@@ -139,6 +139,21 @@ namespace ImagingDeviceManager.Journal {
 			},listFields);
 		}
 
+		///<summary>The sidecar of the image file records a disposition (Capture.CaptureSidecarKeys.Disposition).</summary>
+		private static bool IsResolved(FileInfo fileInfo) {
+			try {
+				string pathSidecar=Path.Combine(fileInfo.DirectoryName,Path.GetFileNameWithoutExtension(fileInfo.Name)+CaptureFiles.SidecarExtension);
+				if(!File.Exists(pathSidecar)) {
+					return false;
+				}
+				string value;
+				return CaptureFiles.ReadSidecar(pathSidecar).TryGetValue(Capture.CaptureSidecarKeys.Disposition,out value) && !string.IsNullOrEmpty(value);
+			}
+			catch {
+				return false;
+			}
+		}
+
 		///<summary>Why an image is in the quarantine, in words for the sidecar and the administrator.</summary>
 		public static string DescribeReason(TwainDrainReason drainReason,TwainStopReason stopReason) {
 			switch(drainReason) {
@@ -171,7 +186,8 @@ namespace ImagingDeviceManager.Journal {
 		}
 
 		///<summary>How many unassigned captures are on this computer: image files anywhere under Capture\quarantine, and the last-write time
-		///of the oldest. 0 when the folder does not exist (it is not created to count). Never throws.</summary>
+		///of the oldest. A file whose sidecar records that it was filed or discarded (it could not be moved out, CaptureFileStore.Resolve) does not
+		///count. 0 when the folder does not exist (it is not created to count). Never throws.</summary>
 		public static int CountImages(CaptureFolders folders,out DateTime? oldest) {
 			oldest=null;
 			try {
@@ -180,7 +196,7 @@ namespace ImagingDeviceManager.Journal {
 					return 0;
 				}
 				List<FileInfo> listFiles=new DirectoryInfo(folder).GetFiles("*",SearchOption.AllDirectories)
-					.Where(x => _arrayImageExtensions.Contains(x.Extension.ToLowerInvariant()))
+					.Where(x => _arrayImageExtensions.Contains(x.Extension.ToLowerInvariant()) && !IsResolved(x))
 					.ToList();
 				if(listFiles.Count>0) {
 					oldest=listFiles.Min(x => x.LastWriteTime);

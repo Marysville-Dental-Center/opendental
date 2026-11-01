@@ -254,8 +254,10 @@ namespace ImagingDeviceManager.Capture {
 		}
 
 		#region List
+		///<summary>A file that was filed or discarded but could not be moved out (its sidecar records the disposition, see Resolve) is left out:
+		///it is no longer an unassigned capture.</summary>
 		public List<CaptureFileEntry> ListQuarantine() {
-			return List(CaptureFileKind.Quarantine,CaptureFolders.SubfolderQuarantine,SearchOption.AllDirectories);
+			return List(CaptureFileKind.Quarantine,CaptureFolders.SubfolderQuarantine,SearchOption.AllDirectories).Where(x => !x.IsResolved).ToList();
 		}
 
 		public List<CaptureFileEntry> ListJournal() {
@@ -475,9 +477,11 @@ namespace ImagingDeviceManager.Capture {
 		#region Resolve
 		///<summary>Records that entry was filed (Assigned, Reassigned) or Discarded. listFields are more Key=Value lines for the sidecar (the
 		///document, the patients, the user, the reason). A quarantine file moves to Capture\quarantine-resolved\&lt;its session folder&gt; with its
-		///sidecar, which gets the disposition appended; a journal copy keeps its place, its sidecar gets the disposition, and an only copy gets its
-		///plain name back (see the class). pathResolved is where the image is afterwards. Returns false with error when the image was not moved
-		///(nothing changed); a sidecar that could not be completed after the move is reported in error with true.</summary>
+		///sidecar, which gets the disposition appended; when it cannot be moved (another program holds it, the folder is not usable), its sidecar
+		///gets the disposition where it is, so it is never offered or counted again (true, with the reason in error). A journal copy keeps its
+		///place, its sidecar gets the disposition, and an only copy gets its plain name back (see the class). pathResolved is where the image is
+		///afterwards. Returns false with error when nothing could be recorded; a sidecar that could not be completed after the move is reported
+		///in error with true.</summary>
 		public bool Resolve(CaptureFileEntry entry,CaptureFileDisposition disposition,IList<KeyValuePair<string,string>> listFields,out string pathResolved,
 			out string error)
 		{
@@ -517,11 +521,15 @@ namespace ImagingDeviceManager.Capture {
 			string folderResolved;
 			string errorFolder;
 			if(!_folders.Ensure(subfolder,out folderResolved,out errorFolder)) {
-				error="The folder for resolved captures is not usable. "+errorFolder;
-				return false;
+				return ResolveQuarantineInPlace(entry,textDisposition,"the folder for resolved captures is not usable. "+errorFolder,out error);
 			}
 			string pathImageNew=Path.Combine(folderResolved,entry.FileName);
-			File.Move(entry.ImagePath,pathImageNew);//fails when the name exists; nothing is replaced
+			try {
+				File.Move(entry.ImagePath,pathImageNew);//fails when the name exists; nothing is replaced
+			}
+			catch(Exception ex) {
+				return ResolveQuarantineInPlace(entry,textDisposition,ex.Message,out error);
+			}
 			pathResolved=pathImageNew;
 			error=errorFolder;//a warning about the folder's rule, if any
 			string pathSidecarNew=Path.Combine(folderResolved,Path.GetFileNameWithoutExtension(entry.FileName)+CaptureFiles.SidecarExtension);
@@ -538,6 +546,27 @@ namespace ImagingDeviceManager.Capture {
 			return true;
 		}
 
+		///<summary>The quarantine file could not be moved out (why): its sidecar records the disposition where it is (created when it has none),
+		///so the file is not listed, counted or filed again; an administrator moves it later. False when that failed too: nothing was recorded.</summary>
+		private static bool ResolveQuarantineInPlace(CaptureFileEntry entry,string textDisposition,string why,out string error) {
+			string pathSidecar=entry.SidecarPath??Path.Combine(Path.GetDirectoryName(entry.ImagePath),
+				Path.GetFileNameWithoutExtension(entry.ImagePath)+CaptureFiles.SidecarExtension);
+			try {
+				File.AppendAllText(pathSidecar,textDisposition,new UTF8Encoding(false));
+			}
+			catch(Exception ex) {
+				error="The file "+entry.FileName+" could not be moved out of the capture quarantine ("+why.Trim()+"), and its sidecar could not record "
+					+"that it was filed: "+ex.Message;
+				return false;
+			}
+			error="The file "+entry.FileName+" could not be moved out of the capture quarantine ("+why.Trim()+"); its sidecar records that it was "
+				+"filed, so it is not offered again. An administrator can move it to Capture\\quarantine-resolved later.";
+			return true;
+		}
+
+		///<summary>The sidecar gets the disposition first, so the copy is resolved whatever fails next. An only copy then gets its plain name back:
+		///the plain-named sidecar is written before the image is renamed and the old one removed after, so the image never lists without its
+		///sidecar (a copy without one would show as a "patient unknown" copy that can be filed again).</summary>
 		private static bool ResolveJournal(CaptureFileEntry entry,string textDisposition,out string pathResolved,out string error) {
 			pathResolved=entry.ImagePath;
 			error="";
@@ -550,15 +579,37 @@ namespace ImagingDeviceManager.Capture {
 			}
 			string baseNamePlain=baseName.Substring(0,baseName.Length-CaptureJournal.OnlyCopySuffix.Length);
 			string pathImagePlain=Path.Combine(folder,baseNamePlain+entry.Extension);
+			string pathSidecarPlain=Path.Combine(folder,baseNamePlain+CaptureFiles.SidecarExtension);
 			try {
-				File.Move(entry.ImagePath,pathImagePlain);
-				pathResolved=pathImagePlain;
-				File.Move(pathSidecar,Path.Combine(folder,baseNamePlain+CaptureFiles.SidecarExtension));
+				File.Copy(pathSidecar,pathSidecarPlain);//fails when the name exists; nothing is replaced
 			}
 			catch(Exception ex) {
 				error="The journal copy keeps its name "+Path.GetFileName(pathResolved)+", so rotation will not remove it: "+ex.Message;
+				return true;
+			}
+			try {
+				File.Move(entry.ImagePath,pathImagePlain);
+			}
+			catch(Exception ex) {
+				TryDelete(pathSidecarPlain);
+				error="The journal copy keeps its name "+Path.GetFileName(pathResolved)+", so rotation will not remove it: "+ex.Message;
+				return true;
+			}
+			pathResolved=pathImagePlain;
+			if(!TryDelete(pathSidecar)) {
+				error="The old sidecar "+Path.GetFileName(pathSidecar)+" of the journal copy could not be removed; it has no image any more.";
 			}
 			return true;
+		}
+
+		private static bool TryDelete(string path) {
+			try {
+				File.Delete(path);
+				return true;
+			}
+			catch {
+				return false;
+			}
 		}
 
 		///<summary>The disposition block appended to a sidecar: a comment, then Disposition, its time, this computer and Windows user, then the

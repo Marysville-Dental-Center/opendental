@@ -335,6 +335,26 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void Resolve_Quarantine_TheFileCannotBeMoved_ItsSidecarRecordsIt_NeitherListedNorCountedAgain() {
+			Guid sessionGuid=Guid.NewGuid();
+			string path=WriteSessionQuarantine(Gray8Image(2,2),sessionGuid,42,new DateTime(2026,10,31,10,0,5));
+			CaptureFileEntry entry=_store.ListQuarantine().Single();
+			string pathResolved;
+			string error;
+			bool isResolved;
+			using(new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read)) {//another program (an antivirus scanner) holds the file
+				isResolved=_store.Resolve(entry,CaptureFileDisposition.Assigned,null,out pathResolved,out error);
+			}
+			Assert.IsTrue(isResolved,error);
+			StringAssert.Contains(error,"could not be moved out of the capture quarantine");
+			Assert.AreEqual(path,pathResolved,"Still where it was.");
+			Assert.IsTrue(File.Exists(path));
+			Assert.AreEqual("Assigned",CaptureFiles.ReadSidecar(Path.ChangeExtension(path,".txt"))[CaptureSidecarKeys.Disposition]);
+			Assert.AreEqual(0,_store.ListQuarantine().Count,"Not offered for Assign again (a second document of one exposure).");
+			Assert.AreEqual(0,CaptureQuarantine.GetUnassignedInfo(_folders,_now).Count,"No longer an unassigned capture.");
+		}
+
+		[TestMethod]
 		public void Resolve_QuarantineRootFile_Discarded_IntoTheResolvedRoot() {
 			string error;
 			string path=new QuarantineWriter(_folders).Write(DibImage.FromPackedDib(Gray8Image(2,2).Dib),
@@ -377,6 +397,27 @@ namespace ImagingDeviceManager.Tests {
 			Assert.IsTrue(CaptureFiles.IsCaptureBaseName(Path.GetFileNameWithoutExtension(pathResolved)),"Rotation counts it again.");
 			Assert.AreEqual("Reassigned",CaptureFiles.ReadSidecar(Path.ChangeExtension(pathResolved,".txt"))[CaptureSidecarKeys.Disposition]);
 			Assert.AreEqual(1,Directory.GetFiles(Path.GetDirectoryName(path),"*.txt").Length);
+		}
+
+		[TestMethod]
+		public void Resolve_JournalOnlyCopy_TheImageCannotBeRenamed_KeepsItsNameAndItsMarkedSidecar() {
+			CaptureJournal journal=new CaptureJournal(_folders);
+			string path=journal.Write(CaptureImageFile.FromAcquiredImage(Gray8Image(2,2)),SessionRecord(new DateTime(2026,10,31,10,0,0),Guid.NewGuid(),false),
+				CaptureJournal.DeliveredNone,"The quarantine could not be written.",200,null);
+			CaptureFileEntry entry=_store.ListJournal().Single();
+			string pathResolved;
+			string error;
+			bool isResolved;
+			using(new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read)) {
+				isResolved=_store.Resolve(entry,CaptureFileDisposition.Assigned,null,out pathResolved,out error);
+			}
+			Assert.IsTrue(isResolved,error);
+			Assert.AreEqual(path,pathResolved);
+			StringAssert.Contains(error,"keeps its name");
+			Assert.AreEqual(1,Directory.GetFiles(Path.GetDirectoryName(path),"*.txt").Length,"No plain-named sidecar is left behind.");
+			CaptureFileEntry entryAfter=_store.ListJournal().Single();
+			Assert.IsTrue(entryAfter.HasSidecar,"Never an image without its sidecar.");
+			Assert.IsTrue(entryAfter.IsResolved);
 		}
 		#endregion Resolve
 
