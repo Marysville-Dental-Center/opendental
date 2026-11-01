@@ -36,9 +36,23 @@ namespace OpenDentBusiness {
 			return (note??"").Replace("\r\n","\n").Replace("\r","\n");
 		}
 
-		///<summary>True when the two texts differ in more than their line breaks.</summary>
+		///<summary>True when the two texts differ in more than their line breaks. For signatures, whose keys ignore line breaks
+		///(Procedures.GetSignatureKeyData). Whether a save writes a note row is decided exactly, by IsNoteRowWritten.</summary>
 		public static bool IsNoteTextChanged(string noteBefore,string noteAfter) {
 			return Normalize(noteBefore)!=Normalize(noteAfter);
+		}
+
+		///<summary>True when the save a window is about to make writes a new procnote row, decided before anything is saved by the rule
+		///Procedures.Update uses (ProcNotes.IsNoteRowNeeded, text compared exactly). procedure holds the window's values, noteToSave the note text it
+		///will save (the note box's text: a RichTextBox returns \n line breaks, so a note stored with \r\n counts as changed, and Procedures.Update
+		///writes a row with it). isSignatureChanged: a signature box was signed, cleared or switched in the window, so the saved signature may change.</summary>
+		public static bool IsNoteRowWritten(Procedure procedure,Procedure procedureOld,string noteToSave,bool isSignatureChanged) {
+			if(isSignatureChanged) {
+				return true;
+			}
+			Procedure procedureSaved=procedure.Copy();
+			procedureSaved.Note=noteToSave;
+			return ProcNotes.IsNoteRowNeeded(procedureSaved,procedureOld);
 		}
 
 		///<summary>True when procNoteNow is a newer note than procNoteAtLoad, the newest note when the window opened (null when there was none):
@@ -99,6 +113,60 @@ namespace OpenDentBusiness {
 					return null;
 			}
 		}
+
+		#region Who may change the text
+		///<summary>True when the user may edit a procedure note under Procedure Info's rule (FormProcEdit's load): Procedure Note Full, or Procedure
+		///Note User when the note is the user's own or not signed. The merge window applies it to the newer note.</summary>
+		public static bool CanEditProcNote(bool hasNoteFullPermission,bool hasNoteUserPermission,long userNumCur,long userNumNote,bool isSigBlank) {
+			if(hasNoteFullPermission) {
+				return true;
+			}
+			return hasNoteUserPermission && (userNumNote==userNumCur || isSigBlank);
+		}
+
+		///<summary>True when the merge window may save a text other than their note (Keep Mine, Save Merged): the user could edit the note text in
+		///the window (canEditTextInWindow: the note box was not read-only), and may edit the newer note under the window's rule for signed notes
+		///(canEditTheirs: CanEditProcNote in Procedure Info, GroupNoteSignatures.CanEditNoteText in the Group Note window). Otherwise only Keep Theirs
+		///and Cancel are offered and the merged note can't be edited, so a user who may not edit a signed note, for example a group note's
+		///co-signer, can't change it or put an older text back through the merge window.</summary>
+		public static bool CanChangeText(bool canEditTextInWindow,bool canEditTheirs) {
+			return canEditTextInWindow && canEditTheirs;
+		}
+
+		///<summary>True when the window may act on the choice: Keep Theirs and Cancel always; Keep Mine and Save Merged only when the text may be
+		///changed (CanChangeText).</summary>
+		public static bool IsChoiceAllowed(ProcNoteMergeChoice choice,bool canChangeText) {
+			if(choice==ProcNoteMergeChoice.KeepMine || choice==ProcNoteMergeChoice.SaveMerged) {
+				return canChangeText;
+			}
+			return true;
+		}
+		#endregion Who may change the text
+
+		#region Window state after a choice
+		///<summary>After any choice but Cancel the newer note is what the window saves over: procedureOld takes its text, user and signatures, so
+		///Procedures.Update compares against the newest row in the database.</summary>
+		public static void TakeAsBaseline(Procedure procedureOld,ProcNote procNoteNow) {
+			procedureOld.Note=procNoteNow.Note??"";
+			procedureOld.UserNum=procNoteNow.UserNum;
+			procedureOld.Signature=procNoteNow.Signature??"";
+			procedureOld.SigIsTopaz=procNoteNow.SigIsTopaz;
+			ProcNotes.CopySecondSignatureTo(procNoteNow,procedureOld);
+		}
+
+		///<summary>Keep Theirs: the procedure takes their note with its user and signatures. noteAsShown is their note as the window's note box returns
+		///it once it is put there (a RichTextBox returns \n line breaks). Both copies get that text, so the save compares it equal (ProcNotes.IsNoteRowNeeded)
+		///and writes no note row; the newer row stays the newest. Signatures are not affected, their keys ignore line breaks.</summary>
+		public static void ApplyTheirNote(Procedure procedure,Procedure procedureOld,ProcNote procNoteTheirs,string noteAsShown) {
+			TakeAsBaseline(procedureOld,procNoteTheirs);
+			procedureOld.Note=noteAsShown??"";
+			procedure.Note=noteAsShown??"";
+			procedure.UserNum=procNoteTheirs.UserNum;
+			procedure.Signature=procNoteTheirs.Signature??"";
+			procedure.SigIsTopaz=procNoteTheirs.SigIsTopaz;
+			ProcNotes.CopySecondSignatureTo(procNoteTheirs,procedure);
+		}
+		#endregion Window state after a choice
 
 		///<summary>True when a signature drawn in the window over noteSigned no longer fits the text being saved, so it is cleared and the user signs
 		///again. A merged text that equals the signed one keeps the signature.</summary>

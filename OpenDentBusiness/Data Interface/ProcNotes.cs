@@ -34,6 +34,21 @@ namespace OpenDentBusiness {
 		}
 		#endregion
 
+		#region Note rows
+		///<summary>True when saving procedure over procedureOld writes a new procnote row (Procedures.Update): the note text differs, or its user, its
+		///signature or (26.1) the second signature changed. The text is compared exactly, as it always was, so a note stored with \r\n line breaks (the
+		///CRUD stores every note that way, POut.StringNote) and read back from a RichTextBox with \n counts as changed. Procedures.Update and the
+		///Procedure Note Merge check (ProcNoteMerges.IsNoteRowWritten)
+		///both use this, so the windows ask exactly when the save writes a row (M2-NOTES).</summary>
+		public static bool IsNoteRowNeeded(Procedure procedure,Procedure procedureOld) {
+			return procedure.Note!=procedureOld.Note
+				|| procedure.UserNum!=procedureOld.UserNum
+				|| procedure.SigIsTopaz!=procedureOld.SigIsTopaz
+				|| procedure.Signature!=procedureOld.Signature
+				|| IsSecondSignatureChanged(procedure,procedureOld);
+		}
+		#endregion Note rows
+
 		#region Second signature (26.1)
 		///<summary>True when the caller changed the second signature of a group note (procnote.UserNum2, Signature2, SigIsTopaz2): signed, cleared or
 		///signed by another user. Procedures.Update then writes a new note row.</summary>

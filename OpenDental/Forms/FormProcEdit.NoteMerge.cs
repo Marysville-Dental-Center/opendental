@@ -30,37 +30,37 @@ namespace OpenDental {
 			if(IsNew || _procedure.ProcNum==0 || ProcNoteMerges.IsAutoMergeOn()) {
 				return true;
 			}
-			bool isNoteRowWritten=ProcNoteMerges.IsNoteTextChanged(_procedureOld.Note,textNotes.Text) || _signatureChanged;
+			//Exactly when Procedures.Update will write a note row (the text compared exactly, as it does).
+			bool isNoteRowWritten=ProcNoteMerges.IsNoteRowWritten(_procedure,_procedureOld,textNotes.Text,_signatureChanged);
 			ProcNote procNoteNow=ProcNotes.GetNewestForProc(_procedure.ProcNum);
 			if(!ProcNoteMerges.IsMergeNeeded(_procNoteNewestAtLoad,procNoteNow,isNoteRowWritten)) {
 				return true;
 			}
 			bool isSigDrawn=_signatureChanged && !signatureBoxWrapper.SigIsBlank;
 			bool isTheirsSigned=!procNoteNow.Signature.IsNullOrEmpty();
+			//The note's permissions apply to the newer note too: without them only Keep Theirs and Cancel are offered.
+			bool canEditTheirs=ProcNoteMerges.CanEditProcNote(Security.IsAuthorized(EnumPermType.ProcedureNoteFull,true),
+				Security.IsAuthorized(EnumPermType.ProcedureNoteUser,true),Security.CurUser.UserNum,procNoteNow.UserNum,procNoteNow.Signature.IsNullOrEmpty());
+			bool canChangeText=ProcNoteMerges.CanChangeText(!textNotes.ReadOnly,canEditTheirs);
 			string noteMine=textNotes.Text;
 			FrmProcNoteMerge frmProcNoteMerge=new FrmProcNoteMerge(procNoteNow.Note,Userods.GetName(procNoteNow.UserNum),procNoteNow.EntryDateTime,isTheirsSigned,
-				noteMine,ProcNoteMerges.GetMergedDefault(procNoteNow.Note,_procedureOld.Note,noteMine),isSigDrawn);
+				noteMine,ProcNoteMerges.GetMergedDefault(procNoteNow.Note,_procedureOld.Note,noteMine),isSigDrawn,canChangeText);
 			frmProcNoteMerge.ShowDialog();
 			ProcNoteMergeChoice choice=frmProcNoteMerge.MergeChoice;
-			if(choice==ProcNoteMergeChoice.Cancel) {
+			if(choice==ProcNoteMergeChoice.Cancel || !ProcNoteMerges.IsChoiceAllowed(choice,canChangeText)) {
 				return false;
 			}
 			//butSave_Click already alerted the signer of the note as loaded when another user cleared that signature.
 			long userNumAlertedOnSave=(_hasUserChanged && !_procedureOld.Signature.IsNullOrEmpty()) ? _procedureOld.UserNum : 0;
 			//From now on the newer note is the one this window saves over.
 			_procNoteNewestAtLoad=procNoteNow;
-			_procedureOld.Note=procNoteNow.Note??"";
-			_procedureOld.UserNum=procNoteNow.UserNum;
-			_procedureOld.Signature=procNoteNow.Signature??"";
-			_procedureOld.SigIsTopaz=procNoteNow.SigIsTopaz;
-			ProcNotes.CopySecondSignatureTo(procNoteNow,_procedureOld);
+			ProcNoteMerges.TakeAsBaseline(_procedureOld,procNoteNow);
 			ProcNotes.CopySecondSignatureTo(procNoteNow,_procedure);
 			_listNoteMergeLogTexts.Add(ProcNoteMerges.GetLogText(choice,
 				ProcedureCodes.GetStringProcCode(_procedure.CodeNum,doThrowIfMissing:false)+" "+_procedure.ProcDate.ToShortDateString(),
 				Userods.GetName(procNoteNow.UserNum)));
 			if(choice==ProcNoteMergeChoice.KeepTheirs) {
-				NoteMerge_KeepTheirs(procNoteNow);
-				return true;
+				return NoteMerge_KeepTheirs(procNoteNow,canEditTheirs,isSigDrawn);
 			}
 			NoteMerge_AlertTheirSigner(choice,procNoteNow,userNumAlertedOnSave);
 			string noteResult=ProcNoteMerges.GetResultText(choice,procNoteNow.Note,noteMine,frmProcNoteMerge.NoteMerged);
@@ -75,20 +75,48 @@ namespace OpenDental {
 			return true;
 		}
 
-		///<summary>Keep Theirs: the newer note with its signature and user; the other changes in the window are still saved.</summary>
-		private void NoteMerge_KeepTheirs(ProcNote procNoteTheirs) {
+		///<summary>Keep Theirs: the newer note with its signature and user; the other changes in the window are still saved, and no note row is
+		///written. A signature drawn here was made over my note, which is not kept, so it is dropped: false (the window stays open) so the user can sign
+		///the kept note, when they may, and save again. When they may not edit the kept note (canEditTheirs), the note and its signature box become
+		///read-only, as when such a note is opened.</summary>
+		private bool NoteMerge_KeepTheirs(ProcNote procNoteTheirs,bool canEditTheirs,bool isSigDrawn) {
 			bool isStartingUpOld=_isStartingUp;
 			_isStartingUp=true;//Keeps the note box from clearing the signature.
 			signatureBoxWrapper.ClearSignature();
 			textNotes.Text=procNoteTheirs.Note??"";
-			_procedure.Note=procNoteTheirs.Note??"";
-			_procedure.UserNum=procNoteTheirs.UserNum;
-			_procedure.Signature=procNoteTheirs.Signature??"";
-			_procedure.SigIsTopaz=procNoteTheirs.SigIsTopaz;
+			//The text as the note box returns it, in both copies, so Procedures.Update writes no note row.
+			ProcNoteMerges.ApplyTheirNote(_procedure,_procedureOld,procNoteTheirs,textNotes.Text);
 			textUser.Text=Userods.GetName(procNoteTheirs.UserNum);
 			_signatureChanged=false;//SaveSignature keeps their signature.
+			_hasUserChanged=false;//Clearing the box above is not a change of the note's user.
 			signatureBoxWrapper.FillSignature(_procedure.SigIsTopaz,Procedures.GetSignatureKeyData(_procedure),_procedure.Signature);
 			_isStartingUp=isStartingUpOld;
+			if(!canEditTheirs) {
+				NoteMerge_LockNote();
+			}
+			if(!isSigDrawn) {
+				return true;
+			}
+			if(canEditTheirs) {
+				MsgBox.Show(this,"Your signature was made over your note, which was not kept. Please sign the note again, then save.");
+			}
+			else {
+				MsgBox.Show(this,"Your signature was not saved, because the note you kept was signed by another user. Save again to save your other changes.");
+			}
+			return false;
+		}
+
+		///<summary>The kept note is signed by another user and this user may not edit it (CanEditProcNote): the note box and its signature are locked,
+		///as when such a note is opened.</summary>
+		private void NoteMerge_LockNote() {
+			textNotes.ReadOnly=true;
+			buttonUseAutoNote.Enabled=false;
+			butEditAutoNote.Enabled=false;
+			signatureBoxWrapper.Enabled=false;
+			butAppend.Enabled=false;
+			butChangeUser.Enabled=false;
+			labelPermAlert.Text=Lan.g(this,"Notes and Signature locked. The note you kept was signed by another user.");
+			labelPermAlert.Visible=true;
 		}
 
 		///<summary>Keep Mine and Save Merged replace the newer note, so its signer gets the "signature cleared" alert (when subscribed), unless that is

@@ -843,7 +843,9 @@ namespace OpenDental{
 		///signature, and they subscribe to the alert.</summary>
 		private void AlertSecondSignerCleared() {
 			List<long> listUserNumsActing=new List<long> { Security.CurUser.UserNum,_userod.UserNum,_userod2.UserNum };
-			long userNum2=GroupNoteSignatures.GetSecondSignerToAlert(_procedureGroupOld,_hasSig2Changed,listUserNumsActing);
+			//After Keep Mine or Save Merged the old copy holds the newer note's second signature, which the save replaces even when box 2 was not touched.
+			bool isSig2Changed=_hasSig2Changed || ProcNotes.IsSecondSignatureChanged(ProcedureGroup,_procedureGroupOld);
+			long userNum2=GroupNoteSignatures.GetSecondSignerToAlert(_procedureGroupOld,isSig2Changed,listUserNumsActing);
 			if(userNum2==0 || !AlertSubs.GetAllAlertTypesForUser(userNum2).Contains(AlertType.SignatureCleared)) {
 				return;
 			}
@@ -868,7 +870,8 @@ namespace OpenDental{
 			if(ProcedureGroup.ProcNum==0 || ProcNoteMerges.IsAutoMergeOn()) {
 				return true;
 			}
-			bool isNoteRowWritten=ProcNoteMerges.IsNoteTextChanged(_procedureGroupOld.Note,textNotes.Text) || _hasSigChanged || _hasSig2Changed;
+			//Exactly when Procedures.Update will write a note row (the text compared exactly, as it does).
+			bool isNoteRowWritten=ProcNoteMerges.IsNoteRowWritten(ProcedureGroup,_procedureGroupOld,textNotes.Text,_hasSigChanged || _hasSig2Changed);
 			ProcNote procNoteNow=ProcNotes.GetNewestForProc(ProcedureGroup.ProcNum);
 			if(!ProcNoteMerges.IsMergeNeeded(_procNoteNewestAtLoad,procNoteNow,isNoteRowWritten)) {
 				return true;
@@ -876,25 +879,31 @@ namespace OpenDental{
 			bool isSig1Drawn=_hasSigChanged && !signatureBoxWrapper.SigIsBlank;
 			bool isSig2Drawn=_hasSig2Changed && !signatureBoxWrapper2.SigIsBlank;
 			bool isTheirsSigned=!procNoteNow.Signature.IsNullOrEmpty() || !procNoteNow.Signature2.IsNullOrEmpty();
+			//Rule 4 applies to the newer note too: only its signers, or a user with Group Note Edit Signed, may change it. A user whose note box is
+			//read-only here (for example a co-signer of someone else's note) never changes the text through the merge window.
+			bool canEditTheirs=GroupNoteSignatures.CanEditNoteText(Security.IsAuthorized(EnumPermType.GroupNoteEditSigned,true),Security.CurUser.UserNum,
+				procNoteNow.UserNum,procNoteNow.Signature.IsNullOrEmpty(),procNoteNow.UserNum2,procNoteNow.Signature2.IsNullOrEmpty());
+			bool canChangeText=ProcNoteMerges.CanChangeText(!textNotes.ReadOnly,canEditTheirs);
 			string noteMine=textNotes.Text;
 			FrmProcNoteMerge frmProcNoteMerge=new FrmProcNoteMerge(procNoteNow.Note,Userods.GetName(procNoteNow.UserNum),procNoteNow.EntryDateTime,isTheirsSigned,
-				noteMine,ProcNoteMerges.GetMergedDefault(procNoteNow.Note,_procedureGroupOld.Note,noteMine),isSig1Drawn || isSig2Drawn);
+				noteMine,ProcNoteMerges.GetMergedDefault(procNoteNow.Note,_procedureGroupOld.Note,noteMine),isSig1Drawn || isSig2Drawn,canChangeText);
 			frmProcNoteMerge.ShowDialog();
 			ProcNoteMergeChoice choice=frmProcNoteMerge.MergeChoice;
-			if(choice==ProcNoteMergeChoice.Cancel) {
+			if(choice==ProcNoteMergeChoice.Cancel || !ProcNoteMerges.IsChoiceAllowed(choice,canChangeText)) {
+				return false;
+			}
+			if(choice==ProcNoteMergeChoice.KeepTheirs && !canEditTheirs && IsStructureOrProviderChanged()) {
+				//Saving them would change (and unsign) a note this user may not edit. Nothing is taken over yet; the next save asks again.
+				MsgBox.Show(this,"The newer note is signed by another user, so the date, the provider and the attached procedures can't be changed here. Undo those changes, or close this window without saving.");
 				return false;
 			}
 			//From now on the newer note is the one this window saves over.
 			_procNoteNewestAtLoad=procNoteNow;
-			_procedureGroupOld.Note=procNoteNow.Note;
-			_procedureGroupOld.UserNum=procNoteNow.UserNum;
-			_procedureGroupOld.Signature=procNoteNow.Signature??"";
-			_procedureGroupOld.SigIsTopaz=procNoteNow.SigIsTopaz;
-			ProcNotes.CopySecondSignatureTo(procNoteNow,_procedureGroupOld);
+			ProcNoteMerges.TakeAsBaseline(_procedureGroupOld,procNoteNow);
 			_listNoteMergeLogTexts.Add(ProcNoteMerges.GetLogText(choice,Lan.g(this,"Group note")+" "+ProcedureGroup.ProcDate.ToShortDateString(),
 				Userods.GetName(procNoteNow.UserNum)));
 			if(choice==ProcNoteMergeChoice.KeepTheirs) {
-				return KeepTheirNote(procNoteNow);
+				return KeepTheirNote(procNoteNow,canEditTheirs,isSig1Drawn || isSig2Drawn);
 			}
 			if(!procNoteNow.Signature.IsNullOrEmpty() && procNoteNow.UserNum!=Security.CurUser.UserNum && procNoteNow.UserNum!=_userod.UserNum) {
 				_hasUserChanged=true;//Their signature is not kept: the usual prompt and "signature cleared" alert go to their signer.
@@ -918,19 +927,19 @@ namespace OpenDental{
 			return true;
 		}
 
-		///<summary>Keep Theirs: the window takes the newer note with its signatures and users; my other changes are still saved. When the date or the
-		///attached procedures changed here, their signatures no longer fit, so they are cleared and, when there were any, the user signs again.</summary>
-		private bool KeepTheirNote(ProcNote procNoteTheirs) {
+		///<summary>Keep Theirs: the window takes the newer note with its signatures and users; my other changes are still saved, and no note row is
+		///written. When the date or the attached procedures changed here, their signatures no longer fit, so they are cleared and, when there were any,
+		///the user signs again (only reached when the user may edit their note). A signature drawn here was made over my note, which is not kept, so it
+		///is dropped and the window stays open (false) for signing the kept note again. When the user may not edit the kept note (canEditTheirs), the
+		///note and the boxes they may not sign become read-only, as when such a note is opened.</summary>
+		private bool KeepTheirNote(ProcNote procNoteTheirs,bool canEditTheirs,bool isSigDrawn) {
 			bool isStartingUpOld=_isStartingUp;
 			_isStartingUp=true;
 			signatureBoxWrapper.ClearSignature();
 			signatureBoxWrapper2.ClearSignature();
 			textNotes.Text=procNoteTheirs.Note??"";
-			ProcedureGroup.Note=procNoteTheirs.Note??"";
-			ProcedureGroup.UserNum=procNoteTheirs.UserNum;
-			ProcedureGroup.Signature=procNoteTheirs.Signature??"";
-			ProcedureGroup.SigIsTopaz=procNoteTheirs.SigIsTopaz;
-			ProcNotes.CopySecondSignatureTo(procNoteTheirs,ProcedureGroup);
+			//The text as the note box returns it, in both copies, so Procedures.Update writes no note row.
+			ProcNoteMerges.ApplyTheirNote(ProcedureGroup,_procedureGroupOld,procNoteTheirs,textNotes.Text);
 			textUser.Text=Userods.GetName(procNoteTheirs.UserNum);
 			textUser2.Text=(procNoteTheirs.UserNum2==0) ? "" : Userods.GetName(procNoteTheirs.UserNum2);
 			_hasUserChanged=false;
@@ -943,7 +952,7 @@ namespace OpenDental{
 				_hasUserChanged=!procNoteTheirs.Signature.IsNullOrEmpty() && procNoteTheirs.UserNum!=Security.CurUser.UserNum
 					&& procNoteTheirs.UserNum!=_userod.UserNum;
 				_isStartingUp=isStartingUpOld;
-				if(isTheirsSigned) {
+				if(isTheirsSigned || isSigDrawn) {
 					MsgBox.Show(this,"The signatures on that note no longer apply because the date or the attached procedures changed here. Please sign again, then save.");
 					return false;
 				}
@@ -955,7 +964,19 @@ namespace OpenDental{
 			signatureBoxWrapper2.FillSignature(ProcedureGroup.SigIsTopaz2,GroupNoteSignatures.GetSignatureKey2(ProcedureGroup,ListProcGroupItems),
 				ProcedureGroup.Signature2);
 			_isStartingUp=isStartingUpOld;
-			return true;
+			if(!canEditTheirs) {
+				LockForSignedNote();
+			}
+			if(!isSigDrawn) {
+				return true;
+			}
+			if(signatureBoxWrapper.Enabled || signatureBoxWrapper2.Enabled) {
+				MsgBox.Show(this,"Your signature was made over your note, which was not kept. Please sign the note again, then save.");
+			}
+			else {
+				MsgBox.Show(this,"Your signature was not saved, because the note you kept was signed by another user. Save again to save your other changes.");
+			}
+			return false;
 		}
 
 		///<summary>True when the date or the attached procedures were changed in this window. The signatures are bound to both.</summary>
@@ -967,6 +988,40 @@ namespace OpenDental{
 				return true;
 			}
 			return GetProceduresAdded().Count>0 || GetProceduresRemoved().Count>0;
+		}
+
+		///<summary>True when the date, the provider or the attached procedures were changed in this window: the changes only a user who may edit the
+		///note can make (25.1).</summary>
+		private bool IsStructureOrProviderChanged() {
+			return IsStructureChanged() || (_canEditStructure && comboProv.GetSelectedProvNum()!=_procedureGroupOld.ProvNum);
+		}
+
+		///<summary>Keep Theirs kept a note this user may not edit (rule 4: signed by another user, and no Group Note Edit Signed): the note, the first
+		///box and the date, provider and procedures become read-only, as when such a note is opened, and the second box stays usable only when the user
+		///may still sign it (GroupNoteSignatures.CanSignBox2). Called only when no date, provider or procedure change is pending.</summary>
+		private void LockForSignedNote() {
+			bool hasEditSignedPermission=Security.IsAuthorized(EnumPermType.GroupNoteEditSigned,true);
+			if(!GroupNoteSignatures.CanEditNoteText(hasEditSignedPermission,Security.CurUser.UserNum,ProcedureGroup.UserNum,signatureBoxWrapper.SigIsBlank,
+				ProcedureGroup.UserNum2,signatureBoxWrapper2.SigIsBlank))
+			{
+				textNotes.ReadOnly=true;
+				signatureBoxWrapper.Enabled=false;
+				labelPermAlert.Text=Lan.g(this,"Notes and Signature locked. The note you kept was signed by another user.");
+				labelPermAlert.Visible=true;
+				butAppend.Enabled=false;
+				buttonUseAutoNote.Enabled=false;
+				butChangeUser.Enabled=false;
+				butDelete.Enabled=false;
+				_canEditStructure=false;
+				textProcDate.ReadOnly=true;
+				comboProv.Enabled=false;
+				butAdd.Enabled=false;
+				butRemove.Enabled=false;
+			}
+			if(!GroupNoteSignatures.CanSignBox2(hasEditSignedPermission,Security.CurUser.UserNum,ProcedureGroup.UserNum2,signatureBoxWrapper2.SigIsBlank)) {
+				butChangeUser2.Enabled=false;
+				signatureBoxWrapper2.Enabled=false;
+			}
 		}
 		#endregion 25.4 Procedure Note Merge
 

@@ -82,7 +82,8 @@ namespace M2NOTESTests {
 			StringAssert.Contains(checks,"PrefName.ProcNoteSigsBlockedAutoNoteIncomplete");
 			StringAssert.Contains(checks,"signatureBoxWrapper2.IsValid");
 			StringAssert.Contains(checks,"GroupNoteSignatures.GetSignersError(");
-			StringAssert.Contains(source,"GroupNoteSignatures.GetSecondSignerToAlert(_procedureGroupOld,_hasSig2Changed,listUserNumsActing)");
+			StringAssert.Contains(source,"bool isSig2Changed=_hasSig2Changed || ProcNotes.IsSecondSignatureChanged(ProcedureGroup,_procedureGroupOld);");
+			StringAssert.Contains(source,"GroupNoteSignatures.GetSecondSignerToAlert(_procedureGroupOld,isSig2Changed,listUserNumsActing)");
 			StringAssert.Contains(source,"GroupNoteSignatures.GetSecondSignatureLogPart(_procedureGroupOld,ProcedureGroup,");
 			StringAssert.Contains(source,"signatureBoxWrapper2?.SetTabletState(0);");
 		}
@@ -103,6 +104,26 @@ namespace M2NOTESTests {
 			StringAssert.Contains(merge,"new FrmProcNoteMerge(");
 			StringAssert.Contains(merge,"ProcNoteMerges.IsResignNeeded(");
 			StringAssert.Contains(source,"ProcNoteMerges.GetLogPermission(GroupNotes.IsTreatedAsComplete(_listProcStatsAtLoad))");
+			//Whether this save writes a note row: Procedures.Update's own rule (exact text), not the line-break-blind comparison.
+			StringAssert.Contains(merge,"bool isNoteRowWritten=ProcNoteMerges.IsNoteRowWritten(ProcedureGroup,_procedureGroupOld,textNotes.Text,_hasSigChanged || _hasSig2Changed);");
+			StringAssert.DoesNotMatch(merge,new Regex(@"isNoteRowWritten=ProcNoteMerges\.IsNoteTextChanged"));
+			//Rule 4 in the merge window: the text changes only when the note box was editable and the newer note may be edited by this user.
+			StringAssert.Contains(merge,"bool canEditTheirs=GroupNoteSignatures.CanEditNoteText(Security.IsAuthorized(EnumPermType.GroupNoteEditSigned,true),Security.CurUser.UserNum,");
+			StringAssert.Contains(merge,"procNoteNow.UserNum,procNoteNow.Signature.IsNullOrEmpty(),procNoteNow.UserNum2,procNoteNow.Signature2.IsNullOrEmpty());");
+			StringAssert.Contains(merge,"bool canChangeText=ProcNoteMerges.CanChangeText(!textNotes.ReadOnly,canEditTheirs);");
+			StringAssert.Contains(merge,",isSig1Drawn || isSig2Drawn,canChangeText);");
+			StringAssert.Contains(merge,"if(choice==ProcNoteMergeChoice.Cancel || !ProcNoteMerges.IsChoiceAllowed(choice,canChangeText)) {");
+			StringAssert.Contains(merge,"if(choice==ProcNoteMergeChoice.KeepTheirs && !canEditTheirs && IsStructureOrProviderChanged()) {");
+			StringAssert.Contains(merge,"ProcNoteMerges.TakeAsBaseline(_procedureGroupOld,procNoteNow);");
+			//Keep Theirs writes no row, drops a signature drawn over my note, and locks a note the user may not edit.
+			string keepTheirs=Between(source,"private bool KeepTheirNote(","private bool IsStructureChanged()");
+			StringAssert.Contains(keepTheirs,"ProcNoteMerges.ApplyTheirNote(ProcedureGroup,_procedureGroupOld,procNoteTheirs,textNotes.Text);");
+			StringAssert.Contains(keepTheirs,"LockForSignedNote();");
+			StringAssert.Contains(keepTheirs,"if(!isSigDrawn) {");
+			string lockNote=Between(source,"private void LockForSignedNote()","#endregion 25.4 Procedure Note Merge");
+			StringAssert.Contains(lockNote,"textNotes.ReadOnly=true;");
+			StringAssert.Contains(lockNote,"signatureBoxWrapper2.Enabled=false;");
+			StringAssert.Contains(lockNote,"GroupNoteSignatures.CanSignBox2(");
 		}
 
 		[TestMethod]
@@ -117,6 +138,14 @@ namespace M2NOTESTests {
 			string partial=ScratchDb.ReadRepoFile("OpenDental","Forms","FormProcEdit.NoteMerge.cs");
 			StringAssert.Contains(partial,"ProcNotes.GetNewestForProc(_procedure.ProcNum)");
 			StringAssert.Contains(partial,"ProcNoteMerges.IsMergeNeeded(_procNoteNewestAtLoad,procNoteNow,isNoteRowWritten)");
+			StringAssert.Contains(partial,"bool isNoteRowWritten=ProcNoteMerges.IsNoteRowWritten(_procedure,_procedureOld,textNotes.Text,_signatureChanged);");
+			StringAssert.DoesNotMatch(partial,new Regex(@"isNoteRowWritten=ProcNoteMerges\.IsNoteTextChanged"));
+			StringAssert.Contains(partial,"ProcNoteMerges.CanEditProcNote(Security.IsAuthorized(EnumPermType.ProcedureNoteFull,true),");
+			StringAssert.Contains(partial,"bool canChangeText=ProcNoteMerges.CanChangeText(!textNotes.ReadOnly,canEditTheirs);");
+			StringAssert.Contains(partial,",isSigDrawn,canChangeText);");
+			StringAssert.Contains(partial,"if(choice==ProcNoteMergeChoice.Cancel || !ProcNoteMerges.IsChoiceAllowed(choice,canChangeText)) {");
+			StringAssert.Contains(partial,"ProcNoteMerges.ApplyTheirNote(_procedure,_procedureOld,procNoteTheirs,textNotes.Text);");
+			StringAssert.Contains(partial,"NoteMerge_LockNote();");
 			StringAssert.Contains(partial,"new FrmProcNoteMerge(");
 			StringAssert.Contains(partial,"ProcNoteMerges.GetLogPermission(ProcNoteMerges.IsCompleteStatus(_procedure.ProcStatus))");
 			StringAssert.Contains(ScratchDb.ReadRepoFile("OpenDental","OpenDental.csproj"),"<Compile Include=\"Forms\\FormProcEdit.NoteMerge.cs\">");
@@ -137,6 +166,13 @@ namespace M2NOTESTests {
 			StringAssert.Contains(code,"MergeChoice=ProcNoteMergeChoice.KeepTheirs;");
 			StringAssert.Contains(code,"MergeChoice=ProcNoteMergeChoice.SaveMerged;");
 			StringAssert.Contains(code,"MergeChoice=ProcNoteMergeChoice.Cancel;");
+			//Only Keep Theirs and Cancel when the text may not be changed (ProcNoteMerges.CanChangeText).
+			string load=Between(code,"if(!_canChangeText) {","textMerged.Focus();");
+			StringAssert.Contains(load,"textMerged.ReadOnly=true;");
+			StringAssert.Contains(load,"butKeepMine.IsEnabled=false;");
+			StringAssert.Contains(load,"butSaveMerged.IsEnabled=false;");
+			StringAssert.Contains(Between(code,"private void butKeepMine_Click(","IsDialogOK=true;"),"if(!_canChangeText) {");
+			StringAssert.Contains(Between(code,"private void butSaveMerged_Click(","IsDialogOK=true;"),"if(!_canChangeText) {");
 			string csproj=ScratchDb.ReadRepoFile("WpfControlsOD","WpfControlsOD.csproj");
 			StringAssert.Contains(csproj,"<Compile Include=\"Frms\\FrmProcNoteMerge.xaml.cs\">");
 			StringAssert.Contains(csproj,"<Page Include=\"Frms\\FrmProcNoteMerge.xaml\">");
@@ -145,7 +181,9 @@ namespace M2NOTESTests {
 		[TestMethod]
 		public void BusinessLayer_HooksInSharedFiles() {
 			string procedures=ScratchDb.ReadRepoFile("OpenDentBusiness","Data Interface","Procedures.cs");
-			StringAssert.Contains(procedures,"|| ProcNotes.IsSecondSignatureChanged(procedure,oldProcedure)//26.1 group note second signature (M2-NOTES)");
+			//One rule for writing a note row, shared with the merge check (ProcNotes.IsNoteRowNeeded).
+			StringAssert.Contains(procedures,"if(ProcNotes.IsNoteRowNeeded(procedure,oldProcedure)) {");
+			StringAssert.DoesNotMatch(procedures,new Regex(@"if\(procedure\.Note!=oldProcedure\.Note"));
 			int idxSet=procedures.IndexOf("ProcNotes.SetSecondSignature(note,procedure,oldProcedure);");
 			int idxInsert=procedures.IndexOf("ProcNotes.Insert(note);",idxSet);
 			Assert.IsTrue(idxSet>0 && idxInsert>idxSet,"The second signature is set before the row is inserted.");

@@ -273,25 +273,115 @@ namespace M2NOTESTests {
 			Assert.AreEqual("Exam done.\r\nX-rays taken.\r\n"+ProcNoteMerges.Separator+"\r\nPt tolerated well.",
 				ProcNoteMerges.GetMergedDefault(procNoteNow.Note,procedureA.Note,noteMine));
 			Assert.IsFalse(ProcNoteMerges.IsMergeNeeded(procNoteNow,ProcNotes.GetNewestForProc(procedure.ProcNum),true),"Nothing newer after the merge.");
-			//Keep Theirs, as Procedure Info does it: the old copy and the procedure both take their note, so no row is written.
+			//Keep Theirs, as both windows do it (ProcNoteMerges.ApplyTheirNote, with their note as the note box returns it): no row is written.
 			int countBefore=CountNotes(procedure.ProcNum);
 			Procedure procedureAOld=procedureA.Copy();
-			procedureAOld.Note=procNoteNow.Note;
-			procedureAOld.UserNum=procNoteNow.UserNum;
-			procedureAOld.Signature=procNoteNow.Signature??"";
-			procedureAOld.SigIsTopaz=procNoteNow.SigIsTopaz;
-			ProcNotes.CopySecondSignatureTo(procNoteNow,procedureAOld);
-			Procedure procedureASaved=procedureAOld.Copy();
+			Procedure procedureASaved=procedureA.Copy();
 			procedureASaved.Prognosis=0;//another edit in the window
+			ProcNoteMerges.ApplyTheirNote(procedureASaved,procedureAOld,procNoteNow,ProcNoteMerges.Normalize(procNoteNow.Note));
 			Procedures.Update(procedureASaved,procedureAOld);
 			Assert.AreEqual(countBefore,CountNotes(procedure.ProcNum));
 			//Save Merged writes one row with the merged text.
+			procedureAOld=procedureA.Copy();
+			ProcNoteMerges.TakeAsBaseline(procedureAOld,procNoteNow);
 			Procedure procedureMerged=procedureAOld.Copy();
 			procedureMerged.Note=ProcNoteMerges.GetMergedDefault(procNoteNow.Note,procedureA.Note,noteMine);
 			procedureMerged.UserNum=_userNumHyg;
 			Procedures.Update(procedureMerged,procedureAOld);
 			Assert.AreEqual(countBefore+1,CountNotes(procedure.ProcNum));
 			StringAssert.EndsWith(ProcNotes.GetNewestForProc(procedure.ProcNum).Note,"Pt tolerated well.");
+		}
+
+		///<summary>A procedure whose note has line breaks, signed by the dentist. The CRUD stores every note with \r\n (POut.StringNote), and
+		///Procedures.SetCompleteInAppt and ProcNotes.SetProcCompleteNoteHelper join notes with \r\n too.</summary>
+		private static Procedure NewProcWithCrLfNote(long patNum,DateTime date,string note) {
+			Procedure procedure=NewProc(patNum,_codeNumA,ProcStat.C,date);
+			Procedure procedureOld=Procedures.GetOneProc(procedure.ProcNum,true);
+			Procedure procedureFirst=procedureOld.Copy();
+			procedureFirst.Note=note;
+			procedureFirst.UserNum=_userNumDoc;
+			procedureFirst.Signature=Sign(Procedures.GetSignatureKeyData(procedureFirst));
+			Procedures.Update(procedureFirst,procedureOld);
+			return procedure;
+		}
+
+		///<summary>Another user saves a newer note.</summary>
+		private static void SaveNewerNote(long procNum,string note) {
+			Procedure procedureBOld=Procedures.GetOneProc(procNum,true);
+			Procedure procedureB=procedureBOld.Copy();
+			procedureB.Note=note;
+			procedureB.UserNum=_userNumOther;
+			procedureB.Signature="";
+			Procedures.Update(procedureB,procedureBOld);
+		}
+
+		[TestMethod]
+		public void Merge_CrLfNote_OtherEditOnly_PredictionMatchesProceduresUpdate() {
+			long patNum=NewPatient();
+			string noteStored="TP note.\r\nDefault note.";
+			Procedure procedure=NewProcWithCrLfNote(patNum,new DateTime(2026,8,8),noteStored);
+			Assert.AreEqual(noteStored,ProcNotes.GetNewestForProc(procedure.ProcNum).Note,"Stored with \\r\\n.");
+			//Window A opens; its note box returns the note with \n.
+			Procedure procedureAOld=Procedures.GetOneProc(procedure.ProcNum,true);
+			ProcNote procNoteAtLoad=ProcNotes.GetNewestForProc(procedure.ProcNum);
+			string noteShown=ProcNoteMerges.Normalize(procedureAOld.Note);
+			SaveNewerNote(procedure.ProcNum,"TP note.\r\nDefault note.\r\nPt called back.");
+			ProcNote procNoteNow=ProcNotes.GetNewestForProc(procedure.ProcNum);
+			//A changes only the Dx and saves: the window asks, because Procedures.Update writes a row.
+			Procedure procedureA=procedureAOld.Copy();
+			procedureA.Dx=3;
+			bool isNoteRowWritten=ProcNoteMerges.IsNoteRowWritten(procedureA,procedureAOld,noteShown,isSignatureChanged:false);
+			Assert.IsTrue(isNoteRowWritten);
+			Assert.IsTrue(ProcNoteMerges.IsMergeNeeded(procNoteAtLoad,procNoteNow,isNoteRowWritten),"The merge window is shown.");
+			//What the prediction stands for: saved without the merge window, the older text becomes the newest note again.
+			int countBefore=CountNotes(procedure.ProcNum);
+			procedureA.Note=noteShown;
+			Procedures.Update(procedureA,procedureAOld);
+			Assert.AreEqual(countBefore+1,CountNotes(procedure.ProcNum),"Procedures.Update wrote the row the prediction said it would.");
+			//The CRUD stores every note with \r\n (POut.StringNote), so the row holds the older text exactly as it was stored.
+			ProcNote procNoteNewest=ProcNotes.GetNewestForProc(procedure.ProcNum);
+			Assert.AreEqual(noteStored,procNoteNewest.Note,"The other user's note is no longer the newest: the overwrite the window prevents.");
+			Assert.AreNotEqual(procNoteNow.ProcNoteNum,procNoteNewest.ProcNoteNum);
+			//And the other way round: the same text exactly writes no row, and the prediction says so.
+			Procedure procedureCOld=Procedures.GetOneProc(procedure.ProcNum,true);
+			Procedure procedureC=procedureCOld.Copy();
+			procedureC.Dx=4;
+			Assert.IsFalse(ProcNoteMerges.IsNoteRowWritten(procedureC,procedureCOld,procedureCOld.Note,isSignatureChanged:false));
+			countBefore=CountNotes(procedure.ProcNum);
+			Procedures.Update(procedureC,procedureCOld);
+			Assert.AreEqual(countBefore,CountNotes(procedure.ProcNum));
+		}
+
+		[TestMethod]
+		public void Merge_CrLfNote_KeepTheirs_WritesNoRow_AndKeepsTheirSignature() {
+			long patNum=NewPatient();
+			Procedure procedure=NewProcWithCrLfNote(patNum,new DateTime(2026,8,9),"Exam done.\r\nNo findings.");
+			Procedure procedureAOld=Procedures.GetOneProc(procedure.ProcNum,true);
+			ProcNote procNoteAtLoad=ProcNotes.GetNewestForProc(procedure.ProcNum);
+			//The dentist saves and signs a newer note, also with \r\n.
+			Procedure procedureBOld=Procedures.GetOneProc(procedure.ProcNum,true);
+			Procedure procedureB=procedureBOld.Copy();
+			procedureB.Note="Exam done.\r\nNo findings.\r\nRecall in 6 months.";
+			procedureB.UserNum=_userNumDoc;
+			procedureB.Signature=Sign(Procedures.GetSignatureKeyData(procedureB));
+			Procedures.Update(procedureB,procedureBOld);
+			ProcNote procNoteNow=ProcNotes.GetNewestForProc(procedure.ProcNum);
+			//A changed only the Dx; the window asks, A keeps theirs.
+			Procedure procedureA=procedureAOld.Copy();
+			procedureA.Dx=3;
+			Assert.IsTrue(ProcNoteMerges.IsMergeNeeded(procNoteAtLoad,procNoteNow,
+				ProcNoteMerges.IsNoteRowWritten(procedureA,procedureAOld,ProcNoteMerges.Normalize(procedureAOld.Note),false)));
+			ProcNoteMerges.ApplyTheirNote(procedureA,procedureAOld,procNoteNow,ProcNoteMerges.Normalize(procNoteNow.Note));
+			Assert.IsFalse(ProcNoteMerges.IsNoteRowWritten(procedureA,procedureAOld,ProcNoteMerges.Normalize(procNoteNow.Note),false),"Saving does not ask again.");
+			int countBefore=CountNotes(procedure.ProcNum);
+			Procedures.Update(procedureA,procedureAOld);
+			Assert.AreEqual(countBefore,CountNotes(procedure.ProcNum),"Keep Theirs writes no row.");
+			ProcNote procNoteNewest=ProcNotes.GetNewestForProc(procedure.ProcNum);
+			Assert.AreEqual(procNoteNow.ProcNoteNum,procNoteNewest.ProcNoteNum,"Their note stays the newest, as stored.");
+			Assert.AreEqual(3,Procedures.GetOneProc(procedure.ProcNum,false).Dx,"The other edit is saved.");
+			//Their signature still validates against the text the window shows (signature keys ignore line breaks).
+			Procedure procedureShown=procedureA.Copy();
+			Assert.IsTrue(IsValid(Procedures.GetSignatureKeyData(procedureShown),procNoteNewest.Signature));
 		}
 
 		[TestMethod]

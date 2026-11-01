@@ -1666,12 +1666,9 @@ namespace OpenDentBusiness {
 			if(procedure.ProcStatus!=oldProcedure.ProcStatus) {
 				ProcMultiVisits.UpdateGroupForProc(procedure.ProcNum,procedure.ProcStatus);
 			}
-			if(procedure.Note!=oldProcedure.Note
-				|| procedure.UserNum!=oldProcedure.UserNum
-				|| procedure.SigIsTopaz!=oldProcedure.SigIsTopaz
-				|| ProcNotes.IsSecondSignatureChanged(procedure,oldProcedure)//26.1 group note second signature (M2-NOTES)
-				|| procedure.Signature!=oldProcedure.Signature) 
-			{
+			//The note text (compared exactly), its user, a signature or the 26.1 group note second signature changed. One rule, shared with the
+			//Procedure Note Merge check (M2-NOTES).
+			if(ProcNotes.IsNoteRowNeeded(procedure,oldProcedure)) {
 				ProcNote note=new ProcNote();
 				note.PatNum=procedure.PatNum;
 				note.ProcNum=procedure.ProcNum;
