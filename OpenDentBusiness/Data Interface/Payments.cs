@@ -357,7 +357,7 @@ namespace OpenDentBusiness{
 			long retVal=ProcessPaymentForWeb(payment,patient,amount);
 			string ccSourceString="XWeb";
 			if (ccSource.In(CreditCardSource.EdgeExpressPaymentPortal, CreditCardSource.EdgeExpressPaymentPortalGuest, CreditCardSource.EdgeExpressCNP, CreditCardSource.EdgeExpressRCM)) {
-				ccSourceString = "EdgeExpress";
+				ccSourceString = "Global Payments V1";//EdgeExpress, renamed in 25.4.
 			}
 			LogSources logSource=LogSources.None;
 			if((CreditCards.GetCreditCardSourcesForOnlinePayments().Contains(ccSource))) {

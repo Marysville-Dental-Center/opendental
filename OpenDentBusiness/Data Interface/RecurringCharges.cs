@@ -451,7 +451,10 @@ namespace OpenDentBusiness {
 						chargeData.CCSource.In(listCreditCardSourcesOpenEdge.Select(x => x).ToArray());
 					bool usePayConnect=(!string.IsNullOrEmpty(chargeData.PayConnectToken) && Programs.IsEnabled(ProgramName.PayConnect));
 					bool usePaySimple=(!string.IsNullOrEmpty(chargeData.PaySimpleToken) && Programs.IsEnabled(ProgramName.PaySimple));
-					if(useEdgeExpress) {
+					if(IsGlobalPaymentsV2Charge(chargeData)) {//25.4: cards saved through Global Payments V2 (RecurringChargerator.GlobalPaymentsV2.cs).
+						SendGlobalPaymentsV2(chargeData,forceDuplicates);
+					}
+					else if(useEdgeExpress) {
 						_progCur=Programs.GetCur(ProgramName.EdgeExpress);
 						bool doForceDuplicatesThisCharge=forceDuplicates || (!_isManual && PIn.Bool(ProgramProperties.GetPropValForClinicOrDefault(
 							_progCur.ProgramNum,ProgramProperties.PropertyDescs.EdgeExpress.ForceRecurringCharge,chargeData.RecurringCharge.ClinicNum)));
@@ -626,7 +629,7 @@ namespace OpenDentBusiness {
 			catch(Exception ex) {
 				//Not set up for this clinic, or no answer from the card processor. Mark this card and carry on with the rest of the batch. The request may
 				//have reached the processor before the error, so the card is never charged again automatically.
-				string errorMsg=Lans.g(_lanThis,"Error from EdgeExpress:")+" "+(ex.InnerException?.Message??ex.Message)+" "
+				string errorMsg=Lans.g(_lanThis,"Error from Global Payments V1:")+" "+(ex.InnerException?.Message??ex.Message)+" "
 					+Lans.g(_lanThis,"Check the card processor's records before charging this card again.");
 				MarkFailed(chargeData,errorMsg);
 				strBuilderResultFile.AppendLine("PatNum: "+chargeData.RecurringCharge.PatNum+" "+errorMsg);
@@ -639,9 +642,9 @@ namespace OpenDentBusiness {
 				Success++;
 			}
 			else {
-				MarkDeclined(chargeData,Lans.g(_lanThis,"Response from EdgeExpress:")+" "+response.XWebResponseCode.ToString(),LogLevel.Information);
+				MarkDeclined(chargeData,Lans.g(_lanThis,"Response from Global Payments V1:")+" "+response.XWebResponseCode.ToString(),LogLevel.Information);
 				chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsEdgeExpressCardDecline(response.XWebResponseCode);//Only a card decline e-mails the patient.
-				response.PayNote+="\r\n"+Lans.g(this,"Response from EdgeExpress:")+" "+response.XWebResponseCode.ToString();
+				response.PayNote+="\r\n"+Lans.g(this,"Response from Global Payments V1:")+" "+response.XWebResponseCode.ToString();
 				amount=0;//If the charge was declined, insert a payment with $0 amount instead of what was supposed to be charged.
 			}
 			strBuilderResultText.Append(response.GetFormattedNote(true));
@@ -1270,7 +1273,10 @@ namespace OpenDentBusiness {
 			if(ccSource!=CreditCardSource.PaySimpleACH && ccSource!=CreditCardSource.PaySimplePaymentPortalACH) {
 				paymentCur.PayType=PrefC.GetLong(PrefName.RecurringChargesPayTypeCC);
 			}
-			if(paymentCur.PayType==0) {//Pref default not set or this is ACH
+			if(paymentCur.PayType==0 && ccSource==CreditCardSource.MeetInTheCloudTerminal) {//Global Payments V2 (25.4): the clinic's, else Headquarters'.
+				paymentCur.PayType=GetGlobalPaymentsV2PayType(paymentCur.ClinicNum);
+			}
+			else if(paymentCur.PayType==0) {//Pref default not set or this is ACH
 				paymentCur.PayType=PIn.Int(ProgramProperties.GetPropVal(_progCur.ProgramNum,ppPayTypeDesc,paymentCur.ClinicNum));
 			}
 			if(recCharge.PaymentType!=0) {

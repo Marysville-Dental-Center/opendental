@@ -210,7 +210,12 @@ namespace OpenDentBusiness{
 		///<summary>DTX Studio: opens the patient in DTX Studio Clinic through DTXsync.exe (Open Dental 25.2).</summary>
 		DTXStudio,
 		///<summary>DTX Studio Acquire: opens the patient in DTX Studio Clinic with acquisition ready (Open Dental 25.2).</summary>
-		DTXStudioAcquire
+		DTXStudioAcquire,
+		///<summary>Global Payments V2 (Open Dental 25.4): card terminals through Global Payments' cloud terminal service, called directly with the
+		///office's own Global Payments API app. "MeetInTheCloud" is the internal name the published 25.4 database documents give this integration
+		///(CreditCardSource.MeetInTheCloudTerminal, computerpref.CreditCardTerminalId); the program row's name itself is not published (INFERRED).
+		///The UI says "Global Payments V2".</summary>
+		MeetInTheCloud
 	}
 
 	

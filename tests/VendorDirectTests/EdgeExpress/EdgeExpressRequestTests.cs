@@ -183,7 +183,8 @@ namespace VendorDirectTests.EdgeExpressTests {
 		public void GetUserMessage_PointsCredentialErrorsAtSetup() {
 			XWebResponse xWebResponse=new XWebResponse();
 			xWebResponse.XWebResponseCode=XWebResponseCodes.AuthenticationError;
-			StringAssert.Contains(EdgeExpress.CNP.GetUserMessage(xWebResponse),"Setup > Program Links > EdgeExpress");
+			//25.4 renamed the EdgeExpress program link Global Payments V1 (V-GP).
+			StringAssert.Contains(EdgeExpress.CNP.GetUserMessage(xWebResponse),"Setup > Program Links > Global Payments V1");
 			xWebResponse.XWebResponseCode=XWebResponseCodes.TestMerchantSetUpError;
 			StringAssert.Contains(EdgeExpress.CNP.GetUserMessage(xWebResponse),"test gateway");
 			xWebResponse.XWebResponseCode=XWebResponseCodes.SessionTimedOut;

@@ -34,6 +34,7 @@ namespace VendorDirectTests.Foundation {
 			CollectionAssert.AreEqual(new[] { "Microsoft365Email","GmailApi","USPSAddresses","PostcardMania" },
 				arrayNames.Skip(Array.IndexOf(arrayNames,"ZImage")+1).Take(4).ToArray());
 			Assert.AreEqual((int)ProgramName.ZImage+1,(int)ProgramName.Microsoft365Email,"Existing values keep their numbers.");
+			Assert.IsTrue((int)ProgramName.MeetInTheCloud>(int)ProgramName.PostcardMania,"Global Payments V2 is appended after the F0 names.");
 		}
 
 		[TestMethod]

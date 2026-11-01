@@ -636,6 +636,21 @@
     <Compile Include="Forms\FormPayTerminalEdit.Designer.cs">
       <DependentUpon>FormPayTerminalEdit.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormGlobalPaymentsV2.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormGlobalPaymentsV2.Designer.cs">
+      <DependentUpon>FormGlobalPaymentsV2.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormGlobalPaymentsV2Setup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormGlobalPaymentsV2Setup.Designer.cs">
+      <DependentUpon>FormGlobalPaymentsV2Setup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormPayment.GlobalPaymentsV2.cs">
+      <DependentUpon>FormPayment.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormCalendar.cs">
       <SubType>Form</SubType>
     </Compile>

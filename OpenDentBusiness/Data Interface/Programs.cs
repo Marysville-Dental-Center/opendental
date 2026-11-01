@@ -470,7 +470,8 @@ namespace OpenDentBusiness {
 		public static bool HasMultipleCreditCardProgramsEnabled() {
 			Meth.NoCheckMiddleTierRole();
 			return new List<bool> {
-				IsEnabled(ProgramName.EdgeExpress),IsEnabled(ProgramName.Xcharge),IsEnabled(ProgramName.PayConnect),IsEnabled(ProgramName.PaySimple)
+				IsEnabled(ProgramName.EdgeExpress),IsEnabled(ProgramName.Xcharge),IsEnabled(ProgramName.PayConnect),IsEnabled(ProgramName.PaySimple),
+				IsEnabled(ProgramName.MeetInTheCloud)//Global Payments V2 (25.4)
 			}.Count(x => x==true) >= 2;
 		}
 
