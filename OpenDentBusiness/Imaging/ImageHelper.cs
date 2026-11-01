@@ -12,14 +12,21 @@ using PdfSharp.Pdf;
 
 namespace OpenDentBusiness {
 	public static class ImageHelper {
+		///<summary>True if PDFs shown inside the Imaging module may run the JavaScript in them (preference ImagingAllowPdfJavascript, Open Dental 26.1).
+		///False by default, and also false when the preference cannot be read, so scripts stay off unless an administrator turns them on. The viewer
+		///applies it before each PDF it opens. PDFs opened in a separate window (preference PdfLaunchWindow) are not affected.</summary>
+		public static bool IsPdfJavascriptAllowed() {
+			return PrefC.GetBoolSilent(PrefName.ImagingAllowPdfJavascript,false);
+		}
+
 		///<summary>This alters the bitmap in raw memory without creating a copy.</summary>
 		public static void ApplyColorSettings(Bitmap bitmap,int windowingMin,int windowingMax){
 			if(windowingMax==0 || (windowingMax==255 && windowingMin==0)){
 				return;
 			}
-			byte min=(byte)windowingMin;
-			byte max=(byte)windowingMax;
-			//todo: if 16 bit, then the above min and max would be a different datatype and proportionally larger
+			byte min=(byte)DicomHelper.ClampWindowing(windowingMin);
+			byte max=(byte)DicomHelper.ClampWindowing(windowingMax);
+			//Bitmaps here have 8 bits per channel. DICOM data with 12 or 16 bits is windowed by DicomHelper.ApplyWindowing before it gets here.
 			BitmapData bitmapData = null;
 			try {
 				bitmapData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height),ImageLockMode.WriteOnly, bitmap.PixelFormat);
@@ -304,9 +311,9 @@ namespace OpenDentBusiness {
 			//Format16bppGrayScale is not supported by C#, but we might use it directly with C++ for faster response
 			//Format48bppRgb might also be used.
 			//Otherwise, it's a normal C# PixelFormat.Format24bppRgb _or_ Format32bppArgb for color or for 8 bit grayscale.
-			byte min=(byte)document.WindowingMin;
-			byte max=(byte)document.WindowingMax;
-			//todo: if 16 bit, then the above min and max would be a different datatype and proportionally larger
+			byte min=(byte)DicomHelper.ClampWindowing(document.WindowingMin);
+			byte max=(byte)DicomHelper.ClampWindowing(document.WindowingMax);
+			//Bitmaps here have 8 bits per channel. DICOM data with 12 or 16 bits is windowed by DicomHelper.ApplyWindowing before it gets here.
 			BitmapData bitmapData = null;
 			//try {
 				bitmapData = bitmapOut.LockBits(new Rectangle(0, 0, bitmapOut.Width, bitmapOut.Height),ImageLockMode.WriteOnly, bitmapOut.PixelFormat);
