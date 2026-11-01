@@ -7,13 +7,34 @@ namespace ImagingCapture.Save {
 	///capture: the lossless inversion of [Device.N] Polarity=Invert, the stored 0-255 window, and the fixed preview LUT.</summary>
 	public static class Gray16Samples {
 		///<summary>How many low bits of the samples are significant, when known: the metadata's effectiveBits (1 to 16), else 14 when the enable ran
-		///at 14 bits (the source said 14: ICAP_BITDEPTH 14, values right-justified in 16-bit containers), else null. For the BitsStored rule, the
-		///inversion's max and the DICOM file's Image Comments; never to rescale.</summary>
-		public static int? GetEffectiveBits(Metadata.CaptureMetadata metadata,int bitDepthInEffect) {
+		///at 14 bits (the source said 14: ICAP_BITDEPTH 14, values right-justified in 16-bit containers) and no sample of pixels is above 16383,
+		///else null. A 14-bit enable whose samples are not right-justified 14-bit values (pixels null counts as not known) is never labelled 14:
+		///the data is kept exactly as delivered, its effective depth unknown. For the BitsStored rule, the inversion's max and the DICOM file's Image
+		///Comments; never to rescale.</summary>
+		public static int? GetEffectiveBits(Metadata.CaptureMetadata metadata,int bitDepthInEffect,ushort[] pixels) {
 			if(metadata?.EffectiveBits!=null && metadata.EffectiveBits.Value>=1 && metadata.EffectiveBits.Value<=16) {
 				return metadata.EffectiveBits.Value;
 			}
-			return bitDepthInEffect==14 ? 14 : (int?)null;
+			if(bitDepthInEffect!=14 || pixels==null || GetMax(pixels)>Max14Bit) {
+				return null;
+			}
+			return 14;
+		}
+
+		///<summary>The largest right-justified 14-bit value.</summary>
+		public const int Max14Bit=16383;
+
+		///<summary>The largest sample of pixels, 0 for none.</summary>
+		public static int GetMax(ushort[] pixels) {
+			int max=0;
+			if(pixels!=null) {
+				for(int i=0;i<pixels.Length;i++) {
+					if(pixels[i]>max) {
+						max=pixels[i];
+					}
+				}
+			}
+			return max;
 		}
 
 		///<summary>The lossless inversion Polarity=Invert applies, only once it has been verified and logged (design 7.8: "Stored pixels change

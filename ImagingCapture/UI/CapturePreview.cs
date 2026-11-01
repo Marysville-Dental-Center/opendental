@@ -52,7 +52,7 @@ namespace ImagingCapture.UI {
 			}
 			if(isInverted) {
 				arrayPixels=Gray16Samples.Invert(arrayPixels,Gray16Samples.GetEffectiveBits(Metadata.CaptureMetadataParser.Parse(image.MetadataJson),
-					image.BitDepthInEffect));
+					image.BitDepthInEffect,arrayPixels));
 			}
 			int low;
 			int high;

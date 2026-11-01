@@ -427,6 +427,9 @@ namespace ImagingCapture.UI {
 			if(record.IsVanillaNotInverted) {
 				listReasons.Add("the source delivers TWPF_VANILLA samples, which are stored as DICOM only with Polarity=Invert");
 			}
+			if(record.Is14BitNotRightJustified) {
+				listReasons.Add("the 14-bit samples are not right-justified (max "+record.MaxValue.Value.ToString(CultureInfo.InvariantCulture)+")");
+			}
 			return "This record does not verify capture of more than 8 bits: "+string.Join(", ",listReasons)+".";
 		}
 

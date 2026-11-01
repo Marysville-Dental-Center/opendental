@@ -149,7 +149,13 @@ namespace ImagingCapture.Settings {
 			&& !string.Equals(ByteOrderCheck,"LooksSwapped",StringComparison.OrdinalIgnoreCase)
 			&& IsByteOrderConfirmed
 			&& IsPolarityConfirmed
-			&& !IsVanillaNotInverted;
+			&& !IsVanillaNotInverted
+			&& !Is14BitNotRightJustified;
+
+		///<summary>The record is for a 14-bit enable whose measured image had a sample above 16383 (MaxValue): its samples are not right-justified
+		///14-bit values (left-justified data, for example), so it verifies no 14-bit capture (design 7.8 condition 2: Test capture checks the
+		///effective bits).</summary>
+		public bool Is14BitNotRightJustified => BitDepthVerified==TwainBitDepth.Bits14 && MaxValue!=null && MaxValue.Value>16383;
 
 		///<summary>IsPassed at exactly bits: a record that passed at 16 covers asking for 16, one that passed at 14 covers asking for 14.</summary>
 		public bool IsPassedFor(int bits) {

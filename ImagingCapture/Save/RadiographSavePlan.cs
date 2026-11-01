@@ -229,7 +229,7 @@ namespace ImagingCapture.Save {
 					plan.Error="Polarity=Invert is set for this capture, but nothing confirms it, so no 8-bit copy was made.";
 					return;
 				}
-				arrayStored=Gray16Samples.Invert(arrayStored,Gray16Samples.GetEffectiveBits(metadata,image.BitDepthInEffect));
+				arrayStored=Gray16Samples.Invert(arrayStored,Gray16Samples.GetEffectiveBits(metadata,image.BitDepthInEffect,image.Gray16));
 				plan.IsInverted=true;
 			}
 			else if(image.PixelFlavor!=AcquiredImage.PixelFlavorChocolate) {
@@ -330,7 +330,7 @@ namespace ImagingCapture.Save {
 			}
 			ushort[] arrayPixels=image.Gray16;
 			//14-bit data (the source said 14) is stored as it is, in a file of BitsAllocated 16 and BitsStored 16, with effectiveBits=14 recorded.
-			int? effectiveBits=Gray16Samples.GetEffectiveBits(metadata,image.BitDepthInEffect);
+			int? effectiveBits=Gray16Samples.GetEffectiveBits(metadata,image.BitDepthInEffect,image.Gray16);
 			if(request.Polarity==TwainPolarity.Invert) {
 				if(!request.IsInversionVerified) {
 					plan.Error="Polarity=Invert is set for this device, but no verification record confirms it, so the image was not saved to the patient.";

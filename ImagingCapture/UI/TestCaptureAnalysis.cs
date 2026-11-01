@@ -162,11 +162,12 @@ namespace ImagingCapture.UI {
 			Histogram=arrayHistogram;
 			CheckByteOrder(pixels,width,height);
 			ushort[] arrayStored=pixels;
+			int? effectiveBits=Gray16Samples.GetEffectiveBits(Metadata,BitDepthInEffect,pixels);
 			if(Polarity==TwainPolarity.Invert) {
-				arrayStored=Gray16Samples.Invert(pixels,Gray16Samples.GetEffectiveBits(Metadata,BitDepthInEffect));
+				arrayStored=Gray16Samples.Invert(pixels,effectiveBits);
 				IsInverted=true;
 			}
-			BitsStoredRule=DicomIntraOralWriter.GetBitsStored(arrayStored,Gray16Samples.GetEffectiveBits(Metadata,BitDepthInEffect));
+			BitsStoredRule=DicomIntraOralWriter.GetBitsStored(arrayStored,effectiveBits);
 			int windowLow;
 			int windowHigh;
 			DicomIntraOralWriter.GetWindow(arrayStored,out windowLow,out windowHigh);

@@ -588,6 +588,15 @@ Name=Not gated
 			record.BitDepthInEffect=14;
 			Assert.IsTrue(record.IsPassedFor(14));
 			Assert.IsFalse(record.IsPassedFor(16),"A record that passed at 14 covers 14 only.");
+			//A 14-bit image with a sample above 16383 is not right-justified 14-bit data: it verifies no 14-bit capture.
+			record.MaxValue=16383;
+			Assert.IsTrue(record.IsPassedFor(14));
+			record.MaxValue=20000;
+			Assert.IsFalse(record.IsPassedFor(14));
+			Assert.IsTrue(record.Is14BitNotRightJustified);
+			StringAssert.Contains(TestCaptureModel.GetRecordWarningPassed(record),"the 14-bit samples are not right-justified (max 20000)");
+			record.BitDepthInEffect=16;
+			Assert.IsTrue(record.IsPassedFor(16),"At 16 bits every value fits.");
 		}
 		#endregion CaptureVerificationRecord
 	}

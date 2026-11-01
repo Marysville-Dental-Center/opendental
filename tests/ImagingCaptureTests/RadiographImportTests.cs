@@ -399,8 +399,34 @@ namespace ImagingCapture.Tests {
 			for(int i=0;i<image.Gray16.Length;i++) {
 				Assert.AreEqual(image.Gray16[i],BitConverter.ToUInt16(arrayPixelData,i*2),"Never rescaled.");
 			}
-			Assert.AreEqual(14,Gray16Samples.GetEffectiveBits(result.Plan.Metadata,14));
-			Assert.IsNull(Gray16Samples.GetEffectiveBits(result.Plan.Metadata,16),"16 bits in effect and no metadata: unknown.");
+			Assert.AreEqual(14,Gray16Samples.GetEffectiveBits(result.Plan.Metadata,14,image.Gray16));
+			Assert.IsNull(Gray16Samples.GetEffectiveBits(result.Plan.Metadata,16,image.Gray16),"16 bits in effect and no metadata: unknown.");
+		}
+
+		[TestMethod]
+		public void Dicom14_SamplesNotRightJustified_NeverLabelledEffectiveBits14_ValuesUnchanged() {
+			//A 14-bit enable whose source left-justified its samples (or sent noise above 14 bits): the data is kept exactly as delivered, but its
+			//effective depth is unknown, never "14".
+			AcquiredImage image=TestImages.Image16(40,30,(x,y) => (ushort)(4*(1+x*400+y*13)),TestImages.Json16Bit12.Replace(@"""effectiveBits"":12",
+				@"""effectiveBits"":null"));
+			image.BitDepthInEffect=14;
+			image.RequestedBits=16;
+			image.BitsPerSample=14;
+			Assert.IsTrue(image.Gray16.Max()>Gray16Samples.Max14Bit);
+			Assert.IsNull(Gray16Samples.GetEffectiveBits(null,14,image.Gray16));
+			Assert.IsNull(Gray16Samples.GetEffectiveBits(null,14,null),"Samples not known: not labelled either.");
+			Assert.AreEqual(14,Gray16Samples.GetEffectiveBits(null,14,new ushort[] { 0,1,16383 }));
+			RadiographSaveRequest request=Request(image,new RadiographTarget { Mount=Mount(),MountItem=Slot() });
+			request.Is16BitAllowed=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsTrue(result.IsSaved,result.Error);
+			Assert.AreEqual(16,result.Plan.DicomResult.BitsStored);
+			TestDicomFile testDicomFile=TestDicomReader.Read(_store.BytesImported);
+			Assert.IsFalse(testDicomFile.Get(0x0020,0x4000).Text.Contains("effectiveBits=14"),testDicomFile.Get(0x0020,0x4000).Text);
+			byte[] arrayPixelData=testDicomFile.Get(0x7FE0,0x0010).Value;
+			for(int i=0;i<image.Gray16.Length;i++) {
+				Assert.AreEqual(image.Gray16[i],BitConverter.ToUInt16(arrayPixelData,i*2),"Never rescaled.");
+			}
 		}
 
 		[TestMethod]
