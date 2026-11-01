@@ -318,6 +318,7 @@ namespace OpenDental {
 				}
 				if(!Security.IsAuthorized(EnumPermType.ClaimProcFieldsBilledToInsEdit,true)) {
 					textFeeBilled.ReadOnly=true;
+					textCodeSent.ReadOnly=true;//Open Dental 25.3: the permission also covers Code Sent.
 				}
 				//butOK.Enabled=false;
 				//butDelete.Enabled=false;
@@ -1170,6 +1171,11 @@ namespace OpenDental {
 		///<summary>Claimprocs with various statuses can be deleted,
 		///except certain specific scenarios where the user does not have permission (multiple different permissions are considered).</summary>
 		private void butDelete_Click(object sender, System.EventArgs e) {
+			//Open Dental 25.3: Insurance Write-off Edit also covers deleting claim procedures, so a write-off outside the date limit cannot be
+			//dodged by deleting the claimproc and adding a new one. The button is already disabled without it; this keeps the rule at the action.
+			if(!ClaimProcs.IsInsWriteOffEditAuthorized(_claimProc,IsProc ? _procedure : null,suppressMessage:false)) {
+				return;
+			}
 			if(_claimProc.IsTransfer) {
 				if(MessageBox.Show(Lan.g(this,"This Claim Procedure is part of an income transfer."+"\r\n"
 					+"Deleting this claim procedure will delete all of the income transfers for this claim.  Continue?"),""
@@ -1306,10 +1312,9 @@ namespace OpenDental {
 			if(!textDateCP.ReadOnly){
 				_claimProc.DateCP=PIn.Date(textDateCP.Text);
 			}
-			_claimProc.CodeSent=textCodeSent.Text;
-			if(Security.IsAuthorized(EnumPermType.ClaimProcFieldsBilledToInsEdit,true)) {
-				_claimProc.FeeBilled=PIn.Double(textFeeBilled.Text);
-			}
+			//Open Dental 25.3: ClaimProcFieldsBilledToInsEdit (252) guards Code Sent as well as Fee Billed, for new and existing claimprocs.
+			ClaimProcs.SetBilledToInsFields(_claimProc,textCodeSent.Text,PIn.Double(textFeeBilled.Text),
+				Security.IsAuthorized(EnumPermType.ClaimProcFieldsBilledToInsEdit,true));
 			_claimProc.Remarks=textRemarks.Text;
 			//if status was changed to received, then set DateEntry
 			if(_claimProcOld.Status!=ClaimProcStatus.Received && _claimProcOld.Status!=ClaimProcStatus.Supplemental){
@@ -1366,6 +1371,10 @@ namespace OpenDental {
 			}
 			//IsSaved=true;
 			MakeAuditTrailEntries();
+			ClaimProcs.CreateAuditTrailEntryForBilledToIns(_claimProc,_claimProcOld);//Open Dental 25.3: Fee Billed and Code Sent, under 252.
+			if(_doSaveToDb) {//Otherwise the window that saves the claimproc audits the overrides (ClaimProcs.CreateAuditTrailEntryForClaimProcPayment).
+				ClaimProcs.CreateAuditTrailEntryForOverrides(_claimProc,_claimProcOld);//Open Dental 25.1: Ins Est Total and Allowed overrides.
+			}
 			DialogResult=DialogResult.OK;
 		}
 
