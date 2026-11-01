@@ -26,8 +26,9 @@ namespace OpenDentBusiness {
 			}
 			listTargets.Add(new DbmInvalidCharTarget("appointment","Note","AptNum",""));
 			listTargets.Add(new DbmInvalidCharTarget("appointment","ProcDescript","AptNum",""));
-			//Procedure notes are kept in procnote, one row per edit; a signed row's signature covers its note.
-			listTargets.Add(new DbmInvalidCharTarget("procnote","Note","ProcNoteNum","procnote.Signature!=''"));
+			//Procedure notes are kept in procnote, one row per edit; a signed row's signature covers its note. Since 26.1 a group note's second
+			//signature covers it too (M2-NOTES); Signature2 is NULL on rows written before the column existed.
+			listTargets.Add(new DbmInvalidCharTarget("procnote","Note","ProcNoteNum","procnote.Signature!='' OR IFNULL(procnote.Signature2,'')!=''"));
 			listTargets.Add(new DbmInvalidCharTarget("commlog","Note","CommlogNum","commlog.Signature!=''"));
 			listTargets.Add(new DbmInvalidCharTarget("definition","ItemName","DefNum",""));
 			//A sheet signature covers every field value of the sheet (SigBox.GetSignatureKeySheets), and a signature box holds the signature itself.

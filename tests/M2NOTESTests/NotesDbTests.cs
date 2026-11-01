@@ -227,6 +227,42 @@ namespace M2NOTESTests {
 		}
 
 		[TestMethod]
+		public void IncompleteNotesReport_SecondSignatureCountsAsSigned() {
+			long patNum=NewPatient();
+			DateTime date=new DateTime(2026,8,10);
+			Procedure procOnly2=NewProc(patNum,_codeNumA,ProcStat.C,date);
+			Procedure procUnsigned=NewProc(patNum,_codeNumA,ProcStat.C,date);
+			Procedure procBefore26=NewProc(patNum,_codeNumA,ProcStat.C,date);
+			ProcNotes.Insert(new ProcNote { PatNum=patNum,ProcNum=procOnly2.ProcNum,Note="Signed in box 2 only.",UserNum=_userNumHyg,UserNum2=_userNumDoc,
+				Signature2="sig2" });
+			ProcNotes.Insert(new ProcNote { PatNum=patNum,ProcNum=procUnsigned.ProcNum,Note="Not signed.",UserNum=_userNumHyg });
+			//A row written before the 26.1 columns existed: Signature2 is NULL.
+			DataCore.NonQ("INSERT INTO procnote (PatNum,ProcNum,EntryDateTime,UserNum,Note,SigIsTopaz,Signature,UserNum2,Signature2,SigIsTopaz2) VALUES ("
+				+POut.Long(patNum)+","+POut.Long(procBefore26.ProcNum)+",NOW(),0,'Written before 26.1.',0,'',0,NULL,0)");
+			string command=RpProcNote.GetQuery(new List<long>(),new List<long>(),date,date,false,true,RpProcNote.ProcNoteGroupBy.Procedure,true,new string[0]);
+			List<DataRow> listRows=DataCore.GetTable(command).Select().Where(x => PIn.Long(x["PatNum"].ToString())==patNum).ToList();
+			Assert.AreEqual(2,listRows.Count,"The unsigned note and the older unsigned row; not the note signed in its second box.");
+			Assert.IsTrue(listRows.All(x => x["HasUnsignedNote"].ToString()=="X"));
+		}
+
+		[TestMethod]
+		public void DatabaseMaintenanceInvalidChars_NoteSignedInBox2IsNeverChanged() {
+			long patNum=NewPatient();
+			Procedure procedure=NewProc(patNum,_codeNumA,ProcStat.C,new DateTime(2026,8,11));
+			List<string> listLabels=new List<string> { "procnote.Note" };
+			DbmInvalidCharResult resultBaseline=DatabaseMaintenances.InvalidCharsGdiScan(listLabels).Single();
+			long procNoteNum=ProcNotes.Insert(new ProcNote { PatNum=patNum,ProcNum=procedure.ProcNum,Note="x",UserNum2=_userNumDoc,Signature2="sig2" });
+			DataCore.NonQ("UPDATE procnote SET Note=?paramValue WHERE ProcNoteNum="+POut.Long(procNoteNum),
+				new OdSqlParameter("paramValue",OdDbType.Text,"Signed in box 2\u0005"));
+			DbmInvalidCharResult resultScan=DatabaseMaintenances.InvalidCharsGdiScan(listLabels).Single();
+			Assert.AreEqual(resultBaseline.CountRowsSigned+1,resultScan.CountRowsSigned,"Counted as signed.");
+			Assert.AreEqual(resultBaseline.CountRows,resultScan.CountRows);
+			DatabaseMaintenances.InvalidCharsGdiFix(listLabels);
+			Assert.AreEqual("Signed in box 2\u0005",DataCore.GetScalar("SELECT Note FROM procnote WHERE ProcNoteNum="+POut.Long(procNoteNum)),
+				"Changing it would invalidate the second signature.");
+		}
+
+		[TestMethod]
 		public void ProgressNotes_SignedColumnAndAuditMode() {
 			long patNum=NewPatient();
 			Procedure procedureBoth=NewGroupNote(patNum,new DateTime(2026,8,6));
