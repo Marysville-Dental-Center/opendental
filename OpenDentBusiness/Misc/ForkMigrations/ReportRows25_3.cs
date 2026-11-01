@@ -189,7 +189,8 @@ namespace OpenDentBusiness.ForkMigrations.Features {
 			return "Renamed displayreport "+internalNameFrom+" to "+internalNameTo+" (same description)";
 		}
 
-		private static long InsertRow(string internalName,int itemOrder,string description,DisplayReportCategory category,bool isHidden) {
+		///<summary>Adds a displayreport row (not visible in the sub menu) and returns its DisplayReportNum. ReportRowUdsPlus uses it too.</summary>
+		internal static long InsertRow(string internalName,int itemOrder,string description,DisplayReportCategory category,bool isHidden) {
 			return DataCore.NonQ("INSERT INTO displayreport (InternalName,ItemOrder,Description,Category,IsHidden,IsVisibleInSubMenu) VALUES ("
 				+"'"+POut.String(internalName)+"',"+POut.Int(itemOrder)+",'"+POut.String(description)+"',"+POut.Int((int)category)+","
 				+POut.Bool(isHidden)+",0)",true);
@@ -202,8 +203,8 @@ namespace OpenDentBusiness.ForkMigrations.Features {
 
 		///<summary>Gives every user group that may run the source report (a Reports permission with FKey = its DisplayReportNum) the same permission for
 		///the target report, unless the group already has it. Groups with FKey 0 may run every report and need no row. Returns the number of rows
-		///added.</summary>
-		private static int CopyReportPermissions(long displayReportNumFrom,long displayReportNumTo) {
+		///added. ReportRowUdsPlus uses it too.</summary>
+		internal static int CopyReportPermissions(long displayReportNumFrom,long displayReportNumTo) {
 			int permType=(int)EnumPermType.Reports;
 			DataTable table=DataCore.GetTable("SELECT DISTINCT UserGroupNum FROM grouppermission WHERE PermType="+POut.Int(permType)
 				+" AND FKey="+POut.Long(displayReportNumFrom)
@@ -216,7 +217,9 @@ namespace OpenDentBusiness.ForkMigrations.Features {
 			return table.Rows.Count;
 		}
 
-		private static List<DisplayReportRow> GetRows() {
+		///<summary>Every displayreport row, straight from the table, ordered by Category, ItemOrder and DisplayReportNum. ReportRowUdsPlus uses it too.
+		///</summary>
+		internal static List<DisplayReportRow> GetRows() {
 			DataTable table=DataCore.GetTable("SELECT DisplayReportNum,InternalName,ItemOrder,Description,Category,IsHidden FROM displayreport "
 				+"ORDER BY Category,ItemOrder,DisplayReportNum");
 			List<DisplayReportRow> listRows=new List<DisplayReportRow>();

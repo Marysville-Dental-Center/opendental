@@ -12,12 +12,14 @@ using Db=SyntheticData.Infrastructure.Db;
 namespace AdoptionValidation {
 	///<summary>What the fork migration that Adoption.Run runs will change in the rows of an Open Dental 25.3.48 database, worked out before adoption
 	///and read-only ("AdoptionValidation migration-preview", runbook step 0.2). On such a database the 25.3 schema steps find nothing to change, and
-	///the 25.3 seed and XConnect steps run only on a database from 24.3. Two kinds of step change it:
+	///the 25.3 seed and XConnect steps run only on a database from 24.3. Three kinds of step change it:
 	///- the report rows step (ReportRows25_3Step) renames the displayreport row of Production by Procedure, Procedures (individual) or Insurance
 	///  Pending Supplementals that Open Dental wrote under an internal name this program does not know. The plan is ReportRows25_3.PlanRenames, the
 	///  matching the step itself uses;
 	///- the Open Dental 25.4 and 26.1 steps bring the schema to 26.1.70 (the schema verifier then confirms the exact match), insert their
-	///  preferences and split the blockout permission (Migration26_1Plan).
+	///  preferences and split the blockout permission (Migration26_1Plan);
+	///- the UDS+ report row step (ReportRowUdsPlusStep, M2-UDS) adds the row of the 25.4 UDS+ report after the FQHC Dental Sealant Measure, moves the
+	///  later Public Health rows down one place and copies the sealant measure's report permissions to it (UdsPlusRowPlan).
 	///adopt's row check (AdoptionRowCheck) holds the adopted copy to the same plans, made from the original. Reads the displayreport table, the
 	///preferences, grouppermission and whether claimpayment notes are NULL.</summary>
 	public static class MigrationPreview {
@@ -31,6 +33,8 @@ namespace AdoptionValidation {
 			public List<ReportRows25_3.ReportTargetPlan> ListPlans=new List<ReportRows25_3.ReportTargetPlan>();
 			///<summary>What the Open Dental 25.4 and 26.1 steps change.</summary>
 			public Migration26_1Plan.Plan Plan26_1=new Migration26_1Plan.Plan();
+			///<summary>What the UDS+ report row step changes.</summary>
+			public UdsPlusRowPlan.Plan PlanUdsPlus=new UdsPlusRowPlan.Plan();
 
 			///<summary>The plans that rename a row.</summary>
 			public List<ReportRows25_3.ReportTargetPlan> ListRenames {
@@ -63,6 +67,7 @@ namespace AdoptionValidation {
 						+"schema, and their seed and XConnect steps run only on a database from 24.3.");
 				}
 				listLines.AddRange(Plan26_1.Lines());
+				listLines.AddRange(PlanUdsPlus.Lines());
 				return listLines;
 			}
 		}
@@ -85,6 +90,7 @@ namespace AdoptionValidation {
 			result.CountRows=listRows.Count;
 			result.ListPlans=ReportRows25_3.PlanRenames(listRows);
 			result.Plan26_1=Migration26_1Plan.Make(db,database);
+			result.PlanUdsPlus=UdsPlusRowPlan.Make(db,database,listRows,result.ListPlans,result.Plan26_1.IsFromBefore25_4);
 			return result;
 		}
 

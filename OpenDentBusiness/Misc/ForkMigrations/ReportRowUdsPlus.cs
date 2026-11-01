@@ -2,7 +2,6 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Text;
 
@@ -41,98 +40,115 @@ namespace OpenDentBusiness.ForkMigrations.Features {
 			return stringBuilder.ToString();
 		}
 
+		///<summary>What the step does on listRows (every displayreport row, in the order ReportRows25_3.GetRows reads them), worked out without writing.
+		///Run applies it; AdoptionValidation's migration-preview and adopt's row check use it too, so the three never disagree. isFromBefore25_4 as for
+		///Run. listRows is not changed.</summary>
+		public static RowPlan Plan(List<ReportRows25_3.DisplayReportRow> listRows,bool isFromBefore25_4) {
+			RowPlan plan=new RowPlan();
+			plan.RowExisting=listRows.FirstOrDefault(x => x.InternalName==DisplayReports.ReportNames.UdsPlus)?.Copy();
+			if(plan.RowExisting!=null) {
+				return plan;
+			}
+			plan.ListMatches=listRows.FindAll(x => !string.IsNullOrWhiteSpace(x.InternalName)
+				&& !DisplayReports.ReportNames.IsKnown(x.InternalName)
+				&& x.InternalName!=DisplayReports.ReportNames.WebSchedAppointments
+				&& _arrayAdoptableDescriptions.Contains(NormalizeDescription(x.Description))).Select(x => x.Copy()).ToList();
+			if(plan.ListMatches.Count==1) {
+				plan.RowRenamed=plan.ListMatches[0];
+				return plan;
+			}
+			if(!isFromBefore25_4 || plan.ListMatches.Count>1) {
+				//Two or more candidates are ambiguous: nothing is renamed or added.
+				return plan;
+			}
+			plan.IsAdded=true;
+			plan.RowSealant=listRows.FirstOrDefault(x => x.InternalName==InternalNameSealant)?.Copy();
+			plan.IsHidden=plan.RowSealant!=null && plan.RowSealant.IsHidden;
+			List<ReportRows25_3.DisplayReportRow> listPublicHealth=listRows.FindAll(x => x.Category==DisplayReportCategory.PublicHealth);
+			if(plan.IsAfterSealant) {
+				//Right after the sealant measure; the later Public Health rows move down one place.
+				plan.ItemOrder=plan.RowSealant.ItemOrder+1;
+				plan.ListRowsMoved=listPublicHealth.FindAll(x => x.ItemOrder>plan.RowSealant.ItemOrder).Select(x => x.Copy()).ToList();
+			}
+			else {
+				plan.ItemOrder=listPublicHealth.Count==0 ? 0 : listPublicHealth.Max(x => x.ItemOrder)+1;
+			}
+			return plan;
+		}
+
 		///<summary>Runs the step. isFromBefore25_4 is true for a database that comes from before Open Dental 25.4 (the row is added); false for a later
 		///or unknown one (only a row under another name is adopted). Returns one line per change.</summary>
 		public static List<string> Run(bool isFromBefore25_4) {
 			List<string> listChanges=new List<string>();
-			List<Row> listRows=GetRows();
-			if(listRows.Any(x => x.InternalName==DisplayReports.ReportNames.UdsPlus)) {
-				return listChanges;
-			}
-			List<Row> listMatches=listRows.FindAll(x => !string.IsNullOrWhiteSpace(x.InternalName)
-				&& !DisplayReports.ReportNames.IsKnown(x.InternalName)
-				&& x.InternalName!=DisplayReports.ReportNames.WebSchedAppointments
-				&& _arrayAdoptableDescriptions.Contains(NormalizeDescription(x.Description)));
-			if(listMatches.Count==1) {
+			RowPlan plan=Plan(ReportRows25_3.GetRows(),isFromBefore25_4);
+			if(plan.RowRenamed!=null) {
 				DataCore.NonQ("UPDATE displayreport SET InternalName='"+POut.String(DisplayReports.ReportNames.UdsPlus)+"' "
-					+"WHERE DisplayReportNum="+POut.Long(listMatches[0].DisplayReportNum));
-				listChanges.Add("Renamed displayreport "+listMatches[0].InternalName+" to "+DisplayReports.ReportNames.UdsPlus+" (UDS+ description)");
+					+"WHERE DisplayReportNum="+POut.Long(plan.RowRenamed.DisplayReportNum));
+				listChanges.Add(DescribeRename(plan.RowRenamed.InternalName));
 				return listChanges;
 			}
-			if(!isFromBefore25_4 || listMatches.Count>1) {
-				//Two or more candidates are ambiguous: nothing is renamed or added.
+			if(!plan.IsAdded) {
 				return listChanges;
 			}
-			Row rowSealant=listRows.FirstOrDefault(x => x.InternalName==InternalNameSealant);
-			int itemOrder;
-			bool isHidden=false;
-			if(rowSealant!=null && rowSealant.Category==DisplayReportCategory.PublicHealth) {
-				//Right after the sealant measure, moving the later Public Health rows down one place. Report Setup expects ItemOrder to run 0, 1, 2, ...
+			if(plan.IsAfterSealant) {
+				//Moving the later Public Health rows down one place. Report Setup expects ItemOrder to run 0, 1, 2, ...
 				DataCore.NonQ("UPDATE displayreport SET ItemOrder=ItemOrder+1 WHERE Category="+POut.Int((int)DisplayReportCategory.PublicHealth)
-					+" AND ItemOrder>"+POut.Int(rowSealant.ItemOrder));
-				itemOrder=rowSealant.ItemOrder+1;
-				isHidden=rowSealant.IsHidden;
+					+" AND ItemOrder>"+POut.Int(plan.RowSealant.ItemOrder));
 			}
-			else {
-				itemOrder=PIn.Int(DataCore.GetScalar("SELECT COALESCE(MAX(ItemOrder)+1,0) FROM displayreport WHERE Category="
-					+POut.Int((int)DisplayReportCategory.PublicHealth)));
-				if(rowSealant!=null) {
-					isHidden=rowSealant.IsHidden;
-				}
-			}
-			long displayReportNum=DataCore.NonQ("INSERT INTO displayreport (InternalName,ItemOrder,Description,Category,IsHidden,IsVisibleInSubMenu) VALUES ("
-				+"'"+POut.String(DisplayReports.ReportNames.UdsPlus)+"',"+POut.Int(itemOrder)+",'"+POut.String(Description)+"',"
-				+POut.Int((int)DisplayReportCategory.PublicHealth)+","+POut.Bool(isHidden)+",0)",true);
-			listChanges.Add("Added displayreport "+DisplayReports.ReportNames.UdsPlus+(isHidden ? " (hidden, as the sealant measure is)" : ""));
-			if(rowSealant!=null) {
-				int count=CopyReportPermissions(rowSealant.DisplayReportNum,displayReportNum);
+			long displayReportNum=ReportRows25_3.InsertRow(DisplayReports.ReportNames.UdsPlus,plan.ItemOrder,Description,DisplayReportCategory.PublicHealth,
+				plan.IsHidden);
+			listChanges.Add(DescribeAdd(plan.IsHidden));
+			if(plan.RowSealant!=null) {
+				int count=ReportRows25_3.CopyReportPermissions(plan.RowSealant.DisplayReportNum,displayReportNum);
 				if(count>0) {
-					listChanges.Add("Copied "+count+" report permission(s) from "+InternalNameSealant+" to "+DisplayReports.ReportNames.UdsPlus);
+					listChanges.Add(DescribeCopy(count));
 				}
 			}
 			return listChanges;
 		}
 
-		///<summary>Gives every user group that may run the source report the same permission for the target report, unless it already has it. Returns
-		///the number of rows added.</summary>
-		private static int CopyReportPermissions(long displayReportNumFrom,long displayReportNumTo) {
-			int permType=(int)EnumPermType.Reports;
-			DataTable table=DataCore.GetTable("SELECT DISTINCT UserGroupNum FROM grouppermission WHERE PermType="+POut.Int(permType)
-				+" AND FKey="+POut.Long(displayReportNumFrom)
-				+" AND UserGroupNum NOT IN (SELECT UserGroupNum FROM grouppermission WHERE PermType="+POut.Int(permType)
-				+" AND FKey="+POut.Long(displayReportNumTo)+")");
-			foreach(DataRow dataRow in table.Rows) {
-				DataCore.NonQ("INSERT INTO grouppermission (NewerDate,NewerDays,UserGroupNum,PermType,FKey) VALUES ("
-					+POut.Date(DateTime.MinValue)+",0,"+POut.Long(PIn.Long(dataRow[0].ToString()))+","+POut.Int(permType)+","+POut.Long(displayReportNumTo)+")");
-			}
-			return table.Rows.Count;
+		///<summary>The change line of the rename, as the step logs it.</summary>
+		public static string DescribeRename(string internalNameFrom) {
+			return "Renamed displayreport "+internalNameFrom+" to "+DisplayReports.ReportNames.UdsPlus+" (UDS+ description)";
 		}
 
-		private static List<Row> GetRows() {
-			DataTable table=DataCore.GetTable("SELECT DisplayReportNum,InternalName,ItemOrder,Description,Category,IsHidden FROM displayreport "
-				+"ORDER BY Category,ItemOrder,DisplayReportNum");
-			List<Row> listRows=new List<Row>();
-			foreach(DataRow dataRow in table.Rows) {
-				listRows.Add(new Row {
-					DisplayReportNum=PIn.Long(dataRow["DisplayReportNum"].ToString()),
-					InternalName=dataRow["InternalName"].ToString(),
-					ItemOrder=PIn.Int(dataRow["ItemOrder"].ToString()),
-					Description=dataRow["Description"].ToString(),
-					Category=(DisplayReportCategory)PIn.Int(dataRow["Category"].ToString()),
-					IsHidden=PIn.Bool(dataRow["IsHidden"].ToString()),
-				});
-			}
-			return listRows;
+		///<summary>The change line of the added row, as the step logs it.</summary>
+		public static string DescribeAdd(bool isHidden) {
+			return "Added displayreport "+DisplayReports.ReportNames.UdsPlus+(isHidden ? " (hidden, as the sealant measure is)" : "");
 		}
 
-		///<summary>The columns of a displayreport row the step reads, straight from the table, not the cache.</summary>
-		private class Row {
-			public long DisplayReportNum;
-			public string InternalName;
+		///<summary>The change line of the copied report permissions, as the step logs it.</summary>
+		public static string DescribeCopy(int count) {
+			return "Copied "+count+" report permission(s) from "+InternalNameSealant+" to "+DisplayReports.ReportNames.UdsPlus;
+		}
+
+		///<summary>What the step does on a given set of rows (Plan). At most one of RowExisting, RowRenamed and IsAdded applies.</summary>
+		public class RowPlan {
+			///<summary>The row that already has this program's name; then nothing changes.</summary>
+			public ReportRows25_3.DisplayReportRow RowExisting;
+			///<summary>Rows under names this program does not know whose description is a UDS+ one (when no row has our name).</summary>
+			public List<ReportRows25_3.DisplayReportRow> ListMatches=new List<ReportRows25_3.DisplayReportRow>();
+			///<summary>The row renamed to ODUdsPlus, as it is before (its old name): the only match. Null when there is none, or more than one.</summary>
+			public ReportRows25_3.DisplayReportRow RowRenamed;
+			///<summary>True when the row is added (a database from before 25.4 with no row of the report).</summary>
+			public bool IsAdded;
+			///<summary>The ItemOrder and IsHidden of the added row.</summary>
 			public int ItemOrder;
-			public string Description;
-			public DisplayReportCategory Category;
 			public bool IsHidden;
+			///<summary>The FQHC Dental Sealant Measure row, whose report permissions the added row gets. Null when there is none.</summary>
+			public ReportRows25_3.DisplayReportRow RowSealant;
+			///<summary>The Public Health rows after the sealant measure, as they are before; each moves down one place (ItemOrder+1).</summary>
+			public List<ReportRows25_3.DisplayReportRow> ListRowsMoved=new List<ReportRows25_3.DisplayReportRow>();
+
+			///<summary>True when the added row goes right after the sealant measure (a Public Health row); otherwise it is appended to Public Health.
+			///</summary>
+			public bool IsAfterSealant {
+				get { return IsAdded && RowSealant!=null && RowSealant.Category==DisplayReportCategory.PublicHealth; }
+			}
+
+			public bool IsAmbiguous {
+				get { return RowExisting==null && ListMatches.Count>1; }
+			}
 		}
 	}
 

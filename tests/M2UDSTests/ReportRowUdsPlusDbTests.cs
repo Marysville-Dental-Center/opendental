@@ -143,6 +143,56 @@ namespace M2UDSTests {
 			Assert.AreEqual("udsplusreportforfqhcdentalservices",ReportRowUdsPlus.NormalizeDescription("UDS+ Report for FQHC Dental Services"));
 		}
 
+		private static List<ReportRows25_3.DisplayReportRow> ReadRows() {
+			return DataCore.GetTable("SELECT DisplayReportNum,InternalName,ItemOrder,Description,Category,IsHidden FROM displayreport "
+				+"ORDER BY Category,ItemOrder,DisplayReportNum").Select().Select(x => new ReportRows25_3.DisplayReportRow {
+					DisplayReportNum=PIn.Long(x["DisplayReportNum"].ToString()),InternalName=x["InternalName"].ToString(),ItemOrder=PIn.Int(x["ItemOrder"].ToString()),
+					Description=x["Description"].ToString(),Category=(DisplayReportCategory)PIn.Int(x["Category"].ToString()),IsHidden=PIn.Bool(x["IsHidden"].ToString()),
+				}).ToList();
+		}
+
+		///<summary>Plan, which AdoptionValidation's migration-preview and adopt's row check use (integration of M2-UDS with M1-Z), predicts exactly what
+		///Run writes: the added row's place and visibility, the moved rows and the sealant measure whose grants are copied; then the row exists.</summary>
+		[TestMethod]
+		public void Plan_IsWhatRunDoes() {
+			SeedPublicHealth(true);
+			List<ReportRows25_3.DisplayReportRow> listBefore=ReadRows();
+			ReportRowUdsPlus.RowPlan plan=ReportRowUdsPlus.Plan(listBefore,true);
+			Assert.IsTrue(plan.IsAdded && plan.IsAfterSealant && plan.IsHidden);
+			Assert.IsNull(plan.RowExisting);
+			Assert.IsNull(plan.RowRenamed);
+			Assert.AreEqual(42L,plan.RowSealant.DisplayReportNum);
+			Assert.AreEqual(3,plan.ItemOrder);
+			CollectionAssert.AreEqual(new List<long> { 43 },plan.ListRowsMoved.Select(x => x.DisplayReportNum).ToList());
+			Assert.AreEqual(5,listBefore.Count,"Plan does not change the rows it is given.");
+			Assert.AreEqual(3,listBefore.Single(x => x.DisplayReportNum==43).ItemOrder);
+			Assert.AreEqual(3,plan.ListRowsMoved[0].ItemOrder,"The moved rows as they are before.");
+			List<string> listChanges=ReportRowUdsPlus.Run(true);
+			CollectionAssert.AreEqual(new List<string> { ReportRowUdsPlus.DescribeAdd(true),ReportRowUdsPlus.DescribeCopy(1) },listChanges);
+			DataRow row=GetUdsRow();
+			Assert.AreEqual(plan.ItemOrder.ToString(),row["ItemOrder"].ToString());
+			Assert.AreEqual("1",row["IsHidden"].ToString());
+			Assert.AreEqual("4",DataCore.GetScalar("SELECT ItemOrder FROM displayreport WHERE DisplayReportNum=43"),"Moved one place down.");
+			ReportRowUdsPlus.RowPlan planAfter=ReportRowUdsPlus.Plan(ReadRows(),true);
+			Assert.IsNotNull(planAfter.RowExisting);
+			Assert.IsFalse(planAfter.IsAdded);
+			Assert.AreEqual(0,planAfter.ListRowsMoved.Count);
+			//Without a sealant measure the row is appended and nothing is copied; a row under another name is renamed instead of adding one.
+			DataCore.NonQ("DELETE FROM displayreport");
+			UdsTestDb.Seed(_dbName,"INSERT INTO displayreport (DisplayReportNum,InternalName,ItemOrder,Description,Category,IsHidden) VALUES "
+				+"(40,'ODRawScreeningData',0,'Raw Screening Data',4,0),(41,'ODRawPopulationData',5,'Raw Population Data',4,0)");
+			plan=ReportRowUdsPlus.Plan(ReadRows(),true);
+			Assert.IsTrue(plan.IsAdded && !plan.IsAfterSealant && plan.RowSealant==null && !plan.IsHidden);
+			Assert.AreEqual(6,plan.ItemOrder);
+			Assert.AreEqual(0,plan.ListRowsMoved.Count);
+			UdsTestDb.Seed(_dbName,"INSERT INTO displayreport (DisplayReportNum,InternalName,ItemOrder,Description,Category,IsHidden) VALUES "
+				+"(44,'ODUDSPlusFuture',6,'UDS+ Report',4,0)");
+			plan=ReportRowUdsPlus.Plan(ReadRows(),true);
+			Assert.IsFalse(plan.IsAdded);
+			Assert.AreEqual(44L,plan.RowRenamed.DisplayReportNum);
+			CollectionAssert.AreEqual(new List<string> { ReportRowUdsPlus.DescribeRename("ODUDSPlusFuture") },ReportRowUdsPlus.Run(true));
+		}
+
 		[TestMethod]
 		public void Step_JudgesTheOriginLikeSeed26_1() {
 			//An Open Dental 25.3.48 database (not yet adopted): the row is added.

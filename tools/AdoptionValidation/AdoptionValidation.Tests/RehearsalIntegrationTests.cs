@@ -28,7 +28,7 @@ namespace AdoptionValidation.Tests {
 		private static RehearsalResult _result;
 
 		///<summary>Every check a run must report, in order.</summary>
-		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","M3","M4","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10",
+		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","M3","M4","M5","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10",
 			"V11","R1","R2","I1","I2","I3","I4" };
 
 		[ClassInitialize]
@@ -176,6 +176,11 @@ namespace AdoptionValidation.Tests {
 			StringAssert.Contains(output,"inserts "+Seed26_1.ListPrefDefaults.Count+" preference(s) with their defaults: ");
 			StringAssert.Contains(output,"moves 1 Open Dental 25.3 PhoneExtension grant(s) from 272 to 274, then grants BlockoutAdd (272) to 2 user group(s) and "
 				+"grants BlockoutDelete (273) to 2 user group(s)");
+			//The UDS+ report row step (M2-UDS): the 25.4 report's row after the fixture's sealant measure, whose one grant it copies.
+			StringAssert.Contains(output,"Step 2027003501 (UDS+ report row) adds the displayreport row "+DisplayReportNames.UdsPlus+" (\"FQHC UDS+ Dental Services\", "
+				+"Public Health, ItemOrder ");
+			StringAssert.Contains(output,") right after the FQHC Dental Sealant Measure (DisplayReportNum ");
+			StringAssert.Contains(output,"it gives the 1 user group(s) that may run the sealant measure (user group ");
 			using(Db db=Db.Open(_server)) {
 				List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,Source(2),null,null),null);
 				Assert.AreEqual(0,listDiffs.Count,"migration-preview only reads.\r\n"+ReportComparer.Format(listDiffs));
@@ -185,19 +190,24 @@ namespace AdoptionValidation.Tests {
 				Assert.AreEqual(0,resultAdopted.Plan26_1.ListPrefsInserted.Count,"After adoption every 25.4 and 26.1 preference is there.");
 				Assert.IsTrue(resultAdopted.Plan26_1.IsSeedStepApplied && !resultAdopted.Plan26_1.IsPermissionSplitPlanned,"The split never runs twice.");
 				Assert.AreEqual(0,resultAdopted.Plan26_1.CountClaimPaymentNotesNull);
+				Assert.IsNotNull(resultAdopted.PlanUdsPlus.Rows.RowExisting,"After adoption the UDS+ report has its row; the step adds nothing twice.");
+				Assert.IsFalse(resultAdopted.PlanUdsPlus.Rows.IsAdded);
 			}
 		}
 
 		///<summary>On the adopted copy the fixture's report rows under unknown names carry this program's names, with the same number, description,
-		///category and order; every other report row, and every other column, is unchanged.</summary>
+		///category and order. The UDS+ report row step (M2-UDS) added one row, the 25.4 UDS+ report's, right after the fixture's FQHC Dental Sealant
+		///Measure, moved the later Public Health rows down one place (ItemOrder only) and gave the sealant measure's group the Reports permission for it;
+		///every other report row, and every other column, is unchanged.</summary>
 		[TestMethod]
-		public void Adoption_RenamesOnlyTheReportRowsUnderUnknownNames() {
+		public void Adoption_RenamesOnlyTheReportRowsUnderUnknownNames_AndAddsTheUdsPlusRow() {
 			SkipIfNeeded();
 			using(Db db=Db.Open(_server)) {
 				RowComparer.TableDiff diff=RowComparer.Compare(db,Source(1),Adopted(1),"displayreport");
-				Assert.AreEqual(0,diff.CountOnlyFirst+diff.CountOnlySecond,diff.Describe());
-				Assert.AreEqual(OfficeFixture.ArrayReportRowsRenamed.Length,diff.CountChanged,diff.Describe());
-				Assert.IsTrue(diff.ListChanged.All(x => x.ListColumns.SequenceEqual(new[] { "InternalName" })),diff.Describe());
+				Assert.AreEqual(0,diff.CountOnlyFirst,diff.Describe());
+				Assert.AreEqual(1,diff.CountOnlySecond,"Only the UDS+ row is added. "+diff.Describe());
+				List<long> listRenamed=OfficeFixture.ArrayReportRowsRenamed.Select(x => db.ScalarLong("SELECT DisplayReportNum FROM `"+Source(1)+"`.displayreport "
+					+"WHERE InternalName='"+x.internalName+"'")).ToList();
 				foreach((string internalName,string description,int category,string nameFork) report in OfficeFixture.ArrayReportRowsRenamed) {
 					long num=db.ScalarLong("SELECT DisplayReportNum FROM `"+Source(1)+"`.displayreport WHERE InternalName='"+report.internalName+"'");
 					Assert.AreEqual(report.nameFork,Convert.ToString(db.Scalar("SELECT InternalName FROM `"+Adopted(1)+"`.displayreport WHERE DisplayReportNum="+num)));
@@ -205,12 +215,36 @@ namespace AdoptionValidation.Tests {
 				foreach((string internalName,string description,int category) report in OfficeFixture.ArrayReportRowsKept) {
 					Assert.AreEqual(1,db.ScalarLong("SELECT COUNT(*) FROM `"+Adopted(1)+"`.displayreport WHERE InternalName='"+report.internalName+"'"),report.internalName);
 				}
+				Assert.IsTrue(diff.ListChanged.Where(x => listRenamed.Contains(x.Key)).All(x => x.ListColumns.SequenceEqual(new[] { "InternalName" })),diff.Describe());
+				Assert.AreEqual(listRenamed.Count,diff.ListChanged.Count(x => listRenamed.Contains(x.Key)),diff.Describe());
+				//The other changed rows are the Public Health rows after the sealant measure, each one place down.
+				long itemOrderSealant=db.ScalarLong("SELECT ItemOrder FROM `"+Source(1)+"`.displayreport WHERE InternalName='"+OfficeFixture.ArrayReportRowsPublicHealth[0].internalName+"'");
+				List<long> listMoved=db.Rows("SELECT DisplayReportNum FROM `"+Source(1)+"`.displayreport WHERE Category="+OfficeFixture.CategoryPublicHealth+" AND ItemOrder>"
+					+itemOrderSealant).Select(x => Convert.ToInt64(x[0])).ToList();
+				CollectionAssert.AreEquivalent(listMoved,diff.ListChanged.Where(x => !listRenamed.Contains(x.Key)).Select(x => x.Key).ToList(),diff.Describe());
+				Assert.IsTrue(diff.ListChanged.Where(x => !listRenamed.Contains(x.Key)).All(x => x.ListColumns.SequenceEqual(new[] { "ItemOrder" })),diff.Describe());
+				Assert.AreEqual(0,db.ScalarLong("SELECT COUNT(*) FROM `"+Source(1)+"`.displayreport a INNER JOIN `"+Adopted(1)+"`.displayreport b USING(DisplayReportNum) "
+					+"WHERE a.Category="+OfficeFixture.CategoryPublicHealth+" AND a.ItemOrder>"+itemOrderSealant+" AND b.ItemOrder<>a.ItemOrder+1"));
+				Assert.IsTrue(listMoved.Contains(db.ScalarLong("SELECT DisplayReportNum FROM `"+Source(1)+"`.displayreport WHERE InternalName='"
+					+OfficeFixture.ArrayReportRowsPublicHealth[1].internalName+"'")),"The fixture's later Public Health row moves.");
+				object[] rowUds=db.Rows("SELECT DisplayReportNum,ItemOrder,Description,Category,IsHidden FROM `"+Adopted(1)+"`.displayreport WHERE InternalName='"
+					+DisplayReportNames.UdsPlus+"'").Single();
+				Assert.AreEqual(diff.ListOnlySecond[0],Convert.ToInt64(rowUds[0]));
+				Assert.AreEqual(itemOrderSealant+1,Convert.ToInt64(rowUds[1]),"Right after the sealant measure.");
+				Assert.AreEqual("FQHC UDS+ Dental Services",Convert.ToString(rowUds[2]));
+				Assert.AreEqual(OfficeFixture.CategoryPublicHealth,Convert.ToInt32(rowUds[3]));
+				Assert.AreEqual(0,Convert.ToInt32(rowUds[4]));
+				long groupClinical=db.ScalarLong("SELECT UserGroupNum FROM `"+Adopted(1)+"`.usergroup WHERE Description='"+OfficeFixture.ArrayGroupsFixture[2]+"' "
+					+"ORDER BY UserGroupNum LIMIT 1");
+				Assert.AreEqual(groupClinical.ToString(CultureInfo.InvariantCulture),Convert.ToString(db.Scalar("SELECT GROUP_CONCAT(UserGroupNum) FROM `"+Adopted(1)
+					+"`.grouppermission WHERE PermType="+OfficeFixture.PermReports+" AND FKey="+rowUds[0])),"The sealant measure's one group may run UDS+.");
 			}
 			RunResult run=_result.ListRuns[0];
 			Assert.IsTrue(run.ListAllowedDifferences.Any(x => x.StartsWith("ColumnChanged displayreport.InternalName")),string.Join("\r\n",run.ListAllowedDifferences));
-			Assert.IsFalse(run.ListAllowedDifferences.Any(x => x.Contains("displayreport.") && !x.StartsWith("ColumnChanged displayreport.InternalName")),
-				string.Join("\r\n",run.ListAllowedDifferences));
+			Assert.IsTrue(run.ListAllowedDifferences.Any(x => x.StartsWith("RowsChanged displayreport")),string.Join("\r\n",run.ListAllowedDifferences));
+			Assert.IsFalse(run.ListUnexpectedDifferences.Any(x => x.Contains("displayreport")),string.Join("\r\n",run.ListUnexpectedDifferences));
 			StringAssert.Contains(run.ListChecks.Single(x => x.Id=="M3").Detail,"3 rename(s)");
+			StringAssert.Contains(run.ListChecks.Single(x => x.Id=="M5").Detail,"the UDS+ report row added as migration-preview lists");
 		}
 
 		///<summary>The Open Dental 25.4 and 26.1 steps on the office fixture's rows: the 25.3 PhoneExtension grant (272) is now 274 under the same key;
@@ -263,9 +297,16 @@ namespace AdoptionValidation.Tests {
 				Assert.AreEqual(1,db.Execute("UPDATE carrier SET PreAuthCodes='D0000' ORDER BY CarrierNum LIMIT 1"));
 				Assert.AreEqual(1,db.Execute("INSERT INTO deletedobj (DateTEntry,ObjType,ObjSerialized) VALUES ('2026-10-24 20:00:00',0,'')"));
 				Assert.AreEqual(1,db.Execute("UPDATE preference SET ValueString='0' WHERE PrefName='RepeatingChargesAllowBackdating'"));
+				//A Reports grant for the UDS+ row that the step did not copy (the administrators may not run the sealant measure).
+				long displayReportNumUds=db.ScalarLong("SELECT DisplayReportNum FROM displayreport WHERE InternalName='"+DisplayReportNames.UdsPlus+"'");
+				Assert.AreEqual(1,db.Execute("INSERT INTO grouppermission (NewerDate,NewerDays,UserGroupNum,PermType,FKey) VALUES ('0001-01-01',0,"+groupAdmin+","
+					+OfficeFixture.PermReports+","+displayReportNumUds+")"));
 				AdoptionRowCheck.Result result=AdoptionRowCheck.Run(db,Source(1),tampered);
 				string failures=string.Join("\r\n",result.ListFailures);
 				Assert.IsFalse(result.Passed);
+				StringAssert.Contains(failures,"(user group "+groupAdmin+", PermType "+OfficeFixture.PermReports+", FKey "+displayReportNumUds
+					+", NewerDate 0001-01-01, NewerDays 0) was added");
+				Assert.AreEqual(1,result.CountReportPermsCopied,"The step's own grant is still found.");
 				StringAssert.Contains(failures,"(user group "+groupAdmin+", PermType 272, FKey 0, NewerDate 0001-01-01, NewerDays 0) was added");
 				StringAssert.Contains(failures,"changed (NewerDays); the fork migration moves only the Open Dental 25.3 PhoneExtension grants");
 				StringAssert.Contains(failures,"PermType 273, FKey 0, NewerDate 0001-01-01, NewerDays 7) was added");
@@ -395,7 +436,12 @@ namespace AdoptionValidation.Tests {
 				"  Renamed displayreport ODSyntheticProcsItemized to ODProceduresIndividual (same description)",
 				"  Renamed displayreport ODSyntheticInsPendingSupp to ODInsPendingSupplementals (same description)",
 				"displayreport: 3 of the 3 rename(s) migration-preview lists, InternalName only (",
-				"; no other row or column changed, none added or removed.",
+				"; the UDS+ report row added as migration-preview lists ("+DisplayReportNames.UdsPlus+", DisplayReportNum ",
+				" later Public Health row(s) moved down one place, ItemOrder only; no other row or column changed, no other row added, none removed.",
+				//The UDS+ report row step (M2-UDS) on the 25.3.48 source: the 25.4 report's row after the fixture's sealant measure, and its one grant.
+				"Fork migration step 2027003501 Report row for the UDS+ report changed the database:","  Added displayreport "+DisplayReportNames.UdsPlus,
+				"  Copied 1 report permission(s) from ODDentalSealantMeasure to "+DisplayReportNames.UdsPlus,
+				"Reports for the UDS+ report row granted to 1 of the 1 user group(s) that may run the FQHC Dental Sealant Measure, as migration-preview lists",
 				//The Open Dental 25.4 and 26.1 steps (M2-01, M2-02) on the 25.3.48 source.
 				"Fork migration step 2026102401 Open Dental 25.4 schema changed the database:","Fork migration step 2026102402 Open Dental 26.1 schema changed the database:",
 				"  Inserted preference RepeatingChargesAllowBackdating","  Moved 1 Open Dental 25.3 PhoneExtension grant(s) from 272 to 274",
@@ -747,16 +793,23 @@ namespace AdoptionValidation.Tests {
 				Assert.IsTrue(listDiffs.Where(x => x.Table=="preference" || x.Table=="securitylog" || x.Table=="documentmisc" || x.Table=="displayreport")
 					.All(x => x.IsAllowed),ReportComparer.Format(listDiffs));
 				Assert.IsTrue(listDiffs.Any(x => x.Table=="displayreport" && x.Column=="InternalName"),ReportComparer.Format(listDiffs));
-				//Undoing a planned rename is caught too, and so is any other column of displayreport, which the report comparison does not allow.
+				//Undoing a planned rename is caught too, and so is any other column of displayreport, which the report comparison allows with the whole
+				//table (the UDS+ row the fork migration adds changes every column checksum): only the row check holds displayreport to the plan.
 				Assert.AreEqual(1,db.Execute("UPDATE displayreport SET InternalName='ODSyntheticProdByProc' WHERE InternalName='"
 					+DisplayReportNames.ProductionByProcedure+"'"));
 				Assert.AreEqual(1,db.Execute("UPDATE displayreport SET Description='Today, renamed' WHERE InternalName='ODToday'"));
+				//The UDS+ row with another value than planned, and a moved Public Health row put back.
+				Assert.AreEqual(1,db.Execute("UPDATE displayreport SET IsHidden=1 WHERE InternalName='"+DisplayReportNames.UdsPlus+"'"));
+				Assert.AreEqual(1,db.Execute("UPDATE displayreport SET ItemOrder=ItemOrder-1 WHERE InternalName='"+OfficeFixture.ArrayReportRowsPublicHealth[1].internalName+"'"));
 				result=AdoptionRowCheck.Run(db,Source(2),tampered);
 				failures=string.Join("\r\n",result.ListFailures);
 				StringAssert.Contains(failures,"(ODSyntheticProdByProc) was not renamed to "+DisplayReportNames.ProductionByProcedure);
 				StringAssert.Contains(failures,"changed (Description)");
+				StringAssert.Contains(failures,"was added with IsHidden 1 (planned: 0); the fork migration adds only the UDS+ report row migration-preview lists.");
+				StringAssert.Contains(failures,"was not moved down to ItemOrder ");
+				Assert.AreEqual(0,result.DisplayReportNumAdded);
 				listDiffs=ReportComparer.Compare(before,Validator.Run(db,tampered,null,null),allowed);
-				Assert.IsTrue(listDiffs.Any(x => x.Table=="displayreport" && x.Column=="Description" && !x.IsAllowed),ReportComparer.Format(listDiffs));
+				Assert.IsTrue(listDiffs.Any(x => x.Table=="displayreport" && x.Column=="Description" && x.IsAllowed),ReportComparer.Format(listDiffs));
 				Assert.IsTrue(listDiffs.Any(x => x.Table=="updatehistory" && !x.IsAllowed),ReportComparer.Format(listDiffs));
 			}
 		}

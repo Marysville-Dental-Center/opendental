@@ -6,6 +6,7 @@ using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenDentBusiness;
 using OpenDentBusiness.ForkMigrations;
+using OpenDentBusiness.ForkMigrations.Features;
 using OpenDentBusiness.ForkMigrations.Seeds26_1;
 using SyntheticData.Validation;
 
@@ -101,6 +102,36 @@ namespace AdoptionValidation.Tests {
 			plan.ListGrants[1].IsAlreadyConfigured=true;
 			StringAssert.Contains(string.Join("\r\n",plan.Lines()),"BlockoutDelete is already configured, so it is not granted");
 			Assert.AreEqual(2,plan.ListGrants.Sum(x => x.CountGranted));
+		}
+
+		///<summary>What migration-preview prints for the UDS+ report row step (M2-UDS): the added row, its place, the moved rows and the copied grants on
+		///a 25.3.48 database; nothing on an adopted one. The dry run reads the report rows step's renames by "Renamed displayreport X to Y (same
+		///description)", which these lines never contain.</summary>
+		[TestMethod]
+		public void UdsPlusPlanLines_SayWhatTheStepChanges() {
+			UdsPlusRowPlan.Plan plan=new UdsPlusRowPlan.Plan { IsFromBefore25_4=true };
+			plan.Rows.IsAdded=true;
+			plan.Rows.ItemOrder=96;
+			plan.Rows.RowSealant=new ReportRows25_3.DisplayReportRow { DisplayReportNum=8,InternalName=ReportRowUdsPlus.InternalNameSealant,ItemOrder=95,
+				Category=DisplayReportCategory.PublicHealth };
+			plan.Rows.ListRowsMoved.Add(new ReportRows25_3.DisplayReportRow { DisplayReportNum=9,InternalName="ODRawPopulationData",ItemOrder=96,
+				Category=DisplayReportCategory.PublicHealth });
+			plan.ListUserGroupsGranted.Add(3);
+			string text=string.Join("\r\n",plan.Lines());
+			StringAssert.Contains(text,"Step 2027003501 (UDS+ report row) adds the displayreport row ODUdsPlus (\"FQHC UDS+ Dental Services\", Public Health, ItemOrder 96) "
+				+"right after the FQHC Dental Sealant Measure (DisplayReportNum 8), moving 1 later Public Health row(s) down one place, ItemOrder only (DisplayReportNum 9)");
+			StringAssert.Contains(text,"it gives the 1 user group(s) that may run the sealant measure (user group 3) the Reports permission for it");
+			StringAssert.Contains(text,"\"Added displayreport ODUdsPlus\" and \"Copied 1 report permission(s) from ODDentalSealantMeasure to ODUdsPlus\"");
+			Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(text,@"Renamed displayreport \S+ to \S+ \(same description\)"));
+			UdsPlusRowPlan.Plan planAdopted=new UdsPlusRowPlan.Plan { IsFromBefore25_4=true };
+			planAdopted.Rows.RowExisting=new ReportRows25_3.DisplayReportRow { DisplayReportNum=12,InternalName=DisplayReports.ReportNames.UdsPlus };
+			StringAssert.Contains(string.Join("\r\n",planAdopted.Lines()),"changes nothing: DisplayReportNum 12 already has this program's name (ODUdsPlus).");
+			UdsPlusRowPlan.Plan planRenamed=new UdsPlusRowPlan.Plan();
+			planRenamed.Rows.RowRenamed=new ReportRows25_3.DisplayReportRow { DisplayReportNum=14,InternalName="ODSyntheticUds",Description="UDS+ Report" };
+			planRenamed.Rows.ListMatches.Add(planRenamed.Rows.RowRenamed);
+			text=string.Join("\r\n",planRenamed.Lines());
+			StringAssert.Contains(text,"DisplayReportNum 14 (\"UDS+ Report\"), under a name this program does not know, is renamed to ODUdsPlus, InternalName only");
+			Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(text,@"Renamed displayreport \S+ to \S+ \(same description\)"));
 		}
 
 		[TestMethod]

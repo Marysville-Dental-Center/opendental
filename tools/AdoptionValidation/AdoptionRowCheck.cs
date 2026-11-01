@@ -21,10 +21,13 @@ namespace AdoptionValidation {
 	///- documentmisc: delete Open Dental's UpdateFiles and UpdateFilesSegment rows, and nothing else;
 	///- securitylog and securityloghash: add adoption's and the rehash's entries; no existing row may change or go;
 	///- displayreport: rename the rows that the fork migration's report rows step renames (ReportRows25_3.PlanRenames on the original's rows, what
-	///  migration-preview lists), InternalName only and only to this program's name for that report; no other row or column may change, and no row
-	///  may be added or go;
+	///  migration-preview lists), InternalName only and only to this program's name for that report; and what the UDS+ report row step plans
+	///  (UdsPlusRowPlan): add the UDS+ row with the planned values and move the later Public Health rows down one place (ItemOrder only), or rename
+	///  the one row under another name with a UDS+ description (InternalName only); no other row or column may change, no other row may be added, and
+	///  no row may go;
 	///- grouppermission: the 25.4 blockout permission split that migration-preview lists (Migration26_1Plan): the Open Dental 25.3 PhoneExtension
 	///  grants move from 272 to 274 (PermType only), and each planned BlockoutAdd and BlockoutDelete grant is added as a copy of its Blockouts grant;
+	///  and the UDS+ step's report permissions: one Reports grant for the added row (FKey its DisplayReportNum, no date limit) per planned user group;
 	///  no other row may change, be added or go;
 	///- claimpayment.Note: only NULL notes become empty strings, as many as migration-preview counts; insverify and insverifyhist.DateLastAssigned: every
 	///  value is the original date at midnight;
@@ -37,7 +40,7 @@ namespace AdoptionValidation {
 		public static readonly string[] ArrayAddedPrefNames={ ForkVersions.PREF_FORK_ADOPTED_FROM,ForkVersions.PREF_OD_SCHEMA_COMPAT,
 			ForkVersions.PREF_FORK_SCHEMA_LEVEL,ForkVersions.PREF_FORK_PROGRAM_VERSION,ForkMigrationRunner.PrefNameApplied,ForkMigrationRunner.PrefNameInProgress };
 		///<summary>The tables allowed-differences.adoption.json may allow whole ("Kind": "*"): this check compares each row by row.</summary>
-		public static readonly string[] ArrayWholeTables={ "preference","documentmisc","securitylog","securityloghash","grouppermission" };
+		public static readonly string[] ArrayWholeTables={ "preference","documentmisc","securitylog","securityloghash","displayreport","grouppermission" };
 		///<summary>The start of the security log entries adoption and the rehash write.</summary>
 		public static readonly string[] ArrayLogTexts={ "Database adopted from Open Dental ",HeadlessAdoption.REHASH_LOG_TEXT };
 
@@ -55,6 +58,14 @@ namespace AdoptionValidation {
 			public List<string> ListReportRenames=new List<string>();
 			///<summary>The plan made from the original (what migration-preview lists for it).</summary>
 			public Migration26_1Plan.Plan Plan26_1;
+			///<summary>The UDS+ report row step's plan made from the original (what migration-preview lists for it).</summary>
+			public UdsPlusRowPlan.Plan PlanUdsPlus;
+			///<summary>The DisplayReportNum of the UDS+ row the step added, when it was planned and found with the planned values; 0 otherwise.</summary>
+			public long DisplayReportNumAdded;
+			///<summary>Public Health rows the UDS+ step moved down one place, all of them planned.</summary>
+			public int CountReportRowsMoved;
+			///<summary>Reports grants the UDS+ step added for its row, all of them planned.</summary>
+			public int CountReportPermsCopied;
 			///<summary>Open Dental 25.3 PhoneExtension grants moved from 272 to 274, all of them planned.</summary>
 			public int CountPermsRenumbered;
 			///<summary>Planned grants found, per permission ("BlockoutAdd" to the number of rows added).</summary>
@@ -76,6 +87,8 @@ namespace AdoptionValidation {
 			LocalOnly.EnsureSafeIdentifier(adopted);
 			Result result=new Result();
 			result.Plan26_1=Migration26_1Plan.Make(db,original);
+			List<ReportRows25_3.DisplayReportRow> listRowsOriginal=MigrationPreview.ReadRows(db,original);
+			result.PlanUdsPlus=UdsPlusRowPlan.Make(db,original,listRowsOriginal,ReportRows25_3.PlanRenames(listRowsOriginal),result.Plan26_1.IsFromBefore25_4);
 			CheckPreferences(db,original,adopted,result);
 			CheckDocumentMisc(db,original,adopted,result);
 			List<long> listLogAdded=CheckSecurityLog(db,original,adopted,result);
@@ -244,8 +257,29 @@ namespace AdoptionValidation {
 				+"; no existing row changed or removed.");
 		}
 
+		///<summary>What the fork migration may change in one existing displayreport row: its InternalName (a planned rename), its ItemOrder (a Public Health
+		///row the UDS+ step moves down one place), or both. Null means unchanged.</summary>
+		private class ReportRowExpected {
+			public string InternalNameOld;
+			public string InternalNameNew;
+			public int? ItemOrderNew;
+
+			public List<string> Columns() {
+				List<string> listColumns=new List<string>();
+				if(InternalNameNew!=null) {
+					listColumns.Add("InternalName");
+				}
+				if(ItemOrderNew!=null) {
+					listColumns.Add("ItemOrder");
+				}
+				return listColumns;
+			}
+		}
+
 		///<summary>The fork migration's report rows step renames, on a database Open Dental converted, the rows ReportRows25_3.PlanRenames finds in the
-		///original (what migration-preview lists before the day). Nothing else in displayreport may change.</summary>
+		///original (what migration-preview lists before the day); its UDS+ report row step adds the UDS+ row and moves the later Public Health rows down
+		///one place, or renames a row under another name, as UdsPlusRowPlan plans it from the original. Nothing else in displayreport may change.
+		///</summary>
 		private static void CheckDisplayReport(Db db,string original,string adopted,Result result) {
 			bool hasOriginal=MigrationPreview.HasTable(db,original);
 			bool hasAdopted=MigrationPreview.HasTable(db,adopted);
@@ -256,50 +290,128 @@ namespace AdoptionValidation {
 				result.ListLines.Add("displayreport: no such table"+(hasOriginal==hasAdopted ? " in either database." : " in one of them (see the failures)."));
 				return;
 			}
-			Dictionary<long,ReportRows25_3.ReportTargetPlan> dictPlanned=ReportRows25_3.PlanRenames(MigrationPreview.ReadRows(db,original))
-				.Where(x => x.RowRenamed!=null).ToDictionary(x => x.RowRenamed.DisplayReportNum);
+			List<ReportRows25_3.ReportTargetPlan> listPlanned=ReportRows25_3.PlanRenames(MigrationPreview.ReadRows(db,original)).Where(x => x.RowRenamed!=null).ToList();
+			ReportRowUdsPlus.RowPlan planUds=result.PlanUdsPlus.Rows;
+			//Every planned change of an existing row, by DisplayReportNum.
+			Dictionary<long,ReportRowExpected> dictExpected=new Dictionary<long,ReportRowExpected>();
+			ReportRowExpected GetExpected(ReportRows25_3.DisplayReportRow row) {
+				if(!dictExpected.TryGetValue(row.DisplayReportNum,out ReportRowExpected expected)) {
+					expected=new ReportRowExpected { InternalNameOld=row.InternalName };
+					dictExpected[row.DisplayReportNum]=expected;
+				}
+				return expected;
+			}
+			foreach(ReportRows25_3.ReportTargetPlan plan in listPlanned) {
+				GetExpected(plan.RowRenamed).InternalNameNew=plan.Target.InternalName;
+			}
+			if(planUds.RowRenamed!=null) {
+				GetExpected(planUds.RowRenamed).InternalNameNew=DisplayReports.ReportNames.UdsPlus;
+			}
+			foreach(ReportRows25_3.DisplayReportRow row in planUds.ListRowsMoved) {
+				GetExpected(row).ItemOrderNew=row.ItemOrder+1;
+			}
+			int countRenamesPlanned=dictExpected.Values.Count(x => x.InternalNameNew!=null);
+			int countAddedPlanned=planUds.IsAdded ? 1 : 0;
 			RowComparer.TableDiff diff=RowComparer.Compare(db,original,adopted,"displayreport");
 			if(diff.ListColumnsInOneOnly.Count>0) {
 				result.ListFailures.Add("displayreport columns differ: "+string.Join(", ",diff.ListColumnsInOneOnly));
 			}
-			if(diff.CountOnlyFirst>0 || diff.CountOnlySecond>0) {
-				result.ListFailures.Add("displayreport rows were removed or added: "+diff.Describe()+". On an Open Dental 25.3.48 database the fork migration only renames.");
+			if(diff.CountOnlyFirst>0 || diff.CountOnlySecond!=countAddedPlanned) {
+				result.ListFailures.Add("displayreport rows were removed or added: "+diff.Describe()+". On an Open Dental 25.3.48 database the fork migration only renames, "
+					+"and adds "+(planUds.IsAdded ? "the one UDS+ report row migration-preview lists." : "no row (migration-preview lists no UDS+ report row to add)."));
+			}
+			else if(planUds.IsAdded) {
+				CheckUdsPlusRowAdded(db,adopted,diff.ListOnlySecond[0],planUds,result);
 			}
 			if(diff.CountChanged>diff.ListChanged.Count) {
-				result.ListFailures.Add(diff.CountChanged+" displayreport rows changed; the fork migration renames at most "+ReportRows25_3.ArrayTargets.Length+".");
+				result.ListFailures.Add(diff.CountChanged+" displayreport rows changed; the fork migration changes "+dictExpected.Count+" on this database.");
 			}
 			int countFailuresBefore=result.ListFailures.Count;
 			foreach(RowComparer.ChangedRow changed in diff.ListChanged) {
-				if(!dictPlanned.TryGetValue(changed.Key,out ReportRows25_3.ReportTargetPlan plan)) {
+				if(!dictExpected.TryGetValue(changed.Key,out ReportRowExpected expected)) {
 					result.ListFailures.Add("displayreport row "+changed.Key+" changed ("+string.Join(", ",changed.ListColumns)+"); the fork migration renames only the rows "
-						+"migration-preview lists for "+original+".");
+						+"migration-preview lists for "+original+", and moves only the Public Health rows it lists.");
 					continue;
 				}
-				if(changed.ListColumns.Count!=1 || !string.Equals(changed.ListColumns[0],"InternalName",StringComparison.OrdinalIgnoreCase)) {
-					result.ListFailures.Add("displayreport row "+changed.Key+": "+string.Join(", ",changed.ListColumns)+" changed; the fork migration changes only InternalName.");
+				List<string> listColumnsExpected=expected.Columns();
+				if(changed.ListColumns.Count!=listColumnsExpected.Count
+					|| !changed.ListColumns.All(x => listColumnsExpected.Contains(x,StringComparer.OrdinalIgnoreCase)))
+				{
+					result.ListFailures.Add("displayreport row "+changed.Key+": "+string.Join(", ",changed.ListColumns)+" changed; the fork migration changes only "
+						+string.Join(" and ",listColumnsExpected)+" there.");
 					continue;
 				}
-				string nameNew=Convert.ToString(db.Scalar("SELECT InternalName FROM `"+adopted+"`.displayreport WHERE DisplayReportNum="
-					+changed.Key.ToString(CultureInfo.InvariantCulture)));
-				if(nameNew!=plan.Target.InternalName) {
-					result.ListFailures.Add("displayreport row "+changed.Key+" was renamed from "+plan.RowRenamed.InternalName+" to "+nameNew+", not to "+plan.Target.InternalName+".");
+				object[] rowNew=db.Rows("SELECT InternalName,ItemOrder FROM `"+adopted+"`.displayreport WHERE DisplayReportNum="
+					+changed.Key.ToString(CultureInfo.InvariantCulture))[0];
+				string nameNew=Convert.ToString(rowNew[0],CultureInfo.InvariantCulture);
+				int itemOrderNew=Convert.ToInt32(rowNew[1],CultureInfo.InvariantCulture);
+				bool isAsPlanned=true;
+				if(expected.InternalNameNew!=null && nameNew!=expected.InternalNameNew) {
+					result.ListFailures.Add("displayreport row "+changed.Key+" was renamed from "+expected.InternalNameOld+" to "+nameNew+", not to "+expected.InternalNameNew+".");
+					isAsPlanned=false;
+				}
+				if(expected.ItemOrderNew!=null && itemOrderNew!=expected.ItemOrderNew.Value) {
+					result.ListFailures.Add("displayreport row "+changed.Key+" has ItemOrder "+itemOrderNew+", not "+expected.ItemOrderNew.Value+" (one place down, below the "
+						+"UDS+ report row).");
+					isAsPlanned=false;
+				}
+				if(!isAsPlanned) {
 					continue;
 				}
-				result.ListReportRenames.Add(plan.RowRenamed.InternalName+" to "+plan.Target.InternalName+" (DisplayReportNum "+changed.Key+")");
+				if(expected.InternalNameNew!=null) {
+					result.ListReportRenames.Add(expected.InternalNameOld+" to "+expected.InternalNameNew+" (DisplayReportNum "+changed.Key+")");
+				}
+				if(expected.ItemOrderNew!=null) {
+					result.CountReportRowsMoved++;
+				}
 			}
-			foreach(ReportRows25_3.ReportTargetPlan plan in dictPlanned.Values.Where(x => !diff.ListChanged.Any(y => y.Key==x.RowRenamed.DisplayReportNum))) {
-				result.ListFailures.Add("displayreport row "+plan.RowRenamed.DisplayReportNum+" ("+plan.RowRenamed.InternalName+") was not renamed to "+plan.Target.InternalName
-					+", though the fork migration renames it.");
+			foreach(KeyValuePair<long,ReportRowExpected> pair in dictExpected.Where(x => !diff.ListChanged.Any(y => y.Key==x.Key))) {
+				if(pair.Value.InternalNameNew!=null) {
+					result.ListFailures.Add("displayreport row "+pair.Key+" ("+pair.Value.InternalNameOld+") was not renamed to "+pair.Value.InternalNameNew
+						+", though the fork migration renames it.");
+				}
+				if(pair.Value.ItemOrderNew!=null) {
+					result.ListFailures.Add("displayreport row "+pair.Key+" ("+pair.Value.InternalNameOld+") was not moved down to ItemOrder "+pair.Value.ItemOrderNew.Value
+						+", though the fork migration moves it below the UDS+ report row.");
+				}
 			}
-			bool isClean=result.ListFailures.Count==countFailuresBefore && diff.CountOnlyFirst==0 && diff.CountOnlySecond==0 && diff.ListColumnsInOneOnly.Count==0
-				&& diff.CountChanged==diff.ListChanged.Count;
-			if(isClean && dictPlanned.Count==0) {
-				result.ListLines.Add("displayreport: identical row by row (migration-preview lists no rename).");
+			bool isClean=result.ListFailures.Count==countFailuresBefore && diff.CountOnlyFirst==0 && diff.CountOnlySecond==countAddedPlanned
+				&& diff.ListColumnsInOneOnly.Count==0 && diff.CountChanged==diff.ListChanged.Count && (!planUds.IsAdded || result.DisplayReportNumAdded>0);
+			if(isClean && dictExpected.Count==0 && countAddedPlanned==0) {
+				result.ListLines.Add("displayreport: identical row by row (migration-preview lists no change).");
 				return;
 			}
-			result.ListLines.Add("displayreport: "+result.ListReportRenames.Count+" of the "+dictPlanned.Count+" rename(s) migration-preview lists, InternalName only"
+			result.ListLines.Add("displayreport: "+result.ListReportRenames.Count+" of the "+countRenamesPlanned+" rename(s) migration-preview lists, InternalName only"
 				+(result.ListReportRenames.Count==0 ? "" : " ("+string.Join("; ",result.ListReportRenames)+")")
-				+(isClean ? "; no other row or column changed, none added or removed." : " (see the failures)."));
+				+(!planUds.IsAdded ? "" : "; the UDS+ report row "+(result.DisplayReportNumAdded>0 ? "added as migration-preview lists ("+DisplayReports.ReportNames.UdsPlus
+					+", DisplayReportNum "+result.DisplayReportNumAdded+", ItemOrder "+planUds.ItemOrder+")" : "not added as migration-preview lists")
+					+", "+result.CountReportRowsMoved+" of the "+planUds.ListRowsMoved.Count+" later Public Health row(s) moved down one place, ItemOrder only")
+				+(isClean ? "; no other row or column changed, "+(planUds.IsAdded ? "no other row added" : "none added")+", none removed." : " (see the failures)."));
+		}
+
+		///<summary>The row the UDS+ step added must hold exactly the planned values. Sets DisplayReportNumAdded when it does.</summary>
+		private static void CheckUdsPlusRowAdded(Db db,string adopted,long displayReportNum,ReportRowUdsPlus.RowPlan planUds,Result result) {
+			object[] row=db.Rows("SELECT InternalName,ItemOrder,Description,Category,IsHidden,IsVisibleInSubMenu FROM `"+adopted+"`.displayreport WHERE DisplayReportNum="
+				+displayReportNum.ToString(CultureInfo.InvariantCulture))[0];
+			List<string> listWrong=new List<string>();
+			void Compare(string column,object value,string expected) {
+				string actual=value is bool isTrue ? (isTrue ? "1" : "0") : Convert.ToString(value,CultureInfo.InvariantCulture);
+				if(actual!=expected) {
+					listWrong.Add(column+" "+actual+" (planned: "+expected+")");
+				}
+			}
+			Compare("InternalName",row[0],DisplayReports.ReportNames.UdsPlus);
+			Compare("ItemOrder",row[1],planUds.ItemOrder.ToString(CultureInfo.InvariantCulture));
+			Compare("Description",row[2],ReportRowUdsPlus.Description);
+			Compare("Category",row[3],((int)DisplayReportCategory.PublicHealth).ToString(CultureInfo.InvariantCulture));
+			Compare("IsHidden",row[4],planUds.IsHidden ? "1" : "0");
+			Compare("IsVisibleInSubMenu",row[5],"0");
+			if(listWrong.Count>0) {
+				result.ListFailures.Add("displayreport row "+displayReportNum+" was added with "+string.Join(", ",listWrong)+"; the fork migration adds only the UDS+ "
+					+"report row migration-preview lists.");
+				return;
+			}
+			result.DisplayReportNumAdded=displayReportNum;
 		}
 
 		///<summary>The 25.4 blockout permission split of the seed step (Seed26_1Step), as migration-preview plans it from the original
@@ -353,6 +465,15 @@ namespace AdoptionValidation {
 			//The added rows must be exactly the planned grants.
 			List<(string describe,string permName)> listExpected=plan.ListGrants.Where(x => !x.IsAlreadyConfigured)
 				.SelectMany(x => x.ListSources.Select(y => (y.Describe((int)x.PermTypeNew),x.PermTypeNew.ToString()))).ToList();
+			//The UDS+ report row step's grants: Reports for the row it added (FKey its DisplayReportNum, no date limit), to each planned user group that
+			//has no such grant yet. When the row was not found as planned, CheckDisplayReport has failed already and none of them is expected.
+			List<long> listGroupsUds=new List<long>();
+			if(result.PlanUdsPlus!=null && result.PlanUdsPlus.Rows.IsAdded && result.DisplayReportNumAdded>0) {
+				HashSet<long> setGroupsAlready=new HashSet<long>(UdsPlusRowPlan.ReadReportGroups(db,original,result.DisplayReportNumAdded));
+				listGroupsUds=result.PlanUdsPlus.ListUserGroupsGranted.Where(x => !setGroupsAlready.Contains(x)).ToList();
+				listExpected.AddRange(listGroupsUds.Select(x => (new Migration26_1Plan.GroupPermRow { UserGroupNum=x,FKey=result.DisplayReportNumAdded,
+					NewerDate=DateTime.MinValue,NewerDays=0 }.Describe((int)EnumPermType.Reports),PermNameUdsPlusReports)));
+			}
 			int countExpected=listExpected.Count;
 			if(diff.CountOnlySecond>diff.ListOnlySecond.Count) {
 				result.ListFailures.Add(diff.CountOnlySecond+" grouppermission rows were added; the fork migration adds "+countExpected+".");
@@ -367,11 +488,16 @@ namespace AdoptionValidation {
 						int index=listExpected.FindIndex(x => x.describe==describe);
 						if(index<0) {
 							result.ListFailures.Add("grouppermission row "+row.GroupPermNum+" ("+describe+") was added; the fork migration adds only the BlockoutAdd and "
-								+"BlockoutDelete grants migration-preview lists for "+original+".");
+								+"BlockoutDelete grants and the UDS+ report's Reports grants migration-preview lists for "+original+".");
 							continue;
 						}
 						string permName=listExpected[index].permName;
-						result.DictPermsGranted[permName]=(result.DictPermsGranted.TryGetValue(permName,out int countSoFar) ? countSoFar : 0)+1;
+						if(permName==PermNameUdsPlusReports) {
+							result.CountReportPermsCopied++;
+						}
+						else {
+							result.DictPermsGranted[permName]=(result.DictPermsGranted.TryGetValue(permName,out int countSoFar) ? countSoFar : 0)+1;
+						}
 						listExpected.RemoveAt(index);
 					}
 				}
@@ -389,8 +515,13 @@ namespace AdoptionValidation {
 				+string.Join(", ",plan.ListGrants.Select(x => x.PermTypeNew+" granted to "+(result.DictPermsGranted.TryGetValue(x.PermTypeNew.ToString(),out int count) ? count : 0)
 					+" of "+x.CountGranted+" user group(s)"+(x.IsAlreadyConfigured ? " (already configured)" : "")))
 				+", as migration-preview lists, each a copy of the group's "+EnumPermType.Blockouts+" grant"
+				+(result.PlanUdsPlus==null || !result.PlanUdsPlus.Rows.IsAdded ? "" : "; "+EnumPermType.Reports+" for the UDS+ report row granted to "
+					+result.CountReportPermsCopied+" of the "+listGroupsUds.Count+" user group(s) that may run the FQHC Dental Sealant Measure, as migration-preview lists")
 				+(isClean ? "; no other row changed, added or removed." : " (see the failures)."));
 		}
+
+		///<summary>The name under which the expected grants list the UDS+ report row step's Reports grants (not a permission the seed step grants).</summary>
+		private const string PermNameUdsPlusReports="UdsPlusReports";
 
 		///<summary>The columns whose stored values the 25.4 and 26.1 steps change with their definition (Migration26_1Plan.ArrayValueChangingColumns):
 		///claimpayment.Note only from NULL to an empty string, as many as migration-preview counts; insverify and insverifyhist.DateLastAssigned only from a

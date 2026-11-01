@@ -11,7 +11,8 @@ namespace AdoptionValidation {
 	///Dental encrypted with its own key, and report rows under internal names this program does not know, which the fork migration renames. Also the
 	///rows the Open Dental 25.4 and 26.1 steps convert: a PhoneExtension grant under its 25.3 number (272), which they move to 274, Blockouts grants
 	///(one of them twice, one with a date limit), from which they grant BlockoutAdd and BlockoutDelete, and a claim payment note that is NULL, which
-	///they make empty. The rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see
+	///they make empty; and the FQHC Dental Sealant Measure with a report grant and a Public Health report after it, among which the UDS+ step adds the
+	///25.4 UDS+ report's row and to which it copies the grant. The rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see
 	///it done.
 	///Everything here is synthetic: the "update files" are a short placeholder text, never program files, the server addresses are built from
 	///the fork's blocked-host list (CodeBase.VendorDirect.HqHosts) so no host name is written in this file, the "ciphertexts" are random bytes
@@ -47,6 +48,18 @@ namespace AdoptionValidation {
 			("ODSyntheticFutureReport","Synthetic Future Report",3),
 			("ODToday","Today",0),
 		};
+		///<summary>Public Health rows under Open Dental's own names, which this program knows: the FQHC Dental Sealant Measure, which the third user
+		///group of ArrayGroupsFixture may run (a Reports grant with its DisplayReportNum as FKey), and a report after it. Adoption's fork migration adds
+		///the row of the Open Dental 25.4 UDS+ report right after the sealant measure (ReportRowUdsPlusStep, M2-UDS), moves the later row down one place
+		///(ItemOrder only) and gives that group the Reports permission for the new row. (internal name, description.)</summary>
+		public static readonly (string internalName,string description)[] ArrayReportRowsPublicHealth={
+			(OpenDentBusiness.ForkMigrations.Features.ReportRowUdsPlus.InternalNameSealant,"FQHC Dental Sealant Measure"),
+			("ODRawPopulationData","Raw Population Data"),
+		};
+		///<summary>DisplayReportCategory.PublicHealth.</summary>
+		public const int CategoryPublicHealth=4;
+		///<summary>EnumPermType.Reports, the same number in 25.3 and 26.1.</summary>
+		public const int PermReports=22;
 		///<summary>EnumPermType.Blockouts, the same number in 25.3 and 26.1.</summary>
 		public const int PermBlockouts=13;
 		///<summary>PhoneExtension as Open Dental 25.3 stored it (Seed26_1.PERM_PHONE_EXTENSION_25_3); Open Dental's Set All grants it too.</summary>
@@ -67,16 +80,20 @@ namespace AdoptionValidation {
 			public List<string> ListCredentialRows=new List<string>();
 			public int ReportRowsRenamed;
 			public int ReportRowsKept;
+			public int ReportRowsPublicHealth;
+			public int ReportGrantsSealant;
 			public int GroupPermRows;
 			public int ClaimPaymentNotesNull;
 
 			public override string ToString() {
 				return UpdateFileRows+" Open Dental update-file rows and "+OtherDocumentMiscRows+" other documentmisc row; "+ListHqPrefs.Count
 					+" preferences with Open Dental addresses, 2 that must be kept; "+UpdateHistoryRows+" updatehistory rows; "+ListCredentialRows.Count
-					+" stored passwords in Open Dental's encryption ("+string.Join(", ",ListCredentialRows)+"); "+(ReportRowsRenamed+ReportRowsKept)
-					+" displayreport rows: "+ReportRowsRenamed+" for the reports this program names itself under names it does not know, which the fork migration "
+					+" stored passwords in Open Dental's encryption ("+string.Join(", ",ListCredentialRows)+"); "+(ReportRowsRenamed+ReportRowsKept
+					+ReportRowsPublicHealth)+" displayreport rows: "+ReportRowsRenamed+" for the reports this program names itself under names it does not know, which the fork migration "
 					+"renames ("+string.Join(", ",ArrayReportRowsRenamed.Select(x => x.internalName+" to "+x.nameFork))+"), and "+ReportRowsKept+" it keeps ("
-					+string.Join(", ",ArrayReportRowsKept.Select(x => x.internalName))+"); "+GroupPermRows+" grouppermission rows the 25.4 permission split converts ("
+					+string.Join(", ",ArrayReportRowsKept.Select(x => x.internalName))+"), and "+ReportRowsPublicHealth+" Public Health rows ("
+					+string.Join(", ",ArrayReportRowsPublicHealth.Select(x => x.internalName))+") among which the 25.4 UDS+ step adds its row, with "+ReportGrantsSealant
+					+" Reports grant for the sealant measure it copies; "+GroupPermRows+" grouppermission rows the 25.4 permission split converts ("
 					+CountPhoneExtensionGrants+" PhoneExtension under its 25.3 number "+PermPhoneExtension25_3+", Blockouts for "+CountBlockoutGroups+" user groups, one "
 					+"of them twice); "+ClaimPaymentNotesNull+" claim payment note set to NULL, which the 26.1 step makes empty.";
 			}
@@ -155,8 +172,17 @@ namespace AdoptionValidation {
 			foreach((string internalName,string description,int category) report in ArrayReportRowsKept) {
 				InsertReportRow(sink,report.internalName,report.description,report.category,itemOrder++);
 			}
+			//The Public Health rows the UDS+ step places its row among: the sealant measure, then a report after it.
+			long displayReportNumSealant=0;
+			foreach((string internalName,string description) report in ArrayReportRowsPublicHealth) {
+				long displayReportNum=InsertReportRow(sink,report.internalName,report.description,CategoryPublicHealth,itemOrder++);
+				if(displayReportNumSealant==0) {
+					displayReportNumSealant=displayReportNum;
+				}
+			}
 			summary.ReportRowsRenamed=ArrayReportRowsRenamed.Length;
 			summary.ReportRowsKept=ArrayReportRowsKept.Length;
+			summary.ReportRowsPublicHealth=ArrayReportRowsPublicHealth.Length;
 			//Grants the 25.4 permission split converts (Seed26_1): PhoneExtension under its 25.3 number, and Blockouts, from which BlockoutAdd and
 			//BlockoutDelete are granted; the duplicated row gets one grant, and the date limit is copied.
 			long[] arrayGroups=ArrayGroupsFixture.Select(x => db.ScalarLong("SELECT UserGroupNum FROM usergroup WHERE Description="+SqlLiteral.Quote(x)
@@ -171,6 +197,10 @@ namespace AdoptionValidation {
 					["NewerDays"]=grant.newerDays,["UserGroupNum"]=grant.userGroupNum,["PermType"]=grant.permType,["FKey"]=0L });
 				summary.GroupPermRows++;
 			}
+			//The sealant measure for the third group only; the UDS+ step gives that group the same grant for its new row.
+			sink.Insert("grouppermission",new Row { ["GroupPermNum"]=sink.NextId("grouppermission"),["NewerDate"]=new DateTime(1,1,1),["NewerDays"]=0,
+				["UserGroupNum"]=arrayGroups[2],["PermType"]=PermReports,["FKey"]=displayReportNumSealant });
+			summary.ReportGrantsSealant=1;
 			sink.FlushAll();
 			//A claim payment note left NULL (the 25.3.48 column allows it); the 26.1 step makes it empty. SecDateTEdit is kept, so every run starts from
 			//the same database (X1).
@@ -183,9 +213,11 @@ namespace AdoptionValidation {
 			return summary;
 		}
 
-		private static void InsertReportRow(DataSink sink,string internalName,string description,int category,int itemOrder) {
-			sink.Insert("displayreport",new Row { ["DisplayReportNum"]=sink.NextId("displayreport"),["InternalName"]=internalName,["ItemOrder"]=itemOrder,
+		private static long InsertReportRow(DataSink sink,string internalName,string description,int category,int itemOrder) {
+			long displayReportNum=sink.NextId("displayreport");
+			sink.Insert("displayreport",new Row { ["DisplayReportNum"]=displayReportNum,["InternalName"]=internalName,["ItemOrder"]=itemOrder,
 				["Description"]=description,["Category"]=category,["IsHidden"]=0,["IsVisibleInSubMenu"]=0 });
+			return displayReportNum;
 		}
 
 		///<summary>32 random bytes in base64, without the fork's "osd1$" prefix: what an Open Dental ciphertext looks like to the fork.</summary>

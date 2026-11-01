@@ -232,6 +232,7 @@ namespace AdoptionValidation {
 					+string.Join("; ",verifyResult.ListDifferences.Take(10).Select(x => x.Table+"."+x.Item))));
 				CheckReportRenames(preview,adoption,adoptionResult);
 				Check26_1Changes(preview,adoption,adoptionResult,fixture);
+				CheckUdsPlusRow(preview,adoption,adoptionResult);
 				//7. Rehash (Database Maintenance, Tools, Security Hashes), done by HeadlessAdoption above.
 				_run.ListHashesBefore=adoption.ListHashesStart;
 				_run.ListHashesAfter=adoption.ListHashesAfter;
@@ -416,6 +417,54 @@ namespace AdoptionValidation {
 				+string.Join(", ",plan.ListGrants.Select(x => x.PermTypeNew+" to "+x.CountGranted+" user group(s)"))+", "+plan.CountClaimPaymentNotesNull
 				+" NULL note(s), "+plan.Schema.ListTablesAdded.Count+" new tables and "+plan.Schema.ListColumnsAdded.Count+" new columns; the adoption log names the "
 				+listLogExpected.Count+" preference and permission changes; row check: "+lineGroupPerm+" "+lineColumns+" "+lineNew
+				+(listProblems.Count==0 ? "" : " Problems: "+string.Join("; ",listProblems)));
+		}
+
+		///<summary>M5: the UDS+ report row step (M2-UDS) changes exactly what migration-preview lists for the source (UdsPlusRowPlan): on the office
+		///fixture it adds the 25.4 UDS+ report's row right after the FQHC Dental Sealant Measure, moves the fixture's later Public Health row down one
+		///place and gives the fixture's sealant measure group the Reports permission for it; the row check found exactly that, and the adoption log
+		///names the added row and the copied grant.</summary>
+		private void CheckUdsPlusRow(MigrationPreview.Result preview,HeadlessAdoption.Result adoption,AdoptionResult adoptionResult) {
+			UdsPlusRowPlan.Plan plan=preview.PlanUdsPlus;
+			OpenDentBusiness.ForkMigrations.Features.ReportRowUdsPlus.RowPlan rows=plan.Rows;
+			AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
+			List<string> listProblems=new List<string>();
+			string nameLater=OfficeFixture.ArrayReportRowsPublicHealth[1].internalName;
+			if(!plan.IsFromBefore25_4 || !rows.IsAdded || !rows.IsAfterSealant || rows.IsHidden || !rows.ListRowsMoved.Any(x => x.InternalName==nameLater)
+				|| plan.ListUserGroupsGranted.Count!=1)
+			{
+				listProblems.Add("migration-preview's UDS+ plan differs from the fixture (a row added after the sealant measure, the fixture's later row moved, one "
+					+"user group granted)");
+			}
+			if(rowCheck==null) {
+				listProblems.Add("no row check");
+			}
+			else {
+				if(rowCheck.DisplayReportNumAdded==0 || rowCheck.CountReportRowsMoved!=rows.ListRowsMoved.Count
+					|| rowCheck.CountReportPermsCopied!=plan.ListUserGroupsGranted.Count)
+				{
+					listProblems.Add("the row check found "+(rowCheck.DisplayReportNumAdded==0 ? "no UDS+ row as planned" : "the UDS+ row")+", "+rowCheck.CountReportRowsMoved
+						+" row(s) moved and "+rowCheck.CountReportPermsCopied+" Reports grant(s) copied");
+				}
+				listProblems.AddRange(rowCheck.ListFailures.Where(x => x.Contains("displayreport") || x.Contains("PermType "+OfficeFixture.PermReports+",")));
+			}
+			List<string> listLogExpected=new List<string> { OpenDentBusiness.ForkMigrations.Features.ReportRowUdsPlus.DescribeAdd(rows.IsHidden) };
+			if(plan.ListUserGroupsGranted.Count>0) {
+				listLogExpected.Add(OpenDentBusiness.ForkMigrations.Features.ReportRowUdsPlus.DescribeCopy(plan.ListUserGroupsGranted.Count));
+			}
+			List<string> listLogMissing=listLogExpected.Where(x => !adoptionResult.ListLog.Any(y => y.Trim()==x)).ToList();
+			if(listLogMissing.Count>0) {
+				listProblems.Add("the adoption log lacks: "+string.Join("; ",listLogMissing));
+			}
+			if(BusinessLayer.Count("SELECT COUNT(*) FROM displayreport WHERE InternalName='"+OpenDentBusiness.DisplayReports.ReportNames.UdsPlus+"'")!=1) {
+				listProblems.Add("the adopted copy does not hold exactly one "+OpenDentBusiness.DisplayReports.ReportNames.UdsPlus+" row");
+			}
+			string lineDisplayReport=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("displayreport:"))??"";
+			string lineGroupPerm=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("grouppermission:"))??"";
+			Check("M5","Adoption's UDS+ report row step changes exactly what migration-preview lists: the 25.4 UDS+ report's row after the FQHC Dental Sealant "
+				+"Measure, the later Public Health rows moved down one place, the sealant measure's report grants copied",listProblems.Count==0,
+				"migration-preview of the source: "+string.Join(" ",plan.Lines())+" The adoption log names "+(listLogExpected.Count-listLogMissing.Count)+" of the "
+				+listLogExpected.Count+" change(s); row check: "+lineDisplayReport+" "+lineGroupPerm
 				+(listProblems.Count==0 ? "" : " Problems: "+string.Join("; ",listProblems)));
 		}
 
