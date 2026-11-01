@@ -107,6 +107,8 @@ Checks (2026-10-31): `M2EMPTests` (34) and `BTIMETests` (28) targeted; the full 
 
 Review finding fixed: Database Maintenance's `ClockEventInFuture` counted and overwrote future clock-outs (see "Database Maintenance" under What was built). Still no fork migration step and no schema or row change: the DBM fix changes rows only when a user runs Fix, as 24.3 did, so the adoption tools need nothing from this package.
 
+Checks (2026-11-01): `M2EMPTests` (35) targeted; the full build through the lane succeeded; `run-tests -Mode Core` passed, 66 assemblies (`test-results/port_m2-emp-t3.txt`); `tools/Test-NoHqHosts.ps1` passed. The slow migration and adoption assemblies were not run: this round changes no migration, schema, TableType, CRUD or adoption code.
+
 ## Questions for the owner
 
 1. While a clock-out is ahead, should the status read "Working" instead of "Manual Entry"? (24.3 shows "Manual Entry" for a clock-out later today; this package keeps that text for later days.)
