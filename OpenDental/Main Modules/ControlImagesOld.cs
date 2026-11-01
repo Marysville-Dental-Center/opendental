@@ -23,7 +23,6 @@ using OpenDental.UI;
 using OpenDentBusiness;
 using Tao.OpenGl;
 using CodeBase;
-using xImageDeviceManager;
 using System.Text.RegularExpressions;
 using System.Linq;
 using OpenDental.Bridges;
@@ -119,8 +118,6 @@ namespace OpenDental {
 		private Rectangle _rectangleCrop=new Rectangle(0,0,-1,-1);
 		///<summary>Used to display Topaz signatures on Windows. Is added dynamically to avoid native code references crashing MONO.</summary>
 		private Control _sigBoxTopaz;
-		///<summary>Used for performing an xRay image capture on an imaging device.</summary>
-		private SuniDeviceControl _suniDeviceControl=null;
 		///<summary>Used to download images from Apterxy</summary>
 		private ODThread _threadImageRequest;
 		///<summary>Thread to handle updating the graphical image to the screen when the current document is an image.</summary>
@@ -175,21 +172,13 @@ namespace OpenDental {
 			}
 			catch { }
 			//}
-			//We always capture with a Suni device for now.
-			//TODO: In the future use a device locator in the xImagingDeviceManager
-			//project to return the appropriate general device control.
-			_suniDeviceControl=new SuniDeviceControl();
-			this._suniDeviceControl.OnCaptureReady+=new System.EventHandler(this.CaptureReady);
-			this._suniDeviceControl.OnCaptureComplete+=new System.EventHandler(this.CaptureComplete);
-			this._suniDeviceControl.OnCaptureFinalize+=new System.EventHandler(this.CaptureFinalize);
+			//Direct sensor capture through Open Dental's closed Suni driver (xImageDeviceManager.dll, SuniUSB.dll) was removed on 2026-11-01.
+			//Suni sensors are acquired through Suni's own TWAIN driver in the Imaging module.
 			Logger.LogToPath("Ctor",LogPath.Startup,LogPhase.End);
 		}
 		#endregion Constructor
 
 		#region Delegates
-		///<summary>Used to safe-guard against multi-threading issues when an image capture is completed.</summary>
-		private delegate void CaptureCallback(object sender,EventArgs e);
-
 		///<summary>Used to protect against multi-threading issues when refreshing a mount during an image capture.</summary>
 		private delegate void InvalidateSettingsCallback(ImageSettingFlags settings,bool reloadZoomTransCrop);
 
@@ -520,75 +509,6 @@ namespace OpenDental {
 			InvalidateSettings(ImageSettingFlags.COLORFUNCTION,false);
 		}
 
-		///<summary>Called on successful capture of image.</summary>
-		private void CaptureComplete(object sender,EventArgs e) {
-			if(this.InvokeRequired) {
-				CaptureCallback c=new CaptureCallback(CaptureComplete);
-				Invoke(c,new object[] { sender,e });
-				return;
-			}
-			if(_idxSelectedInMount<0 || _documentArrayInMount[_idxSelectedInMount]!=null) {//Mount is full.
-				_suniDeviceControl.KillXRayThread();
-				return;
-			}
-			//Depending on the device being captured from, we need to rotate the images returned from the device by a certain
-			//angle, and we need to place the returned images in a specific order within the mount slots. Later, we will allow
-			//the user to define the rotations and slot orders, but for now, they will be hard-coded.
-			short rotationAngle=0;
-			switch(_idxSelectedInMount) {
-				case (0):
-					rotationAngle=90;
-					break;
-				case (1):
-					rotationAngle=90;
-					break;
-				case (2):
-					rotationAngle=270;
-					break;
-				default://3
-					rotationAngle=270;
-					break;
-			}
-			//Create the document object in the database for this mount image.
-			Bitmap capturedImage=_suniDeviceControl.capturedImage;
-			Document doc=ImageStore.ImportImageToMount(capturedImage,rotationAngle,_listMountItems[_idxSelectedInMount].MountItemNum,GetCurrentCategory(),_patient);
-			_bitmapArrayRaw[_idxSelectedInMount]=capturedImage;
-			_intArrayWidthsImagesCur[_idxSelectedInMount]=capturedImage.Width;
-			_intArrayHeightsImagesCur[_idxSelectedInMount]=capturedImage.Height;
-			_documentArrayInMount[_idxSelectedInMount]=doc;
-			_documentShowing=doc;
-			SetWindowingSlider();
-			//Refresh image in in picture box.
-			InvalidateSettings(ImageSettingFlags.ALL,false);
-			//This capture was successful. Keep capturing more images until the capture is manually aborted.
-			//This will cause calls to OnCaptureBegin(), then OnCaptureFinalize().
-			_suniDeviceControl.CaptureXRay();
-		}
-
-		///<summary>Called when the entire sequence of image captures is complete (possibly because of failure, or a full mount among other things).</summary>
-		private void CaptureFinalize(object sender,EventArgs e) {
-			if(this.InvokeRequired) {
-				CaptureCallback c=new CaptureCallback(CaptureFinalize);
-				Invoke(c,new object[] { sender,e });
-				return;
-			}
-			ToolBarMain.Buttons["Capture"].IsTogglePushed=false;
-			ToolBarMain.Invalidate();
-			EnableToolBarsPatient(true);
-			if(_idxSelectedInMount>0 && _documentArrayInMount[_idxSelectedInMount]!=null) {//The capture finished in a state where a mount item is selected.
-				EnableToolBarButtons(true,true,false,true,false,true,false,true,true,true,true,true,true,true);
-			}
-			else {//The capture finished without a mount item selected (so the mount itself is considered to be selected).
-				EnableToolBarButtons(true,true,true,true,false,false,false,true,true,true,false,false,false,true);
-			}
-		}
-
-		///<summary>Called when the image capture device is ready for exposure.</summary>
-		private void CaptureReady(object sender,EventArgs e) {
-			GetNextUnusedMountItem();
-			InvalidateSettings(ImageSettingFlags.NONE,false);//Refresh the selection box change (does not do any image processing here).
-		}
-
 		private void ContrImages_Resize(object sender,EventArgs e) {
 			LayoutAll();
 		}
@@ -740,9 +660,6 @@ namespace OpenDental {
 				//		}
 				//	}
 				//	ToolBarPaint.Invalidate();
-				//	if(_idxSelectedInMount<0) {//The current selection was unselected.
-				//		_suniDeviceControl.KillXRayThread();//Stop xray capture, because it relies on the current selection to place images.
-				//	}
 				//	InvalidateSettings(ImageSettingFlags.ALL,false);
 				}
 			}
@@ -1016,9 +933,6 @@ namespace OpenDental {
 						break;
 					case "Mounts"://future
 						MsgBox.Show(this,"Use the dropdown list.  Manage Mounts from the Setup/Images menu.");
-						break;
-					case "Capture":
-						ToolBarCapture_Click();
 						break;
 					case "Close":
 						ToolBarClose_Click();
@@ -1394,9 +1308,6 @@ namespace OpenDental {
 				}
 				button.DropDownMenu=menuMounts;
 				//ToolBarMain.Buttons.Add(button);//future
-				button=new ODToolBarButton(Lan.g(this,"Capture"),-1,"Capture Image From Device","Capture");
-				button.Style=ODToolBarButtonStyle.ToggleButton;
-				ToolBarMain.Buttons.Add(button);
 				//Program links:
 				ProgramL.LoadToolBar(ToolBarMain,EnumToolBar.ImagingModule);
 			}
@@ -1552,8 +1463,6 @@ namespace OpenDental {
 			//		c.Dispose();
 			//	}
 			//}
-			//Cancel current image capture.
-			_suniDeviceControl.KillXRayThread();
 			_patNumLastSecurityLog=0;//Clear out the last pat num so that a security log gets entered that the module was "visited" or "refreshed".
 			Plugins.HookAddCode(this,"ContrImages.ModuleUnselected_end");
 		}
@@ -1735,71 +1644,7 @@ namespace OpenDental {
 		#endregion Methods - Public
 
 		#region Methods - ToolBar
-		///<summary>Handles a change in selection of the xRay capture button.</summary>
-		private void ToolBarCapture_Click() {
-			if(treeMain.SelectedNode==null) {
-				return;
-			}
-			if(ToolBarMain.Buttons["Capture"].IsTogglePushed) {
-				NodeIdTag nodeIdTag=(NodeIdTag)treeMain.SelectedNode.Tag;
-				if(nodeIdTag.NodeType==EnumNodeType.ApteryxImage) {
-					MsgBox.Show(this,"Cannot capture a read-only image. Please copy/paste or export/import the image you are trying to capture.");
-					return;
-				}
-				//ComputerPref computerPrefs=ComputerPrefs.GetForLocalComputer();
-				_suniDeviceControl.SensorType=ComputerPrefs.LocalComputer.SensorType;
-				_suniDeviceControl.PortNumber=ComputerPrefs.LocalComputer.SensorPort;
-				_suniDeviceControl.Binned=ComputerPrefs.LocalComputer.SensorBinned;
-				_suniDeviceControl.ExposureLevel=ComputerPrefs.LocalComputer.SensorExposure;
-				if(nodeIdTag.NodeType!=EnumNodeType.Mount) {//No mount is currently selected.
-					//Show the user that they are performing an image capture by generating a new mount.
-					Mount mount=new Mount();
-					mount.DateCreated=DateTime.Today;
-					mount.Description="unnamed capture";
-					mount.DocCategory=GetCurrentCategory();
-					mount.PatNum=_patient.PatNum;
-					int border=Math.Max(_suniDeviceControl.SensorSize.Width,_suniDeviceControl.SensorSize.Height)/24;
-					mount.Width=4*_suniDeviceControl.SensorSize.Width+5*border;
-					mount.Height=_suniDeviceControl.SensorSize.Height+2*border;
-					mount.MountNum=Mounts.Insert(mount);
-					MountItem mountItem=new MountItem();
-					mountItem.MountNum=mount.MountNum;
-					mountItem.Width=_suniDeviceControl.SensorSize.Width;
-					mountItem.Height=_suniDeviceControl.SensorSize.Height;
-					mountItem.Ypos=border;
-					mountItem.ItemOrder=1;
-					mountItem.Xpos=border;
-					MountItems.Insert(mountItem);
-					mountItem.ItemOrder=0;
-					mountItem.Xpos=mountItem.Width+2*border;
-					MountItems.Insert(mountItem);
-					mountItem.ItemOrder=2;
-					mountItem.Xpos=2*mountItem.Width+3*border;
-					MountItems.Insert(mountItem);
-					mountItem.ItemOrder=3;
-					mountItem.Xpos=3*mountItem.Width+4*border;
-					MountItems.Insert(mountItem);
-					FillTree(false);
-					SelectTreeNode(GetTreeNode(MakeIdMount(mount.MountNum)));
-					windowingSlider.MinVal=PrefC.GetInt(PrefName.ImageWindowingMin);
-					windowingSlider.MaxVal=PrefC.GetInt(PrefName.ImageWindowingMax);
-				}
-				else if(nodeIdTag.NodeType==EnumNodeType.Mount) {//A mount is currently selected. We must allow the user to insert new images into partially complete mounts.
-					//not supported
-				}
-				//Here we can only allow access to the capture button during a capture, because it is too complicated and hard for a 
-				//user to follow what is going on if they use the other tools when a capture is taking place.
-				EnableToolBarsPatient(false);
-				ToolBarMain.Buttons["Capture"].Enabled=true;
-				ToolBarMain.Invalidate();
-				_suniDeviceControl.CaptureXRay();
-			}
-			else {//The user unselected the image capture button, so cancel the current image capture.
-				_suniDeviceControl.KillXRayThread();//Stop current xRay capture and call OnCaptureFinalize() when done.
-			}
-		}
-
-		///<summary>Handles a change in selection of the xRay capture button.</summary>
+		///<summary></summary>
 		private void ToolBarClose_Click() {
 			EventArgs args=new EventArgs();
 			SelectTreeNode(null);
@@ -3026,9 +2871,6 @@ namespace OpenDental {
 			for(int i=0;i<ToolBarMain.Buttons.Count;i++) {
 				ToolBarMain.Buttons[i].Enabled=enable;
 			}
-			if(ToolBarMain.Buttons["Capture"]!=null) {
-				ToolBarMain.Buttons["Capture"].Enabled=(ToolBarMain.Buttons["Capture"].Enabled && Environment.OSVersion.Platform!=PlatformID.Unix);
-			}
 			ToolBarMain.Invalidate();
 			for(int i=0;i<ToolBarPaint.Buttons.Count;i++) {
 				ToolBarPaint.Buttons[i].Enabled=enable;
@@ -3135,9 +2977,6 @@ namespace OpenDental {
 			Document doc=Documents.GetByNum(docNum,doReturnNullIfNotFound:true);//Get old document.
 			if(doc!=null && Path.GetExtension(doc.FileName).ToLower()==".pdf") {//Adobe acrobat file.
 				string pdfFilePath=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),doc.DocNum+(_patient!=null ? _patient.PatNum.ToString() : "")+".pdf");
-				if(!_suniDeviceControl.IsDisposed){
-					_suniDeviceControl.Dispose();
-				}
 				if(File.Exists(pdfFilePath)){
 					try {
 						File.Delete(pdfFilePath);//Delete temp file
@@ -3533,23 +3372,6 @@ namespace OpenDental {
 			}
 		}
 
-		private void GetNextUnusedMountItem() {
-			//Advance selection box to the location where the next image will capture to.
-			if(_idxSelectedInMount<0) {
-				_idxSelectedInMount=0;
-			}
-			int hotStart=_idxSelectedInMount;
-			int d=_idxSelectedInMount;
-			do {
-				if(_documentArrayInMount[_idxSelectedInMount]==null) {
-					return;//Found an open frame in the mount.
-				}
-				_idxSelectedInMount=(_idxSelectedInMount+1)%_documentArrayInMount.Length;
-			}
-			while(_idxSelectedInMount!=hotStart);
-			_idxSelectedInMount=-1;
-		}
-
 		///<summary>Kills ImageApplicationThread.  Disposes of both currentImages and ImageRenderingNow.  Does not actually trigger a refresh of the Picturebox, though.</summary>
 		private void EraseCurrentImages() {
 			KillThreadImageUpdate();//Stop any current access to the current image and render image so we can dispose them.
@@ -3875,7 +3697,6 @@ namespace OpenDental {
 
 		///<summary>Kills the image processing thread if it is currently running.</summary>
 		private void KillThreadImageUpdate() {
-			_suniDeviceControl.KillXRayThread();//Stop the current xRay image thread if it is running.
 			if(_threadImageUpdate!=null) {//Clear any previous image processing.
 				if(_threadImageUpdate.IsAlive) {
 					_threadImageUpdate.Abort();//this is not recommended because it results in an exception.  But it seems to work.

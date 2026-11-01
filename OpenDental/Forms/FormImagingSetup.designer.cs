@@ -48,23 +48,12 @@ namespace OpenDental {
 			this.slider = new OpenDental.UI.WindowingSlider();
 			this.groupBox3 = new OpenDental.UI.GroupBox();
 			this.label37 = new System.Windows.Forms.Label();
-			this.groupBoxSuni = new OpenDental.UI.GroupBox();
-			this.checkBinned = new OpenDental.UI.CheckBox();
-			this.comboType = new OpenDental.UI.ComboBox();
-			this.upDownPort = new System.Windows.Forms.NumericUpDown();
-			this.label4 = new System.Windows.Forms.Label();
-			this.label3 = new System.Windows.Forms.Label();
-			this.label2 = new System.Windows.Forms.Label();
-			this.upDownExposure = new System.Windows.Forms.NumericUpDown();
 			this.butSetScanner = new OpenDental.UI.Button();
 			this.butSave = new OpenDental.UI.Button();
 			this.groupBox1.SuspendLayout();
 			this.groupScanningOptions.SuspendLayout();
 			this.groupBox2.SuspendLayout();
 			this.groupBox3.SuspendLayout();
-			this.groupBoxSuni.SuspendLayout();
-			((System.ComponentModel.ISupportInitialize)(this.upDownPort)).BeginInit();
-			((System.ComponentModel.ISupportInitialize)(this.upDownExposure)).BeginInit();
 			this.SuspendLayout();
 			// 
 			// label12
@@ -279,100 +268,6 @@ namespace OpenDental {
 			this.label37.TabIndex = 15;
 			this.label37.Text = "Suggested setting for scanning photos is Color, 300 dpi.";
 			// 
-			// groupBoxSuni
-			// 
-			this.groupBoxSuni.Controls.Add(this.checkBinned);
-			this.groupBoxSuni.Controls.Add(this.comboType);
-			this.groupBoxSuni.Controls.Add(this.upDownPort);
-			this.groupBoxSuni.Controls.Add(this.label4);
-			this.groupBoxSuni.Controls.Add(this.label3);
-			this.groupBoxSuni.Controls.Add(this.label2);
-			this.groupBoxSuni.Controls.Add(this.upDownExposure);
-			this.groupBoxSuni.Location = new System.Drawing.Point(21, 409);
-			this.groupBoxSuni.Name = "groupBoxSuni";
-			this.groupBoxSuni.Size = new System.Drawing.Size(484, 137);
-			this.groupBoxSuni.TabIndex = 21;
-			this.groupBoxSuni.TabStop = false;
-			this.groupBoxSuni.Text = "Suni Imaging - Settings apply only to this workstation";
-			// 
-			// checkBinned
-			// 
-			this.checkBinned.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkBinned.Location = new System.Drawing.Point(81, 96);
-			this.checkBinned.Name = "checkBinned";
-			this.checkBinned.Size = new System.Drawing.Size(206, 17);
-			this.checkBinned.TabIndex = 8;
-			this.checkBinned.Text = "Binned (not normally used)";
-			// 
-			// comboType
-			// 
-			this.comboType.Location = new System.Drawing.Point(273, 69);
-			this.comboType.Name = "comboType";
-			this.comboType.Size = new System.Drawing.Size(37, 21);
-			this.comboType.TabIndex = 7;
-			this.comboType.Text = "D";
-			// 
-			// upDownPort
-			// 
-			this.upDownPort.Location = new System.Drawing.Point(273, 43);
-			this.upDownPort.Maximum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-			this.upDownPort.Name = "upDownPort";
-			this.upDownPort.Size = new System.Drawing.Size(33, 20);
-			this.upDownPort.TabIndex = 6;
-			// 
-			// label4
-			// 
-			this.label4.Location = new System.Drawing.Point(28, 45);
-			this.label4.Name = "label4";
-			this.label4.Size = new System.Drawing.Size(239, 13);
-			this.label4.TabIndex = 5;
-			this.label4.Text = "Sensor Port (place where sensor connects)";
-			this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// label3
-			// 
-			this.label3.Location = new System.Drawing.Point(14, 72);
-			this.label3.Name = "label3";
-			this.label3.Size = new System.Drawing.Size(253, 13);
-			this.label3.TabIndex = 3;
-			this.label3.Text = "Sensor Type (last serial letter on sensor cable)";
-			this.label3.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// label2
-			// 
-			this.label2.Location = new System.Drawing.Point(28, 20);
-			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(239, 13);
-			this.label2.TabIndex = 2;
-			this.label2.Text = "Exposure Level (1-7) for New Captures";
-			this.label2.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// upDownExposure
-			// 
-			this.upDownExposure.Location = new System.Drawing.Point(273, 17);
-			this.upDownExposure.Maximum = new decimal(new int[] {
-            7,
-            0,
-            0,
-            0});
-			this.upDownExposure.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-			this.upDownExposure.Name = "upDownExposure";
-			this.upDownExposure.Size = new System.Drawing.Size(33, 20);
-			this.upDownExposure.TabIndex = 1;
-			this.upDownExposure.Value = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-			// 
 			// butSetScanner
 			// 
 			this.butSetScanner.Location = new System.Drawing.Point(21, 12);
@@ -396,7 +291,6 @@ namespace OpenDental {
 			// 
 			this.ClientSize = new System.Drawing.Size(649, 555);
 			this.Controls.Add(this.butSetScanner);
-			this.Controls.Add(this.groupBoxSuni);
 			this.Controls.Add(this.groupBox3);
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.groupBox1);
@@ -416,9 +310,6 @@ namespace OpenDental {
 			this.groupScanningOptions.PerformLayout();
 			this.groupBox2.ResumeLayout(false);
 			this.groupBox3.ResumeLayout(false);
-			this.groupBoxSuni.ResumeLayout(false);
-			((System.ComponentModel.ISupportInitialize)(this.upDownPort)).EndInit();
-			((System.ComponentModel.ISupportInitialize)(this.upDownExposure)).EndInit();
 			this.ResumeLayout(false);
 
 		}
@@ -433,14 +324,7 @@ namespace OpenDental {
 		private System.Windows.Forms.Label label37;
 		private UI.WindowingSlider slider;
 		private Label label1;
-		private OpenDental.UI.GroupBox groupBoxSuni;
-		private Label label2;
-		private NumericUpDown upDownExposure;
-		private NumericUpDown upDownPort;
-		private Label label4;
-		private Label label3;
 		private ValidNum textScanDocQuality;
-		private OpenDental.UI.ComboBox comboType;
 		private ValidNum textScanDocResolution;
 		private Label label6;
 		private Label label5;
@@ -454,6 +338,5 @@ namespace OpenDental {
 		private RadioButton radioScanDocShowOptions;
 		private OpenDental.UI.GroupBox groupScanningOptions;
 		private Label label8;
-		private OpenDental.UI.CheckBox checkBinned;
 	}
 }
