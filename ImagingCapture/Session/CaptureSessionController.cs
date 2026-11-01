@@ -1055,6 +1055,7 @@ namespace ImagingCapture.Session {
 					return;
 				}
 				if(_mountSlots.ListDocuments[idxTarget]!=null) {
+					SetImageTarget(image,mountItemTarget,record.ToothNumbers);
 					QuarantineImage(session,image,record,"Its slot ("+MountPlacement.GetSlotLabel(mountItemTarget)+") already holds an image.",false);
 					return;
 				}
@@ -1064,6 +1065,8 @@ namespace ImagingCapture.Session {
 
 		private void SaveImage(AcquiredImage image,CaptureEnableRecord record,int idxTarget,MountItem mountItemTarget) {
 			RadiographTarget target=GetRadiographTarget(mountItemTarget,record.ToothNumbers);
+			//The target this image is saved into, also in its sidecar: a failed save quarantines it for this target (settings of design 7.12).
+			SetImageTarget(image,mountItemTarget,record.ToothNumbers);
 			RadiographSaveRequest request=new RadiographSaveRequest {
 				Image=image,
 				Metadata=CaptureMetadataParser.Parse(image.MetadataJson),

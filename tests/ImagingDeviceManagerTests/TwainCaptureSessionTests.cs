@@ -787,6 +787,10 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(TwainCaptureStopReason.End,ended.StopReason);
 			Assert.AreEqual(3,ended.ImageCount);
 			Assert.IsTrue(_harness.HasLog("MSG_XFERREADY with nothing pending; ignored"),_harness.LogText);
+			//The sidecar says which image of a continuous enable it is: the enable's slot fields are not a later image's own slot.
+			Dictionary<string,string> dictSecond=CaptureFiles.ReadSidecar(Path.ChangeExtension(_harness.Images[1].JournalPath,".txt"));
+			Assert.AreEqual("2",dictSecond[CaptureSidecarKeys.IndexInEnable]);
+			Assert.AreEqual("1",dictSecond[CaptureSidecarKeys.ContinuousEnable]);
 		}
 
 		[TestMethod]

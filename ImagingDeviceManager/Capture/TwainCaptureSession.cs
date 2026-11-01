@@ -1110,6 +1110,7 @@ namespace ImagingDeviceManager.Capture {
 			image.SidecarFields=context.Request.SidecarFields==null ? null : new List<KeyValuePair<string,string>>(context.Request.SidecarFields);
 			image.SourceName=string.IsNullOrEmpty(image.SourceName) ? _productName : image.SourceName;
 			image.IndexInEnable=++context.CountImages;
+			image.IsContinuousEnable=context.IsContinuous;
 			switch(kind) {
 				case AcquiredImageKind.Extra: context.CountExtra++; break;
 				case AcquiredImageKind.Drained: context.CountDrained++; break;
@@ -1180,6 +1181,8 @@ namespace ImagingDeviceManager.Capture {
 			record.ListCaptureFields.Add(new SidecarField("ImageKind",image.Kind.ToString()));
 			record.ListCaptureFields.Add(new SidecarField("StopReason",image.StopReason.ToString()));
 			record.ListCaptureFields.Add(new SidecarField("Redelivered",image.IsRedelivery ? "1" : "0"));
+			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.IndexInEnable,image.IndexInEnable.ToString(CultureInfo.InvariantCulture)));
+			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.ContinuousEnable,image.IsContinuousEnable ? "1" : "0"));
 			record.ListCaptureFields.Add(new SidecarField("RequestedBits",image.RequestedBits.ToString(CultureInfo.InvariantCulture)));
 			record.ListCaptureFields.Add(new SidecarField("DeliveredAs8BitIn16BitEnable",image.IsDeliveredAs8BitIn16BitEnable ? "1" : "0"));
 			record.ListCaptureFields.Add(new SidecarField("TransferMechanism",image.TransferMechanism.ToString()));

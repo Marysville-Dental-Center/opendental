@@ -92,6 +92,10 @@ namespace ImagingDeviceManager.Capture {
 		public string SourceName { get; set; }
 		///<summary>1-based position of the image within its enable.</summary>
 		public int IndexInEnable { get; set; }
+		///<summary>Its enable ran continuously (the source accepted ContinuousCap, design 7.4): its images after the first are placed into the
+		///target as it is when they arrive, not into the slot the enable started for, so the enable's slot fields in the sidecar are not this
+		///image's slot (CaptureFileEntry.IsSlotKnown).</summary>
+		public bool IsContinuousEnable { get; set; }
 		///<summary>The journal copy the library wrote before raising the image (a .bmp of the DIB, or a 16-bit grayscale .tif of Gray16), or
 		///null when none could be written (the capture log says why).</summary>
 		public string JournalPath { get; set; }

@@ -32,6 +32,13 @@ namespace ImagingDeviceManager.Capture {
 		public const string ProvNum="ProvNum";
 		///<summary>The imagingdevice row the session runs for ([Device.N]).</summary>
 		public const string ImagingDeviceNum="ImagingDeviceNum";
+		///<summary>Written by the library: the image's 1-based position in its enable, and "1" when the enable ran continuously (design 7.4).</summary>
+		public const string IndexInEnable="IndexInEnable";
+		public const string ContinuousEnable="ContinuousEnable";
+		///<summary>"1": MountItemNum, SlotItemOrder and ToothNumbers are the target the capture session meant this image for (it sets them when it
+		///places or quarantines the image). Without it they are its enable's target, which is not the image's own for a later image of a
+		///continuous enable in a mount, nor for a redelivered image (placed into the target current when the operator confirms it).</summary>
+		public const string SlotOfImage="SlotOfImage";
 		///<summary>"1": a redelivered image (Redelivered=1) that the operator confirmed for the bound patient in the session window (design
 		///7.12), so its PatNum is that patient's. Without it a redelivered image is never offered for Assign, whatever its PatNum says.</summary>
 		public const string RedeliveryConfirmed="RedeliveryConfirmed";
@@ -132,6 +139,24 @@ namespace ImagingDeviceManager.Capture {
 			}
 		}
 		public long MountNum => GetLong(CaptureSidecarKeys.MountNum);
+		///<summary>The image's position in its enable (1 when the sidecar does not say).</summary>
+		public int IndexInEnable => Math.Max(1,(int)GetLong(CaptureSidecarKeys.IndexInEnable));
+		public bool IsContinuousEnable => Get(CaptureSidecarKeys.ContinuousEnable)=="1";
+		///<summary>MountItemNum, SlotItemOrder and ToothNumbers are this image's target (CaptureSidecarKeys.SlotOfImage): the session said so, or
+		///they are its enable's and that is where the session would have placed it (the first image of an enable, an image drained during a stop,
+		///every image of single-target mode). False for a later Normal image of a continuous enable in a mount, and for a redelivered image, when
+		///the session did not record the target: then the slot is not known (design 7.12 Assign files it with no slot and no tooth numbers).</summary>
+		public bool IsSlotKnown {
+			get {
+				if(Get(CaptureSidecarKeys.SlotOfImage)=="1") {
+					return true;
+				}
+				if(IsRedelivered) {
+					return false;
+				}
+				return !(MountNum>0 && IsContinuousEnable && IndexInEnable>1 && Get("ImageKind")==AcquiredImageKind.Normal.ToString());
+			}
+		}
 		public long MountItemNum => GetLong(CaptureSidecarKeys.MountItemNum);
 		public int SlotItemOrder => (int)GetLong(CaptureSidecarKeys.SlotItemOrder);
 		public string ToothNumbers => Get(CaptureSidecarKeys.ToothNumbers);

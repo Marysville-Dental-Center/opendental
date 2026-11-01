@@ -121,6 +121,46 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Assign_ALaterImageOfAContinuousEnable_ItsSlotNotRecorded_UnmountedWithNoTeeth_NeverTheEnablesSlot() {
+			//The sidecar names slot 3, where the continuous enable started; image 2 was meant for whatever slot was the target when it came.
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
+			dictFields[CaptureSidecarKeys.ContinuousEnable]="1";
+			dictFields[CaptureSidecarKeys.IndexInEnable]="2";
+			_harness.Slot(3).RotateOnAcquire=90;
+			CaptureFileEntry entry=_harness.Files.Quarantine(dictFields,_receivedAt);
+			Assert.IsFalse(entry.IsSlotKnown);
+			string error;
+			CaptureAssignPlan plan=_harness.Filer.PlanAssign(entry,0,out error);
+			Assert.IsNotNull(plan,error);
+			Assert.IsFalse(plan.IsIntoOriginalSlot,"Not into slot 3, although it is empty.");
+			Assert.AreEqual("Recovered: slot unknown",plan.Description);
+			Assert.AreEqual(CaptureRecoveryFiler.SlotUnknownNote,plan.Note);
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsTrue(result.IsDone,result.Error);
+			Assert.IsTrue(result.IsMountItemCreated);
+			Document document=RadiographStore.ListDocumentsUpdated.Single();
+			Assert.AreEqual("",document.ToothNumbers,"Not slot 3's teeth...");
+			Assert.AreEqual(0,document.DegreesRotated,"...nor its rotation.");
+		}
+
+		[TestMethod]
+		public void Assign_ALaterImageOfAContinuousEnable_TheSessionRecordedItsSlot_FiledThere() {
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
+			dictFields[CaptureSidecarKeys.ContinuousEnable]="1";
+			dictFields[CaptureSidecarKeys.IndexInEnable]="2";
+			dictFields[CaptureSidecarKeys.SlotOfImage]="1";
+			CaptureFileEntry entry=_harness.Files.Quarantine(dictFields,_receivedAt);
+			Assert.IsTrue(entry.IsSlotKnown);
+			string error;
+			Assert.IsTrue(_harness.Filer.PlanAssign(entry,0,out error).IsIntoOriginalSlot,error);
+			dictFields=RecoveryFiles.SessionFields(captureId:"cap-9");
+			dictFields[CaptureSidecarKeys.ContinuousEnable]="1";
+			dictFields[CaptureSidecarKeys.IndexInEnable]="2";
+			dictFields["ImageKind"]="Drained";
+			Assert.IsTrue(_harness.Files.Quarantine(dictFields,_receivedAt.AddSeconds(1)).IsSlotKnown,"A drained image goes to its enable's slot.");
+		}
+
+		[TestMethod]
 		public void Assign_MountGone_SingleDocumentWithTheSlotsTeeth() {
 			Store.DictMounts.Clear();
 			CaptureFileEntry entry=_harness.Files.Quarantine(RecoveryFiles.SessionFields(),_receivedAt);

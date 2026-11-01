@@ -44,6 +44,21 @@ namespace ImagingCapture.Session {
 			image.SidecarFields=listFields;
 		}
 
+		///<summary>Records in image's sidecar fields the target the session places it into or meant it for (mountItem, or in single-target mode
+		///toothNumbers), with CaptureSidecarKeys.SlotOfImage, so that a quarantine file of it is filed into that target and not into the slot its
+		///enable started for: a later image of a continuous enable goes to the target as it is then, and a confirmed redelivered image to the
+		///target at the confirmation (design 7.4, 7.12).</summary>
+		private void SetImageTarget(AcquiredImage image,MountItem mountItem,string toothNumbers) {
+			if(image==null) {
+				return;
+			}
+			SetImageSidecarField(image,CaptureSidecarKeys.MountItemNum,mountItem==null ? "" : ToText(mountItem.MountItemNum));
+			SetImageSidecarField(image,CaptureSidecarKeys.SlotItemOrder,mountItem==null ? "" : ToText(mountItem.ItemOrder));
+			SetImageSidecarField(image,CaptureSidecarKeys.ToothNumbers,mountItem==null ? toothNumbers??"" : mountItem.ToothNumbers??"");
+			SetImageSidecarField(image,CaptureSidecarKeys.SlotOfImage,"1");
+			image.TargetLabel=GetRadiographTarget(mountItem,toothNumbers).GetLabel();
+		}
+
 		///<summary>The quarantine window or Recover recent captures filed an image (design 7.12). When it went into this session's mount, the
 		///mini-map and the target follow at once, so that the session never places another image into that slot, and the mount no longer counts as
 		///empty. The target stays where it was unless the filed slot was the target; then it moves on as after a save. The window opens only while

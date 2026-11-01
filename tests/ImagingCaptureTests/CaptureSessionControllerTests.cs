@@ -494,6 +494,24 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Continuous_ASecondImageWhoseSaveFails_IsQuarantinedForItsOwnSlot_NotTheEnablesFirst() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage);
+			_harness.Image();
+			_harness.RadiographStore.ThrowOn="Import";
+			_harness.Image();
+			FakeQuarantineCall call=_harness.Twain.ListQuarantined.Single();
+			Assert.AreEqual(101,_harness.LastRecord.MountItemTarget.MountItemNum,"The enable started for slot 1...");
+			Dictionary<string,string> dictFields=call.Image.SidecarFields.ToDictionary(x => x.Key,x => x.Value);
+			Assert.AreEqual("102",dictFields[CaptureSidecarKeys.MountItemNum],"...the image was meant for slot 2.");
+			Assert.AreEqual("2",dictFields[CaptureSidecarKeys.SlotItemOrder]);
+			Assert.AreEqual("4,5",dictFields[CaptureSidecarKeys.ToothNumbers]);
+			Assert.AreEqual("1",dictFields[CaptureSidecarKeys.SlotOfImage]);
+			Assert.AreEqual("Slot 2 (teeth 4,5)",call.Image.TargetLabel);
+		}
+
+		[TestMethod]
 		public void ContinuousConfigured_ButTheEnableRanPerSlot_EnablesAgain() {
 			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
 			_harness.Started();

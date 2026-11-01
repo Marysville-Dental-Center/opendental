@@ -98,6 +98,10 @@ namespace ImagingCapture.Recovery {
 			_radiographImport=new RadiographImport(services.RadiographStore,() => Now);
 		}
 
+		///<summary>Why a capture is filed with no slot and no tooth numbers.</summary>
+		public const string SlotUnknownNote="The session did not record which slot this image was for (a later image of a continuous series, or a "
+			+"redelivered image), so it is filed unmounted with no tooth numbers; set them after checking the image.";
+
 		private ICaptureRecoveryStore Store => _services.Store;
 		private DateTime Now => _services.FuncNow?.Invoke()??DateTime.Now;
 
@@ -143,13 +147,23 @@ namespace ImagingCapture.Recovery {
 				return null;
 			}
 			CaptureAssignPlan plan=new CaptureAssignPlan { Patient=patient };
-			string slotLabel=entry.Slot;
+			//A later image of a continuous enable, or a redelivered one, whose target the session did not record: its sidecar names the slot its
+			//enable started for, which is not its own, so neither that slot nor its teeth and rotation are used.
+			bool isSlotKnown=entry.IsSlotKnown;
+			string slotLabel=isSlotKnown ? entry.Slot : "";
+			string toothNumbers=isSlotKnown ? entry.ToothNumbers : "";
 			Mount mount=entry.MountNum>0 ? Store.GetMount(entry.MountNum) : null;
 			if(entry.MountNum>0 && (mount==null || mount.PatNum!=patient.PatNum)) {
 				//The mount was deleted (or is not the patient's any more): the image keeps its slot's teeth on a single document.
-				plan.ToothNumbers=entry.ToothNumbers;
+				plan.ToothNumbers=toothNumbers;
 				plan.Description=CaptureRecoveryText.GetRecoveredLabel(slotLabel);
-				plan.Note="The original mount (MountNum "+entry.MountNum+") no longer exists.";
+				plan.Note="The original mount (MountNum "+entry.MountNum+") no longer exists."+(isSlotKnown ? "" : " "+SlotUnknownNote);
+			}
+			else if(mount!=null && !isSlotKnown) {
+				plan.Mount=mount;
+				plan.SlotRecovered=new MountItem { MountNum=mount.MountNum,ItemOrder=0,ToothNumbers="" };
+				plan.Description=CaptureRecoveryText.GetRecoveredLabel("");
+				plan.Note=SlotUnknownNote;
 			}
 			else if(mount!=null) {
 				plan.Mount=mount;
@@ -169,7 +183,7 @@ namespace ImagingCapture.Recovery {
 				}
 			}
 			else {
-				plan.ToothNumbers=entry.ToothNumbers;//a single image of the session: its banner's teeth
+				plan.ToothNumbers=toothNumbers;//a single image of the session: its banner's teeth
 			}
 			plan.DocCategory=GetDefaultCategory(entry,mount);
 			plan.ProvNum=entry.ProvNum>0 ? entry.ProvNum : GetDefaultProvNum(patient);
