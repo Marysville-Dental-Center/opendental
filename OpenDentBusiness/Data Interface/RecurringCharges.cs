@@ -254,10 +254,15 @@ namespace OpenDentBusiness {
 		public bool CanChargeWhenNoBal;
 		public long PaymentType;
 		public bool CCIsRecurringActive;
+		///<summary>Set while charging: the card processor declined the card (RecurringChargerator.MarkDeclined, narrowed after each call by the
+		///processor's filter: IsEdgeExpressCardDecline, IsXWebDtgCardDecline, IsXChargeClientDecline, IsPayConnect2Decline, IsPaySimpleDecline),
+		///whatever "inactivate declined cards" makes of ChargeStatus. Never set for a charge that succeeded. Decides the failure e-mail
+		///(RecurringChargeFailEmails).</summary>
+		public bool IsDeclinedByProcessor;
 	}
 
 	///<summary>A class that can be used to process recurring charges.</summary>
-	public class RecurringChargerator {
+	public partial class RecurringChargerator {
 		///<summary>A DateTime that can be used to give all charges processed a uniform time.</summary>
 		protected DateTime _nowDateTime;
 		///<summary>The program being used to process payments.</summary>
@@ -489,6 +494,7 @@ namespace OpenDentBusiness {
 							CreditCards.Update(cc);
 						}
 					}
+					SendFailEmailIfNeeded(chargeData);//25.4: e-mails the patient about a declined charge (RecurringChargerator.FailEmails.cs).
 					RecurringCharges.Update(chargeData.RecurringCharge);
 					if(_doShutdown) {
 						DeleteNotYetCharged();
@@ -634,6 +640,7 @@ namespace OpenDentBusiness {
 			}
 			else {
 				MarkDeclined(chargeData,Lans.g(_lanThis,"Response from EdgeExpress:")+" "+response.XWebResponseCode.ToString(),LogLevel.Information);
+				chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsEdgeExpressCardDecline(response.XWebResponseCode);//Only a card decline e-mails the patient.
 				response.PayNote+="\r\n"+Lans.g(this,"Response from EdgeExpress:")+" "+response.XWebResponseCode.ToString();
 				amount=0;//If the charge was declined, insert a payment with $0 amount instead of what was supposed to be charged.
 			}
@@ -800,6 +807,7 @@ namespace OpenDentBusiness {
 					}
 					else {//Other
 						MarkDeclined(chargeData,Lans.g(_lanThis,"Result from XCharge:")+" "+strBuilderResultText.ToString(),LogLevel.Information);
+						chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsXChargeClientDecline(strBuilderResultText.ToString());//Only a declined RESULT e-mails the patient.
 					}
 				}
 			}
@@ -842,6 +850,7 @@ namespace OpenDentBusiness {
 				}
 				else {
 					MarkDeclined(chargeData,Lans.g(_lanThis,"Response from XWeb:")+" "+response.XWebResponseCode.ToString(),LogLevel.Information);
+					chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsEdgeExpressCardDecline(response.XWebResponseCode);//Only a card decline e-mails the patient.
 					response.PayNote+="\r\n"+Lans.g(this,"Response from XWeb:")+" "+response.XWebResponseCode.ToString();
 				}
 				strBuilderResultText.Append(response.GetFormattedNote(true));
@@ -851,6 +860,7 @@ namespace OpenDentBusiness {
 			catch(Exception ex) {
 				if(ex.Message.ToLower().Contains("decline")) {
 					MarkDeclined(chargeData,Lans.g(_lanThis,"Response from XWeb:")+" "+ex.Message,LogLevel.Information);
+					chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsXWebDtgCardDecline(ex);//Only a card decline e-mails the patient.
 				}
 				else {
 					MarkFailed(chargeData,"Unable to charge card.\r\nError Message: "+ex.Message,LogLevel.Error);
@@ -950,6 +960,7 @@ namespace OpenDentBusiness {
 				}
 				else {
 					MarkDeclined(chargeData,errorMessage);
+					chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsPayConnect2Decline(response);//A rejected key or Secret, a validation error or a 5xx e-mails nobody.
 				}
 			}
 			PayConnectResponse payConnectResponse=PayConnect2.ApiResponseToPayConnectResponse(response);
@@ -1128,6 +1139,7 @@ namespace OpenDentBusiness {
 			}
 			catch(Exception ex) {
 				MarkDeclined(chargeData,Lans.g(_lanThis,"Error processing card:")+" "+ex.Message,LogLevel.Information);
+				chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsPaySimpleDecline(ex);//Only PaySimple's own decline e-mails the patient.
 				string clinicDesc="";
 				if(PrefC.HasClinicsEnabled && dictClinicNumDesc.ContainsKey(clinicNumCur)) {
 					clinicDesc=dictClinicNumDesc[clinicNumCur];
@@ -1157,6 +1169,9 @@ namespace OpenDentBusiness {
 
 		///<summary>Call to mark a recurring charge as declined in the specific scenario when the transaction has reached the processor gateway and the processor has responded with something other than success (per Nathan in task #3119214 job #24498).</summary>
 		private void MarkDeclined(RecurringChargeData chargeData,string errorMsg,LogLevel logLevel=LogLevel.Error) {
+			if(chargeData.RecurringCharge.ChargeStatus!=RecurringChargeStatus.ChargeSuccessful) {//An error after the card was charged is not a decline.
+				chargeData.IsDeclinedByProcessor=true;
+			}
 			if(chargeData.RecurringCharge.ChargeStatus==RecurringChargeStatus.NotYetCharged
 				&& PrefC.GetBool(PrefName.RecurringChargesInactivateDeclinedCards))
 			{
@@ -1180,6 +1195,7 @@ namespace OpenDentBusiness {
 			Success=0;
 			Failed=0;
 			Updated=0;
+			ClearFailEmailStats();
 		}
 
 		///<summary>For each RecurringChargeData, inserts a RecurringCharge.</summary>

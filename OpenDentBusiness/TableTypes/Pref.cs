@@ -2049,8 +2049,8 @@ namespace OpenDentBusiness {
 		///<summary>Open Dental 25.4. Text of the e-mail sent when a recurring charge fails. Replacement tags: [NameF], [NamePref], [Amount],
 		///[CardLast4], [DateCharge], [OfficeName], [OfficePhone], [ClinicName]. Name proposed by this fork. Seeded by Seed26_1.</summary>
 		RecurringChargesFailEmailBody,
-		///<summary>Open Dental 25.4. Boolean, false by default. When true, each declined or failed recurring charge sends the patient (or the
-		///guarantor) an e-mail from the office's own address. Name proposed by this fork. Seeded by Seed26_1.</summary>
+		///<summary>Open Dental 25.4. Boolean, false by default. When true, each recurring charge the card processor declines sends the patient (or the
+		///guarantor) an e-mail from the office's own address (RecurringChargeFailEmails). Name proposed by this fork. Seeded by Seed26_1.</summary>
 		[PrefName(ValueType=PrefValueType.BOOL)]
 		RecurringChargesFailEmailEnabled,
 		///<summary>Open Dental 25.4. Subject of the e-mail sent when a recurring charge fails. Same tags as RecurringChargesFailEmailBody. Name

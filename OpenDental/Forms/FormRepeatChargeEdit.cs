@@ -379,6 +379,11 @@ namespace OpenDental{
 			if(!UpdateRepeatCharge(_repeatCharge)) {
 				return;
 			}
+			if((IsNew || _repeatCharge.DateStart!=_repeatChargeOld.DateStart) && RepeatChargeBackdating.IsStartDateSkipped(_repeatCharge.DateStart,DateTime.Today)) {
+				//26.1: with backdating turned off, the billing dates between the start date and today are never posted.
+				MsgBox.Show(this,"Repeating charges are not backdated (Preferences, Account, Rec and Rep Charges).  No charge will be posted for a billing "
+					+"date before today; the first charge is posted on the next billing date.");
+			}
 			Patient patientOldChange=Patients.GetPat(_repeatCharge.PatNum);
 			Patient patientNewChange=patientOldChange.Copy();
 			if(patientNewChange.PatStatus==PatientStatus.Deleted) {
