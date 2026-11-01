@@ -1,6 +1,6 @@
 # Port note: M2-CLAIMFORM, Denti-Cal DC217 claim form
 
-Branch `port/m2-claimform`, cut from `port/foundation` (M2-01 and M2-02 merged) in the single-wave run. Backlog section: [port-backlog.md, M2-CLAIMFORM](../specs/port-backlog.md#m2-claimform-denti-cal-dc217-claim-form). Fork migration levels used: none (the assigned range 2027003601 to 2027003699 cannot be used, see "Deviations").
+Branch `port/m2-claimform`, cut from `port/foundation` (M2-01 and M2-02 merged) in the single-wave run. Backlog section: [port-backlog.md, M2-CLAIMFORM](../specs/port-backlog.md#m2-claimform-denti-cal-dc217-claim-form). Fork migration levels used: none. The assigned range 2027003601 to 2027003699 is gone: the package ranges were retired on 2026-11-01 (dated levels only), so a DC217 install step, if the owner wants one, gets the next dated level (see "Combined review 1" at the end).
 
 ## Sources
 
@@ -103,3 +103,7 @@ Not available: the Medi-Cal Dental Provider Handbook, section 6 (forms), named i
 
 - Merged without conflicts or code changes. The `FormClaimPrint.cs` fix sits next to M2-CAN's one-line change of the `Code` field (RAMQ codes print without their trailing R); both are kept, and `M2CLAIMFORMTests` and `SheetTests` pass on the merged branch.
 - The premise of question 1 changed: B-SHELL (merged on `port/int-5`) made `ForkMigrationRunner.ValidateStep` accept the package ranges (`yyyy00PPNN` from 2027 on), so the step shown under "Deviations" would now validate at level 2027003601. It is still not added: whether every office gets the form automatically is the owner's question, and the step would add `claimform` and `claimformitem` rows on adopted Open Dental 25.3.48 databases, which the M1-Z adoption tools (`migration-preview`, adopt's row check, `allowed-differences.adoption.json`) would then have to plan and check, as they now do for M2-UDS's report row.
+
+## Combined review 1 (branch `port/review-1`, 2026-11-01)
+
+- The premise of question 1 changed again. The owner decided on 2026-11-01 that fork migration levels are dated `yyyyMMddNN` only, every new step above every existing one; `ForkMigrationRunner.IsReservedPackageLevel` is removed, so the reserved 2027003601 is gone and no longer validates. If the owner wants every office to get the form automatically, the install step under "Deviations" gets the next dated level (above the highest existing one, 2026110104 on this branch, for example the date it is written plus `01`), and the adoption tools plan and check its `claimform` and `claimformitem` rows as they do for the other data steps. Question 1 is now only whether to install it automatically.

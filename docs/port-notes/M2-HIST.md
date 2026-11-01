@@ -1,6 +1,6 @@
 # Port note: M2-HIST, Insurance History from code groups
 
-Branch `port/m2-hist`, cut from `port/foundation` (M2-01 and M2-02 merged). Built in the single-wave run, beside the other packages. Finished on `port/m2-hist-t1`, which merges the integration head `port/int-8` (45b919048) and fixes the review findings (see "Integration and review fixes" at the end). Backlog section: [port-backlog.md, M2-HIST](../specs/port-backlog.md#m2-hist-insurance-history-from-code-groups). Fork migration level used: 2027004701 (range 2027004701 to 2027004799). Tests: `tests/M2HISTTests` (assembly `M2HISTTests`).
+Branch `port/m2-hist`, cut from `port/foundation` (M2-01 and M2-02 merged). Built in the single-wave run, beside the other packages. Finished on `port/m2-hist-t1`, which merges the integration head `port/int-8` (45b919048) and fixes the review findings (see "Integration and review fixes" at the end). Backlog section: [port-backlog.md, M2-HIST](../specs/port-backlog.md#m2-hist-insurance-history-from-code-groups). Fork migration level used: 2026110104 (renumbered from 2027004701 on 2026-11-01; the package range 2027004701 to 2027004799 is retired). Tests: `tests/M2HISTTests` (assembly `M2HISTTests`).
 
 Sources: the 26.1 feature spec (`docs/specs/features-26.1.md`), Open Dental's public 26.1 release notes and the published 26.1 database documents as the spec cites them (the three `codegroup` columns and their rules), and the 24.3 manual pages on Insurance History and Code Groups. Nothing was decompiled, installed or observed, and no office data was used. Behaviour that is not public is marked **INFERRED**.
 
@@ -29,7 +29,7 @@ The rules are in the new `OpenDentBusiness/Data Interface/InsHistCategories.cs`,
 - **Sheets** keep using `CodeGroupFixed` (spec rule 7); nothing changed there.
 - **Kept for older callers, unchanged**: `Procedures.GetMostRecentInsHistProc`, `InsertOrUpdateInsHistProcedure`, `ProcedureCodes.GetCodeNumsForInsHistPref`, `GetByInsHistPref`, `Prefs.GetInsHistPrefNames`, `GetInsHistPrefs`, `EB271.GetPrefNameInsHistDate`, `GetInsHistDate(PrefName)`. Nothing in this branch calls the preference-based ones for Insurance History any more. `Procedures.cs`, `ClaimProcs.cs`, `CodeGroups.cs`, `InsVerifies.cs`, `Prefs.cs` and `FormInsPlan.cs` are not edited.
 
-### Data migration (`OpenDentBusiness/Misc/ForkMigrations/InsHistCodeGroupsStep.cs`, level 2027004701)
+### Data migration (`OpenDentBusiness/Misc/ForkMigrations/InsHistCodeGroupsStep.cs`, level 2026110104, renumbered from 2027004701 on 2026-11-01)
 
 Open Dental's own conversion is not public; this is the spec's rule, all **INFERRED**. The rule is in `InsHistCodeGroupsMigration.Plan` (pure, tested without a database); the step reads the rows with plain SQL and writes plain `UPDATE`/`INSERT` statements.
 
@@ -174,3 +174,7 @@ On `port/m2-hist-t1` after the `port/int-8` merge and the fixes (2026-10-31):
 - **M2-CARRIER**: both packages read code lists through the shared `ProcCodeRanges` (Insurance History rows, the step's merge, the carrier's preauthorization list); neither added a parser of its own. They share no file. M2-CARRIER's scratch databases run the fork runner on the 24.3 seed, so they now also get this step's code group changes; its tests use made-up `Z` codes and read no code groups, and pass unchanged.
 - **M2-SHEETS**: sheets' static text fields (dateLastBW and the like) still use `CodeGroupFixed`, as spec rule 7 asks; nothing to connect. **M2-CLAIMRCV**: "Hold Until Prior Received" is a claim status; history still counts completed procedures on received claimprocs. **V-EDS, M2-TERM, M2-AUDIT, M2-MISC**: nothing in common.
 - Adoption: this step's changes are expected as before (`AdoptionValidation.Tests` 59 of 59, with the rehearsal's M6; `SyntheticData.Tests` 54; `ForkMigrationTests` 38; `M201Tests` 24 passed and 2 inconclusive). On the merged head: one full build of `OpenDental.Local.slnf` through the build lane (0 errors), `run-tests -Mode Full` (73 assemblies, 3850 tests, none failed; the 2 not passed are M201Tests' published-document checks) and `tools/Test-NoHqHosts.ps1` (passed). `M2HISTTests` 43 of 43, `BINSHTests` 36, `BPROCTests` 43, `M2INSVTests` 17, `M2ESTTests` 69.
+
+## Combined review 1 (branch `port/review-1`, 2026-11-01)
+
+- **Level.** Owner decision of 2026-11-01: levels are dated `yyyyMMddNN` only, every new step above every existing one, and the package ranges are retired. `InsHistCodeGroupsStep` is now 2026110104 (renumbered from 2027004701), still the last step, after B-SHELL (2026110101, from 2027002301), M2-EST (2026110102, from 2027002701, not active) and M2-UDS (2026110103, from 2027003501). `ForkMigrationRunner.IsReservedPackageLevel` is removed. The step, `InsHistCodeGroupPlan` and the rehearsal read the level from the step, so only the expected texts of the tests, the runbook and the READMEs changed ("Fork schema level 2026110104").

@@ -246,12 +246,12 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6:
 - `Step 2026102501 splits the blockout permission (...): it moves N Open Dental 25.3 PhoneExtension grant(s) from 272 to 274, then grants
   BlockoutAdd (272) to N user group(s) and grants BlockoutDelete (273) to N user group(s), with the FKey and date limits of their Blockouts
   grant.` (or `... BlockoutDelete is already configured, so it is not granted`);
-- `Step 2027003501 (UDS+ report row) adds the displayreport row ODUdsPlus ("FQHC UDS+ Dental Services", Public Health, ItemOrder N) right
+- `Step 2026110103 (UDS+ report row) adds the displayreport row ODUdsPlus ("FQHC UDS+ Dental Services", Public Health, ItemOrder N) right
   after the FQHC Dental Sealant Measure (DisplayReportNum N), moving N later Public Health row(s) down one place, ItemOrder only (...); it
   gives the N user group(s) that may run the sealant measure (user group ...) the Reports permission for it ...` (on an Open Dental 25.3.48
   database; `... at the end of Public Health` when there is no sealant measure row, and `... copies no report permission` when no group has a
   grant for it alone). It quotes the lines the adoption log will show ("Added displayreport ODUdsPlus", "Copied N report permission(s) ...").
-- `Step 2027004701 (Insurance History rows from code groups) marks N code group(s) Show In History and adds N (...): Code group 'BW'
+- `Step 2026110104 (Insurance History rows from code groups) marks N code group(s) Show In History and adds N (...): Code group 'BW'
   (CodeGroupNum N) shown in Insurance History, History Proc Code ...; ...` with one part per code group: the History Proc Code, "with four
   quadrant rows" for the SRP group, "codes added: ..." when the preference held codes the group lacks, and "Added code group '<name>' (<kind>,
   ItemOrder N), ..." for a category without a group of its kind. These parts are the lines the adoption log will show. On a database whose
@@ -521,13 +521,13 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
 - step 2026102501 ("Open Dental 25.4 and 26.1 seed rows") "changed the database:", followed by one line "Inserted preference <name>" for each
   preference of the step 0.2 list, "Moved N Open Dental 25.3 PhoneExtension grant(s) from 272 to 274" if step 0.2 counted any, and "Granted
   BlockoutAdd to N user group(s)" and "Granted BlockoutDelete to N user group(s)" with the step 0.2 numbers
-- step 2027003501 ("Report row for the UDS+ report") "changed the database:", followed by "Added displayreport ODUdsPlus" (with "(hidden, as
+- step 2026110103 ("Report row for the UDS+ report") "changed the database:", followed by "Added displayreport ODUdsPlus" (with "(hidden, as
   the sealant measure is)" if it is hidden) and, if step 0.2 listed user groups, "Copied N report permission(s) from ODDentalSealantMeasure to
   ODUdsPlus" with the step 0.2 number
-- step 2027004701 ("Insurance History rows from the InsHist preferences to code groups (26.1)") "changed the database:", followed by the
+- step 2026110104 ("Insurance History rows from the InsHist preferences to code groups (26.1)") "changed the database:", followed by the
   lines of step 0.2's Insurance History list ("Code group '<name>' (CodeGroupNum N) shown in Insurance History, ..." and "Added code group
   ..."), each once, and "Insurance History: ..." notes for an added group and for perio quadrant preferences that held different codes; then
-  "Fork migrations: 16 step(s) run, 0 already done. Fork schema level 2027004701.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)."
+  "Fork migrations: 16 step(s) run, 0 already done. Fork schema level 2026110104.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)."
   and "Adoption finished."
 - "Fork migration, every step again: 16 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables)."
 - the rehash of step 5

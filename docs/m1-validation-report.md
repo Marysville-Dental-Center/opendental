@@ -102,6 +102,13 @@ new value (`claimpayment.Note` now longer than 255 characters, since the adopted
 41.3 s on the medium data; on the office database the 25.4 and 26.1 `ALTER TABLE` statements copy `claimproc`, `procedurelog` and `procnote`
 once each (MyISAM), so the runbook's time plan is to be taken from a rehearsal of the M2 build, as before.
 
+**Note (combined review 1, branch `port/review-1`, 2026-11-01).** The recorded evidence above and below is left as it was run. Since then
+the four feature package steps have dated levels (owner decision of 2026-11-01): B-SHELL's DXC Patient Credit Score step is 2026110101
+(was 2027002301), M2-EST's inactive back-fill 2026110102 (was 2027002701), M2-UDS's report row 2026110103 (was 2027003501) and M2-HIST's
+Insurance History step 2026110104 (was 2027004701), so an adopted copy now ends at fork schema level 2026110104. The startup guard decides
+from the applied levels (`ForkMigrationsApplied`), not from the highest one, and the rehearsal plans and checks the DXC step too (check M7,
+`program.Enabled` and `toolbutitem`). The gate is repeated on the build the office switches to, as said above.
+
 ## Scope and method
 
 | Task step (M1-Z) | How it was done | Evidence |

@@ -54,20 +54,21 @@ namespace M2UDSTests {
 		}
 
 		[TestMethod]
-		public void Step_IsRegisteredInThePackageRange() {
+		public void Step_HasItsDatedLevel() {
 			List<ForkMigrationStep> listSteps=ForkMigrationRunner.GetSteps();
 			ForkMigrationStep step=listSteps.SingleOrDefault(x => x is ReportRowUdsPlusStep);
 			Assert.IsNotNull(step);
-			Assert.IsTrue(step.Level>=2027003501 && step.Level<=2027003599,step.Level.ToString());
+			Assert.AreEqual(2026110103,step.Level,"Renumbered on 2026-11-01 from the retired package range level 2027003501.");
 			Assert.IsTrue(step.Level>new Seed26_1Step().Level,"After the 26.1 seed rows.");
 			Assert.AreEqual("OpenDentBusiness.ForkMigrations.Features",step.GetType().Namespace,
 				"Not in OpenDentBusiness.ForkMigrations, whose steps must sort before Seed25_3Step.");
 		}
 
 		[TestMethod]
-		public void ValidateStep_AcceptsPackageRangeLevelsOnly() {
+		public void ValidateStep_AcceptsDatedLevelsOnly() {
 			ForkMigrationRunner.ValidateStep(new ReportRowUdsPlusStep());
-			ForkMigrationRunner.ValidateStep(new StepPackageRange());
+			//The yyyy00PPNN package ranges are retired (owner decision of 2026-11-01).
+			AssertRejected(new StepPackageRange());
 			AssertRejected(new StepMonth00Of2026());
 			AssertRejected(new StepMonth13());
 			AssertRejected(new StepShort());

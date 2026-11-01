@@ -45,11 +45,13 @@ namespace M2ESTTests {
 		}
 
 		[TestMethod]
-		public void BackfillStep_IsInactiveUntilTheLevelIsSettled() {
-			//The package's level range (2027002701..) is not a yyyyMMddNN date, which the runner rejects, so the step stays abstract (see the port note).
+		public void BackfillStep_IsInactiveUntilTheOwnerDecides() {
+			//Its level is dated now (renumbered on 2026-11-01 from the retired package range level 2027002701), but the step stays abstract: the owner has
+			//not decided whether the back-fill runs (see the port note).
 			Assert.IsTrue(typeof(NoBillInsBackfillStep).IsAbstract);
-			Assert.AreEqual(2027002701,NoBillInsBackfillStep.LEVEL);
+			Assert.AreEqual(2026110102,NoBillInsBackfillStep.LEVEL);
 			Assert.IsFalse(ForkMigrationRunner.GetSteps().Exists(x => x is NoBillInsBackfillStep),"The runner skips it.");
+			Assert.IsFalse(ForkMigrationRunner.GetSteps().Exists(x => x.Level==NoBillInsBackfillStep.LEVEL),"No active step takes its level.");
 			ForkMigrationAttribute attribute=(ForkMigrationAttribute)Attribute.GetCustomAttribute(typeof(NoBillInsBackfillStep),typeof(ForkMigrationAttribute));
 			Assert.AreEqual(NoBillInsBackfillStep.LEVEL,attribute.Level);
 		}

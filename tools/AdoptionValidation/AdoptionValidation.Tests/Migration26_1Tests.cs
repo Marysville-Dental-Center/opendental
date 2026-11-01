@@ -119,7 +119,7 @@ namespace AdoptionValidation.Tests {
 				Category=DisplayReportCategory.PublicHealth });
 			plan.ListUserGroupsGranted.Add(3);
 			string text=string.Join("\r\n",plan.Lines());
-			StringAssert.Contains(text,"Step 2027003501 (UDS+ report row) adds the displayreport row ODUdsPlus (\"FQHC UDS+ Dental Services\", Public Health, ItemOrder 96) "
+			StringAssert.Contains(text,"Step 2026110103 (UDS+ report row) adds the displayreport row ODUdsPlus (\"FQHC UDS+ Dental Services\", Public Health, ItemOrder 96) "
 				+"right after the FQHC Dental Sealant Measure (DisplayReportNum 8), moving 1 later Public Health row(s) down one place, ItemOrder only (DisplayReportNum 9)");
 			StringAssert.Contains(text,"it gives the 1 user group(s) that may run the sealant measure (user group 3) the Reports permission for it");
 			StringAssert.Contains(text,"\"Added displayreport ODUdsPlus\" and \"Copied 1 report permission(s) from ODDentalSealantMeasure to ODUdsPlus\"");
@@ -155,7 +155,7 @@ namespace AdoptionValidation.Tests {
 				Migration=InsHistCodeGroupsMigration.CreatePlan(true,false,dictPrefs,listCodeGroups,listProcCodes) };
 			Assert.IsTrue(plan.IsChanging);
 			string text=string.Join("\r\n",plan.Lines());
-			StringAssert.Contains(text,"Step 2027004701 (Insurance History rows from code groups) marks 3 code group(s) Show In History and adds 1 (this database "
+			StringAssert.Contains(text,"Step 2026110104 (Insurance History rows from code groups) marks 3 code group(s) Show In History and adds 1 (this database "
 				+"comes from before Open Dental 25.4; the ten InsHist*Codes preferences are kept): ");
 			StringAssert.Contains(text,"Code group 'BWs' (CodeGroupNum 3) shown in Insurance History, History Proc Code Z0272; ");
 			StringAssert.Contains(text,"Code group 'Perio Maint' (CodeGroupNum 7) shown in Insurance History, History Proc Code Z4910, codes added: Z4920; ");
@@ -168,7 +168,7 @@ namespace AdoptionValidation.Tests {
 			InsHistCodeGroupPlan.Plan planAdopted=new InsHistCodeGroupPlan.Plan { HasCodeGroupTable=true,
 				Migration=InsHistCodeGroupsMigration.CreatePlan(true,true,dictPrefs,listCodeGroups,listProcCodes) };
 			Assert.IsFalse(planAdopted.IsChanging);
-			StringAssert.Contains(string.Join("\r\n",planAdopted.Lines()),"Step 2027004701 (Insurance History rows from code groups) changes nothing: it already ran on "
+			StringAssert.Contains(string.Join("\r\n",planAdopted.Lines()),"Step 2026110104 (Insurance History rows from code groups) changes nothing: it already ran on "
 				+"this database.");
 			//From 25.4 on, Open Dental converted the rows itself; and a group already marked Show In History is left alone.
 			StringAssert.Contains(string.Join("\r\n",new InsHistCodeGroupPlan.Plan { HasCodeGroupTable=true,

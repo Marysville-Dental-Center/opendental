@@ -1,6 +1,6 @@
 # B-SHELL: main window and cross-module integration
 
-Backlog package B-SHELL (wave B3 in [../specs/port-backlog.md](../specs/port-backlog.md)), built on branch `port/b-shell` from `m1/integration-a2-patch` in the single-wave run. Fork migration level range: 2027002301 to 2027002399 (one level used). Tests: `tests/BSHELLTests`.
+Backlog package B-SHELL (wave B3 in [../specs/port-backlog.md](../specs/port-backlog.md)), built on branch `port/b-shell` from `m1/integration-a2-patch` in the single-wave run. Fork migration level used: 2026110101 (renumbered from 2027002301 on 2026-11-01; the package range 2027002301 to 2027002399 is retired, see "Combined review 1" at the end). Tests: `tests/BSHELLTests`.
 
 Sources used: the public 25.1, 25.2 and 25.3 release-note pages named in the feature specs, and the specs themselves. No Open Dental binary, install or customer-only page was used. Behaviour the public pages do not describe is marked INFERRED below.
 
@@ -77,7 +77,7 @@ Sources used: the public 25.1, 25.2 and 25.3 release-note pages named in the fea
 - `ProgramL.Execute` refuses any discontinued link before any dispatch, with a message, so an old button can't reach the generic launcher either (`OpenDentBusiness/Misc/MainWindow/ProgramLinksDiscontinued.cs`).
 - `ProgramName.DXCPatientCreditScore` stays, because migrated rows refer to it by name.
 - Program Links shows the row as "(discontinued)" (one line in `FormProgramLinks.cs`). Program Link Edit keeps it disabled with no toolbars and saves it disabled.
-- Fork migration step `DxcCreditScoreRemovedStep`, level 2027002301 (`OpenDentBusiness/Misc/ForkMigrations/BShellSteps.cs`): deletes the row's `toolbutitem` rows and sets `program.Enabled=0`. It runs on every database because what Open Dental's own 25.2 conversion did to the row is not public (INFERRED). Each statement runs only when it has rows to change, so a database Open Dental already cleaned up (row disabled, no buttons) is not changed, and a second run changes nothing. The row's description is not changed; the label is display-only.
+- Fork migration step `DxcCreditScoreRemovedStep`, level 2026110101, renumbered from 2027002301 on 2026-11-01 (`OpenDentBusiness/Misc/ForkMigrations/BShellSteps.cs`): deletes the row's `toolbutitem` rows and sets `program.Enabled=0`. It runs on every database because what Open Dental's own 25.2 conversion did to the row is not public (INFERRED). Each statement runs only when it has rows to change, so a database Open Dental already cleaned up (row disabled, no buttons) is not changed, and a second run changes nothing. The row's description is not changed; the label is display-only.
 
 ### Main window: domain login through the A-SIG helper (built)
 
@@ -155,3 +155,7 @@ Not tested automatically (needs the GUI, which is not launched in this run): the
 - `ProgramL.cs` conflicted with V-BRIDGE1 (merged on `port/int-4`): V-BRIDGE1 added the DTX Studio dispatch branch next to the DXC Patient Credit Score branch this package removes. The DTX Studio branch is kept and the removed one stays removed. Every dispatch branch, V-BRIDGE1's Overjet and DTX Studio included, sits after the discontinued-link check.
 - `ModuleSwitchBlur` now reads and writes its fork-owned row through B-SERVER's shared helpers (`PrefC.GetRawOrDefault`, `PrefC.UpsertRaw`), as B-WIKI, B-PRINT and B-APPT do since `port/int-2` and `port/int-4`. Its own insert (`ModuleSwitchBlur.InsertRow`) is gone. No behaviour change: a missing row still reads as off, the first save inserts the row, and a save with no change writes nothing.
 - `tests/BSHELLTests/Shared/ScratchDb.cs` built its scratch tables from the 25.3.48 dump file. It now uses `SchemaVerifier.GetReference()` (26.1.70), the schema the generated CRUD matches, as the other packages' test databases do. No test was changed or removed.
+
+## Combined review 1 (branch `port/review-1`, 2026-11-01)
+
+- **Level.** Owner decision of 2026-11-01: fork migration levels are dated `yyyyMMddNN` only, every new step above every existing one. `DxcCreditScoreRemovedStep` was renumbered from 2027002301 to 2026110101 (still after every M1 and M2-01/M2-02 step, and before the other three package steps, as before). `ForkMigrationRunner.IsReservedPackageLevel`, which this package added (question 6), is removed: `ValidateStep` accepts only real dated levels from 2026 on. Question 6 is answered.

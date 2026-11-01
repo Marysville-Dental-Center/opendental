@@ -177,12 +177,12 @@ namespace AdoptionValidation.Tests {
 			StringAssert.Contains(output,"moves 1 Open Dental 25.3 PhoneExtension grant(s) from 272 to 274, then grants BlockoutAdd (272) to 2 user group(s) and "
 				+"grants BlockoutDelete (273) to 2 user group(s)");
 			//The UDS+ report row step (M2-UDS): the 25.4 report's row after the fixture's sealant measure, whose one grant it copies.
-			StringAssert.Contains(output,"Step 2027003501 (UDS+ report row) adds the displayreport row "+DisplayReportNames.UdsPlus+" (\"FQHC UDS+ Dental Services\", "
+			StringAssert.Contains(output,"Step 2026110103 (UDS+ report row) adds the displayreport row "+DisplayReportNames.UdsPlus+" (\"FQHC UDS+ Dental Services\", "
 				+"Public Health, ItemOrder ");
 			StringAssert.Contains(output,") right after the FQHC Dental Sealant Measure (DisplayReportNum ");
 			StringAssert.Contains(output,"it gives the 1 user group(s) that may run the sealant measure (user group ");
 			//The Insurance History step (M2-HIST): the fixture's ten InsHist*Codes preferences into six generated code groups and one new group.
-			StringAssert.Contains(output,"Step 2027004701 (Insurance History rows from code groups) marks "+OfficeFixture.CountInsHistGroupsMarked+" code group(s) Show In "
+			StringAssert.Contains(output,"Step 2026110104 (Insurance History rows from code groups) marks "+OfficeFixture.CountInsHistGroupsMarked+" code group(s) Show In "
 				+"History and adds "+OfficeFixture.CountInsHistGroupsAdded+" (this database comes from before Open Dental 25.4;");
 			StringAssert.Contains(output,"Code group 'BWs' (CodeGroupNum ");
 			StringAssert.Contains(output,") shown in Insurance History with four quadrant rows, History Proc Code Z4341");
@@ -533,11 +533,11 @@ namespace AdoptionValidation.Tests {
 				"; the UDS+ report row added as migration-preview lists ("+DisplayReportNames.UdsPlus+", DisplayReportNum ",
 				" later Public Health row(s) moved down one place, ItemOrder only; no other row or column changed, no other row added, none removed.",
 				//The UDS+ report row step (M2-UDS) on the 25.3.48 source: the 25.4 report's row after the fixture's sealant measure, and its one grant.
-				"Fork migration step 2027003501 Report row for the UDS+ report changed the database:","  Added displayreport "+DisplayReportNames.UdsPlus,
+				"Fork migration step 2026110103 Report row for the UDS+ report changed the database:","  Added displayreport "+DisplayReportNames.UdsPlus,
 				"  Copied 1 report permission(s) from ODDentalSealantMeasure to "+DisplayReportNames.UdsPlus,
 				"Reports for the UDS+ report row granted to 1 of the 1 user group(s) that may run the FQHC Dental Sealant Measure, as migration-preview lists",
 				//The Insurance History step (M2-HIST) on the fixture's ten InsHist*Codes preferences.
-				"Fork migration step 2027004701 Insurance History rows from the InsHist preferences to code groups (26.1) changed the database:",
+				"Fork migration step 2026110104 Insurance History rows from the InsHist preferences to code groups (26.1) changed the database:",
 				"  Code group 'BWs' (CodeGroupNum ","History Proc Code Z4910, codes added: "+OfficeFixture.INSHIST_CODE_ADDED,
 				"  Added code group '"+OfficeFixture.INSHIST_GROUP_ADDED+"' (FMDebride, ItemOrder ",
 				"codegroup: "+OfficeFixture.CountInsHistGroupsMarked+" of the "+OfficeFixture.CountInsHistGroupsMarked+" code group(s) migration-preview lists marked Show "

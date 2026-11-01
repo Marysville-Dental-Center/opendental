@@ -152,10 +152,9 @@ namespace OpenDentBusiness.ForkMigrations.Features {
 		}
 	}
 
-	///<summary>Runs ReportRowUdsPlus after the 26.1 schema and seed steps. Level 2027003501 (range 2027003501 to 2027003599, package M2-UDS; the
-	///single-wave build gives each package a yyyy00PPNN range, see ForkMigrationRunner.ValidateStep). The origin is judged as Seed26_1Step judges
-	///it.</summary>
-	[ForkMigration(2027003501,"Report row for the UDS+ report")]
+	///<summary>Runs ReportRowUdsPlus after the 26.1 schema and seed steps. Level 2026110103 (package M2-UDS; renumbered on 2026-11-01 from the
+	///retired package range level 2027003501). The origin is judged as Seed26_1Step judges it.</summary>
+	[ForkMigration(2026110103,"Report row for the UDS+ report")]
 	public class ReportRowUdsPlusStep:ForkMigrationStep {
 		public override void Apply(ForkMigrationContext context) {
 			if(!context.TableExists("displayreport") || !context.TableExists("grouppermission")) {

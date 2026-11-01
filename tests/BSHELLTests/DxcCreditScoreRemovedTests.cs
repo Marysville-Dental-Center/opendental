@@ -55,17 +55,12 @@ namespace BSHELLTests {
 		}
 
 		[TestMethod]
-		public void Step_HasItsReservedLevel_AndPassesValidation() {
+		public void Step_HasItsDatedLevel_AndPassesValidation() {
 			ForkMigrationStep step=ForkMigrationRunner.GetSteps().Single(x => x is DxcCreditScoreRemovedStep);
-			Assert.AreEqual(2027002301,step.Level);
+			Assert.AreEqual(2026110101,step.Level,"Renumbered on 2026-11-01 from the retired package range level 2027002301.");
 			ForkMigrationRunner.ValidateStep(step);
-			Assert.IsTrue(ForkMigrationRunner.IsReservedPackageLevel("2027002301"));
-			Assert.IsTrue(ForkMigrationRunner.IsReservedPackageLevel("2027002399"));
-			Assert.IsFalse(ForkMigrationRunner.IsReservedPackageLevel("2026002301"),"Reserved ranges start in 2027.");
-			Assert.IsFalse(ForkMigrationRunner.IsReservedPackageLevel("2027102301"),"A real month is a dated level, not a reserved range.");
-			Assert.IsFalse(ForkMigrationRunner.IsReservedPackageLevel("202700230"));
-			Assert.IsFalse(ForkMigrationRunner.IsReservedPackageLevel(null));
-			Assert.IsTrue(ForkMigrationRunner.GetSteps().Where(x => x.Level<2027000000).All(x => x.Level<step.Level),"Runs after every dated step.");
+			Assert.IsTrue(ForkMigrationRunner.GetSteps().Where(x => !x.GetType().Namespace.EndsWith(".FeatureSteps") && !x.GetType().Namespace.EndsWith(".Features"))
+				.All(x => x.Level<step.Level),"Runs after every M1 and M2-01/M2-02 step, as before the renumbering.");
 		}
 
 		[TestMethod]

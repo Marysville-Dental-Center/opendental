@@ -1,4 +1,4 @@
-// B-SHELL: data steps for the main window package. Levels 2027002301 to 2027002399 are reserved for B-SHELL.
+// B-SHELL: data steps for the main window package. Level 2026110101 (renumbered on 2026-11-01 from the retired package range level 2027002301).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 
@@ -12,7 +12,7 @@ namespace OpenDentBusiness.ForkMigrations.FeatureSteps {
 	///Runs on every database, including an adopted Open Dental 25.3.48 one, because what Open Dental's own 25.2 conversion did to the row is not
 	///public (INFERRED). Where the row is already disabled and has no buttons, as Open Dental most likely left it, nothing changes. Each statement
 	///runs only when it has rows to change, so a second run changes nothing.</summary>
-	[ForkMigration(2027002301,"Disable the discontinued DXC Patient Credit Score program link")]
+	[ForkMigration(2026110101,"Disable the discontinued DXC Patient Credit Score program link")]
 	public class DxcCreditScoreRemovedStep:ForkMigrationStep {
 		public const string PROG_NAME="DXCPatientCreditScore";
 

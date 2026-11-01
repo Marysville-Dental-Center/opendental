@@ -21,14 +21,16 @@ namespace OpenDentBusiness.ForkMigrations.FeatureSteps {
 	///patient override) is then not taken as a user's decision.</para>
 	///Runs only on a database that comes from before Open Dental 25.4 (Seed26_1Step.IsFromBefore25_4), only on its first run (a RunAll rerun of an
 	///applied level skips it), and only while no procedure has NoBillIns=1 yet, that is while the column is as M2-01's step created it.
-	///<para>NOT ACTIVE YET: the class is abstract, so the runner skips it. The level this package was given (range 2027002701 to 2027002799) is not a
-	///valid yyyyMMddNN level (month 00), and ForkMigrationRunner.ValidateStep would reject it and stop every migration. Once the level scheme is
-	///settled at integration (accept the package ranges in ValidateStep, or give this step a dated level), remove "abstract" (and update LEVEL).
-	///See docs/port-notes/M2-EST.md.</para></summary>
+	///<para>NOT ACTIVE: the class is abstract, so the runner skips it. Its level is a valid dated level (2026110102, renumbered on 2026-11-01
+	///from the retired package range level 2027002701), so the level does not stop it; the owner has not decided whether the back-fill should run,
+	///because it changes procedurelog.NoBillIns on an adopted office database. To turn it on, remove "abstract" and give adoption's tools the plan
+	///(tools/AdoptionValidation: migration-preview and adopt's row check, as for the other data steps). The startup check runs a step whose level is
+	///below a database's highest applied level (ForkVersionGuard decides from ForkMigrationsApplied), so the level can stay. See
+	///docs/port-notes/M2-EST.md.</para></summary>
 	[ForkMigration(LEVEL,"Do Not Bill to Ins decisions moved to procedurelog.NoBillIns (25.4)")]
 	public abstract class NoBillInsBackfillStep:ForkMigrationStep {
-		///<summary>The level assigned to package M2-EST.</summary>
-		public const long LEVEL=2027002701;
+		///<summary>The level of package M2-EST's step.</summary>
+		public const long LEVEL=2026110102;
 		private const int PROC_STAT_TP=1;
 		private const int PROC_STAT_C=2;
 		private const int PROC_STAT_TPI=8;

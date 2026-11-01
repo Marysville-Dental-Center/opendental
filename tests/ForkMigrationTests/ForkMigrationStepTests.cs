@@ -30,6 +30,21 @@ namespace ForkMigrationTests {
 			AssertThrows(() => ForkMigrationRunner.ValidateLevelsUnique(new List<ForkMigrationStep> { new StepGood(),new StepGoodTwin() }),"unique");
 		}
 
+		///<summary>Only real dated levels from 2026 on (owner decision of 2026-11-01): the yyyy00PPNN package ranges of the single-wave feature port
+		///(month 00) are retired, and so are dates before 2026.</summary>
+		[TestMethod]
+		public void Validate_AcceptsOnlyRealDatedLevelsFrom2026() {
+			ForkMigrationRunner.ValidateStep(new StepDated2027());
+			AssertThrows(() => ForkMigrationRunner.ValidateStep(new StepPackageRange()),"a real date from 2026 on");
+			AssertThrows(() => ForkMigrationRunner.ValidateStep(new StepBefore2026()),"a real date from 2026 on");
+			AssertThrows(() => ForkMigrationRunner.ValidateStep(new StepFebruary30()),"a real date from 2026 on");
+			Assert.IsNull(typeof(ForkMigrationRunner).GetMethod("IsReservedPackageLevel"),"The package range rule is gone.");
+			//GetSteps validates every step of this build; the renumbered package steps (2026-11-01) run after the M2-02 seed step, in their old order.
+			List<ForkMigrationStep> listSteps=ForkMigrationRunner.GetSteps();
+			CollectionAssert.AreEqual(new long[] { 2026102501,2026110101,2026110103,2026110104 },listSteps.Where(x => x.Level>=2026102501).Select(x => x.Level).ToList(),
+				"2026110102 (M2-EST's back-fill) is abstract, so the runner skips it.");
+		}
+
 		[TestMethod]
 		public void GuardianRelationship_Has25_1Numbers() {
 			Assert.AreEqual(0,(int)GuardianRelationship.None);
@@ -94,6 +109,26 @@ namespace ForkMigrationTests {
 
 		[ForkMigration(2026101998,"Same level")]
 		private class StepGoodTwin:ForkMigrationStep {
+			public override void Apply(ForkMigrationContext context) { }
+		}
+
+		[ForkMigration(2027010401,"Dated 2027")]
+		private class StepDated2027:ForkMigrationStep {
+			public override void Apply(ForkMigrationContext context) { }
+		}
+
+		[ForkMigration(2027002301,"Retired package range")]
+		private class StepPackageRange:ForkMigrationStep {
+			public override void Apply(ForkMigrationContext context) { }
+		}
+
+		[ForkMigration(2025123101,"Before 2026")]
+		private class StepBefore2026:ForkMigrationStep {
+			public override void Apply(ForkMigrationContext context) { }
+		}
+
+		[ForkMigration(2026023001,"February 30")]
+		private class StepFebruary30:ForkMigrationStep {
 			public override void Apply(ForkMigrationContext context) { }
 		}
 	}

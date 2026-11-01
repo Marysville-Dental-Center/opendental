@@ -17,8 +17,8 @@ namespace OpenDentBusiness.ForkMigrations.FeatureSteps {
 	///history rows are already set up is never changed. The preferences are read, never changed or deleted. Adoption runs it on an Open Dental
 	///25.3.48 database: AdoptionValidation's migration-preview prints the same plan (InsHistCodeGroupsMigration.CreatePlan) and adopt's row check holds
 	///the adopted copy's codegroup rows to it.</para>
-	///Level 2027004701 (range 2027004701 to 2027004799, package M2-HIST).</summary>
-	[ForkMigration(2027004701,"Insurance History rows from the InsHist preferences to code groups (26.1)")]
+	///Level 2026110104 (package M2-HIST; renumbered on 2026-11-01 from the retired package range level 2027004701).</summary>
+	[ForkMigration(2026110104,"Insurance History rows from the InsHist preferences to code groups (26.1)")]
 	public class InsHistCodeGroupsStep:ForkMigrationStep {
 		public override void Apply(ForkMigrationContext context) {
 			foreach(string column in new[] { "ShowInHistory","HistProcCode","IsPerioFourQuads" }) {

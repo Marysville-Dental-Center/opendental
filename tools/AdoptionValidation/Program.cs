@@ -54,7 +54,7 @@ Commands:
                  renames (InternalName only); the Open Dental 25.4 and 26.1 schema (new tables and columns, NULL claim payment
                  notes made empty); the 25.4 and 26.1 preferences step 2026102501 inserts, and its blockout permission split
                  (PhoneExtension grants moved from 272 to 274, BlockoutAdd and BlockoutDelete granted); the row of the 25.4 UDS+
-                 report that step 2027003501 adds after the FQHC Dental Sealant Measure (later Public Health rows moved down one
+                 report that step 2026110103 adds after the FQHC Dental Sealant Measure (later Public Health rows moved down one
                  place, the sealant measure's report grants copied). adopt's row check later requires exactly these changes.
                  Read-only. Exit code 0.
   copy           Copies ORIGINAL into the NEW database on the same server (runbook step 3.2): CREATE TABLE ... LIKE, the

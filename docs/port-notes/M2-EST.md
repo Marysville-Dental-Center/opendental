@@ -1,6 +1,6 @@
 # Port note: M2-EST, insurance estimate engine (25.4 and 26.1)
 
-Branch `port/m2-est`, cut from `port/foundation` (M2-01 and M2-02 merged). Built in the single-wave run beside the other C1 packages. Backlog section: [port-backlog.md, M2-EST](../specs/port-backlog.md#m2-est-insurance-estimate-engine). Assigned fork migration range: 2027002701 to 2027002799 (see "The fork migration level" below: the step is written but not active).
+Branch `port/m2-est`, cut from `port/foundation` (M2-01 and M2-02 merged). Built in the single-wave run beside the other C1 packages. Backlog section: [port-backlog.md, M2-EST](../specs/port-backlog.md#m2-est-insurance-estimate-engine). Fork migration level used: 2026110102 (renumbered from 2027002701 on 2026-11-01; the package range 2027002701 to 2027002799 is retired). See "The fork migration level" below: the step is written but not active.
 
 Sources: the public 25.4 and 26.1 release notes and the feature specs in `docs/specs/` (features-25.3/25.4/26.1.md), and the published 25.4/26.1 database documents only for `procedurelog.NoBillIns` and `benefit.ToothRange` (both already in the schema from M1-01/M2-01). No Open Dental program, install or database was used. Every behavior the public sources do not settle is marked INFERRED below.
 
@@ -73,6 +73,8 @@ Sources: the public 25.4 and 26.1 release notes and the feature specs in `docs/s
 
 The assigned range 2027002701 to 2027002799 is not a valid level: `ForkMigrationRunner.ValidateStep` requires `yyyyMMddNN` with a real date from 2026 on, and 2027-00-27 has month 00. A step with such a level makes `GetSteps()` throw, which stops every migration (and every test that builds a database). So `NoBillInsBackfillStep` is written with `LEVEL=2027002701` but declared `abstract`, which the runner skips; its logic (`NoBillInsBackfillStep.Run`, `GetProcNumsToFlag`, `Apply`) is tested through a subclass in `M2ESTTests`. To activate it at integration: settle the level scheme for all packages (accept the package ranges in `ValidateStep`, or give the step a dated level such as one after 2026102501), then remove `abstract` (and update `LEVEL`). It must run after M2-01's 2026102401 (which adds the column) and may run before or after Seed26_1. No README row was added to `ForkMigrations/README.md` for the same reason.
 
+Since 2026-11-01 (combined review 1, branch `port/review-1`): the owner decided that levels are dated `yyyyMMddNN` only, every new step above every existing one, and the package ranges are retired. `LEVEL` is now 2026110102, renumbered from 2027002701, between B-SHELL's 2026110101 and M2-UDS's 2026110103 (the old order), and the `ForkMigrations/README.md` table lists it as not active. The level no longer keeps the step off: it stays `abstract` only because the owner has not decided whether the back-fill runs on an adopted office database (question 1 below, which is now only that question). The startup check now runs a step whose level is below the database's highest applied level (`ForkVersionGuard` decides from `ForkMigrationsApplied`), so turning the step on later needs no new level: remove `abstract`, give `tools/AdoptionValidation` its plan (`migration-preview` and adopt's row check, as for the other data steps) and update `NoBillInsRulesTests.BackfillStep_IsInactiveUntilTheOwnerDecides`.
+
 ## Interplay with packages built at the same time
 
 - **M2-HIST** (C2, takes over `Procedures.cs`, `ClaimProcs.cs`): the hooks here are one line each (`GetNoBillInsForNewEstimate` in `CreateEst` and `ComputeEstimates`, `ZeroEstimateIfCoverageEnded` in `ComputeForOrdinal`, the teeth arguments of `GetLimitationByCode`); new logic is in the partial files. Insurance history from code groups should keep the `IsDateAsOf` rule if it adds loop entries.
@@ -114,7 +116,7 @@ Results (2026-10-25): build of `OpenDental.Local.slnf` (Debug, x86, full rebuild
 
 ## Questions for the owner
 
-1. Fork migration levels: the C1 ranges (here 2027002701-2027002799) fail `ForkMigrationRunner.ValidateStep` (month 00). Should `ValidateStep` accept package ranges, or should package steps get dated levels at integration? `NoBillInsBackfillStep` is ready either way (remove `abstract`).
+1. Fork migration levels: the C1 ranges (here 2027002701-2027002799) fail `ForkMigrationRunner.ValidateStep` (month 00). Should `ValidateStep` accept package ranges, or should package steps get dated levels at integration? `NoBillInsBackfillStep` is ready either way (remove `abstract`). *Answered on 2026-11-01: dated levels only; the step's level is 2026110102. Still open: should the back-fill run at all on an adopted office database?*
 2. Unscheduled procedures keep the age today and the picker date (the spec says they keep today's behavior). Should their age also follow the TP date picker?
 3. Should fees of scheduled procedures follow the appointment date (dated fee schedules), like the estimates now do?
 4. Coverage end: only `inssub.DateTerm`, and only in the Treatment Plan module. Should the chart and appointment estimates also honor it, and should an effective date after the appointment (`DateEffective`) also mean no estimate?

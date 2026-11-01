@@ -56,29 +56,22 @@ namespace OpenDentBusiness.ForkMigrations {
 			}
 		}
 
-		///<summary>Throws if the step has no attribute, a level that is not yyyyMMddNN (from 2026 on), or no name.</summary>
+		///<summary>Throws if the step has no attribute, a level that is not yyyyMMddNN with a real date from 2026 on, or no name. Only dated levels
+		///are valid (owner decision of 2026-11-01): the yyyy00PPNN package ranges of the single-wave feature port are retired. A new step takes the
+		///date it is written, above every existing level, so the levels also keep the order the steps were written in.</summary>
 		public static void ValidateStep(ForkMigrationStep step) {
 			ForkMigrationAttribute attribute=step.Attribute;//Throws when missing.
 			string level=attribute.Level.ToString();
 			DateTime date;
-			if(!IsReservedPackageLevel(level)
-				&& (level.Length!=10 || !DateTime.TryParseExact(level.Substring(0,8),"yyyyMMdd",System.Globalization.CultureInfo.InvariantCulture,
-				System.Globalization.DateTimeStyles.None,out date) || date.Year<2026))
+			if(level.Length!=10 || !DateTime.TryParseExact(level.Substring(0,8),"yyyyMMdd",System.Globalization.CultureInfo.InvariantCulture,
+				System.Globalization.DateTimeStyles.None,out date) || date.Year<2026)
 			{
-				throw new ApplicationException("Fork migration step "+step.GetType().FullName+" has level "+level+"; levels are yyyyMMddNN, from 2026 on.");
+				throw new ApplicationException("Fork migration step "+step.GetType().FullName+" has level "+level+"; levels are yyyyMMddNN, a real date "
+					+"from 2026 on.");
 			}
 			if(string.IsNullOrWhiteSpace(attribute.Name)) {
 				throw new ApplicationException("Fork migration step "+step.GetType().FullName+" has no name.");
 			}
-		}
-
-		///<summary>True for a level in a range reserved for a backlog package: yyyy00PPNN, the year (2027 on), "00" where the month would be, the
-		///package's two-digit slot and the step's two-digit number, for example 2027002301. These sort after every dated 2026 level.</summary>
-		public static bool IsReservedPackageLevel(string level) {
-			if(level==null || level.Length!=10 || !level.All(char.IsDigit)) {
-				return false;
-			}
-			return int.Parse(level.Substring(0,4))>=2027 && level.Substring(4,2)=="00";
 		}
 
 		///<summary>Levels of the steps that finished on the connected database.</summary>
