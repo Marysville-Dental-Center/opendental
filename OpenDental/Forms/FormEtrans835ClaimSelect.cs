@@ -379,29 +379,22 @@ namespace OpenDental {
 				return;
 			}
 			Claim claimSelected=(Claim)gridClaims.ListGridRows[gridClaims.GetSelectedIndex()].Tag;
-			double fee=(double)_hx835_Claim.ClaimFee;
-			if(_hx835_Claim.IsReversal) {
-				fee=Math.Abs(fee);
-			}
-			bool isValidClaimFee=true;
+			//B-ERA (24.4): a fee or date of service mismatch only warns, and the warning names the value the ERA expects (EraClaimMismatch).
+			double fee=EraClaimMismatch.GetEraClaimFee(_hx835_Claim);
 			if(_hx835_Claim.IsSplitClaim) {
-				isValidClaimFee=HasValidSplitClaimTotals();
-			}
-			else {
-				isValidClaimFee=CompareDouble.IsEqual(claimSelected.ClaimFee,fee);
-			}
-			if(!isValidClaimFee) {
-				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Claim fee on claim does not match ERA. Continue anyway?")) {
+				if(!HasValidSplitClaimTotals() && !MsgBox.Show(MsgBoxButtons.OKCancel,EraClaimMismatch.GetSplitClaimFeeMismatchMessage(fee))) {
 					return;
 				}
 			}
-			if(claimSelected.ClaimType=="PreAuth" && _hx835_Claim.DateServiceStart.Date.Year<=1900) {
-				//Some 835s for PreaAuths have been returning 01/01/1900 as an equivalent to DateTime.MinVale. We will treat them as logically equal.
+			else if(EraClaimMismatch.IsClaimFeeMismatch(claimSelected,_hx835_Claim)) {
+				if(!MsgBox.Show(MsgBoxButtons.OKCancel,EraClaimMismatch.GetClaimFeeMismatchMessage(claimSelected.ClaimFee,fee))) {
+					return;
+				}
 			}
-			else if((claimSelected.DateService.Date.CompareTo(_hx835_Claim.DateServiceStart.Date) < 0)
-				|| (claimSelected.DateService.Date.CompareTo(_hx835_Claim.DateServiceEnd.Date) > 0))
-			{
-				if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Date of service on claim does not match service date range on ERA. Continue anyway?")) {
+			//Some 835s for PreAuths have been returning 01/01/1900 as an equivalent to DateTime.MinVale. EraClaimMismatch treats them as logically equal.
+			if(EraClaimMismatch.IsDateOfServiceMismatch(claimSelected,_hx835_Claim)) {
+				string message=EraClaimMismatch.GetDateOfServiceMismatchMessage(claimSelected.DateService,_hx835_Claim.DateServiceStart,_hx835_Claim.DateServiceEnd);
+				if(!MsgBox.Show(MsgBoxButtons.OKCancel,message)) {
 					return;
 				}
 			}

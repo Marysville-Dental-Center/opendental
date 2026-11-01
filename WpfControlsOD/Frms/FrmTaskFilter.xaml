@@ -25,7 +25,7 @@
 			<ui:RadioButton x:Name="radioPatientMain" Text="Patient Selected In Main Window" Height="20" Margin="20,45,0,0" Width="235"/>
 			<ui:RadioButton x:Name="radioPatientSelectedTask" Text="Patient On Selected Task" Height="20" Margin="20,0,0,0" Width="165" VerticalAlignment="Center"/>
 			<ui:RadioButton x:Name="radioSpecificPatient" Text="Specific Patient" Height="20" Margin="20,85,0,0" Width="165"/>
-			<ui:Button x:Name="butSelectPatient" Text="..." Height="24" Margin="253,108,0,0" Width="25" RenderTransformOrigin="-0.2,1.542"/>
+			<ui:Button x:Name="butSelectPatient" Text="..." Height="24" Margin="253,108,0,0" Width="25" RenderTransformOrigin="-0.2,1.542" Click="butSelectPatient_Click"/>
 			<ui:TextBox x:Name="textPatientSelected" Height="20" Margin="38,110,0,0" Text="" Width="210" ReadOnly="True" ColorBack="#FFEDEDED"/>
 		</ui:GroupBox>
 		<ui:GroupBox Height="126" Text="Clinic or Region" Margin="336,29,0,0" Width="320">

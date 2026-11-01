@@ -51,7 +51,7 @@ namespace OpenDentBusiness {
 		///The return type of this function is whatever the return type of the method you passed in is.
 		///Throws an exception if anything went wrong executing func within the thread.</summary>
 		public static T RunFuncOnReadOnlyServer<T>(Func<T> func,bool doRunOnReadOnlyServer=true) {
-			if(!doRunOnReadOnlyServer) {
+			if(!doRunOnReadOnlyServer || ReplicationDelay.IsReadFromPrimaryRequired()) {//B-SERVER: read delay after a write
 				return func();
 			}
 			Exception ex=null;

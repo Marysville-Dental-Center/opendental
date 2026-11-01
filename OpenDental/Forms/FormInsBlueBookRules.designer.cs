@@ -160,7 +160,7 @@ namespace OpenDental{
 			this.labelUcrFeePercent.Name = "labelUcrFeePercent";
 			this.labelUcrFeePercent.Size = new System.Drawing.Size(123, 21);
 			this.labelUcrFeePercent.TabIndex = 272;
-			this.labelUcrFeePercent.Text = "UCR Fee Percent";
+			this.labelUcrFeePercent.Text = "Provider Fee Percent";
 			this.labelUcrFeePercent.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
 			// groupBlueBookSettings

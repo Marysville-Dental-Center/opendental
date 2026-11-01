@@ -11,7 +11,7 @@ using System.Globalization;
 
 namespace OpenDentBusiness {
 	///<summary></summary>
-	public class Benefits {
+	public partial class Benefits {
 		///<summary></summary>
 		public static List<Benefit> GetPatientData(List<PatPlan> listPatPlans,List<InsSub> listInsSubs) {
 			Meth.NoCheckMiddleTierRole();
@@ -459,6 +459,8 @@ namespace OpenDentBusiness {
 			#region calculate individual already paid this year
 			List<ClaimProcHist> listClaimProcHistsPat=listClaimProcHists.FindAll(x => x.PatNum==patNum);
 			double retVal=GetDeductibleRemainingHelper(insPlan,dateProc,benefitInd,benefitIndGeneral,listClaimProcHistsPat);
+			//Treatment plan loop entries estimated as of another benefit period do not use this period's deductible (Open Dental 25.4).
+			GetBenefitPeriod(dateProc,insPlan,out DateTime dateStartPeriod,out DateTime dateEndPeriod);
 			#endregion
 			#region reduce by amount individual already paid in loopList
 			//now, do a similar thing with loopList, individ-----------------------------------------------------------------------
@@ -500,6 +502,9 @@ namespace OpenDentBusiness {
 				}
 				if(listClaimProcHistsLoop[i].PatNum != patNum) {
 					continue;//this is for someone else in the family
+				}
+				if(!IsLoopHistInPeriod(listClaimProcHistsLoop[i],benefitInd,dateStartPeriod,dateEndPeriod)) {
+					continue;
 				}
 				//Loop list needs to consider procedure specific codes so that deductibles apply to other procedures within a TP if necessary.  E.g. Unit Test 16
 				if(benefitInd.CodeNum!=0) {//specific code
@@ -547,7 +552,8 @@ namespace OpenDentBusiness {
 				return 0;
 			}
 			double deductUsedInLoopList=0;//sum up the deductibles in looplist for the current plan
-			List<ClaimProcHist> listClaimProcHistsLoopInsPlan=listClaimProcHistsLoop.FindAll(x => x.PlanNum==planNum && x.PatNum==patNum);
+			List<ClaimProcHist> listClaimProcHistsLoopInsPlan=listClaimProcHistsLoop.FindAll(x => x.PlanNum==planNum && x.PatNum==patNum
+				&& IsLoopHistInPeriod(x,benefitIndGeneral??benefitInd,dateStartPeriod,dateEndPeriod));
 			for(int i=0;i<listClaimProcHistsLoopInsPlan.Count;i++) {
 				deductUsedInLoopList+=Math.Max(listClaimProcHistsLoopInsPlan[i].Deduct,0);
 			}
@@ -572,6 +578,9 @@ namespace OpenDentBusiness {
 			for(int i=0;i<listClaimProcHistsLoop.Count;i++) {
 				if(listClaimProcHistsLoop[i].PlanNum != planNum) {
 					continue;//different plan
+				}
+				if(!IsLoopHistInPeriod(listClaimProcHistsLoop[i],benefitFam??benefitFamGeneral,dateStartPeriod,dateEndPeriod)) {
+					continue;
 				}
 				//Loop list needs to consider procedure specific codes so that deductibles apply to other procedures within a TP if necessary.
 				if(benefitFam.CodeNum!=0) {//specific code
@@ -710,9 +719,12 @@ namespace OpenDentBusiness {
 		///There don't seem to be any situations where multiple limitations would each partially reduce coverage for a single code, other than ind/fam.  
 		///The returned value will be the original insEstTotal passed in unless there was some limitation that reduced it.
 		///Considers InsEstTotalOverride when dynamically writing the EstimateNote.</summary>
+		///<param name="toothNum">The procedure's tooth, for age limitations limited to teeth (Open Dental 26.1). Blank for a procedure with no tooth.</param>
+		///<param name="toothRange">The procedure's tooth range (comma separated), for age limitations limited to teeth.</param>
 		public static double GetLimitationByCode(List<Benefit> listBenefits,long planNum,long patPlanNum,DateTime procDate,
 			string procCodeStr,List<ClaimProcHist> listClaimProcHists,List<ClaimProcHist> listClaimProcHistsLoop,InsPlan insPlan,long patNum,out string note,
-			double insEstTotal,int patientAge,long insSubNum,double insEstTotalOverride,out LimitationTypeMet limitationTypeMet) {
+			double insEstTotal,int patientAge,long insSubNum,double insEstTotalOverride,out LimitationTypeMet limitationTypeMet,string toothNum="",
+			string toothRange="") {
 			Meth.NoCheckMiddleTierRole();
 			note ="";
 			limitationTypeMet=LimitationTypeMet.None;
@@ -791,7 +803,7 @@ namespace OpenDentBusiness {
 					//If it's an age based limitation, then make sure the patient age matches.
 					//If we have an age match, then we exit the method right here.
 					if(listBenefitsShort[i].QuantityQualifier==BenefitQuantity.AgeLimit && listBenefitsShort[i].Quantity > 0) {
-						if(patientAge > listBenefitsShort[i].Quantity) {
+						if(IsAgeLimitForTeeth(listBenefitsShort[i],listBenefitsShort,toothNum,toothRange) && patientAge > listBenefitsShort[i].Quantity) {
 							note=Lans.g("Benefits","Age limitation:")+" "+listBenefitsShort[i].Quantity.ToString();
 							limitationTypeMet=LimitationTypeMet.Aging;
 							return 0;//not covered if too old.
@@ -836,7 +848,7 @@ namespace OpenDentBusiness {
 				//If it's an age based limitation, then make sure the patient age matches.
 				//If we have an age match, then we exit the method right here.
 				if(listBenefitsShort[i].QuantityQualifier==BenefitQuantity.AgeLimit && listBenefitsShort[i].Quantity > 0) {
-					if(patientAge > listBenefitsShort[i].Quantity) {
+					if(IsAgeLimitForTeeth(listBenefitsShort[i],listBenefitsShort,toothNum,toothRange) && patientAge > listBenefitsShort[i].Quantity) {
 						note=Lans.g("Benefits","Age limitation:")+" "+listBenefitsShort[i].Quantity.ToString();
 						limitationTypeMet=LimitationTypeMet.Aging;
 						return 0;//not covered if too old.
@@ -878,7 +890,7 @@ namespace OpenDentBusiness {
 				//if it's an age based limitation, then make sure the patient age matches.
 				//If we have an age match, then we exit the method right here.
 				if(listBenefitsShort[i].QuantityQualifier==BenefitQuantity.AgeLimit && listBenefitsShort[i].Quantity > 0){
-					if(patientAge > listBenefitsShort[i].Quantity){
+					if(IsAgeLimitForTeeth(listBenefitsShort[i],listBenefitsShort,toothNum,toothRange) && patientAge > listBenefitsShort[i].Quantity){
 						note=Lans.g("Benefits","Age limitation:")+" "+listBenefitsShort[i].Quantity.ToString();
 						limitationTypeMet=LimitationTypeMet.Aging;
 						return 0;//not covered if too old.
@@ -894,7 +906,8 @@ namespace OpenDentBusiness {
 				if(!CodeGroups.IsProcInCodeGroup(procCodeStr,listCodeGroups[i])) {//range aware, whole codes only
 					continue;
 				}
-				Benefit benefitAgeLimit=listBenefitsShort.Find(x=>x.CodeGroupNum==listCodeGroups[i].CodeGroupNum && IsAgeLimit(x));
+				Benefit benefitAgeLimit=listBenefitsShort.Find(x=>x.CodeGroupNum==listCodeGroups[i].CodeGroupNum && IsAgeLimit(x)
+					&& IsAgeLimitForTeeth(x,listBenefitsShort,toothNum,toothRange));
 				if(benefitAgeLimit!=null && benefitAgeLimit.Quantity > 0 && patientAge > benefitAgeLimit.Quantity) {
 					note=Lans.g("Benefits","Age limitation:")+" "+benefitAgeLimit.Quantity.ToString();
 					limitationTypeMet=LimitationTypeMet.Aging;
@@ -984,7 +997,7 @@ namespace OpenDentBusiness {
 				//If it's an age based limitation, then make sure the patient age matches.
 				//If we have an age match, then we exit the method right here.
 				if(listBenefitsShort[i].QuantityQualifier==BenefitQuantity.AgeLimit && listBenefitsShort[i].Quantity > 0) {
-					if(patientAge > listBenefitsShort[i].Quantity) {
+					if(IsAgeLimitForTeeth(listBenefitsShort[i],listBenefitsShort,toothNum,toothRange) && patientAge > listBenefitsShort[i].Quantity) {
 						note=Lans.g("Benefits","Age limitation:")+" "+listBenefitsShort[i].Quantity.ToString();
 						limitationTypeMet=LimitationTypeMet.Aging;
 						return 0;//not covered if too old.
@@ -1035,6 +1048,8 @@ namespace OpenDentBusiness {
 			//establish date range for procedures to consider
 			DateTime dateStart=BenefitLogic.ComputeRenewDate(procDate,insPlan.MonthRenew);
 			DateTime dateEnd=dateStart.AddYears(1).AddDays(-1);//Consider all claim procs with a ProcDate within one year of the renew date
+			//Treatment plan loop entries estimated as of another benefit period do not use this period's max (Open Dental 25.4).
+			DateTime dateStartPeriod=dateStart;
 			//Get deep copies of some cache classes so that we do not waste time in loops down below.
 			if(benefitInd!=null) {
 				if(benefitInd.TimePeriod==BenefitTimePeriod.Lifetime) {
@@ -1106,6 +1121,9 @@ namespace OpenDentBusiness {
 					}
 					if(listClaimProcHistsLoop[i].PatNum != patNum) {
 						continue;//this is for someone else in the family
+					}
+					if(!IsLoopHistInPeriod(listClaimProcHistsLoop[i],benefitInd,dateStartPeriod,dateEnd)) {
+						continue;
 					}
 					if(benefitInd.CodeNum!=0) {//specific code
 						//Enhance this later when code spans are supported.
@@ -1283,6 +1301,9 @@ namespace OpenDentBusiness {
 			for(int i=0;i<listClaimProcHistsLoop.Count;i++) {
 				if(listClaimProcHistsLoop[i].PlanNum != planNum) {
 					continue;//different plan
+				}
+				if(!IsLoopHistInPeriod(listClaimProcHistsLoop[i],benefitFam,dateStartPeriod,dateEnd)) {
+					continue;
 				}
 				if(benefitFam.CodeNum!=0) {//specific code
 					if(ProcedureCodes.GetStringProcCode(benefitFam.CodeNum)!=listClaimProcHistsLoop[i].StrProcCode) {
@@ -2560,15 +2581,15 @@ namespace OpenDentBusiness {
 			if(!IsFrequencyLimitation(benefit) && benefit.TreatArea!=TreatmentArea.None) {
 				Add(EnumBenefitField.TreatArea,"Treatment Area can only be used for limitation benefits.");
 			}
-			if(!string.IsNullOrWhiteSpace(benefit.ToothRange) && benefit.BenefitType!=InsBenefitType.Exclusions) {
-				Add(EnumBenefitField.Teeth,"Teeth can only be entered for exclusions.");
+			if(!string.IsNullOrWhiteSpace(benefit.ToothRange) && !CanHaveTeeth(benefit.BenefitType,benefit.QuantityQualifier)) {
+				Add(EnumBenefitField.Teeth,"Teeth can only be entered for exclusions and age limitations.");
 			}
 			return listErrors;
 		}
 
 		///<summary>Builds the benefit one row of the Other Benefits grid describes, as a copy of benefitBase (which keeps BenefitNum, CodeNum and
 		///CodeGroupNum) with the row's values, and checks it with GetValidationErrors. listErrors also gets the values that do not parse. Teeth are
-		///kept only for exclusions and are parsed in the given nomenclature. Returns null when the row has errors.</summary>
+		///kept only for exclusions and age limitations (Open Dental 26.1) and are parsed in the given nomenclature. Returns null when the row has errors.</summary>
 		public static Benefit GetFromOtherBenefitsRow(Benefit benefitBase,OtherBenefitsRowInput input,long planNum,long patPlanNum,
 			ToothNumberingNomenclature toothNumberingNomenclature,out List<BenefitValidationError> listErrors)
 		{
@@ -2633,7 +2654,7 @@ namespace OpenDentBusiness {
 			benefit.QuantityQualifier=input.QuantityQualifier;
 			benefit.TreatArea=input.TreatArea;
 			benefit.ToothRange="";
-			if(benefit.BenefitType==InsBenefitType.Exclusions && input.TypeIndex>=0) {
+			if(CanHaveTeeth(benefit.BenefitType,benefit.QuantityQualifier) && input.TypeIndex>=0) {
 				try {
 					benefit.ToothRange=Tooth.ParseToothList(input.Teeth,toothNumberingNomenclature);
 				}

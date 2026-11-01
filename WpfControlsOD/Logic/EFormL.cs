@@ -180,5 +180,52 @@ namespace WpfControls {
 				comboLanguage.Items.Add(listLangs[i]);
 			}
 		}
+
+		///<summary>Open Dental 25.4: adds the office's patient fields of a compatible type to a field editor's database link combo box, after the
+		///built-in links. Call after the editor selected the current link. When the current link is a patient field, it is selected; a missing one
+		///(deleted, hidden or of another type) is added as "PatField:Name (missing)" so the link is kept when the field is saved.</summary>
+		public static void AddPatFieldDbLinks(ComboBox comboDbLink,EnumEFormFieldType eFormFieldType,string dbLinkCur){
+			List<string> listDbLinks=EFormPatFields.GetDbLinksAvailable(eFormFieldType);
+			for(int i=0;i<listDbLinks.Count;i++){
+				comboDbLink.Items.Add(listDbLinks[i],listDbLinks[i]);
+			}
+			if(!EFormPatFields.IsPatFieldLink(dbLinkCur)){
+				return;
+			}
+			if(!listDbLinks.Contains(dbLinkCur)){
+				comboDbLink.Items.Add(EFormPatFields.GetDisplayText(dbLinkCur,isMissing:true),dbLinkCur);
+			}
+			for(int i=0;i<comboDbLink.Items.Count;i++){
+				if(comboDbLink.Items.GetObjectAt(i) as string==dbLinkCur){
+					comboDbLink.SelectedIndex=i;
+					break;
+				}
+			}
+		}
+
+		///<summary>The label a field gets when the user picks a database link and the label is still empty.</summary>
+		public static string GetDefaultLabelForDbLink(string dbLink){
+			return EFormPatFields.GetDefaultLabel(dbLink);
+		}
+
+		///<summary>Open Dental 25.4: attach to a label editor's rich text box with DataObject.AddPastingHandler. Pasted RTF (Word, e-mail) or HTML
+		///(browsers) keeps basic formatting (see EFormRichPaste). Plain text, and rich text copied inside this program, paste as before.</summary>
+		public static void RichTextBox_Pasting(object sender,System.Windows.DataObjectPastingEventArgs e){
+			string xaml=null;
+			try{
+				xaml=EFormRichPaste.GetXamlForPaste(e.DataObject);
+			}
+			catch(Exception ex){
+				ex.DoNothing();//the normal paste runs
+				return;
+			}
+			if(xaml==null){
+				return;
+			}
+			System.Windows.DataObject dataObject=new System.Windows.DataObject();
+			dataObject.SetData(System.Windows.DataFormats.Xaml,xaml);
+			e.DataObject=dataObject;
+			e.FormatToApply=System.Windows.DataFormats.Xaml;
+		}
 	}
 }

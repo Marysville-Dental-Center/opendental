@@ -1702,6 +1702,59 @@ namespace OpenDentBusiness{
 			return claimNew;
 		}
 
+		///<summary>B-ERA: splits procedures off a claim that an ERA pays, with the same steps as the Split Claim button of the ERA payment window
+		///(FormEtrans835ClaimPay): InsertSplitClaim, an etrans835attach row that ties the new claim to the same ERA claim (EtransNum and
+		///ClpSegmentIndex), then the multi-visit groups of every procedure that was on the claim. When isUnsent is true the new claim is set to
+		///Unsent (U), so the office can correct it and send it again. listClaimProcsAllForClaim holds the claim's claimprocs before the split.
+		///Caller validates the claim and the claimprocs first, as for InsertSplitClaim.</summary>
+		public static Claim InsertSplitClaimForEra(Claim claimOriginal,List<ClaimProc> listClaimProcsToSplit,List<ClaimProc> listClaimProcsAllForClaim,
+			long etransNum,int clpSegmentIndex,bool isUnsent,out Etrans835Attach etrans835AttachSplit,Patient patient=null)
+		{
+			Meth.NoCheckMiddleTierRole();
+			Claim claimSplit=InsertSplitClaim(claimOriginal,listClaimProcsToSplit,patient);
+			if(isUnsent && claimSplit.ClaimStatus!="U") {
+				Claim claimSplitOld=claimSplit.Copy();
+				claimSplit.ClaimStatus="U";
+				Update(claimSplit,claimSplitOld);
+			}
+			etrans835AttachSplit=new Etrans835Attach();
+			etrans835AttachSplit.EtransNum=etransNum;
+			etrans835AttachSplit.ClpSegmentIndex=clpSegmentIndex;
+			etrans835AttachSplit.ClaimNum=claimSplit.ClaimNum;
+			Etrans835Attaches.Insert(etrans835AttachSplit);
+			MoveEraSplitAttachAfterOriginal(etrans835AttachSplit.Etrans835AttachNum,etransNum,clpSegmentIndex);
+			List<long> listProcNums=listClaimProcsAllForClaim.Select(x => x.ProcNum).Where(x => x!=0).Distinct().ToList();
+			List<Procedure> listProcedures=Procedures.GetManyProc(listProcNums,false);
+			for(int i=0;i<listProcedures.Count;i++) {
+				ProcMultiVisits.UpdateGroupForProc(listProcedures[i].ProcNum,listProcedures[i].ProcStatus);
+			}
+			return claimSplit;
+		}
+
+		///<summary>B-ERA: the X835 takes the first etrans835attach row of an ERA claim, ordered by DateTimeEntry, as the claim the ERA pays, and later
+		///rows as claims split from it. A split made by automatic processing is inserted within the same second as the original attach, so this moves
+		///the split row's DateTimeEntry one second past every other row of that ERA claim when it is not later already.</summary>
+		public static void MoveEraSplitAttachAfterOriginal(long etrans835AttachNumSplit,long etransNum,int clpSegmentIndex) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),etrans835AttachNumSplit,etransNum,clpSegmentIndex);
+				return;
+			}
+			string command="SELECT MAX(DateTimeEntry) FROM etrans835attach WHERE EtransNum="+POut.Long(etransNum)
+				+" AND ClpSegmentIndex="+POut.Int(clpSegmentIndex)+" AND Etrans835AttachNum!="+POut.Long(etrans835AttachNumSplit);
+			DateTime dateTimeOthers=PIn.DateT(Db.GetScalar(command));
+			if(dateTimeOthers.Year<1880) {
+				return;
+			}
+			command="SELECT DateTimeEntry FROM etrans835attach WHERE Etrans835AttachNum="+POut.Long(etrans835AttachNumSplit);
+			DateTime dateTimeSplit=PIn.DateT(Db.GetScalar(command));
+			if(dateTimeSplit>dateTimeOthers) {
+				return;
+			}
+			command="UPDATE etrans835attach SET DateTimeEntry="+POut.DateT(dateTimeOthers.AddSeconds(1))
+				+" WHERE Etrans835AttachNum="+POut.Long(etrans835AttachNumSplit);
+			Db.NonQ(command);
+		}
+
 		///<summary>There is a Clinic override that will cause the InsPlan-level setting to be completely ignored.  Otherwise, this just returns the insSub.AssignBen.  The override is based on the clinic of the subscriber.</summary>
 		public static bool GetAssignmentOfBenefits(Claim claim,InsSub insSub) {
 			Meth.NoCheckMiddleTierRole();

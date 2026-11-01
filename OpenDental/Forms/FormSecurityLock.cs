@@ -30,6 +30,7 @@ namespace OpenDental{
 				textDays.Text=PrefC.GetInt(PrefName.SecurityLockDays).ToString();
 			}
 			checkAdmin.Checked=PrefC.GetBool(PrefName.SecurityLockIncludesAdmin);
+			checkPayPlansExcluded.Checked=PayPlanGlobalLock.IsOn();//25.3
 		}
 
 		private void textDate_KeyDown(object sender,System.Windows.Forms.KeyEventArgs e) {
@@ -41,7 +42,7 @@ namespace OpenDental{
 			textDate.Validate();
 		}
 
-		private string CreateSecurityLog(string textDateOld,string textDaysOld,int days,bool includesAdminOld) {
+		private string CreateSecurityLog(string textDateOld,string textDaysOld,int days,bool includesAdminOld,bool payPlansExcludedOld) {
 			StringBuilder stringBuilder=new StringBuilder();
 			string textDateOldCopy=textDateOld;
 			if(textDateOld=="01/01/0001") {
@@ -55,6 +56,10 @@ namespace OpenDental{
 			}
 			if(includesAdminOld!=checkAdmin.Checked) {
 				stringBuilder.AppendLine($"Lock includes administrators changed from '{includesAdminOld}' to '{checkAdmin.Checked}'");
+			}
+			string payPlansExcludedLine=PayPlanGlobalLock.GetChangeLogLine(payPlansExcludedOld,checkPayPlansExcluded.Checked);
+			if(payPlansExcludedLine!="") {
+				stringBuilder.AppendLine(payPlansExcludedLine);
 			}
 			return stringBuilder.ToString();
 		}
@@ -89,12 +94,14 @@ namespace OpenDental{
 			string textDateOld=PrefC.GetDate(PrefName.SecurityLockDate).ToShortDateString();
 			string textDaysOld=PrefC.GetInt(PrefName.SecurityLockDays).ToString();
 			bool includesAdminOld=PrefC.GetBool(PrefName.SecurityLockIncludesAdmin);
+			bool payPlansExcludedOld=PayPlanGlobalLock.IsOn();
 			if(Prefs.UpdateString(PrefName.SecurityLockDate,POut.Date(date,false))
 				| Prefs.UpdateInt(PrefName.SecurityLockDays,days)
-				| Prefs.UpdateBool(PrefName.SecurityLockIncludesAdmin,checkAdmin.Checked)  )
+				| Prefs.UpdateBool(PrefName.SecurityLockIncludesAdmin,checkAdmin.Checked)
+				| PayPlanGlobalLock.Save(checkPayPlansExcluded.Checked)  )
 			{
 				DataValid.SetInvalid(InvalidType.Prefs);
-				string log=CreateSecurityLog(textDateOld,textDaysOld,days,includesAdminOld);
+				string log=CreateSecurityLog(textDateOld,textDaysOld,days,includesAdminOld,payPlansExcludedOld);
 				SecurityLogs.MakeLogEntry(EnumPermType.SecurityGlobal,0,log.ToString());
 			}
 			DialogResult=DialogResult.OK;

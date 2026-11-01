@@ -25,6 +25,8 @@ namespace OpenDental {
 			if(IsFolderMode) {
 				Text=Lan.g(this,"Insert Folder Link");
 			}
+			//v25_2-wiki-readonly-offline: say what the read-only copy does with a file link.
+			labelReadOnlyCopy.Visible=(!IsFolderMode && WikiStaticExport.IsEnabled());
 		}
 
 		private void butBrowse_Click(object sender,EventArgs e) {

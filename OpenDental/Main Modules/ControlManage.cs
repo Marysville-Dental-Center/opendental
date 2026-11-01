@@ -737,9 +737,13 @@ namespace OpenDental{
 			else {
 				_listEmployees=Employees.GetDeepCopy(true);
 			}
+			long supervisorEmployeeNum=FillComboReportsTo();//Reports To filter (25.3), in ControlManage.ReportsTo.cs
 			for(int i=0;i<_listEmployees.Count();i++) {
 				bool isEmployeeFNameStartingWithFilterName=_listEmployees[i].FName.ToLower().StartsWith(textFilterName.Text.ToLower());
 				if(textFilterName.Text!="" && !isEmployeeFNameStartingWithFilterName) {
+					continue;
+				}
+				if(!EmployeeReportsTo.IsShown(_listEmployees[i],supervisorEmployeeNum)) {
 					continue;
 				}
 				row=new GridRow();

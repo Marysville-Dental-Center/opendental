@@ -84,7 +84,9 @@ namespace OpenDentBusiness.ForkMigrations {
 		}
 
 		///<summary>Changes a column's definition when it differs from definition (written the way SHOW CREATE TABLE prints it). When the new definition is
-		///NOT NULL and the column holds NULLs, sqlNullReplacement (an SQL literal such as '') is written into those rows first. Returns true if the column
+		///NOT NULL and the column holds NULLs, sqlNullReplacement (an SQL literal such as '') is written into those rows first. Filling a NULL is not an
+		///edit of the row, so the table's ON UPDATE timestamps (SecDateTEdit, DateTStamp) keep their values, as SecurityHash's rehash keeps them
+		///(claimpayment.Note's table has SecDateTEdit; the adoption rehearsal requires every audit timestamp unchanged). Returns true if the column
 		///changed. Throws if the column does not exist.</summary>
 		public bool EnsureColumnDefinition(string tableName,string columnName,string definition,string sqlNullReplacement=null) {
 			RequireTable(tableName);
@@ -96,7 +98,11 @@ namespace OpenDentBusiness.ForkMigrations {
 				return false;
 			}
 			if(sqlNullReplacement!=null) {
-				ExecuteData("UPDATE `"+tableName+"` SET `"+columnName+"`="+sqlNullReplacement+" WHERE `"+columnName+"` IS NULL");
+				string keepTimestamps=string.Concat(GetTable(tableName).Columns
+					.Where(x => !string.Equals(x.Name,columnName,StringComparison.OrdinalIgnoreCase)
+						&& x.Definition.IndexOf("on update",StringComparison.OrdinalIgnoreCase)>=0)
+					.Select(x => ",`"+x.Name+"`=`"+x.Name+"`"));
+				ExecuteData("UPDATE `"+tableName+"` SET `"+columnName+"`="+sqlNullReplacement+keepTimestamps+" WHERE `"+columnName+"` IS NULL");
 			}
 			Execute("ALTER TABLE `"+tableName+"` MODIFY COLUMN `"+columnName+"` "+definition,tableName);
 			return true;

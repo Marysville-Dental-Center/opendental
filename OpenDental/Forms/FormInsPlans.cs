@@ -53,8 +53,12 @@ namespace OpenDental{
 			_table=InsPlans.GetBigList(radioOrderEmp.Checked,textEmployer.Text,textCarrier.Text,
 				textGroupName.Text,textGroupNum.Text,textPlanNum.Text,textTrojanID.Text,checkShowHidden.Checked,isGetAll);
 			int selectedRow;//preserves the selected row.
+			string planNumSelected="";//The grid may have been sorted by a column, so the selected plan is found again by PlanNum.
 			if(gridMain.SelectedIndices.Length==1){
 				selectedRow=gridMain.SelectedIndices[0];
+				if(gridMain.ListGridRows[selectedRow].Tag is DataRow dataRowSelected) {
+					planNumSelected=dataRowSelected["PlanNum"].ToString();
+				}
 			}
 			else{
 				selectedRow=-1;
@@ -96,6 +100,8 @@ namespace OpenDental{
 			gridMain.Columns.Add(col);
 			col=new GridColumn(Lans.g("TableInsurancePlans","Subs"),40);
 			gridMain.Columns.Add(col);
+			col=new GridColumn(Lans.g("TableInsurancePlans","In Net"),45,HorizontalAlignment.Center);//25.3: PPO, flat copay and capitation plans
+			gridMain.Columns.Add(col);
 			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
 				col=new GridColumn(Lan.g("TableCarriers","CDAnet"),50);
 				gridMain.Columns.Add(col);
@@ -122,17 +128,27 @@ namespace OpenDental{
 				row.Cells.Add(_table.Rows[i]["noSendElect"].ToString());
 				row.Cells.Add(_table.Rows[i]["ElectID"].ToString());
 				row.Cells.Add(_table.Rows[i]["subscribers"].ToString());
+				row.Cells.Add(_table.Rows[i]["InNet"].ToString());
 				if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
 					row.Cells.Add((_table.Rows[i]["IsCDA"].ToString()=="0")?"":"X");
 				}
 				if(trojan){
 					row.Cells.Add(_table.Rows[i]["TrojanID"].ToString());
 				}
+				row.Tag=_table.Rows[i];//The grid can be sorted by column, so rows are read through their tag, not by index into _table.
 				gridMain.ListGridRows.Add(row);
 			}
 			gridMain.EndUpdate();
+			if(planNumSelected!="") {
+				selectedRow=gridMain.ListGridRows.FindIndex(x => ((DataRow)x.Tag)["PlanNum"].ToString()==planNumSelected);
+			}
 			gridMain.SetSelected(selectedRow,true);
 			Cursor=Cursors.Default;
+		}
+
+		///<summary>The row of _table that a grid row shows, also after the user sorted the grid by a column.</summary>
+		private DataRow GetDataRow(int gridRowIndex) {
+			return (DataRow)gridMain.ListGridRows[gridRowIndex].Tag;
 		}
 
 		private bool InsPlanExists(InsPlan insPlan) {
@@ -145,7 +161,7 @@ namespace OpenDental{
 		}
 
 		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e){
-			InsPlan insPlan=InsPlans.GetPlan(PIn.Long(_table.Rows[e.Row]["PlanNum"].ToString()),null);
+			InsPlan insPlan=InsPlans.GetPlan(PIn.Long(GetDataRow(e.Row)["PlanNum"].ToString()),null);
 			if(!InsPlanExists(insPlan)) {
 				return;
 			}
@@ -193,8 +209,8 @@ namespace OpenDental{
 			}
 			InsPlan[] insPlanSelectedArray=new InsPlan[gridMain.SelectedIndices.Length];
 			for(int i=0;i<insPlanSelectedArray.Length;i++){
-				insPlanSelectedArray[i]=InsPlans.GetPlan(PIn.Long(_table.Rows[gridMain.SelectedIndices[i]]["PlanNum"].ToString()),null);
-				insPlanSelectedArray[i].NumberSubscribers=PIn.Int(_table.Rows[gridMain.SelectedIndices[i]]["subscribers"].ToString());
+				insPlanSelectedArray[i]=InsPlans.GetPlan(PIn.Long(GetDataRow(gridMain.SelectedIndices[i])["PlanNum"].ToString()),null);
+				insPlanSelectedArray[i].NumberSubscribers=PIn.Int(GetDataRow(gridMain.SelectedIndices[i])["subscribers"].ToString());
 			}
 			using FormInsPlansMerge formInsPlansMerge=new FormInsPlansMerge();
 			formInsPlansMerge.InsPlanArrayAll=insPlanSelectedArray;
@@ -261,9 +277,9 @@ namespace OpenDental{
 			}
 			FillGrid();
 			//highlight the merged plan
-			for(int i=0;i<_table.Rows.Count;i++){
+			for(int i=0;i<gridMain.ListGridRows.Count;i++){
 				for(int j=0;j<insPlanSelectedArray.Length;j++){
-					if(_table.Rows[i]["PlanNum"].ToString()==insPlanSelectedArray[j].PlanNum.ToString()){
+					if(GetDataRow(i)["PlanNum"].ToString()==insPlanSelectedArray[j].PlanNum.ToString()){
 						gridMain.SetSelected(i,true);
 					}
 				}

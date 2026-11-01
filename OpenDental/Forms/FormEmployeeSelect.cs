@@ -177,7 +177,7 @@ namespace OpenDental{
 		}
 
 		private void butExport_Click(object sender, EventArgs e){
-			gridMain.Export("Employees");
+			gridMain.ShowExportMenu(butExport,"Employees");//25.3: Export .csv or Export .txt
 		}
 
 		private void FormEmployee_Closing(object sender, System.ComponentModel.CancelEventArgs e) {

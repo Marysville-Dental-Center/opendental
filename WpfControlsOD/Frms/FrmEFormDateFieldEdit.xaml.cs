@@ -76,6 +76,7 @@ namespace OpenDental {
 			else {
 				comboDbLink.SelectedIndex=idxSelect;
 			}
+			EFormL.AddPatFieldDbLinks(comboDbLink,EnumEFormFieldType.DateField,EFormFieldCur.DbLink);//Open Dental 25.4: patient fields
 			checkIsRequired.Checked=EFormFieldCur.IsRequired;
 			checkAutoImport.Checked=EFormFieldCur.AutoImport;
 			SetAutoImportControls();

@@ -60,6 +60,10 @@ namespace OpenDentBusiness{
 						retVal.Add(SheetFieldDef.NewSpecial("PanelEcw",0,0,411,50));//Has growthBehavior logic in FormSheetFieldSpecial.cs
 					}
 					break;
+				case SheetTypeEnum.Statement://25.3: places the inserter barcode (StatementInserterBarcode) on a custom statement layout.
+					retVal.Add(SheetFieldDef.NewSpecial(StatementInserterBarcode.FIELD_NAME,0,0,StatementInserterBarcode.DEFAULT_WIDTH,
+						StatementInserterBarcode.DEFAULT_HEIGHT));
+					break;
 			}
 			return retVal;
 		}

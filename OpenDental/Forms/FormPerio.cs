@@ -186,13 +186,14 @@ namespace OpenDental{
 		private ColRow GetColRowForMobility(int toothNum) {
 			int yVal;
 			int xVal;
+			//Rows come from the chart's layout; they were fixed numbers before the auto Att Ging rows (24.4) were added.
 			if(toothNum <= 16) {
 				xVal=(toothNum-1)*3+2;//Middle cell
-				yVal=10;
+				yVal=contrPerio.GetTableRowForSection(0,PerioSequenceType.Mobility);
 			}
 			else {//ToothNum >= 17
 				xVal=47-(toothNum-17)*3;
-				yVal=32;
+				yVal=contrPerio.GetTableRowForSection(3,PerioSequenceType.Mobility);
 			}
 			return new ColRow(xVal,yVal);
 		}
@@ -200,44 +201,21 @@ namespace OpenDental{
 		///<summary>Returns a colrow for the tooth's passed in.</summary>
 		private ColRow GetColRowForTooth(int toothNum,bool isFacial) {
 			int x=-1;
-			int y=-1;
 			bool isLingual=!isFacial;
 			if(isFacial && toothNum.Between(1,16)) {
 				x=(toothNum)*3-2;
-				if (checkShowCurrent.Checked) {
-					y=5;
-				}
-				else {
-					y=6-Math.Min(6,contrPerio.IdxExamSelected+1);
-				}
 			}
 			else if(isFacial && toothNum.Between(17,32)) {
 				x=(32-toothNum)*3+1;
-				if (checkShowCurrent.Checked) {
-					y=37;
-				}
-				else {
-					y=36+Math.Min(6,contrPerio.IdxExamSelected+1);
-				}
 			}
 			else if(isLingual && toothNum.Between(1,16)) {
 				x=(toothNum)*3;
-				if (checkShowCurrent.Checked) {
-					y=15;
-				}
-				else {
-					y=14+Math.Min(6,contrPerio.IdxExamSelected+1);
-				}
 			}
 			else {//if(isLingual && toothNum.Between(17,32)) {
 				x=(32-toothNum)*3+3;
-				if (checkShowCurrent.Checked) {
-					y=26;
-				}
-				else {
-					y=27-Math.Min(6,contrPerio.IdxExamSelected+1);
-				}
 			}
+			//The probing row of the selected exam, which accounts for "Show current exam only" (FillGrid passes checkShowCurrent to the chart).
+			int y=contrPerio.GetTableRowForSection(contrPerio.GetSection(toothNum,isFacial),PerioSequenceType.Probing);
 			return new ColRow(x,y);
 		}
 
@@ -343,6 +321,14 @@ namespace OpenDental{
 		private int GetToothNumFromColRow(ColRow colRow) {
 			PerioCell perioCell=contrPerio.GetPerioCellFromColRow(colRow);
 			return perioCell.ToothNum;
+		}
+
+		///<summary>Labels the gingival margin count row and the Ging Marg + check box with the chart's term: Ging Marg, or Recession when that Perio
+		///Setup option is on and the displayed exam has no hyperplasia (24.4).</summary>
+		private void SetGingMarginTermLabels() {
+			string gingMarginTerm=contrPerio.GetGingMarginTerm();
+			label10.Text=Lan.g(this,gingMarginTerm);
+			checkGingMarg.Text=Lan.g(this,gingMarginTerm+" +");
 		}
 
 		private void LayoutMenu(){
@@ -545,6 +531,10 @@ namespace OpenDental{
 		#endregion Methods - Event Handlers public
 
 		#region Methods - Event Handlers private
+		private void contrPerio_GingMarginTermChanged(object sender,EventArgs e) {
+			SetGingMarginTermLabels();
+		}
+
 		private void FormPerio_Closing(object sender, System.ComponentModel.CancelEventArgs e) {
 			//There is no OK vs Cancel. It just always saves.
 			if(_perioExam!=null) { //When no Exam is selected or ExamList is empty we don't want to save ExamNotes.
@@ -596,6 +586,8 @@ namespace OpenDental{
 		}
 
 		private void FormPerio_Load(object sender, System.EventArgs e) {
+			contrPerio.GingMarginTermChanged+=contrPerio_GingMarginTermChanged;
+			SetGingMarginTermLabels();
 			labelListening.Visible=false;
 			_listDefsMiscColors=Defs.GetDefsForCategory(DefCat.MiscColors,isShort:true);
 			butColorBleed.BackColor=_listDefsMiscColors[(int)DefCatMiscColors.PerioBleeding].ItemColor;
@@ -701,7 +693,9 @@ namespace OpenDental{
 				return;
 			}
 			using FormPerioSetup formPerioSetup=new FormPerioSetup();
-			formPerioSetup.ShowDialog();
+			if(formPerioSetup.ShowDialog()==DialogResult.OK) {
+				contrPerio.RefreshGingMarginLabels();//the Recession option may have changed; raises GingMarginTermChanged
+			}
 		}
 
 		private void pd2_PrintPage(object sender, PrintPageEventArgs printPageEventArgs){//raised for each page to be printed.
@@ -711,10 +705,11 @@ namespace OpenDental{
 			float xPos=100;
 			g.TranslateTransform(xPos,yPos);
 			contrPerio.DrawChart(g);//have to print graphics first, or they cover up title.
+			//Each auto Att Ging row (24.4) above a letter moves it down by one short row (13).
 			g.DrawString("F",new Font("Arial",15),Brushes.Black,new Point(-26,92));
-			g.DrawString("L",new Font("Arial",15),Brushes.Black,new Point(-26,212));
-			g.DrawString("L",new Font("Arial",15),Brushes.Black,new Point(-26,416));
-			g.DrawString("F",new Font("Arial",15),Brushes.Black,new Point(-26,552));
+			g.DrawString("L",new Font("Arial",15),Brushes.Black,new Point(-26,212+13));
+			g.DrawString("L",new Font("Arial",15),Brushes.Black,new Point(-26,416+13));
+			g.DrawString("F",new Font("Arial",15),Brushes.Black,new Point(-26,552+3*13));
 			g.TranslateTransform(-xPos,-yPos);
 			yPos=67;
 			xPos=100;
@@ -743,7 +738,7 @@ namespace OpenDental{
 			g.DrawString(time,new Font("Arial",11),Brushes.Black,
 				new RectangleF(xPos,yPos,650,25),stringFormat);
 			yPos+=20;//Offset for printed text
-			yPos+=688;//Offset for grid that we already drew.
+			yPos+=688+3*13-19;//Offset for grid that we already drew: 3 auto Att Ging rows taller (24.4), with a smaller gap below it so the summary still fits the page.
 			using Font font=new Font("Arial",9);
 			g.FillEllipse(new SolidBrush(butColorPlaque.BackColor),xPos,yPos+3,8,8);
 			g.DrawString(Lan.g(this,"Plaque Index:")+" "+contrPerio.ComputeIndex(BleedingFlags.Plaque)+" %"
@@ -769,7 +764,11 @@ namespace OpenDental{
 				+ConvertListToString(contrPerio.CountTeeth(PerioSequenceType.MGJ))
 				,font,Brushes.Black,xPos,yPos);
 			yPos+=20;
-			g.DrawString(Lan.g(this,"Teeth with Gingival Margin greater than or equal to")+" "+textRedGing.Text+" mm: "
+			string textTeethWithGingMargin=Lan.g(this,"Teeth with Gingival Margin greater than or equal to");
+			if(contrPerio.GetGingMarginTerm()==PerioMeasures.TermRecession) {//Perio Setup option (24.4)
+				textTeethWithGingMargin=Lan.g(this,"Teeth with Recession greater than or equal to");
+			}
+			g.DrawString(textTeethWithGingMargin+" "+textRedGing.Text+" mm: "
 				+ConvertListToString(contrPerio.CountTeeth(PerioSequenceType.GingMargin))
 				,font,Brushes.Black,xPos,yPos);
 			yPos+=20;
@@ -1139,7 +1138,7 @@ namespace OpenDental{
 			Size sizeContrOriginal=contrPerio.Size;
 			contrPerio.LayoutManager.Is96dpi=true;//Tells the layoutManager not to scale the size and font again when the ContrPerio.OnResize event is called.
 			contrPerio.Font=new Font("Microsoft Sans Serif", 8.25f);
-			LayoutManager.MoveSize(contrPerio,new Size(602, 642));//Revert to default drawn grid size for printing, be sure to adjust this if the default size is changed on ContrPerio.cs, this will then trigger the ContrPerio.OnResize Event adjusting all of the formatting necessary for printing.
+			LayoutManager.MoveSize(contrPerio,new Size(602, 642+3*13));//Revert to default drawn grid size for printing (plus the 3 auto Att Ging rows of 24.4), be sure to adjust this if the default size is changed on ContrPerio.cs, this will then trigger the ContrPerio.OnResize Event adjusting all of the formatting necessary for printing.
 			PrinterL.TryPrint(pd2_PrintPage,
 				Lan.g(this,"Perio chart from")+" "+_perioExam.ExamDate+" "+Lan.g(this,"printed"),
 				_patient.PatNum,
@@ -1551,43 +1550,9 @@ namespace OpenDental{
 
 		///<summary>Moves the cursor to the probing row for the current tooth.</summary>
 		private void GoToProbing() {
-			int yVal;
-			if(_perioCellCurLocation.IsFacial) {
-				if(_perioCellCurLocation.ToothNum<=16) {
-					if(checkShowCurrent.Checked) {
-						yVal=5;
-					}
-					else {
-						yVal=6-Math.Min(6,contrPerio.IdxExamSelected+1);
-					}
-				}
-				else {//ToothNum >= 17
-					if(checkShowCurrent.Checked) {
-						yVal=37;
-					}
-					else {
-						yVal=36+Math.Min(6,contrPerio.IdxExamSelected+1);
-					}
-				}
-			}
-			else {//Lingual
-				if(_perioCellCurLocation.ToothNum<=16) {
-					if(checkShowCurrent.Checked) {
-						yVal=15;
-					}
-					else {
-						yVal=14+Math.Min(6,contrPerio.IdxExamSelected+1);
-					}
-				}
-				else {//ToothNum >= 17
-					if(checkShowCurrent.Checked) {
-						yVal=26;
-					}
-					else {
-						yVal=27-Math.Min(6,contrPerio.IdxExamSelected+1);
-					}
-				}
-			}
+			//The probing row of the selected exam for the current tooth and side.
+			int yVal=contrPerio.GetTableRowForSection(contrPerio.GetSection(_perioCellCurLocation.ToothNum,_perioCellCurLocation.IsFacial),
+				PerioSequenceType.Probing);
 			contrPerio.SetNewCell(FirstEmptyPositionX(_perioCellCurLocation.ToothNum,yVal),yVal);
 			FormPerio_ChangeTitle();
 		}
@@ -1604,29 +1569,18 @@ namespace OpenDental{
 				toothNum=GetToothNumFromColRow(colRowForTooth);
 			}
 			int yPos=-1;
+			//Rows come from the chart's layout; they were fixed numbers before the auto Att Ging rows (24.4) were added.
 			switch(perioSequenceType) {
 				case PerioSequenceType.Furcation:
-					if(toothNum<=16) {
-						yPos=(isFacial ? 9 : 12);
-					}
-					else {//ToothNum >= 17
-						yPos=(isFacial ? 33 : 30);
-					}
-					break;
 				case PerioSequenceType.GingMargin:
-					if(toothNum<=16) {
-						yPos=(isFacial ? 7 : 14);
-					}
-					else {//ToothNum >= 17
-						yPos=(isFacial ? 35 : 28);
-					}
+					yPos=contrPerio.GetTableRowForSection(contrPerio.GetSection(toothNum,isFacial),perioSequenceType);
 					break;
 				case PerioSequenceType.MGJ:
 					if(toothNum<=16) {
-						yPos=6;
+						yPos=contrPerio.GetTableRowForSection(0,PerioSequenceType.MGJ);//the maxillary lingual has no MGJ row; use the facial one
 					}
 					else {//ToothNum >= 17
-						yPos=(isFacial ? 36 : 27);
+						yPos=contrPerio.GetTableRowForSection(contrPerio.GetSection(toothNum,isFacial),PerioSequenceType.MGJ);
 					}
 					break;
 			}
