@@ -66,6 +66,9 @@ namespace ImagingCapture.Session {
 
 		partial void OnImageQuarantinedExt(AcquiredImage image,string reason,string path) {
 			WriteQuarantineEvent(image,reason,path);
+			if(Phase==CaptureSessionPhase.Finished && path!=null && Summary!=null) {
+				WriteSessionSummaryUpdate(Summary);//the summary entry was written at the finish, before this image arrived
+			}
 		}
 
 		partial void OnEnableEndedExt(TwainCaptureEnded ended,CaptureEnableRecord record,bool isRunning,ref bool isHandled) {

@@ -943,6 +943,9 @@ namespace ImagingCapture.Session {
 			if(Phase==CaptureSessionPhase.Finished) {
 				return;
 			}
+			//The source was enabled, stopping or opening: images it still delivers reach the controller only later (posted to this thread) or go
+			//to the quarantine on the closing worker, naming this session's mount and slots.
+			IsSourceStillDelivering=_enableRunning!=null || Phase==CaptureSessionPhase.Stopping || Phase==CaptureSessionPhase.Opening;
 			Phase=CaptureSessionPhase.Finished;
 			StartKind=CaptureStartKind.None;
 			ClearStopWarning();
@@ -995,6 +998,11 @@ namespace ImagingCapture.Session {
 				Reason8BitDelivered=_reason8BitDelivered,
 			};
 		}
+
+		///<summary>The session finished while the source was enabled, stopping or opening (a forced close, the X while stopping): images it still
+		///delivers are quarantined after the finish, naming this session's mount and slots, so a mount created for the session is kept
+		///(CaptureSessionLauncher), and Assign can still file them into their slots.</summary>
+		public bool IsSourceStillDelivering { get; private set; }
 
 		///<summary>No document of this session, and none before it, is in the mount: a mount created for this session is still empty.</summary>
 		public bool IsMountEmpty => _mountSlots!=null && _mountSlots.ListDocuments.All(x => x==null);

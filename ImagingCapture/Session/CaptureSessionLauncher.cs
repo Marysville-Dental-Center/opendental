@@ -211,6 +211,13 @@ namespace ImagingCapture.Session {
 					+"captures and may be assigned into its slots.");
 				return false;
 			}
+			if(controller.IsSourceStillDelivering) {
+				//Decided before the images the closing source still delivers reach the controller (posted to this thread) or the quarantine: they
+				//name this mount and their slots, and Assign files them there only while the mount exists.
+				Log("The mount "+mount.MountNum+" created for the session is kept: the session finished while the source was still enabled or stopping, "
+					+"and images it still delivers go to unassigned captures for its slots.");
+				return false;
+			}
 			try {
 				List<MountItem> listMountItems=_services.Store.GetMountItems(mount.MountNum)??new List<MountItem>();
 				List<Document> listDocuments=_services.Store.GetDocumentsForMountItems(listMountItems)??new List<Document>();

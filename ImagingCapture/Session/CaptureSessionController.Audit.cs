@@ -91,6 +91,15 @@ namespace ImagingCapture.Session {
 			WriteAudit(EnumPermType.ImageCreate,PatNum,CaptureAuditText.GetSessionSummaryText(summary),0);
 		}
 
+		///<summary>An image of the session was quarantined after its summary entry was written (the closing source delivered it): an ImageCreate
+		///entry with the quarantined count as it is now (design 10.7).</summary>
+		private void WriteSessionSummaryUpdate(CaptureSessionSummary summary) {
+			if(summary==null || !_isStarted) {
+				return;
+			}
+			WriteAudit(EnumPermType.ImageCreate,PatNum,CaptureAuditText.GetSessionSummaryUpdateText(summary),0);
+		}
+
 		private string GetRecordTargetLabel(CaptureEnableRecord record) {
 			if(record==null) {
 				return "";

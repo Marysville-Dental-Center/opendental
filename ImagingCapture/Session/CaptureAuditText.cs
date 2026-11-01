@@ -27,6 +27,16 @@ namespace ImagingCapture.Session {
 				+"; ended: "+summary.EndReason+"; in effect: "+(summary.EffectiveSettings??new CaptureEffectiveSettings()).GetText(isWithReasons:true)
 				+". Session: "+summary.SessionGuid+".";
 		}
+		///<summary>"Capture session summary updated: an image arrived after the session finished and is in unassigned captures; 2 quarantined in
+		///all. Session: ...".</summary>
+		public static string GetSessionSummaryUpdateText(CaptureSessionSummary summary) {
+			if(summary==null) {
+				return "Capture session summary updated.";
+			}
+			return "Capture session summary updated: an image arrived after the session finished and is in unassigned captures; "
+				+ToText(summary.CountQuarantined)+" quarantined in all, "+Count(summary.CountImages,"image","images")+" saved. Session: "
+				+summary.SessionGuid+".";
+		}
 		#endregion Session summary
 
 		#region Capture events (design 7.13)

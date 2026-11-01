@@ -206,7 +206,9 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(2,CaptureEvents.Count,"No second entry for the same stop.");
 			Assert.AreEqual("55|0|Capture event: an image was moved to unassigned captures on this computer. Reason: The image arrived after the capture "
 				+@"session ended. File: C:\Quarantine\late.bmp."+Tail,CaptureEvents.Last());
-			Assert.AreEqual(1,_harness.Store.GetLogs(EnumPermType.ImageCreate).Count(x => x.Contains("Capture session summary")));
+			Assert.AreEqual(1,_harness.Store.GetLogs(EnumPermType.ImageCreate).Count(x => x.Contains("Capture session summary:")),"One summary...");
+			string update=_harness.Store.GetLogs(EnumPermType.ImageCreate).Single(x => x.Contains("Capture session summary updated:"));
+			StringAssert.Contains(update,"1 quarantined in all","...and the update for the image quarantined after it (design 10.7).");
 		}
 
 		[TestMethod]

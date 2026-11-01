@@ -402,6 +402,30 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Completed_ClosedWhileTheSourceWasEnabled_CreatedMountKept_ALateQuarantineUpdatesTheSummaryEntry() {
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_clock.Advance(CaptureSessionController.KeyIgnoreMs);
+				controller.RequestStart();
+				_dispatcher.RunPending();
+				_listSessions.Single().RaiseStatus(TwainCaptureState.WaitingForImage);
+				_dispatcher.RunPending();
+				controller.OnClosing();//a logoff closes the window while the source is enabled: the forced close
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual(0,result.Summary.CountQuarantined,"Nothing has arrived yet when the launcher decides.");
+			Assert.IsFalse(result.IsEmptyMountToDelete,"The exposure the closing source still delivers names this mount's slot.");
+			//The closing worker then quarantines the exposure it still held.
+			_listSessions.Single().RaiseQuarantinedByLibrary(TestImages.Image8(4,4,(x,y) => 7));
+			_dispatcher.RunPending();
+			Assert.AreEqual(1,result.Summary.CountQuarantined);
+			Assert.AreEqual(1,_store.ListLogTexts.Count(x => x.Contains("Capture session summary updated:") && x.Contains("1 quarantined in all")),
+				"Design 10.7: the session's ImageCreate entries say how many images went to unassigned captures.\r\n"
+				+string.Join("\r\n",_store.ListLogTexts));
+		}
+
+		[TestMethod]
 		public void WindowFailsAfterAnImageWasSaved_Completed_MountKept_SourceClosed() {
 			_isWindowFailureExpected=true;
 			_windowRunner.ActionWhileShown=controller => {
