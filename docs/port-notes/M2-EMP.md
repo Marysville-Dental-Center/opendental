@@ -96,7 +96,7 @@ Targeted run: `M2EMPTests` and `M202Tests` (Employee Titles definition rules), p
 - `ControlManage.cs`: B-TIME's hook is in `FillEmps`, this package's in `SelectEmpI`; both merged on their own.
 - Still no fork migration step and no schema or row change, so the adoption tools (migration-preview, AdoptionRowCheck, allowed differences) need nothing from this package.
 
-Checks: `M2EMPTests` (34) and `BTIMETests` (28) targeted, then a full build through the lane, `run-tests -Mode Core`, and `tools/Test-NoHqHosts.ps1`.
+Checks (2026-10-31): `M2EMPTests` (34) and `BTIMETests` (28) targeted; the full build through the lane succeeded; `run-tests -Mode Core` passed, 61 assemblies (`test-results/port_m2-emp-t1.txt`); `tools/Test-NoHqHosts.ps1` passed. The slow migration and adoption assemblies were not run: this package changes no migration, schema, TableType, CRUD or adoption code.
 
 ## Questions for the owner
 
