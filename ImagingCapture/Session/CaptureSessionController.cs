@@ -33,7 +33,9 @@ namespace ImagingCapture.Session {
 	///Extension points (partial methods, implemented in other files of this partial class by CAP-4 implementer A2): ExecuteExt and
 	///CanExecuteExt (Retake, Rotate), OnImageReceivedExt (redelivered images, the patient-change monitor), OnImageSavedExt, OnImageQuarantinedExt,
 	///OnEnableEndedExt (capture events of design 7.13, redelivery, idle and patient-change stops), OnEnablePostedExt and OnTickExt (idle
-	///disable), OnStatusExt and OnFinishingExt (the session's audit entry). StopPlacement stops placing images at once (a patient change).</summary>
+	///disable), OnStatusExt and OnFinishingExt (the session's audit entry), OnBeginExt, OnDeliberateStartExt and OnFinishStartingExt (the
+	///patient-change monitor, the forced close). StopPlacement stops placing images at once (a patient change). The rules themselves are in
+	///CaptureSessionController.Retake.cs, .Monitor.cs, .Redelivery.cs and .Audit.cs.</summary>
 	public sealed partial class CaptureSessionController {
 		#region Fields
 		///<summary>Key presses in the first 2 s after the banner appears are ignored (design 7.3 step 2).</summary>
@@ -778,8 +780,9 @@ namespace ImagingCapture.Session {
 				: CaptureSessionText.GetNextImageText(enableTargetText,TargetText);
 		}
 
-		///<summary>Disables the running enable in the safe order, for reason: only called when safe disable is in effect for it, or for an operator's
-		///command after the unsafe-stop warning (design 7.6). Its images still go to the slot it was started for.</summary>
+		///<summary>Disables the running enable in the safe order, for reason. The controller's own stops (a target change, a patient change, idle,
+		///a full continuous mount) call it only when safe disable is in effect for that enable (design 7.6, 10.6). Its images still go to the slot
+		///it was started for.</summary>
 		private void StopEnableSafely(CaptureEnableRecord record,TwainCaptureStopReason reason) {
 			record.StopRequested=reason;
 			_session.Disable(reason);
