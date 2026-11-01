@@ -5,6 +5,7 @@ See header in FormOpenDental.cs for complete text.  Redistributions must retain 
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -50,6 +51,9 @@ namespace OpenDental {
 			if(_def.Category==DefCat.AdjTypes && !IsNew){
 				labelValue.Text="Not allowed to change type after an adjustment is created.";
 				textValue.Visible=false;
+			}
+			if(_def.Category==DefCat.AdjTypes) {
+				FillDefaultPercent();
 			}
 			if(_def.Category==DefCat.BillingTypes) {
 				labelValue.Text="E=Email bill, C=Collection, CE=Collection Excluded";
@@ -185,6 +189,7 @@ namespace OpenDental {
 				MsgBox.Show(this,"Name required.");
 				return;
 			}
+			string suppNew=_def.Supp;//Only adjustment types use Supp (their default percentage). Other categories keep what they have.
 			switch(_def.Category){
 				case DefCat.AccountQuickCharge:
 					string[] stringArrayProcCodesAccountQuickCharge=textValue.Text.Split(',');
@@ -209,6 +214,10 @@ namespace OpenDental {
 				case DefCat.AdjTypes:
 					if(textValue.Text!="+" && textValue.Text!="-" && textValue.Text!="dp"){
 						MessageBox.Show(Lan.g(this,"Valid values are +, -, or dp."));
+						return;
+					}
+					if(!Adjustments.TryGetSuppFromPercentInput(textDefaultPercent.Text,CultureInfo.CurrentCulture,out suppNew)) {
+						MsgBox.Show(this,"Default % must be blank, or a number from 0 to 1000 with at most 2 decimal places.");
 						return;
 					}
 					break;
@@ -308,6 +317,7 @@ namespace OpenDental {
 				default:
 					break;
 			}//end switch DefCur.Category
+			_def.Supp=suppNew;
 			_def.ItemName=textName.Text;
 			_def.ItemValue=_strSelectedValue;
 			if(_defCatOptions.EnableValue && !_defCatOptions.IsValueDefNum) {
@@ -341,6 +351,20 @@ namespace OpenDental {
 				}
 			}
 			DialogResult=DialogResult.OK;
+		}
+
+		///<summary>Open Dental 26.1: adjustment types can have a default percentage (definition.Supp), used by Percent of Fee in the adjustment
+		///windows. Shows it in the user's culture. A stored value that is not a valid percentage is shown as stored, so it is not lost silently;
+		///it must be fixed or cleared before saving.</summary>
+		private void FillDefaultPercent() {
+			labelDefaultPercent.Visible=true;
+			textDefaultPercent.Visible=true;
+			if(Adjustments.TryParseSuppPercent(_def.Supp,out decimal percent)) {
+				textDefaultPercent.Text=Adjustments.FormatPercentForDisplay(percent,CultureInfo.CurrentCulture);
+			}
+			else {
+				textDefaultPercent.Text=_def.Supp??"";
+			}
 		}
 
 	}
