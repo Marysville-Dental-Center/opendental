@@ -122,7 +122,7 @@ namespace ImagingCapture.UI {
 				BuildTeeth();
 			}
 			AttachHotkeyWindow();
-			_viewModel.Begin();
+			//Begin (the banner's 2 s, design 7.3 step 2) waits for Shown: the window is not on the screen yet.
 			_dispatcherTimer=new DispatcherTimer();
 			_dispatcherTimer.Interval=TimeSpan.FromMilliseconds(TickMs);
 			_dispatcherTimer.Tick+=dispatcherTimer_Tick;
@@ -136,6 +136,23 @@ namespace ImagingCapture.UI {
 			}
 			AttachFrameCloseCommandHook();
 			Focus();//not the tooth numbers box: keys and pedals go to the session until the operator clicks into it
+			//Design 7.3 step 2: the 2 s in which keys are ignored, and before Start is armed, count from when the banner appears. Shown means the
+			//window is on the screen; ContextIdle runs after its first render. Begin does nothing unless the session was just created.
+			Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle,new Action(BeginSession));
+		}
+
+		private void BeginSession() {
+			if(_isClosed) {
+				return;
+			}
+			try {
+				_viewModel.Begin();
+				RefreshView();
+			}
+			catch(Exception ex) {
+				LogViewError(ex);
+				Close();//as a failure in Load did: the window closes and the session takes its forced-close path
+			}
 		}
 
 		private void FrmCaptureSession_FormClosing(object sender,CancelEventArgs e) {
