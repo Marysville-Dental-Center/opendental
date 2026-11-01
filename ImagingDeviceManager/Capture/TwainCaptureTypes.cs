@@ -123,9 +123,11 @@ namespace ImagingDeviceManager.Capture {
 		public int ExtraImageCount { get; set; }
 		public int DrainedImageCount { get; set; }
 		public int TransferFailureCount { get; set; }
-		///<summary>The source may still hold images of this enable that the library did not receive: a transfer failed, or a refused disable
-		///got no notification within the bound and the second consecutive MSG_DISABLEDS was sent. The window offers redelivery where the device
-		///profile names a redelivery capability, and says not to re-expose (design 7.12, 7.13).</summary>
+		///<summary>The source may still hold images of this enable that the library did not receive: a transfer failed, or after a refused
+		///disable the source was disabled without having offered what it held (the way-out MSG_DISABLEDS succeeded, or after a second bound the
+		///last one succeeded or the source was treated as disabled). Not when the way-out was refused and the source then sent its notification
+		///and its images were received. The window offers redelivery where the device profile names a redelivery capability, and says not to
+		///re-expose (design 7.12, 7.13).</summary>
 		public bool SourceMayHoldImages { get; set; }
 		///<summary>The safe-disable capability was accepted before this enable ([Device.N] DisableIsSafe=1 and SafeDisableCap set).</summary>
 		public bool IsSafeDisableInEffect { get; set; }
@@ -133,8 +135,9 @@ namespace ImagingDeviceManager.Capture {
 		public bool WasDisableStartedUnsafe { get; set; }
 		///<summary>MSG_DISABLEDS was refused at least once (W13).</summary>
 		public bool WasDisableRefused { get; set; }
-		///<summary>A refused disable got no notification within the bound, and the second consecutive MSG_DISABLEDS was sent: a capture event
-		///(design 7.13).</summary>
+		///<summary>A refused disable got no notification within the bound, and the way-out MSG_DISABLEDS (a second one with no MSG_ENDXFER
+		///since the refusal) was sent: a capture event (design 7.13). It may have been refused by a source still finishing, the session then
+		///waiting a second bound (the log says so); SourceMayHoldImages, not this, says whether images may still be held.</summary>
 		public bool WasSecondDisableAfterWait { get; set; }
 		///<summary>The enable negotiated 16 bits.</summary>
 		public bool IsBitDepth16InEffect { get; set; }

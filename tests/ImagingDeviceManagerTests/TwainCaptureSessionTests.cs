@@ -544,7 +544,37 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
-		public void SafeDisable_RefusedAndNoNotification_SecondDisable_SourceMayHoldImages() {
+		public void SafeDisable_WayOutRefusedWhileFinishing_NotificationInTheSecondBound_ImageDrainedIntoTheEnable() {
+			ConfigureSafeDisable();
+			Options.RefusedDisableWait=TimeSpan.FromMilliseconds(400);
+			Helper.EndAfterMs=60000;
+			Helper.IgnoresCloseRequest=true;
+			Helper.ForcedEndMs=600;//Ended by the source after the first bound, within the second.
+			Helper.ActionOnEnable=() => Capture.Disable(TwainCaptureStopReason.TargetChanged);
+			_harness.OpenOrFail();
+			TwainCaptureEnded ended=_harness.WaitForEnded(EnableOne());
+			Assert.AreEqual(TwainCaptureEndReason.Stopped,ended.Reason);
+			Assert.IsTrue(ended.WasDisableRefused);
+			Assert.IsTrue(ended.WasSecondDisableAfterWait,"The way-out was sent after the first bound.");
+			Assert.IsFalse(ended.SourceMayHoldImages,"The source then delivered what it held.");
+			AcquiredImage image=_harness.Images.Single();
+			Assert.AreEqual(AcquiredImageKind.Drained,image.Kind);
+			Assert.AreEqual(TwainCaptureStopReason.TargetChanged,image.StopReason);
+			Assert.AreEqual(ended.EnableId,image.EnableId);
+			Assert.AreEqual(1,Helper.CountDelivered,"Nothing lost.");
+			List<FakeCall> listDisables=Calls.Where(x => x.Name=="DISABLEDS").ToList();
+			Assert.AreEqual(3,listDisables.Count,_harness.CallText);
+			Assert.AreEqual(FakeHelperSource.CodeDisableClosing,listDisables[1].Condition,"The way-out is refused while the helper runs.");
+			Assert.AreEqual(Tw.TWRC_SUCCESS,listDisables[2].Rc);
+			Assert.IsTrue(_harness.HasLog("Capture event: the way-out MSG_DISABLEDS was sent after the wait bound (enable "+ended.EnableId+")."
+				+" It was refused (the source was still finishing), and the session waited a second bound. The source then delivered what it held."),
+				_harness.LogText);
+			Assert.IsFalse(_harness.HasLog("treated as disabled"),_harness.LogText);
+			_harness.AssertDisabledOnlyInState5();
+		}
+
+		[TestMethod]
+		public void SafeDisable_NoNotificationInEitherBound_TreatedAsDisabled_SourceMayHoldImages() {
 			ConfigureSafeDisable();
 			Options.RefusedDisableWait=TimeSpan.FromMilliseconds(300);
 			Helper.EndAfterMs=60000;
@@ -556,8 +586,11 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(TwainCaptureEndReason.Stopped,ended.Reason);
 			Assert.IsTrue(ended.WasSecondDisableAfterWait);
 			Assert.IsTrue(ended.SourceMayHoldImages);
-			Assert.AreEqual(1,Helper.CountUndelivered,"The helper still runs (the second disable was refused too); the image stays with the source.");
-			Assert.IsTrue(_harness.HasLog("second consecutive MSG_DISABLEDS"),_harness.LogText);
+			Assert.AreEqual(3,Calls.Count(x => x.Name=="DISABLEDS" && x.Rc==Tw.TWRC_FAILURE),_harness.CallText);
+			Assert.AreEqual(1,Helper.CountUndelivered,"The image stays with the source.");
+			Assert.IsTrue(_harness.HasLog("It was refused (the source was still finishing), and the session waited a second bound. The source may"
+				+" still hold images."),_harness.LogText);
+			Assert.IsTrue(_harness.HasLog("treated as disabled"),_harness.LogText);
 		}
 
 		[TestMethod]

@@ -114,8 +114,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>One image, transferred and ended with MSG_ENDXFER. The sink owns it from now on.</summary>
 		void ImageDrained(TwainDrainedImage drained);
 
-		///<summary>The wait after a refused disable ended without a notification, and the second consecutive MSG_DISABLEDS was sent. The
-		///source may still hold images of this series: the facade tells the operator not to re-expose.</summary>
+		///<summary>The source may still hold images of this series that the session did not receive: a pending image could not be transferred
+		///or was discarded, a stop failed, or the wait after a refused disable ended with the source disabled without having offered what it
+		///held (the way-out MSG_DISABLEDS succeeded, or after a second bound the last one succeeded or the source was treated as disabled). Not
+		///called when the source sent its notification within the second bound and its images were received. The facade tells the operator
+		///not to re-expose.</summary>
 		void MayStillHoldImages(string sourceName,TwainStopReason stopReason);
 	}
 }

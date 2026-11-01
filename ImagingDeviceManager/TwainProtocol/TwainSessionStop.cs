@@ -41,12 +41,18 @@ namespace ImagingDeviceManager.TwainProtocol {
 		public bool IsWaitingForSource { get; private set; }
 		///<summary>Refused MSG_DISABLEDS that started a wait, since ResetCaptureStopFlags (the capture path).</summary>
 		internal int CountRefusedDisables { get; private set; }
-		///<summary>Since ResetCaptureStopFlags: a wait after a refused disable ended without a notification and the second consecutive
-		///MSG_DISABLEDS was sent (design 7.13).</summary>
+		///<summary>Since ResetCaptureStopFlags: the first bound of a wait after a refused disable passed without a notification that let a
+		///disable succeed, and the way-out MSG_DISABLEDS was sent (design 7.13). It does not say that images are still held: the way-out may
+		///have been refused and the source then have offered them within the second bound (WasWayOutDisableRefused, SourceMayHoldImages).</summary>
 		internal bool WasRefusedDisableUnanswered { get; private set; }
+		///<summary>Since ResetCaptureStopFlags: the way-out MSG_DISABLEDS was refused as by a source still finishing, and the session waited a
+		///second bound for its notification.</summary>
+		internal bool WasWayOutDisableRefused { get; private set; }
 		///<summary>True when, since the last Acquire started, the source may still hold images of this series that the library did not
-		///receive: a wait after a refused disable ended without a notification and the second consecutive MSG_DISABLEDS was sent, or, on
-		///the by-name path with a sink, a pending image could not be transferred or was discarded with MSG_RESET.</summary>
+		///receive: the wait after a refused disable ended with the source disabled without having offered what it held (the way-out
+		///MSG_DISABLEDS succeeded, or after the second bound the last one succeeded or the source was treated as disabled), or, on the
+		///by-name path with a sink, a pending image could not be transferred or was discarded with MSG_RESET. Not when the source sent its
+		///notification within the second bound and its images were received.</summary>
 		public bool SourceMayHoldImages { get; private set; }
 		///<summary>Raised with true when the session starts waiting for the source after a refused MSG_DISABLEDS (a status window then
 		///says "Waiting for the sensor software to finish."), and with false when the wait ends. Handlers must not throw.</summary>
@@ -505,7 +511,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 			TwainCaptureSettings settings=Settings??new TwainCaptureSettings();
 			bool isListed=settings.ListRefusedDisableCodes.Contains(conditionCode);
-			if(!isListed && !IsSafeDisableInEffect) {
+			if(!IsRefusalToWaitFor(conditionCode,settings)) {
 				Log("\""+SourceName+"\" refused MSG_DISABLEDS (condition code "+ToHex(conditionCode)+"); it is treated as disabled.");
 				SetDisabledState();
 				return;
@@ -526,59 +532,68 @@ namespace ImagingDeviceManager.TwainProtocol {
 			return Math.Max(0,settings.RefusedDisableWait.TotalSeconds).ToString("0.#",System.Globalization.CultureInfo.InvariantCulture);
 		}
 
-		///<summary>After a refused MSG_DISABLEDS (design 7.1, twain-contract 1.1 section 10.2): keeps the message loop running for at most
-		///Settings.RefusedDisableWait, the library's own bound (the contract asks for at least 20 s).
+		///<summary>True when a MSG_DISABLEDS refused with conditionCode means that the source finishes first and then sends a notification:
+		///the code is listed in [Twain] RefusedDisableCodes, or any code while the safe-disable capability is set.</summary>
+		private bool IsRefusalToWaitFor(ushort conditionCode,TwainCaptureSettings settings) {
+			return settings.ListRefusedDisableCodes.Contains(conditionCode) || IsSafeDisableInEffect;
+		}
+
+		///<summary>After a refused MSG_DISABLEDS (design 7.1, twain-contract 1.1 (main 2c96a4d) section 10.2): keeps the message loop running
+		///for at most Settings.RefusedDisableWait, the library's own bound (the contract asks for at least 20 s), for the notification that
+		///follows the refusal.
 		///- MSG_XFERREADY: every image offered goes to the drain sink, then MSG_DISABLEDS again. One that arrives with nothing pending
 		///  (MSG_GET reports 0) is ignored.
 		///- MSG_CLOSEDSREQ: the end condition is read (DAT_STATUS), then MSG_DISABLEDS again.
 		///- A disable that then succeeds is logged with the notification and the time into the wait.
 		///- A disable refused again keeps the wait going, within the same bound.
-		///- Neither in time: the second consecutive MSG_DISABLEDS, which the contract plans to succeed, leaving any images with the
-		///  source for redelivery; the log and the sink hear that the source may still hold images.
-		///Without a sink, offered images are discarded with MSG_RESET (they stay undelivered in the source).</summary>
+		///- No notification in time: the way-out MSG_DISABLEDS (a second one with no MSG_ENDXFER since the refusal). If it succeeds, any
+		///  images stay with the source for redelivery, and the log and the sink hear that it may still hold images.
+		///- The way-out refused with a code IsRefusalToWaitFor accepts: the source is still finishing (under the contract it refuses every
+		///  disable until its notification, and ends its sensor software itself), so the session waits a second bound of the same length,
+		///  handling a notification as above. Refused with any other code: the source is treated as disabled, may still hold images.
+		///- No notification in the second bound either: one last MSG_DISABLEDS. If it is refused too, the source did not follow its contract
+		///  and is treated as disabled. Either way it may still hold images.
+		///MSG_DISABLEDS is sent only after a notification or a bound, never in a loop. Without a sink, offered images are discarded with
+		///MSG_RESET (they stay undelivered in the source).</summary>
 		private void WaitAfterRefusedDisable(TwainStopReason reason,TwainCaptureSettings settings) {
 			CountRefusedDisables++;
 			long startMs=NowMs;
-			long deadlineMs=startMs+(long)Math.Max(0,settings.RefusedDisableWait.TotalMilliseconds);
+			long boundMs=(long)Math.Max(0,settings.RefusedDisableWait.TotalMilliseconds);
+			string waitSeconds=GetWaitSeconds(settings);
 			SetWaitingForSource(true);
 			try {
-				while(true) {
-					ushort notification=PumpMessages(true,deadlineMs);
-					if(notification==Tw.MSG_XFERREADY) {
-						if(State==5) {
-							short pending;
-							if(TryGetPendingCount(out pending) && pending==0) {
-								Log("\""+SourceName+"\" sent MSG_XFERREADY with nothing pending; ignored.");
-								continue;
-							}
-							State=6;
-						}
-						if(CanDrain) {
-							DrainPending(TwainDrainReason.RefusedDisable,reason);
-						}
-						else {
-							ResetPendingTransfers();
-						}
-					}
-					else if(notification==Tw.MSG_CLOSEDSREQ) {
-						ReadEndCondition();
-					}
-					else {
-						break;//The bound passed, or the source stopped responding.
-					}
-					if(State==5 && SendDisable()) {
-						Log("\""+SourceName+"\" was disabled after "+(notification==Tw.MSG_XFERREADY ? "MSG_XFERREADY" : "MSG_CLOSEDSREQ")+", "
-							+((NowMs-startMs)/1000.0).ToString("0.0",System.Globalization.CultureInfo.InvariantCulture)+" s into the wait.");
-						return;
-					}
-					Log("\""+SourceName+"\" refused MSG_DISABLEDS again (condition code "+ToHex(LastConditionCode)+"); still waiting.");
+				if(WaitForNotificationThenDisable(reason,startMs,startMs+boundMs)) {
+					return;
 				}
-				bool isDisabled=State==5 && SendDisable();
 				WasRefusedDisableUnanswered=true;
-				Log("No notification from \""+SourceName+"\" within "+GetWaitSeconds(settings)+" s after the refused disable. The second"
-					+" consecutive MSG_DISABLEDS "+(isDisabled ? "succeeded" : "failed (condition code "+ToHex(LastConditionCode)
-					+"); the source is treated as disabled")+". The source may still hold images of this series.");
-				if(!isDisabled) {
+				if(State==5 && SendDisable()) {
+					Log("No notification from \""+SourceName+"\" within "+waitSeconds+" s after the refused disable. The way-out MSG_DISABLEDS"
+						+" succeeded. The source may still hold images of this series.");
+					NoteMayStillHoldImages(reason);
+					return;
+				}
+				if(State!=5 || !IsRefusalToWaitFor(LastConditionCode,settings)) {
+					Log("No notification from \""+SourceName+"\" within "+waitSeconds+" s after the refused disable. The way-out MSG_DISABLEDS "
+						+GetDisableFailureText()+"; the source is treated as disabled. The source may still hold images of this series.");
+					SetDisabledState();
+					NoteMayStillHoldImages(reason);
+					return;
+				}
+				WasWayOutDisableRefused=true;
+				Log("No notification from \""+SourceName+"\" within "+waitSeconds+" s after the refused disable, and the way-out MSG_DISABLEDS"
+					+" was refused too (condition code "+ToHex(LastConditionCode)+"): the source is still finishing. Waiting up to "+waitSeconds
+					+" s more for its notification.");
+				if(WaitForNotificationThenDisable(reason,startMs,NowMs+boundMs)) {
+					return;
+				}
+				if(State==5 && SendDisable()) {
+					Log("No notification from \""+SourceName+"\" within "+waitSeconds+" s more. The last MSG_DISABLEDS succeeded. The source may"
+						+" still hold images of this series.");
+				}
+				else {
+					Log("Contract deviation: no notification from \""+SourceName+"\" within "+waitSeconds+" s more, and the last MSG_DISABLEDS "
+						+GetDisableFailureText()+". A source that refuses a disable sends a notification once it has finished. It is treated as"
+						+" disabled. The source may still hold images of this series.");
 					SetDisabledState();
 				}
 				NoteMayStillHoldImages(reason);
@@ -587,6 +602,49 @@ namespace ImagingDeviceManager.TwainProtocol {
 				SetWaitingForSource(false);
 				RepostQuitIfPending();
 			}
+		}
+
+		///<summary>One bound of WaitAfterRefusedDisable, until deadlineMs: every notification is handled and followed by MSG_DISABLEDS. True
+		///when a disable succeeded (state 4). False when the bound passed, or the source stopped responding, with no disable succeeding.
+		///startMs is when the whole wait started, for the log.</summary>
+		private bool WaitForNotificationThenDisable(TwainStopReason reason,long startMs,long deadlineMs) {
+			while(true) {
+				ushort notification=PumpMessages(true,deadlineMs);
+				if(notification==Tw.MSG_XFERREADY) {
+					if(State==5) {
+						short pending;
+						if(TryGetPendingCount(out pending) && pending==0) {
+							Log("\""+SourceName+"\" sent MSG_XFERREADY with nothing pending; ignored.");
+							continue;
+						}
+						State=6;
+					}
+					if(CanDrain) {
+						DrainPending(TwainDrainReason.RefusedDisable,reason);
+					}
+					else {
+						ResetPendingTransfers();
+					}
+				}
+				else if(notification==Tw.MSG_CLOSEDSREQ) {
+					ReadEndCondition();
+				}
+				else {
+					return false;//The bound passed, or the source stopped responding.
+				}
+				if(State==5 && SendDisable()) {
+					Log("\""+SourceName+"\" was disabled after "+(notification==Tw.MSG_XFERREADY ? "MSG_XFERREADY" : "MSG_CLOSEDSREQ")+", "
+						+((NowMs-startMs)/1000.0).ToString("0.0",System.Globalization.CultureInfo.InvariantCulture)+" s into the wait.");
+					return true;
+				}
+				Log("\""+SourceName+"\" refused MSG_DISABLEDS again (condition code "+ToHex(LastConditionCode)+"); still waiting.");
+			}
+		}
+
+		///<summary>Why a MSG_DISABLEDS that did not succeed failed, for the log: its condition code, or that it could not be sent outside
+		///state 5.</summary>
+		private string GetDisableFailureText() {
+			return State==5 ? "was refused (condition code "+ToHex(LastConditionCode)+")" : "could not be sent (state "+State+")";
 		}
 
 		private void SetWaitingForSource(bool isWaiting) {

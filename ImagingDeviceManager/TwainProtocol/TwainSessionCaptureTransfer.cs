@@ -304,10 +304,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 			}
 		}
 
-		///<summary>Resets the counters of WasDisableRefused and WasRefusedDisableUnanswered before an enable.</summary>
+		///<summary>Resets the counters of WasDisableRefused, WasRefusedDisableUnanswered and WasWayOutDisableRefused before an enable.</summary>
 		internal void ResetCaptureStopFlags() {
 			CountRefusedDisables=0;
 			WasRefusedDisableUnanswered=false;
+			WasWayOutDisableRefused=false;
 			SourceMayHoldImages=false;
 			DrainedImageCount=0;
 			LastStopReason=TwainStopReason.None;

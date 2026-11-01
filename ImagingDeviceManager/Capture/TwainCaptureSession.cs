@@ -986,11 +986,14 @@ namespace ImagingDeviceManager.Capture {
 				if(_session.CountRefusedDisables>0) {
 					Log("Enable "+context.Id+": MSG_DISABLEDS was refused "+_session.CountRefusedDisables+" time(s).");
 				}
-				if(_session.WasRefusedDisableUnanswered) {
-					Log("Capture event: a second consecutive MSG_DISABLEDS was sent after the wait bound (enable "+context.Id+"); the source may still"
-						+" hold images.");
-				}
 				context.IsSourceMayHoldImages|=_session.SourceMayHoldImages;
+				if(_session.WasRefusedDisableUnanswered) {
+					//Design 7.13. Whether the way-out was refused and a second bound waited is told here, not in TwainCaptureEnded.
+					Log("Capture event: the way-out MSG_DISABLEDS was sent after the wait bound (enable "+context.Id+")."
+						+(_session.WasWayOutDisableRefused ? " It was refused (the source was still finishing), and the session waited a second"
+							+" bound." : "")
+						+(context.IsSourceMayHoldImages ? " The source may still hold images." : " The source then delivered what it held."));
+				}
 				if(context.ConditionCode==null && _session.EndConditionCode!=null && context.Reason!=TwainCaptureEndReason.EnableFailed) {
 					context.ConditionCode=_session.EndConditionCode;
 					context.ConditionText=_session.EndConditionText;
