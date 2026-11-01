@@ -1,42 +1,16 @@
 <Project>
   <!--
-    Local build support for the public Open Dental source.
+    Local build support, imported by every project in this repository.
 
-    No project is substituted today: ImagingDeviceManager, the one sibling project
-    that used to be missing, is now built from ImagingDeviceManager\ in this
-    repository, and its prebuilt copy is gone from "Required dlls". The target below
-    stays as a safety net for a ProjectReference whose project is missing: before
-    project references are resolved, any ProjectReference whose .csproj does not
-    exist on disk is swapped for a plain Reference to the matching DLL in
-    "Required dlls" (project file name with a leading "x" removed), with a warning
-    when there is no such DLL.
-
-    Kept in this file, rather than edits to each .csproj, so that upstream
-    version updates merge without conflicts. When the real project exists on
-    disk, its ProjectReference is left alone.
+    Every project the solution builds now exists in this repository, so nothing is
+    swapped for a prebuilt DLL any more. The target that replaced a missing
+    ProjectReference with the matching DLL in "Required dlls" was removed once
+    ImagingDeviceManager, the last such project, came into the repository: a missing
+    project now fails the build instead of quietly using an old binary.
   -->
-  <PropertyGroup>
-    <ODRequiredDllsDir>$(MSBuildThisFileDirectory)Required dlls\</ODRequiredDllsDir>
-  </PropertyGroup>
-
-  <Target Name="ODSubstituteMissingProjectReferences" BeforeTargets="AssignProjectConfiguration;ResolveAssemblyReferences" Condition="'@(ProjectReference)' != ''">
-    <ItemGroup>
-      <_ODMissingProjectReference Include="@(ProjectReference)" Condition="!Exists('%(FullPath)')" />
-      <_ODMissingProjectReference>
-        <AssemblyName>$([System.Text.RegularExpressions.Regex]::Replace('%(Filename)', '^x(?=[A-Z])', ''))</AssemblyName>
-      </_ODMissingProjectReference>
-      <ProjectReference Remove="@(_ODMissingProjectReference)" />
-      <Reference Include="%(_ODMissingProjectReference.AssemblyName)" Condition="'@(_ODMissingProjectReference)' != '' And Exists('$(ODRequiredDllsDir)%(_ODMissingProjectReference.AssemblyName).dll')">
-        <HintPath>$(ODRequiredDllsDir)%(_ODMissingProjectReference.AssemblyName).dll</HintPath>
-        <Private>True</Private>
-      </Reference>
-    </ItemGroup>
-    <Message Importance="normal" Text="Open Dental: using prebuilt '$(ODRequiredDllsDir)%(_ODMissingProjectReference.AssemblyName).dll' in place of missing project '%(_ODMissingProjectReference.Identity)'." Condition="'@(_ODMissingProjectReference)' != ''" />
-    <Warning Text="Open Dental: project '%(_ODMissingProjectReference.Identity)' is not in this repository and no prebuilt '%(_ODMissingProjectReference.AssemblyName).dll' exists in 'Required dlls'." Condition="'@(_ODMissingProjectReference)' != '' And !Exists('$(ODRequiredDllsDir)%(_ODMissingProjectReference.AssemblyName).dll')" />
-  </Target>
 
   <!--
-    UnitTests and UnitTestsCore reference MSTest v1
+    UnitTests, UnitTestsCore and the test projects reference MSTest v1
     (Microsoft.VisualStudio.QualityTools.UnitTestFramework) by name only. Visual Studio
     and Build Tools install it under Common7\IDE, which MSBuild does not search by default.
   -->
