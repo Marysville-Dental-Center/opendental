@@ -500,6 +500,10 @@
     <Compile Include="Data Interface\CommOptOuts.cs" />
     <Compile Include="Data Interface\DatabaseMaintenances.cs" />
     <Compile Include="Data Interface\DatabaseMaintenances.InsPending.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.Base64Documents.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.EmailText.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.EmployeeSupervisor.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.InvalidCharsGdi.cs" />
     <Compile Include="Data Interface\DbmLogs.cs" />
     <Compile Include="Data Interface\DefLinks.cs" />
     <Compile Include="Data Interface\DiscountPlans.cs" />
@@ -1417,6 +1421,7 @@
     <Compile Include="Misc\ConvertDatabases5.cs" />
     <Compile Include="Misc\EhrCCD.cs" />
     <Compile Include="Misc\FileAtoZ.cs" />
+    <Compile Include="Misc\DbmTextCleaner.cs" />
     <Compile Include="Misc\InnoDb.cs" />
     <Compile Include="Misc\ConvertDatabases2.cs" />
     <Compile Include="Misc\ConvertDatabases1.cs" />
