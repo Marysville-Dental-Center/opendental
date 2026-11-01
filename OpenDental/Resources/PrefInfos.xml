@@ -739,7 +739,7 @@ Usually blank</ControlText>
     <Category>AccountRecAndRepCharges</Category>
     <ControlName>checkRecurringChargesFailEmailEnabled</ControlName>
     <ControlText>Email patients when a recurring charge fails</ControlText>
-    <Details>Each recurring charge the card processor declines sends one e-mail to the patient, or to the guarantor when the patient has no address, from the office's own e-mail address. The same card is not e-mailed again for 7 days. A charge that fails for another reason (a setup problem, or no answer from the processor) sends no e-mail. Patients who opted out of e-mail are skipped. Edit Template sets the subject and text.</Details>
+    <Details>Each recurring charge the card processor declines (the card itself was refused) sends one e-mail to the patient, or to the guarantor when the patient has no address, from the office's own e-mail address. The same card is not e-mailed again for 7 days. A charge that fails for another reason (a setup or credential problem, a processor outage, a duplicate charge, or no answer from the processor) sends no e-mail. Patients who opted out of e-mail are skipped. Edit Template sets the subject and text.</Details>
     <WidthWindow>0</WidthWindow>
     <HeightWindow>0</HeightWindow>
   </PrefInf>
