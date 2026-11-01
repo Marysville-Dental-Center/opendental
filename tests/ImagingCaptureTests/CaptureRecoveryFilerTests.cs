@@ -348,7 +348,7 @@ namespace ImagingCapture.Tests {
 
 		[TestMethod]
 		public void Assign_16Bit_OnlyUnderTheSessionsConditions_NeverConverted() {
-			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);
+			CaptureFileEntry entry=_harness.Files.Quarantine16(SessionFieldsWithDriver(),_receivedAt);
 			Assert.IsTrue(entry.IsGray16);
 			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
 			Assert.IsFalse(result.IsDone);
@@ -528,7 +528,8 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(0,document.MountItemNum);
 			SecurityLog securityLog=Store.ListLogEntries.Single(x => x.PermType==EnumPermType.ImageEdit);
 			StringAssert.Contains(securityLog.LogText,"an 8-bit copy of a 16-bit capture (made through the window 1000 to 3231 of its values; the 16-bit "
-				+"original is kept in Capture\\quarantine-resolved\\"+RecoveryFiles.SessionGuid.ToString("D")+")");
+				+"original "+entry.FileName+" and its sidecar are kept)");
+			Assert.IsFalse(securityLog.LogText.Contains("quarantine-resolved"),"Written before the original moves: no folder it may not reach.");
 			StringAssert.Contains(securityLog.LogText,"Reason: The phantom was Jane's test.");
 			AssertOriginalResolved(entry,document.DocNum,1000,3231);
 			Assert.AreEqual(0,RadiographStore.CountPearl,"The copy is a rendering of a 16-bit capture: never sent.");
@@ -586,6 +587,28 @@ namespace ImagingCapture.Tests {
 			StringAssert.Contains(RadiographStore.ListLogTexts.Single(),RadiographSavePlanner.Copy8BitText,"The capture details entry says so too.");
 			AssertOriginalResolved(entry,document.DocNum,1000,3231);
 			Assert.AreEqual(0,RadiographStore.CountPearl);
+		}
+
+		[TestMethod]
+		public void Assign_16Bit_SlotTaken_TheOriginalCannotLeaveTheQuarantine_TheAuditAndDoneTextsNameNoFolderItIsNotIn() {
+			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);
+			Store.DictSlotDocuments[103]=new Document { DocNum=900,PatNum=42,MountItemNum=103 };
+			//A different file of the same name is already in quarantine-resolved: the move fails, and the sidecar records the filing in place.
+			string folderResolved=Path.Combine(_harness.Files.Folder,@"Capture\quarantine-resolved",RecoveryFiles.SessionGuid.ToString("D"));
+			Directory.CreateDirectory(folderResolved);
+			File.WriteAllText(Path.Combine(folderResolved,entry.FileName),"another file");
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsTrue(result.IsDone,result.Error);
+			Assert.IsTrue(result.IsCopy8BitOf16Bit);
+			Assert.IsTrue(result.ListWarnings.Any(x => x.Contains("could not be moved out of the capture quarantine")),string.Join(" ",result.ListWarnings));
+			Assert.AreEqual(entry.ImagePath,result.PathResolved,"The 16-bit original is still in the quarantine.");
+			Assert.IsTrue(File.Exists(entry.ImagePath));
+			Assert.AreEqual(" as an 8-bit copy of a 16-bit capture; the 16-bit original is kept in Capture\\quarantine\\"
+				+RecoveryFiles.SessionGuid.ToString("D"),CaptureRecoveryText.GetCopyDoneText(result));
+			SecurityLog securityLog=Store.ListLogEntries.Single(x => x.PermType==EnumPermType.ImageCreate);
+			StringAssert.Contains(securityLog.LogText,"the 16-bit original "+entry.FileName+" and its sidecar are kept)");
+			Assert.IsFalse(securityLog.LogText.Contains("quarantine-resolved"),securityLog.LogText);
+			Assert.AreEqual(0,_harness.Files.Store.ListQuarantine().Count(x => !x.IsResolved),"Its sidecar records the filing: not offered again.");
 		}
 
 		[TestMethod]
@@ -652,15 +675,42 @@ namespace ImagingCapture.Tests {
 
 		[TestMethod]
 		public void Assign_16Bit_OwnEmptySlot_StillDicomOnly_NeverACopy() {
-			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);
+			CaptureFileEntry entry=_harness.Files.Quarantine16(SessionFieldsWithDriver(),_receivedAt);
 			string error;
 			CaptureAssignPlan plan=_harness.Filer.PlanAssign(entry,0,out error);
 			Assert.IsTrue(plan.IsIntoOriginalSlot);
 			Assert.IsFalse(plan.Is8BitCopy,"Its own empty slot: 16-bit DICOM, as before.");
 			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
 			Assert.IsFalse(result.IsDone,"Without the session's conditions it stays where it is.");
+			StringAssert.Contains(result.Error,"8 bits (fallback): ");
 			StringAssert.EndsWith(result.Error,CaptureRecoveryText.Gray16StaysNote,"The refusal says no other route files it.");
 			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+		}
+
+		[TestMethod]
+		public void Assign_16Bit_OwnEmptySlot_SidecarBeforeCaptureRecordedTheDriver_NeverCoveredAndSaysSo() {
+			//A sidecar written before CAP-16: no driver version, no BitDepthInEffect key. Every gate of the session holds otherwise.
+			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(),_receivedAt);
+			Assert.IsNull(entry.DriverIdentity);
+			SetGatesPassedAt(16);
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsFalse(result.IsDone);
+			Assert.AreEqual("This 16-bit capture can be filed into its slot only where the capture session could store it at its depth, and it is never "
+				+"converted to 8 bits there. This capture was taken before captures recorded the driver version, so no Test capture record can cover it. "
+				+CaptureRecoveryText.Gray16NeverNote,result.Error);
+			Assert.IsFalse(result.Error.Contains("until the conditions hold again"),"No condition can come to hold for it.");
+			Assert.IsFalse(result.Error.Contains("did not report its driver version"),"The source is not what is missing.");
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+			Assert.AreEqual(1,_harness.Files.CountQuarantineFiles());
+			//A CAP-16 sidecar of a source that reported no driver version says that instead.
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields(captureId:"cap-8");
+			dictFields[CaptureSidecarKeys.BitDepthInEffect]="16";
+			CaptureFileEntry entryNoDriver=_harness.Files.Quarantine16(dictFields,_receivedAt.AddMinutes(1));
+			CaptureFilingResult resultNoDriver=_harness.Filer.Assign(entryNoDriver,0,0);
+			Assert.IsFalse(resultNoDriver.IsDone);
+			StringAssert.Contains(resultNoDriver.Error,"The TWAIN source did not report its driver version when this capture was taken, so no Test capture "
+				+"record can cover it.");
+			StringAssert.EndsWith(resultNoDriver.Error,CaptureRecoveryText.Gray16NeverNote);
 		}
 
 		///<summary>Every gate of the session for device 12 on OPERATORY1 holds, with capture.ini at its defaults: Capture settings saved the file,

@@ -72,10 +72,11 @@ namespace ImagingCapture.Recovery {
 		public MountItem MountItem { get; set; }
 		public bool IsMountItemCreated { get; set; }
 		public string TargetText { get; set; }="";
-		///<summary>Where the file is now (Capture\quarantine-resolved for a quarantine file).</summary>
+		///<summary>Where the file is now (Capture\quarantine-resolved for a quarantine file, or the quarantine when it could not be moved); for an
+		///8-bit copy of a 16-bit journal copy, the kept original in Capture\quarantine-resolved\journal. Null when the file was not marked.</summary>
 		public string PathResolved { get; set; }
-		///<summary>Document is the explicit 8-bit copy of a 16-bit capture (RadiographSavePlan.IsCopyOf16Bit); the 16-bit original is kept in
-		///CaptureRecoveryText.GetOriginalKeptFolder (owner decision 2026-11-01).</summary>
+		///<summary>Document is the explicit 8-bit copy of a 16-bit capture (RadiographSavePlan.IsCopyOf16Bit); the 16-bit original is kept, at
+		///PathResolved (owner decision 2026-11-01).</summary>
 		public bool IsCopy8BitOf16Bit { get; set; }
 		///<summary>Assign was refused because where it would file the capture now differs from the plan that was confirmed (the slot was filled,
 		///or the mount changed, meanwhile): nothing was filed, and the window plans again and shows the new target before another confirmation.</summary>
@@ -506,6 +507,11 @@ namespace ImagingCapture.Recovery {
 		///capture is never downconverted; one that may not be stored as DICOM stays where it is.</summary>
 		private bool Apply16BitRules(CaptureFileEntry entry,RadiographTarget target,RadiographSaveRequest request,out string error) {
 			error="";
+			if(entry.DriverIdentity==null) {
+				//No record can ever cover it (a record names the driver version, owner decision 2026-11-01), so no condition can come to hold.
+				error=Gray16RefusedIntro+CaptureRecoveryText.GetNoDriverReason(entry)+" "+CaptureRecoveryText.Gray16NeverNote;
+				return false;
+			}
 			long imagingDeviceNum=entry.ImagingDeviceNum;
 			LocalCaptureConfig config=_services.FuncLoadConfig?.Invoke()??LocalCaptureConfig.Load((string)null);
 			TwainCaptureOptions options=TwainCaptureOptions.FromConfig(config,imagingDeviceNum);
@@ -529,8 +535,7 @@ namespace ImagingCapture.Recovery {
 				BitsWanted=GetBitsWanted(request.Image),
 			});
 			if(choice.Bits<=8) {
-				error="This 16-bit capture can be filed into its slot only where the capture session could store it at its depth, and it is never "
-					+"converted to 8 bits there. "+(choice.Reason8Bit??"").Trim()+" "+CaptureRecoveryText.Gray16StaysNote;
+				error=Gray16RefusedIntro+(choice.Reason8Bit??"").Trim()+" "+CaptureRecoveryText.Gray16StaysNote;
 				return false;
 			}
 			request.Is16BitAllowed=true;
@@ -538,6 +543,10 @@ namespace ImagingCapture.Recovery {
 			request.IsInversionVerified=choice.IsInversionVerified;
 			return true;
 		}
+
+		///<summary>The start of Assign's refusal of a 16-bit capture for its own empty slot.</summary>
+		private const string Gray16RefusedIntro="This 16-bit capture can be filed into its slot only where the capture session could store it at its "
+			+"depth, and it is never converted to 8 bits there. ";
 
 		///<summary>The depth the recovery decides for, as the session did: the depth the capture's enable asked for (its sidecar's RequestedBits,
 		///16 or 14), whose record covers whatever depth the source then fell back to (a 14-bit capture of a 16-bit enable is stored under a record

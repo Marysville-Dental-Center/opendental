@@ -69,6 +69,18 @@ namespace ImagingCapture.Recovery {
 		///operator is told it is not a mistake to leave it. Whether it may be filed as the explicit 8-bit copy then is an owner question.</summary>
 		public const string Gray16StaysNote="It stays where it is: until the conditions hold again, it can only stay in unassigned captures or be "
 			+"discarded.";
+		///<summary>The end of that refusal when no condition can come to hold for the capture (its sidecar names no driver version: GetNoDriverReason).
+		///Whether it may be filed as the explicit 8-bit copy instead is the same owner question as Gray16StaysNote's.</summary>
+		public const string Gray16NeverNote="It stays where it is: it can only stay in unassigned captures or be discarded.";
+
+		///<summary>Why no Test capture record can cover a 16-bit capture whose sidecar names no driver version (CaptureFileEntry.DriverIdentity is
+		///null): taken before captures recorded the driver version (no BitDepthInEffect key, written from CAP-16), or the source reported none.</summary>
+		public static string GetNoDriverReason(CaptureFileEntry entry) {
+			if(entry==null || entry.Get(CaptureSidecarKeys.BitDepthInEffect)=="") {
+				return "This capture was taken before captures recorded the driver version, so no Test capture record can cover it.";
+			}
+			return "The TWAIN source did not report its driver version when this capture was taken, so no Test capture record can cover it.";
+		}
 		///<summary>A Test capture image (CaptureRecoveryFiler.IsTestCapture) is neither assigned nor reassigned.</summary>
 		public const string TestCaptureNote="A Test capture image is never filed to a patient.";
 
@@ -88,13 +100,25 @@ namespace ImagingCapture.Recovery {
 			+"confirm again.";
 
 		///<summary>The window's words after a filing whose document is the 8-bit copy of a 16-bit capture: " as an 8-bit copy of a 16-bit capture;
-		///the 16-bit original is kept in ...", else "".</summary>
+		///the 16-bit original is kept in ...", else "". The folder is where the original is now (CaptureFilingResult.PathResolved): normally
+		///under Capture\quarantine-resolved, but still the quarantine folder when it could not be moved (the result's warning says why).</summary>
 		public static string GetCopyDoneText(CaptureFilingResult result) {
 			if(result==null || !result.IsCopy8BitOf16Bit) {
 				return "";
 			}
 			return " as an 8-bit copy of a "+(result.Entry!=null && result.Entry.BitDepthInEffect==14 ? "14-bit" : "16-bit")+" capture; the 16-bit "
-				+"original is kept in "+GetOriginalKeptFolder(result.Entry);
+				+"original is kept in "+GetFolderText(result.PathResolved??result.Entry?.ImagePath);
+		}
+
+		///<summary>The folder of path from its Capture folder on ("Capture\quarantine-resolved\&lt;session&gt;"), or the whole folder when path is
+		///not under one. "" for null or empty.</summary>
+		public static string GetFolderText(string path) {
+			if(string.IsNullOrEmpty(path)) {
+				return "";
+			}
+			string folder=System.IO.Path.GetDirectoryName(path)??"";
+			int idx=(folder+"\\").LastIndexOf(@"\Capture\",StringComparison.OrdinalIgnoreCase);//the capture folders' root (CaptureFileStore)
+			return idx==-1 ? folder : folder.Substring(idx+1);
 		}
 
 		///<summary>What the confirmation says plainly before a 16-bit capture is filed as its 8-bit copy (owner decision 2026-11-01).</summary>
@@ -105,10 +129,13 @@ namespace ImagingCapture.Recovery {
 		}
 
 		///<summary>The audit entry's words for an 8-bit copy: "an 8-bit copy of a 16-bit capture (made through the window 120 to 3900 of its values;
-		///the 16-bit original is kept in Capture\quarantine-resolved\...)".</summary>
+		///the 16-bit original 20261031-100004-500.tif and its sidecar are kept)". The entry is written before the original moves, so it names no
+		///folder: where the original ends up (Capture\quarantine-resolved, or the quarantine when it could not be moved) is in the capture log and
+		///the window's result, and the original's sidecar records the copy's DocNum.</summary>
 		public static string GetCopyLogText(CaptureFileEntry entry,int windowLow,int windowHigh) {
+			string fileName=entry?.FileName??"";
 			return "an "+RadiographSavePlanner.Copy8BitText+" (made through the window "+ToText(windowLow)+" to "+ToText(windowHigh)
-				+" of its values; the 16-bit original is kept in "+GetOriginalKeptFolder(entry)+")";
+				+" of its values; the 16-bit original "+(fileName=="" ? "" : fileName+" ")+"and its sidecar are kept)";
 		}
 
 		///<summary>The target an entry is shown with: its sidecar's slot (or single-image target) when it is the image's own (IsSlotKnown). For a
