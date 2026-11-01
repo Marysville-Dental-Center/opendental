@@ -88,8 +88,9 @@ namespace ImagingCapture.Recovery {
 		///<summary>Document is the explicit 8-bit copy of a 16-bit capture (RadiographSavePlan.IsCopyOf16Bit); the 16-bit original is kept, at
 		///PathResolved (owner decision 2026-11-01).</summary>
 		public bool IsCopy8BitOf16Bit { get; set; }
-		///<summary>Assign was refused because where it would file the capture now differs from the plan that was confirmed (the slot was filled,
-		///or the mount changed, meanwhile): nothing was filed, and the window plans again and shows the new target before another confirmation.</summary>
+		///<summary>Assign was refused because where or how it would file the capture now differs from the plan that was confirmed (the slot was
+		///filled, or the mount changed, or 16 bits became allowed or not allowed for it, meanwhile): nothing was filed, and the window plans again
+		///and shows the new target before another confirmation.</summary>
 		public bool IsPlanChanged { get; set; }
 
 		public static CaptureFilingResult Refused(CaptureRecoveryAction action,CaptureFileEntry entry,string error) {

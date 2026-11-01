@@ -214,8 +214,9 @@ namespace ImagingDeviceManager.Capture {
 		public int Height => (int)GetLong("Height");
 		public int BitsPerPixel => (int)GetLong("BitsPerPixel");
 		public string Sha256 => Get("Sha256");
-		///<summary>A 16-bit copy (.tif, 14- or 16-bit samples in 16-bit containers): into its own empty slot it is filed only as DICOM, under the
-		///session's conditions for more than 8 bits (design 7.8); anywhere else only as an explicit 8-bit copy.</summary>
+		///<summary>A 16-bit copy (.tif, 14- or 16-bit samples in 16-bit containers): into its own empty slot it is filed as 16-bit DICOM under the
+		///session's conditions for its depth (design 7.8), otherwise as the explicit 8-bit copy in that slot (owner decision 2026-11-01, "fall back
+		///to 8"); anywhere else only as an explicit 8-bit copy.</summary>
 		public bool IsGray16 => Extension==Gray16Tiff.Extension;
 		///<summary>16, 14 or 8: the depth the image's enable ran at. The BitDepthInEffect key from CAP-16; before it BitDepth16InEffect ("1": 16,
 		///"0": 8); before CAP-4 neither, and a 16-bit copy from a 16-bit memory enable counts as 16 (GetBitDepthInEffect).</summary>

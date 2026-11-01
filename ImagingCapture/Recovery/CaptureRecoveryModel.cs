@@ -489,8 +489,8 @@ namespace ImagingCapture.Recovery {
 			if(!result.IsDone) {
 				ErrorText=result.Error;
 				if(result.IsPlanChanged) {
-					//The slot was filled (or the mount changed) since the confirmation was shown: the step shows where the capture goes now, and the
-					//operator confirms again; nothing was filed.
+					//The slot was filled (or the mount changed, or 16 bits became allowed or not allowed for it) since the confirmation was shown: the
+					//step shows where and how the capture goes now, and the operator confirms again; nothing was filed.
 					string errorPlan;
 					CaptureAssignPlan planNow=_filer.PlanAssign(item.Entry,PatNumSession,out errorPlan);
 					if(planNow==null) {
