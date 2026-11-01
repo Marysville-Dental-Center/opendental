@@ -27,7 +27,8 @@ namespace ImagingDeviceManager.Capture {
 		TwainCaptureOptions Options { get; }
 		///<summary>What the source reported at Open, or null.</summary>
 		TwainCaptureSourceInfo SourceInfo { get; }
-		///<summary>The patient the session is bound to, for quarantine sidecars. May be changed at any time.</summary>
+		///<summary>The patient the session is bound to, for quarantine sidecars. May be replaced at any time; each image uses the one in effect
+		///when it arrived, read once.</summary>
 		TwainCaptureQuarantineContext QuarantineContext { get; set; }
 		///<summary>The caller's metadata parser, called on the worker for each image's MetadataJson (which may be null) before its journal copy
 		///is written, so that the sidecar records captureId and sequence. Null: they are not recorded. Must not throw.</summary>

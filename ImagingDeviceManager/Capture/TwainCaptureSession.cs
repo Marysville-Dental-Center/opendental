@@ -1004,7 +1004,8 @@ namespace ImagingDeviceManager.Capture {
 				case AcquiredImageKind.Drained: context.CountDrained++; break;
 				default: context.CountNormal++; break;
 			}
-			CaptureRecord record=BuildRecord(image);
+			TwainCaptureQuarantineContext quarantineContext=QuarantineContext;//Read once: the PatNum and the name of one patient.
+			CaptureRecord record=BuildRecord(image,quarantineContext);
 			CaptureImageFile file;
 			try {
 				file=CaptureImageFile.FromAcquiredImage(image);
@@ -1015,8 +1016,8 @@ namespace ImagingDeviceManager.Capture {
 			}
 			if(_isClosing) {
 				string error="";
-				string pathQuarantine=file==null ? null : _quarantine.WriteSessionCapture(file,record,SessionGuid,QuarantineContext.PatNum,
-					QuarantineContext.PatientName,image.TargetLabel,"It arrived after the capture window began to close.",Log,out error);
+				string pathQuarantine=file==null ? null : _quarantine.WriteSessionCapture(file,record,SessionGuid,quarantineContext.PatNum,
+					quarantineContext.PatientName,image.TargetLabel,"It arrived after the capture window began to close.",Log,out error);
 				image.QuarantinePath=pathQuarantine;
 				image.JournalPath=file==null ? null : _journal.Write(file,record,
 					pathQuarantine==null ? CaptureJournal.DeliveredNone : CaptureJournal.DeliveredQuarantine,
@@ -1035,10 +1036,12 @@ namespace ImagingDeviceManager.Capture {
 			Raise(ImageAcquired,image,"ImageAcquired");
 		}
 
-		private CaptureRecord BuildRecord(AcquiredImage image) {
+		///<summary>The sidecar record of image, with the PatNum of quarantineContext (the caller reads the context once and uses the same one
+		///for the quarantine sidecar's patient name).</summary>
+		private CaptureRecord BuildRecord(AcquiredImage image,TwainCaptureQuarantineContext quarantineContext) {
 			CaptureRecord record=CaptureRecord.Create(image.ReceivedAt==default(DateTime) ? GetNow() : image.ReceivedAt,
 				image.SourceName??_productName,SessionGuid.ToString("N").Substring(0,8)+"-"+image.EnableId.ToString(CultureInfo.InvariantCulture));
-			record.PatNum=QuarantineContext.PatNum;
+			record.PatNum=quarantineContext.PatNum;
 			CaptureMetadataKeys keys=ReadMetadataKeys(image.MetadataJson);
 			if(keys!=null) {
 				record.CaptureId=keys.CaptureId;
@@ -1082,8 +1085,8 @@ namespace ImagingDeviceManager.Capture {
 			try {
 				CaptureImageFile file=CaptureImageFile.FromAcquiredImage(image);
 				TwainCaptureQuarantineContext context=QuarantineContext;
-				string path=_quarantine.WriteSessionCapture(file,BuildRecord(image),SessionGuid,isPatientUnknown ? 0 : context.PatNum,context.PatientName,
-					image.TargetLabel,reason,Log,out error);
+				string path=_quarantine.WriteSessionCapture(file,BuildRecord(image,context),SessionGuid,isPatientUnknown ? 0 : context.PatNum,
+					context.PatientName,image.TargetLabel,reason,Log,out error);
 				image.QuarantinePath=path;
 				Log(path==null ? "An image of enable "+image.EnableId+" could not be quarantined: "+error
 					: "Quarantine image "+Path.GetFileName(path)+" of enable "+image.EnableId+": "+reason);

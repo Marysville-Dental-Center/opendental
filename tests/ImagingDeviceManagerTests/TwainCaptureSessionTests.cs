@@ -230,7 +230,7 @@ namespace ImagingDeviceManager.Tests {
 
 		[TestMethod]
 		public void JournalSidecar_RecordsSessionEnableMetadataAndDeviceProfile() {
-			Capture.QuarantineContext=new TwainCaptureQuarantineContext { PatNum=77,PatientName="Doe, Jane" };
+			Capture.QuarantineContext=new TwainCaptureQuarantineContext(77,"Doe, Jane");
 			Capture.FuncReadMetadataKeys=json => new CaptureMetadataKeys { CaptureId="cid-from-parser",Sequence=5 };
 			_harness.OpenOrFail();
 			_harness.WaitForEnded(EnableOne());
@@ -704,7 +704,7 @@ namespace ImagingDeviceManager.Tests {
 			ConfigureSafeDisable();
 			Helper.EndAfterMs=60000;
 			Helper.CloseDelayMs=500;//The helper delivers its image 0.5 s into the stop.
-			Capture.QuarantineContext=new TwainCaptureQuarantineContext { PatNum=42,PatientName="Doe, Jane" };
+			Capture.QuarantineContext=new TwainCaptureQuarantineContext(42,"Doe, Jane");
 			_harness.OpenOrFail();
 			int enableId=Capture.Enable(new TwainEnableRequest { TargetLabel="Slot 4" });
 			_harness.WaitUntil(() => _harness.ListStatus.Any(x => x.State==TwainCaptureState.WaitingForImage),"waiting for the image");
@@ -729,7 +729,7 @@ namespace ImagingDeviceManager.Tests {
 
 		[TestMethod]
 		public void QuarantineImage_FromTheWindow_WithTheBoundPatientOrUnknown() {
-			Capture.QuarantineContext=new TwainCaptureQuarantineContext { PatNum=9,PatientName="Roe, Ann" };
+			Capture.QuarantineContext=new TwainCaptureQuarantineContext(9,"Roe, Ann");
 			_harness.OpenOrFail();
 			_harness.WaitForEnded(EnableOne());
 			AcquiredImage image=_harness.Images.Single();

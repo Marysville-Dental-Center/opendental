@@ -225,10 +225,20 @@ namespace ImagingDeviceManager.Capture {
 	}
 
 	///<summary>Who the session's images belong to, for the sidecars of the quarantine (design 7.12: session captures record the originating
-	///PatNum, the patient's name, the session GUID and the slot). The library knows no patient of its own.</summary>
+	///PatNum, the patient's name, the session GUID and the slot). The library knows no patient of its own. Immutable, so that PatNum and
+	///PatientName always name the same patient: the session reads it once per image, and a change replaces it (QuarantineContext).</summary>
 	public sealed class TwainCaptureQuarantineContext {
-		public long PatNum { get; set; }
-		public string PatientName { get; set; }="";
+		public long PatNum { get; }
+		public string PatientName { get; }
+
+		///<summary>No patient.</summary>
+		public TwainCaptureQuarantineContext():this(0,"") {
+		}
+
+		public TwainCaptureQuarantineContext(long patNum,string patientName) {
+			PatNum=patNum;
+			PatientName=patientName??"";
+		}
 	}
 
 	///<summary>What the caller's metadata parser found in AcquiredImage.MetadataJson, for the journal and quarantine sidecars (design 7.9:

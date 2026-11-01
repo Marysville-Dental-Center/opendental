@@ -173,7 +173,7 @@ namespace ImagingCapture.UI {
 			}
 			TwainCaptureSession twainCaptureSession=new TwainCaptureSession();
 			twainCaptureSession.SessionGuid=Guid.NewGuid();
-			twainCaptureSession.QuarantineContext=new TwainCaptureQuarantineContext { PatNum=0,PatientName=TestCaptureModel.QuarantinePatientName };
+			twainCaptureSession.QuarantineContext=new TwainCaptureQuarantineContext(0,TestCaptureModel.QuarantinePatientName);
 			twainCaptureSession.FuncReadMetadataKeys=CaptureMetadataParser.ReadKeys;
 			SubscribeSession(twainCaptureSession);
 			_twainCaptureSession=twainCaptureSession;
