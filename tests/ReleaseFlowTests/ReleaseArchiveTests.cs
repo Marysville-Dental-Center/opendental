@@ -21,8 +21,8 @@ namespace ReleaseFlowTests {
 			new Random(7).NextBytes(arrayBig);
 			File.WriteAllBytes(Path.Combine(folder,"Big.dll"),arrayBig);
 			File.WriteAllText(Path.Combine(folder,"FreeDentalConfig.xml"),"<local/>");
-			Directory.CreateDirectory(Path.Combine(folder,"Sparks3D"));
-			File.WriteAllText(Path.Combine(folder,"Sparks3D","shader.dat"),"3d");
+			Directory.CreateDirectory(Path.Combine(folder,"OpenDentalReplicationService"));
+			File.WriteAllText(Path.Combine(folder,"OpenDentalReplicationService","shader.dat"),"3d");
 			return folder;
 		}
 
@@ -74,7 +74,7 @@ namespace ReleaseFlowTests {
 				List<string> listExpected=ForkReleases.GetReleaseFiles(folder).Select(x => x.Replace('\\','/')).ToList();
 				listExpected.Add(ReleaseManifest.FILE_NAME);
 				CollectionAssert.AreEqual(listExpected,zipArchive.Entries.Select(x => x.FullName).ToList());
-				CollectionAssert.AreEqual(new[] { "Big.dll","OpenDental.exe","Sparks3D/shader.dat",ReleaseManifest.FILE_NAME },
+				CollectionAssert.AreEqual(new[] { "Big.dll","OpenDental.exe","OpenDentalReplicationService/shader.dat",ReleaseManifest.FILE_NAME },
 					zipArchive.Entries.Select(x => x.FullName).ToArray());
 				foreach(ReleaseManifestFile releaseManifestFile in releaseManifest.ListFiles) {
 					ZipArchiveEntry zipArchiveEntry=zipArchive.GetEntry(releaseManifestFile.RelativePath.Replace('\\','/'));
@@ -100,7 +100,7 @@ namespace ReleaseFlowTests {
 			Assert.AreEqual(0,listProblems.Count,string.Join("; ",listProblems));
 			Assert.AreEqual(0,releaseManifest.VerifyFolder(folderDest).Count,"Every file has its listed size and SHA-256 and nothing else is there.");
 			CollectionAssert.AreEqual(File.ReadAllBytes(Path.Combine(folder,"Big.dll")),File.ReadAllBytes(Path.Combine(folderDest,"Big.dll")));
-			Assert.AreEqual("3d",File.ReadAllText(Path.Combine(folderDest,"Sparks3D","shader.dat")));
+			Assert.AreEqual("3d",File.ReadAllText(Path.Combine(folderDest,"OpenDentalReplicationService","shader.dat")));
 			Assert.IsFalse(File.Exists(Path.Combine(folderDest,"FreeDentalConfig.xml")));
 			Assert.AreEqual(releaseManifest.Serialize(),File.ReadAllText(Path.Combine(folderDest,ReleaseManifest.FILE_NAME)),
 				"The pulled folder keeps the published manifest for UpdateFileCopier.");
