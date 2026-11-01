@@ -49,6 +49,24 @@ The capture track was built in a separate imaging session on branches cut from t
   - every ProjectReference to `xImagingDeviceManager.csproj` resolves to the in-repo `ImagingDeviceManager\xImagingDeviceManager.csproj`.
 - **C6, the `Directory.Build.targets` comment.** It no longer says that ImagingDeviceManager is missing from the repository and ships prebuilt. No project is substituted today, and the target stays as a safety net. The "EzTwain4.dll not found" message texts in the legacy paths are left to their files' owners.
 
+## Reviews and test results
+
+- **Reviews in the imaging session**, on `cap/cap-4`:
+  - Round 1: four read-only lenses (patient safety, session logic and threading, data and UI, settings and recovery). 23 issues: 17 confirmed and fixed, 3 refuted, 3 duplicates.
+  - Round 2: four new lenses (windows at runtime, library file handling, test strength, a second safety pass) and a hang investigator. 23 issues, 20 confirmed and fixed, plus round 1's 4 open minor issues and the hang.
+  - Each round ended with a regression review, and its findings were fixed.
+- **The merge review** on `cap/main-3`: C1 to C6 above.
+- **Database tests:** the 55 tests in `tests/ImagingCaptureTests/Db` all pass on the scratch database. None were inconclusive. No `capdb` database was left on the local MariaDB after the run.
+- **Final check** (2026-11-01, `cap/main-final`, from `cap/main-3`):
+  - A cold full build through the build lane: 0 errors. The only warnings in the capture projects are two CS0649 in the test fake `FakeTwainDsm.cs`, which are older than CAP-4.
+  - `run-tests -Mode Full`: 83 assemblies, 5515 tests, 5513 passed, 0 failed. The 2 skipped tests are in M201Tests (the published 26.1 reference documents), and main skips the same 2.
+    - ImagingDeviceManagerTests 501/501.
+    - ImagingCaptureTests 751/751, with the database tests.
+    - ImagingTests 43/43.
+  - `tools/Test-NoHqHosts.ps1` passes.
+  - The OpenDental output has `ImagingCapture.dll` and `ImagingDeviceManager.dll`, and the second is the one built from `ImagingDeviceManager/` (the same file hash). No EZTwain, VideoCamLib or MediaFoundation DLL is anywhere in the build output.
+  - `OpenDental.sln` has 113 projects with no duplicate name, path or GUID, and no duplicate configuration line. `OpenDental.Local.slnf` has 108 entries, with no duplicates. Each entry exists and is in the sln.
+
 ## Still not verified
 
 - **No hardware.** No DSM, sensor or camera has been attached. Everything ran against the fake DSM, the twain-contract 1.1 helper fake and a fake capture session. The clinic run (ask W2, the CAP-0 acceptance list) and a camera test on a PC with a camera are the next real checks.
