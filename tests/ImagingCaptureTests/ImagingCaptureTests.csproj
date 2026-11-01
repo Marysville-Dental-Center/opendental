@@ -5,6 +5,10 @@
     Unit tests for ImagingCapture. They need no camera: the UVC layer is exercised through FakeUvcBackend, and the DirectShow
     declarations are checked for layout and vtable order. MSTest v1, like ImagingDeviceManagerTests. Run with
     vstest.console /Platform:x86. Every .cs file under this folder is compiled.
+    The tests under Db\ are the capture track's database tests: they run the Od* stores, the hook's database path and a full mount save on
+    one scratch MariaDB database (a 24.3.63 seed through the fork migration runner) with a unique per-run name, dropped afterwards, and a
+    temporary A to Z folder. Synthetic data only. They are skipped (inconclusive) when the local MariaDB does not answer or when
+    FORKMIGRATION_TEST_DB=skip; the other tests use no database.
   -->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -25,6 +29,9 @@
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <IsCodedUITest>False</IsCodedUITest>
     <TestProjectType>UnitTest</TestProjectType>
+    <!-- MySqlConnector and the business layer need binding redirects for the database tests, as OpenDental.exe gets them. -->
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -42,12 +49,20 @@
   <ItemGroup>
     <!-- MSTest v1, found through the search path added in Directory.Build.targets. -->
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <Reference Include="MySqlConnector">
+      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
+    <!-- Scratch database helpers shared with the fork migration tests (database names start with forkmig_). -->
+    <Compile Include="..\ForkMigrationTests\TestDb.cs">
+      <Link>Db\TestDb.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\ImagingCapture\xImagingCapture.csproj">
@@ -67,6 +82,20 @@
     <ProjectReference Include="..\..\OpenDentBusiness\OpenDentBusiness.csproj">
       <Project>{3d0fc76e-803c-4de2-bdb1-47d63a4e2357}</Project>
       <Name>OpenDentBusiness</Name>
+    </ProjectReference>
+    <!-- The database tests (Db\): DataConnection, and the synthetic patients, providers, definitions and users of UnitTestsCore. -->
+    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj">
+      <Project>{29C41020-4411-41F2-9061-9B71B5B32B5D}</Project>
+      <Name>xDataConnectionBase</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\UnitTestsCore\UnitTestsCore.csproj">
+      <Project>{7BBDDEDF-C015-43C0-A532-FED224993281}</Project>
+      <Name>UnitTestsCore</Name>
+    </ProjectReference>
+    <!-- DataValid.EventInvalid, which "Add standard templates" raises to tell the other computers about new mount definitions. -->
+    <ProjectReference Include="..\..\WpfControlsOD\WpfControlsOD.csproj">
+      <Project>{118540CC-3536-4E8B-94D4-402CA48A4CB0}</Project>
+      <Name>WpfControlsOD</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
