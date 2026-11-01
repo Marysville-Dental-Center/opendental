@@ -1,6 +1,6 @@
 # Port note: BIN-B, binaries we may not redistribute (part B) and dead references
 
-Branch `pre/bin-b-1`, cut from `main` (d9c177ca6). Part of the run before the rename, for the v0.0 release. Source: the read-only release review of main, `report-release.md` sections 1.2, 1.3, 1.5 and 1.6 (scratch notes of the organization review; not in the repository).
+Branch `pre/bin-b-1`, cut from `main` (d9c177ca6). The review fix round is on `pre/bin-b-2`, cut from `pre/bin-b-1` (see "Fix round" below). Part of the run before the rename, for the v0.0 release. Source: the read-only release review of main, `report-release.md` sections 1.2, 1.3, 1.5 and 1.6 (scratch notes of the organization review; not in the repository).
 
 ## Sources and rules
 
@@ -25,6 +25,7 @@ Branch `pre/bin-b-1`, cut from `main` (d9c177ca6). Part of the run before the re
   - Every other wrapper method does nothing, or returns 0 or "", when it gets a null control, so callers that keep a null control never crash.
 - Callers:
   - `SignatureBoxWrapper` shows the message in its label instead of "Invalid Signature" when it has to show a Topaz signature, and shows it in a message box when the Topaz sign button is clicked. The label's own text (`LabelText`) is put back on the next fill or clear. Callers that set `LabelText` while the message shows keep their value.
+  - The message also stays through the treatment plan retry (fix round): when a fill of that same signature as the program's own does not show it either, the label keeps the message instead of "Invalid Signature".
   - `ControlImages` and `ControlImagesOld` show the same message for a Topaz-signed document and no longer dereference a missing control.
   - The Topaz code in `FormTPsign` and `FormAnestheticRecord` is commented out or not compiled, so it is untouched.
 
@@ -111,6 +112,7 @@ The `Ionic.Zip` references are removed from `OpenDental`, `OpenDentBusiness`, `U
 5. The BCBS Georgia dial-up path was kept on `SerialPort`, not removed, because the wrapper was thin. It is not tested with a modem.
 6. The single-reply `WaitFor` fix in item 5.
 7. The installutil fallback in `ServicesHelper` (outside this package).
+8. Fix round: without Topaz, a treatment plan signature that neither Topaz could check nor the program's own box accepts says "Topaz signature pad software is not installed.", whichever kind the `SigIsTopaz` column names. With one column for two boxes, the program cannot tell a Topaz signature from a damaged one of its own, so it does not claim tampering. Owner question 7.
 
 ## Owner questions
 
@@ -120,6 +122,21 @@ The `Ionic.Zip` references are removed from `OpenDental`, `OpenDentBusiness`, `U
 4. BCBS Georgia dial-up claims: does any office still use them? If not, the clearinghouse path and `TerminalConnector` can go.
 5. `Required dlls/Windows.winmd` (a Windows SDK file) is still in the repository, to compile `PasswordVaultWrapper`. Keep it, or reference the installed Windows SDK's `UnionMetadata\Windows.winmd` instead?
 6. The in-app licence list (`FormLicense`, `FormRegistrationKey`) still lists "Drifty" (DotNetZip), "Stdole", "Zxing" and "Tao_Freeglut", for files no longer shipped. Should the licence package drop them? This package did not touch the list.
+7. Treatment plans on a workstation without Topaz: when the `SigIsTopaz` column says the program's own box and that check fails, the Topaz retry cannot run, so the box says Topaz is not installed rather than "Invalid Signature" (decision 8). Is that the wording you want, or should such a plan say both, for example "Invalid Signature, or a Topaz signature: Topaz signature pad software is not installed."?
+
+## Fix round (pre/bin-b-2)
+
+Review finding: without Topaz, every Topaz-signed treatment plan said "Invalid Signature". `FormTPsign` (patient and practice boxes) and `SheetDrawingJob.GetSigTPHelper` fill a treatment plan signature that does not show once more as the other kind, because one `SigIsTopaz` column covers two boxes. The first fill showed the not-installed message. The retry as the program's own signature then put the label's own text back, and could not read the Topaz string, so the label said "Invalid Signature": a false tamper warning on a legal document. The finding was real, and the new test reproduced it before the fix (`NotInstalled_TreatPlanTriesTheOtherKind_TheMessageStays` failed with "Invalid Signature").
+
+Fix, in `SignatureBoxWrapper` only (option (a) of the review), so every caller that retries is covered without touching `FormTPsign` or `SheetDrawingJob`:
+- `ShowTopazNotInstalled` remembers the signature it could not check (`_signatureTopazNotInstalled`).
+- When the next `FillSignature(false,...)` gets that same signature and still cannot show it (`IsValid` false after all three key-data checks), the not-installed message is shown again.
+- The remembered signature is forgotten whenever the label's own text is restored: on the next fill, on `ClearSignature`, and when the Topaz sign button is used.
+- Unchanged:
+  - A signature the program's own box can show still shows, so a plan whose column says Topaz but whose box was signed in the program's own box displays normally.
+  - A different signature, or a fill after a clear, says the label's own text as before.
+  - With Topaz installed, both checks failing still says "Invalid Signature".
+- Printed sheets: `GetSigTPHelper` draws a blank box for a signature with no points, as before; the label is never printed.
 
 ## Not done here
 
@@ -137,3 +154,13 @@ The `Ionic.Zip` references are removed from `OpenDental`, `OpenDentBusiness`, `U
   - `TerminalConnectorTests`: the port settings, received bytes and special codes, `WaitFor` with one reply, bytes back as received, and opening a port that does not exist.
 - `tests/ReleaseFlowTests/ReleaseArchiveTests.cs` (6 tests, no database): the archive layout of `BuildRelease`, the round trip through `ExtractArchive` and `VerifyFolder`, refusal of 9 hostile paths with nothing written outside the folder, refusal of duplicate, unlisted and oversized entries, the inside-manifest check, and an archive that is not a zip. The existing ReleaseFlowTests pass unchanged, including the database round trip through the published segments.
 - Full build of `OpenDental.Local.slnf`: 0 errors. `tools/Test-NoHqHosts.ps1`: passed (6871 files in 107 projects). `run-tests -Mode Core -Include ReleaseFlowTests` (2026-11-01): 80 assemblies, all passed, including `BINBTests` 31/31, `ReleaseFlowTests` 76/76 and `NoHqTests` 49/49.
+- Fix round (`pre/bin-b-2`): 5 more `TopazWrapperTests`, so `BINBTests` has 36 tests:
+  - Without Topaz:
+    - `NotInstalled_TreatPlanTriesTheOtherKind_TheMessageStays`: `FillSignature(true,k,s)` then `FillSignature(false,k,s)` on a Topaz-shaped string still shows `TopazWrapper.NOT_INSTALLED_MESSAGE`, `IsValid` is false, `LabelText` is the caller's own, and a clear restores it.
+    - `NotInstalled_OwnKindFirstThenTopaz_TheMessageShows`: the opposite order ends the same.
+    - `NotInstalled_TheOwnSignatureOfATopazMarkedPlanStillShows`: a digitally signed treatment plan signature from the program's own box shows and is valid after the Topaz attempt; with changed key data it says "Invalid Signature".
+    - `NotInstalled_AnotherSignatureAfterTheMessage_GetsTheOwnText`: a different signature, or the same one after a clear, says the label's own text.
+  - With Topaz installed (stand-in):
+    - `Installed_TreatPlanTriesTheOtherKind_InvalidAsBefore`: a signature both checks reject says the label's own text, as before.
+  - With the fix disabled, the first test failed with "Invalid Signature", as the review described; with the fix, it passes.
+- Fix round results (2026-11-01): full build of `OpenDental.Local.slnf` 0 errors. `tools/Test-NoHqHosts.ps1` passed (6871 files in 107 projects). `run-tests -Mode Core -Include ReleaseFlowTests`: 80 assemblies, all passed, including `BINBTests` 36/36, `ReleaseFlowTests` 76/76, `NoHqTests` 49/49 and `SignatureTests` 55/55.
