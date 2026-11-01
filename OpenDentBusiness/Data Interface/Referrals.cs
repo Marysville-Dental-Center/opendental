@@ -168,15 +168,13 @@ namespace OpenDentBusiness{
 			return referral.GetNameFL();
 		}
 
-		///<summary></summary>
+		///<summary>The referral's primary phone for display: 10-digit values in the office phone format, anything else as stored (25.4,
+		///ReferralPhones.GetDisplay).</summary>
 		public static string GetPhone(long referralNum) {
 			Meth.NoCheckMiddleTierRole();
 			Referral referral=GetFirstOrDefault(x => x.ReferralNum==referralNum);
 			if(referral!=null) {
-				if(referral.Telephone.Length==10) {
-					return TelephoneNumbers.ReFormat(referral.Telephone);
-				}
-				return referral.Telephone;
+				return ReferralPhones.GetDisplay(referral.Telephone);
 			}
 			return "";
 		}

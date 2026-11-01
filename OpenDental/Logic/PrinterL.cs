@@ -264,38 +264,18 @@ namespace OpenDental {
 				}
 				return isValidPrintConfiguration;
 			}
-			#region 1 - Set default printer if available from this computer.
-			//pSet will always be new when this function is called.
-			//Get the name of the Windows default printer.
-			//This method only works when the pSet is still new.
-			//string winDefault=pSet.PrinterName;
-			//1. If a default printer is set in OD,
-			//and it is in the list of installed printers, use it.
-			bool showPrompt=false;
-			Printer printerForSit=Printers.GetForSit(PrintSituation.Default);//warning: this changes
-			string printerName="";
-			if(printerForSit!=null){
-				printerName=printerForSit.PrinterName;
-				showPrompt=printerForSit.DisplayPrompt;
-				if(Printers.PrinterIsInstalled(printerName)) {
-					printerSettings.PrinterName=printerName;
-				}
+			#region 1 and 2 - The printer the situation's rules pick on this computer (PrintSituationRules, 25.4).
+			//printerSettings is new here, so it holds the Windows default printer. The situation's row is used when it names an installed printer,
+			//otherwise the Default situation's row (this program's own default, not Windows'), otherwise the Windows default stays. The prompt and
+			//the virtual printer settings come from the situation's row when it has one, otherwise from the Default row. These are the rules Setup,
+			//Printers and the Print Options window show.
+			PrinterChoice printerChoice=PrintSituationRules.ResolveForThisComputer(printSituation);
+			bool showPrompt=printerChoice.DisplayPrompt;
+			Printer printerForSit=printerChoice.PrinterRow;
+			if(printerChoice.PrinterName!="") {
+				printerSettings.PrinterName=printerChoice.PrinterName;
 			}
-			#endregion 1
-			#region 2 - If a printer is set for this situation, and it is in the list of installed printers, use it.
-			if(printSituation!=PrintSituation.Default){
-				Printer printerForSpecificSit=Printers.GetForSit(printSituation);
-				printerName="";
-				if(printerForSpecificSit!=null){
-					printerForSit=printerForSpecificSit;
-					printerName=printerForSit.PrinterName;
-					showPrompt=printerForSit.DisplayPrompt;
-					if(Printers.PrinterIsInstalled(printerName)) {
-						printerSettings.PrinterName=printerName;
-					}
-				}
-			}
-			#endregion 2
+			#endregion 1 and 2
 			//If this is a virtual printer, set the path, and flag the settings as document printing.
 			if(printerForSit!=null && printerForSit.IsVirtualPrinter){
 				string printerFilePath=GetFilePrinterPath(printerForSit);

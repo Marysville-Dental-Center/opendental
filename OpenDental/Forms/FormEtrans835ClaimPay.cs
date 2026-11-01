@@ -27,6 +27,9 @@ namespace OpenDental {
 		///<summary>The claim procs shown in the grid.  These procs are saved to/from the grid, but changes are not saved to the database unless the OK button is pressed or an individual claim proc is double-clicked for editing.</summary>
 		public List<ClaimProc> ListClaimProcs;
 		private List<ClaimProc> _listClaimProcsOld;
+		///<summary>Open Dental 25.1: this claim's claimprocs as stored when the window loads, before it saves anything. ListClaimProcs already holds
+		///the allowed amounts the ERA import set, so the override audit compares the saved claimprocs with these copies instead.</summary>
+		private List<ClaimProc> _listClaimProcsDb;
 		private InsPlan _insPlan;
 		///<summary>Index of the Split column in the gridPayments.</summary>
 		private int _idxSplit=-1;
@@ -47,6 +50,9 @@ namespace OpenDental {
 		///Supplemental payments have a feeBilled of 0.
 		///When validating a selection we compare the sum of all feeBilled to claimPaid.ClaimFee, both are set to 0 when true.</summary>
 		private bool _isSupplementalPay;
+		///<summary>Open Dental 25.3: true when the user has Insurance Write-off Edit (119) for every claimproc this posting saves
+		///(ClaimProcs.IsInsWriteOffEditAuthorizedForAll). Without it the Writeoff column is read-only: the ERA's write-offs still post, but none can be typed.</summary>
+		private bool _isWriteOffEditable;
 
 		///<summary>The claimPaid is the individual EOB to load this window for.
 		///The listOtherSplitClaims will contain any split claims which are associated to claimPaid.</summary>
@@ -75,7 +81,10 @@ namespace OpenDental {
 			for(int i=0;i<ListClaimProcs.Count;i++) {
 				_listClaimProcsOld.Add(ListClaimProcs[i].Copy());
 			}
+			_listClaimProcsDb=ClaimProcs.RefreshForClaims(new List<long> { _claim.ClaimNum });//Open Dental 25.1: the override audit compares with these.
 			_listProcedures=Procedures.Refresh(_patient.PatNum);
+			_isWriteOffEditable=ClaimProcs.IsInsWriteOffEditAuthorizedForAll(ListClaimProcs,_listProcedures);//Open Dental 25.3: 119 also covers created claimprocs.
+			butWriteOff.Enabled=_isWriteOffEditable;//Open Dental 25.3: the Write-off button fills the same column, as in FormClaimPayTotal.
 			FillGridClaimAdjustments();
 			FillGridProcedureBreakdown();
 			decimal claimFee=_listHx835_ClaimsAll.Sum(x => x.ClaimFee);
@@ -262,7 +271,7 @@ namespace OpenDental {
 			col=new GridColumn(Lan.g("TableClaimProc",insTitle),62,HorizontalAlignment.Right,isEditable:true);
 			gridPayments.Columns.Add(col);
 			_idxInsPayEst=gridPayments.Columns.Count-1;
-			col=new GridColumn(Lan.g("TableClaimProc","Writeoff"),62,HorizontalAlignment.Right,isEditable:isWOIncluded);
+			col=new GridColumn(Lan.g("TableClaimProc","Writeoff"),62,HorizontalAlignment.Right,isEditable:isWOIncluded && _isWriteOffEditable);
 			gridPayments.Columns.Add(col);
 			_idxWriteoff=gridPayments.Columns.Count-1;
 			col=new GridColumn(Lan.g("TableClaimProc","Status"),50,HorizontalAlignment.Center);
@@ -621,6 +630,10 @@ namespace OpenDental {
 		}
 
 		private void butWriteOff_Click(object sender, System.EventArgs e) {
+			if(!_isWriteOffEditable) {//Open Dental 25.3: checked at the action too, not only through the disabled button.
+				MsgBox.Show(this,"Not authorized for Insurance Write-off Edit on every procedure of this payment.");
+				return;
+			}
 			if(MessageBox.Show(Lan.g(this,"Write off unpaid amount on each procedure?"),"",MessageBoxButtons.OKCancel)
 				!=DialogResult.OK){
 				return;
@@ -807,7 +820,9 @@ namespace OpenDental {
 			List<ClaimProc> listClaimProcs=gridPayments.GetTags<ClaimProc>();
 			FeeL.SaveAllowedFeesFromClaimPayment(listClaimProcs,_listInsPlans);
 			Etranss.ReceiveEraPayment(_claim,_hx835_Claim,ListClaimProcs,checkIncludeWOPercCoPay.Checked,_isSupplementalPay,_insPlan);
+			ClaimProcs.CreateAuditTrailEntriesForOverrides(ListClaimProcs,_listClaimProcsDb);//Open Dental 25.1: ERA and typed overrides, against the database.
 			if(Security.IsAuthorized(EnumPermType.ClaimSend,suppressMessage:true)) {
+				MedicalEobL.PromptToAttachMedicalEob(_claim,ListClaimProcs);//Open Dental 25.2: before the primary claims are sent.
 				if(PrefC.GetBool(PrefName.ClaimMedReceivedPromptForPrimaryClaim) && _claim.MedType.In(EnumClaimMedType.Medical,EnumClaimMedType.Institutional)) {//Check for unsent primary claimprocs.
 					ClaimL.PromptForPrimaryOrSecondaryClaim(ListClaimProcs,false);
 				}

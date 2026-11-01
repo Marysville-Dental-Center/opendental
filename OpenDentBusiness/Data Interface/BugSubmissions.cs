@@ -20,68 +20,11 @@ namespace OpenDentBusiness {
 			set;
 		}
 		#region Get Methods
-		/// <summary>
-		/// Generalizes and centralizesa code to get diagnostic information from an OD session. Used to live in FormAbout.cs. 
-		/// BugSubmissions defaults patNum to -1, so we do the same here. When called during supplemental backup handshake, patNum will
-		/// not be present.
-		/// </summary>
+		///<summary>The Help, About, Diagnostics text. Gathered locally by LocalDiagnostics (M2-MISC, 25.4); nothing is sent anywhere. Kept so callers
+		///built against the old name still work. patNum is the selected patient, or -1 when none.</summary>
 		public static string GetDiagnostics(long patNum=-1) {
-			BugSubmission.SubmissionInfo submissionInfo = new BugSubmission(new Exception(), patNum: patNum).Info;
-			StringBuilder stringBuilder = new StringBuilder();
-			Action<Action> actionWithTryCatch = (action) => {
-				try {
-					action();
-				}
-				catch(Exception ex) {
-					stringBuilder.AppendLine($"ERROR: {ex.Message}");
-				}
-			};
-			stringBuilder.AppendLine("-------------");
-			stringBuilder.AppendLine($"Connection settings");
-			actionWithTryCatch(() => stringBuilder.AppendLine($"  Server Name: {DataConnection.GetServerName()}"));
-			actionWithTryCatch(() => stringBuilder.AppendLine($"  Database Name: {DataConnection.GetDatabaseName()}"));
-			actionWithTryCatch(() => stringBuilder.AppendLine($"  MySQL User: {DataConnection.GetMysqlUser()}"));
-			//Servername, database name, msq user and password
-			List<FieldInfo> listFieldInfos = submissionInfo.GetType().GetFields().ToList();
-			for(int i = 0; i < listFieldInfos.Count; i++) {
-				object objectValue = listFieldInfos[i].GetValue(submissionInfo);
-				if(objectValue.In(null, "")) {
-					continue;
-				}
-				if(objectValue is Dictionary<PrefName, string>) {//DictPrefValues
-					Dictionary<PrefName, string> dictionaryPrefValues = objectValue as Dictionary<PrefName, string>;
-					if(dictionaryPrefValues.Keys.Count > 0) {
-						stringBuilder.AppendLine(listFieldInfos[i].Name + ":");
-						List<KeyValuePair<PrefName, string>> listKeyValuePairsPrefVals = dictionaryPrefValues.ToList();
-						for(int j=0;j<listKeyValuePairsPrefVals.Count;j++){
-							stringBuilder.AppendLine(" " + listKeyValuePairsPrefVals[j].Key.ToString() + " " + listKeyValuePairsPrefVals[j].Value);
-						}
-						stringBuilder.AppendLine("-------------");
-					}
-				}
-				else if(objectValue is List<string>) {//EnabledPlugins
-					List<string> listEnabledPlugins = objectValue as List<string>;
-					if(listEnabledPlugins.Count > 0) {
-						stringBuilder.AppendLine(listFieldInfos[i].Name + ":");
-						for(int j=0;j<listEnabledPlugins.Count;j++){
-							stringBuilder.AppendLine(" " + listEnabledPlugins[j]);
-						}
-						stringBuilder.AppendLine("-------------");
-					}
-				}
-				else if(objectValue is bool) {
-					stringBuilder.AppendLine(listFieldInfos[i].Name + ": " + (((bool)objectValue) == true ? "true" : "false"));
-				}
-				else if(listFieldInfos[i].Name == "CountClinics") {
-					int countTotalClinics = (int)objectValue;
-					int countHiddenClinics = countTotalClinics - Clinics.GetCount(true);
-					stringBuilder.AppendLine($"{listFieldInfos[i].Name}: {countTotalClinics} ({countHiddenClinics} hidden)");
-				}
-				else {
-					stringBuilder.AppendLine(listFieldInfos[i].Name + ": " + objectValue);
-				}
-			}
-			return stringBuilder.ToString();
+			Meth.NoCheckMiddleTierRole();
+			return LocalDiagnostics.GetDiagnostics(patNum);
 		}
 		
 		#endregion

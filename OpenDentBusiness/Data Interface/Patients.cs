@@ -1722,6 +1722,7 @@ namespace OpenDentBusiness {
 			pat.PatNum=Crud.PatientCrud.Insert(pat,useExistingPK);
 			pat.SecurityHash=HashFields(pat);
 			Crud.PatientCrud.Update(pat);
+			InsertBirthdateChangeSecurityLogEntry(null,pat);//Open Dental 26.1: a birthdate the patient is created with is audited as added.
 			if(PrefC.GetBool(PrefName.PatientPhoneUsePhonenumberTable)) {
 				PhoneNumbers.SyncPat(pat);
 			}
@@ -1737,6 +1738,7 @@ namespace OpenDentBusiness {
 				patient.SecurityHash=HashFields(patient);
 			}
 			bool retval=Crud.PatientCrud.Update(patient,oldPatient);
+			InsertBirthdateChangeSecurityLogEntry(oldPatient,patient);//Open Dental 26.1: birthdate additions and changes are audited, from every save path.
 			if(PrefC.GetBool(PrefName.PatientPhoneUsePhonenumberTable)
 				&& (patient.HmPhone!=oldPatient.HmPhone
 					|| patient.WkPhone!=oldPatient.WkPhone
@@ -4071,7 +4073,7 @@ namespace OpenDentBusiness {
 				referral.ST=patientTo.State;
 				referral.SSN=patientTo.SSN;
 				referral.Zip=patientTo.Zip;
-				referral.Telephone=TelephoneNumbers.FormatNumbersExactTen(patientTo.HmPhone);
+				referral.Telephone=ReferralPhones.FromPatientPhone(patientTo.HmPhone);//25.4: the same copy as Edit Referral (up to 30 characters)
 				referral.EMail=patientTo.Email;
 				Referrals.Update(referral);
 				Referrals.RefreshCache();
@@ -5387,7 +5389,7 @@ namespace OpenDentBusiness {
 				referral.ST=patient.State;
 				referral.SSN=patient.SSN;
 				referral.Zip=patient.Zip;
-				referral.Telephone=TelephoneNumbers.FormatNumbersExactTen(patient.HmPhone);
+				referral.Telephone=ReferralPhones.FromPatientPhone(patient.HmPhone);//25.4: the same copy as Edit Referral (up to 30 characters)
 				referral.EMail=patient.Email;
 				Referrals.Update(referral);
 				Referrals.RefreshCache();

@@ -147,7 +147,7 @@ namespace OpenDental {
 			this.checkPpoUseUcr.Name = "checkPpoUseUcr";
 			this.checkPpoUseUcr.Size = new System.Drawing.Size(351, 17);
 			this.checkPpoUseUcr.TabIndex = 0;
-			this.checkPpoUseUcr.Text = "Use UCR fee for billed fee even if PPO fee is higher";
+			this.checkPpoUseUcr.Text = "Use standard provider fee for billed fee even if PPO fee is higher";
 			// 
 			// checkClaimFormTreatDentSaysSigOnFile
 			// 

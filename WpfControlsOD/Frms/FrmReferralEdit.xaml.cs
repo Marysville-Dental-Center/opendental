@@ -47,6 +47,7 @@ namespace OpenDental {
 			Load+=FrmReferralEdit_Load;
 			gridComm.CellDoubleClick+=gridComm_CellDoubleClick;
 			textOtherPhone.TextChanged+=PatientL.ValidPhone_TextChanged;
+			textPhone.TextChanged+=PatientL.ValidPhone_TextChanged;//25.4: one box, up to 30 characters, like the other phone fields
 			FormClosing+=FrmReferralEdit_FormClosing;
 			PreviewKeyDown+=FrmReferralEdit_PreviewKeyDown;
 		}
@@ -75,7 +76,7 @@ namespace OpenDental {
 					ReferralCur.MName=patient.MiddleI;	
 					//RefCur.PatNum=Patients.Cur.PatNum;//already handled
 					ReferralCur.SSN=patient.SSN;
-					ReferralCur.Telephone=TelephoneNumbers.FormatNumbersExactTen(patient.HmPhone);
+					ReferralCur.Telephone=ReferralPhones.FromPatientPhone(patient.HmPhone);
 					if(patient.WkPhone==""){
 						ReferralCur.Phone2=patient.WirelessPhone;
 					}
@@ -96,9 +97,7 @@ namespace OpenDental {
 				textST.ReadOnly=true;
 				textZip.ReadOnly=true;
 				checkNotPerson.IsEnabled=false;
-				textPhone1.ReadOnly=true;
-				textPhone2.ReadOnly=true;
-				textPhone3.ReadOnly=true;
+				textPhone.ReadOnly=true;
 				textSSN.ReadOnly=true;				
 				radioTIN.IsEnabled=false;
 				textEmail.ReadOnly=true;
@@ -129,12 +128,8 @@ namespace OpenDental {
 			textCity.Text=ReferralCur.City;         
 			textST.Text=ReferralCur.ST;
 			textZip.Text=ReferralCur.Zip;
-			string phone=ReferralCur.Telephone;
-			if(phone!=null && phone.Length==10){
-				textPhone1.Text=phone.Substring(0,3);
-				textPhone2.Text=phone.Substring(3,3);
-				textPhone3.Text=phone.Substring(6);
-			}
+			//25.4: 10-digit values are shown in the office phone format, anything else as stored.
+			textPhone.Text=ReferralPhones.GetDisplay(ReferralCur.Telephone);
 			textSSN.Text=ReferralCur.SSN;
 			if(ReferralCur.UsingTIN){ 
 				radioTIN.Checked=true;
@@ -346,9 +341,11 @@ namespace OpenDental {
 			if(!IsNew && !Security.IsAuthorized(EnumPermType.ReferralEdit)) {//User may have add permissions but may not have access to edit.
 				return;
 			}
-			string phone=textPhone1.Text+textPhone2.Text+textPhone3.Text;
-			if(phone.Length > 0 && phone.Length < 10){
-				MessageBox.Show(Lang.g(this,"Invalid phone"));
+			//25.4: no longer limited to 10 digits. A plain 10-digit number is still stored as 10 digits.
+			string phone=ReferralPhones.GetStorage(textPhone.Text);
+			string phoneError=ReferralPhones.GetError(textPhone.Text);
+			if(phoneError!=""){
+				MessageBox.Show(Lang.g(this,phoneError));
 				return;
 			}
 			if(textLName.Text=="") {
