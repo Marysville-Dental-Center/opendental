@@ -119,7 +119,7 @@ Tests: `PaySimpleDeclineTests` (new), two new `FailEmailTests` cases, `IsPaySimp
 
 - One full build through the build lane: 0 errors.
 - Targeted: M2RECURTests 36/36 (two new source checks in an existing test), M202Tests 39/39, VendorDirectTests 873/873, NoHqTests 49/49.
-- `run-tests -Mode Core` with ForkMigrationTests, M201Tests, SyntheticData.Tests and AdoptionValidation.Tests (`Pref.cs` is a TableTypes file, comment only): results in `.git/od-tools/test-results/port_m2-recur-t1.txt`.
+- `run-tests -Mode Core` with ForkMigrationTests, M201Tests, SyntheticData.Tests and AdoptionValidation.Tests (`Pref.cs` is a TableTypes file, comment only): 65 assemblies, no failures (M201Tests 24 of 26 passed; the 2 skipped ones compare with Open Dental's published database documents, which `M201_OD_DOCS_DIR` points to and this PC does not set); M2RECURTests 36/36, ForkMigrationTests 38/38, AdoptionValidation.Tests 56/56, SyntheticData.Tests 53/53. Summary in `.git/od-tools/test-results/port_m2-recur-t1.txt`.
 - `tools/Test-NoHqHosts.ps1` passed.
 
 ## Questions for the owner
