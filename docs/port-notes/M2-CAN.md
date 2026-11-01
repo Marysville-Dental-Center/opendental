@@ -119,3 +119,8 @@ Not changed: `Eclaims/Canadian.cs` (owned; only the excluded CDAnet output would
 5. DAC English and French share one "DAC" category. Separate categories instead?
 6. Codes with commas or hyphens from before 26.1 can only be replaced, not renamed. Is a rename tool wanted (it would have to update fees, code groups and every reference), or is the Database Maintenance list enough?
 7. Is the Canadian part of this package needed at all for a US office? Everything Canadian is hidden outside en-CA and fr-CA.
+
+## Integration (branch `port/int-5`)
+
+- **B-PROC's D Codes and CDA Codes imports** (merged on `port/int-2`) now follow the 26.1 rule, as the interplay section above asks. The check is in `ProcCodeImports.Validate`, right after B-PROC's own 15-character check, so `ProcCodeImports.Parse` leaves a row whose code has a comma, a hyphen-minus or U+2011 out and lists it with `ProcedureCodes.GetProcCodeTextError`'s message; Procedure Code Tools shows those rows before anything is saved ("Rows that could not be read and are skipped"). D codes and CDA codes never contain these characters, so a real code set is unaffected. New tests: `tests/M2CANTests/ProcCodeImportsRuleTests.cs` (text and XML files).
+- `FormProcTools.cs` merged without conflict: B-PROC's layout and this package's constructor line. The Other Codes button is placed from Run Now's position, so it follows B-PROC's taller layout; `WindowTests` checks that.

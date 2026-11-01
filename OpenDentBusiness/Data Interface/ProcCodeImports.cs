@@ -453,6 +453,11 @@ namespace OpenDentBusiness {
 			if(procCodeImportRow.ProcCode.Length>15) {
 				return Lans.g("ProcCodeImports","procedure code longer than 15 characters:")+" "+procCodeImportRow.ProcCode;
 			}
+			//26.1 (package M2-CAN): no comma or hyphen in a code, the rule every other code import and Procedure Codes, New follow.
+			string errorCodeText=ProcedureCodes.GetProcCodeTextError(procCodeImportRow.ProcCode);
+			if(errorCodeText!="") {
+				return errorCodeText;
+			}
 			if(procCodeImportRow.Descript.Length>255) {
 				return Lans.g("ProcCodeImports","description longer than 255 characters for")+" "+procCodeImportRow.ProcCode;
 			}
