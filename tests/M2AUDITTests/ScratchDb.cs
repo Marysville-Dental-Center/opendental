@@ -152,9 +152,13 @@ namespace M2AUDITTests {
 			throw new FileNotFoundException("Not found above the test folder: "+relativePath);
 		}
 
-		///<summary>The repository root: the first folder above the test assembly that holds OpenDental.sln.</summary>
+		///<summary>The repository root: the first folder above the test assembly that holds LICENSE and NOTICE.</summary>
 		public static string GetRepositoryRoot() {
-			return Path.GetDirectoryName(FindRepoFile("OpenDental.sln"));
+			string root=Path.GetDirectoryName(FindRepoFile("NOTICE"));
+			if(!File.Exists(Path.Combine(root,"LICENSE"))) {
+				throw new FileNotFoundException("LICENSE is not next to NOTICE in "+root);
+			}
+			return root;
 		}
 	}
 }

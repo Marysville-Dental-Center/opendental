@@ -71,8 +71,8 @@ namespace RegistryTests {
 			if(listTypes.Count==0) {
 				return null;
 			}
-			return listTypes.FirstOrDefault(x => x.Namespace=="OpenDentBusiness" && !x.IsNested)
-				??listTypes.FirstOrDefault(x => x.Namespace=="OpenDentBusiness")
+			return listTypes.FirstOrDefault(x => x.Namespace==typeof(OpenDentBusiness.Patient).Namespace && !x.IsNested)
+				??listTypes.FirstOrDefault(x => x.Namespace==typeof(OpenDentBusiness.Patient).Namespace)
 				??listTypes[0];
 		}
 	}

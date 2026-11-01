@@ -17,7 +17,7 @@ namespace ReportTests {
 	public class ReportNamesTests {
 		private static string GetRepoFile(params string[] arrayParts) {
 			string dir=Path.GetDirectoryName(typeof(ReportNamesTests).Assembly.Location);
-			while(dir!=null && !File.Exists(Path.Combine(dir,"OpenDental.sln"))) {
+			while(dir!=null && !(File.Exists(Path.Combine(dir,"LICENSE")) && File.Exists(Path.Combine(dir,"NOTICE")))) {
 				dir=Path.GetDirectoryName(dir);
 			}
 			Assert.IsNotNull(dir,"Could not find the repository root above the test assembly.");

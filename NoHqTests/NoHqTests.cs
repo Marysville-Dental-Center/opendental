@@ -240,14 +240,9 @@ namespace NoHqTests {
 		}
 
 		#region Helpers
-		///<summary>Walks up from the test assembly's folder to the folder that holds OpenDental.sln.</summary>
+		///<summary>The repository root (the folder with LICENSE and NOTICE), from this project's one locator.</summary>
 		private static string FindRepoRoot() {
-			DirectoryInfo directoryInfo=new DirectoryInfo(Path.GetDirectoryName(typeof(NoHqTests).Assembly.Location));
-			while(directoryInfo!=null && !File.Exists(Path.Combine(directoryInfo.FullName,"OpenDental.sln"))) {
-				directoryInfo=directoryInfo.Parent;
-			}
-			Assert.IsNotNull(directoryInfo,"Could not find the repository root (OpenDental.sln).");
-			return directoryInfo.FullName;
+			return RemovedAssembliesTests.GetRepositoryRoot();
 		}
 
 		///<summary>Runs the action and asserts that it throws HqNotAvailableException, unwrapping reflection's TargetInvocationException.</summary>

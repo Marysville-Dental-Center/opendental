@@ -213,7 +213,7 @@ namespace VGPTests {
 		public static string GetRepositoryRoot() {
 			string path=AppDomain.CurrentDomain.BaseDirectory;
 			while(path!=null) {
-				if(File.Exists(Path.Combine(path,"OpenDental.sln"))) {
+				if(File.Exists(Path.Combine(path,"LICENSE")) && File.Exists(Path.Combine(path,"NOTICE"))) {
 					return path;
 				}
 				path=Path.GetDirectoryName(path);

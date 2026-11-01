@@ -7,16 +7,16 @@ using OpenDentBusiness;
 namespace VBRIDGE2Tests {
 	///<summary>Locates the repository.</summary>
 	public static class TestPaths {
-		///<summary>Walks up from the test assembly until it finds OpenDental.sln.</summary>
+		///<summary>Walks up from the test assembly until it finds the repository root (LICENSE and NOTICE).</summary>
 		public static string GetRepositoryRoot() {
 			string dir=Path.GetDirectoryName(typeof(TestPaths).Assembly.Location);
 			while(dir!=null) {
-				if(File.Exists(Path.Combine(dir,"OpenDental.sln"))) {
+				if(File.Exists(Path.Combine(dir,"LICENSE")) && File.Exists(Path.Combine(dir,"NOTICE"))) {
 					return dir;
 				}
 				dir=Path.GetDirectoryName(dir);
 			}
-			throw new InvalidOperationException("Could not find the repository root (OpenDental.sln) above the test assembly.");
+			throw new InvalidOperationException("Could not find the repository root (LICENSE and NOTICE) above the test assembly.");
 		}
 
 		///<summary>The text of a file under the repository root, for example ReadRepoFile("WpfControlsOD","Logic","ProgramL.cs").</summary>

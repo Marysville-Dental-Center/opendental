@@ -32,13 +32,22 @@ namespace OpenDental {
 
 		///<summary>Folder for the working copies of letters opened for editing, one subfolder per edit session. It is in the user's local
 		///application data, not in the temporary folder, because temporary-file clean-up (by Windows, other tools or this program) must not remove
-		///a working copy that holds a save that was never stored. If the program is ever renamed, this folder must still be scanned.</summary>
+		///a working copy that holds a save that was never stored. New edit sessions use this folder; GetWorkingRoots also lists the folder that
+		///builds before the rename used, which must still be scanned.</summary>
 		public static string GetWorkingRoot() {
+			return GetWorkingRoots()[0];
+		}
+
+		///<summary>Every folder that can hold working copies, today's (GetWorkingRoot) first: under each of the program's %LOCALAPPDATA% folders
+		///(ProgramNames.GetLocalAppDataFolders, which includes the folder used before the rename), or under %TEMP% when there is no local
+		///application data folder.</summary>
+		public static List<string> GetWorkingRoots() {
 			string folderAppData=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-			if(string.IsNullOrEmpty(folderAppData)) {
-				return Path.Combine(Path.GetTempPath(),"ChartLetters","Working");
+			List<string> listRoots=ProgramNames.GetLocalAppDataFolders(folderAppData).Select(x => Path.Combine(x,"ChartLetters")).ToList();
+			if(listRoots.Count==0) {
+				listRoots.Add(Path.Combine(Path.GetTempPath(),"ChartLetters","Working"));
 			}
-			return Path.Combine(folderAppData,"OpenDental","ChartLetters");
+			return listRoots;
 		}
 
 		///<summary>Folder for the read-only, PDF and merge copies, which are never edited and can be removed at any time. Kept apart from the
@@ -307,13 +316,15 @@ namespace OpenDental {
 			}
 			_isRecovering=true;//The questions below let other events run, which may start another scan.
 			try {
-				List<ChartLetterOrphanedEdit> listOrphanedEdits;
-				try {
-					listOrphanedEdits=ChartLetterEditSession.FindOrphanedEdits(GetWorkingRoot(),patient.PatNum);
-				}
-				catch(Exception ex) {
-					ex.DoNothing();//Nothing found this time; the next scan tries again.
-					return dictReplaced;
+				List<ChartLetterOrphanedEdit> listOrphanedEdits=new List<ChartLetterOrphanedEdit>();
+				//Today's folder and the one used before the rename, so a save that was never stored is found either way.
+				foreach(string workingRoot in GetWorkingRoots()) {
+					try {
+						listOrphanedEdits.AddRange(ChartLetterEditSession.FindOrphanedEdits(workingRoot,patient.PatNum));
+					}
+					catch(Exception ex) {
+						ex.DoNothing();//Nothing found in this folder this time; the next scan tries again.
+					}
 				}
 				bool isChanged=false;
 				for(int i=0;i<listOrphanedEdits.Count;i++) {

@@ -199,6 +199,7 @@
     <Compile Include="Utilities\ODNetworkConnection.cs" />
     <Compile Include="Utilities\ODprintout.cs" />
     <Compile Include="Utilities\ODTuple.cs" />
+    <Compile Include="Utilities\ProgramNames.cs" />
     <Compile Include="Utilities\ServicesHelper.cs" />
     <Compile Include="Utilities\WindowsApiWrapper.cs" />
     <Compile Include="Utilities\ODPrimitiveExtensions.cs" />

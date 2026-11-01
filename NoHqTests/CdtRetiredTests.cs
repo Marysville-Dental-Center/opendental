@@ -20,9 +20,12 @@ namespace NoHqTests {
 			string pathRoot=RemovedAssembliesTests.GetRepositoryRoot();
 			Assert.IsFalse(Directory.Exists(Path.Combine(pathRoot,"CDT")),"The CDT folder should have been deleted.");
 			Assert.IsFalse(File.Exists(Path.Combine(pathRoot,"Required dlls","CDT.dll")),"Required dlls\\CDT.dll should have been deleted.");
-			foreach(string fileName in new[] { "OpenDental.sln","OpenDental.Local.slnf" }) {
-				StringAssert.DoesNotMatch(File.ReadAllText(Path.Combine(pathRoot,fileName)),new System.Text.RegularExpressions.Regex("xCDT"),
-					fileName+" still lists the CDT project.");
+			//The solution and the solution filter, found by extension so the check survives a rename of the solution.
+			List<string> listSolutions=Directory.GetFiles(pathRoot,"*.sln").Concat(Directory.GetFiles(pathRoot,"*.slnf")).ToList();
+			Assert.IsTrue(listSolutions.Count>=2,"Expected the solution and the solution filter in "+pathRoot);
+			foreach(string pathSolution in listSolutions) {
+				StringAssert.DoesNotMatch(File.ReadAllText(pathSolution),new System.Text.RegularExpressions.Regex("xCDT"),
+					Path.GetFileName(pathSolution)+" still lists the CDT project.");
 			}
 		}
 

@@ -252,9 +252,9 @@ namespace CodeBase {
 			return null;
 		}
 
-		///<summary>Returns all services that start with "OpenDent".</summary>
+		///<summary>Returns all services whose names start with ProgramNames.ServicePrefix.</summary>
 		public static List<ServiceController> GetAllOpenDentServices() {
-			return GetServices().FindAll(x => x.ServiceName.StartsWith("OpenDent"));
+			return GetServices().FindAll(x => x.ServiceName.StartsWith(ProgramNames.ServicePrefix));
 		}
 
 		public static string GetMySQLPathToExe(string imagePath) {

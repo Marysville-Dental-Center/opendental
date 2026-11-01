@@ -1315,11 +1315,6 @@ namespace OpenDental{
 			}
 			ComputerPref computerPref =ComputerPrefs.LocalComputer;//just to trigger refresh. See notes in LayoutManagerForms.ScaleMy().
 			//There is no registration key gate. Any key, including a blank one, is accepted.
-			//This must be done at startup in case the user does not perform any action to save something to temp file.
-			//This will cause slowdown, but only for the first week.
-			if(DateTime.Today<PrefC.GetDate(PrefName.TempFolderDateFirstCleaned).AddDays(7)) {
-				PrefC.GetTempFolderPath();//We don't care about the return value.  Just trying to trigger the one-time cleanup and create the temp/opendental directory.
-			}
 			Lans.RefreshCache();//automatically skips if current culture is en-US
 			LanguageForeigns.RefreshCache();//automatically skips if current culture is en-US
 			//menuItemMergeDatabases.Visible=PrefC.GetBool(PrefName.RandomPrimaryKeys");
@@ -6923,7 +6918,7 @@ namespace OpenDental{
 			if(!doShutdownAll) {
 				msg="Your instance of Open Dental ";
 			}
-			else if(Process.GetCurrentProcess().ProcessName=="OpenDental") {
+			else if(ProgramNames.IsProgramProcessName(Process.GetCurrentProcess().ProcessName)) {
 				msg+="All copies of Open Dental ";
 			}
 			else {
@@ -7091,7 +7086,7 @@ namespace OpenDental{
 			for(int i=0;i<stringArrayFileNames.Length;i++) {
 				try {
 					//All files related to updates need to stay.  They do not contain PHI information and will not harm anything if left around.
-					if(stringArrayFileNames[i].Contains("UpdateFileCopier.exe")) {
+					if(stringArrayFileNames[i].Contains(ProgramNames.UpdateFileCopierExeFileName)) {
 						continue;//Skip any files related to updates.
 					}
 					//When an update is in progress, the binaries will be stored in a subfolder called UpdateFiles within the temp directory.
@@ -7099,7 +7094,7 @@ namespace OpenDental{
 						continue;//Skip any files related to updates.
 					}
 					//The UpdateFileCopier will create temporary backups of source and destination setup files so that it can revert if copying fails.
-					if(stringArrayFileNames[i].Contains("updatefilecopier")) {
+					if(stringArrayFileNames[i].Contains(ProgramNames.UpdateFileCopierTempFolderName)) {
 						continue;//Skip any files related to updates.
 					}
 					File.Delete(stringArrayFileNames[i]);
@@ -7117,7 +7112,7 @@ namespace OpenDental{
 						continue;//Skip any files related to updates.
 					}
 					//The UpdateFileCopier will create temporary backups of source and destination setup files so that it can revert if copying fails.
-					if(listDirectories[i].Contains("updatefilecopier")) {
+					if(listDirectories[i].Contains(ProgramNames.UpdateFileCopierTempFolderName)) {
 						continue;//Skip any files related to updates.
 					}
 					Directory.Delete(listDirectories[i]);

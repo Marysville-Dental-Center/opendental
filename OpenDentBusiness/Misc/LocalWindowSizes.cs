@@ -18,7 +18,7 @@ namespace OpenDentBusiness {
 			if(!string.IsNullOrEmpty(PathOverride)) {
 				return PathOverride;
 			}
-			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"OpenDental","WindowSizes.txt");
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),CodeBase.ProgramNames.LocalAppDataFolderName,"WindowSizes.txt");
 		}
 
 		///<summary>The remembered size (width, height at 96 dpi) of the window for the user, or null when none is remembered.</summary>

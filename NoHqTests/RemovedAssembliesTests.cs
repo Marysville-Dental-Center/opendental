@@ -56,19 +56,21 @@ namespace NoHqTests {
 			}
 		}
 
-		///<summary>The folder that holds OpenDental.sln, found by walking up from the test assembly (MSTest may run it from a deployment folder below the repository).</summary>
+		///<summary>The repository root: the first folder above the test assembly (MSTest may run it from a deployment folder below the repository)
+		///that holds LICENSE and NOTICE. Found by those files rather than by the solution's name, so it survives a rename. The one locator of this
+		///project.</summary>
 		internal static string GetRepositoryRoot() {
 			List<string> listStarts=new List<string> { Path.GetDirectoryName(typeof(RemovedAssembliesTests).Assembly.Location),Environment.CurrentDirectory };
 			for(int i=0;i<listStarts.Count;i++) {
 				DirectoryInfo directoryInfo=new DirectoryInfo(listStarts[i]);
 				while(directoryInfo!=null) {
-					if(File.Exists(Path.Combine(directoryInfo.FullName,"OpenDental.sln"))) {
+					if(File.Exists(Path.Combine(directoryInfo.FullName,"LICENSE")) && File.Exists(Path.Combine(directoryInfo.FullName,"NOTICE"))) {
 						return directoryInfo.FullName;
 					}
 					directoryInfo=directoryInfo.Parent;
 				}
 			}
-			Assert.Inconclusive("Could not find the repository root (the folder with OpenDental.sln).");
+			Assert.Inconclusive("Could not find the repository root (the folder with LICENSE and NOTICE).");
 			return null;
 		}
 	}

@@ -172,16 +172,16 @@ namespace BPERIOTests {
 			return Convert.ToInt64(DataCore.GetScalar(command));
 		}
 
-		///<summary>Walks up from the test assembly's folder to the repository root (the folder that holds OpenDental.sln).</summary>
+		///<summary>Walks up from the test assembly's folder to the repository root (the folder that holds LICENSE and NOTICE).</summary>
 		public static string GetRepoRoot() {
 			DirectoryInfo dir=new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
 			while(dir!=null) {
-				if(File.Exists(Path.Combine(dir.FullName,"OpenDental.sln"))) {
+				if(File.Exists(Path.Combine(dir.FullName,"LICENSE")) && File.Exists(Path.Combine(dir.FullName,"NOTICE"))) {
 					return dir.FullName;
 				}
 				dir=dir.Parent;
 			}
-			throw new DirectoryNotFoundException("The repository root (OpenDental.sln) was not found above the test folder.");
+			throw new DirectoryNotFoundException("The repository root (LICENSE and NOTICE) was not found above the test folder.");
 		}
 
 		public static string ReadRepoFile(params string[] arrayParts) {

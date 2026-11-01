@@ -39,7 +39,7 @@ namespace ServiceManager {
 		}
 
 		private void butAdd_Click(object sender,EventArgs e) {
-			using FormServiceManage FormS=new FormServiceManage("OpenDent",false,true);
+			using FormServiceManage FormS=new FormServiceManage(CodeBase.ProgramNames.ServicePrefix,false,true);
 			FormS.ShowDialog();
 			FillList();
 		}

@@ -17,20 +17,20 @@ namespace OpenDentHL7 {
 			if(ODBuild.IsDebug()) {
 				Application.EnableVisualStyles();
 				Application.SetCompatibleTextRenderingDefault(false);
-				Application.Run(new FormDebug("OpenDentHL7"));
+				Application.Run(new FormDebug(ProgramNames.HL7ServiceName));
 			}
 			else {
-				EventLog.WriteEntry("OpenDentHL7.Main", DateTime.Now.ToLongTimeString() +" - Service main method starting...");
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7Main, DateTime.Now.ToLongTimeString() +" - Service main method starting...");
 				ServiceHL7 serviceHL7=new ServiceHL7();
-				serviceHL7.ServiceName="OpenDentalHL7";//default
+				serviceHL7.ServiceName=ProgramNames.HL7ServiceFallbackName;//default when no installed service matches this folder (not the installer's name)
 				//Get the executing assembly location directory (location of this OpenDentHL7.exe)
 				string executingDir=Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 				//Get all installed services
 				List<ServiceController> serviceControllersOD=new List<ServiceController>();
 				ServiceController[] serviceControllersAll=ServiceController.GetServices();
-				//Get all installed services that have names that start with "OpenDent"
+				//Get all installed services whose names start with ProgramNames.ServicePrefix
 				for(int i=0;i<serviceControllersAll.Length;i++) {
-					if(serviceControllersAll[i].ServiceName.StartsWith("OpenDent")) {
+					if(serviceControllersAll[i].ServiceName.StartsWith(ProgramNames.ServicePrefix)) {
 						serviceControllersOD.Add(serviceControllersAll[i]);
 					}
 				}
@@ -49,7 +49,7 @@ namespace OpenDentHL7 {
 					}
 				}
 				ServiceBase.Run(serviceHL7);
-				EventLog.WriteEntry("OpenDentHL7.Main",DateTime.Now.ToLongTimeString() +" - Service main method exiting...");
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7Main,DateTime.Now.ToLongTimeString() +" - Service main method exiting...");
 			}
 		}
 	}

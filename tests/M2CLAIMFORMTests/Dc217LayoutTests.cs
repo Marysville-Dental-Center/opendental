@@ -61,7 +61,7 @@ namespace M2CLAIMFORMTests {
 			for(int i=0;i<4;i++) {
 				root=Path.GetDirectoryName(root);
 			}
-			Assert.IsTrue(File.Exists(Path.Combine(root,"OpenDental.sln")),root);
+			Assert.IsTrue(File.Exists(Path.Combine(root,"LICENSE")) && File.Exists(Path.Combine(root,"NOTICE")),root);
 			string[] arrayExtensions=new[] { ".gif",".png",".jpg",".jpeg",".bmp",".emf",".tif",".tiff",".pdf" };
 			foreach(string folder in new[] { Path.Combine(root,"OpenDentBusiness"),Path.Combine(root,"OpenDental") }) {
 				List<string> listArtwork=Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories)

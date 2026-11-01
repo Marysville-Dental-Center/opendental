@@ -34,6 +34,21 @@ namespace AdoptionValidation.Tests {
 			CollectionAssert.AreEqual(new List<string> { "benefit.ToothRange: NULL saved as '' (363 cells)" },Rehearsal.ListNormalizedNewColumns(summary));
 		}
 
+		///<summary>The table and CRUD lookups take their namespaces from the types, so they still find every table after a rename. A lookup by a
+		///namespace that no longer exists would show every table as unmapped.</summary>
+		[TestMethod]
+		public void TableAndCrudLookups_FindKnownTypes() {
+			Assert.AreEqual(typeof(Patient).Namespace,DataLayerRoundTrip.TableNamespace);
+			Assert.AreEqual(typeof(OpenDentBusiness.Crud.PatientCrud).Namespace,DataLayerRoundTrip.CrudNamespace);
+			Dictionary<string,Type> dictTypes=DataLayerRoundTrip.GetTableTypes();
+			Assert.AreEqual(typeof(Patient),dictTypes["patient"]);
+			Assert.AreEqual(typeof(Procedure),dictTypes["procedurelog"]);
+			Assert.IsTrue(dictTypes.Count>300,"Only "+dictTypes.Count+" table classes found.");
+			Assert.AreEqual(typeof(OpenDentBusiness.Crud.PatientCrud),DataLayerRoundTrip.GetCrudType(typeof(Patient)));
+			Assert.AreEqual(typeof(OpenDentBusiness.Crud.ProcedureCrud),DataLayerRoundTrip.GetCrudType(typeof(Procedure)));
+			Assert.IsNull(DataLayerRoundTrip.GetCrudType(typeof(DataLayerRoundTripTests)));
+		}
+
 		[TestMethod]
 		public void EveryNewOrChangedColumn_HasAClassFieldAndCrud_ExceptTheDocumentedOnes() {
 			Dictionary<string,Type> dictTypes=DataLayerRoundTrip.GetTableTypes();
@@ -50,7 +65,7 @@ namespace AdoptionValidation.Tests {
 					listProblems.Add(table+": no table class");
 					continue;
 				}
-				if(typeof(TableBase).Assembly.GetType("OpenDentBusiness.Crud."+type.Name+"Crud")==null) {
+				if(DataLayerRoundTrip.GetCrudType(type)==null) {
 					listProblems.Add(table+": no CRUD class for "+type.Name);
 					continue;
 				}

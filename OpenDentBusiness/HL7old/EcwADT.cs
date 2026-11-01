@@ -92,13 +92,13 @@ namespace OpenDentBusiness.HL7 {
 			//	ProcessIN1(pat,seg);
 			//}
 			if(pat.FName=="" || pat.LName=="") {
-				EventLog.WriteEntry("OpenDentHL7","Patient demographics not processed due to missing first or last name. PatNum:"+pat.PatNum.ToString()
+				EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSourceHL7,"Patient demographics not processed due to missing first or last name. PatNum:"+pat.PatNum.ToString()
 					,EventLogEntryType.Information);
 				return;
 			}
 			if(isNewPat) {
 				if(isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Inserted patient: "+pat.FName+" "+pat.LName,EventLogEntryType.Information);
+					EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSourceHL7,"Inserted patient: "+pat.FName+" "+pat.LName,EventLogEntryType.Information);
 				}
 				pat.PatNum=Patients.Insert(pat,!isStandalone);//use existing PK if not standalone, standalone will have PatNum=0, so set PatNum here
 				SecurityLogs.MakeLogEntry(EnumPermType.PatientCreate,pat.PatNum,"Created from HL7 for eCW.",LogSources.HL7);
@@ -116,7 +116,7 @@ namespace OpenDentBusiness.HL7 {
 			}
 			else {
 				if(isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Updated patient: "+pat.FName+" "+pat.LName,EventLogEntryType.Information);
+					EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSourceHL7,"Updated patient: "+pat.FName+" "+pat.LName,EventLogEntryType.Information);
 				}
 				Patients.Update(pat,patOld);
 			}

@@ -41,13 +41,13 @@ namespace UpdateFileCopier {
 		///<summary>Temporary directory that will be used to copy any files present in the destination folder before attempting to copy.</summary>
 		private string TempPathDest {
 			get {
-				return ODFileUtils.CombinePaths(Path.GetTempPath(),"opendental","updatefilecopier","local");
+				return ODFileUtils.CombinePaths(Path.GetTempPath(),ProgramNames.TempFolderName,ProgramNames.UpdateFileCopierTempFolderName,"local");
 			}
 		}
 		///<summary>Temporary directory that will be used to copy all files in the destination folder.</summary>
 		private string TempPathSource {
 			get {
-				return ODFileUtils.CombinePaths(Path.GetTempPath(),"opendental","updatefilecopier","source");
+				return ODFileUtils.CombinePaths(Path.GetTempPath(),ProgramNames.TempFolderName,ProgramNames.UpdateFileCopierTempFolderName,"source");
 			}
 		}
 
@@ -73,13 +73,13 @@ namespace UpdateFileCopier {
 			StartFileCopierThread();
 		}
 
-		///<summary>Kills the processes OpenDental and the other programs in the installation directory and then starts a file copier thread.</summary>
+		///<summary>Kills the program (ProgramNames.ProcessName) and the other programs in the installation directory and then starts a file copier thread.</summary>
 		private void StartFileCopierThread() {
 			Cursor=Cursors.WaitCursor;
 			if(_doKillServices) {//Generally kill except when dealing with DynamicMode
-				//kill all processes named OpenDental.
-				//If the software has been rebranded, the original exe will NOT be correctly closed.
-				KillProcess("OpenDental");
+				//Kill every instance of the program (ProgramNames.ProcessName, matched by its whole name).
+				//An exe under another name (an older install that used a different name) is not closed.
+				KillProcess(ProgramNames.ProcessName);
 				//Kill known applications that are present within the installation directory so that the resources are freed if currently in use.
 				//A customer complained on the forums about CentralManager explicitly.  DatabaseIntegrityCheck and ServiceManager are just in case.
 				KillProcess("CentralManager");
@@ -421,10 +421,10 @@ namespace UpdateFileCopier {
 			else {//Everything copied correctly, try and launch Open Dental.
 				SetLabelText("Done");
 				Thread.Sleep(300);//Give SetLabelText some time to finish to make sure Application.Exit doesn't get called too soon.
-				//If Open Dental has been rebranded, then change this value:
+				//The program exe name comes from ProgramNames, the one place a rename changes it.
 				try {
 					if(_doLaunchOpenDental) {
-						string destFileName=ODFileUtils.CombinePaths(_destDirectory,"OpenDental.exe");
+						string destFileName=ODFileUtils.CombinePaths(_destDirectory,ProgramNames.ExeFileName);
 						//Arguments: servername, database name, sql username, sql password hash
 						Process proc=new Process();
 						if(!string.IsNullOrWhiteSpace(_serverName)) {

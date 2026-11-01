@@ -145,14 +145,14 @@ namespace M2EMPTests {
 
 	///<summary>Locates source files for the checks that the windows call the business rules.</summary>
 	public static class RepoFiles {
-		///<summary>Walks up from the test assembly until it finds OpenDental.sln, then reads the file under that root.</summary>
+		///<summary>Walks up from the test assembly until it finds the repository root (LICENSE and NOTICE), then reads the file under that root.</summary>
 		public static string ReadAllText(params string[] arrayParts) {
 			string dir=Path.GetDirectoryName(typeof(RepoFiles).Assembly.Location);
-			while(dir!=null && !File.Exists(Path.Combine(dir,"OpenDental.sln"))) {
+			while(dir!=null && !(File.Exists(Path.Combine(dir,"LICENSE")) && File.Exists(Path.Combine(dir,"NOTICE")))) {
 				dir=Path.GetDirectoryName(dir);
 			}
 			if(dir==null) {
-				throw new InvalidOperationException("Could not find the repository root (OpenDental.sln) above the test assembly.");
+				throw new InvalidOperationException("Could not find the repository root (LICENSE and NOTICE) above the test assembly.");
 			}
 			string path=dir;
 			for(int i=0;i<arrayParts.Length;i++) {
