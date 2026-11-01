@@ -39,8 +39,8 @@ namespace OpenDental {
 				if(processes[i].Id==Process.GetCurrentProcess().Id) {
 					continue;
 				}
-				//we have to do it this way because during debugging, the name has vshost tacked onto the end.
-				if(processes[i].ProcessName.StartsWith("OpenDental")) {
+				//The whole process name, never a prefix: a prefix would also match other programs whose names start the same way.
+				if(ProgramNames.IsProgramProcessName(processes[i].ProcessName)) {
 					isSecondInstance=true;
 					break;
 				}

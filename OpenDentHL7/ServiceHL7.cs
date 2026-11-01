@@ -54,7 +54,7 @@ namespace OpenDentHL7 {
 			InitializeComponent();
 			CanStop = true;
 			IsSendTCPConnected=true;//bool to keep track of whether connection attempts have failed in the past. At startup, the 'previous' attempt is assumed successful.
-			EventLog.WriteEntry("OpenDentHL7",DateTime.Now.ToLongTimeString()+" - Initialized.");
+			EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,DateTime.Now.ToLongTimeString()+" - Initialized.");
 		}
 
 		protected override void OnStart(string[] args) {
@@ -69,7 +69,7 @@ namespace OpenDentHL7 {
 				document.Load(pathXml);
 			}
 			catch {
-				EventLog.WriteEntry("OpenDentHL7",DateTime.Now.ToLongTimeString()+" - Could not find "+pathXml,EventLogEntryType.Error);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,DateTime.Now.ToLongTimeString()+" - Could not find "+pathXml,EventLogEntryType.Error);
 				throw new ApplicationException("Could not find "+pathXml);
 			}
 			XPathNavigator Navigator=document.CreateNavigator();
@@ -88,7 +88,7 @@ namespace OpenDentHL7 {
 			XPathNavigator verboseNav=Navigator.SelectSingleNode("//HL7verbose");
 			if(verboseNav!=null && verboseNav.Value=="True") {
 				IsVerboseLogging=true;
-				EventLog.WriteEntry("OpenDentHL7","Verbose mode.",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Verbose mode.",EventLogEntryType.Information);
 			}
 			DataConnection dcon=new DataConnection();
 			//Try to connect to the database directly
@@ -103,7 +103,7 @@ namespace OpenDentHL7 {
 			//check db version
 			string dbVersion=PrefC.GetString(PrefName.ProgramVersion);
 			if(Application.ProductVersion.ToString() != dbVersion) {
-				EventLog.WriteEntry("OpenDentHL7","Versions do not match.  Db version:"+dbVersion+".  Application version:"+Application.ProductVersion.ToString(),EventLogEntryType.Error);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Versions do not match.  Db version:"+dbVersion+".  Application version:"+Application.ProductVersion.ToString(),EventLogEntryType.Error);
 				throw new ApplicationException("Versions do not match.  Db version:"+dbVersion+".  Application version:"+Application.ProductVersion.ToString());
 			}
 			//connected to the database, set the current user
@@ -121,13 +121,13 @@ namespace OpenDentHL7 {
 					HL7Defs.Update(_medLabHL7DefEnabled);
 				}
 				if(_medLabHL7DefEnabled.HL7Server.ToLower()!=System.Environment.MachineName.ToLower()) {
-					EventLog.WriteEntry("OpenDentHL7","The HL7 Server name does not match the name in the enabled MedLab HL7Def Setup.  Server name: "
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The HL7 Server name does not match the name in the enabled MedLab HL7Def Setup.  Server name: "
 						+System.Environment.MachineName+", Server name in MedLab HL7Def: "+_medLabHL7DefEnabled.HL7Server,EventLogEntryType.Error);
 					throw new ApplicationException("The HL7 Server name does not match the name in the enabled MedLab HL7Def Setup.  Server name: "
 						+System.Environment.MachineName+", Server name in MedLab HL7Def: "+_medLabHL7DefEnabled.HL7Server);
 				}
 				if(_medLabHL7DefEnabled.HL7ServiceName.ToLower()!=this.ServiceName.ToLower()) {
-					EventLog.WriteEntry("OpenDentHL7","The MedLab HL7 Service Name does not match the name in the enabled MedLab HL7Def Setup.  Service name: "
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The MedLab HL7 Service Name does not match the name in the enabled MedLab HL7Def Setup.  Service name: "
 						+this.ServiceName+", Service name in MedLab HL7Def: "+_medLabHL7DefEnabled.HL7ServiceName,EventLogEntryType.Error);
 					throw new ApplicationException("The MedLab HL7 Service Name does not match the name in the enabled MedLab HL7Def Setup.  Service name: "
 						+this.ServiceName+", Service name in MedLab HL7Def: "+_medLabHL7DefEnabled.HL7ServiceName);
@@ -152,13 +152,13 @@ namespace OpenDentHL7 {
 					hl7ServiceName=this.ServiceName;
 				}
 				if(hl7Server.ToLower()!=System.Environment.MachineName.ToLower()) {
-					EventLog.WriteEntry("OpenDentHL7","The HL7 Server name does not match the name set in Program Links eClinicalWorks Setup.  Server name: "+System.Environment.MachineName
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The HL7 Server name does not match the name set in Program Links eClinicalWorks Setup.  Server name: "+System.Environment.MachineName
 						+", Server name in Program Links: "+hl7Server,EventLogEntryType.Error);
 					throw new ApplicationException("The HL7 Server name does not match the name set in Program Links eClinicalWorks Setup.  Server name: "+System.Environment.MachineName
 						+", Server name in Program Links: "+hl7Server);
 				}
 				if(hl7ServiceName.ToLower()!=this.ServiceName.ToLower()) {
-					EventLog.WriteEntry("OpenDentHL7","The HL7 Service Name does not match the name set in Program Links eClinicalWorks Setup.  Service name: "+this.ServiceName+", Service name in Program Links: "
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The HL7 Service Name does not match the name set in Program Links eClinicalWorks Setup.  Service name: "+this.ServiceName+", Service name in Program Links: "
 						+hl7ServiceName,EventLogEntryType.Error);
 					throw new ApplicationException("The HL7 Service Name does not match the name set in Program Links eClinicalWorks Setup.  Service name: "+this.ServiceName+", Service name in Program Links: "
 						+hl7ServiceName);
@@ -181,12 +181,12 @@ namespace OpenDentHL7 {
 				HL7Defs.Update(hL7Def);
 			}
 			if(hL7Def.HL7Server.ToLower()!=System.Environment.MachineName.ToLower()) {
-				EventLog.WriteEntry("OpenDentHL7","The HL7 Server name does not match the name in the enabled HL7Def Setup.  Server name: "+System.Environment.MachineName+", Server name in HL7Def: "+hL7Def.HL7Server,
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The HL7 Server name does not match the name in the enabled HL7Def Setup.  Server name: "+System.Environment.MachineName+", Server name in HL7Def: "+hL7Def.HL7Server,
 					EventLogEntryType.Error);
 				throw new ApplicationException("The HL7 Server name does not match the name in the enabled HL7Def Setup.  Server name: "+System.Environment.MachineName+", Server name in HL7Def: "+hL7Def.HL7Server);
 			}
 			if(hL7Def.HL7ServiceName.ToLower()!=this.ServiceName.ToLower()) {
-				EventLog.WriteEntry("OpenDentHL7","The HL7 Service Name does not match the name in the enabled HL7Def Setup.  Service name: "+this.ServiceName+", Service name in HL7Def: "+hL7Def.HL7ServiceName,
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The HL7 Service Name does not match the name in the enabled HL7Def Setup.  Service name: "+this.ServiceName+", Service name in HL7Def: "+hL7Def.HL7ServiceName,
 					EventLogEntryType.Error);
 				throw new ApplicationException("The HL7 Service Name does not match the name in the enabled HL7Def Setup.  Service name: "+this.ServiceName+", Service name in HL7Def: "+hL7Def.HL7ServiceName);
 			}
@@ -196,11 +196,11 @@ namespace OpenDentHL7 {
 				hl7FolderOut=HL7DefEnabled.OutgoingFolder;
 				hl7FolderIn=HL7DefEnabled.IncomingFolder;
 				if(!Directory.Exists(hl7FolderOut)) {
-					EventLog.WriteEntry("OpenDentHL7","The outgoing HL7 folder does not exist.  Path is set to: "+hl7FolderOut,EventLogEntryType.Error);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The outgoing HL7 folder does not exist.  Path is set to: "+hl7FolderOut,EventLogEntryType.Error);
 					throw new ApplicationException("The outgoing HL7 folder does not exist.  Path is set to: "+hl7FolderOut);
 				}
 				if(!Directory.Exists(hl7FolderIn)) {
-					EventLog.WriteEntry("OpenDentHL7","The incoming HL7 folder does not exist.  Path is set to: "+hl7FolderIn,EventLogEntryType.Error);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The incoming HL7 folder does not exist.  Path is set to: "+hl7FolderIn,EventLogEntryType.Error);
 					throw new ApplicationException("The incoming HL7 folder does not exist.  Path is set to: "+hl7FolderIn);
 				}
 				_ecwDateTimeOldMsgsDeleted=DateTime.MinValue;
@@ -242,7 +242,7 @@ namespace OpenDentHL7 {
 		private void TimerCallbackSftpGetFiles(Object stateInfo) {
 			bool isMedLab=(bool)stateInfo;
 			if(IsVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","A new thread is spawned once per minute to connect to the SFTP server.  "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"A new thread is spawned once per minute to connect to the SFTP server.  "
 						+"If a connection has already been established, this thread will return.",EventLogEntryType.Information);
 			}
 			if(isMedLab) {
@@ -278,7 +278,7 @@ namespace OpenDentHL7 {
 				//if the above fails, clear out the paths, the messages will not be archived
 				msgArchivePath="";
 				msgArchiveProcessedPath="";
-				EventLog.WriteEntry("OpenDentHL7","The SFTP HL7 message archive directory is not accessible or could not be created.  "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The SFTP HL7 message archive directory is not accessible or could not be created.  "
 					+"The inbound HL7 messages will not be archived.  Once processed, the original message text will be deleted.",EventLogEntryType.Warning);
 			}
 			Session session=null;
@@ -311,7 +311,7 @@ namespace OpenDentHL7 {
 				config.Add("StrictHostKeyChecking","no");
 				session.setConfig(config);
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Connecting to the SFTP server to retrieve HL7 message files.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Connecting to the SFTP server to retrieve HL7 message files.",EventLogEntryType.Information);
 				}
 				session.connect(15000);//timeout after 15 seconds
 				ch=session.openChannel("sftp");
@@ -322,7 +322,7 @@ namespace OpenDentHL7 {
 				isConnected=true;
 			}
 			catch(Exception ex) {
-				EventLog.WriteEntry("OpenDentHL7","Could not connect to the SFTP server using the values in the enabled HL7 definition.  "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Could not connect to the SFTP server using the values in the enabled HL7 definition.  "
 					+"Another connection attempt will occur in 1 minute.\r\n"+ex.Message,EventLogEntryType.Information);
 				if(isMedLab) {
 					_medLabSftpModeIsReceiving=false;
@@ -379,7 +379,7 @@ namespace OpenDentHL7 {
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
-				EventLog.WriteEntry("OpenDentHL7","Could not locate the results directory specified in the enabled SFTP HL7 definition.  "
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Could not locate the results directory specified in the enabled SFTP HL7 definition.  "
 					+"Retrieving files from the root directory instead.",EventLogEntryType.Information);
 				resultsPath=".";
 			}
@@ -388,13 +388,13 @@ namespace OpenDentHL7 {
 			try {
 				//At this point we are connected to the LabCorp SFTP server.
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Getting list of file names to retrieve from the SFTP server.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Getting list of file names to retrieve from the SFTP server.",EventLogEntryType.Information);
 				}
 				if(fileList==null) {//fileList will be initialized if the path specified in the def was valid, otherwise default to root dir and fill here
 					fileList=chsftp.ls(resultsPath);//fileList will be ArrayList filled with LsEntry objects
 				}
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Processing SFTP HL7 message files.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Processing SFTP HL7 message files.",EventLogEntryType.Information);
 				}
 				if(fileList.Count==0) {
 					return;//no files to process, return to try again in 60 seconds
@@ -411,7 +411,7 @@ namespace OpenDentHL7 {
 					Tamir.SharpSsh.java.io.InputStream fileStream=null;
 					try {
 						if(IsVerboseLogging) {
-							EventLog.WriteEntry("OpenDentHL7","Begin reading in the next SFTP HL7 file.",EventLogEntryType.Information);
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Begin reading in the next SFTP HL7 file.",EventLogEntryType.Information);
 						}
 						fileStream=chsftp.get(filePath);
 						byte[] fileBytes=new byte[100000];//100,000 byte chunks, 350 KB file size, average time to retrieve file 3.2 seconds
@@ -424,7 +424,7 @@ namespace OpenDentHL7 {
 						string fileName="";
 						if(isMedLab && msgArchivePath!="") {
 							if(IsVerboseLogging) {
-								EventLog.WriteEntry("OpenDentHL7","Create the archive of the SFTP HL7 message "+msgArchivePath,EventLogEntryType.Information);
+								EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Create the archive of the SFTP HL7 message "+msgArchivePath,EventLogEntryType.Information);
 							}
 							try {
 								if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
@@ -448,11 +448,11 @@ namespace OpenDentHL7 {
 							}
 						}
 						if(IsVerboseLogging) {
-							EventLog.WriteEntry("OpenDentHL7","Create the SFTP HL7 Message Object from the file text.",EventLogEntryType.Information);
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Create the SFTP HL7 Message Object from the file text.",EventLogEntryType.Information);
 						}
 						MessageHL7 messageHl7Object=new MessageHL7(sb.ToString());//this creates an entire heirarchy of objects.
 						if(IsVerboseLogging) {
-							EventLog.WriteEntry("OpenDentHL7","Process the SFTP HL7 message.",EventLogEntryType.Information);
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Process the SFTP HL7 message.",EventLogEntryType.Information);
 						}
 						List<long> medLabNumList=new List<long>();
 						if(isMedLab) {
@@ -479,7 +479,7 @@ namespace OpenDentHL7 {
 						//chsftp.rm(filePath);//not necessary to remove the file for MedLab, once it is read it is deleted.
 					}
 					catch(Exception ex) {
-						EventLog.WriteEntry("OpenDentHL7","Error retrieving or processing a SFTP HL7 message.  If the file was not processed, it will remain "
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Error retrieving or processing a SFTP HL7 message.  If the file was not processed, it will remain "
 							+"on the server and another attempt will be made later.\r\n"+ex.Message,EventLogEntryType.Information);
 						continue;
 					}
@@ -491,13 +491,13 @@ namespace OpenDentHL7 {
 				}
 			}
 			catch(Exception ex) {
-				EventLog.WriteEntry("OpenDentHL7","Error retrieving or processing a SFTP HL7 message.  Will retry in 1 minute.\r\n"
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Error retrieving or processing a SFTP HL7 message.  Will retry in 1 minute.\r\n"
 					+ex.Message,EventLogEntryType.Information);
 				return;
 			}
 			finally {
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Files found: "+countFilesFound.ToString()+", Files Processed: "
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Files found: "+countFilesFound.ToString()+", Files Processed: "
 						+countFilesProcessed.ToString()+"\r\nDisconnecting from the SFTP server.",EventLogEntryType.Information);
 				}
 				//Disconnect from the SFTP server.
@@ -555,7 +555,7 @@ namespace OpenDentHL7 {
 				MessageHL7 msg=new MessageHL7(msgtext);//this creates an entire heirarchy of objects.
 				MessageParser.Process(msg,IsVerboseLogging);
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Processed message "+msg.MsgType.ToString(),EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Processed message "+msg.MsgType.ToString(),EventLogEntryType.Information);
 				}
 			}
 			catch(Exception ex) {
@@ -632,13 +632,13 @@ namespace OpenDentHL7 {
 				_socketIncomingMain.Bind(endpointLocal);
 				_socketIncomingMain.Listen(1);//Listen for and queue incoming connection requests.  There should only be one.
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Listening",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Listening",EventLogEntryType.Information);
 				}
 				//Asynchronously process incoming connection attempts:
 				_socketIncomingMain.BeginAccept(new AsyncCallback(OnConnectionAccepted),_socketIncomingMain);
 			}
 			catch(Exception ex) {
-				EventLog.WriteEntry("OpenDentHL7","Error creating incoming TCP listener\r\n"+ex.Message+"\r\n"+ex.StackTrace,EventLogEntryType.Error);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Error creating incoming TCP listener\r\n"+ex.Message+"\r\n"+ex.StackTrace,EventLogEntryType.Error);
 				throw ex;
 				//service will stop working at this point.
 			}
@@ -647,7 +647,7 @@ namespace OpenDentHL7 {
 		///<summary>Runs in a separate thread.  Considered the main thread for receiving messages.</summary>
 		private void OnConnectionAccepted(IAsyncResult asyncResult) {
 			if(IsVerboseLogging) {
-				EventLog.WriteEntry("OpenDentHL7","Connection Accepted",EventLogEntryType.Information);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Connection Accepted",EventLogEntryType.Information);
 			}
 			try {
 				receiveDone.Reset();//manual reset event to tell the main thread to accept an incoming connection
@@ -656,18 +656,18 @@ namespace OpenDentHL7 {
 				//We will keep reusing the same workerSocket instead of maintaining a list of worker sockets
 				//because this program is guaranteed to only have one incoming connection at a time.
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","BeginReceive",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"BeginReceive",EventLogEntryType.Information);
 				}
 				StateObject state=new StateObject();
 				state.workSocket=socketIncomingHandler;
 				_ecwTCPModeIsReceiving=true;
 				socketIncomingHandler.BeginReceive(state.buffer,0,StateObject.BufferSize,SocketFlags.None,new AsyncCallback(OnDataReceived),state);
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","The main receive thread is waiting for the manual reset event to be set before accepting any new connections.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The main receive thread is waiting for the manual reset event to be set before accepting any new connections.",EventLogEntryType.Information);
 				}
 				if(!receiveDone.WaitOne(new TimeSpan(0,20,0))) {
 					if(IsVerboseLogging) {
-						EventLog.WriteEntry("OpenDentHL7","The main receive thread timed out waiting for the manual reset event to be set.  A new connection will be accepted.",EventLogEntryType.Information);
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The main receive thread timed out waiting for the manual reset event to be set.  A new connection will be accepted.",EventLogEntryType.Information);
 					}
 					//the main receive thread will wait for OnDataReceived to set the manual reset event receiveDone before accepting any new connections
 					//if the receiveDone waits for 20 minutes and there is no reset event set, shutdown the socket and accept a new connection
@@ -680,21 +680,21 @@ namespace OpenDentHL7 {
 					socketIncomingHandler.Close();
 				}
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","The manual reset event has been set.  The main receive thread is now accepting new connections.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The manual reset event has been set.  The main receive thread is now accepting new connections.",EventLogEntryType.Information);
 				}
 				//the main socket is now free to wait for another connection.
 				_ecwTCPModeIsReceiving=false;
 				_socketIncomingMain.BeginAccept(new AsyncCallback(OnConnectionAccepted),_socketIncomingMain);
 			}
 			catch(ObjectDisposedException ex) {
-				EventLog.WriteEntry("OpenDentHL7","Error in OnConnectionAccepted.  Attempting to call CreateIncomingTcpListener again.\r\nException: "+ex.Message+"\r\n"+ex.StackTrace,EventLogEntryType.Warning);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Error in OnConnectionAccepted.  Attempting to call CreateIncomingTcpListener again.\r\nException: "+ex.Message+"\r\n"+ex.StackTrace,EventLogEntryType.Warning);
 				//Socket has been closed.  Try to start over.
 				_socketIncomingMain.Close();
 				_ecwTCPModeIsReceiving=false;
 				CreateIncomingTcpListener();//If this fails, service stops running
 			}
 			catch(Exception ex) {
-				EventLog.WriteEntry("OpenDentHL7","Error in OnConnectionAccpeted:\r\n"+ex.Message+"\r\n"+ex.StackTrace,EventLogEntryType.Warning);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Error in OnConnectionAccpeted:\r\n"+ex.Message+"\r\n"+ex.StackTrace,EventLogEntryType.Warning);
 				_socketIncomingMain.Close();
 				_ecwTCPModeIsReceiving=false;
 				CreateIncomingTcpListener();//If this fails, service stops running
@@ -715,7 +715,7 @@ namespace OpenDentHL7 {
 				int byteCountReceived=0;
 				try {
 					if(IsVerboseLogging) {
-						EventLog.WriteEntry("OpenDentHL7","EndReceive is starting.",EventLogEntryType.Information);
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"EndReceive is starting.",EventLogEntryType.Information);
 					}
 					byteCountReceived=socketIncomingHandler.EndReceive(asyncResult);//blocks until data is received.
 				}
@@ -768,7 +768,7 @@ namespace OpenDentHL7 {
 				if(!isFullMsg) {
 					try {
 						if(IsVerboseLogging) {
-							EventLog.WriteEntry("OpenDentHL7","Not a full message, BeginReceive called again.",EventLogEntryType.Information);
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Not a full message, BeginReceive called again.",EventLogEntryType.Information);
 						}
 						//the buffer was cleared after appending the chars to the string builder
 						_ecwTCPModeIsReceiving=true;
@@ -777,7 +777,7 @@ namespace OpenDentHL7 {
 							//if we have received part of a message and 30 seconds goes by with no additional data received
 							//close the socket and set the receiveDone manual reset event.  A new socket connection will be accepted.
 							if(IsVerboseLogging) {
-								EventLog.WriteEntry("OpenDentHL7","Setting manual reset event so the main receive thread will accept a new incoming connection.",EventLogEntryType.Information);
+								EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Setting manual reset event so the main receive thread will accept a new incoming connection.",EventLogEntryType.Information);
 							}
 							inResultIncomplMsg.AsyncWaitHandle.Close();
 							_ecwTCPModeIsReceiving=false;
@@ -810,19 +810,19 @@ namespace OpenDentHL7 {
 				}
 				else {
 					if(IsVerboseLogging) {
-						EventLog.WriteEntry("OpenDentHL7","Create the HL7 Message Object from the message text.",EventLogEntryType.Information);
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Create the HL7 Message Object from the message text.",EventLogEntryType.Information);
 					}
 					MessageHL7 messageHl7Object=new MessageHL7(hl7Msg.MsgText);//this creates an entire heirarchy of objects.
 					try {
 						if(IsVerboseLogging) {
-							EventLog.WriteEntry("OpenDentHL7","Process the HL7 message.",EventLogEntryType.Information);
+							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Process the HL7 message.",EventLogEntryType.Information);
 						}
 						ackEvent=messageHl7Object.AckEvent;
 						MessageParser.Process(messageHl7Object,IsVerboseLogging);//also saves the message to the db and retrieves the control ID from the MSH segment
 						messageControlId=messageHl7Object.ControlId;
 					}
 					catch(Exception ex) {
-						EventLog.WriteEntry("OpenDentHL7","Error in OnDataReceived when processing message:\r\n"+ex.Message+"\r\n"+ex.StackTrace,EventLogEntryType.Information);
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Error in OnDataReceived when processing message:\r\n"+ex.Message+"\r\n"+ex.StackTrace,EventLogEntryType.Information);
 						isProcessed=false;
 					}
 				}
@@ -834,7 +834,7 @@ namespace OpenDentHL7 {
 				}
 				byte[] ackByteOutgoing=Encoding.ASCII.GetBytes(MLLP_START_CHAR+hl7Ack.ToString()+MLLP_END_CHAR+MLLP_ENDMSG_CHAR);
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Beginning to send ACK.\r\n"+MLLP_START_CHAR+hl7Ack.ToString()+MLLP_END_CHAR+MLLP_ENDMSG_CHAR,EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Beginning to send ACK.\r\n"+MLLP_START_CHAR+hl7Ack.ToString()+MLLP_END_CHAR+MLLP_ENDMSG_CHAR,EventLogEntryType.Information);
 				}
 				socketIncomingHandler.SendTimeout=5000;//timeout after 5 seconds of trying to send an acknowledgment
 				try {
@@ -852,14 +852,14 @@ namespace OpenDentHL7 {
 				//the buffer was cleared after appending the chars to the string builder
 				//the string builder was cleared after setting the message text in the table
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Message was received and acknowledgment was sent.  BeginReceive called again.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Message was received and acknowledgment was sent.  BeginReceive called again.",EventLogEntryType.Information);
 				}
 				_ecwTCPModeIsReceiving=true;
 				IAsyncResult inSocketResult=socketIncomingHandler.BeginReceive(state.buffer,0,StateObject.BufferSize,SocketFlags.None,new AsyncCallback(OnDataReceived),state);
 				if(!inSocketResult.AsyncWaitHandle.WaitOne(new TimeSpan(0,5,0))) {//WaitOne will return true if data was received, false if the timeout is reached with no data received
 					//if 5 minutes goes by with no received data, close the socket and set the receiveDone manual reset event.  A new socket connection will be accepted.
 					if(IsVerboseLogging) {
-						EventLog.WriteEntry("OpenDentHL7","Setting manual reset event due to inactive timeout.  The main receive thread will accept a new incoming connection.",EventLogEntryType.Information);
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Setting manual reset event due to inactive timeout.  The main receive thread will accept a new incoming connection.",EventLogEntryType.Information);
 					}
 					inSocketResult.AsyncWaitHandle.Close();
 					_ecwTCPModeIsReceiving=false;
@@ -871,9 +871,9 @@ namespace OpenDentHL7 {
 				}
 			}
 			catch(Exception ex) {
-				EventLog.WriteEntry("OpenDentHL7","Error in OnDataReceived.  Setting receiveDone manual reset event for main thread to accept new incoming connections.\r\n"+ex.Message+"\r\n"+ex.StackTrace,EventLogEntryType.Warning);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Error in OnDataReceived.  Setting receiveDone manual reset event for main thread to accept new incoming connections.\r\n"+ex.Message+"\r\n"+ex.StackTrace,EventLogEntryType.Warning);
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Setting manual reset event so the main receive thread will accept a new incoming connection.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Setting manual reset event so the main receive thread will accept a new incoming connection.",EventLogEntryType.Information);
 				}
 				_ecwTCPModeIsReceiving=false;
 				((StateObject)asyncResult.AsyncState).workSocket.Close();
@@ -895,7 +895,7 @@ namespace OpenDentHL7 {
 				endpoint=new IPEndPoint(ipaddress,port);
 			}
 			catch(Exception ex) {//not likely, but want to make sure to reset the bool that the send socket is connected
-				EventLog.WriteEntry("OpenDentHL7","The HL7 send TCP/IP socket connection failed during IPEndPoint creation.\r\nException message: "+ex.Message,EventLogEntryType.Warning);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The HL7 send TCP/IP socket connection failed during IPEndPoint creation.\r\nException message: "+ex.Message,EventLogEntryType.Warning);
 				socketMain.Close();
 				_ecwTCPSendSocketIsConnected=false;
 				return;//will try to create a socket again in 20 seconds
@@ -903,32 +903,32 @@ namespace OpenDentHL7 {
 			try {
 				connectDone.Reset();
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","The send socket is beginning to connect.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The send socket is beginning to connect.",EventLogEntryType.Information);
 				}
 				socketMain.BeginConnect(endpoint,new AsyncCallback(ConnectCallback),socketMain);
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","The main send thread is waiting for the manual reset event to be set in the connect callback function before sending messages.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The main send thread is waiting for the manual reset event to be set in the connect callback function before sending messages.",EventLogEntryType.Information);
 				}
 				connectDone.WaitOne();//connection attempt will timeout and set the manual reset event
 				if(IsVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","The main send thread is now able to check the socket and if connected start sending.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The main send thread is now able to check the socket and if connected start sending.",EventLogEntryType.Information);
 				}
 				if(!socketMain.Connected) {
 					if(IsVerboseLogging) {
-						EventLog.WriteEntry("OpenDentHL7","The send socket was not connected.  Disposing of the socket object and signaling for a new socket to be connected.",EventLogEntryType.Information);
+						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The send socket was not connected.  Disposing of the socket object and signaling for a new socket to be connected.",EventLogEntryType.Information);
 					}
 					socketMain.Close();
 					_ecwTCPSendSocketIsConnected=false;
 					return;//will try to connect again in 20 seconds
 				}
 				if(!IsSendTCPConnected) {//Previous run failed to connect. This time connected so make log entry that connection was successful
-					EventLog.WriteEntry("OpenDentHL7","The HL7 send TCP/IP socket connection failed to connect previously and was successful this time.",EventLogEntryType.Information);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The HL7 send TCP/IP socket connection failed to connect previously and was successful this time.",EventLogEntryType.Information);
 					IsSendTCPConnected=true;
 				}
 			}
 			catch(SocketException ex) {
 				if(IsSendTCPConnected) {//Previous run connected fine, make log entry and set bool to false
-					EventLog.WriteEntry("OpenDentHL7","The HL7 send TCP/IP socket connection failed to connect.\r\nSocket Exception: "+ex.Message,EventLogEntryType.Warning);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The HL7 send TCP/IP socket connection failed to connect.\r\nSocket Exception: "+ex.Message,EventLogEntryType.Warning);
 					IsSendTCPConnected=false;
 				}
 				socketMain.Close();
@@ -937,7 +937,7 @@ namespace OpenDentHL7 {
 			}
 			catch(Exception ex) {
 				if(IsSendTCPConnected) {//Previous run connected fine, make log entry and set bool to false
-					EventLog.WriteEntry("OpenDentHL7","The HL7 send TCP/IP socket connection failed to connect.\r\nException: "+ex.Message,EventLogEntryType.Warning);
+					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The HL7 send TCP/IP socket connection failed to connect.\r\nException: "+ex.Message,EventLogEntryType.Warning);
 					IsSendTCPConnected=false;
 				}
 				socketMain.Close();
@@ -957,7 +957,7 @@ namespace OpenDentHL7 {
 				client.EndConnect(ar);
 			}
 			catch(Exception ex) {
-				EventLog.WriteEntry("OpenDentHL7","The TCP send socket encountered an issue attempting to connect.\r\nException: "+ex.Message,EventLogEntryType.Warning);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The TCP send socket encountered an issue attempting to connect.\r\nException: "+ex.Message,EventLogEntryType.Warning);
 			}
 			connectDone.Set();
 		}
@@ -976,7 +976,7 @@ namespace OpenDentHL7 {
 				//the connect timer will initiate a new connection with a new socket every 20 seconds if _ecwTCPSendSocketIsConnected=false;
 				timerSendTCP.Dispose();
 				socketWorker.Close();
-				EventLog.WriteEntry("OpenDentHL7","The TCP send socket has been closed.  A new socket connection attempt will occur within 20 seconds.",EventLogEntryType.Warning);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The TCP send socket has been closed.  A new socket connection attempt will occur within 20 seconds.",EventLogEntryType.Warning);
 				_ecwTCPModeIsSending=false;
 				_ecwTCPSendSocketIsConnected=false;
 				return;
@@ -985,7 +985,7 @@ namespace OpenDentHL7 {
 				Send(socketWorker);
 			}
 			catch(Exception ex) {
-				EventLog.WriteEntry("OpenDentHL7","The TCP HL7 outgoing message socket encountered a problem during a send.  Another attempt to send will occur within 6 seconds.\r\nException message: "+ex.Message,EventLogEntryType.Warning);
+				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The TCP HL7 outgoing message socket encountered a problem during a send.  Another attempt to send will occur within 6 seconds.\r\nException message: "+ex.Message,EventLogEntryType.Warning);
 			}
 			_ecwTCPModeIsSending=false;
 		}

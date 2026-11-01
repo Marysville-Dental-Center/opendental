@@ -62,7 +62,7 @@ namespace OpenDentBusiness.HL7 {
 			if(seg.GetFieldComponent(3,0)==""//lname
 				|| seg.GetFieldComponent(3,1)=="")//fname
 			{
-				EventLog.WriteEntry("OpenDentHL7","Guarantor not processed due to missing first or last name. PatNum of patient:"+pat.PatNum.ToString()
+				EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSourceHL7,"Guarantor not processed due to missing first or last name. PatNum of patient:"+pat.PatNum.ToString()
 					,EventLogEntryType.Information);
 				return;
 			}

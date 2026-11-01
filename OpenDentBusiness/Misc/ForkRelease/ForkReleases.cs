@@ -76,19 +76,23 @@ namespace OpenDentBusiness {
 			"OpenDentalReplicationService",
 		};
 		///<summary>The program's own assemblies. The build id is the SHA-256 over their names and SHA-256 values, so any rebuilt assembly gives a new
-		///build id while third-party files are not hashed at every startup.</summary>
+		///build id while third-party files are not hashed at every startup. ComputeBuildId skips a missing file silently, so the program-named
+		///files come from ProgramNames (the one place a rename changes them), and ReleaseFlowTests checks that every file is in the build output.
+		///</summary>
 		public static readonly List<string> ListBuildIdFiles=new List<string>() {
-			"OpenDental.exe",
-			"OpenDentBusiness.dll",
+			ProgramNames.ExeFileName,
+			ProgramNames.BusinessDllFileName,
 			"CodeBase.dll",
 			"DataConnectionBase.dll",
 			"WpfControlsOD.dll",
-			"OpenDentalGraph.dll",
-			"OpenDentalCloud.dll",
+			ProgramNames.GraphDllFileName,
+			ProgramNames.CloudDllFileName,
 			"SparksToothChart.dll",
 			"ODCrypt.dll",
 			"PasswordVaultWrapper.dll",
-			"UpdateFileCopier.exe",
+			"ImagingDeviceManager.dll",
+			"ImagingCapture.dll",
+			ProgramNames.UpdateFileCopierExeFileName,
 		};
 		///<summary>Key of the AssemblyMetadata attribute that holds the build time of OpenDental.exe (written by OpenDental.csproj).</summary>
 		public const string BUILD_UTC_METADATA_KEY="ForkBuildUtc";
@@ -275,7 +279,8 @@ namespace OpenDentBusiness {
 		///<summary>True for files of the installation folder that are published. Local settings, logs and files a plugin marks with a double underscore
 		///stay local (the same rules Open Dental used for its update files).</summary>
 		public static bool ShouldPublishFile(string fileName) {
-			if(fileName.In("FreeDentalConfig.xml","OpenDentalServerConfig.xml","ProximitySettings.txt","OpenDentalReplicationServiceConfig.xml",
+			if(fileName.In(ProgramNames.ConfigFileName,ProgramNames.MiddleTierConfigFileName,"ProximitySettings.txt",
+				ProgramNames.ReplicationServiceConfigFileName,
 				ReleaseManifest.FILE_NAME,"Manifest.txt"))
 			{
 				return false;

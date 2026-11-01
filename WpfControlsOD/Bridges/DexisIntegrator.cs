@@ -112,7 +112,10 @@ namespace OpenDental.Bridges {
 		public static void SendDataDDE(Program progCur,Patient pat) {
 			try {
 				if(_client==null || _client.Context==null) {
-					Form formOD=Application.OpenForms.Cast<Form>().FirstOrDefault(x=>x.GetType().FullName=="OpenDental.FormOpenDental");
+					//FormOpenDental is in the exe, which this assembly cannot reference. It shares FrmODBase's namespace, taken from the type so the
+					//lookup follows a rename.
+					string fullNameMain=typeof(FrmODBase).Namespace+".FormOpenDental";
+					Form formOD=Application.OpenForms.Cast<Form>().FirstOrDefault(x=>x.GetType().FullName==fullNameMain);
 					if(formOD is null){
 						formOD=Application.OpenForms[0];
 					}

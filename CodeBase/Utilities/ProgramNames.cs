@@ -1,0 +1,95 @@
+// The names the installed program uses for itself at run time, in one place, so the rename to Open PMS Dental changes these values only.
+// Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+namespace CodeBase {
+	///<summary>The names the program uses for itself at run time that the compiler cannot check: the exe and process name, the files of the
+	///release build id, the folders under %LOCALAPPDATA%, %ProgramData% and %TEMP%, the Event Log sources, the Windows service prefix and
+	///UpdateFileCopier's defaults. Every such site reads them from here, so a rename changes these values and nothing else. The values are
+	///today's names. Database table, column and preference names are not here and never change.
+	///This file has no dependencies beyond the framework: UpdateFileCopier compiles a linked copy of it, because it replaces CodeBase.dll while
+	///it runs.</summary>
+	public static class ProgramNames {
+		#region Program files
+		///<summary>The main program's process name: its exe file name without ".exe". Compare process names with IsProgramProcessName, which
+		///matches the whole name, never a prefix (a prefix would also match other programs whose names start the same way).</summary>
+		public const string ProcessName="OpenDental";
+		///<summary>The main program's exe file name.</summary>
+		public const string ExeFileName=ProcessName+".exe";
+		///<summary>The business layer's file name.</summary>
+		public const string BusinessDllFileName="OpenDentBusiness.dll";
+		///<summary>The dashboard graphs' file name.</summary>
+		public const string GraphDllFileName="OpenDentalGraph.dll";
+		///<summary>The SFTP storage library's file name.</summary>
+		public const string CloudDllFileName="OpenDentalCloud.dll";
+		///<summary>The program that copies a pulled release into the installation folder and restarts the program.</summary>
+		public const string UpdateFileCopierExeFileName="UpdateFileCopier.exe";
+		#endregion Program files
+
+		#region Local configuration files
+		///<summary>This computer's database connection settings, next to the exe. Never published with a release.</summary>
+		public const string ConfigFileName="FreeDentalConfig.xml";
+		///<summary>The Middle Tier server's database connection settings. Never published with a release.</summary>
+		public const string MiddleTierConfigFileName="OpenDentalServerConfig.xml";
+		///<summary>The replication service's settings. Never published with a release.</summary>
+		public const string ReplicationServiceConfigFileName="OpenDentalReplicationServiceConfig.xml";
+		#endregion Local configuration files
+
+		#region Folders
+		///<summary>The program's folder under %LOCALAPPDATA%: window sizes, Query Monitor filters, the Waiting Room position and the working
+		///copies of chart letters with unsaved edits.</summary>
+		public const string LocalAppDataFolderName="OpenDental";
+		///<summary>The folder under %LOCALAPPDATA% that builds before the rename used. It stays this value after the rename, so files that hold
+		///unsaved work there (chart letter working copies) are still found. See GetLocalAppDataFolders.</summary>
+		public const string LegacyLocalAppDataFolderName="OpenDental";
+		///<summary>The program's folder under %ProgramData%: the SFTP download stash, and the logs of web applications.</summary>
+		public const string ProgramDataFolderName="OpenDental";
+		///<summary>The program's folder under %TEMP% (PrefC.GetTempFolderPath). The program empties it when it closes.</summary>
+		public const string TempFolderName="opendental";
+		///<summary>UpdateFileCopier's sub folder of TempFolderName, which the close-time clean-up keeps.</summary>
+		public const string UpdateFileCopierTempFolderName="updatefilecopier";
+		#endregion Folders
+
+		#region Event Log and Windows services
+		///<summary>The Event Log source of the main program (time synchronization messages).</summary>
+		public const string EventLogSource="OpenDental";
+		///<summary>The default name of the HL7 Windows service, which is also the Event Log source its messages are written under.</summary>
+		public const string HL7ServiceName="OpenDentHL7";
+		///<summary>The Event Log source of the HL7 service's messages.</summary>
+		public const string EventLogSourceHL7=HL7ServiceName;
+		///<summary>The Event Log source of the HL7 service's start and stop messages, written before the service has its name.</summary>
+		public const string EventLogSourceHL7Main=HL7ServiceName+".Main";
+		///<summary>Every Windows service of this program has a name that starts with this. ServiceManager refuses other names, and the program
+		///starts the installed services that start with it.</summary>
+		public const string ServicePrefix="OpenDent";
+		#endregion Event Log and Windows services
+
+		#region UpdateFileCopier defaults
+		///<summary>The installation folder UpdateFileCopier copies into when it is started without one (debugging only; the program always passes
+		///its own folder).</summary>
+		public const string DefaultInstallFolder=@"C:\Program Files\Open Dental";
+		#endregion UpdateFileCopier defaults
+
+		///<summary>True when processName is the main program's process name. Matches the whole name, ignoring case; never a prefix.</summary>
+		public static bool IsProgramProcessName(string processName) {
+			return string.Equals(processName,ProcessName,StringComparison.OrdinalIgnoreCase);
+		}
+
+		///<summary>The program's folders under folderLocalAppData (%LOCALAPPDATA%): today's folder first, then the folder builds before the rename
+		///used, when it is a different one. Empty when folderLocalAppData is blank.</summary>
+		public static List<string> GetLocalAppDataFolders(string folderLocalAppData) {
+			List<string> listFolders=new List<string>();
+			if(string.IsNullOrEmpty(folderLocalAppData)) {
+				return listFolders;
+			}
+			listFolders.Add(Path.Combine(folderLocalAppData,LocalAppDataFolderName));
+			string folderLegacy=Path.Combine(folderLocalAppData,LegacyLocalAppDataFolderName);
+			if(!string.Equals(folderLegacy,listFolders[0],StringComparison.OrdinalIgnoreCase)) {
+				listFolders.Add(folderLegacy);
+			}
+			return listFolders;
+		}
+	}
+}

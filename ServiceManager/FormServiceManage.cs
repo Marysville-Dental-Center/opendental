@@ -90,8 +90,8 @@ namespace ServiceManager {
 				return;
 			}
 			string serviceName=textName.Text;
-			if(serviceName.Length<8 || serviceName.Substring(0,8)!="OpenDent") {
-				MessageBox.Show("Error.  Service name must begin with \"OpenDent\".");
+			if(!serviceName.StartsWith(CodeBase.ProgramNames.ServicePrefix,StringComparison.Ordinal)) {
+				MessageBox.Show("Error.  Service name must begin with \""+CodeBase.ProgramNames.ServicePrefix+"\".");
 				return;
 			}
 			//if(ServicesHelper.HasService(serviceName,_serviceFileInfo)) {

@@ -291,7 +291,7 @@ namespace OpenDentBusiness{
 			if(!string.IsNullOrEmpty(FilePathOverride)) {
 				return FilePathOverride;
 			}
-			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"OpenDental","QueryMonitorFilterGroups.txt");
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),ProgramNames.LocalAppDataFolderName,"QueryMonitorFilterGroups.txt");
 		}
 
 		///<summary>The key for the current connection and user.</summary>

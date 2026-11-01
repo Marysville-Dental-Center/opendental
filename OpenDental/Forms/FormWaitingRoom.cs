@@ -158,7 +158,7 @@ namespace OpenDental {
 			if(string.IsNullOrEmpty(folderAppData)) {
 				folderAppData=Path.GetTempPath();
 			}
-			return Path.Combine(folderAppData,"OpenDental","WaitingRoomWindow.txt");
+			return Path.Combine(folderAppData,ProgramNames.LocalAppDataFolderName,"WaitingRoomWindow.txt");
 		}
 
 		///<summary>"x,y,width,height", or null when missing or invalid.</summary>

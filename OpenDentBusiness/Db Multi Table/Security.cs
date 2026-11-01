@@ -401,6 +401,14 @@ namespace OpenDentBusiness{
 			}
 		}
 
+		///<summary>The Middle Tier method name of LogInWeb, "&lt;namespace&gt;.Security.LogInWeb". Built from the type, like the names Meth sends, so it
+		///follows a rename of the namespace: the server takes the first part as the assembly name (DtoProcessor).</summary>
+		public static string LogInWebMethodName {
+			get {
+				return typeof(Security).FullName+"."+nameof(LogInWeb);
+			}
+		}
+
 		///<summary>Will throw an exception if server cannot validate username and password.
 		///configPath will be empty from a workstation and filled from the server.  If Ecw, odpass will actually be the hash.</summary>
 		public static Userod LogInWeb(string oduser,string odpass,string configPath,string clientVersionStr,bool usingEcw) {
@@ -429,7 +437,7 @@ namespace OpenDentBusiness{
 				dto.Credentials.Username=oduser;
 				dto.Credentials.Password=odpass;//Userods.EncryptPassword(password);
 				dto.ComputerName=Security.CurComputerName;
-				dto.MethodName="OpenDentBusiness.Security.LogInWeb";
+				dto.MethodName=LogInWebMethodName;
 				dto.ObjectType=typeof(Userod).FullName;
 				object[] parameters=new object[] { oduser,odpass,configPath,clientVersionStr,usingEcw };
 				dto.Params=DtoObject.ConstructArray(MethodBase.GetCurrentMethod(),parameters);

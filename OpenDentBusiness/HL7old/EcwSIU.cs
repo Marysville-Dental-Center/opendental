@@ -45,7 +45,7 @@ namespace OpenDentBusiness.HL7 {
 				aptOld=apt.Copy();
 			}
 			if(apt.PatNum != pat.PatNum) {
-				EventLog.WriteEntry("OpenDentHL7","Appointment does not match patient: "+pat.FName+" "+pat.LName
+				EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSourceHL7,"Appointment does not match patient: "+pat.FName+" "+pat.LName
 					+", apt.PatNum:"+apt.PatNum.ToString()+", pat.PatNum:"+pat.PatNum.ToString()
 					,EventLogEntryType.Error);
 				return;//we can't process this message because wrong patnum.
@@ -78,13 +78,13 @@ namespace OpenDentBusiness.HL7 {
 			}
 			//AIL,AIP seem to be optional, and I'm going to ignore them for now.
 			if(pat.FName=="" || pat.LName=="") {
-				EventLog.WriteEntry("OpenDentHL7","Appointment not processed due to missing patient first or last name. PatNum:"+pat.PatNum.ToString()
+				EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSourceHL7,"Appointment not processed due to missing patient first or last name. PatNum:"+pat.PatNum.ToString()
 					,EventLogEntryType.Information);
 				return;//this will also skip the appt insert.
 			}
 			if(isNewPat) {
 				if(isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Inserted patient: "+pat.FName+" "+pat.LName+", PatNum:"+pat.PatNum.ToString()
+					EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSourceHL7,"Inserted patient: "+pat.FName+" "+pat.LName+", PatNum:"+pat.PatNum.ToString()
 						,EventLogEntryType.Information);
 				}
 				Patients.Insert(pat,true);
@@ -92,7 +92,7 @@ namespace OpenDentBusiness.HL7 {
 			}
 			else {
 				if(isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Updated patient: "+pat.FName+" "+pat.LName,EventLogEntryType.Information);
+					EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSourceHL7,"Updated patient: "+pat.FName+" "+pat.LName,EventLogEntryType.Information);
 				}
 				Patients.Update(pat,patOld);
 			}
@@ -100,14 +100,14 @@ namespace OpenDentBusiness.HL7 {
 			PatientRaces.Reconcile(pat.PatNum,listPatRaces);
 			if(isNewApt) {
 				if(isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Inserted appointment for: "+pat.FName+" "+pat.LName,EventLogEntryType.Information);
+					EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSourceHL7,"Inserted appointment for: "+pat.FName+" "+pat.LName,EventLogEntryType.Information);
 				}
 				Appointments.InsertIncludeAptNum(apt,true);
 				Appointments.TryAddPerVisitProcCodesToAppt(apt,ApptStatus.None);
 			}
 			else {
 				if(isVerboseLogging) {
-					EventLog.WriteEntry("OpenDentHL7","Updated appointment for: "+pat.FName+" "+pat.LName,EventLogEntryType.Information);
+					EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSourceHL7,"Updated appointment for: "+pat.FName+" "+pat.LName,EventLogEntryType.Information);
 				}
 				Appointments.Update(apt,aptOld);
 				Appointments.TryAddPerVisitProcCodesToAppt(apt,aptOld.AptStatus);
