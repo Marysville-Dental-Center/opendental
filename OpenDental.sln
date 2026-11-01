@@ -208,6 +208,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VEDSTests", "tests\VEDSTest
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2CLAIMRCVTests", "tests\M2CLAIMRCVTests\M2CLAIMRCVTests.csproj", "{45A42DFE-6424-4EAE-BC3E-A612AC21E241}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2AUDITTests", "tests\M2AUDITTests\M2AUDITTests.csproj", "{8943A30C-94BB-423A-A435-F96D222A8984}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1395,6 +1397,18 @@ Global
 		{45A42DFE-6424-4EAE-BC3E-A612AC21E241}.Release|Any CPU.Build.0 = Release|x86
 		{45A42DFE-6424-4EAE-BC3E-A612AC21E241}.Release|x86.ActiveCfg = Release|x86
 		{45A42DFE-6424-4EAE-BC3E-A612AC21E241}.Release|x86.Build.0 = Release|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.Debug|Any CPU.Build.0 = Debug|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.Debug|x86.ActiveCfg = Debug|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.Debug|x86.Build.0 = Debug|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.ODXam|Any CPU.Build.0 = Release|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.ODXam|x86.ActiveCfg = Release|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.ODXam|x86.Build.0 = Release|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.Release|Any CPU.ActiveCfg = Release|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.Release|Any CPU.Build.0 = Release|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.Release|x86.ActiveCfg = Release|x86
+		{8943A30C-94BB-423A-A435-F96D222A8984}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

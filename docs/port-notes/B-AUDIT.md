@@ -82,6 +82,9 @@ Paths left as they are, on purpose:
   can add its birthdate line to `GetPreferredAndClinicChangeLogText` (or a sibling in the same partial file) and so reach every hook added here,
   including the sheet/eForm import and HL7 paths, without another hook. If it adds its own line next to the hook in
   `InsertAddressChangeSecurityLogEntry`, the merge is a one-line conflict.
+  As merged (`port/m2-audit-t1`): M2-AUDIT hooks `Patients.Insert` and `Patients.Update` instead and writes its own birthdate entry, so these
+  entries are unchanged. A patient inserted with a birthdate now starts with that entry, so `PatientAuditDbTests.GetPatientEditLogs` returns only
+  the rows written after `AddPatient`'s setup (see docs/port-notes/M2-AUDIT.md).
 - **B-EF** owns `FormSheetImport.cs` in this wave. The only change here is one line after `Patients.Update(_patient,_patientOld);` in
   `butImport_Click`; if B-EF restructures that method, keep the call right after the patient row is saved.
 - **A-HASH** (merged): the per-patient entries go through `SecurityLogs.MakeLogEntry(permType,listPatNums,logText)`, which writes the

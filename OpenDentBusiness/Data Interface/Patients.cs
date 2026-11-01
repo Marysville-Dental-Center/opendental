@@ -1722,6 +1722,7 @@ namespace OpenDentBusiness {
 			pat.PatNum=Crud.PatientCrud.Insert(pat,useExistingPK);
 			pat.SecurityHash=HashFields(pat);
 			Crud.PatientCrud.Update(pat);
+			InsertBirthdateChangeSecurityLogEntry(null,pat);//Open Dental 26.1: a birthdate the patient is created with is audited as added.
 			if(PrefC.GetBool(PrefName.PatientPhoneUsePhonenumberTable)) {
 				PhoneNumbers.SyncPat(pat);
 			}
@@ -1737,6 +1738,7 @@ namespace OpenDentBusiness {
 				patient.SecurityHash=HashFields(patient);
 			}
 			bool retval=Crud.PatientCrud.Update(patient,oldPatient);
+			InsertBirthdateChangeSecurityLogEntry(oldPatient,patient);//Open Dental 26.1: birthdate additions and changes are audited, from every save path.
 			if(PrefC.GetBool(PrefName.PatientPhoneUsePhonenumberTable)
 				&& (patient.HmPhone!=oldPatient.HmPhone
 					|| patient.WkPhone!=oldPatient.WkPhone
