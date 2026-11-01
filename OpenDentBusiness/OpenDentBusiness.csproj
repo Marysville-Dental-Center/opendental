@@ -496,6 +496,8 @@
     <Compile Include="Data Interface\StatementProds.cs" />
     <Compile Include="Db Multi Table\InsPlanSubstitution.cs" />
     <Compile Include="Imaging\BitmapDicom.cs" />
+    <Compile Include="Imaging\DicomSubsetReader.cs" />
+    <Compile Include="Imaging\IDicomPixelReader.cs" />
     <Compile Include="Imaging\ImageCopyRules.cs" />
     <Compile Include="Imaging\ImageDrawFontSizeSync.cs" />
     <Compile Include="InternalTools\Cloud\Crud\CloudBillingCrud.cs" />
