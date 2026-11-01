@@ -45,6 +45,7 @@ namespace ImagingCapture.Session {
 		private readonly CaptureSessionServices _services;
 		private readonly ICaptureDispatcher _dispatcher;
 		private readonly ICaptureClock _clock;
+		private readonly IRadiographStore _radiographStore;
 		private readonly RadiographImport _radiographImport;
 		private readonly MountSlots _mountSlots;
 		private ITwainCaptureSession _session;
@@ -93,7 +94,8 @@ namespace ImagingCapture.Session {
 				throw new ArgumentException("A mount needs its slots.",nameof(setup));
 			}
 			_clock=services.Clock??new SystemCaptureClock();
-			_radiographImport=new RadiographImport(services.RadiographStore??new OdRadiographStore(),() => _clock.Now);
+			_radiographStore=services.RadiographStore??new OdRadiographStore();
+			_radiographImport=new RadiographImport(_radiographStore,() => _clock.Now);
 			_mountSlots=setup.Mount==null ? null : setup.MountSlots;
 			ProvNum=setup.ProvNumDefault;
 			ProviderAbbr=GetProviderAbbr(ProvNum);
@@ -707,8 +709,9 @@ namespace ImagingCapture.Session {
 		///<summary>Makes the empty slot idx the target. A target change while the source is enabled never moves the image of the current enable
 		///(design 7.11): its images go to the slot it was started for. With safe disable in effect (PerSlot), the session disables in the safe
 		///order and enables for the new target when that enable has ended; without it, the change waits for the enable to deliver or end, and
-		///NextTargetText says so.</summary>
-		private bool ChangeTarget(int idx,bool isSkip) {
+		///NextTargetText says so ("then retake ..." for a Retake, isRetake). In Continuous mode, once the running enable has delivered an image,
+		///its next images go to the target as it is now (ReceiveImage), so only the target changes.</summary>
+		private bool ChangeTarget(int idx,bool isSkip,bool isRetake=false) {
 			int idxBefore=_mountSlots.IdxTarget;
 			if(idx==idxBefore) {
 				return false;
@@ -720,25 +723,44 @@ namespace ImagingCapture.Session {
 				_hashSetSkipped.Add(idxBefore);
 			}
 			_hashSetSkipped.Remove(idx);
-			Log((isSkip ? "Skipped " : "Target changed from ")+(idxBefore==-1 ? "none" : MountPlacement.GetSlotLabel(_mountSlots.ListMountItems[idxBefore]))
+			Log((isSkip ? "Skipped " : (isRetake ? "Retake: target changed from " : "Target changed from "))
+				+(idxBefore==-1 ? "none" : MountPlacement.GetSlotLabel(_mountSlots.ListMountItems[idxBefore]))
 				+(isSkip ? "; the target is " : " to ")+MountPlacement.GetSlotLabel(_mountSlots.Target)+".");
 			if(_enableRunning==null || _enableRunning.IdxTarget==idx) {
 				_idxTargetChosen=null;
 				NextTargetText="";
 				return true;
 			}
+			if(_setup.Options.SessionMode==TwainSessionMode.Continuous && _enableRunning.CountReceived>0) {
+				_idxTargetChosen=null;//design 7.11: in continuous mode only the target changes; nothing is disabled
+				NextTargetText="";
+				return true;
+			}
 			_idxTargetChosen=idx;
 			if(Phase==CaptureSessionPhase.Enabled && _enableRunning.IsSafeDisableInEffect && _setup.Options.SessionMode==TwainSessionMode.PerSlot
-				&& _enableRunning.CountSaved==0)
+				&& _enableRunning.CountSaved==0 && !_enableRunning.IsRedelivery)
 			{
-				_enableRunning.StopRequested=TwainCaptureStopReason.TargetChanged;
-				_session.Disable(TwainCaptureStopReason.TargetChanged);
-				Phase=CaptureSessionPhase.Stopping;
-				SetIndicator(CaptureIndicatorState.Disabled,CaptureSessionText.Stopping);
+				StopEnableSafely(_enableRunning,TwainCaptureStopReason.TargetChanged);
 			}
-			string enableTargetText=CaptureTargetText.GetSlotText(_mountSlots.ListMountItems,_enableRunning.MountItemTarget);
-			NextTargetText=CaptureSessionText.GetNextImageText(enableTargetText,TargetText);
+			SetNextTargetText(isRetake);
 			return true;
+		}
+
+		///<summary>NextTargetText while the running enable is for another slot than the chosen target (design 7.11): "Next image: &lt;slot N+1&gt;,
+		///then &lt;slot&gt;", or "then retake &lt;slot N&gt;" for a Retake.</summary>
+		private void SetNextTargetText(bool isRetake) {
+			string enableTargetText=CaptureTargetText.GetSlotText(_mountSlots.ListMountItems,_enableRunning.MountItemTarget);
+			NextTargetText=isRetake ? CaptureSessionText.GetNextImageRetakeText(enableTargetText,TargetText)
+				: CaptureSessionText.GetNextImageText(enableTargetText,TargetText);
+		}
+
+		///<summary>Disables the running enable in the safe order, for reason: only called when safe disable is in effect for it, or for an operator's
+		///command after the unsafe-stop warning (design 7.6). Its images still go to the slot it was started for.</summary>
+		private void StopEnableSafely(CaptureEnableRecord record,TwainCaptureStopReason reason) {
+			record.StopRequested=reason;
+			_session.Disable(reason);
+			Phase=CaptureSessionPhase.Stopping;
+			SetIndicator(CaptureIndicatorState.Disabled,CaptureSessionText.Stopping);
 		}
 
 		///<summary>After an image was placed in idxFilled: the target the operator chose meanwhile, if it is still empty, otherwise the next empty
@@ -956,6 +978,7 @@ namespace ImagingCapture.Session {
 				QuarantineImage(session,image,record,"The image did not come from an enable of this capture session.",false);
 				return;
 			}
+			record.CountReceived++;
 			bool isHandled=false;
 			OnImageReceivedExt(image,record,ref isHandled);
 			if(isHandled) {

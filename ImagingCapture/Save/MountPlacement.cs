@@ -285,6 +285,17 @@ namespace ImagingCapture.Save {
 			IdxTarget=listSlots==null ? -1 : MountPlacement.IndexOfMountItem(_listMountItems,listSlots[0]);
 		}
 
+		///<summary>Records that the document in the slot at idx left it (a Retake moved it to an unmounted item, design 7.11), and returns that
+		///document, or null when the slot was empty. The slot is empty afterwards; the target is unchanged.</summary>
+		public Document RemoveFromSlot(int idx) {
+			if(idx<0 || idx>=_listMountItems.Count) {
+				throw new ArgumentOutOfRangeException(nameof(idx));
+			}
+			Document document=_listDocuments[idx];
+			_listDocuments[idx]=null;
+			return document;
+		}
+
 		///<summary>Records a new unmounted item and its document, appended at the end as ControlImageDisplay.DocumentAcquiredForMount does. The
 		///target is unchanged.</summary>
 		public void AddUnmounted(MountItem mountItem,Document document) {

@@ -27,6 +27,12 @@ namespace ImagingCapture.Session {
 		List<SecurityLog> GetSetupLogEntries(long imagingDeviceNum);
 		///<summary>SecurityLogs.MakeLogEntry(permType,patNum,logText,fKey,DateTime.MinValue). Throws on failure.</summary>
 		void MakeLogEntry(EnumPermType permType,long patNum,string logText,long fKey);
+		///<summary>MountItemDefs.GetForMountDef: the slots of a mount definition, ordered by ItemOrder ("Always rotate this slot", design 7.3).</summary>
+		List<MountItemDef> GetMountItemDefs(long mountDefNum);
+		///<summary>MountItemDefs.Update. Throws on failure.</summary>
+		void UpdateMountItemDef(MountItemDef mountItemDef);
+		///<summary>MountItems.Update. Throws on failure.</summary>
+		void UpdateMountItem(MountItem mountItem);
 	}
 
 	///<summary>ICaptureSessionStore through OpenDentBusiness. Not exercised by the unit tests, which have no database.</summary>
@@ -61,6 +67,18 @@ namespace ImagingCapture.Session {
 
 		public void MakeLogEntry(EnumPermType permType,long patNum,string logText,long fKey) {
 			SecurityLogs.MakeLogEntry(permType,patNum,logText,fKey,DateTime.MinValue);
+		}
+
+		public List<MountItemDef> GetMountItemDefs(long mountDefNum) {
+			return MountItemDefs.GetForMountDef(mountDefNum);
+		}
+
+		public void UpdateMountItemDef(MountItemDef mountItemDef) {
+			MountItemDefs.Update(mountItemDef);
+		}
+
+		public void UpdateMountItem(MountItem mountItem) {
+			MountItems.Update(mountItem);
 		}
 	}
 }

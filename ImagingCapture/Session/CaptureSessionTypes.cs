@@ -106,6 +106,8 @@ namespace ImagingCapture.Session {
 		///<summary>Images of this enable that were saved, quarantined.</summary>
 		public int CountSaved { get; set; }
 		public int CountQuarantined { get; set; }
+		///<summary>Images of this enable that reached the controller while the session ran, wherever they went.</summary>
+		public int CountReceived { get; set; }
 		///<summary>The controller asked it to stop, and why.</summary>
 		public ImagingDeviceManager.Capture.TwainCaptureStopReason StopRequested { get; set; }
 	}

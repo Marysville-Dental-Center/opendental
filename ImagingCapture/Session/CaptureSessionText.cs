@@ -1,6 +1,7 @@
 // This file is part of the open source dental practice management software derived from Open Dental.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Globalization;
 
 namespace ImagingCapture.Session {
 	///<summary>The capture session's own texts for the indicator area (design 7.5, 7.12), apart from those CaptureEndText already has for how
@@ -53,6 +54,36 @@ namespace ImagingCapture.Session {
 		public static string GetNextImageText(string enableTargetText,string targetText) {
 			return "Next image: "+enableTargetText+", then "+targetText;
 		}
+
+		///<summary>Design 7.11: "Next image: &lt;slot N+1&gt;, then retake &lt;slot N&gt;", while the enable for the next slot runs and the Retake
+		///waits for it to deliver or end.</summary>
+		public static string GetNextImageRetakeText(string enableTargetText,string retakeTargetText) {
+			return "Next image: "+enableTargetText+", then retake "+retakeTargetText;
+		}
+
+		///<summary>Design 7.11, 9.1: the Description of a retaken document in its unmounted item, "Retake: Slot 3 (teeth 2,3)".</summary>
+		public static string GetRetakeLabel(string slotLabel) {
+			return "Retake: "+(slotLabel??"").Trim();
+		}
+
+		///<summary>After a Retake: where the rejected image went, and what is next.</summary>
+		public static string GetRetakeNotice(string slotLabel) {
+			string label=(slotLabel??"").Trim();
+			return "The image of "+label+" is kept as an unmounted image, \""+GetRetakeLabel(label)+"\". The next image goes to "+label+".";
+		}
+
+		///<summary>"Rotated to 90 degrees."</summary>
+		public static string GetRotatedText(int degrees) {
+			return "Rotated to "+degrees.ToString(CultureInfo.InvariantCulture)+" degrees.";
+		}
+
+		///<summary>After "Always rotate this slot": "Slot 3 of "FMX" now turns 90 degrees on acquire."</summary>
+		public static string GetAlwaysRotateText(int itemOrder,string mountDefDescription,int degrees) {
+			return "Slot "+itemOrder.ToString(CultureInfo.InvariantCulture)+" of \""+(mountDefDescription??"").Trim()+"\" now turns "
+				+degrees.ToString(CultureInfo.InvariantCulture)+" degrees on acquire.";
+		}
+
+		public const string AlwaysRotateNotAuthorized="Not authorized for Setup: the slot's rotation on acquire was not changed.";
 
 		///<summary>"Saved to slot 3 (teeth 2,3)" from MountPlacement.GetSlotLabel's "Slot 3 (teeth 2,3)".</summary>
 		public static string GetSavedText(string slotLabel) {

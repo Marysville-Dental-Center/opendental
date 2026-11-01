@@ -50,6 +50,13 @@ namespace ImagingCapture.Tests {
 	internal sealed class FakeCaptureSessionStore:ICaptureSessionStore {
 		public bool IsAuthorizedResult=true;
 		public EnumPermType PermTypeChecked;
+		///<summary>Permissions that IsAuthorized refuses whatever IsAuthorizedResult says.</summary>
+		public HashSet<EnumPermType> HashSetPermsDenied=new HashSet<EnumPermType>();
+		public Dictionary<long,List<MountItemDef>> DictMountItemDefs=new Dictionary<long,List<MountItemDef>>();
+		public readonly List<MountItemDef> ListMountItemDefsUpdated=new List<MountItemDef>();
+		public readonly List<MountItem> ListMountItemsUpdated=new List<MountItem>();
+		///<summary>Names of calls that throw: "MakeLogEntry", "UpdateMountItemDef", "UpdateMountItem".</summary>
+		public string ThrowOn="";
 		public HashSet<long> HashSetCategories=new HashSet<long> { 20 };
 		public Dictionary<long,List<MountItem>> DictMountItems=new Dictionary<long,List<MountItem>>();
 		public Dictionary<long,Document> DictDocumentsByMountItem=new Dictionary<long,Document>();
@@ -60,7 +67,7 @@ namespace ImagingCapture.Tests {
 
 		public bool IsAuthorized(EnumPermType permType) {
 			PermTypeChecked=permType;
-			return IsAuthorizedResult;
+			return IsAuthorizedResult && !HashSetPermsDenied.Contains(permType);
 		}
 
 		public bool IsCategoryValid(long defNum) {
@@ -95,7 +102,35 @@ namespace ImagingCapture.Tests {
 		}
 
 		public void MakeLogEntry(EnumPermType permType,long patNum,string logText,long fKey) {
+			Call("MakeLogEntry");
 			ListLogTexts.Add(permType+"|"+patNum+"|"+fKey+"|"+logText);
+		}
+
+		public List<MountItemDef> GetMountItemDefs(long mountDefNum) {
+			List<MountItemDef> listMountItemDefs;
+			return DictMountItemDefs.TryGetValue(mountDefNum,out listMountItemDefs) ? listMountItemDefs.ToList() : new List<MountItemDef>();
+		}
+
+		public void UpdateMountItemDef(MountItemDef mountItemDef) {
+			Call("UpdateMountItemDef");
+			ListMountItemDefsUpdated.Add(mountItemDef.Copy());
+		}
+
+		public void UpdateMountItem(MountItem mountItem) {
+			Call("UpdateMountItem");
+			ListMountItemsUpdated.Add(mountItem.Copy());
+		}
+
+		///<summary>The security-log entries of permType, as "patNum|fKey|logText".</summary>
+		public List<string> GetLogs(EnumPermType permType) {
+			string prefix=permType+"|";
+			return ListLogTexts.Where(x => x.StartsWith(prefix)).Select(x => x.Substring(prefix.Length)).ToList();
+		}
+
+		private void Call(string name) {
+			if(ThrowOn.Split('|').Contains(name)) {
+				throw new Exception(name+" failed");
+			}
 		}
 	}
 
@@ -107,7 +142,10 @@ namespace ImagingCapture.Tests {
 		public readonly List<long> ListCategoriesImported=new List<long>();
 		public readonly List<string> ListExtensions=new List<string>();
 		public readonly List<Mount> ListMountsUpdated=new List<Mount>();
+		public readonly List<MountItem> ListMountItemsInserted=new List<MountItem>();
+		public readonly List<MountItem> ListMountItemsDeleted=new List<MountItem>();
 		private long _docNumNext=1000;
+		private long _mountItemNumNext=500;
 
 		private void Call(string name) {
 			if(ThrowOn.Split('|').Contains(name)) {
@@ -131,6 +169,8 @@ namespace ImagingCapture.Tests {
 
 		public void InsertMountItem(MountItem mountItem) {
 			Call("InsertMountItem");
+			mountItem.MountItemNum=_mountItemNumNext++;
+			ListMountItemsInserted.Add(mountItem);
 		}
 
 		public void UpdateDocument(Document document,Document documentOld) {
@@ -144,6 +184,7 @@ namespace ImagingCapture.Tests {
 
 		public void DeleteMountItem(MountItem mountItem) {
 			Call("DeleteMountItem");
+			ListMountItemsDeleted.Add(mountItem);
 		}
 
 		public void UpdateMount(Mount mount) {
