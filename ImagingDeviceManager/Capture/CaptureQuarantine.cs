@@ -25,5 +25,37 @@ namespace ImagingDeviceManager.Capture {
 				return null;
 			}
 		}
+
+		///<summary>The count, the oldest file and whether the count has turned into the warning (older than 30 days), for a window that shows the
+		///line in a warning colour. Never throws, and never creates the folder.</summary>
+		public static CaptureUnassignedInfo GetUnassignedInfo() {
+			return GetUnassignedInfo(CaptureFolders.CreateDefault(),DateTime.Now);
+		}
+
+		internal static CaptureUnassignedInfo GetUnassignedInfo(CaptureFolders folders,DateTime now) {
+			CaptureUnassignedInfo info=new CaptureUnassignedInfo();
+			try {
+				DateTime? oldest;
+				info.Count=QuarantineWriter.CountImages(folders,out oldest);
+				info.Oldest=oldest;
+				info.IsOverdue=oldest!=null && (now-oldest.Value).TotalDays>CaptureNoticeText.UnassignedWarningDays;
+				info.Text=CaptureNoticeText.UnassignedCaptures(info.Count,oldest,now);
+			}
+			catch {
+			}
+			return info;
+		}
+	}
+
+	///<summary>The unassigned captures on this computer (design 7.12 "Visibility").</summary>
+	public sealed class CaptureUnassignedInfo {
+		///<summary>Image files under Capture\quarantine.</summary>
+		public int Count { get; set; }
+		///<summary>The last-write time of the oldest, or null.</summary>
+		public DateTime? Oldest { get; set; }
+		///<summary>The oldest is more than 30 days old: the line asks for recovery now.</summary>
+		public bool IsOverdue { get; set; }
+		///<summary>"N unassigned capture(s) on this computer." (with the warning when IsOverdue), or null when there are none.</summary>
+		public string Text { get; set; }
 	}
 }

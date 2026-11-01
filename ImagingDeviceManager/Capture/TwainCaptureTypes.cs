@@ -102,6 +102,10 @@ namespace ImagingDeviceManager.Capture {
 		public object Tag;
 		///<summary>The target, in words, for the journal and quarantine sidecars ("Slot 3 (teeth 2,3)").</summary>
 		public string TargetLabel="";
+		///<summary>Extra Key=Value lines the caller adds to the journal and quarantine sidecars of every image of the enable, so that a later
+		///recovery can file the image where it was meant to go (CaptureSidecarKeys: the mount, the slot, the category, the provider, the
+		///device). Null or empty: none. Keys and values are written as given, cleaned to one line each.</summary>
+		public List<KeyValuePair<string,string>> SidecarFields;
 	}
 
 	///<summary>The end of one enable, raised once per Enable or RequestRedelivery (also when it never reached MSG_ENABLEDS).</summary>

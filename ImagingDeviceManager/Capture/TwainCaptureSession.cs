@@ -1107,6 +1107,7 @@ namespace ImagingDeviceManager.Capture {
 			image.StopReason=stopReason;
 			image.IsRedelivery=context.IsRedelivery;
 			image.RequestedBits=context.Request.Bits;
+			image.SidecarFields=context.Request.SidecarFields==null ? null : new List<KeyValuePair<string,string>>(context.Request.SidecarFields);
 			image.SourceName=string.IsNullOrEmpty(image.SourceName) ? _productName : image.SourceName;
 			image.IndexInEnable=++context.CountImages;
 			switch(kind) {
@@ -1179,6 +1180,16 @@ namespace ImagingDeviceManager.Capture {
 			record.ListCaptureFields.Add(new SidecarField("DeliveredAs8BitIn16BitEnable",image.IsDeliveredAs8BitIn16BitEnable ? "1" : "0"));
 			record.ListCaptureFields.Add(new SidecarField("TransferMechanism",image.TransferMechanism.ToString()));
 			record.ListCaptureFields.Add(new SidecarField("PixelFlavor",image.PixelFlavor.ToString(CultureInfo.InvariantCulture)));
+			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.PixelType,image.PixelType.ToString(CultureInfo.InvariantCulture)));
+			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitsPerSample,image.BitsPerSample.ToString(CultureInfo.InvariantCulture)));
+			record.ListCaptureFields.Add(new SidecarField(CaptureSidecarKeys.BitDepth16InEffect,image.IsBitDepth16InEffect ? "1" : "0"));
+			if(image.SidecarFields!=null) {
+				foreach(KeyValuePair<string,string> pair in image.SidecarFields) {
+					if(!string.IsNullOrWhiteSpace(pair.Key)) {
+						record.ListCaptureFields.Add(new SidecarField(pair.Key,pair.Value??""));
+					}
+				}
+			}
 			record.ListCaptureFields.Add(new SidecarField("Metadata",image.MetadataJson??""));
 			record.ListSettings=_options.GetSidecarFields();
 			return record;

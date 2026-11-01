@@ -1022,6 +1022,41 @@ namespace ImagingDeviceManager.Tests {
 			DateTime? oldest;
 			Assert.AreEqual(2,QuarantineWriter.CountImages(_harness.Folders,out oldest));
 		}
+
+		[TestMethod]
+		public void SidecarFields_OfTheRequest_InTheJournalAndQuarantineSidecars_ReadBackByTheFileStore() {
+			Capture.QuarantineContext=new TwainCaptureQuarantineContext(9,"Roe, Ann");
+			_harness.OpenOrFail();
+			int enableId=Capture.Enable(new TwainEnableRequest { Bits=8,TargetLabel="Slot 2 (teeth 4,5)",SidecarFields=new List<KeyValuePair<string,string>> {
+				new KeyValuePair<string,string>(CaptureSidecarKeys.MountNum,"7"),
+				new KeyValuePair<string,string>(CaptureSidecarKeys.MountItemNum,"102"),
+				new KeyValuePair<string,string>(CaptureSidecarKeys.ToothNumbers,"4,5"),
+			} });
+			_harness.WaitForEnded(enableId);
+			AcquiredImage image=_harness.Images.Single();
+			Assert.AreEqual(3,image.SidecarFields.Count);
+			Dictionary<string,string> dictJournal=CaptureFiles.ReadSidecar(Path.ChangeExtension(image.JournalPath,".txt"));
+			Assert.AreEqual("7",dictJournal[CaptureSidecarKeys.MountNum]);
+			Assert.AreEqual("9",dictJournal["PatNum"]);
+			Assert.AreEqual(AcquiredImage.PixelTypeGray.ToString(),dictJournal[CaptureSidecarKeys.PixelType]);
+			Assert.AreEqual("0",dictJournal[CaptureSidecarKeys.BitDepth16InEffect]);
+			string error;
+			string path=Capture.QuarantineImage(image,"Could not save: disk full.",false,out error);
+			Assert.IsNotNull(path,error);
+			CaptureFileEntry entry=CaptureFileStore.CreateForFolder(_harness.Folder).ListQuarantine().Single();
+			Assert.AreEqual(path,entry.ImagePath);
+			Assert.AreEqual(7,entry.MountNum);
+			Assert.AreEqual(102,entry.MountItemNum);
+			Assert.AreEqual("4,5",entry.ToothNumbers);
+			Assert.AreEqual("Slot 2 (teeth 4,5)",entry.Slot);
+			Assert.AreEqual(9,entry.PatNum);
+			Assert.AreEqual(Capture.SessionGuid,entry.SessionGuid);
+			AcquiredImage imageRead=CaptureFileStore.CreateForFolder(_harness.Folder).ReadImage(entry,out error);
+			Assert.IsNotNull(imageRead,error);
+			CollectionAssert.AreEqual(image.Dib,imageRead.Dib);
+			Assert.AreEqual(image.MetadataJson,imageRead.MetadataJson);
+			Assert.AreEqual(image.PixelType,imageRead.PixelType);
+		}
 		#endregion Close
 
 		#region Other sources

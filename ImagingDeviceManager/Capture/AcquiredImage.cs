@@ -1,6 +1,7 @@
 // This file is part of the open source dental practice management software derived from Open Dental.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
 
 namespace ImagingDeviceManager.Capture {
 	///<summary>How an image came in, apart from an ordinary transfer.</summary>
@@ -96,6 +97,9 @@ namespace ImagingDeviceManager.Capture {
 		public string JournalPath { get; set; }
 		///<summary>Set when the library itself put the image in the quarantine (after BeginClose), or QuarantineImage did.</summary>
 		public string QuarantinePath { get; set; }
+		///<summary>The enable's TwainEnableRequest.SidecarFields, copied to the image's journal and quarantine sidecars. Set by the library
+		///when it raises the image; null when the request had none.</summary>
+		public List<KeyValuePair<string,string>> SidecarFields { get; set; }
 
 		public bool IsGray16 => Gray16!=null;
 

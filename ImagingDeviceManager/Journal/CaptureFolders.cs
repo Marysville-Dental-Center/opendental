@@ -12,6 +12,9 @@ namespace ImagingDeviceManager.Journal {
 		public const string SubfolderCapture="Capture";
 		public const string SubfolderJournal=@"Capture\journal";
 		public const string SubfolderQuarantine=@"Capture\quarantine";
+		///<summary>Where a quarantine file goes once it is filed or discarded (CaptureFileStore.Resolve): kept with its sidecar, outside the
+		///quarantine, so it no longer counts as an unassigned capture.</summary>
+		public const string SubfolderQuarantineResolved=@"Capture\quarantine-resolved";
 		///<summary>The Imaging folder, or null when it cannot be determined.</summary>
 		private readonly string _folderImaging;
 		///<summary>False for tests: a folder standing in for the Imaging folder, whose ACL is never changed.</summary>
