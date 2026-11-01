@@ -467,23 +467,76 @@ namespace ImagingDeviceManager.Tests {
 
 		#region Journal SetDelivered
 		[TestMethod]
-		public void SetDelivered_None_TheSidecarCannotFollowTheRename_TheImageGetsItsNameBack_WithItsSidecarRewritten() {
+		public void SetDelivered_None_AnotherProgramHoldsTheSidecar_TheOnlyCopyKeepsItsOnlyName_WithANewSidecar() {
 			CaptureJournal journal=new CaptureJournal(_folders);
 			CaptureImageFile file=CaptureImageFile.FromAcquiredImage(Gray8Image(2,2));
 			CaptureRecord record=SessionRecord(new DateTime(2026,10,31,10,0,0),Guid.NewGuid(),false);
 			string path=journal.Write(file,record,CaptureJournal.DeliveredCaller,null,200,null);
 			string folder=Path.GetDirectoryName(path);
-			//The -only sidecar's name is taken (here by a folder): neither a move nor a write can put the sidecar there.
-			Directory.CreateDirectory(Path.Combine(folder,Path.GetFileNameWithoutExtension(path)+CaptureJournal.OnlyCopySuffix+".txt"));
+			string pathSidecarOld=Path.ChangeExtension(path,".txt");
+			string baseOnly=Path.GetFileNameWithoutExtension(path)+CaptureJournal.OnlyCopySuffix;
 			List<string> listLog=new List<string>();
-			string pathNow=journal.SetDelivered(path,file,record,CaptureJournal.DeliveredNone,"The quarantine could not be written.",listLog.Add);
-			Assert.AreEqual(path,pathNow,"The image gets its name back...");
-			Assert.IsTrue(File.Exists(pathNow),"...and the returned path is where it is.");
+			string pathNow;
+			//Another user's Unassigned captures window (or a virus scanner) reads the sidecar just written: it cannot be moved or deleted now.
+			using(new FileStream(pathSidecarOld,FileMode.Open,FileAccess.Read,FileShare.Read)) {
+				pathNow=journal.SetDelivered(path,file,record,CaptureJournal.DeliveredNone,"The quarantine could not be written.",listLog.Add);
+			}
+			Assert.AreEqual(Path.Combine(folder,baseOnly+".bmp"),pathNow,"Never the plain name back: rotation would remove the only copy.");
+			Assert.IsTrue(File.Exists(pathNow));
+			Assert.IsFalse(File.Exists(path));
 			CaptureFileEntry entry=_store.ListJournal().Single();
-			Assert.IsTrue(entry.HasSidecar,"Never an image without its sidecar.");
+			Assert.AreEqual(pathNow,entry.ImagePath);
+			Assert.IsTrue(entry.HasSidecar,"A new sidecar under the new name, written from the record.");
 			Assert.AreEqual(42,entry.PatNum,"Its patient, session and slot are kept.");
 			Assert.AreEqual(CaptureJournal.DeliveredNone,entry.Delivered);
+			Assert.AreEqual(Path.GetFileName(pathNow),CaptureFiles.ReadSidecar(Path.Combine(folder,baseOnly+".txt"))["ImageFile"]);
 			Assert.IsTrue(listLog.Any(x => x.Contains("could not follow")),string.Join("\r\n",listLog));
+			Assert.IsTrue(listLog.Any(x => x.Contains("could not be removed")),"The old sidecar was still held.\r\n"+string.Join("\r\n",listLog));
+			Assert.IsFalse(listLog.Any(x => x.Contains("rotation may remove")),string.Join("\r\n",listLog));
+			Assert.AreEqual(0,CaptureJournal.Rotate(folder,0,out string error),"Rotation never removes it.");
+			Assert.IsTrue(File.Exists(pathNow));
+			Assert.AreEqual(0,Directory.GetFiles(folder,"*.tmp").Length);
+		}
+
+		[TestMethod]
+		public void SetDelivered_None_AStaleSidecarHasTheNewName_ReplacedByTheNewSidecar_TheOldOneRemoved() {
+			CaptureJournal journal=new CaptureJournal(_folders);
+			CaptureImageFile file=CaptureImageFile.FromAcquiredImage(Gray8Image(2,2));
+			CaptureRecord record=SessionRecord(new DateTime(2026,10,31,10,0,0),Guid.NewGuid(),false);
+			string path=journal.Write(file,record,CaptureJournal.DeliveredCaller,null,200,null);
+			string folder=Path.GetDirectoryName(path);
+			string baseOnly=Path.GetFileNameWithoutExtension(path)+CaptureJournal.OnlyCopySuffix;
+			File.WriteAllText(Path.Combine(folder,baseOnly+".txt"),"left over");//the move cannot replace a file
+			List<string> listLog=new List<string>();
+			string pathNow=journal.SetDelivered(path,file,record,CaptureJournal.DeliveredNone,"The quarantine could not be written.",listLog.Add);
+			Assert.AreEqual(Path.Combine(folder,baseOnly+".bmp"),pathNow);
+			CollectionAssert.AreEqual(new[] { baseOnly+".txt" },Directory.GetFiles(folder,"*.txt").Select(x => Path.GetFileName(x)).ToArray());
+			CaptureFileEntry entry=_store.ListJournal().Single();
+			Assert.AreEqual(42,entry.PatNum);
+			Assert.AreEqual(CaptureJournal.DeliveredNone,entry.Delivered);
+			Assert.IsTrue(listLog.Any(x => x.Contains("could not follow")),string.Join("\r\n",listLog));
+		}
+
+		[TestMethod]
+		public void SetDelivered_None_NoSidecarCanBeWrittenUnderTheNewName_TheCopyKeepsItsOnlyNameAnyway_BothFailuresLogged() {
+			CaptureJournal journal=new CaptureJournal(_folders);
+			CaptureImageFile file=CaptureImageFile.FromAcquiredImage(Gray8Image(2,2));
+			CaptureRecord record=SessionRecord(new DateTime(2026,10,31,10,0,0),Guid.NewGuid(),false);
+			string path=journal.Write(file,record,CaptureJournal.DeliveredCaller,null,200,null);
+			string folder=Path.GetDirectoryName(path);
+			string baseOnly=Path.GetFileNameWithoutExtension(path)+CaptureJournal.OnlyCopySuffix;
+			//The -only sidecar's name is taken (here by a folder): neither a move nor a write can put the sidecar there.
+			Directory.CreateDirectory(Path.Combine(folder,baseOnly+".txt"));
+			List<string> listLog=new List<string>();
+			string pathNow=journal.SetDelivered(path,file,record,CaptureJournal.DeliveredNone,"The quarantine could not be written.",listLog.Add);
+			Assert.AreEqual(Path.Combine(folder,baseOnly+".bmp"),pathNow,"A copy without a sidecar can still be filed; a rotated one is gone.");
+			Assert.IsTrue(File.Exists(pathNow));
+			Assert.AreEqual(0,CaptureJournal.Rotate(folder,0,out string error));
+			Assert.IsTrue(File.Exists(pathNow),"Rotation keeps it.");
+			Assert.AreEqual(pathNow,_store.ListJournal().Single().ImagePath,"Listed in Unassigned captures.");
+			Assert.IsTrue(listLog.Any(x => x.Contains("could not follow")),string.Join("\r\n",listLog));
+			Assert.IsTrue(listLog.Any(x => x.Contains("No sidecar could be written")),string.Join("\r\n",listLog));
+			Assert.AreEqual(0,Directory.GetFiles(folder,"*.tmp").Length);
 		}
 
 		[TestMethod]

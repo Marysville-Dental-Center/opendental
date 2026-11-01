@@ -99,10 +99,13 @@ namespace ImagingDeviceManager.Journal {
 		///<summary>Rewrites the sidecar of the journal copy at pathImage (written by Write for file and record) with another Delivered value, for
 		///an image whose fate was decided after its copy was written: the capture session quarantined it (or could not). A DeliveredNone copy is
 		///renamed with OnlyCopySuffix first, so that rotation leaves it alone (a rename needs no disk space), and its sidecar is moved after it at
-		///once, so the image always keeps its sidecar with the patient, session and slot; if the sidecar cannot follow, the image gets its name
-		///back. The sidecar is then rewritten through a temporary file (WriteReplacing): a crash or a full disk leaves the old sidecar or the new
-		///one, never an empty one; when the rewrite fails, the copy keeps its sidecar with the Delivered value from before. Returns the path the
-		///image has now; problems go to log. Never throws.</summary>
+		///once, so the image keeps its sidecar with the patient, session and slot. The renamed copy keeps its name in any case: rotation decides by
+		///the name alone, so the plain name back would let it remove the only copy of the exposure. When the sidecar cannot follow (another
+		///program holds it open, or a file has its new name), a new one is written under the new name from record, and the old one is removed when
+		///it can be; when even that fails, the copy has no sidecar but stays (Reassign can still file it), and both failures are logged. The
+		///sidecar is otherwise rewritten through a temporary file (WriteReplacing): a crash or a full disk leaves the old sidecar or the new one,
+		///never an empty one; when the rewrite fails, the copy keeps its sidecar with the Delivered value from before. Returns the path the image
+		///has now; problems go to log. Never throws.</summary>
 		public string SetDelivered(string pathImage,CaptureImageFile file,CaptureRecord record,string delivered,string detail,Action<string> log) {
 			log=log??(text => { });
 			if(string.IsNullOrEmpty(pathImage) || file==null || record==null) {
@@ -113,6 +116,7 @@ namespace ImagingDeviceManager.Journal {
 				string folder=Path.GetDirectoryName(pathImage);
 				string baseName=Path.GetFileNameWithoutExtension(pathImage);
 				string pathSidecar=Path.Combine(folder,baseName+CaptureFiles.SidecarExtension);
+				string sha256=CaptureFiles.Sha256Hex(file.Bytes);
 				if(delivered==DeliveredNone && !baseName.EndsWith(OnlyCopySuffix,StringComparison.Ordinal)) {
 					string baseNameNew=baseName+OnlyCopySuffix;
 					string pathCandidate=Path.Combine(folder,baseNameNew+Path.GetExtension(pathImage));
@@ -133,27 +137,44 @@ namespace ImagingDeviceManager.Journal {
 							pathSidecar=pathSidecarNew;
 						}
 						catch(Exception ex) {
-							//The image is never left without its sidecar: it gets its name back.
 							log("The sidecar "+Path.GetFileName(pathSidecar)+" could not follow the only copy renamed to "+Path.GetFileName(pathCandidate)
-								+" ("+ex.Message+"); the copy keeps its name, so rotation may remove it after "+KeepDefault+" newer copies.");
-							try {
-								File.Move(pathCandidate,pathImage);
-								pathImageNow=pathImage;
-							}
-							catch(Exception exBack) {
-								log("The journal copy "+Path.GetFileName(pathCandidate)+" could not get its name back: "+exBack.Message);
-								pathSidecar=pathSidecarNew;
-							}
+								+" ("+ex.Message+"); the copy keeps its new name, so rotation keeps it, and gets a new sidecar.");
+							WriteSidecarOfRenamedCopy(pathSidecar,pathSidecarNew,BuildSidecar(record,delivered,detail,Path.GetFileName(pathCandidate),file,
+								sha256),log);
+							return pathImageNow;
 						}
 					}
 				}
-				string sha256=CaptureFiles.Sha256Hex(file.Bytes);
 				WriteReplacing(pathSidecar,BuildSidecar(record,delivered,detail,Path.GetFileName(pathImageNow),file,sha256));
 				return pathImageNow;
 			}
 			catch(Exception ex) {
 				log("The sidecar of the journal copy "+Path.GetFileName(pathImageNow)+" could not be updated (Delivered="+delivered+"): "+ex.Message);
 				return pathImageNow;
+			}
+		}
+
+		///<summary>SetDelivered, when the sidecar of a copy just renamed with OnlyCopySuffix could not follow it: the sidecar text, built from the
+		///record and not from the old file, is written under the new name (a reader of the old file does not hold that path; a stale file of that
+		///name is replaced), then the old sidecar, whose image no longer exists, is removed when it can be (a sidecar without its image is never
+		///listed). Never throws; problems go to log.</summary>
+		private static void WriteSidecarOfRenamedCopy(string pathSidecarOld,string pathSidecarNew,string text,Action<string> log) {
+			try {
+				WriteReplacing(pathSidecarNew,text);
+			}
+			catch(Exception ex) {
+				log("No sidecar could be written for the only copy "+Path.GetFileNameWithoutExtension(pathSidecarNew)+" either ("+ex.Message+"). It "
+					+"keeps its name, so rotation keeps it; Unassigned captures lists it as patient unknown, and Reassign can file it.");
+				return;
+			}
+			try {
+				if(File.Exists(pathSidecarOld)) {
+					File.Delete(pathSidecarOld);
+				}
+			}
+			catch(Exception ex) {
+				log("The old sidecar "+Path.GetFileName(pathSidecarOld)+" of the renamed only copy could not be removed ("+ex.Message+"); it names no "
+					+"image any more and is never listed.");
 			}
 		}
 
