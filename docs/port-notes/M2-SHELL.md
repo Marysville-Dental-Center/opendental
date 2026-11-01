@@ -75,7 +75,7 @@ Sources: the feature specs in `docs/specs/features-25.4.md` and `features-26.1.m
 
 No step was needed, so the package's range 2027005401 to 2027005499 is unused. The one new setting, the fork-owned row `ForkAuditTrailPatientSelected`, has no seed row (missing reads as off, the row is inserted when an administrator turns the audit on); since it is not a `PrefName` member, `tools/DevDbTool` no longer lists it among the "optional prefs" with no row. An adopted Open Dental database has no such row, so adoption leaves the audit off. Because no step changes schema or rows on an adopted 25.3.48 database, the adoption tools (`tools/AdoptionValidation`: migration-preview, AdoptionRowCheck, allowed differences) need nothing from this package.
 
-When this package was first built, `ForkMigrationRunner.ValidateStep` accepted only dated `yyyyMMddNN` levels, so the range looked unusable (old question 4). The integration head now accepts package ranges `yyyy00PPNN` (`ForkMigrationRunner.IsReservedPackageLevel`), so the range would be valid if a later change needs a step.
+When this package was first built, `ForkMigrationRunner.ValidateStep` accepted only dated `yyyyMMddNN` levels, so the range looked unusable (old question 4). For a while the integration head accepted package ranges `yyyy00PPNN` (`ForkMigrationRunner.IsReservedPackageLevel`). The owner decided on 2026-11-01 that levels are dated `yyyyMMddNN` only, every new step above every existing one, and that rule is removed, so the range is gone: a later change that needs a step takes the next dated level (above 2026110104).
 
 ## INFERRED behaviours
 
@@ -123,7 +123,7 @@ Not tested: the WinForms windows themselves (the program was not launched): the 
 2. Should selecting the patient who is already loaded (for example picking the same patient again in Select Patient) also write an entry after the 60 seconds? Today only a change of patient is logged.
 3. Family module Gender row: since t1 it shows the same text as the new Chart row (translated, blank for Unknown instead of "Unknown"), as the spec proposes. Keep it, or put the 24.3 text back (one line in `ControlFamily.FillPatientData`)?
 
-(Old question 4, about the package's level range, is settled: the runner now accepts `yyyy00PPNN` package levels.)
+(Old question 4, about the package's level range, is settled: levels are dated `yyyyMMddNN` only (owner decision of 2026-11-01), and this package has no step.)
 
 ## Finish round t1
 
