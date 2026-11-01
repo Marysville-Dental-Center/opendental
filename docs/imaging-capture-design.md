@@ -552,7 +552,7 @@ The DS may hold exposed images that it has not delivered. twain-contract 1.1 off
 2. the clinic has verified byte order, polarity and effective bits with Test capture, and the latest verification record for the device row, made on any computer, matches its TWAIN source, the sensor driver's identity and the image settings, and passed at the depth asked for (section 9.3);
 3. CAP-W1 is present, and CAP-W2 as well unless the device's data fits BitsStored 12;
 4. the hook, CAP-3 and CAP-4 have landed;
-5. claim attachment can export a .dcm as a windowed 8-bit image. Today it rejects .dcm (FormImageSelectClaimAttach.cs:155-175). This needs its file owner (B-CLAIM in B2) or a later package. Email attachment already sends a .dcm as a windowed JPEG (EmailAttachL.cs:109, 139-157), and CAP-W's windowing change applies there too;
+5. claim attachment can export a .dcm as a windowed 8-bit image. Done on 2026-11-01 (package CLAIM-DCM): every claim image path attaches an 8-bit JPEG rendered with the stored window, and a DICOM file is never sent. Email attachment already sends a .dcm as a windowed JPEG (EmailAttachL.cs:109, 139-157), and CAP-W's windowing change applies there too;
 6. counsel has reviewed the For Presentation labelling and the fork-computed window (decision 18);
 7. the DICOM reader decision (decision 7) is settled.
 
