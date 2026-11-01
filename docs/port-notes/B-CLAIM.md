@@ -154,3 +154,9 @@ Not tested by running code:
 4. Override audit entries for received claimprocs are filed under Claim Procedure Received Edit, which is not in the audit trail's permission filter (24.3 behaviour, M1-02's file). Should it be added, or should all override entries go under Proc Edit?
 5. Should overrides that the program recomputes by itself (ortho cases) also be logged?
 6. `Claims.CalculateAndUpdate` saves with the one-argument `Claims.Update`, which drops the attachments of claims loaded without them (secondary claims recalculated after a primary is received, outside the prompt). Should the owner of `Claims.cs` (B-ERA / M2-CLAIMRCV) switch it to the two-argument overload?
+
+## Integration (branch `port/int-8`)
+
+- `port/b-claim-t1` already had `port/int-7` merged in, so its `--no-ff` merge onto `port/int-8` (cut from `port/int-7`) had no conflicts and needed no integration commit. B-CLAIM is the only package in this round.
+- Interplay checked again on the merged head: B-ERA's `TryAutoProcessEraEob` hook and M2-ERA's `LinkToEraClaim` line stay beside B-CLAIM's `Etranss.cs` hook; no second write-off permission or override-audit helper exists elsewhere, so nothing was folded together. B-APPT's note (line 28) still describes the s1 approach of hiding the Medical EOB setting; since t1 both packages use the fork-owned preference row, so the choice it leaves to the integrator is settled.
+- No fork migration step, schema or row change, so the adoption tools need nothing new. On the merged head: one full build through the lane, `-Mode Full` (65 assemblies, all passing, `BCLAIMTests` 54 of 54) and `tools/Test-NoHqHosts.ps1` (passed).
