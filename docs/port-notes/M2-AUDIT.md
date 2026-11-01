@@ -1,6 +1,6 @@
 # Port note: M2-AUDIT, birthdate audit
 
-Branch `port/m2-audit`, cut from `port/foundation` (which holds M2-01 and M2-02) in the single-wave run. Backlog section: [port-backlog.md, M2-AUDIT](../specs/port-backlog.md#m2-audit-birthdate-audit). Feature spec: [features-26.1.md, v26_1-tools-audit-birthdate](../specs/features-26.1.md#v26_1-tools-audit-birthdate-audit-trail-birthdate-additions-and-changes). No fork migration step, no schema and no registry entry: the entries use the existing `PatientEdit` audit type (range 2027004501-2027004599 left unused).
+Branch `port/m2-audit`, cut from `port/foundation` (which holds M2-01 and M2-02) in the single-wave run, finished on `port/m2-audit-t1` after merging the integration head (see Integration below). Backlog section: [port-backlog.md, M2-AUDIT](../specs/port-backlog.md#m2-audit-birthdate-audit). Feature spec: [features-26.1.md, v26_1-tools-audit-birthdate](../specs/features-26.1.md#v26_1-tools-audit-birthdate-audit-trail-birthdate-additions-and-changes). No fork migration step, no schema and no registry entry: the entries use the existing `PatientEdit` audit type (range 2027004501-2027004599 left unused).
 
 Sources: the public 26.1 release notes (Tools section) and Open Dental's public 26.1 highlights blog post, as cited in the spec. No Open Dental program was installed, observed or decompiled, and no office data was used. Every behavior that the public sources leave open is marked INFERRED below.
 
@@ -75,12 +75,18 @@ Sources: the public 26.1 release notes (Tools section) and Open Dental's public 
 `tests/M2AUDITTests` (MSTest v1, x86, .NET 4.8), 28 tests:
 
 - `BirthdateAuditTextTests` (no database): added, changed, removed, same date with a time of day, blank on both sides, pre-1880 as blank, culture-dependent short dates (en-US, en-GB), null patients.
-- `BirthdateAuditDbTests`, on a scratch database `m2audit_<time>_<pid>_<random>_audit` built from the seed dump, the frozen 24.3.63 chain and the fork migration runner, then dropped. Covers `Patients.Update` (changed, other fields only, blank to date and back), `Patients.Insert` (with and without a birthdate), no signed-in user (user 0, save still succeeds), Edit Patient Information through `Patients.SavePatientEdit` (existing patient: one birthdate entry plus the separate address entry; birthdate untouched: none), Add Family Member (blank insert, then `SavePatientEdit` with `isNew`), `Patients.CreateNewPatient`, sheet import (the window's save sequence), and eForm auto import (`EFormImport.ImportAutoFields` with a Birthdate date field).
+- `BirthdateAuditDbTests`, on a scratch database `m2audit_<time>_<pid>_<random>_audit` built from the seed dump, the frozen 24.3.63 chain and the fork migration runner, then dropped. Covers `Patients.Update` (changed, other fields only, blank to date and back), `Patients.Insert` (with and without a birthdate), no signed-in user (user 0, save still succeeds), Edit Patient Information through `Patients.SavePatientEdit` (existing patient: one birthdate entry plus the separate address entry; birthdate untouched: none), Add Family Member (blank insert, then `SavePatientEdit` with `isNew`), `Patients.CreateNewPatient`, sheet import (the window's save sequence, with B-AUDIT's import entry beside the birthdate entry), and eForm auto import (`EFormImport.ImportAutoFields` with a Birthdate date field).
 - `BirthdateSavePathTests` (source checks): no direct `PatientCrud` writes outside `Patients.cs`, no raw SQL that writes `Birthdate`, the hooks sit in `Insert` and `Update`, and Edit Patient Information, sheet import, the Add Family window and eForm import still save through them.
 
 Related existing assemblies run for this package: `EFormTests` (eForm import and its `PatientEdit` entry), `ApptTests` and `RowHashTests` (they insert and update patients and check security logs or hashes), plus `NoHqTests`. All passed.
 
 Not tested: the WinForms and WPF windows themselves (`FormSheetImport`, `FrmPatientAddAll`, `FormPatientEdit`): their save sequence is checked in the source and repeated in the business-layer tests. Middle Tier: the hook's server-side placement is checked in the source only.
+
+## Checks on `port/m2-audit-t1` (2026-10-31, after merging `port/int-7`)
+
+- Full build through the shared build lane: 0 errors.
+- `run-tests.ps1 -Mode Core`: 61 assemblies, all passed, none inconclusive or not built (`M2AUDITTests` 28/28, `BAUDITTests` 29/29, `EFormTests` 60/60, `M2EFTests` 46/46, `BEFTests` 29/29, `RowHashTests` 22/22, `NoHqTests` 49/49). Results: `.git/od-tools/test-results/port_m2-audit-t1.txt`. The slow migration and adoption assemblies were not added, because this package has no migration step, schema, `TableTypes`, CRUD or adoption change.
+- `tools/Test-NoHqHosts.ps1`: passed.
 
 ## Owner questions
 
