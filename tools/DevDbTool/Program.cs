@@ -34,7 +34,12 @@ namespace DevDbTool {
 				ODInitialize.Initialize();
 				NetworkGuard.Install();
 				ODEvent.Fired+=ODEvent_Fired;
-				exitCode=options.VerifyOnly ? RunVerify(options) : RunCreate(options);
+				if(options.ExportInitSqlPath!="") {
+					exitCode=InitSqlExport.Run(options);
+				}
+				else {
+					exitCode=options.VerifyOnly ? RunVerify(options) : RunCreate(options);
+				}
 			}
 			catch(RefusedException ex) {
 				Console.Error.WriteLine("Refused: "+ex.Message);
@@ -106,7 +111,7 @@ namespace DevDbTool {
 			return Verify(options);
 		}
 
-		private static int Verify(Options options) {
+		public static int Verify(Options options) {
 			Info("Verifying "+options.Database);
 			SchemaCheck check=SchemaCheck.Run(options.Database,!options.SkipForkMigrations);
 			foreach(string note in check.ListNotes) {

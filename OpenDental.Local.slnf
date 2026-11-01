@@ -53,6 +53,7 @@
       "tests\\ImagingCaptureTests\\ImagingCaptureTests.csproj",
       "tests\\ImagingDeviceManagerTests\\ImagingDeviceManagerTests.csproj",
       "tests\\ImagingTests\\ImagingTests.csproj",
+      "tests\\InitSqlTests\\InitSqlTests.csproj",
       "tests\\InsuranceTests\\InsuranceTests.csproj",
       "tests\\M201Tests\\M201Tests.csproj",
       "tests\\M202Tests\\M202Tests.csproj",

@@ -2,8 +2,10 @@
 <!--
   DevDbTool: builds a local development database for this codebase from the seed dump in
   UnitTests\Resources\dump.txt, then upgrades it with the convert scripts in OpenDentBusiness.
-  Run it through tools\New-DevDatabase.ps1, which builds it on its own. It is also in OpenDental.sln
-  and OpenDental.Local.slnf, so that every solution build compiles it and catches a break early.
+  Run it through tools\New-DevDatabase.ps1, which builds it on its own. With export-init-sql it also writes
+  db\init\new-database.sql, the SQL file that initializes a new database (tools\New-InitSql.ps1). It is in OpenDental.sln
+  and OpenDental.Local.slnf, so that every solution build compiles it, catches a break early and builds it for the test
+  that regenerates that file (tests\ForkMigrationTests\InitSqlRegenerationTests.cs).
 -->
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
@@ -50,6 +52,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DevDatabase.cs" />
+    <Compile Include="InitSqlExport.cs" />
+    <Compile Include="InitSqlScrub.cs" />
+    <Compile Include="InitSqlWriter.cs" />
     <Compile Include="NetworkGuard.cs" />
     <Compile Include="Options.cs" />
     <Compile Include="Program.cs" />
