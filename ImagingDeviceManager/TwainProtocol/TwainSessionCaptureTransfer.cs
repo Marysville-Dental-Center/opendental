@@ -295,7 +295,11 @@ namespace ImagingDeviceManager.TwainProtocol {
 		internal void StopCapture(TwainStopReason reason) {
 			if(State==5) {
 				ushort notification=PollNotification();
-				if(notification==Tw.MSG_XFERREADY) {
+				short pending;
+				if(notification==Tw.MSG_XFERREADY && TryGetPendingCount(out pending) && pending==0) {
+					Log("\""+SourceName+"\" sent MSG_XFERREADY with nothing pending; ignored.");
+				}
+				else if(notification==Tw.MSG_XFERREADY) {
 					State=6;
 				}
 				else if(notification==Tw.MSG_CLOSEDSREQ) {
@@ -315,6 +319,14 @@ namespace ImagingDeviceManager.TwainProtocol {
 		///<summary>DAT_PENDINGXFERS / MSG_GET.</summary>
 		internal bool TryGetPendingTransfers(out short count) {
 			return TryGetPendingCount(out count);
+		}
+
+		///<summary>The source's text for a condition code (DAT_STATUSUTF8), or null when it gives none.</summary>
+		internal string GetSourceTextForCode(ushort conditionCode) {
+			if(State<4) {
+				return null;
+			}
+			return TryGetStatusText(new TW_STATUS { ConditionCode=conditionCode });
 		}
 		#endregion Enable and wait
 

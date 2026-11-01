@@ -159,6 +159,18 @@ namespace ImagingDeviceManager.TwainProtocol {
 			return Math.Min(readable,max);
 		}
 
+		public const uint QS_ALLINPUT=0x04FF;
+		public const uint MWMO_INPUTAVAILABLE=0x0004;
+		public const uint PM_REMOVE=0x0001;
+		public const uint WAIT_FAILED=0xFFFFFFFF;
+
+		[DllImport("user32.dll",SetLastError=true)]
+		public static extern uint MsgWaitForMultipleObjectsEx(uint nCount,IntPtr[] pHandles,uint dwMilliseconds,uint dwWakeMask,uint dwFlags);
+
+		[DllImport("user32.dll")]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		public static extern bool PeekMessage(IntPtr lpMsg,IntPtr hWnd,uint wMsgFilterMin,uint wMsgFilterMax,uint wRemoveMsg);
+
 		[DllImport("gdi32.dll",SetLastError=true)]
 		public static extern IntPtr CreateDIBSection(IntPtr hdc,IntPtr pbmi,uint usage,out IntPtr ppvBits,IntPtr hSection,uint offset);
 

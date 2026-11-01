@@ -111,6 +111,8 @@ namespace ImagingDeviceManager.Tests {
 		public int FailReadAtImage;
 		///<summary>Runs inside each MSG_ENABLEDS, after the session started and before the source wakes the host.</summary>
 		public Action ActionOnEnable;
+		///<summary>Not contract behaviour: runs at the start of every DAT_IMAGENATIVEXFER and DAT_IMAGEMEMXFER call (states 6 and 7).</summary>
+		public Action ActionOnTransfer;
 		///<summary>Not contract behaviour: after the first refused disable, one MSG_XFERREADY arrives while nothing is offered (pending
 		///count 0), before the real notification. Checks that the host ignores a repeated XFERREADY with nothing pending.</summary>
 		public bool SpuriousXferReadyAfterRefusal;
@@ -155,6 +157,9 @@ namespace ImagingDeviceManager.Tests {
 		public bool EnableReturnsCheckStatus;
 		///<summary>Not contract behaviour: MSG_SET ICAP_XFERMECH TWSX_MEMORY fails with TWCC_BADVALUE, as for a source with native transfers only.</summary>
 		public bool RefusesMemoryTransfer;
+		///<summary>Not contract behaviour: the TW_INFO.ReturnCode DAT_EXTIMAGEINFO gives TWEI_TWAINDIRECTMETADATA (TWRC_INFONOTSUPPORTED or
+		///TWRC_DATANOTAVAILABLE for a source without it for this image). TWRC_SUCCESS: the metadata.</summary>
+		public ushort MetadataReturnCode=Tw.TWRC_SUCCESS;
 		#endregion Script and installation settings
 
 		#region Observations
@@ -1048,6 +1053,13 @@ namespace ImagingDeviceManager.Tests {
 						info.Item=_dsm.SourceAllocate(16);
 						break;
 					case TweiTwainDirectMetadata:
+						if(MetadataReturnCode!=Tw.TWRC_SUCCESS) {
+							info.ReturnCode=MetadataReturnCode;
+							info.ItemType=0;
+							info.NumItems=0;
+							info.Item=IntPtr.Zero;
+							break;
+						}
 						byte[] bytes=Encoding.UTF8.GetBytes(GetMetadataJson(page)+"\0");
 						IntPtr handle=_dsm.SourceAllocate(bytes.Length);
 						IntPtr p=NativeMethods.GlobalLock(handle);
@@ -1090,6 +1102,7 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		private ushort NativeXfer(IntPtr data) {
+			ActionOnTransfer?.Invoke();
 			FakePage page=CurrentPage;
 			if(page==null || State!=6) {
 				return Fail(Tw.TWCC_SEQERROR);
@@ -1110,6 +1123,7 @@ namespace ImagingDeviceManager.Tests {
 		///<summary>Memory transfer: chunky, top-down, unpadded rows, as many whole rows per call as fit (sections 6.1, 6.2: 2 bytes per sample
 		///at 16 bits, little-endian). MemoryRowPadding and MemoryColumnsPerStrip (not contract behaviour) pad the rows and cut them into tiles.</summary>
 		private ushort MemXfer(IntPtr data) {
+			ActionOnTransfer?.Invoke();
 			FakePage page=CurrentPage;
 			if(page==null) {
 				return Fail(Tw.TWCC_SEQERROR);
