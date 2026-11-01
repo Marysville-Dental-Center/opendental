@@ -262,7 +262,7 @@ namespace OpenDental {
 				MsgBox.Show(this,"Click Refresh first.");
 				return;
 			}
-			gridMain.Export("Procedures");
+			gridMain.ShowExportMenu(butExport,"Procedures");//25.3: Export .csv or Export .txt
 		}
 
 		private void butClose_Click(object sender,EventArgs e) {

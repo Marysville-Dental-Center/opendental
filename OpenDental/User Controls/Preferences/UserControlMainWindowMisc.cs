@@ -147,6 +147,7 @@ namespace OpenDental {
 			//}
 			checkAuditTrailUseReportingServer.Checked=PrefC.GetBool(PrefName.AuditTrailUseReportingServer);
 			checkBackupIndexesDisabled.Checked=PrefC.GetBool(PrefName.BackupIndexesDisabled);
+			checkModuleSwitchBlur.Checked=ModuleSwitchBlur.IsEnabled();//25.2, the fork's own preference row.
 		}
 
 		public bool SaveMainWindowMisc() {
@@ -204,6 +205,9 @@ namespace OpenDental {
 			hasChanged |=Prefs.UpdateString(PrefName.ClinicTrackLast,_listTrackLastClinicBys[comboTrackClinic.SelectedIndex]);
 			hasChanged |=Prefs.UpdateString(PrefName.AuditTrailEntriesDisplayed,textAuditEntries.Text);
 			hasChanged |=Prefs.UpdateBool(PrefName.BackupIndexesDisabled,checkBackupIndexesDisabled.Checked);
+			if(checkModuleSwitchBlur.Checked!=ModuleSwitchBlur.IsEnabled()) {
+				hasChanged |=ModuleSwitchBlur.Save(checkModuleSwitchBlur.Checked);
+			}
 			if(checkAuditTrailUseReportingServer.Visible) {
 				hasChanged |=Prefs.UpdateBool(PrefName.AuditTrailUseReportingServer,checkAuditTrailUseReportingServer.Checked);
 			}

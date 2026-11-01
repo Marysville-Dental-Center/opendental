@@ -694,8 +694,10 @@ namespace OpenDentBusiness {
 			table.Columns.Add("trojanID");
 			table.Columns.Add("Zip");
 			table.Columns.Add("IsCDA");
+			table.Columns.Add("PlanType");
+			table.Columns.Add("InNet");
 			string command="SELECT carrier.Address,carrier.City,CarrierName,ElectID,EmpName,GroupName,GroupNum,NoSendElect,"
-				+"carrier.Phone,PlanNum,insplan.IsHidden,"
+				+"carrier.Phone,PlanNum,insplan.IsHidden,insplan.PlanType,"
 				+"(SELECT COUNT(DISTINCT Subscriber) FROM inssub WHERE insplan.PlanNum=inssub.PlanNum) subscribers,"//for Oracle
 				+"carrier.State,TrojanID,carrier.Zip, "
 				//+"(SELECT COUNT(*) FROM employer WHERE insplan.EmployerNum=employer.EmployerNum) haveName "//for Oracle. Could be higher than 1?
@@ -752,9 +754,18 @@ namespace OpenDentBusiness {
 				row["TrojanID"]=listDataRows[i]["TrojanID"].ToString();
 				row["Zip"]=listDataRows[i]["Zip"].ToString();
 				row["IsCDA"]=listDataRows[i]["IsCDA"].ToString();
+				row["PlanType"]=listDataRows[i]["PlanType"].ToString();
+				row["InNet"]=(IsInNetworkPlanType(listDataRows[i]["PlanType"].ToString())?"X":"");
 				table.Rows.Add(row);
 			}
 			return table;
+		}
+
+		///<summary>True for the plan types that count as in network for the In Net column of the Insurance Plans list (Open Dental 25.3): PPO
+		///percentage and PPO fixed benefit ("p"), Medicaid or flat copay ("f") and capitation ("c"). Category percentage (blank) is not.</summary>
+		public static bool IsInNetworkPlanType(string planType) {
+			Meth.NoCheckMiddleTierRole();
+			return (planType??"").Trim().ToLower().In("p","f","c");
 		}
 
 		///<summary>Used in FormFeesForIns</summary>

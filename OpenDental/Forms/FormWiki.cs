@@ -114,6 +114,7 @@ namespace OpenDental {
 						WikiPageCur.PageContentPlainText=MarkupEdit.ConvertToPlainText(WikiPageCur.PageContent);
 					}
 					WikiPages.Update(WikiPageCur);
+					WikiStaticExport.ExportInBackground(new List<string>() { WikiPageCur.PageTitle },isFullExport:false);
 				});
 				AddWikiPage(actionWikiSaved);
 				return;
@@ -173,6 +174,10 @@ namespace OpenDental {
 			}
 			//ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"All Pages"),11,"","All Pages"));
 			ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Search"),12,"","Search"));
+			if(WikiStaticExport.IsEnabled()) {//v25_2-wiki-readonly-offline: only when the office keeps a read-only copy.
+				ToolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Read-Only Copy"),-1,
+					Lan.g(this,"Open the read-only copy of the wiki in a web browser. It also opens while this program is closed."),"ReadOnlyCopy"));
+			}
 		}
 
 		private void ToolBarMain_ButtonClick(object sender,OpenDental.UI.ODToolBarButtonClickEventArgs e) {
@@ -214,9 +219,7 @@ namespace OpenDental {
 					History_Click();
 					break;
 				case "Drafts":
-					if(IsWikiPageLocked()) {
-						return;
-					}
+					//Viewing and comparing drafts needs only wiki access; FormWikiDrafts blocks editing a locked page's drafts without Wiki Admin.
 					Drafts_Click();
 					break;
 				case "Inc Links":
@@ -231,6 +234,26 @@ namespace OpenDental {
 				case "Search":
 					Search_Click();
 					break;
+				case "ReadOnlyCopy":
+					ReadOnlyCopy_Click();
+					break;
+			}
+		}
+
+		///<summary>Opens index.html of the read-only copy in the default browser (v25_2-wiki-readonly-offline).</summary>
+		private void ReadOnlyCopy_Click() {
+			string folder=WikiStaticExport.GetExportPath();
+			string pathIndex=WikiStaticExport.GetIndexPath(folder);
+			if(!File.Exists(pathIndex)) {
+				MessageBox.Show(this,Lan.g(this,"The read-only copy has not been written yet, or its folder cannot be reached:")+"\r\n"+folder+"\r\n"
+					+Lan.g(this,"Use Setup, Export Now to write it."));
+				return;
+			}
+			try {
+				System.Diagnostics.Process.Start(pathIndex);
+			}
+			catch(Exception ex) {
+				MessageBox.Show(this,ex.Message);
 			}
 		}
 
@@ -344,6 +367,8 @@ namespace OpenDental {
 			if(!frmWikiSetup.IsDialogOK) {
 				return;
 			}
+			LayoutToolBar();//The Read-Only Copy button follows the setting.
+			ToolBarMain.Invalidate();
 			if(WikiPageCur==null) {//if browsing the WWW
 				return;
 			}
@@ -400,6 +425,7 @@ namespace OpenDental {
 				return;
 			}
 			WikiPages.Rename(WikiPageCur,frmWikiRename.PageTitle);
+			WikiStaticExport.ExportInBackground(null,isFullExport:true);//Other pages show the new title in their links.
 			_listHistoryNav[_listHistoryNav.Count-(1+_idxHistoryNavBack)]="wiki:"+frmWikiRename.PageTitle;//keep history updated, do not decrement historyNavBack, stay at the same index in history
 			//historyNavBack--;//no need to decrement history counter since we are loading the same page, just with a different name, historyNav was edited above with new name
 			LoadWikiPage(frmWikiRename.PageTitle);
@@ -417,6 +443,7 @@ namespace OpenDental {
 				return;
 			}
 			WikiPages.Archive(WikiPageCur.PageTitle,Security.CurUser.UserNum);
+			WikiStaticExport.ExportInBackground(null,isFullExport:true);//Removes the page and marks the links to it.
 			//historyNavBack--;//do not decrement, load will consider this a branch and put "wiki:Home" in place of the deleted page and remove "forward" history.
 			LoadWikiPage("Home");
 		}
@@ -642,6 +669,7 @@ namespace OpenDental {
 			if(wikiPageDeleted!=null && HasExistingWikiPage(wikiPageDeleted,out wikiPageExisting)) {
 				//Now replace any references to wikiPageDeleted with the non deleted wp(wpExisting).
 				WikiPages.UpdateWikiPageReferences(WikiPageCur.WikiPageNum,wikiPageDeleted.WikiPageNum,wikiPageExisting.WikiPageNum);
+				WikiStaticExport.ExportInBackground(new List<string>() { WikiPageCur.PageTitle },isFullExport:false);
 				//Continue to load the page.
 			}
 			else if(wikiPageDeleted!=null) {
@@ -652,6 +680,7 @@ namespace OpenDental {
 				}
 				//User wants to restore the WikiPage.
 				WikiPages.WikiPageRestore(wikiPageDeleted,Security.CurUser.UserNum);
+				WikiStaticExport.ExportInBackground(null,isFullExport:true);//Links to the restored page work again.
 			}
 			//Open wiki in a new window.
 			bool isCtrlDown=(Control.ModifierKeys & Keys.Control)==Keys.Control;

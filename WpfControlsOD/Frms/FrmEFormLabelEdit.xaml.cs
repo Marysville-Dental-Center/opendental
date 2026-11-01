@@ -44,6 +44,9 @@ namespace OpenDental {
 			checkIsHorizStacking.Click+=CheckIsHorizStacking_Click;
 			textLabelTranslated.Click+=TextLabelTranslated_Click;
 			textLabel.Click+=TextLabel_Click;
+			//Open Dental 25.4: rich text pasted from Word, a browser or e-mail keeps basic formatting.
+			DataObject.AddPastingHandler(textLabel.richTextBox,EFormL.RichTextBox_Pasting);
+			DataObject.AddPastingHandler(textLabelTranslated.richTextBox,EFormL.RichTextBox_Pasting);
 		}
 
 		private void FrmEFormsLabelEdit_Load(object sender, EventArgs e) {

@@ -36,7 +36,8 @@ namespace OpenDental{
 				this.label7,
 				this.label12,
 				this.labelPanoBW,
-				this.label37
+				this.label37,
+				this.butScanDocSelectSourceDetails
 			});
 			Lan.C("All", new System.Windows.Forms.Control[] {
 				butSave,
@@ -91,6 +92,15 @@ namespace OpenDental{
 			if(radioScanDocShowOptions.Checked) {
 				groupScanningOptions.Enabled=false;
 			}
+		}
+
+		///<summary>Explains when to turn on Show Select Scanner Window. Only shows text: nothing here talks to a scanner.</summary>
+		private void butScanDocSelectSourceDetails_Click(object sender,EventArgs e) {
+			MsgBox.Show(this,"When this box is checked, the window for choosing a scanner opens every time a document is scanned on this computer.\r\n\r\n"
+				+"Turn it on if this computer scans with a Canon scanner and, after scanning, either of these happens:\r\n"
+				+"- some PDFs no longer open in the Imaging module;\r\n"
+				+"- list boxes in other windows, such as Commlog, stop showing which row is selected.\r\n\r\n"
+				+"Choosing the scanner before each scan avoids both problems. Otherwise it can stay off, and scans use the scanner picked with Set Default Scanner.");
 		}
 
 		private void butSetScanner_Click(object sender,EventArgs e) {

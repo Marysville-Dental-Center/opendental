@@ -329,6 +329,79 @@ namespace SyntheticData.Tests {
 			List<Difference> list=ReportComparer.Compare(Report(),after,Adoption());
 			Assert.AreEqual(1,list.Count);
 			Assert.IsFalse(list[0].IsAllowed);
+			//It says what it means, and where the runbook says what to do.
+			StringAssert.Contains(list[0].Note,"every value reads the same");
+			StringAssert.Contains(list[0].ToString(),"[note: ");
+			StringAssert.Contains(list[0].ToString(),"step 3.3");
+			//With a column difference it is explained by it, and has no note.
+			after.Tables[1].Columns["Relationship"]="51";
+			list=ReportComparer.Compare(Report(),after,Adoption());
+			Difference checksum=list.Single(x => x.Kind==DifferenceKind.ChecksumTableChanged);
+			Assert.IsTrue(checksum.IsAllowed);
+			Assert.IsNull(checksum.Note);
+		}
+
+		///<summary>Adoption does not touch updatehistory, so the allowed list has no rule for it (it had a whole-table one).</summary>
+		[TestMethod]
+		public void UpdateHistoryChange_IsUnexpected() {
+			ValidationReport before=Report();
+			TableReport history=new TableReport { Name="updatehistory",Rows=4,ChecksumTable="333" };
+			history.Columns["ProgramVersion"]="60";
+			before.Tables.Add(history);
+			ValidationReport after=Report();
+			TableReport historyAfter=new TableReport { Name="updatehistory",Rows=5,ChecksumTable="334" };
+			historyAfter.Columns["ProgramVersion"]="61";
+			after.Tables.Add(historyAfter);
+			List<Difference> list=ReportComparer.Compare(before,after,Adoption());
+			Assert.IsTrue(list.Where(x => x.Table=="updatehistory").All(x => !x.IsAllowed || x.Kind==DifferenceKind.ChecksumTableChanged),ReportComparer.Format(list));
+			Assert.IsTrue(list.Any(x => x.Table=="updatehistory" && x.Kind==DifferenceKind.RowsChanged && !x.IsAllowed));
+		}
+
+		///<summary>The fork migration renames report rows Open Dental wrote under names the fork does not know, and adds the row of the Open Dental 25.4
+		///UDS+ report, moving the later Public Health rows down one place (M2-UDS). A row added changes the row count and every column checksum of
+		///displayreport, so the list allows the table as a whole, as it does grouppermission; adopt's row check holds it to the renames, the added row
+		///and the moves migration-preview lists (AdoptionValidation's row check tests). A table without a rule is still compared column by column.
+		///</summary>
+		[TestMethod]
+		public void DisplayReport_IsAllowedAsAWholeTable_OtherTablesAreNot() {
+			ValidationReport before=Report();
+			TableReport reports=new TableReport { Name="displayreport",Rows=5,ChecksumTable="444" };
+			reports.Columns["InternalName"]="70";
+			reports.Columns["ItemOrder"]="75";
+			reports.Columns["Description"]="80";
+			before.Tables.Add(reports);
+			ValidationReport after=Report();
+			TableReport reportsAfter=new TableReport { Name="displayreport",Rows=5,ChecksumTable="445" };
+			reportsAfter.Columns["InternalName"]="71";
+			reportsAfter.Columns["ItemOrder"]="75";
+			reportsAfter.Columns["Description"]="80";
+			after.Tables.Add(reportsAfter);
+			List<Difference> list=ReportComparer.Compare(before,after,Adoption());
+			Assert.IsTrue(list.Where(x => x.Table=="displayreport").All(x => x.IsAllowed),ReportComparer.Format(list));
+			Assert.IsTrue(list.Any(x => x.Table=="displayreport" && x.Kind==DifferenceKind.ColumnChanged && x.Column=="InternalName"));
+			Assert.IsTrue(list.Any(x => x.Table=="displayreport" && x.Kind==DifferenceKind.ChecksumTableChanged && x.IsAllowed),"Explained by the rename.");
+			//The UDS+ row added: one row more, and every column checksum changes.
+			reportsAfter.Rows=6;
+			reportsAfter.Columns["ItemOrder"]="76";
+			reportsAfter.Columns["Description"]="81";
+			list=ReportComparer.Compare(before,after,Adoption());
+			Assert.IsTrue(list.Any(x => x.Table=="displayreport" && x.Kind==DifferenceKind.RowsChanged),ReportComparer.Format(list));
+			Assert.IsTrue(list.Any(x => x.Table=="displayreport" && x.Column=="Description"),ReportComparer.Format(list));
+			Assert.IsTrue(list.Where(x => x.Table=="displayreport").All(x => x.IsAllowed),ReportComparer.Format(list));
+			//Next to it, a change of a table without a rule is still unexpected.
+			after.Tables.Single(x => x.Name=="guardian").Columns["Relationship"]="51";
+			after.Tables.Single(x => x.Name=="guardian").ChecksumTable="223";
+			list=ReportComparer.Compare(before,after,Adoption());
+			Assert.IsTrue(list.Any(x => x.Table=="guardian" && x.Kind==DifferenceKind.ColumnChanged && !x.IsAllowed),ReportComparer.Format(list));
+			Assert.IsTrue(list.Where(x => x.Table=="displayreport").All(x => x.IsAllowed),ReportComparer.Format(list));
+		}
+
+		///<summary>MariaDB writes a FLOAT as text with 6 significant digits, so the column checksum widens it to DOUBLE, which it writes exactly.</summary>
+		[TestMethod]
+		public void ColumnChecksum_ReadsFloatsExactly() {
+			Assert.AreEqual("CAST(`FontSize` AS DOUBLE)",Validator.ExactText(new ColumnInfo { Name="FontSize",DataType="float" }));
+			Assert.AreEqual("`ClaimFee`",Validator.ExactText(new ColumnInfo { Name="ClaimFee",DataType="double" }));
+			Assert.AreEqual("`LName`",Validator.ExactText(new ColumnInfo { Name="LName",DataType="varchar" }));
 		}
 	}
 

@@ -53,6 +53,22 @@ namespace OpenDental {
 			}
 			//Increase by % starts from the fees in effect today unless the user picks another date.
 			textDateAsOf.Text=DateTime.Today.ToShortDateString();
+			//Open Dental 25.1 puts each tool on its own tab. The last tab is remembered per user until the program closes.
+			if(Security.CurUser!=null && _dictTabIndexLastByUser.TryGetValue(Security.CurUser.UserNum,out int indexTabLast)
+				&& indexTabLast>=0 && indexTabLast<tabControlTools.TabPages.Count)
+			{
+				tabControlTools.SelectedIndex=indexTabLast;
+			}
+		}
+
+		///<summary>The tab each user last had open in this window, for this session only (no preference or schema change).</summary>
+		private static Dictionary<long,int> _dictTabIndexLastByUser=new Dictionary<long,int>();
+
+		private void tabControlTools_SelectedIndexChanged(object sender,EventArgs e) {
+			if(Security.CurUser==null || tabControlTools.SelectedIndex<0) {
+				return;
+			}
+			_dictTabIndexLastByUser[Security.CurUser.UserNum]=tabControlTools.SelectedIndex;
 		}
 
 		///<summary>Reads an optional date box. Blank gives MinValue. Shows a message and returns false when the text is not a valid date.</summary>

@@ -1828,6 +1828,7 @@ namespace OpenDental {
 				checkNoBillIns.CheckState=CheckState.Unchecked;
 			}
 			Cursor=Cursors.WaitCursor;
+			bool? isNoBillInsOld=Procedures.GetNoBillInsState(_listClaimProcs);//The box before this click.
 			for(int i=0;i<_listClaimProcs.Count;i++) {
 				if(!_listClaimProcs[i].Status.In(ClaimProcStatus.Estimate,ClaimProcStatus.CapClaim,ClaimProcStatus.CapEstimate)) {
 					continue;
@@ -1835,6 +1836,9 @@ namespace OpenDental {
 				_listClaimProcs[i].NoBillIns=(checkNoBillIns.CheckState==CheckState.Checked);
 				ClaimProcs.Update(_listClaimProcs[i]);
 			}
+			//Open Dental 25.4: the decision is also kept on the procedure (saved now, like the claimprocs) and audited.
+			Procedures.SetNoBillInsFromUser(_procedure,checkNoBillIns.CheckState==CheckState.Checked,isNoBillInsOld);
+			_procedureOld.NoBillIns=_procedure.NoBillIns;
 			//next lines are needed to recalc BaseEst, etc, for claimprocs that are no longer NoBillIns
 			//also, if they are NoBillIns, then it clears out the other values.
 			Procedures.ComputeEstimates(_procedure,_patient.PatNum,ref _listClaimProcs,false,_listInsPlans,_listPatPlans,_listBenefits,

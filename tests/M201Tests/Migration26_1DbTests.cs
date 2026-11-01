@@ -90,10 +90,10 @@ namespace M201Tests {
 				"INSERT INTO evaluationdef (SchoolCourseNum,EvalTitle,GradingScaleNum) VALUES (3,'Synthetic template',1)",
 				"INSERT INTO schoolcoursedef (CourseID,Descript) VALUES ('SYN101','Synthetic course')",
 				"INSERT INTO claimpayment (CheckDate,CheckAmt,CheckNum,BankBranch,Note,ClinicNum,DepositNum,CarrierName,DateIssued,IsPartial,PayType,"
-					+"SecUserNumEntry,SecDateEntry,PayGroup) VALUES "
-					+"('2025-04-01',10,'1001','',NULL,0,0,'Synthetic Carrier','2025-03-30',0,0,1,'2025-04-01',0),"
-					+"('2025-04-02',20,'1002','','Synthetic check note',0,0,'Synthetic Carrier','2025-03-31',0,0,1,'2025-04-02',0),"
-					+"('2025-04-03',30,'1003','',REPEAT('n',255),0,0,'Synthetic Carrier','2025-04-01',0,0,1,'2025-04-03',0)",
+					+"SecUserNumEntry,SecDateEntry,PayGroup,SecDateTEdit) VALUES "
+					+"('2025-04-01',10,'1001','',NULL,0,0,'Synthetic Carrier','2025-03-30',0,0,1,'2025-04-01',0,'2025-04-01 12:00:00'),"
+					+"('2025-04-02',20,'1002','','Synthetic check note',0,0,'Synthetic Carrier','2025-03-31',0,0,1,'2025-04-02',0,'2025-04-02 12:00:00'),"
+					+"('2025-04-03',30,'1003','',REPEAT('n',255),0,0,'Synthetic Carrier','2025-04-01',0,0,1,'2025-04-03',0,'2025-04-03 12:00:00')",
 				"INSERT INTO insverify (DateLastVerified,UserNum,VerifyType,FKey,DefNum,Note,DateLastAssigned,DateTimeEntry,HoursAvailableForVerification,"
 					+"SecurityHash) VALUES ('2025-05-01',1,1,11,0,'','2025-06-01','2025-05-01 08:00:00',0,'')",
 				"INSERT INTO insverifyhist (InsVerifyNum,DateLastVerified,UserNum,VerifyType,FKey,DefNum,Note,DateLastAssigned,DateTimeEntry,"
@@ -240,6 +240,9 @@ namespace M201Tests {
 			Assert.AreEqual("Synthetic check note",table.Rows[1]["Note"].ToString());
 			Assert.AreEqual(new string('n',255),table.Rows[2]["Note"].ToString());
 			Assert.AreEqual("0",DataCore.GetScalar("SELECT COUNT(*) FROM claimpayment WHERE Note IS NULL"));
+			//Making a NULL note empty is not an edit of the payment: its ON UPDATE audit timestamp stays (the adoption rehearsal compares them all).
+			Assert.AreEqual("2025-04-01 12:00:00|2025-04-02 12:00:00|2025-04-03 12:00:00",ScratchDb.Scalar(DB_OD253,"SELECT GROUP_CONCAT(DATE_FORMAT("
+				+"SecDateTEdit,'%Y-%m-%d %H:%i:%s') ORDER BY ClaimPaymentNum SEPARATOR '|') FROM claimpayment"));
 			//Dates became datetimes at midnight; the key stays.
 			Assert.AreEqual("2025-06-01 00:00:00",DataCore.GetScalar("SELECT DATE_FORMAT(DateLastAssigned,'%Y-%m-%d %H:%i:%s') FROM insverify"));
 			Assert.AreEqual("2025-06-02 00:00:00",DataCore.GetScalar("SELECT DATE_FORMAT(DateLastAssigned,'%Y-%m-%d %H:%i:%s') FROM insverifyhist"));
@@ -281,6 +284,10 @@ namespace M201Tests {
 			//customization column.
 			HashSet<string> setAdoption=new HashSet<string>(new[] { "preference","securitylog","securityloghash","patient" },
 				StringComparer.OrdinalIgnoreCase);
+			//The UDS+ report row (package M2-UDS, ReportRowUdsPlusStep) is added on every database from before 25.4: one displayreport row.
+			setAdoption.Add("displayreport");
+			Assert.AreEqual((PIn.Long(_dictRowCountsBefore["displayreport"])+1).ToString(),_dictRowCountsAfter["displayreport"]);
+			Assert.AreEqual("1",ScratchDb.Scalar(DB_OD253,"SELECT COUNT(*) FROM displayreport WHERE InternalName='"+DisplayReports.ReportNames.UdsPlus+"'"));
 			foreach(KeyValuePair<string,string> pair in _dictRowCountsBefore.Where(x => !setAdoption.Contains(x.Key))) {
 				Assert.AreEqual(pair.Value,_dictRowCountsAfter[pair.Key],"Row count of "+pair.Key);
 			}
