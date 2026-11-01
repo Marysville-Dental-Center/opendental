@@ -107,7 +107,8 @@ namespace ImagingCapture.Templates {
 		public ReadOnlyCollection<StandardTemplateSlot> ListSlots { get; }
 		///<summary>The text item, or null.</summary>
 		public StandardTemplateText Text { get; }
-		///<summary>MountDef.ScaleValue: "50 1 mm" when every slot matches one sensor size 1:1, else "" (design 9.1).</summary>
+		///<summary>MountDef.ScaleValue: always "" (design 9.1 allows "50 1 mm" only for mounts whose slots match one sensor size 1:1, and the fork
+		///knows no sensor's image size; the clinic sets it per the CAP-0 runbook once the slots are sized to the sensor's measured image).</summary>
 		public string ScaleValue { get; }
 		///<summary>Why the template has its ScaleValue, one sentence.</summary>
 		public string ScaleNote { get; }
@@ -148,24 +149,22 @@ namespace ImagingCapture.Templates {
 			return string.Join(", then ",listRuns);
 		}
 
-		///<summary>Design 9.1: a mount scale holds only when every image is shown 1:1, so only when every slot is taken with the same sensor and is
-		///exactly that sensor's image, either way round (the slot's rotation, confirmed on the phantom, turns it to fit).</summary>
+		///<summary>Design 9.1: a mount scale holds only when every image is shown 1:1, so only when every slot is exactly the image of the one sensor
+		///it is taken with. Open Dental draws a mount image scaled to fit its slot, and the slots here have the generator's default size, which is
+		///no sensor's measured image (and one sensor's image cannot fit both the horizontal and the vertical bitewing slots 1:1). So no template
+		///gets a scale: a wrong one would make every measurement wrong. The clinic sets ScaleValue once the slots are sized to its sensor's measured
+		///image (the CAP-0 runbook).</summary>
 		private static string GetScaleValue(IList<StandardTemplateSlot> listSlots,out string scaleNote) {
 			bool isOneSensor=listSlots.Select(x => x.SensorSize).Distinct().Count()==1;
-			bool isEverySlotOneImage=listSlots.All(x => (x.Width==StandardMountTemplates.SlotWidth && x.Height==StandardMountTemplates.SlotHeight)
-				|| (x.Width==StandardMountTemplates.SlotHeight && x.Height==StandardMountTemplates.SlotWidth));
-			if(isOneSensor && isEverySlotOneImage) {
-				scaleNote="Scale "+StandardMountTemplates.ScaleValueOneToOne+": every slot is one image of the same sensor, "
-					+ToText(StandardMountTemplates.SlotWidth)+" x "+ToText(StandardMountTemplates.SlotHeight)+" pixels either way round, shown 1:1 "
-					+"(50 pixels per mm at 0.02 mm pixels).";
-				return StandardMountTemplates.ScaleValueOneToOne;
-			}
+			string advice=" Set the mount's scale ("+StandardMountTemplates.ScaleValueOneToOne+" for 0.02 mm pixels) only after its slots are sized to the "
+				+"sensor's measured image, as the clinic runbook describes.";
 			if(!isOneSensor) {
 				scaleNote="No scale: the anterior slots are taken with the size 1 sensor but sized like the size 2 slots, so their images are scaled to fit "
-					+"and one mount scale cannot hold for every slot.";
+					+"and one mount scale cannot hold for every slot."+advice;
 			}
 			else {
-				scaleNote="No scale: not every slot is one sensor image shown 1:1.";
+				scaleNote="No scale: the slots are "+ToText(StandardMountTemplates.SlotWidth)+" x "+ToText(StandardMountTemplates.SlotHeight)+" pixels, "
+					+"Open Dental's generator's default, not a measured sensor image, so a mount scale would measure wrongly."+advice;
 			}
 			return "";
 		}

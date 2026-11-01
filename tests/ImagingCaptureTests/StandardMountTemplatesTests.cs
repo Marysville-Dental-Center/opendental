@@ -196,13 +196,16 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void ScaleValue_OnlyWhereEverySlotMatchesOneSensorSizeOneToOne() {
+		public void ScaleValue_NoneInAnyTemplate_TheSlotsAreTheGeneratorsDefaultNotAMeasuredSensorImage() {
 			Assert.AreEqual("",StandardMountTemplates.Get(StandardTemplateKind.FmxHorizontalBitewings).ScaleValue,"Size 1 and size 2 images in slots of one size.");
 			Assert.AreEqual("",StandardMountTemplates.Get(StandardTemplateKind.FmxVerticalBitewings).ScaleValue);
 			StringAssert.Contains(StandardMountTemplates.Get(StandardTemplateKind.FmxVerticalBitewings).ScaleNote,"size 1 sensor");
-			Assert.AreEqual("50 1 mm",StandardMountTemplates.Get(StandardTemplateKind.FourBitewingsHorizontal).ScaleValue);
-			Assert.AreEqual("50 1 mm",StandardMountTemplates.Get(StandardTemplateKind.FourBitewingsVertical).ScaleValue);
-			StringAssert.Contains(StandardMountTemplates.Get(StandardTemplateKind.FourBitewingsVertical).ScaleNote,"1:1");
+			//Design 9.1: "50 1 mm" only for slots that match one sensor size 1:1; 1700 x 1300 is no sensor's measured image, and the vertical 4BW's
+			//portrait slots would show a landscape image at 0.765.
+			Assert.AreEqual("",StandardMountTemplates.Get(StandardTemplateKind.FourBitewingsHorizontal).ScaleValue);
+			Assert.AreEqual("",StandardMountTemplates.Get(StandardTemplateKind.FourBitewingsVertical).ScaleValue);
+			StringAssert.Contains(StandardMountTemplates.Get(StandardTemplateKind.FourBitewingsVertical).ScaleNote,"not a measured sensor image");
+			Assert.IsTrue(StandardMountTemplates.ListTemplates.All(x => x.ScaleNote.Contains("runbook")),"Each note says who sets the scale.");
 			Assert.AreEqual(50f,MountDefs.GetScale("50 1 mm"),"Read the way Open Dental reads a mount scale.");
 			Assert.AreEqual(1,MountDefs.GetDecimals("50 1 mm"));
 			Assert.AreEqual("mm",MountDefs.GetScaleUnits("50 1 mm"));
@@ -239,7 +242,7 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(Color.Black.ToArgb(),mountDef.ColorBack.ToArgb());
 			Assert.AreEqual(Color.White.ToArgb(),mountDef.ColorFore.ToArgb());
 			Assert.AreEqual(Color.Black.ToArgb(),mountDef.ColorTextBack.ToArgb());
-			Assert.AreEqual("50 1 mm",mountDef.ScaleValue);
+			Assert.AreEqual("",mountDef.ScaleValue,"Design 9.1: the clinic sets it once the slots are sized to the sensor.");
 			Assert.IsFalse(mountDef.FlipOnAcquire);
 			Assert.IsFalse(mountDef.AdjModeAfterSeries,"The generator leaves it as a new mount definition has it.");
 			Assert.AreEqual("",StandardTemplatePlanner.BuildMountDef(StandardMountTemplates.Get(StandardTemplateKind.FmxHorizontalBitewings),20,0).ScaleValue);
@@ -284,7 +287,7 @@ namespace ImagingCapture.Tests {
 			StringAssert.StartsWith(store.ListLogs[0].LogText,StandardTemplatePlanner.LogPrefix);
 			StringAssert.Contains(store.ListLogs[0].LogText,"Description=FMX horizontal BW; MountDefNum=101; DefaultCat=20 (X-rays); Size=10700x3900; Slots=18");
 			StringAssert.Contains(store.ListLogs[0].LogText,"ScaleValue=(none)");
-			StringAssert.Contains(store.ListLogs[3].LogText,"ScaleValue=50 1 mm");
+			StringAssert.Contains(store.ListLogs[3].LogText,"ScaleValue=(none)");
 			StringAssert.Contains(store.ListLogs[0].LogText,"SlotList=1:2/3/30/31:0|2:4/5/28/29:0|3:14/15/18/19:180");
 			Assert.AreEqual(1,store.CountSignals);
 			StringAssert.Contains(StandardTemplateTexts.GetResultText(result),"Added: FMX horizontal BW (mount 101)");
