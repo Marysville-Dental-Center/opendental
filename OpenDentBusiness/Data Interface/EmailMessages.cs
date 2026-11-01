@@ -3312,7 +3312,7 @@ namespace OpenDentBusiness {
 			FileAtoZ.Copy(ImageStore.GetFilePath(document,patFolder),filePathAndName,FileAtoZSourceDestination.AtoZToAtoZ);
 			EmailMessage emailMessage=Statements.GetEmailMessageForStatement(statement,patient);
 			EmailAttach emailAttach=new EmailAttach();
-			emailAttach.DisplayedFileName="Statement.pdf";
+			emailAttach.DisplayedFileName=Statements.GetEmailPdfDisplayName(patient);//25.3: "Statement_LastName.pdf"
 			emailAttach.ActualFileName=fileName;
 			emailMessage.Attachments.Add(emailAttach);
 			return emailMessage;

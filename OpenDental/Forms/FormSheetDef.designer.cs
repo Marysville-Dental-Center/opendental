@@ -210,7 +210,7 @@ namespace OpenDental{
 			this.checkAutoSaveCheck.Name = "checkAutoSaveCheck";
 			this.checkAutoSaveCheck.Size = new System.Drawing.Size(174, 20);
 			this.checkAutoSaveCheck.TabIndex = 103;
-			this.checkAutoSaveCheck.Text = "Check \'Autosave\' By Default";
+			this.checkAutoSaveCheck.Text = "Copy to Imaging when saved";
 			this.checkAutoSaveCheck.Visible = false;
 			// 
 			// comboAutoSaveOverride

@@ -396,7 +396,7 @@ namespace OpenDental{
 			//};
 			//GridRow totalsRow=new GridRow("Totals",textDebit.Text,textCredit.Text,"");
 			//string msg=
-			gridMain.Export(gridMain.Title);//listOtherDetails:listOtherDetails,totalsRow:totalsRow);
+			gridMain.ShowExportMenu(butExport,gridMain.Title);//listOtherDetails:listOtherDetails,totalsRow:totalsRow);
 			//if(!string.IsNullOrEmpty(msg)) {
 			//	MsgBox.Show(this,msg);
 			//}

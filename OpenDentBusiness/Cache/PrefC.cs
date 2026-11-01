@@ -397,6 +397,50 @@ namespace OpenDentBusiness {
 		public static bool HListIsNull() {
 			return Prefs.DictIsNull();
 		}
+
+		///<summary>Fork-owned preference rows that are not in the PrefName enum (package B-SERVER: ForkReportsIncompleteProcsAllNoNotes,
+		///ForkReplicationReadDelayMs, ForkReplicationSignalLookbackMs). Returns the cached value, or defaultValue when the preference cache is not
+		///filled yet or has no row with that name. Never fills the cache and never throws, so it is safe on any thread and in any code path.</summary>
+		public static string GetRawOrDefault(string prefName,string defaultValue) {
+			try {
+				if(Prefs.DictIsNull() || !Prefs.GetContainsKey(prefName)) {
+					return defaultValue;
+				}
+				return Prefs.GetOne(prefName).ValueString??defaultValue;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return defaultValue;
+			}
+		}
+
+		///<summary>Stores a fork-owned preference that is not in the PrefName enum: inserts the row the first time, otherwise updates it, then
+		///updates this workstation's cache. Returns true if the value changed. The caller signals InvalidType.Prefs so other workstations reload.
+		///An Open Dental database has no such rows, so nothing needs a migration: a missing row reads as the caller's default.</summary>
+		public static bool UpsertRaw(string prefName,string newValue) {
+			Meth.NoCheckMiddleTierRole();
+			newValue=newValue??"";
+			if(GetRawOrDefault(prefName,null)==newValue) {
+				return false;
+			}
+			UpsertRawNoCache(prefName,newValue);
+			Prefs.UpdateValueForKey(new Pref { PrefName=prefName,ValueString=newValue });
+			return true;
+		}
+
+		///<summary>Writes a fork-owned preference row straight to the table, inserting it when it is missing. Does not touch the cache.</summary>
+		public static void UpsertRawNoCache(string prefName,string newValue) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),prefName,newValue);
+				return;
+			}
+			string command="SELECT COUNT(*) FROM preference WHERE PrefName='"+POut.String(prefName)+"'";
+			if(PIn.Long(Db.GetScalar(command))==0) {
+				Db.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES ('"+POut.String(prefName)+"','"+POut.String(newValue??"")+"')");
+				return;
+			}
+			Db.NonQ("UPDATE preference SET ValueString='"+POut.String(newValue??"")+"' WHERE PrefName='"+POut.String(prefName)+"'");
+		}
 		
 		///<summary>Static variable used to always reflect FormOpenDental.IsTreatPlanSortByTooth.  
 		///This setter should only be called in FormOpenDental.IsTreatPlanSortByTooth.  

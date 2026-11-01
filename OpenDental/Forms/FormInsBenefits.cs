@@ -46,6 +46,9 @@ namespace OpenDental {
 		private const int COL_QUALIFIER=8;
 		private const int COL_TREAT_AREA=9;
 		private const int COL_TEETH=10;
+		///<summary>Columns of the Age Limits grid that are read back: Age, and Teeth (Open Dental 26.1).</summary>
+		private const int COL_AGE_LIMIT_AGE=2;
+		private const int COL_AGE_LIMIT_TEETH=3;
 
 		///<summary></summary>
 		public FormInsBenefits(long planNum,long patPlanNum) {
@@ -68,6 +71,7 @@ namespace OpenDental {
 			_listBenefitsAll=ListBenefits.FindAll(x => CodeGroups.IsShownInBenefitsWindow(x));
 			_listCovCats=CovCats.GetDeepCopy(true);
 			gridBenefits.FuncCellIsEditable=IsOtherBenefitCellEditable;
+			gridAgeLimits.CellLeave+=gridAgeLimits_CellLeave;
 			if(CovCats.GetForEbenCat(EbenefitCategory.Accident)==null
 				|| CovCats.GetForEbenCat(EbenefitCategory.Crowns)==null
 				|| CovCats.GetForEbenCat(EbenefitCategory.Diagnostic)==null
@@ -509,12 +513,15 @@ namespace OpenDental {
 		private void FillGridAgeLimits() {
 			gridAgeLimits.BeginUpdate();
 			gridAgeLimits.Columns.Clear();
-			GridColumn gridColumn = new GridColumn("Code Group",140);
+			GridColumn gridColumn = new GridColumn("Code Group",110);
 			gridAgeLimits.Columns.Add(gridColumn);
-			gridColumn = new GridColumn("Codes", 80);
+			gridColumn = new GridColumn("Codes", 60);
 			gridAgeLimits.Columns.Add(gridColumn);
 			gridColumn = new GridColumn("Age",30,HorizontalAlignment.Center);
 			gridColumn.IsEditable=true;
+			gridAgeLimits.Columns.Add(gridColumn);
+			//Open Dental 26.1: an age limit can be limited to teeth. Blank applies to every tooth.
+			gridColumn=new GridColumn(Lan.g(this,"Teeth"),50,isEditable:true);
 			gridAgeLimits.Columns.Add(gridColumn);
 			gridAgeLimits.ListGridRows.Clear();
 			GridRow gridRow;
@@ -523,30 +530,80 @@ namespace OpenDental {
 				if(listCodeGroups[i].IsHidden) {
 					continue;//Retired code group (Open Dental 25.1): no row.
 				}
-				//There will not be duplicates like with frequencies.
-				Benefit benefit=_listBenefitsAll.Find(x=>x.CodeGroupNum==listCodeGroups[i].CodeGroupNum && Benefits.IsAgeLimit(x));
-				if(benefit==null) {
+				//One row per age limit of the group: since 26.1 a group can have a row without teeth and rows with teeth. Benefits still in the Other
+				//Benefits grid (just edited there) show there only.
+				List<Benefit> listBenefitsGroup=_listBenefitsAll.FindAll(x=>x.CodeGroupNum==listCodeGroups[i].CodeGroupNum && Benefits.IsAgeLimit(x)
+					&& !_listBenefitsGrid.Any(y => ReferenceEquals(y,x)))
+					.OrderBy(x => string.IsNullOrWhiteSpace(x.ToothRange) ? 0 : 1).ToList();
+				if(listBenefitsGroup.Count==0) {
 					if(!listCodeGroups[i].ShowInAgeLimit) {
 						//Do not provide an age limit row for this codegroup.
 						continue;
 					}
-					benefit = new Benefit();
-					benefit.CodeGroupNum=listCodeGroups[i].CodeGroupNum;
-					benefit = MakeAgeLimitBenefit(benefit,0);
+					Benefit benefitNew = new Benefit();
+					benefitNew.CodeGroupNum=listCodeGroups[i].CodeGroupNum;
+					listBenefitsGroup.Add(MakeAgeLimitBenefit(benefitNew,0));
 				}
-				gridRow=new GridRow();
-				gridRow.Cells.Add(Benefits.GetCategoryString(benefit));// Code Group
-				gridRow.Cells.Add(listCodeGroups[i].ProcCodes);
-				if(benefit.Quantity > 0) { // Age
-					gridRow.Cells.Add(benefit.Quantity.ToString());
+				for(int j=0;j<listBenefitsGroup.Count;j++) {
+					Benefit benefit=listBenefitsGroup[j];
+					gridRow=new GridRow();
+					gridRow.Cells.Add(Benefits.GetCategoryString(benefit));// Code Group
+					gridRow.Cells.Add(listCodeGroups[i].ProcCodes);
+					if(benefit.Quantity > 0) { // Age
+						gridRow.Cells.Add(benefit.Quantity.ToString());
+					}
+					else {
+						gridRow.Cells.Add("");
+					}
+					gridRow.Cells.Add(Benefits.GetToothRangeDisplay(benefit));// Teeth
+					gridRow.Tag=benefit;
+					gridAgeLimits.ListGridRows.Add(gridRow);
 				}
-				else {
-					gridRow.Cells.Add("");
-				}
-				gridRow.Tag=benefit;
-				gridAgeLimits.ListGridRows.Add(gridRow);
 			}
 			gridAgeLimits.EndUpdate();
+		}
+
+		///<summary>Checks the Teeth cell of an Age Limits row when it is left: a valid list is shown tidied, an invalid one turns the cell red until it is
+		///fixed (Save then refuses, see GetAgeLimitTeethErrors).</summary>
+		private void gridAgeLimits_CellLeave(object sender,ODGridClickEventArgs e) {
+			if(e.Col!=COL_AGE_LIMIT_TEETH || e.Row<0 || e.Row>=gridAgeLimits.ListGridRows.Count) {
+				return;
+			}
+			GridCell gridCell=gridAgeLimits.ListGridRows[e.Row].Cells[COL_AGE_LIMIT_TEETH];
+			try {
+				string toothRange=Tooth.ParseToothList(gridCell.Text);
+				gridCell.Text=Tooth.DisplayToothList(toothRange);
+				gridCell.ColorBackG=Color.Empty;
+			}
+			catch(ApplicationException) {
+				gridCell.ColorBackG=Color.LightPink;
+			}
+			gridAgeLimits.Invalidate();
+		}
+
+		///<summary>The problems with the Teeth cells of the Age Limits grid, one line each: teeth that do not parse, and teeth on a row without an age.
+		///Empty when every row is fine.</summary>
+		private List<string> GetAgeLimitTeethErrors() {
+			List<string> listErrors=new List<string>();
+			for(int i=0;i<gridAgeLimits.ListGridRows.Count;i++) {
+				GridRow gridRow=gridAgeLimits.ListGridRows[i];
+				string teeth=gridRow.Cells[COL_AGE_LIMIT_TEETH].Text;
+				if(string.IsNullOrWhiteSpace(teeth)) {
+					continue;
+				}
+				string codeGroup=gridRow.Cells[0].Text;
+				try {
+					Tooth.ParseToothList(teeth);
+				}
+				catch(ApplicationException ex) {
+					listErrors.Add(codeGroup+": "+ex.Message);
+					continue;
+				}
+				if(PIn.Byte(gridRow.Cells[COL_AGE_LIMIT_AGE].Text,hasExceptions:false)==0) {
+					listErrors.Add(codeGroup+": "+Lan.g(this,"enter an age for these teeth, or clear the teeth."));
+				}
+			}
+			return listErrors;
 		}
 
 		/// <summary> Should be called any time a change to a Frequency needs made visible. </summary>
@@ -786,7 +843,7 @@ namespace OpenDental {
 
 		///<summary>Which cells of the Other Benefits grid can be edited in place. The category is read-only on rows with a code group or procedure
 		///code and on rows whose category is hidden (Edit Benefit still opens on double click), Treat Area only applies to limitations, and Teeth
-		///only to exclusions.</summary>
+		///only to exclusions and age limitations.</summary>
 		private bool IsOtherBenefitCellEditable(int col,int row) {
 			if(!butSave.Enabled) {
 				return false;//no InsPlanEdit permission
@@ -801,8 +858,9 @@ namespace OpenDental {
 					return Benefits.GetOtherBenefitsCategoryIndex(otherBenefitRow.Benefit,_listCovCats)>=0;
 				case COL_TREAT_AREA:
 					return typeIndex==(int)InsBenefitType.Limitations || gridRow.Cells[COL_TREAT_AREA].ComboSelectedIndex>0;
-				case COL_TEETH:
-					return typeIndex==(int)InsBenefitType.Exclusions;
+				case COL_TEETH://Exclusions (25.3) and age limitations (26.1).
+					return typeIndex>=0 && Benefits.CanHaveTeeth((InsBenefitType)typeIndex,
+						(BenefitQuantity)Math.Max(0,gridRow.Cells[COL_QUALIFIER].ComboSelectedIndex));
 				default:
 					return true;
 			}
@@ -1118,6 +1176,8 @@ namespace OpenDental {
 			_listBenefitsAll.Add(formBenefitEdit.BenefitCur);
 			if(panelSimple.Visible && ConvertFormToBenefits(isSilent:true)) {
 				FillSimple();
+				//A new code group age limit (for example a second one, with teeth, for a group that has one) moves to the Age Limits grid.
+				FillGridAgeLimits();
 			}
 			FillGridBenefits();
 		}
@@ -1214,6 +1274,13 @@ namespace OpenDental {
 			if(!checkCalendarYear.Checked && textMonth.Text=="") {
 				if(!isSilent) {
 					MsgBox.Show(this,"Please enter a starting month for the benefit year.");
+				}
+				return false;
+			}
+			List<string> listAgeLimitTeethErrors=GetAgeLimitTeethErrors();//Open Dental 26.1
+			if(listAgeLimitTeethErrors.Count>0) {
+				if(!isSilent) {
+					MessageBox.Show(this,Lan.g(this,"Fix the Teeth of the Age Limits grid first:")+"\r\n"+string.Join("\r\n",listAgeLimitTeethErrors));
 				}
 				return false;
 			}
@@ -1315,6 +1382,8 @@ namespace OpenDental {
 				byte age=PIn.Byte(gridAgeLimits.ListGridRows[i].Cells[2].Text,hasExceptions:false);
 				if(age>0) {
 					benefit=MakeAgeLimitBenefit(listBenefitsAgeLim[i],age);
+					//Teeth (Open Dental 26.1), already checked by GetAgeLimitTeethErrors.
+					benefit.ToothRange=Tooth.ParseToothList(gridAgeLimits.ListGridRows[i].Cells[COL_AGE_LIMIT_TEETH].Text);
 					_listBenefitsAll.Add(benefit);
 				}
 			}

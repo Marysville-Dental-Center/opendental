@@ -285,6 +285,36 @@ namespace RowHashTests {
 			Assert.IsTrue(InsSubs.IsInsSubHashValid(InsSubs.GetOne(insSub.InsSubNum)));
 			Assert.IsTrue(TamperHash.IsCurrentFormat(InsSubs.GetOne(insSub.InsSubNum).SecurityHash));
 		}
+
+		///<summary>Writing a hash is not an edit: the rehash keeps every row's ON UPDATE audit timestamp (DateTStamp, SecDateTEdit). The M1-Z rehearsal
+		///found that it stamped every rehashed row with the rehash time, which after adoption would be every patient and every recent appointment,
+		///claim, claim procedure, payment split and insurance row.</summary>
+		[TestMethod]
+		public void RehashNow_KeepsTheAuditTimestamps() {
+			string timestampRecent=POut.DateT(DateTime.Now.Date.AddDays(-1).AddHours(9));
+			string timestampOld=POut.DateT(new DateTime(2024,5,5,5,5,5));
+			InsVerify insVerify=InsVerifies.GetOne(InsVerifies.InsertForPlanNum(NextNum()));
+			InsSub insSub=InsertInsSub(NextNum(),"SYN"+NextNum());
+			Patient patient=new Patient();
+			patient.LName="Synthetic";
+			patient.FName="Timestamp";
+			Patients.Insert(patient,false);
+			long aptNum=DataCore.NonQ("INSERT INTO appointment (PatNum,AptStatus,AptDateTime,SecurityHash,DateTStamp) VALUES ("+POut.Long(patient.PatNum)
+				+",1,"+POut.DateT(DateTime.Now.Date.AddDays(14).AddHours(10))+",'',"+timestampOld+")",true);
+			//Blank hashes with known timestamps, written outside the program; the timestamp stays put because the statement sets it.
+			EditOutsideProgram("UPDATE insverify SET SecurityHash='',SecDateTEdit="+timestampRecent+" WHERE InsVerifyNum="+POut.Long(insVerify.InsVerifyNum));
+			EditOutsideProgram("UPDATE inssub SET SecurityHash='',SecDateTEdit="+timestampRecent+" WHERE InsSubNum="+POut.Long(insSub.InsSubNum));
+			EditOutsideProgram("UPDATE patient SET SecurityHash='',DateTStamp="+timestampOld+" WHERE PatNum="+POut.Long(patient.PatNum));
+			SecurityHash.RehashNow();
+			Assert.IsTrue(TamperHash.IsCurrentFormat(InsVerifies.GetOne(insVerify.InsVerifyNum).SecurityHash));
+			Assert.IsTrue(TamperHash.IsCurrentFormat(InsSubs.GetOne(insSub.InsSubNum).SecurityHash));
+			Assert.IsTrue(TamperHash.IsCurrentFormat(DataCore.GetScalar("SELECT SecurityHash FROM patient WHERE PatNum="+POut.Long(patient.PatNum))));
+			Assert.IsTrue(TamperHash.IsCurrentFormat(DataCore.GetScalar("SELECT SecurityHash FROM appointment WHERE AptNum="+POut.Long(aptNum))));
+			Assert.AreEqual("1",DataCore.GetScalar("SELECT SecDateTEdit="+timestampRecent+" FROM insverify WHERE InsVerifyNum="+POut.Long(insVerify.InsVerifyNum)));
+			Assert.AreEqual("1",DataCore.GetScalar("SELECT SecDateTEdit="+timestampRecent+" FROM inssub WHERE InsSubNum="+POut.Long(insSub.InsSubNum)));
+			Assert.AreEqual("1",DataCore.GetScalar("SELECT DateTStamp="+timestampOld+" FROM patient WHERE PatNum="+POut.Long(patient.PatNum)));
+			Assert.AreEqual("1",DataCore.GetScalar("SELECT DateTStamp="+timestampOld+" FROM appointment WHERE AptNum="+POut.Long(aptNum)));
+		}
 		#endregion Hashing pass
 
 		#region patient

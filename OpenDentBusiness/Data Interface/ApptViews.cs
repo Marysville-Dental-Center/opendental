@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace OpenDentBusiness {
 	///<summary>Handles database commands related to the apptview table in the database.</summary>
-	public class ApptViews {
+	public partial class ApptViews {
 		public const long APPTVIEWNUM_NONE=0;
 		#region Get Methods
 		///<summary>Optionally pass in a clinic to filter the list of appointment views returned.</summary>

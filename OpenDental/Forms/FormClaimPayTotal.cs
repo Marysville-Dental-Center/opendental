@@ -70,6 +70,8 @@ namespace OpenDental {
 					LayoutManager.MoveLocation(textPatResp,new Point(textWriteOff.Right-1,textInsPayAllowed.Location.Y));
 				}
 			}
+			//Canada (25.4): Pay Labs, only when a procedure in this payment has its labs in it too.
+			butPayLabs.Visible=CultureInfo.CurrentCulture.Name.EndsWith("CA") && ClaimProcs.HasPayLabsGroups(ClaimProcArray,_listProcedures);
 			_listDefs=Defs.GetDefsForCategory(DefCat.ClaimPaymentTracking,true);
 			if(_totalPayAmt>=0) {
 				ApplyAsTotalPayment();
@@ -431,6 +433,19 @@ namespace OpenDental {
 			ClaimProcArray[gridMain.SelectedCell.Y].DedApplied=dedAmt;
 			ClaimProcArray[gridMain.SelectedCell.Y].InsPayEst-=dedAmt;
 			ClaimProcArray[gridMain.SelectedCell.Y].InsPayAmt-=dedAmt;
+			FillGrid();
+		}
+
+		///<summary>Canada: for carriers that pay the whole amount against the main procedure. Moves the lab part of each procedure's insurance payment
+		///onto its lab rows (ClaimProcs.PayLabs). Nothing is saved until Save; closing the window without saving undoes it.</summary>
+		private void butPayLabs_Click(object sender,EventArgs e) {
+			if(!SaveGridChanges(skipChecks:true)) {
+				return;
+			}
+			if(ClaimProcs.PayLabs(ClaimProcArray,_listProcedures)==0) {
+				MsgBox.Show(this,"Nothing to move. Enter what the carrier paid on each procedure first, then click Pay Labs to move the lab amounts "
+					+"onto the lab rows.");
+			}
 			FillGrid();
 		}
 

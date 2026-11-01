@@ -434,6 +434,10 @@
     <Compile Include="Data Interface\ChildRooms.cs" />
     <Compile Include="Data Interface\Children.cs" />
     <Compile Include="Data Interface\CodeGroups.cs" />
+    <Compile Include="Data Interface\CodeGroupDefaults.cs" />
+    <Compile Include="Data Interface\CodeGroupResets.cs" />
+    <Compile Include="Data Interface\MoreFeesFilters.cs" />
+    <Compile Include="Data Interface\ProcCodeImports.cs" />
     <Compile Include="Data Interface\EFormDefs.cs" />
     <Compile Include="Data Interface\EFormFieldDefs.cs" />
     <Compile Include="Data Interface\EFormFields.cs" />
@@ -442,6 +446,7 @@
     <Compile Include="Data Interface\LanguagePats.cs" />
     <Compile Include="Data Interface\CommlogHists.cs" />
     <Compile Include="Data Interface\Etrans835s.cs" />
+    <Compile Include="X12\EraClaimProcLinks.cs" />
     <Compile Include="Data Interface\ImageDraws.cs" />
     <Compile Include="Data Interface\InsPlanPreferences.cs" />
     <Compile Include="Data Interface\LimitedBetaFeatures.cs" />
@@ -466,12 +471,18 @@
     <Compile Include="Db Multi Table\PatientDataGenerated.cs" />
     <Compile Include="Eclaims\Lantek.cs" />
     <Compile Include="Eclaims\VyneDental.cs" />
+    <Compile Include="EForms\EFormFieldChildren.cs" />
     <Compile Include="EForms\EFormFieldsAvailable.cs" />
     <Compile Include="EForms\EFormFiller.cs" />
     <Compile Include="EForms\EFormImport.cs" />
     <Compile Include="EForms\EFormInsPick.cs" />
     <Compile Include="EForms\EFormInternal.cs" />
     <Compile Include="EForms\EFormPatListLayout.cs" />
+    <Compile Include="EForms\PatientFormsList.cs" />
+    <Compile Include="EForms\EFormDefImport.cs" />
+    <Compile Include="EForms\EFormPatFields.cs" />
+    <Compile Include="EForms\EFormRichPaste.cs" />
+    <Compile Include="EForms\FormSubmittedDates.cs" />
     <Compile Include="Email\BasicEmailAttachment.cs" />
     <Compile Include="Imaging\MountHelper.cs" />
     <Compile Include="Data Interface\DiscountPlanSubs.cs" />
@@ -484,6 +495,8 @@
     <Compile Include="Data Interface\StatementProds.cs" />
     <Compile Include="Db Multi Table\InsPlanSubstitution.cs" />
     <Compile Include="Imaging\BitmapDicom.cs" />
+    <Compile Include="Imaging\ImageCopyRules.cs" />
+    <Compile Include="Imaging\ImageDrawFontSizeSync.cs" />
     <Compile Include="InternalTools\Cloud\Crud\CloudBillingCrud.cs" />
     <Compile Include="InternalTools\Cloud\TableTypes\CloudBilling.cs" />
     <Compile Include="Data Interface\BugSubmissions.cs" />
@@ -491,12 +504,18 @@
     <Compile Include="Data Interface\ClinicErxs.cs" />
     <Compile Include="Data Interface\CommOptOuts.cs" />
     <Compile Include="Data Interface\DatabaseMaintenances.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.Allergies.cs" />
     <Compile Include="Data Interface\DatabaseMaintenances.InsPending.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.Base64Documents.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.EmailText.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.EmployeeSupervisor.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.InvalidCharsGdi.cs" />
     <Compile Include="Data Interface\DbmLogs.cs" />
     <Compile Include="Data Interface\DefLinks.cs" />
     <Compile Include="Data Interface\DiscountPlans.cs" />
     <Compile Include="Data Interface\EntryLogs.cs" />
     <Compile Include="Data Interface\Etrans835Attaches.cs" />
+    <Compile Include="Data Interface\ClaimProcs.Era.cs" />
     <Compile Include="Data Interface\InsEditPatLogs.cs" />
     <Compile Include="Data Interface\FeeSchedGroups.cs" />
     <Compile Include="Data Interface\FeeSchedNotes.cs" />
@@ -535,6 +554,10 @@
     <Compile Include="Db Multi Table\AgingData.cs" />
     <Compile Include="Db Multi Table\MarkupEdit.cs" />
     <Compile Include="Db Multi Table\PayPlanEdit.cs" />
+    <Compile Include="Db Multi Table\PayPlanAudits.cs" />
+    <Compile Include="Db Multi Table\PayPlanChargeLogic.cs" />
+    <Compile Include="Db Multi Table\PayPlanGlobalLock.cs" />
+    <Compile Include="Db Multi Table\PaySplitPayPlanAttach.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\JobTeamUser.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\MobileBug.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\MobileBugVersion.cs" />
@@ -551,6 +574,7 @@
     <Compile Include="InternalTools\RemoteSupport\TableTypes\PeerInfo.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatNote.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatSurvey.cs" />
+    <Compile Include="Logic\BillingEmailHtml.cs" />
     <Compile Include="Logic\BillingL.cs" />
     <Compile Include="Logic\CodeMapping.cs" />
     <Compile Include="Logic\USlocales.cs" />
@@ -571,7 +595,11 @@
     <Compile Include="Misc\Result.cs" />
     <Compile Include="Misc\SecurityHash.cs" />
     <Compile Include="Misc\DomainLogin.cs" />
+    <!-- Main window and module rules (backlog B-SHELL): File Monitor, [SelectedProcNums], module switch blur, ortho chart window, discontinued links. -->
+    <Compile Include="Misc\MainWindow\**\*.cs" />
     <Compile Include="Misc\SheetSignatureSigners.cs" />
+    <Compile Include="Misc\Code39Barcode.cs" />
+    <Compile Include="Misc\PrintOptions.cs" />
     <Compile Include="Misc\ProcTPFeeEdit.cs" />
     <Compile Include="ODEvents\MiddleTierConnectionEvent.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -590,6 +618,8 @@
     <Compile Include="Shared\ODCloudClient\Sirona.cs" />
     <Compile Include="Shared\ODCloudClient\x837Controller.cs" />
     <Compile Include="SheetFramework\CheckSheets.cs" />
+    <Compile Include="SheetFramework\SheetAutoSaveImages.cs" />
+    <Compile Include="SheetFramework\StatementInserterBarcode.cs" />
     <Compile Include="SheetFramework\GraphicsHelper.cs" />
     <Compile Include="SheetFramework\SheetDataTableUtil.cs" />
     <Compile Include="SheetFramework\SheetDrawingJob.cs" />
@@ -709,6 +739,7 @@
     <Compile Include="UI\GlobalFormOpenDental.cs" />
     <Compile Include="UI\GridCell.cs" />
     <Compile Include="UI\GridColumn.cs" />
+    <Compile Include="UI\GridODExport.cs" />
     <Compile Include="UI\GridOld.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -744,6 +775,8 @@
     <!-- Fork version guard, adoption and fork migrations (backlog M1-01 to M1-03; each migration step is its own file, so new steps need no csproj edit), and the fork release channel (M1-03). -->
     <Compile Include="Misc\ForkMigrations\**\*.cs" />
     <Compile Include="Misc\ForkRelease\**\*.cs" />
+    <!-- Appointments module rules from Open Dental 24.4 to 25.3 (backlog package B-APPT); new files in the folder need no csproj edit. -->
+    <Compile Include="Misc\ApptModule\**\*.cs" />
     <Compile Include="WebBridges\Erx\DoseSpot\**\*.cs" />
     <Compile Include="WebBridges\Microsoft365\**\*.cs" />
     <Compile Include="WebBridges\Usps\**\*.cs" />
@@ -793,6 +826,7 @@
     <Compile Include="Data Interface\InsEditLogs.cs" />
     <Compile Include="Data Interface\PatientLinks.cs" />
     <Compile Include="Db Multi Table\PaymentEdit.cs" />
+    <Compile Include="Db Multi Table\PaymentInvoiceFilter.cs" />
     <Compile Include="Db Multi Table\ProcEdit.cs" />
     <Compile Include="InternalTools\Phones\TableTypes\PhoneComp.cs" />
     <Compile Include="Misc\ItransNCpl.cs" />
@@ -807,6 +841,7 @@
     <Compile Include="Data Interface\TsiTransLogs.cs" />
     <Compile Include="Data Interface\UserGroupAttaches.cs" />
     <Compile Include="Db Multi Table\TreatmentPlanModules.cs" />
+    <Compile Include="Db Multi Table\TreatmentPlanModules.EstimateDates.cs" />
     <Compile Include="Db\ConnectionStore.cs" />
     <Compile Include="Db\DataAction.cs" />
     <Compile Include="Db\DataConnectionCancelable.cs" />
@@ -1276,6 +1311,7 @@
     <Compile Include="InternalTools\Job Manager\TableTypes\JobNote.cs" />
     <Compile Include="InternalTools\Job Manager\TableTypes\VersionRelease.cs" />
     <Compile Include="Data Interface\ProcButtonQuicks.cs" />
+    <Compile Include="Data Interface\ProcAddHelper.cs" />
     <Compile Include="Data Interface\Resellers.cs" />
     <Compile Include="Data Interface\ResellerServices.cs" />
     <Compile Include="Data Interface\SecurityLogHashes.cs" />
@@ -1295,6 +1331,7 @@
     <Compile Include="Data Interface\DisplayFields.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Data Interface\DisplayFields.Era.cs" />
     <Compile Include="Data Interface\DocumentMiscs.cs" />
     <Compile Include="Data Interface\DrugManufacturers.cs" />
     <Compile Include="Data Interface\DrugUnits.cs" />
@@ -1320,6 +1357,7 @@
     <Compile Include="Data Interface\MedicalOrders.cs" />
     <Compile Include="Data Interface\OrionProcs.cs" />
     <Compile Include="Data Interface\OrthoCharts.cs" />
+    <Compile Include="Data Interface\OtherEntryConverts.cs" />
     <Compile Include="Data Interface\ProcApptColors.cs" />
     <Compile Include="Data Interface\ProcGroupItems.cs" />
     <Compile Include="Data Interface\GroupNotes.cs" />
@@ -1328,6 +1366,7 @@
     <Compile Include="Data Interface\InsFilingCodes.cs" />
     <Compile Include="Data Interface\EtransMessageTexts.cs" />
     <Compile Include="Data Interface\InsFilingCodeSubtypes.cs" />
+    <Compile Include="Data Interface\InsHistDates.cs" />
     <Compile Include="Data Interface\RxNorms.cs" />
     <Compile Include="Data Interface\ScreenPats.cs" />
     <Compile Include="Data Interface\Signalods.cs" />
@@ -1395,12 +1434,15 @@
     <Compile Include="Misc\ConvertDatabases5.cs" />
     <Compile Include="Misc\EhrCCD.cs" />
     <Compile Include="Misc\FileAtoZ.cs" />
+    <Compile Include="Misc\DbmTextCleaner.cs" />
     <Compile Include="Misc\InnoDb.cs" />
     <Compile Include="Misc\ConvertDatabases2.cs" />
     <Compile Include="Misc\ConvertDatabases1.cs" />
     <Compile Include="Misc\Mime.cs" />
     <Compile Include="Misc\NTPv4.cs" />
     <Compile Include="Misc\TsiMsgConstructor.cs" />
+    <Compile Include="Misc\WikiSearchLimit.cs" />
+    <Compile Include="Misc\WikiStaticExport.cs" />
     <Compile Include="Misc\WindowsTime.cs" />
     <Compile Include="Remoting\ClientSL.cs" />
     <Compile Include="Data Interface\AccountingAutoPays.cs" />
@@ -1415,6 +1457,7 @@
     <Compile Include="Data Interface\AutoNoteControls.cs" />
     <Compile Include="Data Interface\AutoNotes.cs" />
     <Compile Include="Data Interface\Benefits.cs" />
+    <Compile Include="Data Interface\Benefits.EstimateTeeth.cs" />
     <Compile Include="Data Interface\CanadianNetworks.cs" />
     <Compile Include="Data Interface\Carriers.cs" />
     <Compile Include="Data Interface\ClaimAttaches.cs" />
@@ -1428,6 +1471,7 @@
     <Compile Include="Data Interface\Clearinghouses.cs" />
     <Compile Include="Data Interface\Clinics.cs" />
     <Compile Include="Data Interface\ClockEvents.cs" />
+    <Compile Include="Data Interface\TimeCardTotals.cs" />
     <Compile Include="Data Interface\Commlogs.cs" />
     <Compile Include="Data Interface\ComputerPrefs.cs" />
     <Compile Include="Data Interface\Computers.cs" />
@@ -1442,6 +1486,7 @@
     <Compile Include="Data Interface\EmailMessages.cs" />
     <Compile Include="Data Interface\EmailTemplates.cs" />
     <Compile Include="Data Interface\Employees.cs" />
+    <Compile Include="Data Interface\EmployeeReportsTo.cs" />
     <Compile Include="Data Interface\Employers.cs" />
     <Compile Include="Data Interface\Etranss.cs" />
     <Compile Include="Data Interface\Fees.cs" />
@@ -1468,6 +1513,7 @@
     <Compile Include="Data Interface\PayPlanCharges.cs" />
     <Compile Include="Data Interface\PayPlans.cs" />
     <Compile Include="Data Interface\PaySplits.cs" />
+    <Compile Include="Data Interface\IncomeTransferLimits.cs" />
     <Compile Include="Data Interface\PerioExams.cs" />
     <Compile Include="Data Interface\PerioMeasures.cs" />
     <Compile Include="Data Interface\PlannedAppts.cs" />
@@ -1477,7 +1523,13 @@
     <Compile Include="Data Interface\ProcButtons.cs" />
     <Compile Include="Data Interface\ProcCodeNotes.cs" />
     <Compile Include="Data Interface\ProcedureCodes.cs" />
+    <Compile Include="Data Interface\ProcedureCodes.CodeText.cs" />
+    <Compile Include="Data Interface\ProcCodesOther.cs" />
+    <Compile Include="Data Interface\ClaimProcs.PayLabs.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.ProcCodes.cs" />
     <Compile Include="Data Interface\Procedures.cs" />
+    <Compile Include="Data Interface\Procedures.EstimateAsOf.cs" />
+    <Compile Include="Data Interface\Procedures.NoBillIns.cs" />
     <Compile Include="Data Interface\ProcTPs.cs" />
     <Compile Include="Data Interface\ProgramProperties.cs" />
     <Compile Include="Data Interface\Programs.cs" />
@@ -1500,8 +1552,10 @@
     <Compile Include="Data Interface\RxAlerts.cs" />
     <Compile Include="Data Interface\RxDefs.cs" />
     <Compile Include="Data Interface\RxPats.cs" />
+    <Compile Include="Data Interface\SalesTaxProcs.cs" />
     <Compile Include="Data Interface\ScheduleOps.cs" />
     <Compile Include="Data Interface\Schedules.cs" />
+    <Compile Include="Data Interface\BlockoutPerms.cs" />
     <Compile Include="Data Interface\SchoolClasses.cs" />
     <Compile Include="Data Interface\SchoolCourses.cs" />
     <Compile Include="Data Interface\ScreenGroups.cs" />
@@ -1524,10 +1578,12 @@
     <Compile Include="Data Interface\SigElementDefs.cs" />
     <Compile Include="Data Interface\Statements.cs" />
     <Compile Include="Data Interface\Statements.ServiceDateView.cs" />
+    <Compile Include="Data Interface\Statements.EmailName.cs" />
     <Compile Include="Data Interface\ChartLetters.cs" />
     <Compile Include="Data Interface\Documents.cs" />
     <Compile Include="Db Multi Table\Family.cs" />
     <Compile Include="Db\Db.cs" />
+    <Compile Include="Db\ReplicationDelay.cs" />
     <Compile Include="Db Multi Table\Ledgers.cs" />
     <Compile Include="Data Interface\MountDefs.cs" />
     <Compile Include="Data Interface\MountItemDefs.cs" />
@@ -1535,6 +1591,7 @@
     <Compile Include="Data Interface\Mounts.cs" />
     <Compile Include="Data Interface\PatientNotes.cs" />
     <Compile Include="Data Interface\Patients.cs" />
+    <Compile Include="Data Interface\Patients.ClinicPreferredAudit.cs" />
     <Compile Include="Data Interface\Providers.cs" />
     <Compile Include="Data Interface\Suppliers.cs" />
     <Compile Include="Data Interface\Supplies.cs" />
@@ -1542,6 +1599,7 @@
     <Compile Include="Data Interface\SupplyOrderItems.cs" />
     <Compile Include="Data Interface\SupplyOrders.cs" />
     <Compile Include="Data Interface\TaskAncestors.cs" />
+    <Compile Include="Data Interface\TaskFilters.cs" />
     <Compile Include="Data Interface\TaskLists.cs" />
     <Compile Include="Data Interface\Tasks.cs" />
     <Compile Include="Data Interface\TaskSubscriptions.cs" />
@@ -1571,6 +1629,7 @@
     <Compile Include="Db\Enumerations.cs" />
     <Compile Include="Data Interface\Lans.cs" />
     <Compile Include="Logic\aaLogic.cs" />
+    <Compile Include="Logic\BenefitEditRules.cs" />
     <Compile Include="Db Multi Table\AccountModules.cs" />
     <Compile Include="Data Interface\Appointments.cs" />
     <Compile Include="Logic\BenefitLogic.cs" />
@@ -1622,12 +1681,15 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Reports\RpInsPendingSupplementals.cs" />
+    <Compile Include="Reports\RpUdsPlus.cs" />
+    <Compile Include="Reports\UdsPlusLineMap.cs" />
     <Compile Include="Reports\RpNewPatients.cs" />
     <Compile Include="Reports\RpOutstandingIns.cs" />
     <Compile Include="Reports\RpPayPlan.cs" />
     <Compile Include="Reports\ReportsComplex.cs" />
     <Compile Include="Reports\RpPaySheet.cs" />
     <Compile Include="Reports\RpProcNote.cs" />
+    <Compile Include="Reports\ReportServerAudit.cs" />
     <Compile Include="Reports\RpProcCodes.cs" />
     <Compile Include="Reports\RpProcNotBilledIns.cs" />
     <Compile Include="Reports\RpProcSheet.cs" />
@@ -1879,6 +1941,9 @@
     <Compile Include="X12\X834.cs" />
     <Compile Include="X12\X835.cs" />
     <Compile Include="X12\X277.cs" />
+    <Compile Include="X12\EraAutoSplit.cs" />
+    <Compile Include="X12\EraCarcRules.cs" />
+    <Compile Include="X12\EraClaimMismatch.cs" />
     <Compile Include="X12\X999.cs" />
     <Compile Include="X12\X837_5010.cs" />
     <Compile Include="X12\DTP271.cs" />

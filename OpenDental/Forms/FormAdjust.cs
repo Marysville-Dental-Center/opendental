@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Windows.Forms;
 using OpenDentBusiness;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using CodeBase;
 
@@ -32,6 +33,10 @@ namespace OpenDental {
 		private Program _program;
 		private Patient _patientGuar;
 		private bool _isTsiAdj;
+		///<summary>The fee a Percent of Fee amount is a percentage of: the attached procedure's total fee. 0 when no procedure is attached.</summary>
+		private double _feeForPercent;
+		///<summary>True while the window itself switches between Fixed Amount and Percent of Fee, so the radio button handler does nothing.</summary>
+		private bool _isSettingAmountMode;
 
 		///<summary></summary>
 		public FormAdjust(Patient patient,Adjustment adjustment,bool isTsiAdj=false){
@@ -145,6 +150,7 @@ namespace OpenDental {
 			}
 			FillListBoxAdjTypes();
 			checkOnlyTsiExcludedAdjTypes.CheckedChanged+=checkOnlyTsiExcludedAdjTypes_Checked;
+			ApplyAdjTypeDefaultPercent(onlyIfAmountIsZero:true);
 			FillProcedure();
 			textNote.Text=_adjustment.AdjNote;
 		}
@@ -152,6 +158,7 @@ namespace OpenDental {
 		private void listTypePos_SelectedIndexChanged(object sender,System.EventArgs e) {
 			if(listTypePos.SelectedIndex>-1) {
 				listTypeNeg.SelectedIndex=-1;
+				ApplyAdjTypeDefaultPercent(onlyIfAmountIsZero:false);
 				FillProcedure();
 			}
 		}
@@ -159,6 +166,7 @@ namespace OpenDental {
 		private void listTypeNeg_SelectedIndexChanged(object sender,System.EventArgs e) {
 			if(listTypeNeg.SelectedIndex>-1) {
 				listTypePos.SelectedIndex=-1;
+				ApplyAdjTypeDefaultPercent(onlyIfAmountIsZero:false);
 				FillProcedure();
 			}
 		}
@@ -208,9 +216,11 @@ namespace OpenDental {
 				textProcAdjCur.Text="";
 				labelProcRemain.Text="";
 				_adjRemAmt=0;
+				FillPercentOfFee(null);
 				return;
 			}
 			Procedure procedure=Procedures.GetOneProc(_adjustment.ProcNum,false);
+			FillPercentOfFee(procedure);
 			List<ClaimProc> listClaimProcs=ClaimProcs.Refresh(procedure.PatNum);
 			List<Adjustment> listAdjustments=Adjustments.Refresh(procedure.PatNum)
 				.Where(x => x.ProcNum==procedure.ProcNum && x.AdjNum!=_adjustment.AdjNum).ToList();
@@ -236,10 +246,10 @@ namespace OpenDental {
 			double procAdjCur=0;
 			if(textAmount.IsValid()){
 				if(listTypePos.SelectedIndex>-1){//pos
-					procAdjCur=PIn.Double(textAmount.Text);
+					procAdjCur=GetAmountEntered();
 				}
 				else if(listTypeNeg.SelectedIndex>-1 || Defs.GetValue(DefCat.AdjTypes,_adjustment.AdjType)=="dp"){//neg or discount plan
-					procAdjCur=-PIn.Double(textAmount.Text);
+					procAdjCur=-GetAmountEntered();
 				}
 			}
 			_isNegativeAdjustment=procAdjCur<0;
@@ -278,6 +288,7 @@ namespace OpenDental {
 				}
 			}
 			_adjustment.ProcNum=formProcSelect.ListProceduresSelected[0].ProcNum;
+			ApplyAdjTypeDefaultPercent(onlyIfAmountIsZero:true);
 			FillProcedure();
 			textProcDate.Text=formProcSelect.ListProceduresSelected[0].ProcDate.ToShortDateString();
 			textProcDate.ReadOnly=true;
@@ -308,10 +319,13 @@ namespace OpenDental {
 				MessageBox.Show(Lan.g(this,"Please fix data entry error first."));
 				return;
 			}
+			if(!IsPercentOfFeeValid()) {
+				return;
+			}
 			if(Security.IsGlobalDateLock(EnumPermType.AdjustmentEdit,textAdjDate.Value)) {
 				return;
 			}
-			if(textAmount.Value!=0 || !Security.IsAuthorized(EnumPermType.AdjustmentEditZero)) {//if it's a $0 adjustment and they have that permission we don't care about AdjustmentCreate
+			if(GetAmountEntered()!=0 || !Security.IsAuthorized(EnumPermType.AdjustmentEditZero)) {//if it's a $0 adjustment and they have that permission we don't care about AdjustmentCreate
 				if(IsNew && !Security.IsAuthorized(EnumPermType.AdjustmentCreate,textAdjDate.Value,false)) {
 					return;
 				}
@@ -346,7 +360,7 @@ namespace OpenDental {
 				isDPP=payPlan.IsDynamic;
 			}
 			if(isDPP) { //No longer allowing negative, unallocated adjustments on DPPs.
-				double value=PIn.Double(textAmount.Text);
+				double value=GetAmountEntered();
 				//If a Subtraction adjustment type is selected, make value negative.
 				if(listTypeNeg.SelectedIndex!=-1) {
 					value*=-1;
@@ -412,15 +426,15 @@ namespace OpenDental {
 			_adjustment.ClinicNum=comboClinic.ClinicNumSelected;
 			if(listTypePos.SelectedIndex!=-1) {
 				_adjustment.AdjType=_listDefsAdjPosCats[listTypePos.SelectedIndex].DefNum;
-				_adjustment.AdjAmt=PIn.Double(textAmount.Text);
+				_adjustment.AdjAmt=GetAmountEntered();
 			}
 			if(listTypeNeg.SelectedIndex!=-1) {
 				_adjustment.AdjType=_listDefsAdjNegCats[listTypeNeg.SelectedIndex].DefNum;
-				_adjustment.AdjAmt=-PIn.Double(textAmount.Text);
+				_adjustment.AdjAmt=-GetAmountEntered();
 			}
 			if(isDiscountPlanAdj) {
 				//AdjustmentCur.AdjType is already set to a "discount plan" adj type.
-				_adjustment.AdjAmt=-PIn.Double(textAmount.Text);
+				_adjustment.AdjAmt=-GetAmountEntered();
 			}
 			if(_checkZeroAmount && _adjustment.AdjAmt!=0) {
 				MsgBox.Show(this,"Amount has to be 0.00 due to security permission.");
@@ -445,7 +459,7 @@ namespace OpenDental {
 				}
 				SecurityLogs.MakeLogEntry(EnumPermType.AdjustmentCreate,_adjustment.PatNum,
 					_patient.GetNameLF()+", "
-					+_adjustment.AdjAmt.ToString("c"));
+					+_adjustment.AdjAmt.ToString("c")+GetPercentOfFeeLogNote());
 				TsiTransLogs.CheckAndInsertLogsIfAdjTypeExcluded(_adjustment,_isTsiAdj);
 			}
 			else {
@@ -456,7 +470,7 @@ namespace OpenDental {
 					MessageBox.Show(ex.Message);
 					return;
 				}
-				SecurityLogs.MakeLogEntry(EnumPermType.AdjustmentEdit,_adjustment.PatNum,_patient.GetNameLF()+", "+_adjustment.AdjAmt.ToString("c"),0,datePreviousChange);
+				SecurityLogs.MakeLogEntry(EnumPermType.AdjustmentEdit,_adjustment.PatNum,_patient.GetNameLF()+", "+_adjustment.AdjAmt.ToString("c")+GetPercentOfFeeLogNote(),0,datePreviousChange);
 			}
 			if(changeAdjSplit) {
 				PaySplits.UpdateProvForAdjust(_adjustment,listPaySplitsForAdjust);
@@ -524,6 +538,152 @@ namespace OpenDental {
 		private void checkOnlyTsiExcludedAdjTypes_Checked(object sender,EventArgs e) {
 			FillListBoxAdjTypes();
 		}
+
+		#region Percent of Fee
+		//Open Dental 26.1: the amount can be entered as a percentage of the attached procedure's fee. The amount box then holds the percentage,
+		//labelPercentOfFeeAmount shows the dollars, and only the dollars are saved. Reopening a saved adjustment shows Fixed Amount.
+
+		///<summary>The amount the user entered, without the sign of the adjustment type: the amount box in Fixed Amount mode, or the percentage
+		///of the procedure's fee, rounded to cents, in Percent of Fee mode (0 when the percentage is not valid).</summary>
+		private double GetAmountEntered() {
+			if(!radioPercentOfFee.Checked) {
+				return PIn.Double(textAmount.Text);
+			}
+			return GetPercentOfFeeAmount();
+		}
+
+		///<summary>The dollars of the percentage in the amount box, unsigned. 0 when the box does not hold a valid percentage.</summary>
+		private double GetPercentOfFeeAmount() {
+			if(!Adjustments.TryParsePercentInput(textAmount.Text,CultureInfo.CurrentCulture,out decimal percent)) {
+				return 0;
+			}
+			return Adjustments.GetPercentOfFeeAmount(_feeForPercent,percent);
+		}
+
+		///<summary>Called by FillProcedure with the attached procedure, or null when none is attached. Percent of Fee needs a procedure: without one
+		///it is disabled, and if it was in use, the window switches to Fixed Amount and keeps the dollars it had computed.</summary>
+		private void FillPercentOfFee(Procedure procedure) {
+			if(procedure==null) {
+				if(radioPercentOfFee.Checked) {
+					double amount=GetPercentOfFeeAmount();
+					SetAmountMode(isPercentOfFee:false);
+					textAmount.Text=amount.ToString("F");
+				}
+				_feeForPercent=0;
+				radioPercentOfFee.Enabled=false;
+				FillPercentOfFeeAmount();
+				return;
+			}
+			_feeForPercent=Adjustments.GetPercentOfFeeBasis(procedure);
+			radioPercentOfFee.Enabled=radioFixedAmount.Enabled;//Stays disabled when the whole window was disabled on load.
+			FillPercentOfFeeAmount();
+		}
+
+		///<summary>Shows the computed dollars next to the amount box in Percent of Fee mode.</summary>
+		private void FillPercentOfFeeAmount() {
+			labelPercentOfFeeAmount.Visible=radioPercentOfFee.Checked;
+			if(!radioPercentOfFee.Checked) {
+				labelPercentOfFeeAmount.Text="";
+				return;
+			}
+			if(!Adjustments.TryParsePercentInput(textAmount.Text,CultureInfo.CurrentCulture,out decimal percent)) {
+				labelPercentOfFeeAmount.Text=Lan.g(this,"Amount")+":";
+				return;
+			}
+			labelPercentOfFeeAmount.Text=Lan.g(this,"Amount")+": "+Adjustments.GetPercentOfFeeAmount(_feeForPercent,percent).ToString("c");
+		}
+
+		///<summary>Switches the amount box between a dollar amount and a percentage: radio buttons, label and allowed range. Does not change the text.</summary>
+		private void SetAmountMode(bool isPercentOfFee) {
+			_isSettingAmountMode=true;
+			radioPercentOfFee.Checked=isPercentOfFee;
+			radioFixedAmount.Checked=!isPercentOfFee;
+			_isSettingAmountMode=false;
+			if(isPercentOfFee) {
+				label5.Text=Lan.g(this,"Percent");
+				textAmount.MinVal=0;
+				textAmount.MaxVal=(double)Adjustments.PERCENT_OF_FEE_MAX;
+			}
+			else {
+				label5.Text=Lan.g(this,"Amount");
+				textAmount.MinVal=-100000000;
+				textAmount.MaxVal=100000000;
+			}
+			FillPercentOfFeeAmount();
+		}
+
+		///<summary>For a new adjustment with a procedure attached: when the selected adjustment type has a default percentage, switches to Percent
+		///of Fee and fills in that percentage. Set onlyIfAmountIsZero to leave an amount the user already typed alone. Editing a saved adjustment
+		///never applies defaults. Returns true if the default was applied.</summary>
+		private bool ApplyAdjTypeDefaultPercent(bool onlyIfAmountIsZero) {
+			if(!IsNew || _adjustment.ProcNum==0 || !radioFixedAmount.Enabled) {
+				return false;
+			}
+			if(onlyIfAmountIsZero && PIn.Double(textAmount.Text)!=0) {
+				return false;
+			}
+			Def defAdjType=null;
+			if(listTypePos.SelectedIndex>-1) {
+				defAdjType=_listDefsAdjPosCats[listTypePos.SelectedIndex];
+			}
+			else if(listTypeNeg.SelectedIndex>-1) {
+				defAdjType=_listDefsAdjNegCats[listTypeNeg.SelectedIndex];
+			}
+			decimal? percentDefault=Adjustments.GetDefaultPercent(defAdjType);
+			if(percentDefault==null) {
+				return false;
+			}
+			SetAmountMode(isPercentOfFee:true);
+			textAmount.Text=Adjustments.FormatPercentForDisplay(percentDefault.Value,CultureInfo.CurrentCulture);
+			return true;
+		}
+
+		///<summary>Checks the percentage before saving. True in Fixed Amount mode.</summary>
+		private bool IsPercentOfFeeValid() {
+			if(!radioPercentOfFee.Checked || textAmount.Text=="") {
+				return true;//A blank box gets the usual "Please enter an amount." message.
+			}
+			if(_adjustment.ProcNum==0) {
+				MsgBox.Show(this,"Percent of Fee needs an attached procedure.");
+				return false;
+			}
+			if(!Adjustments.TryParsePercentInput(textAmount.Text,CultureInfo.CurrentCulture,out decimal _)) {
+				MsgBox.Show(this,"Percent must be from 0 to 1000, with at most 2 decimal places.");
+				return false;
+			}
+			return true;
+		}
+
+		///<summary>" (N% of fee)" for the security log in Percent of Fee mode, otherwise "".</summary>
+		private string GetPercentOfFeeLogNote() {
+			if(!radioPercentOfFee.Checked || !Adjustments.TryParsePercentInput(textAmount.Text,CultureInfo.CurrentCulture,out decimal percent)) {
+				return "";
+			}
+			return Adjustments.GetPercentOfFeeLogNote(percent);
+		}
+
+		private void radioPercentOfFee_CheckedChanged(object sender,EventArgs e) {
+			if(_isSettingAmountMode) {
+				return;
+			}
+			if(radioPercentOfFee.Checked) {
+				//The user switched to Percent of Fee. The box now takes a percentage, so the dollar amount in it no longer applies.
+				SetAmountMode(isPercentOfFee:true);
+				textAmount.Text="";
+			}
+			else {
+				//The user switched back to Fixed Amount. Keep the dollars the percentage gave.
+				double amount=GetPercentOfFeeAmount();
+				SetAmountMode(isPercentOfFee:false);
+				textAmount.Text=amount.ToString("F");
+			}
+			FillProcedure();
+		}
+
+		private void textAmount_TextChanged(object sender,EventArgs e) {
+			FillPercentOfFeeAmount();
+		}
+		#endregion Percent of Fee
 	}
 
 	///<summary></summary>

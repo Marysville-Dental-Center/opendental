@@ -116,6 +116,10 @@ namespace OpenDental {
 			checkApptsAllowOverlap.Checked=PrefC.GetBool(PrefName.ApptsAllowOverlap);
 			checkApptMirrorSecondary.Checked=PrefC.GetBool(PrefName.ApptMirrorSecondary);//25.3 mirroring: default of the Mirror checkbox on new appointments.
 			checkBrokenApptRequiredOnMove.Checked=PrefC.GetBool(PrefName.BrokenApptRequiredOnMove);
+			//26.1: Make Recall's opening search can be turned off, and the default provider for unassigned operatories moved here from Edit Day.
+			checkAppointmentMakeRecallSearchesOpenings.Checked=PrefC.GetBool(PrefName.AppointmentMakeRecallSearchesOpenings);
+			comboScheduleProvUnassigned.Items.AddProvsAbbr(Providers.GetDeepCopy(true));
+			comboScheduleProvUnassigned.SetSelectedProvNum(PrefC.GetLong(PrefName.ScheduleProvUnassigned));
 		}
 
 		public bool SaveApptGeneral() {
@@ -146,6 +150,10 @@ namespace OpenDental {
 			Changed|=Prefs.UpdateBool(PrefName.BrokenApptRequiredOnMove,checkBrokenApptRequiredOnMove.Checked);
 			if(comboBrokenApptAdjType.SelectedIndex!=-1) {
 				Changed|=Prefs.UpdateLong(PrefName.BrokenAppointmentAdjustmentType,comboBrokenApptAdjType.GetSelectedDefNum());
+			}
+			Changed|=Prefs.UpdateBool(PrefName.AppointmentMakeRecallSearchesOpenings,checkAppointmentMakeRecallSearchesOpenings.Checked);//26.1
+			if(comboScheduleProvUnassigned.SelectedIndex!=-1) {//26.1: a hidden provider stays until another one is picked, as in the old Edit Day combo.
+				Changed|=Prefs.UpdateLong(PrefName.ScheduleProvUnassigned,comboScheduleProvUnassigned.GetSelectedProvNum());
 			}
 			return true;
 		}
