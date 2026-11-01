@@ -174,3 +174,10 @@ items), the new test files in BSERVERTests and ReleaseFlowTests, and the enum lo
   ReleaseFlowTests 76, BSERVERTests 55, AdoptionValidation.Tests 64, VendorDirectTests 873, and every project whose repository-root locator
   changed).
 - `tools/Test-NoHqHosts.ps1`: passed. `tools/Test-NoOldNames.ps1`: report mode, exit 0; `-Strict` exits 1 today, as intended.
+
+Review fix round (`pre/ren-proof-2`, the HL7 fallback name):
+
+- Build: full `OpenDental.Local.slnf` build through the lane, 0 errors, no warnings in the changed files.
+- Targeted: NoHqTests 53/53, ReleaseFlowTests 77/77 (the new `HL7Service_FallbackNameIsOpenDentalsRunTimeDefault`), BSERVERTests 55/55.
+- `run-tests -Mode Core -Include ReleaseFlowTests,AdoptionValidation.Tests`: 80 assemblies, 5,412 tests, all passed.
+- `tools/Test-NoHqHosts.ps1`: passed. `tools/Test-NoOldNames.ps1`: report mode, exit 0.
