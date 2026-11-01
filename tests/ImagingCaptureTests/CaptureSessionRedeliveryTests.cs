@@ -211,6 +211,38 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Redelivered_HandledOnlyAfterTheSessionFinished_QuarantinedAsPatientUnknown() {
+			//Design 7.12: a redelivered image that the operator did not confirm has no patient. Its ImageAcquired is still queued when a logoff
+			//closes the window.
+			TransferFailed();
+			_harness.Arm();
+			Assert.IsTrue(Controller.RequestRedelivery());
+			AcquiredImage image=TestImages.Image8(6,4,(x,y) => (byte)(x*40+y),TestImages.Json8Bit);
+			image.IsRedelivery=true;
+			_harness.Twain.RaiseImage(image);
+			Controller.OnClosing();
+			_harness.Dispatcher.RunPending();
+			FakeQuarantineCall call=_harness.Twain.ListQuarantined.Single();
+			Assert.IsTrue(call.IsPatientUnknown,"Never the bound patient for an image nobody confirmed.");
+			StringAssert.Contains(call.Reason,"after the capture session ended");
+			Assert.AreEqual(0,_harness.RadiographStore.ListDocumentsUpdated.Count);
+		}
+
+		[TestMethod]
+		public void Redelivered_OnlyTheEnableSaysSo_HandledAfterTheSessionFinished_QuarantinedAsPatientUnknown() {
+			TransferFailed();
+			_harness.Arm();
+			Assert.IsTrue(Controller.RequestRedelivery());
+			Assert.IsTrue(_harness.LastRecord.IsRedelivery);
+			AcquiredImage image=TestImages.Image8(6,4,(x,y) => (byte)(x*40+y),TestImages.Json8Bit);//the image itself is not marked
+			_harness.Twain.RaiseImage(image);
+			Controller.OnClosing();
+			_harness.Dispatcher.RunPending();
+			Assert.IsTrue(_harness.Twain.ListQuarantined.Single().IsPatientUnknown,"The redelivery enable's image has no patient either.");
+			Assert.AreEqual(0,_harness.RadiographStore.ListDocumentsUpdated.Count);
+		}
+
+		[TestMethod]
 		public void NoRedeliverCap_NoOffer() {
 			_harness.Setup.Options.RedeliverCap=null;
 			TransferFailed();
