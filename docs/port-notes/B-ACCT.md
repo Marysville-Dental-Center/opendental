@@ -168,3 +168,9 @@ Not changed: foundation registries (`PrefName`, `PrefInfos.xml`, permissions, se
   totals in memory and on the real report query; window text checks in the source.
 - Not tested: the windows themselves (the Account module menu, Preferences, the Daily Payments report output and the Ortho Case layout are checked
   only through source and business-layer tests, because the program is not launched); X12 output of a claim with a sales-tax line; Middle Tier.
+
+## Combined review (2026-11-01, branch `port/review-3`)
+
+- **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** The Sales Tax procedure code is read from `SalesTaxProcCode`, the spec's proposed name, which carries the office's value over only if Open Dental uses the same name. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (row 1 of its table), step 7.1 sets it again in this program, and both are checklist rows.
+- Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
+- The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.

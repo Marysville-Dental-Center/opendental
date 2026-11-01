@@ -147,3 +147,9 @@ Other changes:
 ## Untested
 - The windows themselves were not opened (no GUI launch): the Global Lock Date checkbox, the Paysplit window flows (combo, checkbox, attach procedure or adjustment, closed-plan prompt) and the Preferences pages. The rules they call are tested in `tests/BPAYTests`. The designer and caller wiring is covered only by source checks: the hidden combo, and the global-lock call-site inventory.
 - Middle tier (`ClientMT`) dispatch of the new optional `auditTrigger` parameters and of `PayPlanGlobalLock.Upsert` / `PaySplitPayPlanAttach.DetachPrepaymentsFromPayPlan` was not exercised.
+
+## Combined review (2026-11-01, branch `port/review-3`)
+
+- **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** "Payment plans are not affected by the global lock" is read from `SecurityLockExcludesPayPlans`, the spec's proposed name (owner question 1), so the global lock blocks payment plan edits again unless Open Dental uses the same name. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (row 10 of its table), step 7.1 sets it again in this program, and both are checklist rows.
+- Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
+- The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.

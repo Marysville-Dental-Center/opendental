@@ -257,3 +257,9 @@ real printer, scanning a printed barcode with an inserter, and the middle-tier p
 ## Integration (branch `port/int-2`)
 
 - B-SERVER added the shared helpers for fork-owned preference rows (`PrefC.GetRawOrDefault`, `PrefC.UpsertRawNoCache`). `StatementInserterBarcode.IsEnabled` and `UpsertPref` now use them for `BillingStatementInserterBarcode` instead of their own copy of the same code; the behaviour is unchanged (a missing row reads as off, the row is inserted the first time the barcode is turned on, `UpsertPref` keeps its Middle Tier call).
+
+## Combined review (2026-11-01, branch `port/review-3`)
+
+- **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** "Print inserter barcode on statements" is read from `BillingStatementInserterBarcode`, the spec's proposed name, which carries the office's value over only if Open Dental uses the same name. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (row 11 of its table), step 7.1 sets it again in this program, and both are checklist rows.
+- Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
+- The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.

@@ -105,3 +105,9 @@ Run for this package: `BPERIOTests` and `RegistryTests` (its `PrefNameTests` kee
 1. Do you know Open Dental's preference name for the 24.4 "Recession" option (for example from Perio Setup in your 25.3 database)? Until then it is stored as `PerioUseRecessionTerm`.
 2. With the Recession term on, should the *Ging Marg +* check box read "Recession +" (as built), or keep "Ging Marg +" because it enters hyperplasia?
 3. Is "auto Att Ging" between Ging Marg and MGJ the place you expect, or should it sit on the other side of MGJ, next to the probing rows?
+
+## Combined review (2026-11-01, branch `port/review-3`)
+
+- **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** The Perio Setup "Recession" option is read from `PerioUseRecessionTerm`, the spec's proposed name (owner question 1), which carries the office's value over only if Open Dental uses the same name. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (row 12 of its table), step 7.1 sets it again in this program, and both are checklist rows.
+- Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
+- The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.

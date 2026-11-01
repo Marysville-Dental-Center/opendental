@@ -115,3 +115,9 @@ New `OpenDentBusiness/Misc/WikiStaticExport.cs`. Layout of the folder:
 ## Integration (branch `port/int-2`)
 
 - B-SERVER added the shared helpers for fork-owned preference rows (`PrefC.GetRawOrDefault`, `PrefC.UpsertRawNoCache`). `WikiStaticExport` now reads and writes `ForkWikiReadOnlyExportPath` and `ForkWikiReadOnlyAutoExport` through them instead of its own copy of the same SQL; the behaviour is unchanged (a missing row still reads as the default, the rows are inserted the first time Wiki Setup is saved, and `UpsertSettings` still makes one Middle Tier call for both rows).
+
+## Combined review (2026-11-01, branch `port/review-3`)
+
+- **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** The read-only copy's folder and "Update the copy after each save" are read from the fork-owned rows `ForkWikiReadOnlyExportPath` and `ForkWikiReadOnlyAutoExport`, so after adoption there is no read-only copy until the folder is set again. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (rows 13 and 14 of its table), step 7.1 sets it again in this program, and both are checklist rows.
+- Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
+- The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.

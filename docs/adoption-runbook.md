@@ -1,6 +1,7 @@
 # Adoption runbook: moving the office from Open Dental 25.3.48 to Open PMS - Dental
 
-Status: 2026-10-25, third revision after review (M1-Z r3); milestone M1 switch gate (M1-Z in [specs/port-backlog.md](specs/port-backlog.md)).
+Status: 2026-10-25, third revision after review (M1-Z r3), plus steps 0.11 and 7.1 (combined review, 2026-11-01); milestone M1 switch
+gate (M1-Z in [specs/port-backlog.md](specs/port-backlog.md)).
 Rehearsed on synthetic data with [tools/AdoptionValidation](../tools/AdoptionValidation/README.md); results in
 [m1-validation-report.md](m1-validation-report.md). The tool commands of steps 0.2, 1.1, 3.2 to 6.1 (everything before the program's first
 start), 10.1 and 10.2 are the commands the dry run ran, in its order, through a forwarded port as on the admin PC (step 0.0). The commands
@@ -58,6 +59,12 @@ is removed before the switch (step 2.1), every workstation switches together (st
 original since the backup. The same holds the other way after a rollback, which removes this program from every workstation and drops the
 adopted database (Rollback, steps 1 and 2). Going back to Open Dental means going back to the original, and anything entered in this program
 after the switch must then be re-entered by hand. Decide the rollback deadline before the day (step 0.9).
+
+**Adoption does not carry over two things**, and neither `migration-preview` nor `adopt` lists them: the stored passwords (step 7), and 14
+settings that Open Dental added in 24.4 to 25.3 whose preference names in Open Dental's database are not public. This program keeps each of
+those settings in a preference row of its own or under the name the specs propose, so after adoption it shows its default (off, blank or 0)
+unless Open Dental happens to use that name. The second person records them in Open Dental before the day (step 0.11), and they are set
+again in step 7.1.
 
 ### Why steps 3 to 6.1 run without the program
 
@@ -128,8 +135,8 @@ database's size takes on `fox-db`, plus a minute to stop and start MariaDB.
 The copy and the reports grow with the data; adoption is dominated by one `ALTER TABLE patient` and the rehash by the number of patients.
 The office database also holds documents, logs and history the synthetic data does not, and the server is not this PC, and the forward adds
 the network between the admin PC and `fox-db` (the reports and the rows the rehash reads cross it; the copy does not). Plan the outage window from the office's own dry run (step
-0.6) when the owner allows it, or else from these figures (step 0.7): the steps above + step 3.1 + password re-entry + workstations + smoke
-test, plus a margin of 50% (dry run) or 200% (no dry run).
+0.6) when the owner allows it, or else from these figures (step 0.7): the steps above + step 3.1 + password and setting re-entry (step 7) +
+workstations + smoke test, plus a margin of 50% (dry run) or 200% (no dry run).
 
 ## 0. Preparation (the week before)
 
@@ -388,6 +395,34 @@ after the switch). After the deadline the original database is archived (step 11
 
 0.10. **Open Dental installers.** Keep the Open Dental 25.3.48 installer and the office's registration details at hand; rollback needs them.
 
+0.11. **Settings that do not carry over** (see "What adoption does"). Open Dental 24.4 to 25.3 added the settings below; Open Dental's names
+for them in its database are not public, so this program reads each from the preference row in the third column, and after adoption each
+shows its default unless Open Dental happens to use that name. In the week before the day, in Open Dental 25.3.48, the second person opens
+each window below and writes in the fourth column what each box holds: ticked or not ticked, the procedure code, the number, or the folder.
+Change nothing in Open Dental. A box the second person cannot find in Open Dental is written "not found" and given to the developers; the
+switch does not wait for it. These are settings, no patient data; keep the filled table with the checklist. Step 7.1 sets each value again in
+this program.
+
+| # | Window and box (as this program names them) | Read from (package) | In Open Dental 25.3.48 (0.11) | Set in this program (7.1) | Initials |
+|---|---|---|---|---|---|
+| 1 | Preferences, Account - General, Adjustments, Sales Tax: "Sales Tax procedure code" (a procedure code, or blank) | `SalesTaxProcCode` (B-ACCT) | | | |
+| 2 | Preferences, Account - General, Claim - Receive, Claims Medical: "Prompt for Medical EOB on primary claims" | `ForkClaimMedReceivedPromptForMedicalEob` (B-CLAIM) | | | |
+| 3 | Preferences, Appointment - General, Appearance: "Show provider time on the operatory background in the provider's color" | `ForkApptProvTimeBarsOnOpBackground` (B-APPT) | | | |
+| 4 | Preferences, Appointment - General, Appearance: "No provider time set: show the secondary provider color in the time bar" | `ForkApptTimeBarSecondaryColorNoProvTime` (B-APPT) | | | |
+| 5 | Preferences, Main Window - General, Miscellaneous: "Blur when switching between modules to prevent accidental clicking" | `ForkModuleSwitchBlur` (B-SHELL) | | | |
+| 6 | Preferences, Manage - General, ERA: "Auto split ERAs with CARC denial codes listed above" (it can only be ticked while the CARC codes box above it lists codes) | `ForkEraAutoSplitCarcDenials` (B-ERA) | | | |
+| 7 | Preferences, Server Connections - General, Replication: "Read delay after write (ms)" | `ForkReplicationReadDelayMs` (B-SERVER) | | | |
+| 8 | Preferences, Server Connections - General, Replication: "Write delay for signals (ms)" | `ForkReplicationSignalLookbackMs` (B-SERVER) | | | |
+| 9 | Report Setup, Misc Settings: "Include all procedures with no notes in the Incomplete Procedures Report" | `ForkReportsIncompleteProcsAllNoNotes` (B-SERVER) | | | |
+| 10 | Lock Date (the global lock date): "Payment plans are not affected by the global lock" | `SecurityLockExcludesPayPlans` (B-PAY) | | | |
+| 11 | Billing Defaults: "Print inserter barcode on statements" | `BillingStatementInserterBarcode` (B-PRINT) | | | |
+| 12 | Perio Setup (from the Perio Chart): "Use the term "Recession" (reverts to Gingival Margin when hyperplasia is charted)" | `PerioUseRecessionTerm` (B-PERIO) | | | |
+| 13 | Wiki Setup, Read-only copy of the wiki: on or off, and its folder | `ForkWikiReadOnlyExportPath` (B-WIKI) | | | |
+| 14 | Wiki Setup, Read-only copy of the wiki: "Update the copy after each save" | `ForkWikiReadOnlyAutoExport` (B-WIKI) | | | |
+
+The defaults after adoption: every box not ticked, rows 1 and 13 blank (13 blank means no read-only copy), rows 7 and 8 `0`, except row 14,
+which is ticked.
+
 ## 1. Start of the outage
 
 1.1. Tell everyone to close Open Dental. [admin PC] (window as in 0.0.4, forward running) `& $av connections --database opendental @db`. Each
@@ -642,7 +677,7 @@ Check sheets). Print the aging report and compare its totals with the last Open 
 
 Any unexpected difference or wrong screen: go to Rollback (the original is untouched).
 
-## 7. Re-enter the stored passwords
+## 7. Re-enter the stored passwords and the recorded settings
 
 Open Dental encrypted stored passwords with its own proprietary key; this program cannot read them (decoupling plan, ground rule 3;
 `CodeBase/Crypto/README.md`). They show as blank, and the integration fails until they are re-entered. Run [admin PC]
@@ -663,6 +698,14 @@ re-enter each:
 | Check, re-enter only if it fails | E-mail account passwords (Setup, E-mail) and X-Charge or OpenEdge passwords use a different, open format that may still work: send a test e-mail and run a test card transaction. |
 
 Run `credentials` again afterwards: entries re-entered in this program are stored in its own format and disappear from the list.
+
+7.1. **[workstation] The settings of step 0.11.** In this program (the workstation of step 6.2), open each window of the table of step 0.11
+and set each box to the value written in its fourth column: tick or untick it, type the code, the number or the folder. A box that already
+shows that value needs nothing (Open Dental used the same name, or the value is the default). Save each window (OK or Save; Preferences saves
+all its pages at once). The second person then opens each window again, compares every box with the fourth column, writes "set" in the fifth
+column and initials the row. A row written "not found" in step 0.11 stays as it is. A value that this program refuses (for example a sales tax
+procedure code that is not in the procedure code list): write "refused" in the fifth column and give the row to the developers; that setting
+stays at its default until they answer, and the switch goes on.
 
 ## 8. Switch every workstation
 
@@ -807,6 +850,7 @@ Sign each line with time and initials.
 | 0.7 | If no: passwords collected, window planned from the rehearsal (+200%); tools and server check if done | Plan filed | |
 | 0.8 | Disk space | 1.5 × / 1.2 × the database folder free (2.7 × on one disk) | |
 | 0.9 | Rollback deadline agreed | Date and time | |
+| 0.11 | Settings that do not carry over, recorded in Open Dental 25.3.48 by the second person | Table of step 0.11, fourth column filled for all 14 rows (a value, or "not found") | |
 | 1.1 | Everyone out | `connections`: only the services' connections left, or none | |
 | 1.2 | Other writers paused | Checked | |
 | 2 | Open Dental services stopped and removed, tasks disabled, A to Z Setup moved | Both service queries empty, tasks `Disabled`, on every computer of 0.3 | |
@@ -818,6 +862,7 @@ Sign each line with time and initials.
 | 6.1 | Validation before the first start | 0 unexpected differences, Allowed section read (`displayreport`, `grouppermission`, `codegroup` and `toolbutitem` as whole tables, `program.Enabled` as a whole column); startup check exit 0 | |
 | 6.2 | First start, smoke test, aging report | OK | |
 | 7 | Passwords re-entered | `credentials` list empty or explained | |
+| 7.1 | Recorded settings set again in this program | Table of step 0.11, fifth column "set" (or "refused", given to the developers) and initialled by the second person on every row not "not found" | |
 | 8 | Every workstation switched | Table of step 8 complete | |
 | 9 | Other programs repointed, backups on `opendental_pms` | Checked | |
 | 10.1 | No connection to `opendental` | `connections` exit 0 | |

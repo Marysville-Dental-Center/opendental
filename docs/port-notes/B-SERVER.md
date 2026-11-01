@@ -124,3 +124,9 @@ Checks on the final branch (`port/b-server-r1`): build 0 errors, 376 warnings (b
 4. Should the read delay start on any write (current choice) or only on user saves?
 5. Does the office run a Middle Tier? If so, is starting the read delay on signal inserts (and not looking back on the Middle Tier server's own polling) acceptable?
 6. Report Setup: should checking the "all procedures" default also lock the same-day default, as the report window does?
+
+## Combined review (2026-11-01, branch `port/review-3`)
+
+- **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** The two replication delays and the Report Setup default "Include all procedures with no notes" are read from the fork-owned rows `ForkReplicationReadDelayMs`, `ForkReplicationSignalLookbackMs` and `ForkReportsIncompleteProcsAllNoNotes`. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (rows 7, 8 and 9 of its table), step 7.1 sets it again in this program, and both are checklist rows.
+- Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
+- The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.
