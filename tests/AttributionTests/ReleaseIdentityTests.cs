@@ -51,7 +51,7 @@ namespace AttributionTests {
 		private static string RepoRoot() {
 			DirectoryInfo directoryInfo=new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
 			while(directoryInfo!=null) {
-				if(File.Exists(Path.Combine(directoryInfo.FullName,"OpenDental.sln")) && File.Exists(Path.Combine(directoryInfo.FullName,"LICENSE"))) {
+				if(File.Exists(Path.Combine(directoryInfo.FullName,"LICENSE")) && File.Exists(Path.Combine(directoryInfo.FullName,"NOTICE"))) {
 					return directoryInfo.FullName;
 				}
 				directoryInfo=directoryInfo.Parent;

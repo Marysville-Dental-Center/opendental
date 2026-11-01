@@ -9,11 +9,12 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace BINATests {
 	internal static class RepoFiles {
-		///<summary>The repository root: the first folder above the test assembly with OpenDental.sln and LICENSE.</summary>
+		///<summary>The repository root: the first folder above the test assembly with LICENSE and NOTICE (not found by the solution's name, which the
+		///rename may change; package REN-PROOF).</summary>
 		public static string Root() {
 			DirectoryInfo directoryInfo=new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
 			while(directoryInfo!=null) {
-				if(File.Exists(Path.Combine(directoryInfo.FullName,"OpenDental.sln")) && File.Exists(Path.Combine(directoryInfo.FullName,"LICENSE"))) {
+				if(File.Exists(Path.Combine(directoryInfo.FullName,"LICENSE")) && File.Exists(Path.Combine(directoryInfo.FullName,"NOTICE"))) {
 					return directoryInfo.FullName;
 				}
 				directoryInfo=directoryInfo.Parent;

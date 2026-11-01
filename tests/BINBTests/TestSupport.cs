@@ -28,17 +28,18 @@ namespace BINBTests {
 		///starts with '.' (.git, .vs, and the worktrees under .claude, which are other checkouts).</summary>
 		private static readonly string[] _arrayFoldersSkipped={ "bin","obj","packages","TestResults","node_modules" };
 
-		///<summary>The repository root: the first folder above the test assembly that holds OpenDental.sln.</summary>
+		///<summary>The repository root: the first folder above the test assembly that holds LICENSE and NOTICE (not found by the solution's name,
+		///which the rename may change; package REN-PROOF).</summary>
 		public static string RepoRoot {
 			get {
 				DirectoryInfo directoryInfo=new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
 				while(directoryInfo!=null) {
-					if(File.Exists(Path.Combine(directoryInfo.FullName,"OpenDental.sln"))) {
+					if(File.Exists(Path.Combine(directoryInfo.FullName,"LICENSE")) && File.Exists(Path.Combine(directoryInfo.FullName,"NOTICE"))) {
 						return directoryInfo.FullName;
 					}
 					directoryInfo=directoryInfo.Parent;
 				}
-				throw new InvalidOperationException("OpenDental.sln not found above "+AppDomain.CurrentDomain.BaseDirectory);
+				throw new InvalidOperationException("LICENSE and NOTICE not found above "+AppDomain.CurrentDomain.BaseDirectory);
 			}
 		}
 
