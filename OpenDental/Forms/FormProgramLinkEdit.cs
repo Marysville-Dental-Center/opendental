@@ -46,6 +46,7 @@ namespace OpenDental{
 			}
 			_pathOverrideOld=ProgramProperties.GetLocalPathOverrideForProgram(ProgramCur.ProgramNum);
 			textOverride.Text=_pathOverrideOld;
+			OpenDentBusiness.Pearl.PearlLog.EnsureLogLevelProperty(ProgramCur);//V-PEARL2: Pearl's "Log Level" row, inserted if missing. Other programs: no-op.
 			_isPdmp=PDMP.IsPdmpProgram(ProgramCur);
 			if(_isPdmp) {
 				PdmpProperty.EnsureProperties(ProgramCur);//Rows the office fills in, inserted at runtime if missing.
@@ -323,6 +324,16 @@ namespace OpenDental{
 							ShowComboBoxForProgramProperty(programProperty,listLicenseOptions,listLicenseDisplays,Lans.g(this,"Choose License Type for PDMP Program"));
 							return;
 						}	
+					break;
+				case nameof(ProgramName.Pearl)://V-PEARL2: pick the log level from a list instead of typing it.
+					if(programProperty.PropertyDesc==OpenDentBusiness.Pearl.PearlLog.LOG_LEVEL_PROPERTY
+						&& ProgramProperties.CanEditProperties(new List<ProgramProperty>() { programProperty },false))
+					{
+						ShowComboBoxForProgramProperty(programProperty,OpenDentBusiness.Pearl.PearlLog.GetLogLevelValues(),
+							OpenDentBusiness.Pearl.PearlLog.GetLogLevelDisplays().Select(x => Lans.g(this,x)).ToList(),
+							Lans.g(this,"Choose the Pearl log level (use 2 only while troubleshooting)"));
+						return;
+					}
 					break;
 				}
 			ShowFormProgramProperty(programProperty);

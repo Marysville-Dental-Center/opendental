@@ -149,6 +149,7 @@ Examples:
 			ODThread oDThreadPearl=new ODThread(this.SendOnThreadWorker);
 			//Swallow all exceptions and allow thread to exit gracefully.
 			oDThreadPearl.AddExceptionHandler(new ODThread.ExceptionDelegate((Exception ex) => {
+				PearlLog.LogWorkerFailure(Document_?.DocNum??0,_pearlRequest?.RequestId,ex);//V-PEARL2: "Log Level" log, errors (always written).
 				AlertUserOfError(ex.Message);
 			}));
 			oDThreadPearl.AddExitHandler(new ODThread.WorkerDelegate((o) => {
