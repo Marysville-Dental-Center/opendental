@@ -11,7 +11,7 @@ Each keeps its own license. For each component this file names the files,
 the version in this repository, the copyright holders, the license and where
 its source is published. The license texts follow the components: the short
 standard texts in full, and the vendor texts kept from Open Dental's license
-list in the program (Help > About > Licenses), under the component's name.
+list in the program (Help > About > View Licenses), under the component's name.
 Copyright years are in each project's own license file at its source address.
 
 Files in the repository's "Required dlls" folder that are not listed here are

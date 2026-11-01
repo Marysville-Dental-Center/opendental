@@ -15,10 +15,10 @@ Nothing here talks to Open Dental's servers or reads Open Dental's update files.
 
 | Version | Value now | Where it lives | Used for |
 |---|---|---|---|
-| Release (product) version | `0.0` | `AssemblyInformationalVersion` in `OpenDental/Properties/AssemblyInfo.cs` | About window (`Application.ProductVersion`), release manifests, the `ForkProgramVersion` marker. Our own scheme. It is never compared with Open Dental numbers. |
+| Release (product) version | `0.0` | `AssemblyInformationalVersion` in `SharedAssemblyInfo.cs` (repository root, linked into every shipped assembly) | About window (`Application.ProductVersion`), release manifests, the `ForkProgramVersion` marker. Our own scheme. It is never compared with Open Dental numbers. |
 | Compatibility version | `24.3.63.0` | `AssemblyVersion` (file version), `ForkVersions.CompatVersion` | The frozen legacy conversion chain, and `DataBaseVersion`/`ProgramVersion` on databases the fork markers don't govern yet. |
 
-Raise the release version by editing `AssemblyInformationalVersion`, for example to `0.1`. Leave `AssemblyVersion` at `24.3.63.0`. Once the fork markers take over, the database checks no longer look at it.
+Raise the release version by editing `AssemblyInformationalVersion` in `SharedAssemblyInfo.cs`, for example to `0.1`. Leave `AssemblyVersion` at `24.3.63.0`. Once the fork markers take over, the database checks no longer look at it.
 
 A build is identified by its **build id**: a SHA-256 over the program's own assemblies (`ForkReleases.ListBuildIdFiles`: `OpenDental.exe`, `OpenDentBusiness.dll`, `CodeBase.dll` and the others). Every rebuild of `0.0` therefore counts as a different build, and third-party DLLs aren't hashed at every startup.
 
