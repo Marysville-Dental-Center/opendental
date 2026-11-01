@@ -41,5 +41,19 @@ namespace ImagingCapture.Tests {
 			StringAssert.Contains(GetMethodBody(source,"private void FrmCaptureSession_Shown("),"BeginSession");
 			StringAssert.Contains(GetMethodBody(source,"private void BeginSession("),"_viewModel.Begin();");
 		}
+
+		[TestMethod]
+		public void AltF4AndTheTaskbarsClose_GoThroughTheEndRule_TheFrameHookIsAttachedAndDropsTheMessage() {
+			//Design 7.6: without the hook, Alt+F4 while the source is enabled without safe disable would take the forced-close path unwarned.
+			string source=ReadWindowSource();
+			StringAssert.Contains(GetMethodBody(source,"private void FrmCaptureSession_Load("),"AttachFrameCloseCommandHook();");
+			StringAssert.Contains(GetMethodBody(source,"private void FrmCaptureSession_Shown("),"AttachFrameCloseCommandHook();");
+			string attach=GetMethodBody(source,"private void AttachFrameCloseCommandHook(");
+			StringAssert.Contains(attach,"new FrameCloseCommandHook(MayOperatorClose,");
+			StringAssert.Contains(attach,".AssignHandle(_formFrame.Handle);");
+			string wndProc=GetMethodBody(source,"protected override void WndProc(ref System.Windows.Forms.Message m) {");
+			StringAssert.Matches(wndProc,new Regex(@"if\(CaptureSessionViewModel\.IsFrameMessageDropped\(m\.Msg,m\.WParam\.ToInt64\(\),_funcMayClose,_actionLog\)\)"
+				+@"\s*\{\s*m\.Result=IntPtr\.Zero;\s*return;"));
+		}
 	}
 }

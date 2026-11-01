@@ -634,13 +634,33 @@ namespace ImagingCapture.Tests {
 			Assert.IsTrue(CaptureSessionViewModel.IsOperatorCloseCommand(0x0112,0xF063),"The four low bits are the system's own.");
 			Assert.IsFalse(CaptureSessionViewModel.IsOperatorCloseCommand(0x0112,0xF020),"SC_MINIMIZE.");
 			Assert.IsFalse(CaptureSessionViewModel.IsOperatorCloseCommand(0x0010,0),"WM_CLOSE itself (a logoff, the owner): the forced close.");
-			//The window sends an operator close to OnCloseRequestedByOperator: while enabled without safe disable, the warning, no disable.
+			//The window's hook on the frame sends an operator close to OnCloseRequestedByOperator: while enabled without safe disable, the
+			//message is dropped, with the warning, and nothing is disabled or closed.
 			ViewModel();
 			Started();
-			Assert.IsFalse(_viewModel.OnCloseRequestedByOperator());
+			List<string> listLog=new List<string>();
+			Assert.IsTrue(CaptureSessionViewModel.IsFrameMessageDropped(0x0112,0xF063,_viewModel.OnCloseRequestedByOperator,listLog.Add),
+				"Alt+F4 while enabled: End, the window stays.");
 			StringAssert.StartsWith(_viewModel.WarningText,"If an exposure was just taken, wait until it appears before cancelling.");
 			Assert.AreEqual(0,_harness.Twain.ListDisables.Count);
 			Assert.AreEqual(0,_harness.Twain.CountBeginClose,"Not the forced close.");
+			Assert.AreEqual(CaptureSessionPhase.Enabled,_viewModel.Phase);
+			Assert.IsFalse(CaptureSessionViewModel.IsFrameMessageDropped(0x0010,0,_viewModel.OnCloseRequestedByOperator,listLog.Add),
+				"WM_CLOSE always goes on: the forced close of FormClosing.");
+			Assert.AreEqual(0,listLog.Count);
+		}
+
+		[TestMethod]
+		public void FrameCloseFilter_NotEnabled_TheCloseGoesOn_ACheckThatThrows_GoesOnAndIsLogged() {
+			ViewModel();
+			BeginArmed();
+			List<string> listLog=new List<string>();
+			Assert.IsFalse(CaptureSessionViewModel.IsFrameMessageDropped(0x0112,0xF060,_viewModel.OnCloseRequestedByOperator,listLog.Add),
+				"Not enabled: Alt+F4 closes the window.");
+			Assert.IsFalse(CaptureSessionViewModel.IsFrameMessageDropped(0x0112,0xF020,() => false,listLog.Add),"SC_MINIMIZE is never dropped.");
+			Assert.IsFalse(CaptureSessionViewModel.IsFrameMessageDropped(0x0112,0xF060,() => { throw new InvalidOperationException("broken"); },
+				listLog.Add),"A check that fails never makes the window impossible to close.");
+			Assert.AreEqual("The close could not be checked: broken",listLog.Single());
 		}
 
 		[TestMethod]

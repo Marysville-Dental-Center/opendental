@@ -788,6 +788,27 @@ namespace ImagingCapture.UI {
 			return msg==WM_SYSCOMMAND && (wParam&0xFFF0)==SC_CLOSE;
 		}
 
+		///<summary>The frame window's message filter (the window's hook on the frame, which sees its messages first): true when the message is
+		///dropped, because it is an operator close (IsOperatorCloseCommand) and funcMayClose says the window stays (End while the source is enabled,
+		///design 7.6). Every other message, WM_CLOSE included (a logoff, the owner closing: the forced close of FormClosing), goes on. When the check
+		///throws, the close goes on (the window must never become impossible to close) and actionLog gets why.</summary>
+		public static bool IsFrameMessageDropped(int msg,long wParam,Func<bool> funcMayClose,Action<string> actionLog) {
+			if(!IsOperatorCloseCommand(msg,wParam)) {
+				return false;
+			}
+			try {
+				return funcMayClose!=null && !funcMayClose();
+			}
+			catch(Exception ex) {
+				try {
+					actionLog?.Invoke("The close could not be checked: "+ex.Message);
+				}
+				catch {
+				}
+				return false;
+			}
+		}
+
 		///<summary>The window is closing (FormClosing: after the summary, the operator, or forced by a logoff). The hotkeys are released and a
 		///session that has not finished takes the controller's forced-close path, which never waits for the worker.</summary>
 		public void OnClosing() {

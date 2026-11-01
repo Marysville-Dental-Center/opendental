@@ -416,22 +416,9 @@ namespace ImagingCapture.UI {
 			}
 
 			protected override void WndProc(ref System.Windows.Forms.Message m) {
-				if(CaptureSessionViewModel.IsOperatorCloseCommand(m.Msg,m.WParam.ToInt64())) {
-					bool mayClose=true;
-					try {
-						mayClose=_funcMayClose();
-					}
-					catch(Exception ex) {
-						try {
-							_actionLog?.Invoke("The close could not be checked: "+ex.Message);
-						}
-						catch {
-						}
-					}
-					if(!mayClose) {
-						m.Result=IntPtr.Zero;
-						return;
-					}
+				if(CaptureSessionViewModel.IsFrameMessageDropped(m.Msg,m.WParam.ToInt64(),_funcMayClose,_actionLog)) {
+					m.Result=IntPtr.Zero;
+					return;
 				}
 				base.WndProc(ref m);
 			}
