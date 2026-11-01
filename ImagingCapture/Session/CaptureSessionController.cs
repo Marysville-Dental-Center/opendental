@@ -1018,10 +1018,19 @@ namespace ImagingCapture.Session {
 					SetIndicator(CaptureIndicatorState.Connecting,CaptureSessionText.Starting);
 					break;
 				case TwainCaptureState.WaitingForImage:
-					SetIndicator(CaptureIndicatorState.WaitingForExposure,CaptureSessionText.WaitingForExposure+": "+GetEnableTargetText(record));
-					break;
 				case TwainCaptureState.Transferring:
-					SetIndicator(CaptureIndicatorState.Receiving,CaptureSessionText.Receiving);
+					if(_isPausedBySaveFailure) {
+						//A continuous enable that could not be disabled after a failed save (no safe disable in effect) still runs: design 7.12 says
+						//Paused, so the indicator keeps the error and never invites an exposure that would not be placed.
+						SetIndicator(CaptureIndicatorState.Error,CaptureSessionText.PausedAfterSaveFailureIndicator);
+						break;
+					}
+					if(status.State==TwainCaptureState.WaitingForImage) {
+						SetIndicator(CaptureIndicatorState.WaitingForExposure,CaptureSessionText.WaitingForExposure+": "+GetEnableTargetText(record));
+					}
+					else {
+						SetIndicator(CaptureIndicatorState.Receiving,CaptureSessionText.Receiving);
+					}
 					break;
 				case TwainCaptureState.Stopping:
 					if(!isSavedShowing) {
@@ -1082,6 +1091,8 @@ namespace ImagingCapture.Session {
 				//Design 7.12 "Save fails": the session pauses until the deliberate re-enable. A continuous enable that could not be disabled (no safe
 				//disable in effect) still delivers; its images are not placed into the slot whose save failed, or any other, meanwhile.
 				QuarantineImage(session,image,record,CaptureSessionText.PausedAfterSaveFailure,false);
+				NoticeText=CaptureSessionText.PausedAfterSaveFailureNotice;
+				PlaySound(CaptureSound.NotReceived);
 				return;
 			}
 			if(image.IsRedelivery || record.IsRedelivery) {

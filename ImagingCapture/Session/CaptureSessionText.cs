@@ -24,6 +24,11 @@ namespace ImagingCapture.Session {
 		public const string CouldNotSavePrefix="Could not save: ";
 		///<summary>The quarantine reason of an image that arrives while the session is paused after a failed save.</summary>
 		public const string PausedAfterSaveFailure="The session was paused after a failed save; the image was not placed.";
+		///<summary>The indicator while a continuous enable that could not be disabled (no safe disable in effect) still runs after a failed save
+		///(design 7.12 "Paused (disabled)"): exposures now are not placed.</summary>
+		public const string PausedAfterSaveFailureIndicator="Paused after a failed save: exposures go to unassigned captures. Press End or Disable, then Re-enable.";
+		///<summary>The notice for an image quarantined because the session is paused after a failed save.</summary>
+		public const string PausedAfterSaveFailureNotice="An image arrived while the session was paused after a failed save; it is in unassigned captures.";
 		public const string NotOpen="The sensor software is not open.";
 		///<summary>The library closed the source on its own while an enable ran (WM_QUIT on its worker).</summary>
 		public const string SourceClosed="The sensor software was closed. Press Retry to open it again.";

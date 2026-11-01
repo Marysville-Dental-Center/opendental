@@ -689,6 +689,31 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void SaveFails_InAContinuousEnable_WithoutSafeDisable_TheIndicatorStaysPaused_EachLaterImageIsSignalled() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			_harness.RadiographStore.ThrowOn="Import";
+			_harness.Image();
+			_harness.RadiographStore.ThrowOn="";
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState);
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);//the library's status after every transfer
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState,"Design 7.12: Paused; no invitation to expose.");
+			Assert.AreEqual(CaptureSessionText.PausedAfterSaveFailureIndicator,Controller.IndicatorText);
+			StringAssert.StartsWith(Controller.RedStripText,"Could not save: Import failed","The red strip keeps the error.");
+			_harness.Status(TwainCaptureState.Transferring,isSafeDisableInEffect:false);
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState);
+			_harness.ListSounds.Clear();
+			_harness.Image();
+			Assert.AreEqual(CaptureSessionText.PausedAfterSaveFailure,_harness.Twain.ListQuarantined[1].Reason);
+			CollectionAssert.Contains(_harness.ListSounds,CaptureSound.NotReceived,"Each image not placed is signalled.");
+			Assert.AreEqual(CaptureSessionText.PausedAfterSaveFailureNotice,Controller.NoticeText);
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState);
+			Assert.AreEqual(0,_harness.RadiographStore.ListDocumentsUpdated.Count);
+		}
+
+		[TestMethod]
 		public void QuarantineFails_RedStripNamesTheJournalCopy() {
 			_harness.RadiographStore.ThrowOn="Import";
 			_harness.ActionOnNewSession=session => session.QuarantineError="the disk is full";
