@@ -14,8 +14,9 @@ namespace ImagingCapture.Tests {
 		///bitewings, 4BW horizontal and vertical), as (template, ItemOrder, ToothNumbers, RotateOnAcquire), with the expected Patient
 		///Orientation of the stored image without and with Mount.FlipOnAcquire, and the expected Image Laterality. The orientation is the
 		///slot's labial-mount view as displayed (anterior L\F, right posterior A\F, left posterior P\F) with the rotation and mirror undone.
-		///The phantom check of design 13 step 4 confirms these before 16-bit is enabled for a device.</summary>
-		private static readonly object[][] _arrayTemplateSlots={
+		///The phantom check of design 13 step 4 confirms these before 16-bit is enabled for a device. StandardMountTemplatesTests checks that
+		///"Add standard templates" (StandardMountTemplates) creates exactly these slots; this table stays the independent pin.</summary>
+		internal static readonly object[][] _arrayTemplateSlots={
 			//FMX, horizontal bitewings
 			new object[] { "FMX horiz",1,"2,3,30,31",0,@"A\F",@"P\F","R" },
 			new object[] { "FMX horiz",2,"4,5,28,29",0,@"A\F",@"P\F","R" },

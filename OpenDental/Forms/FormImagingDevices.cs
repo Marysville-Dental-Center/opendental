@@ -125,6 +125,12 @@ namespace OpenDentalImaging {
 				View=ImagingCapture.Recovery.CaptureRecoveryView.Unassigned });
 		}
 
+		///<summary>"Add standard templates" (ImagingCapture): the standard FMX and 4BW mount definitions with the X-ray category the user picks,
+		///idempotent by Description. It needs Setup and logs each template it adds.</summary>
+		private void butStandardTemplates_Click(object sender,EventArgs e) {
+			ImagingCapture.UI.FrmStandardTemplates.ShowModal();
+		}
+
 		private void FormImagingDevices_FormClosing(object sender,FormClosingEventArgs e) {
 			if(_changed){
 				DataValid.SetInvalid(InvalidType.ToolButsAndMounts);

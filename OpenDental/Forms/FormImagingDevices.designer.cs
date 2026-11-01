@@ -31,6 +31,7 @@ namespace OpenDentalImaging{
 			this.butDown = new OpenDental.UI.Button();
 			this.butUp = new OpenDental.UI.Button();
 			this.butUnassigned = new OpenDental.UI.Button();
+			this.butStandardTemplates = new OpenDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// gridMain
@@ -108,9 +109,19 @@ namespace OpenDentalImaging{
 			this.butUnassigned.Text = "Unassigned captures";
 			this.butUnassigned.Click += new System.EventHandler(this.butUnassigned_Click);
 			// 
+			// butStandardTemplates
+			// 
+			this.butStandardTemplates.Location = new System.Drawing.Point(518, 6);
+			this.butStandardTemplates.Name = "butStandardTemplates";
+			this.butStandardTemplates.Size = new System.Drawing.Size(150, 24);
+			this.butStandardTemplates.TabIndex = 41;
+			this.butStandardTemplates.Text = "Add standard templates";
+			this.butStandardTemplates.Click += new System.EventHandler(this.butStandardTemplates_Click);
+			// 
 			// FormImagingDevices
 			// 
 			this.ClientSize = new System.Drawing.Size(1154, 563);
+			this.Controls.Add(this.butStandardTemplates);
 			this.Controls.Add(this.butUnassigned);
 			this.Controls.Add(this.butDown);
 			this.Controls.Add(this.butUp);
@@ -136,5 +147,6 @@ namespace OpenDentalImaging{
 		private OpenDental.UI.Button butDown;
 		private OpenDental.UI.Button butUp;
 		private OpenDental.UI.Button butUnassigned;
+		private OpenDental.UI.Button butStandardTemplates;
 	}
 }
