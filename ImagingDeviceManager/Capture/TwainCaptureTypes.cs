@@ -166,6 +166,9 @@ namespace ImagingDeviceManager.Capture {
 		AlreadyOpen,
 		///<summary>The worker did not finish the open within TwainCaptureOptions.OpenTimeout; the session closes when it does.</summary>
 		Timeout,
+		///<summary>Another capture session of this program has the source open, or did not finish closing it within
+		///TwainCaptureOptions.OpenTimeout: two sessions never drive one source at once.</summary>
+		SourceBusy,
 		Other,
 	}
 

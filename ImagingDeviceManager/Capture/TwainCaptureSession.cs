@@ -21,6 +21,11 @@ namespace ImagingDeviceManager.Capture {
 	///it starts uses the safe order of CAP-1, with the bounded wait after a refused disable.</summary>
 	public sealed class TwainCaptureSession:ITwainCaptureSession {
 		#region Fields
+		///<summary>Every instance of this process whose worker has not ended, with the ProductName it was opened for: two workers must never
+		///drive one source at once (each loads its own DSM identity, and most sources accept one MSG_OPENDS, while the other may still be
+		///stopping it). Taken before an instance's _lock, never after it.</summary>
+		private static readonly object _lockLiveSessions=new object();
+		private static readonly List<TwainCaptureSession> _listLiveSessions=new List<TwainCaptureSession>();
 		private readonly DsmLoader _dsmLoader;
 		private readonly CaptureFolders _folders;
 		private readonly Func<DateTime> _funcNow;
@@ -45,6 +50,8 @@ namespace ImagingDeviceManager.Capture {
 		private TwainCaptureOptions _options=new TwainCaptureOptions();
 		private TwainCaptureQuarantineContext _quarantineContext=new TwainCaptureQuarantineContext();
 		private volatile string _productName="";
+		///<summary>The ProductName Open was called with, trimmed, while this instance is in _listLiveSessions. Guarded by _lockLiveSessions.</summary>
+		private string _productNameLive="";
 		private volatile TwainCaptureSourceInfo _sourceInfo;
 		//Worker thread only:
 		private TwainSession _session;
@@ -140,27 +147,47 @@ namespace ImagingDeviceManager.Capture {
 			if(threadOld!=null && threadOld.IsAlive && State==TwainCaptureState.Closed) {
 				threadOld.Join(5000);//A worker that is just ending.
 			}
-			Command command;
 			lock(_lock) {
 				if(State!=TwainCaptureState.Closed || (_thread!=null && _thread.IsAlive)) {
 					return new TwainCaptureOpenResult { Error=TwainCaptureOpenError.AlreadyOpen,ErrorText="The capture session is already open." };
 				}
-				_options=options==null ? new TwainCaptureOptions() : options.Clone();
-				_isClosing=false;
-				_hwndWake=IntPtr.Zero;
-				_sourceInfo=null;
-				_productName="";
-				_listCommands.Clear();
-				_state=(int)TwainCaptureState.Opening;
-				_eventClosed.Reset();
-				command=new Command { Kind=CommandKind.Open,ProductName=productName??"",EventDone=new ManualResetEvent(false) };
-				_listCommands.AddLast(command);
-				_thread=new Thread(WorkerMain) { IsBackground=true,Name="TWAIN capture "+SessionGuid.ToString("N").Substring(0,8) };
-				_thread.SetApartmentState(ApartmentState.STA);
+			}
+			string productNameLive=(productName??"").Trim();
+			string errorBusy;
+			if(!WaitForOtherSessions(productNameLive,GetOpenTimeout(options),out errorBusy)) {
+				Log(errorBusy);
+				return new TwainCaptureOpenResult { Error=TwainCaptureOpenError.SourceBusy,ErrorText=errorBusy };
+			}
+			Command command;
+			lock(_lockLiveSessions) {
+				if(FindOtherLiveSession(productNameLive)!=null) {
+					errorBusy="Another capture session of this program has just opened the TWAIN source \""+productNameLive+"\".";
+					Log(errorBusy);
+					return new TwainCaptureOpenResult { Error=TwainCaptureOpenError.SourceBusy,ErrorText=errorBusy };
+				}
+				lock(_lock) {
+					if(State!=TwainCaptureState.Closed || (_thread!=null && _thread.IsAlive)) {
+						return new TwainCaptureOpenResult { Error=TwainCaptureOpenError.AlreadyOpen,ErrorText="The capture session is already open." };
+					}
+					_options=options==null ? new TwainCaptureOptions() : options.Clone();
+					_isClosing=false;
+					_hwndWake=IntPtr.Zero;
+					_sourceInfo=null;
+					_productName="";
+					_listCommands.Clear();
+					_state=(int)TwainCaptureState.Opening;
+					_eventClosed.Reset();
+					command=new Command { Kind=CommandKind.Open,ProductName=productName??"",EventDone=new ManualResetEvent(false) };
+					_listCommands.AddLast(command);
+					_thread=new Thread(WorkerMain) { IsBackground=true,Name="TWAIN capture "+SessionGuid.ToString("N").Substring(0,8) };
+					_thread.SetApartmentState(ApartmentState.STA);
+					_productNameLive=productNameLive;
+					_listLiveSessions.Add(this);
+				}
 			}
 			_thread.Start();
 			_eventCommand.Set();
-			TimeSpan timeout=_options.OpenTimeout>TimeSpan.Zero ? _options.OpenTimeout : TimeSpan.FromSeconds(60);
+			TimeSpan timeout=GetOpenTimeout(_options);
 			if(!command.EventDone.WaitOne(timeout)) {
 				Log("The source did not finish opening within "+timeout.TotalSeconds.ToString("0",CultureInfo.InvariantCulture)
 					+" s; the session closes when it does.");
@@ -174,6 +201,47 @@ namespace ImagingDeviceManager.Capture {
 				WaitForClose(TimeSpan.FromSeconds(10));//The worker ends after a failed open; State is Closed afterwards.
 			}
 			return command.OpenResult;
+		}
+
+		private static TimeSpan GetOpenTimeout(TwainCaptureOptions options) {
+			return options!=null && options.OpenTimeout>TimeSpan.Zero ? options.OpenTimeout : TimeSpan.FromSeconds(60);
+		}
+
+		///<summary>Another instance of this process whose worker drives productName (ignoring case), or null. The caller holds
+		///_lockLiveSessions.</summary>
+		private TwainCaptureSession FindOtherLiveSession(string productName) {
+			foreach(TwainCaptureSession session in _listLiveSessions) {
+				if(session!=this && string.Equals(session._productNameLive,productName,StringComparison.OrdinalIgnoreCase)) {
+					return session;
+				}
+			}
+			return null;
+		}
+
+		///<summary>Before an Open: waits, at most timeout, while another instance of this process is closing productName (after a timed-out
+		///Open, or a window closed while MSG_DISABLEDS blocks), so that its MSG_CLOSEDS comes before this MSG_OPENDS. False with errorText when
+		///another instance has the source open and is not closing, or did not finish closing in time.</summary>
+		private bool WaitForOtherSessions(string productName,TimeSpan timeout,out string errorText) {
+			errorText="";
+			Stopwatch stopwatch=Stopwatch.StartNew();
+			while(true) {
+				TwainCaptureSession sessionOther;
+				lock(_lockLiveSessions) {
+					sessionOther=FindOtherLiveSession(productName);
+				}
+				if(sessionOther==null) {
+					return true;
+				}
+				if(!sessionOther._isClosing) {
+					errorText="The TWAIN source \""+productName+"\" is open in another capture window of this program. Close that window first.";
+					return false;
+				}
+				TimeSpan timeLeft=timeout-stopwatch.Elapsed;
+				if(timeLeft<=TimeSpan.Zero || !sessionOther._eventClosed.WaitOne(timeLeft)) {
+					errorText="The previous capture session of the TWAIN source \""+productName+"\" is still closing. Try again in a moment.";
+					return false;
+				}
+			}
 		}
 
 		public int Enable(TwainEnableRequest request) {
@@ -359,6 +427,10 @@ namespace ImagingDeviceManager.Capture {
 				}
 			}
 			SetState(TwainCaptureState.Closed,0);
+			lock(_lockLiveSessions) {
+				_listLiveSessions.Remove(this);//The source and the DSM are closed: another session may open the source now.
+				_productNameLive="";
+			}
 			_eventClosed.Set();
 		}
 

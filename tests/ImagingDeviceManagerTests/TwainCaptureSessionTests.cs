@@ -81,6 +81,37 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void SecondSessionOnTheSameSource_RefusedWhileOpen_OpensOnlyOnceTheFirstHasClosed() {
+			Helper.ListExposures.Clear();
+			Helper.End=FakeHelperEnd.Never;
+			Helper.BlockingCloseMs=600;//Without safe disable, MSG_DISABLEDS blocks while the sensor software closes.
+			TwainCaptureSession capture2=new TwainCaptureSession((out string errorText) => {
+				errorText="";
+				return _harness.Fake;
+			},_harness.Folders,() => DateTime.Now);
+			try {
+				_harness.OpenOrFail();
+				TwainCaptureOpenResult resultBusy=capture2.Open(" "+Helper.ProductName.ToUpperInvariant(),Options);
+				Assert.AreEqual(TwainCaptureOpenError.SourceBusy,resultBusy.Error);
+				StringAssert.Contains(resultBusy.ErrorText,"open in another capture window");
+				Assert.AreEqual(1,_harness.Fake.ListLog.Count(x => x.StartsWith("OPENDS ")),"The second session sent no MSG_OPENDS.");
+				EnableOne();
+				_harness.WaitUntil(() => _harness.ListStatus.Any(x => x.State==TwainCaptureState.WaitingForImage),"waiting for the image");
+				Capture.BeginClose();//Does not wait (the window closes); the worker blocks in MSG_DISABLEDS.
+				TwainCaptureOpenResult result2=capture2.Open(Helper.ProductName,Options);
+				Assert.IsTrue(result2.IsOpen,result2.ErrorText);
+				Assert.IsTrue(Capture.WaitForClose(TimeSpan.Zero),"The second session waited for the first to close the source.");
+				List<string> listLog=_harness.Fake.ListLog;
+				Assert.IsTrue(listLog.LastIndexOf("CLOSEDS")<listLog.FindLastIndex(x => x.StartsWith("OPENDS ")),string.Join("\r\n",listLog));
+			}
+			finally {
+				capture2.BeginClose();
+				capture2.WaitForClose(TimeSpan.FromSeconds(15));
+			}
+			Assert.AreEqual(TwainCaptureState.Closed,capture2.State);
+		}
+
+		[TestMethod]
 		public void Open_SourceNotFound() {
 			TwainCaptureOpenResult result=Capture.Open("No Such Source",Options);
 			Assert.IsFalse(result.IsOpen);

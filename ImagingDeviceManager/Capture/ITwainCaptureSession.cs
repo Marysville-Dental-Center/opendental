@@ -35,7 +35,8 @@ namespace ImagingDeviceManager.Capture {
 		Func<string,CaptureMetadataKeys> FuncReadMetadataKeys { get; set; }
 
 		///<summary>Opens productName on the worker and keeps it open in state 4 across enables. Fails, without throwing, when the session is
-		///not closed.</summary>
+		///not closed (AlreadyOpen), or when another session of this program has the same source open (SourceBusy). Before it opens, it waits up
+		///to OpenTimeout for another session of this program that is still closing that source.</summary>
 		TwainCaptureOpenResult Open(string productName,TwainCaptureOptions options);
 		///<summary>Posts an enable: state 4 negotiation (CAP_XFERCOUNT=1, bit depth, ICAP_EXTIMAGEINFO, the device profile's custom
 		///capabilities), then MSG_ENABLEDS. Returns the enable id that tags its images and its Ended, or 0 when the session is not open (nothing
