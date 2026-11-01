@@ -113,7 +113,7 @@ Mount / Acquire reads only the `[Twain]` section. Other sections are for later v
 | `SafeDisableCap` | empty | the safe-disable capability number from the contract, in hex | Set together with `DisableIsSafeSources`. |
 | `RefusedDisableCodes` | empty | the contract's "disable refused" condition codes, in hex, separated by `\|` | Set together with `DisableIsSafeSources`. When the source refuses a stop with one of these codes, Open Dental waits up to 30 s for it to finish and keeps every image it then delivers. |
 | `AcquireTimeoutMinutes` | `0` (off) | `0` until the safe-disable test passed on this computer; then a value in the order of section 4.3 | Stops a slot in which no image arrived after this many minutes, which ends the series. It counts per slot, from the moment the sensor software opens. It is honoured only for Twain Radiograph slots of a source listed in `DisableIsSafeSources` that accepted safe disable and one image per slot for that slot; otherwise the capture log says why not. When it expires, the series ends without a notice, like a cancel. |
-| `Allow16Bit` | `1` (since 2026-11-01; it was `0`) | leave it out, or `1`; `0` only to keep this computer at 8 bits | Not used by Mount / Acquire, which never asks the source for a bit depth and stays 8-bit. The later capture session reads it: `1` allows more than 8 bits (16 or 14) on this computer, `0` forces 8 bits for every device on it. The key keeps its old name. See section 14. |
+| `Allow16Bit` | `1` (since 2026-11-01; it was `0`) | `0` on every computer that uses the sensor for patients, until the owner has settled the BEFORE 16-BIT questions (section 14, "Before a Test capture record on a sensor used for patients"); otherwise leave it out | Not used by Mount / Acquire, which never asks the source for a bit depth and stays 8-bit. The later capture session reads it: `1` allows more than 8 bits (16 or 14) on this computer, `0` forces 8 bits for every device on it. The key keeps its old name. See section 14. |
 
 Leave `DisableIsSafeSources`, `SafeDisableCap` and `RefusedDisableCodes` empty when the installed contract version has no safe disable. Then Cancel shows a warning first, `AcquireTimeoutMinutes` is not honoured, and any stop that Open Dental starts can lose an exposure that the sensor software still holds (section 10.3).
 
@@ -153,6 +153,10 @@ SafeDisableCap=<capability number from the contract, hex>
 RefusedDisableCodes=<first code from the contract, hex>|<second code, hex>
 ; 0 until the safe-disable test passed on this computer (section 4.3).
 AcquireTimeoutMinutes=0
+; 0 on a computer that uses the sensor for patients, until the owner has
+; settled the BEFORE 16-BIT questions (section 14). Mount / Acquire stays
+; 8-bit either way; the later capture session reads it.
+Allow16Bit=0
 ```
 
 Replace each `<...>` with the real value. A value that is still a placeholder reads as missing.
@@ -479,7 +483,7 @@ This section applies to the capture session of a later phase (Mount / Acquire wi
 
 | Key | Default | Values | What it does |
 |---|---|---|---|
-| `[Device.N] Bits` | `16` (it was `8`) | `16`, `14`, `8`; anything else is a warning and `8` | The depth the session asks for. For 16 the source is asked for 16, else 14, else 8, by what it lists; for 14, 14 else 8. A Test capture record must have passed at this depth: a source that lists only 14 needs `Bits=14` and a Test capture at 14; with `Bits=16` the session then takes 8 bits (Test capture warns). |
+| `[Device.N] Bits` | `16` (it was `8`) | `16`, `14`, `8`; anything else is a warning and `8` | The depth the session asks for. For 16 the source is asked for 16, else 14, else 8, by what it lists; for 14, 14 else 8. A Test capture record must have passed at the depth the session asks for. With `Bits=16`, a source that lists 14 but not 16 gives 14 to its Test capture; the record passes at 14, and the session then asks that driver for 14 bits. |
 | `[Twain] Allow16Bit` | `1` (it was `0`) | `1`, `0` | `1`: more than 8 bits are allowed on this computer. `0`: 8 bits for every device on this computer. |
 | `[Device.N] ByteOrder16`, `Polarity` | `LE`, `AsDelivered` | as before | With `Bits`, the image settings a Test capture covers. |
 
@@ -489,14 +493,14 @@ When the capture settings are not verified (never saved in Capture settings on t
 
 1. `Bits` is 16 or 14 and `Allow16Bit=1` (both defaults);
 2. the capture settings were saved in Capture settings on this computer and not changed by hand since (checked on each computer);
-3. the latest Test capture verification record for the device row, made on any computer, names the driver version the sensor's source reports when it opens (its name and version numbers) and the same image settings (`Bits`, `ByteOrder16`, `Polarity`), and passed at the depth asked for: a record that passed at 16 covers 16, one that passed at 14 covers 14. Only the latest record for the row counts, so a newer record for another driver version or other image settings replaces an older one that matched;
+3. the latest Test capture verification record for the device row, made on any computer, names the driver version the sensor's source reports when it opens (its name and version numbers) and the same image settings (`Bits`, `ByteOrder16`, `Polarity`), and passed at the depth asked for: a record that passed at 16 covers 16, one that passed at 14 covers 14. With `Bits=16`, a record whose Test capture asked for 16 and got 14 (the driver lists 14 but not 16) makes the session ask for 14. Only the latest record for the row counts, so a newer record for another driver version or other image settings replaces an older one that matched;
 4. the X-ray goes into a mount slot whose tooth numbers are of one view (a single image without a mount, or a slot without teeth, is always 8-bit).
 
 A record written by an earlier version of the program (format `capture-verification/1`, which names no driver version or image settings) never matches, whatever its date; the session says to run Test capture again. Other capture.ini keys (the source list, the journal size, the session mode, the timeouts) do not change what a record covers.
 
 **Before a Test capture record on a sensor used for patients.** Nothing in the program waits for the display and DICOM work that 16-bit X-rays need (the owner questions marked BEFORE 16-BIT: DICOM thumbnails and 16-bit brightness, the in-house DICOM reader, counsel's review, claim attachment). Once a record passes and `[Session] Enabled=1`, the session stores 16-bit DICOM X-rays, which today have no thumbnail, show the wrong brightness and cannot be attached to a claim. Until the owner has settled those questions, keep every computer that uses a sensor for patients at 8 bits: set `[Device.N] Bits=8`, or `[Twain] Allow16Bit=0`, in Capture settings on each of them. Test capture can still verify 16 bits on a computer that is kept off patient use (it asks for that computer's `Bits`).
 
-**Running Test capture.** On one computer with the sensor's source installed, open Setup > Imaging > Devices, the device, Test capture. It asks for the device's `Bits` (16 by default). Take an image of the phantom or the known ramp, check byte order and polarity, and write the record. Run it again after a new version of the sensor's source (section 5) and after changing `Bits`, `ByteOrder16` or `Polarity`. If the source gives 14 bits while `Bits=16`, the record passes at 14 and Test capture warns: set `Bits=14` in Capture settings and run Test capture again, or the session stays at 8 bits.
+**Running Test capture.** On one computer with the sensor's source installed, open Setup > Imaging > Devices, the device, Test capture. It asks for the device's `Bits` (16 by default). Take an image of the phantom or the known ramp, check byte order and polarity, and write the record. Run it again after a new version of the sensor's source (section 5) and after changing `Bits`, `ByteOrder16` or `Polarity`. If the source gives 14 bits while `Bits=16`, the record passes at 14, and the session asks that driver for 14 bits (Test capture says so). Test capture also lets you choose 14 or 8 to measure; a record of a test image taken at a depth you chose other than the device's `Bits` (for example 14 while `Bits=16`) covers no session, and Test capture warns. `Bits` is one of the image settings the record covers, so after changing `Bits` in Capture settings, run Test capture again.
 
 **What staff see.** The session summary's "In effect" line, Test capture and Unassigned captures show the depth actually used:
 
@@ -504,7 +508,7 @@ A record written by an earlier version of the program (format `capture-verificat
 - "14-bit in a 16-bit file": 14-bit data, stored unchanged in a 16-bit DICOM file (Bits Stored 16, with `effectiveBits=14` in its Image Comments);
 - "8-bit (fallback: <reason>)", for example "8-bit (fallback: no Test capture record for this sensor's driver version and image settings)". With `Bits=8` or `Allow16Bit=0` it is simply "8-bit".
 
-If the source delivers a 14- or 16-bit image in a layout Open Dental cannot read, that image is not received ("Image not received. Do not re-expose yet.", with the reason), nothing of it is kept, and the session takes 8 bits for the rest of that session. Follow section 10.4. In a continuous series the sensor software stays armed after an image, so every later exposure of that series would be lost the same way: with safe disable in effect the series is stopped after that image; without it the indicator says "Image not received: <reason>. Do not expose again; end the series." Press End or Disable, then start again: the session takes 8 bits.
+If the source delivers a 14- or 16-bit image in a layout Open Dental cannot read, that image is not received ("Image not received. Do not re-expose yet.", with the reason), nothing of it is kept, and the session takes 8 bits for the rest of that session. Follow section 10.4. In a continuous series the sensor software stays armed after an image, so every later exposure of that series would be lost the same way: with safe disable in effect the series is stopped after that image; without it the indicator says "Image not received: <reason>. Do not expose again; end the series." Press Disable, then Start: the rest of this session takes 8 bits. The 8 bits last only for that session: after End, set `Bits=8` in Capture settings for this device before the next session with this sensor, or the next session asks for more than 8 bits again and can lose another exposure. (Running Test capture again does not help: it cannot read such an image either, so it writes no record, and the record that passed still counts.)
 
 A 14-bit image whose values are not right-justified 14-bit values (some above 16383) is stored unchanged, but is not labelled `effectiveBits=14`, and a Test capture of such an image does not pass ("the 14-bit samples are not right-justified").
 
