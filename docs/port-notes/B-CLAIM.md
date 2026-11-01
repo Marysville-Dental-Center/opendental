@@ -131,7 +131,7 @@ Outside the owned files: `GroupPermissions.HasAuditTrail` now lists 252, so the 
   - the primary claims prompt after the Medical EOB attach: the claims reloaded by `Claims.GetPrimaryOrSecondaryClaimsNotReceived`, set to Waiting to Send by `ClaimAttaches.SetClaimsWaitingToSend`, keep both the medical EOB and an earlier attachment; a secondary claim recalculated by `Claims.CalculateAndUpdateSecondaries` keeps its attachment.
 - Source checks that the window hooks are present and in the right order, that the primary claims prompt no longer saves its claims with the one-argument `Claims.Update`, that the ERA Writeoff column and Write-off button follow the 119 result, that every statement of manual ERA posting that sets a write-off is covered by it, and that the preferences checkbox reads and saves the fork-owned row.
 
-Related existing assemblies run: `RegistryTests`, `VendorDirectTests`, `ImagingTests` (s1); on t1 the whole Core run plus the slow migration and adoption assemblies (see Integration on port/int-7).
+Related existing assemblies run: `RegistryTests`, `VendorDirectTests`, `ImagingTests` (s1); on t1, after the int-7 merge, the whole Core run (61 assemblies, all passing; `test-results/port_b-claim-t1.txt` in the tools folder). The slow migration and adoption assemblies were not needed: B-CLAIM changes no migration, schema, CRUD or adoption code.
 
 Not tested by running code:
 
