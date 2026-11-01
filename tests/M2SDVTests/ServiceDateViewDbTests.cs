@@ -460,6 +460,15 @@ namespace M2SDVTests {
 			Assert.AreEqual(2,listPayNums.Count);
 			Assert.IsTrue(listPayNums.All(x => x==_payNum1));
 			Assert.IsFalse(table.Rows.OfType<DataRow>().Any(x => (long)x["ClaimNum"]!=0),"No insurance on a receipt.");
+			//The totals agree with the procedures shown: procedure 1 shows 40.00 (its attached adjustment of 10 is not on the receipt but still
+			//applies) and procedure 3 shows 60.00.
+			List<DataRow> listRowsTotal=table.Rows.OfType<DataRow>().Where(x => (bool)x[Statements.COLUMN_IS_BOLD]).ToList();
+			Assert.AreEqual(2,listRowsTotal.Count,"One date of service, then the family total.");
+			StringAssert.Contains(listRowsTotal[1]["description"].ToString(),"Family Total");
+			foreach(DataRow rowTotal in listRowsTotal) {
+				Assert.AreEqual(100m,(decimal)rowTotal["balanceDouble"],rowTotal["description"].ToString());
+				Assert.AreEqual(100m.ToString("n"),rowTotal["balance"],rowTotal["description"].ToString());
+			}
 		}
 
 		[TestMethod]

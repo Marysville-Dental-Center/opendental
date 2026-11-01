@@ -181,6 +181,50 @@ namespace M2SDVTests {
 			Assert.AreEqual("20",listRows[1].TranNum);
 			Assert.AreEqual(10m,listRows[0].Balance,"The procedure shows what is still owed on it after every credit.");
 			Assert.IsFalse(listRows.Any(x => x.TranType=="Balance Forward"));
+			//The totals add up the rows shown: the procedure's own balance (its credits not on the receipt included, the payment beneath it not
+			//counted again) and the unattached payment.
+			Assert.AreEqual(10m,listRows[2].Balance,"Day total of the older procedure: its balance.");
+			Assert.AreEqual(10m,listRows[2].AcctBal);
+			Assert.AreEqual(-15m,listRows[5].Balance,"Day total of today: the prepayment.");
+			Assert.AreEqual(-15m,listRows[5].AcctBal);
+			ServiceDateViewRow rowOverall=listRows.Last();
+			Assert.AreEqual(-5m,rowOverall.Balance,"Overall total: 10 still owed on the procedure less the 15 prepaid.");
+			Assert.AreEqual(-5m,rowOverall.AcctBal);
+			Assert.AreEqual(45m,rowOverall.Credit,"Credits are today's payments.");
+			Assert.IsTrue(rowOverall.ShowsBalance);
+		}
+
+		[TestMethod]
+		public void Build_Receipt_TotalsAddUpTheRowsShown() {
+			List<ServiceDateViewCoreRow> listCore=new List<ServiceDateViewCoreRow> {
+				//Paid off by insurance, an attached adjustment and today's payment.
+				Proc(10,_date1,100,procCredits:100),
+				Tran("InsPay-Att.",30,_date1,_date2,0,60,procNum:10,parentNum:7),
+				Tran("Adj-Att.",31,_date1,_date1,0,10,procNum:10),
+				Tran("PatPay Att.",20,_date1,_date3,0,30,procNum:10,parentNum:3),
+				//Insurance still pending: today's payment is part of the patient's estimated portion.
+				Proc(11,_date2,80,procCredits:20,insCredits:50),
+				Tran("PatPay Att.",21,_date2,_date3,0,20,procNum:11,parentNum:3),
+				//A payment on a procedure the view does not list (not complete).
+				Tran("PatPay Att.",22,_date2,_date3,0,5,procNum:9,parentNum:3),
+			};
+			ServiceDateViewOptions options=new ServiceDateViewOptions { IsReceipt=true,DateFrom=_date3,DateTo=_date3 };
+			List<ServiceDateViewRow> listRows=ServiceDateViews.Build(listCore,options);
+			CollectionAssert.AreEqual(new[] { "Proc","PatPay Att.","Day Total","Proc","PatPay Att.","PatPay Att.","Day Total","Overall Total" },
+				Types(listRows));
+			Assert.AreEqual("22",listRows[5].TranNum);
+			Assert.AreEqual(0m,listRows[0].Balance);
+			Assert.AreEqual(0m,listRows[2].Balance,"Nothing left on the procedure, though its insurance and adjustment are not on the receipt.");
+			Assert.AreEqual(60m,listRows[3].Balance);
+			Assert.AreEqual(10m,listRows[3].AcctBal);
+			Assert.AreEqual(55m,listRows[6].Balance,"60 on the procedure less the 5 paid on the procedure not listed.");
+			Assert.AreEqual(5m,listRows[6].AcctBal);
+			Assert.AreEqual(50m,listRows[6].InsBal);
+			ServiceDateViewRow rowOverall=listRows.Last();
+			Assert.AreEqual(55m,rowOverall.Balance);
+			Assert.AreEqual(5m,rowOverall.AcctBal);
+			Assert.AreEqual(50m,rowOverall.InsBal);
+			Assert.AreEqual(55m,rowOverall.Credit);
 		}
 
 		[TestMethod]

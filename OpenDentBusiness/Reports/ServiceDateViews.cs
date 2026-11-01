@@ -274,6 +274,11 @@ namespace OpenDentBusiness {
 				.GroupBy(x => x.TranNum+"|"+x.DateService.Date.ToString("yyyyMMdd",CultureInfo.InvariantCulture)+"|"+x.TranType)
 				.Select(x => MakeTransactionRow(x.ToList(),options.IsDetailed))
 				.ToList();
+			//A receipt keeps only some of the credits of the procedures it lists, so its totals add up the rows it shows (see MakeTotal).
+			HashSet<long> setReceiptProcNums=null;
+			if(options.InvoiceItems==null && options.IsReceipt) {
+				setReceiptProcNums=new HashSet<long>(listTransactions.Where(x => x.IsProcedure).Select(x => x.ProcNum));
+			}
 			foreach(IGrouping<DateTime,ServiceDateViewRow> groupDate in listTransactions.GroupBy(x => x.DateService).OrderBy(x => x.Key)) {
 				List<ServiceDateViewRow> listAttached=groupDate.Where(x => IsAttachedType(x.TranType)).ToList();
 				List<ServiceDateViewRow> listUnattached=groupDate.Where(x => !IsAttachedType(x.TranType)).ToList();
@@ -285,9 +290,10 @@ namespace OpenDentBusiness {
 					listResult.AddRange(listUnattached);
 				}
 				listResult.Add(MakeTotal(ServiceDateViewRowKind.DayTotal,groupDate.Key,groupDate.ToList(),listRows.FindAll(x => x.DateService.Date==groupDate.Key),
-					null,options.IsFamily));
+					null,options.IsFamily,setReceiptProcNums));
 			}
-			listResult.Add(MakeTotal(ServiceDateViewRowKind.OverallTotal,DateTime.MinValue,listTransactions,listRows,rowBalanceForward,options.IsFamily));
+			listResult.Add(MakeTotal(ServiceDateViewRowKind.OverallTotal,DateTime.MinValue,listTransactions,listRows,rowBalanceForward,options.IsFamily,
+				setReceiptProcNums));
 			return listResult;
 		}
 
@@ -367,9 +373,11 @@ namespace OpenDentBusiness {
 		}
 
 		///<summary>Totals of a date (DayTotal) or of everything shown (OverallTotal). Charge and Credit add up the transaction rows; InsBal, AcctBal
-		///and Balance add up the raw rows, as the 24.3 report does, plus the balance forward for the overall total.</summary>
+		///and Balance add up the raw rows, as the 24.3 report does, plus the balance forward for the overall total. Receipts (setReceiptProcNums
+		///not null: the procedures the receipt lists) keep only the range's patient payments, so the raw rows no longer hold every credit of the
+		///procedures shown; their AcctBal and Balance add up the rows shown instead (see GetReceiptRowBalance).</summary>
 		private static ServiceDateViewRow MakeTotal(ServiceDateViewRowKind rowKind,DateTime dateService,List<ServiceDateViewRow> listTransactions,
-			List<ServiceDateViewCoreRow> listCoreRows,ServiceDateViewRow rowBalanceForward,bool isFamily)
+			List<ServiceDateViewCoreRow> listCoreRows,ServiceDateViewRow rowBalanceForward,bool isFamily,HashSet<long> setReceiptProcNums)
 		{
 			ServiceDateViewRow row=new ServiceDateViewRow();
 			row.RowKind=rowKind;
@@ -387,6 +395,10 @@ namespace OpenDentBusiness {
 			row.InsBal=listCoreRows.Where(x => x.TranType==TYPE_PROC).Sum(x => x.InsCredits);
 			row.AcctBal=listCoreRows.Sum(x => x.Charge-x.Credit-x.InsCredits);
 			row.Balance=listCoreRows.Sum(x => x.Charge-x.Credit);
+			if(setReceiptProcNums!=null) {
+				row.AcctBal=listTransactions.Sum(x => GetReceiptRowBalance(x,setReceiptProcNums,isAcctBal:true));
+				row.Balance=listTransactions.Sum(x => GetReceiptRowBalance(x,setReceiptProcNums,isAcctBal:false));
+			}
 			if(rowBalanceForward!=null) {
 				row.InsBal+=rowBalanceForward.InsBal;
 				row.AcctBal+=rowBalanceForward.AcctBal;
@@ -395,6 +407,20 @@ namespace OpenDentBusiness {
 			row.ShowsInsAndAcctBal=true;
 			row.ShowsBalance=true;
 			return row;
+		}
+
+		///<summary>What one row of a receipt adds to the receipt's totals. A procedure adds its own balance (Balance, or AcctBal), which already
+		///counts every credit applied to it, the payments listed beneath it included. A credit listed under a procedure the receipt shows adds
+		///nothing, so it is not counted twice. Any other row (an unattached payment, or a payment on a procedure the view does not list, such as
+		///one not complete yet) adds its charge less its credit.</summary>
+		private static decimal GetReceiptRowBalance(ServiceDateViewRow row,HashSet<long> setReceiptProcNums,bool isAcctBal) {
+			if(row.IsProcedure) {
+				return isAcctBal ? row.AcctBal : row.Balance;
+			}
+			if(row.IsAttachedCredit && row.ProcNum!=0 && setReceiptProcNums.Contains(row.ProcNum)) {
+				return 0;
+			}
+			return row.Charge-row.Credit;
 		}
 
 		private static ServiceDateViewRow MakeBalanceForward(List<ServiceDateViewCoreRow> listCoreRowsBefore) {
