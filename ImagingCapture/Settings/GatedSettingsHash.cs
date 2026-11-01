@@ -19,8 +19,10 @@ namespace ImagingCapture.Settings {
 	///The hash is over a canonical text (GetCanonicalText), so that only a change of meaning changes it:
 	///- a fixed list of keys in a fixed order, whatever the order of sections and keys in the file, and whatever the case of their names
 	///  (LocalCaptureConfig reads names case-insensitively, and the last of repeated keys wins);
-	///- each value trimmed, runs of spaces and tabs inside it made one space, and lowercased (every gated value is read case-insensitively:
-	///  numbers, 0/1 switches, enumerations, hex numbers, and source names, which the source gate compares ignoring case);
+	///- each value trimmed and lowercased (every gated value is read case-insensitively: numbers, 0/1 switches, enumerations, hex numbers,
+	///  and source names, which the source gate compares ignoring case). Spaces and tabs inside a value are kept as written: the source gate
+	///  and DisableIsSafeSources compare source names with them, so "Sensor  Source" and "Sensor Source" behave differently and must hash
+	///  differently; for every other key such a value is invalid anyway;
 	///- in the |-separated lists (AllowedSources, DisableIsSafeSources, RefusedDisableCodes) each entry normalised the same way and empty
 	///  entries dropped, keeping the order;
 	///- a missing key written like an empty value: both read as the key's default.
@@ -127,24 +129,12 @@ namespace ImagingCapture.Settings {
 			return string.Join("|",listEntries);
 		}
 
+		///<summary>Trimmed (as the source gate trims names) and lowercased; spaces and tabs inside are kept.</summary>
 		private static string NormalizeText(string value) {
 			if(value==null) {
 				return "";
 			}
-			StringBuilder stringBuilder=new StringBuilder(value.Length);
-			bool isSpacePending=false;
-			foreach(char c in value.Trim()) {
-				if(c==' ' || c=='\t') {
-					isSpacePending=true;
-					continue;
-				}
-				if(isSpacePending) {
-					stringBuilder.Append(' ');
-					isSpacePending=false;
-				}
-				stringBuilder.Append(char.ToLowerInvariant(c));
-			}
-			return stringBuilder.ToString();
+			return value.Trim().ToLowerInvariant();
 		}
 	}
 }

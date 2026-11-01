@@ -155,7 +155,7 @@ SessionMode=perslot
 [twain]
 RefusedDisableCodes=0x8001|0x8002
 SafeDisableCap=0x8002
-DisableIsSafeSources=  Sensor   Source
+DisableIsSafeSources=  sensor SOURCE  
 JournalKeep=200
 AllowedSources=SCANNER ONE | Sensor Source
 RestrictSources=1
@@ -204,6 +204,10 @@ Headless=0
 			Assert.AreNotEqual(hashBase,Hash(IniBase.Replace("AllowedSources=Scanner One|Sensor Source","AllowedSources=Sensor Source|Scanner One")));
 			Assert.AreNotEqual(hashBase,Hash(IniBase.Replace("AllowedSources=Scanner One|Sensor Source","AllowedSources=Scanner One")));
 			Assert.AreNotEqual(hashBase,Hash(IniBase.Replace("AllowedSources=Scanner One|Sensor Source","AllowedSources=ScannerOne|Sensor Source")));
+			//Inner spaces of a source name are meaning too: the source gate and DisableIsSafeSources compare names with them.
+			Assert.AreNotEqual(hashBase,Hash(IniBase.Replace("AllowedSources=Scanner One|Sensor Source","AllowedSources=Scanner One|Sensor  Source")));
+			Assert.AreNotEqual(hashBase,Hash(IniBase.Replace("DisableIsSafeSources=Sensor Source","DisableIsSafeSources=Sensor\tSource")));
+			Assert.AreNotEqual(hashBase,Hash(IniBase.Replace("DisableIsSafeSources=Sensor Source","DisableIsSafeSources=Sensor   Source")));
 		}
 
 		[TestMethod]
