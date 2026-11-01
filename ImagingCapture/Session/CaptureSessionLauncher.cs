@@ -64,8 +64,8 @@ namespace ImagingCapture.Session {
 	}
 
 	///<summary>Shows the capture session window, modal to its owner, and returns when it has closed. The window calls controller.Begin when it
-	///has loaded and controller.OnClosing when it closes (both on the UI thread), and closes itself after SessionFinished. Implemented by the
-	///window's code (CAP-4 implementer B); the launcher has none until then and reports NotStarted.</summary>
+	///has loaded and controller.OnClosing when it closes (both on the UI thread), and closes itself after SessionFinished. CaptureSessionWindowRunner
+	///(ImagingCapture.UI) shows FrmCaptureSession; without a runner the launcher reports NotStarted.</summary>
 	public interface ICaptureSessionWindowRunner {
 		void ShowModal(CaptureSessionController controller,object owner);
 	}
@@ -93,8 +93,8 @@ namespace ImagingCapture.Session {
 		///<summary>ODEvent, for the patient-change monitor (design 7.6). Null means ODEvent itself (ODEventCapturePatientEvents).</summary>
 		public ICapturePatientEvents PatientEvents { get; set; }
 
-		///<summary>OpenDentBusiness, TwainCaptureSession, the UI thread's SynchronizationContext, capture.ini and the capture log. WindowRunner is
-		///null until the session window is built (CAP-4 implementer B sets it here).</summary>
+		///<summary>OpenDentBusiness, TwainCaptureSession, the UI thread's SynchronizationContext, capture.ini, the capture log and the session window
+		///(FrmCaptureSession through CaptureSessionWindowRunner).</summary>
 		public static CaptureSessionServices CreateDefault() {
 			return new CaptureSessionServices {
 				Store=new OdCaptureSessionStore(),
@@ -106,7 +106,7 @@ namespace ImagingCapture.Session {
 				FuncGetComputerName=() => ODEnvironment.MachineName,
 				FuncGetUnassignedText=() => CaptureQuarantine.GetUnassignedText(),
 				ActionWriteLog=text => CaptureLogFile.Write(text),
-				WindowRunner=null,
+				WindowRunner=new CaptureSessionWindowRunner(),
 				PatientEvents=new ODEventCapturePatientEvents(),
 			};
 		}
