@@ -117,6 +117,8 @@ Checks on the first branch (`port/m2-sdv`): build of `OpenDental.Local.slnf` (De
 
 Checks on `port/m2-sdv-t1` (after the merge with `port/int-7`): full build of `OpenDental.Local.slnf` through the build lane, 0 errors; `run-tests -Mode Core`, 61 assemblies, all passed (`M2SDVTests` 45/45, `StatementTests` 8/8, `ReportTests` 31/31, `SheetTests` 31/31, `M202Tests` 39/39, `BERATests` 73/73, `BACCTTests` 41/41, `BPRINTTests` 71/71, `M2DUNTests` 35/35, `NoHqTests` 49/49); results in `.git/od-tools/test-results/port_m2-sdv-t1.txt`. `tools/Test-NoHqHosts.ps1` passed. The slow migration and adoption assemblies were not run: this package has no migration, schema or adoption change.
 
+Checks on `port/m2-sdv-t3` (after the merge with `port/int-9`, head 8d077f202): full build of `OpenDental.Local.slnf` through the build lane, 0 errors; `run-tests -Mode Core`, 66 assemblies, all passed (`M2SDVTests` 47/47, `StatementTests` 8/8, `ReportTests` 31/31, `SheetTests` 31/31, `M2SHEETSTests` 53/53, `M2CLAIMRCVTests` 50/50, `BPRINTTests` 71/71, `M2DUNTests` 35/35, `NoHqTests` 49/49); results in `.git/od-tools/test-results/port_m2-sdv-t3.txt`. `tools/Test-NoHqHosts.ps1` passed. The slow migration and adoption assemblies were not run: no migration, schema or adoption change.
+
 ## Not tested
 
 - The windows were not run (OpenDental.exe is not launched in this run): the Account module switch, the selection mirror, double-click, the details box, the right-click and Statement menu items, the window following the patient, and the new boxes in Statement Options and Billing Options are covered by source checks and by the business-layer tests behind them only.
