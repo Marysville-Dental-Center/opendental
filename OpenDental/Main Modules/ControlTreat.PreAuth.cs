@@ -71,7 +71,8 @@ namespace OpenDental {
 				if(displayField==null) {
 					continue;
 				}
-				string heading=displayField.Description=="" ? displayField.InternalName : displayField.Description;
+				//The same heading text FillMainDisplay gives the column (M2-TERM builds the headers with DisplayFields26_1.GetColumnText).
+				string heading=DisplayFields26_1.GetColumnText(displayField);
 				int idxColumn=gridMain.Columns.GetIndex(heading);
 				if(idxColumn>=0) {
 					return idxColumn;
