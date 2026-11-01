@@ -49,8 +49,18 @@ namespace OpenDentBusiness {
 
 		///<summary>The message for a DICOM file the program cannot read. It is shown, and nothing is attached.</summary>
 		public static string GetUnreadableMessage(string fileName) {
+			string fileNameShort="";
+			if(!string.IsNullOrWhiteSpace(fileName)) {
+				try {
+					fileNameShort=Path.GetFileName(fileName.Trim());
+				}
+				catch(Exception ex) {//characters a path cannot have: show the name as it is
+					ex.DoNothing();
+					fileNameShort=fileName.Trim();
+				}
+			}
 			return Lans.g("ClaimAttachDicom","The DICOM image could not be read, so it was not attached to the claim.")
-				+(string.IsNullOrWhiteSpace(fileName) ? "" : " ("+Path.GetFileName(fileName.Trim())+")")+"\r\n"
+				+(fileNameShort=="" ? "" : " ("+fileNameShort+")")+"\r\n"
 				+Lans.g("ClaimAttachDicom","Open it in the Imaging module to check it, or attach another image.");
 		}
 		#endregion File names

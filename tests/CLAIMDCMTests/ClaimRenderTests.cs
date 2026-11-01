@@ -273,6 +273,9 @@ namespace CLAIMDCMTests {
 			Assert.IsFalse(ClaimAttachDicom.IsDicomFileName(""));
 			Assert.AreEqual("PatXray12.jpg",ClaimAttachDicom.GetDisplayedFileName("PatXray12.dcm"));
 			Assert.AreEqual("Radiograph.jpg",ClaimAttachDicom.GetDisplayedFileName(""));
+			StringAssert.Contains(ClaimAttachDicom.GetUnreadableMessage("C:\\x\\a.dcm"),"(a.dcm)");
+			StringAssert.Contains(ClaimAttachDicom.GetUnreadableMessage("a<|>.dcm"),"(a<|>.dcm)","a name a path cannot hold is shown as it is");
+			Assert.IsFalse(ClaimAttachDicom.GetUnreadableMessage(null).Contains("()"));
 			Assert.IsFalse(ImageHelper.HasImageExtension("a.dcm"),"HasImageExtension stays as it was: its callers take it to mean GDI+ can open the file.");
 		}
 	}
