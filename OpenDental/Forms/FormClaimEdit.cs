@@ -238,7 +238,7 @@ namespace OpenDental{
 			_listClaimStatuses=GetListComboClaimStatus();
 			comboClaimStatus.Items.Clear();
 			for(int i=0;i<_listClaimStatuses.Count;i++) {
-				comboClaimStatus.Items.Add(_listClaimStatuses[i].GetDescription(false));
+				comboClaimStatus.Items.Add(ClaimReceiveRelated.GetClaimStatusText(_listClaimStatuses[i]));//H reads 'Hold Until Prior Received' (26.1)
 			}
 			comboSpecialProgram.Items.Clear();
 			string[] stringArrayEnumClaimSpecialPrograms=Enum.GetNames(typeof(EnumClaimSpecialProgram));
@@ -814,6 +814,7 @@ namespace OpenDental{
 				textAttachID.Text=_claim.AttachmentID;
 			}
 			FillDxcAttachmentState();
+			labelEdsValidationState.Text=EdsValidationL.GetEdsTabText(_claim,_clearinghouse);//Open Dental 26.1: the claim's last EDS validation
 			//medical/inst
 			textBillType.Text=_claim.UniformBillType;
 			textAdmissionType.Text=_claim.AdmissionTypeCode;
@@ -2930,6 +2931,10 @@ namespace OpenDental{
 			//string warnings;
 			//string missingData=
 			claimSendQueueItemsArrayCA[0]=Eclaims.GetMissingData(clearinghouseClin,claimSendQueueItemsArrayCA[0]);
+			//Open Dental 26.1: a claim that goes to EDS shows every problem, local and from EDS, in one validation window (Logic/EdsValidationL).
+			if(!EdsValidationL.ValidateBeforeSend(_claim,clearinghouseClin,claimSendQueueItemsArrayCA[0])) {
+				return;
+			}
 			if(claimSendQueueItemsArrayCA[0].MissingData!=""){
 				MessageBox.Show(Lan.g(this,"Cannot send claim until missing/invalid data is fixed:")+"\r\n"+claimSendQueueItemsArrayCA[0].MissingData);
 				return;
@@ -4074,6 +4079,10 @@ namespace OpenDental{
 						Claims.Update(_claim);
 					}
 				}
+				else if(IsNew && EdsValidationL.IsEds(clearinghouseClin)) {
+					//Open Dental 26.1: a new claim that goes to EDS is validated when saved. Never blocks saving (Logic/EdsValidationL).
+					EdsValidationL.ValidateAfterSave(_claim,clearinghouseClin,claimSendQueueItemsArray[0]);
+				}
 				//if(MsgBox.Show(this,true,"Send electronic claim immediately?")){
 				//	List<ClaimSendQueueItem> queueItems=new List<ClaimSendQueueItem>();
 				//	queueItems.Add(listQueue[0]);
@@ -4137,8 +4146,9 @@ namespace OpenDental{
 				if(Security.IsAuthorized(EnumPermType.PaymentCreate,DateTime.Today,true)) {
 					PaymentEdit.MakeIncomeTransferForClaimProcs(_patient.PatNum,_listClaimProcsForClaim);
 				}
-				if(PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary) && !receivedAsNoPay && _claim.ClaimType=="P") {
-					List<Claim> listClaims=Claims.GetPrimaryOrSecondaryClaimsNotReceived(_listClaimProcsForClaim);
+				//Open Dental 26.1: recalculate the next insurance's claims after a claim of any ordinal is received, not only after a primary claim.
+				if(ClaimReceiveRelated.IsRecalcNextInsuranceNeeded(_claim,receivedAsNoPay,PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary))) {
+					List<Claim> listClaims=Claims.GetNextOrdinalClaimsNotReceived(_listClaimProcsForClaim,includeHoldForInProcess:true);
 					List<Benefit> listBenefits=Benefits.GetAllForPatPlans(_listPatPlans,_listInsSubs);
 					for(int i=0;i<listClaims.Count;i++) {
 						List<Procedure> listProcedures=Procedures.GetProcsForClaimNum(listClaims[i].ClaimNum);

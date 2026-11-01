@@ -46,9 +46,7 @@
         <ui:TextBox x:Name="textAddress2" Width="297" Height="20" Margin="149,157,0,0" TabIndexOD="5" />
         <ui:TextBox x:Name="textAddress" Width="297" Height="20" Margin="149,135,0,0" TabIndexOD="4" />
         <ui:TextBox x:Name="textTitle" Width="70" Height="20" Margin="149,113,0,0" TabIndexOD="3" />
-        <ui:TextBox x:Name="textPhone3" Width="39" Height="20" Margin="230,245,0,0" TabIndexOD="11" />
-        <ui:TextBox x:Name="textPhone2" Width="28" Height="20" Margin="190,245,0,0" TabIndexOD="10" />
-        <ui:TextBox x:Name="textPhone1" Width="28" Height="20" Margin="149,245,0,0" TabIndexOD="9" />
+        <ui:TextBox x:Name="textPhone" Width="161" Height="20" Margin="149,245,0,0" TabIndexOD="9" MaxLength="30" />
         <ui:TextBox x:Name="textST" Width="118" Height="20" Margin="149,201,0,0" TabIndexOD="7" />
         <ui:TextBox x:Name="textMName" Width="169" Height="20" Margin="149,91,0,0" TabIndexOD="2" />
         <ui:TextBox x:Name="textFName" Width="297" Height="20" Margin="149,69,0,0" TabIndexOD="1" />
@@ -61,9 +59,6 @@
         <ui:Label x:Name="label8" Width="104" Height="18" Margin="44,159,0,0" Text="Address2" HAlign="Right" />
         <ui:Label x:Name="label9" Width="104" Height="18" Margin="44,137,0,0" Text="Address" HAlign="Right" />
         <ui:Label x:Name="label5" Width="89" Height="18" Margin="60,115,0,0" Text="Title (DDS)" HAlign="Right" />
-        <ui:Label x:Name="label13" Width="6" Height="16" Margin="220,247,0,0" Text="-" HAlign="Center" />
-        <ui:Label x:Name="label11" Width="6" Height="16" Margin="178,247,0,0" Text=")" HAlign="Center" />
-        <ui:Label x:Name="label12" Width="11" Height="16" Margin="140,247,0,0" Text="(" HAlign="Right" />
         <ui:Label x:Name="label14" Width="95" Height="18" Margin="44,247,0,0" Text="Phone" HAlign="Right" />
         <ui:Label x:Name="label10" Width="99" Height="18" Margin="51,508,0,0" Text="Specialty" HAlign="Right" />
         <ui:GroupBox x:Name="groupSSN" Width="141" Height="86" Margin="141,354,0,0" Text="SSN or TIN (no dashes)" >

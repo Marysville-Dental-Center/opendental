@@ -116,6 +116,7 @@
 			this.textEDSAttachmentID = new OpenDental.ODtextBox();
 			this.label7 = new System.Windows.Forms.Label();
 			this.gridEDSSent = new OpenDental.UI.GridOD();
+			this.labelEdsValidationState = new System.Windows.Forms.Label();
 			this.tabCanadianAttachments = new OpenDental.UI.TabPage();
 			this.groupCanadianAttachedImages = new OpenDental.UI.GroupBox();
 			this.butCanadianExport = new OpenDental.UI.Button();
@@ -1261,6 +1262,7 @@
 			this.tabEDS.Controls.Add(this.textEDSAttachmentID);
 			this.tabEDS.Controls.Add(this.label7);
 			this.tabEDS.Controls.Add(this.gridEDSSent);
+			this.tabEDS.Controls.Add(this.labelEdsValidationState);
 			this.tabEDS.Location = new System.Drawing.Point(2, 21);
 			this.tabEDS.Name = "tabEDS";
 			this.tabEDS.Size = new System.Drawing.Size(667, 198);
@@ -1310,6 +1312,14 @@
 			this.gridEDSSent.Title = "Attachments Sent";
 			this.gridEDSSent.TranslationName = "gridSent";
 			this.gridEDSSent.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridSent_CellDoubleClick);
+			// 
+			// labelEdsValidationState
+			// 
+			this.labelEdsValidationState.Location = new System.Drawing.Point(467, 6);
+			this.labelEdsValidationState.Name = "labelEdsValidationState";
+			this.labelEdsValidationState.Size = new System.Drawing.Size(195, 188);
+			this.labelEdsValidationState.TabIndex = 157;
+			this.labelEdsValidationState.Text = "";
 			// 
 			// tabCanadianAttachments
 			// 
@@ -4132,5 +4142,6 @@
 		private UI.WarningIntegrity warningIntegrity;
 		private System.Windows.Forms.Label labelWorkflowMsg;
 		private System.Windows.Forms.Label labelDxcAttachmentState;
+		private System.Windows.Forms.Label labelEdsValidationState;
 	}
 }

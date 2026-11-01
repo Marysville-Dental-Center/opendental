@@ -180,6 +180,7 @@ namespace OpenDental{
 		private void gridMain_CellDoubleClick(object sender,OpenDental.UI.ODGridClickEventArgs e) {
 			using FormAutomationConditionEdit formAutmationConditionEdit=new FormAutomationConditionEdit();
 			formAutmationConditionEdit.AutomationConditionCur=_listAutomationConditions[e.Row];
+			formAutmationConditionEdit.AutomationTriggerCur=GetTriggerSelected();
 			formAutmationConditionEdit.ShowDialog();
 			FillGrid();
 		}
@@ -199,11 +200,20 @@ namespace OpenDental{
 			formAutomationConditionEdit.IsNew=true;
 			formAutomationConditionEdit.AutomationConditionCur=new AutomationCondition();
 			formAutomationConditionEdit.AutomationConditionCur.AutomationNum=_automation.AutomationNum;
+			formAutomationConditionEdit.AutomationTriggerCur=GetTriggerSelected();
 			formAutomationConditionEdit.ShowDialog();
 			if(formAutomationConditionEdit.DialogResult!=DialogResult.OK) {
 				return;
 			}
 			FillGrid();
+		}
+
+		///<summary>The trigger chosen in comboTrigger, or null when none is chosen.</summary>
+		private EnumAutomationTrigger? GetTriggerSelected() {
+			if(comboTrigger.SelectedIndex<0) {
+				return null;
+			}
+			return (EnumAutomationTrigger)comboTrigger.SelectedIndex;
 		}
 
 		private void butDelete_Click(object sender,EventArgs e) {
@@ -224,6 +234,12 @@ namespace OpenDental{
 			}
 			if(comboAction.SelectedIndex==-1) {
 				MsgBox.Show(this,"Action not allowed to be blank.");
+				return;
+			}
+			//26.1: the clinic mismatch condition works only with the ProcedureComplete trigger.
+			string errorClinicMismatch=AutomationClinicMismatches.GetSaveError((EnumAutomationTrigger)comboTrigger.SelectedIndex,_listAutomationConditions);
+			if(errorClinicMismatch!="") {
+				MessageBox.Show(Lan.g(this,errorClinicMismatch));
 				return;
 			}
 			_automation.Description=textDescription.Text;
