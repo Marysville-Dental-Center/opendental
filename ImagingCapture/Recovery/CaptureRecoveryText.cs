@@ -51,6 +51,24 @@ namespace ImagingCapture.Recovery {
 			return patient.GetNameFL()+", "+char.ToLowerInvariant(birthdate[0])+birthdate.Substring(1)+" (PatNum "+ToText(patient.PatNum)+")";
 		}
 
+		public const string SlotUnknown="Slot unknown";
+		public const string ToothNumbersUnknown="Tooth numbers unknown";
+
+		///<summary>The target an entry is shown with: its sidecar's slot (or single-image target) when it is the image's own (IsSlotKnown). For a
+		///later image of a continuous enable, or a redelivered one, whose target the session did not record, the sidecar names the target its
+		///enable began at, which is not the image's: "Slot unknown (its enable began at Slot 1 (teeth 1,2))", or "Tooth numbers unknown (...)"
+		///without a mount.</summary>
+		public static string GetSlotText(CaptureFileEntry entry) {
+			if(entry==null) {
+				return "";
+			}
+			if(entry.IsSlotKnown) {
+				return entry.Slot;
+			}
+			string unknown=entry.MountNum>0 ? SlotUnknown : ToothNumbersUnknown;
+			return entry.Slot=="" ? unknown : unknown+" (its enable began at "+entry.Slot+")";
+		}
+
 		///<summary>The capture's file in words for the security log: "file 20261031-...-a3f9.bmp (quarantine, session ..., received
 		///2026-10-31 10:00:05, source "Example Sensor DS", captureId "cap-7", sequence 3, slot Slot 3 (teeth 2,3))".</summary>
 		public static string GetFileText(CaptureFileEntry entry) {
@@ -69,8 +87,9 @@ namespace ImagingCapture.Recovery {
 			if(entry.Sequence!=null) {
 				stringBuilder.Append(", sequence ").Append(ToText(entry.Sequence.Value));
 			}
-			if(entry.Slot!="") {
-				stringBuilder.Append(", slot ").Append(Clean(entry.Slot));
+			string slotText=GetSlotText(entry);
+			if(slotText!="") {
+				stringBuilder.Append(", slot ").Append(Clean(slotText));
 			}
 			stringBuilder.Append(")");
 			return stringBuilder.ToString();

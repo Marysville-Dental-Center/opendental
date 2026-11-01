@@ -303,7 +303,8 @@ namespace ImagingCapture.Recovery {
 				: entry.IsPatientUnknown ? CaptureRecoveryText.PatientUnknown
 				: entry.Kind==CaptureFileKind.Quarantine && entry.PatientName!="" ? entry.PatientName
 				: "PatNum "+entry.PatNum.ToString(CultureInfo.InvariantCulture);
-			item.TitleText=patient+" | "+FormatTime(entry.ReceivedAt)+(entry.Slot=="" ? "" : " | "+entry.Slot);
+			string slotText=CaptureRecoveryText.GetSlotText(entry);
+			item.TitleText=patient+" | "+FormatTime(entry.ReceivedAt)+(slotText=="" ? "" : " | "+slotText);
 			item.NoteText=GetNoteText(item);
 			return item;
 		}
@@ -630,7 +631,7 @@ namespace ImagingCapture.Recovery {
 			add("Patient",entry.IsPatientUnknown ? CaptureRecoveryText.PatientUnknown
 				: (entry.PatientName=="" ? "" : entry.PatientName+" ")+"(PatNum "+entry.PatNum.ToString(CultureInfo.InvariantCulture)+")");
 			add("Session",entry.SessionGuid?.ToString("D"));
-			add("Slot",entry.Slot);
+			add("Slot",CaptureRecoveryText.GetSlotText(entry));
 			add("Mount",entry.MountNum>0 ? "MountNum "+entry.MountNum.ToString(CultureInfo.InvariantCulture) : "");
 			add("Received",FormatTime(entry.ReceivedAt));
 			add("Device or source",entry.Source);

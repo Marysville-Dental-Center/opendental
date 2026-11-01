@@ -62,6 +62,33 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void ALaterImageOfAContinuousEnable_ItsSlotNotRecorded_ShownAsSlotUnknown_NeverAsItsEnablesSlot() {
+			//The sidecar's Slot is the slot the continuous enable began at (slot 3); image 2 was for whatever slot was the target then.
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
+			dictFields[CaptureSidecarKeys.ContinuousEnable]="1";
+			dictFields[CaptureSidecarKeys.IndexInEnable]="2";
+			_harness.Files.Quarantine(dictFields,_receivedAt);
+			dictFields=RecoveryFiles.SessionFields(captureId:"cap-8");
+			dictFields[CaptureSidecarKeys.ContinuousEnable]="1";
+			dictFields[CaptureSidecarKeys.IndexInEnable]="2";
+			dictFields[CaptureSidecarKeys.SlotOfImage]="1";//the session recorded this image's own slot
+			_harness.Files.Quarantine(dictFields,_receivedAt.AddMinutes(1));
+			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);
+			Assert.AreEqual(2,model.Items.Count);
+			CaptureRecoveryItem itemUnknown=model.Items.Single(x => !x.Entry.IsSlotKnown);
+			Assert.AreEqual("Doe, Jane | 2026-10-31 10:00:05 | Slot unknown (its enable began at Slot 3 (teeth 6))",itemUnknown.TitleText);
+			model.Select(model.Items.ToList().IndexOf(itemUnknown));
+			StringAssert.Contains(model.DetailsText,"Slot: Slot unknown (its enable began at Slot 3 (teeth 6))");
+			Assert.IsFalse(model.DetailsText.Contains("Slot: Slot 3"),model.DetailsText);
+			StringAssert.Contains(CaptureRecoveryText.GetFileText(itemUnknown.Entry),", slot Slot unknown (its enable began at Slot 3 (teeth 6)))",
+				"The security-log text says so too.");
+			CaptureRecoveryItem itemKnown=model.Items.Single(x => x.Entry.IsSlotKnown);
+			Assert.AreEqual("Doe, Jane | 2026-10-31 10:01:05 | Slot 3 (teeth 6)",itemKnown.TitleText);
+			model.Select(model.Items.ToList().IndexOf(itemKnown));
+			StringAssert.Contains(model.DetailsText,"Slot: Slot 3 (teeth 6)");
+		}
+
+		[TestMethod]
 		public void Assign_PermissionWhenBegun_ThenTheExplicitConfirmation() {
 			_harness.Files.Quarantine(RecoveryFiles.SessionFields(),_receivedAt);
 			CaptureRecoveryModel model=Model(CaptureRecoveryView.Unassigned);
