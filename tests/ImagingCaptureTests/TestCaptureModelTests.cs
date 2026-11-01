@@ -358,6 +358,15 @@ Name=Not gated
 			record=FullRecord();
 			record.ByteOrderCheck="Inconclusive";
 			Assert.IsTrue(record.IsPassedFor16Bit,"Inconclusive passes when the operator confirmed it on the ramp.");
+			//The record never claims what the saver refuses: TWPF_VANILLA samples are written only inverted; inverted CHOCOLATE ones are written.
+			record=FullRecord();
+			record.PixelFlavor="Vanilla";
+			Assert.IsFalse(record.IsPassedFor16Bit);
+			StringAssert.Contains(TestCaptureModel.GetRecordWarning(record),"only with Polarity=Invert");
+			record.Polarity="Invert";
+			Assert.IsTrue(record.IsPassedFor16Bit);
+			record.PixelFlavor="Chocolate";
+			Assert.IsTrue(record.IsPassedFor16Bit,"A verified inversion of a chocolate source is the clinic's fix (twain-contract 1.1 section 6.2).");
 		}
 		#endregion CaptureVerificationRecord
 	}

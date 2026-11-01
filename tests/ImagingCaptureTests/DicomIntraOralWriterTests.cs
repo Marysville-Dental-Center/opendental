@@ -450,6 +450,20 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Inversion_ChocolateInvertedIsWrittenAndNoted() {
+			//twain-contract 1.1 keeps TWPF_CHOCOLATE and publishes after the clinic run whether the values follow it: a verified Polarity=Invert
+			//of a chocolate source is the clinic's fix, and the stored values then follow the verified polarity.
+			DicomIntraOralImage image=MakeImage();
+			image.IsInverted=true;
+			DicomWriteResult result;
+			TestDicomFile testDicomFile=WriteAndRead(image,out result);
+			Assert.IsTrue(result.IsWritten,result.Error);
+			StringAssert.StartsWith(Required(testDicomFile,0x00204000).Text,"rendering=original; polarity=inverted; ");
+			Assert.AreEqual(-1,Required(testDicomFile,0x00281041).SS);
+			Assert.AreEqual("MONOCHROME2",Required(testDicomFile,0x00280004).Text.Trim());
+		}
+
+		[TestMethod]
 		public void Uids_NewWhenNotGivenAndUnique() {
 			DicomIntraOralImage image=MakeImage();
 			image.StudyInstanceUid=null;
@@ -515,9 +529,6 @@ namespace ImagingCapture.Tests {
 			DicomIntraOralImage imageVanilla=MakeImage();
 			imageVanilla.PixelFlavor=AcquiredImage.PixelFlavorVanilla;
 			AssertRefused(imageVanilla,"VANILLA");
-			DicomIntraOralImage imageChocolateInverted=MakeImage();
-			imageChocolateInverted.IsInverted=true;
-			AssertRefused(imageChocolateInverted,"after inversion");
 			DicomIntraOralImage imageUnknownFlavor=MakeImage();
 			imageUnknownFlavor.PixelFlavor=5;
 			AssertRefused(imageUnknownFlavor,"flavor");

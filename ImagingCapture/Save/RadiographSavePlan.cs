@@ -258,7 +258,7 @@ namespace ImagingCapture.Save {
 			dicomImage.Pixels=arrayPixels;
 			dicomImage.XDpi=image.XDpi;
 			dicomImage.YDpi=image.YDpi;
-			dicomImage.PixelFlavor=image.PixelFlavor;//as delivered: the writer applies IsInverted itself
+			dicomImage.PixelFlavor=image.PixelFlavor;//as delivered: the writer writes verified inverted samples whatever it says
 			dicomImage.IsInverted=plan.IsInverted;
 			dicomImage.Target=target.ToIntraOralTarget();
 			dicomImage.Metadata=metadata;

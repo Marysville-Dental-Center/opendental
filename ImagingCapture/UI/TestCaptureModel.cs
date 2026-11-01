@@ -349,6 +349,9 @@ namespace ImagingCapture.UI {
 			if(!record.IsPolarityConfirmed) {
 				listReasons.Add("the polarity is not confirmed");
 			}
+			if(record.IsVanillaNotInverted) {
+				listReasons.Add("the source delivers TWPF_VANILLA samples, which are stored as DICOM only with Polarity=Invert");
+			}
 			return "This record does not verify 16-bit capture: "+string.Join(", ",listReasons)+".";
 		}
 

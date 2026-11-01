@@ -350,12 +350,30 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void Dicom16_DeliveredChocolate_InvertRefusedByWriter() {
+		public void Dicom16_DeliveredChocolate_VerifiedInvert_Saved() {
+			//twain-contract 1.1 keeps TWPF_CHOCOLATE and publishes after the clinic run whether the values follow it: if they do not, the
+			//verified Polarity=Invert is the clinic's fix, so the writer must accept it.
 			RadiographSaveRequest request=Request(Image16(),new RadiographTarget { Mount=Mount(),MountItem=Slot() });
 			request.Is16BitAllowed=true;
 			request.Polarity=TwainPolarity.Invert;
 			request.IsInversionVerified=true;
-			Assert.IsFalse(_radiographImport.Save(request).IsSaved,"Inverting TWPF_CHOCOLATE samples would store 0 as white.");
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsTrue(result.IsSaved,result.Error);
+			Assert.IsTrue(result.Plan.IsInverted);
+			TestDicomFile testDicomFile=TestDicomReader.Read(_store.BytesImported);
+			StringAssert.Contains(testDicomFile.Get(0x0020,0x4000).Text,"polarity=inverted");
+			ushort[] arrayDelivered=request.Image.Gray16;
+			byte[] arrayPixelData=testDicomFile.Get(0x7FE0,0x0010).Value;
+			Assert.AreEqual(4096-arrayDelivered[100],BitConverter.ToUInt16(arrayPixelData,100*2));
+		}
+
+		[TestMethod]
+		public void Dicom16_DeliveredVanilla_NotInverted_RefusedByWriter() {
+			RadiographSaveRequest request=Request(Image16(pixelFlavor:AcquiredImage.PixelFlavorVanilla),new RadiographTarget { Mount=Mount(),MountItem=Slot() });
+			request.Is16BitAllowed=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsFalse(result.IsSaved,"TWPF_VANILLA samples stored as delivered would have 0 as white.");
+			StringAssert.Contains(result.Error,"VANILLA");
 		}
 
 		[TestMethod]

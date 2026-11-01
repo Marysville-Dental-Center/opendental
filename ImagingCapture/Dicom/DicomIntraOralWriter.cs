@@ -22,7 +22,8 @@ namespace ImagingCapture.Dicom {
 		public double YDpi { get; set; }
 		///<summary>The pixel flavor the source delivered (AcquiredImage.PixelFlavor): PixelFlavorChocolate (0 is black) or PixelFlavorVanilla.</summary>
 		public int PixelFlavor { get; set; }
-		///<summary>The saver inverted the samples, as Polarity=Invert allows once it has been verified and logged (design 7.8).</summary>
+		///<summary>The saver inverted the samples, as Polarity=Invert allows once it has been verified and logged (design 7.8). Inverted samples
+		///are written whatever PixelFlavor says.</summary>
 		public bool IsInverted { get; set; }
 		///<summary>The source reports values that are logarithmic, not linear, in detector signal (W5): Pixel Intensity Relationship LOG
 		///instead of LIN.</summary>
@@ -96,8 +97,10 @@ namespace ImagingCapture.Dicom {
 	///dose attributes (design 7.9). Image Comments also records rendering=original.
 	///
 	///Polarity: Pixel Intensity Relationship Sign is always -1 (higher stored values mean less beam intensity, more radiopaque), which with
-	///MONOCHROME2 shows radiopaque structures white. That holds for samples whose flavor, after any verified inversion, is TWPF_CHOCOLATE
-	///(0 is black); the writer refuses any other samples rather than label them wrongly.
+	///MONOCHROME2 shows radiopaque structures white. That holds for samples delivered as TWPF_CHOCOLATE (0 is black), and for samples the
+	///saver inverted under a verified Polarity=Invert, whatever flavor the source reported: the stored values follow the polarity the clinic
+	///verified (design 7.8), not the flavor label, which twain-contract 1.1 keeps at TWPF_CHOCOLATE until its clinic run says whether the
+	///values follow it. The writer refuses TWPF_VANILLA samples that were not inverted rather than label them wrongly.
 	///
 	///The writer refuses (IsWritten false, with Error) a target with no mount slot or no tooth numbers (design 7.10: those are captured at
 	///8 bits and never written as DICOM; CanWrite checks this before an enable), and an image it cannot describe truthfully. It never
@@ -249,11 +252,12 @@ namespace ImagingCapture.Dicom {
 				error="The image's pixel flavor ("+image.PixelFlavor+") is not known.";
 				return false;
 			}
-			bool isChocolate=(image.PixelFlavor==AcquiredImage.PixelFlavorChocolate)!=image.IsInverted;
-			if(!isChocolate) {
-				error="The stored samples would have 0 as white (TWPF_VANILLA"+(image.IsInverted ? " after inversion" : "")+"). DICOM MONOCHROME2 with Pixel "
-					+"Intensity Relationship Sign -1 needs higher values to be more radiopaque; a vanilla source needs the verified Polarity=Invert "
-					+"(design 7.8).";
+			//Samples the saver inverted follow the verified polarity, whatever flavor the source reported: the operator confirmed on the phantom,
+			//after the inversion, that radiopaque markers show white. twain-contract 1.1 section 6.2 keeps TWPF_CHOCOLATE and publishes only after
+			//the clinic run whether the values follow it, so Invert must work for a CHOCOLATE source too.
+			if(!image.IsInverted && image.PixelFlavor!=AcquiredImage.PixelFlavorChocolate) {
+				error="The stored samples would have 0 as white (TWPF_VANILLA). DICOM MONOCHROME2 with Pixel Intensity Relationship Sign -1 needs "
+					+"higher values to be more radiopaque; a vanilla source needs the verified Polarity=Invert (design 7.8).";
 				return false;
 			}
 			CaptureMetadata captureMetadata=image.Metadata;

@@ -79,12 +79,18 @@ namespace ImagingCapture.Settings {
 		}
 
 		///<summary>The record verifies 16-bit capture: a 16-bit image was measured, the automatic byte-order check did not find the bytes
-		///swapped, and the operator confirmed byte order and polarity on the phantom (design 7.8 condition 2).</summary>
+		///swapped, the operator confirmed byte order and polarity on the phantom (design 7.8 condition 2), and the saver would write the
+		///samples (IsVanillaNotInverted is false: DicomIntraOralWriter refuses TWPF_VANILLA samples stored as delivered).</summary>
 		public bool IsPassedFor16Bit =>
 			BitsDelivered==16
 			&& !string.Equals(ByteOrderCheck,"LooksSwapped",StringComparison.OrdinalIgnoreCase)
 			&& IsByteOrderConfirmed
-			&& IsPolarityConfirmed;
+			&& IsPolarityConfirmed
+			&& !IsVanillaNotInverted;
+
+		///<summary>The source delivered TWPF_VANILLA samples and Polarity is not Invert: the DICOM writer refuses such samples.</summary>
+		public bool IsVanillaNotInverted =>
+			string.Equals(PixelFlavor,"Vanilla",StringComparison.OrdinalIgnoreCase) && !string.Equals(Polarity,"Invert",StringComparison.OrdinalIgnoreCase);
 
 		///<summary>The security-log text: LogPrefix, then key=value pairs separated by "; ".</summary>
 		public string ToLogText() {
