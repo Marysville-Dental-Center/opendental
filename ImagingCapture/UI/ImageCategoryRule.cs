@@ -84,15 +84,21 @@ namespace ImagingCapture.UI {
 		///<summary>"" when photos may go into this category. Otherwise the warning to show next to the picker. 0 (no category chosen)
 		///and unknown categories give "".</summary>
 		public string GetWarning(long defNum) {
+			return GetWarning(defNum,"photo","Photos");
+		}
+
+		///<summary>GetWarning for images of another kind, named in the text: imageSingular "X-ray" and imagePlural "X-rays" for the X-ray category
+		///FrmTestCapture checks.</summary>
+		public string GetWarning(long defNum,string imageSingular,string imagePlural) {
 			ImageCategoryItem item=Find(defNum);
 			if(item==null || !CarriesPatientPictureLetter(item.UsageLetters)) {
 				return "";
 			}
 			if(item.DefNum==GetPatientPictureDefNum()) {
-				return "\""+item.Name+"\" is the patient picture category (usage P). Every photo saved in it becomes the patient's picture. "
+				return "\""+item.Name+"\" is the patient picture category (usage P). Every "+imageSingular+" saved in it becomes the patient's picture. "
 					+"Choose a category without P.";
 			}
-			return "\""+item.Name+"\" is marked for patient pictures (usage P). Photos saved in it can become the patient's picture. "
+			return "\""+item.Name+"\" is marked for patient pictures (usage P). "+imagePlural+" saved in it can become the patient's picture. "
 				+"Choose a category without P.";
 		}
 
