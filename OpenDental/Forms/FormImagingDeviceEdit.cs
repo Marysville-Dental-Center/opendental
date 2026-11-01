@@ -68,6 +68,16 @@ namespace OpenDentalImaging {
 			frmTestCapture.ShowDialog();
 		}
 
+		///<summary>Capture settings (ImagingCapture): this computer's capture.ini for this device, with the gated keys that change only there (Setup
+		///permission, logged with the settings hash). It runs for the saved row, because capture.ini's [Device.N] is keyed by ImagingDeviceNum.</summary>
+		private void butCaptureSettings_Click(object sender,EventArgs e) {
+			if(ImagingDeviceCur.IsNew) {
+				MsgBox.Show(this,"Save the device first.");
+				return;
+			}
+			ImagingCapture.UI.FrmCaptureSettings.ShowForDevice(ImagingDeviceCur);
+		}
+
 		private void butDelete_Click(object sender,EventArgs e) {
 			if(ImagingDeviceCur.IsNew){
 				DialogResult=DialogResult.Cancel;
