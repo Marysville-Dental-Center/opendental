@@ -1,6 +1,7 @@
 # V-EDS: EDS enhanced claim validation (port note)
 
-Package V-EDS of [the port backlog](../specs/port-backlog.md) (wave C2, vendor-direct). Branch `port/v-eds`, cut from `m1/integration-a2-patch`.
+Package V-EDS of [the port backlog](../specs/port-backlog.md) (wave C2, vendor-direct). Branch `port/v-eds`, cut from `m1/integration-a2-patch`; fix round
+`port/v-eds-s1`; finished on `port/v-eds-t1`, which merges the integration head `port/int-7` (see Integration).
 Spec: [features-26.1.md](../specs/features-26.1.md), item `v26_1-manage-eds-claim-validation`. Ground rules: [decoupling-plan.md](../decoupling-plan.md)
 (rules 6 and 7) and [vendor-direct/README.md](../specs/vendor-direct/README.md).
 
@@ -8,7 +9,7 @@ Spec: [features-26.1.md](../specs/features-26.1.md), item `v26_1-manage-eds-clai
 
 | Feature ID | Status | Summary |
 |---|---|---|
-| `v26_1-manage-eds-claim-validation` | **partial** | Spec rules 1, 3, 4 and 5 are built. Rule 2 is **partial**: its narrative check is built as a local check, but no public source says which procedure codes need a narrative, so it only repeats what EDS's last answer for the claim said. That answer needs the EDS attachment service, which is off by default, so in the default setup the narrative check never fires (see Deviations and owner question 7). The extra checks that EDS itself runs in Open Dental 26.1 are **partner-gated**: neither the checks nor the endpoint are public (26.1 open question 4). |
+| `v26_1-manage-eds-claim-validation` | built (partner-gated part) | Spec rules 1 to 5 are built. In rule 2, the narrative check is built with the only public source of which procedures need a narrative: EDS's last answer for the claim (INFERRED 11). That answer needs the EDS attachment service, which is off by default, so in the default setup the narrative check never fires (see Deviations and owner question 7). **Partner-gated:** the extra checks that EDS itself runs in Open Dental 26.1. Neither the checks nor their endpoint are public (26.1 open question 4). They plug in at `IEdsEnhancedValidator`. Not run against EDS (no test account). |
 
 What is built:
 
@@ -78,7 +79,7 @@ Changed (small, local hooks):
    - Close sends only the claims without problems.
 
    For EDS claims, this replaces the batch-wide "Not allowed to send e-claims with missing information" refusal.
-9. **Edit Claim Send.** For an EDS claim, the "Cannot send claim until missing/invalid data is fixed" message is replaced by the validation window, which lists the same text as one "Claim data" row, so there is one list (rule 3).
+9. **Edit Claim Send.** For an EDS claim, the "Cannot send claim until missing/invalid data is fixed" message is replaced by the validation window, which lists the same text as one "Claim data" row, so there is one list (rule 3). When the user re-validated in the window and then chose Send, `EdsValidationL.ValidateBeforeSend` reads the claim's Missing Info and Warnings again (`RefreshMissingData`, finish round `port/v-eds-t1`). Edit Claim checks Missing Info right after, so a problem fixed in the meantime, for example by another workstation, no longer stops the send with the old message. A problem that is still there still stops it.
 10. **Payer list.** The payer-list checks run only when EDS payer rows exist (`electid.CommBridge=EDS`, written by `EDS.GetPayerList`). Nothing in the fork calls `EDS.GetPayerList` today (Open Dental ran it from its service), so on most databases these checks stay silent.
 11. **Which procedures need a narrative (rule 2).** No public source says which procedure codes need a narrative, and the fork has no such list: the procedure code table has no flag for it, and CDT descriptors may not be copied. EDS's attachment validation does say it, per procedure: a procedure answer with `response=true` and a Narrative document.
     - **What is remembered.** Each time EDS answers for a claim, `EdsClaimValidation` keeps the procedure codes EDS named, per claim, on this workstation and in memory, as with the last result (INFERRED 7). The next answer replaces them. EDS's procID is the procedure's own code (`ProcedureCodes.GetForClaim`), so a line matches on that code or on the code sent.
@@ -107,6 +108,15 @@ Changed (small, local hooks):
 - **V-DXC1 / XConnect**: independent; it uses a different comm bridge. The EDS batch hook runs right after `ApplyXConnectResultsToSelection()`.
 - **Other packages editing `FormClaimEdit.cs` or `FormClaimsSend.cs`** (B-CLAIM, V-PAYSUITE later): the edits are single insertions at three points: the Send path after `GetMissingData`, the save path after the ClaimConnect block, and `FillForm` after `FillDxcAttachmentState()`. The designer edit adds one control to `tabEDS`.
 - **`OpenDental.sln` / `OpenDental.Local.slnf` / `OpenDental.csproj`**: additions at the end of the test-project list and next to the XConnect window entries; they may conflict textually with other packages' additions at merge time (keep both).
+
+## Integration (`port/v-eds-t1`)
+
+- **Merged:** `port/int-7` at `1763cc7ae`, with no conflicts. The `.sln` and `.slnf` keep `VEDSTests` next to `VDXC2Tests` and the other merged test projects.
+- **V-DXC2 on the base.** It changed `FormClaimAttachment` (DentalXChange PDFs: `DxcPdfAttachment`, the DentalXChange branches of `FillGrid`, `GetSelectedImage` and saving). This package's five lines in the EDS branch of `FormClaimAttachment_Shown` sit apart from those changes. EDS attachments still refuse PDFs through `DxcPdfAttachment.IsPdfAccepted`.
+- **B-PERIO on the base.** It changed three sizes in `FormClaimEdit.butAttachPerioHelper`, apart from this package's three insertions.
+- **No duplicate helpers.** The base has no NPI check digit or taxonomy format helper (the X12 validators check only the NPI's length), so `EdsClaimChecks` keeps its own. The scratch database still comes from `tests/ForkMigrationTests/TestDb.cs`, as in the other test projects.
+- **No fork migration step, schema or preference**, so the adoption tools (`tools/AdoptionValidation`) have nothing to expect from this package.
+- **Not merged yet: M2-CLAIMRCV and B-CLAIM.** The hooks they need are described in "Interplay" above.
 
 ## Tests
 
@@ -140,7 +150,7 @@ Changed (small, local hooks):
   - `ValidateClaimNum` with and without a clearinghouse override, and for a deleted claim (cannot be sent, not skipped);
   - a batch whose claims are sent, deleted, held or marked probably sent after validation (INFERRED 12): re-validated as the batch window does, and also without a re-validation, neither the sent, the deleted nor the held claim is in the final list (`GetClaimNumsToSendForBatch`, which `ListClaimNumsAllowed` comes from), even with Send Anyway; the P claim still goes; Edit Claim's own re-validation still allows resending a sent claim.
 - **Source wiring:**
-  - the hooks sit where rule 1 needs them;
+  - the hooks sit where rule 1 needs them, and Edit Claim's Send reads Missing Info again after a re-validation in the window;
   - the batch window re-validates with the waiting-to-send rule, every batch path reads the claims again, and Send Claims deselects and drops the claims that are no longer waiting;
   - the new files are in the projects;
   - the new files have no links or promotional words;
