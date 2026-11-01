@@ -610,6 +610,15 @@ namespace ImagingDeviceManager.Capture {
 					context.ErrorText="The capture session is closing.";
 					return;
 				}
+				TwainCaptureStopReason reasonBeforeEnable;
+				if(TryTakeStopRequest(context,out reasonBeforeEnable)) {
+					//A Disable or Cancel posted while the enable was prepared: MSG_ENABLEDS is not sent, so the sensor software never starts and
+					//nothing is stopped without safe disable.
+					context.StopReason=reasonBeforeEnable;
+					context.Reason=TwainCaptureEndReason.Stopped;
+					Log("Enable "+context.Id+" is stopped ("+reasonBeforeEnable+") before MSG_ENABLEDS; the sensor software was not started.");
+					return;
+				}
 				ushort rc=_session.EnableForCapture(isShowUI);
 				if(rc!=Tw.TWRC_SUCCESS && rc!=Tw.TWRC_CHECKSTATUS) {
 					context.Reason=TwainCaptureEndReason.EnableFailed;
@@ -821,8 +830,9 @@ namespace ImagingDeviceManager.Capture {
 			return _isClosing || (context!=null && context.DeadlineMs>0 && NowMs>=context.DeadlineMs);
 		}
 
-		///<summary>While enabled: takes the first Disable from the queue, or sees a Close (left queued for after the enable), the session timeout
-		///or BeginClose. Enable and RedeliveryRequest commands before it are refused at once: the source is already enabled.</summary>
+		///<summary>While enabled, and once right before MSG_ENABLEDS: takes the first Disable from the queue, or sees a Close (left queued for
+		///after the enable), the session timeout or BeginClose. Enable and RedeliveryRequest commands before it are refused at once: the source
+		///is already enabled, or being enabled.</summary>
 		private bool TryTakeStopRequest(EnableContext context,out TwainCaptureStopReason reason) {
 			reason=TwainCaptureStopReason.None;
 			List<Command> listRefused=new List<Command>();
@@ -848,7 +858,7 @@ namespace ImagingDeviceManager.Capture {
 				}
 			}
 			foreach(Command command in listRefused) {
-				RaiseEnded(new EnableContext(command),TwainCaptureEndReason.Refused,"The source is already enabled (enable "+context.Id+").");
+				RaiseEnded(new EnableContext(command),TwainCaptureEndReason.Refused,"The source is already enabled, or being enabled (enable "+context.Id+").");
 			}
 			if(reason==TwainCaptureStopReason.None && _isClosing) {
 				reason=TwainCaptureStopReason.Close;

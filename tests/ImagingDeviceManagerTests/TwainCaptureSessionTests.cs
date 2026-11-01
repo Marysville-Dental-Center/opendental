@@ -548,6 +548,37 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
+		public void DisableWhileTheEnableIsPrepared_NoEnableDsSent_NothingStoppedUnsafely() {
+			Options.RedeliverCap=FakeHelperSource.CapRedeliver;
+			bool isDisablePending=true;
+			Capture.StatusChanged+=status => {
+				if(status.State==TwainCaptureState.Enabling && isDisablePending) {
+					isDisablePending=false;
+					Capture.Disable(TwainCaptureStopReason.TargetChanged);//Stop is clickable as soon as the enable is posted.
+				}
+			};
+			_harness.OpenOrFail();
+			TwainCaptureEnded ended=_harness.WaitForEnded(EnableOne());
+			Assert.AreEqual(TwainCaptureEndReason.Stopped,ended.Reason);
+			Assert.AreEqual(TwainCaptureStopReason.TargetChanged,ended.StopReason);
+			Assert.IsFalse(ended.WasDisableStartedUnsafe);
+			Assert.AreEqual(0,Helper.CountEnable,"MSG_ENABLEDS was never sent: the sensor software did not start.");
+			Assert.IsFalse(_harness.HasLog("Capture event: enable"),"No false 'may hold an exposure' event.\r\n"+_harness.LogText);
+			Assert.AreEqual(4,Helper.State);
+			//The same for a redelivery: RedeliverCap goes back to FALSE without an enable.
+			isDisablePending=true;
+			int start=Calls.Count;
+			ended=_harness.WaitForEnded(Capture.RequestRedelivery(null));
+			Assert.AreEqual(TwainCaptureEndReason.Stopped,ended.Reason);
+			Assert.AreEqual(0,Helper.CountEnable);
+			int idxTrue=_harness.IndexOfCall(x => x.Name=="CAP/SET" && x.Cap==FakeHelperSource.CapRedeliver && x.Value==1,start);
+			int idxFalse=_harness.IndexOfCall(x => x.Name=="CAP/SET" && x.Cap==FakeHelperSource.CapRedeliver && x.Value==0,start);
+			Assert.IsTrue(idxTrue>=0 && idxFalse>idxTrue,_harness.CallText);
+			Assert.AreEqual(TwainCaptureEndReason.Completed,_harness.WaitForEnded(EnableOne()).Reason,"The session stays usable.");
+			Assert.AreEqual(1,Helper.CountEnable);
+		}
+
+		[TestMethod]
 		public void DisableThenEnable_RunInOrder() {
 			Helper.ListExposures.Clear();
 			Helper.End=FakeHelperEnd.Never;
