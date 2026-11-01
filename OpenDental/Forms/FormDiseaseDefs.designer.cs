@@ -51,6 +51,7 @@ namespace OpenDental {
 			this.butUp = new OpenDental.UI.Button();
 			this.butAlphabetize = new OpenDental.UI.Button();
 			this.labelAlphabetize = new System.Windows.Forms.Label();
+			this.butMerge = new OpenDental.UI.Button();
 			this.groupBox1.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -275,11 +276,23 @@ namespace OpenDental {
 			this.labelAlphabetize.TabIndex = 29;
 			this.labelAlphabetize.Text = "Orders the problem list alphabetically";
 			this.labelAlphabetize.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			// 
+			//
+			// butMerge
+			//
+			this.butMerge.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.butMerge.Enabled = false;
+			this.butMerge.Location = new System.Drawing.Point(561, 173);
+			this.butMerge.Name = "butMerge";
+			this.butMerge.Size = new System.Drawing.Size(79, 26);
+			this.butMerge.TabIndex = 30;
+			this.butMerge.Text = "Merge";
+			this.butMerge.Click += new System.EventHandler(this.butMerge_Click);
+			//
 			// FormDiseaseDefs
 			// 
 			this.ClientSize = new System.Drawing.Size(680, 697);
 			this.Controls.Add(this.butOK);
+			this.Controls.Add(this.butMerge);
 			this.Controls.Add(this.labelAlphabetize);
 			this.Controls.Add(this.butAlphabetize);
 			this.Controls.Add(this.butAdd);
@@ -318,5 +331,6 @@ namespace OpenDental {
 		private OpenDental.UI.CheckBox checkShowHidden;
 		private UI.Button butAlphabetize;
 		private Label labelAlphabetize;
+		private UI.Button butMerge;
 	}
 }

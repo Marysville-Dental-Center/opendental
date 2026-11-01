@@ -57,6 +57,7 @@ namespace OpenDental{
 				labelAlphabetize.Visible=false;
 				butAlphabetize.Visible=false;
 				checkShowHidden.Visible=false;
+				butMerge.Visible=false;
 				if(IsMultiSelect) {
 					gridMain.SelectionMode=GridSelectionMode.MultiExtended;
 				}
@@ -66,6 +67,10 @@ namespace OpenDental{
 			else{
 				//change UI
 				butOK.Visible=false;
+				//Merge needs two selected rows.
+				gridMain.SelectionMode=GridSelectionMode.MultiExtended;
+				gridMain.MouseUp+=(o,args) => SetMergeEnabled();
+				gridMain.KeyUp+=(o,args) => SetMergeEnabled();
 				//show all items, including hidden.
 				_listDiseaseDefs=DiseaseDefs.GetDeepCopy();
 			}
@@ -123,6 +128,7 @@ namespace OpenDental{
 				gridMain.ListGridRows.Add(row);
 			}
 			gridMain.EndUpdate();
+			SetMergeEnabled();
 		}
 
 		///<summary>Returns a list of DiseaseDefs from the ones passed in that match the all criteria from filterText based off of the search type.
@@ -312,6 +318,90 @@ namespace OpenDental{
 			listSelectedIndices.ForEach(x => gridMain.SetSelected(x+1,true));
 			_isChanged=true;
 		}
+
+		#region Merge (26.1)
+		///<summary>Merge is enabled when exactly two rows are selected. The button is hidden in selection mode.</summary>
+		private void SetMergeEnabled() {
+			butMerge.Enabled=(!IsSelectionMode && gridMain.SelectedIndices.Length==2);
+		}
+
+		///<summary>Writes the window's unsaved changes (edits, new problems, deletions, order) to the database now instead of on closing, so a merge
+		///works on saved problems that all have numbers.</summary>
+		private void SaveChangesNow() {
+			if(!_isChanged) {
+				return;
+			}
+			DiseaseDefs.Sync(_listDiseaseDefs,_listDiseaseDefsOld);
+			_listSecurityLogMsgs.FindAll(x => !string.IsNullOrEmpty(x)).ForEach(x => SecurityLogs.MakeLogEntry(EnumPermType.ProblemDefEdit,0,x));
+			_listSecurityLogMsgs.Clear();
+			DiseaseDefs.RefreshCache();
+			DiseaseDefs.FixItemOrders();
+			DataValid.SetInvalid(InvalidType.Diseases);
+			_isChanged=false;
+			ReloadDiseaseDefs();
+		}
+
+		///<summary>Reloads the full list (hidden problems included) from the cache. Not used in selection mode.</summary>
+		private void ReloadDiseaseDefs() {
+			_listDiseaseDefs=DiseaseDefs.GetDeepCopy();
+			_listDiseaseDefsOld=_listDiseaseDefs.Select(x => x.Copy()).ToList();
+		}
+
+		///<summary>Merges the two selected problems. The user chooses which one to keep; everything that used the other one moves to it, and the
+		///other one is deleted.</summary>
+		private void butMerge_Click(object sender,EventArgs e) {
+			if(IsSelectionMode || !Security.IsAuthorized(EnumPermType.ProblemDefEdit)) {
+				return;
+			}
+			if(gridMain.SelectedIndices.Length!=2) {
+				MsgBox.Show(this,"Select exactly two problems to merge.");
+				return;
+			}
+			DiseaseDef diseaseDef1=(DiseaseDef)gridMain.ListGridRows[gridMain.SelectedIndices[0]].Tag;
+			DiseaseDef diseaseDef2=(DiseaseDef)gridMain.ListGridRows[gridMain.SelectedIndices[1]].Tag;
+			SaveChangesNow();//New problems get their numbers here.
+			diseaseDef1=_listDiseaseDefs.Find(x => x.DiseaseDefNum==diseaseDef1.DiseaseDefNum)??diseaseDef1;
+			diseaseDef2=_listDiseaseDefs.Find(x => x.DiseaseDefNum==diseaseDef2.DiseaseDefNum)??diseaseDef2;
+			using FormDiseaseDefMerge formDiseaseDefMerge=new FormDiseaseDefMerge(diseaseDef1,diseaseDef2);
+			if(formDiseaseDefMerge.ShowDialog()!=DialogResult.OK) {
+				FillGrid();//The rows now hold the reloaded problems.
+				SelectRows(diseaseDef1.DiseaseDefNum,diseaseDef2.DiseaseDefNum);
+				return;
+			}
+			DiseaseDefMergeResult diseaseDefMergeResult;
+			try {
+				diseaseDefMergeResult=DiseaseDefs.Merge(formDiseaseDefMerge.DiseaseDefKeep.DiseaseDefNum,formDiseaseDefMerge.DiseaseDefDiscard.DiseaseDefNum);
+			}
+			catch(ApplicationException ex) {
+				MsgBox.Show(ex.Message);
+				DataValid.SetInvalid(InvalidType.Diseases);
+				ReloadDiseaseDefs();
+				FillGrid();
+				return;
+			}
+			SecurityLogs.MakeLogEntry(EnumPermType.ProblemDefEdit,0,DiseaseDefs.GetMergeLogText(diseaseDefMergeResult));
+			if(diseaseDefMergeResult.IsProblemsIndicateNoneMoved) {
+				DataValid.SetInvalid(InvalidType.Prefs);
+			}
+			DiseaseDefs.RefreshCache();
+			DiseaseDefs.FixItemOrders();//Closes the gap the deleted problem left in the order.
+			DataValid.SetInvalid(InvalidType.Diseases);
+			ReloadDiseaseDefs();
+			FillGrid();
+			SelectRows(diseaseDefMergeResult.DiseaseDefNumKept);
+			MsgBox.Show(DiseaseDefs.GetMergeSummaryText(diseaseDefMergeResult));
+		}
+
+		///<summary>Selects the showing rows of the given problems.</summary>
+		private void SelectRows(params long[] arrayDiseaseDefNums) {
+			for(int i=0;i<gridMain.ListGridRows.Count;i++) {
+				if(arrayDiseaseDefNums.Contains(((DiseaseDef)gridMain.ListGridRows[i].Tag).DiseaseDefNum)) {
+					gridMain.SetSelected(i,true);
+				}
+			}
+			SetMergeEnabled();
+		}
+		#endregion Merge (26.1)
 
 		private void checkShowHidden_CheckedChanged(object sender,EventArgs e) {
 			FillGrid();

@@ -500,6 +500,7 @@
     <Compile Include="Data Interface\ClinicErxs.cs" />
     <Compile Include="Data Interface\CommOptOuts.cs" />
     <Compile Include="Data Interface\DatabaseMaintenances.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.Allergies.cs" />
     <Compile Include="Data Interface\DatabaseMaintenances.InsPending.cs" />
     <Compile Include="Data Interface\DatabaseMaintenances.Base64Documents.cs" />
     <Compile Include="Data Interface\DatabaseMaintenances.EmailText.cs" />

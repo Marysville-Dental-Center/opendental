@@ -17,20 +17,14 @@ namespace OpenDental {
 			return IsSelectionMode && TextOtherToConvert!=null;
 		}
 
-		///<summary>Called on load.  Shows the Search box, filled with what the patient typed, when converting an "Other" allergy.</summary>
+		///<summary>Called on load, after the list is read.  Fills the Search box with what the patient typed when converting an "Other" allergy.  The
+		///box itself is always shown and filters as the user types (the 26.1 Allergy Setup search, M2-MED).</summary>
 		private void ShowSearchForOtherConvert() {
 			if(!IsConvertingOther()) {
 				return;
 			}
-			labelSearch.Visible=true;
-			textSearch.Visible=true;
 			textSearch.Text=TextOtherToConvert;
-			textSearch.TextChanged+=textSearch_TextChanged;
 			Text=Lan.g(this,"Convert Other Allergy")+": "+TextOtherToConvert;
-		}
-
-		private void textSearch_TextChanged(object sender,EventArgs e) {
-			FillGrid();
 		}
 
 		///<summary>Called by FillGrid.  While converting an "Other" allergy, keeps the definitions whose description contains every word in the Search
