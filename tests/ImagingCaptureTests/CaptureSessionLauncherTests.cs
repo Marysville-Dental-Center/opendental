@@ -1,0 +1,313 @@
+// This file is part of the open source dental practice management software derived from Open Dental.
+// Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using ImagingCapture.Save;
+using ImagingCapture.Session;
+using ImagingCapture.Settings;
+using ImagingCapture.UI;
+using ImagingDeviceManager.Capture;
+using ImagingDeviceManager.Config;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using OpenDentBusiness;
+
+namespace ImagingCapture.Tests {
+	///<summary>CaptureSessionLauncher (design 6.4, 7.3 "The hook", 7.12): the checks before anything opens, the rollback (NotStarted), the
+	///refusals, and what the partial is told about a mount it created. The window is a stand-in that drives the controller.</summary>
+	[TestClass]
+	public class CaptureSessionLauncherTests {
+		private string _tempDir;
+		private FakeCaptureSessionStore _store;
+		private FakeSessionRadiographStore _radiographStore;
+		private FakeWindowRunner _windowRunner;
+		private List<FakeTwainCaptureSession> _listSessions;
+		private List<string> _listLog;
+		private LocalCaptureConfig _config;
+		private QueueCaptureDispatcher _dispatcher;
+		private FakeCaptureClock _clock;
+		private long _patNumCur=55;
+
+		[TestInitialize]
+		public void Init() {
+			_tempDir=Path.Combine(Path.GetTempPath(),"CaptureSessionLauncherTests_"+Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(_tempDir);
+			_store=new FakeCaptureSessionStore();
+			_store.DictMountItems[7]=CaptureControllerHarness.Slots(3);
+			_radiographStore=new FakeSessionRadiographStore();
+			_windowRunner=new FakeWindowRunner();
+			_listSessions=new List<FakeTwainCaptureSession>();
+			_listLog=new List<string>();
+			_dispatcher=new QueueCaptureDispatcher();
+			_clock=new FakeCaptureClock();
+			_config=Config("[Session]","Enabled=1");
+		}
+
+		[TestCleanup]
+		public void Cleanup() {
+			try {
+				Directory.Delete(_tempDir,true);
+			}
+			catch {
+			}
+		}
+
+		private LocalCaptureConfig Config(params string[] arrayLines) {
+			string path=Path.Combine(_tempDir,"capture.ini");
+			File.WriteAllBytes(path,new UTF8Encoding(false).GetBytes(string.Join("\r\n",arrayLines)+"\r\n"));
+			return LocalCaptureConfig.Load(path,Path.Combine(_tempDir,"fallback.ini"));
+		}
+
+		private CaptureSessionLauncher Launcher() {
+			return new CaptureSessionLauncher(new CaptureSessionServices {
+				Store=_store,
+				RadiographStore=_radiographStore,
+				FuncCreateSession=() => {
+					FakeTwainCaptureSession session=new FakeTwainCaptureSession();
+					_listSessions.Add(session);
+					return session;
+				},
+				FuncCreateDispatcher=() => _dispatcher,
+				Clock=_clock,
+				FuncLoadConfig=() => _config,
+				FuncGetComputerName=() => "OPERATORY1",
+				FuncGetUnassignedText=() => null,
+				ActionWriteLog=line => _listLog.Add(line),
+				WindowRunner=_windowRunner,
+			});
+		}
+
+		private CaptureSessionLaunchRequest Request(bool isMountCreatedHere=true,bool isMount=true) {
+			Mount mount=isMount ? new Mount { MountNum=7,PatNum=55,Description="FMX",DateCreated=_clock.Now,DocCategory=20 } : null;
+			return new CaptureSessionLaunchRequest {
+				Patient=CaptureControllerHarness.Pat(),
+				PatNum=55,
+				FuncGetPatNumCur=() => _patNumCur,
+				Mount=mount,
+				MountDef=isMount && isMountCreatedHere ? new MountDef { MountDefNum=3,Description="FMX" } : null,
+				ImagingDevice=CaptureControllerHarness.Device(),
+				CategoryDefNum=20,
+				Owner="owner",
+			};
+		}
+
+		#region NotStarted: the legacy loop runs
+		[TestMethod]
+		public void SessionDisabled_ByDefault_NotStarted_NothingOpens() {
+			_config=Config("[Twain]","Allow16Bit=0");
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,result.Kind);
+			StringAssert.Contains(result.Reason,"[Session] Enabled");
+			Assert.IsFalse(result.IsEmptyMountToDelete,"The legacy loop uses the mount.");
+			Assert.AreEqual(0,_windowRunner.CountShown);
+			Assert.AreEqual(0,_listSessions.Count);
+		}
+
+		[TestMethod]
+		public void MissingConfigFile_NotStarted() {
+			_config=LocalCaptureConfig.Load(Path.Combine(_tempDir,"none.ini"),Path.Combine(_tempDir,"none2.ini"));
+			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,Launcher().Run(Request()).Kind);
+		}
+
+		[TestMethod]
+		public void TwainMulti_NotStarted() {
+			CaptureSessionLaunchRequest request=Request();
+			request.ImagingDevice.DeviceType=EnumImgDeviceType.TwainMulti;
+			CaptureSessionLaunchResult result=Launcher().Run(request);
+			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,result.Kind);
+			Assert.AreEqual(0,_windowRunner.CountShown);
+		}
+
+		[TestMethod]
+		public void NoWindowInThisBuild_NotStarted() {
+			CaptureSessionLauncher launcher=new CaptureSessionLauncher(new CaptureSessionServices {
+				Store=_store,FuncLoadConfig=() => _config,WindowRunner=null,
+			});
+			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,launcher.Run(Request()).Kind);
+		}
+		#endregion NotStarted: the legacy loop runs
+
+		#region Refused
+		[TestMethod]
+		public void PatientChangedInTheMainWindow_Refused_CreatedMountToDelete() {
+			_patNumCur=77;
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Refused,result.Kind);
+			StringAssert.Contains(result.Reason,"Pat Test");
+			Assert.IsTrue(result.IsEmptyMountToDelete,"The mount this call created is still empty.");
+			Assert.AreEqual(0,_windowRunner.CountShown);
+			_patNumCur=0;
+			Assert.AreEqual(CaptureSessionLaunchKind.Refused,Launcher().Run(Request()).Kind,"No patient in the main window.");
+		}
+
+		[TestMethod]
+		public void ExistingMount_RefusedButNotToDelete() {
+			_patNumCur=77;
+			CaptureSessionLaunchResult result=Launcher().Run(Request(isMountCreatedHere:false));
+			Assert.AreEqual(CaptureSessionLaunchKind.Refused,result.Kind);
+			Assert.IsFalse(result.IsEmptyMountToDelete,"Only a mount created in this call is deleted.");
+		}
+
+		[TestMethod]
+		public void PatientAndPatNumDisagree_Refused() {
+			CaptureSessionLaunchRequest request=Request();
+			request.PatNum=56;
+			_patNumCur=56;
+			Assert.AreEqual(CaptureSessionLaunchKind.Refused,Launcher().Run(request).Kind);
+			request=Request();
+			request.Mount.PatNum=99;
+			Assert.AreEqual(CaptureSessionLaunchKind.Refused,Launcher().Run(request).Kind,"The mount of another patient.");
+		}
+
+		[TestMethod]
+		public void NotAuthorized_Refused() {
+			_store.IsAuthorizedResult=false;
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Refused,result.Kind);
+			Assert.AreEqual(EnumPermType.ImageCreate,_store.PermTypeChecked);
+			Assert.AreEqual(0,_windowRunner.CountShown);
+		}
+
+		[TestMethod]
+		public void InvalidCategory_Refused_BeforeAnythingOpens() {
+			CaptureSessionLaunchRequest request=Request();
+			request.CategoryDefNum=21;
+			CaptureSessionLaunchResult result=Launcher().Run(request);
+			Assert.AreEqual(CaptureSessionLaunchKind.Refused,result.Kind);
+			Assert.AreEqual("Image category missing; choose a category.",result.Reason);
+			request.CategoryDefNum=0;
+			Assert.AreEqual("Image category missing; choose a category.",Launcher().Run(request).Reason);
+			Assert.AreEqual(0,_listSessions.Count);
+		}
+
+		[TestMethod]
+		public void SourceGate_Refused() {
+			_config=Config("[Session]","Enabled=1","[Twain]","RestrictSources=1","AllowedSources=Scanner");
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Refused,result.Kind);
+			Assert.AreEqual(CaptureEndText.SourceNotEnabledHere,result.Reason);
+			_config=Config("[Session]","Enabled=1","[Twain]","RestrictSources=1","AllowedSources=Scanner|example sensor ds");
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,Launcher().Run(Request()).Kind,"A listed source passes.");
+		}
+
+		[TestMethod]
+		public void NoTwainSource_Refused() {
+			CaptureSessionLaunchRequest request=Request();
+			request.ImagingDevice.TwainName=" ";
+			Assert.AreEqual(CaptureSessionLaunchKind.Refused,Launcher().Run(request).Kind);
+		}
+
+		[TestMethod]
+		public void FullMount_Refused_NotToDelete() {
+			_store.DictDocumentsByMountItem=_store.DictMountItems[7].Where(x => x.ItemOrder>0)
+				.ToDictionary(x => x.MountItemNum,x => new Document { DocNum=x.MountItemNum*10,MountItemNum=x.MountItemNum });
+			CaptureSessionLaunchResult result=Launcher().Run(Request(isMountCreatedHere:false));
+			Assert.AreEqual(CaptureSessionLaunchKind.Refused,result.Kind);
+			StringAssert.Contains(result.Reason,"already has an image");
+			Assert.IsFalse(result.IsEmptyMountToDelete);
+		}
+
+		[TestMethod]
+		public void UnexpectedException_Refused_WithTheMessage() {
+			_store.IsThrowOnMountItems=true;
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Refused,result.Kind,"The legacy loop does not run instead without a word.");
+			StringAssert.Contains(result.Reason,"The database is not reachable.");
+			Assert.IsTrue(result.IsEmptyMountToDelete);
+		}
+		#endregion Refused
+
+		#region Completed
+		[TestMethod]
+		public void Completed_NothingSaved_CreatedMountToDelete() {
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				controller.Execute(CaptureSessionAction.End);
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual("owner",_windowRunner.Owner);
+			Assert.AreEqual(CaptureSessionEndReason.CancelledBeforeStart,result.Summary.EndReason);
+			Assert.IsTrue(result.IsEmptyMountToDelete);
+		}
+
+		[TestMethod]
+		public void Completed_ImagesSaved_MountKept_SetupFromTheChecks() {
+			_store.DefaultProvNum=8;
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_clock.Advance(CaptureSessionController.KeyIgnoreMs);
+				controller.RequestStart();
+				_dispatcher.RunPending();
+				FakeTwainCaptureSession twain=_listSessions.Single();
+				twain.RaiseStatus(TwainCaptureState.WaitingForImage);
+				twain.RaiseImage(TestImages.Image8(4,4,(x,y) => 7));
+				twain.RaiseEnded(TwainCaptureEndReason.Completed);
+				_dispatcher.RunPending();
+				controller.Execute(CaptureSessionAction.End);//the second slot's enable is running: the first press warns
+				controller.Execute(CaptureSessionAction.End);
+				twain.RaiseEnded(TwainCaptureEndReason.Stopped,ended => ended.StopReason=TwainCaptureStopReason.End);
+				_dispatcher.RunPending();
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual(1,result.Summary.CountImages);
+			Assert.AreEqual(8,result.Summary.ProvNum,"The default provider from the store (design 10.8).");
+			Assert.IsFalse(result.IsEmptyMountToDelete,"The mount holds an image.");
+			CaptureSessionController controllerShown=_windowRunner.Controller;
+			Assert.AreEqual("Example Sensor DS",_listSessions.Single().OpenProductName);
+			Assert.AreEqual(12,controllerShown.Options.ImagingDeviceNum);
+			Assert.AreEqual(3,controllerShown.MountSlots.ListMountItems.Count(x => MountPlacement.IsSlot(x)));
+			Assert.AreEqual(8,_radiographStore.ListDocumentsUpdated.Single().ProvNum);
+		}
+
+		[TestMethod]
+		public void WindowClosedWithoutTheController_SessionClosedSafely() {
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_clock.Advance(CaptureSessionController.KeyIgnoreMs);
+				controller.RequestStart();
+				_dispatcher.RunPending();
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual(CaptureSessionEndReason.Closed,result.Summary.EndReason);
+			Assert.AreEqual(1,_listSessions.Single().CountBeginClose,"The source closes in the safe order on its worker.");
+		}
+
+		[TestMethod]
+		public void SingleTarget_NoMount_NothingToDelete() {
+			_windowRunner.ActionWhileShown=controller => {
+				Assert.IsTrue(controller.IsSingleTarget);
+				controller.Begin();
+				controller.Execute(CaptureSessionAction.End);
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request(isMount:false));
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.IsFalse(result.IsEmptyMountToDelete);
+		}
+
+		[TestMethod]
+		public void VerificationRecord_LatestForThisDeviceAndComputer_Gives16Bits() {
+			_config=Config("[Session]","Enabled=1","[Twain]","Allow16Bit=1","[Device.12]","Bits=16");
+			string hash=GatedSettingsHash.Compute(_config,12);
+			CaptureVerificationRecord record=CaptureControllerHarness.PassedRecord(hash);
+			_store.ListSetupLogs.Add(new SecurityLog { SecurityLogNum=1,FKey=12,PermType=EnumPermType.Setup,LogText=record.ToLogText(),
+				LogDateTime=new DateTime(2026,10,30,9,0,0) });
+			int bits=0;
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				_clock.Advance(CaptureSessionController.KeyIgnoreMs);
+				controller.RequestStart();
+				_dispatcher.RunPending();
+				bits=_listSessions.Single().LastRequest.Bits;
+				controller.OnClosing();
+			};
+			Launcher().Run(Request());
+			Assert.AreEqual(16,bits);
+		}
+		#endregion Completed
+	}
+}
