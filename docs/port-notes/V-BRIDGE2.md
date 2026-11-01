@@ -31,7 +31,7 @@ Sources, all public and read on 2026-10-25: the 25.4 release notes (version25_4.
 
 ### Clerri
 
-- `OpenDentBusiness/VendorDirect/ProgramLinks/ClerriProgram.cs`: `GetDefinition` and `EnsureProgram` (the row and button through `BridgeLinkRows.EnsureProgram`, the two property rows through `VendorCredentials` because they need the credential flags), the Family module button (`IsToolbarButtonShown`, `SetToolbarButtonShown`, `CanChangeToolbarButton`), `ValidateDashboardAddress`, `BuildDashboardUrl`, `GetDashboardUrl`, `ReadClientKey` (the clinic's key, else the default), `HasAnyClientKey`.
+- `OpenDentBusiness/VendorDirect/ProgramLinks/ClerriProgram.cs`: `GetDefinition` and `EnsureProgram` (the row and button through `BridgeLinkRows.EnsureProgram`, the two property rows through `VendorCredentials` because they need the credential flags), the Family module button (`IsToolbarButtonShown`, `SetToolbarButtonShown`, `CanChangeToolbarButton`, `ShouldSaveToolbarButton`, `SaveToolbarButtonAndEnabled`), `ValidateDashboardAddress`, `BuildDashboardUrl`, `GetDashboardUrl`, `ReadClientKey` (the clinic's key, else the default), `HasAnyClientKey`.
 - `OpenDentBusiness/VendorDirect/ProgramLinks/ProgramLinkLaunchLog.cs`: one line per launch in the workstation's log folder (`ProgramLinks`): program, user, clinic and PatNum, no names.
 - `WpfControlsOD/Bridges/Clerri.cs`: builds the address for the current clinic and patient, logs the launch, opens it in the default browser.
 - `OpenDental/Forms/FormClerriSetup.cs` (+ designer, resx) and `ClerriProgramLinkSetup` in the same file: the setup window.
@@ -113,7 +113,7 @@ New tests: `ClerriProgramTests.ToolbarButton_SavedFromTheSavedStateNotFromTheLoc
 
 ## Tests
 
-New project `tests/VBRIDGE2Tests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 60 tests:
+New project `tests/VBRIDGE2Tests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 64 tests:
 
 - `TrophyEnhancedCommandLineTests`: sample command lines (blank, `-D[PatNum]`, quoted `[TrophyFolder]`, case, `$` in paths, skipped folders).
 - `CleverOneProgramTests`: the linkage.xml content and layout, no SSN, PatNum or ChartNumber, regional settings, defaults, the row definition (path, button, property, note).
@@ -121,7 +121,9 @@ New project `tests/VBRIDGE2Tests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln`
 - `WiringTests`: `ProgramName` order (appended after V-BRIDGE1's values, nothing renumbered), the dispatch branches, project files, the setup registrations (Clever One through `StandardProgramLinkSetup`), the encrypted key save, the one-line hook, the exit scrub, no web addresses or promotion in the new files.
 - `ProgramLinksDbTests` (scratch MariaDB database `vbridge2_<time>_<pid>_<random>` with the 26.1.70 reference schema, dropped afterwards; skipped when `VBRIDGE2_TEST_DB=skip` or no local server): the inserted rows, note and buttons, a second run, office changes kept, the saved PatientNum/ChartNum choice, buttons only when enabled, Show Toolbar Button, keys encrypted per clinic with the default fallback, unreadable and plain-text keys, and the Trophy tags with the real `Patients.ReplacePatient`.
 
-Final run on `port/v-bridge2-t1` (after the `port/int-9` merge), through the shared runner: one full build of `OpenDental.Local.slnf` (0 errors), then `run-tests -Mode Core -Include ForkMigrationTests,M201Tests,SyntheticData.Tests,AdoptionValidation.Tests` (the slow assemblies because `TableTypes/Program.cs` changed): 70 assemblies, 3700 passed, 0 failed, 2 skipped (M201Tests' two checks against the published 26.1 documents, which skip when the documents are not on this computer). Among them `VBRIDGE2Tests` 60/60, `VBRIDGE1Tests` 37/37, `VendorDirectTests` 873/873, `BSHELLTests` 66/66, `RegistryTests` 33/33, `M202Tests` 39/39, `ForkMigrationTests` 38/38, `AdoptionValidation.Tests` 56/56, `NoHqTests` 49/49. `tools/Test-NoHqHosts.ps1` passes.
+Final run on `port/v-bridge2-t3` (after the `port/int-10` merge and the Show Toolbar Button fix), through the shared runner: one full build of `OpenDental.Local.slnf` (0 errors), then `run-tests -Mode Core -Include ForkMigrationTests,M201Tests,SyntheticData.Tests,AdoptionValidation.Tests` (the slow assemblies because the package changes `TableTypes/Program.cs`): 72 assemblies, 3812 tests, 3810 passed, 0 failed, 2 skipped (M201Tests' two checks against the published 26.1 documents, which skip when the documents are not on this computer). Among them `VBRIDGE2Tests` 64/64, `VBRIDGE1Tests` 37/37, `VendorDirectTests` 873/873, `BSHELLTests` 66/66, `M2AUDITTests` 28/28, `M2MISCTests` 78/78, `RegistryTests` 33/33, `M202Tests` 39/39, `ForkMigrationTests` 38/38, `AdoptionValidation.Tests` 56/56, `SyntheticData.Tests` 53/53, `NoHqTests` 49/49. `tools/Test-NoHqHosts.ps1` passes.
+
+Earlier run on `port/v-bridge2-t1` (after the `port/int-9` merge): 70 assemblies, 3700 passed, 0 failed, 2 skipped.
 
 Not tested: the setup window and the tool tip on screen, starting Clever One or Trophy, opening the browser, writing `linkage.xml` into a real program folder, and the middle tier.
 
