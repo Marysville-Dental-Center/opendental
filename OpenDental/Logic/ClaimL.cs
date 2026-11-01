@@ -707,6 +707,8 @@ namespace OpenDental {
 				//Open Dental 25.2: claims are validated with XConnect when they are sent; claims with errors stay in the queue. Done here and not in
 				//SendClaimSendQueueItems(), because the Send Claims window has already validated the claims it sends.
 				List<ClaimSendQueueItem> listClaimSendQueueItemsToSend=FilterQueueItemsByXConnect(listQueues.ToList(),listClaimsPromptingFor);
+				//Open Dental 26.1: claims that go to EDS are validated with EDS the same way (one window, errors stay waiting to send).
+				listClaimSendQueueItemsToSend=EdsValidationL.FilterQueueItemsForSend(listClaimSendQueueItemsToSend);
 				if(listClaimSendQueueItemsToSend.Count==0) {
 					return;
 				}

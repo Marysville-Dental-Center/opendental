@@ -155,6 +155,22 @@ namespace OpenDental {
 			return batchOutcome;
 		}
 
+		///<summary>Before the "outstanding claims for the next insurance" prompt (ClaimL.PromptForPrimaryOrSecondaryClaim, M2-CLAIMRCV) sends claims:
+		///validates the ones that go to EDS as a batch (ValidateBatchForSend, each claim's own clearinghouse) and returns the queue items that may be
+		///sent: those that do not go to EDS, plus the EDS claims that passed or whose warnings the user chose to send anyway. Claims with errors stay
+		///waiting to send; deleted claims and claims no longer waiting to send are left out. Returns an empty list if the user cancels.</summary>
+		public static List<ClaimSendQueueItem> FilterQueueItemsForSend(List<ClaimSendQueueItem> listClaimSendQueueItems) {
+			if(listClaimSendQueueItems.Count==0) {
+				return listClaimSendQueueItems;
+			}
+			BatchOutcome batchOutcome=ValidateBatchForSend(listClaimSendQueueItems,0);
+			if(batchOutcome.IsCancelled) {
+				return new List<ClaimSendQueueItem>();
+			}
+			return listClaimSendQueueItems.FindAll(x => !batchOutcome.ListClaimNumsNotWaiting.Contains(x.ClaimNum)
+				&& (!batchOutcome.ListClaimNumsValidated.Contains(x.ClaimNum) || batchOutcome.ListClaimNumsAllowed.Contains(x.ClaimNum)));
+		}
+
 		///<summary>The claims of the batch that may be sent, read again from the database: Edit Claim in the validation window, or another workstation,
 		///may have sent, deleted or held a claim since it was validated, and such a claim is never sent again.</summary>
 		private static void SetAllowed(BatchOutcome batchOutcome,List<EdsValidationResult> listResultsFinal,bool isSendAnywayConfirmed) {

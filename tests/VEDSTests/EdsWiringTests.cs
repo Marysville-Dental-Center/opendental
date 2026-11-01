@@ -61,6 +61,35 @@ namespace VEDSTests {
 		}
 
 		[TestMethod]
+		public void NextInsurancePrompt_ValidatesEdsClaimsBeforeSending() {
+			//Integration of V-EDS with M2-CLAIMRCV (port/int-9): "Send claim(s) now" in the prompt for the next insurance's claims sends through
+			//SendClaimSendQueueItems, which the Send Claims window also calls after its own validation. So the EDS validation runs at the prompt's
+			//call site, after the XConnect one and before the send, and never inside SendClaimSendQueueItems.
+			string source=Read(@"OpenDental\Logic\ClaimL.cs");
+			int indexPrompt=source.IndexOf("public static void PromptForPrimaryOrSecondaryClaim(");
+			int indexSendMethod=source.IndexOf("internal static List<ClaimSendQueueItem> SendClaimSendQueueItems(");
+			Assert.IsTrue(indexPrompt>0 && indexSendMethod>indexPrompt);
+			string prompt=source.Substring(indexPrompt,indexSendMethod-indexPrompt);
+			int indexXConnect=prompt.IndexOf("FilterQueueItemsByXConnect(");
+			int indexEds=prompt.IndexOf("listClaimSendQueueItemsToSend=EdsValidationL.FilterQueueItemsForSend(listClaimSendQueueItemsToSend);");
+			int indexSend=prompt.IndexOf("SendClaimSendQueueItems(listClaimSendQueueItemsToSend,");
+			Assert.IsTrue(indexXConnect>0 && indexEds>indexXConnect && indexSend>indexEds,"Validated, then only the claims that passed are sent.");
+			int indexSendEnd=source.IndexOf("#region XConnect claim validation",indexSendMethod);
+			Assert.IsTrue(indexSendEnd>indexSendMethod);
+			Assert.IsFalse(source.Substring(indexSendMethod,indexSendEnd-indexSendMethod).Contains("EdsValidationL."),"Not validated twice from Send Claims.");
+			//The filter keeps the claims that do not go to EDS and the EDS claims allowed, and drops claims no longer waiting to send.
+			string logic=Read(@"OpenDental\Logic\EdsValidationL.cs");
+			int indexFilter=logic.IndexOf("public static List<ClaimSendQueueItem> FilterQueueItemsForSend(");
+			int indexFilterEnd=logic.IndexOf("private static void SetAllowed(",indexFilter);
+			Assert.IsTrue(indexFilter>0 && indexFilterEnd>indexFilter);
+			string filter=logic.Substring(indexFilter,indexFilterEnd-indexFilter);
+			StringAssert.Contains(filter,"ValidateBatchForSend(listClaimSendQueueItems,0)");
+			StringAssert.Contains(filter,"if(batchOutcome.IsCancelled) {");
+			StringAssert.Contains(filter,"!batchOutcome.ListClaimNumsNotWaiting.Contains(x.ClaimNum)");
+			StringAssert.Contains(filter,"(!batchOutcome.ListClaimNumsValidated.Contains(x.ClaimNum) || batchOutcome.ListClaimNumsAllowed.Contains(x.ClaimNum))");
+		}
+
+		[TestMethod]
 		public void ClaimsSend_NeverResendsClaimsSentOrDeletedFromTheWindow() {
 			//Edit Claim opened from the batch validation window can send, delete or hold a claim. The window re-validates it as a claim that must be
 			//waiting to send, the final list is read again from the database, and the Send Claims window deselects and drops such claims.
