@@ -27,6 +27,7 @@ namespace OpenDental {
 			this.groupBoxClaimsMedical = new OpenDental.UI.GroupBox();
 			this.checkClaimMedReceivedPromptForPrimaryClaim = new OpenDental.UI.CheckBox();
 			this.checkClaimMedReceivedForcePrimaryStatus = new OpenDental.UI.CheckBox();
+			this.checkClaimMedReceivedPromptForMedicalEob = new OpenDental.UI.CheckBox();
 			this.groupBoxClaimsPayments = new OpenDental.UI.GroupBox();
 			this.comboClaimCredit = new OpenDental.UI.ComboBox();
 			this.checkClaimPaymentPickStatementType = new OpenDental.UI.CheckBox();
@@ -54,9 +55,10 @@ namespace OpenDental {
 			// 
 			this.groupBoxClaimsMedical.Controls.Add(this.checkClaimMedReceivedPromptForPrimaryClaim);
 			this.groupBoxClaimsMedical.Controls.Add(this.checkClaimMedReceivedForcePrimaryStatus);
+			this.groupBoxClaimsMedical.Controls.Add(this.checkClaimMedReceivedPromptForMedicalEob);
 			this.groupBoxClaimsMedical.Location = new System.Drawing.Point(20, 339);
 			this.groupBoxClaimsMedical.Name = "groupBoxClaimsMedical";
-			this.groupBoxClaimsMedical.Size = new System.Drawing.Size(450, 51);
+			this.groupBoxClaimsMedical.Size = new System.Drawing.Size(450, 70);
 			this.groupBoxClaimsMedical.TabIndex = 4;
 			this.groupBoxClaimsMedical.Text = "Claims Medical";
 			// 
@@ -78,7 +80,16 @@ namespace OpenDental {
 			this.checkClaimMedReceivedForcePrimaryStatus.TabIndex = 1;
 			this.checkClaimMedReceivedForcePrimaryStatus.Text = "Remove \'Do Nothing\' for primary claims with \'Hold Until Pri Received\' or \'Unsent\'" +
     "";
-			// 
+			//
+			// checkClaimMedReceivedPromptForMedicalEob
+			//
+			this.checkClaimMedReceivedPromptForMedicalEob.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkClaimMedReceivedPromptForMedicalEob.Location = new System.Drawing.Point(15, 48);
+			this.checkClaimMedReceivedPromptForMedicalEob.Name = "checkClaimMedReceivedPromptForMedicalEob";
+			this.checkClaimMedReceivedPromptForMedicalEob.Size = new System.Drawing.Size(425, 17);
+			this.checkClaimMedReceivedPromptForMedicalEob.TabIndex = 2;
+			this.checkClaimMedReceivedPromptForMedicalEob.Text = "Prompt for Medical EOB on primary claims";
+			//
 			// groupBoxClaimsPayments
 			// 
 			this.groupBoxClaimsPayments.Controls.Add(this.comboClaimCredit);
@@ -293,6 +304,7 @@ namespace OpenDental {
 		private UI.GroupBox groupBoxClaimsMedical;
 		private UI.CheckBox checkClaimMedReceivedPromptForPrimaryClaim;
 		private UI.CheckBox checkClaimMedReceivedForcePrimaryStatus;
+		private UI.CheckBox checkClaimMedReceivedPromptForMedicalEob;
 	}
 
 }

@@ -1336,6 +1336,7 @@ namespace OpenDentBusiness{
 			ClaimProcs.LinkToEraClaim(x835,claimPaid,claim,listClaimProcsToEdit,isByTotalIncluded ? cpByTotal : null);//M2-ERA (26.1): claimproc.Etrans835AttachNum
 			if(isAutomatic) {
 				ReceiveEraPayment(claim,claimPaid,listClaimProcsForClaim,PrefC.GetBool(PrefName.EraIncludeWOPercCoPay),isSupplementalPay,isAutomatic:isAutomatic);
+				ClaimProcs.CreateAuditTrailEntriesForOverrides(listClaimProcsForClaim,listClaimProcsOld);//Open Dental 25.1: Allowed overrides the ERA changed.
 				if(automationResult!=null) {
 					automationResult.CountClaimsProcessed++;
 				}
