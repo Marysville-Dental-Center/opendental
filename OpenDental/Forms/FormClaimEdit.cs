@@ -4152,6 +4152,12 @@ namespace OpenDental{
 					List<Benefit> listBenefits=Benefits.GetAllForPatPlans(_listPatPlans,_listInsSubs);
 					for(int i=0;i<listClaims.Count;i++) {
 						List<Procedure> listProcedures=Procedures.GetProcsForClaimNum(listClaims[i].ClaimNum);
+						//Combined review (2026-11-01): the lookup loads no attachments and CalculateAndUpdate's save rewrites claimattach from the claim, so
+						//load them first (the medical EOB the Medical EOB prompt just attached to the dental primary claim among them).
+						Claim claimDb=Claims.GetClaim(listClaims[i].ClaimNum);
+						if(claimDb!=null) {
+							listClaims[i].Attachments=claimDb.Attachments;
+						}
 						Claims.CalculateAndUpdate(listProcedures,_listInsPlans,listClaims[i],_listPatPlans,listBenefits,_patient,_listInsSubs);
 					}
 				}

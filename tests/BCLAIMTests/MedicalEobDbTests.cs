@@ -191,6 +191,47 @@ namespace BCLAIMTests {
 			Assert.AreEqual(claimAttach.ActualFileName,claimSaved.Attachments.Single().ActualFileName);
 		}
 
+		///<summary>Combined review (2026-11-01). With the medical plan first, a received medical claim recalculates the next insurance's claims (Open
+		///Dental 26.1: after any claim but a preauthorization), and the next insurance is the dental primary claim the Medical EOB prompt has just
+		///attached the EOB to. When the user picks "Do nothing" (or the prompts are off), the claim is still on hold and the recalculation saves it with
+		///the one-argument Claims.Update, which rewrites claimattach from the claim object. The lookup loads no attachments, so the recalculation loads
+		///them first; otherwise the EOB and every earlier attachment were deleted.</summary>
+		[TestMethod]
+		public void ReceivedMedicalClaim_RecalculatedDentalClaimKeepsTheMedicalEob() {
+			BClaimDb.SetStorage(DataStorageType.LocalAtoZ);
+			ClaimScenario scenario=ClaimScenario.Create("Z9740");
+			PatPlanT.CreatePatPlan(1,scenario.Patient_.PatNum,scenario.InsSubNumMedical);
+			PatPlanT.CreatePatPlan(2,scenario.Patient_.PatNum,scenario.InsSubNumDental);
+			//Medical claims are created with ClaimType "Other" (AccountModules, claim type "Med").
+			Claim claimMedical=BClaimDb.CreateClaim(scenario.Patient_,scenario.PlanMedical,scenario.InsSubNumMedical,"Other",EnumClaimMedType.Medical,"R",
+				scenario.Procedure_.ProcDate);
+			ClaimProc claimProcMedical=BClaimDb.CreateClaimProc(scenario.Procedure_,scenario.PlanMedical,scenario.InsSubNumMedical,claimMedical.ClaimNum,
+				ClaimProcStatus.Received);
+			Claim claimDental=CreateDentalClaim(scenario,"P","H");
+			ClaimAttach claimAttachEarlier=new ClaimAttach {
+				ClaimNum=claimDental.ClaimNum,DisplayedFileName="narrative.txt",ActualFileName="earlier_"+BClaimDb.NewSuffix()+".txt" };
+			ClaimAttaches.Insert(claimAttachEarlier);
+			string sourcePath=Path.Combine(BClaimDb.AtoZPath,"import_"+BClaimDb.NewSuffix()+".txt");
+			File.WriteAllText(sourcePath,"Synthetic medical EOB");
+			ClaimAttach claimAttachEob=ClaimAttaches.AttachFileToClaim(claimDental.ClaimNum,sourcePath,ClaimAttaches.MEDICAL_EOB_DISPLAY_PREFIX+"eob.txt");
+			string[] arrayFileNames=new[] { claimAttachEarlier.ActualFileName,claimAttachEob.ActualFileName };
+			//Edit Claim's SaveCleanup after "Do nothing": the recalculation is due and finds the dental primary claim on hold.
+			Assert.IsTrue(ClaimReceiveRelated.IsRecalcNextInsuranceNeeded(claimMedical,isReceivedAsNoPay:false,isRecalcPrefOn:true));
+			List<Claim> listClaims=Claims.GetNextOrdinalClaimsNotReceived(new List<ClaimProc> { claimProcMedical },includeHoldForInProcess:true);
+			Assert.AreEqual(claimDental.ClaimNum,listClaims.Single().ClaimNum);
+			Assert.AreEqual(0,listClaims[0].Attachments.Count,"The lookup loads no attachments.");
+			Claims.CalculateAndUpdateSecondaries(listClaims);
+			Claim claimSaved=Claims.GetClaim(claimDental.ClaimNum);
+			Assert.AreEqual(120,claimSaved.ClaimFee,0.001,"The dental claim was recalculated and saved.");
+			Assert.AreEqual("H",claimSaved.ClaimStatus);
+			CollectionAssert.AreEquivalent(arrayFileNames,claimSaved.Attachments.Select(x => x.ActualFileName).ToArray(),
+				"Both attachments are still on the claim.");
+			Assert.AreEqual("EoB,Mail",claimSaved.AttachedFlags);
+			//The ERA payment, receive with no payment and zero-claims paths recalculate through CalculateAndUpdateSecondariesFromPrimaries.
+			Claims.CalculateAndUpdateSecondariesFromPrimaries(new List<Claim> { Claims.GetClaim(claimMedical.ClaimNum) });
+			CollectionAssert.AreEquivalent(arrayFileNames,Claims.GetClaim(claimDental.ClaimNum).Attachments.Select(x => x.ActualFileName).ToArray());
+		}
+
 		[TestMethod]
 		public void Attach_NeedsTheAtoZFolder() {
 			BClaimDb.SetStorage(DataStorageType.InDatabase);

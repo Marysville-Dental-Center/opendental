@@ -43,6 +43,23 @@ namespace M2CLAIMRCVTests {
 			StringAssert.Contains(saveCleanup,"ClaimReceiveRelated.IsRecalcNextInsuranceNeeded(_claim,receivedAsNoPay,PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary))");
 			StringAssert.Contains(saveCleanup,"Claims.GetNextOrdinalClaimsNotReceived(_listClaimProcsForClaim,includeHoldForInProcess:true)");
 			Assert.IsFalse(saveCleanup.Contains("_claim.ClaimType==\"P\""),"No longer only after a primary claim.");
+			//Combined review (2026-11-01): the lookup loads no attachments and CalculateAndUpdate saves with the one-argument Claims.Update, so each
+			//claim's attachments are loaded onto the same object first (a medical EOB attached a moment before among them).
+			string recalc=Between(saveCleanup,"Claims.GetNextOrdinalClaimsNotReceived(_listClaimProcsForClaim,includeHoldForInProcess:true)",
+				"DialogResult=DialogResult.OK;");
+			AssertBefore(recalc,"Claim claimDb=Claims.GetClaim(listClaims[i].ClaimNum);","Claims.CalculateAndUpdate(");
+			AssertBefore(recalc,"listClaims[i].Attachments=claimDb.Attachments;","Claims.CalculateAndUpdate(listProcedures,_listInsPlans,listClaims[i],");
+		}
+
+		///<summary>Combined review (2026-11-01): CalculateAndUpdateSecondaries, which every silent receive path and the prompt use, loads each claim's
+		///attachments onto the claim object it saves (not a reloaded copy, which would lose a Waiting to Send status set in memory).</summary>
+		[TestMethod]
+		public void Claims_RecalculationOfTheNextInsuranceKeepsAttachments() {
+			string source=Read(Path.Combine("OpenDentBusiness","Data Interface","Claims.cs"));
+			string secondaries=Between(source,"public static void CalculateAndUpdateSecondaries(","public static void CalculateAndUpdate(");
+			AssertBefore(secondaries,"Claim claimDb=Claims.GetClaim(listSecondaryClaims[i].ClaimNum);","CalculateAndUpdate(listProceduresRelevant,");
+			AssertBefore(secondaries,"listSecondaryClaims[i].Attachments=claimDb.Attachments;","CalculateAndUpdate(listProceduresRelevant,");
+			StringAssert.Contains(secondaries,"CalculateAndUpdate(listProceduresRelevant,listInsPlansRelevant,listSecondaryClaims[i],");
 		}
 
 		[TestMethod]

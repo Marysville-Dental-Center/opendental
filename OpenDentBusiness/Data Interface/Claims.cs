@@ -1095,6 +1095,13 @@ namespace OpenDentBusiness{
 				List<long> listPatPlanNumsRelevant=listPatPlansRelevant.Select(x=>x.PatPlanNum).ToList();
 				List<InsPlan> listInsPlansRelevant=listInsPlans.FindAll(x=>listInsPlanNumsRelevant.Contains(x.PlanNum));
 				List<Benefit> listBenefitsRelevant=listBenefits.FindAll(x=>listInsPlanNumsRelevant.Contains(x.PlanNum) || listPatPlanNumsRelevant.Contains(x.PatPlanNum));
+				//Combined review (2026-11-01): the claims usually come from GetNextOrdinalClaimsNotReceived, which loads no attachments, and CalculateAndUpdate
+				//saves with the one-argument Update, which rewrites claimattach from the claim object. Load them onto this object (not a reloaded copy:
+				//callers set ClaimStatus in memory and rely on this save), so the claim keeps them, a medical EOB attached a moment before among them.
+				Claim claimDb=Claims.GetClaim(listSecondaryClaims[i].ClaimNum);
+				if(claimDb!=null) {
+					listSecondaryClaims[i].Attachments=claimDb.Attachments;
+				}
 				CalculateAndUpdate(listProceduresRelevant,listInsPlansRelevant,listSecondaryClaims[i],listPatPlansRelevant,listBenefitsRelevant,patient,listInsSubsRelevant);
 			}
 		}

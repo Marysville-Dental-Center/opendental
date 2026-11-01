@@ -214,6 +214,68 @@ namespace M2CLAIMRCVTests {
 			Assert.AreEqual(999,Claims.GetClaim(claimFourth.ClaimNum).ClaimFee,0.001,"The fourth insurance waits for the tertiary claim.");
 		}
 
+		///<summary>A claimattach row on the claim, as the Edit Claim window or the Medical EOB prompt saves one.</summary>
+		private static ClaimAttach AddAttachment(long claimNum) {
+			ClaimAttach claimAttach=new ClaimAttach {
+				ClaimNum=claimNum,
+				DisplayedFileName="attachment.txt",
+				ActualFileName="rcv_"+Guid.NewGuid().ToString("N").Substring(0,8)+".txt",
+			};
+			ClaimAttaches.Insert(claimAttach);
+			return claimAttach;
+		}
+
+		private static List<string> AttachmentFileNames(long claimNum) {
+			return Claims.GetClaim(claimNum).Attachments.Select(x => x.ActualFileName).ToList();
+		}
+
+		///<summary>Combined review (2026-11-01). The recalculation after a received claim saves the next insurance's claims with the one-argument
+		///Claims.Update, which rewrites claimattach from the claim object, and the lookup loads no attachments. Since 26.1 that reaches tertiary claims
+		///(after a secondary claim) and claims on Hold for In Process; their attachments are loaded first, so they survive.</summary>
+		[TestMethod]
+		public void RecalcAfterSecondary_TertiaryClaimKeepsItsAttachments() {
+			Family family=Family.Dental(3);
+			family.AddClaim(1,"P","R",ClaimProcStatus.Received,0);
+			Claim claimSecondary=family.AddClaim(2,"S","R",ClaimProcStatus.Received,0);
+			Claim claimTertiary=family.AddClaim(3,"Other","H",ClaimProcStatus.NotReceived,0);
+			ClaimAttach claimAttach=AddAttachment(claimTertiary.ClaimNum);
+			Claims.CalculateAndUpdateSecondariesFromPrimaries(new List<Claim> { Claims.GetClaim(claimSecondary.ClaimNum) });
+			Assert.AreEqual(100,Claims.GetClaim(claimTertiary.ClaimNum).ClaimFee,0.001,"The tertiary claim was recalculated and saved.");
+			CollectionAssert.AreEqual(new List<string> { claimAttach.ActualFileName },AttachmentFileNames(claimTertiary.ClaimNum));
+		}
+
+		[TestMethod]
+		public void RecalcAfterPrimary_HoldForInProcessClaimKeepsItsAttachments() {
+			Family family=Family.Dental(2);
+			Claim claimPrimary=family.AddClaim(1,"P","R",ClaimProcStatus.Received,0);
+			Claim claimSecondary=family.AddClaim(2,"S","I",ClaimProcStatus.NotReceived,0);
+			ClaimAttach claimAttach=AddAttachment(claimSecondary.ClaimNum);
+			Claims.CalculateAndUpdateSecondariesFromPrimaries(new List<Claim> { Claims.GetClaim(claimPrimary.ClaimNum) });
+			Claim claimSaved=Claims.GetClaim(claimSecondary.ClaimNum);
+			Assert.AreEqual(100,claimSaved.ClaimFee,0.001,"The claim on Hold for In Process was recalculated and saved.");
+			Assert.AreEqual("I",claimSaved.ClaimStatus);
+			CollectionAssert.AreEqual(new List<string> { claimAttach.ActualFileName },AttachmentFileNames(claimSecondary.ClaimNum));
+		}
+
+		///<summary>ERA automatic processing (Etranss.TryAutoProcessEraEob) sets the next insurance's claims to Waiting to Send in memory and leaves the
+		///save to the recalculation. Loading the attachments must keep that status: the claim objects are kept, only their attachments are filled.</summary>
+		[TestMethod]
+		public void EraAutomaticSequence_WaitingToSendAndAttachmentsAreBothSaved() {
+			Family family=Family.Dental(3);
+			family.AddClaim(1,"P","R",ClaimProcStatus.Received,0);
+			Claim claimSecondary=family.AddClaim(2,"S","R",ClaimProcStatus.Received,0);
+			Claim claimTertiary=family.AddClaim(3,"Other","H",ClaimProcStatus.NotReceived,0);
+			ClaimAttach claimAttach=AddAttachment(claimTertiary.ClaimNum);
+			List<Claim> listClaims=Claims.GetPrimaryOrSecondaryClaimsNotReceived(ClaimProcs.RefreshForClaim(claimSecondary.ClaimNum));
+			Assert.AreEqual(claimTertiary.ClaimNum,listClaims.Single().ClaimNum);
+			listClaims[0].ClaimStatus="W";
+			Claims.CalculateAndUpdateSecondaries(listClaims);
+			Claim claimSaved=Claims.GetClaim(claimTertiary.ClaimNum);
+			Assert.AreEqual("W",claimSaved.ClaimStatus,"The status set in memory is saved by the recalculation.");
+			Assert.AreEqual(100,claimSaved.ClaimFee,0.001);
+			CollectionAssert.AreEqual(new List<string> { claimAttach.ActualFileName },AttachmentFileNames(claimTertiary.ClaimNum));
+		}
+
 		[TestMethod]
 		public void ZeroClaims_SecondaryRecalculatesTheTertiary() {
 			Family family=Family.Dental(3);
