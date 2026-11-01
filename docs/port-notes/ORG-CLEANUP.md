@@ -156,8 +156,7 @@ sed -i '/ODXam/d' OpenDental.sln
 
 ## Tests
 
-- **Full build:** `OpenDental.sln`, Debug|x86, through the build lane: 0 errors.
-- **Core:** `run-tests -Mode Core`.
-- **Host check:** `tools/Test-NoHqHosts.ps1`, which now also scans `tools/DevDbTool`.
-
-The results of the last two are in the package's final report.
+- **Full build:** `OpenDental.sln` by itself, Debug|x86, through the build lane, from a clean worktree: 0 errors. This covers all 109 projects, the same set as the filter, DevDbTool included.
+- **Core:** `run-tests -Mode Core`: 79 assemblies, 5,333 tests, all passed. ImagingTests (43) passed with the adjusted wiring test.
+- **Host check:** `tools/Test-NoHqHosts.ps1`, which now also scans `tools/DevDbTool`: passed (6,805 files in 107 projects, 26 allowed references).
+- **Runner:** the committed `tools/run-tests.ps1 -List`, run from outside the repository, found the 83 test assemblies.
