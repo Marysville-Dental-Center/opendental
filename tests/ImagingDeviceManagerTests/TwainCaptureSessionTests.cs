@@ -358,6 +358,20 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(1,Helper.CountRedeliverable,"The source keeps it for redelivery.");
 			Assert.IsTrue(_harness.HasLog("Capture event: image not received"),_harness.LogText);
 		}
+
+		[TestMethod]
+		public void TransferFailsWithoutAFailedTriplet_NoConditionCodeOfAnEarlierFailure() {
+			Helper.SupportsExtImageInfo=false;//MSG_QUERYSUPPORT on ICAP_EXTIMAGEINFO fails with TWCC_CAPUNSUPPORTED before the enable.
+			FakePage page=Helper.ListExposures[0];
+			page.NativeDib=page.NativeDib.Take(page.NativeDib.Length/2).ToArray();//TWRC_XFERDONE with a DIB that cannot be read.
+			_harness.OpenOrFail();
+			TwainCaptureEnded ended=_harness.WaitForEnded(EnableOne());
+			Assert.AreEqual(TwainCaptureEndReason.TransferFailed,ended.Reason);
+			Assert.AreEqual(1,ended.TransferFailureCount);
+			Assert.IsNull(ended.ConditionCode,"Not TWCC_CAPUNSUPPORTED from the earlier MSG_QUERYSUPPORT.");
+			Assert.IsTrue(Calls.Any(x => x.Rc==Tw.TWRC_FAILURE && x.Condition==Tw.TWCC_CAPUNSUPPORTED),"The scenario has an earlier failure.\r\n"
+				+_harness.CallText);
+		}
 		#endregion Ends without an image
 
 		#region Stops

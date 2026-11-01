@@ -46,6 +46,9 @@ namespace ImagingDeviceManager.TwainProtocol {
 		private bool _isCaptureBigEndian;
 		///<summary>The TWEI_ items DAT_EXTIMAGEINFO asks for in state 7, or null when extended image info is off.</summary>
 		private List<ushort> _listExtInfoIds;
+		///<summary>The condition code read after the transfer triplet itself (DAT_IMAGENATIVEXFER or DAT_IMAGEMEMXFER) returned TWRC_FAILURE in
+		///the last TransferCaptureImage, or null.</summary>
+		private ushort? _transferConditionCode;
 
 		private void ResetCaptureTransferState() {
 			_isBitDepth16Set=false;
@@ -332,11 +335,18 @@ namespace ImagingDeviceManager.TwainProtocol {
 		#endregion Enable and wait
 
 		#region Transfer
+		///<summary>After a failed TransferCaptureImage: the condition code of the transfer triplet that returned TWRC_FAILURE, or null when the
+		///transfer failed without one (TWRC_XFERDONE with no handle, a DIB that cannot be read, 16-bit samples that do not make an image).
+		///Unlike LastConditionCode, it never holds the code of an earlier, unrelated triplet.</summary>
+		internal ushort? TransferConditionCode => _transferConditionCode;
+
 		///<summary>From state 6: DAT_IMAGEINFO for this image, the transfer (the raw 16-bit memory path when the image is 16-bit gray), then,
 		///in state 7 after TWRC_XFERDONE and before MSG_ENDXFER, DAT_EXTIMAGEINFO, then MSG_ENDXFER (state 6 when more are pending, otherwise
-		///5). A failed transfer is ended with MSG_ENDXFER like any other; the error is then set.</summary>
+		///5). A failed transfer is ended with MSG_ENDXFER like any other; the error is then set, and TransferConditionCode says whether the
+		///transfer triplet itself failed.</summary>
 		internal TransferOutcome TransferCaptureImage(out AcquiredImage image) {
 			image=null;
+			_transferConditionCode=null;
 			TW_IMAGEINFO imageInfo;
 			bool hasImageInfo=TryGetImageInfo(out imageInfo);
 			DibImage dib=null;

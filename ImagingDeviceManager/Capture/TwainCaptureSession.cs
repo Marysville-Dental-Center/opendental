@@ -812,7 +812,7 @@ namespace ImagingDeviceManager.Capture {
 				}
 				context.CountTransferFailures++;
 				context.IsSourceMayHoldImages=true;
-				context.ConditionCode=_session.LastConditionCode==Tw.TWCC_SUCCESS ? context.ConditionCode : _session.LastConditionCode;
+				context.ConditionCode=_session.TransferConditionCode??context.ConditionCode;//Never the code of an earlier, unrelated failure.
 				Log("Capture event: image not received from \""+_session.SourceName+"\" (enable "+context.Id+"): "+_session.ErrorText);
 			}
 			return true;

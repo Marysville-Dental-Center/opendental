@@ -1276,6 +1276,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 					State=7;
 					return TransferOutcome.Cancelled;
 				}
+				_transferConditionCode=LastConditionCode;
 				SetErrorFromCondition(EZTwainErrorCode.EZTEC_XFER_FAILURE,"The image transfer from the scanner failed.");
 				return TransferOutcome.Failed;
 			}
@@ -1365,6 +1366,7 @@ namespace ImagingDeviceManager.TwainProtocol {
 						State=7;
 						return TransferOutcome.Cancelled;
 					}
+					_transferConditionCode=LastConditionCode;
 					SetErrorFromCondition(EZTwainErrorCode.EZTEC_XFER_FAILURE,"The image transfer from the scanner failed.");
 					return TransferOutcome.Failed;
 				}
