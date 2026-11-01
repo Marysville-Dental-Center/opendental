@@ -170,5 +170,92 @@ namespace OpenDentBusiness {
 			return ReportsComplex.RunFuncOnReportServer(() => Db.GetTable(queryPat));
 		}
 
+		#region Merchant fees
+		//Open Dental 24.4 replaced the "Show CareCredit fees" and "Show PayConnect fees" boxes of the Daily Payments report with one "Show merchant
+		//fees" box: one Merchant Fee column and one set of fee totals for every processor. The 24.3 layout stays: fees show only for patient payments,
+		//on their own row under the payment. B-ACCT, docs/port-notes/B-ACCT.md.
+		///<summary>The column AddMerchantFeeColumn adds, just before the amount.</summary>
+		public const string COLUMN_MERCHANT_FEE="Merchant Fee";
+		///<summary>The amount less the merchant fee, summed by the "After Fees" totals.</summary>
+		public const string COLUMN_AFTER_FEE="afterFee";
+
+		///<summary>True when the report shows the merchant fees of payments from this source: CareCredit (history from before CareCredit was cut from the
+		///fork), every PayConnect source, and any other processor that records a MerchantFee (our decision). Not None: a payment without a processor
+		///only carries a surcharge typed in by hand.</summary>
+		public static bool IsMerchantFeeSource(CreditCardSource creditCardSource) {
+			return creditCardSource!=CreditCardSource.None;
+		}
+
+		///<summary>The fee as the report shows it. CareCredit stores MerchantFee with the opposite sign of the other processors, so it is negated, as the
+		///24.3 CareCredit column did. Zero for sources whose fees the report does not show.</summary>
+		public static decimal GetMerchantFeeForReport(CreditCardSource creditCardSource,decimal merchantFee) {
+			if(!IsMerchantFeeSource(creditCardSource)) {
+				return 0;
+			}
+			if(creditCardSource==CreditCardSource.CareCredit) {
+				return -merchantFee;
+			}
+			return merchantFee;
+		}
+
+		///<summary>Adds the afterFee column and fills it with the amount (column amt). AddMerchantFeeColumn then takes the fees off.</summary>
+		public static void AddAfterFeeColumn(DataTable table) {
+			if(table==null) {
+				return;
+			}
+			table.Columns.Add(COLUMN_AFTER_FEE);
+			for(int i=0;i<table.Rows.Count;i++) {
+				table.Rows[i][COLUMN_AFTER_FEE]=PIn.Decimal(table.Rows[i]["amt"].ToString());
+			}
+		}
+
+		///<summary>For the patient payments table (columns PayNum, amt, MerchantFee, PaymentSource, the provider list and clinicAbbr): each payment that
+		///has a merchant fee from a source the report shows gets one fee row, right after its last row. The fee row is a copy with amt 0 and no provider or
+		///clinic, so the fee is never credited to a provider or clinic. MerchantFee is then cleared on every other row, so each fee counts once.
+		///Call before AddAfterFeeColumn.</summary>
+		public static void AddMerchantFeeRows(DataTable tablePat,bool hasClinicsEnabled) {
+			if(tablePat==null) {
+				return;
+			}
+			HashSet<long> hashSetPayNumsDone=new HashSet<long>();
+			//Backwards, so each fee row lands right after the last row of its payment and is never visited again.
+			for(int i=tablePat.Rows.Count-1;i>=0;i--) {
+				DataRow dataRow=tablePat.Rows[i];
+				CreditCardSource creditCardSource=(CreditCardSource)PIn.Int(dataRow["PaymentSource"].ToString());
+				long payNum=PIn.Long(dataRow["PayNum"].ToString());
+				if(IsMerchantFeeSource(creditCardSource) && PIn.Decimal(dataRow["MerchantFee"].ToString())!=0 && !hashSetPayNumsDone.Contains(payNum)) {
+					DataRow dataRowFee=tablePat.NewRow();
+					dataRowFee.ItemArray=dataRow.ItemArray;
+					dataRowFee["amt"]=0;
+					dataRowFee["GROUP_CONCAT(DISTINCT provider.Abbr)"]="";
+					if(hasClinicsEnabled && tablePat.Columns.Contains("clinicAbbr")) {
+						dataRowFee["clinicAbbr"]="";
+					}
+					tablePat.Rows.InsertAt(dataRowFee,i+1);
+					hashSetPayNumsDone.Add(payNum);
+				}
+				dataRow["MerchantFee"]=0;
+			}
+		}
+
+		///<summary>Adds the Merchant Fee column just before amt. Each row gets its fee as the report shows it (GetMerchantFeeForReport), and afterFee
+		///becomes amt plus that fee. Needs the afterFee column (AddAfterFeeColumn) and the fee rows (AddMerchantFeeRows).</summary>
+		public static void AddMerchantFeeColumn(DataTable table) {
+			if(table==null) {
+				return;
+			}
+			DataColumn dataColumn=table.Columns.Add(COLUMN_MERCHANT_FEE);
+			dataColumn.SetOrdinal(table.Columns["amt"].Ordinal);
+			for(int i=0;i<table.Rows.Count;i++) {
+				CreditCardSource creditCardSource=(CreditCardSource)PIn.Int(table.Rows[i]["PaymentSource"].ToString());
+				decimal fee=GetMerchantFeeForReport(creditCardSource,PIn.Decimal(table.Rows[i]["MerchantFee"].ToString()));
+				table.Rows[i][COLUMN_MERCHANT_FEE]=fee;
+				if(fee!=0) {
+					table.Rows[i][COLUMN_AFTER_FEE]=PIn.Decimal(table.Rows[i]["amt"].ToString())+fee;
+				}
+			}
+		}
+		#endregion Merchant fees
+
 	}
 }

@@ -117,7 +117,7 @@ Examples:
 			pearl.MountItem_=mountItem;
 			pearl.Document_=document;
 			PearlRequest pearlRequest=PearlRequests.GetOneByDocNum(pearl.Document_.DocNum);
-			if(pearlRequest!=null && pearlRequest.RequestStatus!=EnumPearlStatus.TimedOut) {
+			if(!PearlRequests.CanSendToPearl(pearlRequest)) {//V-PEARL1: sent again only after a failed upload, a timeout or a processing failure.
 				return null;
 			}
 			pearl._userNum=Security.CurUser.UserNum;
@@ -149,6 +149,7 @@ Examples:
 			ODThread oDThreadPearl=new ODThread(this.SendOnThreadWorker);
 			//Swallow all exceptions and allow thread to exit gracefully.
 			oDThreadPearl.AddExceptionHandler(new ODThread.ExceptionDelegate((Exception ex) => {
+				PearlLog.LogWorkerFailure(Document_?.DocNum??0,_pearlRequest?.RequestId,ex);//V-PEARL2: "Log Level" log, errors (always written).
 				AlertUserOfError(ex.Message);
 			}));
 			oDThreadPearl.AddExitHandler(new ODThread.WorkerDelegate((o) => {
@@ -172,12 +173,13 @@ Examples:
 				}
 				//Look for existing request for this document and skip uploading the image if one is found.
 				pearlRequest=PearlRequests.GetOneByDocNum(Document_.DocNum);
-				if(pearlRequest!=null) {
-					throw new Exception("Image was already sent to Pearl");
-				}
+				//V-PEARL1: not null when a request that timed out or failed while processing is polled again. Throws if already sent.
+				string requestId=PearlRequests.PrepareToSend(pearlRequest);
 				//Send image to Pearl
-				string requestId=null;
-				if(ODBuild.IsDebug()&&!ODBuild.IsUnitTest) {
+				if(requestId!=null) {
+					//Pearl already has the image. Poll the same request again without uploading it.
+				}
+				else if(ODBuild.IsDebug()&&!ODBuild.IsUnitTest) {
 					oDThread.Wait(2000);//simulated wait for getting URL and uploading image
 					requestId=SimulateSendOneImageToPearl(Document_.DocNum,Bitmap_,oDThread);
 				}
@@ -187,6 +189,7 @@ Examples:
 						requestId=PearlApiClient.Inst.SendOneImageToPearl(Document_.DocNum,Bitmap_,Patient_);
 					}
 					catch(Exception ex) {
+						PearlRequests.SetUploadFailed(Document_.DocNum);//V-PEARL1: ErrorUploading, so the image can be sent again.
 						throw new Exception("There was an error uploading an image:\r\n"+ex.Message);
 					}
 				}
@@ -357,6 +360,9 @@ Examples:
 				}
 				catch (Exception ex) {
 					//API error, we didn't get a result so we will try again on next polling loop.
+					//V-PEARL1: polling stops here, so the request becomes ErrorProcessing, which can be polled again, instead of staying Polling.
+					_pearlRequest.RequestStatus=EnumPearlStatus.ErrorProcessing;
+					PearlRequests.Update(_pearlRequest);
 					throw new Exception("There was an error retrieving AI results for an image:\r\n"+ex.Message);
 				}
 			}
@@ -374,7 +380,7 @@ Examples:
 			}
 			if(result.is_completed) {
 				//We got a result, and it is complete/ok.
-				_pearlRequest.RequestStatus=EnumPearlStatus.Received;
+				_pearlRequest.RequestStatus=PearlRequests.GetCompletedStatus(result);//V-PEARL1: NoResults when Pearl found nothing to draw.
 				PearlRequests.Update(_pearlRequest);
 				ProcessResultsForOneImage(result,Document_.DocNum,MountItem_,Bitmap_);
 				return true;

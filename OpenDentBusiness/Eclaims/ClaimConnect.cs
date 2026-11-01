@@ -605,6 +605,8 @@ namespace OpenDentBusiness.Eclaims {
 		///(Open Dental 24.4: the attachment has been sent). If a call throws, the claim's flags are left without Submitted and the exception
 		///propagates. Returns the ImageReferenceIds DentalXChange assigned.</summary>
 		public static List<int> SendAttachmentImages(Claim claim,List<ImageAttachment> listImages,string narrative) {
+			//Open Dental 26.1.64: PDFs go as they are; an empty, oversized, non-PDF or encrypted one is refused before any call.
+			DxcPdfAttachment.ThrowIfAnyCannotBeSent(listImages);
 			string attachedFlagsOld=claim.AttachedFlags;
 			//New images are not sent yet. Cleared in memory only, so a failure below leaves the saved claim as it was.
 			claim.AttachedFlags=ClaimAttaches.ClearDxcAttachmentSubmitted(attachedFlagsOld);
@@ -1059,8 +1061,19 @@ namespace OpenDentBusiness.Eclaims {
 			///<summary>Set when the image is saved to the patient's images module.
 			///Used to look up when previewing.</summary>
 			public long DocNum;
+			///<summary>Open Dental 26.1.64: true when ImageFileAsBase64 holds a PDF document's own bytes, sent as they are, instead of an image saved as
+			///a JPEG. Set by DxcPdfAttachment.CreateImageAttachment.</summary>
+			public bool IsPdf;
 
 			public ImageAttachment() {
+			}
+
+			///<summary>The file name DentalXChange receives: the display name, or for a PDF the display name ending in .pdf.</summary>
+			public string GetFileNameToSend() {
+				if(IsPdf) {
+					return DxcPdfAttachment.GetFileNameToSend(ImageFileNameDisplay);
+				}
+				return ImageFileNameDisplay;
 			}
 
 			///<summary>Converts this helper class into the corresponding ClaimConnect AttachmentImage class with all of the same values.</summary>
@@ -1102,7 +1115,7 @@ namespace OpenDentBusiness.Eclaims {
 				//This MUST be set so that the ImageTypeCode is serialized in the API call.
 				attachImage.ImageTypeCodeSpecified=true;
 				attachImage.ImageFileAsBase64=ImageFileAsBase64;
-				attachImage.ImageFileName=ImageFileNameDisplay;
+				attachImage.ImageFileName=GetFileNameToSend();
 				if(ImageOrientationType=="left") {
 					attachImage.ImageOrientationType=DentalxchangePartnerService.orientationType.LEFT;
 				}
@@ -1781,7 +1794,7 @@ namespace OpenDentBusiness.Eclaims {
 						break;
 				}
 				xConnectAttachmentAddImage.imageFileAsBase64=Convert.ToBase64String(listImages[i].ImageFileAsBase64);
-				xConnectAttachmentAddImage.imageFileName=listImages[i].ImageFileNameDisplay;
+				xConnectAttachmentAddImage.imageFileName=listImages[i].GetFileNameToSend();
 				if(listImages[i].ImageOrientationType=="right") {
 					xConnectAttachmentAddImage.imageOrientationType=EnumXConnectImageOrientationType.RIGHT;
 				}

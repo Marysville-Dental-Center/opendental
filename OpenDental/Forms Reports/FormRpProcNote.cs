@@ -20,6 +20,8 @@ namespace OpenDental{
 		private int _headingPrintH;
 		//Used to track which window the calling form is currently displaying from, this way we know if we want to minimize this window or let it stay in view.
 		private System.Windows.Forms.Screen _screenParent;
+		///<summary>The same-day box's own state, restored when "all procedures with no notes" is turned off again.</summary>
+		private bool _isNoNotesCheckedBeforeAll;
 
 		///<summary></summary>
 		public FormRpProcNote(Control controlParentForm) {
@@ -32,6 +34,8 @@ namespace OpenDental{
 		private void FormRpProcNote_Load(object sender,System.EventArgs e) {
 			checkNoNotes.Checked=PrefC.GetBool(PrefName.ReportsIncompleteProcsNoNotes);
 			checkUnsignedNote.Checked=PrefC.GetBool(PrefName.ReportsIncompleteProcsUnsigned);
+			checkAllNoNotes.Checked=RpProcNote.GetAllNoNotesDefault();
+			SetNoNotesEnabled();
 			List<Provider> listProviders=Providers.GetListProvidersForClinic(comboClinics.ClinicNumSelected);
 			FillProvs(listProviders);
 			dateRangePicker.SetDateTimeFrom(DateTime.Today);
@@ -46,9 +50,29 @@ namespace OpenDental{
 			comboProvs.IsAllSelected=true;
 		}
 
+		///<summary>The 24.4 "all procedures with no notes" filter implies the same-day filter, so that box is checked and locked while it is on.</summary>
+		private void SetNoNotesEnabled() {
+			if(checkAllNoNotes.Checked) {
+				if(checkNoNotes.Enabled) {
+					_isNoNotesCheckedBeforeAll=checkNoNotes.Checked;
+				}
+				checkNoNotes.Checked=true;
+				checkNoNotes.Enabled=false;
+				return;
+			}
+			if(!checkNoNotes.Enabled) {
+				checkNoNotes.Checked=_isNoNotesCheckedBeforeAll;
+				checkNoNotes.Enabled=true;
+			}
+		}
+
+		private void checkAllNoNotes_CheckedChanged(object sender,EventArgs e) {
+			SetNoNotesEnabled();
+		}
+
 		private void FillGrid() {
 			DataTable table=GetIncompleteProcNotes();
-			bool includeNoNotes=checkNoNotes.Checked;
+			bool includeNoNotes=checkNoNotes.Checked || checkAllNoNotes.Checked;
 			bool includeUnsignedNotes=checkUnsignedNote.Checked;
 			gridMain.BeginUpdate();
 			//Columns
@@ -130,7 +154,8 @@ namespace OpenDental{
 			}
 			return RpProcNote.GetData(GetListSelectedProvNums(),comboClinics.ListClinicNumsSelected,dateRangePicker.GetDateTimeFrom(),
 				dateRangePicker.GetDateTimeTo(),checkNoNotes.Checked,checkUnsignedNote.Checked,
-				(ToothNumberingNomenclature)PrefC.GetInt(PrefName.UseInternationalToothNumbers),groupBy,showExcludedCodes:checkShowExcludedCodes.Checked);
+				(ToothNumberingNomenclature)PrefC.GetInt(PrefName.UseInternationalToothNumbers),groupBy,showExcludedCodes:checkShowExcludedCodes.Checked,
+				includeAllNoNotes:checkAllNoNotes.Checked);
 		}
 
 		///<summary></summary>
@@ -251,7 +276,7 @@ namespace OpenDental{
 		}
 
 		private void butExport_Click(object sender,System.EventArgs e) {
-			gridMain.Export("Incomplete Procedure Notes");
+			gridMain.ShowExportMenu(butExport,"Incomplete Procedure Notes");//25.3: Export .csv or Export .txt
 		}
 
 	}

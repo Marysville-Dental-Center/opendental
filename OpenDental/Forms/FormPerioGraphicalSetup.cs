@@ -24,6 +24,9 @@ namespace OpenDental {
 			this.butColorMGJ.BackColor=PrefC.GetColor(PrefName.PerioColorMGJ);	
 			this.butColorProbing.BackColor=PrefC.GetColor(PrefName.PerioColorProbing);
 			this.butColorProbingRed.BackColor=PrefC.GetColor(PrefName.PerioColorProbingRed);
+			if(PerioMeasures.GetUseRecessionTerm()) {//Perio Setup option (24.4). The color is still the gingival margin line.
+				label4.Text=Lan.g(this,"Recession");
+			}
 		}
 
 		private void butColorCal_Click(object sender,EventArgs e) {

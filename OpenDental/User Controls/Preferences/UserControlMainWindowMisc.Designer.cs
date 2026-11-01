@@ -33,6 +33,7 @@ namespace OpenDental {
 			this.label7 = new System.Windows.Forms.Label();
 			this.labelTrackClinic = new System.Windows.Forms.Label();
 			this.checkBackupIndexesDisabled = new OpenDental.UI.CheckBox();
+			this.checkModuleSwitchBlur = new OpenDental.UI.CheckBox();
 			this.textAuditEntries = new OpenDental.ValidNum();
 			this.comboTrackClinic = new OpenDental.UI.ComboBox();
 			this.groupBox2 = new OpenDental.UI.GroupBox();
@@ -138,6 +139,15 @@ namespace OpenDental {
 			this.checkBackupIndexesDisabled.Size = new System.Drawing.Size(457, 18);
 			this.checkBackupIndexesDisabled.TabIndex = 267;
 			this.checkBackupIndexesDisabled.Text = "Disable indexes to speed up automatic backups";
+			//
+			// checkModuleSwitchBlur
+			//
+			this.checkModuleSwitchBlur.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkModuleSwitchBlur.Location = new System.Drawing.Point(15, 561);
+			this.checkModuleSwitchBlur.Name = "checkModuleSwitchBlur";
+			this.checkModuleSwitchBlur.Size = new System.Drawing.Size(457, 18);
+			this.checkModuleSwitchBlur.TabIndex = 268;
+			this.checkModuleSwitchBlur.Text = "Blur when switching between modules to prevent accidental clicking";
 			// 
 			// textAuditEntries
 			// 
@@ -361,6 +371,7 @@ namespace OpenDental {
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.BackColor = System.Drawing.Color.White;
+			this.Controls.Add(this.checkModuleSwitchBlur);
 			this.Controls.Add(this.checkBackupIndexesDisabled);
 			this.Controls.Add(this.textWebServiceServerName);
 			this.Controls.Add(this.textAuditEntries);
@@ -422,5 +433,6 @@ namespace OpenDental {
 		private System.Windows.Forms.Label labelTrackClinic;
 		private ValidNum textInactiveAlert;
 		private UI.CheckBox checkBackupIndexesDisabled;
+		private UI.CheckBox checkModuleSwitchBlur;
 	}
 }

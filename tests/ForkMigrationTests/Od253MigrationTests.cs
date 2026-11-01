@@ -161,6 +161,8 @@ namespace ForkMigrationTests {
 			List<string> listChangesBefore26_1=_resultAll.ListChanges.Where(x => long.Parse(x.Substring(0,x.IndexOf(':')))<levelFirst26_1).ToList();
 			Assert.AreEqual(0,listChangesBefore26_1.Count,string.Join("\r\n",listChangesBefore26_1));
 			HashSet<string> setTables26_1=GetTablesChangedBy26_1();
+			//The UDS+ report row (package M2-UDS, ReportRowUdsPlusStep) is added on every database from before 25.4.
+			setTables26_1.Add("displayreport");
 			List<string> listChanged=_dictChecksumsBefore.Keys.Where(x => !setTables26_1.Contains(x))
 				.Where(x => !_dictChecksumsAfterAll.ContainsKey(x) || _dictChecksumsAfterAll[x]!=_dictChecksumsBefore[x]).ToList();
 			Assert.AreEqual(0,listChanged.Count,"Tables changed outside 25.4/26.1: "+string.Join(", ",listChanged));

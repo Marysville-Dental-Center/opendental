@@ -90,6 +90,7 @@ namespace OpenDental {
 			comboUnallocatedSplits.SetSelectedDefNum(PrefC.GetLong(PrefName.PrepaymentUnearnedType));
 			checkAllowEmailCCReceipt.Checked=PrefC.GetBool(PrefName.AllowEmailCCReceipt);
 			checkIncTxfrTreatNegProdAsIncome.Checked=PrefC.GetBool(PrefName.IncomeTransfersTreatNegativeProductionAsIncome);
+			checkIncomeTransfersLimitToPatPayments.Checked=PrefC.GetBool(PrefName.IncomeTransfersLimitToPatPayments);
 			checkPaymentCompletedDisableMerchantButtons.Checked=PrefC.GetBool(PrefName.PaymentsCompletedDisableMerchantButtons);
 			checkAllowPrepayProvider.Checked=PrefC.GetBool(PrefName.AllowPrepayProvider);
 			comboDppUnearnedType.Items.AddDefs(Defs.GetHiddenUnearnedDefs(true));
@@ -135,6 +136,11 @@ namespace OpenDental {
 			//(synced) Changed|=Prefs.UpdateBool(PrefName.PaymentsPromptForPayType,checkPaymentsPromptForPayType.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.AllowEmailCCReceipt,checkAllowEmailCCReceipt.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.IncomeTransfersTreatNegativeProductionAsIncome,checkIncTxfrTreatNegProdAsIncome.Checked);
+			if(Prefs.UpdateBool(PrefName.IncomeTransfersLimitToPatPayments,checkIncomeTransfersLimitToPatPayments.Checked)) {
+				Changed=true;
+				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"'Limit manual income transfers to the amount of patient payments' changed to "
+					+(checkIncomeTransfersLimitToPatPayments.Checked ? "on" : "off")+".");
+			}
 			Changed|=Prefs.UpdateBool(PrefName.PaymentsCompletedDisableMerchantButtons,checkPaymentCompletedDisableMerchantButtons.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.AllowPrepayProvider,checkAllowPrepayProvider.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.ShowAllocateUnearnedPaymentPrompt,checkShowAllocateUnearnedPaymentPrompt.Checked);
@@ -154,6 +160,10 @@ namespace OpenDental {
 			checkPaymentsPromptForPayType.Checked=PIn.Bool(prefValSync.PrefVal);
 			prefValSync=ListPrefValSyncs.Find(x=>x.PrefName_==PrefName.PayPlansVersion);
 			comboPayPlansVersion.SelectedIndex=PIn.Int(prefValSync.PrefVal)-1;//PrefVal is the enum which starts at 1 so subtract 1 for SelectedIndex
+			//25.1: the charge logic is no longer a choice. The combo stays hidden; a legacy mode shows as a read-only line, the default shows nothing.
+			comboPayPlansVersion.Visible=false;
+			label27.Text=PayPlanChargeLogic.GetReadOnlyText(PIn.Int(prefValSync.PrefVal));
+			label27.Visible=PayPlanChargeLogic.IsLegacyMode(PIn.Int(prefValSync.PrefVal));
 			if(comboPayPlansVersion.SelectedIndex==(int)PayPlanVersions.AgeCreditsAndDebits-1) {//Minus 1 because the enum starts at 1.
 				checkHideDueNow.Visible=true;
 				checkHideDueNow.Checked=PrefC.GetBool(PrefName.PayPlanHideDueNow);

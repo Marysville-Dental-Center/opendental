@@ -402,9 +402,9 @@
 			// 
 			// labelAIProcessing
 			//
-			this.labelAIProcessing.Location = new System.Drawing.Point(7, 27);
+			this.labelAIProcessing.Location = new System.Drawing.Point(7, 20);
 			this.labelAIProcessing.Name = "labelAIProcessing";
-			this.labelAIProcessing.Size = new System.Drawing.Size(80, 16);
+			this.labelAIProcessing.Size = new System.Drawing.Size(182, 32);
 			this.labelAIProcessing.TabIndex = 3;
 			this.labelAIProcessing.Text = "Processing...";
 			this.labelAIProcessing.Visible = false;

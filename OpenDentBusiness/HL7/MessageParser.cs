@@ -2123,6 +2123,7 @@ namespace OpenDentBusiness.HL7 {
 				}
 			}
 			Patients.Update(pat,patOld);
+			Patients.InsertPreferredAndClinicChangeSecurityLogEntry(patOld,pat,"an inbound HL7 message (PV1 segment)");
 			if(!string.IsNullOrEmpty(securitylogText)) {
 				SecurityLogs.MakeLogEntry(EnumPermType.PatPriProvEdit,pat.PatNum,securitylogText);
 			}

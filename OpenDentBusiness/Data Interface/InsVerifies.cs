@@ -247,16 +247,18 @@ namespace OpenDentBusiness{
 		///<summary>UserNum=-1 is "All", UserNum=0 is "Unassigned". 
 		///statusDefNum=-1 or statusDefNum=0 is "All".  
 		///listClinicNums containing -1 is "All". listClinicNums containing 0 is "Unassigned". 
-		///listRegionDefNums containing 0 or -1 is "All".</summary>
+		///listRegionDefNums containing 0 or -1 is "All".
+		///listCarrierNums null or empty is "All"; otherwise only plans of those carriers (Open Dental 25.4 replaced the carrier name box with a pick of
+		///one or more carriers). The appointment dates are whole days: dateStart through dateEnd, see GetApptDateRange.</summary>
 		public static List<InsVerifyGridObject> GetVerifyGridList(DateTime dateStartStandard, DateTime dateEndStandard,DateTime datePatEligibilityLastVerifiedStandard
 			,DateTime datePlanBenefitsLastVerifiedStandard,List<long> listClinicNums,List<long> listRegionDefNums,long statusDefNum
-			,long userNum,string carrierName,bool excludePatVerifyWhenNoIns,bool excludePatClones
+			,long userNum,List<long> listCarrierNums,bool excludePatVerifyWhenNoIns,bool excludePatClones
 			,DateTime dateStartMedicaid,DateTime dateEndMedicaid,DateTime datePatEligibilityLastVerifiedMedicaid,DateTime datePlanBenefitsLastVerifiedMedicaid
 			,InsVerifyListType insVerifyListType) 
 		{
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<List<InsVerifyGridObject>>(MethodBase.GetCurrentMethod(),dateStartStandard,dateEndStandard,datePatEligibilityLastVerifiedStandard
-					,datePlanBenefitsLastVerifiedStandard,listClinicNums,listRegionDefNums,statusDefNum,userNum,carrierName,excludePatVerifyWhenNoIns,excludePatClones
+					,datePlanBenefitsLastVerifiedStandard,listClinicNums,listRegionDefNums,statusDefNum,userNum,listCarrierNums,excludePatVerifyWhenNoIns,excludePatClones
 					,dateStartMedicaid,dateEndMedicaid,datePatEligibilityLastVerifiedMedicaid,datePlanBenefitsLastVerifiedMedicaid,insVerifyListType);
 			}
 			List<long> listInsFilingCodeNums=InsFilingCodes.GetAll().Select(x=>x.InsFilingCodeNum).ToList();
@@ -269,7 +271,7 @@ namespace OpenDentBusiness{
 			//If our list type is Both or Standard, and we have a populated list of Standard CodeNums, grab all of the relevant InsVerifyGridObjects using the db.
 			if((insVerifyListType==InsVerifyListType.Both || insVerifyListType==InsVerifyListType.Standard) && listInsFilingCodeNumsStandard.Count>0) { //The list will always be populated.
 				string command=GetVerifyGridListQuery(dateStartStandard,dateEndStandard,datePatEligibilityLastVerifiedStandard,datePlanBenefitsLastVerifiedStandard,
-					listClinicNums,listRegionDefNums,statusDefNum,userNum,carrierName,excludePatVerifyWhenNoIns,excludePatClones,listInsFilingCodeNumsStandard);
+					listClinicNums,listRegionDefNums,statusDefNum,userNum,listCarrierNums,excludePatVerifyWhenNoIns,excludePatClones,listInsFilingCodeNumsStandard);
 				DataTable table=Db.GetTable(command);
 				List<InsVerifyGridObject> listInsVerifyGridObjectsStandard=TableToListInsVerifyGridObjects(table,isForMedicaid:false);
 				listInsVerifyGridObjects.AddRange(listInsVerifyGridObjectsStandard);
@@ -277,7 +279,7 @@ namespace OpenDentBusiness{
 			//If our list type is Both or Medicaid, and we have a populated list of Medicaid CodeNums, grab all of the relevant InsVerifyGridObjects using the db.
 			if((insVerifyListType==InsVerifyListType.Both || insVerifyListType==InsVerifyListType.Medicaid) && listInsFilingCodeNumsMedicaid.Count>0) {
 				string command=GetVerifyGridListQuery(dateStartMedicaid,dateEndMedicaid,datePatEligibilityLastVerifiedMedicaid,datePlanBenefitsLastVerifiedMedicaid,
-					listClinicNums,listRegionDefNums,statusDefNum,userNum,carrierName,excludePatVerifyWhenNoIns,excludePatClones,listInsFilingCodeNumsMedicaid);
+					listClinicNums,listRegionDefNums,statusDefNum,userNum,listCarrierNums,excludePatVerifyWhenNoIns,excludePatClones,listInsFilingCodeNumsMedicaid);
 				DataTable table=Db.GetTable(command);
 				List<InsVerifyGridObject> listInsVerifyGridObjectsMedicaid=TableToListInsVerifyGridObjects(table,isForMedicaid:true);
 				listInsVerifyGridObjects.AddRange(listInsVerifyGridObjectsMedicaid);
@@ -288,7 +290,7 @@ namespace OpenDentBusiness{
 
 		private static string GetVerifyGridListQuery(DateTime dateStart, DateTime dateEnd,DateTime datePatEligibilityLastVerified
 			,DateTime datePlanBenefitsLastVerified,List<long> listClinicNums,List<long> listRegionDefNums,long defNumStatus
-			,long userNum,string carrierName,bool excludePatVerifyWhenNoIns,bool excludePatClones,List<long> listInsFilingCodeNums) {
+			,long userNum,List<long> listCarrierNums,bool excludePatVerifyWhenNoIns,bool excludePatClones,List<long> listInsFilingCodeNums) {
 			Meth.NoCheckMiddleTierRole();
 			//clinicJoin should only be used if the passed in clinicNum is a value other than 0 (Unassigned).
 			string whereClinic="";
@@ -332,7 +334,7 @@ namespace OpenDentBusiness{
 					"+(excludePatVerifyWhenNoIns ? "AND insplan.HideFromVerifyList=0" : "")+@"
 					AND insplan.FilingCode IN("+POut.String(String.Join(",",listInsFilingCodeNums))+@")
 				INNER JOIN carrier ON carrier.CarrierNum=insplan.CarrierNum 
-					"+(string.IsNullOrEmpty(carrierName) ? "" : "AND carrier.CarrierName LIKE '%"+POut.String(carrierName)+"%'")+@"
+					"+GetCarrierFilterClause(listCarrierNums)+@"
 				"+(excludePatClones ? "LEFT JOIN patientlink ON patientlink.PatNumTo=patient.PatNum AND patientlink.LinkType="
 					+POut.Int((int)PatientLinkType.Clone)+" " : "");
 			string insVerifyJoin1=@"INNER JOIN insverify ON 
@@ -491,7 +493,9 @@ namespace OpenDentBusiness{
 			}
 		}
 
-		///<summary>Builds a query to select certain values from the insverifies table within a passed in timeframe.</summary>
+		///<summary>Builds a query to select certain values from the insverifies table within a passed in timeframe.
+		///DateLastAssigned is a datetime since Open Dental 25.4. It is compared with midnight 30 days ago, so an assignment is cleared once it is more
+		///than 30 whole days old, as with the 24.3 date column, whatever its time of day.</summary>
 		private static string GetInsVerifyCleanupQuery(DateTime dateStart, DateTime dateEndStandard, DateTime dateEndMedicaid) {
 			Meth.NoCheckMiddleTierRole();
 			List<long> listInsFilingCodeNums=InsFilingCodes.GetAll().Select(x=>x.InsFilingCodeNum).ToList();
@@ -512,7 +516,7 @@ namespace OpenDentBusiness{
 					INNER JOIN insverify ON VerifyType="+POut.Int((int)VerifyTypes.InsuranceBenefit)+@"
 						AND insverify.FKey=insplan.PlanNum
 					WHERE insverify.DateLastAssigned>'0001-01-01'
-					AND insverify.DateLastAssigned<"+POut.Date(DateTime.Today.AddDays(-30))+@"
+					AND insverify.DateLastAssigned<"+POut.DateT(DateTime.Today.AddDays(-30))+@"
 				
 					UNION
 					
@@ -523,7 +527,7 @@ namespace OpenDentBusiness{
 					INNER JOIN insverify ON VerifyType="+POut.Int((int)VerifyTypes.PatientEnrollment)+@"
 						AND insverify.FKey=patplan.PatPlanNum
 					WHERE insverify.DateLastAssigned>'0001-01-01'
-					AND insverify.DateLastAssigned<"+POut.Date(DateTime.Today.AddDays(-30))+@"
+					AND insverify.DateLastAssigned<"+POut.DateT(DateTime.Today.AddDays(-30))+@"
 				) insverifies
 				LEFT JOIN appointment ON appointment.PatNum=insverifies.PatNum
 					AND appointment.AptStatus IN ("+POut.Int((int)ApptStatus.Scheduled)+","+POut.Int((int)ApptStatus.Complete)+@")
@@ -566,7 +570,7 @@ namespace OpenDentBusiness{
 				,new List<long>(){ 0 }//All regions
 				,0//All statuses
 				,-1//All userNums
-				,""//All carriers 
+				,new List<long>()//All carriers
 				,excludePatVerifyWhenNoIns
 				,excludePatClones
 				,dateTimeStartMedicaid,dateTimeEndMedicaid,dateTimeLastPatEligibilityMedicaid,dateTimeLastPlanBenefitsMedicaid,InsVerifyListType.Both
@@ -697,7 +701,7 @@ namespace OpenDentBusiness{
 			else {//Pat only or Both
 				insVerifyGridObject.InsVerifyPat.DefNum=defNumErrorPatIns;
 				insVerifyGridObject.InsVerifyPat.Note=errorNotePatIns;
-				insVerifyGridObject.InsVerifyPat.DateLastAssigned=DateTime.Today;
+				insVerifyGridObject.InsVerifyPat.DateLastAssigned=DateTime.Now;//datetime since Open Dental 25.4: keeps the time of the status change.
 				Update(insVerifyGridObject.InsVerifyPat);
 			}
 		}
@@ -1008,6 +1012,73 @@ namespace OpenDentBusiness{
 			return Crud.InsVerifyCrud.SelectMany(command);
 		}
 		*/
+
+		#region Verification List filters (Open Dental 25.4)
+		///<summary>The appointment dates the Insurance Verification List shows for a range of days until the appointment: dateToday+daysMin through
+		///dateToday+daysMax, whole days (GetVerifyGridList includes all of the last day). Open Dental 25.4 added the minimum; in 24.3 the minimum was
+		///always 0 (today).</summary>
+		public static void GetApptDateRange(DateTime dateToday,int daysMin,int daysMax,out DateTime dateStart,out DateTime dateEnd) {
+			Meth.NoCheckMiddleTierRole();
+			dateStart=dateToday.Date.AddDays(daysMin);
+			dateEnd=dateToday.Date.AddDays(daysMax);
+		}
+
+		///<summary>True when daysMin and daysMax are 0 or more and daysMin is not more than daysMax. An invalid range blocks the refresh of the list,
+		///like the other invalid day boxes.</summary>
+		public static bool IsApptDayRangeValid(int daysMin,int daysMax) {
+			Meth.NoCheckMiddleTierRole();
+			return daysMin>=0 && daysMax>=0 && daysMin<=daysMax;
+		}
+
+		///<summary>The condition added to the carrier join of the verification list query: blank for all carriers (null, empty, or no CarrierNum above
+		///0), otherwise "AND carrier.CarrierNum IN(...)".</summary>
+		public static string GetCarrierFilterClause(List<long> listCarrierNums) {
+			Meth.NoCheckMiddleTierRole();
+			List<long> listCarrierNumsValid=GetCarrierNumsDistinct(listCarrierNums);
+			if(listCarrierNumsValid.Count==0) {
+				return "";
+			}
+			return "AND carrier.CarrierNum IN("+string.Join(",",listCarrierNumsValid.Select(x => POut.Long(x)))+")";
+		}
+
+		///<summary>The carriers of the filter that still exist, in the given order. A carrier that was combined into another one (Carrier Combine) or
+		///deleted drops out silently; when none is left, the filter means all carriers again.</summary>
+		public static List<long> GetCarrierNumsStillPresent(List<long> listCarrierNums) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<long>>(MethodBase.GetCurrentMethod(),listCarrierNums);
+			}
+			List<long> listCarrierNumsValid=GetCarrierNumsDistinct(listCarrierNums);
+			if(listCarrierNumsValid.Count==0) {
+				return listCarrierNumsValid;
+			}
+			string command="SELECT CarrierNum FROM carrier WHERE CarrierNum IN("+string.Join(",",listCarrierNumsValid.Select(x => POut.Long(x)))+")";
+			List<long> listCarrierNumsExisting=Db.GetListLong(command);
+			return listCarrierNumsValid.FindAll(x => listCarrierNumsExisting.Contains(x));
+		}
+
+		///<summary>The text of the read-only carrier box of the Insurance Verification List: "All" for no carriers, otherwise the carrier names
+		///separated by commas, or "N carriers" when several names do not fit in maxChars.</summary>
+		public static string GetCarrierFilterText(List<Carrier> listCarriers,int maxChars) {
+			Meth.NoCheckMiddleTierRole();
+			if(listCarriers==null || listCarriers.Count==0) {
+				return Lans.g("FormInsVerificationList","All");
+			}
+			string carrierNames=string.Join(", ",listCarriers.Select(x => x.CarrierName));
+			if(listCarriers.Count==1 || carrierNames.Length<=maxChars) {
+				return carrierNames;
+			}
+			return listCarriers.Count.ToString()+" "+Lans.g("FormInsVerificationList","carriers");
+		}
+
+		///<summary>Positive CarrierNums only, each once, in the given order. Null gives an empty list.</summary>
+		private static List<long> GetCarrierNumsDistinct(List<long> listCarrierNums) {
+			Meth.NoCheckMiddleTierRole();
+			if(listCarrierNums==null) {
+				return new List<long>();
+			}
+			return listCarrierNums.FindAll(x => x>0).Distinct().ToList();
+		}
+		#endregion Verification List filters (Open Dental 25.4)
 
 		#region SecurityHash
 		///<summary>Returns the keyed hash over the fields that drive the verification list: assigned user, status definition and assignment date. The

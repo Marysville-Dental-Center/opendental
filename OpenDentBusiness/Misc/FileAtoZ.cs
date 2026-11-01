@@ -66,6 +66,7 @@ namespace OpenDentBusiness.FileIO {
 			if(CloudStorage.IsCloudStorage) {
 				return;//There is no need to create directories in cloud mode.  Folders automatically get created when creating files.
 			}
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.CreateDirectory,folder);
 			Directory.CreateDirectory(folder);
 		}
 
@@ -77,11 +78,13 @@ namespace OpenDentBusiness.FileIO {
 			if(CloudStorage.IsCloudStorage) {
 				return;//There is no need to create directories in cloud mode.  Folders automatically get created when creating files.
 			}
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.CreateDirectory,folder);
 			Directory.CreateDirectory(CombinePaths(GetPreferredAtoZpath(),folder));
 		}
 
 		///<summary>Returns the string contents of the file. Sychronous for cloud storage.</summary>
 		public static string ReadAllText(string fileFullPath) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Read,fileFullPath);
 			if(CloudStorage.IsCloudStorage) {
 				byte[] byteArray=CloudStorage.Download(Path.GetDirectoryName(fileFullPath),Path.GetFileName(fileFullPath));
 				return Encoding.UTF8.GetString(byteArray);
@@ -93,6 +96,7 @@ namespace OpenDentBusiness.FileIO {
 
 		///<summary>Returns the byte contents of the file. Sychronous for cloud storage.</summary>
 		public static byte[] ReadAllBytes(string fileFullPath) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Read,fileFullPath);
 			if(CloudStorage.IsCloudStorage) {
 				byte[] byteArray=CloudStorage.Download(Path.GetDirectoryName(fileFullPath),Path.GetFileName(fileFullPath));
 				return byteArray;
@@ -104,6 +108,7 @@ namespace OpenDentBusiness.FileIO {
 
 		///<summary>Writes or uploads the text to the specified file name.  Sychronous for cloud storage.  Throws exceptions.</summary>
 		public static void WriteAllText(string fileFullPath,string contents) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Write,fileFullPath);
 			if(CloudStorage.IsCloudStorage) {
 				CloudStorage.Upload(Path.GetDirectoryName(fileFullPath),Path.GetFileName(fileFullPath),Encoding.UTF8.GetBytes(contents));
 			}
@@ -122,6 +127,7 @@ namespace OpenDentBusiness.FileIO {
 
 		///<summary>Writes or uploads the bytes to the specified file name. Sychronous for cloud storage.</summary>
 		public static void WriteAllBytes(string fileFullPath,byte[] byteArray) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Write,fileFullPath);
 			if(CloudStorage.IsCloudStorage) {
 				CloudStorage.Upload(Path.GetDirectoryName(fileFullPath),Path.GetFileName(fileFullPath),byteArray);
 			}
@@ -132,6 +138,7 @@ namespace OpenDentBusiness.FileIO {
 
 		///<summary>Gets a list of the files in the specified directory.  Throws exceptions.</summary>
 		public static List<string> GetFilesInDirectory(string folderFullPath) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.List,folderFullPath);
 			if(CloudStorage.IsCloudStorage) {
 				return CloudStorage.ListFolderContents(folderFullPath);
 			}
@@ -158,6 +165,7 @@ namespace OpenDentBusiness.FileIO {
 
 		///<summary>Returns true if the file exists.  Sychronous for cloud storage. Throws exceptions.</summary>
 		public static bool Exists(string fileFullPath) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Exists,fileFullPath);
 			if(CloudStorage.IsCloudStorage) {
 				return CloudStorage.FileExists(fileFullPath);
 			}
@@ -175,6 +183,7 @@ namespace OpenDentBusiness.FileIO {
 		///<summary>The first parameter, 'sourceFileName', must be a file that exists. Sychronous for cloud storage.</summary>
 		public static void Copy(string sourceFileName,string destinationFileName,FileAtoZSourceDestination sourceDestination,bool isFolder=false,
 			bool doOverwrite=false) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.BeginTransfer(FileMonitorAction.Copy,sourceFileName,destinationFileName);
 			if(CloudStorage.IsCloudStorage) {
 				sourceFileName=CloudStorage.PathTidy(sourceFileName);
 				destinationFileName=CloudStorage.PathTidy(destinationFileName);
@@ -199,6 +208,7 @@ namespace OpenDentBusiness.FileIO {
 		}
 
 		public static void Move(string sourceFileFullPath,string destinationFileFullPath) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.BeginTransfer(FileMonitorAction.Move,sourceFileFullPath,destinationFileFullPath);
 			if(CloudStorage.IsCloudStorage) {
 				CloudStorage.Move(sourceFileFullPath,destinationFileFullPath,hasExceptions:true);
 			}
@@ -209,6 +219,7 @@ namespace OpenDentBusiness.FileIO {
 
 		///<summary>Deletes the file. Sychronous for cloud storage.</summary>
 		public static void Delete(string fileFullPath) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Delete,fileFullPath);
 			if(CloudStorage.IsCloudStorage) {
 				CloudStorage.Delete(fileFullPath);
 			}
@@ -219,6 +230,7 @@ namespace OpenDentBusiness.FileIO {
 
 		///<summary>Returns true if the directory exists.  Sychronous for cloud storage.  Throws exceptions.</summary>
 		public static bool DirectoryExists(string folderFullPath) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Exists,folderFullPath);
 			if(CloudStorage.IsCloudStorage) {
 				return CloudStorage.FileExists(folderFullPath);
 			}
@@ -235,6 +247,7 @@ namespace OpenDentBusiness.FileIO {
 
 		///<summary>Returns null if the the image could not be downloaded. Sychronous.</summary>
 		public static Bitmap GetImage(string imagePath) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Read,imagePath);
 			if(CloudStorage.IsCloudStorage) {
 				byte[] byteArray=CloudStorage.Download(Path.GetDirectoryName(imagePath),Path.GetFileName(imagePath));
 				if(byteArray==null || byteArray.Length<2){
@@ -250,6 +263,7 @@ namespace OpenDentBusiness.FileIO {
 
 		///<summary>Returns null if the the image could not be downloaded. Sychronous.</summary>
 		public static Bitmap GetBitmap128(string imagePath) {
+			using FileMonitorScope fileMonitorScope=FileMonitor.Begin(FileMonitorAction.Read,imagePath);
 			if(CloudStorage.IsCloudStorage) {
 				Byte[] byteArray=CloudStorage.GetThumbnail(Path.GetDirectoryName(imagePath),Path.GetFileName(imagePath));
 				if(byteArray==null || byteArray.Length < 2) {

@@ -175,7 +175,7 @@ namespace ApptTests {
 			string errors=Schedules.CopyBlockouts(0,false,true,false,_date,_date,dateTo,dateTo,1,includeUnflagged:true,includeFlagged:false);
 			Assert.AreEqual("",errors);
 			Assert.AreEqual("Lunch@A",Remaining(dateTo));
-			CollectionAssert.AreEqual(new List<int> { (int)EnumPermType.Blockouts },LoggedPermTypes());
+			CollectionAssert.AreEqual(new List<int> { (int)EnumPermType.BlockoutAdd },LoggedPermTypes(),"25.4: a paste of unflagged blockouts is a Blockout Add.");
 		}
 
 		[TestMethod]
@@ -184,8 +184,8 @@ namespace ApptTests {
 			DateTime dateTo=_date.AddDays(1);
 			Assert.AreEqual("",Schedules.CopyBlockouts(0,false,true,false,_date,_date,dateTo,dateTo,1));
 			Assert.AreEqual("Lunch@A,NS@A",Remaining(dateTo));
-			CollectionAssert.AreEqual(new List<int> { (int)EnumPermType.Blockouts,(int)EnumPermType.BlockoutsFlagged },LoggedPermTypes(),
-				"One paste entry per kind, each under its own permission.");
+			CollectionAssert.AreEqual(new List<int> { (int)EnumPermType.BlockoutsFlagged,(int)EnumPermType.BlockoutAdd },LoggedPermTypes(),
+				"One paste entry per kind, each under its own permission (25.4: Blockout Add for unflagged blockouts).");
 		}
 
 		[TestMethod]
@@ -209,7 +209,7 @@ namespace ApptTests {
 			Schedules.BlockoutLogHelper(BlockoutAction.Delete,scheduleUnflagged);
 			Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:_date,permTypeClear:EnumPermType.BlockoutsFlagged);
 			Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:_date);
-			CollectionAssert.AreEqual(new List<int> { 266,13,266,13 },LoggedPermTypes());
+			CollectionAssert.AreEqual(new List<int> { 266,273,266,273 },LoggedPermTypes(),"25.4: delete and clear of unflagged blockouts are Blockout Delete.");
 		}
 		#endregion Audit entries
 

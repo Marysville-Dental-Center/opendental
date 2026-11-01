@@ -3118,6 +3118,7 @@ namespace OpenDental {
 					if(_odWebView2.CoreWebView2==null) {
 						await _odWebView2.Init();//Throws exception if Microsoft WebView2 Runtime is not installed so need to have in try-catch.
 					}
+					_odWebView2.SetScriptEnabled(ImageHelper.IsPdfJavascriptAllowed());//JavaScript in PDFs only when the preference allows it, read for every PDF.
 					_odWebView2.CoreWebView2.Navigate(_odWebView2FilePath);//The return status of this function doesn't seem to be helpful.
 				}
 			}
