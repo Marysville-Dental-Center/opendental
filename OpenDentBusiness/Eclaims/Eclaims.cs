@@ -309,6 +309,8 @@ namespace OpenDentBusiness.Eclaims
 			catch(Exception e) {
 				queueItem.MissingData=Lans.g("Eclaims","Unable to validate claim data:")+" "+e.Message+Lans.g("Eclaims"," Please recreate claim.");
 			}
+			//Open Dental 26.1: the EDS-specific local checks for claims that go to EDS (VendorDirect/Eds/EdsClaimValidation). Never calls EDS.
+			VendorDirect.Eds.EdsClaimValidation.AddLocalChecksToQueueItem(clearinghouseClin,queueItem);
 			return queueItem;
 		}
 
