@@ -678,8 +678,43 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void ContinuousConfigured_ButTheEnableRunsPerSlot_AnImageDrainedAfterItsImage_IsExtra_NotPlacedIntoTheCurrentTarget() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.ActionOnNewSession=session => session.IsContinuousCapAccepted=false;
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:true);
+			AcquiredImage image1=_harness.Image();
+			Assert.IsFalse(image1.IsContinuousEnable);
+			Assert.AreEqual(102,Controller.MountSlots.Target.MountItemNum);
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.End));
+			CollectionAssert.AreEqual(new[] { TwainCaptureStopReason.End },_harness.Twain.ListDisables);
+			AcquiredImage image2=_harness.Image(AcquiredImageKind.Drained,TwainCaptureStopReason.End);
+			Assert.AreEqual(2,image2.IndexInEnable);
+			CollectionAssert.AreEqual(new long[] { 101 },_harness.RadiographStore.ListDocumentsUpdated.Select(x => x.MountItemNum).ToList(),
+				"Not saved into slot 2 as a continuous image would be.");
+			Assert.AreEqual("The sensor software sent more images than expected.",_harness.Twain.ListQuarantined.Single().Reason);
+		}
+
+		[TestMethod]
+		public void ContinuousConfigured_ButTheEnableRunsPerSlot_TheFullMountIsNoContinuousOne() {
+			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.ActionOnNewSession=session => session.IsContinuousCapAccepted=false;
+			_harness.Started();
+			_harness.Expose();
+			_harness.Expose();
+			_harness.Status(TwainCaptureState.WaitingForImage,isSafeDisableInEffect:false);
+			_harness.Image();
+			Assert.AreEqual(3,_harness.RadiographStore.ListDocumentsUpdated.Count);
+			Assert.AreNotEqual(CaptureSessionText.MountFullContinuous,Controller.NoticeText,"A per-slot enable ends by itself after its image.");
+			_harness.Ended(TwainCaptureEndReason.Completed);
+			Assert.AreEqual(CaptureSessionPhase.Finished,Controller.Phase);
+			Assert.AreEqual(CaptureSessionEndReason.MountFull,Controller.Summary.EndReason);
+		}
+
+		[TestMethod]
 		public void ContinuousConfigured_ButTheEnableRanPerSlot_EnablesAgain() {
 			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
+			_harness.ActionOnNewSession=session => session.IsContinuousCapAccepted=false;//the source refused ContinuousCap
 			_harness.Started();
 			_harness.Expose();
 			Assert.AreEqual(2,_harness.Twain.ListEnables.Count,"Completed means the source was disabled after Count=0.");

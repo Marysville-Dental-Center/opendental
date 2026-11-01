@@ -127,6 +127,10 @@ namespace ImagingCapture.Tests {
 			return call.Path;
 		}
 
+		///<summary>The source accepts ContinuousCap, so an enable of SessionMode=Continuous runs continuously (the library's
+		///SetCustomCapability(ContinuousCap) returned Set). False: the enable runs per slot (design 7.4).</summary>
+		public bool IsContinuousCapAccepted=true;
+
 		#region Raising events (as the worker would)
 		public TwainEnableRequest LastRequest => ListEnables.LastOrDefault();
 		public int LastEnableId => ListEnableIds.LastOrDefault();
@@ -151,8 +155,9 @@ namespace ImagingCapture.Tests {
 			image.IndexInEnable=count;
 			//As the library: the enable's sidecar fields, which the session may change before it quarantines the image.
 			image.SidecarFields=request.SidecarFields==null ? null : new List<KeyValuePair<string,string>>(request.SidecarFields);
-			//As the library when the source accepts ContinuousCap: an enable of SessionMode=Continuous runs continuously, a redelivery never.
-			image.IsContinuousEnable=Options.SessionMode==TwainSessionMode.Continuous && !ListRedeliveryEnableIds.Contains(id);
+			//As the library: an enable of SessionMode=Continuous runs continuously only when the source accepted ContinuousCap (otherwise it runs
+			//per slot, design 7.4), a redelivery never.
+			image.IsContinuousEnable=Options.SessionMode==TwainSessionMode.Continuous && IsContinuousCapAccepted && !ListRedeliveryEnableIds.Contains(id);
 			ImageAcquired?.Invoke(image);
 			return image;
 		}
