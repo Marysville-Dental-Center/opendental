@@ -50,6 +50,7 @@ namespace OpenDentBusiness.Crud{
 				schoolCourseDef.SchoolCourseDefNum= PIn.Long  (row["SchoolCourseDefNum"].ToString());
 				schoolCourseDef.CourseID          = PIn.String(row["CourseID"].ToString());
 				schoolCourseDef.Descript          = PIn.String(row["Descript"].ToString());
+				schoolCourseDef.GradingScaleNum   = PIn.Long  (row["GradingScaleNum"].ToString());
 				retVal.Add(schoolCourseDef);
 			}
 			return retVal;
@@ -64,11 +65,13 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("SchoolCourseDefNum");
 			table.Columns.Add("CourseID");
 			table.Columns.Add("Descript");
+			table.Columns.Add("GradingScaleNum");
 			foreach(SchoolCourseDef schoolCourseDef in listSchoolCourseDefs) {
 				table.Rows.Add(new object[] {
 					POut.Long  (schoolCourseDef.SchoolCourseDefNum),
 					            schoolCourseDef.CourseID,
 					            schoolCourseDef.Descript,
+					POut.Long  (schoolCourseDef.GradingScaleNum),
 				});
 			}
 			return table;
@@ -88,13 +91,14 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="SchoolCourseDefNum,";
 			}
-			command+="CourseID,Descript) VALUES(";
+			command+="CourseID,Descript,GradingScaleNum) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(schoolCourseDef.SchoolCourseDefNum)+",";
 			}
 			command+=
 				 "'"+POut.String(schoolCourseDef.CourseID)+"',"
-				+"'"+POut.String(schoolCourseDef.Descript)+"')";
+				+"'"+POut.String(schoolCourseDef.Descript)+"',"
+				+    POut.Long  (schoolCourseDef.GradingScaleNum)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -119,13 +123,14 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="SchoolCourseDefNum,";
 			}
-			command+="CourseID,Descript) VALUES(";
+			command+="CourseID,Descript,GradingScaleNum) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(schoolCourseDef.SchoolCourseDefNum)+",";
 			}
 			command+=
 				 "'"+POut.String(schoolCourseDef.CourseID)+"',"
-				+"'"+POut.String(schoolCourseDef.Descript)+"')";
+				+"'"+POut.String(schoolCourseDef.Descript)+"',"
+				+    POut.Long  (schoolCourseDef.GradingScaleNum)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -139,7 +144,8 @@ namespace OpenDentBusiness.Crud{
 		public static void Update(SchoolCourseDef schoolCourseDef) {
 			string command="UPDATE schoolcoursedef SET "
 				+"CourseID          = '"+POut.String(schoolCourseDef.CourseID)+"', "
-				+"Descript          = '"+POut.String(schoolCourseDef.Descript)+"' "
+				+"Descript          = '"+POut.String(schoolCourseDef.Descript)+"', "
+				+"GradingScaleNum   =  "+POut.Long  (schoolCourseDef.GradingScaleNum)+" "
 				+"WHERE SchoolCourseDefNum = "+POut.Long(schoolCourseDef.SchoolCourseDefNum);
 			Db.NonQ(command);
 		}
@@ -154,6 +160,10 @@ namespace OpenDentBusiness.Crud{
 			if(schoolCourseDef.Descript != oldSchoolCourseDef.Descript) {
 				if(command!="") { command+=",";}
 				command+="Descript = '"+POut.String(schoolCourseDef.Descript)+"'";
+			}
+			if(schoolCourseDef.GradingScaleNum != oldSchoolCourseDef.GradingScaleNum) {
+				if(command!="") { command+=",";}
+				command+="GradingScaleNum = "+POut.Long(schoolCourseDef.GradingScaleNum)+"";
 			}
 			if(command=="") {
 				return false;
@@ -171,6 +181,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(schoolCourseDef.Descript != oldSchoolCourseDef.Descript) {
+				return true;
+			}
+			if(schoolCourseDef.GradingScaleNum != oldSchoolCourseDef.GradingScaleNum) {
 				return true;
 			}
 			return false;

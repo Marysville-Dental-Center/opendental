@@ -111,6 +111,28 @@ namespace OpenDentBusiness{
 			Crud.EFormCrud.Delete(eFormNum);
 		}
 
+		///<summary>Open Dental 26.1 (also 25.4.79): the Audit Trail text for a deleted patient eForm. Names the form, the date it shows and its ID, and
+		///the date submitted when it was set (25.4).</summary>
+		public static string GetDeleteLogText(EForm eForm) {
+			Meth.NoCheckMiddleTierRole();
+			string text="eForm "+eForm.Description+" dated "+eForm.DateTimeShown.ToShortDateString()+" "+eForm.DateTimeShown.ToShortTimeString()
+				+" (ID "+eForm.EFormNum+") deleted";
+			if(eForm.DateTimeSubmitted.Year>1880) {
+				text+=", submitted "+eForm.DateTimeSubmitted.ToShortDateString()+" "+eForm.DateTimeSubmitted.ToShortTimeString();
+			}
+			return text;
+		}
+
+		///<summary>Call after EForms.Delete succeeds. Writes an EFormDelete Audit Trail entry for an eForm that was saved and attached to a patient.
+		///Deleting a new form that was never saved, or one with no patient, logs nothing.</summary>
+		public static void MakeDeleteLogEntry(EForm eForm) {
+			Meth.NoCheckMiddleTierRole();
+			if(eForm==null || eForm.IsNew || eForm.PatNum==0 || eForm.EFormNum==0) {
+				return;
+			}
+			SecurityLogs.MakeLogEntry(EnumPermType.EFormDelete,eForm.PatNum,GetDeleteLogText(eForm));
+		}
+
 		/// <summary>The eFormDef passed in must have ListEFormFieldDefs already filled. The resulting EForm will also have its fields already attached. Neither the form nor the fields get inserted into the db here.</summary>
 		public static EForm CreateEFormFromEFormDef(EFormDef eFormDef,long patNum,EnumEFormStatus status) {
 			Meth.NoCheckMiddleTierRole();
@@ -193,7 +215,7 @@ namespace OpenDentBusiness{
 					return eFormValidation;
 				}
 				//Validating Phone Numbers
-				if(listEFormFields[i].DbLink.Contains("Phone")) {
+				if(listEFormFields[i].DbLink.Contains("Phone") && !EFormPatFields.IsPatFieldLink(listEFormFields[i].DbLink)) {//a patient field named "...Phone..." is free text
 					if(TelephoneNumbers.IsNumberValidTenDigit(listEFormFields[i].ValueString)) {
 						listEFormFields[i].ValueString=TelephoneNumbers.AutoFormat(listEFormFields[i].ValueString);
 					}
@@ -206,6 +228,13 @@ namespace OpenDentBusiness{
 				//Validating SSN
 				if(!ValidateSSN(listEFormFields[i],maskedSSNOld)) {
 					eFormValidation.ErrorMsg="Patient's Social Security Number is invalid.";
+					eFormValidation.PageNum=pageNum;
+					return eFormValidation;
+				}
+				//Validating patient field links (Open Dental 25.4): a Currency patient field must get a number.
+				string errorPatField=EFormPatFields.Validate(listEFormFields[i]);
+				if(errorPatField!="") {
+					eFormValidation.ErrorMsg=errorPatField;
 					eFormValidation.PageNum=pageNum;
 					return eFormValidation;
 				}

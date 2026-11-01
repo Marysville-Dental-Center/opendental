@@ -444,6 +444,7 @@ namespace OpenDental{
 			menuItemHelp.Add(_menuItemPayloadMonitor);
 			_menuItemQueryMonitor=new MenuItemOD("Query Monitor",MenuItemQueryMonitor_Click);
 			menuItemHelp.Add(_menuItemQueryMonitor);
+			menuItemHelp.Add("File Monitor",menuItemFileMonitor_Click);//25.3, FormOpenDentalBShell.cs
 			//The update window no longer checks Open Dental's servers. It keeps update history, update setup and local workstation updates.
 			menuItemHelp.Add("&Update",menuItemUpdate_Click);
 			menuItemHelp.AddSeparator();

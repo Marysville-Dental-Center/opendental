@@ -55,6 +55,10 @@ namespace OpenDentBusiness {
 		///updates.  Not user editable with the UI.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.TimeStamp)]
 		public DateTime SecDateTEdit;
+		///<summary>Added in Open Dental 26.1. FK to userod.UserNum: the user logged in when the text was sent. Schema compatibility only (Open Dental's
+		///texting service is not part of this program). Set on insert only, like the other SecUserNumEntry columns.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.ExcludeFromUpdate)]
+		public long SecUserNumEntry;
 
 		public SmsToMobile Copy() {
 			return (SmsToMobile)this.MemberwiseClone();

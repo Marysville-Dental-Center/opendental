@@ -119,6 +119,9 @@ namespace OpenDentBusiness{
 		public bool IsOverpay;
 		///<summary>Holds the salted hash of the following claimproc fields: ClaimNum, Status, InsPayEst, InsPayAmt. </summary>
 		public string SecurityHash;
+		///<summary>Added in Open Dental 26.1. FK to etrans835attach.Etrans835AttachNum: for a claimproc paid from an ERA (X12 835), the ERA claim it
+		///was paid from. 0 otherwise.</summary>
+		public long Etrans835AttachNum;
 
 		///<summary>Returns a copy of this ClaimProc.</summary>
 		public ClaimProc Copy(){

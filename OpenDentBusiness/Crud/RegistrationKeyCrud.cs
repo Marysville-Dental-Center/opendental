@@ -63,6 +63,7 @@ namespace OpenDentBusiness.Crud{
 				registrationKey.HasEarlyAccess      = PIn.Bool  (row["HasEarlyAccess"].ToString());
 				registrationKey.DateTBackupScheduled= PIn.DateT (row["DateTBackupScheduled"].ToString());
 				registrationKey.BackupPassCode      = PIn.String(row["BackupPassCode"].ToString());
+				registrationKey.DateTClinicAccess   = PIn.DateT (row["DateTClinicAccess"].ToString());
 				retVal.Add(registrationKey);
 			}
 			return retVal;
@@ -90,6 +91,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("HasEarlyAccess");
 			table.Columns.Add("DateTBackupScheduled");
 			table.Columns.Add("BackupPassCode");
+			table.Columns.Add("DateTClinicAccess");
 			foreach(RegistrationKey registrationKey in listRegistrationKeys) {
 				table.Rows.Add(new object[] {
 					POut.Long  (registrationKey.RegistrationKeyNum),
@@ -108,6 +110,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Bool  (registrationKey.HasEarlyAccess),
 					POut.DateT (registrationKey.DateTBackupScheduled,false),
 					            registrationKey.BackupPassCode,
+					POut.DateT (registrationKey.DateTClinicAccess,false),
 				});
 			}
 			return table;
@@ -127,7 +130,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="RegistrationKeyNum,";
 			}
-			command+="PatNum,RegKey,Note,DateStarted,DateDisabled,DateEnded,IsForeign,UsesServerVersion,IsFreeVersion,IsOnlyForTesting,VotesAllotted,IsResellerCustomer,HasEarlyAccess,DateTBackupScheduled,BackupPassCode) VALUES(";
+			command+="PatNum,RegKey,Note,DateStarted,DateDisabled,DateEnded,IsForeign,UsesServerVersion,IsFreeVersion,IsOnlyForTesting,VotesAllotted,IsResellerCustomer,HasEarlyAccess,DateTBackupScheduled,BackupPassCode,DateTClinicAccess) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(registrationKey.RegistrationKeyNum)+",";
 			}
@@ -146,7 +149,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (registrationKey.IsResellerCustomer)+","
 				+    POut.Bool  (registrationKey.HasEarlyAccess)+","
 				+    POut.DateT (registrationKey.DateTBackupScheduled)+","
-				+"'"+POut.String(registrationKey.BackupPassCode)+"')";
+				+"'"+POut.String(registrationKey.BackupPassCode)+"',"
+				+    POut.DateT (registrationKey.DateTClinicAccess)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -171,7 +175,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="RegistrationKeyNum,";
 			}
-			command+="PatNum,RegKey,Note,DateStarted,DateDisabled,DateEnded,IsForeign,UsesServerVersion,IsFreeVersion,IsOnlyForTesting,VotesAllotted,IsResellerCustomer,HasEarlyAccess,DateTBackupScheduled,BackupPassCode) VALUES(";
+			command+="PatNum,RegKey,Note,DateStarted,DateDisabled,DateEnded,IsForeign,UsesServerVersion,IsFreeVersion,IsOnlyForTesting,VotesAllotted,IsResellerCustomer,HasEarlyAccess,DateTBackupScheduled,BackupPassCode,DateTClinicAccess) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(registrationKey.RegistrationKeyNum)+",";
 			}
@@ -190,7 +194,8 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (registrationKey.IsResellerCustomer)+","
 				+    POut.Bool  (registrationKey.HasEarlyAccess)+","
 				+    POut.DateT (registrationKey.DateTBackupScheduled)+","
-				+"'"+POut.String(registrationKey.BackupPassCode)+"')";
+				+"'"+POut.String(registrationKey.BackupPassCode)+"',"
+				+    POut.DateT (registrationKey.DateTClinicAccess)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -217,7 +222,8 @@ namespace OpenDentBusiness.Crud{
 				+"IsResellerCustomer  =  "+POut.Bool  (registrationKey.IsResellerCustomer)+", "
 				+"HasEarlyAccess      =  "+POut.Bool  (registrationKey.HasEarlyAccess)+", "
 				+"DateTBackupScheduled=  "+POut.DateT (registrationKey.DateTBackupScheduled)+", "
-				+"BackupPassCode      = '"+POut.String(registrationKey.BackupPassCode)+"' "
+				+"BackupPassCode      = '"+POut.String(registrationKey.BackupPassCode)+"', "
+				+"DateTClinicAccess   =  "+POut.DateT (registrationKey.DateTClinicAccess)+" "
 				+"WHERE RegistrationKeyNum = "+POut.Long(registrationKey.RegistrationKeyNum);
 			Db.NonQ(command);
 		}
@@ -285,6 +291,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="BackupPassCode = '"+POut.String(registrationKey.BackupPassCode)+"'";
 			}
+			if(registrationKey.DateTClinicAccess != oldRegistrationKey.DateTClinicAccess) {
+				if(command!="") { command+=",";}
+				command+="DateTClinicAccess = "+POut.DateT(registrationKey.DateTClinicAccess)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -340,6 +350,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(registrationKey.BackupPassCode != oldRegistrationKey.BackupPassCode) {
+				return true;
+			}
+			if(registrationKey.DateTClinicAccess != oldRegistrationKey.DateTClinicAccess) {
 				return true;
 			}
 			return false;

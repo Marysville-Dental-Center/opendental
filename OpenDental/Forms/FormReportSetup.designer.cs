@@ -30,7 +30,7 @@ namespace OpenDental{
 			this.tabReportPermissions = new OpenDental.UI.TabPage();
 			this.tabReportServer = new OpenDental.UI.TabPage();
 			this.label8 = new System.Windows.Forms.Label();
-			this.textSkySQL = new System.Windows.Forms.TextBox();
+			this.textSslCaPem = new System.Windows.Forms.TextBox();
 			this.checkUseReportServer = new OpenDental.UI.CheckBox();
 			this.radioReportServerMiddleTier = new System.Windows.Forms.RadioButton();
 			this.radioReportServerDirect = new System.Windows.Forms.RadioButton();
@@ -58,6 +58,7 @@ namespace OpenDental{
 			this.checkOutstandingRpDateTab = new OpenDental.UI.CheckBox();
 			this.checkBenefitAssumeGeneral = new OpenDental.UI.CheckBox();
 			this.checkReportsIncompleteProcsUnsigned = new OpenDental.UI.CheckBox();
+			this.checkReportsIncompleteProcsAllNoNotes = new OpenDental.UI.CheckBox();
 			this.checkReportsIncompleteProcsNoNotes = new OpenDental.UI.CheckBox();
 			this.checkNetProdDetailUseSnapshotToday = new OpenDental.UI.CheckBox();
 			this.checkProviderPayrollAllowToday = new OpenDental.UI.CheckBox();
@@ -122,7 +123,7 @@ namespace OpenDental{
 			// 
 			this.tabReportServer.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(253)))), ((int)(((byte)(254)))));
 			this.tabReportServer.Controls.Add(this.label8);
-			this.tabReportServer.Controls.Add(this.textSkySQL);
+			this.tabReportServer.Controls.Add(this.textSslCaPem);
 			this.tabReportServer.Controls.Add(this.checkUseReportServer);
 			this.tabReportServer.Controls.Add(this.radioReportServerMiddleTier);
 			this.tabReportServer.Controls.Add(this.radioReportServerDirect);
@@ -142,15 +143,15 @@ namespace OpenDental{
 			this.label8.Name = "label8";
 			this.label8.Size = new System.Drawing.Size(386, 17);
 			this.label8.TabIndex = 224;
-			this.label8.Text = "(only if using MariaDB SkySQL) PEM path";
+			this.label8.Text = "SSL CA certificate (.pem) path";
 			this.label8.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
-			// textSkySQL
+			// textSslCaPem
 			// 
-			this.textSkySQL.Location = new System.Drawing.Point(67, 338);
-			this.textSkySQL.Name = "textSkySQL";
-			this.textSkySQL.Size = new System.Drawing.Size(386, 20);
-			this.textSkySQL.TabIndex = 229;
+			this.textSslCaPem.Location = new System.Drawing.Point(67, 338);
+			this.textSslCaPem.Name = "textSslCaPem";
+			this.textSslCaPem.Size = new System.Drawing.Size(386, 20);
+			this.textSslCaPem.TabIndex = 229;
 			// 
 			// checkUseReportServer
 			// 
@@ -324,6 +325,7 @@ namespace OpenDental{
 			this.tabMiscOptions.Controls.Add(this.checkOutstandingRpDateTab);
 			this.tabMiscOptions.Controls.Add(this.checkBenefitAssumeGeneral);
 			this.tabMiscOptions.Controls.Add(this.checkReportsIncompleteProcsUnsigned);
+			this.tabMiscOptions.Controls.Add(this.checkReportsIncompleteProcsAllNoNotes);
 			this.tabMiscOptions.Controls.Add(this.checkReportsIncompleteProcsNoNotes);
 			this.tabMiscOptions.Controls.Add(this.checkNetProdDetailUseSnapshotToday);
 			this.tabMiscOptions.Controls.Add(this.checkProviderPayrollAllowToday);
@@ -343,7 +345,7 @@ namespace OpenDental{
 			// 
 			// checkUserQueryDefaultRaw
 			// 
-			this.checkUserQueryDefaultRaw.Location = new System.Drawing.Point(20, 244);
+			this.checkUserQueryDefaultRaw.Location = new System.Drawing.Point(20, 261);
 			this.checkUserQueryDefaultRaw.Name = "checkUserQueryDefaultRaw";
 			this.checkUserQueryDefaultRaw.Size = new System.Drawing.Size(511, 17);
 			this.checkUserQueryDefaultRaw.TabIndex = 221;
@@ -351,7 +353,7 @@ namespace OpenDental{
 			// 
 			// butIncompleteProcsExcludeCodes
 			// 
-			this.butIncompleteProcsExcludeCodes.Location = new System.Drawing.Point(501, 318);
+			this.butIncompleteProcsExcludeCodes.Location = new System.Drawing.Point(501, 335);
 			this.butIncompleteProcsExcludeCodes.Name = "butIncompleteProcsExcludeCodes";
 			this.butIncompleteProcsExcludeCodes.Size = new System.Drawing.Size(21, 21);
 			this.butIncompleteProcsExcludeCodes.TabIndex = 220;
@@ -361,7 +363,7 @@ namespace OpenDental{
 			// 
 			// label7
 			// 
-			this.label7.Location = new System.Drawing.Point(17, 303);
+			this.label7.Location = new System.Drawing.Point(17, 320);
 			this.label7.Name = "label7";
 			this.label7.Size = new System.Drawing.Size(478, 13);
 			this.label7.TabIndex = 219;
@@ -373,7 +375,7 @@ namespace OpenDental{
 			this.textIncompleteProcsExcludeCodes.BackColor = System.Drawing.SystemColors.Window;
 			this.textIncompleteProcsExcludeCodes.DetectLinksEnabled = false;
 			this.textIncompleteProcsExcludeCodes.DetectUrls = false;
-			this.textIncompleteProcsExcludeCodes.Location = new System.Drawing.Point(20, 319);
+			this.textIncompleteProcsExcludeCodes.Location = new System.Drawing.Point(20, 336);
 			this.textIncompleteProcsExcludeCodes.Multiline = false;
 			this.textIncompleteProcsExcludeCodes.Name = "textIncompleteProcsExcludeCodes";
 			this.textIncompleteProcsExcludeCodes.QuickPasteType = OpenDentBusiness.EnumQuickPasteType.Adjustment;
@@ -384,7 +386,7 @@ namespace OpenDental{
 			// 
 			// checkReportDisplayUnearnedTP
 			// 
-			this.checkReportDisplayUnearnedTP.Location = new System.Drawing.Point(20, 227);
+			this.checkReportDisplayUnearnedTP.Location = new System.Drawing.Point(20, 244);
 			this.checkReportDisplayUnearnedTP.Name = "checkReportDisplayUnearnedTP";
 			this.checkReportDisplayUnearnedTP.Size = new System.Drawing.Size(511, 17);
 			this.checkReportDisplayUnearnedTP.TabIndex = 215;
@@ -392,14 +394,14 @@ namespace OpenDental{
 			// 
 			// comboReportWriteoff
 			// 
-			this.comboReportWriteoff.Location = new System.Drawing.Point(20, 279);
+			this.comboReportWriteoff.Location = new System.Drawing.Point(20, 296);
 			this.comboReportWriteoff.Name = "comboReportWriteoff";
 			this.comboReportWriteoff.Size = new System.Drawing.Size(171, 21);
 			this.comboReportWriteoff.TabIndex = 216;
 			// 
 			// checkOutstandingRpDateTab
 			// 
-			this.checkOutstandingRpDateTab.Location = new System.Drawing.Point(20, 210);
+			this.checkOutstandingRpDateTab.Location = new System.Drawing.Point(20, 227);
 			this.checkOutstandingRpDateTab.Name = "checkOutstandingRpDateTab";
 			this.checkOutstandingRpDateTab.Size = new System.Drawing.Size(511, 17);
 			this.checkOutstandingRpDateTab.TabIndex = 214;
@@ -407,7 +409,7 @@ namespace OpenDental{
 			// 
 			// checkBenefitAssumeGeneral
 			// 
-			this.checkBenefitAssumeGeneral.Location = new System.Drawing.Point(20, 193);
+			this.checkBenefitAssumeGeneral.Location = new System.Drawing.Point(20, 210);
 			this.checkBenefitAssumeGeneral.Name = "checkBenefitAssumeGeneral";
 			this.checkBenefitAssumeGeneral.Size = new System.Drawing.Size(511, 17);
 			this.checkBenefitAssumeGeneral.TabIndex = 213;
@@ -422,6 +424,14 @@ namespace OpenDental{
 			this.checkReportsIncompleteProcsUnsigned.TabIndex = 212;
 			this.checkReportsIncompleteProcsUnsigned.Text = "Include procedures with a note that is unsigned in the Incomplete Procedures Repo" +
     "rt";
+			// 
+			// checkReportsIncompleteProcsAllNoNotes
+			// 
+			this.checkReportsIncompleteProcsAllNoNotes.Location = new System.Drawing.Point(20, 193);
+			this.checkReportsIncompleteProcsAllNoNotes.Name = "checkReportsIncompleteProcsAllNoNotes";
+			this.checkReportsIncompleteProcsAllNoNotes.Size = new System.Drawing.Size(511, 17);
+			this.checkReportsIncompleteProcsAllNoNotes.TabIndex = 222;
+			this.checkReportsIncompleteProcsAllNoNotes.Text = "Include all procedures with no notes in the Incomplete Procedures Report";
 			// 
 			// checkReportsIncompleteProcsNoNotes
 			// 
@@ -498,7 +508,7 @@ namespace OpenDental{
 			// 
 			// label1
 			// 
-			this.label1.Location = new System.Drawing.Point(17, 264);
+			this.label1.Location = new System.Drawing.Point(17, 281);
 			this.label1.Name = "label1";
 			this.label1.RightToLeft = System.Windows.Forms.RightToLeft.No;
 			this.label1.Size = new System.Drawing.Size(244, 18);
@@ -582,7 +592,8 @@ namespace OpenDental{
 		private ODtextBox textIncompleteProcsExcludeCodes;
 		private UI.Button butIncompleteProcsExcludeCodes;
 		private System.Windows.Forms.Label label8;
-		private System.Windows.Forms.TextBox textSkySQL;
+		private System.Windows.Forms.TextBox textSslCaPem;
 		private UI.CheckBox checkUserQueryDefaultRaw;
+		private OpenDental.UI.CheckBox checkReportsIncompleteProcsAllNoNotes;
 	}
 }

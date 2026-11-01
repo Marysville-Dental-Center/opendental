@@ -357,8 +357,8 @@ namespace OpenDentBusiness {
 		NeedsManualAccountId,
 		///<summary>5.</summary>
 		PendingEmail,
-		///<summary>6.</summary>
-		PendingPodio,
+		///<summary>6. Named PendingPodio before Open Dental 25.4 (OpenDentalDiffDocumentation25-4.xml); same number.</summary>
+		Pending,
 		///<summary>7.</summary>
 		PendingEconnTransmit,
 		///<summary>8.</summary>

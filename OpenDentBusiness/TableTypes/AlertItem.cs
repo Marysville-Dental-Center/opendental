@@ -221,6 +221,28 @@ namespace OpenDentBusiness {
 		///<summary>45 - Reserved. Open Dental HQ only: a notification HQ sent to an office.</summary>
 		[Description("HQ Notification"),IsODHQ]
 		HQNotification,
+		//46 to 50 were added by Open Dental 25.4 and 51 by 26.1 (OpenDentalDiffDocumentation25-4.xml, 26-1.xml). 46 to 49 and 51 are raised by
+		//Open Dental's eConnector, ODTouch and eClipboard, which this program does not have. 50 belongs to the PaySuite integration, which is not
+		//built yet; it stays hidden until that integration is enabled. All are defined so that rows written by Open Dental load.
+		///<summary>46 - Reserved. The eConnector could not save signed treatment plan PDFs to the patient's image folder.</summary>
+		[Description("Treatment Plan Images Folder Inaccessible"),ReservedEnumValue("Raised by the Open Dental eConnector.")]
+		TreatmentPlanImagesFolderInaccesible,
+		///<summary>47 - Reserved. The eConnector could not save signed payment plan PDFs to the patient's image folder.</summary>
+		[Description("Payment Plan Images Folder Inaccessible"),ReservedEnumValue("Raised by the Open Dental eConnector.")]
+		PaymentPlanImagesFolderInaccesible,
+		///<summary>48 - Reserved. A mobile app could not create or open a patient's image folder.</summary>
+		[Description("Cannot Create or Access Patient Folder"),ReservedEnumValue("Raised by Open Dental's mobile apps through the eConnector.")]
+		CannotCreateOrAccessPatientFolder,
+		///<summary>49 - Reserved. No default email address is set for eServices.</summary>
+		[Description("Default Email Not Set"),ReservedEnumValue("Raised by Open Dental eServices.")]
+		DefaultEmailNotSet,
+		///<summary>50 - Reserved until the PaySuite integration is built: a summary of PaySuite postings and problems. Opens FrmPaySuiteReconciliation
+		///(FormType 21).</summary>
+		[Description("PaySuite"),ReservedEnumValue("PaySuite is not built yet; vendor items stay hidden until the office enables them.")]
+		PaySuite,
+		///<summary>51 - Reserved (Open Dental 26.1). eConnector listener firewall rules failed.</summary>
+		[Description("eService Listener Error"),ReservedEnumValue("Raised by the Open Dental eConnector.")]
+		EServiceListenerError,
 	}
 
 	///<summary>Represents the urgency of the alert.  Also determines the color for the menu item in the main menu.</summary>
@@ -314,6 +336,9 @@ namespace OpenDentBusiness {
 		///<summary>20 - Reserved (Open Dental 25.1). Mass email audience upload window, not in this program. Opening it does nothing.</summary>
 		[Description("Mass Email Upload"),ReservedEnumValue("Mass email is an Open Dental hosted service.")]
 		FormAdvertisingMassEmailUpload,
+		///<summary>21 - Reserved (Open Dental 25.4). PaySuite reconciliation window, not built yet. Opening it does nothing.</summary>
+		[Description("PaySuite Reconciliation"),ReservedEnumValue("PaySuite is not built yet.")]
+		FrmPaySuiteReconciliation,
 	}
 
 }

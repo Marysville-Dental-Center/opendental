@@ -145,6 +145,9 @@ namespace OpenDentBusiness {
 
 		///<summary>For a given fieldName, returns a picklist of all possible Db options.</summary>
 		public static List<string> GetRadioDbAll(string fieldName) {
+			if(EFormPatFields.IsPatFieldLink(fieldName)) {
+				return EFormPatFields.GetPickListNames(fieldName);//Open Dental 25.4: a PickList patient field
+			}
 			List<string> listStrings=new List<string>();
 			if(fieldName.StartsWith("allergy:")
 				|| fieldName.StartsWith("problem:"))
@@ -191,6 +194,9 @@ namespace OpenDentBusiness {
 
 		///<summary>For a given fieldName, returns a picklist of our suggested default Db options. This must be paired exactly with GetRadioVisDefault.</summary>
 		public static List<string> GetRadioDbDefault(string fieldName) {
+			if(EFormPatFields.IsPatFieldLink(fieldName)) {
+				return EFormPatFields.GetPickListNames(fieldName);//Open Dental 25.4: a PickList patient field
+			}
 			List<string> listStrings=new List<string>();
 			if(fieldName.StartsWith("allergy:")
 				|| fieldName.StartsWith("problem:"))
@@ -248,6 +254,9 @@ namespace OpenDentBusiness {
 
 		///<summary>For a given fieldName, returns a picklist to show to patient.</summary>
 		public static List<string> GetRadioVisDefault(string fieldName) {
+			if(EFormPatFields.IsPatFieldLink(fieldName)) {
+				return EFormPatFields.GetPickListNames(fieldName);//the pick list items, as they show in the patient's record
+			}
 			List<string> listStrings=new List<string>();
 			if(fieldName.StartsWith("allergy:")
 				|| fieldName.StartsWith("problem:"))

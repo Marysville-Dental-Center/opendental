@@ -191,6 +191,16 @@ namespace OpenDentBusiness {
 		///<summary>22 - XWeb payment taken through the Payment Portal as a guest.</summary>
 		[OnlinePaymentMethod]
 		XWebPaymentPortalGuest,
+		//23, 25 and 26 were added by Open Dental 25.4 (OpenDentalDiffDocumentation25-4.xml). The published documents list no 24, so the numbers
+		//are explicit; a stored 24 loads as the bare number.
+		///<summary>23 - Card terminal payment through Global Payments Meet in the Cloud (Open Dental 25.4).</summary>
+		MeetInTheCloudTerminal=23,
+		///<summary>25 - Reserved. Meet in the Cloud payment taken through the Payment Portal, an Open Dental hosted service.</summary>
+		[OnlinePaymentMethod]
+		MeetInTheCloudPaymentPortal=25,
+		///<summary>26 - Reserved. Meet in the Cloud payment taken through the Payment Portal as a guest.</summary>
+		[OnlinePaymentMethod]
+		MeetInTheCloudPaymentPortalGuest=26,
 	}
 
 	public enum ChargeFrequencyType {

@@ -56,7 +56,7 @@ namespace OpenDentBusiness.Crud{
 				insVerifyHist.FKey                         = PIn.Long  (row["FKey"].ToString());
 				insVerifyHist.DefNum                       = PIn.Long  (row["DefNum"].ToString());
 				insVerifyHist.Note                         = PIn.String(row["Note"].ToString());
-				insVerifyHist.DateLastAssigned             = PIn.Date  (row["DateLastAssigned"].ToString());
+				insVerifyHist.DateLastAssigned             = PIn.DateT (row["DateLastAssigned"].ToString());
 				insVerifyHist.DateTimeEntry                = PIn.DateT (row["DateTimeEntry"].ToString());
 				insVerifyHist.HoursAvailableForVerification= PIn.Double(row["HoursAvailableForVerification"].ToString());
 				insVerifyHist.SecDateTEdit                 = PIn.DateT (row["SecDateTEdit"].ToString());
@@ -134,7 +134,7 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (insVerifyHist.FKey)+","
 				+    POut.Long  (insVerifyHist.DefNum)+","
 				+    DbHelper.ParamChar+"paramNote,"
-				+    POut.Date  (insVerifyHist.DateLastAssigned)+","
+				+    POut.DateT (insVerifyHist.DateLastAssigned)+","
 				+    POut.DateT (insVerifyHist.DateTimeEntry)+","
 				+		 POut.Double(insVerifyHist.HoursAvailableForVerification)+","
 				//SecDateTEdit can only be set by MySQL
@@ -180,7 +180,7 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Long  (insVerifyHist.FKey)+","
 				+    POut.Long  (insVerifyHist.DefNum)+","
 				+    DbHelper.ParamChar+"paramNote,"
-				+    POut.Date  (insVerifyHist.DateLastAssigned)+","
+				+    POut.DateT (insVerifyHist.DateLastAssigned)+","
 				+    POut.DateT (insVerifyHist.DateTimeEntry)+","
 				+	   POut.Double(insVerifyHist.HoursAvailableForVerification)+","
 				//SecDateTEdit can only be set by MySQL
@@ -209,7 +209,7 @@ namespace OpenDentBusiness.Crud{
 				+"FKey                         =  "+POut.Long  (insVerifyHist.FKey)+", "
 				+"DefNum                       =  "+POut.Long  (insVerifyHist.DefNum)+", "
 				+"Note                         =  "+DbHelper.ParamChar+"paramNote, "
-				+"DateLastAssigned             =  "+POut.Date  (insVerifyHist.DateLastAssigned)+", "
+				+"DateLastAssigned             =  "+POut.DateT (insVerifyHist.DateLastAssigned)+", "
 				+"DateTimeEntry                =  "+POut.DateT (insVerifyHist.DateTimeEntry)+", "
 				+"HoursAvailableForVerification=  "+POut.Double(insVerifyHist.HoursAvailableForVerification)+", "
 				//SecDateTEdit can only be set by MySQL
@@ -257,9 +257,9 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="Note = "+DbHelper.ParamChar+"paramNote";
 			}
-			if(insVerifyHist.DateLastAssigned.Date != oldInsVerifyHist.DateLastAssigned.Date) {
+			if(insVerifyHist.DateLastAssigned != oldInsVerifyHist.DateLastAssigned) {
 				if(command!="") { command+=",";}
-				command+="DateLastAssigned = "+POut.Date(insVerifyHist.DateLastAssigned)+"";
+				command+="DateLastAssigned = "+POut.DateT(insVerifyHist.DateLastAssigned)+"";
 			}
 			if(insVerifyHist.DateTimeEntry != oldInsVerifyHist.DateTimeEntry) {
 				if(command!="") { command+=",";}
@@ -314,7 +314,7 @@ namespace OpenDentBusiness.Crud{
 			if(insVerifyHist.Note != oldInsVerifyHist.Note) {
 				return true;
 			}
-			if(insVerifyHist.DateLastAssigned.Date != oldInsVerifyHist.DateLastAssigned.Date) {
+			if(insVerifyHist.DateLastAssigned != oldInsVerifyHist.DateLastAssigned) {
 				return true;
 			}
 			if(insVerifyHist.DateTimeEntry != oldInsVerifyHist.DateTimeEntry) {

@@ -157,6 +157,7 @@ namespace OpenDental {
 			this.gridMain.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+			this.gridMain.AllowSortingByColumn = true;
 			this.gridMain.HScrollVisible = true;
 			this.gridMain.Location = new System.Drawing.Point(11, 79);
 			this.gridMain.Name = "gridMain";

@@ -290,6 +290,11 @@ namespace OpenDental {
 				node.Nodes.Add(node2);
 				node2=SetNode(EnumPermType.ApptConfirmStatusEdit);
 				node.Nodes.Add(node2);
+				//Open Dental 25.4 split unflagged blockouts into Add (272), Edit (13) and Delete (273); the flagged ones stay under 266.
+				node2=SetNode(EnumPermType.BlockoutAdd);
+				node.Nodes.Add(node2);
+				node2=SetNode(EnumPermType.BlockoutDelete);
+				node.Nodes.Add(node2);
 				node2=SetNode(EnumPermType.Blockouts);
 				node.Nodes.Add(node2);
 				node2=SetNode(EnumPermType.BlockoutsFlagged);

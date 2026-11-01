@@ -59,6 +59,9 @@ namespace OpenDental {
 			this.textEmailBody = new System.Windows.Forms.TextBox();
 			this.textEmailSubject = new System.Windows.Forms.TextBox();
 			this.label4 = new System.Windows.Forms.Label();
+			this.labelEmailType = new System.Windows.Forms.Label();
+			this.comboEmailType = new OpenDental.UI.ComboBox();
+			this.butEditHtml = new OpenDental.UI.Button();
 			this.butDelete = new OpenDental.UI.Button();
 			this.butSave = new OpenDental.UI.Button();
 			this.comboClinics = new OpenDental.UI.ComboBoxClinicPicker();
@@ -249,6 +252,9 @@ namespace OpenDental {
 			// 
 			// groupBox4
 			// 
+			this.groupBox4.Controls.Add(this.butEditHtml);
+			this.groupBox4.Controls.Add(this.comboEmailType);
+			this.groupBox4.Controls.Add(this.labelEmailType);
 			this.groupBox4.Controls.Add(this.label10);
 			this.groupBox4.Controls.Add(this.label3);
 			this.groupBox4.Controls.Add(this.textEmailBody);
@@ -284,10 +290,10 @@ namespace OpenDental {
 			this.textEmailBody.AcceptsTab = true;
 			this.textEmailBody.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
 			this.textEmailBody.ForeColor = System.Drawing.Color.Black;
-			this.textEmailBody.Location = new System.Drawing.Point(6, 132);
+			this.textEmailBody.Location = new System.Drawing.Point(6, 138);
 			this.textEmailBody.Multiline = true;
 			this.textEmailBody.Name = "textEmailBody";
-			this.textEmailBody.Size = new System.Drawing.Size(424, 317);
+			this.textEmailBody.Size = new System.Drawing.Size(424, 311);
 			this.textEmailBody.TabIndex = 118;
 			// 
 			// textEmailSubject
@@ -303,12 +309,37 @@ namespace OpenDental {
 			// 
 			// label4
 			// 
-			this.label4.Location = new System.Drawing.Point(6, 113);
+			this.label4.Location = new System.Drawing.Point(6, 115);
 			this.label4.Name = "label4";
-			this.label4.Size = new System.Drawing.Size(412, 17);
+			this.label4.Size = new System.Drawing.Size(60, 17);
 			this.label4.TabIndex = 119;
 			this.label4.Text = "Body";
 			this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			// 
+			// labelEmailType
+			// 
+			this.labelEmailType.Location = new System.Drawing.Point(70, 115);
+			this.labelEmailType.Name = "labelEmailType";
+			this.labelEmailType.Size = new System.Drawing.Size(110, 17);
+			this.labelEmailType.TabIndex = 251;
+			this.labelEmailType.Text = "Email type";
+			this.labelEmailType.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// comboEmailType
+			// 
+			this.comboEmailType.Location = new System.Drawing.Point(182, 113);
+			this.comboEmailType.Name = "comboEmailType";
+			this.comboEmailType.Size = new System.Drawing.Size(140, 21);
+			this.comboEmailType.TabIndex = 252;
+			// 
+			// butEditHtml
+			// 
+			this.butEditHtml.Location = new System.Drawing.Point(330, 111);
+			this.butEditHtml.Name = "butEditHtml";
+			this.butEditHtml.Size = new System.Drawing.Size(100, 24);
+			this.butEditHtml.TabIndex = 253;
+			this.butEditHtml.Text = "Edit HTML...";
+			this.butEditHtml.Click += new System.EventHandler(this.butEditHtml_Click);
 			// 
 			// butDelete
 			// 
@@ -407,6 +438,9 @@ namespace OpenDental {
 		private TextBox textEmailSubject;
 		private Label label4;
 		private Label label10;
+		private Label labelEmailType;
+		private UI.ComboBox comboEmailType;
+		private UI.Button butEditHtml;
 		private Label labelDaysInAdvance;
 		private ValidNum textDaysInAdvance;
 		private UI.ComboBoxClinicPicker comboClinics;

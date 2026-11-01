@@ -14,6 +14,8 @@ namespace OpenDental {
 	/// <summary></summary>
 	public partial class FrmDiseaseEdit:FrmODBase {
 		private Disease _disease;
+		///<summary>What the patient typed for an eForm "Other" problem (its saved PatNote).  Null unless the saved problem is an "Other" one.</summary>
+		private string _textOtherEntered;
 
 		///<summary></summary>
 		public bool IsNew;
@@ -100,6 +102,35 @@ namespace OpenDental {
 				butSave.IsEnabled=false;
 				butDelete.IsEnabled=false;
 			}
+			//Open Dental 25.2: an eForm "Other" problem shows what the patient typed and can be converted to a listed problem.
+			labelOtherEntered.Visible=false;
+			butConvertOther.Visible=false;
+			checkKeepOtherText.Visible=false;
+			if(!IsNew && OtherEntryConverts.IsOtherProblem(_disease)) {
+				_textOtherEntered=_disease.PatNote??"";
+				labelOtherEntered.Text=OtherEntryConverts.GetPatientEnteredText(_textOtherEntered);
+				labelOtherEntered.Visible=true;
+				butConvertOther.Visible=true;
+				butConvertOther.IsEnabled=butSave.IsEnabled;
+				checkKeepOtherText.Visible=true;
+			}
+		}
+
+		///<summary>Converts this "Other" problem to a listed one (OtherEntryConvertL).  Other edits made in this window are saved with it.</summary>
+		private void butConvertOther_Click(object sender,EventArgs e) {
+			if(!textVDateStart.IsValid() || !textVDateStop.IsValid()) {
+				MsgBox.Show(this,"Please fix date.");
+				return;
+			}
+			//The definition is set by the conversion; status, dates, note and codes come from this window, as Save would set them.
+			Disease disease=_disease.Copy();
+			disease=Diseases.SetDiseaseFields(disease,PIn.Date(textVDateStart.Text),PIn.Date(textVDateStop.Text),(ProblemStatus)comboStatus.SelectedIndex,
+				textNote.Text,(SnomedProblemTypes)comboSnomedProblemType.SelectedIndex,(FunctionalStatus)comboEhrFunctionalStatus.SelectedIndex);
+			if(!OtherEntryConvertL.ConvertOtherProblem(disease,_textOtherEntered,checkKeepOtherText.Checked==true)) {
+				return;
+			}
+			_disease=disease;
+			IsDialogOK=true;
 		}
 
 		private void butTodayStart_Click(object sender,EventArgs e) {

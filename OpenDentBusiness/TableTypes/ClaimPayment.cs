@@ -18,8 +18,9 @@ namespace OpenDentBusiness{
 		public string CheckNum;
 		///<summary>Bank and branch.</summary>
 		public string BankBranch;
-		///<summary>Note for this check if needed.  varchar(255) in Open Dental 25.3.48 although the published 25.3 documentation says text; the 26.1
-		///schema step widens it.</summary>
+		///<summary>Note for this check if needed.  text, as the published 25.3 and 26.1 documentation says. Open Dental 25.3.48 databases still had
+		///varchar(255); the 26.1 fork migration step widens it.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
 		public string Note;
 		///<summary>FK to clinic.ClinicNum.  0 if no clinic (unassigned).</summary>
 		public long ClinicNum;

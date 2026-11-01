@@ -680,6 +680,10 @@ namespace OpenDentBusiness{
 				//case EnumPermType.ProcTPEditFee:
 				//case EnumPermType.EFormImport:
 				//case EnumPermType.PhoneExtension://Reserved, see below.
+				//case EnumPermType.BlockoutAdd:
+				//case EnumPermType.BlockoutDelete:
+				//case EnumPermType.PatientSelected://Audit trail only.
+				//case EnumPermType.LogScraperHQ://Reserved, see below.
 				return false;//Does not have audit Trail if uncommented.
 			}
 			if(enumPermType.In(
@@ -699,7 +703,8 @@ namespace OpenDentBusiness{
 					EnumPermType.AiChatSession,
 					EnumPermType.SendAlertsFromHQ,
 					EnumPermType.TextAllEmployees,
-					EnumPermType.PhoneExtension
+					EnumPermType.PhoneExtension,
+					EnumPermType.LogScraperHQ
 				))
 			{
 				return false;
@@ -742,7 +747,7 @@ namespace OpenDentBusiness{
 		}
 
 		///<summary>True for permission values that are marked [IsODHQ]: Open Dental HQ permissions that this program keeps only so that rows written by
-		///Open Dental load and display (for example 268 SendAlertsFromHQ, 269 TextAllEmployees and 272 PhoneExtension). They are hidden from the
+		///Open Dental load and display (for example 268 SendAlertsFromHQ, 269 TextAllEmployees, 274 PhoneExtension and 276 LogScraperHQ). They are hidden from the
 		///security tree and the audit trail filter, and Set All never grants them.</summary>
 		public static bool IsReserved(EnumPermType enumPermType) {
 			Meth.NoCheckMiddleTierRole();

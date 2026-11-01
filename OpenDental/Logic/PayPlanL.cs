@@ -211,8 +211,10 @@ namespace OpenDental {
 
 		///<summary>Changes to the database are all made when the form is closed, so securitylog entries have been consolidated into this method.
 		///Centralized so both Dynamic and Static payment plans can use the same method.</summary>
+		///<param name="downPaymentChargesOld">25.2: sum of the plan's down payment charges when they were last logged (PayPlanAudits.SumDownPaymentCharges).
+		///Only old-style plans can change their down payment charges; dynamic plans pass 0 for both.</param>
 		public static void MakeSecLogEntries(PayPlan payPlan,PayPlan payPlanOld,bool hasSignatureChanged,bool isSigOldValid,bool isSigBlank,
-			bool isSigValid, bool isPrinting=false) 
+			bool isSigValid, bool isPrinting=false,double downPaymentChargesOld=0,double downPaymentChargesNew=0)
 		{
 			//logs creating, closing out, deleting, and signing of payment plan.
 			//deleted logs are in butDelete_click since that method doesn't call SaveData.
@@ -252,11 +254,17 @@ namespace OpenDental {
 							(payPlan.PlanNum == 0 ? planType : "Insurance ") + "Payment Plan guarantor changed from "
 							+Patients.GetNameLF(payPlanOld.Guarantor)+" to "+Patients.GetNameLF(payPlan.Guarantor)+".",payPlanOld.PayPlanNum,DateTime.MinValue);
 			}
-			//Completed Amt Changed
-			if(payPlanOld.CompletedAmt != payPlan.CompletedAmt) {
-				SecurityLogs.MakeLogEntry(EnumPermType.PayPlanEdit,payPlan.PatNum,
-							(payPlan.PlanNum == 0 ? planType : "Insurance ") + "Payment Plan completed amount changed.",payPlanOld.PayPlanNum,DateTime.MinValue);
+			//Completed Amt Changed. 25.1: the entry gives the old and new amounts. Dynamic plans are logged where the amount is recalculated
+			//(PayPlanEdit.SaveDynamicPaymentPlanAndTerms), so they are not logged twice.
+			if(!payPlan.IsDynamic) {
+				string textCompletedAmt=PayPlanAudits.GetCompletedAmtChangeText(payPlanOld.CompletedAmt,payPlan.CompletedAmt);
+				if(textCompletedAmt!="") {
+					SecurityLogs.MakeLogEntry(EnumPermType.PayPlanEdit,payPlan.PatNum,
+								(payPlan.PlanNum == 0 ? planType : "Insurance ") + "Payment Plan "+textCompletedAmt,payPlanOld.PayPlanNum,DateTime.MinValue);
+				}
 			}
+			//Down Payment Changed (25.2): the terms' down payment, else the down payment charges.
+			PayPlanAudits.LogDownPaymentChange(payPlan,payPlanOld.DownPayment,payPlan.DownPayment,downPaymentChargesOld,downPaymentChargesNew);
 			//Ins Plan Changed
 			if(payPlanOld.PlanNum != payPlan.PlanNum) {
 				SecurityLogs.MakeLogEntry(EnumPermType.PayPlanEdit,payPlan.PatNum,
@@ -272,6 +280,16 @@ namespace OpenDental {
 				SecurityLogs.MakeLogEntry(EnumPermType.PayPlanEdit,payPlan.PatNum,
 							(payPlan.PlanNum == 0 ? planType : "Insurance ") + "Payment Plan closed.",payPlanOld.PayPlanNum,DateTime.MinValue);
 			}
+		}
+
+		///<summary>25.1/25.2: after MakeSecLogEntries logged a save (not a print), the logged amounts become the new starting point, so saving again in
+		///the same window (Print or Sign and Print, then OK) does not log the same completed amount or down payment change twice.</summary>
+		public static void AdvanceAuditBaseline(PayPlan payPlan,PayPlan payPlanOld,bool isPrinting) {
+			if(isPrinting || payPlanOld.IsNew) {
+				return;
+			}
+			payPlanOld.CompletedAmt=payPlan.CompletedAmt;
+			payPlanOld.DownPayment=payPlan.DownPayment;
 		}
 
 		/// <summary>Creates a list of GridRows where PayPlanCharges are merged into 1 row with the same date, and PaySplits with the same PayNum. Returns the list with 1 Row for 1 date set of charges, and 1 Row for 1 Set of paysplits grouped by PayNum. listPayPlanCharges needs to be sorted by ChargeDate in ascending order.</summary>

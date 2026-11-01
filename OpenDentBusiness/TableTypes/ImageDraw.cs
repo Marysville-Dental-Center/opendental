@@ -245,6 +245,9 @@ namespace OpenDentBusiness{
 		Pearl,
 		///<summary>2 - BetterDiagnostics AI annotations (Open Dental 24.4). Reserved so stored drawings load; never written by this program.</summary>
 		BetterDiagnostics,
+		///<summary>3 - BetterDiagnostics annotations for the patient view (Open Dental 26.1). Reserved so stored drawings load; never written by this
+		///program.</summary>
+		BetterDiagnosticsPatientView,
 	}
 
 	///<summary>Stored in imagedraw.BetterDiagLayer. Numbers as published in the Open Dental 25.3 database documentation (24.4 added 0 to 13, 25.1

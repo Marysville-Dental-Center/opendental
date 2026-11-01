@@ -15,6 +15,11 @@ namespace OpenDental {
 		///<summary>Indicates the most recently selected Document.DocNum</summary>
 		public long DocNum;
 		private Patient _patient;
+		///<summary>Every form of the patient, with the Status column (PatientFormsList.GetTable). The grid shows the rows the Show filter lists, sorted.
+		///</summary>
+		private DataTable _tablePatientForms;
+		///<summary>The toolbar buttons by action, so they can be enabled for the selected row (Open Dental 25.2 window improvements).</summary>
+		private Dictionary<EnumPatientFormAction,ODToolBarButton> _dictToolBarButtons;
 
 		public FormPatientForms() {
 			InitializeComponent();
@@ -28,7 +33,108 @@ namespace OpenDental {
 			_patient=Patients.GetPat(PatNum);
 			Text=Lan.g(this,"Patient Forms for")+" "+_patient.GetNameFL();
 			LayoutMenu();
+			LayoutToolBar();
+			LoadView();
 			FillGrid(refreshFromDb:true);
+		}
+
+		///<summary>The actions in a fixed order (Open Dental 25.2 improvements, our design). Each button runs the handler the old buttons used. Buttons
+		///that don't apply to the selected row are disabled, and their tooltip says why (UpdateToolBar). eClipboard and Web Forms are not part of this
+		///program, so there are no actions for them.</summary>
+		private void LayoutToolBar() {
+			toolBarMain.Buttons.Clear();
+			_dictToolBarButtons=new Dictionary<EnumPatientFormAction,ODToolBarButton>();
+			AddToolBarButton(EnumPatientFormAction.AddSheet,Lan.g(this,"Add Sheet"),butAddSheet_Click,EnumIcons.Add);
+			AddToolBarButton(EnumPatientFormAction.AddEForm,Lan.g(this,"Add eForm"),butAddEForm_Click,EnumIcons.Add);
+			toolBarMain.Buttons.Add(new ODToolBarButton(ODToolBarButtonStyle.Separator));
+			AddToolBarButton(EnumPatientFormAction.PreFill,Lan.g(this,"Pre-Fill"),butPreFill_Click,EnumIcons.None);
+			AddToolBarButton(EnumPatientFormAction.Copy,Lan.g(this,"Copy"),butCopy_Click,EnumIcons.None);
+			AddToolBarButton(EnumPatientFormAction.Import,Lan.g(this,"Import"),butImport_Click,EnumIcons.None);
+			toolBarMain.Buttons.Add(new ODToolBarButton(ODToolBarButtonStyle.Separator));
+			AddToolBarButton(EnumPatientFormAction.Kiosk,Lan.g(this,"Kiosk"),butTerminal_Click,EnumIcons.None);
+			toolBarMain.Invalidate();
+		}
+
+		private void AddToolBarButton(EnumPatientFormAction action,string text,EventHandler eventHandlerClick,EnumIcons icon) {
+			ODToolBarButton toolBarButton=new ODToolBarButton(text,eventHandlerClick,icon,"",action);
+			toolBarMain.Buttons.Add(toolBarButton);
+			_dictToolBarButtons[action]=toolBarButton;
+		}
+
+		///<summary>Enables the toolbar actions that apply to the selected row and sets each tooltip to what the action does, or why it is disabled.
+		///</summary>
+		private void UpdateToolBar() {
+			if(_dictToolBarButtons==null) {
+				return;
+			}
+			int countSelected=gridMain.SelectedIndices.Length;
+			EnumPatientFormRowType rowTypeSelected=EnumPatientFormRowType.Sheet;
+			bool isSelectedImportable=false;
+			if(countSelected==1) {
+				DataRow dataRow=(DataRow)gridMain.ListGridRows[gridMain.SelectedIndices[0]].Tag;
+				rowTypeSelected=PatientFormsList.GetRowType(dataRow);
+				isSelectedImportable=dataRow[PatientFormsList.COLUMN_IMPORTABLE].ToString()=="1";
+			}
+			bool hasKioskForms=_tablePatientForms!=null && PatientFormsList.HasKioskForms(_tablePatientForms);
+			List<PatientFormActionState> listPatientFormActionStates=PatientFormsList.GetActionStates(countSelected,rowTypeSelected,isSelectedImportable,
+				hasKioskForms);
+			for(int i=0;i<listPatientFormActionStates.Count;i++) {
+				if(!_dictToolBarButtons.TryGetValue(listPatientFormActionStates[i].Action,out ODToolBarButton toolBarButton)) {
+					continue;
+				}
+				toolBarButton.Enabled=listPatientFormActionStates[i].IsEnabled;
+				toolBarButton.ToolTipText=Lan.g(this,listPatientFormActionStates[i].ToolTip);
+			}
+			toolBarMain.Invalidate();
+		}
+
+		private void gridMain_SelectionCommitted(object sender,EventArgs e) {
+			UpdateToolBar();
+		}
+
+		///<summary>Sets the Show and Sort radio buttons from the user's saved choice.</summary>
+		private void LoadView() {
+			if(Security.CurUser==null) {
+				return;
+			}
+			PatientFormsList.GetViewForUser(Security.CurUser.UserNum,out EnumPatientFormsShow show,out EnumPatientFormsSort sort);
+			radioShowBoth.Checked=show==EnumPatientFormsShow.Both;
+			radioShowSheets.Checked=show==EnumPatientFormsShow.Sheets;
+			radioShowEForms.Checked=show==EnumPatientFormsShow.EForms;
+			radioSortByDateTime.Checked=sort==EnumPatientFormsSort.DateTime;
+			radioSortByDescDateT.Checked=sort==EnumPatientFormsSort.DescriptionDateTime;
+		}
+
+		///<summary>Remembers the Show and Sort choice for this user (userodpref).</summary>
+		private void SaveView() {
+			if(Security.CurUser==null) {
+				return;
+			}
+			if(PatientFormsList.SaveViewForUser(Security.CurUser.UserNum,GetShowSelected(),GetSortSelected())) {
+				DataValid.SetInvalid(InvalidType.UserOdPrefs);
+			}
+		}
+
+		private EnumPatientFormsShow GetShowSelected() {
+			if(radioShowSheets.Checked) {
+				return EnumPatientFormsShow.Sheets;
+			}
+			if(radioShowEForms.Checked) {
+				return EnumPatientFormsShow.EForms;
+			}
+			return EnumPatientFormsShow.Both;
+		}
+
+		private EnumPatientFormsSort GetSortSelected() {
+			if(radioSortByDescDateT.Checked) {
+				return EnumPatientFormsSort.DescriptionDateTime;
+			}
+			return EnumPatientFormsSort.DateTime;
+		}
+
+		private void radioShow_Click(object sender,EventArgs e) {
+			SaveView();
+			FillGrid(refreshFromDb:false);
 		}
 
 		private void LayoutMenu() {
@@ -49,15 +155,11 @@ namespace OpenDental {
 		private void FillGrid(bool refreshFromDb){
 			//js This is an edge case pattern because we are not normally dealing with a table.
 			DataTable table=new DataTable();
-			if(refreshFromDb){
-				table=Sheets.GetPatientFormsTable(PatNum);
+			if(refreshFromDb || _tablePatientForms==null){
+				_tablePatientForms=PatientFormsList.GetTable(PatNum);//adds the Status column (Open Dental 25.2 window improvements)
 			}
-			else{
-				List<DataRow> listDataRows2=gridMain.ListGridRows.Select(x=>(DataRow)x.Tag).ToList();//Get the list of DataRows from the grid.
-				if(listDataRows2.Count>0){//The line below will throw an exception if there aren't any rows to copy.
-					table=listDataRows2.CopyToDataTable();//Add them to the new DataTable. CopyToDataTable() will also copy the schema to the table.
-				}
-			}
+			//Not rebuilt from the grid's rows, because rows hidden by the Show filter are not in the grid.
+			table=PatientFormsList.Filter(_tablePatientForms,GetShowSelected());
 			//Sort DataTable.
 			if(radioSortByDateTime.Checked && table.Rows.Count>0){
 				DataView dataView=table.DefaultView;
@@ -88,12 +190,17 @@ namespace OpenDental {
 			gridMain.Columns.Add(col);
 			col=new GridColumn(Lan.g(this,"Kiosk"),55,HorizontalAlignment.Center,GridSortingStrategy.AmountParse);
 			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g(this,"Description"),190);
+			col=new GridColumn(Lan.g(this,"Description"),170);
 			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g(this,"Image Category"),120);
+			col=new GridColumn(Lan.g(this,"Status"),110);
+			gridMain.Columns.Add(col);
+			col=new GridColumn(Lan.g(this,"Image Category"),100);
 			gridMain.Columns.Add(col);
 			col=new GridColumn(Lan.g(this,"Updated"),65,GridSortingStrategy.DateParse);
 			gridMain.Columns.Add(col);
+			col=new GridColumn(Lan.g(this,"Submitted"),115,GridSortingStrategy.DateParse);//Open Dental 25.4 sheet/eform.DateTimeSubmitted
+			gridMain.Columns.Add(col);
+			DataTable tableSubmitted=FormSubmittedDates.GetForPatient(PatNum);
 			gridMain.ListGridRows.Clear();
 			GridRow row;
 			for(int i=0;i<table.Rows.Count;i++){
@@ -111,8 +218,11 @@ namespace OpenDental {
 				row.Cells.Add(table.Rows[i]["dateTime"].ToString());
 				row.Cells.Add(table.Rows[i]["showInTerminal"].ToString());
 				row.Cells.Add(table.Rows[i]["description"].ToString());
+				row.Cells.Add(table.Rows[i][PatientFormsList.COLUMN_STATUS].ToString());
 				row.Cells.Add(table.Rows[i]["imageCat"].ToString());
 				row.Cells.Add(table.Rows[i]["DateTSheetEdited"].ToString());
+				row.Cells.Add(FormSubmittedDates.GetDisplayForRow(tableSubmitted,PIn.Long(table.Rows[i]["SheetNum"].ToString()),
+					PIn.Long(table.Rows[i]["EFormNum"].ToString())));
 				row.Tag=table.Rows[i];
 				gridMain.ListGridRows.Add(row);
 			}
@@ -131,6 +241,7 @@ namespace OpenDental {
 				int idx=listDataRows.FindIndex(x=>x["DocNum"].ToString()==docNumSelected.ToString());
 				gridMain.SetSelected(idx,true);
 			}
+			UpdateToolBar();
 		}
 
 		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e) {
@@ -210,11 +321,13 @@ namespace OpenDental {
 		}
 
 		private void radioSortByDateTime_Click(object sender,EventArgs e) {
+			SaveView();
 			//Refill gridMain without pulling from the db.
 			FillGrid(refreshFromDb:false);
 		}
 
 		private void radioSortByDescriptionDateTime_Click(object sender,EventArgs e) {
+			SaveView();
 			//Refill gridMain without pulling from the db.
 			FillGrid(refreshFromDb:false);
 		}
@@ -296,9 +409,8 @@ namespace OpenDental {
 		}
 
 		private void butTerminal_Click(object sender,EventArgs e) {
-			//<List>.All() returns true for an empty list.
-			List<DataRow> listDataRows=gridMain.ListGridRows.Select(x=>(DataRow)x.Tag).ToList();//Get the list of DataRows from the grid.
-			if(listDataRows.All(x=>x["showInTerminal"].ToString()=="")){
+			//All of the patient's forms, not only the rows the Show filter lists.
+			if(_tablePatientForms==null || !PatientFormsList.HasKioskForms(_tablePatientForms)){
 				MsgBox.Show(this,"No forms for this patient are set to show in the kiosk.");
 				return;
 			}
@@ -450,7 +562,10 @@ namespace OpenDental {
 			formSheetImport.SheetCur=sheet;
 			formSheetImport.EFormCur=eForm;
 			formSheetImport.ShowDialog();
-			//No need to refresh grid because no changes could have been made.
+			if(formSheetImport.DialogResult==DialogResult.OK) {
+				//The import is recorded in the audit trail, which the Status column shows as Imported.
+				FillGrid(refreshFromDb:true);
+			}
 		}
 
 		/// <summary>Event handler for closing FormSheetFillEdit when it is non-modal.</summary>

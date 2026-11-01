@@ -92,5 +92,13 @@ namespace OpenDentBusiness {
 		///<summary>28 - Reserved (Open Dental 25.3). Open Dental HQ only: the default office map for a user. This program never writes it.</summary>
 		[CodeBase.IsODHQ]
 		DefaultMapSetting,
+		///<summary>29 - Reserved (Open Dental 25.4). Open Dental HQ only: a user's default testing team in the Job Manager. This program never writes it.</summary>
+		[CodeBase.IsODHQ]
+		DefaultTestingTeamJM,
+		///<summary>114 - Fork only, not an Open Dental value. Open Dental's numbers end at 29 (25.4), so fork values sit at 100 and up, inside the
+		///tinyint column (at most 127). 114 follows the "14" of backlog package B-EF's reserved migration range (2027001401-2027001499), to keep it
+		///apart from other packages' fork values. The Patient Forms window's Show filter and sort order for this user, in ValueString like
+		///"Show=0;Sort=0" (see PatientFormsList.SerializeView). Does not use FKey.</summary>
+		PatientFormsView=114,
 	}
 }

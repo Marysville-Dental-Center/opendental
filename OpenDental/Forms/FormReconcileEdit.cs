@@ -239,7 +239,7 @@ namespace OpenDental {
 			//	Tuple.Create(labelSum.Text,PIn.Double(textSum.Text).ToString("n"))
 			//};
 			//string msg=
-			gridMain.Export(gridMain.Title);//listOtherDetails:listOtherDetails);
+			gridMain.ShowExportMenu(butExport,gridMain.Title);//listOtherDetails:listOtherDetails);
 			//if(!string.IsNullOrEmpty(msg)) {
 			//	MsgBox.Show(this,msg);
 			//}

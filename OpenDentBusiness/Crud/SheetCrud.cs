@@ -47,28 +47,29 @@ namespace OpenDentBusiness.Crud{
 			Sheet sheet;
 			foreach(DataRow row in table.Rows) {
 				sheet=new Sheet();
-				sheet.SheetNum        = PIn.Long  (row["SheetNum"].ToString());
-				sheet.SheetType       = (OpenDentBusiness.SheetTypeEnum)PIn.Int(row["SheetType"].ToString());
-				sheet.PatNum          = PIn.Long  (row["PatNum"].ToString());
-				sheet.DateTimeSheet   = PIn.DateT (row["DateTimeSheet"].ToString());
-				sheet.FontSize        = PIn.Float (row["FontSize"].ToString());
-				sheet.FontName        = PIn.String(row["FontName"].ToString());
-				sheet.Width           = PIn.Int   (row["Width"].ToString());
-				sheet.Height          = PIn.Int   (row["Height"].ToString());
-				sheet.IsLandscape     = PIn.Bool  (row["IsLandscape"].ToString());
-				sheet.InternalNote    = PIn.String(row["InternalNote"].ToString());
-				sheet.Description     = PIn.String(row["Description"].ToString());
-				sheet.ShowInTerminal  = PIn.Byte  (row["ShowInTerminal"].ToString());
-				sheet.IsWebForm       = PIn.Bool  (row["IsWebForm"].ToString());
-				sheet.IsMultiPage     = PIn.Bool  (row["IsMultiPage"].ToString());
-				sheet.IsDeleted       = PIn.Bool  (row["IsDeleted"].ToString());
-				sheet.SheetDefNum     = PIn.Long  (row["SheetDefNum"].ToString());
-				sheet.DocNum          = PIn.Long  (row["DocNum"].ToString());
-				sheet.ClinicNum       = PIn.Long  (row["ClinicNum"].ToString());
-				sheet.DateTSheetEdited= PIn.DateT (row["DateTSheetEdited"].ToString());
-				sheet.HasMobileLayout = PIn.Bool  (row["HasMobileLayout"].ToString());
-				sheet.RevID           = PIn.Int   (row["RevID"].ToString());
-				sheet.WebFormSheetID  = PIn.Long  (row["WebFormSheetID"].ToString());
+				sheet.SheetNum         = PIn.Long  (row["SheetNum"].ToString());
+				sheet.SheetType        = (OpenDentBusiness.SheetTypeEnum)PIn.Int(row["SheetType"].ToString());
+				sheet.PatNum           = PIn.Long  (row["PatNum"].ToString());
+				sheet.DateTimeSheet    = PIn.DateT (row["DateTimeSheet"].ToString());
+				sheet.FontSize         = PIn.Float (row["FontSize"].ToString());
+				sheet.FontName         = PIn.String(row["FontName"].ToString());
+				sheet.Width            = PIn.Int   (row["Width"].ToString());
+				sheet.Height           = PIn.Int   (row["Height"].ToString());
+				sheet.IsLandscape      = PIn.Bool  (row["IsLandscape"].ToString());
+				sheet.InternalNote     = PIn.String(row["InternalNote"].ToString());
+				sheet.Description      = PIn.String(row["Description"].ToString());
+				sheet.ShowInTerminal   = PIn.Byte  (row["ShowInTerminal"].ToString());
+				sheet.IsWebForm        = PIn.Bool  (row["IsWebForm"].ToString());
+				sheet.IsMultiPage      = PIn.Bool  (row["IsMultiPage"].ToString());
+				sheet.IsDeleted        = PIn.Bool  (row["IsDeleted"].ToString());
+				sheet.SheetDefNum      = PIn.Long  (row["SheetDefNum"].ToString());
+				sheet.DocNum           = PIn.Long  (row["DocNum"].ToString());
+				sheet.ClinicNum        = PIn.Long  (row["ClinicNum"].ToString());
+				sheet.DateTSheetEdited = PIn.DateT (row["DateTSheetEdited"].ToString());
+				sheet.HasMobileLayout  = PIn.Bool  (row["HasMobileLayout"].ToString());
+				sheet.RevID            = PIn.Int   (row["RevID"].ToString());
+				sheet.WebFormSheetID   = PIn.Long  (row["WebFormSheetID"].ToString());
+				sheet.DateTimeSubmitted= PIn.DateT (row["DateTimeSubmitted"].ToString());
 				retVal.Add(sheet);
 			}
 			return retVal;
@@ -102,6 +103,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("HasMobileLayout");
 			table.Columns.Add("RevID");
 			table.Columns.Add("WebFormSheetID");
+			table.Columns.Add("DateTimeSubmitted");
 			foreach(Sheet sheet in listSheets) {
 				table.Rows.Add(new object[] {
 					POut.Long  (sheet.SheetNum),
@@ -126,6 +128,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Bool  (sheet.HasMobileLayout),
 					POut.Int   (sheet.RevID),
 					POut.Long  (sheet.WebFormSheetID),
+					POut.DateT (sheet.DateTimeSubmitted,false),
 				});
 			}
 			return table;
@@ -145,7 +148,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="SheetNum,";
 			}
-			command+="SheetType,PatNum,DateTimeSheet,FontSize,FontName,Width,Height,IsLandscape,InternalNote,Description,ShowInTerminal,IsWebForm,IsMultiPage,IsDeleted,SheetDefNum,DocNum,ClinicNum,DateTSheetEdited,HasMobileLayout,RevID,WebFormSheetID) VALUES(";
+			command+="SheetType,PatNum,DateTimeSheet,FontSize,FontName,Width,Height,IsLandscape,InternalNote,Description,ShowInTerminal,IsWebForm,IsMultiPage,IsDeleted,SheetDefNum,DocNum,ClinicNum,DateTSheetEdited,HasMobileLayout,RevID,WebFormSheetID,DateTimeSubmitted) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(sheet.SheetNum)+",";
 			}
@@ -170,7 +173,8 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.Now()+","
 				+    POut.Bool  (sheet.HasMobileLayout)+","
 				+    POut.Int   (sheet.RevID)+","
-				+    POut.Long  (sheet.WebFormSheetID)+")";
+				+    POut.Long  (sheet.WebFormSheetID)+","
+				+    POut.DateT (sheet.DateTimeSubmitted)+")";
 			if(sheet.InternalNote==null) {
 				sheet.InternalNote="";
 			}
@@ -199,7 +203,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="SheetNum,";
 			}
-			command+="SheetType,PatNum,DateTimeSheet,FontSize,FontName,Width,Height,IsLandscape,InternalNote,Description,ShowInTerminal,IsWebForm,IsMultiPage,IsDeleted,SheetDefNum,DocNum,ClinicNum,DateTSheetEdited,HasMobileLayout,RevID,WebFormSheetID) VALUES(";
+			command+="SheetType,PatNum,DateTimeSheet,FontSize,FontName,Width,Height,IsLandscape,InternalNote,Description,ShowInTerminal,IsWebForm,IsMultiPage,IsDeleted,SheetDefNum,DocNum,ClinicNum,DateTSheetEdited,HasMobileLayout,RevID,WebFormSheetID,DateTimeSubmitted) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(sheet.SheetNum)+",";
 			}
@@ -224,7 +228,8 @@ namespace OpenDentBusiness.Crud{
 				+    DbHelper.Now()+","
 				+    POut.Bool  (sheet.HasMobileLayout)+","
 				+    POut.Int   (sheet.RevID)+","
-				+    POut.Long  (sheet.WebFormSheetID)+")";
+				+    POut.Long  (sheet.WebFormSheetID)+","
+				+    POut.DateT (sheet.DateTimeSubmitted)+")";
 			if(sheet.InternalNote==null) {
 				sheet.InternalNote="";
 			}
@@ -241,27 +246,28 @@ namespace OpenDentBusiness.Crud{
 		///<summary>Updates one Sheet in the database.</summary>
 		public static void Update(Sheet sheet) {
 			string command="UPDATE sheet SET "
-				+"SheetType       =  "+POut.Int   ((int)sheet.SheetType)+", "
-				+"PatNum          =  "+POut.Long  (sheet.PatNum)+", "
-				+"DateTimeSheet   =  "+POut.DateT (sheet.DateTimeSheet)+", "
-				+"FontSize        =  "+POut.Float (sheet.FontSize)+", "
-				+"FontName        = '"+POut.String(sheet.FontName)+"', "
-				+"Width           =  "+POut.Int   (sheet.Width)+", "
-				+"Height          =  "+POut.Int   (sheet.Height)+", "
-				+"IsLandscape     =  "+POut.Bool  (sheet.IsLandscape)+", "
-				+"InternalNote    =  "+DbHelper.ParamChar+"paramInternalNote, "
-				+"Description     = '"+POut.String(sheet.Description)+"', "
-				+"ShowInTerminal  =  "+POut.Byte  (sheet.ShowInTerminal)+", "
-				+"IsWebForm       =  "+POut.Bool  (sheet.IsWebForm)+", "
-				+"IsMultiPage     =  "+POut.Bool  (sheet.IsMultiPage)+", "
-				+"IsDeleted       =  "+POut.Bool  (sheet.IsDeleted)+", "
-				+"SheetDefNum     =  "+POut.Long  (sheet.SheetDefNum)+", "
-				+"DocNum          =  "+POut.Long  (sheet.DocNum)+", "
-				+"ClinicNum       =  "+POut.Long  (sheet.ClinicNum)+", "
-				+"DateTSheetEdited=  "+POut.DateT (sheet.DateTSheetEdited)+", "
-				+"HasMobileLayout =  "+POut.Bool  (sheet.HasMobileLayout)+", "
-				+"RevID           =  "+POut.Int   (sheet.RevID)+", "
-				+"WebFormSheetID  =  "+POut.Long  (sheet.WebFormSheetID)+" "
+				+"SheetType        =  "+POut.Int   ((int)sheet.SheetType)+", "
+				+"PatNum           =  "+POut.Long  (sheet.PatNum)+", "
+				+"DateTimeSheet    =  "+POut.DateT (sheet.DateTimeSheet)+", "
+				+"FontSize         =  "+POut.Float (sheet.FontSize)+", "
+				+"FontName         = '"+POut.String(sheet.FontName)+"', "
+				+"Width            =  "+POut.Int   (sheet.Width)+", "
+				+"Height           =  "+POut.Int   (sheet.Height)+", "
+				+"IsLandscape      =  "+POut.Bool  (sheet.IsLandscape)+", "
+				+"InternalNote     =  "+DbHelper.ParamChar+"paramInternalNote, "
+				+"Description      = '"+POut.String(sheet.Description)+"', "
+				+"ShowInTerminal   =  "+POut.Byte  (sheet.ShowInTerminal)+", "
+				+"IsWebForm        =  "+POut.Bool  (sheet.IsWebForm)+", "
+				+"IsMultiPage      =  "+POut.Bool  (sheet.IsMultiPage)+", "
+				+"IsDeleted        =  "+POut.Bool  (sheet.IsDeleted)+", "
+				+"SheetDefNum      =  "+POut.Long  (sheet.SheetDefNum)+", "
+				+"DocNum           =  "+POut.Long  (sheet.DocNum)+", "
+				+"ClinicNum        =  "+POut.Long  (sheet.ClinicNum)+", "
+				+"DateTSheetEdited =  "+POut.DateT (sheet.DateTSheetEdited)+", "
+				+"HasMobileLayout  =  "+POut.Bool  (sheet.HasMobileLayout)+", "
+				+"RevID            =  "+POut.Int   (sheet.RevID)+", "
+				+"WebFormSheetID   =  "+POut.Long  (sheet.WebFormSheetID)+", "
+				+"DateTimeSubmitted=  "+POut.DateT (sheet.DateTimeSubmitted)+" "
 				+"WHERE SheetNum = "+POut.Long(sheet.SheetNum);
 			if(sheet.InternalNote==null) {
 				sheet.InternalNote="";
@@ -357,6 +363,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="WebFormSheetID = "+POut.Long(sheet.WebFormSheetID)+"";
 			}
+			if(sheet.DateTimeSubmitted != oldSheet.DateTimeSubmitted) {
+				if(command!="") { command+=",";}
+				command+="DateTimeSubmitted = "+POut.DateT(sheet.DateTimeSubmitted)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -434,6 +444,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(sheet.WebFormSheetID != oldSheet.WebFormSheetID) {
+				return true;
+			}
+			if(sheet.DateTimeSubmitted != oldSheet.DateTimeSubmitted) {
 				return true;
 			}
 			return false;

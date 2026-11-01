@@ -355,7 +355,10 @@ namespace OpenDental {
 			string message=Lan.g(this,"This page has the following invalid wiki page link(s):")+"\r\n"+string.Join("\r\n",listInvalidWikiPages.Take(10))+"\r\n"
 				+(listInvalidWikiPages.Count>10 ? "...\r\n\r\n" : "\r\n")
 				+Lan.g(this,"Create the wikipage(s) automatically?");
+			//Pages to re-export into the read-only copy of the wiki once saved (v25_2-wiki-readonly-offline).
+			List<string> listTitlesToExport=new List<string>();
 			if(listInvalidWikiPages.Count!=0 && showMsgBox && MsgBox.Show(this,MsgBoxButtons.YesNo,message)) {
+				listTitlesToExport.AddRange(listInvalidWikiPages);
 				for(int i=0;i<listInvalidWikiPages.Count;i++) {
 					WikiPage wikiPage=new WikiPage();
 					wikiPage.PageTitle=listInvalidWikiPages[i];
@@ -381,6 +384,8 @@ namespace OpenDental {
 				}
 			}
 			WikiPages.InsertAndArchive(WikiPageCur);
+			listTitlesToExport.Add(WikiPageCur.PageTitle);
+			WikiStaticExport.ExportInBackground(listTitlesToExport,isFullExport:false);//Never interrupts the save.
 			//If the form was given an action, fire it.
 			_actionWikiSaved?.Invoke(WikiPageCur.PageTitle);
 			FormWiki formWiki=(FormWiki)this.FormWiki_;

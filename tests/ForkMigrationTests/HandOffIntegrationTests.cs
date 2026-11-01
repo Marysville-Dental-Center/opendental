@@ -26,10 +26,20 @@ namespace ForkMigrationTests {
 		public void Steps_SeedRowsRunAfterTheSchemaSteps() {
 			List<ForkMigrationStep> listSteps=ForkMigrationRunner.GetSteps();
 			ForkMigrationStep stepSeed=listSteps.Single(x => x is Seed25_3Step);
+			//The 25.3.48 schema steps: the steps of this namespace that are not the seed and not the Open Dental 25.4/26.1 steps (OdParity26_1.cs,
+			//M2-01), which come after the seed on purpose.
 			List<ForkMigrationStep> listSchemaSteps=listSteps.Where(x => x.GetType().Namespace==typeof(Seed25_3Step).Namespace
-				&& x.GetType().Assembly==typeof(Seed25_3Step).Assembly && !(x is Seed25_3Step)).ToList();
+				&& x.GetType().Assembly==typeof(Seed25_3Step).Assembly && !(x is Seed25_3Step) && !IsOdParity26_1Step(x)).ToList();
 			Assert.IsTrue(listSchemaSteps.Count>0);
 			Assert.IsTrue(listSchemaSteps.All(x => x.Level<stepSeed.Level),"Seed25_3Step must run after every 25.3.48 schema step.");
+			//The 25.4 and 26.1 steps add their columns after 25.3 columns, so they must run after every 25.3.48 schema step.
+			List<ForkMigrationStep> listSteps26_1=listSteps.Where(x => IsOdParity26_1Step(x)).ToList();
+			Assert.AreEqual(3,listSteps26_1.Count);
+			Assert.IsTrue(listSteps26_1.All(x => x.Level>listSchemaSteps.Max(y => y.Level)),"The 26.1 steps run after the 25.3.48 schema steps.");
+		}
+
+		private static bool IsOdParity26_1Step(ForkMigrationStep step) {
+			return step is OdParity25_4Schema || step is OdParity26_1Schema || step is OdParity26_1ClaimPaymentNote;
 		}
 
 		[TestMethod]
@@ -40,7 +50,8 @@ namespace ForkMigrationTests {
 			Assert.AreEqual(ForkGuardAction.NeedsAdoption,ForkVersionGuard.Evaluate(forkDbState).Action);
 		}
 
-		///<summary>A fresh 24.3.63 database adopted with the real runner: markers consistent, nothing pending, the schema at 25.3.48, and the seed
+		///<summary>A fresh 24.3.63 database adopted with the real runner: markers consistent, nothing pending, the schema at the default reference
+		///(Open Dental 26.1.70 since M2-01) and OdSchemaCompat saying so, and the seed
 		///rows written because the source in ForkAdoptedFrom is 24.3.63 (DataBaseVersion already holds the sentinel when the steps run).</summary>
 		[TestMethod]
 		public void Adoption_Fresh24_3WithTheRealRunner() {

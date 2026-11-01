@@ -17,5 +17,8 @@ namespace OpenDentBusiness {
 		public long ClinicNum;
 		///<summary>Serial number of physical device, typically provided by the card processor.</summary>
 		public string TerminalID;
+		///<summary>Added in Open Dental 25.4: the card-processing integration this terminal belongs to, for example PayConnect. Empty on rows made
+		///before 25.4.</summary>
+		public string CCIntegration="";
 	}
 }

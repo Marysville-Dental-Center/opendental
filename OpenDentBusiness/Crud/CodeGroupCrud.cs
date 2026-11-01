@@ -47,15 +47,18 @@ namespace OpenDentBusiness.Crud{
 			CodeGroup codeGroup;
 			foreach(DataRow row in table.Rows) {
 				codeGroup=new CodeGroup();
-				codeGroup.CodeGroupNum   = PIn.Long  (row["CodeGroupNum"].ToString());
-				codeGroup.GroupName      = PIn.String(row["GroupName"].ToString());
-				codeGroup.ProcCodes      = PIn.String(row["ProcCodes"].ToString());
-				codeGroup.ItemOrder      = PIn.Int   (row["ItemOrder"].ToString());
-				codeGroup.CodeGroupFixed = (OpenDentBusiness.EnumCodeGroupFixed)PIn.Int(row["CodeGroupFixed"].ToString());
-				codeGroup.IsHidden       = PIn.Bool  (row["IsHidden"].ToString());
-				codeGroup.ShowInAgeLimit = PIn.Bool  (row["ShowInAgeLimit"].ToString());
-				codeGroup.ShowInFrequency= PIn.Bool  (row["ShowInFrequency"].ToString());
-				codeGroup.ShowInOther    = PIn.Bool  (row["ShowInOther"].ToString());
+				codeGroup.CodeGroupNum    = PIn.Long  (row["CodeGroupNum"].ToString());
+				codeGroup.GroupName       = PIn.String(row["GroupName"].ToString());
+				codeGroup.ProcCodes       = PIn.String(row["ProcCodes"].ToString());
+				codeGroup.ItemOrder       = PIn.Int   (row["ItemOrder"].ToString());
+				codeGroup.CodeGroupFixed  = (OpenDentBusiness.EnumCodeGroupFixed)PIn.Int(row["CodeGroupFixed"].ToString());
+				codeGroup.IsHidden        = PIn.Bool  (row["IsHidden"].ToString());
+				codeGroup.ShowInAgeLimit  = PIn.Bool  (row["ShowInAgeLimit"].ToString());
+				codeGroup.ShowInFrequency = PIn.Bool  (row["ShowInFrequency"].ToString());
+				codeGroup.ShowInOther     = PIn.Bool  (row["ShowInOther"].ToString());
+				codeGroup.ShowInHistory   = PIn.Bool  (row["ShowInHistory"].ToString());
+				codeGroup.HistProcCode    = PIn.String(row["HistProcCode"].ToString());
+				codeGroup.IsPerioFourQuads= PIn.Bool  (row["IsPerioFourQuads"].ToString());
 				retVal.Add(codeGroup);
 			}
 			return retVal;
@@ -76,6 +79,9 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("ShowInAgeLimit");
 			table.Columns.Add("ShowInFrequency");
 			table.Columns.Add("ShowInOther");
+			table.Columns.Add("ShowInHistory");
+			table.Columns.Add("HistProcCode");
+			table.Columns.Add("IsPerioFourQuads");
 			foreach(CodeGroup codeGroup in listCodeGroups) {
 				table.Rows.Add(new object[] {
 					POut.Long  (codeGroup.CodeGroupNum),
@@ -87,6 +93,9 @@ namespace OpenDentBusiness.Crud{
 					POut.Bool  (codeGroup.ShowInAgeLimit),
 					POut.Bool  (codeGroup.ShowInFrequency),
 					POut.Bool  (codeGroup.ShowInOther),
+					POut.Bool  (codeGroup.ShowInHistory),
+					            codeGroup.HistProcCode,
+					POut.Bool  (codeGroup.IsPerioFourQuads),
 				});
 			}
 			return table;
@@ -106,7 +115,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="CodeGroupNum,";
 			}
-			command+="GroupName,ProcCodes,ItemOrder,CodeGroupFixed,IsHidden,ShowInAgeLimit,ShowInFrequency,ShowInOther) VALUES(";
+			command+="GroupName,ProcCodes,ItemOrder,CodeGroupFixed,IsHidden,ShowInAgeLimit,ShowInFrequency,ShowInOther,ShowInHistory,HistProcCode,IsPerioFourQuads) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(codeGroup.CodeGroupNum)+",";
 			}
@@ -118,7 +127,10 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (codeGroup.IsHidden)+","
 				+    POut.Bool  (codeGroup.ShowInAgeLimit)+","
 				+    POut.Bool  (codeGroup.ShowInFrequency)+","
-				+    POut.Bool  (codeGroup.ShowInOther)+")";
+				+    POut.Bool  (codeGroup.ShowInOther)+","
+				+    POut.Bool  (codeGroup.ShowInHistory)+","
+				+"'"+POut.String(codeGroup.HistProcCode)+"',"
+				+    POut.Bool  (codeGroup.IsPerioFourQuads)+")";
 			if(codeGroup.ProcCodes==null) {
 				codeGroup.ProcCodes="";
 			}
@@ -147,7 +159,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="CodeGroupNum,";
 			}
-			command+="GroupName,ProcCodes,ItemOrder,CodeGroupFixed,IsHidden,ShowInAgeLimit,ShowInFrequency,ShowInOther) VALUES(";
+			command+="GroupName,ProcCodes,ItemOrder,CodeGroupFixed,IsHidden,ShowInAgeLimit,ShowInFrequency,ShowInOther,ShowInHistory,HistProcCode,IsPerioFourQuads) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(codeGroup.CodeGroupNum)+",";
 			}
@@ -159,7 +171,10 @@ namespace OpenDentBusiness.Crud{
 				+    POut.Bool  (codeGroup.IsHidden)+","
 				+    POut.Bool  (codeGroup.ShowInAgeLimit)+","
 				+    POut.Bool  (codeGroup.ShowInFrequency)+","
-				+    POut.Bool  (codeGroup.ShowInOther)+")";
+				+    POut.Bool  (codeGroup.ShowInOther)+","
+				+    POut.Bool  (codeGroup.ShowInHistory)+","
+				+"'"+POut.String(codeGroup.HistProcCode)+"',"
+				+    POut.Bool  (codeGroup.IsPerioFourQuads)+")";
 			if(codeGroup.ProcCodes==null) {
 				codeGroup.ProcCodes="";
 			}
@@ -176,14 +191,17 @@ namespace OpenDentBusiness.Crud{
 		///<summary>Updates one CodeGroup in the database.</summary>
 		public static void Update(CodeGroup codeGroup) {
 			string command="UPDATE codegroup SET "
-				+"GroupName      = '"+POut.String(codeGroup.GroupName)+"', "
-				+"ProcCodes      =  "+DbHelper.ParamChar+"paramProcCodes, "
-				+"ItemOrder      =  "+POut.Int   (codeGroup.ItemOrder)+", "
-				+"CodeGroupFixed =  "+POut.Int   ((int)codeGroup.CodeGroupFixed)+", "
-				+"IsHidden       =  "+POut.Bool  (codeGroup.IsHidden)+", "
-				+"ShowInAgeLimit =  "+POut.Bool  (codeGroup.ShowInAgeLimit)+", "
-				+"ShowInFrequency=  "+POut.Bool  (codeGroup.ShowInFrequency)+", "
-				+"ShowInOther    =  "+POut.Bool  (codeGroup.ShowInOther)+" "
+				+"GroupName       = '"+POut.String(codeGroup.GroupName)+"', "
+				+"ProcCodes       =  "+DbHelper.ParamChar+"paramProcCodes, "
+				+"ItemOrder       =  "+POut.Int   (codeGroup.ItemOrder)+", "
+				+"CodeGroupFixed  =  "+POut.Int   ((int)codeGroup.CodeGroupFixed)+", "
+				+"IsHidden        =  "+POut.Bool  (codeGroup.IsHidden)+", "
+				+"ShowInAgeLimit  =  "+POut.Bool  (codeGroup.ShowInAgeLimit)+", "
+				+"ShowInFrequency =  "+POut.Bool  (codeGroup.ShowInFrequency)+", "
+				+"ShowInOther     =  "+POut.Bool  (codeGroup.ShowInOther)+", "
+				+"ShowInHistory   =  "+POut.Bool  (codeGroup.ShowInHistory)+", "
+				+"HistProcCode    = '"+POut.String(codeGroup.HistProcCode)+"', "
+				+"IsPerioFourQuads=  "+POut.Bool  (codeGroup.IsPerioFourQuads)+" "
 				+"WHERE CodeGroupNum = "+POut.Long(codeGroup.CodeGroupNum);
 			if(codeGroup.ProcCodes==null) {
 				codeGroup.ProcCodes="";
@@ -227,6 +245,18 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="ShowInOther = "+POut.Bool(codeGroup.ShowInOther)+"";
 			}
+			if(codeGroup.ShowInHistory != oldCodeGroup.ShowInHistory) {
+				if(command!="") { command+=",";}
+				command+="ShowInHistory = "+POut.Bool(codeGroup.ShowInHistory)+"";
+			}
+			if(codeGroup.HistProcCode != oldCodeGroup.HistProcCode) {
+				if(command!="") { command+=",";}
+				command+="HistProcCode = '"+POut.String(codeGroup.HistProcCode)+"'";
+			}
+			if(codeGroup.IsPerioFourQuads != oldCodeGroup.IsPerioFourQuads) {
+				if(command!="") { command+=",";}
+				command+="IsPerioFourQuads = "+POut.Bool(codeGroup.IsPerioFourQuads)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -265,6 +295,15 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(codeGroup.ShowInOther != oldCodeGroup.ShowInOther) {
+				return true;
+			}
+			if(codeGroup.ShowInHistory != oldCodeGroup.ShowInHistory) {
+				return true;
+			}
+			if(codeGroup.HistProcCode != oldCodeGroup.HistProcCode) {
+				return true;
+			}
+			if(codeGroup.IsPerioFourQuads != oldCodeGroup.IsPerioFourQuads) {
 				return true;
 			}
 			return false;

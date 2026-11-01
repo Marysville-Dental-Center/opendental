@@ -61,6 +61,7 @@ namespace OpenDentBusiness.Crud{
 				employee.IsFurloughed = PIn.Bool  (row["IsFurloughed"].ToString());
 				employee.IsWorkingHome= PIn.Bool  (row["IsWorkingHome"].ToString());
 				employee.ReportsTo    = PIn.Long  (row["ReportsTo"].ToString());
+				employee.Title        = PIn.Long  (row["Title"].ToString());
 				retVal.Add(employee);
 			}
 			return retVal;
@@ -86,6 +87,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("IsFurloughed");
 			table.Columns.Add("IsWorkingHome");
 			table.Columns.Add("ReportsTo");
+			table.Columns.Add("Title");
 			foreach(Employee employee in listEmployees) {
 				table.Rows.Add(new object[] {
 					POut.Long  (employee.EmployeeNum),
@@ -102,6 +104,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Bool  (employee.IsFurloughed),
 					POut.Bool  (employee.IsWorkingHome),
 					POut.Long  (employee.ReportsTo),
+					POut.Long  (employee.Title),
 				});
 			}
 			return table;
@@ -121,7 +124,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="EmployeeNum,";
 			}
-			command+="LName,FName,MiddleI,IsHidden,ClockStatus,PhoneExt,PayrollID,WirelessPhone,EmailWork,EmailPersonal,IsFurloughed,IsWorkingHome,ReportsTo) VALUES(";
+			command+="LName,FName,MiddleI,IsHidden,ClockStatus,PhoneExt,PayrollID,WirelessPhone,EmailWork,EmailPersonal,IsFurloughed,IsWorkingHome,ReportsTo,Title) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(employee.EmployeeNum)+",";
 			}
@@ -138,7 +141,8 @@ namespace OpenDentBusiness.Crud{
 				+"'"+POut.String(employee.EmailPersonal)+"',"
 				+    POut.Bool  (employee.IsFurloughed)+","
 				+    POut.Bool  (employee.IsWorkingHome)+","
-				+    POut.Long  (employee.ReportsTo)+")";
+				+    POut.Long  (employee.ReportsTo)+","
+				+    POut.Long  (employee.Title)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -163,7 +167,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="EmployeeNum,";
 			}
-			command+="LName,FName,MiddleI,IsHidden,ClockStatus,PhoneExt,PayrollID,WirelessPhone,EmailWork,EmailPersonal,IsFurloughed,IsWorkingHome,ReportsTo) VALUES(";
+			command+="LName,FName,MiddleI,IsHidden,ClockStatus,PhoneExt,PayrollID,WirelessPhone,EmailWork,EmailPersonal,IsFurloughed,IsWorkingHome,ReportsTo,Title) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(employee.EmployeeNum)+",";
 			}
@@ -180,7 +184,8 @@ namespace OpenDentBusiness.Crud{
 				+"'"+POut.String(employee.EmailPersonal)+"',"
 				+    POut.Bool  (employee.IsFurloughed)+","
 				+    POut.Bool  (employee.IsWorkingHome)+","
-				+    POut.Long  (employee.ReportsTo)+")";
+				+    POut.Long  (employee.ReportsTo)+","
+				+    POut.Long  (employee.Title)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -205,7 +210,8 @@ namespace OpenDentBusiness.Crud{
 				+"EmailPersonal= '"+POut.String(employee.EmailPersonal)+"', "
 				+"IsFurloughed =  "+POut.Bool  (employee.IsFurloughed)+", "
 				+"IsWorkingHome=  "+POut.Bool  (employee.IsWorkingHome)+", "
-				+"ReportsTo    =  "+POut.Long  (employee.ReportsTo)+" "
+				+"ReportsTo    =  "+POut.Long  (employee.ReportsTo)+", "
+				+"Title        =  "+POut.Long  (employee.Title)+" "
 				+"WHERE EmployeeNum = "+POut.Long(employee.EmployeeNum);
 			Db.NonQ(command);
 		}
@@ -265,6 +271,10 @@ namespace OpenDentBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="ReportsTo = "+POut.Long(employee.ReportsTo)+"";
 			}
+			if(employee.Title != oldEmployee.Title) {
+				if(command!="") { command+=",";}
+				command+="Title = "+POut.Long(employee.Title)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -314,6 +324,9 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			if(employee.ReportsTo != oldEmployee.ReportsTo) {
+				return true;
+			}
+			if(employee.Title != oldEmployee.Title) {
 				return true;
 			}
 			return false;

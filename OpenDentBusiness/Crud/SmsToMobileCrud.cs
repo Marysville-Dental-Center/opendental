@@ -67,6 +67,7 @@ namespace OpenDentBusiness.Crud{
 				smsToMobile.IsHidden          = PIn.Bool  (row["IsHidden"].ToString());
 				smsToMobile.MsgDiscountUSD    = PIn.Float (row["MsgDiscountUSD"].ToString());
 				smsToMobile.SecDateTEdit      = PIn.DateT (row["SecDateTEdit"].ToString());
+				smsToMobile.SecUserNumEntry   = PIn.Long  (row["SecUserNumEntry"].ToString());
 				retVal.Add(smsToMobile);
 			}
 			return retVal;
@@ -97,6 +98,7 @@ namespace OpenDentBusiness.Crud{
 			table.Columns.Add("IsHidden");
 			table.Columns.Add("MsgDiscountUSD");
 			table.Columns.Add("SecDateTEdit");
+			table.Columns.Add("SecUserNumEntry");
 			foreach(SmsToMobile smsToMobile in listSmsToMobiles) {
 				table.Rows.Add(new object[] {
 					POut.Long  (smsToMobile.SmsToMobileNum),
@@ -118,6 +120,7 @@ namespace OpenDentBusiness.Crud{
 					POut.Bool  (smsToMobile.IsHidden),
 					POut.Float (smsToMobile.MsgDiscountUSD),
 					POut.DateT (smsToMobile.SecDateTEdit,false),
+					POut.Long  (smsToMobile.SecUserNumEntry),
 				});
 			}
 			return table;
@@ -137,7 +140,7 @@ namespace OpenDentBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="SmsToMobileNum,";
 			}
-			command+="PatNum,GuidMessage,GuidBatch,SmsPhoneNumber,MobilePhoneNumber,IsTimeSensitive,MsgType,MsgText,SmsStatus,MsgParts,MsgChargeUSD,ClinicNum,CustErrorText,DateTimeSent,DateTimeTerminated,IsHidden,MsgDiscountUSD) VALUES(";
+			command+="PatNum,GuidMessage,GuidBatch,SmsPhoneNumber,MobilePhoneNumber,IsTimeSensitive,MsgType,MsgText,SmsStatus,MsgParts,MsgChargeUSD,ClinicNum,CustErrorText,DateTimeSent,DateTimeTerminated,IsHidden,MsgDiscountUSD,SecUserNumEntry) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(smsToMobile.SmsToMobileNum)+",";
 			}
@@ -158,8 +161,9 @@ namespace OpenDentBusiness.Crud{
 				+    POut.DateT (smsToMobile.DateTimeSent)+","
 				+    POut.DateT (smsToMobile.DateTimeTerminated)+","
 				+    POut.Bool  (smsToMobile.IsHidden)+","
-				+    POut.Float (smsToMobile.MsgDiscountUSD)+")";
+				+    POut.Float (smsToMobile.MsgDiscountUSD)+","
 				//SecDateTEdit can only be set by MySQL
+				+    POut.Long  (smsToMobile.SecUserNumEntry)+")";
 			if(smsToMobile.MsgText==null) {
 				smsToMobile.MsgText="";
 			}
@@ -199,7 +203,7 @@ namespace OpenDentBusiness.Crud{
 						if(useExistingPK) {
 							sbCommands.Append("SmsToMobileNum,");
 						}
-						sbCommands.Append("PatNum,GuidMessage,GuidBatch,SmsPhoneNumber,MobilePhoneNumber,IsTimeSensitive,MsgType,MsgText,SmsStatus,MsgParts,MsgChargeUSD,ClinicNum,CustErrorText,DateTimeSent,DateTimeTerminated,IsHidden,MsgDiscountUSD) VALUES ");
+						sbCommands.Append("PatNum,GuidMessage,GuidBatch,SmsPhoneNumber,MobilePhoneNumber,IsTimeSensitive,MsgType,MsgText,SmsStatus,MsgParts,MsgChargeUSD,ClinicNum,CustErrorText,DateTimeSent,DateTimeTerminated,IsHidden,MsgDiscountUSD,SecUserNumEntry) VALUES ");
 						countRows=0;
 					}
 					else {
@@ -224,8 +228,9 @@ namespace OpenDentBusiness.Crud{
 					sbRow.Append(POut.DateT(smsToMobile.DateTimeSent)); sbRow.Append(",");
 					sbRow.Append(POut.DateT(smsToMobile.DateTimeTerminated)); sbRow.Append(",");
 					sbRow.Append(POut.Bool(smsToMobile.IsHidden)); sbRow.Append(",");
-					sbRow.Append(POut.Float(smsToMobile.MsgDiscountUSD)); sbRow.Append(")");
+					sbRow.Append(POut.Float(smsToMobile.MsgDiscountUSD)); sbRow.Append(",");
 					//SecDateTEdit can only be set by MySQL
+					sbRow.Append(POut.Long(smsToMobile.SecUserNumEntry)); sbRow.Append(")");
 					if(sbCommands.Length+sbRow.Length+1 > TableBase.MaxAllowedPacketCount && countRows > 0) {
 						Db.NonQ(sbCommands.ToString());
 						sbCommands=null;
@@ -260,7 +265,7 @@ namespace OpenDentBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="SmsToMobileNum,";
 			}
-			command+="PatNum,GuidMessage,GuidBatch,SmsPhoneNumber,MobilePhoneNumber,IsTimeSensitive,MsgType,MsgText,SmsStatus,MsgParts,MsgChargeUSD,ClinicNum,CustErrorText,DateTimeSent,DateTimeTerminated,IsHidden,MsgDiscountUSD) VALUES(";
+			command+="PatNum,GuidMessage,GuidBatch,SmsPhoneNumber,MobilePhoneNumber,IsTimeSensitive,MsgType,MsgText,SmsStatus,MsgParts,MsgChargeUSD,ClinicNum,CustErrorText,DateTimeSent,DateTimeTerminated,IsHidden,MsgDiscountUSD,SecUserNumEntry) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(smsToMobile.SmsToMobileNum)+",";
 			}
@@ -281,8 +286,9 @@ namespace OpenDentBusiness.Crud{
 				+    POut.DateT (smsToMobile.DateTimeSent)+","
 				+    POut.DateT (smsToMobile.DateTimeTerminated)+","
 				+    POut.Bool  (smsToMobile.IsHidden)+","
-				+    POut.Float (smsToMobile.MsgDiscountUSD)+")";
+				+    POut.Float (smsToMobile.MsgDiscountUSD)+","
 				//SecDateTEdit can only be set by MySQL
+				+    POut.Long  (smsToMobile.SecUserNumEntry)+")";
 			if(smsToMobile.MsgText==null) {
 				smsToMobile.MsgText="";
 			}
@@ -317,6 +323,7 @@ namespace OpenDentBusiness.Crud{
 				+"IsHidden          =  "+POut.Bool  (smsToMobile.IsHidden)+", "
 				+"MsgDiscountUSD    =  "+POut.Float (smsToMobile.MsgDiscountUSD)+" "
 				//SecDateTEdit can only be set by MySQL
+				//SecUserNumEntry excluded from update
 				+"WHERE SmsToMobileNum = "+POut.Long(smsToMobile.SmsToMobileNum);
 			if(smsToMobile.MsgText==null) {
 				smsToMobile.MsgText="";
@@ -397,6 +404,7 @@ namespace OpenDentBusiness.Crud{
 				command+="MsgDiscountUSD = "+POut.Float(smsToMobile.MsgDiscountUSD)+"";
 			}
 			//SecDateTEdit can only be set by MySQL
+			//SecUserNumEntry excluded from update
 			if(command=="") {
 				return false;
 			}
@@ -465,6 +473,7 @@ namespace OpenDentBusiness.Crud{
 				return true;
 			}
 			//SecDateTEdit can only be set by MySQL
+			//SecUserNumEntry excluded from update
 			return false;
 		}
 

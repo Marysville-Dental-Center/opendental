@@ -52,7 +52,6 @@ namespace OpenDental{
 			this.butEmail = new OpenDental.UI.Button();
 			this.butToKiosk = new OpenDental.UI.Button();
 			this.butPDF = new OpenDental.UI.Button();
-			this.checkSaveToImages = new OpenDental.UI.CheckBox();
 			this.butAddField = new OpenDental.UI.Button();
 			this.timerTextChanged = new System.Windows.Forms.Timer(this.components);
 			this.butReduceFontSize = new OpenDental.UI.Button();
@@ -320,17 +319,6 @@ namespace OpenDental{
 			this.butPDF.Text = "Create PDF";
 			this.butPDF.Click += new System.EventHandler(this.butPDF_Click);
 			// 
-			// checkSaveToImages
-			// 
-			this.checkSaveToImages.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.checkSaveToImages.Location = new System.Drawing.Point(321, 589);
-			this.checkSaveToImages.Name = "checkSaveToImages";
-			this.checkSaveToImages.Size = new System.Drawing.Size(141, 20);
-			this.checkSaveToImages.TabIndex = 96;
-			this.checkSaveToImages.TabStop = false;
-			this.checkSaveToImages.Text = "Autosave to Images";
-			this.checkSaveToImages.Visible = false;
-			// 
 			// butAddField
 			// 
 			this.butAddField.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
@@ -382,7 +370,6 @@ namespace OpenDental{
 			this.Controls.Add(this.butReduceFontSize);
 			this.Controls.Add(this.butAddField);
 			this.Controls.Add(this.butOK);
-			this.Controls.Add(this.checkSaveToImages);
 			this.Controls.Add(this.butToKiosk);
 			this.Controls.Add(this.butEmail);
 			this.Controls.Add(this.butPrint);
@@ -439,7 +426,6 @@ namespace OpenDental{
 		private UI.Button butEmail;
 		private UI.Button butToKiosk;
 		private UI.Button butPDF;
-		private OpenDental.UI.CheckBox checkSaveToImages;
 		private UI.Button butAddField;
 		private System.Windows.Forms.Timer timerTextChanged;
 		private UI.Button butReduceFontSize;

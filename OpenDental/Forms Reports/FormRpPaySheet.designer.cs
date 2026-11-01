@@ -49,8 +49,7 @@ namespace OpenDental {
 			this.checkUnearned = new OpenDental.UI.CheckBox();
 			this.checkReportDisplayUnearnedTP = new OpenDental.UI.CheckBox();
 			this.checkShowOnlinePatientPaymentsSeparately = new OpenDental.UI.CheckBox();
-			this.checkShowCareCreditFees = new OpenDental.UI.CheckBox();
-			this.checkShowPayConnectFees = new OpenDental.UI.CheckBox();
+			this.checkShowMerchantFees = new OpenDental.UI.CheckBox();
 			this.groupBox1.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -258,29 +257,19 @@ namespace OpenDental {
 			this.checkShowOnlinePatientPaymentsSeparately.TabIndex = 61;
 			this.checkShowOnlinePatientPaymentsSeparately.Text = "Show online patient payments separately";
 			// 
-			// checkShowCareCreditFees
+			// checkShowMerchantFees
 			// 
-			this.checkShowCareCreditFees.CheckAlign = System.Drawing.ContentAlignment.TopLeft;
-			this.checkShowCareCreditFees.Location = new System.Drawing.Point(26, 442);
-			this.checkShowCareCreditFees.Name = "checkShowCareCreditFees";
-			this.checkShowCareCreditFees.Size = new System.Drawing.Size(159, 18);
-			this.checkShowCareCreditFees.TabIndex = 62;
-			this.checkShowCareCreditFees.Text = "Show CareCredit fees";
-			// 
-			// checkShowPayConnectFees
-			// 
-			this.checkShowPayConnectFees.CheckAlign = System.Drawing.ContentAlignment.TopLeft;
-			this.checkShowPayConnectFees.Location = new System.Drawing.Point(26, 465);
-			this.checkShowPayConnectFees.Name = "checkShowPayConnectFees";
-			this.checkShowPayConnectFees.Size = new System.Drawing.Size(159, 18);
-			this.checkShowPayConnectFees.TabIndex = 63;
-			this.checkShowPayConnectFees.Text = "Show PayConnect fees";
+			this.checkShowMerchantFees.CheckAlign = System.Drawing.ContentAlignment.TopLeft;
+			this.checkShowMerchantFees.Location = new System.Drawing.Point(26, 442);
+			this.checkShowMerchantFees.Name = "checkShowMerchantFees";
+			this.checkShowMerchantFees.Size = new System.Drawing.Size(159, 18);
+			this.checkShowMerchantFees.TabIndex = 62;
+			this.checkShowMerchantFees.Text = "Show merchant fees";
 			// 
 			// FormRpPaySheet
 			// 
 			this.ClientSize = new System.Drawing.Size(844, 507);
-			this.Controls.Add(this.checkShowPayConnectFees);
-			this.Controls.Add(this.checkShowCareCreditFees);
+			this.Controls.Add(this.checkShowMerchantFees);
 			this.Controls.Add(this.checkShowOnlinePatientPaymentsSeparately);
 			this.Controls.Add(this.checkReportDisplayUnearnedTP);
 			this.Controls.Add(this.checkUnearned);
@@ -334,7 +323,6 @@ namespace OpenDental {
 		private OpenDental.UI.CheckBox checkShowProvSeparate;
 		private OpenDental.UI.CheckBox checkReportDisplayUnearnedTP;
 		private UI.CheckBox checkShowOnlinePatientPaymentsSeparately;
-		private UI.CheckBox checkShowCareCreditFees;
-		private UI.CheckBox checkShowPayConnectFees;
+		private UI.CheckBox checkShowMerchantFees;
 	}
 }
