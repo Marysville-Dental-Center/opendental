@@ -254,19 +254,58 @@ namespace ImagingCapture.Recovery {
 		///or window assigned the file, or its earlier move out of the quarantine failed. Also false when the documents cannot be read, because then
 		///nothing can be said to be missing.</summary>
 		private bool CheckNoDocumentYet(CaptureFileEntry entry,Patient patient,out string error) {
+			Document document;
+			string how;
+			if(!FindDocumentOfExposure(entry,patient,out document,out how,out error)) {
+				return false;
+			}
+			if(document==null) {
+				return true;
+			}
+			error="The patient already has a document of this exposure (DocNum "+ToText(document.DocNum)+", matched by its "
+				+(how=="captureId" ? "capture ID" : "time")+"), so it is not filed again.";
+			return false;
+		}
+
+		///<summary>Design 10.6 "One document per TWAIN transfer", for Reassign: the exposure is not a document of the patient it goes to, nor of its
+		///originating patient (a journal copy of an image saved normally, a confirmed redelivered image whose copy records no patient). False with
+		///error when it is, or when the documents cannot be read.</summary>
+		private bool CheckNotFiledForEither(CaptureFileEntry entry,Patient patientTarget,out string error) {
+			List<Patient> listPatients=new List<Patient> { patientTarget };
+			if(entry.PatNum>0 && entry.PatNum!=patientTarget.PatNum) {
+				Patient patientFrom=Store.GetPatient(entry.PatNum);
+				if(patientFrom!=null) {
+					listPatients.Add(patientFrom);
+				}
+			}
+			foreach(Patient patient in listPatients) {
+				Document document;
+				string how;
+				if(!FindDocumentOfExposure(entry,patient,out document,out how,out error)) {
+					return false;
+				}
+				if(document!=null) {
+					error="This exposure is already DocNum "+ToText(document.DocNum)+" of "+patient.GetNameFL()+" (PatNum "+ToText(patient.PatNum)
+						+", matched by its "+(how=="captureId" ? "capture ID" : "time")+"); move that document in the Imaging module instead.";
+					return false;
+				}
+			}
+			error="";
+			return true;
+		}
+
+		///<summary>The document of patient that entry was saved as (CaptureJournalMatch), or null in document. False with error when the
+		///patient's documents cannot be read.</summary>
+		private bool FindDocumentOfExposure(CaptureFileEntry entry,Patient patient,out Document document,out string how,out string error) {
+			document=null;
+			how="";
 			error="";
 			try {
 				List<Document> listDocuments=Store.GetPatientDocuments(patient.PatNum)??new List<Document>();
 				List<SecurityLog> listSecurityLogs=Store.GetImageCreateLogEntries(patient.PatNum,
 					CaptureJournalMatch.GetDocNumsToCheck(new[] { entry },listDocuments))??new List<SecurityLog>();
-				string how;
-				Document document=CaptureJournalMatch.FindDocument(entry,listDocuments,listSecurityLogs,out how);
-				if(document==null) {
-					return true;
-				}
-				error="The patient already has a document of this exposure (DocNum "+ToText(document.DocNum)+", matched by its "
-					+(how=="captureId" ? "capture ID" : "time")+"), so it is not filed again.";
-				return false;
+				document=CaptureJournalMatch.FindDocument(entry,listDocuments,listSecurityLogs,out how);
+				return true;
 			}
 			catch(Exception ex) {
 				error="The patient's documents could not be read, so it cannot be checked that this capture was not filed already: "+ex.Message;
@@ -361,6 +400,16 @@ namespace ImagingCapture.Recovery {
 			}
 			if(entry.Kind==CaptureFileKind.Quarantine && !entry.IsPatientUnknown && !IsRedeliveredUnconfirmed(entry) && patientTarget.PatNum==entry.PatNum) {
 				return CaptureFilingResult.Refused(action,entry,"This is the capture's originating patient: use Assign, which keeps its slot.");
+			}
+			if(entry.Kind==CaptureFileKind.Journal && !entry.IsPatientUnknown && !IsRedeliveredUnconfirmed(entry) && patientTarget.PatNum==entry.PatNum) {
+				//Reassign is for a different patient (design 7.12). Recover recent captures in a session of the patient files a copy that has no
+				//document yet, into its slot.
+				return CaptureFilingResult.Refused(action,entry,"This is the copy's originating patient: use Recover recent captures in a capture session "
+					+"for the patient, which files only a copy that has no document yet, into its slot.");
+			}
+			string errorFiled;
+			if(!CheckNotFiledForEither(entry,patientTarget,out errorFiled)) {
+				return CaptureFilingResult.Refused(action,entry,errorFiled);
 			}
 			if(docCategory<=0 || !IsCategoryValid(docCategory)) {
 				return CaptureFilingResult.Refused(action,entry,"Image category missing; choose a category.");

@@ -420,6 +420,38 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Reassign_AJournalCopyOfAnImageSavedNormally_Refused_ForEitherPatient() {
+			//Outside a session the journal view lists every copy; most of them were saved normally (design 10.6: one document per transfer).
+			CaptureFileEntry entry=_harness.Files.Journal(RecoveryFiles.SessionFields(captureId:"cap-7"),_receivedAt);
+			Store.ListPatientDocuments.Add(new Document { DocNum=900,PatNum=42,DateCreated=new DateTime(2026,10,31,8,0,0) });
+			Store.ListSecurityLogsExisting.Add(new SecurityLog { PatNum=42,FKey=900,PermType=EnumPermType.ImageCreate,
+				LogText="Capture: captureId "+CaptureJournalMatch.QuoteLikeTheSaver("cap-7")+", sequence 3." });
+			CaptureFilingResult result=_harness.Filer.Reassign(entry,_harness.PatientJohn,"Taken for John.",20);
+			Assert.IsFalse(result.IsDone,"The exposure would be in both charts.");
+			StringAssert.Contains(result.Error,"This exposure is already DocNum 900 of Jane Doe (PatNum 42");
+			StringAssert.Contains(result.Error,"move that document in the Imaging module instead");
+			CaptureFilingResult resultOwn=_harness.Filer.Reassign(entry,_harness.PatientJane,"Again.",20);
+			Assert.IsFalse(resultOwn.IsDone,"A second, unmounted document of the same exposure.");
+			StringAssert.Contains(resultOwn.Error,"originating patient");
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+			Assert.IsFalse(_harness.Files.Store.ListJournal().Single().IsResolved);
+		}
+
+		[TestMethod]
+		public void Reassign_ACopyWithNoPatientOfAnImageTheTargetAlreadyHas_Refused() {
+			//A confirmed and saved redelivered image: its journal copy was written before the confirmation and records no patient.
+			CaptureFileEntry entry=_harness.Files.Journal(RecoveryFiles.SessionFields(patNum:0,captureId:"cap-7"),_receivedAt);
+			Assert.IsTrue(entry.IsPatientUnknown);
+			Store.ListPatientDocuments.Add(new Document { DocNum=901,PatNum=42,DateCreated=new DateTime(2026,10,31,8,0,0) });
+			Store.ListSecurityLogsExisting.Add(new SecurityLog { PatNum=42,FKey=901,PermType=EnumPermType.ImageCreate,
+				LogText="Capture: captureId "+CaptureJournalMatch.QuoteLikeTheSaver("cap-7")+", sequence 3." });
+			CaptureFilingResult result=_harness.Filer.Reassign(entry,_harness.PatientJane,"It is Jane's.",20);
+			Assert.IsFalse(result.IsDone);
+			StringAssert.Contains(result.Error,"already DocNum 901 of Jane Doe");
+			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
+		}
+
+		[TestMethod]
 		public void Reassign_16Bit_Refused_StaysPut() {
 			CaptureFileEntry entry=_harness.Files.Quarantine16(RecoveryFiles.SessionFields(patNum:0),_receivedAt);
 			CaptureFilingResult result=_harness.Filer.Reassign(entry,_harness.PatientJane,"reason",20);
