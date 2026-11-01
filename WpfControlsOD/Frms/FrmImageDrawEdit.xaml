@@ -12,10 +12,8 @@
         <ui:CheckBox x:Name="checkTransparent" Width="166" Height="21" Margin="175,231,0,0" Text="Transparent" CheckAlign="MiddleLeft" Click="checkTransparent_Click" />
         <ui:Label x:Name="label4" Width="106" Height="18" Margin="30,232,0,0" Text="Background Color" HAlign="Right" VAlign="Center" />
         <ui:Panel x:Name="panelColorBack" Width="30" Height="24" Margin="137,230,0,0" ColorBorder="#FF636363" Click="butColorBack_Click"/>
-        <ui:GroupBox x:Name="groupBoxFont" Width="291" Height="89" Margin="30,106,0,0" Text="Font (decimals are allowed)" >
-            <ui:Button x:Name="butCalculateApparent" Width="106" Height="24" Margin="158,53,0,0" Text="Calculate Apparent" Click="butCalculateApparent_Click" />
+        <ui:GroupBox x:Name="groupBoxFont" Width="200" Height="89" Margin="30,106,0,0" Text="Font (decimals are allowed)" >
             <ui:TextVDouble x:Name="textFontSize" Width="42" Height="20" Margin="107,25,0,0" MinVal="1" MaxVal="100000000"/>
-            <ui:Button x:Name="butCalculateActual" Width="106" Height="24" Margin="158,23,0,0" Text="Calculate Actual" Click="butCalculateActual_Click" />
             <ui:Label x:Name="label3" Width="90" Height="18" Margin="16,25,0,0" Text="Actual Size" HAlign="Right" VAlign="Center" />
             <ui:Label x:Name="label7" Width="93" Height="36" Margin="13,46,0,0" Text="Apparent Size at Current Zoom" HAlign="Right" VAlign="Center" />
             <ui:TextVDouble x:Name="textFontApparent" Width="42" Height="20" Margin="107,55,0,0" MinVal="1" MaxVal="100000000" />

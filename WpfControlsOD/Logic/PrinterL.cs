@@ -121,6 +121,7 @@ then change:
 			FrmPrintPreview frmPrintPreview=new FrmPrintPreview();
 			CreateFixedDocument(printout);
 			frmPrintPreview.FixedDocumentCur=printout.FixedDocument_;
+			frmPrintPreview.Description=printout.Descript;
 			frmPrintPreview.ShowDialog();
 			return frmPrintPreview.IsDialogOK;
 		}
@@ -225,10 +226,9 @@ then change:
 			if(!TrySetPrinter(printout)) {
 				return false;
 			}
-			PrintDialog printDialog=new PrintDialog();
 			CreateFixedDocument(printout);
-			printDialog.PrintDocument(printout.FixedDocument_.DocumentPaginator,printout.Descript);
-			return true;
+			//B-PRINT (25.3): the printer the Default print situation picks, and the Print Options window when that situation has Prompt on.
+			return PrintOptionsWpf.TryPrintFixedDocument(printout.FixedDocument_,printout.Descript);
 		}
 
 		///<summary>Attempts to print if in RELEASE mode or if in DEBUG mode will open printout in FormPrintPreview. Returns true if succesfully printed, or if preview is shown and OK is clicked.</summary>

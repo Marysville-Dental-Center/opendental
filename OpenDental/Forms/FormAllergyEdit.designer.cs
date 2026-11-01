@@ -37,6 +37,9 @@ namespace OpenDental{
 			this.butSnomedReactionSelect = new OpenDental.UI.Button();
 			this.butOK = new OpenDental.UI.Button();
 			this.butDelete = new OpenDental.UI.Button();
+			this.labelOtherEntered = new System.Windows.Forms.Label();
+			this.butConvertOther = new OpenDental.UI.Button();
+			this.checkKeepOtherText = new OpenDental.UI.CheckBox();
 			this.SuspendLayout();
 			// 
 			// checkActive
@@ -137,7 +140,7 @@ namespace OpenDental{
 			// butOK
 			// 
 			this.butOK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butOK.Location = new System.Drawing.Point(425, 215);
+			this.butOK.Location = new System.Drawing.Point(425, 245);
 			this.butOK.Name = "butOK";
 			this.butOK.Size = new System.Drawing.Size(75, 24);
 			this.butOK.TabIndex = 3;
@@ -149,16 +152,49 @@ namespace OpenDental{
 			this.butDelete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.butDelete.Icon = OpenDental.UI.EnumIcons.DeleteX;
 			this.butDelete.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butDelete.Location = new System.Drawing.Point(19, 215);
+			this.butDelete.Location = new System.Drawing.Point(19, 245);
 			this.butDelete.Name = "butDelete";
 			this.butDelete.Size = new System.Drawing.Size(75, 24);
 			this.butDelete.TabIndex = 2;
 			this.butDelete.Text = "&Delete";
 			this.butDelete.Click += new System.EventHandler(this.butDelete_Click);
-			// 
+			//
+			// labelOtherEntered
+			//
+			this.labelOtherEntered.AutoEllipsis = true;
+			this.labelOtherEntered.Location = new System.Drawing.Point(141, 182);
+			this.labelOtherEntered.Name = "labelOtherEntered";
+			this.labelOtherEntered.Size = new System.Drawing.Size(275, 18);
+			this.labelOtherEntered.TabIndex = 29;
+			this.labelOtherEntered.Text = "Patient entered:";
+			this.labelOtherEntered.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.labelOtherEntered.Visible = false;
+			//
+			// butConvertOther
+			//
+			this.butConvertOther.Location = new System.Drawing.Point(421, 179);
+			this.butConvertOther.Name = "butConvertOther";
+			this.butConvertOther.Size = new System.Drawing.Size(79, 24);
+			this.butConvertOther.TabIndex = 30;
+			this.butConvertOther.Text = "Convert";
+			this.butConvertOther.Visible = false;
+			this.butConvertOther.Click += new System.EventHandler(this.butConvertOther_Click);
+			//
+			// checkKeepOtherText
+			//
+			this.checkKeepOtherText.Location = new System.Drawing.Point(144, 205);
+			this.checkKeepOtherText.Name = "checkKeepOtherText";
+			this.checkKeepOtherText.Size = new System.Drawing.Size(272, 20);
+			this.checkKeepOtherText.TabIndex = 31;
+			this.checkKeepOtherText.Text = "Keep entered text as reaction";
+			this.checkKeepOtherText.Visible = false;
+			//
 			// FormAllergyEdit
-			// 
-			this.ClientSize = new System.Drawing.Size(514, 251);
+			//
+			this.ClientSize = new System.Drawing.Size(514, 281);
+			this.Controls.Add(this.checkKeepOtherText);
+			this.Controls.Add(this.butConvertOther);
+			this.Controls.Add(this.labelOtherEntered);
 			this.Controls.Add(this.butNoneSnomedReaction);
 			this.Controls.Add(this.butSnomedReactionSelect);
 			this.Controls.Add(this.label2);
@@ -196,5 +232,8 @@ namespace OpenDental{
 		private UI.Button butSnomedReactionSelect;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.TextBox textSnomedReaction;
+		private System.Windows.Forms.Label labelOtherEntered;
+		private OpenDental.UI.Button butConvertOther;
+		private OpenDental.UI.CheckBox checkKeepOtherText;
 	}
 }

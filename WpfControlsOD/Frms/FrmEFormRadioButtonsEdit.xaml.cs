@@ -28,6 +28,9 @@ namespace OpenDental {
 		private bool _alreadyAsked;
 		///<summary>We don't fire off a signal to update the language cache on other computers until we hit Save in the form window. So each edit window has this variable to keep track of whether there are any new translations. This bubbles up to the parent.</summary>
 		public bool IsChangedLanCache;
+		///<summary>Set by the form designer (FrmEFormDefEdit): opens another field's editor, so a child can be opened from the Children window (Open
+		///Dental 25.1). When null, the children can only be viewed.</summary>
+		public Func<EFormField,bool> FuncEditField;
 
 		///<summary></summary>
 		public FrmEFormRadioButtonsEdit() {
@@ -78,6 +81,7 @@ namespace OpenDental {
 			else{
 				comboDbLink.SelectedItem=EFormFieldCur.DbLink;
 			}
+			EFormL.AddPatFieldDbLinks(comboDbLink,EnumEFormFieldType.RadioButtons,EFormFieldCur.DbLink);//Open Dental 25.4: patient fields
 			SetVisAllerProb();
 			checkIsRequired.Checked=EFormFieldCur.IsRequired;
 			checkAutoImport.Checked=EFormFieldCur.AutoImport;
@@ -163,6 +167,7 @@ namespace OpenDental {
 				&& x.ConditionalParent!="" //for a new radiobutton, ValueLabel might be blank
 			);
 			textCountChildren.Text=listEFormFieldsChildren.Count.ToString();
+			butChildren.IsEnabled=listEFormFieldsChildren.Count>0;
 		}
 
 		private class VisDbLang{
@@ -319,7 +324,7 @@ namespace OpenDental {
 			}
 			//all others
 			if(textLabel.Text==""){
-				textLabel.Text=(string)comboDbLink.SelectedItem;
+				textLabel.Text=EFormL.GetDefaultLabelForDbLink((string)comboDbLink.SelectedItem);
 			}
 			SetVisAllerProb();
 		}
@@ -522,15 +527,18 @@ Any or all items are allowed to have no label by leaving that value in the first
 			gridMain.SetSelected(colRow);
 		}
 
-		//private void butPickChildren_Click(object sender,EventArgs e) {
-		//	FrmEFormFieldChildren frmEFormFieldChildren=new FrmEFormFieldChildren();
-		//	frmEFormFieldChildren.ListEFormFields=_listEFormFields;
-		//	frmEFormFieldChildren.ShowDialog();
-		//	if(frmEFormFieldChildren.IsDialogCancel){
-		//		return;
-		//	}
-		//	textCondParent.Text=frmEFormFieldChildren.LabelSelected;
-		//}
+		///<summary>Opens the list of this field's conditional children (Open Dental 25.1). A child can be opened from there; afterward the count is
+		///refreshed because a child may have been deleted or given another parent.</summary>
+		private void butChildren_Click(object sender,EventArgs e) {
+			FrmEFormFieldChildren frmEFormFieldChildren=new FrmEFormFieldChildren();
+			frmEFormFieldChildren.EFormFieldParent=EFormFieldCur;
+			frmEFormFieldChildren.ListEFormFields=ListEFormFields;
+			frmEFormFieldChildren.FuncEditField=FuncEditField;
+			frmEFormFieldChildren.ShowDialog();
+			int countChildren=EFormFieldChildren.GetChildren(EFormFieldCur,ListEFormFields).Count;
+			textCountChildren.Text=countChildren.ToString();
+			butChildren.IsEnabled=countChildren>0;
+		}
 
 		private void butDelete_Click(object sender,EventArgs e) {
 			//no need to verify with user because they have another chance to cancel in the parent window.
@@ -663,6 +671,15 @@ Any or all items are allowed to have no label by leaving that value in the first
 			IsChangedLanCache=LanguagePats.SaveTranslationEFormField(EFormFieldCur.EFormFieldDefNum,LanguageShowing,strTranslations);
 			if(IsChangedLanCache){
 				LanguagePats.RefreshCache();
+			}
+			//Open Dental 25.1: a renamed parent offers to keep its conditional children, which name it by its label.
+			string labelOld=EFormFieldCur.ValueLabel;
+			int countChildrenToRename=EFormFieldChildren.CountChildrenToRename(ListEFormFields,EFormFieldCur,labelOld,textLabel.Text);
+			if(countChildrenToRename>0
+				&& MsgBox.Show(MsgBoxButtons.YesNo,Lang.g(this,"This field is the conditional parent of")+" "+countChildrenToRename+" "
+				+Lang.g(this,"field(s). Change them to use the new label? If not, they will always show.")))
+			{
+				EFormFieldChildren.RenameParent(ListEFormFields,EFormFieldCur,labelOld,textLabel.Text);
 			}
 			EFormFieldCur.ValueLabel=textLabel.Text;
 			if(comboDbLink.SelectedIndex==0){//None

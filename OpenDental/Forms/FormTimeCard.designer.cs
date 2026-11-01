@@ -33,8 +33,6 @@ namespace OpenDental {
 		{
 			this.components = new System.ComponentModel.Container();
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTimeCard));
-			this.textTotal = new System.Windows.Forms.TextBox();
-			this.labelRegularTime = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.label3 = new System.Windows.Forms.Label();
 			this.timerUpdateBreak = new System.Windows.Forms.Timer(this.components);
@@ -47,17 +45,10 @@ namespace OpenDental {
 			this.butRight = new OpenDental.UI.Button();
 			this.butLeft = new OpenDental.UI.Button();
 			this.label4 = new System.Windows.Forms.Label();
-			this.labelOvertime = new System.Windows.Forms.Label();
-			this.textOvertime = new System.Windows.Forms.TextBox();
 			this.groupBox2 = new OpenDental.UI.GroupBox();
 			this.radioBreaks = new System.Windows.Forms.RadioButton();
 			this.radioTimeCard = new System.Windows.Forms.RadioButton();
-			this.textOvertime2 = new System.Windows.Forms.TextBox();
-			this.textTotal2 = new System.Windows.Forms.TextBox();
 			this.gridMain = new OpenDental.UI.GridOD();
-			this.textRateTwo2 = new System.Windows.Forms.TextBox();
-			this.labelRateTwo = new System.Windows.Forms.Label();
-			this.textRateTwo = new System.Windows.Forms.TextBox();
 			this.butCalcDaily = new OpenDental.UI.Button();
 			this.butPrint = new OpenDental.UI.Button();
 			this.butCalcWeekOT = new OpenDental.UI.Button();
@@ -66,39 +57,15 @@ namespace OpenDental {
 			this.groupEmployee = new OpenDental.UI.GroupBox();
 			this.butPrevEmp = new OpenDental.UI.Button();
 			this.butNextEmp = new OpenDental.UI.Button();
-			this.labelPTO = new System.Windows.Forms.Label();
-			this.textPTO = new System.Windows.Forms.TextBox();
-			this.textPTO2 = new System.Windows.Forms.TextBox();
-			this.textUnpaidProtectedLeave = new System.Windows.Forms.TextBox();
-			this.textUnpaidProtectedLeave2 = new System.Windows.Forms.TextBox();
-			this.labelUnpaidProtectedLeave = new System.Windows.Forms.Label();
-			this.textRateThree2 = new System.Windows.Forms.TextBox();
-			this.labelRateThree = new System.Windows.Forms.Label();
-			this.textRateThree = new System.Windows.Forms.TextBox();
+			this.gridTotals = new OpenDental.UI.GridOD();
+			this.groupTotalsFormat = new OpenDental.UI.GroupBox();
+			this.radioTotalsDecimal = new System.Windows.Forms.RadioButton();
+			this.radioTotalsColon = new System.Windows.Forms.RadioButton();
 			this.groupBox1.SuspendLayout();
 			this.groupBox2.SuspendLayout();
 			this.groupEmployee.SuspendLayout();
+			this.groupTotalsFormat.SuspendLayout();
 			this.SuspendLayout();
-			// 
-			// textTotal
-			// 
-			this.textTotal.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textTotal.Location = new System.Drawing.Point(491, 572);
-			this.textTotal.Name = "textTotal";
-			this.textTotal.Size = new System.Drawing.Size(66, 20);
-			this.textTotal.TabIndex = 3;
-			this.textTotal.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			// 
-			// labelRegularTime
-			// 
-			this.labelRegularTime.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.labelRegularTime.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.labelRegularTime.Location = new System.Drawing.Point(385, 573);
-			this.labelRegularTime.Name = "labelRegularTime";
-			this.labelRegularTime.Size = new System.Drawing.Size(100, 17);
-			this.labelRegularTime.TabIndex = 4;
-			this.labelRegularTime.Text = "Regular Time";
-			this.labelRegularTime.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
 			// label2
 			// 
@@ -217,26 +184,6 @@ namespace OpenDental {
 			this.label4.Text = "Paycheck Date";
 			this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
-			// labelOvertime
-			// 
-			this.labelOvertime.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.labelOvertime.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.labelOvertime.Location = new System.Drawing.Point(385, 593);
-			this.labelOvertime.Name = "labelOvertime";
-			this.labelOvertime.Size = new System.Drawing.Size(100, 17);
-			this.labelOvertime.TabIndex = 17;
-			this.labelOvertime.Text = "Overtime";
-			this.labelOvertime.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textOvertime
-			// 
-			this.textOvertime.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textOvertime.Location = new System.Drawing.Point(491, 592);
-			this.textOvertime.Name = "textOvertime";
-			this.textOvertime.Size = new System.Drawing.Size(66, 20);
-			this.textOvertime.TabIndex = 16;
-			this.textOvertime.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			// 
 			// groupBox2
 			// 
 			this.groupBox2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -269,24 +216,6 @@ namespace OpenDental {
 			this.radioTimeCard.UseVisualStyleBackColor = true;
 			this.radioTimeCard.Click += new System.EventHandler(this.radioTimeCard_Click);
 			// 
-			// textOvertime2
-			// 
-			this.textOvertime2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textOvertime2.Location = new System.Drawing.Point(563, 592);
-			this.textOvertime2.Name = "textOvertime2";
-			this.textOvertime2.Size = new System.Drawing.Size(66, 20);
-			this.textOvertime2.TabIndex = 22;
-			this.textOvertime2.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			// 
-			// textTotal2
-			// 
-			this.textTotal2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textTotal2.Location = new System.Drawing.Point(563, 572);
-			this.textTotal2.Name = "textTotal2";
-			this.textTotal2.Size = new System.Drawing.Size(66, 20);
-			this.textTotal2.TabIndex = 21;
-			this.textTotal2.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			// 
 			// gridMain
 			// 
 			this.gridMain.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -299,35 +228,6 @@ namespace OpenDental {
 			this.gridMain.Title = "Time Card";
 			this.gridMain.TranslationName = "TableTimeCard";
 			this.gridMain.CellDoubleClick += new OpenDental.UI.ODGridClickEventHandler(this.gridMain_CellDoubleClick);
-			// 
-			// textRateTwo2
-			// 
-			this.textRateTwo2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textRateTwo2.Location = new System.Drawing.Point(563, 612);
-			this.textRateTwo2.Name = "textRateTwo2";
-			this.textRateTwo2.Size = new System.Drawing.Size(66, 20);
-			this.textRateTwo2.TabIndex = 26;
-			this.textRateTwo2.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			// 
-			// labelRateTwo
-			// 
-			this.labelRateTwo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.labelRateTwo.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.labelRateTwo.Location = new System.Drawing.Point(385, 613);
-			this.labelRateTwo.Name = "labelRateTwo";
-			this.labelRateTwo.Size = new System.Drawing.Size(100, 17);
-			this.labelRateTwo.TabIndex = 25;
-			this.labelRateTwo.Text = "Rate2";
-			this.labelRateTwo.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textRateTwo
-			// 
-			this.textRateTwo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textRateTwo.Location = new System.Drawing.Point(491, 612);
-			this.textRateTwo.Name = "textRateTwo";
-			this.textRateTwo.Size = new System.Drawing.Size(66, 20);
-			this.textRateTwo.TabIndex = 24;
-			this.textRateTwo.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
 			// butCalcDaily
 			// 
@@ -415,124 +315,62 @@ namespace OpenDental {
 			this.butNextEmp.Size = new System.Drawing.Size(39, 24);
 			this.butNextEmp.TabIndex = 128;
 			this.butNextEmp.Click += new System.EventHandler(this.butBrowseEmp_Click);
-			// 
-			// labelPTO
-			// 
-			this.labelPTO.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.labelPTO.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.labelPTO.Location = new System.Drawing.Point(385, 653);
-			this.labelPTO.Name = "labelPTO";
-			this.labelPTO.Size = new System.Drawing.Size(100, 17);
-			this.labelPTO.TabIndex = 122;
-			this.labelPTO.Text = "PTO";
-			this.labelPTO.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textPTO
-			// 
-			this.textPTO.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textPTO.Location = new System.Drawing.Point(491, 652);
-			this.textPTO.Name = "textPTO";
-			this.textPTO.Size = new System.Drawing.Size(66, 20);
-			this.textPTO.TabIndex = 123;
-			this.textPTO.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			// 
-			// textPTO2
-			// 
-			this.textPTO2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textPTO2.Location = new System.Drawing.Point(563, 652);
-			this.textPTO2.Name = "textPTO2";
-			this.textPTO2.Size = new System.Drawing.Size(66, 20);
-			this.textPTO2.TabIndex = 124;
-			this.textPTO2.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			// 
-			// textUnpaidProtectedLeave
-			// 
-			this.textUnpaidProtectedLeave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textUnpaidProtectedLeave.Location = new System.Drawing.Point(491, 672);
-			this.textUnpaidProtectedLeave.Name = "textUnpaidProtectedLeave";
-			this.textUnpaidProtectedLeave.Size = new System.Drawing.Size(66, 20);
-			this.textUnpaidProtectedLeave.TabIndex = 126;
-			this.textUnpaidProtectedLeave.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			// 
-			// textUnpaidProtectedLeave2
-			// 
-			this.textUnpaidProtectedLeave2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textUnpaidProtectedLeave2.Location = new System.Drawing.Point(563, 672);
-			this.textUnpaidProtectedLeave2.Name = "textUnpaidProtectedLeave2";
-			this.textUnpaidProtectedLeave2.Size = new System.Drawing.Size(66, 20);
-			this.textUnpaidProtectedLeave2.TabIndex = 127;
-			this.textUnpaidProtectedLeave2.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			// 
-			// labelUnpaidProtectedLeave
-			// 
-			this.labelUnpaidProtectedLeave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.labelUnpaidProtectedLeave.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.labelUnpaidProtectedLeave.Location = new System.Drawing.Point(334, 673);
-			this.labelUnpaidProtectedLeave.Name = "labelUnpaidProtectedLeave";
-			this.labelUnpaidProtectedLeave.Size = new System.Drawing.Size(151, 17);
-			this.labelUnpaidProtectedLeave.TabIndex = 125;
-			this.labelUnpaidProtectedLeave.Text = "Protected Leave";
-			this.labelUnpaidProtectedLeave.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textRateThree2
-			// 
-			this.textRateThree2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textRateThree2.Location = new System.Drawing.Point(563, 632);
-			this.textRateThree2.Name = "textRateThree2";
-			this.textRateThree2.Size = new System.Drawing.Size(66, 20);
-			this.textRateThree2.TabIndex = 130;
-			this.textRateThree2.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			// 
-			// labelRateThree
-			// 
-			this.labelRateThree.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.labelRateThree.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.labelRateThree.Location = new System.Drawing.Point(385, 633);
-			this.labelRateThree.Name = "labelRateThree";
-			this.labelRateThree.Size = new System.Drawing.Size(100, 17);
-			this.labelRateThree.TabIndex = 129;
-			this.labelRateThree.Text = "Rate3";
-			this.labelRateThree.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textRateThree
-			// 
-			this.textRateThree.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.textRateThree.Location = new System.Drawing.Point(491, 632);
-			this.textRateThree.Name = "textRateThree";
-			this.textRateThree.Size = new System.Drawing.Size(66, 20);
-			this.textRateThree.TabIndex = 128;
-			this.textRateThree.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-			// 
+			//
+			// gridTotals
+			//
+			this.gridTotals.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.gridTotals.Location = new System.Drawing.Point(18, 572);
+			this.gridTotals.Name = "gridTotals";
+			this.gridTotals.SelectionMode = OpenDental.UI.GridSelectionMode.None;
+			this.gridTotals.Size = new System.Drawing.Size(630, 58);
+			this.gridTotals.TabIndex = 131;
+			this.gridTotals.Title = "Totals for Period";
+			this.gridTotals.TranslationName = "TableTimeCardTotals";
+			//
+			// groupTotalsFormat
+			//
+			this.groupTotalsFormat.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.groupTotalsFormat.Controls.Add(this.radioTotalsDecimal);
+			this.groupTotalsFormat.Controls.Add(this.radioTotalsColon);
+			this.groupTotalsFormat.Location = new System.Drawing.Point(654, 572);
+			this.groupTotalsFormat.Name = "groupTotalsFormat";
+			this.groupTotalsFormat.Size = new System.Drawing.Size(120, 58);
+			this.groupTotalsFormat.TabIndex = 132;
+			//
+			// radioTotalsDecimal
+			//
+			this.radioTotalsDecimal.Location = new System.Drawing.Point(10, 12);
+			this.radioTotalsDecimal.Name = "radioTotalsDecimal";
+			this.radioTotalsDecimal.Size = new System.Drawing.Size(105, 19);
+			this.radioTotalsDecimal.TabIndex = 0;
+			this.radioTotalsDecimal.Text = "Decimal Format";
+			this.radioTotalsDecimal.UseVisualStyleBackColor = true;
+			this.radioTotalsDecimal.Click += new System.EventHandler(this.radioTotalsFormat_Click);
+			//
+			// radioTotalsColon
+			//
+			this.radioTotalsColon.Location = new System.Drawing.Point(10, 32);
+			this.radioTotalsColon.Name = "radioTotalsColon";
+			this.radioTotalsColon.Size = new System.Drawing.Size(105, 19);
+			this.radioTotalsColon.TabIndex = 1;
+			this.radioTotalsColon.Text = "Colon Format";
+			this.radioTotalsColon.UseVisualStyleBackColor = true;
+			this.radioTotalsColon.Click += new System.EventHandler(this.radioTotalsFormat_Click);
+			//
 			// FormTimeCard
-			// 
+			//
 			this.CancelButton = this.butSave;
 			this.ClientSize = new System.Drawing.Size(979, 696);
-			this.Controls.Add(this.textRateThree2);
-			this.Controls.Add(this.labelRateThree);
-			this.Controls.Add(this.textRateThree);
-			this.Controls.Add(this.textUnpaidProtectedLeave2);
-			this.Controls.Add(this.textUnpaidProtectedLeave);
-			this.Controls.Add(this.labelUnpaidProtectedLeave);
-			this.Controls.Add(this.textPTO2);
-			this.Controls.Add(this.textPTO);
-			this.Controls.Add(this.labelPTO);
+			this.Controls.Add(this.groupTotalsFormat);
+			this.Controls.Add(this.gridTotals);
 			this.Controls.Add(this.groupEmployee);
-			this.Controls.Add(this.textRateTwo2);
-			this.Controls.Add(this.labelRateTwo);
-			this.Controls.Add(this.textRateTwo);
 			this.Controls.Add(this.butCalcDaily);
-			this.Controls.Add(this.textOvertime2);
-			this.Controls.Add(this.textTotal2);
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.butCalcWeekOT);
-			this.Controls.Add(this.labelOvertime);
-			this.Controls.Add(this.textOvertime);
 			this.Controls.Add(this.butAdj);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.gridMain);
-			this.Controls.Add(this.labelRegularTime);
-			this.Controls.Add(this.textTotal);
 			this.Controls.Add(this.butSave);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
@@ -546,17 +384,16 @@ namespace OpenDental {
 			this.groupBox1.PerformLayout();
 			this.groupBox2.ResumeLayout(false);
 			this.groupEmployee.ResumeLayout(false);
+			this.groupTotalsFormat.ResumeLayout(false);
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
 		}
 		#endregion
 
-		private System.Windows.Forms.Label labelRegularTime;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.Label label3;
 		private OpenDental.UI.Button butSave;
-		private System.Windows.Forms.TextBox textTotal;
 		private System.Windows.Forms.Timer timerUpdateBreak;
 		private OpenDental.UI.GridOD gridMain;
 		private OpenDental.UI.GroupBox groupBox1;
@@ -567,32 +404,20 @@ namespace OpenDental {
 		private TextBox textDatePaycheck;
 		private TextBox textDateStop;
 		private OpenDental.UI.Button butAdj;
-		private Label labelOvertime;
-		private TextBox textOvertime;
 		private OpenDental.UI.Button butCalcWeekOT;
 		private OpenDental.UI.Button butPrint;
 		private OpenDental.UI.GroupBox groupBox2;
 		private RadioButton radioBreaks;
 		private RadioButton radioTimeCard;
-		private TextBox textOvertime2;
-		private TextBox textTotal2;
 		private OpenDental.UI.Button butCalcDaily;
-		private TextBox textRateTwo2;
-		private Label labelRateTwo;
-		private TextBox textRateTwo;
 		private OpenDental.UI.GroupBox groupEmployee;
 		private UI.Button butPrevEmp;
 		private UI.Button butNextEmp;
 		private Label labelNote;
 		private TextBox textNote;
-		private Label labelPTO;
-		private TextBox textPTO;
-		private TextBox textPTO2;
-		private TextBox textUnpaidProtectedLeave;
-		private TextBox textUnpaidProtectedLeave2;
-		private Label labelUnpaidProtectedLeave;
-		private TextBox textRateThree2;
-		private Label labelRateThree;
-		private TextBox textRateThree;
+		private OpenDental.UI.GridOD gridTotals;
+		private OpenDental.UI.GroupBox groupTotalsFormat;
+		private RadioButton radioTotalsDecimal;
+		private RadioButton radioTotalsColon;
 	}
 }

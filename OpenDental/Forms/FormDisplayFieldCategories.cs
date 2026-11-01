@@ -38,6 +38,9 @@ namespace OpenDental{
 				if(_isCemtMode!=isDisplayCemtOnly) {
 					continue;
 				}
+				if(!DisplayFields.HasAvailableFields(listDisplayFieldCategories[i])) {//B-ERA: placeholders for later versions have no fields yet.
+					continue;
+				}
 				if(listDisplayFieldCategories[i]==DisplayFieldCategory.OrthoChart) { //orthochart tabs can have their own name.
 					listCategory.Items.Add(OrthoChartTabs.GetFirst(isShort:true).TabName,listDisplayFieldCategories[i]);
 					continue;

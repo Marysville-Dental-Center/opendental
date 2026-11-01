@@ -89,7 +89,7 @@ namespace OpenDental {
 				row.Cells.Add("Insurance Plan");
 			}
 			else if(insBlueBookRule.RuleType==InsBlueBookRuleType.ProviderFee) {
-				row.Cells.Add("UCR fee");
+				row.Cells.Add("Provider fee");
 				row.Cells.Add("All");
 			}
 			row.Cells.Add(insBlueBookRule.LimitType.ToString());
@@ -213,7 +213,7 @@ namespace OpenDental {
 
 		private void ButSave_Click(object sender,EventArgs e) {
 			if(!textUcrFeePercent.IsValid() || textUcrFeePercent.Text=="") {
-				MsgBox.Show(this,"Please enter a UCR Fee Percent between 0 and 100.");
+				MsgBox.Show(this,"Please enter a Provider Fee Percent between 0 and 100.");
 				return;
 			}
 			if(listBlueBookFeature.GetSelected<AllowedFeeSchedsAutomate>()==AllowedFeeSchedsAutomate.LegacyBlueBook) {

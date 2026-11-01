@@ -54,6 +54,11 @@ namespace OpenDental {
 			this.checkBrokenApptRequiredOnMove = new OpenDental.UI.CheckBox();
 			this.checkBrokenApptAdjustment = new OpenDental.UI.CheckBox();
 			this.label7 = new System.Windows.Forms.Label();
+			this.groupBoxScheduling = new OpenDental.UI.GroupBox();
+			this.checkAppointmentMakeRecallSearchesOpenings = new OpenDental.UI.CheckBox();
+			this.labelScheduleProvUnassigned = new System.Windows.Forms.Label();
+			this.comboScheduleProvUnassigned = new OpenDental.UI.ComboBox();
+			this.groupBoxScheduling.SuspendLayout();
 			this.groupBoxProduction.SuspendLayout();
 			this.groupBoxOD2.SuspendLayout();
 			this.groupBoxCalendarBehavior.SuspendLayout();
@@ -375,17 +380,58 @@ namespace OpenDental {
 			this.label7.TabIndex = 71;
 			this.label7.Text = "Broken appt default adj type";
 			this.label7.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			//
+			// groupBoxScheduling
+			//
+			this.groupBoxScheduling.Controls.Add(this.checkAppointmentMakeRecallSearchesOpenings);
+			this.groupBoxScheduling.Controls.Add(this.labelScheduleProvUnassigned);
+			this.groupBoxScheduling.Controls.Add(this.comboScheduleProvUnassigned);
+			this.groupBoxScheduling.Location = new System.Drawing.Point(20, 508);
+			this.groupBoxScheduling.Name = "groupBoxScheduling";
+			this.groupBoxScheduling.Size = new System.Drawing.Size(450, 57);
+			this.groupBoxScheduling.TabIndex = 331;
+			this.groupBoxScheduling.Text = "Recall and Schedules";
+			//
+			// checkAppointmentMakeRecallSearchesOpenings
+			//
+			this.checkAppointmentMakeRecallSearchesOpenings.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.checkAppointmentMakeRecallSearchesOpenings.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkAppointmentMakeRecallSearchesOpenings.Location = new System.Drawing.Point(34, 10);
+			this.checkAppointmentMakeRecallSearchesOpenings.Name = "checkAppointmentMakeRecallSearchesOpenings";
+			this.checkAppointmentMakeRecallSearchesOpenings.Size = new System.Drawing.Size(406, 17);
+			this.checkAppointmentMakeRecallSearchesOpenings.TabIndex = 332;
+			this.checkAppointmentMakeRecallSearchesOpenings.Text = "Make Recall automatically searches for openings";
+			//
+			// labelScheduleProvUnassigned
+			//
+			this.labelScheduleProvUnassigned.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.labelScheduleProvUnassigned.Location = new System.Drawing.Point(3, 33);
+			this.labelScheduleProvUnassigned.Name = "labelScheduleProvUnassigned";
+			this.labelScheduleProvUnassigned.Size = new System.Drawing.Size(233, 17);
+			this.labelScheduleProvUnassigned.TabIndex = 334;
+			this.labelScheduleProvUnassigned.Text = "Default provider for unassigned operatories";
+			this.labelScheduleProvUnassigned.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			//
+			// comboScheduleProvUnassigned
+			//
+			this.comboScheduleProvUnassigned.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.comboScheduleProvUnassigned.Location = new System.Drawing.Point(237, 30);
+			this.comboScheduleProvUnassigned.Name = "comboScheduleProvUnassigned";
+			this.comboScheduleProvUnassigned.Size = new System.Drawing.Size(203, 21);
+			this.comboScheduleProvUnassigned.TabIndex = 333;
+			//
 			// UserControlApptGeneral
-			// 
+			//
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.BackColor = System.Drawing.Color.White;
+			this.Controls.Add(this.groupBoxScheduling);
 			this.Controls.Add(this.groupBoxProduction);
 			this.Controls.Add(this.groupBoxOD2);
 			this.Controls.Add(this.groupBoxCalendarBehavior);
 			this.Controls.Add(this.groupBox2);
 			this.Name = "UserControlApptGeneral";
 			this.Size = new System.Drawing.Size(494, 660);
+			this.groupBoxScheduling.ResumeLayout(false);
 			this.groupBoxProduction.ResumeLayout(false);
 			this.groupBoxOD2.ResumeLayout(false);
 			this.groupBoxOD2.PerformLayout();
@@ -428,5 +474,9 @@ namespace OpenDental {
 		private UI.GroupBox groupBoxProduction;
 		private System.Windows.Forms.Label labelApptProvChangePrompt;
 		private UI.ComboBox comboApptProvChangePrompt;
+		private UI.GroupBox groupBoxScheduling;
+		private OpenDental.UI.CheckBox checkAppointmentMakeRecallSearchesOpenings;
+		private System.Windows.Forms.Label labelScheduleProvUnassigned;
+		private UI.ComboBox comboScheduleProvUnassigned;
 	}
 }

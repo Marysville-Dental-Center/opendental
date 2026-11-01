@@ -1627,8 +1627,10 @@ namespace OpenDentBusiness{
 			table.Columns.Add("LName");
 			table.Columns.Add("waitTime");
 			table.Columns.Add("OpNum");
+			table.Columns.Add("AptNum");//25.2 Waiting Room window: double-click jumps to the appointment.
+			table.Columns.Add("PatNum");
 			string strDateTime=POut.DateT(dateTime);
-			string command="SELECT DateTimeArrived,DateTimeSeated,LName,FName,Preferred,"+strDateTime+" dateTimeNow,Op "
+			string command="SELECT DateTimeArrived,DateTimeSeated,LName,FName,Preferred,"+strDateTime+" dateTimeNow,Op,appointment.AptNum,appointment.PatNum "
 				+"FROM appointment "
 				+"JOIN patient ON appointment.PatNum=patient.PatNum "
 				+"WHERE "+DbHelper.DtimeToDate("AptDateTime")+" = "+POut.Date(DateTime.Now)+" "
@@ -1673,6 +1675,8 @@ namespace OpenDentBusiness{
 				//}
 				//row["waitTime"]+=waitTime.Minutes.ToString()+"m";
 				dataRow["OpNum"]=tableRaw.Rows[i]["Op"].ToString();
+				dataRow["AptNum"]=tableRaw.Rows[i]["AptNum"].ToString();
+				dataRow["PatNum"]=tableRaw.Rows[i]["PatNum"].ToString();
 				table.Rows.Add(dataRow);
 			}
 			return table;

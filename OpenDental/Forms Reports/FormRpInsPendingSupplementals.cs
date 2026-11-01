@@ -211,7 +211,7 @@ namespace OpenDental {
 		}
 
 		private void butExport_Click(object sender,EventArgs e) {
-			gridMain.Export("Insurance Pending Supplementals");
+			gridMain.ShowExportMenu(butExport,"Insurance Pending Supplementals");//25.3: Export .csv or Export .txt
 		}
 
 		private void butClose_Click(object sender,EventArgs e) {

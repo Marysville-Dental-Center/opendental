@@ -730,6 +730,56 @@ namespace OpenDentBusiness{
 			return isChanged;
 		}
 
+		///<summary>Open Dental 26.1 (eformfield.DateTimeSig): call on save, before the fields are compared and stored. listEFormFieldsOld is the copy
+		///taken when the form opened or was last saved, in the same order (fields of a filled form can't be added, removed or reordered). For each
+		///signature box: a signature that is new or different from the old one gets the time from funcNow (the server time); a cleared signature
+		///gets MinValue; an unchanged signature keeps its time, so saving again without touching it changes nothing. Other field types are left
+		///alone. Returns true if any time changed.</summary>
+		public static bool SetDateTimeSigs(List<EFormField> listEFormFields,List<EFormField> listEFormFieldsOld,Func<DateTime> funcNow){
+			bool isChanged=false;
+			DateTime? dateTimeNow=null;
+			for(int i=0;i<listEFormFields.Count;i++){
+				EFormField eFormField=listEFormFields[i];
+				if(eFormField.FieldType!=EnumEFormFieldType.SigBox){
+					continue;
+				}
+				if(!IsSigned(eFormField)){
+					if(eFormField.DateTimeSig!=DateTime.MinValue){
+						eFormField.DateTimeSig=DateTime.MinValue;
+						isChanged=true;
+					}
+					continue;
+				}
+				EFormField eFormFieldOld=null;
+				if(listEFormFieldsOld!=null && i<listEFormFieldsOld.Count && listEFormFieldsOld[i].FieldType==EnumEFormFieldType.SigBox){
+					eFormFieldOld=listEFormFieldsOld[i];
+				}
+				if(eFormFieldOld!=null && IsSigned(eFormFieldOld) && eFormFieldOld.ValueString==eFormField.ValueString){
+					continue;//unchanged signature keeps its time
+				}
+				if(dateTimeNow==null){
+					dateTimeNow=funcNow();
+				}
+				eFormField.DateTimeSig=dateTimeNow.Value;
+				isChanged=true;
+			}
+			return isChanged;
+		}
+
+		///<summary>True for a signature box that holds a signature. ValueString starts with 0 or 1 (Topaz), followed by the signature.</summary>
+		public static bool IsSigned(EFormField eFormField){
+			return eFormField.FieldType==EnumEFormFieldType.SigBox && eFormField.ValueString!=null && eFormField.ValueString.Length>1;
+		}
+
+		///<summary>The caption shown under a signed signature box, on screen and in prints (Open Dental 26.1). Empty when the box is not signed or the
+		///time was not recorded (signed before 26.1).</summary>
+		public static string GetSigCaption(EFormField eFormField){
+			if(!IsSigned(eFormField) || eFormField.DateTimeSig.Year<1880){
+				return "";
+			}
+			return Lans.g("EForms","Signed")+" "+eFormField.DateTimeSig.ToShortDateString()+" "+eFormField.DateTimeSig.ToShortTimeString();
+		}
+
 		///<summary></summary>
 		public static List<EFormField> GetDeepCopy(List<EFormField> listEFormFields){
 			List<EFormField> listEFormFieldsRet=new List<EFormField>();

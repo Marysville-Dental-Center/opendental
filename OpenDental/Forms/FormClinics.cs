@@ -275,7 +275,9 @@ namespace OpenDental {
 					ODEvent.Fire(ODEventType.ProgressBar,Lan.g(this,"Moved patients")+": "+patsMoved+" "+Lan.g(this,"out of total")+" "
 						+countTotal.ToString());
 				})).ToList();
-				ODThread.RunParallel(listActions,TimeSpan.FromMinutes(2));
+				//Each move also writes one Audit Trail entry per patient (Patients.ChangeClinicsForAll), so a large clinic needs longer than the
+				//old 2 minutes. The timeout stops the threads, which would leave patients moved without their entries.
+				ODThread.RunParallel(listActions,TimeSpan.FromMinutes(10));
 			};
 			progressOD.StartingMessage=Lan.g(this,"Moving patients")+"...";
 			progressOD.TestSleep=true;

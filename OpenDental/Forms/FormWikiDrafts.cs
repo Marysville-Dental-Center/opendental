@@ -13,6 +13,8 @@ namespace OpenDental {
 	public partial class FormWikiDrafts:FormODBase {
 		private List<WikiPage> _listWikiPages;
 		public FormWiki FormWiki_;
+		///<summary>True when the page is locked and this user lacks Wiki Admin: drafts can be viewed and compared, not edited or deleted.</summary>
+		private bool _isReadOnly;
 
 		public FormWikiDrafts() {
 			InitializeComponent();
@@ -26,6 +28,40 @@ namespace OpenDental {
 			gridMain.SetSelected(gridMain.ListGridRows.Count-1,true);//select most recent draft
 			LoadWikiPage(_listWikiPages[gridMain.SelectedIndices[0]]);
 			Text=Lan.g(this,"Wiki Drafts")+" - "+FormWiki_.WikiPageCur.PageTitle;
+			//Viewing and comparing need only wiki access. The Wiki Admin rule for locked pages applies to editing (v25_1-misc-wiki-draft-compare).
+			_isReadOnly=FormWiki_.WikiPageCur.IsLocked && !Security.IsAuthorized(EnumPermType.WikiAdmin,true);
+			butEdit.Enabled=!_isReadOnly;
+			butDelete.Enabled=!_isReadOnly;
+			labelNotAuthorized.Visible=_isReadOnly;
+		}
+
+		private void butCompare_Click(object sender,EventArgs e) {
+			if(gridMain.SelectedIndices.Length!=1) {
+				MsgBox.Show(this,"Select one draft to compare with the published page.");
+				return;
+			}
+			WikiPage wikiPageDraft=_listWikiPages[gridMain.SelectedIndices[0]];
+			bool isFromHistory;
+			WikiPageHist wikiPageHistPublished=WikiPages.GetPublishedForDraftCompare(wikiPageDraft.PageTitle,out isFromHistory);
+			string captionLeft;
+			if(wikiPageHistPublished==null) {
+				captionLeft=Lan.g(this,"No published version of this page");
+				wikiPageHistPublished=new WikiPageHist();
+				wikiPageHistPublished.PageTitle=wikiPageDraft.PageTitle;
+				wikiPageHistPublished.PageContent="";
+			}
+			else if(isFromHistory) {
+				captionLeft=Lan.g(this,"Last history version (the page is archived)")+": "+wikiPageHistPublished.DateTimeSaved.ToString();
+			}
+			else {
+				captionLeft=Lan.g(this,"Published page")+": "+wikiPageHistPublished.DateTimeSaved.ToString();
+			}
+			string captionRight=Lan.g(this,"Draft by")+" "+Userods.GetName(wikiPageDraft.UserNum)+": "+wikiPageDraft.DateTimeSaved.ToString();
+			using FormWikiCompare formWikiCompare=new FormWikiCompare();
+			formWikiCompare.InitializeRevisionsSelected(wikiPageHistPublished,WikiPages.PageToHist(wikiPageDraft),captionLeft,captionRight,
+				Lan.g(this,"Published (removed or moved lines)."),Lan.g(this,"Draft (added or moved lines)."));
+			formWikiCompare.ShowDialog();
+			gridMain.Focus();
 		}
 
 		///<summary>Resize text boxes to each occupy ~1/2 of screen from top to bottom.</summary>
@@ -98,6 +134,10 @@ namespace OpenDental {
 		}
 
 		private void EditWikiDraft() {
+			if(_isReadOnly) {
+				MsgBox.Show(this,"This wiki page is locked and cannot be edited without the Wiki Admin security permission.");
+				return;
+			}
 			int idxSelected=gridMain.GetSelectedIndex();
 			using FormWikiEdit formWikiEdit=new FormWikiEdit();
 			formWikiEdit.WikiPageCur=_listWikiPages[idxSelected];

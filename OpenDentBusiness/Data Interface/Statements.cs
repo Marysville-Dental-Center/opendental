@@ -283,6 +283,7 @@ namespace OpenDentBusiness {
 				str=PrefC.GetString(PrefName.BillingEmailBodyText);
 			}
 			emailMessage.BodyText=MessageTagReplacer.ReplaceTagsForStatement(str,patient,statement,isEmail:true);
+			BillingEmailHtml.ApplyEmailType(emailMessage,BillingEmailHtml.GetEmailTypeForStatement(statement,patient));//26.1: HTML and raw HTML bodies
 			emailMessage.MsgType=EmailMessageSource.Statement;
 			return emailMessage;
 		}
@@ -528,6 +529,7 @@ namespace OpenDentBusiness {
 				emailMessageError.SentOrReceived=EmailSentOrReceived.Sent;
 				emailMessageError.MsgDateTime=DateTime_.Now;
 				emailMessageError.BodyText=errorMessage;
+				emailMessageError.HtmlType=EmailType.Regular;//The error text is plain, even when the billing e-mail body is HTML (26.1).
 				if(emailAddressFrom==null || EmailAddresses.GetValidMailAddress(emailAddressFrom.GetFrom())==null) {//Check to make sure that our "from" email address is valid.
 					throw new ODException("Thank you for your recent payment. An error occurred when attempting to email your receipt," 
 						+" please contact your provider.",ODException.ErrorCodes.ReceiptEmailAddressInvalid);

@@ -38,14 +38,11 @@ namespace OpenDental {
 			this.groupPractice = new OpenDental.UI.GroupBox();
 			this.butHoliday = new OpenDental.UI.Button();
 			this.butNote = new OpenDental.UI.Button();
-			this.label2 = new System.Windows.Forms.Label();
 			this.butSave = new OpenDental.UI.Button();
 			this.groupBox3 = new OpenDental.UI.GroupBox();
 			this.tabControl2 = new OpenDental.UI.TabControl();
 			this.tabPageProv = new OpenDental.UI.TabPage();
-			this.label3 = new System.Windows.Forms.Label();
 			this.listProv = new OpenDental.UI.ListBox();
-			this.comboProv = new OpenDental.UI.ComboBox();
 			this.tabPageEmp = new OpenDental.UI.TabPage();
 			this.listEmp = new OpenDental.UI.ListBox();
 			this.butProvNote = new OpenDental.UI.Button();
@@ -194,15 +191,6 @@ namespace OpenDental {
 			this.butNote.Text = "Note";
 			this.butNote.Click += new System.EventHandler(this.butNote_Click);
 			// 
-			// label2
-			// 
-			this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.label2.Location = new System.Drawing.Point(12, 670);
-			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(450, 44);
-			this.label2.TabIndex = 14;
-			this.label2.Text = resources.GetString("label2.Text");
-			// 
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
@@ -244,9 +232,7 @@ namespace OpenDental {
 			// tabPageProv
 			// 
 			this.tabPageProv.BackColor = System.Drawing.SystemColors.Control;
-			this.tabPageProv.Controls.Add(this.label3);
 			this.tabPageProv.Controls.Add(this.listProv);
-			this.tabPageProv.Controls.Add(this.comboProv);
 			this.tabPageProv.Location = new System.Drawing.Point(2, 21);
 			this.tabPageProv.Name = "tabPageProv";
 			this.tabPageProv.Padding = new System.Windows.Forms.Padding(3);
@@ -254,31 +240,15 @@ namespace OpenDental {
 			this.tabPageProv.TabIndex = 0;
 			this.tabPageProv.Text = "Providers (0)";
 			// 
-			// label3
-			// 
-			this.label3.Location = new System.Drawing.Point(3, 319);
-			this.label3.Name = "label3";
-			this.label3.Size = new System.Drawing.Size(147, 21);
-			this.label3.TabIndex = 17;
-			this.label3.Text = "Default Prov for Unassigned*";
-			this.label3.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			// 
 			// listProv
 			// 
-			this.listProv.Location = new System.Drawing.Point(0, 0);
+			this.listProv.Dock = System.Windows.Forms.DockStyle.Fill;
+			this.listProv.Location = new System.Drawing.Point(3, 3);
 			this.listProv.Name = "listProv";
 			this.listProv.SelectionMode = OpenDental.UI.SelectionMode.MultiExtended;
-			this.listProv.Size = new System.Drawing.Size(160, 316);
+			this.listProv.Size = new System.Drawing.Size(158, 362);
 			this.listProv.TabIndex = 6;
 			this.listProv.SelectedIndexChanged += new System.EventHandler(this.listProv_SelectedIndexChanged);
-			// 
-			// comboProv
-			// 
-			this.comboProv.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.comboProv.Location = new System.Drawing.Point(7, 345);
-			this.comboProv.Name = "comboProv";
-			this.comboProv.Size = new System.Drawing.Size(155, 21);
-			this.comboProv.TabIndex = 16;
 			// 
 			// tabPageEmp
 			// 
@@ -389,7 +359,6 @@ namespace OpenDental {
 			this.Controls.Add(this.comboClinic);
 			this.Controls.Add(this.tabControl1);
 			this.Controls.Add(this.groupPractice);
-			this.Controls.Add(this.label2);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.groupBox3);
 			this.Controls.Add(this.labelDate);
@@ -424,20 +393,17 @@ namespace OpenDental {
 		private Label label1;
 		private OpenDental.UI.ListBox listProv;
 		private OpenDental.UI.Button butSave;
-		private Label label2;
 		private OpenDental.UI.GroupBox groupPractice;
 		private OpenDental.UI.Button butNote;
 		private OpenDental.UI.Button butHoliday;
 		private OpenDental.UI.Button butProvNote;
 		private OpenDental.UI.ListBox listEmp;
-		private UI.ComboBox comboProv;
 		private OpenDental.UI.TabControl tabControl1;
 		private OpenDental.UI.TabPage tabPage1;
 		private OpenDental.UI.TabPage tabPage2;
 		private OpenDental.UI.TabControl tabControl2;
 		private OpenDental.UI.TabPage tabPageProv;
 		private OpenDental.UI.TabPage tabPageEmp;
-		private Label label3;
 		private UI.ComboBoxClinicPicker comboClinic;
 		private UI.Button butForward;
 		private UI.Button butBack;

@@ -1323,6 +1323,7 @@ namespace OpenDental {
 				}
 				#endregion ins2
 				FillRowsInsPick();
+				FillRowsPatFields();//Open Dental 25.4: eForm fields linked to patient fields
 			}
 			#endregion Patient Form
 			#region Medical History (Sheets)
@@ -3233,6 +3234,7 @@ namespace OpenDental {
 					}
 				}
 				ImportInsPickRows();
+				ImportPatFieldRows();//Open Dental 25.4: eForm fields linked to patient fields
 				//Every USPS lookup is billed and counts against the office's quota, so an address the import didn't change is not checked again.
 				bool isAddressChanged=_patient.Address!=_patientOld.Address
 					|| _patient.Address2!=_patientOld.Address2
@@ -3260,6 +3262,7 @@ namespace OpenDental {
 				}
 				//Patient information updating---------------------------------------------------------------------------------------------------------
 				Patients.Update(_patient,_patientOld);
+				Patients.InsertPreferredAndClinicChangeSecurityLogEntry(_patientOld,_patient,EFormCur!=null ? "eForm import" : "sheet import");
 				if(_isAddressSameForFam) {
 					bool isAuthArchivedEdit=Security.IsAuthorized(EnumPermType.ArchivedPatientEdit,true);
 					if(!isAuthArchivedEdit && _family.HasArchivedMember()) {
@@ -3579,9 +3582,15 @@ namespace OpenDental {
 			if(logText!="") {
 				SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,_patient.PatNum,logText,0,LogSources.None,DateTime.Now);
 			}
+			if(SheetCur!=null) {
+				//Recorded with the SheetNum so the Patient Forms window can show the sheet as Imported (PatientFormsList.IsImportLog).
+				SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,_patient.PatNum,PatientFormsList.GetImportLogTextSheet(SheetCur.SheetNum,SheetCur.Description),
+					SheetCur.SheetNum,DateTime.MinValue);
+			}
 			if(EFormCur!=null) {
-				//Since Open Dental 25.2 the eForm's status does not record the import (it stays Filled or None). The audit trail does.
-				SecurityLogs.MakeLogEntry(EnumPermType.EFormImport,_patient.PatNum,"eForm #"+EFormCur.EFormNum+" ("+EFormCur.Description+") imported");
+				//Since Open Dental 25.2 the eForm's status does not record the import (it stays Filled or None). The audit trail does, with the EFormNum.
+				SecurityLogs.MakeLogEntry(EnumPermType.EFormImport,_patient.PatNum,PatientFormsList.GetImportLogTextEForm(EFormCur.EFormNum,EFormCur.Description),
+					EFormCur.EFormNum,DateTime.MinValue);
 			}
 			MsgBox.Show(this,"Done.");
 			DialogResult=DialogResult.OK;

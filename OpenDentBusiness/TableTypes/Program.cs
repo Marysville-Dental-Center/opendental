@@ -203,6 +203,14 @@ namespace OpenDentBusiness{
 		USPSAddresses,
 		///<summary>PostcardMania (PCM Integrations) DirectMail API v3 with the office's own API key.</summary>
 		PostcardMania,
+		//Open Dental 25.1 and 25.2 program links (V-BRIDGE1), appended so existing values keep their numbers. Rows are inserted at runtime with
+		//Enabled=0 (OpenDentBusiness/VendorDirect/ProgramLinks). The names are our proposal; confirm them against program.ProgName in the office data.
+		///<summary>Overjet: opens the vendor's web app in the browser (Open Dental 25.1).</summary>
+		Overjet,
+		///<summary>DTX Studio: opens the patient in DTX Studio Clinic through DTXsync.exe (Open Dental 25.2).</summary>
+		DTXStudio,
+		///<summary>DTX Studio Acquire: opens the patient in DTX Studio Clinic with acquisition ready (Open Dental 25.2).</summary>
+		DTXStudioAcquire,
 		///<summary>Global Payments V2 (Open Dental 25.4): card terminals through Global Payments' cloud terminal service, called directly with the
 		///office's own Global Payments API app. "MeetInTheCloud" is the internal name the published 25.4 database documents give this integration
 		///(CreditCardSource.MeetInTheCloudTerminal, computerpref.CreditCardTerminalId); the program row's name itself is not published (INFERRED).
