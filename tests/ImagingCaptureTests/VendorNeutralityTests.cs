@@ -41,9 +41,10 @@ namespace ImagingCapture.Tests {
 		///<summary>Folders scanned, from the repository root. Missing ones are skipped.</summary>
 		private static readonly string[] _arrayFolders={ "ImagingCapture","ImagingDeviceManager",@"docs\imaging",@"tests\ImagingCaptureTests",
 			@"tests\ImagingDeviceManagerTests" };
-		///<summary>Single files scanned when present: the capture hook partial (design 13) and the Video window built on ImagingCapture.</summary>
+		///<summary>Single files scanned when present: the capture hook partial (design 13), the Video window built on ImagingCapture, the
+		///capture design itself, whose background and provenance sections describe the clinic's hardware by role only, and the track's port note.</summary>
 		private static readonly string[] _arrayFiles={ @"OpenDental\Main Modules\ControlImages.Acquire.cs",@"OpenDental\Forms\FormVideo.cs",
-			@"OpenDental\Forms\FormVideo.designer.cs" };
+			@"OpenDental\Forms\FormVideo.designer.cs",@"docs\imaging-capture-design.md",@"docs\port-notes\CAP.md" };
 		private static readonly string[] _arrayFoldersSkipped={ "bin","obj","TestResults",".vs" };
 		private static readonly string[] _arrayExtensionsBinary={ ".dll",".exe",".pdb",".png",".jpg",".jpeg",".gif",".bmp",".ico",".tif",".tiff",
 			".dcm",".zip",".cache" };
