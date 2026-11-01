@@ -1,6 +1,6 @@
 # Port note: BIN-B, binaries we may not redistribute (part B) and dead references
 
-Branch `pre/bin-b-1`, cut from `main` (d9c177ca6). The review fix round is on `pre/bin-b-2`, cut from `pre/bin-b-1` (see "Fix round" below). Part of the run before the rename, for the v0.0 release. Source: the read-only release review of main, `report-release.md` sections 1.2, 1.3, 1.5 and 1.6 (scratch notes of the organization review; not in the repository).
+Branch `pre/bin-b-1`, cut from `main` (d9c177ca6). The review fix rounds are on `pre/bin-b-2`, cut from `pre/bin-b-1`, and `pre/bin-b-3`, cut from `pre/bin-b-2` (see "Fix round" and "Second fix round" below). Part of the run before the rename, for the v0.0 release. Source: the read-only release review of main, `report-release.md` sections 1.2, 1.3, 1.5 and 1.6 (scratch notes of the organization review; not in the repository).
 
 ## Sources and rules
 
@@ -25,7 +25,8 @@ Branch `pre/bin-b-1`, cut from `main` (d9c177ca6). The review fix round is on `p
   - Every other wrapper method does nothing, or returns 0 or "", when it gets a null control, so callers that keep a null control never crash.
 - Callers:
   - `SignatureBoxWrapper` shows the message in its label instead of "Invalid Signature" when it has to show a Topaz signature, and shows it in a message box when the Topaz sign button is clicked. The label's own text (`LabelText`) is put back on the next fill or clear. Callers that set `LabelText` while the message shows keep their value.
-  - The message also stays through the treatment plan retry (fix round): when a fill of that same signature as the program's own does not show it either, the label keeps the message instead of "Invalid Signature".
+  - The message is shown only for a signature that could be a Topaz string: hex digits (`SignatureBoxWrapper.IsTopazShaped`, second fix round). A signature marked Topaz that is not hex, such as one from the program's own box (base 64), fails with the label's own text ("Invalid Signature"), as on main.
+  - The message also stays through the treatment plan retry (fix round): when a fill of that same Topaz-shaped signature as the program's own does not show it either, the label keeps the message instead of "Invalid Signature".
   - `ControlImages` and `ControlImagesOld` show the same message for a Topaz-signed document and no longer dereference a missing control.
   - The Topaz code in `FormTPsign` and `FormAnestheticRecord` is commented out or not compiled, so it is untouched.
 
@@ -112,7 +113,13 @@ The `Ionic.Zip` references are removed from `OpenDental`, `OpenDentBusiness`, `U
 5. The BCBS Georgia dial-up path was kept on `SerialPort`, not removed, because the wrapper was thin. It is not tested with a modem.
 6. The single-reply `WaitFor` fix in item 5.
 7. The installutil fallback in `ServicesHelper` (outside this package).
-8. Fix round: without Topaz, a treatment plan signature that neither Topaz could check nor the program's own box accepts says "Topaz signature pad software is not installed.", whichever kind the `SigIsTopaz` column names. With one column for two boxes, the program cannot tell a Topaz signature from a damaged one of its own, so it does not claim tampering. Owner question 7.
+8. Fix rounds: without Topaz, the not-installed message is shown only for a signature that could be a Topaz string. The two kinds can be told apart by their text:
+   - The program's own box stores `Convert.ToBase64String` of AES ciphertext (`SigBox.EncryptSigString`, through `SignatureBox.GetSigString`). Base 64 of a real signature always has letters past F, '+', '/' or '=', so it is never all hex digits.
+   - INFERRED: a Topaz SigPlus signature string is hex digits. This is how the package's synthetic Topaz-shaped test strings model it; no real Topaz signature was available.
+   So, whichever kind the `SigIsTopaz` column names and in either order of the treatment plan retry:
+   - A hex signature that neither Topaz could check nor the program's own box accepts says "Topaz signature pad software is not installed.": it may be a Topaz signature the workstation cannot check, so the program does not claim tampering.
+   - Any other signature that the program's own box does not accept says "Invalid Signature", as on main. A damaged or changed plan signed in the program's own box is still flagged on workstations without Topaz.
+   Owner question 7.
 
 ## Owner questions
 
@@ -122,7 +129,9 @@ The `Ionic.Zip` references are removed from `OpenDental`, `OpenDentBusiness`, `U
 4. BCBS Georgia dial-up claims: does any office still use them? If not, the clearinghouse path and `TerminalConnector` can go.
 5. `Required dlls/Windows.winmd` (a Windows SDK file) is still in the repository, to compile `PasswordVaultWrapper`. Keep it, or reference the installed Windows SDK's `UnionMetadata\Windows.winmd` instead?
 6. The in-app licence list (`FormLicense`, `FormRegistrationKey`) still lists "Drifty" (DotNetZip), "Stdole", "Zxing" and "Tao_Freeglut", for files no longer shipped. Should the licence package drop them? This package did not touch the list.
-7. Treatment plans on a workstation without Topaz: when the `SigIsTopaz` column says the program's own box and that check fails, the Topaz retry cannot run, so the box says Topaz is not installed rather than "Invalid Signature" (decision 8). Is that the wording you want, or should such a plan say both, for example "Invalid Signature, or a Topaz signature: Topaz signature pad software is not installed."?
+7. Signatures on a workstation without Topaz (decision 8): a hex signature that the program's own box does not accept says "Topaz signature pad software is not installed."; every other failed signature says "Invalid Signature". Two checks for you:
+   - If your database holds Topaz signatures, do they all consist of 0-9 and A-F only? A Topaz signature with any other character would say "Invalid Signature" on a workstation without Topaz.
+   - Is the not-installed wording right for a hex signature, or should it say both, for example "Invalid Signature, or a Topaz signature: Topaz signature pad software is not installed."?
 
 ## Fix round (pre/bin-b-2)
 
@@ -137,6 +146,31 @@ Fix, in `SignatureBoxWrapper` only (option (a) of the review), so every caller t
   - A different signature, or a fill after a clear, says the label's own text as before.
   - With Topaz installed, both checks failing still says "Invalid Signature".
 - Printed sheets: `GetSigTPHelper` draws a blank box for a signature with no points, as before; the label is never printed.
+
+## Second fix round (pre/bin-b-3)
+
+Review finding: the first fix hid a real tamper warning. Without Topaz, `FillSignature(true,...)` showed the not-installed message for every signature and remembered it. So in `FormTPsign` (and `SheetDrawingJob.GetSigTPHelper`) a treatment plan signed in the program's own box whose check failed (damaged, tampered, or the plan changed) never said "Invalid Signature":
+- column says the program's own box: `FillSignature(false)` failed with "Invalid Signature", then the retry `FillSignature(true)` replaced it with the Topaz message;
+- column says Topaz: the first fill remembered the signature, and the failed own check put the Topaz message back.
+
+On main, `SigPlusNET.dll` was shipped, so Topaz loaded, found no points, and the label said "Invalid Signature". Since the file is no longer shipped, the regression would reach every workstation of every office that never used Topaz. The finding was real. The claim in decision 8 that the two kinds cannot be told apart was wrong: the program's own box stores base 64 (see decision 8), never all hex.
+
+Fix, in `SignatureBoxWrapper` only:
+- New `IsTopazShaped(signature)`: true when every character other than whitespace is a hex digit (`Uri.IsHexDigit`), and there is at least one.
+- In `FillSignature`'s not-installed branch:
+  - a Topaz-shaped signature gets `ShowTopazNotInstalled` and is remembered, as before;
+  - any other signature sets the label visible with its own text, as on main, and is not remembered. The retry's restore of the Topaz message (`_signatureTopazNotInstalled`) therefore never fires for a signature of the program's own box.
+- The first round's fix for a real Topaz-shaped string still holds in both orders. Nothing changes with Topaz installed.
+
+Tests, 4 more in `TopazWrapperTests` (`BINBTests` now has 40):
+- `NotInstalled_OwnSignatureWithChangedKeyData_OwnKindFirst_SaysInvalidSignature`: `GetOwnTreatPlanSignature(KEY_DATA)` filled with `KEY_DATA+" changed"`, `FillSignature(false)` then `FillSignature(true)`, and through a helper that copies FormTPsign's retry with the column false. The label is "Invalid Signature" (the caller's own text), `IsValid` is false.
+- `NotInstalled_OwnSignatureWithChangedKeyData_TopazFirst_SaysInvalidSignature`: the same with `FillSignature(true)` then `FillSignature(false)`, and the retry helper with the column true.
+- `NotInstalled_TopazShapedSignature_BothFormTPsignOrders_TheMessageShows`: the hex test string through the retry helper, column true and false, still shows the not-installed message.
+- `IsTopazShaped_HexOnly`: hex, hex with whitespace, empty, null, whitespace only, base 64 padding, '+' and '/', plain point text, and two real own-box treatment plan signatures.
+- Changed: `NotInstalled_TheOwnSignatureOfATopazMarkedPlanStillShows` first checks that the own-box signature is not Topaz-shaped. After the Topaz attempt it now expects the label's own text, not the Topaz message. It still expects the signature to show and be valid on the own-box fill.
+- Kept unchanged: the hex-shaped tests that expect the not-installed message (`NotInstalled_SignatureBoxShowsTheMessage_ThenItsOwnTextAgain`, `NotInstalled_TreatPlanTriesTheOtherKind_TheMessageStays`, `NotInstalled_OwnKindFirstThenTopaz_TheMessageShows`, `NotInstalled_AnotherSignatureAfterTheMessage_GetsTheOwnText`).
+- With the hex check disabled (every signature treated as Topaz-shaped), 3 of the 40 tests failed: the two new changed-key-data tests (actual: the Topaz message) and the changed own-signature test. With the check, 40 of 40 pass.
+- Results (2026-11-01): full build of `OpenDental.Local.slnf` 0 errors. `tools/Test-NoHqHosts.ps1` passed (6871 files in 107 projects). `run-tests -Mode Core -Include ReleaseFlowTests`: 80 assemblies, all passed, including `BINBTests` 40/40, `ReleaseFlowTests` 76/76, `NoHqTests` 49/49 and `SignatureTests` 55/55.
 
 ## Not done here
 
@@ -158,7 +192,7 @@ Fix, in `SignatureBoxWrapper` only (option (a) of the review), so every caller t
   - Without Topaz:
     - `NotInstalled_TreatPlanTriesTheOtherKind_TheMessageStays`: `FillSignature(true,k,s)` then `FillSignature(false,k,s)` on a Topaz-shaped string still shows `TopazWrapper.NOT_INSTALLED_MESSAGE`, `IsValid` is false, `LabelText` is the caller's own, and a clear restores it.
     - `NotInstalled_OwnKindFirstThenTopaz_TheMessageShows`: the opposite order ends the same.
-    - `NotInstalled_TheOwnSignatureOfATopazMarkedPlanStillShows`: a digitally signed treatment plan signature from the program's own box shows and is valid after the Topaz attempt; with changed key data it says "Invalid Signature".
+    - `NotInstalled_TheOwnSignatureOfATopazMarkedPlanStillShows`: a digitally signed treatment plan signature from the program's own box shows and is valid after the Topaz attempt. Its last step, changed key data, checks only a single `FillSignature(false,...)`, not FormTPsign's retry order; the second fix round adds the tests in both orders.
     - `NotInstalled_AnotherSignatureAfterTheMessage_GetsTheOwnText`: a different signature, or the same one after a clear, says the label's own text.
   - With Topaz installed (stand-in):
     - `Installed_TreatPlanTriesTheOtherKind_InvalidAsBefore`: a signature both checks reject says the label's own text, as before.
