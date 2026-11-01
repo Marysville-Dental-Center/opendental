@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using CodeBase;
 using OpenDentBusiness;
 using OpenDentBusiness.Eclaims;
+using OpenDentBusiness.VendorDirect.DentalXChange;
 
 namespace OpenDental {
 	///<summary>This form takes the image the user wants to send through their clearinghouse and gathers the additional information (specified by the user)
@@ -23,6 +24,9 @@ namespace OpenDental {
 		private Image _imageForClaim;
 		private EclaimsCommBridge _eclaimsCommBridge;
 		private string _narrative;
+		///<summary>Open Dental 26.1.64: the PDF's own bytes when this attachment is a PDF (DentalXChange only), otherwise null. The image passed to
+		///the constructor is then only a preview.</summary>
+		private byte[] _arrayBytesPdf;
 
 		///<summary>Used for opening and editing an existing image attachment row in FormClaimAttachment.</summary>
 		public FormClaimAttachmentItemEdit(Image image,string fileName,DateTime dateTime,Enum enumImageType,bool isRightOrientation ,EclaimsCommBridge eclaimsCommBridge,string narrative="") : this(image,eclaimsCommBridge) {
@@ -54,6 +58,18 @@ namespace OpenDental {
 			pictureBoxImagePreview.Invalidate();
 		}
 
+		///<summary>Open Dental 26.1.64: makes this attachment a PDF that is sent as it is (DentalXChange only; the caller has checked the bytes). Call
+		///before ShowDialog. A non-blank fileNameDisplay replaces the file name. The mirror-image box is hidden: orientation only applies to X-ray
+		///images.</summary>
+		public void SetPdf(byte[] arrayBytesPdf,string fileNameDisplay=null) {
+			_arrayBytesPdf=arrayBytesPdf;
+			if(!string.IsNullOrWhiteSpace(fileNameDisplay)) {
+				textFileName.Text=fileNameDisplay;
+			}
+			checkIsXrayMirrored.Checked=false;
+			checkIsXrayMirrored.Visible=false;
+		}
+
 		private void FormClaimAttachmentItemEdit_Load(object sender,EventArgs e) {
 			if(!IsSnip) {
 				butNewSnip.Visible=false;
@@ -72,7 +88,11 @@ namespace OpenDental {
 		///<summary>Called on ValidateAndCreateAttachment(). This method takes the user entered data and creates the ClaimConnect.ImageAttachment object
 		///used by FormClaimAttach. This object is eventually used in the ClaimConnect.CreateAttachment() API call to DentalXChange.</summary>
 		private void CreateImageAttachment() {
-			if(_eclaimsCommBridge==EclaimsCommBridge.ClaimConnect) {
+			if(_eclaimsCommBridge==EclaimsCommBridge.ClaimConnect && _arrayBytesPdf!=null) {//Open Dental 26.1.64: the PDF goes as it is.
+				ImageAttachmentDXC=DxcPdfAttachment.CreateImageAttachment(_arrayBytesPdf,textFileName.Text,PIn.Date(textDateCreated.Text),
+					listBoxImageType.GetSelected<ClaimConnect.ImageTypeCode>());
+			}
+			else if(_eclaimsCommBridge==EclaimsCommBridge.ClaimConnect) {
 				ImageAttachmentDXC=ClaimConnect.ImageAttachment.Create(
 					fileName:textFileName.Text,
 					createdDate:PIn.Date(textDateCreated.Text),
@@ -108,7 +128,13 @@ namespace OpenDental {
 				MsgBox.Show(this,"Select an image type.");
 				return false;
 			}
-			CreateImageAttachment();
+			try {
+				CreateImageAttachment();
+			}
+			catch(ODException ex) {//A PDF that can't be sent; the message is ready to show.
+				MessageBox.Show(this,ex.Message);
+				return false;
+			}
 			return true;
 		}
 

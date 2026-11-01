@@ -14,7 +14,7 @@ using OpenDentBusiness.Eclaims;
 
 namespace OpenDentBusiness{
 	///<summary></summary>
-	public class ProcedureCodes {
+	public partial class ProcedureCodes {
 		#region Cache Pattern
 
 		///<summary>Utilizes the NonPkAbs version of CacheDict because it uses ProcCode as the Key instead of the PK CodeNum.</summary>

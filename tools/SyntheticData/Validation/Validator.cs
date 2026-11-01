@@ -47,7 +47,7 @@ namespace SyntheticData.Validation {
 			string key=columnKey==null ? "''" : "`"+columnKey.Name+"`";
 			StringBuilder stringBuilder=new StringBuilder("SELECT COUNT(*)");
 			foreach(ColumnInfo column in table.ListColumns) {
-				stringBuilder.Append(",IFNULL(SUM(CRC32(CONCAT_WS(CHAR(31),"+key+",IFNULL(`"+column.Name+"`,CHAR(0))))),0)");
+				stringBuilder.Append(",IFNULL(SUM(CRC32(CONCAT_WS(CHAR(31),"+key+",IFNULL("+ExactText(column)+",CHAR(0))))),0)");
 			}
 			stringBuilder.Append(" FROM `"+table.Name+"`");
 			object[] row=db.Rows(stringBuilder.ToString())[0];
@@ -56,6 +56,13 @@ namespace SyntheticData.Validation {
 				tableReport.Columns[table.ListColumns[i].Name]=Convert.ToString(row[i+1],CultureInfo.InvariantCulture);
 			}
 			return tableReport;
+		}
+
+		///<summary>The column as the checksum reads it. MariaDB writes a FLOAT as text with 6 significant digits, so two different FLOAT values can
+		///read the same (34.285713 and 34.2857, the rounding a dump and restore makes); widened to DOUBLE, a FLOAT is written exactly. DOUBLE values are
+		///written exactly already. Public for the tests.</summary>
+		public static string ExactText(ColumnInfo column) {
+			return column.DataType=="float" ? "CAST(`"+column.Name+"` AS DOUBLE)" : "`"+column.Name+"`";
 		}
 
 		///<summary>Runs every named query of business-totals.sql. A failed query is recorded as "error: ...".</summary>

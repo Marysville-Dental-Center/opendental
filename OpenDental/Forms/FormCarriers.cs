@@ -22,6 +22,15 @@ namespace OpenDental{
 		private DataTable _table;
 		public Carrier CarrierSelected;
 		private List<ItransImportFields> _listItransImportFields=new List<ItransImportFields>();
+		///<summary>Set to true to pick one or more carriers, for example for the Insurance Verification List's Carrier filter (Open Dental 25.4).
+		///OK returns ListCarrierNumsSelected, which may be empty (no carrier picked).</summary>
+		public bool IsMultiSelectMode;
+		///<summary>Multi-select mode only. In: the carriers to show as picked when the window opens. Out, after OK: the picked carriers, in name
+		///order.</summary>
+		public List<long> ListCarrierNumsSelected=new List<long>();
+		///<summary>Multi-select mode: the picked carriers, including those the search boxes currently hide, so that changing the search does not
+		///lose a pick.</summary>
+		private HashSet<long> _hashSetCarrierNumsPicked=new HashSet<long>();
 
 		///<summary></summary>
 		public FormCarriers()
@@ -42,8 +51,11 @@ namespace OpenDental{
 			//else{
 			//	checkCDAnet.Visible=false;
 			//}
-			if(!IsSelectMode) {
+			if(!IsSelectMode && !IsMultiSelectMode) {
 				butOK.Visible=false;
+			}
+			if(IsMultiSelectMode) {
+				_hashSetCarrierNumsPicked=new HashSet<long>(ListCarrierNumsSelected.FindAll(x => x>0));
 			}
 			if(!Security.IsAuthorized(EnumPermType.CarrierCreate,true)) {
 				butAdd.Enabled=false;
@@ -58,6 +70,10 @@ namespace OpenDental{
 				checkItransMissing.Checked=(itransImportFields.HasFlag(ItransImportFields.AddMissing));
 			}
 			Carriers.RefreshCache();
+			//Multi-select mode: a picked carrier that is hidden is listed only with Show Hidden, so show hidden carriers when one is picked.
+			if(IsMultiSelectMode && Carriers.GetCarriers(_hashSetCarrierNumsPicked.ToList()).Any(x => x.IsHidden)) {
+				checkShowHidden.Checked=true;
+			}
 			SetFilterControlsAndAction(() => FillGrid(), textCarrier, textElectId, textPhone, checkCDAnet, checkShowHidden);
 			FillGrid();
 		}
@@ -66,6 +82,10 @@ namespace OpenDental{
 			List<string> selectedCarrierNums=new List<string>();
 			for(int i=0;i<gridMain.SelectedIndices.Length;i++){
 				selectedCarrierNums.Add(_table.Rows[gridMain.SelectedIndices[i]]["CarrierNum"].ToString());
+			}
+			if(IsMultiSelectMode) {
+				SyncPickedCarrierNums();
+				selectedCarrierNums.AddRange(_hashSetCarrierNumsPicked.Select(x => x.ToString()));
 			}
 			//Carriers.Refresh();
 			gridMain.BeginUpdate();
@@ -185,7 +205,50 @@ namespace OpenDental{
 			//}
 		}
 
+		///<summary>Multi-select mode: updates the picked carriers from the rows the grid shows now (selected rows are picked, the other shown rows are
+		///not). Picks the search boxes hide are kept.</summary>
+		private void SyncPickedCarrierNums() {
+			if(_table==null) {
+				return;
+			}
+			List<long> listCarrierNumsShown=new List<long>();
+			for(int i=0;i<_table.Rows.Count;i++) {
+				listCarrierNumsShown.Add(PIn.Long(_table.Rows[i]["CarrierNum"].ToString()));
+			}
+			List<long> listCarrierNumsSelected=new List<long>();
+			for(int i=0;i<gridMain.SelectedIndices.Length;i++) {
+				listCarrierNumsSelected.Add(listCarrierNumsShown[gridMain.SelectedIndices[i]]);
+			}
+			MergePickedCarrierNums(_hashSetCarrierNumsPicked,listCarrierNumsShown,listCarrierNumsSelected);
+		}
+
+		///<summary>Multi-select mode: of the carriers listed in the grid, the selected ones become picked and the others stop being picked. Carriers
+		///not listed (hidden by the search boxes or by Show Hidden) keep their state.</summary>
+		public static void MergePickedCarrierNums(HashSet<long> hashSetCarrierNumsPicked,List<long> listCarrierNumsShown,List<long> listCarrierNumsSelected) {
+			for(int i=0;i<listCarrierNumsShown.Count;i++) {
+				if(listCarrierNumsSelected.Contains(listCarrierNumsShown[i])) {
+					hashSetCarrierNumsPicked.Add(listCarrierNumsShown[i]);
+				}
+				else {
+					hashSetCarrierNumsPicked.Remove(listCarrierNumsShown[i]);
+				}
+			}
+		}
+
+		///<summary>Multi-select mode: closes with OK and returns the picked carriers in ListCarrierNumsSelected, in name order.</summary>
+		private void CloseMultiSelect() {
+			SyncPickedCarrierNums();
+			ListCarrierNumsSelected=Carriers.GetCarriers(_hashSetCarrierNumsPicked.ToList())
+				.OrderBy(x => x.CarrierName).ThenBy(x => x.CarrierNum)
+				.Select(x => x.CarrierNum).ToList();
+			DialogResult=DialogResult.OK;
+		}
+
 		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e) {
+			if(IsMultiSelectMode) {
+				CloseMultiSelect();
+				return;
+			}
 			Carrier carrier=Carriers.GetCarrier(PIn.Long(_table.Rows[e.Row]["CarrierNum"].ToString()));
 			if(IsSelectMode) {
 				CarrierSelected=carrier;
@@ -401,7 +464,11 @@ namespace OpenDental{
 		}
 
 		private void butOK_Click(object sender, System.EventArgs e) {
-			//only visible if IsSelectMode
+			//only visible if IsSelectMode or IsMultiSelectMode
+			if(IsMultiSelectMode) {
+				CloseMultiSelect();//no carrier picked is allowed: the caller treats it as all carriers.
+				return;
+			}
 			if(gridMain.SelectedIndices.Length==0) {
 				MessageBox.Show(Lan.g(this,"Please select an item first."));
 				return;

@@ -51,7 +51,7 @@ namespace OpenDental {
 			textPassword.PasswordChar=(textPassword.Text=="" ? default(char) : '*');
 			textUser2.Text=ChooseDatabaseInfo_.CentralConnectionCur.OdUser;
 			textPassword2.Text=ChooseDatabaseInfo_.CentralConnectionCur.OdPassword;
-			textPEM.Text=ChooseDatabaseInfo_.CentralConnectionCur.SslCA??"";
+			textSslCaPem.Text=ChooseDatabaseInfo_.CentralConnectionCur.SslCA??"";
 			if(listType.Items.Count > 0 && listType.Items.Count >= 2) {
 				listType.SelectedIndex=(int)ChooseDatabaseInfo_.DatabaseType;
 			}
@@ -94,7 +94,7 @@ namespace OpenDental {
 			ChooseDatabaseInfo_.CentralConnectionCur.OdPassword=textPassword2.Text;
 			ChooseDatabaseInfo_.CentralConnectionCur.WebServiceIsEcw=checkUsingEcw.Checked;
 			ChooseDatabaseInfo_.DatabaseType=(listType.SelectedIndex==1 ? DatabaseType.Oracle : DatabaseType.MySql);
-			ChooseDatabaseInfo_.CentralConnectionCur.SslCA=textPEM.Text;
+			ChooseDatabaseInfo_.CentralConnectionCur.SslCA=textSslCaPem.Text;
 			ChooseDatabaseInfo_.ConnectionString=textConnectionString.Text;
 			//Only save AutoLogin if connecting to MT and AutoLogin box is checked.
 			ChooseDatabaseInfo_.CentralConnectionCur.IsAutomaticLogin=(checkBoxAutomaticLogin.Checked && checkConnectServer.Checked);
@@ -130,13 +130,13 @@ namespace OpenDental {
 				groupDirect.Enabled=false;
 				checkDynamicMode.Checked=false;
 				checkDynamicMode.Enabled=false;
-				textPEM.Enabled=false;
+				textSslCaPem.Enabled=false;
 			}
 			else {
 				groupServer.Enabled=false;
 				groupDirect.Enabled=true;
 				checkDynamicMode.Enabled=true;
-				textPEM.Enabled=true;
+				textSslCaPem.Enabled=true;
 			}
 		}
 

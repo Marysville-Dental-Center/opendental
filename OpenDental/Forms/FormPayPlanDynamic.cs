@@ -1460,6 +1460,7 @@ namespace OpenDental {
 			}
 			PayPlanL.MakeSecLogEntries(_dynamicPaymentPlanData.PayPlan,_payPlanOld,signatureBoxWrapper.GetSigChanged(),
 				_isSigOldValid,signatureBoxWrapper.SigIsBlank,signatureBoxWrapper.IsValid,isPrinting);
+			PayPlanL.AdvanceAuditBaseline(_dynamicPaymentPlanData.PayPlan,_payPlanOld,isPrinting);//25.2: a down payment change is logged once
 			LogSheetChange();
 			//When sign & print is clicked (saves the plan) on new plan to let users know it has been saved and some thing can no longer be edited.
 			//Refresh local class wide variables.

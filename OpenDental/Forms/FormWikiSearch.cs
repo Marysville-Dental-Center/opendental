@@ -15,6 +15,8 @@ namespace OpenDental {
 
 	public partial class FormWikiSearch:FormODBase {
 		private const bool DO_INCLUDE_CONTENT_DEFAULT=false;
+		///<summary>The user's result limit when the window opened, to save only a change.</summary>
+		private WikiSearchLimit _wikiSearchLimitOnLoad=new WikiSearchLimit();
 		private List<string> _listWikiPageTitles;
 		public string WikiPageTitleSelected;
 		public NavToPageDeligate NavToPageDeligate_;
@@ -32,12 +34,16 @@ namespace OpenDental {
 			Location=new Point(rectangleWorkingArea.Left+rectangleWorkingArea.Width/2-Width/2,
 				y:rectangleWorkingArea.Top);
 			WikiPageTitleSelected="";
-			UserOdPref userOdPref=UserOdPrefs.GetByUserAndFkeyType(Security.CurUser.UserNum,UserOdFkeyType.WikiSearchIncludeContent).FirstOrDefault();
+			//Fkey 0 is the include-content row. Fkey 1 of the same type holds the result limit (WikiSearchLimit).
+			UserOdPref userOdPref=UserOdPrefs.GetByUserFkeyAndFkeyType(Security.CurUser.UserNum,0,UserOdFkeyType.WikiSearchIncludeContent).FirstOrDefault();
 			bool doIncludeContent=DO_INCLUDE_CONTENT_DEFAULT;
 			if(userOdPref!=null) {
 				doIncludeContent=PIn.Bool(userOdPref.ValueString);
 			}
 			checkIgnoreContent.Checked=!doIncludeContent;
+			_wikiSearchLimitOnLoad=WikiSearchLimit.GetForUser(Security.CurUser.UserNum);
+			checkLimit.Checked=_wikiSearchLimitOnLoad.IsEnabled;
+			textLimit.Value=_wikiSearchLimitOnLoad.Limit;
 			if(string.IsNullOrWhiteSpace(PrefC.GetString(PrefName.ReportingServerDbName))
 				|| string.IsNullOrWhiteSpace(PrefC.GetString(PrefName.ReportingServerCompName)))
 			{
@@ -109,8 +115,9 @@ namespace OpenDental {
 			//gridMain.Columns.Add(col);
 			gridMain.ListGridRows.Clear();
 			//This used to search the wikipagehist table, now archived pages are stored in wikipage.  See JobNum 4429.
+			int limit=GetWikiSearchLimit().GetLimitForSearch();
 			_listWikiPageTitles=ReportsComplex.RunFuncOnReportServer(() => WikiPages.GetForSearch(textSearch.Text,checkIgnoreContent.Checked,checkArchivedOnly.Checked,
-				checkBoxMatchWholeWord.Checked,checkBoxShowMainPages.Checked,searchForLinks:false),checkReportServer.Checked);
+				checkBoxMatchWholeWord.Checked,checkBoxShowMainPages.Checked,searchForLinks:false,limit:limit),checkReportServer.Checked);
 			for(int i=0;i<_listWikiPageTitles.Count;i++) {
 				GridRow row=new GridRow();
 				row.Cells.Add(_listWikiPageTitles[i]);
@@ -118,6 +125,34 @@ namespace OpenDental {
 			}
 			gridMain.EndUpdate();
 			webBrowserWiki.DocumentText="";
+			//The search stops at the limit, so reaching it means there may be more matches.
+			labelLimitInfo.Visible=(limit>0 && _listWikiPageTitles.Count>=limit);
+			labelLimitInfo.Text=Lan.g(this,"Showing first")+" "+limit+" "+Lan.g(this,"matches");
+		}
+
+		///<summary>The limit as the boxes show it. A number outside 1 to 5000 counts as the default.</summary>
+		private WikiSearchLimit GetWikiSearchLimit() {
+			int limit=WikiSearchLimit.DEFAULT_LIMIT;
+			if(textLimit.IsValid() && textLimit.Text.Trim()!="") {
+				limit=textLimit.Value;
+			}
+			return new WikiSearchLimit(checkLimit.Checked,limit);
+		}
+
+		private void checkLimit_Click(object sender,EventArgs e) {
+			FillGrid();
+		}
+
+		private void textLimit_KeyDown(object sender,KeyEventArgs e) {
+			if(e.KeyCode==Keys.Enter) {
+				FillGrid();
+			}
+		}
+
+		private void textLimit_Leave(object sender,EventArgs e) {
+			if(checkLimit.Checked) {
+				FillGrid();
+			}
 		}
 
 		private void gridMain_CellClick(object sender,ODGridClickEventArgs e) {
@@ -181,6 +216,7 @@ namespace OpenDental {
 				return;
 			}
 			WikiPages.WikiPageRestore(wikiPageRestored,Security.CurUser.UserNum);
+			WikiStaticExport.ExportInBackground(null,isFullExport:true);//Read-only copy of the wiki: links to the restored page work again.
 			Close();
 		}
 
@@ -193,8 +229,12 @@ namespace OpenDental {
 		}
 
 		private void FormWikiSearch_FormClosing(object sender,FormClosingEventArgs e) {
+			WikiSearchLimit wikiSearchLimit=GetWikiSearchLimit();
+			if(!wikiSearchLimit.IsSameAs(_wikiSearchLimitOnLoad) && WikiSearchLimit.SaveForUser(Security.CurUser.UserNum,wikiSearchLimit)) {
+				DataValid.SetInvalid(InvalidType.UserOdPrefs);
+			}
 			bool doIncludeContent=!checkIgnoreContent.Checked;
-			UserOdPref userOdPref=UserOdPrefs.GetByUserAndFkeyType(Security.CurUser.UserNum,UserOdFkeyType.WikiSearchIncludeContent).FirstOrDefault();
+			UserOdPref userOdPref=UserOdPrefs.GetByUserFkeyAndFkeyType(Security.CurUser.UserNum,0,UserOdFkeyType.WikiSearchIncludeContent).FirstOrDefault();
 			if(userOdPref==null) {
 				if(doIncludeContent!=DO_INCLUDE_CONTENT_DEFAULT) {
 					//Only insert the new UserOdPref if not the default value.

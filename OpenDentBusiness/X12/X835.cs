@@ -3596,6 +3596,11 @@ namespace OpenDentBusiness {
 				//Attaches are made after double clicking into the claim EOB on an ERA to process it or by auto-processing an ERA.
 				return false;
 			}
+			//M2-ERA (26.1): claimprocs entered from an ERA name the ERA claim they came from (claimproc.Etrans835AttachNum). See EraClaimProcLinks.
+			if(EraClaimProcLinks.IsEnteredFromEraClaim(this,listEraClaimProcs,listAttaches)) {
+				return true;
+			}
+			listEraClaimProcs=EraClaimProcLinks.RemoveEnteredFromOtherEraClaims(this,listEraClaimProcs,listAttaches);//The rest match as before.
 			//List of claimNums for this ERA which were split from this ERA to a new claim.
 			List<long> listSplitClaimNums=listAttaches.Where(x => 
 				x.EtransNum==this.Era.EtransSource.EtransNum//Same ERA
@@ -3648,12 +3653,10 @@ namespace OpenDentBusiness {
 			return true;
 		}
 
-		///<summary>Returns all CARC codes for the claim or its procedures that we are not supposed to auto-process.</summary>
+		///<summary>Returns a description of each adjustment on the claim or its procedures that matches an entry of EraNoAutoProcessCarcCodes, such as
+		///"CO-97 on procedure Z0220" (B-ERA, EraCarcRules). Empty when no listed CARC holds the claim back.</summary>
 		public List<string> GetCarcCodesNoAutoProcessForClaim() {
-			List<string> listCarcCodesNoAutoProcess=PrefC.GetString(PrefName.EraNoAutoProcessCarcCodes).Split(",",StringSplitOptions.RemoveEmptyEntries).Distinct().ToList();
-			List<string> listClaimCarcCodes=ListClaimAdjustments.Select(x => x.ReasonCode).ToList();
-			List<string> listProcedureCarcCodes=ListProcs.SelectMany(x => x.ListProcAdjustments).Select(x => x.ReasonCode).ToList();
-			return listCarcCodesNoAutoProcess.FindAll(x => listClaimCarcCodes.Contains(x) || listProcedureCarcCodes.Contains(x));
+			return EraCarcRules.GetMatches(EraCarcRules.GetRulesFromPref(),this).Select(x => x.GetDescription()).Distinct().ToList();
 		}
 		
 		private List<Hx835_ShortClaimProc> GetClaimProcsForEraProcs(List<Hx835_ShortClaimProc> listAllClaimProcs,List<long> listSplitClaimNums) {
@@ -4156,6 +4159,8 @@ namespace OpenDentBusiness {
 		public double AllowedOverride;
 		///<summary>A copy of the data from claimproc.SecDateEntry</summary>
 		public DateTime SecDateEntry;
+		///<summary>A copy of the data from claimproc.Etrans835AttachNum (Open Dental 26.1, M2-ERA): the ERA claim the claimproc was entered from, or 0.</summary>
+		public long Etrans835AttachNum;
 
 		public Hx835_ShortClaimProc() { }
 
@@ -4174,6 +4179,7 @@ namespace OpenDentBusiness {
 			CodeSent=claimProc.CodeSent;
 			AllowedOverride=claimProc.AllowedOverride;
 			SecDateEntry=claimProc.SecDateEntry;
+			Etrans835AttachNum=claimProc.Etrans835AttachNum;//M2-ERA (26.1)
 		}
 
 		/// <summary>Returns a list of all Hx835_ShortClaimProcs for the list of ProcNums
@@ -4202,7 +4208,7 @@ namespace OpenDentBusiness {
 			List <string> listClaimNumStrs=listClaimNums.Select(x => POut.Long(x)).ToList();
 			string command=
 				"SELECT ClaimProcNum,ProcNum,ClaimNum,FeeBilled,InsPayEst,DedApplied,Status,InsPayAmt,WriteOff,"
-				+"WriteOffEst,WriteOffEstOverride,CodeSent,AllowedOverride,SecDateEntry "
+				+"WriteOffEst,WriteOffEstOverride,CodeSent,AllowedOverride,SecDateEntry,Etrans835AttachNum "//M2-ERA (26.1): Etrans835AttachNum
 				+"FROM claimproc "
 				+"WHERE ClaimNum IN("+String.Join(",",listClaimNumStrs)+")";
 			return SelectMany(command);
@@ -4237,6 +4243,9 @@ namespace OpenDentBusiness {
 				claimProc.CodeSent            = PIn.String(row["CodeSent"].ToString());
 				claimProc.AllowedOverride     = PIn.Double(row["AllowedOverride"].ToString());
 				claimProc.SecDateEntry        = PIn.Date  (row["SecDateEntry"].ToString());
+				if(table.Columns.Contains("Etrans835AttachNum")) {//M2-ERA (26.1)
+					claimProc.Etrans835AttachNum=PIn.Long(row["Etrans835AttachNum"].ToString());
+				}
 				retVal.Add(claimProc);
 			}
 			return retVal;
@@ -4244,7 +4253,7 @@ namespace OpenDentBusiness {
 	}
 
 	///<summary>Holds result data for automatic processing of an ERA.</summary>
-	public class EraAutomationResult {
+	public partial class EraAutomationResult {
 		///<summary>Used to display the Carrier name, date, and amount of transaction.</summary>
 		public X835 X835Cur;
 		///<summary>Used to indicate which transaction from the Etrans our data is for. In version 14.2 and older, a single Etrans could represent multiple transactions from an 835.</summary>
@@ -4301,6 +4310,10 @@ namespace OpenDentBusiness {
 				stringBuilderErrorMessage.AppendLine(Lans.g("X835","Payment information included the following Claim Adjustment Reason Codes:")+" "
 					+string.Join(", ",listCarcCodesNoAutoProcessForClaim)+". "
 					+Lans.g("X835","Claim wasn't processed per the codes set in your 'Don't auto-process claims with CARC codes' preference."));
+				string autoSplitSkipReason=GetAutoSplitSkipReason(claimPaid);//B-ERA
+				if(autoSplitSkipReason!="") {
+					stringBuilderErrorMessage.AppendLine(autoSplitSkipReason);
+				}
 			}
 			//Check if user must choose an insurance payment plan to apply the payment to.
 			if(listPayPlans.Count>1) {
@@ -4319,6 +4332,10 @@ namespace OpenDentBusiness {
 			bool is835ClaimProcessed=claimPaid.IsProcessed(listClaimProcsAll,listAttaches);
 			if(is835ClaimProcessed) {
 				stringBuilderErrorMessage.AppendLine(Lans.g("X835","The claim is already processed."));
+			}
+			else if(EraClaimProcLinks.GetEtransNumsWithSamePayment(claimPaid,listClaimProcsAll,listAttaches).Count>0) {//M2-ERA (26.1)
+				stringBuilderErrorMessage.AppendLine(Lans.g("X835","The claim was already paid from another ERA with the same check or EFT trace number. "
+					+"This ERA may have been received twice."));
 			}
 			bool is835ClaimSupplemental=claimPaid.GetIsSupplemental(listAttaches,listClaimProcsAll);
 			bool areAnyClaimProcsReceived=listClaimProcsForClaim.Any(x => ClaimProcs.GetInsPaidStatuses().Contains(x.Status));
@@ -4392,6 +4409,7 @@ namespace OpenDentBusiness {
 			int countClaimsProcessed=listAutomationResults.Sum(x => x.CountClaimsProcessed);
 			string claimsProcessedSuccessfully=Lans.g("X835","Claims Processed Successfully:");
 			stringBuilderAutomationMessage.AppendLine(claimsProcessedSuccessfully+$" {countClaimsProcessed}");
+			AppendAutoSplitNotes(stringBuilderAutomationMessage,listAutomationResults);//B-ERA
 			//Show count of ERAs finalized or a message indicating that a single ERA was finalized.
 			int countPaymentsFinalized=listAutomationResults.Count(x => x.IsPaymentFinalized);
 			if(isForSingleEra && countPaymentsFinalized==1) {//Don't show count if we are only dealing with one ERA and payment was finalized.

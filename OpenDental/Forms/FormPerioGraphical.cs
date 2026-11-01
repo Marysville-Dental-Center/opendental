@@ -223,7 +223,7 @@ namespace OpenDental {
 				bool isCrown=false;
 				for(int p=0;p<listProceduresForTooth.Count;p++) {
 					ProcedureCode procedureCode=ProcedureCodes.GetProcCode(listProceduresForTooth[p].CodeNum);
-					if(procedureCode.PaintType==ToothPaintingType.Implant) {
+					if(procedureCode.PaintType==ToothPaintingType.Implant && !listProceduresForTooth[p].HideGraphics) {//hidden graphics: the implant was removed (24.4)
 						isImplant=true;
 					}
 					if(procedureCode.PaintType==ToothPaintingType.CrownDark || procedureCode.PaintType==ToothPaintingType.CrownLight) {
@@ -284,6 +284,14 @@ namespace OpenDental {
 			sizeF=g.MeasureString(patNameStr,font);
 			g.DrawString(patNameStr,font,Brushes.Black,new PointF(rectangleMarginBounds.Width/2f-sizeF.Width/2f,y));
 			y+=sizeF.Height;
+			//Birthdate on its own line (25.2), skipped when the patient has none.
+			string birthdateStr=PerioMeasures.GetBirthdateForPrint(patient.Birthdate);
+			if(birthdateStr!="") {
+				birthdateStr=Lan.g(this,"DOB:")+" "+birthdateStr;
+				sizeF=g.MeasureString(birthdateStr,font);
+				g.DrawString(birthdateStr,font,Brushes.Black,new PointF(rectangleMarginBounds.Width/2f-sizeF.Width/2f,y));
+				y+=sizeF.Height;
+			}
 			//We put the exam date instead of the current date because the exam date isn't anywhere else on the printout.
 			string examDateStr=_perioExam.ExamDate.ToShortDateString();//Locale specific exam date.
 			sizeF=g.MeasureString(examDateStr,font);

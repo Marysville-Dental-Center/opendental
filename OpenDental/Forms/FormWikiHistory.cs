@@ -147,6 +147,7 @@ namespace OpenDental {
 			WikiPage wikiPageNew = WikiPageHists.RevertFrom(gridMain.ListGridRows[gridMain.GetSelectedIndex()].Tag as WikiPageHist);
 			wikiPageNew.UserNum=Security.CurUser.UserNum;
 			WikiPages.InsertAndArchive(wikiPageNew);
+			WikiStaticExport.ExportInBackground(new List<string>() { wikiPageNew.PageTitle },isFullExport:false);//Read-only copy of the wiki.
 			FillGrid();
 		}
 

@@ -10,7 +10,7 @@ using System.Windows.Forms;
 using OpenDentBusiness;
 
 namespace OpenDentBusiness {
-	public class DisplayFields {
+	public partial class DisplayFields {
 		#region CachePattern
 
 		private class DisplayFieldCache : CacheListAbs<DisplayField> {
@@ -135,6 +135,9 @@ namespace OpenDentBusiness {
 
 		public static List<DisplayField> GetDefaultList(DisplayFieldCategory displayFieldCategory){
 			Meth.NoCheckMiddleTierRole();
+			if(displayFieldCategory==DisplayFieldCategory.ERA) {
+				return GetDefaultListEra();//B-ERA, DisplayFields.Era.cs
+			}
 			List<DisplayField> listDisplayFields=new List<DisplayField>();
 			switch (displayFieldCategory) {
 				#region 'None'
@@ -623,6 +626,9 @@ namespace OpenDentBusiness {
 
 		public static List<DisplayField> GetAllAvailableList(DisplayFieldCategory displayFieldCategory){
 			Meth.NoCheckMiddleTierRole(); 
+			if(displayFieldCategory==DisplayFieldCategory.ERA) {
+				return GetAllAvailableListEra();//B-ERA, DisplayFields.Era.cs
+			}
 			List<DisplayField> listDisplayFields=new List<DisplayField>();
 			switch (displayFieldCategory) {
 				#region 'None'

@@ -106,6 +106,48 @@ namespace OpenDentBusiness{
 			return Crud.WikiPageCrud.SelectOne(command);
 		}
 
+		///<summary>The newest wikipagehist row for the title (by DateTimeSaved, then WikiPageNum), with its PageContent. Null if there is none.</summary>
+		public static WikiPageHist GetLatestHistByTitle(string pageTitle) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<WikiPageHist>(MethodBase.GetCurrentMethod(),pageTitle);
+			}
+			string command="SELECT * FROM wikipagehist WHERE PageTitle='"+POut.String(pageTitle)+"' "
+				+"ORDER BY DateTimeSaved DESC,WikiPageNum DESC LIMIT 1";
+			return Crud.WikiPageHistCrud.SelectOne(command);
+		}
+
+		///<summary>The published version a draft is compared with (v25_1-misc-wiki-draft-compare): the live page, or, when the live page was archived
+		///or no longer exists, its newest history version (isFromHistory is then true). Null when the title has neither, so the draft is compared with
+		///an empty page.</summary>
+		public static WikiPageHist GetPublishedForDraftCompare(string pageTitle,out bool isFromHistory) {
+			Meth.NoCheckMiddleTierRole();
+			WikiPage wikiPage=GetByTitle(pageTitle);
+			if(wikiPage!=null) {
+				isFromHistory=false;
+				return PageToHist(wikiPage);
+			}
+			isFromHistory=true;
+			return GetLatestHistByTitle(pageTitle);
+		}
+
+		///<summary>The pages that go into the read-only copy of the wiki (v25_2-wiki-readonly-offline): every published page that is not archived
+		///and whose title does not start with an underscore (such as _Master), ordered by WikiPageNum. When includeContent is false, PageContent is
+		///left blank to keep the query small (PageContentPlainText is always filled).</summary>
+		public static List<WikiPage> GetForStaticExport(bool includeContent) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<WikiPage>>(MethodBase.GetCurrentMethod(),includeContent);
+			}
+			string columns="*";
+			if(!includeContent) {
+				columns="WikiPageNum,UserNum,PageTitle,KeyWords,'' PageContent,DateTimeSaved,IsDraft,IsLocked,IsDeleted,PageContentPlainText";
+			}
+			string command="SELECT "+columns+" FROM wikipage "
+				// \_ is a literal underscore in LIKE, as in GetForSearch.
+				+"WHERE PageTitle NOT LIKE '\\_%' AND IsDraft=0 AND IsDeleted=0 "
+				+"ORDER BY WikiPageNum";
+			return Crud.WikiPageCrud.SelectMany(command);
+		}
+
 		///<summary>Returns empty list if page does not exist.</summary>
 		public static List<WikiPage> GetDraftsByTitle(string pageTitle) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
@@ -182,10 +224,15 @@ namespace OpenDentBusiness{
 			Crud.WikiPageCrud.Update(wikiPage);
 		}
 
-		///<summary>Searches keywords, title, content.  Does not return pagetitles for drafts.</summary>
-		public static List<string> GetForSearch(string searchText,bool ignoreContent,bool isDeleted=false, bool isExactSearch=false,bool showMainPages=false,bool searchForLinks=true) {
+		///<summary>Searches keywords, title, content.  Does not return pagetitles for drafts.
+		///limit (v25_2-wiki-search-limit): 0 or less means no limit. Otherwise at most limit titles are returned. The tiers still run in the same
+		///order (keywords, titles, content and links) and each tier asks for at most limit rows: a duplicate can only be a title an earlier tier
+		///already collected, so limit rows always hold enough new titles to fill the remaining places. Later tiers are skipped once limit titles are
+		///collected. The title tier also supplies the pages whose incoming links the content tier looks for; the content tier only runs when the
+		///title tier was not cut short, so that list is always complete and the result is the first limit titles of the unlimited search.</summary>
+		public static List<string> GetForSearch(string searchText,bool ignoreContent,bool isDeleted=false, bool isExactSearch=false,bool showMainPages=false,bool searchForLinks=true,int limit=0) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<List<string>>(MethodBase.GetCurrentMethod(),searchText,ignoreContent,isDeleted,isExactSearch,showMainPages,searchForLinks);
+				return Meth.GetObject<List<string>>(MethodBase.GetCurrentMethod(),searchText,ignoreContent,isDeleted,isExactSearch,showMainPages,searchForLinks,limit);
 			}
 			List<string> listPageTitles=new List<string>();
 			DataTable tableResults=new DataTable();
@@ -213,9 +260,13 @@ namespace OpenDentBusiness{
 			}
 			command+=
 				"GROUP BY PageTitle "
-				+"ORDER BY PageTitle";
+				+"ORDER BY PageTitle"
+				+GetSearchLimitClause(limit);
 			tableResults=Db.GetTable(command);
 			for(int i=0;i<tableResults.Rows.Count;i++) {
+				if(IsSearchLimitReached(listPageTitles,limit)) {
+					break;
+				}
 				string pageTitle=tableResults.Rows[i]["PageTitle"].ToString();
 				if(listPageTitles.Contains(pageTitle)) {
 					continue;
@@ -235,9 +286,18 @@ namespace OpenDentBusiness{
 			}
 			command+=
 				"GROUP BY PageTitle "
-				+"ORDER BY PageTitle";
-			tableResults=Db.GetTable(command);
+				+"ORDER BY PageTitle"
+				+GetSearchLimitClause(limit);
+			if(IsSearchLimitReached(listPageTitles,limit)) {
+				tableResults=new DataTable();//Limit reached: the later tiers are skipped.
+			}
+			else {
+				tableResults=Db.GetTable(command);
+			}
 			for(int i=0;i<tableResults.Rows.Count;i++) {
+				if(IsSearchLimitReached(listPageTitles,limit)) {
+					break;
+				}
 				string pageTitle=tableResults.Rows[i]["PageTitle"].ToString();
 				if(listPageTitles.Contains(pageTitle)) {
 					continue;
@@ -249,7 +309,7 @@ namespace OpenDentBusiness{
 				}
 			}
 			//Match Content third-----------------------------------------------------------------------------------
-			if(!ignoreContent) {
+			if(!ignoreContent && !IsSearchLimitReached(listPageTitles,limit)) {
 				command=
 					"SELECT PageTitle,KeyWords FROM wikipage "
 					+"WHERE PageTitle NOT LIKE '\\_%' AND IsDraft=0 "
@@ -273,9 +333,13 @@ namespace OpenDentBusiness{
 				command+=") ";
 				command+=
 					"GROUP BY PageTitle "
-					+"ORDER BY PageTitle";
+					+"ORDER BY PageTitle"
+					+GetSearchLimitClause(limit);
 				tableResults=Db.GetTable(command);
 				for(int i=0;i<tableResults.Rows.Count;i++) {
+					if(IsSearchLimitReached(listPageTitles,limit)) {
+						break;
+					}
 					string pageTitle=tableResults.Rows[i]["PageTitle"].ToString();
 					if(listPageTitles.Contains(pageTitle)) {
 						continue;
@@ -296,6 +360,19 @@ namespace OpenDentBusiness{
 				return listTitlesWithKeyMain;
 			}
 			return listPageTitles;
+		}
+
+		///<summary>The LIMIT clause of one search tier: blank when limit is 0 or less (no limit), otherwise " LIMIT n".</summary>
+		public static string GetSearchLimitClause(int limit) {
+			if(limit<=0) {
+				return "";
+			}
+			return " LIMIT "+POut.Int(limit);
+		}
+
+		///<summary>True when a search limit is set and the list already holds that many titles.</summary>
+		public static bool IsSearchLimitReached(List<string> listPageTitles,int limit) {
+			return limit>0 && listPageTitles.Count>=limit;
 		}
 
 		///<summary>Returns true if the passed in comma delimited keyword string contains 'Main' by itself. Otherwise false. Not case sensitive.</summary>
