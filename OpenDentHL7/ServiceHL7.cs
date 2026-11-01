@@ -102,9 +102,12 @@ namespace OpenDentHL7 {
 			}
 			//check db version
 			string dbVersion=PrefC.GetString(PrefName.ProgramVersion);
-			if(Application.ProductVersion.ToString() != dbVersion) {
-				EventLog.WriteEntry("OpenDentHL7","Versions do not match.  Db version:"+dbVersion+".  Application version:"+Application.ProductVersion.ToString(),EventLogEntryType.Error);
-				throw new ApplicationException("Versions do not match.  Db version:"+dbVersion+".  Application version:"+Application.ProductVersion.ToString());
+			//The compatibility version (24.3.63.0), which ProgramVersion holds; Application.ProductVersion is the release version ("0.0") since every
+			//shipped assembly carries SharedAssemblyInfo.cs.
+			string versionProgram=ForkVersions.CompatVersion.ToString(4);
+			if(versionProgram != dbVersion) {
+				EventLog.WriteEntry("OpenDentHL7","Versions do not match.  Db version:"+dbVersion+".  Application version:"+versionProgram,EventLogEntryType.Error);
+				throw new ApplicationException("Versions do not match.  Db version:"+dbVersion+".  Application version:"+versionProgram);
 			}
 			//connected to the database, set the current user
 			//Security.CurUser=Userods.GetUser(PrefC.GetLong(PrefName.ODServiceSecUserNum));

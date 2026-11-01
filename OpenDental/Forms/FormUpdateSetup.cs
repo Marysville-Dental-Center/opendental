@@ -98,7 +98,8 @@ namespace OpenDental{
 		}
 
 		private void butRecopy_Click(object sender,EventArgs e) {
-			Version versionCurrent=new Version(Application.ProductVersion);
+			//The compatibility version, not the release version ("0.0"): a version number passed on, never shown.
+			Version versionCurrent=ForkVersions.CompatVersion;
 			string folderUpdate=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),"UpdateFiles");
 			if(Directory.Exists(folderUpdate)) {
 				try {

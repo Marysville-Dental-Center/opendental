@@ -79,6 +79,9 @@
     <Compile Include="Shared\TaskStateThumbnail.cs" />
     <Compile Include="Shared\TaskStateUpload.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="..\SharedAssemblyInfo.cs">
+      <Link>Properties\SharedAssemblyInfo.cs</Link>
+    </Compile>
     <Compile Include="Storage\RemovedStorage.cs" />
     <Compile Include="Shared\TaskState.cs" />
     <Compile Include="Storage\Sftp.cs" />

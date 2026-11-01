@@ -76,6 +76,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="..\SharedAssemblyInfo.cs">
+      <Link>Properties\SharedAssemblyInfo.cs</Link>
+    </Compile>
     <EmbeddedResource Include="FormDatabaseCheck.resx">
       <SubType>Designer</SubType>
       <DependentUpon>FormDatabaseCheck.cs</DependentUpon>

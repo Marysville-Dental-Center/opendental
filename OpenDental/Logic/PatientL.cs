@@ -102,7 +102,8 @@ namespace OpenDental{
 		///<summary>Returns a string representation of the current state of the application designed for display in the main title.
 		///Accepts null for pat and 0 for clinicNum.</summary>
 		public static string GetMainTitle(Patient patient,long clinicNum) {
-			string retVal=PrefC.GetString(PrefName.MainWindowTitle);
+			//Open Dental's default title shows as the product name; the preference keeps its stored value (AboutBoxInfo.GetDisplayName).
+			string retVal=AboutBoxInfo.GetMainWindowTitle();
 			object[] objectArrayParameters = { retVal };
 			Plugins.HookAddCode(null,"PatientL.GetMainTitle_beginning",objectArrayParameters);
 			retVal = (string)objectArrayParameters[0];
@@ -151,7 +152,7 @@ namespace OpenDental{
 		///<summary>Used to update the main title bar when neither the patient nor the clinic need to change. 
 		///Currently only used to refresh the title bar when the timer ticks for the update time countdown.</summary>
 		public static string GetMainTitleSamePat() {
-			string retVal=PrefC.GetString(PrefName.MainWindowTitle);
+			string retVal=AboutBoxInfo.GetMainWindowTitle();
 			if(PrefC.HasClinicsEnabled && _clinicNumSelected>0) {
 				if(retVal!="") {
 					retVal+=" - "+Lan.g("FormOpenDental","Clinic")+": ";

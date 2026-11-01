@@ -8,9 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("OpenDental")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("OpenDental")]
-[assembly: AssemblyCopyright("Copyright ©  2006")]
+//AssemblyProduct, AssemblyCompany, AssemblyCopyright and AssemblyInformationalVersion come from SharedAssemblyInfo.cs in the repository root.
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -34,10 +32,9 @@ using System.Runtime.InteropServices;
 //so we might consider removing it when a significant portion of OD is in WPF.
 [assembly: System.Windows.Media.DisableDpiAwareness]
 
+//AssemblyVersion stays on the Open Dental 24.3.63 compatibility line, which the database version checks use until the fork markers take over
+//(OpenDentBusiness ForkVersions.CompatVersion); the Win32 file version follows it. The release (product) version, "0.0", is the
+//AssemblyInformationalVersion in SharedAssemblyInfo.cs in the repository root. See docs/release-process.md.
 [assembly: AssemblyVersion("24.3.63.0")]
-//The release (product) version of this program: our own scheme, shown in About (Application.ProductVersion) and written to release manifests.
-//It is never compared with Open Dental version numbers. AssemblyVersion above stays on the Open Dental 24.3.63 compatibility line, which the
-//database version checks use until the fork markers take over (OpenDentBusiness ForkVersions.CompatVersion). See docs/release-process.md.
-[assembly: AssemblyInformationalVersion("0.0")]
 
 //[assembly: AssemblyFileVersion("1.0.0.0")]

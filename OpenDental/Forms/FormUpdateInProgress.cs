@@ -42,7 +42,7 @@ namespace OpenDental {
 
 		private void FormUpdateInProgress_Load(object sender,System.EventArgs e) {
 			string warningString=Lan.g("FormUpdateInProgress","An update is in progress on workstation")+": '"+_updateComputerName+"'.\r\n\r\n"
-			+Lan.g(this,"Not allowed to start")+" "+PrefC.GetString(PrefName.SoftwareName)+" "+Lan.g(this,"while an update is in progress.")+"\r\n"
+			+Lan.g(this,"Not allowed to start")+" "+AboutBoxInfo.GetSoftwareName()+" "+Lan.g(this,"while an update is in progress.")+"\r\n"
 			+Lan.g(this,"Please wait and click 'Try Again'.");
 			try {
 				if(_listAdminCompNames.Contains(ComputerPrefs.LocalComputer.ComputerName)) {

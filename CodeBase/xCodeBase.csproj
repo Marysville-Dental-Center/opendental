@@ -212,6 +212,9 @@
     <Compile Include="Utilities\ODMathLib.cs" />
     <Compile Include="Utilities\Logger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="..\SharedAssemblyInfo.cs">
+      <Link>Properties\SharedAssemblyInfo.cs</Link>
+    </Compile>
     <Compile Include="Utilities\MsgBoxCopyPaste.cs">
       <SubType>Form</SubType>
     </Compile>

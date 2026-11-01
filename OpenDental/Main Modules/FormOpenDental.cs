@@ -3413,7 +3413,7 @@ namespace OpenDental{
 			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(forkDbState);
 			if(!forkGuardResult.CanProceed || forkGuardResult.HasPendingMigrations) {
 				errorMsg=(forkGuardResult.Message=="" ? Lan.g(this,"The database was updated by another workstation.") : forkGuardResult.Message)+"\r\n\r\n"
-					+Lan.g(this,"You will have to restart")+" "+PrefC.GetString(PrefName.SoftwareName)+" "+Lan.g(this,"to correct the version mismatch.");
+					+Lan.g(this,"You will have to restart")+" "+AboutBoxInfo.GetSoftwareName()+" "+Lan.g(this,"to correct the version mismatch.");
 				return false;
 			}
 			if(!ODBuild.IsDebug()) {
@@ -3428,14 +3428,14 @@ namespace OpenDental{
 				{
 					errorMsg=Lan.g(this,"You are running release")+" "+releaseIdentityRunning+", "
 						+Lan.g(this,"but the update server published release")+" "+releaseIdentityPublished+".\r\n\r\n"
-						+Lan.g(this,"You will have to restart")+" "+PrefC.GetString(PrefName.SoftwareName)+" "+Lan.g(this,"to correct the version mismatch.");
+						+Lan.g(this,"You will have to restart")+" "+AboutBoxInfo.GetSoftwareName()+" "+Lan.g(this,"to correct the version mismatch.");
 					return false;
 				}
 			}
 			string updateComputerName=PrefC.GetString(PrefName.UpdateInProgressOnComputerName);
 			if(!string.IsNullOrEmpty(updateComputerName)) {
 				errorMsg=Lan.g(this,"An update is in progress on workstation")+": '"+updateComputerName+"'.\r\n\r\n"
-					+Lan.g(this,"You will have to restart")+" "+PrefC.GetString(PrefName.SoftwareName)+" "+Lan.g(this,"once the update has finished.");
+					+Lan.g(this,"You will have to restart")+" "+AboutBoxInfo.GetSoftwareName()+" "+Lan.g(this,"once the update has finished.");
 				return false;
 			}
 			if(PrefC.GetBool(PrefName.CorruptedDatabase) || CheckCorruptedReportandRead()) {

@@ -24,7 +24,10 @@ namespace ReleaseFlowTests {
 			Assert.AreEqual("24.3.63.0",fileVersionInfo.FileVersion,"The compatibility version used by the database checks.");
 			string assemblyInfo=TestPaths.ReadSource("OpenDental","Properties","AssemblyInfo.cs");
 			StringAssert.Contains(assemblyInfo,"[assembly: AssemblyVersion(\"24.3.63.0\")]");
-			StringAssert.Contains(assemblyInfo,"[assembly: AssemblyInformationalVersion(\"0.0\")]");
+			//The release version lives in the shared assembly info (package REL-FILES), which OpenDental.csproj links.
+			string sharedAssemblyInfo=TestPaths.ReadSource("SharedAssemblyInfo.cs");
+			StringAssert.Contains(sharedAssemblyInfo,"[assembly: AssemblyInformationalVersion(\"0.0\")]");
+			StringAssert.Contains(TestPaths.ReadSource("OpenDental","OpenDental.csproj"),"<Compile Include=\"..\\SharedAssemblyInfo.cs\">");
 		}
 
 		[TestMethod]

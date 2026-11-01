@@ -1,0 +1,475 @@
+Open PMS - Dental: third-party notices
+======================================
+
+Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and
+contributors. The program itself is licensed under the GNU General Public
+License, version 2 or (at your option) any later version; see LICENSE and
+NOTICE.
+
+The release ships the third-party components below next to OpenDental.exe.
+Each keeps its own license. For each component this file names the files,
+the version in this repository, the copyright holders, the license and where
+its source is published. The license texts follow the components: the short
+standard texts in full, and the vendor texts kept from Open Dental's license
+list in the program (Help > About > View Licenses), under the component's name.
+Copyright years are in each project's own license file at its source address.
+
+Files in the repository's "Required dlls" folder that are not listed here are
+not part of the release (see docs/third-party-binaries-audit.md). The MariaDB
+server, the .NET Framework, the Visual C++ runtime, the WebView2 runtime and
+the TWAIN data source manager are installed separately and are not shipped.
+
+GPL compatibility: the components marked "Owner question" below have
+licenses whose compatibility with the GNU GPL is not settled; see
+docs/port-notes/REL-FILES.md.
+
+--- Component: MySqlConnector
+Files:     MySqlConnector.dll
+Version:   2.3.7
+Copyright: Bradley Grainger and contributors
+License:   MIT License
+Source:    https://github.com/mysql-net/MySqlConnector
+
+--- Component: .NET libraries
+Files:     Microsoft.Bcl.AsyncInterfaces.dll, Microsoft.Extensions.Logging.Abstractions.dll,
+           System.Buffers.dll, System.Diagnostics.DiagnosticSource.dll, System.Memory.dll,
+           System.Numerics.Vectors.dll, System.Runtime.CompilerServices.Unsafe.dll,
+           System.Threading.Tasks.Extensions.dll
+Version:   as published with MySqlConnector 2.3.7 and Microsoft.Bcl.AsyncInterfaces 6.0
+Copyright: .NET Foundation and Contributors
+License:   MIT License
+Source:    https://github.com/dotnet/runtime
+
+--- Component: Newtonsoft.Json
+Files:     Newtonsoft.Json.dll
+Version:   12.0.3
+Copyright: James Newton-King
+License:   MIT License (the project's own text follows)
+Source:    https://github.com/JamesNK/Newtonsoft.Json
+
+--- Component: MimeKit
+Files:     MimeKit.dll
+Version:   2.4.1
+Copyright: Jeffrey Stedfast and Xamarin Inc.
+License:   MIT License
+Source:    https://github.com/jstedfast/MimeKit
+
+--- Component: MSAL.NET
+Files:     Microsoft.Identity.Client.dll (4.47.1), Microsoft.IdentityModel.Abstractions.dll (6.23.1)
+Version:   4.47.1 and 6.23.1
+Copyright: Microsoft Corporation
+License:   MIT License
+Source:    https://github.com/AzureAD/microsoft-authentication-library-for-dotnet
+           https://github.com/AzureAD/azure-activedirectory-identitymodel-extensions-for-dotnet
+
+--- Component: SSH.NET
+Files:     Renci.SshNet.dll
+Version:   2024.1
+Copyright: RENCI and the SSH.NET contributors
+License:   MIT License (the project's own text follows)
+Source:    https://github.com/sshnet/SSH.NET
+
+--- Component: PDFsharp
+Files:     PdfSharp.dll, PdfSharp.Charting.dll
+Version:   1.2
+Copyright: empira Software GmbH
+License:   MIT License (the project's own text follows)
+Source:    https://github.com/empira/PDFsharp
+
+--- Component: MigraDoc
+Files:     MigraDoc.DocumentObjectModel.dll, MigraDoc.Rendering.dll, MigraDoc.RtfRendering.dll
+Version:   1.2
+Copyright: empira Software GmbH
+License:   MIT License (the project's own text follows)
+Source:    https://github.com/empira/MigraDoc
+
+--- Component: SharpDX
+Files:     SharpDX.dll, SharpDX.Direct3D9.dll, SharpDX.Mathematics.dll
+Version:   4.0.1
+Copyright: Alexandre Mutel
+License:   MIT License (the project's own text follows)
+Source:    https://github.com/sharpdx/SharpDX
+
+--- Component: Tao Framework
+Files:     Tao.OpenGl.dll, Tao.Platform.Windows.dll
+Version:   2.1
+Copyright: The Tao Framework Team
+License:   MIT X11 License (the project's own text follows)
+Source:    https://sourceforge.net/projects/taoframework/
+
+--- Component: Direct Project
+Files:     Health.Direct.Agent.dll, Health.Direct.Common.dll, Health.Direct.ResolverPlugins.dll
+Version:   1.2 (.NET reference implementation)
+Copyright: The Direct Project
+License:   BSD 3-Clause License
+Source:    https://github.com/DirectProject/nhin-d-dotnet
+
+--- Component: OpenPop.NET
+Files:     OpenPop.dll
+Version:   2.0.5
+Copyright: none (dedicated to the public domain by its authors)
+License:   Public domain
+Source:    https://www.nuget.org/packages/OpenPop.NET
+
+--- Component: SharpSSH
+Files:     Tamir.SharpSSH.dll
+Version:   1.1.1.13
+Copyright: Tamir Gal; JSch, of which it is a port: Atsuhiko Yamanaka, JCraft, Inc.
+License:   BSD-style license of JSch (the project's own text follows)
+Source:    https://sourceforge.net/projects/sharpssh/
+
+--- Component: Mentalis.org Security Library
+Files:     Org.Mentalis.Security.dll (1.0.13), DiffieHellman.dll
+Version:   1.0.13
+Copyright: The Mentalis.org Team
+License:   BSD-style Mentalis.org license (the project's own text follows)
+Source:    distributed with SharpSSH, https://sourceforge.net/projects/sharpssh/
+
+--- Component: NHunspell and Hunspell
+Files:     NHunspell.dll (0.9.6), Hunspellx86.dll (Hunspell 1.2, x86)
+Version:   0.9.6 and 1.2
+Copyright: Thomas Maierhofer, maierhofer software (NHunspell); Laszlo Nemeth and the Hunspell contributors (Hunspell)
+License:   GPL / LGPL / MPL 1.1 tri-license, at the user's choice (the project's own summary follows)
+           https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
+           https://www.mozilla.org/en-US/MPL/1.1/
+Source:    https://www.nuget.org/packages/NHunspell
+           https://github.com/hunspell/hunspell
+
+--- Component: Hunspell en_US dictionary
+Files:     embedded in WpfControlsOD.dll (WpfControlsOD/Resources/en_US_aff, en_US_dic)
+Version:   the OpenOffice.org en_US dictionary with 48,245 words, as shipped by Open Dental
+Copyright: Kevin Atkinson (word list, from SCOWL); Geoff Kuenning (affix file, from Ispell)
+License:   LGPL (word list) and a BSD-style license (affix file), as stated by the OpenOffice.org
+           en_US dictionary; the exact version and terms are still to be confirmed (owner question)
+Source:    https://github.com/LibreOffice/dictionaries/tree/master/en
+
+--- Component: RDL Project
+Files:     RdlEngine.dll, RdlViewer.dll
+Version:   2.9.3 (prebuilt; the source is in RdlEngine/ and RdlViewer/ of this repository)
+Copyright: fyiReporting Software, LLC
+License:   GNU Lesser General Public License, version 2.1 or later
+           https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
+Source:    RdlEngine/ and RdlViewer/ in this repository (the corresponding source of this release)
+
+--- Component: Google APIs Client Library for .NET
+Files:     Google.Apis.dll, Google.Apis.Auth.dll, Google.Apis.Core.dll, Google.Apis.Gmail.v1.dll
+Version:   1.44
+Copyright: Google LLC
+License:   Apache License 2.0
+Source:    https://github.com/googleapis/google-api-dotnet-client
+Note:      Apache License 2.0 is compatible with GNU GPL version 3 but not with version 2. Owner question.
+
+--- Component: fo-dicom
+Files:     Dicom.Core.dll, Dicom.Native.dll
+Version:   4.0.7
+Copyright: fo-dicom contributors
+License:   Microsoft Public License (MS-PL)
+Source:    https://github.com/fo-dicom/fo-dicom
+Note:      MS-PL is not compatible with the GNU GPL. Owner question.
+
+--- Component: NDde
+Files:     NDde.dll
+Version:   1.03
+Copyright: Brian Gideon
+License:   Shared Source License for NDde (the project's own text follows)
+Source:    https://www.nuget.org/packages/NDde
+Note:      A permissive license in the style of MS-PL; its compatibility with the GNU GPL is not settled. Owner question.
+
+--- Component: Microsoft Edge WebView2 SDK
+Files:     Microsoft.Web.WebView2.Core.dll, Microsoft.Web.WebView2.WinForms.dll, Microsoft.Web.WebView2.Wpf.dll,
+           WebView2Loader.dll (x86)
+Version:   1.0.2420.47
+Copyright: Microsoft Corporation
+License:   BSD 3-Clause License (Microsoft's own text is LICENSE.txt in the NuGet package)
+Source:    https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.2420.47
+
+--- Component: TWAIN
+Files:     none; ImagingDeviceManager.dll implements the TWAIN protocol from the TWAIN specification
+Version:   TWAIN 2.4
+Copyright: The TWAIN Working Group
+License:   TWAIN Working Group toolkit license, kept from Open Dental's license list (its text follows)
+Source:    https://twain.org/
+
+--- Component: Pearl API notice
+Files:     none; the Pearl bridge calls Pearl's service when an office enables it
+Version:   not applicable
+Copyright: Pearl, Inc.
+License:   Pearl's notice on the use of its API, kept from Open Dental's license list (its text follows)
+Source:    not applicable
+
+--- License: MIT License
+Copyright (c) <year> <copyright holders named above>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--- License: BSD 3-Clause License
+Copyright (c) <year> <copyright holders named above>
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+--- License: Microsoft Public License (MS-PL)
+This license governs use of the accompanying software. If you use the
+software, you accept this license. If you do not accept the license, do not
+use the software.
+
+1. Definitions
+The terms "reproduce," "reproduction," "derivative works," and
+"distribution" have the same meaning here as under U.S. copyright law.
+A "contribution" is the original software, or any additions or changes to
+the software.
+A "contributor" is any person that distributes its contribution under this
+license.
+"Licensed patents" are a contributor's patent claims that read directly on
+its contribution.
+
+2. Grant of Rights
+(A) Copyright Grant- Subject to the terms of this license, including the
+license conditions and limitations in section 3, each contributor grants you
+a non-exclusive, worldwide, royalty-free copyright license to reproduce its
+contribution, prepare derivative works of its contribution, and distribute
+its contribution or any derivative works that you create.
+(B) Patent Grant- Subject to the terms of this license, including the
+license conditions and limitations in section 3, each contributor grants you
+a non-exclusive, worldwide, royalty-free license under its licensed patents
+to make, have made, use, sell, offer for sale, import, and/or otherwise
+dispose of its contribution in the software or derivative works of the
+contribution in the software.
+
+3. Conditions and Limitations
+(A) No Trademark License- This license does not grant you rights to use any
+contributors' name, logo, or trademarks.
+(B) If you bring a patent claim against any contributor over patents that
+you claim are infringed by the software, your patent license from such
+contributor to the software ends automatically.
+(C) If you distribute any portion of the software, you must retain all
+copyright, patent, trademark, and attribution notices that are present in
+the software.
+(D) If you distribute any portion of the software in source code form, you
+may do so only under this license by including a complete copy of this
+license with your distribution. If you distribute any portion of the
+software in compiled or object code form, you may only do so under a license
+that complies with this license.
+(E) The software is licensed "as-is." You bear the risk of using it. The
+contributors give no express warranties, guarantees or conditions. You may
+have additional consumer rights under your local laws which this license
+cannot change. To the extent permitted under your local laws, the
+contributors exclude the implied warranties of merchantability, fitness for
+a particular purpose and non-infringement.
+
+--- License: Apache License 2.0
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS

@@ -47,7 +47,8 @@ namespace OpenDentBusiness.Eclaims {
 				//The uploader name is the office's own DentalXChange partner name. Nothing is sent until the office has entered it.
 				DxcPartnerIdentity dxcPartnerIdentity=DxcPartnerIdentity.GetConfiguredOrThrow();
 				//Step 1: Post authentication request:
-				Version myVersion=new Version(Application.ProductVersion);
+				//The version DentalXChange sees is the Open Dental compatibility version (24.3.63), not the release version ("0.0").
+				Version myVersion=ForkVersions.CompatVersion;
 				HttpWebRequest webReq;
 				WebResponse response;
 				StreamReader readStream;
@@ -76,7 +77,7 @@ namespace OpenDentBusiness.Eclaims {
 					+"&Username="+HttpUtility.UrlEncode(clearinghouseClin.LoginID)
 					+"&Password="+HttpUtility.UrlEncode(clearinghouseClin.Password)
 					+"&UploaderName="+HttpUtility.UrlEncode(dxcPartnerIdentity.Client)//The partner name DentalXChange issued to the office
-					+"&UploaderVersion="+myVersion.Major.ToString()+"."+myVersion.Minor.ToString()+"."+Math.Max(myVersion.Build,0).ToString();//eg 12.3.24 (release "0.0" has no build part)
+					+"&UploaderVersion="+myVersion.Major.ToString()+"."+myVersion.Minor.ToString()+"."+Math.Max(myVersion.Build,0).ToString();//eg 24.3.63
 				webReq.KeepAlive=false;
 				webReq.Method="POST";
 				webReq.ContentType="application/x-www-form-urlencoded";
@@ -269,7 +270,7 @@ namespace OpenDentBusiness.Eclaims {
 				return DxcPartnerIdentity.GetNotConfiguredMessage();
 			}
 			Dentalxchange2016.Credentials cred=DxcCredentials.GetDentalxchangeCredentials(null,clearinghouseClin);//Null claim because we have a clearinghouse
-			cred.version=Application.ProductVersion;
+			cred.version=ForkVersions.CompatVersion.ToString();//The compatibility version, as for Launch, not the release version.
 			Dentalxchange2016.textRequest request=new Dentalxchange2016.textRequest();
 			request.outputFormatSpecified=true;
 			request.outputFormat=outputFormat;
@@ -793,7 +794,7 @@ namespace OpenDentBusiness.Eclaims {
 				return DxcPartnerIdentity.GetNotConfiguredMessage();
 			}
 			Dentalxchange2016.Credentials credentials=DxcCredentials.GetDentalxchangeCredentials(null,clearinghouse);//Null claim because we have a clearinghouse
-			credentials.version=Application.ProductVersion;
+			credentials.version=ForkVersions.CompatVersion.ToString();//The compatibility version, as for Launch, not the release version.
 			Dentalxchange2016.payerListInfoRequest payerListInfoRequest=new Dentalxchange2016.payerListInfoRequest();
 			payerListInfoRequest.outputFormatSpecified=true;
 			payerListInfoRequest.outputFormat=Dentalxchange2016.Format.XML;
