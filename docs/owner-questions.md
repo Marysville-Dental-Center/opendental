@@ -258,6 +258,16 @@ The program has no automatic runner for recurring card charges or repeating char
 
 ---
 
+## Imaging capture (native X-ray and camera capture)
+
+The questions about the new capture work (the capture session, unassigned captures, 16-bit X-rays, the camera, mount templates) are in their own list, [imaging-capture-owner-questions.md](imaging-capture-owner-questions.md). The ones marked [BEFORE PATIENT USE] must be settled before the capture session is turned on for patients. Settled since that list was written: 16-bit is the default once a computer's sensor passes Test capture (until then that computer captures 8-bit), and a 16-bit X-ray that cannot go back into its own slot is filed as an 8-bit copy with the 16-bit original kept.
+
+The review that put the capture work on main added these:
+- **The capture design document.** It names the clinic's vendor products and a private project, so it was kept off the public repository. Publish a neutral edition (names removed), or keep it private? **Today:** not on main; the code's "design x.y" references point to it.
+- **Deleting an empty session mount.** When the capture session made a mount and saved nothing into it, the mount is deleted and logged under Image Create, as the design says. Log it under Image Delete instead, as the Imaging module does for an empty mount? **Today:** Image Create.
+- **Patient names in local capture files.** Unassigned captures and the journal store their notes on the computer with the patient number. Should they also carry the patient's name (easier recovery), or only the number (less patient data on disk)? **Today:** patient number only.
+- **Reassign.** Moving an unassigned capture to another patient needs Image Edit and a reason. Should it also need Image Create, since it adds an image to that patient's chart? **Today:** Image Edit only.
+
 ## Vendor integrations
 
 - (V-BRIDGE1 3) Overjet: opening a patient directly needs parameter names from Overjet. Once known, ship a default template or leave it to the office? **Today:** left to the office.
