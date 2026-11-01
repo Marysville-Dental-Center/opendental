@@ -1,6 +1,6 @@
 # Intraoral X-ray capture: clinic setup and runbook
 
-Status: 2026-10-25; bit depth defaults and the 16-bit filing route updated 2026-11-01 (section 14). Package CAP-0 of the native capture design. For the clinic administrator, and for the staff who take X-rays.
+Status: 2026-10-25; bit depth defaults, the 16-bit filing route, "fall back to 8" and the rule for 16-bit X-rays on patient computers updated 2026-11-01 (section 14). Package CAP-0 of the native capture design. For the clinic administrator, and for the staff who take X-rays.
 
 This runbook covers intraoral X-rays from a digital sensor through Open Dental's existing **Mount / Acquire**, with the protections built into Open Dental's TWAIN client:
 
@@ -113,7 +113,7 @@ Mount / Acquire reads only the `[Twain]` section. Other sections are for later v
 | `SafeDisableCap` | empty | the safe-disable capability number from the contract, in hex | Set together with `DisableIsSafeSources`. |
 | `RefusedDisableCodes` | empty | the contract's "disable refused" condition codes, in hex, separated by `\|` | Set together with `DisableIsSafeSources`. When the source refuses a stop with one of these codes, Open Dental waits up to 30 s for it to finish and keeps every image it then delivers. |
 | `AcquireTimeoutMinutes` | `0` (off) | `0` until the safe-disable test passed on this computer; then a value in the order of section 4.3 | Stops a slot in which no image arrived after this many minutes, which ends the series. It counts per slot, from the moment the sensor software opens. It is honoured only for Twain Radiograph slots of a source listed in `DisableIsSafeSources` that accepted safe disable and one image per slot for that slot; otherwise the capture log says why not. When it expires, the series ends without a notice, like a cancel. |
-| `Allow16Bit` | `1` (since 2026-11-01; it was `0`) | `0` on every computer that uses the sensor for patients, until the owner has settled the BEFORE 16-BIT questions (section 14, "Before a Test capture record on a sensor used for patients"); otherwise leave it out | Not used by Mount / Acquire, which never asks the source for a bit depth and stays 8-bit. The later capture session reads it: `1` allows more than 8 bits (16 or 14) on this computer, `0` forces 8 bits for every device on it. The key keeps its old name. See section 14. |
+| `Allow16Bit` | `1` (since 2026-11-01; it was `0`) | `0` on every computer that captures for patients, until counsel has reviewed the 16-bit labelling and the computed window and the clinic run has signed off (section 14, "Before 16-bit X-rays for patients"); otherwise leave it out | Not used by Mount / Acquire, which never asks the source for a bit depth and stays 8-bit. The later capture session reads it: `1` allows more than 8 bits (16 or 14) on this computer, `0` forces 8 bits for every device on it. The key keeps its old name. See section 14. |
 
 Leave `DisableIsSafeSources`, `SafeDisableCap` and `RefusedDisableCodes` empty when the installed contract version has no safe disable. Then Cancel shows a warning first, `AcquireTimeoutMinutes` is not honoured, and any stop that Open Dental starts can lose an exposure that the sensor software still holds (section 10.3).
 
@@ -153,9 +153,10 @@ SafeDisableCap=<capability number from the contract, hex>
 RefusedDisableCodes=<first code from the contract, hex>|<second code, hex>
 ; 0 until the safe-disable test passed on this computer (section 4.3).
 AcquireTimeoutMinutes=0
-; 0 on a computer that uses the sensor for patients, until the owner has
-; settled the BEFORE 16-BIT questions (section 14). Mount / Acquire stays
-; 8-bit either way; the later capture session reads it.
+; 0 on a computer that captures for patients, until counsel has reviewed
+; the 16-bit labelling and the computed window and the clinic run has
+; signed off (section 14). Mount / Acquire stays 8-bit either way; the
+; later capture session reads it.
 Allow16Bit=0
 ```
 
@@ -478,6 +479,7 @@ This section applies to the capture session of a later phase (Mount / Acquire wi
 - "Make our fork default to 16, and can fall back to 14 or 8": the device asks for 16 bits by default; the source may give 14 or 8 instead.
 - "Isn't just the sensor enough?": one Test capture covers every computer that uses the same device row and runs the same driver version with the same image settings. It is no longer tied to the computer it ran on. A computer with its own device row (section 6, step 3) needs its own Test capture.
 - The 16-bit filing route: a 16-bit capture that cannot go back into its own slot is filed as an explicit 8-bit copy, and the 16-bit original is kept.
+- "Fall back to 8": a 16-bit (or 14-bit) capture whose own slot is still empty, but which may not be stored as 16-bit now, goes into that slot as the explicit 8-bit copy, and the 16-bit original is kept.
 
 **Keys and defaults** (set them in Capture settings, Setup permission):
 
@@ -498,7 +500,7 @@ When the capture settings are not verified (never saved in Capture settings on t
 
 A record written by an earlier version of the program (format `capture-verification/1`, which names no driver version or image settings) never matches, whatever its date; the session says to run Test capture again. Other capture.ini keys (the source list, the journal size, the session mode, the timeouts) do not change what a record covers.
 
-**Before a Test capture record on a sensor used for patients.** Nothing in the program waits for the display and DICOM work that 16-bit X-rays need (the owner questions marked BEFORE 16-BIT: DICOM thumbnails and 16-bit brightness, the in-house DICOM reader, counsel's review, claim attachment). Once a record passes and `[Session] Enabled=1`, the session stores 16-bit DICOM X-rays, which today have no thumbnail, show the wrong brightness and cannot be attached to a claim. Until the owner has settled those questions, keep every computer that uses a sensor for patients at 8 bits: set `[Device.N] Bits=8`, or `[Twain] Allow16Bit=0`, in Capture settings on each of them. Test capture can still verify 16 bits on a computer that is kept off patient use (it asks for that computer's `Bits`).
+**Before 16-bit X-rays for patients.** 16-bit X-rays are not for patient use until counsel has reviewed the 16-bit labelling ("For Presentation") and the brightness window the program computes, and the clinic run has signed off. Until then, set `[Twain] Allow16Bit=0` in Capture settings on every computer that captures for patients. One passed Test capture record covers every computer with the same device row and driver version, so `Allow16Bit=0` is what keeps those computers at 8 bits. The display fixes (DICOM thumbnails, cropping and rotating, and 16-bit brightness), the in-house DICOM reader and claim attachment of DICOM X-rays (an 8-bit copy with the stored window) are part of the same release as the 16-bit capture, so they are not a clinic step (the coordinator's plan of 2026-11-01). Test capture can still verify 16 bits on a computer that is kept off patient use (it asks for that computer's `Bits`).
 
 **Running Test capture.** On one computer with the sensor's source installed, open Setup > Imaging > Devices, the device, Test capture. It asks for the device's `Bits` (16 by default). Take an image of the phantom or the known ramp, check byte order and polarity, and write the record. Run it again after a new version of the sensor's source (section 5) and after changing `Bits`, `ByteOrder16` or `Polarity`. If the source gives 14 bits while `Bits=16`, the record passes at 14, and the session asks that driver for 14 bits (Test capture says so). Test capture also lets you choose 14 or 8 to measure; a record of a test image taken at a depth you chose other than the device's `Bits` (for example 14 while `Bits=16`) covers no session, and Test capture warns. `Bits` is one of the image settings the record covers, so after changing `Bits` in Capture settings, run Test capture again.
 
@@ -514,8 +516,8 @@ A 14-bit image whose values are not right-justified 14-bit values (some above 16
 
 **Filing 16-bit captures from Unassigned captures:**
 
-- Assign into its own empty slot: stored as 16-bit DICOM, only while the conditions above hold for the depth its enable asked for (a 14-bit capture of a 16-bit enable is covered by a record that passed at 16, as in the session). Otherwise it stays where it is: until the conditions hold again (for example after a Test capture for the driver version that took it), it can only stay in Unassigned captures or be discarded. Whether such a capture may then be filed as the explicit 8-bit copy is an open owner question.
-- If its slot is filled while the confirmation is shown (another computer filed a retake), Confirm files nothing and shows where the capture goes now, with the 8-bit copy note when that applies; check it and confirm again.
+- Assign into its own empty slot: stored as 16-bit DICOM while the conditions above hold for the depth its enable asked for (a 14-bit capture of a 16-bit enable is covered by a record that passed at 16, as in the session). Otherwise (for example `Allow16Bit=0` on this computer, a newer Test capture for another driver version or other image settings, capture settings not verified, a slot whose teeth are not of one view, or a capture taken before captures recorded the driver version) it goes into that slot as the explicit 8-bit copy (owner decision 2026-11-01, "fall back to 8"): the same gray PNG as below, as that slot's document with the slot's teeth and rotation, inverted when it was taken with `Polarity=Invert`. The confirmation says "8-bit copy: 16 bits are not allowed for it now (<reason>); the 16-bit original is kept".
+- If its slot is filled while the confirmation is shown (another computer filed a retake), or whether 16 bits are allowed for it changes meanwhile, Confirm files nothing and shows where and how the capture goes now, with the 8-bit copy note when that applies; check it and confirm again.
 - Its slot taken, its mount deleted, or no mount: filed as an explicit 8-bit copy, a gray PNG made with the 0.5-99.5 % window the session shows, as an unmounted "Recovered: <slot>" item (a single document when the mount is gone), with the slot's teeth when the slot is known and none when it is not. The confirmation says that the copy is 8-bit.
 - Reassign to another patient: also the 8-bit copy, as an unmounted document with no tooth numbers, with a typed reason.
 - The 16-bit original and its sidecar move to `Capture\quarantine-resolved` with the copy's DocNum and window in the sidecar. A 16-bit journal copy is copied to `Capture\quarantine-resolved\journal` before its 8-bit copy is filed, because the journal removes old copies; when that copy cannot be made (for example another file of that name is there), nothing is filed. The audit entry says "8-bit copy of a 16-bit capture", and the window's result says the document is an 8-bit copy and where the original is kept. Nothing is deleted, and neither folder is emptied automatically.
