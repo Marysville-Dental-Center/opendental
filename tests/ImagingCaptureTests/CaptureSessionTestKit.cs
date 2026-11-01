@@ -285,12 +285,21 @@ namespace ImagingCapture.Tests {
 		public object Owner;
 		public int CountShown;
 		public Action<CaptureSessionController> ActionWhileShown;
+		///<summary>What ActionWhileShown threw (an assertion of the test, or a crash), or null. The launcher catches every exception of the window
+		///and still returns Completed, so a test checks this, or its assertions inside the window would pass silently.</summary>
+		public Exception ExceptionThrown;
 
 		public void ShowModal(CaptureSessionController controller,object owner) {
 			CountShown++;
 			Controller=controller;
 			Owner=owner;
-			ActionWhileShown?.Invoke(controller);
+			try {
+				ActionWhileShown?.Invoke(controller);
+			}
+			catch(Exception ex) {
+				ExceptionThrown=ex;
+				throw;//the launcher's failure path still runs
+			}
 		}
 	}
 

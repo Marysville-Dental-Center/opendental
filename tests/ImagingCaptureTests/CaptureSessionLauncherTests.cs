@@ -23,6 +23,8 @@ namespace ImagingCapture.Tests {
 		private FakeCaptureSessionStore _store;
 		private FakeSessionRadiographStore _radiographStore;
 		private FakeWindowRunner _windowRunner;
+		///<summary>The test makes the window fail on purpose (Cleanup then accepts what it threw).</summary>
+		private bool _isWindowFailureExpected;
 		private List<FakeTwainCaptureSession> _listSessions;
 		private List<string> _listLog;
 		private LocalCaptureConfig _config;
@@ -58,6 +60,10 @@ namespace ImagingCapture.Tests {
 				Directory.Delete(_tempDir,true);
 			}
 			catch {
+			}
+			if(!_isWindowFailureExpected && _windowRunner.ExceptionThrown!=null) {
+				//The launcher returns Completed for any exception of the window: an assertion inside the window must still fail the test.
+				Assert.Fail("The window's script threw: "+_windowRunner.ExceptionThrown);
 			}
 		}
 
@@ -187,6 +193,7 @@ namespace ImagingCapture.Tests {
 			};
 			CaptureSessionLaunchResult result=Launcher().Run(Request());
 			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual("",result.Reason,"Not the window-failure path.");
 			Assert.AreEqual(0,_listNotices.Count);
 			Assert.AreEqual(1,_windowRunner.CountShown);
 		}
@@ -299,6 +306,7 @@ namespace ImagingCapture.Tests {
 			};
 			CaptureSessionLaunchResult result=Launcher().Run(Request());
 			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual("",result.Reason);
 			Assert.AreEqual("owner",_windowRunner.Owner);
 			Assert.AreEqual(CaptureSessionEndReason.CancelledBeforeStart,result.Summary.EndReason);
 			Assert.IsTrue(result.IsEmptyMountToDelete);
@@ -334,6 +342,7 @@ namespace ImagingCapture.Tests {
 			};
 			CaptureSessionLaunchResult result=Launcher().Run(Request());
 			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual("",result.Reason);
 			Assert.IsFalse(result.IsEmptyMountToDelete,"Mounts.Delete would leave the document pointing at a deleted mount item.");
 			_store.DictDocumentsByMountItem.Clear();
 			_windowRunner.ActionWhileShown=controller => {
@@ -341,7 +350,9 @@ namespace ImagingCapture.Tests {
 				_store.IsThrowOnMountItems=true;//after the checks before the start
 				controller.Execute(CaptureSessionAction.End);
 			};
-			Assert.IsFalse(Launcher().Run(Request()).IsEmptyMountToDelete,"Kept when the mount cannot be read.");
+			CaptureSessionLaunchResult resultUnreadable=Launcher().Run(Request());
+			Assert.AreEqual("",resultUnreadable.Reason,"The session itself ran normally.");
+			Assert.IsFalse(resultUnreadable.IsEmptyMountToDelete,"Kept when the mount cannot be read.");
 		}
 
 		[TestMethod]
@@ -364,6 +375,7 @@ namespace ImagingCapture.Tests {
 			};
 			CaptureSessionLaunchResult result=Launcher().Run(Request());
 			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual("",result.Reason);
 			Assert.AreEqual(1,result.Summary.CountImages);
 			Assert.AreEqual(8,result.Summary.ProvNum,"The default provider from the store (design 10.8).");
 			Assert.IsFalse(result.IsEmptyMountToDelete,"The mount holds an image.");
@@ -384,12 +396,14 @@ namespace ImagingCapture.Tests {
 			};
 			CaptureSessionLaunchResult result=Launcher().Run(Request());
 			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual("",result.Reason);
 			Assert.AreEqual(CaptureSessionEndReason.Closed,result.Summary.EndReason);
 			Assert.AreEqual(1,_listSessions.Single().CountBeginClose,"The source closes in the safe order on its worker.");
 		}
 
 		[TestMethod]
 		public void WindowFailsAfterAnImageWasSaved_Completed_MountKept_SourceClosed() {
+			_isWindowFailureExpected=true;
 			_windowRunner.ActionWhileShown=controller => {
 				controller.Begin();
 				_clock.Advance(CaptureSessionController.KeyIgnoreMs);
@@ -417,6 +431,7 @@ namespace ImagingCapture.Tests {
 			};
 			CaptureSessionLaunchResult result=Launcher().Run(Request(isMount:false));
 			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind);
+			Assert.AreEqual("",result.Reason,"The assertion inside the window held.");
 			Assert.IsFalse(result.IsEmptyMountToDelete);
 		}
 
