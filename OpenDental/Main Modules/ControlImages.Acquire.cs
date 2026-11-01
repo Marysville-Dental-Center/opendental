@@ -60,7 +60,8 @@ namespace OpenDental{
 		///<summary>Design 7.3 "The hook": the mount created for the session holds no image. It is deleted, and that is logged under ImageCreate with
 		///the refusal or the reason the session saved nothing. The launcher already checked the database (and keeps a mount whose slots a
 		///quarantined image of the session may still be assigned into); the documents are read again right before the delete, because
-		///Mounts.Delete removes the mount and its mount items but leaves any document, which would then point at a deleted mount item.</summary>
+		///Mounts.Delete removes the mount and its mount items but leaves any document, which would then point at a deleted mount item. It leaves
+		///the mount's imagedraw rows too (the ScaleValue of its definition), so those are deleted first.</summary>
 		private bool DeleteEmptyMountAfterSession(Mount mount,CaptureSessionLaunchResult result){
 			try{
 				List<MountItem> listMountItems=MountItems.GetItemsForMount(mount.MountNum);
@@ -69,6 +70,9 @@ namespace OpenDental{
 					SecurityLogs.MakeLogEntry(EnumPermType.ImageCreate,_patient.PatNum,"Mount kept: "+mount.Description
 						+", created for a capture session, holds a document after the session, so it was not deleted.");
 					return false;
+				}
+				foreach(ImageDraw imageDraw in ImageDraws.RefreshForMount(mount.MountNum)){
+					ImageDraws.Delete(imageDraw.ImageDrawNum);//the scale Mounts.CreateMountFromDef added for a definition with a ScaleValue
 				}
 				Mounts.Delete(mount);//also deletes its mount items; it has no documents (checked just now)
 			}
