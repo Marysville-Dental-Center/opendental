@@ -121,6 +121,13 @@ namespace OpenDental{
 				MsgBox.Show(this,"Please select an item in the grid on the left first.");
 				return;
 			}
+			//B-ERA: some columns can't be removed (ERA: Recd and Patient).
+			List<string> listRequiredSelected=gridMain.SelectedIndices.Select(x => _listDisplayFieldsShowing[x].InternalName)
+				.Where(x => DisplayFields.IsRequiredField(DisplayFieldCategoryCur,x)).ToList();
+			if(listRequiredSelected.Count>0) {
+				MessageBox.Show(Lan.g(this,"These fields can't be removed:")+" "+string.Join(", ",listRequiredSelected));
+				return;
+			}
 			for(int i=gridMain.SelectedIndices.Length-1;i>=0;i--){//go backwards
 				_listDisplayFieldsShowing.RemoveAt(gridMain.SelectedIndices[i]);
 			}

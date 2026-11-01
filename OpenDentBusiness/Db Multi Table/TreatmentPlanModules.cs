@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace OpenDentBusiness {
-	public class TreatmentPlanModules {
+	public partial class TreatmentPlanModules {
 		private static string _translationString="TableTP";
 
 		///<summary>Gets a good chunk of the data used in the TP Module.</summary>
@@ -63,7 +63,10 @@ namespace OpenDentBusiness {
 			//regardless of status.  Needed for Procedures.ComputeEstimates.  This should be fine.
 			data.ClaimProcList=ClaimProcs.RefreshForTP(pat.PatNum);
 			if(doFillHistList) {
-				data.HistList=ClaimProcs.GetHistList(pat.PatNum,listBenefits,listPatPlans,listInsPlans,-1,dateTimeTP,listInsSubs);
+				//Procedures on scheduled appointments are estimated as of the appointment date (Open Dental 25.4), so the history reaches back far enough
+				//for the earliest of those dates too.
+				DateTime dateHist=GetDateForHistList(data.listProcForTP,Appointments.GetAppointmentsForProcs(data.listProcForTP),dateTimeTP);
+				data.HistList=ClaimProcs.GetHistList(pat.PatNum,listBenefits,listPatPlans,listInsPlans,-1,dateHist,listInsSubs);
 			}
 			List<ProcedureCode> listProcedureCodes=new List<ProcedureCode>();
 			foreach(Procedure procedure in listProcs) {
@@ -270,9 +273,13 @@ namespace OpenDentBusiness {
 			OrthoCase orthoCase=null;
 			OrthoSchedule orthoSchedule=null;
 			List<OrthoProcLink> listOrthoProcLinksForOrthoCase=null;
+			//Procedures on scheduled appointments are estimated as of the appointment date (Open Dental 25.4); the others as before, as of the TP date
+			//picker when frequency checking shows it, else today.
+			TpEstimateDates tpEstimateDates=new TpEstimateDates(listAppointments,
+				PrefC.GetBool(PrefName.InsChecksFrequency) ? dateTimeTP : DateTime.Today,PatientCur);
 			if(PrefC.GetBool(PrefName.InsChecksFrequency)) {
 				for(int i=0;i<listProceduresForTPs.Count;i++) {
-					listProceduresForTPs[i].ProcDate=dateTimeTP;
+					listProceduresForTPs[i].ProcDate=tpEstimateDates.GetDateAsOf(listProceduresForTPs[i]);
 					if(listProceduresForTPs[i].ProcNumLab!=0){
 							//Lab fees will be calculated and added to looplist when its parent is calculated.
 							continue;
@@ -284,17 +291,17 @@ namespace OpenDentBusiness {
 						orthoSchedule=listOrthoSchedules.Find(x=>x.OrthoScheduleNum==orthoCaseNum);
 						listOrthoProcLinksForOrthoCase=listOrthoProcLinksAllForPat.FindAll(x=>x.OrthoCaseNum==orthoCaseNum);
 					}
-					Procedures.ComputeEstimates(listProceduresForTPs[i],PatientCur.PatNum,ref _listClaimProcs,false,_listInsPlans,_listPatPlans,_listBenefits,
-						_listClaimProcHists,listClaimProcHistsLoops,false,
-						PatientCur.Age,_listInsSubs,
-						null,false,true,_listSubstitutionLinks,false,
-						_loadActiveTPData.ListFees,lookupFees,
-						orthoProcLink,orthoCase,orthoSchedule,listOrthoProcLinksForOrthoCase,_loadActiveTPData.BlueBookEstimateData);
+					using(Procedures.ScopeCoverageEndCheck(tpEstimateDates.IsOnScheduledAppointment(listProceduresForTPs[i]))) {
+						Procedures.ComputeEstimates(listProceduresForTPs[i],PatientCur.PatNum,ref _listClaimProcs,false,_listInsPlans,_listPatPlans,_listBenefits,
+							_listClaimProcHists,listClaimProcHistsLoops,false,
+							tpEstimateDates.GetPatientAge(listProceduresForTPs[i]),_listInsSubs,
+							null,false,true,_listSubstitutionLinks,false,
+							_loadActiveTPData.ListFees,lookupFees,
+							orthoProcLink,orthoCase,orthoSchedule,listOrthoProcLinksForOrthoCase,_loadActiveTPData.BlueBookEstimateData);
+					}
 					//then, add this information to loopList so that the next procedure is aware of it.
 					List<ClaimProcHist> listClaimProcHistsToAdd = ClaimProcs.GetHistForProc(_listClaimProcs,listProceduresForTPs[i],listProceduresForTPs[i].CodeNum);
-					for(int c=0;c<listClaimProcHistsToAdd.Count;c++) {
-						listClaimProcHistsToAdd[c].ProcDate=dateTimeTP;
-					}
+					tpEstimateDates.SetLoopDates(listClaimProcHistsToAdd,listProceduresForTPs[i]);
 					listClaimProcHistsLoops.AddRange(listClaimProcHistsToAdd);
 				}
 				SyncCanadianLabs(_listClaimProcs,listProceduresForTPs);
@@ -317,13 +324,22 @@ namespace OpenDentBusiness {
 						orthoSchedule=listOrthoSchedules.Find(x=>x.OrthoScheduleNum==orthoCaseNum);
 						listOrthoProcLinksForOrthoCase=listOrthoProcLinksAllForPat.FindAll(x=>x.OrthoCaseNum==orthoCaseNum);
 					}
-					Procedures.ComputeEstimates(listProceduresForTPs[i],PatientCur.PatNum,ref _listClaimProcs,false,_listInsPlans,_listPatPlans,_listBenefits,_listClaimProcHists,listClaimProcHistsLoops
-						,false,PatientCur.Age,_listInsSubs,
-						listSubstLinks:_listSubstitutionLinks,lookupFees:lookupFees,
-						orthoProcLink:orthoProcLink,orthoCase:orthoCase,orthoSchedule:orthoSchedule,listOrthoProcLinksForOrthoCase:listOrthoProcLinksForOrthoCase,
-						blueBookEstimateData:_loadActiveTPData.BlueBookEstimateData);
+					//A scheduled procedure is estimated through a copy dated as of its appointment; procedure dates are not changed here.
+					Procedure procedureEst=tpEstimateDates.GetProcedureForEstimate(listProceduresForTPs[i]);
+					bool isScheduled=tpEstimateDates.IsOnScheduledAppointment(listProceduresForTPs[i]);
+					using(Procedures.ScopeCoverageEndCheck(isScheduled)) {
+						Procedures.ComputeEstimates(procedureEst,PatientCur.PatNum,ref _listClaimProcs,false,_listInsPlans,_listPatPlans,_listBenefits,_listClaimProcHists,listClaimProcHistsLoops
+							,false,tpEstimateDates.GetPatientAge(listProceduresForTPs[i]),_listInsSubs,
+							useProcDateOnProc:isScheduled,
+							listSubstLinks:_listSubstitutionLinks,lookupFees:lookupFees,
+							orthoProcLink:orthoProcLink,orthoCase:orthoCase,orthoSchedule:orthoSchedule,listOrthoProcLinksForOrthoCase:listOrthoProcLinksForOrthoCase,
+							blueBookEstimateData:_loadActiveTPData.BlueBookEstimateData);
+					}
+					tpEstimateDates.FinishEstimate(listProceduresForTPs[i],procedureEst,_listClaimProcs);
 					//then, add this information to loopList so that the next procedure is aware of it.
-					listClaimProcHistsLoops.AddRange(ClaimProcs.GetHistForProc(_listClaimProcs,listProceduresForTPs[i],listProceduresForTPs[i].CodeNum));
+					List<ClaimProcHist> listClaimProcHistsToAdd=ClaimProcs.GetHistForProc(_listClaimProcs,listProceduresForTPs[i],listProceduresForTPs[i].CodeNum);
+					tpEstimateDates.SetLoopDates(listClaimProcHistsToAdd,listProceduresForTPs[i]);
+					listClaimProcHistsLoops.AddRange(listClaimProcHistsToAdd);
 				}
 				SyncCanadianLabs(_listClaimProcs,listProceduresForTPs);
 				//We don't want to save the claimprocs if it's a date other than DateTime.Today, since they are calculated using modified date information.
@@ -403,7 +419,8 @@ namespace OpenDentBusiness {
 							priIns=(decimal)claimProc.BaseEst;
 						}
 					}
-					bool noBillIns=InsPlanPreferences.NoBillIns(procedureCode,listInsPlanPreferences); 
+					bool noBillIns=InsPlanPreferences.NoBillIns(procedureCode,listInsPlanPreferences)
+						|| listProceduresForTPs[i].NoBillIns;//The procedure's own decision (Open Dental 25.4).
 					if((claimProc!=null && claimProc.NoBillIns) || (claimProc==null && noBillIns)) {
 						allowed=-1;
 					}
@@ -486,6 +503,10 @@ namespace OpenDentBusiness {
 					estimateNote=ClaimProcs.GetEstimateNotes(listProceduresForTPs[i].ProcNum,_listClaimProcs);
 					if(estimateNote!="") {
 						descript+="\r\n"+estimateNote;
+					}
+					string estimateDateNote=tpEstimateDates.GetEstimateDateNote(listProceduresForTPs[i]);//Open Dental 25.4
+					if(estimateDateNote!="") {
+						descript+="\r\n"+estimateDateNote;
 					}
 				}
 				row.Description=(descript);

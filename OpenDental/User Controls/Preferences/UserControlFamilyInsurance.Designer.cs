@@ -232,7 +232,7 @@ namespace OpenDental {
 			this.checkInsPlanExclusionsUseUCR.Name = "checkInsPlanExclusionsUseUCR";
 			this.checkInsPlanExclusionsUseUCR.Size = new System.Drawing.Size(422, 17);
 			this.checkInsPlanExclusionsUseUCR.TabIndex = 277;
-			this.checkInsPlanExclusionsUseUCR.Text = "Ins plans with exclusions use UCR fee (zero out write-offs)";
+			this.checkInsPlanExclusionsUseUCR.Text = "Ins plans with exclusions use standard provider fee (no write-offs)";
 			// 
 			// checkEnableZeroWriteoffOnLimitations
 			// 
@@ -242,7 +242,7 @@ namespace OpenDental {
 			this.checkEnableZeroWriteoffOnLimitations.Name = "checkEnableZeroWriteoffOnLimitations";
 			this.checkEnableZeroWriteoffOnLimitations.Size = new System.Drawing.Size(422, 17);
 			this.checkEnableZeroWriteoffOnLimitations.TabIndex = 373;
-			this.checkEnableZeroWriteoffOnLimitations.Text = "Ins plans use UCR fee (zero out write-offs) when frequency or age limits are met";
+			this.checkEnableZeroWriteoffOnLimitations.Text = "Ins plans use standard provider fee (no write-offs) at frequency or age limits";
 			// 
 			// checkEnableZeroWriteoffOnAnnualMax
 			// 
@@ -252,7 +252,7 @@ namespace OpenDental {
 			this.checkEnableZeroWriteoffOnAnnualMax.Name = "checkEnableZeroWriteoffOnAnnualMax";
 			this.checkEnableZeroWriteoffOnAnnualMax.Size = new System.Drawing.Size(422, 17);
 			this.checkEnableZeroWriteoffOnAnnualMax.TabIndex = 372;
-			this.checkEnableZeroWriteoffOnAnnualMax.Text = "Ins plans use UCR fee (zero out write-offs) when annual max is met";
+			this.checkEnableZeroWriteoffOnAnnualMax.Text = "Ins plans use standard provider fee (no write-offs) when annual max is met";
 			// 
 			// checkInsPlanExclusionsMarkDoNotBill
 			// 
@@ -272,7 +272,7 @@ namespace OpenDental {
 			this.checkInsDefaultShowUCRonClaims.Name = "checkInsDefaultShowUCRonClaims";
 			this.checkInsDefaultShowUCRonClaims.Size = new System.Drawing.Size(400, 17);
 			this.checkInsDefaultShowUCRonClaims.TabIndex = 261;
-			this.checkInsDefaultShowUCRonClaims.Text = "Insurance plans default to show UCR fee on claims";
+			this.checkInsDefaultShowUCRonClaims.Text = "Insurance plans default to show standard provider fee on claims";
 			this.checkInsDefaultShowUCRonClaims.Click += new System.EventHandler(this.checkInsDefaultShowUCRonClaims_Click);
 			// 
 			// groupBoxInsuranceGeneral

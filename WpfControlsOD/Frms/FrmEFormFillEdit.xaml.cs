@@ -61,6 +61,7 @@ namespace OpenDental {
 			_maskedSSNOld=EFormCur.ListEFormFields.Find(x=>x.DbLink=="SSN")?.ValueString;//null is ok
 			textDescription.Text=EFormCur.Description;
 			textDateTime.Text=EFormCur.DateTimeShown.ToShortDateString()+" "+EFormCur.DateTimeShown.ToShortTimeString();
+			textDateSubmitted.Text=FormSubmittedDates.ToDisplay(EFormCur.DateTimeSubmitted);//Open Dental 25.4; empty means not submitted
 			if(EFormCur.SaveImageCategory==0){
 				groupSaveImages.Visible=false;
 			}
@@ -106,6 +107,7 @@ namespace OpenDental {
 			}
 			EFormFields.DeleteForForm(EFormCur.EFormNum);
 			EForms.Delete(EFormCur.EFormNum,EFormCur.PatNum);
+			EForms.MakeDeleteLogEntry(EFormCur);//Open Dental 26.1: Audit Trail entry under eForm Delete
 			//There is no need to send any signal to calling form that user deleted.
 			IsDialogOK=true;
 		}
@@ -296,6 +298,11 @@ namespace OpenDental {
 				_wasError=true;
 				return;
 			}
+			if(!FormSubmittedDates.TryParse(textDateSubmitted.Text,EFormCur.DateTimeSubmitted,out DateTime dateTimeSubmitted)) {
+				MsgBox.Show(this,"Please fix data entry errors first.");
+				_wasError=true;
+				return;
+			}
 			long saveImageCategory=0;
 			if(groupSaveImages.Visible){
 				saveImageCategory=comboImageCat.GetSelectedDefNum();
@@ -312,6 +319,9 @@ namespace OpenDental {
 			{
 				isChanged=true;
 			}
+			isChanged|=EFormCur.DateTimeSubmitted!=dateTimeSubmitted;
+			//Open Dental 26.1: a signature that is new or changed gets the server time; a cleared one loses its time.
+			EFormFields.SetDateTimeSigs(EFormCur.ListEFormFields,_listEFormFieldsOld,() => MiscData.GetNowDateTime());
 			isChanged|=EFormFields.IsAnyChanged(EFormCur.ListEFormFields,_listEFormFieldsOld);
 			//Auto Import fields (Open Dental 25.1) are written into the patient record only by the save that first inserts the form. A form that was
 			//already in the database, whether saved here earlier or filled by Open Dental, is never imported again by opening and saving it.
@@ -326,6 +336,10 @@ namespace OpenDental {
 			_wasSaved=true;
 			EFormCur.Description=textDescription.Text;
 			EFormCur.SaveImageCategory=saveImageCategory;
+			//Open Dental 25.4: a new form saved with a signature and no date entered counts as submitted now (fork decision).
+			EFormCur.DateTimeSubmitted=FormSubmittedDates.GetToSave(dateTimeSubmitted,EFormCur.IsNew,FormSubmittedDates.IsEFormSigned(EFormCur.ListEFormFields),
+				DateTime.Now);
+			textDateSubmitted.Text=FormSubmittedDates.ToDisplay(EFormCur.DateTimeSubmitted);
 			if(EFormCur.IsNew){
 				EFormCur.DateTimeShown=DateTime.Now;//instead of what user might have typed in
 				//DateTEdited gets set automatically for insert

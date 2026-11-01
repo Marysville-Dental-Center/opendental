@@ -758,6 +758,7 @@ namespace OpenDentBusiness {
 				PhoneNumbers.SyncPat(patientSynch);
 			}
 			InsertBillTypeChangeSecurityLogEntry(patCloneOld,patientSynch);
+			InsertPreferredAndClinicChangeSecurityLogEntry(patCloneOld,patientSynch,"clone synch with patient #"+patient.PatNum);
 			string strDataUpdated="";
 			string strChngFrom=" "+Lans.g("ContrFamily","changed from")+" ";
 			string strChngTo=" "+Lans.g("ContrFamily","to")+" ";
@@ -1721,6 +1722,7 @@ namespace OpenDentBusiness {
 			pat.PatNum=Crud.PatientCrud.Insert(pat,useExistingPK);
 			pat.SecurityHash=HashFields(pat);
 			Crud.PatientCrud.Update(pat);
+			InsertBirthdateChangeSecurityLogEntry(null,pat);//Open Dental 26.1: a birthdate the patient is created with is audited as added.
 			if(PrefC.GetBool(PrefName.PatientPhoneUsePhonenumberTable)) {
 				PhoneNumbers.SyncPat(pat);
 			}
@@ -1736,6 +1738,7 @@ namespace OpenDentBusiness {
 				patient.SecurityHash=HashFields(patient);
 			}
 			bool retval=Crud.PatientCrud.Update(patient,oldPatient);
+			InsertBirthdateChangeSecurityLogEntry(oldPatient,patient);//Open Dental 26.1: birthdate additions and changes are audited, from every save path.
 			if(PrefC.GetBool(PrefName.PatientPhoneUsePhonenumberTable)
 				&& (patient.HmPhone!=oldPatient.HmPhone
 					|| patient.WkPhone!=oldPatient.WkPhone
@@ -2620,6 +2623,7 @@ namespace OpenDentBusiness {
 			secLogText.Append(SecurityLogEntryHelper(patOld.PatStatus.GetDescription(),patCur.PatStatus.GetDescription(),"status"));
 			secLogText.Append(SecurityLogEntryHelper(patOld.LName,patCur.LName,"last name"));
 			secLogText.Append(SecurityLogEntryHelper(patOld.FName,patCur.FName,"first name"));
+			secLogText.Append(GetPreferredAndClinicChangeLogText(patOld,patCur));//Preferred name (OD 25.3) and clinic (OD 25.2), Patients.ClinicPreferredAudit.cs
 			secLogText.Append(SecurityLogEntryHelper(patOld.WkPhone,patCur.WkPhone,"work phone"));
 			secLogText.Append(SecurityLogEntryHelper(patOld.WirelessPhone,patCur.WirelessPhone,"wireless phone"));
 			secLogText.Append(SecurityLogEntryHelper(patOld.HmPhone,patCur.HmPhone,"home phone"));
@@ -4069,7 +4073,7 @@ namespace OpenDentBusiness {
 				referral.ST=patientTo.State;
 				referral.SSN=patientTo.SSN;
 				referral.Zip=patientTo.Zip;
-				referral.Telephone=TelephoneNumbers.FormatNumbersExactTen(patientTo.HmPhone);
+				referral.Telephone=ReferralPhones.FromPatientPhone(patientTo.HmPhone);//25.4: the same copy as Edit Referral (up to 30 characters)
 				referral.EMail=patientTo.Email;
 				Referrals.Update(referral);
 				Referrals.RefreshCache();
@@ -4390,8 +4394,10 @@ namespace OpenDentBusiness {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),clinicNumFrom,clinicNumTo);
 				return;
 			}
+			List<long> listPatNumsMoved=GetPatNumsForClinicChange(clinicNumFrom,clinicNumTo);//For one Audit Trail entry per patient (OD 25.2)
 			string command="UPDATE patient SET ClinicNum="+POut.Long(clinicNumTo)+" WHERE ClinicNum="+POut.Long(clinicNumFrom);
 			Db.NonQ(command);
+			InsertClinicChangeSecurityLogEntries(listPatNumsMoved,clinicNumFrom,clinicNumTo);
 		}
 		/// <summary>Find the most used provider for a single patient. Bias towards the most recently used provider if they have done an equal number of procedures.</summary>
 		public static long ReassignProvGetMostUsed(long patNum) {
@@ -5383,7 +5389,7 @@ namespace OpenDentBusiness {
 				referral.ST=patient.State;
 				referral.SSN=patient.SSN;
 				referral.Zip=patient.Zip;
-				referral.Telephone=TelephoneNumbers.FormatNumbersExactTen(patient.HmPhone);
+				referral.Telephone=ReferralPhones.FromPatientPhone(patient.HmPhone);//25.4: the same copy as Edit Referral (up to 30 characters)
 				referral.EMail=patient.Email;
 				Referrals.Update(referral);
 				Referrals.RefreshCache();

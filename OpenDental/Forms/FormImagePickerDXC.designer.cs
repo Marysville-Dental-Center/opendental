@@ -40,6 +40,7 @@ namespace OpenDental{
 			this.textNarrative = new OpenDental.ODtextBox();
 			this.labelNarrative = new System.Windows.Forms.Label();
 			this.labelCharCount = new System.Windows.Forms.Label();
+			this.butSendFile = new OpenDental.UI.Button();
 			((System.ComponentModel.ISupportInitialize)(this.pictureBox)).BeginInit();
 			this.SuspendLayout();
 			// 
@@ -215,10 +216,21 @@ namespace OpenDental{
 			this.labelCharCount.TabIndex = 61;
 			this.labelCharCount.Text = "/2000";
 			this.labelCharCount.TextAlign = System.Drawing.ContentAlignment.BottomRight;
-			// 
+			//
+			// butSendFile
+			//
+			this.butSendFile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.butSendFile.Location = new System.Drawing.Point(1024, 660);
+			this.butSendFile.Name = "butSendFile";
+			this.butSendFile.Size = new System.Drawing.Size(113, 24);
+			this.butSendFile.TabIndex = 62;
+			this.butSendFile.Text = "Send &File...";
+			this.butSendFile.Click += new System.EventHandler(this.butSendFile_Click);
+			//
 			// FormImagePickerDXC
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(1230, 696);
+			this.Controls.Add(this.butSendFile);
 			this.Controls.Add(this.labelCharCount);
 			this.Controls.Add(this.labelNarrative);
 			this.Controls.Add(this.textNarrative);
@@ -262,5 +274,6 @@ namespace OpenDental{
 		private ODtextBox textNarrative;
 		private System.Windows.Forms.Label labelNarrative;
 		private System.Windows.Forms.Label labelCharCount;
+		private UI.Button butSendFile;
 	}
 }

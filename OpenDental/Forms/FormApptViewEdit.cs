@@ -16,6 +16,9 @@ namespace OpenDental{
 	public partial class FormApptViewEdit : FormODBase {
 		///<summary></summary>
 		public bool IsNew;
+		///<summary>24.4 Copy View: the view is a fresh copy of another view. Set with IsNew, so Cancel deletes it, but the copied settings are kept
+		///instead of the defaults a new view gets.</summary>
+		public bool IsCopy;
 		/// <summary>Those elements which are showing in the list of available elements.</summary>
 		private List<EnumApptViewElement> _listEnumApptViewElementsAvailable;
 		///<summary>The actual ApptFieldDefNums of all available elements because no language translation is needed.</summary>
@@ -62,7 +65,7 @@ namespace OpenDental{
 			textScrollTime.Text=ApptViewCur.ApptTimeScrollStart.ToStringHmm();
 			checkDynamicScroll.Checked=ApptViewCur.IsScrollStartDynamic;
 			checkApptBubblesDisabled.Checked=ApptViewCur.IsApptBubblesDisabled;
-			if(IsNew) {
+			if(IsNew && !IsCopy) {
 				checkApptBubblesDisabled.Checked=PrefC.GetBool(PrefName.AppointmentBubblesDisabled);
 			}
 			checkOnlyScheduledProvs.Checked=ApptViewCur.OnlyScheduledProvs;

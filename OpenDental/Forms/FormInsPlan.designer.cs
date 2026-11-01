@@ -395,7 +395,7 @@ namespace OpenDental {
 			this.butIapFind.Size = new System.Drawing.Size(55, 21);
 			this.butIapFind.TabIndex = 1;
 			this.butIapFind.Text = "IAP";
-			this.toolTip1.SetToolTip(this.butIapFind, "Edit all the similar plans at once");
+			this.toolTip1.SetToolTip(this.butIapFind, "Open the Insurance Answers Plus sign-in page");
 			this.butIapFind.Click += new System.EventHandler(this.butIapFind_Click);
 			// 
 			// butBenefitNotes

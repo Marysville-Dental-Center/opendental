@@ -79,7 +79,8 @@ namespace OpenDental{
 				query.AddColumn("Code",140,FieldValueType.String,font);
 				query.AddColumn("Proc Description",120,FieldValueType.String,font);
 				query.AddColumn("Date",80,FieldValueType.Date,font);
-				query.AddColumn("UCR Fee",60,FieldValueType.Number,font);
+				query.AddColumn("Standard Fee",60,FieldValueType.Number,font);
+				query.ExportTable.Columns[query.ExportTable.Columns.Count-1].ColumnName="UCR Fee";//25.4 renamed the shown header only. The export keeps its column name.
 				query.AddColumn("Co-Pay",60,FieldValueType.Number,font);
 			}
 			else {
@@ -88,7 +89,8 @@ namespace OpenDental{
 				query.AddColumn("Tth",30,FieldValueType.String,font);
 				query.AddColumn("Surf",40,FieldValueType.String,font);
 				query.AddColumn("Date",80,FieldValueType.Date,font);
-				query.AddColumn("UCR Fee",70,FieldValueType.Number,font);
+				query.AddColumn("Standard Fee",70,FieldValueType.Number,font);
+				query.ExportTable.Columns[query.ExportTable.Columns.Count-1].ColumnName="UCR Fee";//25.4 renamed the shown header only. The export keeps its column name.
 				query.AddColumn("Co-Pay",70,FieldValueType.Number,font);
 			}
 			if(!report.SubmitQueries()) {

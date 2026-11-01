@@ -34,14 +34,30 @@ namespace OpenDental {
 			}
 			FillClipboard();
 			_apptViewNumPrevious=ApptViewNum;//remember the appt view for next time.
+			EnableForBlockoutPerms();
+		}
+
+		///<summary>25.4: copying and pasting need Blockout Add, clearing needs Blockout Delete, and pasting with Replace Existing needs both (for
+		///unflagged blockouts). BlockoutsFlagged covers all of it for NS/DC-flagged blockouts.</summary>
+		private void EnableForBlockoutPerms() {
+			BlockoutPerms blockoutPerms=BlockoutPerms.ForCurrentUser();
+			butCopyDay.Enabled=blockoutPerms.CanDoAny(BlockoutAction.Copy);
+			butCopyWeek.Enabled=blockoutPerms.CanDoAny(BlockoutAction.Copy);
+			butPaste.Enabled=blockoutPerms.CanDoAny(BlockoutAction.Paste);
+			butRepeat.Enabled=blockoutPerms.CanDoAny(BlockoutAction.Paste);
+			butClearDay.Enabled=blockoutPerms.CanDoAny(BlockoutAction.Clear);
+			if(!blockoutPerms.CanReplaceOnPaste()) {
+				checkReplace.Checked=false;
+				checkReplace.Enabled=false;
+			}
 		}
 
 		private void butClearDay_Click(object sender,EventArgs e) {
-			//25.1: only the kinds of blockouts the user may manage are cleared.
-			bool hasPermBlockouts=Security.IsAuthorized(EnumPermType.Blockouts,true);
+			//25.1: only the kinds of blockouts the user may manage are cleared. 25.4: unflagged ones need Blockout Delete.
+			bool hasPermBlockouts=Security.IsAuthorized(EnumPermType.BlockoutDelete,true);
 			bool hasPermBlockoutsFlagged=Security.IsAuthorized(EnumPermType.BlockoutsFlagged,true);
 			if(!hasPermBlockouts && !hasPermBlockoutsFlagged) {
-				Security.IsAuthorized(EnumPermType.Blockouts);//Shows the "not authorized" message.
+				Security.IsAuthorized(EnumPermType.BlockoutDelete);//Shows the "not authorized" message.
 				return;
 			}
 			int countSkipped;
@@ -69,10 +85,11 @@ namespace OpenDental {
 			Close();
 		}
 
-		///<summary>25.1: one clear entry per kind of blockout the user was allowed to clear, under that kind's permission.</summary>
+		///<summary>25.1: one clear entry per kind of blockout the user was allowed to clear, under that kind's permission (25.4: Blockout Delete for
+		///unflagged blockouts).</summary>
 		private void LogClear(long clinicNum,bool hasPermBlockouts,bool hasPermBlockoutsFlagged) {
 			if(hasPermBlockouts) {
-				Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:DateSelected,clinicNum:clinicNum,permTypeClear:EnumPermType.Blockouts);
+				Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:DateSelected,clinicNum:clinicNum,permTypeClear:EnumPermType.BlockoutDelete);
 			}
 			if(hasPermBlockoutsFlagged) {
 				Schedules.BlockoutLogHelper(BlockoutAction.Clear,dateTime:DateSelected,clinicNum:clinicNum,permTypeClear:EnumPermType.BlockoutsFlagged);
@@ -91,13 +108,28 @@ namespace OpenDental {
 			}
 		}
 
+		///<summary>25.4: copying needs Blockout Add, or BlockoutsFlagged for flagged blockouts. Shows the usual message when both are missing.</summary>
+		private bool IsAuthorizedToCopy() {
+			if(BlockoutPerms.ForCurrentUser().CanDoAny(BlockoutAction.Copy)) {
+				return true;
+			}
+			Security.IsAuthorized(EnumPermType.BlockoutAdd);//Shows the "not authorized" message.
+			return false;
+		}
+
 		private void butCopyDay_Click(object sender,EventArgs e) {
+			if(!IsAuthorizedToCopy()) {//25.4
+				return;
+			}
 			_dateCopyStart=DateSelected;
 			_dateCopyEnd=DateSelected;
 			Close();
 		}
 
 		private void butCopyWeek_Click(object sender,EventArgs e) {
+			if(!IsAuthorizedToCopy()) {//25.4
+				return;
+			}
 			//Always start week on Monday
 			if(DateSelected.DayOfWeek==DayOfWeek.Sunday) {//if selecting Sunday, go back to the previous Monday.
 				_dateCopyStart=DateSelected.AddDays(-6);
@@ -134,6 +166,16 @@ namespace OpenDental {
 				MsgBox.Show(this,"Please copy a selection to the clipboard first.");
 				return;
 			}
+			//25.4: pasting needs Blockout Add (BlockoutsFlagged for flagged blockouts); replacing what is there also needs Blockout Delete.
+			BlockoutPerms blockoutPerms=BlockoutPerms.ForCurrentUser();
+			if(!blockoutPerms.CanDoAny(BlockoutAction.Paste)) {
+				Security.IsAuthorized(EnumPermType.BlockoutAdd);//Shows the "not authorized" message.
+				return;
+			}
+			if(checkReplace.Checked && !blockoutPerms.CanReplaceOnPaste()) {
+				Security.IsAuthorized(EnumPermType.BlockoutDelete);//Shows the "not authorized" message.
+				return;
+			}
 			if(DateSelected.DayOfWeek==DayOfWeek.Saturday || DateSelected.DayOfWeek==DayOfWeek.Sunday) {//copying from a weekend
 				if(!checkWeekend.Checked) {//but they didn't indicate pasting onto weekends
 					MsgBox.Show(this,"You must check 'Include Weekends' if you would like to paste into weekends.");
@@ -165,10 +207,9 @@ namespace OpenDental {
 				return;
 			}
 			Cursor=Cursors.WaitCursor;
-			//25.1: NS-flagged blockouts need BlockoutsFlagged and unflagged ones need Blockouts. DC-flagged ones are never copied.
+			//25.1: NS-flagged blockouts need BlockoutsFlagged and unflagged ones need Blockouts (25.4: Blockout Add). DC-flagged ones are never copied.
 			string errors=Schedules.CopyBlockouts(ApptViewNum,isWeek,checkWeekend.Checked,checkReplace.Checked,_dateCopyStart,_dateCopyEnd,
-				dateSelectedStart,dateSelectedEnd,numRepeat,Security.IsAuthorized(EnumPermType.Blockouts,true),
-				Security.IsAuthorized(EnumPermType.BlockoutsFlagged,true));
+				dateSelectedStart,dateSelectedEnd,numRepeat,blockoutPerms.HasUnflagged(BlockoutAction.Paste),blockoutPerms.HasFlagged);
 			Cursor=Cursors.Default;
 			if(!string.IsNullOrEmpty(errors)) {
 				MessageBox.Show(errors);//Error was translated inside of the S class method.

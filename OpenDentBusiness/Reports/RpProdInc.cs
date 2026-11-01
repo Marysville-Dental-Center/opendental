@@ -565,7 +565,7 @@ namespace OpenDentBusiness {
 			if(isDetailed) {
 				dt.Columns.Add(new DataColumn("Patient"));
 			}
-			dt.Columns.Add(new DataColumn("UCR Poduction"));
+			dt.Columns.Add(new DataColumn("Standard Fee Production"));
 			dt.Columns.Add(new DataColumn("Original Est Writeoff"));
 			dt.Columns.Add(new DataColumn("Prod Adj"));
 			dt.Columns.Add(new DataColumn("Est Minus Actual Writeoff Adjs"));

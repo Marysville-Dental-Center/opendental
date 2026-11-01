@@ -27,6 +27,7 @@ namespace OpenDental {
 			this.groupBoxClaimsMedical = new OpenDental.UI.GroupBox();
 			this.checkClaimMedReceivedPromptForPrimaryClaim = new OpenDental.UI.CheckBox();
 			this.checkClaimMedReceivedForcePrimaryStatus = new OpenDental.UI.CheckBox();
+			this.checkClaimMedReceivedPromptForMedicalEob = new OpenDental.UI.CheckBox();
 			this.groupBoxClaimsPayments = new OpenDental.UI.GroupBox();
 			this.comboClaimCredit = new OpenDental.UI.ComboBox();
 			this.checkClaimPaymentPickStatementType = new OpenDental.UI.CheckBox();
@@ -54,9 +55,10 @@ namespace OpenDental {
 			// 
 			this.groupBoxClaimsMedical.Controls.Add(this.checkClaimMedReceivedPromptForPrimaryClaim);
 			this.groupBoxClaimsMedical.Controls.Add(this.checkClaimMedReceivedForcePrimaryStatus);
+			this.groupBoxClaimsMedical.Controls.Add(this.checkClaimMedReceivedPromptForMedicalEob);
 			this.groupBoxClaimsMedical.Location = new System.Drawing.Point(20, 339);
 			this.groupBoxClaimsMedical.Name = "groupBoxClaimsMedical";
-			this.groupBoxClaimsMedical.Size = new System.Drawing.Size(450, 51);
+			this.groupBoxClaimsMedical.Size = new System.Drawing.Size(450, 70);
 			this.groupBoxClaimsMedical.TabIndex = 4;
 			this.groupBoxClaimsMedical.Text = "Claims Medical";
 			// 
@@ -78,7 +80,16 @@ namespace OpenDental {
 			this.checkClaimMedReceivedForcePrimaryStatus.TabIndex = 1;
 			this.checkClaimMedReceivedForcePrimaryStatus.Text = "Remove \'Do Nothing\' for primary claims with \'Hold Until Pri Received\' or \'Unsent\'" +
     "";
-			// 
+			//
+			// checkClaimMedReceivedPromptForMedicalEob
+			//
+			this.checkClaimMedReceivedPromptForMedicalEob.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkClaimMedReceivedPromptForMedicalEob.Location = new System.Drawing.Point(15, 48);
+			this.checkClaimMedReceivedPromptForMedicalEob.Name = "checkClaimMedReceivedPromptForMedicalEob";
+			this.checkClaimMedReceivedPromptForMedicalEob.Size = new System.Drawing.Size(425, 17);
+			this.checkClaimMedReceivedPromptForMedicalEob.TabIndex = 2;
+			this.checkClaimMedReceivedPromptForMedicalEob.Text = "Prompt for Medical EOB on primary claims";
+			//
 			// groupBoxClaimsPayments
 			// 
 			this.groupBoxClaimsPayments.Controls.Add(this.comboClaimCredit);
@@ -172,7 +183,7 @@ namespace OpenDental {
 			this.checkClaimPrimaryReceivedRecalcSecondary.Name = "checkClaimPrimaryReceivedRecalcSecondary";
 			this.checkClaimPrimaryReceivedRecalcSecondary.Size = new System.Drawing.Size(410, 17);
 			this.checkClaimPrimaryReceivedRecalcSecondary.TabIndex = 9;
-			this.checkClaimPrimaryReceivedRecalcSecondary.Text = "Auto update secondary claim estimates when primary is received";
+			this.checkClaimPrimaryReceivedRecalcSecondary.Text = "Auto update next insurance claim estimates when a claim is received";
 			// 
 			// checkClaimFinalizeWarning
 			// 
@@ -208,7 +219,7 @@ namespace OpenDental {
 			this.checkPromptForSecondaryClaim.Name = "checkPromptForSecondaryClaim";
 			this.checkPromptForSecondaryClaim.Size = new System.Drawing.Size(367, 17);
 			this.checkPromptForSecondaryClaim.TabIndex = 2;
-			this.checkPromptForSecondaryClaim.Text = "Prompt for secondary claims";
+			this.checkPromptForSecondaryClaim.Text = "Prompt for claims of the next insurance";
 			// 
 			// checkClaimPrimaryRecievedForceSecondaryStatus
 			// 
@@ -217,7 +228,7 @@ namespace OpenDental {
 			this.checkClaimPrimaryRecievedForceSecondaryStatus.Name = "checkClaimPrimaryRecievedForceSecondaryStatus";
 			this.checkClaimPrimaryRecievedForceSecondaryStatus.Size = new System.Drawing.Size(410, 17);
 			this.checkClaimPrimaryRecievedForceSecondaryStatus.TabIndex = 6;
-			this.checkClaimPrimaryRecievedForceSecondaryStatus.Text = "Remove \'Do Nothing\' for secondary claims with \'Hold until Pri received\'";
+			this.checkClaimPrimaryRecievedForceSecondaryStatus.Text = "Remove \'Do Nothing\' from the next insurance claims prompt";
 			// 
 			// checkProviderIncomeShows
 			// 
@@ -293,6 +304,7 @@ namespace OpenDental {
 		private UI.GroupBox groupBoxClaimsMedical;
 		private UI.CheckBox checkClaimMedReceivedPromptForPrimaryClaim;
 		private UI.CheckBox checkClaimMedReceivedForcePrimaryStatus;
+		private UI.CheckBox checkClaimMedReceivedPromptForMedicalEob;
 	}
 
 }

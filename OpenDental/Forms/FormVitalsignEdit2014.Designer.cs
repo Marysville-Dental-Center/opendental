@@ -71,6 +71,8 @@
 			this.textPulse = new System.Windows.Forms.TextBox();
 			this.butDelete = new OpenDental.UI.Button();
 			this.butSave = new OpenDental.UI.Button();
+			this.labelNotes = new System.Windows.Forms.Label();
+			this.textNotes = new System.Windows.Forms.TextBox();
 			this.groupExclusion.SuspendLayout();
 			this.groupInterventions.SuspendLayout();
 			this.SuspendLayout();
@@ -504,7 +506,7 @@
 			this.butDelete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.butDelete.Icon = OpenDental.UI.EnumIcons.DeleteX;
 			this.butDelete.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butDelete.Location = new System.Drawing.Point(10, 579);
+			this.butDelete.Location = new System.Drawing.Point(10, 649);
 			this.butDelete.Name = "butDelete";
 			this.butDelete.Size = new System.Drawing.Size(75, 24);
 			this.butDelete.TabIndex = 13;
@@ -514,16 +516,37 @@
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(513, 579);
+			this.butSave.Location = new System.Drawing.Point(513, 649);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 11;
 			this.butSave.Text = "&Save";
 			this.butSave.Click += new System.EventHandler(this.butSave_Click);
-			// 
+			//
+			// labelNotes
+			//
+			this.labelNotes.Location = new System.Drawing.Point(26, 577);
+			this.labelNotes.Name = "labelNotes";
+			this.labelNotes.Size = new System.Drawing.Size(93, 17);
+			this.labelNotes.TabIndex = 0;
+			this.labelNotes.Text = "Notes";
+			this.labelNotes.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textNotes
+			//
+			this.textNotes.AcceptsReturn = true;
+			this.textNotes.Location = new System.Drawing.Point(122, 576);
+			this.textNotes.Multiline = true;
+			this.textNotes.Name = "textNotes";
+			this.textNotes.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+			this.textNotes.Size = new System.Drawing.Size(466, 64);
+			this.textNotes.TabIndex = 10;
+			//
 			// FormVitalsignEdit2014
-			// 
-			this.ClientSize = new System.Drawing.Size(602, 614);
+			//
+			this.ClientSize = new System.Drawing.Size(602, 684);
+			this.Controls.Add(this.textNotes);
+			this.Controls.Add(this.labelNotes);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.textPulse);
@@ -618,5 +641,7 @@
 		private UI.Button butDelete;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.TextBox textPulse;
+		private System.Windows.Forms.Label labelNotes;
+		private System.Windows.Forms.TextBox textNotes;
 	}
 }

@@ -63,6 +63,10 @@ namespace OpenDental {
 			this.checkWaitingRoomFilterByView = new OpenDental.UI.CheckBox();
 			this.butColor = new System.Windows.Forms.Button();
 			this.label23 = new System.Windows.Forms.Label();
+			this.groupBoxTimeBars = new OpenDental.UI.GroupBox();
+			this.checkProvTimeOnOpBackground = new OpenDental.UI.CheckBox();
+			this.checkTimeBarSecondaryColor = new OpenDental.UI.CheckBox();
+			this.groupBoxTimeBars.SuspendLayout();
 			this.groupBoxOD1.SuspendLayout();
 			this.groupBoxBlockouts.SuspendLayout();
 			this.groupBoxApptBubble.SuspendLayout();
@@ -467,11 +471,42 @@ namespace OpenDental {
 			this.label23.TabIndex = 223;
 			this.label23.Text = "Waiting room alert color";
 			this.label23.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
+			//
+			// groupBoxTimeBars
+			//
+			this.groupBoxTimeBars.Controls.Add(this.checkProvTimeOnOpBackground);
+			this.groupBoxTimeBars.Controls.Add(this.checkTimeBarSecondaryColor);
+			this.groupBoxTimeBars.Location = new System.Drawing.Point(20, 547);
+			this.groupBoxTimeBars.Name = "groupBoxTimeBars";
+			this.groupBoxTimeBars.Size = new System.Drawing.Size(450, 51);
+			this.groupBoxTimeBars.TabIndex = 340;
+			this.groupBoxTimeBars.Text = "Time Bars";
+			//
+			// checkProvTimeOnOpBackground
+			//
+			this.checkProvTimeOnOpBackground.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.checkProvTimeOnOpBackground.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkProvTimeOnOpBackground.Location = new System.Drawing.Point(15, 10);
+			this.checkProvTimeOnOpBackground.Name = "checkProvTimeOnOpBackground";
+			this.checkProvTimeOnOpBackground.Size = new System.Drawing.Size(425, 17);
+			this.checkProvTimeOnOpBackground.TabIndex = 341;
+			this.checkProvTimeOnOpBackground.Text = "Show provider time on the operatory background in the provider\'s color";
+			//
+			// checkTimeBarSecondaryColor
+			//
+			this.checkTimeBarSecondaryColor.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.checkTimeBarSecondaryColor.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkTimeBarSecondaryColor.Location = new System.Drawing.Point(15, 29);
+			this.checkTimeBarSecondaryColor.Name = "checkTimeBarSecondaryColor";
+			this.checkTimeBarSecondaryColor.Size = new System.Drawing.Size(425, 17);
+			this.checkTimeBarSecondaryColor.TabIndex = 342;
+			this.checkTimeBarSecondaryColor.Text = "No provider time set: show the secondary provider color in the time bar";
+			//
 			// UserControlApptAppearance
-			// 
+			//
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.BackColor = System.Drawing.Color.White;
+			this.Controls.Add(this.groupBoxTimeBars);
 			this.Controls.Add(this.groupBoxOD1);
 			this.Controls.Add(this.groupBoxBlockouts);
 			this.Controls.Add(this.groupBoxApptBubble);
@@ -487,6 +522,7 @@ namespace OpenDental {
 			this.groupBoxAppearance.PerformLayout();
 			this.groupBoxWaitingRoom.ResumeLayout(false);
 			this.groupBoxWaitingRoom.PerformLayout();
+			this.groupBoxTimeBars.ResumeLayout(false);
 			this.ResumeLayout(false);
 
 		}
@@ -531,5 +567,8 @@ namespace OpenDental {
 		private System.Windows.Forms.Label labelApptSchedEnforceSpecialty;
 		private UI.ComboBox comboApptSchedEnforceSpecialty;
 		private OpenDental.UI.CheckBox checkApptSecondaryProviderConsiderOpOnly;
+		private UI.GroupBox groupBoxTimeBars;
+		private OpenDental.UI.CheckBox checkProvTimeOnOpBackground;
+		private OpenDental.UI.CheckBox checkTimeBarSecondaryColor;
 	}
 }

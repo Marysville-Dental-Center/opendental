@@ -6,12 +6,13 @@
              xmlns:local="clr-namespace:OpenDental"
              xmlns:ui="clr-namespace:WpfControls.UI"
              mc:Ignorable="d"
-             Width="635" Height="560" 
-             Text="EForm Field Children" MinMaxBoxes="False">
+             Width="635" Height="460"
+             Text="Conditional Children" MinMaxBoxes="False">
 	<Grid Background="#FFFCFDFE" >
-		<ui:Button x:Name="butSave" HorizontalAlignment="Right" Width="75" VerticalAlignment="Bottom" Height="24" Margin="0,0,10,10" Text="OK" Click="butSave_Click" />
-		<ui:Label Height="20" Margin="25,10,0,0" Text="The fields below will show..." Width="270" HAlign="Left" />
-		<ui:ListBox x:Name="listBoxFieldLabels" Margin="25,29,0,10" VerticalAlignment="Stretch" Width="270"/>
-		<ui:Label Height="95" Margin="330,70,0,0" Text="This form is not currently used. Might revive it some day to allow faster picking of conditional children, but there are other more important things to work on right now." Width="270" HAlign="Left" ColorText="Red" />
+		<ui:Label Width="98" Height="18" Margin="12,12,0,0" Text="Parent field" HAlign="Right" VAlign="Center" />
+		<ui:TextBox x:Name="textParent" Width="300" Height="20" Margin="113,11,0,0" ReadOnly="True" ColorBack="#FFF0F0F0" />
+		<ui:Label x:Name="labelExplain" Height="34" Margin="25,38,0,0" Width="580" HAlign="Left" Text="These fields show only when the parent field has the value in the Shows When column. Double click a field to edit it." />
+		<ui:Grid x:Name="gridMain" Margin="25,76,25,46" Title="Child Fields" TranslationName="TableEFormFieldChildren" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+		<ui:Button x:Name="butClose" HorizontalAlignment="Right" Width="75" VerticalAlignment="Bottom" Height="24" Margin="0,0,25,12" Text="_Close" Click="butClose_Click" />
 	</Grid>
 </local:FrmODBase>

@@ -102,6 +102,9 @@ namespace OpenDental {
 			this.labelEraAutomation = new System.Windows.Forms.Label();
 			this.comboOrthoConsolidate = new OpenDental.UI.ComboBox();
 			this.labelOrthoConsolidate = new System.Windows.Forms.Label();
+			this.labelPreAuthCodes = new System.Windows.Forms.Label();
+			this.textPreAuthCodes = new System.Windows.Forms.TextBox();
+			this.butPreAuthCodes = new OpenDental.UI.Button();
 			this.groupBox1.SuspendLayout();
 			this.groupCDAnet.SuspendLayout();
 			this.groupBox3.SuspendLayout();
@@ -268,7 +271,7 @@ namespace OpenDental {
 			// 
 			// checkIsCDAnet
 			// 
-			this.checkIsCDAnet.Location = new System.Drawing.Point(12, 376);
+			this.checkIsCDAnet.Location = new System.Drawing.Point(12, 418);
 			this.checkIsCDAnet.Name = "checkIsCDAnet";
 			this.checkIsCDAnet.Size = new System.Drawing.Size(168, 17);
 			this.checkIsCDAnet.TabIndex = 18;
@@ -294,7 +297,7 @@ namespace OpenDental {
 			this.groupCDAnet.Controls.Add(this.label5);
 			this.groupCDAnet.Controls.Add(this.textVersion);
 			this.groupCDAnet.Controls.Add(this.label1);
-			this.groupCDAnet.Location = new System.Drawing.Point(12, 399);
+			this.groupCDAnet.Location = new System.Drawing.Point(12, 441);
 			this.groupCDAnet.Name = "groupCDAnet";
 			this.groupCDAnet.Size = new System.Drawing.Size(665, 222);
 			this.groupCDAnet.TabIndex = 19;
@@ -577,7 +580,7 @@ namespace OpenDental {
 			this.butDelete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.butDelete.Icon = OpenDental.UI.EnumIcons.DeleteX;
 			this.butDelete.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butDelete.Location = new System.Drawing.Point(12, 639);
+			this.butDelete.Location = new System.Drawing.Point(12, 681);
 			this.butDelete.Name = "butDelete";
 			this.butDelete.Size = new System.Drawing.Size(78, 26);
 			this.butDelete.TabIndex = 20;
@@ -587,7 +590,7 @@ namespace OpenDental {
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(599, 639);
+			this.butSave.Location = new System.Drawing.Point(599, 681);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(78, 26);
 			this.butSave.TabIndex = 21;
@@ -750,10 +753,39 @@ namespace OpenDental {
 			this.labelOrthoConsolidate.TabIndex = 276;
 			this.labelOrthoConsolidate.Text = "Consolidate Ortho Ins Payments";
 			this.labelOrthoConsolidate.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
+			//
+			// labelPreAuthCodes
+			//
+			this.labelPreAuthCodes.Location = new System.Drawing.Point(22, 377);
+			this.labelPreAuthCodes.Name = "labelPreAuthCodes";
+			this.labelPreAuthCodes.Size = new System.Drawing.Size(182, 34);
+			this.labelPreAuthCodes.TabIndex = 0;
+			this.labelPreAuthCodes.Text = "Procedures requiring preauthorization";
+			this.labelPreAuthCodes.TextAlign = System.Drawing.ContentAlignment.TopRight;
+			//
+			// textPreAuthCodes
+			//
+			this.textPreAuthCodes.Location = new System.Drawing.Point(204, 376);
+			this.textPreAuthCodes.Multiline = true;
+			this.textPreAuthCodes.Name = "textPreAuthCodes";
+			this.textPreAuthCodes.Size = new System.Drawing.Size(291, 36);
+			this.textPreAuthCodes.TabIndex = 278;
+			//
+			// butPreAuthCodes
+			//
+			this.butPreAuthCodes.Location = new System.Drawing.Point(498, 376);
+			this.butPreAuthCodes.Name = "butPreAuthCodes";
+			this.butPreAuthCodes.Size = new System.Drawing.Size(24, 22);
+			this.butPreAuthCodes.TabIndex = 279;
+			this.butPreAuthCodes.Text = "...";
+			this.butPreAuthCodes.Click += new System.EventHandler(this.butPreAuthCodes_Click);
+			//
 			// FormCarrierEdit
-			// 
-			this.ClientSize = new System.Drawing.Size(702, 677);
+			//
+			this.ClientSize = new System.Drawing.Size(702, 719);
+			this.Controls.Add(this.butPreAuthCodes);
+			this.Controls.Add(this.textPreAuthCodes);
+			this.Controls.Add(this.labelPreAuthCodes);
 			this.Controls.Add(this.comboOrthoConsolidate);
 			this.Controls.Add(this.labelOrthoConsolidate);
 			this.Controls.Add(this.comboEraAutomation);
@@ -876,5 +908,8 @@ namespace OpenDental {
 		private UI.ComboBox comboOrthoConsolidate;
 		private Label labelOrthoConsolidate;
 		private UI.CheckBox check09;
+		private Label labelPreAuthCodes;
+		private TextBox textPreAuthCodes;
+		private OpenDental.UI.Button butPreAuthCodes;
 	}
 }
