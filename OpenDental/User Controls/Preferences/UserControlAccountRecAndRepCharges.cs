@@ -9,12 +9,14 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using CodeBase;
 using OpenDentBusiness;
+using OpenDentBusiness.ForkMigrations.Seeds26_1;
 
 namespace OpenDental {
 	public partial class UserControlAccountRecAndRepCharges:UserControl {
 
 		#region Fields - Private
-		///<summary>The failure e-mail template being edited. Saved with the other preferences.</summary>
+		///<summary>The failure e-mail template being edited, as the preferences store it (blank uses the default text). Saved with the other
+		///preferences.</summary>
 		private string _failEmailSubject;
 		private string _failEmailBody;
 		#endregion Fields - Private
@@ -43,7 +45,10 @@ namespace OpenDental {
 		}
 
 		private void butRecurringChargesFailEmailTemplate_Click(object sender,EventArgs e) {
-			using FormRecurringChargeFailEmailTemplate formRecurringChargeFailEmailTemplate=new FormRecurringChargeFailEmailTemplate(_failEmailSubject,_failEmailBody);
+			//A blank preference shows the default text the e-mail would use.
+			string subject=string.IsNullOrWhiteSpace(_failEmailSubject) ? Seed26_1.RECURRING_FAIL_EMAIL_SUBJECT_DEFAULT : _failEmailSubject;
+			string body=string.IsNullOrWhiteSpace(_failEmailBody) ? Seed26_1.RECURRING_FAIL_EMAIL_BODY_DEFAULT : _failEmailBody;
+			using FormRecurringChargeFailEmailTemplate formRecurringChargeFailEmailTemplate=new FormRecurringChargeFailEmailTemplate(subject,body);
 			formRecurringChargeFailEmailTemplate.ShowDialog();
 			if(formRecurringChargeFailEmailTemplate.DialogResult!=DialogResult.OK) {
 				return;
@@ -94,12 +99,14 @@ namespace OpenDental {
 			checkRecurPatBal0.Checked=PrefC.GetBool(PrefName.RecurringChargesAllowedWhenNoPatBal);
 			checkRecurringChargesInactivateDeclinedCards.Checked=PrefC.GetBool(PrefName.RecurringChargesInactivateDeclinedCards);
 			checkRecurringChargesFailEmailEnabled.Checked=PrefC.GetBool(PrefName.RecurringChargesFailEmailEnabled);
-			_failEmailSubject=RecurringChargeFailEmails.GetSubjectTemplate();
-			_failEmailBody=RecurringChargeFailEmails.GetBodyTemplate();
+			//The stored text, so that saving with an untouched blank template keeps it blank (RecurringChargeFailEmails then uses the default).
+			_failEmailSubject=PrefC.GetStringSilent(PrefName.RecurringChargesFailEmailSubject);
+			_failEmailBody=PrefC.GetStringSilent(PrefName.RecurringChargesFailEmailBody);
 			if(PrefC.GetBool(PrefName.EasyHideRepeatCharges)) {
 				//groupRepeatingCharges.Enabled=false;//Can't do this because we want hover info to still work
 				checkRepeatingChargesRunAging.Enabled=false;
 				checkRepeatingChargesAutomated.Enabled=false;
+				checkRepeatingChargesAllowBackdating.Enabled=false;
 				labelRepeatingChargesAutomatedTime.ForeColor=ColorOD.DisabledText;
 				textRepeatingChargesAutomatedTime.Enabled=false;
 			}

@@ -117,6 +117,15 @@ namespace M2RECURTests {
 			StringAssert.Contains(code,"Prefs.UpdateString(PrefName.RecurringChargesFailEmailSubject,_failEmailSubject);");
 			StringAssert.Contains(code,"Prefs.UpdateString(PrefName.RecurringChargesFailEmailBody,_failEmailBody);");
 			StringAssert.Contains(designer,"this.butRecurringChargesFailEmailTemplate.Click += new System.EventHandler(this.butRecurringChargesFailEmailTemplate_Click);");
+			//The stored template text is loaded as it is, so saving the window with a blank template keeps it blank.
+			StringAssert.Contains(code,"_failEmailSubject=PrefC.GetStringSilent(PrefName.RecurringChargesFailEmailSubject);");
+			StringAssert.Contains(code,"_failEmailBody=PrefC.GetStringSilent(PrefName.RecurringChargesFailEmailBody);");
+			//"Hide repeating charges" disables the backdating box with the other repeating charge settings.
+			string codeLf=code.Replace("\r\n","\n");
+			int indexEasyHide=codeLf.IndexOf("if(PrefC.GetBool(PrefName.EasyHideRepeatCharges)) {",StringComparison.Ordinal);
+			Assert.IsTrue(indexEasyHide>0);
+			string blockEasyHide=codeLf.Substring(indexEasyHide,codeLf.IndexOf("\n\t\t\t}",indexEasyHide,StringComparison.Ordinal)-indexEasyHide);
+			StringAssert.Contains(blockEasyHide,"checkRepeatingChargesAllowBackdating.Enabled=false;");
 		}
 
 		[TestMethod]
