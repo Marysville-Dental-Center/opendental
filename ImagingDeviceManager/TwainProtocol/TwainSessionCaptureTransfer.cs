@@ -406,6 +406,8 @@ namespace ImagingDeviceManager.TwainProtocol {
 				TransferMechanism=xferMech==Tw.TWSX_MEMORY ? TwainTransferMechanism.Memory : TwainTransferMechanism.Native,
 			};
 			if(dib!=null && dib.BitCount==16 && hasImageInfo && imageInfo.PixelType==Tw.TWPT_GRAY) {
+				Log("Warning: \""+SourceName+"\" sent a 16-bit native DIB, which is never asked for (a 16bpp DIB is RGB555/565 by definition, TWAIN"
+					+" 2.4 p.12-7). It is kept raw as 16-bit samples, read little-endian; with TransferMechanism Native it is never written as DICOM.");
 				gray16=Gray16Builder.FromGray16Dib(dib);//Never asked for; kept raw, without the scan path's shift.
 				heightGray16=dib.Height;
 				widthGray16=dib.Width;

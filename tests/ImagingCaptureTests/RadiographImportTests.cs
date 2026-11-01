@@ -368,6 +368,24 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Dicom16_NotFromTheNegotiated16BitMemoryTransfer_Refused() {
+			AcquiredImage imageNative=Image16();
+			imageNative.TransferMechanism=TwainTransferMechanism.Native;//A 16bpp native DIB the library kept as raw samples.
+			RadiographSaveRequest request=Request(imageNative,new RadiographTarget { Mount=Mount(),MountItem=Slot() });
+			request.Is16BitAllowed=true;
+			RadiographSaveResult result=_radiographImport.Save(request);
+			Assert.IsFalse(result.IsSaved);
+			StringAssert.Contains(result.Error,"verified 16-bit memory transfer");
+			CollectionAssert.AreEqual(new[] { "IsCategoryValid" },_store.ListCalls,"Nothing written: the caller quarantines it.");
+			AcquiredImage imageIn8BitEnable=Image16();
+			imageIn8BitEnable.RequestedBits=8;
+			imageIn8BitEnable.IsBitDepth16InEffect=false;//16-bit memory samples in an 8-bit enable.
+			request=Request(imageIn8BitEnable,new RadiographTarget { Mount=Mount(),MountItem=Slot() });
+			request.Is16BitAllowed=true;
+			Assert.IsFalse(_radiographImport.Save(request).IsSaved);
+		}
+
+		[TestMethod]
 		public void Dicom16_DeliveredVanilla_NotInverted_RefusedByWriter() {
 			RadiographSaveRequest request=Request(Image16(pixelFlavor:AcquiredImage.PixelFlavorVanilla),new RadiographTarget { Mount=Mount(),MountItem=Slot() });
 			request.Is16BitAllowed=true;

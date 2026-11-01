@@ -341,6 +341,9 @@ namespace ImagingCapture.UI {
 			if(record.BitsDelivered!=16) {
 				listReasons.Add("the image is not 16-bit");
 			}
+			else if(!record.IsNegotiated16Bit) {
+				listReasons.Add("the 16-bit image did not come from a 16-bit enable over memory transfer");
+			}
 			if(record.ByteOrderCheck==ByteOrderVerdict.LooksSwapped.ToString()) {
 				listReasons.Add("the byte order looks swapped");
 			}

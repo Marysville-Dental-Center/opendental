@@ -84,15 +84,21 @@ namespace ImagingCapture.Settings {
 				&& string.Equals(GatedSettingsHash,(gatedSettingsHash??"").Trim(),StringComparison.OrdinalIgnoreCase);
 		}
 
-		///<summary>The record verifies 16-bit capture: a 16-bit image was measured, the automatic byte-order check did not find the bytes
-		///swapped, the operator confirmed byte order and polarity on the phantom (design 7.8 condition 2), and the saver would write the
-		///samples (IsVanillaNotInverted is false: DicomIntraOralWriter refuses TWPF_VANILLA samples stored as delivered).</summary>
+		///<summary>The record verifies 16-bit capture: a 16-bit image was measured from a 16-bit enable over memory transfer (IsNegotiated16Bit),
+		///the automatic byte-order check did not find the bytes swapped, the operator confirmed byte order and polarity on the phantom (design
+		///7.8 condition 2), and the saver would write the samples (IsVanillaNotInverted is false: DicomIntraOralWriter refuses TWPF_VANILLA
+		///samples stored as delivered).</summary>
 		public bool IsPassedFor16Bit =>
-			BitsDelivered==16
+			IsNegotiated16Bit
 			&& !string.Equals(ByteOrderCheck,"LooksSwapped",StringComparison.OrdinalIgnoreCase)
 			&& IsByteOrderConfirmed
 			&& IsPolarityConfirmed
 			&& !IsVanillaNotInverted;
+
+		///<summary>A 16-bit image from a 16-bit enable over memory transfer: the only 16-bit images the saver writes as DICOM (a 16bpp native DIB,
+		///or 16-bit samples in an 8-bit enable, are refused).</summary>
+		public bool IsNegotiated16Bit =>
+			BitsDelivered==16 && BitsRequested==16 && string.Equals(TransferMechanism,"Memory",StringComparison.OrdinalIgnoreCase);
 
 		///<summary>The source delivered TWPF_VANILLA samples and Polarity is not Invert: the DICOM writer refuses such samples.</summary>
 		public bool IsVanillaNotInverted =>

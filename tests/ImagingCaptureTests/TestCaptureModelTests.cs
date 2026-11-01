@@ -366,7 +366,15 @@ Name=Not gated
 			record=FullRecord();
 			record.ByteOrderCheck="Inconclusive";
 			Assert.IsTrue(record.IsPassedFor16Bit,"Inconclusive passes when the operator confirmed it on the ramp.");
-			//The record never claims what the saver refuses: TWPF_VANILLA samples are written only inverted; inverted CHOCOLATE ones are written.
+			//The record never claims what the saver refuses: 16-bit samples only from a 16-bit enable over memory transfer...
+			record=FullRecord();
+			record.TransferMechanism="Native";
+			Assert.IsFalse(record.IsPassedFor16Bit,"A 16bpp native DIB is never written as DICOM.");
+			StringAssert.Contains(TestCaptureModel.GetRecordWarning(record),"over memory transfer");
+			record=FullRecord();
+			record.BitsRequested=8;
+			Assert.IsFalse(record.IsPassedFor16Bit,"Nor 16-bit samples in an 8-bit enable.");
+			//...and TWPF_VANILLA samples only inverted; inverted CHOCOLATE ones are written.
 			record=FullRecord();
 			record.PixelFlavor="Vanilla";
 			Assert.IsFalse(record.IsPassedFor16Bit);
