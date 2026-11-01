@@ -87,3 +87,7 @@ Run with ImagingTests (the existing tests over the same files): all pass.
 1. PDFs shown elsewhere (eForms, statements, sheets) are outside this preference, as in the spec. Should the same setting, or a second one, cover them?
 2. True 16-bit images still import with the full range rather than an automatic window computed from the image, as in 24.3. Should they get the same automatic windowing as 12-bit images? That needs a real 16-bit sensor sample to tune the thresholds.
 3. 12-bit images whose stored windowing is 4095 (the import's fallback when it finds no edge) now show the full range instead of a nearly black picture. Confirm this is wanted. It only changes images that were unreadable before.
+
+## Integration (branch `port/int-7`)
+
+- Merged without conflicts. No other merged package changed `BitmapDicom.cs`, `ImageHelper.cs`, `ODWebView2.cs` or the Imaging General preferences page since this package's base. Every PDF navigation in `ControlImageDisplay` and `ControlImagesOld` (B-IMG's edits included) still applies the preference first; `PdfJavascriptPrefTests` checks it. B-IMG's copy commands use `ImageHelper.HasImageBeenEdited`, which this package did not change.

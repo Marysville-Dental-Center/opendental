@@ -80,3 +80,8 @@ Not tested: the two windows themselves (the GUI is not launched in this run), an
 1. INFERRED 1: is matching a statement's body back to its dunning message acceptable, or should the type be fixed when the statement is made? The latter needs a column the 26.1 schema does not have (a fork-only `statement` column would break schema parity), or storing the type in the statement's text.
 2. Should HTML e-mails (statements and every other HTML e-mail) get a plain-text part as well? It is a change to the shared e-mail sender for all HTML e-mail, so it belongs in its own small package.
 3. INFERRED 4: should an HTML statement body that cannot be translated rather be refused (the patient skipped in billing with an error) than sent as plain text?
+
+## Integration (branch `port/int-7`)
+
+- One conflict, in the field list of `FormBillingDefaults.Designer.cs`: B-PRINT's `checkInserterBarcode` and this package's three e-mail type controls all stay. The barcode box sits on the form below the groups and the e-mail type row inside Email Statements, so they do not overlap.
+- B-PRINT's statement attachment name (`Statements.EmailName.cs`) and this package's `ApplyEmailType` line in `GetEmailMessageForStatement` work on different parts of the message (attachment name, body), so nothing more to connect. M2-SDV and M2-RECUR are not merged yet.

@@ -99,3 +99,9 @@ Not tested: the WinForms windows themselves (Merge button state, the Merge Probl
 2. When the discarded problem is the one set in "Problems indicate none", the preference moves to the kept problem. Is that right, or should the merge refuse?
 3. Should the allergy merge also ask which allergy to keep, as the problem merge now does? 26.1's release note mentions problems only.
 4. The DBM check reuses a hidden UNKNOWN ALLERGY if that is the only one. Should it unhide it instead?
+
+## Integration (branch `port/int-7`)
+
+- `FormAllergySetup` conflicted with B-MED (merged on `port/int-2`), which had added a Search box with the same names, shown only while converting an eForm "Other" allergy. As B-MED's note asked, one box stays: this package's, always shown, with its layout and its "contains" filter. While converting, B-MED's hooks still work: `ShowSearchForOtherConvert` fills the box with the typed text and sets the title, and `FillGrid` passes a blank search to `AllergyDefs.FilterForSetup` and lets `FilterForOtherConvert` keep its every-word match. The list is read before the convert text fills the box (the box's TextChanged now filters the list). B-MED's `Visible = false` lines, its second TextChanged handler and its own `textSearch_TextChanged` are gone.
+- `FormDiseaseDefs` merged without conflicts: Merge stays hidden in selection mode, which covers B-MED's convert mode.
+- B-DBM (merged) added no allergy check, so `AllergyWithInvalidAllergyDef` is the only one.
