@@ -87,7 +87,9 @@ namespace ImagingCapture.UI {
 					listParts.Add(GetErrorText(ended,"The capture stopped with an error"));
 					break;
 			}
-			if(ended.Reason!=TwainCaptureEndReason.TransferFailed && (ended.SourceMayHoldImages || ended.WasSecondDisableAfterWait)) {
+			//SourceMayHoldImages alone: after the way-out disable the source may still have offered everything in the second wait
+			//(WasSecondDisableAfterWait is then true while nothing is held).
+			if(ended.Reason!=TwainCaptureEndReason.TransferFailed && ended.SourceMayHoldImages) {
 				listParts.Add(MayStillHoldImages);
 			}
 			if(ended.ExtraImageCount>0) {

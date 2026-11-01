@@ -157,7 +157,10 @@ Name=Not gated
 			Assert.AreEqual("Stopped (cancelled).",
 				CaptureEndText.GetEndedText(new TwainCaptureEnded { Reason=TwainCaptureEndReason.Stopped,StopReason=TwainCaptureStopReason.Cancel }));
 			StringAssert.Contains(CaptureEndText.GetEndedText(new TwainCaptureEnded { Reason=TwainCaptureEndReason.Stopped,
-				StopReason=TwainCaptureStopReason.Cancel,WasSecondDisableAfterWait=true }),CaptureEndText.MayStillHoldImages);
+				StopReason=TwainCaptureStopReason.Cancel,WasSecondDisableAfterWait=true,SourceMayHoldImages=true }),CaptureEndText.MayStillHoldImages);
+			//The way-out disable was refused and the source then offered everything in the second wait: nothing is held.
+			Assert.AreEqual("Stopped (cancelled).",CaptureEndText.GetEndedText(new TwainCaptureEnded { Reason=TwainCaptureEndReason.Stopped,
+				StopReason=TwainCaptureStopReason.Cancel,WasSecondDisableAfterWait=true }));
 			StringAssert.Contains(CaptureEndText.GetEndedText(new TwainCaptureEnded { Reason=TwainCaptureEndReason.EnableFailed,ConditionCode=0x0011 }),
 				"could not be started: 0x0011.");
 			StringAssert.Contains(CaptureEndText.GetEndedText(new TwainCaptureEnded { Reason=TwainCaptureEndReason.Completed,ExtraImageCount=1 }),
