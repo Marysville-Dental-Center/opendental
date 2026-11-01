@@ -3596,6 +3596,11 @@ namespace OpenDentBusiness {
 				//Attaches are made after double clicking into the claim EOB on an ERA to process it or by auto-processing an ERA.
 				return false;
 			}
+			//M2-ERA (26.1): claimprocs entered from an ERA name the ERA claim they came from (claimproc.Etrans835AttachNum). See EraClaimProcLinks.
+			if(EraClaimProcLinks.IsEnteredFromEraClaim(this,listEraClaimProcs,listAttaches)) {
+				return true;
+			}
+			listEraClaimProcs=EraClaimProcLinks.RemoveEnteredFromOtherEraClaims(this,listEraClaimProcs,listAttaches);//The rest match as before.
 			//List of claimNums for this ERA which were split from this ERA to a new claim.
 			List<long> listSplitClaimNums=listAttaches.Where(x => 
 				x.EtransNum==this.Era.EtransSource.EtransNum//Same ERA
@@ -4154,6 +4159,8 @@ namespace OpenDentBusiness {
 		public double AllowedOverride;
 		///<summary>A copy of the data from claimproc.SecDateEntry</summary>
 		public DateTime SecDateEntry;
+		///<summary>A copy of the data from claimproc.Etrans835AttachNum (Open Dental 26.1, M2-ERA): the ERA claim the claimproc was entered from, or 0.</summary>
+		public long Etrans835AttachNum;
 
 		public Hx835_ShortClaimProc() { }
 
@@ -4172,6 +4179,7 @@ namespace OpenDentBusiness {
 			CodeSent=claimProc.CodeSent;
 			AllowedOverride=claimProc.AllowedOverride;
 			SecDateEntry=claimProc.SecDateEntry;
+			Etrans835AttachNum=claimProc.Etrans835AttachNum;//M2-ERA (26.1)
 		}
 
 		/// <summary>Returns a list of all Hx835_ShortClaimProcs for the list of ProcNums
@@ -4200,7 +4208,7 @@ namespace OpenDentBusiness {
 			List <string> listClaimNumStrs=listClaimNums.Select(x => POut.Long(x)).ToList();
 			string command=
 				"SELECT ClaimProcNum,ProcNum,ClaimNum,FeeBilled,InsPayEst,DedApplied,Status,InsPayAmt,WriteOff,"
-				+"WriteOffEst,WriteOffEstOverride,CodeSent,AllowedOverride,SecDateEntry "
+				+"WriteOffEst,WriteOffEstOverride,CodeSent,AllowedOverride,SecDateEntry,Etrans835AttachNum "//M2-ERA (26.1): Etrans835AttachNum
 				+"FROM claimproc "
 				+"WHERE ClaimNum IN("+String.Join(",",listClaimNumStrs)+")";
 			return SelectMany(command);
@@ -4235,6 +4243,9 @@ namespace OpenDentBusiness {
 				claimProc.CodeSent            = PIn.String(row["CodeSent"].ToString());
 				claimProc.AllowedOverride     = PIn.Double(row["AllowedOverride"].ToString());
 				claimProc.SecDateEntry        = PIn.Date  (row["SecDateEntry"].ToString());
+				if(table.Columns.Contains("Etrans835AttachNum")) {//M2-ERA (26.1)
+					claimProc.Etrans835AttachNum=PIn.Long(row["Etrans835AttachNum"].ToString());
+				}
 				retVal.Add(claimProc);
 			}
 			return retVal;
@@ -4321,6 +4332,10 @@ namespace OpenDentBusiness {
 			bool is835ClaimProcessed=claimPaid.IsProcessed(listClaimProcsAll,listAttaches);
 			if(is835ClaimProcessed) {
 				stringBuilderErrorMessage.AppendLine(Lans.g("X835","The claim is already processed."));
+			}
+			else if(EraClaimProcLinks.GetEtransNumsWithSamePayment(claimPaid,listClaimProcsAll,listAttaches).Count>0) {//M2-ERA (26.1)
+				stringBuilderErrorMessage.AppendLine(Lans.g("X835","The claim was already paid from another ERA with the same check or EFT trace number. "
+					+"This ERA may have been received twice."));
 			}
 			bool is835ClaimSupplemental=claimPaid.GetIsSupplemental(listAttaches,listClaimProcsAll);
 			bool areAnyClaimProcsReceived=listClaimProcsForClaim.Any(x => ClaimProcs.GetInsPaidStatuses().Contains(x.Status));
