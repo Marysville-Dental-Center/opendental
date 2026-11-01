@@ -141,6 +141,26 @@ namespace BERATests {
 			Assert.IsTrue(x835Reloaded.ListClaimsPaid[0].IsProcessed(listShortClaimProcs,listAttachesDb));
 		}
 
+		///<summary>Integration with M2-ERA (26.1 claimproc-to-ERA link): the claimprocs automatic processing posts after an auto split remember the ERA
+		///claim they came from (the original claim's etrans835attach row); the claimproc split off to the new claim stays Not Received, without a link.
+		///</summary>
+		[TestMethod]
+		public void AutoSplit_PostedClaimProcsAreLinkedToTheEraClaim() {
+			EraCase eraCase=CreateOnePaidOneDenied();
+			long claimNumOriginal=eraCase.Claim.ClaimNum;
+			EraAutomationResult result=Etranss.TryAutoProcessEraEob(eraCase.X835,eraCase.ListAttaches,isFullyAutomatic:false);
+			Assert.AreEqual(1,result.CountClaimsProcessed,string.Join("\r\n",result.ListClaimErrors));
+			Assert.AreEqual(1,result.ListAutoSplitNotes.Count);
+			Etrans835Attach attachOriginal=Etrans835Attaches.GetForEtrans(eraCase.Etrans.EtransNum).First(x => x.ClaimNum==claimNumOriginal);
+			ClaimProc claimProcPaid=GetClaimProcForProc(ProcNum(eraCase,0));
+			Assert.AreEqual(ClaimProcStatus.Received,claimProcPaid.Status);
+			Assert.AreEqual(attachOriginal.Etrans835AttachNum,claimProcPaid.Etrans835AttachNum,"The paid claimproc points at the ERA claim it was entered from.");
+			ClaimProc claimProcDenied=GetClaimProcForProc(ProcNum(eraCase,1));
+			Assert.AreNotEqual(claimNumOriginal,claimProcDenied.ClaimNum);
+			Assert.AreEqual(ClaimProcStatus.NotReceived,claimProcDenied.Status);
+			Assert.AreEqual(0L,claimProcDenied.Etrans835AttachNum,"Nothing was entered on the split claim.");
+		}
+
 		[TestMethod]
 		public void AutoSplit_ImportPath_EtransNoteNamesTheNewClaim() {
 			EraCase eraCase=CreateOnePaidOneDenied();

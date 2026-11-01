@@ -98,3 +98,8 @@ Not tested automatically: the two checkboxes on screen (the window was not opene
 1. Should the report's Show PreAuths and Show $0 Payments choices survive a restart? That needs a `UserOdFkeyType` value from the registry owner (the B-EF convention would give 138, above the tinyint column's 127).
 2. The spec asks to clear the link when the claim payment is deleted; this branch keeps it (see the deviation). Confirm.
 3. Automatic processing now holds back a claim whose payment came from another ERA with the same trace number and payer (a duplicate import). Keep this check, or post such claims as before?
+
+## Integration (branch `port/int-6`)
+
+- Merged without conflicts. B-ERA (merged on `port/int-1`) asked for the 26.1 link to be written for the claimprocs automatic processing posts after an auto split; it is, because the split runs before `TryImportEraClaimData`, which sets the link. New test `BERATests.EraAutoProcessDbTests.AutoSplit_PostedClaimProcsAreLinkedToTheEraClaim`: the paid claimproc points at the original claim's `etrans835attach` row, and the claimproc split off to the new claim stays Not Received with no link. B-ERA's `AutoSplit_EraStillPointsAtTheOriginalClaimAndShowsProcessed` passes through the linked `IsProcessed`.
+- `tests/BERATests` and `tests/M2ERATests` each keep their own `EraDb` and `Era835Builder`: they are test scaffolding of two test projects with different needs (M2-ERA's builder writes preauthorizations, claim statuses and trace numbers), not a shared product helper.
