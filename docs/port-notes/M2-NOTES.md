@@ -133,3 +133,9 @@ Last verification (fix round t3, on top of `port/int-10` f252347b2): one full bu
 
 - The windows themselves (Group Note layout and resizing, the merge window and its read-only mode, Change User, Topaz pads): the GUI is not launched in this run; the wiring tests read the sources.
 - A second signature written by Open Dental 26.1 (its key is not public).
+
+## Integration (branch `port/int-13`)
+
+- Merged onto `port/int-12` first of the three packages of this round, with no conflicts and no integration commit. Since `port/int-10` the integration branch gained M2-CARRIER, M2-HIST, M2-SDV, M2-RECUR and M2-EMP. **M2-HIST** owns `Procedures.cs`: on the merged head `Procedures.Update` still decides the note row with `ProcNotes.IsNoteRowNeeded(procedure,oldProcedure)` and calls `ProcNotes.SetSecondSignature` before `ProcNotes.Insert`. **M2-CARRIER** changed two lines of `ControlChart.cs` and nothing in `FormProcEdit.cs`, `FormProcGroup.cs`, `ProcNotes.cs` or `ChartModules.GetProgNotes`, so the Procedure Info hooks and the progress notes' Signed column are as on the package branch.
+- No duplicate helpers: none of the packages merged since `port/int-10` (nor V-GP and V-BRIDGE2, merged after this one) adds a window-size store, a note merge or a signature rule; `LocalWindowSizes` stays the one generic per-user window-size store beside B-APPT's Waiting Room bounds file.
+- Still no fork migration step, schema, CRUD or adoption change. On the merged head (`port/int-13`, after V-GP and V-BRIDGE2 too): one full build through the build lane (0 errors), `run-tests -Mode Full` (79 assemblies, 4174 tests, none failed; the 2 not passed are M201Tests' published-document checks, skipped) and `tools/Test-NoHqHosts.ps1` (passed). `M2NOTESTests` 51 of 51, `GroupNoteTests` 54, `SignatureTests` 55, `M2HISTTests` 43, `BSERVERTests` 51, `BDBMTests` 30.
