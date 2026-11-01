@@ -211,6 +211,14 @@ namespace OpenDentBusiness{
 		DTXStudio,
 		///<summary>DTX Studio Acquire: opens the patient in DTX Studio Clinic with acquisition ready (Open Dental 25.2).</summary>
 		DTXStudioAcquire,
+		//Open Dental 25.4 program links (V-BRIDGE2), appended so existing values keep their numbers. Rows are inserted at runtime with Enabled=0.
+		//The names are the fork's: Open Dental's program.ProgName values for them are not public.
+		///<summary>Clerri membership plans (25.4): a Family module button that opens the office's Clerri dashboard. Launch only, no data sync.</summary>
+		Clerri,
+		///<summary>Clever One by VATECH (25.4), the newer VATECH imaging program. The EzDenti link stays.</summary>
+		CleverOne,
+		//Global Payments V2 (V-GP), appended after the V-BRIDGE2 links when both were merged (port/int-13). program.ProgName and
+		//payterminal.CCIntegration store the name, not the number, so the order is free.
 		///<summary>Global Payments V2 (Open Dental 25.4): card terminals through Global Payments' cloud terminal service, called directly with the
 		///office's own Global Payments API app. "MeetInTheCloud" is the internal name the published 25.4 database documents give this integration
 		///(CreditCardSource.MeetInTheCloudTerminal, computerpref.CreditCardTerminalId); the program row's name itself is not published (INFERRED).

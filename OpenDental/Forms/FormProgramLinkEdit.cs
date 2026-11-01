@@ -70,6 +70,7 @@ namespace OpenDental{
 				listToolBars.Enabled=false;
 				Text+=" "+Lan.g(this,ProgramLinksDiscontinued.LABEL);
 			}
+			SetCommandLineHint();//V-BRIDGE2: Trophy (Enhanced) Command line tags (FormProgramLinkEdit.Bridges2.cs).
 		}
 
 		private void FormProgramLinkEdit_Shown(object sender,EventArgs e) {

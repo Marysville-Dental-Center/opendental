@@ -88,6 +88,7 @@
       "tests\\StatementTests\\StatementTests.csproj",
       "tests\\TaskCategoryTests\\TaskCategoryTests.csproj",
       "tests\\VBRIDGE1Tests\\VBRIDGE1Tests.csproj",
+      "tests\\VBRIDGE2Tests\\VBRIDGE2Tests.csproj",
       "tests\\VDXC2Tests\\VDXC2Tests.csproj",
       "tests\\VEDSTests\\VEDSTests.csproj",
       "tests\\VendorDirectTests\\VendorDirectTests.csproj",
