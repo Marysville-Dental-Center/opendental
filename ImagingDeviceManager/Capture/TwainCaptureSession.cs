@@ -883,7 +883,7 @@ namespace ImagingDeviceManager.Capture {
 				TransferOutcome outcome=_session.TransferCaptureImage(out image);
 				if(outcome==TransferOutcome.Done) {
 					AcquiredImageKind kind=AcquiredImageKind.Normal;
-					if(!context.IsContinuous && !context.IsRedelivery && context.CountNormal>=1) {
+					if(!context.IsContinuous && !context.IsRedelivery && context.CountImages>=1) {
 						kind=AcquiredImageKind.Extra;
 						Log("Warning: \""+_session.SourceName+"\" sent more images than the one asked for (CAP_XFERCOUNT=1); this one is an extra image.");
 					}
@@ -1084,11 +1084,13 @@ namespace ImagingDeviceManager.Capture {
 			}
 			EnableContext context=_enable??new EnableContext(new Command { Kind=CommandKind.Enable,EnableId=0 });
 			TwainCaptureStopReason reason=_stopReasonCurrent!=TwainCaptureStopReason.None ? _stopReasonCurrent : context.StopReason;
-			if(reason==TwainCaptureStopReason.None && !context.IsContinuous && !context.IsRedelivery && context.CountNormal>=1) {
-				//No stop of the session's: the disable after Count=0 (or after MSG_CLOSEDSREQ) was refused and the source then offered more. The
-				//one image CAP_XFERCOUNT=1 asked for has arrived, so this is an extra image (design 7.12), not one for the enable's target.
-				Log("Warning: \""+_session.SourceName+"\" sent more images than the one asked for (CAP_XFERCOUNT=1) after the disable was refused;"
-					+" this one is an extra image.");
+			if(!context.IsContinuous && !context.IsRedelivery && context.CountImages>=1) {
+				//The one image CAP_XFERCOUNT=1 asked for has arrived (Normal, or drained itself), so this is an extra image (design 7.12), not one
+				//for the enable's target, whatever drained it: a refused disable after Count=0 or MSG_CLOSEDSREQ, or a stop (End, Disable, a safe
+				//stop after a patient change) between the transfers. Its stop reason is kept.
+				Log("Warning: \""+_session.SourceName+"\" sent more images than the one asked for (CAP_XFERCOUNT=1)"
+					+(reason==TwainCaptureStopReason.None ? " after the disable was refused" : " while it was stopped ("+reason+")")
+					+"; this one is an extra image.");
 				Deliver(context,drained.Acquired,AcquiredImageKind.Extra,reason);
 				return;
 			}

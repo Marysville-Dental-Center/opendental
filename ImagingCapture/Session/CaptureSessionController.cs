@@ -1123,7 +1123,9 @@ namespace ImagingCapture.Session {
 				QuarantineImage(session,image,record,"Redelivered image that the operator did not confirm.",true);
 				return;
 			}
-			if(image.Kind==AcquiredImageKind.Extra) {
+			if(image.Kind==AcquiredImageKind.Extra || (!image.IsContinuousEnable && image.IndexInEnable>1)) {
+				//Also a later image of a per-slot enable (CAP_XFERCOUNT=1) that the library did not mark Extra: never saved as the enable's own image,
+				//nor marked with its slot (design 7.12 "Extra images").
 				QuarantineImage(session,image,record,"The sensor software sent more images than expected.",false);
 				NoticeText=CaptureSessionText.ExtraImages;
 				return;

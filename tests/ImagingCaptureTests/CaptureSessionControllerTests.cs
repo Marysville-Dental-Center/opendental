@@ -647,6 +647,37 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void PerSlot_ASecondImageDrainedByAStop_IsExtra_QuarantinedWithoutItsEnablesSlot() {
+			_harness.Started();
+			_harness.Status(TwainCaptureState.WaitingForImage);
+			_harness.Image();
+			//The source sent a second image although CAP_XFERCOUNT=1 asked for one, and a stop drained it (Kind Drained from an older library).
+			_harness.Image(AcquiredImageKind.Drained,TwainCaptureStopReason.Cancel);
+			Assert.AreEqual(1,_harness.RadiographStore.ListDocumentsUpdated.Count);
+			FakeQuarantineCall call=_harness.Twain.ListQuarantined.Single();
+			Assert.AreEqual("The sensor software sent more images than expected.",call.Reason);
+			Assert.AreEqual(CaptureSessionText.ExtraImages,Controller.NoticeText);
+			Dictionary<string,string> dictFields=(call.Image.SidecarFields??new List<KeyValuePair<string,string>>()).ToDictionary(x => x.Key,x => x.Value);
+			Assert.IsFalse(dictFields.ContainsKey(CaptureSidecarKeys.SlotOfImage),"Not marked as the slot's image: Assign files it with no slot.");
+		}
+
+		[TestMethod]
+		public void SingleTarget_EndDuringTheTransfer_ADrainedSecondImage_QuarantinedAsExtra_NoSecondDocument() {
+			_harness=new CaptureControllerHarness(0);
+			Assert.IsTrue(Controller.SetToothNumbers("8",out string error),error);
+			_harness.Started();
+			_harness.Status(TwainCaptureState.Transferring);
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.End));
+			Assert.IsTrue(_harness.Execute(CaptureSessionAction.End),"Without safe disable the second press goes ahead.");
+			_harness.Image(AcquiredImageKind.Drained,TwainCaptureStopReason.End);
+			_harness.Image(AcquiredImageKind.Drained,TwainCaptureStopReason.End);
+			Assert.AreEqual(1,_harness.RadiographStore.ListDocumentsUpdated.Count,"Only the enable's own image is a document.");
+			Assert.AreEqual("8",_harness.RadiographStore.ListDocumentsUpdated.Single().ToothNumbers);
+			Assert.AreEqual("The sensor software sent more images than expected.",_harness.Twain.ListQuarantined.Single().Reason);
+			Assert.AreEqual(CaptureSessionText.ExtraImages,Controller.NoticeText);
+		}
+
+		[TestMethod]
 		public void ContinuousConfigured_ButTheEnableRanPerSlot_EnablesAgain() {
 			_harness.Setup.Options.SessionMode=TwainSessionMode.Continuous;
 			_harness.Started();
@@ -655,14 +686,14 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void DrainedImage_SlotTaken_GoesToTheQuarantine() {
+		public void DrainedSecondImageOfAPerSlotEnable_GoesToTheQuarantineAsExtra_TaggedWithTheBoundPatient() {
 			_harness.Started();
 			_harness.Status(TwainCaptureState.WaitingForImage);
 			_harness.Image();
 			_harness.Image(AcquiredImageKind.Drained,TwainCaptureStopReason.Cancel);
 			Assert.AreEqual(1,_harness.RadiographStore.ListDocumentsUpdated.Count);
 			FakeQuarantineCall call=_harness.Twain.ListQuarantined.Single();
-			StringAssert.Contains(call.Reason,"already holds an image");
+			StringAssert.Contains(call.Reason,"more images than expected","CAP_XFERCOUNT=1 asked for one image: not the slot's image (design 7.12).");
 			Assert.IsFalse(call.IsPatientUnknown);
 			Assert.AreEqual(55,call.Context.PatNum,"Tagged with the bound patient.");
 			Assert.AreEqual(1,Controller.CountQuarantined);

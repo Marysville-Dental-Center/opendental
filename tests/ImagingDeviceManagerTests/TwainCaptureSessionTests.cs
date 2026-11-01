@@ -472,7 +472,7 @@ namespace ImagingDeviceManager.Tests {
 		}
 
 		[TestMethod]
-		public void Cancel_State6_FromAnotherThread_PendingImagesDrainedWithTheStopReason() {
+		public void Cancel_State6_FromAnotherThread_PendingImagesOfAPerSlotEnableAreExtra_WithTheStopReason() {
 			Helper.Mode=FakeHelperMode.Multi;
 			Helper.ListExposures.Add(SessionHarness.Exposure(9));
 			Helper.ListExposures.Add(SessionHarness.Exposure(10));
@@ -489,11 +489,14 @@ namespace ImagingDeviceManager.Tests {
 			Assert.AreEqual(TwainCaptureEndReason.Stopped,ended.Reason);
 			Assert.AreEqual(TwainCaptureStopReason.PatientChanged,ended.StopReason);
 			Assert.AreEqual(3,ended.ImageCount,"Nothing is dropped.");
-			Assert.AreEqual(2,ended.DrainedImageCount);
+			//CAP_XFERCOUNT=1 asked for one image, and it has arrived: what the stop drains after it is extra (design 7.12), never the slot's image.
+			Assert.AreEqual(2,ended.ExtraImageCount);
+			Assert.AreEqual(0,ended.DrainedImageCount);
 			List<AcquiredImage> listImages=_harness.Images;
 			Assert.AreEqual(AcquiredImageKind.Normal,listImages[0].Kind);
-			Assert.IsTrue(listImages.Skip(1).All(x => x.Kind==AcquiredImageKind.Drained && x.StopReason==TwainCaptureStopReason.PatientChanged
+			Assert.IsTrue(listImages.Skip(1).All(x => x.Kind==AcquiredImageKind.Extra && x.StopReason==TwainCaptureStopReason.PatientChanged
 				&& x.EnableId==ended.EnableId));
+			Assert.IsTrue(_harness.HasLog("while it was stopped (PatientChanged); this one is an extra image"),_harness.LogText);
 			Assert.AreEqual(3,Helper.CountDelivered);
 			_harness.AssertDisabledOnlyInState5();
 		}

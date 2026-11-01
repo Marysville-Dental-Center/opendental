@@ -164,6 +164,34 @@ namespace ImagingCapture.Tests {
 			dictFields[CaptureSidecarKeys.IndexInEnable]="1";
 			dictFields["ImageKind"]="Drained";
 			Assert.IsTrue(_harness.Files.Quarantine(dictFields,_receivedAt.AddSeconds(2)).IsSlotKnown,"A drained image of a per-slot enable goes to its enable's slot.");
+			dictFields=RecoveryFiles.SessionFields(captureId:"cap-11");
+			dictFields[CaptureSidecarKeys.ContinuousEnable]="0";
+			dictFields[CaptureSidecarKeys.IndexInEnable]="2";
+			dictFields["ImageKind"]="Drained";
+			dictFields[CaptureSidecarKeys.SlotOfImage]="1";
+			Assert.IsFalse(_harness.Files.Quarantine(dictFields,_receivedAt.AddSeconds(3)).IsSlotKnown,
+				"A second image of a per-slot enable (it asked for one) is never its enable's slot.");
+			dictFields=RecoveryFiles.SessionFields(captureId:"cap-12");
+			dictFields["ImageKind"]="Extra";
+			Assert.IsFalse(_harness.Files.Quarantine(dictFields,_receivedAt.AddSeconds(4)).IsSlotKnown,"An extra image is never its enable's slot.");
+		}
+
+		[TestMethod]
+		public void Assign_AnExtraImageOfASingleImageSession_FiledWithNoTeeth() {
+			Dictionary<string,string> dictFields=RecoveryFiles.SessionFields();
+			dictFields.Remove(CaptureSidecarKeys.MountNum);
+			dictFields.Remove(CaptureSidecarKeys.MountItemNum);
+			dictFields.Remove(CaptureSidecarKeys.SlotItemOrder);
+			dictFields["Slot"]="Single image, #6";
+			dictFields["Target"]="Single image, #6";
+			dictFields["ImageKind"]="Extra";
+			dictFields[CaptureSidecarKeys.IndexInEnable]="2";
+			CaptureFileEntry entry=_harness.Files.Quarantine(dictFields,_receivedAt);
+			Assert.IsFalse(entry.IsSlotKnown);
+			string error;
+			CaptureAssignPlan plan=_harness.Filer.PlanAssign(entry,0,out error);
+			Assert.IsNotNull(plan,error);
+			Assert.AreEqual("",plan.ToothNumbers,"Not the banner's teeth of its enable.");
 		}
 
 		[TestMethod]
