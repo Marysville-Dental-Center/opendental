@@ -82,7 +82,7 @@ namespace OpenDental {
 		private void BuildContextMenuGridClaims() {
 			List<MenuItem> listMenuItems=new List<MenuItem>();
 			listMenuItems.Add(new MenuItem(Lan.g(this,"Go to Account"),new EventHandler(MenuItemGoToAccount_Click)));
-			listMenuItems.Add(new MenuItem(Lan.g(this,"Process Unsent Secondary Claims"),new EventHandler(MenuItemProcessSecondaryClaims_Click)));
+			listMenuItems.Add(new MenuItem(Lan.g(this,"Process Unsent Claims of the Next Insurance"),new EventHandler(MenuItemProcessSecondaryClaims_Click)));
 			ContextMenu contextMenu=new ContextMenu(listMenuItems.ToArray());
 			gridClaims.ContextMenu=contextMenu;
 		}
@@ -506,7 +506,8 @@ namespace OpenDental {
 			EtransL.GoToAccountForHx835_Claim(hx835_Claim);
 		}
 
-		///<summary>Validates that the selected claim has procedures that are on one or more secondary claims with a status of Unsent or Hold Unti Pri Recieved.
+		///<summary>Validates that the selected claim has procedures that are on one or more claims of the next insurance (Open Dental 26.1: after a
+		///claim of any ordinal, see Claims.GetNextOrdinalClaimsNotReceived) with a status of Unsent, Hold Until Prior Received or Hold for In Process.
 		///If so, the user is prompted to send these claims, change there status to "Waiting to send", or do nothing.</summary>
 		private void MenuItemProcessSecondaryClaims_Click(object sender,EventArgs e) {
 			ClaimRowData claimRowDataSelected=gridClaims.SelectedTag<ClaimRowData>();
@@ -519,21 +520,20 @@ namespace OpenDental {
 				MsgBox.Show(this,"There are no unsent claims for the procedures on the selected claim.");
 				return;
 			}
-			List<long> listClaimNums=listHx835_ShortClaimProcsForUnsentClaims.Select(x => x.ClaimNum).ToList();
-			List<Hx835_ShortClaim> listHx835_ShortClaimsUnsent=Hx835_ShortClaim.GetClaimsFromClaimNums(listClaimNums);
-			if(!listHx835_ShortClaimsUnsent.Any(x => x.ClaimType=="S" && x.ClaimStatus.In("U","H","I"))) {
-				MsgBox.Show(this,"There are unsent claim(s) for one or more procedures on the selected claim, " 
-					+"but none of them are for secondary claims with a status of 'Unsent', 'Hold Until Pri Received', or 'Hold for In Process'. "
+			Hx835_ShortClaim hx835_ShortClaim=claimRowDataSelected.Hx835_ShortClaim_;
+			List<ClaimProc> listClaimProcsForClaim=ClaimProcs.RefreshForClaim(hx835_ShortClaim.ClaimNum);
+			//Open Dental 26.1 (M2-CLAIMRCV): the claims of the next insurance after the selected claim, of any ordinal, as the prompt finds them.
+			if(Claims.GetNextOrdinalClaimsNotReceived(listClaimProcsForClaim,includeHoldForInProcess:true).Count==0) {
+				MsgBox.Show(this,"There are unsent claim(s) for one or more procedures on the selected claim, "
+					+"but none of them are for the next insurance with a status of 'Unsent', 'Hold Until Prior Received', or 'Hold for In Process'. "
 					+"Please go to the account to send them.");
 				return;
 			}
-			Hx835_ShortClaim hx835_ShortClaim=claimRowDataSelected.Hx835_ShortClaim_;
-			//The selected claim must be recieved and processed properly before we can send secondary claims.
+			//The selected claim must be recieved and processed properly before we can send the next insurance's claims.
 			if(hx835_ShortClaim.ClaimStatus!="R" || !claimRowDataSelected.IsProcessed) {//R=Received
-				MsgBox.Show(this,"The selected claim must be received before secondary claims can be sent.");
+				MsgBox.Show(this,"The selected claim must be received before claims of the next insurance can be sent.");
 				return;
 			}
-			List<ClaimProc> listClaimProcsForClaim=ClaimProcs.RefreshForClaim(hx835_ShortClaim.ClaimNum);
 			ClaimL.PromptForPrimaryOrSecondaryClaim(listClaimProcsForClaim);
 		}
 

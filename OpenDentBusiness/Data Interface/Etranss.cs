@@ -1336,6 +1336,7 @@ namespace OpenDentBusiness{
 			ClaimProcs.LinkToEraClaim(x835,claimPaid,claim,listClaimProcsToEdit,isByTotalIncluded ? cpByTotal : null);//M2-ERA (26.1): claimproc.Etrans835AttachNum
 			if(isAutomatic) {
 				ReceiveEraPayment(claim,claimPaid,listClaimProcsForClaim,PrefC.GetBool(PrefName.EraIncludeWOPercCoPay),isSupplementalPay,isAutomatic:isAutomatic);
+				ClaimProcs.CreateAuditTrailEntriesForOverrides(listClaimProcsForClaim,listClaimProcsOld);//Open Dental 25.1: Allowed overrides the ERA changed.
 				if(automationResult!=null) {
 					automationResult.CountClaimsProcessed++;
 				}
@@ -1412,7 +1413,7 @@ namespace OpenDentBusiness{
 			Claims.Update(claim);
 			ClaimProcs.RemoveSupplementalTransfersForClaims(claim.ClaimNum);
 			InsBlueBooks.SynchForClaimNums(claim.ClaimNum);
-			if(PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary) && claim.ClaimStatus=="R" && claimOld.ClaimStatus!="R" && claim.ClaimType=="P") {
+			if(PrefC.GetBool(PrefName.ClaimPrimaryReceivedRecalcSecondary) && claim.ClaimStatus=="R" && claimOld.ClaimStatus!="R" && claim.ClaimType!="PreAuth") {//26.1: any ordinal
 				Claims.CalculateAndUpdateSecondariesFromPrimaries(new List<Claim>{ claim });
 			}
 			if(isAutomatic || Security.IsAuthorized(EnumPermType.PaymentCreate,DateTime.Today,true)) {
