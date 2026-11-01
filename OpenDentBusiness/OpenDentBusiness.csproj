@@ -1486,6 +1486,7 @@
     <Compile Include="Data Interface\Clearinghouses.cs" />
     <Compile Include="Data Interface\Clinics.cs" />
     <Compile Include="Data Interface\ClockEvents.cs" />
+    <Compile Include="Data Interface\ClockEvents.FutureClockOut.cs" />
     <Compile Include="Data Interface\TimeCardTotals.cs" />
     <Compile Include="Data Interface\Commlogs.cs" />
     <Compile Include="Data Interface\ComputerPrefs.cs" />
@@ -1501,6 +1502,7 @@
     <Compile Include="Data Interface\EmailMessages.cs" />
     <Compile Include="Data Interface\EmailTemplates.cs" />
     <Compile Include="Data Interface\Employees.cs" />
+    <Compile Include="Data Interface\Employees.Titles.cs" />
     <Compile Include="Data Interface\EmployeeReportsTo.cs" />
     <Compile Include="Data Interface\Employers.cs" />
     <Compile Include="Data Interface\Etranss.cs" />

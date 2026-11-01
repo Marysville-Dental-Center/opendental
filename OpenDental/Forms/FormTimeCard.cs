@@ -244,16 +244,18 @@ namespace OpenDental{
 			gridMain.Columns.Add(col);
 			//col=new ODGridColumn(Lan.g(this,"Altered"),50,HorizontalAlignment.Center);//use red now instead of separate col
 			//gridMain.Columns.Add(col);
+			//M2-EMP: a second time on a later date than the first (a clock-out entered for a later day) also shows its date, so its column widens.
+			int widthSecondTime=ClockEvents.GetSecondTimeColumnWidth(_listClockEvents,64);
 			if(IsBreaks){
 				col=new GridColumn(Lan.g(this,"Out"),64,HorizontalAlignment.Right);
 				gridMain.Columns.Add(col);
-				col=new GridColumn(Lan.g(this,"In"),64,HorizontalAlignment.Right);
+				col=new GridColumn(Lan.g(this,"In"),widthSecondTime,HorizontalAlignment.Right);
 				gridMain.Columns.Add(col);
 			}
 			else{
 				col=new GridColumn(Lan.g(this,"In"),64,HorizontalAlignment.Right);
 				gridMain.Columns.Add(col);
-				col=new GridColumn(Lan.g(this,"Out"),64,HorizontalAlignment.Right);
+				col=new GridColumn(Lan.g(this,"Out"),widthSecondTime,HorizontalAlignment.Right);
 				gridMain.Columns.Add(col);
 			}
 			col=new GridColumn(Lan.g(this,"Total"),50,HorizontalAlignment.Right);
@@ -343,12 +345,8 @@ namespace OpenDental{
 						row.Cells.Add("");//not clocked out yet
 					}
 					else{
-						if(PrefC.GetBool(PrefName.TimeCardShowSeconds)) {
-							row.Cells.Add(clockEvent.TimeDisplayed2.ToLongTimeString());
-						}
-						else {
-							row.Cells.Add(clockEvent.TimeDisplayed2.ToShortTimeString());
-						}
+						//M2-EMP: the time, with its date in front when it falls on a later date than the first time.
+						row.Cells.Add(ClockEvents.GetSecondTimeCellText(clockEvent,PrefC.GetBool(PrefName.TimeCardShowSeconds)));
 						if (clockEvent.TimeEntered2!=clockEvent.TimeDisplayed2){
 							row.Cells[row.Cells.Count-1].ColorText = Color.Red;
 						}
@@ -599,7 +597,13 @@ namespace OpenDental{
 			List<string> listCells=TimeCardTotals.GetCells(_timeCardPeriodTotals,_enumTimeCardTotalsFormat,PrefC.GetBool(PrefName.TimeCardShowSeconds));
 			gridTotals.BeginUpdate();
 			gridTotals.Columns.Clear();
-			gridTotals.Columns.Add(new GridColumn("",70+45+64+64));//Date, Day, In and Out of gridMain
+			//Date, Day, In and Out of gridMain. Integration (M2-EMP): the second-time column widens when a clock-out falls on a later date, so the
+			//spacer takes gridMain's own widths to keep the totals under their columns.
+			int widthSpacer=70+45+64+64;
+			if(gridMain.Columns.Count>=4) {
+				widthSpacer=gridMain.Columns[0].ColWidth+gridMain.Columns[1].ColWidth+gridMain.Columns[2].ColWidth+gridMain.Columns[3].ColWidth;
+			}
+			gridTotals.Columns.Add(new GridColumn("",widthSpacer));
 			for(int i=0;i<listCaptions.Count;i++) {
 				int width=45;
 				if(listCaptions[i]=="Total" || listCaptions[i]=="Day") {
@@ -809,6 +813,11 @@ namespace OpenDental{
 				intArrayColW[13]=50;//Clinic
 				intArrayColW[14]=80;//Note: Reduce width when Clinic column is added so that we do not exceed the margin.
 			}
+			//M2-EMP: a second time on a later date prints with its date; the Out/In column takes the room from the Note column (the last one).
+			int widthSecondTimeMoved=ClockEvents.GetSecondTimePrintWidthMoved(_listClockEvents,PrefC.GetBool(PrefName.TimeCardShowSeconds),
+				x => g.MeasureString(x,font).Width,intArrayColW[3],intArrayColW[intArrayColW.Length-1]);
+			intArrayColW[3]+=widthSecondTimeMoved;
+			intArrayColW[intArrayColW.Length-1]-=widthSecondTimeMoved;
 			int[] intArrayColPos=new int[intArrayColW.Length+1];
 			intArrayColPos[0]=45;
 			for(int i=1;i<intArrayColPos.Length;i++) {
@@ -856,11 +865,11 @@ namespace OpenDental{
 			while(yPos < e.PageBounds.Height-75-50-32-16 && _linesPrinted < gridMain.ListGridRows.Count) {
 				for(int i=0;i<intArrayColPos.Length-1;i++) {
 					if(gridMain.ListGridRows[_linesPrinted].Cells[i].ColorText==Color.Empty || gridMain.ListGridRows[_linesPrinted].Cells[i].ColorText==Color.Black) {
-						e.Graphics.DrawString(gridMain.ListGridRows[_linesPrinted].Cells[i].Text,font,solidBrush
+						e.Graphics.DrawString(GetPrintCellText(gridMain.ListGridRows[_linesPrinted],i),font,solidBrush
 							,new RectangleF(intArrayColPos[i]+2,yPos,intArrayColPos[i+1]-intArrayColPos[i]-5,font.GetHeight(e.Graphics)));
 					}
 					else { //The only other color currently supported is red.
-						e.Graphics.DrawString(gridMain.ListGridRows[_linesPrinted].Cells[i].Text,font,Brushes.Red
+						e.Graphics.DrawString(GetPrintCellText(gridMain.ListGridRows[_linesPrinted],i),font,Brushes.Red
 							,new RectangleF(intArrayColPos[i]+2,yPos,intArrayColPos[i+1]-intArrayColPos[i]-5,font.GetHeight(e.Graphics)));
 					}
 				}
@@ -883,6 +892,15 @@ namespace OpenDental{
 			else {
 				e.HasMorePages=true;
 			}
+		}
+
+		///<summary>M2-EMP: the text pd_PrintPage prints in a cell: the grid's text, except in a clock event's second-time column (index 3), which prints
+		///its time before its date (ClockEvents.GetSecondTimePrintText).</summary>
+		private string GetPrintCellText(GridRow gridRow,int indexColumn) {
+			if(indexColumn==3 && gridRow.Tag is ClockEvent clockEvent) {
+				return ClockEvents.GetSecondTimePrintText(clockEvent,PrefC.GetBool(PrefName.TimeCardShowSeconds));
+			}
+			return gridRow.Cells[indexColumn].Text;
 		}
 
 		///<summary>Prints the Totals for Period row in the format chosen in this window: the label under Date through Out, then each total under its

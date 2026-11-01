@@ -220,6 +220,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2SDVTests", "tests\M2SDVTe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2RECURTests", "tests\M2RECURTests\M2RECURTests.csproj", "{09A539F6-D3D2-481E-B33A-A033FA1345E7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "M2EMPTests", "tests\M2EMPTests\M2EMPTests.csproj", "{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1479,6 +1481,18 @@ Global
 		{09A539F6-D3D2-481E-B33A-A033FA1345E7}.Release|Any CPU.Build.0 = Release|x86
 		{09A539F6-D3D2-481E-B33A-A033FA1345E7}.Release|x86.ActiveCfg = Release|x86
 		{09A539F6-D3D2-481E-B33A-A033FA1345E7}.Release|x86.Build.0 = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Debug|Any CPU.Build.0 = Debug|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Debug|x86.ActiveCfg = Debug|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Debug|x86.Build.0 = Debug|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.ODXam|Any CPU.ActiveCfg = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.ODXam|Any CPU.Build.0 = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.ODXam|x86.ActiveCfg = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.ODXam|x86.Build.0 = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Release|Any CPU.ActiveCfg = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Release|Any CPU.Build.0 = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Release|x86.ActiveCfg = Release|x86
+		{26FE86B9-AA28-49EE-9C67-3179A92D3FEA}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -61,6 +61,7 @@
       "tests\\M2CLAIMRCVTests\\M2CLAIMRCVTests.csproj",
       "tests\\M2DUNTests\\M2DUNTests.csproj",
       "tests\\M2EFTests\\M2EFTests.csproj",
+      "tests\\M2EMPTests\\M2EMPTests.csproj",
       "tests\\M2ERATests\\M2ERATests.csproj",
       "tests\\M2ESTTests\\M2ESTTests.csproj",
       "tests\\M2HISTTests\\M2HISTTests.csproj",
