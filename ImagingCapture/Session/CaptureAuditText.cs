@@ -101,14 +101,26 @@ namespace ImagingCapture.Session {
 				+CaptureSessionText.GetRetakeLabel(label)+"\". The slot is taken again. Session: "+sessionGuid+".";
 		}
 
-		///<summary>Design 7.3 step 5, 10.7: the Setup entry of "Always rotate this slot", with the old and new values.</summary>
+		///<summary>Design 7.3 step 5, 10.7: the Setup entry of "Always rotate this slot", with the old and new values of the mount definition's slot
+		///and of the same slot of this mount (isMountItemChanged false: that slot could not be saved and keeps degreesItemOld).</summary>
 		public static string GetAlwaysRotateText(string mountDefDescription,long mountDefNum,int itemOrder,string toothNumbers,int degreesOld,
-			int degreesNew,long mountNum,string computerName)
+			int degreesNew,long mountNum,int degreesItemOld,bool isMountItemChanged,string computerName)
 		{
 			string teeth=(toothNumbers??"").Trim();
 			return "Always rotate this slot: mount definition \""+(mountDefDescription??"").Trim()+"\" (MountDefNum "+ToText(mountDefNum)+"), slot "
 				+ToText(itemOrder)+(teeth=="" ? "" : " (teeth "+teeth+")")+": RotateOnAcquire "+ToText(degreesOld)+" -> "+ToText(degreesNew)
-				+". The slot of mount "+ToText(mountNum)+" was changed the same way. Computer: "+(computerName??"").Trim()+".";
+				+". The slot of mount "+ToText(mountNum)+(isMountItemChanged
+					? ": RotateOnAcquire "+ToText(degreesItemOld)+" -> "+ToText(degreesNew)+"."
+					: " could not be changed; it keeps RotateOnAcquire "+ToText(degreesItemOld)+".")
+				+" Computer: "+(computerName??"").Trim()+".";
+		}
+
+		///<summary>The ImageEdit entry of Rotate (FKey=DocNum, under the bound patient), as the Imaging module logs its Rotate Right: the document,
+		///the target and the old and new DegreesRotated, a display transform (the stored pixels do not change).</summary>
+		public static string GetRotateText(long docNum,string fileName,string targetLabel,int degreesOld,int degreesNew,Guid sessionGuid) {
+			string file=(fileName??"").Trim();
+			return "Rotate: image DocNum "+ToText(docNum)+(file=="" ? "" : " ("+file+")")+" in "+(targetLabel??"").Trim()+" rotated right 90 degrees: "
+				+"DegreesRotated "+ToText(degreesOld)+" -> "+ToText(degreesNew)+". Session: "+sessionGuid+".";
 		}
 		#endregion Retake and rotation
 

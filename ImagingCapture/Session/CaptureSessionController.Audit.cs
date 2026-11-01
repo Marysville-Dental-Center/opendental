@@ -17,8 +17,9 @@ namespace ImagingCapture.Session {
 	///An entry that cannot be written never stops the session: the failure and the text go to the capture log instead.</summary>
 	public sealed partial class CaptureSessionController {
 		#region Methods - audit
-		///<summary>One security-log entry (SecurityLogs.MakeLogEntry). Never throws.</summary>
-		private void WriteAudit(EnumPermType permType,long patNum,string logText,long fKey) {
+		///<summary>One security-log entry (SecurityLogs.MakeLogEntry). Never throws: false when it could not be written (the capture log has the
+		///text then).</summary>
+		private bool WriteAudit(EnumPermType permType,long patNum,string logText,long fKey) {
 			ICaptureSessionStore store=_services.Store;
 			try {
 				if(store==null) {
@@ -26,9 +27,11 @@ namespace ImagingCapture.Session {
 				}
 				store.MakeLogEntry(permType,patNum,logText,fKey);
 				Log("Security log ("+permType+"): "+logText);
+				return true;
 			}
 			catch(Exception ex) {
 				Log("The security-log entry ("+permType+") could not be written: "+ex.Message+" Its text: "+logText);
+				return false;
 			}
 		}
 

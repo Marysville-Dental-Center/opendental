@@ -83,18 +83,56 @@ namespace ImagingCapture.Session {
 			}
 			int degreesItemOld=mountItem.RotateOnAcquire;
 			mountItem.RotateOnAcquire=degreesNew;
+			bool isMountItemChanged=true;
+			string errorMountItem="";
 			try {
 				store.UpdateMountItem(mountItem);
 			}
 			catch(Exception ex) {
 				mountItem.RotateOnAcquire=degreesItemOld;
+				isMountItemChanged=false;
+				errorMountItem=ex.Message;
 				Log("The slot of mount "+_setup.Mount.MountNum+" could not be saved with the new rotation: "+ex.Message);
 			}
-			WriteAudit(EnumPermType.Setup,0,CaptureAuditText.GetAlwaysRotateText(_setup.MountDef.Description,_setup.MountDef.MountDefNum,
-				mountItem.ItemOrder,mountItem.ToothNumbers,degreesOld,degreesNew,_setup.Mount.MountNum,_setup.ComputerName),0);
-			NoticeText=CaptureSessionText.GetAlwaysRotateText(mountItem.ItemOrder,_setup.MountDef.Description,degreesNew);
+			//Design 10.7: a Setup change with its old and new values, FKey=MountDefNum as the standard templates' entries.
+			string logText=CaptureAuditText.GetAlwaysRotateText(_setup.MountDef.Description,_setup.MountDef.MountDefNum,mountItem.ItemOrder,
+				mountItem.ToothNumbers,degreesOld,degreesNew,_setup.Mount.MountNum,degreesItemOld,isMountItemChanged,_setup.ComputerName);
+			if(!WriteAudit(EnumPermType.Setup,0,logText,_setup.MountDef.MountDefNum)) {
+				return UndoSlotRotation(store,mountItemDef,degreesOld,mountItem,isMountItemChanged ? (int?)degreesItemOld : null);
+			}
+			NoticeText=CaptureSessionText.GetAlwaysRotateText(mountItem.ItemOrder,_setup.MountDef.Description,degreesNew)
+				+(isMountItemChanged ? "" : " The slot of this mount could not be changed: "+errorMountItem);
 			Log("Always rotate this slot: MountDefNum "+_setup.MountDef.MountDefNum+", slot "+mountItem.ItemOrder+", "+degreesOld+" -> "+degreesNew+".");
 			return true;
+		}
+
+		///<summary>The Setup entry of "Always rotate this slot" could not be written: a Setup change is not kept without its entry, so the mount
+		///definition's slot (and this mount's slot, when degreesItemOld is set) get their old rotation back. NoticeText says what is left.</summary>
+		private bool UndoSlotRotation(ICaptureSessionStore store,MountItemDef mountItemDef,int degreesOld,MountItem mountItem,int? degreesItemOld) {
+			List<string> listErrors=new List<string>();
+			mountItemDef.RotateOnAcquire=degreesOld;
+			try {
+				store.UpdateMountItemDef(mountItemDef);
+			}
+			catch(Exception ex) {
+				listErrors.Add(ex.Message);
+			}
+			if(degreesItemOld!=null) {
+				int degreesNew=mountItem.RotateOnAcquire;
+				mountItem.RotateOnAcquire=degreesItemOld.Value;
+				try {
+					store.UpdateMountItem(mountItem);
+				}
+				catch(Exception ex) {
+					mountItem.RotateOnAcquire=degreesNew;
+					listErrors.Add(ex.Message);
+				}
+			}
+			if(listErrors.Count==0) {
+				return FailSlotRotation("the change could not be written to the security log, so it was undone.");
+			}
+			return FailSlotRotation("the change could not be written to the security log, and it could not be undone ("+string.Join(" ",listErrors)
+				+"): the new rotation is saved but not logged. Tell an administrator.");
 		}
 
 		private bool FailSlotRotation(string error) {
@@ -199,6 +237,10 @@ namespace ImagingCapture.Session {
 			}
 			NoticeText=CaptureSessionText.GetRotatedText(degreesNew);
 			Log("Rotated DocNum "+document.DocNum+" to "+degreesNew+" degrees.");
+			//As the Imaging module's Rotate Right: a stored change of the patient's document is logged under ImageEdit.
+			string targetLabel=IsSingleTarget ? GetRadiographTarget(null,document.ToothNumbers).GetLabel() : MountPlacement.GetSlotLabel(LastSavedMountItem);
+			WriteAudit(EnumPermType.ImageEdit,PatNum,CaptureAuditText.GetRotateText(document.DocNum,document.FileName,targetLabel,
+				NormalizeDegrees(documentOld.DegreesRotated),degreesNew,SessionGuid),document.DocNum);
 			return true;
 		}
 

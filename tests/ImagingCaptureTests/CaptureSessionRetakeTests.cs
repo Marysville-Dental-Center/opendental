@@ -182,6 +182,9 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual(1000,document.DocNum);
 			Assert.AreEqual(90f,document.DegreesRotated,"Saved as DegreesRotated, as Rotate Right in the Imaging module.");
 			Assert.AreEqual("Rotated to 90 degrees.",Controller.NoticeText);
+			Assert.AreEqual("55|1000|Rotate: image DocNum 1000 ("+document.FileName+") in Slot 1 (teeth 1,2,3) rotated right 90 degrees: DegreesRotated "
+				+"0 -> 90. Session: 11111111-2222-3333-4444-555555555555.",_harness.Store.GetLogs(EnumPermType.ImageEdit).Single(),
+				"Logged under ImageEdit as the Imaging module's Rotate Right is.");
 			//A key press rotates once per press.
 			Controller.OnKeyDown(CaptureSessionKey.Rotate,_harness.Clock.NowMs,false);
 			Controller.OnKeyDown(CaptureSessionKey.Rotate,_harness.Clock.NowMs,true);
@@ -215,8 +218,9 @@ namespace ImagingCapture.Tests {
 			MountItem mountItem=_harness.Store.ListMountItemsUpdated.Single();
 			Assert.AreEqual(101,mountItem.MountItemNum,"The slot of this mount, so that its retakes come in turned.");
 			Assert.AreEqual(90,mountItem.RotateOnAcquire);
-			Assert.AreEqual("0|0|Always rotate this slot: mount definition \"FMX\" (MountDefNum 3), slot 1 (teeth 1,2,3): RotateOnAcquire 0 -> 90. "
-				+"The slot of mount 7 was changed the same way. Computer: OPERATORY1.",_harness.Store.GetLogs(EnumPermType.Setup).Single());
+			Assert.AreEqual("0|3|Always rotate this slot: mount definition \"FMX\" (MountDefNum 3), slot 1 (teeth 1,2,3): RotateOnAcquire 0 -> 90. "
+				+"The slot of mount 7: RotateOnAcquire 0 -> 90. Computer: OPERATORY1.",_harness.Store.GetLogs(EnumPermType.Setup).Single(),
+				"FKey=MountDefNum.");
 			Assert.AreEqual("Slot 1 of \"FMX\" now turns 90 degrees on acquire.",Controller.NoticeText);
 			Assert.IsFalse(Controller.CanAlwaysRotateSlot,"The slot matches the image now.");
 			//The retake of that slot comes in turned.
@@ -225,6 +229,39 @@ namespace ImagingCapture.Tests {
 			_harness.Ended(TwainCaptureEndReason.Completed);
 			_harness.Expose();
 			Assert.AreEqual(90f,DocumentInSlot(1).DegreesRotated);
+		}
+
+		[TestMethod]
+		public void AlwaysRotateSlot_TheMountsSlotCannotBeSaved_TheEntrySaysSo() {
+			_harness.Setup.MountDef=new MountDef { MountDefNum=3,Description="FMX" };
+			_harness.Store.DictMountItemDefs[3]=Enumerable.Range(1,3).Select(x => new MountItemDef { MountItemDefNum=30+x,MountDefNum=3,ItemOrder=x })
+				.ToList();
+			_harness.Started();
+			_harness.Expose();
+			_harness.Execute(CaptureSessionAction.Rotate);
+			_harness.Store.ThrowOn="UpdateMountItem";
+			Assert.IsTrue(Controller.AlwaysRotateSlot(),"The definition changed.");
+			Assert.AreEqual("0|3|Always rotate this slot: mount definition \"FMX\" (MountDefNum 3), slot 1 (teeth 1,2,3): RotateOnAcquire 0 -> 90. "
+				+"The slot of mount 7 could not be changed; it keeps RotateOnAcquire 0. Computer: OPERATORY1.",
+				_harness.Store.GetLogs(EnumPermType.Setup).Single());
+			StringAssert.Contains(Controller.NoticeText,"The slot of this mount could not be changed: UpdateMountItem failed");
+		}
+
+		[TestMethod]
+		public void AlwaysRotateSlot_TheSetupEntryCannotBeWritten_TheChangeIsUndone() {
+			_harness.Setup.MountDef=new MountDef { MountDefNum=3,Description="FMX" };
+			_harness.Store.DictMountItemDefs[3]=Enumerable.Range(1,3).Select(x => new MountItemDef { MountItemDefNum=30+x,MountDefNum=3,ItemOrder=x })
+				.ToList();
+			_harness.Started();
+			_harness.Expose();
+			_harness.Execute(CaptureSessionAction.Rotate);
+			_harness.Store.ThrowOn="MakeLogEntry";
+			Assert.IsFalse(Controller.AlwaysRotateSlot());
+			CollectionAssert.AreEqual(new[] { 90,0 },_harness.Store.ListMountItemDefsUpdated.Select(x => x.RotateOnAcquire).ToList(),
+				"Design 10.7: no Setup change without its entry.");
+			CollectionAssert.AreEqual(new[] { 90,0 },_harness.Store.ListMountItemsUpdated.Select(x => x.RotateOnAcquire).ToList());
+			Assert.AreEqual("Always rotate this slot: the change could not be written to the security log, so it was undone.",Controller.NoticeText);
+			Assert.IsTrue(Controller.CanAlwaysRotateSlot,"Still offered: nothing changed.");
 		}
 
 		[TestMethod]
