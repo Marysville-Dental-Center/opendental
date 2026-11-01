@@ -28,6 +28,8 @@ namespace OpenDental {
 		private List<Etrans835Attach> _listEtrans835Attaches; 
 		private long _preLoadedPrintPreviewClaimNum;
 		private bool _hasPrintPreviewOnLoad=false;
+		///<summary>B-ERA: the columns of gridClaimDetails, from Display Fields (category ERA). Set in FillClaimDetails.</summary>
+		private List<DisplayField> _listDisplayFieldsClaimPaid=new List<DisplayField>();
 
 		///<summary>Set printPreviewClaimNum to a print preview a specific claim on this ERA after loading.
 		///If the claimNum is not found on this ERA then all claims will preview.</summary>
@@ -142,21 +144,21 @@ namespace OpenDental {
 		private void FillClaimDetails() {
 			gridClaimDetails.BeginUpdate();
 			gridClaimDetails.Columns.Clear();
-			gridClaimDetails.Columns.Add(new GridColumn(Lan.g(this,"Recd"),32,HorizontalAlignment.Center));
-			GridColumn col=new GridColumn(Lan.g(this,"Patient"),70,HorizontalAlignment.Left);
-			col.IsWidthDynamic=true;
-			gridClaimDetails.Columns.Add(col);
-			gridClaimDetails.Columns.Add(new GridColumn(Lan.g(this,"DateService"),80,HorizontalAlignment.Center));
-			gridClaimDetails.Columns.Add(new GridColumn(Lan.g(this,"Claim\r\nIdentifier"),50,HorizontalAlignment.Left));
-			gridClaimDetails.Columns.Add(new GridColumn(Lan.g(this,"Payor\r\nControl#"),56,HorizontalAlignment.Center));//Payer Claim Control Number (CLP07)
-			col=new GridColumn(Lan.g(this,"Status"),70,HorizontalAlignment.Left);
-			col.IsWidthDynamic=true;
-			gridClaimDetails.Columns.Add(col);//Claim Status Code Description (CLP02)
-			gridClaimDetails.Columns.Add(new GridColumn(Lan.g(this,"ClaimFee"),70,HorizontalAlignment.Right));//Total Claim Charge Amount (CLP03)
-			gridClaimDetails.Columns.Add(new GridColumn(Lan.g(this,"InsPaid"),70,HorizontalAlignment.Right));//Claim Payment Amount (CLP04)
-			gridClaimDetails.Columns.Add(new GridColumn(Lan.g(this,"PatPort"),70,HorizontalAlignment.Right));//Patient Portion
-			gridClaimDetails.Columns.Add(new GridColumn(Lan.g(this,"Deduct"),70,HorizontalAlignment.Right));//Deductible
-			gridClaimDetails.Columns.Add(new GridColumn(Lan.g(this,"Writeoff"),70,HorizontalAlignment.Right));//Writeoff
+			//B-ERA (25.3.78/25.4): the columns come from Setup, Display Fields, category ERA. The default list is the 24.3 set; Recd and Patient are
+			//always present. Cells are filled by internal name in SetClaimDetailRows.
+			_listDisplayFieldsClaimPaid=DisplayFields.GetForEraClaimPaidGrid();
+			for(int i=0;i<_listDisplayFieldsClaimPaid.Count;i++) {
+				DisplayField displayField=_listDisplayFieldsClaimPaid[i];
+				string header=displayField.Description;
+				if(string.IsNullOrWhiteSpace(header)) {
+					header=Lan.g(this,DisplayFields.EraClaimPaid.GetDefaultHeader(displayField.InternalName));
+				}
+				GridColumn col=new GridColumn(header,displayField.ColumnWidth,DisplayFields.EraClaimPaid.GetAlignment(displayField.InternalName));
+				col.IsWidthDynamic=DisplayFields.EraClaimPaid.IsWidthDynamic(displayField.InternalName);
+				gridClaimDetails.Columns.Add(col);
+			}
+			//When the office's columns are wider than the grid, scroll sideways instead of squeezing the free-width columns.
+			gridClaimDetails.HScrollVisible=LayoutManager.Scale(_listDisplayFieldsClaimPaid.Sum(x => x.ColumnWidth))>gridClaimDetails.Width;
 			gridClaimDetails.ListGridRows.Clear();
 			_sumClaimInsPaid=0;
 			List<int> listMatchedRowIndices=new List<int>();
@@ -201,22 +203,17 @@ namespace OpenDental {
 				else if(hx835_Claim.IsAttachedToClaim && hx835_Claim.ClaimNum==0) {
 					claimStatus="N/A";//User detached claim manually.
 				}
-				row.Cells.Add(claimStatus);
-				row.Cells.Add(new UI.GridCell(hx835_Claim.PatientName.ToString()));//Patient
-				string strDateService=hx835_Claim.DateServiceStart.ToShortDateString();
-				if(hx835_Claim.DateServiceEnd>hx835_Claim.DateServiceStart) {
-					strDateService+=" to "+hx835_Claim.DateServiceEnd.ToShortDateString();
+				//B-ERA: one cell per Display Fields column, in the office's order (see FillClaimDetails).
+				for(int j=0;j<_listDisplayFieldsClaimPaid.Count;j++) {
+					row.Cells.Add(new UI.GridCell(DisplayFields.EraClaimPaid.GetCellText(_listDisplayFieldsClaimPaid[j].InternalName,hx835_Claim,claimStatus)));
 				}
-				row.Cells.Add(new UI.GridCell(strDateService));//DateService
-				row.Cells.Add(new UI.GridCell(hx835_Claim.ClaimTrackingNumber));//Claim Identfier
-				row.Cells.Add(new UI.GridCell(hx835_Claim.PayerControlNumber));//PayorControlNum
-				row.Cells.Add(new UI.GridCell(hx835_Claim.StatusCodeDescript));//Status
-				row.Cells.Add(new UI.GridCell(hx835_Claim.ClaimFee.ToString("f2")));//ClaimFee
-				row.Cells.Add(new UI.GridCell(hx835_Claim.InsPaid.ToString("f2")));//InsPaid
-				row.Cells.Add(new UI.GridCell(hx835_Claim.PatientPortionAmt.ToString("f2")));//PatPort
-				row.Cells.Add(new UI.GridCell(hx835_Claim.PatientDeductAmt.ToString("f2")));//Deduct
-				row.Cells.Add(new UI.GridCell(hx835_Claim.WriteoffAmt.ToString("f2")));//Writeoff
 			}
+		}
+
+		///<summary>B-ERA: the index of the Recd column in gridClaimDetails. Recd is always in the grid, but the office can move it.</summary>
+		private int GetIndexColRecd() {
+			int index=_listDisplayFieldsClaimPaid.FindIndex(x => x.InternalName==DisplayFields.EraClaimPaid.Recd);
+			return Math.Max(index,0);
 		}
 
 		/// <summary>Runs aging for all families for patient's on claims attached to payment</summary>
@@ -541,7 +538,8 @@ namespace OpenDental {
 			List<EraAutomationResult> listEraAutomationResults=new List<EraAutomationResult>();
 			listEraAutomationResults.Add(eraAutomationResult);
 			string automationResultMessage=EraAutomationResult.CreateMessage(listEraAutomationResults,isForSingleEra:true);
-			textNote.Text=EraAutomationResult.CreateEtransNote(eraAutomationResult.Status,textNote.Text,eraAutomationResult.CountProcessedClaimsWithNameMismatch);
+			textNote.Text=EraAutomationResult.CreateEtransNote(eraAutomationResult.Status,textNote.Text,eraAutomationResult.CountProcessedClaimsWithNameMismatch,
+				eraAutomationResult.ListAutoSplitNotes);//B-ERA: names the claims split automatically
 			EtransCur.Note=textNote.Text;
 			Etrans835 etrans835=Etrans835s.GetByEtransNums(EtransCur.EtransNum).FirstOrDefault();
 			if(etrans835==null) {
@@ -600,8 +598,9 @@ namespace OpenDental {
 		private void FormEtrans835Edit_FormClosing(object sender,FormClosingEventArgs e) {
 			//This originally only happened on OK click, but other buttons also close the form after claims are processed.
 			bool isReceived=true;
+			int indexColRecd=GetIndexColRecd();//B-ERA
 			for(int i=0;i<gridClaimDetails.ListGridRows.Count;i++) {
-				if(gridClaimDetails.ListGridRows[i].Cells[0].Text=="") {//Will count as Recieved even if some claims are manually detached from the ERA ("Recd" column shows "N/A")
+				if(gridClaimDetails.ListGridRows[i].Cells[indexColRecd].Text=="") {//Will count as Recieved even if some claims are manually detached from the ERA ("Recd" column shows "N/A")
 					isReceived=false;
 					break;
 				}

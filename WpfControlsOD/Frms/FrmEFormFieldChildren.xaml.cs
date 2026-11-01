@@ -12,78 +12,93 @@ using WpfControls.UI;
 using CodeBase;
 
 namespace OpenDental {
-	/// <summary></summary>
+	/// <summary>Lists the conditional children of a checkbox or radio button field in eForm setup (Open Dental 25.1): every field whose conditional
+	/// parent is this field, with the value that makes it show. Double clicking a child opens its editor. Opened from the parent field's editor.</summary>
 	public partial class FrmEFormFieldChildren : FrmODBase {
-		///<summary>This is set from the parent form.</summary>
-		public List<EFormField> ListEFormFieldsAll;
-		///<summary>Set before opening and used after closing.</summary>
-		public List<EFormField> ListEFormFieldsLinked;
-		///<summary>The reason for this is to handle duplicates. This list will contain the duplicate, but not the listBox.</summary>
-		private List<string> _listStrings;
+		///<summary>The field whose children are listed. Set before opening. Children are matched on its saved label.</summary>
+		public EFormField EFormFieldParent;
+		///<summary>Every field of the form in the designer: the same list the parent's editor uses. Set before opening.</summary>
+		public List<EFormField> ListEFormFields;
+		///<summary>Opens a field's editor the way double clicking it in the form designer does (FrmEFormDefEdit). Returns false if the field is no
+		///longer in the form. When null, the list can only be viewed.</summary>
+		public Func<EFormField,bool> FuncEditField;
+		///<summary>After closing: true if a child's editor was opened, so the parent's editor recounts its children.</summary>
+		public bool IsChildEdited;
+		///<summary>The children showing in the grid, in form order.</summary>
+		private List<EFormField> _listEFormFieldsChildren;
 
 		///<summary></summary>
 		public FrmEFormFieldChildren() {
 			InitializeComponent();
-			Load+=FrmEFormFieldPicker_Load;
-			listBoxFieldLabels.MouseDoubleClick+=ListBoxFieldLabels_MouseDoubleClick;
+			Load+=FrmEFormFieldChildren_Load;
+			PreviewKeyDown+=FrmEFormFieldChildren_PreviewKeyDown;
+			gridMain.CellDoubleClick+=GridMain_CellDoubleClick;
 		}
 
-
-		private void FrmEFormFieldPicker_Load(object sender, EventArgs e) {
+		private void FrmEFormFieldChildren_Load(object sender, EventArgs e) {
 			Lang.F(this);
-			//_listStrings=new List<string>();
-			//for(int i=0;i<ListEFormFields.Count;i++) {
-			//	if(!ListEFormFields[i].FieldType.In(
-			//		EnumEFormFieldType.CheckBox,
-			//		EnumEFormFieldType.RadioButtons))
-			//	{
-			//		continue;
-			//	}
-			//	_listStrings.Add(ListEFormFields[i].ValueLabel);
-			//}
-			//for(int i=0;i<_listStrings.Count;i++) {
-			//	if(_listStrings.Count(x=> x==_listStrings[i])==1){ 
-			//		listBoxFieldLabels.Items.Add(_listStrings[i]);
-			//	}
-			//	else{
-			//		if(!listBoxDups.Items.Contains(_listStrings[i])){
-			//			listBoxDups.Items.Add(_listStrings[i]);
-			//		}
-			//	}
-			//}
-			//if(_listStrings.Count==0){
-			//	MsgBox.Show("There are no suitable parent fields to pick from.");
-			//	//IsDialogCancel=true;//leave it open in case there are fields on the right
-			//	return;
-			//}
-
+			textParent.Text=EFormFieldChildren.GetDisplayLabel(EFormFieldParent);
+			if(FuncEditField==null){
+				labelExplain.Text=Lang.g(this,"These fields show only when the parent field has the value in the Shows When column.");
+			}
+			FillGrid();
 		}
 
-		private void ListBoxFieldLabels_MouseDoubleClick(object sender,MouseButtonEventArgs e) {
-			//if(listBoxFieldLabels.Items.Count<=0 || listBoxFieldLabels.SelectedIndex==-1) {
-			//	return;
-			//}
-			//string selected=listBoxFieldLabels.GetSelected<string>();
-			//if(_listStrings.Count(x=>x==selected)>1){
-			//	MsgBox.Show("That label is used more than once. The parent field must have a unique label.");
-			//	return;
-			//}
-			//LabelSelected=selected;
-			//IsDialogOK=true;
+		private void FillGrid(){
+			_listEFormFieldsChildren=EFormFieldChildren.GetChildren(EFormFieldParent,ListEFormFields);
+			gridMain.BeginUpdate();
+			gridMain.Columns.Clear();
+			GridColumn gridColumn=new GridColumn(Lang.g("TableEFormFieldChildren","Field"),250);
+			gridColumn.IsWidthDynamic=true;
+			gridMain.Columns.Add(gridColumn);
+			gridColumn=new GridColumn(Lang.g("TableEFormFieldChildren","Type"),110);
+			gridMain.Columns.Add(gridColumn);
+			gridColumn=new GridColumn(Lang.g("TableEFormFieldChildren","Shows When"),150);
+			gridMain.Columns.Add(gridColumn);
+			gridMain.ListGridRows.Clear();
+			for(int i=0;i<_listEFormFieldsChildren.Count;i++){
+				GridRow gridRow=new GridRow();
+				gridRow.Cells.Add(EFormFieldChildren.GetDisplayLabel(_listEFormFieldsChildren[i]));
+				gridRow.Cells.Add(Lang.g("enumEFormFieldType",EFormFieldChildren.GetTypeText(_listEFormFieldsChildren[i].FieldType)));
+				gridRow.Cells.Add(EFormFieldChildren.GetTriggerText(EFormFieldParent,_listEFormFieldsChildren[i]));
+				//gridRow.Tag=;//not needed because the grid always matches the list.
+				gridMain.ListGridRows.Add(gridRow);
+			}
+			gridMain.EndUpdate();
+			if(_listEFormFieldsChildren.Count==0){
+				gridMain.Title=Lang.g(this,"Child Fields")+" ("+Lang.g(this,"none")+")";
+			}
+			else{
+				gridMain.Title=Lang.g(this,"Child Fields");
+			}
 		}
 
-		private void butSave_Click(object sender, EventArgs e) {
-			//if(listBoxFieldLabels.SelectedIndex==-1) {
-			//	MsgBox.Show("Please select an item first.");
-			//	return;
-			//}
-			//string selected=listBoxFieldLabels.GetSelected<string>();
-			//if(_listStrings.Count(x=>x==selected)>1){
-			//	MsgBox.Show("That label is used more than once. The parent field must have a unique label.");
-			//	return;
-			//}
-			//LabelSelected=selected;
-			//IsDialogOK=true;
+		private void GridMain_CellDoubleClick(object sender,GridClickEventArgs e) {
+			if(e.Row<0 || e.Row>=_listEFormFieldsChildren.Count){
+				return;
+			}
+			if(FuncEditField==null){
+				MsgBox.Show(this,"Open this field from the eForm designer to edit its children.");
+				return;
+			}
+			EFormField eFormFieldChild=_listEFormFieldsChildren[e.Row];
+			IsChildEdited=true;
+			if(!FuncEditField(eFormFieldChild)){
+				MsgBox.Show(this,"That field is no longer in the form.");
+			}
+			//The child may have been changed, given another parent or deleted.
+			FillGrid();
+		}
+
+		private void FrmEFormFieldChildren_PreviewKeyDown(object sender,KeyEventArgs e) {
+			if(butClose.IsAltKey(Key.C,e)) {
+				butClose_Click(this,new EventArgs());
+			}
+		}
+
+		private void butClose_Click(object sender, EventArgs e) {
+			//Nothing to save here. Child edits were applied by their own editors, and the form is saved from the designer.
+			IsDialogOK=true;
 		}
 	}
 }

@@ -75,6 +75,9 @@
 			this.butDetachProc = new OpenDental.UI.Button();
 			this.butAttachProc = new OpenDental.UI.Button();
 			this.checkOnlyTsiExcludedAdjTypes = new OpenDental.UI.CheckBox();
+			this.radioFixedAmount = new System.Windows.Forms.RadioButton();
+			this.radioPercentOfFee = new System.Windows.Forms.RadioButton();
+			this.labelPercentOfFeeAmount = new System.Windows.Forms.Label();
 			this.groupProcedure.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -168,6 +171,7 @@
 			this.textAmount.Size = new System.Drawing.Size(68, 20);
 			this.textAmount.TabIndex = 0;
 			this.textAmount.Validating += new System.ComponentModel.CancelEventHandler(this.textAmount_Validating);
+			this.textAmount.TextChanged += new System.EventHandler(this.textAmount_TextChanged);
 			// 
 			// listTypePos
 			// 
@@ -567,9 +571,44 @@
 			this.checkOnlyTsiExcludedAdjTypes.Text = "Only TSI excluded adjustment types";
 			this.checkOnlyTsiExcludedAdjTypes.CheckedChanged += new System.EventHandler(this.checkOnlyTsiExcludedAdjTypes_Checked);
 			// 
+			// radioFixedAmount
+			// 
+			this.radioFixedAmount.Checked = true;
+			this.radioFixedAmount.Location = new System.Drawing.Point(192, 64);
+			this.radioFixedAmount.Name = "radioFixedAmount";
+			this.radioFixedAmount.Size = new System.Drawing.Size(104, 17);
+			this.radioFixedAmount.TabIndex = 172;
+			this.radioFixedAmount.TabStop = true;
+			this.radioFixedAmount.Text = "Fixed Amount";
+			this.radioFixedAmount.UseVisualStyleBackColor = true;
+			// 
+			// radioPercentOfFee
+			// 
+			this.radioPercentOfFee.Enabled = false;
+			this.radioPercentOfFee.Location = new System.Drawing.Point(192, 82);
+			this.radioPercentOfFee.Name = "radioPercentOfFee";
+			this.radioPercentOfFee.Size = new System.Drawing.Size(104, 17);
+			this.radioPercentOfFee.TabIndex = 173;
+			this.radioPercentOfFee.Text = "Percent of Fee";
+			this.radioPercentOfFee.UseVisualStyleBackColor = true;
+			this.radioPercentOfFee.CheckedChanged += new System.EventHandler(this.radioPercentOfFee_CheckedChanged);
+			// 
+			// labelPercentOfFeeAmount
+			// 
+			this.labelPercentOfFeeAmount.Location = new System.Drawing.Point(180, 102);
+			this.labelPercentOfFeeAmount.Name = "labelPercentOfFeeAmount";
+			this.labelPercentOfFeeAmount.Size = new System.Drawing.Size(116, 16);
+			this.labelPercentOfFeeAmount.TabIndex = 174;
+			this.labelPercentOfFeeAmount.Text = "Amount";
+			this.labelPercentOfFeeAmount.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.labelPercentOfFeeAmount.Visible = false;
+			// 
 			// FormAdjust
 			// 
 			this.ClientSize = new System.Drawing.Size(731, 504);
+			this.Controls.Add(this.labelPercentOfFeeAmount);
+			this.Controls.Add(this.radioPercentOfFee);
+			this.Controls.Add(this.radioFixedAmount);
 			this.Controls.Add(this.checkOnlyTsiExcludedAdjTypes);
 			this.Controls.Add(this.groupProcedure);
 			this.Controls.Add(this.butPickProv);
@@ -658,5 +697,8 @@
 		private System.Windows.Forms.Label labelEditAnyway;
 		private System.Windows.Forms.Label labelProcDisabled;
 		private UI.CheckBox checkOnlyTsiExcludedAdjTypes;
+		private System.Windows.Forms.RadioButton radioFixedAmount;
+		private System.Windows.Forms.RadioButton radioPercentOfFee;
+		private System.Windows.Forms.Label labelPercentOfFeeAmount;
 	}
 }

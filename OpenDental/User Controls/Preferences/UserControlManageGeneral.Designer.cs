@@ -61,6 +61,7 @@ namespace OpenDental {
 			this.checkIncludeEraWOPercCoPay = new OpenDental.UI.CheckBox();
 			this.labelEraAutomation = new System.Windows.Forms.Label();
 			this.checkEraAllowTotalPayment = new OpenDental.UI.CheckBox();
+			this.checkEraAutoSplitCarcDenials = new OpenDental.UI.CheckBox();
 			this.groupBoxTimeCards.SuspendLayout();
 			this.groupBoxDeposits.SuspendLayout();
 			this.groupBoxPrescriptions.SuspendLayout();
@@ -71,7 +72,7 @@ namespace OpenDental {
 			// checkScheduleProvEmpSelectAll
 			// 
 			this.checkScheduleProvEmpSelectAll.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkScheduleProvEmpSelectAll.Location = new System.Drawing.Point(39, 610);
+			this.checkScheduleProvEmpSelectAll.Location = new System.Drawing.Point(39, 632);
 			this.checkScheduleProvEmpSelectAll.Name = "checkScheduleProvEmpSelectAll";
 			this.checkScheduleProvEmpSelectAll.Size = new System.Drawing.Size(421, 17);
 			this.checkScheduleProvEmpSelectAll.TabIndex = 201;
@@ -80,7 +81,7 @@ namespace OpenDental {
 			// checkAccountingInvoiceAttachmentsSaveInDatabase
 			// 
 			this.checkAccountingInvoiceAttachmentsSaveInDatabase.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkAccountingInvoiceAttachmentsSaveInDatabase.Location = new System.Drawing.Point(25, 632);
+			this.checkAccountingInvoiceAttachmentsSaveInDatabase.Location = new System.Drawing.Point(25, 654);
 			this.checkAccountingInvoiceAttachmentsSaveInDatabase.Name = "checkAccountingInvoiceAttachmentsSaveInDatabase";
 			this.checkAccountingInvoiceAttachmentsSaveInDatabase.Size = new System.Drawing.Size(435, 17);
 			this.checkAccountingInvoiceAttachmentsSaveInDatabase.TabIndex = 308;
@@ -93,7 +94,7 @@ namespace OpenDental {
 			this.groupBoxTimeCards.Controls.Add(this.label16);
 			this.groupBoxTimeCards.Controls.Add(this.checkTimeCardADP);
 			this.groupBoxTimeCards.Controls.Add(this.checkClockEventAllowBreak);
-			this.groupBoxTimeCards.Location = new System.Drawing.Point(20, 508);
+			this.groupBoxTimeCards.Location = new System.Drawing.Point(20, 530);
 			this.groupBoxTimeCards.Name = "groupBoxTimeCards";
 			this.groupBoxTimeCards.Size = new System.Drawing.Size(450, 100);
 			this.groupBoxTimeCards.TabIndex = 307;
@@ -151,7 +152,7 @@ namespace OpenDental {
 			this.groupBoxDeposits.Controls.Add(this.comboDepositSoftware);
 			this.groupBoxDeposits.Controls.Add(this.checkShowAutoDeposit);
 			this.groupBoxDeposits.Controls.Add(this.labelDepositSoftware);
-			this.groupBoxDeposits.Location = new System.Drawing.Point(20, 437);
+			this.groupBoxDeposits.Location = new System.Drawing.Point(20, 459);
 			this.groupBoxDeposits.Name = "groupBoxDeposits";
 			this.groupBoxDeposits.Size = new System.Drawing.Size(450, 64);
 			this.groupBoxDeposits.TabIndex = 306;
@@ -189,7 +190,7 @@ namespace OpenDental {
 			// groupBoxPrescriptions
 			// 
 			this.groupBoxPrescriptions.Controls.Add(this.checkRxHideProvsWithoutDEA);
-			this.groupBoxPrescriptions.Location = new System.Drawing.Point(20, 372);
+			this.groupBoxPrescriptions.Location = new System.Drawing.Point(20, 394);
 			this.groupBoxPrescriptions.Name = "groupBoxPrescriptions";
 			this.groupBoxPrescriptions.Size = new System.Drawing.Size(450, 60);
 			this.groupBoxPrescriptions.TabIndex = 305;
@@ -211,7 +212,7 @@ namespace OpenDental {
 			this.groupBoxClaims.Controls.Add(this.checkClaimsSendWindowValidateOnLoad);
 			this.groupBoxClaims.Controls.Add(this.labelClaimsReceivedDays);
 			this.groupBoxClaims.Controls.Add(this.checkClaimPaymentBatchOnly);
-			this.groupBoxClaims.Location = new System.Drawing.Point(20, 279);
+			this.groupBoxClaims.Location = new System.Drawing.Point(20, 301);
 			this.groupBoxClaims.Name = "groupBoxClaims";
 			this.groupBoxClaims.Size = new System.Drawing.Size(450, 86);
 			this.groupBoxClaims.TabIndex = 304;
@@ -279,9 +280,10 @@ namespace OpenDental {
 			this.groupBoxERA.Controls.Add(this.checkIncludeEraWOPercCoPay);
 			this.groupBoxERA.Controls.Add(this.labelEraAutomation);
 			this.groupBoxERA.Controls.Add(this.checkEraAllowTotalPayment);
+			this.groupBoxERA.Controls.Add(this.checkEraAutoSplitCarcDenials);
 			this.groupBoxERA.Location = new System.Drawing.Point(20, 10);
 			this.groupBoxERA.Name = "groupBoxERA";
-			this.groupBoxERA.Size = new System.Drawing.Size(450, 263);
+			this.groupBoxERA.Size = new System.Drawing.Size(450, 285);
 			this.groupBoxERA.TabIndex = 303;
 			this.groupBoxERA.Text = "ERA";
 			// 
@@ -441,6 +443,16 @@ namespace OpenDental {
 			this.checkEraAllowTotalPayment.TabIndex = 296;
 			this.checkEraAllowTotalPayment.Text = "ERA allow total payments";
 			// 
+			// checkEraAutoSplitCarcDenials
+			//
+			this.checkEraAutoSplitCarcDenials.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.checkEraAutoSplitCarcDenials.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkEraAutoSplitCarcDenials.Location = new System.Drawing.Point(19, 260);
+			this.checkEraAutoSplitCarcDenials.Name = "checkEraAutoSplitCarcDenials";
+			this.checkEraAutoSplitCarcDenials.Size = new System.Drawing.Size(421, 17);
+			this.checkEraAutoSplitCarcDenials.TabIndex = 313;
+			this.checkEraAutoSplitCarcDenials.Text = "Auto split ERAs with CARC denial codes listed above";
+			//
 			// UserControlManageGeneral
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
@@ -453,7 +465,7 @@ namespace OpenDental {
 			this.Controls.Add(this.groupBoxERA);
 			this.Controls.Add(this.checkScheduleProvEmpSelectAll);
 			this.Name = "UserControlManageGeneral";
-			this.Size = new System.Drawing.Size(494, 660);
+			this.Size = new System.Drawing.Size(494, 682);
 			this.groupBoxTimeCards.ResumeLayout(false);
 			this.groupBoxDeposits.ResumeLayout(false);
 			this.groupBoxPrescriptions.ResumeLayout(false);
@@ -504,5 +516,6 @@ namespace OpenDental {
 		private System.Windows.Forms.Label labelEraNoAutoProcessCarcCodes;
 		private System.Windows.Forms.TextBox textEraNoAutoProcessCarcCodes;
 		private UI.CheckBox checkTimeCardUseLocal;
+		private OpenDental.UI.CheckBox checkEraAutoSplitCarcDenials;
 	}
 }

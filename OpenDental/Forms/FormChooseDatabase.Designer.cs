@@ -51,7 +51,7 @@ namespace OpenDental{
 			this.label4 = new System.Windows.Forms.Label();
 			this.butOK = new OpenDental.UI.Button();
 			this.checkDynamicMode = new OpenDental.UI.CheckBox();
-			this.textPEM = new System.Windows.Forms.TextBox();
+			this.textSslCaPem = new System.Windows.Forms.TextBox();
 			this.label5 = new System.Windows.Forms.Label();
 			this.groupServer.SuspendLayout();
 			this.groupDirect.SuspendLayout();
@@ -315,12 +315,12 @@ namespace OpenDental{
 			this.checkDynamicMode.Text = "Dynamic Mode: Automatically downgrades or upgrades to server version.";
 			this.checkDynamicMode.CheckedChanged += new System.EventHandler(this.checkDynamicMode_CheckedChanged);
 			// 
-			// textPEM
+			// textSslCaPem
 			// 
-			this.textPEM.Location = new System.Drawing.Point(42, 295);
-			this.textPEM.Name = "textPEM";
-			this.textPEM.Size = new System.Drawing.Size(527, 20);
-			this.textPEM.TabIndex = 8;
+			this.textSslCaPem.Location = new System.Drawing.Point(42, 295);
+			this.textSslCaPem.Name = "textSslCaPem";
+			this.textSslCaPem.Size = new System.Drawing.Size(527, 20);
+			this.textSslCaPem.TabIndex = 8;
 			// 
 			// label5
 			// 
@@ -328,14 +328,14 @@ namespace OpenDental{
 			this.label5.Name = "label5";
 			this.label5.Size = new System.Drawing.Size(509, 18);
 			this.label5.TabIndex = 7;
-			this.label5.Text = "(only if using MariaDB SkySQL) PEM path";
+			this.label5.Text = "SSL CA certificate (.pem) path";
 			this.label5.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
 			// 
 			// FormChooseDatabase
 			// 
 			this.AcceptButton = this.butOK;
 			this.ClientSize = new System.Drawing.Size(723, 642);
-			this.Controls.Add(this.textPEM);
+			this.Controls.Add(this.textSslCaPem);
 			this.Controls.Add(this.checkDynamicMode);
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.textConnectionString);
@@ -390,7 +390,7 @@ namespace OpenDental{
 		private UI.Button butOK;
 		private OpenDental.UI.CheckBox checkBoxAutomaticLogin;
 		private OpenDental.UI.CheckBox checkDynamicMode;
-		private System.Windows.Forms.TextBox textPEM;
+		private System.Windows.Forms.TextBox textSslCaPem;
 		private System.Windows.Forms.Label label5;
 	}
 }

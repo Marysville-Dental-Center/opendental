@@ -44,6 +44,7 @@ namespace OpenDental {
 			this.butSave = new OpenDental.UI.Button();
 			this.label2 = new System.Windows.Forms.Label();
 			this.label5 = new System.Windows.Forms.Label();
+			this.checkPayPlansExcluded = new OpenDental.UI.CheckBox();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -61,7 +62,15 @@ namespace OpenDental {
 			this.checkAdmin.Size = new System.Drawing.Size(224, 16);
 			this.checkAdmin.TabIndex = 58;
 			this.checkAdmin.Text = "Lock includes administrators";
-			// 
+			//
+			// checkPayPlansExcluded
+			//
+			this.checkPayPlansExcluded.Location = new System.Drawing.Point(15, 254);
+			this.checkPayPlansExcluded.Name = "checkPayPlansExcluded";
+			this.checkPayPlansExcluded.Size = new System.Drawing.Size(330, 16);
+			this.checkPayPlansExcluded.TabIndex = 65;
+			this.checkPayPlansExcluded.Text = "Payment plans are not affected by the global lock";
+			//
 			// textDays
 			// 
 			this.textDays.Location = new System.Drawing.Point(88, 202);
@@ -99,7 +108,7 @@ namespace OpenDental {
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(382, 263);
+			this.butSave.Location = new System.Drawing.Point(382, 285);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 1;
@@ -126,7 +135,8 @@ namespace OpenDental {
 			// 
 			// FormSecurityLock
 			// 
-			this.ClientSize = new System.Drawing.Size(470, 299);
+			this.ClientSize = new System.Drawing.Size(470, 321);
+			this.Controls.Add(this.checkPayPlansExcluded);
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.textDate);
@@ -157,5 +167,6 @@ namespace OpenDental {
 		private Label label4;
 		private Label label2;
 		private Label label5;
+		private OpenDental.UI.CheckBox checkPayPlansExcluded;
 	}
 }

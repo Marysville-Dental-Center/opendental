@@ -39,18 +39,9 @@ namespace OpenDental {
 			this.gridAllMedications = new OpenDental.UI.GridOD();
 			this.textSearch = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
-			this.tabMedications = new OpenDental.UI.TabControl();
-			this.tabAllMedications = new OpenDental.UI.TabPage();
 			this.butExportMedications = new OpenDental.UI.Button();
 			this.butImportMedications = new OpenDental.UI.Button();
-			this.tabMissing = new OpenDental.UI.TabPage();
-			this.butConvertBrand = new OpenDental.UI.Button();
-			this.butConvertGeneric = new OpenDental.UI.Button();
-			this.gridMissing = new OpenDental.UI.GridOD();
 			this.checkShowHidden = new OpenDental.UI.CheckBox();
-			this.tabMedications.SuspendLayout();
-			this.tabAllMedications.SuspendLayout();
-			this.tabMissing.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// butOK
@@ -67,7 +58,7 @@ namespace OpenDental {
 			// 
 			this.butAddGeneric.Icon = OpenDental.UI.EnumIcons.Add;
 			this.butAddGeneric.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butAddGeneric.Location = new System.Drawing.Point(6, 6);
+			this.butAddGeneric.Location = new System.Drawing.Point(15, 9);
 			this.butAddGeneric.Name = "butAddGeneric";
 			this.butAddGeneric.Size = new System.Drawing.Size(113, 26);
 			this.butAddGeneric.TabIndex = 33;
@@ -78,7 +69,7 @@ namespace OpenDental {
 			// 
 			this.butAddBrand.Icon = OpenDental.UI.EnumIcons.Add;
 			this.butAddBrand.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butAddBrand.Location = new System.Drawing.Point(125, 6);
+			this.butAddBrand.Location = new System.Drawing.Point(134, 9);
 			this.butAddBrand.Name = "butAddBrand";
 			this.butAddBrand.Size = new System.Drawing.Size(113, 26);
 			this.butAddBrand.TabIndex = 34;
@@ -91,9 +82,9 @@ namespace OpenDental {
 			this.gridAllMedications.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.gridAllMedications.Location = new System.Drawing.Point(5, 38);
+			this.gridAllMedications.Location = new System.Drawing.Point(14, 41);
 			this.gridAllMedications.Name = "gridAllMedications";
-			this.gridAllMedications.Size = new System.Drawing.Size(911, 561);
+			this.gridAllMedications.Size = new System.Drawing.Size(919, 588);
 			this.gridAllMedications.TabIndex = 37;
 			this.gridAllMedications.Title = "All Medications";
 			this.gridAllMedications.TranslationName = "FormMedications";
@@ -102,7 +93,7 @@ namespace OpenDental {
 			// 
 			// textSearch
 			// 
-			this.textSearch.Location = new System.Drawing.Point(367, 9);
+			this.textSearch.Location = new System.Drawing.Point(376, 12);
 			this.textSearch.Name = "textSearch";
 			this.textSearch.Size = new System.Drawing.Size(195, 20);
 			this.textSearch.TabIndex = 0;
@@ -110,7 +101,7 @@ namespace OpenDental {
 			// 
 			// label1
 			// 
-			this.label1.Location = new System.Drawing.Point(239, 12);
+			this.label1.Location = new System.Drawing.Point(248, 15);
 			this.label1.Name = "label1";
 			this.label1.Size = new System.Drawing.Size(127, 17);
 			this.label1.TabIndex = 39;
@@ -119,47 +110,17 @@ namespace OpenDental {
 			// 
 			// checkShowHidden
 			// 
-			this.checkShowHidden.Location = new System.Drawing.Point(578, 10);
+			this.checkShowHidden.Location = new System.Drawing.Point(587, 13);
 			this.checkShowHidden.Name = "checkShowHidden";
 			this.checkShowHidden.Size = new System.Drawing.Size(110, 20);
 			this.checkShowHidden.TabIndex = 43;
 			this.checkShowHidden.Text = "Show Hidden";
 			this.checkShowHidden.Click += new System.EventHandler(this.checkShowHidden_Click);
-			// 
-			// tabMedications
-			// 
-			this.tabMedications.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.tabMedications.Controls.Add(this.tabAllMedications);
-			this.tabMedications.Controls.Add(this.tabMissing);
-			this.tabMedications.Location = new System.Drawing.Point(9, 3);
-			this.tabMedications.Name = "tabMedications";
-			this.tabMedications.Size = new System.Drawing.Size(924, 626);
-			this.tabMedications.TabIndex = 40;
-			this.tabMedications.SelectedIndexChanged += new System.EventHandler(this.tabMedications_SelectedIndexChanged);
-			// 
-			// tabAllMedications
-			// 
-			this.tabAllMedications.Controls.Add(this.checkShowHidden);
-			this.tabAllMedications.Controls.Add(this.butExportMedications);
-			this.tabAllMedications.Controls.Add(this.butImportMedications);
-			this.tabAllMedications.Controls.Add(this.gridAllMedications);
-			this.tabAllMedications.Controls.Add(this.textSearch);
-			this.tabAllMedications.Controls.Add(this.butAddGeneric);
-			this.tabAllMedications.Controls.Add(this.label1);
-			this.tabAllMedications.Controls.Add(this.butAddBrand);
-			this.tabAllMedications.Location = new System.Drawing.Point(2, 21);
-			this.tabAllMedications.Name = "tabAllMedications";
-			this.tabAllMedications.Padding = new System.Windows.Forms.Padding(3);
-			this.tabAllMedications.Size = new System.Drawing.Size(920, 603);
-			this.tabAllMedications.TabIndex = 0;
-			this.tabAllMedications.Text = "All Medications";
-			// 
+			//
 			// butExportMedications
-			// 
+			//
 			this.butExportMedications.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.butExportMedications.Location = new System.Drawing.Point(829, 6);
+			this.butExportMedications.Location = new System.Drawing.Point(848, 9);
 			this.butExportMedications.Name = "butExportMedications";
 			this.butExportMedications.Size = new System.Drawing.Size(85, 26);
 			this.butExportMedications.TabIndex = 42;
@@ -169,64 +130,25 @@ namespace OpenDental {
 			// butImportMedications
 			// 
 			this.butImportMedications.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.butImportMedications.Location = new System.Drawing.Point(738, 6);
+			this.butImportMedications.Location = new System.Drawing.Point(757, 9);
 			this.butImportMedications.Name = "butImportMedications";
 			this.butImportMedications.Size = new System.Drawing.Size(85, 26);
 			this.butImportMedications.TabIndex = 41;
 			this.butImportMedications.Text = "Import";
 			this.butImportMedications.Click += new System.EventHandler(this.butImportMedications_Click);
-			// 
-			// tabMissing
-			// 
-			this.tabMissing.Controls.Add(this.butConvertBrand);
-			this.tabMissing.Controls.Add(this.butConvertGeneric);
-			this.tabMissing.Controls.Add(this.gridMissing);
-			this.tabMissing.Location = new System.Drawing.Point(2, 21);
-			this.tabMissing.Name = "tabMissing";
-			this.tabMissing.Size = new System.Drawing.Size(920, 603);
-			this.tabMissing.TabIndex = 2;
-			this.tabMissing.Text = "Missing Generic/Brand";
-			// 
-			// butConvertBrand
-			// 
-			this.butConvertBrand.Icon = OpenDental.UI.EnumIcons.Add;
-			this.butConvertBrand.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butConvertBrand.Location = new System.Drawing.Point(161, 6);
-			this.butConvertBrand.Name = "butConvertBrand";
-			this.butConvertBrand.Size = new System.Drawing.Size(150, 26);
-			this.butConvertBrand.TabIndex = 40;
-			this.butConvertBrand.Text = "Convert To Brand";
-			this.butConvertBrand.Click += new System.EventHandler(this.butConvertBrand_Click);
-			// 
-			// butConvertGeneric
-			// 
-			this.butConvertGeneric.Icon = OpenDental.UI.EnumIcons.Add;
-			this.butConvertGeneric.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butConvertGeneric.Location = new System.Drawing.Point(5, 6);
-			this.butConvertGeneric.Name = "butConvertGeneric";
-			this.butConvertGeneric.Size = new System.Drawing.Size(150, 26);
-			this.butConvertGeneric.TabIndex = 39;
-			this.butConvertGeneric.Text = "Convert To Generic";
-			this.butConvertGeneric.Click += new System.EventHandler(this.butConvertGeneric_Click);
-			// 
-			// gridMissing
-			// 
-			this.gridMissing.AllowSortingByColumn = true;
-			this.gridMissing.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.gridMissing.Location = new System.Drawing.Point(5, 38);
-			this.gridMissing.Name = "gridMissing";
-			this.gridMissing.Size = new System.Drawing.Size(911, 562);
-			this.gridMissing.TabIndex = 38;
-			this.gridMissing.Title = "Medications Missing Generic or Brand";
-			this.gridMissing.TranslationName = "FormMedications";
-			// 
+			//
 			// FormMedications
-			// 
+			//
 			this.AcceptButton = this.butOK;
 			this.ClientSize = new System.Drawing.Size(941, 671);
-			this.Controls.Add(this.tabMedications);
+			this.Controls.Add(this.checkShowHidden);
+			this.Controls.Add(this.butExportMedications);
+			this.Controls.Add(this.butImportMedications);
+			this.Controls.Add(this.gridAllMedications);
+			this.Controls.Add(this.textSearch);
+			this.Controls.Add(this.butAddGeneric);
+			this.Controls.Add(this.label1);
+			this.Controls.Add(this.butAddBrand);
 			this.Controls.Add(this.butOK);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
@@ -236,11 +158,8 @@ namespace OpenDental {
 			this.Text = "Medications";
 			this.Load += new System.EventHandler(this.FormMedications_Load);
 			this.Shown += new System.EventHandler(this.FormMedications_Shown);
-			this.tabMedications.ResumeLayout(false);
-			this.tabAllMedications.ResumeLayout(false);
-			this.tabAllMedications.PerformLayout();
-			this.tabMissing.ResumeLayout(false);
 			this.ResumeLayout(false);
+			this.PerformLayout();
 
 		}
 		#endregion
@@ -250,14 +169,8 @@ namespace OpenDental {
 		private OpenDental.UI.GridOD gridAllMedications;
 		public TextBox textSearch;
 		private Label label1;
-		private OpenDental.UI.TabControl tabMedications;
-		private OpenDental.UI.TabPage tabAllMedications;
-		private OpenDental.UI.TabPage tabMissing;
-		private UI.GridOD gridMissing;
-		private UI.Button butConvertBrand;
 		private UI.Button butImportMedications;
 		private UI.Button butExportMedications;
-		private UI.Button butConvertGeneric;
 		private OpenDental.UI.CheckBox checkShowHidden;
 	}
 }

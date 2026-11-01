@@ -24,6 +24,8 @@ namespace SyntheticData.Tests {
 		private static readonly string DbC="synth_test_"+RunTag+"_c";
 		private static readonly string DbAdopted="synth_test_"+RunTag+"_adopted";
 		private static readonly string DbFill="synth_test_"+RunTag+"_fill";
+		private static readonly string DbFloatA="synth_test_"+RunTag+"_floata";
+		private static readonly string DbFloatB="synth_test_"+RunTag+"_floatb";
 		private static readonly ServerSettings _server=new ServerSettings();
 		private static string _skipReason;
 		private static ValidationReport _reportA;
@@ -53,7 +55,7 @@ namespace SyntheticData.Tests {
 				return;
 			}
 			using(Db db=Db.Open(_server)) {
-				foreach(string database in new[] { DbA,DbB,DbC,DbAdopted,DbFill }) {
+				foreach(string database in new[] { DbA,DbB,DbC,DbAdopted,DbFill,DbFloatA,DbFloatB }) {
 					if(db.DatabaseExists(database)) {
 						db.Execute("DROP DATABASE `"+database+"`");
 					}
@@ -284,6 +286,40 @@ namespace SyntheticData.Tests {
 				ValidationReport report=Validator.Run(db,DbFill,null,null);
 				List<string> listEmpty=report.Tables.Where(x => x.Rows==0 && !Generator.SetFillerExcludedTables.Contains(x.Name)).Select(x => x.Name).ToList();
 				Assert.AreEqual(0,listEmpty.Count,string.Join(", ",listEmpty));
+			}
+		}
+
+		///<summary>A dump and restore rounds a FLOAT to 6 significant digits (34.285713 to 34.2857). Both print as 34.2857, so a checksum of the printed
+		///value cannot tell them apart; the report's column checksum reads FLOAT values widened to DOUBLE and does. DOUBLE values print exactly.</summary>
+		[TestMethod]
+		public void ColumnChecksums_SeeAFloatRoundedTo6Digits() {
+			SkipIfNeeded();
+			using(Db db=Db.Open(_server)) {
+				foreach((string database,string valueFloat,string valueDouble) item in new[] { (DbFloatA,"34.285713","0.30000000000000004"),
+					(DbFloatB,"34.2857","0.3") })
+				{
+					db.Execute("DROP DATABASE IF EXISTS `"+item.database+"`");
+					db.Execute("CREATE DATABASE `"+item.database+"`");
+					db.Execute("CREATE TABLE `"+item.database+"`.imagedraw (ImageDrawNum bigint NOT NULL PRIMARY KEY,FontSize float NOT NULL,Amount double NOT NULL,"
+						+"Note varchar(20) NOT NULL) ENGINE=MyISAM");
+					db.Execute("INSERT INTO `"+item.database+"`.imagedraw VALUES (1,"+item.valueFloat+","+item.valueDouble+",'x'),(2,8.25,1.5,'y')");
+				}
+				Assert.AreEqual("34.2857",Convert.ToString(db.Scalar("SELECT CAST(FontSize AS CHAR) FROM `"+DbFloatA+"`.imagedraw WHERE ImageDrawNum=1")),
+					"MariaDB prints the long value with 6 digits.");
+				TableReport ChecksumOf(string database) {
+					db.Use(database);//ChecksumTable reads the table of the current database, as Validator.Run does.
+					return Validator.ChecksumTable(db,SchemaInfo.Load(db,database).GetTable("imagedraw"));
+				}
+				TableReport reportA=ChecksumOf(DbFloatA);
+				TableReport reportB=ChecksumOf(DbFloatB);
+				Assert.AreNotEqual(reportA.Columns["FontSize"],reportB.Columns["FontSize"],"The FLOAT column checksum sees the rounding.");
+				Assert.AreNotEqual(reportA.Columns["Amount"],reportB.Columns["Amount"],"The DOUBLE column checksum sees the 17th digit.");
+				Assert.AreEqual(reportA.Columns["Note"],reportB.Columns["Note"]);
+				db.Execute("UPDATE `"+DbFloatB+"`.imagedraw SET FontSize=34.285713,Amount=0.30000000000000004 WHERE ImageDrawNum=1");
+				reportB=ChecksumOf(DbFloatB);
+				Assert.AreEqual(reportA.Columns["FontSize"],reportB.Columns["FontSize"]);
+				Assert.AreEqual(reportA.Columns["Amount"],reportB.Columns["Amount"]);
+				Assert.AreEqual(reportA.ChecksumTable,reportB.ChecksumTable);
 			}
 		}
 

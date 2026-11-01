@@ -958,6 +958,9 @@ namespace OpenDentBusiness{
 					.Select(x => x.Copy())
 					.ToList();
 				List<PayPlan> listPayPlans=FilterValidInsPayPlansForClaimHelper(listValidInsPayPlansForClaims,listClaimProcsAll,listClaimsToProcess[i]);
+				//B-ERA: when the auto split option is on, procedures denied with a listed CARC move to a new unsent claim and the rest is processed.
+				listClaimsPaidToProcess[i]=EraAutoSplit.SplitDeniedProcsIfNeeded(isFullyAutomatic,x835,listClaimsPaidToProcess[i],listClaimsToProcess[i],patient,
+					insPlan,listPayPlans,listClaimProcsAll,listShortClaimProcsAll,listClaimProcsForClaimCopy,listAttaches,automationResult);
 				bool canClaimBeAutoProcessed=automationResult.CanClaimBeAutoProcessed(isFullyAutomatic,patient,insPlan,listClaimsPaidToProcess[i],listPayPlans,listShortClaimProcsAll,
 					listClaimProcsForClaimCopy.Select(x => new Hx835_ShortClaimProc(x)).ToList(),
 					listAttaches);
@@ -1330,6 +1333,7 @@ namespace OpenDentBusiness{
 				//Add the total payment to the beginning of the list, so that the ins paid amount for the total payment will be highlighted when FormEtrans835ClaimPay loads.
 				listClaimProcsForClaim.Insert(0,cpByTotal);
 			}
+			ClaimProcs.LinkToEraClaim(x835,claimPaid,claim,listClaimProcsToEdit,isByTotalIncluded ? cpByTotal : null);//M2-ERA (26.1): claimproc.Etrans835AttachNum
 			if(isAutomatic) {
 				ReceiveEraPayment(claim,claimPaid,listClaimProcsForClaim,PrefC.GetBool(PrefName.EraIncludeWOPercCoPay),isSupplementalPay,isAutomatic:isAutomatic);
 				if(automationResult!=null) {

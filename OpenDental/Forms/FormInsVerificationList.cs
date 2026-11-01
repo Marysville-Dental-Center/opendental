@@ -29,6 +29,8 @@ namespace OpenDental {
 		private Dictionary<long,Def> _dictionaryDefsStatus=new Dictionary<long,Def>();
 		private ContextMenu _contextMenuRightClick=new ContextMenu();
 		private List<Def> _listDefsRegion;
+		///<summary>The carriers picked for the Carrier filter (Open Dental 25.4: one or more carriers instead of a name box). Empty is "All".</summary>
+		private List<long> _listCarrierNumsFilter=new List<long>();
 		///<summary>Indicates if a region is selected in the region listbox.</summary>
 
 		public FormInsVerificationList() {
@@ -46,9 +48,10 @@ namespace OpenDental {
 			if(PrefC.HasClinicsEnabled) {
 				_listClinicNumsVerifyClinicsFilter.Add(-1);//-1 represents "All"
 			}
+			//The carrier box is read-only now: its pick and clear buttons refresh the list themselves.
 			SetFilterControlsAndAction(() => FillControls(),
-				textPatientEnrollmentDaysStandard,textInsBenefitEligibilityDaysStandard,textAppointmentScheduledDaysStandard,textVerifyCarrier,
-				textPatientEnrollmentDaysMedicaid,textInsBenefitEligibilityDaysMedicaid,textAppointmentScheduledDaysMedicaid);
+				textPatientEnrollmentDaysStandard,textInsBenefitEligibilityDaysStandard,textAppointmentScheduledDaysStandard,textAppointmentScheduledDaysMinStandard,
+				textPatientEnrollmentDaysMedicaid,textInsBenefitEligibilityDaysMedicaid,textAppointmentScheduledDaysMedicaid,textAppointmentScheduledDaysMinMedicaid);
 			if(PrefC.GetBool(PrefName.InsVerifyDefaultToCurrentUser)) {
 				_userNumVerify=Security.CurUser.UserNum;
 			}
@@ -70,6 +73,9 @@ namespace OpenDental {
 			textAppointmentScheduledDaysMedicaid.Text=POut.Int(PrefC.GetInt(PrefName.InsVerifyAppointmentScheduledDaysMedicaid));
 			textInsBenefitEligibilityDaysMedicaid.Text=POut.Int(PrefC.GetInt(PrefName.InsVerifyBenefitEligibilityDaysMedicaid));
 			textPatientEnrollmentDaysMedicaid.Text=POut.Int(PrefC.GetInt(PrefName.InsVerifyPatientEnrollmentDaysMedicaid));
+			//The minimum days until the appointment start at 0 each time, so the default list is the 24.3 list (no setup preference, fork decision).
+			textAppointmentScheduledDaysMinStandard.Text="0";
+			textAppointmentScheduledDaysMinMedicaid.Text="0";
 			InsVerifies.CleanupInsVerifyRows(DateTime.Today,
 				DateTime.Today.AddDays(PIn.Int(textAppointmentScheduledDaysStandard.Text)),
 				DateTime.Today.AddDays(PIn.Int(textAppointmentScheduledDaysMedicaid.Text))
@@ -86,6 +92,7 @@ namespace OpenDental {
 		}
 
 		public void FillControls() {
+			FillCarrierFilter();
 			FillComboBoxes();
 			FillUsers();
 			FillGrid();
@@ -318,21 +325,30 @@ namespace OpenDental {
 
 		private List<InsVerifyGridRow> GetRowsForGrid(GridOD grid) {
 			List<InsVerifyGridRow> listInsVerifyGridRows=new List<InsVerifyGridRow>();
+			SetApptDaysMaxLowerBounds();
 			if(!textAppointmentScheduledDaysStandard.IsValid() 
+				|| !textAppointmentScheduledDaysMinStandard.IsValid()
 				|| !textPatientEnrollmentDaysStandard.IsValid() 
 				|| !textInsBenefitEligibilityDaysStandard.IsValid()
 				|| !textAppointmentScheduledDaysMedicaid.IsValid() 
+				|| !textAppointmentScheduledDaysMinMedicaid.IsValid()
 				|| !textPatientEnrollmentDaysMedicaid.IsValid() 
 				|| !textInsBenefitEligibilityDaysMedicaid.IsValid()) 
 			{
 				return listInsVerifyGridRows;
 			}
+			int daysMinStandard=PIn.Int(textAppointmentScheduledDaysMinStandard.Text);
+			int daysMaxStandard=PIn.Int(textAppointmentScheduledDaysStandard.Text);
+			int daysMinMedicaid=PIn.Int(textAppointmentScheduledDaysMinMedicaid.Text);
+			int daysMaxMedicaid=PIn.Int(textAppointmentScheduledDaysMedicaid.Text);
+			if(!InsVerifies.IsApptDayRangeValid(daysMinStandard,daysMaxStandard) || !InsVerifies.IsApptDayRangeValid(daysMinMedicaid,daysMaxMedicaid)) {
+				return listInsVerifyGridRows;
+			}
 			bool excludePatVerifyWhenNoIns=PrefC.GetBool(PrefName.InsVerifyExcludePatVerify);
 			bool excludePatClones=(PrefC.GetBool(PrefName.ShowFeaturePatientClone)==true) && PrefC.GetBool(PrefName.InsVerifyExcludePatientClones);
-			DateTime dateStartStandard=DateTime.Today;
-			DateTime dateEndStandard=DateTime.Today.AddDays(PIn.Int(textAppointmentScheduledDaysStandard.Text));//Don't need to add 1 because we will be getting only the date portion of this datetime.
-			DateTime dateStartMedicaid=DateTime.Today;
-			DateTime dateEndMedicaid=DateTime.Today.AddDays(PIn.Int(textAppointmentScheduledDaysMedicaid.Text));
+			//Appointments from Min through Max days from today, whole days (Open Dental 25.4; 24.3 always started today).
+			InsVerifies.GetApptDateRange(DateTime.Today,daysMinStandard,daysMaxStandard,out DateTime dateStartStandard,out DateTime dateEndStandard);
+			InsVerifies.GetApptDateRange(DateTime.Today,daysMinMedicaid,daysMaxMedicaid,out DateTime dateStartMedicaid,out DateTime dateEndMedicaid);
 			if(grid==gridPastDue) {
 				dateStartStandard=DateTime.Today.AddDays(-PrefC.GetInt(PrefName.InsVerifyDaysFromPastDueAppt));
 				dateEndStandard=DateTime.Today.AddDays(-1);
@@ -356,7 +372,7 @@ namespace OpenDental {
 			ProgressWin progressOD=new ProgressWin();
 			progressOD.ActionMain=() => {
 				List<InsVerifyGridObject> listInsVerifyGridObjects=InsVerifies.GetVerifyGridList(dateStartStandard,dateEndStandard,dateLastPatEligibilityStandard,dateLastPlanBenefitsStandard,
-					_listClinicNumsVerifyClinicsFilter,_listDefNumsVerifyRegionsFilter,_defNumVerifyStatusFilter,_userNumVerify,textVerifyCarrier.Text,
+					_listClinicNumsVerifyClinicsFilter,_listDefNumsVerifyRegionsFilter,_defNumVerifyStatusFilter,_userNumVerify,_listCarrierNumsFilter,
 					excludePatVerifyWhenNoIns,excludePatClones,
 					dateStartMedicaid,dateEndMedicaid,dateLastPatEligibilityMedicaid,dateLastPlanBenefitsMedicaid,insVerifyListType);
 				for(int i=0;i<listInsVerifyGridObjects.Count;i++) {
@@ -395,7 +411,8 @@ namespace OpenDental {
 			row.Cells.Add(insVerifyGridRow.DateLastVerified.ToShortDateString());
 			row.Cells.Add(insVerifyGridRow.VerifyStatus);
 			if(!isAssignGrid) {
-				row.Cells.Add(insVerifyGridRow.DateLastAssigned.ToShortDateString());
+				//Date and time since Open Dental 25.4 (datetime column). Blank when the row was never assigned.
+				row.Cells.Add(GetDateLastAssignedText(insVerifyGridRow.DateLastAssigned));
 			}
 			row.Cells.Add(insVerifyGridRow.AssignedTo);
 			row.Tag=insVerifyGridRow.Tag;
@@ -446,7 +463,7 @@ namespace OpenDental {
 			col=new GridColumn(Lans.g(this,"Status"),110);
 			grid.Columns.Add(col);
 			if(!isAssignGrid) {
-				col=new GridColumn(Lans.g(this,"Status Date"),80,HorizontalAlignment.Center);
+				col=new GridColumn(Lans.g(this,"Status Date"),115,HorizontalAlignment.Center,GridSortingStrategy.DateParse);
 				grid.Columns.Add(col);
 			}
 			col=new GridColumn(Lans.g(this,"Assigned to"),120){ IsWidthDynamic=true };
@@ -720,17 +737,18 @@ namespace OpenDental {
 				}
 			}
 			List<InsVerifyGridObject> listInsVerifyGridObjects=GetSelectedInsVerifyList();
+			DateTime dateTimeAssigned=DateTime.Now;//datetime since Open Dental 25.4: the time of day is kept.
 			for(int i=0;i<listInsVerifyGridObjects.Count;i++) {
 				if(listInsVerifyGridObjects[i].InsVerifyPat!=null) {
 					listInsVerifyGridObjects[i].InsVerifyPat.UserNum=_userNumAssign;
 					listInsVerifyGridObjects[i].InsVerifyPat.Note=GetInsVerifyNote();
-					listInsVerifyGridObjects[i].InsVerifyPat.DateLastAssigned=DateTime.Today;
+					listInsVerifyGridObjects[i].InsVerifyPat.DateLastAssigned=dateTimeAssigned;
 					InsVerifies.Update(listInsVerifyGridObjects[i].InsVerifyPat);
 				}
 				if(listInsVerifyGridObjects[i].InsVerifyPlan!=null) {
 					listInsVerifyGridObjects[i].InsVerifyPlan.UserNum=_userNumAssign;
 					listInsVerifyGridObjects[i].InsVerifyPlan.Note=GetInsVerifyNote();
-					listInsVerifyGridObjects[i].InsVerifyPlan.DateLastAssigned=DateTime.Today;
+					listInsVerifyGridObjects[i].InsVerifyPlan.DateLastAssigned=dateTimeAssigned;
 					InsVerifies.Update(listInsVerifyGridObjects[i].InsVerifyPlan);
 				}
 			}
@@ -891,6 +909,62 @@ namespace OpenDental {
 			FillControls();
 		}
 
+		///<summary>Opens the carrier list in multi-select mode. The picked carriers replace the Carrier filter; none picked means all carriers.</summary>
+		private void butCarrierPick_Click(object sender,EventArgs e) {
+			using FormCarriers formCarriers=new FormCarriers();
+			formCarriers.IsMultiSelectMode=true;
+			formCarriers.ListCarrierNumsSelected=new List<long>(_listCarrierNumsFilter);
+			formCarriers.ShowDialog();
+			if(formCarriers.DialogResult!=DialogResult.OK) {
+				return;
+			}
+			_listCarrierNumsFilter=new List<long>(formCarriers.ListCarrierNumsSelected);
+			FillDisplayInfo(null);
+			FillControls();
+		}
+
+		///<summary>Sets the Carrier filter back to all carriers.</summary>
+		private void butCarrierClear_Click(object sender,EventArgs e) {
+			if(_listCarrierNumsFilter.Count==0) {
+				return;
+			}
+			_listCarrierNumsFilter=new List<long>();
+			FillDisplayInfo(null);
+			FillControls();
+		}
+
+		///<summary>Drops the carriers of the Carrier filter that were combined into another carrier or deleted since they were picked, then shows the
+		///filter in the read-only carrier box: "All", the names, or "N carriers".</summary>
+		private void FillCarrierFilter() {
+			_listCarrierNumsFilter=InsVerifies.GetCarrierNumsStillPresent(_listCarrierNumsFilter);
+			//Carriers.GetCarrier refreshes the cache when a carrier is missing from it, for example one added at another workstation.
+			List<Carrier> listCarriers=_listCarrierNumsFilter.Select(x => Carriers.GetCarrier(x)).OrderBy(x => x.CarrierName).ToList();
+			textVerifyCarrier.Text=InsVerifies.GetCarrierFilterText(listCarriers,maxChars:13);
+		}
+
+		///<summary>The Max box of each "days until appointment" pair may not be below its Min box. ValidNum then shows the error on the Max box, and
+		///the refresh is blocked as for any other invalid box.</summary>
+		private void SetApptDaysMaxLowerBounds() {
+			textAppointmentScheduledDaysStandard.MinVal=GetDaysOrZero(textAppointmentScheduledDaysMinStandard);
+			textAppointmentScheduledDaysMedicaid.MinVal=GetDaysOrZero(textAppointmentScheduledDaysMinMedicaid);
+		}
+
+		///<summary>The number in the box, or 0 when the box is blank or invalid.</summary>
+		private int GetDaysOrZero(ValidNum validNum) {
+			if(!validNum.IsValid()) {
+				return 0;
+			}
+			return PIn.Int(validNum.Text,hasExceptions:false);
+		}
+
+		///<summary>The Status Date cell: date and time of the last assignment or status change, blank when there was none.</summary>
+		public static string GetDateLastAssignedText(DateTime dateLastAssigned) {
+			if(dateLastAssigned.Year<1880) {
+				return "";
+			}
+			return dateLastAssigned.ToString("g");//"g" excludes seconds, like the appointment column.
+		}
+
 		#endregion
 
 		private void SetStatus(long statusDefNum,bool isVerifyGrid) {
@@ -909,13 +983,14 @@ namespace OpenDental {
 				statusNote=inputBox.StringResult;
 				hasChanged=true;
 			}
+			DateTime dateTimeAssigned=DateTime.Now;//datetime since Open Dental 25.4: the time of day is kept.
 			if(isVerifyGrid) {
 				if(_insVerifyGridObjectRowSelected.InsVerifyPat!=null) {
 					_insVerifyGridObjectRowSelected.InsVerifyPat.DefNum=statusDefNum;
 					if(hasChanged) {
 						_insVerifyGridObjectRowSelected.InsVerifyPat.Note=statusNote;
 					}
-					_insVerifyGridObjectRowSelected.InsVerifyPat.DateLastAssigned=DateTime.Today;
+					_insVerifyGridObjectRowSelected.InsVerifyPat.DateLastAssigned=dateTimeAssigned;
 					InsVerifies.Update(_insVerifyGridObjectRowSelected.InsVerifyPat);
 				}
 				if(_insVerifyGridObjectRowSelected.InsVerifyPlan!=null) {
@@ -924,7 +999,7 @@ namespace OpenDental {
 						_insVerifyGridObjectRowSelected.InsVerifyPlan.Note=statusNote;
 						textInsVerifyReadOnlyNote.Text=statusNote;
 					}
-					_insVerifyGridObjectRowSelected.InsVerifyPlan.DateLastAssigned=DateTime.Today;
+					_insVerifyGridObjectRowSelected.InsVerifyPlan.DateLastAssigned=dateTimeAssigned;
 					InsVerifies.Update(_insVerifyGridObjectRowSelected.InsVerifyPlan);
 				}
 				return;
@@ -936,7 +1011,7 @@ namespace OpenDental {
 					if(hasChanged) {
 						listInsVerifyGridObjects[i].InsVerifyPat.Note=statusNote;
 					}
-					listInsVerifyGridObjects[i].InsVerifyPat.DateLastAssigned=DateTime.Today;
+					listInsVerifyGridObjects[i].InsVerifyPat.DateLastAssigned=dateTimeAssigned;
 					InsVerifies.Update(listInsVerifyGridObjects[i].InsVerifyPat);
 				}
 				if(listInsVerifyGridObjects[i].InsVerifyPlan!=null) {
@@ -944,7 +1019,7 @@ namespace OpenDental {
 					if(hasChanged) {
 						listInsVerifyGridObjects[i].InsVerifyPlan.Note=statusNote;
 					}
-					listInsVerifyGridObjects[i].InsVerifyPlan.DateLastAssigned=DateTime.Today;
+					listInsVerifyGridObjects[i].InsVerifyPlan.DateLastAssigned=dateTimeAssigned;
 					InsVerifies.Update(listInsVerifyGridObjects[i].InsVerifyPlan);
 				}
 			}
@@ -965,15 +1040,16 @@ namespace OpenDental {
 
 		private void menuItemAssignUserDropDown_Click(object sender, EventArgs e) {
 			Userod userod=(Userod)((MenuItem)sender).Tag;
+			DateTime dateTimeAssigned=DateTime.Now;//datetime since Open Dental 25.4: the time of day is kept.
 			if(tabControl1.SelectedTab==tabVerify) {
 				if(_insVerifyGridObjectRowSelected.InsVerifyPat!=null) {
 					_insVerifyGridObjectRowSelected.InsVerifyPat.UserNum=userod.UserNum;
-					_insVerifyGridObjectRowSelected.InsVerifyPat.DateLastAssigned=DateTime.Today;
+					_insVerifyGridObjectRowSelected.InsVerifyPat.DateLastAssigned=dateTimeAssigned;
 					InsVerifies.Update(_insVerifyGridObjectRowSelected.InsVerifyPat);
 				}
 				if(_insVerifyGridObjectRowSelected.InsVerifyPlan!=null) {
 					_insVerifyGridObjectRowSelected.InsVerifyPlan.UserNum=userod.UserNum;
-					_insVerifyGridObjectRowSelected.InsVerifyPlan.DateLastAssigned=DateTime.Today;
+					_insVerifyGridObjectRowSelected.InsVerifyPlan.DateLastAssigned=dateTimeAssigned;
 					InsVerifies.Update(_insVerifyGridObjectRowSelected.InsVerifyPlan);
 				}
 				FillControls();
@@ -987,12 +1063,12 @@ namespace OpenDental {
 			for(int i=0;i<listInsVerifyGridObjects.Count;i++) { 
 				if(listInsVerifyGridObjects[i].InsVerifyPat!=null) {
 					listInsVerifyGridObjects[i].InsVerifyPat.UserNum=userod.UserNum;
-					listInsVerifyGridObjects[i].InsVerifyPat.DateLastAssigned=DateTime.Today;
+					listInsVerifyGridObjects[i].InsVerifyPat.DateLastAssigned=dateTimeAssigned;
 					InsVerifies.Update(listInsVerifyGridObjects[i].InsVerifyPat);
 				}
 				if(listInsVerifyGridObjects[i].InsVerifyPlan!=null) {
 					listInsVerifyGridObjects[i].InsVerifyPlan.UserNum=userod.UserNum;
-					listInsVerifyGridObjects[i].InsVerifyPlan.DateLastAssigned=DateTime.Today;
+					listInsVerifyGridObjects[i].InsVerifyPlan.DateLastAssigned=dateTimeAssigned;
 					InsVerifies.Update(listInsVerifyGridObjects[i].InsVerifyPlan);
 				}
 			}

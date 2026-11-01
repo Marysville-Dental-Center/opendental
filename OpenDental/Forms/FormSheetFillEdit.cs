@@ -139,9 +139,6 @@ namespace OpenDental {
 				SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,SheetCur.PatNum,Lan.g(this,"Sheet with ID")+" "+SheetCur.SheetNum+" "+Lan.g(this,"moved to PatNum")+" "+frmPatientSelect.PatNumSelected);
 				SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,frmPatientSelect.PatNumSelected,Lan.g(this,"Sheet with ID")+" "+SheetCur.SheetNum+" "+Lan.g(this,"moved from PatNum")+" "+SheetCur.PatNum);
 				SheetCur.PatNum=frmPatientSelect.PatNumSelected;
-				if(SheetCur.PatNum>0) {
-					checkSaveToImages.Enabled=true;
-				}
 			}
 		}
 
@@ -212,7 +209,7 @@ namespace OpenDental {
 			if(HasEmailBeenSent && SheetCur.SheetType==SheetTypeEnum.Statement && SaveStatementToDocDelegate!=null) {
 				SaveStatementToDocDelegate(StatementCur,SheetCur,DataSet_,pdfFile);
 			}
-			if(_isAutoSave && checkSaveToImages.Checked) {
+			if(IsAutoSaveCopyDue()) {
 				SaveAsDocument('U',"PatientForm");//could actually be any sheet, not just PatientForm
 			}
 		}
@@ -271,7 +268,7 @@ namespace OpenDental {
 			if(SheetCur.SheetType==SheetTypeEnum.LabSlip) {
 				SaveAsDocument('B',"LabSlipArchive");
 			}
-			if(_isAutoSave && checkSaveToImages.Checked) {
+			if(IsAutoSaveCopyDue()) {
 				SaveAsDocument('U',"PatientForm");
 			}
 			DialogResult=DialogResult.OK;
@@ -317,7 +314,7 @@ namespace OpenDental {
 			if(SheetCur.SheetType==SheetTypeEnum.LabSlip) {
 				SaveAsDocument('B',"LabSlipArchive");
 			}
-			if(_isAutoSave && checkSaveToImages.Checked) {
+			if(IsAutoSaveCopyDue()) {
 				SaveAsDocument('U',"PatientForm");
 			}
 			if(DoExportCSV) {
@@ -442,7 +439,7 @@ namespace OpenDental {
 			if(SheetCur.SheetType==SheetTypeEnum.LabSlip) {
 				SaveAsDocument('B',"LabSlipArchive");
 			}
-			if(_isAutoSave && checkSaveToImages.Checked) {
+			if(IsAutoSaveCopyDue()) {
 				SaveAsDocument('U',"PatientForm");
 			}
 			DialogResult=DialogResult.OK;
@@ -576,20 +573,9 @@ namespace OpenDental {
 				Height=System.Windows.Forms.Screen.FromControl(this).WorkingArea.Height;
 			}
 			CenterFormOnMonitor();
-			//Only allow Autosave when there is a non-hidden image category that is flagged for Autosave Form (U) and the sheet being filled out is not in a terminal.
+			//Only allow Autosave when there is a non-hidden image category that is flagged for Autosave Form (U).
 			_isAutoSave=Defs.GetDefsForCategory(DefCat.ImageCats,isShort:true).Any(x => x.ItemValue.Contains("U"));
-			if(_isAutoSave && !IsInTerminal) {//only visible if the Autosave Form usage has been set and is not in kiosk mode
-				//This will get set depending on the SheetDef for the current Sheet
-				//Jordan the schema is wrong here. We should never refer back to the template SheetDef
-				//but we're going to leave it because too hard to fix right now.
-				SheetDef sheetDefForSheetCur=SheetDefs.GetFirstOrDefault(x=>x.SheetDefNum==SheetCur.SheetDefNum);
-				checkSaveToImages.Checked=sheetDefForSheetCur?.AutoCheckSaveImage??false;
-				checkSaveToImages.Visible=true;
-			}
-			if(SheetCur.PatNum==0) {
-				checkSaveToImages.Enabled=false;
-				checkSaveToImages.Checked=false;
-			}
+			//25.1: no "Autosave to Images" box. A save that changed the sheet copies it to Imaging when its layout says so, in a kiosk or terminal too (IsAutoSaveCopyDue).
 			_listPoints=new List<Point>();
 			_uniqueFormIdentifier=MiscUtils.CreateRandomAlphaNumericString(15);//Thread safe random
 			Sheets.SetPageMargin(SheetCur,_marginsPrint);
@@ -677,6 +663,7 @@ namespace OpenDental {
 			if(SheetCur.ShowInTerminal>0) {
 				textShowInTerminal.Text=SheetCur.ShowInTerminal.ToString();
 			}
+			LoadDateSubmitted();//Open Dental 25.4 sheet.DateTimeSubmitted, see FormSheetFillEdit.Submitted.cs
 			LoadImages();
 			//We need to double check any sheet Input, Output, and Static Text fields for growth behavior. If this sheet was sent over as a webform, the height for a specific field may have been adjusted to conform to a web or mobile web view. If the height was adjusted, we need to re-measure and adjust these fields once they are retreived in OD.
 			for(int i=0;i<SheetCur.SheetFields.Count;i++) {
@@ -1510,7 +1497,7 @@ namespace OpenDental {
 			if(SheetCur.SheetType==SheetTypeEnum.Statement && patient!=null && IsStatement) {
 				//Mimics FormStatementOptions.CreateEmailMessage(), we should centralize this in the future.
 				emailMessage=Statements.GetEmailMessageForStatement(StatementCur,patient);
-				shortFileName="Statement";
+				shortFileName=Path.GetFileNameWithoutExtension(Statements.GetEmailPdfDisplayName(patient));//25.3: "Statement_LastName"
 				emailMessageSource=EmailMessageSource.Statement;
 			}
 			emailMessage.PatNum=SheetCur.PatNum;
@@ -2118,6 +2105,9 @@ namespace OpenDental {
 				MsgBox.Show(this,"Please fix data entry errors first.");
 				return false;
 			}
+			if(!TrySetDateSubmitted()) {//Open Dental 25.4 sheet.DateTimeSubmitted, see FormSheetFillEdit.Submitted.cs
+				return false;
+			}
 			SheetCur.DateTimeSheet=dateTimeSheet;
 			SheetCur.Description=textDescription.Text;
 			SheetCur.InternalNote=textNote.Text;
@@ -2636,7 +2626,7 @@ namespace OpenDental {
 			if(!VerifyRequiredFields() || !OkToSaveBecauseNoOtherEdits() || !TryToSaveData()){
 				return;
 			}
-			if(_isAutoSave && checkSaveToImages.Checked) {
+			if(IsAutoSaveCopyDue()) {
 				SaveAsDocument('U',"PatientForm");
 			}
 			SecurityLogs.MakeLogEntry(EnumPermType.SheetEdit,SheetCur.PatNum,SheetCur.Description+" from "+SheetCur.DateTimeSheet.ToShortDateString());

@@ -402,6 +402,9 @@ namespace OpenDental {
 			if(!ValidateInOK()) {
 				return;
 			}
+			if(!ConfirmInserterBarcodeClearZone()) {//25.3 statement inserter barcode (FormSheetDefEdit.InserterBarcode.cs)
+				return;
+			}
 			if(!_sheetEditMobileCtrl.MergeMobileSheetFieldDefs(SheetDef_,true,new Action<string>((err) => { MsgBox.Show(this,err); }))) {
 				return;
 			}
@@ -3657,6 +3660,9 @@ namespace OpenDental {
 					DrawControlForSheetField(g,panel,sheetFieldDef);
 					break;
 				#endregion
+				case StatementInserterBarcode.FIELD_NAME://25.3 statement inserter barcode (FormSheetDefEdit.InserterBarcode.cs)
+					DrawInserterBarcode(sheetFieldDef,g);
+					break;
 				default:
 					g.DrawString("(Special:Tooth Grid)",Font,solidBrush,sheetFieldDef.XPos,sheetFieldDef.YPos);
 					break;

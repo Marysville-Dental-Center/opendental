@@ -424,6 +424,7 @@ namespace OpenDentBusiness {
 				patientGuarantor=family.ListPats.FirstOrDefault(x => x.PatNum==patient.Guarantor);
 			}
 			ApplyPrefillFromGuarantor(eForm,patient,patientGuarantor);
+			EFormPatFields.FillFields(eForm);//Open Dental 25.4: fields linked to the office's patient fields
 			List<EnumStaticTextField> listEnumStaticTextFields=GetAllStaticTextFieldsForEForm(eForm);
 			StaticTextFieldDependency staticTextFieldDependency=StaticTextData.GetStaticTextDependencies(listEnumStaticTextFields);
 			List<StaticTextReplacement> listStaticTextReplacements=SheetFiller.GetStaticTextReplacements(listEnumStaticTextFields,patient,family,staticTextData:null,staticTextFieldDependency,aptNum:0);
