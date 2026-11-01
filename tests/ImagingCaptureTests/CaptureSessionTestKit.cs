@@ -479,7 +479,6 @@ namespace ImagingCapture.Tests {
 			return isDone;
 		}
 
-		///<summary>A passed 16-bit verification record for device 12 on OPERATORY1 with the given hash.</summary>
 		///<summary>The driver build FakeTwainCaptureSession reports at open by default, and PassedRecord names.</summary>
 		public static readonly TwainDriverIdentity Driver=new TwainDriverIdentity("Example Sensor DS",1,1,"1.1.0");
 

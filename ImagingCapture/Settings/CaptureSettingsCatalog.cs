@@ -129,7 +129,9 @@ namespace ImagingCapture.Settings {
 				+"contract offers it and ContinuousCap is set.","PerSlot","Continuous");
 			Add(SectionDevice,"Bits",CaptureSettingKind.Choice,"16",true,"16 (the default), 14 or 8: the depth asked for. 16 falls back to 14, and either "
 				+"to 8, when the source does not list it; 14-bit data is stored in a 16-bit DICOM file. More than 8 bits also need Allow16Bit=1 and a "
-				+"Test capture that passed at this depth; until then, or for a target that cannot be stored as DICOM, the session takes 8 bits.","16","14","8");
+				+"Test capture that passed at this depth; until then, or for a target that cannot be stored as DICOM, the session takes 8 bits. A source "
+				+"that lists only 14 needs Bits=14 and a Test capture at 14; with Bits=16 the session then takes 8 bits (Test capture warns).",
+				"16","14","8");
 			Add(SectionDevice,"ByteOrder16",CaptureSettingKind.Choice,"LE",true,"Byte order of 16-bit samples (review flag).","LE","BE");
 			Add(SectionDevice,"Polarity",CaptureSettingKind.Choice,"AsDelivered",true,"AsDelivered, or Invert for 16-bit samples once verified (review "
 				+"flag).","AsDelivered","Invert");

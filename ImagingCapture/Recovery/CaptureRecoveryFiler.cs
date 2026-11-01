@@ -530,7 +530,7 @@ namespace ImagingCapture.Recovery {
 			});
 			if(choice.Bits<=8) {
 				error="This 16-bit capture can be filed into its slot only where the capture session could store it at its depth, and it is never "
-					+"converted to 8 bits there. "+(choice.Reason8Bit??"").Trim()+" It stays where it is.";
+					+"converted to 8 bits there. "+(choice.Reason8Bit??"").Trim()+" "+CaptureRecoveryText.Gray16StaysNote;
 				return false;
 			}
 			request.Is16BitAllowed=true;

@@ -59,11 +59,16 @@ namespace ImagingCapture.Recovery {
 		public const string SlotUnknown="Slot unknown";
 		///<summary>Owner decision 2026-11-01 (the 16-bit filing route): into its own empty slot a 16-bit capture goes as 16-bit DICOM (design 7.8);
 		///anywhere else, and when reassigned, as an explicit 8-bit copy, and the 16-bit original is kept.</summary>
-		public const string Gray16Note="16-bit: into its empty slot as 16-bit DICOM; anywhere else, or reassigned, as an 8-bit copy (the 16-bit original "
-			+"is kept).";
-		public const string Gray16NoSlotNote="16-bit with no slot to go into (no mount, the slot not recorded, or no patient): it is filed as an 8-bit "
-			+"copy, and the 16-bit original is kept.";
+		public const string Gray16Note="More than 8 bits: into its empty slot as 16-bit DICOM; anywhere else, or reassigned, as an 8-bit copy (the "
+			+"16-bit original is kept).";
+		public const string Gray16NoSlotNote="More than 8 bits, with no slot to go into (no mount, the slot not recorded, or no patient): it is filed as "
+			+"an 8-bit copy, and the 16-bit original is kept.";
 		public const string ToothNumbersUnknown="Tooth numbers unknown";
+		///<summary>The end of Assign's refusal of a 16-bit capture for its own empty slot when the session's conditions for its depth do not hold
+		///(the latest Test capture is for another driver version, or the image settings changed): no other route files it for its patient, so the
+		///operator is told it is not a mistake to leave it. Whether it may be filed as the explicit 8-bit copy then is an owner question.</summary>
+		public const string Gray16StaysNote="It stays where it is: until the conditions hold again, it can only stay in unassigned captures or be "
+			+"discarded.";
 		///<summary>A Test capture image (CaptureRecoveryFiler.IsTestCapture) is neither assigned nor reassigned.</summary>
 		public const string TestCaptureNote="A Test capture image is never filed to a patient.";
 

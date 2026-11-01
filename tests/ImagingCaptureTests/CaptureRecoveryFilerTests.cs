@@ -657,7 +657,9 @@ namespace ImagingCapture.Tests {
 			CaptureAssignPlan plan=_harness.Filer.PlanAssign(entry,0,out error);
 			Assert.IsTrue(plan.IsIntoOriginalSlot);
 			Assert.IsFalse(plan.Is8BitCopy,"Its own empty slot: 16-bit DICOM, as before.");
-			Assert.IsFalse(_harness.Filer.Assign(entry,0,0).IsDone,"Without the session's conditions it stays where it is.");
+			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0);
+			Assert.IsFalse(result.IsDone,"Without the session's conditions it stays where it is.");
+			StringAssert.EndsWith(result.Error,CaptureRecoveryText.Gray16StaysNote,"The refusal says no other route files it.");
 			Assert.AreEqual(0,RadiographStore.ListPatientsImported.Count);
 		}
 

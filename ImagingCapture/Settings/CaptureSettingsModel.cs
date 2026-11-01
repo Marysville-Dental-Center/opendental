@@ -167,7 +167,7 @@ namespace ImagingCapture.Settings {
 				&& string.Equals(x.Def.Key,key,StringComparison.OrdinalIgnoreCase));
 		}
 
-		///<summary>The problems, one line each: "[Device.12] Bits=12 is not one of 8, 16."</summary>
+		///<summary>The problems, one line each: "[Device.12] Bits=12 is not one of 16, 14, 8."</summary>
 		public List<string> GetProblemTexts() {
 			return _listRows.Where(x => x.Problem!="").Select(x => x.Problem).ToList();
 		}
