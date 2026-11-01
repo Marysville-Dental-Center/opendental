@@ -444,6 +444,8 @@ namespace OpenDental.User_Controls {
 					return "Production By Procedure";
 				case DisplayReports.ReportNames.InsPendingSupplementals:
 					return "Insurance Pending Supplementals";
+				case DisplayReports.ReportNames.UdsPlus:
+					return "UDS+ Dental Services";
 				case "ODCustomAging":
 					return "Custom Aging";
 				case "ODDynamicPayPlanOvercharged":

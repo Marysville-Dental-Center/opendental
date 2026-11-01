@@ -34,6 +34,11 @@ namespace OpenDental{
 		private TimeSpan _timeSpanStoredWeek;
 		private TimeAdjust _timeAdjustNote;
 		private List<PayPeriod> _listPayPeriods;
+		///<summary>The totals shown in gridTotals and printed. Filled by FillMain.</summary>
+		private TimeCardPeriodTotals _timeCardPeriodTotals=new TimeCardPeriodTotals();
+		///<summary>Decimal or colon, for the totals only. Starts from the TimeCardsUseDecimalInsteadOfColon preference each time the window opens;
+		///changing it never changes the preference.</summary>
+		private EnumTimeCardTotalsFormat _enumTimeCardTotalsFormat;
 
 		///<summary>If true, the current employee cannot edit their own time card.</summary>
 		private bool _cannotEditOwnTimecard {
@@ -74,6 +79,7 @@ namespace OpenDental{
 		}
 
 		private void FormTimeCard_Load(object sender, System.EventArgs e){
+			SetTotalsFormat(TimeCardTotals.GetDefaultFormat());
 			Initialize(DateTime.Today);
 			SortEmployeeList();
 			if(Security.IsAuthorized(EnumPermType.TimecardsEditAll,true)) {
@@ -114,17 +120,9 @@ namespace OpenDental{
 				groupBox2.Visible=false;
 			}
 			if(IsBreaks){
-				textOvertime.Visible=false;
-				labelOvertime.Visible=false;
 				butCalcDaily.Visible=false;
 				butCalcWeekOT.Visible=false;//butCompute.Visible=false;
 				butAdj.Visible=false;
-				labelRateTwo.Visible=false;
-				textRateTwo.Visible=false;
-				textRateTwo2.Visible=false;
-				labelRateThree.Visible=false;
-				textRateThree.Visible=false;
-				textRateThree2.Visible=false;
 			}
 			radioTimeCard.Checked=!IsBreaks;
 			radioBreaks.Checked=IsBreaks;
@@ -191,39 +189,17 @@ namespace OpenDental{
 
 		private void radioTimeCard_Click(object sender,EventArgs e) {
 			IsBreaks=false;
-			textOvertime.Visible=true;
-			labelOvertime.Visible=true;
 			butCalcDaily.Visible=true;//butDaily.Visible=true;
 			butCalcWeekOT.Visible=true;//butCompute.Visible=true;
 			butAdj.Visible=true;
-			labelRateTwo.Visible=true;
-			textRateTwo.Visible=true;
-			textRateTwo2.Visible=true;
-			labelRateThree.Visible=true;
-			textRateThree.Visible=true;
-			textRateThree2.Visible=true;
-			labelPTO.Visible=true;
-			textPTO.Visible=true;
-			textPTO2.Visible=true;
 			FillMain(true);
 		}
 
 		private void radioBreaks_Click(object sender,EventArgs e) {
 			IsBreaks=true;
-			textOvertime.Visible=false;
-			labelOvertime.Visible=false;
 			butCalcDaily.Visible=false;//butDaily.Visible=false;
 			butCalcWeekOT.Visible=false;//butCompute.Visible=false;
 			butAdj.Visible=false;
-			labelRateTwo.Visible=false;
-			textRateTwo.Visible=false;
-			textRateTwo2.Visible=false;
-			labelRateThree.Visible=false;
-			textRateThree.Visible=false;
-			textRateThree2.Visible=false;
-			labelPTO.Visible=false;
-			textPTO.Visible=false;
-			textPTO2.Visible=false;
 			//butDaily.Visible=false;
 			FillMain(true);
 		}
@@ -604,55 +580,51 @@ namespace OpenDental{
 				gridMain.ListGridRows.Add(row);
 			}
 			gridMain.EndUpdate();
-			if(IsBreaks){
-				labelRegularTime.Visible=false;
-				labelOvertime.Visible=false;
-				labelRateTwo.Visible=false;
-				labelRateThree.Visible=false;
-				labelPTO.Visible=false;
-				textTotal.Visible=false;
-				textTotal2.Visible=false;
-				textOvertime.Visible=false;
-				textOvertime2.Visible=false;
-				textRateTwo.Visible=false;
-				textRateTwo2.Visible=false;
-				textRateThree.Visible=false;
-				textRateThree2.Visible=false;
-				textPTO.Visible=false;
-				textPTO2.Visible=false;
-				labelUnpaidProtectedLeave.Visible=false;
-				textUnpaidProtectedLeave.Visible=false;
-				textUnpaidProtectedLeave2.Visible=false;
+			//Totals for Period (Open Dental 25.1): one grid under the time card, also on the Breaks view.
+			_timeCardPeriodTotals=TimeCardTotals.Calculate(_listClockEvents,_listTimeAdjusts,IsBreaks);
+			FillGridTotals();
+		}
+
+		///<summary>Sets the totals format and its radio buttons. Does not change the preference.</summary>
+		private void SetTotalsFormat(EnumTimeCardTotalsFormat enumTimeCardTotalsFormat) {
+			_enumTimeCardTotalsFormat=enumTimeCardTotalsFormat;
+			radioTotalsDecimal.Checked=(enumTimeCardTotalsFormat==EnumTimeCardTotalsFormat.Decimal);
+			radioTotalsColon.Checked=(enumTimeCardTotalsFormat==EnumTimeCardTotalsFormat.Colon);
+		}
+
+		///<summary>One row with the period total under each numeric column of gridMain, in the format chosen in this window. The first column has
+		///the width of Date, Day, In and Out together, so the totals line up under their columns.</summary>
+		private void FillGridTotals() {
+			List<string> listCaptions=TimeCardTotals.GetColumnCaptions();
+			List<string> listCells=TimeCardTotals.GetCells(_timeCardPeriodTotals,_enumTimeCardTotalsFormat,PrefC.GetBool(PrefName.TimeCardShowSeconds));
+			gridTotals.BeginUpdate();
+			gridTotals.Columns.Clear();
+			gridTotals.Columns.Add(new GridColumn("",70+45+64+64));//Date, Day, In and Out of gridMain
+			for(int i=0;i<listCaptions.Count;i++) {
+				int width=45;
+				if(listCaptions[i]=="Total" || listCaptions[i]=="Day") {
+					width=50;//The same widths as gridMain.
+				}
+				gridTotals.Columns.Add(new GridColumn(Lan.g(this,listCaptions[i]),width,HorizontalAlignment.Right));
+			}
+			gridTotals.ListGridRows.Clear();
+			GridRow row=new GridRow();
+			row.Cells.Add("");//under Date, Day, In and Out; the grid's title names the row
+			for(int i=0;i<listCells.Count;i++) {
+				row.Cells.Add(listCells[i]);
+			}
+			gridTotals.ListGridRows.Add(row);
+			gridTotals.EndUpdate();
+		}
+
+		private void radioTotalsFormat_Click(object sender,EventArgs e) {
+			if(sender==radioTotalsDecimal) {
+				SetTotalsFormat(EnumTimeCardTotalsFormat.Decimal);
 			}
 			else {
-				labelRegularTime.Visible=true;
-				labelOvertime.Visible=true;
-				labelRateTwo.Visible=true;
-				labelRateThree.Visible=true;
-				textTotal.Visible=true;
-				textTotal2.Visible=true;
-				textOvertime.Visible=true;
-				textOvertime2.Visible=true;
-				textRateTwo.Visible=true;
-				textRateTwo2.Visible=true;
-				textRateThree.Visible=true;
-				textRateThree2.Visible=true;
-				labelUnpaidProtectedLeave.Visible=true;
-				textUnpaidProtectedLeave.Visible=true;
-				textUnpaidProtectedLeave2.Visible=true;
-				textTotal.Text=timeSpanPeriod.ToStringHmm();
-				textOvertime.Text=timeSpanOT.ToStringHmm();
-				textRateTwo.Text=timeSpanRate2.ToStringHmm();
-				textRateThree.Text=timeSpanRate3.ToStringHmm();
-				textPTO.Text=timeSpanPTO.ToStringHmm();
-				textUnpaidProtectedLeave.Text=timeSpanUnpaidProtectedLeave.ToStringHmm();
-				textTotal2.Text=timeSpanPeriod.TotalHours.ToString("n");
-				textOvertime2.Text=timeSpanOT.TotalHours.ToString("n");
-				textRateTwo2.Text=timeSpanRate2.TotalHours.ToString("n");
-				textRateThree2.Text=timeSpanRate3.TotalHours.ToString("n");
-				textPTO2.Text=timeSpanPTO.TotalHours.ToString("n");
-				textUnpaidProtectedLeave2.Text=timeSpanUnpaidProtectedLeave.TotalHours.ToString("n");
+				SetTotalsFormat(EnumTimeCardTotalsFormat.Colon);
 			}
+			FillGridTotals();
 		}
 
 		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e) {
@@ -904,22 +876,35 @@ namespace OpenDental{
 			//e.Graphics.DrawLine(new Pen(Color.Gray),colPos[0],yPos,colPos[colPos.Length-1],yPos);
 			//totals will print on every page for simplicity
 			yPos+=10;
-			g.DrawString(Lan.g(this,"Regular Time")+": "+textTotal.Text+" ("+textTotal2.Text+")",fontHeader,solidBrush,xPos,yPos);
-			yPos+=16;
-			g.DrawString(Lan.g(this,"Overtime")+": "+textOvertime.Text+" ("+textOvertime2.Text+")",fontHeader,solidBrush,xPos,yPos);
-			yPos+=16;
-			g.DrawString(Lan.g(this,"Rate 2 Time")+": "+textRateTwo.Text+" ("+textRateTwo2.Text+")",fontHeader,solidBrush,xPos,yPos);
-			yPos+=16;
-			g.DrawString(Lan.g(this,"Rate 3 Time")+": "+textRateThree.Text+" ("+textRateThree2.Text+")",fontHeader,solidBrush,xPos,yPos);
-			yPos+=16;
-			g.DrawString(Lan.g(this,"PTO Time")+": "+textPTO.Text+" ("+textPTO2.Text+")",fontHeader,solidBrush,xPos,yPos);
-			yPos+=16;
-			g.DrawString(Lan.g(this,"Protected Leave")+": "+textUnpaidProtectedLeave.Text+" ("+textUnpaidProtectedLeave2.Text+")",fontHeader,solidBrush,xPos,yPos);
+			PrintTotalsRow(g,intArrayColPos,yPos,font,fontHeader,solidBrush,pen);
 			if(_linesPrinted==gridMain.ListGridRows.Count) {
 				e.HasMorePages=false;
 			}
 			else {
 				e.HasMorePages=true;
+			}
+		}
+
+		///<summary>Prints the Totals for Period row in the format chosen in this window: the label under Date through Out, then each total under its
+		///printed column (Total, Adjust, Rate 2, Rate 3, PTO, OT, PL, Day). Printed on every page, as the 24.3 totals were.</summary>
+		private void PrintTotalsRow(Graphics g,int[] intArrayColPos,float yPos,Font font,Font fontHeader,SolidBrush solidBrush,Pen pen) {
+			List<string> listCells=TimeCardTotals.GetCells(_timeCardPeriodTotals,_enumTimeCardTotalsFormat,PrefC.GetBool(PrefName.TimeCardShowSeconds));
+			const int idxColTotal=4;//The printed Total column. The totals continue in the columns after it.
+			int idxColAfterLast=idxColTotal+listCells.Count;
+			float xLeft=intArrayColPos[0];
+			float xRight=intArrayColPos[idxColAfterLast];
+			float height=18;
+			g.FillRectangle(Brushes.WhiteSmoke,xLeft,yPos,xRight-xLeft,height);
+			g.DrawRectangle(pen,xLeft,yPos,xRight-xLeft,height);
+			for(int i=idxColTotal;i<idxColAfterLast;i++) {
+				g.DrawLine(pen,intArrayColPos[i],yPos,intArrayColPos[i],yPos+height);
+			}
+			g.DrawString(Lan.g(this,"Totals for Period"),fontHeader,solidBrush,
+				new RectangleF(xLeft+2,yPos+2,intArrayColPos[idxColTotal]-xLeft-4,font.GetHeight(g)));
+			for(int i=0;i<listCells.Count;i++) {
+				int idxCol=idxColTotal+i;
+				g.DrawString(listCells[i],font,solidBrush,
+					new RectangleF(intArrayColPos[idxCol]+2,yPos+2,intArrayColPos[idxCol+1]-intArrayColPos[idxCol]-5,font.GetHeight(g)));
 			}
 		}
 

@@ -19,6 +19,8 @@ namespace CodeBase.Controls {
 		public bool DoBlockNavigation=false;
 		/// <summary>Prevents navigation. Altered by OdWebView2Navigate and CoreWebView2_NavigationCompleted to allow navigation via OdWebView2Navigate.</summary>
 		private bool _doBlockNavigation=false;
+		///<summary>Null until SetScriptEnabled is called, which leaves WebView2's own default (scripts allowed).</summary>
+		private bool? _isScriptEnabled=null;
 		public ODWebView2() {
 			InitializeComponent();
 		}
@@ -93,6 +95,19 @@ namespace CodeBase.Controls {
 			this.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled=false;
 			this.CoreWebView2.Settings.AreDevToolsEnabled=false;
 			this.CoreWebView2.NewWindowRequested+=CoreWebView2_NewWindowRequested;
+			if(_isScriptEnabled!=null) {
+				this.CoreWebView2.Settings.IsScriptEnabled=_isScriptEnabled.Value;
+			}
+		}
+
+		///<summary>Sets whether scripts may run in what this control shows, from its next navigation on. This includes the JavaScript inside PDFs:
+		///the built-in PDF viewer follows CoreWebView2Settings.IsScriptEnabled (checked with WebView2 Runtime 155, see tests/M2IMGTests), while the
+		///viewer itself keeps working. Can be called before Init; the value is then applied when initialization completes.</summary>
+		public void SetScriptEnabled(bool isScriptEnabled) {
+			_isScriptEnabled=isScriptEnabled;
+			if(this.CoreWebView2!=null) {
+				this.CoreWebView2.Settings.IsScriptEnabled=isScriptEnabled;
+			}
 		}
 
 		///<summary>On attempting to navigate, if DoBlockNavigation is true, cancel the event.</summary>

@@ -122,6 +122,9 @@ namespace OpenDental {
 				labelApptSchedEnforceSpecialty.Visible=false;
 			}
 			checkReplaceBlockouts.Checked=PrefC.GetBool(PrefName.ReplaceExistingBlockout);
+			//25.2 and 25.3 time bar preferences, kept in fork-owned preference rows (see ApptTimeBars).
+			checkProvTimeOnOpBackground.Checked=ApptTimeBars.IsProvTimeOnOpBackground();
+			checkTimeBarSecondaryColor.Checked=ApptTimeBars.IsSecondaryColorNoProvTime();
 		}
 
 		public bool SaveApptAppearance() {
@@ -176,6 +179,8 @@ namespace OpenDental {
 			//Changed|=Prefs.UpdateBool(PrefName.ApptSecondaryProviderConsiderOpOnly,checkApptSecondaryProviderConsiderOpOnly.Checked);
 			Changed|=Prefs.UpdateInt(PrefName.ApptSchedEnforceSpecialty,comboApptSchedEnforceSpecialty.SelectedIndex);
 			Changed|=Prefs.UpdateBool(PrefName.ReplaceExistingBlockout,checkReplaceBlockouts.Checked);
+			Changed|=ApptTimeBars.UpdateBoolPref(ApptTimeBars.PREF_PROV_TIME_ON_OP_BACKGROUND,checkProvTimeOnOpBackground.Checked);
+			Changed|=ApptTimeBars.UpdateBoolPref(ApptTimeBars.PREF_SECONDARY_COLOR_NO_PROV_TIME,checkTimeBarSecondaryColor.Checked);
 			long timeArrivedTrigger=0;
 			if(comboTimeArrived.SelectedIndex>0){
 				timeArrivedTrigger=comboTimeArrived.GetSelectedDefNum();

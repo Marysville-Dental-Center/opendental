@@ -15,6 +15,7 @@ using CodeBase;
 using OpenDental.UI;
 using OpenDentBusiness;
 using OpenDentBusiness.Eclaims;
+using OpenDentBusiness.VendorDirect.DentalXChange;
 using Dicom.Imaging.Mathematics;
 
 namespace OpenDental {
@@ -130,7 +131,7 @@ namespace OpenDental {
 				if(_eclaimsCommBridge==EclaimsCommBridge.ClaimConnect) {//Will never use ClaimConnect
 					row=CreateRow(_listImageAttachmentsDXC[i].ImageDate,
 						_listImageAttachmentsDXC[i].ImageType.GetDescription(),
-						_listImageAttachmentsDXC[i].ImageFileNameDisplay);
+						_listImageAttachmentsDXC[i].GetFileNameToSend());//A PDF row shows its .pdf name.
 					row.Tag=_listImageAttachmentsDXC[i];
 				}
 				else if(_eclaimsCommBridge==EclaimsCommBridge.EDS) {
@@ -472,8 +473,8 @@ namespace OpenDental {
 			}
 			//The filename property is the entire path of the file.
 			selectedFile=openFileDialog.FileName;
-			if(selectedFile.EndsWith(".pdf")) {
-				MessageBox.Show(this,"PDF attachments are not supported.");
+			if(DxcPdfAttachment.IsPdfFileName(selectedFile)) {//Open Dental 26.1.64: any case of .pdf. DentalXChange takes PDFs, EDS does not.
+				AddPdfAttachment(selectedFile);
 				return;
 			}
 			//There is purposely no validation that the user selected an image as that will be handled on the clearinghouse's end.
@@ -492,6 +493,32 @@ namespace OpenDental {
 			catch(Exception ex) {
 				FriendlyException.Show(Lan.g(this,"An error occurred. Please try again or call support.")+"\r\n"+ex.Message,ex);
 			}
+		}
+
+		///<summary>Open Dental 26.1.64: adds a PDF chosen from disk. DentalXChange receives the PDF's own bytes; EDS refuses PDFs. The PDF is checked
+		///(size, PDF header, encryption) before the attachment window opens.</summary>
+		private void AddPdfAttachment(string pathPdf) {
+			if(!DxcPdfAttachment.IsPdfAccepted(_eclaimsCommBridge)) {
+				MessageBox.Show(this,DxcPdfAttachment.GetPdfRefusedMessage(_eclaimsCommBridge));
+				return;
+			}
+			byte[] arrayBytesPdf;
+			try {
+				arrayBytesPdf=DxcPdfAttachment.ReadPdfFile(pathPdf);
+			}
+			catch(ODException ex) {
+				MessageBox.Show(this,ex.Message);
+				return;
+			}
+			using Bitmap bitmapPreview=DxcPdfAttachment.CreatePreviewBitmap(400,520,Path.GetFileName(pathPdf),DxcPdfAttachment.CountPages(arrayBytesPdf));
+			using FormClaimAttachmentItemEdit formClaimAttachmentItemEdit=new FormClaimAttachmentItemEdit(bitmapPreview,_eclaimsCommBridge);
+			formClaimAttachmentItemEdit.SetPdf(arrayBytesPdf,Path.GetFileNameWithoutExtension(pathPdf));
+			formClaimAttachmentItemEdit.ShowDialog(this);
+			if(formClaimAttachmentItemEdit.DialogResult!=DialogResult.OK) {
+				return;
+			}
+			_listImageAttachmentsDXC.Add(formClaimAttachmentItemEdit.ImageAttachmentDXC);
+			FillGrid();
 		}
 
 		///<summary>Allows users to paste an image from their clipboard. Throws exception if the content on the clipboard is not a supported image format.</summary>
@@ -550,6 +577,9 @@ namespace OpenDental {
 				imageAttachmentSelected.ImageType,
 				imageAttachmentSelected.ImageOrientationType=="right",
 				_eclaimsCommBridge);
+				if(imageAttachmentSelected.IsPdf) {//Open Dental 26.1.64: stays a PDF.
+					formClaimAttachmentItemEdit.SetPdf(imageAttachmentSelected.ImageFileAsBase64);
+				}
 				formClaimAttachmentItemEdit.ShowDialog();
 				if(formClaimAttachmentItemEdit.DialogResult==DialogResult.OK) {//Update row
 					_listImageAttachmentsDXC[gridAttachedImages.GetSelectedIndex()]=formClaimAttachmentItemEdit.ImageAttachmentDXC;
@@ -578,7 +608,12 @@ namespace OpenDental {
 		private Image GetSelectedImage() {
 			byte[] byteArr=new byte[0];
 			if(_eclaimsCommBridge==EclaimsCommBridge.ClaimConnect) {//Will never use ClaimConnect
-				byteArr=gridAttachedImages.SelectedTag<ClaimConnect.ImageAttachment>().ImageFileAsBase64;
+				ClaimConnect.ImageAttachment imageAttachmentSelected=gridAttachedImages.SelectedTag<ClaimConnect.ImageAttachment>();
+				if(imageAttachmentSelected.IsPdf) {//Open Dental 26.1.64: a PDF shows as a PDF icon.
+					return DxcPdfAttachment.CreatePreviewBitmap(400,520,imageAttachmentSelected.GetFileNameToSend(),
+						DxcPdfAttachment.CountPages(imageAttachmentSelected.ImageFileAsBase64));
+				}
+				byteArr=imageAttachmentSelected.ImageFileAsBase64;
 			}
 			else if(_eclaimsCommBridge==EclaimsCommBridge.EDS) {
 				byteArr=gridAttachedImages.SelectedTag<EDS.ImageAttachment>().FileData;
@@ -766,7 +801,12 @@ namespace OpenDental {
 			for(int i=0;i<gridAttachedImages.ListGridRows.Count;i++) {
 				if(_eclaimsCommBridge==EclaimsCommBridge.ClaimConnect) {//Will never use ClaimConnect
 					ClaimConnect.ImageAttachment imageAttachmentRow=((ClaimConnect.ImageAttachment)gridAttachedImages.ListGridRows[i].Tag);
-					if(PrefC.GetBool(PrefName.SaveDXCAttachments)) {
+					if(PrefC.GetBool(PrefName.SaveDXCAttachments) && imageAttachmentRow.IsPdf) {//Open Dental 26.1.64: saved as the PDF it is.
+						Document documentCur=ImageStore.Import(imageAttachmentRow.ImageFileAsBase64,imageTypeDefNum,ImageType.Document,_patient,
+							fileExtension:DxcPdfAttachment.PdfExtension);
+						imageAttachmentRow.ImageFileNameActual=documentCur.FileName;
+					}
+					else if(PrefC.GetBool(PrefName.SaveDXCAttachments)) {
 						Document documentCur=ImageStore.Import(imageAttachmentRow.ImageFileAsBase64,imageTypeDefNum,ImageType.Attachment,_patient);
 						imageAttachmentRow.ImageFileNameActual=documentCur.FileName;
 					}

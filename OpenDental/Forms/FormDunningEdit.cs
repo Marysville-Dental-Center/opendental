@@ -78,6 +78,34 @@ namespace OpenDental{
 			textMessageBold.Text=_dunning.MessageBold;
 			textEmailBody.Text=_dunning.EmailBody;
 			textEmailSubject.Text=_dunning.EmailSubject;
+			FillEmailType();
+		}
+
+		///<summary>Since Open Dental 26.1 the e-mail override can be plain text, HTML inside the e-mail master template, or raw HTML.</summary>
+		private void FillEmailType() {
+			comboEmailType.Items.Add(Lan.g(this,"Plain Text"),EmailType.Regular);
+			comboEmailType.Items.Add(Lan.g(this,"HTML"),EmailType.Html);
+			comboEmailType.Items.Add(Lan.g(this,"Raw HTML"),EmailType.RawHtml);
+			comboEmailType.SetSelectedEnum(BillingEmailHtml.ToEmailType((int)_dunning.EmailType));
+		}
+
+		///<summary>Opens the HTML editor and preview that e-mail templates use. Saving there makes the override HTML, or raw HTML when that box is
+		///checked.</summary>
+		private void butEditHtml_Click(object sender,EventArgs e) {
+			using FormEmailEdit formEmailEdit=new FormEmailEdit();
+			formEmailEdit.MarkupText=textEmailBody.Text;
+			formEmailEdit.IsRaw=comboEmailType.GetSelected<EmailType>()==EmailType.RawHtml;
+			formEmailEdit.ShowDialog();
+			if(formEmailEdit.DialogResult!=DialogResult.OK) {
+				return;
+			}
+			textEmailBody.Text=formEmailEdit.MarkupText;
+			if(formEmailEdit.IsRaw) {
+				comboEmailType.SetSelectedEnum(EmailType.RawHtml);
+			}
+			else {
+				comboEmailType.SetSelectedEnum(EmailType.Html);
+			}
 		}
 
 		private void radioAny_CheckedChanged(object sender,EventArgs e) {
@@ -108,6 +136,11 @@ namespace OpenDental{
 				MsgBox.Show(this,"All messages cannot be blank.");
 				return;
 			}
+			string emailBodyError=BillingEmailHtml.GetBodyError(textEmailBody.Text,comboEmailType.GetSelected<EmailType>());
+			if(emailBodyError!="") {
+				MessageBox.Show(Lan.g(this,"The email body is not valid HTML. Fix it with Edit HTML, or choose Plain Text.")+"\r\n"+emailBodyError);
+				return;
+			}
 			_dunning.BillingType=0;
 			if(listBillType.SelectedIndex>0) {
 				_dunning.BillingType=_listDefsBillingTypes[listBillType.SelectedIndex-1].DefNum;
@@ -122,6 +155,7 @@ namespace OpenDental{
 			_dunning.MessageBold=textMessageBold.Text;
 			_dunning.EmailBody=textEmailBody.Text;
 			_dunning.EmailSubject=textEmailSubject.Text;
+			_dunning.EmailType=comboEmailType.GetSelected<EmailType>();
 			_dunning.IsSuperFamily=checkSuperFamily.Checked;
 			if(PrefC.HasClinicsEnabled) {
 				_dunning.ClinicNum=comboClinics.ClinicNumSelected;

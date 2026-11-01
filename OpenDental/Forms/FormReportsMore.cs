@@ -688,6 +688,11 @@ namespace OpenDental {
 					}
 					SecurityLogs.MakeLogEntry(EnumPermType.Reports,0,"FQHC Dental Sealant Measure report run.");
 					break;
+				case DisplayReports.ReportNames.UdsPlus://UDS+ Report for FQHC Dental Services (25.4). The window logs each run and each saved file.
+					using(FormRpUdsPlus formRpUdsPlus=new FormRpUdsPlus()) {
+						formRpUdsPlus.ShowDialog();
+					}
+					break;
 				case "ODEligibilityFile"://Eligibility File
 					using(FormRpArizonaPrimaryCareEligibility formRpArizonaPrimaryCareEligibility=new FormRpArizonaPrimaryCareEligibility()) {
 						formRpArizonaPrimaryCareEligibility.ShowDialog();

@@ -55,6 +55,8 @@ namespace OpenDental{
 		private List<Adjustment> _listAdjustments=new List<Adjustment>();
 		///<summary>List of Audit Trail log messages to be inserted if changes are finalized.</summary>
 		private List<string> _listLogs=new List<string>();
+		///<summary>25.2: sum of the down payment charges when the plan was loaded or last logged, for the "Down Payment Changed" entry.</summary>
+		private double _downPaymentChargesLogged;
 
 		///<summary>The supplied payment plan should already have been saved in the database.</summary>
 		public FormPayPlan(PayPlan payPlan) {
@@ -102,6 +104,7 @@ namespace OpenDental{
 			}
 			else {
 				_listPayPlanCharges=PayPlanCharges.GetForPayPlan(_payPlan.PayPlanNum);
+				_downPaymentChargesLogged=PayPlanAudits.SumDownPaymentCharges(_listPayPlanCharges);
 				if(_payPlan.DateInterestStart.Year>=1880) {
 					textDateInterestStart.Text=_payPlan.DateInterestStart.ToShortDateString();
 				}
@@ -1255,8 +1258,14 @@ namespace OpenDental{
 				return;
 			}
 			PayPlans.Update(_payPlan);//always saved to db before opening this form
+			double downPaymentCharges=PayPlanAudits.SumDownPaymentCharges(_listPayPlanCharges);
 			PayPlanL.MakeSecLogEntries(_payPlan,_payPlanOld,signatureBoxWrapper.GetSigChanged(),
-				_isSigOldValid,signatureBoxWrapper.SigIsBlank,signatureBoxWrapper.IsValid,isPrinting);
+				_isSigOldValid,signatureBoxWrapper.SigIsBlank,signatureBoxWrapper.IsValid,isPrinting,
+				downPaymentChargesOld:_downPaymentChargesLogged,downPaymentChargesNew:downPaymentCharges);
+			if(!isPrinting) {//25.1/25.2: the logged amounts become the new starting point
+				PayPlanL.AdvanceAuditBaseline(_payPlan,_payPlanOld,isPrinting);
+				_downPaymentChargesLogged=downPaymentCharges;
+			}
 			//24.4: log a change of the print sheet. The logged value becomes the new starting point, so saving again in this window (Print, then OK)
 			//does not log the same change twice.
 			if(!IsNew && PayPlanTemplates.MakeLogEntryIfSheetChanged(_payPlan,_payPlanOld)) {

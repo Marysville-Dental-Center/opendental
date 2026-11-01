@@ -294,6 +294,9 @@ namespace OpenDentBusiness{
 			}).Contains(perm)) {
 				return false;//permission being checked is not affected by global lock date. (notice the ! 20 lines up)
 			}
+			if(PayPlanGlobalLock.IsExcludedFromGlobalLock(perm)) {
+				return false;//25.3: the office lets payment plans ignore the global lock. User-group lock dates still apply in IsAuthorized.
+			}
 			if(date.Year==1) {
 				return false;//Invalid or MinDate passed in.
 			}

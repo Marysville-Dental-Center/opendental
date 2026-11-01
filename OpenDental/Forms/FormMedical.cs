@@ -79,6 +79,7 @@ namespace OpenDental {
 			FillProblems();
 			FillAllergies();
 			FillVitalSigns();
+			InitOtherConvertMenus();
 			if(PrefC.GetBool(PrefName.ShowFeatureEhr)) {
 				FillFamilyHealth();
 				TobaccoUseTabLoad();
@@ -687,6 +688,62 @@ namespace OpenDental {
 		}
 		#endregion Allergies Tab
 
+		#region Convert "Other" allergies and problems (Open Dental 25.2)
+		private System.Windows.Forms.MenuItem _menuItemConvertOtherAllergy;
+		private System.Windows.Forms.MenuItem _menuItemConvertOtherProblem;
+
+		///<summary>Right-click items on the Allergies and Problems grids that convert an eForm "Other" entry to a listed allergy or problem.  They show
+		///only when the clicked row is an "Other" entry.</summary>
+		private void InitOtherConvertMenus() {
+			_menuItemConvertOtherAllergy=new System.Windows.Forms.MenuItem(Lan.g(this,"Convert \"Other\" allergy..."),menuItemConvertOtherAllergy_Click);
+			System.Windows.Forms.ContextMenu contextMenuAllergies=new System.Windows.Forms.ContextMenu(new[] { _menuItemConvertOtherAllergy });
+			contextMenuAllergies.Popup+=(sender,e) => _menuItemConvertOtherAllergy.Visible=OtherEntryConverts.IsOtherAllergy(GetAllergySelected());
+			gridAllergies.ContextMenu=contextMenuAllergies;
+			_menuItemConvertOtherProblem=new System.Windows.Forms.MenuItem(Lan.g(this,"Convert \"Other\" problem..."),menuItemConvertOtherProblem_Click);
+			System.Windows.Forms.ContextMenu contextMenuProblems=new System.Windows.Forms.ContextMenu(new[] { _menuItemConvertOtherProblem });
+			contextMenuProblems.Popup+=(sender,e) => _menuItemConvertOtherProblem.Visible=OtherEntryConverts.IsOtherProblem(GetDiseaseSelected());
+			gridDiseases.ContextMenu=contextMenuProblems;
+		}
+
+		///<summary>The allergy of the selected row, or null.</summary>
+		private Allergy GetAllergySelected() {
+			int index=gridAllergies.GetSelectedIndex();
+			if(index<0 || _listAllergies==null || index>=_listAllergies.Count) {
+				return null;
+			}
+			return _listAllergies[index];
+		}
+
+		///<summary>The problem of the selected row, or null.</summary>
+		private Disease GetDiseaseSelected() {
+			int index=gridDiseases.GetSelectedIndex();
+			if(index<0 || _listDiseases==null || index>=_listDiseases.Count) {
+				return null;
+			}
+			return _listDiseases[index];
+		}
+
+		private void menuItemConvertOtherAllergy_Click(object sender,EventArgs e) {
+			Allergy allergy=GetAllergySelected();
+			if(allergy==null) {
+				return;
+			}
+			if(OtherEntryConvertL.ConvertOtherAllergy(allergy.Copy(),allergy.Reaction,keepTextAsReaction:null)) {
+				FillAllergies();
+			}
+		}
+
+		private void menuItemConvertOtherProblem_Click(object sender,EventArgs e) {
+			Disease disease=GetDiseaseSelected();
+			if(disease==null) {
+				return;
+			}
+			if(OtherEntryConvertL.ConvertOtherProblem(disease.Copy(),disease.PatNote,keepTextAsNote:null)) {
+				FillProblems();
+			}
+		}
+		#endregion Convert "Other" allergies and problems (Open Dental 25.2)
+
 		#region Vital Signs Tab
 		private void FillVitalSigns() {
 			gridVitalSigns.BeginUpdate();
@@ -703,7 +760,7 @@ namespace OpenDental {
 			gridVitalSigns.Columns.Add(col);
 			col=new GridColumn("BMI",55);
 			gridVitalSigns.Columns.Add(col);
-			col=new GridColumn("Documentation for Followup or Ineligible",150);
+			col=new GridColumn("Notes",150);//vitalsign.Documentation, edited in the Notes box of Edit Vital Sign (Open Dental 25.3)
 			gridVitalSigns.Columns.Add(col);
 			_listVitalSigns=Vitalsigns.Refresh(_patient.PatNum);
 			gridVitalSigns.ListGridRows.Clear();

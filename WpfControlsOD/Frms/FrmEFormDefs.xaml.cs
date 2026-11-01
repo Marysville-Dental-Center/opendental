@@ -115,54 +115,28 @@ namespace OpenDental {
 			frmEFormSetup.ShowDialog();
 		}
 
-		///<summary>Opens File Explorer and lets the user select a previously exported eFormDef. This should only allow users to import an eFormDef that was exported using Open Dental.</summary>
+		///<summary>Opens File Explorer and lets the user select one or more previously exported eFormDefs (Open Dental 25.4: several at once). This should only allow users to import an eFormDef that was exported using Open Dental.</summary>
 		private void butImport_Click(object sender,EventArgs e) {
 			Cursor=Cursors.Wait;
-			string importFilePath="";
 			OpenFileDialog openFileDialog=new OpenFileDialog();
 			string initDir=PrefC.GetString(PrefName.ExportPath);
 			if(Directory.Exists(initDir)) {
 				openFileDialog.InitialDirectory=initDir;
 			}
-			if(openFileDialog.ShowDialog()==false) {
+			openFileDialog.Multiselect=true;
+			if(openFileDialog.ShowDialog()==false || openFileDialog.FileNames.Length==0) {
 				Cursor=Cursors.Arrow;
 				return;
 			}
-			importFilePath=openFileDialog.FileName;
-			EFormDef eFormDef=new EFormDef();
-			XmlSerializer serializer=new XmlSerializer(typeof(EFormDef));
-			if(importFilePath=="") {
-				Cursor=Cursors.Arrow;
-				return;
+			//One file or several: files in name order, failed files skipped and listed, " (2)" on name clashes, one EFormEdit log per form.
+			//Inserts the definitions and their fields and refreshes the caches.
+			EFormDefImportResult eFormDefImportResult=EFormDefImport.ImportFiles(openFileDialog.FileNames.ToList());
+			if(eFormDefImportResult.ListEFormDefsImported.Count>0) {
+				_isChanged=true;
+				FillGrid();
 			}
-			if(!File.Exists(importFilePath)){
-				Cursor=Cursors.Arrow;
-				MsgBox.Show(this,"File not found");
-				return;
-			}
-			try {
-				using TextReader reader=new StreamReader(importFilePath);
-				eFormDef=(EFormDef)serializer.Deserialize(reader);
-			}
-			catch {
-				Cursor=Cursors.Arrow;
-				MsgBox.Show(this,"Invalid file format.");
-				return;
-			}
-			eFormDef.DateTCreated=DateTime.Now;
-			//Insert the eFormWrapper.EFormDef and eFormWrapper.ListEFormFieldDefs
-			EFormDefs.Insert(eFormDef);
-			for(int i=0;i<eFormDef.ListEFormFieldDefs.Count;i++) {
-				eFormDef.ListEFormFieldDefs[i].EFormDefNum=eFormDef.EFormDefNum;
-				eFormDef.ListEFormFieldDefs[i].ItemOrder=i;
-				EFormFieldDefs.Insert(eFormDef.ListEFormFieldDefs[i]);//ignores any existing PK when inserting
-			}
-			EFormDefs.RefreshCache();
-			EFormFieldDefs.RefreshCache();
-			_isChanged=true;
-			FillGrid();
 			Cursor=Cursors.Arrow;
-			MsgBox.Show(this,"Imported.");
+			MsgBox.Show(eFormDefImportResult.GetSummary());
 		}
 
 		///<summary>Allows users to export custom eFormDefs from Open Dental. This would be useful if they want to move an eFormDef to a different Open Dental database.</summary>

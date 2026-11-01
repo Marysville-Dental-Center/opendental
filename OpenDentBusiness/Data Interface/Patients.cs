@@ -758,6 +758,7 @@ namespace OpenDentBusiness {
 				PhoneNumbers.SyncPat(patientSynch);
 			}
 			InsertBillTypeChangeSecurityLogEntry(patCloneOld,patientSynch);
+			InsertPreferredAndClinicChangeSecurityLogEntry(patCloneOld,patientSynch,"clone synch with patient #"+patient.PatNum);
 			string strDataUpdated="";
 			string strChngFrom=" "+Lans.g("ContrFamily","changed from")+" ";
 			string strChngTo=" "+Lans.g("ContrFamily","to")+" ";
@@ -2622,6 +2623,7 @@ namespace OpenDentBusiness {
 			secLogText.Append(SecurityLogEntryHelper(patOld.PatStatus.GetDescription(),patCur.PatStatus.GetDescription(),"status"));
 			secLogText.Append(SecurityLogEntryHelper(patOld.LName,patCur.LName,"last name"));
 			secLogText.Append(SecurityLogEntryHelper(patOld.FName,patCur.FName,"first name"));
+			secLogText.Append(GetPreferredAndClinicChangeLogText(patOld,patCur));//Preferred name (OD 25.3) and clinic (OD 25.2), Patients.ClinicPreferredAudit.cs
 			secLogText.Append(SecurityLogEntryHelper(patOld.WkPhone,patCur.WkPhone,"work phone"));
 			secLogText.Append(SecurityLogEntryHelper(patOld.WirelessPhone,patCur.WirelessPhone,"wireless phone"));
 			secLogText.Append(SecurityLogEntryHelper(patOld.HmPhone,patCur.HmPhone,"home phone"));
@@ -4392,8 +4394,10 @@ namespace OpenDentBusiness {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),clinicNumFrom,clinicNumTo);
 				return;
 			}
+			List<long> listPatNumsMoved=GetPatNumsForClinicChange(clinicNumFrom,clinicNumTo);//For one Audit Trail entry per patient (OD 25.2)
 			string command="UPDATE patient SET ClinicNum="+POut.Long(clinicNumTo)+" WHERE ClinicNum="+POut.Long(clinicNumFrom);
 			Db.NonQ(command);
+			InsertClinicChangeSecurityLogEntries(listPatNumsMoved,clinicNumFrom,clinicNumTo);
 		}
 		/// <summary>Find the most used provider for a single patient. Bias towards the most recently used provider if they have done an equal number of procedures.</summary>
 		public static long ReassignProvGetMostUsed(long patNum) {

@@ -32,6 +32,7 @@
 		private void InitializeComponent() {
 			this.menuPanelMain = new System.Windows.Forms.ContextMenu();
 			this.menuItemCopy = new System.Windows.Forms.MenuItem();
+			this.menuItemCopyWithoutDrawings = new System.Windows.Forms.MenuItem();
 			this.menuItemPaste = new System.Windows.Forms.MenuItem();
 			this.menuItemFlipHoriz = new System.Windows.Forms.MenuItem();
 			this.menuItemRotateLeft = new System.Windows.Forms.MenuItem();
@@ -47,6 +48,7 @@
 			// 
 			this.menuPanelMain.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
             this.menuItemCopy,
+            this.menuItemCopyWithoutDrawings,
             this.menuItemPaste,
             this.menuItemFlipHoriz,
             this.menuItemRotateLeft,
@@ -62,51 +64,57 @@
 			this.menuItemCopy.Text = "Copy";
 			this.menuItemCopy.Click += new System.EventHandler(this.menuPanelMain_Click);
 			// 
+			// menuItemCopyWithoutDrawings
+			// 
+			this.menuItemCopyWithoutDrawings.Index = 1;
+			this.menuItemCopyWithoutDrawings.Text = "Copy without drawings";
+			this.menuItemCopyWithoutDrawings.Click += new System.EventHandler(this.menuPanelMain_Click);
+			// 
 			// menuItemPaste
 			// 
-			this.menuItemPaste.Index = 1;
+			this.menuItemPaste.Index = 2;
 			this.menuItemPaste.Text = "Paste";
 			this.menuItemPaste.Click += new System.EventHandler(this.menuPanelMain_Click);
 			// 
 			// menuItemFlipHoriz
 			// 
-			this.menuItemFlipHoriz.Index = 2;
+			this.menuItemFlipHoriz.Index = 3;
 			this.menuItemFlipHoriz.Text = "Flip Horizontally";
 			this.menuItemFlipHoriz.Click += new System.EventHandler(this.menuPanelMain_Click);
 			// 
 			// menuItemRotateLeft
 			// 
-			this.menuItemRotateLeft.Index = 3;
+			this.menuItemRotateLeft.Index = 4;
 			this.menuItemRotateLeft.Text = "Rotate Left";
 			this.menuItemRotateLeft.Click += new System.EventHandler(this.menuPanelMain_Click);
 			// 
 			// menuItemRotateRight
 			// 
-			this.menuItemRotateRight.Index = 4;
+			this.menuItemRotateRight.Index = 5;
 			this.menuItemRotateRight.Text = "Rotate Right";
 			this.menuItemRotateRight.Click += new System.EventHandler(this.menuPanelMain_Click);
 			// 
 			// menuItemRotate180
 			// 
-			this.menuItemRotate180.Index = 5;
+			this.menuItemRotate180.Index = 6;
 			this.menuItemRotate180.Text = "Rotate 180";
 			this.menuItemRotate180.Click += new System.EventHandler(this.menuPanelMain_Click);
 			// 
 			// menuItemDelete
 			// 
-			this.menuItemDelete.Index = 6;
+			this.menuItemDelete.Index = 7;
 			this.menuItemDelete.Text = "Delete";
 			this.menuItemDelete.Click += new System.EventHandler(this.menuPanelMain_Click);
 			// 
 			// menuItemInfo
 			// 
-			this.menuItemInfo.Index = 7;
+			this.menuItemInfo.Index = 8;
 			this.menuItemInfo.Text = "Info";
 			this.menuItemInfo.Click += new System.EventHandler(this.menuPanelMain_Click);
 			// 
 			// menuItemTasks
 			// 
-			this.menuItemTasks.Index = 8;
+			this.menuItemTasks.Index = 9;
 			this.menuItemTasks.Text = "Find Tasks";
 			this.menuItemTasks.Click += new System.EventHandler(this.menuPanelMain_Click);
 			// 
@@ -143,6 +151,7 @@
 		#endregion
 		private System.Windows.Forms.ContextMenu menuPanelMain;
 		private System.Windows.Forms.MenuItem menuItemCopy;
+		private System.Windows.Forms.MenuItem menuItemCopyWithoutDrawings;
 		private System.Windows.Forms.MenuItem menuItemPaste;
 		private System.Windows.Forms.MenuItem menuItemFlipHoriz;
 		private System.Windows.Forms.MenuItem menuItemRotateLeft;
