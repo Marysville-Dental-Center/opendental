@@ -30,7 +30,8 @@ namespace ReleaseFlowTests {
 			"Eztwain4.dll","Bridges.dll","CDT.dll","stdole.dll","Interop.Word.dll","Interop.Microsoft.Office.Core.dll","Interop.VBIDE.dll",
 			"Interop.QBFC10.dll","AxInterop.AcroPDFLib.dll","Interop.AcroPDFLib.dll","Windows.winmd","installutil.exe","vcruntime140.dll","MSVCR71.dll",
 			"RS232.dll","SigPlusNET.dll","zxing.dll","zxing.presentation.dll","Avalara.AvaTax.RestClient.net45.dll","Ionic.Zip.dll","TWAINDSM.dll",
-			"NHunspell.dll","Hunspellx86.dll","Hunspellx64.dll","FreeDentalConfig.xml","OpenPmsDental.pdb","unins000.exe","unins000.dat","OpenDental.exe","OpenDentBusiness.dll",
+			"NHunspell.dll","Hunspellx86.dll","Hunspellx64.dll","PdfSharp.License.dll","FreeDentalConfig.xml","OpenPmsDental.pdb","unins000.exe","unins000.dat",
+			"OpenDental.exe","OpenDentBusiness.dll",
 		};
 
 		///<summary>The program folder's documents, staged from the repository.</summary>
@@ -113,13 +114,8 @@ namespace ReleaseFlowTests {
 			return folder;
 		}
 
-		///<summary>The list checks of Build-Release.ps1 on the folder. With isResolved (the default), the switches that record the owner's answers
-		///to the release blockers are passed (-PdfSharpLicenceResolved), so that the other checks are tested by themselves; the blocker has its own
-		///test.</summary>
-		private static ScriptResult CheckFolder(string folder,bool isResolved=true) {
-			if(isResolved) {
-				return RunBuildRelease("-CheckFolder",Quote(folder),"-PdfSharpLicenceResolved");
-			}
+		///<summary>The list checks of Build-Release.ps1 on the folder.</summary>
+		private static ScriptResult CheckFolder(string folder) {
 			return RunBuildRelease("-CheckFolder",Quote(folder));
 		}
 
@@ -192,24 +188,13 @@ namespace ReleaseFlowTests {
 		}
 
 		[TestMethod]
-		public void CheckFolder_BlocksTheReleaseWhilePdfSharpLicenseDllShips_UntilTheOwnersResolutionIsGiven() {
-			//PdfSharp.License.dll has no published source, so its Corresponding Source cannot be supplied (GPL 3.0 and AGPL 3.0, sections 1 and 6;
-			//docs/owner-questions.md). A staging folder that is otherwise complete fails on that alone.
-			string folder=NewFakeStaging("blocker");
-			try {
-				Assert.IsTrue(ListFiles().Any(x => x.Key=="third" && x.Value=="PdfSharp.License.dll"),"PdfSharp.License.dll is on the allow-list.");
-				ScriptResult scriptResult=CheckFolder(folder,isResolved:false);
-				Assert.AreEqual(1,scriptResult.ExitCode,scriptResult.Output);
-				CollectionAssert.Contains(scriptResult.Lines,"The check failed, 1 problem(s):",scriptResult.Output);
-				Assert.IsTrue(scriptResult.Lines.Any(x => x.StartsWith("Release blocked: PdfSharp.License.dll (") && x.Contains("-PdfSharpLicenceResolved")),
-					scriptResult.Output);
-				scriptResult=CheckFolder(folder);
-				Assert.AreEqual(0,scriptResult.ExitCode,scriptResult.Output);
-				CollectionAssert.Contains(scriptResult.Lines,"The check passed.");
-			}
-			finally {
-				DeleteFolder(folder);
-			}
+		public void AllowList_ShipsPdfSharpFromTheSourceBuild_AndNoLicenceDll() {
+			//PDFsharp and MigraDoc are built from empira's source with an open licence check (docs/third-party-source-builds.md): the closed
+			//PdfSharp.License.dll is not on the allow-list but on the deny-list, and an otherwise complete staging folder passes.
+			Assert.IsFalse(ListFiles().Any(x => x.Value=="PdfSharp.License.dll"),"PdfSharp.License.dll is not on the allow-list.");
+			string script=TestPaths.ReadSource("tools","Build-Release.ps1");
+			StringAssert.Contains(script,@"$ThirdPartyFiles[$name+'.dll']='third-party\build\'+$name+'\bin\Release'");
+			Assert.IsFalse(script.Contains("PdfSharpLicenceResolved"),"No release blocker any more.");
 		}
 
 		[TestMethod]

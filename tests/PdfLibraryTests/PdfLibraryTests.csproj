@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  <!-- Tests for the PDFsharp and MigraDoc 6.5 update (package LIB-PDF): the AGPL licence selected with no key, no network call, no message and
-       no mark on the pages; the files in Required dlls, the release lists and the licence texts; and representative PDFs (sheets, MigraDoc
-       documents with tables, images and charts, merged and split PDFs, images, fonts, print preview) saved and read back with PdfReader.
+  <!-- Tests for the PDFsharp and MigraDoc 6.5 update (package LIB-PDF) and their build from empira's source (package SRC-REF): the AGPL licence
+       selected with no key, no network call, no message and no mark on the pages, through the open licence check that replaces empira's closed
+       PdfSharp.License.dll; the git submodule and its pin, the project files of third-party\build against the upstream ones, the built
+       assemblies' identities, the source archive of a release (git, offline); the release lists and the licence texts; and representative PDFs
+       (sheets, MigraDoc documents with tables, images and charts, merged and split PDFs, images, fonts, print preview) saved and read back with
+       PdfReader.
        The statement tests use a scratch database on the local MariaDB (127.0.0.1:3306, root, blank password; the name starts with
-       test_libpdf_), with synthetic data only, dropped afterwards; they are inconclusive when the server does not answer or when
+       test_srcref_pdf_), with synthetic data only, dropped afterwards; they are inconclusive when the server does not answer or when
        LIBPDF_TEST_DB=skip. Tests that need a Windows font or printer this computer lacks are inconclusive. Every .cs file under this folder
        is compiled. -->
   <PropertyGroup>
@@ -55,6 +58,9 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <!-- The source archive (SourceArchiveTests). -->
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />

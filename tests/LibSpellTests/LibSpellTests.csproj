@@ -4,7 +4,7 @@
   <!-- The spell checker on WeCantSpell.Hunspell 7.0.1 (WpfControls.SpellCheckL, used by every ODtextBox and TextRich): correct and misspelled
        words, suggestions, a long note checked without a stall, the dictionary read once per process (each such test runs in a fresh AppDomain,
        like a program that just started), the office's own words (the dictcustom table) on a scratch database of the local MariaDB
-       (127.0.0.1:3306, root, blank password; the name starts with test_libspell_ and the database is dropped afterwards; skipped, inconclusive,
+       (127.0.0.1:3306, root, blank password; the name starts with test_srcref_spell_ and the database is dropped afterwards; skipped, inconclusive,
        when the server does not answer), and NHunspell with its native files gone for good. Synthetic words only. Nothing reaches the internet.
        Every .cs file under this folder is compiled. -->
   <PropertyGroup>

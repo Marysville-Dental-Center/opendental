@@ -1,5 +1,5 @@
 // A statement made into a PDF by the sheet code on PDFsharp 6.5, from a scratch database with one synthetic family; and the statement batch
-// merging statement PDFs as BillingL does. The database (127.0.0.1:3306, root, blank password, name starting test_libpdf_) is built from the
+// merging statement PDFs as BillingL does. The database (127.0.0.1:3306, root, blank password, name starting test_srcref_pdf_) is built from the
 // seed dump and the frozen convert scripts, and dropped afterwards; the tests are inconclusive when the server does not answer or when
 // LIBPDF_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

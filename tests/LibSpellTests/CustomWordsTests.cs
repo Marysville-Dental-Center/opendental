@@ -1,5 +1,5 @@
 // The office's own words (the dictcustom table, Setup | Spell Check and "Add to Dictionary") count as correct, ignoring case, next to the en_US
-// dictionary. Runs on a scratch database of the local MariaDB (test_libspell_..., dropped afterwards), in a fresh AppDomain so the business
+// dictionary. Runs on a scratch database of the local MariaDB (test_srcref_spell_..., dropped afterwards), in a fresh AppDomain so the business
 // layer of the other tests never points at it. Made-up words only.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;

@@ -1,6 +1,6 @@
 // PDFsharp 6.5 under the AGPL: the program selects the licence with no key, and the library then draws nothing of its own on the pages, opens
 // no network connection and writes no message; only the Producer and Creator properties of a PDF name the licence. The licence texts that ship
-// are the FSF's, word for word.
+// are the FSF's, word for word. The licence check is this project's open PdfSharpLicense.cs (StandInTests), not empira's closed library.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -52,9 +52,11 @@ namespace PdfLibraryTests {
 			Assert.IsTrue(isolatedPdfResult.ListNetworkLinesControl.Count>0,"The network tracing is on: creating a socket was recorded.");
 			Assert.AreEqual("",isolatedPdfResult.ConsoleAndTraceOutput.Trim(),"The library wrote to the console or to Trace.");
 			CollectionAssert.DoesNotContain(isolatedPdfResult.ListAssemblies,"System.Net.Http");
-			//The licence check came from the file that ships, and the rest of the package stayed out.
-			CollectionAssert.Contains(isolatedPdfResult.ListAssemblies,"PdfSharp.License");
-			foreach(string name in new[] { "PdfSharp.Quality-gdi","PdfSharp.Snippets-gdi","PdfSharp.Cryptography","PdfSharp.WPFonts","PdfSharp.BarCodes-gdi" }) {
+			//The licence check is part of PdfSharp-gdi built here: empira's closed PdfSharp.License is never loaded, and the rest of the package stays out.
+			CollectionAssert.Contains(isolatedPdfResult.ListAssemblies,"PdfSharp-gdi");
+			foreach(string name in new[] { "PdfSharp.License","PdfSharp.Quality-gdi","PdfSharp.Snippets-gdi","PdfSharp.Cryptography","PdfSharp.WPFonts",
+				"PdfSharp.BarCodes-gdi" })
+			{
 				CollectionAssert.DoesNotContain(isolatedPdfResult.ListAssemblies,name);
 			}
 		}
