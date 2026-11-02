@@ -30,6 +30,7 @@
     { "Kind": "TableAdded", "Table": "maintrecord", "Reason": "Adoption runs the routine maintenance steps (2026110201 to 2026110205): new table of this program, not Open Dental schema (ForkTables; checked by adopt: empty)." },
     { "Kind": "TableAdded", "Table": "maintrecordvalue", "Reason": "Adoption runs the routine maintenance steps (2026110201 to 2026110205): new table of this program, not Open Dental schema (ForkTables; checked by adopt: empty)." },
     { "Kind": "TableAdded", "Table": "maintstep", "Reason": "Adoption runs the routine maintenance steps (2026110201 to 2026110205): new table of this program, not Open Dental schema (ForkTables; checked by adopt: empty)." },
+    { "Kind": "TableAdded", "Table": "sshhostkey", "Reason": "Adoption runs the SSH host keys step (2026110221): new table of this program, not Open Dental schema (ForkTables, SshHostKeyTables): the remembered host key of each SSH server, stored by the first connection to it (checked by adopt: empty)." },
     { "Kind": "ColumnAdded", "Table": "carrier", "Column": "PaySuiteTransSup", "Reason": "Open Dental 25.4 column (M2-01); checked by adopt: its default in every row." },
     { "Kind": "ColumnAdded", "Table": "carrier", "Column": "PreAuthCodes", "Reason": "Open Dental 26.1 column (M2-01); checked by adopt: its default in every row." },
     { "Kind": "ColumnAdded", "Table": "chatuserod", "Column": "PlayNotificationSound", "Reason": "Open Dental 26.1 column (M2-01); checked by adopt: its default in every row." },

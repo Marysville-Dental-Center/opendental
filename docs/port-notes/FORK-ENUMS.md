@@ -9,7 +9,8 @@ fork-only values start at 10000.
 |-------------|---------------------------------|
 | 10000-10049 | Routine maintenance             |
 | 10050-10099 | Inventory tracking              |
-| 10100-      | Free; reserve a range here first |
+| 10100-10149 | SSH host keys                   |
+| 10150-      | Free; reserve a range here first |
 
 Rules:
 
@@ -63,6 +64,7 @@ feature may take them in their enum: `DocumentMiscType` 100 and 101 (the release
 | EnumPermType     | 10000 | MaintenanceSetup      | Routine maintenance |
 | EnumPermType     | 10001 | MaintenanceRecord     | Routine maintenance |
 | EnumPermType     | 10050 | InventoryAdjust       | Inventory tracking  |
+| EnumPermType     | 10100 | SshHostKeys           | SSH host keys       |
 | AlertType        | 127   | MaintenanceDueSoon    | Routine maintenance |
 | AlertType        | 126   | MaintenanceOverdue    | Routine maintenance |
 | AlertType        | 119   | InventoryLowStock     | Inventory tracking  |

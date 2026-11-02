@@ -21,6 +21,7 @@ namespace OpenPmsDentalBusiness {
 		public const int LAST_VALUE_SMALLINT=32767;
 		public const string FEATURE_MAINTENANCE="Routine maintenance";
 		public const string FEATURE_INVENTORY="Inventory tracking";
+		public const string FEATURE_SSH_HOST_KEYS="SSH host keys";
 		public const string FEATURE_RELEASE_CHANNEL="Release channel";
 		public const string FEATURE_PATIENT_FORMS_VIEW="Patient Forms view";
 		///<summary>The enums with fork-only values that are stored in tinyint(4) columns: AlertType (alertitem.Type, alertcategorylink.AlertType,
@@ -35,6 +36,7 @@ namespace OpenPmsDentalBusiness {
 		public static readonly List<ForkEnumRange> ListRanges=new List<ForkEnumRange>() {
 			new ForkEnumRange(false,10000,10049,FEATURE_MAINTENANCE),
 			new ForkEnumRange(false,10050,10099,FEATURE_INVENTORY),
+			new ForkEnumRange(false,10100,10149,FEATURE_SSH_HOST_KEYS),
 			new ForkEnumRange(true,120,127,FEATURE_MAINTENANCE),
 			new ForkEnumRange(true,112,119,FEATURE_INVENTORY),
 		};

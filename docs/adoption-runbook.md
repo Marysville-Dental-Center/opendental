@@ -49,7 +49,8 @@ same code):
    preference's first code as its History Proc Code (the SRP group with four quadrant rows), the preference's codes the group lacks are added
    to it, and a category without a code group of its kind gets a new group; the preferences themselves are kept. Then the routine
    maintenance steps create this program's own maintenance tables (empty) and give every user group that has Security Admin the two new
-   routine maintenance permissions (Maintenance Setup and Maintenance Record Completion). Step 0.2 lists all these changes in advance
+   routine maintenance permissions (Maintenance Setup and Maintenance Record Completion), and the SSH host keys step creates the empty table
+   in which the program remembers each SSH server's host key. Step 0.2 lists all these changes in advance
    (`migration-preview`); step 4 checks that adoption made exactly them.
 7. records the finish and adds a security log entry
 
@@ -629,9 +630,10 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   other row changed, added or removed", or "identical row by row ..."), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
   migration-preview counts now empty, every other note unchanged", and `insverify` and `insverifyhist.DateLastAssigned` "the original date at
   midnight in all N row(s)"), "New tables and columns:" ("5 new table(s), all empty (...); 28 new column(s) in 21 table(s) hold their default
-  in every row."), "Fork tables:" ("11 new table(s) of this program, all empty (maintfield, maintitem, maintrecord, maintrecordvalue,
-  maintstep, supplycount, supplycountline, supplylot, supplyproccode, supplyprocpending, supplysetting).": the routine maintenance tables and
-  the inventory tables but the stock ledger, so no stock count is open), "Stock ledger:" ("supplyledger added (inventory tracking), N of the N
+  in every row."), "Fork tables:" ("12 new table(s) of this program, all empty (maintfield, maintitem, maintrecord, maintrecordvalue,
+  maintstep, sshhostkey, supplycount, supplycountline, supplylot, supplyproccode, supplyprocpending, supplysetting).": the routine maintenance
+  tables, the SSH host keys table (no server's key is stored yet: the first connection to each server stores it) and the inventory tables
+  but the stock ledger, so no stock count is open), "Stock ledger:" ("supplyledger added (inventory tracking), N of the N
   opening balance row(s) migration-preview lists and no other row.") and `updatehistory` ("identical row by row")
 - "Adopt: PASS." with the report rows renamed (or "the fork migration renamed no report row"), the UDS+ report row added and, if step 0.2
   listed them, the DXC Patient Credit Score row disabled and its buttons deleted, and exit code 0
@@ -697,6 +699,8 @@ person reads them all):
   new columns hold their defaults, only NULL notes changed and every `DateLastAssigned` is its old date at midnight;
 - this program's own tables (routine maintenance, steps 2026110201 to 2026110205): `TableAdded` for `maintfield`, `maintitem`, `maintrecord`,
   `maintrecordvalue` and `maintstep` (0 rows); step 4's row check printed them under "Fork tables:", all empty;
+- this program's own table of SSH host keys (step 2026110221): `TableAdded` for `sshhostkey` (0 rows); step 4's row check printed it under
+  "Fork tables:", empty;
 - `ChecksumTableChanged` lines "explained by the differences listed for this table", for the tables above.
 
 A line for any other table in the Allowed section: stop, go to Rollback, and give `compare.txt` to the developers. Every business total

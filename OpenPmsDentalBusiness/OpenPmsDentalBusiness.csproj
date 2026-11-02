@@ -1182,6 +1182,7 @@
     <Compile Include="Crud\SmsFromMobileCrud.cs" />
     <Compile Include="Crud\SmsToMobileCrud.cs" />
     <Compile Include="Crud\SmsPhoneCrud.cs" />
+    <Compile Include="Crud\SshHostKeyCrud.cs" />
     <Compile Include="Crud\SnomedCrud.cs" />
     <Compile Include="Crud\SopCrud.cs" />
     <Compile Include="Crud\StatementCrud.cs" />
@@ -1765,6 +1766,7 @@
     <Compile Include="TableTypes\RequiredField.cs" />
     <Compile Include="TableTypes\RequiredFieldCondition.cs" />
     <Compile Include="TableTypes\SmsPhone.cs" />
+    <Compile Include="TableTypes\SshHostKey.cs" />
     <Compile Include="TableTypes\SmsToMobile.cs" />
     <Compile Include="TableTypes\SmsFromMobile.cs" />
     <Compile Include="TableTypes\MedLabFacAttach.cs" />

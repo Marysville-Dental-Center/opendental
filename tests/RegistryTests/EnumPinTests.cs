@@ -47,7 +47,8 @@ namespace RegistryTests {
 			}
 			foreach(EnumPermType permType in Enum.GetValues(typeof(EnumPermType)).Cast<EnumPermType>().Where(x => (int)x>=ForkEnums.FIRST_VALUE)) {
 				Assert.IsTrue(ForkEnums.IsForkOnly(permType));
-				Assert.IsTrue((int)permType<10100,permType+" is outside the ranges reserved in docs/port-notes/FORK-ENUMS.md.");
+				Assert.IsTrue(ForkEnums.ListRanges.Any(x => !x.IsTinyInt && x.Contains((int)permType)),
+					permType+" is outside the ranges reserved in docs/port-notes/FORK-ENUMS.md.");
 			}
 		}
 
