@@ -1,7 +1,8 @@
 # Port note: LIB-WEB, WebView2 in place of the Internet Explorer WebBrowser control
 
 Branch `next/libweb-1`, cut from `next/libbase-2` (0c5fa6369); the review fixes are on `next/libweb-2` (own page files and history never
-raise `LinkClicked`, what a page may load, find in page, one profile folder for the Images print). Owner approval of 2026-11-02 (roadmap
+raise `LinkClicked`, what a page may load, find in page, one profile folder for the Images print), the second round on `next/libweb-3` (no
+email stylesheet runs in the program, a runtime that will not start is reported, smoke tests fail on the control's own errors). Owner approval of 2026-11-02 (roadmap
 item 2, library updates for maintenance). The WebView2 SDK stays at 1.0.2420.47 (`Required dlls`: `Microsoft.Web.WebView2.Core`, `.WinForms`, `.Wpf`, `WebView2Loader.dll`);
 no DLL was added, replaced or removed, so the binding redirects, the release allow list, the installer file list and the notices are unchanged.
 
@@ -47,7 +48,17 @@ no DLL was added, replaced or removed, so the binding redirects, the release all
   - the context menu keeps only Copy, Select all, the link and image copy commands and "Open link in new window"
     (`IsContextMenuEnabled=false` removes it);
   - the page file is deleted when the next page replaces it and when the control is disposed (the temp folder is also emptied at close).
-  - The control initializes itself on the first `NavigateToHtml`; a missing runtime is reported once by `Init`.
+  - The control initializes itself on the first `NavigateToHtml`; a missing runtime is reported by `Init`.
+- **A runtime that will not start** (installed but damaged, `msedgewebview2.exe` blocked by antivirus or AppLocker, a profile folder that
+  cannot be used): `Init` catches what `CreateEnvironmentAsync` and `EnsureCoreWebView2Async` throw, and the initialization event reports
+  `!IsSuccess` the same way. The error goes to the log (`WebView2` folder), and the user sees one message per program session (a static flag,
+  so the inbox's two previews and every wiki window do not each show one) with the error, its HRESULT and what an administrator can do:
+  repair or reinstall the runtime (Apps and features), check that `msedgewebview2.exe` is not blocked, check that the profile folder is
+  writable. `Init` then throws `ODException`, so the windows' "Init told the user" catches are true. A control closed while it starts
+  (disposed, `E_ABORT`) is no failure and is not reported. Before, only a missing runtime was reported: a failing one left the windows that
+  only call `NavigateToHtml` blank without a word, and `FormWebView` and `FormWebBrowserPrefs` closed without one.
+  Windows that show `FriendlyException` when `Init` throws (`FormCareCreditWeb`, `FormPayConnect2`, `FormPayConnect2iFrame`, the Images
+  module's PDF print) show it after that message, as they already did for a missing runtime.
 - What each window allows its pages (`MarkupEdit.GetImageFolders` gives the A to Z `Wiki` or `EmailImages` folder when the A to Z folder is
   local or on a share, and the temp folder that holds images downloaded from cloud storage):
 
@@ -58,7 +69,7 @@ no DLL was added, replaced or removed, so the binding redirects, the release all
   | `EmailPreviewControl`, sent email and drafts | email images | yes |
   | `EmailPreviewControl`, received email | its own folder only | **no**, until the user clicks Show Images, which now also appears when the email asked for web content (a remote image tells the sender when and from where the email was read) |
   | `UserControlEmailTemplate` (no caller) | email images | no |
-  | `FormEhrSummaryCcdEdit` (the stylesheet can come with an email), `FormWebView.HtmlContent` (a clearinghouse's response), `FormWebBrowserPrefs` | its own folder only | no |
+  | `FormEhrSummaryCcdEdit` (the CCD can come with an email), `FormWebView.HtmlContent` (a clearinghouse's response), `FormWebBrowserPrefs` | its own folder only | no |
 
   `EmailPreviewControl` now also forgets the image parts and the Show Images button of the email shown before (the inbox reuses one control).
 - **Browser keys**: `ODWebView2` turned off the browser's accelerator keys everywhere, which removed find in page (Ctrl+F, F3) from windows
@@ -78,8 +89,8 @@ no DLL was added, replaced or removed, so the binding redirects, the release all
 - `ShowPrintDialog()` (Windows' print dialog through `CoreWebView2.ShowPrintUI`), `StatusText`/`StatusTextChanged`, `GetScrollTopAsync`,
   `SetScrollTop`, `SetBodyZoom` and `SetCookie` (the eCW panel) cover what the windows used from the IE control.
 - `Init` no longer offers to download the runtime: it says that Windows 11 includes it and that an administrator installs it from Microsoft.
-- `CodeBase.HtmlPage` builds the pages the program writes itself, with `Encode` for every text from the database, and `TransformXsl` applies an
-  XSLT stylesheet (no `document()`, no `xsl:include`/`xsl:import`, no scripts, no external entities, an entity expansion limit).
+- `CodeBase.HtmlPage` builds the pages the program writes itself, with `Encode` for every text from the database, and `BuildXml` shows an
+  XML document as encoded, indented text (its document type skipped: no entity expands, nothing external is read).
 
 ## Every use of the IE browser, and what became of it
 
@@ -99,7 +110,7 @@ no DLL was added, replaced or removed, so the binding redirects, the release all
 | `OpenPmsDental/User Controls/EmailPreviewControl.cs` | received and sent emails (untrusted HTML); "Show images" writes the MIME images and the page to a temp folder | links to the default browser, `DocumentText` read back; no find (shortcuts off) | **Ported**: scripts off, `NavigateToHtml(html, folder)` for "Show images", `LinkClicked`; a meta refresh or script in an email can no longer open anything. A received email loads nothing from the web and no file outside its folder until Show Images (see above). |
 | `OpenPmsDental/User Controls/UserControlEmailTemplate.cs` | template preview (the control has no caller) | find (shortcuts on) | **Ported**: email image folders, nothing from the web, `AreBrowserKeysEnabled`. |
 | `OpenPmsDental/Forms/FormEhrEduBrowser.cs` | an education resource's web page (office-configured URL), reached from the EHR tools (`FormEHR`, `FormEhrEduResourcesPat`) | print (records the EHR measure), find (shortcuts on) | **Ported**: http/https only, pop-ups to the default browser, `ShowPrintDialog`, `AreBrowserKeysEnabled`. |
-| `OpenPmsDental/Forms/FormEhrSummaryCcdEdit.cs` | a CCD file with its XSL stylesheet (IE ran XSLT) | XSLT, print, find (shortcuts on) | **Ported**: the program applies the stylesheet (`HtmlPage.TransformXsl`) and shows the HTML with scripts off, no file but its own and nothing from the web, `AreBrowserKeysEnabled`. Still reachable: Open Dental's stylesheets came from EHR.dll (`EhrSummaryCcds.GetEhrResource` returns "" since the decoupling), but an email attachment that brings its own `.xsl` opens here (`EmailPreviewControl.OpenFile`). |
+| `OpenPmsDental/Forms/FormEhrSummaryCcdEdit.cs` | a CCD file with its XSL stylesheet (IE ran XSLT) | XSLT, print, find (shortcuts on) | **Ported without the stylesheet**: Open Dental's stylesheets came from EHR.dll (`EhrSummaryCcds.GetEhrResource` returns "" since the decoupling), so the only stylesheet left is one an email brings along (`EmailPreviewControl.OpenFile`), and the program never runs it. XSLT in the program's process (the first round's `HtmlPage.TransformXsl`) let a received `.xsl` end the program: a self-recursive template overflows the stack, and a `StackOverflowException` ends the process whatever catches it (the review reproduced this in a 32-bit .NET Framework 4.8 process); a looping one hangs it. `DisplayCCD` no longer reads the attachment: the window shows the CCD as encoded, indented XML (`HtmlPage.BuildXml`) with a line saying that the stylesheet that came with it was not run, keeps print, find and the reconcile buttons of a Direct message, scripts off, no file but its own and nothing from the web. Without an attached stylesheet `DisplayCCD` shows the raw text as before. |
 | `OpenPmsDental/Main Modules/ControlChart.cs` (+ designer) | eCW's medical panel (remote dashboard on the eCW server) | session cookies through wininet `InternetSetCookie` (IE's cookie store), find (shortcuts on) | **Ported**: cookies through WebView2's `CookieManager` for the eCW host, http/https only, pop-ups to the default browser, a label instead of a message box without the runtime, `AreBrowserKeysEnabled`. An invalid Medical Panel URL no longer navigates anyway. |
 | `FormPayConnect2`, `FormPayConnect2iFrame` | nothing (hidden IE control next to the WebView2 one; its `message` handler was empty) | | **Deleted** (dead). |
 | `FormWebBrowserPrefs` (from `FormPreferences`) | preference details (HTML from `PrefInfos.xml`) | | Hidden IE control **deleted**; the WebView2 page uses `NavigateToHtml`, links open in the default browser, label and preference name are encoded (`BuildHtml`). |
@@ -130,7 +141,13 @@ Windows Update or device management), and the log says the same for silent insta
   print uses its control's), dev tools, host objects, link (a file that is there is never a web address), frame, page resource (own and
   allowed folders, shares, escaped separators, the web), context menu and cookie rules, swipe off, and what each window allows its pages
   and where the browser keys stay on.
-- `HtmlGenerationTests`: encoding, the CCD transform and its limits, the preference page, the wiki's link kinds.
+- `HtmlGenerationTests`: encoding, the CCD as XML (`BuildXml`: indented, encoded, no entity, no external file, broken XML as it came), that
+  no shipped source outside the report engine and a developer tool, and none of the program's built assemblies, uses an XSLT processor, and
+  that `DisplayCCD` never reads the attachment; the preference page, the wiki's link kinds.
+- `WebView2StartFailureTests`: through internal seams (`ODWebView2.FuncCreateEnvironment`, `FuncIsRuntimeAvailable`, `ActionShowMessage`;
+  `InternalsVisibleTo("LibWebTests")` in CodeBase), an environment that fails: `NavigateToHtml` does not throw, the user is told once with the
+  error, HRESULT and the administrator's steps, a second control does not tell again, `Init` throws `ODException`; the initialization event
+  reports the same way, but not for a closed control or `E_ABORT`; a missing runtime is still told as before.
 - `WebView2SmokeTests` (off-screen windows):
   - a generated page: encoded text shows as text, the page's script does not run, a local image loads, clicked wiki and web links raise
     `LinkClicked` and are not followed, a meta refresh and a frame are cancelled; two pages shown back to back without waiting, then
@@ -140,7 +157,14 @@ Windows Update or device management), and the log says the same for silent insta
     folder (also through `../`), `C:\Windows\win.ini`, `http://img.invalid/` or `file://unc.invalid/` (each request is seen and refused
     by the control; the share is tried only after a local file was seen refused, so nothing reaches `unc.invalid`), and
     `RemoteContentBlocked` once; from the office's own page also the allowed folder and the web image (which the test answers itself).
-  Only local and `.invalid` addresses, background networking off. Inconclusive without the runtime or with `LIBWEB_SKIP_WEBVIEW2=1`.
+  Only local and `.invalid` addresses, background networking off. Inconclusive only when the runtime is missing, when a plain WebView2
+  control (none of the program's code) cannot start in the test's environment, or with `LIBWEB_SKIP_WEBVIEW2=1`. After that any error fails:
+  an exception of the test or the control, an exception in an event handler on the window's thread (`Application.SetUnhandledExceptionMode`
+  and `ThreadException` on that thread, so WinForms shows no dialog that would block it), a message the control shows, the 3 minutes running
+  out, and an exception the control's own code throws on that thread (first-chance, by the throwing method): WebView2 drops an exception
+  thrown in a handler of its events, so neither the test nor `ThreadException` would see it. Checked by mutation with Runtime 156: a throw
+  in the control's `NavigationCompleted` handler fails both tests ("The control threw on the window's thread"), and a throw in the posted
+  `LinkClicked` callback fails the first test within a second, with no dialog. Before, both turned into Inconclusive (reported as skipped).
 
 ## Not verified here
 
@@ -150,6 +174,8 @@ Windows Update or device management), and the log says the same for silent insta
   the Images module as a standard user.
 - Hints such as `<link rel="dns-prefetch">` or `preconnect` in a received email are no requests, so `WebResourceRequested` does not see
   them; the browser may still look up or connect to such a host (no request is sent, nor credentials). Not checked.
+- A runtime that is really damaged or blocked: the start failure is checked through the seam only (an environment that throws), and the
+  message on screen in the running program. The CCD's XML view on screen and on paper.
 
 ## Owner questions
 
@@ -163,3 +189,6 @@ Windows Update or device management), and the log says the same for silent insta
    or add a preference to load them always?
 5. The browser keys (`AreBrowserKeysEnabled`) bring back find in page where Internet Explorer had it, and with it Ctrl+P (the browser's
    print preview) and Ctrl+Plus/Minus (zoom). Keep all of them, or only find?
+6. A CCD that came by email with a stylesheet now shows as XML (the stylesheet is never run in the program). A styled view would need either
+   a stylesheet the program ships itself (reviewed, then safe to run) or the received one run in a short-lived child process with a time
+   and output limit. Is the XML view enough, or which of the two?

@@ -3,10 +3,11 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!-- Tests for the library update package LIB-WEB (docs/port-notes/LIB-WEB.md): WebView2 in place of the Internet Explorer WebBrowser control.
        A static check that no IE browser type, mshtml or SHDocVw interop or IE emulation key is left in shipped code; unit tests of the WebView2
-       rules (profile folder, link handling, context menu, cookies) and of the HTML the program builds (encoding, the CCD stylesheet transform,
-       the wiki's links, the preference details page); and a WebView2 smoke test in a small off-screen window, which is skipped (inconclusive)
-       when the WebView2 Runtime is missing, when no window can be shown, or when LIBWEB_SKIP_WEBVIEW2=1. It uses only local pages and .invalid
-       addresses, whose navigations are cancelled before any request goes out. No database. Every .cs file under this folder is compiled. -->
+       rules (profile folder, link handling, context menu, cookies, a runtime that will not start) and of the HTML the program builds (encoding,
+       a CCD as XML with no stylesheet run in the program, the wiki's links, the preference details page); and a WebView2 smoke test in a small
+       off-screen window, which is inconclusive only when the WebView2 Runtime is missing or does not start here, or when LIBWEB_SKIP_WEBVIEW2=1.
+       It uses only local pages and .invalid addresses, whose navigations are cancelled before any request goes out. No database. Every .cs
+       file under this folder is compiled. -->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>

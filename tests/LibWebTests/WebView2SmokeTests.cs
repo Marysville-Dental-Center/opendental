@@ -230,12 +230,41 @@ namespace LibWebTests {
 			offScreenRun.SetRuntimeStarted();
 		}
 
-		///<summary>Runs funcRun in a small off-screen window on a thread of its own. An exception in an event handler on that thread (the control's,
-		///or a continuation of funcRun) goes to Application.ThreadException, never to WinForms' error dialog, which would block the thread: it is
-		///recorded and closes the window. The window may take 3 minutes. Check the result with OffScreenRun.AssertNoError.</summary>
+		///<summary>True when the control's own code threw ex (ODWebView2 or WebView2Policy, their lambdas and async methods included), not a
+		///method it called: the control throws nothing on purpose while it shows pages, and what it calls and expects to fail (an event an older
+		///runtime lacks, a file already deleted) throws from WebView2's or .NET's code.</summary>
+		private static bool IsThrownByTheControl(Exception ex) {
+			Type type=ex.TargetSite?.DeclaringType;
+			while(type!=null) {
+				if(type==typeof(ODWebView2) || type==typeof(WebView2Policy)) {
+					return true;
+				}
+				type=type.DeclaringType;
+			}
+			return false;
+		}
+
+		///<summary>Runs funcRun in a small off-screen window on a thread of its own. An exception in an event handler on that thread (a posted
+		///callback of the control, or a continuation of funcRun) goes to Application.ThreadException, never to WinForms' error dialog, which would
+		///block the thread: it is recorded and closes the window. An exception the control's own code throws on that thread is recorded too, also
+		///when nothing reports it: WebView2 drops an exception thrown in a handler of its events (seen with Runtime 156: a throw in the control's
+		///NavigationCompleted handler reached neither ThreadException nor the test). The window may take 3 minutes. Check the result with
+		///OffScreenRun.AssertNoError.</summary>
 		private static OffScreenRun RunOffScreen(Func<Form,OffScreenRun,Task> funcRun) {
 			OffScreenRun offScreenRun=new OffScreenRun();
-			Thread thread=new Thread(() => {
+			Thread thread=null;
+			EventHandler<System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs> eventHandlerFirstChance=(sender,e) => {
+				try {
+					if(Thread.CurrentThread==thread && IsThrownByTheControl(e.Exception)) {
+						offScreenRun.SetError("The control threw on the window's thread: "+e.Exception.GetType().Name+": "+e.Exception.Message
+							+" in "+e.Exception.TargetSite.DeclaringType.FullName+"."+e.Exception.TargetSite.Name);
+					}
+				}
+				catch(Exception) {
+					//Never throw from a first-chance handler.
+				}
+			};
+			thread=new Thread(() => {
 				//Before the thread's first window. Thread scope: the test host may have windows on other threads.
 				Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException,true);
 				Form formRun=null;
@@ -266,8 +295,11 @@ namespace LibWebTests {
 			//A message from the control (ODWebView2.ReportStartFailure) would block the window's thread: recorded as an error instead.
 			Action<string> actionShowMessageOld=ODWebView2.ActionShowMessage;
 			ODWebView2.ActionShowMessage=x => offScreenRun.SetError("The control showed a message: "+x);
+			AppDomain.CurrentDomain.FirstChanceException+=eventHandlerFirstChance;
 			thread.Start();
-			if(!thread.Join(TimeSpan.FromMinutes(3))) {
+			bool isFinished=thread.Join(TimeSpan.FromMinutes(3));
+			AppDomain.CurrentDomain.FirstChanceException-=eventHandlerFirstChance;
+			if(!isFinished) {
 				//The window's thread still runs: it keeps the recording seam, so it never shows a message box in the test host.
 				offScreenRun.SetError("The WebView2 window did not finish within 3 minutes.");
 				return offScreenRun;
