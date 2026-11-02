@@ -741,7 +741,8 @@ namespace OpenPmsDental {
 				return true;
 			}
 			//The server's host key is not the stored one. Retyping the program link does not help; Setup, SSH Host Keys does, as the message says.
-			bool isNothingToSend=_dictClinicProgProps.All(x => listClinicsSkipped.Contains(x.Key));
+			List<long> listClinicNumsSkipped=listClinicsSkipped;//an out parameter cannot be used in a lambda
+			bool isNothingToSend=_dictClinicProgProps.All(x => listClinicNumsSkipped.Contains(x.Key));
 			StringBuilder stringBuilder=new StringBuilder();
 			foreach(KeyValuePair<string,List<long>> kvp in dictRefusalClinicNums) {
 				if(stringBuilder.Length>0) {
