@@ -199,11 +199,21 @@ namespace M201Tests {
 			Assert.IsTrue(_adoptionResult.ListLog.Any(x => x.Contains("26.1.70")),string.Join("\r\n",_adoptionResult.ListLog));
 		}
 
+		///<summary>True for a step's log line that creates one of this program's own tables ("level: CREATE TABLE `name` ...").</summary>
+		private static bool IsForkTableCreate(string change) {
+			System.Text.RegularExpressions.Match match=System.Text.RegularExpressions.Regex.Match(change,@"^\d+: CREATE TABLE `(\w+)`");
+			return match.Success && ForkTables.IsForkTable(match.Groups[1].Value);
+		}
+
 		[TestMethod]
 		public void Od253_MatchesThe26_1ReferenceExactly() {
 			SchemaVerifyResult result=SchemaVerifier.VerifyDatabase(DB_OD253);
 			Assert.IsTrue(result.IsMatch,result.GetReport());
-			Assert.AreEqual(0,result.ListDifferences.Count,"Adoption dropped the office customization, so nothing is left to allow: "+result.GetReport());
+			//This program's own tables (ForkTables) are the only extra tables, allowed by the verifier and checked by ForkTables.VerifyDatabase.
+			Assert.AreEqual(0,result.ListDifferences.Count(x => !ForkTables.IsForkTable(x.Table)),
+				"Adoption dropped the office customization, so nothing is left to allow: "+result.GetReport());
+			Assert.IsTrue(result.ListDifferences.All(x => x.Kind==SchemaDifferenceKind.ExtraTable && x.IsExcepted),result.GetReport());
+			Assert.AreEqual(0,ForkTables.VerifyDatabase(DB_OD253).ListDifferences.Count);
 		}
 
 		[TestMethod]
@@ -211,8 +221,10 @@ namespace M201Tests {
 			if(!ScratchDb.DatabaseExists(ScratchDb.DbNameOd261Schema)) {
 				Assert.Inconclusive("The reference database "+ScratchDb.DbNameOd261Schema+" is not loaded (tools/New-OdReferenceDatabase.ps1).");
 			}
-			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaSnapshot.FromDatabase(ScratchDb.DbNameOd261Schema),SchemaSnapshot.FromDatabase(DB_OD253));
-			Assert.AreEqual(0,result.ListDifferences.Count,result.GetReport());
+			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaSnapshot.FromDatabase(ScratchDb.DbNameOd261Schema),SchemaSnapshot.FromDatabase(DB_OD253),
+				ForkTables.GetSchemaExceptions());
+			Assert.AreEqual(0,result.ListMismatches.Count,result.GetReport());
+			Assert.IsTrue(result.ListAllowed.All(x => ForkTables.IsForkTable(x.Table)),"Only this program's own tables are extra: "+result.GetReport());
 		}
 
 		///<summary>The loaded od_261_schema database is the reference as the server prints it: loading the file and reading it back changes nothing,
@@ -325,11 +337,14 @@ namespace M201Tests {
 			//Seed26_1 (package M2-02) inserts the fork's own 25.4 and 26.1 preference rows on every database that lacks them: Open Dental publishes
 			//no preference names, so an Open Dental 26.1 database has none of them. They live in the preference table, which is left out below.
 			string prefixSeed26_1=new OpenPmsDentalBusiness.ForkMigrations.Seeds26_1.Seed26_1Step().Level+": Inserted preference ";
-			List<string> listChanges=_resultOd261.ListChanges.Where(x => !x.StartsWith(prefixSeed26_1)).ToList();
+			//The feature steps also create this program's own tables (ForkTables, empty), which Open Dental does not have.
+			List<string> listChanges=_resultOd261.ListChanges.Where(x => !x.StartsWith(prefixSeed26_1) && !IsForkTableCreate(x)).ToList();
 			Assert.AreEqual(0,listChanges.Count,string.Join("\r\n",listChanges));
-			Assert.AreEqual(0,_resultSchemaOd261.ListDifferences.Count,_resultSchemaOd261.GetReport());
+			Assert.AreEqual(0,_resultSchemaOd261.ListDifferences.Count(x => !(ForkTables.IsForkTable(x.Table) && x.Kind==SchemaDifferenceKind.ExtraTable)),
+				_resultSchemaOd261.GetReport());
 			Dictionary<string,string> dictBefore=_dictChecksumsOd261Before.Where(x => x.Key!="preference").ToDictionary(x => x.Key,x => x.Value);
-			Dictionary<string,string> dictAfter=_dictChecksumsOd261After.Where(x => x.Key!="preference").ToDictionary(x => x.Key,x => x.Value);
+			Dictionary<string,string> dictAfter=_dictChecksumsOd261After.Where(x => x.Key!="preference" && !ForkTables.IsForkTable(x.Key))
+				.ToDictionary(x => x.Key,x => x.Value);
 			CollectionAssert.AreEquivalent(dictBefore.ToList(),dictAfter.ToList());
 			Assert.AreEqual("4.5",ScratchDb.Scalar(DB_OD261,"SELECT GradeOverride FROM evaluation"));
 			Assert.AreEqual("600",ScratchDb.Scalar(DB_OD261,"SELECT CHAR_LENGTH(Note) FROM claimpayment"));

@@ -226,10 +226,13 @@ namespace AdoptionValidation {
 				SchemaVerifyResult verifyResult=adoption.Verify;
 				_run.SchemaVerifierReport=verifyResult.GetReport();
 				//The source is Open Dental 25.3.48; adoption's fork migration brings it to the current reference (26.1.70 since M2-01).
-				Check("M2","Schema matches Open Dental "+SchemaVerifier.ReferenceVersion+" exactly",verifyResult.IsMatch && verifyResult.ListDifferences.Count==0,
-					verifyResult.CountTablesActual+" of "+verifyResult.CountTablesExpected+" tables; "+verifyResult.ListDifferences.Count+" differences, "
-					+verifyResult.ListMismatches.Count+" mismatches"+(verifyResult.ListDifferences.Count==0 ? " (no documented exception needed)" : ": "
-					+string.Join("; ",verifyResult.ListDifferences.Take(10).Select(x => x.Table+"."+x.Item))));
+				//This program's own tables (ForkTables) are extra tables that must match their declarations; nothing else may differ.
+				int countDifferencesOd=verifyResult.ListDifferences.Count-adoption.CountForkTables;
+				Check("M2","Schema matches Open Dental "+SchemaVerifier.ReferenceVersion+" exactly",adoption.IsSchemaExactMatch,
+					(verifyResult.CountTablesActual-adoption.CountForkTables)+" of "+verifyResult.CountTablesExpected+" tables, plus "+adoption.CountForkTables
+					+" of this program; "+countDifferencesOd+" differences, "+verifyResult.ListMismatches.Count+" mismatches"
+					+(countDifferencesOd==0 ? " (no documented exception needed)" : ": "
+					+string.Join("; ",verifyResult.ListDifferences.Where(x => !ForkTables.IsForkTable(x.Table)).Take(10).Select(x => x.Table+"."+x.Item))));
 				CheckReportRenames(preview,adoption,adoptionResult);
 				Check26_1Changes(preview,adoption,adoptionResult,fixture);
 				CheckUdsPlusRow(preview,adoption,adoptionResult);
@@ -650,10 +653,11 @@ namespace AdoptionValidation {
 			ForkMigrationResult migrationResult=again.Migration;
 			SchemaVerifyResult verifyResult=again.Verify;
 			Check("I2","A second fork migration changes nothing and the schema still matches",again.WasAlreadyAdopted && again.Adoption==null
-				&& migrationResult.ListChanges.Count==0 && !again.HasPendingMigrations && verifyResult.IsMatch && verifyResult.ListDifferences.Count==0
+				&& migrationResult.ListChanges.Count==0 && !again.HasPendingMigrations && again.IsSchemaExactMatch
 				&& again.RowCheck!=null && again.RowCheck.Passed,
 				"adoption skipped (already adopted); "+migrationResult.ListStepsRun.Count+" steps run, "+migrationResult.ListChanges.Count+" changes; verifier "
-				+verifyResult.ListDifferences.Count+" differences; row check against the source "+(again.RowCheck!=null && again.RowCheck.Passed ? "passed"
+				+(verifyResult.ListDifferences.Count-again.CountForkTables)+" differences (and "+again.CountForkTables+" table(s) of this program); row check against the source "
+				+(again.RowCheck!=null && again.RowCheck.Passed ? "passed"
 				: "failed: "+string.Join(" ",again.RowCheck?.ListFailures??new List<string>())));
 			ValidationReport afterRerun=Validator.Run(db,adopted,null,null);
 			List<Difference> listDiffs=ReportComparer.Compare(afterFirstPass,afterRerun,null);

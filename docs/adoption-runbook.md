@@ -588,9 +588,9 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
 - step 2026110104 ("Insurance History rows from the InsHist preferences to code groups (26.1)") "changed the database:", followed by the
   lines of step 0.2's Insurance History list ("Code group '<name>' (CodeGroupNum N) shown in Insurance History, ..." and "Added code group
   ..."), each once, and "Insurance History: ..." notes for an added group and for perio quadrant preferences that held different codes; then
-  "Fork migrations: 16 step(s) run, 0 already done. Fork schema level 2026110104.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)."
+  "Fork migrations: 21 step(s) run, 0 already done. Fork schema level 2026110205.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)."
   and "Adoption finished."
-- "Fork migration, every step again: 16 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables)."
+- "Fork migration, every step again: 21 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables), plus 5 table(s) of this program that match their declarations."
 - the rehash of step 5
 - "Row check against opendental ..." with twelve lines and no line starting `FAIL`: `preference` (the markers added, "N of the N 25.4 and 26.1
   preference(s) migration-preview lists added with their defaults", `DataBaseVersion` and `ProgramVersion` set to 99.0.0.0, the preferences of

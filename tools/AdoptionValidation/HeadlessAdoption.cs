@@ -41,6 +41,11 @@ namespace AdoptionValidation {
 			public ForkMigrationResult Migration;
 			public bool HasPendingMigrations;
 			public SchemaVerifyResult Verify;
+			///<summary>True when the schema is exactly Open Dental's (no difference at all) apart from this program's own tables (ForkTables), which
+			///are extra tables that each match their declaration.</summary>
+			public bool IsSchemaExactMatch;
+			///<summary>This program's own tables (ForkTables) the database has, which Verify lists as allowed extra tables.</summary>
+			public int CountForkTables;
 			public DateTime DateRehashWindow;
 			public List<HashCount> ListHashesAfter=new List<HashCount>();
 			public bool IsRehashLogged;
@@ -109,12 +114,22 @@ namespace AdoptionValidation {
 				result.ListFailures.Add("Fork migration steps are still pending: "+string.Join(", ",guard.ListPendingLevels)+".");
 			}
 			step("Schema verifier",() => result.Verify=SchemaVerifier.VerifyDatabase(database));
-			bool isSchemaMatch=result.Verify.IsMatch && result.Verify.ListDifferences.Count==0;
+			//This program's own tables (ForkTables, for example routine maintenance) are extra tables the verifier allows; each must match its
+			//declaration exactly, which ForkTables.VerifyDatabase checks. Every other difference is a failure.
+			SchemaVerifyResult resultForkTables=ForkTables.VerifyDatabase(database);
+			List<SchemaDifference> listDifferencesOd=result.Verify.ListDifferences
+				.Where(x => !(x.Kind==SchemaDifferenceKind.ExtraTable && ForkTables.IsForkTable(x.Table))).ToList();
+			int countForkTables=result.Verify.ListDifferences.Count-listDifferencesOd.Count;
+			bool isSchemaMatch=result.Verify.IsMatch && listDifferencesOd.Count==0 && resultForkTables.ListDifferences.Count==0;
+			result.IsSchemaExactMatch=isSchemaMatch;
+			result.CountForkTables=countForkTables;
 			log(isSchemaMatch
-				? "The schema matches Open Dental "+SchemaVerifier.ReferenceVersion+" exactly ("+result.Verify.CountTablesActual+" of "+result.Verify.CountTablesExpected
-					+" tables)."
-				: "The schema differs from Open Dental "+SchemaVerifier.ReferenceVersion+": "+result.Verify.ListDifferences.Count+" difference(s), "
-					+result.Verify.ListMismatches.Count+" mismatch(es): "+string.Join("; ",result.Verify.ListDifferences.Take(20).Select(x => x.Table+"."+x.Item)));
+				? "The schema matches Open Dental "+SchemaVerifier.ReferenceVersion+" exactly ("+(result.Verify.CountTablesActual-countForkTables)+" of "
+					+result.Verify.CountTablesExpected+" tables), plus "+countForkTables+" table(s) of this program that match their declarations."
+				: "The schema differs from Open Dental "+SchemaVerifier.ReferenceVersion+": "+listDifferencesOd.Count+" difference(s), "
+					+result.Verify.ListMismatches.Count+" mismatch(es): "+string.Join("; ",listDifferencesOd.Take(20).Select(x => x.Table+"."+x.Item))
+					+(resultForkTables.ListDifferences.Count==0 ? "" : "; tables of this program: "
+						+string.Join("; ",resultForkTables.ListDifferences.Take(20).Select(x => x.ToString()))));
 			if(!isSchemaMatch) {
 				result.ListFailures.Add("The schema differs from Open Dental "+SchemaVerifier.ReferenceVersion+".");
 			}
