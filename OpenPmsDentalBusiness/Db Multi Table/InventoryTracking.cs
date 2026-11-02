@@ -586,12 +586,23 @@ namespace OpenPmsDentalBusiness {
 				if(listAlertItems.Any(x => x.FKey==pair.Key)) {
 					continue;
 				}
-				string where="Type="+(int)alertType+" AND FKey="+POut.Long(pair.Key);
-				Db.NonQ("INSERT INTO alertitem (ClinicNum,Description,Type,Severity,Actions,FormToOpen,FKey,ItemValue,UserNum,SecDateTEntry) "
-					+"SELECT -1,'"+POut.String(pair.Value)+"',"+(int)alertType+","+(int)SeverityType.Medium+","
-					+(int)(ActionType.MarkAsRead|ActionType.OpenForm)+","+(int)FormType.FormSupplyInventory+","+POut.Long(pair.Key)+",'',0,"+DbHelper.Now()+" "
-					+"FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM alertitem WHERE "+where+")");
+				InsertAlertIfMissing(alertType,pair.Key,pair.Value);
 			}
+		}
+
+		///<summary>Adds the inventory alert of the type for fKey (all clinics, Medium, Mark as Read and Open Form, opening the Supply Inventory window)
+		///unless one exists. One INSERT ... SELECT ... WHERE NOT EXISTS statement, which MyISAM runs under one lock of alertitem: of two workstations
+		///that both saw no alert, only the first adds one. Returns true when it added one.</summary>
+		public static bool InsertAlertIfMissing(AlertType alertType,long fKey,string description) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetBool(MethodBase.GetCurrentMethod(),alertType,fKey,description);
+			}
+			string where="Type="+(int)alertType+" AND FKey="+POut.Long(fKey);
+			long countAdded=Db.NonQ("INSERT INTO alertitem (ClinicNum,Description,Type,Severity,Actions,FormToOpen,FKey,ItemValue,UserNum,SecDateTEntry) "
+				+"SELECT -1,'"+POut.String(description)+"',"+(int)alertType+","+(int)SeverityType.Medium+","
+				+(int)(ActionType.MarkAsRead|ActionType.OpenForm)+","+(int)FormType.FormSupplyInventory+","+POut.Long(fKey)+",'',0,"+DbHelper.Now()+" "
+				+"FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM alertitem WHERE "+where+")");
+			return countAdded>0;
 		}
 		#endregion Alerts
 	}

@@ -82,11 +82,21 @@ namespace M202Tests {
 
 		[TestMethod]
 		public void EnumPermType_EndsAt276WithoutGaps() {
-			int[] arrayValues=Enum.GetValues(typeof(EnumPermType)).Cast<int>().OrderBy(x => x).ToArray();
+			//Open Dental's values; fork-only values start at 10000 (docs/port-notes/FORK-ENUMS.md).
+			int[] arrayValues=Enum.GetValues(typeof(EnumPermType)).Cast<int>().Where(x => x<10000).OrderBy(x => x).ToArray();
 			for(int i=0;i<arrayValues.Length;i++) {
-				Assert.AreEqual(i,arrayValues[i],"The security tree's Set All and Set None loop over 0..count-1.");
+				Assert.AreEqual(i,arrayValues[i],"Open Dental's values have no gaps.");
 			}
 			Assert.AreEqual(276,arrayValues.Max());
+		}
+
+		///<summary>The security tree's Set All and Set None loop over the defined values, so a fork-only value at 10000 is granted and no undefined
+		///value between 277 and 9999 is ever written.</summary>
+		[TestMethod]
+		public void SecurityTree_SetAllAndSetNoneLoopOverTheDefinedValues() {
+			string source=File.ReadAllText(TestPaths.GetRepoFile("OpenPmsDental","User Controls","UserControlSecurityTree.cs"));
+			Assert.IsFalse(source.Contains("(EnumPermType)i"),"No loop casts a counter to a permission.");
+			Assert.AreEqual(2,source.Split(new[] { "foreach(EnumPermType permType in Enum.GetValues(typeof(EnumPermType)))" },StringSplitOptions.None).Length-1);
 		}
 
 		///<summary>The 272 conflict: Open Dental's 25.3 documents print 272 PhoneExtension, the 25.4 and 26.1 documents print 272 BlockoutAdd and 274

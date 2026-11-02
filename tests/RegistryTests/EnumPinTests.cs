@@ -39,11 +39,22 @@ namespace RegistryTests {
 
 		[TestMethod]
 		public void EnumPermType_IsContiguous() {
-			//The security tree's Set All and Set None loop over 0..count-1, so the values must have no gaps.
-			int[] arrayValues=Enum.GetValues(typeof(EnumPermType)).Cast<int>().OrderBy(x => x).ToArray();
+			//Open Dental's values have no gaps. Fork-only values start at 10000 (docs/port-notes/FORK-ENUMS.md); the security tree's Set All and Set
+			//None loop over the defined values, not over 0..count-1.
+			int[] arrayValues=Enum.GetValues(typeof(EnumPermType)).Cast<int>().Where(x => x<10000).OrderBy(x => x).ToArray();
 			for(int i=0;i<arrayValues.Length;i++) {
 				Assert.AreEqual(i,arrayValues[i]);
 			}
+		}
+
+		///<summary>True for a fork-only member (docs/port-notes/FORK-ENUMS.md): 10000 and above, or 100 to 127 for the enums stored in tinyint
+		///columns. Open Dental's published documents never list them.</summary>
+		private static bool IsForkOnly(Type type,string name) {
+			long value=Convert.ToInt64(Enum.Parse(type,name));
+			if(type==typeof(AlertType) || type==typeof(FormType)) {
+				return value>=100 && value<=127;
+			}
+			return value>=10000;
 		}
 
 		[TestMethod]
@@ -167,7 +178,7 @@ namespace RegistryTests {
 				HashSet<string> setPublished=new HashSet<string>(OdEnumReference.GetEnum(pair.Key.Name).Select(x => x.MemberName));
 				Assert.IsTrue(setPublished.Count>0,pair.Key.Name+" is not in the reference data.");
 				foreach(string name in Enum.GetNames(pair.Key)) {
-					if(!setPublished.Contains(name) && !pair.Value.Contains(name)) {
+					if(!setPublished.Contains(name) && !pair.Value.Contains(name) && !IsForkOnly(pair.Key,name)) {
 						listProblems.Add(pair.Key.Name+"."+name);
 					}
 				}
