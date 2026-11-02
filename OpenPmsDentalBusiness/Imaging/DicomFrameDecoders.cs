@@ -239,10 +239,10 @@ namespace OpenPmsDentalBusiness {
 	}
 
 	///<summary>JPEG Baseline (Process 1, PS3.5 A.4.1 and 8.2.1) through the .NET Framework's own JPEG decoder (GDI+), which applies the
-	///JPEG stream's own color transform, so YBR_FULL_422, YBR_PARTIAL_422 and YBR_FULL data come back as RGB. The stream's markers are checked
-	///first (ITU-T T.81 B.2): a frame header of baseline, extended or progressive Huffman coding (fo-dicom 4 decoded progressive streams under
-	///this transfer syntax too), 8-bit precision, one or three components as Samples per Pixel says, the size of Rows and Columns, an end of
-	///image marker, and at most MaxScans scans.</summary>
+	///JPEG stream's own color transform, so YBR_FULL_422, YBR_PARTIAL_422 and YBR_FULL data come back as RGB. The stream's markers are walked
+	///first, the way the decoder reads them (ITU-T T.81 B.1, B.2; see CheckStream): a frame header of baseline, extended or progressive Huffman
+	///coding (fo-dicom 4 decoded progressive streams under this transfer syntax too), 8-bit precision, one or three components as Samples per
+	///Pixel says, the size of Rows and Columns, an end of image marker, and at most MaxScans scans.</summary>
 	public sealed class DicomJpegBaselineDecoder : IDicomFrameDecoder {
 		///<summary>The most scans a stream may have. A sequential stream has one per component at most, and a progressive one as encoders write it
 		///about ten (T.81 Annex G). The decoder passes over every block of the image in each scan, and an end-of-band run lets a few bytes cover
@@ -292,9 +292,16 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Null when the JPEG stream's markers (ITU-T T.81 B.1 and B.2) fit the image; otherwise why not, with isUnsupported true for a
-		///valid stream this decoder does not take. Walks every marker segment by its length, and every scan's entropy-coded data (and, after
-		///the frame header, any bytes outside a marker segment) up to the next marker (B.1.1.5: in entropy-coded data an FF byte is followed by
-		///a stuffed 00 or a restart marker D0 to D7, so any other FF xx is a marker), so each SOS marker counted is a scan the decoder sees.</summary>
+		///valid stream this decoder does not take. The walk reads the markers as the decoder reads them (the .NET Framework's decoder is the IJG
+		///one, which says so in its messages), so that each SOS marker counted is a scan the decoder sees and no scan it sees is passed over:
+		///- from the start of image marker up to the first end of image marker; whatever follows that marker (pad bytes, junk) is ignored, as the
+		///  decoder ignores it, and a stream with no end of image marker is cut off;
+		///- every marker segment by its length; APPn, COM and DNL with a length below 2 are their two length bytes alone, as the decoder takes them;
+		///- between marker segments, before the frame header as after it, every byte up to the next marker is passed over: a scan's entropy-coded
+		///  data (B.1.1.5: there an FF byte is followed by a stuffed 00 or a restart marker D0 to D7, so any other FF xx is a marker), fill bytes
+		///  FF, and stray bytes or FF 00 outside any segment, which the decoder discards;
+		///- a second start of image marker, an SOS before the frame header, or a marker the decoder does not know ends its decode, and declines
+		///  here.</summary>
 		private static string CheckStream(byte[] bytes,DicomFrameInfo frameInfo,out int countComponents,out bool isUnsupported) {
 			countComponents=0;
 			isUnsupported=false;
@@ -302,52 +309,47 @@ namespace OpenPmsDentalBusiness {
 				return "The frame is not a JPEG stream (no start of image marker).";
 			}
 			int end=bytes.Length;
-			while(end>2 && bytes[end-1]==0x00) {//fragments are padded to an even length (PS3.5 A.4)
-				end--;
-			}
-			if(end<4 || bytes[end-2]!=0xFF || bytes[end-1]!=0xD9) {
-				return "The JPEG stream is cut off (no end of image marker).";
-			}
 			bool hasFrameHeader=false;
 			int countScans=0;
 			int pos=2;
 			while(true) {
-				if(pos+2>end) {
+				pos=FindMarker(bytes,pos,end);
+				if(pos<0) {
 					return "The JPEG stream is cut off (no end of image marker).";
 				}
-				if(bytes[pos]!=0xFF) {
-					if(!hasFrameHeader) {
-						return "The JPEG stream has no frame header before its data.";
-					}
-					//Bytes that belong to no marker segment, such as a pad byte where a writer split the stream into odd fragments (PS3.5 A.4): the
-					//decoder passes over them to the next marker, and so does the count.
-					pos=FindMarkerAfterEntropyData(bytes,pos,end);
-					continue;
-				}
 				byte marker=bytes[pos+1];
-				if(marker==0xFF) {//fill byte
-					pos++;
-					continue;
-				}
-				if(marker==0xD9) {//end of image
+				if(marker==0xD9) {//end of image: the decoder reads no further
 					break;
 				}
-				if(marker==0x00 && hasFrameHeader) {//FF 00 is not a marker: more bytes outside a marker segment
-					pos=FindMarkerAfterEntropyData(bytes,pos,end);
-					continue;
+				if(marker==0xD8) {
+					return "The JPEG stream has a second start of image marker.";
 				}
-				if(marker==0x01 || (marker>=0xD0 && marker<=0xD7)) {//markers without a length
+				if(marker==0x01) {//TEM, without a length (restart markers are passed over by FindMarker)
 					pos+=2;
 					continue;
+				}
+				bool isSkippedSegment=(marker>=0xE0 && marker<=0xEF) || marker==0xFE || marker==0xDC;//APPn, COM, DNL: the decoder skips them by length
+				bool isFrameHeader=marker>=0xC0 && marker<=0xCF && marker!=0xC4 && marker!=0xCC;
+				if(!isSkippedSegment && !isFrameHeader && marker!=0xC4 && marker!=0xCC && marker!=0xDA && marker!=0xDB && marker!=0xDD) {
+					//Reserved markers (02 to BF), the hierarchical DHP and EXP (DE, DF) and the JPEG extensions (F0 to FD, such as JPEG-LS): the
+					//decoder stops at them.
+					isUnsupported=marker>=0xDE;
+					return "The JPEG stream has marker 0x"+marker.ToString("X2",CultureInfo.InvariantCulture)+", which the JPEG Baseline decoder does not know.";
 				}
 				if(pos+4>end) {
 					return "A JPEG marker segment runs past the end of the frame.";
 				}
 				int length=(bytes[pos+2]<<8) | bytes[pos+3];
-				if(length<2 || pos+2+length>end) {
+				if(length<2 && isSkippedSegment) {
+					pos+=4;
+					continue;
+				}
+				if(length<2) {
+					return "A JPEG marker segment (0x"+marker.ToString("X2",CultureInfo.InvariantCulture)+") has a length below 2.";
+				}
+				if(pos+2+length>end) {
 					return "A JPEG marker segment runs past the end of the frame.";
 				}
-				bool isFrameHeader=marker>=0xC0 && marker<=0xCF && marker!=0xC4 && marker!=0xC8 && marker!=0xCC;
 				if(isFrameHeader) {
 					if(hasFrameHeader) {
 						return "The JPEG stream has more than one frame header.";
@@ -367,10 +369,8 @@ namespace OpenPmsDentalBusiness {
 						isUnsupported=true;
 						return "The JPEG stream has more than "+MaxScans+" scans; this version does not decode such streams.";
 					}
-					pos=FindMarkerAfterEntropyData(bytes,pos+2+length,end);
-					continue;
 				}
-				pos+=2+length;
+				pos+=2+length;//after an SOS segment, the next FindMarker passes over the scan's entropy-coded data
 			}
 			if(!hasFrameHeader) {
 				return "The JPEG stream has no frame header.";
@@ -408,9 +408,9 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>The position of the next marker from start, past entropy-coded data or other bytes outside a marker segment: the first FF
-		///followed by neither 00 (a stuffed byte) nor D0 to D7 (a restart marker) nor another FF (fill). The stream's end of image marker is
-		///found at the latest.</summary>
-		private static int FindMarkerAfterEntropyData(byte[] bytes,int start,int end) {
+		///followed by neither 00 (a stuffed byte, or FF 00 the decoder discards) nor D0 to D7 (a restart marker, which has no length) nor another
+		///FF (fill). -1 when there is none before end: the stream is cut off.</summary>
+		private static int FindMarker(byte[] bytes,int start,int end) {
 			int pos=start;
 			while(pos+1<end) {
 				if(bytes[pos]!=0xFF) {
@@ -428,7 +428,7 @@ namespace OpenPmsDentalBusiness {
 				}
 				return pos;
 			}
-			return end-2;
+			return -1;
 		}
 
 		///<summary>The pixels of a JPEG stream through GDI+ (System.Drawing), with no color management: gray samples for one component, RGB

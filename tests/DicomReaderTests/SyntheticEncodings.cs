@@ -201,9 +201,10 @@ namespace DicomReaderTests {
 				foreach(SynElement element in listElements) {
 					WriteU16(memoryStream,(ushort)(element.Tag>>16),isBig);
 					WriteU16(memoryStream,(ushort)(element.Tag & 0xFFFF),isBig);
+					string vrLayout=element.LayoutVr ?? element.Vr;
 					byte[] bytesValue;
 					uint length;
-					if(element.Vr=="SQ") {
+					if(vrLayout=="SQ") {
 						bytesValue=EncodeItemsAs(element.ListItems,encoding);
 						if(element.IsUndefinedLength) {
 							bytesValue=bytesValue.Concat(DelimiterAs(0xE0DD,isBig)).ToArray();
@@ -211,7 +212,7 @@ namespace DicomReaderTests {
 						length=element.IsUndefinedLength ? 0xFFFFFFFF : (uint)bytesValue.Length;
 					}
 					else {
-						bytesValue=element.LengthOverride==0xFFFFFFFF ? element.Value : SwapUnits(element.Value,isBig ? SwapUnit(element.Vr) : 1);
+						bytesValue=element.LengthOverride==0xFFFFFFFF ? element.Value : SwapUnits(element.Value,isBig ? SwapUnit(vrLayout) : 1);
 						length=(uint)bytesValue.Length;
 					}
 					if(element.LengthOverride!=null) {
@@ -223,7 +224,7 @@ namespace DicomReaderTests {
 					else {
 						byte[] bytesVr=Encoding.ASCII.GetBytes(element.Vr);
 						memoryStream.Write(bytesVr,0,bytesVr.Length);
-						if(_arrayLongVrs.Contains(element.Vr)) {
+						if(_arrayLongVrs.Contains(vrLayout)) {
 							WriteU16(memoryStream,0,isBig);
 							WriteU32(memoryStream,length,isBig);
 						}

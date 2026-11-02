@@ -20,6 +20,9 @@ namespace DicomReaderTests {
 		public List<SynItem> ListItems;
 		///<summary>A sequence of undefined length, closed by a Sequence Delimitation Item.</summary>
 		public bool IsUndefinedLength;
+		///<summary>The VR whose layout (PS3.5 7.1.2) and byte order the element is written in, when that is not Vr's: two spaces for the VR in
+		///the layout of SQ, UT or LO. Null: Vr's own.</summary>
+		public string LayoutVr;
 	}
 
 	internal sealed class SynItem {
@@ -185,9 +188,10 @@ namespace DicomReaderTests {
 						binaryWriter.Write((ushort)(element.Tag>>16));
 						binaryWriter.Write((ushort)(element.Tag & 0xFFFF));
 						binaryWriter.Write(Encoding.ASCII.GetBytes(element.Vr));
+						string vrLayout=element.LayoutVr ?? element.Vr;
 						byte[] bytesValue=element.Value;
 						uint length;
-						if(element.Vr=="SQ") {
+						if(vrLayout=="SQ") {
 							bytesValue=EncodeItems(element.ListItems);
 							if(element.IsUndefinedLength) {
 								bytesValue=bytesValue.Concat(Delimiter(0xE0DD)).ToArray();
@@ -200,7 +204,7 @@ namespace DicomReaderTests {
 						if(element.LengthOverride!=null) {
 							length=element.LengthOverride.Value;
 						}
-						if(_arrayLongVrs.Contains(element.Vr)) {
+						if(_arrayLongVrs.Contains(vrLayout)) {
 							binaryWriter.Write((ushort)0);
 							binaryWriter.Write(length);
 						}

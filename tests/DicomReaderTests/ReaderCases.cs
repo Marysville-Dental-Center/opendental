@@ -213,7 +213,8 @@ namespace DicomReaderTests {
 		}
 
 		///<summary>Files that break PS3.5 or PS3.10 in ways real writers did, which fo-dicom 4 read: an Implicit VR data set under an Explicit VR
-		///transfer syntax, two spaces where an Explicit VR element's VR goes, File Meta Information in Implicit VR, data sets with no File Meta
+		///transfer syntax, two spaces where an Explicit VR element's VR goes (in the 16-bit layout, and in the 32-bit layout on private elements,
+		///sequences and UT, of defined and undefined length), File Meta Information in Implicit VR, data sets with no File Meta
 		///Information whose first element is private, of group 0004 or out of tag order, and a preamble of zeros without "DICM" (fo-dicom read
 		///the Implicit VR data set after it, not the Explicit VR one).</summary>
 		public static List<ReaderCase> MislabelledEncodings() {
@@ -231,6 +232,36 @@ namespace DicomReaderTests {
 				.Concat(new byte[] { 0xE0,0x7F,0x10,0x00,0x20,0x20,0x00,0x00 }).Concat(BitConverter.GetBytes((uint)elementPixels.Value.Length))
 				.Concat(elementPixels.Value).ToArray();
 			listCases.Add(new ReaderCase("enc-explicit-le-vr-spaces-pixel-data-12",bytesPixelsSpaces));
+			//Two spaces for the VR in the layout of a long VR (two reserved bytes and a 32-bit length), on elements whose VR the reader does not
+			//know, where writers that did not know a VR left it blank: a private OB, a sequence of defined length and a UT, in little and big
+			//endian. In little endian the OB's value starts like an element header (VR AE, length 4), so that only the bytes after the value tell
+			//the layout.
+			foreach((string name,string transferSyntax) encoding in new[] { ("le",ExplicitVrLittleEndian),("be",ExplicitVrBigEndian) }) {
+				List<SynElement> listPrivate=With(With(listTwelve,Text(0x0009,0x0010,"LO","SYNTHETIC")),
+					BlankVr(Raw(0x0009,0x1010,"OB",new byte[] { (byte)'A',(byte)'E',4,0,1,2,3,4,5,6,7,8,9,10,11,12 })));
+				listCases.Add(new ReaderCase("enc-explicit-"+encoding.name+"-vr-spaces-long-private-12",MakeFileIn(listPrivate,encoding.transferSyntax)));
+				SynElement elementSequence=Sequence(0x0008,0x1140,false,Item(false,Text(0x0008,0x1150,"UI",SopClassIntraOral),Text(0x0008,0x1155,"UI","2.25.42")));
+				listCases.Add(new ReaderCase("enc-explicit-"+encoding.name+"-vr-spaces-long-sq-12",MakeFileIn(With(listTwelve,BlankVr(elementSequence)),
+					encoding.transferSyntax)));
+				listCases.Add(new ReaderCase("enc-explicit-"+encoding.name+"-vr-spaces-long-ut-12",
+					MakeFileIn(With(listTwelve,BlankVr(Text(0x0040,0xA160,"UT","Synthetic text value"))),encoding.transferSyntax)));
+			}
+			//The same of undefined length: a sequence with Explicit VR items, and a private element holding Implicit VR Little Endian items as UN
+			//would (PS3.5 6.2.2).
+			SynElement elementSequenceUndefined=Sequence(0x0008,0x1140,true,Item(true,Text(0x0008,0x1150,"UI",SopClassIntraOral)),
+				Item(false,Text(0x0008,0x1155,"UI","2.25.42")));
+			listCases.Add(new ReaderCase("enc-explicit-le-vr-spaces-sq-undefined-12",MakeFileIn(With(listTwelve,BlankVr(elementSequenceUndefined)),
+				ExplicitVrLittleEndian)));
+			byte[] bytesImplicitItems=ItemHeaderLE(0xFFFFFFFF).Concat(EncodeAs(new List<SynElement> { Text(0x0008,0x0100,"SH","AB") },SynEncoding.ImplicitLittle))
+				.Concat(Delimiter(0xE00D)).Concat(Delimiter(0xE0DD)).ToArray();
+			SynElement elementPrivateUndefined=new SynElement { Tag=Tag(0x0009,0x1020),Vr="  ",LayoutVr="UN",Value=bytesImplicitItems,LengthOverride=0xFFFFFFFF };
+			listCases.Add(new ReaderCase("enc-explicit-le-vr-spaces-private-undefined-12",MakeFileIn(With(listTwelve,elementPrivateUndefined),
+				ExplicitVrLittleEndian)));
+			//An empty LO with two spaces for the VR, in the 16-bit layout, followed by a group length whose tag read as a 32-bit length fits the
+			//file: only the bytes after that reading's value show it is not the layout.
+			List<SynElement> listEmpty=With(With(With(listTwelve,BlankVr(Text(0x0008,0x1030,"LO",""))),UL(0x0010,0x0000,26)),
+				Text(0x0010,0x0010,"PN","SYNTHETIC^PATIENT"));
+			listCases.Add(new ReaderCase("enc-explicit-le-vr-spaces-empty-lo-12",MakeFileIn(listEmpty,ExplicitVrLittleEndian)));
 			listCases.Add(new ReaderCase("enc-meta-implicit-ts-implicit-12",MakeFileIn(listTwelve,ImplicitVrLittleEndian,SynLayout.MetaImplicit)));
 			listCases.Add(new ReaderCase("enc-meta-implicit-ts-explicit-12",MakeFileIn(listTwelve,ExplicitVrLittleEndian,SynLayout.MetaImplicit)));
 			listCases.Add(new ReaderCase("enc-meta-implicit-no-preamble-12",MakeFileIn(listTwelve,ImplicitVrLittleEndian,SynLayout.MetaImplicitWithoutPreamble)));
@@ -249,6 +280,12 @@ namespace DicomReaderTests {
 			listCases.Add(new ReaderCase("enc-zero-preamble-no-prefix-implicit-12",MakeFileIn(listTwelve,ImplicitVrLittleEndian,SynLayout.PreambleWithoutPrefix)));
 			listCases.Add(new ReaderCase("enc-zero-preamble-no-prefix-explicit-12",MakeFileIn(listTwelve,ExplicitVrLittleEndian,SynLayout.PreambleWithoutPrefix)));
 			return listCases;
+		}
+
+		///<summary>The element with two spaces for its VR, written in the layout of its VR.</summary>
+		public static SynElement BlankVr(SynElement element) {
+			return new SynElement { Tag=element.Tag,Vr="  ",LayoutVr=element.Vr,Value=element.Value,LengthOverride=element.LengthOverride,
+				ListItems=element.ListItems,IsUndefinedLength=element.IsUndefinedLength };
 		}
 
 		///<summary>The elements, with another VR written for the one of the tag.</summary>
@@ -433,6 +470,18 @@ namespace DicomReaderTests {
 			//Progressive JPEG (SOF2) under the JPEG Baseline transfer syntax, which PS3.5 A.4.1 reserves for Process 1: a few scans, as encoders write.
 			listCases.Add(new ReaderCase("jpeg-progressive-gray",MakeFileIn(Encapsulated8("MONOCHROME2",16,24,1,
 				Encapsulated(null,JpegProgressiveFlat(24,16,80,5))),JpegBaseline)));
+			//Bytes outside the stream's marker segments, which the decoder passes over: junk and an FF pad after the end of image marker, stray
+			//bytes before the frame header, and an APP0 segment whose length is 2 short, which leaves its last 2 bytes stray.
+			listCases.Add(new ReaderCase("jpeg-rgb-junk-after-eoi",MakeFileIn(Encapsulated8("RGB",14,22,3,
+				Encapsulated(null,bytesJpegRgb.Concat(new byte[] { 0x12,0x34 }).ToArray())),JpegBaseline)));
+			listCases.Add(new ReaderCase("jpeg-rgb-ff-pad",MakeFileIn(Encapsulated8("RGB",14,22,3,
+				Encapsulated(null,bytesJpegRgb.Concat(new byte[] { 0xFF }).ToArray())),JpegBaseline)));
+			int idxDqt=Enumerable.Range(2,bytesJpegRgb.Length-3).First(i => bytesJpegRgb[i]==0xFF && bytesJpegRgb[i+1]==0xDB);
+			listCases.Add(new ReaderCase("jpeg-rgb-stray-bytes-before-dqt",MakeFileIn(Encapsulated8("RGB",14,22,3,
+				Encapsulated(null,bytesJpegRgb.Take(idxDqt).Concat(new byte[] { 0x00,0x00 }).Concat(bytesJpegRgb.Skip(idxDqt)).ToArray())),JpegBaseline)));
+			byte[] bytesApp0Short=(byte[])bytesJpegRgb.Clone();
+			bytesApp0Short[5]-=2;//APP0 (JFIF) at byte 2, its length at bytes 4 and 5
+			listCases.Add(new ReaderCase("jpeg-rgb-app0-length-short",MakeFileIn(Encapsulated8("RGB",14,22,3,Encapsulated(null,bytesApp0Short)),JpegBaseline)));
 			//Encapsulated Uncompressed (PS3.5 A.4.11): one native frame per fragment.
 			listCases.Add(new ReaderCase("encapsulated-uncompressed",MakeFileIn(Encapsulated8("MONOCHROME2",6,10,1,Encapsulated(null,bytesGray)),
 				EncapsulatedUncompressed)));

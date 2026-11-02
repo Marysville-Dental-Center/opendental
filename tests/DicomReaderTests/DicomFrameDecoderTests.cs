@@ -322,6 +322,114 @@ namespace DicomReaderTests {
 				JpegBaseline));
 			Assert.AreEqual(FoDicomBaseline.DictRecorded["jpeg-gray"],FoDicomBaseline.Fingerprint(resultApp.BitmapDicom),resultApp.ToString());
 		}
+
+		///<summary>A JPEG stream made of SOI, then bytesBefore, then an APP15 segment holding a decoy (a frame header of the same size, one scan and
+		///an end of image marker) when hasDecoy, then the stream given without its own SOI.</summary>
+		private static byte[] JpegWithBytesBefore(byte[] bytesStream,int size,byte[] bytesBefore,bool hasDecoy) {
+			byte[] bytesDecoy={ 0xFF,0xC2,0x00,0x0B,0x08,(byte)(size>>8),(byte)size,(byte)(size>>8),(byte)size,0x01,0x01,0x11,0x00,
+				0xFF,0xDA,0x00,0x08,0x01,0x01,0x00,0x00,0x00,0x00,0x00,0xFF,0xD9 };
+			byte[] bytesApp15=new byte[] { 0xFF,0xEF,0x00,(byte)(bytesDecoy.Length+2) }.Concat(bytesDecoy).ToArray();
+			return new byte[] { 0xFF,0xD8 }.Concat(bytesBefore).Concat(hasDecoy ? bytesApp15 : new byte[0]).Concat(bytesStream.Skip(2)).ToArray();
+		}
+
+		[TestMethod]
+		public void JpegScanCount_BytesOutsideMarkerSegments_HideNoScan() {
+			//The decoder discards FF 00 and stray bytes between marker segments, before the frame header as after it. Read as a marker segment,
+			//FF 00 00 06 would make the walk jump into the APP15 segment after it and count the decoy's one scan, while the decoder skips the
+			//APP15 by its length and decodes all 2001 scans of the stream after it (half a minute). Stray non-FF bytes in the same place are
+			//passed over the same way.
+			byte[] bytesHostile=JpegProgressiveFlat(8192,8192,80,2000);
+			var listShapes=new List<(string name,byte[] bytesBefore,bool hasDecoy)> {
+				("FF 00 and a length before an APPn decoy",new byte[] { 0xFF,0x00,0x00,0x06 },true),
+				("stray bytes before an APPn decoy",new byte[] { 0x00,0x00,0x00,0x06 },true),
+				("stray bytes before the frame header",new byte[] { 0x12,0x34,0x56 },false),
+			};
+			foreach((string name,byte[] bytesBefore,bool hasDecoy) shape in listShapes) {
+				byte[] bytesFile=MakeFileIn(ReaderCases.Encapsulated8("MONOCHROME2",8192,8192,1,
+					Encapsulated(null,JpegWithBytesBefore(bytesHostile,8192,shape.bytesBefore,shape.hasDecoy))),JpegBaseline);
+				System.Diagnostics.Stopwatch stopwatch=System.Diagnostics.Stopwatch.StartNew();
+				DicomImageReadResult result=DicomHelper.ReadStreamResult(new System.IO.MemoryStream(bytesFile));
+				stopwatch.Stop();
+				Assert.AreEqual(DicomImageReadStatus.Unsupported,result.Status,shape.name+": "+result);
+				StringAssert.Contains(result.Reason,"more than "+DicomJpegBaselineDecoder.MaxScans+" scans",shape.name);
+				Assert.IsTrue(stopwatch.ElapsedMilliseconds<1000,shape.name+": took "+stopwatch.ElapsedMilliseconds+" ms.");
+				//The same bytes before a stream of MaxScans scans: read, as the decoder reads it.
+				byte[] bytesFileLegal=MakeFileIn(ReaderCases.Encapsulated8("MONOCHROME2",16,24,1,Encapsulated(null,
+					JpegWithBytesBefore(JpegProgressiveFlat(24,16,80,DicomJpegBaselineDecoder.MaxScans-1),16,shape.bytesBefore,shape.hasDecoy))),JpegBaseline);
+				DicomImageReadResult resultLegal=DicomHelper.FullReader.Read(bytesFileLegal);
+				Assert.AreEqual(DicomImageReadStatus.Read,resultLegal.Status,shape.name+", "+DicomJpegBaselineDecoder.MaxScans+" scans: "+resultLegal);
+				Assert.IsTrue(resultLegal.BitmapDicom.ArrayDataRaw.All(x => x==138),shape.name);
+			}
+		}
+
+		[TestMethod]
+		public void JpegBaseline_BytesTheDecoderPassesOver_GiveThePixelsOfThePlainStream() {
+			//fo-dicom read each of these to the plain stream's pixels (the four ReaderCases are recorded in FoDicomBaseline.cs; the others were
+			//checked the same way), and so does the .NET Framework's decoder: what follows the first end of image marker is ignored, and bytes
+			//between marker segments are discarded.
+			byte[] bytesJpeg=ReaderCases.JpegRgbFixed();
+			int idxDqt=Enumerable.Range(2,bytesJpeg.Length-3).First(i => bytesJpeg[i]==0xFF && bytesJpeg[i+1]==0xDB);
+			int idxSos=Enumerable.Range(2,bytesJpeg.Length-3).First(i => bytesJpeg[i]==0xFF && bytesJpeg[i+1]==0xDA);
+			Func<int,byte[],byte[]> insert=(at,bytes) => bytesJpeg.Take(at).Concat(bytes).Concat(bytesJpeg.Skip(at)).ToArray();
+			var listCases=new List<(string name,byte[] bytes)> {
+				("12 34 after the end of image marker",bytesJpeg.Concat(new byte[] { 0x12,0x34 }).ToArray()),
+				("FF 00 after it",bytesJpeg.Concat(new byte[] { 0xFF,0x00 }).ToArray()),
+				("FF FF after it",bytesJpeg.Concat(new byte[] { 0xFF,0xFF }).ToArray()),
+				("an FF pad after it",bytesJpeg.Concat(new byte[] { 0xFF }).ToArray()),
+				("a second end of image marker and more after it",bytesJpeg.Concat(new byte[] { 0xFF,0xD9,0xFF,0xDA,0x00,0x08 }).ToArray()),
+				("00 00 before the DQT",insert(idxDqt,new byte[] { 0x00,0x00 })),
+				("FF 00 00 06 after the SOI",insert(2,new byte[] { 0xFF,0x00,0x00,0x06 })),
+				("stray bytes before the SOS",insert(idxSos,new byte[] { 0x12,0x34,0x56 })),
+				("COM and APP1 with lengths 0 and 1",insert(idxDqt,new byte[] { 0xFF,0xFE,0x00,0x00,0xFF,0xE1,0x00,0x01 })),
+				("TEM and RST0 before the DQT",insert(idxDqt,new byte[] { 0xFF,0x01,0xFF,0xD0 })),
+				("DNL before the SOS",insert(idxSos,new byte[] { 0xFF,0xDC,0x00,0x04,0x00,0x0E })),
+			};
+			string expected=FoDicomBaseline.DictRecorded["jpeg-rgb-declared"];
+			foreach((string name,byte[] bytes) testCase in listCases) {
+				DicomImageReadResult result=DicomHelper.FullReader.Read(MakeFileIn(ReaderCases.Encapsulated8("RGB",14,22,3,Encapsulated(null,testCase.bytes)),
+					JpegBaseline));
+				Assert.AreEqual(expected,FoDicomBaseline.Fingerprint(result.BitmapDicom),testCase.name+": "+result);
+			}
+			foreach(string caseName in new[] { "jpeg-rgb-junk-after-eoi","jpeg-rgb-ff-pad","jpeg-rgb-stray-bytes-before-dqt","jpeg-rgb-app0-length-short" }) {
+				Assert.AreEqual(expected,FoDicomBaseline.DictRecorded[caseName],caseName);
+			}
+		}
+
+		[TestMethod]
+		public void JpegBaseline_StreamsTheDecoderStopsAt_AreDeclinedAtOnce() {
+			byte[] bytesJpeg=ReaderCases.JpegRgbFixed();
+			int idxDqt=Enumerable.Range(2,bytesJpeg.Length-3).First(i => bytesJpeg[i]==0xFF && bytesJpeg[i+1]==0xDB);
+			int idxSof=Enumerable.Range(2,bytesJpeg.Length-3).First(i => bytesJpeg[i]==0xFF && bytesJpeg[i+1]==0xC0);
+			int idxSos=Enumerable.Range(2,bytesJpeg.Length-3).First(i => bytesJpeg[i]==0xFF && bytesJpeg[i+1]==0xDA);
+			Func<int,byte[],byte[]> insert=(at,bytes) => bytesJpeg.Take(at).Concat(bytes).Concat(bytesJpeg.Skip(at)).ToArray();
+			byte[] bytesNoEoi=bytesJpeg.Take(bytesJpeg.Length-2).ToArray();
+			//With no end of image marker, the walk ends at the end of the frame whatever the last bytes are. fo-dicom never returned from some of
+			//these (version 0.0 froze) and showed others, such as the stream without its marker followed by 00 00; this version declines them all.
+			var listCases=new List<(string name,byte[] bytes,DicomImageReadStatus status,string reason)> {
+				("no end of image marker",bytesNoEoi,DicomImageReadStatus.Malformed,"cut off"),
+				("no end of image marker, then 00 00",bytesNoEoi.Concat(new byte[] { 0,0 }).ToArray(),DicomImageReadStatus.Malformed,"cut off"),
+				("no end of image marker, then 12 34",bytesNoEoi.Concat(new byte[] { 0x12,0x34 }).ToArray(),DicomImageReadStatus.Malformed,"cut off"),
+				("no end of image marker, then FF",bytesNoEoi.Concat(new byte[] { 0xFF }).ToArray(),DicomImageReadStatus.Malformed,"cut off"),
+				("cut in the scan",bytesJpeg.Take((idxSos+bytesJpeg.Length)/2).ToArray(),DicomImageReadStatus.Malformed,"cut off"),
+				("cut in a marker segment",bytesJpeg.Take(idxDqt+20).ToArray(),DicomImageReadStatus.Malformed,"past the end"),
+				("a reserved marker",insert(idxDqt,new byte[] { 0xFF,0x02,0x00,0x04,0x00,0x00 }),DicomImageReadStatus.Malformed,"0x02"),
+				("a JPEG extension marker (JPEG-LS frame header)",insert(idxDqt,new byte[] { 0xFF,0xF7,0x00,0x04,0x00,0x00 }),DicomImageReadStatus.Unsupported,"0xF7"),
+				("a second start of image marker",insert(idxDqt,new byte[] { 0xFF,0xD8 }),DicomImageReadStatus.Malformed,"second start of image"),
+				("a scan before the frame header",insert(idxSof,new byte[] { 0xFF,0xDA,0x00,0x08,0x01,0x01,0x00,0x00,0x3F,0x00 }),DicomImageReadStatus.Malformed,
+					"no frame header"),
+				("an end of image marker before the frame header",insert(idxDqt,new byte[] { 0xFF,0xD9 }),DicomImageReadStatus.Malformed,"no frame header"),
+				("a DQT of length 0",insert(idxDqt,new byte[] { 0xFF,0xDB,0x00,0x00 }),DicomImageReadStatus.Malformed,"length below 2"),
+			};
+			foreach((string name,byte[] bytes,DicomImageReadStatus status,string reason) testCase in listCases) {
+				System.Diagnostics.Stopwatch stopwatch=System.Diagnostics.Stopwatch.StartNew();
+				DicomImageReadResult result=DicomHelper.FullReader.Read(MakeFileIn(ReaderCases.Encapsulated8("RGB",14,22,3,Encapsulated(null,testCase.bytes)),
+					JpegBaseline));
+				stopwatch.Stop();
+				Assert.AreEqual(testCase.status,result.Status,testCase.name+": "+result);
+				StringAssert.Contains(result.Reason,testCase.reason,testCase.name);
+				Assert.IsTrue(stopwatch.ElapsedMilliseconds<1000,testCase.name+": took "+stopwatch.ElapsedMilliseconds+" ms.");
+			}
+		}
 		#endregion JPEG Baseline through the .NET Framework's decoder
 
 		#region Formats this version cannot open yet

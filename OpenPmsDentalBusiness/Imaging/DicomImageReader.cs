@@ -26,7 +26,8 @@ namespace OpenPmsDentalBusiness {
 		Malformed,
 		///<summary>The first frame is larger than MaxFramePixels or its compressed bytes larger than MaxCompressedFrameBytes, a deflated data
 		///set inflates past MaxInflatedBytesBeforePixelData before its Pixel Data or past MaxInflatedBytes in all, or the file has more than
-		///MaxElements elements, items and fragments.</summary>
+		///MaxElements elements, items and fragments, or more than MaxBlankVrLookAheads elements with two spaces for the VR whose layout the
+		///reader had to look past their value to tell.</summary>
 		TooLarge,
 		///<summary>The file or stream could not be read.</summary>
 		FileError,
@@ -73,8 +74,9 @@ namespace OpenPmsDentalBusiness {
 	///(System.IO.Compression), in a PS3.10 file (128-byte preamble, "DICM", File Meta Information), in a file that starts directly with the
 	///File Meta Information, or as a data set with no File Meta Information or without a Transfer Syntax UID, whose encoding is then told from
 	///its first element. The encoding is decided from the data where writers broke the standard in ways fo-dicom 4 read: File Meta
-	///Information in Implicit VR, an Implicit VR data set labelled Explicit VR Little Endian, two spaces where an element's VR goes, a preamble
-	///of zeros without "DICM", a first element of a private group or out of tag order. fo-dicom
+	///Information in Implicit VR, an Implicit VR data set labelled Explicit VR Little Endian, two spaces where an element's VR goes (with the
+	///16-bit or the 32-bit layout, told from the bytes that follow), a preamble of zeros without "DICM", a first element of a private group or
+	///out of tag order. fo-dicom
 	///refused "DICM" at byte 0 without the preamble, and so does this reader (docs/imaging/dicom-reader.md lists exactly what is accepted).
 	///Encapsulated pixel data (PS3.5 A.4): the items, the fragments, the Basic Offset Table and the Extended Offset Table are parsed here, and
 	///the first frame's bytes go to the decoder DicomFrameDecoderRegistry has for the transfer syntax. A compressed transfer syntax without a
@@ -87,8 +89,10 @@ namespace OpenPmsDentalBusiness {
 	///than 8, 12 and 16 is moved up to the next of those (shifted left), because BitmapDicom's windowing knows only those; YBR_FULL,
 	///YBR_FULL_422 and PALETTE COLOR become RGB first, and 16-bit color is taken at 8 bits.
 	///
-	///Hardening: it never throws to callers; it reads the stream forward once and checks every length against what is left before it reads or
-	///skips (a seekable stream knows its end; a non-seekable one is read, never trusted); sequences of undefined length are nested at most
+	///Hardening: it never throws to callers; it reads the stream forward once (it looks ahead and comes back only to tell the layout of an
+	///element with two spaces for its VR, at most MaxBlankVrLookAheads times, and in a stream that cannot seek at most MaxLookAheadBytes
+	///ahead) and checks every length against what is left before it reads or skips (a seekable stream knows its end; a non-seekable one is
+	///read, never trusted); sequences of undefined length are nested at most
 	///MaxSequenceDepth deep; it allocates only the attributes it keeps (each at most a quarter megabyte), the first frame (at most MaxFramePixels
 	///pixels) and that frame's compressed bytes (at most MaxCompressedFrameBytes); a deflated data set may inflate to at most
 	///MaxInflatedBytesBeforePixelData before its Pixel Data and MaxInflatedBytes in all; at most MaxElements headers are read, which bounds
@@ -111,6 +115,12 @@ namespace OpenPmsDentalBusiness {
 		///about half a microsecond, so this bounds the work of a file of millions of tiny elements, which deflate makes small on disk, to about
 		///half a second. A real data set has a few thousand.</summary>
 		public const int MaxElements=1000000;
+		///<summary>The most elements with two spaces for the VR whose layout the reader tells by looking past their value, in one file (TooLarge
+		///past it). Each look costs a seek, so this bounds the work of a file made of them; a real file has a handful.</summary>
+		public const int MaxBlankVrLookAheads=10000;
+		///<summary>How far ahead the reader looks, in a stream that cannot seek (a deflated data set), to tell the layout of an element with two
+		///spaces for its VR. Past this the value is taken as empty, in the 16-bit layout.</summary>
+		public const int MaxLookAheadBytes=64*1024;
 		private const int _maxKeptValueBytes=256*1024;
 		private const uint _undefinedLength=0xFFFFFFFF;
 		private const uint _tagItem=0xFFFEE000;
@@ -256,6 +266,8 @@ namespace OpenPmsDentalBusiness {
 		private sealed class ByteSource {
 			///<summary>Reads larger than this from a stream that cannot seek go in pieces of this size.</summary>
 			private const int _chunkBytes=4*1024*1024;
+			///<summary>PeekAt reads bytes this close ahead into the look-ahead buffer even when the stream can seek.</summary>
+			private const int _maxPeekBytesInMemory=4096;
 			private readonly Stream _stream;
 			private readonly bool _canSeek;
 			private readonly long _streamEnd;
@@ -295,20 +307,61 @@ namespace OpenPmsDentalBusiness {
 
 			///<summary>Up to count bytes from the current position, without consuming them. Fewer at the end of the stream.</summary>
 			public byte[] Peek(int count) {
-				if(PeekCount<count) {
-					byte[] arrayNew=new byte[count];
-					int countHave=PeekCount;
-					Buffer.BlockCopy(_arrayPeek,_peekStart,arrayNew,0,countHave);
-					int countRead=ReadFromStream(arrayNew,countHave,count-countHave);
-					if(countHave+countRead<count) {
-						Array.Resize(ref arrayNew,countHave+countRead);
-					}
-					_arrayPeek=arrayNew;
-					_peekStart=0;
-				}
+				FillPeek(count);
 				byte[] arrayOut=new byte[Math.Min(count,PeekCount)];
 				Buffer.BlockCopy(_arrayPeek,_peekStart,arrayOut,0,arrayOut.Length);
 				return arrayOut;
+			}
+
+			///<summary>Reads ahead until the look-ahead buffer holds count bytes from the current position, or the stream ends.</summary>
+			private void FillPeek(int count) {
+				if(PeekCount>=count) {
+					return;
+				}
+				byte[] arrayNew=new byte[count];
+				int countHave=PeekCount;
+				Buffer.BlockCopy(_arrayPeek,_peekStart,arrayNew,0,countHave);
+				int countRead=ReadFromStream(arrayNew,countHave,count-countHave);
+				if(countHave+countRead<count) {
+					Array.Resize(ref arrayNew,countHave+countRead);
+				}
+				_arrayPeek=arrayNew;
+				_peekStart=0;
+			}
+
+			///<summary>Up to count bytes from offset bytes past the current position, without consuming anything; fewer at the end of the stream.
+			///A stream that can seek is read there and put back; one that cannot is read ahead into memory, at most MaxLookAheadBytes, and null
+			///is returned when the bytes are farther than that.</summary>
+			public byte[] PeekAt(long offset,int count) {
+				if(offset<0 || count<0) {
+					return new byte[0];
+				}
+				if(offset+count<=Math.Max(PeekCount,_maxPeekBytesInMemory) || (!_canSeek && offset+count<=MaxLookAheadBytes)) {
+					FillPeek((int)(offset+count));
+					int countOut=(int)Math.Max(0,Math.Min(count,PeekCount-offset));
+					byte[] arrayOut=new byte[countOut];
+					if(countOut>0) {
+						Buffer.BlockCopy(_arrayPeek,_peekStart+(int)offset,arrayOut,0,countOut);
+					}
+					return arrayOut;
+				}
+				if(!_canSeek) {
+					return null;
+				}
+				//The look-ahead buffer holds the bytes just before the stream's position, so offset is at this position in the stream.
+				long positionStream=_stream.Position;
+				long positionTarget=positionStream+(offset-PeekCount);
+				if(positionTarget>=_streamEnd) {
+					return new byte[0];
+				}
+				byte[] bytes=new byte[(int)Math.Min(count,_streamEnd-positionTarget)];
+				_stream.Seek(positionTarget,SeekOrigin.Begin);
+				int countRead=ReadFromStream(bytes,0,bytes.Length);
+				_stream.Seek(positionStream,SeekOrigin.Begin);
+				if(countRead<bytes.Length) {
+					Array.Resize(ref bytes,countRead);
+				}
+				return bytes;
 			}
 
 			public bool IsAtEnd() {
@@ -518,6 +571,8 @@ namespace OpenPmsDentalBusiness {
 			private Stream _streamInflated;
 			///<summary>Element, item, delimiter and fragment headers read so far (MaxElements).</summary>
 			private int _countHeaders;
+			///<summary>Elements with two spaces for the VR whose layout was told by looking past their value (MaxBlankVrLookAheads).</summary>
+			private int _countLookAheads;
 
 			///<summary>The Transfer Syntax UID of the File Meta Information, once read.</summary>
 			public string TransferSyntaxUid { get; private set; }
@@ -675,7 +730,7 @@ namespace OpenPmsDentalBusiness {
 					if(bytesPeek.Length<2 || U16(bytesPeek,0,false)!=0x0002) {
 						return;
 					}
-					ReadElementHeader(isImplicit,false,out uint tag,out string vr,out uint length);
+					ReadElementHeader(isImplicit,false,false,out uint tag,out string vr,out uint length);
 					if(length==_undefinedLength) {
 						throw Malformed("File Meta element "+FormatTag(tag)+" has an undefined length.");
 					}
@@ -723,9 +778,11 @@ namespace OpenPmsDentalBusiness {
 			#region Elements
 			///<summary>The tag, VR and length of the element at the current position (PS3.5 7.1.2 and 7.1.3). In Implicit VR, the VR is the one
 			///the reader knows for the attributes it keeps, otherwise "UN". In Explicit VR, two spaces where the VR goes take the VR the reader
-			///knows for the tag the same way, with the layout of that VR: two reserved bytes and a 32-bit length for Pixel Data and the palette
-			///tables (OW) and the Extended Offset Table (OV), and a 16-bit length for every other element.</summary>
-			private void ReadElementHeader(bool isImplicit,bool isBig,out uint tag,out string vr,out uint length) {
+			///knows for the attributes it keeps, with the layout of that VR: two reserved bytes and a 32-bit length for Pixel Data and the palette
+			///tables (OW) and the Extended Offset Table (OV), a 16-bit length for the others. For any other tag the layout is told from the data
+			///(IsBlankVrLongLayout), and the VR is "UN", or "SQ" or "UN" for an undefined length (BlankVrOfUndefinedLength). isInItem: the element
+			///is inside an item of undefined length, where an Item Delimitation Item may follow it.</summary>
+			private void ReadElementHeader(bool isImplicit,bool isBig,bool isInItem,out uint tag,out string vr,out uint length) {
 				CountHeader();
 				byte[] bytes=new byte[8];
 				_source.ReadExact(bytes,0,8,"an element header");
@@ -742,7 +799,12 @@ namespace OpenPmsDentalBusiness {
 				}
 				else if(IsBlankVr(bytes[4],bytes[5])) {
 					vr=ImplicitVr(tag);
-					isLongLayout=vr=="OW" || vr=="OV";
+					if(vr=="UN") {
+						isLongLayout=IsBlankVrLongLayout(bytes,tag,isBig,isInItem);
+					}
+					else {
+						isLongLayout=vr=="OW" || vr=="OV";
+					}
 				}
 				else {
 					throw Malformed("Element "+FormatTag(tag)+" has no valid VR; the data set is not "+(isBig ? "Explicit VR Big Endian." : "Explicit VR."));
@@ -750,10 +812,98 @@ namespace OpenPmsDentalBusiness {
 				if(isLongLayout) {
 					byte[] bytesLength=_source.ReadBytes(4,"an element header");
 					length=U32(bytesLength,0,isBig);
+					if(length==_undefinedLength && vr=="UN" && IsBlankVr(bytes[4],bytes[5])) {
+						vr=BlankVrOfUndefinedLength();
+					}
 				}
 				else {
 					length=U16(bytes,6,isBig);
 				}
+			}
+
+			///<summary>Whether an Explicit VR element with two spaces for its VR, of a tag the reader does not keep, has the layout of the VRs with
+			///two reserved bytes and a 32-bit length (PS3.5 7.1.2) rather than a 16-bit length. The reader knows no VR for such a tag; fo-dicom 4
+			///took the long layout where its dictionary gave a long VR (a sequence, UT, OB) and for private tags, the short one for the others (LO,
+			///CS). Here it is told from the data. bytesHeader is the element's first 8 bytes, which have just been consumed. The long layout needs
+			///the bytes after the tag and VR to be 00 00 and a 32-bit length that is undefined (a sequence) or fits what is left. It is taken when the
+			///16-bit reading (an empty value, then the next element at byte 8) does not look like the next header, or when it does but the 8 bytes
+			///after the 32-bit reading's value look like one too, or the data ends there. Otherwise the 16-bit layout is taken, so an empty LO or CS
+			///with two spaces for its VR still reads.</summary>
+			private bool IsBlankVrLongLayout(byte[] bytesHeader,uint tag,bool isBig,bool isInItem) {
+				if(bytesHeader[6]!=0 || bytesHeader[7]!=0) {
+					return false;//a 16-bit length other than 0
+				}
+				byte[] bytesNext=_source.Peek(8);
+				if(bytesNext.Length<4) {
+					return false;//the data ends: an empty value
+				}
+				uint lengthLong=U32(bytesNext,0,isBig);
+				if(lengthLong==_undefinedLength) {
+					return true;
+				}
+				long remaining=_source.Remaining;
+				if(remaining>=0 && lengthLong>remaining-4) {
+					return false;
+				}
+				if(!IsPlausibleNextHeader(bytesNext,tag,isBig,isInItem)) {
+					return true;
+				}
+				//Both readings look right at byte 8: look past the 32-bit reading's value.
+				_countLookAheads++;
+				if(_countLookAheads>MaxBlankVrLookAheads) {
+					throw TooLarge("The file has more than "+FormatCount(MaxBlankVrLookAheads)+" elements with two spaces for the VR whose layout had to be told by "
+						+"reading past their value; this version reads at most that many.");
+				}
+				byte[] bytesAfter=_source.PeekAt(4L+lengthLong,8);
+				if(bytesAfter==null) {
+					return false;//too far ahead in a stream that cannot seek
+				}
+				return bytesAfter.Length==0 || IsPlausibleNextHeader(bytesAfter,tag,isBig,isInItem);
+			}
+
+			///<summary>Whether 8 bytes look like the Explicit VR header that follows the element of tagBefore: a tag of the same or a later group
+			///(PS3.5 7.1: elements are in ascending order; a later element of the same group is not required, since writers put tags out of order),
+			///VR letters with 00 00 after a VR of the long layout, or two spaces; or, inside an item of undefined length, the Item Delimitation
+			///Item.</summary>
+			private bool IsPlausibleNextHeader(byte[] bytes,uint tagBefore,bool isBig,bool isInItem) {
+				if(bytes.Length<8) {
+					return false;
+				}
+				uint tagNext=((uint)U16(bytes,0,isBig)<<16) | U16(bytes,2,isBig);
+				if((tagNext>>16)==0xFFFE) {
+					return isInItem && tagNext==_tagItemDelimitation && U32(bytes,4,isBig)==0;
+				}
+				if((tagNext>>16)<(tagBefore>>16)) {
+					return false;
+				}
+				if(IsBlankVr(bytes[4],bytes[5])) {
+					return true;
+				}
+				if(!IsVr(bytes[4],bytes[5])) {
+					return false;
+				}
+				if(_hashSetLongVrs.Contains(""+(char)bytes[4]+(char)bytes[5])) {
+					return bytes[6]==0 && bytes[7]==0;
+				}
+				return true;
+			}
+
+			///<summary>How to skip an element with two spaces for its VR whose 32-bit length is undefined: as "SQ", items in the data set's encoding,
+			///or as "UN", items in Implicit VR Little Endian (PS3.5 6.2.2), as fo-dicom 4 read a private one. Told from the first item: when it has
+			///an undefined length and its first element is neither an Explicit VR header nor a delimiter, "UN"; otherwise "SQ" (an item of defined
+			///length is skipped by its length either way).</summary>
+			private string BlankVrOfUndefinedLength() {
+				byte[] bytesPeek=_source.Peek(16);
+				if(bytesPeek.Length<16 || U32(bytesPeek,4,false)!=_undefinedLength) {
+					return "SQ";
+				}
+				byte[] bytesFirst=new byte[8];
+				Buffer.BlockCopy(bytesPeek,8,bytesFirst,0,8);
+				bool isDelimiter=(bytesFirst[0]==0xFE && bytesFirst[1]==0xFF) || (bytesFirst[0]==0xFF && bytesFirst[1]==0xFE);
+				if(isDelimiter || IsExplicitHeader(bytesFirst)) {
+					return "SQ";
+				}
+				return "UN";
 			}
 
 			///<summary>The VRs of the attributes the reader keeps (PS3.6 Table 6-1), for Implicit VR.</summary>
@@ -815,7 +965,7 @@ namespace OpenPmsDentalBusiness {
 					if((tagPeek>>16)==0xFFFE) {
 						throw Malformed("Item or delimiter "+FormatTag(tagPeek)+" outside a sequence.");
 					}
-					ReadElementHeader(_isImplicit,_isBigEndian,out uint tag,out string vr,out uint length);
+					ReadElementHeader(_isImplicit,_isBigEndian,false,out uint tag,out string vr,out uint length);
 					if(tag==_tagPixelData) {
 						if(_streamInflated!=null) {
 							_source.SetLimit(MaxInflatedBytes,"inflated data set");
@@ -898,7 +1048,7 @@ namespace OpenPmsDentalBusiness {
 					if((tagPeek>>16)==0xFFFE) {
 						throw Malformed("Unexpected "+FormatTag(tagPeek)+" inside an item.");
 					}
-					ReadElementHeader(isImplicit,isBig,out uint tag,out string vr,out uint length);
+					ReadElementHeader(isImplicit,isBig,true,out uint tag,out string vr,out uint length);
 					if(length==_undefinedLength) {
 						SkipUndefinedLength(tag,vr,isImplicit,isBig,depth+1);
 						continue;

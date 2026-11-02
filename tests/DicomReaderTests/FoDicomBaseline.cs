@@ -4,7 +4,10 @@
 // running fo-dicom 4.0.7 (with its native codecs) on these exact bytes, before fo-dicom was removed, so the in-house reader is checked against
 // the old behaviour. The cases added after review (ReaderCases.MislabelledEncodings, jpeg-ybr-partial-422, jpeg-progressive-gray) were recorded
 // the same day the same way, outside the repository, with the Dicom.Core.dll and Dicom.Native.dll of version 0.0 and the old path's code; that
-// run gave every earlier value below again. Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
+// run gave every earlier value below again. The cases added after the second review (the vr-spaces cases of the 32-bit layout, of undefined
+// length and the empty LO; jpeg-rgb-junk-after-eoi, jpeg-rgb-ff-pad, jpeg-rgb-stray-bytes-before-dqt, jpeg-rgb-app0-length-short) were
+// recorded the same way on 2026-11-02, in a run over all 129 cases that again gave every earlier value. Licensed under the GNU General Public
+// License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -61,6 +64,15 @@ namespace DicomReaderTests {
 			{ "enc-explicit-le-vr-spaces-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
 			{ "enc-explicit-be-vr-spaces-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
 			{ "enc-explicit-le-vr-spaces-pixel-data-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
+			{ "enc-explicit-le-vr-spaces-long-private-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
+			{ "enc-explicit-le-vr-spaces-long-sq-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
+			{ "enc-explicit-le-vr-spaces-long-ut-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
+			{ "enc-explicit-be-vr-spaces-long-private-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
+			{ "enc-explicit-be-vr-spaces-long-sq-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
+			{ "enc-explicit-be-vr-spaces-long-ut-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
+			{ "enc-explicit-le-vr-spaces-sq-undefined-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
+			{ "enc-explicit-le-vr-spaces-private-undefined-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
+			{ "enc-explicit-le-vr-spaces-empty-lo-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
 			{ "enc-meta-implicit-ts-implicit-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
 			{ "enc-meta-implicit-ts-explicit-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
 			{ "enc-meta-implicit-no-preamble-12","7x5 16/12 MONOCHROME2 0189a2a473ab1eb9" },
@@ -136,6 +148,10 @@ namespace DicomReaderTests {
 			{ "jpeg-rgb-declared","22x14 8/8 RGB 070cdf1958404a12" },
 			{ "jpeg-ybr-partial-422","null" },
 			{ "jpeg-progressive-gray","24x16 8/8 MONOCHROME2 984e782c9f840fd3" },
+			{ "jpeg-rgb-junk-after-eoi","22x14 8/8 RGB 070cdf1958404a12" },
+			{ "jpeg-rgb-ff-pad","22x14 8/8 RGB 070cdf1958404a12" },
+			{ "jpeg-rgb-stray-bytes-before-dqt","22x14 8/8 RGB 070cdf1958404a12" },
+			{ "jpeg-rgb-app0-length-short","22x14 8/8 RGB 070cdf1958404a12" },
 			{ "encapsulated-uncompressed","throws" },
 			{ "unsupported-1.2.840.10008.1.2.4.51","throws" },
 			{ "unsupported-1.2.840.10008.1.2.4.57","throws" },

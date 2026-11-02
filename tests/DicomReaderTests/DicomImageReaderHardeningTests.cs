@@ -386,6 +386,39 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
+		public void FloodOfBlankVrElementsThatNeedALookAhead_IsDeclined() {
+			//Pairs of an empty element with two spaces for its VR and an empty LO (0009,0010): read as a 32-bit length, the LO's tag is about a
+			//megabyte, which fits the file, and the LO looks like the next header, so each pair costs a look a megabyte ahead (a seek; it lands in
+			//the zero pixels, so the element is empty). Past MaxBlankVrLookAheads such elements the file is declined.
+			List<SynElement> listImage=ReaderCases.Mono16(1024,1024,16,15,new ushort[1024*1024]).ToDataset();
+			byte[] bytesHead=MakeFileIn(listImage.Where(x => x.Tag<Tag(0x0009,0x0010)).ToList(),ExplicitVrLittleEndian);
+			byte[] bytesTail=EncodeAs(listImage.Where(x => x.Tag>Tag(0x0009,0x0010)).ToList(),SynEncoding.ExplicitLittle);
+			byte[] bytesPair={ 0x09,0x00,0x00,0x10,0x20,0x20,0x00,0x00,0x09,0x00,0x10,0x00,(byte)'L',(byte)'O',0x00,0x00 };
+			byte[] bytesFlood=Join(bytesHead,Repeat(bytesPair,DicomImageReader.MaxBlankVrLookAheads+1),bytesTail);
+			string path=Path.Combine(Path.GetTempPath(),"dicomreadertests_lookahead_"+Guid.NewGuid().ToString("N")+".dcm");
+			try {
+				File.WriteAllBytes(path,bytesFlood);
+				System.Diagnostics.Stopwatch stopwatch=System.Diagnostics.Stopwatch.StartNew();
+				DicomImageReadResult result=DicomHelper.FullReader.ReadFileResult(path);//a file stream: each look is a seek and a buffer refill
+				stopwatch.Stop();
+				Assert.AreEqual(DicomImageReadStatus.TooLarge,result.Status,result.ToString());
+				StringAssert.Contains(result.Reason,"two spaces for the VR");
+				Assert.IsTrue(stopwatch.ElapsedMilliseconds<10000,"Took "+stopwatch.ElapsedMilliseconds+" ms.");
+			}
+			finally {
+				File.Delete(path);
+			}
+			Assert.AreEqual(DicomImageReadStatus.TooLarge,Read(bytesFlood).Status);
+			using(DicomImageReaderTests.NonSeekableStream stream=new DicomImageReaderTests.NonSeekableStream(bytesFlood)) {
+				Assert.AreEqual(DicomImageReadStatus.TooLarge,DicomHelper.FullReader.ReadStreamResult(stream).Status,"not seekable");
+			}
+			//Up to the limit, the file reads.
+			DicomImageReadResult resultWithin=Read(Join(bytesHead,Repeat(bytesPair,DicomImageReader.MaxBlankVrLookAheads),bytesTail));
+			Assert.AreEqual(DicomImageReadStatus.Read,resultWithin.Status,resultWithin.ToString());
+			Assert.IsTrue(resultWithin.BitmapDicom.ArrayDataRaw.All(x => x==0));
+		}
+
+		[TestMethod]
 		public void FloodsOfItemsAndFragments_AreDeclined() {
 			List<SynElement> listGood=ReaderCases.Twelve().ToDataset();
 			byte[] bytesHead=MakeFileIn(listGood.Where(x => x.Tag<Tag(0x0008,0x1115)).ToList(),ExplicitVrLittleEndian);

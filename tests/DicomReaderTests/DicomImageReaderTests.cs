@@ -309,6 +309,55 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
+		public void BlankVr_OnTagsTheReaderDoesNotKeep_TakesTheLayoutTheDataShows() {
+			//The ReaderCases (vr-spaces) give the source pixels, as fo-dicom 4 did. Here the layout decision is pushed further.
+			ushort[] arraySource=ReaderCases.Words(35,4095);
+			List<SynElement> listTwelve=ReaderCases.Twelve().ToDataset();
+			//The 32-bit layout in a deflated data set, where the reader cannot seek and looks ahead in memory: a private OB whose value starts like
+			//an element header, as in the ReaderCases, and a sequence.
+			List<SynElement> listPrivate=With(listTwelve,ReaderCases.BlankVr(Raw(0x0009,0x1010,"OB",
+				new byte[] { (byte)'A',(byte)'E',4,0,1,2,3,4,5,6,7,8,9,10,11,12 })));
+			List<SynElement> listSequence=With(listTwelve,ReaderCases.BlankVr(Sequence(0x0008,0x1140,false,Item(false,Text(0x0008,0x1150,"UI","2.25.7")))));
+			foreach((string name,List<SynElement> listElements) testCase in new[] { ("private OB",listPrivate),("sequence",listSequence) }) {
+				DicomImageReadResult result=ReadThroughHelper(MakeFileIn(testCase.listElements,DeflatedExplicitVrLittleEndian));
+				Assert.AreEqual(DicomImageReadStatus.Read,result.Status,testCase.name+", deflated: "+result);
+				CollectionAssert.AreEqual(arraySource,result.BitmapDicom.ArrayDataRaw,testCase.name);
+			}
+			//A private OB of 100 KB whose value starts like an element header: only the bytes after the value tell the layout. A seekable stream
+			//looks there; a stream that cannot seek looks at most MaxLookAheadBytes ahead, so there the value is taken as empty and the file is
+			//declined (the one blank-VR layout this version does not read the way fo-dicom did, and only in a stream that cannot seek).
+			byte[] bytesLargeValue=Enumerable.Range(0,100*1024).Select(i => (byte)(i%251)).ToArray();
+			bytesLargeValue[0]=(byte)'A';
+			bytesLargeValue[1]=(byte)'E';
+			bytesLargeValue[2]=4;
+			bytesLargeValue[3]=0;
+			List<SynElement> listLarge=With(listTwelve,ReaderCases.BlankVr(Raw(0x0009,0x1010,"OB",bytesLargeValue)));
+			byte[] bytesLarge=MakeFileIn(listLarge,ExplicitVrLittleEndian);
+			DicomImageReadResult resultLarge=ReadThroughHelper(bytesLarge);
+			Assert.AreEqual(DicomImageReadStatus.Read,resultLarge.Status,resultLarge.ToString());
+			CollectionAssert.AreEqual(arraySource,resultLarge.BitmapDicom.ArrayDataRaw);
+			using(NonSeekableStream stream=new NonSeekableStream(bytesLarge)) {
+				DicomImageReadResult resultNotSeekable=DicomHelper.FullReader.ReadStreamResult(stream);
+				Assert.AreEqual(DicomImageReadStatus.Malformed,resultNotSeekable.Status,resultNotSeekable.ToString());
+			}
+			Assert.AreEqual(DicomImageReadStatus.Malformed,ReadThroughHelper(MakeFileIn(listLarge,DeflatedExplicitVrLittleEndian)).Status);
+			//An empty LO with two spaces for its VR in a 2.4 MB file: read as a 32-bit length, the next tag, (0028,0002), is 128 KB, which fits,
+			//and the next element looks like one; the look past those 128 KB lands in the pixel data, which does not, so the LO is empty.
+			ushort[] arrayLarge=ReaderCases.Words(1200*1000,65535);
+			List<SynElement> listEmpty=With(ReaderCases.Mono16(1000,1200,16,15,arrayLarge).ToDataset(),ReaderCases.BlankVr(Text(0x0008,0x1030,"LO","")));
+			DicomImageReadResult resultEmpty=ReadThroughHelper(MakeFileIn(listEmpty,ExplicitVrLittleEndian));
+			Assert.AreEqual(DicomImageReadStatus.Read,resultEmpty.Status,resultEmpty.ToString());
+			CollectionAssert.AreEqual(arrayLarge,resultEmpty.BitmapDicom.ArrayDataRaw);
+			//Two spaces with a 16-bit length other than 0 are the 16-bit layout whatever follows; an undefined 32-bit length is a sequence.
+			DicomImageReadResult resultShort=ReadThroughHelper(MakeFileIn(With(listTwelve,ReaderCases.BlankVr(Text(0x0008,0x1030,"LO","00"))),ExplicitVrLittleEndian));
+			Assert.AreEqual(DicomImageReadStatus.Read,resultShort.Status,resultShort.ToString());
+			SynElement elementUndefinedBig=ReaderCases.BlankVr(Sequence(0x0008,0x1140,true,Item(true,Text(0x0008,0x1150,"UI","2.25.7"))));
+			DicomImageReadResult resultUndefinedBig=ReadThroughHelper(MakeFileIn(With(listTwelve,elementUndefinedBig),ExplicitVrBigEndian));
+			Assert.AreEqual(DicomImageReadStatus.Read,resultUndefinedBig.Status,resultUndefinedBig.ToString());
+			CollectionAssert.AreEqual(arraySource,resultUndefinedBig.BitmapDicom.ArrayDataRaw);
+		}
+
+		[TestMethod]
 		public void TransferSyntax_IsReported() {
 			Assert.AreEqual(ImplicitVrLittleEndian,ReadThroughHelper(ReaderCases.Get("enc-implicit-le-12").Bytes).TransferSyntaxUid);
 			Assert.AreEqual(DeflatedExplicitVrLittleEndian,ReadThroughHelper(ReaderCases.Get("enc-deflate-12").Bytes).TransferSyntaxUid);
