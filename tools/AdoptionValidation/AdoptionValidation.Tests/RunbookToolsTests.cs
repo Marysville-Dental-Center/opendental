@@ -31,6 +31,21 @@ namespace AdoptionValidation.Tests {
 			Assert.IsFalse(HeadlessAdoption.HasProcessPrivilege(new List<string>()));
 		}
 
+		///<summary>migration-preview's last line lists the program rows that name a plug-in DLL: plug-ins built for Open Dental stop loading after the
+		///switch (owner decision), so the office sees them first.</summary>
+		[TestMethod]
+		public void MigrationPreview_PluginLineListsTheProgramRowsWithAPluginDll() {
+			Assert.AreEqual("Plug-ins: no program row names a plug-in DLL (PluginDllName), so no plug-in stops loading.",
+				MigrationPreview.GetPluginLine(new List<MigrationPreview.PluginRow>()));
+			string line=MigrationPreview.GetPluginLine(new List<MigrationPreview.PluginRow> {
+				new MigrationPreview.PluginRow { ProgramNum=12,ProgName="OfficeTool",IsEnabled=true,PluginDllName="OfficeTool.dll" },
+				new MigrationPreview.PluginRow { ProgramNum=40,ProgName="OldReports",IsEnabled=false,PluginDllName="OldReports[Version].dll" },
+			});
+			StringAssert.StartsWith(line,"Plug-ins: 2 program row(s) name a plug-in DLL (PluginDllName); a plug-in built for Open Dental does not load");
+			StringAssert.Contains(line,"OfficeTool (ProgramNum 12, enabled, OfficeTool.dll); OldReports (ProgramNum 40, disabled, OldReports[Version].dll).");
+			Assert.IsFalse(line.Contains("\n"),"One line.");
+		}
+
 		[TestMethod]
 		public void FloatCheck_ComparesEachValueWithItselfWrittenAsText() {
 			Assert.AreEqual("IFNULL(SUM(`FontSize`<>CAST(CAST(`FontSize` AS CHAR) AS FLOAT)),0)",FloatCheck.RoundedExpression("FontSize","float"));

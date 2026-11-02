@@ -24,8 +24,9 @@ namespace AdoptionValidation {
 	///  later Public Health rows down one place and copies the sealant measure's report permissions to it (UdsPlusRowPlan);
 	///- the Insurance History step (InsHistCodeGroupsStep, M2-HIST) marks the code groups of the InsHist*Codes preferences Show In History, adds
 	///  their codes and creates a group for a category without one (InsHistCodeGroupPlan).
-	///adopt's row check (AdoptionRowCheck) holds the adopted copy to the same plans, made from the original. Reads the displayreport table, the
-	///preferences, grouppermission, whether claimpayment notes are NULL, program, toolbutitem, codegroup and the procedure codes.</summary>
+	///adopt's row check (AdoptionRowCheck) holds the adopted copy to the same plans, made from the original. The last line lists the program rows
+	///that name a plug-in DLL, which adoption does not change but which stop loading in this program (GetPluginLine). Reads the displayreport
+	///table, the preferences, grouppermission, whether claimpayment notes are NULL, program, toolbutitem, codegroup and the procedure codes.</summary>
 	public static class MigrationPreview {
 		public class Result {
 			public string Database;
@@ -43,6 +44,9 @@ namespace AdoptionValidation {
 			public UdsPlusRowPlan.Plan PlanUdsPlus=new UdsPlusRowPlan.Plan();
 			///<summary>What the Insurance History step changes.</summary>
 			public InsHistCodeGroupPlan.Plan PlanInsHist=new InsHistCodeGroupPlan.Plan();
+			///<summary>The program rows that name a plug-in DLL (PluginDllName), in ProgramNum order. Adoption changes none of them; it is listed so
+			///that an office sees, before it switches, which plug-ins will stop loading.</summary>
+			public List<PluginRow> ListPluginRows=new List<PluginRow>();
 
 			///<summary>The plans that rename a row.</summary>
 			public List<ReportRows25_3.ReportTargetPlan> ListRenames {
@@ -78,8 +82,49 @@ namespace AdoptionValidation {
 				listLines.AddRange(PlanDxc.Lines());
 				listLines.AddRange(PlanUdsPlus.Lines());
 				listLines.AddRange(PlanInsHist.Lines());
+				listLines.Add(GetPluginLine(ListPluginRows));
 				return listLines;
 			}
+		}
+
+		///<summary>A program row that names a plug-in DLL.</summary>
+		public class PluginRow {
+			public long ProgramNum;
+			public string ProgName;
+			public bool IsEnabled;
+			public string PluginDllName;
+		}
+
+		///<summary>The preview's one line about plug-ins: the program rows that name a PluginDllName. Plug-ins built against Open Dental's assemblies
+		///(its exe and business layer dll) do not load in this program, whose assemblies and namespaces have other names (owner decision);
+		///the program skips them without a message. Adoption changes none of these rows.</summary>
+		public static string GetPluginLine(List<PluginRow> listPluginRows) {
+			if(listPluginRows.Count==0) {
+				return "Plug-ins: no program row names a plug-in DLL (PluginDllName), so no plug-in stops loading.";
+			}
+			return "Plug-ins: "+listPluginRows.Count+" program row(s) name a plug-in DLL (PluginDllName); a plug-in built for Open Dental does not load in "
+				+"this program (adoption changes none of these rows): "
+				+string.Join("; ",listPluginRows.Select(x => x.ProgName+" (ProgramNum "+x.ProgramNum+", "+(x.IsEnabled ? "enabled" : "disabled")+", "
+				+x.PluginDllName+")"))+".";
+		}
+
+		///<summary>Every program row with a PluginDllName, read with plain SQL in ProgramNum order. Empty when there is no program table or column.
+		///</summary>
+		public static List<PluginRow> ReadPluginRows(Db db,string database) {
+			LocalOnly.EnsureSafeIdentifier(database);
+			bool hasColumn=db.ScalarLong("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA="+SqlLiteral.Quote(database)
+				+" AND TABLE_NAME='program' AND COLUMN_NAME='PluginDllName'")>0;
+			if(!hasColumn) {
+				return new List<PluginRow>();
+			}
+			return db.Rows("SELECT ProgramNum,ProgName,Enabled,PluginDllName FROM `"+database+"`.program "
+				+"WHERE COALESCE(TRIM(PluginDllName),'')<>'' ORDER BY ProgramNum")
+				.Select(x => new PluginRow {
+					ProgramNum=Convert.ToInt64(x[0],CultureInfo.InvariantCulture),
+					ProgName=Convert.ToString(x[1],CultureInfo.InvariantCulture)??"",
+					IsEnabled=Convert.ToInt64(x[2],CultureInfo.InvariantCulture)!=0,
+					PluginDllName=Convert.ToString(x[3],CultureInfo.InvariantCulture)??"",
+				}).ToList();
 		}
 
 		///<summary>The level of the report rows step, for messages.</summary>
@@ -103,6 +148,7 @@ namespace AdoptionValidation {
 			result.PlanDxc=DxcCreditScorePlan.Make(db,database);
 			result.PlanUdsPlus=UdsPlusRowPlan.Make(db,database,listRows,result.ListPlans,result.Plan26_1.IsFromBefore25_4);
 			result.PlanInsHist=InsHistCodeGroupPlan.Make(db,database,result.Plan26_1.IsFromBefore25_4);
+			result.ListPluginRows=ReadPluginRows(db,database);
 			return result;
 		}
 

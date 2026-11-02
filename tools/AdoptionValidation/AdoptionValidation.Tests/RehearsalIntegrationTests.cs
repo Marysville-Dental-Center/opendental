@@ -193,6 +193,8 @@ namespace AdoptionValidation.Tests {
 			StringAssert.Contains(output,") stays, with its text; the step disables 1 program row(s) of it (ProgramNum ");
 			StringAssert.Contains(output,"deletes its "+OfficeFixture.CountDxcButtons+" toolbar button(s) (ToolButItemNum ");
 			StringAssert.Contains(output,"\"Deleted "+OfficeFixture.CountDxcButtons+" toolbar button(s) of the discontinued DXC Patient Credit Score program link (ToolButItemNum ");
+			//The plug-in line: which program rows name a plug-in DLL, which stops loading after the switch.
+			StringAssert.Contains(output,"Plug-ins: ");
 			using(Db db=Db.Open(_server)) {
 				List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,Source(2),null,null),null);
 				Assert.AreEqual(0,listDiffs.Count,"migration-preview only reads.\r\n"+ReportComparer.Format(listDiffs));

@@ -19,15 +19,18 @@ namespace PluginExample {
 				Meth.GetVoid(MethodBase.GetCurrentMethod());
 				return;
 			}
-			Version versionMainApp=new Version(System.Windows.Forms.Application.ProductVersion);//eg. 6.8.0.0
-			Version versionMainAppMajMin=new Version(versionMainApp.Major,versionMainApp.Minor);//eg. 6.8
-			Version versionThisAssembly=System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;//eg. 6.7.0.0
-			Version versionThisAssMajMin=new Version(versionThisAssembly.Major,versionThisAssembly.Minor);//eg. 6.7
+			//The program's assembly version is its compatibility version (24.3.63.0, ForkVersions.CompatVersion). Application.ProductVersion is its
+			//release version (0.0), which is not comparable with a plug-in's version.
+			Version versionMainApp=typeof(Patient).Assembly.GetName().Version;//eg. 24.3.63.0
+			Version versionMainAppMajMin=new Version(versionMainApp.Major,versionMainApp.Minor);//eg. 24.3
+			Version versionThisAssembly=System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;//eg. 7.1.0.0
+			Version versionThisAssMajMin=new Version(versionThisAssembly.Major,versionThisAssembly.Minor);//eg. 7.1
 			if(versionThisAssMajMin > versionMainAppMajMin) {
-				//Prevent the use of a new plugin with an old version of OD. User should upgrade OD.
-				throw new ApplicationException("Version of plug-in may not be newer than version of Open Dental.");
+				//Prevent the use of a new plugin with an old version of the program. User should upgrade the program.
+				throw new ApplicationException("Version of plug-in may not be newer than version of Open PMS - Dental.");
 			}
-			//In case the developer of a plug-in gets hit by a bus etc, there should be no restriction on using an old plugin with a new version of OD.
+			//In case the developer of a plug-in gets hit by a bus etc, there should be no restriction on using an old plugin with a new version of
+			//the program.
 			//If a plug-in is distributed, there should be a separate plugin available for each minor version.
 			string command="SELECT ValueString FROM preference WHERE PrefName='Plugin_JSS_DataBaseVersion'";//notice the very unique name.
 			DataTable table=DataCore.GetTable(command);

@@ -8,7 +8,10 @@ using System.Windows.Forms;
 using OpenPmsDentalBusiness;
 
 ///<summary>The namespace for this class must match the dll filename, including capitalization.
-///All other classes will typically belong to the same namespace too, but that's not a requirement.</summary>
+///All other classes will typically belong to the same namespace too, but that's not a requirement.
+///A plug-in is built against this program's assemblies (OpenPmsDental.exe and OpenPmsDentalBusiness.dll, namespaces OpenPmsDental and
+///OpenPmsDentalBusiness) and its PluginBase. A plug-in built against Open Dental's assemblies does not load in this program: rebuild it
+///against these. The adoption tool's migration-preview lists the program rows that name a plug-in DLL.</summary>
 namespace PluginExample {
 	///<summary>Required class.  Don't change the name.</summary>
 	public class Plugin : PluginBase {
