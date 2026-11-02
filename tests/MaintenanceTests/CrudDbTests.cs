@@ -18,9 +18,11 @@ namespace MaintenanceTests {
 			TestDb.ResetOrSkip();
 		}
 
-		public static MaintItem InsertItem(string name,DateTime dateAnchor,long userNum=0,long userGroupNum=0,int leadDays=7) {
+		public static MaintItem InsertItem(string name,DateTime dateAnchor,long userNum=0,long userGroupNum=0,int leadDays=7,
+			EnumMaintIntervalUnit intervalUnit=EnumMaintIntervalUnit.Months)
+		{
 			MaintItem maintItem=new MaintItem { ItemName=name,Description="",ScheduleType=EnumMaintScheduleType.Interval,IntervalCount=1,
-				IntervalUnit=EnumMaintIntervalUnit.Months,DateAnchor=dateAnchor,LeadDays=leadDays,UserNumAssigned=userNum,UserGroupNumAssigned=userGroupNum };
+				IntervalUnit=intervalUnit,DateAnchor=dateAnchor,LeadDays=leadDays,UserNumAssigned=userNum,UserGroupNumAssigned=userGroupNum };
 			MaintItems.Insert(maintItem);
 			return maintItem;
 		}

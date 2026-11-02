@@ -98,6 +98,66 @@ namespace MaintenanceTests {
 			Assert.AreEqual(1,TestDb.GetLong("SELECT COUNT(*) FROM alertread WHERE AlertItemNum="+alertItem.AlertItemNum),"Read stays read.");
 		}
 
+		///<summary>What the main window's Alerts menu counts for the user (FormOpenDental.AddAlertsToMenu): the user's maintenance alerts minus the
+		///ones the user has read.</summary>
+		private static int UnreadCount(long userNum) {
+			AlertCategoryLinks.GetTableFromCache(doRefreshCache:true);
+			List<long> listAlertItemNums=AlertItems.GetAlertsItemsForUser(userNum,0).Where(x => MaintAlerts.ArrayAlertTypes.Contains(x.Type))
+				.Select(x => x.AlertItemNum).ToList();
+			return listAlertItemNums.Count-AlertReads.RefreshForAlertNums(userNum,listAlertItemNums).Count;
+		}
+
+		[TestMethod]
+		public void Sync_TheNextOccurrenceIsANewUnreadAlert_EvenWhenItIsDueSoonAtOnce() {
+			//Weekly with a lead time of 7 days (the board's default): the next occurrence is due soon as soon as this one is recorded.
+			DateTime dateDue=_dateToday.AddDays(2);
+			MaintItem maintItem=CrudDbTests.InsertItem("Spore test",dateDue,userNum:TestDb.USER_ASSISTANT_A,leadDays:7,
+				intervalUnit:EnumMaintIntervalUnit.Weeks);
+			MaintAlerts.Sync(_dateToday);
+			AlertItem alertFirst=MaintenanceAlerts().Single();
+			Assert.AreEqual(AlertType.MaintenanceDueSoon,alertFirst.Type);
+			Assert.AreEqual("2026-11-04",alertFirst.ItemValue,"The due date, culture-independent.");
+			Assert.AreEqual(1,UnreadCount(TestDb.USER_ASSISTANT_A));
+			AlertReads.Insert(new AlertRead(alertFirst.AlertItemNum,TestDb.USER_ASSISTANT_A));
+			Assert.AreEqual(0,UnreadCount(TestDb.USER_ASSISTANT_A),"Read.");
+			//Done on time, on the due date: next due 11/11, already within the lead time.
+			MaintRecords.Insert(new MaintRecord { MaintItemNum=maintItem.MaintItemNum,DateDone=dateDue,DateDue=dateDue,Note="" },new List<MaintRecordValue>());
+			MaintAlerts.SyncPlan syncPlan=MaintAlerts.Sync(dateDue);
+			Assert.AreEqual(1,syncPlan.ListInserts.Count);
+			Assert.AreEqual(0,syncPlan.ListUpdates.Count,"Not the old row with a new text.");
+			CollectionAssert.AreEqual(new[] { alertFirst.AlertItemNum },syncPlan.ListAlertItemNumsDeleted);
+			AlertItem alertNext=MaintenanceAlerts().Single();
+			Assert.AreNotEqual(alertFirst.AlertItemNum,alertNext.AlertItemNum,"A new alert for the new occurrence.");
+			Assert.AreEqual(AlertType.MaintenanceDueSoon,alertNext.Type);
+			Assert.AreEqual("2026-11-11",alertNext.ItemValue);
+			Assert.AreEqual("Maintenance due 11/11/2026: Spore test",alertNext.Description);
+			Assert.AreEqual(0,TestDb.GetLong("SELECT COUNT(*) FROM alertread WHERE AlertItemNum="+alertNext.AlertItemNum));
+			Assert.AreEqual(0,TestDb.GetLong("SELECT COUNT(*) FROM alertread"),"The old read mark went with the old alert.");
+			Assert.AreEqual(1,UnreadCount(TestDb.USER_ASSISTANT_A),"The Alerts menu shows the new reminder as unread.");
+			//Later the same week, still the same occurrence: the alert and its read mark are kept.
+			AlertReads.Insert(new AlertRead(alertNext.AlertItemNum,TestDb.USER_ASSISTANT_A));
+			Assert.IsFalse(MaintAlerts.Sync(dateDue.AddDays(3)).IsChanging);
+			Assert.AreEqual(0,UnreadCount(TestDb.USER_ASSISTANT_A));
+		}
+
+		[TestMethod]
+		public void Sync_RenamingTheItemKeepsTheAlertAndItsReadMark() {
+			MaintItem maintItem=CrudDbTests.InsertItem("Spore tset",_dateToday.AddDays(3),userNum:TestDb.USER_ASSISTANT_A);
+			MaintAlerts.Sync(_dateToday);
+			AlertItem alertItem=MaintenanceAlerts().Single();
+			AlertReads.Insert(new AlertRead(alertItem.AlertItemNum,TestDb.USER_ASSISTANT_A));
+			MaintItem maintItemOld=maintItem.Copy();
+			maintItem.ItemName="Spore test";
+			MaintItems.Update(maintItem,maintItemOld);
+			MaintAlerts.SyncPlan syncPlan=MaintAlerts.Sync(_dateToday);
+			Assert.AreEqual(1,syncPlan.ListUpdates.Count);
+			Assert.AreEqual(0,syncPlan.ListInserts.Count+syncPlan.ListAlertItemNumsDeleted.Count);
+			AlertItem alertAfter=MaintenanceAlerts().Single();
+			Assert.AreEqual(alertItem.AlertItemNum,alertAfter.AlertItemNum,"Same due date: the same reminder.");
+			Assert.AreEqual("Maintenance due 11/5/2026: Spore test",alertAfter.Description);
+			Assert.AreEqual(0,UnreadCount(TestDb.USER_ASSISTANT_A),"A new name is not a new reminder.");
+		}
+
 		[TestMethod]
 		public void Sync_DueSoonBecomesOverdue_WhenTheDueDatePasses() {
 			MaintItem maintItem=CrudDbTests.InsertItem("Due in two days",_dateToday.AddDays(2),userNum:TestDb.USER_ASSISTANT_A,leadDays:7);

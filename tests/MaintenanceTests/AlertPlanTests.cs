@@ -46,16 +46,18 @@ namespace MaintenanceTests {
 			Assert.AreEqual(AlertType.MaintenanceDueSoon,alertDueSoon.Type);
 			Assert.AreEqual(SeverityType.Low,alertDueSoon.Severity);
 			Assert.AreEqual("Maintenance due 11/7/2026: Item 1",alertDueSoon.Description);
+			Assert.AreEqual("2026-11-07",alertDueSoon.ItemValue,"The due date is part of the alert's identity, in a culture-independent form.");
 			AlertItem alertOverdue=listAlerts.Single(x => x.FKey==2);
 			Assert.AreEqual(AlertType.MaintenanceOverdue,alertOverdue.Type);
 			Assert.AreEqual(SeverityType.High,alertOverdue.Severity);
 			Assert.AreEqual("Maintenance overdue since 11/1/2026: Item 2",alertOverdue.Description);
+			Assert.AreEqual("2026-11-01",alertOverdue.ItemValue);
 			foreach(AlertItem alertItem in listAlerts) {
 				Assert.AreEqual(2,alertItem.UserNum,"The alert carries the assignee, so it reaches only that user.");
 				Assert.AreEqual(-1,alertItem.ClinicNum);
-				Assert.AreEqual(ActionType.MarkAsRead|ActionType.OpenForm,alertItem.Actions,"No Delete: the alert would only come back.");
+				Assert.AreEqual(ActionType.MarkAsRead|ActionType.OpenForm,alertItem.Actions,"No Delete: the alert would only come back. No ShowItemValue: "
+					+"the user does not see the stored due date.");
 				Assert.AreEqual(FormType.FormMaintenanceBoard,alertItem.FormToOpen);
-				Assert.AreEqual("",alertItem.ItemValue);
 			}
 		}
 
@@ -102,17 +104,39 @@ namespace MaintenanceTests {
 		}
 
 		[TestMethod]
-		public void Plan_UpdatesTheTextInPlace() {
+		public void Plan_RenameUpdatesTheTextInPlace() {
 			List<AlertItem> listWanted=Wanted(Item(1,_dateToday.AddDays(3),7,userNum:2));
-			AlertItem alertExisting=listWanted[0].Copy();
-			alertExisting.AlertItemNum=21;
-			alertExisting.Description="Maintenance due 10/1/2026: Old name";
-			MaintAlerts.SyncPlan syncPlan=MaintAlerts.GetSyncPlan(listWanted,new List<AlertItem> { alertExisting });
-			Assert.AreEqual(1,syncPlan.ListUpdates.Count);
-			Assert.AreEqual(21,syncPlan.ListUpdates[0].AlertItemNum,"The same row, so its read mark survives.");
-			Assert.AreEqual(listWanted[0].Description,syncPlan.ListUpdates[0].Description);
-			Assert.AreEqual(0,syncPlan.ListInserts.Count);
-			Assert.AreEqual(0,syncPlan.ListAlertItemNumsDeleted.Count);
+			Assert.AreEqual("2026-11-05",listWanted[0].ItemValue);
+			//The same due date under an old name, and as a workstation in another culture writes it: both are the same reminder.
+			foreach(string descriptionOld in new[] { "Maintenance due 11/5/2026: Old name","Maintenance due 05.11.2026: Item 1" }) {
+				AlertItem alertExisting=listWanted[0].Copy();
+				alertExisting.AlertItemNum=21;
+				alertExisting.Description=descriptionOld;
+				MaintAlerts.SyncPlan syncPlan=MaintAlerts.GetSyncPlan(listWanted,new List<AlertItem> { alertExisting });
+				Assert.AreEqual(1,syncPlan.ListUpdates.Count,descriptionOld);
+				Assert.AreEqual(21,syncPlan.ListUpdates[0].AlertItemNum,"The same row, so its read mark survives.");
+				Assert.AreEqual(listWanted[0].Description,syncPlan.ListUpdates[0].Description);
+				Assert.AreEqual("2026-11-05",syncPlan.ListUpdates[0].ItemValue);
+				Assert.AreEqual(0,syncPlan.ListInserts.Count);
+				Assert.AreEqual(0,syncPlan.ListAlertItemNumsDeleted.Count);
+			}
+		}
+
+		[TestMethod]
+		public void Plan_NewDueDateIsANewAlert_TheOldOneGoesWithItsReadMark() {
+			//A weekly item with lead 7, recorded on time: the next occurrence is due soon at once, for the same item, type and recipient.
+			MaintItem maintItem=Item(1,_dateToday.AddDays(7),7,userNum:2);
+			List<AlertItem> listWanted=Wanted(maintItem);
+			Assert.AreEqual(AlertType.MaintenanceDueSoon,listWanted.Single().Type);
+			AlertItem alertPrevious=MaintAlerts.CreateAlert(maintItem,AlertType.MaintenanceDueSoon,2,_dateToday);
+			alertPrevious.AlertItemNum=41;
+			Assert.AreEqual("2026-11-02",alertPrevious.ItemValue);
+			MaintAlerts.SyncPlan syncPlan=MaintAlerts.GetSyncPlan(listWanted,new List<AlertItem> { alertPrevious });
+			Assert.AreEqual(0,syncPlan.ListUpdates.Count,"Not updated in place: its read mark must not carry over to the new occurrence.");
+			CollectionAssert.AreEqual(new long[] { 41 },syncPlan.ListAlertItemNumsDeleted,"Deleted, with its read marks (AlertItems.Delete).");
+			Assert.AreEqual(1,syncPlan.ListInserts.Count);
+			Assert.AreEqual("2026-11-09",syncPlan.ListInserts[0].ItemValue,"Inserted, so it is unread.");
+			Assert.AreEqual(0,syncPlan.ListInserts[0].AlertItemNum);
 		}
 
 		[TestMethod]

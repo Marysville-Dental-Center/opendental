@@ -232,10 +232,18 @@ Reminders use the program's alert system (`alertitem`, the Alerts menu of the ma
   alert; the board shows it.
 - `FKey` is the MaintItemNum, `ClinicNum` -1 (every clinic), severity Low for due soon and High for overdue, actions Mark As Read and Open
   Form, `FormToOpen` FormType 127 FormMaintenanceBoard (opens the board; `alertitem.FormToOpen` is `tinyint(4)` too). There is no Delete action: the alert goes away by itself.
-- **Without duplicates**: `MaintAlerts.Sync` works out the wanted set (one per item, type and recipient) and compares it with the existing
-  maintenance alerts: a wanted alert that exists is kept (its text is updated in place, so its read state survives), a missing one is added,
-  extra copies of one alert (two workstations syncing at the same moment) are deleted, and alerts no longer wanted (recorded, hidden,
-  reassigned, moved from due soon to overdue) are deleted with their read marks. Running it again changes nothing.
+- **One reminder per due date**: `ItemValue` holds the due date the alert is about, as `yyyy-MM-dd` (the same on every workstation, whatever
+  its culture or language). It is part of the alert's identity; the user does not see it (no Show Item Value action). So each occurrence gets
+  a reminder of its own: when a completion is recorded and the next due date is already within the lead time (always the case when the
+  interval is not longer than the lead time, for example a weekly or weekday item with the default lead time of 7 days), the old alert is
+  deleted with its read marks and a new, unread one is added. The Alerts menu then shows it as new.
+- **Without duplicates**: `MaintAlerts.Sync` works out the wanted set (one per item, type and recipient, for the item's current due date)
+  and compares it with the existing maintenance alerts, matched on type, item (`FKey`), recipient (`UserNum`) and due date (`ItemValue`),
+  never on the description, which depends on the workstation's culture and language. A wanted alert that exists is kept; when only its text
+  or options differ (a renamed item, or a description written by a workstation in another culture) it is updated in place, so its read state
+  survives. A missing one is added, extra copies of one alert (two workstations syncing at the same moment) are deleted, and alerts no
+  longer wanted (recorded, so the due date moved on; hidden; reassigned; moved from due soon to overdue) are deleted with their read marks.
+  Running it again changes nothing.
 - When: every 10 minutes on each workstation (a thread of the main window), right after a completion is recorded, and after an item is
   saved.
 

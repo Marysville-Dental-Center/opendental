@@ -6,10 +6,12 @@ using System.Linq;
 
 namespace OpenPmsDentalBusiness {
 	///<summary>Keeps the maintenance alerts (AlertType MaintenanceDueSoon and MaintenanceOverdue) equal to what the items' status calls for: one
-	///alert per item, type and recipient. The recipient is the assigned user, or each user of the assigned user group; the alert carries the
-	///recipient's UserNum, so it reaches that user whatever alert categories they subscribe to, and only that user. An item without an assignee, a
-	///hidden item and an item that is not due soon or overdue have none. Sync can run on several workstations at once: the next run deletes any
-	///duplicate it finds, and running it again changes nothing.</summary>
+	///alert per item, type and recipient, for the item's current due date. The recipient is the assigned user, or each user of the assigned user
+	///group; the alert carries the recipient's UserNum, so it reaches that user whatever alert categories they subscribe to, and only that user.
+	///An item without an assignee, a hidden item and an item that is not due soon or overdue have none. The due date is part of an alert's
+	///identity (ItemValue, yyyy-MM-dd): a new due date (the next occurrence, once one is recorded) is a new reminder, inserted unread, and the
+	///alert of the old one goes with its read marks. Sync can run on several workstations at once: the next run deletes any duplicate it finds,
+	///and running it again changes nothing.</summary>
 	public static class MaintAlerts {
 		///<summary>The alert types this class owns.</summary>
 		public static readonly AlertType[] ArrayAlertTypes={ AlertType.MaintenanceDueSoon,AlertType.MaintenanceOverdue };
@@ -20,9 +22,10 @@ namespace OpenPmsDentalBusiness {
 		public class SyncPlan {
 			///<summary>Wanted alerts that did not exist.</summary>
 			public List<AlertItem> ListInserts=new List<AlertItem>();
-			///<summary>Existing alerts kept, whose text or options changed (updated in place, so their read marks survive).</summary>
+			///<summary>Existing alerts kept whose due date is the same but whose text or options changed, for example a renamed item (updated in
+			///place, so their read marks survive).</summary>
 			public List<AlertItem> ListUpdates=new List<AlertItem>();
-			///<summary>Existing alerts no longer wanted, and extra copies of a wanted one.</summary>
+			///<summary>Existing alerts no longer wanted (including the alert of an earlier due date), and extra copies of a wanted one.</summary>
 			public List<long> ListAlertItemNumsDeleted=new List<long>();
 
 			public bool IsChanging {
@@ -31,7 +34,9 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		#region Pure logic
-		///<summary>The alert for one item, type and recipient.</summary>
+		///<summary>The alert for one item, type, recipient and due date. ItemValue holds the due date as yyyy-MM-dd, the same on every workstation
+		///whatever its culture or language, so that GetSyncPlan can tell a new due date from a new text. The user does not see it: the alert has no
+		///ShowItemValue action.</summary>
 		public static AlertItem CreateAlert(MaintItem maintItem,AlertType alertType,long userNum,DateTime dateDue) {
 			AlertItem alertItem=new AlertItem();
 			alertItem.Type=alertType;
@@ -41,7 +46,7 @@ namespace OpenPmsDentalBusiness {
 			alertItem.Actions=ActionType.MarkAsRead | ActionType.OpenForm;//No Delete: the alert would only come back. It goes away when the item is done.
 			alertItem.FormToOpen=FormType.FormMaintenanceBoard;
 			alertItem.Severity=alertType==AlertType.MaintenanceOverdue ? SeverityType.High : SeverityType.Low;
-			alertItem.ItemValue="";
+			alertItem.ItemValue=MaintValues.DateToDb(dateDue);
 			string name=maintItem.ItemName??"";
 			if(name.Length>MAX_NAME_LENGTH) {
 				name=name.Substring(0,MAX_NAME_LENGTH);
@@ -83,16 +88,19 @@ namespace OpenPmsDentalBusiness {
 			return listAlertItems;
 		}
 
-		///<summary>What to change so that the existing maintenance alerts equal the wanted ones, matched by type, item (FKey) and recipient (UserNum).
-		///A match is kept (the oldest copy) and updated only when its text or options differ; other copies of it are deleted; wanted alerts with no
-		///match are inserted; existing ones nobody wants are deleted. Alerts of other types must not be passed in.</summary>
+		///<summary>What to change so that the existing maintenance alerts equal the wanted ones, matched by type, item (FKey), recipient (UserNum) and
+		///due date (ItemValue). A match is kept (the oldest copy) and updated only when its text or options differ, for example after a rename, so
+		///its read marks survive; other copies of it are deleted; wanted alerts with no match are inserted; existing ones nobody wants are deleted.
+		///So when the due date moves on to the next occurrence, the old alert is deleted with its read marks and the new one is inserted unread, even
+		///when the item stays due soon. The match never looks at Description, which depends on the workstation's culture and language. Alerts of
+		///other types must not be passed in.</summary>
 		public static SyncPlan GetSyncPlan(List<AlertItem> listAlertItemsWanted,List<AlertItem> listAlertItemsExisting) {
 			SyncPlan syncPlan=new SyncPlan();
 			List<AlertItem> listExisting=listAlertItemsExisting.OrderBy(x => x.AlertItemNum).ToList();
 			HashSet<long> setKept=new HashSet<long>();
 			foreach(AlertItem alertItemWanted in listAlertItemsWanted) {
 				List<AlertItem> listMatches=listExisting.FindAll(x => x.Type==alertItemWanted.Type && x.FKey==alertItemWanted.FKey
-					&& x.UserNum==alertItemWanted.UserNum && !setKept.Contains(x.AlertItemNum));
+					&& x.UserNum==alertItemWanted.UserNum && (x.ItemValue??"")==(alertItemWanted.ItemValue??"") && !setKept.Contains(x.AlertItemNum));
 				if(listMatches.Count==0) {
 					syncPlan.ListInserts.Add(alertItemWanted);
 					continue;
@@ -106,7 +114,6 @@ namespace OpenPmsDentalBusiness {
 					alertItemUpdated.Actions=alertItemWanted.Actions;
 					alertItemUpdated.FormToOpen=alertItemWanted.FormToOpen;
 					alertItemUpdated.ClinicNum=alertItemWanted.ClinicNum;
-					alertItemUpdated.ItemValue=alertItemWanted.ItemValue;
 					syncPlan.ListUpdates.Add(alertItemUpdated);
 				}
 			}
@@ -114,13 +121,13 @@ namespace OpenPmsDentalBusiness {
 			return syncPlan;
 		}
 
+		///<summary>True when two matching alerts (same type, item, recipient and due date) also have the same text and options.</summary>
 		private static bool IsSame(AlertItem alertItem,AlertItem alertItemOther) {
 			return alertItem.Description==alertItemOther.Description
 				&& alertItem.Severity==alertItemOther.Severity
 				&& alertItem.Actions==alertItemOther.Actions
 				&& alertItem.FormToOpen==alertItemOther.FormToOpen
-				&& alertItem.ClinicNum==alertItemOther.ClinicNum
-				&& (alertItem.ItemValue??"")==(alertItemOther.ItemValue??"");
+				&& alertItem.ClinicNum==alertItemOther.ClinicNum;
 		}
 		#endregion Pure logic
 
