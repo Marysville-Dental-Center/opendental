@@ -287,6 +287,7 @@ The connections:
 | `FormOpenDental.CheckProgramVersionsReportandReadOnly`, `CheckCorruptedReportandRead`, `CheckUpdateInProgressReportandRead` (start-up) | main's arguments again, built by `BuildPreferenceServerConnectionString` (only when the preference names a server). |
 | The set-up windows' database lists (`FormReportSetup`, `UserControlServerConnections`, `UserControlEnterpriseReports`) | `DataConnection.CreateForPreferenceServer` with the window's CA field (Enterprise reports: the reporting server's CA preference), never this computer's client certificate. On main they took the main connection's CA by default. |
 | `DataConnectionCancelable` (user queries on the reporting server, cancellable) | `NewMySqlConnectionWithoutPooling`: the registered string keeps its exemption; only `Pooling` is changed. |
+| The Connection Lost window (`FormOpenDentalThreads.BeginDataConnectionLostThread`), for a connection lost on any thread | only tests the lost connection (`DataConnection.TestConnectionString`, the check `StartConnectionErrorRetry` runs). Upstream's `SetDb(e.ConnectionString)` made the lost string the main (static) connection, so a lost read-only or reporting connection became the connection of every thread without a context of its own; the window's thread keeps its context too, from which its exit handler starts the program's threads again (`SetThreads`). `DataConnection.SetDb(string)` refuses a registered string (`DbConnectionRefusedException`, before any connection). |
 
 The safety points:
 
@@ -307,7 +308,11 @@ The safety points:
   so they never equal one (the builder of preference servers writes only `none` or `VerifyCA`). A `ConnectionString` element in
   `FreeDentalConfig.xml` that is exactly such a string is still refused for a server over the network (`GetConnectionStringProblem`,
   before it is used), and `IsPreferenceServer` can never come from a file (`XmlIgnore`, no public setter). Only marked connections under
-  the two preference names are connected this way, and only on their own thread.
+  the two preference names are connected this way, and only on their own thread: nothing sets the main (static) connection to such a
+  string. `ConnectionStoreBase.SetDb` refuses a marked connection, `DataConnection.SetDb(string)` refuses a registered string (as the main
+  string or as its lower user's), and the Connection Lost window only tests a lost connection (`TestConnectionString`) without setting the
+  main connection or its own thread's context. The `SetDb` overload with server, database and user builds with `BuildSimpleConnectionString`
+  and is under the rule.
 
 Tests: `tests/DbConnectionSecurityTests/PreferenceServerTests.cs`, `PreferenceServerDatabaseTests.cs` (the local MariaDB, scratch
 databases `test_dbsec_*`).
@@ -356,6 +361,7 @@ server of its own (section 5.1).
 | Reports (`ReportsComplex.RunFuncOnReportServer`, `RunFuncOnReadOnlyServer`, `DataConnectionCancelable`, ODR, the RDL hook) with no read-only or reporting server preference | yes | Rule: the main connection (`ConnectionStore`'s unmarked connection). |
 | The same with a server in the read-only or reporting preference | yes | As before (section 5.1): `ConnectionStore` marks it, `ConnectionStoreBase.SetDbT` connects it with its own server, user, password and CA preference. The ODR and RDL connections of such a thread reuse its string, which passes as registered. |
 | Start-up checks of those servers (`FormOpenDental`: program version, corrupted database, update in progress) and their set-up windows' database lists | yes | As before (section 5.1). |
+| The Connection Lost window (`FormOpenDentalThreads.BeginDataConnectionLostThread`) | yes | Tests the lost connection only (`TestConnectionString`); never sets the main connection, so a lost read-only or reporting connection stays on its own thread (section 5.1). |
 | `OpenPmsDental.exe` (eCW diagnostics, RDL allocators, self-update) | yes | Rule. The eCW diagnostics build `Server=`+the eCW server property with `SslMode=none`, so they reach a loopback eCW database only. |
 | Backup to another server (`FormBackup`'s archive tab, `MiscData.MakeABackup(serverName,user,pass)`) | yes | Rule, with the user and password typed there and this computer's office CA and certificate. |
 | `ODR.dll` | yes | The program's string (the thread's), or `DbConnectionConfig` + `BuildSimpleConnectionString`. |
