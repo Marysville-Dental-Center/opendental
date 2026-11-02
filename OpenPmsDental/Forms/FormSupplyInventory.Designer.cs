@@ -34,6 +34,8 @@ namespace OpenPmsDental {
 			this.label3 = new System.Windows.Forms.Label();
 			this.label4 = new System.Windows.Forms.Label();
 			this.menuMain = new OpenPmsDental.UI.MenuOD();
+			this.butStockCount = new OpenPmsDental.UI.Button();
+			this.labelStockCount = new System.Windows.Forms.Label();
 			this.SuspendLayout();
 			// 
 			// gridMain
@@ -41,9 +43,9 @@ namespace OpenPmsDental {
 			this.gridMain.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.gridMain.Location = new System.Drawing.Point(12, 155);
+			this.gridMain.Location = new System.Drawing.Point(12, 185);
 			this.gridMain.Name = "gridMain";
-			this.gridMain.Size = new System.Drawing.Size(450, 439);
+			this.gridMain.Size = new System.Drawing.Size(450, 409);
 			this.gridMain.TabIndex = 4;
 			this.gridMain.Title = "Supplies Needed";
 			this.gridMain.TranslationName = "TableSupplies";
@@ -132,7 +134,7 @@ namespace OpenPmsDental {
 			// 
 			// label4
 			// 
-			this.label4.Location = new System.Drawing.Point(12, 123);
+			this.label4.Location = new System.Drawing.Point(12, 153);
 			this.label4.Name = "label4";
 			this.label4.Size = new System.Drawing.Size(450, 29);
 			this.label4.TabIndex = 28;
@@ -147,11 +149,31 @@ namespace OpenPmsDental {
 			this.menuMain.Name = "menuMain";
 			this.menuMain.Size = new System.Drawing.Size(474, 24);
 			this.menuMain.TabIndex = 29;
-			// 
+			//
+			// butStockCount
+			//
+			this.butStockCount.Location = new System.Drawing.Point(12, 117);
+			this.butStockCount.Name = "butStockCount";
+			this.butStockCount.Size = new System.Drawing.Size(80, 24);
+			this.butStockCount.TabIndex = 16;
+			this.butStockCount.Text = "Stock Count";
+			this.butStockCount.Click += new System.EventHandler(this.butStockCount_Click);
+			//
+			// labelStockCount
+			//
+			this.labelStockCount.Location = new System.Drawing.Point(98, 114);
+			this.labelStockCount.Name = "labelStockCount";
+			this.labelStockCount.Size = new System.Drawing.Size(364, 32);
+			this.labelStockCount.TabIndex = 30;
+			this.labelStockCount.Text = "No stock count is open.";
+			this.labelStockCount.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
 			// FormSupplyInventory
 			// 
 			this.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
 			this.ClientSize = new System.Drawing.Size(474, 638);
+			this.Controls.Add(this.labelStockCount);
+			this.Controls.Add(this.butStockCount);
 			this.Controls.Add(this.label4);
 			this.Controls.Add(this.label3);
 			this.Controls.Add(this.label2);
@@ -182,5 +204,7 @@ namespace OpenPmsDental {
 		private System.Windows.Forms.Label label3;
 		private System.Windows.Forms.Label label4;
 		private UI.MenuOD menuMain;
+		private UI.Button butStockCount;
+		private System.Windows.Forms.Label labelStockCount;
 	}
 }

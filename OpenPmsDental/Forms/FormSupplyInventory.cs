@@ -27,6 +27,7 @@ namespace OpenPmsDental {
 		private void FormInventory_Load(object sender,EventArgs e) {
 			LayoutMenu();
 			FillGridNeeded();
+			FillStockCount();
 		}
 		private void LayoutMenu() {
 			menuMain.BeginUpdate();
@@ -66,8 +67,39 @@ namespace OpenPmsDental {
 		}
 
 		private void menuItemStockCount_Click(object sender,EventArgs e) {
+			OpenStockCount();
+		}
+
+		private void butStockCount_Click(object sender,EventArgs e) {
+			OpenStockCount();
+		}
+
+		///<summary>The Stock Count window, which resumes the office's open count if there is one (docs/specs/inventory-tracking.md, 3.5).</summary>
+		private void OpenStockCount() {
 			using FormSupplyCount formSupplyCount=new FormSupplyCount();
 			formSupplyCount.ShowDialog();
+			FillStockCount();
+		}
+
+		///<summary>Shows whether a stock count is open (saved while it is counted; any user can resume it): who started it, when, how many lines, and
+		///whether its post runs or did not finish. The Stock Count button then reads Resume Count.</summary>
+		private void FillStockCount() {
+			string description=null;
+			try {
+				if(InventoryTracking.IsInstalled()) {
+					description=InventoryTracking.GetOpenCountDescription();
+				}
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//A database without the count tables: the window works as before.
+			}
+			if(description==null) {
+				labelStockCount.Text=Lan.g(this,"No stock count is open.");
+				butStockCount.Text=Lan.g(this,"Stock Count");
+				return;
+			}
+			labelStockCount.Text=description;
+			butStockCount.Text=Lan.g(this,"Resume Count");
 		}
 
 		private void menuItemAwaitingMaterials_Click(object sender,EventArgs e) {

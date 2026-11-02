@@ -1,4 +1,5 @@
-// Inventory tracking (docs/specs/inventory-tracking.md): a periodic stock count, by scanning and counting, posted as count adjustments.
+// Inventory tracking (docs/specs/inventory-tracking.md, 2.7 and 3.5): a periodic stock count, by scanning and counting, saved line by line and
+// posted as count adjustments.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -9,11 +10,17 @@ using OpenPmsDental.UI;
 using OpenPmsDentalBusiness;
 
 namespace OpenPmsDental {
-	///<summary>Supply Inventory, Inventory, Stock Count. Items are added by scanning or from the supply list; for supplies tracked by lot there is
-	///one row per lot. Each row keeps the quantity the program had when it was added, so procedures completed during the count are not counted
-	///twice. Post (Inventory Adjust) writes the differences with the reason. The count is kept only while the window is open.</summary>
+	///<summary>Supply Inventory, Inventory, Stock Count. Shows the office's open count, if there is one, for any user, and saves every counted row
+	///at once (InventoryTracking.SaveCountLine), so a closed window, a crash or a power cut loses nothing and the count is resumed where it was.
+	///Items are added by scanning or from the supply list; for supplies tracked by lot there is one row per lot. A saved line keeps the program's
+	///quantity of the moment it was counted, so procedures completed during the count are not counted twice. Post (Inventory Adjust) writes the
+	///differences with the reason and closes the count; Discard (Inventory Adjust) closes it without changing stock.</summary>
 	public partial class FormSupplyCount:FormODBase {
+		///<summary>The office's open count, or null while none is open: the first counted row starts one.</summary>
+		private SupplyCount _supplyCount;
 		private List<CountRow> _listCountRows=new List<CountRow>();
+		///<summary>True when nothing can be counted here: the count's post runs elsewhere or did not finish, or the count could not be read.</summary>
+		private bool _isReadOnly;
 
 		private class CountRow {
 			public Supply Supply;
@@ -22,7 +29,9 @@ namespace OpenPmsDental {
 			public DateTime DateExpiry;
 			public double QtyProgram;
 			public double QtyCounted;
+			///<summary>True for a saved line of the open count (SupplyCountLineNum). A row not counted yet is only in this window.</summary>
 			public bool IsCounted;
+			public long SupplyCountLineNum;
 		}
 
 		public FormSupplyCount() {
@@ -32,19 +41,123 @@ namespace OpenPmsDental {
 		}
 
 		private void FormSupplyCount_Load(object sender,EventArgs e) {
+			if(!LoadCount()) {
+				SetReadOnly();
+			}
+			else if(_supplyCount!=null && _supplyCount.CountStatus==SupplyCountStatus.Posting) {
+				ResumePosting();
+			}
 			FillGrid();
 			textScan.Select();
+		}
+
+		///<summary>Reads the open count and its saved lines again (other workstations' too) and merges them into the rows: a saved line updates its
+		///row, a row whose line is gone (removed elsewhere, or the count was closed) is no longer counted, and a line this window has no row for
+		///gets one after the other rows of its supply. Rows not counted yet stay. Returns false, after a message, when the count could not be read.
+		///</summary>
+		private bool LoadCount() {
+			List<SupplyCountLine> listSupplyCountLines;
+			List<Supply> listSupplies;
+			try {
+				_supplyCount=InventoryTracking.GetOpenCount();
+				listSupplyCountLines=_supplyCount==null ? new List<SupplyCountLine>() : InventoryTracking.GetSavedCountLines(_supplyCount.SupplyCountNum);
+				listSupplies=Supplies.GetMany(listSupplyCountLines.Select(x => x.SupplyNum).Distinct()
+					.Where(x => !_listCountRows.Any(y => y.Supply.SupplyNum==x)).ToList());
+			}
+			catch(Exception ex) {
+				MessageBox.Show(this,Lan.g(this,"The stock count could not be read")+": "+ex.Message);
+				return false;
+			}
+			List<SupplyCountLine> listLinesLeft=new List<SupplyCountLine>(listSupplyCountLines);
+			foreach(CountRow countRow in _listCountRows) {
+				SupplyCountLine supplyCountLine=listLinesLeft.Find(x => IsRowOfLine(countRow,x));
+				if(supplyCountLine==null) {
+					countRow.IsCounted=false;
+					countRow.QtyCounted=0;
+					countRow.SupplyCountLineNum=0;
+					continue;
+				}
+				listLinesLeft.Remove(supplyCountLine);
+				ApplyLine(countRow,supplyCountLine);
+			}
+			foreach(SupplyCountLine supplyCountLine in listLinesLeft) {
+				Supply supply=_listCountRows.Select(x => x.Supply).FirstOrDefault(x => x.SupplyNum==supplyCountLine.SupplyNum)
+					??listSupplies.Find(x => x.SupplyNum==supplyCountLine.SupplyNum)
+					??new Supply { SupplyNum=supplyCountLine.SupplyNum,Descript=Lan.g(this,"(deleted supply)") };
+				CountRow countRow=new CountRow { Supply=supply };
+				ApplyLine(countRow,supplyCountLine);
+				int indexLast=_listCountRows.FindLastIndex(x => x.Supply.SupplyNum==supply.SupplyNum);
+				_listCountRows.Insert(indexLast<0 ? _listCountRows.Count : indexLast+1,countRow);
+			}
+			return true;
+		}
+
+		///<summary>True when the row is the saved line's supply and lot: the same lot, or the same lot number for a lot found in the count (also once
+		///the line became the lot it names, when the lot was received meanwhile).</summary>
+		private static bool IsRowOfLine(CountRow countRow,SupplyCountLine supplyCountLine) {
+			if(countRow.Supply.SupplyNum!=supplyCountLine.SupplyNum) {
+				return false;
+			}
+			if(countRow.SupplyLotNum==supplyCountLine.SupplyLotNum) {
+				return supplyCountLine.SupplyLotNum!=0 || string.Equals(countRow.LotNumber.Trim(),(supplyCountLine.LotNumber??"").Trim(),StringComparison.OrdinalIgnoreCase);
+			}
+			return countRow.SupplyLotNum==0 && countRow.LotNumber.Trim()!=""
+				&& string.Equals(countRow.LotNumber.Trim(),(supplyCountLine.LotNumber??"").Trim(),StringComparison.OrdinalIgnoreCase);
+		}
+
+		private static void ApplyLine(CountRow countRow,SupplyCountLine supplyCountLine) {
+			countRow.SupplyLotNum=supplyCountLine.SupplyLotNum;
+			countRow.LotNumber=supplyCountLine.LotNumber??"";
+			countRow.DateExpiry=supplyCountLine.DateExpiry;
+			countRow.QtyProgram=supplyCountLine.QtyProgram;
+			countRow.QtyCounted=supplyCountLine.QtyCounted;
+			countRow.IsCounted=true;
+			countRow.SupplyCountLineNum=supplyCountLine.SupplyCountLineNum;
+		}
+
+		///<summary>The open count is Posting: its post runs on another workstation, or did not finish (a crash, a lost connection). Offers to resume
+		///it (InventoryTracking.ResumeCount), which reads every line's program quantity again from the ledger; otherwise nothing can be counted here.
+		///</summary>
+		private void ResumePosting() {
+			string description=InventoryTracking.GetOpenCountDescription()??"";
+			if(!MsgBox.Show(MsgBoxButtons.OKCancel,description+"\r\n\r\n"+Lan.g(this,"Resume the count? Each line's program quantity is read again "
+				+"from the ledger, so posting again writes only what still differs.")))
+			{
+				SetReadOnly();
+				return;
+			}
+			try {
+				InventoryTracking.ResumeCount(_supplyCount.SupplyCountNum);
+			}
+			catch(Exception ex) {
+				MessageBox.Show(this,ex.Message);
+				SetReadOnly();
+				return;
+			}
+			if(!LoadCount()) {
+				SetReadOnly();
+			}
+		}
+
+		private void SetReadOnly() {
+			_isReadOnly=true;
+			textScan.Enabled=false;
+			butAdd.Enabled=false;
+			butNewLot.Enabled=false;
+			butRemove.Enabled=false;
+			butPost.Enabled=false;
+			butDiscard.Enabled=false;
 		}
 
 		private void FillGrid() {
 			int indexSelected=gridMain.GetSelectedIndex();
 			gridMain.BeginUpdate();
 			gridMain.Columns.Clear();
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Supply"),260));
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Lot"),110));
+			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Supply"),300));
+			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Lot"),120));
 			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Expires"),75));
 			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Program"),65,HorizontalAlignment.Center));
-			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Counted"),65,HorizontalAlignment.Center,isEditable:true));
+			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Counted"),65,HorizontalAlignment.Center,isEditable:!_isReadOnly));
 			gridMain.Columns.Add(new GridColumn(Lan.g(this,"Difference"),70,HorizontalAlignment.Center));
 			gridMain.ListGridRows.Clear();
 			foreach(CountRow countRow in _listCountRows) {
@@ -63,11 +176,21 @@ namespace OpenPmsDental {
 			if(indexSelected>=0 && indexSelected<gridMain.ListGridRows.Count) {
 				gridMain.SetSelected(new System.Drawing.Point(COL_SUPPLY,indexSelected));
 			}
-			labelCount.Text=_listCountRows.Count(x => x.IsCounted)+" "+Lan.g(this,"of")+" "+_listCountRows.Count+" "+Lan.g(this,"rows counted");
+			string text=_listCountRows.Count(x => x.IsCounted)+" "+Lan.g(this,"of")+" "+_listCountRows.Count+" "+Lan.g(this,"rows counted.")+" ";
+			if(_supplyCount==null) {
+				text+=Lan.g(this,"Each counted row is saved as soon as it is entered.");
+			}
+			else {
+				text+=Lan.g(this,"Count started by")+" "+Userods.GetName(_supplyCount.UserNum)+" "+Lan.g(this,"on")+" "+_supplyCount.DateTimeEntry.ToShortDateString()+" "
+					+_supplyCount.DateTimeEntry.ToShortTimeString()+"; "+Lan.g(this,"every counted row is saved, so it can be closed and resumed.");
+			}
+			labelCount.Text=text;
 		}
 
 		///<summary>Rows are selected in the Supply column, never in the Counted one: an edit box there would take the scanner's digits.</summary>
 		private const int COL_SUPPLY=0;
+		///<summary>The editable column.</summary>
+		private const int COL_COUNTED=4;
 
 		///<summary>Selects the row in the Supply column (no edit box) and puts the keyboard back in the Scan box once the grid is drawn.</summary>
 		private void SelectRowAndScanBox(int index) {
@@ -81,7 +204,8 @@ namespace OpenPmsDental {
 
 		///<summary>Adds the rows of the supply that are not in the grid yet, with the quantities the program has now, from the ledger
 		///(InventoryTracking.GetCountLines): one row per lot whose stock is not 0, negative lots too, so the count can correct them, and one for stock
-		///without a lot when there is some, or when the supply is not tracked by lot, or has no such lot.</summary>
+		///without a lot when there is some, or when the supply is not tracked by lot, or has no such lot. They are saved once they are counted.
+		///</summary>
 		private void AddRowsForSupply(Supply supply) {
 			if(_listCountRows.Any(x => x.Supply.SupplyNum==supply.SupplyNum)) {
 				return;
@@ -90,6 +214,29 @@ namespace OpenPmsDental {
 				_listCountRows.Add(new CountRow { Supply=supply,SupplyLotNum=supplyCountLine.SupplyLotNum,LotNumber=supplyCountLine.LotNumber??"",
 					DateExpiry=supplyCountLine.DateExpiry,QtyProgram=supplyCountLine.QtyProgram });
 			}
+		}
+
+		///<summary>Saves the row at once as a counted line of the open count (InventoryTracking.SaveCountLine, which starts a count when none is
+		///open): qty replaces its counted quantity, or with isAdded (a scan) is added to it. The line gets the program's quantity of this moment.
+		///Then reads the count again. Returns false when it was not saved (a message says why; another workstation posted or discarded the count).
+		///</summary>
+		private bool SaveRow(CountRow countRow,double qty,bool isAdded) {
+			SupplyCountLine supplyCountLine=new SupplyCountLine();
+			supplyCountLine.SupplyNum=countRow.Supply.SupplyNum;
+			supplyCountLine.SupplyLotNum=countRow.SupplyLotNum;
+			supplyCountLine.LotNumber=countRow.LotNumber;
+			supplyCountLine.DateExpiry=countRow.DateExpiry;
+			supplyCountLine.QtyCounted=qty;
+			try {
+				ApplyLine(countRow,InventoryTracking.SaveCountLine(supplyCountLine,isAdded));
+			}
+			catch(Exception ex) {
+				MessageBox.Show(this,ex.Message);
+				LoadCount();
+				return false;
+			}
+			LoadCount();
+			return true;
 		}
 
 		private void textScan_KeyDown(object sender,KeyEventArgs e) {
@@ -118,30 +265,49 @@ namespace OpenPmsDental {
 			}
 			countRow=countRow??_listCountRows.FirstOrDefault(x => x.Supply.SupplyNum==supply.SupplyNum && x.QtyProgram>0)
 				??_listCountRows.First(x => x.Supply.SupplyNum==supply.SupplyNum);
-			countRow.QtyCounted=Math.Round((countRow.IsCounted ? countRow.QtyCounted : 0)+1,2);
-			countRow.IsCounted=true;
+			SaveRow(countRow,1,isAdded:true);//One more of it, added to the saved line in the same statement.
 			FillGrid();
 			SelectRowAndScanBox(_listCountRows.IndexOf(countRow));
 		}
 
 		private void gridMain_CellLeave(object sender,ODGridClickEventArgs e) {
-			if(e.Col!=4 || e.Row<0 || e.Row>=_listCountRows.Count) {
+			if(e.Col!=COL_COUNTED || e.Row<0 || e.Row>=_listCountRows.Count || _isReadOnly) {
 				return;
 			}
 			CountRow countRow=_listCountRows[e.Row];
-			string text=gridMain.ListGridRows[e.Row].Cells[4].Text.Trim();
+			string text=gridMain.ListGridRows[e.Row].Cells[COL_COUNTED].Text.Trim();
 			if(text=="") {
-				countRow.IsCounted=false;
-				countRow.QtyCounted=0;
+				if(countRow.IsCounted) {
+					DeleteLine(countRow);
+				}
 			}
 			else if(!double.TryParse(text,NumberStyles.Number,CultureInfo.CurrentCulture,out double qty) || qty<0) {
 				MsgBox.Show(this,"Please enter a quantity of 0 or more.");
 			}
+			else if(countRow.IsCounted && Math.Round(qty,2)==Math.Round(countRow.QtyCounted,2)) {
+				//Unchanged: the line keeps its snapshot.
+			}
 			else if(MaterialsUsedL.IsQtyAccepted(this,qty,Math.Max(MaterialsUsedL.QTY_ASK_STOCK,Math.Round(countRow.QtyProgram*10,2)))) {
-				countRow.QtyCounted=Math.Round(qty,2);
-				countRow.IsCounted=true;
+				SaveRow(countRow,Math.Round(qty,2),isAdded:false);
 			}
 			FillGrid();
+		}
+
+		///<summary>Removes the row's saved line from the open count; the row stays, not counted. Returns false when it could not be removed.</summary>
+		private bool DeleteLine(CountRow countRow) {
+			try {
+				InventoryTracking.DeleteCountLine(countRow.SupplyCountLineNum);
+			}
+			catch(Exception ex) {
+				MessageBox.Show(this,ex.Message);
+				LoadCount();
+				return false;
+			}
+			countRow.IsCounted=false;
+			countRow.QtyCounted=0;
+			countRow.SupplyCountLineNum=0;
+			LoadCount();
+			return true;
 		}
 
 		private void butAdd_Click(object sender,EventArgs e) {
@@ -193,6 +359,7 @@ namespace OpenPmsDental {
 					}
 					countRow.DateExpiry=dateExpiry.Date;
 				}
+				//Saved once it is counted (scan or type its quantity), like every other row.
 				_listCountRows.Insert(index+1,countRow);
 			}
 			FillGrid();
@@ -205,7 +372,12 @@ namespace OpenPmsDental {
 				MsgBox.Show(this,"Please select a row first.");
 				return;
 			}
-			_listCountRows.RemoveAt(index);
+			CountRow countRow=_listCountRows[index];
+			if(countRow.IsCounted && !DeleteLine(countRow)) {
+				FillGrid();
+				return;
+			}
+			_listCountRows.Remove(countRow);
 			FillGrid();
 		}
 
@@ -213,8 +385,7 @@ namespace OpenPmsDental {
 			if(!Security.IsAuthorized(EnumPermType.InventoryAdjust)) {
 				return;
 			}
-			List<CountRow> listCounted=_listCountRows.FindAll(x => x.IsCounted);
-			if(listCounted.Count==0) {
+			if(_supplyCount==null || !_listCountRows.Any(x => x.IsCounted)) {
 				MsgBox.Show(this,"Nothing is counted yet.");
 				return;
 			}
@@ -222,57 +393,54 @@ namespace OpenPmsDental {
 				MsgBox.Show(this,"Please enter a reason, for example \"Quarterly count\".");
 				return;
 			}
-			List<SupplyCountLine> listSupplyCountLines=listCounted.Select(x => new SupplyCountLine { SupplyNum=x.Supply.SupplyNum,SupplyLotNum=x.SupplyLotNum,
-				LotNumber=x.LotNumber,DateExpiry=x.DateExpiry,QtyProgram=x.QtyProgram,QtyCounted=x.QtyCounted }).ToList();
 			int countAdjusted;
 			try {
-				countAdjusted=InventoryTracking.PostCount(listSupplyCountLines,textReason.Text);
+				countAdjusted=InventoryTracking.PostOpenCount(_supplyCount.SupplyCountNum,textReason.Text);
 			}
 			catch(Exception ex) {
-				//Some or all of it may be posted (a failure part-way, or the answer was lost). Read the program's quantity of each counted row again, so
-				//posting again writes only the difference that is still left.
-				ReloadQtyProgramAfterFailure(listCounted);
+				//Some or all of it may be posted (a failure part-way, or the answer was lost). The count was opened again with each line's program
+				//quantity read again from the ledger, so posting again writes only what still differs; read it again here.
+				if(!LoadCount()) {
+					SetReadOnly();
+				}
 				FillGrid();
 				MessageBox.Show(this,ex.Message+"\r\n\r\n"+Lan.g(this,"Part of the count may have been posted. The program's quantities were read again: posting again writes only what still differs."));
 				return;
 			}
 			_listCountRows.RemoveAll(x => x.IsCounted);
+			textReason.Text="";
+			LoadCount();
 			FillGrid();
 			MessageBox.Show(this,Lan.g(this,"Count posted. Rows adjusted")+": "+countAdjusted);
 		}
 
-		///<summary>After a failed post: each counted row's program quantity read again from the ledger (InventoryTracking.GetQtyProgram), never from
-		///the lot counter, which the failed post may have left at its old value; a lot found in the count that the post created is found by its number.
-		///When even that fails, Post is turned off until the window is opened again.</summary>
-		private void ReloadQtyProgramAfterFailure(List<CountRow> listCountRows) {
+		private void butDiscard_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.InventoryAdjust)) {
+				return;
+			}
+			if(_supplyCount==null) {
+				MsgBox.Show(this,"No stock count is open.");
+				return;
+			}
+			if(!MsgBox.Show(MsgBoxButtons.OKCancel,Lan.g(this,"Discard the open stock count with its")+" "+_listCountRows.Count(x => x.IsCounted)+" "
+				+Lan.g(this,"counted row(s)? Stock is not changed, and the count cannot be resumed afterwards.")))
+			{
+				return;
+			}
 			try {
-				foreach(CountRow countRow in listCountRows) {
-					if(countRow.SupplyLotNum==0 && countRow.LotNumber!="") {
-						SupplyLot supplyLotFound=SupplyLots.GetForSupply(countRow.Supply.SupplyNum,isEmptyIncluded:true)
-							.Find(x => string.Equals(x.LotNumber.Trim(),countRow.LotNumber.Trim(),StringComparison.OrdinalIgnoreCase));
-						if(supplyLotFound!=null) {
-							countRow.SupplyLotNum=supplyLotFound.SupplyLotNum;
-						}
-					}
-					if(countRow.SupplyLotNum!=0 || countRow.LotNumber=="") {
-						countRow.QtyProgram=InventoryTracking.GetQtyProgram(countRow.Supply.SupplyNum,countRow.SupplyLotNum);
-					}
-				}
+				InventoryTracking.DiscardOpenCount(_supplyCount.SupplyCountNum);
 			}
-			catch(Exception) {
-				_listCountRows.Clear();
-				butPost.Enabled=false;
-				butAdd.Enabled=false;
-				butNewLot.Enabled=false;
-				textScan.Enabled=false;
-				MsgBox.Show(this,"The stock could not be read again. Close this window and check the supplies in Stock before counting again.");
+			catch(Exception ex) {
+				MessageBox.Show(this,ex.Message);
 			}
+			_listCountRows.Clear();
+			textReason.Text="";
+			LoadCount();
+			FillGrid();
 		}
 
 		private void butClose_Click(object sender,EventArgs e) {
-			if(_listCountRows.Any(x => x.IsCounted) && !MsgBox.Show(this,MsgBoxButtons.OKCancel,"The count is not posted and will be lost. Close anyway?")) {
-				return;
-			}
+			//Every counted row is saved: the count stays open and is resumed from here or from Supply Inventory.
 			DialogResult=DialogResult.OK;
 		}
 	}
