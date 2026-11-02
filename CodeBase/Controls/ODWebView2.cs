@@ -305,7 +305,13 @@ namespace CodeBase.Controls {
 			if(isAllowed) {
 				return;
 			}
-			e.Response=this.CoreWebView2.Environment.CreateWebResourceResponse(null,403,"Blocked","");
+			try {
+				e.Response=this.CoreWebView2.Environment.CreateWebResourceResponse(null,403,"Blocked","");
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//The control is being disposed: nothing shows the page any more.
+				return;
+			}
 			if(isPageShown && WebView2Policy.IsRemoteUri(uri)) {
 				RaiseRemoteContentBlocked();
 			}
