@@ -209,6 +209,7 @@ function RunPrereq(const FileName, Params, Name: String): Boolean;
 var
   ResultCode: Integer;
   Path: String;
+  Started: Boolean;
 begin
   Result := False;
   Path := ExpandConstant('{tmp}\') + FileName;
@@ -221,13 +222,14 @@ begin
     ProgressPage.Show;
   end;
   try
-    if not Exec(Path, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode) then begin
-      AddPrereqWarning(Name + ': its installer could not be started (' + SysErrorMessage(ResultCode) + ').');
-      Exit;
-    end;
+    Started := Exec(Path, Params, '', SW_SHOW, ewWaitUntilTerminated, ResultCode);
   finally
     if not WizardSilent then
       ProgressPage.Hide;
+  end;
+  if not Started then begin
+    AddPrereqWarning(Name + ': its installer could not be started (' + SysErrorMessage(ResultCode) + ').');
+    Exit;
   end;
   Log(Name + ': installer exit code ' + IntToStr(ResultCode));
   { 0 done; 3010 and 1641 done, a restart is needed; 1638 a newer version is already installed. }
@@ -236,14 +238,21 @@ begin
     AddPrereqWarning(Name + ': its installer ended with code ' + IntToStr(ResultCode) + '.');
 end;
 
+{ Nested ifs, not "and": a component that is present must never be downloaded, whatever the boolean evaluation. }
 procedure InstallPrereqs;
 begin
-  if NeedVcRedist and DownloadPrereq(VcRedistUrl, VcRedistFile, VcRedistName) then
-    if RunPrereq(VcRedistFile, '/install /quiet /norestart', VcRedistName) then
-      NeedVcRedist := not IsVcRedistInstalled;
-  if NeedWebView2 and DownloadPrereq(WebView2Url, WebView2File, WebView2Name) then
-    if RunPrereq(WebView2File, '/silent /install', WebView2Name) then
-      NeedWebView2 := not IsWebView2Installed;
+  if NeedVcRedist then begin
+    if DownloadPrereq(VcRedistUrl, VcRedistFile, VcRedistName) then begin
+      if RunPrereq(VcRedistFile, '/install /quiet /norestart', VcRedistName) then
+        NeedVcRedist := not IsVcRedistInstalled;
+    end;
+  end;
+  if NeedWebView2 then begin
+    if DownloadPrereq(WebView2Url, WebView2File, WebView2Name) then begin
+      if RunPrereq(WebView2File, '/silent /install', WebView2Name) then
+        NeedWebView2 := not IsWebView2Installed;
+    end;
+  end;
   if NeedVcRedist then
     AddPrereqWarning(VcRedistName + ' is still missing. Install it from ' + VcRedistUrl);
   if NeedWebView2 then
