@@ -153,6 +153,19 @@ namespace LibraryUpdateTests {
 		}
 
 		[TestMethod]
+		public void SignIn_IsUserAndPass_EvenWhenSaslAndApopAreOffered() {
+			using(FakePop3Server fakePop3Server=new FakePop3Server(USER,PASSWORD,isTls:false)) {
+				fakePop3Server.IsSaslAndApopOffered=true;
+				fakePop3Server.AddMessage("u1",Message("pat@example.test",USER,"x","x\r\n"));
+				Run run=Download(MakeAddress(fakePop3Server.Port,false));
+				Assert.AreEqual(1,run.CountNew);
+				List<string> listCommands=fakePop3Server.GetCommands();
+				Assert.IsFalse(listCommands.Any(x => x.StartsWith("AUTH") || x.StartsWith("APOP")),string.Join(" | ",listCommands));
+				CollectionAssert.Contains(listCommands,"USER "+USER);
+			}
+		}
+
+		[TestMethod]
 		public void PlainServer_IsNotSpokenToWithTls() {
 			//UseSSL off means plain POP3 (port 110), as with OpenPop: no STLS is tried, and the fake server offers none.
 			using(FakePop3Server fakePop3Server=new FakePop3Server(USER,PASSWORD,isTls:false)) {

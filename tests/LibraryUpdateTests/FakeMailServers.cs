@@ -186,6 +186,9 @@ namespace LibraryUpdateTests {
 		private readonly string _password;
 		///<summary>UID and raw bytes of each message, message 1 first.</summary>
 		public List<KeyValuePair<string,byte[]>> ListMessages=new List<KeyValuePair<string,byte[]>>();
+		///<summary>Offer SASL (PLAIN, CRAM-MD5) and APOP (a timestamp in the greeting), which this server then refuses: a client that takes them
+		///fails. The program signs in with USER and PASS only, as OpenPop did.</summary>
+		public bool IsSaslAndApopOffered;
 
 		public FakePop3Server(string userName,string password,bool isTls) {
 			_userName=userName;
@@ -203,7 +206,7 @@ namespace LibraryUpdateTests {
 			if(_isTls) {
 				connection.StartTls();
 			}
-			connection.Write("+OK Fake POP3 server ready\r\n");
+			connection.Write(IsSaslAndApopOffered ? "+OK Fake POP3 server ready <1896.697170952@pop.example.test>\r\n" : "+OK Fake POP3 server ready\r\n");
 			string userGiven=null;
 			bool isSignedIn=false;
 			List<KeyValuePair<string,byte[]>> listMessages;
@@ -219,7 +222,7 @@ namespace LibraryUpdateTests {
 				string[] arrayParts=line.Split(' ');
 				string command=arrayParts[0].ToUpperInvariant();
 				if(command=="CAPA") {
-					connection.Write("+OK Capability list follows\r\nUSER\r\nUIDL\r\nTOP\r\n.\r\n");
+					connection.Write("+OK Capability list follows\r\nUSER\r\nUIDL\r\nTOP\r\n"+(IsSaslAndApopOffered ? "SASL PLAIN CRAM-MD5\r\n" : "")+".\r\n");
 				}
 				else if(command=="USER") {
 					userGiven=line.Substring(5);

@@ -1185,7 +1185,10 @@ namespace OpenPmsDentalBusiness {
 				}
 				client.Connect(emailAddress.Pop3ServerIncoming,emailAddress.ServerPortIncoming,
 					emailAddress.UseSSL ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.None);
-				client.AuthenticationMechanisms.Remove("XOAUTH2");//The address signs in with its password; OAuth addresses download through their APIs.
+				//USER and PASS, as OpenPop signed in. No SASL mechanism or APOP: a server may offer one that an account does not support, and a password
+				//address never signs in with a token (OAuth addresses download through their APIs).
+				client.AuthenticationMechanisms.Clear();
+				client.Capabilities&=~MailKit.Net.Pop3.Pop3Capabilities.Apop;
 				client.Authenticate(emailAddress.EmailUsername.Trim(),MiscUtils.Decrypt(emailAddress.EmailPassword));
 				List<string> listMsgIds=client.GetMessageUids().ToList();//Get all unique identifiers for each email in the inbox.
 				List<string> listMsgIdsDownloaded=funcGetStoredUids();
