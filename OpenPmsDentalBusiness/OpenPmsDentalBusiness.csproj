@@ -1587,6 +1587,8 @@
     <Compile Include="Data Interface\SupplyNeededs.cs" />
     <Compile Include="Data Interface\SupplyOrderItems.cs" />
     <Compile Include="Data Interface\SupplyOrders.cs" />
+    <Compile Include="Data Interface\SupplyCountLines.cs" />
+    <Compile Include="Data Interface\SupplyCounts.cs" />
     <Compile Include="Data Interface\SupplyLedgers.cs" />
     <Compile Include="Data Interface\SupplyLots.cs" />
     <Compile Include="Data Interface\SupplyProcCodes.cs" />

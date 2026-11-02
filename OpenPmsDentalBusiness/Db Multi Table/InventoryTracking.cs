@@ -621,7 +621,7 @@ namespace OpenPmsDentalBusiness {
 		///<summary>Posts a stock count: for every line whose counted quantity differs from the quantity the program had when the line was counted, a
 		///CountAdjust row of the difference, so that procedures completed during the count are not counted twice. A line with a lot number and no
 		///SupplyLotNum is a lot found in the count: it is found or created. Writes an Inventory Adjust audit entry per adjusted line. The reason is
-		///required. Returns the number of adjusted lines.</summary>
+		///required. Returns the number of adjusted lines. The window posts the office's saved count through PostOpenCount, which calls this.</summary>
 		public static int PostCount(List<SupplyCountLine> listSupplyCountLines,string reason) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetInt(MethodBase.GetCurrentMethod(),listSupplyCountLines,reason);
@@ -815,6 +815,268 @@ namespace OpenPmsDentalBusiness {
 			return (qty>0 ? "+" : "")+FormatQty(qty);
 		}
 		#endregion Receiving, counts, adjustments, dispensing, repair
+
+		#region Saved stock counts
+		///<summary>A count that is Posting longer than this many minutes after its post began is taken for a post that did not finish (a crash, a lost
+		///connection, a power cut), and ResumeCount may open it again. Before that another workstation may still be posting it.</summary>
+		public const int MINUTES_POST_STALE=5;
+
+		///<summary>The office's open count (Open or Posting), or null when none is open (docs/specs/inventory-tracking.md, 2.7).</summary>
+		public static SupplyCount GetOpenCount() {
+			Meth.NoCheckMiddleTierRole();
+			return SupplyCounts.GetOpen();
+		}
+
+		///<summary>What Supply Inventory shows about the open count: who started it, when, how many lines, and whether its post runs or did not
+		///finish. Null when no count is open.</summary>
+		public static string GetOpenCountDescription() {
+			Meth.NoCheckMiddleTierRole();
+			SupplyCount supplyCount=SupplyCounts.GetOpen();
+			if(supplyCount==null) {
+				return null;
+			}
+			long countLines=SupplyCountLines.GetCountForCount(supplyCount.SupplyCountNum);
+			string text=Lans.g("InventoryTracking","Stock count open: started by")+" "+Userods.GetName(supplyCount.UserNum)+" "+Lans.g("InventoryTracking","on")+" "
+				+supplyCount.DateTimeEntry.ToShortDateString()+" "+supplyCount.DateTimeEntry.ToShortTimeString()+", "+countLines+" "+Lans.g("InventoryTracking","line(s).");
+			if(supplyCount.CountStatus==SupplyCountStatus.Posting) {
+				if(SupplyCounts.IsPostingOlderThan(supplyCount.SupplyCountNum,MINUTES_POST_STALE)) {
+					text+=" "+Lans.g("InventoryTracking","Its post did not finish: resume it to post it again or to discard it.");
+				}
+				else {
+					text+=" "+Lans.g("InventoryTracking","It is being posted now.");
+				}
+			}
+			return text;
+		}
+
+		///<summary>The count's saved lines, in the order they were first counted, with the lot number and expiry date of existing lots filled in from
+		///supplylot.</summary>
+		public static List<SupplyCountLine> GetSavedCountLines(long supplyCountNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<SupplyCountLine>>(MethodBase.GetCurrentMethod(),supplyCountNum);
+			}
+			List<SupplyCountLine> listSupplyCountLines=SupplyCountLines.GetForCount(supplyCountNum);
+			FillLotsOfLines(listSupplyCountLines);
+			return listSupplyCountLines;
+		}
+
+		///<summary>Saved lines keep the lot number and expiry date only of a lot found in the count; an existing lot's are read from supplylot.</summary>
+		private static void FillLotsOfLines(List<SupplyCountLine> listSupplyCountLines) {
+			List<SupplyLot> listSupplyLots=SupplyLots.GetMany(listSupplyCountLines.Where(x => x.SupplyLotNum>0).Select(x => x.SupplyLotNum).Distinct().ToList());
+			foreach(SupplyCountLine supplyCountLine in listSupplyCountLines.Where(x => x.SupplyLotNum>0)) {
+				SupplyLot supplyLot=listSupplyLots.Find(x => x.SupplyLotNum==supplyCountLine.SupplyLotNum);
+				if(supplyLot!=null) {
+					supplyCountLine.LotNumber=supplyLot.LotNumber;
+					supplyCountLine.DateExpiry=supplyLot.DateExpiry;
+				}
+			}
+		}
+
+		///<summary>The supply's lot with this lot number (ignoring case and blanks around it), or null.</summary>
+		private static SupplyLot FindLotByNumber(long supplyNum,string lotNumber) {
+			return SupplyLots.GetForSupply(supplyNum,isEmptyIncluded:true)
+				.Find(x => string.Equals((x.LotNumber??"").Trim(),(lotNumber??"").Trim(),StringComparison.OrdinalIgnoreCase));
+		}
+
+		///<summary>Saves one counted line into the office's open count as soon as it is counted, starting a count when none is open
+		///(SupplyCounts.InsertOpenIfNone; two workstations starting at once share one). The line is the supply and its lot (SupplyLotNum), or a lot
+		///found in the count (SupplyLotNum 0 and LotNumber, with DateExpiry), or stock without a lot. A lot found in the count whose number is a lot of
+		///the supply by now is saved as that lot. The line gets a new snapshot of the program's quantity, read from the ledger now (GetQtyProgram;
+		///0 for a lot found in the count), and replaces the count's earlier line of the same supply and lot; QtyCounted replaces its counted
+		///quantity, or with isAdded (a scan) is added to it in the same statement (SupplyCountLines.Upsert). Throws when the count is being posted or
+		///was closed by another workstation meanwhile: the line is then not saved, and the window says so. Returns the line as saved, with the lot
+		///number and expiry date of an existing lot filled in.</summary>
+		public static SupplyCountLine SaveCountLine(SupplyCountLine supplyCountLine,bool isAdded) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<SupplyCountLine>(MethodBase.GetCurrentMethod(),supplyCountLine,isAdded);
+			}
+			double qtyCounted=Math.Round(supplyCountLine.QtyCounted,2);
+			if(qtyCounted<0 || (isAdded && qtyCounted==0)) {
+				throw new ApplicationException(Lans.g("InventoryTracking","Please enter a quantity of 0 or more."));
+			}
+			Supply supply=Supplies.GetSupply(supplyCountLine.SupplyNum);
+			if(supply==null) {
+				throw new ApplicationException(Lans.g("InventoryTracking","The supply was deleted by another user."));
+			}
+			long userNum=Security.CurUser?.UserNum??0;
+			SupplyCount supplyCount=SupplyCounts.InsertOpenIfNone(userNum);
+			if(supplyCount==null) {
+				throw new ApplicationException(Lans.g("InventoryTracking","The stock count is being posted, or its post did not finish. Open Supply Inventory to "
+					+"resume it."));
+			}
+			SupplyCountLine supplyCountLineSave=new SupplyCountLine();
+			supplyCountLineSave.SupplyCountNum=supplyCount.SupplyCountNum;
+			supplyCountLineSave.SupplyNum=supply.SupplyNum;
+			supplyCountLineSave.SupplyLotNum=Math.Max(0,supplyCountLine.SupplyLotNum);
+			supplyCountLineSave.LotNumber="";
+			supplyCountLineSave.DateExpiry=DateTime.MinValue;
+			string lotNumber=(supplyCountLine.LotNumber??"").Trim();
+			if(supplyCountLineSave.SupplyLotNum==0 && lotNumber!="") {
+				SupplyLot supplyLotFound=FindLotByNumber(supply.SupplyNum,lotNumber);
+				if(supplyLotFound==null) {
+					supplyCountLineSave.LotNumber=lotNumber;
+					supplyCountLineSave.DateExpiry=supplyCountLine.DateExpiry.Year>1880 ? supplyCountLine.DateExpiry.Date : DateTime.MinValue;
+				}
+				else {
+					supplyCountLineSave.SupplyLotNum=supplyLotFound.SupplyLotNum;
+				}
+			}
+			if(supplyCountLineSave.SupplyLotNum>0) {
+				SupplyLot supplyLot=SupplyLots.GetMany(new List<long> { supplyCountLineSave.SupplyLotNum }).FirstOrDefault();
+				if(supplyLot==null || supplyLot.SupplyNum!=supply.SupplyNum) {
+					throw new ApplicationException(Lans.g("InventoryTracking","The lot is not a lot of this supply."));
+				}
+				if(!string.IsNullOrWhiteSpace(supplyLot.LotNumber)) {
+					//The lot's earlier line from when it was a lot found in the count (it was received since) becomes this lot's line.
+					SupplyCountLines.MoveLotFound(supplyCount.SupplyCountNum,supply.SupplyNum,supplyLot.LotNumber,supplyLot.SupplyLotNum,SupplyCountStatus.Open);
+				}
+			}
+			supplyCountLineSave.QtyProgram=supplyCountLineSave.IsLotFound() ? 0 : GetQtyProgram(supply.SupplyNum,supplyCountLineSave.SupplyLotNum);
+			supplyCountLineSave.QtyCounted=qtyCounted;
+			supplyCountLineSave.UserNum=userNum;
+			long countRows=SupplyCountLines.Upsert(supplyCountLineSave,isAdded);
+			if(countRows==0 && SupplyCounts.GetOne(supplyCount.SupplyCountNum)?.CountStatus!=SupplyCountStatus.Open) {
+				throw new ApplicationException(Lans.g("InventoryTracking","The stock count was posted or discarded by another user, or is being posted. "
+					+"This line was not saved."));
+			}
+			SupplyCountLine supplyCountLineSaved=SupplyCountLines.GetByKey(supplyCount.SupplyCountNum,supply.SupplyNum,supplyCountLineSave.SupplyLotNum,
+				supplyCountLineSave.LotNumber);
+			if(supplyCountLineSaved==null) {
+				throw new ApplicationException(Lans.g("InventoryTracking","Another user removed this line at the same moment. Count it again."));
+			}
+			FillLotsOfLines(new List<SupplyCountLine> { supplyCountLineSaved });
+			return supplyCountLineSaved;
+		}
+
+		///<summary>Removes a saved line from the open count (Remove, or a counted quantity cleared). Nothing happens when another workstation removed it
+		///already. Throws when its count is no longer open.</summary>
+		public static void DeleteCountLine(long supplyCountLineNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),supplyCountLineNum);
+				return;
+			}
+			if(SupplyCountLines.DeleteWhileOpen(supplyCountLineNum)>0) {
+				return;
+			}
+			if(SupplyCountLines.GetOne(supplyCountLineNum)!=null) {
+				throw new ApplicationException(Lans.g("InventoryTracking","The stock count was posted or discarded by another user, or is being posted."));
+			}
+		}
+
+		///<summary>Posts the open count (Inventory Adjust; the reason is required), exactly as an unsaved count is posted (PostCount: a CountAdjust row
+		///of the difference to each line's snapshot, an Inventory Adjust audit entry per adjusted line), and closes it. First marks the count Posting in
+		///one UPDATE ... WHERE CountStatus=Open, so of two workstations posting it only one does, and no line can be saved into it any more; then reads
+		///its lines, writes the adjustments and marks it Posted. When the adjustments fail, the count is opened again with each line's program
+		///quantity read again from the ledger, so posting again writes only what still differs; if even that fails, the count stays Posting and is
+		///resumed later (ResumeCount). Returns the number of adjusted lines.</summary>
+		public static int PostOpenCount(long supplyCountNum,string reason) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetInt(MethodBase.GetCurrentMethod(),supplyCountNum,reason);
+			}
+			if(string.IsNullOrWhiteSpace(reason)) {
+				throw new ApplicationException(Lans.g("InventoryTracking","A reason is required."));
+			}
+			if(SupplyCountLines.GetCountForCount(supplyCountNum)==0) {
+				throw new ApplicationException(Lans.g("InventoryTracking","Nothing is counted yet."));
+			}
+			long userNum=Security.CurUser?.UserNum??0;
+			if(!SupplyCounts.SetStatus(supplyCountNum,SupplyCountStatus.Open,SupplyCountStatus.Posting,userNum,reason)) {
+				throw new ApplicationException(Lans.g("InventoryTracking","The stock count was posted or discarded by another user, or is being posted."));
+			}
+			bool isLedgerWriteStarted=false;
+			int countAdjusted;
+			try {
+				List<SupplyCountLine> listSupplyCountLines=GetSavedCountLines(supplyCountNum);//Every line: none can be saved into it now.
+				isLedgerWriteStarted=true;
+				countAdjusted=PostCount(listSupplyCountLines,reason);
+				ActionAfterCountPosted?.Invoke(supplyCountNum);
+			}
+			catch(Exception) {
+				try {
+					ReopenAfterFailedPost(supplyCountNum,isLedgerWriteStarted);
+				}
+				catch(Exception exReopen) {
+					//The count stays Posting; ResumeCount opens it again later. The caller gets the post's own failure.
+					ODException.SwallowAnyException(() => Logger.WriteException(exReopen,"InventoryTracking"));
+				}
+				throw;
+			}
+			//Stock is written: closing the count never makes this call report a failure (posting again would adjust twice). A count this leaves
+			//Posting is resumed later, which reads every line's program quantity again, so posting it then writes nothing more.
+			RunAfterStockWritten(() => SupplyCounts.SetPosted(supplyCountNum));
+			return countAdjusted;
+		}
+
+		///<summary>Tests only: runs in PostOpenCount right after the count's adjustments were written, to fail there as a lost connection or a crash
+		///would.</summary>
+		internal static Action<long> ActionAfterCountPosted;
+
+		///<summary>Opens a Posting count again after a post that failed or did not finish. When the post may have written ledger rows
+		///(isLedgerTouched), each line's snapshot is first read again from the ledger (GetQtyProgram), never from the counters, and a lot found in the
+		///count that the post created becomes that lot's line, so posting again writes only what still differs. The count stays Posting when this
+		///fails part-way.</summary>
+		private static void ReopenAfterFailedPost(long supplyCountNum,bool isLedgerTouched) {
+			if(isLedgerTouched) {
+				foreach(SupplyCountLine supplyCountLine in SupplyCountLines.GetForCount(supplyCountNum).Where(x => x.IsLotFound())) {
+					SupplyLot supplyLot=FindLotByNumber(supplyCountLine.SupplyNum,supplyCountLine.LotNumber);
+					if(supplyLot!=null) {
+						SupplyCountLines.MoveLotFound(supplyCountNum,supplyCountLine.SupplyNum,supplyCountLine.LotNumber,supplyLot.SupplyLotNum,SupplyCountStatus.Posting);
+					}
+				}
+				foreach(SupplyCountLine supplyCountLine in SupplyCountLines.GetForCount(supplyCountNum).Where(x => !x.IsLotFound())) {
+					SupplyCountLines.UpdateQtyProgramWhilePosting(supplyCountLine.SupplyCountLineNum,GetQtyProgram(supplyCountLine.SupplyNum,supplyCountLine.SupplyLotNum));
+				}
+			}
+			SupplyCounts.SetStatus(supplyCountNum,SupplyCountStatus.Posting,SupplyCountStatus.Open,0,"");
+		}
+
+		///<summary>Resumes the open count: returns it when it is Open. A count that is Posting longer than MINUTES_POST_STALE (a post that did not
+		///finish) is opened again first, with each line's program quantity read again from the ledger (ReopenAfterFailedPost), and an Inventory Adjust
+		///audit entry. Throws when the count is no longer open, or while its post may still be running.</summary>
+		public static SupplyCount ResumeCount(long supplyCountNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<SupplyCount>(MethodBase.GetCurrentMethod(),supplyCountNum);
+			}
+			SupplyCount supplyCount=SupplyCounts.GetOne(supplyCountNum);
+			if(supplyCount==null || !supplyCount.IsOpenOrPosting()) {
+				throw new ApplicationException(Lans.g("InventoryTracking","The stock count was posted or discarded by another user."));
+			}
+			if(supplyCount.CountStatus==SupplyCountStatus.Open) {
+				return supplyCount;
+			}
+			if(!SupplyCounts.IsPostingOlderThan(supplyCountNum,MINUTES_POST_STALE)) {
+				throw new ApplicationException(Lans.g("InventoryTracking","The stock count is being posted by")+" "+Userods.GetName(supplyCount.UserNumClosed)+". "
+					+Lans.g("InventoryTracking","If that post did not finish, the count can be resumed")+" "+MINUTES_POST_STALE+" "
+					+Lans.g("InventoryTracking","minutes after it began."));
+			}
+			ReopenAfterFailedPost(supplyCountNum,isLedgerTouched:true);
+			RunAfterStockWritten(() => SecurityLogs.MakeLogEntry(EnumPermType.InventoryAdjust,0,"Stock count resumed after a post that did not finish (begun by "
+				+Userods.GetName(supplyCount.UserNumClosed)+" on "+supplyCount.DateTimeClosed.ToShortDateString()+" "+supplyCount.DateTimeClosed.ToShortTimeString()
+				+"): each line's program quantity read again from the ledger (SupplyCountNum "+supplyCountNum+")."));
+			return SupplyCounts.GetOne(supplyCountNum);
+		}
+
+		///<summary>Discards the open count (Inventory Adjust, after a confirmation): closes it as Discarded in one UPDATE ... WHERE CountStatus=Open,
+		///changes no stock, and writes an Inventory Adjust audit entry with who started it, when and how many lines it had. Its lines are kept with
+		///it. Throws when it is no longer Open.</summary>
+		public static void DiscardOpenCount(long supplyCountNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),supplyCountNum);
+				return;
+			}
+			SupplyCount supplyCount=SupplyCounts.GetOne(supplyCountNum);
+			long countLines=SupplyCountLines.GetCountForCount(supplyCountNum);
+			if(supplyCount==null
+				|| !SupplyCounts.SetStatus(supplyCountNum,SupplyCountStatus.Open,SupplyCountStatus.Discarded,Security.CurUser?.UserNum??0,""))
+			{
+				throw new ApplicationException(Lans.g("InventoryTracking","The stock count was posted or discarded by another user, or is being posted."));
+			}
+			//The count is closed: the audit entry never makes this call report a failure (the window would offer to discard it again).
+			RunAfterStockWritten(() => SecurityLogs.MakeLogEntry(EnumPermType.InventoryAdjust,0,"Stock count discarded: started by "+Userods.GetName(supplyCount.UserNum)
+				+" on "+supplyCount.DateTimeEntry.ToShortDateString()+" "+supplyCount.DateTimeEntry.ToShortTimeString()+", "+countLines
+				+" line(s) counted; stock not changed (SupplyCountNum "+supplyCountNum+")."));
+		}
+		#endregion Saved stock counts
 
 		#region Alerts
 		///<summary>Brings the Inventory Low Stock alerts of the supplies up to date: adds the missing ones, updates changed texts and removes the ones
