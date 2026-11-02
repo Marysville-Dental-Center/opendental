@@ -75,6 +75,10 @@ Key: `MaintItemNum`.
 
 Key: `MaintItemNum`.
 
+`ValueMin` and `ValueMax` keep 6 decimals (`CrudColumn` `DecimalPlaces=6`). The Crud class writes them with `SOut.Double(double,int)`, which
+always formats with a period (invariant culture), so a workstation whose culture uses a comma as the decimal separator (de-DE, fr-CA and
+others) writes valid SQL too.
+
 ### maintrecord: one completion
 
 | Column | Type | Meaning |

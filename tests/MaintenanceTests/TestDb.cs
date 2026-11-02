@@ -143,6 +143,23 @@ namespace MaintenanceTests {
 			Thread.CurrentThread.CurrentUICulture=new CultureInfo("en-US");
 		}
 
+		///<summary>Runs action with this thread's culture and the default culture of new threads set to cultureName, as on a workstation of that
+		///culture (DateTimeOD sets DefaultThreadCurrentCulture to the user's culture), then puts both back.</summary>
+		public static void RunInCulture(string cultureName,Action action) {
+			CultureInfo cultureOld=CultureInfo.CurrentCulture;
+			CultureInfo cultureDefaultOld=CultureInfo.DefaultThreadCurrentCulture;
+			CultureInfo culture=new CultureInfo(cultureName);
+			try {
+				CultureInfo.CurrentCulture=culture;
+				CultureInfo.DefaultThreadCurrentCulture=culture;
+				action();
+			}
+			finally {
+				CultureInfo.CurrentCulture=cultureOld;
+				CultureInfo.DefaultThreadCurrentCulture=cultureDefaultOld;
+			}
+		}
+
 		///<summary>Drops scratch databases that earlier runs left behind (a crash, or MAINT_KEEP_DB=1), once they are older than _timeSpanStale.
 		///Never drops the database of a run that may still be going, and never a name without this naming scheme.</summary>
 		private static void DropStaleScratchDatabases() {

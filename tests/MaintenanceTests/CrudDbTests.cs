@@ -123,6 +123,50 @@ namespace MaintenanceTests {
 		}
 
 		[TestMethod]
+		public void Fields_SyncWithACommaDecimalSeparator_KeepsTheLimitsExactly() {
+			MaintItem maintItem=InsertItem("Refrigerator temperature",new DateTime(2026,11,2));
+			TestDb.RunInCulture("de-DE",() => {
+				Assert.AreEqual("2,5",2.5.ToString(),"The workstation writes numbers with a comma.");
+				List<MaintField> listFields=new List<MaintField> {
+					new MaintField { FieldName="Temperature",FieldType=EnumMaintFieldType.Number,Unit="°C",HasMin=true,ValueMin=2.125,HasMax=true,ValueMax=7.999999 },
+					new MaintField { FieldName="Door seal",FieldType=EnumMaintFieldType.PassFail,Unit="" },//Its limits (0) are written too.
+				};
+				MaintFields.Sync(maintItem.MaintItemNum,listFields);
+				List<MaintField> listDb=MaintFields.GetForItem(maintItem.MaintItemNum);
+				CollectionAssert.AreEqual(new[] { "Temperature","Door seal" },listDb.Select(x => x.FieldName).ToList(),"Inserted.");
+				Assert.AreEqual(2.125,listDb[0].ValueMin);
+				Assert.AreEqual(7.999999,listDb[0].ValueMax);
+				Assert.AreEqual(0,listDb[1].ValueMin);
+				Assert.AreEqual(0,listDb[1].ValueMax);
+				//Update: the changed limits only (MaintFieldCrud.Update with the old row).
+				listDb[0].ValueMin=-40.5;
+				listDb[0].ValueMax=1234.000001;
+				MaintFields.Sync(maintItem.MaintItemNum,listDb);
+				List<MaintField> listAfter=MaintFields.GetForItem(maintItem.MaintItemNum);
+				Assert.AreEqual(-40.5,listAfter[0].ValueMin);
+				Assert.AreEqual(1234.000001,listAfter[0].ValueMax);
+				Assert.AreEqual(listDb[1].MaintFieldNum,listAfter[1].MaintFieldNum);
+				//Update of the whole row (MaintFieldCrud.Update).
+				listAfter[0].ValueMax=8.25;
+				OpenPmsDentalBusiness.Crud.MaintFieldCrud.Update(listAfter[0]);
+				Assert.AreEqual(8.25,MaintFields.GetForItem(maintItem.MaintItemNum)[0].ValueMax);
+			});
+			Assert.AreEqual("-40.5",DataCore.GetScalar("SELECT CAST(ValueMin AS CHAR) FROM maintfield WHERE FieldName='Temperature'"));
+			Assert.AreEqual("8.25",DataCore.GetScalar("SELECT CAST(ValueMax AS CHAR) FROM maintfield WHERE FieldName='Temperature'"));
+		}
+
+		[TestMethod]
+		public void Crud_RoundTripEveryFieldOfEveryTable_WithACommaDecimalSeparator() {
+			List<string> listProblems=new List<string>();
+			TestDb.RunInCulture("de-DE",() => {
+				foreach(Type type in new[] { typeof(MaintItem),typeof(MaintStep),typeof(MaintField),typeof(MaintRecord),typeof(MaintRecordValue) }) {
+					RoundTrip(type,listProblems);
+				}
+			});
+			Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));
+		}
+
+		[TestMethod]
 		public void Record_InsertSetsTheUserAndFlag_AndKeepsTheValuesInOrder() {
 			MaintItem maintItem=InsertItem("Autoclave",new DateTime(2026,11,1));
 			MaintStep maintStep=new MaintStep { MaintStepNum=41,Description="Load the test vial" };
