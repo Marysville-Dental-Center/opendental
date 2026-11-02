@@ -12,7 +12,7 @@ Open PMS - Dental is a Windows desktop practice management system written in C#:
 
 ## Installing in an office
 
-There is no installer yet. Until there is, a release is the output folder of a **Release | x86** build (see [Building](#building)), copied by hand. Nothing here contacts Open Dental's servers, and nothing is installed on the database server by this program.
+A release is a setup program, `OpenPmsDental-<version>-Setup.exe`, with its `SHA256SUMS.txt` and release notes ([docs/release-notes/v0.0.md](docs/release-notes/v0.0.md) for 0.0). `tools/Build-Release.ps1` builds it from a **Release | x86** build ([docs/release-process.md](docs/release-process.md#building-the-installer)). Nothing here contacts Open Dental's servers, and nothing is installed on the database server by this program.
 
 ### Database server
 
@@ -39,19 +39,22 @@ max_allowed_packet=40M
 Prerequisites:
 
 - Windows 10 version 1903 or later, or Windows 11
-- **.NET Framework 4.8** (Windows 10 1903 and later and Windows 11 already have it)
+- **.NET Framework 4.8** (Windows 10 1903 and later and Windows 11 already have it; the setup stops if it is missing)
 - **Microsoft Visual C++ 2015-2022 Redistributable, x86** (`vc_redist.x86.exe`; the DICOM codecs and `Direct2dWrapper.dll` need it)
 - **Microsoft Edge WebView2 Runtime, x86** (Evergreen; Windows 11 already has it)
 - For scanners and sensors: the device's own TWAIN driver, which brings the TWAIN data source manager
 
+When the Visual C++ or WebView2 runtime is missing, the setup offers to download Microsoft's installer from Microsoft and run it, or to skip it.
+
 Steps:
 
 1. Install the program on the **update server** first: the workstation named in the `WebServiceServerName` preference (Setup > Update Setup).
-2. Copy the release folder to `C:\Program Files (x86)\Open PMS - Dental\`. Don't copy a `FreeDentalConfig.xml` from another computer.
-3. Start `OpenPmsDental.exe` once **as an administrator**. The first start creates `FreeDentalConfig.xml` in the program folder, which needs administrator rights there. In the Choose Database window enter the server, the database, the database user and its password.
+2. Check the setup's SHA-256 against `SHA256SUMS.txt`, then run it as an administrator. It installs into `C:\Program Files (x86)\Open PMS - Dental\`, creates the Start menu shortcut "Open PMS - Dental", and writes `FreeDentalConfig.xml` from its database connection page (server, database, user; never a password). The setup is not signed, so SmartScreen may warn.
+3. Start the program from the Start menu and enter the database password in the Choose Database window.
 4. On the update server, the program offers to publish the release at that first start, so the other workstations update to it.
-5. Create a Start menu shortcut named "Open PMS - Dental" that points to `OpenPmsDental.exe`.
-6. On the other workstations repeat steps 2, 3 and 5. A workstation that runs an older build pulls the published one when it starts.
+5. On the other workstations repeat steps 2 and 3. A workstation that runs an older build pulls the published one when it starts.
+
+Silent installs, the setup's switches and the uninstall are described in the release notes.
 
 ### Updates
 
@@ -166,7 +169,8 @@ Then build the solution (see [Build](#build)), start `OpenPmsDental\bin\Debug\Op
 | `OpenPmsDentalCloud/`, `OpenPmsDentalGraph/`, `SparksToothChart/`, `Direct2dWrapper/`, `PasswordVaultWrapper/` | Cloud storage, dashboards, tooth chart rendering, native Direct2D, and Windows credential vault libraries |
 | `tests/` | MSTest v1 test projects, one per package, in the solution filter. Tests that need a database create a scratch database with a unique name on `127.0.0.1:3306` and drop it afterwards |
 | `UnitTests/`, `UnitTestsCore/`, `NoHqTests/` | Open Dental's MSTest v1 tests (most need a live test database) and the checks that no Open Dental servers are contacted |
-| `tools/` | `New-DevDatabase.ps1` and `DevDbTool/` (development database), `New-InitSql.ps1` (regenerates `db/init/new-database.sql`), `AdoptionValidation/` (adopting an Open Dental database), `SyntheticData/` (synthetic test data), `run-tests.ps1` (the test runner), `Test-NoHqHosts.ps1` (fails if code still references Open Dental's hosts), `Test-NoOldNames.ps1` (lists the program's old internal names, for the rename) |
+| `tools/` | `New-DevDatabase.ps1` and `DevDbTool/` (development database), `New-InitSql.ps1` (regenerates `db/init/new-database.sql`), `AdoptionValidation/` (adopting an Open Dental database), `SyntheticData/` (synthetic test data), `run-tests.ps1` (the test runner), `Test-NoHqHosts.ps1` (fails if code still references Open Dental's hosts), `Test-NoOldNames.ps1` (lists the program's old internal names, for the rename), `Build-Release.ps1` (the release: staging, checks, checksums and the setup) and `Test-Installer.ps1` (a per-user test install and uninstall of the setup) |
+| `installer/` | The Inno Setup 6 script of the workstation setup (`OpenPmsDental.iss`) and its information page |
 | `docs/` | Design notes, the release process, the adoption runbook, the binaries audit and one port note per package (`docs/port-notes/`) |
 | `Required dlls/` | Third-party assemblies the build references. What ships is listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt); the rest is reviewed in [docs/third-party-binaries-audit.md](docs/third-party-binaries-audit.md) |
 | `ODR/`, `RdlEngine/`, `RdlViewer/` | RDL reports: `ODR.dll`, the code module report definitions call, and the fyiReporting RDL engine and viewer (LGPL 2.1), built from source in the solution and copied next to `OpenPmsDental.exe` ([docs/port-notes/RDL-SRC.md](docs/port-notes/RDL-SRC.md)) |

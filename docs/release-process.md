@@ -97,7 +97,7 @@ Before adopting the office copy, stop and uninstall the Open Dental services and
 The **update server** is the workstation named in the `WebServiceServerName` preference (Update Setup). Name it before you publish rebuilds. If that preference is blank (the default), any workstation may act as the update server, but only within limits: it may publish the first release, or a build known to be newer than the published one (a higher release version, or the same release with a later build time). It never replaces a published build that is newer or whose order is unknown. It updates to that build instead.
 
 1. Build the solution in Release. `OpenPmsDental.csproj` copies `UpdateFileCopier.exe` next to `OpenPmsDental.exe`, because every release ships it.
-2. Install the build on the update server, for example by copying the output folder over the installation, and start it as an administrator. Builds from before the rename to `OpenPmsDental.exe` (2026-11-01) cannot be upgraded in place, because UpdateFileCopier never deletes the exe and DLLs of the old names: install a renamed build into a clean folder ([port-notes/RENAME.md](port-notes/RENAME.md)).
+2. Install the build on the update server with its setup ([Building the installer](#building-the-installer)), and start it as an administrator. Builds from before the rename to `OpenPmsDental.exe` (2026-11-01) cannot be upgraded in place, because UpdateFileCopier never deletes the exe and DLLs of the old names: install a renamed build into a clean folder ([port-notes/RENAME.md](port-notes/RENAME.md)).
 3. At startup, `PrefL.CheckProgramVersion` sees that this build isn't the published one and asks whether to publish it. If you click Cancel, this workstation runs the build without publishing it. Update Setup's Recopy button publishes the running build at any time, under the same rules: with a blank `WebServiceServerName` it refuses to replace a different published build that this one isn't known to be newer than. A silent run publishes only when nothing is published yet. It never replaces a published release, because nobody is asked.
 4. Publishing (`ForkReleases.Publish`) works like this:
    - While it runs, `UpdateInProgressOnComputerName` is set, so other workstations wait.
@@ -134,6 +134,34 @@ At startup each workstation compares its build with the published one (`ForkRele
 No row offers a downgrade. A pull always goes to a build that is newer, or, when the order is unknown, to the build the office published. A workstation still running an old build is never asked to publish it over the office's release. Only the named update server, which the office chose, can replace a build it can't prove older.
 
 Dynamic mode, where Open Dental kept per-version program folders, isn't part of the fork's release channel.
+
+## Building the installer
+
+A release is `OpenPmsDental-<version>-Setup.exe`, made by `tools/Build-Release.ps1` with Inno Setup 6 (6.7.4 for 0.0):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\Build-Release.ps1 -BuildLane <path of odbuild.ps1> -CopyTo <release folder>
+```
+
+Without `-BuildLane` the script finds MSBuild with vswhere; `-SkipBuild` uses the Release output that is there; `-SkipInstaller` stops after the staging folder; `-Iscc` names `ISCC.exe` when Inno Setup is not in its default folder. The script:
+
+1. Builds `OpenDental.Local.slnf` as Release x86 and checks `OpenPmsDental\bin\Release`. Every file there must be on the script's allow-list (the program's own files and the third-party files) or be one that never ships (`*.pdb`, the XML documentation). A file on the deny-list (Open Dental's closed binaries, the commercial and non-redistributable files, `FreeDentalConfig.xml`, debug symbols, an uninstaller, the pre-rename names), any other file and any sub folder stop the script.
+2. Stages one folder, `installer\bin\staging` (ignored by git): the allowed files, with `LICENSE`, `NOTICE`, `THIRD-PARTY-NOTICES.txt`, `db\init\new-database.sql` and `db\README.md`. It checks it again: nothing outside the lists, every allowed file there (with the reason for `WebView2Loader.dll`, `Hunspellx86.dll` and `ODR.dll`), every third-party file named in `THIRD-PARTY-NOTICES.txt`, every file built here equal to its project's own output and every third-party file equal to its `Required dlls` copy (so a prebuilt `ImagingDeviceManager.dll` or `ODR.dll` can't ship in place of the one built from source), the native files x86 and free of the debug C runtime, and `OpenPmsDental.exe` and `OpenPmsDentalBusiness.dll` at file version 24.3.63.0 and product version the release version.
+3. Prints the build id (the same computation as `ForkReleases.ComputeBuildId`) and writes `installer\bin\SHA256SUMS.txt`.
+4. Compiles `installer\OpenPmsDental.iss` into `installer\bin` and adds the setup's SHA-256 to `SHA256SUMS.txt` (first line; the staged files follow as `staging/...`).
+5. With `-CopyTo`, copies the setup, `SHA256SUMS.txt` and `docs\release-notes\v<version>.md` there.
+
+The release version comes from `SharedAssemblyInfo.cs` and must equal `#define AppVersion` in `installer\OpenPmsDental.iss` (and its `VersionInfoVersion`, `0.0.0.0` for `0.0`); the script stops when they differ. A new third-party file goes on the allow-list and into `THIRD-PARTY-NOTICES.txt`; the script fails until it is in both.
+
+What the setup does, for the release channel:
+
+- It installs exactly the staging folder into `C:\Program Files (x86)\Open PMS - Dental` (per machine, as administrator). A workstation installed from the same staging folder therefore has the same build id as the update server that published it, and nothing happens at its start.
+- The uninstaller is in the `uninstall` sub folder. A release publishes the top-level files only (and `OpenDentalReplicationService`), so neither the uninstaller nor the `db` folder reaches the other workstations.
+- It writes `FreeDentalConfig.xml` only when the folder has none, with no password, and gives Users modify rights on that one file. A release never carries the file.
+- The uninstall removes the whole folder, including files a pull added, but keeps a sub folder that looks like an A to Z folder. It never touches the database.
+- Setup never starts the program. `RestartApplications=no` keeps it from restarting a program it closed.
+
+`tools/Test-Installer.ps1` installs the setup per user (`/CURRENTUSER`, no administrator rights) into new folders under `%TEMP%`, checks the files against the staging folder, `FreeDentalConfig.xml` and its rights, a reinstall and the uninstall, and never starts the program. `tests/ReleaseFlowTests/InstallerTests.cs` runs the script's list checks (`-CheckFolder`) against fake staging folders.
 
 ## Tests
 

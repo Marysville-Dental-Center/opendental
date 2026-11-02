@@ -149,6 +149,7 @@ $AllowList=@(
 	@{ Path='*HL7\Program.cs'; Match='\(OpenDentHL7\)'; Reason='The HL7 service name of builds before the rename, still found by LegacyServicePrefix.' }
 	@{ Path='tests\ReleaseFlowTests\ProgramNamesTests.cs'; Match='"OpenDental",ProgramNames\.LegacyLocalAppDataFolderName'; Reason='The test that the pre-rename folder never changes.' }
 	@{ Path='tests\ReleaseFlowTests\ProgramNamesTests.cs'; Line='^\s*\[@"[^"]+"\]=new\[\]'; Reason='The pre-rename literals that must stay out of the sites routed through ProgramNames.' }
+	@{ Path='tests\ReleaseFlowTests\InstallerTests.cs'; Match='"OpenDental\.exe","OpenDentBusiness\.dll"'; Reason="The release's deny-list test: a release never carries a file of the pre-rename names." }
 )
 
 #The file walk and the line scan, in C#: a PowerShell loop over every old name in the repository takes minutes.

@@ -4,6 +4,47 @@ This list holds every question the 55 package notes on `port/integration` still 
 
 **[SWITCH-OVER]** marks a question that changes the office's data during the switch-over, or that you should settle before it: one-time conversions, steps that change the office's existing data, and defaults that change billing or claims.
 
+The v0.0 release work added the open questions of its package notes (ORG-CLEANUP, INIT-SQL, BIN-A, BIN-B, TWAIN-W, REL-FILES, REN-PROOF, CLAIM-DCM, RDL-SRC, M16-INTEGRATION and RENAME), each under its area, and the section below: the decisions that were taken by default for v0.0.
+
+---
+
+## Decided by default for v0.0
+
+These are in v0.0 as described. Each one is a default, not a final answer: **change it if you disagree**, and say which.
+
+1. **The rename identifiers** (RENAME, REN-PROOF 1 and 2). The code names are `OpenPmsDental` (`OpenPmsDental.exe`, `OpenPmsDentalBusiness.dll`, `OpenPmsDentalGraph`, `OpenPmsDentalCloud`, `OpenPmsDentalServer`, `OpenPmsDentalHL7`). The run-time folders are `OpenPMS-Dental`, the temp folder `openpms-dental`, the Event Log source `OpenPMS-Dental`. The solution files keep their names (`OpenDental.sln`, `OpenDental.Local.slnf`), and so do `FreeDentalConfig.xml`, the database and every stored value. Window sizes, Query Monitor filters and the Waiting Room position start fresh; they are not read from the folder that builds before the rename used under `%LOCALAPPDATA%`. Change it if you disagree.
+2. **The product name at display time** (REL-FILES D2 and question 6). Where an adopted database still holds Open Dental's default main window title or software name, or one of the two values the Benco switch wrote, the program shows "Open PMS - Dental". An office's own title is shown as stored. The rows are only read, never rewritten. Change it if you disagree.
+3. **The Benco branding toggle is removed** (REL-FILES D7). Enabling the Benco program link no longer switches the title and software name; the link itself is unchanged. Change it if you disagree.
+4. **Third-party plug-ins built for Open Dental no longer load** (RENAME, D5). The adoption tool lists the program rows that name a plug-in DLL. Change it if you disagree.
+5. **Suni direct capture is removed** (BIN-A 1, CAP design 2 (a)). Suni sensors work through Suni's own TWAIN driver. Change it if you disagree.
+6. **Four bridges say "not available"** (BIN-A 2 and question 1): Dr. Ceph, eClinicalWorks Rx, Patterson Imaging and Schick CDR 4. Their vendors publish no interface, and they needed Open Dental's closed `VBbridges.dll`. Schick CDR DICOM (version 5) still works. The alternatives: hide or remove the four, or get the vendor's interface so it can be implemented from its documentation. Change it if you disagree.
+7. **Sparks3D is removed, with the OpenGL fallback** (BIN-A 3 and 4, question 4). The tooth chart is SparksToothChart: DirectX 9 where Microsoft's DirectX End-User Runtime (`d3dx9_43.dll`) is installed, otherwise OpenGL, otherwise Simple 2D. The setup does not install the DirectX runtime; the graphical perio chart needs it and says so. The alternatives: the setup chains Microsoft's DirectX installer, or new computers default to OpenGL. Change it if you disagree.
+8. **Topaz is loaded only when installed** (BIN-B 1). The program ships no `SigPlusNET.dll` and loads Topaz's from the program folder, a `Topaz Systems` folder or `%windir%\SigPlus`. Without it, a Topaz signature shows "Topaz signature pad software is not installed." Change it if you disagree (the open Topaz questions are under Vendor integrations).
+9. **The Word letter merge uses late binding** (BIN-B 2). No Office interop assembly and no `stdole.dll` ship; the merge needs Word installed, as before. Change it if you disagree.
+10. **RS232 and DotNetZip are replaced** (BIN-B 5 and 6): the BCBS Georgia dial-up path uses .NET's `SerialPort`, and every zip (the release channel too) uses `System.IO.Compression`. Change it if you disagree.
+11. **fo-dicom, NDde and the Google APIs client libraries ship in v0.0, pending the licence question** (REL-FILES 1 to 3; the questions are under "Release v0.0" below). Change it if you disagree.
+12. **README.md says "GNU GPL v2 or later"** (REL-FILES 6), as the source headers do ("either version 2 of the License, or (at your option) any later version"). Change it if you disagree.
+13. **The side programs are not shipped**: the HL7 service, the Middle Tier server, CentralManager, DatabaseIntegrityCheck, MySQLManager and the replication service. The setup installs the program, `ServiceManager.exe` and `UpdateFileCopier.exe` (the program uses both). Change it if you disagree.
+14. **The installer is not signed** (your decision for v0.0). SmartScreen warns; the release notes tell the office to compare the SHA-256 with `SHA256SUMS.txt`. Change it if you disagree.
+15. **Inno Setup builds the installer.** Its author asks commercial users to buy a licence (since 6.5.0); its FAQ says this is not strictly required. Change it if you disagree (the fallback is a PowerShell script in an IExpress or 7-Zip self-extractor).
+16. **The public repository's history still contains the old proprietary DLLs** that main no longer has (Open Dental's closed binaries and the commercial and interop files BIN-A and BIN-B deleted). Rewriting the history removes them from every clone's future but changes every commit id; that is your call. **Today:** the history is unchanged.
+17. **The installer's own defaults** (this release). The program folder is `C:\Program Files (x86)\Open PMS - Dental`. The setup refuses a folder that holds other files, because uninstalling removes the whole program folder (also files updates added); it keeps a folder inside it that looks like an A to Z folder. The database connection page defaults to `localhost`, `opendental` and `root` and never stores a password. A missing Visual C++ x86 or WebView2 runtime is downloaded from Microsoft's own addresses only after the user agrees (or with `/PREREQS=download` in a silent install), and runs only with a valid Microsoft signature. Setup never starts the program. Change it if you disagree.
+
+---
+
+## Release v0.0: licences, packaging and the first start
+
+- (REL-FILES 1, TWAIN-W 1) **fo-dicom** (`Dicom.Core.dll`, `Dicom.Native.dll`) is MS-PL, which is not compatible with the GNU GPL. Keep it, replace it, or drop DICOM? The in-house reader (TWAIN-W) already opens the simple files the capture writes; it could take more (signed grayscale with an offset, the first frame of multi-frame files) so that fewer files need fo-dicom, or some files could stop being read so fo-dicom can go. **Today:** every other DICOM file goes to fo-dicom, which ships.
+- (REL-FILES 2) **NDde** (`NDde.dll`) has its own shared source licence in the style of MS-PL. Acceptable next to the GPL? **Today:** ships.
+- (REL-FILES 3) The **Google APIs** client libraries are Apache 2.0: compatible with GPL v3, not v2. The program is "v2 or later", so it can be distributed under v3. Is that the intended reading, or should the Gmail integration go? **Today:** ships.
+- (REL-FILES 4) `AssemblyCompany`: "Open PMS - Dental contributors" (also the setup's publisher), or "Marysville Dental Center"? **Today:** "Open PMS - Dental contributors".
+- (REL-FILES 5) The Hunspell en_US dictionary embedded in `WpfControlsOD` is the OpenOffice.org dictionary (48,245 words); its terms are taken from that dictionary's README (word list LGPL, affix file BSD-style). Please confirm, or replace it with a current SCOWL build.
+- (BIN-B 5) `Required dlls/Windows.winmd` (a Windows SDK file) is in the repository only to compile `PasswordVaultWrapper`; it does not ship. Keep it, or reference the installed Windows SDK's `UnionMetadata\Windows.winmd`?
+- (RDL-SRC 4) `Required dlls/RdlDesigner.exe` is the prebuilt report designer; it does not ship, and `RdlDesign/` holds its source outside the solution. Delete it, or build RdlDesign from source?
+- (this release) **Tag and publish v0.0?** May the developer tag `v0.0` and make the GitHub release with the setup, `SHA256SUMS.txt`, the release notes and the source archive? The release notes name the tag as the source of the release (GPL section 3). **Today:** nothing is tagged or published; the files wait in the developer's release folder.
+- (this release) **Issue reports.** The release notes send reports to the repository's GitHub issues. A fork has Issues turned off by default: turn them on, or name another contact?
+- (RENAME, stage 3) **The first start after the installer.** The rename's checks that need the running program are still open: start the program from an installed folder and walk through the modules, CentralManager (not shipped), the RDL reports, the cursors, a second instance and the Event Log source. Who does this, and on which PC?
+
 ---
 
 ## Switch-over and data conversions
@@ -125,6 +166,12 @@ The program has no automatic runner for recurring card charges or repeating char
 - (M2-CLAIMFORM 2) Please print a test claim on DC-217 (10/19) stock and report any shift. If you can supply the handbook's section 6 PDF (it is public), the positions can be checked against it.
 - (M2-CLAIMFORM 3) Denti-Cal form, arch and quadrant: should they print as area codes (01, 10, ...) or as letters (UA/LA, UR/UL/LL/LR)? **Today:** area codes.
 - (M2-CLAIMFORM 4) Boxes not printed on the Denti-Cal form: share of cost, other-coverage amount, a separate billing-provider signature date, TAR/NOA control numbers. Are any needed?
+- (CLAIM-DCM 1) An existing bug, not changed: in the claim attachment picker (`FormImageSelectClaimAttach.SaveAttachment`), a non-DICOM image with crop, rotation, flip or windowing set, on a local A to Z folder, gets a claim attachment row but no file. The branch looks inverted (it renders only for cloud storage). DICOM does not go through it. Fix it in a follow-up?
+- (CLAIM-DCM 2) Edit Claim's copy of an X-ray: JPEG (quality 100) or PNG (lossless, larger)? CDAnet converts it to JPEG anyway. **Today:** JPEG.
+- (CLAIM-DCM 3) Should the DentalXChange picker default the image type to X-Rays for a DICOM radiograph? **Today:** the user always picks the type.
+- (CLAIM-DCM 4) CDAnet allows DICOM (`DIC`) attachments, but a DICOM file is never sent, so CDAnet gets the JPEG copy. Confirm.
+- (CLAIM-DCM 6) Should Edit Claim's DICOM copy include the drawings? **Today:** no Edit Claim copy does.
+- (BIN-B 4) BCBS Georgia dial-up claims: does any office still use them? If not, the clearinghouse path and `TerminalConnector` can go. **Today:** kept, on `SerialPort`, not tested with a modem.
 
 **Clearinghouses**
 - (V-EDS 1) Can the office get EDS's documentation and a test login for the checks EDS added for 26.1? **Today:** those checks stay off.
@@ -200,6 +247,8 @@ The program has no automatic runner for recurring card charges or repeating char
 - (M2-SHELL 3) Family module Gender row: it now shows the same text as the new Chart row (blank instead of "Unknown"). Keep, or bring the old text back?
 - (M2-MISC 1) Automation "clinic mismatch" on Procedure Complete also looks at other procedures completed earlier the same day. Should only the procedures just completed be checked (a one-line change in four places)? **Today:** the whole day's procedures.
 - (M2-MISC 2) A procedure with no clinic on a patient who has a clinic counts as a mismatch. Right? **Today:** yes.
+- (BIN-A 2) The business layer's tooth chart image (the treatment plan and perio PDFs of the API and mobile paths, which v0.0 does not ship) is a plain "Tooth chart image not available" picture since Sparks3D went. Acceptable for v0.0, or draw it another way (for example a 2D renderer in the business layer)? The program's own sheets and printouts draw the chart as before.
+- (BIN-A 3) Free text and ortho hardware on the tooth chart: only Sparks3D drew them. Hide the Draw tab's text controls (Add, Move Text) and the ortho hardware drawing, or keep them (saved but not drawn)? **Today:** kept.
 
 ---
 
@@ -255,6 +304,11 @@ The program has no automatic runner for recurring card charges or repeating char
 - (M2-IMG 1) The "allow PDF JavaScript" setting covers PDFs in the Imaging module only. Should it, or a second setting, also cover PDFs shown in eForms, statements and sheets?
 - (M2-IMG 2) True 16-bit X-ray images still open with the full range, without automatic brightness windowing. Should they get the same automatic windowing as 12-bit images? That needs a real 16-bit sensor sample to tune.
 - (M2-IMG 3) 12-bit images whose stored windowing is the import fallback (4095) now show the full range instead of an almost black picture. This only changes images that were unreadable before. Confirm.
+- (TWAIN-W 2) Should the windowing slider show a legacy stored value above 255 the way the picture now reads it (divided by 16)? That is a change in `ControlImageDisplay`. **Today:** the picture reads 256 to 4094 on the 12-bit scale, while the slider shows any stored value above 255 as 255.
+- (TWAIN-W 3) Should the 12-bit import store 255 instead of 4095 when it finds no edge, so new rows are on the 0-255 scale? They look the same either way. **Today:** 4095.
+- (TWAIN-W 4) Who runs TWAIN-W's read-only query on the clinic database before the display change ships, and should staff be told about the two groups of images whose display changes?
+- (TWAIN-W 5) An unreadable `.dcm` dropped into a patient's folder is now attached without windowing, instead of stopping the folder scan with an error. Confirm.
+- (CLAIM-DCM 5) A document whose name ends in `.DCM` (upper case) is imported as DICOM, and claims accept it, but the Imaging module does not show it as DICOM (its display path tests `EndsWith(".dcm")`). Should the display path accept any case too?
 
 ---
 
@@ -289,6 +343,9 @@ The review that put the capture work on main added these:
 - (V-PEARL2 4) Error text that Pearl returns (with private details removed) goes into the local log, and it could echo request details. Or log only the error code?
 - (M2-02 3) PaySuite stays hidden. Should PaySuite be in scope at all for a US office?
 - (B-DBM 4) Database Maintenance shows the X-Charge "Tokens" tool even when X-Charge is not turned on, which goes against the rule of no vendor screens before the office turns them on. Hide it unless X-Charge is on? **Today:** always shown.
+- (BIN-B 1) Topaz: where does the clinic's Topaz software put `SigPlusNET.dll`? If it is not under a `Topaz Systems` folder or `%windir%\SigPlus`, the office copies it into the program folder (a release then carries it to the other workstations), or the search gets that folder added.
+- (BIN-B 7) Signatures on a workstation without Topaz: a signature of hex digits only that the program's own box does not accept says "Topaz signature pad software is not installed."; every other failed signature says "Invalid Signature". If the office database holds Topaz signatures, do they all consist of 0-9 and A-F only? And is the wording right, or should it say both ("Invalid Signature, or a Topaz signature: Topaz signature pad software is not installed.")?
+- (REL-FILES 7) DemandForce's extract still names "Open Dental" as the management system (the name DemandForce's import expects). Keep it, or send the product name? **Today:** "Open Dental".
 
 ---
 
@@ -301,6 +358,10 @@ The review that put the capture work on main added these:
 - (M2-TERM 1) Report column headers: "Standard Fee" (fits, or wraps to two lines in Capitation) or the full "Standard Provider Fee" (wraps everywhere)? Exported files keep the old names ("UCR Fee" and so on). Using new names in exports too is against the spec and needs your explicit approval.
 - (M2-UDS 2) The UDS+ patient file carries the internal patient number so the health center's tools can group a patient's rows (no name or other identifier). Acceptable, or use a made-up number per file?
 - (M2-UDS 3) Should the insurance category in UDS+ come from a mapping the office can edit, instead of the fixed list? **Today:** fixed list.
+- (RDL-SRC 1) An office's own RDL report can show its parameter window two or three times (the 2.9.3 engine with ODR, unchanged). Should ODR remember the parameters it was given for the same report run, for example the last values per query for a few seconds, or should the viewer build the report once?
+- (RDL-SRC 2) Three report resources are embedded but no code opens them (`Unsched_Treat_Plans`, and the two accounting reports hard-coded to 2007 with an unfilled `@@@ConnectionString@@@`). Keep them as samples, or delete them? Only an office's own `.rdl` files reach the RDL viewer.
+- (RDL-SRC 3) Delete the 8 old files in `RdlEngine/Definition` that are not compiled? One carries an older GPL header instead of the LGPL one.
+- (RDL-SRC 5) ODR's error handling: `ODR.DataConnection.GetTable` shows a failed query in a message box and returns an empty table, and the `Integer` parameter type stores a `long` and unboxes it as `int`, which throws. Leave them, or fix them?
 
 ---
 
@@ -325,6 +386,14 @@ The review that put the capture work on main added these:
 - (B-SERVER 5) Does the office run a Middle Tier server? If so, is starting the read delay when a signal is sent acceptable?
 - (B-SHELL 2) Should the File Monitor keep requiring the Setup permission? Open Dental leaves it open to everyone. **Today:** Setup required.
 - (M2-MISC 3) Referral phone: a plain 10-digit number is stored as 10 digits (anything else as typed). Or store exactly what was typed? **Today:** 10 digits.
+- (REN-PROOF 3) The HL7 service (not shipped in v0.0) has two default names, as in Open Dental: `OpenPmsDentalHL7` (`HL7ServiceName`) and the run-time fallback `OpenDentalHL7` (`HL7ServiceFallbackName`), which adopted HL7 setups saved. Unify them later? That needs a migration of the saved `HL7Def.HL7ServiceName` and eCW `HL7ServiceName` values, or both names accepted at start. **Today:** two names.
+
+**New office database** (`db/init/new-database.sql`)
+- (INIT-SQL 1) The adoption record of a new database is `new=1;source=24.3.63.0;level=...;adopted=db/init/new-database.sql`. Should later steps that depend on the database's origin treat a new database as one of the 24.3.63 line (this choice), or as its own origin?
+- (INIT-SQL 2) Keep the ADA claim form layouts (ADA 2006, 2012 and 2024 rows, which name the image files `ADA2006.gif`, `ADA2012.gif`, `ADA2024_J430.gif`), the clearinghouse list and the Canadian network rows, or start without some of them? **Today:** all kept.
+- (INIT-SQL 3) The two placeholder providers ("Dentist" `DOC`, "Hygienist" `HYG`) and six operatories: keep them as a starting point, or start with one provider, or none?
+- (INIT-SQL 4) The seed's legacy tables (`anesth*`, `files`, `instructor`) are documented schema exceptions and are in the file. Drop them with a fork migration step one day?
+- (INIT-SQL 5) The development seed still has the eServices notices and Open Dental's mass e-mail templates (with links to Open Dental's site); only the new database file drops them. Remove them from the seed too?
 
 **Wiki**
 - (B-WIKI 1) The read-only wiki copy has one folder for the whole office, by default inside the A-to-Z folder (usually on the same server as the database). Should there be a folder per computer, or a second copy, so it is still there when the server is down? **Today:** one folder; Wiki Setup warns about this.
@@ -361,6 +430,12 @@ The review that put the capture work on main added these:
 - (V-GP, phase B) One Global Payments question box uses the plain Windows message box, because the program's own box can't set the default button. Acceptable, or add that option to the program's box?
 - (M2-01 4) Mark Open Dental's remaining headquarters-only values as reserved in a follow-up?
 - (B-EF 5, B-WIKI 4, M2-SDV 5) How the program numbers its own saved per-user settings: values from 100 up, the existing value 25 with Fkey 1 (wiki search limit), or AcctProcBreakdown with Fkey 1 and 2 (Service Date View). Keep these, or register values of the program's own?
+- (ORG-CLEANUP 1) Delete `D:\Unversioned` on the development PC? Earlier Debug builds of Direct2dWrapper created it; nothing writes there any more.
+- (ORG-CLEANUP 2) Should the fork's merge driver drop configuration lines that one side removed (as with `ODXam`)? Until then, the strip step in ORG-CLEANUP is needed after merges that touch `OpenDental.sln`.
+- (ORG-CLEANUP 3) Keep `OpenDental.Local.slnf`, or point the test runner and the host check at `OpenDental.sln` and delete the filter?
+- (BIN-A 5) Delete the DirectX 11 preference (`DirectX11ToothChartUseIfAvail`) and `computerpref.GraphicsUseDirectX11` in a future fork migration, or keep them? Nothing reads them since Sparks3D went.
+- (BIN-B 2) Remove the always-false AvaTax branches in the shared billing files (Adjustments, Procedures, RepeatCharges and their windows), and the disabled stub with them, in a later cleanup?
+- (BIN-B 3) RAMQ and QRDA zips store their XML in the system code page, as DotNetZip did. Keep that, or store UTF-8?
 
 ---
 
@@ -381,3 +456,7 @@ These came out of the review of all 55 packages together. Items 4, 5, 8 and 10 a
 - M2-01 5 (hide Employee Titles until the title feature ships): M2-EMP shipped employee titles, so it stays visible.
 - M2-01's question about test databases with fixed names clashing in parallel runs: fixed on `port/int-4`.
 - B-APPT's request that the integrator pick one approach for setting names that aren't confirmed yet: settled on the integration branch. All packages use the program's own setting rows.
+- BIN-B 6 (the licence list still naming "Drifty", "Stdole", "Zxing" and "Tao_Freeglut"): REL-FILES removed those entries.
+- REL-FILES 8 (build RdlEngine and RdlViewer from source before v0.0): done in RDL-SRC; the setup checks that both are the files built from this repository.
+- REN-PROOF 1 (`TempFolderName`) and 2 (window sizes from the pre-rename folder), REL-FILES 6 (Benco values), BIN-A 1 (the four bridges) and BIN-A 4 (the DirectX runtime): now items 1, 2, 6 and 7 of "Decided by default for v0.0".
+- M16-INTEGRATION has no questions of its own; the capture questions it points to are in `imaging-capture-owner-questions.md`.
