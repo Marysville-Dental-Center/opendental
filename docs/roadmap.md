@@ -19,6 +19,7 @@ Planned work after v0.0, as agreed with the owner. Each item is discussed and sc
    panel that opens when a procedure is completed, filled with the procedure code's default materials for the assistant to confirm or adjust;
    lot and expiration tracking (soonest-expiring lot first, implant lots recorded on the patient's procedure); low-stock and expiring-soon
    alerts; usage and cost reports.
+5. **Storage rename**: `OpenPmsDentalCloud` becomes `OpenPmsDentalStorage`, since it holds only the SFTP storage option.
 
 ## Later
 
@@ -75,7 +76,6 @@ both frameworks; the program and tests on .NET 8 or later; the Middle Tier stays
 ### Other planned items
 
 - Open Dental 26.2 features, re-implemented from its public release notes once Open Dental marks 26.2 stable.
-- `OpenPmsDentalCloud` renamed to a storage assembly (it holds only the SFTP storage option).
 - Server components on Linux, new ones in Rust: a plan first (image storage, backups on the server, publishing releases from the server,
   scheduled jobs). The Middle Tier is the exception and stays on Windows for now.
 - The GitHub repository moves to a neutral name.
