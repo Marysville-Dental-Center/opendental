@@ -9,7 +9,7 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - encrypted database connections with the program's own database account;
 - the security updates of the libraries (SSH.NET, MailKit and MimeKit 4, Newtonsoft.Json 13, MSAL, the Google APIs), with remembered SSH
   host keys;
-- the maintenance updates: WebView2 in place of Internet Explorer, a managed spell checker, PDFsharp and MigraDoc 6.5 (both libraries built
+- the maintenance updates: WebView2 in place of Internet Explorer, a managed spell checker and PDFsharp and MigraDoc 6.5 (these two built
   from their source), and the program's own DICOM reader in place of fo-dicom;
 - routine maintenance around the practice, and inventory tracking for materials;
 - the storage library under its new name, and a Database Maintenance check that works again.
@@ -103,9 +103,8 @@ their licences in `THIRD-PARTY-NOTICES.txt`.
 
 - **SSH: SSH.NET 2026.0.0** (with Bouncy Castle Cryptography 2.7.0) in place of SharpSSH, which was unmaintained since 2013, and its two
   cryptography libraries (Mentalis.org Security Library and DiffieHellman). It serves every SSH connection of the program: the SFTP image
-  storage, the Transworld (TSI) uploads, the Denti-Cal and Mercury clearinghouses and the HL7 service's SFTP mode. DSA host keys
-  (`ssh-dss`) are not supported: a server that has only a DSA key cannot be reached (owner decision of 2026-11-02: accepted). Host keys are
-  now remembered (next section).
+  storage, the Transworld (TSI) uploads, the Denti-Cal and Mercury clearinghouses and the HL7 service's SFTP mode. Host keys are now
+  remembered, and DSA host keys are not supported (next section).
 - **E-mail: MailKit and MimeKit 4.18.2** in place of OpenPop.NET (POP3) and MimeKit 2. POP3 signs in with the user name and password as
   before, and with Use SSL it uses TLS from the first byte; MailKit checks the server's certificate and its revocation, and the program
   keeps that check (owner decision of 2026-11-02). The program still adds no background check of POP3 inboxes (owner decision of
@@ -138,7 +137,8 @@ all. The design is in `docs/specs/ssh-host-keys.md`.
   presents then. Both are in the Audit Trail.
 - **After the update** no key is stored yet: the first connection to each server stores its key. An office that wants to be sure should
   compare the stored fingerprints in Setup, SSH Host Keys with the ones its servers' administrators give.
-- **DSA keys** (`ssh-dss`) are still not supported, as in the SSH.NET update: a server with only a DSA key cannot be reached.
+- **DSA keys** (`ssh-dss`) are not supported, as SSH.NET does not offer them: a server with only a DSA key cannot be reached (owner
+  decision of 2026-11-02: accepted).
 
 ## WebView2 in place of Internet Explorer
 

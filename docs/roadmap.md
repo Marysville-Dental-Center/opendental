@@ -14,7 +14,8 @@ Built for the version after 0.0; what each one changes is in its release notes, 
 1. **Library updates (security) and client-side database security**: the tier 1 library updates (SSH.NET, MailKit/MimeKit 4, Newtonsoft.Json
    13, MSAL and the Google APIs) with remembered SSH host keys, and encrypted database connections with the program's own database account.
 2. **Library updates (maintenance)**: WebView2 in place of the Internet Explorer control, the managed WeCantSpell.Hunspell spell checker,
-   PDFsharp/MigraDoc 6.5 (both libraries built from their source), and the in-house DICOM reader in place of fo-dicom.
+   PDFsharp/MigraDoc 6.5 (the spell checker and PDFsharp/MigraDoc built from their source), and the in-house DICOM reader in place of
+   fo-dicom.
 3. **Routine maintenance around the practice**.
 4. **Inventory tracking**.
 5. **Storage rename**: `OpenPmsDentalCloud` becomes `OpenPmsDentalStorage`, since it holds only the SFTP storage option.
