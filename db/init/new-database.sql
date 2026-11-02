@@ -1,7 +1,7 @@
 /*
 Open PMS - Dental: a new database.
 
-Creates the 453 tables of a database at fork schema level 2026110213 (the Open Dental 26.1.70 schema and the
+Creates the 454 tables of a database at fork schema level 2026110221 (the Open Dental 26.1.70 schema and the
 fork's), with the rows the program needs to start: preferences, definitions, user groups and permissions, the user Admin,
 program links (all off) and procedure codes (named by their code only). No patients and no office data. Admin has a blank
 password, which the program asks to set at the first logon.
@@ -25814,11 +25814,11 @@ INSERT INTO `preference` (`PrefName`,`ValueString`,`PrefNum`,`Comments`) VALUES
 ('BackupIndexesDisabled','1',1163,NULL),
 ('InsOutOfNetworkBlankLikeZero','0',1164,NULL),
 ('EformsSpaceToRightEachField','10',1165,NULL),
-('ForkAdoptedFrom','new=1;source=24.3.63.0;level=2026110213;adopted=db/init/new-database.sql',1166,''),
+('ForkAdoptedFrom','new=1;source=24.3.63.0;level=2026110221;adopted=db/init/new-database.sql',1166,''),
 ('OdSchemaCompat','26.1.70',1167,''),
-('ForkSchemaLevel','2026110213',1168,''),
+('ForkSchemaLevel','2026110221',1168,''),
 ('ForkMigrationInProgress','',1169,NULL),
-('ForkMigrationsApplied','2026101901,2026101902,2026101903,2026101904,2026101905,2026101906,2026101907,2026101951,2026101971,2026102401,2026102402,2026102403,2026102501,2026110101,2026110103,2026110104,2026110201,2026110202,2026110203,2026110204,2026110205,2026110206,2026110207,2026110211,2026110212,2026110213',1170,NULL),
+('ForkMigrationsApplied','2026101901,2026101902,2026101903,2026101904,2026101905,2026101906,2026101907,2026101951,2026101971,2026102401,2026102402,2026102403,2026102501,2026110101,2026110103,2026110104,2026110201,2026110202,2026110203,2026110204,2026110205,2026110206,2026110207,2026110211,2026110212,2026110213,2026110221',1170,NULL),
 ('ApptMirrorSecondary','0',1171,NULL),
 ('TaskCategoryShow','0',1172,NULL),
 ('IncomeTransfersLimitToPatPayments','0',1173,NULL),
@@ -28593,6 +28593,25 @@ CREATE TABLE `sop` (
   `Description` varchar(255) NOT NULL,
   PRIMARY KEY (`SopNum`),
   KEY `SopCode` (`SopCode`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `sshhostkey` */
+
+CREATE TABLE `sshhostkey` (
+  `SshHostKeyNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `Host` varchar(255) NOT NULL,
+  `Port` int(11) NOT NULL,
+  `KeyType` varchar(255) NOT NULL,
+  `FingerprintSha256` varchar(255) NOT NULL,
+  `UserNum` bigint(20) NOT NULL,
+  `DateTStored` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  `IsAccepted` tinyint(4) NOT NULL,
+  `RefusedKeyType` varchar(255) NOT NULL,
+  `RefusedFingerprintSha256` varchar(255) NOT NULL,
+  `DateTRefused` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  PRIMARY KEY (`SshHostKeyNum`),
+  UNIQUE KEY `HostPort` (`Host`,`Port`),
+  KEY `UserNum` (`UserNum`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 /*Table structure for table `stateabbr` */
