@@ -50,8 +50,6 @@ namespace OpenPmsDental {
 			_listProcedures=ListProcNums.Select(x => _listProcedures.Find(y => y.ProcNum==x)).Where(x => x!=null).ToList();
 			List<long> listProcNumsAwaiting=SupplyProcPendings.GetForProcs(ListProcNums).Select(x => x.ProcNum).ToList();
 			_listHeld=InventoryTracking.GetProcMaterials(ListProcNums);
-			//A procedure that awaits materials and holds none yet opens with its code's defaults; any other shows what it holds.
-			List<Procedure> listProceduresDefault=_listProcedures.FindAll(x => listProcNumsAwaiting.Contains(x.ProcNum) && !_listHeld.Any(y => y.ProcNum==x.ProcNum));
 			LoadSupplies(_listHeld.Select(x => x.SupplyNum));
 			_listSupplyUsageLines=new List<SupplyUsageLine>();
 			//What a procedure holds: an implant with the lot it was taken from; anything else as one line of lot -1 per supply, which keeps the lots
@@ -63,14 +61,14 @@ namespace OpenPmsDental {
 				}
 				AddToAutoLine(supplyUsageLine.ProcNum,supplyUsageLine.SupplyNum,supplyUsageLine.Quantity);
 			}
-			List<SupplyUsageLine> listDefaults=InventoryTracking.GetDefaultMaterials(listProceduresDefault,isLotAuto:true);
+			//Every procedure that awaits materials starts from its code's defaults, also one that holds some already: a confirmation that failed
+			//part-way wrote some of its rows and left it on the Awaiting Materials list. A supply it holds keeps the larger of what it holds and the
+			//default; a supply it does not hold yet gets the default. A procedure that does not await materials shows only what it holds.
+			List<Procedure> listProceduresAwaiting=_listProcedures.FindAll(x => listProcNumsAwaiting.Contains(x.ProcNum));
+			List<SupplyUsageLine> listDefaults=InventoryTracking.GetDefaultMaterials(listProceduresAwaiting,isLotAuto:true);
 			LoadSupplies(listDefaults.Select(x => x.SupplyNum));
-			foreach(SupplyUsageLine supplyUsageLine in listDefaults) {
-				if(supplyUsageLine.SupplyLotNum==-1) {
-					AddToAutoLine(supplyUsageLine.ProcNum,supplyUsageLine.SupplyNum,supplyUsageLine.Quantity);
-					continue;
-				}
-				_listSupplyUsageLines.Add(supplyUsageLine);
+			foreach(IGrouping<(long ProcNum,long SupplyNum),SupplyUsageLine> grouping in listDefaults.GroupBy(x => (x.ProcNum,x.SupplyNum)).ToList()) {
+				AddDefaultLines(grouping.Key.ProcNum,grouping.Key.SupplyNum,grouping.ToList());
 			}
 			if(IsReadOnly) {
 				labelReadOnly.Visible=true;
@@ -92,6 +90,41 @@ namespace OpenPmsDental {
 			FillComboLot();
 			//The keyboard-wedge scanner types into the control that has focus.
 			textScan.Select();
+		}
+
+		///<summary>The default lines of one supply of an awaiting procedure (GetDefaultMaterials): all of them when the procedure holds none of the
+		///supply. When it holds some, only what the default asks beyond that: more on its line of lot -1, or for an implant, rows in the soonest-expiring
+		///lots that still have stock after what the panel plans (without a lot when none has).</summary>
+		private void AddDefaultLines(long procNum,long supplyNum,List<SupplyUsageLine> listDefaultsSupply) {
+			double qtyHeld=Math.Round(_listHeld.Where(x => x.ProcNum==procNum && x.SupplyNum==supplyNum).Sum(x => x.Quantity),2);
+			if(qtyHeld<=0) {
+				foreach(SupplyUsageLine supplyUsageLine in listDefaultsSupply) {
+					if(supplyUsageLine.SupplyLotNum==-1) {
+						AddToAutoLine(procNum,supplyNum,supplyUsageLine.Quantity);
+						continue;
+					}
+					_listSupplyUsageLines.Add(supplyUsageLine);
+				}
+				return;
+			}
+			double qtyMore=Math.Round(listDefaultsSupply.Sum(x => x.Quantity)-qtyHeld,2);
+			if(qtyMore<=0) {
+				return;//It holds the default or more: what was confirmed stays.
+			}
+			if(!GetSetting(supplyNum).IsImplant) {
+				AddToAutoLine(procNum,supplyNum,qtyMore);
+				return;
+			}
+			ComputePlan();
+			foreach(SupplyUsageLine supplyUsageLineAllocated in SupplyLots.AllocateFifo(supplyNum,qtyMore,_listSupplyLotsAfterPlan)) {
+				SupplyUsageLine supplyUsageLine=_listSupplyUsageLines.Find(x => x.ProcNum==procNum && x.SupplyNum==supplyNum
+					&& x.SupplyLotNum==supplyUsageLineAllocated.SupplyLotNum);
+				if(supplyUsageLine==null) {
+					supplyUsageLine=new SupplyUsageLine(procNum,supplyNum,supplyUsageLineAllocated.SupplyLotNum,0);
+					_listSupplyUsageLines.Add(supplyUsageLine);
+				}
+				supplyUsageLine.Quantity=Math.Round(supplyUsageLine.Quantity+supplyUsageLineAllocated.Quantity,2);
+			}
 		}
 
 		///<summary>Adds the quantity to the procedure's line of lot -1 of the supply, or adds that line.</summary>

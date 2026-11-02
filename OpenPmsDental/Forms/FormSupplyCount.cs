@@ -79,21 +79,16 @@ namespace OpenPmsDental {
 			}
 		}
 
-		///<summary>Adds the rows of the supply that are not in the grid yet, with the quantities the program has now: one row per lot with stock, and
-		///one for stock without a lot when there is some, or when the supply is not tracked by lot, or has no lot with stock.</summary>
+		///<summary>Adds the rows of the supply that are not in the grid yet, with the quantities the program has now, from the ledger
+		///(InventoryTracking.GetCountLines): one row per lot whose stock is not 0, negative lots too, so the count can correct them, and one for stock
+		///without a lot when there is some, or when the supply is not tracked by lot, or has no such lot.</summary>
 		private void AddRowsForSupply(Supply supply) {
 			if(_listCountRows.Any(x => x.Supply.SupplyNum==supply.SupplyNum)) {
 				return;
 			}
-			bool isLotTracked=SupplySettings.GetForSupply(supply.SupplyNum).IsLotTracked;
-			List<SupplyLot> listSupplyLots=SupplyLots.GetForSupply(supply.SupplyNum,isEmptyIncluded:false);
-			foreach(SupplyLot supplyLot in listSupplyLots) {
-				_listCountRows.Add(new CountRow { Supply=supply,SupplyLotNum=supplyLot.SupplyLotNum,LotNumber=supplyLot.LotNumber,DateExpiry=supplyLot.DateExpiry,
-					QtyProgram=Math.Round(supplyLot.QtyOnHand,2) });
-			}
-			double qtyWithoutLot=Math.Round(SupplyLedgers.GetSumWithoutLot(supply.SupplyNum),2);
-			if(qtyWithoutLot!=0 || !isLotTracked || listSupplyLots.Count==0) {
-				_listCountRows.Add(new CountRow { Supply=supply,QtyProgram=qtyWithoutLot });
+			foreach(SupplyCountLine supplyCountLine in InventoryTracking.GetCountLines(supply.SupplyNum)) {
+				_listCountRows.Add(new CountRow { Supply=supply,SupplyLotNum=supplyCountLine.SupplyLotNum,LotNumber=supplyCountLine.LotNumber??"",
+					DateExpiry=supplyCountLine.DateExpiry,QtyProgram=supplyCountLine.QtyProgram });
 			}
 		}
 
@@ -114,13 +109,15 @@ namespace OpenPmsDental {
 			}
 			Supply supply=listSupplies[0];
 			AddRowsForSupply(supply);
-			//The selected row when it is that supply (the lot being counted), otherwise its first row.
+			//The selected row when it is that supply (the lot being counted), otherwise its first row that the program has stock in (a lot below zero
+			//is counted by selecting its row), otherwise its first row.
 			CountRow countRow=null;
 			int indexSelected=gridMain.GetSelectedIndex();
 			if(indexSelected>=0 && indexSelected<_listCountRows.Count && _listCountRows[indexSelected].Supply.SupplyNum==supply.SupplyNum) {
 				countRow=_listCountRows[indexSelected];
 			}
-			countRow=countRow??_listCountRows.First(x => x.Supply.SupplyNum==supply.SupplyNum);
+			countRow=countRow??_listCountRows.FirstOrDefault(x => x.Supply.SupplyNum==supply.SupplyNum && x.QtyProgram>0)
+				??_listCountRows.First(x => x.Supply.SupplyNum==supply.SupplyNum);
 			countRow.QtyCounted=Math.Round((countRow.IsCounted ? countRow.QtyCounted : 0)+1,2);
 			countRow.IsCounted=true;
 			FillGrid();
@@ -181,7 +178,7 @@ namespace OpenPmsDental {
 				if(supplyLot!=null) {
 					countRow.SupplyLotNum=supplyLot.SupplyLotNum;
 					countRow.DateExpiry=supplyLot.DateExpiry;
-					countRow.QtyProgram=Math.Round(supplyLot.QtyOnHand,2);
+					countRow.QtyProgram=InventoryTracking.GetQtyProgram(supply.SupplyNum,supplyLot.SupplyLotNum);//From the ledger, not the counter.
 				}
 				else {
 					InputBox inputBoxExpiry=new InputBox(Lan.g(this,"Expiry date (blank for none)"));
@@ -244,8 +241,9 @@ namespace OpenPmsDental {
 			MessageBox.Show(this,Lan.g(this,"Count posted. Rows adjusted")+": "+countAdjusted);
 		}
 
-		///<summary>After a failed post: each counted row's program quantity read again from the ledger (a lot found in the count that the post
-		///created is found by its number). When even that fails, Post is turned off until the window is opened again.</summary>
+		///<summary>After a failed post: each counted row's program quantity read again from the ledger (InventoryTracking.GetQtyProgram), never from
+		///the lot counter, which the failed post may have left at its old value; a lot found in the count that the post created is found by its number.
+		///When even that fails, Post is turned off until the window is opened again.</summary>
 		private void ReloadQtyProgramAfterFailure(List<CountRow> listCountRows) {
 			try {
 				foreach(CountRow countRow in listCountRows) {
@@ -256,12 +254,8 @@ namespace OpenPmsDental {
 							countRow.SupplyLotNum=supplyLotFound.SupplyLotNum;
 						}
 					}
-					if(countRow.SupplyLotNum!=0) {
-						SupplyLot supplyLot=SupplyLots.GetMany(new List<long> { countRow.SupplyLotNum }).FirstOrDefault();
-						countRow.QtyProgram=Math.Round(supplyLot?.QtyOnHand??0,2);
-					}
-					else if(countRow.LotNumber=="") {
-						countRow.QtyProgram=Math.Round(SupplyLedgers.GetSumWithoutLot(countRow.Supply.SupplyNum),2);
+					if(countRow.SupplyLotNum!=0 || countRow.LotNumber=="") {
+						countRow.QtyProgram=InventoryTracking.GetQtyProgram(countRow.Supply.SupplyNum,countRow.SupplyLotNum);
 					}
 				}
 			}
