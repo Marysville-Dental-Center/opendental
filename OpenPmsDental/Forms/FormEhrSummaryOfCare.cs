@@ -116,20 +116,15 @@ namespace OpenPmsDental {
 			catch {
 				throw new XmlException("Invalid XML");
 			}
-			string xmlFileName="";
-			bool isStylesheetAttached=false;
-			if(doc.DocumentElement.Name.ToLower()=="clinicaldocument") {//CCD, CCDA, and C32.
-				xmlFileName="ccd.xml";
-				isStylesheetAttached=!string.IsNullOrEmpty(strAlterateFilPathXslCCD);
-			}
-			else if(doc.DocumentElement.Name.ToLower()=="continuityofcarerecord" || doc.DocumentElement.Name.ToLower()=="ccr:continuityofcarerecord") {//CCR
-				xmlFileName="ccr.xml";
-			}
-			else {
+			string rootName=doc.DocumentElement.Name.ToLower();
+			bool isCcd=rootName=="clinicaldocument";//CCD, CCDA, and C32.
+			bool isCcr=rootName=="continuityofcarerecord" || rootName=="ccr:continuityofcarerecord";
+			if(!isCcd && !isCcr) {
 				MessageBox.Show("This is not a valid CCD, CCDA, CCR, or C32 message.  Only the raw text will be shown");
 				MessageBox.Show(strXmlCCD);
 				return false;
 			}
+			bool isStylesheetAttached=isCcd && !string.IsNullOrEmpty(strAlterateFilPathXslCCD);
 			//The display stylesheets came from Open Dental's proprietary EHR.dll, which is not loaded anymore (EhrSummaryCcds.GetEhrResource gives "").
 			//A stylesheet that came with an email is never run: the program has no XSLT in its own process, because a stylesheet that recurses
 			//without end overflows the stack, which ends the program whatever catches it, and one that loops never returns.
@@ -141,20 +136,42 @@ namespace OpenPmsDental {
 			}
 			//The email's stylesheet styled this window before. The window still opens, with the CCD as XML, so a Direct message can still be reconciled.
 			string note=Lan.g("FormEhrSummaryOfCare","The stylesheet that came with this document was not run, so the document is shown as XML.");
-			File.WriteAllText(Path.Combine(PrefC.GetTempFolderPath(),xmlFileName),doc.InnerXml.ToString());
-			using FormEhrSummaryCcdEdit formESCD=new FormEhrSummaryCcdEdit(ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),xmlFileName),patCur,note);
+			//The document stays in memory while it is shown: the patient's clinical document never sits on disk, and a crash leaves nothing behind.
+			//An older version wrote it (and the email's stylesheet) to the program's temp folder until the window closed; remove what one left there.
+			DeleteOldCcdFiles(Path.Combine(Path.GetTempPath(),ProgramNames.TempFolderName),DateTime.Now.AddHours(-1));
+			using FormEhrSummaryCcdEdit formESCD=new FormEhrSummaryCcdEdit(doc.InnerXml,patCur,note);
 			formESCD.ShowDialog();
-			string[] arrayFileNames={"ccd.xml","ccd.xsl","ccr.xml","ccr.xsl"};
-			for(int i=0;i<arrayFileNames.Length;i++) {
+			return formESCD.DidPrint;
+		}
+
+		///<summary>The names of the files an older version wrote into the program's temp folder while it showed a CCD or CCR: the document and its
+		///stylesheet (the one that came with an email).</summary>
+		private static readonly string[] _arrayOldCcdFileNames={"ccd.xml","ccd.xsl","ccr.xml","ccr.xsl"};
+
+		///<summary>Deletes the files an older version wrote into folder (the program's temp folder) while it showed a CCD or CCR, when they were
+		///written before dateTimeWrittenBefore. That version deleted them when the window closed, and the program empties the folder when it closes,
+		///so only an older version that ended with the window open leaves them; the time leaves alone the file of an older version that shows a CCD
+		///at the same time (it reads it again to reconcile). Nothing else is touched; a file in use stays. Returns how many it deleted. Never throws.
+		///Does not create folder.</summary>
+		public static int DeleteOldCcdFiles(string folder,DateTime dateTimeWrittenBefore) {
+			if(string.IsNullOrWhiteSpace(folder)) {
+				return 0;
+			}
+			int countDeleted=0;
+			for(int i=0;i<_arrayOldCcdFileNames.Length;i++) {
 				try {
-					File.Delete(ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),arrayFileNames[i]));
+					string path=Path.Combine(folder,_arrayOldCcdFileNames[i]);
+					if(!File.Exists(path) || File.GetLastWriteTime(path)>=dateTimeWrittenBefore) {
+						continue;
+					}
+					File.Delete(path);
+					countDeleted++;
 				}
-				catch {
-					//Do nothing because the file could have been in use or there were not sufficient permissions.
-					//This file will most likely get deleted next time a file is created.
+				catch(Exception ex) {
+					ex.DoNothing();//In use, or not sufficient permissions: the program empties the folder when it closes.
 				}
 			}
-			return formESCD.DidPrint;
+			return countDeleted;
 		}
 
 		private void butExport_Click(object sender,EventArgs e) {

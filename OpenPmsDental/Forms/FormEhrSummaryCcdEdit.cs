@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Windows.Forms;
 using System.Xml;
 using CodeBase;
@@ -8,18 +7,21 @@ using OpenPmsDentalBusiness;
 
 namespace OpenPmsDental {
 	public partial class FormEhrSummaryCcdEdit:FormODBase {
-		public string StrXmlFilePath;
 		public bool DidPrint;
+		///<summary>The text of the CCD (or CCR), kept in memory only: the document is never written to disk while it is shown, and a crash leaves
+		///nothing behind. Shown, reconciled and shown as raw XML from here.</summary>
+		private string _xmlCcd;
 		///<summary>Will be set to the patient that this CCD message is indicated for.  Can be null if not meant for incorporating into a patient's account.</summary>
 		private Patient _patCur;
 		///<summary>The line shown above the document, for example that the stylesheet that came with it was not run. Can be empty.</summary>
 		private string _note;
 
-		///<summary>Patient can be null.  If null, or if PatNum is 0, reconciles will not be available. note is shown above the document.</summary>
-		public FormEhrSummaryCcdEdit(string strXmlFilePath,Patient patCur,string note) {
+		///<summary>xmlCcd is the text of the CCD (or CCR), not a file. Patient can be null.  If null, or if PatNum is 0, reconciles will not be available.
+		///note is shown above the document.</summary>
+		public FormEhrSummaryCcdEdit(string xmlCcd,Patient patCur,string note) {
 			InitializeComponent();
 			InitializeLayoutManager();
-			StrXmlFilePath=strXmlFilePath;
+			_xmlCcd=xmlCcd??"";
 			_patCur=patCur;
 			_note=note;
 		}
@@ -36,7 +38,7 @@ namespace OpenPmsDental {
 			try {
 				//The document is shown as XML, encoded, so patient data is never markup. No stylesheet runs in the program: one that came with an email
 				//could recurse without end, and the stack overflow would end the program whatever catches it, or loop for ever.
-				html=HtmlPage.BuildXml(File.ReadAllText(StrXmlFilePath),_note);
+				html=HtmlPage.BuildXml(_xmlCcd,_note);
 			}
 			catch(Exception ex) {
 				html=HtmlPage.BuildText(Lan.g(this,"The document could not be shown.")+"\r\n"+ex.Message);
@@ -61,11 +63,10 @@ namespace OpenPmsDental {
 		private void butReconcileMedications_Click(object sender,EventArgs e) {
 			XmlDocument xmlDocCcd=new XmlDocument();
 			try {
-				string strXmlText=File.ReadAllText(StrXmlFilePath);
-				xmlDocCcd.LoadXml(strXmlText);				
+				xmlDocCcd.LoadXml(_xmlCcd);
 			}
 			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Error reading file")+": "+ex.Message);
+				MessageBox.Show(Lan.g(this,"Error reading the document")+": "+ex.Message);
 				return;
 			}
 			using FormReconcileMedication formRM=new FormReconcileMedication(_patCur);
@@ -78,11 +79,10 @@ namespace OpenPmsDental {
 		private void butReconcileProblems_Click(object sender,EventArgs e) {
 			XmlDocument xmlDocCcd=new XmlDocument();
 			try {
-				string strXmlText=File.ReadAllText(StrXmlFilePath);
-				xmlDocCcd.LoadXml(strXmlText);
+				xmlDocCcd.LoadXml(_xmlCcd);
 			}
 			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Error reading file")+": "+ex.Message);
+				MessageBox.Show(Lan.g(this,"Error reading the document")+": "+ex.Message);
 				return;
 			}
 			using FormReconcileProblem formRP=new FormReconcileProblem(_patCur);
@@ -96,11 +96,10 @@ namespace OpenPmsDental {
 		private void butReconcileAllergies_Click(object sender,EventArgs e) {
 			XmlDocument xmlDocCcd=new XmlDocument();
 			try {
-				string strXmlText=File.ReadAllText(StrXmlFilePath);
-				xmlDocCcd.LoadXml(strXmlText);
+				xmlDocCcd.LoadXml(_xmlCcd);
 			}
 			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Error reading file")+": "+ex.Message);
+				MessageBox.Show(Lan.g(this,"Error reading the document")+": "+ex.Message);
 				return;
 			}
 			using FormReconcileAllergy formRA=new FormReconcileAllergy(_patCur);
@@ -111,7 +110,7 @@ namespace OpenPmsDental {
 		}
 
 		private void butShowXml_Click(object sender,EventArgs e) {
-			string strCcd=File.ReadAllText(StrXmlFilePath);
+			string strCcd=_xmlCcd;
 			//Reformat to add newlines after each element to make more readable.
 			strCcd=strCcd.Replace("\r\n","").Replace("\n","").Replace("\r","");//Remove existsing newlines.
 			strCcd=strCcd.Replace(">",">\r\n");
