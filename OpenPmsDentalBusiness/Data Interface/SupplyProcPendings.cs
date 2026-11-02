@@ -74,5 +74,15 @@ namespace OpenPmsDentalBusiness {
 			}
 			Db.NonQ("DELETE FROM supplyprocpending WHERE ProcNum IN("+string.Join(",",listProcNums.Select(x => POut.Long(x)))+")");
 		}
+
+		///<summary>For the repair: removes the awaiting rows of procedures that are no longer complete, or no longer exist (a failure between a
+		///procedure's restore and the removal of its awaiting row). Returns the number removed.</summary>
+		public static long DeleteNotComplete() {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetLong(MethodBase.GetCurrentMethod());
+			}
+			return Db.NonQ("DELETE supplyprocpending FROM supplyprocpending LEFT JOIN procedurelog ON procedurelog.ProcNum=supplyprocpending.ProcNum "
+				+"WHERE procedurelog.ProcNum IS NULL OR procedurelog.ProcStatus<>"+POut.Int((int)ProcStat.C));
+		}
 	}
 }

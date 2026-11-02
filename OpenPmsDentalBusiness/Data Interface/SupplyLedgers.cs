@@ -35,6 +35,25 @@ namespace OpenPmsDentalBusiness {
 			return Crud.SupplyLedgerCrud.SelectMany(command);
 		}
 
+		///<summary>The procedures that still hold materials (their Use and Restore rows of some supply and lot sum to less than 0) although they are
+		///no longer complete, or no longer exist. Left by a failure between a procedure's status write and its restore, or by another workstation
+		///un-completing a procedure while its materials were being confirmed. For the repair.</summary>
+		public static List<long> GetProcNumsHeldNotComplete() {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<long>>(MethodBase.GetCurrentMethod());
+			}
+			string command="SELECT DISTINCT held.ProcNum FROM ("
+					+"SELECT supplyledger.ProcNum FROM supplyledger "
+					+"WHERE supplyledger.ProcNum>0 AND supplyledger.LedgerType IN("+(int)SupplyLedgerType.Use+","+(int)SupplyLedgerType.Restore+") "
+					+"GROUP BY supplyledger.ProcNum,supplyledger.SupplyNum,supplyledger.SupplyLotNum "
+					+"HAVING ROUND(SUM(supplyledger.Quantity),2)<0"
+				+") held "
+				+"LEFT JOIN procedurelog ON procedurelog.ProcNum=held.ProcNum "
+				+"WHERE procedurelog.ProcNum IS NULL OR procedurelog.ProcStatus<>"+POut.Int((int)ProcStat.C)+" "
+				+"ORDER BY held.ProcNum";
+			return Db.GetListLong(command);
+		}
+
 		///<summary>The Receive rows of the order items.</summary>
 		public static List<SupplyLedger> GetReceiptsForOrderItems(List<long> listSupplyOrderItemNums) {
 			if(listSupplyOrderItemNums.IsNullOrEmpty()) {
@@ -129,24 +148,69 @@ namespace OpenPmsDentalBusiness {
 			}
 			for(int i=0;i<listSupplyLedgers.Count;i++) {
 				SupplyLedger supplyLedger=listSupplyLedgers[i];
-				if(supplyLedger.SupplyNum==0) {
-					throw new ApplicationException("A stock ledger row needs a supply.");
-				}
-				supplyLedger.Quantity=Math.Round(supplyLedger.Quantity,2);
-				if(supplyLedger.UserNum==0 && Security.CurUser!=null) {
-					supplyLedger.UserNum=Security.CurUser.UserNum;
-				}
-				if(supplyLedger.Reason==null) {
-					supplyLedger.Reason="";
-				}
-				if(supplyLedger.Reason.Length>255) {
-					supplyLedger.Reason=supplyLedger.Reason.Substring(0,255);
-				}
+				PrepareRow(supplyLedger);
 				Crud.SupplyLedgerCrud.Insert(supplyLedger);
 			}
 			RecomputeForSupplies(listSupplyLedgers.Select(x => x.SupplyNum).Distinct().ToList());
 			RecomputeForLots(listSupplyLedgers.Select(x => x.SupplyLotNum).Where(x => x!=0).Distinct().ToList());
 			return listSupplyLedgers;
+		}
+
+		///<summary>Writes Restore rows of procedures, each one only while what its procedure holds of the row's supply and lot is still exactly what
+		///the row puts back: one INSERT ... SELECT ... WHERE statement per row, which MyISAM runs under one lock of supplyledger. So two workstations
+		///putting back the same procedure at the same time never put it back twice: the second one finds the first one's row and writes nothing.
+		///Whatever is left held after that (another workstation took more in between) is put back by the next restore of that procedure or by the
+		///repair. Then recomputes the counters as InsertMany does. Returns the rows written; their keys are not read back.</summary>
+		public static List<SupplyLedger> InsertRestoresIfStillHeld(List<SupplyLedger> listSupplyLedgers) {
+			if(listSupplyLedgers.IsNullOrEmpty()) {
+				return new List<SupplyLedger>();
+			}
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<SupplyLedger>>(MethodBase.GetCurrentMethod(),listSupplyLedgers);
+			}
+			List<SupplyLedger> listSupplyLedgersWritten=new List<SupplyLedger>();
+			foreach(SupplyLedger supplyLedger in listSupplyLedgers) {
+				if(supplyLedger.LedgerType!=SupplyLedgerType.Restore || supplyLedger.ProcNum==0 || Math.Round(supplyLedger.Quantity,2)<=0) {
+					throw new ApplicationException("Only Restore rows of a procedure are written this way.");
+				}
+				PrepareRow(supplyLedger);
+				string command="INSERT INTO supplyledger ("+(PrefC.RandomKeys ? "SupplyLedgerNum," : "")
+					+"SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,DispSupplyNum,UserNum,DateTimeEntry,Reason) "
+					+"SELECT "+(PrefC.RandomKeys ? POut.Long(ReplicationServers.GetKey("supplyledger","SupplyLedgerNum"))+"," : "")
+					+POut.Long(supplyLedger.SupplyNum)+","+POut.Long(supplyLedger.SupplyLotNum)+","+(int)supplyLedger.LedgerType+","
+					+POut.Double(supplyLedger.Quantity)+","+POut.Double(supplyLedger.UnitCost)+","+POut.Long(supplyLedger.ProcNum)+","
+					+POut.Long(supplyLedger.PatNum)+","+POut.Long(supplyLedger.SupplyOrderItemNum)+","+POut.Long(supplyLedger.DispSupplyNum)+","
+					+POut.Long(supplyLedger.UserNum)+","+DbHelper.Now()+",'"+POut.String(supplyLedger.Reason)+"' "
+					+"FROM DUAL WHERE ABS((SELECT COALESCE(SUM(supplyledger.Quantity),0) FROM supplyledger "
+						+"WHERE supplyledger.ProcNum="+POut.Long(supplyLedger.ProcNum)+" AND supplyledger.SupplyNum="+POut.Long(supplyLedger.SupplyNum)+" "
+						+"AND supplyledger.SupplyLotNum="+POut.Long(supplyLedger.SupplyLotNum)+" "
+						+"AND supplyledger.LedgerType IN("+(int)SupplyLedgerType.Use+","+(int)SupplyLedgerType.Restore+"))"
+					+"+"+POut.Double(supplyLedger.Quantity)+")<0.005";
+				if(Db.NonQ(command)>0) {
+					listSupplyLedgersWritten.Add(supplyLedger);
+				}
+			}
+			RecomputeForSupplies(listSupplyLedgersWritten.Select(x => x.SupplyNum).Distinct().ToList());
+			RecomputeForLots(listSupplyLedgersWritten.Select(x => x.SupplyLotNum).Where(x => x!=0).Distinct().ToList());
+			return listSupplyLedgersWritten;
+		}
+
+		///<summary>Checks and completes a row before it is written: a supply, 2 decimals, the current user when UserNum is 0, a reason of at most 255
+		///characters.</summary>
+		private static void PrepareRow(SupplyLedger supplyLedger) {
+			if(supplyLedger.SupplyNum==0) {
+				throw new ApplicationException("A stock ledger row needs a supply.");
+			}
+			supplyLedger.Quantity=Math.Round(supplyLedger.Quantity,2);
+			if(supplyLedger.UserNum==0 && Security.CurUser!=null) {
+				supplyLedger.UserNum=Security.CurUser.UserNum;
+			}
+			if(supplyLedger.Reason==null) {
+				supplyLedger.Reason="";
+			}
+			if(supplyLedger.Reason.Length>255) {
+				supplyLedger.Reason=supplyLedger.Reason.Substring(0,255);
+			}
 		}
 		#endregion Insert
 
@@ -222,10 +286,14 @@ namespace OpenPmsDentalBusiness {
 		#endregion Misc
 	}
 
-	///<summary>What SupplyLedgers.RecomputeAll changed.</summary>
+	///<summary>What the repair changed (SupplyLedgers.RecomputeAll, InventoryTracking.Repair).</summary>
 	[Serializable]
 	public class SupplyRepairResult {
 		public long CountSupplies;
 		public long CountLots;
+		///<summary>Procedures no longer complete whose materials the repair put back (InventoryTracking.Repair only).</summary>
+		public long CountProcs;
+		///<summary>Awaiting rows of procedures no longer complete that the repair removed (InventoryTracking.Repair only).</summary>
+		public long CountAwaiting;
 	}
 }

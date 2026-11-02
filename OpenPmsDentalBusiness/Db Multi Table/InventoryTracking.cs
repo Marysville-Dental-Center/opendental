@@ -19,6 +19,8 @@ namespace OpenPmsDentalBusiness {
 		public const string REASON_ON_HAND_EDITED="On hand edited";
 		public const string REASON_OPENING="Opening balance";
 		public const string REASON_DISPENSED="Dispensed";
+		public const string REASON_MOVED_TO_LOT="Lot number entered: moved from stock without a lot";
+		public const string REASON_REPAIRED="Repair: procedure no longer complete";
 		///<summary>The full alert refresh runs at most this often per program (RefreshAlertsIfDue).</summary>
 		public static readonly TimeSpan TimeSpanAlertRefresh=TimeSpan.FromMinutes(10);
 		private static DateTime _dateTimeAlertsRefreshed=DateTime.MinValue;
@@ -183,17 +185,24 @@ namespace OpenPmsDentalBusiness {
 			return SupplyLedgers.GetNetUsage(SupplyLedgers.GetForProcs(listProcNums));
 		}
 
-		///<summary>The default materials of each procedure's code, for the Materials used panel: one line per material, with the lots filled in
-		///soonest-expiring first (split over lots when one lot does not hold enough; lot 0 when there is no lot with stock). Lots already planned for
-		///an earlier procedure of the list are taken into account.</summary>
-		public static List<SupplyUsageLine> GetDefaultMaterials(List<Procedure> listProcedures) {
+		///<summary>The default materials of each procedure's code, for the Materials used panel: one line per material. The lots are filled in
+		///soonest-expiring first (split over lots when one lot does not hold enough; lot 0 when there is no lot with stock), taking into account what
+		///an earlier procedure of the list takes. With isLotAuto, only implants get their lots that way (an implant's lot is chosen in the panel and
+		///recorded with the procedure); every other material gets lot -1, so its lots are chosen soonest-expiring first from the stock as it is when
+		///it is deducted (ConfirmMaterials).</summary>
+		public static List<SupplyUsageLine> GetDefaultMaterials(List<Procedure> listProcedures,bool isLotAuto=false) {
 			Meth.NoCheckMiddleTierRole();
 			List<SupplyUsageLine> listSupplyUsageLines=new List<SupplyUsageLine>();
 			List<SupplyProcCode> listSupplyProcCodes=SupplyProcCodes.GetForCodes(listProcedures.Select(x => x.CodeNum).Distinct().ToList());
 			List<long> listSupplyNums=listSupplyProcCodes.Select(x => x.SupplyNum).Distinct().ToList();
 			List<SupplyLot> listSupplyLots=SupplyLots.GetForSupplies(listSupplyNums,isEmptyIncluded:false);
+			List<SupplySetting> listSupplySettings=isLotAuto ? SupplySettings.GetForSupplies(listSupplyNums) : new List<SupplySetting>();
 			foreach(Procedure procedure in listProcedures) {
 				foreach(SupplyProcCode supplyProcCode in listSupplyProcCodes.FindAll(x => x.CodeNum==procedure.CodeNum)) {
+					if(isLotAuto && !(listSupplySettings.Find(x => x.SupplyNum==supplyProcCode.SupplyNum)?.IsImplant??false)) {
+						listSupplyUsageLines.Add(new SupplyUsageLine(procedure.ProcNum,supplyProcCode.SupplyNum,-1,Math.Round(supplyProcCode.Quantity,2)));
+						continue;
+					}
 					List<SupplyUsageLine> listAllocated=SupplyLots.AllocateFifo(supplyProcCode.SupplyNum,supplyProcCode.Quantity,listSupplyLots);
 					foreach(SupplyUsageLine supplyUsageLine in listAllocated) {
 						supplyUsageLine.ProcNum=procedure.ProcNum;
@@ -209,23 +218,37 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Deducts what the user confirmed for the procedures and removes them from the awaiting list. listSupplyUsageLines holds what each
-		///procedure should hold in the end, per supply and lot (SupplyLotNum -1: soonest-expiring first now). For each procedure, the difference to
-		///what the ledger already holds for it is written: Use rows for more, Restore rows for less. So confirming again after a failure part-way, or
-		///opening the panel again for a procedure, never deducts twice. A procedure with no lines is confirmed with no materials. Procedures that are
-		///not complete any more (another workstation changed them) are skipped and returned.</summary>
-		public static List<long> ConfirmMaterials(List<long> listProcNums,List<SupplyUsageLine> listSupplyUsageLines) {
+		///procedure should hold in the end, per supply and lot. SupplyLotNum -1 means soonest-expiring first, chosen here from the lots as they are
+		///in the database now (ResolveAutoLines), so a panel that was open while another workstation took the last of a lot never takes it again.
+		///For each procedure, the difference to what the ledger already holds for it is written: Use rows for more, Restore rows for less. So
+		///confirming again after a failure part-way, or opening the panel again for a procedure, never deducts twice. A procedure with no lines is
+		///confirmed with no materials. Procedures that are not complete (another workstation changed them) are skipped and returned, also when that
+		///happened while this call ran: what it took for them is put back (RestoreForProc).
+		///A lot-tracked supply taken from an explicit lot that holds less: the missing quantity is first moved from the supply's stock without a lot
+		///into the lot (two Adjust rows), up to what that stock holds, as when the assistant enters the lot number of an implant that came in as an
+		///opening balance. An implant taken without a lot (lot 0) needs reasonImplantWithoutLot, which goes to the audit trail; without it nothing
+		///is written and an ApplicationException is thrown.</summary>
+		public static List<long> ConfirmMaterials(List<long> listProcNums,List<SupplyUsageLine> listSupplyUsageLines,string reasonImplantWithoutLot="") {
 			if(listProcNums.IsNullOrEmpty()) {
 				return new List<long>();
 			}
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<List<long>>(MethodBase.GetCurrentMethod(),listProcNums,listSupplyUsageLines);
+				return Meth.GetObject<List<long>>(MethodBase.GetCurrentMethod(),listProcNums,listSupplyUsageLines,reasonImplantWithoutLot);
 			}
+			listSupplyUsageLines=listSupplyUsageLines??new List<SupplyUsageLine>();
 			List<long> listProcNumsSkipped=new List<long>();
 			List<Procedure> listProcedures=Procedures.GetManyProc(listProcNums,false);
+			ActionAfterStatusesRead?.Invoke(listProcNums);
 			List<SupplyLedger> listSupplyLedgersProcs=SupplyLedgers.GetForProcs(listProcNums);
+			List<SupplyUsageLine> listHeldAll=SupplyLedgers.GetNetUsage(listSupplyLedgersProcs);
 			List<long> listSupplyNums=listSupplyUsageLines.Select(x => x.SupplyNum).Concat(listSupplyLedgersProcs.Select(x => x.SupplyNum)).Distinct().ToList();
 			List<Supply> listSupplies=Supplies.GetMany(listSupplyNums);
+			List<SupplySetting> listSupplySettings=SupplySettings.GetForSupplies(listSupplyNums);
+			//The lots as they are now. ResolveAutoLines takes each procedure's draws off before the next procedure's lots are chosen.
+			List<SupplyLot> listSupplyLots=SupplyLots.GetForSupplies(listSupplyNums,isEmptyIncluded:true);
+			Dictionary<long,double> dictQtyWithoutLotDb=new Dictionary<long,double>();
 			List<SupplyLedger> listSupplyLedgersNew=new List<SupplyLedger>();
+			List<string> listLogTexts=new List<string>();
 			List<long> listProcNumsDone=new List<long>();
 			foreach(long procNum in listProcNums.Distinct()) {
 				Procedure procedure=listProcedures.Find(x => x.ProcNum==procNum);
@@ -234,16 +257,49 @@ namespace OpenPmsDentalBusiness {
 					continue;
 				}
 				List<SupplyLedger> listSupplyLedgersProc=listSupplyLedgersProcs.FindAll(x => x.ProcNum==procNum);
-				List<SupplyUsageLine> listHeld=SupplyLedgers.GetNetUsage(listSupplyLedgersProc);
-				List<SupplyUsageLine> listWanted=ResolveWanted(listSupplyUsageLines.FindAll(x => x.ProcNum==procNum && x.Quantity>0),listHeld);
+				List<SupplyUsageLine> listHeld=listHeldAll.FindAll(x => x.ProcNum==procNum);
+				List<SupplyUsageLine> listLinesProc=listSupplyUsageLines.FindAll(x => x.ProcNum==procNum && Math.Round(x.Quantity,2)>0);
+				List<SupplyUsageLine> listWanted=listLinesProc.FindAll(x => x.SupplyLotNum>=0).Select(x => x.Copy()).ToList();
+				listWanted.AddRange(ResolveAutoLines(new List<long> { procNum },listLinesProc,listHeld,listSupplyLots));
 				List<(long SupplyNum,long SupplyLotNum)> listKeys=listWanted.Select(x => (x.SupplyNum,x.SupplyLotNum))
 					.Concat(listHeld.Select(x => (x.SupplyNum,x.SupplyLotNum))).Distinct().ToList();
+				List<SupplyLedger> listSupplyLedgersMoves=new List<SupplyLedger>();
+				List<SupplyLedger> listSupplyLedgersUses=new List<SupplyLedger>();
 				foreach((long supplyNum,long supplyLotNum) in listKeys) {
 					double qtyWanted=listWanted.Where(x => x.SupplyNum==supplyNum && x.SupplyLotNum==supplyLotNum).Sum(x => x.Quantity);
 					double qtyHeld=listHeld.Where(x => x.SupplyNum==supplyNum && x.SupplyLotNum==supplyLotNum).Sum(x => x.Quantity);
 					double qtyDiff=Math.Round(qtyWanted-qtyHeld,2);
 					if(qtyDiff==0) {
 						continue;
+					}
+					Supply supply=listSupplies.Find(x => x.SupplyNum==supplyNum);
+					SupplySetting supplySetting=listSupplySettings.Find(x => x.SupplyNum==supplyNum)??SupplySettings.CreateDefault(supplyNum);
+					string textProc=ProcedureCodes.GetStringProcCode(procedure.CodeNum)+" "+procedure.ProcDate.ToShortDateString();
+					if(qtyDiff>0 && supplyLotNum==0 && supplySetting.IsImplant) {
+						if(string.IsNullOrWhiteSpace(reasonImplantWithoutLot)) {
+							throw new ApplicationException(Lans.g("InventoryTracking","The lot number of an implant is recorded with the procedure. Please enter the lot number from the package of")
+								+" "+(supply?.Descript??"")+".");
+						}
+						listLogTexts.Add("Implant deducted without a lot number: "+(supply?.Descript??"")+" x"+FormatQty(qtyDiff)+", procedure "+textProc
+							+". Reason: "+reasonImplantWithoutLot.Trim());
+					}
+					SupplyLot supplyLot=listSupplyLots.Find(x => x.SupplyLotNum==supplyLotNum);
+					if(qtyDiff>0 && supplyLotNum>0 && supplySetting.IsLotTracked && supplyLot!=null && Math.Round(supplyLot.QtyOnHand,2)<0) {
+						//The lot holds less than is taken from it now (ResolveAutoLines took this procedure's draws off already).
+						double qtyShort=Math.Min(qtyDiff,Math.Round(-supplyLot.QtyOnHand,2));
+						if(!dictQtyWithoutLotDb.ContainsKey(supplyNum)) {
+							dictQtyWithoutLotDb[supplyNum]=SupplyLedgers.GetSumWithoutLot(supplyNum);
+						}
+						double qtyWithoutLot=dictQtyWithoutLotDb[supplyNum]+listSupplyLedgersNew.Concat(listSupplyLedgersMoves).Concat(listSupplyLedgersUses)
+							.Where(x => x.SupplyNum==supplyNum && x.SupplyLotNum==0).Sum(x => x.Quantity);
+						double qtyMove=Math.Round(Math.Min(qtyShort,qtyWithoutLot),2);
+						if(qtyMove>0) {
+							listSupplyLedgersMoves.Add(NewAdjustRow(supply,supplyNum,0,-qtyMove,REASON_MOVED_TO_LOT));
+							listSupplyLedgersMoves.Add(NewAdjustRow(supply,supplyNum,supplyLotNum,qtyMove,REASON_MOVED_TO_LOT));
+							supplyLot.QtyOnHand=Math.Round(supplyLot.QtyOnHand+qtyMove,2);
+							listLogTexts.Add("Stock without a lot moved into lot "+supplyLot.LotNumber+": "+(supply?.Descript??"")+" x"+FormatQty(qtyMove)
+								+", for procedure "+textProc+".");
+						}
 					}
 					SupplyLedger supplyLedger=new SupplyLedger();
 					supplyLedger.SupplyNum=supplyNum;
@@ -253,7 +309,7 @@ namespace OpenPmsDentalBusiness {
 					supplyLedger.Quantity=-qtyDiff;
 					if(qtyDiff>0) {
 						supplyLedger.LedgerType=SupplyLedgerType.Use;
-						supplyLedger.UnitCost=listSupplies.Find(x => x.SupplyNum==supplyNum)?.Price??0;
+						supplyLedger.UnitCost=supply?.Price??0;
 						supplyLedger.Reason="";
 					}
 					else {
@@ -261,52 +317,137 @@ namespace OpenPmsDentalBusiness {
 						supplyLedger.UnitCost=GetUseCost(listSupplyLedgersProc,supplyNum,supplyLotNum,listSupplies);
 						supplyLedger.Reason=REASON_CORRECTED;
 					}
-					listSupplyLedgersNew.Add(supplyLedger);
+					listSupplyLedgersUses.Add(supplyLedger);
 				}
+				//A move into a lot comes before the Use row that takes from it.
+				listSupplyLedgersNew.AddRange(listSupplyLedgersMoves);
+				listSupplyLedgersNew.AddRange(listSupplyLedgersUses);
 				listProcNumsDone.Add(procNum);
 			}
 			//Ledger first (it recomputes the counters), the awaiting rows last.
 			SupplyLedgers.InsertMany(listSupplyLedgersNew);
+			//Another workstation may have un-completed or deleted a procedure after its status was read above; its restore then found nothing of
+			//this call's rows to put back. Read the statuses again and put back what this call took for such a procedure.
+			List<long> listProcNumsWritten=listSupplyLedgersNew.Where(x => x.ProcNum!=0).Select(x => x.ProcNum).Distinct().ToList();
+			if(listProcNumsWritten.Count>0) {
+				List<Procedure> listProceduresNow=Procedures.GetManyProc(listProcNumsWritten,false);
+				foreach(long procNum in listProcNumsWritten) {
+					Procedure procedureNow=listProceduresNow.Find(x => x.ProcNum==procNum);
+					if(procedureNow!=null && procedureNow.ProcStatus==ProcStat.C) {
+						continue;
+					}
+					RestoreForProc(procNum,procedureNow==null || procedureNow.ProcStatus==ProcStat.D ? REASON_DELETED : REASON_UNCOMPLETED);
+					listProcNumsDone.Remove(procNum);
+					listProcNumsSkipped.Add(procNum);
+				}
+			}
 			SupplyProcPendings.DeleteForProcs(listProcNumsDone.Concat(listProcNumsSkipped).ToList());
+			foreach(string logText in listLogTexts) {
+				RunAfterStockWritten(() => SecurityLogs.MakeLogEntry(EnumPermType.InventoryAdjust,0,logText));
+			}
 			if(IsEnabled()) {
-				RefreshLowStockAlerts(listSupplyLedgersNew.Select(x => x.SupplyNum).Distinct().ToList());
+				RunAfterStockWritten(() => RefreshLowStockAlerts(listSupplyLedgersNew.Select(x => x.SupplyNum).Distinct().ToList()));
 			}
 			return listProcNumsSkipped;
 		}
 
-		///<summary>Turns the lines of one procedure into explicit lots. A supply with any line of lot -1 is taken as a whole: what the procedure already
-		///holds of it is kept as it is, more is allocated soonest-expiring first from the lots in the database now, and less is given back from stock
-		///without a lot first, then from the lots that expire last.</summary>
-		private static List<SupplyUsageLine> ResolveWanted(List<SupplyUsageLine> listLines,List<SupplyUsageLine> listHeld) {
-			List<SupplyUsageLine> listWanted=new List<SupplyUsageLine>();
-			foreach(IGrouping<long,SupplyUsageLine> grouping in listLines.GroupBy(x => x.SupplyNum)) {
-				if(!grouping.Any(x => x.SupplyLotNum==-1)) {
-					listWanted.AddRange(grouping.Select(x => x.Copy()));
-					continue;
-				}
-				long supplyNum=grouping.Key;
-				double qtyWanted=Math.Round(grouping.Sum(x => x.Quantity),2);
-				List<SupplyUsageLine> listHeldSupply=listHeld.FindAll(x => x.SupplyNum==supplyNum && x.Quantity>0).Select(x => x.Copy()).ToList();
-				double qtyHeld=Math.Round(listHeldSupply.Sum(x => x.Quantity),2);
-				if(qtyWanted>=qtyHeld) {
-					listWanted.AddRange(listHeldSupply);
-					listWanted.AddRange(SupplyLots.AllocateFifo(supplyNum,Math.Round(qtyWanted-qtyHeld,2)));
-					continue;
-				}
-				double qtyGiveBack=Math.Round(qtyHeld-qtyWanted,2);
-				List<SupplyLot> listSupplyLots=SupplyLots.GetMany(listHeldSupply.Select(x => x.SupplyLotNum).Where(x => x!=0).ToList());
-				List<long> listLotNumsOrder=new List<long> { 0 };
-				listLotNumsOrder.AddRange(SupplyLots.SortFifo(listSupplyLots).Select(x => x.SupplyLotNum).Reverse());
-				foreach(long supplyLotNum in listLotNumsOrder) {
-					foreach(SupplyUsageLine supplyUsageLine in listHeldSupply.FindAll(x => x.SupplyLotNum==supplyLotNum)) {
-						double qtyTake=Math.Min(qtyGiveBack,supplyUsageLine.Quantity);
-						supplyUsageLine.Quantity=Math.Round(supplyUsageLine.Quantity-qtyTake,2);
-						qtyGiveBack=Math.Round(qtyGiveBack-qtyTake,2);
-					}
-				}
-				listWanted.AddRange(listHeldSupply.FindAll(x => x.Quantity>0));
+		///<summary>Tests only: runs in ConfirmMaterials right after the procedures' statuses were read, to change them as another workstation would.
+		///</summary>
+		internal static Action<List<long>> ActionAfterStatusesRead;
+
+		///<summary>An Adjust row of the supply and lot at the supply's price.</summary>
+		private static SupplyLedger NewAdjustRow(Supply supply,long supplyNum,long supplyLotNum,double qtyChange,string reason) {
+			SupplyLedger supplyLedger=new SupplyLedger();
+			supplyLedger.SupplyNum=supplyNum;
+			supplyLedger.SupplyLotNum=supplyLotNum;
+			supplyLedger.LedgerType=SupplyLedgerType.Adjust;
+			supplyLedger.Quantity=qtyChange;
+			supplyLedger.UnitCost=supply?.Price??0;
+			supplyLedger.Reason=reason;
+			return supplyLedger;
+		}
+
+		///<summary>Runs a follow-up of a stock write that is already done (audit entries, alerts, received dates). A failure is written to the log
+		///(folder InventoryTracking) and never thrown: the caller must not report a failure for stock that was written, because the window would keep
+		///what was entered and posting it again would write it twice.</summary>
+		private static void RunAfterStockWritten(Action action) {
+			try {
+				action();
 			}
-			return listWanted;
+			catch(Exception ex) {
+				ODException.SwallowAnyException(() => Logger.WriteException(ex,"InventoryTracking"));
+			}
+		}
+
+		///<summary>Chooses the lots of the lines of lot -1 (soonest-expiring first), procedure by procedure in the order of listProcNums, and returns
+		///the explicit lines that take their place (with ProcNum; the procedures' lines of explicit lots are not returned). Per procedure and supply,
+		///the lines of explicit lots are kept as they are and claim first what the procedure holds of their lots. The quantity of the lines of lot -1
+		///then keeps what the procedure holds of the supply beyond that; more is taken soonest-expiring first from what the lots hold (less what
+		///explicit lines take from them), and the rest without a lot; less gives back from stock without a lot first, then from the lots that expire
+		///last. listHeld: what the procedures hold now (GetProcMaterials). listSupplyLots: the supplies' lots with their stock, empty lots included;
+		///it is changed as each procedure draws (its explicit lines too), so a later procedure, or a caller, sees what is left. No database access:
+		///ConfirmMaterials passes the lots as they are when it runs, the Materials used panel the lots it read, to show the lots it plans.</summary>
+		public static List<SupplyUsageLine> ResolveAutoLines(List<long> listProcNums,List<SupplyUsageLine> listLines,List<SupplyUsageLine> listHeld,
+			List<SupplyLot> listSupplyLots)
+		{
+			Meth.NoCheckMiddleTierRole();
+			List<SupplyUsageLine> listAuto=new List<SupplyUsageLine>();
+			foreach(long procNum in listProcNums.Distinct()) {
+				List<SupplyUsageLine> listLinesProc=listLines.FindAll(x => x.ProcNum==procNum && Math.Round(x.Quantity,2)>0);
+				List<SupplyUsageLine> listHeldProc=listHeld.FindAll(x => x.ProcNum==procNum && Math.Round(x.Quantity,2)>0);
+				List<SupplyUsageLine> listAutoProc=new List<SupplyUsageLine>();
+				foreach(long supplyNum in listLinesProc.Where(x => x.SupplyLotNum==-1).Select(x => x.SupplyNum).Distinct()) {
+					double qtyAuto=Math.Round(listLinesProc.Where(x => x.SupplyNum==supplyNum && x.SupplyLotNum==-1).Sum(x => x.Quantity),2);
+					List<SupplyUsageLine> listExplicit=listLinesProc.FindAll(x => x.SupplyNum==supplyNum && x.SupplyLotNum>=0);
+					//What the procedure holds of the supply that its explicit lines do not claim, and what is free in each lot after the explicit lines.
+					List<SupplyLot> listLotsFree=listSupplyLots.FindAll(x => x.SupplyNum==supplyNum).Select(x => x.Copy()).ToList();
+					List<SupplyUsageLine> listHeldFree=new List<SupplyUsageLine>();
+					List<long> listLotNums=listHeldProc.Where(x => x.SupplyNum==supplyNum).Select(x => x.SupplyLotNum)
+						.Concat(listExplicit.Select(x => x.SupplyLotNum)).Distinct().ToList();
+					foreach(long supplyLotNum in listLotNums) {
+						double qtyHeld=Math.Round(listHeldProc.Where(x => x.SupplyNum==supplyNum && x.SupplyLotNum==supplyLotNum).Sum(x => x.Quantity),2);
+						double qtyExplicit=Math.Round(listExplicit.Where(x => x.SupplyLotNum==supplyLotNum).Sum(x => x.Quantity),2);
+						if(qtyHeld>qtyExplicit) {
+							listHeldFree.Add(new SupplyUsageLine(procNum,supplyNum,supplyLotNum,Math.Round(qtyHeld-qtyExplicit,2)));
+							continue;
+						}
+						SupplyLot supplyLotFree=listLotsFree.Find(x => x.SupplyLotNum==supplyLotNum);
+						if(supplyLotFree!=null) {
+							supplyLotFree.QtyOnHand=Math.Round(supplyLotFree.QtyOnHand-(qtyExplicit-qtyHeld),2);
+						}
+					}
+					double qtyHeldFree=Math.Round(listHeldFree.Sum(x => x.Quantity),2);
+					if(qtyAuto>=qtyHeldFree) {
+						listAutoProc.AddRange(listHeldFree);
+						List<SupplyUsageLine> listAllocated=SupplyLots.AllocateFifo(supplyNum,Math.Round(qtyAuto-qtyHeldFree,2),listLotsFree);
+						listAllocated.ForEach(x => x.ProcNum=procNum);
+						listAutoProc.AddRange(listAllocated);
+						continue;
+					}
+					//Less than it holds: give back from stock without a lot first, then from the lots that expire last.
+					double qtyGiveBack=Math.Round(qtyHeldFree-qtyAuto,2);
+					List<long> listLotNumsOrder=new List<long> { 0 };
+					listLotNumsOrder.AddRange(SupplyLots.SortFifo(listSupplyLots.FindAll(x => x.SupplyNum==supplyNum)).Select(x => x.SupplyLotNum).Reverse());
+					listLotNumsOrder.AddRange(listHeldFree.Select(x => x.SupplyLotNum).Where(x => !listLotNumsOrder.Contains(x)));//Lots not passed in.
+					foreach(long supplyLotNum in listLotNumsOrder) {
+						foreach(SupplyUsageLine supplyUsageLine in listHeldFree.FindAll(x => x.SupplyLotNum==supplyLotNum)) {
+							double qtyTake=Math.Min(qtyGiveBack,supplyUsageLine.Quantity);
+							supplyUsageLine.Quantity=Math.Round(supplyUsageLine.Quantity-qtyTake,2);
+							qtyGiveBack=Math.Round(qtyGiveBack-qtyTake,2);
+						}
+					}
+					listAutoProc.AddRange(listHeldFree.FindAll(x => x.Quantity>0));
+				}
+				//What the procedure takes from each lot beyond what it holds (its explicit and its chosen lines) is no longer there for the next one.
+				List<SupplyUsageLine> listWantedProc=listLinesProc.FindAll(x => x.SupplyLotNum>=0).Concat(listAutoProc).ToList();
+				foreach(SupplyLot supplyLot in listSupplyLots) {
+					double qtyWanted=listWantedProc.Where(x => x.SupplyLotNum==supplyLot.SupplyLotNum).Sum(x => x.Quantity);
+					double qtyHeld=listHeldProc.Where(x => x.SupplyLotNum==supplyLot.SupplyLotNum).Sum(x => x.Quantity);
+					supplyLot.QtyOnHand=Math.Round(supplyLot.QtyOnHand-(qtyWanted-qtyHeld),2);
+				}
+				listAuto.AddRange(listAutoProc);
+			}
+			return listAuto;
 		}
 
 		///<summary>The unit cost of the procedure's latest Use row of the supply and lot, or the supply's price.</summary>
@@ -320,7 +461,8 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Writes a Restore row for every supply and lot the procedure still holds (the sum of its Use and Restore rows), with the lot it was
-		///taken from and its cost. Writes nothing when it holds nothing.</summary>
+		///taken from and its cost. Writes nothing when it holds nothing. Each row is written only while the procedure still holds exactly that
+		///(SupplyLedgers.InsertRestoresIfStillHeld), so two workstations putting back the same procedure at the same time put it back once.</summary>
 		public static void RestoreForProc(long procNum,string reason) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),procNum,reason);
@@ -345,9 +487,10 @@ namespace OpenPmsDentalBusiness {
 				supplyLedger.Reason=reason;
 				listSupplyLedgersNew.Add(supplyLedger);
 			}
-			SupplyLedgers.InsertMany(listSupplyLedgersNew);
+			List<SupplyLedger> listSupplyLedgersWritten=SupplyLedgers.InsertRestoresIfStillHeld(listSupplyLedgersNew);
 			if(IsEnabled()) {
-				RefreshLowStockAlerts(listSupplyLedgersNew.Select(x => x.SupplyNum).Distinct().ToList());
+				//Never a failure of the caller (Procedures.Update and Delete have written the procedure already).
+				RunAfterStockWritten(() => RefreshLowStockAlerts(listSupplyLedgersWritten.Select(x => x.SupplyNum).Distinct().ToList()));
 			}
 		}
 		#endregion Materials of procedures
@@ -390,7 +533,22 @@ namespace OpenPmsDentalBusiness {
 				listSupplyLedgers.Add(supplyLedger);
 			}
 			SupplyLedgers.InsertMany(listSupplyLedgers);
-			//Received dates, from every receipt of the items (other workstations' too).
+			//Stock is written. What follows (received dates, the audit entry, the alerts) can still fail, but must never make this call report a
+			//failure: the window would keep what was entered, and posting it again would receive it twice. A failure is logged; a date that was not
+			//set is set by the next receipt of the order, an alert by the next alert check.
+			RunAfterStockWritten(() => SetReceivedDatesOfItems(listSupplyOrderItems));
+			foreach(long supplyOrderNum in listSupplyOrderItems.Select(x => x.SupplyOrderNum).Distinct()) {
+				RunAfterStockWritten(() => FinishOrderReceipt(supplyOrderNum,listSupplyLedgers));
+			}
+			if(IsEnabled()) {
+				RunAfterStockWritten(() => RefreshLowStockAlerts(listSupplyLedgers.Select(x => x.SupplyNum).Distinct().ToList()));
+			}
+			return listSupplyLedgers;
+		}
+
+		///<summary>Sets the received date of each order item that is now fully received, from every receipt of the items (other workstations' too).
+		///</summary>
+		private static void SetReceivedDatesOfItems(List<SupplyOrderItem> listSupplyOrderItems) {
 			List<SupplyLedger> listSupplyLedgersReceived=SupplyLedgers.GetReceiptsForOrderItems(listSupplyOrderItems.Select(x => x.SupplyOrderItemNum).ToList());
 			foreach(SupplyOrderItem supplyOrderItem in listSupplyOrderItems) {
 				double qtyReceived=listSupplyLedgersReceived.Where(x => x.SupplyOrderItemNum==supplyOrderItem.SupplyOrderItemNum).Sum(x => x.Quantity);
@@ -399,24 +557,22 @@ namespace OpenPmsDentalBusiness {
 					SupplyOrderItems.Update(supplyOrderItem);
 				}
 			}
-			foreach(long supplyOrderNum in listSupplyOrderItems.Select(x => x.SupplyOrderNum).Distinct()) {
-				SupplyOrder supplyOrder=SupplyOrders.GetOne(supplyOrderNum);
-				if(supplyOrder==null) {
-					continue;
-				}
-				List<SupplyOrderItem> listItemsOrder=SupplyOrderItems.GetSupplyItemsForOrder(supplyOrderNum);
-				int countLines=listSupplyLedgers.Count(x => listItemsOrder.Any(y => y.SupplyOrderItemNum==x.SupplyOrderItemNum));
-				SecurityLogs.MakeLogEntry(EnumPermType.SupplyPurchases,0,"Order received: "+countLines+" line(s), supplier "
-					+Suppliers.GetOne(supplyOrder.SupplierNum)?.Name+", order of "+(supplyOrder.IsPending() ? "(not placed)" : supplyOrder.DatePlaced.ToShortDateString()));
-				if(supplyOrder.DateReceived.Year<1880 && listItemsOrder.All(x => x.DateReceived.Year>1880)) {
-					supplyOrder.DateReceived=DateTime.Today;
-					SupplyOrders.Update(supplyOrder);
-				}
+		}
+
+		///<summary>The Supply Purchases audit entry of a receipt of the order, then the order's received date when every item is received.</summary>
+		private static void FinishOrderReceipt(long supplyOrderNum,List<SupplyLedger> listSupplyLedgers) {
+			SupplyOrder supplyOrder=SupplyOrders.GetOne(supplyOrderNum);
+			if(supplyOrder==null) {
+				return;
 			}
-			if(IsEnabled()) {
-				RefreshLowStockAlerts(listSupplyLedgers.Select(x => x.SupplyNum).Distinct().ToList());
+			List<SupplyOrderItem> listItemsOrder=SupplyOrderItems.GetSupplyItemsForOrder(supplyOrderNum);
+			int countLines=listSupplyLedgers.Count(x => listItemsOrder.Any(y => y.SupplyOrderItemNum==x.SupplyOrderItemNum));
+			SecurityLogs.MakeLogEntry(EnumPermType.SupplyPurchases,0,"Order received: "+countLines+" line(s), supplier "
+				+Suppliers.GetOne(supplyOrder.SupplierNum)?.Name+", order of "+(supplyOrder.IsPending() ? "(not placed)" : supplyOrder.DatePlaced.ToShortDateString()));
+			if(supplyOrder.DateReceived.Year<1880 && listItemsOrder.All(x => x.DateReceived.Year>1880)) {
+				supplyOrder.DateReceived=DateTime.Today;
+				SupplyOrders.Update(supplyOrder);
 			}
-			return listSupplyLedgers;
 		}
 
 		///<summary>Posts a stock count: for every line whose counted quantity differs from the quantity the program had when the line was counted, a
@@ -459,11 +615,12 @@ namespace OpenPmsDentalBusiness {
 					+", counted "+FormatQty(supplyCountLine.QtyCounted)+", adjusted by "+FormatQtySigned(qtyDiff)+". Reason: "+reason.Trim());
 			}
 			SupplyLedgers.InsertMany(listSupplyLedgers);
+			//Stock is written: the audit entries and alerts never make this call report a failure (posting again would adjust twice).
 			foreach(string logText in listLogTexts) {
-				SecurityLogs.MakeLogEntry(EnumPermType.InventoryAdjust,0,logText);
+				RunAfterStockWritten(() => SecurityLogs.MakeLogEntry(EnumPermType.InventoryAdjust,0,logText));
 			}
 			if(IsEnabled()) {
-				RefreshLowStockAlerts(listSupplyLedgers.Select(x => x.SupplyNum).Distinct().ToList());
+				RunAfterStockWritten(() => RefreshLowStockAlerts(listSupplyLedgers.Select(x => x.SupplyNum).Distinct().ToList()));
 			}
 			return listSupplyLedgers.Count;
 		}
@@ -497,10 +654,11 @@ namespace OpenPmsDentalBusiness {
 			supplyLedger.UnitCost=supply.Price;
 			supplyLedger.Reason=reason.Trim();
 			SupplyLedgers.InsertMany(new List<SupplyLedger> { supplyLedger });
-			SecurityLogs.MakeLogEntry(EnumPermType.InventoryAdjust,0,"Stock adjusted: "+supply.Descript+(lotNumber=="" ? "" : ", lot "+lotNumber)+" by "
-				+FormatQtySigned(qtyChange)+". Reason: "+reason.Trim());
+			//Stock is written: the audit entry and alerts never make this call report a failure (saving again would adjust twice).
+			RunAfterStockWritten(() => SecurityLogs.MakeLogEntry(EnumPermType.InventoryAdjust,0,"Stock adjusted: "+supply.Descript
+				+(lotNumber=="" ? "" : ", lot "+lotNumber)+" by "+FormatQtySigned(qtyChange)+". Reason: "+reason.Trim()));
 			if(IsEnabled()) {
-				RefreshLowStockAlerts(new List<long> { supplyNum });
+				RunAfterStockWritten(() => RefreshLowStockAlerts(new List<long> { supplyNum }));
 			}
 		}
 
@@ -537,18 +695,29 @@ namespace OpenPmsDentalBusiness {
 			supplyLedger.DispSupplyNum=dispSupply.DispSupplyNum;
 			supplyLedger.Reason=REASON_DISPENSED;
 			SupplyLedgers.InsertMany(new List<SupplyLedger> { supplyLedger });
-			RefreshLowStockAlerts(new List<long> { dispSupply.SupplyNum });
+			RunAfterStockWritten(() => RefreshLowStockAlerts(new List<long> { dispSupply.SupplyNum }));
 		}
 
-		///<summary>The repair: recomputes every supply's and lot's stock from the ledger (SupplyLedgers.RecomputeAll), writes an Inventory Adjust audit
+		///<summary>The repair. First puts back what procedures that are no longer complete (or no longer exist) still hold
+		///(SupplyLedgers.GetProcNumsHeldNotComplete, RestoreForProc): left by a failure between a procedure's status write and its restore, or by
+		///another workstation un-completing a procedure while its materials were confirmed. Then removes the awaiting rows of procedures that are
+		///no longer complete, recomputes every supply's and lot's stock from the ledger (SupplyLedgers.RecomputeAll), writes an Inventory Adjust audit
 		///entry and refreshes the alerts. Safe at any time.</summary>
 		public static SupplyRepairResult Repair() {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<SupplyRepairResult>(MethodBase.GetCurrentMethod());
 			}
+			List<long> listProcNums=SupplyLedgers.GetProcNumsHeldNotComplete();
+			foreach(long procNum in listProcNums) {
+				RestoreForProc(procNum,REASON_REPAIRED);
+			}
+			long countAwaiting=SupplyProcPendings.DeleteNotComplete();
 			SupplyRepairResult supplyRepairResult=SupplyLedgers.RecomputeAll();
+			supplyRepairResult.CountProcs=listProcNums.Count;
+			supplyRepairResult.CountAwaiting=countAwaiting;
 			SecurityLogs.MakeLogEntry(EnumPermType.InventoryAdjust,0,"Stock repaired from the ledger: "+supplyRepairResult.CountSupplies+" supply(ies) and "
-				+supplyRepairResult.CountLots+" lot(s) changed.");
+				+supplyRepairResult.CountLots+" lot(s) changed, "+supplyRepairResult.CountProcs+" procedure(s) no longer complete put back"
+				+(listProcNums.Count==0 ? "" : " (ProcNum "+string.Join(", ",listProcNums)+")")+", "+countAwaiting+" awaiting row(s) removed.");
 			if(IsEnabled()) {
 				RefreshAllAlerts();
 			}

@@ -2166,8 +2166,6 @@ namespace OpenPmsDentalBusiness {
 			PayPlanCharges.DeleteForProc(procNum);
 			//delete and update procmultivisits
 			ProcMultiVisits.UpdateGroupForProc(procNum,ProcStat.D);
-			//Inventory tracking: puts back what the procedure used and removes it from the awaiting list.
-			InventoryTracking.OnProcNoLongerComplete(procNum,isDeleted:true);
 			command="SELECT AptNum,PlannedAptNum,DateComplete FROM procedurelog WHERE ProcNum = "+POut.Long(procNum);
 			DataTable table = Db.GetTable(command);
 			DateTime dateComplete = PIn.Date(table.Rows[0]["DateComplete"].ToString());
@@ -2185,6 +2183,9 @@ namespace OpenPmsDentalBusiness {
 			}
 			command+=" WHERE ProcNum="+POut.Long(procNum);
 			Db.NonQ(command);
+			//Inventory tracking: puts back what the procedure used and removes it from the awaiting list. After the status is written, as in Update:
+			//a failure in between leaves a deleted procedure that still holds materials, which the repair puts back (InventoryTracking.Repair).
+			InventoryTracking.OnProcNoLongerComplete(procNum,isDeleted:true);
 			//resynch appointment description-------------------------------------------------------------------------------------
 			if(aptNum != 0) {
 				Appointment apt = Appointments.GetOneApt(aptNum);
