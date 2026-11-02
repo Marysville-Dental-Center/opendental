@@ -757,8 +757,8 @@ namespace OpenPmsDentalBusiness.Microsoft365 {
 
 		///<summary>MSAL's logger, switched off for every level, so MSAL never writes tokens, account names or other PII anywhere (the same as MSAL's
 		///default, made explicit). Using MSAL's IIdentityLogger here also makes Microsoft.IdentityModel.Abstractions a reference of this assembly, so
-		///every program that hosts the sign-in copies it and gets the binding redirect it needs (MSAL 4.47.1 asks for 6.22; the shipped copy is
-		///6.23.1). Microsoft Graph's dependencies brought it in before Bridges.dll and the Graph SDK were removed.</summary>
+		///every program that hosts the sign-in copies it and gets the binding redirect to the shipped copy (8.14.0, which MSAL 4.92.0 asks for).
+		///Microsoft Graph's dependencies brought it in before Bridges.dll and the Graph SDK were removed.</summary>
 		private sealed class MsalNoLogger : IIdentityLogger {
 			public bool IsEnabled(EventLogLevel eventLogLevel) {
 				return false;

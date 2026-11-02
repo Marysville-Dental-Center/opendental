@@ -114,14 +114,14 @@ $OwnFiles=[ordered]@{
 $ThirdPartyFiles=[ordered]@{}
 foreach($name in @('BouncyCastle.Cryptography.dll','Dicom.Core.dll','Dicom.Native.dll','Google.Apis.dll','Google.Apis.Auth.dll',
 	'Google.Apis.Core.dll','Google.Apis.Gmail.v1.dll','Health.Direct.Agent.dll','Health.Direct.Common.dll','Health.Direct.ResolverPlugins.dll',
-	'Hunspellx86.dll','Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Bcl.Cryptography.dll','Microsoft.Extensions.DependencyInjection.Abstractions.dll',
-	'Microsoft.Extensions.Logging.Abstractions.dll','Microsoft.Identity.Client.dll','Microsoft.IdentityModel.Abstractions.dll',
-	'MailKit.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','Microsoft.Web.WebView2.Wpf.dll',
-	'MigraDoc.DocumentObjectModel.dll','MigraDoc.Rendering.dll','MimeKit.dll','MySqlConnector.dll','NDde.dll','NHunspell.dll','Newtonsoft.Json.dll','PdfSharp.dll',
-	'PdfSharp.Charting.dll','Renci.SshNet.dll','SharpDX.dll','SharpDX.Direct3D9.dll','SharpDX.Mathematics.dll','System.Buffers.dll',
-	'System.Diagnostics.DiagnosticSource.dll','System.Formats.Asn1.dll','System.Memory.dll','System.Numerics.Vectors.dll',
-	'System.Runtime.CompilerServices.Unsafe.dll','System.Threading.Tasks.Extensions.dll','Tao.OpenGl.dll','Tao.Platform.Windows.dll',
-	'WebView2Loader.dll'))
+	'Hunspellx86.dll','MailKit.dll','Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Bcl.Cryptography.dll',
+	'Microsoft.Extensions.DependencyInjection.Abstractions.dll','Microsoft.Extensions.Logging.Abstractions.dll','Microsoft.Identity.Client.dll',
+	'Microsoft.IdentityModel.Abstractions.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll',
+	'Microsoft.Web.WebView2.Wpf.dll','MigraDoc.DocumentObjectModel.dll','MigraDoc.Rendering.dll','MimeKit.dll','MySqlConnector.dll','NDde.dll',
+	'NHunspell.dll','Newtonsoft.Json.dll','PdfSharp.dll','PdfSharp.Charting.dll','Renci.SshNet.dll','SharpDX.dll','SharpDX.Direct3D9.dll',
+	'SharpDX.Mathematics.dll','System.Buffers.dll','System.Diagnostics.DiagnosticSource.dll','System.Formats.Asn1.dll','System.IO.Pipelines.dll',
+	'System.Memory.dll','System.Numerics.Vectors.dll','System.Runtime.CompilerServices.Unsafe.dll','System.Text.Encodings.Web.dll',
+	'System.Text.Json.dll','System.Threading.Tasks.Extensions.dll','Tao.OpenGl.dll','Tao.Platform.Windows.dll','WebView2Loader.dll'))
 {
 	$ThirdPartyFiles[$name]='Required dlls'
 }

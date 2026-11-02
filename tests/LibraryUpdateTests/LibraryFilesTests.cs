@@ -25,7 +25,11 @@ namespace LibraryUpdateTests {
 			new[] { "Google.Apis.Core.dll","1.78.0.0","1.78.0.0","Google.Apis.Core 1.78.0" },
 			new[] { "Google.Apis.Auth.dll","1.78.0.0","1.78.0.0","Google.Apis.Auth 1.78.0" },
 			new[] { "Google.Apis.Gmail.v1.dll","1.77.0.4295","1.77.0.4295","Google.Apis.Gmail.v1 1.77.0.4295" },
+			new[] { "Microsoft.Identity.Client.dll","4.92.0.0","4.92.0.0","Microsoft.Identity.Client 4.92.0" },
+			new[] { "Microsoft.IdentityModel.Abstractions.dll","8.14.0.0","8.14.0.60815","Microsoft.IdentityModel.Abstractions 8.14.0" },
 			new[] { "Renci.SshNet.dll","2026.0.0.1","2026.0.0.1","SSH.NET 2026.0.0" },
+			new[] { "System.Text.Json.dll","10.0.0.14","10.0.1426.52326","System.Text.Json 10.0.14" },
+			new[] { "System.Text.Encodings.Web.dll","10.0.0.14","10.0.1426.52326","System.Text.Encodings.Web 10.0.14" },
 		};
 
 		///<summary>The assemblies that went, by assembly name (the file is the name plus .dll).</summary>

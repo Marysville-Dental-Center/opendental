@@ -25,8 +25,9 @@ namespace AttributionTests {
 		private static readonly string[] _arrayShippedFiles=new string[] {
 			"MySqlConnector.dll","Microsoft.Bcl.AsyncInterfaces.dll","Microsoft.Bcl.Cryptography.dll",
 			"Microsoft.Extensions.DependencyInjection.Abstractions.dll","Microsoft.Extensions.Logging.Abstractions.dll","System.Buffers.dll",
-			"System.Diagnostics.DiagnosticSource.dll","System.Formats.Asn1.dll","System.Memory.dll","System.Numerics.Vectors.dll",
-			"System.Runtime.CompilerServices.Unsafe.dll","System.Threading.Tasks.Extensions.dll","Newtonsoft.Json.dll","MimeKit.dll","MailKit.dll",
+			"System.Diagnostics.DiagnosticSource.dll","System.Formats.Asn1.dll","System.IO.Pipelines.dll","System.Memory.dll",
+			"System.Numerics.Vectors.dll","System.Runtime.CompilerServices.Unsafe.dll","System.Text.Encodings.Web.dll","System.Text.Json.dll",
+			"System.Threading.Tasks.Extensions.dll","Newtonsoft.Json.dll","MimeKit.dll","MailKit.dll",
 			"Microsoft.Identity.Client.dll","Microsoft.IdentityModel.Abstractions.dll","Renci.SshNet.dll","BouncyCastle.Cryptography.dll","PdfSharp.dll",
 			"PdfSharp.Charting.dll","MigraDoc.DocumentObjectModel.dll","MigraDoc.Rendering.dll","MigraDoc.RtfRendering.dll","SharpDX.dll",
 			"SharpDX.Direct3D9.dll","SharpDX.Mathematics.dll","Tao.OpenGl.dll","Tao.Platform.Windows.dll","Health.Direct.Agent.dll",

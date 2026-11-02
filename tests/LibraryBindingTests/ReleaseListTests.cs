@@ -96,12 +96,13 @@ namespace LibraryBindingTests {
 				listProblems.Add(fileName+": the program needs it, but the build did not copy it to OpenPmsDental\\bin\\Debug.");
 			}
 			Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));
-			//The support assemblies the first library step added for the packages that follow do not ship until a shipped library uses them.
-			foreach(string fileName in new[] { "System.Formats.Asn1.dll","System.IO.Pipelines.dll","System.Security.Cryptography.Pkcs.dll",
-				"Microsoft.Bcl.Cryptography.dll" })
-			{
-				Assert.IsTrue(RequiredDlls.Files.ContainsKey(fileName),fileName);
+			//The support assemblies the first library step added for the packages that follow ship once a shipped library uses them: the tier 1
+			//updates (SSH.NET 2026, MailKit 4, MSAL 4.92 with System.Text.Json) use all but System.Security.Cryptography.Pkcs.
+			foreach(string fileName in new[] { "System.Formats.Asn1.dll","System.IO.Pipelines.dll","Microsoft.Bcl.Cryptography.dll" }) {
+				CollectionAssert.Contains(listAllowed,fileName);
 			}
+			Assert.IsTrue(RequiredDlls.Files.ContainsKey("System.Security.Cryptography.Pkcs.dll"));
+			CollectionAssert.DoesNotContain(listAllowed,"System.Security.Cryptography.Pkcs.dll","Nothing shipped uses it yet.");
 			CollectionAssert.Contains(listAllowed,"Microsoft.Extensions.DependencyInjection.Abstractions.dll",
 				"Microsoft.Extensions.Logging.Abstractions 8.0.3 references it, so it ships.");
 		}
