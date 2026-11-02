@@ -255,7 +255,7 @@ namespace OpenPmsDental {
 				printDocument.DefaultPageSettings.PaperSize=new PaperSize("default",850,1100);
 			}
 			MigraDoc.DocumentObjectModel.Document document=CreatePrintDocument(printDocument);
-			MigraDoc.Rendering.Printing.MigraDocPrintDocument migraDocPrintDocument=new MigraDoc.Rendering.Printing.MigraDocPrintDocument();
+			MigraDocPrintDocument migraDocPrintDocument=new MigraDocPrintDocument();
 			MigraDoc.Rendering.DocumentRenderer documentRenderer=new MigraDoc.Rendering.DocumentRenderer(document);
 			documentRenderer.PrepareDocument();
 			migraDocPrintDocument.PrinterSettings=printDocument.PrinterSettings;
@@ -270,7 +270,7 @@ namespace OpenPmsDental {
 
 		private MigraDoc.DocumentObjectModel.Document CreatePrintDocument(PrintDocument pd) {
 			string text;
-			MigraDoc.DocumentObjectModel.Document document=new MigraDoc.DocumentObjectModel.Document();
+			MigraDoc.DocumentObjectModel.Document document=MigraDocHelper.CreateDocument();
 			document.DefaultPageSetup.PageWidth=Unit.FromInch((double)pd.DefaultPageSettings.PaperSize.Width/100);
 			document.DefaultPageSetup.PageHeight=Unit.FromInch((double)pd.DefaultPageSettings.PaperSize.Height/100);
 			document.DefaultPageSetup.TopMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Top/100);

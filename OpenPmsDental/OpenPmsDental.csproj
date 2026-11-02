@@ -5427,6 +5427,7 @@
     <Compile Include="Misc\DataConnectionOld.cs" />
     <Compile Include="Misc\FileAtoZ.cs" />
     <Compile Include="Misc\MigraDocHelper.cs" />
+    <Compile Include="Misc\MigraDocPrintDocument.cs" />
     <Compile Include="ReportingComplex\ParameterField.cs" />
     <Compile Include="ReportingComplex\ParameterFieldCollection.cs" />
     <Compile Include="Properties\Resources.Designer.cs">

@@ -68,9 +68,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\PdfSharp-gdi.dll</HintPath>
     </Reference>
-    <Reference Include="PdfSharp.Charting-gdi">
-      <HintPath>..\Required dlls\PdfSharp.Charting-gdi.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="System" />
     <Reference Include="System.Core" />

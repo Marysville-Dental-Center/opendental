@@ -92,7 +92,7 @@ namespace M2SHEETSTests {
 						pdfPageInfo.ListImages.Add(new PdfImageInfo {
 							Width=dictXObject.Elements.GetInteger("/Width"),
 							Height=dictXObject.Elements.GetInteger("/Height"),
-							HasSoftMask=dictXObject.Elements.Contains("/SMask"),
+							HasSoftMask=dictXObject.Elements.ContainsKey("/SMask"),
 						});
 					}
 				}

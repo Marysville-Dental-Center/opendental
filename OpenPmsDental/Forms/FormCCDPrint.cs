@@ -584,7 +584,7 @@ namespace OpenPmsDental {
 					_claimResponseDefNum=0;//Do not save PDF to images.
 				}
 				if(_claimResponseDefNum!=0) {//Only save PDF to images when the Claim Responses ImageCat is set and the response print document was generated correclty.
-					_pdfDocument=new MigraDoc.DocumentObjectModel.Document();
+					_pdfDocument=MigraDocHelper.CreateDocument();
 					_pdfDocument.DefaultPageSetup.PageWidth=MigraDoc.DocumentObjectModel.Unit.FromInch(e.PageBounds.Size.Width/100.0);
 					_pdfDocument.DefaultPageSetup.PageHeight=MigraDoc.DocumentObjectModel.Unit.FromInch(e.PageBounds.Size.Height/100.0);
 					_pdfDocument.DefaultPageSetup.TopMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(0);//Margin is 0 because the page image contains built-in margins.
@@ -622,7 +622,7 @@ namespace OpenPmsDental {
 				e.HasMorePages=false;
 				labelPage.Text=(printPreviewControl1.StartPage+1).ToString()+" / "+_totalPages.ToString();
 				if(_claimResponseDefNum!=0) {//Import the PDF to the patient images in the Claim Response folder.
-					PdfDocumentRenderer pdfDocumentRenderer=new PdfDocumentRenderer(true,PdfFontEmbedding.Always);
+					PdfDocumentRenderer pdfDocumentRenderer=new PdfDocumentRenderer();
 					pdfDocumentRenderer.Document=_pdfDocument;
 					pdfDocumentRenderer.RenderDocument();
 					using(MemoryStream ms=new MemoryStream()) {

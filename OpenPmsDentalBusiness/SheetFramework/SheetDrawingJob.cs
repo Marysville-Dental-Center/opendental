@@ -79,6 +79,7 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>Creates a PDF in memory and returns it, does not save to disk.<br>Use SheetDrawingJob.SavePdfToFile(PdfDocument pdf, string fileNameAndPath) to save to disk.</br></summary>
 		public PdfDocument CreatePdf(Sheet sheet,Statement stmt=null,MedLab medLab=null,DataSet dataSet=null,Patient pat=null,Patient patGuar=null) {
+			PdfSharpSetup.Init();//Also when this runs outside OpenPmsDental (the Middle Tier, statement services, tests).
 			if(dataSet==null && stmt!=null && sheet.SheetType==SheetTypeEnum.Statement) {
 				//This should never get hit.  This line of code is here just in case I forgot to update a random spot in our code.
 				//Worst case scenario we will end up calling the database a few extra times for the same data set.
@@ -130,8 +131,8 @@ namespace OpenPmsDentalBusiness {
 			if(pagesPrinted > -1) {
 				_pagesPrinted=pagesPrinted;
 			}
-			page.Width=p(sheet.Width);//XUnit.FromInch((double)sheet.Width/100);  //new XUnit((double)sheet.Width/100,XGraphicsUnit.Inch);
-			page.Height=p(sheet.Height);//new XUnit((double)sheet.Height/100,XGraphicsUnit.Inch);
+			page.Width=XUnit.FromPoint(p(sheet.Width));//XUnit.FromInch((double)sheet.Width/100);  //new XUnit((double)sheet.Width/100,XGraphicsUnit.Inch);
+			page.Height=XUnit.FromPoint(p(sheet.Height));//new XUnit((double)sheet.Height/100,XGraphicsUnit.Inch);
 			if(sheet.IsLandscape){
 				page.Orientation=PageOrientation.Landscape;
 			}

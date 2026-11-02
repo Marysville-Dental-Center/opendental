@@ -146,14 +146,14 @@ namespace OpenPmsDental {
 		}
 
 		private void CreatePDF(string tempFile) {
-			MigraDoc.Rendering.PdfDocumentRenderer pdfRenderer=new MigraDoc.Rendering.PdfDocumentRenderer(true,PdfFontEmbedding.Always);
+			MigraDoc.Rendering.PdfDocumentRenderer pdfRenderer=new MigraDoc.Rendering.PdfDocumentRenderer();
 			pdfRenderer.Document=CreateDocument();
 			pdfRenderer.RenderDocument();
 			pdfRenderer.PdfDocument.Save(tempFile);
 		}
 
 		private MigraDoc.DocumentObjectModel.Document CreateDocument() {
-			MigraDoc.DocumentObjectModel.Document doc= new MigraDoc.DocumentObjectModel.Document();
+			MigraDoc.DocumentObjectModel.Document doc=MigraDocHelper.CreateDocument();
 			doc.DefaultPageSetup.PageWidth=MigraDoc.DocumentObjectModel.Unit.FromInch(8.5);
 			doc.DefaultPageSetup.PageHeight=MigraDoc.DocumentObjectModel.Unit.FromInch(11);
 			doc.DefaultPageSetup.TopMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(.5);

@@ -180,6 +180,7 @@ namespace OpenPmsDentalBusiness {
 		///<summary>No FillGrid needed in here or in any called method because that always happens one level up. 
 		///Returns false if billing is interrupted or has a critical failure.</summary>
 		public static bool SendStatements(SendStatementsIO sendStatementsIO) {
+			PdfSharpSetup.Init();//Statements are PDFs, also when this runs outside OpenPmsDental.
 			//Run aging for all patients. May be skipped if aging has already run today.
 			if(!RunAgingEnterprise(sendStatementsIO)) {
 				return false;//if aging fails, don't generate and print statements

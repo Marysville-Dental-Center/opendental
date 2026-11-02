@@ -15,6 +15,14 @@ using PdfSharp.Pdf;
 namespace OpenPmsDental {
 	///<summary>Used to add functionality to the MigraDoc framework.  Specifically, it helps with absolute positioning.</summary>
 	public class MigraDocHelper {
+		///<summary>A new MigraDoc document. Its Normal style uses Verdana, the default of MigraDoc 1.2 (MigraDoc 6 uses Arial), so text without a
+		///font of its own looks as it did.</summary>
+		public static MigraDoc.DocumentObjectModel.Document CreateDocument() {
+			MigraDoc.DocumentObjectModel.Document document=new MigraDoc.DocumentObjectModel.Document();
+			document.Styles.Normal.Font.Name="Verdana";
+			return document;
+		}
+
 		///<Summary>Creates a container frame in a section.  This allows other objects to be placed absolutely within a given area by adding more textframes within this one.  This frame is full width and is automatically placed after previous elements.</Summary>
 		public static TextFrame CreateContainer(Section section){
 			TextFrame framebig=section.AddTextFrame();

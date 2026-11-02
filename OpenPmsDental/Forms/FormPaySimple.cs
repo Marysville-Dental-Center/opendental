@@ -426,7 +426,7 @@ namespace OpenPmsDental {
 
 		private void PrintReceipt(string receiptStr) {
 			string[] stringArrayReceiptLines=receiptStr.Split(new string[] { Environment.NewLine },StringSplitOptions.None);
-			MigraDoc.DocumentObjectModel.Document document=new MigraDoc.DocumentObjectModel.Document();
+			MigraDoc.DocumentObjectModel.Document document=MigraDocHelper.CreateDocument();
 			document.DefaultPageSetup.PageWidth=Unit.FromInch(3.0);
 			document.DefaultPageSetup.PageHeight=Unit.FromInch(0.181*stringArrayReceiptLines.Length+0.56);//enough to print receipt text plus 9/16 inch (0.56) extra space at bottom.
 			document.DefaultPageSetup.TopMargin=Unit.FromInch(0.25);
@@ -441,7 +441,7 @@ namespace OpenPmsDental {
 			paragraphFormat.Font=fontXBody;
 			paragraph.Format=paragraphFormat;
 			paragraph.AddFormattedText(receiptStr,fontXBody);
-			MigraDoc.Rendering.Printing.MigraDocPrintDocument migraDocPrintDocument=new MigraDoc.Rendering.Printing.MigraDocPrintDocument();
+			MigraDocPrintDocument migraDocPrintDocument=new MigraDocPrintDocument();
 			MigraDoc.Rendering.DocumentRenderer documentRenderer=new MigraDoc.Rendering.DocumentRenderer(document);
 			documentRenderer.PrepareDocument();
 			migraDocPrintDocument.Renderer=documentRenderer;

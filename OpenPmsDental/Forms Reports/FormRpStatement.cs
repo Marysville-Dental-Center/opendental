@@ -106,7 +106,7 @@ namespace OpenPmsDental{
 				}
 			}
 			MigraDoc.DocumentObjectModel.Document doc=CreateDocument(ODprintout.CurPrintout.PrintDoc,fam,pat,dataSet);
-			MigraDoc.Rendering.Printing.MigraDocPrintDocument printdoc=new MigraDoc.Rendering.Printing.MigraDocPrintDocument();
+			MigraDocPrintDocument printdoc=new MigraDocPrintDocument();
 			MigraDoc.Rendering.DocumentRenderer renderer=new MigraDoc.Rendering.DocumentRenderer(doc);
 			renderer.PrepareDocument();
 			totalPages=renderer.FormattedDocument.PageCount;
@@ -128,7 +128,7 @@ namespace OpenPmsDental{
 
 		///<summary>Supply pd so that we know the paper size and margins.</summary>
 		private MigraDoc.DocumentObjectModel.Document CreateDocument(PrintDocument pd,Family fam,Patient pat,DataSet dataSet){
-			MigraDoc.DocumentObjectModel.Document doc= new MigraDoc.DocumentObjectModel.Document();
+			MigraDoc.DocumentObjectModel.Document doc=MigraDocHelper.CreateDocument();
 			if(Plugins.HookMethod(this,"FormRpStatement.CreateDocument",doc,pd,fam,pat,dataSet,Stmt)) {
 				return doc;
 			}
