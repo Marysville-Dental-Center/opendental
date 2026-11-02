@@ -384,6 +384,13 @@ namespace DicomReaderTests {
 			result=ReadThroughHelper(MakeFileIn(listDataset,ExplicitVrLittleEndian));
 			Assert.AreEqual(DicomImageReadStatus.Malformed,result.Status,result.ToString());
 			StringAssert.Contains(result.Reason,"needs");
+			//In a deflated data set the reader cannot know the end in advance: a 128 MB frame declared, 70 bytes there, is read in pieces and
+			//refused when the data ends.
+			List<SynElement> listDeflated=Without(listDataset,Tag(0x7FE0,0x0010));
+			listDeflated.Add(new SynElement { Tag=Tag(0x7FE0,0x0010),Vr="OW",Value=new byte[70],LengthOverride=8000*8000*2 });
+			result=ReadThroughHelper(MakeFileIn(listDeflated,DeflatedExplicitVrLittleEndian));
+			Assert.AreEqual(DicomImageReadStatus.Malformed,result.Status,result.ToString());
+			StringAssert.Contains(result.Reason,"ends inside");
 			Assert.IsTrue(DicomImageReader.MaxFramePixels>=8192*8192);
 		}
 

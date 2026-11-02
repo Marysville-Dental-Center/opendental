@@ -242,6 +242,8 @@ namespace OpenPmsDentalBusiness {
 		///<summary>A forward-only reader over a stream, which can look ahead a few bytes and skips by seeking when the stream can seek. Every read
 		///and skip is checked against the end: the stream's length when it can seek, the bytes really there when it cannot, and maxBytes.</summary>
 		private sealed class ByteSource {
+			///<summary>Reads larger than this from a stream that cannot seek go in pieces of this size.</summary>
+			private const int _chunkBytes=4*1024*1024;
 			private readonly Stream _stream;
 			private readonly bool _canSeek;
 			private readonly long _streamEnd;
@@ -330,9 +332,28 @@ namespace OpenPmsDentalBusiness {
 			}
 
 			public byte[] ReadBytes(int count,string what) {
-				byte[] bytes=new byte[count];
-				ReadExact(bytes,0,count,what);
-				return bytes;
+				if(_canSeek || count<=_chunkBytes) {
+					//A seekable stream's lengths were checked against its end before anything this large is read.
+					byte[] bytes=new byte[count];
+					ReadExact(bytes,0,count,what);
+					return bytes;
+				}
+				//A stream that cannot tell its end: memory grows with the bytes that are really there, not with the declared length.
+				List<byte[]> listChunks=new List<byte[]>();
+				int countLeft=count;
+				while(countLeft>0) {
+					byte[] bytesChunk=new byte[Math.Min(_chunkBytes,countLeft)];
+					ReadExact(bytesChunk,0,bytesChunk.Length,what);
+					listChunks.Add(bytesChunk);
+					countLeft-=bytesChunk.Length;
+				}
+				byte[] bytesAll=new byte[count];
+				int offset=0;
+				foreach(byte[] bytesChunk in listChunks) {
+					Buffer.BlockCopy(bytesChunk,0,bytesAll,offset,bytesChunk.Length);
+					offset+=bytesChunk.Length;
+				}
+				return bytesAll;
 			}
 
 			///<summary>Moves count bytes ahead, or declines when that is past the end.</summary>
