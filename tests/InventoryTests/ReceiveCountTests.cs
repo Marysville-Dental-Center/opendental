@@ -114,6 +114,67 @@ namespace InventoryTests {
 			Assert.AreEqual(4,SupplyLedgers.GetForSupply(supply.SupplyNum).Count,"Opening, receipt, count, adjustment: each once.");
 		}
 
+		///<summary>A post that failed inside SupplyLedgers.InsertMany can leave a CountAdjust row written and the lot counter at its old value (the
+		///recompute comes last). The count's program quantity is read from the ledger, so posting the same count line again writes nothing more.</summary>
+		[TestMethod]
+		public void CountProgramQuantity_IsTheLedgerSum_SoARepostAfterAMissedRecomputeWritesNothingMore() {
+			Supply supply=InvData.Supply(isLotTracked:true);
+			SupplyLot supplyLot=InvData.Lot(supply,"CQ"+InvData.Next(),DateTime.Today.AddMonths(6),5);
+			Assert.AreEqual(5,InventoryTracking.GetQtyProgram(supply.SupplyNum,supplyLot.SupplyLotNum));
+			//The count said 3 (program 5): the CountAdjust row of -2 was written, then the post failed before the counters were recomputed.
+			DataCore.NonQ("INSERT INTO supplyledger (SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,DispSupplyNum,"
+				+"UserNum,DateTimeEntry,Reason) VALUES ("+supply.SupplyNum+","+supplyLot.SupplyLotNum+","+(int)SupplyLedgerType.CountAdjust+",-2,0,0,0,0,0,1,NOW(),"
+				+"'Quarterly count')");
+			Assert.AreEqual(5,InvData.LotQty(supplyLot.SupplyLotNum),"The counter missed the row.");
+			double qtyProgram=InventoryTracking.GetQtyProgram(supply.SupplyNum,supplyLot.SupplyLotNum);
+			Assert.AreEqual(3,qtyProgram,"The ledger sum, not the counter.");
+			Assert.AreEqual(3,InventoryTracking.GetCountLines(supply.SupplyNum).Single(x => x.SupplyLotNum==supplyLot.SupplyLotNum).QtyProgram);
+			//The window reloads the program quantity (3) and the same count (3) is posted again: nothing more is adjusted.
+			int countAdjusted=InventoryTracking.PostCount(new List<SupplyCountLine> { new SupplyCountLine { SupplyNum=supply.SupplyNum,
+				SupplyLotNum=supplyLot.SupplyLotNum,LotNumber=supplyLot.LotNumber,QtyProgram=qtyProgram,QtyCounted=3 } },"Quarterly count");
+			Assert.AreEqual(0,countAdjusted);
+			Assert.AreEqual(3,SupplyLedgers.GetSumForLot(supplyLot.SupplyLotNum));
+			Assert.AreEqual(1,SupplyLedgers.GetForSupply(supply.SupplyNum).Count(x => x.LedgerType==SupplyLedgerType.CountAdjust),"Adjusted once.");
+			//The window reads the ledger through these, never the counters.
+			string source=System.IO.File.ReadAllText(InvDb.FindRepoFile(System.IO.Path.Combine("OpenPmsDental","Forms","FormSupplyCount.cs")));
+			Assert.IsFalse(source.Contains("QtyOnHand"),"FormSupplyCount reads no lot counter.");
+			StringAssert.Contains(source,"InventoryTracking.GetCountLines(supply.SupplyNum)");
+			Assert.AreEqual(2,source.Split(new[] { "InventoryTracking.GetQtyProgram(" },StringSplitOptions.None).Length-1,"New lot and the reload after a failure.");
+			SupplyLedgers.RecomputeForSupplies(new List<long> { supply.SupplyNum });
+			SupplyLedgers.RecomputeForLots(new List<long> { supplyLot.SupplyLotNum });
+		}
+
+		///<summary>A lot below zero gets a count row (a lot taken past its stock), so a full count corrects the supply: lot A at -1 and lot B at 2,
+		///with 1 on the shelf (in lot B). Counting A as 0 and B as 1 leaves On Hand 1 and each lot at its count.</summary>
+		[TestMethod]
+		public void CountLines_ListLotsBelowZero_SoAFullCountCorrectsTheSupply() {
+			Supply supply=InvData.Supply(isLotTracked:true);
+			int n=InvData.Next();
+			SupplyLot supplyLotA=InvData.Lot(supply,"AB21-"+n,DateTime.Today.AddMonths(2),0);
+			InventoryTracking.Adjust(supply.SupplyNum,supplyLotA.SupplyLotNum,-1,"Taken past its stock");
+			SupplyLot supplyLotB=InvData.Lot(supply,"AB12-"+n,DateTime.Today.AddMonths(5),2);
+			SupplyLot supplyLotEmpty=InvData.Lot(supply,"EMPTY-"+n,DateTime.Today.AddMonths(1),0);
+			Assert.AreEqual(1,InvData.OnHand(supply.SupplyNum));
+			List<SupplyCountLine> listLines=InventoryTracking.GetCountLines(supply.SupplyNum);
+			CollectionAssert.AreEqual(new[] { supplyLotA.SupplyLotNum,supplyLotB.SupplyLotNum },listLines.Select(x => x.SupplyLotNum).ToList(),
+				"Both lots with stock other than 0, soonest-expiring first; no line for the empty lot or for stock without a lot (there is none).");
+			Assert.AreEqual(-1,listLines[0].QtyProgram);
+			Assert.AreEqual(2,listLines[1].QtyProgram);
+			Assert.AreEqual("AB21-"+n,listLines[0].LotNumber);
+			listLines[0].QtyCounted=0;
+			listLines[1].QtyCounted=1;
+			Assert.AreEqual(2,InventoryTracking.PostCount(listLines,"Full count"));
+			Assert.AreEqual(1,InvData.OnHand(supply.SupplyNum),"On Hand matches the shelf.");
+			Assert.AreEqual(0,InvData.LotQty(supplyLotA.SupplyLotNum));
+			Assert.AreEqual(1,InvData.LotQty(supplyLotB.SupplyLotNum));
+			Assert.AreEqual(0,InvData.LotQty(supplyLotEmpty.SupplyLotNum));
+			//A supply not tracked by lot always has its line of stock without a lot, also at 0.
+			Supply supplyPlain=InvData.Supply(onHand:0);
+			SupplyCountLine supplyCountLinePlain=InventoryTracking.GetCountLines(supplyPlain.SupplyNum).Single();
+			Assert.AreEqual(0,supplyCountLinePlain.SupplyLotNum);
+			Assert.AreEqual(0,supplyCountLinePlain.QtyProgram);
+		}
+
 		[TestMethod]
 		public void GetByScan_MatchesTheBarcode_ThenTheCatalogNumber() {
 			string barcode="0"+InvData.Next()+"77123";

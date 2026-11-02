@@ -51,7 +51,7 @@ namespace InventoryTests {
 				foreach(string table in _arrayInventoryTables) {
 					DataCore.NonQ("DROP TABLE IF EXISTS `"+table+"`");
 				}
-				DataCore.NonQ("DELETE FROM preference WHERE PrefName IN('InventoryTrackingEnabled','InventoryExpiryAlertDays')");
+				DataCore.NonQ("DELETE FROM preference WHERE PrefName IN('"+InventoryTracking.PREF_ENABLED+"','"+InventoryTracking.PREF_EXPIRY_ALERT_DAYS+"')");
 				DataCore.NonQ("DELETE FROM alertcategorylink WHERE AlertType IN("+(int)AlertType.InventoryLowStock+","+(int)AlertType.InventoryExpiring+")");
 				DataCore.NonQ("DELETE FROM grouppermission WHERE PermType="+(int)EnumPermType.InventoryAdjust);
 				//Synthetic supplies as an office's supply list has them, with the old free-typed On Hand.
@@ -101,7 +101,7 @@ namespace InventoryTests {
 		}
 
 		private static Dictionary<string,string> ReadPrefs() {
-			return DataCore.GetTable("SELECT PrefName,ValueString FROM preference WHERE PrefName LIKE 'Inventory%'").Select()
+			return DataCore.GetTable("SELECT PrefName,ValueString FROM preference WHERE PrefName LIKE 'ForkInventory%'").Select()
 				.ToDictionary(x => x["PrefName"].ToString(),x => x["ValueString"].ToString());
 		}
 
@@ -178,8 +178,8 @@ namespace InventoryTests {
 
 		[TestMethod]
 		public void TurningOn_WritesThePrefs_TheLinksOnce_AndTheGrantOnlyTheFirstTime() {
-			Assert.AreEqual("1",_dictPrefs["InventoryTrackingEnabled"]);
-			Assert.AreEqual("30",_dictPrefs["InventoryExpiryAlertDays"]);
+			Assert.AreEqual("1",_dictPrefs[InventoryTracking.PREF_ENABLED]);
+			Assert.AreEqual("30",_dictPrefs[InventoryTracking.PREF_EXPIRY_ALERT_DAYS]);
 			Assert.AreEqual(2,_countLinks,"One link per alert type, also after turning it on twice.");
 			Assert.IsTrue(_countGrantedFirst>=1);
 			Assert.AreEqual(0,_countGrantedSecond,"Granted only the first time.");

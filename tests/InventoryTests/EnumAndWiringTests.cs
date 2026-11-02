@@ -59,6 +59,22 @@ namespace InventoryTests {
 			Assert.IsFalse(sourceCentral.Contains("(AlertType)i") || sourceCentral.Contains("(AlertType)index"),"No loop casts a counter to an alert type.");
 		}
 
+		///<summary>The two settings are fork-owned preference rows with the "Fork" prefix, outside PrefName, which holds only the names Open Dental
+		///publishes (RegistryTests), as every package's settings are.</summary>
+		[TestMethod]
+		public void Preferences_AreForkOwnedRows_NotPrefNames() {
+			Assert.AreEqual("ForkInventoryTrackingEnabled",InventoryTracking.PREF_ENABLED);
+			Assert.AreEqual("ForkInventoryExpiryAlertDays",InventoryTracking.PREF_EXPIRY_ALERT_DAYS);
+			foreach(string prefName in new[] { InventoryTracking.PREF_ENABLED,InventoryTracking.PREF_EXPIRY_ALERT_DAYS,"InventoryTrackingEnabled",
+				"InventoryExpiryAlertDays" })
+			{
+				Assert.IsFalse(Enum.IsDefined(typeof(PrefName),prefName),prefName+" must not be an Open Dental preference name.");
+			}
+			string source=ReadRepoFile("OpenPmsDentalBusiness","Db Multi Table","InventoryTracking.cs");
+			Assert.IsFalse(source.Contains("INSERT INTO preference"),"Written with the shared helper (PrefC.UpsertRawNoCache).");
+			StringAssert.Contains(source,"PrefC.UpsertRawNoCache(PREF_ENABLED,");
+		}
+
 		[TestMethod]
 		public void LevelOnHand_IsNeverWrittenByUpdate() {
 			CrudColumnAttribute crudColumn=typeof(Supply).GetField(nameof(Supply.LevelOnHand)).GetCustomAttributes(typeof(CrudColumnAttribute),true)

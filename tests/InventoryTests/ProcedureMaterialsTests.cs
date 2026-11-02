@@ -48,6 +48,66 @@ namespace InventoryTests {
 			Assert.IsTrue(SupplyProcPendings.GetTableAll().Select().Any(x => PIn.Long(x["ProcNum"].ToString())==procedure.ProcNum),"On the Awaiting Materials list.");
 		}
 
+		///<summary>The newest note text of the procedure (procnote).</summary>
+		private static string GetNewestNote(long procNum) {
+			return DataCore.GetScalar("SELECT Note FROM procnote WHERE ProcNum="+POut.Long(procNum)+" ORDER BY ProcNoteNum DESC LIMIT 1");
+		}
+
+		///<summary>The inventory hooks of the procedure save path never stop a procedure from being saved, deleted or given its note: with the stock
+		///ledger and the default materials renamed away (as a MyISAM table marked as crashed fails), completing with a note, un-completing with a note
+		///and deleting all succeed and keep the note. Renamed back, the repair puts back what the restores could not.</summary>
+		[TestMethod]
+		public void ProcedureSave_InventoryTablesFailing_StillSavesTheProcedureAndItsNote_AndTheRepairPutsBack() {
+			Supply supply=InvData.Supply(onHand:10);
+			long codeNum=InvData.Code((supply,2));
+			long patNum=InvData.Patient();
+			Procedure procedureUsed=InvData.SetStatus(InvData.Proc(patNum,codeNum),ProcStat.C);
+			InventoryTracking.ConfirmMaterials(new List<long> { procedureUsed.ProcNum },InventoryTracking.GetDefaultMaterials(new List<Procedure> { procedureUsed }));
+			Procedure procedureDeleted=InvData.SetStatus(InvData.Proc(patNum,codeNum),ProcStat.C);
+			InventoryTracking.ConfirmMaterials(new List<long> { procedureDeleted.ProcNum },InventoryTracking.GetDefaultMaterials(new List<Procedure> { procedureDeleted }));
+			Procedure procedureCompleted=InvData.Proc(patNum,codeNum);
+			Assert.AreEqual(6,InvData.OnHand(supply.SupplyNum));
+			Assert.IsTrue(InventoryTracking.IsInstalled());
+			string loggerDirOld=CodeBase.Logger.LoggerDirOverride;
+			CodeBase.Logger.LoggerDirOverride=System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"TestLogs");
+			DataCore.NonQ("RENAME TABLE supplyledger TO supplyledger_inv_off,supplyproccode TO supplyproccode_inv_off");
+			try {
+				//Completed with a note: the awaiting row cannot be written (no default materials to read), the procedure and its note are saved.
+				Procedure procedureOld=Procedures.GetOneProc(procedureCompleted.ProcNum,false);
+				Procedure procedureNew=procedureOld.Copy();
+				procedureNew.ProcStatus=ProcStat.C;
+				procedureNew.Note="Completed while the stock ledger was broken";
+				procedureNew.UserNum=Security.CurUser.UserNum;
+				Procedures.Update(procedureNew,procedureOld);
+				Assert.AreEqual(ProcStat.C,Procedures.GetOneProc(procedureCompleted.ProcNum,false).ProcStatus);
+				Assert.AreEqual("Completed while the stock ledger was broken",GetNewestNote(procedureCompleted.ProcNum));
+				//Complete to treatment planned with a note: the restore cannot run, the status and the note are saved.
+				procedureOld=Procedures.GetOneProc(procedureUsed.ProcNum,false);
+				procedureNew=procedureOld.Copy();
+				procedureNew.ProcStatus=ProcStat.TP;
+				procedureNew.Note="Back to the plan while the stock ledger was broken";
+				procedureNew.UserNum=Security.CurUser.UserNum;
+				Procedures.Update(procedureNew,procedureOld);
+				Assert.AreEqual(ProcStat.TP,Procedures.GetOneProc(procedureUsed.ProcNum,false).ProcStatus);
+				Assert.AreEqual("Back to the plan while the stock ledger was broken",GetNewestNote(procedureUsed.ProcNum));
+				//Deleted: the restore cannot run, the delete goes through.
+				Procedures.Delete(procedureDeleted.ProcNum,forceDelete:true);
+				Assert.AreEqual(ProcStat.D,Procedures.GetOneProc(procedureDeleted.ProcNum,false).ProcStatus);
+			}
+			finally {
+				DataCore.NonQ("RENAME TABLE supplyledger_inv_off TO supplyledger,supplyproccode_inv_off TO supplyproccode");
+				CodeBase.Logger.LoggerDirOverride=loggerDirOld;
+			}
+			Assert.IsFalse(IsPending(procedureCompleted.ProcNum),"Not on the list: nothing is deducted for it, never silently.");
+			Assert.AreEqual(6,InvData.OnHand(supply.SupplyNum),"The restores did not run.");
+			CollectionAssert.IsSubsetOf(new[] { procedureUsed.ProcNum,procedureDeleted.ProcNum },SupplyLedgers.GetProcNumsHeldNotComplete());
+			SupplyRepairResult supplyRepairResult=InventoryTracking.Repair();
+			Assert.IsTrue(supplyRepairResult.CountProcs>=2);
+			Assert.AreEqual(10,InvData.OnHand(supply.SupplyNum),"The repair put back what both still held.");
+			Assert.AreEqual(0,InventoryTracking.GetProcMaterials(new List<long> { procedureUsed.ProcNum,procedureDeleted.ProcNum }).Count);
+			Assert.IsFalse(SupplyLedgers.GetProcNumsHeldNotComplete().Contains(procedureUsed.ProcNum));
+		}
+
 		[TestMethod]
 		public void Complete_CodeWithoutMaterials_IsNotAwaiting() {
 			long codeNum=InvData.Code();
@@ -372,7 +432,7 @@ namespace InventoryTests {
 			InventoryTracking.ConfirmMaterials(new List<long> { procedureUsed.ProcNum },InventoryTracking.GetDefaultMaterials(new List<Procedure> { procedureUsed }));
 			List<long> listProcNumsRaised=new List<long>();
 			Action<long> action=x => listProcNumsRaised.Add(x);
-			Prefs.UpdateBool(PrefName.InventoryTrackingEnabled,false);
+			PrefC.UpsertRaw(InventoryTracking.PREF_ENABLED,"0");//The shared helper for fork-owned preference rows.
 			Cache.Refresh(InvalidType.Prefs);
 			InventoryTracking.ProcSetComplete+=action;
 			try {
@@ -385,7 +445,7 @@ namespace InventoryTests {
 			}
 			finally {
 				InventoryTracking.ProcSetComplete-=action;
-				Prefs.UpdateBool(PrefName.InventoryTrackingEnabled,true);
+				PrefC.UpsertRaw(InventoryTracking.PREF_ENABLED,"1");
 				Cache.Refresh(InvalidType.Prefs);
 			}
 		}

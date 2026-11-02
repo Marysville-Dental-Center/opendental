@@ -114,6 +114,54 @@ namespace InventoryTests {
 			Assert.AreEqual(9,InvData.OnHand(supply.SupplyNum));
 		}
 
+		///<summary>A confirmation that failed part-way (ConfirmMaterials writes one row at a time and removes the awaiting row last) leaves the
+		///procedure on the Awaiting Materials list holding some of its materials. Opened again from that list, the panel starts from the code's
+		///defaults, so OK deducts what is still missing, each supply once, and the procedure leaves the list.</summary>
+		[TestMethod]
+		public void MaterialsUsedPanel_AfterAConfirmationThatFailedPartWay_OpensWithTheMissingDefaults() {
+			InvDb.Begin();
+			Supply supplyComposite=InvData.Supply(onHand:10);
+			Supply supplyBond=InvData.Supply(onHand:10);
+			Procedure procedure=InvData.SetStatus(InvData.Proc(InvData.Patient(),InvData.Code((supplyComposite,1),(supplyBond,1))),ProcStat.C);
+			Assert.AreEqual(1,SupplyProcPendings.GetForProcs(new List<long> { procedure.ProcNum }).Count);
+			//Only the first default's Use row was written before the failure.
+			DataCore.NonQ("INSERT INTO supplyledger (SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,DispSupplyNum,"
+				+"UserNum,DateTimeEntry,Reason) VALUES ("+supplyComposite.SupplyNum+",0,"+(int)SupplyLedgerType.Use+",-1,2.5,"+procedure.ProcNum+","
+				+procedure.PatNum+",0,0,1,NOW(),'')");
+			SupplyLedgers.RecomputeForSupplies(new List<long> { supplyComposite.SupplyNum });
+			DialogResult dialogResult=DialogResult.None;
+			int countRows=0;
+			RunSta(() => {
+				using FormMaterialsUsed form=new FormMaterialsUsed();
+				form.ListProcNums=new List<long> { procedure.ProcNum };
+				Assert.AreNotEqual(IntPtr.Zero,form.Handle);
+				InvokePrivate(form,"FormMaterialsUsed_Load",form,EventArgs.Empty);
+				OpenPmsDental.UI.GridOD grid=GetPrivate<OpenPmsDental.UI.GridOD>(form,"gridMain");
+				countRows=grid.ListGridRows.Count;
+				Assert.IsTrue(grid.ListGridRows.All(x => x.Cells[2].Text=="1"),"Each supply at its default of 1.");
+				InvokePrivate(form,"butOK_Click",form,EventArgs.Empty);
+				dialogResult=form.DialogResult;
+			});
+			Assert.AreEqual(2,countRows,"The composite it holds and the bond it does not hold yet.");
+			Assert.AreEqual(DialogResult.OK,dialogResult);
+			Assert.AreEqual(9,InvData.OnHand(supplyComposite.SupplyNum),"Deducted once.");
+			Assert.AreEqual(9,InvData.OnHand(supplyBond.SupplyNum),"The missing default is deducted.");
+			List<SupplyLedger> listSupplyLedgers=SupplyLedgers.GetForProcs(new List<long> { procedure.ProcNum });
+			Assert.AreEqual(2,listSupplyLedgers.Count);
+			Assert.IsTrue(listSupplyLedgers.All(x => x.LedgerType==SupplyLedgerType.Use && x.Quantity==-1));
+			Assert.AreEqual(0,SupplyProcPendings.GetForProcs(new List<long> { procedure.ProcNum }).Count,"Left the Awaiting Materials list.");
+			//Opened again now that it no longer awaits materials: only what it holds, nothing more on OK.
+			RunSta(() => {
+				using FormMaterialsUsed form=new FormMaterialsUsed();
+				form.ListProcNums=new List<long> { procedure.ProcNum };
+				Assert.AreNotEqual(IntPtr.Zero,form.Handle);
+				InvokePrivate(form,"FormMaterialsUsed_Load",form,EventArgs.Empty);
+				Assert.AreEqual(2,GetPrivate<OpenPmsDental.UI.GridOD>(form,"gridMain").ListGridRows.Count);
+				InvokePrivate(form,"butOK_Click",form,EventArgs.Empty);
+			});
+			Assert.AreEqual(2,SupplyLedgers.GetForProcs(new List<long> { procedure.ProcNum }).Count);
+		}
+
 		///<summary>A UPC scanned into a quantity cell instead of the Scan box is refused; a large quantity is asked first.</summary>
 		[TestMethod]
 		public void QuantityCells_RefuseAScannedBarcode_AndAskAboveTheLimit() {
@@ -154,8 +202,11 @@ namespace InventoryTests {
 		}
 
 		///<summary>Business methods that complete procedures entirely on the Middle Tier server raise the event in the program after the remote call,
-		///in their ClientMT branch: Procedures.SetCompleteInApptInList (Chart Set Complete of an appointment, the appointment edit window, per-visit
-		///codes) and Appointments.CompleteClick (the Appointments module's Set Complete).</summary>
+		///in their ClientMT branch: Procedures.SetCompleteInApptInList (called on the client by the Chart module's Set Complete of an appointment and
+		///by per-visit codes added from the Chart and Appointments modules), Appointments.ApptSaveHelper (the appointment edit window's OK, whose
+		///UpdateProcsInApptHelper and per-visit codes run on the server), Appointments.CompleteClick (the Appointments module's Set Complete) and
+		///Procedures.SetCanadianLabFeesCompleteForProc (Canadian lab fees and the parent of a lab fee). Methods without a user (UpsertApptFromWeb)
+		///leave their procedures on the Awaiting Materials list.</summary>
 		[TestMethod]
 		public void MiddleTierCompletions_RaiseTheEventInTheProgram() {
 			string sourceProcedures=File.ReadAllText(InvDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","Data Interface","Procedures.cs")));
@@ -164,6 +215,17 @@ namespace InventoryTests {
 			StringAssert.Contains(branchSetComplete,"InventoryTracking.NotifyProcsNowComplete(listProcsForAppt,listProcsSetComplete);");
 			string branchCompleteClick=GetClientMtBranch(sourceAppointments,"public static ODTuple<Appointment,List<Procedure>> CompleteClick(");
 			StringAssert.Contains(branchCompleteClick,"InventoryTracking.NotifyProcsNowComplete(listProceduresForAppt,Procedures.GetProcsForSingle(");
+			string branchApptSave=GetClientMtBranch(sourceAppointments,"public static ApptSaveHelperResult ApptSaveHelper(");
+			StringAssert.Contains(branchApptSave,"List<Procedure> listProceduresBefore=(listProceduresForAppt??new List<Procedure>()).Select(x => x.Copy()).ToList();");
+			Assert.IsTrue(branchApptSave.IndexOf("listProceduresBefore=")<branchApptSave.IndexOf("Meth.GetObject<ApptSaveHelperResult>("),"Read before the call.");
+			StringAssert.Contains(branchApptSave,
+				"InventoryTracking.NotifyProcsNowComplete(listProceduresBefore,Procedures.GetProcsForSingle(apptSaveHelperResultRemote.AptCur.AptNum,false));");
+			string branchLabFees=GetClientMtBranch(sourceProcedures,"public static void SetCanadianLabFeesCompleteForProc(");
+			Assert.IsTrue(branchLabFees.IndexOf("listProcsBefore=GetManyProc(")<branchLabFees.IndexOf("Meth.GetVoid("),"Read before the call.");
+			StringAssert.Contains(branchLabFees,"InventoryTracking.NotifyProcsNowComplete(listProcsBefore,GetManyProc(");
+			//The appointment edit window saves through ApptSaveHelper, so its completions are this branch's.
+			string sourceApptEdit=File.ReadAllText(InvDb.FindRepoFile(Path.Combine("OpenPmsDental","Forms","FormApptEdit.cs")));
+			StringAssert.Contains(sourceApptEdit,"Appointments.ApptSaveHelper(");
 		}
 
 		///<summary>The text of the method's "if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {" block, up to its closing brace.</summary>

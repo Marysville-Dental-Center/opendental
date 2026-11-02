@@ -69,6 +69,40 @@ namespace InventoryTests {
 			StringAssert.Contains(listAlertItems[0].Description,supply.Descript,"The text is brought up to date.");
 		}
 
+		///<summary>With random primary keys (replication), the alert's INSERT ... SELECT takes its key from ReplicationServers.GetKey, as the generated
+		///CRUD does, never the next AUTO_INCREMENT value, which two replicated servers would hand out twice.</summary>
+		[TestMethod]
+		public void Alerts_WithRandomKeys_TakeAReplicationKey_NotTheNextAutoIncrement() {
+			Supply supply=InvData.Supply(onHand:0,reorderLevel:2);
+			Supply supplyAuto=InvData.Supply(onHand:0,reorderLevel:2);
+			AlertItems.DeleteFor(AlertType.InventoryLowStock,new List<long> { supply.SupplyNum,supplyAuto.SupplyNum });
+			Assert.IsFalse(PrefC.RandomKeys,"The test database starts without random keys.");
+			Prefs.UpdateBool(PrefName.RandomPrimaryKeys,true);
+			Cache.Refresh(InvalidType.Prefs);
+			long alertItemNumRandom;
+			long autoIncrementBefore;
+			try {
+				Assert.IsTrue(PrefC.RandomKeys);
+				autoIncrementBefore=PIn.Long(DataCore.GetScalar("SELECT COALESCE(MAX(AlertItemNum),0)+1 FROM alertitem"));
+				Assert.IsTrue(InventoryTracking.InsertAlertIfMissing(AlertType.InventoryLowStock,supply.SupplyNum,"Low stock: random key"));
+				Assert.IsFalse(InventoryTracking.InsertAlertIfMissing(AlertType.InventoryLowStock,supply.SupplyNum,"Low stock: again"),"Still only once.");
+				List<AlertItem> listAlertItems=GetAlerts(AlertType.InventoryLowStock,supply.SupplyNum);
+				Assert.AreEqual(1,listAlertItems.Count);
+				alertItemNumRandom=listAlertItems[0].AlertItemNum;
+			}
+			finally {
+				Prefs.UpdateBool(PrefName.RandomPrimaryKeys,false);
+				Cache.Refresh(InvalidType.Prefs);
+			}
+			Assert.AreNotEqual(autoIncrementBefore,alertItemNumRandom,"Not the next AUTO_INCREMENT value.");
+			Assert.IsTrue(alertItemNumRandom>10000,"In the range ReplicationServers.GetKey gives (above 10000 without a server range).");
+			//Without random keys the database numbers the row, as before.
+			Assert.IsTrue(InventoryTracking.InsertAlertIfMissing(AlertType.InventoryLowStock,supplyAuto.SupplyNum,"Low stock: auto"));
+			Assert.AreEqual(1,GetAlerts(AlertType.InventoryLowStock,supplyAuto.SupplyNum).Count);
+			string source=System.IO.File.ReadAllText(InvDb.FindRepoFile(System.IO.Path.Combine("OpenPmsDentalBusiness","Db Multi Table","InventoryTracking.cs")));
+			StringAssert.Contains(source,"POut.Long(ReplicationServers.GetKey(\"alertitem\",\"AlertItemNum\"))");
+		}
+
 		[TestMethod]
 		public void Expiring_RaisedWithinTheLeadDays_TextChangesWhenExpired_RemovedWhenUsedUp() {
 			Supply supply=InvData.Supply(isLotTracked:true);
@@ -100,7 +134,7 @@ namespace InventoryTests {
 			Supply supply=InvData.Supply(onHand:0,reorderLevel:1);
 			InventoryTracking.RefreshLowStockAlerts(new List<long> { supply.SupplyNum });
 			Assert.AreEqual(1,GetAlerts(AlertType.InventoryLowStock,supply.SupplyNum).Count);
-			Prefs.UpdateBool(PrefName.InventoryTrackingEnabled,false);
+			PrefC.UpsertRaw(InventoryTracking.PREF_ENABLED,"0");//The shared helper for fork-owned preference rows.
 			Cache.Refresh(InvalidType.Prefs);
 			try {
 				InventoryTracking.DeleteAllAlerts();
@@ -108,7 +142,7 @@ namespace InventoryTests {
 				Assert.AreEqual(0,AlertItems.RefreshForType(AlertType.InventoryLowStock).Count);
 			}
 			finally {
-				Prefs.UpdateBool(PrefName.InventoryTrackingEnabled,true);
+				PrefC.UpsertRaw(InventoryTracking.PREF_ENABLED,"1");
 				Cache.Refresh(InvalidType.Prefs);
 			}
 		}
