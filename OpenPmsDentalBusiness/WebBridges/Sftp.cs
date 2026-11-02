@@ -8,7 +8,6 @@ using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using CodeBase;
 using OpenPmsDentalStorage.Core;
-using OpenPop.Pop3;
 
 namespace OpenPmsDentalBusiness {
 	public static class ODSftp {

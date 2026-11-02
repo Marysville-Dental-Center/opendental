@@ -16,21 +16,22 @@ namespace AttributionTests {
 	public class ReleaseIdentityTests {
 		///<summary>Every third-party component the release ships, by its name in THIRD-PARTY-NOTICES.txt (report-release.md 1.3 to 1.5).</summary>
 		private static readonly string[] _arrayShippedComponents=new string[] {
-			"MySqlConnector",".NET libraries","Newtonsoft.Json","MimeKit","MSAL.NET","SSH.NET","PDFsharp","MigraDoc","SharpDX","Tao Framework",
-			"Direct Project","OpenPop.NET","SharpSSH","Mentalis.org Security Library","NHunspell and Hunspell","Hunspell en_US dictionary",
+			"MySqlConnector",".NET libraries","Newtonsoft.Json","MimeKit","MailKit","MSAL.NET","SSH.NET","Bouncy Castle Cryptography","PDFsharp",
+			"MigraDoc","SharpDX","Tao Framework","Direct Project","NHunspell and Hunspell","Hunspell en_US dictionary",
 			"RDL Project","Google APIs Client Library for .NET","fo-dicom","NDde","Microsoft Edge WebView2 SDK","TWAIN","Pearl API notice",
 		};
 
 		///<summary>Files of every listed component that ships in the output folder.</summary>
 		private static readonly string[] _arrayShippedFiles=new string[] {
-			"MySqlConnector.dll","Microsoft.Bcl.AsyncInterfaces.dll","Microsoft.Extensions.DependencyInjection.Abstractions.dll",
-			"Microsoft.Extensions.Logging.Abstractions.dll","System.Buffers.dll",
-			"System.Diagnostics.DiagnosticSource.dll","System.Memory.dll","System.Numerics.Vectors.dll","System.Runtime.CompilerServices.Unsafe.dll",
-			"System.Threading.Tasks.Extensions.dll","Newtonsoft.Json.dll","MimeKit.dll","Microsoft.Identity.Client.dll",
-			"Microsoft.IdentityModel.Abstractions.dll","Renci.SshNet.dll","PdfSharp.dll","PdfSharp.Charting.dll","MigraDoc.DocumentObjectModel.dll",
-			"MigraDoc.Rendering.dll","MigraDoc.RtfRendering.dll","SharpDX.dll","SharpDX.Direct3D9.dll","SharpDX.Mathematics.dll","Tao.OpenGl.dll",
-			"Tao.Platform.Windows.dll","Health.Direct.Agent.dll","Health.Direct.Common.dll","Health.Direct.ResolverPlugins.dll","OpenPop.dll",
-			"Tamir.SharpSSH.dll","Org.Mentalis.Security.dll","DiffieHellman.dll","NHunspell.dll","Hunspellx86.dll","RdlEngine.dll","RdlViewer.dll",
+			"MySqlConnector.dll","Microsoft.Bcl.AsyncInterfaces.dll","Microsoft.Bcl.Cryptography.dll",
+			"Microsoft.Extensions.DependencyInjection.Abstractions.dll","Microsoft.Extensions.Logging.Abstractions.dll","System.Buffers.dll",
+			"System.Diagnostics.DiagnosticSource.dll","System.Formats.Asn1.dll","System.IO.Pipelines.dll","System.Memory.dll",
+			"System.Numerics.Vectors.dll","System.Runtime.CompilerServices.Unsafe.dll","System.Text.Encodings.Web.dll","System.Text.Json.dll",
+			"System.Threading.Tasks.Extensions.dll","Newtonsoft.Json.dll","MimeKit.dll","MailKit.dll",
+			"Microsoft.Identity.Client.dll","Microsoft.IdentityModel.Abstractions.dll","Renci.SshNet.dll","BouncyCastle.Cryptography.dll","PdfSharp.dll",
+			"PdfSharp.Charting.dll","MigraDoc.DocumentObjectModel.dll","MigraDoc.Rendering.dll","MigraDoc.RtfRendering.dll","SharpDX.dll",
+			"SharpDX.Direct3D9.dll","SharpDX.Mathematics.dll","Tao.OpenGl.dll","Tao.Platform.Windows.dll","Health.Direct.Agent.dll",
+			"Health.Direct.Common.dll","Health.Direct.ResolverPlugins.dll","NHunspell.dll","Hunspellx86.dll","RdlEngine.dll","RdlViewer.dll",
 			"Google.Apis.dll","Google.Apis.Auth.dll","Google.Apis.Core.dll","Google.Apis.Gmail.v1.dll","Dicom.Core.dll","Dicom.Native.dll","NDde.dll",
 			"Microsoft.Web.WebView2.Core.dll","Microsoft.Web.WebView2.WinForms.dll","Microsoft.Web.WebView2.Wpf.dll","WebView2Loader.dll",
 		};
@@ -42,10 +43,13 @@ namespace AttributionTests {
 			"Oracle","Tao_Freeglut",
 		};
 
-		///<summary>What packages BIN-A and BIN-B delete, and Open Dental's own closed binaries: never listed as shipped.</summary>
+		///<summary>What packages BIN-A and BIN-B delete, Open Dental's own closed binaries, and the libraries the tier 1 library updates removed
+		///(OpenPop.NET, SharpSSH with Mentalis.org and DiffieHellman, MimeKit 2's BouncyCastle.Crypto, the Google APIs 1.44 platform shims): never
+		///listed as shipped.</summary>
 		private static readonly string[] _arrayNotShipped=new string[] {
 			"Sparks3D","SigPlusNET","Interop.Word","Interop.Microsoft.Office","Interop.VBIDE","stdole","AcroPDF","Acrobat","zxing","Avalara","RS232","DotNetZip",
-			"Ionic","Drifty","VBbridges","xImageDeviceManager","EZTwain","Eztwain","SuniUSB","VideoCamLib",
+			"Ionic","Drifty","VBbridges","xImageDeviceManager","EZTwain","Eztwain","SuniUSB","VideoCamLib","OpenPop","SharpSSH","Mentalis",
+			"DiffieHellman","BouncyCastle.Crypto.dll","PlatformServices",
 		};
 
 		#region Helpers
@@ -163,12 +167,12 @@ namespace AttributionTests {
 				.Select(x => x.Name).ToList();
 			foreach(string resourceName in new[] { "OpenDentalLicense","OpenDentalApiEndUserLicense","CDT_Content_End_User_License",
 				"CDT_Content_End_User_License1","Sparks3D","stdole","Ionic","Zxing","AForge","Angular","BouncyCastle","Bsd","Microsoft","Oracle",
-				"Tao_Freeglut" })
+				"Tao_Freeglut","Tamir","Mentalis" })
 			{
 				CollectionAssert.DoesNotContain(listResourceNames,resourceName);
 			}
 			foreach(string fileName in new[] { "opendentallicense.txt","opendentalapienduserlicense.txt","CDT Content End User License.txt",
-				"CDT Content End User License.rtf","Sparks3D.txt","stdole.txt","Ionic.txt","Zxing.txt" })
+				"CDT Content End User License.rtf","Sparks3D.txt","stdole.txt","Ionic.txt","Zxing.txt","Tamir.txt","Mentalis.txt" })
 			{
 				Assert.IsFalse(File.Exists(Path.Combine(RepoRoot(),"OpenPmsDental","Resources",fileName)),fileName);
 			}

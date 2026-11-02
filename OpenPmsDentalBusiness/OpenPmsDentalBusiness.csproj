@@ -92,25 +92,21 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Dicom.Native.dll</HintPath>
     </Reference>
-    <Reference Include="Google.Apis, Version=1.44.0.0, Culture=neutral, PublicKeyToken=4b01fa6e34db77ab, processorArchitecture=MSIL">
+    <!-- Google APIs Client Library for .NET 1.78 (lib\net462) and the Gmail API 1.77.0.4295, for Gmail send and download (GoogleApiConnector).
+         Since 1.50 the library has no PlatformServices assemblies. -->
+    <Reference Include="Google.Apis, Version=1.78.0.0, Culture=neutral, PublicKeyToken=4b01fa6e34db77ab, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Google.Apis.dll</HintPath>
     </Reference>
     <Reference Include="Google.Apis.Auth">
       <HintPath>..\Required dlls\Google.Apis.Auth.dll</HintPath>
     </Reference>
-    <Reference Include="Google.Apis.Auth.PlatformServices">
-      <HintPath>..\Required dlls\Google.Apis.Auth.PlatformServices.dll</HintPath>
-    </Reference>
-    <Reference Include="Google.Apis.Core, Version=1.44.0.0, Culture=neutral, PublicKeyToken=4b01fa6e34db77ab, processorArchitecture=MSIL">
+    <Reference Include="Google.Apis.Core, Version=1.78.0.0, Culture=neutral, PublicKeyToken=4b01fa6e34db77ab, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Google.Apis.Core.dll</HintPath>
     </Reference>
     <Reference Include="Google.Apis.Gmail.v1">
       <HintPath>..\Required dlls\Google.Apis.Gmail.v1.dll</HintPath>
-    </Reference>
-    <Reference Include="Google.Apis.PlatformServices">
-      <HintPath>..\Required dlls\Google.Apis.PlatformServices.dll</HintPath>
     </Reference>
     <Reference Include="Health.Direct.Agent">
       <HintPath>..\Required dlls\Health.Direct.Agent.dll</HintPath>
@@ -121,18 +117,21 @@
     <Reference Include="Health.Direct.ResolverPlugins">
       <HintPath>..\Required dlls\Health.Direct.ResolverPlugins.dll</HintPath>
     </Reference>
+    <!-- MailKit and MimeKit 4.18.2 (lib\net48): POP3 receive (EmailMessages.ReceiveFromInbox) and the MIME messages of Gmail and Microsoft 365.
+         Both use BouncyCastle.Cryptography 2.7 from Required dlls. -->
     <Reference Include="MailKit">
       <HintPath>..\Required dlls\MailKit.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualBasic" />
-    <!-- MSAL for the vendor-direct Microsoft 365 sign-in (M365-LIB). The 4.47.1 copy shipped in Required dlls for now; see docs/specs/vendor-direct/microsoft-365.md. -->
+    <!-- MSAL 4.92.0 (lib\net472) for the vendor-direct Microsoft 365 sign-in (M365-LIB); see docs/specs/vendor-direct/microsoft-365.md. It uses
+         System.Text.Json and System.Text.Encodings.Web 10.0.14 from Required dlls (MSAL asks for 6.0, the redirects send it to them). -->
     <Reference Include="Microsoft.Identity.Client">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Microsoft.Identity.Client.dll</HintPath>
     </Reference>
-    <!-- MSAL's own dependency (its IIdentityLogger). Used by Microsoft365Session, so every program hosting the sign-in copies it and gets the
-         6.22 to 6.23.1 binding redirect MSAL needs. The Graph SDK's dependencies brought it in until the prebuilt Bridges assembly and
-         the Graph SDK were deleted. -->
+    <!-- MSAL's own dependency (its IIdentityLogger), 8.14.0. Used by Microsoft365Session, so every program hosting the sign-in copies it and
+         gets the binding redirect to it. The Graph SDK's dependencies brought it in until the prebuilt Bridges assembly and the Graph SDK were
+         deleted. -->
     <Reference Include="Microsoft.IdentityModel.Abstractions">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Microsoft.IdentityModel.Abstractions.dll</HintPath>
@@ -143,7 +142,7 @@
     <Reference Include="MySqlConnector">
       <HintPath>..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -151,9 +150,6 @@
       <Project>{c37b8157-f665-4ebe-8fd6-20d1c92a0797}</Project>
       <Name>xODCrypt</Name>
     </ProjectReference>
-    <Reference Include="OpenPop">
-      <HintPath>..\Required dlls\OpenPop.dll</HintPath>
-    </Reference>
     <Reference Include="PdfSharp, Version=1.2.1269.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\PdfSharp.dll</HintPath>
@@ -185,9 +181,6 @@
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
-    <Reference Include="Tamir.SharpSSH">
-      <HintPath>..\Required dlls\Tamir.SharpSSH.dll</HintPath>
-    </Reference>
     <Reference Include="System.IO.Compression" />
     <Reference Include="WindowsBase" />
   </ItemGroup>

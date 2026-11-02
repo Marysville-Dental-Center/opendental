@@ -100,6 +100,11 @@ namespace OpenPmsDentalBusiness {
 		///checks both lists against this one.</summary>
 		public static readonly List<string> ListRetiredFiles=new List<string>() {
 			ProgramNames.LegacyCloudDllFileName,//The storage library of v0.0, renamed on 2026-11-02.
+			//Libraries of v0.0 that the tier 1 library updates removed (2026-11-02).
+			"Tamir.SharpSSH.dll",//SharpSSH, replaced by SSH.NET.
+			"Org.Mentalis.Security.dll",//SharpSSH's cryptography library.
+			"DiffieHellman.dll",//SharpSSH's key exchange library.
+			"OpenPop.dll",//OpenPop.NET, replaced by MailKit's POP3 client.
 		};
 		///<summary>Key of the AssemblyMetadata attribute that holds the build time of OpenPmsDental.exe (written by OpenPmsDental.csproj).</summary>
 		public const string BUILD_UTC_METADATA_KEY="ForkBuildUtc";

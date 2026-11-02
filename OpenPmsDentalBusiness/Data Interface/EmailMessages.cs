@@ -1145,31 +1145,65 @@ namespace OpenPmsDentalBusiness {
 
 		#region Receiving
 
+		///<summary>Tests only (tests/LibraryUpdateTests): checks the certificate of the fake POP3 server, which no authority signed. Null in
+		///production, where MailKit checks the server's certificate itself.</summary>
+		internal static System.Net.Security.RemoteCertificateValidationCallback Pop3CertificateValidationForTests;
+
 		///<summary>Receives emails from the email server for the email address passed in. Returns the count of new emails that were downloaded.</summary>
 		public static int ReceiveFromInbox(EmailAddress emailAddress) {
 			Meth.NoCheckMiddleTierRole();
 			if(emailAddress.DownloadInbox && emailAddress.AuthenticationType.In(OAuthType.Google,OAuthType.Microsoft)) {
 				return RetrieveFromInboxOAuth(emailAddress);
 			}
+			int countNewEmails=DownloadPop3Inbox(emailAddress,() => EmailMessageUids.GetMsgIdsRecipientAddress(emailAddress.EmailUsername.Trim()),
+				strRawEmail => ProcessRawEmailMessageIn(strRawEmail,0,emailAddress,true),//Inserts to db.
+				msgId => {
+					EmailMessageUid emailMessageUid=new EmailMessageUid();
+					emailMessageUid.RecipientAddress=emailAddress.EmailUsername.Trim();
+					emailMessageUid.MsgId=msgId;
+					EmailMessageUids.Insert(emailMessageUid);//Remember Uid was downloaded, to avoid email duplication the next time the inbox is refreshed.
+				});
+			//Since this function is fired automatically based on the inbox check interval, we also try to send the oldest unsent Ack.
+			//The goal is to keep trying to send the Acks at a reasonable interval until they are successfully delivered.
+			SendOldestUnsentAck(emailAddress);
+			return countNewEmails;
+		}
+
+		///<summary>The POP3 download behind ReceiveFromInbox. funcGetStoredUids gives the IDs already downloaded, actionImport stores one raw email,
+		///actionStoreUid remembers an ID as downloaded. Those three are the database side, which tests replace. Returns the count of new emails.
+		///Throws if the server can't be reached, its certificate is not trusted, or it refuses the user name and password.</summary>
+		internal static int DownloadPop3Inbox(EmailAddress emailAddress,Func<List<string>> funcGetStoredUids,Action<string> actionImport,
+			Action<string> actionStoreUid)
+		{
 			int countNewEmails=0;
-			//This code is modified from the example at: http://hpop.sourceforge.net/exampleFetchAllMessages.php
-			using(OpenPop.Pop3.Pop3Client client=new OpenPop.Pop3.Pop3Client()) {//The client disconnects from the server when being disposed.
-				client.Connect(emailAddress.Pop3ServerIncoming,emailAddress.ServerPortIncoming,emailAddress.UseSSL,180000,180000,null);//3 minute timeout, just as for sending emails.
-				client.Authenticate(emailAddress.EmailUsername.Trim(),MiscUtils.Decrypt(emailAddress.EmailPassword),OpenPop.Pop3.AuthenticationMethod.UsernameAndPassword);
-				List<string> listMsgIds=client.GetMessageUids();//Get all unique identifiers for each email in the inbox.
-				List<string> listMsgIdsDownloaded=EmailMessageUids.GetMsgIdsRecipientAddress(emailAddress.EmailUsername.Trim());
+			//MailKit's POP3 client (OpenPop.NET until the library updates). UseSSL means TLS from the first byte (POP3S, usually port 995), as with
+			//OpenPop; otherwise the connection is plain text, as before. MailKit checks the server's certificate and its revocation.
+			using(MailKit.Net.Pop3.Pop3Client client=new MailKit.Net.Pop3.Pop3Client()) {//Disposing the client closes the connection.
+				client.Timeout=180000;//3 minute timeout, just as for sending emails.
+				if(Pop3CertificateValidationForTests!=null) {
+					client.ServerCertificateValidationCallback=Pop3CertificateValidationForTests;
+				}
+				client.Connect(emailAddress.Pop3ServerIncoming,emailAddress.ServerPortIncoming,
+					emailAddress.UseSSL ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.None);
+				//USER and PASS, as OpenPop signed in. No SASL mechanism or APOP: a server may offer one that an account does not support, and a password
+				//address never signs in with a token (OAuth addresses download through their APIs).
+				client.AuthenticationMechanisms.Clear();
+				client.Capabilities&=~MailKit.Net.Pop3.Pop3Capabilities.Apop;
+				client.Authenticate(emailAddress.EmailUsername.Trim(),MiscUtils.Decrypt(emailAddress.EmailPassword));
+				List<string> listMsgIds=client.GetMessageUids().ToList();//Get all unique identifiers for each email in the inbox.
+				List<string> listMsgIdsDownloaded=funcGetStoredUids();
 				for(int i=0;i<listMsgIds.Count;i++) {
-					int msgIndex=i+1;//The message indicies are 1-based.
-					string msgId=listMsgIds[i];//Example: 1420562540.886638.p3plgemini22-06.prod.phx.2602059520
-					OpenPop.Mime.Header.MessageHeader messageHeader=null;
+					int msgIndex=i;//MailKit's message indexes are 0-based (OpenPop's were 1-based).
+					string msgId=listMsgIds[i]??"";//Example: 1420562540.886638.p3plgemini22-06.prod.phx.2602059520
+					MimeKit.HeaderList headerList=null;
 					if(msgId.Length==0) {
 						//Message Uids are commonly used, but are optional according to the RFC822 email standard.
 						//Uids are assgined by the sending client application, so they could be anything, but are supposed to be unique.
 						//Additionally, most email servers are probably smart enough to create a Uid for any message where the Uid is missing.
-						//In the worst case scenario, we create a Uid for the message based off of the message header information, which takes a little extra time, 
+						//In the worst case scenario, we create a Uid for the message based off of the message header information, which takes a little extra time,
 						//but is better than downloading old messages again, especially if some of those messages contain large attachments.
-						messageHeader=client.GetMessageHeaders(msgIndex);//Takes 1-2 seconds to get this information from the server.  The message, minus body and minus attachments.
-						msgId=messageHeader.DateSent.ToString("yyyyMMddHHmmss")+emailAddress.EmailUsername.Trim()+messageHeader.From.Address+messageHeader.Subject;
+						headerList=client.GetMessageHeaders(msgIndex);//Takes 1-2 seconds to get this information from the server.  The message, minus body and minus attachments.
+						msgId=GetPop3HeaderMsgId(headerList,emailAddress.EmailUsername.Trim());
 					}
 					if(msgId.Length>4000) {//The EmailMessageUid.MsgId field is only 4000 characters in size.
 						msgId=msgId.Substring(0,4000);
@@ -1177,13 +1211,14 @@ namespace OpenPmsDentalBusiness {
 					if(listMsgIdsDownloaded.Contains(msgId)) {
 						continue;//Skip emails which have already been downloaded.
 					}
-					//messageHeader will only be defined if we created our own unique ID manually above.  MessageId is optional, just as the message UIDs are.
-					if(messageHeader!=null && messageHeader.MessageId!="") {
+					//headerList will only be defined if we created our own unique ID manually above.  MessageId is optional, just as the message UIDs are.
+					string messageIdHeader=(headerList==null) ? "" : GetPop3MessageId(headerList);
+					if(messageIdHeader!="") {
 						//The MessageId is usually generated by the email server.
-						//The message does not have a UID, and the ID that we made up has not been downloaded before.  As a last resort we check the MessageId in 
-						//the message header.  MessageId is different than the UID.  We should have used the MessageId as the second option in the past, but now 
+						//The message does not have a UID, and the ID that we made up has not been downloaded before.  As a last resort we check the MessageId in
+						//the message header.  MessageId is different than the UID.  We should have used the MessageId as the second option in the past, but now
 						//we are stuck using it as a third option, because using MessageId as a second option would cause old emails to download again.
-						msgId=messageHeader.MessageId;//Example: xtbzX6Pumwpcn9NjhAJn5A@mcmail1.mcr.colo.comodo.net
+						msgId=messageIdHeader;//Example: xtbzX6Pumwpcn9NjhAJn5A@mcmail1.mcr.colo.comodo.net
 						if(msgId.Length>4000) {//The EmailMessageUid.MsgId field is only 4000 characters in size.
 							msgId=msgId.Substring(0,4000);
 						}
@@ -1192,39 +1227,38 @@ namespace OpenPmsDentalBusiness {
 						}
 					}
 					//At this point, we know that the email is one which we have not downloaded yet.
-					OpenPop.Mime.Message messageOpenPop;
+					byte[] arrayRawMessage;
 					try {
-						messageOpenPop=client.GetMessage(msgIndex);//This is where the entire raw email is downloaded.
+						arrayRawMessage=GetPop3RawMessage(client,msgIndex);//This is where the entire raw email is downloaded.
+					}
+					catch(ThreadAbortException) {
+						throw;
 					}
 					catch(Exception ex) {
-						//Certain error messages should be treated as "downloaded" so that we do not waste time trying to download these email messages again.
-						if(ex.Message=="The specified media type is invalid."
-							|| ex.Message=="Invalid length for a Base-64 char array or string."
-							|| ex.Message.StartsWith("'binary' is not a supported encoding name. "
-								+"For information on defining a custom encoding, see the documentation for the Encoding.RegisterProvider method.")
-							|| ex.Message.StartsWith("'Cp1252' is not a supported encoding name. "
-								+"For information on defining a custom encoding, see the documentation for the Encoding.RegisterProvider method."))
-						{
-							EmailMessageUid emailMessageUid=new EmailMessageUid();
-							emailMessageUid.RecipientAddress=emailAddress.EmailUsername.Trim();
-							emailMessageUid.MsgId=msgId;
-							EmailMessageUids.Insert(emailMessageUid);//Remember Uid was downloaded, to avoid email duplication the next time the inbox is refreshed.
-							listMsgIdsDownloaded.Add(msgId);
+						//The server or the connection failed. The UID is not stored, so the message is tried again the next time.
+						ex.DoNothing();
+						continue;
+					}
+					MimeKit.MimeMessage mimeMessage;
+					try {
+						using(MemoryStream memoryStream=new MemoryStream(arrayRawMessage)) {
+							mimeMessage=MimeKit.MimeMessage.Load(memoryStream);
 						}
+					}
+					catch(Exception ex) {
+						//Not readable as a message. Treated as "downloaded" so that we do not waste time trying to download it again, as OpenPop's parse
+						//errors were.
+						ex.DoNothing();
+						actionStoreUid(msgId);
+						listMsgIdsDownloaded.Add(msgId);
 						continue;
 					}
 					try {
-						if(IsEmailFromInbox(emailAddress.EmailUsername,messageOpenPop.Headers.To,ListTools.FromSingle(messageOpenPop.Headers.From)
-							,messageOpenPop.Headers.Cc,messageOpenPop.Headers.Bcc)) 
-						{
-							string strRawEmail=messageOpenPop.MessagePart.BodyEncoding.GetString(messageOpenPop.RawMessage);
-							EmailMessage emailMessage=ProcessRawEmailMessageIn(strRawEmail,0,emailAddress,true);//Inserts to db.
+						if(IsEmailFromInbox(emailAddress.EmailUsername,mimeMessage.To.ToList(),mimeMessage.From.ToList(),mimeMessage.Cc.ToList(),mimeMessage.Bcc.ToList())) {
+							actionImport(GetPop3BodyEncoding(mimeMessage).GetString(arrayRawMessage));
 							countNewEmails++;
 						}
-						EmailMessageUid emailMessageUid=new EmailMessageUid();
-						emailMessageUid.RecipientAddress=emailAddress.EmailUsername.Trim();
-						emailMessageUid.MsgId=msgId;
-						EmailMessageUids.Insert(emailMessageUid);//Remember Uid was downloaded, to avoid email duplication the next time the inbox is refreshed.
+						actionStoreUid(msgId);
 						listMsgIdsDownloaded.Add(msgId);
 					}
 					catch(ThreadAbortException) {
@@ -1236,11 +1270,66 @@ namespace OpenPmsDentalBusiness {
 						//If one particular email fails to download, then skip it for now and move on to the next email.
 					}
 				}
+				client.Disconnect(true);//QUIT. Nothing is deleted from the server: no message was marked for deletion.
 			}
-			//Since this function is fired automatically based on the inbox check interval, we also try to send the oldest unsent Ack.
-			//The goal is to keep trying to send the Acks at a reasonable interval until they are successfully delivered.
-			SendOldestUnsentAck(emailAddress);
 			return countNewEmails;
+		}
+
+		///<summary>The whole message as the server sent it (RETR), without the POP3 dot-stuffing: the bytes OpenPop's RawMessage held.</summary>
+		private static byte[] GetPop3RawMessage(MailKit.Net.Pop3.Pop3Client client,int msgIndex) {
+			using(Stream stream=client.GetStream(msgIndex))
+			using(MemoryStream memoryStream=new MemoryStream())
+			{
+				stream.CopyTo(memoryStream);
+				return memoryStream.ToArray();
+			}
+		}
+
+		///<summary>The ID made up for a message the server gave no UID: the date sent (UTC, yyyyMMddHHmmss; DateTime.MinValue without a readable Date
+		///header), the inbox's user name, the sender's address and the subject, as OpenPop's MessageHeader gave them.</summary>
+		internal static string GetPop3HeaderMsgId(MimeKit.HeaderList headerList,string emailUsername) {
+			DateTime dateTimeSentUtc=DateTime.MinValue;
+			string date=headerList[MimeKit.HeaderId.Date];
+			DateTimeOffset dateTimeOffset;
+			if(!string.IsNullOrEmpty(date) && MimeKit.Utils.DateUtils.TryParse(date,out dateTimeOffset)) {
+				dateTimeSentUtc=dateTimeOffset.UtcDateTime;
+			}
+			string fromAddress="";
+			MimeKit.InternetAddressList internetAddressList;
+			string from=headerList[MimeKit.HeaderId.From];
+			if(!string.IsNullOrEmpty(from) && MimeKit.InternetAddressList.TryParse(from,out internetAddressList)) {
+				MimeKit.MailboxAddress mailboxAddress=internetAddressList.Mailboxes.FirstOrDefault();
+				if(mailboxAddress!=null) {
+					fromAddress=mailboxAddress.Address;
+				}
+			}
+			string subject=headerList[MimeKit.HeaderId.Subject]??"";
+			return dateTimeSentUtc.ToString("yyyyMMddHHmmss")+emailUsername+fromAddress+subject;
+		}
+
+		///<summary>The Message-ID header without its angle brackets, as OpenPop gave it; "" when there is none.</summary>
+		internal static string GetPop3MessageId(MimeKit.HeaderList headerList) {
+			string messageId=headerList[MimeKit.HeaderId.MessageId];
+			if(string.IsNullOrWhiteSpace(messageId)) {
+				return "";
+			}
+			return messageId.Trim().TrimEnd('>').TrimStart('<');
+		}
+
+		///<summary>The encoding the raw message is read with: the charset of its top-level Content-Type, US-ASCII when it names none, as OpenPop
+		///read it. A charset .NET does not know also gives US-ASCII (OpenPop could not read such a message and skipped it for good).</summary>
+		internal static Encoding GetPop3BodyEncoding(MimeKit.MimeMessage mimeMessage) {
+			MimeKit.ContentType contentType=mimeMessage.Body?.ContentType;
+			if(contentType==null || string.IsNullOrEmpty(contentType.Charset)) {
+				return Encoding.ASCII;
+			}
+			try {
+				return contentType.CharsetEncoding??Encoding.ASCII;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return Encoding.ASCII;
+			}
 		}
 
 		///<summary>Determines if an email is sent from the emailUsername account.  'TEmailAddress' is an type representing an email address and must be able to call ToString() to get the string representation of the email address.</summary>

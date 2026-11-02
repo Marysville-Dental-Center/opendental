@@ -665,24 +665,6 @@ namespace OpenPmsDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Source Code License
-        ///
-        ///Copyright © 2002-2007, The Mentalis.org Team
-        ///All rights reserved.
-        ///
-        ///Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
-        ///
-        ///- Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
-        ///
-        ///- Neither the name of the Mentalis.org Team, nor the names of its contributors may be used to endorse or promote products derived from this sof [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string Mentalis {
-            get {
-                return ResourceManager.GetString("Mentalis", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         public static System.Drawing.Bitmap Microphone_22px {
@@ -1167,26 +1149,6 @@ namespace OpenPmsDental.Properties {
             get {
                 object obj = ResourceManager.GetObject("stop", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Copyright (c) 2002-2015 Atsuhiko Yamanaka, JCraft,Inc. 
-        ///All rights reserved.
-        ///
-        ///Redistribution and use in source and binary forms, with or without
-        ///modification, are permitted provided that the following conditions are met:
-        ///
-        ///  1. Redistributions of source code must retain the above copyright notice,
-        ///     this list of conditions and the following disclaimer.
-        ///
-        ///  2. Redistributions in binary form must reproduce the above copyright 
-        ///     notice, this list of conditions and the following disclaimer in 
-        ///  [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string Tamir {
-            get {
-                return ResourceManager.GetString("Tamir", resourceCulture);
             }
         }
         

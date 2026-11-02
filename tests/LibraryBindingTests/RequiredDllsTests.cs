@@ -13,9 +13,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace LibraryBindingTests {
 	[TestClass]
 	public class RequiredDllsTests {
-		///<summary>File, assembly version, file version and NuGet package version of each support assembly. The libraries that use them are updated by
-		///later packages; System.Formats.Asn1, System.IO.Pipelines, System.Security.Cryptography.Pkcs and Microsoft.Bcl.Cryptography wait in the
-		///folder for them and ship once a shipped library needs them (ReleaseListTests).</summary>
+		///<summary>File, assembly version, file version and NuGet package version of each support assembly. The tier 1 library updates use all but
+		///System.Security.Cryptography.Pkcs, which waits in the folder and ships once a shipped library needs it (ReleaseListTests). The libraries
+		///themselves are checked by tests/LibraryUpdateTests (LibraryFilesTests).</summary>
 		private static readonly string[][] _arraySupportAssemblies=new[] {
 			new[] { "Microsoft.Bcl.AsyncInterfaces.dll","10.0.0.14","10.0.1426.52326","10.0.14" },
 			new[] { "Microsoft.Bcl.Cryptography.dll","10.0.0.10","10.0.1026.32716","10.0.10" },

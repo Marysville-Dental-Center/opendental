@@ -20,7 +20,7 @@ using System.Xml.Serialization;
 using System.Xml.XPath;
 using CodeBase;
 using OpenPmsDentalBusiness;
-using Tamir.SharpSsh.jsch;
+using OpenPmsDentalStorage;
 
 namespace OpenPmsDentalBusiness.Eclaims {
 	/// <summary>
@@ -45,43 +45,20 @@ namespace OpenPmsDentalBusiness.Eclaims {
 			progress=progress??new ODProgressExtendedNull();
 			bool success=true;
 			//Connect to the Denti-Cal SFTP server.
-			Session session=null;
-			Channel channel=null;
-			ChannelSftp ch=null;
-			JSch jsch=new JSch();
+			SftpSession sftpSession=null;
 			progress.UpdateProgress(Lans.g(progress.LanThis,"Contacting web server"),"reports","17%",17);
 			if(progress.IsPauseOrCancel()) {
 				progress.UpdateProgress(Lans.g(progress.LanThis,"Canceled by user."));
 				return false;
 			}
 			try {
-				string remoteHost="sftp.mft.oxisaas.com";
-				int remotePort=2222;
-				if(!string.IsNullOrEmpty(clearinghouseClin.ClientProgram)) {
-					if(clearinghouseClin.ClientProgram.Contains(":")) {//if the user included the port number
-						remoteHost=clearinghouseClin.ClientProgram.Split(':')[0];
-						remotePort=PIn.Int(clearinghouseClin.ClientProgram.Split(':')[1],false);
-						if(remotePort==0) {
-							remotePort=2222;
-						}
-					}
-					else {
-						remoteHost=clearinghouseClin.ClientProgram;
-					}
-				}
-				session=jsch.getSession(clearinghouseClin.LoginID,remoteHost);
-				session.setPassword(clearinghouseClin.Password);
-				Hashtable config=new Hashtable();
-				config.Add("StrictHostKeyChecking","no");
-				session.setConfig(config);
-				session.setPort(remotePort);
-				session.connect();
-				channel=session.openChannel("sftp");
-				channel.connect();
-				ch=(ChannelSftp)channel;
+				GetRemoteHostAndPort(clearinghouseClin.ClientProgram,out string remoteHost,out int remotePort);
+				sftpSession=new SftpSession(remoteHost,remotePort,clearinghouseClin.LoginID,clearinghouseClin.Password);
+				sftpSession.Connect();
 			}
 			catch(Exception ex) {
 				ErrorMessage=Lans.g("DentiCal","Connection Failed")+": "+ex.Message;
+				sftpSession?.Dispose();
 				return false;
 			}
 			progress.UpdateProgress(Lans.g(progress.LanThis,"Web server contact successful."));
@@ -103,15 +80,15 @@ namespace OpenPmsDentalBusiness.Eclaims {
 					//Although the documentation we received from Denti-Cal says that the folder name should start "OXi", that was not the case for a customer
 					//that we connected to and Barbara Castelli from Denti-Cal informed us that the folder name should start with "dcaprod".
 					string retrievePath=homeDir+"dcaprod_"+clearinghouseClin.LoginID+"_out/";
-					Tamir.SharpSsh.java.util.Vector fileList;
+					List<SftpEntry> fileList;
 					try {
-						fileList=ch.ls(retrievePath);
+						fileList=sftpSession.ListDirectory(retrievePath);
 					}
 					catch(Exception ex) {
 						ex.DoNothing();
 						//Try again with the path as described in the documentation.
 						retrievePath=homeDir+"OXi_"+clearinghouseClin.LoginID+"_out/";
-						fileList=ch.ls(retrievePath);
+						fileList=sftpSession.ListDirectory(retrievePath);
 					}
 					for(int i=0;i<fileList.Count;i++) {
 						int percent=(i/fileList.Count)*100;
@@ -121,25 +98,15 @@ namespace OpenPmsDentalBusiness.Eclaims {
 							progress.UpdateProgress(Lans.g(progress.LanThis,"Canceled by user."));
 							return false;
 						}
-						string listItem=fileList[i].ToString().Trim();
-						if(listItem[0]=='d') {
-							continue;//Skip directories and focus on files.
+						if(fileList[i].IsDirectory) {
+							continue;//Skip directories (including "." and "..") and focus on files.
 						}
-						Match fileNameMatch=Regex.Match(listItem,".*\\s+(.*)$");
-						string getFileName=fileNameMatch.Result("$1");
+						string getFileName=fileList[i].Name;
 						string getFilePath=retrievePath+getFileName;
 						string exportFilePath=CodeBase.ODFileUtils.CombinePaths(clearinghouseClin.ResponsePath,getFileName);
-						Tamir.SharpSsh.java.io.InputStream fileStream=null;
-						FileStream exportFileStream=null;
-						try {						
-							fileStream=ch.get(getFilePath);
-							exportFileStream=File.Open(exportFilePath,FileMode.Create,FileAccess.Write);//Creates or overwrites.
-							byte[] dataBytes=new byte[4096];
-							int numBytes=fileStream.Read(dataBytes,0,dataBytes.Length);
-							while(numBytes>0) {
-								exportFileStream.Write(dataBytes,0,numBytes);
-								numBytes=fileStream.Read(dataBytes,0,dataBytes.Length);
-							}
+						try {
+							byte[] dataBytes=sftpSession.DownloadFile(getFilePath);
+							File.WriteAllBytes(exportFilePath,dataBytes);//Creates or overwrites.
 							float overallpercent=33+(i/fileList.Count)*17;//33 is starting point. 17 is the amount of bar space we have before our next major spot (50%)
 							progress.UpdateProgress(Lans.g(progress.LanThis,"Getting files"),"reports",overallpercent+"%",(int)overallpercent);
 							if(progress.IsPauseOrCancel()) {
@@ -151,18 +118,12 @@ namespace OpenPmsDentalBusiness.Eclaims {
 							success=false;
 						}
 						finally {
-							if(exportFileStream!=null) {
-								exportFileStream.Dispose();
-							}
-							if(fileStream!=null) {
-								fileStream.Dispose();
-							}
 							progress.UpdateProgress("","import","");//Clear import bar for now
 						}
 						if(success) {
 							//Removed the processed report from the Denti-Cal SFTP so it does not get processed again in the future.
 							try {
-								ch.rm(getFilePath);
+								sftpSession.DeleteFile(getFilePath);
 								progress.UpdateProgress(Lans.g(progress.LanThis,"Reports downloaded successfully."));
 							}
 							catch {
@@ -182,15 +143,14 @@ namespace OpenPmsDentalBusiness.Eclaims {
 					string[] files=Directory.GetFiles(clearinghouseClin.ExportPath);
 					//Try to find a folder that starts with "dcaprod" or "OXi".
 					string uploadPath=homeDir+"dcaprod_"+clearinghouseClin.LoginID+"_in/";
-					Tamir.SharpSsh.java.util.Vector fileList;
 					try {
-						fileList=ch.ls(uploadPath);
+						sftpSession.ListDirectory(uploadPath);
 					}
 					catch(Exception ex) {
 						ex.DoNothing();
 						//Try again with the path as described in the documentation.
 						uploadPath=homeDir+"OXi_"+clearinghouseClin.LoginID+"_in/";
-						fileList=ch.ls(uploadPath);
+						sftpSession.ListDirectory(uploadPath);
 					}
 					//We have successfully found the folder where we need to put the files.
 					for(int i=0;i<files.Length;i++) {
@@ -203,11 +163,11 @@ namespace OpenPmsDentalBusiness.Eclaims {
 						//First upload the batch file to a temporary file name. Denti-Cal does not process file names unless they start with the Login ID.
 						//Uploading to a temporary file and then renaming the file allows us to avoid partial file uploads if there is connection loss.
 						string tempRemoteFilePath=uploadPath+"temp_"+Path.GetFileName(files[i]);
-						ch.put(files[i],tempRemoteFilePath);
+						sftpSession.UploadFile(files[i],tempRemoteFilePath);
 						//Denti-Cal requires the file name to start with the Login ID followed by a period and end with a .txt extension.
 						//The middle part of the file name can be anything.
 						string remoteFilePath=uploadPath+Path.GetFileName(files[i]);
-						ch.rename(tempRemoteFilePath,remoteFilePath);
+						sftpSession.RenameFile(tempRemoteFilePath,remoteFilePath);
 						File.Delete(files[i]);//Remove the processed file.
 					}
 					progress.UpdateProgress(Lans.g(progress.LanThis,"Claims sent successfully."));
@@ -220,11 +180,29 @@ namespace OpenPmsDentalBusiness.Eclaims {
 			finally {
 				progress.UpdateProgress(Lans.g(progress.LanThis,"Closing connection"),"reports","50%",50);
 				//Disconnect from the Denti-Cal SFTP server.
-				channel.disconnect();
-				ch.disconnect();
-				session.disconnect();
+				sftpSession.Dispose();
 			}
 			return success;
+		}
+
+		///<summary>The Denti-Cal SFTP server from the clearinghouse's ClientProgram field: "host", "host:port", or blank for Denti-Cal's own server.
+		///A missing or invalid port gives 2222.</summary>
+		public static void GetRemoteHostAndPort(string clientProgram,out string remoteHost,out int remotePort) {
+			remoteHost="sftp.mft.oxisaas.com";
+			remotePort=2222;
+			if(string.IsNullOrEmpty(clientProgram)) {
+				return;
+			}
+			if(clientProgram.Contains(":")) {//if the user included the port number
+				remoteHost=clientProgram.Split(':')[0];
+				remotePort=PIn.Int(clientProgram.Split(':')[1],false);
+				if(remotePort==0) {
+					remotePort=2222;
+				}
+			}
+			else {
+				remoteHost=clientProgram;
+			}
 		}
 
 	}

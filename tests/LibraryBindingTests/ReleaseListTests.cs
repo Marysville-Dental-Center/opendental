@@ -12,11 +12,10 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace LibraryBindingTests {
 	[TestClass]
 	public class ReleaseListTests {
-		///<summary>References of shipped files that neither the release nor the .NET Framework has, with why the program still runs. The library
-		///updates that follow remove them; keep this list short and exact.</summary>
+		///<summary>References of shipped files that neither the release nor the .NET Framework has, with why the program still runs. Keep this list
+		///short and exact. (MimeKit 2.4.1's BouncyCastle.Crypto left it with the MailKit and MimeKit 4 update, which ships BouncyCastle.Cryptography.)
+		///</summary>
 		private static readonly Dictionary<string,string> _dictKnownGaps=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
-			{ "BouncyCastle.Crypto","MimeKit 2.4.1 uses it only for S/MIME, OpenPGP and DKIM, which the program does not call; the MailKit and MimeKit "
-				+"update ships BouncyCastle.Cryptography" },
 			{ "Health.Direct.Config.Client","Health.Direct.ResolverPlugins uses it only for the Direct configuration service; the program uses only its "
 				+"LdapCertResolver" },
 			{ "Health.Direct.Config.Store","Health.Direct.ResolverPlugins uses it only for the Direct configuration service; the program uses only its "
@@ -97,12 +96,13 @@ namespace LibraryBindingTests {
 				listProblems.Add(fileName+": the program needs it, but the build did not copy it to OpenPmsDental\\bin\\Debug.");
 			}
 			Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));
-			//The support assemblies the first library step added for the packages that follow do not ship until a shipped library uses them.
-			foreach(string fileName in new[] { "System.Formats.Asn1.dll","System.IO.Pipelines.dll","System.Security.Cryptography.Pkcs.dll",
-				"Microsoft.Bcl.Cryptography.dll" })
-			{
-				Assert.IsTrue(RequiredDlls.Files.ContainsKey(fileName),fileName);
+			//The support assemblies the first library step added for the packages that follow ship once a shipped library uses them: the tier 1
+			//updates (SSH.NET 2026, MailKit 4, MSAL 4.92 with System.Text.Json) use all but System.Security.Cryptography.Pkcs.
+			foreach(string fileName in new[] { "System.Formats.Asn1.dll","System.IO.Pipelines.dll","Microsoft.Bcl.Cryptography.dll" }) {
+				CollectionAssert.Contains(listAllowed,fileName);
 			}
+			Assert.IsTrue(RequiredDlls.Files.ContainsKey("System.Security.Cryptography.Pkcs.dll"));
+			CollectionAssert.DoesNotContain(listAllowed,"System.Security.Cryptography.Pkcs.dll","Nothing shipped uses it yet.");
 			CollectionAssert.Contains(listAllowed,"Microsoft.Extensions.DependencyInjection.Abstractions.dll",
 				"Microsoft.Extensions.Logging.Abstractions 8.0.3 references it, so it ships.");
 		}

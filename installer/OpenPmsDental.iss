@@ -91,6 +91,12 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; holds only this release's files: the release channel publishes every top-level file of it. Nothing loads them any more.
 ; The storage library of v0.0, renamed OpenPmsDentalStorage.dll on 2026-11-02 (docs\port-notes\RENAME.md).
 Type: files; Name: "{app}\OpenPmsDentalCloud.dll"
+; Libraries v0.0 installed that the program no longer uses (the tier 1 library updates). tests\LibraryBindingTests checks that the release
+; ships none of them.
+Type: files; Name: "{app}\Tamir.SharpSSH.dll"
+Type: files; Name: "{app}\Org.Mentalis.Security.dll"
+Type: files; Name: "{app}\DiffieHellman.dll"
+Type: files; Name: "{app}\OpenPop.dll"
 
 [Files]
 Source: "{#StagingDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

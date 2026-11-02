@@ -131,8 +131,6 @@ namespace OpenPmsDental{
 			dictVendorTexts.Add("MigraDoc",Properties.Resources.MigraDoc);
 			dictVendorTexts.Add("SharpDX",Properties.Resources.SharpDX);
 			dictVendorTexts.Add("Tao Framework",Properties.Resources.Tao_OpenGL);
-			dictVendorTexts.Add("SharpSSH",Properties.Resources.Tamir);
-			dictVendorTexts.Add("Mentalis.org Security Library",Properties.Resources.Mentalis);
 			dictVendorTexts.Add("NHunspell and Hunspell",Properties.Resources.NHunSpell);
 			dictVendorTexts.Add("NDde",Properties.Resources.NDde);
 			dictVendorTexts.Add("TWAIN",Properties.Resources.Twain);

@@ -17,7 +17,9 @@ using VendorDirectTests.Foundation;
 namespace VendorDirectTests.BridgesRemoval {
 	[TestClass]
 	public class BridgesDllRemovedTests {
-		///<summary>Bridges.dll and the files in "Required dlls" that only it (directly or through each other) needed.</summary>
+		///<summary>Bridges.dll and the files in "Required dlls" that only it (directly or through each other) needed. System.Text.Json and
+		///System.Text.Encodings.Web, which the Graph SDK brought, came back at 10.0.14 as MSAL 4.92's own dependencies, so they are not listed.
+		///</summary>
 		private static readonly string[] _arrayRemovedFiles=new[] {
 			"Bridges.dll",
 			"Intuit.Ipp.Core.dll","Intuit.Ipp.Data.dll","Intuit.Ipp.DataService.dll","Intuit.Ipp.Diagnostics.dll","Intuit.Ipp.EntitlementService.dll",
@@ -28,8 +30,7 @@ namespace VendorDirectTests.BridgesRemoval {
 			"Serilog.Settings.Configuration.dll","Serilog.Sinks.AzureDocumentDB.dll","Serilog.Sinks.Console.dll","Serilog.Sinks.Debug.dll",
 			"Serilog.Sinks.File.dll","Serilog.Sinks.Literate.dll","Serilog.Sinks.RollingFile.dll","Serilog.Sinks.Trace.dll","SerilogTraceListener.dll",
 			"Microsoft.Azure.Documents.Client.dll","Microsoft.DotNet.PlatformAbstractions.dll",
-			"Microsoft.Graph.dll","Microsoft.Graph.Core.dll","Azure.Core.dll","System.Memory.Data.dll","System.Text.Json.dll",
-			"System.Text.Encodings.Web.dll","System.Net.Http.WinHttpHandler.dll",
+			"Microsoft.Graph.dll","Microsoft.Graph.Core.dll","Azure.Core.dll","System.Memory.Data.dll","System.Net.Http.WinHttpHandler.dll",
 			"Microsoft.IdentityModel.Tokens.dll","Microsoft.IdentityModel.Logging.dll","Microsoft.IdentityModel.Protocols.dll",
 			"Microsoft.IdentityModel.Protocols.OpenIdConnect.dll","Microsoft.IdentityModel.JsonWebTokens.dll",
 			"Dropbox.Api.dll" };
@@ -94,7 +95,7 @@ namespace VendorDirectTests.BridgesRemoval {
 			//"Bridges\" alone is the in-repo bridges folder of OpenPmsDental, OpenPmsDentalBusiness and WpfControlsOD, and VBbridges.dll is a different
 			//binary, so look for the Bridges assembly forms only.
 			Regex regex=new Regex(@"(?<![A-Za-z])Bridges\.dll|xBridges|Include=""Bridges[,""]|Intuit\.Ipp|IppDotNetSdk|Serilog|Microsoft\.Graph|Azure\.Core|Dropbox\.Api"
-				+@"|System\.Text\.Json|Encodings\.Web|WinHttpHandler|System\.Memory\.Data|Documents\.Client|PlatformAbstractions"
+				+@"|WinHttpHandler|System\.Memory\.Data|Documents\.Client|PlatformAbstractions"
 				+@"|Microsoft\.IdentityModel\.(Tokens|Logging|Protocols|JsonWebTokens)",RegexOptions.IgnoreCase);
 			List<string> listOffenders=new List<string>();
 			foreach(string relative in GetFiles(root,"*.csproj").Concat(GetFiles(root,"*.sln")).Concat(GetFiles(root,"*.slnf"))
@@ -151,8 +152,8 @@ namespace VendorDirectTests.BridgesRemoval {
 
 		[TestMethod]
 		public void MsalDependency_StillReachesTheProgram() {
-			//The Graph SDK's dependencies used to bring Microsoft.IdentityModel.Abstractions in. MSAL 4.47.1 asks for 6.22 and the shipped copy is
-			//6.23.1, so the business layer references it itself, and the program must both copy it and redirect to it.
+			//The Graph SDK's dependencies used to bring Microsoft.IdentityModel.Abstractions in. MSAL 4.92.0 asks for 8.14.0, the shipped copy; the
+			//business layer references it itself, and the program must both copy it and redirect older versions to it.
 			Assert.IsTrue(typeof(Patient).Assembly.GetReferencedAssemblies().Any(x => x.Name=="Microsoft.IdentityModel.Abstractions"),
 				"OpenPmsDentalBusiness should reference Microsoft.IdentityModel.Abstractions.");
 			string folder=Path.Combine(GetRoot(),@"OpenPmsDental\bin\Debug");
@@ -162,13 +163,13 @@ namespace VendorDirectTests.BridgesRemoval {
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Identity.Client.dll")));
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.IdentityModel.Abstractions.dll")),"MSAL's dependency is not copied to the program folder.");
 			string config=File.ReadAllText(Path.Combine(folder,"OpenPmsDental.exe.config"));
-			StringAssert.Matches(config,new Regex(@"name=""Microsoft\.IdentityModel\.Abstractions""[^>]*/>\s*<bindingRedirect oldVersion=""0\.0\.0\.0-6\.23\.1\.0"""),
+			StringAssert.Matches(config,new Regex(@"name=""Microsoft\.IdentityModel\.Abstractions""[^>]*/>\s*<bindingRedirect oldVersion=""0\.0\.0\.0-8\.14\.0\.0"""),
 				"OpenPmsDental.exe.config needs the binding redirect MSAL relies on.");
 		}
 
 		[TestMethod]
 		public void SshNetDependency_StillReachesTheProgram() {
-			//Renci.SshNet (SSH.NET 2024.1.0, net462) references Microsoft.Bcl.AsyncInterfaces 1.0.0.0. The Graph SDK used to bring a newer copy and
+			//Renci.SshNet (SSH.NET 2026.0.0, net462) references Microsoft.Bcl.AsyncInterfaces 8.0.0.0. The Graph SDK used to bring a newer copy and
 			//its redirect in, so OpenPmsDentalStorage now references it itself. Without it, SFTP A to Z storage and the TSI uploads fail when SftpClient loads.
 			Assert.IsTrue(Regex.IsMatch(ReadRepoFile(@"OpenPmsDentalStorage\OpenPmsDentalStorage.csproj"),
 				@"<Reference Include=""Microsoft\.Bcl\.AsyncInterfaces[,""][^>]*>\s*<HintPath>\.\.\\Required dlls\\Microsoft\.Bcl\.AsyncInterfaces\.dll</HintPath>"),
@@ -179,7 +180,7 @@ namespace VendorDirectTests.BridgesRemoval {
 			}
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Renci.SshNet.dll")));
 			//A HintPath alone does not carry it to the hosts: the compiler drops unused references, and the hosts' build will not take 10.0.0.14 for
-			//SSH.NET's 1.0.0.0. OpenPmsDentalStorage must use it, so its own reference is what every host copies.
+			//SSH.NET's 8.0.0.0. OpenPmsDentalStorage must use it, so its own reference is what every host copies.
 			Assert.IsTrue(GetReferencedAssemblyNames(Path.Combine(folder,"OpenPmsDentalStorage.dll")).Contains("Microsoft.Bcl.AsyncInterfaces"),
 				"OpenPmsDentalStorage.dll should reference Microsoft.Bcl.AsyncInterfaces.");
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Bcl.AsyncInterfaces.dll")),"SSH.NET's dependency is not copied to the program folder.");

@@ -9,7 +9,6 @@ using PdfSharp.Pdf;
 using OpenPmsDentalBusiness;
 using System.Drawing.Drawing2D;
 using CodeBase;
-using Google.Apis.Util;
 
 namespace OpenPmsDentalBusiness {
 	public class GraphicsHelper {
