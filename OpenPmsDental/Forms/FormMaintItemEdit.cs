@@ -10,7 +10,8 @@ using OpenPmsDentalBusiness;
 
 namespace OpenPmsDental {
 	///<summary>Sets up one maintenance item: name, description, equipment link, schedule, reminder lead time, assignee, hidden, the ordered checklist
-	///and the result fields. Saving logs the change under MaintenanceSetup. The caller checks MaintenanceSetup before opening it.</summary>
+	///and the result fields. A new item's first due date (the anchor) is today unless the caller set one. Saving logs the change under
+	///MaintenanceSetup. The caller checks MaintenanceSetup before opening it.</summary>
 	public partial class FormMaintItemEdit:FormODBase {
 		private MaintItem _maintItem;
 		private MaintItem _maintItemOld;
@@ -54,18 +55,23 @@ namespace OpenPmsDental {
 			comboScheduleType.Items.Clear();
 			comboScheduleType.Items.Add(Lan.g(this,"Every N days, weeks, months or years"),EnumMaintScheduleType.Interval);
 			comboScheduleType.Items.Add(Lan.g(this,"On weekdays"),EnumMaintScheduleType.Weekdays);
-			comboScheduleType.Items.Add(Lan.g(this,"N days, weeks or months after last done"),EnumMaintScheduleType.AfterCompletion);
+			comboScheduleType.Items.Add(Lan.g(this,"N days, weeks, months or years after last done"),EnumMaintScheduleType.AfterCompletion);
 			comboScheduleType.SelectedIndex=Math.Max(0,comboScheduleType.Items.GetAll<EnumMaintScheduleType>().IndexOf(_maintItem.ScheduleType));
 			textCount.Text=Math.Max(1,_maintItem.IntervalCount).ToString();
 			FillComboUnit(_maintItem.IntervalUnit);
 			for(int i=0;i<7;i++) {
 				_listCheckWeekdays[i].Checked=MaintSchedules.HasWeekday(_maintItem.Weekdays,(DayOfWeek)i);
 			}
+			if(_isNew && _maintItem.DateAnchor.Year<1880) {
+				//The anchor is the first due date; a new item starts today unless the office picks another day.
+				_maintItem.DateAnchor=_dateToday;
+			}
 			if(_maintItem.DateAnchor.Year>1880) {
 				textAnchor.Text=_maintItem.DateAnchor.ToShortDateString();
 			}
 			textLead.Text=_maintItem.LeadDays.ToString();
 			FillComboAssigned();
+			SetUnassignedLabel();
 			checkHidden.Checked=_maintItem.IsHidden;
 			butDelete.Visible=!_isNew;
 			FillGridSteps();
@@ -90,17 +96,25 @@ namespace OpenPmsDental {
 			comboEquipment.SelectedIndex=Math.Max(0,comboEquipment.Items.GetAll<long>().IndexOf(_maintItem.EquipmentNum));
 		}
 
-		///<summary>Days, weeks, months and years; no years after the last completion.</summary>
+		///<summary>Days, weeks, months and years, for "every N" and for "N after the last completion" alike.</summary>
 		private void FillComboUnit(EnumMaintIntervalUnit intervalUnitSelected) {
 			comboUnit.Items.Clear();
 			comboUnit.Items.Add(Lan.g(this,"days"),EnumMaintIntervalUnit.Days);
 			comboUnit.Items.Add(Lan.g(this,"weeks"),EnumMaintIntervalUnit.Weeks);
 			comboUnit.Items.Add(Lan.g(this,"months"),EnumMaintIntervalUnit.Months);
-			if(GetScheduleType()!=EnumMaintScheduleType.AfterCompletion) {
-				comboUnit.Items.Add(Lan.g(this,"years"),EnumMaintIntervalUnit.Years);
-			}
+			comboUnit.Items.Add(Lan.g(this,"years"),EnumMaintIntervalUnit.Years);
 			int index=comboUnit.Items.GetAll<EnumMaintIntervalUnit>().IndexOf(intervalUnitSelected);
-			comboUnit.SelectedIndex=index>=0 ? index : 2;//Months when years are not offered.
+			comboUnit.SelectedIndex=index>=0 ? index : 2;//Months for a unit that is not offered.
+		}
+
+		///<summary>Shows, while nobody is assigned, that the reminders go to every user with Maintenance Setup.</summary>
+		private void SetUnassignedLabel() {
+			string tagAssigned=comboAssigned.SelectedIndex<0 ? ASSIGNEE_NONE : comboAssigned.GetSelected<string>();
+			labelUnassigned.Visible=tagAssigned==ASSIGNEE_NONE;
+		}
+
+		private void comboAssigned_SelectionChangeCommitted(object sender,EventArgs e) {
+			SetUnassignedLabel();
 		}
 
 		private void FillComboAssigned() {
@@ -459,11 +473,7 @@ namespace OpenPmsDental {
 					return;
 				}
 			}
-			if(maintItem.UserNumAssigned==0 && maintItem.UserGroupNumAssigned==0 && !maintItem.IsHidden
-				&& !MsgBox.Show(this,MsgBoxButtons.OKCancel,"Nobody is assigned, so no reminder alert will be sent. Save anyway?"))
-			{
-				return;
-			}
+			//An item without an assignee sends its reminders to every user with Maintenance Setup (labelUnassigned says so).
 			if(_isNew) {
 				MaintItems.Insert(maintItem);
 				MaintSteps.Sync(maintItem.MaintItemNum,_listMaintSteps);

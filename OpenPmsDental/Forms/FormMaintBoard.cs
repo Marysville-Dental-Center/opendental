@@ -212,14 +212,8 @@ namespace OpenPmsDental {
 			if(!Security.IsAuthorized(EnumPermType.MaintenanceSetup)) {
 				return;
 			}
-			MaintItem maintItem=new MaintItem();
-			maintItem.ScheduleType=EnumMaintScheduleType.Interval;
-			maintItem.IntervalCount=1;
-			maintItem.IntervalUnit=EnumMaintIntervalUnit.Months;
-			maintItem.DateAnchor=_dateToday;
-			maintItem.LeadDays=7;
-			maintItem.ItemName="";
-			maintItem.Description="";
+			//The first due date (the anchor) defaults to today, the server's date.
+			MaintItem maintItem=MaintItems.CreateNew(MaintAlerts.GetToday());
 			using FormMaintItemEdit formMaintItemEdit=new FormMaintItemEdit(maintItem,isNew:true);
 			if(formMaintItemEdit.ShowDialog()!=DialogResult.OK) {
 				return;

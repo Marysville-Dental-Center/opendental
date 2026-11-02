@@ -32,6 +32,7 @@ namespace OpenPmsDental {
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.gridValues = new OpenPmsDental.UI.GridOD();
 			this.butOpenAttachment = new OpenPmsDental.UI.Button();
+			this.butCorrect = new OpenPmsDental.UI.Button();
 			this.butPrint = new OpenPmsDental.UI.Button();
 			this.butExport = new OpenPmsDental.UI.Button();
 			this.butClose = new OpenPmsDental.UI.Button();
@@ -122,6 +123,16 @@ namespace OpenPmsDental {
 			this.butOpenAttachment.Text = "Open Attachment";
 			this.butOpenAttachment.Click += new System.EventHandler(this.butOpenAttachment_Click);
 			//
+			// butCorrect
+			//
+			this.butCorrect.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.butCorrect.Location = new System.Drawing.Point(1008, 456);
+			this.butCorrect.Name = "butCorrect";
+			this.butCorrect.Size = new System.Drawing.Size(80, 40);
+			this.butCorrect.TabIndex = 12;
+			this.butCorrect.Text = "Correct Completion";
+			this.butCorrect.Click += new System.EventHandler(this.butCorrect_Click);
+			//
 			// butPrint
 			//
 			this.butPrint.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
@@ -160,6 +171,7 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butClose);
 			this.Controls.Add(this.butExport);
 			this.Controls.Add(this.butPrint);
+			this.Controls.Add(this.butCorrect);
 			this.Controls.Add(this.butOpenAttachment);
 			this.Controls.Add(this.gridValues);
 			this.Controls.Add(this.gridMain);
@@ -188,6 +200,7 @@ namespace OpenPmsDental {
 		private OpenPmsDental.UI.GridOD gridMain;
 		private OpenPmsDental.UI.GridOD gridValues;
 		private OpenPmsDental.UI.Button butOpenAttachment;
+		private OpenPmsDental.UI.Button butCorrect;
 		private OpenPmsDental.UI.Button butPrint;
 		private OpenPmsDental.UI.Button butExport;
 		private OpenPmsDental.UI.Button butClose;

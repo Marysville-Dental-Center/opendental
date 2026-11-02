@@ -11,7 +11,8 @@ using OpenPmsDentalBusiness;
 
 namespace OpenPmsDental {
 	///<summary>The recorded completions of one maintenance item, or of every item, for a range of dates done, with each completion's checklist and
-	///results. Printable and exportable like other grids. Read-only: a completion is never edited or deleted.</summary>
+	///results, and when and by whom a completion was last corrected. Printable and exportable like other grids. A completion is never deleted;
+	///Correct opens the selected one for correction (FormMaintRecordEdit), for the user who recorded it or a user with MaintenanceSetup.</summary>
 	public partial class FormMaintHistory:FormODBase {
 		///<summary>0 for every item.</summary>
 		private long _maintItemNum;
@@ -57,6 +58,7 @@ namespace OpenPmsDental {
 			DateTime dateTo=textDateTo.Text=="" ? new DateTime(9999,12,31) : PIn.Date(textDateTo.Text);
 			_listMaintRecords=MaintRecords.GetForDateRange(dateFrom,dateTo,_maintItemNum);
 			_listMaintRecordValues=MaintRecordValues.GetForRecords(_listMaintRecords.Select(x => x.MaintRecordNum).ToList());
+			long maintRecordNumSelected=gridMain.SelectedTag<MaintRecord>()?.MaintRecordNum??0;
 			gridMain.BeginUpdate();
 			gridMain.Columns.Clear();
 			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Date Done"),80));
@@ -71,6 +73,8 @@ namespace OpenPmsDental {
 			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Results"),200){ IsWidthDynamic=true });
 			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Note"),130));
 			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Recorded"),120));
+			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Corrected"),150));
+			int indexSelect=-1;
 			gridMain.ListGridRows.Clear();
 			foreach(MaintRecord maintRecord in _listMaintRecords) {
 				GridRow row=new GridRow();
@@ -93,6 +97,8 @@ namespace OpenPmsDental {
 				row.Cells.Add(string.Join("; ",listValues.Select(x => x.Label+": "+MaintValues.GetDisplayText(x))));
 				row.Cells.Add(maintRecord.Note);
 				row.Cells.Add(maintRecord.SecDateTEntry.Year>1880 ? maintRecord.SecDateTEntry.ToString() : "");
+				//A corrected completion says so in the grid, so the printout and the export show it too.
+				row.Cells.Add(MaintCorrections.GetCorrectedText(maintRecord,maintRecord.UserNumCorrected==0 ? "" : Userods.GetName(maintRecord.UserNumCorrected)));
 				if(maintRecord.IsFlagged) {
 					row.ColorBackG=Color.FromArgb(255,215,215);
 				}
@@ -101,8 +107,14 @@ namespace OpenPmsDental {
 				}
 				row.Tag=maintRecord;
 				gridMain.ListGridRows.Add(row);
+				if(maintRecord.MaintRecordNum==maintRecordNumSelected) {
+					indexSelect=gridMain.ListGridRows.Count-1;
+				}
 			}
 			gridMain.EndUpdate();
+			if(indexSelect>=0) {
+				gridMain.SetSelected(indexSelect,true);
+			}
 			FillGridValues();
 		}
 
@@ -165,6 +177,36 @@ namespace OpenPmsDental {
 			if(maintRecordValue!=null && maintRecordValue.FieldType==EnumMaintFieldType.Attachment) {
 				OpenAttachment();
 			}
+		}
+
+		///<summary>Corrects the selected completion: its checklist ticks, results, attachments and note. Only the user who recorded it or a user with
+		///MaintenanceSetup; a completion is never deleted.</summary>
+		private void butCorrect_Click(object sender,EventArgs e) {
+			MaintRecord maintRecordSelected=gridMain.SelectedTag<MaintRecord>();
+			if(maintRecordSelected==null) {
+				MsgBox.Show(this,"Please select a completion first.");
+				return;
+			}
+			MaintRecord maintRecord=MaintRecords.GetOne(maintRecordSelected.MaintRecordNum);
+			if(maintRecord==null) {
+				MsgBox.Show(this,"This completion was not found.");
+				FillGrid();
+				return;
+			}
+			if(!MaintRecords.CanCorrect(Security.CurUser,maintRecord)) {
+				MsgBox.Show(this,"Only the user who recorded this completion or a user with Maintenance Setup can correct it.");
+				return;
+			}
+			MaintItem maintItem=MaintItems.GetOne(maintRecord.MaintItemNum)??_listMaintItems.FirstOrDefault(x => x.MaintItemNum==maintRecord.MaintItemNum);
+			if(maintItem==null) {
+				MsgBox.Show(this,"The item of this completion was not found.");
+				return;
+			}
+			using FormMaintRecordEdit formMaintRecordEdit=new FormMaintRecordEdit(maintItem,maintRecord);
+			if(formMaintRecordEdit.ShowDialog()!=DialogResult.OK) {
+				return;
+			}
+			FillGrid();
 		}
 
 		private void butExport_Click(object sender,EventArgs e) {

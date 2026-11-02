@@ -52,6 +52,7 @@ namespace OpenPmsDental {
 			this.labelNextDue = new System.Windows.Forms.Label();
 			this.labelAssigned = new System.Windows.Forms.Label();
 			this.comboAssigned = new OpenPmsDental.UI.ComboBox();
+			this.labelUnassigned = new System.Windows.Forms.Label();
 			this.checkHidden = new OpenPmsDental.UI.CheckBox();
 			this.gridSteps = new OpenPmsDental.UI.GridOD();
 			this.butStepAdd = new OpenPmsDental.UI.Button();
@@ -349,6 +350,15 @@ namespace OpenPmsDental {
 			this.comboAssigned.Name = "comboAssigned";
 			this.comboAssigned.Size = new System.Drawing.Size(312, 21);
 			this.comboAssigned.TabIndex = 8;
+			this.comboAssigned.SelectionChangeCommitted += new System.EventHandler(this.comboAssigned_SelectionChangeCommitted);
+			//
+			// labelUnassigned
+			//
+			this.labelUnassigned.Location = new System.Drawing.Point(125, 410);
+			this.labelUnassigned.Name = "labelUnassigned";
+			this.labelUnassigned.Size = new System.Drawing.Size(312, 32);
+			this.labelUnassigned.TabIndex = 24;
+			this.labelUnassigned.Text = "Nobody is assigned: the reminders go to every user with Maintenance Setup.";
 			//
 			// checkHidden
 			//
@@ -507,6 +517,7 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butStepEdit);
 			this.Controls.Add(this.butStepAdd);
 			this.Controls.Add(this.gridSteps);
+			this.Controls.Add(this.labelUnassigned);
 			this.Controls.Add(this.checkHidden);
 			this.Controls.Add(this.comboAssigned);
 			this.Controls.Add(this.labelAssigned);
@@ -558,6 +569,7 @@ namespace OpenPmsDental {
 		private System.Windows.Forms.Label labelNextDue;
 		private System.Windows.Forms.Label labelAssigned;
 		private OpenPmsDental.UI.ComboBox comboAssigned;
+		private System.Windows.Forms.Label labelUnassigned;
 		private OpenPmsDental.UI.CheckBox checkHidden;
 		private OpenPmsDental.UI.GridOD gridSteps;
 		private OpenPmsDental.UI.Button butStepAdd;
