@@ -88,6 +88,32 @@ namespace InventoryTests {
 			Assert.AreEqual(1,SupplyLedgers.GetForSupply(supplyEqual.SupplyNum).Count,"Only the opening row.");
 		}
 
+		///<summary>Once the ledger is written, a failure of what follows (here the audit entry: the securitylog table is renamed away for the moment)
+		///is logged, not reported: the windows would otherwise keep what was entered, and posting it again would write it twice.</summary>
+		[TestMethod]
+		public void ReceiveCountAdjust_FailureAfterTheLedgerWrite_IsNotReportedAsAFailure() {
+			Supply supply=InvData.Supply(onHand:4);
+			List<SupplyOrderItem> listItems=InvData.Order((supply,3,2.0));
+			string loggerDirOld=CodeBase.Logger.LoggerDirOverride;
+			CodeBase.Logger.LoggerDirOverride=System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"TestLogs");
+			DataCore.NonQ("RENAME TABLE securitylog TO securitylog_inv_off");
+			try {
+				InventoryTracking.Receive(new List<SupplyReceiveLine> { new SupplyReceiveLine { SupplyOrderItemNum=listItems[0].SupplyOrderItemNum,Quantity=3 } });
+				Assert.AreEqual(7,InvData.OnHand(supply.SupplyNum));
+				Assert.AreEqual(1,InventoryTracking.PostCount(new List<SupplyCountLine> { new SupplyCountLine { SupplyNum=supply.SupplyNum,QtyProgram=7,QtyCounted=6 } },
+					"Count"));
+				Assert.AreEqual(6,InvData.OnHand(supply.SupplyNum));
+				InventoryTracking.Adjust(supply.SupplyNum,0,-1,"Broken");
+				Assert.AreEqual(5,InvData.OnHand(supply.SupplyNum));
+			}
+			finally {
+				DataCore.NonQ("RENAME TABLE securitylog_inv_off TO securitylog");
+				CodeBase.Logger.LoggerDirOverride=loggerDirOld;
+			}
+			Assert.AreEqual(DateTime.Today,SupplyOrderItems.SelectOne(listItems[0].SupplyOrderItemNum).DateReceived,"The other follow-ups still ran.");
+			Assert.AreEqual(4,SupplyLedgers.GetForSupply(supply.SupplyNum).Count,"Opening, receipt, count, adjustment: each once.");
+		}
+
 		[TestMethod]
 		public void GetByScan_MatchesTheBarcode_ThenTheCatalogNumber() {
 			string barcode="0"+InvData.Next()+"77123";

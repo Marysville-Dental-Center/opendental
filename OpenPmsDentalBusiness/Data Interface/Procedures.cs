@@ -4328,7 +4328,12 @@ namespace OpenPmsDentalBusiness {
 			List<Procedure> listProcsForAppt,List<InsSub> subList,Userod curUser)
 		{
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<List<Procedure>>(MethodBase.GetCurrentMethod(),apt,planList,patPlans,patient,listProcsForAppt,subList,curUser);
+				List<Procedure> listProcsSetComplete=Meth.GetObject<List<Procedure>>(MethodBase.GetCurrentMethod(),apt,planList,patPlans,patient,
+					listProcsForAppt,subList,curUser);
+				//Inventory tracking: the Update calls ran on the Middle Tier server, where the program does not hear them. Tell the program here which
+				//procedures this completed, so it opens the Materials used panel.
+				InventoryTracking.NotifyProcsNowComplete(listProcsForAppt,listProcsSetComplete);
+				return listProcsSetComplete;
 			}
 			if(listProcsForAppt.Count==0) {
 				return listProcsForAppt;//Nothing to do.

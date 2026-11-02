@@ -197,6 +197,141 @@ namespace InventoryTests {
 			Assert.AreEqual(2,InvData.OnHand(supplyImplant.SupplyNum));
 		}
 
+		///<summary>A procedure left not complete while it still holds materials (the program stopped between its status write and its restore):
+		///the repair puts back what it holds, removes its awaiting row, and counts it.</summary>
+		[TestMethod]
+		public void Repair_PutsBackWhatAProcedureNoLongerCompleteHolds() {
+			Supply supply=InvData.Supply(onHand:10);
+			long codeNum=InvData.Code((supply,3));
+			Procedure procedure=InvData.SetStatus(InvData.Proc(InvData.Patient(),codeNum),ProcStat.C);
+			InventoryTracking.ConfirmMaterials(new List<long> { procedure.ProcNum },InventoryTracking.GetDefaultMaterials(new List<Procedure> { procedure }));
+			Assert.AreEqual(7,InvData.OnHand(supply.SupplyNum));
+			Procedure procedureAwaiting=InvData.SetStatus(InvData.Proc(InvData.Patient(),codeNum),ProcStat.C);
+			//Only the status writes of Procedures.Delete and Procedures.Update ran.
+			DataCore.NonQ("UPDATE procedurelog SET ProcStatus="+(int)ProcStat.D+" WHERE ProcNum="+procedure.ProcNum);
+			DataCore.NonQ("UPDATE procedurelog SET ProcStatus="+(int)ProcStat.TP+" WHERE ProcNum="+procedureAwaiting.ProcNum);
+			CollectionAssert.Contains(SupplyLedgers.GetProcNumsHeldNotComplete(),procedure.ProcNum);
+			SupplyRepairResult supplyRepairResult=InventoryTracking.Repair();
+			Assert.IsTrue(supplyRepairResult.CountProcs>=1);
+			Assert.IsTrue(supplyRepairResult.CountAwaiting>=1);
+			Assert.AreEqual(10,InvData.OnHand(supply.SupplyNum));
+			Assert.AreEqual(0,InventoryTracking.GetProcMaterials(new List<long> { procedure.ProcNum }).Count);
+			Assert.AreEqual(InventoryTracking.REASON_REPAIRED,SupplyLedgers.GetForProcs(new List<long> { procedure.ProcNum }).Last().Reason);
+			Assert.IsFalse(IsPending(procedureAwaiting.ProcNum));
+			CollectionAssert.DoesNotContain(SupplyLedgers.GetProcNumsHeldNotComplete(),procedure.ProcNum);
+			Assert.AreEqual(0,InventoryTracking.Repair().CountProcs,"Nothing left to put back.");
+			Assert.IsTrue(InvData.CountLogs(EnumPermType.InventoryAdjust,"procedure(s) no longer complete put back")>=2);
+		}
+
+		///<summary>Another workstation un-completes the procedure after ConfirmMaterials read its status and before it wrote the Use rows: that
+		///workstation's restore finds nothing, so ConfirmMaterials reads the status again and puts back what it took.</summary>
+		[TestMethod]
+		public void Confirm_ProcedureUncompletedWhileConfirming_IsPutBack() {
+			Supply supply=InvData.Supply(onHand:6);
+			Procedure procedure=InvData.SetStatus(InvData.Proc(InvData.Patient(),InvData.Code((supply,2))),ProcStat.C);
+			List<SupplyUsageLine> listLines=InventoryTracking.GetDefaultMaterials(new List<Procedure> { procedure },isLotAuto:true);
+			List<long> listSkipped;
+			InventoryTracking.ActionAfterStatusesRead=listProcNums => InvData.SetStatus(procedure,ProcStat.TP);
+			try {
+				listSkipped=InventoryTracking.ConfirmMaterials(new List<long> { procedure.ProcNum },listLines);
+			}
+			finally {
+				InventoryTracking.ActionAfterStatusesRead=null;
+			}
+			CollectionAssert.AreEqual(new[] { procedure.ProcNum },listSkipped,"Reported as not deducted.");
+			Assert.AreEqual(6,InvData.OnHand(supply.SupplyNum));
+			Assert.AreEqual(0,InventoryTracking.GetProcMaterials(new List<long> { procedure.ProcNum }).Count);
+			Assert.AreEqual(InventoryTracking.REASON_UNCOMPLETED,SupplyLedgers.GetForProcs(new List<long> { procedure.ProcNum }).Last().Reason);
+			Assert.IsFalse(IsPending(procedure.ProcNum));
+			CollectionAssert.DoesNotContain(SupplyLedgers.GetProcNumsHeldNotComplete(),procedure.ProcNum);
+		}
+
+		///<summary>A Restore row is written only while the procedure still holds exactly what it puts back: the same rows written twice (two
+		///workstations restoring at once) put back once.</summary>
+		[TestMethod]
+		public void Restore_WrittenTwice_PutsBackOnce() {
+			Supply supply=InvData.Supply(onHand:5,price:3);
+			Procedure procedure=InvData.SetStatus(InvData.Proc(InvData.Patient(),InvData.Code((supply,2))),ProcStat.C);
+			InventoryTracking.ConfirmMaterials(new List<long> { procedure.ProcNum },InventoryTracking.GetDefaultMaterials(new List<Procedure> { procedure }));
+			Assert.AreEqual(3,InvData.OnHand(supply.SupplyNum));
+			Func<List<SupplyLedger>> funcRows=() => new List<SupplyLedger> { new SupplyLedger { SupplyNum=supply.SupplyNum,SupplyLotNum=0,
+				LedgerType=SupplyLedgerType.Restore,Quantity=2,UnitCost=3,ProcNum=procedure.ProcNum,PatNum=procedure.PatNum,Reason="Twice" } };
+			Assert.AreEqual(1,SupplyLedgers.InsertRestoresIfStillHeld(funcRows()).Count);
+			Assert.AreEqual(0,SupplyLedgers.InsertRestoresIfStillHeld(funcRows()).Count,"Held 0 now, not 2.");
+			Assert.AreEqual(5,InvData.OnHand(supply.SupplyNum));
+			InventoryTracking.RestoreForProc(procedure.ProcNum,"Again");
+			Assert.AreEqual(5,InvData.OnHand(supply.SupplyNum));
+			Assert.AreEqual(2,SupplyLedgers.GetForProcs(new List<long> { procedure.ProcNum }).Count);
+		}
+
+		///<summary>An implant that came in as an opening balance has no lot. The assistant enters the lot number from the package (SupplyLots.GetOrInsert
+		///creates it); confirming moves the quantity from the stock without a lot into the lot, then takes it from the lot. Confirming again moves
+		///nothing more.</summary>
+		[TestMethod]
+		public void Implant_LotEnteredForStockWithoutALot_IsMovedIntoTheLot() {
+			Supply supplyImplant=InvData.Supply(onHand:2,isImplant:true);
+			Procedure procedure=InvData.SetStatus(InvData.Proc(InvData.Patient(),InvData.Code((supplyImplant,1))),ProcStat.C);
+			string lotNumber="PKG-"+InvData.Next();
+			SupplyLot supplyLot=SupplyLots.GetOrInsert(supplyImplant.SupplyNum,lotNumber,DateTime.Today.AddYears(3),0);
+			List<SupplyUsageLine> listLines=new List<SupplyUsageLine> { new SupplyUsageLine(procedure.ProcNum,supplyImplant.SupplyNum,supplyLot.SupplyLotNum,1) };
+			InventoryTracking.ConfirmMaterials(new List<long> { procedure.ProcNum },listLines);
+			Assert.AreEqual(0,InvData.LotQty(supplyLot.SupplyLotNum));
+			Assert.AreEqual(1,SupplyLedgers.GetSumWithoutLot(supplyImplant.SupplyNum));
+			Assert.AreEqual(1,InvData.OnHand(supplyImplant.SupplyNum));
+			Assert.AreEqual(supplyLot.SupplyLotNum,InventoryTracking.GetProcMaterials(new List<long> { procedure.ProcNum }).Single().SupplyLotNum);
+			List<SupplyLedger> listMoves=SupplyLedgers.GetForSupply(supplyImplant.SupplyNum).FindAll(x => x.LedgerType==SupplyLedgerType.Adjust);
+			Assert.AreEqual(2,listMoves.Count);
+			Assert.IsTrue(listMoves.All(x => x.Reason==InventoryTracking.REASON_MOVED_TO_LOT));
+			Assert.AreEqual(0,Math.Round(listMoves.Sum(x => x.Quantity),2),"A move, not a change of stock.");
+			InventoryTracking.ConfirmMaterials(new List<long> { procedure.ProcNum },listLines);
+			Assert.AreEqual(2,SupplyLedgers.GetForSupply(supplyImplant.SupplyNum).Count(x => x.LedgerType==SupplyLedgerType.Adjust));
+			Assert.AreEqual(1,InvData.CountLogs(EnumPermType.InventoryAdjust,"Stock without a lot moved into lot "+lotNumber));
+		}
+
+		///<summary>An implant deducted without a lot (no lot has stock) needs a reason, which goes to the audit trail; without one nothing is written.
+		///</summary>
+		[TestMethod]
+		public void Implant_WithoutALot_NeedsAReason() {
+			Supply supplyImplant=InvData.Supply(onHand:1,isImplant:true);
+			Procedure procedure=InvData.SetStatus(InvData.Proc(InvData.Patient(),InvData.Code((supplyImplant,1))),ProcStat.C);
+			List<SupplyUsageLine> listLines=InventoryTracking.GetDefaultMaterials(new List<Procedure> { procedure },isLotAuto:true);
+			Assert.AreEqual(0,listLines.Single().SupplyLotNum,"No lot has stock.");
+			InvData.Throws<ApplicationException>(() => InventoryTracking.ConfirmMaterials(new List<long> { procedure.ProcNum },listLines));
+			Assert.AreEqual(1,InvData.OnHand(supplyImplant.SupplyNum));
+			Assert.IsTrue(IsPending(procedure.ProcNum));
+			string reason="Package discarded "+InvData.Next();
+			InventoryTracking.ConfirmMaterials(new List<long> { procedure.ProcNum },listLines,reason);
+			Assert.AreEqual(0,InvData.OnHand(supplyImplant.SupplyNum));
+			Assert.IsFalse(IsPending(procedure.ProcNum));
+			Assert.AreEqual(1,InvData.CountLogs(EnumPermType.InventoryAdjust,"Implant deducted without a lot number: "+supplyImplant.Descript));
+			Assert.AreEqual(1,InvData.CountLogs(EnumPermType.InventoryAdjust,"Reason: "+reason));
+			//Opened again unchanged: nothing new is taken without a lot, so no reason is needed.
+			InventoryTracking.ConfirmMaterials(new List<long> { procedure.ProcNum },listLines);
+		}
+
+		///<summary>Procedures.SetCompleteInApptInList and Appointments.CompleteClick complete procedures on the Middle Tier server; the program raises
+		///ProcSetComplete itself for those that are complete now and were not.</summary>
+		[TestMethod]
+		public void NotifyProcsNowComplete_RaisesForTheNewlyCompleted() {
+			Procedure procedureWasTp=new Procedure { ProcNum=900001,ProcStatus=ProcStat.TP };
+			Procedure procedureWasC=new Procedure { ProcNum=900002,ProcStatus=ProcStat.C };
+			Procedure procedureStillTp=new Procedure { ProcNum=900003,ProcStatus=ProcStat.TP };
+			List<Procedure> listAfter=new List<Procedure> {
+				new Procedure { ProcNum=900001,ProcStatus=ProcStat.C },new Procedure { ProcNum=900002,ProcStatus=ProcStat.C },
+				new Procedure { ProcNum=900003,ProcStatus=ProcStat.TP },new Procedure { ProcNum=900004,ProcStatus=ProcStat.C },//Added on the server.
+			};
+			List<long> listProcNumsRaised=new List<long>();
+			Action<long> action=x => listProcNumsRaised.Add(x);
+			InventoryTracking.ProcSetComplete+=action;
+			try {
+				InventoryTracking.NotifyProcsNowComplete(new List<Procedure> { procedureWasTp,procedureWasC,procedureStillTp },listAfter);
+			}
+			finally {
+				InventoryTracking.ProcSetComplete-=action;
+			}
+			CollectionAssert.AreEqual(new long[] { 900001,900004 },listProcNumsRaised);
+		}
+
 		///<summary>Merging two patients moves the procedures to the patient kept; the ledger rows and the awaiting rows follow them, so the stock
 		///window and a recall by lot name the chart that is kept, not the archived one.</summary>
 		[TestMethod]

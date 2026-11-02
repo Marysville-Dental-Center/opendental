@@ -166,6 +166,26 @@ namespace OpenPmsDentalBusiness {
 			ProcSetComplete?.Invoke(procNum);
 		}
 
+		///<summary>For business methods that complete procedures entirely on the Middle Tier server (Procedures.SetCompleteInApptInList,
+		///Appointments.CompleteClick): called in the program after the remote call returns, it raises ProcSetComplete (NotifyProcSetComplete) for
+		///every procedure of listProceduresAfter that is complete and was not complete in listProceduresBefore (or was not in it).</summary>
+		public static void NotifyProcsNowComplete(List<Procedure> listProceduresBefore,List<Procedure> listProceduresAfter) {
+			Meth.NoCheckMiddleTierRole();
+			if(listProceduresAfter.IsNullOrEmpty() || !IsEnabled()) {
+				return;
+			}
+			listProceduresBefore=listProceduresBefore??new List<Procedure>();
+			foreach(Procedure procedure in listProceduresAfter) {
+				if(procedure==null || procedure.ProcStatus!=ProcStat.C) {
+					continue;
+				}
+				if(listProceduresBefore.Any(x => x!=null && x.ProcNum==procedure.ProcNum && x.ProcStatus==ProcStat.C)) {
+					continue;
+				}
+				NotifyProcSetComplete(procedure.ProcNum);
+			}
+		}
+
 		///<summary>Called by Procedures.Update when a complete procedure gets another status, and by Procedures.Delete: puts back what the procedure
 		///still holds (RestoreForProc) and removes it from the awaiting list. Runs also while tracking is off, so stock stays right.</summary>
 		public static void OnProcNoLongerComplete(long procNum,bool isDeleted) {

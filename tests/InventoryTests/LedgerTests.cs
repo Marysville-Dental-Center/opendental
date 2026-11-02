@@ -108,7 +108,7 @@ namespace InventoryTests {
 			Assert.AreEqual(10,InvData.OnHand(supply.SupplyNum));
 			Assert.AreEqual(2,InvData.LotQty(supplyLot.SupplyLotNum));
 			Assert.AreEqual(1,InvData.OnHand(supplyOk.SupplyNum));
-			Assert.IsTrue(InvData.CountLogs(EnumPermType.InventoryAdjust,"Stock repaired from the ledger: 1 supply(ies) and 1 lot(s) changed.")>=1);
+			Assert.IsTrue(InvData.CountLogs(EnumPermType.InventoryAdjust,"Stock repaired from the ledger: 1 supply(ies) and 1 lot(s) changed, ")>=1);
 			Assert.AreEqual(0,SupplyLedgers.RecomputeAll().CountSupplies,"Nothing left to repair.");
 		}
 

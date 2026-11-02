@@ -83,5 +83,54 @@ namespace InventoryTests {
 			string sourceProcedures=File.ReadAllText(InvDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","Data Interface","Procedures.cs")));
 			Assert.AreEqual(4,Regex.Matches(sourceProcedures,@"InventoryTracking\.NotifyProcSetComplete\(").Count,"Insert and Update raise it, on both sides of the Middle Tier check.");
 		}
+
+		///<summary>Business methods that complete procedures entirely on the Middle Tier server raise the event in the program after the remote call,
+		///in their ClientMT branch: Procedures.SetCompleteInApptInList (Chart Set Complete of an appointment, the appointment edit window, per-visit
+		///codes) and Appointments.CompleteClick (the Appointments module's Set Complete).</summary>
+		[TestMethod]
+		public void MiddleTierCompletions_RaiseTheEventInTheProgram() {
+			string sourceProcedures=File.ReadAllText(InvDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","Data Interface","Procedures.cs")));
+			string sourceAppointments=File.ReadAllText(InvDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","Data Interface","Appointments.cs")));
+			string branchSetComplete=GetClientMtBranch(sourceProcedures,"public static List<Procedure> SetCompleteInApptInList(");
+			StringAssert.Contains(branchSetComplete,"InventoryTracking.NotifyProcsNowComplete(listProcsForAppt,listProcsSetComplete);");
+			string branchCompleteClick=GetClientMtBranch(sourceAppointments,"public static ODTuple<Appointment,List<Procedure>> CompleteClick(");
+			StringAssert.Contains(branchCompleteClick,"InventoryTracking.NotifyProcsNowComplete(listProceduresForAppt,Procedures.GetProcsForSingle(");
+		}
+
+		///<summary>The text of the method's "if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {" block, up to its closing brace.</summary>
+		private static string GetClientMtBranch(string source,string signature) {
+			int indexMethod=source.IndexOf(signature);
+			Assert.IsTrue(indexMethod>=0,signature);
+			int indexBranch=source.IndexOf("if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {",indexMethod);
+			int depth=0;
+			for(int i=source.IndexOf('{',indexBranch);i<source.Length;i++) {
+				if(source[i]=='{') {
+					depth++;
+				}
+				else if(source[i]=='}') {
+					depth--;
+					if(depth==0) {
+						return source.Substring(indexBranch,i-indexBranch+1);
+					}
+				}
+			}
+			Assert.Fail("No end of the ClientMT branch after "+signature);
+			return "";
+		}
+
+		///<summary>Procedures.Delete puts back the materials after it writes the deleted status, as Update does, so a failure in between leaves a
+		///deleted procedure holding materials, which the repair finds, never a complete procedure whose materials are back in stock.</summary>
+		[TestMethod]
+		public void ProcedureDelete_RestoresAfterTheStatusWrite() {
+			string source=File.ReadAllText(InvDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","Data Interface","Procedures.cs")));
+			int indexDelete=source.IndexOf("public static void Delete(long procNum,bool forceDelete=false,bool hideGraphics=false) {");
+			int indexNext=source.IndexOf("public static void TryDeleteLab(",indexDelete);
+			string textDelete=source.Substring(indexDelete,indexNext-indexDelete);
+			int indexStatus=textDelete.IndexOf("command=\"UPDATE procedurelog SET ProcStatus = \"+POut.Int((int)ProcStat.D)");
+			int indexRestore=textDelete.IndexOf("InventoryTracking.OnProcNoLongerComplete(procNum,isDeleted:true);");
+			Assert.IsTrue(indexStatus>0 && indexRestore>0);
+			Assert.IsTrue(indexRestore>textDelete.IndexOf("Db.NonQ(command);",indexStatus),"The restore comes after the status is written.");
+			Assert.AreEqual(1,Regex.Matches(textDelete,@"OnProcNoLongerComplete\(").Count);
+		}
 	}
 }
