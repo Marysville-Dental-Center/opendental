@@ -568,7 +568,7 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>The explicit .dcm branch of GetImageCropped (design 7.8, CAP-W1): the raw pixels are read through DicomHelper's
-		///IDicomPixelReader (ImageStore.OpenBitmapDicom: the in-house subset reader, then fo-dicom; any storage type), then windowed. Throws when
+		///IDicomPixelReader (ImageStore.OpenBitmapDicom: the in-house subset reader, then the in-house full reader; any storage type), then windowed. Throws when
 		///the file cannot be read, like GetImageCropped.</summary>
 		private static Bitmap GetImageCroppedDicom(Document document,string patientFolder) {
 			BitmapDicom bitmapDicom=ImageStore.OpenBitmapDicom(document,patientFolder);

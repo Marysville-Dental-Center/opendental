@@ -1,9 +1,9 @@
-// IDicomPixelReader and DicomHelper's reader order (CAP-DR, design 7.8): the in-house subset reader first, fo-dicom for everything else.
+// IDicomPixelReader and DicomHelper's reader order (CAP-DR, design 7.8; docs/imaging/dicom-reader.md): the in-house subset reader first, the
+// in-house full reader for everything else, and no DICOM library loaded at all.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.IO;
 using System.Linq;
-using Dicom;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
 
@@ -53,7 +53,7 @@ namespace DicomReaderTests {
 			using(MemoryStream memoryStream=new MemoryStream(new byte[10])) {
 				Assert.AreSame(bitmapDicomFirst,chain.ReadStream(memoryStream));
 			}
-			Assert.AreEqual(0,readerSecond.CountFile+readerSecond.CountStream,"fo-dicom is not asked when the subset reader read the file.");
+			Assert.AreEqual(0,readerSecond.CountFile+readerSecond.CountStream,"The full reader is not asked when the subset reader read the file.");
 			readerFirst.Result=null;
 			Assert.AreSame(bitmapDicomSecond,chain.ReadFile("x.dcm"));
 			using(MemoryStream memoryStream=new MemoryStream(new byte[10])) {
@@ -76,17 +76,23 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
-		public void DicomHelper_UsesTheSubsetReaderFirst_ThenFoDicom() {
+		public void DicomHelper_UsesTheSubsetReaderFirst_ThenTheFullReader() {
 			Assert.IsInstanceOfType(DicomHelper.SubsetReader,typeof(DicomSubsetReader));
+			Assert.IsInstanceOfType(DicomHelper.FullReader,typeof(DicomImageReader));
 			Assert.IsInstanceOfType(DicomHelper.PixelReader,typeof(DicomPixelReaderChain));
-			Assert.AreNotSame(DicomHelper.SubsetReader,DicomHelper.FoDicomReader);
+			//The subset reader declines what it does not read, and the chain then asks the full reader: a file only the full reader reads.
+			byte[] bytes=ReaderCases.Get("enc-implicit-le-12").Bytes;
+			Assert.IsNull(DicomHelper.SubsetReader.ReadStream(new MemoryStream(bytes)));
+			Assert.IsNotNull(DicomHelper.PixelReader.ReadStream(new MemoryStream(bytes)));
 		}
 
-		///<summary>Runs DicomHelper.GetFromFile in a fresh application domain and reports what it read and whether fo-dicom (Dicom.Core) was loaded.</summary>
+		///<summary>Runs DicomHelper.GetFromFile in a fresh application domain and reports what it read and whether any DICOM library (fo-dicom 4
+		///Dicom.Core, fo-dicom 5 fo-dicom.core) was loaded.</summary>
 		public sealed class IsolatedRead : MarshalByRefObject {
 			public string Run(string path) {
 				BitmapDicom bitmapDicom=DicomHelper.GetFromFile(path);
-				bool isFoDicomLoaded=AppDomain.CurrentDomain.GetAssemblies().Any(x => x.GetName().Name=="Dicom.Core");
+				bool isFoDicomLoaded=AppDomain.CurrentDomain.GetAssemblies().Any(x => x.GetName().Name.StartsWith("Dicom.",StringComparison.OrdinalIgnoreCase)
+					|| x.GetName().Name.StartsWith("fo-dicom",StringComparison.OrdinalIgnoreCase));
 				string read=bitmapDicom==null ? "null" : bitmapDicom.Width+"x"+bitmapDicom.Height+" sum "+bitmapDicom.ArrayDataRaw.Sum(x => (long)x);
 				return read+"|"+(isFoDicomLoaded ? "fo-dicom loaded" : "fo-dicom not loaded");
 			}
@@ -119,7 +125,7 @@ namespace DicomReaderTests {
 				string pathSubset=Path.Combine(folder,"subset.dcm");
 				File.WriteAllBytes(pathSubset,TestFiles.FromCaptureWriter(20,10,arrayPixels,null));
 				string pathImplicit=Path.Combine(folder,"implicit.dcm");
-				File.WriteAllBytes(pathImplicit,TestFiles.FromFoDicom(DicomTransferSyntax.ImplicitVRLittleEndian,10,20,16,16,0,"MONOCHROME2",
+				File.WriteAllBytes(pathImplicit,TestFiles.FromOtherWriter(SyntheticDicom.ImplicitVrLittleEndian,10,20,16,16,0,"MONOCHROME2",
 					SyntheticDicom.Words(arrayPixels)));
 				long sum=arrayPixels.Sum(x => (long)x);
 				Assert.AreEqual("20x10 sum "+sum+"|fo-dicom not loaded",RunIsolated(pathSubset),"The subset is read by the in-house subset reader.");

@@ -18,7 +18,7 @@ namespace AttributionTests {
 		private static readonly string[] _arrayShippedComponents=new string[] {
 			"MySqlConnector",".NET libraries","Newtonsoft.Json","MimeKit","MSAL.NET","SSH.NET","PDFsharp","MigraDoc","SharpDX","Tao Framework",
 			"Direct Project","OpenPop.NET","SharpSSH","Mentalis.org Security Library","NHunspell and Hunspell","Hunspell en_US dictionary",
-			"RDL Project","Google APIs Client Library for .NET","fo-dicom","NDde","Microsoft Edge WebView2 SDK","TWAIN","Pearl API notice",
+			"RDL Project","Google APIs Client Library for .NET","NDde","Microsoft Edge WebView2 SDK","TWAIN","Pearl API notice",
 		};
 
 		///<summary>Files of every listed component that ships in the output folder.</summary>
@@ -31,7 +31,7 @@ namespace AttributionTests {
 			"MigraDoc.Rendering.dll","MigraDoc.RtfRendering.dll","SharpDX.dll","SharpDX.Direct3D9.dll","SharpDX.Mathematics.dll","Tao.OpenGl.dll",
 			"Tao.Platform.Windows.dll","Health.Direct.Agent.dll","Health.Direct.Common.dll","Health.Direct.ResolverPlugins.dll","OpenPop.dll",
 			"Tamir.SharpSSH.dll","Org.Mentalis.Security.dll","DiffieHellman.dll","NHunspell.dll","Hunspellx86.dll","RdlEngine.dll","RdlViewer.dll",
-			"Google.Apis.dll","Google.Apis.Auth.dll","Google.Apis.Core.dll","Google.Apis.Gmail.v1.dll","Dicom.Core.dll","Dicom.Native.dll","NDde.dll",
+			"Google.Apis.dll","Google.Apis.Auth.dll","Google.Apis.Core.dll","Google.Apis.Gmail.v1.dll","NDde.dll",
 			"Microsoft.Web.WebView2.Core.dll","Microsoft.Web.WebView2.WinForms.dll","Microsoft.Web.WebView2.Wpf.dll","WebView2Loader.dll",
 		};
 
@@ -39,13 +39,13 @@ namespace AttributionTests {
 		///end-user licenses, Sparks3D, the stdole pre-release license, the wrong "Drifty" text for DotNetZip, and components that do not ship.</summary>
 		private static readonly string[] _arrayRemovedEntries=new string[] {
 			"OpenDental","OpenDental API End User","CDT","Sparks3D","Stdole","Drifty","Zxing","AForge","Angular","Bouncy Castle","BSD","Microsoft",
-			"Oracle","Tao_Freeglut",
+			"Oracle","Tao_Freeglut","fo-dicom",
 		};
 
 		///<summary>What packages BIN-A and BIN-B delete, and Open Dental's own closed binaries: never listed as shipped.</summary>
 		private static readonly string[] _arrayNotShipped=new string[] {
 			"Sparks3D","SigPlusNET","Interop.Word","Interop.Microsoft.Office","Interop.VBIDE","stdole","AcroPDF","Acrobat","zxing","Avalara","RS232","DotNetZip",
-			"Ionic","Drifty","VBbridges","xImageDeviceManager","EZTwain","Eztwain","SuniUSB","VideoCamLib",
+			"Ionic","Drifty","VBbridges","xImageDeviceManager","EZTwain","Eztwain","SuniUSB","VideoCamLib","fo-dicom","Dicom.Core","Dicom.Native",
 		};
 
 		#region Helpers
@@ -142,7 +142,6 @@ namespace AttributionTests {
 			}
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="MySqlConnector").Text,"Permission is hereby granted, free of charge");
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="Google APIs Client Library for .NET").Text,"Version 2.0, January 2004");
-			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="fo-dicom").Text,"Microsoft Public License (MS-PL)");
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="Direct Project").Text,"Redistribution and use in source and binary forms");
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="NDde").Text,"Shared Source License for NDde");
 		}
@@ -208,17 +207,18 @@ namespace AttributionTests {
 				Assert.IsTrue(source.Contains("https://") || source.Contains("this repository") || source=="not applicable",
 					noticeSection.Title+": "+source);
 			}
-			CollectionAssert.AreEquivalent(new[] { "MIT License","BSD 3-Clause License","Microsoft Public License (MS-PL)","Apache License 2.0" },
+			CollectionAssert.AreEquivalent(new[] { "MIT License","BSD 3-Clause License","Apache License 2.0" },
 				listNoticeSections.FindAll(x => !x.IsComponent).Select(x => x.Title).ToArray());
 		}
 
 		[TestMethod]
 		public void ThirdPartyNotices_MarksTheGplQuestions() {
 			List<NoticeSection> listNoticeSections=ParseNoticesFile();
-			foreach(string title in new[] { "fo-dicom","NDde","Google APIs Client Library for .NET" }) {
+			foreach(string title in new[] { "NDde","Google APIs Client Library for .NET" }) {
 				StringAssert.Contains(listNoticeSections.Single(x => x.Title==title).GetField("Note"),"Owner question",title);
 			}
-			StringAssert.Contains(listNoticeSections.Single(x => x.Title=="fo-dicom").GetField("License"),"MS-PL");
+			//fo-dicom (MS-PL) was the third; the in-house DICOM reader replaced it (docs/imaging/dicom-reader.md).
+			Assert.IsFalse(listNoticeSections.Any(x => x.Title=="fo-dicom"));
 		}
 
 		[TestMethod]

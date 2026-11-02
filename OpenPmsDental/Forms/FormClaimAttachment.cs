@@ -16,7 +16,6 @@ using OpenPmsDental.UI;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.Eclaims;
 using OpenPmsDentalBusiness.VendorDirect.DentalXChange;
-using Dicom.Imaging.Mathematics;
 
 namespace OpenPmsDental {
 	///<summary>As of 5/14/2024, this form will no longer send attachments to DentalXChange. We want users to use the right click attachment workflows instead of this form, so all the controls have been removed from the FormClaimEdit DXC tab. The DXC logic will remain in this form in case we ever need to revert.</summary>

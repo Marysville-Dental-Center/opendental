@@ -6,10 +6,6 @@ using System.Drawing.Imaging;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Dicom;
-using Dicom.Imaging;
-using Dicom.Imaging.Codec;
-using Dicom.Imaging.Render;
 
 namespace OpenPmsDentalBusiness {
 	///<summary></summary>
@@ -33,9 +29,6 @@ namespace OpenPmsDentalBusiness {
 		///<summary>The in-house reader of every other DICOM file (docs/imaging/dicom-reader.md): every encoding, the photometric interpretations
 		///the program shows, RLE Lossless and JPEG Baseline, and a clear reason for what it declines.</summary>
 		public static readonly DicomImageReader FullReader=new DicomImageReader();
-		///<summary>fo-dicom (MS-PL), the reader Open Dental used. No longer used by the program; kept only until the tests have compared the
-		///in-house reader with it.</summary>
-		public static readonly IDicomPixelReader FoDicomReader=new FoDicomPixelReader();
 		///<summary>What GetFromFile, GetFromStream and GetFromBase64 read with: the subset reader first, for the files the capture writes, then
 		///the full reader for every file the subset reader declines.</summary>
 		public static readonly IDicomPixelReader PixelReader=new DicomPixelReaderChain(SubsetReader,FullReader);
@@ -228,94 +221,6 @@ namespace OpenPmsDentalBusiness {
 			return PixelReader.ReadFile(filename);
 		}
 
-		///<summary>The fo-dicom path of DicomHelper as it was before the subset reader (design 7.8, CAP-DR): it opens the file with fo-dicom, decodes
-		///any transfer syntax fo-dicom has a codec for, and reads frame 0. ReadFile returns null when the file does not exist or the pixels
-		///cannot be read; opening a file fo-dicom cannot parse throws, as before. ReadStream does not catch.</summary>
-		private sealed class FoDicomPixelReader : IDicomPixelReader {
-			public BitmapDicom ReadFile(string path){
-				if(!File.Exists(path)){
-					return null;
-				}
-				DicomFile dicomFile=DicomFile.Open(path);
-				try{
-					return GetFromDicomFile(dicomFile);
-				}
-				catch{
-					return null;
-				}
-			}
-
-			public BitmapDicom ReadStream(Stream stream){
-				DicomFile dicomFile=DicomFile.Open(stream);
-				return GetFromDicomFile(dicomFile);
-			}
-		}
-
-		private static BitmapDicom GetFromDicomFile(DicomFile dicomFile){
-			/*
-			When this method was created, we used example dicom images to figure out how to display them in Open Dental. Since then, we have received additional
-			examples of different dicom images that were causing errors when viewing. This method has since been modified to support the new formats each time.
-			The example images that were used can be found \\opendental.od\serverfiles\Engineering\dicom_image_examples
-			
-			Supporting a new format: Typically, when a new format is detected, an error from this method will occur. We should get an example image so we 
-			can change our code to handle the new format. Changes to our code will most like happen to this method(DicomHelper.GetFromDicomFile())
-			and/or the DicomHelper.CalculateWindowingOnImport().
-
-			After a new format has been added: After the code change for the newly supported format, make sure to add the example dicom image to the network 
-			\\opendental.od\serverfiles\Engineering\dicom_image_examples. Follow the existing pattern when creating the new directory.
-
-			Debugging:
-			Make sure to run the Open Dental solution in 'x86'. Running the solution in 'ANY CPU' will cause importing and viewing errors.
-			*/
-
-			BitmapDicom bitmapDicom=new BitmapDicom();
-			DicomDataset dicomDataset=dicomFile.Dataset;
-			EnumDicomPhotometricInterp enumPhotometricInterp=PIn.Enum<EnumDicomPhotometricInterp>(dicomDataset.GetSingleValueOrDefault(new DicomTag(0x0028,0x0004),""),isEnumAsString:true,defaultEnumOption:EnumDicomPhotometricInterp.None);
-			if(enumPhotometricInterp==EnumDicomPhotometricInterp.None){
-				return null;
-			}
-			bitmapDicom.PhotometricInterp=enumPhotometricInterp;
-			bitmapDicom.BitsAllocated=dicomDataset.GetSingleValueOrDefault<ushort>(new DicomTag(0x0028,0x0100),0);
-			if(bitmapDicom.BitsAllocated!=16 && bitmapDicom.BitsAllocated!=8) {
-				return null;
-			}
-			bitmapDicom.BitsStored=dicomDataset.GetSingleValueOrDefault<ushort>(new DicomTag(0x0028,0x0101),0);
-			if(bitmapDicom.BitsStored!=12 && bitmapDicom.BitsStored!=8 && bitmapDicom.BitsStored!=16){
-				return null;
-			}
-			bitmapDicom.Height=dicomDataset.GetSingleValueOrDefault(new DicomTag(0x0028,0x0010),0);//rows
-			if(bitmapDicom.Height==0){
-				return null;
-			}
-			bitmapDicom.Width=dicomDataset.GetSingleValueOrDefault(new DicomTag(0x0028,0x0011),0);//columns
-			if(bitmapDicom.Width==0){
-				return null;
-			}
-			DicomDataset dicomDatasetDecoded=dicomDataset.Clone(DicomTransferSyntax.ExplicitVRLittleEndian);//uses codec to decompress
-			DicomPixelData dicomPixelDataDecoded=DicomPixelData.Create(dicomDatasetDecoded,false);
-			IPixelData iPixelData=PixelDataFactory.Create(dicomPixelDataDecoded,0);
-			if(!(iPixelData is GrayscalePixelDataU16) && !(iPixelData is GrayscalePixelDataU8) && !(iPixelData is ColorPixelData24)) {
-				return null;//we cannot read other formats yet
-			}
-			bitmapDicom.ArrayDataRaw=new ushort[bitmapDicom.Height*bitmapDicom.Width];
-			for(int r=0;r<bitmapDicom.Height;r++){
-				for(int c=0;c<bitmapDicom.Width;c++){
-					ushort pixelVal;
-					if(iPixelData is ColorPixelData24) {
-						Color colorCur=Color.FromArgb((int)iPixelData.GetPixel(c,r));
-						//Get the average RGB to convert to gray scale.
-						int intGrayScaleAverage=(colorCur.R+colorCur.G+colorCur.B)/3;
-						pixelVal=(ushort)intGrayScaleAverage;
-					}
-					else {
-						pixelVal=(ushort)iPixelData.GetPixel(c,r);
-					}
-					bitmapDicom.ArrayDataRaw[r*bitmapDicom.Width+c]=pixelVal;
-				}
-			}  
-			return bitmapDicom;
-		}
-
 		public static void CalculateWindowingOnImport(BitmapDicom bitmapDicom){
 			if(bitmapDicom.BitsAllocated==8) {
 				bitmapDicom.WindowingMax=255;
@@ -390,22 +295,6 @@ namespace OpenPmsDentalBusiness {
 			}
 			return idxOfValue;
 		}
-
-		/*
-		///<summary>Gets the size of the bitmap at the designated file location.</summary>
-		public static Size GetSizeBitmap(string filename){
-			if(!File.Exists(filename)){
-				return default;
-			}
-			DicomFile dicomFile=DicomFile.Open(filename);
-			DicomDataset dicomDataset=dicomFile.Dataset;
-			int height=dicomDataset.GetSingleValueOrDefault(new DicomTag(0x0028,0x0010),0);//rows
-			int width=dicomDataset.GetSingleValueOrDefault(new DicomTag(0x0028,0x0011),0);//columns
-			if(height==0 || width==0){
-				return default;
-			}
-			return new Size(width,height);
-		}*/
 	}
 
 	public enum EnumDicomPhotometricInterp {

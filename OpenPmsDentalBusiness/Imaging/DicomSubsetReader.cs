@@ -53,18 +53,18 @@ namespace OpenPmsDentalBusiness {
 	///  (7FE0,0010) as OB or OW of defined length, at least Rows x Columns samples long (a trailing pad byte or more is ignored).
 	///Every other attribute is skipped by its length, including sequences of defined or undefined length with items of defined or undefined
 	///length, nested up to MaxSequenceDepth deep. The values it returns are the ones fo-dicom returned for the same file through the old
-	///path: the stored samples, with the bits above High Bit cleared when Bits Stored is less than 16, and no inversion for MONOCHROME1 (the
-	///windowing handles that, as before).
+	///path, and the ones DicomImageReader returns: the stored samples, with the bits above High Bit cleared when Bits Stored is less than 16,
+	///and no inversion for MONOCHROME1 (the windowing handles that, as before).
 	///
 	///Anything else is declined with a status and a reason (NotSubset, Unsupported, Malformed, FileError), never by an exception, so that
-	///DicomHelper.PixelReader hands the file to fo-dicom exactly as before. The reader allocates only what the file holds: it reads at most
+	///DicomHelper.PixelReader hands the file to the full reader, DicomImageReader. The reader allocates only what the file holds: it reads at most
 	///MaxFileBytes, checks every length against the bytes that are really there before it uses it, and sizes the pixel array from Rows x
 	///Columns only after checking that the pixel data holds that many samples.</summary>
 	public sealed class DicomSubsetReader : IDicomPixelReader {
 		///<summary>PS3.5 Annex A.2 (PS3.6 Table A-1).</summary>
 		public const string TransferSyntaxExplicitVrLittleEndian="1.2.840.10008.1.2.1";
 		///<summary>Files and streams larger than this are declined (NotSubset) without being read, so a huge file never fills memory twice;
-		///fo-dicom then reads them as before. A 16-bit intra-oral image is a few megabytes.</summary>
+		///the full reader, which streams, reads them instead. A 16-bit intra-oral image is a few megabytes.</summary>
 		public const int MaxFileBytes=256*1024*1024;
 		///<summary>Sequences nested deeper than this are declined (Malformed), so a hostile file cannot exhaust the stack.</summary>
 		public const int MaxSequenceDepth=16;
@@ -115,7 +115,7 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Reads a DICOM file from the stream's current position to its end. It looks at the first 64 KB before reading the rest, so a
-		///file outside the subset costs little. It consumes what it reads; DicomPixelReaderChain sets the position back before fo-dicom reads.
+		///file outside the subset costs little. It consumes what it reads; DicomPixelReaderChain sets the position back before the full reader reads.
 		///Never throws.</summary>
 		public static DicomSubsetReadResult ReadStreamResult(Stream stream) {
 			try {
@@ -170,7 +170,7 @@ namespace OpenPmsDentalBusiness {
 				return new DicomSubsetReadResult(ex.Status,ex.Message,null);
 			}
 			catch(Exception ex) {
-				//Not expected: every length is checked first. Declining keeps the old fo-dicom path for the file.
+				//Not expected: every length is checked first. Declining hands the file to the full reader.
 				return new DicomSubsetReadResult(DicomSubsetReadStatus.Malformed,"The file could not be parsed ("+ex.GetType().Name+").",null);
 			}
 		}

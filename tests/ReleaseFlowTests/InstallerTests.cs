@@ -30,7 +30,8 @@ namespace ReleaseFlowTests {
 			"Eztwain4.dll","Bridges.dll","CDT.dll","stdole.dll","Interop.Word.dll","Interop.Microsoft.Office.Core.dll","Interop.VBIDE.dll",
 			"Interop.QBFC10.dll","AxInterop.AcroPDFLib.dll","Interop.AcroPDFLib.dll","Windows.winmd","installutil.exe","vcruntime140.dll","MSVCR71.dll",
 			"RS232.dll","SigPlusNET.dll","zxing.dll","zxing.presentation.dll","Avalara.AvaTax.RestClient.net45.dll","Ionic.Zip.dll","TWAINDSM.dll",
-			"FreeDentalConfig.xml","OpenPmsDental.pdb","unins000.exe","unins000.dat","OpenDental.exe","OpenDentBusiness.dll",
+			"FreeDentalConfig.xml","OpenPmsDental.pdb","unins000.exe","unins000.dat","OpenDental.exe","OpenDentBusiness.dll","Dicom.Core.dll",
+			"Dicom.Native.dll","fo-dicom.core.dll",
 		};
 
 		///<summary>The program folder's documents, staged from the repository.</summary>

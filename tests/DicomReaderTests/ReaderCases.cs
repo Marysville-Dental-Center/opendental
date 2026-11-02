@@ -323,11 +323,11 @@ namespace DicomReaderTests {
 		///They were made by the .NET Framework's JpegBitmapEncoder from Gray8(21,13) at quality 90 and Rgb8Smooth(22,14) at quality 90; the
 		///round-trip tests encode afresh.</summary>
 		public static byte[] JpegGrayFixed() {
-			return FoDicomBaseline.JpegGrayBase64=="" ? JpegGray(Gray8(21,13),21,13,90) : Convert.FromBase64String(FoDicomBaseline.JpegGrayBase64);
+			return Convert.FromBase64String(FoDicomBaseline.JpegGrayBase64);
 		}
 
 		public static byte[] JpegRgbFixed() {
-			return FoDicomBaseline.JpegRgbBase64=="" ? JpegRgb(Rgb8Smooth(22,14),22,14,90) : Convert.FromBase64String(FoDicomBaseline.JpegRgbBase64);
+			return Convert.FromBase64String(FoDicomBaseline.JpegRgbBase64);
 		}
 
 		public static SynImage Encapsulated8(string photometric,int rows,int columns,ushort samplesPerPixel,SynElement elementPixels) {

@@ -11,7 +11,9 @@ Planned work after v0.0, as agreed with the owner. Each item is discussed and sc
    certificate from the Windows certificate store with a DPAPI-protected password as the fallback, set up by the installer and changed later with
    a small admin-only settings tool; Choose Database is for local testing and debugging only.
 2. **Library updates (maintenance)**: WebView2 in place of the Internet Explorer WebBrowser control, a managed Hunspell (no native DLL),
-   PdfSharp/MigraDoc 6 and fo-dicom 5, kept as DLL files in `Required dlls`.
+   PdfSharp/MigraDoc 6, kept as DLL files in `Required dlls`. fo-dicom is not updated but removed (owner decision 2026-11-02, option C): the
+   program reads DICOM with its own reader (`docs/imaging/dicom-reader.md`); decoders for JPEG Lossless, JPEG-LS and JPEG 2000 plug into its
+   decoder seam later.
 3. **Routine maintenance around the practice**: maintenance items the office defines itself (equipment, rooms, systems, compliance routines),
    each with its own schedule, checklist, result fields, assignee and reminder; a due and overdue board; a history of who did what and when.
    The list starts empty.
@@ -49,7 +51,7 @@ The program is built as 32-bit today. Decided: go to full 64-bit (no interim lar
 - **Other TWAIN devices** (document scanners, a second sensor) need 64-bit drivers; most current devices ship both. For a device with only a
   32-bit driver, an optional 32-bit TWAIN bridge helper loads that driver and passes the images on.
 - **Native DLLs**: the library updates above remove most of them (the spell checker becomes managed); `Direct2dWrapper` is built 64-bit from
-  our source; fo-dicom's native codecs and WebView2 have 64-bit versions.
+  our source; WebView2 has a 64-bit version, and the DICOM reader is managed code of our own.
 - **Code**: P/Invoke signatures and structures (the TWAIN structures above all) are made pointer-size-safe, with tests that run in both
   bitnesses, while the program still ships as 32-bit.
 - **Installer and updates**: 64-bit install folder and prerequisites, and a defined way for an office to move from a 32-bit install to a

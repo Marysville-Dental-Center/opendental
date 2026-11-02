@@ -42,7 +42,7 @@ Prerequisites:
 
 - Windows 10 version 1903 or later, or Windows 11
 - **.NET Framework 4.8** (Windows 10 1903 and later and Windows 11 already have it; the setup stops if it is missing)
-- **Microsoft Visual C++ 2015-2022 Redistributable, x86** (`vc_redist.x86.exe`; the DICOM codecs and `Direct2dWrapper.dll` need it)
+- **Microsoft Visual C++ 2015-2022 Redistributable, x86** (`vc_redist.x86.exe`; `Direct2dWrapper.dll` needs it)
 - **Microsoft Edge WebView2 Runtime, x86** (Evergreen; Windows 11 already has it)
 - For scanners and sensors: the device's own TWAIN driver, which brings the TWAIN data source manager
 
