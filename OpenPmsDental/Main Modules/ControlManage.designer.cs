@@ -46,6 +46,7 @@ namespace OpenPmsDental {
 			this.butSendClaims = new OpenPmsDental.UI.Button();
 			this.butTasks = new OpenPmsDental.UI.Button();
 			this.butManageAR = new OpenPmsDental.UI.Button();
+			this.butMaintenance = new OpenPmsDental.UI.Button();
 			this.groupBox2 = new OpenPmsDental.UI.GroupBox();
 			this.listBoxMessages = new OpenPmsDental.UI.ListBox();
 			this.butSend = new OpenPmsDental.UI.Button();
@@ -109,9 +110,10 @@ namespace OpenPmsDental {
 			this.groupBox3.Controls.Add(this.butSendClaims);
 			this.groupBox3.Controls.Add(this.butTasks);
 			this.groupBox3.Controls.Add(this.butManageAR);
+			this.groupBox3.Controls.Add(this.butMaintenance);
 			this.groupBox3.Location = new System.Drawing.Point(17, 5);
 			this.groupBox3.Name = "groupBox3";
-			this.groupBox3.Size = new System.Drawing.Size(272, 181);
+			this.groupBox3.Size = new System.Drawing.Size(272, 207);
 			this.groupBox3.TabIndex = 23;
 			this.groupBox3.Text = "Daily";
 			// 
@@ -240,6 +242,15 @@ namespace OpenPmsDental {
 			this.butManageAR.TabIndex = 31;
 			this.butManageAR.Text = "Collections";
 			this.butManageAR.Click += new System.EventHandler(this.butManageAR_Click);
+			// 
+			// butMaintenance
+			// 
+			this.butMaintenance.Location = new System.Drawing.Point(16, 175);
+			this.butMaintenance.Name = "butMaintenance";
+			this.butMaintenance.Size = new System.Drawing.Size(104, 26);
+			this.butMaintenance.TabIndex = 32;
+			this.butMaintenance.Text = "Maintenance";
+			this.butMaintenance.Click += new System.EventHandler(this.butMaintenance_Click);
 			// 
 			// groupBox2
 			// 
@@ -658,6 +669,7 @@ namespace OpenPmsDental {
 		private UI.Button butImportInsPlans;
 		private UI.Button butManage;
 		private UI.Button butManageAR;
+		private UI.Button butMaintenance;
 		private UI.Button butSend;
 		private UI.Button butSendClaims;
 		private UI.Button butSupply;

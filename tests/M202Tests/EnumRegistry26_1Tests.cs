@@ -82,9 +82,10 @@ namespace M202Tests {
 
 		[TestMethod]
 		public void EnumPermType_EndsAt276WithoutGaps() {
-			int[] arrayValues=Enum.GetValues(typeof(EnumPermType)).Cast<int>().OrderBy(x => x).ToArray();
+			//Open Dental's values; this program's own values start at 10000 (docs/port-notes/FORK-ENUMS.md).
+			int[] arrayValues=Enum.GetValues(typeof(EnumPermType)).Cast<int>().Where(x => x<ForkEnums.FIRST_VALUE).OrderBy(x => x).ToArray();
 			for(int i=0;i<arrayValues.Length;i++) {
-				Assert.AreEqual(i,arrayValues[i],"The security tree's Set All and Set None loop over 0..count-1.");
+				Assert.AreEqual(i,arrayValues[i],"Open Dental's permission values have no gaps.");
 			}
 			Assert.AreEqual(276,arrayValues.Max());
 		}

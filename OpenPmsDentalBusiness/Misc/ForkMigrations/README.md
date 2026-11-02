@@ -25,6 +25,9 @@ The legacy `ConvertDatabases` chain (`OpenPmsDentalBusiness/Misc/ConvertDatabase
 | 2026110102 | `NoBillInsBackfillStep.cs`: Do Not Bill to Ins decisions moved to `procedurelog.NoBillIns`. Not active: the class is abstract, so the runner skips it; the owner has not decided whether it runs (see `docs/port-notes/M2-EST.md`) | M2-EST |
 | 2026110103 | `ReportRowUdsPlus.cs`: the UDS+ report row after the FQHC Dental Sealant Measure, on a database from before 25.4 | M2-UDS |
 | 2026110104 | `InsHistCodeGroupsStep.cs`: Insurance History rows from the `InsHist*Codes` preferences to code groups, on a database from before 25.4 | M2-HIST |
+| 2026110201 to 2026110205 | `MaintenanceSteps.cs`: the routine maintenance tables `maintitem`, `maintstep`, `maintfield`, `maintrecord` and `maintrecordvalue`, one per step, created empty from `MaintenanceTables` (a `ForkTableSet`; see "Fork-only tables"). No row is written. | Routine maintenance (`docs/specs/routine-maintenance.md`) |
+| 2026110206 | `MaintenanceSteps.cs`: `MaintPermissionGrantStep` gives Maintenance Setup and Maintenance Record Completion to every user group that has Security Admin, inserting only the missing `grouppermission` rows (FKey 0, NewerDate `0001-01-01`, NewerDays 0) from `MaintPermissionGrants.Plan`, which the adoption tools share (`MaintenanceGrantPlan`). Once per database: a `RunAll` rerun of a database whose `ForkMigrationsApplied` holds the level skips it. | Routine maintenance |
+| 2026110207 | `MaintenanceSteps.cs`: `MaintRecordCorrectionColumnsStep` adds `maintrecord.UserNumCorrected`, `DateTCorrected` and the key on `UserNumCorrected` to a table an earlier build of the unreleased feature created; the declaration in `MaintenanceTables` has them, so elsewhere it changes nothing. 2026110208 and 2026110209 are kept for this feature. | Routine maintenance |
 
 The last four were renumbered on 2026-11-01 from the retired package range levels 2027002301, 2027002701, 2027003501 and 2027004701, keeping their order. No office database carried a fork level then.
 
@@ -50,7 +53,16 @@ Tables, columns (type, NULL, default, extra, charset, position), keys, engine an
 - `patient._portal_active_email` and its unique key `portal_active_email_uniq`: an office-specific customization, not Open Dental schema. The adoption step drops both.
 - The 54 Open Dental HQ-only tables that the 24.3 code declares, when present.
 - Legacy tables that long-lived databases (including our development seed) still carry: the `anesth*` tables, `files` and `instructor`.
+- This program's own tables, declared in `ForkTableSet` classes (see "Fork-only tables" below).
 
 Tests: `tests/ForkMigrationTests` (runner, 25.3 steps, both references) and `tests/M201Tests` (25.4 and 26.1 steps, the 26.1.70 reference, the regenerated CRUD; set `M201_OD_DOCS_DIR` to a folder with the published XML documents to also check the reference against them).
+
+## Fork-only tables
+
+A table that only this program has (a feature of the fork, not Open Dental schema) is declared once, with its exact DDL as `SHOW CREATE TABLE` prints it on MariaDB 10.11, in a class derived from `ForkTableSet` in the feature's own step file (for example `MaintenanceTables` in `MaintenanceSteps.cs`). `ForkTables` finds every set by reflection, as the runner finds steps, and refuses a table declared twice or a name the 26.1.70 reference has. The feature's steps create the tables from those statements with `CreateTableIfMissing`.
+
+- `SchemaVerifier.DocumentedExceptions` allows every fork-only table as an `ExtraTable`, so a migrated database still matches Open Dental 26.1.70 and gets `OdSchemaCompat`. `ForkTables.VerifyDatabase` compares the fork-only tables with their declarations exactly.
+- The adoption tools: `tools/SyntheticData/allowed-differences.adoption.json` has a `TableAdded` rule per fork-only table (a test checks the rules equal `ForkTables.GetTableNames()`), and `AdoptionRowCheck` lists them under "Fork tables:" and requires them empty. A step that writes rows into an existing table on adoption also needs a plan and a row check there: the routine maintenance table steps write none, and its grant step's `grouppermission` rows have `MaintenanceGrantPlan` and the row check's `grouppermission` check.
+- Table classes of fork-only tables map to their declaration instead of the reference (`ReferenceSnapshotTests.TableClasses_MapToReferenceColumns`).
 
 Scratch databases that tests build from a reference file must use the reference the code expects, `OdSchema-26.1.70.sql` (or `GetReference()`), since the CRUD writes the 26.1 columns.

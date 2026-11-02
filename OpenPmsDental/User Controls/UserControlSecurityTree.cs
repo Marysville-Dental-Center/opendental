@@ -527,6 +527,12 @@ namespace OpenPmsDental {
 					node3=SetNode(EnumPermType.SupplierEdit);
 					node2.Nodes.Add(node3);
 				node.Nodes.Add(node2);
+				node2=SetNode("Routine Maintenance");
+					node3=SetNode(EnumPermType.MaintenanceSetup);
+					node2.Nodes.Add(node3);
+					node3=SetNode(EnumPermType.MaintenanceRecord);
+					node2.Nodes.Add(node3);
+				node.Nodes.Add(node2);
 			treePermissions.Nodes.Add(node);
 			#endregion
 			node=SetNode("Merge Tools");
@@ -680,8 +686,10 @@ namespace OpenPmsDental {
 			}
 			long userGroupNum=_listUserGroupNums.First();
 			GroupPermission perm;
-			for(int i = 0;i<Enum.GetNames(typeof(EnumPermType)).Length;i++) {
-				EnumPermType permType=(EnumPermType)i;
+			//Every defined value, not 0..count-1: this program's own values start at 10000 (docs/port-notes/FORK-ENUMS.md).
+			List<EnumPermType> listPermTypes=Enum.GetValues(typeof(EnumPermType)).Cast<EnumPermType>().ToList();
+			for(int i = 0;i<listPermTypes.Count;i++) {
+				EnumPermType permType=listPermTypes[i];
 				if(permType==EnumPermType.SecurityAdmin
 					|| permType==EnumPermType.StartupMultiUserOld
 					|| permType==EnumPermType.StartupSingleUserOld
@@ -718,12 +726,14 @@ namespace OpenPmsDental {
 			}
 			long userGroupNum=_listUserGroupNums.First();
 			GroupPermission perm;
-			for(int i = 0;i<Enum.GetNames(typeof(EnumPermType)).Length;i++) {
-				EnumPermType permType=(EnumPermType)i;
+			//Every defined value, not 0..count-1: this program's own values start at 10000 (docs/port-notes/FORK-ENUMS.md).
+			List<EnumPermType> listPermTypes=Enum.GetValues(typeof(EnumPermType)).Cast<EnumPermType>().ToList();
+			for(int i = 0;i<listPermTypes.Count;i++) {
+				EnumPermType permType=listPermTypes[i];
 				if(permType==EnumPermType.SecurityAdmin
 					|| permType==EnumPermType.StartupMultiUserOld
 					|| permType==EnumPermType.StartupSingleUserOld
-					|| permType==EnumPermType.EhrKeyAdd) 
+					|| permType==EnumPermType.EhrKeyAdd)
 				{
 					continue;
 				}

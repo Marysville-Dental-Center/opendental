@@ -93,6 +93,7 @@ namespace OpenPmsDental {
 					Logger.LogActionIfOverTimeLimit("BeginTimeSyncThread",LogPath.Threads,() => BeginTimeSyncThread());
 					Logger.LogActionIfOverTimeLimit("CheckAlerts",LogPath.Threads,() => CheckAlerts(doRunOnThread: true));
 					Logger.LogActionIfOverTimeLimit("BeginVendorJobsThread",LogPath.Threads,() => BeginVendorJobsThread());
+					Logger.LogActionIfOverTimeLimit("BeginMaintenanceRemindersThread",LogPath.Threads,() => BeginMaintenanceRemindersThread());
 					Logger.LogToPath("Started threads",LogPath.Threads,LogPhase.Unspecified);
 					return;
 				}
@@ -122,6 +123,7 @@ namespace OpenPmsDental {
 						case FormODThreadNames.TimeSync:
 						case FormODThreadNames.CheckAlerts:
 						case FormODThreadNames.VendorJobs:
+						case FormODThreadNames.MaintenanceReminders:
 						default:
 							//Add these to our list so we can wait on them to exit before restarting the threads next time.
 							_listThreadExitWaitHandles.AddRange(ODThread.QuitAsyncThreadsByGroupName(threadName.GetDescription()));
@@ -175,6 +177,28 @@ namespace OpenPmsDental {
 				return;
 			}
 			VendorDirect.VendorJobHost.Start(FormODThreadNames.VendorJobs.GetDescription());
+		}
+
+		#endregion
+		#region MaintenanceRemindersThread
+
+		///<summary>Routine maintenance (docs/specs/routine-maintenance.md, "Alerts"): every 10 minutes, brings the maintenance alerts in line with the
+		///items' status as of the server's date (MaintAlerts.Sync): an alert for each assignee when an item enters its lead time and when it becomes
+		///overdue, removed once it is recorded. Every workstation runs it; the sync removes any duplicate a simultaneous run makes.</summary>
+		private void BeginMaintenanceRemindersThread() {
+			if(IsThreadAlreadyRunning(FormODThreadNames.MaintenanceReminders)) {
+				return;
+			}
+			ODThread odThread=new ODThread((int)TimeSpan.FromMinutes(10).TotalMilliseconds,(o) => {
+				MaintAlerts.SyncPlan syncPlan=MaintAlerts.Sync(MaintAlerts.GetToday());
+				if(syncPlan.IsChanging) {
+					CheckAlerts();
+				}
+			});
+			odThread.AddExceptionHandler((e) => e.DoNothing());
+			odThread.GroupName=FormODThreadNames.MaintenanceReminders.GetDescription();
+			odThread.Name=FormODThreadNames.MaintenanceReminders.GetDescription();
+			odThread.Start();
 		}
 
 		#endregion
@@ -812,7 +836,9 @@ namespace OpenPmsDental {
 			Dashboard,
 			RegistrationKeyIsDisabled,
 			DataReaderNullMonitor,
-			VendorJobs
+			VendorJobs,
+			///<summary>Routine maintenance reminders (MaintAlerts.Sync).</summary>
+			MaintenanceReminders
 		}
 	}
 }

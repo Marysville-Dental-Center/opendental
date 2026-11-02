@@ -30,7 +30,8 @@ namespace AdoptionValidation {
 	///- grouppermission: the 25.4 blockout permission split that migration-preview lists (Migration26_1Plan): the Open Dental 25.3 PhoneExtension
 	///  grants move from 272 to 274 (PermType only), and each planned BlockoutAdd and BlockoutDelete grant is added as a copy of its Blockouts grant;
 	///  and the UDS+ step's report permissions: one Reports grant for the added row (FKey its DisplayReportNum, no date limit) per planned user group;
-	///  no other row may change, be added or go;
+	///  and the routine maintenance grant step's rows (MaintenanceGrantPlan): Maintenance Setup and Maintenance Record Completion (FKey 0, no date
+	///  limit) for each planned user group with Security Admin; no other row may change, be added or go;
 	///- codegroup: what the Insurance History step plans (InsHistCodeGroupPlan): the planned groups change only ProcCodes (to the planned codes) and
 	///  the three 26.1 history columns (to the planned values), and each planned new group is one added row with the planned values; no other row or
 	///  column may change, no other row may be added, and no row may go;
@@ -40,7 +41,7 @@ namespace AdoptionValidation {
 	///- claimpayment.Note: only NULL notes become empty strings, as many as migration-preview counts; insverify and insverifyhist.DateLastAssigned: every
 	///  value is the original date at midnight;
 	///- the tables the 25.4 and 26.1 steps add stay empty, and the columns they add hold the column's default in every row (the codegroup rows the
-	///  Insurance History step writes aside);
+	///  Insurance History step writes aside); this program's own tables (ForkTables, for example routine maintenance) are created empty too;
 	///- updatehistory: nothing.
 	///Read-only; it names rows, preferences, permissions, columns and report names, never other values. The original must be the unchanged database the
 	///copy was made from (runbook step 3.3 showed they were equal, and step 10.2 shows the original did not change).</summary>
@@ -95,12 +96,18 @@ namespace AdoptionValidation {
 			public int CountPermsRenumbered;
 			///<summary>Planned grants found, per permission ("BlockoutAdd" to the number of rows added).</summary>
 			public SortedDictionary<string,int> DictPermsGranted=new SortedDictionary<string,int>(StringComparer.Ordinal);
+			///<summary>The routine maintenance grant step's plan made from the original (what migration-preview lists for it).</summary>
+			public MaintenanceGrantPlan.Plan PlanMaintGrants;
+			///<summary>Routine maintenance grants the step added, all of them planned.</summary>
+			public int CountMaintGrantsAdded;
 			///<summary>claimpayment notes that were NULL and are now empty.</summary>
 			public long CountNotesBlanked;
 			///<summary>The new columns checked (table.column), each holding its default in every row.</summary>
 			public List<string> ListColumnsAddedChecked=new List<string>();
-			///<summary>The new tables, each empty.</summary>
+			///<summary>The new tables of the Open Dental 25.4 and 26.1 schema steps, each empty.</summary>
 			public List<string> ListTablesAdded=new List<string>();
+			///<summary>The new tables that are this program's own (ForkTables, for example routine maintenance), each empty.</summary>
+			public List<string> ListForkTablesAdded=new List<string>();
 
 			public bool Passed {
 				get { return ListFailures.Count==0; }
@@ -116,6 +123,7 @@ namespace AdoptionValidation {
 			result.PlanUdsPlus=UdsPlusRowPlan.Make(db,original,listRowsOriginal,ReportRows25_3.PlanRenames(listRowsOriginal),result.Plan26_1.IsFromBefore25_4);
 			result.PlanInsHist=InsHistCodeGroupPlan.Make(db,original,result.Plan26_1.IsFromBefore25_4);
 			result.PlanDxc=DxcCreditScorePlan.Make(db,original);
+			result.PlanMaintGrants=MaintenanceGrantPlan.Make(db,original);
 			CheckPreferences(db,original,adopted,result);
 			CheckDocumentMisc(db,original,adopted,result);
 			List<long> listLogAdded=CheckSecurityLog(db,original,adopted,result);
@@ -446,8 +454,9 @@ namespace AdoptionValidation {
 
 		///<summary>The 25.4 blockout permission split of the seed step (Seed26_1Step), as migration-preview plans it from the original
 		///(Migration26_1Plan): the Open Dental 25.3 PhoneExtension rows (272) move to 274, PermType only, and each planned BlockoutAdd and BlockoutDelete
-		///grant is one added row, a copy of its Blockouts row (user group, FKey, date limits) with the new PermType. Nothing else in grouppermission may
-		///change, be added or go.</summary>
+		///grant is one added row, a copy of its Blockouts row (user group, FKey, date limits) with the new PermType. The UDS+ step's Reports grants and
+		///the routine maintenance grant step's rows (MaintenanceGrantPlan: Maintenance Setup and Maintenance Record Completion, FKey 0, no date limit,
+		///for the planned Security Admin groups) are added rows too. Nothing else in grouppermission may change, be added or go.</summary>
 		private static void CheckGroupPermission(Db db,string original,string adopted,Result result) {
 			bool hasOriginal=Migration26_1Plan.HasTable(db,original,"grouppermission");
 			bool hasAdopted=Migration26_1Plan.HasTable(db,adopted,"grouppermission");
@@ -504,6 +513,11 @@ namespace AdoptionValidation {
 				listExpected.AddRange(listGroupsUds.Select(x => (new Migration26_1Plan.GroupPermRow { UserGroupNum=x,FKey=result.DisplayReportNumAdded,
 					NewerDate=DateTime.MinValue,NewerDays=0 }.Describe((int)EnumPermType.Reports),PermNameUdsPlusReports)));
 			}
+			//The routine maintenance grant step's rows: Maintenance Setup and Maintenance Record Completion (FKey 0, no date limit) for the planned
+			//Security Admin groups.
+			List<MaintPermissionGrants.Grant> listMaintGrants=result.PlanMaintGrants?.ListGrants??new List<MaintPermissionGrants.Grant>();
+			listExpected.AddRange(listMaintGrants.Select(x => (new Migration26_1Plan.GroupPermRow { UserGroupNum=x.UserGroupNum,FKey=0,NewerDate=DateTime.MinValue,
+				NewerDays=0 }.Describe((int)x.PermType),PermNameMaintenanceGrants)));
 			int countExpected=listExpected.Count;
 			if(diff.CountOnlySecond>diff.ListOnlySecond.Count) {
 				result.ListFailures.Add(diff.CountOnlySecond+" grouppermission rows were added; the fork migration adds "+countExpected+".");
@@ -518,12 +532,15 @@ namespace AdoptionValidation {
 						int index=listExpected.FindIndex(x => x.describe==describe);
 						if(index<0) {
 							result.ListFailures.Add("grouppermission row "+row.GroupPermNum+" ("+describe+") was added; the fork migration adds only the BlockoutAdd and "
-								+"BlockoutDelete grants and the UDS+ report's Reports grants migration-preview lists for "+original+".");
+								+"BlockoutDelete grants, the UDS+ report's Reports grants and the routine maintenance grants migration-preview lists for "+original+".");
 							continue;
 						}
 						string permName=listExpected[index].permName;
 						if(permName==PermNameUdsPlusReports) {
 							result.CountReportPermsCopied++;
+						}
+						else if(permName==PermNameMaintenanceGrants) {
+							result.CountMaintGrantsAdded++;
 						}
 						else {
 							result.DictPermsGranted[permName]=(result.DictPermsGranted.TryGetValue(permName,out int countSoFar) ? countSoFar : 0)+1;
@@ -547,11 +564,15 @@ namespace AdoptionValidation {
 				+", as migration-preview lists, each a copy of the group's "+EnumPermType.Blockouts+" grant"
 				+(result.PlanUdsPlus==null || !result.PlanUdsPlus.Rows.IsAdded ? "" : "; "+EnumPermType.Reports+" for the UDS+ report row granted to "
 					+result.CountReportPermsCopied+" of the "+listGroupsUds.Count+" user group(s) that may run the FQHC Dental Sealant Measure, as migration-preview lists")
+				+(listMaintGrants.Count==0 ? "" : "; "+string.Join(" and ",MaintPermissionGrants.ArrayPermTypes)+" for the user groups with Security Admin: "
+					+result.CountMaintGrantsAdded+" of the "+listMaintGrants.Count+" planned row(s) added (FKey 0, no date limit), as migration-preview lists")
 				+(isClean ? "; no other row changed, added or removed." : " (see the failures)."));
 		}
 
 		///<summary>The name under which the expected grants list the UDS+ report row step's Reports grants (not a permission the seed step grants).</summary>
 		private const string PermNameUdsPlusReports="UdsPlusReports";
+		///<summary>The name under which the expected grants list the routine maintenance grant step's rows (MaintenanceGrantPlan).</summary>
+		private const string PermNameMaintenanceGrants="MaintenanceGrants";
 
 		///<summary>The columns whose stored values the 25.4 and 26.1 steps change with their definition (Migration26_1Plan.ArrayValueChangingColumns):
 		///claimpayment.Note only from NULL to an empty string, as many as migration-preview counts; insverify and insverifyhist.DateLastAssigned only from a
@@ -852,7 +873,8 @@ namespace AdoptionValidation {
 			result.ListLines.Add("Changed columns: "+string.Join("; ",listParts)+".");
 		}
 
-		///<summary>The tables the copy has and the original lacks must be empty, and every column the copy's tables have and the original's lack must hold
+		///<summary>The tables the copy has and the original lacks must be empty (the Open Dental 25.4 and 26.1 tables and this program's own tables,
+		///ForkTables, listed apart), and every column the copy's tables have and the original's lack must hold
 		///the column's default in every row: the 25.4 and 26.1 schema steps add them and write nothing into them (evaluation.GradeOverride's default is
 		///-1, the "no override" back-fill). The one exception is the codegroup rows the Insurance History step writes (and any added row), which
 		///CheckCodeGroup holds to the plan.</summary>
@@ -860,12 +882,25 @@ namespace AdoptionValidation {
 			int countFailuresBefore=result.ListFailures.Count;
 			HashSet<string> setTablesOriginal=new HashSet<string>(TableNames(db,original),StringComparer.OrdinalIgnoreCase);
 			int countTablesWithRows=0;
+			int countForkTablesWithRows=0;
 			foreach(string table in TableNames(db,adopted).Where(x => !setTablesOriginal.Contains(x))) {
 				LocalOnly.EnsureSafeIdentifier(table);
-				result.ListTablesAdded.Add(table);
+				//This program's own tables (ForkTableSet, for example routine maintenance) are listed apart from the Open Dental 25.4 and 26.1 ones.
+				bool isForkTable=ForkTables.IsForkTable(table);
+				if(isForkTable) {
+					result.ListForkTablesAdded.Add(table);
+				}
+				else {
+					result.ListTablesAdded.Add(table);
+				}
 				long countRows=db.ScalarLong("SELECT COUNT(*) FROM `"+adopted+"`.`"+table+"`");
 				if(countRows>0) {
-					countTablesWithRows++;
+					if(isForkTable) {
+						countForkTablesWithRows++;
+					}
+					else {
+						countTablesWithRows++;
+					}
 					result.ListFailures.Add("The new table "+table+" holds "+countRows+" row(s); the fork migration only creates it.");
 				}
 			}
@@ -912,6 +947,9 @@ namespace AdoptionValidation {
 				+(result.ListTablesAdded.Count==0 ? "" : " ("+string.Join(", ",result.ListTablesAdded)+")")+"; "+result.ListColumnsAddedChecked.Count
 				+" new column(s) in "+result.ListColumnsAddedChecked.Select(x => x.Split('.')[0]).Distinct(StringComparer.OrdinalIgnoreCase).Count()
 				+" table(s) hold their default in every row"+(isClean ? "." : " (see the failures)."));
+			result.ListLines.Add("Fork tables: "+result.ListForkTablesAdded.Count+" new table(s) of this program, "
+				+(countForkTablesWithRows==0 ? "all empty" : countForkTablesWithRows+" not empty")
+				+(result.ListForkTablesAdded.Count==0 ? "." : " ("+string.Join(", ",result.ListForkTablesAdded)+")."));
 		}
 
 		///<summary>The SQL value every existing row of a column added by ALTER TABLE ... ADD COLUMN holds, from information_schema.COLUMNS: its declared

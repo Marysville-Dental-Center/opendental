@@ -174,6 +174,10 @@ namespace DevDbTool {
 			foreach(SchemaDifference difference in result.ListMismatches) {
 				ListProblems.Add("Schema differs from Open Dental "+SchemaVerifier.ReferenceVersion+": "+difference);
 			}
+			//This program's own tables (ForkTables), which the verifier allows as extra tables, must match their declarations exactly.
+			foreach(SchemaDifference difference in ForkTables.VerifyDatabase(databaseName).ListDifferences) {
+				ListProblems.Add("A table of this program differs from its declaration (ForkTables): "+difference);
+			}
 			ListNotes.Add("Schema matches Open Dental "+SchemaVerifier.ReferenceVersion+(result.IsMatch ? "" : " except as listed")+" ("
 				+result.ListAllowed.Count+" documented exception(s), for example tables Open Dental no longer has).");
 		}

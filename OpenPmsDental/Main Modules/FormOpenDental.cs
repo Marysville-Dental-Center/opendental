@@ -6394,6 +6394,12 @@ namespace OpenPmsDental{
 				case FormType.FormModuleSetup:
 					LaunchPrerencesWithMenuItem((int)alertItem.FKey);
 					break;
+				case FormType.FormMaintenanceBoard://Routine maintenance (fork only): the due and overdue board.
+					using(FormMaintBoard formMaintBoard=new FormMaintBoard()) {
+						formMaintBoard.ShowDialog();
+					}
+					CheckAlerts();
+					break;
 			}
 		}
 

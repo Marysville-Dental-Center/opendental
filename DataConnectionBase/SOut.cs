@@ -146,7 +146,9 @@ namespace DataConnectionBase {
 			}
 		}
 
-		///<summary>Returns a string representing the passed in number rounded to the specified number of decimal places.</summary>
+		///<summary>Returns a string representing the passed in number rounded to the specified number of decimal places, always with a period as
+		///the decimal separator (invariant culture), because the string goes into SQL. In the current culture a comma separator (de-DE, fr-CA and
+		///others) would split the value into two SQL values. The Crud classes call this for columns with CrudColumn DecimalPlaces.</summary>
 		public static string Double(double myDouble,int decimalPlaces) {
 			//example format string "0.00##"
 			if(decimalPlaces<0) {
@@ -162,7 +164,7 @@ namespace DataConnectionBase {
 					format+="#";
 					}
 				}
-				return myDouble.ToString(format);
+				return myDouble.ToString(format,CultureInfo.InvariantCulture);
 			}
 			catch(Exception ex) {
 				ex.DoNothing();

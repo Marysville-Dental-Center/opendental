@@ -290,6 +290,11 @@
     <Compile Include="Crud\LanguagePatCrud.cs" />
     <Compile Include="Crud\LimitedBetaFeatureCrud.cs" />
     <Compile Include="Crud\LoginAttemptCrud.cs" />
+    <Compile Include="Crud\MaintFieldCrud.cs" />
+    <Compile Include="Crud\MaintItemCrud.cs" />
+    <Compile Include="Crud\MaintRecordCrud.cs" />
+    <Compile Include="Crud\MaintRecordValueCrud.cs" />
+    <Compile Include="Crud\MaintStepCrud.cs" />
     <Compile Include="Crud\MapAreaContainerCrud.cs" />
     <Compile Include="Crud\MobileAppDeviceCrud.cs" />
     <Compile Include="Crud\MobileBrandingProfileCrud.cs" />
@@ -402,6 +407,11 @@
     <Compile Include="Data Interface\ImageDraws.cs" />
     <Compile Include="Data Interface\InsPlanPreferences.cs" />
     <Compile Include="Data Interface\LimitedBetaFeatures.cs" />
+    <Compile Include="Data Interface\MaintFields.cs" />
+    <Compile Include="Data Interface\MaintItems.cs" />
+    <Compile Include="Data Interface\MaintRecords.cs" />
+    <Compile Include="Data Interface\MaintRecordValues.cs" />
+    <Compile Include="Data Interface\MaintSteps.cs" />
     <Compile Include="Data Interface\OrthoChartRows.cs" />
     <Compile Include="Data Interface\OrthoChartLogs.cs" />
     <Compile Include="Data Interface\OrthoHardwares.cs" />
@@ -649,6 +659,11 @@
     <Compile Include="TableTypes\InsPlanPreference.cs" />
     <Compile Include="TableTypes\LimitedBetaFeature.cs" />
     <Compile Include="TableTypes\LoginAttempt.cs" />
+    <Compile Include="TableTypes\MaintField.cs" />
+    <Compile Include="TableTypes\MaintItem.cs" />
+    <Compile Include="TableTypes\MaintRecord.cs" />
+    <Compile Include="TableTypes\MaintRecordValue.cs" />
+    <Compile Include="TableTypes\MaintStep.cs" />
     <Compile Include="TableTypes\MobileAppDevice.cs" />
     <Compile Include="TableTypes\MobileDataByte.cs" />
     <Compile Include="TableTypes\ImagingDevice.cs" />
@@ -742,6 +757,8 @@
     <Compile Include="VendorDirect\**\*.cs" />
     <!-- Fork version guard, adoption and fork migrations (backlog M1-01 to M1-03; each migration step is its own file, so new steps need no csproj edit), and the fork release channel (M1-03). -->
     <Compile Include="Misc\ForkMigrations\**\*.cs" />
+    <Compile Include="Misc\Maintenance\**\*.cs" />
+    <Compile Include="Misc\ForkEnums.cs" />
     <Compile Include="Misc\ForkRelease\**\*.cs" />
     <!-- Appointments module rules from Open Dental 24.4 to 25.3 (backlog package B-APPT); new files in the folder need no csproj edit. -->
     <Compile Include="Misc\ApptModule\**\*.cs" />

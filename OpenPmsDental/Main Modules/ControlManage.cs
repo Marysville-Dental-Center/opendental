@@ -351,6 +351,12 @@ namespace OpenPmsDental{
 			Cursor=Cursors.Default;
 		}
 
+		///<summary>Routine maintenance: the due and overdue board (docs/specs/routine-maintenance.md). Viewing needs only this module.</summary>
+		private void butMaintenance_Click(object sender,EventArgs e) {
+			using FormMaintBoard formMaintBoard=new FormMaintBoard();
+			formMaintBoard.ShowDialog();
+		}
+
 		private void butSupply_Click(object sender,EventArgs e) {
 			using FormSupplyInventory formSupplyInventory=new FormSupplyInventory();
 			formSupplyInventory.ShowDialog();
@@ -645,6 +651,7 @@ namespace OpenPmsDental{
 				butBilling,
 				butDeposit,
 				butSupply,
+				butMaintenance,
 				butTasks,
 				butBackup,
 				butAccounting,

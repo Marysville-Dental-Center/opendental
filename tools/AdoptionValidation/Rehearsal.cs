@@ -226,10 +226,13 @@ namespace AdoptionValidation {
 				SchemaVerifyResult verifyResult=adoption.Verify;
 				_run.SchemaVerifierReport=verifyResult.GetReport();
 				//The source is Open Dental 25.3.48; adoption's fork migration brings it to the current reference (26.1.70 since M2-01).
-				Check("M2","Schema matches Open Dental "+SchemaVerifier.ReferenceVersion+" exactly",verifyResult.IsMatch && verifyResult.ListDifferences.Count==0,
-					verifyResult.CountTablesActual+" of "+verifyResult.CountTablesExpected+" tables; "+verifyResult.ListDifferences.Count+" differences, "
-					+verifyResult.ListMismatches.Count+" mismatches"+(verifyResult.ListDifferences.Count==0 ? " (no documented exception needed)" : ": "
-					+string.Join("; ",verifyResult.ListDifferences.Take(10).Select(x => x.Table+"."+x.Item))));
+				//This program's own tables (ForkTables) are extra tables that must match their declarations; nothing else may differ.
+				int countDifferencesOd=verifyResult.ListDifferences.Count-adoption.CountForkTables;
+				Check("M2","Schema matches Open Dental "+SchemaVerifier.ReferenceVersion+" exactly",adoption.IsSchemaExactMatch,
+					(verifyResult.CountTablesActual-adoption.CountForkTables)+" of "+verifyResult.CountTablesExpected+" tables, plus "+adoption.CountForkTables
+					+" of this program; "+countDifferencesOd+" differences, "+verifyResult.ListMismatches.Count+" mismatches"
+					+(countDifferencesOd==0 ? " (no documented exception needed)" : ": "
+					+string.Join("; ",verifyResult.ListDifferences.Where(x => !ForkTables.IsForkTable(x.Table)).Take(10).Select(x => x.Table+"."+x.Item))));
 				CheckReportRenames(preview,adoption,adoptionResult);
 				Check26_1Changes(preview,adoption,adoptionResult,fixture);
 				CheckUdsPlusRow(preview,adoption,adoptionResult);
@@ -569,13 +572,17 @@ namespace AdoptionValidation {
 			_run.TablesUntouched=baseline.Tables.Count(x => !setTouched.Contains(x.Name));
 			int countUntouchedWithRows=baseline.Tables.Count(x => !setTouched.Contains(x.Name) && x.Rows>0);
 			List<Difference> listRows=listDiffs.Where(x => x.Kind==DifferenceKind.RowsChanged).ToList();
-			//The only tables that may come or go are the new tables of the Open Dental 25.4 and 26.1 schema steps (allowed TableAdded differences).
+			//The only tables that may come or go are the new tables of the Open Dental 25.4 and 26.1 schema steps and this program's own tables
+			//(ForkTables), each an allowed TableAdded difference.
 			List<Difference> listTablesAdded=listDiffs.Where(x => x.Kind==DifferenceKind.TableAdded).ToList();
+			List<Difference> listTablesAddedOd=listTablesAdded.Where(x => !ForkTables.IsForkTable(x.Table)).ToList();
+			List<Difference> listTablesAddedFork=listTablesAdded.Where(x => ForkTables.IsForkTable(x.Table)).ToList();
 			bool isTableCountExpected=listTablesAdded.All(x => x.IsAllowed) && !listDiffs.Any(x => x.Kind==DifferenceKind.TableRemoved)
 				&& after.TableCount==baseline.TableCount+listTablesAdded.Count;
 			Check("V1","Row counts unchanged except where adoption deletes or adds rows, and no table gone",listRows.All(x => x.IsAllowed) && isTableCountExpected,
-				baseline.TableCount+" tables before, "+after.TableCount+" after ("+listTablesAdded.Count+" new from the Open Dental 25.4 and 26.1 schema steps"
-				+(listTablesAdded.Count==0 ? "" : ": "+string.Join(", ",listTablesAdded.Select(x => x.Table)))+"); "+(baseline.TotalRows).ToString("N0")+" rows before, "
+				baseline.TableCount+" tables before, "+after.TableCount+" after ("+listTablesAddedOd.Count+" new from the Open Dental 25.4 and 26.1 schema steps"
+				+(listTablesAddedOd.Count==0 ? "" : ": "+string.Join(", ",listTablesAddedOd.Select(x => x.Table)))+"; "+listTablesAddedFork.Count+" of this program"
+				+(listTablesAddedFork.Count==0 ? "" : ": "+string.Join(", ",listTablesAddedFork.Select(x => x.Table)))+"); "+(baseline.TotalRows).ToString("N0")+" rows before, "
 				+after.TotalRows.ToString("N0")+" after; changed: "+(listRows.Count==0 ? "none" : string.Join(", ",listRows.Select(x => x.Table+" "+x.Before+" -> "+x.After))));
 			Check("V2","Checksums of untouched tables identical",listDiffs.Where(x => x.Table!=null).All(x => x.IsAllowed),
 				_run.TablesUntouched+" of "+baseline.TableCount+" tables ("+countUntouchedWithRows+" that hold rows and "+(_run.TablesUntouched-countUntouchedWithRows)
@@ -646,10 +653,11 @@ namespace AdoptionValidation {
 			ForkMigrationResult migrationResult=again.Migration;
 			SchemaVerifyResult verifyResult=again.Verify;
 			Check("I2","A second fork migration changes nothing and the schema still matches",again.WasAlreadyAdopted && again.Adoption==null
-				&& migrationResult.ListChanges.Count==0 && !again.HasPendingMigrations && verifyResult.IsMatch && verifyResult.ListDifferences.Count==0
+				&& migrationResult.ListChanges.Count==0 && !again.HasPendingMigrations && again.IsSchemaExactMatch
 				&& again.RowCheck!=null && again.RowCheck.Passed,
 				"adoption skipped (already adopted); "+migrationResult.ListStepsRun.Count+" steps run, "+migrationResult.ListChanges.Count+" changes; verifier "
-				+verifyResult.ListDifferences.Count+" differences; row check against the source "+(again.RowCheck!=null && again.RowCheck.Passed ? "passed"
+				+(verifyResult.ListDifferences.Count-again.CountForkTables)+" differences (and "+again.CountForkTables+" table(s) of this program); row check against the source "
+				+(again.RowCheck!=null && again.RowCheck.Passed ? "passed"
 				: "failed: "+string.Join(" ",again.RowCheck?.ListFailures??new List<string>())));
 			ValidationReport afterRerun=Validator.Run(db,adopted,null,null);
 			List<Difference> listDiffs=ReportComparer.Compare(afterFirstPass,afterRerun,null);

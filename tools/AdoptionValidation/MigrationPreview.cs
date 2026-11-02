@@ -23,7 +23,9 @@ namespace AdoptionValidation {
 	///- the UDS+ report row step (ReportRowUdsPlusStep, M2-UDS) adds the row of the 25.4 UDS+ report after the FQHC Dental Sealant Measure, moves the
 	///  later Public Health rows down one place and copies the sealant measure's report permissions to it (UdsPlusRowPlan);
 	///- the Insurance History step (InsHistCodeGroupsStep, M2-HIST) marks the code groups of the InsHist*Codes preferences Show In History, adds
-	///  their codes and creates a group for a category without one (InsHistCodeGroupPlan).
+	///  their codes and creates a group for a category without one (InsHistCodeGroupPlan);
+	///- the routine maintenance grant step (MaintPermissionGrantStep) gives every user group with Security Admin Maintenance Setup and Maintenance
+	///  Record Completion, the rows it lacks (MaintenanceGrantPlan). The routine maintenance tables are created empty.
 	///adopt's row check (AdoptionRowCheck) holds the adopted copy to the same plans, made from the original. The last line lists the program rows
 	///that name a plug-in DLL, which adoption does not change but which stop loading in this program (GetPluginLine). Reads the displayreport
 	///table, the preferences, grouppermission, whether claimpayment notes are NULL, program, toolbutitem, codegroup and the procedure codes.</summary>
@@ -44,6 +46,8 @@ namespace AdoptionValidation {
 			public UdsPlusRowPlan.Plan PlanUdsPlus=new UdsPlusRowPlan.Plan();
 			///<summary>What the Insurance History step changes.</summary>
 			public InsHistCodeGroupPlan.Plan PlanInsHist=new InsHistCodeGroupPlan.Plan();
+			///<summary>What the routine maintenance grant step changes.</summary>
+			public MaintenanceGrantPlan.Plan PlanMaintGrants=new MaintenanceGrantPlan.Plan();
 			///<summary>The program rows that name a plug-in DLL (PluginDllName), in ProgramNum order. Adoption changes none of them; it is listed so
 			///that an office sees, before it switches, which plug-ins will stop loading.</summary>
 			public List<PluginRow> ListPluginRows=new List<PluginRow>();
@@ -82,6 +86,7 @@ namespace AdoptionValidation {
 				listLines.AddRange(PlanDxc.Lines());
 				listLines.AddRange(PlanUdsPlus.Lines());
 				listLines.AddRange(PlanInsHist.Lines());
+				listLines.AddRange(PlanMaintGrants.Lines());
 				listLines.Add(GetPluginLine(ListPluginRows));
 				return listLines;
 			}
@@ -148,6 +153,7 @@ namespace AdoptionValidation {
 			result.PlanDxc=DxcCreditScorePlan.Make(db,database);
 			result.PlanUdsPlus=UdsPlusRowPlan.Make(db,database,listRows,result.ListPlans,result.Plan26_1.IsFromBefore25_4);
 			result.PlanInsHist=InsHistCodeGroupPlan.Make(db,database,result.Plan26_1.IsFromBefore25_4);
+			result.PlanMaintGrants=MaintenanceGrantPlan.Make(db,database);
 			result.ListPluginRows=ReadPluginRows(db,database);
 			return result;
 		}
