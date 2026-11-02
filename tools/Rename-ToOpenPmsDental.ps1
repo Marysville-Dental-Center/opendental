@@ -30,7 +30,8 @@
 	  folder of a relative path (..\OpenDental\...) and project, dll, exe, pdb and xml file names in paths. XML comments are kept.
 	- Solutions: the project entries (names and paths) of every .sln and .slnf. The OpenDental.sln and OpenDental.Local.slnf file names stay.
 	- app.config section names, Settings.settings namespaces, ServiceMain.asmx Class=, data source type names, class diagram type names,
-	  the old Middle Tier publish record and relative paths in batch files.
+	  the old Middle Tier publish record, relative paths in batch files, and the project folder in the repository paths of the tools
+	  (Test-NoHqHosts.ps1's allow-list, New-DevDatabase.ps1, New-OdReferenceDatabase.ps1).
 
 	Kept on purpose: everything else, in particular text, comments and docs (a later step), string literals outside the list, enum
 	members, preference names and values, the database, OpenDental.sln and OpenDental.Local.slnf as file names, FreeDentalConfig.xml and
@@ -145,6 +146,10 @@ $TextRules=@(
 	@{ Category='Middle Tier publish record (file names)'; Path='*\*.Publish.xml'; XmlComments=$true; Regex="relUrl=`"bin/$Old\." }
 	@{ Category='Batch files: relative paths (folder)'; Path='*.bat'; Regex="(?<=\.\.[\\/])$Old(?=[\\/`"]|$)" }
 	@{ Category='Batch files: relative paths (folder)'; Path='*.cmd'; Regex="(?<=\.\.[\\/])$Old(?=[\\/`"]|$)" }
+	#--- The repository's PowerShell tools: the project folder at the start of an allow-list path (Test-NoHqHosts.ps1) and of a path joined
+	#    to the repository root (New-DevDatabase.ps1, New-OdReferenceDatabase.ps1). Their comments and messages are kept.
+	@{ Category='Tools: project folders in repository paths'; Path='tools\*.ps1'; Regex="(?<=\bPath='|\bPath=`")$Old(?=\\)" }
+	@{ Category='Tools: project folders in repository paths'; Path='tools\*.ps1'; Regex="(?<=Join-Path\s+\`$repoRoot\s+['`"])$Old(?=\\)" }
 )
 
 #Never edited: this script, the leftover-name scanner, and the history the scanner allows as whole files.
