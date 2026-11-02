@@ -27,9 +27,9 @@ namespace ReleaseFlowTests {
 			//Built from source and shipped since package RDL-SRC; RDL report definitions load it by file name, so its version is never compared.
 			new ShippedProject("ODR","xODR.csproj","4.6.1",null),
 			new ShippedProject("OpenPmsDental","OpenPmsDental.csproj","24.3.63.0",null),
-			new ShippedProject("OpenPmsDentalCloud","OpenPmsDentalCloud.csproj","16.4.0.0","1.0.0.0"),
 			new ShippedProject("OpenPmsDentalGraph","OpenPmsDentalGraph.csproj","16.1.1.0","16.1.1.0"),
 			new ShippedProject("OpenPmsDentalServer","OpenPmsDentalServer.csproj","24.3.63.0",null),
+			new ShippedProject("OpenPmsDentalStorage","OpenPmsDentalStorage.csproj","16.4.0.0","1.0.0.0"),
 			new ShippedProject("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj","24.3.63.0",null),
 			new ShippedProject("OpenPmsDentalHL7","OpenPmsDentalHL7.csproj","24.3.63.0",null),
 			new ShippedProject("PasswordVaultWrapper","PasswordVaultWrapper.csproj","1.0.0.0","1.0.0.0"),
@@ -42,7 +42,7 @@ namespace ReleaseFlowTests {
 		///<summary>The program's own assemblies in OpenPmsDental's output folder, which carry the shared assembly info.</summary>
 		private static readonly string[] _arrayBuiltAssemblies=new string[] {
 			"OpenPmsDental.exe","OpenPmsDentalBusiness.dll","CodeBase.dll","DataConnectionBase.dll","WpfControlsOD.dll","OpenPmsDentalGraph.dll",
-			"OpenPmsDentalCloud.dll","SparksToothChart.dll","ODCrypt.dll","PasswordVaultWrapper.dll","ImagingCapture.dll","ImagingDeviceManager.dll",
+			"OpenPmsDentalStorage.dll","SparksToothChart.dll","ODCrypt.dll","PasswordVaultWrapper.dll","ImagingCapture.dll","ImagingDeviceManager.dll",
 			"ServiceManager.exe","UpdateFileCopier.exe","ODR.dll",
 		};
 

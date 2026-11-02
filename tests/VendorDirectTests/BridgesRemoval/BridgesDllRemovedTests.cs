@@ -37,7 +37,7 @@ namespace VendorDirectTests.BridgesRemoval {
 		private static readonly string[] _arrayRemovedAssemblies=_arrayRemovedFiles.Select(x => Path.GetFileNameWithoutExtension(x)).ToArray();
 		///<summary>The projects whose source the program is built from.</summary>
 		private static readonly string[] _arraySourceProjects=new[] { "OpenPmsDental","OpenPmsDentalBusiness","WpfControlsOD","CodeBase","OpenPmsDentalServer",
-			"OpenPmsDentalCloud","UnitTests" };
+			"OpenPmsDentalStorage","UnitTests" };
 
 		private static string GetRoot() {
 			return FoundationLayoutTests.GetRepositoryRoot();
@@ -169,19 +169,19 @@ namespace VendorDirectTests.BridgesRemoval {
 		[TestMethod]
 		public void SshNetDependency_StillReachesTheProgram() {
 			//Renci.SshNet (SSH.NET 2024.1.0, net462) references Microsoft.Bcl.AsyncInterfaces 1.0.0.0. The Graph SDK used to bring the 6.0.0.0 copy and
-			//its redirect in, so OpenPmsDentalCloud now references it itself. Without it, SFTP A to Z storage and the TSI uploads fail when SftpClient loads.
-			Assert.IsTrue(Regex.IsMatch(ReadRepoFile(@"OpenPmsDentalCloud\OpenPmsDentalCloud.csproj"),
+			//its redirect in, so OpenPmsDentalStorage now references it itself. Without it, SFTP A to Z storage and the TSI uploads fail when SftpClient loads.
+			Assert.IsTrue(Regex.IsMatch(ReadRepoFile(@"OpenPmsDentalStorage\OpenPmsDentalStorage.csproj"),
 				@"<Reference Include=""Microsoft\.Bcl\.AsyncInterfaces[,""][^>]*>\s*<HintPath>\.\.\\Required dlls\\Microsoft\.Bcl\.AsyncInterfaces\.dll</HintPath>"),
-				"OpenPmsDentalCloud should reference Required dlls\\Microsoft.Bcl.AsyncInterfaces.dll next to Renci.SshNet.");
+				"OpenPmsDentalStorage should reference Required dlls\\Microsoft.Bcl.AsyncInterfaces.dll next to Renci.SshNet.");
 			string folder=Path.Combine(GetRoot(),@"OpenPmsDental\bin\Debug");
 			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
 				Assert.Inconclusive(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Renci.SshNet.dll")));
 			//A HintPath alone does not carry it to the hosts: the compiler drops unused references, and the hosts' build will not take 6.0.0.0 for
-			//SSH.NET's 1.0.0.0. OpenPmsDentalCloud must use it, so its own reference is what every host copies.
-			Assert.IsTrue(GetReferencedAssemblyNames(Path.Combine(folder,"OpenPmsDentalCloud.dll")).Contains("Microsoft.Bcl.AsyncInterfaces"),
-				"OpenPmsDentalCloud.dll should reference Microsoft.Bcl.AsyncInterfaces.");
+			//SSH.NET's 1.0.0.0. OpenPmsDentalStorage must use it, so its own reference is what every host copies.
+			Assert.IsTrue(GetReferencedAssemblyNames(Path.Combine(folder,"OpenPmsDentalStorage.dll")).Contains("Microsoft.Bcl.AsyncInterfaces"),
+				"OpenPmsDentalStorage.dll should reference Microsoft.Bcl.AsyncInterfaces.");
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Bcl.AsyncInterfaces.dll")),"SSH.NET's dependency is not copied to the program folder.");
 			string pathConfig=Path.Combine(folder,"OpenPmsDental.exe.config");
 			StringAssert.Matches(File.ReadAllText(pathConfig),

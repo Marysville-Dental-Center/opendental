@@ -211,6 +211,34 @@ namespace ReleaseFlowTests {
 			}
 		}
 
+		///<summary>A file that an earlier release shipped and this one does not (ForkReleases.ListRetiredFiles, such as the storage library of
+		///v0.0) is never staged: it is not on the allow-list, and a leftover copy in the build output or the staging folder is refused with a
+		///reason.</summary>
+		[TestMethod]
+		public void CheckFolder_RefusesARetiredFile() {
+			Assert.IsTrue(ForkReleases.ListRetiredFiles.Count>0);
+			List<string> listPaths=ListFiles().Select(x => x.Value).ToList();
+			foreach(string name in ForkReleases.ListRetiredFiles) {
+				Assert.IsFalse(listPaths.Contains(name,StringComparer.OrdinalIgnoreCase),"A retired file is on the allow-list: "+name);
+			}
+			CollectionAssert.Contains(listPaths,ProgramNames.CloudDllFileName,"The storage library ships under its new name.");
+			string folder=NewFakeStaging("retired");
+			try {
+				foreach(string name in ForkReleases.ListRetiredFiles) {
+					File.WriteAllText(Path.Combine(folder,name),"synthetic leftover");
+				}
+				ScriptResult scriptResult=CheckFolder(folder);
+				Assert.AreEqual(1,scriptResult.ExitCode,scriptResult.Output);
+				foreach(string name in ForkReleases.ListRetiredFiles) {
+					Assert.IsTrue(scriptResult.Lines.Any(x => x.StartsWith("Denied file: "+name+" (")),"Not refused with a reason: "+name+"\r\n"+scriptResult.Output);
+				}
+				Assert.IsFalse(scriptResult.Lines.Any(x => x.StartsWith("Missing:")),scriptResult.Output);
+			}
+			finally {
+				DeleteFolder(folder);
+			}
+		}
+
 		[TestMethod]
 		public void CheckFolder_FailsWhenTheRuntimeFilesOrTheDocumentsAreMissing() {
 			string folder=NewFakeStaging("missing");
@@ -330,6 +358,23 @@ namespace ReleaseFlowTests {
 			StringAssert.Contains(iss,"procedure RemoveProgramFolder;");
 			Assert.IsFalse(iss.Contains("[UninstallDelete]"),"The program folder is removed in code, which keeps an A to Z folder.");
 			StringAssert.Contains(iss,"function CheckInstallFolder(");
+		}
+
+		///<summary>UpdateFileCopier never deletes a file, so setup is what removes the files of an earlier release that this one no longer ships
+		///(ForkReleases.ListRetiredFiles): an upgrade deletes each one from the program folder, and nothing else.</summary>
+		[TestMethod]
+		public void Iss_DeletesTheRetiredFilesOnAnUpgrade() {
+			string iss=ReadIss();
+			Match match=Regex.Match(iss,@"(?ms)^\[InstallDelete\]\r?\n(.*?)(?=^\[)");
+			Assert.IsTrue(match.Success,"No [InstallDelete] section before the next section.");
+			List<string> listEntries=match.Groups[1].Value.Split('\n').Select(x => x.Trim()).Where(x => x!="" && !x.StartsWith(";")).ToList();
+			List<string> listExpected=ForkReleases.ListRetiredFiles.Select(x => @"Type: files; Name: ""{app}\"+x+@"""").ToList();
+			CollectionAssert.AreEquivalent(listExpected,listEntries,"One entry per retired file, and only files in the program folder.");
+			Assert.AreEqual(1,Regex.Matches(iss,@"(?m)^\[InstallDelete\]").Count);
+			//Setup never deletes a file this release installs: CheckFolder_RefusesARetiredFile keeps every retired file off the allow-list.
+			foreach(string name in ForkReleases.ListRetiredFiles) {
+				Assert.IsFalse(ForkReleases.ListBuildIdFiles.Contains(name,StringComparer.OrdinalIgnoreCase),name);
+			}
 		}
 
 		[TestMethod]
