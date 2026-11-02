@@ -3,9 +3,8 @@
 Builds an Open PMS - Dental release: a Release x86 build, one checked staging folder, SHA256SUMS.txt and the Inno Setup installer.
 
 .DESCRIPTION
-0. Refuses a release while a file that blocks it is on the allow-list and its owner question is not settled (the release blockers below:
-   PdfSharp.License.dll, whose source empira does not publish, until -PdfSharpLicenceResolved). The staging check refuses it again.
-1. Builds OpenDental.Local.slnf as Release x86, through the shared build lane when -BuildLane is given.
+1. Builds OpenDental.Local.slnf as Release x86, through the shared build lane when -BuildLane is given. PDFsharp/MigraDoc and
+   WeCantSpell.Hunspell build from their source in the git submodules under third-party\ (docs\third-party-source-builds.md).
 2. Checks OpenPmsDental\bin\Release: every file must be on the allow-list below or be one the release never ships (debug symbols,
    XML documentation). A file on the deny-list, an unknown file or a sub folder fails the script.
 3. Stages the allowed files into one folder (<OutDir>\staging), with LICENSE, LICENSE-GPL-3.0.txt, LICENSE-AGPL-3.0.txt,
@@ -17,14 +16,19 @@ Builds an Open PMS - Dental release: a Release x86 build, one checked staging fo
 5. Writes the setup's information page (installer\setup-info.txt with NOTICE) and License Agreement page (installer\setup-license.txt:
    how the installed program is licensed, then LICENSE-GPL-3.0.txt) into <OutDir>, compiles installer\OpenPmsDental.iss with Inno Setup 6
    into <OutDir>, and adds the setup's SHA-256 to SHA256SUMS.txt.
-6. With -CopyTo, copies the setup, SHA256SUMS.txt and the release notes (docs\release-notes\v<version>.md) there.
+6. Writes the source archive, <OutDir>\OpenPmsDental-<version>-source.zip: the repository at the release commit (git archive HEAD) with
+   every submodule at the commit the release commit pins (PDFsharp/MigraDoc and WeCantSpell.Hunspell), and SOURCE-COMMITS.txt naming them,
+   so the Corresponding Source of everything the setup ships is published with the release even if an upstream repository goes away. Its
+   SHA-256 goes into SHA256SUMS.txt. A submodule that is not checked out at its pinned commit fails the script: the shipped files were
+   built from the checkout.
+7. With -CopyTo, copies the setup, the source archive, SHA256SUMS.txt and the release notes (docs\release-notes\v<version>.md) there.
 
 The staging folder is exactly what the installer puts in the program folder. The uninstaller goes to the program folder's "uninstall"
 sub folder, never the top level: a release published from the update server holds every top-level file of the program folder.
 
 Nothing is downloaded and nothing connects to a database.
 
-Exit codes: 0 done; 1 a check failed; 2 the build failed; 3 the installer did not compile; 4 a tool or file is missing.
+Exit codes: 0 done; 1 a check failed; 2 the build failed; 3 the installer did not compile; 4 a tool or file is missing (git, a submodule).
 
 .PARAMETER BuildLane
 Path of the shared build lane script (odbuild.ps1) of this PC. The build then runs through it, so only one build runs at a time.
@@ -62,13 +66,9 @@ Only print the allow-list, one "own|name", "third|name" or "doc|path" line per f
 Only write the setup's two pages, setup-info.txt and setup-license.txt, into this folder (created if missing), as a release writes them
 into <OutDir>. Nothing is built or checked. Used by tests\ReleaseFlowTests\InstallerTests.cs.
 
-.PARAMETER PdfSharpLicenceResolved
-Records that the owner has settled the question of PdfSharp.License.dll (docs/owner-questions.md, "PdfSharp.License.dll has no published
-source"), so a release may ship it. The file is a prebuilt part of PDFsharp 6.5 whose source empira does not publish, while the GNU GPL 3.0
-and AGPL 3.0 (sections 1 and 6) ask whoever conveys the program for the Corresponding Source of every library it is designed to require.
-Pass it only once empira has supplied the source or a written permission, counsel has cleared shipping it, or the commercial licence has
-been bought. Without it, a release that ships the file fails (exit 1). The other way out is PDFsharp/MigraDoc 6.2.4 (MIT), which has no
-licence file.
+.PARAMETER WriteSourceArchive
+Only write the source archive (step 6) into this folder (created if missing) and print its path. Nothing is built or checked. Used by
+tests\PdfLibraryTests\SourceArchiveTests.cs.
 
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\Build-Release.ps1 -BuildLane C:\path\to\odbuild.ps1 -CopyTo D:\releases\v0.0
@@ -86,7 +86,7 @@ param(
 	[string]$CheckFolder='',
 	[switch]$ListFiles,
 	[string]$WriteSetupTexts='',
-	[switch]$PdfSharpLicenceResolved
+	[string]$WriteSourceArchive=''
 )
 Set-StrictMode -Version 2
 $ErrorActionPreference='Stop'
@@ -134,17 +134,24 @@ foreach($name in @('Dicom.Core.dll','Dicom.Native.dll','DiffieHellman.dll','Goog
 	'Google.Apis.Gmail.v1.dll','Health.Direct.Agent.dll','Health.Direct.Common.dll','Health.Direct.ResolverPlugins.dll',
 	'Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Extensions.DependencyInjection.Abstractions.dll','Microsoft.Extensions.Logging.Abstractions.dll',
 	'Microsoft.Identity.Client.dll','Microsoft.IdentityModel.Abstractions.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll',
-	'Microsoft.Web.WebView2.Wpf.dll','MigraDoc.DocumentObjectModel.dll','MigraDoc.Rendering-gdi.dll','MimeKit.dll','MySqlConnector.dll','NDde.dll',
-	'Newtonsoft.Json.dll','OpenPop.dll','Org.Mentalis.Security.dll','PdfSharp-gdi.dll','PdfSharp.Charting-gdi.dll',
-	'PdfSharp.License.dll','PdfSharp.Shared.dll','PdfSharp.System.dll','Renci.SshNet.dll',
+	'Microsoft.Web.WebView2.Wpf.dll','MimeKit.dll','MySqlConnector.dll','NDde.dll',
+	'Newtonsoft.Json.dll','OpenPop.dll','Org.Mentalis.Security.dll','Renci.SshNet.dll',
 	'SharpDX.dll','SharpDX.Direct3D9.dll','SharpDX.Mathematics.dll','System.Buffers.dll','System.Diagnostics.DiagnosticSource.dll',
 	'System.Memory.dll','System.Numerics.Vectors.dll','System.Runtime.CompilerServices.Unsafe.dll','System.Threading.Tasks.Extensions.dll',
-	'Tamir.SharpSSH.dll','Tao.OpenGl.dll','Tao.Platform.Windows.dll','WeCantSpell.Hunspell.dll','WebView2Loader.dll'))
+	'Tamir.SharpSSH.dll','Tao.OpenGl.dll','Tao.Platform.Windows.dll','WebView2Loader.dll'))
 {
 	$ThirdPartyFiles[$name]='Required dlls'
 }
 $ThirdPartyFiles['RdlEngine.dll']='RdlEngine\bin\Release'
 $ThirdPartyFiles['RdlViewer.dll']='RdlViewer\bin\Release'
+#Built here from the upstream source in the git submodules under third-party\ (docs\third-party-source-builds.md): PDFsharp and MigraDoc
+#6.5.0 (third-party\PDFsharp, with this project's PdfSharpLicense.cs in place of empira's wrapper around its closed PdfSharp.License.dll,
+#which no release ships) and WeCantSpell.Hunspell 7.0.1 (third-party\WeCantSpell.Hunspell).
+foreach($name in @('PdfSharp-gdi','PdfSharp.Charting-gdi','PdfSharp.Shared','PdfSharp.System','MigraDoc.DocumentObjectModel','MigraDoc.Rendering-gdi',
+	'WeCantSpell.Hunspell'))
+{
+	$ThirdPartyFiles[$name+'.dll']='third-party\build\'+$name+'\bin\Release'
+}
 
 #Files from the repository: the path in the program folder, and the repository-relative source. LICENSE-LGPL-2.1.txt is the licence
 #text the LGPL 2.1 asks for with every copy of the libraries the release ships under it (RdlEngine.dll, RdlViewer.dll,
@@ -171,18 +178,12 @@ $RequiredReasons=[ordered]@{
 	'LICENSE-LGPL-2.1.txt'='the LGPL 2.1 (sections 1 and 4) asks for its text with every copy of RdlEngine.dll, RdlViewer.dll and WeCantSpell.Hunspell.dll'
 	'LICENSE-AGPL-3.0.txt'='the GNU AGPL 3.0 (section 4) asks for its text with every copy of PDFsharp and MigraDoc'
 	'LICENSE-GPL-3.0.txt'='the program with PDFsharp and MigraDoc is conveyed under the GNU GPL 3.0, whose section 4 asks for its text with every copy'
-	'PdfSharp.License.dll'='PdfSharp-gdi.dll checks the licence through it before it makes or reads any PDF'
+	'PdfSharp-gdi.dll'='every PDF the program makes or reads goes through it; it holds the AGPL licence check that PdfSharpSetup.Init satisfies'
 }
 
-#Release blockers: an allowed file that no release may ship until the owner settles its question (docs/owner-questions.md), the switch
-#that records the answer, and why. A blocker ends when its file leaves the allow-list or its switch is given.
-#PdfSharp.License.dll: PDFsharp 6.5 refuses to work until PdfSharpSetup.Init selects the AGPL licence through it, but empira publishes it
-#only as a prebuilt file (its source is not in https://github.com/empira/PDFsharp), so this project cannot supply its Corresponding Source
-#(GPL 3.0 and AGPL 3.0, sections 1 and 6). The leading comma keeps a list of one entry a list of entries.
-$ReleaseBlockers=@(
-	,@('PdfSharp.License.dll','PdfSharpLicenceResolved',
-		'empira publishes it only prebuilt, so its Corresponding Source cannot be supplied under the GNU GPL 3.0 and AGPL 3.0, sections 1 and 6. Pass -PdfSharpLicenceResolved only once empira has supplied the source or a written permission, counsel has cleared it, or the commercial licence has been bought; or go back to PDFsharp/MigraDoc 6.2.4 (MIT). See docs/owner-questions.md, "PdfSharp.License.dll has no published source"')
-)
+#The source archive's name and top folder ({0}: the release version). It holds the repository at the release commit and every submodule
+#(third-party\PDFsharp, third-party\WeCantSpell.Hunspell) at the commit the release commit pins (git ls-tree HEAD, .gitmodules).
+$SourceArchiveName='OpenPmsDental-{0}-source'
 
 #Native files: they must be x86 and must not need the debug C runtime, which may not be redistributed.
 $NativeFiles=@('Direct2dWrapper.dll','WebView2Loader.dll','Dicom.Native.dll')
@@ -231,6 +232,7 @@ $DenyList=@(
 	@('DotNetZip*','DotNetZip: MS-PL, abandoned, CVE-2024-48510 (replaced in BIN-B)'),
 	@('NHunspell.dll','NHunspell 0.9.6, a wrapper of the native Hunspell 1.2 (replaced by the managed WeCantSpell.Hunspell in the library updates)'),
 	@('Hunspellx*.dll',"NHunspell's native Hunspell 1.2 (removed with NHunspell; WeCantSpell.Hunspell needs no native file)"),
+	@('PdfSharp.License.dll',"empira's closed licence check of PDFsharp 6.5, whose source is not published; the PdfSharp-gdi.dll built here holds the AGPL licence check itself (third-party\build\PdfSharp-gdi\PdfSharpLicense.cs)"),
 	@('TWAINDSM.dll',"the TWAIN data source manager comes with the scanner's driver; one in the program folder would be loaded first"),
 	@('FreeDentalConfig.xml','the connection settings of each computer; the installer writes it, a release never carries it'),
 	@('OpenDentalServerConfig.xml','the Middle Tier settings of each server'),
@@ -330,21 +332,6 @@ function Get-AllowedPaths {
 	return $list
 }
 
-#The release blockers still open: one "Release blocked: <file> (<why>)" line for each blocker whose file is on the allow-list and whose
-#switch was not given.
-function Get-ReleaseBlockers {
-	$blockers=New-Object 'System.Collections.Generic.List[string]'
-	$allowedSet=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-	foreach($path in Get-AllowedPaths){ [void]$allowedSet.Add($path) }
-	foreach($entry in $ReleaseBlockers){
-		$resolved=[bool](Get-Variable -Name $entry[1] -Scope Script -ValueOnly)
-		if($allowedSet.Contains($entry[0]) -and -not $resolved){
-			$blockers.Add("Release blocked: $($entry[0]) ($($entry[2]))")
-		}
-	}
-	return ,$blockers
-}
-
 #The setup's two pages, written into the folder: setup-info.txt (the information page: installer\setup-info.txt with NOTICE) and
 #setup-license.txt (the License Agreement page: installer\setup-license.txt, which says how the installed program is licensed, with
 #LICENSE-GPL-3.0.txt, the license the program is conveyed under as installed). UTF-8 with a byte order mark and CRLF line ends, as Inno
@@ -399,9 +386,6 @@ function Test-StagingFolder([string]$folder,[switch]$Full){
 			else{ $problems.Add("Missing: $path") }
 		}
 	}
-	#No release ships a file whose owner question is open.
-	$blockers=Get-ReleaseBlockers
-	foreach($blocker in $blockers){ $problems.Add($blocker) }
 	#Every third-party file is named in the notices file that ships with it.
 	$noticesPath=Join-Path $folder 'THIRD-PARTY-NOTICES.txt'
 	if(Test-Path -LiteralPath $noticesPath -PathType Leaf){
@@ -472,6 +456,151 @@ function Find-MSBuild {
 	return $found
 }
 
+#git from the PATH, or $null.
+function Find-Git {
+	$command=Get-Command 'git.exe' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+	if($command){ return $command.Source }
+	return $null
+}
+
+#Runs git in the folder and returns its output lines. Throws with git's own message when git fails.
+function Invoke-Git([string]$folder,[string[]]$arguments){
+	$saved=$ErrorActionPreference
+	$ErrorActionPreference='Continue'
+	try{
+		$output=@(& $script:GitPath -C $folder @arguments 2>&1 | ForEach-Object { "$_" })
+		$exitCode=$LASTEXITCODE
+	}
+	finally{ $ErrorActionPreference=$saved }
+	if($exitCode -ne 0){ throw "git $($arguments -join ' ') failed in ${folder}: $($output -join ' ')" }
+	return $output
+}
+
+#The submodules the release commit pins: their path, the pinned commit (the gitlinks of git ls-tree HEAD) and their address in the
+#release commit's .gitmodules.
+function Get-PinnedSubmodules {
+	$list=New-Object 'System.Collections.Generic.List[object]'
+	foreach($line in Invoke-Git $RepoRoot @('ls-tree','-r','HEAD')){
+		if($line -match '^160000 commit ([0-9a-f]{40})\t(.+)$'){
+			$commit=$Matches[1]
+			$path=$Matches[2]
+			$url=@(Invoke-Git $RepoRoot @('config','--blob','HEAD:.gitmodules','--get',"submodule.$path.url"))[0]
+			$list.Add([pscustomobject]@{ Path=$path; Commit=$commit; Url=$url })
+		}
+	}
+	return ,$list
+}
+
+#Whether every submodule is checked out at the commit the release commit pins: the release's files are built from the checkout and the
+#source archive holds the pinned commits, so they must be the same. Returns one line per problem; a problem whose line starts with
+#"Missing:" means the submodule is not checked out at all.
+function Test-SubmoduleCheckouts {
+	$problems=New-Object 'System.Collections.Generic.List[string]'
+	$submodules=Get-PinnedSubmodules
+	foreach($submodule in $submodules){
+		$folder=Join-Path $RepoRoot $submodule.Path
+		if(-not (Test-Path -LiteralPath (Join-Path $folder '.git'))){
+			$problems.Add("Missing: the submodule $($submodule.Path) is not checked out. Run git -c protocol.file.allow=always submodule update --init (docs\third-party-source-builds.md).")
+			continue
+		}
+		$checkedOut=@(Invoke-Git $folder @('rev-parse','HEAD'))[0].Trim()
+		if($checkedOut -ne $submodule.Commit){
+			$problems.Add("The submodule $($submodule.Path) is checked out at $checkedOut, but the release commit pins $($submodule.Commit). Run git submodule update, or commit the new pin.")
+		}
+	}
+	return ,$problems
+}
+
+#Writes <folder>\OpenPmsDental-<version>-source.zip and returns its path: the repository at the release commit (git archive HEAD) and every
+#submodule at the commit HEAD pins, under one top folder, with SOURCE-COMMITS.txt naming the commits. git archive writes each part; the parts
+#are joined into one zip (an entry two parts share, the folder of a submodule, is written once).
+function Write-SourceArchive([string]$folder,[string]$version){
+	Add-Type -AssemblyName System.IO.Compression
+	Add-Type -AssemblyName System.IO.Compression.FileSystem
+	New-Item -ItemType Directory -Force -Path $folder | Out-Null
+	$folder=(Resolve-Path -LiteralPath $folder).Path
+	$name=$SourceArchiveName -f $version
+	$archivePath=Join-Path $folder ($name+'.zip')
+	$commit=@(Invoke-Git $RepoRoot @('rev-parse','HEAD'))[0].Trim()
+	$submodules=Get-PinnedSubmodules
+	if(@(Invoke-Git $RepoRoot @('status','--porcelain','--untracked-files=no')).Count -gt 0){
+		Write-Host "Warning: the working tree has changes that are not committed. The source archive holds the commit $commit."
+	}
+	$temp=Join-Path ([System.IO.Path]::GetTempPath()) ('OpenPmsDental-source-'+[guid]::NewGuid().ToString('N'))
+	New-Item -ItemType Directory -Path $temp | Out-Null
+	try{
+		$parts=New-Object 'System.Collections.Generic.List[string]'
+		$part=Join-Path $temp 'repository.zip'
+		[void](Invoke-Git $RepoRoot @('archive','--format=zip',"--prefix=$name/",'-o',$part,'HEAD'))
+		$parts.Add($part)
+		$index=0
+		foreach($submodule in $submodules){
+			$index++
+			$part=Join-Path $temp "submodule$index.zip"
+			[void](Invoke-Git (Join-Path $RepoRoot $submodule.Path) @('archive','--format=zip',"--prefix=$name/$($submodule.Path)/",'-o',$part,$submodule.Commit))
+			$parts.Add($part)
+		}
+		if(Test-Path -LiteralPath $archivePath){ Remove-Item -LiteralPath $archivePath -Force }
+		$seen=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+		$zipTarget=[System.IO.Compression.ZipFile]::Open($archivePath,[System.IO.Compression.ZipArchiveMode]::Create)
+		try{
+			foreach($part in $parts){
+				$zipSource=[System.IO.Compression.ZipFile]::OpenRead($part)
+				try{
+					foreach($entry in $zipSource.Entries){
+						if(-not $seen.Add($entry.FullName)){ continue }
+						$entryTarget=$zipTarget.CreateEntry($entry.FullName,[System.IO.Compression.CompressionLevel]::Optimal)
+						$entryTarget.LastWriteTime=$entry.LastWriteTime
+						if($entry.FullName.EndsWith('/')){ continue }
+						$streamIn=$entry.Open()
+						$streamOut=$entryTarget.Open()
+						try{ $streamIn.CopyTo($streamOut) }
+						finally{
+							$streamOut.Dispose()
+							$streamIn.Dispose()
+						}
+					}
+				}
+				finally{ $zipSource.Dispose() }
+			}
+			$lines=New-Object 'System.Collections.Generic.List[string]'
+			$lines.Add("Open PMS - Dental $version`: the source of this release")
+			$lines.Add('')
+			$lines.Add("Repository: commit $commit")
+			$lines.Add('')
+			$lines.Add('Submodules, each at the commit the release commit pins, built from this source by third-party/build:')
+			foreach($submodule in $submodules){ $lines.Add("$($submodule.Path): commit $($submodule.Commit), $($submodule.Url)") }
+			$lines.Add('')
+			$lines.Add('Build and upgrade steps: README.md and docs/third-party-source-builds.md.')
+			$entryCommits=$zipTarget.CreateEntry("$name/SOURCE-COMMITS.txt",[System.IO.Compression.CompressionLevel]::Optimal)
+			$writer=New-Object System.IO.StreamWriter($entryCommits.Open(),(New-Object System.Text.UTF8Encoding($false)))
+			try{ $writer.Write(($lines -join "`r`n")+"`r`n") }
+			finally{ $writer.Dispose() }
+		}
+		finally{ $zipTarget.Dispose() }
+	}
+	finally{
+		Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
+	}
+	return $archivePath
+}
+
+#Checks git and the submodules for the source archive, and exits when it cannot be written: 4 when git or a submodule is missing, 1 when a
+#submodule is not at its pinned commit.
+function Assert-SourceArchivePossible {
+	$script:GitPath=Find-Git
+	if(-not $script:GitPath){
+		Write-Host 'git.exe not found on the PATH. The source archive needs it.'
+		exit 4
+	}
+	$problems=Test-SubmoduleCheckouts
+	if($problems.Count -gt 0){
+		Write-Problems $problems 'The submodule check'
+		if(@($problems | Where-Object { $_.StartsWith('Missing:') }).Count -gt 0){ exit 4 }
+		exit 1
+	}
+}
+
 function Find-Iscc {
 	foreach($candidate in @((Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),(Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'),
 		(Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe')))
@@ -491,6 +620,12 @@ if($ListFiles){
 
 if($WriteSetupTexts){
 	foreach($path in Write-SetupTexts $WriteSetupTexts (Read-ReleaseVersion)){ Write-Host "Wrote $path" }
+	exit 0
+}
+
+if($WriteSourceArchive){
+	Assert-SourceArchivePossible
+	Write-Host "Wrote $(Write-SourceArchive $WriteSourceArchive (Read-ReleaseVersion))"
 	exit 0
 }
 
@@ -519,19 +654,10 @@ if($installerVersion -ne $releaseVersion){
 Write-Host "Release version $releaseVersion (compatibility version $CompatVersion)"
 #endregion Versions
 
-#region Release blockers
-#Before the build, so that a release that may not ship stops at once; the staging check refuses it again.
-$blockers=Get-ReleaseBlockers
-if($blockers.Count -gt 0){
-	Write-Problems $blockers 'The release check'
-	exit 1
-}
-foreach($entry in $ReleaseBlockers){
-	if([bool](Get-Variable -Name $entry[1] -Scope Script -ValueOnly)){
-		Write-Host "$($entry[0]) ships on the owner's resolution (-$($entry[1]))."
-	}
-}
-#endregion Release blockers
+#region Submodules
+#Before the build: PDFsharp/MigraDoc and WeCantSpell.Hunspell build from the submodules, and the source archive holds their pinned commits.
+Assert-SourceArchivePossible
+#endregion Submodules
 
 #region Build
 if(-not $SkipBuild){
@@ -657,13 +783,25 @@ if(-not $SkipInstaller){
 	Write-Host "Setup: $setupPath"
 	Write-Host "Setup SHA-256: $setupSha"
 }
-Write-Host "Checksums: $sumsPath"
 #endregion Installer
+
+#region Source archive
+#The Corresponding Source of the release: the repository and the submodules at the release commit (docs\release-process.md attaches it to
+#the GitHub release). Its SHA-256 follows the setup's in SHA256SUMS.txt.
+$sourceArchivePath=Write-SourceArchive $OutDir $releaseVersion
+$sourceArchiveName=Split-Path $sourceArchivePath -Leaf
+$sourceArchiveSha=Get-Sha256 $sourceArchivePath
+$sumLines.Insert($(if($SkipInstaller){ 0 }else{ 1 }),$sourceArchiveSha+'  '+$sourceArchiveName)
+Write-Sums $sumsPath $sumLines.ToArray()
+Write-Host "Source archive: $sourceArchivePath"
+Write-Host "Source archive SHA-256: $sourceArchiveSha"
+Write-Host "Checksums: $sumsPath"
+#endregion Source archive
 
 #region Copy
 if($CopyTo){
 	$notes=Join-Path $RepoRoot "docs\release-notes\v$releaseVersion.md"
-	foreach($path in @($sumsPath,$notes)){
+	foreach($path in @($sumsPath,$notes,$sourceArchivePath)){
 		if(-not (Test-Path -LiteralPath $path -PathType Leaf)){
 			Write-Host "Missing: $path"
 			exit 4
@@ -675,9 +813,10 @@ if($CopyTo){
 	}
 	New-Item -ItemType Directory -Force -Path $CopyTo | Out-Null
 	Copy-Item -LiteralPath $setupPath -Destination (Join-Path $CopyTo $setupName) -Force
+	Copy-Item -LiteralPath $sourceArchivePath -Destination (Join-Path $CopyTo $sourceArchiveName) -Force
 	Copy-Item -LiteralPath $sumsPath -Destination (Join-Path $CopyTo 'SHA256SUMS.txt') -Force
 	Copy-Item -LiteralPath $notes -Destination (Join-Path $CopyTo "release-notes-v$releaseVersion.md") -Force
-	Write-Host "Copied the setup, SHA256SUMS.txt and the release notes to $CopyTo"
+	Write-Host "Copied the setup, the source archive, SHA256SUMS.txt and the release notes to $CopyTo"
 }
 #endregion Copy
 exit 0
