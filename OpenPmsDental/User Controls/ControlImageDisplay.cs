@@ -902,13 +902,12 @@ Here is the desired behavior:
 			}
 			if(_odWebView2.CoreWebView2==null) {
 				_odWebView2=new ODWebView2();
-				try {
-					await _odWebView2.Init();
+				//One message when the browser cannot start: Init's own for the WebView2 Runtime, this one for anything else.
+				bool isInitialized=await WebView2L.TryInit(_odWebView2,"Error printing PDFs.",() => {
 					_odWebView2.NavigationCompleted+=odWebView2_NavigationCompleted;
-				}
-				catch(Exception ex) {
-					//Init failed, nothing to do
-					FriendlyException.Show("Error printing PDFs.",ex);
+					return System.Threading.Tasks.Task.CompletedTask;
+				});
+				if(!isInitialized) {
 					return;
 				}
 			}

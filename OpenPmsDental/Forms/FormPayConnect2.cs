@@ -531,15 +531,14 @@ namespace OpenPmsDental {
 			}
 			webViewMain.Visible=true;
 			if(!update) {
-				try {
-					await webViewMain.Init();
+				//One message when the browser cannot start: Init's own for the WebView2 Runtime, this one for anything else.
+				bool isInitialized=await WebView2L.TryInit(webViewMain,"Error initializing window.",async () => {
 					webViewMain.CoreWebView2.WebMessageReceived+=GetTransactionResult;
 					webViewMain.CoreWebView2.NavigationStarting+=WebViewMain_NavigationStarting;
 					//Relays only messages whose origin is a DentalXChange host, with that origin, so GetTransactionResult can check it again.
 					await webViewMain.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(PayConnect2.GetHostedFormRelayScript());
-				}
-				catch(Exception ex) {
-					FriendlyException.Show("Error initializing window.",ex);
+				});
+				if(!isInitialized) {
 					return;
 				}
 			}

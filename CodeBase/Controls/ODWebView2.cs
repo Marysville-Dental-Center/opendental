@@ -22,12 +22,13 @@ namespace CodeBase.Controls {
 		private bool _doBlockNavigation=false;
 		///<summary>Null until SetScriptEnabled is called, which leaves WebView2's own default (scripts allowed).</summary>
 		private bool? _isScriptEnabled=null;
-		///<summary>The file of the page that NavigateToHtml shows, or null when the control shows anything else. While it is set the control stays on
-		///that page: every other navigation and every new window is cancelled, and a link the user clicks raises LinkClicked instead.</summary>
-		private string _pathDocument=null;
-		///<summary>The file: address of _pathDocument.</summary>
+		///<summary>The page that NavigateToHtml shows, in memory (WebView2PageStore), or null when the control shows anything else. While it is set
+		///the control stays on that page: every other navigation and every new window is cancelled, and a link the user clicks raises LinkClicked
+		///instead.</summary>
+		private WebView2Page _page=null;
+		///<summary>The file: address of _page, which names no file on disk: the control answers it, and the files of the page, from memory.</summary>
 		private string _uriDocument=null;
-		///<summary>The file: address (without a #fragment) of every page this control wrote for NavigateToHtml. A navigation to one of them that is
+		///<summary>The file: address (without a #fragment) of every page this control showed for NavigateToHtml. A navigation to one of them that is
 		///not the current page is cancelled without raising LinkClicked: the earlier of two pages shown in quick succession, whose own navigation
 		///starts after the second page took its place, or a page that Back or Forward would show again.</summary>
 		private HashSet<string> _hashSetUrisPage=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -47,6 +48,9 @@ namespace CodeBase.Controls {
 		private bool _areBrowserKeysEnabled=false;
 		///<summary>The start failure this control last reported (Init and the initialization's event both see the same exception), so it is logged once.</summary>
 		private Exception _exceptionStartReported=null;
+		///<summary>True once this control told the user that the runtime would not start, so Init and the initialization's event, which both report
+		///it, count it as told.</summary>
+		private bool _isStartFailureTold=false;
 		///<summary>True once a WebView2 Runtime that would not start was shown to the user in this program session, so the message shows once: the
 		///inbox's two previews and every wiki window would otherwise each show it. Locked by _lockStartFailure.</summary>
 		private static bool _isStartFailureShown=false;
@@ -103,7 +107,7 @@ namespace CodeBase.Controls {
 			}
 		}
 
-		///<summary>The file: address of the page NavigateToHtml shows, or null.</summary>
+		///<summary>The file: address of the page NavigateToHtml shows, or null. The page is in memory: no file is at that address.</summary>
 		[Browsable(false)]
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public string DocumentUri {
@@ -140,18 +144,15 @@ namespace CodeBase.Controls {
 
 		///<summary>Like Init(), but first lets the caller set the controller options, which are created from this control's environment. For example,
 		///x => x.IsInPrivateModeEnabled=true gives an InPrivate profile, so no cookies, history or form data persist in the shared user data folder.
-		///Throws ODException after telling the user what is wrong: the runtime is missing, or it would not start (ReportStartFailure, once per
-		///program session).</summary>
+		///Throws ODWebView2InitException (an ODException) when the runtime is missing, after telling the user, or when it would not start, after
+		///telling the user once per program session (ReportStartFailure); IsUserTold says whether this call told the user. A window that shows its
+		///own message when Init fails gives the exception to TryShowInitFailure first, so the user sees one message, never two.</summary>
 		public async Task Init(Action<CoreWebView2ControllerOptions> actionSetControllerOptions) {
 			if(!FuncIsRuntimeAvailable()) {
 				//The program never downloads or installs the runtime itself: an administrator installs it (Windows 11 includes it).
-				string warning="The Microsoft Edge WebView2 Runtime is not installed on this computer, so this window cannot show its page.\r\n"
-					+"Windows 11 includes it. On other computers an administrator can install it from Microsoft: "+WebView2Policy.RuntimeDownloadUrl;
-				if(ODBuild.IsDebug()) {
-					warning+="\r\nIf you are in debug, make sure you are running in x86 config instead of Any CPU. Also, make sure RequiredDlls\\WebView2Loader.dll has been copied to your bin folder.";
-				}
+				string warning=GetMissingRuntimeMessage();
 				ActionShowMessage(warning);
-				throw new ODException();
+				throw new ODWebView2InitException(warning,null,isUserTold:true,isClosed:false);
 			}
 			try {
 				CoreWebView2Environment environment=await FuncCreateEnvironment();
@@ -165,26 +166,63 @@ namespace CodeBase.Controls {
 			}
 			catch(Exception ex) {
 				//The runtime is there but would not start: damaged, blocked (antivirus, AppLocker), or the profile folder cannot be used.
-				ReportStartFailure(ex);
-				throw new ODException(ex.Message,ex);
+				bool isClosed=IsDisposed || Disposing || IsCancelledByClose(ex);
+				bool isUserTold=ReportStartFailure(ex);
+				throw new ODWebView2InitException(ex.Message,ex,isUserTold,isClosed);
 			}
 		}
 
+		///<summary>The message for a WebView2 Runtime that is not installed: Windows 11 includes it, and where an administrator gets it.</summary>
+		internal static string GetMissingRuntimeMessage() {
+			string warning="The Microsoft Edge WebView2 Runtime is not installed on this computer, so this window cannot show its page.\r\n"
+				+"Windows 11 includes it. On other computers an administrator can install it from Microsoft: "+WebView2Policy.RuntimeDownloadUrl;
+			if(ODBuild.IsDebug()) {
+				warning+="\r\nIf you are in debug, make sure you are running in x86 config instead of Any CPU. Also, make sure RequiredDlls\\WebView2Loader.dll has been copied to your bin folder.";
+			}
+			return warning;
+		}
+
 		///<summary>Logs a WebView2 Runtime that is installed but would not start, and tells the user once per program session what an administrator
-		///can do about it. Nothing is reported for a control that was closed while it started (the window closed), which is no failure.</summary>
-		private void ReportStartFailure(Exception ex) {
-			if(ex==null || ReferenceEquals(ex,_exceptionStartReported) || IsDisposed || Disposing || IsCancelledByClose(ex)) {
-				return;
+		///can do about it. Nothing is reported for a control that was closed while it started (the window closed), which is no failure. Returns
+		///true when this control told the user about it, now or before (Init and the initialization's event both report the same failure).</summary>
+		private bool ReportStartFailure(Exception ex) {
+			if(ex==null || IsDisposed || Disposing || IsCancelledByClose(ex)) {
+				return false;
+			}
+			if(ReferenceEquals(ex,_exceptionStartReported)) {
+				return _isStartFailureTold;
 			}
 			_exceptionStartReported=ex;
 			ODException.SwallowAnyException(() => Logger.WriteException(ex,"WebView2"));
+			if(_isStartFailureTold) {
+				return true;
+			}
 			lock(_lockStartFailure) {
 				if(_isStartFailureShown) {
-					return;
+					return false;
 				}
 				_isStartFailureShown=true;
 			}
 			ActionShowMessage(GetStartFailureMessage(ex));
+			_isStartFailureTold=true;
+			return true;
+		}
+
+		///<summary>For a window that cannot work without its browser and shows its own error when the browser's setup fails (FormCareCreditWeb,
+		///FormPayConnect2, FormPayConnect2iFrame, the Images module's PDF print): true when ex is Init's failure (ODWebView2InitException), and the
+		///user has then seen exactly one message about it: Init's own, or, when Init held its message back because the runtime's start failure was
+		///already shown in this program session, the same message again now (the user opened this window on purpose, and it cannot work). Nothing
+		///shows for a window that was closed while its browser started. False for any other exception, which the window shows itself.</summary>
+		public static bool TryShowInitFailure(Exception ex) {
+			ODWebView2InitException odWebView2InitException=ex as ODWebView2InitException;
+			if(odWebView2InitException==null) {
+				return false;
+			}
+			if(odWebView2InitException.IsUserTold || odWebView2InitException.IsClosed) {
+				return true;
+			}
+			ActionShowMessage(GetStartFailureMessage(odWebView2InitException.InnerException??odWebView2InitException,isOncePerSession:false));
+			return true;
 		}
 
 		///<summary>True for the error WebView2 gives when the control's window goes away while it starts (E_ABORT, or a cancellation).</summary>
@@ -192,8 +230,9 @@ namespace CodeBase.Controls {
 			return ex is OperationCanceledException || ex is ObjectDisposedException || ex.HResult==unchecked((int)0x80004004);
 		}
 
-		///<summary>The message for a WebView2 Runtime that would not start: the error and its HRESULT, and what an administrator can check.</summary>
-		internal static string GetStartFailureMessage(Exception ex) {
+		///<summary>The message for a WebView2 Runtime that would not start: the error and its HRESULT, and what an administrator can check. With
+		///isOncePerSession it ends by saying that it shows once per program session (Init's message); without it (TryShowInitFailure) it does not.</summary>
+		internal static string GetStartFailureMessage(Exception ex,bool isOncePerSession=true) {
 			string folder;
 			try {
 				folder=WebView2Policy.GetUserDataFolder();
@@ -202,14 +241,17 @@ namespace CodeBase.Controls {
 				exFolder.DoNothing();
 				folder="%LOCALAPPDATA%\\"+ProgramNames.LocalAppDataFolderName+"\\"+WebView2Policy.UserDataFolderName;
 			}
-			return "The Microsoft Edge WebView2 Runtime could not start, so the program cannot show web pages, emails or wiki pages.\r\n"
+			string message="The Microsoft Edge WebView2 Runtime could not start, so the program cannot show web pages, emails or wiki pages.\r\n"
 				+"Error: "+ex.Message+" (HRESULT 0x"+ex.HResult.ToString("X8")+")\r\n\r\n"
 				+"An administrator can:\r\n"
 				+"- repair the runtime in Windows Settings, Apps and features (Microsoft Edge WebView2 Runtime, Modify, Repair), or reinstall it from "
 				+"Microsoft: "+WebView2Policy.RuntimeDownloadUrl+"\r\n"
 				+"- check that antivirus software or AppLocker does not block msedgewebview2.exe\r\n"
-				+"- check that this Windows user can write to "+folder+"\r\n\r\n"
-				+"This message shows once until the program is started again.";
+				+"- check that this Windows user can write to "+folder;
+			if(isOncePerSession) {
+				message+="\r\n\r\nThis message shows once until the program is started again.";
+			}
+			return message;
 		}
 
 		///<summary>Lets LibWebTests see the once-per-session message again.</summary>
@@ -267,7 +309,7 @@ namespace CodeBase.Controls {
 
 		///<summary>On attempting to navigate, if DoBlockNavigation is true, cancel the event. A page shown with NavigateToHtml stays: anything else is
 		///cancelled, and a link the user clicked raises LinkClicked. WebView2 counts its own Navigate and GoBack calls, Back and Forward (mouse
-		///buttons, keys) and reloads as user initiated too, so a navigation to a page file of this control, or one that is not to a new document,
+		///buttons, keys) and reloads as user initiated too, so a navigation to a page this control showed, or one that is not to a new document,
 		///is cancelled without it.</summary>
 		public void CoreWebView2_NavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e) {
 			if(_uriDocument!=null) {
@@ -349,7 +391,8 @@ namespace CodeBase.Controls {
 		///in the folders NavigateToHtml allows, data:, blob: and about: addresses, and http and https only when NavigateToHtml allows them. Anything
 		///else gets an empty 403 response, so the request never leaves the computer: an image on another computer's share would otherwise make
 		///Windows send the user's credentials there. Until the browser shows the current page, a request can still come from the page before it,
-		///so nothing remote loads then.</summary>
+		///so nothing remote loads then. The page itself and the files in its own folder are in memory (WebView2PageStore): every request under the
+		///store's folder is answered from memory, with 404 for a file that is not there, and never read from the disk.</summary>
 		private void CoreWebView2_WebResourceRequested(object sender,CoreWebView2WebResourceRequestedEventArgs e) {
 			if(_uriDocument==null) {
 				return;
@@ -357,19 +400,25 @@ namespace CodeBase.Controls {
 			string uri="";
 			bool isPageShown=false;
 			bool isAllowed=false;
+			bool isInMemory=false;
 			try {
 				uri=e.Request.Uri;
 				isPageShown=WebView2Policy.IsSameDocument(this.CoreWebView2.Source,_uriDocument);
 				isAllowed=WebView2Policy.IsPageResourceAllowed(uri,_uriDocument,_listFoldersAllowed,_isRemoteContentAllowed && isPageShown);
+				isInMemory=WebView2PageStore.IsInRoot(uri);
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
 				isAllowed=false;
 			}
-			if(isAllowed) {
-				return;
+			if(isAllowed && !isInMemory) {
+				return;//A file in an allowed folder, the web when allowed, or data:, blob: and about:.
 			}
 			try {
+				if(isAllowed) {
+					e.Response=GetMemoryResponse(uri);
+					return;
+				}
 				e.Response=this.CoreWebView2.Environment.CreateWebResourceResponse(null,403,"Blocked","");
 			}
 			catch(Exception ex) {
@@ -379,6 +428,17 @@ namespace CodeBase.Controls {
 			if(isPageShown && WebView2Policy.IsRemoteUri(uri)) {
 				RaiseRemoteContentBlocked();
 			}
+		}
+
+		///<summary>The response for a file: address under WebView2PageStore's folder: the page or file from memory, or an empty 404 when there is
+		///none (a page that was replaced, a name the page does not have).</summary>
+		private CoreWebView2WebResourceResponse GetMemoryResponse(string uri) {
+			if(!WebView2PageStore.TryGetFile(uri,out byte[] content,out string contentType)) {
+				return this.CoreWebView2.Environment.CreateWebResourceResponse(null,404,"Not found",WebView2PageStore.GetResponseHeaders("text/plain"));
+			}
+			//The browser reads the stream after this handler returns; a MemoryStream over the kept array copies nothing.
+			return this.CoreWebView2.Environment.CreateWebResourceResponse(new MemoryStream(content,writable:false),200,"OK",
+				WebView2PageStore.GetResponseHeaders(contentType));
 		}
 
 		///<summary>Raises RemoteContentBlocked once for the current page, after the browser event returns, and only while that page is still shown.</summary>
@@ -442,22 +502,25 @@ namespace CodeBase.Controls {
 			CoreWebView2.Navigate(path);
 		}
 
-		///<summary>Shows html that the program generated or received (a wiki page, an email, a report): writes it to a new file and shows that file.
-		///A file page can show the local images such html refers to (file paths), which a page from a string cannot. The file goes into folder, or
-		///into the program's temp folder when folder is null (give a folder that already holds the images a relative path names). While the page is
-		///shown, scripts are off and the control stays on it: links raise LinkClicked. The page loads files only from its own folder and from
-		///listFoldersAllowed (the A to Z folder its images come from, for example), never from another computer's share, and http and https images,
-		///style sheets and fonts only when isRemoteContentAllowed is true: leave it false for html from outside the office, such as a received email
-		///(RemoteContentBlocked then tells the window that the page wanted some). Initializes the control first when needed (the user is told if the
-		///WebView2 Runtime is missing or would not start); the page then shows when initialization completes. Never throws for a missing or failing
-		///runtime; throws when the page file cannot be written.</summary>
-		public void NavigateToHtml(string html,string folder=null,bool isRemoteContentAllowed=false,List<string> listFoldersAllowed=null) {
+		///<summary>Shows html that the program generated or received (a wiki page, an email, a report) from memory: nothing of it is written to disk.
+		///The page gets a file: address in a folder of its own that is never created (WebView2PageStore), and the control answers the browser's
+		///requests for it, and for the files in its folder, from memory. So the page can show the local images such html refers to (file paths),
+		///which a page from a string cannot, and dictFiles gives the files a relative path in the html names (an email's images, by file name).
+		///While the page is shown, scripts are off and the control stays on it: links raise LinkClicked. The page loads files only from its own
+		///folder (dictFiles) and from listFoldersAllowed (the A to Z folder its images come from, for example), never from another computer's share,
+		///and http and https images, style sheets and fonts only when isRemoteContentAllowed is true: leave it false for html from outside the
+		///office, such as a received email (RemoteContentBlocked then tells the window that the page wanted some). Initializes the control first
+		///when needed (the user is told if the WebView2 Runtime is missing or would not start); the page then shows when initialization completes.
+		///Never throws for a missing or failing runtime.</summary>
+		public void NavigateToHtml(string html,bool isRemoteContentAllowed=false,List<string> listFoldersAllowed=null,
+			IDictionary<string,byte[]> dictFiles=null)
+		{
 			if(IsDisposed) {
 				return;
 			}
 			PagePending pagePending=new PagePending();
 			pagePending.Html=html??"";
-			pagePending.Folder=folder;
+			pagePending.DictFiles=dictFiles;
 			pagePending.IsRemoteContentAllowed=isRemoteContentAllowed;
 			pagePending.ListFoldersAllowed=listFoldersAllowed;
 			if(CoreWebView2==null) {
@@ -485,8 +548,8 @@ namespace CodeBase.Controls {
 			ShowPendingDocument();
 		}
 
-		///<summary>Runs from the initialization's event and continuation, where an exception would end the program, so a page file that cannot be
-		///written leaves the control blank.</summary>
+		///<summary>Runs from the initialization's event and continuation, where an exception would end the program, so a page that cannot be shown
+		///leaves the control blank.</summary>
 		private void ShowPendingDocument() {
 			if(IsDisposed || CoreWebView2==null || _pagePending==null) {
 				return;
@@ -497,16 +560,12 @@ namespace CodeBase.Controls {
 		}
 
 		private void ShowDocument(PagePending pagePending) {
-			string pathOld=_pathDocument;
-			string folder=pagePending.Folder;
-			if(string.IsNullOrEmpty(folder)) {
-				folder=WebView2Policy.GetPageFolder();
-			}
-			string path=ODFileUtils.CreateRandomFile(folder,".html");
-			//UTF-8 with a byte order mark, so the page reads as UTF-8 whatever its meta tags say.
-			File.WriteAllText(path,pagePending.Html,new UTF8Encoding(true));
-			_pathDocument=path;
-			_uriDocument=new Uri(path).AbsoluteUri;
+			//Older versions wrote every page into the temp folder: what one left when it ended without closing goes, once per program session.
+			WebView2PageStore.DeleteOldPageFiles();
+			WebView2Page pageOld=_page;
+			//In memory only. UTF-8 with a byte order mark, so the page reads as UTF-8 whatever its meta tags say.
+			_page=WebView2PageStore.AddPage(pagePending.Html,pagePending.DictFiles);
+			_uriDocument=_page.Uri;
 			_hashSetUrisPage.Add(WebView2Policy.RemoveFragment(_uriDocument));
 			_isRemoteContentAllowed=pagePending.IsRemoteContentAllowed;
 			_listFoldersAllowed=new List<string>();
@@ -522,18 +581,18 @@ namespace CodeBase.Controls {
 				_isResourceFilterAdded=true;
 			}
 			CoreWebView2.Navigate(_uriDocument);
-			DeleteFile(pathOld);
+			WebView2PageStore.RemovePage(pageOld);
 		}
 
-		///<summary>Leaves the page of NavigateToHtml (its file is deleted) before the control shows something else.</summary>
+		///<summary>Leaves the page of NavigateToHtml (it is removed from memory) before the control shows something else or is disposed.</summary>
 		private void ClearDocument() {
-			string pathOld=_pathDocument;
-			_pathDocument=null;
+			WebView2Page pageOld=_page;
+			_page=null;
 			_uriDocument=null;
 			_pagePending=null;
 			_isRemoteContentAllowed=false;
 			_listFoldersAllowed=new List<string>();
-			DeleteFile(pathOld);
+			WebView2PageStore.RemovePage(pageOld);
 		}
 
 		///<summary>Removes the WebResourceRequested filter of NavigateToHtml's pages, so other pages load without a detour through the program.</summary>
@@ -543,13 +602,6 @@ namespace CodeBase.Controls {
 			}
 			CoreWebView2.RemoveWebResourceRequestedFilter("*",CoreWebView2WebResourceContext.All);
 			_isResourceFilterAdded=false;
-		}
-
-		private static void DeleteFile(string path) {
-			if(string.IsNullOrEmpty(path)) {
-				return;
-			}
-			ODException.SwallowAnyException(() => File.Delete(path));
 		}
 
 		///<summary>Sets a session cookie for url's host in the browser's cookie store, as InternetSetCookie did for Internet Explorer's control.
@@ -629,12 +681,26 @@ namespace CodeBase.Controls {
 			await this.CoreWebView2.CallDevToolsProtocolMethodAsync("Network.clearBrowserCache","{}");
 		}
 
-		///<summary>A page for NavigateToHtml: its html, its folder and what it may load besides that folder's files.</summary>
+		///<summary>A page for NavigateToHtml: its html, the files of its own folder and what it may load besides them.</summary>
 		private class PagePending {
 			public string Html;
-			public string Folder;
+			public IDictionary<string,byte[]> DictFiles;
 			public bool IsRemoteContentAllowed;
 			public List<string> ListFoldersAllowed;
+		}
+	}
+
+	///<summary>What ODWebView2.Init throws when the WebView2 Runtime is missing or would not start. An ODException, so the windows' "Init told the
+	///user" catches still hold. Give it to ODWebView2.TryShowInitFailure before a window shows its own message.</summary>
+	public class ODWebView2InitException:ODException {
+		///<summary>True when Init told the user why (a missing runtime always; a runtime that would not start once per program session).</summary>
+		public bool IsUserTold { get; }
+		///<summary>True when the control was closed while it started (its window closed): no failure, and nothing to tell.</summary>
+		public bool IsClosed { get; }
+
+		public ODWebView2InitException(string message,Exception exceptionInner,bool isUserTold,bool isClosed) : base(message,exceptionInner) {
+			IsUserTold=isUserTold;
+			IsClosed=isClosed;
 		}
 	}
 }

@@ -1,11 +1,13 @@
 // The HTML the program builds for its browser windows: text from the database is encoded (CodeBase.HtmlPage), a CCD shows as encoded XML and no
-// stylesheet ever runs in the program (HtmlPage.BuildXml), the preference details page (FormWebBrowserPrefs.BuildHtml), and what a link in a
-// wiki page opens (FormWiki.ParseLink). Synthetic data only.
+// stylesheet ever runs in the program (HtmlPage.BuildXml), the CCD window keeps the document in memory (no file while it is shown) and only the
+// files an older version left are deleted, the preference details page (FormWebBrowserPrefs.BuildHtml), and what a link in a wiki page opens
+// (FormWiki.ParseLink). Synthetic data only.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -139,7 +141,84 @@ namespace LibWebTests {
 			string source=TestPaths.ReadSource("OpenPmsDental","Forms","FormEhrSummaryOfCare.cs");
 			Assert.IsFalse(Regex.IsMatch(source,@"\bRead\w*\(\s*strAlterateFilPathXslCCD\b"),"DisplayCCD reads the email's stylesheet.");
 			StringAssert.Contains(source,"The stylesheet that came with this document was not run, so the document is shown as XML.");
-			StringAssert.Contains(TestPaths.ReadSource("OpenPmsDental","Forms","FormEhrSummaryCcdEdit.cs"),"html=HtmlPage.BuildXml(File.ReadAllText(StrXmlFilePath),_note);");
+			StringAssert.Contains(TestPaths.ReadSource("OpenPmsDental","Forms","FormEhrSummaryCcdEdit.cs"),"html=HtmlPage.BuildXml(_xmlCcd,_note);");
+		}
+
+		[TestMethod]
+		public void CcdView_KeepsTheDocumentInMemory_AndWritesNoFile() {
+			//The window gets the CCD's text, not a file: no path field, and its constructor takes the XML.
+			Type typeForm=typeof(FormEhrSummaryCcdEdit);
+			BindingFlags bindingFlags=BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Static;
+			Assert.IsNull(typeForm.GetField("StrXmlFilePath",bindingFlags),"FormEhrSummaryCcdEdit keeps no file path.");
+			Assert.AreEqual(typeof(string),typeForm.GetField("_xmlCcd",bindingFlags)?.FieldType,"FormEhrSummaryCcdEdit keeps the text.");
+			ConstructorInfo[] arrayConstructors=typeForm.GetConstructors();
+			Assert.AreEqual(1,arrayConstructors.Length);
+			CollectionAssert.AreEqual(new[] { "xmlCcd","patCur","note" },arrayConstructors[0].GetParameters().Select(x => x.Name).ToArray());
+			//Shown, reconciled and shown as raw XML from that text: the window reads no file and writes none.
+			string sourceForm=TestPaths.ReadSource("OpenPmsDental","Forms","FormEhrSummaryCcdEdit.cs");
+			foreach(string text in new[] { "File.","Path.","FileStream","StreamReader","StreamWriter","GetTempFolderPath","using System.IO;" }) {
+				Assert.IsFalse(sourceForm.Contains(text),"FormEhrSummaryCcdEdit.cs: "+text);
+			}
+			Assert.AreEqual(3,Regex.Matches(sourceForm,Regex.Escape("xmlDocCcd.LoadXml(_xmlCcd);")).Count,"The three reconcile buttons read the text.");
+			StringAssert.Contains(sourceForm,"string strCcd=_xmlCcd;");
+			//DisplayCCD hands the window the document and writes it nowhere; it deletes only what an older version left.
+			string source=TestPaths.ReadSource("OpenPmsDental","Forms","FormEhrSummaryOfCare.cs");
+			int indexStart=source.IndexOf("public static bool DisplayCCD(string strXmlCCD,Patient patCur,string strAlterateFilPathXslCCD)");
+			int indexEnd=source.IndexOf("public static int DeleteOldCcdFiles(",indexStart);
+			Assert.IsTrue(indexStart>=0 && indexEnd>indexStart,"DisplayCCD and DeleteOldCcdFiles are found.");
+			string sourceDisplay=source.Substring(indexStart,indexEnd-indexStart);
+			foreach(string text in new[] { "File.","WriteAll","GetTempFolderPath","GetRandomTempFile","FileStream","StreamWriter" }) {
+				Assert.IsFalse(sourceDisplay.Contains(text),"DisplayCCD: "+text);
+			}
+			StringAssert.Contains(sourceDisplay,"new FormEhrSummaryCcdEdit(doc.InnerXml,patCur,note)");
+			StringAssert.Contains(sourceDisplay,"DeleteOldCcdFiles(Path.Combine(Path.GetTempPath(),ProgramNames.TempFolderName),DateTime.Now.AddHours(-1));");
+		}
+
+		[TestMethod]
+		public void DeleteOldCcdFiles_OnlyTheFilesAnOlderVersionLeft() {
+			string folder=TestPaths.NewTempFolder("oldccd");
+			try {
+				string[] arrayOld={ "ccd.xml","ccd.xsl","ccr.xml","CCR.XSL" };
+				string[] arrayKept={ "ccd.xml.bak","report.xml","ccd2.xml","ABC12320261102093000.html" };
+				foreach(string name in arrayOld.Concat(arrayKept)) {
+					File.WriteAllText(Path.Combine(folder,name),"<ClinicalDocument>Jane Doe</ClinicalDocument>");
+				}
+				Directory.CreateDirectory(Path.Combine(folder,"sub"));
+				File.WriteAllText(Path.Combine(folder,"sub","ccd.xml"),"kept");
+				//Written two hours ago, as an older version that ended with the window open left them.
+				DateTime dateTimeOld=DateTime.Now.AddHours(-2);
+				foreach(string path in Directory.GetFiles(folder,"*",SearchOption.AllDirectories)) {
+					File.SetLastWriteTime(path,dateTimeOld);
+				}
+				//One in use stays, and nothing throws.
+				string pathInUse=Path.Combine(folder,"ccr.xml");
+				using(FileStream fileStream=new FileStream(pathInUse,FileMode.Open,FileAccess.Read,FileShare.None)) {
+					Assert.AreEqual(3,FormEhrSummaryOfCare.DeleteOldCcdFiles(folder,DateTime.Now.AddHours(-1)));
+					Assert.IsTrue(File.Exists(pathInUse));
+				}
+				Assert.AreEqual(1,FormEhrSummaryOfCare.DeleteOldCcdFiles(folder,DateTime.Now.AddHours(-1)),"Once it is free, it goes too.");
+				foreach(string name in arrayOld) {
+					Assert.IsFalse(File.Exists(Path.Combine(folder,name)),name);
+				}
+				foreach(string name in arrayKept) {
+					Assert.IsTrue(File.Exists(Path.Combine(folder,name)),name);
+				}
+				Assert.IsTrue(File.Exists(Path.Combine(folder,"sub","ccd.xml")),"Only the folder itself, not its sub folders.");
+				//A file an older version running now has just written stays.
+				string pathRecent=Path.Combine(folder,"ccd.xml");
+				File.WriteAllText(pathRecent,"<ClinicalDocument/>");
+				Assert.AreEqual(0,FormEhrSummaryOfCare.DeleteOldCcdFiles(folder,DateTime.Now.AddHours(-1)));
+				Assert.IsTrue(File.Exists(pathRecent));
+				//A missing folder is not created; no folder, nothing.
+				string folderMissing=Path.Combine(folder,"missing");
+				Assert.AreEqual(0,FormEhrSummaryOfCare.DeleteOldCcdFiles(folderMissing,DateTime.Now));
+				Assert.IsFalse(Directory.Exists(folderMissing));
+				Assert.AreEqual(0,FormEhrSummaryOfCare.DeleteOldCcdFiles(null,DateTime.Now));
+				Assert.AreEqual(0,FormEhrSummaryOfCare.DeleteOldCcdFiles("",DateTime.Now));
+			}
+			finally {
+				TestPaths.DeleteFolder(folder);
+			}
 		}
 
 		[TestMethod]
