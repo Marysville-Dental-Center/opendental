@@ -1,7 +1,8 @@
 // The stock count step 2026110213 (InventoryCountsStep, owner decision INV 11) on a scratch database made from db/init/new-database.sql: first on
 // the database without any inventory table (as a database from before inventory tracking), then on the same database migrated by the earlier
-// inventory steps and holding stock (opening balances, a lot, movements). Each time it creates the two count tables empty and exactly as declared,
-// a second run changes nothing, and on the migrated database no other table changes.
+// inventory steps of an earlier build (a stock ledger without SupplyCountLineNum) and holding stock (opening balances, a lot, movements). Each time
+// it creates the two count tables empty and exactly as declared and a second run changes nothing; on the migrated database it adds the ledger's
+// SupplyCountLineNum and its key as declared, keeping every ledger row as it was (0 in the new column), and no other table changes.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -28,6 +29,9 @@ namespace InventoryTests {
 		private static List<string> _listChangesMigratedSecond;
 		private static Dictionary<string,string> _dictChecksumsBefore;
 		private static Dictionary<string,string> _dictChecksumsAfter;
+		private static string _ledgerRowsBefore;
+		private static string _ledgerRowsAfter;
+		private static long _countLedgerRowsTagged;
 		private static Dictionary<string,long> _dictRowsMigrated;
 		private static long _countLedgerRowsMigrated;
 		private static List<SchemaDifference> _listDifferencesMigrated;
@@ -55,6 +59,9 @@ namespace InventoryTests {
 					+"(1,'CMIG-A','Count migration A',0,0,0,0,2,'',0,0,'',6,0),"
 					+"(1,'CMIG-B','Count migration B',0,1,0,0,3,'',0,0,'',1.5,0)");
 				RunSteps(new InventoryLedgerStep(),new InventoryTablesStep());
+				//The ledger as an earlier build made it, before CountAdjust rows named their count line.
+				DataCore.NonQ("ALTER TABLE supplyledger DROP INDEX `"+InventoryCountsStep.COLUMN_LEDGER_COUNT_LINE+"`,DROP COLUMN `"
+					+InventoryCountsStep.COLUMN_LEDGER_COUNT_LINE+"`");
 				long supplyNumA=PIn.Long(DataCore.GetScalar("SELECT SupplyNum FROM supply WHERE CatalogNumber='CMIG-A'"));
 				DataCore.NonQ("INSERT INTO supplylot (SupplyNum,LotNumber,DateExpiry,QtyOnHand,SupplyOrderItemNum,DateTimeEntry) VALUES ("+supplyNumA
 					+",'CMIG-LOT','2028-01-01',2,0,'2026-11-01 09:00:00')");
@@ -63,9 +70,12 @@ namespace InventoryTests {
 					+"DateTimeEntry,Reason) VALUES ("+supplyNumA+","+supplyLotNum+","+(int)SupplyLedgerType.Adjust+",2,2,0,0,0,0,1,'2026-11-01 09:00:00','Synthetic'),("
 					+supplyNumA+",0,"+(int)SupplyLedgerType.CountAdjust+",-1,2,0,0,0,0,1,'2026-11-01 09:05:00','Synthetic count')");
 				_dictChecksumsBefore=Checksums();
+				_ledgerRowsBefore=LedgerRows();
 				_listChangesMigratedFirst=RunSteps(new InventoryCountsStep());
 				_listChangesMigratedSecond=RunSteps(new InventoryCountsStep());
 				_dictChecksumsAfter=Checksums();
+				_ledgerRowsAfter=LedgerRows();
+				_countLedgerRowsTagged=PIn.Long(DataCore.GetScalar("SELECT COUNT(*) FROM supplyledger WHERE SupplyCountLineNum<>0"));
 				_dictRowsMigrated=CountRows();
 				_countLedgerRowsMigrated=PIn.Long(DataCore.GetScalar("SELECT COUNT(*) FROM supplyledger"));
 				_listDifferencesMigrated=ForkTables.VerifyDatabase(_dbName).ListDifferences.FindAll(x => InvDb.ArrayInventoryTables.Contains(x.Table));
@@ -113,17 +123,25 @@ namespace InventoryTests {
 				.Select(x => x[0].ToString()).Where(x => InvDb.ArrayInventoryTables.Contains(x)).OrderBy(x => x).ToList();
 		}
 
-		///<summary>CHECKSUM TABLE of every table but the two count tables, by name.</summary>
+		///<summary>CHECKSUM TABLE of every table but the two count tables and the stock ledger (which gets a column; LedgerRows compares its rows),
+		///by name.</summary>
 		private static Dictionary<string,string> Checksums() {
 			Dictionary<string,string> dict=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
 			foreach(DataRow dataRow in DataCore.GetTable("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='"+_dbName+"' AND TABLE_TYPE='BASE TABLE'").Rows) {
 				string table=dataRow[0].ToString();
-				if(_arrayCountTables.Contains(table)) {
+				if(_arrayCountTables.Contains(table) || table==InventoryTables.TABLE_LEDGER) {
 					continue;
 				}
 				dict[table]=DataCore.GetTable("CHECKSUM TABLE `"+table+"`").Rows[0][1].ToString();
 			}
 			return dict;
+		}
+
+		///<summary>Every stock ledger row in the columns it had before the step, one line per row.</summary>
+		private static string LedgerRows() {
+			return string.Join("\n",DataCore.GetTable("SELECT SupplyLedgerNum,SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,"
+				+"DispSupplyNum,UserNum,DateTimeEntry,Reason FROM supplyledger ORDER BY SupplyLedgerNum").Select()
+				.Select(x => string.Join("|",x.ItemArray.Select(y => Convert.ToString(y,System.Globalization.CultureInfo.InvariantCulture)))));
 		}
 
 		[TestInitialize]
@@ -143,16 +161,26 @@ namespace InventoryTests {
 			Assert.IsTrue(_dictRowsEmpty.All(x => x.Value==0),"No count, so none is open.");
 		}
 
+		///<summary>On a database an earlier build migrated (a stock ledger without SupplyCountLineNum), the step adds the two count tables and the
+		///ledger's column and key, exactly as declared; every ledger row keeps its values, with 0 in the new column, and no other table changes.
+		///</summary>
 		[TestMethod]
-		public void Step_OnADatabaseAlreadyMigratedWithStock_AddsOnlyTheTwoCountTables() {
-			Assert.AreEqual(2,_listChangesMigratedFirst.Count,string.Join("\r\n",_listChangesMigratedFirst));
-			Assert.IsTrue(_listChangesMigratedFirst.All(x => x.Contains("CREATE TABLE")),string.Join("\r\n",_listChangesMigratedFirst));
+		public void Step_OnADatabaseAlreadyMigratedWithStock_AddsTheTwoCountTablesAndTheLedgersCountLine() {
+			Assert.AreEqual(4,_listChangesMigratedFirst.Count,string.Join("\r\n",_listChangesMigratedFirst));
+			Assert.AreEqual(2,_listChangesMigratedFirst.Count(x => x.Contains("CREATE TABLE")),string.Join("\r\n",_listChangesMigratedFirst));
+			Assert.AreEqual(1,_listChangesMigratedFirst.Count(x => x.Contains("ALTER TABLE `supplyledger` ADD COLUMN `SupplyCountLineNum` bigint(20) NOT NULL DEFAULT 0 "
+				+"AFTER `Reason`")),string.Join("\r\n",_listChangesMigratedFirst));
+			Assert.AreEqual(1,_listChangesMigratedFirst.Count(x => x.Contains("ALTER TABLE `supplyledger` ADD INDEX `SupplyCountLineNum` (`SupplyCountLineNum`)")),
+				string.Join("\r\n",_listChangesMigratedFirst));
 			Assert.AreEqual(0,_listChangesMigratedSecond.Count,string.Join("\r\n",_listChangesMigratedSecond));
 			CollectionAssert.AreEquivalent(_dictChecksumsBefore.Keys.ToList(),_dictChecksumsAfter.Keys.ToList());
 			foreach(KeyValuePair<string,string> pair in _dictChecksumsBefore) {
 				Assert.AreEqual(pair.Value,_dictChecksumsAfter[pair.Key],pair.Key+" changed.");
 			}
-			Assert.IsTrue(_dictChecksumsBefore.ContainsKey("supplyledger") && _dictChecksumsBefore.ContainsKey("supplylot"),"The stock stays as it was.");
+			Assert.IsTrue(_dictChecksumsBefore.ContainsKey("supplylot"),"The stock stays as it was.");
+			Assert.AreEqual(_ledgerRowsBefore,_ledgerRowsAfter,"Every ledger row as it was.");
+			Assert.AreEqual(4,_ledgerRowsAfter.Split('\n').Length);
+			Assert.AreEqual(0,_countLedgerRowsTagged,"No row was posted from a count.");
 			Assert.AreEqual(4,_countLedgerRowsMigrated,"Two opening rows and two movements.");
 			Assert.IsTrue(_dictRowsMigrated.All(x => x.Value==0),"No count, so none is open.");
 			Assert.AreEqual(0,_listDifferencesMigrated.Count,"Every inventory table as declared: "+string.Join("\r\n",_listDifferencesMigrated));

@@ -1,7 +1,9 @@
 // Stock counts saved while they are counted (owner decision INV 11; docs/specs/inventory-tracking.md, 2.7 and 3.5): lines saved at once and shown
 // again after the window is closed, resumed by another user, one open count only, a recount replacing its line with a new snapshot, two
 // workstations saving into the same count at the same moment, a post after a resume giving the same results as an uninterrupted count, a failed
-// post and a post that did not finish, a discard with its audit entry, and Supply Inventory's line about the open count.
+// post and a post that did not finish (with stock used between counting and the failure and before the post again: the same results as an
+// uninterrupted count), a post that failed before it wrote anything, a line counted again between two failed posts, a lot-tracked supply
+// resumed in the window with its uncounted lots, a discard with its audit entry, and Supply Inventory's line about the open count.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -340,37 +342,123 @@ namespace InventoryTests {
 				+": program had 10, counted 8, adjusted by -2. Reason: Quarterly count"));
 		}
 
-		///<summary>A post that fails after its adjustments were written (a lost connection) opens the count again with each line's program quantity
-		///read again from the ledger, so posting again writes nothing more.</summary>
+		///<summary>Counts the shelf as the failure tests and their uninterrupted count do: the plain supply 8 (the program has 10), the soon lot 3
+		///(4), then a procedure uses one of the plain supply after it was counted, then the late lot 7 (6) and 2 of a lot found in the count.
+		///Returns the count.</summary>
+		private static long CountShelf(Shelf shelf,DateTime dateExpiryFound) {
+			long supplyCountNum=InvData.CountLine(shelf.SupplyPlain,8).SupplyCountNum;
+			InvData.CountLine(shelf.SupplyLotted,3,supplyLotNum:shelf.SupplyLotSoon.SupplyLotNum,supplyCountNum:supplyCountNum);
+			InventoryTracking.Adjust(shelf.SupplyPlain.SupplyNum,0,-1,"Used after it was counted");
+			InvData.CountLine(shelf.SupplyLotted,7,supplyLotNum:shelf.SupplyLotLate.SupplyLotNum,supplyCountNum:supplyCountNum);
+			InvData.CountLine(shelf.SupplyLotted,2,supplyCountNum:supplyCountNum,lotNumber:shelf.LotNumberFound,dateExpiry:dateExpiryFound);
+			return supplyCountNum;
+		}
+
+		///<summary>Procedures use one more of the plain supply and one of the soon lot: after a post, or between a failed post and the post again.
+		///</summary>
+		private static void UseFromShelf(Shelf shelf) {
+			InventoryTracking.Adjust(shelf.SupplyPlain.SupplyNum,0,-1,"Used meanwhile");
+			InventoryTracking.Adjust(shelf.SupplyLotted.SupplyNum,shelf.SupplyLotSoon.SupplyLotNum,-1,"Used meanwhile");
+		}
+
+		///<summary>The shelf counted and posted without a break, then UseFromShelf: what every interrupted post must end with. Plain: 10, counted 8,
+		///1 used after it was counted, posted -2 (7), 1 used (6). Soon lot: 4, counted 3, posted -1, 1 used (2).</summary>
+		private static string CountUninterrupted(DateTime dateExpiryFound) {
+			Shelf shelfOnce=Shelf.Make();
+			long supplyCountNumOnce=CountShelf(shelfOnce,dateExpiryFound);
+			Assert.AreEqual(4,InventoryTracking.PostOpenCount(supplyCountNumOnce,"Quarterly count"));
+			UseFromShelf(shelfOnce);
+			string resultOnce=shelfOnce.Result();
+			Assert.AreEqual("6;11;2;7;2;"+dateExpiryFound.ToString("yyyy-MM-dd")+";plain:-2:Quarterly count,soon:-1:Quarterly count,late:1:Quarterly count,"
+				+"found:2:Quarterly count",resultOnce);
+			return resultOnce;
+		}
+
+		///<summary>Every line of the count shows no difference (the post took its adjustment into its snapshot), with the adjustment in QtyPosted,
+		///and the lot found in the count is the lot the post created.</summary>
+		private static void AssertShelfLinesPosted(Shelf shelf,long supplyCountNum) {
+			List<SupplyCountLine> listSupplyCountLines=InventoryTracking.GetSavedCountLines(supplyCountNum);
+			Assert.AreEqual(4,listSupplyCountLines.Count);
+			foreach(SupplyCountLine supplyCountLine in listSupplyCountLines) {
+				Assert.AreEqual(supplyCountLine.QtyCounted,supplyCountLine.QtyProgram,"No difference left: "+supplyCountLine.LotNumber);
+			}
+			CollectionAssert.AreEqual(new[] { -2.0,-1.0,1.0,2.0 },listSupplyCountLines.Select(x => x.QtyPosted).ToArray());
+			SupplyLot supplyLotFound=SupplyLots.GetForSupply(shelf.SupplyLotted.SupplyNum,isEmptyIncluded:true).Single(x => x.LotNumber==shelf.LotNumberFound);
+			Assert.AreEqual(supplyLotFound.SupplyLotNum,listSupplyCountLines[3].SupplyLotNum,"The found lot's line is the lot the post created.");
+			List<SupplyLedger> listSupplyLedgersCount=SupplyLedgers.GetForSupply(shelf.SupplyPlain.SupplyNum).Concat(SupplyLedgers.GetForSupply(shelf.SupplyLotted.SupplyNum))
+				.Where(x => x.LedgerType==SupplyLedgerType.CountAdjust).ToList();
+			CollectionAssert.AreEqual(listSupplyCountLines.Select(x => x.SupplyCountLineNum).ToArray(),listSupplyLedgersCount.Select(x => x.SupplyCountLineNum).ToArray(),
+				"Each adjustment names its line.");
+		}
+
+		///<summary>A post that fails after its adjustments were written (a lost connection) opens the count again: each line takes its own
+		///adjustment into its snapshot, so it shows no difference, and is never read again from today's quantity. Stock is used after the lines
+		///were counted and again between the failure and the post again; the post again writes nothing more, and stock and adjustments are those of
+		///an uninterrupted count (reading the snapshots again would have added back the uses: plain 7, not 6).</summary>
 		[TestMethod]
 		public void FailedPost_OpensTheCountAgain_AndARepostWritesNothingMore() {
-			Supply supply=InvData.Supply(onHand:10);
-			Supply supply2=InvData.Supply(onHand:4);
-			long supplyCountNum=InvData.CountLine(supply,8).SupplyCountNum;
-			InvData.CountLine(supply2,6,supplyCountNum:supplyCountNum);
+			DateTime dateExpiryFound=DateTime.Today.AddMonths(10);
+			string resultOnce=CountUninterrupted(dateExpiryFound);
+			Shelf shelf=Shelf.Make();
+			long supplyCountNum=CountShelf(shelf,dateExpiryFound);
 			InventoryTracking.ActionAfterCountPosted=x => throw new ApplicationException("Connection lost (test)");
-			InvData.Throws<ApplicationException>(() => InventoryTracking.PostOpenCount(supplyCountNum,"Count"));
+			InvData.Throws<ApplicationException>(() => InventoryTracking.PostOpenCount(supplyCountNum,"Quarterly count"));
 			InventoryTracking.ActionAfterCountPosted=null;
 			Assert.AreEqual(SupplyCountStatus.Open,SupplyCounts.GetOne(supplyCountNum).CountStatus,"Opened again.");
-			Assert.AreEqual(8,InvData.OnHand(supply.SupplyNum),"The adjustments were written.");
-			Assert.AreEqual(6,InvData.OnHand(supply2.SupplyNum));
-			List<SupplyCountLine> listSupplyCountLines=SupplyCountLines.GetForCount(supplyCountNum);
-			CollectionAssert.AreEqual(new[] { 8.0,6.0 },listSupplyCountLines.Select(x => x.QtyProgram).ToArray(),"Read again from the ledger.");
-			Assert.AreEqual(0,InventoryTracking.PostOpenCount(supplyCountNum,"Count"),"Posting again writes nothing more.");
+			Assert.AreEqual(7,InvData.OnHand(shelf.SupplyPlain.SupplyNum),"The adjustments were written.");
+			AssertShelfLinesPosted(shelf,supplyCountNum);
+			UseFromShelf(shelf);
+			Assert.AreEqual(0,InventoryTracking.PostOpenCount(supplyCountNum,"Quarterly count"),"Posting again writes nothing more.");
 			Assert.AreEqual(SupplyCountStatus.Posted,SupplyCounts.GetOne(supplyCountNum).CountStatus);
-			Assert.AreEqual(1,SupplyLedgers.GetForSupply(supply.SupplyNum).Count(x => x.LedgerType==SupplyLedgerType.CountAdjust));
-			Assert.AreEqual(1,SupplyLedgers.GetForSupply(supply2.SupplyNum).Count(x => x.LedgerType==SupplyLedgerType.CountAdjust));
+			Assert.AreEqual(resultOnce,shelf.Result(),"The same as an uninterrupted count.");
+		}
+
+		///<summary>A post that fails before it writes any ledger row (here the supply table is gone for the moment, so PostCount cannot read the
+		///supplies) opens the count again with every line's snapshot as it was counted: stock used since does not change it. Posting again writes
+		///every difference once, as an uninterrupted count does (today's quantity as the snapshot would have written plain -1 instead of -2).
+		///</summary>
+		[TestMethod]
+		public void FailedPostBeforeAnyLedgerRow_KeepsEachLinesSnapshot() {
+			DateTime dateExpiryFound=DateTime.Today.AddMonths(10);
+			string resultOnce=CountUninterrupted(dateExpiryFound);
+			Shelf shelf=Shelf.Make();
+			long supplyCountNum=CountShelf(shelf,dateExpiryFound);
+			List<SupplyCountLine> listSupplyCountLinesBefore=SupplyCountLines.GetForCount(supplyCountNum);
+			string loggerDirOld=CodeBase.Logger.LoggerDirOverride;
+			CodeBase.Logger.LoggerDirOverride=System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"TestLogs");
+			DataCore.NonQ("RENAME TABLE supply TO supply_inv_off");
+			try {
+				InvData.Throws<Exception>(() => InventoryTracking.PostOpenCount(supplyCountNum,"Quarterly count"));
+			}
+			finally {
+				DataCore.NonQ("RENAME TABLE supply_inv_off TO supply");
+				CodeBase.Logger.LoggerDirOverride=loggerDirOld;
+			}
+			Assert.AreEqual(SupplyCountStatus.Open,SupplyCounts.GetOne(supplyCountNum).CountStatus,"Opened again.");
+			Assert.AreEqual(9,InvData.OnHand(shelf.SupplyPlain.SupplyNum),"Nothing was written.");
+			Assert.AreEqual(0,SupplyLedgers.GetForSupply(shelf.SupplyLotted.SupplyNum).Count(x => x.LedgerType==SupplyLedgerType.CountAdjust));
+			List<SupplyCountLine> listSupplyCountLines=SupplyCountLines.GetForCount(supplyCountNum);
+			CollectionAssert.AreEqual(new[] { 10.0,4.0,6.0,0.0 },listSupplyCountLines.Select(x => x.QtyProgram).ToArray(),"The snapshots of when they were counted.");
+			CollectionAssert.AreEqual(listSupplyCountLinesBefore.Select(x => x.QtyProgram).ToArray(),listSupplyCountLines.Select(x => x.QtyProgram).ToArray());
+			Assert.IsTrue(listSupplyCountLines.All(x => x.QtyPosted==0));
+			Assert.AreEqual(shelf.LotNumberFound,listSupplyCountLines[3].LotNumber,"Still a lot found in the count: the post created no lot.");
+			UseFromShelf(shelf);
+			Assert.AreEqual(4,InventoryTracking.PostOpenCount(supplyCountNum,"Quarterly count"));
+			Assert.AreEqual(resultOnce,shelf.Result(),"The same as an uninterrupted count.");
 		}
 
 		///<summary>A post cut off after its adjustments were written and before the count could be opened again (a crash, a power cut: here the
 		///lines table is gone for the moment) leaves the count Posting. Nothing can be counted then, and it cannot be resumed while the post may
-		///still run; 5 minutes after the post began it is resumed, with each line's program quantity read again from the ledger and an audit entry,
-		///and posting it again writes nothing more.</summary>
+		///still run. Stock was used after the lines were counted, and is used again while the count waits; 5 minutes after the post began it is
+		///resumed, with an audit entry: each line takes its own adjustment into its snapshot, so posting it again writes nothing more, and stock
+		///and adjustments are those of an uninterrupted count.</summary>
 		[TestMethod]
 		public void PostThatDidNotFinish_StaysPosting_AndIsResumedAfterFiveMinutes() {
-			Supply supply=InvData.Supply(onHand:5);
+			DateTime dateExpiryFound=DateTime.Today.AddMonths(10);
+			string resultOnce=CountUninterrupted(dateExpiryFound);
+			Shelf shelf=Shelf.Make();
 			Supply supplyOther=InvData.Supply(onHand:1);
-			long supplyCountNum=InvData.CountLine(supply,3).SupplyCountNum;
+			long supplyCountNum=CountShelf(shelf,dateExpiryFound);
 			string loggerDirOld=CodeBase.Logger.LoggerDirOverride;
 			CodeBase.Logger.LoggerDirOverride=System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"TestLogs");
 			InventoryTracking.ActionAfterCountPosted=x => {
@@ -378,7 +466,7 @@ namespace InventoryTests {
 				throw new ApplicationException("Power cut (test)");
 			};
 			try {
-				InvData.Throws<ApplicationException>(() => InventoryTracking.PostOpenCount(supplyCountNum,"Count"));
+				InvData.Throws<ApplicationException>(() => InventoryTracking.PostOpenCount(supplyCountNum,"Quarterly count"));
 			}
 			finally {
 				InventoryTracking.ActionAfterCountPosted=null;
@@ -386,23 +474,104 @@ namespace InventoryTests {
 				CodeBase.Logger.LoggerDirOverride=loggerDirOld;
 			}
 			Assert.AreEqual(SupplyCountStatus.Posting,SupplyCounts.GetOne(supplyCountNum).CountStatus,"It could not be opened again.");
-			Assert.AreEqual(3,InvData.OnHand(supply.SupplyNum),"Posted.");
+			Assert.AreEqual(7,InvData.OnHand(shelf.SupplyPlain.SupplyNum),"Posted.");
 			StringAssert.Contains(InventoryTracking.GetOpenCountDescription(),"It is being posted now.");
 			InvData.Throws<ApplicationException>(() => InvData.CountLine(supplyOther,1));
 			Assert.AreEqual(1,InvData.CountOpenCounts(),"No second count.");
 			InvData.Throws<ApplicationException>(() => InventoryTracking.ResumeCount(supplyCountNum));
 			Assert.AreEqual(SupplyCountStatus.Posting,SupplyCounts.GetOne(supplyCountNum).CountStatus);
+			UseFromShelf(shelf);//While the count waits to be resumed.
 			DataCore.NonQ("UPDATE supplycount SET DateTimeClosed=DATE_SUB(NOW(),INTERVAL 10 MINUTE) WHERE SupplyCountNum="+supplyCountNum);
 			StringAssert.Contains(InventoryTracking.GetOpenCountDescription(),"Its post did not finish");
 			SupplyCount supplyCount=InventoryTracking.ResumeCount(supplyCountNum);
 			Assert.AreEqual(SupplyCountStatus.Open,supplyCount.CountStatus);
 			Assert.AreEqual(0,supplyCount.UserNumClosed);
-			Assert.AreEqual(3,SupplyCountLines.GetForCount(supplyCountNum).Single().QtyProgram,"Read again from the ledger.");
+			AssertShelfLinesPosted(shelf,supplyCountNum);
 			Assert.AreEqual(1,InvData.CountLogs(EnumPermType.InventoryAdjust,"Stock count resumed after a post that did not finish (begun by "));
-			Assert.AreEqual(1,InvData.CountLogs(EnumPermType.InventoryAdjust,"from the ledger (SupplyCountNum "+supplyCountNum+")."));
-			Assert.AreEqual(0,InventoryTracking.PostOpenCount(supplyCountNum,"Count"));
-			Assert.AreEqual(3,InvData.OnHand(supply.SupplyNum));
-			Assert.AreEqual(1,SupplyLedgers.GetForSupply(supply.SupplyNum).Count(x => x.LedgerType==SupplyLedgerType.CountAdjust));
+			Assert.AreEqual(1,InvData.CountLogs(EnumPermType.InventoryAdjust,"the others keep the program's quantity of when they were counted (SupplyCountNum "
+				+supplyCountNum+")."));
+			Assert.AreEqual(0,InventoryTracking.PostOpenCount(supplyCountNum,"Quarterly count"));
+			Assert.AreEqual(resultOnce,shelf.Result(),"The same as an uninterrupted count.");
+		}
+
+		///<summary>A line the failed post adjusted is counted again (stock was used since), and the next post fails too, before it writes anything.
+		///The recount's new snapshot already includes the first adjustment, and QtyPosted says so, so opening the count again keeps the recount's
+		///snapshot: the third post writes the recount's difference once.</summary>
+		[TestMethod]
+		public void LineCountedAgainAfterAFailedPost_IsPostedOnce_AfterASecondFailedPost() {
+			Supply supply=InvData.Supply(onHand:10);
+			SupplyCountLine supplyCountLine=InvData.CountLine(supply,8);
+			long supplyCountNum=supplyCountLine.SupplyCountNum;
+			InventoryTracking.ActionAfterCountPosted=x => throw new ApplicationException("Connection lost (test)");
+			InvData.Throws<ApplicationException>(() => InventoryTracking.PostOpenCount(supplyCountNum,"Count"));
+			InventoryTracking.ActionAfterCountPosted=null;
+			SupplyCountLine supplyCountLineReopened=SupplyCountLines.GetOne(supplyCountLine.SupplyCountLineNum);
+			Assert.AreEqual(8,supplyCountLineReopened.QtyProgram);
+			Assert.AreEqual(-2,supplyCountLineReopened.QtyPosted);
+			InventoryTracking.Adjust(supply.SupplyNum,0,-1,"Used meanwhile");
+			SupplyCountLine supplyCountLineAgain=InvData.CountLine(supply,6,supplyCountNum:supplyCountNum);
+			Assert.AreEqual(supplyCountLine.SupplyCountLineNum,supplyCountLineAgain.SupplyCountLineNum,"The same line, replaced.");
+			Assert.AreEqual(7,supplyCountLineAgain.QtyProgram,"A new snapshot, with the first adjustment and the use in it.");
+			Assert.AreEqual(-2,supplyCountLineAgain.QtyPosted,"Kept: the snapshot includes that adjustment.");
+			string loggerDirOld=CodeBase.Logger.LoggerDirOverride;
+			CodeBase.Logger.LoggerDirOverride=System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"TestLogs");
+			DataCore.NonQ("RENAME TABLE supply TO supply_inv_off");
+			try {
+				InvData.Throws<Exception>(() => InventoryTracking.PostOpenCount(supplyCountNum,"Count"));
+			}
+			finally {
+				DataCore.NonQ("RENAME TABLE supply_inv_off TO supply");
+				CodeBase.Logger.LoggerDirOverride=loggerDirOld;
+			}
+			SupplyCountLine supplyCountLineSecond=SupplyCountLines.GetOne(supplyCountLine.SupplyCountLineNum);
+			Assert.AreEqual(SupplyCountStatus.Open,SupplyCounts.GetOne(supplyCountNum).CountStatus);
+			Assert.AreEqual(7,supplyCountLineSecond.QtyProgram,"The recount's snapshot: the first post's row is not this post's.");
+			Assert.AreEqual(6,supplyCountLineSecond.QtyCounted);
+			Assert.AreEqual(1,InventoryTracking.PostOpenCount(supplyCountNum,"Count"));
+			Assert.AreEqual(6,InvData.OnHand(supply.SupplyNum),"Counted 6 at the end.");
+			List<SupplyLedger> listSupplyLedgersCount=SupplyLedgers.GetForSupply(supply.SupplyNum).Where(x => x.LedgerType==SupplyLedgerType.CountAdjust).ToList();
+			CollectionAssert.AreEqual(new[] { -2.0,-1.0 },listSupplyLedgersCount.Select(x => x.Quantity).ToArray());
+			Assert.IsTrue(listSupplyLedgersCount.All(x => x.SupplyCountLineNum==supplyCountLine.SupplyCountLineNum));
+		}
+
+		///<summary>An implant tracked by lot with lots A (4) and B (6) and 2 without a lot: one user counts lot A and closes the window. Another user
+		///resumes: the window shows lot B and the stock without a lot too, after lot A, as when the supply was first scanned; a scan with lot B's
+		///row selected counts lot B, Add of the same supply adds no row twice, and a window opened again shows the same rows.</summary>
+		[TestMethod]
+		public void ResumedSupplyCountedInOneLot_ShowsItsOtherLots_AndAScanGoesToTheSelectedLot() {
+			string barcode="CNTLOT"+InvData.Next();
+			Supply supply=InvData.Supply(onHand:2,isLotTracked:true,isImplant:true,barcode:barcode);
+			int n=InvData.Next();
+			SupplyLot supplyLotA=InvData.Lot(supply,"IMPA"+n,DateTime.Today.AddMonths(3),4);
+			SupplyLot supplyLotB=InvData.Lot(supply,"IMPB"+n,DateTime.Today.AddMonths(6),6);
+			long supplyCountNum=InvData.CountLine(supply,3,supplyLotNum:supplyLotA.SupplyLotNum).SupplyCountNum;
+			Userod userodB=InvData.User();
+			List<string> listRowsResumed=null;
+			List<string> listRowsAfterAdd=null;
+			RunStaLoaded(form => {
+				OpenPmsDental.UI.GridOD grid=GetGrid(form);
+				listRowsResumed=grid.ListGridRows.Select(x => x.Cells[1].Text+"|"+x.Cells[3].Text+"|"+x.Cells[4].Text).ToList();
+				int indexB=listRowsResumed.FindIndex(x => x.StartsWith(supplyLotB.LotNumber+"|"));
+				grid.SetSelected(new System.Drawing.Point(0,indexB));
+				TextBox textScan=WindowTests.GetPrivate<TextBox>(form,"textScan");
+				textScan.Text=barcode;
+				WindowTests.InvokePrivate(form,"textScan_KeyDown",textScan,new KeyEventArgs(Keys.Enter));
+				WindowTests.InvokePrivate(form,"AddRowsForSupply",supply);//What Add does for a supply picked from the list.
+				WindowTests.InvokePrivate(form,"FillGrid");
+				listRowsAfterAdd=grid.ListGridRows.Select(x => x.Cells[1].Text+"|"+x.Cells[3].Text+"|"+x.Cells[4].Text).ToList();
+			},userodB);
+			CollectionAssert.AreEqual(new[] { supplyLotA.LotNumber+"|4|3",supplyLotB.LotNumber+"|6|","(no lot)|2|" },listRowsResumed,
+				"Every row the supply had when it was first scanned, the counted lot first.");
+			CollectionAssert.AreEqual(new[] { supplyLotA.LotNumber+"|4|3",supplyLotB.LotNumber+"|6|1","(no lot)|2|" },listRowsAfterAdd,
+				"The scan counted lot B; Add added no row twice.");
+			List<SupplyCountLine> listSupplyCountLines=InventoryTracking.GetSavedCountLines(supplyCountNum);
+			CollectionAssert.AreEqual(new[] { supplyLotA.SupplyLotNum,supplyLotB.SupplyLotNum },listSupplyCountLines.Select(x => x.SupplyLotNum).ToArray());
+			CollectionAssert.AreEqual(new[] { 3.0,1.0 },listSupplyCountLines.Select(x => x.QtyCounted).ToArray(),"Lot A keeps its 3.");
+			List<string> listRowsAgain=null;
+			RunStaLoaded(form => {
+				listRowsAgain=GetGrid(form).ListGridRows.Select(x => x.Cells[1].Text+"|"+x.Cells[3].Text+"|"+x.Cells[4].Text).ToList();
+			});
+			CollectionAssert.AreEqual(listRowsAfterAdd,listRowsAgain);
 		}
 
 		///<summary>Discarding the open count closes it without changing stock, keeps its lines with it, writes an Inventory Adjust audit entry with

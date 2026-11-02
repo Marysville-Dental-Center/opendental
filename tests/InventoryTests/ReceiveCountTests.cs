@@ -135,8 +135,9 @@ namespace InventoryTests {
 			Assert.AreEqual(0,countAdjusted);
 			Assert.AreEqual(3,SupplyLedgers.GetSumForLot(supplyLot.SupplyLotNum));
 			Assert.AreEqual(1,SupplyLedgers.GetForSupply(supply.SupplyNum).Count(x => x.LedgerType==SupplyLedgerType.CountAdjust),"Adjusted once.");
-			//The window reads the ledger through these, never the counters; the reload after a failed post is the business layer's, from the ledger
-			//too, and so is every saved line's snapshot.
+			//The window reads the ledger through these, never the counters, and so does every saved line's snapshot. Opening a count again after a
+			//failed post never reads a snapshot again (today's quantity has the stock used since the line was counted in it): each line takes its own
+			//adjustments into its snapshot, from the ledger rows that name it.
 			string source=System.IO.File.ReadAllText(InvDb.FindRepoFile(System.IO.Path.Combine("OpenPmsDental","Forms","FormSupplyCount.cs")));
 			Assert.IsFalse(source.Contains("QtyOnHand"),"FormSupplyCount reads no lot counter.");
 			StringAssert.Contains(source,"InventoryTracking.GetCountLines(supply.SupplyNum)");
@@ -144,8 +145,11 @@ namespace InventoryTests {
 			string sourceBusiness=System.IO.File.ReadAllText(InvDb.FindRepoFile(System.IO.Path.Combine("OpenPmsDentalBusiness","Db Multi Table","InventoryTracking.cs")));
 			int indexReopen=sourceBusiness.IndexOf("private static void ReopenAfterFailedPost(");
 			int indexSave=sourceBusiness.IndexOf("public static SupplyCountLine SaveCountLine(");
-			Assert.IsTrue(indexReopen>0 && indexSave>0);
-			StringAssert.Contains(sourceBusiness.Substring(indexReopen,sourceBusiness.IndexOf("#endregion Saved stock counts")-indexReopen),"GetQtyProgram(");
+			int indexResume=sourceBusiness.IndexOf("public static SupplyCount ResumeCount(");
+			Assert.IsTrue(indexReopen>0 && indexSave>0 && indexResume>indexReopen);
+			string sourceReopen=sourceBusiness.Substring(indexReopen,indexResume-indexReopen);
+			Assert.IsFalse(sourceReopen.Contains("GetQtyProgram("),"No snapshot is read again after a failed post.");
+			StringAssert.Contains(sourceReopen,"SupplyCountLines.TakeAdjustmentsIntoSnapshotsWhilePosting(supplyCountNum)");
 			StringAssert.Contains(sourceBusiness.Substring(indexSave,indexReopen>indexSave ? indexReopen-indexSave : sourceBusiness.Length-indexSave),"GetQtyProgram(");
 			SupplyLedgers.RecomputeForSupplies(new List<long> { supply.SupplyNum });
 			SupplyLedgers.RecomputeForLots(new List<long> { supplyLot.SupplyLotNum });

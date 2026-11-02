@@ -150,6 +150,7 @@ namespace InventoryTests {
 			Assert.AreEqual(4,PIn.Double(listRows[0]["UnitCost"].ToString()));
 			Assert.IsTrue(listRows.All(x => PIn.DateT(x["DateTimeEntry"].ToString()).Year<1880),"No time of their own, the same on every run.");
 			Assert.IsTrue(listRows.All(x => PIn.Long(x["UserNum"].ToString())==0));
+			Assert.IsTrue(listRows.All(x => PIn.Long(x["SupplyCountLineNum"].ToString())==0),"Not posted from a stock count.");
 			Assert.AreEqual(InventoryTracking.REASON_OPENING,InventoryLedgerStep.REASON_OPENING);
 		}
 
