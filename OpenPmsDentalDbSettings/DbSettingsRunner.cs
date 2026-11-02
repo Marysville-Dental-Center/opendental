@@ -27,6 +27,9 @@ namespace OpenPmsDentalDbSettings {
 		public string Thumbprint;
 		///<summary>The database password (password mode); null keeps the stored one when the user stays the same.</summary>
 		public string DbPassword;
+		///<summary>True when the request comes from the window: messages then name its fields and buttons, not the secrets file or /prompt.
+		///</summary>
+		public bool IsWindow;
 	}
 
 	///<summary>The result of a run: the exit code and a message for the user and the log, never with a secret in it.</summary>
@@ -64,14 +67,32 @@ namespace OpenPmsDentalDbSettings {
 			}
 		}
 
-		///<summary>/check: whether the file at configPath passes the rule, without connecting. 0, or 5 with what is missing.</summary>
+		///<summary>/check: whether the file at configPath passes the rule, without connecting. 0, or 5 with what is missing. A ConnectionString
+		///element is checked first, because the program uses it before DatabaseConnection: it may name only a database on this computer
+		///(docs/specs/db-connection-security.md section 3.1).</summary>
 		public static DbSettingsResult Check(string configPath) {
 			DbConnectionConfig dbConnectionConfig;
+			string connectionString;
 			try {
-				dbConnectionConfig=DbConnectionConfig.ReadFile(configPath);
+				if(!File.Exists(configPath)) {
+					return new DbSettingsResult(EXIT_REFUSED,ProgramNames.ConfigFileName+" is missing, so it has no database connection.");
+				}
+				System.Xml.XmlDocument xmlDocument=new System.Xml.XmlDocument();
+				xmlDocument.Load(configPath);
+				System.Xml.XPath.XPathNavigator xPathNavigator=xmlDocument.CreateNavigator();
+				connectionString=DbConnectionConfig.ReadConnectionStringElement(xPathNavigator);
+				dbConnectionConfig=DbConnectionConfig.FromNavigator(xPathNavigator);
 			}
 			catch(Exception ex) {
 				return new DbSettingsResult(EXIT_REFUSED,ProgramNames.ConfigFileName+" cannot be read: "+ex.Message);
+			}
+			if(!string.IsNullOrWhiteSpace(connectionString)) {
+				string connectionStringProblem=DbConnectionSecurity.GetConnectionStringProblem(connectionString);
+				if(connectionStringProblem!="") {
+					return new DbSettingsResult(EXIT_REFUSED,connectionStringProblem);
+				}
+				return new DbSettingsResult(EXIT_OK,"The connection string in "+ProgramNames.ConfigFileName+" names a database on this computer, which "
+					+"needs no encryption.");
 			}
 			if(dbConnectionConfig==null) {
 				return new DbSettingsResult(EXIT_REFUSED,ProgramNames.ConfigFileName+" has no database connection.");
@@ -154,7 +175,7 @@ namespace OpenPmsDentalDbSettings {
 			}
 			if(!isLoopback && string.IsNullOrWhiteSpace(dbConnectionConfigNew.SslCa)) {
 				throw new DbSettingsException(EXIT_REFUSED,"A database server over the network ("+dbConnectionConfigNew.ServerName+") needs the office "
-					+"CA certificate file (/ca=).");
+					+"CA certificate file "+Hint(dbSettingsRequest,"(/ca=).","(Office CA certificate: Browse...)."));
 			}
 			DbSettingsAuth dbSettingsAuth=ResolveAuth(dbSettingsRequest,dbConnectionConfigCurrent);
 			bool isPfxImport=false;
@@ -162,8 +183,9 @@ namespace OpenPmsDentalDbSettings {
 			if(dbSettingsAuth==DbSettingsAuth.Certificate) {
 				if(!string.IsNullOrWhiteSpace(dbSettingsRequest.PfxFile)) {
 					if(dbSettingsRequest.PfxPassword==null) {
-						throw new DbSettingsException(EXIT_BAD_VALUE,"The password of the client certificate file is missing (PfxPassword in the secrets "
-							+"file, or /prompt).");
+						throw new DbSettingsException(EXIT_BAD_VALUE,"The password of the client certificate file is missing "+Hint(dbSettingsRequest,
+							"(PfxPassword in the secrets file, or /prompt).","(type it when the window asks for it, or choose the file again with Import "
+							+".pfx...)."));
 					}
 					using(X509Certificate2 x509Certificate2=ClientCertificateStore.LoadPfxForCheck(dbSettingsRequest.PfxFile.Trim(),
 						dbSettingsRequest.PfxPassword))
@@ -175,8 +197,8 @@ namespace OpenPmsDentalDbSettings {
 				else {
 					string thumbprint=DbConnectionConfig.NormalizeThumbprint(dbSettingsRequest.Thumbprint??dbConnectionConfigCurrent.ClientCertThumbprint);
 					if(thumbprint=="") {
-						throw new DbSettingsException(EXIT_BAD_VALUE,"No client certificate: import a .pfx (/pfx=) or name one in the computer's store "
-							+"(/thumbprint=).");
+						throw new DbSettingsException(EXIT_BAD_VALUE,"No client certificate: "+Hint(dbSettingsRequest,"import a .pfx (/pfx=) or name one in "
+							+"the computer's store (/thumbprint=).","import a .pfx with Import .pfx..., or choose Database password."));
 					}
 					X509Certificate2 x509Certificate2=ClientCertificateStore.FindInStore(thumbprint);
 					if(x509Certificate2==null) {
@@ -198,12 +220,14 @@ namespace OpenPmsDentalDbSettings {
 					}
 					catch(DbConnectionRefusedException) {
 						throw new DbSettingsException(EXIT_REFUSED,"The stored password cannot be kept for "+dbConnectionConfigNew.ServerName+": it is "
-							+"stored the old way or cannot be read on this computer. Give the database password (DbPassword in the secrets file, or /prompt).");
+							+"stored the old way or cannot be read on this computer. "+Hint(dbSettingsRequest,"Give the database password (DbPassword in the "
+							+"secrets file, or /prompt).","Type the database password in the Password field."));
 					}
 				}
 				if(!isLoopback && password=="") {
 					throw new DbSettingsException(EXIT_REFUSED,"A database server over the network ("+dbConnectionConfigNew.ServerName+") needs a client "
-						+"certificate or a database password (DbPassword in the secrets file, or /prompt).");
+						+"certificate or a database password "+Hint(dbSettingsRequest,"(DbPassword in the secrets file, or /prompt).","(import a .pfx with "
+						+"Import .pfx..., or type the database password in the Password field)."));
 				}
 			}
 			//The rule, as the program will apply it. The CA copy does not exist yet; the rule checks the file the copy is made from.
@@ -241,12 +265,18 @@ namespace OpenPmsDentalDbSettings {
 				throw;
 			}
 			catch(Exception ex) when(ex is IOException || ex is UnauthorizedAccessException || ex is CryptographicException
-				|| ex is System.Xml.XmlException)
+				|| ex is System.Xml.XmlException || ex is InvalidOperationException)//InvalidOperationException: an owner Windows does not let this process set
 			{
 				throw new DbSettingsException(EXIT_WRITE_FAILED,"The connection settings could not be saved: "+ex.Message);
 			}
 			#endregion Change things
 			return warning;
+		}
+
+		///<summary>What to do about a missing value: switches for the switches and the secrets file, window for the window's fields and buttons
+		///(DbSettingsRequest.IsWindow).</summary>
+		private static string Hint(DbSettingsRequest dbSettingsRequest,string switches,string window) {
+			return dbSettingsRequest.IsWindow ? window : switches;
 		}
 
 		///<summary>Connects with the saved settings at configPath (through the connection rule) and asks the server for its version. Returns the

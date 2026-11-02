@@ -42,6 +42,7 @@ namespace OpenPmsDentalDbSettings {
 			_dbSettingsRequestStart=dbSettingsRequestStart??new DbSettingsRequest();
 			BuildControls();
 			Load+=FormDbSettings_Load;
+			Shown+=FormDbSettings_Shown;
 		}
 
 		private void BuildControls() {
@@ -133,6 +134,42 @@ namespace OpenPmsDentalDbSettings {
 			SetCredentialEnabled();
 		}
 
+		private void FormDbSettings_Shown(object sender,EventArgs e) {
+			//Setup's page passes the .pfx with /pfx= and never its password: ask for it now, not only when Save fails.
+			EnsurePfxPassword();
+		}
+
+		///<summary>Asks for the password of the .pfx that is to be imported when it has none yet (a .pfx from /pfx= without a secrets file, as
+		///setup passes it), and checks it with the file without storing anything (ClientCertificateStore.LoadPfxForCheck). True when there is no
+		///such .pfx or its password is now known; false when the user cancels or the check fails, and the .pfx then stays waiting for its
+		///password.</summary>
+		private bool EnsurePfxPassword() {
+			if(_pfxPathPending==null || _pfxPasswordPending!=null) {
+				return true;
+			}
+			string fileName=Path.GetFileName(_pfxPathPending);
+			string password;
+			try {
+				password=FormSecretPrompt.Ask("The password of the client certificate file "+fileName+":");
+			}
+			catch(DbSettingsException) {
+				_labelPfxPending.Text="To import when you save: "+fileName+" (its password is still needed)";
+				return false;
+			}
+			try {
+				using(X509Certificate2 x509Certificate2=ClientCertificateStore.LoadPfxForCheck(_pfxPathPending,password)) {
+					_labelPfxPending.Text="To import when you save: "+ClientCertificateStore.Describe(x509Certificate2);
+				}
+			}
+			catch(DbSettingsException ex) {
+				_labelPfxPending.Text="To import when you save: "+fileName+" (its password is still needed)";
+				MessageBox.Show(ex.Message,TITLE,MessageBoxButtons.OK,MessageBoxIcon.Warning);
+				return false;
+			}
+			_pfxPasswordPending=password;
+			return true;
+		}
+
 		private void ShowCurrentCertificate() {
 			string thumbprint=_dbSettingsRequestStart.Thumbprint??_dbConnectionConfigCurrent.ClientCertThumbprint;
 			if(string.IsNullOrEmpty(thumbprint)) {
@@ -201,6 +238,7 @@ namespace OpenPmsDentalDbSettings {
 
 		private DbSettingsRequest RequestFromScreen() {
 			DbSettingsRequest dbSettingsRequest=new DbSettingsRequest();
+			dbSettingsRequest.IsWindow=true;
 			dbSettingsRequest.Server=_textServer.Text.Trim();
 			dbSettingsRequest.Database=_textDatabase.Text.Trim();
 			dbSettingsRequest.User=_textUser.Text.Trim();
@@ -254,6 +292,9 @@ namespace OpenPmsDentalDbSettings {
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
+			if(_radioCertificate.Checked && !EnsurePfxPassword()) {
+				return;//The .pfx still waits for its password; nothing is saved.
+			}
 			Cursor=Cursors.WaitCursor;
 			DbSettingsResult dbSettingsResult=DbSettingsRunner.Apply(RequestFromScreen(),_configPath,_caCopyPath);
 			Cursor=Cursors.Default;
