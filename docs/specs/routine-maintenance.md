@@ -252,10 +252,12 @@ history's **Correct** button:
 Per item (from the board's History button) or overall (All History), for a date range (default: the last 12 months) of the date done.
 Columns: Date Done, Item (overall only), Done By, Due, Late (days after the due date, blank when on time), Flagged, Checklist ("5 of 5"
 when every step was ticked, "3 of 5, not done: Drain, Refill" when some were not, blank when the item had no steps), Results (each filled
-result as "name: value"), Note, Recorded (date and time), Corrected (blank when never corrected, otherwise the date and time of the last
-correction and who made it, for example "11/03/2026 10:15 AM by Admin"). The checklist and the results are in this grid so that a printout
-or an export shows them: a completion recorded with skipped steps never looks like a full one, and a corrected one shows that it was
-corrected. A row is light red when the completion is flagged, light yellow when a checklist step was not done (an unticked step is not a
+result as "name: value"), Note, Recorded (date and time, without seconds), Corrected (blank when never corrected, otherwise the date of the
+last correction and who made it, for example "11/3/2026 by Admin"; the time is in the audit trail). The checklist and the results are in
+this grid so that a printout or an export shows them: a completion recorded with skipped steps never looks like a full one, and a corrected
+one shows that it was corrected. Results is the only column that takes the width the others leave, and a printout has the on-screen width,
+so the other columns (`MaintHistoryGrid`) leave Results at least 150 pixels in All History at the window's default size, on screen and
+printed; one item's history has no Item column and gives Results 150 more. Longer text wraps onto more lines. A row is light red when the completion is flagged, light yellow when a checklist step was not done (an unticked step is not a
 failed result, so it does not flag the completion). A second grid shows the selected completion's checklist and results, with not-done steps
 light yellow; **Open Attachment** opens an attached file; **Correct** corrects the selected completion (above). **Print** and **Export** as
 on the board.

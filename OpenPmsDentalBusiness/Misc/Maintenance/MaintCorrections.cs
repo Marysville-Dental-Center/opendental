@@ -159,13 +159,14 @@ namespace OpenPmsDentalBusiness {
 			return "note: '"+(string.IsNullOrEmpty(noteOld) ? LOG_BLANK : noteOld)+"' to '"+(string.IsNullOrEmpty(noteNew) ? LOG_BLANK : noteNew)+"'";
 		}
 
-		///<summary>The history's Corrected column: "" when the completion was never corrected, otherwise the date and time of the last correction and
-		///who made it, in the user's culture, for example "11/3/2026 10:15 AM by Admin". userName is the name of maintRecord.UserNumCorrected.</summary>
+		///<summary>The history's Corrected column: "" when the completion was never corrected, otherwise the date of the last correction and who
+		///made it, in the user's culture, for example "11/3/2026 by Admin". The time is left out so that the column stays narrow enough for Results
+		///(MaintHistoryGrid); the audit trail entry has it. userName is the name of maintRecord.UserNumCorrected.</summary>
 		public static string GetCorrectedText(MaintRecord maintRecord,string userName) {
 			if(!IsCorrected(maintRecord)) {
 				return "";
 			}
-			string text=maintRecord.DateTCorrected.ToShortDateString()+" "+maintRecord.DateTCorrected.ToShortTimeString();
+			string text=maintRecord.DateTCorrected.ToShortDateString();
 			if(!string.IsNullOrEmpty(userName)) {
 				text+=" "+Lans.g("MaintCorrections","by")+" "+userName;
 			}

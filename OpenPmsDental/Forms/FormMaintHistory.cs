@@ -61,19 +61,10 @@ namespace OpenPmsDental {
 			long maintRecordNumSelected=gridMain.SelectedTag<MaintRecord>()?.MaintRecordNum??0;
 			gridMain.BeginUpdate();
 			gridMain.Columns.Clear();
-			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Date Done"),80));
-			if(_maintItemNum==0) {
-				gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Item"),180));
+			//The widths leave Results room in All History, on screen and printed (MaintHistoryGrid).
+			foreach(GridColumn gridColumn in MaintHistoryGrid.GetColumns(gridMain.TranslationName,isAllItems:_maintItemNum==0)) {
+				gridMain.Columns.Add(gridColumn);
 			}
-			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Done By"),100));
-			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Due"),80));
-			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Late"),50,HorizontalAlignment.Right));
-			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Flagged"),55,HorizontalAlignment.Center));
-			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Checklist"),120));
-			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Results"),200){ IsWidthDynamic=true });
-			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Note"),130));
-			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Recorded"),120));
-			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Corrected"),150));
 			int indexSelect=-1;
 			gridMain.ListGridRows.Clear();
 			foreach(MaintRecord maintRecord in _listMaintRecords) {
@@ -96,7 +87,7 @@ namespace OpenPmsDental {
 				List<MaintRecordValue> listValues=listValuesRecord.FindAll(x => x.FieldType!=EnumMaintFieldType.ChecklistStep && x.ValueText!="");
 				row.Cells.Add(string.Join("; ",listValues.Select(x => x.Label+": "+MaintValues.GetDisplayText(x))));
 				row.Cells.Add(maintRecord.Note);
-				row.Cells.Add(maintRecord.SecDateTEntry.Year>1880 ? maintRecord.SecDateTEntry.ToString() : "");
+				row.Cells.Add(MaintHistoryGrid.GetRecordedText(maintRecord.SecDateTEntry));
 				//A corrected completion says so in the grid, so the printout and the export show it too.
 				row.Cells.Add(MaintCorrections.GetCorrectedText(maintRecord,maintRecord.UserNumCorrected==0 ? "" : Userods.GetName(maintRecord.UserNumCorrected)));
 				if(maintRecord.IsFlagged) {
