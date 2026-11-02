@@ -81,7 +81,20 @@ namespace OpenPmsDental {
 			}
 			gridMain.EndUpdate();
 			if(indexSelected>=0 && indexSelected<gridMain.ListGridRows.Count) {
-				gridMain.SetSelected(new System.Drawing.Point(4,indexSelected));
+				gridMain.SetSelected(new System.Drawing.Point(COL_DESCRIPTION,indexSelected));
+			}
+		}
+
+		///<summary>Rows are selected in the Description column, never in an editable one: an edit box there would take the scanner's digits.</summary>
+		private const int COL_DESCRIPTION=1;
+
+		///<summary>Selects the row in the Description column (no edit box) and puts the keyboard back in the Scan box once the grid is drawn.</summary>
+		private void SelectRowAndScanBox(int index) {
+			if(index>=0 && index<gridMain.ListGridRows.Count) {
+				gridMain.SetSelected(new System.Drawing.Point(COL_DESCRIPTION,index));
+			}
+			if(IsHandleCreated) {
+				BeginInvoke((Action)(() => textScan.Focus()));
 			}
 		}
 
@@ -95,11 +108,11 @@ namespace OpenPmsDental {
 				if(text=="") {
 					receiveRow.QtyNow=0;
 				}
-				else if(double.TryParse(text,NumberStyles.Number,CultureInfo.CurrentCulture,out double qty) && qty>=0) {
-					receiveRow.QtyNow=Math.Round(qty,2);
-				}
-				else {
+				else if(!double.TryParse(text,NumberStyles.Number,CultureInfo.CurrentCulture,out double qty) || qty<0) {
 					MsgBox.Show(this,"Please enter a quantity of 0 or more.");
+				}
+				else if(MaterialsUsedL.IsQtyAccepted(this,qty,Math.Max(MaterialsUsedL.QTY_ASK_STOCK,receiveRow.SupplyOrderItem.Qty))) {
+					receiveRow.QtyNow=Math.Round(qty,2);
 				}
 			}
 			else if(e.Col==5) {
@@ -138,9 +151,7 @@ namespace OpenPmsDental {
 			}
 			receiveRow.QtyNow=Math.Round(receiveRow.QtyNow+1,2);
 			FillGrid();
-			int index=_listReceiveRows.IndexOf(receiveRow);
-			gridMain.SetSelected(new System.Drawing.Point(receiveRow.IsLotTracked && receiveRow.LotNumber=="" ? 5 : 4,index));
-			textScan.Focus();
+			SelectRowAndScanBox(_listReceiveRows.IndexOf(receiveRow));
 		}
 
 		private void butAddLotRow_Click(object sender,EventArgs e) {
@@ -157,7 +168,7 @@ namespace OpenPmsDental {
 			receiveRow.QtyReceivedBefore=receiveRowFrom.QtyReceivedBefore;
 			_listReceiveRows.Insert(index+1,receiveRow);
 			FillGrid();
-			gridMain.SetSelected(new System.Drawing.Point(4,index+1));
+			SelectRowAndScanBox(index+1);
 		}
 
 		private void butPost_Click(object sender,EventArgs e) {
@@ -193,12 +204,31 @@ namespace OpenPmsDental {
 				InventoryTracking.Receive(listSupplyReceiveLines);
 			}
 			catch(Exception ex) {
-				MessageBox.Show(this,ex.Message);
+				//Some or all of it may be received (a failure part-way, or the answer was lost). Read Received from the ledger again and clear Receive
+				//Now, so posting again cannot receive the same items twice.
+				ReloadAfterFailure();
+				MessageBox.Show(this,ex.Message+"\r\n\r\n"+Lan.g(this,"Part of it may have been received. Received was read again and Receive Now cleared: check Received, then enter and post only what is missing."));
 				return;
 			}
 			LoadRows();
 			FillGrid();
 			MsgBox.Show(this,"Received. Stock is updated.");
+		}
+
+		///<summary>After a failed post: the rows read again from the database (Received from the ledger, Receive Now cleared). When even that fails,
+		///Post is turned off until the window is opened again.</summary>
+		private void ReloadAfterFailure() {
+			try {
+				LoadRows();
+			}
+			catch(Exception) {
+				_listReceiveRows.Clear();
+				butPost.Enabled=false;
+				butAddLotRow.Enabled=false;
+				textScan.Enabled=false;
+				MsgBox.Show(this,"The order could not be read again. Close this window and open Receive again to see what was received.");
+			}
+			FillGrid();
 		}
 
 		private void butClose_Click(object sender,EventArgs e) {

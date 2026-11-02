@@ -61,9 +61,22 @@ namespace OpenPmsDental {
 			}
 			gridMain.EndUpdate();
 			if(indexSelected>=0 && indexSelected<gridMain.ListGridRows.Count) {
-				gridMain.SetSelected(new System.Drawing.Point(4,indexSelected));
+				gridMain.SetSelected(new System.Drawing.Point(COL_SUPPLY,indexSelected));
 			}
 			labelCount.Text=_listCountRows.Count(x => x.IsCounted)+" "+Lan.g(this,"of")+" "+_listCountRows.Count+" "+Lan.g(this,"rows counted");
+		}
+
+		///<summary>Rows are selected in the Supply column, never in the Counted one: an edit box there would take the scanner's digits.</summary>
+		private const int COL_SUPPLY=0;
+
+		///<summary>Selects the row in the Supply column (no edit box) and puts the keyboard back in the Scan box once the grid is drawn.</summary>
+		private void SelectRowAndScanBox(int index) {
+			if(index>=0 && index<gridMain.ListGridRows.Count) {
+				gridMain.SetSelected(new System.Drawing.Point(COL_SUPPLY,index));
+			}
+			if(IsHandleCreated) {
+				BeginInvoke((Action)(() => textScan.Focus()));
+			}
 		}
 
 		///<summary>Adds the rows of the supply that are not in the grid yet, with the quantities the program has now: one row per lot with stock, and
@@ -111,8 +124,7 @@ namespace OpenPmsDental {
 			countRow.QtyCounted=Math.Round((countRow.IsCounted ? countRow.QtyCounted : 0)+1,2);
 			countRow.IsCounted=true;
 			FillGrid();
-			gridMain.SetSelected(new System.Drawing.Point(4,_listCountRows.IndexOf(countRow)));
-			textScan.Focus();
+			SelectRowAndScanBox(_listCountRows.IndexOf(countRow));
 		}
 
 		private void gridMain_CellLeave(object sender,ODGridClickEventArgs e) {
@@ -125,12 +137,12 @@ namespace OpenPmsDental {
 				countRow.IsCounted=false;
 				countRow.QtyCounted=0;
 			}
-			else if(double.TryParse(text,NumberStyles.Number,CultureInfo.CurrentCulture,out double qty) && qty>=0) {
+			else if(!double.TryParse(text,NumberStyles.Number,CultureInfo.CurrentCulture,out double qty) || qty<0) {
+				MsgBox.Show(this,"Please enter a quantity of 0 or more.");
+			}
+			else if(MaterialsUsedL.IsQtyAccepted(this,qty,Math.Max(MaterialsUsedL.QTY_ASK_STOCK,Math.Round(countRow.QtyProgram*10,2)))) {
 				countRow.QtyCounted=Math.Round(qty,2);
 				countRow.IsCounted=true;
-			}
-			else {
-				MsgBox.Show(this,"Please enter a quantity of 0 or more.");
 			}
 			FillGrid();
 		}
@@ -187,7 +199,7 @@ namespace OpenPmsDental {
 				_listCountRows.Insert(index+1,countRow);
 			}
 			FillGrid();
-			gridMain.SetSelected(new System.Drawing.Point(4,_listCountRows.IndexOf(countRow)));
+			SelectRowAndScanBox(_listCountRows.IndexOf(countRow));
 		}
 
 		private void butRemove_Click(object sender,EventArgs e) {
@@ -220,12 +232,47 @@ namespace OpenPmsDental {
 				countAdjusted=InventoryTracking.PostCount(listSupplyCountLines,textReason.Text);
 			}
 			catch(Exception ex) {
-				MessageBox.Show(this,ex.Message);
+				//Some or all of it may be posted (a failure part-way, or the answer was lost). Read the program's quantity of each counted row again, so
+				//posting again writes only the difference that is still left.
+				ReloadQtyProgramAfterFailure(listCounted);
+				FillGrid();
+				MessageBox.Show(this,ex.Message+"\r\n\r\n"+Lan.g(this,"Part of the count may have been posted. The program's quantities were read again: posting again writes only what still differs."));
 				return;
 			}
 			_listCountRows.RemoveAll(x => x.IsCounted);
 			FillGrid();
 			MessageBox.Show(this,Lan.g(this,"Count posted. Rows adjusted")+": "+countAdjusted);
+		}
+
+		///<summary>After a failed post: each counted row's program quantity read again from the ledger (a lot found in the count that the post
+		///created is found by its number). When even that fails, Post is turned off until the window is opened again.</summary>
+		private void ReloadQtyProgramAfterFailure(List<CountRow> listCountRows) {
+			try {
+				foreach(CountRow countRow in listCountRows) {
+					if(countRow.SupplyLotNum==0 && countRow.LotNumber!="") {
+						SupplyLot supplyLotFound=SupplyLots.GetForSupply(countRow.Supply.SupplyNum,isEmptyIncluded:true)
+							.Find(x => string.Equals(x.LotNumber.Trim(),countRow.LotNumber.Trim(),StringComparison.OrdinalIgnoreCase));
+						if(supplyLotFound!=null) {
+							countRow.SupplyLotNum=supplyLotFound.SupplyLotNum;
+						}
+					}
+					if(countRow.SupplyLotNum!=0) {
+						SupplyLot supplyLot=SupplyLots.GetMany(new List<long> { countRow.SupplyLotNum }).FirstOrDefault();
+						countRow.QtyProgram=Math.Round(supplyLot?.QtyOnHand??0,2);
+					}
+					else if(countRow.LotNumber=="") {
+						countRow.QtyProgram=Math.Round(SupplyLedgers.GetSumWithoutLot(countRow.Supply.SupplyNum),2);
+					}
+				}
+			}
+			catch(Exception) {
+				_listCountRows.Clear();
+				butPost.Enabled=false;
+				butAdd.Enabled=false;
+				butNewLot.Enabled=false;
+				textScan.Enabled=false;
+				MsgBox.Show(this,"The stock could not be read again. Close this window and check the supplies in Stock before counting again.");
+			}
 		}
 
 		private void butClose_Click(object sender,EventArgs e) {

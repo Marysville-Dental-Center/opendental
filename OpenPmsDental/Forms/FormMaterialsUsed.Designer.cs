@@ -31,6 +31,7 @@ namespace OpenPmsDental {
 			this.butRemove = new OpenPmsDental.UI.Button();
 			this.labelLot = new System.Windows.Forms.Label();
 			this.comboLot = new OpenPmsDental.UI.ComboBox();
+			this.butLotNumber = new OpenPmsDental.UI.Button();
 			this.labelReadOnly = new System.Windows.Forms.Label();
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.butCancel = new OpenPmsDental.UI.Button();
@@ -41,9 +42,9 @@ namespace OpenPmsDental {
 			this.labelInstructions.Location = new System.Drawing.Point(12, 7);
 			this.labelInstructions.Name = "labelInstructions";
 			this.labelInstructions.Size = new System.Drawing.Size(736, 32);
-			this.labelInstructions.TabIndex = 0;
-			this.labelInstructions.Text = "Confirm the materials used. Change a quantity in the grid, pick the lot below, add items from the supply list or by" +
-    " scanning a barcode, or remove a row. OK deducts them from stock.";
+			this.labelInstructions.TabIndex = 12;
+			this.labelInstructions.Text = "Confirm the materials used: change a quantity, add items (Add, or scan a barcode), remove a row. OK deducts them, s" +
+    "oonest-expiring lot first unless you pick a lot. An implant\'s lot is recorded with the procedure.";
 			this.labelInstructions.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			//
 			// gridMain
@@ -77,7 +78,7 @@ namespace OpenPmsDental {
 			this.textScan.Location = new System.Drawing.Point(60, 353);
 			this.textScan.Name = "textScan";
 			this.textScan.Size = new System.Drawing.Size(160, 20);
-			this.textScan.TabIndex = 3;
+			this.textScan.TabIndex = 0;
 			this.textScan.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textScan_KeyDown);
 			//
 			// butAdd
@@ -123,6 +124,16 @@ namespace OpenPmsDental {
 			this.comboLot.TabIndex = 7;
 			this.comboLot.SelectionChangeCommitted += new System.EventHandler(this.comboLot_SelectionChangeCommitted);
 			//
+			// butLotNumber
+			//
+			this.butLotNumber.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butLotNumber.Location = new System.Drawing.Point(648, 381);
+			this.butLotNumber.Name = "butLotNumber";
+			this.butLotNumber.Size = new System.Drawing.Size(100, 24);
+			this.butLotNumber.TabIndex = 11;
+			this.butLotNumber.Text = "Lot Number...";
+			this.butLotNumber.Click += new System.EventHandler(this.butLotNumber_Click);
+			//
 			// labelReadOnly
 			//
 			this.labelReadOnly.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
@@ -161,6 +172,7 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butCancel);
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.labelReadOnly);
+			this.Controls.Add(this.butLotNumber);
 			this.Controls.Add(this.comboLot);
 			this.Controls.Add(this.labelLot);
 			this.Controls.Add(this.butRemove);
@@ -188,6 +200,7 @@ namespace OpenPmsDental {
 		private UI.Button butRemove;
 		private System.Windows.Forms.Label labelLot;
 		private UI.ComboBox comboLot;
+		private UI.Button butLotNumber;
 		private System.Windows.Forms.Label labelReadOnly;
 		private UI.Button butOK;
 		private UI.Button butCancel;

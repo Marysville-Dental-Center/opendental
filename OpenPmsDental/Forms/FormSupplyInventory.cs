@@ -84,12 +84,20 @@ namespace OpenPmsDental {
 			if(!Security.IsAuthorized(EnumPermType.InventoryAdjust)) {
 				return;
 			}
-			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Set every supply's and lot's stock to the sum of its ledger rows?")) {
+			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Put back what procedures that are no longer complete still hold, and set every supply's and lot's stock to the sum of its ledger rows?")) {
 				return;
 			}
-			SupplyRepairResult supplyRepairResult=InventoryTracking.Repair();
-			MessageBox.Show(this,Lan.g(this,"Supplies corrected")+": "+supplyRepairResult.CountSupplies+"\r\n"+Lan.g(this,"Lots corrected")+": "
-				+supplyRepairResult.CountLots);
+			SupplyRepairResult supplyRepairResult;
+			try {
+				supplyRepairResult=InventoryTracking.Repair();
+			}
+			catch(Exception ex) {
+				MessageBox.Show(this,ex.Message);
+				return;
+			}
+			MessageBox.Show(this,Lan.g(this,"Procedures no longer complete, materials put back")+": "+supplyRepairResult.CountProcs+"\r\n"
+				+Lan.g(this,"Awaiting Materials rows removed")+": "+supplyRepairResult.CountAwaiting+"\r\n"
+				+Lan.g(this,"Supplies corrected")+": "+supplyRepairResult.CountSupplies+"\r\n"+Lan.g(this,"Lots corrected")+": "+supplyRepairResult.CountLots);
 		}
 		#endregion Inventory tracking
 

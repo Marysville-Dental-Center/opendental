@@ -153,8 +153,16 @@ namespace OpenPmsDental {
 			else {
 				butLock.Visible=false;
 			}
-			//Inventory tracking: the materials (and implant lots) the procedure used, recorded with it.
-			butMaterials.Visible=InventoryTracking.IsEnabled() && !IsNew;
+			//Inventory tracking: the materials (and implant lots) the procedure used, recorded with it. Shown while tracking is on, and after it is
+			//turned off for a procedure that holds materials (read-only then), so an implant's lot can always be seen from the procedure.
+			butMaterials.Visible=!IsNew && InventoryTracking.IsInstalled()
+				&& (InventoryTracking.IsEnabled() || InventoryTracking.GetProcMaterials(new List<long> { _procedure.ProcNum }).Count>0);
+			if(butMaterials.Visible) {
+				string textImplantLot=MaterialsUsedL.GetImplantLotText(_procedure.ProcNum);
+				if(textImplantLot!="") {
+					toolTip1.SetToolTip(butMaterials,textImplantLot);
+				}
+			}
 			Def def=Defs.GetDef(DefCat.AdjTypes,PrefC.GetLong(PrefName.TreatPlanDiscountAdjustmentType));
 			if(!GroupPermissions.HasPermissionForAdjType(EnumPermType.AdjustmentCreate,def,DateTime.Today)) {
 				textDiscount.Enabled=false;

@@ -47,7 +47,10 @@ namespace OpenPmsDental {
 				InventoryTracking.Adjust(SupplyNum,comboLot.GetSelected<SupplyLot>()?.SupplyLotNum??0,textChange.Value,textReason.Text);
 			}
 			catch(Exception ex) {
-				MessageBox.Show(this,ex.Message);
+				//The adjustment may have been saved (the answer was lost). Close instead of offering Save again, which could adjust twice; the stock
+				//window reads the ledger again.
+				MessageBox.Show(this,ex.Message+"\r\n\r\n"+Lan.g(this,"The adjustment may have been saved. Check the supply's ledger in Stock before adjusting again."));
+				DialogResult=DialogResult.OK;
 				return;
 			}
 			DialogResult=DialogResult.OK;
