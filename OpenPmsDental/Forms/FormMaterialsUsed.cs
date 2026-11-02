@@ -33,6 +33,8 @@ namespace OpenPmsDental {
 		private List<SupplyUsageLine> _listAutoPlanned=new List<SupplyUsageLine>();
 		///<summary>Set by ComputePlan: copies of the lots with what the panel plans to take taken off.</summary>
 		private List<SupplyLot> _listSupplyLotsAfterPlan=new List<SupplyLot>();
+		///<summary>The lots whose number the assistant entered here (Lot Number), from the package in hand.</summary>
+		private List<long> _listSupplyLotNumsEntered=new List<long>();
 		///<summary>The Supply column. Rows are selected in it, never in the Qty column: an edit box there would take the scanner's digits.</summary>
 		private const int COL_SUPPLY=1;
 		private const int COL_QTY=2;
@@ -335,6 +337,9 @@ namespace OpenPmsDental {
 				}
 			}
 			supplyUsageLine.SupplyLotNum=supplyLot.SupplyLotNum;
+			if(!_listSupplyLotNumsEntered.Contains(supplyLot.SupplyLotNum)) {
+				_listSupplyLotNumsEntered.Add(supplyLot.SupplyLotNum);
+			}
 			FillGrid();
 			SelectLineAndScanBox(supplyUsageLine);
 		}
@@ -426,9 +431,9 @@ namespace OpenPmsDental {
 			return Math.Round(_listHeld.Where(x => x.ProcNum==procNum && x.SupplyNum==supplyNum && x.SupplyLotNum==supplyLotNum).Sum(x => x.Quantity),2);
 		}
 
-		///<summary>The rows of explicit lots that take more from their lot than it holds now (read again from the database), counting the stock
-		///without a lot of a supply tracked by lot, which ConfirmMaterials moves into the lot. Another workstation may have taken the lot since the
-		///panel opened. One text line per lot; empty when none.</summary>
+		///<summary>The rows of explicit lots that take more from their lot than it holds now (read again from the database): another workstation may
+		///have taken the lot since the panel opened, or the row asks for more. For a lot whose number was entered here (Lot Number), the stock
+		///without a lot counts too, because ConfirmMaterials moves it into the lot. One text line per lot; empty when none.</summary>
 		private string GetLotsShortText(List<SupplyUsageLine> listLines) {
 			List<SupplyUsageLine> listExplicit=listLines.FindAll(x => x.SupplyLotNum>0);
 			if(listExplicit.Count==0) {
@@ -446,7 +451,7 @@ namespace OpenPmsDental {
 					continue;
 				}
 				double qtyThere=Math.Max(0,Math.Round(supplyLot.QtyOnHand,2));
-				if(GetSetting(supplyLot.SupplyNum).IsLotTracked) {
+				if(_listSupplyLotNumsEntered.Contains(supplyLot.SupplyLotNum) && GetSetting(supplyLot.SupplyNum).IsLotTracked) {
 					qtyThere+=Math.Max(0,Math.Round(SupplyLedgers.GetSumWithoutLot(supplyLot.SupplyNum),2));
 				}
 				if(qtyTaken<=qtyThere) {
@@ -488,7 +493,8 @@ namespace OpenPmsDental {
 				MessageBox.Show(this,ex.Message);
 				return;
 			}
-			if(textShort!="" && MessageBox.Show(this,Lan.g(this,"These lots hold less than is taken from them")+":\r\n"+textShort+"\r\n"+Lan.g(this,"Deduct anyway?"),"",
+			if(textShort!="" && MessageBox.Show(this,Lan.g(this,"These lots hold less than is taken from them")+":\r\n"+textShort+"\r\n"
+				+Lan.g(this,"Stock of the supply without a lot is moved into the lot first, as far as there is some. Deduct anyway?"),"",
 				MessageBoxButtons.OKCancel)!=DialogResult.OK)
 			{
 				return;

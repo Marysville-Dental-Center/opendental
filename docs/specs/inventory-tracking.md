@@ -176,7 +176,7 @@ holds less than is taken (an implant that came in as an opening balance has no l
 stock without a lot into the lot (two Adjust rows, "Lot number entered: moved from stock without a lot", and an Inventory Adjust audit
 entry), up to what that stock holds. An implant taken without a lot needs a reason, which goes to the audit trail
 ("Implant deducted without a lot number"); without one `ConfirmMaterials` writes nothing. OK warns when an explicit lot holds less than is
-taken from it (read again from the database).
+taken from it (read again from the database; for a lot whose number was entered with Lot Number, the stock without a lot counts too).
 
 **Scanning.** The Scan box is first in the tab order and has the focus when the panel opens; rows are selected in the Supply column, never
 in the Qty column, so no edit box opens to take a keyboard-wedge scanner's digits, and after a scan the focus goes back to the Scan box. A
