@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsBlueBookRuleEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.labelLimitType = new System.Windows.Forms.Label();
 			this.listLimitType = new OpenPmsDental.UI.ListBox();
@@ -109,7 +108,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.listLimitType);
 			this.Controls.Add(this.butSave);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormInsBlueBookRuleEdit";
 			this.Text = "Blue Book Rule Edit";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormInsBlueBookRuleEdit_FormClosing);

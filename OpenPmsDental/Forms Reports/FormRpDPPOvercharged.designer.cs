@@ -216,7 +216,6 @@
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.groupBox2);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpDPPOvercharged";
 			this.Text = "Payment Plans Overcharged Report";
 			this.Load += new System.EventHandler(this.FormRpDPPOvercharged_Load);

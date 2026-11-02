@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpFinanceCharge));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.groupBox2 = new OpenPmsDental.UI.GroupBox();
 			this.label2 = new System.Windows.Forms.Label();
@@ -159,7 +158,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.listProv);
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormRpFinanceCharge";

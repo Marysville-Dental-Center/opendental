@@ -29,7 +29,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpClaimNotSent));
 			this.butRunReport = new OpenPmsDental.UI.Button();
 			this.butRefresh = new OpenPmsDental.UI.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
@@ -134,7 +133,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.groupBoxFilters);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butRunReport);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpClaimNotSent";
 			this.Text = "Claims Not Sent Report";
 			this.Load += new System.EventHandler(this.FormClaimNotSent_Load);

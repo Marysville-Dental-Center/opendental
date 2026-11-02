@@ -157,7 +157,6 @@
 			this.Controls.Add(this.groupBoxPassword);
 			this.Controls.Add(this.groupBoxPatient);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormTerminalManager";

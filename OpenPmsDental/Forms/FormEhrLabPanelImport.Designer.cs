@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrLabPanelImport));
 			this.textHL7Raw = new System.Windows.Forms.TextBox();
 			this.textPatName = new System.Windows.Forms.TextBox();
 			this.textPatIDNum = new System.Windows.Forms.TextBox();
@@ -280,7 +279,6 @@
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.textHL7Raw);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrLabPanelImport";
 			this.Text = "Import Lab Results";
 			this.Load += new System.EventHandler(this.FormLabPanelImport_Load);

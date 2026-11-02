@@ -24,7 +24,6 @@
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrQualityMeasureEdit2014));
 			this.label1 = new System.Windows.Forms.Label();
 			this.textId = new System.Windows.Forms.TextBox();
 			this.textDescription = new System.Windows.Forms.TextBox();
@@ -376,7 +375,6 @@
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.textId);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrQualityMeasureEdit2014";
 			this.Text = "Edit Quality Measure";
 			this.Load += new System.EventHandler(this.FormQualityEdit2014_Load);

@@ -110,7 +110,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.gridInsPlans);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEtrans834Preview";
 			this.Text = "Import Ins Plans 834 Preview";
 			this.Load += new System.EventHandler(this.FormEtrans834Preview_Load);

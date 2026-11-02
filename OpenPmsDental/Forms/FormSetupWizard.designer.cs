@@ -82,7 +82,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butAll);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSetupWizard";
 			this.Text = "Setup Wizard";
 			this.Load += new System.EventHandler(this.FormSetupWizard_Load);

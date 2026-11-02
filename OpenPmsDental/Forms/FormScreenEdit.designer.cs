@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormScreenEdit));
 			this.comboGradeLevel = new OpenPmsDental.UI.ComboBox();
 			this.label35 = new System.Windows.Forms.Label();
 			this.label15 = new System.Windows.Forms.Label();
@@ -369,7 +368,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label15);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.label10);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormScreenEdit";
 			this.ShowInTaskbar = false;
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;

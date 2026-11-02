@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormImagePickerDXC));
 			this.butSend = new OpenPmsDental.UI.Button();
 			this.pictureBox = new System.Windows.Forms.PictureBox();
 			this.elementHostImageSelector = new System.Windows.Forms.Integration.ElementHost();
@@ -247,7 +246,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.elementHostImageSelector);
 			this.Controls.Add(this.pictureBox);
 			this.Controls.Add(this.butSend);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormImagePickerDXC";
 			this.Text = "Select Image";
 			this.Load += new System.EventHandler(this.FormImagePickerPatient_Load);

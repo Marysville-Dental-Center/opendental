@@ -1304,7 +1304,6 @@
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.butOk);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrLabOrderEdit2014";
 			this.Text = "Lab Order Edit";
 			this.Load += new System.EventHandler(this.FormLabPanelEdit_Load);

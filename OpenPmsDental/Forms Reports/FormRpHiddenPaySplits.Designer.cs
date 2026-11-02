@@ -25,7 +25,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpHiddenPaySplits));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.odDateRangePicker = new OpenPmsDental.UI.ODDateRangePicker();
 			this.checkAllProv = new OpenPmsDental.UI.CheckBox();
@@ -160,7 +159,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.listBoxClinic);
 			this.Controls.Add(this.labelClinic);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpHiddenPaySplits";
 			this.Text = "Hidden Payment Splits Report";
 			this.Load += new System.EventHandler(this.FormRpTpPreAllocation_Load);

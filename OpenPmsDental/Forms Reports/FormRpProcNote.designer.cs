@@ -28,7 +28,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpProcNote));
 			this.checkNoNotes = new OpenPmsDental.UI.CheckBox();
 			this.checkUnsignedNote = new OpenPmsDental.UI.CheckBox();
 			this.checkAllNoNotes = new OpenPmsDental.UI.CheckBox();
@@ -257,7 +256,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.groupFilter);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormRpProcNote";

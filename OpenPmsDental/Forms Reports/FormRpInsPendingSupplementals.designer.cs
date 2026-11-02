@@ -26,7 +26,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpInsPendingSupplementals));
 			this.groupFilter = new OpenPmsDental.UI.GroupBox();
 			this.labelDates = new System.Windows.Forms.Label();
 			this.labelType = new System.Windows.Forms.Label();
@@ -194,7 +193,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butRefresh);
 			this.Controls.Add(this.groupFilter);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpInsPendingSupplementals";
 			this.Text = "Insurance Pending Supplementals Report";
 			this.Load += new System.EventHandler(this.FormRpInsPendingSupplementals_Load);

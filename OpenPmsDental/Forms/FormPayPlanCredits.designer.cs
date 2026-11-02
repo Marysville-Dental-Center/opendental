@@ -24,7 +24,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPayPlanCredits));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.groupCreditInfo = new OpenPmsDental.UI.GroupBox();
@@ -290,7 +289,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.groupCreditInfo);
 			this.Controls.Add(this.gridMain);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormPayPlanCredits";

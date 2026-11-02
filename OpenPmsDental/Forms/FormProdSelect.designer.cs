@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProdSelect));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.gridProduction = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
@@ -58,7 +57,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(580, 432);
 			this.Controls.Add(this.gridProduction);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormProdSelect";
 			this.Text = "Select Production";
 			this.Load += new System.EventHandler(this.FormProdSelect_Load);

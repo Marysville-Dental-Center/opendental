@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsVerificationList));
 			this.tabControl1 = new OpenPmsDental.UI.TabControl();
 			this.tabVerify = new OpenPmsDental.UI.TabPage();
 			this.tabControlVerificationList = new OpenPmsDental.UI.TabControl();
@@ -983,7 +982,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(974, 661);
 			this.Controls.Add(this.tabControl1);
 			this.Controls.Add(this.groupVerificationFilters);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormInsVerificationList";
 			this.Text = "Insurance Verification List";
 			this.Load += new System.EventHandler(this.FormInsVerificationList_Load);

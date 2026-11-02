@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrSetup));
 			this.groupCodeSystems = new OpenPmsDental.UI.GroupBox();
 			this.butCodeImport = new OpenPmsDental.UI.Button();
 			this.butRxNorm = new OpenPmsDental.UI.Button();
@@ -251,7 +250,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butVaccineDef);
 			this.Controls.Add(this.butAllergies);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrSetup";
 			this.Text = "Electronic Health Record (EHR) Setup";
 			this.Load += new System.EventHandler(this.FormEhrSetup_Load);

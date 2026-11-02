@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAllergySetup));
 			this.checkShowHidden = new OpenPmsDental.UI.CheckBox();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butAdd = new OpenPmsDental.UI.Button();
@@ -119,7 +118,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.checkShowHidden);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butAdd);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAllergySetup";
 			this.Text = "Allergy Setup";
 			this.Load += new System.EventHandler(this.FormAllergySetup_Load);

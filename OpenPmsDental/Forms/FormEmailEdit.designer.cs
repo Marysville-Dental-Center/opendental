@@ -166,7 +166,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.toolBarTop);
 			this.Controls.Add(this.labelPreview);
 			this.Controls.Add(this.labelPlainText);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEmailEdit";
 			this.Text = "Email HTML Edit";
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

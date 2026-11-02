@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSubscriberSelect));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.listPats = new OpenPmsDental.UI.ListBox();
 			this.butMore = new OpenPmsDental.UI.Button();
@@ -88,7 +87,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.butMore);
 			this.Controls.Add(this.listPats);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormSubscriberSelect";

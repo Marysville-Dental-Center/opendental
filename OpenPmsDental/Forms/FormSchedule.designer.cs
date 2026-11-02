@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSchedule));
 			this.label2 = new System.Windows.Forms.Label();
 			this.label1 = new System.Windows.Forms.Label();
 			this.listBoxProvs = new OpenPmsDental.UI.ListBox();
@@ -442,7 +441,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.groupPaste);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MinimizeBox = false;
 			this.Name = "FormSchedule";
 			this.ShowInTaskbar = false;

@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormDefaultCCProcs));
 			this.listProcs = new OpenPmsDental.UI.ListBox();
 			this.label15 = new System.Windows.Forms.Label();
 			this.butRemoveProc = new OpenPmsDental.UI.Button();
@@ -106,7 +105,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butAddProc);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.label15);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormDefaultCCProcs";
 			this.Text = "Default Procedures";
 			this.Load += new System.EventHandler(this.FormDefaultCCProcs_Load);

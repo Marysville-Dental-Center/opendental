@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsBenefitNotes));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.textBenefitNotes = new System.Windows.Forms.TextBox();
 			this.SuspendLayout();
@@ -69,7 +68,6 @@ namespace OpenPmsDental {
 			this.AutoScaleBaseSize = new System.Drawing.Size(5,13);
 			this.ClientSize = new System.Drawing.Size(561,660);
 			this.Controls.Add(this.textBenefitNotes);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormInsBenefitNotes";

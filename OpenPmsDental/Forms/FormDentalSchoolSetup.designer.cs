@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormDentalSchoolSetup));
 			this.label1 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.textStudents = new System.Windows.Forms.TextBox();
@@ -141,7 +140,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.butGradingScales);
 			this.Controls.Add(this.butEvaluation);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormDentalSchoolSetup";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Dental School Setup";

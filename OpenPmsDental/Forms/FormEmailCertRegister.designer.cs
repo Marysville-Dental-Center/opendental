@@ -190,7 +190,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.groupStep2);
 			this.Controls.Add(this.groupStep1);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEmailCertRegister";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Email Certificate Registration";

@@ -136,7 +136,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.textImportPath);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEtrans834Import";
 			this.Text = "Import Ins Plans 834";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormEtrans834Import_FormClosing);

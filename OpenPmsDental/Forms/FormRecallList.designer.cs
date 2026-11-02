@@ -18,7 +18,6 @@
 
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRecallList));
 			this.menuRightClick = new System.Windows.Forms.ContextMenu();
 			this.menuItemSeeFamily = new System.Windows.Forms.MenuItem();
 			this.menuItemSeeAccount = new System.Windows.Forms.MenuItem();
@@ -1007,7 +1006,6 @@
 			// 
 			this.ClientSize = new System.Drawing.Size(985, 696);
 			this.Controls.Add(this.tabControl);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRecallList";
 			this.Text = "Recall List";
 			this.Load += new System.EventHandler(this.FormRecallList_Load);

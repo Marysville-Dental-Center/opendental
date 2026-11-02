@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormApptPrintSetup));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.butPreview = new OpenPmsDental.UI.Button();
@@ -292,7 +291,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(415, 438);
 			this.Controls.Add(this.groupBoxPrintRouting);
 			this.Controls.Add(this.groupBox1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormApptPrintSetup";
 			this.Text = "Appt Print Setup";
 			this.Load += new System.EventHandler(this.FormApptPrintSetup_Load);

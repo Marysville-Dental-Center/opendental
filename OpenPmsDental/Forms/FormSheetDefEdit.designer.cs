@@ -33,7 +33,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSheetDefEdit));
 			this.panelMain = new OpenPmsDental.UI.PanelOD();
 			this.butAlignTop = new OpenPmsDental.UI.Button();
 			this.butSave = new OpenPmsDental.UI.Button();
@@ -833,7 +832,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(828, 696);
 			this.Controls.Add(this.panelLeft);
 			this.Controls.Add(this.panelRight);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSheetDefEdit";
 			this.Text = "Edit Sheet Def";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormSheetDefEdit_FormClosing);

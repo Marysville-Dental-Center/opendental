@@ -24,7 +24,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPopupFade));
 			this.timer2 = new System.Windows.Forms.Timer(this.components);
 			this.labelInfo = new System.Windows.Forms.Label();
 			this.SuspendLayout();
@@ -50,7 +49,6 @@ namespace OpenPmsDental {
 			this.BackColor = System.Drawing.SystemColors.ControlLight;
 			this.ClientSize = new System.Drawing.Size(326, 100);
 			this.Controls.Add(this.labelInfo);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormPopupFade";

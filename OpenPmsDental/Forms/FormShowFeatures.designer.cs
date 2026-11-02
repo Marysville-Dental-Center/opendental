@@ -32,7 +32,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormShowFeatures));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.checkCapitation = new OpenPmsDental.UI.CheckBox();
 			this.checkMedicaid = new OpenPmsDental.UI.CheckBox();
@@ -372,7 +371,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.groupEnterprise);
 			this.Controls.Add(this.label1);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormShowFeatures";

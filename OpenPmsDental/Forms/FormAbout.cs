@@ -22,7 +22,9 @@ namespace OpenPmsDental{
 
 		private void FormAbout_Load(object sender, System.EventArgs e) {
 			//Fork identity (decoupling Phase 4). The product name and the attribution are not translated: they are a name and a legal notice.
-			//The Open Dental and reseller logos are no longer shown; this program is not Open Dental's product.
+			//The Open Dental and reseller logos are no longer shown; this program is not Open Dental's product. Its own logo (branding/logo-256.png)
+			//sits at the upper right, in the space beside the version and above the connection box.
+			pictureLogo.Image=BrandAssets.GetLogo();
 			labelProductName.Text=AboutBoxInfo.ProductName;
 			labelAttribution.Text=AboutBoxInfo.Attribution;
 			Assembly assemblyProgram=typeof(FormAbout).Assembly;

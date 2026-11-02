@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsPlanSubstitution));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butDelete = new OpenPmsDental.UI.Button();
@@ -88,7 +87,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butSave);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormInsPlanSubstitution";
 			this.Text = "Insurance Plan Substitution Codes";
 			this.Load += new System.EventHandler(this.FormInsPlanSubstitution_Load);

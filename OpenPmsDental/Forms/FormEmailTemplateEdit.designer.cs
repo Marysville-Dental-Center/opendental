@@ -32,7 +32,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEmailTemplateEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.label2 = new System.Windows.Forms.Label();
 			this.textBodyText = new OpenPmsDental.ODtextBox();
@@ -281,7 +280,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.webBrowserHtml);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEmailTemplateEdit";
 			this.ShowInTaskbar = false;
 			this.Text = "Edit Email Template";

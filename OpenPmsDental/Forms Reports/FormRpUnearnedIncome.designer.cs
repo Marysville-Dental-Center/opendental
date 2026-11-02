@@ -558,7 +558,6 @@ namespace OpenPmsDental{
 			// 
 			this.ClientSize = new System.Drawing.Size(647, 543);
 			this.Controls.Add(this.tabControlMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpUnearnedIncome";
 			this.Text = "Unearned Income Reports";
 			this.Load += new System.EventHandler(this.FormRpUnearnedIncome_Load);

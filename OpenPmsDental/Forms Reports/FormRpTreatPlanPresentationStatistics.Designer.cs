@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpTreatPlanPresentationStatistics));
 			this.checkAllUsers = new OpenPmsDental.UI.CheckBox();
 			this.labelClin = new System.Windows.Forms.Label();
 			this.checkAllClinics = new OpenPmsDental.UI.CheckBox();
@@ -238,7 +237,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.date2);
 			this.Controls.Add(this.date1);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpTreatPlanPresentationStatistics";
 			this.Text = "Treatment Plan Presentation Statistics";
 			this.Load += new System.EventHandler(this.FormRpTreatPlanPresenter_Load);

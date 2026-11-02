@@ -26,7 +26,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormDefinitions));
 			this.label14 = new System.Windows.Forms.Label();
 			this.textGuide = new System.Windows.Forms.TextBox();
 			this.groupEdit = new OpenPmsDental.UI.GroupBox();
@@ -167,7 +166,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.groupEdit);
 			this.Controls.Add(this.listCategory);
 			this.Controls.Add(this.label13);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormDefinitions";

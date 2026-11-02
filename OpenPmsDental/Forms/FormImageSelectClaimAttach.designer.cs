@@ -35,7 +35,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormImageSelectClaimAttach));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.labelPasteImage = new System.Windows.Forms.Label();
@@ -130,7 +129,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butImport);
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormImageSelectClaimAttach";

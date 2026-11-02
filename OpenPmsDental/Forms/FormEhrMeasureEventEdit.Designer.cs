@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrMeasureEventEdit));
 			this.textMoreInfo = new System.Windows.Forms.TextBox();
 			this.labelDateTime = new System.Windows.Forms.Label();
 			this.textType = new System.Windows.Forms.TextBox();
@@ -229,7 +228,6 @@
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.labelDateTime);
 			this.Controls.Add(this.textMoreInfo);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrMeasureEventEdit";
 			this.Text = "EhrMeasureEvent Edit";
 			this.Load += new System.EventHandler(this.FormEhrMeasureEventEdit_Load);

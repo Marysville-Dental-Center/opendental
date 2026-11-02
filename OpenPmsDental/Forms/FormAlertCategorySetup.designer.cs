@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAlertCategorySetup));
 			this.butDuplicate = new OpenPmsDental.UI.Button();
 			this.butCopy = new OpenPmsDental.UI.Button();
 			this.gridInternal = new OpenPmsDental.UI.GridOD();
@@ -86,7 +85,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.gridInternal);
 			this.Controls.Add(this.gridCustom);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAlertCategorySetup";
 			this.Text = "Alert Category Setup";
 			this.Load += new System.EventHandler(this.FormAlertCategorySetup_Load);

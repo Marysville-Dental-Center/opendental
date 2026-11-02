@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormUpdateHistory));
 			this.label1 = new System.Windows.Forms.Label();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
@@ -56,7 +55,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(329, 475);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormUpdateHistory";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Update History";

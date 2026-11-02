@@ -36,7 +36,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			SparksToothChart.ToothChartData toothChartData1 = new SparksToothChart.ToothChartData();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormToothChartingBig));
 			this.toothChartWrapper = new SparksToothChart.ToothChartWrapper();
 			this.SuspendLayout();
 			// 
@@ -64,7 +63,6 @@ namespace OpenPmsDental {
 			// 
 			this.ClientSize = new System.Drawing.Size(926, 858);
 			this.Controls.Add(this.toothChartWrapper);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormToothChartingBig";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

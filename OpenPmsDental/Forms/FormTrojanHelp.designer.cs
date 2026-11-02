@@ -53,7 +53,6 @@ namespace OpenPmsDental {
 			// 
 			this.ClientSize = new System.Drawing.Size(617, 424);
 			this.Controls.Add(this.textMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormTrojanHelp";

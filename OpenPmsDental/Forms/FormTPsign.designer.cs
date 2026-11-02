@@ -188,7 +188,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.panelSig);
 			this.Controls.Add(this.ToolBarMain);
 			this.Controls.Add(this.previewContr);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormTPsign";
 			this.Text = "Report";
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

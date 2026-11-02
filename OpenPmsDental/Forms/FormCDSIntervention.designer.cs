@@ -65,7 +65,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(923, 287);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCDSIntervention";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "CDS Intervention";

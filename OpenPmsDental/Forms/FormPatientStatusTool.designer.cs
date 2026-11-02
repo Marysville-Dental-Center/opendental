@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPatientStatusTool));
 			this.groupCriteria = new OpenPmsDental.UI.GroupBox();
 			this.comboPatientStatusCur = new OpenPmsDental.UI.ComboBox();
 			this.labelPatientCurrent = new System.Windows.Forms.Label();
@@ -199,7 +198,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butCreateList);
 			this.Controls.Add(this.butRun);
 			this.Controls.Add(this.comboChangePatientStatusTo);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPatientStatusTool";
 			this.Text = "Patient Status Setter";
 			this.Load += new System.EventHandler(this.FormPatientStatusTool_Load);

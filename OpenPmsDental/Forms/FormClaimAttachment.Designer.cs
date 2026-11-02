@@ -24,7 +24,6 @@
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormClaimAttachment));
 			this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.deleteToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.labelNarrative = new System.Windows.Forms.Label();
@@ -237,7 +236,6 @@
 			this.Controls.Add(this.textNarrative);
 			this.Controls.Add(this.labelNarrative);
 			this.Controls.Add(this.butAddImage);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormClaimAttachment";
 			this.Text = "Claim Attachments";
 			this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.FormClaimAttachment_FormClosed);

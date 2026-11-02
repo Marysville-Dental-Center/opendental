@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormDiscountPlanMerge));
 			this.groupBox1 = new OpenPmsDental.UI.GroupBox();
 			this.textAdjTypeInto = new System.Windows.Forms.TextBox();
 			this.label5 = new System.Windows.Forms.Label();
@@ -220,7 +219,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.butMerge);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormDiscountPlanMerge";
 			this.Text = "Merge Discount Plans";
 			this.Load += new System.EventHandler(this.FormDiscountPlanMerge_Load);

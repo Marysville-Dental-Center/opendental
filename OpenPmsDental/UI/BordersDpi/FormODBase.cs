@@ -46,6 +46,8 @@ namespace OpenPmsDental {
 		private bool _hasClosed=false;
 		///<summary>True when form has been shown by the system. Shown occurs last in the forms construction life cycle. The Shown event is only raised the first time a form is displayed.</summary>
 		private bool _hasShown=false;
+		///<summary>The icon this form had at the end of FormODBase's constructor. OnHandleCreated sets the program icon only on a form that still has it.</summary>
+		private Icon _iconAtConstruction;
 		//<summary>Property backer</summary>
 		//private bool _isImageFloatDocked=false;
 		//<summary></summary>
@@ -142,6 +144,8 @@ namespace OpenPmsDental {
 			timerHoverSnap=new Timer();
 			timerHoverSnap.Interval=400;//try to get this from Windows
 			timerHoverSnap.Tick += timerHoverSnap_Tick;
+			//Before the derived form's InitializeComponent, so this is Windows Forms' default icon (see OnHandleCreated).
+			_iconAtConstruction=this.Icon;
 		}
 		#endregion Constructor
 
@@ -317,6 +321,16 @@ namespace OpenPmsDental {
 				//We don't want an enumeration exception here so don't clear _listFilterControls. It will get garbage collected anyways.
 			}
 			_hasClosed=true;
+		}
+
+		///<summary>Every window shows the program icon (BrandAssets.AppIcon, branding/app.ico, embedded once in this exe), set here, after
+		///InitializeComponent, instead of a copy in each form's .resx. A form that set an icon of its own before its handle was created keeps it, and so
+		///does a form whose handle is created again later (FormOpenDental paints the light signals on its icon).</summary>
+		protected override void OnHandleCreated(EventArgs e) {
+			if(!DesignMode && ReferenceEquals(this.Icon,_iconAtConstruction)) {
+				this.Icon=BrandAssets.AppIcon;
+			}
+			base.OnHandleCreated(e);
 		}
 
 		protected override void OnLoad(EventArgs e){
@@ -799,7 +813,8 @@ namespace OpenPmsDental {
 			}
 			Rectangle rectangleIcon=new Rectangle(MaxInset()+5,MaxInset()+4,Scale(20),Scale(20));
 			if(ShowIcon){
-				g.DrawImage(Icon.ToBitmap(),rectangleIcon);
+				using Bitmap bitmapIcon=Icon.ToBitmap();
+				g.DrawImage(bitmapIcon,rectangleIcon);
 			}
 			if(_fontTitle==null){
 				RectangleF rectangleText=new RectangleF(MaxInset()+ScaleF(30),MaxInset()+ScaleF(7),

@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsRemain));
 			this.groupBoxIndIns = new OpenPmsDental.UI.GroupBox();
 			this.textPriDed = new System.Windows.Forms.TextBox();
 			this.textPriUsed = new System.Windows.Forms.TextBox();
@@ -391,7 +390,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.gridRemainTimeUnits);
 			this.Controls.Add(this.groupBoxIndIns);
 			this.Controls.Add(this.groupBoxFamilyIns);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormInsRemain";
 			this.Text = "Insurance Remaining";
 			this.Load += new System.EventHandler(this.FormInsRemain_Load);

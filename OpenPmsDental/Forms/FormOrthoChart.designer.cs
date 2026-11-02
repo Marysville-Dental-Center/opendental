@@ -24,7 +24,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormOrthoChart));
 			this.butPrint = new OpenPmsDental.UI.Button();
 			this.gridOrtho = new OpenPmsDental.UI.GridOD();
 			this.tabControl = new OpenPmsDental.UI.TabControl();
@@ -335,7 +334,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.gridPat);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormOrthoChart";
 			this.Text = "Ortho Chart";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormOrthoChart_FormClosing);

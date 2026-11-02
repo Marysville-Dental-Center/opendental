@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEduResourceSetup));
 			this.butAdd = new System.Windows.Forms.Button();
 			this.gridEdu = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
@@ -58,7 +57,6 @@
 			this.ClientSize = new System.Drawing.Size(892, 531);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridEdu);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEduResourceSetup";
 			this.Text = "Education Resources Setup";
 			this.Load += new System.EventHandler(this.FormEduResourceSetup_Load);

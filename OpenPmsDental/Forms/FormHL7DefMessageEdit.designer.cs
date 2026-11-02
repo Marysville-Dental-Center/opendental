@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormHL7DefMessageEdit));
 			this.radioOut = new System.Windows.Forms.RadioButton();
 			this.radioIn = new System.Windows.Forms.RadioButton();
 			this.comboMessageStructure = new OpenPmsDental.UI.ComboBox();
@@ -212,7 +211,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label10);
 			this.Controls.Add(this.label8);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormHL7DefMessageEdit";

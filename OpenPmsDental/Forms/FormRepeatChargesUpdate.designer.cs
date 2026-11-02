@@ -76,7 +76,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelDescription);
 			this.Controls.Add(this.checkRunAging);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormRepeatChargesUpdate";

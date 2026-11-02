@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTaskListBlocks));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.treeSubscriptions = new System.Windows.Forms.TreeView();
 			this.butSetAll = new OpenPmsDental.UI.Button();
@@ -94,7 +93,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butSetAll);
 			this.Controls.Add(this.treeSubscriptions);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormTaskListBlocks";
 			this.Text = "Block Task Popups for Subscriptions";
 			this.Load += new System.EventHandler(this.FormTaskListBlock_Load);

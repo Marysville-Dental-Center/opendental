@@ -119,7 +119,6 @@
 			this.Controls.Add(this.butExport);
 			this.Controls.Add(this.labelExportSelect);
 			this.Controls.Add(this.treeNotes);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAutoNoteExport";
 			this.Text = "Auto Note Export";
 			this.Load += new System.EventHandler(this.FormAutoNoteExport_Load);

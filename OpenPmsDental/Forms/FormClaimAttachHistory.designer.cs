@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormClaimAttachHistory));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.labelClaimStatus = new System.Windows.Forms.Label();
 			this.textClaimStatus = new OpenPmsDental.ODtextBox();
@@ -172,7 +171,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelClaimStatus);
 			this.Controls.Add(this.textClaimStatus);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormClaimAttachHistory";
 			this.Text = "Attachment History";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormClaimAttachHistory_FormClosing);

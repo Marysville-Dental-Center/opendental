@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormDunningSetup));
 			this.butAdd = new OpenPmsDental.UI.Button();
 			this.butDuplicate = new OpenPmsDental.UI.Button();
 			this.gridDunning = new OpenPmsDental.UI.GridOD();
@@ -248,7 +247,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.butDuplicate);
 			this.Controls.Add(this.gridDunning);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormDunningSetup";
 			this.Text = "Dunning Msg Setup";
 			this.Load += new System.EventHandler(this.FormDunningSetup_Load);

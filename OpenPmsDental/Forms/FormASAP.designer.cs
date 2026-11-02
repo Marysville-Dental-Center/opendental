@@ -29,7 +29,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormASAP));
 			this.menuApptsRightClick = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.menuApptSelectPatient = new System.Windows.Forms.ToolStripMenuItem();
 			this.menuApptSeeChart = new System.Windows.Forms.ToolStripMenuItem();
@@ -459,7 +458,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label4);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.Name = "FormASAP";
 			this.Text = "ASAP List";

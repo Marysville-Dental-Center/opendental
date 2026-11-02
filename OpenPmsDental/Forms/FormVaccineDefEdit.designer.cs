@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormVaccineDefEdit));
 			this.comboManufacturer = new OpenPmsDental.UI.ComboBox();
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.label3 = new System.Windows.Forms.Label();
@@ -129,7 +128,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textCVXCode);
 			this.Controls.Add(this.labelCVXCode);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormVaccineDefEdit";
 			this.Text = "Vaccine Definition Edit";
 			this.Load += new System.EventHandler(this.FormVaccineDefEdit_Load);

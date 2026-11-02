@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormClearinghouseEdit));
 			this.checkAllowAttachSend = new OpenPmsDental.UI.CheckBox();
 			this.listBoxEraBehavior = new OpenPmsDental.UI.ListBox();
 			this.checkIsClaimExportAllowed = new OpenPmsDental.UI.CheckBox();
@@ -994,7 +993,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label6);
 			this.Controls.Add(this.labelExportPath);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormClearinghouseEdit";

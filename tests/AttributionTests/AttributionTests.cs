@@ -73,7 +73,12 @@ namespace AttributionTests {
 		[TestMethod]
 		public void Readme_TopSectionNamesProductAndAttribution() {
 			string[] arrayLines=ReadRepoFile("README.md").Split(new[] { "\r\n","\n" },StringSplitOptions.None);
-			Assert.AreEqual("# Open PMS - Dental",arrayLines[0].Trim());
+			//The title is the first heading; only the logo (and blank lines) may come above it (BrandingTests).
+			int indexTitle=Array.FindIndex(arrayLines,x => x.StartsWith("#"));
+			Assert.IsTrue(indexTitle>=0,"README.md has no heading.");
+			Assert.AreEqual("# Open PMS - Dental",arrayLines[indexTitle].Trim());
+			Assert.IsTrue(arrayLines.Take(indexTitle).All(x => x.Trim()=="" || x.Contains("branding/logo-256.png")),
+				"Only the logo may come above the README title.");
 			//The attribution comes before the first second-level heading, so it is the first thing a reader sees.
 			int indexFirstSection=Array.FindIndex(arrayLines,x => x.StartsWith("## "));
 			Assert.IsTrue(indexFirstSection>0,"README.md has no second-level heading.");

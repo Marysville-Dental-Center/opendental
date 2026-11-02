@@ -23,6 +23,7 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormServiceManage));
 			this.butRefresh = new System.Windows.Forms.Button();
 			this.butStop = new System.Windows.Forms.Button();
 			this.butStart = new System.Windows.Forms.Button();
@@ -166,6 +167,7 @@
 			this.Controls.Add(this.butUninstall);
 			this.Controls.Add(this.textStatus);
 			this.Controls.Add(this.butInstall);
+			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormServiceManage";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Manage Service";

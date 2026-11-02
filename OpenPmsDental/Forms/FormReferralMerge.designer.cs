@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormReferralMerge));
 			this.groupBox2 = new OpenPmsDental.UI.GroupBox();
 			this.checkIsDoctorFrom = new OpenPmsDental.UI.CheckBox();
 			this.butChangeReferralFrom = new OpenPmsDental.UI.Button();
@@ -266,7 +265,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.butMerge);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormReferralMerge";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Merge Referrals";

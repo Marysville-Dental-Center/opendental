@@ -30,7 +30,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPayPlanDynamic));
 			this.labelTotalTx = new System.Windows.Forms.Label();
 			this.textTotalTxAmt = new OpenPmsDental.ValidDouble();
 			this.label1 = new System.Windows.Forms.Label();
@@ -1148,7 +1147,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label15);
 			this.Controls.Add(this.butPrint);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormPayPlanDynamic";

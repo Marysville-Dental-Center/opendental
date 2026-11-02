@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrLabPanelEdit));
 			this.butSave = new System.Windows.Forms.Button();
 			this.butDelete = new System.Windows.Forms.Button();
 			this.textRawMsg = new System.Windows.Forms.TextBox();
@@ -293,7 +292,6 @@
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrLabPanelEdit";
 			this.Text = "Lab Panel";
 			this.Load += new System.EventHandler(this.FormLabPanelEdit_Load);

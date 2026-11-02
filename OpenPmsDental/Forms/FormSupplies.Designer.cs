@@ -24,7 +24,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSupplies));
 			this.textFind = new System.Windows.Forms.TextBox();
 			this.butUp = new OpenPmsDental.UI.Button();
 			this.butDown = new OpenPmsDental.UI.Button();
@@ -278,7 +277,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.checkShowHidden);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSupplies";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
 			this.Text = "Supplies";

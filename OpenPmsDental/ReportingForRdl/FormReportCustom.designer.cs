@@ -125,7 +125,6 @@ namespace OpenPmsDental {
 			this.ClientSize = new System.Drawing.Size(987,712);
 			this.Controls.Add(this.ToolBarMain);
 			this.Controls.Add(this.viewer);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormReportCustom";
 			this.ShowInTaskbar = false;
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;

@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormVitalsignEdit2014));
 			this.label1 = new System.Windows.Forms.Label();
 			this.labelBMI = new System.Windows.Forms.Label();
 			this.labelBPs = new System.Windows.Forms.Label();
@@ -580,7 +579,6 @@
 			this.Controls.Add(this.labelBPs);
 			this.Controls.Add(this.labelBMI);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormVitalsignEdit2014";
 			this.Text = "Edit Vital Sign";
 			this.Load += new System.EventHandler(this.FormVitalsignEdit2014_Load);

@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCdsTriggers));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butAddTrigger = new OpenPmsDental.UI.Button();
 			this.menuMain = new OpenPmsDental.UI.MenuOD();
@@ -70,7 +69,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butAddTrigger);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCdsTriggers";
 			this.Text = "CDS Triggers";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormEhrTriggers_FormClosing);

@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRxManage));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butNewRx = new OpenPmsDental.UI.Button();
 			this.butPrintSelected = new OpenPmsDental.UI.Button();
@@ -85,7 +84,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butNewRx);
 			this.Controls.Add(this.butPrintSelected);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRxManage";
 			this.Text = "Rx Manage";
 			this.Load += new System.EventHandler(this.FormRxManage_Load);

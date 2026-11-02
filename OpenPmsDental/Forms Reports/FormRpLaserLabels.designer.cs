@@ -24,7 +24,6 @@ namespace OpenPmsDental {
 		}
 
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpLaserLabels));
 			this.tabCustomLabels = new OpenPmsDental.UI.TabPage();
 			this.butCusRemove = new OpenPmsDental.UI.Button();
 			this.butCusAdd = new OpenPmsDental.UI.Button();
@@ -747,7 +746,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labLabelStart);
 			this.Controls.Add(this.tabLabelSetup);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormRpLaserLabels";

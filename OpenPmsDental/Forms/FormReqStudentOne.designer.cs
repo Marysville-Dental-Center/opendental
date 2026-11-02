@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormReqStudentOne));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
 			// 
@@ -56,7 +55,6 @@ namespace OpenPmsDental {
 			this.ClientSize = new System.Drawing.Size(760, 665);
 			this.AutoScaleBaseSize = new System.Drawing.Size(5,13);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormReqStudentOne";

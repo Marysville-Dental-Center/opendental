@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources=new System.ComponentModel.ComponentResourceManager(typeof(FormRpArizonaPrimaryCareEligibility));
 			this.textEligibilityFolder=new System.Windows.Forms.TextBox();
 			this.label1=new System.Windows.Forms.Label();
 			this.textLog=new System.Windows.Forms.TextBox();
@@ -204,7 +203,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.textEligibilityFolder);
 			this.Controls.Add(this.butFinished);
-			this.Icon=((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name="FormRpArizonaPrimaryCareEligibility";
 			this.StartPosition=System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text="Arizona Primary Care Eligibility File Report";

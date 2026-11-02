@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsPlans));
 			this.textPlanNum = new System.Windows.Forms.TextBox();
 			this.labelInsPlanID = new System.Windows.Forms.Label();
 			this.butGetAll = new OpenPmsDental.UI.Button();
@@ -262,7 +261,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butHide);
 			this.Controls.Add(this.butMerge);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormInsPlans";
 			this.ShowInTaskbar = false;
 			this.Text = "Insurance Plans";

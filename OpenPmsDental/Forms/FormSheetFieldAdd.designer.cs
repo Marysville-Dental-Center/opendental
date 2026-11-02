@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSheetFieldAdd));
 			this.labelInternal = new System.Windows.Forms.Label();
 			this.butPatImage = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
@@ -51,7 +50,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(382, 145);
 			this.Controls.Add(this.butPatImage);
 			this.Controls.Add(this.labelInternal);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSheetFieldAdd";
 			this.Text = "Add Field";
 			this.Load += new System.EventHandler(this.FormSheetFieldAdd_Load);

@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProcCodes));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.butEditFeeSched = new OpenPmsDental.UI.Button();
 			this.butTools = new OpenPmsDental.UI.Button();
@@ -859,7 +858,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormProcCodes";
 			this.ShowInTaskbar = false;
 			this.Text = "Procedure Codes - Fee Schedules";

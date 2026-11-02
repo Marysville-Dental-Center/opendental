@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormQueryParser));
 			this.textQuery = new OpenPmsDental.ODtextBox();
 			this.butShowHide = new OpenPmsDental.UI.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
@@ -145,7 +144,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(817, 681);
 			this.Controls.Add(this.splitContainer);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormQueryParser";
 			this.Text = "Query Variables";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormQueryParser_FormClosing);

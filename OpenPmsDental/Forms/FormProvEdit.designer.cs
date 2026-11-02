@@ -1116,7 +1116,6 @@ namespace OpenPmsDental {
 			this.ClientSize = new System.Drawing.Size(895, 665);
 			this.Controls.Add(this.tabControlProvider);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormProvEdit";

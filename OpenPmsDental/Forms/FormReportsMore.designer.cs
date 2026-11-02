@@ -273,7 +273,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelLists);
 			this.Controls.Add(this.labelPublicHealth);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormReportsMore";

@@ -26,7 +26,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormQuickBooksOnlineAuthorization));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.labelWaiting = new System.Windows.Forms.Label();
 			this.textAddress = new System.Windows.Forms.TextBox();
@@ -118,7 +117,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textAddress);
 			this.Controls.Add(this.labelWaiting);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormQuickBooksOnlineAuthorization";
 			this.Text = "QuickBooks Online Authorization";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormQuickBooksOnlineAuthorization_FormClosing);

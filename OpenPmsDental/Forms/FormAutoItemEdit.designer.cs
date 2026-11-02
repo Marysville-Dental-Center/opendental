@@ -25,7 +25,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAutoItemEdit));
 			this.textADA = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.listConditions = new OpenPmsDental.UI.ListBox();
@@ -97,7 +96,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.listConditions);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.textADA);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormAutoItemEdit";

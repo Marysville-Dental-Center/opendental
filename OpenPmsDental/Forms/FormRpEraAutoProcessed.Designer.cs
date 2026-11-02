@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpEraAutoProcessed));
 			this.dateRangePicker = new OpenPmsDental.UI.ODDateRangePicker();
 			this.checkShowAcknowledged = new OpenPmsDental.UI.CheckBox();
 			this.textCarrier = new OpenPmsDental.ODtextBox();
@@ -250,7 +249,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelCarrier);
 			this.Controls.Add(this.checkShowAcknowledged);
 			this.Controls.Add(this.dateRangePicker);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpEraAutoProcessed";
 			this.Text = "ERAs Automatically Processed";
 			this.Load += new System.EventHandler(this.FormRpEraAutoProcessed_Load);

@@ -24,7 +24,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormOnlinePayments));
 			this.contextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.menuItemGoTo = new System.Windows.Forms.ToolStripMenuItem();
 			this.comboClinic = new OpenPmsDental.UI.ComboBox();
@@ -177,7 +176,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.comboClinic);
 			this.Controls.Add(this.labelClinic);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormOnlinePayments";
 			this.Text = "Online Payments";
 			this.Load += new System.EventHandler(this.FormPendingOnlinePayments_Load);

@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRecurringChargesHistory));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.contextMenu = new System.Windows.Forms.ContextMenu();
 			this.menuItemGoTo = new System.Windows.Forms.MenuItem();
@@ -180,7 +179,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(1044, 714);
 			this.Controls.Add(this.groupView);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRecurringChargesHistory";
 			this.Text = "Recurring Charge History";
 			this.Load += new System.EventHandler(this.FormRecurringChargesHistory_Load);

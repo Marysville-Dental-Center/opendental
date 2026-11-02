@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormOrthoRxEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.butDelete = new OpenPmsDental.UI.Button();
 			this.comboHardwareSpec = new OpenPmsDental.UI.ComboBox();
@@ -161,7 +160,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label4);
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormOrthoRxEdit";
 			this.Text = "Edit Ortho Prescription";
 			this.Load += new System.EventHandler(this.FormOrthoRxEdit_Load);

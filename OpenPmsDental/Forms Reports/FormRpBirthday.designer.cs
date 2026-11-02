@@ -32,7 +32,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			OpenPmsDental.UI.Button butSave;
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpBirthday));
 			this.label3 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.butOK = new OpenPmsDental.UI.Button();
@@ -196,7 +195,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.groupBox4);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpBirthday";
 			this.Text = "Birthday Report";
 			this.Load += new System.EventHandler(this.FormRpBirthday_Load);

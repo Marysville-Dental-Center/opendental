@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormReconcileEdit));
 			this.labelDate = new System.Windows.Forms.Label();
 			this.labelStart = new System.Windows.Forms.Label();
 			this.labelEnd = new System.Windows.Forms.Label();
@@ -269,7 +268,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelDate);
 			this.Controls.Add(this.textDate);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormReconcileEdit";

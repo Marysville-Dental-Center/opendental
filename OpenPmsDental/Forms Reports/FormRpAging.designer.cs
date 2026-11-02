@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpAging));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.groupAgeOfAccount = new OpenPmsDental.UI.GroupBox();
 			this.radio30 = new System.Windows.Forms.RadioButton();
@@ -451,7 +450,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.listBillType);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.groupAgeOfAccount);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormRpAging";

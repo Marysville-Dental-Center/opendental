@@ -25,7 +25,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPrntScrn));
 			this.label1 = new System.Windows.Forms.Label();
 			this.printPreviewControl2 = new System.Windows.Forms.PrintPreviewControl();
 			this.pd2 = new System.Drawing.Printing.PrintDocument();
@@ -170,7 +169,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.printPreviewControl2);
 			this.Controls.Add(this.label1);
 			this.Cursor = System.Windows.Forms.Cursors.Default;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPrntScrn";
 			this.ShowInTaskbar = false;
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;

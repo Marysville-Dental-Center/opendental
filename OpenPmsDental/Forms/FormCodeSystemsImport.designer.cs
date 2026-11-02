@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCodeSystemsImport));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butImport = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
@@ -58,7 +57,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(881, 406);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butImport);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCodeSystemsImport";
 			this.Text = "Import CPT Codes";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormCodeSystemsImport_FormClosing);

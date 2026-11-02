@@ -113,7 +113,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPayment));
 			this.contextMenuXcharge = new System.Windows.Forms.ContextMenu();
 			this.menuXcharge = new System.Windows.Forms.MenuItem();
 			this.contextMenuPayConnect = new System.Windows.Forms.ContextMenu();
@@ -1479,7 +1478,6 @@
 			this.Controls.Add(this.label4);
 			this.Controls.Add(this.checkProcessed);
 			this.Controls.Add(this.label12);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormPayment";

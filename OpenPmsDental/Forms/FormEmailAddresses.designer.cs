@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEmailAddresses));
 			this.label2 = new System.Windows.Forms.Label();
 			this.groupEmailPrefs = new OpenPmsDental.UI.GroupBox();
 			this.label1 = new System.Windows.Forms.Label();
@@ -178,7 +177,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEmailAddresses";
 			this.Text = "Email Addresses";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormEmailAddresses_FormClosing);

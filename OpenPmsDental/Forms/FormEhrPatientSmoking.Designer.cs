@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrPatientSmoking));
 			this.label2 = new System.Windows.Forms.Label();
 			this.comboSmokeStatus = new System.Windows.Forms.ComboBox();
 			this.label1 = new System.Windows.Forms.Label();
@@ -417,7 +416,6 @@
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.comboSmokeStatus);
 			this.Controls.Add(this.label2);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrPatientSmoking";
 			this.Text = "Tobacco Use";
 			this.Load += new System.EventHandler(this.FormPatientSmoking_Load);

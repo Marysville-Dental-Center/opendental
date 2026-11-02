@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSecurity));
 			this.userControlSecurityUserGroup = new OpenPmsDental.UserControlSecurityUserGroup();
 			this.menuMain = new OpenPmsDental.UI.MenuOD();
 			this.SuspendLayout();
@@ -62,7 +61,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(984, 696);
 			this.Controls.Add(this.userControlSecurityUserGroup);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSecurity";
 			this.Text = "Security";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormSecurityEdit_FormClosing);

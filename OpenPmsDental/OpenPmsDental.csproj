@@ -13,7 +13,7 @@
     <AssemblyName>OpenPmsDental</AssemblyName>
     <TargetZone>LocalIntranet</TargetZone>
     <GenerateManifests>false</GenerateManifests>
-    <ApplicationIcon>Misc\App.ico</ApplicationIcon>
+    <ApplicationIcon>..\branding\app.ico</ApplicationIcon>
     <StartupObject>
     </StartupObject>
     <FileUpgradeFlags>
@@ -5421,6 +5421,7 @@
     </Compile>
     <Compile Include="Main Modules\ProgramEntry.cs" />
     <Compile Include="Misc\SetupWizard.cs" />
+    <Compile Include="Misc\BrandAssets.cs" />
     <Compile Include="Misc\ClassConvertDatabase.cs" />
     <Compile Include="Misc\ClassesShared.cs" />
     <Compile Include="Misc\DataConnectionOld.cs" />
@@ -8890,7 +8891,6 @@
     <None Include="Resources\XamlStyle_ListBoxItem.txt" />
     <None Include="Resources\PRB icon_OD.png" />
     <None Include="Resources\PrefInfos.xml" />
-    <None Include="Resources\splashCanada.jpg" />
     <None Include="Resources\Pen.cur" />
     <None Include="Resources\EraseCircle.cur" />
     <None Include="Resources\ColorChanger.cur" />
@@ -8903,8 +8903,6 @@
     <Resource Include="Resources\topazPen10.gif" />
     <Resource Include="Resources\eSig.gif" />
     <Resource Include="Resources\deleteX10.gif" />
-    <None Include="Resources\splashBenco.jpg" />
-    <None Include="Resources\benco_logo.png" />
     <None Include="Resources\butPin22.gif" />
     <None Include="Resources\ExternalLink.png" />
     <Resource Include="Resources\webChatIcon.png" />
@@ -8934,7 +8932,6 @@
     <None Include="Resources\NoFigure.png" />
     <None Include="Resources\raisehanddisabled.png" />
     <None Include="Resources\raisehand.png" />
-    <None Include="Resources\ODLogo.gif" />
     <None Include="Resources\Figure.png" />
     <None Include="Resources\close_door.ico" />
     <None Include="Resources\Highlight_24x24.png" />
@@ -8968,7 +8965,15 @@
     <EmbeddedResource Include="CursorLineSubtract.cur" />
     <EmbeddedResource Include="CursorMeasure.cur" />
     <EmbeddedResource Include="CursorScale.cur" />
-    <Content Include="Misc\App.ico" />
+    <!-- The program icon and logo, embedded once from the repository's branding folder (branding/README.md, Misc/BrandAssets.cs). -->
+    <EmbeddedResource Include="..\branding\app.ico">
+      <Link>Branding\app.ico</Link>
+      <LogicalName>OpenPmsDental.Branding.app.ico</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="..\branding\logo-256.png">
+      <Link>Branding\logo-256.png</Link>
+      <LogicalName>OpenPmsDental.Branding.logo-256.png</LogicalName>
+    </EmbeddedResource>
     <Content Include="Misc\TerminalMgr.ico" />
     <EmbeddedResource Include="Forms Reports\FormRpInsOverpaid.resx">
       <DependentUpon>FormRpInsOverpaid.cs</DependentUpon>

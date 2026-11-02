@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpAppointments));
 			this.listProvs = new OpenPmsDental.UI.ListBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.butOK = new OpenPmsDental.UI.Button();
@@ -281,7 +280,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.listProvs);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpAppointments";
 			this.Text = "Appointments Report";
 			this.Load += new System.EventHandler(this.FormRpApptWithPhones_Load);

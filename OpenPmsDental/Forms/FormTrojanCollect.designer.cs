@@ -26,7 +26,6 @@ namespace OpenPmsDental {
 		///<summary>Required method for Designer support - do not modify the contents of this method with the code editor.</summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTrojanCollect));
 			this.label1 = new System.Windows.Forms.Label();
 			this.labelGuarantor = new System.Windows.Forms.Label();
 			this.labelAddress = new System.Windows.Forms.Label();
@@ -334,7 +333,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butHelp);
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormTrojanCollect";

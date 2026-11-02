@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpUdsPlus));
 			this.labelDates = new System.Windows.Forms.Label();
 			this.dateRangePicker = new OpenPmsDental.UI.ODDateRangePicker();
 			this.comboClinics = new OpenPmsDental.UI.ComboBoxClinicPicker();
@@ -168,7 +167,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.comboClinics);
 			this.Controls.Add(this.dateRangePicker);
 			this.Controls.Add(this.labelDates);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpUdsPlus";
 			this.Text = "UDS+ Report for FQHC Dental Services";
 			this.Load += new System.EventHandler(this.FormRpUdsPlus_Load);

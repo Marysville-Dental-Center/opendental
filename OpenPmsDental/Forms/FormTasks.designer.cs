@@ -31,7 +31,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTasks));
 			this.userControlTasks1 = new OpenPmsDental.UserControlTasks();
 			this.splitContainer = new OpenPmsDental.UI.SplitContainer();
 			this.splitterPanel1 = new OpenPmsDental.UI.SplitterPanel();
@@ -85,7 +84,6 @@ namespace OpenPmsDental {
 			// 
 			this.ClientSize = new System.Drawing.Size(1230, 696);
 			this.Controls.Add(this.splitContainer);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormTasks";
 			this.Text = "Tasks";
 			this.Load += new System.EventHandler(this.FormTasks_Load);

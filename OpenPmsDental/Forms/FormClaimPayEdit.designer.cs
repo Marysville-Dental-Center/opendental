@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormClaimPayEdit));
 			this.textAmount = new OpenPmsDental.ValidDouble();
 			this.textDate = new OpenPmsDental.ValidDate();
 			this.textBankBranch = new System.Windows.Forms.TextBox();
@@ -505,7 +504,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butCarrierSelect);
 			this.Controls.Add(this.butSave);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormClaimPayEdit";

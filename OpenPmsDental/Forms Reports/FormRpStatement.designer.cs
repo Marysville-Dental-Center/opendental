@@ -27,7 +27,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpStatement));
 			this.printPreviewControl2 = new System.Windows.Forms.PrintPreviewControl();
 			this.butPrint = new OpenPmsDental.UI.Button();
 			this.panelZoom = new System.Windows.Forms.Panel();
@@ -107,7 +106,6 @@ namespace OpenPmsDental {
 			this.ClientSize = new System.Drawing.Size(787, 610);
 			this.Controls.Add(this.panelZoom);
 			this.Controls.Add(this.printPreviewControl2);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpStatement";
 			this.Text = "Statement Preview";
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

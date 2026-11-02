@@ -26,7 +26,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormScheduleEdit));
 			this.labelStop = new System.Windows.Forms.Label();
 			this.labelStart = new System.Windows.Forms.Label();
 			this.textNote = new OpenPmsDental.ODtextBox();
@@ -153,7 +152,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label4);
 			this.Controls.Add(this.labelStop);
 			this.Controls.Add(this.labelStart);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormScheduleEdit";

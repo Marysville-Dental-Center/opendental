@@ -19,7 +19,6 @@
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPaySplitEdit));
 			this.labelRemainder = new System.Windows.Forms.Label();
 			this.label5 = new System.Windows.Forms.Label();
 			this.listPatient = new OpenPmsDental.UI.ListBox();
@@ -755,7 +754,6 @@
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.labelRemainder);
 			this.Controls.Add(this.comboClinic);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Location = new System.Drawing.Point(0, 400);
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;

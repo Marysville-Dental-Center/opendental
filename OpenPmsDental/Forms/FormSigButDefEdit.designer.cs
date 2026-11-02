@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSigButDefEdit));
 			this.label2 = new System.Windows.Forms.Label();
 			this.textButtonText = new System.Windows.Forms.TextBox();
 			this.label3 = new System.Windows.Forms.Label();
@@ -230,7 +229,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.textButtonText);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormSigButDefEdit";

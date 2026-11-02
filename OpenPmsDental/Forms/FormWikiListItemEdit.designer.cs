@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormWikiListItemEdit));
 			this.comboEntry = new System.Windows.Forms.ComboBox();
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.butDelete = new OpenPmsDental.UI.Button();
@@ -86,7 +85,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormWikiListItemEdit";
 			this.Text = "Edit Wiki List Item";
 			this.Load += new System.EventHandler(this.FormWikiListEdit_Load);

@@ -1747,9 +1747,6 @@
     <Resource Include="Resources\down.gif" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Resources\Icon.ico" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\ExternalLink.png" />
   </ItemGroup>
   <ItemGroup>

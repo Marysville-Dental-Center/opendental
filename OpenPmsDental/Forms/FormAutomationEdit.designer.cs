@@ -35,7 +35,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			OpenPmsDental.UI.Button butDelete;
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAutomationEdit));
 			this.label1 = new System.Windows.Forms.Label();
 			this.textDescription = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
@@ -228,7 +227,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(butDelete);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormAutomationEdit";

@@ -25,7 +25,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAutoCodeEdit));
 			this.checkHidden = new OpenPmsDental.UI.CheckBox();
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.textDescript = new System.Windows.Forms.TextBox();
@@ -149,7 +148,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.textDescript);
 			this.Controls.Add(this.checkHidden);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormAutoCodeEdit";

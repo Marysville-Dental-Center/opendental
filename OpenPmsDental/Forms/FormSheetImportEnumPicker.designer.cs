@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSheetImportEnumPicker));
 			this.labelPrompt = new System.Windows.Forms.Label();
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.butClear = new OpenPmsDental.UI.Button();
@@ -78,7 +77,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.listResult);
 			this.Controls.Add(this.butClear);
 			this.Controls.Add(this.labelPrompt);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSheetImportEnumPicker";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Load += new System.EventHandler(this.FormSheetImportEnumPicker_Load);

@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEtrans270EBraw));
 			this.label1 = new System.Windows.Forms.Label();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.textRaw = new System.Windows.Forms.RichTextBox();
@@ -69,7 +68,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textRaw);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEtrans270EBraw";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Raw Benefit Info";

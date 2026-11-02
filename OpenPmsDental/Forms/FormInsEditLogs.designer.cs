@@ -24,7 +24,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsEditLogs));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.textDateTo = new System.Windows.Forms.TextBox();
 			this.textDateFrom = new System.Windows.Forms.TextBox();
@@ -98,7 +97,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormInsEditLogs";
 			this.Text = "Insurance Plan Edit Log";
 			this.Load += new System.EventHandler(this.FormInsEditLogs_Load);

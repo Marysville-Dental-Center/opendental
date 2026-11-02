@@ -24,7 +24,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTaskPreferences));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.checkTaskSortApptDateTime = new OpenPmsDental.UI.CheckBox();
 			this.checkShowOpenTickets = new OpenPmsDental.UI.CheckBox();
@@ -311,7 +310,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.groupBoxComputerDefaults);
 			this.Controls.Add(this.groupBoxDatabase);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormTaskPreferences";
 			this.Text = "Tasks Preferences";
 			this.Load += new System.EventHandler(this.FormTaskPreferences_Load);

@@ -70,7 +70,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.ToolBarMain);
 			this.Controls.Add(this.browser);
 			this.Cursor = System.Windows.Forms.Cursors.Default;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormWebBrowser";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Web Browser";

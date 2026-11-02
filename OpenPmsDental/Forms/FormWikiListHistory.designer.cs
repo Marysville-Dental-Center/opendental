@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormWikiListHistory));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butRevert = new OpenPmsDental.UI.Button();
 			this.gridOld = new OpenPmsDental.UI.GridOD();
@@ -94,7 +93,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.gridOld);
 			this.Controls.Add(this.butRevert);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormWikiListHistory";
 			this.Text = "Wiki List History";
 			this.Load += new System.EventHandler(this.FormWikiListHistory_Load);

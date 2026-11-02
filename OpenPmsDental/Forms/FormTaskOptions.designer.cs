@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTaskOptions));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.checkShowFinished = new OpenPmsDental.UI.CheckBox();
 			this.textStartDate = new OpenPmsDental.ValidDate();
@@ -119,7 +118,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.checkShowFinished);
 			this.Controls.Add(this.butSave);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormTaskOptions";
 			this.Text = "Task Options";
 			this.TopMost = true;

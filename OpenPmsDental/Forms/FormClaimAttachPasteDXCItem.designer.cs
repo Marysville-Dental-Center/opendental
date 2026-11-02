@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormClaimAttachPasteDXCItem));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.butDelete = new OpenPmsDental.UI.Button();
 			this.listBoxImageType = new OpenPmsDental.UI.ListBox();
@@ -117,7 +116,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelImageType);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.butDelete);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormClaimAttachPasteDXCItem";
 			this.Text = "Edit Attachment Item";
 			this.Load += new System.EventHandler(this.FormClaimAttachPasteDXCItem_Load);

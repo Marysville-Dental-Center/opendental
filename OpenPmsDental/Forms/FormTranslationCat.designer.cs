@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTranslationCat));
 			this.listCats = new OpenPmsDental.UI.ListBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.butExport = new OpenPmsDental.UI.Button();
@@ -86,7 +85,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butExport);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.listCats);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormTranslationCat";

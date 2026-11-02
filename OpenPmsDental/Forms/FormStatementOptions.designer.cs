@@ -32,7 +32,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormStatementOptions));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.checkHidePayment = new OpenPmsDental.UI.CheckBox();
 			this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
@@ -503,7 +502,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label3);
 			this.Controls.Add(this.checkHidePayment);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormStatementOptions";

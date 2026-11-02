@@ -115,7 +115,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.radioQuarterly);
 			this.Controls.Add(this.radioMonthly);
 			this.Controls.Add(this.label8);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPaymentPlanOptions";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Payment Plan Options";

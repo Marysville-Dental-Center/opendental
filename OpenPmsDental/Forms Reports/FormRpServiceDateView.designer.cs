@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpServiceDateView));
 			this.butPrint = new OpenPmsDental.UI.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butSavePDFToImages = new OpenPmsDental.UI.Button();
@@ -124,7 +123,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butSavePDFToImages);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butPrint);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpServiceDateView";
 			this.Text = "Service Date View";
 			this.Load += new System.EventHandler(this.FormRpServiceDate_Load);

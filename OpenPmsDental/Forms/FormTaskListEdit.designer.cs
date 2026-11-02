@@ -32,7 +32,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTaskListEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.labelDescription = new System.Windows.Forms.Label();
 			this.labelGlobalFilter = new System.Windows.Forms.Label();
@@ -202,7 +201,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelDate2);
 			this.Controls.Add(this.labelDate);
 			this.Controls.Add(this.labelDescription);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormTaskListEdit";

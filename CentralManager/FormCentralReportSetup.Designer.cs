@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCentralReportSetup));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.butCancel = new OpenPmsDental.UI.Button();
 			this.tabControl1 = new OpenPmsDental.UI.TabControl();
@@ -84,7 +83,6 @@
 			this.Controls.Add(this.tabControl1);
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.butCancel);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCentralReportSetup";
 			this.Text = "Report Setup";
 			this.Load += new System.EventHandler(this.FormCentralReportSetup_Load);

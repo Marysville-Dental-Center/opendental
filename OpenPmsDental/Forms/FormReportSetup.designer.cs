@@ -530,7 +530,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(556, 681);
 			this.Controls.Add(this.tabControl1);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormReportSetup";
 			this.Text = "Report Setup";
 			this.Load += new System.EventHandler(this.FormReportSetup_Load);

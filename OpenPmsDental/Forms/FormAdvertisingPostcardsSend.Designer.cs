@@ -26,7 +26,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAdvertisingPostcardsSend));
 			this.menuMain = new OpenPmsDental.UI.MenuOD();
 			this.labelSandbox = new System.Windows.Forms.Label();
 			this.labelClinic = new System.Windows.Forms.Label();
@@ -414,7 +413,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelClinic);
 			this.Controls.Add(this.labelSandbox);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAdvertisingPostcardsSend";
 			this.Text = "Postcards";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormAdvertisingPostcardsSend_FormClosing);

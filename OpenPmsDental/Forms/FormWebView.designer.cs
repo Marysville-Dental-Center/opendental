@@ -69,7 +69,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.webViewMain);
 			this.Controls.Add(this.ToolBarMain);
 			this.Cursor = System.Windows.Forms.Cursors.Default;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormWebView";
 			this.Text = "Web Browser";
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

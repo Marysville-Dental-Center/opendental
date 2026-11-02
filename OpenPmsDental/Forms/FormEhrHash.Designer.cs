@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrHash));
 			this.textHash = new System.Windows.Forms.TextBox();
 			this.butGererate = new System.Windows.Forms.Button();
 			this.label1 = new System.Windows.Forms.Label();
@@ -114,7 +113,6 @@
 			this.Controls.Add(this.butGererate);
 			this.Controls.Add(this.textHash);
 			this.Controls.Add(this.textMessage);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrHash";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Hash";

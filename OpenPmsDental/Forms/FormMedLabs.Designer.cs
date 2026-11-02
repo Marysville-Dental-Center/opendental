@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormMedLabs));
 			this.checkIncludeNoPat = new OpenPmsDental.UI.CheckBox();
 			this.groupBox1 = new OpenPmsDental.UI.GroupBox();
 			this.comboClinic = new OpenPmsDental.UI.ComboBox();
@@ -225,7 +224,6 @@
 			this.ClientSize = new System.Drawing.Size(974, 561);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormMedLabs";
 			this.Text = "Medical Labs";
 			this.Load += new System.EventHandler(this.FormMedLabs_Load);

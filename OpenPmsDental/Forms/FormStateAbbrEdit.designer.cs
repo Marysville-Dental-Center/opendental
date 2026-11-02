@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormStateAbbrEdit));
 			this.textAbbr = new System.Windows.Forms.TextBox();
 			this.textDescription = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
@@ -117,7 +116,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textAbbr);
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormStateAbbrEdit";
 			this.Text = "State Abbreviation Edit";
 			this.Load += new System.EventHandler(this.FormStateAbbrEdit_Load);

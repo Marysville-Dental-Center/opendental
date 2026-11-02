@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormOrthoHardwareSpecEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
 			this.textDescription = new System.Windows.Forms.TextBox();
@@ -129,7 +128,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textDescription);
 			this.Controls.Add(this.checkHidden);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormOrthoHardwareSpecEdit";
 			this.Text = "Edit Ortho Hardware Spec";
 			this.Load += new System.EventHandler(this.FormOrthoHardwareSpecEdit_Load);

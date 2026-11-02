@@ -307,7 +307,6 @@
 			this.Controls.Add(this.groupBox5);
 			this.Controls.Add(this.groupBox4);
 			this.Controls.Add(this.gridMu);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEHR";
 			this.Text = "EHR";
 			this.Load += new System.EventHandler(this.FormEHR_Load);

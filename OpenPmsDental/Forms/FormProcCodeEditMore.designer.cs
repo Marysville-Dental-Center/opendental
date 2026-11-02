@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProcCodeEditMore));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.labelProvider = new System.Windows.Forms.Label();
 			this.comboProvider = new OpenPmsDental.UI.ComboBox();
@@ -79,7 +78,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.comboProvider);
 			this.Controls.Add(this.labelProvider);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormProcCodeEditMore";

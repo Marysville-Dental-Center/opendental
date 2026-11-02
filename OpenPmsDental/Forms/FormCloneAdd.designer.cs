@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCloneAdd));
 			this.butClone = new OpenPmsDental.UI.Button();
 			this.labelSpecialty = new System.Windows.Forms.Label();
 			this.labelClinic = new System.Windows.Forms.Label();
@@ -241,7 +240,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelClinic);
 			this.Controls.Add(this.labelSpecialty);
 			this.Controls.Add(this.butClone);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCloneAdd";
 			this.Text = "Clone Add";
 			this.Load += new System.EventHandler(this.FormCloneAdd_Load);

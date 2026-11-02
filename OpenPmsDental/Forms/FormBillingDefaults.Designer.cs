@@ -602,7 +602,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelStartDate);
 			this.Controls.Add(this.textNote);
 			this.Controls.Add(this.label4);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormBillingDefaults";
 			this.Text = "Billing Defaults";
 			this.Load += new System.EventHandler(this.FormBillingDefaults_Load);

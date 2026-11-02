@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrElectronicCopy));
 			this.butDelete = new System.Windows.Forms.Button();
 			this.butRequest = new System.Windows.Forms.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
@@ -163,7 +162,6 @@
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butDelete);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrElectronicCopy";
 			this.Text = "Electronic Copy for Patient";
 			this.Load += new System.EventHandler(this.FormElectronicCopy_Load);

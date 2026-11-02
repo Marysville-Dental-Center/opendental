@@ -27,7 +27,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpPatPortionUncollected));
 			this.butRefresh = new OpenPmsDental.UI.Button();
 			this.comboBoxClinicPicker = new OpenPmsDental.UI.ComboBoxClinicPicker();
 			this.gridOD = new OpenPmsDental.UI.GridOD();
@@ -114,7 +113,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.gridOD);
 			this.Controls.Add(this.comboBoxClinicPicker);
 			this.Controls.Add(this.butRefresh);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.Name = "FormRpPatPortionUncollected";
 			this.Text = "Patient Portion Uncollected Report";

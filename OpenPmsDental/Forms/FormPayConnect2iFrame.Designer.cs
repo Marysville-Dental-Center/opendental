@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPayConnect2iFrame));
 			this.webBrowserMain = new System.Windows.Forms.WebBrowser();
 			this.webViewMain = new CodeBase.Controls.ODWebView2();
 			((System.ComponentModel.ISupportInitialize)(this.webViewMain)).BeginInit();
@@ -53,7 +52,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(524, 432);
 			this.Controls.Add(this.webViewMain);
 			this.Controls.Add(this.webBrowserMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPayConnect2iFrame";
 			this.Text = "PayConnect";
 			this.Load += new System.EventHandler(this.FormPayConnect2iFrame_Load);

@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTxtMsgEdit));
 			this.textWirelessPhone = new OpenPmsDental.ValidPhone();
 			this.label1 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
@@ -196,7 +195,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.textWirelessPhone);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormTxtMsgEdit";
 			this.Text = "Text Message";
 			this.Load += new System.EventHandler(this.FormTxtMsgEdit_Load);

@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProvidersMultiPick));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butProvHygenist = new OpenPmsDental.UI.Button();
@@ -83,7 +82,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butProvHygenist);
 			this.Controls.Add(this.butProvDentist);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormProvidersMultiPick";
 			this.Text = "Providers";
 			this.Load += new System.EventHandler(this.FormProvidersMultiPick_Load);

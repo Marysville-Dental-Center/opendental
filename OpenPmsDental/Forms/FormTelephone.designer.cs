@@ -32,7 +32,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTelephone));
 			this.butReformat = new OpenPmsDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
 			this.SuspendLayout();
@@ -62,7 +61,6 @@ namespace OpenPmsDental {
 			this.ClientSize = new System.Drawing.Size(642, 83);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.butReformat);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormTelephone";

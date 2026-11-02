@@ -24,7 +24,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsHistSetup));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.labelHeading = new System.Windows.Forms.Label();
 			this.labelMostRecent = new System.Windows.Forms.Label();
@@ -75,7 +74,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelMostRecent);
 			this.Controls.Add(this.labelHeading);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormInsHistSetup";
 			this.Text = "Insurance History";
 			this.Load += new System.EventHandler(this.FormInsHistSetup_Load);

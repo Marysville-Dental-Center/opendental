@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTaskListSelect));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.labelMulti = new System.Windows.Forms.Label();
 			this.checkMulti = new OpenPmsDental.UI.CheckBox();
@@ -125,7 +124,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelMulti);
 			this.Controls.Add(this.checkMulti);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormTaskListSelect";

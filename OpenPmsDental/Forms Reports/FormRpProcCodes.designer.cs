@@ -25,7 +25,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpProcCodes));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.listBoxFeeSched = new OpenPmsDental.UI.ListBox();
 			this.radioCategories = new System.Windows.Forms.RadioButton();
@@ -148,7 +147,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.listBoxFeeSched);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormRpProcCodes";

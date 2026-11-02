@@ -351,7 +351,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butMore);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butSearch);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormApptSearchAdvanced";
 			this.Text = "Advanced Appointment Search";
 			this.Load += new System.EventHandler(this.FormApptSearchAdvanced_Load);

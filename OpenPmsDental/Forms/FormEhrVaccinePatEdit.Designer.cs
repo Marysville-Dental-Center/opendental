@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrVaccinePatEdit));
 			this.label5 = new System.Windows.Forms.Label();
 			this.labelAmount = new System.Windows.Forms.Label();
 			this.textAmount = new System.Windows.Forms.TextBox();
@@ -579,7 +578,6 @@
 			this.Controls.Add(this.labelAmount);
 			this.Controls.Add(this.label5);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrVaccinePatEdit";
 			this.Text = "Vaccine Edit";
 			this.Load += new System.EventHandler(this.FormVaccinePatEdit_Load);

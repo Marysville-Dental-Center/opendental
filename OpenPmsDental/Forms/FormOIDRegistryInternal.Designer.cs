@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormOIDRegistryInternal));
 			this.labelStatus = new System.Windows.Forms.Label();
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
@@ -97,7 +96,6 @@
 			this.Controls.Add(this.labelStatus);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormOIDRegistryInternal";
 			this.Text = "OID Registry Internal";
 			this.Load += new System.EventHandler(this.FormReminders_Load);

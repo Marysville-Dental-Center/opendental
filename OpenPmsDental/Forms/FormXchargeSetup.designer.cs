@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormXchargeSetup));
 			this.checkEnabled = new OpenPmsDental.UI.CheckBox();
 			this.textPath = new System.Windows.Forms.TextBox();
 			this.labelPath = new System.Windows.Forms.Label();
@@ -359,7 +358,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelPath);
 			this.Controls.Add(this.checkEnabled);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormXchargeSetup";

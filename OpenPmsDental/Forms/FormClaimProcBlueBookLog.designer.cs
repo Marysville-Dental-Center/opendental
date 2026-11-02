@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormClaimProcBlueBookLog));
 			this.gridInsBlueBookLog = new OpenPmsDental.UI.GridOD();
 			this.labelBlueBookOff = new System.Windows.Forms.Label();
 			this.SuspendLayout();
@@ -61,7 +60,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(1064, 624);
 			this.Controls.Add(this.labelBlueBookOff);
 			this.Controls.Add(this.gridInsBlueBookLog);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormClaimProcBlueBookLog";
 			this.Text = "Insurance Blue Book Log";
 			this.Load += new System.EventHandler(this.FormClaimProcBlueBookLog_Load);

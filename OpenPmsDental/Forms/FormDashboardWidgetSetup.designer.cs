@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormDashboardWidgetSetup));
 			this.gridCustom = new OpenPmsDental.UI.GridOD();
 			this.comboUserGroup = new OpenPmsDental.UI.ComboBox();
 			this.labelUserGroup = new System.Windows.Forms.Label();
@@ -157,7 +156,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.comboUserGroup);
 			this.Controls.Add(this.labelUserGroup);
 			this.Controls.Add(this.butSetAll);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormDashboardWidgetSetup";
 			this.Text = "Dashboard Setup";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormDashboardWidgetSetup_FormClosing);

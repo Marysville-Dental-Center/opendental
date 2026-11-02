@@ -26,7 +26,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRecallSetup));
             this.gridMain = new OpenPmsDental.UI.GridOD();
             this.radioExcludeFutureYes = new System.Windows.Forms.RadioButton();
             this.label8 = new System.Windows.Forms.Label();
@@ -520,7 +519,6 @@ namespace OpenPmsDental {
             this.Controls.Add(this.label26);
             this.Controls.Add(this.comboStatusMailedRecall);
             this.Controls.Add(this.label25);
-            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "FormRecallSetup";

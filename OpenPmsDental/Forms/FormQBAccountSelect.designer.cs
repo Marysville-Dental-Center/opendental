@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormQBAccountSelect));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.labelDepositAccount = new System.Windows.Forms.Label();
 			this.comboDepositAccount = new OpenPmsDental.UI.ComboBox();
@@ -92,7 +91,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelIncomeAccountQB);
 			this.Controls.Add(this.comboIncomeAccount);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormQBAccountSelect";
 			this.Text = "Select QuickBooks Accounts";
 			this.Load += new System.EventHandler(this.FormQBAccountSelect_Load);

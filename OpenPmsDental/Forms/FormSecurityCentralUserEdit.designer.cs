@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSecurityCentralUserEdit));
 			this.butEdit = new OpenPmsDental.UI.Button();
 			this.gridCentralUsers = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
@@ -57,7 +56,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(437, 407);
 			this.Controls.Add(this.gridCentralUsers);
 			this.Controls.Add(this.butEdit);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSecurityCentralUserEdit";
 			this.Text = "Central User Edit";
 			this.Load += new System.EventHandler(this.FormSecurityCentralUserEdit_Load);

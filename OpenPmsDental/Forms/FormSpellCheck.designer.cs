@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSpellCheck));
 			this.label4 = new System.Windows.Forms.Label();
 			this.textCustom = new System.Windows.Forms.TextBox();
 			this.checkBox1 = new OpenPmsDental.UI.CheckBox();
@@ -119,7 +118,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textCustom);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSpellCheck";
 			this.Text = "Spell Check";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormSpellCheck_FormClosing);

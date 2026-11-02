@@ -446,7 +446,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.groupPregnancy);
 			this.Controls.Add(this.groupEncounter);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrSettings";
 			this.Text = "EHR Settings";
 			this.Load += new System.EventHandler(this.FormEhrSettings_Load);

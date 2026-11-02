@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEtrans835Edit));
 			this.label5 = new System.Windows.Forms.Label();
 			this.textTransHandlingDesc = new System.Windows.Forms.TextBox();
 			this.textPaymentMethod = new System.Windows.Forms.TextBox();
@@ -632,7 +631,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butRawMessage);
 			this.Controls.Add(this.gridClaimDetails);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEtrans835Edit";
 			this.Text = "Electronic Remittance Advice (ERA) - Electronic EOB - Format X12 835";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormEtrans835Edit_FormClosing);

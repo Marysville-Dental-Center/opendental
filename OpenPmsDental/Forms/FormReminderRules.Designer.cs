@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormReminderRules));
 			this.butAdd = new System.Windows.Forms.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
@@ -58,7 +57,6 @@
 			this.ClientSize = new System.Drawing.Size(670, 415);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butAdd);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormReminderRules";
 			this.Text = "Reminder Rules";
 			this.Load += new System.EventHandler(this.FormReminderRules_Load);

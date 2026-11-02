@@ -31,7 +31,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPayPeriodManager));
 			this.groupBox3 = new OpenPmsDental.UI.GroupBox();
 			this.label3 = new System.Windows.Forms.Label();
 			this.radioPayBefore = new System.Windows.Forms.RadioButton();
@@ -414,7 +413,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.dateTimeStart);
 			this.Controls.Add(this.butGenerate);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormPayPeriodManager";

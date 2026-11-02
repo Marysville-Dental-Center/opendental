@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormHL7DefFieldEdit));
 			this.label1 = new System.Windows.Forms.Label();
 			this.listFieldNames = new OpenPmsDental.UI.ListBox();
 			this.comboDataType = new OpenPmsDental.UI.ComboBox();
@@ -178,7 +177,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelItemOrder);
 			this.Controls.Add(this.label12);
 			this.Controls.Add(this.label10);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormHL7DefFieldEdit";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "HL7 Def Field Edit";
