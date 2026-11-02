@@ -1,7 +1,9 @@
 # Inventory tracking for materials
 
 Status: 2026-11-02. Package INV (roadmap "Next" item 4), from the owner decisions of 2026-11-02. It builds on Open Dental's supply inventory
-(`supply`, `supplyorder`, `supplyorderitem`, `supplyneeded`, `dispsupply`, `equipment` and their windows) and replaces nothing.
+(`supply`, `supplyorder`, `supplyorderitem`, `supplyneeded`, `dispsupply`, `equipment` and their windows) and replaces nothing. The owner
+answered the questions of section 7 on 2026-11-02 ("all as recommended"): every default stays as built, except that a stock count is now saved
+while it is counted (INV 11; sections 2.7 and 3.5).
 
 ## 1. What the office gets
 
@@ -11,7 +13,7 @@ Status: 2026-11-02. Package INV (roadmap "Next" item 4), from the owner decision
   - when **receiving** an order: each scan of an item on the purchase order adds one to what is received now; lot number and expiry date are
     entered for supplies tracked by lot; posting raises stock;
   - in a **stock count**: each scan adds one to the counted quantity of the item; posting writes the differences as count adjustments with a
-    reason;
+    reason. The count is saved line by line as it is counted, and any user can resume it on any workstation;
   - in the **Materials used** panel: a scan adds one of the item to the selected procedure.
 - **Stock goes down from completed procedures.** A procedure code has default materials (a map from procedure code to supplies with default
   quantities). When procedures are completed in the program, the **Materials used** panel opens by itself with the codes' default materials.
@@ -41,6 +43,8 @@ declaration, and the migration steps create them from those definitions. The tab
 | `supplyproccode` | `SupplyProcCode` | one default material of a procedure code: supply and quantity |
 | `supplysetting` | `SupplySetting` | the tracking settings of one supply: reorder level, tracked by lot, implant |
 | `supplyprocpending` | `SupplyProcPending` | a completed procedure whose materials nobody has confirmed yet |
+| `supplycount` | `SupplyCount` | one stock count: open (at most one), being posted, posted or discarded |
+| `supplycountline` | `SupplyCountLine` | one counted line of a stock count: supply, lot, the program's quantity when counted, the counted quantity |
 
 ### 2.1 The stock ledger (`supplyledger`)
 
@@ -97,9 +101,9 @@ MyISAM has no transactions, and two workstations can complete procedures at the 
 6. **Receiving, counts and adjustments are safe to retry.** Once their ledger rows are written, what follows (received dates, audit entries,
    alerts) can no longer make the call fail: a failure there is written to the log (`InventoryTracking` folder). When the call itself fails
    (part-way, or a lost Middle Tier answer), the windows read the database again before another post is possible: Receive reloads Received
-   from the ledger and clears Receive Now, Stock Count reads each counted row's program quantity again from the ledger, never from the lot
-   counter, which the failed write may have left at its old value (`InventoryTracking.GetQtyProgram`; a re-post writes only what still
-   differs), and the adjustment window closes with a message to check the ledger in Stock.
+   from the ledger and clears Receive Now, a failed stock count post opens the count again with each line's program quantity read again from
+   the ledger, never from the lot counter, which the failed write may have left at its old value (`InventoryTracking.GetQtyProgram`; a
+   re-post writes only what still differs; 2.7), and the adjustment window closes with a message to check the ledger in Stock.
 7. **Repair** (Supply Inventory, Inventory, Repair Stock from Ledger; Inventory Adjust): first puts back what procedures that are no longer
    complete (or no longer exist) still hold (`SupplyLedgers.GetProcNumsHeldNotComplete`, reason "Repair: procedure no longer complete") and
    removes the awaiting rows of procedures that are no longer complete; then recomputes every supply's and every lot's quantity from the
@@ -132,6 +136,40 @@ the defaults (no reorder level, not tracked by lot, not an implant). Marking a s
 `SupplyProcPendingNum`, `ProcNum` (unique), `PatNum`, `UserNum` (who completed it, 0 if no user), `DateTimeEntry`. A row is written when a
 procedure becomes complete while tracking is on and its code has default materials. It is removed when its materials are confirmed (with or
 without items), or when the procedure is un-completed or deleted. Supply Inventory, Awaiting Materials lists them.
+
+### 2.7 Stock counts (`supplycount`, `supplycountline`)
+
+A stock count is saved while it is counted (owner decision INV 11), so closing its window, a crash or a power cut loses nothing of it.
+
+`supplycount`: `SupplyCountNum`, `CountStatus` (`SupplyCountStatus`: 0 Open, 1 Posting, 2 Posted, 3 Discarded), `UserNum` and
+`DateTimeEntry` (who started it and when, server time), `UserNumClosed` and `DateTimeClosed` (who posted or discarded it and when; while it is
+Posting, when the post began), `Reason` (the reason of the post). The office has at most one count that is Open or Posting (one storage
+location, one count): "the open count". Closed counts stay, with their lines, as the record of what was counted.
+
+`supplycountline`: `SupplyCountLineNum`, `SupplyCountNum`, `SupplyNum`, `SupplyLotNum` (0 for stock without a lot, and for a lot found in
+the count), `LotNumber` and `DateExpiry` (only for a lot found in the count, which the post creates; blank for an existing lot, whose number
+and expiry date are read from `supplylot`), `QtyProgram` (the program's quantity of that supply and lot, from the ledger, when the line was
+last counted: its snapshot), `QtyCounted`, `UserNum` and `DateTimeEntry` (who counted it last, and when). One line per supply and lot: a
+unique key on `SupplyCountNum`, `SupplyNum`, `SupplyLotNum`, `LotNumber`.
+
+Without transactions (`SupplyCounts`, `SupplyCountLines`, `InventoryTracking`):
+
+1. **Starting.** The first counted line starts the count with one `INSERT ... SELECT ... WHERE NOT EXISTS` statement (no Open or Posting
+   count), which MyISAM runs under one lock of `supplycount`: two workstations starting at the same moment share one count.
+2. **Saving a line** is one `INSERT ... SELECT ... FROM supplycount WHERE` (the count is Open) `... ON DUPLICATE KEY UPDATE` statement. It
+   writes a line only into an open count, and a supply and lot counted again replaces its line (counted quantity, a new snapshot, user and
+   time) instead of adding a second one, also when two workstations save it at the same moment. A scan adds one to the line's counted quantity
+   inside that statement, so scans of the same item on two workstations all count. A line the statement refuses because the count is no
+   longer open is reported to the user, never lost without a word. A lot found in the count whose number has become a lot of the supply since
+   (received meanwhile) is saved as that lot, and its earlier line follows it.
+3. **Posting** first marks the count Posting (`UPDATE ... WHERE CountStatus=Open`): of two workstations posting the same count only one
+   posts it, and from then on no line can be saved into it. Then it reads the lines, writes the count adjustments (`PostCount`, 3.5) and marks
+   the count Posted. When the ledger write fails, the count is made Open again with each line's program quantity read again from the ledger,
+   so posting again writes only what still differs (the window did the same in memory before counts were saved). When even that fails (a lost
+   connection, a crash, a power cut during the post), the count stays Posting; the Supply Inventory window offers to resume it once the post
+   began more than 5 minutes ago (`InventoryTracking.MINUTES_POST_STALE`; before that another workstation may still be posting it), which
+   does the same reading again and opens it.
+4. **Discarding** marks the open count Discarded (`UPDATE ... WHERE CountStatus=Open`) and writes no ledger row.
 
 ## 3. Behaviour
 
@@ -232,14 +270,35 @@ writes a Supply Purchases security log entry. Receiving more than was ordered as
 
 ### 3.5 Stock counts and adjustments
 
-Supply Inventory, Inventory, Stock Count. Items are added by scanning or from the supply list; each row (supply, and lot for supplies tracked by lot) shows
-the quantity the program had when the row was added and the counted quantity. The program's quantity is read from the ledger
+Supply Inventory, Inventory, Stock Count, or the Stock Count button of Supply Inventory. The window shows the office's open count, if there is
+one, with its lines, to every user who can open it: a count started on another workstation, by another user, or before the window or the
+program was closed is resumed where it was (2.7). Items are added by scanning or from the supply list; each row (supply, and lot for supplies
+tracked by lot) shows the program's quantity and the counted quantity. The program's quantity is read from the ledger
 (`InventoryTracking.GetCountLines`, `GetQtyProgram`), never from the counters, which a write that failed part-way can leave stale. Every lot
 whose stock is not 0 gets a row, a lot below zero too (a lot taken past its stock, a lot number entered from the package, two workstations
-taking the last unit), so a full count corrects it; a scan adds to the selected row of the supply, otherwise to its first row with stock. A reason is required. Post writes a CountAdjust row with the
-difference counted minus the program's quantity at that time (so procedures completed during the count are not counted twice) and one Inventory
-Adjust security log entry per item. A lot found in the count (Lot...) is created when the count is posted. The count lives only while the
-window is open. A manual adjustment (supply edit window, Stock..., Adjust; Inventory Adjust) writes an Adjust row with its reason and a
+taking the last unit), so a full count corrects it; a scan adds to the selected row of the supply, otherwise to its first row with stock.
+
+**Each counted row is saved at once** (`InventoryTracking.SaveCountLine`): a scan, a typed quantity, and a lot found in the count (Lot...)
+once it is counted. Saving takes the program's quantity at that moment as the line's snapshot, so a supply and lot counted again replaces its
+line with the new quantity and a new snapshot. Remove, or clearing a counted quantity, deletes the line (`DeleteCountLine`). Rows of lots not
+counted yet are not saved: they hold nothing counted. After every save the window reads the count's lines again, so it shows what other
+workstations counted. The window closes without a warning, since nothing is lost.
+
+**Post** (Inventory Adjust; a reason is required; `InventoryTracking.PostOpenCount`) works as before counts were saved: for every line whose
+counted quantity differs from its snapshot, a CountAdjust row of the difference (counted minus the program's quantity when the line was
+counted, so procedures completed during the count are not counted twice) with the reason, and one Inventory Adjust security log entry per
+adjusted line; a lot found in the count is created when the count is posted. Then the count is closed as Posted (who, when, the reason). A
+failed post leaves the count open with each line's program quantity read again from the ledger, so posting again writes only what still
+differs (2.7).
+
+**Discard** (Inventory Adjust, after a confirmation; `InventoryTracking.DiscardOpenCount`) closes the open count without changing stock and
+writes an Inventory Adjust security log entry naming who started it, when, and how many lines it had.
+
+**Supply Inventory** shows whether a count is open, under its buttons: "Stock count open: started by <user> on <date and time>, N line(s)."
+(or that its post is running, or did not finish and can be resumed), and its Stock Count button then reads Resume Count. Counting needs no
+permission beyond opening Supply Inventory, as before; posting and discarding need Inventory Adjust.
+
+A manual adjustment (supply edit window, Stock..., Adjust; Inventory Adjust) writes an Adjust row with its reason and a
 security log entry; the same window lists the supply's lots (a lot number or expiry date typed wrong can be corrected there) and every
 ledger row. While tracking is off, the existing On Hand fields of the supply windows still work: an edit becomes an Adjust row ("On hand edited").
 While tracking is on, On Hand is read-only there and changes go through counts and adjustments.
@@ -289,8 +348,8 @@ ledger and the stock agree from the start. Supplies, orders, suppliers and categ
   `Supplies` leave a database without them (a scratch database built from the Open Dental reference) as before.
 - Supply Inventory, Inventory, Default Materials of Procedure Codes needs Setup. Changes are saved right away.
 - The supply edit window has the barcode (`BarCodeOrID`, which it did not show before), the reorder level, tracked by lot and implant.
-- `EnumPermType.InventoryAdjust` (10050, "Inventory Adjust"): posting counts, manual adjustments, correcting a lot and the repair. Security
-  log entries for each. The first time tracking is turned on it is granted to every user group that has Supplier Edit, the permission of the
+- `EnumPermType.InventoryAdjust` (10050, "Inventory Adjust"): posting and discarding counts, manual adjustments, correcting a lot and the
+  repair. Security log entries for each. The first time tracking is turned on it is granted to every user group that has Supplier Edit, the permission of the
   people who look after supplies today, unless a group has it already (a Security Admin log entry names the groups).
 - Receiving uses Supply Purchases (`SupplyPurchases`) for its log entry, as orders do.
 - Fork-only values stored in the database (`docs/port-notes/FORK-ENUMS.md`): `EnumPermType.InventoryAdjust` 10050, in the inventory
@@ -306,20 +365,25 @@ ledger and the stock agree from the start. Supplies, orders, suppliers and categ
 |---|---|
 | 2026110211 | `supplyledger`, and in the same step (only when it created the table) the opening ledger rows |
 | 2026110212 | `supplylot`, `supplyproccode`, `supplysetting`, `supplyprocpending` |
+| 2026110213 | `supplycount`, `supplycountline` (stock counts saved while they are counted, owner decision INV 11) |
 
-2026110213 to 2026110219 are kept for this feature. The steps change no Open Dental table, so adopting an Open Dental 25.3.48 database for
-this feature only adds the five tables and the opening rows. The adoption tools (`tools/AdoptionValidation`) treat them as every fork-only
-table (a `TableAdded` rule each in `allowed-differences.adoption.json`, the four tables without rows listed under "Fork tables:" and required
-empty), with one documented exception: the stock ledger is the one table of this program that adoption writes rows into, so migration-preview
-lists its opening rows (`InventoryPlan`) and adopt's row check holds it to exactly those rows ("Stock ledger:",
-`AdoptionRowCheck.CheckInventoryLedger`) instead of requiring it empty.
+2026110214 to 2026110219 are kept for this feature. The steps change no Open Dental table, so adopting an Open Dental 25.3.48 database for
+this feature only adds the seven tables and the opening rows. The adoption tools (`tools/AdoptionValidation`) treat them as every fork-only
+table (a `TableAdded` rule each in `allowed-differences.adoption.json`, the six tables without rows listed under "Fork tables:" and required
+empty, so an adopted database has no open stock count), with one documented exception: the stock ledger is the one table of this program
+that adoption writes rows into, so migration-preview lists its opening rows (`InventoryPlan`) and adopt's row check holds it to exactly those
+rows ("Stock ledger:", `AdoptionRowCheck.CheckInventoryLedger`) instead of requiring it empty.
 
 ## 6. Tests
 
 `tests/InventoryTests` (scratch databases `test_inv_*` on the local MariaDB, synthetic rows only): ledger and `LevelOnHand` consistency,
 soonest-expiring first (lots chosen when deducted: a raised quantity splits over lots, two confirmations against the last unit of a lot,
 explicit lots kept beside lot -1), receiving, counts and adjustments (and a failure after the ledger write; the program quantity read from the
-ledger after a missed recompute, so a re-post writes nothing more; a lot below zero listed and corrected by a full count), deduct and restore
+ledger after a missed recompute, so a re-post writes nothing more; a lot below zero listed and corrected by a full count), saved stock counts
+(`CountTests`: lines saved at once and read back after the window is closed and reopened, resumed by another user, one open count only, a
+recount replacing its line with a new snapshot, two workstations saving lines into the same open count at the same moment, a post after a
+resume giving the same results as an uninterrupted count, a failed post opened again, a post interrupted by a crash resumed, a discard with
+its audit entry, and step 2026110213 on a database without the inventory tables and on one already migrated with stock), deduct and restore
 on complete, un-complete and delete (a procedure un-completed while it is confirmed, restores written twice, and the stock ledger and default
 materials renamed away: the procedure is still completed, un-completed with its note and deleted, and the repair puts back afterwards), several
 procedures in one confirmation, the implant lot on the procedure (a lot entered for stock without a lot, an implant without a lot), the
@@ -335,4 +399,10 @@ table.
 
 ## 7. Owner questions
 
-In `docs/owner-questions.md`, "Inventory tracking (INV, 2026-11-02)", each with what the program does today.
+In `docs/owner-questions.md`, "Inventory tracking (INV, 2026-11-02)". The owner answered them on 2026-11-02 ("all as recommended"):
+
+- INV 1 to 10, 12 to 15, 17 and 18: kept as built (the defaults this document describes).
+- INV 11: changed. A stock count is saved while it is counted: each counted line as soon as it is entered, one open count at a time, which
+  any user allowed to count can resume; posting works as before and closes the count; an open count can be discarded after a confirmation,
+  with a security log entry (2.7, 3.5, step 2026110213).
+- INV 16 (the alert values in the tinyint range) is settled when the packages are merged.
