@@ -3,7 +3,8 @@
 Draws the Open PMS - Dental brand assets from the logo in branding\logo.svg.
 
 .DESCRIPTION
-The logo is a white molar on a teal rounded square (branding\logo.svg is the vector master). This script draws, with WPF and no other tool:
+The logo is a white molar on a blue rounded square (branding\logo.svg is the vector master). The blue is the program's own: #3C5A96, the
+grid title bar blue (_colorTitleBottom in OpenPmsDentalBusiness\UI\GridOD.cs), used flat. This script draws, with WPF and no other tool:
   branding\app.ico            program and window icon: 16, 20, 24, 32, 40, 48, 64, 128 (32-bit) and 256 (PNG) pixels
   branding\window.ico         the compact window icon (16 and 32 pixels, 32-bit) of the forms that embed their own icon
   branding\logo-256.png       the logo for documents and the installer
@@ -30,7 +31,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 public static class BrandArt {
-	public static readonly Color Teal=Color.FromRgb(0x0F,0x76,0x6E);
+	///<summary>The program's grid title bar blue (GridOD._colorTitleBottom, 60,90,150), used flat.</summary>
+	public static readonly Color Brand=Color.FromRgb(0x3C,0x5A,0x96);
 	public static readonly Color Ink=Color.FromRgb(0x0F,0x17,0x2A);
 	public static readonly Color Muted=Color.FromRgb(0x47,0x55,0x69);
 	public static readonly Color Faint=Color.FromRgb(0x64,0x74,0x8B);
@@ -41,7 +43,7 @@ public static class BrandArt {
 		double s=size/100.0;
 		dc.PushTransform(new TranslateTransform(x,y));
 		dc.PushTransform(new ScaleTransform(s,s));
-		dc.DrawRoundedRectangle(new SolidColorBrush(Teal),null,new Rect(0,0,100,100),22,22);
+		dc.DrawRoundedRectangle(new SolidColorBrush(Brand),null,new Rect(0,0,100,100),22,22);
 		Geometry molar=Geometry.Parse(Molar).Clone();
 		TransformGroup tg=new TransformGroup();
 		tg.Children.Add(new ScaleTransform(0.82,0.82));
@@ -76,15 +78,15 @@ public static class BrandArt {
 	public static BitmapSource Splash() {
 		return Render(500,300,dc => {
 			dc.DrawRectangle(Brushes.White,null,new Rect(0,0,500,300));
-			dc.DrawRectangle(new SolidColorBrush(Teal),null,new Rect(0,0,500,6));
+			dc.DrawRectangle(new SolidColorBrush(Brand),null,new Rect(0,0,500,6));
 			DrawLogo(dc,40,62,112);
 			dc.DrawText(Text("Open PMS - Dental",30,FontWeights.SemiBold,Ink),new Point(176,78));
 			dc.DrawText(Text("Dental practice management",15,FontWeights.Normal,Muted),new Point(178,124));
-			dc.DrawRectangle(new SolidColorBrush(Teal),null,new Rect(178,154,56,3));
-			dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0xE2,0xE8,0xF0)),null,new Rect(40,214,420,1));
-			dc.DrawText(Text("Based on Open Dental. \u00A9 Jordan Sparks, DMD, Open Dental Software, Inc. and contributors.",10.5,FontWeights.Normal,Faint),new Point(40,224));
-			dc.DrawText(Text("Free software under the GNU GPL, version 2 or later. It comes with no warranty.",10.5,FontWeights.Normal,Faint),new Point(40,242));
-			dc.DrawText(Text("Not affiliated with or endorsed by Open Dental Software, Inc.",10.5,FontWeights.Normal,Faint),new Point(40,260));
+			dc.DrawRectangle(new SolidColorBrush(Brand),null,new Rect(178,154,56,3));
+			//The lower part: a hairline, the copyright line and the GPL notice. The full attribution is in Help > About, NOTICE and README.md.
+			dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0xE2,0xE8,0xF0)),null,new Rect(40,232,420,1));
+			dc.DrawText(Text("\u00A9 Open PMS - Dental contributors and the original authors. See Help > About.",10.5,FontWeights.Normal,Faint),new Point(40,242));
+			dc.DrawText(Text("Free software under the GNU GPL, version 2 or later. It comes with no warranty.",10.5,FontWeights.Normal,Faint),new Point(40,260));
 		});
 	}
 
@@ -99,7 +101,7 @@ public static class BrandArt {
 	public static BitmapSource InstallerWizard(int scale) {
 		int w=164*scale, h=314*scale;
 		return Render(w,h,dc => {
-			dc.DrawRectangle(new SolidColorBrush(Teal),null,new Rect(0,0,w,h));
+			dc.DrawRectangle(new SolidColorBrush(Brand),null,new Rect(0,0,w,h));
 			double logo=96*scale;
 			dc.PushTransform(new TranslateTransform((w-logo)/2,48*scale));
 			dc.DrawRoundedRectangle(Brushes.White,null,new Rect(-4*scale,-4*scale,logo+8*scale,logo+8*scale),24*scale,24*scale);

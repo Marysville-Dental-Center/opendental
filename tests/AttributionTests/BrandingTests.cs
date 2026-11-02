@@ -38,6 +38,8 @@ namespace AttributionTests {
 		///<summary>Folders that hold build output, packages or other checkouts (.claude holds worktrees), never this repository's sources.</summary>
 		private static readonly string[] _arraySkippedFolders=new string[] { ".git",".claude",".vs","bin","obj","packages","node_modules","TestResults" };
 		private static string _repoRoot;
+		///<summary>The brand colour: the program's grid title bar blue (GridOD._colorTitleBottom), #3C5A96.</summary>
+		private static readonly Color BrandColor=Color.FromArgb(0x3C,0x5A,0x96);
 		private const int WM_GETICON=0x007F;
 		private const int ICON_SMALL=0;
 		private const int ICON_BIG=1;
@@ -390,6 +392,77 @@ namespace AttributionTests {
 			//The built program carries it.
 			using Bitmap bitmap=(Bitmap)new System.ComponentModel.ComponentResourceManager(typeof(FormSplash)).GetObject("$this.BackgroundImage");
 			Assert.AreEqual(new Size(500,300),bitmap.Size);
+		}
+
+		[TestMethod]
+		public void Splash_NamesOnlyThisProgramAndTheGpl() {
+			//The splash names no Open Dental, no OD, no person and has no affiliation line: the full attribution is in Help > About, NOTICE,
+			//README.md and the installer. These are the texts Make-BrandAssets.ps1 draws on it, in order, and no others.
+			string script=ReadRepoFile("tools/Make-BrandAssets.ps1");
+			Match matchSplash=Regex.Match(script,@"public static BitmapSource Splash\(\) \{(.*?)\n\t\}",RegexOptions.Singleline);
+			Assert.IsTrue(matchSplash.Success,"Splash() not found in tools/Make-BrandAssets.ps1");
+			string body=matchSplash.Groups[1].Value;
+			List<string> listTexts=Regex.Matches(body,@"\bText\(""((?:[^""\\]|\\.)*)""").Cast<Match>().Select(x => Regex.Unescape(x.Groups[1].Value)).ToList();
+			CollectionAssert.AreEqual(new[] {
+					"Open PMS - Dental",
+					"Dental practice management",
+					"© Open PMS - Dental contributors and the original authors. See Help > About.",
+					"Free software under the GNU GPL, version 2 or later. It comes with no warranty.",
+				},listTexts,"The splash draws: "+string.Join(" | ",listTexts));
+			Assert.AreEqual(listTexts.Count,Regex.Matches(body,@"\.DrawText\(").Count,"Every text the splash draws is a Text(\"...\") literal.");
+			foreach(string text in listTexts) {
+				foreach(string forbidden in new[] { "Open Dental","Jordan Sparks","endorsed","affiliated","Sparks" }) {
+					Assert.IsFalse(text.IndexOf(forbidden,StringComparison.OrdinalIgnoreCase)>=0,"The splash says \""+forbidden+"\": "+text);
+				}
+				Assert.IsFalse(text.Contains("OD "),"The splash says \"OD \": "+text);
+				Assert.IsFalse(Regex.IsMatch(text,@"\bOD\b"),"The splash names OD: "+text);
+			}
+			//The picture holds that layout: the blue top bar, nothing between the name block and the hairline at y=232, then the two lines.
+			using MemoryStream memoryStream=new MemoryStream(ReadRepoBytes("branding/splash.png"));
+			using Bitmap bitmap=new Bitmap(memoryStream);
+			Assert.AreEqual(new Size(500,300),bitmap.Size);
+			for(int x=0;x<500;x++) {
+				Assert.AreEqual(BrandColor.ToArgb(),bitmap.GetPixel(x,0).ToArgb(),"Top bar at x="+x);
+				for(int y=176;y<232;y++) {
+					Assert.AreEqual(Color.White.ToArgb(),bitmap.GetPixel(x,y).ToArgb(),"The splash has something at "+x+","+y);
+				}
+			}
+			for(int x=40;x<460;x++) {
+				Assert.AreEqual(Color.FromArgb(0xE2,0xE8,0xF0).ToArgb(),bitmap.GetPixel(x,232).ToArgb(),"Hairline at x="+x);
+			}
+			Assert.AreEqual(BrandColor.ToArgb(),bitmap.GetPixel(200,155).ToArgb(),"The underline below the name.");
+		}
+
+		[TestMethod]
+		public void MakeBrandAssets_IsAsciiOnly() {
+			//Windows PowerShell 5.1 reads a file without a byte order mark as ANSI, so a literal non-ASCII character in the script would be drawn
+			//wrong (the copyright sign is written © in its C# text).
+			byte[] bytes=ReadRepoBytes("tools/Make-BrandAssets.ps1");
+			List<int> listOffsets=Enumerable.Range(0,bytes.Length).Where(i => bytes[i]>0x7F).ToList();
+			Assert.AreEqual(0,listOffsets.Count,"tools/Make-BrandAssets.ps1 has non-ASCII bytes at offsets "+string.Join(", ",listOffsets.Take(10)));
+		}
+
+		[TestMethod]
+		public void BrandColor_IsTheProgramsGridTitleBlue() {
+			//The logo and the splash use the program's own blue, the grid title bar's #3C5A96 (60,90,150), flat.
+			StringAssert.Contains(ReadRepoFile("OpenPmsDentalBusiness/UI/GridOD.cs"),"_colorTitleBottom=Color.FromArgb(60,90,150);");
+			string script=ReadRepoFile("tools/Make-BrandAssets.ps1");
+			StringAssert.Contains(script,"public static readonly Color Brand=Color.FromRgb(0x3C,0x5A,0x96);");
+			Assert.IsFalse(Regex.IsMatch(script,@"\bTeal\b"),"Make-BrandAssets.ps1 still has the Teal colour.");
+			Assert.IsFalse(script.Contains("0x0F,0x76,0x6E"),"Make-BrandAssets.ps1 still has the teal value.");
+			Assert.IsFalse(Regex.IsMatch(script,@"Gradient"),"The brand colour is used flat.");
+			string svg=ReadRepoFile("branding/logo.svg");
+			StringAssert.Contains(svg,"<rect width=\"100\" height=\"100\" rx=\"22\" fill=\"#3C5A96\"/>");
+			Assert.IsFalse(svg.IndexOf("0F766E",StringComparison.OrdinalIgnoreCase)>=0,"logo.svg still has the teal value.");
+			StringAssert.Contains(ReadRepoFile("branding/README.md"),"`#3C5A96`, the program's grid title blue");
+			//The drawn files carry it: the logo tile and the installer's welcome-page background.
+			using MemoryStream memoryStreamLogo=new MemoryStream(ReadRepoBytes("branding/logo-256.png"));
+			using Bitmap bitmapLogo=new Bitmap(memoryStreamLogo);
+			Assert.AreEqual(BrandColor.ToArgb(),bitmapLogo.GetPixel(128,4).ToArgb(),"logo-256.png");
+			using MemoryStream memoryStreamWizard=new MemoryStream(ReadRepoBytes("branding/installer-wizard.bmp"));
+			using Bitmap bitmapWizard=new Bitmap(memoryStreamWizard);
+			Assert.AreEqual(BrandColor.ToArgb(),bitmapWizard.GetPixel(2,2).ToArgb(),"installer-wizard.bmp");
+			Assert.AreEqual(BrandColor.ToArgb(),bitmapWizard.GetPixel(2,bitmapWizard.Height-3).ToArgb(),"installer-wizard.bmp");
 		}
 
 		[TestMethod]

@@ -6,8 +6,8 @@ using System.Drawing;
 using System.Windows.Forms;
 
 namespace OpenPmsDental {
-	///<summary>A splash screen to show when the program launches. The background is branding/splash.png (in FormSplash.resx), with the
-	///attribution to Open Dental and the GPL notice. An office's own Splash.jpg in the program folder takes its place.</summary>
+	///<summary>A splash screen to show when the program launches. The background is branding/splash.png (in FormSplash.resx), with a
+	///copyright line that points to Help > About and the GPL notice. An office's own Splash.jpg in the program folder takes its place.</summary>
 	public partial class FormSplash : Form {
 
 		///<summary>Launches a splash screen.</summary>
