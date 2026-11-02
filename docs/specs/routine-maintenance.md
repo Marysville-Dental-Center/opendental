@@ -214,7 +214,8 @@ sign-off. OK saves the completion, its values and the audit entry, and updates t
 ### History (FormMaintHistory)
 
 Per item (from the board's History button) or overall (All History), for a date range (default: the last 12 months) of the date done.
-Columns: Date Done, Item, Done By, Due, Late (days after the due date, blank when on time), Flagged, Note, Recorded (date and time). A second
+Columns: Date Done, Item (overall only), Done By, Due, Late (days after the due date, blank when on time), Flagged, Results (each filled
+result as "name: value", so a printout shows them), Note, Recorded (date and time). A second
 grid shows the selected completion's checklist and results; **Open Attachment** opens an attached file. **Print** and **Export** as on the
 board.
 
@@ -222,13 +223,15 @@ board.
 
 Reminders use the program's alert system (`alertitem`, the Alerts menu of the main window):
 
-- **AlertType 10000 MaintenanceDueSoon** ("Maintenance Due Soon") while an item's status is Due soon: it has entered its lead time.
-- **AlertType 10001 MaintenanceOverdue** ("Maintenance Overdue") while it is Overdue. It replaces the due-soon alert.
+- **AlertType 127 MaintenanceDueSoon** ("Maintenance Due Soon") while an item's status is Due soon: it has entered its lead time.
+- **AlertType 126 MaintenanceOverdue** ("Maintenance Overdue") while it is Overdue. It replaces the due-soon alert.
+- Why 127 and 126, not 10000: `alertitem.Type`, `alertcategorylink.AlertType` and `alertsub.Type` are `tinyint(4)` (-128 to 127) in Open
+  Dental's schema, so `FORK-ENUMS.md` gives the tinyint enums their own rule: fork-only values count down from 127.
 - Recipients: the assigned user, or every user of the assigned user group (hidden users excluded). Each recipient gets an alert of their own
   (`UserNum` set), so it reaches them whatever alert categories they subscribe to, and nobody else sees it. An item with no assignee raises no
   alert; the board shows it.
 - `FKey` is the MaintItemNum, `ClinicNum` -1 (every clinic), severity Low for due soon and High for overdue, actions Mark As Read and Open
-  Form, `FormToOpen` FormType 10000 FormMaintenanceBoard (opens the board). There is no Delete action: the alert goes away by itself.
+  Form, `FormToOpen` FormType 127 FormMaintenanceBoard (opens the board; `alertitem.FormToOpen` is `tinyint(4)` too). There is no Delete action: the alert goes away by itself.
 - **Without duplicates**: `MaintAlerts.Sync` works out the wanted set (one per item, type and recipient) and compares it with the existing
   maintenance alerts: a wanted alert that exists is kept (its text is updated in place, so its read state survives), a missing one is added,
   extra copies of one alert (two workstations syncing at the same moment) are deleted, and alerts no longer wanted (recorded, hidden,
@@ -238,7 +241,8 @@ Reminders use the program's alert system (`alertitem`, the Alerts menu of the ma
 
 ## 7. Permissions and the audit trail
 
-Fork-only permission values (`docs/port-notes/FORK-ENUMS.md`, range 10000-10049):
+Fork-only permission values (`docs/port-notes/FORK-ENUMS.md`, range 10000-10049; the alert and window values above are in the tinyint
+range 127-120, because `alertitem.Type`, `alertcategorylink.AlertType`, `alertsub.Type` and `alertitem.FormToOpen` are `tinyint(4)`):
 
 - **EnumPermType 10000 MaintenanceSetup** ("Maintenance Setup"): add, edit, hide and delete maintenance items, their checklists and fields.
 - **EnumPermType 10001 MaintenanceRecord** ("Maintenance Record Completion"): record a completion.
@@ -282,3 +286,6 @@ Taken as the simplest option consistent with the decisions above; each can chang
 5. Items belong to the whole practice, not to a clinic; alerts show in every clinic.
 6. The anchor is the first due date, so an anchor in the past makes a never-done item overdue at once.
 7. Years are not offered for "after the last completion" (the decision lists days, weeks and months).
+8. The alert types and the alert's window are 127, 126 and 127 instead of the 10000 range, because their columns are `tinyint(4)`
+   (`FORK-ENUMS.md`, "tinyint enums"); widening Open Dental's columns was not chosen, since the schema must stay Open Dental's.
+9. The reminder check runs every 10 minutes on every workstation that is logged on; the sync makes that safe (no duplicates).
