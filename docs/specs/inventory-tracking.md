@@ -88,11 +88,17 @@ MyISAM has no transactions, and two workstations can complete procedures at the 
    leaves a procedure that is no longer complete but still holds materials, which the repair finds; never a complete procedure whose
    materials are back in stock. A Restore row is written only while the procedure still holds exactly what it puts back (one
    `INSERT ... SELECT ... WHERE` statement, under one MyISAM table lock), so two workstations restoring the same procedure at once put it back
-   once (`SupplyLedgers.InsertRestoresIfStillHeld`).
+   once (`SupplyLedgers.InsertRestoresIfStillHeld`). In `Procedures.Update` the inventory hooks run last, after the procedure and its note
+   and signature are saved, and neither hook ever throws (`InventoryTracking.OnProcSetComplete`, `OnProcNoLongerComplete`): a failing
+   inventory table (a MyISAM table marked as crashed, a lost connection, a deadlock), also on a database whose office never turned tracking
+   on, is written to the log, and the procedure is still saved, deleted and given its note. A restore that did not run is put back by the
+   repair; a completion whose awaiting row could not be written is not on the Awaiting Materials list, so nothing is deducted for it, which is
+   never a silent deduction. The procedure edit window hides Materials when the inventory tables cannot be read.
 6. **Receiving, counts and adjustments are safe to retry.** Once their ledger rows are written, what follows (received dates, audit entries,
    alerts) can no longer make the call fail: a failure there is written to the log (`InventoryTracking` folder). When the call itself fails
    (part-way, or a lost Middle Tier answer), the windows read the database again before another post is possible: Receive reloads Received
-   from the ledger and clears Receive Now, Stock Count reads each counted row's program quantity again (a re-post writes only what still
+   from the ledger and clears Receive Now, Stock Count reads each counted row's program quantity again from the ledger, never from the lot
+   counter, which the failed write may have left at its old value (`InventoryTracking.GetQtyProgram`; a re-post writes only what still
    differs), and the adjustment window closes with a message to check the ledger in Stock.
 7. **Repair** (Supply Inventory, Inventory, Repair Stock from Ledger; Inventory Adjust): first puts back what procedures that are no longer
    complete (or no longer exist) still hold (`SupplyLedgers.GetProcNumsHeldNotComplete`, reason "Repair: procedure no longer complete") and
@@ -137,12 +143,27 @@ background threads, an interface. What is not confirmed in the program stays on 
 
 In the program, the business layer also tells the user interface which procedures were completed by the user's own action (an event raised in
 the program, on the thread that completed them). `Procedures.Insert` and `Procedures.Update` raise it on both sides of their Middle Tier
-check. Two business methods complete procedures entirely on the Middle Tier server for a Middle Tier client, where the program does not hear
-the `Update` calls inside them: `Procedures.SetCompleteInApptInList` (Chart module Set Complete of an appointment's procedures, the
-appointment edit window, per-visit codes) and `Appointments.CompleteClick` (the Appointments module's Set Complete). In their Middle Tier
-client branch they raise it after the remote call returns (`InventoryTracking.NotifyProcsNowComplete`), for every procedure that is complete
-then and was not before (for `CompleteClick` the appointment's procedures are read again, because it returns the list it was given). A test
-in `InventoryTests` checks both branches. The main window collects the procedures of its own (main) thread and, when the program is idle again
+check. Four business methods complete procedures entirely on the Middle Tier server for a Middle Tier client, where the program does not hear
+the `Update` calls inside them:
+
+- `Procedures.SetCompleteInApptInList`, which the program calls itself for the Chart module's Set Complete of an appointment's procedures
+  (`ProcedureL.SetCompleteInAppt`) and for per-visit codes added complete from the Chart and Appointments modules and Other Appointments
+  (`Appointments.TryAddPerVisitProcCodesToAppt` runs in the program);
+- `Appointments.ApptSaveHelper`, the appointment edit window's OK: its `Procedures.UpdateProcsInApptHelper` (which calls
+  `SetCompleteInAppt`, and so `SetCompleteInApptInList`, on the server) and its per-visit codes complete the appointment's procedures on the
+  server, so `SetCompleteInApptInList`'s own branch never runs for this window;
+- `Appointments.CompleteClick`, the Appointments module's Set Complete;
+- `Procedures.SetCanadianLabFeesCompleteForProc` (Canada): a procedure's lab fees, and a lab fee's parent procedure, completed from the
+  procedure edit window.
+
+In their Middle Tier client branch they read the procedures' statuses before the remote call and raise it after the call returns
+(`InventoryTracking.NotifyProcsNowComplete`), for every procedure that is complete then and was not before (for `ApptSaveHelper` and
+`CompleteClick` the appointment's procedures are read again, because what they return does not show the procedures the server completed or
+added). A test in `InventoryTests` checks the four branches. The other business methods that reach `UpdateProcsInApptHelper` or
+`SetCompleteInAppt` have no user (`Appointments.UpsertApptFromWeb`, the HL7 and eCW interfaces), so their procedures stay on the Awaiting
+Materials list, or only schedule an appointment (`SchedulePlannedApt`, appointment moves), which completes nothing.
+
+The main window collects the procedures of its own (main) thread and, when the program is idle again
 and the window the user worked in is active (any message box or other window the same action opened has closed), opens one **Materials used**
 panel for every procedure of that action that awaits materials. So the panel opens from every completion path without each path calling it:
 Chart module Set Complete (one or several procedures, or an appointment), procedures entered as complete (procedure buttons, quick buttons,
@@ -185,7 +206,10 @@ quantity typed above 9999 is refused (a barcode in the wrong box looks like that
 work the same way (they ask above 999, or above the ordered quantity, or ten times the program's quantity, when that is larger).
 
 Opened again for a procedure that already has materials (Materials in the procedure edit window), it shows what the procedure used, with
-lots, and OK writes only the differences (Use rows for more, Restore rows for less). For an implant this is where the lot is seen from the
+lots, and OK writes only the differences (Use rows for more, Restore rows for less). A procedure that is still on the Awaiting Materials list
+always opens from its code's defaults, also when it already holds some materials (a confirmation that failed part-way wrote some of its rows
+and left it on the list): a supply it holds shows the larger of what it holds and the default, a supply it does not hold yet the default, so
+OK deducts what is still missing. Only a procedure that does not await materials shows just what it holds. For an implant this is where the lot is seen from the
 procedure; the Materials button's tooltip also names the implant lots. The Materials button is shown while tracking is on, and after
 tracking is turned off for a procedure that holds materials, read-only then. Changing the materials of a procedure that does not await
 materials needs Completed Procedure Edit Misc (`ProcCompleteEditMisc`) for the procedure's date (without it the panel is read-only);
@@ -209,7 +233,10 @@ writes a Supply Purchases security log entry. Receiving more than was ordered as
 ### 3.5 Stock counts and adjustments
 
 Supply Inventory, Inventory, Stock Count. Items are added by scanning or from the supply list; each row (supply, and lot for supplies tracked by lot) shows
-the quantity the program had when the row was added and the counted quantity. A reason is required. Post writes a CountAdjust row with the
+the quantity the program had when the row was added and the counted quantity. The program's quantity is read from the ledger
+(`InventoryTracking.GetCountLines`, `GetQtyProgram`), never from the counters, which a write that failed part-way can leave stale. Every lot
+whose stock is not 0 gets a row, a lot below zero too (a lot taken past its stock, a lot number entered from the package, two workstations
+taking the last unit), so a full count corrects it; a scan adds to the selected row of the supply, otherwise to its first row with stock. A reason is required. Post writes a CountAdjust row with the
 difference counted minus the program's quantity at that time (so procedures completed during the count are not counted twice) and one Inventory
 Adjust security log entry per item. A lot found in the count (Lot...) is created when the count is posted. The count lives only while the
 window is open. A manual adjustment (supply edit window, Stock..., Adjust; Inventory Adjust) writes an Adjust row with its reason and a
@@ -229,13 +256,14 @@ Two alert types, raised for all clinics (`ClinicNum` -1), linked to the "All" al
 - **Inventory Low Stock** (`AlertType.InventoryLowStock`, `FKey` the supply): a supply that is not hidden, whose reorder level is above 0
   and whose on hand is at or below it.
 - **Inventory Expiring** (`AlertType.InventoryExpiring`, `FKey` the lot): a lot with stock whose expiry date is within the preference's lead
-  days (`InventoryExpiryAlertDays`, default 30) or already past.
+  days (the `ForkInventoryExpiryAlertDays` preference, default 30) or already past.
 
 Both open the Supply Inventory window (`FormType.FormSupplyInventory`), with Mark as Read and Open Form (no Delete: a deleted alert that
 still applies would come back). They are refreshed for the supplies of every stock movement, and in full by the program's alert check
 at most every 10 minutes. The refresh adds an alert only with one `INSERT ... SELECT ... WHERE NOT EXISTS` statement, which MyISAM runs under
-one table lock, so two workstations never create the same alert twice; it removes alerts that no longer apply. Turning tracking off removes
-them.
+one table lock, so two workstations never create the same alert twice; it removes alerts that no longer apply. With random primary keys
+(replication) that statement takes the alert's key from `ReplicationServers.GetKey`, as the generated CRUD and `InsertRestoresIfStillHeld`
+do, never from `AUTO_INCREMENT`, which two replicated servers would hand out twice. Turning tracking off removes them.
 
 ### 3.8 Usage reports
 
@@ -250,7 +278,10 @@ ledger and the stock agree from the start. Supplies, orders, suppliers and categ
 
 ## 4. Settings, permissions and enum values
 
-- Preferences: `InventoryTrackingEnabled` and `InventoryExpiryAlertDays` (30; 0 turns the expiring alert off). Their rows are written the first
+- Preferences: `ForkInventoryTrackingEnabled` and `ForkInventoryExpiryAlertDays` (30; 0 turns the expiring alert off), fork-owned preference
+  rows outside the `PrefName` enum, which holds only the names Open Dental publishes (the "Fork" prefix keeps a later Open Dental name from
+  clashing): `InventoryTracking.PREF_ENABLED` and `PREF_EXPIRY_ALERT_DAYS`, read with `PrefC.GetRawOrDefault` and written with
+  `PrefC.UpsertRawNoCache`, as every fork-owned setting is. Their rows are written the first
   time the office saves Supply Inventory, Inventory, Setup (needs Setup; a Setup security log entry), by `InventoryTracking.SaveSettings`;
   without a row tracking is off, so every existing and every new database starts with tracking off. Turning tracking on also links the two
   alert types to the "All" alert category where a link is missing, and the first time only grants Inventory Adjust (below).
@@ -287,12 +318,16 @@ lists its opening rows (`InventoryPlan`) and adopt's row check holds it to exact
 
 `tests/InventoryTests` (scratch databases `test_inv_*` on the local MariaDB, synthetic rows only): ledger and `LevelOnHand` consistency,
 soonest-expiring first (lots chosen when deducted: a raised quantity splits over lots, two confirmations against the last unit of a lot,
-explicit lots kept beside lot -1), receiving, counts and adjustments (and a failure after the ledger write), deduct and restore on complete,
-un-complete and delete (a procedure un-completed while it is confirmed, restores written twice), several procedures in one confirmation, the
-implant lot on the procedure (a lot entered for stock without a lot, an implant without a lot), the patient merge, alerts without duplicates,
-the opening-balance migration, and the repair (procedures no longer complete); the inventory windows built in memory with every control
-inside them, the Materials used panel loaded and scanned into with a window handle but never shown, the source rule that the program's
-windows change procedures only through the business layer, the Middle Tier branches that raise the event, and the order of the writes in
+explicit lots kept beside lot -1), receiving, counts and adjustments (and a failure after the ledger write; the program quantity read from the
+ledger after a missed recompute, so a re-post writes nothing more; a lot below zero listed and corrected by a full count), deduct and restore
+on complete, un-complete and delete (a procedure un-completed while it is confirmed, restores written twice, and the stock ledger and default
+materials renamed away: the procedure is still completed, un-completed with its note and deleted, and the repair puts back afterwards), several
+procedures in one confirmation, the implant lot on the procedure (a lot entered for stock without a lot, an implant without a lot), the
+patient merge, alerts without duplicates (and with random primary keys, a replication key), the opening-balance migration and the tables
+against their declarations, the fork-owned preference rows, and the repair (procedures no longer complete); the inventory windows built in
+memory with every control inside them, the Materials used panel loaded and scanned into with a window handle but never shown (and reopened
+for a procedure whose confirmation failed part-way: it deducts the missing default once), the source rule that the program's windows change
+procedures only through the business layer, the four Middle Tier branches that raise the event, and the order of the writes in
 `Procedures.Delete`. The running program with a scanner was not tried (the build rules forbid starting the program). The main test database is the committed `db/init/new-database.sql` with this build's fork migrations run on it, so the tests
 pass before and after the file is regenerated with the inventory steps. `RegistryTests` and `M202Tests` treat fork-only enum members as fork
 values; `ForkMigrationTests` maps the table classes of fork-only tables to their declarations where it checks that every table class has a
