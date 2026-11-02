@@ -214,6 +214,29 @@ namespace OpenPmsDental {
 			gridItems.EndUpdate();
 		}
 
+		///<summary>Inventory tracking: receive the selected order's items, scanning them against the order (FormSupplyReceive).</summary>
+		private void butReceive_Click(object sender,EventArgs e) {
+			int index=gridOrders.GetSelectedIndex();
+			if(index==-1) {
+				MsgBox.Show(this,"Please select an order first.");
+				return;
+			}
+			SupplyOrder supplyOrder=_listSupplyOrders[index];
+			if(supplyOrder.IsPending()) {
+				MsgBox.Show(this,"This order has not been placed yet.");
+				return;
+			}
+			using FormSupplyReceive formSupplyReceive=new FormSupplyReceive();
+			formSupplyReceive.SupplyOrderNum=supplyOrder.SupplyOrderNum;
+			formSupplyReceive.ShowDialog();
+			FillGridOrders();
+			int indexNew=_listSupplyOrders.FindIndex(x => x.SupplyOrderNum==supplyOrder.SupplyOrderNum);
+			if(indexNew>=0) {
+				gridOrders.SetSelected(indexNew,true);
+			}
+			FillGridOrderItem();
+		}
+
 		private void checkShowReceived_MouseClick(object sender,MouseEventArgs e) {
 			FillGridOrders();
 		}

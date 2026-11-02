@@ -64,6 +64,7 @@
       "tests\\ImagingTests\\ImagingTests.csproj",
       "tests\\InitSqlTests\\InitSqlTests.csproj",
       "tests\\InsuranceTests\\InsuranceTests.csproj",
+      "tests\\InventoryTests\\InventoryTests.csproj",
       "tests\\LibraryBindingTests\\LibraryBindingTests.csproj",
       "tests\\LibraryUpdateTests\\LibraryUpdateTests.csproj",
       "tests\\LibSpellTests\\LibSpellTests.csproj",

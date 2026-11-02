@@ -3496,9 +3496,17 @@ namespace OpenPmsDentalBusiness{
 			Patient patient,Family family,bool updateProcFees,bool removeCompleteProcs,bool createSecLog,bool insertHL7) 
 		{
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<ApptSaveHelperResult>(MethodBase.GetCurrentMethod(),appointment,appointmentOld,isInsertRequired,listProceduresForAppt,listAppointments,
-					listSelectedIndices,listProcNumsAttachedStart,isPlanned,listInsPlans,listInsSubs,selectedProvNum,selectedProvHygNum,listProceduresSelected,isNew,
-					patient,family,updateProcFees,removeCompleteProcs,createSecLog,insertHL7);
+				//Inventory tracking: the procedures' statuses before the call. UpdateProcsInApptHelper (SetCompleteInAppt) and the per-visit procedures
+				//complete procedures on the Middle Tier server, where the program does not hear it.
+				List<Procedure> listProceduresBefore=(listProceduresForAppt??new List<Procedure>()).Select(x => x.Copy()).ToList();
+				ApptSaveHelperResult apptSaveHelperResultRemote=Meth.GetObject<ApptSaveHelperResult>(MethodBase.GetCurrentMethod(),appointment,appointmentOld,
+					isInsertRequired,listProceduresForAppt,listAppointments,listSelectedIndices,listProcNumsAttachedStart,isPlanned,listInsPlans,listInsSubs,
+					selectedProvNum,selectedProvHygNum,listProceduresSelected,isNew,patient,family,updateProcFees,removeCompleteProcs,createSecLog,insertHL7);
+				//Tell the program which procedures of the appointment are complete now and were not, so it opens the Materials used panel.
+				if(InventoryTracking.IsEnabled() && apptSaveHelperResultRemote?.AptCur!=null) {
+					InventoryTracking.NotifyProcsNowComplete(listProceduresBefore,Procedures.GetProcsForSingle(apptSaveHelperResultRemote.AptCur.AptNum,false));
+				}
+				return apptSaveHelperResultRemote;
 			}
 			ApptSaveHelperResult apptSaveHelperResult=new ApptSaveHelperResult();
 			DateTime dateTPrevious=appointment.DateTStamp;
@@ -5323,7 +5331,15 @@ namespace OpenPmsDentalBusiness{
 		///<summary>Used to set an appointment complete when it is right-clicked set complete.  Insert an invalid appointment signalod.</summary>
 		public static ODTuple<Appointment,List<Procedure>> CompleteClick(Appointment appointment,List<Procedure> listProceduresForAppt,bool removeCompletedProcs) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<ODTuple<Appointment,List<Procedure>>>(MethodBase.GetCurrentMethod(),appointment,listProceduresForAppt,removeCompletedProcs);
+				ODTuple<Appointment,List<Procedure>> odTuple=Meth.GetObject<ODTuple<Appointment,List<Procedure>>>(MethodBase.GetCurrentMethod(),appointment,
+					listProceduresForAppt,removeCompletedProcs);
+				//Inventory tracking: the procedures were completed on the Middle Tier server, where the program does not hear it, and the list returned is
+				//the one passed in. Tell the program here which procedures of the appointment are complete now and were not, so it opens the Materials
+				//used panel.
+				if(InventoryTracking.IsEnabled()) {
+					InventoryTracking.NotifyProcsNowComplete(listProceduresForAppt,Procedures.GetProcsForSingle(odTuple.Item1.AptNum,false));
+				}
+				return odTuple;
 			}
 			Family family=Patients.GetFamily(appointment.PatNum);
 			Patient patient=family.GetPatient(appointment.PatNum);

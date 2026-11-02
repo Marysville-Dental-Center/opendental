@@ -524,6 +524,8 @@ namespace OpenPmsDental {
 						node4=SetNode(EnumPermType.EquipmentDelete);
 						node3.Nodes.Add(node4);
 					node2.Nodes.Add(node3);
+					node3=SetNode(EnumPermType.InventoryAdjust);
+					node2.Nodes.Add(node3);
 					node3=SetNode(EnumPermType.SupplierEdit);
 					node2.Nodes.Add(node3);
 				node.Nodes.Add(node2);

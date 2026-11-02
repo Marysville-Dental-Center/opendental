@@ -888,13 +888,19 @@ namespace OpenPmsDentalBusiness{
 		[Description("Log Scraper HQ"),IsODHQ]
 		LogScraperHQ,
 		//10000 and up: this program's own values, so that Open Dental's later values never collide with them (docs/port-notes/FORK-ENUMS.md).
-		//Code must not loop over 0..count-1 of this enum; use Enum.GetValues.
+		//Code must not loop over 0..count-1 of this enum; use Enum.GetValues. 10000 to 10049: routine maintenance; 10050 to 10099: inventory
+		//tracking.
 		///<summary>10000 - Routine maintenance (fork only): add, edit, hide and delete maintenance items, their checklists and result fields.</summary>
 		[Description("Maintenance Setup")]
 		MaintenanceSetup=10000,
 		///<summary>10001 - Routine maintenance (fork only): record a completion of a maintenance item.</summary>
 		[Description("Maintenance Record Completion")]
 		MaintenanceRecord=10001,
+		///<summary>10050 - Inventory tracking (fork only): posting stock counts and manual stock adjustments, and repairing stock from the ledger.
+		///Every count and adjustment writes an audit entry under it. No date limit. Upgrade grant: every user group that holds Supplier Edit (242).
+		///</summary>
+		[Description("Inventory Adjust")]
+		InventoryAdjust=10050,
 	}
 }
 

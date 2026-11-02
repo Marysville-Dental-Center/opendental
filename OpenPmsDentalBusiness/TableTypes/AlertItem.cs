@@ -244,7 +244,8 @@ namespace OpenPmsDentalBusiness {
 		[Description("eService Listener Error"),ReservedEnumValue("Raised by the Open Dental eConnector.")]
 		EServiceListenerError,
 		//This program's own values count down from 127: alertitem.Type, alertcategorylink.AlertType and alertsub.Type are tinyint(4), so 10000 and up
-		//do not fit, and Open Dental's own values count up from 0 (docs/port-notes/FORK-ENUMS.md, "tinyint enums"). 127 to 120: routine maintenance.
+		//do not fit, and Open Dental's own values count up from 0 (docs/port-notes/FORK-ENUMS.md, "tinyint enums"). 127 to 120: routine maintenance;
+		//119 to 112: inventory tracking.
 		///<summary>127 - Routine maintenance (fork only): a maintenance item entered its reminder lead time. One per item and assigned user
 		///(UserNum), FKey the MaintItemNum. Raised and removed by MaintAlerts.Sync.</summary>
 		[Description("Maintenance Due Soon")]
@@ -253,6 +254,14 @@ namespace OpenPmsDentalBusiness {
 		///MaintItemNum. Replaces MaintenanceDueSoon. Raised and removed by MaintAlerts.Sync.</summary>
 		[Description("Maintenance Overdue")]
 		MaintenanceOverdue=126,
+		///<summary>119 - Inventory tracking (fork only): a supply's on hand is at or below its reorder level. FKey is the SupplyNum. Opens the Supply
+		///Inventory window.</summary>
+		[Description("Inventory Low Stock")]
+		InventoryLowStock=119,
+		///<summary>118 - Inventory tracking (fork only): a lot with stock expires within the lead days of the ForkInventoryExpiryAlertDays preference
+		///(InventoryTracking.PREF_EXPIRY_ALERT_DAYS), or has expired. FKey is the SupplyLotNum. Opens the Supply Inventory window.</summary>
+		[Description("Inventory Expiring")]
+		InventoryExpiring=118,
 	}
 
 	///<summary>Represents the urgency of the alert.  Also determines the color for the menu item in the main menu.</summary>
@@ -350,10 +359,13 @@ namespace OpenPmsDentalBusiness {
 		[Description("PaySuite Reconciliation"),ReservedEnumValue("PaySuite is not built yet.")]
 		FrmPaySuiteReconciliation,
 		//This program's own values count down from 127, because alertitem.FormToOpen is tinyint(4) (docs/port-notes/FORK-ENUMS.md, "tinyint
-		//enums"). 127 to 120: routine maintenance.
+		//enums"). 127 to 120: routine maintenance; 119 to 112: inventory tracking.
 		///<summary>127 - Routine maintenance (fork only): FormMaintBoard, the maintenance board.</summary>
 		[Description("Maintenance Board")]
 		FormMaintenanceBoard=127,
+		///<summary>119 - Inventory tracking (fork only): FormSupplyInventory, for the low-stock and expiring alerts.</summary>
+		[Description("Supply Inventory")]
+		FormSupplyInventory=119,
 	}
 
 }

@@ -261,6 +261,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DbConnectionSecurityTests",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MaintenanceTests", "tests\MaintenanceTests\MaintenanceTests.csproj", "{AC98AD56-4376-4165-83DE-0C232C3C0D65}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InventoryTests", "tests\InventoryTests\InventoryTests.csproj", "{BFBEEFB9-0202-4554-82A1-72A6B30F701C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1270,6 +1272,14 @@ Global
 		{AC98AD56-4376-4165-83DE-0C232C3C0D65}.Release|Any CPU.Build.0 = Release|x86
 		{AC98AD56-4376-4165-83DE-0C232C3C0D65}.Release|x86.ActiveCfg = Release|x86
 		{AC98AD56-4376-4165-83DE-0C232C3C0D65}.Release|x86.Build.0 = Release|x86
+		{BFBEEFB9-0202-4554-82A1-72A6B30F701C}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{BFBEEFB9-0202-4554-82A1-72A6B30F701C}.Debug|Any CPU.Build.0 = Debug|x86
+		{BFBEEFB9-0202-4554-82A1-72A6B30F701C}.Debug|x86.ActiveCfg = Debug|x86
+		{BFBEEFB9-0202-4554-82A1-72A6B30F701C}.Debug|x86.Build.0 = Debug|x86
+		{BFBEEFB9-0202-4554-82A1-72A6B30F701C}.Release|Any CPU.ActiveCfg = Release|x86
+		{BFBEEFB9-0202-4554-82A1-72A6B30F701C}.Release|Any CPU.Build.0 = Release|x86
+		{BFBEEFB9-0202-4554-82A1-72A6B30F701C}.Release|x86.ActiveCfg = Release|x86
+		{BFBEEFB9-0202-4554-82A1-72A6B30F701C}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

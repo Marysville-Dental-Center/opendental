@@ -146,6 +146,8 @@ namespace OpenPmsDentalBusiness {
 					"smsfrommobile.PatNum",
 					"smstomobile.PatNum",
 					"statement.PatNum",
+					"supplyledger.PatNum",//Inventory tracking (fork): a Use or Restore row follows its procedure.
+					"supplyprocpending.PatNum",//Inventory tracking (fork).
 					//task.KeyNum,  //Taken care of in a seperate step, because it is not always a patnum.
 					//taskhist.KeyNum,  //Taken care of in a seperate step, because it is not always a patnum.
 					"terminalactive.PatNum",
@@ -3966,6 +3968,9 @@ namespace OpenPmsDentalBusiness {
 					continue;
 				}
 				string[] tableAndKeyName=StringArrayPatNumForeignKeys[i].Split(new char[] {'.'});
+				if((tableAndKeyName[0]=="supplyledger" || tableAndKeyName[0]=="supplyprocpending") && !InventoryTracking.IsInstalled()) {
+					continue;//Inventory tracking (fork): a database without the inventory tables (a scratch database from the Open Dental schema).
+				}
 				command="UPDATE "+tableAndKeyName[0]
 					+" SET "+tableAndKeyName[1]+"="+POut.Long(patTo)
 					+" WHERE "+tableAndKeyName[1]+"="+POut.Long(patFrom);

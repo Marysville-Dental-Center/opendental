@@ -48,6 +48,8 @@ namespace AdoptionValidation {
 			public InsHistCodeGroupPlan.Plan PlanInsHist=new InsHistCodeGroupPlan.Plan();
 			///<summary>What the routine maintenance grant step changes.</summary>
 			public MaintenanceGrantPlan.Plan PlanMaintGrants=new MaintenanceGrantPlan.Plan();
+			///<summary>What the inventory tracking steps change (the opening balance rows of the new stock ledger).</summary>
+			public InventoryPlan.Plan PlanInventory=new InventoryPlan.Plan();
 			///<summary>The program rows that name a plug-in DLL (PluginDllName), in ProgramNum order. Adoption changes none of them; it is listed so
 			///that an office sees, before it switches, which plug-ins will stop loading.</summary>
 			public List<PluginRow> ListPluginRows=new List<PluginRow>();
@@ -87,6 +89,7 @@ namespace AdoptionValidation {
 				listLines.AddRange(PlanUdsPlus.Lines());
 				listLines.AddRange(PlanInsHist.Lines());
 				listLines.AddRange(PlanMaintGrants.Lines());
+				listLines.AddRange(PlanInventory.Lines());
 				listLines.Add(GetPluginLine(ListPluginRows));
 				return listLines;
 			}
@@ -154,6 +157,7 @@ namespace AdoptionValidation {
 			result.PlanUdsPlus=UdsPlusRowPlan.Make(db,database,listRows,result.ListPlans,result.Plan26_1.IsFromBefore25_4);
 			result.PlanInsHist=InsHistCodeGroupPlan.Make(db,database,result.Plan26_1.IsFromBefore25_4);
 			result.PlanMaintGrants=MaintenanceGrantPlan.Make(db,database);
+			result.PlanInventory=InventoryPlan.Make(db,database);
 			result.ListPluginRows=ReadPluginRows(db,database);
 			return result;
 		}

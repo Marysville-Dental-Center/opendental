@@ -325,6 +325,8 @@ namespace OpenPmsDental{
 				IconLibrary.OnlyGDI=true;
 			}
 			EscClosesWindow=false;
+			//Inventory tracking: the Materials used panel opens by itself after the user completes procedures, from any window.
+			MaterialsUsedL.Start(this);
 		}
 
 		private void FormOpenDental_Shown(object sender,EventArgs e) {
@@ -6399,6 +6401,11 @@ namespace OpenPmsDental{
 						formMaintBoard.ShowDialog();
 					}
 					CheckAlerts();
+					break;
+				case FormType.FormSupplyInventory://Inventory tracking: low-stock and expiring alerts.
+					using(FormSupplyInventory formSupplyInventory=new FormSupplyInventory()) {
+						formSupplyInventory.ShowDialog();
+					}
 					break;
 			}
 		}

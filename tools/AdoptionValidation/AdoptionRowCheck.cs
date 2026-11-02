@@ -40,6 +40,8 @@ namespace AdoptionValidation {
 	///  may go, and no row may be added to either;
 	///- claimpayment.Note: only NULL notes become empty strings, as many as migration-preview counts; insverify and insverifyhist.DateLastAssigned: every
 	///  value is the original date at midnight;
+	///- supplyledger, the inventory stock ledger (a table of this program, InventoryTables), the one table of this program adoption writes rows into:
+	///  exactly the opening balance rows the inventory step plans (InventoryPlan, what migration-preview lists), and no other row;
 	///- the tables the 25.4 and 26.1 steps add stay empty, and the columns they add hold the column's default in every row (the codegroup rows the
 	///  Insurance History step writes aside); this program's own tables (ForkTables, for example routine maintenance) are created empty too;
 	///- updatehistory: nothing.
@@ -92,6 +94,12 @@ namespace AdoptionValidation {
 			public List<long> ListProgramNumsDisabled=new List<long>();
 			///<summary>The toolbutitem rows of the DXC link the step deleted as planned.</summary>
 			public List<long> ListToolButItemNumsDeleted=new List<long>();
+			///<summary>The inventory tracking steps' plan made from the original (what migration-preview lists for it).</summary>
+			public InventoryPlan.Plan PlanInventory;
+			///<summary>True when adoption added the stock ledger (supplyledger).</summary>
+			public bool IsLedgerAdded;
+			///<summary>The opening balance rows found in the added stock ledger, all of them planned.</summary>
+			public int CountOpeningRows;
 			///<summary>Open Dental 25.3 PhoneExtension grants moved from 272 to 274, all of them planned.</summary>
 			public int CountPermsRenumbered;
 			///<summary>Planned grants found, per permission ("BlockoutAdd" to the number of rows added).</summary>
@@ -124,6 +132,7 @@ namespace AdoptionValidation {
 			result.PlanInsHist=InsHistCodeGroupPlan.Make(db,original,result.Plan26_1.IsFromBefore25_4);
 			result.PlanDxc=DxcCreditScorePlan.Make(db,original);
 			result.PlanMaintGrants=MaintenanceGrantPlan.Make(db,original);
+			result.PlanInventory=InventoryPlan.Make(db,original);
 			CheckPreferences(db,original,adopted,result);
 			CheckDocumentMisc(db,original,adopted,result);
 			List<long> listLogAdded=CheckSecurityLog(db,original,adopted,result);
@@ -135,6 +144,7 @@ namespace AdoptionValidation {
 			CheckToolButItem(db,original,adopted,result);
 			CheckValueChangingColumns(db,original,adopted,result);
 			CheckNewTablesAndColumns(db,original,adopted,result);
+			CheckInventoryLedger(db,original,adopted,result);
 			RowComparer.TableDiff diffHistory=RowComparer.Compare(db,original,adopted,"updatehistory");
 			if(diffHistory.IsIdentical) {
 				result.ListLines.Add("updatehistory: identical row by row.");
@@ -885,6 +895,11 @@ namespace AdoptionValidation {
 			int countForkTablesWithRows=0;
 			foreach(string table in TableNames(db,adopted).Where(x => !setTablesOriginal.Contains(x))) {
 				LocalOnly.EnsureSafeIdentifier(table);
+				if(InventoryPlan.IsHeldToPlan(table)) {
+					//The one table of this program that adoption writes rows into, the inventory stock ledger (its opening balances): CheckInventoryLedger
+					//lists it and holds it to the plan instead.
+					continue;
+				}
 				//This program's own tables (ForkTableSet, for example routine maintenance) are listed apart from the Open Dental 25.4 and 26.1 ones.
 				bool isForkTable=ForkTables.IsForkTable(table);
 				if(isForkTable) {
@@ -984,6 +999,63 @@ namespace AdoptionValidation {
 
 		private static bool IsNumericType(string dataType) {
 			return new[] { "tinyint","smallint","mediumint","int","bigint","float","double","decimal" }.Contains(dataType);
+		}
+
+		///<summary>The inventory stock ledger (supplyledger, InventoryTables), the one exception to "this program's own tables are created empty":
+		///the step that creates it writes the opening balances (InventoryLedgerStep). Added by adoption, it must hold exactly the opening rows the plan
+		///lists (InventoryPlan, what migration-preview printed: one per supply with stock, at its price, without a lot, user, procedure, order item or
+		///stock count line)
+		///and nothing else. A database that had the ledger before keeps its row count (adoption leaves a table it finds alone). The other inventory
+		///tables are CheckNewTablesAndColumns' (empty).</summary>
+		private static void CheckInventoryLedger(Db db,string original,string adopted,Result result) {
+			int countFailuresBefore=result.ListFailures.Count;
+			string table=InventoryTables.TABLE_LEDGER;
+			LocalOnly.EnsureSafeIdentifier(table);
+			HashSet<string> setTablesOriginal=new HashSet<string>(TableNames(db,original),StringComparer.OrdinalIgnoreCase);
+			HashSet<string> setTablesAdopted=new HashSet<string>(TableNames(db,adopted),StringComparer.OrdinalIgnoreCase);
+			if(!setTablesAdopted.Contains(table)) {
+				result.ListFailures.Add("The stock ledger ("+table+") is missing from "+adopted+".");
+				result.ListLines.Add("Stock ledger: missing (see the failures).");
+				return;
+			}
+			if(setTablesOriginal.Contains(table)) {
+				long countOriginal=db.ScalarLong("SELECT COUNT(*) FROM `"+original+"`.`"+table+"`");
+				long countAdopted=db.ScalarLong("SELECT COUNT(*) FROM `"+adopted+"`.`"+table+"`");
+				if(countOriginal!=countAdopted) {
+					result.ListFailures.Add("The stock ledger ("+table+") had "+countOriginal+" row(s) and has "+countAdopted+"; adoption leaves a table it finds alone.");
+				}
+				result.ListLines.Add("Stock ledger: "+table+" was there before, "+countAdopted+" row(s)"
+					+(result.ListFailures.Count==countFailuresBefore ? ", unchanged." : " (see the failures)."));
+				return;
+			}
+			result.IsLedgerAdded=true;
+			List<object[]> listRows=db.Rows("SELECT SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,DispSupplyNum,UserNum,Reason,"
+				+"SupplyCountLineNum FROM `"+adopted+"`.`"+table+"` ORDER BY SupplyLedgerNum");
+			List<InventoryPlan.OpeningRow> listPlanned=result.PlanInventory.ListOpening;
+			if(listRows.Count!=listPlanned.Count) {
+				result.ListFailures.Add("The stock ledger holds "+listRows.Count+" row(s); migration-preview lists "+listPlanned.Count+" opening balance row(s).");
+			}
+			else {
+				for(int i=0;i<listRows.Count;i++) {
+					object[] row=listRows[i];
+					InventoryPlan.OpeningRow planned=listPlanned[i];
+					bool isPlanned=Convert.ToInt64(row[0],CultureInfo.InvariantCulture)==planned.SupplyNum
+						&& Math.Round(Convert.ToDouble(row[3],CultureInfo.InvariantCulture),2)==planned.Quantity
+						&& Convert.ToDouble(row[4],CultureInfo.InvariantCulture)==planned.UnitCost
+						&& Convert.ToInt64(row[2],CultureInfo.InvariantCulture)==(long)SupplyLedgerType.Opening
+						&& new[] { 1,5,6,7,8,9,11 }.All(x => Convert.ToInt64(row[x],CultureInfo.InvariantCulture)==0)
+						&& Convert.ToString(row[10])==InventoryLedgerStep.REASON_OPENING;
+					if(!isPlanned) {
+						result.ListFailures.Add("Stock ledger row "+(i+1)+" (SupplyNum "+row[0]+") is not the opening balance migration-preview lists (SupplyNum "
+							+planned.SupplyNum+", "+planned.Quantity.ToString(CultureInfo.InvariantCulture)+" at "+planned.UnitCost.ToString(CultureInfo.InvariantCulture)+").");
+						continue;
+					}
+					result.CountOpeningRows++;
+				}
+			}
+			bool isClean=result.ListFailures.Count==countFailuresBefore;
+			result.ListLines.Add("Stock ledger: "+table+" added (inventory tracking), "+result.CountOpeningRows+" of the "+listPlanned.Count
+				+" opening balance row(s) migration-preview lists and no other row"+(isClean ? "." : " (see the failures)."));
 		}
 
 		private static bool ColumnExists(Db db,string database,string table,string column) {

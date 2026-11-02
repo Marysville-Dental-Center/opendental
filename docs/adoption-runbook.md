@@ -287,6 +287,12 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature
   Security Admin group, so this is normal: the people who run the program's security get the new routine maintenance permissions and can
   give them to others. `... changes nothing: each of the N user group(s) with Security Admin has both permissions already.` is just as
   normal.
+- `Steps 2026110211 to 2026110213 (inventory tracking) create the tables of this program supplyledger, supplylot, supplyproccode,
+  supplysetting, supplyprocpending, supplycount, supplycountline and change no Open Dental table; the stock ledger gets N opening balance
+  row(s), one per supply with stock (SupplyNum ...), LevelOnHand rounded to 2 decimals at the supply's price; supply itself is not changed.
+  Tracking stays off ...` (or `... no supply has stock (supply.LevelOnHand), so the stock ledger starts empty. ...`). The stock ledger is the
+  one table of this program that adoption writes rows into; step 4 holds it to exactly these rows, and the others, the stock counts too, to
+  empty.
 - `Plug-ins: N program row(s) name a plug-in DLL (PluginDllName); a plug-in built for Open Dental does not load in this program ...: <ProgName>
   (ProgramNum N, enabled, <dll>); ...` (or `Plug-ins: no program row names a plug-in DLL ...`). Adoption changes none of these rows, but a
   plug-in built against Open Dental's assemblies stops loading after the switch, without a message. Give the list to the developers before
@@ -295,7 +301,9 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature
 **Write the numbers on the checklist**: NULL notes, preferences, PhoneExtension grants moved, user groups for BlockoutAdd and for
 BlockoutDelete, the DXC Patient Credit Score row disabled (ProgramNum, or "none") and its buttons deleted (ToolButItemNum, or "none"), the
 UDS+ row's DisplayReportNum of the sealant measure, the Public Health rows moved, the user groups granted the UDS+
-report, the user groups granted the two routine maintenance permissions, and the code groups marked for Insurance History (CodeGroupNum and History Proc Code) and added (name). Step 4 must show exactly these. Zero PhoneExtension grants is normal (Open Dental's Set All grants it, so it is there only where
+report, the user groups granted the two routine maintenance permissions, the code groups marked for Insurance History (CodeGroupNum and History
+Proc Code) and added (name), and the opening balance rows of the stock ledger. Step 4 must show exactly these. Zero PhoneExtension grants is
+normal (Open Dental's Set All grants it, so it is there only where
 someone used Set All).
 
 0.3. **Inventory of Open Dental services and jobs** (for step 2): on every Windows computer of the office that runs Open Dental, its services
@@ -599,11 +607,11 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
 - step 2026110206 ("Routine maintenance: grant Maintenance Setup and Maintenance Record Completion to the Security Admin groups") "changed the
   database:", followed by "Granted MaintenanceSetup to N Security Admin user group(s)" and "Granted MaintenanceRecord to N Security Admin user
   group(s)" with the step 0.2 numbers (or "found nothing to change" if step 0.2 said it changes nothing); then
-  "Fork migrations: 23 step(s) run, 0 already done. Fork schema level 2026110207.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)."
+  "Fork migrations: 26 step(s) run, 0 already done. Fork schema level 2026110213.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)."
   and "Adoption finished."
-- "Fork migration, every step again: 23 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables), plus 5 table(s) of this program that match their declarations."
+- "Fork migration, every step again: 26 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables), plus 12 table(s) of this program that match their declarations."
 - the rehash of step 5
-- "Row check against opendental ..." with twelve lines and no line starting `FAIL`: `preference` (the markers added, "N of the N 25.4 and 26.1
+- "Row check against opendental ..." with fourteen lines and no line starting `FAIL`: `preference` (the markers added, "N of the N 25.4 and 26.1
   preference(s) migration-preview lists added with their defaults", `DataBaseVersion` and `ProgramVersion` set to 99.0.0.0, the preferences of
   the "Blanked" line blanked, "no other row changed or removed"), `documentmisc` (the update-file rows deleted, "0 other row(s) deleted; 0
   added; 0 changed"), `securitylog` ("2 entries added (1 adoption, 1 rehash); no existing row changed or removed"), `securityloghash`,
@@ -621,8 +629,10 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   other row changed, added or removed", or "identical row by row ..."), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
   migration-preview counts now empty, every other note unchanged", and `insverify` and `insverifyhist.DateLastAssigned` "the original date at
   midnight in all N row(s)"), "New tables and columns:" ("5 new table(s), all empty (...); 28 new column(s) in 21 table(s) hold their default
-  in every row."), "Fork tables:" ("5 new table(s) of this program, all empty (maintfield, maintitem, maintrecord, maintrecordvalue,
-  maintstep).": the routine maintenance tables) and `updatehistory` ("identical row by row")
+  in every row."), "Fork tables:" ("11 new table(s) of this program, all empty (maintfield, maintitem, maintrecord, maintrecordvalue,
+  maintstep, supplycount, supplycountline, supplylot, supplyproccode, supplyprocpending, supplysetting).": the routine maintenance tables and
+  the inventory tables but the stock ledger, so no stock count is open), "Stock ledger:" ("supplyledger added (inventory tracking), N of the N
+  opening balance row(s) migration-preview lists and no other row.") and `updatehistory` ("identical row by row")
 - "Adopt: PASS." with the report rows renamed (or "the fork migration renamed no report row"), the UDS+ report row added and, if step 0.2
   listed them, the DXC Patient Credit Score row disabled and its buttons deleted, and exit code 0
 
@@ -674,6 +684,12 @@ person reads them all):
   Credit Score buttons of step 0.2, if it listed any (`RowsChanged toolbutitem` and `ColumnChanged toolbutitem.<column>`);
 - `ColumnChanged program.Enabled`, only if step 0.2 listed the DXC Patient Credit Score row as disabled: a report can only allow it as a
   whole column, and step 4's row check printed that only that row changed, `Enabled` only;
+- this program's own tables of inventory tracking (steps 2026110211 to 2026110213): `TableAdded` for `supplylot`, `supplyproccode`,
+  `supplysetting`, `supplyprocpending`, `supplycount` and `supplycountline` (0 rows; step 4's row check printed them under "Fork tables:",
+  all empty) and for `supplyledger`, the
+  one table of this program adoption writes rows into (one opening balance row per supply with stock, as step 0.2 listed; step 4's row check
+  printed "Stock ledger:" with exactly those rows). These steps change no Open Dental table; inventory tracking stays off until the office
+  turns it on;
 - the Open Dental 25.4 and 26.1 schema: `TableAdded` for `deletedobj`, `paysuitepayment`, `paysuitepaymentdetail`, `schoolcourseenrollee`
   and `schoolcourseinstructor` (0 rows), `ColumnAdded <table>.<column>` for the 28 new columns (`allowed-differences.adoption.json` names
   each), and `ColumnChanged` for `claimpayment.Note` (if step 0.2 counted NULL notes) and `insverify` and `insverifyhist.DateLastAssigned`

@@ -66,7 +66,7 @@ namespace OpenPmsDental {
 
 		private void FillGrid(bool refresh=true){
 			List<long> listSupplierNums=null;
-			if(IsSelectMode){
+			if(IsSelectMode && SupplierNumSelected!=0){//0: every supplier (inventory tracking picks any supply).
 				listSupplierNums=new List<long>();
 				listSupplierNums.Add(SupplierNumSelected);
 			}
@@ -122,7 +122,7 @@ namespace OpenPmsDental {
 			col=new GridColumn(Lan.g(this,"Stock"),50,HorizontalAlignment.Center);
 			gridMain.Columns.Add(col);
 			col=new GridColumn(Lan.g(this,"On Hand"),60,HorizontalAlignment.Center);
-			if(checkEnterQty.Checked) {
+			if(checkEnterQty.Checked && !InventoryTracking.IsEnabled()) {//While tracking is on, stock changes through counts and adjustments.
 				col.IsEditable=true;
 			}
 			gridMain.Columns.Add(col);
@@ -159,7 +159,7 @@ namespace OpenPmsDental {
 				else {
 					row.Cells.Add(_listSupplies[i].LevelDesired.ToString());
 				}
-				row.Cells.Add(_listSupplies[i].LevelOnHand.ToString());
+				row.Cells.Add(InventoryTracking.FormatQty(_listSupplies[i].LevelOnHand));
 				//order:
 				if(_listSupplies[i].OrderQty==0) {
 					row.Cells.Add("");
@@ -469,12 +469,12 @@ namespace OpenPmsDental {
 				Supplies.Update(_listSupplies[e.Row]);
 				FillGrid();
 			}
-			if(onHandOld==onHandNew) {
+			if(Math.Round(onHandOld,2)==Math.Round(onHandNew,2) || InventoryTracking.IsEnabled()) {
 				FillGrid(false);
 			}
 			else {
-				_listSupplies[e.Row].LevelOnHand=onHandNew;
-				Supplies.Update(_listSupplies[e.Row]);
+				//The stock ledger takes the difference as an adjustment; LevelOnHand is set from the ledger (inventory tracking).
+				InventoryTracking.SetOnHand(_listSupplies[e.Row].SupplyNum,onHandNew);
 				FillGrid();
 			}
 		}

@@ -24,6 +24,8 @@ using System.Runtime.InteropServices;
 [assembly: InternalsVisibleTo("VendorDirectTests")]
 // The library update tests reach the email layer's test seams too (the MIME builder, the POP3 certificate check of the fake server).
 [assembly: InternalsVisibleTo("LibraryUpdateTests")]
+// The inventory tests reach InventoryTracking's test seam (another workstation changing procedures while materials are confirmed).
+[assembly: InternalsVisibleTo("InventoryTests")]
 
 // Version information for an assembly consists of the following four values:
 //
