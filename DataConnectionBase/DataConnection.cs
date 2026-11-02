@@ -562,7 +562,7 @@ namespace DataConnectionBase {
 			if(string.IsNullOrEmpty(pServer)) {
 				throw new ArgumentException("A read-only or reporting server preference without a server means the main connection.",nameof(pServer));
 			}
-			string connectStr=BuildConnectionStringStart(pServer,pDatabase,pUserID,pPassword,out string serverName)+GetOldSslOptions(sslCa);
+			string connectStr=BuildConnectionStringStart(pServer,pDatabase,pUserID,pPassword,out _)+GetOldSslOptions(sslCa);
 			DbConnectionSecurity.AllowPreferenceServerConnection(connectStr);
 			return connectStr;
 		}
