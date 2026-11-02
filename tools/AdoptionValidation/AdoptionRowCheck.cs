@@ -948,6 +948,40 @@ namespace AdoptionValidation {
 				+(result.ListForkTablesAdded.Count==0 ? "." : " ("+string.Join(", ",result.ListForkTablesAdded)+")."));
 		}
 
+		///<summary>The SQL value every existing row of a column added by ALTER TABLE ... ADD COLUMN holds, from information_schema.COLUMNS: its declared
+		///default (a number, a quoted literal or NULL, as MariaDB 10.11 prints COLUMN_DEFAULT), or, for a NOT NULL column without one, the implicit
+		///default of its type ('' for text, 0 for numbers). Null when that cannot be told (an expression such as current_timestamp(), or a NOT NULL date
+		///without a default).</summary>
+		public static string DefaultExpression(string columnDefault,bool isNullable,string dataType) {
+			if(columnDefault==null) {
+				if(isNullable) {
+					return "NULL";
+				}
+				if(IsTextType(dataType)) {
+					return "''";
+				}
+				return IsNumericType(dataType) ? "0" : null;
+			}
+			string text=columnDefault.Trim();
+			if(string.Equals(text,"NULL",StringComparison.OrdinalIgnoreCase)) {
+				return "NULL";
+			}
+			if(System.Text.RegularExpressions.Regex.IsMatch(text,@"^-?[0-9]+(\.[0-9]+)?$")
+				|| System.Text.RegularExpressions.Regex.IsMatch(text,@"^'([^'\\]|'')*'$"))
+			{
+				return text;
+			}
+			return null;
+		}
+
+		private static bool IsTextType(string dataType) {
+			return new[] { "char","varchar","tinytext","text","mediumtext","longtext" }.Contains(dataType);
+		}
+
+		private static bool IsNumericType(string dataType) {
+			return new[] { "tinyint","smallint","mediumint","int","bigint","float","double","decimal" }.Contains(dataType);
+		}
+
 		///<summary>The inventory stock ledger (supplyledger, InventoryTables), the one exception to "this program's own tables are created empty":
 		///the step that creates it writes the opening balances (InventoryLedgerStep). Added by adoption, it must hold exactly the opening rows the plan
 		///lists (InventoryPlan, what migration-preview printed: one per supply with stock, at its price, without a lot, user, procedure or order item)
@@ -1002,40 +1036,6 @@ namespace AdoptionValidation {
 			bool isClean=result.ListFailures.Count==countFailuresBefore;
 			result.ListLines.Add("Stock ledger: "+table+" added (inventory tracking), "+result.CountOpeningRows+" of the "+listPlanned.Count
 				+" opening balance row(s) migration-preview lists and no other row"+(isClean ? "." : " (see the failures)."));
-		}
-
-		///<summary>The SQL value every existing row of a column added by ALTER TABLE ... ADD COLUMN holds, from information_schema.COLUMNS: its declared
-		///default (a number, a quoted literal or NULL, as MariaDB 10.11 prints COLUMN_DEFAULT), or, for a NOT NULL column without one, the implicit
-		///default of its type ('' for text, 0 for numbers). Null when that cannot be told (an expression such as current_timestamp(), or a NOT NULL date
-		///without a default).</summary>
-		public static string DefaultExpression(string columnDefault,bool isNullable,string dataType) {
-			if(columnDefault==null) {
-				if(isNullable) {
-					return "NULL";
-				}
-				if(IsTextType(dataType)) {
-					return "''";
-				}
-				return IsNumericType(dataType) ? "0" : null;
-			}
-			string text=columnDefault.Trim();
-			if(string.Equals(text,"NULL",StringComparison.OrdinalIgnoreCase)) {
-				return "NULL";
-			}
-			if(System.Text.RegularExpressions.Regex.IsMatch(text,@"^-?[0-9]+(\.[0-9]+)?$")
-				|| System.Text.RegularExpressions.Regex.IsMatch(text,@"^'([^'\\]|'')*'$"))
-			{
-				return text;
-			}
-			return null;
-		}
-
-		private static bool IsTextType(string dataType) {
-			return new[] { "char","varchar","tinytext","text","mediumtext","longtext" }.Contains(dataType);
-		}
-
-		private static bool IsNumericType(string dataType) {
-			return new[] { "tinyint","smallint","mediumint","int","bigint","float","double","decimal" }.Contains(dataType);
 		}
 
 		private static bool ColumnExists(Db db,string database,string table,string column) {
