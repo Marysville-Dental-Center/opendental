@@ -109,8 +109,8 @@ namespace OpenPmsDental{
 		private const string HEADER_LICENSE="--- License: ";
 
 		///<summary>The text of the first entry: the attribution, the GPL notice of the source headers ("version 2 of the License, or (at your
-		///option) any later version"), how the program is distributed with PDFsharp and MigraDoc (GNU GPL version 3 with their GNU AGPL version 3),
-		///the GPL version 2 text (Resources\GPL.txt; the same license as LICENSE in the repository root) and the GPL version 3 text
+		///option) any later version"), how the program is distributed with PDFsharp and MigraDoc (GNU GPL version 3 with their GNU AGPL version 3,
+		///whose network clause then applies to the combination as a whole), the GPL version 2 text (Resources\GPL.txt; the same license as LICENSE in the repository root) and the GPL version 3 text
 		///(LICENSE-GPL-3.0.txt).</summary>
 		public static string GetProgramLicenseText() {
 			return AboutBoxInfo.ProductName+"\r\n\r\n"
@@ -122,7 +122,9 @@ namespace OpenPmsDental{
 				+"As distributed, the program includes PDFsharp and MigraDoc, which are licensed under the GNU Affero General Public License, "
 				+"version 3. The program as a whole is therefore distributed under the terms of the GNU General Public License, version 3, which "
 				+"\"any later version\" above allows, and PDFsharp and MigraDoc keep the terms of the GNU Affero General Public License, version 3 "
-				+"(section 13 of each license). The text of version 3 follows the text of version 2 below; both are in the program folder, as "
+				+"(section 13 of each license). By the same section 13, the GNU Affero General Public License's requirements on interaction "
+				+"through a network apply to the combination as a whole; NOTICE in the program folder says what that means for a modified version "
+				+"that users reach over a network. The text of version 3 follows the text of version 2 below; both are in the program folder, as "
 				+"LICENSE-GPL-3.0.txt and LICENSE-AGPL-3.0.txt.\r\n\r\n"
 				+"Third-party components keep their own licenses: see \""+NameThirdPartyNotices+"\" and the entries after it.\r\n\r\n"
 				+NormalizeNewLines(Properties.Resources.GPL)+"\r\n\r\n"

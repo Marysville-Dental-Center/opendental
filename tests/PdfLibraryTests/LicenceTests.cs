@@ -97,6 +97,8 @@ namespace PdfLibraryTests {
 			string text=OpenPmsDental.LicenseList.GetProgramLicenseText();
 			StringAssert.Contains(text,"either version 2 of the License, or (at your option) any later version");
 			StringAssert.Contains(text,"GNU Affero General Public License, version 3");
+			StringAssert.Contains(text,"requirements on interaction through a network apply to the combination as a whole",
+				"GPL 3.0 section 13: the AGPL's network clause covers the whole program.");
 			StringAssert.Contains(text,"Version 3, 29 June 2007","The GPL 3.0 text follows the 2.0 text.");
 			Dictionary<string,string> dictVendorTexts=OpenPmsDental.LicenseList.GetVendorTexts();
 			foreach(string component in new[] { "PDFsharp","MigraDoc" }) {

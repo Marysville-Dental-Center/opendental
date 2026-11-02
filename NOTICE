@@ -52,6 +52,19 @@ address of each release, PDFsharp's and MigraDoc's at
 https://github.com/empira/PDFsharp; THIRD-PARTY-NOTICES.txt names the one
 PDFsharp file whose source empira does not publish (PdfSharp.License.dll).
 
+Use over a network: by section 13 of the GNU GPL version 3, the special
+requirements of section 13 of the GNU AGPL, concerning interaction through
+a network, apply to the combination as such, that is, to the program as a
+whole and not only to PDFsharp and MigraDoc. Anyone who runs a modified
+version of the program and lets users interact with it remotely through a
+computer network (a hosted Middle Tier, for example) must offer those users
+the Corresponding Source of the whole modified program, from a network
+server at no charge. That surely applies when PDFsharp or MigraDoc are
+modified; whether a change to the other parts of the program alone
+triggers it is not settled, so seek legal advice before offering such a
+version over a network. Running the unmodified program, or a modified
+version that no one reaches over a network, does not trigger it.
+
 Third-party components
 ----------------------
 Third-party libraries keep their own licenses. THIRD-PARTY-NOTICES.txt lists
