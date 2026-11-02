@@ -69,7 +69,10 @@ namespace NoHqTests {
 			AssemblyName assemblyNameStorage=assemblyBusiness.GetReferencedAssemblies().FirstOrDefault(x => x.Name==nameStorage);
 			Assert.IsNotNull(assemblyNameStorage,assemblyBusiness.GetName().Name+" does not reference "+nameStorage+".");
 			Assembly assemblyStorage=Assembly.Load(assemblyNameStorage);
-			List<Type> listTypes=GetLoadableTypes(assemblyStorage).Where(x => !x.IsNested && !x.Name.StartsWith("<")).ToList();
+			//The compiler's own types are left out: the attributes it embeds in the assembly (Microsoft.CodeAnalysis.EmbeddedAttribute and
+			//System.Runtime.CompilerServices.NullableAttribute, there since the library's SSH.NET 2026 code) carry [CompilerGenerated].
+			List<Type> listTypes=GetLoadableTypes(assemblyStorage).Where(x => !x.IsNested && !x.Name.StartsWith("<")
+				&& !x.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute),false)).ToList();
 			Assert.IsTrue(listTypes.Any(x => x.Name=="Sftp"),"The SFTP client is in "+nameStorage+".");
 			Assert.IsTrue(listTypes.Any(x => x.Name=="TaskStateUpload"),"The task states are in "+nameStorage+".");
 			List<string> listWrong=listTypes.Where(x => !HasAssemblyNameAsRootNamespace(x,nameStorage)).Select(x => x.FullName).OrderBy(x => x).ToList();

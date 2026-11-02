@@ -32,4 +32,19 @@
   <PropertyGroup Condition="'$(AppConfig)' == '' and $(MSBuildProjectName.EndsWith('Tests')) and !Exists('$(MSBuildProjectDirectory)\app.config')">
     <AppConfig>$(MSBuildThisFileDirectory)tests\BindingRedirects.config</AppConfig>
   </PropertyGroup>
+
+  <!--
+    System.ValueTuple comes from the .NET Framework: 4.7 and later bind every 4.0.x reference to the copy in the
+    global assembly cache (4.0.0.0), and "Required dlls" has none (tests\LibraryBindingTests). The libraries
+    reference different 4.0.x versions (PDFsharp and MigraDoc 6.5: 4.0.2.0; SSH.NET, System.Text.Json,
+    System.Formats.Asn1 and Microsoft.Bcl.Cryptography: 4.0.5.0), so reference resolution suggests a redirect to
+    4.0.5.0, a version no computer has; a .config with that redirect makes every load of System.ValueTuple
+    fail. The suggestion is dropped, so the framework's own binding stays in charge.
+  -->
+  <Target Name="ODDropValueTupleRedirect" AfterTargets="ResolveAssemblyReferences" BeforeTargets="GenerateBindingRedirects">
+    <ItemGroup>
+      <_ODValueTupleRedirect Include="@(SuggestedBindingRedirects)" Condition="$([System.String]::Copy('%(Identity)').StartsWith('System.ValueTuple,'))" />
+      <SuggestedBindingRedirects Remove="@(_ODValueTupleRedirect)" />
+    </ItemGroup>
+  </Target>
 </Project>
