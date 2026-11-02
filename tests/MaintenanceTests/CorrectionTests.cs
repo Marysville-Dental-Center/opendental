@@ -209,7 +209,8 @@ namespace MaintenanceTests {
 			maintRecord.UserNumCorrected=TestDb.USER_FRONT;
 			maintRecord.DateTCorrected=new DateTime(2026,11,3,10,15,0);
 			Assert.IsTrue(MaintCorrections.IsCorrected(maintRecord));
-			Assert.AreEqual("11/3/2026 10:15 AM by Front Desk",MaintCorrections.GetCorrectedText(maintRecord,"Front Desk"));
+			//The date and who: the time is in the audit trail, so that the column leaves room for Results (MaintHistoryGrid).
+			Assert.AreEqual("11/3/2026 by Front Desk",MaintCorrections.GetCorrectedText(maintRecord,"Front Desk"));
 		}
 
 		[TestMethod]
@@ -295,7 +296,7 @@ namespace MaintenanceTests {
 			Assert.AreEqual(TestDb.USER_ASSISTANT_A.ToString(),table.Rows[0]["UserNum"].ToString());
 			//The history's marker: when and by whom.
 			MaintRecord maintRecordHistory=MaintRecords.GetForDateRange(_dateToday,_dateToday).Single();
-			Assert.AreEqual(maintRecordAfter.DateTCorrected.ToShortDateString()+" "+maintRecordAfter.DateTCorrected.ToShortTimeString()+" by Assistant A",
+			Assert.AreEqual(maintRecordAfter.DateTCorrected.ToShortDateString()+" by Assistant A",
 				MaintCorrections.GetCorrectedText(maintRecordHistory,Userods.GetName(maintRecordHistory.UserNumCorrected)));
 		}
 

@@ -138,7 +138,10 @@ namespace MaintenanceTests {
 		public void HistoryWindow_ShowsTheCorrection_AndCorrectsThroughTheBusinessLayer() {
 			string history=Source("OpenPmsDental","Forms","FormMaintHistory.cs");
 			string fill=Between(history,"private void FillGrid()","private void FillGridValues()");
-			StringAssert.Contains(fill,"\"Corrected\"");
+			//The columns, Corrected among them, are MaintHistoryGrid's (HistoryGridTests lays them out at the window's size).
+			StringAssert.Contains(fill,"MaintHistoryGrid.GetColumns(gridMain.TranslationName,isAllItems:_maintItemNum==0)");
+			Assert.IsFalse(fill.Contains("new GridColumn("),"No column is added beside MaintHistoryGrid's.");
+			StringAssert.Contains(fill,"MaintHistoryGrid.GetRecordedText(maintRecord.SecDateTEntry)");
 			StringAssert.Contains(fill,"MaintCorrections.GetCorrectedText(maintRecord,");
 			string correct=Between(history,"private void butCorrect_Click","private void butExport_Click");
 			StringAssert.Contains(correct,"MaintRecords.CanCorrect(Security.CurUser,maintRecord)");
