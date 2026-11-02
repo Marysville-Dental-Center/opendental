@@ -158,8 +158,24 @@ names the server and says the connection was refused because its stored host key
 Where it goes: the Denti-Cal and Mercury windows show it as their connection error, the HL7 service writes it to its event log, an SFTP
 image upload or download fails with it, and the SFTP checks of Setup, Data Paths (Save) and of the program's start-up show it in place of
 their general "not available" message (`Sftp.FileExists` with `doThrowHostKeyRefusal`). `Sftp.FileExists` otherwise still answers only
-whether the file exists, and the TSI connection test (`Sftp.IsConnectionValid`) only valid or not valid, as before; the refusal is recorded on
-the row and in the audit trail, where the SSH Host Keys window shows it.
+whether the file exists.
+
+The Transworld (TSI) paths show it too, never the program link messages, because retyping the program link does not help when the server's
+key changed. Each of them tests the connection first, with `Sftp.IsConnectionValid` and `doThrowHostKeyRefusal` (directly, or through
+`TsiTransLogs.ValidateClinicSftpDetails` with `out refusalMessage`), which throws the refusal instead of answering "not valid":
+
+- **Manage, A/R Manager** (`ControlManage.butManageAR_Click`): when no clinic's details connect and a connection was refused for its host
+  key, the refusal (each message once, for clinics that share the server) replaces "An SFTP connection could not be made ... Would you like
+  to edit the Transworld program link now?". A user with Security Admin is asked whether to open Setup, SSH Host Keys; after the window
+  closes the connection is tested again. Any other user gets the message only.
+- **Sending or updating accounts in the A/R Manager** (`FormArManager`): a clinic skipped because its server was refused is reported with
+  the refusal, naming the clinic (each message once, with the clinics it applies to). When that leaves no clinic to send for, nothing is
+  sent and the "until the program link is setup" message is not shown.
+- **The automated suspend message** (`TsiTransLogs.SuspendGuar`, when a TSI payment plan is made in the Account module): returns "The SFTP
+  server of the Transworld program link (for the guarantor's clinic, ...) was refused for its SSH host key, so the suspend message was not
+  sent." followed by the refusal, instead of "The Transworld program link is not enabled ... or is not setup properly."
+
+In every case the refusal is also recorded on the row and in the audit trail, where the SSH Host Keys window shows it.
 
 ## 8. Middle Tier, services and caching
 
@@ -191,14 +207,17 @@ run, no network:
   signature algorithm is one key.
 - A real SSH.NET client against an in-process fake SSH server on 127.0.0.1 (version exchange, curve25519-sha256 key exchange, an Ed25519
   host key, nothing after the key exchange): with a stored key that differs, the client refuses the key and never sends `SSH_MSG_NEWKEYS`,
-  so it never reaches authentication; with the stored key, or with none, it accepts the key (sends `NEWKEYS`).
+  so it never reaches authentication; with the stored key, or with none, it accepts the key (sends `NEWKEYS`). `Sftp.IsConnectionValid`
+  with `doThrowHostKeyRefusal` throws the refusal (server and both fingerprints) and still answers false for any other failure; the TSI
+  connection test (`TsiTransLogs.ValidateClinicSftpDetails` with `out refusalMessage`) returns it with the database store.
 - The business layer on a scratch database: first use stores the key with its user, time and audit entry; the same key and a second store
   of the same server change nothing; a refused key is recorded once in the audit trail; Accept Changed Key and Remove, with their audit
   entries; both refused without Security Admin; Accept refused when the refused key changed meanwhile.
 - The step on an empty scratch database (the table is created exactly as declared) and on one that already has it (nothing changes), the
   levels, the fork table declaration and the adoption rule.
 - Wiring: only `OpenPmsDentalStorage` references SSH.NET; every SSH.NET client it creates is attached to the check; every caller passes
-  `SshHostKeys.Store`; the window and the menu entry exist.
+  `SshHostKeys.Store`; every caller of `Sftp.IsConnectionValid` asks for the refusal, and the TSI paths show it (section 7); the window and
+  the menu entry exist.
 
 `tests/LibraryUpdateTests` (`SftpTests`) keeps its SFTP path tests and uses the new check with an in-memory store.
 

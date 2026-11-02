@@ -94,6 +94,9 @@ all. The design is in `docs/specs/ssh-host-keys.md`.
   when and by whom, in the new table `sshhostkey`. The Audit Trail gets an entry under the new type SSH Host Keys.
 - **Every later connection must present the same key.** A server that presents another key is refused during the key exchange, before the
   user name, the password or any file is sent. The message names the server and both fingerprints, and the refused key is recorded.
+  Every path shows that message, the Transworld (TSI) ones included: Manage, A/R Manager shows it instead of offering to edit the
+  Transworld program link (and offers Setup, SSH Host Keys to a Security Admin), sending or updating accounts names the clinics skipped
+  for it, and the automated suspend message reports it instead of "not enabled or not setup properly".
 - **When a server's key really changed** (a new server, a reinstalled one, a clearinghouse that renewed its key), a user with Security Admin
   opens Setup, SSH Host Keys (or the SSH Host Keys button on the SFTP tab of Setup, Data Paths), compares the new fingerprint with the one the
   server's administrator gives, and clicks Accept Changed Key. Remove forgets a stored key, so the next connection stores the key the server
