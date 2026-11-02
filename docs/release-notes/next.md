@@ -23,9 +23,10 @@ section 0):
 
 1. On the server: make the office CA, the server certificate and the client certificate, set `ssl_ca`, `ssl_cert`, `ssl_key` and
    `sql_mode=""`, restart MariaDB, and leave `require_secure_transport` OFF. Create the program's own database account, `opmsd`, with
-   only the rights the guide lists (the office database, the backup databases the update makes first, and three server-wide rights);
-   the program no longer uses `root`. The guide's list is untested against a real server: try it on a test copy first. The 0.0
-   workstations keep working.
+   only the rights the guide lists (the office database, the backup databases the update makes first, and three server-wide rights),
+   after removing the rights MariaDB's own setup may give every account on `test` databases (the guide, section 5); the program no
+   longer uses `root`. The guide's list was tested on a local MariaDB 10.11 server, not yet on an office server: try it on a test copy
+   first. The 0.0 workstations keep working.
 2. On the update server: uninstall 0.0, then install this version with its setup, as an administrator. Setup runs the connection settings
    tool (`OpenPmsDentalDbSettings.exe`), which sets up the office CA certificate and imports the client certificate (or stores the
    database password). Start the program there as an administrator; it backs up and updates the database. **Do not publish yet:** when

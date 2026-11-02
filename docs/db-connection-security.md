@@ -19,8 +19,9 @@ an encrypted USB drive: whoever has it can issue certificates the workstations t
 ## 0. The order of the switch-over
 
 1. **TLS on the server, not yet required.** Make the certificates (sections 1 to 3), set `ssl_ca`, `ssl_cert`, `ssl_key` and `sql_mode`
-   and restart MariaDB with `require_secure_transport` still OFF (section 4). Create the program's database account (section 5). The v0.0
-   workstations keep working: they connect as before, without TLS, with their old user.
+   and restart MariaDB with `require_secure_transport` still OFF (section 4). Remove MariaDB's default rights on `test` databases and
+   create the program's database account (section 5). The v0.0 workstations keep working: they connect as before, without TLS, with
+   their old user.
 2. **The update server.** Uninstall version 0.0 there first (Windows Settings > Apps, or Control Panel > Programs and Features). Its
    uninstaller removes the whole program folder, including the `FreeDentalConfig.xml` its setup wrote. Then install the new version with
    its setup, as an administrator (section 6): setup runs the connection settings tool, which sets up the office CA and the client
@@ -180,9 +181,29 @@ on the server computer, give it `<db-server>` in its connection settings, not `l
 
 The program no longer uses `root` (owner decision of 2026-11-02). The office gives it an account of its own, `opmsd` in this guide (the
 installer's default user), with only the rights it needs to run, to update the database and to make the backup that comes before every
-update. `<database>` is the office database (`opendental` by default). **This list is untested against a real server**: try it on a test
-copy (a restored backup on a test server) before step 2 of the switch-over. The spec lists where in the program each right is needed
-([specs/db-connection-security.md](specs/db-connection-security.md), section 9).
+update. `<database>` is the office database (`opendental` by default). **Tested on a local MariaDB 10.11 server on 2026-11-02, not yet on
+an office server.** With exactly the grants below, no statement of the program was refused: start-up, the modules' reads and writes, work
+tables, user queries and cancelling them, the fork migration steps, the large-table helper, backups, `CHECK`, `OPTIMIZE` and `REPAIR` of
+every table, every database maintenance method in Check and Fix, and the Open Dental update chain from 21.1.9 to 24.3.63 followed by the
+adoption. Each of the three server-wide rights was shown to be needed: without any one of them every backup fails. Try the grants on a
+test copy (a restored backup on a test server) before step 2 of the switch-over all the same. The spec lists where in the program each
+right is needed, and what the test could not show ([specs/db-connection-security.md](specs/db-connection-security.md), section 9).
+
+First remove the rights MariaDB's own setup can give every account on databases named `test` or starting with `test_` (the 10.11 server
+on Windows the grants were tested on had them), and never give the office database such a name. Those rights belong to the `PUBLIC`
+role, so every account, `opmsd` too, could read, change and drop such a database whatever its own grants say. As your administrator:
+
+```sql
+SHOW GRANTS FOR PUBLIC;
+-- Revoke what it lists on `test` and `test\_%`:
+REVOKE ALL PRIVILEGES ON `test`.* FROM PUBLIC;
+REVOKE ALL PRIVILEGES ON `test\_%`.* FROM PUBLIC;
+DROP DATABASE IF EXISTS test;   -- the empty database the setup made
+SHOW GRANTS FOR PUBLIC;          -- must list no rights on any database now
+```
+
+A server before 10.11 has no `PUBLIC` role; there, `mariadb-secure-installation` ("Remove test database and access to it") removes the
+same default rights if the server has them (not tested for this guide).
 
 The workstations' account, authenticated by the client certificate:
 
@@ -191,7 +212,7 @@ CREATE USER 'opmsd'@'<office-network>'
   REQUIRE SUBJECT '/CN=opmsd-workstations' AND ISSUER '/CN=<office-ca>';
 
 -- The office database.
-GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, INDEX, CREATE TEMPORARY TABLES
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, CREATE TEMPORARY TABLES
   ON `<database>`.* TO 'opmsd'@'<office-network>';
 
 -- The backup databases: before every database update the program copies the office database into <database>backup_MM_dd_yyyy
@@ -205,22 +226,45 @@ GRANT SELECT, INSERT, CREATE, ALTER
 GRANT RELOAD, BINLOG MONITOR, REPLICA MONITOR ON *.* TO 'opmsd'@'<office-network>';
 ```
 
+`SHOW GRANTS FOR 'opmsd'@'<office-network>'` prints `REPLICA MONITOR` under its other name, `SLAVE MONITOR`.
+
 In a database name in `GRANT`, `_` and `%` are wildcards: write every `_` of `<database>` as `\_` in both grants (for `opendental_pms`:
-`` `opendental\_pms`.* `` and `` `opendental\_pmsbackup\_%`.* ``), so that they cover exactly these databases. The backup grant is a
-wildcard on purpose: each backup is a new database, and the grant lets the account create those and nothing else. It never needs to drop
-them; remove old backups with your own administrator account.
+`` `opendental\_pms`.* `` and `` `opendental\_pmsbackup\_%`.* ``), so that they cover exactly these databases.
+
+What these grants allow beyond what the program does, and why they stay:
+
+- **The backup databases.** The backup grant is a wildcard on purpose: each backup is a new database. With it the account can create any
+  database whose name starts with `<database>backup_`, fill it, add tables to it, read every backup (`SELECT`) and alter the backups'
+  tables (`ALTER`, which includes dropping a column or changing the engine). It cannot update, delete, truncate, drop or rename anything
+  in them. `ALTER` is needed because the `BackupIndexesDisabled` preference is on unless the office turned it off, so every backup turns
+  off the keys of each table it copies (`ALTER TABLE ... DISABLE KEYS`); `SELECT` is needed only by the row counts that check the
+  archive's backup. The account never drops a backup: remove old ones with your own administrator account.
+- **The office database.** `DROP` on `<database>` also allows `DROP DATABASE <database>`, the whole office database, and `CREATE`
+  allows creating it again. Both are needed all the same: `DROP` for `DROP TABLE` of work tables, `TRUNCATE` (family aging, the A/R
+  dashboard, recall triggers), the database maintenance and the large-table helper's `RENAME TABLE`; `CREATE` for new tables, and MariaDB
+  checks `CREATE` and `INSERT` for every `ALTER TABLE` as well. Backups kept off the database server are the protection.
+- **`RELOAD`** also allows the other `FLUSH` statements (and some `RESET` statements) server-wide. It gives no access to any data.
 
 What the account does not get, and why it does not need it:
 
 - No `SUPER`. At every start the program sets the server's `sql_mode` to blank when it is anything else, which needs `SUPER`; with
   `sql_mode=""` in the option file (section 4) it never tries. Without that line every start stops (owner decision of 2026-11-02), with a
   message that names this fix: add `sql_mode=""` to the `[mariadb]` section of the server's option file and restart MariaDB.
-- No `ALL PRIVILEGES`, no `GRANT OPTION`, no `CREATE USER`, no `FILE`, no `PROCESS`, no `SHOW DATABASES`: the program's own statements
-  need none of them. Cancelling a running user query (`KILL QUERY`) stops the account's own query only.
+- No `INDEX`. The program adds and drops indexes with `ALTER TABLE`, which `ALTER` covers. Only three steps of the old Open Dental update
+  chain use `CREATE INDEX` or `DROP INDEX` (17.4.46, 17.4.51 and 17.4.53), so converting an Open Dental database older than 17.4.46 also
+  needs `INDEX`: grant it for that first start and revoke it after, or run that first start as your administrator:
+
+  ```sql
+  GRANT INDEX ON `<database>`.* TO 'opmsd'@'<office-network>';    -- before the first start
+  REVOKE INDEX ON `<database>`.* FROM 'opmsd'@'<office-network>'; -- after it
+  ```
+
+- No `ALL PRIVILEGES`, no `GRANT OPTION`, no `CREATE USER`, no `FILE`, no `PROCESS`, no `SHOW DATABASES`, no rights on `mysql.*`: the
+  program's own statements need none of them. Cancelling a running user query (`KILL QUERY`) stops the account's own query only; the
+  account cannot cancel another account's query.
 - A server that replicates (a replication set-up in the program, or binary logging with replicas) also needs `BINLOG ADMIN` for the
   backup, which then turns binary logging off for its own session (`SET SESSION sql_log_bin`). The program's replication set-up window
   (stop and start the replica) needs `REPLICATION SLAVE ADMIN`: run it as your administrator, not as `opmsd`.
-- `RELOAD` also allows the other `FLUSH` statements (and some `RESET` statements) server-wide. It gives no access to any data.
 
 A database not set up for certificates uses the password fallback, still over TLS (the program refuses anything else), with the same
 three grants (`'opmsd_pw'@'<office-network>'` in place of `'opmsd'@'<office-network>'`):
