@@ -14,7 +14,7 @@
 				components.Dispose();
 			}
 			if(disposing) {
-				ClearDocument();//The page file of NavigateToHtml.
+				ClearDocument();//The in-memory page of NavigateToHtml.
 			}
 			base.Dispose(disposing);
 		}

@@ -119,6 +119,7 @@
     <Compile Include="Controls\ODWebView2.Designer.cs">
       <DependentUpon>ODWebView2.cs</DependentUpon>
     </Compile>
+    <Compile Include="Controls\WebView2PageStore.cs" />
     <Compile Include="Controls\WebView2Policy.cs" />
     <Compile Include="Controls\OpenGLWinFormsControl.cs">
       <SubType>Component</SubType>

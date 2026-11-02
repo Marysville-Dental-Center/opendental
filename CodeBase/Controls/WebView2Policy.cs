@@ -38,14 +38,6 @@ namespace CodeBase.Controls {
 			return Path.Combine(folderLocalAppData,ProgramNames.LocalAppDataFolderName,UserDataFolderName);
 		}
 
-		///<summary>The folder the pages of NavigateToHtml are written to: the program's temp folder (ProgramNames.TempFolderName), which the
-		///program empties when it closes.</summary>
-		public static string GetPageFolder() {
-			string folder=Path.Combine(Path.GetTempPath(),ProgramNames.TempFolderName);
-			Directory.CreateDirectory(folder);
-			return folder;
-		}
-
 		///<summary>True in Debug builds only: a Release build never opens the dev tools.</summary>
 		public static bool AreDevToolsAllowed {
 			get {
@@ -102,7 +94,8 @@ namespace CodeBase.Controls {
 			return uriParsed.Scheme==Uri.UriSchemeHttp || uriParsed.Scheme==Uri.UriSchemeHttps;
 		}
 
-		///<summary>True when a page the program shows (uriDocument, a file written by ODWebView2.NavigateToHtml) may load uri: the page itself, or an
+		///<summary>True when a page the program shows (uriDocument, the file: address of a page of ODWebView2.NavigateToHtml, which is in memory) may
+		///load uri: the page itself, or an
 		///image, style sheet, font or the like it names. data:, blob: and about: addresses always (they bring nothing from outside the page); http
 		///and https only when isRemoteContentAllowed; file: only for a file inside the page's own folder or inside one of listFoldersAllowed (a
 		///folder on a server share counts only for that share). A file on any other share or computer never: opening it would make Windows send the
@@ -216,7 +209,8 @@ namespace CodeBase.Controls {
 		///<summary>The address to open in the default browser for a link the user clicked in a page the program shows (uriDocument), or "" when
 		///the link must not leave the program. Only http, https and mailto links qualify. A relative link (which the browser resolves into the
 		///page's own folder) counts as a web address, as with the old browser control: "www.example.com" opens http://www.example.com/. A link to a
-		///file or folder that is there, such as another page file of the program, is a file and never a web address.</summary>
+		///file or folder that is there, such as an image of an in-memory page (WebView2PageStore) or a file on disk, is a file and never a web
+		///address.</summary>
 		public static string GetSystemBrowserUrl(string uriLink,string uriDocument) {
 			if(string.IsNullOrWhiteSpace(uriLink)) {
 				return "";
@@ -242,10 +236,18 @@ namespace CodeBase.Controls {
 			if(relative=="" || relative.Contains("\\") || !Uri.TryCreate("http://"+relative,UriKind.Absolute,out uriWeb) || !uriWeb.Host.Contains(".")) {
 				return "";
 			}
-			//Only checked here, inside the page's own (local) folder, so a link never makes the program look at another computer's share.
+			//Only checked here, inside the page's own (local) folder, so a link never makes the program look at another computer's share. The folder
+			//of an in-memory page is never on disk: its files are in WebView2PageStore.
 			string pathLink=GetLocalFilePath(uriLink);//Null for "www.example.com:8080/page", which is no file name.
-			if(pathLink!=null && (File.Exists(pathLink) || Directory.Exists(pathLink))) {
-				return "";
+			if(pathLink!=null) {
+				if(WebView2PageStore.IsPathInRoot(pathLink)) {
+					if(WebView2PageStore.Exists(pathLink)) {
+						return "";
+					}
+				}
+				else if(File.Exists(pathLink) || Directory.Exists(pathLink)) {
+					return "";
+				}
 			}
 			return uriWeb.AbsoluteUri;
 		}
