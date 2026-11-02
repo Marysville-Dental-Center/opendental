@@ -102,9 +102,10 @@ MyISAM has no transactions, and two workstations can complete procedures at the 
 6. **Receiving, counts and adjustments are safe to retry.** Once their ledger rows are written, what follows (received dates, audit entries,
    alerts) can no longer make the call fail: a failure there is written to the log (`InventoryTracking` folder). When the call itself fails
    (part-way, or a lost Middle Tier answer), the windows read the database again before another post is possible: Receive reloads Received
-   from the ledger and clears Receive Now, a failed stock count post opens the count again with each line's program quantity read again from
-   the ledger, never from the lot counter, which the failed write may have left at its old value (`InventoryTracking.GetQtyProgram`; a
-   re-post writes only what still differs; 2.7), and the adjustment window closes with a message to check the ledger in Stock.
+   from the ledger and clears Receive Now, a failed stock count post opens the count again with the lines it adjusted showing no difference
+   (each takes the CountAdjust rows that name it into its snapshot) and every other line keeping the program's quantity of when it was
+   counted, never today's and never the lot counter's, which the failed write may have left at its old value (a re-post writes only what the
+   failed post did not; 2.7), and the adjustment window closes with a message to check the ledger in Stock.
 7. **Repair** (Supply Inventory, Inventory, Repair Stock from Ledger; Inventory Adjust): first puts back what procedures that are no longer
    complete (or no longer exist) still hold (`SupplyLedgers.GetProcNumsHeldNotComplete`, reason "Repair: procedure no longer complete") and
    removes the awaiting rows of procedures that are no longer complete; then recomputes every supply's and every lot's quantity from the
