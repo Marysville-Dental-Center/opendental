@@ -146,6 +146,10 @@ assembly version and Update only the release version.
   behaviour.
 - The installer must ship `LICENSE`, `NOTICE` and `THIRD-PARTY-NOTICES.txt` in the program folder and verify each copyright line against the
   exact package's own licence file; the LGPL 2.1 and MPL 1.1 texts are referenced by address, not embedded.
+  Done for v0.0 (the release package): the installer ships the three files and `LICENSE-LGPL-2.1.txt`, the FSF's LGPL 2.1 text, which
+  `THIRD-PARTY-NOTICES.txt` names for the RDL Project, NHunspell and Hunspell, and the en_US word list. NHunspell and Hunspell ship under
+  the LGPL 2.1 option of their tri-licence, so no MPL 1.1 text is needed (`docs/owner-questions.md`, "Decided by default for v0.0"). The
+  release package did not re-check the copyright lines against the packages' own licence files.
 
 ## Owner questions
 

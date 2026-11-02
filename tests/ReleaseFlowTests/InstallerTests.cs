@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -34,8 +35,18 @@ namespace ReleaseFlowTests {
 
 		///<summary>The program folder's documents, staged from the repository.</summary>
 		private static readonly string[] _arrayDocuments=new string[] {
-			"LICENSE","NOTICE","THIRD-PARTY-NOTICES.txt",@"db\init\new-database.sql",@"db\README.md",
+			"LICENSE","LICENSE-LGPL-2.1.txt","NOTICE","THIRD-PARTY-NOTICES.txt",@"db\init\new-database.sql",@"db\README.md",
 		};
+
+		///<summary>The file the GNU LGPL 2.1 text ships as (LGPL 2.1 sections 1 and 4: a copy of the licence with every copy of the library).</summary>
+		private const string LGPL_FILE="LICENSE-LGPL-2.1.txt";
+
+		///<summary>SHA-256 of LICENSE-LGPL-2.1.txt with LF line ends: the FSF's text of the LGPL 2.1 as gnu.org publishes it, byte for byte the
+		///copies that xz, gettext, libiconv and libtasn1 ship. A changed byte means the text is no longer the licence verbatim.</summary>
+		private const string LGPL_SHA256_LF="20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95";
+
+		///<summary>The components of THIRD-PARTY-NOTICES.txt that ship under the LGPL 2.1, and so with its text.</summary>
+		private static readonly string[] _arrayLgplComponents=new string[] { "NHunspell and Hunspell","Hunspell en_US dictionary","RDL Project" };
 
 		#region Helpers
 		private class ScriptResult {
@@ -204,12 +215,12 @@ namespace ReleaseFlowTests {
 		public void CheckFolder_FailsWhenTheRuntimeFilesOrTheDocumentsAreMissing() {
 			string folder=NewFakeStaging("missing");
 			try {
-				foreach(string path in new[] { "WebView2Loader.dll","Hunspellx86.dll","ODR.dll","LICENSE",@"db\init\new-database.sql" }) {
+				foreach(string path in new[] { "WebView2Loader.dll","Hunspellx86.dll","ODR.dll","LICENSE",LGPL_FILE,@"db\init\new-database.sql" }) {
 					File.Delete(Path.Combine(folder,path));
 				}
 				ScriptResult scriptResult=CheckFolder(folder);
 				Assert.AreEqual(1,scriptResult.ExitCode,scriptResult.Output);
-				foreach(string name in new[] { "WebView2Loader.dll","Hunspellx86.dll","ODR.dll" }) {
+				foreach(string name in new[] { "WebView2Loader.dll","Hunspellx86.dll","ODR.dll",LGPL_FILE }) {
 					Assert.IsTrue(scriptResult.Lines.Any(x => x.StartsWith("Missing: "+name+" (")),"No reason for "+name+"\r\n"+scriptResult.Output);
 				}
 				CollectionAssert.Contains(scriptResult.Lines,"Missing: LICENSE");
@@ -236,6 +247,32 @@ namespace ReleaseFlowTests {
 			finally {
 				DeleteFolder(folder);
 			}
+		}
+
+		[TestMethod]
+		public void LgplText_IsTheLicenceVerbatim_AndEveryLgplComponentPointsToIt() {
+			//RdlEngine.dll, RdlViewer.dll, NHunspell.dll, Hunspellx86.dll and the en_US word list ship under the LGPL 2.1, which asks for a copy of
+			//the licence with every copy of the library. The release stages the text (the allow-list test above) from this file.
+			string text=TestPaths.ReadSource(LGPL_FILE).Replace("\r\n","\n");
+			StringAssert.StartsWith(text.TrimStart(),"GNU LESSER GENERAL PUBLIC LICENSE");
+			StringAssert.Contains(text,"Version 2.1, February 1999");
+			StringAssert.Contains(text,"TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION");
+			StringAssert.Contains(text,"END OF TERMS AND CONDITIONS");
+			string sha256;
+			using(SHA256 sha=SHA256.Create()) {
+				sha256=string.Concat(sha.ComputeHash(Encoding.UTF8.GetBytes(text)).Select(x => x.ToString("x2")));
+			}
+			Assert.AreEqual(LGPL_SHA256_LF,sha256,"The LGPL 2.1 text, unchanged.");
+			string notices=TestPaths.ReadSource("THIRD-PARTY-NOTICES.txt").Replace("\r\n","\n");
+			foreach(string component in _arrayLgplComponents) {
+				Match match=Regex.Match(notices,@"(?m)^--- Component: "+Regex.Escape(component)+@"\n(?:(?!^--- ).*\n)*?License:(.*\n(?:[ \t]+\S.*\n)*)");
+				Assert.IsTrue(match.Success,"No License field for "+component);
+				StringAssert.Contains(match.Groups[1].Value,LGPL_FILE,component);
+			}
+			//The tri-licensed NHunspell and Hunspell ship under their LGPL option, so no MPL 1.1 text is needed.
+			StringAssert.Contains(notices,"This release distributes them under the GNU Lesser General Public License, version 2.1");
+			StringAssert.Contains(TestPaths.ReadSource("NOTICE"),LGPL_FILE);
+			StringAssert.Contains(TestPaths.ReadSource("installer","setup-info.txt"),LGPL_FILE);
 		}
 
 		[TestMethod]
@@ -362,6 +399,23 @@ namespace ReleaseFlowTests {
 			StringAssert.Contains(notes,ATTRIBUTION);
 			StringAssert.Contains(notes,"https://github.com/Marysville-Dental-Center/opendental/tree/v"+version);
 			StringAssert.Contains(notes,"OpenPmsDental-"+version+"-Setup.exe");
+		}
+
+		[TestMethod]
+		public void ReleaseNotes_GiveTheInstalled16BitDefault_AndTheStepThatKeepsPatientCaptureAt8Bits() {
+			//The notes once said patient computers "stay at 8 bits (Allow16Bit=0)", while the program installs with Allow16Bit=1: an office that
+			//followed them and ran one Test capture would take 16-bit X-rays of patients before the counsel review and the clinic run.
+			string catalog=TestPaths.ReadSource("ImagingCapture","Settings","CaptureSettingsCatalog.cs");
+			Match match=Regex.Match(catalog,@"Add\(twain,""Allow16Bit"",CaptureSettingKind\.Switch,""([01])""");
+			Assert.IsTrue(match.Success,"The Allow16Bit default in CaptureSettingsCatalog.cs");
+			string notes=TestPaths.ReadSource("docs","release-notes","v"+ReleaseVersion()+".md");
+			StringAssert.Contains(notes,"defaults are `[Twain] Allow16Bit="+match.Groups[1].Value+"`");
+			if(match.Groups[1].Value=="1") {
+				StringAssert.Contains(notes,"Before any patient capture, set `[Twain] Allow16Bit=0` in Capture settings");
+				StringAssert.Contains(notes,"\"Before 16-bit X-rays for patients\"");
+				StringAssert.Contains(TestPaths.ReadSource("docs","imaging","intraoral-capture-setup.md"),"**Before 16-bit X-rays for patients.**");
+				Assert.IsFalse(notes.Contains("stay at 8 bits"),"Nothing in the program keeps them at 8 bits by itself.");
+			}
 		}
 		#endregion installer/OpenPmsDental.iss
 	}

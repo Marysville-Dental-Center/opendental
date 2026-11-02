@@ -6,10 +6,10 @@ Builds an Open PMS - Dental release: a Release x86 build, one checked staging fo
 1. Builds OpenDental.Local.slnf as Release x86, through the shared build lane when -BuildLane is given.
 2. Checks OpenPmsDental\bin\Release: every file must be on the allow-list below or be one the release never ships (debug symbols,
    XML documentation). A file on the deny-list, an unknown file or a sub folder fails the script.
-3. Stages the allowed files into one folder (<OutDir>\staging), with LICENSE, NOTICE, THIRD-PARTY-NOTICES.txt, db\init\new-database.sql
-   and db\README.md, and checks the staging folder again: allow-list, deny-list, every allowed file present, every third-party file named
-   in THIRD-PARTY-NOTICES.txt, every file built from this repository equal to its project's own output, the native files x86 and free of
-   the debug C runtime, and OpenPmsDental.exe's versions (file version 24.3.63.0, the database compatibility version; product version the
+3. Stages the allowed files into one folder (<OutDir>\staging), with LICENSE, LICENSE-LGPL-2.1.txt, NOTICE, THIRD-PARTY-NOTICES.txt,
+   db\init\new-database.sql and db\README.md, and checks the staging folder again: allow-list, deny-list, every allowed file present,
+   every third-party file named in THIRD-PARTY-NOTICES.txt, every file built from this repository equal to its project's own output, the
+   native files x86 and free of the debug C runtime, and OpenPmsDental.exe's versions (file version 24.3.63.0, the database compatibility version; product version the
    release version of SharedAssemblyInfo.cs).
 4. Prints the build id (ForkReleases.ComputeBuildId over ForkReleases.ListBuildIdFiles) and writes <OutDir>\SHA256SUMS.txt.
 5. Compiles installer\OpenPmsDental.iss with Inno Setup 6 into <OutDir>, and adds the setup's SHA-256 to SHA256SUMS.txt.
@@ -127,9 +127,12 @@ foreach($name in @('Dicom.Core.dll','Dicom.Native.dll','DiffieHellman.dll','Goog
 $ThirdPartyFiles['RdlEngine.dll']='RdlEngine\bin\Release'
 $ThirdPartyFiles['RdlViewer.dll']='RdlViewer\bin\Release'
 
-#Files from the repository: the path in the program folder, and the repository-relative source.
+#Files from the repository: the path in the program folder, and the repository-relative source. LICENSE-LGPL-2.1.txt is the licence
+#text the LGPL 2.1 asks for with every copy of the libraries the release ships under it (RdlEngine.dll, RdlViewer.dll, NHunspell.dll,
+#Hunspellx86.dll and the en_US word list in WpfControlsOD.dll; THIRD-PARTY-NOTICES.txt).
 $DocumentFiles=[ordered]@{
 	'LICENSE'='LICENSE'
+	'LICENSE-LGPL-2.1.txt'='LICENSE-LGPL-2.1.txt'
 	'NOTICE'='NOTICE'
 	'THIRD-PARTY-NOTICES.txt'='THIRD-PARTY-NOTICES.txt'
 	'db\init\new-database.sql'='db\init\new-database.sql'
@@ -137,11 +140,12 @@ $DocumentFiles=[ordered]@{
 }
 $StagedFolders=@('db','db\init')
 
-#Files the program cannot run without, and why. They are on the allow-list too; these get a reason when missing.
+#Files the program cannot run or ship without, and why. They are on the allow-list too; these get a reason when missing.
 $RequiredReasons=[ordered]@{
 	'WebView2Loader.dll'='Microsoft.Web.WebView2.Core.dll loads it for every WebView2 window (CodeBase/Controls/ODWebView2.cs)'
 	'Hunspellx86.dll'='NHunspell loads it for the spell check of every ODtextBox; a Release build throws without it'
 	'ODR.dll'='RDL report definitions load it by file name (<CodeModule>ODR.dll</CodeModule>)'
+	'LICENSE-LGPL-2.1.txt'='the LGPL 2.1 (sections 1 and 4) asks for its text with every copy of RdlEngine.dll, RdlViewer.dll, NHunspell.dll and Hunspellx86.dll'
 }
 
 #Native files: they must be x86 and must not need the debug C runtime, which may not be redistributed.

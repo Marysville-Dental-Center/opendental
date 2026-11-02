@@ -12,6 +12,9 @@ the version in this repository, the copyright holders, the license and where
 its source is published. The license texts follow the components: the short
 standard texts in full, and the vendor texts kept from Open Dental's license
 list in the program (Help > About > View Licenses), under the component's name.
+The GNU Lesser General Public License, version 2.1, is in full in
+LICENSE-LGPL-2.1.txt next to this file, and the GNU General Public License,
+version 2, in LICENSE.
 Copyright years are in each project's own license file at its source address.
 
 Files in the repository's "Required dlls" folder that are not listed here are
@@ -129,9 +132,9 @@ Source:    distributed with SharpSSH, https://sourceforge.net/projects/sharpssh/
 Files:     NHunspell.dll (0.9.6), Hunspellx86.dll (Hunspell 1.2, x86)
 Version:   0.9.6 and 1.2
 Copyright: Thomas Maierhofer, maierhofer software (NHunspell); Laszlo Nemeth and the Hunspell contributors (Hunspell)
-License:   GPL / LGPL / MPL 1.1 tri-license, at the user's choice (the project's own summary follows)
-           https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
-           https://www.mozilla.org/en-US/MPL/1.1/
+License:   GPL / LGPL / MPL 1.1 tri-license, at the user's choice (the project's own summary follows).
+           This release distributes them under the GNU Lesser General Public License, version 2.1
+           (LICENSE-LGPL-2.1.txt): https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
 Source:    https://www.nuget.org/packages/NHunspell
            https://github.com/hunspell/hunspell
 
@@ -140,14 +143,15 @@ Files:     embedded in WpfControlsOD.dll (WpfControlsOD/Resources/en_US_aff, en_
 Version:   the OpenOffice.org en_US dictionary with 48,245 words, as shipped by Open Dental
 Copyright: Kevin Atkinson (word list, from SCOWL); Geoff Kuenning (affix file, from Ispell)
 License:   LGPL (word list) and a BSD-style license (affix file), as stated by the OpenOffice.org
-           en_US dictionary; the exact version and terms are still to be confirmed (owner question)
+           en_US dictionary; the exact version and terms are still to be confirmed (owner question).
+           The LGPL version 2.1 text is LICENSE-LGPL-2.1.txt
 Source:    https://github.com/LibreOffice/dictionaries/tree/master/en
 
 --- Component: RDL Project
 Files:     RdlEngine.dll, RdlViewer.dll
 Version:   2.9.3, built from RdlEngine/ and RdlViewer/ of this repository (changes are marked in the changed files)
 Copyright: fyiReporting Software, LLC
-License:   GNU Lesser General Public License, version 2.1 or later
+License:   GNU Lesser General Public License, version 2.1 or later (LICENSE-LGPL-2.1.txt)
            https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
 Source:    RdlEngine/ and RdlViewer/ in this repository (the corresponding source of this release)
 

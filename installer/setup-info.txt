@@ -11,7 +11,7 @@ What this setup does:
 - It does not install or change a database server or a database, and it never touches the A to Z images folder.
 - Uninstalling removes the whole program folder, including files that later updates added. The database and the A to Z folder are not touched.
 
-The program folder also gets LICENSE (the GNU GPL), NOTICE, THIRD-PARTY-NOTICES.txt (the licenses of the third-party components), and db\README.md with db\init\new-database.sql (how to create a new office database).
+The program folder also gets LICENSE (the GNU GPL), LICENSE-LGPL-2.1.txt (the GNU LGPL 2.1, under which the report engine and the spell checker ship), NOTICE, THIRD-PARTY-NOTICES.txt (the licenses of the third-party components), and db\README.md with db\init\new-database.sql (how to create a new office database).
 
 This setup is not digitally signed. Windows SmartScreen may warn about it; compare its SHA-256 with SHA256SUMS.txt of the release.
 
