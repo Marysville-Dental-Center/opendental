@@ -50,7 +50,7 @@ namespace OpenPmsDentalBusiness {
 				connectStr=DataConnection.GetCurrentConnectionString();
 			}
 			//Append pooling=false to the connection string.
-			MySqlConnection con=new MySqlConnection(connectStr+";pooling=false");
+			MySqlConnection con=DbConnectionSecurity.NewMySqlConnection(connectStr+";pooling=false");
 			con.Open();
 			int serverThread=con.ServerThread;
 			//If the dictionary already contains the ServerThread key, then something went wrong. Just stop and throw.

@@ -11,7 +11,8 @@ namespace DataConnectionBase {
 	public class MySqlHelper {
     ///<summary>The new open source MySqlConnector does not have this method like the old Oracle/MySQL connector. Create our own using the same logic as the old Oracle/MySQL connector.</summary>
     public static DataSet ExecuteDataset(string connectionString, string commandText,params MySqlParameter[] commandParameters) {
-      using(MySqlConnection connection=new MySqlConnection(connectionString)) {
+      //Through the connection rule: a server over the network must be encrypted and verified (docs/specs/db-connection-security.md).
+      using(MySqlConnection connection=DbConnectionSecurity.NewMySqlConnection(connectionString)) {
         connection.Open();
         MySqlCommand selectCommand=new MySqlCommand();
         selectCommand.Connection=connection;

@@ -243,6 +243,19 @@ namespace DataConnectionBase {
 			}
 		}
 
+		///<summary>The thumbprint of this computer's client certificate in the LocalMachine store (FreeDentalConfig.xml ClientCertThumbprint), or
+		///"" when it has none. One per computer, so one per process, not per thread. BuildSimpleConnectionString adds it to every connection to a
+		///server over the network: the main database, the read-only and the reporting server.</summary>
+		public static string ClientCertificateThumbprint {
+			get {
+				return _clientCertificateThumbprint;
+			}
+			set {
+				_clientCertificateThumbprint=value??"";
+			}
+		}
+		private static string _clientCertificateThumbprint="";
+
 		private static string ConnectionString {
 			get {
 				if(String.IsNullOrEmpty(_connectionStringT)) {
@@ -447,7 +460,8 @@ namespace DataConnectionBase {
 			if(isLow) {
 				//Forcefully use mysqlUserLow and mysqlPassLow regardless if a connectStr was passed in or not.
 				//There is no such thing as a "connectiong string low" so it needs to fail if the lower user credentials were not passed in correctly.
-				connectStr=BuildSimpleConnectionString(dtype,serverName,database,mysqlUserLow,mysqlPassLow,"");
+				//The same CA as the main user: a server over the network needs it (DbConnectionSecurity).
+				connectStr=BuildSimpleConnectionString(dtype,serverName,database,mysqlUserLow,mysqlPassLow,string.IsNullOrEmpty(sslCa) ? SslCa : sslCa);
 				ServerNameCur=serverName;
 				UserCur=mysqlUserLow;
 			}
@@ -460,7 +474,7 @@ namespace DataConnectionBase {
 				ServerNameCur=serverName;
 				UserCur=mysqlUser;
 			}
-			_con=new MySqlConnection(connectStr);
+			_con=DbConnectionSecurity.NewMySqlConnection(connectStr);
 			_cmd=new MySqlCommand();
 			_cmd.Connection=_con;
 		}
@@ -468,37 +482,65 @@ namespace DataConnectionBase {
 
 		#region ConnectionString
 
-		///<summary>The sslCa can be null or empty if not using SSL.</summary>
-		public static string BuildSimpleConnectionString(DatabaseType pDbType,string pServer,string pDatabase,string pUserID,string pPassword,string sslCa="") {
-			string serverName=pServer;
-			string port=DefaultPortNum().ToString();
-			if(pServer.Contains(":")) {
-				string[] serverNamePort=pServer.Split(new char[] { ':' },StringSplitOptions.RemoveEmptyEntries);
-				serverName=serverNamePort[0];
-				port=serverNamePort[1];
+		///<summary>The connection string for a server ("host", "host:port", "[v6]:port" or a bare IPv6 address). A server on this computer
+		///(DbConnectionSecurity.IsLoopbackServer) connects as it always did: SslMode=none, or VerifyCA when sslCa is set. Any other server gets
+		///SslMode=VerifyFull, the office CA (sslCa) and, when this computer has one, the client certificate from the LocalMachine store
+		///(certificateThumbprint; null means ClientCertificateThumbprint). The string passes the rule only when the CA and a certificate or a
+		///password are there (docs/specs/db-connection-security.md); DbConnectionSecurity checks it before any connection is made.</summary>
+		public static string BuildSimpleConnectionString(DatabaseType pDbType,string pServer,string pDatabase,string pUserID,string pPassword,string sslCa="",
+			string certificateThumbprint=null)
+		{
+			DbConnectionSecurity.SplitServer(pServer,out string serverName,out string port);
+			if(port=="") {
+				port=DefaultPortNum().ToString();
 			}
 			string connectStr="";
 			connectStr=
 				"Server="+serverName
 				+";Port="+port//although this does seem to cause a bug in Mono.  We will revisit this bug if needed to exclude the port option only for Mono.
-				+";Database="+pDatabase
+				+";Database="+QuoteValue(pDatabase)
 				//+";Connect Timeout=20"
-				+";User ID="+pUserID
-				+";Password="+pPassword
+				+";User ID="+QuoteValue(pUserID)
+				+";Password="+QuoteValue(pPassword)
 				+";CharSet=utf8"
 				+";Treat Tiny As Boolean=false"
 				+";Allow User Variables=true"
 				+";Convert Zero Datetime=true"//Convert all MySQL dates 0000-00-00 to 0001-01-01, since C# crashes for 0000-00-00 dates.
 				+";Default Command Timeout="+CommandTimeout;//one hour timeout on commands.  Prevents crash during conversions, etc.
 			//+";Pooling=false";
-			if(String.IsNullOrEmpty(sslCa)) {
-				connectStr+=";SslMode=none";
+			if(DbConnectionSecurity.IsLoopbackServer(pServer)) {
+				if(String.IsNullOrEmpty(sslCa)) {
+					connectStr+=";SslMode=none";
+				}
+				else {
+					connectStr+=";SslMode=VerifyCA"
+					+";SslCa="+QuoteValue(sslCa);
+				}
+				return connectStr;
 			}
-			else {
-				connectStr+=";SslMode=VerifyCA"
-				+";SslCa="+sslCa;
+			//Over the network: encrypted, and the server's certificate must chain to the office CA and name the host (owner decision Q5).
+			connectStr+=";SslMode=VerifyFull";
+			if(!String.IsNullOrEmpty(sslCa)) {
+				connectStr+=";SslCa="+QuoteValue(sslCa);
+			}
+			string thumbprint=certificateThumbprint??ClientCertificateThumbprint;
+			if(!String.IsNullOrEmpty(thumbprint)) {
+				connectStr+=";CertificateStoreLocation=LocalMachine"
+					+";CertificateThumbprint="+QuoteValue(thumbprint);
 			}
 			return connectStr;
+		}
+
+		///<summary>A connection string value as it is, or in double quotes (inner double quotes doubled) when it holds a semicolon, starts with a
+		///quote or has spaces at either end, so that a password or a path can never end the value early.</summary>
+		private static string QuoteValue(string value) {
+			if(string.IsNullOrEmpty(value)) {
+				return value??"";
+			}
+			if(value.IndexOf(';')<0 && value[0]!='"' && value[0]!='\'' && value.Trim()==value) {
+				return value;
+			}
+			return "\""+value.Replace("\"","\"\"")+"\"";
 		}
 
 		private string BuildSimpleConnectionString(string pServer,string pDatabase,string pUserID,string pPassword,string sslCa) {
@@ -618,7 +660,7 @@ namespace DataConnectionBase {
 
 		private void TestConnection(string connectStr,string connectStrLow,DatabaseType dbtype,bool skipValidation) {
 			DBtype=dbtype;
-			_con=new MySqlConnection(connectStr);
+			_con=DbConnectionSecurity.NewMySqlConnection(connectStr);
 			_cmd=new MySqlCommand();
 			_cmd.Connection=_con;
 			_con.Open();
@@ -628,7 +670,7 @@ namespace DataConnectionBase {
 			}
 			_con.Close();
 			if(connectStrLow!="") {
-				_con=new MySqlConnection(connectStrLow);
+				_con=DbConnectionSecurity.NewMySqlConnection(connectStrLow);
 				_cmd = new MySqlCommand();
 				_cmd.Connection=_con;
 				_con.Open();
@@ -643,7 +685,7 @@ namespace DataConnectionBase {
 		}
 
 		public static bool GetCorruptedDatabasePref(string connectStr) {
-			MySqlConnection connection=new MySqlConnection(connectStr);
+			MySqlConnection connection=DbConnectionSecurity.NewMySqlConnection(connectStr);
 			MySqlCommand command=new MySqlCommand();
 			command.Connection=connection;
 			command.CommandText="SELECT ValueString FROM preference WHERE PrefName='CorruptedDatabase'";
@@ -658,7 +700,7 @@ namespace DataConnectionBase {
 		}
 
 		public static string GetUpdateInProgressPref(string connectStr) {
-			MySqlConnection connection=new MySqlConnection(connectStr);
+			MySqlConnection connection=DbConnectionSecurity.NewMySqlConnection(connectStr);
 			MySqlCommand command=new MySqlCommand();
 			command.Connection=connection;
 			command.CommandText="SELECT ValueString FROM preference WHERE PrefName='UpdateInProgressOnComputerName'";
@@ -670,7 +712,7 @@ namespace DataConnectionBase {
 		}
 
 		public static string GetProgramVersion(string connectStr) {
-			MySqlConnection connection=new MySqlConnection(connectStr);
+			MySqlConnection connection=DbConnectionSecurity.NewMySqlConnection(connectStr);
 			MySqlCommand command=new MySqlCommand();
 			command.Connection=connection;
 			command.CommandText="SELECT ValueString FROM preference WHERE PrefName='ProgramVersion'";
