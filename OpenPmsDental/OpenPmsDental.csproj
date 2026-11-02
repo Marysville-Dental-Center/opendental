@@ -8918,7 +8918,7 @@
     <None Include="Resources\Tamir.txt" />
     <None Include="Resources\SshNet.txt" />
     <None Include="Resources\PdfSharp.txt" />
-    <None Include="Resources\NHunSpell.txt" />
+    <None Include="Resources\WeCantSpellHunspell.txt" />
     <None Include="Resources\NewtonSoft_Json.txt" />
     <None Include="Resources\GPL.txt" />
     <None Include="Resources\NDde.txt" />

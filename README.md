@@ -88,7 +88,7 @@ Open **`OpenDental.Local.slnf`** in Visual Studio, not `OpenDental.sln`, and bui
 "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/MSBuild.exe" OpenDental.Local.slnf -restore -p:RestorePackagesConfig=true -p:Configuration=Debug -p:Platform=x86 -m -nodeReuse:false
 ```
 
-With Visual Studio installed instead of Build Tools, replace `BuildTools` in the path with your edition, e.g. `Community`. A clean build produces many compiler warnings and no errors. The main program is `OpenPmsDental\bin\Debug\OpenPmsDental.exe` (`OpenPmsDental\bin\Release\` for a Release build). The build also copies `UpdateFileCopier.exe` and the two native files the program loads at run time, `Hunspellx86.dll` and `WebView2Loader.dll`, next to it.
+With Visual Studio installed instead of Build Tools, replace `BuildTools` in the path with your edition, e.g. `Community`. A clean build produces many compiler warnings and no errors. The main program is `OpenPmsDental\bin\Debug\OpenPmsDental.exe` (`OpenPmsDental\bin\Release\` for a Release build). The build also copies `UpdateFileCopier.exe` and the native file the program loads at run time, `WebView2Loader.dll`, next to it.
 
 ### The solution and the solution filter
 

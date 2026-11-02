@@ -139,15 +139,17 @@ Copyright: The Mentalis.org Team
 License:   BSD-style Mentalis.org license (the project's own text follows)
 Source:    distributed with SharpSSH, https://sourceforge.net/projects/sharpssh/
 
---- Component: NHunspell and Hunspell
-Files:     NHunspell.dll (0.9.6), Hunspellx86.dll (Hunspell 1.2, x86)
-Version:   0.9.6 and 1.2
-Copyright: Thomas Maierhofer, maierhofer software (NHunspell); Laszlo Nemeth and the Hunspell contributors (Hunspell)
-License:   GPL / LGPL / MPL 1.1 tri-license, at the user's choice (the project's own summary follows).
-           This release distributes them under the GNU Lesser General Public License, version 2.1
-           (LICENSE-LGPL-2.1.txt): https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
-Source:    https://www.nuget.org/packages/NHunspell
-           https://github.com/hunspell/hunspell
+--- Component: WeCantSpell.Hunspell
+Files:     WeCantSpell.Hunspell.dll
+Version:   7.0.1 (a .NET port of Hunspell 1.7.2; the netstandard2.0 build of the NuGet package)
+Copyright: Aaron Dandy and contributors (the port); Kevin Hendricks (MySpell), Laszlo Nemeth and the Hunspell contributors (Hunspell)
+License:   MPL 1.1 / GPL 2.0 or later / LGPL 2.1 or later tri-license, at the user's choice (the project's own
+           text follows). This release uses it under the GPL / LGPL: it distributes it under the GNU Lesser
+           General Public License, version 2.1 or later (LICENSE-LGPL-2.1.txt), which also allows its use
+           under the GNU General Public License, version 2 or later (LICENSE). No MPL 1.1 text is needed.
+           https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
+Source:    https://github.com/aarondandy/WeCantSpell.Hunspell (release 7.0.1, commit ab5709d95b2d)
+           https://www.nuget.org/packages/WeCantSpell.Hunspell/7.0.1
 
 --- Component: Hunspell en_US dictionary
 Files:     embedded in WpfControlsOD.dll (WpfControlsOD/Resources/en_US_aff, en_US_dic)

@@ -133,7 +133,7 @@ namespace OpenPmsDental{
 			dictVendorTexts.Add("Tao Framework",Properties.Resources.Tao_OpenGL);
 			dictVendorTexts.Add("SharpSSH",Properties.Resources.Tamir);
 			dictVendorTexts.Add("Mentalis.org Security Library",Properties.Resources.Mentalis);
-			dictVendorTexts.Add("NHunspell and Hunspell",Properties.Resources.NHunSpell);
+			dictVendorTexts.Add("WeCantSpell.Hunspell",Properties.Resources.WeCantSpellHunspell);
 			dictVendorTexts.Add("NDde",Properties.Resources.NDde);
 			dictVendorTexts.Add("TWAIN",Properties.Resources.Twain);
 			dictVendorTexts.Add("Pearl API notice",Properties.Resources.Pearl);
