@@ -58,6 +58,11 @@ namespace DevDbTool {
 			"StateWhereLicensed","EcwID","CustomID",
 		};
 		public static readonly string[] ArrayProviderClinicColumnsBlanked={ "DEANum","StateLicense","StateRxID","StateWhereLicensed","CareCreditMerchantId" };
+		///<summary>The preferences that name the program, set to the product name in the new database: the main window title and the software name
+		///of the messages and the About box. The seed dump holds Open Dental's defaults ("Open Dental", "Open Dental Software"). The program already
+		///shows those as the product name (AboutBoxInfo.GetDisplayName); a new database is not an adopted copy, so its rows say so themselves. An
+		///adopted database keeps Open Dental's values, because adoption may change no other row (AdoptionRowCheck).</summary>
+		public static readonly string[] ArrayProductNamePrefs={ "MainWindowTitle","SoftwareName" };
 
 		private readonly string _database;
 		private readonly DateTime _dateTimeWindowStart;
@@ -134,6 +139,11 @@ namespace DevDbTool {
 			string adoptedFrom=GetAdoptedFromValue(level);
 			ForkVersions.SetMarker(ForkVersions.PREF_FORK_ADOPTED_FROM,adoptedFrom);
 			ListLog.Add("DocPath "+SeedDocPath+"; ForkAdoptedFrom "+adoptedFrom+".");
+			foreach(string prefName in ArrayProductNamePrefs) {
+				DataCore.NonQ("UPDATE preference SET ValueString='"+POut.String(CodeBase.VendorDirect.ProductIdentity.ProductName)+"' "
+					+"WHERE PrefName='"+POut.String(prefName)+"'");
+			}
+			ListLog.Add(string.Join(" and ",ArrayProductNamePrefs)+": "+CodeBase.VendorDirect.ProductIdentity.ProductName+".");
 			long count=DataCore.NonQ("UPDATE userod SET IsPasswordResetRequired=1 WHERE UserName='Admin' AND COALESCE(Password,'')=''");
 			ListLog.Add("Admin must set a password at the first logon (IsPasswordResetRequired, "+count+" row).");
 		}

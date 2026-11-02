@@ -109,6 +109,17 @@ namespace InitSqlTests {
 			}
 		}
 
+		///<summary>A new database names this program itself: the title and software name rows hold the product name, not the seed dump's Open
+		///Dental defaults (an adopted database keeps those, and the program shows them as the product name).</summary>
+		[TestMethod]
+		public void File_TitleAndSoftwareNameAreTheProductName() {
+			foreach(string prefName in new[] { "MainWindowTitle","SoftwareName" }) {
+				Match match=Regex.Match(_text,@"^\('"+prefName+@"','([^']*)',",RegexOptions.Multiline);
+				Assert.IsTrue(match.Success,prefName+" row not found.");
+				Assert.AreEqual(ProductIdentity.ProductName,match.Groups[1].Value,prefName);
+			}
+		}
+
 		[TestMethod]
 		public void File_ProcedureCodesAreNamedByCodeOnly() {
 			List<string[]> listRows=GetProcedureCodeRows(_text,"INSERT INTO `procedurecode` (");

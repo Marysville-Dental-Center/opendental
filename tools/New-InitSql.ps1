@@ -11,7 +11,9 @@ Builds tools\DevDbTool (through the build lane when -BuildLane is given) and run
   2. verifies it like New-DevDatabase.ps1 -VerifyOnly;
   3. removes what belongs to the PC or the run that built it: computer and computerpref rows, the security log, cache signals, run
      timestamps, and the seed dump's fictional practice, providers, schedules and zip codes; writes the adoption record of a new database
-     (ForkAdoptedFrom "new=1;..."); makes Admin set a password at the first logon;
+     (ForkAdoptedFrom "new=1;..."); sets MainWindowTitle and SoftwareName to the product name "Open PMS - Dental" (the seed dump holds
+     Open Dental's; a new database is not an adopted copy, so the adoption row check does not apply); makes Admin set a password at the
+     first logon;
   4. writes every table (SHOW CREATE TABLE) and its rows in primary key order, in C#, without MariaDB client tools. The same source always
      gives the same bytes;
   5. drops the scratch database.
