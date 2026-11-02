@@ -217,15 +217,22 @@ namespace LibWebTests {
 				foreach(string path in arrayKept) {
 					File.WriteAllText(path,"kept");
 				}
-				Assert.AreEqual(3,WebView2PageStore.DeleteOldPageFiles(folder));
+				//Every file above was written two hours ago; a page an older version running now has just written stays.
+				DateTime dateTimeOld=DateTime.Now.AddHours(-2);
+				foreach(string path in Directory.GetFiles(folder,"*",SearchOption.AllDirectories)) {
+					File.SetLastWriteTime(path,dateTimeOld);
+				}
+				string pageRecent=Path.Combine(folder,"GHI78920261102120000.html");
+				File.WriteAllText(pageRecent,"<p>shown now</p>");
+				Assert.AreEqual(3,WebView2PageStore.DeleteOldPageFiles(folder,DateTime.Now.AddHours(-1)));
 				Assert.IsFalse(File.Exists(pageOld));
 				Assert.IsFalse(Directory.Exists(folderShowImages),"An email's Show Images folder goes with its page.");
-				foreach(string path in arrayKept) {
+				foreach(string path in arrayKept.Concat(new[] { pageRecent })) {
 					Assert.IsTrue(File.Exists(path),path);
 				}
-				Assert.AreEqual(0,WebView2PageStore.DeleteOldPageFiles(folder));
-				Assert.AreEqual(0,WebView2PageStore.DeleteOldPageFiles(Path.Combine(folder,"missing")));
-				Assert.AreEqual(0,WebView2PageStore.DeleteOldPageFiles(null));
+				Assert.AreEqual(0,WebView2PageStore.DeleteOldPageFiles(folder,DateTime.Now.AddHours(-1)));
+				Assert.AreEqual(0,WebView2PageStore.DeleteOldPageFiles(Path.Combine(folder,"missing"),DateTime.Now));
+				Assert.AreEqual(0,WebView2PageStore.DeleteOldPageFiles(null,DateTime.Now));
 			}
 			finally {
 				TestPaths.DeleteFolder(folder);

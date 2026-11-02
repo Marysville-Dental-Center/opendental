@@ -247,9 +247,10 @@ namespace CodeBase.Controls {
 
 		///<summary>Deletes, once per program session, the page files an older version wrote into the program's temp folder (it wrote every page
 		///shown with NavigateToHtml there, and the images of an email's Show Images into a folder with the page): files named like
-		///"ABC12320261102093000.html" in that folder, and folders named like "ABC12320261102093000" that hold such a page, with their files. The
-		///program empties the folder when it closes, so this only finds what an older version left when it ended without closing. Nothing else is
-		///touched, and an error leaves the file. Never throws.</summary>
+		///"ABC12320261102093000.html" in that folder, and folders named like "ABC12320261102093000" that hold such a page, with their files, when
+		///the page was written more than an hour ago. The program empties the folder when it closes, so this only finds what an older version left
+		///when it ended without closing; the hour leaves alone a page that an older version running at the same time has just written and not yet
+		///shown. Nothing else is touched, and an error leaves the file. Never throws.</summary>
 		public static void DeleteOldPageFiles() {
 			lock(_lock) {
 				if(_isOldPageFilesDeleted) {
@@ -257,18 +258,18 @@ namespace CodeBase.Controls {
 				}
 				_isOldPageFilesDeleted=true;
 			}
-			ODException.SwallowAnyException(() => DeleteOldPageFiles(Path.Combine(Path.GetTempPath(),ProgramNames.TempFolderName)));
+			ODException.SwallowAnyException(() => DeleteOldPageFiles(Path.Combine(Path.GetTempPath(),ProgramNames.TempFolderName),DateTime.Now.AddHours(-1)));
 		}
 
-		///<summary>DeleteOldPageFiles in folder. Returns how many files it deleted. Never throws.</summary>
-		public static int DeleteOldPageFiles(string folder) {
+		///<summary>DeleteOldPageFiles in folder, for pages written before dateTimeWrittenBefore. Returns how many files it deleted. Never throws.</summary>
+		public static int DeleteOldPageFiles(string folder,DateTime dateTimeWrittenBefore) {
 			int countDeleted=0;
 			if(string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) {
 				return 0;
 			}
 			try {
 				foreach(string path in Directory.GetFiles(folder,"*.html",SearchOption.TopDirectoryOnly)) {
-					if(IsOldPageFile(path) && TryDelete(path)) {
+					if(IsOldPageFile(path,dateTimeWrittenBefore) && TryDelete(path)) {
 						countDeleted++;
 					}
 				}
@@ -277,7 +278,7 @@ namespace CodeBase.Controls {
 						continue;
 					}
 					string[] arrayFiles=Directory.GetFiles(folderSub,"*",SearchOption.TopDirectoryOnly);
-					if(Directory.GetDirectories(folderSub).Length>0 || !arrayFiles.Any(x => IsOldPageFile(x))) {
+					if(Directory.GetDirectories(folderSub).Length>0 || !arrayFiles.Any(x => IsOldPageFile(x,dateTimeWrittenBefore))) {
 						continue;
 					}
 					foreach(string path in arrayFiles) {
@@ -294,10 +295,20 @@ namespace CodeBase.Controls {
 			return countDeleted;
 		}
 
-		///<summary>True for a page file an older version wrote: "ABC12320261102093000.html".</summary>
-		private static bool IsOldPageFile(string path) {
-			return string.Equals(Path.GetExtension(path),".html",StringComparison.OrdinalIgnoreCase)
-				&& _regexRandomName.IsMatch(Path.GetFileNameWithoutExtension(path));
+		///<summary>True for a page file an older version wrote before dateTimeWrittenBefore: "ABC12320261102093000.html".</summary>
+		private static bool IsOldPageFile(string path,DateTime dateTimeWrittenBefore) {
+			if(!string.Equals(Path.GetExtension(path),".html",StringComparison.OrdinalIgnoreCase)
+				|| !_regexRandomName.IsMatch(Path.GetFileNameWithoutExtension(path)))
+			{
+				return false;
+			}
+			try {
+				return File.GetLastWriteTime(path)<dateTimeWrittenBefore;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return false;
+			}
 		}
 
 		private static bool TryDelete(string path) {

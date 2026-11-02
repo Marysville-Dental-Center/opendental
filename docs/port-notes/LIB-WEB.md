@@ -3,14 +3,16 @@
 Branch `next/libweb-1`, cut from `next/libbase-2` (0c5fa6369); the review fixes are on `next/libweb-2` (own page files and history never
 raise `LinkClicked`, what a page may load, find in page, one profile folder for the Images print), the second round on `next/libweb-3` (no
 email stylesheet runs in the program, a runtime that will not start is reported, smoke tests fail on the control's own errors). Owner approval of 2026-11-02 (roadmap
-item 2, library updates for maintenance). The WebView2 SDK stays at 1.0.2420.47 (`Required dlls`: `Microsoft.Web.WebView2.Core`, `.WinForms`, `.Wpf`, `WebView2Loader.dll`);
+item 2, library updates for maintenance). The follow-up of the owner answers of 2026-11-02 to questions 2 and 7 (pages from memory, one message
+when a window's browser cannot start) is on `next/fu-web-1`, cut from `next/int-2`: see [Follow-up](#follow-up-owner-answers-to-questions-2-and-7). The WebView2 SDK stays at 1.0.2420.47 (`Required dlls`: `Microsoft.Web.WebView2.Core`, `.WinForms`, `.Wpf`, `WebView2Loader.dll`);
 no DLL was added, replaced or removed, so the binding redirects, the release allow list, the installer file list and the notices are unchanged.
 
 ## Sources and rules
 
 - WebView2's behaviour comes from Microsoft's public WebView2 documentation; no binary was decompiled. The smoke test (`tests/LibWebTests`) checks
   the behaviour the windows rely on against the installed runtime. In particular `CoreWebView2.WebResourceRequested` is raised for file, http
-  and https addresses (Microsoft's reference; not for virtual host mappings, which is why the pages stay `file:` pages), and
+  and https addresses (Microsoft's reference; not for virtual host mappings, which is why the pages stay `file:` pages; the follow-up answers
+  the requests of a page's own `file:` address from memory), and
   `CoreWebView2NavigationStartingEventArgs.NavigationKind` exists from SDK 1.0.1901 on.
 - Synthetic data only. No database, table, column or preference name changed. No migration.
 
@@ -24,9 +26,11 @@ no DLL was added, replaced or removed, so the binding redirects, the release all
   - No host objects (`AreHostObjectsAllowed=false`; nothing calls `AddHostObjectToScript`), dev tools only in Debug builds.
   - Link rules for pages the program shows: only http, https and mailto addresses are ever handed to the shell (`OpenInSystemBrowser`); a
     relative link such as `www.example.com` counts as http, as the old control did.
-- **`ODWebView2.NavigateToHtml(html, folder)`** replaces the IE control's `DocumentText`. The page is written to a new file (UTF-8 with a byte
-  order mark) in the program's temp folder, or in `folder`, and that file is shown, so the local images the wiki and emails refer to still load
-  (a page from a string cannot load `file:` images). While such a page is shown:
+- **`ODWebView2.NavigateToHtml(html, ...)`** replaces the IE control's `DocumentText`. On `next/libweb-3` the page was written to a new file
+  (UTF-8 with a byte order mark) in the program's temp folder, or in a folder the window gave, and that file was shown, so the local images the
+  wiki and emails refer to still load (a page from a string cannot load `file:` images). Since the follow-up the page and the files of its own
+  folder are in memory and nothing is written (see [Follow-up](#follow-up-owner-answers-to-questions-2-and-7)); everything below holds for
+  them as it did for the files. While such a page is shown:
   - scripts, web messages, script dialogs, autofill and password saving are off; the program's own `ExecuteScriptAsync` calls still run;
   - every other top-level navigation is cancelled; a link the user clicked raises `LinkClicked` (with `IsNewWindow` for Ctrl+click and
     "Open link in new window"); a navigation the page starts by itself (meta refresh) raises nothing;
@@ -47,7 +51,8 @@ no DLL was added, replaced or removed, so the binding redirects, the release all
   - frames load only `about:blank`, new windows, downloads, external protocols and permission requests are refused;
   - the context menu keeps only Copy, Select all, the link and image copy commands and "Open link in new window"
     (`IsContextMenuEnabled=false` removes it);
-  - the page file is deleted when the next page replaces it and when the control is disposed (the temp folder is also emptied at close).
+  - the page leaves memory when the next page replaces it and when the control is disposed (on `next/libweb-3`: the page file was deleted then,
+    and the temp folder emptied at close).
   - The control initializes itself on the first `NavigateToHtml`; a missing runtime is reported by `Init`.
 - **A runtime that will not start** (installed but damaged, `msedgewebview2.exe` blocked by antivirus or AppLocker, a profile folder that
   cannot be used): `Init` catches what `CreateEnvironmentAsync` and `EnsureCoreWebView2Async` throw, and the initialization event reports
@@ -58,9 +63,12 @@ no DLL was added, replaced or removed, so the binding redirects, the release all
   (disposed, `E_ABORT`) is no failure and is not reported. Before, only a missing runtime was reported: a failing one left the windows that
   only call `NavigateToHtml` blank without a word, and `FormWebView` and `FormWebBrowserPrefs` closed without one.
   Windows that show `FriendlyException` when `Init` throws (`FormCareCreditWeb`, `FormPayConnect2`, `FormPayConnect2iFrame`, the Images
-  module's PDF print) show it after that message, as they already did for a missing runtime.
+  module's PDF print) showed it after that message on `next/libweb-3`, as they already did for a missing runtime; since the follow-up they
+  show exactly one message (owner answer to question 7, see [Follow-up](#follow-up-owner-answers-to-questions-2-and-7)).
 - What each window allows its pages (`MarkupEdit.GetImageFolders` gives the A to Z `Wiki` or `EmailImages` folder when the A to Z folder is
-  local or on a share, and the temp folder that holds images downloaded from cloud storage):
+  local or on a share, and the folder that holds images downloaded from cloud storage: for the wiki the in-memory pages' shared folder since the
+  follow-up, for email the temp folder). A page's "own folder" is its in-memory folder, which holds the page and the files the window gave
+  it (an email's images after Show Images), nothing else; on `next/libweb-3` it was the program's temp folder unless the window gave a folder:
 
   | Window | Folders | Web content |
   |---|---|---|
@@ -107,7 +115,7 @@ no DLL was added, replaced or removed, so the binding redirects, the release all
 | `OpenPmsDental/Forms/FormWikiEdit.cs` | live preview of the page being edited | DOM `scrollTop` kept across refreshes, body `zoom`; no find (shortcuts off) | **Ported**: `GetScrollTopAsync`/`SetScrollTop`/`SetBodyZoom` after `NavigationCompleted`; wiki image folders, web content allowed. |
 | `OpenPmsDental/Forms/FormEmailEdit.cs` | preview of the email being written (generated or raw HTML) | links to the default browser, `DocumentText` read back as `HtmlText`; no find (shortcuts off) | **Ported**: `NavigateToHtml` (email image folders, web content allowed), `LinkClicked`; `HtmlText` is the kept HTML string. |
 | `OpenPmsDental/Forms/FormEmailTemplateEdit.cs` | preview of a template in the master template | links to the default browser, find (shortcuts on) | **Ported**: email image folders, web content allowed, `AreBrowserKeysEnabled`. |
-| `OpenPmsDental/User Controls/EmailPreviewControl.cs` | received and sent emails (untrusted HTML); "Show images" writes the MIME images and the page to a temp folder | links to the default browser, `DocumentText` read back; no find (shortcuts off) | **Ported**: scripts off, `NavigateToHtml(html, folder)` for "Show images", `LinkClicked`; a meta refresh or script in an email can no longer open anything. A received email loads nothing from the web and no file outside its folder until Show Images (see above). |
+| `OpenPmsDental/User Controls/EmailPreviewControl.cs` | received and sent emails (untrusted HTML); "Show images" writes the MIME images and the page to a temp folder | links to the default browser, `DocumentText` read back; no find (shortcuts off) | **Ported**: scripts off, `NavigateToHtml` with the MIME images as the page's own files for "Show images" (in memory since the follow-up; `next/libweb-3` wrote them and the page to a temp folder), `LinkClicked`; a meta refresh or script in an email can no longer open anything. A received email loads nothing from the web and no file outside its folder until Show Images (see above). |
 | `OpenPmsDental/User Controls/UserControlEmailTemplate.cs` | template preview (the control has no caller) | find (shortcuts on) | **Ported**: email image folders, nothing from the web, `AreBrowserKeysEnabled`. |
 | `OpenPmsDental/Forms/FormEhrEduBrowser.cs` | an education resource's web page (office-configured URL), reached from the EHR tools (`FormEHR`, `FormEhrEduResourcesPat`) | print (records the EHR measure), find (shortcuts on) | **Ported**: http/https only, pop-ups to the default browser, `ShowPrintDialog`, `AreBrowserKeysEnabled`. |
 | `OpenPmsDental/Forms/FormEhrSummaryCcdEdit.cs` | a CCD file with its XSL stylesheet (IE ran XSLT) | XSLT, print, find (shortcuts on) | **Ported without the stylesheet**: Open Dental's stylesheets came from EHR.dll (`EhrSummaryCcds.GetEhrResource` returns "" since the decoupling), so the only stylesheet left is one an email brings along (`EmailPreviewControl.OpenFile`), and the program never runs it. XSLT in the program's process (the first round's `HtmlPage.TransformXsl`) let a received `.xsl` end the program: a self-recursive template overflows the stack, and a `StackOverflowException` ends the process whatever catches it (the review reproduced this in a 32-bit .NET Framework 4.8 process); a looping one hangs it. `DisplayCCD` no longer reads the attachment: the window shows the CCD as encoded, indented XML (`HtmlPage.BuildXml`) with a line saying that the stylesheet that came with it was not run, keeps print, find and the reconcile buttons of a Direct message, scripts off, no file but its own and nothing from the web. Without an attached stylesheet `DisplayCCD` shows the raw text as before. |
@@ -183,7 +191,8 @@ Windows Update or device management), and the log says the same for silent insta
    downloads nothing" as the WebView2 Runtime only. Should the Visual C++ download go too (then setup only names Microsoft's installer)?
 2. Pages the program shows (wiki pages, emails) are written as temporary files in the program's temp folder while they are shown (deleted when the
    page changes, the window closes and the program exits). An in-memory alternative (a virtual host) would need the images served the same way.
-   Is the temp-file approach acceptable for email content?
+   Is the temp-file approach acceptable for email content? **Answered 2026-11-02: no; patient email must not sit on disk. Done on
+   `next/fu-web-1`, see [Follow-up](#follow-up-owner-answers-to-questions-2-and-7).**
 3. The old WebView2 profile folders (`%LOCALAPPDATA%\WindowsFormsWebView2`) are left on workstations. Remove them on upgrade?
 4. A received email no longer loads images from the web until the user clicks Show Images (Internet Explorer loaded them at once). Keep this,
    or add a preference to load them always?
@@ -192,3 +201,92 @@ Windows Update or device management), and the log says the same for silent insta
 6. A CCD that came by email with a stylesheet now shows as XML (the stylesheet is never run in the program). A styled view would need either
    a stylesheet the program ships itself (reviewed, then safe to run) or the received one run in a short-lived child process with a time
    and output limit. Is the XML view enough, or which of the two?
+7. `FormCareCreditWeb`, `FormPayConnect2`, `FormPayConnect2iFrame` and the Images module's PDF print show two error dialogs when the WebView2
+   Runtime is missing or fails (`Init`'s message, then the window's own `FriendlyException`). **Answered 2026-11-02: show exactly one clear
+   message. Done on `next/fu-web-1`, see [Follow-up](#follow-up-owner-answers-to-questions-2-and-7).**
+
+## Follow-up: owner answers to questions 2 and 7
+
+Branch `next/fu-web-1`, cut from `next/int-2` (the integrated branch, where `next/libweb-3` is merged). Synthetic data only; no database,
+table, column or preference changed; no migration; no DLL added.
+
+### Question 2: pages from memory
+
+Wiki pages, emails (received ones included), the CCD view and the other pages of `NavigateToHtml` are no longer written to disk while they are
+shown, nor are the images of an email's Show Images, so a patient's email never sits in the temp folder and a crash leaves nothing behind.
+
+- **`CodeBase/Controls/WebView2PageStore`** keeps every page and the files of its own folder in memory. A page gets a `file:` address in a
+  folder of its own, `%TEMP%\openpms-dental\pages-in-memory\<random>\page.html`, a folder that is never created. `ODWebView2` answers the
+  browser's request for anything under `pages-in-memory` from memory in `WebResourceRequested` (with `Cache-Control: no-store`), 404 for a
+  name the page does not have, and never lets such a request reach the disk: a file someone put at that path is never read. The page leaves
+  memory when the next page replaces it and when the control is disposed.
+- **Why a `file:` address answered from memory**, of the three ways to show a page without a file:
+  - `NavigateToString` holds at most 2 MB (an email with inline images is often more), and its page has no folder: it cannot load the `file:`
+    images the wiki and the email editor name, and an image name of Show Images has nothing to resolve against.
+  - A virtual host name (`https://<name>.invalid/`) answered by `WebResourceRequested`: the page becomes an https page, and the browser itself
+    refuses every `file:` image of an https page before the program sees the request. The wiki's images (`file:///` addresses from
+    `MarkupEdit.TranslateToXhtml`) and the email editor's (`C:\` paths) would all have to be rewritten into virtual addresses (every `img`,
+    `background` and style sheet `url()`), and the rules of `next/libweb-3` (own folder, allowed folders, the relative links that open as web
+    addresses, the link rules) would all change.
+  - A `file:` address answered from memory keeps every rule and behaviour of `next/libweb-3` as it was, because WebView2 raises
+    `WebResourceRequested` for `file:` requests, the page's own included (Microsoft's reference; checked by the smoke tests with Runtime 156,
+    which see the page and its image answered with 200 by the control). So links, images (the wiki folder, Show Images, the web only when
+    allowed), printing, find, the CCD's XML view, the navigation limits and the secure settings are unchanged; only where the bytes come
+    from changed.
+- `NavigateToHtml(html, isRemoteContentAllowed, listFoldersAllowed, dictFiles)`: `dictFiles` gives the files of the page's own folder by name
+  (an email's images, by the name that replaced their `cid:` address); the `folder` parameter is gone, with `WebView2Policy.GetPageFolder`
+  and every page file write and delete of `ODWebView2`.
+- `EmailPreviewControl`'s Show Images no longer makes a temp folder: `EmailMessages.GetMimeImageBytes` (in place of `SaveMimeImageToFile`)
+  gives each image's bytes, from the same source and in the same format (a format without an encoder, such as `.ico`, falls back to PNG, as
+  saving it to a file did).
+- A received email's own folder was the program's temp folder on `next/libweb-3` (when shown without Show Images), so it could load any file
+  there, another email's Show Images images included; it now holds the email's own images only.
+- Wiki images downloaded from cloud storage (SFTP, Dropbox) go into the shared folder `pages-in-memory\shared` (by a hash of their A to Z path,
+  so an image shown again replaces itself; at most 64 MB, the oldest go first), and `MarkupEdit.GetImageFolders(isEmail:false)` allows that
+  folder in place of the temp folder. The image is read from the downloaded bytes (`FileAtoZ.GetImage` on the temp file's path downloaded it
+  again from cloud storage, by the temp path).
+- **Not changed**: email images downloaded from cloud storage are still temp files (`MarkupEdit.TranslateEmailImages`), because sending the
+  email attaches them from there (`EmailMessages.FindAndReplaceImageTags` with `AreImagesDownloaded`); these are the office's own email
+  images, not a received email. The S/MIME signature of a signed email (`smime.p7s`) is still copied to a temp file to read the signer's
+  certificate (`X509Certificate.CreateFromSignedFile` reads files only); it holds the certificate, not the message.
+- **Old page files**: once per program session, at the first page shown, `WebView2PageStore.DeleteOldPageFiles` deletes what an older version
+  left in `%TEMP%\openpms-dental` when it ended without closing (the program empties that folder when it closes): files named like
+  `ABC12320261102093000.html` (only `ODWebView2` named files so), and folders named like `ABC12320261102093000` that hold such a page (Show
+  Images), with their files, when the page is more than an hour old. The hour leaves alone a page an older version running at the same time
+  (another user session, a test run) has just written; deleting one it shows longer changes nothing on screen.
+
+### Question 7: one message
+
+- `ODWebView2.Init` throws `ODWebView2InitException` (an `ODException`, so every "Init told the user" catch still holds) with `IsUserTold`
+  (Init showed its message: always for a missing runtime, once per program session for one that will not start) and `IsClosed` (the window
+  closed while its browser started). `ODWebView2.TryShowInitFailure(ex)` is true for such an exception; it shows the start failure's message
+  itself when Init held it back (already shown in this session), without the "shows once" line, and nothing for a closed window.
+- `WebView2L.TryInit(control, textError, funcSetup)` (OpenPmsDental) runs `Init` and the window's own setup (events, scripts) and shows exactly
+  one message when either fails: Init's for the runtime, or `FriendlyException` with `textError` for anything else (the setup failing).
+  `FormCareCreditWeb`, `FormPayConnect2`, `FormPayConnect2iFrame` and `ControlImageDisplay.PrintPDF` use it in place of their try/catch.
+
+### Tests (`tests/LibWebTests`)
+
+- `WebView2PageStoreTests` (no browser): a page and its files are found by the escaped `file:` address the browser asks for, in any letter
+  case, and nothing else is (another page's file, the folder, `..` or escaped separators, a stream name, outside the root, a share); nothing is
+  written; a replaced page is gone; names with a folder are left out; the response is never cached; the shared folder replaces and evicts; a
+  link to an in-memory image is a file, a relative name without a file stays a web address; what an in-memory page may load; the old page
+  file clean-up (pattern, Show Images folders, the hour); a source check that `ODWebView2`, `EmailPreviewControl` and `EmailMessages` write no
+  page or image file any more.
+- `WebView2InitMessageTests` (seams, no window, no browser): a missing runtime, a runtime that will not start (also for a window opened after
+  Init told the session once and a wiki page held it back) and a window closed while starting each show exactly one message, or none; the
+  window's own setup never runs without its browser; the four windows go through `WebView2L.TryInit`.
+- `WebView2SmokeTests` (with the runtime; Inconclusive without it): the pages come from memory (their address is under `pages-in-memory`,
+  no file or folder there, only the shown page in memory, none after dispose); `WikiPageAndEmail_AreShownFromMemory_AndWriteNoTemporaryFile`
+  shows a wiki page with an image from a wiki folder and a received email after Show Images with its image in memory, and compares the
+  program's temp folder and the temp folder before, while each page is shown, and after (no new file holds either page's text or the email's
+  image, no page file is created, also for a moment, watched with a `FileSystemWatcher`), and searches the test's WebView2 profile for them.
+  Checked by mutation: an `ODWebView2` that writes each page to the program's temp folder and deletes it at the next page fails this test
+  ("A temporary file held a page ... while it was shown") and the source check.
+
+### Not verified here
+
+- Printing (Windows' print dialog), find (Ctrl+F) and the CCD's XML view on screen in the running program: they work on the shown document,
+  which is the same as before; only where its bytes come from changed.
+- Wiki images from cloud storage (no SFTP or Dropbox A to Z folder here): the store and the allowed folder are unit tested, the download
+  path is not.
