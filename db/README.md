@@ -28,7 +28,7 @@ What is not in it: patients, appointments, schedules, the seed's fictional pract
    - HeidiSQL: select the new database, then run the file with **File > Run SQL file**.
 
    It takes under a minute. The file never drops anything: loaded into a database that already has tables, it stops with "Table 'account' already exists" at its first `CREATE TABLE`.
-4. Point the program at the database. `OpenPmsDental.exe` reads `FreeDentalConfig.xml` from its own folder. Set `ComputerName` (the server, `host:port` for a port other than 3306), `Database`, `User` and `Password`, as in `tools/FreeDentalConfig.dev.xml`, or fill in the same fields in the window that asks for the database when the program starts without a config file.
+4. Point the program at the database. `OpenPmsDental.exe` reads `FreeDentalConfig.xml` from its own folder; setup writes it from its connection page (server, database, user), and the program never asks for the database or its password. To set or change the connection, run `OpenPmsDentalDbSettings.exe` in the program folder as an administrator: server (`host:port` for a port other than 3306), database, user, and, for a server over the network, the office CA certificate and the client certificate or the database password, which it stores on this computer with Windows DPAPI. A database server over the network must have TLS first: see `docs/db-connection-security.md` in the source repository.
 5. Start the program. It logs on as `Admin` and asks for a password: set one. Then enter the practice's settings: practice name, address and phone (blank in the file), providers, operatories, fee schedules, the A to Z images folder (`DocPath`, `C:\OpenDentImages\` until changed), and the procedure code descriptions.
 
 ## Regenerate the file

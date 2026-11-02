@@ -157,11 +157,12 @@ What the setup does, for the release channel:
 
 - It installs exactly the staging folder into `C:\Program Files (x86)\Open PMS - Dental` (per machine, as administrator). A workstation installed from the same staging folder therefore has the same build id as the update server that published it, and nothing happens at its start.
 - The uninstaller is in the `uninstall` sub folder. A release publishes the top-level files only (and `OpenDentalReplicationService`), so neither the uninstaller nor the `db` folder reaches the other workstations.
-- It writes `FreeDentalConfig.xml` only when the folder has none, with no password, and gives Users modify rights on that one file. A release never carries the file.
+- It writes `FreeDentalConfig.xml` only when the folder has none, with no password, and gives Users no rights on it: the file keeps the program folder's rights, so only an administrator changes the connection settings. A release never carries the file.
+- In an administrative install it then runs the connection settings tool `OpenPmsDentalDbSettings.exe` ([docs/specs/db-connection-security.md](specs/db-connection-security.md) section 6): for a new connection to a server over the network or with a security switch, and in an interactive install for a database on the same computer too (password mode). On an upgrade (the file exists) it runs the tool with the security switches given, or only the tool's `/check` without them. A per-user install cannot run the tool and logs that the connection needs it.
 - The uninstall removes the whole folder, including files a pull added, but keeps a sub folder that looks like an A to Z folder. It never touches the database.
 - Setup never starts the program. `RestartApplications=no` keeps it from restarting a program it closed.
 
-`tools/Test-Installer.ps1` installs the setup per user (`/CURRENTUSER`, no administrator rights) into new folders under `%TEMP%`, checks the files against the staging folder, `FreeDentalConfig.xml` and its rights, a reinstall and the uninstall, and never starts the program. `tests/ReleaseFlowTests/InstallerTests.cs` runs the script's list checks (`-CheckFolder`) against fake staging folders.
+`tools/Test-Installer.ps1` installs the setup per user (`/CURRENTUSER`, no administrator rights) into new folders under `%TEMP%`, checks the files against the staging folder, `FreeDentalConfig.xml` (and that setup added no access rule to it), the log line for a server over the network, a reinstall and the uninstall, and never starts the program. `tests/ReleaseFlowTests/InstallerTests.cs` runs the script's list checks (`-CheckFolder`) against fake staging folders.
 
 ## Tests
 

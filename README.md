@@ -31,6 +31,7 @@ max_allowed_packet=40M
 - The tables are MyISAM; with another default engine, new tables end up in a different engine.
 - `max_allowed_packet` must be at least 40 MB. Smaller values make large inserts (images, releases stored in the database) fail with "Please add the following to your my.ini file: max_allowed_packet=40000000".
 - Give each office its own database account, and back the database up.
+- A server the workstations reach over the network must have TLS with a certificate from the office's own CA, and each workstation needs that CA certificate and the client certificate: see [docs/db-connection-security.md](docs/db-connection-security.md), which also gives the order for an office that runs version 0.0.
 
 **A new office's database:** see [db/README.md](db/README.md) and the script `db/init/new-database.sql`.
 
@@ -51,8 +52,8 @@ When the Visual C++ or WebView2 runtime is missing, the setup offers to download
 Steps:
 
 1. Install the program on the **update server** first: the workstation named in the `WebServiceServerName` preference (Setup > Update Setup).
-2. Check the setup's SHA-256 against `SHA256SUMS.txt`, then run it as an administrator. It installs into `C:\Program Files (x86)\Open PMS - Dental\`, creates the Start menu shortcut "Open PMS - Dental", and writes `FreeDentalConfig.xml` from its database connection page (server, database, user; never a password). The setup is not signed, so SmartScreen may warn.
-3. Start the program from the Start menu and enter the database password in the Choose Database window.
+2. Check the setup's SHA-256 against `SHA256SUMS.txt`, then run it as an administrator. It installs into `C:\Program Files (x86)\Open PMS - Dental\`, creates the Start menu shortcut "Open PMS - Dental", and writes `FreeDentalConfig.xml` from its database connection page (server, database, user; never a password). For a database server over the network the next page asks for the office CA certificate and the client certificate (`.pfx`). Setup then opens the connection settings tool, `OpenPmsDentalDbSettings.exe`, which imports the client certificate or stores the database password on this computer with Windows DPAPI; for a database on the same computer it opens in password mode (Cancel when the database user has no password). The setup is not signed, so SmartScreen may warn.
+3. Start the program from the Start menu. It never asks for the database password: to change the connection later, an administrator runs `OpenPmsDentalDbSettings.exe` in the program folder.
 4. On the update server, the program offers to publish the release at that first start, so the other workstations update to it.
 5. On the other workstations repeat steps 2 and 3. A workstation that runs an older build pulls the published one when it starts.
 
