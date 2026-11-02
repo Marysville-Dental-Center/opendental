@@ -51,6 +51,8 @@ Version:   NuGet packages Microsoft.Bcl.AsyncInterfaces 10.0.14,
 Copyright: .NET Foundation and Contributors
 License:   MIT License
 Source:    https://github.com/dotnet/runtime
+           https://github.com/dotnet/maintenance-packages (System.Buffers, System.Memory, System.Numerics.Vectors,
+           System.Runtime.CompilerServices.Unsafe, System.Threading.Tasks.Extensions)
 
 --- Component: Newtonsoft.Json
 Files:     Newtonsoft.Json.dll
