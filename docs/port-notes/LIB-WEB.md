@@ -207,13 +207,14 @@ Windows Update or device management), and the log says the same for silent insta
 
 ## Follow-up: owner answers to questions 2 and 7
 
-Branch `next/fu-web-1`, cut from `next/int-2` (the integrated branch, where `next/libweb-3` is merged). Synthetic data only; no database,
-table, column or preference changed; no migration; no DLL added.
+Branch `next/fu-web-1`, cut from `next/int-2` (the integrated branch, where `next/libweb-3` is merged), and its review fix `next/fu-web-2`
+(the CCD document in memory). Synthetic data only; no database, table, column or preference changed; no migration; no DLL added.
 
 ### Question 2: pages from memory
 
 Wiki pages, emails (received ones included), the CCD view and the other pages of `NavigateToHtml` are no longer written to disk while they are
-shown, nor are the images of an email's Show Images, so a patient's email never sits in the temp folder and a crash leaves nothing behind.
+shown, nor are the images of an email's Show Images, nor the CCD document itself, so a patient's email never sits in the temp folder and a
+crash leaves nothing behind.
 
 - **`CodeBase/Controls/WebView2PageStore`** keeps every page and the files of its own folder in memory. A page gets a `file:` address in a
   folder of its own, `%TEMP%\openpms-dental\pages-in-memory\<random>\page.html`, a folder that is never created. `ODWebView2` answers the
@@ -241,6 +242,14 @@ shown, nor are the images of an email's Show Images, so a patient's email never 
   saving it to a file did).
 - A received email's own folder was the program's temp folder on `next/libweb-3` (when shown without Show Images), so it could load any file
   there, another email's Show Images images included; it now holds the email's own images only.
+- **The CCD document**: `FormEhrSummaryOfCare.DisplayCCD` wrote the CCD (or CCR) of a received email with a stylesheet to
+  `%TEMP%\openpms-dental\ccd.xml` (or `ccr.xml`) while `FormEhrSummaryCcdEdit` showed it, and deleted it only after the window closed, because
+  the window read the file again for its page, its three reconcile buttons and Show XML. The window now gets the XML text (`doc.InnerXml`,
+  what the file held) and keeps it in a field for all of them; `DisplayCCD` writes no file. `DeleteOldCcdFiles` deletes, when the window
+  opens, a `ccd.xml`, `ccd.xsl`, `ccr.xml` or `ccr.xsl` an older version left there (it wrote the stylesheet too) when it ended with the window
+  open, if more than an hour old (an older version showing a CCD at the same time reads its file again to reconcile); it creates no folder,
+  and a file in use stays. The program also empties the folder when it closes. The four names are those the older versions deleted after the
+  window, so nothing else is touched.
 - Wiki images downloaded from cloud storage (SFTP, Dropbox) go into the shared folder `pages-in-memory\shared` (by a hash of their A to Z path,
   so an image shown again replaces itself; at most 64 MB, the oldest go first), and `MarkupEdit.GetImageFolders(isEmail:false)` allows that
   folder in place of the temp folder. The image is read from the downloaded bytes (`FileAtoZ.GetImage` on the temp file's path downloaded it
@@ -273,6 +282,11 @@ shown, nor are the images of an email's Show Images, so a patient's email never 
   link to an in-memory image is a file, a relative name without a file stays a web address; what an in-memory page may load; the old page
   file clean-up (pattern, Show Images folders, the hour); a source check that `ODWebView2`, `EmailPreviewControl` and `EmailMessages` write no
   page or image file any more.
+- `HtmlGenerationTests` (no window): `CcdView_KeepsTheDocumentInMemory_AndWritesNoFile` (the CCD window has no file path, its constructor
+  takes the XML, it reads and writes no file, its reconcile buttons and Show XML use the text; `DisplayCCD` writes nothing and hands it
+  `doc.InnerXml`) and `DeleteOldCcdFiles_OnlyTheFilesAnOlderVersionLeft` (the four names only, in the folder only, the hour, a file in use
+  stays, no folder created). The window itself is not shown in a test (it needs the program's translations and layout); its page goes
+  through the same `NavigateToHtml` as the smoke test's pages.
 - `WebView2InitMessageTests` (seams, no window, no browser): a missing runtime, a runtime that will not start (also for a window opened after
   Init told the session once and a wiki page held it back) and a window closed while starting each show exactly one message, or none; the
   window's own setup never runs without its browser; the four windows go through `WebView2L.TryInit`.
@@ -287,6 +301,7 @@ shown, nor are the images of an email's Show Images, so a patient's email never 
 ### Not verified here
 
 - Printing (Windows' print dialog), find (Ctrl+F) and the CCD's XML view on screen in the running program: they work on the shown document,
-  which is the same as before; only where its bytes come from changed.
+  which is the same as before; only where its bytes come from changed. The CCD window's reconcile buttons and Show XML with a real Direct
+  message (they parse the same text the file held).
 - Wiki images from cloud storage (no SFTP or Dropbox A to Z folder here): the store and the allowed folder are unit tested, the download
   path is not.
