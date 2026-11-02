@@ -408,7 +408,7 @@ The download code is fixed but stays **manual** in v1, because nothing in this r
 
 ### 3.9 Data migrated from Open Dental
 
-On a restored `fox-db` copy:
+On a restored copy of the office database:
 
 - **Rows with `AuthenticationType=1`** hold plain-text tokens issued to Open Dental's client.
   - They are **not used**: `RefreshToken` lacks `osd1$`, which means legacy (3.3).
@@ -635,7 +635,7 @@ There is no vendor lead time. A Cloud project and Desktop client are self-servic
 
 1. **Program row naming.** Is `ProgramName.GmailApi` with ProgDesc "Gmail API" right? The Microsoft 365 spec should follow the same pattern (e.g. `Microsoft365Mail`), so agree on both at once.
 2. **Inbox polling.** Is a manual check on inbox open/refresh enough? Or should there be a background `ODThread` in `FormOpenDentalThreads`, every N minutes and on one designated workstation? A new `PrefName` is a data row, not a schema change. The same decision covers POP3 and Microsoft accounts, which also lost their poller.
-3. **Does the office use Gmail OAuth today?** Run `SELECT COUNT(*), SUM(DownloadInbox) FROM emailaddress WHERE AuthenticationType=1` on the restored `fox-db` copy. If none, the feature could ship send-only first.
+3. **Does the office use Gmail OAuth today?** Run `SELECT COUNT(*), SUM(DownloadInbox) FROM emailaddress WHERE AuthenticationType=1` on the restored copy of the office database. If none, the feature could ship send-only first.
 4. **Per-office client (proposed) or one project-wide client?** A shared client would mean Google verification, restricted-scope review and a security assessment, plus publishing a privacy policy. Not recommended.
 5. **PHI notice.** Should Setup show a factual note, such as "a BAA with the email provider is required to send PHI", perhaps when the `id_token` has no `hd` (hosted domain) claim? Or does that belong only in the documentation (ground rule 7)?
 6. **Library.** Option A or B (4.1). That depends on how soon the binaries cleanup wants `Google.Apis*.dll` gone.

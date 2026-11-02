@@ -78,7 +78,7 @@ Behaviour from Open Dental's public manual ([CareCredit Setup](https://www.opend
 
 ### 1.3 Exactly what Open Dental's HQ provided
 
-Sources: `D:/Dev/opendental-schema/hq-vendor-table.md` (CareCredit row) and the code cited.
+Sources: the HQ vendor table (kept outside the repository) (CareCredit row) and the code cited.
 
 | HQ piece | What it did | Evidence in this repo | Direct replacement |
 |---|---|---|---|
@@ -260,7 +260,7 @@ A webhook needs a public HTTPS listener. That would mean hosting something reach
 
 `CareCreditJobs.PollPending()` uses `CareCreditWebResponses.GetAllPending()` and the row method `CareCreditWebResponse.GetLastPendingUpdateDateTime()`, the same shape as the PayConnect monitor in `OpenDentBusiness/WebBridges/PayConnect.cs` ~425–455. `CareCredit.UpdateWebResponse(row)` maps the vendor status onto `CareCreditWebStatus` and writes the row. Then:
 
-- **Purchase or refund completed, `PayNum=0`** (the patient finished it on their own device): `Payments.InsertFromCareCredit(...)` creates the payment with `IsCcCompleted=true`, the CareCredit payment type and status `OnlinePending` (or `OnlineProcessed` when the `OnlinePaymentsMarkAsProcessed` pref is on), so staff see it with the other online payments. Set the row's `PayNum`, note (`GetFormattedNote`) and merchant fee (`GetMerchantFee`). A refund is inserted as a negative amount. **Assumption:** this is inferred from the method's signature and has to be confirmed against how Open Dental's migrated refund rows look in fox-db.
+- **Purchase or refund completed, `PayNum=0`** (the patient finished it on their own device): `Payments.InsertFromCareCredit(...)` creates the payment with `IsCcCompleted=true`, the CareCredit payment type and status `OnlinePending` (or `OnlineProcessed` when the `OnlinePaymentsMarkAsProcessed` pref is on), so staff see it with the other online payments. Set the row's `PayNum`, note (`GetFormattedNote`) and merchant fee (`GetMerchantFee`). A refund is inserted as a negative amount. **Assumption:** this is inferred from the method's signature and has to be confirmed against how Open Dental's migrated refund rows look in the office database.
 - **Completed with `PayNum`>0:** update that payment the same way `FormPayment` does (`IsCcCompleted`, note, fee). Never create a second payment. The row's `PayNum` is the key that guarantees this.
 - **QuickScreen and lookup results:** `UpdateCareCreditPatField`, `UpsertPreApprovalAmt` / `UpsertAvailableCredit`.
 
@@ -367,7 +367,7 @@ This surface is reconstructed only from how this repo calls it. Implement it in 
 | `enum CareCreditLandingPage { HM, AP, LU, PR, QS, RF }` | CareCreditL | Names as used. Values map to the vendor codes in the gated guide. |
 | `enum EnumCareCreditPrefillServiceType { A, C, L, R }` | CareCreditL | `C` is the default |
 | `enum EnumCareCreditBatch { Off, On, NoBalance, LookupOnly }` with `[Description]` | FormCareCreditSetup | **Stored as int in `QSBatchEnabled`.** Off=0 and On=1 are certain (`ConvertDatabases6`, Setup default "1"). The values of NoBalance and LookupOnly are not visible in this repo (see open question 6). |
-| `class CareCreditQSBatchResponse { static From(CareCreditWebResponse); bool IsInvalidInput; string ResponseDesc; }` | CareCreditWebResponses ~208, FormCareCreditTransactions | Deserialize `LastResponseStr`. It must also read the JSON that Open Dental stored in migrated rows (study their shape on a restored fox-db copy; it's data, not a binary). |
+| `class CareCreditQSBatchResponse { static From(CareCreditWebResponse); bool IsInvalidInput; string ResponseDesc; }` | CareCreditWebResponses ~208, FormCareCreditTransactions | Deserialize `LastResponseStr`. It must also read the JSON that Open Dental stored in migrated rows (study their shape on a restored copy of the office database; it's data, not a binary). |
 
 ### 4.3 Files and members that change
 
@@ -487,7 +487,7 @@ This surface is reconstructed only from how this repo calls it. Implement it in 
 12. Token expiry: shorten the stored expiry by hand → transparent refresh.
 13. Host check: capture traffic with a proxy for a full test day. The only hosts contacted are the configured Synchrony hosts, none are Open Dental's, and nothing is contacted while the program is disabled.
 
-**Regression on a restored copy of fox-db** (never the live database):
+**Regression on a restored copy of the office database** (never the live database):
 
 - Migrated `carecreditwebresponse` rows display in all three tabs.
 - Old payments keep their CareCredit fee.
@@ -541,7 +541,7 @@ The office can still take CareCredit through Synchrony's own provider portal, an
 3. Exact prefill fields and landing-page and service-type codes, the session parameter name and lifetime, and the pullback status vocabulary (gated reference).
 4. Is Batch QuickScreen a separate API or bulk request, and what are its schedule rules and result timing? Can lookup-only mode work without SSN digits?
 5. May endpoint paths and field names from the gated docs be published in GPL source?
-6. Which ints do `EnumCareCreditBatch.NoBalance` and `LookupOnly` use in `QSBatchEnabled`? Settle it from the office's own data. On a restored fox-db copy, compare each clinic's `QSBatchEnabled` value with what Open Dental 25.3's setup window shows, or set each option once in a 25.3 trial install. Either way, the enum must match.
+6. Which ints do `EnumCareCreditBatch.NoBalance` and `LookupOnly` use in `QSBatchEnabled`? Settle it from the office's own data. On a restored copy of the office database, compare each clinic's `QSBatchEnabled` value with what Open Dental 25.3's setup window shows, or set each option once in a 25.3 trial install. Either way, the enum must match.
 7. BAA or privacy addendum for prefill and batch data, and the FCRA prescreen obligations for Batch QuickScreen.
 8. How do refunds finished outside the app appear in pullback (negative purchase, or a separate type), and should they create a negative payment automatically or only flag the original?
 9. Is Consumer Self Service reachable through the same Patient Data Service and credentials, or does it need separate enrollment? The same question applies to Batch QuickScreen, the Admin and Reporting modules and account lookup, which the public page lists as features without saying how they're enabled.
@@ -562,7 +562,7 @@ The office can still take CareCredit through Synchrony's own provider portal, an
 - Open Dental manual, CareCredit Setup: https://www.opendental.com/site/carecreditsetup.html
 - Open Dental manual, CareCredit: https://www.opendental.com/site/carecredit.html
 - Open Dental manual, CareCredit Transactions: https://www.opendental.com/site/carecredittransactions.html
-- In repo: `D:/Dev/opendental-schema/hq-vendor-table.md` (CareCredit row), `docs/decoupling-plan.md`, `docs/specs/port-backlog.md`, `docs/specs/vendor-direct/edgeexpress.md` (format)
+- Outside the repository: the HQ vendor table (CareCredit row). In repo: `docs/decoupling-plan.md`, `docs/specs/port-backlog.md`, `docs/specs/vendor-direct/edgeexpress.md` (format)
 
 ## Fact-check log (2026-10-18)
 

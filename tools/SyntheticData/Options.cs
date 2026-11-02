@@ -44,8 +44,8 @@ Commands:
 Connection: --server (localhost, 127.0.0.1 or ::1 only), --port 3306, --user root. The password is read from the
 SYNTH_DB_PASSWORD environment variable. Databases written by this tool must be named synth...
 
-Defaults: seed 20261018, size small, as of 2026-09-30, schema from D:\Dev\opendental-schema\fox-db-schema.sql, falling
-back to the local database od_253_schema.";
+Defaults: seed 20261018, size small, as of 2026-09-30, schema from the dump named by the SYNTH_SCHEMA_SQL environment
+variable (a schema-only dump of an Open Dental 25.3.48 database), falling back to the local database od_253_schema.";
 
 		public static Options Parse(string[] args) {
 			Options options=new Options();

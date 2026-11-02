@@ -309,7 +309,7 @@ namespace VendorDirectTests.Foundation {
 				FakeHttpHandler fake=new FakeHttpHandler().Enqueue(HttpStatusCode.OK,"{\"token\":\"t\"}",
 					actionCustomize:x => x.Headers.Add("x-request-id","req-42"));
 				HttpClient httpClient=VendorHttp.CreateClient(MakeOptions(listLog),fake);
-				HttpRequestMessage request=new HttpRequestMessage(HttpMethod.Get,"addresses?streetAddress=123+Main+St&ZIPCode=98270");
+				HttpRequestMessage request=new HttpRequestMessage(HttpMethod.Get,"addresses?streetAddress=123+Main+St&ZIPCode=62701");
 				request.Headers.Authorization=new AuthenticationHeaderValue("Bearer","secret-token");
 				request.Headers.Add("API-Key","key-123");
 				await httpClient.SendAsync(request);
@@ -321,7 +321,7 @@ namespace VendorDirectTests.Foundation {
 				string allLines=string.Join("\n",listLog);
 				StringAssert.Contains(listLog[0],"TestVendor GET api.vendor.example: 200 request req-42");
 				StringAssert.Contains(listLog[1],"TestVendor address: 200");
-				foreach(string forbidden in new[] { "Main","98270","Oak","secret-token","key-123","token","/v1/" }) {
+				foreach(string forbidden in new[] { "Main","62701","Oak","secret-token","key-123","token","/v1/" }) {
 					Assert.IsFalse(allLines.Contains(forbidden),"Log leaked: "+forbidden);
 				}
 			});

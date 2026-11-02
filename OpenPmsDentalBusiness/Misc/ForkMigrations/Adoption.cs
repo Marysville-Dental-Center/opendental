@@ -38,7 +38,7 @@ namespace OpenPmsDentalBusiness {
 	///here the fork markers govern the database. 7. The fork migration runner runs its pending steps. 8. ForkAdoptedFrom records the finish.</summary>
 	public class Adoption {
 		public const string PATIENT_PORTAL_EMAIL_COLUMN="_portal_active_email";
-		///<summary>The unique index the office copy has on the column (fox-db-schema.sql). Any other index on the column is dropped too.</summary>
+		///<summary>The unique index the office copy has on the column (as in the office's schema-only dump). Any other index on the column is dropped too.</summary>
 		public const string PATIENT_PORTAL_EMAIL_INDEX="portal_active_email_uniq";
 		///<summary>Preferences that only ever held addresses of Open Dental's servers. They are blanked whatever they hold. Any other preference whose
 		///value is a web address on one of Open Dental's hosts (CodeBase.VendorDirect.HqHosts) is blanked too.</summary>

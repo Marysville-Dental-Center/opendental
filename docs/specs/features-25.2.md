@@ -11,7 +11,7 @@ Baseline: our code is upstream Open Dental 24.3.63. Target: schema and behavior 
 | 25.2 release notes | https://www.opendental.com/site/version25_2.html | The authoritative list of items. The page has no per-item manual links. |
 | 25.2 blog post | https://opendental.blog/version-25-2/ | Extra behavior detail for about a dozen items, plus two changes the release page omits. |
 | Published database docs | https://www.opendental.com/OpenDentalDocumentation25-2.xml, compared with https://www.opendental.com/OpenDentalDocumentation25-1.xml, and the diff doc https://www.opendental.com/OpenDentalDiffDocumentation25-2.xml | New tables and columns, enum values, and column comments that describe behavior (Ins Pick, Patient List, inspending, sheet signer, task category, XConnect). |
-| 25.3 DDL dump | `D:\Dev\opendental-schema\fox-db-schema.sql` | Exact column types and defaults. Every schema line below was checked against it. |
+| 25.3 DDL dump | The office schema dump: a schema-only dump of an Open Dental 25.3.48 office database, kept outside the repository | Exact column types and defaults. Every schema line below was checked against it. |
 | Public manual | https://www.opendental.com/manual/ | **Frozen at 24.4**: the version picker on each page tops out at "v24.4". Used only to describe the starting behavior. Our code is 24.3, so a manual page can describe a 24.4 change that our code lacks; check the code before calling something "baseline". |
 | Public `/site/` pages | e.g. https://www.opendental.com/site/bridgedtxstudio.html | A few current pages are public: bridge setup pages, CareCredit setup, the reports overview. |
 | Schema companion spec | `docs/specs/schema-changes-24.3-to-26.1.md` | Full DDL and migration notes for all schema changes; this file only repeats what each feature needs. |
@@ -32,8 +32,8 @@ Sizes are in engineer time, including tests: **S** ≤ 2 days, **M** 3 to 7 days
    - `EnumEFormFieldType` 8 `PatientList` (added in the 25.1 docs, released as a feature in 25.2) and 9 `InsPick`.
    - `EnumEFormStatus`: `Imported` (3) removed in 25.2; `UnmatchedToPatient` (4) was already removed in 25.1.
    - Reserve-only values for cut eServices: `ApptReminderType` 11, `EmailMessageSource.EClipboardWeb` (stored as a string), `SmsMessageSource` 29, and `SessionTokenType` 5.
-2. **Preference names.** Open Dental's internal preference names are not public, except `TaskCategoryShow`, which the DB docs name. For each new preference below we give the UI label and a *proposed* internal name. Before coding, restore a copy of `fox-db` and run `SELECT PrefName, ValueString FROM preference`, then diff that list against our `PrefName` enum. Adopt Open Dental's names wherever a 25.2 preference already exists in the office data, so that migrated settings carry over.
-3. **Other string keys that live in office data**: `program.ProgName` for new bridges and `displayreport.InternalName` for new reports. Proposed values are given below; confirm them against the restored `fox-db` before release.
+2. **Preference names.** Open Dental's internal preference names are not public, except `TaskCategoryShow`, which the DB docs name. For each new preference below we give the UI label and a *proposed* internal name. Before coding, restore a copy of the office database and run `SELECT PrefName, ValueString FROM preference`, then diff that list against our `PrefName` enum. Adopt Open Dental's names wherever a 25.2 preference already exists in the office data, so that migrated settings carry over.
+3. **Other string keys that live in office data**: `program.ProgName` for new bridges and `displayreport.InternalName` for new reports. Proposed values are given below; confirm them against the restored office database before release.
 4. **Database conversion**: every schema change goes into our convert script with the exact 25.3 DDL types. Changes are additive, with one rename (`task.TriageCategory` → `Category`). Regenerate the CRUD classes in `OpenDentBusiness/Crud/` with `xCrudGenerator` instead of hand-editing them.
 
 ## Summary
@@ -106,7 +106,7 @@ Counts: 35 desktop, 4 vendor-direct, 32 excluded (12 Open Dental-service, 20 oth
 ### v25_2-core-schema-enum-sync: 25.2 schema, enum and type sync
 
 - **Category:** desktop · **Size:** M · **Confidence:** High
-- **Sources:** https://www.opendental.com/OpenDentalDiffDocumentation25-2.xml, https://www.opendental.com/OpenDentalDocumentation25-2.xml, `fox-db-schema.sql`, `docs/specs/schema-changes-24.3-to-26.1.md`.
+- **Sources:** https://www.opendental.com/OpenDentalDiffDocumentation25-2.xml, https://www.opendental.com/OpenDentalDocumentation25-2.xml, the office schema dump, `docs/specs/schema-changes-24.3-to-26.1.md`.
 
 **Purpose.** This item does the plumbing that the feature items assume. Do it first, so that a migrated 25.3 database can open in our build even before every feature exists.
 
@@ -277,7 +277,7 @@ The new 25.2 preference most likely extends this flow. In the usual case the med
 **UI:**
 
 - Preferences > Account > Claim Receive, **Medical** group: new checkbox **Prompt for Medical EOB on primary claims**, under "Prompt for primary claims".
-- Proposed internal name `ClaimMedReceivedPromptForMedicalEob`; bool, default false. Confirm the name against the restored `fox-db` (cross-cutting rule 2).
+- Proposed internal name `ClaimMedReceivedPromptForMedicalEob`; bool, default false. Confirm the name against the restored office database (cross-cutting rule 2).
 
 **Rules:**
 
@@ -577,7 +577,7 @@ The operatory column itself paints scheduled ("open") time in one generic color,
 | `PickListVis` | Pipe-delimited labels of the three options, translatable. `PickListVisEnglish` keeps the English text for conditional logic. `PickListDb` is not used. |
 | `ValueString` | `""` = None; `"New"` = New; `"InsSubNum:####"` or `"InsPendingNum:####"` = Existing. Display reads the referenced row live. |
 
-**Which slot a field represents.** This is not documented. Our design takes it from `DbLink`: `ins1Pick` = ordinal 1 and `ins2Pick` = ordinal 2, which matches the existing `ins1*`/`ins2*` DbLinks in `EFormFieldsAvailable.cs`. **Verify** against `eformfielddef` rows with `FieldType=9` in the restored `fox-db` and adopt Open Dental's convention if it differs.
+**Which slot a field represents.** This is not documented. Our design takes it from `DbLink`: `ins1Pick` = ordinal 1 and `ins2Pick` = ordinal 2, which matches the existing `ins1*`/`ins2*` DbLinks in `EFormFieldsAvailable.cs`. **Verify** against `eformfielddef` rows with `FieldType=9` in the restored office database and adopt Open Dental's convention if it differs.
 
 **UI:**
 
@@ -746,7 +746,7 @@ Get a product decision before building. If the owner allows looking at the offic
 - If the path is blank, show "Set the IAP login address in Program Links".
 - Accept only `https://` URLs; open them with the shell.
 - Remove `FormIap`, the DLL calls, and the plan-copy code, including the benefit import.
-- The public setup page says only that Open Dental opens the IAP login page and that the bridge no longer works with the IAP desktop product. Keeping the URL in "Path of file to open" is **our** choice; Open Dental may hard-code it. Check the `program` row for IAP in the restored `fox-db`.
+- The public setup page says only that Open Dental opens the IAP login page and that the bridge no longer works with the IAP desktop product. Keeping the URL in "Path of file to open" is **our** choice; Open Dental may hard-code it. Check the `program` row for IAP in the restored office database.
 
 **Schema:** none. On conversion, if the IAP program row still has a local file path, leave it disabled and blank the path. The office enters the vendor's URL.
 
@@ -936,12 +936,12 @@ Tasks with no object attached remain unfiltered, as before.
 
 - With no patient selected, show "Please select a patient first."
 - If the exe is missing, show the path in the error.
-- The patient ID is PatNum by default. Offer the standard "PatNum or ChartNumber" program property used by other imaging bridges. The public setup pages list only Birthdate Format, so this property is **our** addition. If the restored `fox-db` has DTX `programproperty` rows, match them exactly and add ours only if missing.
+- The patient ID is PatNum by default. Offer the standard "PatNum or ChartNumber" program property used by other imaging bridges. The public setup pages list only Birthdate Format, so this property is **our** addition. If the restored office database has DTX `programproperty` rows, match them exactly and add ours only if missing.
 - Acquire with a patient who does not exist in DTX yet: launch anyway and let DTX handle it. Note this in the help text.
 
 **Schema and data:**
 
-- New `ProgramName` values. Proposed: `DTXStudio`, `DTXStudioAcquire`. Confirm against the `program.ProgName` rows in the restored `fox-db`.
+- New `ProgramName` values. Proposed: `DTXStudio`, `DTXStudioAcquire`. Confirm against the `program.ProgName` rows in the restored office database.
 - The convert script inserts the `program`, `programproperty` (Birthdate Format, PatNum/ChartNumber) and `toolbutitem` rows, disabled.
 
 **Touchpoints:** `OpenDentBusiness/TableTypes/Program.cs` (`ProgramName` enum), new `WpfControlsOD/Bridges/DTXStudio.cs` (model it on `WpfControlsOD/Bridges/DentalStudio.cs`), `WpfControlsOD/Logic/ProgramL.cs` (dispatch ~138 to 190), `OpenDental/Forms/FormProgramLinkEdit.cs` (no change expected), convert script.
@@ -978,7 +978,7 @@ Tasks with no object attached remain unfiltered, as before.
 - Rows disappear when the amount is cleared, set to 0, or converted to supplemental.
 - Hidden from users without access to that clinic.
 
-**Permissions:** standard report security. Add a `displayreport` row; access is through `Reports` permission with `FKey=DisplayReportNum` (Report Setup). Proposed internal name `ODInsPendingSupplementals`; confirm against `fox-db.displayreport`. The convert script grants it to user groups that already have `ODInsuranceOverpaid` (our choice).
+**Permissions:** standard report security. Add a `displayreport` row; access is through `Reports` permission with `FKey=DisplayReportNum` (Report Setup). Proposed internal name `ODInsPendingSupplementals`; confirm against the office database's `displayreport` rows. The convert script grants it to user groups that already have `ODInsuranceOverpaid` (our choice).
 
 **Schema:** no new table; one `displayreport` row.
 
@@ -1082,7 +1082,7 @@ The rest of the 25.2 rename list is not public. Collect it from the office's 25.
 
 - Preferences > Server Connections, new group "Replication".
 - Two numeric boxes in ms, range 0 to 60000, default 0, which keeps today's behavior.
-- Proposed names `ReplicationReadDelayMs` and `ReplicationSignalLookbackMs`. **Verify** against the `fox-db` preference rows and, if Open Dental's prefs exist, adopt their names and meaning.
+- Proposed names `ReplicationReadDelayMs` and `ReplicationSignalLookbackMs`. **Verify** against the office database's preference rows and, if Open Dental's prefs exist, adopt their names and meaning.
 
 **Rules:**
 
@@ -1298,9 +1298,9 @@ The 25.3 release notes (https://www.opendental.com/site/version25_3.html) mark s
 
 ## Open questions
 
-1. **Where the XConnect API key lives in 25.2+.** The `LocationID` DB comment dropped its XConnect mention. Inspect `clearinghouse.LocationID` values in the restored `fox-db` before deciding the conversion.
-2. **Ins Pick slot convention.** How Open Dental marks primary versus secondary on an Ins Pick field. Read the `eformfielddef` rows with `FieldType=9` in `fox-db`.
-3. **Preference, ProgName and DisplayReport names.** Diff the `preference`, `program` and `displayreport` rows in the restored `fox-db` against our enums. This settles the proposed names in this file.
+1. **Where the XConnect API key lives in 25.2+.** The `LocationID` DB comment dropped its XConnect mention. Inspect `clearinghouse.LocationID` values in the restored office database before deciding the conversion.
+2. **Ins Pick slot convention.** How Open Dental marks primary versus secondary on an Ins Pick field. Read the `eformfielddef` rows with `FieldType=9` in the office database.
+3. **Preference, ProgName and DisplayReport names.** Diff the `preference`, `program` and `displayreport` rows in the restored office database against our enums. This settles the proposed names in this file.
 4. **Observing the office's licensed 25.3 install.** Many Low-confidence items (permission renames, Patient Forms window, Edit Benefit layout, time-bar preference, replication delays, blur, DBM tool scope, offline wiki, CARC logic, Medical EOB prompt) could be confirmed by looking at the office's own running Open Dental 25.3. This is black-box observation, not decompiling, but it goes beyond "public documentation only". **The owner should decide whether it is allowed.**
 5. **Medical EOB prompt trigger.** Our design hooks the prompt into the existing "Prompt for primary claims" flow (`ClaimMedReceivedPromptForPrimaryClaim`): when a medical claim is received, ask to attach the medical EOB to the primary dental claims. Two other readings are possible. (a) Ask to scan the EOB for the medical claim's own payment when it is received. (b) Ask when a dental claim is created for a patient who also has medical coverage. Choose one.
 6. **XConnect claim submission.** `EtransType` 36/37 suggest Open Dental may also *send* claims through XConnect, not only validate them. Decide whether we need that, and get DentalXChange's API documentation either way.

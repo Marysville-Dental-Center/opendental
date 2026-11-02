@@ -286,7 +286,7 @@ Then **Test connection**, then **Enabled**.
 
 NewCrop is **[Partner / sales]**. The OID root is **[Self-service, free]**.
 
-1. First run the discovery queries in `newcrop.md` §6, step 1 on a restored `fox-db` copy. If the office doesn't use NewCrop, skip steps 2-5.
+1. First run the discovery queries in `newcrop.md` §6, step 1 on a restored copy of the office database. If the office doesn't use NewCrop, skip steps 2-5.
 2. Choose the route: an authorized Ensora reseller, or Ensora directly ([product page](https://ensorahealth.com/product/erx/features); there is no public partner sign-up).
 3. Ask for:
    - preproduction, then production, credentials
@@ -420,7 +420,7 @@ The integrator steps are **[Partner / sales]**, once per integrator. The per-off
 
 Per dentist: **[Partner / sales]** through CDA membership. For the project: **[Partner / sales]** certification.
 
-First check whether the office is in Canada at all: `SELECT COUNT(*) FROM carrier WHERE IsCDA=1` on `fox-db`.
+First check whether the office is in Canada at all: `SELECT COUNT(*) FROM carrier WHERE IsCDA=1` on the office database.
 
 1. **Project:**
    - Ask `cdanet@cda-adc.ca` about CDAnet certification, the Development Tools and simulator, and vendor test credentials.
@@ -662,9 +662,9 @@ These are recommendations for the owner, who decided to re-implement each integr
 |---|---|---|
 | **CareCredit** | **Remove**, unless Synchrony grants Direct Integration Partner status and its own partner code (the spec's go/no-go gate). Removal is S | <ul><li>Partner-only: the API reference, hosts and sandbox are behind a login, and may not be publishable in GPL source.</li><li>The largest package (L, 15-20 d), and it needs an always-on job host for batch QuickScreen.</li><li>Sends identity, contact, fee and sometimes SSN digits to a lender, with no confirmed BAA.</li><li>Every change to the API interaction needs Synchrony's re-approval.</li><li>The decoupling plan originally cut it.</li><li>The office can still take CareCredit through Synchrony's provider portal and record the payment with the CareCredit payment type.</li></ul> |
 | **PostcardMania** | **Remove** (or defer until the vendor confirms a BAA) | <ul><li>A marketing feature, close to ground rule 7's line.</li><li>The public v3 API doesn't match the old flow (partner accounts, SSO, list upload), so the "re-implementation" is a new feature that places paid orders from inside the PMS.</li><li>Patient names and addresses go to a mail house, which needs a BAA; the vendor's public material doesn't mention HIPAA.</li><li>The office can export a patient list with the existing reports or queries and use any mail house, under its own BAA.</li><li>The decoupling plan originally cut it.</li></ul> |
-| **PayConnect 1.0 and VeriFone terminals** (`DpsPos.dll`) | **Remove** (PAYCONNECT1-REMOVE) | <ul><li>DentalXChange has decommissioned PayConnect 1.0.</li><li>`DpsPos.dll` is proprietary, with no public documentation or redistribution terms.</li><li>The v1 code carries Open Dental's compiled-in integrator identity.</li><li>PayConnect 2 terminals go through the cloud API instead.</li><li>First confirm the office's "Program Version" in `fox-db` is 2.</li></ul> |
-| **Dropbox A to Z storage** | **Remove**, unless `fox-db` shows `AtoZfolderUsed=2` and the owner accepts the trade-offs. Removal is S | <ul><li>It conflicts with ground rule 6 ("patient data and images stay on local storage").</li><li>Developer Terms §2.6(c) bars tokens that let several app users into one account, which is exactly what shared office storage is.</li><li>Imaging goes offline whenever the internet does.</li><li>Local A to Z, or SFTP to the office's own server, plus the office's own backup or sync tool, cover the need with no vendor integration.</li></ul> |
-| **NewCrop (Ensora) eRx** | **Remove the NewCrop option** if `fox-db` shows the office doesn't use it; keep the credential deletion and the OID work either way | <ul><li>Partner-only, through Ensora or a reseller, with no public documentation.</li><li>Open Dental points practices new to eRx at DoseSpot, so offering both partner-only eRx vendors doubles the onboarding for no gain.</li><li>The code carries Open Dental's own compiled-in NewCrop credentials, which must go regardless.</li></ul> |
+| **PayConnect 1.0 and VeriFone terminals** (`DpsPos.dll`) | **Remove** (PAYCONNECT1-REMOVE) | <ul><li>DentalXChange has decommissioned PayConnect 1.0.</li><li>`DpsPos.dll` is proprietary, with no public documentation or redistribution terms.</li><li>The v1 code carries Open Dental's compiled-in integrator identity.</li><li>PayConnect 2 terminals go through the cloud API instead.</li><li>First confirm the office's "Program Version" in the office database is 2.</li></ul> |
+| **Dropbox A to Z storage** | **Remove**, unless the office database shows `AtoZfolderUsed=2` and the owner accepts the trade-offs. Removal is S | <ul><li>It conflicts with ground rule 6 ("patient data and images stay on local storage").</li><li>Developer Terms §2.6(c) bars tokens that let several app users into one account, which is exactly what shared office storage is.</li><li>Imaging goes offline whenever the internet does.</li><li>Local A to Z, or SFTP to the office's own server, plus the office's own backup or sync tool, cover the need with no vendor integration.</li></ul> |
+| **NewCrop (Ensora) eRx** | **Remove the NewCrop option** if the office database shows the office doesn't use it; keep the credential deletion and the OID work either way | <ul><li>Partner-only, through Ensora or a reseller, with no public documentation.</li><li>Open Dental points practices new to eRx at DoseSpot, so offering both partner-only eRx vendors doubles the onboarding for no gain.</li><li>The code carries Open Dental's own compiled-in NewCrop credentials, which must go regardless.</li></ul> |
 | **Canadian claims (beyond the clean-up)** | **Park** if the office is US-only: ship `canada.md` 4.1 only (0.5 d) | <ul><li>Nothing suggests the office is in Canada.</li><li>Live claims need CDAnet certification of this product (months, outside the code).</li><li>Hygienist claims also need TELUS and ABC vendor certificates.</li></ul> |
 
 Integrations to **keep**, even though some are gated:
@@ -771,7 +771,7 @@ Where specs disagree, the following wins:
    - `TryEncrypt` silently returns plain text on failure.
    - `TryDecrypt` returns a corrupted `osd1$` value unchanged, which would then be sent as the password.
 2. **`OAuthApplicationNames`.** Keep every member and mark the unused ones obsolete. `dosespot.md` proposes deleting four members; don't, so the ordinals never shift.
-3. **Program names.** `Microsoft365Email` (the Microsoft 365 spec's name, not `google.md`'s `Microsoft365Mail` suggestion), `GmailApi`, `USPSAddresses`, `PostcardMania`. All appended at the end of `ProgramName`. Before release, check `fox-db` for clashes with the queries each spec gives.
+3. **Program names.** `Microsoft365Email` (the Microsoft 365 spec's name, not `google.md`'s `Microsoft365Mail` suggestion), `GmailApi`, `USPSAddresses`, `PostcardMania`. All appended at the end of `ProgramName`. Before release, check the office database for clashes with the queries each spec gives.
 4. **One listener class** (5.1), not four.
 5. **`DentalTek`.** `canada.md` says `FormCarriers` gets it from the prebuilt Bridges assembly. In fact it is in-repo source (`WpfControlsOD/Bridges/DentalTek.cs`, namespace `OpenDental.Bridges`) and doesn't depend on `Bridges.dll`.
 

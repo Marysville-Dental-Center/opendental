@@ -37,7 +37,7 @@ All of this is optional and runs only when **Setup > Program Links > eRx** is en
 
 ### 1.2 What Open Dental's HQ provided
 
-The sources are `D:/Dev/opendental-schema/hq-vendor-table.md`, the code below, and Open Dental's public manual pages [DoseSpot Setup](https://opendental.com/manual/dosespotsetup.html) and [DoseSpot requirements](https://opendental.com/manual/dosespotrequiredinfo.html). Rows marked *inferred* are reasoned from how the code behaves, not from HQ source.
+The sources are the HQ vendor table (kept outside the repository), the code below, and Open Dental's public manual pages [DoseSpot Setup](https://opendental.com/manual/dosespotsetup.html) and [DoseSpot requirements](https://opendental.com/manual/dosespotrequiredinfo.html). Rows marked *inferred* are reasoned from how the code behaves, not from HQ source.
 
 | What HQ provided | How it reached the office | Code | Needed after decoupling? |
 |---|---|---|---|

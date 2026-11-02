@@ -408,7 +408,7 @@ The office does this itself, in its own name. The project never supplies a USPS 
 
 ## 6. Test plan
 
-There is no separate sandbox account. The **TEM** host (`apis-tem.usps.com`) is used with the office's production credentials (FAQ), once USPS has enabled the licensed access. Do these steps on a restored copy of `fox-db` or a dev database, with Windows set to culture **en-US**. Every production call is billable; keep production checks to a handful.
+There is no separate sandbox account. The **TEM** host (`apis-tem.usps.com`) is used with the office's production credentials (FAQ), once USPS has enabled the licensed access. Do these steps on a restored copy of the office database or a dev database, with Windows set to culture **en-US**. Every production call is billable; keep production checks to a handful.
 
 1. **Off by default:**
    - On a fresh database and on a migrated Open Dental database (preference = 1), save a patient with a changed address and import a patient form. Expect no prompt, no network traffic (check with Fiddler or a firewall log) and no error.
@@ -474,13 +474,13 @@ Not included: the office's USPS onboarding (licence, payment account, access app
    - The developer FAQ still reads as if Addresses were free in every app; expect USPS's pages to keep changing.
 7. **Unit folded into Address1.** USPS may return the unit inside `streetAddress` with `secondaryAddress` null, so accepting the result blanks Address2. This matches what Open Dental users saw (same field mapping), but staff may notice. The compare window shows it before they accept.
 8. **Upper case.** USPS returns upper case, so accepting changes the patient's address casing. Open Dental behaved the same way.
-9. **ProgName collision.** If an Open Dental 25.3 database already holds a program row with the same name and other properties, `InsertIfMissing` would adopt it. Check `fox-db` first (open question 1).
+9. **ProgName collision.** If an Open Dental 25.3 database already holds a program row with the same name and other properties, `InsertIfMissing` would adopt it. Check the office database first (open question 1).
 10. **`osd1$` is obfuscation only.** Same as every bridge secret. The impact is low (quota and billed lookups on the office's account).
 11. **Bridges.dll split ordering.** If the Bridges split lands first and defines these types in a `Bridges` namespace, this spec's `OpenDentBusiness` types must replace them, not sit beside them. Coordinate with the QuickBooks Online and Microsoft 365 specs.
 
 ### 7.3 Open questions
 
-1. **`fox-db` check.** `SELECT ProgName,Enabled FROM program WHERE ProgName LIKE '%USPS%' OR ProgDesc LIKE '%USPS%';` and `SELECT ValueString FROM preference WHERE PrefName='AddressVerifyWithUSPS';`. None is expected, because Open Dental used only the preference. Confirm before choosing the final ProgName `USPSAddresses`.
+1. **Office database check.** `SELECT ProgName,Enabled FROM program WHERE ProgName LIKE '%USPS%' OR ProgDesc LIKE '%USPS%';` and `SELECT ValueString FROM preference WHERE PrefName='AddressVerifyWithUSPS';`. None is expected, because Open Dental used only the preference. Confirm before choosing the final ProgName `USPSAddresses`.
 2. **Real quota and tier.** After onboarding, what hourly quota and fee tier does the office's app actually get? Is 60 per hour enough, or should the office request more from the start?
 3. **CRID/MID.** The USPS README says a CRID and MID are needed for a token. Does an Addresses-only app from a new portal account work without a MID? Confirm in TEM at the first registration and update section 5.
 4. **Scope.** Send `scope=addresses` (least privilege) or leave it out (app default)? Confirm in TEM that `addresses` is accepted.
@@ -506,7 +506,7 @@ Not included: the office's USPS onboarding (licence, payment account, access app
 - Secondary unit designators (Pub 28): <https://pe.usps.com/text/pub28/28c2_003.htm>
 - Third-party reports (unconfirmed by USPS pages): rate limit, <https://www.smarty.com/blog/usps-api-rate-limit>; Web Tools retirement and per-token limits, <https://directmail.io/blog/usps-api-marketplace-explained-npf-2026>; licensed cut-over and onboarding steps, <https://github.com/CannObserv/address-validator/issues/155> and <https://www.ablecommerce.com/forums/posts/m8721-USPS-Addresses-API-change>; fee tiers, <https://apicostcalc.com/blog/usps-address-api-no-longer-free-2026.html>
 - HHS de-identification guidance (address as an identifier): <https://www.hhs.gov/hipaa/for-professionals/special-topics/de-identification/index.html>
-- In-repo: `D:/Dev/opendental-schema/hq-vendor-table.md` (USPS row), `docs/decoupling-plan.md` (ground rules 5–7, OpenDentalHelp and Bridges rows), `docs/third-party-binaries-audit.md` (Bridges.dll), `CDT/README.md` (osd1 threat model), `docs/specs/vendor-direct/postcardmania.md` (runtime program-row pattern)
+- Outside the repository: the HQ vendor table (USPS row). In-repo: `docs/decoupling-plan.md` (ground rules 5–7, OpenDentalHelp and Bridges rows), `docs/third-party-binaries-audit.md` (Bridges.dll), `CDT/README.md` (osd1 threat model), `docs/specs/vendor-direct/postcardmania.md` (runtime program-row pattern)
 
 ---
 

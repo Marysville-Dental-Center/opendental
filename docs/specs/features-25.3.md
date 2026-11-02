@@ -1,8 +1,8 @@
 # Open Dental 25.3: desktop feature specs for the 24.3-based fork
 
-Status: draft spec, 2026-10-18, fact-checked the same day (see "Fact-check" under Sources and method). Baseline: this fork (Open Dental 24.3.63). Target: parity with Open Dental 25.3 so the office database (Open Dental 25.3.48, `fox-db`) can be adopted. Next step after this: 26.1.70.
+Status: draft spec, 2026-10-18, fact-checked the same day (see "Fact-check" under Sources and method). Baseline: this fork (Open Dental 24.3.63). Target: parity with Open Dental 25.3 so the office database (Open Dental 25.3.48) can be adopted. Next step after this: 26.1.70.
 
-Everything below is re-specified in our own words from Open Dental's public material. Nothing was decompiled. Where public material doesn't describe a behavior, the spec says so and marks it **VERIFY**. For those items, an engineer should either watch the behavior in the office's running Open Dental 25.3.48 (ordinary use of the program, not reverse engineering) or read the data in a **restored copy** of `fox-db`.
+Everything below is re-specified in our own words from Open Dental's public material. Nothing was decompiled. Where public material doesn't describe a behavior, the spec says so and marks it **VERIFY**. For those items, an engineer should either watch the behavior in the office's running Open Dental 25.3.48 (ordinary use of the program, not reverse engineering) or read the data in a **restored copy** of the office database.
 
 ## Summary
 
@@ -104,7 +104,7 @@ Limits:
 - The 25.3 release-note page links to no manual pages, so "follow the manual links" had nothing to follow. The sources above stand in for them.
 - Preference names: the 25.3 database document names only `ApptMirrorSecondary` and a `ChatServer...` prefix. Every other preference name below is **proposed**. Open Dental's 25.3 conversion has already written its own rows into the office's `preference` table, so before coding, list them on a restored copy and reuse Open Dental's exact names. That way the office's settings carry over:
   ```sql
-  -- run on a RESTORED copy of fox-db, then diff against PrefName in OpenDentBusiness/TableTypes/Pref.cs
+  -- run on a RESTORED copy of the office database, then diff against PrefName in OpenDentBusiness/TableTypes/Pref.cs
   SELECT PrefName, ValueString FROM preference ORDER BY PrefName;
   ```
 - Office version: the office runs 25.3.48. Backports that landed in 25.3.49 or later are included for completeness and marked; they are also part of 25.4, so implement each only once. The 26.1 spec refers to the tooth-exclusion item as `v25_4-family-benefit-tooth-exclusions`; it is the same work as `v25_3-family-exclusions-tooth` here.
@@ -113,7 +113,7 @@ Fact-check (2026-10-18, second pass):
 
 - Coverage: every bullet on the 25.3 release-note page maps to an item below: the 3 Major Changes features (with their sub-bullets), then Account 6, Appointments 5, eServices 5, Family 3, Manage 6, Miscellaneous 16 and API 11. The 25.4 page lists nine items backported into 25.3.x; all nine are covered here (two of them as exclusions). The 26.1 page lists no 25.3.x backports.
 - Codebase paths: every existing path cited below was checked against this checkout. Paths that don't exist are files this spec asks us to create (marked "new").
-- Schema: every column and table below was checked against `fox-db-schema.sql` and the measured diff. All 15 of the 25.3 columns and all 10 of the 25.3 tables in the measured diff are accounted for. The 25.2 mirroring columns are covered in the mirroring item.
+- Schema: every column and table below was checked against the office schema dump and the measured diff. All 15 of the 25.3 columns and all 10 of the 25.3 tables in the measured diff are accounted for. The 25.2 mirroring columns are covered in the mirroring item.
 
 Shared touchpoints that almost every item with schema uses (not repeated in each section):
 
@@ -722,7 +722,7 @@ Static text, lines, rectangles and images (for example a signature image) work a
 - **Split (complex) transactions**: print one check for the asset-account entry. The other splits list in an optional stub grid. **VERIFY** whether 25.3.48 supports splits; if not, disable the button for them.
 - **MICR**: our `account` table has no routing-number column, so a full MICR line can't be built. Recommend pre-printed check stock. Optionally allow static text set in an E-13B font installed by the office.
 - Printer: use the Default print situation unless a new "Checks" print situation is added. Route through `PrinterL` so the printer-options window (v25_3-misc-printer-options) applies.
-- **Office data**: `sheetdef` rows with `SheetType=28` may already exist in `fox-db`. `SheetTypeEnum` must have `Check=28` before the office data is loaded. That part is covered by v25_3-schema-compat-columns.
+- **Office data**: `sheetdef` rows with `SheetType=28` may already exist in the office database. `SheetTypeEnum` must have `Check=28` before the office data is loaded. That part is covered by v25_3-schema-compat-columns.
 
 **Permissions and audit:** printing writes the usual `Printing` audit entry ("Check #N printed, $X, Payee"), plus an AccountingEdit entry if the transaction was saved. No new permission (the 25.3 enum adds none).
 **Preferences:** none required.
@@ -1099,7 +1099,7 @@ These come from the versions page summary ("Dental School enhancements"), the 25
 ### v25_3-schema-compat-columns: Schema and enum values needed only for data compatibility
 
 - **Category:** desktop. **Size:** S. **Depends on:** none.
-- **Sources:** https://www.opendental.com/OpenDentalDiffDocumentation25-3.xml, https://www.opendental.com/OpenDentalDocumentation25-3.xml, `D:/Dev/opendental-schema/fox-db-schema.sql`.
+- **Sources:** https://www.opendental.com/OpenDentalDiffDocumentation25-3.xml, https://www.opendental.com/OpenDentalDocumentation25-3.xml, the office schema dump (a schema-only dump of an Open Dental 25.3.48 office database, kept outside the repository).
 
 **Why.** Some 25.3 schema serves features we cut, or only changes types. The office data still uses it, so the conversion must create it and the code must not break on it.
 

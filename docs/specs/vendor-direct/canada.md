@@ -6,7 +6,7 @@ Status: draft, 2026-10-18; fact-checked the same day (see "Fact-check log" at th
 
 **Priority: LOW, pending confirmation.** Nothing in the repo or the docs says the office is in Canada, and the hints point the other way:
 - the other vendor-direct specs cover US-only services (USPS, US state PDMPs, 10DLC texting, HIPAA BAAs)
-- `fox-db` is the office's database, but nobody has checked whether it holds Canadian carriers or a Canadian clearinghouse. A quick check: `SELECT COUNT(*) FROM carrier WHERE IsCDA=1` and the `clearinghouse.Eformat` values.
+- Nobody has checked whether the office database holds Canadian carriers or a Canadian clearinghouse. A quick check: `SELECT COUNT(*) FROM carrier WHERE IsCDA=1` and the `clearinghouse.Eformat` values.
 - the Canadian code is gated by the Windows culture. The hourly carrier thread starts on any workstation whose culture name ends in `CA`, whatever the clearinghouse. The **Update Carriers** box in `FormCarriers` also needs the default clearinghouse to use the Canadian format, and claim sending needs a Canadian clearinghouse.
 
 If the office is US-only, do only the small clean-up in section 4.1 (it is safe and removes dead HQ paths) and park the rest. Section 7 lists what to ask the owner.
@@ -388,7 +388,7 @@ External work isn't included: CDAnet certification and the network vendor certif
 - **File method.** Unencrypted claim files still pass through `C:\ICD`. CDA recommends the API method (`POST /ICD/SendPayload/`); see the follow-up question below.
 
 **Open questions for the owner:**
-1. **Is the office US-only?** If yes, ship 4.1 only and close the rest as "not needed". Nothing found suggests Canada, but nobody has checked `fox-db` (see the query at the top).
+1. **Is the office US-only?** If yes, ship 4.1 only and close the rest as "not needed". Nothing found suggests Canada, but nobody has checked the office database (see the query at the top).
 2. **Should Open Dental's leftover certificates be blocked or only warned about?** Recommendation: block, because they identify another vendor and we can't vouch for how the private key was obtained.
 3. **Will the project seek CDAnet certification** and network vendor certification? If not, should the Canadian claim UI warn that the product isn't CDA-certified, while still allowing claims to be printed?
 4. **Should claim transport move to the ICD API method** (`POST /ICD/SendPayload/`) to stop writing PHI to disk? That would be a separate spec. It replaces the file loop in `PassToIca` for `ITRANS2` and needs the same pinned localhost TLS.
@@ -423,7 +423,7 @@ Checked against the CDA manuals (revision 1.5, text extracted from the PDFs), CD
 - **Added:** CDHA states the "CCDWS certified" software requirement, and instream is a paid hygienist registration.
 - **Corrected:** the manuals are written for ICD v4.1; v4.2 (June 4, 2026) is the current installer.
 - **Corrected:** the Continovation "operates ITRANS" claim was softened to what the `ICD.ini` defaults show.
-- **Corrected:** the US-office "evidence" was reworded (none of it is direct), and a `fox-db` check was added.
+- **Corrected:** the US-office "evidence" was reworded (none of it is direct), and a check of the office database was added.
 - **Corrected:** the gating description. Today the hourly thread checks only the culture; the UI box checks culture plus the Canadian claim format.
 - **Corrected:** "the owner removed reference-data downloads". The decoupling plan actually says "make configurable or bundle locally".
 - **Corrected:** CDAnet eligibility and the Service Schedule wording, now with a source link. Also, the certified-vendors page gives no certification contact, and 1-866-788-1212 is the office help desk, not a vendor line.

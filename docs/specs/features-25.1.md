@@ -21,13 +21,13 @@ All text is paraphrased. Release-note wording is summarized, not quoted.
 
 ## Cross-cutting rules for implementers
 
-1. **Get unknown names from the office database, not by guessing.** The office runs 25.3.48, so its data already holds Open Dental's real names and numbers for everything 25.1 added. Before finishing an item, run these against a copy of `fox-db`:
+1. **Get unknown names from the office database, not by guessing.** The office runs 25.3.48, so its data already holds Open Dental's real names and numbers for everything 25.1 added. Before finishing an item, run these against a copy of the office database:
    - New preferences: `SELECT PrefName, ValueString FROM preference` and diff it against `PrefName` in `OpenDentBusiness/TableTypes/Pref.cs`. Items below that add a preference give a proposed name; use the real one if it differs.
    - Audit-trail types: `SELECT PermType, COUNT(*) FROM securitylog WHERE LogDateTime >= '2025-03-20' GROUP BY PermType`, then read sample `LogText` rows to match the wording and PermType Open Dental used.
 2. **Enum numbers must match Open Dental's exactly.** Permission numbers, alert types and other enums are stored as integers. Item `v25_1-schema-enum-compat` lists every 25.1 value. 24.4 used permission numbers 264 and 265, so our enum must reserve them even before the 24.4 features are built.
 3. **One renumbering in 25.1 changes stored data.** `guardian.Relationship` moved two values (item `v25_1-family-guardian-relationship-renumber`). The 25.1 diff document only shows the new `None` value; the move is visible only when the full 24.4 and 25.1 documents are compared.
 4. **Conversion steps must be idempotent.** The same code has to upgrade a 24.3 database and must also leave the office's 25.3 database unchanged. Every `ALTER TABLE` checks whether the column exists (use `LargeTableHelper.ColumnExists`, defined in `OpenDentBusiness/Db/LargeTableHelper.cs`; `OpenDentBusiness/Misc/SecurityHash.cs` shows the calling pattern), and every data backfill runs only when the column was just added. Today's conversions live in `OpenDentBusiness/Misc/ConvertDatabases1.cs` to `ConvertDatabases8.cs`.
-5. **Column conventions.** Like the rest of the schema: MyISAM, `utf8mb3`, `NOT NULL` with no explicit default (MySQL then uses `0` or `''`). Every 25.1 column below was checked in `D:/Dev/opendental-schema/fox-db-schema.sql` and matches this, including its position. 25.1 adds **no tables** and exactly **11 columns**, and all 11 appear in the measured diff (`D:/Dev/opendental-schema/schema-diff-24.3.63-vs-25.3.48.txt`). Of the other 36 diff columns, 7 belong to 24.4 (`document.ChartLetterStatus`, `document.UserNum`, `document.ChartLetterHash`, `fee.DateEffective`, `imagedraw.BetterDiagLayer`, `payplan.SheetDefNum`, `payplantemplate.SheetDefNum`), 28 to 25.2 or 25.3, and `patient._portal_active_email` is in none of the 24.4, 25.1 or 25.3 database documents (probably added outside Open Dental).
+5. **Column conventions.** Like the rest of the schema: MyISAM, `utf8mb3`, `NOT NULL` with no explicit default (MySQL then uses `0` or `''`). Every 25.1 column below was checked in the office schema dump (a schema-only dump of an Open Dental 25.3.48 office database, kept outside the repository) and matches this, including its position. 25.1 adds **no tables** and exactly **11 columns**, and all 11 appear in the measured diff (`schema-diff-24.3.63-vs-25.3.48.txt`, kept outside the repository). Of the other 36 diff columns, 7 belong to 24.4 (`document.ChartLetterStatus`, `document.UserNum`, `document.ChartLetterHash`, `fee.DateEffective`, `imagedraw.BetterDiagLayer`, `payplan.SheetDefNum`, `payplantemplate.SheetDefNum`), 28 to 25.2 or 25.3, and `patient._portal_active_email` is in none of the 24.4, 25.1 or 25.3 database documents (probably added outside Open Dental).
 6. **Data classes.** After changing a `TableTypes` class, regenerate its CRUD file in `OpenDentBusiness/Crud/` with `xCrudGenerator`, then update `DocumentationBuilder` if we keep publishing schema docs.
 
 Size scale: **S** up to 2 dev-days, **M** 3 to 7 days, **L** 1 to 3 weeks, **XL** more than 3 weeks.
@@ -1019,7 +1019,7 @@ The Group Note window already does this in 24.3 (a "..." button next to User).
 
 - **Category:** desktop. **Size:** S.
 - **Depends on:** the decoupling plan's in-repo SecurityHash (HMAC-SHA256 instead of the proprietary CDT hash).
-- **Sources:** https://www.opendental.com/site/version25_1.html (method `SecurityHashRehashPatientTable`, also backported to 24.4.48); 25.1 DB docs (`patient.SecurityHash`); `D:/Dev/opendental/docs/decoupling-plan.md`.
+- **Sources:** https://www.opendental.com/site/version25_1.html (method `SecurityHashRehashPatientTable`, also backported to 24.4.48); 25.1 DB docs (`patient.SecurityHash`); `docs/decoupling-plan.md`.
 
 **Behavior.** A new Database Maintenance method recomputes `patient.SecurityHash` for every patient row. The normal hashing pass after an update (`SecurityHash.UpdateHashing`) never fixes a bad patient hash: for patients, `PatientWorker` only fills rows whose `SecurityHash` is empty, while the other tables rehash only rows newer than `GetHashingDate()` (one month back, or the hashing start date). Use the method when integrity warnings show on many patients.
 
@@ -1229,6 +1229,6 @@ An independent pass checked this file against the public sources and the code. E
 
 Small line-number drifts were corrected where found.
 
-**Schema.** All 11 columns from 25.1 match `fox-db-schema.sql` in type, nullability, engine, charset and position, and all 11 appear in the measured diff. 25.1 adds no tables. Two dependencies on 24.4 were made explicit: the `imagedraw.BetterDiagLayer` column with its enum, and the missing `eServiceCode` values 50 to 52.
+**Schema.** All 11 columns from 25.1 match the office schema dump in type, nullability, engine, charset and position, and all 11 appear in the measured diff. 25.1 adds no tables. Two dependencies on 24.4 were made explicit: the `imagedraw.BetterDiagLayer` column with its enum, and the missing `eServiceCode` values 50 to 52.
 
 **Copied text.** The file was compared against all cited pages, the blog and the 24.4 and 25.1 database documents, looking for runs of 8 or more identical words. The only matches are UI labels and the default URL, none longer than 11 words. No passage needed rewriting.

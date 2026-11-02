@@ -15,7 +15,7 @@ After that, port desktop features from Open Dental 26.1.70, **re-implemented fro
 ## Ground rules
 
 1. **We don't merge from upstream anymore.** Public source stops at 24.3.63, so `.csproj` and solution files can now be edited freely. The `Directory.Build.targets` DLL substitution was temporary and is gone (ORG-CLEANUP, 2026-11-01): every project the solution builds is in the repository. `OpenDental.sln` builds by itself and lists the same projects as `OpenDental.Local.slnf`. The filter stays because `tools/run-tests.ps1` and `tools/Test-NoHqHosts.ps1` read it; it can go once they read the solution.
-2. **Stay schema-compatible with Open Dental's database**, so the office's data (Open Dental 25.3.48 on `fox-db`) can migrate onto this fork. Rename or drop tables only with a migration.
+2. **Stay schema-compatible with Open Dental's database**, so the office's data (Open Dental 25.3.48) can migrate onto this fork. Rename or drop tables only with a migration.
 3. **No encrypted data to preserve.** Per the owner, existing data isn't encrypted, so Open Dental's crypto doesn't need to be reproduced.
    - Bridge passwords that Open Dental stored masked will be re-entered after migration.
 4. **Nothing proprietary in the repo**: no ADA CDT code text, no ADA claim-form artwork, no "Open Dental" trademark in the product. GPL v2 copyright notices stay.
@@ -67,13 +67,13 @@ After that, port desktop features from Open Dental 26.1.70, **re-implemented fro
 
 ### Schema baseline
 
-`fox-db` (Open Dental 25.3.48, 422 MyISAM tables) compared with our 24.3.63 code:
+The office database (Open Dental 25.3.48, 422 MyISAM tables) compared with our 24.3.63 code:
 - **15 new tables**: intra-office chat (7), dental school scheduling (3), `feeschednote`, `inspending`, `queryfilter`, `branding`, `deletedobject`, `sequencecounter`.
 - **47 new columns**: appointment mirroring, fee effective dates, eForms fields, check printing on journal entries, hidden medications, tooth-range benefits, and others.
 - **One rename**: `task.triagecategory` → `task.category`.
-- **54 tables in our code that `fox-db` lacks.** Almost all are HQ-internal: Job Manager, phones, resellers, web chat, billing, bug submissions.
+- **54 tables in our code that the office database lacks.** Almost all are HQ-internal: Job Manager, phones, resellers, web chat, billing, bug submissions.
 
-The full diff is kept outside the repo: `D:\Dev\opendental-schema\schema-diff-24.3.63-vs-25.3.48.txt`.
+The full diff is kept outside the repository (`schema-diff-24.3.63-vs-25.3.48.txt`).
 
 ## Phases
 
@@ -115,7 +115,7 @@ New name, branding, and an installer (Open Dental's installer isn't in the repo,
 ### Phase 5: Office migration path. Size: L.
 
 - Port the 24.3 → 25.3 schema changes above, with the matching features, at least where the office already has data in them.
-- Migrate a **restored copy** of `fox-db`, never the live database: re-enter masked passwords, rehash `SecurityHash`, verify.
+- Migrate a **restored copy** of the office database, never the live database: re-enter masked passwords, rehash `SecurityHash`, verify.
 - Pilot one workstation, with rollback to Open Dental 25.3.48.
 
 ### Phase 6: Feature parity with 26.1.70.

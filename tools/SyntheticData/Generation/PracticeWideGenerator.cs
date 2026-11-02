@@ -58,7 +58,7 @@ namespace SyntheticData.Generation {
 		}
 
 		///<summary>The width of claimpayment.Note in the reference schema. Open Dental's 25.3 docs make it text, but the office's 25.3.48
-		///database (fox-db-schema.sql) still has varchar(255) (the DRIFT entry in schema-changes.json), so a longer note cannot be stored
+		///database (its schema-only dump) still has varchar(255) (the DRIFT entry in schema-changes.json), so a longer note cannot be stored
 		///before adoption: strict mode refuses it.</summary>
 		public const int ClaimPaymentNoteReferenceWidth=255;
 

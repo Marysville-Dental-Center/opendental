@@ -19,7 +19,7 @@ Everything below is written in our own words from Open Dental's public material.
   - https://www.opendental.com/OpenDentalDiffDocumentation25-4.xml (25.3 to 25.4 diff)
   - We also diffed the full 25.3 and 25.4 documents ourselves. That found the same table and column changes, plus enum and description changes that the diff document leaves out.
   - Shared DDL for every schema change lives in `docs/specs/schema-changes.json` (entries with `"version": "25.4"`). Types below match it.
-- **25.3 DDL cross-check** (`D:/Dev/opendental-schema/fox-db-schema.sql`): every 25.4 addition below is absent from the 25.3.48 dump, as expected. These columns were confirmed against the dump:
+- **25.3 DDL cross-check** (the office schema dump: a schema-only dump of an Open Dental 25.3.48 office database, kept outside the repository): every 25.4 addition below is absent from the 25.3.48 dump, as expected. These columns were confirmed against the dump:
   - `referral.Telephone varchar(10)`
   - `insverify.DateLastAssigned date`
   - `payterminal` without `CCIntegration`

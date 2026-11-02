@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 namespace AdoptionValidation.Tests {
-	///<summary>Stands in for the SSH local forward of runbook step 0.0 ("ssh -N -L 13306:127.0.0.1:3306 admin@fox-db"): listens on a free port of
+	///<summary>Stands in for the SSH local forward of runbook step 0.0 ("ssh -N -L 13306:127.0.0.1:3306 admin@db-server"): listens on a free port of
 	///127.0.0.1 and relays every connection to the local MariaDB server, counting them. The tools run with --port set to the relay, as they run on
 	///the office's admin PC with --port set to the forward. Loopback only; it never reaches another host.</summary>
 	public sealed class TcpRelay : IDisposable {

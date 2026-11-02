@@ -58,14 +58,14 @@ namespace SyntheticData.Tests {
 			foreach(string host in new[] { "localhost","127.0.0.1","::1","[::1]","LOCALHOST" }) {
 				Assert.IsTrue(LocalOnly.IsLocalHost(host),host);
 			}
-			foreach(string host in new[] { "fox-db","192.168.1.10","10.0.0.5","example.com","127.0.0.2","","0.0.0.0",null }) {
+			foreach(string host in new[] { "db.example.test","192.168.1.10","10.0.0.5","example.com","127.0.0.2","","0.0.0.0",null }) {
 				Assert.IsFalse(LocalOnly.IsLocalHost(host),host??"(null)");
 			}
 		}
 
 		[TestMethod]
 		public void OpeningARemoteServer_IsRefusedBeforeConnecting() {
-			ServerSettings settings=new ServerSettings { Server="fox-db" };
+			ServerSettings settings=new ServerSettings { Server="db.example.test" };
 			TestUtil.AssertThrows<RefusedException>(() => Db.Open(settings));
 		}
 
@@ -74,7 +74,7 @@ namespace SyntheticData.Tests {
 			foreach(string name in new[] { "synth_253","synth","synth_test_a","synth2" }) {
 				Assert.IsTrue(LocalOnly.IsWritableDatabaseName(name),name);
 			}
-			foreach(string name in new[] { "opendental","fox-db","od_253_schema","opendental_dev","synth-253","Synth_253","synth_253;drop","" }) {
+			foreach(string name in new[] { "opendental","office-db","od_253_schema","opendental_dev","synth-253","Synth_253","synth_253;drop","" }) {
 				Assert.IsFalse(LocalOnly.IsWritableDatabaseName(name),name);
 			}
 		}

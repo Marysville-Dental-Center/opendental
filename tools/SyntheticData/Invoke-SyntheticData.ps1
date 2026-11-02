@@ -13,7 +13,8 @@ Generate, Schema, Validate, Coverage or Compare.
 
 .EXAMPLE
 .\tools\SyntheticData\Invoke-SyntheticData.ps1 Generate -Size medium -Force -Out before.json
-Creates synth_253 from fox-db-schema.sql, fills it with the medium preset and writes the "before" report.
+Creates synth_253 from the schema-only dump named by SYNTH_SCHEMA_SQL (or, without it, from the local database od_253_schema),
+fills it with the medium preset and writes the "before" report.
 
 .EXAMPLE
 .\tools\SyntheticData\Invoke-SyntheticData.ps1 Validate -Database synth_253_adopted -Out after.json

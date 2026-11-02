@@ -474,7 +474,7 @@ Sandbox testing comes on top and waits on OpenEdge supplying test credentials an
   - commit `b5ca25960`
   - `OpenDentBusiness/Data Interface/XWebResponses.cs`
   - `OpenDentBusiness/TableTypes/XWebResponse.cs`
-  - `D:/Dev/opendental-schema/hq-vendor-table.md`
+  - The HQ vendor table (kept outside the repository)
 
 ## Fact-check log (2026-10-18)
 

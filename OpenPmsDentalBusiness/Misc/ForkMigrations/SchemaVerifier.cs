@@ -137,7 +137,7 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 			}
 		}
 
-		///<summary>Builds the reference snapshot from the schema-only dump of an Open Dental 25.3.48 database (fox-db-schema.sql). Removes what is
+		///<summary>Builds the reference snapshot from the schema-only dump of an Open Dental 25.3.48 office database (not in the repository). Removes what is
 		///not Open Dental schema (patient._portal_active_email and its key) and writes the result with a header. This is how
 		///Reference/OdSchema-25.3.48.sql was made; a test checks that the committed file still equals this output when the dump is available.</summary>
 		public static string BuildReferenceDdlFromDump(string dumpText) {

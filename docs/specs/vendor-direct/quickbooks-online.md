@@ -340,7 +340,7 @@ Nothing else is contacted: no `opendental.com`, no `IWebServiceMainHQ`, no `Buil
 
 ### 3.9 Data migrated from Open Dental
 
-On a restored `fox-db` copy:
+On a restored copy of the office database:
 
 - "Refresh Token" and "Realm ID" hold Open Dental-encrypted values, issued to **Open Dental's** client ID. `Decrypt` fails, so the status is "not connected" (3.5). Even decrypted, they would be useless with the office's client ID.
 - "Deposit Accounts", "Income Accounts" and "Class Refs" are plain text and refer to the **same QuickBooks Online company's** IDs. They **stay valid** when the office reconnects the same company with its own app. The realm check in 3.2 step 6 blanks them only if the company differs, and here no realm ID was readable.
@@ -512,7 +512,7 @@ Bridges.dll's behaviour wasn't inspected beyond these calls. The account-type fi
 14. **Disconnect button.** The revoke call is made and the rows are blanked. Deposit Software QuickBooks Online shows the warning.
 15. **Company switch.** Connect a second sandbox company. The confirmation shows and the lists are cleared.
 16. **Environment switch.** The confirmation shows, and the tokens are blanked.
-17. **Migration.** Restore a `fox-db` copy:
+17. **Migration.** Restore a copy of the office database:
     - The status says the saved connection can't be used, and the lists are kept.
     - Connecting the same company with the office's app keeps the lists, and the IDs still resolve on a test send (to a sandbox only if the IDs come from sandbox; otherwise do this in the production pilot).
 18. **Permissions.** A user without `ManageHighSecurityProgProperties` can't view or change the secret.
@@ -570,7 +570,7 @@ The office's Intuit registration and production questionnaire run in parallel. E
 ### 7.3 Open questions
 
 1. **Per-office app or project app?** Recommended: per office (3.1). A project-wide app would need a hosted redirect, a public EULA and privacy policy, and shared-secret handling. Owner decision.
-2. **Account types.** Which ones did Bridges.dll offer for deposit-to and income? Proposed: Bank plus Other Current Asset (so Undeposited Funds is possible), and Income plus Other Income. Check against the office's current picks in `fox-db`: look up their `AccountType` after connecting.
+2. **Account types.** Which ones did Bridges.dll offer for deposit-to and income? Proposed: Bank plus Other Current Asset (so Undeposited Funds is possible), and Income plus Other Income. Check against the office's current picks in the office database: look up their `AccountType` after connecting.
 3. **`Name` vs `FullyQualifiedName`.** Switching changes what is shown and stored for sub-accounts. Existing stored names may be plain `Name`. Re-sync names by ID when the lists load (3.9).
 4. **Relay page.** Ship `qbo-redirect.html` in v1, or paste only? Recommended: ship it. It is small and optional.
 5. **Memo PHI check** (7.2 item 6): add it, or rely on staff guidance?
@@ -626,4 +626,4 @@ Repository:
 - `OpenDentBusiness/Misc/ConvertDatabases6.cs` (`To20_4_5`), `ConvertDatabases7.cs` (Access Token removal, encryption)
 - `OpenDentBusiness/WebServices/WebServiceMainHQNoHq.cs` (`BuildOAuthUrl`), `WebServiceMainHQMockDemo.cs` (client ID and secret comment)
 - `OpenDentBusiness/Misc/Introspection.cs`, `OpenDentBusiness/Db/Enumerations.cs`
-- `CDT/README.md` (`osd1$`), `docs/third-party-binaries-audit.md` (Intuit and Serilog rows), `D:/Dev/opendental-schema/hq-vendor-table.md`
+- `CDT/README.md` (`osd1$`), `docs/third-party-binaries-audit.md` (Intuit and Serilog rows), the HQ vendor table (kept outside the repository)

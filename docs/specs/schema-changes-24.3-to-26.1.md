@@ -1,6 +1,6 @@
 # Schema changes: Open Dental 24.3 → 25.3 → 26.1
 
-Status: draft spec, 2026-10-18. Baseline: this fork (Open Dental 24.3.63). Targets: the office database (Open Dental 25.3.48, `fox-db`), then Open Dental 26.1.70.
+Status: draft spec, 2026-10-18. Baseline: this fork (Open Dental 24.3.63). Targets: the office database (Open Dental 25.3.48), then Open Dental 26.1.70.
 
 Machine-readable twin: [`schema-changes.json`](schema-changes.json) (one entry per change, same content as the tables below).
 
@@ -27,8 +27,8 @@ Machine-readable twin: [`schema-changes.json`](schema-changes.json) (one entry p
 | Diff docs (each lists changes since the previous version) | [24.4](https://www.opendental.com/OpenDentalDiffDocumentation24-4.xml), [25.1](https://www.opendental.com/OpenDentalDiffDocumentation25-1.xml), [25.2](https://www.opendental.com/OpenDentalDiffDocumentation25-2.xml), [25.3](https://www.opendental.com/OpenDentalDiffDocumentation25-3.xml), [25.4](https://www.opendental.com/OpenDentalDiffDocumentation25-4.xml), [26.1](https://www.opendental.com/OpenDentalDiffDocumentation26-1.xml) |
 | Release notes | [24.4](https://www.opendental.com/site/version24_4.html), [25.1](https://www.opendental.com/site/version25_1.html), [25.2](https://www.opendental.com/site/version25_2.html), [25.3](https://www.opendental.com/site/version25_3.html), [25.4](https://www.opendental.com/site/version25_4.html), [26.1](https://www.opendental.com/site/version26_1.html) |
 | Manual (appointment mirroring) | https://opendental.com/help254/overviewapptmirror.html |
-| Office schema (authoritative for 25.3.48) | `D:/Dev/opendental-schema/fox-db-schema.sql` |
-| Measured diff | `D:/Dev/opendental-schema/schema-diff-24.3.63-vs-25.3.48.txt` |
+| Office schema (authoritative for 25.3.48) | The office schema dump: a schema-only dump of the office's 25.3.48 database, kept outside the repository |
+| Measured diff | `schema-diff-24.3.63-vs-25.3.48.txt`, kept outside the repository |
 
 The URL pattern is `OpenDentalDocumentationXX-Y.xml` and `OpenDentalDiffDocumentationXX-Y.xml`. Only the newest is linked from the site; the older ones are reachable by URL. The diff file is produced by Open Dental's own `DocumentationBuilder` tool (its source is in this repo under `DocumentationBuilder/`), which compares a version's schema with the previous version's. A column appears in a diff when it is new, deleted, retyped (listed twice, old and new type), or when its enum gained or lost values. Enum-only entries are not schema changes; they are collected in [Appendix A](#appendix-a-enum-value-changes-no-ddl).
 
@@ -566,7 +566,7 @@ Also: in 24.4 the `orionproc` columns `DPC`, `Status2` and `DPCpost` lost their 
 ## Gaps and open questions
 
 1. **Inferred DDL for 25.4 and 26.1.** Only types are published. NOT NULL, defaults and indexes follow the 25.3.48 dump's conventions. Check them against a real 26.1 database when one is available.
-2. **Index changes on existing columns** (any version) are not in the published docs. To close this for 24.3 → 25.3, create an empty database with our 24.3.63 code and diff its `KEY` lines against `fox-db-schema.sql`.
+2. **Index changes on existing columns** (any version) are not in the published docs. To close this for 24.3 → 25.3, create an empty database with our 24.3.63 code and diff its `KEY` lines against the office schema dump.
 3. **Version granularity.** The docs are per major.minor (for example "25.3.0.0"). Patch-level timing is not shown, so an item marked 25.3 may have landed in any 25.3.x. The office DB at 25.3.48 matches the 25.3 doc except for `claimpayment.Note`, which suggests that conversion came in a later 25.3 patch or did not run. Likewise, the 26.1 doc may predate 26.1.70.
 4. **Enum numbering to verify** before the code is ported: `EnumPermType` 272 is `PhoneExtension` in the 25.3 diff but `BlockoutAdd` in 25.4, and 25.4 lists 13, 77, 78 and 81 as new names (probably renames of old permissions). `EnumBrandingType` 1 is `LogoFilePath` in 25.2 and `LogoImage` in 26.1. Numbers marked "?" were not printed.
 5. **Release-note mapping is partial.** Many schema items have no matching release-note entry (marked so, with the diff doc as the only source). Some links are inferences and are labelled as such: `inspending` ↔ Ins Pick eForm field, `definition.Supp` ↔ adjustment-type default percentage, `payterminal.CCIntegration` ↔ Global Payments V2.

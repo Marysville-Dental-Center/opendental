@@ -157,7 +157,7 @@ assembly version and Update only the release version.
 2. NDde (`NDde.dll`) uses its own Shared Source License in the style of MS-PL. Is it acceptable next to the GPL?
 3. The Google APIs client libraries are Apache 2.0, compatible with GPL v3 but not v2. The program is "v2 or later", so it can be distributed
    under v3; is that the intended reading, or should Gmail go?
-4. `AssemblyCompany`: "Open PMS - Dental contributors" (INFERRED), or "Marysville Dental Center"?
+4. `AssemblyCompany`: "Open PMS - Dental contributors" (INFERRED), or the practice's name?
 5. The Hunspell en_US dictionary embedded in `WpfControlsOD` is the OpenOffice.org en_US dictionary (48,245 words). Its terms are taken from
    that dictionary's README (word list LGPL, affix file BSD-style); please confirm, or replace it with a current SCOWL build.
 6. Showing the product name for the two Benco values too (INFERRED), not only for Open Dental's defaults: agreed?

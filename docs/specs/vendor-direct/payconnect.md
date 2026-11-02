@@ -53,7 +53,7 @@ The integration is optional and off by default (`program.Enabled` for PayConnect
 
 ### 1.2 What Open Dental's HQ provided
 
-From `D:/Dev/opendental-schema/hq-vendor-table.md` (row "PayConnect 2 (and VeriFone driver)") and the code:
+From the HQ vendor table (kept outside the repository) (row "PayConnect 2 (and VeriFone driver)") and the code:
 
 | What | How it reached the office | State on `main` |
 |---|---|---|
@@ -483,7 +483,7 @@ Not counted:
    - Check in the sandbox with a swiped test card. If it is a card number, refuse to save it and ask the user to key the card instead.
 5. **Secret obfuscation, not protection** (3.2). Anyone with a database copy and this source can recover the keys. Restrict database access, and rotate the keys if a copy leaks.
 6. **Spoofed hosted-form results.** Today the injected relay forwards any `message` event from any origin, and the C# handler doesn't check where it came from. The `event.origin` filter (preferably in a local wrapper page) and the navigation checks (3.6) close that; checking `args.Source` alone would not.
-7. **Losing VeriFone.** Offices still on 1.0 and VeriFone lose terminal processing once 1.0 is removed. DentalXChange has already decommissioned 1.0, so the migration source (Open Dental 25.3) is most likely on 2.0, but this is unverified. Confirm the office's actual version in `fox-db` (`programproperty` "Program Version") before removing.
+7. **Losing VeriFone.** Offices still on 1.0 and VeriFone lose terminal processing once 1.0 is removed. DentalXChange has already decommissioned 1.0, so the migration source (Open Dental 25.3) is most likely on 2.0, but this is unverified. Confirm the office's actual version in the office database (`programproperty` "Program Version") before removing.
 8. **Embed-session host unknown.** If the session URL points outside `*.dentalxchange.com`, the origin check must allow that host. Make the allowed suffix list a constant and confirm it in the sandbox.
 9. **Debug builds hit a non-public host** until the `ODBuild.IsDebug()` override is removed (4.1).
 
@@ -545,7 +545,7 @@ An adversarial review checked this spec against the OpenAPI file (2.12.0), the d
 - DentalXChange user agreement: <https://www.dentalxchange.com/user-agreement>
 - Open Dental manual, PayConnect setup (1.0 decommissioned, Secret from PayConnect): <https://opendental.com/manual/payconnectsetup.html>
 - In repo:
-  - `D:/Dev/opendental-schema/hq-vendor-table.md`
+  - The HQ vendor table (kept outside the repository)
   - `docs/decoupling-plan.md` (ground rules 5–7)
   - `docs/third-party-binaries-audit.md` (DpsPos)
   - `CDT/README.md` (osd1 threat model)
