@@ -8,26 +8,26 @@ namespace M2EMPTests {
 	public class WindowHookTests {
 		[TestMethod]
 		public void EmployeeEdit_HasTheTitlePicker() {
-			string code=RepoFiles.ReadAllText("OpenDental","Forms","FormEmployeeEdit.cs");
+			string code=RepoFiles.ReadAllText("OpenPmsDental","Forms","FormEmployeeEdit.cs");
 			StringAssert.Contains(code,"comboTitle.Items.AddDefNone();");
 			StringAssert.Contains(code,"comboTitle.Items.AddDefs(Employees.GetTitlesForPicker(EmployeeCur.Title));");
 			StringAssert.Contains(code,"comboTitle.SetSelectedDefNum(EmployeeCur.Title);");
 			StringAssert.Contains(code,"EmployeeCur.Title=comboTitle.GetSelectedDefNum();");
-			string designer=RepoFiles.ReadAllText("OpenDental","Forms","FormEmployeeEdit.designer.cs");
+			string designer=RepoFiles.ReadAllText("OpenPmsDental","Forms","FormEmployeeEdit.designer.cs");
 			StringAssert.Contains(designer,"this.labelTitle.Text = \"Title\";");
 			StringAssert.Contains(designer,"this.Controls.Add(this.comboTitle);");
 		}
 
 		[TestMethod]
 		public void EmployeeSelect_HasTheTitleColumn() {
-			string code=RepoFiles.ReadAllText("OpenDental","Forms","FormEmployeeSelect.cs");
+			string code=RepoFiles.ReadAllText("OpenPmsDental","Forms","FormEmployeeSelect.cs");
 			StringAssert.Contains(code,"new GridColumn(Lan.g(\"FormEmployeeSelect\",\"Title\"),100)");
 			StringAssert.Contains(code,"Employees.GetTitleText(_listEmployeesShowing[i].Title,listDefsTitles)");
 		}
 
 		[TestMethod]
 		public void ClockEventEdit_UsesTheFutureClockOutRules() {
-			string code=RepoFiles.ReadAllText("OpenDental","Forms","FormClockEventEdit.cs");
+			string code=RepoFiles.ReadAllText("OpenPmsDental","Forms","FormClockEventEdit.cs");
 			StringAssert.Contains(code,"ClockEvents.CheckFutureDates(");
 			StringAssert.Contains(code,"Security.IsAuthorized(EnumPermType.TimecardsEditAll,true)");
 			StringAssert.Contains(code,"\"Clock-out is in the future. Save anyway?");
@@ -40,7 +40,7 @@ namespace M2EMPTests {
 
 		[TestMethod]
 		public void TimeCard_ShowsTheDateOfALaterClockOut() {
-			string code=RepoFiles.ReadAllText("OpenDental","Forms","FormTimeCard.cs");
+			string code=RepoFiles.ReadAllText("OpenPmsDental","Forms","FormTimeCard.cs");
 			StringAssert.Contains(code,"ClockEvents.GetSecondTimeColumnWidth(_listClockEvents,64)");
 			StringAssert.Contains(code,"ClockEvents.GetSecondTimeCellText(clockEvent,PrefC.GetBool(PrefName.TimeCardShowSeconds))");
 		}
@@ -49,7 +49,7 @@ namespace M2EMPTests {
 		public void TimeCard_TotalsStayUnderTheirColumns() {
 			//Integration with B-TIME: the Totals for Period grid's first column spans Date, Day, In and Out of gridMain, so it takes their widths from
 			//gridMain, which includes a second-time column widened for a later-day clock-out.
-			string code=RepoFiles.ReadAllText("OpenDental","Forms","FormTimeCard.cs");
+			string code=RepoFiles.ReadAllText("OpenPmsDental","Forms","FormTimeCard.cs");
 			int indexFill=code.IndexOf("private void FillGridTotals(");
 			Assert.IsTrue(indexFill>0);
 			string fill=code.Substring(indexFill);
@@ -64,7 +64,7 @@ namespace M2EMPTests {
 
 		[TestMethod]
 		public void TimeCard_PrintKeepsTheClockOutTime() {
-			string code=RepoFiles.ReadAllText("OpenDental","Forms","FormTimeCard.cs");
+			string code=RepoFiles.ReadAllText("OpenPmsDental","Forms","FormTimeCard.cs");
 			int indexPrint=code.IndexOf("private void pd_PrintPage(");
 			Assert.IsTrue(indexPrint>0);
 			string print=code.Substring(indexPrint);
@@ -86,7 +86,7 @@ namespace M2EMPTests {
 
 		[TestMethod]
 		public void ManageModule_FutureClockOutKeepsClockOutEnabled() {
-			string code=RepoFiles.ReadAllText("OpenDental","Main Modules","ControlManage.cs");
+			string code=RepoFiles.ReadAllText("OpenPmsDental","Main Modules","ControlManage.cs");
 			StringAssert.Contains(code,"if(clockEvent.TimeDisplayed2.Year<1880 || ClockEvents.HasFutureClockOut(clockEvent)) {");
 		}
 	}

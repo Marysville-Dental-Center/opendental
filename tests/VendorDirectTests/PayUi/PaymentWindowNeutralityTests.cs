@@ -28,8 +28,8 @@ namespace VendorDirectTests.PayUi {
 
 		[TestMethod]
 		public void PaymentWindows_ProcessorButtonsHaveNoVendorLogo() {
-			foreach(string relativePath in new[] { @"OpenDental\Forms\FormPayment.designer.cs",@"OpenDental\Forms\FormClaimPayEdit.designer.cs",
-				@"OpenDental\Forms\FormPayment.resx",@"OpenDental\Forms\FormClaimPayEdit.resx" })
+			foreach(string relativePath in new[] { @"OpenPmsDental\Forms\FormPayment.designer.cs",@"OpenPmsDental\Forms\FormClaimPayEdit.designer.cs",
+				@"OpenPmsDental\Forms\FormPayment.resx",@"OpenPmsDental\Forms\FormClaimPayEdit.resx" })
 			{
 				string source=ReadRepoFile(relativePath);
 				foreach(string logo in _arrayLogoResources) {
@@ -41,19 +41,19 @@ namespace VendorDirectTests.PayUi {
 
 		[TestMethod]
 		public void PaymentWindows_ProcessorButtonsAreTextButtons() {
-			string formPayment=ReadRepoFile(@"OpenDental\Forms\FormPayment.designer.cs");
+			string formPayment=ReadRepoFile(@"OpenPmsDental\Forms\FormPayment.designer.cs");
 			foreach(string name in new[] { "butPayConnect","butPaySimple","butCareCredit","panelEdgeExpress","panelXcharge" }) {
-				StringAssert.Contains(formPayment,"private OpenDental.UI.Button "+name+";",name);
+				StringAssert.Contains(formPayment,"private OpenPmsDental.UI.Button "+name+";",name);
 			}
-			string formClaimPayEdit=ReadRepoFile(@"OpenDental\Forms\FormClaimPayEdit.designer.cs");
+			string formClaimPayEdit=ReadRepoFile(@"OpenPmsDental\Forms\FormClaimPayEdit.designer.cs");
 			foreach(string name in new[] { "butPayConnect","butPaySimple","panelEdgeExpress","panelXcharge" }) {
-				StringAssert.Contains(formClaimPayEdit,"private OpenDental.UI.Button "+name+";",name);
+				StringAssert.Contains(formClaimPayEdit,"private OpenPmsDental.UI.Button "+name+";",name);
 			}
 		}
 
 		[TestMethod]
 		public void PaymentWindows_NoShowEveryProcessorFallback() {
-			foreach(string relativePath in new[] { @"OpenDental\Forms\FormPayment.cs",@"OpenDental\Forms\FormClaimPayEdit.cs" }) {
+			foreach(string relativePath in new[] { @"OpenPmsDental\Forms\FormPayment.cs",@"OpenPmsDental\Forms\FormClaimPayEdit.cs" }) {
 				string code=StripLineComments(ReadRepoFile(relativePath));
 				Assert.IsFalse(code.Contains("butPaySimple.Visible=true"),relativePath);
 				Assert.IsFalse(code.Contains("butPayConnect.Visible=true"),relativePath);
@@ -68,9 +68,9 @@ namespace VendorDirectTests.PayUi {
 
 		[TestMethod]
 		public void FormPayment_UsesTheInRepoCareCreditClientAndNoSignupPage() {
-			string code=StripLineComments(ReadRepoFile(@"OpenDental\Forms\FormPayment.cs"));
+			string code=StripLineComments(ReadRepoFile(@"OpenPmsDental\Forms\FormPayment.cs"));
 			Assert.IsFalse(code.Contains("using Bridges;"),"FormPayment must not use the prebuilt Bridges.dll.");
-			StringAssert.Contains(code,"using OpenDentBusiness.Bridges;");
+			StringAssert.Contains(code,"using OpenPmsDentalBusiness.Bridges;");
 			Assert.IsFalse(code.Contains("ProviderSignupURL"),"No CareCredit sign-up page.");
 			Assert.IsFalse(code.Contains("IsAdvertisingDisabled"),"No advertising toggle.");
 			StringAssert.Contains(code,"butCareCredit.Visible=PaymentWindowRules.ShowCareCredit()");

@@ -107,13 +107,13 @@ namespace M2MISCTests {
 		public void PatientReferral_EveryCopyOfTheHomePhoneUsesTheSameRule() {
 			Assert.AreEqual("1(503)555-0142",ReferralPhones.FromPatientPhone("1(503)555-0142"));
 			Assert.AreEqual("+44 20 7946 0958",ReferralPhones.FromPatientPhone("+44 20 7946 0958"));
-			string patients=TestDb.ReadRepoFile("OpenDentBusiness","Data Interface","Patients.cs");
+			string patients=TestDb.ReadRepoFile("OpenPmsDentalBusiness","Data Interface","Patients.cs");
 			StringAssert.Contains(patients,"referral.Telephone=ReferralPhones.FromPatientPhone(patientTo.HmPhone);");
 			StringAssert.Contains(patients,"referral.Telephone=ReferralPhones.FromPatientPhone(patient.HmPhone);");
 			Assert.IsFalse(Regex.IsMatch(patients,@"\.Telephone=TelephoneNumbers\.FormatNumbersExactTen"),"No 10-digit copy of the home phone is left.");
 			StringAssert.Contains(TestDb.ReadRepoFile("WpfControlsOD","Frms","FrmReferralEdit.xaml.cs"),
 				"ReferralCur.Telephone=ReferralPhones.FromPatientPhone(patient.HmPhone);");
-			string sheetFiller=TestDb.ReadRepoFile("OpenDentBusiness","SheetFramework","SheetFiller.cs");
+			string sheetFiller=TestDb.ReadRepoFile("OpenPmsDentalBusiness","SheetFramework","SheetFiller.cs");
 			Assert.IsFalse(sheetFiller.Contains("refer.Telephone.Length==10"),"Sheets print every stored referral phone.");
 		}
 

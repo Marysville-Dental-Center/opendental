@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 
 namespace SyntheticData.Generation {
 	///<summary>Stored shapes of the eForm fields whose ValueLabel or ValueString is not plain text. The shapes follow the published database
-	///docs and the eForm classes in OpenDentBusiness/TableTypes/EFormField.cs; see README.md, "eForm value formats".</summary>
+	///docs and the eForm classes in OpenPmsDentalBusiness/TableTypes/EFormField.cs; see README.md, "eForm value formats".</summary>
 	public static class EFormJson {
 		///<summary>Pick lists (PickListVis, PickListDb) and multiple conditional values are pipe-delimited.</summary>
 		public const char Delimiter='|';

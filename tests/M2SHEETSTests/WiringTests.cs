@@ -1,5 +1,5 @@
 // Checks that the windows and the sheet drawing code use the M2-SHEETS helpers. They read the source files: the windows draw only when shown,
-// and OpenDental.exe is never launched (SheetDefEditKeyTests drives the Sheet Def editor's key handling in memory).
+// and OpenPmsDental.exe is never launched (SheetDefEditKeyTests drives the Sheet Def editor's key handling in memory).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.IO;
 using System.Text.RegularExpressions;
@@ -19,7 +19,7 @@ namespace M2SHEETSTests {
 
 		[TestMethod]
 		public void SheetDefEdit_WarnsBeforeAddingADuplicateField() {
-			string source=Read(@"OpenDental\Forms\FormSheetDefEdit.cs");
+			string source=Read(@"OpenPmsDental\Forms\FormSheetDefEdit.cs");
 			foreach(string form in new[] { "formSheetFieldOutput","formSheetFieldInput","formSheetFieldCheckBox" }) {
 				//The check comes right before the field is added: only a return in between.
 				string pattern=Regex.Escape("if(!ConfirmDuplicateFields(new List<SheetFieldDef> { "+form+".SheetFieldDefCur },out _)) {")+@"\s+return;\s+}\s+"
@@ -78,7 +78,7 @@ namespace M2SHEETSTests {
 		///CopyControlsToMemory does, and the paste must decide the cascade offset from the ALT state saved before the box.</summary>
 		[TestMethod]
 		public void SheetDefEdit_DuplicateFieldBoxResetsTheModifierKeys() {
-			string source=Read(@"OpenDental\Forms\FormSheetDefEdit.cs");
+			string source=Read(@"OpenPmsDental\Forms\FormSheetDefEdit.cs");
 			//The paste is reached with CTRL or ALT down.
 			string keyDown=MethodBody(source,"private void FormSheetDefEdit_KeyDown(object sender,KeyEventArgs e)");
 			Assert.IsTrue(Regex.IsMatch(keyDown,Regex.Escape("if(_isCtrlDown && e.KeyCode==Keys.V) { //CTRL-V")+@"\s+"
@@ -118,7 +118,7 @@ namespace M2SHEETSTests {
 
 		[TestMethod]
 		public void SheetDefEdit_NonLatinLanguagesAndText() {
-			string source=Read(@"OpenDental\Forms\FormSheetDefEdit.cs");
+			string source=Read(@"OpenPmsDental\Forms\FormSheetDefEdit.cs");
 			Assert.AreEqual(3,Count(source,"SheetScripts.GetLanguageDisplayName("),"Every language name in the list.");
 			Assert.AreEqual(0,Count(source,"GetCultureFromThreeLetter("));
 			StringAssert.Contains(source,"using Font font=new Font(SheetFonts.GetFontNameForText(sheetFieldDef.FontName,");
@@ -127,7 +127,7 @@ namespace M2SHEETSTests {
 
 		[TestMethod]
 		public void SheetFillEdit_FallbackFontAndDirectionOnScreen() {
-			string source=Read(@"OpenDental\Forms\FormSheetFillEdit.cs");
+			string source=Read(@"OpenPmsDental\Forms\FormSheetFillEdit.cs");
 			StringAssert.Contains(source,"using Font font=new Font(SheetFonts.GetFontNameForText(SheetCur.SheetFields[i].FontName,SheetCur.SheetFields[i].FieldValue),");
 			StringAssert.Contains(source,"SheetTextDrawing.ApplyDirection(stringFormat,SheetCur.SheetFields[i].FieldValue);");
 			StringAssert.Contains(source,"textBox.Font=new Font(SheetFonts.GetFontNameForText(sheetField.FontName,text),fontSize,style);");
@@ -138,7 +138,7 @@ namespace M2SHEETSTests {
 
 		[TestMethod]
 		public void SheetDrawingJob_AllTextGoesThroughTheHelper() {
-			string source=Read(@"OpenDentBusiness\SheetFramework\SheetDrawingJob.cs");
+			string source=Read(@"OpenPmsDentalBusiness\SheetFramework\SheetDrawingJob.cs");
 			Assert.AreEqual(0,Count(source,"GraphicsHelper.DrawStringX("),"PDF text goes through SheetTextDrawing.DrawStringX.");
 			Assert.AreEqual(0,Count(source,"GraphicsHelper.DrawString("),"Printed text goes through SheetTextDrawing.DrawString.");
 			Assert.AreEqual(12,Count(source,"SheetTextDrawing.DrawStringX(gx,"));

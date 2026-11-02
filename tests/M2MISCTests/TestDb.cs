@@ -1,5 +1,5 @@
 // Scratch database for the M2-MISC tests, on the local MariaDB only (127.0.0.1:3306, root, blank password). It gets the Open Dental 26.1.70
-// schema from the reference embedded in OpenDentBusiness (SchemaVerifier.GetReference) and synthetic rows only; nothing here reads or copies an
+// schema from the reference embedded in OpenPmsDentalBusiness (SchemaVerifier.GetReference) and synthetic rows only; nothing here reads or copies an
 // office database. Same naming and clean-up pattern as tests/ForkMigrationTests/TestDb.cs. Database tests are skipped (inconclusive) when no
 // server answers, or when M2MISC_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

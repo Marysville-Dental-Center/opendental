@@ -34,7 +34,7 @@ namespace ForkMigrationTests {
 		}
 
 		private static void RoundTrip(Type type,SchemaTable table,List<string> listProblems) {
-			Type typeCrud=typeof(TableBase).Assembly.GetType("OpenDentBusiness.Crud."+type.Name+"Crud",true);
+			Type typeCrud=typeof(TableBase).Assembly.GetType("OpenPmsDentalBusiness.Crud."+type.Name+"Crud",true);
 			MethodInfo methodInsert=typeCrud.GetMethod("Insert",new[] { type });
 			MethodInfo methodSelectOne=typeCrud.GetMethod("SelectOne",new[] { typeof(long) });
 			MethodInfo methodUpdate=typeCrud.GetMethod("Update",new[] { type });

@@ -5930,7 +5930,7 @@ namespace UnitTests.PaymentEdit_Tests {
 		<td>Income Transfer on Payplan without Procedure attached</td>
 	</tr>
 </table>
-This can cause the Dynamic Payment Plan to be considered overpaid since we are Explicitly adding money to it and the attached production but Implicitly removing money from the plan itself. OpenDental should see these splits and calculate that two of them are intended offsets which should net to 0. The resulting Account Entries should look like:
+This can cause the Dynamic Payment Plan to be considered overpaid since we are Explicitly adding money to it and the attached production but Implicitly removing money from the plan itself. OpenPmsDental should see these splits and calculate that two of them are intended offsets which should net to 0. The resulting Account Entries should look like:
 <table>
 	<tr>
 		<td><b>Patient</b></td>
@@ -10167,7 +10167,7 @@ This can cause the Dynamic Payment Plan to be considered overpaid since we are E
 		<td>Income Transfer on Payplan without Procedure attached</td>
 	</tr>
 </table>
-This can cause the Dynamic Payment Plan to be considered overpaid since we are Explicitly adding money to it and the attached production but Implicitly removing money from the plan itself. OpenDental should see these splits and calculate that two of them are intended offsets which should net to 0. The resulting Account Entries should look like:
+This can cause the Dynamic Payment Plan to be considered overpaid since we are Explicitly adding money to it and the attached production but Implicitly removing money from the plan itself. OpenPmsDental should see these splits and calculate that two of them are intended offsets which should net to 0. The resulting Account Entries should look like:
 <table>
 	<tr>
 		<td><b>Patient</b></td>

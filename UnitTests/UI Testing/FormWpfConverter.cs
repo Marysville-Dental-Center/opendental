@@ -32,7 +32,7 @@ namespace UnitTests {
 					return;
 				} 
 			}
-			Type type= Type.GetType("OpenDental."+textName.Text+", OpenDental");
+			Type type= Type.GetType("OpenPmsDental."+textName.Text+", OpenPmsDental");
 			if(type is null){
 				MsgBox.Show("Type not found.  Check spelling.");
 				return;

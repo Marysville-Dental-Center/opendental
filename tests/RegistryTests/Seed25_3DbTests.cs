@@ -1,4 +1,4 @@
-// Integration tests for the 24.3 upgrade seed (OpenDentBusiness/Misc/ForkMigrations/Seed25_3.cs) against a scratch MariaDB database on this
+// Integration tests for the 24.3 upgrade seed (OpenPmsDentalBusiness/Misc/ForkMigrations/Seed25_3.cs) against a scratch MariaDB database on this
 // computer, filled with synthetic rows only. They are skipped (inconclusive) when no server answers at 127.0.0.1:3306 as root with a blank
 // password, or when REGISTRY_TEST_DB=skip.
 using System;

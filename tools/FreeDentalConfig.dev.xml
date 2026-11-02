@@ -2,8 +2,8 @@
 <!--
   Connection settings for a local development database made by tools\New-DevDatabase.ps1.
 
-  OpenDental.exe reads FreeDentalConfig.xml from its own folder. Either copy this file to
-  OpenDental\bin\Debug\FreeDentalConfig.xml, or run
+  OpenPmsDental.exe reads FreeDentalConfig.xml from its own folder. Either copy this file to
+  OpenPmsDental\bin\Debug\FreeDentalConfig.xml, or run
       .\tools\New-DevDatabase.ps1 -WriteConfig
   which writes it there with your -Name, -Server, -Port and -User filled in.
 

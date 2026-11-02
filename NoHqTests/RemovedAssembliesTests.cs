@@ -27,7 +27,7 @@ namespace NoHqTests {
 		public void RemovedAssemblies_AreNotReferenced() {
 			string pathRoot=GetRepositoryRoot();
 			List<string> listPaths=new List<string> {
-				Path.Combine(pathRoot,"OpenDental","bin","Debug","OpenDental.exe"),
+				Path.Combine(pathRoot,"OpenPmsDental","bin","Debug","OpenPmsDental.exe"),
 				Path.Combine(pathRoot,"WpfControlsOD","bin","Debug","WpfControlsOD.dll"),
 			};
 			for(int i=0;i<listPaths.Count;i++) {

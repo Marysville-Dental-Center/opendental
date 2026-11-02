@@ -1,4 +1,4 @@
-// The displayreport and report-permission rows for the 24.4 and 25.2 reports (OpenDentBusiness/Misc/ForkMigrations/ReportRows25_3.cs), on scratch
+// The displayreport and report-permission rows for the 24.4 and 25.2 reports (OpenPmsDentalBusiness/Misc/ForkMigrations/ReportRows25_3.cs), on scratch
 // databases with the Open Dental 25.3.48 table definitions and synthetic rows.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;

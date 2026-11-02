@@ -75,7 +75,7 @@ namespace M2IMGTests {
 
 		[TestMethod]
 		public void ImageDisplay_EveryPdfNavigationAppliesThePreference() {
-			string source=Read("OpenDental","User Controls","ControlImageDisplay.cs");
+			string source=Read("OpenPmsDental","User Controls","ControlImageDisplay.cs");
 			AssertBefore(MethodBody(source,"private async void LoadPdf("),"_odWebView2."+HOOK,"_odWebView2.ODWebView2Navigate(_odWebView2FilePath);");
 			AssertBefore(MethodBody(source,"public async void PrintPDF("),"_odWebView2."+HOOK,"_odWebView2.ODWebView2Navigate(filePath);");
 			Assert.AreEqual(Count(source,"ODWebView2Navigate("),Count(source,HOOK),"Every navigation of the PDF viewer reads the preference first.");
@@ -85,7 +85,7 @@ namespace M2IMGTests {
 		[TestMethod]
 		public void OldImagingModule_EveryPdfNavigationAppliesThePreference() {
 			//Preferences > Imaging > General can still switch to the pre-2020 Imaging module, which shows PDFs in its own WebView2.
-			string source=Read("OpenDental","Main Modules","ControlImagesOld.cs");
+			string source=Read("OpenPmsDental","Main Modules","ControlImagesOld.cs");
 			AssertBefore(MethodBody(source,"private async void LoadPdf("),"_odWebView2."+HOOK,"_odWebView2.CoreWebView2.Navigate(_odWebView2FilePath);");
 			Assert.AreEqual(Count(source,"_odWebView2.CoreWebView2.Navigate(")+Count(source,"_odWebView2.ODWebView2Navigate("),Count(source,HOOK));
 		}
@@ -100,7 +100,7 @@ namespace M2IMGTests {
 
 		[TestMethod]
 		public void PreferencesWindow_EditsThePreference() {
-			string source=Read("OpenDental","User Controls","Preferences","UserControlImagingGeneral.cs");
+			string source=Read("OpenPmsDental","User Controls","Preferences","UserControlImagingGeneral.cs");
 			StringAssert.Contains(MethodBody(source,"public void FillImagingGeneral()"),
 				"checkImagingAllowPdfJavascript.Checked=PrefC.GetBool(PrefName.ImagingAllowPdfJavascript);");
 			StringAssert.Contains(MethodBody(source,"public bool SaveImagingGeneral()"),
@@ -109,8 +109,8 @@ namespace M2IMGTests {
 
 		[TestMethod]
 		public void PreferencesWindow_CheckboxMatchesItsHoverHelpAndFitsTheGroup() {
-			string designer=Read("OpenDental","User Controls","Preferences","UserControlImagingGeneral.Designer.cs");
-			XElement xElementPrefInf=XDocument.Load(TestDb.FindRepoFile(Path.Combine("OpenDental","Resources","PrefInfos.xml"))).Root.Elements("PrefInf")
+			string designer=Read("OpenPmsDental","User Controls","Preferences","UserControlImagingGeneral.Designer.cs");
+			XElement xElementPrefInf=XDocument.Load(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","Resources","PrefInfos.xml"))).Root.Elements("PrefInf")
 				.Single(x => (string)x.Element("PrefName")=="ImagingAllowPdfJavascript");
 			Assert.AreEqual("checkImagingAllowPdfJavascript",(string)xElementPrefInf.Element("ControlName"),"The hover help is found by control name.");
 			Assert.AreEqual("ImagingGeneral",(string)xElementPrefInf.Element("Category"));

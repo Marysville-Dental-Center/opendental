@@ -1119,8 +1119,8 @@ namespace UnitTests.MiddleTier {
 		[TestMethod]
 		public void MiddleTier_GetPrimaryKeysFromInsert() {
 			StringBuilder strBuilderErrors=new StringBuilder();
-			List<string> listSClassPaths=Directory.GetFiles(@"..\..\..\OpenDentBusiness\Data Interface").ToList();
-			List<string> listTableTypePaths=Directory.GetFiles(@"..\..\..\OpenDentBusiness\TableTypes").ToList();
+			List<string> listSClassPaths=Directory.GetFiles(@"..\..\..\OpenPmsDentalBusiness\Data Interface").ToList();
+			List<string> listTableTypePaths=Directory.GetFiles(@"..\..\..\OpenPmsDentalBusiness\TableTypes").ToList();
 			//Get just the names of the classes without the path and extension information.
 			List<string> listSClassNames=listSClassPaths.Select(x => Path.GetFileNameWithoutExtension(x)).ToList();
 			List<string> listTableTypeNames=listTableTypePaths.Select(x => Path.GetFileNameWithoutExtension(x).ToLower()).ToList();

@@ -67,7 +67,7 @@ namespace VBRIDGE1Tests {
 
 		[TestMethod]
 		public void InsurancePlan_IapButtonOpensTheLoginPage_AndTheImportIsGone() {
-			string source=Read("OpenDental","Forms","FormInsPlan.cs");
+			string source=Read("OpenPmsDental","Forms","FormInsPlan.cs");
 			string body=MethodBody(source,"private void butIapFind_Click(");
 			StringAssert.Contains(body,"Iap.OpenLoginPage();");
 			foreach(string removed in new[] { "FormIap","Iap.ReadRecord","Iap.ReadField","Iap.CloseDatabase" }) {
@@ -77,14 +77,14 @@ namespace VBRIDGE1Tests {
 			StringAssert.Contains(source,"program=Programs.GetCur(ProgramName.IAP);\n\t\t\tif(program==null || !program.Enabled) {");
 			string root=GetRepoRoot();
 			foreach(string file in new[] { "FormIap.cs","FormIap.designer.cs","FormIap.resx" }) {
-				Assert.IsFalse(File.Exists(Path.Combine(root,"OpenDental","Bridges",file)),file);
+				Assert.IsFalse(File.Exists(Path.Combine(root,"OpenPmsDental","Bridges",file)),file);
 			}
-			Assert.IsFalse(Read("OpenDental","OpenDental.csproj").Contains("FormIap"),"FormIap is out of the project.");
+			Assert.IsFalse(Read("OpenPmsDental","OpenPmsDental.csproj").Contains("FormIap"),"FormIap is out of the project.");
 		}
 
 		[TestMethod]
 		public void ProgramLinks_RegistersTheFourSetups() {
-			string source=Read("OpenDental","Logic","VendorDirect","BridgeProgramLinkSetups.cs");
+			string source=Read("OpenPmsDental","Logic","VendorDirect","BridgeProgramLinkSetups.cs");
 			StringAssert.Contains(source,"public abstract class StandardProgramLinkSetup:IProgramLinkSetup");
 			string[][] arrayPairs={
 				new[] { "ProgramName.Overjet;","OverjetLink.EnsureProgram();" },
@@ -97,14 +97,14 @@ namespace VBRIDGE1Tests {
 				StringAssert.Contains(source,"return "+arrayPair[1]);
 			}
 			StringAssert.Contains(source,"new FormProgramLinkEdit()");
-			StringAssert.Contains(Read("OpenDental","OpenDental.csproj"),"<Compile Include=\"Logic\\VendorDirect\\BridgeProgramLinkSetups.cs\" />");
+			StringAssert.Contains(Read("OpenPmsDental","OpenPmsDental.csproj"),"<Compile Include=\"Logic\\VendorDirect\\BridgeProgramLinkSetups.cs\" />");
 			//FormProgramLinks finds them through the registry; it is not edited.
-			StringAssert.Contains(Read("OpenDental","Forms","FormProgramLinks.cs"),"VendorDirect.ProgramLinkSetupRegistry.EnsureAllPrograms()");
+			StringAssert.Contains(Read("OpenPmsDental","Forms","FormProgramLinks.cs"),"VendorDirect.ProgramLinkSetupRegistry.EnsureAllPrograms()");
 		}
 
 		[TestMethod]
 		public void ProgramLinkEdit_ChecksTheWebAddressBeforeSaving() {
-			string body=MethodBody(Read("OpenDental","Forms","FormProgramLinkEdit.cs"),"private void butSave_Click(");
+			string body=MethodBody(Read("OpenPmsDental","Forms","FormProgramLinkEdit.cs"),"private void butSave_Click(");
 			int idxCheck=body.IndexOf("BridgeLinkRows.GetPathSaveProblem(textProgName.Text,textPath.Text)");
 			Assert.IsTrue(idxCheck>=0,"The save checks the address.");
 			Assert.IsTrue(idxCheck<body.IndexOf("ProgramCur.Path=textPath.Text"),"Before the path is copied to the program.");

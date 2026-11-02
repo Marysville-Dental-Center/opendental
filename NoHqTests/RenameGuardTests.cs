@@ -66,7 +66,7 @@ namespace NoHqTests {
 			string folderProject=Path.Combine(root,"WpfControlsOD");
 			Assert.IsTrue(Directory.Exists(folderProject),folderProject+" is missing.");
 			string dirTests=Path.GetDirectoryName(typeof(RenameGuardTests).Assembly.Location);//NoHqTests\bin\Debug
-			string pathDll=Path.GetFullPath(Path.Combine(dirTests,"..","..","..","OpenDental","bin",Path.GetFileName(dirTests),"WpfControlsOD.dll"));
+			string pathDll=Path.GetFullPath(Path.Combine(dirTests,"..","..","..","OpenPmsDental","bin",Path.GetFileName(dirTests),"WpfControlsOD.dll"));
 			if(!File.Exists(pathDll)) {
 				Assert.Inconclusive(pathDll+" is not built.");
 			}
@@ -107,7 +107,7 @@ namespace NoHqTests {
 			foreach(Match match in Regex.Matches(csproj,@"<Resource Include=""Resources\\(?<file>[^""]+)""")) {
 				listFiles.Add(match.Groups["file"].Value);
 			}
-			foreach(string folder in new[] { folderProject,Path.Combine(root,"OpenDental") }) {
+			foreach(string folder in new[] { folderProject,Path.Combine(root,"OpenPmsDental") }) {
 				foreach(string pathXaml in GetSourceFiles(folder,".xaml")) {
 					foreach(Match match in Regex.Matches(File.ReadAllText(pathXaml),@"\bBitmapFileName=""(?<file>[^""]+)""")) {
 						listFiles.Add(match.Groups["file"].Value);

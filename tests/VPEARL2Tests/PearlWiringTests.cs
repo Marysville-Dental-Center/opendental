@@ -118,7 +118,7 @@ namespace VPEARL2Tests {
 
 		[TestMethod]
 		public void Worker_LogsItsFailure_BeforeTheAlert() {
-			string source=ReadSource(Path.Combine("OpenDentBusiness","Bridges","Pearl","Pearl.cs"));
+			string source=ReadSource(Path.Combine("OpenPmsDentalBusiness","Bridges","Pearl","Pearl.cs"));
 			int indexHandler=source.IndexOf("oDThreadPearl.AddExceptionHandler(",StringComparison.Ordinal);
 			Assert.IsTrue(indexHandler>0,"SendOnThread's exception handler.");
 			int indexLog=source.IndexOf("PearlLog.LogWorkerFailure(Document_?.DocNum??0,_pearlRequest?.RequestId,ex);",indexHandler,StringComparison.Ordinal);
@@ -128,10 +128,10 @@ namespace VPEARL2Tests {
 
 		[TestMethod]
 		public void SetupWindow_AddsTheRow_AndOffersTheLevels() {
-			string source=ReadSource(Path.Combine("OpenDental","Forms","FormProgramLinkEdit.cs"));
+			string source=ReadSource(Path.Combine("OpenPmsDental","Forms","FormProgramLinkEdit.cs"));
 			int indexLoad=source.IndexOf("private void FormProgramLinkEdit_Load(",StringComparison.Ordinal);
 			int indexFillForm=source.IndexOf("FillForm();",indexLoad,StringComparison.Ordinal);
-			int indexEnsure=source.IndexOf("OpenDentBusiness.Pearl.PearlLog.EnsureLogLevelProperty(ProgramCur);",indexLoad,StringComparison.Ordinal);
+			int indexEnsure=source.IndexOf("OpenPmsDentalBusiness.Pearl.PearlLog.EnsureLogLevelProperty(ProgramCur);",indexLoad,StringComparison.Ordinal);
 			Assert.IsTrue(indexEnsure>indexLoad && indexEnsure<indexFillForm,"The row exists before the grid is filled.");
 			int indexDoubleClick=source.IndexOf("private void gridMain_CellDoubleClick(",StringComparison.Ordinal);
 			int indexCase=source.IndexOf("case nameof(ProgramName.Pearl):",indexDoubleClick,StringComparison.Ordinal);

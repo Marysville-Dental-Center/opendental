@@ -54,7 +54,7 @@ namespace BIMGTests {
 		#region Copy without drawings
 		[TestMethod]
 		public void ImagingToolbar_CopyIsASplitButtonWithBothCommands() {
-			string source=Read("OpenDental","Main Modules","ControlImages.cs");
+			string source=Read("OpenPmsDental","Main Modules","ControlImages.cs");
 			string layout=MethodBody(source,"public void LayoutToolBars() {");
 			AssertBefore(layout,"contextMenuCopy.Add(new WpfControls.UI.MenuItem(Lan.g(this,\"Copy\"),ToolBarCopy_Click));",
 				"contextMenuCopy.Add(new WpfControls.UI.MenuItem(Lan.g(this,\"Copy without drawings\"),ToolBarCopyWithoutDrawings_Click));");
@@ -70,7 +70,7 @@ namespace BIMGTests {
 
 		[TestMethod]
 		public void ImageDisplay_BothCommandsShareOneCopyThatSkipsDrawings() {
-			string source=Read("OpenDental","User Controls","ControlImageDisplay.cs");
+			string source=Read("OpenPmsDental","User Controls","ControlImageDisplay.cs");
 			StringAssert.Contains(MethodBody(source,"public void ToolBarCopy_Click(object sender, EventArgs e){"),"CopyToClipboard(includeDrawings:true);");
 			StringAssert.Contains(MethodBody(source,"public void ToolBarCopyWithoutDrawings_Click(object sender,EventArgs e){"),
 				"CopyToClipboard(includeDrawings:false);");
@@ -99,7 +99,7 @@ namespace BIMGTests {
 
 		[TestMethod]
 		public void ImageDisplay_DrawMountAndDrawDocumentKeepDrawingsByDefault() {
-			string source=Read("OpenDental","User Controls","ControlImageDisplay.cs");
+			string source=Read("OpenPmsDental","User Controls","ControlImageDisplay.cs");
 			string drawMount=MethodBody(source,"private void DrawMount(Graphics g,bool includeDrawings=true){");
 			CollectionAssert.AreEqual(new[] { true },GetDrawDrawingsGuarded(drawMount).ToArray());
 			string drawDocument=MethodBody(source,"private void DrawDocument(Graphics g,bool includeDrawings=true){");
@@ -111,7 +111,7 @@ namespace BIMGTests {
 
 		[TestMethod]
 		public void ImageRightClickMenu_HasBothCommandsInOrder() {
-			string designer=Read("OpenDental","User Controls","ControlImageDisplay.Designer.cs");
+			string designer=Read("OpenPmsDental","User Controls","ControlImageDisplay.Designer.cs");
 			Match match=Regex.Match(designer,@"this\.menuPanelMain\.MenuItems\.AddRange\(new System\.Windows\.Forms\.MenuItem\[\] \{(?<items>[^}]*)\}\);");
 			Assert.IsTrue(match.Success);
 			string[] arrayItems=match.Groups["items"].Value.Split(',').Select(x => x.Trim().Replace("this.","")).ToArray();
@@ -123,7 +123,7 @@ namespace BIMGTests {
 			}
 			StringAssert.Contains(designer,"this.menuItemCopyWithoutDrawings.Text = \"Copy without drawings\";");
 			//The click handler goes by menu item, so the inserted item cannot shift the others.
-			string source=Read("OpenDental","User Controls","ControlImageDisplay.cs");
+			string source=Read("OpenPmsDental","User Controls","ControlImageDisplay.cs");
 			string click=MethodBody(source,"private void menuPanelMain_Click(object sender,System.EventArgs e) {");
 			Assert.AreEqual(0,Count(click,".Index"),"No dispatch by position.");
 			Assert.IsTrue(Regex.IsMatch(click,@"if\(menuItem==menuItemCopy\) \{\s*ToolBarCopy_Click\(this,new EventArgs\(\)\);"));
@@ -147,7 +147,7 @@ namespace BIMGTests {
 		///it never brings drawings along, whichever copy command put them on the clipboard.</summary>
 		[TestMethod]
 		public void PasteInsideTheProgram_NeverCopiesDrawings() {
-			string source=Read("OpenDental","User Controls","ControlImageDisplay.cs");
+			string source=Read("OpenPmsDental","User Controls","ControlImageDisplay.cs");
 			string paste=MethodBody(source,"public void ToolBarPasteTypeAndKey(NodeTypeAndKey nodeTypeAndKey,bool showDocInfo){");
 			Assert.AreEqual(0,Count(paste,"ImageDraw"),"No drawings are read or written while pasting.");
 		}
@@ -209,8 +209,8 @@ namespace BIMGTests {
 
 		[TestMethod]
 		public void ScanningSetup_DetailsButtonBesideShowSelectScannerWindow() {
-			string designer=Read("OpenDental","Forms","FormImagingSetup.designer.cs");
-			StringAssert.Contains(designer,"this.butScanDocSelectSourceDetails = new OpenDental.UI.Button();");
+			string designer=Read("OpenPmsDental","Forms","FormImagingSetup.designer.cs");
+			StringAssert.Contains(designer,"this.butScanDocSelectSourceDetails = new OpenPmsDental.UI.Button();");
 			StringAssert.Contains(designer,"this.groupBox1.Controls.Add(this.butScanDocSelectSourceDetails);");
 			StringAssert.Contains(designer,"this.butScanDocSelectSourceDetails.Text = \"Details\";");
 			StringAssert.Contains(designer,"this.butScanDocSelectSourceDetails.Click += new System.EventHandler(this.butScanDocSelectSourceDetails_Click);");
@@ -234,7 +234,7 @@ namespace BIMGTests {
 
 		[TestMethod]
 		public void ScanningSetup_DetailsExplainsTheOptionAndTouchesNoScanner() {
-			string source=Read("OpenDental","Forms","FormImagingSetup.cs");
+			string source=Read("OpenPmsDental","Forms","FormImagingSetup.cs");
 			string details=MethodBody(source,"private void butScanDocSelectSourceDetails_Click(object sender,EventArgs e) {");
 			StringAssert.Contains(details,"MsgBox.Show(this,");
 			foreach(string text in new[] { "Canon","PDFs","Imaging module","list boxes","Commlog","before each scan" }) {

@@ -18,7 +18,7 @@ namespace M2APPTTests {
 			throw new InvalidOperationException("Could not find the repository root (LICENSE and NOTICE) above the test assembly.");
 		}
 
-		///<summary>A file under the repository root, for example GetPath("OpenDental","Resources","PrefInfos.xml").</summary>
+		///<summary>A file under the repository root, for example GetPath("OpenPmsDental","Resources","PrefInfos.xml").</summary>
 		public static string GetPath(params string[] arrayParts) {
 			string path=GetRoot();
 			for(int i=0;i<arrayParts.Length;i++) {

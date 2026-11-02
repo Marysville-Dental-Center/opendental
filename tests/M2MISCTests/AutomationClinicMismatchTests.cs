@@ -118,7 +118,7 @@ namespace M2MISCTests {
 			AutomationConditions.RefreshCache();
 		}
 
-		///<summary>Fires the trigger the way OpenDental.AutomationL does and returns the pop-up messages shown.</summary>
+		///<summary>Fires the trigger the way OpenPmsDental.AutomationL does and returns the pop-up messages shown.</summary>
 		private static List<string> Fire(EnumAutomationTrigger automationTrigger,List<string> listProcCodes,long patNum,object triggerObj=null) {
 			List<string> listMessages=new List<string>();
 			Automations.Trigger<object>(automationTrigger,listProcCodes,patNum,new Dictionary<long,Dictionary<long,DateTime>>(),

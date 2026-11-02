@@ -62,7 +62,7 @@ namespace CryptoTests {
 				+"ed311d0a9d5141ce9cc5c66ee689b266a8aa18ace8282a0e0db596c90b0a7b87",Sha3Hex(new string('a',1000000)));
 		}
 
-		///<summary>Same construction as OpenDentBusiness.Authentication.HashPasswordSHA512: base64(SHA3-512(UTF-16LE(salt+password))).</summary>
+		///<summary>Same construction as OpenPmsDentalBusiness.Authentication.HashPasswordSHA512: base64(SHA3-512(UTF-16LE(salt+password))).</summary>
 		[TestMethod]
 		public void Sha3_512_UserPasswordHashFormat() {
 			string hash=Convert.ToBase64String(ODCrypt.Sha3.Hash(Encoding.Unicode.GetBytes("salt"+"password")));
@@ -91,7 +91,7 @@ namespace CryptoTests {
 				Md5Hex("12345678901234567890123456789012345678901234567890123456789012345678901234567890"));
 		}
 
-		///<summary>Same construction as OpenDentBusiness.Authentication.HashPasswordMD5 (non-eCW): base64(MD5(UTF-16LE(password))).</summary>
+		///<summary>Same construction as OpenPmsDentalBusiness.Authentication.HashPasswordMD5 (non-eCW): base64(MD5(UTF-16LE(password))).</summary>
 		[TestMethod]
 		public void Md5_UserPasswordHashFormat() {
 			Assert.AreEqual("sIHb6F4ew//D1OfQInQAzQ==",Convert.ToBase64String(ODCrypt.MD5.Hash(Encoding.Unicode.GetBytes("password"))));

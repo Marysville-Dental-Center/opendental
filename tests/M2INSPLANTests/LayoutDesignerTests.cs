@@ -275,19 +275,19 @@ namespace M2INSPLANTests {
 					continue;
 				}
 				float widthAvailable;
-				if(typeName=="OpenDental.UI.CheckBox") {
+				if(typeName=="OpenPmsDental.UI.CheckBox") {
 					widthAvailable=bounds.Width-12-4;//the 12 pixel box and its gap (UI.CheckBox.OnPaint)
 				}
-				else if(typeName=="OpenDental.UI.Button") {
+				else if(typeName=="OpenPmsDental.UI.Button") {
 					if(designerControl.HasImage) {
 						continue;
 					}
 					widthAvailable=bounds.Width;
 				}
-				else if(typeName=="OpenDental.UI.GroupBox") {
+				else if(typeName=="OpenPmsDental.UI.GroupBox") {
 					widthAvailable=bounds.Width-5;
 				}
-				else if(typeName=="OpenDental.UI.ComboBox") {
+				else if(typeName=="OpenPmsDental.UI.ComboBox") {
 					widthAvailable=bounds.Width-20;//the drop-down arrow
 				}
 				else {

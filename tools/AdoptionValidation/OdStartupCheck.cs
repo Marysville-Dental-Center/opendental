@@ -96,7 +96,7 @@ namespace AdoptionValidation {
 
 	///<summary>An executable model of the two version checks an Open Dental client runs at startup, in this order: ClassConvertDatabase.Convert
 	///(through PrefL.ConvertDB) and PrefL.CheckProgramVersion. It follows the published GPL source of Open Dental 24.3.63 (the 24_3 branch of this
-	///repository, OpenDental/Misc/ClassConvertDatabase.cs and OpenDental/Logic/PrefL.cs), the last public source; backlog risk R1 describes the
+	///repository, OpenPmsDental/Misc/ClassConvertDatabase.cs and OpenPmsDental/Logic/PrefL.cs), the last public source; backlog risk R1 describes the
 	///same path. It never runs Open Dental and never reads update files. Open Dental 25.3 is closed source, so a one-time confirmation with the
 	///licensed client on a copy stays an owner decision (R1, strategy item 5).
 	///Not modelled, because they do not depend on the version numbers: the checks before ConvertDB (read-only and report server versions, index

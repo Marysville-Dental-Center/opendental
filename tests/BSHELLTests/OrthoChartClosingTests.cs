@@ -14,7 +14,7 @@ namespace BSHELLTests {
 		private const OrthoChartCloseKind DEFAULT_KIND=OrthoChartCloseKind.UserCancel;
 
 		private static string Form() {
-			return TestPaths.ReadRepoFile("OpenDental","Forms","FormOrthoChart.cs");
+			return TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormOrthoChart.cs");
 		}
 
 		private static string Closing() {
@@ -202,7 +202,7 @@ namespace BSHELLTests {
 
 		[TestMethod]
 		public void ForcedCloseOpenForms_MarksTheWindows() {
-			string main=TestPaths.ReadRepoFile("OpenDental","Main Modules","FormOpenDental.cs");
+			string main=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","FormOpenDental.cs");
 			string closeOpen=TestPaths.GetMethodBody(main,"public bool CloseOpenForms(bool isForceClose");
 			int indexMark=closeOpen.IndexOf("if(isForceClose && !isSnip) {",StringComparison.Ordinal);
 			int indexCall=closeOpen.IndexOf("FormOrthoChart.MarkAllForForcedClose();",StringComparison.Ordinal);

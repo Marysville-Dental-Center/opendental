@@ -1,4 +1,4 @@
-// The Standard Reports row of the UDS+ report (OpenDentBusiness/Misc/ForkMigrations/ReportRowUdsPlus.cs) on scratch databases with the reference
+// The Standard Reports row of the UDS+ report (OpenPmsDentalBusiness/Misc/ForkMigrations/ReportRowUdsPlus.cs) on scratch databases with the reference
 // table definitions and synthetic rows.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;

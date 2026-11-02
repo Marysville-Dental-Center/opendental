@@ -239,7 +239,7 @@ namespace M2ESTTests {
 		}
 
 		///<summary>The back-fill step is abstract until its level is settled (see the port note), so the test runs it through a subclass. The
-		///subclass has no [ForkMigration] attribute and is not in OpenDentBusiness, so the runner never sees it.</summary>
+		///subclass has no [ForkMigration] attribute and is not in OpenPmsDentalBusiness, so the runner never sees it.</summary>
 		private class StepUnderTest:NoBillInsBackfillStep {
 		}
 		#endregion Back-fill of 24.3/25.3 decisions

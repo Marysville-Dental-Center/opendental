@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 //using System.Windows.Forms;
 using OpenPmsDental;
-//using OpenDental.UI;
+//using OpenPmsDental.UI;
 using OpenPmsDentalBusiness;
 using CodeBase;
 using WpfControls.UI;

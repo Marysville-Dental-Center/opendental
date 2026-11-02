@@ -26,8 +26,8 @@ namespace BTIMETests {
 
 		[TestMethod]
 		public void TimeCard_TotalsGridReplacesTheTotalBoxes() {
-			string designer=ReadRepoFile("OpenDental","Forms","FormTimeCard.designer.cs");
-			StringAssert.Contains(designer,"this.gridTotals = new OpenDental.UI.GridOD();");
+			string designer=ReadRepoFile("OpenPmsDental","Forms","FormTimeCard.designer.cs");
+			StringAssert.Contains(designer,"this.gridTotals = new OpenPmsDental.UI.GridOD();");
 			StringAssert.Contains(designer,"this.gridTotals.Title = \"Totals for Period\";");
 			StringAssert.Contains(designer,"this.radioTotalsDecimal.Text = \"Decimal Format\";");
 			StringAssert.Contains(designer,"this.radioTotalsColon.Text = \"Colon Format\";");
@@ -40,7 +40,7 @@ namespace BTIMETests {
 
 		[TestMethod]
 		public void TimeCard_TotalsUseTheTestedRules_AndNeverChangeThePreference() {
-			string code=ReadRepoFile("OpenDental","Forms","FormTimeCard.cs");
+			string code=ReadRepoFile("OpenPmsDental","Forms","FormTimeCard.cs");
 			StringAssert.Contains(code,"TimeCardTotals.Calculate(_listClockEvents,_listTimeAdjusts,IsBreaks)");
 			StringAssert.Contains(code,"SetTotalsFormat(TimeCardTotals.GetDefaultFormat());");
 			StringAssert.Contains(code,"TimeCardTotals.GetCells(_timeCardPeriodTotals,_enumTimeCardTotalsFormat,PrefC.GetBool(PrefName.TimeCardShowSeconds))");
@@ -52,10 +52,10 @@ namespace BTIMETests {
 
 		[TestMethod]
 		public void TimeClock_ReportsToFilterIsWiredIntoTheEmployeeGrid() {
-			string designer=ReadRepoFile("OpenDental","Main Modules","ControlManage.designer.cs");
-			string code=ReadRepoFile("OpenDental","Main Modules","ControlManage.cs");
-			string codeReportsTo=ReadRepoFile("OpenDental","Main Modules","ControlManage.ReportsTo.cs");
-			StringAssert.Contains(designer,"this.comboReportsTo = new OpenDental.UI.ComboBox();");
+			string designer=ReadRepoFile("OpenPmsDental","Main Modules","ControlManage.designer.cs");
+			string code=ReadRepoFile("OpenPmsDental","Main Modules","ControlManage.cs");
+			string codeReportsTo=ReadRepoFile("OpenPmsDental","Main Modules","ControlManage.ReportsTo.cs");
+			StringAssert.Contains(designer,"this.comboReportsTo = new OpenPmsDental.UI.ComboBox();");
 			StringAssert.Contains(designer,"this.groupBox1.Controls.Add(this.comboReportsTo);");
 			StringAssert.Contains(designer,"this.labelReportsTo.Text = \"Reports To\";");
 			StringAssert.Contains(designer,"this.comboReportsTo.SelectionChangeCommitted += new System.EventHandler(this.comboReportsTo_SelectionChangeCommitted);");
@@ -64,7 +64,7 @@ namespace BTIMETests {
 			StringAssert.Contains(codeReportsTo,"EmployeeReportsTo.GetSupervisors(_listEmployees)");
 			StringAssert.Contains(codeReportsTo,"EmployeeReportsTo.GetValidSelection(EmployeeReportsTo.GetRemembered(userNum),listSupervisors)");
 			StringAssert.Contains(codeReportsTo,"EmployeeReportsTo.Remember(");
-			StringAssert.Contains(ReadRepoFile("OpenDental","OpenDental.csproj"),"<Compile Include=\"Main Modules\\ControlManage.ReportsTo.cs\">");
+			StringAssert.Contains(ReadRepoFile("OpenPmsDental","OpenPmsDental.csproj"),"<Compile Include=\"Main Modules\\ControlManage.ReportsTo.cs\">");
 		}
 	}
 }

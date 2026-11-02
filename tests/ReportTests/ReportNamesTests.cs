@@ -53,7 +53,7 @@ namespace ReportTests {
 
 		[TestMethod]
 		public void Dispatcher_OpensExactlyTheKnownNames() {
-			string source=File.ReadAllText(GetRepoFile("OpenDental","Forms","FormReportsMore.cs"));
+			string source=File.ReadAllText(GetRepoFile("OpenPmsDental","Forms","FormReportsMore.cs"));
 			HashSet<string> hashSetDispatched=GetCaseNames(GetMethodSource(source,"public static ReportNonModalSelection OpenReportHelper("));
 			HashSet<string> hashSetKnown=new HashSet<string>(DisplayReports.ReportNames.ArrayKnownNames);
 			Assert.AreEqual(hashSetKnown.Count,DisplayReports.ReportNames.ArrayKnownNames.Length,"ArrayKnownNames has duplicates.");
@@ -71,7 +71,7 @@ namespace ReportTests {
 
 		[TestMethod]
 		public void Dispatcher_NewReportsKeepTheDailyProviderRuleAndLogs() {
-			string source=GetMethodSource(File.ReadAllText(GetRepoFile("OpenDental","Forms","FormReportsMore.cs")),
+			string source=GetMethodSource(File.ReadAllText(GetRepoFile("OpenPmsDental","Forms","FormReportsMore.cs")),
 				"public static ReportNonModalSelection OpenReportHelper(");
 			foreach(string constant in new[] { "ProceduresIndividual","ProductionByProcedure" }) {
 				int index=source.IndexOf("case DisplayReports.ReportNames."+constant+":",StringComparison.Ordinal);
@@ -92,7 +92,7 @@ namespace ReportTests {
 
 		[TestMethod]
 		public void ReportSetup_NamesTheNewReports() {
-			string source=File.ReadAllText(GetRepoFile("OpenDental","User Controls","UserControlReportSetup.cs"));
+			string source=File.ReadAllText(GetRepoFile("OpenPmsDental","User Controls","UserControlReportSetup.cs"));
 			HashSet<string> hashSet=GetCaseNames(GetMethodSource(source,"private string GetInternalName("));
 			foreach(string name in new[] { DisplayReports.ReportNames.Procedures,DisplayReports.ReportNames.ProceduresIndividual,
 				DisplayReports.ReportNames.ProductionByProcedure,DisplayReports.ReportNames.InsPendingSupplementals })
@@ -103,7 +103,7 @@ namespace ReportTests {
 
 		[TestMethod]
 		public void ProcSheet_IsGroupedOnly() {
-			string designer=File.ReadAllText(GetRepoFile("OpenDental","Forms Reports","FormRpProcSheet.designer.cs"));
+			string designer=File.ReadAllText(GetRepoFile("OpenPmsDental","Forms Reports","FormRpProcSheet.designer.cs"));
 			Assert.IsFalse(designer.Contains("radioIndividual"),"The Type group box is gone.");
 			StringAssert.Contains(designer,"\"Production by Procedure Report\"");
 		}

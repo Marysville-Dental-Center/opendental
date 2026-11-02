@@ -1,6 +1,6 @@
 // Tests that the prebuilt Bridges.dll stays deleted (docs/specs/vendor-direct/README.md, package Z2): no project, solution entry, source file or
 // built assembly needs it or the binaries only it pulled in (Intuit, Serilog, Microsoft Graph and its closure, Dropbox.Api), every type the
-// program used from it is in-repo source inside OpenDentBusiness, and the HQ provisioning leftovers and vendor logos removed with it stay gone.
+// program used from it is in-repo source inside OpenPmsDentalBusiness, and the HQ provisioning leftovers and vendor logos removed with it stay gone.
 // Dependencies that other kept DLLs still need (MSAL's IdentityModel.Abstractions, SSH.NET's Bcl.AsyncInterfaces) must still reach the program.
 // Reads the source and the built assemblies only; nothing leaves this computer and no database is needed.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
@@ -36,8 +36,8 @@ namespace VendorDirectTests.BridgesRemoval {
 		///<summary>Assembly names that no built assembly of the program may reference.</summary>
 		private static readonly string[] _arrayRemovedAssemblies=_arrayRemovedFiles.Select(x => Path.GetFileNameWithoutExtension(x)).ToArray();
 		///<summary>The projects whose source the program is built from.</summary>
-		private static readonly string[] _arraySourceProjects=new[] { "OpenDental","OpenDentBusiness","WpfControlsOD","CodeBase","OpenDentalServer",
-			"OpenDentalCloud","UnitTests" };
+		private static readonly string[] _arraySourceProjects=new[] { "OpenPmsDental","OpenPmsDentalBusiness","WpfControlsOD","CodeBase","OpenPmsDentalServer",
+			"OpenPmsDentalCloud","UnitTests" };
 
 		private static string GetRoot() {
 			return FoundationLayoutTests.GetRepositoryRoot();
@@ -91,7 +91,7 @@ namespace VendorDirectTests.BridgesRemoval {
 		[TestMethod]
 		public void Projects_DoNotReferenceBridgesOrItsDependencies() {
 			string root=GetRoot();
-			//"Bridges\" alone is the in-repo bridges folder of OpenDental, OpenDentBusiness and WpfControlsOD, and VBbridges.dll is a different
+			//"Bridges\" alone is the in-repo bridges folder of OpenPmsDental, OpenPmsDentalBusiness and WpfControlsOD, and VBbridges.dll is a different
 			//binary, so look for the Bridges assembly forms only.
 			Regex regex=new Regex(@"(?<![A-Za-z])Bridges\.dll|xBridges|Include=""Bridges[,""]|Intuit\.Ipp|IppDotNetSdk|Serilog|Microsoft\.Graph|Azure\.Core|Dropbox\.Api"
 				+@"|System\.Text\.Json|Encodings\.Web|WinHttpHandler|System\.Memory\.Data|Documents\.Client|PlatformAbstractions"
@@ -135,7 +135,7 @@ namespace VendorDirectTests.BridgesRemoval {
 
 		[TestMethod]
 		public void Program_ReferencesNoRemovedAssembly() {
-			foreach(string pathRelative in new[] { @"OpenDental\bin\Debug\OpenDental.exe",@"WpfControlsOD\bin\Debug\WpfControlsOD.dll",
+			foreach(string pathRelative in new[] { @"OpenPmsDental\bin\Debug\OpenPmsDental.exe",@"WpfControlsOD\bin\Debug\WpfControlsOD.dll",
 				@"UnitTests\bin\Debug\Unit Tests.exe" })
 			{
 				string path=Path.Combine(GetRoot(),pathRelative);
@@ -154,39 +154,39 @@ namespace VendorDirectTests.BridgesRemoval {
 			//The Graph SDK's dependencies used to bring Microsoft.IdentityModel.Abstractions in. MSAL 4.47.1 asks for 6.22 and the shipped copy is
 			//6.23.1, so the business layer references it itself, and the program must both copy it and redirect to it.
 			Assert.IsTrue(typeof(Patient).Assembly.GetReferencedAssemblies().Any(x => x.Name=="Microsoft.IdentityModel.Abstractions"),
-				"OpenDentBusiness should reference Microsoft.IdentityModel.Abstractions.");
-			string folder=Path.Combine(GetRoot(),@"OpenDental\bin\Debug");
-			if(!File.Exists(Path.Combine(folder,"OpenDental.exe"))) {
-				Assert.Inconclusive(@"OpenDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+				"OpenPmsDentalBusiness should reference Microsoft.IdentityModel.Abstractions.");
+			string folder=Path.Combine(GetRoot(),@"OpenPmsDental\bin\Debug");
+			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
+				Assert.Inconclusive(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Identity.Client.dll")));
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.IdentityModel.Abstractions.dll")),"MSAL's dependency is not copied to the program folder.");
-			string config=File.ReadAllText(Path.Combine(folder,"OpenDental.exe.config"));
+			string config=File.ReadAllText(Path.Combine(folder,"OpenPmsDental.exe.config"));
 			StringAssert.Matches(config,new Regex(@"name=""Microsoft\.IdentityModel\.Abstractions""[^>]*/>\s*<bindingRedirect oldVersion=""0\.0\.0\.0-6\.23\.1\.0"""),
-				"OpenDental.exe.config needs the binding redirect MSAL relies on.");
+				"OpenPmsDental.exe.config needs the binding redirect MSAL relies on.");
 		}
 
 		[TestMethod]
 		public void SshNetDependency_StillReachesTheProgram() {
 			//Renci.SshNet (SSH.NET 2024.1.0, net462) references Microsoft.Bcl.AsyncInterfaces 1.0.0.0. The Graph SDK used to bring the 6.0.0.0 copy and
-			//its redirect in, so OpenDentalCloud now references it itself. Without it, SFTP A to Z storage and the TSI uploads fail when SftpClient loads.
-			Assert.IsTrue(Regex.IsMatch(ReadRepoFile(@"OpenDentalCloud\OpenDentalCloud.csproj"),
+			//its redirect in, so OpenPmsDentalCloud now references it itself. Without it, SFTP A to Z storage and the TSI uploads fail when SftpClient loads.
+			Assert.IsTrue(Regex.IsMatch(ReadRepoFile(@"OpenPmsDentalCloud\OpenPmsDentalCloud.csproj"),
 				@"<Reference Include=""Microsoft\.Bcl\.AsyncInterfaces[,""][^>]*>\s*<HintPath>\.\.\\Required dlls\\Microsoft\.Bcl\.AsyncInterfaces\.dll</HintPath>"),
-				"OpenDentalCloud should reference Required dlls\\Microsoft.Bcl.AsyncInterfaces.dll next to Renci.SshNet.");
-			string folder=Path.Combine(GetRoot(),@"OpenDental\bin\Debug");
-			if(!File.Exists(Path.Combine(folder,"OpenDental.exe"))) {
-				Assert.Inconclusive(@"OpenDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+				"OpenPmsDentalCloud should reference Required dlls\\Microsoft.Bcl.AsyncInterfaces.dll next to Renci.SshNet.");
+			string folder=Path.Combine(GetRoot(),@"OpenPmsDental\bin\Debug");
+			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
+				Assert.Inconclusive(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Renci.SshNet.dll")));
 			//A HintPath alone does not carry it to the hosts: the compiler drops unused references, and the hosts' build will not take 6.0.0.0 for
-			//SSH.NET's 1.0.0.0. OpenDentalCloud must use it, so its own reference is what every host copies.
-			Assert.IsTrue(GetReferencedAssemblyNames(Path.Combine(folder,"OpenDentalCloud.dll")).Contains("Microsoft.Bcl.AsyncInterfaces"),
-				"OpenDentalCloud.dll should reference Microsoft.Bcl.AsyncInterfaces.");
+			//SSH.NET's 1.0.0.0. OpenPmsDentalCloud must use it, so its own reference is what every host copies.
+			Assert.IsTrue(GetReferencedAssemblyNames(Path.Combine(folder,"OpenPmsDentalCloud.dll")).Contains("Microsoft.Bcl.AsyncInterfaces"),
+				"OpenPmsDentalCloud.dll should reference Microsoft.Bcl.AsyncInterfaces.");
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Bcl.AsyncInterfaces.dll")),"SSH.NET's dependency is not copied to the program folder.");
-			string pathConfig=Path.Combine(folder,"OpenDental.exe.config");
+			string pathConfig=Path.Combine(folder,"OpenPmsDental.exe.config");
 			StringAssert.Matches(File.ReadAllText(pathConfig),
 				new Regex(@"name=""Microsoft\.Bcl\.AsyncInterfaces""[^>]*/>\s*<bindingRedirect oldVersion=""0\.0\.0\.0-6\.0\.0\.0"" newVersion=""6\.0\.0\.0"""),
-				"OpenDental.exe.config needs the binding redirect SSH.NET relies on.");
+				"OpenPmsDental.exe.config needs the binding redirect SSH.NET relies on.");
 			//Load SftpClient the way the program does: from its folder, with its config, in a domain of its own so nothing stays loaded or locked.
 			AppDomainSetup setup=new AppDomainSetup();
 			setup.ApplicationBase=folder;
@@ -205,15 +205,15 @@ namespace VendorDirectTests.BridgesRemoval {
 
 		[TestMethod]
 		public void Program_OutputHasNoBridgesDll() {
-			string folder=Path.Combine(GetRoot(),@"OpenDental\bin\Debug");
-			if(!File.Exists(Path.Combine(folder,"OpenDental.exe"))) {
-				Assert.Inconclusive(@"OpenDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+			string folder=Path.Combine(GetRoot(),@"OpenPmsDental\bin\Debug");
+			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
+				Assert.Inconclusive(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			//A stale copy from an older build can stay in bin until a clean, so only check that this build did not write a newer one.
 			string pathBridges=Path.Combine(folder,"Bridges.dll");
 			if(File.Exists(pathBridges)) {
-				Assert.IsTrue(File.GetLastWriteTimeUtc(pathBridges)<File.GetLastWriteTimeUtc(Path.Combine(folder,"OpenDental.exe")).AddMinutes(-1),
-					@"OpenDental\bin\Debug\Bridges.dll was copied by the latest build.");
+				Assert.IsTrue(File.GetLastWriteTimeUtc(pathBridges)<File.GetLastWriteTimeUtc(Path.Combine(folder,"OpenPmsDental.exe")).AddMinutes(-1),
+					@"OpenPmsDental\bin\Debug\Bridges.dll was copied by the latest build.");
 			}
 		}
 
@@ -221,18 +221,18 @@ namespace VendorDirectTests.BridgesRemoval {
 		public void ReplacementTypes_AreInRepoSourceInsideOpenDentBusiness() {
 			Assembly assembly=typeof(Patient).Assembly;
 			string[] arrayTypeNames=new[] {
-				"OpenDentBusiness.Qbo.QuickBooksOnline","OpenDentBusiness.Qbo.QuickBooksOnlineToken","OpenDentBusiness.Qbo.QuickBooksOnlineAccount",
-				"OpenDentBusiness.Qbo.QuickBooksOnlineClassRef","OpenDentBusiness.Qbo.QuickBooksOnlineDepositResponse",
-				"OpenDentBusiness.Microsoft365.MicrosoftApiConnector","OpenDentBusiness.Microsoft365.MicrosoftTokenHelper",
-				"OpenDentBusiness.USPSAddressValidationDatas","OpenDentBusiness.USPSAddressValidationResponse","OpenDentBusiness.EnumDPVConfirmation",
-				"OpenDentBusiness.Bridges.CareCredit","OpenDentBusiness.Bridges.CareCredit+CareCreditException","OpenDentBusiness.Bridges.CareCreditLandingPage",
-				"OpenDentBusiness.Bridges.EnumCareCreditPrefillServiceType","OpenDentBusiness.Bridges.EnumCareCreditBatch",
-				"OpenDentBusiness.Bridges.CareCreditQSBatchResponse" };
+				"OpenPmsDentalBusiness.Qbo.QuickBooksOnline","OpenPmsDentalBusiness.Qbo.QuickBooksOnlineToken","OpenPmsDentalBusiness.Qbo.QuickBooksOnlineAccount",
+				"OpenPmsDentalBusiness.Qbo.QuickBooksOnlineClassRef","OpenPmsDentalBusiness.Qbo.QuickBooksOnlineDepositResponse",
+				"OpenPmsDentalBusiness.Microsoft365.MicrosoftApiConnector","OpenPmsDentalBusiness.Microsoft365.MicrosoftTokenHelper",
+				"OpenPmsDentalBusiness.USPSAddressValidationDatas","OpenPmsDentalBusiness.USPSAddressValidationResponse","OpenPmsDentalBusiness.EnumDPVConfirmation",
+				"OpenPmsDentalBusiness.Bridges.CareCredit","OpenPmsDentalBusiness.Bridges.CareCredit+CareCreditException","OpenPmsDentalBusiness.Bridges.CareCreditLandingPage",
+				"OpenPmsDentalBusiness.Bridges.EnumCareCreditPrefillServiceType","OpenPmsDentalBusiness.Bridges.EnumCareCreditBatch",
+				"OpenPmsDentalBusiness.Bridges.CareCreditQSBatchResponse" };
 			foreach(string typeName in arrayTypeNames) {
-				Assert.IsNotNull(assembly.GetType(typeName),typeName+" should be in OpenDentBusiness.");
+				Assert.IsNotNull(assembly.GetType(typeName),typeName+" should be in OpenPmsDentalBusiness.");
 			}
 			//README 3.5: never a type in a namespace called just "Bridges" (it was Bridges.dll's).
-			Assert.IsFalse(assembly.GetTypes().Any(x => x.Namespace=="Bridges"),"OpenDentBusiness declares a type in the namespace Bridges.");
+			Assert.IsFalse(assembly.GetTypes().Any(x => x.Namespace=="Bridges"),"OpenPmsDentalBusiness declares a type in the namespace Bridges.");
 		}
 
 		[TestMethod]
@@ -242,23 +242,23 @@ namespace VendorDirectTests.BridgesRemoval {
 			string nsBusiness=typeof(Patient).Namespace;
 			Assert.IsTrue(assembly.GetTypes().Any(x => x.Namespace==nsBusiness+".Bridges"),"No type in "+nsBusiness+".Bridges, so the lookup is wrong.");
 			Assert.IsFalse(assembly.GetTypes().Any(x => x.Namespace==nsBusiness+".DoseSpotService"),"The DoseSpot v1 SOAP proxy should have been removed.");
-			Assert.IsFalse(Directory.Exists(Path.Combine(GetRoot(),@"OpenDentBusiness\Web References\DoseSpotService")));
-			Assert.IsFalse(ReadRepoFile(@"OpenDentBusiness\OpenDentBusiness.csproj").Contains("DoseSpotService"));
-			foreach(string file in new[] { @"OpenDentBusiness\Properties\Settings.settings",@"OpenDentBusiness\Properties\Settings.Designer.cs",
-				@"OpenDentBusiness\app.config" })
+			Assert.IsFalse(Directory.Exists(Path.Combine(GetRoot(),@"OpenPmsDentalBusiness\Web References\DoseSpotService")));
+			Assert.IsFalse(ReadRepoFile(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj").Contains("DoseSpotService"));
+			foreach(string file in new[] { @"OpenPmsDentalBusiness\Properties\Settings.settings",@"OpenPmsDentalBusiness\Properties\Settings.Designer.cs",
+				@"OpenPmsDentalBusiness\app.config" })
 			{
 				Assert.IsFalse(ReadRepoFile(file).Contains("dosespot_staging_my_API"),file+" still has the DoseSpot v1 URL setting.");
 			}
 			Assert.IsNull(typeof(OIDInternals).GetProperty("CustomerPatNum"),"OIDInternals.CustomerPatNum asked HQ and should have been removed.");
 			Assert.IsFalse(typeof(ICustomerUpdates).GetMethods().Any(x => x.Name=="RequestCustomerID"));
-			string csproj=ReadRepoFile(@"OpenDental\OpenDental.csproj");
+			string csproj=ReadRepoFile(@"OpenPmsDental\OpenPmsDental.csproj");
 			foreach(string form in new[] { "FormAdvertisingPostcardsAccountSetup","FormDoseSpotAssignClinicId","FormDoseSpotAssignUserId","FormNewCropBilling",
 				"FormErxAccess" })
 			{
-				Assert.IsFalse(csproj.Contains(form),"OpenDental.csproj still lists "+form);
-				Assert.IsFalse(File.Exists(Path.Combine(GetRoot(),@"OpenDental\Forms\"+form+".cs")),form+".cs should have been deleted.");
+				Assert.IsFalse(csproj.Contains(form),"OpenPmsDental.csproj still lists "+form);
+				Assert.IsFalse(File.Exists(Path.Combine(GetRoot(),@"OpenPmsDental\Forms\"+form+".cs")),form+".cs should have been deleted.");
 			}
-			string formOpenDental=ReadRepoFile(@"OpenDental\Main Modules\FormOpenDental.cs");
+			string formOpenDental=ReadRepoFile(@"OpenPmsDental\Main Modules\FormOpenDental.cs");
 			Assert.IsFalse(formOpenDental.Contains("new FormDoseSpotAssign"),"Old DoseSpot alerts must not open the removed forms.");
 			//The stored values stay, so alert rows written before still load.
 			Assert.IsTrue(Enum.IsDefined(typeof(FormType),"FormDoseSpotAssignUserId"));
@@ -267,21 +267,21 @@ namespace VendorDirectTests.BridgesRemoval {
 
 		[TestMethod]
 		public void VendorLogosAndDropboxLicence_AreGone() {
-			string resx=ReadRepoFile(@"OpenDental\Properties\Resources.resx");
-			string designer=ReadRepoFile(@"OpenDental\Properties\Resources.Designer.cs");
-			string csproj=ReadRepoFile(@"OpenDental\OpenDental.csproj");
+			string resx=ReadRepoFile(@"OpenPmsDental\Properties\Resources.resx");
+			string designer=ReadRepoFile(@"OpenPmsDental\Properties\Resources.Designer.cs");
+			string csproj=ReadRepoFile(@"OpenPmsDental\OpenPmsDental.csproj");
 			foreach(string name in new[] { "CareCredit_Button_NoTag_26x90","google_signin_","PaySimple_Button","payconnect-btn-26","payconnect_btn_26",
 				"Dropbox_Api" })
 			{
 				Assert.IsFalse(resx.Contains(name),"Resources.resx still has "+name);
 				Assert.IsFalse(designer.Contains(name),"Resources.Designer.cs still has "+name);
-				Assert.IsFalse(csproj.Contains(name),"OpenDental.csproj still lists "+name);
+				Assert.IsFalse(csproj.Contains(name),"OpenPmsDental.csproj still lists "+name);
 			}
-			List<string> listLeft=Directory.EnumerateFiles(Path.Combine(GetRoot(),@"OpenDental\Resources"))
+			List<string> listLeft=Directory.EnumerateFiles(Path.Combine(GetRoot(),@"OpenPmsDental\Resources"))
 				.Select(x => Path.GetFileName(x))
 				.Where(x => Regex.IsMatch(x,@"^(CareCredit_Button|google_signin|PaySimple_Button|payconnect-btn|Dropbox_Api)",RegexOptions.IgnoreCase))
 				.ToList();
-			Assert.AreEqual(0,listLeft.Count,"Still in OpenDental\\Resources: "+string.Join(", ",listLeft));
+			Assert.AreEqual(0,listLeft.Count,"Still in OpenPmsDental\\Resources: "+string.Join(", ",listLeft));
 		}
 	}
 

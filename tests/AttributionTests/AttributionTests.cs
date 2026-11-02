@@ -146,11 +146,11 @@ namespace AttributionTests {
 
 		[TestMethod]
 		public void AboutBox_ShowsNameAttributionAndReleaseVersion() {
-			string code=ReadRepoFile("OpenDental","Forms","FormAbout.cs");
+			string code=ReadRepoFile("OpenPmsDental","Forms","FormAbout.cs");
 			StringAssert.Contains(code,"labelProductName.Text=AboutBoxInfo.ProductName;");
 			StringAssert.Contains(code,"labelAttribution.Text=AboutBoxInfo.Attribution;");
 			StringAssert.Contains(code,"AboutBoxInfo.GetReleaseVersion(assemblyProgram)");
-			string designer=ReadRepoFile("OpenDental","Forms","FormAbout.designer.cs");
+			string designer=ReadRepoFile("OpenPmsDental","Forms","FormAbout.designer.cs");
 			StringAssert.Contains(designer,"this.Controls.Add(this.labelProductName);");
 			StringAssert.Contains(designer,"this.Controls.Add(this.labelAttribution);");
 			//The Open Dental logo is no longer shown.
@@ -159,13 +159,13 @@ namespace AttributionTests {
 
 		[TestMethod]
 		public void AboutBox_KeepsEveryCopyrightLine() {
-			string code=ReadRepoFile("OpenDental","Forms","FormAbout.cs");
+			string code=ReadRepoFile("OpenPmsDental","Forms","FormAbout.cs");
 			StringAssert.Contains(code,"\"Copyright 2003-\"");
 			StringAssert.Contains(code,"Jordan Sparks, D.M.D.");
 			StringAssert.Contains(code,"\"MySQL - Copyright 1995-\"");
 			StringAssert.Contains(code,"\"MariaDB - Copyright 2009-\"");
 			StringAssert.Contains(code,"FormLicense");
-			string designer=ReadRepoFile("OpenDental","Forms","FormAbout.designer.cs");
+			string designer=ReadRepoFile("OpenPmsDental","Forms","FormAbout.designer.cs");
 			StringAssert.Contains(designer,"All CDT codes are Copyrighted by the ADA.");
 			StringAssert.Contains(designer,"this.Controls.Add(this.labelCopyright);");
 			StringAssert.Contains(designer,"this.Controls.Add(this.labelMySQLCopyright);");
@@ -174,12 +174,12 @@ namespace AttributionTests {
 		}
 
 		[TestMethod]
-		public void AboutBox_DoesNotRenameWindowTitleOrAssembly() {
-			//The rename of window titles, namespaces and assemblies is the final cosmetic step, not this one.
-			string designer=ReadRepoFile("OpenDental","Forms","FormAbout.designer.cs");
+		public void AboutBox_KeepsItsWindowTitleAndIsInTheRenamedAssembly() {
+			//The window title stays "About"; the exe's assembly and namespace carry the Open PMS Dental code name since the rename.
+			string designer=ReadRepoFile("OpenPmsDental","Forms","FormAbout.designer.cs");
 			StringAssert.Contains(designer,"this.Text = \"About\";");
-			Assert.AreEqual("OpenDental",typeof(AboutBoxInfo).Assembly.GetName().Name);
-			Assert.AreEqual("OpenDental",typeof(AboutBoxInfo).Namespace);
+			Assert.AreEqual("OpenPmsDental",typeof(AboutBoxInfo).Assembly.GetName().Name);
+			Assert.AreEqual("OpenPmsDental",typeof(AboutBoxInfo).Namespace);
 		}
 		#endregion About box
 	}

@@ -148,11 +148,11 @@ namespace BPAYTests {
 		[TestMethod]
 		public void ListedCallSites_AllRouteThroughIsGlobalDateLock() {
 			//The spec lists the direct callers; each must keep calling Security.IsGlobalDateLock(EnumPermType.PayPlanEdit,...) so the setting reaches it.
-			AssertCallCount(Path.Combine("OpenDental","Forms","FormPayPlan.cs"),4);
-			AssertCallCount(Path.Combine("OpenDental","Forms","FormPayPlanDynamic.cs"),1);
-			AssertCallCount(Path.Combine("OpenDental","Forms","FormPayPlanCredits.cs"),2);
-			AssertCallCount(Path.Combine("OpenDentBusiness","Db Multi Table","PayPlanEdit.cs"),1);
-			string security=File.ReadAllText(TestDb.FindRepoFile(Path.Combine("OpenDentBusiness","Db Multi Table","Security.cs")));
+			AssertCallCount(Path.Combine("OpenPmsDental","Forms","FormPayPlan.cs"),4);
+			AssertCallCount(Path.Combine("OpenPmsDental","Forms","FormPayPlanDynamic.cs"),1);
+			AssertCallCount(Path.Combine("OpenPmsDental","Forms","FormPayPlanCredits.cs"),2);
+			AssertCallCount(Path.Combine("OpenPmsDentalBusiness","Db Multi Table","PayPlanEdit.cs"),1);
+			string security=File.ReadAllText(TestDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","Db Multi Table","Security.cs")));
 			StringAssert.Contains(security,"PayPlanGlobalLock.IsExcludedFromGlobalLock(perm)");
 		}
 

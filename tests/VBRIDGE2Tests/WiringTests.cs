@@ -1,5 +1,5 @@
 // How the V-BRIDGE2 program links are wired into the program: the ProgramName values, the button dispatch, the Program Links registry, the
-// project files and the neutrality rules. Source checks for the parts in OpenDental.exe and WpfControlsOD.dll, which this test project does not load.
+// project files and the neutrality rules. Source checks for the parts in OpenPmsDental.exe and WpfControlsOD.dll, which this test project does not load.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Linq;
@@ -47,35 +47,35 @@ namespace VBRIDGE2Tests {
 			string csproj=TestPaths.ReadRepoFile("WpfControlsOD","WpfControlsOD.csproj");
 			StringAssert.Contains(csproj,"<Compile Include=\"Bridges\\Clerri.cs\" />");
 			StringAssert.Contains(csproj,"<Compile Include=\"Bridges\\CleverOne.cs\" />");
-			string csprojProgram=TestPaths.ReadRepoFile("OpenDental","OpenDental.csproj");
+			string csprojProgram=TestPaths.ReadRepoFile("OpenPmsDental","OpenPmsDental.csproj");
 			StringAssert.Contains(csprojProgram,"<Compile Include=\"Forms\\FormClerriSetup.cs\">");
 			StringAssert.Contains(csprojProgram,"<Compile Include=\"Forms\\FormClerriSetup.Designer.cs\">");
 			StringAssert.Contains(csprojProgram,"<EmbeddedResource Include=\"Forms\\FormClerriSetup.resx\">");
 			StringAssert.Contains(csprojProgram,"<Compile Include=\"Forms\\FormProgramLinkEdit.Bridges2.cs\">");
 			StringAssert.Contains(csprojProgram,"<Compile Include=\"Logic\\VendorDirect\\CleverOneProgramLinkSetup.cs\" />");
-			//The business classes are picked up by the VendorDirect wildcard, so OpenDentBusiness.csproj needs no line of its own.
-			StringAssert.Contains(TestPaths.ReadRepoFile("OpenDentBusiness","OpenDentBusiness.csproj"),"<Compile Include=\"VendorDirect\\**\\*.cs\" />");
+			//The business classes are picked up by the VendorDirect wildcard, so OpenPmsDentalBusiness.csproj needs no line of its own.
+			StringAssert.Contains(TestPaths.ReadRepoFile("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj"),"<Compile Include=\"VendorDirect\\**\\*.cs\" />");
 		}
 
 		[TestMethod]
 		public void ProgramLinks_RegistersBothSetups() {
-			//ProgramLinkSetupRegistry finds IProgramLinkSetup implementations in OpenDental.exe by reflection.
-			string clerri=TestPaths.ReadRepoFile("OpenDental","Forms","FormClerriSetup.cs");
+			//ProgramLinkSetupRegistry finds IProgramLinkSetup implementations in OpenPmsDental.exe by reflection.
+			string clerri=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormClerriSetup.cs");
 			StringAssert.Contains(clerri,"public class ClerriProgramLinkSetup:IProgramLinkSetup");
 			StringAssert.Contains(clerri,"return ProgramName.Clerri;");
 			StringAssert.Contains(clerri,"return ClerriProgram.EnsureProgram();");
-			string cleverOne=TestPaths.ReadRepoFile("OpenDental","Logic","VendorDirect","CleverOneProgramLinkSetup.cs");
+			string cleverOne=TestPaths.ReadRepoFile("OpenPmsDental","Logic","VendorDirect","CleverOneProgramLinkSetup.cs");
 			//Clever One opens in the standard Program Link window through V-BRIDGE1's StandardProgramLinkSetup.
 			StringAssert.Contains(cleverOne,"public class CleverOneProgramLinkSetup:StandardProgramLinkSetup");
 			StringAssert.Contains(cleverOne,"return ProgramName.CleverOne;");
 			StringAssert.Contains(cleverOne,"return CleverOneProgram.EnsureProgram();");
-			StringAssert.Contains(TestPaths.ReadRepoFile("OpenDental","Logic","VendorDirect","BridgeProgramLinkSetups.cs"),
+			StringAssert.Contains(TestPaths.ReadRepoFile("OpenPmsDental","Logic","VendorDirect","BridgeProgramLinkSetups.cs"),
 				"public abstract class StandardProgramLinkSetup:IProgramLinkSetup");
 		}
 
 		[TestMethod]
 		public void ClerriSetup_SavesTheKeyEncryptedAndLocksTheButtonWhileEnabled() {
-			string source=TestPaths.ReadRepoFile("OpenDental","Forms","FormClerriSetup.cs");
+			string source=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormClerriSetup.cs");
 			StringAssert.Contains(source,"VendorCredentials.WriteSecret(_program.ProgramNum,ClerriProgram.PropClientKey,");
 			StringAssert.Contains(source,"ClerriProgram.CanChangeToolbarButton(_program.Enabled,checkEnabled.Checked)");
 			//Show Toolbar Button is saved from the saved state (ClerriProgram.SaveToolbarButtonAndEnabled), never from whether the box is editable.
@@ -83,7 +83,7 @@ namespace VBRIDGE2Tests {
 			Assert.IsFalse(source.Contains("checkShowToolbarButton.Enabled &&"),"The locked box's value is saved, not skipped.");
 			StringAssert.Contains(source,"ProgramProperties.CanEditProperties(");
 			Assert.IsFalse(source.Contains("ProgramProperties.Update("),"The key is written through VendorCredentials only.");
-			string designer=TestPaths.ReadRepoFile("OpenDental","Forms","FormClerriSetup.Designer.cs");
+			string designer=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormClerriSetup.Designer.cs");
 			StringAssert.Contains(designer,"this.textClientKey.PasswordChar = '*';");
 			StringAssert.Contains(designer,"this.textProgName.ReadOnly = true;");
 			StringAssert.Contains(designer,"this.textProgDesc.ReadOnly = true;");
@@ -91,16 +91,16 @@ namespace VBRIDGE2Tests {
 
 		[TestMethod]
 		public void FormProgramLinkEdit_HasOneHookLine() {
-			string source=TestPaths.ReadRepoFile("OpenDental","Forms","FormProgramLinkEdit.cs");
+			string source=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProgramLinkEdit.cs");
 			Assert.AreEqual(1,Regex.Matches(source,Regex.Escape("SetCommandLineHint();")).Count);
-			string partial=TestPaths.ReadRepoFile("OpenDental","Forms","FormProgramLinkEdit.Bridges2.cs");
+			string partial=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProgramLinkEdit.Bridges2.cs");
 			StringAssert.Contains(partial,"ProgramName.TrophyEnhanced");
 			StringAssert.Contains(partial,"TrophyEnhancedCommandLine.CommandLineHint");
 		}
 
 		[TestMethod]
 		public void LinkageXml_IsScrubbedOnExitLikeEzDenti() {
-			string source=TestPaths.ReadRepoFile("OpenDentBusiness","Data Interface","Programs.cs");
+			string source=TestPaths.ReadRepoFile("OpenPmsDentalBusiness","Data Interface","Programs.cs");
 			StringAssert.Contains(source,"program=Programs.GetCur(ProgramName.CleverOne);\r\n\t\t\tRemoveLinkageXMLFile(program);".Replace("\r\n",
 				source.Contains("\r\n") ? "\r\n" : "\n"));
 		}
@@ -110,12 +110,12 @@ namespace VBRIDGE2Tests {
 			string[][] arrayFiles={
 				new[] { "WpfControlsOD","Bridges","Clerri.cs" },
 				new[] { "WpfControlsOD","Bridges","CleverOne.cs" },
-				new[] { "OpenDental","Forms","FormClerriSetup.cs" },
-				new[] { "OpenDental","Forms","FormClerriSetup.Designer.cs" },
-				new[] { "OpenDental","Logic","VendorDirect","CleverOneProgramLinkSetup.cs" },
-				new[] { "OpenDentBusiness","VendorDirect","ProgramLinks","ClerriProgram.cs" },
-				new[] { "OpenDentBusiness","VendorDirect","ProgramLinks","CleverOneProgram.cs" },
-				new[] { "OpenDentBusiness","VendorDirect","ProgramLinks","TrophyEnhancedCommandLine.cs" },
+				new[] { "OpenPmsDental","Forms","FormClerriSetup.cs" },
+				new[] { "OpenPmsDental","Forms","FormClerriSetup.Designer.cs" },
+				new[] { "OpenPmsDental","Logic","VendorDirect","CleverOneProgramLinkSetup.cs" },
+				new[] { "OpenPmsDentalBusiness","VendorDirect","ProgramLinks","ClerriProgram.cs" },
+				new[] { "OpenPmsDentalBusiness","VendorDirect","ProgramLinks","CleverOneProgram.cs" },
+				new[] { "OpenPmsDentalBusiness","VendorDirect","ProgramLinks","TrophyEnhancedCommandLine.cs" },
 			};
 			foreach(string[] arrayParts in arrayFiles) {
 				string source=TestPaths.ReadRepoFile(arrayParts);

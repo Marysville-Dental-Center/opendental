@@ -22,7 +22,7 @@ namespace M2SDVTests {
 
 		[TestMethod]
 		public void ControlAccount_HooksTheServiceDateView() {
-			string source=ReadSource(Path.Combine("OpenDental","Main Modules","ControlAccount.cs"));
+			string source=ReadSource(Path.Combine("OpenPmsDental","Main Modules","ControlAccount.cs"));
 			Assert.AreEqual(1,CountOf(source,"ConstructServiceDateView();"),"Constructor.");
 			Assert.AreEqual(1,CountOf(source,"InitializeServiceDateView();"),"InitializeOnStartup.");
 			Assert.AreEqual(1,CountOf(source,"FillServiceDateView();"),"End of FillMain.");
@@ -31,37 +31,37 @@ namespace M2SDVTests {
 			//The proc breakdown setting is read and written in its own row (Fkey 0): the Service Date View settings share its FkeyType.
 			Assert.IsFalse(source.Contains("GetByUserAndFkeyType(Security.CurUser.UserNum,UserOdFkeyType.AcctProcBreakdown)"));
 			Assert.IsFalse(source.Contains("GetFirstOrNewByUserAndFkeyType(Security.CurUser.UserNum,UserOdFkeyType.AcctProcBreakdown)"));
-			string sourcePartial=ReadSource(Path.Combine("OpenDental","Main Modules","ControlAccount.ServiceDateView.cs"));
+			string sourcePartial=ReadSource(Path.Combine("OpenPmsDental","Main Modules","ControlAccount.ServiceDateView.cs"));
 			StringAssert.Contains(sourcePartial,"contextMenuStatement.MenuItems.Add(");
 			StringAssert.Contains(sourcePartial,"contextMenuAcctGrid.MenuItems.Add(");
 			StringAssert.Contains(sourcePartial,"_formRpServiceDateView.SetPatient(patNum,isFamily);");
-			string sourceProject=ReadSource(Path.Combine("OpenDental","OpenDental.csproj"));
+			string sourceProject=ReadSource(Path.Combine("OpenPmsDental","OpenPmsDental.csproj"));
 			StringAssert.Contains(sourceProject,@"Main Modules\ControlAccount.ServiceDateView.cs");
 		}
 
 		[TestMethod]
 		public void StatementOptions_SavesTheServiceDateViewBox() {
-			string source=ReadSource(Path.Combine("OpenDental","Forms","FormStatementOptions.cs"));
+			string source=ReadSource(Path.Combine("OpenPmsDental","Forms","FormStatementOptions.cs"));
 			StringAssert.Contains(source,"checkServiceDateView.Checked=StatementCur.IsServiceDateView;");
 			StringAssert.Contains(source,"Statements.SetServiceDateView(StatementCur,checkServiceDateView.Checked);");
 			StringAssert.Contains(source,"Statements.SetServiceDateView(ListStatements[i],checkServiceDateView.Checked);");
-			string sourceDesigner=ReadSource(Path.Combine("OpenDental","Forms","FormStatementOptions.Designer.cs"));
+			string sourceDesigner=ReadSource(Path.Combine("OpenPmsDental","Forms","FormStatementOptions.Designer.cs"));
 			StringAssert.Contains(sourceDesigner,"this.Controls.Add(this.checkServiceDateView);");
 		}
 
 		[TestMethod]
 		public void BillingOptions_DefaultFromThePreferenceAndSavedOnStatements() {
-			string source=ReadSource(Path.Combine("OpenDental","Forms","FormBillingOptions.cs"));
+			string source=ReadSource(Path.Combine("OpenPmsDental","Forms","FormBillingOptions.cs"));
 			StringAssert.Contains(source,"checkServiceDateView.Checked=Statements.GetBillingDefaultServiceDateView();");
 			StringAssert.Contains(source,"Prefs.UpdateBool(PrefName.BillingDefaultServiceDateView,checkServiceDateView.Checked)");
 			StringAssert.Contains(source,"Statements.SetServiceDateView(statement,checkServiceDateView.Checked);");
-			string sourceDesigner=ReadSource(Path.Combine("OpenDental","Forms","FormBillingOptions.Designer.cs"));
+			string sourceDesigner=ReadSource(Path.Combine("OpenPmsDental","Forms","FormBillingOptions.Designer.cs"));
 			StringAssert.Contains(sourceDesigner,"this.Controls.Add(this.checkServiceDateView);");
 		}
 
 		[TestMethod]
 		public void StatementMainGrid_UsesTheServiceDateViewWhenTheStatementSaysSo() {
-			string source=ReadSource(Path.Combine("OpenDentBusiness","SheetFramework","SheetDataTableUtil.cs"));
+			string source=ReadSource(Path.Combine("OpenPmsDentalBusiness","SheetFramework","SheetDataTableUtil.cs"));
 			int idxMethod=source.IndexOf("public static DataTable GetTable_StatementMain(");
 			int idxHook=source.IndexOf("Statements.IsShownInServiceDateView(stmt)");
 			Assert.IsTrue(idxMethod>0 && idxHook>idxMethod && idxHook-idxMethod<300,"First thing the main grid table does.");
@@ -70,11 +70,11 @@ namespace M2SDVTests {
 		[TestMethod]
 		public void OwnedFiles_FollowThePackagesMergedBefore() {
 			//M2-CLAIMRCV: the Account grid (and statements) show claim status H with the 26.1 text.
-			string sourceAccount=ReadSource(Path.Combine("OpenDentBusiness","Db Multi Table","AccountModules.cs"));
+			string sourceAccount=ReadSource(Path.Combine("OpenPmsDentalBusiness","Db Multi Table","AccountModules.cs"));
 			StringAssert.Contains(sourceAccount,"Lans.g(\"ContrAccount\",ClaimReceiveRelated.HOLD_UNTIL_PRIOR_RECEIVED)");
 			Assert.IsFalse(sourceAccount.Contains("\"Hold until Pri received\""));
 			//M2-SHEETS: growing text fields are measured with the font they are drawn with (a fallback font for scripts the field's font lacks).
-			string sourceSheetUtil=ReadSource(Path.Combine("OpenDentBusiness","SheetFramework","SheetUtil.cs"));
+			string sourceSheetUtil=ReadSource(Path.Combine("OpenPmsDentalBusiness","SheetFramework","SheetUtil.cs"));
 			Assert.AreEqual(2,CountOf(sourceSheetUtil,"new Font(SheetFonts.GetFontNameForText(field.FontName,field.FieldValue),field.FontSize,fontstyle)"),
 				"CalculateHeights and CalculateHeightsPageBreakForText.");
 			Assert.AreEqual(0,CountOf(sourceSheetUtil,"new Font(field.FontName,field.FontSize,fontstyle)"));
@@ -83,7 +83,7 @@ namespace M2SDVTests {
 		[TestMethod]
 		public void DisplayFieldCategories_ListTheServiceDateViewCategory() {
 			//FormDisplayFieldCategories lists every DisplayFieldCategory except None, so category 22 appears with its description.
-			string source=ReadSource(Path.Combine("OpenDental","Forms","FormDisplayFieldCategories.cs"));
+			string source=ReadSource(Path.Combine("OpenPmsDental","Forms","FormDisplayFieldCategories.cs"));
 			StringAssert.Contains(source,"Enum.GetValues(typeof(DisplayFieldCategory))");
 			Assert.IsFalse(source.Contains("AccountModuleServiceDateView"),"Not filtered out.");
 			//B-ERA's filter lists a category only once it has fields (placeholders for later versions are hidden): 22 has them (M2-02).
@@ -96,7 +96,7 @@ namespace M2SDVTests {
 
 		[TestMethod]
 		public void ServiceDateViewWindow_ColumnsFromDisplayFieldsAndDetailPerUser() {
-			string source=ReadSource(Path.Combine("OpenDental","Forms Reports","FormRpServiceDateView.cs"));
+			string source=ReadSource(Path.Combine("OpenPmsDental","Forms Reports","FormRpServiceDateView.cs"));
 			StringAssert.Contains(source,"DisplayFieldCategory.AccountModuleServiceDateView");
 			StringAssert.Contains(source,"ServiceDateViewUserPrefs.FKEY_SHOW_DETAILS");
 			StringAssert.Contains(source,"public void SetPatient(long patNum,bool isFamily)");

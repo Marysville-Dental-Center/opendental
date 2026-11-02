@@ -16,7 +16,7 @@ namespace SignatureTests {
 			throw new InvalidOperationException("Could not find the repository root (LICENSE and NOTICE) above the test assembly.");
 		}
 
-		///<summary>A file under the repository root, for example GetRepoFile("OpenDental","Forms","FormLogOn.cs").</summary>
+		///<summary>A file under the repository root, for example GetRepoFile("OpenPmsDental","Forms","FormLogOn.cs").</summary>
 		public static string GetRepoFile(params string[] arrayParts) {
 			string path=GetRepositoryRoot();
 			for(int i=0;i<arrayParts.Length;i++) {

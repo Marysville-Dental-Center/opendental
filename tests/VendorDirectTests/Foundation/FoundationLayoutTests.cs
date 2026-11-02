@@ -47,7 +47,7 @@ namespace VendorDirectTests.Foundation {
 
 		[TestMethod]
 		public void BusinessProject_HasTheVendorFolderWildcards() {
-			string csproj=ReadRepoFile(@"OpenDentBusiness\OpenDentBusiness.csproj");
+			string csproj=ReadRepoFile(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj");
 			foreach(string folder in new[] { @"Bridges\QuickBooksOnline",@"Bridges\CareCredit",@"Bridges\PostcardMania",@"WebBridges\Microsoft365",
 				@"WebBridges\Usps",@"WebBridges\Erx\DoseSpot","VendorDirect" })
 			{
@@ -59,12 +59,12 @@ namespace VendorDirectTests.Foundation {
 		[TestMethod]
 		public void Stubs_ExistAndAreCompiled() {
 			string root=GetRepositoryRoot();
-			string csprojBusiness=ReadRepoFile(@"OpenDentBusiness\OpenDentBusiness.csproj");
+			string csprojBusiness=ReadRepoFile(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj");
 			foreach(string stub in new[] { @"WebBridges\Google\GoogleTokenCache.cs",@"WebBridges\Google\GoogleOAuthSettings.cs",
 				@"WebBridges\Erx\NewCrop\NewCropConfig.cs",@"WebBridges\PDMP\PdmpHttp.cs",@"WebBridges\PDMP\PdmpCertificate.cs",
 				@"WebBridges\PaySimpleAchStatusSync.cs" })
 			{
-				Assert.IsTrue(File.Exists(Path.Combine(root,"OpenDentBusiness",stub)),stub);
+				Assert.IsTrue(File.Exists(Path.Combine(root,"OpenPmsDentalBusiness",stub)),stub);
 				StringAssert.Contains(csprojBusiness,"<Compile Include=\""+stub+"\" />",stub);
 			}
 		}
@@ -73,11 +73,11 @@ namespace VendorDirectTests.Foundation {
 		public void ProgramProject_HasTheRegistryAndJobHost() {
 			//Only the foundation's own files. The forms and helpers that later packages fill in, rename or delete are theirs to test.
 			string root=GetRepositoryRoot();
-			string csprojProgram=ReadRepoFile(@"OpenDental\OpenDental.csproj");
+			string csprojProgram=ReadRepoFile(@"OpenPmsDental\OpenPmsDental.csproj");
 			foreach(string file in new[] { @"Logic\VendorDirect\IProgramLinkSetup.cs",@"Logic\VendorDirect\ProgramLinkSetupRegistry.cs",
 				@"Logic\VendorDirect\VendorJobHost.cs" })
 			{
-				Assert.IsTrue(File.Exists(Path.Combine(root,"OpenDental",file)),file);
+				Assert.IsTrue(File.Exists(Path.Combine(root,"OpenPmsDental",file)),file);
 				StringAssert.Contains(csprojProgram,"<Compile Include=\""+file+"\" />",file);
 			}
 		}

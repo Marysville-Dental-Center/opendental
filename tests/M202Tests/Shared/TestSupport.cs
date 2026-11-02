@@ -21,7 +21,7 @@ namespace M202Tests {
 			throw new InvalidOperationException("Could not find the repository root (LICENSE and NOTICE) above the test assembly.");
 		}
 
-		///<summary>A file under the repository root, for example GetRepoFile("OpenDental","Resources","PrefInfos.xml").</summary>
+		///<summary>A file under the repository root, for example GetRepoFile("OpenPmsDental","Resources","PrefInfos.xml").</summary>
 		public static string GetRepoFile(params string[] arrayParts) {
 			string path=GetRepositoryRoot();
 			for(int i=0;i<arrayParts.Length;i++) {
@@ -80,7 +80,7 @@ namespace M202Tests {
 			return listChanges;
 		}
 
-		///<summary>Finds the enum type with this simple name in the business layer or CodeBase. Prefers the OpenDentBusiness namespace.</summary>
+		///<summary>Finds the enum type with this simple name in the business layer or CodeBase. Prefers the OpenPmsDentalBusiness namespace.</summary>
 		public static Type FindCodeEnum(string enumName) {
 			List<Type> listTypes=new List<Type>();
 			foreach(Assembly assembly in new[] { typeof(OpenPmsDentalBusiness.Patient).Assembly,typeof(CodeBase.ODException).Assembly }) {

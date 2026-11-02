@@ -231,18 +231,18 @@ namespace BSHELLTests {
 
 		[TestMethod]
 		public void MenuAndWindow_Wiring() {
-			string menus=TestPaths.ReadRepoFile("OpenDental","Main Modules","FormOpenDentalMenus.cs");
+			string menus=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","FormOpenDentalMenus.cs");
 			string help=TestPaths.GetMethodBody(menus,"private void LayoutMenuHelp(MenuItemOD menuItemHelp)");
 			StringAssert.Contains(help,"menuItemHelp.Add(\"File Monitor\",menuItemFileMonitor_Click);");
-			string shell=TestPaths.ReadRepoFile("OpenDental","Main Modules","FormOpenDentalBShell.cs");
+			string shell=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","FormOpenDentalBShell.cs");
 			string click=TestPaths.GetMethodBody(shell,"private void menuItemFileMonitor_Click(");
 			StringAssert.Contains(click,"Security.IsAuthorized(EnumPermType.Setup)");
 			StringAssert.Contains(click,"FormFileMonitor.ShowSingle(this);");
-			string window=TestPaths.ReadRepoFile("OpenDental","Forms","FormFileMonitor.cs");
+			string window=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormFileMonitor.cs");
 			StringAssert.Contains(window,"DataStorageType.InDatabase","Says so when images are stored in the database.");
 			StringAssert.Contains(window,"FileMonitor.StopCapture();");
 			Assert.IsFalse(window.Contains("File.Write") || window.Contains("FileAtoZ.Write"),"The feed is never written to disk.");
-			string designer=TestPaths.ReadRepoFile("OpenDental","Forms","FormFileMonitor.designer.cs");
+			string designer=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormFileMonitor.designer.cs");
 			StringAssert.Contains(designer,"this.butStart.Text = \"Start\";","Capture is off when the window opens.");
 		}
 	}

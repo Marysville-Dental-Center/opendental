@@ -31,7 +31,7 @@ namespace M2ESTTests {
 
 		[TestMethod]
 		public void ProcedureInfo_DoNotBillBox_SavesAndAuditsTheProcedureFlag() {
-			string body=MethodBody(Read("OpenDental","Forms","FormProcEdit.cs"),"private void checkNoBillIns_Click(");
+			string body=MethodBody(Read("OpenPmsDental","Forms","FormProcEdit.cs"),"private void checkNoBillIns_Click(");
 			AssertBefore(body,"Security.IsAuthorized(EnumPermType.InsWriteOffEdit","Procedures.GetNoBillInsState(_listClaimProcs)");
 			AssertBefore(body,"Procedures.GetNoBillInsState(_listClaimProcs)","ClaimProcs.Update(_listClaimProcs[i])");
 			AssertBefore(body,"ClaimProcs.Update(_listClaimProcs[i])",
@@ -42,7 +42,7 @@ namespace M2ESTTests {
 
 		[TestMethod]
 		public void EditClaimProcedure_BillingAgain_ClearsTheProcedureFlag() {
-			string body=MethodBody(Read("OpenDental","Forms","FormClaimProc.cs"),"private void butSave_Click(");
+			string body=MethodBody(Read("OpenPmsDental","Forms","FormClaimProc.cs"),"private void butSave_Click(");
 			AssertBefore(body,"ClaimProcs.Update(_claimProc,_claimProcOld);","Procedures.ClearNoBillInsForBilledClaimProc(_procedure,_claimProcOld,_claimProc);");
 			AssertBefore(body,"if(_doSaveToDb) {","Procedures.ClearNoBillInsForBilledClaimProc(");
 			AssertBefore(body,"Procedures.ClearNoBillInsForBilledClaimProc(","}//otherwise, the change to db will be made by calling class");
@@ -50,18 +50,18 @@ namespace M2ESTTests {
 
 		[TestMethod]
 		public void EditBenefit_TeethFollowTypeAndQualifier() {
-			string source=Read("OpenDental","Forms","FormBenefitEdit.cs");
+			string source=Read("OpenPmsDental","Forms","FormBenefitEdit.cs");
 			StringAssert.Contains(source,"return Benefits.CanHaveTeeth(listBenefitType.GetSelected<InsBenefitType>(),benefitQuantity);");
 			StringAssert.Contains(MethodBody(source,"private void listQuantityQualifier_SelectedIndexChanged("),"SetTeethEnabled();");
 			StringAssert.Contains(MethodBody(source,"private void butSave_Click("),"if(Benefits.CanHaveTeeth(benefitType,quantityQualifier)) {");
-			string designer=Read("OpenDental","Forms","FormBenefitEdit.Designer.cs");
+			string designer=Read("OpenPmsDental","Forms","FormBenefitEdit.Designer.cs");
 			StringAssert.Contains(designer,
 				"this.listQuantityQualifier.SelectedIndexChanged += new System.EventHandler(this.listQuantityQualifier_SelectedIndexChanged);");
 		}
 
 		[TestMethod]
 		public void EditBenefits_AgeLimitsGridHasTeeth() {
-			string source=Read("OpenDental","Forms","FormInsBenefits.cs");
+			string source=Read("OpenPmsDental","Forms","FormInsBenefits.cs");
 			string fill=MethodBody(source,"private void FillGridAgeLimits(");
 			StringAssert.Contains(fill,"new GridColumn(Lan.g(this,\"Teeth\"),50,isEditable:true)");
 			StringAssert.Contains(fill,"gridRow.Cells.Add(Benefits.GetToothRangeDisplay(benefit));");

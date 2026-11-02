@@ -46,7 +46,7 @@ namespace M2RECURTests {
 
 		[TestMethod]
 		public void Source_SendChargesSendsTheEmailBeforeSavingEachCharge() {
-			string source=ReadRepoFile(Path.Combine("OpenDentBusiness","Data Interface","RecurringCharges.cs")).Replace("\r\n","\n");
+			string source=ReadRepoFile(Path.Combine("OpenPmsDentalBusiness","Data Interface","RecurringCharges.cs")).Replace("\r\n","\n");
 			string body=GetMethodBody(source,"public void SendCharges(");
 			int indexEmail=body.IndexOf("SendFailEmailIfNeeded(chargeData);",StringComparison.Ordinal);
 			int indexUpdate=body.IndexOf("RecurringCharges.Update(chargeData.RecurringCharge);",StringComparison.Ordinal);
@@ -71,7 +71,7 @@ namespace M2RECURTests {
 		public void Source_EveryMarkDeclinedIsNarrowedByItsProcessorsFilter() {
 			//MarkDeclined flags every call (it also drives "inactivate declined cards"). Each processor's call is followed by the line that keeps the
 			//flag only for a card decline, so a setup problem, an outage or a duplicate e-mails nobody.
-			string source=ReadRepoFile(Path.Combine("OpenDentBusiness","Data Interface","RecurringCharges.cs")).Replace("\r\n","\n");
+			string source=ReadRepoFile(Path.Combine("OpenPmsDentalBusiness","Data Interface","RecurringCharges.cs")).Replace("\r\n","\n");
 			(string Method,string MarkDeclined,string Filter)[] arrayHooks=new[] {
 				("public void SendEdgeExpress(",
 					"MarkDeclined(chargeData,Lans.g(_lanThis,\"Response from Global Payments V1:\")+\" \"+response.XWebResponseCode.ToString(),LogLevel.Information);",
@@ -110,7 +110,7 @@ namespace M2RECURTests {
 			//V-GP's Global Payments V2 branch (RecurringChargerator.GlobalPaymentsV2.cs, merged on port/int-13) calls MarkDeclined only for
 			//GpV2Outcome.Declined, the card's or the issuer's decline (GlobalPaymentsV2Result.DecideOutcome). A refused request, a setup problem, a duplicate
 			//or an unknown outcome goes through MarkFailed. So V2 needs no filter line after its MarkDeclined call: only its card declines e-mail the patient.
-			string source=ReadRepoFile(Path.Combine("OpenDentBusiness","VendorDirect","GlobalPayments","RecurringChargerator.GlobalPaymentsV2.cs"))
+			string source=ReadRepoFile(Path.Combine("OpenPmsDentalBusiness","VendorDirect","GlobalPayments","RecurringChargerator.GlobalPaymentsV2.cs"))
 				.Replace("\r\n","\n");
 			Assert.AreEqual(1,Regex.Matches(source,@"\bMarkDeclined\(").Count,"One MarkDeclined call in the Global Payments V2 file.");
 			string body=GetMethodBody(source,"private void SendGlobalPaymentsV2(");
@@ -265,7 +265,7 @@ namespace M2RECURTests {
 
 		[TestMethod]
 		public void Source_BillingDatesHelperAppliesTheBackdatingPreference() {
-			string source=ReadRepoFile(Path.Combine("OpenDentBusiness","Data Interface","RepeatCharges.cs")).Replace("\r\n","\n");
+			string source=ReadRepoFile(Path.Combine("OpenPmsDentalBusiness","Data Interface","RepeatCharges.cs")).Replace("\r\n","\n");
 			string body=GetMethodBody(source,"public static List<DateTime> GetBillingDatesHelper(");
 			int indexAfterToday=body.IndexOf("retVal.RemoveAll(x => x > dateRun);",StringComparison.Ordinal);
 			int indexBackdating=body.IndexOf("RepeatChargeBackdating.RemoveBackdatedDates(retVal,dateRun);",StringComparison.Ordinal);
@@ -274,9 +274,9 @@ namespace M2RECURTests {
 
 		[TestMethod]
 		public void Source_PreferencesWindowHasTheControlsPrefInfosNames() {
-			string designer=ReadRepoFile(Path.Combine("OpenDental","User Controls","Preferences","UserControlAccountRecAndRepCharges.Designer.cs"));
-			string code=ReadRepoFile(Path.Combine("OpenDental","User Controls","Preferences","UserControlAccountRecAndRepCharges.cs"));
-			XDocument xDocument=XDocument.Load(TestDb.FindRepoFile(Path.Combine("OpenDental","Resources","PrefInfos.xml")));
+			string designer=ReadRepoFile(Path.Combine("OpenPmsDental","User Controls","Preferences","UserControlAccountRecAndRepCharges.Designer.cs"));
+			string code=ReadRepoFile(Path.Combine("OpenPmsDental","User Controls","Preferences","UserControlAccountRecAndRepCharges.cs"));
+			XDocument xDocument=XDocument.Load(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","Resources","PrefInfos.xml")));
 			foreach(PrefName prefName in new[] { PrefName.RecurringChargesFailEmailEnabled,PrefName.RepeatingChargesAllowBackdating }) {
 				XElement xElement=xDocument.Root.Elements("PrefInf").Single(x => (string)x.Element("PrefName")==prefName.ToString());
 				string controlName=(string)xElement.Element("ControlName");
@@ -302,15 +302,15 @@ namespace M2RECURTests {
 
 		[TestMethod]
 		public void Source_WindowsUseTheNewRules() {
-			string formRecurring=ReadRepoFile(Path.Combine("OpenDental","Forms","FormCreditRecurringCharges.cs"));
+			string formRecurring=ReadRepoFile(Path.Combine("OpenPmsDental","Forms","FormCreditRecurringCharges.cs"));
 			StringAssert.Contains(formRecurring,"_recurringChargerator.GetFailEmailSummary()","The run summary shows the e-mail counts.");
-			string formEdit=ReadRepoFile(Path.Combine("OpenDental","Forms","FormRepeatChargeEdit.cs"));
+			string formEdit=ReadRepoFile(Path.Combine("OpenPmsDental","Forms","FormRepeatChargeEdit.cs"));
 			StringAssert.Contains(formEdit,"RepeatChargeBackdating.IsStartDateSkipped(_repeatCharge.DateStart,DateTime.Today)");
-			string formUpdate=ReadRepoFile(Path.Combine("OpenDental","Forms","FormRepeatChargesUpdate.cs"));
+			string formUpdate=ReadRepoFile(Path.Combine("OpenPmsDental","Forms","FormRepeatChargesUpdate.cs"));
 			StringAssert.Contains(formUpdate,"RepeatChargeBackdating.IsAllowed()");
-			string formTemplate=ReadRepoFile(Path.Combine("OpenDental","Forms","FormRecurringChargeFailEmailTemplate.cs"));
+			string formTemplate=ReadRepoFile(Path.Combine("OpenPmsDental","Forms","FormRecurringChargeFailEmailTemplate.cs"));
 			StringAssert.Contains(formTemplate,"RecurringChargeFailEmails.ListTags");
-			string csproj=ReadRepoFile(Path.Combine("OpenDental","OpenDental.csproj"));
+			string csproj=ReadRepoFile(Path.Combine("OpenPmsDental","OpenPmsDental.csproj"));
 			StringAssert.Contains(csproj,"Forms\\FormRecurringChargeFailEmailTemplate.cs");
 			StringAssert.Contains(csproj,"Forms\\FormRecurringChargeFailEmailTemplate.Designer.cs");
 		}
@@ -318,7 +318,7 @@ namespace M2RECURTests {
 		[TestMethod]
 		public void Source_SendsOnlyThroughTheOfficesOwnAddress() {
 			//Ground rule 6: no hosted service. The e-mail goes through EmailMessages.SendEmail with the office's EmailAddress row.
-			string source=ReadRepoFile(Path.Combine("OpenDentBusiness","Data Interface","RecurringChargeFailEmails.cs"));
+			string source=ReadRepoFile(Path.Combine("OpenPmsDentalBusiness","Data Interface","RecurringChargeFailEmails.cs"));
 			StringAssert.Contains(source,"EmailMessages.SendEmail(emailMessage,emailAddress)");
 			StringAssert.Contains(source,"EmailAddresses.GetByClinic(clinicNum,allowNullReturn:true)");
 			Assert.IsFalse(Regex.IsMatch(source,@"https?://",RegexOptions.IgnoreCase),"No web address in the sending code.");

@@ -13,7 +13,7 @@ using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2UDSTests {
-	///<summary>Creates a scratch database with the reference definitions (OdSchema-26.1.70.sql, embedded in OpenDentBusiness) of the tables a test
+	///<summary>Creates a scratch database with the reference definitions (OdSchema-26.1.70.sql, embedded in OpenPmsDentalBusiness) of the tables a test
 	///needs, connects the business layer to it and drops it afterwards. Names are "m2uds_" plus a per-run id (time, process id, random number), so
 	///parallel runs never collide and nothing else is ever dropped. Tests are inconclusive when no server answers at 127.0.0.1:3306 as root with a
 	///blank password, or when M2UDS_TEST_DB=skip.</summary>

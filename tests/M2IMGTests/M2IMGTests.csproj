@@ -20,7 +20,7 @@
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <IsCodedUITest>False</IsCodedUITest>
     <TestProjectType>UnitTest</TestProjectType>
-    <!-- MySqlConnector and the business layer need binding redirects, as OpenDental.exe gets them. Generate M2IMGTests.dll.config. -->
+    <!-- MySqlConnector and the business layer need binding redirects, as OpenPmsDental.exe gets them. Generate M2IMGTests.dll.config. -->
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
@@ -75,7 +75,7 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <!-- The native loader of the WebView2 SDK (x86), which OpenDental.exe also keeps next to itself. -->
+    <!-- The native loader of the WebView2 SDK (x86), which OpenPmsDental.exe also keeps next to itself. -->
     <None Include="..\..\Required dlls\WebView2Loader.dll">
       <Link>WebView2Loader.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

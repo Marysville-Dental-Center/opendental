@@ -75,7 +75,7 @@ namespace BINATests {
 
 		[TestMethod]
 		public void BuiltProgram_ReferencesNoneOfTheRemovedBinaries() {
-			foreach(string pathRelative in new[] { @"OpenDental\bin\Debug\OpenDental.exe",@"WpfControlsOD\bin\Debug\WpfControlsOD.dll" }) {
+			foreach(string pathRelative in new[] { @"OpenPmsDental\bin\Debug\OpenPmsDental.exe",@"WpfControlsOD\bin\Debug\WpfControlsOD.dll" }) {
 				string path=Path.Combine(RepoFiles.Root(),pathRelative);
 				if(!File.Exists(path)) {
 					Assert.Inconclusive(pathRelative+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
@@ -100,30 +100,30 @@ namespace BINATests {
 
 		[TestMethod]
 		public void SuniCapture_IsGoneFromTheOldImagesModuleAndScanningSetup() {
-			string controlImagesOld=RepoFiles.Read(@"OpenDental\Main Modules\ControlImagesOld.cs");
+			string controlImagesOld=RepoFiles.Read(@"OpenPmsDental\Main Modules\ControlImagesOld.cs");
 			StringAssert.DoesNotMatch(controlImagesOld,new Regex(@"""Capture Image From Device""|ToolBarCapture_Click|KillXRayThread|CaptureXRay"));
-			StringAssert.DoesNotMatch(RepoFiles.Read(@"OpenDental\Main Modules\ControlImagesOld.designer.cs"),new Regex("KillXRayThread"));
-			string imagingSetup=RepoFiles.Read(@"OpenDental\Forms\FormImagingSetup.cs")+RepoFiles.Read(@"OpenDental\Forms\FormImagingSetup.designer.cs");
+			StringAssert.DoesNotMatch(RepoFiles.Read(@"OpenPmsDental\Main Modules\ControlImagesOld.designer.cs"),new Regex("KillXRayThread"));
+			string imagingSetup=RepoFiles.Read(@"OpenPmsDental\Forms\FormImagingSetup.cs")+RepoFiles.Read(@"OpenPmsDental\Forms\FormImagingSetup.designer.cs");
 			StringAssert.DoesNotMatch(imagingSetup,new Regex(@"groupBoxSuni|upDownExposure|checkBinned|ProgDesc==""Suni"""),
 				"The Suni sensor settings were only read by the removed Suni driver.");
 		}
 
 		[TestMethod]
 		public void LicenceLists_DoNotNameSparks3D() {
-			foreach(string relative in new[] { @"OpenDental\Forms\FormLicense.cs",@"OpenDental\Forms\FormRegistrationKey.cs",
-				@"OpenDental\Properties\Resources.resx" })
+			foreach(string relative in new[] { @"OpenPmsDental\Forms\FormLicense.cs",@"OpenPmsDental\Forms\FormRegistrationKey.cs",
+				@"OpenPmsDental\Properties\Resources.resx" })
 			{
 				StringAssert.DoesNotMatch(RepoFiles.Read(relative),new Regex("Sparks3D"),relative);
 			}
-			Assert.IsFalse(File.Exists(Path.Combine(RepoFiles.Root(),@"OpenDental\Resources\Sparks3D.txt")));
+			Assert.IsFalse(File.Exists(Path.Combine(RepoFiles.Root(),@"OpenPmsDental\Resources\Sparks3D.txt")));
 		}
 
 		[TestMethod]
 		public void GraphicsWindow_HasNoDirectX11Settings() {
-			string graphics=RepoFiles.Read(@"OpenDental\Forms\FormGraphics.cs")+RepoFiles.Read(@"OpenDental\Forms\FormGraphics.designer.cs");
+			string graphics=RepoFiles.Read(@"OpenPmsDental\Forms\FormGraphics.cs")+RepoFiles.Read(@"OpenPmsDental\Forms\FormGraphics.designer.cs");
 			StringAssert.DoesNotMatch(graphics,new Regex(@"radioDirectX11|Prefs\.UpdateBool\(PrefName\.DirectX11ToothChartUseIfAvail"),
 				"The DirectX 11 settings were only read by the removed Sparks3D chart.");
-			StringAssert.DoesNotMatch(RepoFiles.Read(@"OpenDental\Main Modules\ControlChart.cs"),
+			StringAssert.DoesNotMatch(RepoFiles.Read(@"OpenPmsDental\Main Modules\ControlChart.cs"),
 				new Regex(@"PrefName\.DirectX11ToothChartUseIfAvail|LocalComputer\.GraphicsUseDirectX11"),"The chart no longer reads the Sparks3D settings.");
 		}
 	}

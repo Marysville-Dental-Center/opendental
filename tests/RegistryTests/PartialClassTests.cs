@@ -8,7 +8,7 @@ namespace RegistryTests {
 		[TestMethod]
 		public void HotDataClasses_ArePartial() {
 			foreach(string className in new[] { "DatabaseMaintenances","Procedures","ClaimProcs","Patients","Appointments","Statements" }) {
-				string source=File.ReadAllText(TestPaths.GetRepoFile("OpenDentBusiness","Data Interface",className+".cs"));
+				string source=File.ReadAllText(TestPaths.GetRepoFile("OpenPmsDentalBusiness","Data Interface",className+".cs"));
 				Assert.IsTrue(System.Text.RegularExpressions.Regex.IsMatch(source,@"public partial class "+className+@"\s*\{"),className+" must be partial.");
 			}
 		}

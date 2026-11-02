@@ -22,7 +22,7 @@ namespace GroupNoteTests {
 			return PREFIX+DateTime.UtcNow.ToString("yyMMddHHmmss")+"_"+System.Diagnostics.Process.GetCurrentProcess().Id+"_"+new Random().Next(1000,10000);
 		}
 
-		///<summary>Null when the server answers with a blank global sql_mode (the convert scripts need it, as OpenDental.exe sets at startup);
+		///<summary>Null when the server answers with a blank global sql_mode (the convert scripts need it, as OpenPmsDental.exe sets at startup);
 		///otherwise why the database tests are skipped.</summary>
 		public static string GetSkipReason() {
 			if(Environment.GetEnvironmentVariable("GN_TEST_DB")=="skip") {

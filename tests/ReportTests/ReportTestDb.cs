@@ -15,7 +15,7 @@ using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace ReportTests {
 	///<summary>Creates a scratch database with the Open Dental 25.3.48 definitions of the tables a test needs (from the reference schema embedded in
-	///OpenDentBusiness), connects the business layer to it and drops it afterwards. Names start with "rpttest_" plus a per-run id, so parallel runs
+	///OpenPmsDentalBusiness), connects the business layer to it and drops it afterwards. Names start with "rpttest_" plus a per-run id, so parallel runs
 	///from other worktrees never collide and nothing else is ever dropped. Tests are skipped (inconclusive) when no server answers at 127.0.0.1:3306
 	///as root with a blank password, or when REPORT_TEST_DB=skip.</summary>
 	public static class ReportTestDb {

@@ -16,7 +16,7 @@ namespace BERATests {
 
 		[TestMethod]
 		public void AutoProcessing_SplitsBeforeTheChecks() {
-			string source=Read("OpenDentBusiness","Data Interface","Etranss.cs");
+			string source=Read("OpenPmsDentalBusiness","Data Interface","Etranss.cs");
 			int indexMethod=source.IndexOf("public static EraAutomationResult TryAutoProcessEraEob(");
 			Assert.IsTrue(indexMethod>=0);
 			int indexHook=source.IndexOf("listClaimsPaidToProcess[i]=EraAutoSplit.SplitDeniedProcsIfNeeded(",indexMethod);
@@ -35,7 +35,7 @@ namespace BERATests {
 
 		[TestMethod]
 		public void CarcCheck_UsesTheRulesAndReportsWhyNotSplit() {
-			string source=Read("OpenDentBusiness","X12","X835.cs");
+			string source=Read("OpenPmsDentalBusiness","X12","X835.cs");
 			StringAssert.Contains(source,"EraCarcRules.GetMatches(EraCarcRules.GetRulesFromPref(),this)");
 			StringAssert.Contains(source,"GetAutoSplitSkipReason(claimPaid)");
 			StringAssert.Contains(source,"AppendAutoSplitNotes(stringBuilderAutomationMessage,listAutomationResults)");
@@ -44,7 +44,7 @@ namespace BERATests {
 
 		[TestMethod]
 		public void DisplayFields_EraHooks() {
-			string source=Read("OpenDentBusiness","Data Interface","DisplayFields.cs");
+			string source=Read("OpenPmsDentalBusiness","Data Interface","DisplayFields.cs");
 			StringAssert.Matches(source,new Regex(@"public partial class DisplayFields\s*\{"));
 			StringAssert.Contains(source,"return GetDefaultListEra();");
 			StringAssert.Contains(source,"return GetAllAvailableListEra();");
@@ -52,7 +52,7 @@ namespace BERATests {
 
 		[TestMethod]
 		public void EraWindow_GridFollowsDisplayFields() {
-			string source=Read("OpenDental","Forms","FormEtrans835Edit.cs");
+			string source=Read("OpenPmsDental","Forms","FormEtrans835Edit.cs");
 			StringAssert.Contains(source,"DisplayFields.GetForEraClaimPaidGrid()");
 			StringAssert.Contains(source,"DisplayFields.EraClaimPaid.GetCellText(");
 			StringAssert.Contains(source,"Cells[indexColRecd]");
@@ -63,13 +63,13 @@ namespace BERATests {
 
 		[TestMethod]
 		public void DisplayFieldsWindows_RequiredAndPlaceholderCategories() {
-			StringAssert.Contains(Read("OpenDental","Forms","FormDisplayFields.cs"),"DisplayFields.IsRequiredField(DisplayFieldCategoryCur,");
-			StringAssert.Contains(Read("OpenDental","Forms","FormDisplayFieldCategories.cs"),"DisplayFields.HasAvailableFields(");
+			StringAssert.Contains(Read("OpenPmsDental","Forms","FormDisplayFields.cs"),"DisplayFields.IsRequiredField(DisplayFieldCategoryCur,");
+			StringAssert.Contains(Read("OpenPmsDental","Forms","FormDisplayFieldCategories.cs"),"DisplayFields.HasAvailableFields(");
 		}
 
 		[TestMethod]
 		public void ClaimSelect_WarningsNameExpectedValues() {
-			string source=Read("OpenDental","Forms","FormEtrans835ClaimSelect.cs");
+			string source=Read("OpenPmsDental","Forms","FormEtrans835ClaimSelect.cs");
 			StringAssert.Contains(source,"EraClaimMismatch.GetClaimFeeMismatchMessage(");
 			StringAssert.Contains(source,"EraClaimMismatch.GetDateOfServiceMismatchMessage(");
 			StringAssert.Contains(source,"EraClaimMismatch.GetSplitClaimFeeMismatchMessage(");
@@ -78,26 +78,26 @@ namespace BERATests {
 
 		[TestMethod]
 		public void Preferences_AutoSplitCheckboxAndValidation() {
-			string source=Read("OpenDental","User Controls","Preferences","UserControlManageGeneral.cs");
+			string source=Read("OpenPmsDental","User Controls","Preferences","UserControlManageGeneral.cs");
 			StringAssert.Contains(source,"EraAutoSplit.IsEnabled()");
 			StringAssert.Contains(source,"EraAutoSplit.SetEnabled(");
 			StringAssert.Contains(source,"EraCarcRules.IsValid(textEraNoAutoProcessCarcCodes.Text");
 			StringAssert.Contains(source,"EraCarcRules.GetSyntaxHelp()");
-			string designer=Read("OpenDental","User Controls","Preferences","UserControlManageGeneral.Designer.cs");
+			string designer=Read("OpenPmsDental","User Controls","Preferences","UserControlManageGeneral.Designer.cs");
 			StringAssert.Contains(designer,"this.groupBoxERA.Controls.Add(this.checkEraAutoSplitCarcDenials);");
 			StringAssert.Contains(designer,"\"Auto split ERAs with CARC denial codes listed above\"");
 		}
 
 		[TestMethod]
 		public void AutoProcessedReport_ShowsCarcHold() {
-			string source=Read("OpenDental","Forms","FormRpEraAutoProcessed.cs");
+			string source=Read("OpenPmsDental","Forms","FormRpEraAutoProcessed.cs");
 			StringAssert.Contains(source,"\"CARC Hold\"");
 			StringAssert.Contains(source,"EraCarcRules.GetMatches(listEraCarcRules,hx835_Claim)");
 		}
 
 		[TestMethod]
 		public void NewFiles_AreCompiled() {
-			string csproj=Read("OpenDentBusiness","OpenDentBusiness.csproj");
+			string csproj=Read("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj");
 			StringAssert.Contains(csproj,@"<Compile Include=""Data Interface\DisplayFields.Era.cs"" />");
 			StringAssert.Contains(csproj,@"<Compile Include=""X12\EraAutoSplit.cs"" />");
 			StringAssert.Contains(csproj,@"<Compile Include=""X12\EraCarcRules.cs"" />");

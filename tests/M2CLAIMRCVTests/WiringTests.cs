@@ -1,4 +1,4 @@
-// Source checks for the window code of package M2-CLAIMRCV (the OpenDental project has no test harness for windows): Edit Claim prompts and
+// Source checks for the window code of package M2-CLAIMRCV (the OpenPmsDental project has no test harness for windows): Edit Claim prompts and
 // recalculates through the generalized lookup, the prompt's wording comes from ClaimReceiveRelated, the claim status drop-down shows the 26.1
 // text, and the Claim Receive preferences carry the 26.1 labels.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
@@ -32,7 +32,7 @@ namespace M2CLAIMRCVTests {
 
 		[TestMethod]
 		public void EditClaim_ReceivePromptsAndRecalculatesForAnyOrdinal() {
-			string saveCleanup=Between(Read(Path.Combine("OpenDental","Forms","FormClaimEdit.cs")),"private void SaveCleanup(){",
+			string saveCleanup=Between(Read(Path.Combine("OpenPmsDental","Forms","FormClaimEdit.cs")),"private void SaveCleanup(){",
 				"private void FormClaimEdit_FormClosing(");
 			//The trigger stays: the claim is saved as Received after payment was entered, and the user has ClaimSend (checked silently).
 			AssertBefore(saveCleanup,"_isPaymentEntered","Security.IsAuthorized(EnumPermType.ClaimSend,true)");
@@ -55,7 +55,7 @@ namespace M2CLAIMRCVTests {
 		///attachments onto the claim object it saves (not a reloaded copy, which would lose a Waiting to Send status set in memory).</summary>
 		[TestMethod]
 		public void Claims_RecalculationOfTheNextInsuranceKeepsAttachments() {
-			string source=Read(Path.Combine("OpenDentBusiness","Data Interface","Claims.cs"));
+			string source=Read(Path.Combine("OpenPmsDentalBusiness","Data Interface","Claims.cs"));
 			string secondaries=Between(source,"public static void CalculateAndUpdateSecondaries(","public static void CalculateAndUpdate(");
 			AssertBefore(secondaries,"Claim claimDb=Claims.GetClaim(listSecondaryClaims[i].ClaimNum);","CalculateAndUpdate(listProceduresRelevant,");
 			AssertBefore(secondaries,"listSecondaryClaims[i].Attachments=claimDb.Attachments;","CalculateAndUpdate(listProceduresRelevant,");
@@ -64,14 +64,14 @@ namespace M2CLAIMRCVTests {
 
 		[TestMethod]
 		public void EditClaim_StatusDropDownShowsHoldUntilPriorReceived() {
-			string source=Read(Path.Combine("OpenDental","Forms","FormClaimEdit.cs"));
+			string source=Read(Path.Combine("OpenPmsDental","Forms","FormClaimEdit.cs"));
 			StringAssert.Contains(source,"comboClaimStatus.Items.Add(ClaimReceiveRelated.GetClaimStatusText(_listClaimStatuses[i]));");
 			Assert.IsFalse(source.Contains("comboClaimStatus.Items.Add(_listClaimStatuses[i].GetDescription(false));"));
 		}
 
 		[TestMethod]
 		public void Prompt_UsesTheGeneralizedWordingAndPreferences() {
-			string source=Read(Path.Combine("OpenDental","Logic","ClaimL.cs"));
+			string source=Read(Path.Combine("OpenPmsDental","Logic","ClaimL.cs"));
 			string prompt=Between(source,"public static void PromptForPrimaryOrSecondaryClaim(","internal static List<ClaimSendQueueItem> SendClaimSendQueueItems(");
 			StringAssert.Contains(prompt,"Claims.GetPrimaryOrSecondaryClaimsNotReceived(listClaimProcsForClaim,isPromptForSecondaryClaim)");
 			StringAssert.Contains(prompt,"ClaimReceiveRelated.GetForceStatusPrefName(isPromptForSecondaryClaim)");
@@ -91,7 +91,7 @@ namespace M2CLAIMRCVTests {
 
 		[TestMethod]
 		public void Claims_TheSecondaryLookupIsTheNextInsurance() {
-			string source=Read(Path.Combine("OpenDentBusiness","Data Interface","Claims.cs"));
+			string source=Read(Path.Combine("OpenPmsDentalBusiness","Data Interface","Claims.cs"));
 			string lookup=Between(source,"public static List<Claim> GetPrimaryOrSecondaryClaimsNotReceived(","public static List<ClaimPaySplit> GetInsPayNotAttachedForFixTool(");
 			AssertBefore(lookup,"if(isSecondaryClaim) {","return GetNextOrdinalClaimsNotReceived(listClaimProcsForClaims);");
 			string receiveNoPay=Between(source,"public static bool ReceiveAsNoPaymentIfNeeded(long claimNum) {","public static string HashFields(Claim claim) {");
@@ -104,11 +104,11 @@ namespace M2CLAIMRCVTests {
 		[TestMethod]
 		public void EraAndZeroClaims_RecalculateAfterAnyOrdinal() {
 			//ERA payments (manual and automatic) and Outstanding Insurance's zero-claim tool receive claims silently: no prompt, only recalculation.
-			string era=Between(Read(Path.Combine("OpenDentBusiness","Data Interface","Etranss.cs")),"public static void ReceiveEraPayment(",
+			string era=Between(Read(Path.Combine("OpenPmsDentalBusiness","Data Interface","Etranss.cs")),"public static void ReceiveEraPayment(",
 				"PaymentEdit.MakeIncomeTransferForClaimProcs(claim.PatNum,listClaimProcsForClaim);");
 			StringAssert.Contains(era,"claimOld.ClaimStatus!=\"R\" && claim.ClaimType!=\"PreAuth\")");
 			Assert.IsFalse(era.Contains("claim.ClaimType==\"P\""));
-			string zero=Between(Read(Path.Combine("OpenDentBusiness","Reports","RpOutstandingIns.cs")),"public static void ZeroClaims(","public static void ZeroClaim(");
+			string zero=Between(Read(Path.Combine("OpenPmsDentalBusiness","Reports","RpOutstandingIns.cs")),"public static void ZeroClaims(","public static void ZeroClaim(");
 			StringAssert.Contains(zero,"listClaims=listClaims.FindAll(x=>x.ClaimType!=\"PreAuth\");");
 			Assert.IsFalse(zero.Contains("ClaimL."),"The business layer never prompts.");
 		}
@@ -117,7 +117,7 @@ namespace M2CLAIMRCVTests {
 		public void EraAutoProcessedReport_ProcessesTheNextInsurance() {
 			//The ERA report's claim menu item checks for claims of the next insurance (any ordinal) the way the prompt finds them, not only for
 			//secondary claims (type S), so a received secondary claim reaches the prompt for its tertiary claim.
-			string source=Read(Path.Combine("OpenDental","Forms","FormRpEraAutoProcessed.cs"));
+			string source=Read(Path.Combine("OpenPmsDental","Forms","FormRpEraAutoProcessed.cs"));
 			string item=Between(source,"private void MenuItemProcessSecondaryClaims_Click(","private void gridClaims_CellDoubleClick(");
 			AssertBefore(item,"Claims.GetNextOrdinalClaimsNotReceived(listClaimProcsForClaim,includeHoldForInProcess:true).Count==0",
 				"ClaimL.PromptForPrimaryOrSecondaryClaim(listClaimProcsForClaim);");
@@ -129,19 +129,19 @@ namespace M2CLAIMRCVTests {
 		[TestMethod]
 		public void PrefInfos_MatchTheClaimReceiveLabels() {
 			//The Preferences window's registry carries each control's text; the two relabelled check boxes keep it in step with the designer.
-			string prefInfos=Read(Path.Combine("OpenDental","Resources","PrefInfos.xml")).Replace("\r\n","\n");
+			string prefInfos=Read(Path.Combine("OpenPmsDental","Resources","PrefInfos.xml")).Replace("\r\n","\n");
 			StringAssert.Contains(prefInfos,"<ControlName>checkPromptForSecondaryClaim</ControlName>\n    <ControlText>Prompt for claims of the next insurance</ControlText>");
 			StringAssert.Contains(prefInfos,"<ControlName>checkClaimPrimaryRecievedForceSecondaryStatus</ControlName>\n    <ControlText>Remove 'Do Nothing' from the next insurance claims prompt</ControlText>");
 		}
 
 		[TestMethod]
 		public void ClaimReceivePreferences_26_1Labels() {
-			string designer=Read(Path.Combine("OpenDental","User Controls","Preferences","UserControlAccountClaimReceive.Designer.cs"));
+			string designer=Read(Path.Combine("OpenPmsDental","User Controls","Preferences","UserControlAccountClaimReceive.Designer.cs"));
 			StringAssert.Contains(designer,"this.checkPromptForSecondaryClaim.Text = \"Prompt for claims of the next insurance\";");
 			StringAssert.Contains(designer,"this.checkClaimPrimaryRecievedForceSecondaryStatus.Text = \"Remove \\'Do Nothing\\' from the next insurance claims prompt\";");
 			StringAssert.Contains(designer,"this.checkClaimPrimaryReceivedRecalcSecondary.Text = \"Auto update next insurance claim estimates when a claim is received\";");
 			//The preference names stay; only the labels change.
-			string control=Read(Path.Combine("OpenDental","User Controls","Preferences","UserControlAccountClaimReceive.cs"));
+			string control=Read(Path.Combine("OpenPmsDental","User Controls","Preferences","UserControlAccountClaimReceive.cs"));
 			StringAssert.Contains(control,"Prefs.UpdateBool(PrefName.PromptForSecondaryClaim,checkPromptForSecondaryClaim.Checked)");
 			StringAssert.Contains(control,"Prefs.UpdateBool(PrefName.ClaimPrimaryRecievedForceSecondaryStatus,checkClaimPrimaryRecievedForceSecondaryStatus.Checked)");
 			StringAssert.Contains(control,"Prefs.UpdateBool(PrefName.ClaimPrimaryReceivedRecalcSecondary,checkClaimPrimaryReceivedRecalcSecondary.Checked)");

@@ -79,7 +79,7 @@ namespace ImagingDeviceManager.Tests {
 					}
 				}
 			}
-			//OpenDental, ImagingCapture and the two test projects reference it today; a project dropping its reference is not this test's concern.
+			//OpenPmsDental, ImagingCapture and the two test projects reference it today; a project dropping its reference is not this test's concern.
 			Assert.IsTrue(countReferences>=1,"No project references "+ProjectFileName+".");
 			Assert.AreEqual(0,listViolations.Count,"A reference to ImagingDeviceManager is not the in-repo project (a missing project would be swapped "
 				+"for a prebuilt DLL by Directory.Build.targets): "+string.Join("; ",listViolations));

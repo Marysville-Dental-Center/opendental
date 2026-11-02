@@ -71,7 +71,7 @@ namespace BPROCTests {
 		}
 
 		private static string ReadSource(string fileName) {
-			return File.ReadAllText(TestDb.FindRepoFile(Path.Combine("OpenDental","Forms",fileName)));
+			return File.ReadAllText(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","Forms",fileName)));
 		}
 
 		[TestMethod]

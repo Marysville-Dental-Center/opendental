@@ -75,7 +75,7 @@ namespace VendorDirectTests.Canada {
 
 		[TestMethod]
 		public void CarrierList_NoHqRelayInTheSource() {
-			string code=StripLineComments(ReadRepoFile(@"OpenDentBusiness\Misc\ItransNCpl.cs"));
+			string code=StripLineComments(ReadRepoFile(@"OpenPmsDentalBusiness\Misc\ItransNCpl.cs"));
 			foreach(string forbidden in new[] { "WebServiceMainHQProxy","CanadaCarrierUpdate","PayloadHelper","HqNotAvailableException","WebSerializer" }) {
 				Assert.IsFalse(code.Contains(forbidden),forbidden);
 			}
@@ -146,7 +146,7 @@ namespace VendorDirectTests.Canada {
 
 		[TestMethod]
 		public void CarrierThread_StartsOnlyForItrans2WithAResponsePath() {
-			string code=ReadRepoFile(@"OpenDental\Main Modules\FormOpenDentalThreads.cs");
+			string code=ReadRepoFile(@"OpenPmsDental\Main Modules\FormOpenDentalThreads.cs");
 			int start=code.IndexOf("private void BeginCanadianItransCarrierThread()");
 			Assert.IsTrue(start>=0);
 			string method=code.Substring(start,code.IndexOf("odThread.Start();",start)-start);
@@ -159,7 +159,7 @@ namespace VendorDirectTests.Canada {
 
 		[TestMethod]
 		public void Certificates_NoDownloadOrConfigRewriteInTheSource() {
-			string code=StripLineComments(ReadRepoFile(@"OpenDentBusiness\Eclaims\Canadian.cs"));
+			string code=StripLineComments(ReadRepoFile(@"OpenPmsDentalBusiness\Eclaims\Canadian.cs"));
 			foreach(string forbidden in new[] { "CustomerUpdatesProxy","RequestCertCanada","RegistrationKeyIsDisabled","FileData64","OD_2023-","OD_2018-",
 				"\"OPENDENTAL.pem\"","WriteAllBytes(certFilePath","WriteAllText(configFilePath" })
 			{

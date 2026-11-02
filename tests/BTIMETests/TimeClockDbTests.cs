@@ -1,5 +1,5 @@
 // Integration tests for B-TIME against a scratch MariaDB database on this computer. The database gets the current reference schema
-// (SchemaVerifier.GetReference(), the one the CRUD matches) from the snapshot embedded in OpenDentBusiness and is filled with synthetic rows only. The tests are skipped (inconclusive)
+// (SchemaVerifier.GetReference(), the one the CRUD matches) from the snapshot embedded in OpenPmsDentalBusiness and is filled with synthetic rows only. The tests are skipped (inconclusive)
 // when no server answers at 127.0.0.1:3306 as root with a blank password, or when BTIME_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;

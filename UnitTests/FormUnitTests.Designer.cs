@@ -129,7 +129,7 @@ namespace UnitTests {
 			this.label4.Name = "label4";
 			this.label4.Size = new System.Drawing.Size(600, 18);
 			this.label4.TabIndex = 11;
-			this.label4.Text = "Set both this project and OpenDentalServer as startup.  Edit OpenDentalServer.Ope" +
+			this.label4.Text = "Set both this project and OpenPmsDentalServer as startup.  Edit OpenPmsDentalServer.Ope" +
     "nDentalServerConfig.xml to be valid.";
 			this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 

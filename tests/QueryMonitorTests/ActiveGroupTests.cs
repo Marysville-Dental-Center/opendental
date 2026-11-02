@@ -41,7 +41,7 @@ namespace QueryMonitorTests {
 			Assert.AreEqual("Signals",QueryFilterActiveGroups.GetActiveGroup(keyUser1));
 			Assert.AreEqual("Billing",QueryFilterActiveGroups.GetActiveGroup(keyUser2));
 			Assert.AreEqual("",QueryFilterActiveGroups.GetActiveGroup(keyOtherDb));
-			Assert.AreEqual("Signals",QueryFilterActiveGroups.GetActiveGroup(QueryFilterActiveGroups.GetKey("LOCALHOST","OpenDental",1)),
+			Assert.AreEqual("Signals",QueryFilterActiveGroups.GetActiveGroup(QueryFilterActiveGroups.GetKey("LOCALHOST","OpenPmsDental",1)),
 				"Keys ignore case.");
 		}
 

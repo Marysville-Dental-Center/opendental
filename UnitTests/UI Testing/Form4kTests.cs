@@ -201,7 +201,7 @@ namespace UnitTests{
 
 			//List<Procedure> listProcs=new List<Procedure>();
 			//long patNum=293;
-			//Image imgToothChart=OpenDental.SheetPrinting.GetToothChartHelper(patNum,true,null,listProcs,isInPatientDashboard:true);
+			//Image imgToothChart=OpenPmsDental.SheetPrinting.GetToothChartHelper(patNum,true,null,listProcs,isInPatientDashboard:true);
 			//_imgToothChart?.Dispose();
 			//_imgToothChart=imgToothChart;
 

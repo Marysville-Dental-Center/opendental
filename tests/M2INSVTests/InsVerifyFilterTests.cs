@@ -117,10 +117,10 @@ namespace M2INSVTests {
 			//Every place that stamps an assignment or a status change stores DateTime.Now since the column became a datetime (25.4). Resets to
 			//DateTime.MinValue are unchanged. Commented-out code is ignored.
 			string[] arrayFiles=new string[] {
-				Path.Combine("OpenDental","Forms","FormInsVerificationList.cs"),
-				Path.Combine("OpenDentBusiness","Data Interface","InsVerifies.cs"),
-				Path.Combine("OpenDentBusiness","Data Interface","InsVerifyHists.cs"),
-				Path.Combine("OpenDentBusiness","Data Interface","PatPlans.cs"),
+				Path.Combine("OpenPmsDental","Forms","FormInsVerificationList.cs"),
+				Path.Combine("OpenPmsDentalBusiness","Data Interface","InsVerifies.cs"),
+				Path.Combine("OpenPmsDentalBusiness","Data Interface","InsVerifyHists.cs"),
+				Path.Combine("OpenPmsDentalBusiness","Data Interface","PatPlans.cs"),
 			};
 			List<string> listOffending=new List<string>();
 			foreach(string relativePath in arrayFiles) {

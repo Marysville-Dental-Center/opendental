@@ -16,9 +16,9 @@ namespace VDXC2Tests {
 		[TestMethod]
 		public void NoCaseSensitivePdfCheckIsLeft() {
 			string[] arrayPaths={
-				Path.Combine("OpenDental","Forms","FormImagePickerDXC.cs"),
-				Path.Combine("OpenDental","Forms","FormClaimAttachment.cs"),
-				Path.Combine("OpenDental","Forms","FormClaimAttachmentItemEdit.cs"),
+				Path.Combine("OpenPmsDental","Forms","FormImagePickerDXC.cs"),
+				Path.Combine("OpenPmsDental","Forms","FormClaimAttachment.cs"),
+				Path.Combine("OpenPmsDental","Forms","FormClaimAttachmentItemEdit.cs"),
 			};
 			foreach(string path in arrayPaths) {
 				string source=ReadSource(path);
@@ -29,11 +29,11 @@ namespace VDXC2Tests {
 
 		[TestMethod]
 		public void ImagePickerSendsPdfsFromImagesAndFromDisk() {
-			string source=ReadSource(Path.Combine("OpenDental","Forms","FormImagePickerDXC.cs"));
+			string source=ReadSource(Path.Combine("OpenPmsDental","Forms","FormImagePickerDXC.cs"));
 			StringAssert.Contains(source,"DxcPdfAttachment.ReadPdfDocument(");
 			StringAssert.Contains(source,"DxcPdfAttachment.ReadPdfFile(");
 			StringAssert.Contains(source,"DxcPdfAttachment.CreateImageAttachment(");
-			string designer=ReadSource(Path.Combine("OpenDental","Forms","FormImagePickerDXC.designer.cs"));
+			string designer=ReadSource(Path.Combine("OpenPmsDental","Forms","FormImagePickerDXC.designer.cs"));
 			StringAssert.Contains(designer,"this.butSendFile.Click += new System.EventHandler(this.butSendFile_Click);");
 			StringAssert.Contains(designer,"this.Controls.Add(this.butSendFile);");
 			StringAssert.Contains(designer,"this.Text = \"Select Image\";","The window title is unchanged.");
@@ -41,20 +41,20 @@ namespace VDXC2Tests {
 
 		[TestMethod]
 		public void ClaimAttachmentWindowAcceptsPdfsForDentalXChangeOnly() {
-			string source=ReadSource(Path.Combine("OpenDental","Forms","FormClaimAttachment.cs"));
+			string source=ReadSource(Path.Combine("OpenPmsDental","Forms","FormClaimAttachment.cs"));
 			StringAssert.Contains(source,"DxcPdfAttachment.IsPdfFileName(selectedFile)");
 			StringAssert.Contains(source,"DxcPdfAttachment.IsPdfAccepted(_eclaimsCommBridge)");
 			StringAssert.Contains(source,"DxcPdfAttachment.GetPdfRefusedMessage(_eclaimsCommBridge)");
-			string sourceItemEdit=ReadSource(Path.Combine("OpenDental","Forms","FormClaimAttachmentItemEdit.cs"));
+			string sourceItemEdit=ReadSource(Path.Combine("OpenPmsDental","Forms","FormClaimAttachmentItemEdit.cs"));
 			StringAssert.Contains(sourceItemEdit,"_eclaimsCommBridge==EclaimsCommBridge.ClaimConnect && _arrayBytesPdf!=null");
 		}
 
 		[TestMethod]
 		public void SnipAndPasteStayImageOnly() {
 			string[] arrayPaths={
-				Path.Combine("OpenDental","Forms","FormClaimAttachSnipDXC.cs"),
-				Path.Combine("OpenDental","Forms","FormClaimAttachPasteDXC.cs"),
-				Path.Combine("OpenDental","Forms","FormClaimAttachPasteDXCItem.cs"),
+				Path.Combine("OpenPmsDental","Forms","FormClaimAttachSnipDXC.cs"),
+				Path.Combine("OpenPmsDental","Forms","FormClaimAttachPasteDXC.cs"),
+				Path.Combine("OpenPmsDental","Forms","FormClaimAttachPasteDXCItem.cs"),
 			};
 			foreach(string path in arrayPaths) {
 				Assert.IsFalse(ReadSource(path).Contains("DxcPdfAttachment"),path);
@@ -63,7 +63,7 @@ namespace VDXC2Tests {
 
 		[TestMethod]
 		public void SendingChecksPdfsFirst() {
-			string source=ReadSource(Path.Combine("OpenDentBusiness","Eclaims","ClaimConnect.cs"));
+			string source=ReadSource(Path.Combine("OpenPmsDentalBusiness","Eclaims","ClaimConnect.cs"));
 			int idxSend=source.IndexOf("public static List<int> SendAttachmentImages(");
 			Assert.IsTrue(idxSend>0);
 			int idxCheck=source.IndexOf("DxcPdfAttachment.ThrowIfAnyCannotBeSent(listImages);",idxSend);

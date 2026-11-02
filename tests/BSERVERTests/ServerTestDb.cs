@@ -13,7 +13,7 @@ using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace BSERVERTests {
 	///<summary>Creates scratch databases with the Open Dental 25.3.48 definitions of the tables a test needs (from the reference schema embedded in
-	///OpenDentBusiness), connects the business layer to one of them and drops them afterwards. Names start with "bsrvtest_" plus a per-run id (UTC
+	///OpenPmsDentalBusiness), connects the business layer to one of them and drops them afterwards. Names start with "bsrvtest_" plus a per-run id (UTC
 	///start time, process id and a random number), so parallel runs from other worktrees never collide and nothing else is ever dropped. Tests are
 	///skipped (inconclusive) when no server answers at 127.0.0.1:3306 as root with a blank password, or when BSERVER_TEST_DB=skip.</summary>
 	public static class ServerTestDb {

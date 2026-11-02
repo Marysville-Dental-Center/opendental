@@ -1,4 +1,4 @@
-// B-PRINT: Export .csv and Export .txt (Open Dental 24.4 Transaction History, 25.3 "more windows"). Text rules of OpenDental.UI.GridODExport.
+// B-PRINT: Export .csv and Export .txt (Open Dental 24.4 Transaction History, 25.3 "more windows"). Text rules of OpenPmsDental.UI.GridODExport.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.Collections.Generic;
 using System.IO;

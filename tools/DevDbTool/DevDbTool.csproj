@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   DevDbTool: builds a local development database for this codebase from the seed dump in
-  UnitTests\Resources\dump.txt, then upgrades it with the convert scripts in OpenDentBusiness.
+  UnitTests\Resources\dump.txt, then upgrades it with the convert scripts in OpenPmsDentalBusiness.
   Run it through tools\New-DevDatabase.ps1, which builds it on its own. With export-init-sql it also writes
   db\init\new-database.sql, the SQL file that initializes a new database (tools\New-InitSql.ps1). It is in OpenDental.sln
   and OpenDental.Local.slnf, so that every solution build compiles it, catches a break early and builds it for the test

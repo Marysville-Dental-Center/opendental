@@ -10,9 +10,9 @@ using VendorDirectTests.Foundation;
 namespace VendorDirectTests.Email {
 	[TestClass]
 	public class EmailUiLayoutTests {
-		private static readonly string[] _arrayOwnedFiles={ @"OpenDentBusiness\Data Interface\EmailMessages.cs",@"OpenDentBusiness\Email\SendEmails.cs",
-			@"OpenDental\Forms\FormEmailAddressEdit.cs",@"OpenDental\Forms\FormEmailAddressEdit.designer.cs",@"OpenDental\Forms\FormEmailMessageEdit.cs",
-			@"OpenDental\Forms\FormEmailInbox.cs" };
+		private static readonly string[] _arrayOwnedFiles={ @"OpenPmsDentalBusiness\Data Interface\EmailMessages.cs",@"OpenPmsDentalBusiness\Email\SendEmails.cs",
+			@"OpenPmsDental\Forms\FormEmailAddressEdit.cs",@"OpenPmsDental\Forms\FormEmailAddressEdit.designer.cs",@"OpenPmsDental\Forms\FormEmailMessageEdit.cs",
+			@"OpenPmsDental\Forms\FormEmailInbox.cs" };
 
 		private static string ReadRepoFile(string relativePath) {
 			return File.ReadAllText(Path.Combine(FoundationLayoutTests.GetRepositoryRoot(),relativePath));
@@ -29,16 +29,16 @@ namespace VendorDirectTests.Email {
 					Assert.IsFalse(text.Contains(forbidden),file+" contains "+forbidden);
 				}
 			}
-			foreach(string file in new[] { @"OpenDentBusiness\Data Interface\EmailMessages.cs",@"OpenDentBusiness\Email\SendEmails.cs",
-				@"OpenDental\Forms\FormEmailAddressEdit.cs",@"OpenDental\Forms\FormEmailMessageEdit.cs" })
+			foreach(string file in new[] { @"OpenPmsDentalBusiness\Data Interface\EmailMessages.cs",@"OpenPmsDentalBusiness\Email\SendEmails.cs",
+				@"OpenPmsDental\Forms\FormEmailAddressEdit.cs",@"OpenPmsDental\Forms\FormEmailMessageEdit.cs" })
 			{
-				StringAssert.Contains(ReadRepoFile(file),"using OpenDentBusiness.Microsoft365;",file);
+				StringAssert.Contains(ReadRepoFile(file),"using OpenPmsDentalBusiness.Microsoft365;",file);
 			}
 		}
 
 		[TestMethod]
 		public void EmailMessages_DefectsStayFixed() {
-			string text=ReadRepoFile(@"OpenDentBusiness\Data Interface\EmailMessages.cs");
+			string text=ReadRepoFile(@"OpenPmsDentalBusiness\Data Interface\EmailMessages.cs");
 			Assert.IsFalse(text.Contains(".GetProfile("),"No token probe before sending: a send-only Gmail grant can't call getProfile (google.md defect 1).");
 			Assert.IsFalse(text.Contains("TrimStart(\"GmailId\""),"Stored Gmail IDs are compared exactly (google.md defect 6).");
 			Assert.IsFalse(text.Contains("TrimStart(\"MicrosoftId\""),"Stored Graph IDs are compared exactly (microsoft-365.md defect 5).");
@@ -53,7 +53,7 @@ namespace VendorDirectTests.Email {
 
 		[TestMethod]
 		public void SendEmails_RethrowsTheVendorExceptionsUnchanged() {
-			string text=ReadRepoFile(@"OpenDentBusiness\Email\SendEmails.cs");
+			string text=ReadRepoFile(@"OpenPmsDentalBusiness\Email\SendEmails.cs");
 			Assert.IsFalse(text.Contains("Unable to authenticate with Google"),"The GoogleApiException is rethrown with its HTTP status.");
 			Assert.IsTrue(Regex.IsMatch(text,@"catch\(GoogleApiException\)\s*\{[^}]*throw;",RegexOptions.Singleline));
 			Assert.IsTrue(Regex.IsMatch(text,@"catch\(Microsoft365Exception\)\s*\{[^}]*throw;",RegexOptions.Singleline));
@@ -63,19 +63,19 @@ namespace VendorDirectTests.Email {
 
 		[TestMethod]
 		public void EmailAddressWindow_IsNeutralAndGated() {
-			string textDesigner=ReadRepoFile(@"OpenDental\Forms\FormEmailAddressEdit.designer.cs");
+			string textDesigner=ReadRepoFile(@"OpenPmsDental\Forms\FormEmailAddressEdit.designer.cs");
 			foreach(string removed in new[] { "textAccessTokenGmail","textRefreshTokenGmail","textAccessTokenMicrosoft","textRefreshTokenMicrosoft",
 				"google_signin","butAuthMicrosoft.Image","System.Windows.Forms.Button()" })
 			{
 				Assert.IsFalse(textDesigner.Contains(removed),"The designer still has "+removed+": tokens are never shown and there is no vendor artwork.");
 			}
-			StringAssert.Contains(textDesigner,"this.butAuthGoogle = new OpenDental.UI.Button();");
-			StringAssert.Contains(textDesigner,"this.butAuthMicrosoft = new OpenDental.UI.Button();");
+			StringAssert.Contains(textDesigner,"this.butAuthGoogle = new OpenPmsDental.UI.Button();");
+			StringAssert.Contains(textDesigner,"this.butAuthMicrosoft = new OpenPmsDental.UI.Button();");
 			StringAssert.Contains(textDesigner,"\"Authorize...\"");
 			StringAssert.Contains(textDesigner,"\"Sign in...\"");
 			StringAssert.Contains(textDesigner,"\"Gmail (OAuth)\"");
-			Assert.IsFalse(ReadRepoFile(@"OpenDental\Forms\FormEmailAddressEdit.resx").Contains("butAuthMicrosoft.Image"),"The sign-in artwork is gone.");
-			string text=ReadRepoFile(@"OpenDental\Forms\FormEmailAddressEdit.cs");
+			Assert.IsFalse(ReadRepoFile(@"OpenPmsDental\Forms\FormEmailAddressEdit.resx").Contains("butAuthMicrosoft.Image"),"The sign-in artwork is gone.");
+			string text=ReadRepoFile(@"OpenPmsDental\Forms\FormEmailAddressEdit.cs");
 			StringAssert.Contains(text,"radioGmail.Visible=isGmailEnabled || _authenticationType==OAuthType.Google;");
 			StringAssert.Contains(text,"radioMicrosoft.Visible=isMicrosoft365Enabled || _authenticationType==OAuthType.Microsoft;");
 			StringAssert.Contains(text,"MicrosoftApiConnector.GetAccessToken(emailUsername,\"\",","Sign in always prompts (a blank cache argument).");
@@ -86,13 +86,13 @@ namespace VendorDirectTests.Email {
 
 		[TestMethod]
 		public void EmailWindows_DownloadAndReauthenticate() {
-			string textInbox=ReadRepoFile(@"OpenDental\Forms\FormEmailInbox.cs");
+			string textInbox=ReadRepoFile(@"OpenPmsDental\Forms\FormEmailInbox.cs");
 			int indexGetMessages=textInbox.IndexOf("private void GetMessages()",StringComparison.Ordinal);
 			Assert.IsTrue(indexGetMessages>0);
 			int indexReceive=textInbox.IndexOf("ReceiveFromOAuthInbox(GetSelectedAddress());",indexGetMessages,StringComparison.Ordinal);
 			int indexPop3=textInbox.IndexOf("Pop3ServerIncoming==\"\"",indexGetMessages,StringComparison.Ordinal);
 			Assert.IsTrue(indexReceive>0 && indexReceive<indexPop3,"The manual download runs before the blank-POP3 return (google.md 3.8).");
-			string textMessage=ReadRepoFile(@"OpenDental\Forms\FormEmailMessageEdit.cs");
+			string textMessage=ReadRepoFile(@"OpenPmsDental\Forms\FormEmailMessageEdit.cs");
 			StringAssert.Contains(textMessage,"EmailMessages.FindException<Microsoft365Exception>(ex)");
 			StringAssert.Contains(textMessage,"microsoft365Exception.IsAuthError","A refused sign-in offers Sign in again instead of clearing the tokens.");
 			Assert.IsFalse(textMessage.Contains("emailAddress.RefreshToken=\"\""),"The stored sign-in is never cleared automatically.");

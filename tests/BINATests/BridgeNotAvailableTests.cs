@@ -32,8 +32,8 @@ namespace BINATests {
 
 		[TestMethod]
 		public void EachFormerCallSite_ShowsItsMessage() {
-			string controlChart=RepoFiles.Read(@"OpenDental\Main Modules\ControlChart.cs");
-			string formRxManage=RepoFiles.Read(@"OpenDental\Forms\FormRxManage.cs");
+			string controlChart=RepoFiles.Read(@"OpenPmsDental\Main Modules\ControlChart.cs");
+			string formRxManage=RepoFiles.Read(@"OpenPmsDental\Forms\FormRxManage.cs");
 			StringAssert.Contains(controlChart,"MsgBox.Show(this,BridgeNotAvailable.EcwRx);");
 			StringAssert.Contains(formRxManage,"MsgBox.Show(this,BridgeNotAvailable.EcwRx);");
 			StringAssert.Contains(RepoFiles.Read(@"WpfControlsOD\Bridges\Patterson.cs"),"MsgBox.Show(\"Patterson\",BridgeNotAvailable.Patterson);");

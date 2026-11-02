@@ -77,7 +77,7 @@ namespace NoHqTests {
 			"Crud.TaskTakenCrud",
 		};
 
-		///<summary>Windows used only by Open Dental HQ staff, as file name prefixes in OpenDental and WpfControlsOD.</summary>
+		///<summary>Windows used only by Open Dental HQ staff, as file name prefixes in OpenPmsDental and WpfControlsOD.</summary>
 		private static readonly string[] _arrayRemovedWindowPrefixes=new string[] {
 			"FormBugSubmission","FormCustomerManagement","FormRegistrationKeyEdit","FormFeatureRequest","FormRequestEdit","FormUpdateInstallMsg",
 			"FormResellers","FormResellerEdit","FormResellerServiceEdit","FormWebChat","FormAiChatSession","FormNewCropBilling","FormErxAccess",
@@ -105,18 +105,18 @@ namespace NoHqTests {
 		[TestMethod]
 		public void HqTools_FoldersAndProgramsAreRemoved() {
 			string pathRoot=RemovedAssembliesTests.GetRepositoryRoot();
-			foreach(string folder in new[] { Path.Combine("OpenDental","InternalTools"),Path.Combine("WpfControlsOD","InternalTools"),"JobManagerDashboard","WebCamOD" }) {
+			foreach(string folder in new[] { Path.Combine("OpenPmsDental","InternalTools"),Path.Combine("WpfControlsOD","InternalTools"),"JobManagerDashboard","WebCamOD" }) {
 				Assert.IsFalse(Directory.Exists(Path.Combine(pathRoot,folder)),folder+" should have been removed.");
 			}
-			//Only table types and Crud classes may remain in OpenDentBusiness\InternalTools.
-			string pathBusinessTools=Path.Combine(pathRoot,"OpenDentBusiness","InternalTools");
+			//Only table types and Crud classes may remain in OpenPmsDentalBusiness\InternalTools.
+			string pathBusinessTools=Path.Combine(pathRoot,"OpenPmsDentalBusiness","InternalTools");
 			if(Directory.Exists(pathBusinessTools)) {
 				string sep=Path.DirectorySeparatorChar.ToString();
 				List<string> listFiles=Directory.GetFiles(pathBusinessTools,"*.cs",SearchOption.AllDirectories)
 					.Where(x => !x.Contains(sep+"TableTypes"+sep) && !x.Contains(sep+"Crud"+sep) && !Path.GetFileName(x).EndsWith("Crud.cs"))
 					.Where(x => !Path.GetFileName(x).In("EServiceBilling.cs","EServiceCodeLink.cs"))//Table types kept next to their old data interfaces.
 					.ToList();
-				Assert.AreEqual(0,listFiles.Count,"Unexpected files in OpenDentBusiness\\InternalTools: "+string.Join(", ",listFiles));
+				Assert.AreEqual(0,listFiles.Count,"Unexpected files in OpenPmsDentalBusiness\\InternalTools: "+string.Join(", ",listFiles));
 			}
 			string[] arrayPathSolutions=Directory.GetFiles(pathRoot,"*.sln");//By extension, so the check survives a rename of the solution.
 			Assert.AreEqual(1,arrayPathSolutions.Length,"Expected one solution in "+pathRoot);
@@ -128,7 +128,7 @@ namespace NoHqTests {
 			string pathRoot=RemovedAssembliesTests.GetRepositoryRoot();
 			string sep=Path.DirectorySeparatorChar.ToString();
 			List<string> listFiles=new List<string>();
-			foreach(string folder in new[] { "OpenDental","WpfControlsOD" }) {
+			foreach(string folder in new[] { "OpenPmsDental","WpfControlsOD" }) {
 				listFiles.AddRange(Directory.GetFiles(Path.Combine(pathRoot,folder),"*.*",SearchOption.AllDirectories)
 					.Where(x => x.EndsWith(".cs",StringComparison.OrdinalIgnoreCase) || x.EndsWith(".xaml",StringComparison.OrdinalIgnoreCase))
 					.Where(x => !x.Contains(sep+"bin"+sep) && !x.Contains(sep+"obj"+sep)));

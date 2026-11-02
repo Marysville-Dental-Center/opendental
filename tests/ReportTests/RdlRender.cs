@@ -1,6 +1,6 @@
 // Renders RDL report definitions the way the program does (package RDL-SRC, docs/port-notes/RDL-SRC.md): through RdlEngine's RDLParser,
 // Report.RunGetData and Report.BuildPages, as RdlViewer.GetReport and GetPages call them, or through the RdlViewer control itself, as
-// OpenDental/ReportingForRdl/FormReportForRdl.cs uses it. ODR.Query asks for report parameters in a modal window (ODR.FormParameterInput); the
+// OpenPmsDental/ReportingForRdl/FormReportForRdl.cs uses it. ODR.Query asks for report parameters in a modal window (ODR.FormParameterInput); the
 // render thread fills that window in from its message loop and presses OK, so no one has to.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
@@ -44,10 +44,10 @@ namespace ReportTests {
 		///</summary>
 		private const int TIMEOUT_MS=180000;
 
-		///<summary>The report definition as the program embeds it: OpenDental\Resources\fileName (Properties\Resources.resx reads these files as
+		///<summary>The report definition as the program embeds it: OpenPmsDental\Resources\fileName (Properties\Resources.resx reads these files as
 		///Windows-1252 text).</summary>
 		public static string ReadProgramReport(string fileName) {
-			string path=ForkMigrationTests.TestDb.FindRepoFile(Path.Combine("OpenDental","Resources",fileName));
+			string path=ForkMigrationTests.TestDb.FindRepoFile(Path.Combine("OpenPmsDental","Resources",fileName));
 			return File.ReadAllText(path,Encoding.GetEncoding(1252));
 		}
 

@@ -1,6 +1,6 @@
 // Integration tests for adjustment type default percentages (definition.Supp, added by package M2-01) and Percent of Fee adjustments, against a
 // scratch MariaDB database on this computer. The database gets the Open Dental 26.1.70 schema from the reference snapshot embedded in
-// OpenDentBusiness, and synthetic rows only. Its name is unique to the run and it is dropped afterwards. The tests are skipped (inconclusive)
+// OpenPmsDentalBusiness, and synthetic rows only. Its name is unique to the run and it is dropped afterwards. The tests are skipped (inconclusive)
 // when no server answers at 127.0.0.1:3306 as root with a blank password, or when M2ADJ_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;

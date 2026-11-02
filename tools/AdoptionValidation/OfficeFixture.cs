@@ -21,7 +21,7 @@ namespace AdoptionValidation {
 	///the fork's blocked-host list (CodeBase.VendorDirect.HqHosts) so no host name is written in this file, the "ciphertexts" are random bytes
 	///from the seed, and the report rows' internal names are made up (Open Dental's are not published).</summary>
 	public static class OfficeFixture {
-		///<summary>DocMiscType values of Open Dental's own rows (DocumentMiscType in OpenDentBusiness).</summary>
+		///<summary>DocMiscType values of Open Dental's own rows (DocumentMiscType in OpenPmsDentalBusiness).</summary>
 		public const int DocMiscUpdateFiles=0;
 		public const int DocMiscUpdateFilesSegment=1;
 		public const int DocMiscShareScreenExeSegment=2;

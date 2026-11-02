@@ -29,7 +29,7 @@ namespace UnitTests{
 			//for(int i=0;i<40;i++){
 			//	_um.ListBox_Items_Add("listBox1","Item"+i.ToString());
 			//}
-			//List<OpenDental.Wui.ListBoxItem> listListBoxItems=Lan.EnumsGetForListBox<DayOfWeek>();
+			//List<OpenPmsDental.Wui.ListBoxItem> listListBoxItems=Lan.EnumsGetForListBox<DayOfWeek>();
 			//_um.ListBox_Items_AddList("listBox1",listListBoxItems);
 			//_um.ComboBox_Items_Clear("comboBox1");
 			for(int i=0;i<30;i++){
@@ -174,21 +174,21 @@ Line2\par
 		//	}
 		//	_um.Grid_BeginUpdate("gridMain");
 		//	_um.Grid_ColumnsClear("gridMain");
-		//	OpenDental.Wui.GridColumn gridColumn = new OpenDental.Wui.GridColumn("LastName",100);
+		//	OpenPmsDental.Wui.GridColumn gridColumn = new OpenPmsDental.Wui.GridColumn("LastName",100);
 		//	_um.Grid_ColumnAdd("gridMain",gridColumn);
-		//	gridColumn=new OpenDental.Wui.GridColumn("FirstName",100,System.Windows.HorizontalAlignment.Center);
+		//	gridColumn=new OpenPmsDental.Wui.GridColumn("FirstName",100,System.Windows.HorizontalAlignment.Center);
 		//	gridColumn.IsWidthDynamic=true;
 		//	_um.Grid_ColumnAdd("gridMain",gridColumn);
-		//	List<OpenDental.Wui.GridRow> listGridRows = new List<OpenDental.Wui.GridRow>();
+		//	List<OpenPmsDental.Wui.GridRow> listGridRows = new List<OpenPmsDental.Wui.GridRow>();
 		//	for(int i = 0;i<table.Rows.Count;i++) {
-		//		OpenDental.Wui.GridRow gridRow = new OpenDental.Wui.GridRow();
-		//		OpenDental.Wui.GridCell gridCell;
-		//		gridCell=new OpenDental.Wui.GridCell(table.Rows[i]["LName"].ToString());
+		//		OpenPmsDental.Wui.GridRow gridRow = new OpenPmsDental.Wui.GridRow();
+		//		OpenPmsDental.Wui.GridCell gridCell;
+		//		gridCell=new OpenPmsDental.Wui.GridCell(table.Rows[i]["LName"].ToString());
 		//		if(i==2) {
 		//			gridCell.Bold=true;
 		//		}
 		//		gridRow.Cells.Add(gridCell);
-		//		gridCell=new OpenDental.Wui.GridCell(table.Rows[i]["FName"].ToString());
+		//		gridCell=new OpenPmsDental.Wui.GridCell(table.Rows[i]["FName"].ToString());
 		//		if(i%5==0) {
 		//			gridRow.ColorBackG=System.Windows.Media.Colors.Pink;
 		//			gridCell.ColorBackG=System.Windows.Media.Colors.Green;
@@ -219,7 +219,7 @@ Line2\par
 
 		private void butDelete_Click(object sender,EventArgs e) {
 			//float fontSize=textBox1.Font.Size;
-			//OpenDental.MessageBox.Show(fontSize.ToString());
+			//OpenPmsDental.MessageBox.Show(fontSize.ToString());
 		}
 
 		private void textBox1_FontChanged(object sender,EventArgs e) {
@@ -292,7 +292,7 @@ Line2\par
 		}
 
 		private void butLaunchWin_Click(object sender,EventArgs e) {
-			//OpenDental.Wui.WindowTest windowTest=new OpenDental.Wui.WindowTest();
+			//OpenPmsDental.Wui.WindowTest windowTest=new OpenPmsDental.Wui.WindowTest();
 			//windowTest.ShowDialog();
 			//InputBox inputBox=new InputBox("test prompt");
 			//inputBox.ShowDialog();

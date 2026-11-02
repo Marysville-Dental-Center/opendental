@@ -226,7 +226,7 @@ namespace M2MISCTests {
 		///<summary>WinForms printing, WPF printing and the setup windows pick the printer with the same rules.</summary>
 		[TestMethod]
 		public void Printing_PicksThePrinterWithTheSameRules() {
-			string printerL=TestDb.ReadRepoFile("OpenDental","Logic","PrinterL.cs");
+			string printerL=TestDb.ReadRepoFile("OpenPmsDental","Logic","PrinterL.cs");
 			StringAssert.Contains(printerL,"PrinterChoice printerChoice=PrintSituationRules.ResolveForThisComputer(printSituation);");
 			Assert.IsFalse(printerL.Contains("Printers.GetForSit("),"PrinterL reads the printer rows only through PrintSituationRules.");
 			string printOptionsWpf=TestDb.ReadRepoFile("WpfControlsOD","Logic","PrintOptionsWpf.cs");

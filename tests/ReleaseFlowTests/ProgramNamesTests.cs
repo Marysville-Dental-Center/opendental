@@ -31,25 +31,54 @@ namespace ReleaseFlowTests {
 			Assert.AreEqual(Path.Combine(folderAppData,ProgramNames.LocalAppDataFolderName),listFolders[0]);
 			CollectionAssert.Contains(listFolders,Path.Combine(folderAppData,ProgramNames.LegacyLocalAppDataFolderName));
 			Assert.AreEqual(listFolders.Count,listFolders.Distinct(StringComparer.OrdinalIgnoreCase).Count());
-			//Before the rename both names are the same folder.
-			Assert.AreEqual(ProgramNames.LocalAppDataFolderName==ProgramNames.LegacyLocalAppDataFolderName ? 1 : 2,listFolders.Count);
+			//After the rename today's folder and the pre-rename one differ, so both are listed.
+			Assert.AreNotEqual(ProgramNames.LocalAppDataFolderName,ProgramNames.LegacyLocalAppDataFolderName);
+			Assert.AreEqual(2,listFolders.Count);
 			Assert.AreEqual("OpenDental",ProgramNames.LegacyLocalAppDataFolderName,"The pre-rename folder never changes.");
 			Assert.AreEqual(0,ProgramNames.GetLocalAppDataFolders("").Count);
 			Assert.AreEqual(0,ProgramNames.GetLocalAppDataFolders(null).Count);
 		}
 
 		[TestMethod]
-		public void Values_AreTodaysNames() {
-			//The rename changes these values, and only here. Until then they are the names the program has always used.
-			Assert.AreEqual("OpenDental",ProgramNames.ProcessName);
-			Assert.AreEqual("OpenDentBusiness.dll",ProgramNames.BusinessDllFileName);
-			Assert.AreEqual("opendental",ProgramNames.TempFolderName);
+		public void Values_AreTheOpenPmsDentalNames() {
+			//The rename to Open PMS Dental changed these values, and only here.
+			Assert.AreEqual("OpenPmsDental",ProgramNames.ProcessName);
+			Assert.AreEqual("OpenPmsDental.exe",ProgramNames.ExeFileName);
+			Assert.AreEqual("OpenPmsDentalBusiness.dll",ProgramNames.BusinessDllFileName);
+			Assert.AreEqual("OpenPmsDentalGraph.dll",ProgramNames.GraphDllFileName);
+			Assert.AreEqual("OpenPmsDentalCloud.dll",ProgramNames.CloudDllFileName);
+			Assert.AreEqual("UpdateFileCopier.exe",ProgramNames.UpdateFileCopierExeFileName);
+			//The configuration files keep their names (decision D3), so existing installs and the publish filter still find them.
+			Assert.AreEqual("FreeDentalConfig.xml",ProgramNames.ConfigFileName);
+			Assert.AreEqual("OpenDentalServerConfig.xml",ProgramNames.MiddleTierConfigFileName);
+			Assert.AreEqual("OpenDentalReplicationServiceConfig.xml",ProgramNames.ReplicationServiceConfigFileName);
+			Assert.AreEqual("OpenPMS-Dental",ProgramNames.LocalAppDataFolderName);
+			Assert.AreEqual("OpenPMS-Dental",ProgramNames.ProgramDataFolderName);
+			Assert.AreEqual("openpms-dental",ProgramNames.TempFolderName);
 			Assert.AreEqual("updatefilecopier",ProgramNames.UpdateFileCopierTempFolderName);
-			Assert.AreEqual("OpenDental",ProgramNames.EventLogSource);
-			Assert.AreEqual("OpenDentHL7",ProgramNames.EventLogSourceHL7);
-			Assert.AreEqual("OpenDentHL7.Main",ProgramNames.EventLogSourceHL7Main);
-			Assert.AreEqual("OpenDent",ProgramNames.ServicePrefix);
+			Assert.AreEqual("OpenPMS-Dental",ProgramNames.EventLogSource);
+			Assert.AreEqual("OpenPmsDentalHL7",ProgramNames.HL7ServiceName);
+			Assert.AreEqual("OpenPmsDentalHL7",ProgramNames.EventLogSourceHL7);
+			Assert.AreEqual("OpenPmsDentalHL7.Main",ProgramNames.EventLogSourceHL7Main);
+			Assert.AreEqual("OpenPmsDental",ProgramNames.ServicePrefix);
+			Assert.AreEqual("OpenDent",ProgramNames.LegacyServicePrefix,"Services installed before the rename carry this prefix; it never changes.");
+			Assert.AreEqual(@"C:\Program Files (x86)\Open PMS - Dental",ProgramNames.DefaultInstallFolder);
 			Assert.IsTrue(ProgramNames.HL7ServiceName.StartsWith(ProgramNames.ServicePrefix),"The HL7 service must carry the service prefix.");
+		}
+
+		///<summary>Installed services are found by today's prefix and by the prefix of builds before the rename, so an HL7 service installed then
+		///still finds its own name and the program still starts it. Case-sensitive, like the names the installers write.</summary>
+		[TestMethod]
+		public void HasServicePrefix_MatchesTodaysAndThePreRenamePrefix() {
+			Assert.IsTrue(ProgramNames.HasServicePrefix(ProgramNames.HL7ServiceName));
+			Assert.IsTrue(ProgramNames.HasServicePrefix(ProgramNames.ServicePrefix+"Service"));
+			Assert.IsTrue(ProgramNames.HasServicePrefix(ProgramNames.LegacyServicePrefix+"HL7"),"An HL7 service installed before the rename.");
+			Assert.IsTrue(ProgramNames.HasServicePrefix(ProgramNames.HL7ServiceFallbackName),"Open Dental's run-time default HL7 service name.");
+			foreach(string name in new[] { ProgramNames.ServicePrefix.ToLowerInvariant()+"HL7",ProgramNames.LegacyServicePrefix.ToUpperInvariant(),
+				"MySQL",ProgramNames.LocalAppDataFolderName,"",null })
+			{
+				Assert.IsFalse(ProgramNames.HasServicePrefix(name),"Matched "+(name??"null"));
+			}
 		}
 
 		///<summary>The HL7 service's fallback name is Open Dental's run-time default, not the installer's name. Existing HL7 setups saved it into
@@ -58,12 +87,12 @@ namespace ReleaseFlowTests {
 		[TestMethod]
 		public void HL7Service_FallbackNameIsOpenDentalsRunTimeDefault() {
 			Assert.AreEqual("OpenDentalHL7",ProgramNames.HL7ServiceFallbackName,"Saved HL7 setups hold this name; it never changes.");
-			string code=Regex.Replace(File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"OpenDentHL7","Program.cs")),@"//.*$","",RegexOptions.Multiline);
+			string code=Regex.Replace(File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"OpenPmsDentalHL7","Program.cs")),@"//.*$","",RegexOptions.Multiline);
 			StringAssert.Contains(code,"serviceHL7.ServiceName=ProgramNames.HL7ServiceFallbackName;","The service's default name must be the fallback name.");
 			Assert.IsFalse(code.Contains("serviceHL7.ServiceName=ProgramNames.HL7ServiceName"),"The installer's name is not the run-time fallback.");
 			//The setup windows tell users to type the fallback name.
 			foreach(string designer in new[] { "FormHL7DefEdit.designer.cs","FormEClinicalWorks.designer.cs" }) {
-				StringAssert.Contains(File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"OpenDental","Forms",designer)),
+				StringAssert.Contains(File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","Forms",designer)),
 					"Typically "+ProgramNames.HL7ServiceFallbackName+".",designer);
 			}
 		}
@@ -72,26 +101,28 @@ namespace ReleaseFlowTests {
 		///after the rename without a compiler error.</summary>
 		[TestMethod]
 		public void RuntimeNameSites_UseProgramNames() {
+			//The names before the rename and today's: a literal of either would bypass ProgramNames.
 			Dictionary<string,string[]> dictForbidden=new Dictionary<string,string[]> {
-				[@"UpdateFileCopier\FormMain.cs"]=new[] { "KillProcess(\"OpenDental\")","\"OpenDental.exe\"","\"opendental\"","\"updatefilecopier\"" },
-				[@"UpdateFileCopier\Program.cs"]=new[] { @"@""C:\Program Files\Open Dental""" },
-				[@"OpenDental\Main Modules\ProgramEntry.cs"]=new[] { "ProcessName.StartsWith(" },
-				[@"OpenDental\Main Modules\FormOpenDental.cs"]=new[] { "ProcessName==\"OpenDental\"","Contains(\"updatefilecopier\")" },
-				[@"OpenDentalCloud\Storage\Sftp.cs"]=new[] { "ProcessName.StartsWith(","\"OpenDental\",\"Stash\"" },
-				[@"OpenDentBusiness\Cache\PrefC.cs"]=new[] { "\"opendental\"","Directory.GetFiles(Path.GetTempPath())" },
-				[@"OpenDentBusiness\Misc\NTPv4.cs"]=new[] { "WriteEntry(\"OpenDental\"" },
-				[@"OpenDentBusiness\Misc\WindowsTime.cs"]=new[] { "WriteEntry(\"OpenDental\"" },
-				[@"OpenDentHL7\Program.cs"]=new[] { "\"OpenDentHL7","StartsWith(\"OpenDent\")" },
-				[@"OpenDentHL7\ProjectInstaller.cs"]=new[] { "\"OpenDentHL7\"" },
-				[@"CodeBase\Utilities\ServicesHelper.cs"]=new[] { "StartsWith(\"OpenDent\")" },
-				[@"ServiceManager\FormServiceManage.cs"]=new[] { "!=\"OpenDent\"" },
-				[@"ServiceManager\FormMain.cs"]=new[] { "FormServiceManage(\"OpenDent\"" },
-				[@"CentralManager\Db\CentralConnectionHelper.cs"]=new[] { "Process.Start(\"OpenDental.exe\"" },
-				[@"OpenDental\Logic\ChartLetterL.cs"]=new[] { "\"OpenDental\",\"ChartLetters\"" },
-				[@"OpenDentBusiness\Remoting\DtoProcessor.cs"]=new[] { "\"OpenDentBusiness.\"" },
-				[@"OpenDentBusiness\Remoting\DataTransferObject.cs"]=new[] { "\"OpenDentBusiness.\"" },
-				[@"OpenDentBusiness\Db Multi Table\Security.cs"]=new[] { "\"OpenDentBusiness.Security.LogInWeb\"" },
-				[@"WpfControlsOD\Bridges\DexisIntegrator.cs"]=new[] { "\"OpenDental.FormOpenDental\"" },
+				[@"UpdateFileCopier\FormMain.cs"]=new[] { "KillProcess(\"OpenDental\")","KillProcess(\"OpenPmsDental\")","\"OpenDental.exe\"","\"OpenPmsDental.exe\"",
+					"\"opendental\"","\"openpms-dental\"","\"updatefilecopier\"" },
+				[@"UpdateFileCopier\Program.cs"]=new[] { @"@""C:\Program Files\Open Dental""",@"@""C:\Program Files (x86)\Open PMS - Dental""" },
+				[@"OpenPmsDental\Main Modules\ProgramEntry.cs"]=new[] { "ProcessName.StartsWith(" },
+				[@"OpenPmsDental\Main Modules\FormOpenDental.cs"]=new[] { "ProcessName==\"OpenDental\"","ProcessName==\"OpenPmsDental\"","Contains(\"updatefilecopier\")" },
+				[@"OpenPmsDentalCloud\Storage\Sftp.cs"]=new[] { "ProcessName.StartsWith(","\"OpenDental\",\"Stash\"","\"OpenPMS-Dental\",\"Stash\"" },
+				[@"OpenPmsDentalBusiness\Cache\PrefC.cs"]=new[] { "\"opendental\"","\"openpms-dental\"","Directory.GetFiles(Path.GetTempPath())" },
+				[@"OpenPmsDentalBusiness\Misc\NTPv4.cs"]=new[] { "WriteEntry(\"OpenDental\"","WriteEntry(\"OpenPMS-Dental\"" },
+				[@"OpenPmsDentalBusiness\Misc\WindowsTime.cs"]=new[] { "WriteEntry(\"OpenDental\"","WriteEntry(\"OpenPMS-Dental\"" },
+				[@"OpenPmsDentalHL7\Program.cs"]=new[] { "\"OpenDentHL7","\"OpenPmsDentalHL7","StartsWith(\"OpenDent\")","StartsWith(\"OpenPmsDental\")" },
+				[@"OpenPmsDentalHL7\ProjectInstaller.cs"]=new[] { "\"OpenDentHL7\"","\"OpenPmsDentalHL7\"" },
+				[@"CodeBase\Utilities\ServicesHelper.cs"]=new[] { "StartsWith(\"OpenDent\")","StartsWith(\"OpenPmsDental\")" },
+				[@"ServiceManager\FormServiceManage.cs"]=new[] { "!=\"OpenDent\"","!=\"OpenPmsDental\"" },
+				[@"ServiceManager\FormMain.cs"]=new[] { "FormServiceManage(\"OpenDent\"","FormServiceManage(\"OpenPmsDental\"" },
+				[@"CentralManager\Db\CentralConnectionHelper.cs"]=new[] { "Process.Start(\"OpenDental.exe\"","Process.Start(\"OpenPmsDental.exe\"" },
+				[@"OpenPmsDental\Logic\ChartLetterL.cs"]=new[] { "\"OpenDental\",\"ChartLetters\"","\"OpenPMS-Dental\",\"ChartLetters\"" },
+				[@"OpenPmsDentalBusiness\Remoting\DtoProcessor.cs"]=new[] { "\"OpenDentBusiness.\"","\"OpenPmsDentalBusiness.\"" },
+				[@"OpenPmsDentalBusiness\Remoting\DataTransferObject.cs"]=new[] { "\"OpenDentBusiness.\"","\"OpenPmsDentalBusiness.\"" },
+				[@"OpenPmsDentalBusiness\Db Multi Table\Security.cs"]=new[] { "\"OpenDentBusiness.Security.LogInWeb\"","\"OpenPmsDentalBusiness.Security.LogInWeb\"" },
+				[@"WpfControlsOD\Bridges\DexisIntegrator.cs"]=new[] { "\"OpenDental.FormOpenDental\"","\"OpenPmsDental.FormOpenDental\"" },
 			};
 			List<string> listProblems=new List<string>();
 			foreach(KeyValuePair<string,string[]> pair in dictForbidden) {
@@ -105,10 +136,10 @@ namespace ReleaseFlowTests {
 				}
 			}
 			//Every HL7 Event Log write names its source through ProgramNames.
-			foreach(string folder in new[] { @"OpenDentBusiness\HL7",@"OpenDentBusiness\HL7old",@"OpenDentHL7" }) {
+			foreach(string folder in new[] { @"OpenPmsDentalBusiness\HL7",@"OpenPmsDentalBusiness\HL7old",@"OpenPmsDentalHL7" }) {
 				foreach(string path in Directory.GetFiles(Path.Combine(TestPaths.RepoRoot,folder),"*.cs",SearchOption.AllDirectories)) {
-					//A literal source ("OpenDentHL7", or Open Dental's stray "OpenDentalHL7"); "OpenDentHL7 error ..." messages are not sources.
-					Match match=Regex.Match(File.ReadAllText(path),@"EventLog\.WriteEntry\(\s*""OpenDent\w*""\s*,");
+					//A literal source (today's, the pre-rename one, or Open Dental's stray "OpenDentalHL7"); "... error ..." messages are not sources.
+					Match match=Regex.Match(File.ReadAllText(path),@"EventLog\.WriteEntry\(\s*""Open(?:Dent|PmsDental|PMS-Dental)[\w.-]*""\s*,");
 					if(match.Success) {
 						listProblems.Add(path.Substring(TestPaths.RepoRoot.Length+1)+": "+match.Value);
 					}

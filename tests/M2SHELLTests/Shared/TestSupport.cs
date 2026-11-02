@@ -8,7 +8,7 @@ using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace M2SHELLTests {
-	///<summary>Locates the repository and its source files (the WinForms code is checked as source, because the tests do not load OpenDental.exe).</summary>
+	///<summary>Locates the repository and its source files (the WinForms code is checked as source, because the tests do not load OpenPmsDental.exe).</summary>
 	public static class TestPaths {
 		///<summary>Walks up from the test assembly until it finds the repository root (LICENSE and NOTICE).</summary>
 		public static string GetRepositoryRoot() {
@@ -22,7 +22,7 @@ namespace M2SHELLTests {
 			throw new InvalidOperationException("Could not find the repository root (LICENSE and NOTICE) above the test assembly.");
 		}
 
-		///<summary>A file under the repository root, for example GetRepoFile("OpenDental","Forms","FormChartView.cs").</summary>
+		///<summary>A file under the repository root, for example GetRepoFile("OpenPmsDental","Forms","FormChartView.cs").</summary>
 		public static string GetRepoFile(params string[] arrayParts) {
 			string path=GetRepositoryRoot();
 			for(int i=0;i<arrayParts.Length;i++) {
@@ -37,7 +37,7 @@ namespace M2SHELLTests {
 	}
 
 	///<summary>A scratch database on the local MariaDB (127.0.0.1:3306, root, blank password) with the Open Dental 26.1.70 schema from the reference
-	///snapshot embedded in OpenDentBusiness, and synthetic rows only. Its name starts with "m2shell_" and is unique to the run (time, process id,
+	///snapshot embedded in OpenPmsDentalBusiness, and synthetic rows only. Its name starts with "m2shell_" and is unique to the run (time, process id,
 	///random), because several worktrees and test runners share the one local server. Tests are inconclusive when no server answers or when
 	///M2SHELL_TEST_DB=skip.</summary>
 	public static class ScratchDb {

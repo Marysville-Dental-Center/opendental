@@ -20,7 +20,7 @@
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <IsCodedUITest>False</IsCodedUITest>
     <TestProjectType>UnitTest</TestProjectType>
-    <!-- MySqlConnector and the business layer need binding redirects, as OpenDental.exe gets them. -->
+    <!-- MySqlConnector and the business layer need binding redirects, as OpenPmsDental.exe gets them. -->
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
@@ -66,7 +66,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <!-- The spell checker of the window's note boxes (ODtextBox) loads these native libraries from the program folder; a Debug build otherwise
-         tries to copy them from a path relative to OpenDental\bin\Debug. -->
+         tries to copy them from a path relative to OpenPmsDental\bin\Debug. -->
     <None Include="..\..\Required dlls\Hunspellx86.dll">
       <Link>Hunspellx86.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -5,8 +5,8 @@ Loads an Open Dental reference schema into a local, empty database: od_261_schem
 .DESCRIPTION
 Creates the database on the local MariaDB/MySQL server and runs the reference DDL that the schema verifier embeds:
 
-  26.1.70  OpenDentBusiness\Misc\ForkMigrations\Reference\OdSchema-26.1.70.sql  ->  od_261_schema  (427 tables)
-  25.3.48  OpenDentBusiness\Misc\ForkMigrations\Reference\OdSchema-25.3.48.sql  ->  od_253_schema  (422 tables)
+  26.1.70  OpenPmsDentalBusiness\Misc\ForkMigrations\Reference\OdSchema-26.1.70.sql  ->  od_261_schema  (427 tables)
+  25.3.48  OpenPmsDentalBusiness\Misc\ForkMigrations\Reference\OdSchema-25.3.48.sql  ->  od_253_schema  (422 tables)
 
 The 26.1.70 reference is built from Open Dental's published database documents only; the NULL/NOT NULL, defaults and keys that the documents
 do not publish are marked INFERRED in the file. The database has tables and no rows. Tests and tools that compare a database with the

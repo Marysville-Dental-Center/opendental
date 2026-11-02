@@ -119,7 +119,7 @@ namespace DicomReaderTests {
 
 		[TestMethod]
 		public void SingleValueWindow_DoesNotThrow() {
-			//OpenDentBusiness uses checked arithmetic: 0/0 would be NaN, and a checked cast of NaN to a byte throws.
+			//OpenPmsDentalBusiness uses checked arithmetic: 0/0 would be NaN, and a checked cast of NaN to a byte throws.
 			BitmapDicom bitmapDicom=MakeImage(16,new ushort[] { 0,25600,25700,65535 });
 			CollectionAssert.AreEqual(new byte[] { 0,255,255,255 },Window(bitmapDicom,100,100));
 			BitmapDicom bitmapDicom12=MakeImage(12,new ushort[] { 0,4080,4095 });

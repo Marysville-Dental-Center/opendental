@@ -37,7 +37,7 @@ namespace UnitTests.SecurityLogs_Tests {
 		public void SecurityLogs_MakeLogEntry_DuplicateEntry() {
 			Patient patient=PatientT.CreatePatient(MethodBase.GetCurrentMethod().Name);
 			//There are lots of bug submissions with exception text like "Duplicate entry 'XXXXX' for key 'PRIMARY'".
-			//OpenDentBusiness.SecurityLogs.MakeLogEntry() seems to be the common theme for most of the submissions.
+			//OpenPmsDentalBusiness.SecurityLogs.MakeLogEntry() seems to be the common theme for most of the submissions.
 			//Loop as fast as we can and insert 200 security logs trying to get a duplicate entry exception.
 			for(int i=0;i<200;i++) {
 				try {
@@ -56,7 +56,7 @@ namespace UnitTests.SecurityLogs_Tests {
 			//First, turn on random primary keys
 			PrefT.UpdateBool(PrefName.RandomPrimaryKeys,true);
 			//There are lots of bug submissions with exception text like "Duplicate entry 'XXXXX' for key 'PRIMARY'".
-			//OpenDentBusiness.SecurityLogs.MakeLogEntry() seems to be the common theme for most of the submissions.
+			//OpenPmsDentalBusiness.SecurityLogs.MakeLogEntry() seems to be the common theme for most of the submissions.
 			//Loop as fast as we can and insert 200 security logs trying to get a duplicate entry exception.
 			for(int i=0;i<200;i++) {
 				try {
@@ -75,7 +75,7 @@ namespace UnitTests.SecurityLogs_Tests {
 		public void SecurityLogs_MakeLogEntry_DuplicateEntryParallel() {
 			Patient patient=PatientT.CreatePatient(MethodBase.GetCurrentMethod().Name);
 			//There are lots of bug submissions with exception text like "Duplicate entry 'XXXXX' for key 'PRIMARY'".
-			//OpenDentBusiness.SecurityLogs.MakeLogEntry() seems to be the common theme for most of the submissions.
+			//OpenPmsDentalBusiness.SecurityLogs.MakeLogEntry() seems to be the common theme for most of the submissions.
 			//Spawn parallel threads to insert 200 security logs trying to get a duplicate entry exception.
 			List<Action> listActions=new List<Action>();
 			for(int i=0;i<200;i++) {
@@ -99,7 +99,7 @@ namespace UnitTests.SecurityLogs_Tests {
 			//First, turn on random primary keys
 			PrefT.UpdateBool(PrefName.RandomPrimaryKeys,true);
 			//There are lots of bug submissions with exception text like "Duplicate entry 'XXXXX' for key 'PRIMARY'".
-			//OpenDentBusiness.SecurityLogs.MakeLogEntry() seems to be the common theme for most of the submissions.
+			//OpenPmsDentalBusiness.SecurityLogs.MakeLogEntry() seems to be the common theme for most of the submissions.
 			//Spawn parallel threads to insert 200 security logs trying to get a duplicate entry exception.
 			List<Action> listActions=new List<Action>();
 			for(int i=0;i<200;i++) {

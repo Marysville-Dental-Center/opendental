@@ -19,7 +19,7 @@
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <IsCodedUITest>False</IsCodedUITest>
     <TestProjectType>UnitTest</TestProjectType>
-    <!-- MySqlConnector and the business layer need binding redirects, as OpenDental.exe gets them. Generate M2TERMTests.dll.config. -->
+    <!-- MySqlConnector and the business layer need binding redirects, as OpenPmsDental.exe gets them. Generate M2TERMTests.dll.config. -->
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
@@ -76,7 +76,7 @@
       <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
       <Name>OpenPmsDentalBusiness</Name>
     </ProjectReference>
-    <!-- For the report export keys (OpenDental.ReportingComplex.QueryObject's export table). No window is ever shown. -->
+    <!-- For the report export keys (OpenPmsDental.ReportingComplex.QueryObject's export table). No window is ever shown. -->
     <ProjectReference Include="..\..\OpenPmsDental\OpenPmsDental.csproj">
       <Project>{8136317D-C936-49B6-9E31-D90F02D2F207}</Project>
       <Name>OpenPmsDental</Name>

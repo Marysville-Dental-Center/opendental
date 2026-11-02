@@ -1,4 +1,4 @@
-// The character rules of the B-DBM text tools (OpenDentBusiness/Misc/DbmTextCleaner.cs) and the base64 note format. No database needed.
+// The character rules of the B-DBM text tools (OpenPmsDentalBusiness/Misc/DbmTextCleaner.cs) and the base64 note format. No database needed.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Text;

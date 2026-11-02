@@ -1,5 +1,5 @@
 // When the M2-HIST step (InsHistCodeGroupsStep) runs and when it leaves a database alone, on a scratch database with the Open Dental 26.1.70
-// schema (the reference embedded in OpenDentBusiness; the step runs after M2-01's 26.1 schema step) and synthetic rows only (made-up Z codes).
+// schema (the reference embedded in OpenPmsDentalBusiness; the step runs after M2-01's 26.1 schema step) and synthetic rows only (made-up Z codes).
 // The database name is unique to the run and it is dropped afterwards.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;

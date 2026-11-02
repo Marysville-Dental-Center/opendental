@@ -14,7 +14,7 @@ namespace M2AUDITTests {
 		///<summary>Folders, relative to the repository root, whose code is not part of the program: tests, test helpers, build output, the frozen
 		///legacy data classes, generated CRUD (only Patients.cs calls it for patients), and worktrees of other branches under .claude.</summary>
 		private static readonly string[] _arrayExcludedFolders={ "bin","obj",".git",".claude","tests","UnitTests","UnitTestsCore","TestCanada",
-			"DataClassesOld","OpenDentBusiness.Tests","NoHqTests" };
+			"DataClassesOld","OpenPmsDentalBusiness.Tests","NoHqTests" };
 		private static List<string> _listSourceFiles;
 
 		///<summary>Repository-relative paths of the program's C# files.</summary>
@@ -30,11 +30,11 @@ namespace M2AUDITTests {
 				if(arrayParts.Take(arrayParts.Length-1).Any(x => _arrayExcludedFolders.Contains(x,StringComparer.OrdinalIgnoreCase))) {
 					continue;
 				}
-				if(relative.StartsWith(Path.Combine("OpenDentBusiness","Crud")+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)) {
+				if(relative.StartsWith(Path.Combine("OpenPmsDentalBusiness","Crud")+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)) {
 					continue;
 				}
 				//The frozen legacy convert chain (24.3.63 and older) repairs data during an upgrade; it is not a save path.
-				if(Regex.IsMatch(relative,@"^OpenDentBusiness[\\/]Misc[\\/]ConvertDatabases\d*\.cs$",RegexOptions.IgnoreCase)) {
+				if(Regex.IsMatch(relative,@"^OpenPmsDentalBusiness[\\/]Misc[\\/]ConvertDatabases\d*\.cs$",RegexOptions.IgnoreCase)) {
 					continue;
 				}
 				listFiles.Add(relative);
@@ -50,7 +50,7 @@ namespace M2AUDITTests {
 		[TestMethod]
 		public void PatientRowsAreWrittenOnlyByPatientsInsertAndUpdate() {
 			Regex regex=new Regex(@"(?<![A-Za-z0-9_])PatientCrud\.(Insert|InsertMany|InsertNoCache|Update|Sync)\s*\(");
-			string pathPatients=Path.Combine("OpenDentBusiness","Data Interface","Patients.cs");
+			string pathPatients=Path.Combine("OpenPmsDentalBusiness","Data Interface","Patients.cs");
 			List<string> listViolations=new List<string>();
 			foreach(string relative in GetSourceFiles()) {
 				if(relative.Equals(pathPatients,StringComparison.OrdinalIgnoreCase)) {
@@ -93,7 +93,7 @@ namespace M2AUDITTests {
 		[TestMethod]
 		public void HooksSitInInsertAndUpdate() {
 			//Right after the row is written, on the server side of the Middle Tier check.
-			string text=ReadRepoFile("OpenDentBusiness","Data Interface","Patients.cs");
+			string text=ReadRepoFile("OpenPmsDentalBusiness","Data Interface","Patients.cs");
 			Assert.IsTrue(Regex.IsMatch(text,@"Crud\.PatientCrud\.Update\(pat\);\s*InsertBirthdateChangeSecurityLogEntry\(null,pat\);"),"Patients.Insert");
 			Assert.IsTrue(Regex.IsMatch(text,@"bool retval=Crud\.PatientCrud\.Update\(patient,oldPatient\);\s*InsertBirthdateChangeSecurityLogEntry\(oldPatient,patient\);"),
 				"Patients.Update");
@@ -101,15 +101,15 @@ namespace M2AUDITTests {
 
 		[TestMethod]
 		public void EditPatientInformation_SavesThroughPatientsUpdate() {
-			StringAssert.Contains(ReadRepoFile("OpenDental","Forms","FormPatientEdit.cs"),"Patients.SavePatientEdit(");
+			StringAssert.Contains(ReadRepoFile("OpenPmsDental","Forms","FormPatientEdit.cs"),"Patients.SavePatientEdit(");
 			Regex regex=new Regex(@"public static Result SavePatientEdit\([^)]*\)\s*\{\s*Result result=new Result\(\);\s*Update\(patient,patientOld\);");
-			Assert.IsTrue(regex.IsMatch(ReadRepoFile("OpenDentBusiness","Data Interface","Patients.cs")),
+			Assert.IsTrue(regex.IsMatch(ReadRepoFile("OpenPmsDentalBusiness","Data Interface","Patients.cs")),
 				"Patients.SavePatientEdit saves the patient with Update(patient,patientOld).");
 		}
 
 		[TestMethod]
 		public void SheetImport_SavesTheBirthdateThroughPatientsUpdate() {
-			string text=ReadRepoFile("OpenDental","Forms","FormSheetImport.cs");
+			string text=ReadRepoFile("OpenPmsDental","Forms","FormSheetImport.cs");
 			StringAssert.Contains(text,"_patient.Birthdate=(DateTime)_listImportRows[i].ImpValObj;");
 			StringAssert.Contains(text,"Patients.Update(_patient,_patientOld);");
 		}
@@ -125,7 +125,7 @@ namespace M2AUDITTests {
 
 		[TestMethod]
 		public void EFormImport_SavesThroughPatientsUpdate() {
-			string text=ReadRepoFile("OpenDentBusiness","EForms","EFormImport.cs");
+			string text=ReadRepoFile("OpenPmsDentalBusiness","EForms","EFormImport.cs");
 			StringAssert.Contains(text,"case \"Birthdate\":");
 			StringAssert.Contains(text,"Patients.Update(patient,patientOld);");
 		}

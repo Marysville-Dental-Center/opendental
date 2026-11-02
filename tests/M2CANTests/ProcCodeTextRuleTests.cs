@@ -80,7 +80,7 @@ namespace M2CANTests {
 
 		[TestMethod]
 		public void NoFeeCodesThatShipWithTheProgram_FollowTheRule() {
-			string text=TestPaths.ReadRepoFile("OpenDental","Resources","NoFeeProcCodes.txt");
+			string text=TestPaths.ReadRepoFile("OpenPmsDental","Resources","NoFeeProcCodes.txt");
 			List<string> listCodes=System.Text.RegularExpressions.Regex.Matches(text,"<ProcCode>([^<]*)</ProcCode>").Cast<System.Text.RegularExpressions.Match>()
 				.Select(x => x.Groups[1].Value).ToList();
 			Assert.IsTrue(listCodes.Count>0);
@@ -100,19 +100,19 @@ namespace M2CANTests {
 
 		[TestMethod]
 		public void EveryImportPath_ChecksTheRule() {
-			string codeNew=TestPaths.ReadRepoFile("OpenDental","Forms","FormProcCodeNew.cs");
+			string codeNew=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProcCodeNew.cs");
 			StringAssert.Contains(codeNew,"ProcedureCodes.IsProcCodeTextAllowed(textNewCode.Text)");
 			//The check comes before the code is inserted.
 			Assert.IsTrue(codeNew.IndexOf("ProcedureCodes.IsProcCodeTextAllowed(textNewCode.Text)")<codeNew.IndexOf("ProcedureCodes.Insert(procedureCode)"));
-			string codes2=TestPaths.ReadRepoFile("OpenDental","Forms","FormProcCodes2.cs");
+			string codes2=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProcCodes2.cs");
 			int indexImport=codes2.IndexOf("public static int ImportProcCodes(");
 			int indexFilter=codes2.IndexOf("ProcedureCodes.GetCodesWithAllowedText(listProcedureCodes,out List<string> listErrorsCodeText)");
 			int indexInsert=codes2.IndexOf("ProcedureCodes.Insert(listProcedureCodes[i])");
 			Assert.IsTrue(indexImport>0 && indexFilter>indexImport && indexInsert>indexFilter,"ImportProcCodes filters the codes before inserting them.");
 			//Edit Procedure Code can't change the code text (read-only box), so it needs no check.
-			string designerEdit=TestPaths.ReadRepoFile("OpenDental","Forms","FormProcCodeEdit.designer.cs");
+			string designerEdit=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProcCodeEdit.designer.cs");
 			StringAssert.Contains(designerEdit,"this.textProcCode.ReadOnly = true;");
-			string other=TestPaths.ReadRepoFile("OpenDentBusiness","Data Interface","ProcCodesOther.cs");
+			string other=TestPaths.ReadRepoFile("OpenPmsDentalBusiness","Data Interface","ProcCodesOther.cs");
 			StringAssert.Contains(other,"ProcedureCodes.GetProcCodeTextError(code)");
 		}
 	}

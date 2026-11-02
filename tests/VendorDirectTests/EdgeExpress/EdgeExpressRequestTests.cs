@@ -266,7 +266,7 @@ namespace VendorDirectTests.EdgeExpressTests {
 			Assert.IsNull(typeof(XWebs).GetField("UseTestAccountOD"),"The Open Dental test account switch is gone.");
 			Assert.IsNull(typeof(XWebs).GetField("UseTestAccountLoopback"),"The X-Web loopback test account switch is gone.");
 			string source=File.ReadAllText(Path.Combine(Foundation.FoundationLayoutTests.GetRepositoryRoot(),
-				@"OpenDentBusiness\WebTypes\Shared\XWeb\XWebs.cs"));
+				@"OpenPmsDentalBusiness\WebTypes\Shared\XWeb\XWebs.cs"));
 			//No quoted literal shaped like an X-Web Auth Key (32 letters and digits), XWebID (12 digits) or Terminal ID (8 digits).
 			foreach(Match match in Regex.Matches(source,"\"([A-Za-z0-9]{32}|[0-9]{12}|[0-9]{8})\"")) {
 				Assert.Fail("Credential-shaped literal in XWebs.cs (SHA-256 "+Sha256Hex(match.Groups[1].Value)+").");

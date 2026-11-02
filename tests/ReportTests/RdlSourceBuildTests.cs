@@ -106,13 +106,13 @@ namespace ReportTests {
 
 		[TestMethod]
 		public void OpenDental_ReferencesTheThreeProjects() {
-			string csproj=Read(@"OpenDental\OpenDental.csproj");
+			string csproj=Read(@"OpenPmsDental\OpenPmsDental.csproj");
 			foreach(string[] project in _arrayProjects) {
 				Match match=Regex.Match(csproj,@"<ProjectReference Include=""\.\.\\"+Regex.Escape(project[1])+@""">\s*<Project>([^<]*)</Project>");
-				Assert.IsTrue(match.Success,"OpenDental.csproj does not reference "+project[1]);
+				Assert.IsTrue(match.Success,"OpenPmsDental.csproj does not reference "+project[1]);
 				Assert.AreEqual(project[2],match.Groups[1].Value,true,project[1]);
 				Assert.IsFalse(Regex.IsMatch(csproj,@"<ProjectReference Include=""\.\.\\"+Regex.Escape(project[1])+@""">(?:(?!</ProjectReference>).)*"
-					+"<ReferenceOutputAssembly>false",RegexOptions.Singleline),project[1]+" must be copied next to OpenDental.exe.");
+					+"<ReferenceOutputAssembly>false",RegexOptions.Singleline),project[1]+" must be copied next to OpenPmsDental.exe.");
 			}
 		}
 
@@ -149,7 +149,7 @@ namespace ReportTests {
 			Assert.AreEqual("MySqlConnector.dll",match.Groups[1].Value);
 			Assert.AreEqual("MySqlConnector.MySqlConnection",match.Groups[2].Value);
 			Assert.IsNotNull(typeof(MySqlConnector.MySqlConnection).GetConstructor(new[] { typeof(string) }),"RdlEngine creates it with the connection string.");
-			Assert.IsFalse(Regex.IsMatch(Read(@"OpenDental\OpenDental.csproj"),@"RdlEngineConfig\.xml"),"No RdlEngineConfig.xml is shipped.");
+			Assert.IsFalse(Regex.IsMatch(Read(@"OpenPmsDental\OpenPmsDental.csproj"),@"RdlEngineConfig\.xml"),"No RdlEngineConfig.xml is shipped.");
 		}
 
 		[TestMethod]
@@ -163,7 +163,7 @@ namespace ReportTests {
 			//Every ODR.Class.Method( that the program's report definitions call is a public static method of that class.
 			List<string> listCalls=new List<string>();
 			foreach(string fileName in new[] { "Unsched Treat Plans.rdl","ReportAccountingBalanceSheet.txt","ReportAccountingGenLedger.txt" }) {
-				string rdl=Read(Path.Combine("OpenDental","Resources",fileName));
+				string rdl=Read(Path.Combine("OpenPmsDental","Resources",fileName));
 				StringAssert.Contains(rdl,"<CodeModule>ODR.dll</CodeModule>",fileName);
 				foreach(Match match in Regex.Matches(rdl,@"\bODR\.(\w+)\.(\w+)\(")) {
 					listCalls.Add(match.Groups[1].Value+"."+match.Groups[2].Value);
@@ -184,7 +184,7 @@ namespace ReportTests {
 			List<string> listReferences=ReferencedAssemblyNames(typeof(ODR.Query).Assembly);
 			CollectionAssert.Contains(listReferences,"MySqlConnector");
 			CollectionAssert.DoesNotContain(listReferences,"MySql.Data");
-			foreach(string name in new[] { "OpenDentBusiness","CodeBase","DataConnectionBase" }) {
+			foreach(string name in new[] { "OpenPmsDentalBusiness","CodeBase","DataConnectionBase" }) {
 				CollectionAssert.Contains(listReferences,name,"ODR binds to the program's assemblies by name; it is rebuilt with them.");
 			}
 			CollectionAssert.DoesNotContain(ReferencedAssemblyNames(typeof(fyiReporting.RDL.Report).Assembly),"MySql.Data");
@@ -200,7 +200,7 @@ namespace ReportTests {
 				Assert.IsTrue(arrayReadmeLines.Any(x => x.StartsWith("| ") && x.Contains(folder) && x.Contains("built from source")),
 					"README says "+folder+" is built from source.");
 			}
-			foreach(string form in new[] { @"OpenDental\ReportingForRdl\FormReportForRdl.cs",@"OpenDental\ReportingForRdl\FormReportCustom.cs" }) {
+			foreach(string form in new[] { @"OpenPmsDental\ReportingForRdl\FormReportForRdl.cs",@"OpenPmsDental\ReportingForRdl\FormReportCustom.cs" }) {
 				string source=Read(form);
 				StringAssert.Contains(source,"<CodeModule>MySqlConnector.dll</CodeModule>",form+": the upgrade comment names the provider the engine uses.");
 				StringAssert.Contains(source,"<ClassName>MySqlConnector.MySqlConnection</ClassName>",form);
@@ -210,17 +210,17 @@ namespace ReportTests {
 			foreach(string fileName in _arrayDeletedDlls) {
 				string row=arrayAuditLines.Single(x => x.StartsWith("| `"+fileName+"` |") && x.Contains("RDL-SRC"));
 				StringAssert.Contains(row,"built from source",fileName+" audit row");
-				StringAssert.Contains(row,"ProjectReference: OpenDental",fileName+" audit row");
-				Assert.IsFalse(row.Contains("HintPath: OpenDental"),fileName+" audit row still names the old HintPath.");
+				StringAssert.Contains(row,"ProjectReference: OpenPmsDental",fileName+" audit row");
+				Assert.IsFalse(row.Contains("HintPath: OpenPmsDental"),fileName+" audit row still names the old HintPath.");
 				Assert.IsFalse(row.Contains("so the build never copies it"),fileName+" audit row still says it is not copied.");
 			}
 		}
 
 		[TestMethod]
 		public void ProgramOutput_HoldsTheBinariesBuiltFromSource() {
-			string folder=Path.Combine(Root(),"OpenDental","bin","Debug");
-			if(!File.Exists(Path.Combine(folder,"OpenDental.exe"))) {
-				Assert.Inconclusive(@"OpenDental\bin\Debug is not built.");
+			string folder=Path.Combine(Root(),"OpenPmsDental","bin","Debug");
+			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
+				Assert.Inconclusive(@"OpenPmsDental\bin\Debug is not built.");
 			}
 			foreach(string[] pair in new[] { new[] { "ODR.dll",@"ODR\bin\Debug" },new[] { "RdlEngine.dll",@"RdlEngine\bin\Debug" },
 				new[] { "RdlViewer.dll",@"RdlViewer\bin\Debug" } })

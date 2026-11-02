@@ -10,7 +10,7 @@ using OpenPmsDentalBusiness;
 namespace NoHqTests {
 	///<summary>Checks that Open Dental's cloud edition (Thinfinity "ODCloud" and AWS AppStream) stays removed: the VirtualWeb shim and the AWS SDK are gone,
 	///and the cloud switches (ODBuild.IsThinfinity, ODEnvironment.IsCloudServer, PrefC.IsAppStream, the ODCloudClient) no longer exist.
-	///The OpenDentalCloud project (Dropbox and Google Drive image storage) is not part of the cloud edition and is not checked here.</summary>
+	///The OpenPmsDentalCloud project (Dropbox and Google Drive image storage) is not part of the cloud edition and is not checked here.</summary>
 	[TestClass]
 	public class CloudEditionTests {
 		///<summary>VirtualWeb.dll was the Thinfinity browser-hosting shim. The AWS SDK was only used for the AppStream user administration window.</summary>
@@ -29,10 +29,10 @@ namespace NoHqTests {
 		public void CloudEditionAssemblies_AreNotReferenced() {
 			string pathRoot=RemovedAssembliesTests.GetRepositoryRoot();
 			List<string> listPaths=new List<string> {
-				Path.Combine(pathRoot,"OpenDental","bin","Debug","OpenDental.exe"),
+				Path.Combine(pathRoot,"OpenPmsDental","bin","Debug","OpenPmsDental.exe"),
 				Path.Combine(pathRoot,"WpfControlsOD","bin","Debug","WpfControlsOD.dll"),
-				Path.Combine(pathRoot,"OpenDentBusiness","bin","Debug","OpenDentBusiness.dll"),
-				Path.Combine(pathRoot,"OpenDentalGraph","bin","Debug","OpenDentalGraph.dll"),
+				Path.Combine(pathRoot,"OpenPmsDentalBusiness","bin","Debug","OpenPmsDentalBusiness.dll"),
+				Path.Combine(pathRoot,"OpenPmsDentalGraph","bin","Debug","OpenPmsDentalGraph.dll"),
 				Path.Combine(pathRoot,"CodeBase","bin","Debug","CodeBase.dll"),
 			};
 			for(int i=0;i<listPaths.Count;i++) {

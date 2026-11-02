@@ -13,7 +13,7 @@ using Db=SyntheticData.Infrastructure.Db;
 
 namespace AdoptionValidation {
 	///<summary>Proves that every 24.4-25.3 column survives the program's own data layer on the adopted database. Per table, through the generated
-	///CRUD class in OpenDentBusiness:
+	///CRUD class in OpenPmsDentalBusiness:
 	///1. Load: every row is read with SelectMany; each 24.4-25.3 column must be mapped by a field, and every field value must equal the raw stored
 	///   value (read separately over MySqlConnector), and enum values must be defined.
 	///2. Save: every row is written back unchanged with Update; afterwards the row count, CHECKSUM TABLE and every per-column checksum of the table
@@ -92,7 +92,7 @@ namespace AdoptionValidation {
 			return dict;
 		}
 
-		///<summary>Every table class in OpenDentBusiness, keyed by table name.</summary>
+		///<summary>Every table class in OpenPmsDentalBusiness, keyed by table name.</summary>
 		public static Dictionary<string,Type> GetTableTypes() {
 			Dictionary<string,Type> dict=new Dictionary<string,Type>(StringComparer.OrdinalIgnoreCase);
 			//Table classes derive from TableBase; a few older ones (DeletedObject) only carry the CrudTable attribute. TableBase classes win a name clash.
@@ -136,7 +136,7 @@ namespace AdoptionValidation {
 			}
 			result.Rows=db.ScalarLong("SELECT COUNT(*) FROM `"+tableInfo.Name+"`");
 			if(!dictTypes.TryGetValue(tableInfo.Name,out Type type)) {
-				AddUnmappedTable(result,"no table class in OpenDentBusiness");
+				AddUnmappedTable(result,"no table class in OpenPmsDentalBusiness");
 				return;
 			}
 			result.TypeName=type.Name;
@@ -412,7 +412,7 @@ namespace AdoptionValidation {
 		}
 
 		///<summary>Reads rows with the session time zone of the business layer's own connection (the server's), so timestamp columns read as
-		///OpenDentBusiness reads them. The SyntheticData connection otherwise runs in UTC, which the checksums need, so it is set back afterwards.
+		///OpenPmsDentalBusiness reads them. The SyntheticData connection otherwise runs in UTC, which the checksums need, so it is set back afterwards.
 		///</summary>
 		private static List<object[]> ReadRawInServerTimeZone(Db db,string command) {
 			db.Execute("SET SESSION time_zone=@@GLOBAL.time_zone");

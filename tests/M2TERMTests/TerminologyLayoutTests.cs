@@ -9,7 +9,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace M2TERMTests {
 	[TestClass]
 	public class TerminologyLayoutTests {
-		///<summary>OpenDental.UI.CheckBox draws its text in Width-sqrSize-4 pixels, sqrSize being 12 at 96 dpi (CheckBox.OnPaint).</summary>
+		///<summary>OpenPmsDental.UI.CheckBox draws its text in Width-sqrSize-4 pixels, sqrSize being 12 at 96 dpi (CheckBox.OnPaint).</summary>
 		private const int CHECKBOX_BOX_AND_GAP=12+4;
 
 		private static Font NewDefaultFont() {

@@ -26,12 +26,12 @@ namespace ReleaseFlowTests {
 			new ShippedProject("ODCrypt","xODCrypt.csproj","24.3.63.0","24.3.63.0"),
 			//Built from source and shipped since package RDL-SRC; RDL report definitions load it by file name, so its version is never compared.
 			new ShippedProject("ODR","xODR.csproj","4.6.1",null),
-			new ShippedProject("OpenDental","OpenDental.csproj","24.3.63.0",null),
-			new ShippedProject("OpenDentalCloud","OpenDentalCloud.csproj","16.4.0.0","1.0.0.0"),
-			new ShippedProject("OpenDentalGraph","OpenDentalGraph.csproj","16.1.1.0","16.1.1.0"),
-			new ShippedProject("OpenDentalServer","OpenDentalServer.csproj","24.3.63.0",null),
-			new ShippedProject("OpenDentBusiness","OpenDentBusiness.csproj","24.3.63.0",null),
-			new ShippedProject("OpenDentHL7","OpenDentHL7.csproj","24.3.63.0",null),
+			new ShippedProject("OpenPmsDental","OpenPmsDental.csproj","24.3.63.0",null),
+			new ShippedProject("OpenPmsDentalCloud","OpenPmsDentalCloud.csproj","16.4.0.0","1.0.0.0"),
+			new ShippedProject("OpenPmsDentalGraph","OpenPmsDentalGraph.csproj","16.1.1.0","16.1.1.0"),
+			new ShippedProject("OpenPmsDentalServer","OpenPmsDentalServer.csproj","24.3.63.0",null),
+			new ShippedProject("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj","24.3.63.0",null),
+			new ShippedProject("OpenPmsDentalHL7","OpenPmsDentalHL7.csproj","24.3.63.0",null),
 			new ShippedProject("PasswordVaultWrapper","PasswordVaultWrapper.csproj","1.0.0.0","1.0.0.0"),
 			new ShippedProject("ServiceManager","ServiceManager.csproj","15.4.1.0","15.4.1.0"),
 			new ShippedProject("SparksToothChart","SparksToothChart.csproj","4.7.1.0",null),
@@ -39,10 +39,10 @@ namespace ReleaseFlowTests {
 			new ShippedProject("WpfControlsOD","WpfControlsOD.csproj","1.0.0.0","1.0.0.0"),
 		};
 
-		///<summary>The program's own assemblies in OpenDental's output folder, which carry the shared assembly info.</summary>
+		///<summary>The program's own assemblies in OpenPmsDental's output folder, which carry the shared assembly info.</summary>
 		private static readonly string[] _arrayBuiltAssemblies=new string[] {
-			"OpenDental.exe","OpenDentBusiness.dll","CodeBase.dll","DataConnectionBase.dll","WpfControlsOD.dll","OpenDentalGraph.dll",
-			"OpenDentalCloud.dll","SparksToothChart.dll","ODCrypt.dll","PasswordVaultWrapper.dll","ImagingCapture.dll","ImagingDeviceManager.dll",
+			"OpenPmsDental.exe","OpenPmsDentalBusiness.dll","CodeBase.dll","DataConnectionBase.dll","WpfControlsOD.dll","OpenPmsDentalGraph.dll",
+			"OpenPmsDentalCloud.dll","SparksToothChart.dll","ODCrypt.dll","PasswordVaultWrapper.dll","ImagingCapture.dll","ImagingDeviceManager.dll",
 			"ServiceManager.exe","UpdateFileCopier.exe","ODR.dll",
 		};
 
@@ -88,9 +88,9 @@ namespace ReleaseFlowTests {
 
 		[TestMethod]
 		public void BuiltAssemblies_CarryTheProductNameReleaseVersionAndCopyright() {
-			string folder=Path.Combine(TestPaths.RepoRoot,"OpenDental","bin","Debug");
-			if(!File.Exists(Path.Combine(folder,"OpenDental.exe"))) {
-				Assert.Inconclusive("OpenDental is not built.");
+			string folder=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug");
+			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
+				Assert.Inconclusive("OpenPmsDental is not built.");
 			}
 			foreach(string fileName in _arrayBuiltAssemblies) {
 				string path=Path.Combine(folder,fileName);
@@ -101,15 +101,15 @@ namespace ReleaseFlowTests {
 				StringAssert.Contains(fileVersionInfo.LegalCopyright,"Jordan Sparks",fileName);
 				StringAssert.Contains(fileVersionInfo.LegalCopyright,"Open PMS - Dental contributors",fileName);
 			}
-			Assert.AreEqual("24.3.63.0",FileVersionInfo.GetVersionInfo(Path.Combine(folder,"OpenDental.exe")).FileVersion);
-			Assert.AreEqual("24.3.63.0",FileVersionInfo.GetVersionInfo(Path.Combine(folder,"OpenDentBusiness.dll")).FileVersion);
+			Assert.AreEqual("24.3.63.0",FileVersionInfo.GetVersionInfo(Path.Combine(folder,"OpenPmsDental.exe")).FileVersion);
+			Assert.AreEqual("24.3.63.0",FileVersionInfo.GetVersionInfo(Path.Combine(folder,"OpenPmsDentalBusiness.dll")).FileVersion);
 		}
 
 		[TestMethod]
 		public void OutputFolder_HasTheNativeRuntimeDlls() {
-			string folder=Path.Combine(TestPaths.RepoRoot,"OpenDental","bin","Debug");
-			if(!File.Exists(Path.Combine(folder,"OpenDental.exe"))) {
-				Assert.Inconclusive("OpenDental is not built.");
+			string folder=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug");
+			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
+				Assert.Inconclusive("OpenPmsDental is not built.");
 			}
 			List<string> listFileNames=Directory.GetFiles(folder).Select(x => Path.GetFileName(x)).ToList();
 			foreach(string fileName in _arrayRuntimeDlls) {
@@ -117,14 +117,14 @@ namespace ReleaseFlowTests {
 				string pathOutput=Path.Combine(folder,fileName);
 				string pathRequired=Path.Combine(TestPaths.RepoRoot,"Required dlls",fileName);
 				CollectionAssert.AreEqual(File.ReadAllBytes(pathRequired),File.ReadAllBytes(pathOutput),fileName+" is the copy from Required dlls.");
-				Assert.AreEqual(0x014C,GetPeMachine(pathOutput),fileName+" is x86, like OpenDental.exe.");
+				Assert.AreEqual(0x014C,GetPeMachine(pathOutput),fileName+" is x86, like OpenPmsDental.exe.");
 			}
 		}
 
 		[TestMethod]
 		public void OpenDentalCsproj_CopiesTheNativeRuntimeDllsInEveryConfiguration() {
 			XmlDocument xmlDocument=new XmlDocument();
-			xmlDocument.Load(Path.Combine(TestPaths.RepoRoot,"OpenDental","OpenDental.csproj"));
+			xmlDocument.Load(Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","OpenPmsDental.csproj"));
 			XmlNamespaceManager xmlNamespaceManager=new XmlNamespaceManager(xmlDocument.NameTable);
 			xmlNamespaceManager.AddNamespace("b","http://schemas.microsoft.com/developer/msbuild/2003");
 			foreach(string fileName in _arrayRuntimeDlls) {
@@ -144,29 +144,29 @@ namespace ReleaseFlowTests {
 			//Each of these read Application.ProductVersion, which is the release version ("0.0") in every shipped program since the shared
 			//assembly info. Where a version number is sent or compared, they now use the compatibility version.
 			string[][] arrayPaths=new[] {
-				new[] { "OpenDentBusiness","Eclaims","ClaimConnect.cs" },
-				new[] { "OpenDentBusiness","Data Interface","CentralConnections.cs" },
+				new[] { "OpenPmsDentalBusiness","Eclaims","ClaimConnect.cs" },
+				new[] { "OpenPmsDentalBusiness","Data Interface","CentralConnections.cs" },
 				new[] { "WpfControlsOD","Bridges","DemandForce.cs" },
-				new[] { "OpenDental","Forms","FormUpdateSetup.cs" },
-				new[] { "OpenDentHL7","ServiceHL7.cs" },
-				new[] { "OpenDental","Forms","FormUpdate.cs" },
+				new[] { "OpenPmsDental","Forms","FormUpdateSetup.cs" },
+				new[] { "OpenPmsDentalHL7","ServiceHL7.cs" },
+				new[] { "OpenPmsDental","Forms","FormUpdate.cs" },
 			};
 			foreach(string[] arrayPath in arrayPaths) {
 				string text=StripComments(TestPaths.ReadSource(arrayPath));
 				Assert.IsFalse(text.Contains("Application.ProductVersion"),string.Join("\\",arrayPath));
 			}
-			Assert.AreEqual(3,Regex.Matches(StripComments(TestPaths.ReadSource("OpenDentBusiness","Eclaims","ClaimConnect.cs")),
+			Assert.AreEqual(3,Regex.Matches(StripComments(TestPaths.ReadSource("OpenPmsDentalBusiness","Eclaims","ClaimConnect.cs")),
 				@"ForkVersions\.CompatVersion").Count,"DentalXChange: the uploader version and both credential versions.");
-			StringAssert.Contains(StripComments(TestPaths.ReadSource("OpenDentBusiness","Data Interface","CentralConnections.cs")),
+			StringAssert.Contains(StripComments(TestPaths.ReadSource("OpenPmsDentalBusiness","Data Interface","CentralConnections.cs")),
 				"Security.LogInWeb(username,password,\"\",ForkVersions.CompatVersion.ToString(4),useEcwAlgorithm)");
 			StringAssert.Contains(StripComments(TestPaths.ReadSource("WpfControlsOD","Bridges","DemandForce.cs")),
 				"string versionCur=ForkVersions.CompatVersion.ToString();");
-			StringAssert.Contains(StripComments(TestPaths.ReadSource("OpenDental","Forms","FormUpdateSetup.cs")),
+			StringAssert.Contains(StripComments(TestPaths.ReadSource("OpenPmsDental","Forms","FormUpdateSetup.cs")),
 				"Version versionCurrent=ForkVersions.CompatVersion;");
-			StringAssert.Contains(StripComments(TestPaths.ReadSource("OpenDentHL7","ServiceHL7.cs")),
+			StringAssert.Contains(StripComments(TestPaths.ReadSource("OpenPmsDentalHL7","ServiceHL7.cs")),
 				"string versionProgram=ForkVersions.CompatVersion.ToString(4);");
 			//The Update window shows the release version, as About does.
-			StringAssert.Contains(TestPaths.ReadSource("OpenDental","Forms","FormUpdate.cs"),"AboutBoxInfo.GetReleaseVersion(assemblyProgram)");
+			StringAssert.Contains(TestPaths.ReadSource("OpenPmsDental","Forms","FormUpdate.cs"),"AboutBoxInfo.GetReleaseVersion(assemblyProgram)");
 		}
 
 		///<summary>The values of [assembly: Name("value")] lines that are not commented out.</summary>

@@ -2,7 +2,7 @@
 <!--
   SyntheticData: fills a copy of the Open Dental 25.3.48 schema with deterministic, entirely fictional practice data, and writes
   validation reports (row counts, per-table and per-column checksums, business totals) for the adoption rehearsal (M1-Z).
-  It talks only to a MariaDB/MySQL server on this machine and does not depend on OpenDentBusiness, because the schema it fills
+  It talks only to a MariaDB/MySQL server on this machine and does not depend on OpenPmsDentalBusiness, because the schema it fills
   is newer than the business layer. See README.md.
 -->
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">

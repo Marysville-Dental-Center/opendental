@@ -14,11 +14,11 @@ namespace GroupNoteTests {
 		}
 
 		private static string ControlChart() {
-			return Read("OpenDental","Main Modules","ControlChart.cs");
+			return Read("OpenPmsDental","Main Modules","ControlChart.cs");
 		}
 
 		private static string FormProcGroup() {
-			return Read("OpenDental","Forms","FormProcGroup.cs");
+			return Read("OpenPmsDental","Forms","FormProcGroup.cs");
 		}
 
 		[TestMethod]
@@ -45,7 +45,7 @@ namespace GroupNoteTests {
 
 		[TestMethod]
 		public void ProgressNotes_PlaceGroupNotes() {
-			string source=Read("OpenDentBusiness","Db Multi Table","ChartModules.cs");
+			string source=Read("OpenPmsDentalBusiness","Db Multi Table","ChartModules.cs");
 			StringAssert.Contains(source,"GroupNotes.PlaceAfterAttachedProcs(rows,ProcGroupItems.GetPatientData(patNum))");
 		}
 
@@ -57,7 +57,7 @@ namespace GroupNoteTests {
 			StringAssert.Contains(source,"comboProv.GetSelectedProvNum()");
 			StringAssert.Contains(source,"textProcDate.ReadOnly=!_canEditStructure");
 			StringAssert.Contains(source,"GroupNotes.GetStructurePermission(_listProcStatsAtLoad)");
-			string designer=Read("OpenDental","Forms","FormProcGroup.designer.cs");
+			string designer=Read("OpenPmsDental","Forms","FormProcGroup.designer.cs");
 			StringAssert.Contains(designer,"this.butAdd.Click += new System.EventHandler(this.butAdd_Click);");
 			StringAssert.Contains(designer,"this.butRemove.Click += new System.EventHandler(this.butRemove_Click);");
 			StringAssert.Contains(designer,"this.textProcDate.TextChanged += new System.EventHandler(this.textProcDate_TextChanged);");

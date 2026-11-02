@@ -26,7 +26,7 @@ namespace M2CANTests {
 			throw new InvalidOperationException("Could not find the repository root (LICENSE and NOTICE) above the test assembly.");
 		}
 
-		///<summary>A file under the repository root, for example GetRepoFile("OpenDental","Forms","FormProcTools.cs").</summary>
+		///<summary>A file under the repository root, for example GetRepoFile("OpenPmsDental","Forms","FormProcTools.cs").</summary>
 		public static string GetRepoFile(params string[] arrayParts) {
 			string path=GetRepositoryRoot();
 			for(int i=0;i<arrayParts.Length;i++) {
@@ -82,7 +82,7 @@ namespace M2CANTests {
 		}
 	}
 
-	///<summary>One scratch database for the run, with the Open Dental 26.1.70 schema from the reference embedded in OpenDentBusiness. Its name is
+	///<summary>One scratch database for the run, with the Open Dental 26.1.70 schema from the reference embedded in OpenPmsDentalBusiness. Its name is
 	///unique to the run (time, process id, random), because several worktrees and test runners share the one local server; it is dropped when the
 	///run ends. Database tests are inconclusive when no server answers at 127.0.0.1:3306 as root with a blank password, or when
 	///M2CAN_TEST_DB=skip.</summary>

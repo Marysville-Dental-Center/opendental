@@ -96,7 +96,7 @@ namespace UnitTests.Prefs_Tests {
 			};
 			bool hadException=false;
 			try {
-				Prefs.FillCacheFromTable(OpenDentBusiness.Crud.PrefCrud.ListToTable(listPrefs));
+				Prefs.FillCacheFromTable(OpenPmsDentalBusiness.Crud.PrefCrud.ListToTable(listPrefs));
 			}
 			catch(Exception e) {
 				e.DoNothing();
@@ -116,7 +116,7 @@ namespace UnitTests.Prefs_Tests {
 			};
 			bool hadException=false;
 			try {
-				Prefs.FillCacheFromTable(OpenDentBusiness.Crud.PrefCrud.ListToTable(listPrefs));
+				Prefs.FillCacheFromTable(OpenPmsDentalBusiness.Crud.PrefCrud.ListToTable(listPrefs));
 			}
 			catch(Exception e) {
 				e.DoNothing();

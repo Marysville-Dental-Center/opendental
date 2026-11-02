@@ -1,4 +1,4 @@
-// Unit tests for the Perio Chart rules in OpenDentBusiness (PerioMeasures): attached gingiva, calculated rows, the Recession label, implants
+// Unit tests for the Perio Chart rules in OpenPmsDentalBusiness (PerioMeasures): attached gingiva, calculated rows, the Recession label, implants
 // after removal and the birthdate line. No database.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;

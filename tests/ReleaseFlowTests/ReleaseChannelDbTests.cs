@@ -20,8 +20,8 @@ namespace ReleaseFlowTests {
 		///<summary>A fake installation folder: program files, a special sub folder, and local files that must not be published.</summary>
 		private static string MakeInstallFolder(byte[] arrayBigFile=null) {
 			string folder=TestPaths.NewTempFolder("install");
-			File.WriteAllText(Path.Combine(folder,"OpenDental.exe"),"synthetic program "+Guid.NewGuid());
-			File.WriteAllText(Path.Combine(folder,"OpenDentBusiness.dll"),"synthetic business layer");
+			File.WriteAllText(Path.Combine(folder,"OpenPmsDental.exe"),"synthetic program "+Guid.NewGuid());
+			File.WriteAllText(Path.Combine(folder,"OpenPmsDentalBusiness.dll"),"synthetic business layer");
 			File.WriteAllText(Path.Combine(folder,"UpdateFileCopier.exe"),"synthetic copier");
 			File.WriteAllText(Path.Combine(folder,"FreeDentalConfig.xml"),"<local/>");
 			File.WriteAllText(Path.Combine(folder,"openlog_1.txt"),"log");
@@ -57,7 +57,7 @@ namespace ReleaseFlowTests {
 			string folderInstall=MakeInstallFolder(arrayBig);
 			ReleaseIdentity releaseIdentity=Identity(folderInstall);
 			ReleaseManifest releaseManifest=ForkReleases.Publish(folderInstall,releaseIdentity,"SERVER1",new DateTime(2026,10,19,9,0,0,DateTimeKind.Utc));
-			CollectionAssert.AreEquivalent(new[] { "Big.dll","OpenDental.exe","OpenDentBusiness.dll","OpenDentalReplicationService\\shader.dat","UpdateFileCopier.exe" },
+			CollectionAssert.AreEquivalent(new[] { "Big.dll","OpenPmsDental.exe","OpenPmsDentalBusiness.dll","OpenDentalReplicationService\\shader.dat","UpdateFileCopier.exe" },
 				releaseManifest.ListFiles.Select(x => x.RelativePath).ToArray(),"Local settings, logs, Open Dental's Manifest.txt and other folders stay local.");
 			Assert.IsTrue(int.Parse(ScratchDb.Scalar(DB_NAME,"SELECT COUNT(*) FROM documentmisc WHERE DocMiscType=101"))>=3);
 			Assert.AreEqual("1",ScratchDb.Scalar(DB_NAME,"SELECT COUNT(*) FROM documentmisc WHERE DocMiscType=100"));
@@ -130,7 +130,7 @@ namespace ReleaseFlowTests {
 			string manifest=Encoding.UTF8.GetString(Convert.FromBase64String(
 				ScratchDb.Scalar(DB_NAME,"SELECT RawBase64 FROM documentmisc WHERE DocMiscType=100")));
 			ReleaseManifest releaseManifest=ReleaseManifest.Parse(manifest);
-			releaseManifest.ListFiles.First(x => x.RelativePath=="OpenDental.exe").Sha256=new string('0',64);
+			releaseManifest.ListFiles.First(x => x.RelativePath=="OpenPmsDental.exe").Sha256=new string('0',64);
 			ScratchDb.Exec(DB_NAME,"UPDATE documentmisc SET RawBase64='"+Convert.ToBase64String(Encoding.UTF8.GetBytes(releaseManifest.Serialize()))
 				+"' WHERE DocMiscType=100");
 			ReleaseDownloadResult releaseDownloadResult=ForkReleases.DownloadAndVerify(Path.Combine(TestPaths.NewTempFolder("hash"),"ForkRelease"));
@@ -142,14 +142,14 @@ namespace ReleaseFlowTests {
 			CreateDb();
 			string folderInstall=MakeInstallFolder();
 			ForkReleases.Publish(folderInstall,Identity(folderInstall),"SERVER1");
-			File.WriteAllText(Path.Combine(folderInstall,"OpenDental.exe"),"rebuilt");
+			File.WriteAllText(Path.Combine(folderInstall,"OpenPmsDental.exe"),"rebuilt");
 			ReleaseIdentity releaseIdentity=Identity(folderInstall);
 			ForkReleases.Publish(folderInstall,releaseIdentity,"SERVER1");
 			Assert.AreEqual("1",ScratchDb.Scalar(DB_NAME,"SELECT COUNT(*) FROM documentmisc WHERE DocMiscType=100"));
 			Assert.AreEqual(releaseIdentity.BuildId,ForkReleases.GetPublishedManifest(out string _).BuildId);
 			string folderPull=Path.Combine(TestPaths.NewTempFolder("republish"),"ForkRelease");
 			Assert.IsTrue(ForkReleases.DownloadAndVerify(folderPull).IsOk);
-			Assert.AreEqual("rebuilt",File.ReadAllText(Path.Combine(folderPull,"OpenDental.exe")));
+			Assert.AreEqual("rebuilt",File.ReadAllText(Path.Combine(folderPull,"OpenPmsDental.exe")));
 		}
 	}
 }

@@ -57,7 +57,7 @@ namespace M202Tests {
 
 		#region Security tree (source checks; the tree is a WinForms control)
 		private static string GetFillTreeSource() {
-			string source=File.ReadAllText(TestPaths.GetRepoFile("OpenDental","User Controls","UserControlSecurityTree.cs"));
+			string source=File.ReadAllText(TestPaths.GetRepoFile("OpenPmsDental","User Controls","UserControlSecurityTree.cs"));
 			int start=source.IndexOf("public void FillTreePermissionsInitial()");
 			int end=source.IndexOf("public void FillTreePerm()");
 			Assert.IsTrue(start>0 && end>start,"FillTreePermissionsInitial not found.");

@@ -132,11 +132,11 @@ namespace BINATests {
 			StringAssert.Contains(wrapper,"drawMode=StartFirstWorkingMode(value,IsDirectXRuntimeAvailable(),TryStartDrawMode,LogFallbackOnce);");
 			StringAssert.DoesNotMatch(wrapper,new Regex(@"MessageBox\.|MsgBox\."),"A fallback never shows a dialog.");
 			//Callers that test DirectX must treat any other mode as failure, because the chart may now fall back to OpenGL instead of 2D.
-			string graphics=RepoFiles.Read(@"OpenDental\Forms\FormGraphics.cs");
+			string graphics=RepoFiles.Read(@"OpenPmsDental\Forms\FormGraphics.cs");
 			StringAssert.Contains(graphics,"if(toothChartWrapperTest.DrawMode!=DrawingMode.DirectX) {");
 			StringAssert.Contains(graphics,"if(!ToothChartWrapper.IsDirectXRuntimeAvailable()) {");
 			//A computer with no working DirectX format is set to the next mode, OpenGL, rather than straight to Simple 2D.
-			StringAssert.Contains(RepoFiles.Read(@"OpenDental\Main Modules\FormOpenDental.cs"),
+			StringAssert.Contains(RepoFiles.Read(@"OpenPmsDental\Main Modules\FormOpenDental.cs"),
 				"ComputerPrefs.LocalComputer.GraphicsSimple=SparksToothChart.ToothChartWrapper.GetFallbackDrawMode(DrawingMode.DirectX);");
 		}
 

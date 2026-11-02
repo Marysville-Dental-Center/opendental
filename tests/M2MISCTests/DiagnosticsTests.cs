@@ -1,4 +1,4 @@
-// v25_4-misc-diagnostics-info: the local Diagnostics text of Help, About (OpenDentBusiness.LocalDiagnostics).
+// v25_4-misc-diagnostics-info: the local Diagnostics text of Help, About (OpenPmsDentalBusiness.LocalDiagnostics).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

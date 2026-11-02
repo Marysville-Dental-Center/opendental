@@ -14,7 +14,7 @@ namespace M2INSPLANTests {
 	///<summary>One control (or component) of the designer file.</summary>
 	public class DesignerControl {
 		public string Name;
-		///<summary>The declared type, full name (OpenDental.UI.Button, System.Windows.Forms.Label, ...).</summary>
+		///<summary>The declared type, full name (OpenPmsDental.UI.Button, System.Windows.Forms.Label, ...).</summary>
 		public string TypeName;
 		///<summary>"this" for controls added to the form itself, null when no Controls.Add puts it anywhere.</summary>
 		public string ParentName;
@@ -50,7 +50,7 @@ namespace M2INSPLANTests {
 		private static readonly Regex _regexFont=new Regex(@"^new System\.Drawing\.Font\(""[^""]+"", ([\d\.]+)F(.*)\)$");
 
 		public static DesignerModel LoadFormInsPlan() {
-			string path=TestDb.FindRepoFile(Path.Combine("OpenDental","Forms","FormInsPlan.designer.cs"));
+			string path=TestDb.FindRepoFile(Path.Combine("OpenPmsDental","Forms","FormInsPlan.designer.cs"));
 			return Parse(File.ReadAllText(path,Encoding.UTF8));
 		}
 
@@ -177,11 +177,11 @@ namespace M2INSPLANTests {
 
 		///<summary>Full type name for the short names the designer declarations use.</summary>
 		public static string NormalizeType(string typeName) {
-			if(typeName.StartsWith("OpenDental.") || typeName.StartsWith("System.")) {
+			if(typeName.StartsWith("OpenPmsDental.") || typeName.StartsWith("System.")) {
 				return typeName;
 			}
 			if(typeName.StartsWith("UI.")) {
-				return "OpenDental."+typeName;
+				return "OpenPmsDental."+typeName;
 			}
 			switch(typeName) {
 				case "Label":
@@ -194,7 +194,7 @@ namespace M2INSPLANTests {
 				case "ValidDouble":
 				case "ValidNum":
 				case "ODtextBox":
-					return "OpenDental."+typeName;
+					return "OpenPmsDental."+typeName;
 			}
 			return typeName;
 		}

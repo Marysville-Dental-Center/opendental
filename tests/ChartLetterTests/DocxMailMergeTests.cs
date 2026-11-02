@@ -1,4 +1,4 @@
-// Tests for the .docx letter merge used by chart letters (OpenDentBusiness/Misc/DocxMailMerge.cs). Templates are built in memory; no files and no
+// Tests for the .docx letter merge used by chart letters (OpenPmsDentalBusiness/Misc/DocxMailMerge.cs). Templates are built in memory; no files and no
 // word processor are needed. Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

@@ -34,7 +34,7 @@ namespace BINBTests {
 			@"Required dlls\installutil.exe",
 			@"SparksToothChart\RequiredDlls\Tao.FreeGlut.dll",
 			@"SparksToothChart\RequiredDlls\freeglut.dll",
-			@"OpenDental\Forms\FormAvaTax.cs",
+			@"OpenPmsDental\Forms\FormAvaTax.cs",
 		};
 		///<summary>The assemblies no project may reference again, as an assembly name or a file name.</summary>
 		private static readonly string[] _arrayRemovedAssemblies={ "SigPlusNET","Interop.Word","Interop.Microsoft.Office.Core","Interop.VBIDE","stdole",
@@ -57,7 +57,7 @@ namespace BINBTests {
 		public void RemovedAssemblies_AreNotNamedByAProjectItem() {
 			string root=TestPaths.RepoRoot;
 			List<string> listProjects=TestPaths.GetFiles(root,".csproj",".vbproj",".vcxproj",".targets",".props");
-			Assert.IsTrue(listProjects.Any(x => x.EndsWith("OpenDental.csproj",StringComparison.OrdinalIgnoreCase)),"No project files under "+root);
+			Assert.IsTrue(listProjects.Any(x => x.EndsWith("OpenPmsDental.csproj",StringComparison.OrdinalIgnoreCase)),"No project files under "+root);
 			List<string> listViolations=new List<string>();
 			foreach(string path in listProjects) {
 				XDocument xDocument;
@@ -113,10 +113,10 @@ namespace BINBTests {
 
 		[TestMethod]
 		public void RemovedAssemblies_AreNotCopiedToTheBuildOutput() {
-			//This test's own folder holds the copy-local closure of OpenDentBusiness, CodeBase and PasswordVaultWrapper.
+			//This test's own folder holds the copy-local closure of OpenPmsDentalBusiness, CodeBase and PasswordVaultWrapper.
 			List<string> listFolders=new List<string> { AppDomain.CurrentDomain.BaseDirectory };
-			string folderOpenDental=Path.Combine(TestPaths.RepoRoot,"OpenDental","bin","Debug");
-			if(File.Exists(Path.Combine(folderOpenDental,"OpenDental.exe"))) {
+			string folderOpenDental=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug");
+			if(File.Exists(Path.Combine(folderOpenDental,"OpenPmsDental.exe"))) {
 				listFolders.Add(folderOpenDental);
 			}
 			List<string> listFound=new List<string>();

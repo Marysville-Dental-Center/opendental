@@ -11,7 +11,7 @@ namespace NoHqTests {
 	///<summary>Checks that the functions which downloaded or imported reference data from Open Dental are gone: the default medication list,
 	///translations, Canadian procedure codes and fee schedules, code systems and the VeriFone USB driver. Per the owner, that data is loaded into
 	///the database directly. The CPT import stays, because it reads the CPT data file that the office licenses from the AMA.
-	///None of these tests needs a database or a network connection. The OpenDental.exe checks read the built program next to this project.</summary>
+	///None of these tests needs a database or a network connection. The OpenPmsDental.exe checks read the built program next to this project.</summary>
 	[TestClass]
 	public class RefDataTests {
 		private const BindingFlags ALL_DECLARED=BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static|BindingFlags.Instance
@@ -65,12 +65,12 @@ namespace NoHqTests {
 		}
 
 		#region Helpers
-		///<summary>Loads an assembly from OpenDental\bin\Debug (or Release), the folder the solution builds OpenDental.exe into. The test is inconclusive
+		///<summary>Loads an assembly from OpenPmsDental\bin\Debug (or Release), the folder the solution builds OpenPmsDental.exe into. The test is inconclusive
 		///when it has not been built.</summary>
 		private static Assembly LoadBuiltAssembly(string fileName) {
 			string dirTests=Path.GetDirectoryName(typeof(RefDataTests).Assembly.Location);//NoHqTests\bin\Debug
 			string dirConfiguration=Path.GetFileName(dirTests);
-			string path=Path.GetFullPath(Path.Combine(dirTests,"..","..","..","OpenDental","bin",dirConfiguration,fileName));
+			string path=Path.GetFullPath(Path.Combine(dirTests,"..","..","..","OpenPmsDental","bin",dirConfiguration,fileName));
 			if(!File.Exists(path)) {
 				Assert.Inconclusive(fileName+" is not built: "+path);
 			}

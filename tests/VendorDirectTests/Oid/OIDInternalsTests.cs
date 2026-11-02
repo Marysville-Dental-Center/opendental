@@ -151,15 +151,15 @@ namespace VendorDirectTests.Oid {
 		[TestMethod]
 		public void OidRegistry_MakesNoHqCallAndNamesNoVendor() {
 			string root=FoundationLayoutTests.GetRepositoryRoot();
-			string form=File.ReadAllText(Path.Combine(root,@"OpenDental\Forms\FormOIDRegistryInternal.cs"));
-			string designer=File.ReadAllText(Path.Combine(root,@"OpenDental\Forms\FormOIDRegistryInternal.Designer.cs"));
+			string form=File.ReadAllText(Path.Combine(root,@"OpenPmsDental\Forms\FormOIDRegistryInternal.cs"));
+			string designer=File.ReadAllText(Path.Combine(root,@"OpenPmsDental\Forms\FormOIDRegistryInternal.Designer.cs"));
 			foreach(string text in new[] { form,designer }) {
 				StringAssert.DoesNotMatch(text,new Regex("CustomerPatNum|RequestCustomerID|CustomerUpdates|WebServiceMainHQ|OpenDentalOID|Open Dental"));
 			}
 			StringAssert.Contains(form,"OIDInternals.GenerateUuidRoot()");
 			StringAssert.Contains(form,"OIDInternals.IsValidOid(");
 			//The business class asks no one for the root either: CustomerPatNum, its last HQ request, was deleted (package Z2).
-			string business=File.ReadAllText(Path.Combine(root,@"OpenDentBusiness\Data Interface\OIDInternals.cs"));
+			string business=File.ReadAllText(Path.Combine(root,@"OpenPmsDentalBusiness\Data Interface\OIDInternals.cs"));
 			StringAssert.DoesNotMatch(business,new Regex("CustomerPatNum|RequestCustomerID|CustomerUpdates|WebServiceMainHQ"));
 			Assert.IsNull(typeof(OIDInternals).GetProperty("CustomerPatNum"),"OIDInternals.CustomerPatNum should have been removed.");
 		}

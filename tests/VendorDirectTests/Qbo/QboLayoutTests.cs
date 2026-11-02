@@ -21,21 +21,21 @@ namespace VendorDirectTests.Qbo {
 			foreach(Type type in new[] { typeof(QuickBooksOnline),typeof(QuickBooksOnlineToken),typeof(QuickBooksOnlineAccount),typeof(QuickBooksOnlineClassRef),
 				typeof(QuickBooksOnlineDepositResponse) })
 			{
-				Assert.AreEqual("OpenDentBusiness.Qbo",type.Namespace,type.Name);
-				Assert.AreEqual("OpenDentBusiness",type.Assembly.GetName().Name,type.Name);
+				Assert.AreEqual("OpenPmsDentalBusiness.Qbo",type.Namespace,type.Name);
+				Assert.AreEqual("OpenPmsDentalBusiness",type.Assembly.GetName().Name,type.Name);
 			}
 		}
 
 		[TestMethod]
 		public void Callers_ImportTheInRepoTypes_NotBridges() {
-			foreach(string file in new[] { @"OpenDental\Forms\FormDepositEdit.cs",@"OpenDental\Forms\FormQuickBooksOnlineSetup.cs",
-				@"OpenDental\Forms\FormQBAccountSelect.cs" })
+			foreach(string file in new[] { @"OpenPmsDental\Forms\FormDepositEdit.cs",@"OpenPmsDental\Forms\FormQuickBooksOnlineSetup.cs",
+				@"OpenPmsDental\Forms\FormQBAccountSelect.cs" })
 			{
 				string text=ReadRepoFile(file);
 				Assert.IsFalse(Regex.IsMatch(text,@"^\s*using\s+Bridges\s*;",RegexOptions.Multiline),file+" still imports Bridges.");
-				StringAssert.Contains(text,"using OpenDentBusiness.Qbo;",file);
+				StringAssert.Contains(text,"using OpenPmsDentalBusiness.Qbo;",file);
 			}
-			string textDeposit=ReadRepoFile(@"OpenDental\Forms\FormDepositEdit.cs");
+			string textDeposit=ReadRepoFile(@"OpenPmsDental\Forms\FormDepositEdit.cs");
 			Assert.IsFalse(textDeposit.Contains("_programPropertyQboAccessToken"),"The dead access token field is gone.");
 			Assert.IsFalse(textDeposit.Contains("SaveTokens("),"Token saving lives in QboTokenManager.");
 			StringAssert.Contains(textDeposit,"QuickBooksOnline.NewRequestId()");
@@ -43,7 +43,7 @@ namespace VendorDirectTests.Qbo {
 
 		[TestMethod]
 		public void Package_NeverCallsTheHqWebService() {
-			string folder=Path.Combine(FoundationLayoutTests.GetRepositoryRoot(),@"OpenDentBusiness\Bridges\QuickBooksOnline");
+			string folder=Path.Combine(FoundationLayoutTests.GetRepositoryRoot(),@"OpenPmsDentalBusiness\Bridges\QuickBooksOnline");
 			string[] arrayFiles=Directory.GetFiles(folder,"*.cs");
 			Assert.IsTrue(arrayFiles.Length>=10);
 			foreach(string file in arrayFiles) {

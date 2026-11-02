@@ -14,16 +14,16 @@ namespace VGPTests {
 	[TestClass]
 	public class GpWiringSourceTests {
 		private static readonly string[] _arrayV2Files=new[] {
-			@"OpenDentBusiness\VendorDirect\GlobalPayments\GlobalPaymentsV2.cs",
-			@"OpenDentBusiness\VendorDirect\GlobalPayments\GlobalPaymentsV2Results.cs",
-			@"OpenDentBusiness\VendorDirect\GlobalPayments\GpV2Client.cs",
-			@"OpenDentBusiness\VendorDirect\GlobalPayments\GpV2Transactions.cs",
-			@"OpenDentBusiness\VendorDirect\GlobalPayments\RecurringChargerator.GlobalPaymentsV2.cs",
-			@"OpenDental\Forms\FormGlobalPaymentsV2.cs",
-			@"OpenDental\Forms\FormGlobalPaymentsV2.Designer.cs",
-			@"OpenDental\Forms\FormGlobalPaymentsV2Setup.cs",
-			@"OpenDental\Forms\FormGlobalPaymentsV2Setup.Designer.cs",
-			@"OpenDental\Forms\FormPayment.GlobalPaymentsV2.cs",
+			@"OpenPmsDentalBusiness\VendorDirect\GlobalPayments\GlobalPaymentsV2.cs",
+			@"OpenPmsDentalBusiness\VendorDirect\GlobalPayments\GlobalPaymentsV2Results.cs",
+			@"OpenPmsDentalBusiness\VendorDirect\GlobalPayments\GpV2Client.cs",
+			@"OpenPmsDentalBusiness\VendorDirect\GlobalPayments\GpV2Transactions.cs",
+			@"OpenPmsDentalBusiness\VendorDirect\GlobalPayments\RecurringChargerator.GlobalPaymentsV2.cs",
+			@"OpenPmsDental\Forms\FormGlobalPaymentsV2.cs",
+			@"OpenPmsDental\Forms\FormGlobalPaymentsV2.Designer.cs",
+			@"OpenPmsDental\Forms\FormGlobalPaymentsV2Setup.cs",
+			@"OpenPmsDental\Forms\FormGlobalPaymentsV2Setup.Designer.cs",
+			@"OpenPmsDental\Forms\FormPayment.GlobalPaymentsV2.cs",
 		};
 
 		[TestMethod]
@@ -36,13 +36,13 @@ namespace VGPTests {
 
 		[TestMethod]
 		public void FormPayment_HasTheThreeHooks_AndTheButtonIsNeverShownUnconditionally() {
-			string formPayment=RepoFiles.Read(@"OpenDental\Forms\FormPayment.cs");
+			string formPayment=RepoFiles.Read(@"OpenPmsDental\Forms\FormPayment.cs");
 			StringAssert.Contains(formPayment,"FillGlobalPaymentsV2Button();");
 			StringAssert.Contains(formPayment,"DisableGlobalPaymentsV2Button();");
 			StringAssert.Contains(formPayment,"if(VoidGlobalPaymentsV2OnClosing()) {");
 			Assert.IsTrue(formPayment.IndexOf("if(VoidGlobalPaymentsV2OnClosing())")<formPayment.IndexOf("if(refNum!=\"\") {//Void the PayConnect"),
 				"The V2 void runs before the note is read for other processors' voids.");
-			string partial=RepoFiles.Read(@"OpenDental\Forms\FormPayment.GlobalPaymentsV2.cs");
+			string partial=RepoFiles.Read(@"OpenPmsDental\Forms\FormPayment.GlobalPaymentsV2.cs");
 			StringAssert.Contains(partial,"GlobalPaymentsV2.ShowButton(");
 			Assert.IsTrue(Regex.Matches(partial,@"_butGlobalPaymentsV2\.Visible=true").Count==1,"Shown in one place, after the ShowButton check.");
 			Assert.IsTrue(partial.IndexOf("GlobalPaymentsV2.ShowButton(")<partial.IndexOf("_butGlobalPaymentsV2.Visible=true"));
@@ -50,30 +50,30 @@ namespace VGPTests {
 
 		[TestMethod]
 		public void FormPayment_ProjectListsTheNewFiles() {
-			string csproj=RepoFiles.Read(@"OpenDental\OpenDental.csproj");
+			string csproj=RepoFiles.Read(@"OpenPmsDental\OpenPmsDental.csproj");
 			foreach(string file in new[] { "FormGlobalPaymentsV2.cs","FormGlobalPaymentsV2.Designer.cs","FormGlobalPaymentsV2Setup.cs",
 				"FormGlobalPaymentsV2Setup.Designer.cs","FormPayment.GlobalPaymentsV2.cs" })
 			{
 				StringAssert.Contains(csproj,"<Compile Include=\"Forms\\"+file+"\"",file);
 			}
-			StringAssert.Contains(RepoFiles.Read(@"OpenDentBusiness\OpenDentBusiness.csproj"),"<Compile Include=\"VendorDirect\\**\\*.cs\" />",
+			StringAssert.Contains(RepoFiles.Read(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj"),"<Compile Include=\"VendorDirect\\**\\*.cs\" />",
 				"The business files are under VendorDirect, which the project compiles by wildcard.");
 		}
 
 		[TestMethod]
 		public void V1Rename_IsDisplayOnly() {
-			Assert.AreEqual("Global Payments V1 Setup",GetDesignerText(@"OpenDental\Forms\FormEdgeExpressSetup.designer.cs","this.Text"));
-			Assert.AreEqual("Global Payments V1 Transaction Types",GetDesignerText(@"OpenDental\Forms\FormEdgeExpressTrans.designer.cs","this.Text"));
-			Assert.AreEqual("Global Payments V1",GetDesignerText(@"OpenDental\Forms\FormPayment.designer.cs","this.panelEdgeExpress.Text"));
+			Assert.AreEqual("Global Payments V1 Setup",GetDesignerText(@"OpenPmsDental\Forms\FormEdgeExpressSetup.designer.cs","this.Text"));
+			Assert.AreEqual("Global Payments V1 Transaction Types",GetDesignerText(@"OpenPmsDental\Forms\FormEdgeExpressTrans.designer.cs","this.Text"));
+			Assert.AreEqual("Global Payments V1",GetDesignerText(@"OpenPmsDental\Forms\FormPayment.designer.cs","this.panelEdgeExpress.Text"));
 			Assert.AreEqual("EdgeExpress",ProgramName.EdgeExpress.ToString(),"The program name and its rows stay, for data compatibility.");
 			Assert.AreEqual("Global Payments V1",GlobalPaymentsV1.ProgDesc);
-			string formPayment=RepoFiles.Read(@"OpenDental\Forms\FormPayment.cs");
+			string formPayment=RepoFiles.Read(@"OpenPmsDental\Forms\FormPayment.cs");
 			Assert.IsFalse(formPayment.Contains("\"EdgeExpress receipt printed\""));
 			Assert.IsFalse(formPayment.Contains("\"EdgeExpress must be enabled in Program Links.\""));
-			string bridge=RepoFiles.Read(@"OpenDentBusiness\WebBridges\EdgeExpress.cs");
+			string bridge=RepoFiles.Read(@"OpenPmsDentalBusiness\WebBridges\EdgeExpress.cs");
 			Assert.IsFalse(bridge.Contains("Program Links > EdgeExpress"));
 			StringAssert.Contains(bridge,"Program Links > Global Payments V1");
-			string creditCard=RepoFiles.Read(@"OpenDentBusiness\TableTypes\CreditCard.cs");
+			string creditCard=RepoFiles.Read(@"OpenPmsDentalBusiness\TableTypes\CreditCard.cs");
 			StringAssert.Contains(creditCard,"listTokens.Add(\"Global Payments V1\")");
 			StringAssert.Contains(creditCard,"listTokens.Add(\"Global Payments V2\")");
 		}
@@ -87,17 +87,17 @@ namespace VGPTests {
 
 		[TestMethod]
 		public void EverySetupWindowEnforcesOneProcessor() {
-			StringAssert.Contains(RepoFiles.Read(@"OpenDental\Forms\FormGlobalPaymentsV2Setup.cs"),
+			StringAssert.Contains(RepoFiles.Read(@"OpenPmsDental\Forms\FormGlobalPaymentsV2Setup.cs"),
 				"GlobalPaymentsV2.GetExclusiveConflictMessage(ProgramName.MeetInTheCloud)");
-			StringAssert.Contains(RepoFiles.Read(@"OpenDental\Forms\FormEdgeExpressSetup.cs"),
+			StringAssert.Contains(RepoFiles.Read(@"OpenPmsDental\Forms\FormEdgeExpressSetup.cs"),
 				"GlobalPaymentsV2.GetExclusiveConflictMessage(ProgramName.EdgeExpress)");
-			StringAssert.Contains(RepoFiles.Read(@"OpenDental\Forms\FormXchargeSetup.cs"),
+			StringAssert.Contains(RepoFiles.Read(@"OpenPmsDental\Forms\FormXchargeSetup.cs"),
 				"GlobalPaymentsV2.GetExclusiveConflictMessage(ProgramName.Xcharge)");
 		}
 
 		[TestMethod]
 		public void ProgramLinks_V1AndV2AreRegistered() {
-			string setup=RepoFiles.Read(@"OpenDental\Forms\FormGlobalPaymentsV2Setup.cs");
+			string setup=RepoFiles.Read(@"OpenPmsDental\Forms\FormGlobalPaymentsV2Setup.cs");
 			StringAssert.Contains(setup,"public class GlobalPaymentsV2ProgramLinkSetup:IProgramLinkSetup");
 			StringAssert.Contains(setup,"public class GlobalPaymentsV1ProgramLinkSetup:IProgramLinkSetup");
 			StringAssert.Contains(setup,"GlobalPaymentsV1.RenameProgDescIfDefault()");
@@ -105,7 +105,7 @@ namespace VGPTests {
 
 		[TestMethod]
 		public void Recurring_V2CardsAreRoutedBeforeTheOtherProcessors() {
-			string recurring=RepoFiles.Read(@"OpenDentBusiness\Data Interface\RecurringCharges.cs");
+			string recurring=RepoFiles.Read(@"OpenPmsDentalBusiness\Data Interface\RecurringCharges.cs");
 			StringAssert.Contains(recurring,"public partial class RecurringChargerator");
 			int indexV2=recurring.IndexOf("if(IsGlobalPaymentsV2Charge(chargeData)) {");
 			Assert.IsTrue(indexV2>0);
@@ -114,7 +114,7 @@ namespace VGPTests {
 
 		[TestMethod]
 		public void Recurring_InDoubtRetry_IsSeparateFromForceDuplicates() {
-			string partial=RepoFiles.Read(@"OpenDentBusiness\VendorDirect\GlobalPayments\RecurringChargerator.GlobalPaymentsV2.cs");
+			string partial=RepoFiles.Read(@"OpenPmsDentalBusiness\VendorDirect\GlobalPayments\RecurringChargerator.GlobalPaymentsV2.cs");
 			Match match=Regex.Match(partial,@"bool canRetryInDoubt=([^;]*);");
 			Assert.IsTrue(match.Success);
 			Assert.IsFalse(match.Groups[1].Value.Contains("forceDuplicates") || match.Groups[1].Value.Contains("ForceDuplicates"),
@@ -123,7 +123,7 @@ namespace VGPTests {
 			StringAssert.Contains(match.Groups[1].Value,"SetRecurringChargeNumsRetryInDoubt.Contains(recurringChargeInDoubt.RecurringChargeNum)");
 			Assert.AreEqual(1,Regex.Matches(partial,@"canRetryInDoubt=").Count);
 			//The window: one reset per run, and the set filled only when the user answers Yes to its own question, which defaults to No.
-			string form=RepoFiles.Read(@"OpenDental\Forms\FormCreditRecurringCharges.cs");
+			string form=RepoFiles.Read(@"OpenPmsDental\Forms\FormCreditRecurringCharges.cs");
 			int indexSend=form.IndexOf("private void butSend_Click(");
 			int indexAsk=form.IndexOf("AskRetryGlobalPaymentsV2InDoubt(listRecurringChargeData);",indexSend);
 			int indexThread=form.IndexOf("_recurringChargerator.SendCharges(",indexSend);
@@ -150,7 +150,7 @@ namespace VGPTests {
 
 		[TestMethod]
 		public void CreditCardEdit_RecurringSectionShowsForGlobalPaymentsV2() {
-			string form=RepoFiles.Read(@"OpenDental\Forms\FormCreditCardEdit.cs");
+			string form=RepoFiles.Read(@"OpenPmsDental\Forms\FormCreditCardEdit.cs");
 			StringAssert.Contains(form,"_isGlobalPaymentsV2Enabled=Programs.IsEnabled(ProgramName.MeetInTheCloud);");
 			const string conditionOld="_isEdgeExpressEnabled || _isXChargeEnabled || _isPayConnectEnabled || _isPaySimpleEnabled";
 			//Load (show the section), FillData (fill it), validation, and save (write ChargeAmt, DateStart, DateStop, ChargeFrequency, PayPlanNum).
@@ -192,12 +192,12 @@ namespace VGPTests {
 
 		[TestMethod]
 		public void DatabaseReads_GoThroughMiddleTier() {
-			foreach(string relativePath in _arrayV2Files.Where(x => x.StartsWith(@"OpenDentBusiness\"))) {
+			foreach(string relativePath in _arrayV2Files.Where(x => x.StartsWith(@"OpenPmsDentalBusiness\"))) {
 				Assert.IsFalse(RepoFiles.Read(relativePath).Contains("DataCore."),relativePath+": DataCore skips the Middle Tier guard.");
 			}
-			string source=RepoFiles.Read(@"OpenDentBusiness\VendorDirect\GlobalPayments\GlobalPaymentsV2.cs");
+			string source=RepoFiles.Read(@"OpenPmsDentalBusiness\VendorDirect\GlobalPayments\GlobalPaymentsV2.cs");
 			//The type and signature the Middle Tier server resolves from the method name it is sent (DtoProcessor.DtoInformation).
-			Type type=Type.GetType("OpenDentBusiness."+"VendorDirect.GlobalPayments.GlobalPaymentsV2"+",OpenDentBusiness");
+			Type type=Type.GetType("OpenPmsDentalBusiness."+"VendorDirect.GlobalPayments.GlobalPaymentsV2"+",OpenPmsDentalBusiness");
 			Assert.IsNotNull(type);
 			foreach(Tuple<string,Type[]> tuple in new[] {
 				Tuple.Create("HasSamePaymentOnDate",new[] { typeof(long),typeof(double),typeof(DateTime) }),
@@ -212,7 +212,7 @@ namespace VGPTests {
 				StringAssert.Contains(start,"if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {",tuple.Item1+" runs on the server for a Middle Tier client.");
 				Assert.IsFalse(start.Contains("Meth.NoCheckMiddleTierRole()"),tuple.Item1);
 			}
-			string form=RepoFiles.Read(@"OpenDental\Forms\FormGlobalPaymentsV2.cs");
+			string form=RepoFiles.Read(@"OpenPmsDental\Forms\FormGlobalPaymentsV2.cs");
 			int indexCheck=form.IndexOf("GlobalPaymentsV2.HasSamePaymentOnDate(");
 			int indexMethod=form.LastIndexOf("private bool ConfirmNotDuplicate(",Math.Max(indexCheck,0));
 			Assert.IsTrue(indexCheck>0 && indexMethod>0 && form.LastIndexOf("try {",indexCheck)>indexMethod,
@@ -222,9 +222,9 @@ namespace VGPTests {
 
 		[TestMethod]
 		public void PaymentPortalBox_IsNotBuilt() {
-			string designer=RepoFiles.Read(@"OpenDental\Forms\FormGlobalPaymentsV2Setup.Designer.cs");
+			string designer=RepoFiles.Read(@"OpenPmsDental\Forms\FormGlobalPaymentsV2Setup.Designer.cs");
 			Assert.IsFalse(designer.Contains("Payment Portal") || designer.Contains("eClipboard"),"Excluded hosted services have no setting here.");
-			string setup=RepoFiles.Read(@"OpenDental\Forms\FormGlobalPaymentsV2Setup.cs");
+			string setup=RepoFiles.Read(@"OpenPmsDental\Forms\FormGlobalPaymentsV2Setup.cs");
 			Assert.IsFalse(Regex.IsMatch(setup,@"IsOnlinePaymentsEnabled|WebPay"),"No online payment switch.");
 		}
 	}

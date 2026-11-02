@@ -20,7 +20,7 @@ using OpenPmsDentalBusiness.Email;
 using OpenPmsDentalBusiness.Microsoft365;
 
 namespace VendorDirectTests.Email {
-	//OpenDentBusiness.Task (the task list table type) would hide System.Threading.Tasks.Task otherwise.
+	//OpenPmsDentalBusiness.Task (the task list table type) would hide System.Threading.Tasks.Task otherwise.
 	using Task=System.Threading.Tasks.Task;
 
 	[TestClass]

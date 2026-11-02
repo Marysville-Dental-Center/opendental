@@ -15,7 +15,7 @@ namespace DevDbTool {
 
 	///<summary>Creates and upgrades the dev database. Mirrors UnitTests.DatabaseTools.FreshFromDump (load the seed dump, run the convert
 	///methods, apply the default auto codes, procedure buttons and quick-add procedures) minus the unit-test-only steps, and the parts of
-	///OpenDental's ClassConvertDatabase that guard a conversion (the CorruptedDatabase flag).</summary>
+	///OpenPmsDental's ClassConvertDatabase that guard a conversion (the CorruptedDatabase flag).</summary>
 	public class DevDatabase {
 		///<summary>A dev database is expected to hold a handful of patients at most. -Force refuses to drop anything bigger, so that a typo in
 		///--database or --server cannot wipe a real office database.</summary>
@@ -27,7 +27,7 @@ namespace DevDbTool {
 			_options=options;
 		}
 
-		///<summary>The version of the business layer this tool was built against. OpenDental.exe is built from the same source and carries
+		///<summary>The version of the business layer this tool was built against. OpenPmsDental.exe is built from the same source and carries
 		///the same version.</summary>
 		public static Version VersionProgram {
 			get {
@@ -49,7 +49,7 @@ namespace DevDbTool {
 				skipValidation);
 		}
 
-		///<summary>Prints the server version and makes sure sql_mode is one the convert scripts tolerate. OpenDental.exe itself runs the same
+		///<summary>Prints the server version and makes sure sql_mode is one the convert scripts tolerate. OpenPmsDental.exe itself runs the same
 		///"SET GLOBAL sql_mode=''" at every startup (MiscData.SetSqlMode) unless told not to.</summary>
 		public void CheckServer() {
 			string version=DataCore.GetScalar("SELECT VERSION()");
@@ -58,7 +58,7 @@ namespace DevDbTool {
 			string sqlMode=table.Rows.Count>0 ? table.Rows[0]["Value"].ToString() : null;
 			if(sqlMode==null || (sqlMode!="" && sqlMode.ToUpperInvariant()!="NO_AUTO_CREATE_USER")) {
 				Program.Warn("Global sql_mode is '"+sqlMode+"'. The convert scripts need a blank sql_mode, so running SET GLOBAL sql_mode='' "
-					+"(OpenDental.exe does the same at startup). Put sql_mode= in my.ini to make it permanent.");
+					+"(OpenPmsDental.exe does the same at startup). Put sql_mode= in my.ini to make it permanent.");
 				DataCore.NonQ("SET GLOBAL sql_mode=''");
 			}
 			string engine=DataCore.GetScalar("SELECT ENGINE FROM information_schema.ENGINES WHERE Support='DEFAULT'");
@@ -103,7 +103,7 @@ namespace DevDbTool {
 		}
 
 		///<summary>Runs every convert method newer than the database's version, guarded by the CorruptedDatabase flag like
-		///ClassConvertDatabase does: if a step throws, the flag stays set and OpenDental.exe will refuse to open the database.</summary>
+		///ClassConvertDatabase does: if a step throws, the flag stays set and OpenPmsDental.exe will refuse to open the database.</summary>
 		public void Upgrade() {
 			Version versionFrom=new Version(GetPrefRaw(PrefName.DataBaseVersion));
 			Version versionTo=ConvertDatabases.LatestVersion;
@@ -123,7 +123,7 @@ namespace DevDbTool {
 			Program.Info("Conversion finished: database version "+GetPrefRaw(PrefName.DataBaseVersion));
 		}
 
-		///<summary>Runs the fork migrations that take over from the frozen 24.3.63 convert chain (OpenDentBusiness/Misc/ForkMigrations), which bring
+		///<summary>Runs the fork migrations that take over from the frozen 24.3.63 convert chain (OpenPmsDentalBusiness/Misc/ForkMigrations), which bring
 		///the schema to Open Dental 25.3.48 and then 26.1.70. They run through the adoption tool's code (Adoption.Run), the only way the fork version markers are
 		///written: the startup version guard (ForkVersionGuard) asks for adoption on a 24.3.63 database while this build has fork migration steps, and
 		///refuses a database that has ForkSchemaLevel without the adoption markers. Needs ProgramVersion stamped first (StampProgramVersion), because
@@ -146,7 +146,7 @@ namespace DevDbTool {
 			ProcedureCodes.RefreshCache();
 		}
 
-		///<summary>Records the program version the way OpenDental.exe does after an update on the update server (ProgramVersion pref plus an
+		///<summary>Records the program version the way OpenPmsDental.exe does after an update on the update server (ProgramVersion pref plus an
 		///updatehistory row). Without it a Release build would treat its first start as an update and try to stash its files into the
 		///database's UpdateFiles.</summary>
 		public void StampProgramVersion() {
@@ -159,7 +159,7 @@ namespace DevDbTool {
 			Program.Info("ProgramVersion set to "+version);
 		}
 
-		///<summary>Creates an A to Z images folder (with the A-Z subfolders OpenDental.exe uses to recognize one) and points DocPath at it.</summary>
+		///<summary>Creates an A to Z images folder (with the A-Z subfolders OpenPmsDental.exe uses to recognize one) and points DocPath at it.</summary>
 		public void SetAtoZFolder(string path) {
 			string fullPath=Path.GetFullPath(path);
 			Directory.CreateDirectory(fullPath);

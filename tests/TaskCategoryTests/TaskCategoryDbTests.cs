@@ -1,5 +1,5 @@
 // Integration tests for task categories against a scratch MariaDB database on this computer. The database gets the Open Dental 25.3.48 schema
-// from the reference snapshot embedded in OpenDentBusiness (SchemaVerifier), so task.Category and task.TriagePosition are exactly as an office
+// from the reference snapshot embedded in OpenPmsDentalBusiness (SchemaVerifier), so task.Category and task.TriagePosition are exactly as an office
 // database has them, and is filled with synthetic rows only. The tests are skipped (inconclusive) when no server answers at 127.0.0.1:3306 as
 // root with a blank password, or when TASKCATEGORY_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

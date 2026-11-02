@@ -7,7 +7,7 @@ namespace BSHELLTests {
 	public class ChartAndMainWindowWiringTests {
 		[TestMethod]
 		public void PatientInfo_MedUrgentAndMedicalSummaryLabelsAreBold() {
-			string source=TestPaths.ReadRepoFile("OpenDental","Main Modules","ControlChart.cs");
+			string source=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","ControlChart.cs");
 			string fill=TestPaths.GetMethodBody(source,"public void FillPtInfo(bool isRefreshData=true)");
 			foreach(string internalName in new[] { "Med Urgent","Medical Summary" }) {
 				int indexCase=fill.IndexOf("case \""+internalName+"\":",StringComparison.Ordinal);
@@ -29,7 +29,7 @@ namespace BSHELLTests {
 
 		[TestMethod]
 		public void StartupDomainLogin_UsesTheSharedHelper() {
-			string source=TestPaths.ReadRepoFile("OpenDental","Main Modules","FormOpenDental.cs");
+			string source=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","FormOpenDental.cs");
 			StringAssert.Contains(source,"else if(DomainLogin.IsEnabled()) {");
 			StringAssert.Contains(source,"string domainUser=DomainLogin.BuildDomainUser(domainGuidPref,Environment.UserName);");
 			Assert.IsFalse(source.Contains("(domainGuidPref+'\\\\'+Environment.UserName)"));

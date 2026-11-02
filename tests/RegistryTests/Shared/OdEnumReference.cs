@@ -46,7 +46,7 @@ namespace RegistryTests {
 			return GetAll().FindAll(x => x.EnumName==enumName);
 		}
 
-		///<summary>Finds the enum type with this simple name in the business layer or CodeBase. Prefers the OpenDentBusiness namespace when the
+		///<summary>Finds the enum type with this simple name in the business layer or CodeBase. Prefers the OpenPmsDentalBusiness namespace when the
 		///name is used more than once. Returns null if there is none.</summary>
 		public static Type FindCodeEnum(string enumName) {
 			if(enumName.Contains(".")) {//Qualified, for example "Pearl.EnumCategoryOD": match the end of the full name.

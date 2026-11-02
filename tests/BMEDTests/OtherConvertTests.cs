@@ -303,8 +303,8 @@ namespace BMEDTests {
 	public class OtherConvertWiringTests {
 		[TestMethod]
 		public void AllergyEditWindow_OffersConvertForOtherAllergies() {
-			string source=BMedDb.ReadRepoFile("OpenDental","Forms","FormAllergyEdit.cs");
-			string designer=BMedDb.ReadRepoFile("OpenDental","Forms","FormAllergyEdit.designer.cs");
+			string source=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormAllergyEdit.cs");
+			string designer=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormAllergyEdit.designer.cs");
 			StringAssert.Contains(source,"if(OtherEntryConverts.IsOtherAllergy(AllergyCur)) {");
 			StringAssert.Contains(source,"OtherEntryConverts.GetPatientEnteredText(_textOtherEntered)");
 			StringAssert.Contains(source,"OtherEntryConvertL.ConvertOtherAllergy(allergy,_textOtherEntered,checkKeepOtherText.Checked)");
@@ -324,7 +324,7 @@ namespace BMEDTests {
 
 		[TestMethod]
 		public void MedicalWindow_HasRightClickConvertItems() {
-			string source=BMedDb.ReadRepoFile("OpenDental","Forms","FormMedical.cs");
+			string source=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormMedical.cs");
 			StringAssert.Contains(source,"InitOtherConvertMenus();");
 			StringAssert.Contains(source,"Convert \\\"Other\\\" allergy...");
 			StringAssert.Contains(source,"Convert \\\"Other\\\" problem...");
@@ -343,21 +343,21 @@ namespace BMEDTests {
 			Assert.AreEqual(2,System.Text.RegularExpressions.Regex.Matches(flow,"SetField\\(\"IsSelectionMode\",true\\)").Count);
 			StringAssert.Contains(flow,"Security.IsAuthorized(EnumPermType.PatAllergyListEdit)");
 			StringAssert.Contains(flow,"Security.IsAuthorized(EnumPermType.PatProblemListEdit)");
-			string allergySetup=BMedDb.ReadRepoFile("OpenDental","Forms","FormAllergySetup.cs");
+			string allergySetup=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormAllergySetup.cs");
 			StringAssert.Contains(allergySetup,"_listAllergyDefs=FilterForOtherConvert(_listAllergyDefs);");
 			StringAssert.Contains(allergySetup,"SetNewDefForOtherConvert(formAllergyDefEdit.AllergyDefCur);");
 			StringAssert.Contains(allergySetup,"if(PickNewDefForOtherConvert(formAllergyDefEdit.DialogResult,formAllergyDefEdit.AllergyDefCur)) {");
 			//Adding a definition still needs AllergyDefEdit, checked before the edit window opens.
 			int indexPermission=allergySetup.IndexOf("Security.IsAuthorized(EnumPermType.AllergyDefEdit)");
 			Assert.IsTrue(indexPermission>=0 && indexPermission<allergySetup.IndexOf("SetNewDefForOtherConvert("));
-			StringAssert.Contains(BMedDb.ReadRepoFile("OpenDental","Forms","FormAllergySetup.OtherConvert.cs"),"public string TextOtherToConvert;");
-			string diseaseDefs=BMedDb.ReadRepoFile("OpenDental","Forms","FormDiseaseDefs.cs");
+			StringAssert.Contains(BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormAllergySetup.OtherConvert.cs"),"public string TextOtherToConvert;");
+			string diseaseDefs=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormDiseaseDefs.cs");
 			StringAssert.Contains(diseaseDefs,"ShowSearchForOtherConvert();");
 			StringAssert.Contains(diseaseDefs,"SetNewDefForOtherConvert(diseaseDef);");
 			StringAssert.Contains(diseaseDefs,"PickNewDefForOtherConvert(formDiseaseDefEdit.DiseaseDefCur);");
 			indexPermission=diseaseDefs.IndexOf("Security.IsAuthorized(EnumPermType.ProblemDefEdit)");
 			Assert.IsTrue(indexPermission>=0 && indexPermission<diseaseDefs.IndexOf("SetNewDefForOtherConvert("));
-			string diseaseDefsConvert=BMedDb.ReadRepoFile("OpenDental","Forms","FormDiseaseDefs.OtherConvert.cs");
+			string diseaseDefsConvert=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormDiseaseDefs.OtherConvert.cs");
 			StringAssert.Contains(diseaseDefsConvert,"public string TextOtherToConvert;");
 			StringAssert.Contains(diseaseDefsConvert,"textDescript.Text=TextOtherToConvert;");
 		}

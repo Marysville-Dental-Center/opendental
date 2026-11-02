@@ -83,7 +83,7 @@ namespace RegistryTests {
 
 		[TestMethod]
 		public void ConfirmedNames_HavePrefInfosEntries() {
-			XDocument xDocument=XDocument.Load(TestPaths.GetRepoFile("OpenDental","Resources","PrefInfos.xml"));
+			XDocument xDocument=XDocument.Load(TestPaths.GetRepoFile("OpenPmsDental","Resources","PrefInfos.xml"));
 			List<XElement> listPrefInfs=xDocument.Root.Elements("PrefInf").ToList();
 			HashSet<string> setCategories=new HashSet<string>(Enum.GetNames(typeof(EnumPrefInfoCategory)));
 			foreach(string name in ArrayConfirmedNames) {

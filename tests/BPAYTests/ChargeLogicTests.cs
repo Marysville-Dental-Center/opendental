@@ -49,9 +49,9 @@ namespace BPAYTests {
 		[TestMethod]
 		public void PreferencePages_HideTheCombo() {
 			foreach(string userControl in new[] { "UserControlAccountPayments","UserControlEnterpriseAccount" }) {
-				string designer=File.ReadAllText(TestDb.FindRepoFile(Path.Combine("OpenDental","User Controls","Preferences",userControl+".Designer.cs")));
+				string designer=File.ReadAllText(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","User Controls","Preferences",userControl+".Designer.cs")));
 				StringAssert.Contains(designer,"this.comboPayPlansVersion.Visible = false;",userControl);
-				string code=File.ReadAllText(TestDb.FindRepoFile(Path.Combine("OpenDental","User Controls","Preferences",userControl+".cs")));
+				string code=File.ReadAllText(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","User Controls","Preferences",userControl+".cs")));
 				StringAssert.Contains(code,"PayPlanChargeLogic.GetReadOnlyText(",userControl);
 				StringAssert.Contains(code,"comboPayPlansVersion.Visible=false;",userControl);
 			}

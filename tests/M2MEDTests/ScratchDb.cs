@@ -50,7 +50,7 @@ namespace M2MEDTests {
 			return connection;
 		}
 
-		///<summary>Creates the database with every table of the Open Dental 26.1.70 reference schema embedded in OpenDentBusiness (no rows), adds the
+		///<summary>Creates the database with every table of the Open Dental 26.1.70 reference schema embedded in OpenPmsDentalBusiness (no rows), adds the
 		///preference rows the code under test reads, and connects the business layer to it.</summary>
 		public static void CreateFrom26_1Reference(string name) {
 			Drop(name);

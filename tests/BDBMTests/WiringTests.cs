@@ -31,7 +31,7 @@ namespace BDBMTests {
 
 		[TestMethod]
 		public void ToolsTab_HasTheThreeNewTools() {
-			string fillGridTools=MethodBody(Read("OpenDental","Forms","FormDatabaseMaintenance.cs"),"private void FillGridTools()");
+			string fillGridTools=MethodBody(Read("OpenPmsDental","Forms","FormDatabaseMaintenance.cs"),"private void FillGridTools()");
 			StringAssert.Contains(fillGridTools,"Lan.g(this,\"Base64 Documents\")");
 			StringAssert.Contains(fillGridTools,"row.Tag=new Action(Base64DocumentsFix);");
 			StringAssert.Contains(fillGridTools,"Lan.g(this,\"Invalid Characters (GDI+)\")");
@@ -42,7 +42,7 @@ namespace BDBMTests {
 
 		[TestMethod]
 		public void ToolHandlers_CallTheBusinessMethods() {
-			string source=Read("OpenDental","Forms","FormDatabaseMaintenance.Tools25.cs");
+			string source=Read("OpenPmsDental","Forms","FormDatabaseMaintenance.Tools25.cs");
 			string whiteSpace=MethodBody(source,"private void NotesWhiteSpaceFix()");
 			AssertBefore(whiteSpace,"MsgBox.Show(this,MsgBoxButtons.OKCancel","DatabaseMaintenances.NotesWithTooMuchWhiteSpace(true,DbmMode.Fix)");
 			StringAssert.Contains(whiteSpace,"MsgBoxCopyPaste");
@@ -57,7 +57,7 @@ namespace BDBMTests {
 
 		[TestMethod]
 		public void InvalidCharsWindow_FixNeedsTheReplicationCheckAndAConfirmation() {
-			string source=Read("OpenDental","Forms","FormDatabaseMaintInvalidChars.cs");
+			string source=Read("OpenPmsDental","Forms","FormDatabaseMaintInvalidChars.cs");
 			StringAssert.Contains(MethodBody(source,"private void Scan(List<string> listLabels)"),"butFix.Enabled=_canFix && ");
 			string fix=MethodBody(source,"private void butFix_Click(object sender,EventArgs e)");
 			AssertBefore(fix,"if(!_canFix","DatabaseMaintenances.InvalidCharsGdiFix(listLabels)");
@@ -69,7 +69,7 @@ namespace BDBMTests {
 
 		[TestMethod]
 		public void RawEmails_NormalizesWhiteSpaceBeforeComparing() {
-			string cleanUp=MethodBody(Read("OpenDentBusiness","Data Interface","DatabaseMaintenances.cs"),"public static string CleanUpRawEmails()");
+			string cleanUp=MethodBody(Read("OpenPmsDentalBusiness","Data Interface","DatabaseMaintenances.cs"),"public static string CleanUpRawEmails()");
 			StringAssert.Contains(cleanUp,"FindEmailAddressForRawEmail(listEmailAddresses,emailMessage.RecipientAddress)");
 			AssertBefore(cleanUp,"emailMessageOldCopy.BodyText=inMsgOld.Message.Body.Text;","NormalizeRawEmailWhiteSpace(emailMessageNewCopy,emailMessageOldCopy)");
 			AssertBefore(cleanUp,"NormalizeRawEmailWhiteSpace(emailMessageNewCopy,emailMessageOldCopy)","Crud.EmailMessageCrud.UpdateComparison(");
@@ -77,11 +77,11 @@ namespace BDBMTests {
 
 		[TestMethod]
 		public void NewFiles_AreInTheProjects() {
-			string openDental=Read("OpenDental","OpenDental.csproj");
+			string openDental=Read("OpenPmsDental","OpenPmsDental.csproj");
 			StringAssert.Contains(openDental,"<Compile Include=\"Forms\\FormDatabaseMaintInvalidChars.cs\">");
 			StringAssert.Contains(openDental,"<Compile Include=\"Forms\\FormDatabaseMaintInvalidChars.Designer.cs\">");
 			StringAssert.Contains(openDental,"<Compile Include=\"Forms\\FormDatabaseMaintenance.Tools25.cs\">");
-			string business=Read("OpenDentBusiness","OpenDentBusiness.csproj");
+			string business=Read("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj");
 			StringAssert.Contains(business,"<Compile Include=\"Misc\\DbmTextCleaner.cs\" />");
 			StringAssert.Contains(business,"<Compile Include=\"Data Interface\\DatabaseMaintenances.Base64Documents.cs\" />");
 			StringAssert.Contains(business,"<Compile Include=\"Data Interface\\DatabaseMaintenances.EmailText.cs\" />");

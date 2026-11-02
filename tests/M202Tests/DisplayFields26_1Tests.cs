@@ -69,7 +69,7 @@ namespace M202Tests {
 
 		[TestMethod]
 		public void DisplayFields_CallsTheHooksAfterItsSwitch() {
-			string source=File.ReadAllText(TestPaths.GetRepoFile("OpenDentBusiness","Data Interface","DisplayFields.cs"));
+			string source=File.ReadAllText(TestPaths.GetRepoFile("OpenPmsDentalBusiness","Data Interface","DisplayFields.cs"));
 			Assert.AreEqual(1,CountOf(source,"DisplayFields26_1.AddDefaultFields(displayFieldCategory,listDisplayFields);"));
 			Assert.AreEqual(1,CountOf(source,"DisplayFields26_1.AddAvailableFields(displayFieldCategory,listDisplayFields);"));
 		}

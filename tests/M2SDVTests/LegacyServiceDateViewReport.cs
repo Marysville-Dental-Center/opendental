@@ -1,4 +1,4 @@
-// The display query of Open Dental 24.3's Service Date View report (OpenDentBusiness/Reports/RpServiceDateView.cs, GetData, as it was before
+// The display query of Open Dental 24.3's Service Date View report (OpenPmsDentalBusiness/Reports/RpServiceDateView.cs, GetData, as it was before
 // package M2-SDV), kept here unchanged as the reference the new builder (ServiceDateViews.Build) must match. It wraps the report's core query,
 // which RpServiceDateView still has (private GetCoreQuery, called by reflection). GPL code from the Open Dental 24.3 source this fork is based on.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

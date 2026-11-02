@@ -16,7 +16,7 @@ namespace ReleaseFlowTests {
 		///<summary>A fake installation folder: two program files, a special sub folder, and a local settings file that is never published.</summary>
 		private static string MakeInstallFolder() {
 			string folder=TestPaths.NewTempFolder("archive_install");
-			File.WriteAllText(Path.Combine(folder,"OpenDental.exe"),"synthetic program "+Guid.NewGuid());
+			File.WriteAllText(Path.Combine(folder,"OpenPmsDental.exe"),"synthetic program "+Guid.NewGuid());
 			byte[] arrayBig=new byte[300000];
 			new Random(7).NextBytes(arrayBig);
 			File.WriteAllBytes(Path.Combine(folder,"Big.dll"),arrayBig);
@@ -74,7 +74,7 @@ namespace ReleaseFlowTests {
 				List<string> listExpected=ForkReleases.GetReleaseFiles(folder).Select(x => x.Replace('\\','/')).ToList();
 				listExpected.Add(ReleaseManifest.FILE_NAME);
 				CollectionAssert.AreEqual(listExpected,zipArchive.Entries.Select(x => x.FullName).ToList());
-				CollectionAssert.AreEqual(new[] { "Big.dll","OpenDental.exe","OpenDentalReplicationService/shader.dat",ReleaseManifest.FILE_NAME },
+				CollectionAssert.AreEqual(new[] { "Big.dll","OpenPmsDental.exe","OpenDentalReplicationService/shader.dat",ReleaseManifest.FILE_NAME },
 					zipArchive.Entries.Select(x => x.FullName).ToArray());
 				foreach(ReleaseManifestFile releaseManifestFile in releaseManifest.ListFiles) {
 					ZipArchiveEntry zipArchiveEntry=zipArchive.GetEntry(releaseManifestFile.RelativePath.Replace('\\','/'));
@@ -111,9 +111,9 @@ namespace ReleaseFlowTests {
 		public void Extract_RefusesEveryPathOutsideTheFolder() {
 			string folderParent=TestPaths.NewTempFolder("archive_slip");
 			string folderDest=Path.Combine(folderParent,"ForkRelease");
-			KeyValuePair<string,byte[]> entryGood=Entry("OpenDental.exe","good");
+			KeyValuePair<string,byte[]> entryGood=Entry("OpenPmsDental.exe","good");
 			string[] arrayHostile={ "../evil1.dll","..\\evil2.dll","Sparks3D/../../evil3.dll","/evil4.dll","\\evil5.dll","C:/evil6.dll",
-				"C:evil7.dll","OpenDental.exe:stream","\\\\server\\share\\evil8.dll" };
+				"C:evil7.dll","OpenPmsDental.exe:stream","\\\\server\\share\\evil8.dll" };
 			List<KeyValuePair<string,byte[]>> listEntries=new List<KeyValuePair<string,byte[]>> { entryGood };
 			listEntries.AddRange(arrayHostile.Select(x => Entry(x,"hostile")));
 			byte[] arrayArchive=MakeArchive(ManifestListing(entryGood),listEntries.ToArray());
@@ -125,7 +125,7 @@ namespace ReleaseFlowTests {
 			Assert.AreEqual(arrayHostile.Length,listProblems.Count,string.Join("; ",listProblems));
 			Assert.AreEqual(0,Directory.GetFiles(folderParent,"evil*",SearchOption.AllDirectories).Length,"Nothing was written outside the folder.");
 			Assert.IsFalse(File.Exists(@"C:\evil6.dll") || File.Exists(@"C:\evil4.dll") || File.Exists(@"C:\evil5.dll"));
-			Assert.AreEqual("good",File.ReadAllText(Path.Combine(folderDest,"OpenDental.exe")),"The listed file is still extracted; DownloadAndVerify "
+			Assert.AreEqual("good",File.ReadAllText(Path.Combine(folderDest,"OpenPmsDental.exe")),"The listed file is still extracted; DownloadAndVerify "
 				+"then fails because problems were found.");
 		}
 

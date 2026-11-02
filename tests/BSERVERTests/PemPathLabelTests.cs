@@ -13,9 +13,9 @@ namespace BSERVERTests {
 		public const string LABEL="SSL CA certificate (.pem) path";
 
 		private static readonly string[][] _arrayDesignerFiles=new[] {
-			new[] { "OpenDental","Forms","FormChooseDatabase.Designer.cs" },
-			new[] { "OpenDental","Forms","FormReportSetup.designer.cs" },
-			new[] { "OpenDental","User Controls","Preferences","UserControlServerConnections.Designer.cs" },
+			new[] { "OpenPmsDental","Forms","FormChooseDatabase.Designer.cs" },
+			new[] { "OpenPmsDental","Forms","FormReportSetup.designer.cs" },
+			new[] { "OpenPmsDental","User Controls","Preferences","UserControlServerConnections.Designer.cs" },
 		};
 
 		private static string ReadRepoFile(string[] arrayParts) {
@@ -45,10 +45,10 @@ namespace BSERVERTests {
 		[TestMethod]
 		public void CodeBehind_SavesTheSameStoredValues() {
 			//The stored values do not change: the connection's SslCA, ReportingServerSslCa and ReadOnlyServerSslCa.
-			StringAssert.Contains(ReadRepoFile(new[] { "OpenDental","Forms","FormChooseDatabase.cs" }),"CentralConnectionCur.SslCA=textSslCaPem.Text;");
-			StringAssert.Contains(ReadRepoFile(new[] { "OpenDental","Forms","FormReportSetup.cs" }),
+			StringAssert.Contains(ReadRepoFile(new[] { "OpenPmsDental","Forms","FormChooseDatabase.cs" }),"CentralConnectionCur.SslCA=textSslCaPem.Text;");
+			StringAssert.Contains(ReadRepoFile(new[] { "OpenPmsDental","Forms","FormReportSetup.cs" }),
 				"Prefs.UpdateString(PrefName.ReportingServerSslCa,textSslCaPem.Text);");
-			StringAssert.Contains(ReadRepoFile(new[] { "OpenDental","User Controls","Preferences","UserControlServerConnections.cs" }),
+			StringAssert.Contains(ReadRepoFile(new[] { "OpenPmsDental","User Controls","Preferences","UserControlServerConnections.cs" }),
 				"Prefs.UpdateString(PrefName.ReadOnlyServerSslCa,textSslCaPem.Text);");
 		}
 	}

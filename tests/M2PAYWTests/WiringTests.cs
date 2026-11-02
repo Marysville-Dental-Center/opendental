@@ -17,7 +17,7 @@ namespace M2PAYWTests {
 
 		[TestMethod]
 		public void PaymentWindow_SavingAnIncomeTransferChecksTheLimit() {
-			string source=Read("OpenDental","Forms","FormPayment.cs");
+			string source=Read("OpenPmsDental","Forms","FormPayment.cs");
 			int indexSave=source.IndexOf("private bool SavePaymentToDb()");
 			int indexBranch=source.IndexOf("paymentTypeParam=\"\";",indexSave);
 			int indexCheck=source.IndexOf("if(!IncomeTransferLimit_IsValid()) {",indexSave);
@@ -33,7 +33,7 @@ namespace M2PAYWTests {
 
 		[TestMethod]
 		public void PaymentWindow_InvoiceFilterIsFilledAndApplied() {
-			string source=Read("OpenDental","Forms","FormPayment.cs");
+			string source=Read("OpenPmsDental","Forms","FormPayment.cs");
 			Match matchFill=Regex.Match(source,@"private void FillFiltersChargesTreatPlan\(bool doPreserveValues\) \{(?<body>.*?)\n\t\t\}",RegexOptions.Singleline);
 			Assert.IsTrue(matchFill.Success);
 			StringAssert.Contains(matchFill.Groups["body"].Value,"FillFilterInvoices(doPreserveValues);");
@@ -45,7 +45,7 @@ namespace M2PAYWTests {
 
 		[TestMethod]
 		public void PaymentWindow_InvoiceDropDownSitsInTheOutstandingFilterGroup() {
-			string designer=Read("OpenDental","Forms","FormPayment.designer.cs");
+			string designer=Read("OpenPmsDental","Forms","FormPayment.designer.cs");
 			StringAssert.Contains(designer,"this.groupBoxFilteringOutstanding.Controls.Add(this.comboInvoiceOutstandingFilter);");
 			StringAssert.Contains(designer,"this.groupBoxFilteringOutstanding.Controls.Add(this.labelInvoiceOutstandingFilter);");
 			StringAssert.Contains(designer,"this.labelInvoiceOutstandingFilter.Text = \"Invoice:\";");
@@ -59,17 +59,17 @@ namespace M2PAYWTests {
 
 		[TestMethod]
 		public void Preferences_CheckboxMatchesItsPrefInfosEntryAndSavesWithASetupLog() {
-			XDocument xDocument=XDocument.Parse(Read("OpenDental","Resources","PrefInfos.xml"));
+			XDocument xDocument=XDocument.Parse(Read("OpenPmsDental","Resources","PrefInfos.xml"));
 			XElement xElement=xDocument.Descendants("PrefInf").Single(x => (string)x.Element("PrefName")=="IncomeTransfersLimitToPatPayments");
 			Assert.AreEqual("AccountPayments",(string)xElement.Element("Category"));
 			string controlName=(string)xElement.Element("ControlName");
 			string controlText=(string)xElement.Element("ControlText");
 			Assert.AreEqual("checkIncomeTransfersLimitToPatPayments",controlName);
-			string designer=Read("OpenDental","User Controls","Preferences","UserControlAccountPayments.Designer.cs");
+			string designer=Read("OpenPmsDental","User Controls","Preferences","UserControlAccountPayments.Designer.cs");
 			StringAssert.Contains(designer,"this.groupBoxPayments.Controls.Add(this."+controlName+");");
 			StringAssert.Contains(designer,"this."+controlName+".Text = \""+controlText+"\";");
 			Assert.AreEqual("Limit manual income transfers to the amount of patient payments",controlText,"The label the release note gives.");
-			string code=Read("OpenDental","User Controls","Preferences","UserControlAccountPayments.cs");
+			string code=Read("OpenPmsDental","User Controls","Preferences","UserControlAccountPayments.cs");
 			StringAssert.Contains(code,controlName+".Checked=PrefC.GetBool(PrefName.IncomeTransfersLimitToPatPayments);");
 			StringAssert.Contains(code,"Prefs.UpdateBool(PrefName.IncomeTransfersLimitToPatPayments,"+controlName+".Checked)");
 			StringAssert.Contains(code,"SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,");

@@ -23,7 +23,7 @@ namespace VPEARL1Tests {
 
 		[TestMethod]
 		public void SendButton_UsesTheResendRule() {
-			string body=MethodBody(Read("OpenDental","Main Modules","ControlImages.cs"),"private void ToolBarProgram_Click(");
+			string body=MethodBody(Read("OpenPmsDental","Main Modules","ControlImages.cs"),"private void ToolBarProgram_Click(");
 			StringAssert.Contains(body,"PearlRequests.CanSendToPearl(pearlRequest)");
 			StringAssert.Contains(body,"PearlRequests.GetCannotSendText(pearlRequest)");
 			Assert.IsFalse(body.Contains("EnumPearlStatus.TimedOut"),"The 24.3 rule (only TimedOut is sent again) is gone.");
@@ -31,7 +31,7 @@ namespace VPEARL1Tests {
 
 		[TestMethod]
 		public void StatusPanel_ShowsEveryStatusText() {
-			string body=MethodBody(Read("OpenDental","Main Modules","ControlImages.cs"),"private bool ShouldPearlPanelShow(");
+			string body=MethodBody(Read("OpenPmsDental","Main Modules","ControlImages.cs"),"private bool ShouldPearlPanelShow(");
 			StringAssert.Contains(body,"PearlRequests.HasStatusToShow(pearlRequest)");
 			StringAssert.Contains(body,"PearlRequests.GetStatusText(pearlRequest.RequestStatus)");
 			Assert.IsFalse(body.Contains("RequestStatus.ToString()"),"The enum name is no longer shown as the status.");
@@ -39,7 +39,7 @@ namespace VPEARL1Tests {
 
 		[TestMethod]
 		public void Bridge_UsesTheResendRule() {
-			string source=Read("OpenDentBusiness","Bridges","Pearl","Pearl.cs");
+			string source=Read("OpenPmsDentalBusiness","Bridges","Pearl","Pearl.cs");
 			string bodySetup=MethodBody(source,"public static Pearl SetupPearlForSendingSingle(");
 			StringAssert.Contains(bodySetup,"PearlRequests.CanSendToPearl(pearlRequest)");
 			Assert.IsFalse(bodySetup.Contains("EnumPearlStatus.TimedOut"));

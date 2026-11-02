@@ -125,7 +125,7 @@ namespace AdoptionValidation {
 
 		private static readonly Lazy<SchemaChanges> _lazySchemaChanges=new Lazy<SchemaChanges>(ReadSchemaChanges);
 
-		///<summary>The schema changes, from the two references embedded in OpenDentBusiness (no database). Read once.</summary>
+		///<summary>The schema changes, from the two references embedded in OpenPmsDentalBusiness (no database). Read once.</summary>
 		public static SchemaChanges GetSchemaChanges() {
 			return _lazySchemaChanges.Value;
 		}

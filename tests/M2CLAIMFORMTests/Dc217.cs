@@ -13,7 +13,7 @@ using OpenPmsDentalBusiness;
 
 namespace M2CLAIMFORMTests {
 	public static class Dc217 {
-		public const string RelativePath=@"OpenDentBusiness\Resources\ClaimForms\ClaimFormDenti-Cal DC217_2019.xml";
+		public const string RelativePath=@"OpenPmsDentalBusiness\Resources\ClaimForms\ClaimFormDenti-Cal DC217_2019.xml";
 		///<summary>The service line count of the DC-217.</summary>
 		public const int LINE_COUNT=15;
 		///<summary>The fields of one service line, left to right: tooth or letter/arch/quad, surface, description, date of service, procedure
@@ -25,7 +25,7 @@ namespace M2CLAIMFORMTests {
 			return ClaimForms.DeserializeClaimForm(TestDb.FindRepoFile(RelativePath),"");
 		}
 
-		///<summary>The form as OpenDentBusiness ships it (embedded resource).</summary>
+		///<summary>The form as OpenPmsDentalBusiness ships it (embedded resource).</summary>
 		public static ClaimForm FromResource() {
 			return ClaimForms.GetInternalClaim(ClaimForms.DescriptionDentiCalDC217_2019);
 		}

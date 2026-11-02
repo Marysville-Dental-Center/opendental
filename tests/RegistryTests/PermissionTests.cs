@@ -71,7 +71,7 @@ namespace RegistryTests {
 
 		#region Security tree (source checks; the tree is a WinForms control)
 		private static string GetTreeSource() {
-			return File.ReadAllText(TestPaths.GetRepoFile("OpenDental","User Controls","UserControlSecurityTree.cs"));
+			return File.ReadAllText(TestPaths.GetRepoFile("OpenPmsDental","User Controls","UserControlSecurityTree.cs"));
 		}
 
 		///<summary>The body of FillTreePermissionsInitial.</summary>
@@ -153,7 +153,7 @@ namespace RegistryTests {
 		public void OldPermissionName_IsGoneFromTheCode() {
 			string root=TestPaths.GetRepositoryRoot();
 			List<string> listHits=new List<string>();
-			foreach(string folder in new[] { "OpenDental","OpenDentBusiness","WpfControlsOD" }) {
+			foreach(string folder in new[] { "OpenPmsDental","OpenPmsDentalBusiness","WpfControlsOD" }) {
 				foreach(string path in Directory.EnumerateFiles(Path.Combine(root,folder),"*.cs",SearchOption.AllDirectories)) {
 					if(path.Contains(Path.DirectorySeparatorChar+"obj"+Path.DirectorySeparatorChar)) {
 						continue;

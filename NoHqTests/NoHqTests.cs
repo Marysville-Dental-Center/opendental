@@ -68,7 +68,7 @@ namespace NoHqTests {
 		[TestMethod]
 		public void WebServiceMainHQ_ProxyNoLongerUsesBridgesTypes() {
 			//The PostcardMania helpers were the last reason for "using Bridges;" here. Bridges.dll itself is deleted (vendor-direct package Z2).
-			string source=File.ReadAllText(Path.Combine(FindRepoRoot(),"OpenDentBusiness","WebServices","WebServiceMainHQProxy.cs"));
+			string source=File.ReadAllText(Path.Combine(FindRepoRoot(),"OpenPmsDentalBusiness","WebServices","WebServiceMainHQProxy.cs"));
 			Assert.IsFalse(source.Contains("using Bridges;"),"WebServiceMainHQProxy.cs should not import Bridges.dll types.");
 			Assert.IsFalse(source.Contains("PostcardMania"),"WebServiceMainHQProxy.cs should not name PostcardMania types.");
 		}
@@ -78,11 +78,11 @@ namespace NoHqTests {
 			//Every HQ-brokered vendor flow was replaced, so only the factory itself (and unit tests) may still ask for the HQ web service.
 			string root=FindRepoRoot();
 			List<string> listOffenders=new List<string>();
-			foreach(string folder in new[] { "OpenDentBusiness","OpenDental","WpfControlsOD","CodeBase" }) {
+			foreach(string folder in new[] { "OpenPmsDentalBusiness","OpenPmsDental","WpfControlsOD","CodeBase" }) {
 				foreach(string path in Directory.EnumerateFiles(Path.Combine(root,folder),"*.cs",SearchOption.AllDirectories)) {
 					string relativePath=path.Substring(root.Length+1);
 					if(relativePath.Contains(@"\obj\") || relativePath.Contains(@"\bin\") || relativePath.Contains(@"\Web References\")
-						|| relativePath.StartsWith(@"OpenDentBusiness\WebServices\",StringComparison.OrdinalIgnoreCase))
+						|| relativePath.StartsWith(@"OpenPmsDentalBusiness\WebServices\",StringComparison.OrdinalIgnoreCase))
 					{
 						continue;
 					}
@@ -216,7 +216,7 @@ namespace NoHqTests {
 			//The Chart module only adds the eRx toolbar button once the eRx program link is enabled, and ODToolBarButtonCollection's
 			//string indexer returns null for a missing button. ControlChart is WinForms (not referenced here), so this checks the source:
 			//every member access on Buttons["eRx"] must sit inside an "if(ToolBarMain.Buttons["eRx"]!=null)" block.
-			string pathControlChart=Path.Combine(FindRepoRoot(),"OpenDental","Main Modules","ControlChart.cs");
+			string pathControlChart=Path.Combine(FindRepoRoot(),"OpenPmsDental","Main Modules","ControlChart.cs");
 			string[] arrayLines=File.ReadAllLines(pathControlChart);
 			int countAccesses=0;
 			for(int i=0;i<arrayLines.Length;i++) {

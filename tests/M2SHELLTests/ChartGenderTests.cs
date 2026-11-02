@@ -21,7 +21,7 @@ namespace M2SHELLTests {
 
 		[TestMethod]
 		public void ChartModule_RendersTheRow() {
-			string source=TestPaths.ReadRepoFile("OpenDental","Main Modules","ControlChart.cs");
+			string source=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","ControlChart.cs");
 			int start=source.IndexOf("public void FillPtInfo(");
 			int end=source.IndexOf("public void FunctionKeyPressContrChart(",start);
 			Assert.IsTrue(start>0 && end>start,"FillPtInfo not found.");
@@ -37,7 +37,7 @@ namespace M2SHELLTests {
 		[TestMethod]
 		public void FamilyModule_UsesTheSameText() {
 			//The spec: one rendering in both modules. The Family module's 24.3 row showed the raw enum name ("Unknown" for an unknown gender).
-			string source=TestPaths.ReadRepoFile("OpenDental","Main Modules","ControlFamily.cs");
+			string source=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","ControlFamily.cs");
 			int idxCase=source.IndexOf("case \"Gender\":");
 			Assert.IsTrue(idxCase>0,"The Family patient information switch has a Gender case.");
 			int idxBreak=source.IndexOf("break;",idxCase);

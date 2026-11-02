@@ -14,21 +14,21 @@ namespace VendorDirectTests.Erx {
 	public class ErxSourceTests {
 		///<summary>The eRx files the ERX package owns.</summary>
 		private static readonly string[] _arrayErxFiles={
-			@"OpenDentBusiness\WebBridges\Erx\DoseSpot.cs",
-			@"OpenDentBusiness\WebBridges\Erx\DoseSpotV2.cs",
-			@"OpenDentBusiness\WebBridges\Erx\Erx.cs",
-			@"OpenDentBusiness\WebBridges\Erx\ErxXml.cs",
-			@"OpenDentBusiness\WebBridges\Erx\NewCrop\NewCrop.cs",
-			@"OpenDentBusiness\WebBridges\Erx\NewCrop\NewCropConfig.cs",
-			@"OpenDentBusiness\WebBridges\Erx\DoseSpot\DoseSpotApiClient.cs",
-			@"OpenDentBusiness\WebBridges\Erx\DoseSpot\DoseSpotConfig.cs",
-			@"OpenDentBusiness\WebBridges\Erx\DoseSpot\DoseSpotSso.cs",
-			@"OpenDentBusiness\WebBridges\Erx\DoseSpot\ErxPollThrottle.cs",
-			@"OpenDental\Forms\FormErxSetup.cs",
-			@"OpenDental\Forms\FormErxSetup.Designer.cs",
-			@"OpenDental\Forms\FormDoseSpotProperyEdit.cs",
-			@"OpenDental\Forms\FormDoseSpotProperyEdit.designer.cs",
-			@"OpenDental\Forms\FormErx.cs",
+			@"OpenPmsDentalBusiness\WebBridges\Erx\DoseSpot.cs",
+			@"OpenPmsDentalBusiness\WebBridges\Erx\DoseSpotV2.cs",
+			@"OpenPmsDentalBusiness\WebBridges\Erx\Erx.cs",
+			@"OpenPmsDentalBusiness\WebBridges\Erx\ErxXml.cs",
+			@"OpenPmsDentalBusiness\WebBridges\Erx\NewCrop\NewCrop.cs",
+			@"OpenPmsDentalBusiness\WebBridges\Erx\NewCrop\NewCropConfig.cs",
+			@"OpenPmsDentalBusiness\WebBridges\Erx\DoseSpot\DoseSpotApiClient.cs",
+			@"OpenPmsDentalBusiness\WebBridges\Erx\DoseSpot\DoseSpotConfig.cs",
+			@"OpenPmsDentalBusiness\WebBridges\Erx\DoseSpot\DoseSpotSso.cs",
+			@"OpenPmsDentalBusiness\WebBridges\Erx\DoseSpot\ErxPollThrottle.cs",
+			@"OpenPmsDental\Forms\FormErxSetup.cs",
+			@"OpenPmsDental\Forms\FormErxSetup.Designer.cs",
+			@"OpenPmsDental\Forms\FormDoseSpotProperyEdit.cs",
+			@"OpenPmsDental\Forms\FormDoseSpotProperyEdit.designer.cs",
+			@"OpenPmsDental\Forms\FormErx.cs",
 		};
 
 		private static string Read(string relativePath) {
@@ -37,7 +37,7 @@ namespace VendorDirectTests.Erx {
 
 		private static IEnumerable<string> GetSourceFiles() {
 			string root=FoundationLayoutTests.GetRepositoryRoot();
-			foreach(string folder in new[] { "OpenDentBusiness","OpenDental","WpfControlsOD","CodeBase" }) {
+			foreach(string folder in new[] { "OpenPmsDentalBusiness","OpenPmsDental","WpfControlsOD","CodeBase" }) {
 				foreach(string path in Directory.EnumerateFiles(Path.Combine(root,folder),"*.cs",SearchOption.AllDirectories)) {
 					string relative=path.Substring(root.Length).TrimStart('\\','/');
 					if(Regex.IsMatch(relative,@"(^|\\)(bin|obj)\\")) {
@@ -59,7 +59,7 @@ namespace VendorDirectTests.Erx {
 
 		[TestMethod]
 		public void ControlChart_ErxPathsAreLocal() {
-			string text=Read(@"OpenDental\Main Modules\ControlChart.cs");
+			string text=Read(@"OpenPmsDental\Main Modules\ControlChart.cs");
 			StringAssert.DoesNotMatch(text,new Regex(@"CustomerUpdatesProxy|RequestCustomerID|GetErxAccess|SyncClinicErxsWithHQ|MigrateDoseSpotIfNeeded"
 				+@"|ComposeNewRxNewCropWebRequest|NewCropIsAccountIdValid|DoseSpotV2\.|DoseSpotApiVersion|UpdateServerAddress"));
 			StringAssert.DoesNotMatch(text,new Regex(@"Contact support to enable eRx|see our online manual|Fees are associated",RegexOptions.IgnoreCase));
@@ -73,7 +73,7 @@ namespace VendorDirectTests.Erx {
 
 		[TestMethod]
 		public void NewCrop_HasNoCompiledInCredentials() {
-			string text=Read(@"OpenDentBusiness\WebBridges\Erx\NewCrop\NewCrop.cs");
+			string text=Read(@"OpenPmsDentalBusiness\WebBridges\Erx\NewCrop\NewCrop.cs");
 			Assert.IsFalse(text.Contains("MiscUtils.Decrypt(\""),"Open Dental's encrypted NewCrop credentials must stay deleted.");
 			StringAssert.DoesNotMatch(text,new Regex("\"OpenDental(Lexi)?\""));
 			foreach(string file in _arrayErxFiles) {
@@ -85,9 +85,9 @@ namespace VendorDirectTests.Erx {
 		public void VendorUrls_LiveOnlyInTheirConfigClasses() {
 			//Identifiers (XML and SOAP namespaces in NCScript.cs and the generated web references) and the web reference defaults in
 			//Settings.Designer.cs are not calls, so they are allowed.
-			string[] arrayAllowedNewCrop={ @"OpenDentBusiness\WebBridges\Erx\NewCrop\NewCropConfig.cs",@"OpenDentBusiness\WebBridges\Erx\NewCrop\NCScript.cs",
-				@"OpenDentBusiness\Properties\Settings.Designer.cs" };
-			string[] arrayAllowedDoseSpot={ @"OpenDentBusiness\WebBridges\Erx\DoseSpot\DoseSpotConfig.cs",@"OpenDentBusiness\Properties\Settings.Designer.cs" };
+			string[] arrayAllowedNewCrop={ @"OpenPmsDentalBusiness\WebBridges\Erx\NewCrop\NewCropConfig.cs",@"OpenPmsDentalBusiness\WebBridges\Erx\NewCrop\NCScript.cs",
+				@"OpenPmsDentalBusiness\Properties\Settings.Designer.cs" };
+			string[] arrayAllowedDoseSpot={ @"OpenPmsDentalBusiness\WebBridges\Erx\DoseSpot\DoseSpotConfig.cs",@"OpenPmsDentalBusiness\Properties\Settings.Designer.cs" };
 			foreach(string file in GetSourceFiles()) {
 				if(file.Contains(@"\Web References\")) {
 					continue;
@@ -100,24 +100,24 @@ namespace VendorDirectTests.Erx {
 					Assert.IsTrue(arrayAllowedDoseSpot.Contains(file,StringComparer.OrdinalIgnoreCase),"DoseSpot URL outside DoseSpotConfig: "+file);
 				}
 			}
-			StringAssert.DoesNotMatch(Read(@"OpenDentBusiness\Properties\Settings.Designer.cs"),new Regex(@"http://secure\.newcropaccounts"));
+			StringAssert.DoesNotMatch(Read(@"OpenPmsDentalBusiness\Properties\Settings.Designer.cs"),new Regex(@"http://secure\.newcropaccounts"));
 		}
 
 		[TestMethod]
 		public void ErxScreens_AreNeutral() {
 			Regex regex=new Regex(@"Open Dental|eRxTeamPW|acknowledge and approve|See the website|online manual|contact support|Call support",RegexOptions.IgnoreCase);
-			foreach(string file in _arrayErxFiles.Where(x => x.StartsWith(@"OpenDental\"))) {
+			foreach(string file in _arrayErxFiles.Where(x => x.StartsWith(@"OpenPmsDental\"))) {
 				Match match=regex.Match(Read(file));
 				Assert.IsFalse(match.Success,file+" has \""+match.Value+"\"");
 			}
-			StringAssert.DoesNotMatch(Read(@"OpenDental\Forms\FormProvEdit.cs"),new Regex(@"acknowledge and approve Electronic Rx|See the website"));
-			string business=Read(@"OpenDentBusiness\WebBridges\Erx\DoseSpot.cs")+Read(@"OpenDentBusiness\WebBridges\Erx\Erx.cs");
+			StringAssert.DoesNotMatch(Read(@"OpenPmsDental\Forms\FormProvEdit.cs"),new Regex(@"acknowledge and approve Electronic Rx|See the website"));
+			string business=Read(@"OpenPmsDentalBusiness\WebBridges\Erx\DoseSpot.cs")+Read(@"OpenPmsDentalBusiness\WebBridges\Erx\Erx.cs");
 			StringAssert.DoesNotMatch(business,new Regex(@"Call support|acknowledge Electronic Prescription fees"));
 		}
 
 		[TestMethod]
 		public void FormErx_KeepsDevToolsClosedAndGuardsNavigation() {
-			string text=Read(@"OpenDental\Forms\FormErx.cs");
+			string text=Read(@"OpenPmsDental\Forms\FormErx.cs");
 			StringAssert.Contains(text,"AreDevToolsEnabled=false");
 			StringAssert.Contains(text,"NavigationStarting+=");
 			StringAssert.Contains(text,"NewCropConfig.Load().GetRxEntryUrl()");
@@ -125,7 +125,7 @@ namespace VendorDirectTests.Erx {
 
 		[TestMethod]
 		public void ErxSetup_EncryptsSecretsBeforeSaving() {
-			string text=Read(@"OpenDental\Forms\FormErxSetup.cs");
+			string text=Read(@"OpenPmsDental\Forms\FormErxSetup.cs");
 			StringAssert.Contains(text,"SecretValue.Protect(");
 			StringAssert.Contains(text,"DoseSpotConfig.EnsureProperties()");
 			StringAssert.Contains(text,"NewCropConfig.InsertMissingProperties()");

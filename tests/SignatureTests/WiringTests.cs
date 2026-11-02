@@ -8,7 +8,7 @@ namespace SignatureTests {
 	[TestClass]
 	public class WiringTests {
 		private static string Form(string name) {
-			return TestPaths.ReadRepoFile("OpenDental","Forms",name+".cs");
+			return TestPaths.ReadRepoFile("OpenPmsDental","Forms",name+".cs");
 		}
 
 		[TestMethod]
@@ -17,7 +17,7 @@ namespace SignatureTests {
 			StringAssert.Contains(source,"checkUseDomainLogin.Visible=_isSimpleSwitch && DomainLogin.IsEnabled()");
 			StringAssert.Contains(source,"DomainLogin.AuthenticateForSwitch(");
 			StringAssert.Contains(source,"IsDomainAuthenticated=true");
-			StringAssert.Contains(TestPaths.ReadRepoFile("OpenDental","Forms","FormLogOn.designer.cs"),"Use Windows (domain) login");
+			StringAssert.Contains(TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormLogOn.designer.cs"),"Use Windows (domain) login");
 		}
 
 		[TestMethod]
@@ -49,7 +49,7 @@ namespace SignatureTests {
 
 		[TestMethod]
 		public void PrintedSheets_ShowWhoSigned() {
-			string source=TestPaths.ReadRepoFile("OpenDentBusiness","SheetFramework","SheetDrawingJob.cs");
+			string source=TestPaths.ReadRepoFile("OpenPmsDentalBusiness","SheetFramework","SheetDrawingJob.cs");
 			StringAssert.Contains(source,"SheetSignatureSigners.GetSignedByText(field.UserSigned,Userods.GetName)");
 		}
 

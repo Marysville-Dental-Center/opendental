@@ -53,7 +53,7 @@ namespace VendorDirectTests.DentalXChange {
 		[TestMethod]
 		public void Source_NoPartnerIdentityIsCompiledIn() {
 			//Open Dental's and Practice-Web's DCI service IDs and client names must not come back in any DentalXChange caller.
-			foreach(string relativePath in new[] { @"OpenDentBusiness\Eclaims\ClaimConnect.cs",@"OpenDental\Forms\FormInsPlan.cs" }) {
+			foreach(string relativePath in new[] { @"OpenPmsDentalBusiness\Eclaims\ClaimConnect.cs",@"OpenPmsDental\Forms\FormInsPlan.cs" }) {
 				string source=DxcTestFiles.ReadRepoFile(relativePath);
 				Assert.IsFalse(source.Contains("002778"),relativePath+": Open Dental's DCI service ID.");
 				Assert.IsFalse(source.Contains("001513"),relativePath+": Practice-Web's DCI service ID.");
@@ -61,7 +61,7 @@ namespace VendorDirectTests.DentalXChange {
 				Assert.IsFalse(source.Contains("\"Practice-Web\""),relativePath);
 				Assert.IsFalse(source.Contains("UploaderName=OpenDental"),relativePath);
 			}
-			string claimConnect=DxcTestFiles.ReadRepoFile(@"OpenDentBusiness\Eclaims\ClaimConnect.cs");
+			string claimConnect=DxcTestFiles.ReadRepoFile(@"OpenPmsDentalBusiness\Eclaims\ClaimConnect.cs");
 			StringAssert.Contains(claimConnect,"DxcPartnerIdentity.GetConfiguredOrThrow()");
 		}
 

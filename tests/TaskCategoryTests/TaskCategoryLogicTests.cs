@@ -1,4 +1,4 @@
-// Unit tests for the task category helpers in OpenDentBusiness/Data Interface/Tasks.cs (feature v25_2-manage-task-category). No database.
+// Unit tests for the task category helpers in OpenPmsDentalBusiness/Data Interface/Tasks.cs (feature v25_2-manage-task-category). No database.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.Collections.Generic;
 using System.Drawing;

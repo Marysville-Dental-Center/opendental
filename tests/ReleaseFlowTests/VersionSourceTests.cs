@@ -15,19 +15,19 @@ namespace ReleaseFlowTests {
 	public class VersionSourceTests {
 		[TestMethod]
 		public void OpenDentalExe_ReleaseVersionIs_0_0_AndCompatVersionStaysOn_24_3_63() {
-			string pathExe=Path.Combine(TestPaths.RepoRoot,"OpenDental","bin","Debug","OpenDental.exe");
+			string pathExe=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug","OpenPmsDental.exe");
 			if(!File.Exists(pathExe)) {
-				Assert.Inconclusive("OpenDental is not built.");
+				Assert.Inconclusive("OpenPmsDental is not built.");
 			}
 			FileVersionInfo fileVersionInfo=FileVersionInfo.GetVersionInfo(pathExe);
 			Assert.AreEqual("0.0",fileVersionInfo.ProductVersion,"AssemblyInformationalVersion: the release version shown in About.");
 			Assert.AreEqual("24.3.63.0",fileVersionInfo.FileVersion,"The compatibility version used by the database checks.");
-			string assemblyInfo=TestPaths.ReadSource("OpenDental","Properties","AssemblyInfo.cs");
+			string assemblyInfo=TestPaths.ReadSource("OpenPmsDental","Properties","AssemblyInfo.cs");
 			StringAssert.Contains(assemblyInfo,"[assembly: AssemblyVersion(\"24.3.63.0\")]");
-			//The release version lives in the shared assembly info (package REL-FILES), which OpenDental.csproj links.
+			//The release version lives in the shared assembly info (package REL-FILES), which OpenPmsDental.csproj links.
 			string sharedAssemblyInfo=TestPaths.ReadSource("SharedAssemblyInfo.cs");
 			StringAssert.Contains(sharedAssemblyInfo,"[assembly: AssemblyInformationalVersion(\"0.0\")]");
-			StringAssert.Contains(TestPaths.ReadSource("OpenDental","OpenDental.csproj"),"<Compile Include=\"..\\SharedAssemblyInfo.cs\">");
+			StringAssert.Contains(TestPaths.ReadSource("OpenPmsDental","OpenPmsDental.csproj"),"<Compile Include=\"..\\SharedAssemblyInfo.cs\">");
 		}
 
 		[TestMethod]
@@ -65,14 +65,14 @@ namespace ReleaseFlowTests {
 		[TestMethod]
 		public void GuardCode_HasNoDebugBypass() {
 			foreach(string fileName in new[] { "ForkVersionGuard.cs","ForkVersions.cs","Adoption.cs","ForkMigrationHandOff.cs" }) {
-				string text=StripComments(TestPaths.ReadSource("OpenDentBusiness","Misc","ForkMigrations",fileName));
+				string text=StripComments(TestPaths.ReadSource("OpenPmsDentalBusiness","Misc","ForkMigrations",fileName));
 				Assert.IsFalse(text.Contains("IsDebug"),fileName);
 				Assert.IsFalse(text.Contains("#if"),fileName);
 			}
-			string textPrefL=TestPaths.ReadSource("OpenDental","Logic","PrefL.cs");
+			string textPrefL=TestPaths.ReadSource("OpenPmsDental","Logic","PrefL.cs");
 			string guardMethod=GetMethodBody(textPrefL,"public static bool CheckForkVersionGuard(");
 			Assert.IsFalse(Regex.IsMatch(guardMethod,@"if\(\s*ODBuild\.IsDebug\(\)\s*\)\s*\{?\s*return true"),"The guard never returns early in Debug builds.");
-			string textMain=TestPaths.ReadSource("OpenDental","Main Modules","FormOpenDental.cs");
+			string textMain=TestPaths.ReadSource("OpenPmsDental","Main Modules","FormOpenDental.cs");
 			List<string> listGuardCalls=textMain.Split('\n').Where(x => x.Contains("PrefL.CheckForkVersionGuard(")).ToList();
 			Assert.AreEqual(2,listGuardCalls.Count,"Before and after conversion.");
 			Assert.IsTrue(listGuardCalls.All(x => !x.Contains("IsDebug")));
@@ -86,7 +86,7 @@ namespace ReleaseFlowTests {
 		[TestMethod]
 		public void OpenDentalUpdateFileRows_AreOnlyEverDeleted() {
 			List<string> listHits=new List<string>();
-			foreach(string folder in new[] { "OpenDental","OpenDentBusiness","UpdateFileCopier","WpfControlsOD","CodeBase" }) {
+			foreach(string folder in new[] { "OpenPmsDental","OpenPmsDentalBusiness","UpdateFileCopier","WpfControlsOD","CodeBase" }) {
 				foreach(string path in GetSourceFiles(Path.Combine(TestPaths.RepoRoot,folder))) {
 					string text=StripComments(File.ReadAllText(path));
 					if(Regex.IsMatch(text,@"DocumentMiscType\.UpdateFiles(Segment)?\b")) {
@@ -94,9 +94,9 @@ namespace ReleaseFlowTests {
 					}
 				}
 			}
-			CollectionAssert.AreEqual(new[] { Path.Combine("OpenDentBusiness","Data Interface","DocumentMiscs.cs") },listHits.ToArray(),
+			CollectionAssert.AreEqual(new[] { Path.Combine("OpenPmsDentalBusiness","Data Interface","DocumentMiscs.cs") },listHits.ToArray(),
 				"Only DocumentMiscs may name Open Dental's update file types.");
-			string textDocumentMiscs=StripComments(TestPaths.ReadSource("OpenDentBusiness","Data Interface","DocumentMiscs.cs"));
+			string textDocumentMiscs=StripComments(TestPaths.ReadSource("OpenPmsDentalBusiness","Data Interface","DocumentMiscs.cs"));
 			string bodyDelete=GetMethodBody(textDocumentMiscs,"public static long DeleteOpenDentalUpdateFiles(");
 			int countAll=Regex.Matches(textDocumentMiscs,@"DocumentMiscType\.UpdateFiles(Segment)?\b").Count;
 			int countDelete=Regex.Matches(bodyDelete,@"DocumentMiscType\.UpdateFiles(Segment)?\b").Count;
@@ -107,9 +107,9 @@ namespace ReleaseFlowTests {
 		[TestMethod]
 		public void NoDowngradePrompt_AndNoOpenDentalSetupDownload() {
 			foreach(string[] arrayPath in new[] {
-				new[] { "OpenDental","Logic","PrefL.cs" },
-				new[] { "OpenDental","Misc","ClassConvertDatabase.cs" },
-				new[] { "OpenDental","Main Modules","FormOpenDental.cs" },
+				new[] { "OpenPmsDental","Logic","PrefL.cs" },
+				new[] { "OpenPmsDental","Misc","ClassConvertDatabase.cs" },
+				new[] { "OpenPmsDental","Main Modules","FormOpenDental.cs" },
 				new[] { "UpdateFileCopier","FormMain.cs" } })
 			{
 				string text=StripComments(TestPaths.ReadSource(arrayPath));
@@ -117,7 +117,7 @@ namespace ReleaseFlowTests {
 					Assert.IsFalse(match.Value.ToLowerInvariant().Contains("downgrade"),string.Join("\\",arrayPath)+": "+match.Value);
 				}
 			}
-			string textPrefL=StripComments(TestPaths.ReadSource("OpenDental","Logic","PrefL.cs"));
+			string textPrefL=StripComments(TestPaths.ReadSource("OpenPmsDental","Logic","PrefL.cs"));
 			Assert.IsFalse(textPrefL.Contains("Setup.exe"),"PrefL must not run or download Open Dental's setup program.");
 			Assert.IsFalse(textPrefL.Contains("LaunchCorrespondingVersion"));
 			Assert.IsFalse(textPrefL.Contains("CheckProgramVersionClassic"));
@@ -128,7 +128,7 @@ namespace ReleaseFlowTests {
 		[TestMethod]
 		public void UpdateFileCopier_ChecksTheReleaseManifest() {
 			string textCsproj=TestPaths.ReadSource("UpdateFileCopier","UpdateFileCopier.csproj");
-			StringAssert.Contains(textCsproj,@"..\OpenDentBusiness\Misc\ForkRelease\ReleaseManifest.cs");
+			StringAssert.Contains(textCsproj,@"..\OpenPmsDentalBusiness\Misc\ForkRelease\ReleaseManifest.cs");
 			string text=StripComments(TestPaths.ReadSource("UpdateFileCopier","FormMain.cs"));
 			StringAssert.Contains(text,"VerifyRelease(_sourceDirectory)");
 			StringAssert.Contains(text,"VerifyRelease(TempPathSource)");

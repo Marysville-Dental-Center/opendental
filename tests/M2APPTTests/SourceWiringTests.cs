@@ -11,7 +11,7 @@ namespace M2APPTTests {
 	[TestClass]
 	public class SourceWiringTests {
 		private static string ReadControlAppt() {
-			return RepoFiles.Read("OpenDental","Main Modules","ControlAppt.cs");
+			return RepoFiles.Read("OpenPmsDental","Main Modules","ControlAppt.cs");
 		}
 
 		#region Blockout permissions (25.4)
@@ -55,9 +55,9 @@ namespace M2APPTTests {
 		public void BlockoutCode_NoLongerChecksTheOldSinglePermission() {
 			//13 now means Blockout Edit; every check goes through BlockoutPerms with an action instead.
 			List<string> listFiles=new List<string> {
-				RepoFiles.Read("OpenDental","Main Modules","ControlAppt.cs"),
-				RepoFiles.Read("OpenDental","Forms","FormBlockoutCutCopyPaste.cs"),
-				RepoFiles.Read("OpenDental","Forms","FormScheduleBlockEdit.cs"),
+				RepoFiles.Read("OpenPmsDental","Main Modules","ControlAppt.cs"),
+				RepoFiles.Read("OpenPmsDental","Forms","FormBlockoutCutCopyPaste.cs"),
+				RepoFiles.Read("OpenPmsDental","Forms","FormScheduleBlockEdit.cs"),
 			};
 			foreach(string source in listFiles.Select(x => RepoFiles.StripLineComments(x))) {
 				Assert.IsFalse(Regex.IsMatch(source,@"EnumPermType\.Blockouts\b(?!Flagged)"),"EnumPermType.Blockouts is used directly.");
@@ -67,7 +67,7 @@ namespace M2APPTTests {
 
 		[TestMethod]
 		public void FormScheduleBlockEdit_AddForNewEditForExistingDeleteForDelete() {
-			string source=RepoFiles.StripLineComments(RepoFiles.Read("OpenDental","Forms","FormScheduleBlockEdit.cs"));
+			string source=RepoFiles.StripLineComments(RepoFiles.Read("OpenPmsDental","Forms","FormScheduleBlockEdit.cs"));
 			StringAssert.Contains(RepoFiles.GetMethod(source,"FormScheduleBlockEdit_Load"),"IsNew ? BlockoutAction.Create : BlockoutAction.Edit");
 			StringAssert.Contains(RepoFiles.GetMethod(source,"butDelete_Click"),"BlockoutAction.Delete");
 			string methodSave=RepoFiles.GetMethod(source,"butSave_Click");
@@ -78,7 +78,7 @@ namespace M2APPTTests {
 
 		[TestMethod]
 		public void FormBlockoutCutCopyPaste_ButtonsFollowAddDeleteAndReplace() {
-			string source=RepoFiles.StripLineComments(RepoFiles.Read("OpenDental","Forms","FormBlockoutCutCopyPaste.cs"));
+			string source=RepoFiles.StripLineComments(RepoFiles.Read("OpenPmsDental","Forms","FormBlockoutCutCopyPaste.cs"));
 			string methodEnable=RepoFiles.GetMethod(source,"EnableForBlockoutPerms");
 			StringAssert.Contains(methodEnable,"butCopyDay.Enabled=blockoutPerms.CanDoAny(BlockoutAction.Copy)");
 			StringAssert.Contains(methodEnable,"butCopyWeek.Enabled=blockoutPerms.CanDoAny(BlockoutAction.Copy)");
@@ -132,8 +132,8 @@ namespace M2APPTTests {
 		[TestMethod]
 		public void ApptGeneral_HasControlsNamedForTheirPrefInfos() {
 			//M2-02 registered the hover help under these control names; FormPreferences finds the entry by control name and category.
-			XDocument xDocument=XDocument.Load(RepoFiles.GetPath("OpenDental","Resources","PrefInfos.xml"));
-			string designer=RepoFiles.Read("OpenDental","User Controls","Preferences","UserControlApptGeneral.Designer.cs");
+			XDocument xDocument=XDocument.Load(RepoFiles.GetPath("OpenPmsDental","Resources","PrefInfos.xml"));
+			string designer=RepoFiles.Read("OpenPmsDental","User Controls","Preferences","UserControlApptGeneral.Designer.cs");
 			foreach(string prefName in new[] { "AppointmentMakeRecallSearchesOpenings","ScheduleProvUnassigned" }) {
 				XElement xElement=xDocument.Descendants("PrefInf").Single(x => (string)x.Element("PrefName")==prefName);
 				Assert.AreEqual("ApptGeneral",(string)xElement.Element("Category"),prefName);
@@ -147,7 +147,7 @@ namespace M2APPTTests {
 
 		[TestMethod]
 		public void ApptGeneral_ReadsAndSavesBothPreferences() {
-			string source=RepoFiles.StripLineComments(RepoFiles.Read("OpenDental","User Controls","Preferences","UserControlApptGeneral.cs"));
+			string source=RepoFiles.StripLineComments(RepoFiles.Read("OpenPmsDental","User Controls","Preferences","UserControlApptGeneral.cs"));
 			string methodFill=RepoFiles.GetMethod(source,"FillApptGeneral");
 			StringAssert.Contains(methodFill,"checkAppointmentMakeRecallSearchesOpenings.Checked=PrefC.GetBool(PrefName.AppointmentMakeRecallSearchesOpenings)");
 			StringAssert.Contains(methodFill,"comboScheduleProvUnassigned.SetSelectedProvNum(PrefC.GetLong(PrefName.ScheduleProvUnassigned))");
@@ -158,9 +158,9 @@ namespace M2APPTTests {
 
 		[TestMethod]
 		public void EditDay_NoLongerShowsOrSavesTheDefaultProvider() {
-			string source=RepoFiles.StripLineComments(RepoFiles.Read("OpenDental","Forms","FormScheduleDayEdit.cs"));
-			string designer=RepoFiles.Read("OpenDental","Forms","FormScheduleDayEdit.designer.cs");
-			string resx=RepoFiles.Read("OpenDental","Forms","FormScheduleDayEdit.resx");
+			string source=RepoFiles.StripLineComments(RepoFiles.Read("OpenPmsDental","Forms","FormScheduleDayEdit.cs"));
+			string designer=RepoFiles.Read("OpenPmsDental","Forms","FormScheduleDayEdit.designer.cs");
+			string resx=RepoFiles.Read("OpenPmsDental","Forms","FormScheduleDayEdit.resx");
 			Assert.IsFalse(source.Contains("PrefName.ScheduleProvUnassigned"),"Saving schedules no longer writes the preference.");
 			Assert.IsFalse(source.Contains("comboProv"));
 			Assert.IsFalse(designer.Contains("comboProv"));

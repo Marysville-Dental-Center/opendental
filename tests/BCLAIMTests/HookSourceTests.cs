@@ -29,7 +29,7 @@ namespace BCLAIMTests {
 
 		[TestMethod]
 		public void FormClaimProc_CodeSentGuardedAndAudited() {
-			string source=Read("OpenDental","Forms","FormClaimProc.cs").Replace("\r\n","\n");
+			string source=Read("OpenPmsDental","Forms","FormClaimProc.cs").Replace("\r\n","\n");
 			StringAssert.Contains(source,"if(!Security.IsAuthorized(EnumPermType.ClaimProcFieldsBilledToInsEdit,true)) {\n"
 				+"\t\t\t\t\ttextFeeBilled.ReadOnly=true;\n\t\t\t\t\ttextCodeSent.ReadOnly=true;");
 			StringAssert.Contains(source,"ClaimProcs.SetBilledToInsFields(_claimProc,textCodeSent.Text,PIn.Double(textFeeBilled.Text),");
@@ -41,7 +41,7 @@ namespace BCLAIMTests {
 
 		[TestMethod]
 		public void FormClaimProc_DeleteChecksInsWriteOffEdit() {
-			string source=Read("OpenDental","Forms","FormClaimProc.cs");
+			string source=Read("OpenPmsDental","Forms","FormClaimProc.cs");
 			string delete=GetMethodBody(source,"private void butDelete_Click(");
 			int check=delete.IndexOf("ClaimProcs.IsInsWriteOffEditAuthorized(",StringComparison.Ordinal);
 			int deleteCall=delete.IndexOf("ClaimProcs.DeleteAfterValidating(",StringComparison.Ordinal);
@@ -52,16 +52,16 @@ namespace BCLAIMTests {
 
 		[TestMethod]
 		public void MedicalEobPrompt_RunsBeforeEachPrimaryClaimsPrompt() {
-			AssertPromptBefore(Read("OpenDental","Forms","FormClaimEdit.cs"),"MedicalEobL.PromptToAttachMedicalEob(_claim,_listClaimProcsForClaim);");
-			AssertPromptBefore(Read("OpenDental","Forms","FormEtrans835ClaimPay.cs"),"MedicalEobL.PromptToAttachMedicalEob(_claim,ListClaimProcs);");
-			AssertPromptBefore(Read("OpenDental","Logic","ClaimL.cs"),"MedicalEobL.PromptToAttachMedicalEob(claimLeadOrdinal,listClaimProcs);");
+			AssertPromptBefore(Read("OpenPmsDental","Forms","FormClaimEdit.cs"),"MedicalEobL.PromptToAttachMedicalEob(_claim,_listClaimProcsForClaim);");
+			AssertPromptBefore(Read("OpenPmsDental","Forms","FormEtrans835ClaimPay.cs"),"MedicalEobL.PromptToAttachMedicalEob(_claim,ListClaimProcs);");
+			AssertPromptBefore(Read("OpenPmsDental","Logic","ClaimL.cs"),"MedicalEobL.PromptToAttachMedicalEob(claimLeadOrdinal,listClaimProcs);");
 		}
 
 		[TestMethod]
 		public void PrimaryClaimsPrompt_SavesTheClaimRowAndKeepsAttachments() {
 			//The claims come from Claims.GetPrimaryOrSecondaryClaimsNotReceived without their attachments; the one-argument Claims.Update would
 			//delete the medical EOB the Medical EOB prompt has just attached.
-			string prompt=GetMethodBody(Read("OpenDental","Logic","ClaimL.cs"),"public static void PromptForPrimaryOrSecondaryClaim(");
+			string prompt=GetMethodBody(Read("OpenPmsDental","Logic","ClaimL.cs"),"public static void PromptForPrimaryOrSecondaryClaim(");
 			StringAssert.Contains(prompt,"ClaimAttaches.SetClaimsWaitingToSend(listClaimsPromptingFor,");
 			Assert.IsFalse(prompt.Contains("Claims.Update(listClaimsPromptingFor[i]);"),"No one-argument Claims.Update on the reloaded claims.");
 			int indexStatus=prompt.IndexOf("ClaimAttaches.SetClaimsWaitingToSend(",StringComparison.Ordinal);
@@ -72,7 +72,7 @@ namespace BCLAIMTests {
 		[TestMethod]
 		public void EraPosting_WriteOffColumnFollowsInsWriteOffEdit() {
 			//Open Dental 25.3: 119 also covers creating claimprocs, and manual ERA posting creates (supplemental) or receives them.
-			string source=Read("OpenDental","Forms","FormEtrans835ClaimPay.cs");
+			string source=Read("OpenPmsDental","Forms","FormEtrans835ClaimPay.cs");
 			string load=GetMethodBody(source,"private void FormEtrans835ClaimPay_Load(");
 			int indexProcedures=load.IndexOf("_listProcedures=Procedures.Refresh(_patient.PatNum);",StringComparison.Ordinal);
 			int indexPermission=load.IndexOf("_isWriteOffEditable=ClaimProcs.IsInsWriteOffEditAuthorizedForAll(ListClaimProcs,_listProcedures);",
@@ -98,7 +98,7 @@ namespace BCLAIMTests {
 		///restoring the ERA's own write-offs, and the hypothetical copies used to validate credits.</summary>
 		[TestMethod]
 		public void EraPosting_EveryWriteOffAssignmentFollowsInsWriteOffEdit() {
-			string source=Read("OpenDental","Forms","FormEtrans835ClaimPay.cs");
+			string source=Read("OpenPmsDental","Forms","FormEtrans835ClaimPay.cs");
 			string[] arrayAllowedMethods=new[] {
 				"private void SaveGridChanges(",
 				"private List<ClaimProc> GetListClaimProcHypothetical(",
@@ -149,7 +149,7 @@ namespace BCLAIMTests {
 
 		[TestMethod]
 		public void OverrideAudit_HookedIntoTheSharedSavePaths() {
-			string claimProcs=Read("OpenDentBusiness","Data Interface","ClaimProcs.cs").Replace("\r\n","\n");
+			string claimProcs=Read("OpenPmsDentalBusiness","Data Interface","ClaimProcs.cs").Replace("\r\n","\n");
 			string payment=GetMethodBody(claimProcs,"public static void CreateAuditTrailEntryForClaimProcPayment(");
 			StringAssert.Contains(payment,"if(!isPaymentFromERA) {");
 			int indexGuard=payment.IndexOf("if(!isPaymentFromERA) {",StringComparison.Ordinal);
@@ -157,17 +157,17 @@ namespace BCLAIMTests {
 			Assert.IsTrue(indexOverrides>indexGuard && indexOverrides-indexGuard<200,"An ERA posting audits overrides against the database instead.");
 			StringAssert.Contains(GetMethodBody(claimProcs,"public static void SetInsEstTotalOverride("),
 				"CreateAuditTrailEntryForOverrides(listClaimProcs[i],claimProcOld);");
-			string etranss=Read("OpenDentBusiness","Data Interface","Etranss.cs");
+			string etranss=Read("OpenPmsDentalBusiness","Data Interface","Etranss.cs");
 			StringAssert.Contains(GetMethodBody(etranss,"public static bool TryImportEraClaimData("),
 				"ClaimProcs.CreateAuditTrailEntriesForOverrides(listClaimProcsForClaim,listClaimProcsOld);");
-			string claimEdit=Read("OpenDental","Forms","FormClaimEdit.cs");
+			string claimEdit=Read("OpenPmsDental","Forms","FormClaimEdit.cs");
 			StringAssert.Contains(claimEdit,"ClaimProcs.CreateAuditTrailEntriesForOverrides(formClaimPayPreAuth.ListClaimProcs,listClaimProcsPreAuthOld);");
 		}
 
 		[TestMethod]
 		public void OverrideAudit_ManualEraPostingComparesWithTheDatabase() {
 			//ListClaimProcs already holds the 835 allowed amounts when FormEtrans835ClaimPay loads, so its old copies cannot show the change.
-			string source=Read("OpenDental","Forms","FormEtrans835ClaimPay.cs");
+			string source=Read("OpenPmsDental","Forms","FormEtrans835ClaimPay.cs");
 			string load=GetMethodBody(source,"private void FormEtrans835ClaimPay_Load(");
 			StringAssert.Contains(load,"_listClaimProcsDb=ClaimProcs.RefreshForClaims(new List<long> { _claim.ClaimNum });");
 			string save=GetMethodBody(source,"private void butSave_Click(");
@@ -180,11 +180,11 @@ namespace BCLAIMTests {
 
 		[TestMethod]
 		public void Preferences_MedicalEobCheckboxUsesTheForkOwnedRow() {
-			string source=Read("OpenDental","User Controls","Preferences","UserControlAccountClaimReceive.cs");
+			string source=Read("OpenPmsDental","User Controls","Preferences","UserControlAccountClaimReceive.cs");
 			StringAssert.Contains(source,"checkClaimMedReceivedPromptForMedicalEob.Checked=ClaimAttaches.IsMedicalEobPromptEnabled();");
 			StringAssert.Contains(source,"Changed|=ClaimAttaches.SetMedicalEobPromptEnabled(checkClaimMedReceivedPromptForMedicalEob.Checked);");
 			Assert.IsFalse(source.Contains("checkClaimMedReceivedPromptForMedicalEob.Visible"),"The checkbox is always shown.");
-			string designer=Read("OpenDental","User Controls","Preferences","UserControlAccountClaimReceive.Designer.cs");
+			string designer=Read("OpenPmsDental","User Controls","Preferences","UserControlAccountClaimReceive.Designer.cs");
 			StringAssert.Contains(designer,"this.groupBoxClaimsMedical.Controls.Add(this.checkClaimMedReceivedPromptForMedicalEob);");
 			StringAssert.Contains(designer,"\"Prompt for Medical EOB on primary claims\"");
 		}

@@ -28,7 +28,7 @@ namespace TaskCategoryTests {
 		public void TriagePosition_IsNeverShown() {
 			//task.TriagePosition is Open Dental HQ's support triage data. It is kept for data compatibility; no window or grid may show it.
 			string root=GetRepoRoot();
-			foreach(string folder in new[] { "OpenDental","WpfControlsOD" }) {
+			foreach(string folder in new[] { "OpenPmsDental","WpfControlsOD" }) {
 				foreach(string path in Directory.EnumerateFiles(Path.Combine(root,folder),"*.cs",SearchOption.AllDirectories)) {
 					if(path.Contains(Path.DirectorySeparatorChar+"obj"+Path.DirectorySeparatorChar)
 						|| path.Contains(Path.DirectorySeparatorChar+"bin"+Path.DirectorySeparatorChar))
@@ -42,18 +42,18 @@ namespace TaskCategoryTests {
 
 		[TestMethod]
 		public void TaskWindow_ShowsCategoryFromThePreference_NotFromHq() {
-			string code=ReadRepoFile("OpenDental","Forms","FormTaskEdit.cs");
-			string designer=ReadRepoFile("OpenDental","Forms","FormTaskEdit.designer.cs");
+			string code=ReadRepoFile("OpenPmsDental","Forms","FormTaskEdit.cs");
+			string designer=ReadRepoFile("OpenPmsDental","Forms","FormTaskEdit.designer.cs");
 			StringAssert.Contains(code,"Tasks.IsCategoryShown()");
 			StringAssert.Contains(code,"Tasks.GetCategoryChoices(TaskCur.Category)");
 			Assert.IsFalse(code.Contains("Triage Category"),"The HQ-only Invalid Triage Category message is replaced by ordinary None handling.");
-			StringAssert.Contains(designer,"this.comboCategory = new OpenDental.UI.ComboBox();");
+			StringAssert.Contains(designer,"this.comboCategory = new OpenPmsDental.UI.ComboBox();");
 			StringAssert.Contains(designer,"this.labelCategory.Text = \"Category\";");
 		}
 
 		[TestMethod]
 		public void TaskList_AddsTheCategoryColumnFromThePreference() {
-			string code=ReadRepoFile("OpenDental","User Controls","UserControlTasks.cs");
+			string code=ReadRepoFile("OpenPmsDental","User Controls","UserControlTasks.cs");
 			StringAssert.Contains(code,"Tasks.IsCategoryShown()");
 			StringAssert.Contains(code,"Lan.g(\"TableTasks\",\"Category\")");
 			StringAssert.Contains(code,"Tasks.GetCategoryColor(");
@@ -61,8 +61,8 @@ namespace TaskCategoryTests {
 
 		[TestMethod]
 		public void TaskPreferences_SavesTaskCategoryShow() {
-			string code=ReadRepoFile("OpenDental","Forms","FormTaskPreferences.cs");
-			string designer=ReadRepoFile("OpenDental","Forms","FormTaskPreferences.designer.cs");
+			string code=ReadRepoFile("OpenPmsDental","Forms","FormTaskPreferences.cs");
+			string designer=ReadRepoFile("OpenPmsDental","Forms","FormTaskPreferences.designer.cs");
 			StringAssert.Contains(code,"checkTaskCategoryShow.Checked=PrefC.GetBool(PrefName.TaskCategoryShow);");
 			StringAssert.Contains(code,"Prefs.UpdateBool(PrefName.TaskCategoryShow,checkTaskCategoryShow.Checked)");
 			StringAssert.Contains(designer,"this.checkTaskCategoryShow.Text = \"Show task category\";");
@@ -70,7 +70,7 @@ namespace TaskCategoryTests {
 
 		[TestMethod]
 		public void Definitions_TaskCategoriesHelpText_IsNotHqOnly() {
-			string code=ReadRepoFile("OpenDental","Logic","DefL.cs");
+			string code=ReadRepoFile("OpenPmsDental","Logic","DefL.cs");
 			Assert.IsFalse(code.Contains("HQ Only as of now"));
 		}
 	}

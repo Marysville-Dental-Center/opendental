@@ -31,7 +31,7 @@ namespace SignatureTests {
 				return;
 			}
 			try {
-				string schema=File.ReadAllText(TestPaths.GetRepoFile("OpenDentBusiness","Misc","ForkMigrations","Reference","OdSchema-25.3.48.sql"));
+				string schema=File.ReadAllText(TestPaths.GetRepoFile("OpenPmsDentalBusiness","Misc","ForkMigrations","Reference","OdSchema-25.3.48.sql"));
 				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);

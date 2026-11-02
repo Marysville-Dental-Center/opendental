@@ -68,7 +68,7 @@ namespace NoHqTests {
 			"GetMobileSettings","GetMobileSettings2FA","UpsertMobileSettings","ProcessOCRIIDRequest",
 		};
 
-		///<summary>Windows of the hosted eServices, as file name prefixes in OpenDental and WpfControlsOD.</summary>
+		///<summary>Windows of the hosted eServices, as file name prefixes in OpenPmsDental and WpfControlsOD.</summary>
 		private static readonly string[] _arrayRemovedWindowPrefixes=new string[] {
 			"FormEServices","FormWebSched","FormEClipboard","FrmEClipboard","FormWebForms","FormWebFormSetup","FormMassEmail","FormEmailHosting",
 			"FormSecureEmailSetup","FormSmsTextMessaging","FormTxtMsgMany","FrmShortCodeOptIn","FormPatientPortal","FormMessageToPayEdit",
@@ -100,7 +100,7 @@ namespace NoHqTests {
 		public void EServices_WindowsAreRemoved() {
 			string pathRoot=RemovedAssembliesTests.GetRepositoryRoot();
 			List<string> listFiles=new List<string>();
-			listFiles.AddRange(GetSourceFiles(Path.Combine(pathRoot,"OpenDental")));
+			listFiles.AddRange(GetSourceFiles(Path.Combine(pathRoot,"OpenPmsDental")));
 			listFiles.AddRange(GetSourceFiles(Path.Combine(pathRoot,"WpfControlsOD")));
 			for(int i=0;i<_arrayRemovedWindowPrefixes.Length;i++) {
 				string fileFound=listFiles.FirstOrDefault(x => Path.GetFileName(x).StartsWith(_arrayRemovedWindowPrefixes[i],StringComparison.OrdinalIgnoreCase));
@@ -111,7 +111,7 @@ namespace NoHqTests {
 		///<summary>The eConnector and the local API service were installed by PrefL. The local Open Dental Service stays.</summary>
 		[TestMethod]
 		public void EServices_EConnectorInstallIsRemoved() {
-			string path=Path.Combine(RemovedAssembliesTests.GetRepositoryRoot(),"OpenDental","Logic","PrefL.cs");
+			string path=Path.Combine(RemovedAssembliesTests.GetRepositoryRoot(),"OpenPmsDental","Logic","PrefL.cs");
 			string text=File.ReadAllText(path);
 			Assert.IsFalse(text.Contains("UpgradeOrInstallEConnector"),"PrefL.UpgradeOrInstallEConnector should have been removed.");
 			Assert.IsFalse(text.Contains("TryInstallEConnector"),"PrefL.TryInstallEConnector should have been removed.");

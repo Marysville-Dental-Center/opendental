@@ -94,7 +94,7 @@ namespace M2CANTests {
 
 		[TestMethod]
 		public void PrintedClaims_UseTheRamqRule() {
-			string code=TestPaths.ReadRepoFile("OpenDental","Forms","FormClaimPrint.cs");
+			string code=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormClaimPrint.cs");
 			StringAssert.Contains(code,"case \"Code\":\r\n\t\t\t\t\treturn ProcCodesOther.GetCodeForClaim(_listClaimProcs[procIndex].CodeSent,procedureCode);"
 				.Replace("\r\n",code.Contains("\r\n") ? "\r\n" : "\n"));
 		}
@@ -123,7 +123,7 @@ namespace M2CANTests {
 
 		[TestMethod]
 		public void Confirmation_WindowAsksBeforeReadingTheFile() {
-			string code=TestPaths.ReadRepoFile("OpenDental","Forms","FormProcCodesOther.cs");
+			string code=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProcCodesOther.cs");
 			int indexOk=code.IndexOf("private void butOK_Click(");
 			int indexSecurityAdmin=code.IndexOf("!Security.IsAuthorized(EnumPermType.SecurityAdmin) || !Security.IsAuthorized(EnumPermType.ProcCodeEdit)",
 				indexOk);

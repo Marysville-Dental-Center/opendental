@@ -32,8 +32,8 @@ namespace BAPPTTests {
 
 		[TestMethod]
 		public void CopyView_ButtonCopiesAndOpensTheCopy() {
-			string designer=Read("OpenDental","Forms","FormApptViews.designer.cs");
-			string code=Read("OpenDental","Forms","FormApptViews.cs");
+			string designer=Read("OpenPmsDental","Forms","FormApptViews.designer.cs");
+			string code=Read("OpenPmsDental","Forms","FormApptViews.cs");
 			StringAssert.Contains(designer,"this.butCopy.Text = \"Copy View\";");
 			StringAssert.Contains(designer,"this.butCopy.Enabled = false;");
 			string body=GetMethodBody(code,"private void butCopy_Click(");
@@ -42,16 +42,16 @@ namespace BAPPTTests {
 			StringAssert.Contains(body,"formApptViewEdit.IsCopy=true;");
 			StringAssert.Contains(body,"SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,ApptViews.GetCopyLogText(");
 			StringAssert.Contains(GetMethodBody(code,"private void listViews_SelectedIndexChanged("),"butCopy.Enabled=(listViews.SelectedIndex!=-1);");
-			string edit=Read("OpenDental","Forms","FormApptViewEdit.cs");
+			string edit=Read("OpenPmsDental","Forms","FormApptViewEdit.cs");
 			StringAssert.Contains(edit,"if(IsNew && !IsCopy) {","A copy keeps its bubble setting.");
 		}
 
 		[TestMethod]
 		public void TimeBars_DrawingHooks() {
-			string panel=Read("OpenDental","UI","Appt","ControlApptPanel.cs");
+			string panel=Read("OpenPmsDental","UI","Appt","ControlApptPanel.cs");
 			Assert.AreEqual(2,Regex.Matches(panel,@"DrawOpBackgroundProvTime\(g,provSchedsForOp,").Count,"Week view and day view.");
 			StringAssert.Contains(GetMethodBody(panel,"private void DrawOneAppt("),"DrawTimeBarSecondaryNoProvTime(g,dataRoww,graphicsPathLeftSide);");
-			string timeBars=Read("OpenDental","UI","Appt","ControlApptPanel.TimeBars.cs");
+			string timeBars=Read("OpenPmsDental","UI","Appt","ControlApptPanel.TimeBars.cs");
 			StringAssert.Contains(timeBars,"ApptTimeBars.IsProvTimeOnOpBackground()");
 			StringAssert.Contains(timeBars,"PrintColorBehavior.In(ApptPrintColorBehavior.LessColor,ApptPrintColorBehavior.Grayscale)");
 			StringAssert.Contains(timeBars,"ApptTimeBars.IsSecondaryColorNoProvTime()");
@@ -60,8 +60,8 @@ namespace BAPPTTests {
 
 		[TestMethod]
 		public void TimeBars_PreferenceCheckboxes() {
-			string code=Read("OpenDental","User Controls","Preferences","UserControlApptAppearance.cs");
-			string designer=Read("OpenDental","User Controls","Preferences","UserControlApptAppearance.Designer.cs");
+			string code=Read("OpenPmsDental","User Controls","Preferences","UserControlApptAppearance.cs");
+			string designer=Read("OpenPmsDental","User Controls","Preferences","UserControlApptAppearance.Designer.cs");
 			StringAssert.Contains(code,"checkProvTimeOnOpBackground.Checked=ApptTimeBars.IsProvTimeOnOpBackground();");
 			StringAssert.Contains(code,"checkTimeBarSecondaryColor.Checked=ApptTimeBars.IsSecondaryColorNoProvTime();");
 			StringAssert.Contains(code,"ApptTimeBars.UpdateBoolPref(ApptTimeBars.PREF_PROV_TIME_ON_OP_BACKGROUND,checkProvTimeOnOpBackground.Checked)");
@@ -72,14 +72,14 @@ namespace BAPPTTests {
 
 		[TestMethod]
 		public void WaitingRoom_ToolbarButtonOpensOneWindow() {
-			string module=Read("OpenDental","Main Modules","ControlAppt.cs");
+			string module=Read("OpenPmsDental","Main Modules","ControlAppt.cs");
 			StringAssert.Contains(GetMethodBody(module,"public void LayoutToolBar("),"AddToolBarButtonWaitingRoom();");
-			string partial=Read("OpenDental","Main Modules","ControlAppt.WaitingRoom.cs");
+			string partial=Read("OpenPmsDental","Main Modules","ControlAppt.WaitingRoom.cs");
 			StringAssert.Contains(partial,"Lan.g(this,\"Wait Rm\")");
 			string click=GetMethodBody(partial,"private void butWaitingRoom_Click(");
 			StringAssert.Contains(click,"_formWaitingRoom.BringToFront();","A second click brings the open window to the front.");
 			StringAssert.Contains(click,"_formWaitingRoom.Show(","Non-modal.");
-			string form=Read("OpenDental","Forms","FormWaitingRoom.cs");
+			string form=Read("OpenPmsDental","Forms","FormWaitingRoom.cs");
 			StringAssert.Contains(form,"ApptWaitingRoom.GetRows(");
 			StringAssert.Contains(form,"Appointments.GetPeriodWaitingRoomTable(DateTime.Now)");
 			StringAssert.Contains(form,"GlobalFormOpenDental.GoToModule(EnumModuleType.Appointments");
@@ -88,38 +88,38 @@ namespace BAPPTTests {
 
 		[TestMethod]
 		public void Permissions_Unschedule_AndPinFromAppointmentL() {
-			string code=Read("OpenDental","Logic","AppointmentL.cs");
+			string code=Read("OpenPmsDental","Logic","AppointmentL.cs");
 			StringAssert.Contains(GetMethodBody(code,"public static bool ValidateApptUnsched("),"ApptPermissionRules.GetPermsToUnschedule(appointment.AptStatus)");
 			StringAssert.Contains(GetMethodBody(code,"public static bool ValidateApptToPinboard("),"ApptPermissionRules.IsMoveNeededToPin(appointment.AptStatus)");
 		}
 
 		[TestMethod]
 		public void Permissions_PlannedToPinboardNeedsNoMove() {
-			string chart=GetMethodBody(Read("OpenDental","Main Modules","ControlChart.cs"),"private void butPin_Click(");
+			string chart=GetMethodBody(Read("OpenPmsDental","Main Modules","ControlChart.cs"),"private void butPin_Click(");
 			StringAssert.Contains(chart,"ApptPermissionRules.IsPlannedRowPinAMove(");
 			Assert.IsFalse(Regex.IsMatch(chart,@"\{\s*if\(!Security\.IsAuthorized\(EnumPermType\.AppointmentMove\)\)"),"No up-front Appointment Move check.");
-			string other=GetMethodBody(Read("OpenDental","Forms","FormApptsOther.cs"),"private void butPin_Click(");
+			string other=GetMethodBody(Read("OpenPmsDental","Forms","FormApptsOther.cs"),"private void butPin_Click(");
 			StringAssert.Contains(other,"ApptPermissionRules.IsMoveNeededToPin(apptOther.AptStatus) && !Security.IsAuthorized(EnumPermType.AppointmentMove)");
 			StringAssert.Contains(other,"PatRestrictionL.IsRestricted(","The patient restriction stays.");
-			string edit=GetMethodBody(Read("OpenDental","Forms","FormApptEdit.cs"),"private void butPin_Click(");
+			string edit=GetMethodBody(Read("OpenPmsDental","Forms","FormApptEdit.cs"),"private void butPin_Click(");
 			StringAssert.Contains(edit,"ApptPermissionRules.IsMoveNeededToPin(_appointment.AptStatus) && !Security.IsAuthorized(EnumPermType.AppointmentMove)");
 		}
 
 		[TestMethod]
 		public void Permissions_PlannedFromPinboardNeedsCreate() {
 			//Already in 24.3: dropping a planned appointment off the pinboard checks Appointment Create, and nothing there checks Move.
-			string drop=GetMethodBody(Read("OpenDental","Main Modules","ControlAppt.cs"),"private void pinBoard_ApptMovedFromPinboard(");
+			string drop=GetMethodBody(Read("OpenPmsDental","Main Modules","ControlAppt.cs"),"private void pinBoard_ApptMovedFromPinboard(");
 			StringAssert.Contains(drop,"if(!Security.IsAuthorized(EnumPermType.AppointmentCreate))");
 			Assert.IsFalse(drop.Contains("EnumPermType.AppointmentMove)"),"Scheduling from the pinboard never checks Appointment Move.");
 		}
 
 		[TestMethod]
 		public void Tasks_OnlyOpenTasksCount() {
-			string edit=GetMethodBody(Read("OpenDental","Forms","FormApptEdit.cs"),"private void butTask_Click(");
+			string edit=GetMethodBody(Read("OpenPmsDental","Forms","FormApptEdit.cs"),"private void butTask_Click(");
 			StringAssert.Contains(edit,"ApptTasks.GetTaskButtonAction(false,Tasks.GetMany(_appointment.AptNum),out Task taskOpen)");
-			string other=GetMethodBody(Read("OpenDental","Forms","FormApptsOther.cs"),"public void RefreshData(");
+			string other=GetMethodBody(Read("OpenPmsDental","Forms","FormApptsOther.cs"),"public void RefreshData(");
 			StringAssert.Contains(other,"ApptTasks.GetApptNumsWithOpenTask(");
-			string tree=Read("OpenDental","User Controls","UserControlTasks.cs");
+			string tree=Read("OpenPmsDental","User Controls","UserControlTasks.cs");
 			StringAssert.Contains(GetMethodBody(tree,"private void Copy_Clicked("),"ApptTasks.IsCopyBlocked(PrefC.GetBool(PrefName.TasksForApptAllowMultiple),taskCur)");
 			StringAssert.Contains(GetMethodBody(tree,"private void Paste_Clicked("),"ApptTasks.IsClipboardClearedAfterPaste(PrefC.GetBool(PrefName.TasksForApptAllowMultiple),_taskClip,_wasCut)");
 		}

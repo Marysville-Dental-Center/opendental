@@ -169,16 +169,16 @@ namespace AttributionTests {
 			foreach(string fileName in new[] { "opendentallicense.txt","opendentalapienduserlicense.txt","CDT Content End User License.txt",
 				"CDT Content End User License.rtf","Sparks3D.txt","stdole.txt","Ionic.txt","Zxing.txt" })
 			{
-				Assert.IsFalse(File.Exists(Path.Combine(RepoRoot(),"OpenDental","Resources",fileName)),fileName);
+				Assert.IsFalse(File.Exists(Path.Combine(RepoRoot(),"OpenPmsDental","Resources",fileName)),fileName);
 			}
 		}
 
 		[TestMethod]
 		public void LicenseForms_ShowTheSharedList() {
-			string formLicense=StripComments(ReadRepoFile("OpenDental","Forms","FormLicense.cs"));
+			string formLicense=StripComments(ReadRepoFile("OpenPmsDental","Forms","FormLicense.cs"));
 			StringAssert.Contains(formLicense,"LicenseList.GetEntries()");
 			StringAssert.Contains(formLicense,"_selectedLicense=LicenseList.GetProgramLicenseText();");
-			string formRegistrationKey=StripComments(ReadRepoFile("OpenDental","Forms","FormRegistrationKey.cs"));
+			string formRegistrationKey=StripComments(ReadRepoFile("OpenPmsDental","Forms","FormRegistrationKey.cs"));
 			StringAssert.Contains(formRegistrationKey,"LicenseList.GetEntries()");
 			StringAssert.Contains(formRegistrationKey,"listBoxRegistration.SetSelected(0);");
 			foreach(string text in new[] { formLicense,formRegistrationKey }) {
@@ -253,23 +253,23 @@ namespace AttributionTests {
 
 		[TestMethod]
 		public void DisplayName_IsUsedForTheTitleAndTheRestartPrompts() {
-			string patientL=StripComments(ReadRepoFile("OpenDental","Logic","PatientL.cs"));
+			string patientL=StripComments(ReadRepoFile("OpenPmsDental","Logic","PatientL.cs"));
 			Assert.IsFalse(patientL.Contains("PrefName.MainWindowTitle"),"PatientL reads the title through AboutBoxInfo.");
 			Assert.AreEqual(2,Regex.Matches(patientL,@"string retVal=AboutBoxInfo\.GetMainWindowTitle\(\);").Count,"GetMainTitle and GetMainTitleSamePat.");
-			string formOpenDental=StripComments(ReadRepoFile("OpenDental","Main Modules","FormOpenDental.cs"));
+			string formOpenDental=StripComments(ReadRepoFile("OpenPmsDental","Main Modules","FormOpenDental.cs"));
 			Assert.IsFalse(formOpenDental.Contains("PrefName.SoftwareName"));
 			Assert.AreEqual(3,Regex.Matches(formOpenDental,@"Lan\.g\(this,""You will have to restart""\)\+"" ""\+AboutBoxInfo\.GetSoftwareName\(\)").Count);
-			string formUpdateInProgress=StripComments(ReadRepoFile("OpenDental","Forms","FormUpdateInProgress.cs"));
+			string formUpdateInProgress=StripComments(ReadRepoFile("OpenPmsDental","Forms","FormUpdateInProgress.cs"));
 			Assert.IsFalse(formUpdateInProgress.Contains("PrefName.SoftwareName"));
 			StringAssert.Contains(formUpdateInProgress,"AboutBoxInfo.GetSoftwareName()");
 			//The preferences are only read, never written, so adoption's row check is unaffected.
-			string formAbout=StripComments(ReadRepoFile("OpenDental","Forms","FormAbout.cs"));
+			string formAbout=StripComments(ReadRepoFile("OpenPmsDental","Forms","FormAbout.cs"));
 			Assert.IsFalse(Regex.IsMatch(formAbout,@"Prefs\.Update"),"FormAbout.cs writes no preference.");
 		}
 
 		[TestMethod]
 		public void AboutBox_CopyrightLineCreditsOpenDentalWhateverSoftwareNameSays() {
-			string formAbout=StripComments(ReadRepoFile("OpenDental","Forms","FormAbout.cs"));
+			string formAbout=StripComments(ReadRepoFile("OpenPmsDental","Forms","FormAbout.cs"));
 			StringAssert.Contains(formAbout,
 				"labelCopyright.Text=\"Open Dental Software \"+Lan.g(this,\"Copyright 2003-\")+DateTime.Now.ToString(\"yyyy\")+\", Jordan Sparks, D.M.D.\";");
 			int indexLoad=formAbout.IndexOf("private void FormAbout_Load(");
@@ -282,8 +282,8 @@ namespace AttributionTests {
 		public void UpdateHistory_IsLookedUpByReleaseThenCompatibilityVersion() {
 			CollectionAssert.AreEqual(new[] { "0.0","24.3.63.0" },AboutBoxInfo.GetUpdateHistoryVersions(MakeAssembly(new Version(24,3,63,0),"0.0")));
 			CollectionAssert.AreEqual(new[] { "24.3.63.0" },AboutBoxInfo.GetUpdateHistoryVersions(MakeAssembly(new Version(24,3,63,0),null)));
-			StringAssert.Contains(ReadRepoFile("OpenDental","Forms","FormAbout.cs"),"AboutBoxInfo.GetUpdateHistory(assemblyProgram)");
-			StringAssert.Contains(ReadRepoFile("OpenDental","Forms","FormUpdate.cs"),"AboutBoxInfo.GetUpdateHistory(assemblyProgram)");
+			StringAssert.Contains(ReadRepoFile("OpenPmsDental","Forms","FormAbout.cs"),"AboutBoxInfo.GetUpdateHistory(assemblyProgram)");
+			StringAssert.Contains(ReadRepoFile("OpenPmsDental","Forms","FormUpdate.cs"),"AboutBoxInfo.GetUpdateHistory(assemblyProgram)");
 		}
 
 		[TestMethod]

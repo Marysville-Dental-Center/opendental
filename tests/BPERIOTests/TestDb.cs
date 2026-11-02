@@ -1,5 +1,5 @@
 // Scratch database for the Perio Chart tests, on the local MariaDB only (127.0.0.1:3306, root, blank password). It gets the current reference
-// schema (SchemaVerifier.GetReference(), the one the CRUD matches) from the snapshot embedded in OpenDentBusiness and synthetic rows only;
+// schema (SchemaVerifier.GetReference(), the one the CRUD matches) from the snapshot embedded in OpenPmsDentalBusiness and synthetic rows only;
 // nothing here reads or copies an office database. Same naming and clean-up pattern as tests/ForkMigrationTests/TestDb.cs. Database tests are skipped (inconclusive) when no
 // server answers, or when BPERIO_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

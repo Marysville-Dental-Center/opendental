@@ -9,7 +9,7 @@ namespace BSHELLTests {
 	[TestClass]
 	public class OrthoChartNonModalTests {
 		private static string Form() {
-			return TestPaths.ReadRepoFile("OpenDental","Forms","FormOrthoChart.cs");
+			return TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormOrthoChart.cs");
 		}
 
 		[TestMethod]
@@ -83,12 +83,12 @@ namespace BSHELLTests {
 
 		[TestMethod]
 		public void Modules_OpenItNonModal() {
-			string chart=TestPaths.ReadRepoFile("OpenDental","Main Modules","ControlChart.cs");
+			string chart=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","ControlChart.cs");
 			Assert.IsFalse(chart.Contains("new FormOrthoChart("),"Every Chart module opening goes through ShowNonModal.");
 			Assert.AreEqual(3,TestPaths.Count(chart,"FormOrthoChart.ShowNonModal(FindForm(),Pd.Patient,"),"Toolbar, tab menu and ortho grid.");
 			string saved=TestPaths.GetMethodBody(chart,"private void OrthoChartSaved(long patNum)");
 			StringAssert.Contains(saved,"Visible && !IsPatientNull() && Pd.PatNum==patNum","Refreshes only when the Chart shows that patient.");
-			string appt=TestPaths.ReadRepoFile("OpenDental","Main Modules","ControlAppt.cs");
+			string appt=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","ControlAppt.cs");
 			Assert.IsFalse(appt.Contains("new FormOrthoChart("));
 			StringAssert.Contains(appt,"FormOrthoChart.ShowNonModal(FindForm(),_patient,0,null);");
 		}
@@ -126,7 +126,7 @@ namespace BSHELLTests {
 
 		[TestMethod]
 		public void LogOff_PromptsBeforeClosingForms_AndPatientCheckRunsOnTheTimer() {
-			string main=TestPaths.ReadRepoFile("OpenDental","Main Modules","FormOpenDental.cs");
+			string main=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","FormOpenDental.cs");
 			string closeOpen=TestPaths.GetMethodBody(main,"public bool CloseOpenForms(bool isForceClose");
 			int indexPrompt=closeOpen.IndexOf("if(!isForceClose && !FormOrthoChart.PromptCloseAllForLogOff()) {",StringComparison.Ordinal);
 			int indexGetForms=closeOpen.IndexOf("List<Form> listFormsToClose=GetOpenForms();",StringComparison.Ordinal);

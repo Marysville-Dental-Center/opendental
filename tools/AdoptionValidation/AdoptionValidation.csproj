@@ -3,7 +3,7 @@
   AdoptionValidation: the M1-Z switch-gate rehearsal (docs/specs/port-backlog.md, section M1-Z). It generates a synthetic Open Dental
   25.3.48 database with tools\SyntheticData, records its validation baseline, backs it up and restores a copy, adopts the copy with the
   business layer's adoption tool (M1-03), runs the fork migration and the schema verifier (M1-01), rehashes, and validates the result:
-  row counts, checksums, business totals, a load-and-save round trip of every 24.4-25.3 column through OpenDentBusiness, the version
+  row counts, checksums, business totals, a load-and-save round trip of every 24.4-25.3 column through OpenPmsDentalBusiness, the version
   sentinels and an Open Dental-style startup check. Synthetic data on the local server only. See README.md.
 -->
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
@@ -18,7 +18,7 @@
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <LangVersion>8.0</LangVersion>
-    <!-- MySqlConnector and the business layer need binding redirects, as OpenDental.exe gets them. -->
+    <!-- MySqlConnector and the business layer need binding redirects, as OpenPmsDental.exe gets them. -->
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <Prefer32Bit>false</Prefer32Bit>

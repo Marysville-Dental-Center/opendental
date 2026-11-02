@@ -42,7 +42,7 @@ namespace M2DUNTests {
 				using(MySqlConnection connection=OpenServer()) {
 					string sqlMode=Scalar(connection,"SELECT @@GLOBAL.sql_mode");
 					if(sqlMode!="" && sqlMode.ToUpperInvariant()!="NO_AUTO_CREATE_USER") {
-						return "Global sql_mode is '"+sqlMode+"'; the convert scripts need a blank sql_mode, as OpenDental.exe sets at startup.";
+						return "Global sql_mode is '"+sqlMode+"'; the convert scripts need a blank sql_mode, as OpenPmsDental.exe sets at startup.";
 					}
 				}
 				return null;

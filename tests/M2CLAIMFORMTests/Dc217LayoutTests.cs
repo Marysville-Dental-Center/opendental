@@ -25,7 +25,7 @@ namespace M2CLAIMFORMTests {
 		public void EmbeddedForm_IsTheFileAndListedOnce() {
 			ClaimForm claimFormFile=Dc217.FromFile();
 			ClaimForm claimFormEmbedded=Dc217.FromResource();
-			Assert.IsNotNull(claimFormEmbedded,"OpenDentBusiness ships the form as an internal claim form.");
+			Assert.IsNotNull(claimFormEmbedded,"OpenPmsDentalBusiness ships the form as an internal claim form.");
 			Assert.IsTrue(claimFormEmbedded.IsInternal);
 			Assert.AreEqual("Denti-Cal DC217_2019",ClaimForms.DescriptionDentiCalDC217_2019);
 			Assert.AreEqual(ClaimForms.DescriptionDentiCalDC217_2019,claimFormFile.Description);
@@ -56,14 +56,14 @@ namespace M2CLAIMFORMTests {
 
 		[TestMethod]
 		public void Repository_HasNoDc217Artwork() {
-			//The file is <root>\OpenDentBusiness\Resources\ClaimForms\..., four levels below the repository root.
+			//The file is <root>\OpenPmsDentalBusiness\Resources\ClaimForms\..., four levels below the repository root.
 			string root=Path.GetFullPath(TestDb.FindRepoFile(Dc217.RelativePath));
 			for(int i=0;i<4;i++) {
 				root=Path.GetDirectoryName(root);
 			}
 			Assert.IsTrue(File.Exists(Path.Combine(root,"LICENSE")) && File.Exists(Path.Combine(root,"NOTICE")),root);
 			string[] arrayExtensions=new[] { ".gif",".png",".jpg",".jpeg",".bmp",".emf",".tif",".tiff",".pdf" };
-			foreach(string folder in new[] { Path.Combine(root,"OpenDentBusiness"),Path.Combine(root,"OpenDental") }) {
+			foreach(string folder in new[] { Path.Combine(root,"OpenPmsDentalBusiness"),Path.Combine(root,"OpenPmsDental") }) {
 				List<string> listArtwork=Directory.EnumerateFiles(folder,"*",SearchOption.AllDirectories)
 					.Where(x => !x.Contains(@"\bin\") && !x.Contains(@"\obj\"))
 					.Where(x => arrayExtensions.Contains(Path.GetExtension(x).ToLowerInvariant()))

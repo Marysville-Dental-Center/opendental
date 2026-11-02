@@ -81,7 +81,7 @@ namespace VendorDirectTests.DentalXChange {
 		[TestMethod]
 		public void X837Builders_UseTheHelpers() {
 			//Both builders must ask ClaimAttaches instead of comparing AttachedFlags with "Mail" themselves.
-			foreach(string relativePath in new[] { @"OpenDentBusiness\X12\X837_5010.cs",@"OpenDentBusiness\X12\X837_4010.cs" }) {
+			foreach(string relativePath in new[] { @"OpenPmsDentalBusiness\X12\X837_5010.cs",@"OpenPmsDentalBusiness\X12\X837_4010.cs" }) {
 				string source=DxcTestFiles.ReadRepoFile(relativePath);
 				StringAssert.Contains(source,"ClaimAttaches.HasPaperworkFlags(claim.AttachedFlags)",relativePath);
 				StringAssert.Contains(source,"ClaimAttaches.IsAttachmentIdMissing(claim.AttachedFlags,claim.AttachmentID,pwkNeeded)",relativePath);

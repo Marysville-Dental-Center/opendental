@@ -193,7 +193,7 @@ namespace VendorDirectTests.DentalXChange {
 			response.response.claimItems=new[] { new XConnectClaimItemResponse { itemStatus=new XConnectStatus { message="Attachment required: X-rays" } } };
 			Assert.AreEqual(1,XConnectValidation.GetIssues(response,claim.AttachedFlags).Count);
 			//Edit Claim makes that call on every save, after the block that runs only when attachments cannot be sent electronically.
-			string source=DxcTestFiles.ReadRepoFile(@"OpenDental\Forms\FormClaimEdit.cs");
+			string source=DxcTestFiles.ReadRepoFile(@"OpenPmsDental\Forms\FormClaimEdit.cs");
 			int indexStart=source.IndexOf("private ClaimEdit.UpdateData UpdateClaim(){");
 			Assert.IsTrue(indexStart>=0,"UpdateClaim() not found.");
 			int indexEnd=source.IndexOf("ClaimEdit.UpdateClaim(_claim,",indexStart);
@@ -209,7 +209,7 @@ namespace VendorDirectTests.DentalXChange {
 		public void OutstandingClaimsPrompt_ValidatesWithXConnectBeforeSending() {
 			//"Outstanding secondary claims > Send" sends through SendClaimSendQueueItems(). XConnect validation happens at that call site, before the
 			//send, and not inside SendClaimSendQueueItems(), which the Send Claims window calls after validating the claims itself.
-			string source=DxcTestFiles.ReadRepoFile(@"OpenDental\Logic\ClaimL.cs");
+			string source=DxcTestFiles.ReadRepoFile(@"OpenPmsDental\Logic\ClaimL.cs");
 			int indexPrompt=source.IndexOf("public static void PromptForPrimaryOrSecondaryClaim(");
 			int indexSend=source.IndexOf("internal static List<ClaimSendQueueItem> SendClaimSendQueueItems(");
 			int indexRegion=source.IndexOf("#region XConnect claim validation",Math.Max(indexSend,0));

@@ -1,5 +1,5 @@
 // Tests for the Percent of Fee calculation (v26_1-account-adjust-percent-of-fee) and the default percentage of an adjustment type
-// (v26_1-setup-adjtype-default-percent), in OpenDentBusiness/Data Interface/Adjustments.cs. No database: these methods only compute.
+// (v26_1-setup-adjtype-default-percent), in OpenPmsDentalBusiness/Data Interface/Adjustments.cs. No database: these methods only compute.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Globalization;

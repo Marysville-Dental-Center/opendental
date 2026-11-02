@@ -83,7 +83,7 @@ namespace BSHELLTests {
 			List<FrmMessageReplacements.ReplacementField> listForEmail=FrmMessageReplacements.GetReplacementFieldList(true,
 				new List<MessageReplaceType> { MessageReplaceType.Patient,MessageReplaceType.Misc });
 			Assert.IsFalse(listForEmail.Any(x => x.FieldName=="[SelectedProcNums]"),"Email and other templates never replace it, so they don't list it.");
-			string sourceOutputFile=TestPaths.ReadRepoFile("OpenDental","Forms","FormProgramLinkOutputFile .cs");
+			string sourceOutputFile=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProgramLinkOutputFile .cs");
 			StringAssert.Contains(sourceOutputFile,"listMessageReplaceTypes.Add(MessageReplaceType.ProgramLink)");
 		}
 
@@ -109,15 +109,15 @@ namespace BSHELLTests {
 
 		[TestMethod]
 		public void Modules_PassTheirSelection() {
-			string chart=TestPaths.ReadRepoFile("OpenDental","Main Modules","ControlChart.cs");
+			string chart=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","ControlChart.cs");
 			StringAssert.Contains(chart,"ProgramLinkSelectedProcs.FromProgNotesRows(gridProg.SelectedIndices.Select(x => gridProg.ListGridRows[x].Tag as DataRow))");
-			string treat=TestPaths.ReadRepoFile("OpenDental","Main Modules","ControlTreat.cs");
+			string treat=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","ControlTreat.cs");
 			StringAssert.Contains(treat,"ProgramLinkSelectedProcs.FromTreatPlanTags(gridMain.SelectedIndices.Select(x => gridMain.ListGridRows[x].Tag))");
-			string account=TestPaths.ReadRepoFile("OpenDental","Main Modules","ControlAccount.cs");
+			string account=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","ControlAccount.cs");
 			StringAssert.Contains(account,"ProgramLinkSelectedProcs.FromLedgerRows(_dataSetMain?.Tables[\"account\"],gridAccount.SelectedIndices)");
 			//Other modules and the main toolbar keep the two-argument call, which replaces the field with an empty string.
 			foreach(string module in new[] { "ControlAppt.cs","ControlFamily.cs","ControlImages.cs","FormOpenDental.cs" }) {
-				string source=TestPaths.ReadRepoFile("OpenDental","Main Modules",module);
+				string source=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules",module);
 				Assert.IsFalse(source.Contains("ProgramLinkSelectedProcs."),module);
 			}
 		}

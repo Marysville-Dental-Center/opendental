@@ -2,8 +2,8 @@
 
 namespace SyntheticData.Generation {
 	///<summary>Stored enum numbers the generator writes, pinned to Open Dental's published database documentation (25.3). Values that
-	///already existed in 24.3 are cross-checked against OpenDentBusiness by the tests; values that are new in 24.4 to 25.3 are cited.
-	///This tool does not reference OpenDentBusiness at run time, because the schema it fills is newer than the business layer.</summary>
+	///already existed in 24.3 are cross-checked against OpenPmsDentalBusiness by the tests; values that are new in 24.4 to 25.3 are cited.
+	///This tool does not reference OpenPmsDentalBusiness at run time, because the schema it fills is newer than the business layer.</summary>
 	public static class OdValues {
 		//ApptStatus
 		public const int AptScheduled=1, AptComplete=2, AptUnschedList=3, AptBroken=5, AptPlanned=6;

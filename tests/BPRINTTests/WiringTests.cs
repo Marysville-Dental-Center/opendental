@@ -1,4 +1,4 @@
-// B-PRINT: checks that the windows (OpenDental.exe and WPF windows, which the tests do not open) call the B-PRINT business rules. They read the
+// B-PRINT: checks that the windows (OpenPmsDental.exe and WPF windows, which the tests do not open) call the B-PRINT business rules. They read the
 // source files.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.IO;
@@ -21,7 +21,7 @@ namespace BPRINTTests {
 		#region v24_4-manage-accounting-export and v25_3-misc-export-csv-txt
 		[TestMethod]
 		public void TransactionHistory_HasExportTxtAndExportCsv() {
-			string source=Read(@"OpenDental\Forms\FormJournal.cs");
+			string source=Read(@"OpenPmsDental\Forms\FormJournal.cs");
 			StringAssert.Contains(source,"new ODToolBarButton(Lan.g(this,\"Export .txt\")");
 			StringAssert.Contains(source,"new ODToolBarButton(Lan.g(this,\"Export .csv\")");
 			StringAssert.Contains(source,"Export_Click(GridExportFormat.Txt);");
@@ -32,7 +32,7 @@ namespace BPRINTTests {
 
 		[TestMethod]
 		public void ChartOfAccounts_UsesTheSharedExport() {
-			string source=Read(@"OpenDental\Forms\FormAccounting.cs");
+			string source=Read(@"OpenPmsDental\Forms\FormAccounting.cs");
 			StringAssert.Contains(source,"gridMain.ExportAs(gridMain.Title,gridExportFormat);");
 			Assert.IsFalse(source.Contains("new StreamWriter("),"No private copy of the export routine.");
 		}
@@ -40,15 +40,15 @@ namespace BPRINTTests {
 		[TestMethod]
 		public void GridWindows_OfferExportCsvAndExportTxt() {
 			string[][] arrayCalls={
-				new[] { @"OpenDental\Forms\FormTransactionEdit.cs","gridMain.ShowExportMenu(butExport,gridMain.Title);" },
-				new[] { @"OpenDental\Forms\FormReconcileEdit.cs","gridMain.ShowExportMenu(butExport,gridMain.Title);" },
-				new[] { @"OpenDental\Forms\FormEmployeeSelect.cs","gridMain.ShowExportMenu(butExport,\"Employees\");" },
-				new[] { @"OpenDental\Forms\FormArManager.cs","gridUnsent.ShowExportMenu(butUnsentExport,\"TSI Unsent Accounts\");" },
-				new[] { @"OpenDental\Forms\FormArManager.cs","gridSent.ShowExportMenu(butSentExport,\"TSI Sent Accounts\");" },
-				new[] { @"OpenDental\Forms\FormArManager.cs","gridExcluded.ShowExportMenu(butExcludedExport,\"TSI Excluded Accounts\");" },
-				new[] { @"OpenDental\Forms Reports\FormRpProcNote.cs","gridMain.ShowExportMenu(butExport,\"Incomplete Procedure Notes\");" },
-				new[] { @"OpenDental\Forms Reports\FormRpProcedures.cs","gridMain.ShowExportMenu(butExport,\"Procedures\");" },
-				new[] { @"OpenDental\Forms Reports\FormRpInsPendingSupplementals.cs","gridMain.ShowExportMenu(butExport,\"Insurance Pending Supplementals\");" },
+				new[] { @"OpenPmsDental\Forms\FormTransactionEdit.cs","gridMain.ShowExportMenu(butExport,gridMain.Title);" },
+				new[] { @"OpenPmsDental\Forms\FormReconcileEdit.cs","gridMain.ShowExportMenu(butExport,gridMain.Title);" },
+				new[] { @"OpenPmsDental\Forms\FormEmployeeSelect.cs","gridMain.ShowExportMenu(butExport,\"Employees\");" },
+				new[] { @"OpenPmsDental\Forms\FormArManager.cs","gridUnsent.ShowExportMenu(butUnsentExport,\"TSI Unsent Accounts\");" },
+				new[] { @"OpenPmsDental\Forms\FormArManager.cs","gridSent.ShowExportMenu(butSentExport,\"TSI Sent Accounts\");" },
+				new[] { @"OpenPmsDental\Forms\FormArManager.cs","gridExcluded.ShowExportMenu(butExcludedExport,\"TSI Excluded Accounts\");" },
+				new[] { @"OpenPmsDental\Forms Reports\FormRpProcNote.cs","gridMain.ShowExportMenu(butExport,\"Incomplete Procedure Notes\");" },
+				new[] { @"OpenPmsDental\Forms Reports\FormRpProcedures.cs","gridMain.ShowExportMenu(butExport,\"Procedures\");" },
+				new[] { @"OpenPmsDental\Forms Reports\FormRpInsPendingSupplementals.cs","gridMain.ShowExportMenu(butExport,\"Insurance Pending Supplementals\");" },
 			};
 			foreach(string[] arrayCall in arrayCalls) {
 				StringAssert.Contains(Read(arrayCall[0]),arrayCall[1],arrayCall[0]);
@@ -64,17 +64,17 @@ namespace BPRINTTests {
 		[TestMethod]
 		public void EmailedStatements_AreNamedAfterTheLastName() {
 			string[] arrayPaths={
-				@"OpenDental\Forms\FormBilling.cs",
-				@"OpenDental\Forms\FormStatementOptions.cs",
-				@"OpenDentBusiness\Logic\BillingL.cs",
-				@"OpenDentBusiness\Data Interface\EmailMessages.cs",
+				@"OpenPmsDental\Forms\FormBilling.cs",
+				@"OpenPmsDental\Forms\FormStatementOptions.cs",
+				@"OpenPmsDentalBusiness\Logic\BillingL.cs",
+				@"OpenPmsDentalBusiness\Data Interface\EmailMessages.cs",
 			};
 			foreach(string path in arrayPaths) {
 				string source=Read(path);
 				StringAssert.Contains(source,"emailAttach.DisplayedFileName=Statements.GetEmailPdfDisplayName(patient);",path);
 				Assert.IsFalse(source.Contains("DisplayedFileName=\"Statement.pdf\""),path);
 			}
-			StringAssert.Contains(Read(@"OpenDental\Forms\FormSheetFillEdit.cs"),
+			StringAssert.Contains(Read(@"OpenPmsDental\Forms\FormSheetFillEdit.cs"),
 				"shortFileName=Path.GetFileNameWithoutExtension(Statements.GetEmailPdfDisplayName(patient));");
 		}
 		#endregion
@@ -82,48 +82,48 @@ namespace BPRINTTests {
 		#region v25_3-manage-statement-barcode
 		[TestMethod]
 		public void BillingDefaults_HasTheBarcodeOption() {
-			string designer=Read(@"OpenDental\Forms\FormBillingDefaults.Designer.cs");
+			string designer=Read(@"OpenPmsDental\Forms\FormBillingDefaults.Designer.cs");
 			StringAssert.Contains(designer,"this.checkInserterBarcode.Text = \"Print inserter barcode on statements\";");
 			StringAssert.Contains(designer,"this.Controls.Add(this.checkInserterBarcode);");
-			string source=Read(@"OpenDental\Forms\FormBillingDefaults.cs");
+			string source=Read(@"OpenPmsDental\Forms\FormBillingDefaults.cs");
 			StringAssert.Contains(source,"checkInserterBarcode.Checked=StatementInserterBarcode.IsEnabled();");
 			StringAssert.Contains(source,"| StatementInserterBarcode.SetEnabled(checkInserterBarcode.Checked))");
 		}
 
 		[TestMethod]
 		public void Barcode_IsPrintedAndStamped() {
-			string billing=Read(@"OpenDental\Forms\FormBilling.cs");
+			string billing=Read(@"OpenPmsDental\Forms\FormBilling.cs");
 			int idxAttach=billing.IndexOf("StatementInserterBarcodeBatch.Attach(sendStatementsIO);");
 			int idxSend=billing.IndexOf("BillingL.SendStatements(sendStatementsIO);");
 			int idxStamp=billing.IndexOf("statementInserterBarcodeBatch.Stamp(sendStatementsIO);");
 			int idxSave=billing.IndexOf("sendStatementsIO.PdfMasterDocument.Save(tempFileOutputDocument);");
 			Assert.IsTrue(idxAttach>0 && idxAttach<idxSend && idxSend<idxStamp && idxStamp<idxSave,"Attach, send, stamp, then save the print document.");
-			StringAssert.Contains(Read(@"OpenDental\SheetFramework\SheetPrintingJob.cs"),
+			StringAssert.Contains(Read(@"OpenPmsDental\SheetFramework\SheetPrintingJob.cs"),
 				"StatementInserterBarcode.DrawOnPrintedPage(g,sheet,_sheetsPrinted+1,_pagesPrinted+1,Sheets.CalculatePageCount(sheet,_printMargin));");
 		}
 
 		[TestMethod]
 		public void SheetEditor_DrawsTheBarcodeField_AndWarnsAboutTheClearZone() {
-			string source=Read(@"OpenDental\Forms\FormSheetDefEdit.cs");
+			string source=Read(@"OpenPmsDental\Forms\FormSheetDefEdit.cs");
 			StringAssert.Contains(source,"case StatementInserterBarcode.FIELD_NAME:");
 			StringAssert.Contains(source,"DrawInserterBarcode(sheetFieldDef,g);");
 			StringAssert.Contains(source,"if(!ConfirmInserterBarcodeClearZone()) {");
-			string partial=Read(@"OpenDental\Forms\FormSheetDefEdit.InserterBarcode.cs");
+			string partial=Read(@"OpenPmsDental\Forms\FormSheetDefEdit.InserterBarcode.cs");
 			StringAssert.Contains(partial,"StatementInserterBarcode.GetOverlappingFields(SheetDef_)");
-			StringAssert.Contains(Read(@"OpenDental\OpenDental.csproj"),"<Compile Include=\"Forms\\FormSheetDefEdit.InserterBarcode.cs\">");
+			StringAssert.Contains(Read(@"OpenPmsDental\OpenPmsDental.csproj"),"<Compile Include=\"Forms\\FormSheetDefEdit.InserterBarcode.cs\">");
 		}
 		#endregion
 
 		#region v25_1-sheets-autosave-images
 		[TestMethod]
 		public void FillSheet_HasNoAutosaveBox_AndCopiesWhenTheSaveChangedTheSheet() {
-			string source=Read(@"OpenDental\Forms\FormSheetFillEdit.cs");
+			string source=Read(@"OpenPmsDental\Forms\FormSheetFillEdit.cs");
 			Assert.IsFalse(source.Contains("checkSaveToImages"));
-			Assert.IsFalse(Read(@"OpenDental\Forms\FormSheetFillEdit.designer.cs").Contains("checkSaveToImages"));
+			Assert.IsFalse(Read(@"OpenPmsDental\Forms\FormSheetFillEdit.designer.cs").Contains("checkSaveToImages"));
 			//E-mail, PDF, Print, Print/E-mail and OK each copy after their save.
 			Assert.AreEqual(5,Count(source,"if(IsAutoSaveCopyDue()) {"));
 			Assert.AreEqual(5,Count(source,"SaveAsDocument('U',\"PatientForm\");"));
-			string partial=Read(@"OpenDental\Forms\FormSheetFillEdit.AutoSaveImages.cs");
+			string partial=Read(@"OpenPmsDental\Forms\FormSheetFillEdit.AutoSaveImages.cs");
 			StringAssert.Contains(partial,"_sheetAutoSaveTracker.IsCopyDue(SheetCur,_isAutoSave,SheetAutoSaveImages.IsLayoutOptionOn(SheetCur))");
 			StringAssert.Contains(partial,"protected override void OnShown(EventArgs e)");
 			StringAssert.Contains(partial,"_sheetAutoSaveTracker.TakeSnapshot(SheetCur);");
@@ -133,19 +133,19 @@ namespace BPRINTTests {
 			int idxCopy=partial.IndexOf("SaveAsDocument('U',\"PatientForm\");",idxTerminal);
 			int idxCatch=partial.IndexOf("catch(Exception ex) {",idxTerminal);
 			Assert.IsTrue(idxTerminal>0 && idxTry>idxTerminal && idxCopy>idxTry && idxCatch>idxCopy);
-			StringAssert.Contains(Read(@"OpenDental\OpenDental.csproj"),"<Compile Include=\"Forms\\FormSheetFillEdit.AutoSaveImages.cs\">");
+			StringAssert.Contains(Read(@"OpenPmsDental\OpenPmsDental.csproj"),"<Compile Include=\"Forms\\FormSheetFillEdit.AutoSaveImages.cs\">");
 		}
 
 		[TestMethod]
 		public void SheetSetup_DescribesTheCopy() {
-			StringAssert.Contains(Read(@"OpenDental\Forms\FormSheetDef.designer.cs"),"this.checkAutoSaveCheck.Text = \"Copy to Imaging when saved\";");
+			StringAssert.Contains(Read(@"OpenPmsDental\Forms\FormSheetDef.designer.cs"),"this.checkAutoSaveCheck.Text = \"Copy to Imaging when saved\";");
 		}
 		#endregion
 
 		#region v25_3-sheets-checkbox-cleanup
 		[TestMethod]
 		public void EditCheckBox_HasNoLongInstructions_AndKeepsThemAsTooltips() {
-			string designer=Read(@"OpenDental\Forms\FormSheetFieldCheckBox.designer.cs");
+			string designer=Read(@"OpenPmsDental\Forms\FormSheetFieldCheckBox.designer.cs");
 			Assert.IsFalse(Regex.IsMatch(designer,@"\blabel9\b"),"The misc radio button instructions label is gone.");
 			Assert.IsFalse(Regex.IsMatch(designer,@"\blabel1\b"),"The radio button value instructions label is gone.");
 			foreach(Match match in Regex.Matches(designer,"this\\.label\\w+\\.Text = \"([^\"]|\\\\\")*\"( \\+)?")) {
@@ -154,13 +154,13 @@ namespace BPRINTTests {
 			StringAssert.Contains(designer,"this.labelRequired.Text = \"Same for the whole group\";");
 			StringAssert.Contains(designer,"this.labelMiscInstructions.Text = \"One Reportable Name per button\";");
 			StringAssert.Contains(designer,"this.labelYesNo.Text = \"Pair with a \\\"No\\\" box\";");
-			string partial=Read(@"OpenDental\Forms\FormSheetFieldCheckBox.Instructions.cs");
+			string partial=Read(@"OpenPmsDental\Forms\FormSheetFieldCheckBox.Instructions.cs");
 			foreach(string tip in new[] { "SetTip(groupRadioMisc,TIP_RADIO_MISC);","SetTip(groupRadio,TIP_RADIO);","SetTip(checkRequired,TIP_REQUIRED);",
 				"SetTip(textReportableName,TIP_REPORTABLE);","SetTip(radioYes,TIP_YES_NO);","SetTip(radioNo,TIP_YES_NO);" })
 			{
 				StringAssert.Contains(partial,tip);
 			}
-			StringAssert.Contains(Read(@"OpenDental\OpenDental.csproj"),"<Compile Include=\"Forms\\FormSheetFieldCheckBox.Instructions.cs\">");
+			StringAssert.Contains(Read(@"OpenPmsDental\OpenPmsDental.csproj"),"<Compile Include=\"Forms\\FormSheetFieldCheckBox.Instructions.cs\">");
 			Assert.IsFalse(Read(@"WpfControlsOD\Frms\FrmEFormCheckBoxEdit.xaml.cs").Contains("B-PRINT"),"The eForm checkbox window is left alone.");
 		}
 		#endregion
@@ -168,17 +168,17 @@ namespace BPRINTTests {
 		#region v25_3-misc-printer-options
 		[TestMethod]
 		public void Printing_ShowsThePrintOptionsWindow_InsteadOfTheWindowsDialog() {
-			string printerL=Read(@"OpenDental\Logic\PrinterL.cs");
+			string printerL=Read(@"OpenPmsDental\Logic\PrinterL.cs");
 			Assert.IsFalse(printerL.Contains("new PrintDialog()"),"No Windows print dialog.");
 			StringAssert.Contains(printerL,"if((showPrompt || isPromptForced) && !isRemotePrint) {");
 			StringAssert.Contains(printerL,"if(!ShowPrintOptions(printerSettings,printSituation,printerForSit)) {");
 			StringAssert.Contains(printerL,"SecurityLogs.MakeLogEntry(EnumPermType.Printing,patNum,auditDescription);");
 			StringAssert.Contains(printerL,"ApplyPageRange(printout.PrintDoc);");
-			string printOptions=Read(@"OpenDental\Logic\PrinterL.PrintOptions.cs");
+			string printOptions=Read(@"OpenPmsDental\Logic\PrinterL.PrintOptions.cs");
 			StringAssert.Contains(printOptions,"FrmPrintOptions frmPrintOptions=new FrmPrintOptions();");
 			StringAssert.Contains(printOptions,"PrintOptions.Remember(printSituation,printOptionsChoice);");
 			StringAssert.Contains(printOptions,"PageRangePrintController.ApplyTo(printDocument);");
-			StringAssert.Contains(Read(@"OpenDental\UI\FormPrintPreview.cs"),"PrinterL.TryPrint(_printout,isPromptForced:true)");
+			StringAssert.Contains(Read(@"OpenPmsDental\UI\FormPrintPreview.cs"),"PrinterL.TryPrint(_printout,isPromptForced:true)");
 		}
 
 		///<summary>Reports, User Query and RDL reports apply FromPage/ToPage in their own page handlers and reach the page-range controller through
@@ -186,19 +186,19 @@ namespace BPRINTTests {
 		///once (PrintOptionsTests.PageRange_HandlerThatSkipsPagesItself_PrintsExactlyTheChosenPages).</summary>
 		[TestMethod]
 		public void PageRange_ReportsThatSkipPagesThemselves_GoThroughTheController() {
-			string printerL=Read(@"OpenDental\Logic\PrinterL.cs");
+			string printerL=Read(@"OpenPmsDental\Logic\PrinterL.cs");
 			StringAssert.Contains(printerL,"ApplyPageRange(printout.PrintDoc);");
 			StringAssert.Contains(printerL,"ApplyPageRange(printDocument);");
-			string printOptions=Read(@"OpenDentBusiness\Misc\PrintOptions.cs");
+			string printOptions=Read(@"OpenPmsDentalBusiness\Misc\PrintOptions.cs");
 			StringAssert.Contains(printOptions,"printDocument.PrinterSettings.PrintRange=PrintRange.AllPages;");
-			string reportComplex=Read(@"OpenDental\ReportingComplex\FormReportComplex.cs");
+			string reportComplex=Read(@"OpenPmsDental\ReportingComplex\FormReportComplex.cs");
 			StringAssert.Contains(reportComplex,"ev.PageSettings.PrinterSettings.FromPage>=_currentPage");
 			StringAssert.Contains(reportComplex,"PrinterL.TryPrint(_printout)");
-			string query=Read(@"OpenDental\Forms Reports\FormQuery.cs");
+			string query=Read(@"OpenPmsDental\Forms Reports\FormQuery.cs");
 			StringAssert.Contains(query,"ev.PageSettings.PrinterSettings.FromPage>=_currentPage");
 			StringAssert.Contains(query,"PrinterL.TryPrint(ODprintout.CurPrintout)");
-			StringAssert.Contains(Read(@"OpenDental\ReportingForRdl\FormReportForRdl.cs"),"PrinterL.SetPrinter(pd,PrintSituation.Default,0,");
-			StringAssert.Contains(Read(@"OpenDental\ReportingForRdl\FormReportCustom.cs"),"PrinterL.SetPrinter(pd,PrintSituation.Default,0,");
+			StringAssert.Contains(Read(@"OpenPmsDental\ReportingForRdl\FormReportForRdl.cs"),"PrinterL.SetPrinter(pd,PrintSituation.Default,0,");
+			StringAssert.Contains(Read(@"OpenPmsDental\ReportingForRdl\FormReportCustom.cs"),"PrinterL.SetPrinter(pd,PrintSituation.Default,0,");
 			StringAssert.Contains(Read(@"RdlViewer\RdlViewer.cs"),"case PrintRange.SomePages:");
 		}
 

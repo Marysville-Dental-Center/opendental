@@ -1,4 +1,4 @@
-// Source checks for the three windows of package M2-ADJ. The windows cannot be opened in a test run (OpenDental.exe is not launched), so these
+// Source checks for the three windows of package M2-ADJ. The windows cannot be opened in a test run (OpenPmsDental.exe is not launched), so these
 // tests make sure the hooks that route the windows through the tested business methods are in place, for example after a merge.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
@@ -26,7 +26,7 @@ namespace M2ADJTests {
 		}
 
 		private static string ReadForm(string fileName) {
-			return File.ReadAllText(GetRepoFile("OpenDental","Forms",fileName));
+			return File.ReadAllText(GetRepoFile("OpenPmsDental","Forms",fileName));
 		}
 
 		[TestMethod]
@@ -63,7 +63,7 @@ namespace M2ADJTests {
 			StringAssert.Contains(source,"Adjustments.TryGetSuppFromPercentInput(textDefaultPercent.Text,CultureInfo.CurrentCulture,out suppNew)");
 			StringAssert.Contains(source,"_def.Supp=suppNew;");
 			StringAssert.Contains(source,"FillDefaultPercent();");
-			string designer=File.ReadAllText(GetRepoFile("OpenDental","Forms","FormDefEdit.designer.cs"));
+			string designer=File.ReadAllText(GetRepoFile("OpenPmsDental","Forms","FormDefEdit.designer.cs"));
 			StringAssert.Contains(designer,"this.Controls.Add(this.textDefaultPercent);");
 		}
 	}

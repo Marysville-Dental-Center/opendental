@@ -9,7 +9,7 @@ using OpenPmsDentalBusiness;
 namespace NoHqTests {
 	///<summary>Checks that the CDT library is retired: its secrets and SecurityHash functions live in CodeBase (Secrets, TamperHash), the CDT project
 	///and every reference to it are gone, and so are the ADA-content and registration-key functions that used it. Procedure codes come from the
-	///procedurecode table. None of these tests needs a database or a network connection. The OpenDental.exe checks read the built program.</summary>
+	///procedurecode table. None of these tests needs a database or a network connection. The OpenPmsDental.exe checks read the built program.</summary>
 	[TestClass]
 	public class CdtRetiredTests {
 		private const BindingFlags ALL_DECLARED=BindingFlags.Public|BindingFlags.NonPublic|BindingFlags.Static|BindingFlags.Instance
@@ -48,7 +48,7 @@ namespace NoHqTests {
 		[TestMethod]
 		public void CdtAssembly_IsNotReferencedByTheBusinessLayers() {
 			List<Assembly> listAssemblies=new List<Assembly> {
-				typeof(Patient).Assembly,//OpenDentBusiness
+				typeof(Patient).Assembly,//OpenPmsDentalBusiness
 				typeof(CodeBase.Secrets).Assembly,//CodeBase
 				typeof(DataConnectionBase.DataConnection).Assembly,
 			};
@@ -61,7 +61,7 @@ namespace NoHqTests {
 		[TestMethod]
 		public void CdtAssembly_IsNotReferencedByTheProgram() {
 			string pathRoot=RemovedAssembliesTests.GetRepositoryRoot();
-			foreach(string pathRelative in new[] { @"OpenDental\bin\Debug\OpenDental.exe",@"WpfControlsOD\bin\Debug\WpfControlsOD.dll" }) {
+			foreach(string pathRelative in new[] { @"OpenPmsDental\bin\Debug\OpenPmsDental.exe",@"WpfControlsOD\bin\Debug\WpfControlsOD.dll" }) {
 				string path=Path.Combine(pathRoot,pathRelative);
 				if(!File.Exists(path)) {
 					Assert.Inconclusive(path+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
@@ -105,10 +105,10 @@ namespace NoHqTests {
 
 		[TestMethod]
 		public void OpenDental_AdaUiIsRemoved() {
-			Assembly assembly=LoadBuiltAssembly("OpenDental.exe");
-			AssertNoMembers(FindType(assembly,"OpenDental.FormProcTools"),"checkDcodes","checkTreatAreas","_listProcedureCodes");
-			AssertNoMembers(FindType(assembly,"OpenDental.FormRegistrationKey"),"ValidateKey");
-			Type typeFormDatabaseMaintenance=FindType(assembly,"OpenDental.FormDatabaseMaintenance");
+			Assembly assembly=LoadBuiltAssembly("OpenPmsDental.exe");
+			AssertNoMembers(FindType(assembly,"OpenPmsDental.FormProcTools"),"checkDcodes","checkTreatAreas","_listProcedureCodes");
+			AssertNoMembers(FindType(assembly,"OpenPmsDental.FormRegistrationKey"),"ValidateKey");
+			Type typeFormDatabaseMaintenance=FindType(assembly,"OpenPmsDental.FormDatabaseMaintenance");
 			Assert.AreEqual(1,typeFormDatabaseMaintenance.GetMember("SecurityHashesFix",ALL_DECLARED).Length,
 				"Database Maintenance should have the Security Hashes tool.");
 		}
@@ -123,11 +123,11 @@ namespace NoHqTests {
 				|| x.Equals("packages",StringComparison.OrdinalIgnoreCase));
 		}
 
-		///<summary>Loads an assembly from OpenDental\bin\Debug (or Release). The test is inconclusive when it has not been built.</summary>
+		///<summary>Loads an assembly from OpenPmsDental\bin\Debug (or Release). The test is inconclusive when it has not been built.</summary>
 		private static Assembly LoadBuiltAssembly(string fileName) {
 			string dirTests=Path.GetDirectoryName(typeof(CdtRetiredTests).Assembly.Location);//NoHqTests\bin\Debug
 			string dirConfiguration=Path.GetFileName(dirTests);
-			string path=Path.GetFullPath(Path.Combine(dirTests,"..","..","..","OpenDental","bin",dirConfiguration,fileName));
+			string path=Path.GetFullPath(Path.Combine(dirTests,"..","..","..","OpenPmsDental","bin",dirConfiguration,fileName));
 			if(!File.Exists(path)) {
 				Assert.Inconclusive(fileName+" is not built: "+path);
 			}

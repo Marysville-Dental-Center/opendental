@@ -9,7 +9,7 @@ using OpenPmsDentalBusiness;
 using SyntheticData.Infrastructure;
 
 namespace AdoptionValidation {
-	///<summary>Points OpenDentBusiness at one database and runs the program's own adoption, migration, verifier and rehash code against it, exactly
+	///<summary>Points OpenPmsDentalBusiness at one database and runs the program's own adoption, migration, verifier and rehash code against it, exactly
 	///as the program does (Adoption.Run is what FormAdoptDatabase calls). Nothing here re-implements those steps.</summary>
 	public static class BusinessLayer {
 		///<summary>Tables with a SecurityHash column that the rehash (SecurityHash.RehashNow) writes.</summary>

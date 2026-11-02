@@ -22,7 +22,7 @@ namespace DevDbTool {
 		public bool Force;
 		public bool WithSampleData;
 		public bool VerifyOnly;
-		///<summary>Stop at the frozen 24.3.63 convert chain: do not run the fork migrations (OpenDentBusiness/Misc/ForkMigrations), and do not expect
+		///<summary>Stop at the frozen 24.3.63 convert chain: do not run the fork migrations (OpenPmsDentalBusiness/Misc/ForkMigrations), and do not expect
 		///their tables and columns when verifying. Gives a plain 24.3.63 database, for testing the migrations themselves.</summary>
 		public bool SkipForkMigrations;
 		public bool AllowRemoteServer;

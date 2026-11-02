@@ -83,7 +83,7 @@ namespace UnitTests{
 
 		private void butDelete_Click(object sender,EventArgs e) {
 			//float fontSize=textBox1.Font.Size;
-			//OpenDental.MessageBox.Show(fontSize.ToString());
+			//OpenPmsDental.MessageBox.Show(fontSize.ToString());
 		}
 
 		private void textBox1_FontChanged(object sender,EventArgs e) {

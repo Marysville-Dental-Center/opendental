@@ -14,7 +14,7 @@ namespace BTPTests {
 
 		[TestMethod]
 		public void Module_ToolbarButtonClickAndEnabledState() {
-			string source=Read("OpenDental","Main Modules","ControlTreat.cs");
+			string source=Read("OpenPmsDental","Main Modules","ControlTreat.cs");
 			StringAssert.Contains(source,"new ODToolBarButton(Lan.g(this,\"Add Procs\"),-1,");
 			StringAssert.Contains(source,"case \"AddProcs\":");
 			StringAssert.Contains(source,"ToolBarMainAddProcs_Click();");
@@ -24,7 +24,7 @@ namespace BTPTests {
 
 		[TestMethod]
 		public void Module_AddsThroughTheHelperAndRefreshes() {
-			string source=Read("OpenDental","Main Modules","ControlTreat.AddProcs.cs");
+			string source=Read("OpenPmsDental","Main Modules","ControlTreat.AddProcs.cs");
 			StringAssert.Contains(source,"private void ToolBarMainAddProcs_Click()");
 			StringAssert.Contains(source,"TreatPlans.CanAddProcsTo(treatPlan)");
 			StringAssert.Contains(source,"_listTreatPlans.Any(x => TreatPlans.CanAddProcsTo(x))");
@@ -41,7 +41,7 @@ namespace BTPTests {
 
 		[TestMethod]
 		public void Window_PickersValidationAndDesigner() {
-			string source=Read("OpenDental","Forms","FormTreatPlanAddProcs.cs");
+			string source=Read("OpenPmsDental","Forms","FormTreatPlanAddProcs.cs");
 			StringAssert.Contains(source,"formProcCodes.IsSelectionMode=true;");
 			StringAssert.Contains(source,"formProcCodes.CanAllowMultipleSelections=true;");
 			StringAssert.Contains(source,"ProcAddHelper.GetQuickButtons(ProcButtonQuicks.GetAll())");
@@ -49,10 +49,10 @@ namespace BTPTests {
 			StringAssert.Contains(source,"ProcAddHelper.GetEntryError(_listProcAddEntries[i])");
 			StringAssert.Contains(source,"ProcAddHelper.GetTargetError(TreatPlans.GetOne(_treatPlan.TreatPlanNum),_patient.PatNum)");
 			StringAssert.Contains(source,"comboPriority.Items.AddDefs(Defs.GetDefsForCategory(DefCat.TxPriorities,true));");
-			string designer=Read("OpenDental","Forms","FormTreatPlanAddProcs.Designer.cs");
-			StringAssert.Contains(designer,"this.gridQuick.CellClick += new OpenDental.UI.ODGridClickEventHandler(this.gridQuick_CellClick);");
-			StringAssert.Contains(designer,"this.gridMain.CellLeave += new OpenDental.UI.ODGridClickEventHandler(this.gridMain_CellLeave);");
-			StringAssert.Contains(designer,"this.gridMain.SelectionMode = OpenDental.UI.GridSelectionMode.OneCell;");
+			string designer=Read("OpenPmsDental","Forms","FormTreatPlanAddProcs.Designer.cs");
+			StringAssert.Contains(designer,"this.gridQuick.CellClick += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridQuick_CellClick);");
+			StringAssert.Contains(designer,"this.gridMain.CellLeave += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridMain_CellLeave);");
+			StringAssert.Contains(designer,"this.gridMain.SelectionMode = OpenPmsDental.UI.GridSelectionMode.OneCell;");
 			StringAssert.Contains(designer,"this.butSearch.Click += new System.EventHandler(this.butSearch_Click);");
 			StringAssert.Contains(designer,"this.butAddCode.Click += new System.EventHandler(this.butAddCode_Click);");
 			StringAssert.Contains(designer,"this.textCode.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textCode_KeyDown);");
@@ -63,12 +63,12 @@ namespace BTPTests {
 
 		[TestMethod]
 		public void ChartModuleUntouched_AndFilesInTheProjects() {
-			StringAssert.DoesNotMatch(Read("OpenDental","Main Modules","ControlChart.cs"),new System.Text.RegularExpressions.Regex("ProcAddHelper"));
-			string csproj=Read("OpenDental","OpenDental.csproj");
+			StringAssert.DoesNotMatch(Read("OpenPmsDental","Main Modules","ControlChart.cs"),new System.Text.RegularExpressions.Regex("ProcAddHelper"));
+			string csproj=Read("OpenPmsDental","OpenPmsDental.csproj");
 			StringAssert.Contains(csproj,"<Compile Include=\"Main Modules\\ControlTreat.AddProcs.cs\">");
 			StringAssert.Contains(csproj,"<Compile Include=\"Forms\\FormTreatPlanAddProcs.cs\">");
 			StringAssert.Contains(csproj,"<Compile Include=\"Forms\\FormTreatPlanAddProcs.Designer.cs\">");
-			StringAssert.Contains(Read("OpenDentBusiness","OpenDentBusiness.csproj"),"<Compile Include=\"Data Interface\\ProcAddHelper.cs\" />");
+			StringAssert.Contains(Read("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj"),"<Compile Include=\"Data Interface\\ProcAddHelper.cs\" />");
 		}
 	}
 }

@@ -3,18 +3,18 @@
 Creates a local development database for this codebase. No installer or trial version is needed.
 
 .DESCRIPTION
-Builds tools\DevDbTool, which also builds OpenDentBusiness, CodeBase and DataConnectionBase when they are out of
+Builds tools\DevDbTool, which also builds OpenPmsDentalBusiness, CodeBase and DataConnectionBase when they are out of
 date, and runs it to:
 
   1. create the database on a local MariaDB/MySQL server, dropping it first with -Force;
   2. load the seed dump UnitTests\Resources\dump.txt, a version 21.1.9 database;
-  3. upgrade it to this build's version with the convert scripts in OpenDentBusiness (frozen at 24.3.63) and record ProgramVersion;
-  4. adopt it (OpenDentBusiness\Misc\ForkMigrations\Adoption.cs, as the adoption tool does), which writes the fork version markers and runs
+  3. upgrade it to this build's version with the convert scripts in OpenPmsDentalBusiness (frozen at 24.3.63) and record ProgramVersion;
+  4. adopt it (OpenPmsDentalBusiness\Misc\ForkMigrations\Adoption.cs, as the adoption tool does), which writes the fork version markers and runs
      the fork migrations that bring the schema to Open Dental 25.3.48 and then 26.1.70, so the startup version guard opens it;
   5. apply the default auto codes, procedure buttons and appointment quick-add procedures;
   6. create an A to Z images folder, and optionally add fictional sample data;
   7. verify the version preferences or fork markers, that every table and column the code expects exists, and that the schema matches
-     Open Dental 26.1.70 (OpenDentBusiness\Misc\ForkMigrations\Reference\OdSchema-26.1.70.sql) apart from the documented exceptions.
+     Open Dental 26.1.70 (OpenPmsDentalBusiness\Misc\ForkMigrations\Reference\OdSchema-26.1.70.sql) apart from the documented exceptions.
 
 The tool talks only to the database server. Outbound HTTP is blocked, and any attempt is reported with exit code 3.
 The default user Admin has a blank password.
@@ -51,12 +51,12 @@ Default: %USERPROFILE%\OpenDentImagesDev\<Name>.
 Leave DocPath as the seed dump has it (C:\OpenDentImages\) and create no folder.
 
 .PARAMETER WriteConfig
-Write OpenDental\bin\<Configuration>\FreeDentalConfig.xml from tools\FreeDentalConfig.dev.xml so that OpenDental.exe
+Write OpenPmsDental\bin\<Configuration>\FreeDentalConfig.xml from tools\FreeDentalConfig.dev.xml so that OpenPmsDental.exe
 opens this database. An existing file is kept as FreeDentalConfig.xml.bak.
 
 .PARAMETER SkipForkMigrations
 Stop after the 24.3.63 convert scripts: a plain, unadopted 24.3.63 database without the fork migrations, for testing the migrations
-(OpenDentBusiness\Misc\ForkMigrations) and adoption themselves. OpenDental.exe asks for adoption before it opens such a database.
+(OpenPmsDentalBusiness\Misc\ForkMigrations) and adoption themselves. OpenPmsDental.exe asks for adoption before it opens such a database.
 With -VerifyOnly, check such a database without expecting the migrated schema.
 
 .PARAMETER VerifyOnly
@@ -80,7 +80,7 @@ Creates opendental_dev on 127.0.0.1:3306.
 
 .EXAMPLE
 .\tools\New-DevDatabase.ps1 -Force -WithSampleData -WriteConfig
-Recreates opendental_dev with sample data and points OpenDental\bin\Debug\OpenDental.exe at it.
+Recreates opendental_dev with sample data and points OpenPmsDental\bin\Debug\OpenPmsDental.exe at it.
 
 .EXAMPLE
 .\tools\New-DevDatabase.ps1 -Name mydev -VerifyOnly
@@ -144,7 +144,7 @@ function Write-DevConfig {
 	}
 	$target = Join-Path $binDir 'FreeDentalConfig.xml'
 	# Keep the template's whitespace as is. Re-indenting on save would put a line break inside the empty <Password></Password>,
-	# and OpenDental.exe would read that whitespace as the password.
+	# and OpenPmsDental.exe would read that whitespace as the password.
 	$xml = New-Object System.Xml.XmlDocument
 	$xml.PreserveWhitespace = $true
 	$xml.Load($configTemplate)
@@ -155,7 +155,7 @@ function Write-DevConfig {
 	$xml.SelectSingleNode('/ConnectionSettings/DatabaseConnection/ComputerName').InnerText = $computerName
 	$xml.SelectSingleNode('/ConnectionSettings/DatabaseConnection/Database').InnerText = $Name
 	$xml.SelectSingleNode('/ConnectionSettings/DatabaseConnection/User').InnerText = $User
-	# Plain text is what OpenDental.exe falls back to when it cannot encrypt; fine for a dev server.
+	# Plain text is what OpenPmsDental.exe falls back to when it cannot encrypt; fine for a dev server.
 	$xml.SelectSingleNode('/ConnectionSettings/DatabaseConnection/Password').InnerText = $Password
 	if (Test-Path -LiteralPath $target) {
 		Copy-Item -LiteralPath $target -Destination "$target.bak" -Force
@@ -223,8 +223,8 @@ if (-not $VerifyOnly) {
 	Write-Host ''
 	Write-Host "Dev database '$Name' is ready on ${Server}:$Port. Log in as Admin with a blank password."
 	if (-not $WriteConfig) {
-		Write-Host 'To point OpenDental.exe at it, rerun with -WriteConfig (add -VerifyOnly to skip rebuilding the database), or copy'
-		Write-Host "tools\FreeDentalConfig.dev.xml to OpenDental\bin\$Configuration\FreeDentalConfig.xml and set <Database> to $Name."
+		Write-Host 'To point OpenPmsDental.exe at it, rerun with -WriteConfig (add -VerifyOnly to skip rebuilding the database), or copy'
+		Write-Host "tools\FreeDentalConfig.dev.xml to OpenPmsDental\bin\$Configuration\FreeDentalConfig.xml and set <Database> to $Name."
 	}
 }
 if ($exitCode -eq 3) {

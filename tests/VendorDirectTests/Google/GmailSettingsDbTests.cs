@@ -224,7 +224,7 @@ namespace VendorDirectTests.Gmail {
 		[TestMethod]
 		public void GmailCode_NoLongerCallsOpenDental() {
 			foreach(string file in new[] { "Google.cs","GoogleApiConnector.cs","GoogleTokenCache.cs","GoogleOAuthSettings.cs" }) {
-				string text=Read(Path.Combine("OpenDentBusiness","WebBridges","Google",file));
+				string text=Read(Path.Combine("OpenPmsDentalBusiness","WebBridges","Google",file));
 				foreach(string forbidden in new[] { "WebServiceMainHQ","BuildOAuthUrl","GetGoogleAccessToken","PayloadHelper","ODCloudClient",
 					"RegistrationKey","GoogleAuthCodeResponseHtml","www.googleapis.com/oauth2/v4" }.Concat(HqHosts.BlockedDomains))
 				{
@@ -235,7 +235,7 @@ namespace VendorDirectTests.Gmail {
 
 		[TestMethod]
 		public void ResponsePageResource_IsGone() {
-			string resx=Read(Path.Combine("OpenDentBusiness","Properties","Resources.resx"));
+			string resx=Read(Path.Combine("OpenPmsDentalBusiness","Properties","Resources.resx"));
 			Assert.IsFalse(resx.Contains("GoogleAuthCodeResponseHtml"));
 			Assert.IsFalse(HqHosts.BlockedDomains.Any(x => resx.Contains(x+"/")),"The resources no longer load anything from Open Dental.");
 			Assert.IsNull(typeof(OpenPmsDentalBusiness.Properties.Resources).GetProperty("GoogleAuthCodeResponseHtml"));
@@ -243,7 +243,7 @@ namespace VendorDirectTests.Gmail {
 
 		[TestMethod]
 		public void SetupWindow_IsVendorNeutral() {
-			string text=Read(Path.Combine("OpenDental","Forms","FormGmailApiSetup.cs"))+Read(Path.Combine("OpenDental","Forms","FormGmailApiSetup.Designer.cs"));
+			string text=Read(Path.Combine("OpenPmsDental","Forms","FormGmailApiSetup.cs"))+Read(Path.Combine("OpenPmsDental","Forms","FormGmailApiSetup.Designer.cs"));
 			foreach(string forbidden in new[] { "http://","https://","Sign in with Google","google_signin","Image","recommended","Sign up" }) {
 				Assert.IsFalse(text.Contains(forbidden),"The setup window must not contain "+forbidden);
 			}

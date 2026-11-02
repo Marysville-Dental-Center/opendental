@@ -38,7 +38,7 @@ Commands:
                  runbook does (default; --copy dump backs it up with mariadb-dump and restores it instead), adopt the copy (the
                  same code as the adopt command; its fork migration brings it to the Open Dental 26.1.70 schema), and validate:
                  row counts, checksums, business totals, the rows adoption may change, the 24.4-25.3 columns through
-                 OpenDentBusiness, the dropped office column, the removed update files, the version sentinels and an Open
+                 OpenPmsDentalBusiness, the dropped office column, the removed update files, the version sentinels and an Open
                  Dental-style startup check. Then everything a second time on the adopted copy.
                  Repeats the whole run --runs times (default 2) and checks the runs agree. Every step is timed. Writes
                  rehearsal-result.json, rehearsal-result.md and the reports to --out. Scratch databases are named

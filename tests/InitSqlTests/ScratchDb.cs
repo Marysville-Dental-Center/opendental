@@ -33,7 +33,7 @@ namespace InitSqlTests {
 			return name;
 		}
 
-		///<summary>Null when the local server answers with a blank global sql_mode (as OpenDental.exe sets it); otherwise why database tests are
+		///<summary>Null when the local server answers with a blank global sql_mode (as OpenPmsDental.exe sets it); otherwise why database tests are
 		///skipped.</summary>
 		public static string GetSkipReason() {
 			if(Environment.GetEnvironmentVariable("INITSQL_TEST_DB")=="skip") {

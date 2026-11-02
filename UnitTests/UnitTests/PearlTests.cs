@@ -142,7 +142,7 @@ namespace UnitTests {
 		//		List<Bitmap> listBitmaps=new List<Bitmap>();
 		//		listBitmaps.Add(new Bitmap(40,40));
 		//		listBitmaps.Add(new Bitmap(40,40));
-		//		OpenDentBusiness.Bridges.Pearl pearl=new OpenDentBusiness.Bridges.Pearl();
+		//		OpenPmsDentalBusiness.Bridges.Pearl pearl=new OpenPmsDentalBusiness.Bridges.Pearl();
 		//		pearl.ListBitmaps=listBitmaps;
 		//		pearl.DocNum=0;
 		//		pearl.MountNum=1;

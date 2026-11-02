@@ -11,7 +11,7 @@ namespace BPERIOTests {
 	[TestClass]
 	public class PerioUiSourceTests {
 		private static string FormPerio() {
-			return TestDb.ReadRepoFile("OpenDental","Forms","FormPerio.cs");
+			return TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPerio.cs");
 		}
 
 		#region Attached gingiva (v24_4-chart-perio-attached-gingiva)
@@ -39,7 +39,7 @@ namespace BPERIOTests {
 
 		[TestMethod]
 		public void FormPerio_ChartControlIsTallEnoughForTheNewRows() {
-			string designer=TestDb.ReadRepoFile("OpenDental","Forms","FormPerio.designer.cs");
+			string designer=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPerio.designer.cs");
 			Match match=Regex.Match(designer,@"this\.contrPerio\.Size = new System\.Drawing\.Size\((\d+), (\d+)\);");
 			Assert.IsTrue(match.Success);
 			Assert.IsTrue(int.Parse(match.Groups[2].Value)>=642+3*13,"The 96 dpi grid with the auto Att Ging rows is 681 pixels high.");
@@ -68,7 +68,7 @@ namespace BPERIOTests {
 
 		///<summary>Reads the sizes from FormClaimEdit.butAttachPerioHelper. Sizes may be written as sums of products, such as 665+3*13.</summary>
 		internal static ClaimPerioAttachmentSizes ReadClaimPerioAttachmentSizes() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormClaimEdit.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormClaimEdit.cs");
 			int indexStart=code.IndexOf("private void butAttachPerioHelper() {",StringComparison.Ordinal);
 			Assert.IsTrue(indexStart>0,"FormClaimEdit.butAttachPerioHelper not found.");
 			int indexEnd=code.IndexOf("private void ",indexStart+1,StringComparison.Ordinal);
@@ -117,13 +117,13 @@ namespace BPERIOTests {
 
 		[TestMethod]
 		public void PerioSetup_LoadsAndSavesTheRecessionOption() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormPerioSetup.cs");
-			string designer=TestDb.ReadRepoFile("OpenDental","Forms","FormPerioSetup.Designer.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPerioSetup.cs");
+			string designer=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPerioSetup.Designer.cs");
 			StringAssert.Contains(code,"checkUseRecessionTerm.Checked=PerioMeasures.GetUseRecessionTerm();");
 			StringAssert.Contains(code,"PerioMeasures.SetUseRecessionTerm(checkUseRecessionTerm.Checked)");
 			StringAssert.Contains(code,"SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,\"Perio Setup: Recession term \"");
 			StringAssert.Contains(code,"DataValid.SetInvalid(InvalidType.Prefs);");
-			StringAssert.Contains(designer,"this.checkUseRecessionTerm = new OpenDental.UI.CheckBox();");
+			StringAssert.Contains(designer,"this.checkUseRecessionTerm = new OpenPmsDental.UI.CheckBox();");
 			StringAssert.Contains(designer,"Use the term \\\"Recession\\\" (reverts to Gingival Margin when hyperplasia is charted)");
 			//Saved on both save paths: the option is saved before the "all default depths blank" early return.
 			int indexSave=code.IndexOf("SaveUseRecessionTerm();");
@@ -133,7 +133,7 @@ namespace BPERIOTests {
 
 		[TestMethod]
 		public void GraphicalSetup_GingivalMarginLabelFollowsTheOption() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormPerioGraphicalSetup.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPerioGraphicalSetup.cs");
 			StringAssert.Contains(code,"if(PerioMeasures.GetUseRecessionTerm()) {");
 			StringAssert.Contains(code,"label4.Text=Lan.g(this,\"Recession\");");
 		}
@@ -142,13 +142,13 @@ namespace BPERIOTests {
 		#region Implant marker (v24_4-chart-perio-implant-removed)
 		[TestMethod]
 		public void GraphicalPerio_RemovedImplantIsNotDrawn() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormPerioGraphical.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPerioGraphical.cs");
 			StringAssert.Contains(code,"procedureCode.PaintType==ToothPaintingType.Implant && !listProceduresForTooth[p].HideGraphics");
 		}
 
 		[TestMethod]
 		public void ContrPerio_ImplantUsesTheSharedRule() {
-			string code=TestDb.ReadRepoFile("OpenDental","User Controls","ContrPerio.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","User Controls","ContrPerio.cs");
 			StringAssert.Contains(code,"return PerioMeasures.IsImplantTooth(intTooth,_listProcedures,codeNum => ProcedureCodes.GetProcCode(codeNum));");
 			StringAssert.Contains(code,"_listProcedures=null;","The cached procedures are cleared each time a Perio Chart opens.");
 		}
@@ -157,7 +157,7 @@ namespace BPERIOTests {
 		#region Birthdate on the Graphical Perio Chart (v25_2-chart-perio-print-birthdate)
 		[TestMethod]
 		public void GraphicalPerio_PrintsTheBirthdateBetweenNameAndExamDate() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormPerioGraphical.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPerioGraphical.cs");
 			int indexName=code.IndexOf("string patNameStr=_patient.GetNameFLFormal();",StringComparison.Ordinal);
 			int indexBirthdate=code.IndexOf("PerioMeasures.GetBirthdateForPrint(patient.Birthdate)",StringComparison.Ordinal);
 			int indexExamDate=code.IndexOf("string examDateStr=_perioExam.ExamDate.ToShortDateString();",StringComparison.Ordinal);

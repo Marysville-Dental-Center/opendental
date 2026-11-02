@@ -104,7 +104,7 @@ namespace SheetTests {
 
 		[TestMethod]
 		public void ClaimForm1500_HasBox18Items() {
-			ClaimForm claimFormFile=ClaimForms.DeserializeClaimForm(TestDb.FindRepoFile(@"OpenDentBusiness\Resources\ClaimForms\ClaimForm1500_02_12.xml"),"");
+			ClaimForm claimFormFile=ClaimForms.DeserializeClaimForm(TestDb.FindRepoFile(@"OpenPmsDentalBusiness\Resources\ClaimForms\ClaimForm1500_02_12.xml"),"");
 			ClaimForm claimFormEmbedded=ClaimForms.GetInternalClaims().Single(x => x.Description=="1500_02_12");
 			foreach(ClaimForm claimForm in new[] { claimFormFile,claimFormEmbedded }) {
 				ClaimFormItem itemFrom=claimForm.Items.Single(x => x.FieldName=="HospitalizationDateFrom");

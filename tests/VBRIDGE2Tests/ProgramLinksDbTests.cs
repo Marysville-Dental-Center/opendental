@@ -1,5 +1,5 @@
 // Integration tests for the V-BRIDGE2 program rows, buttons and Clerri keys against a scratch MariaDB database on this computer. The database gets
-// the Open Dental 26.1.70 schema from the reference snapshot embedded in OpenDentBusiness and synthetic rows only. Its name is unique to the run
+// the Open Dental 26.1.70 schema from the reference snapshot embedded in OpenPmsDentalBusiness and synthetic rows only. Its name is unique to the run
 // (time, process id, random) and it is dropped afterwards. The tests are skipped (inconclusive) when no server answers at 127.0.0.1:3306 as root
 // with a blank password, or when VBRIDGE2_TEST_DB=skip. Nothing is launched and no vendor is called.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

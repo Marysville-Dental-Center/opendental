@@ -9,11 +9,11 @@ namespace M2NOTESTests {
 	[TestClass]
 	public class WiringTests {
 		private static string FormProcGroup() {
-			return ScratchDb.ReadRepoFile("OpenDental","Forms","FormProcGroup.cs");
+			return ScratchDb.ReadRepoFile("OpenPmsDental","Forms","FormProcGroup.cs");
 		}
 
 		private static string FormProcGroupDesigner() {
-			return ScratchDb.ReadRepoFile("OpenDental","Forms","FormProcGroup.designer.cs");
+			return ScratchDb.ReadRepoFile("OpenPmsDental","Forms","FormProcGroup.designer.cs");
 		}
 
 		private static string Between(string source,string start,string end) {
@@ -128,7 +128,7 @@ namespace M2NOTESTests {
 
 		[TestMethod]
 		public void ProcedureInfo_Hooks() {
-			string source=ScratchDb.ReadRepoFile("OpenDental","Forms","FormProcEdit.cs");
+			string source=ScratchDb.ReadRepoFile("OpenPmsDental","Forms","FormProcEdit.cs");
 			Assert.AreEqual(1,Regex.Matches(source,@"NoteMerge_Load\(\);").Count);
 			//In SaveAndClose (Save, Set Complete, Lock) and in butLock_Click.
 			Assert.AreEqual(2,Regex.Matches(source,@"if\(!NoteMerge_TryResolve\(\)\) \{ return; \}").Count);
@@ -158,7 +158,7 @@ namespace M2NOTESTests {
 			string saveBody=Between(source,"private void butSave_Click(","\n\t\t}");
 			string changeUserBlock=Between(saveBody,"if(_hasUserChanged && !_procedureOld.Signature.IsNullOrEmpty()) {","AlertItems.Insert(");
 			StringAssert.Contains(changeUserBlock,"_noteMergeUserNumAlertedOnSave=_procedureOld.UserNum;");
-			string partial=ScratchDb.ReadRepoFile("OpenDental","Forms","FormProcEdit.NoteMerge.cs");
+			string partial=ScratchDb.ReadRepoFile("OpenPmsDental","Forms","FormProcEdit.NoteMerge.cs");
 			//Nothing is alerted or logged while resolving; NoteMerge_Saved does both, and the window has no close handler that could log an unsaved merge.
 			string resolve=Between(partial,"private bool NoteMerge_TryResolve() {","private bool NoteMerge_KeepTheirs(");
 			StringAssert.DoesNotMatch(resolve,new Regex(@"AlertItems\.Insert|SecurityLogs\.MakeLogEntry"));
@@ -184,7 +184,7 @@ namespace M2NOTESTests {
 			StringAssert.Contains(partial,"NoteMerge_LockNote();");
 			StringAssert.Contains(partial,"new FrmProcNoteMerge(");
 			StringAssert.Contains(partial,"ProcNoteMerges.GetLogPermission(ProcNoteMerges.IsCompleteStatus(_procedure.ProcStatus))");
-			StringAssert.Contains(ScratchDb.ReadRepoFile("OpenDental","OpenDental.csproj"),"<Compile Include=\"Forms\\FormProcEdit.NoteMerge.cs\">");
+			StringAssert.Contains(ScratchDb.ReadRepoFile("OpenPmsDental","OpenPmsDental.csproj"),"<Compile Include=\"Forms\\FormProcEdit.NoteMerge.cs\">");
 		}
 
 		[TestMethod]
@@ -216,18 +216,18 @@ namespace M2NOTESTests {
 
 		[TestMethod]
 		public void BusinessLayer_HooksInSharedFiles() {
-			string procedures=ScratchDb.ReadRepoFile("OpenDentBusiness","Data Interface","Procedures.cs");
+			string procedures=ScratchDb.ReadRepoFile("OpenPmsDentalBusiness","Data Interface","Procedures.cs");
 			//One rule for writing a note row, shared with the merge check (ProcNotes.IsNoteRowNeeded).
 			StringAssert.Contains(procedures,"if(ProcNotes.IsNoteRowNeeded(procedure,oldProcedure)) {");
 			StringAssert.DoesNotMatch(procedures,new Regex(@"if\(procedure\.Note!=oldProcedure\.Note"));
 			int idxSet=procedures.IndexOf("ProcNotes.SetSecondSignature(note,procedure,oldProcedure);");
 			int idxInsert=procedures.IndexOf("ProcNotes.Insert(note);",idxSet);
 			Assert.IsTrue(idxSet>0 && idxInsert>idxSet,"The second signature is set before the row is inserted.");
-			string chart=ScratchDb.ReadRepoFile("OpenDentBusiness","Db Multi Table","ChartModules.cs");
+			string chart=ScratchDb.ReadRepoFile("OpenPmsDentalBusiness","Db Multi Table","ChartModules.cs");
 			StringAssert.Contains(chart,",UserNum2,CASE WHEN Signature2!='' THEN 1 ELSE 0 END AS Sig2Present ");
 			StringAssert.Contains(chart,"GroupNoteSignatures.FillProgNotesSigned(row,noteRowCur,userName,dictUserNames);");
 			StringAssert.Contains(chart,"GroupNoteSignatures.GetAuditSecondSignatureText(rowCur,dictUserNames);");
-			string csproj=ScratchDb.ReadRepoFile("OpenDentBusiness","OpenDentBusiness.csproj");
+			string csproj=ScratchDb.ReadRepoFile("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj");
 			foreach(string file in new[] { "Data Interface\\GroupNoteSignatures.cs","Data Interface\\ProcNoteMerges.cs","Misc\\LocalWindowSizes.cs" }) {
 				StringAssert.Contains(csproj,"<Compile Include=\""+file+"\" />",file);
 			}

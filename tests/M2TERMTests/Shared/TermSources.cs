@@ -22,7 +22,7 @@ namespace M2TERMTests {
 			throw new InvalidOperationException("Could not find the repository root (LICENSE and NOTICE) above the test assembly.");
 		}
 
-		///<summary>A file under the repository root, given relative to it with forward slashes, for example "OpenDental/Resources/PrefInfos.xml".
+		///<summary>A file under the repository root, given relative to it with forward slashes, for example "OpenPmsDental/Resources/PrefInfos.xml".
 		///</summary>
 		public static string GetRepoFile(string relativePath) {
 			return Path.Combine(GetRepositoryRoot(),relativePath.Replace('/',Path.DirectorySeparatorChar));
@@ -69,22 +69,22 @@ namespace M2TERMTests {
 
 	///<summary>The files M2-TERM owns and the wording it changed in them (docs/port-notes/M2-TERM.md has the same table).</summary>
 	public static class TermSources {
-		public const string FAMILY_INSURANCE_DESIGNER="OpenDental/User Controls/Preferences/UserControlFamilyInsurance.Designer.cs";
-		public const string FAMILY_INSURANCE="OpenDental/User Controls/Preferences/UserControlFamilyInsurance.cs";
-		public const string ACCOUNT_CLAIM_SEND_DESIGNER="OpenDental/User Controls/Preferences/UserControlAccountClaimSend.Designer.cs";
-		public const string ACCOUNT_CLAIM_SEND="OpenDental/User Controls/Preferences/UserControlAccountClaimSend.cs";
-		public const string BLUE_BOOK_RULES="OpenDental/Forms/FormInsBlueBookRules.cs";
-		public const string BLUE_BOOK_RULES_DESIGNER="OpenDental/Forms/FormInsBlueBookRules.designer.cs";
-		public const string RP_CAPITATION="OpenDental/Forms Reports/FormRpCapitation.cs";
-		public const string RP_NET_PROD_DETAIL="OpenDental/Forms Reports/FormRpNetProdDetail.cs";
-		public const string RP_PROVIDER_PAYROLL="OpenDental/Forms Reports/FormRpProviderPayroll.cs";
-		public const string INS_BLUE_BOOKS="OpenDentBusiness/Data Interface/InsBlueBooks.cs";
-		public const string INS_PLAN="OpenDentBusiness/TableTypes/InsPlan.cs";
-		public const string RP_PROD_INC="OpenDentBusiness/Reports/RpProdInc.cs";
-		public const string PREF_INFOS="OpenDental/Resources/PrefInfos.xml";
+		public const string FAMILY_INSURANCE_DESIGNER="OpenPmsDental/User Controls/Preferences/UserControlFamilyInsurance.Designer.cs";
+		public const string FAMILY_INSURANCE="OpenPmsDental/User Controls/Preferences/UserControlFamilyInsurance.cs";
+		public const string ACCOUNT_CLAIM_SEND_DESIGNER="OpenPmsDental/User Controls/Preferences/UserControlAccountClaimSend.Designer.cs";
+		public const string ACCOUNT_CLAIM_SEND="OpenPmsDental/User Controls/Preferences/UserControlAccountClaimSend.cs";
+		public const string BLUE_BOOK_RULES="OpenPmsDental/Forms/FormInsBlueBookRules.cs";
+		public const string BLUE_BOOK_RULES_DESIGNER="OpenPmsDental/Forms/FormInsBlueBookRules.designer.cs";
+		public const string RP_CAPITATION="OpenPmsDental/Forms Reports/FormRpCapitation.cs";
+		public const string RP_NET_PROD_DETAIL="OpenPmsDental/Forms Reports/FormRpNetProdDetail.cs";
+		public const string RP_PROVIDER_PAYROLL="OpenPmsDental/Forms Reports/FormRpProviderPayroll.cs";
+		public const string INS_BLUE_BOOKS="OpenPmsDentalBusiness/Data Interface/InsBlueBooks.cs";
+		public const string INS_PLAN="OpenPmsDentalBusiness/TableTypes/InsPlan.cs";
+		public const string RP_PROD_INC="OpenPmsDentalBusiness/Reports/RpProdInc.cs";
+		public const string PREF_INFOS="OpenPmsDental/Resources/PrefInfos.xml";
 		//Not owned by M2-TERM: the Treatment Plan grids that show the "Cat% UCR" display field (headers built with DisplayFields26_1.GetColumnText).
-		public const string CONTROL_TREAT="OpenDental/Main Modules/ControlTreat.cs";
-		public const string SHEET_DRAWING_JOB="OpenDentBusiness/SheetFramework/SheetDrawingJob.cs";
+		public const string CONTROL_TREAT="OpenPmsDental/Main Modules/ControlTreat.cs";
+		public const string SHEET_DRAWING_JOB="OpenPmsDentalBusiness/SheetFramework/SheetDrawingJob.cs";
 
 		public static readonly List<string> ListOwnedSourceFiles=new List<string> {
 			FAMILY_INSURANCE_DESIGNER,FAMILY_INSURANCE,ACCOUNT_CLAIM_SEND_DESIGNER,ACCOUNT_CLAIM_SEND,BLUE_BOOK_RULES,BLUE_BOOK_RULES_DESIGNER,

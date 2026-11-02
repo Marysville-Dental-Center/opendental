@@ -20,7 +20,7 @@ namespace ReleaseFlowTests {
 			releaseManifest.PublishedUtc=new DateTime(2026,10,19,12,30,5,DateTimeKind.Utc);
 			releaseManifest.PublishedBy="SERVER1";
 			releaseManifest.ArchiveSha256=new string('b',64);
-			releaseManifest.ListFiles.Add(new ReleaseManifestFile { RelativePath="OpenDental.exe",Size=3,Sha256=ReleaseManifest.ComputeSha256(new byte[] { 1,2,3 }) });
+			releaseManifest.ListFiles.Add(new ReleaseManifestFile { RelativePath="OpenPmsDental.exe",Size=3,Sha256=ReleaseManifest.ComputeSha256(new byte[] { 1,2,3 }) });
 			releaseManifest.ListFiles.Add(new ReleaseManifestFile { RelativePath="Sparks3D\\a b.dll",Size=0,Sha256=ReleaseManifest.ComputeSha256(new byte[0]) });
 			return releaseManifest;
 		}
@@ -58,7 +58,7 @@ namespace ReleaseFlowTests {
 			AssertFormat(text+"File="+new string('c',64)+"|1|..\\evil.dll\n");
 			AssertFormat(text+"File="+new string('c',64)+"|1|C:\\Windows\\evil.dll\n");
 			AssertFormat(text+"File="+new string('c',64)+"|1|\\evil.dll\n");
-			AssertFormat(text+"File="+new string('c',64)+"|1|OpenDental.exe\n");//Listed twice.
+			AssertFormat(text+"File="+new string('c',64)+"|1|OpenPmsDental.exe\n");//Listed twice.
 			AssertFormat(text+"Unknown=1\n");
 			AssertFormat(null);
 		}
@@ -74,7 +74,7 @@ namespace ReleaseFlowTests {
 
 		[TestMethod]
 		public void SafeRelativePaths() {
-			Assert.IsTrue(ReleaseManifest.IsSafeRelativePath("OpenDental.exe"));
+			Assert.IsTrue(ReleaseManifest.IsSafeRelativePath("OpenPmsDental.exe"));
 			Assert.IsTrue(ReleaseManifest.IsSafeRelativePath("Sparks3D\\x.dll"));
 			Assert.IsTrue(ReleaseManifest.IsSafeRelativePath("Sparks3D/x.dll"));
 			Assert.IsFalse(ReleaseManifest.IsSafeRelativePath("..\\x.dll"));
@@ -89,19 +89,19 @@ namespace ReleaseFlowTests {
 		[TestMethod]
 		public void VerifyFolder_FindsMissingTamperedAndExtraFiles() {
 			string folder=TestPaths.NewTempFolder("verify");
-			File.WriteAllBytes(Path.Combine(folder,"OpenDental.exe"),new byte[] { 1,2,3 });
+			File.WriteAllBytes(Path.Combine(folder,"OpenPmsDental.exe"),new byte[] { 1,2,3 });
 			Directory.CreateDirectory(Path.Combine(folder,"Sparks3D"));
 			File.WriteAllBytes(Path.Combine(folder,"Sparks3D","a b.dll"),new byte[0]);
 			File.WriteAllText(Path.Combine(folder,ReleaseManifest.FILE_NAME),"ignored");
 			ReleaseManifest releaseManifest=Sample();
 			Assert.AreEqual(0,releaseManifest.VerifyFolder(folder).Count,string.Join("; ",releaseManifest.VerifyFolder(folder)));
-			File.WriteAllBytes(Path.Combine(folder,"OpenDental.exe"),new byte[] { 1,2,4 });
+			File.WriteAllBytes(Path.Combine(folder,"OpenPmsDental.exe"),new byte[] { 1,2,4 });
 			StringAssert.Contains(releaseManifest.VerifyFolder(folder).Single(),"Wrong SHA-256");
-			File.WriteAllBytes(Path.Combine(folder,"OpenDental.exe"),new byte[] { 1,2,3,4 });
+			File.WriteAllBytes(Path.Combine(folder,"OpenPmsDental.exe"),new byte[] { 1,2,3,4 });
 			StringAssert.Contains(releaseManifest.VerifyFolder(folder).Single(),"Wrong size");
-			File.Delete(Path.Combine(folder,"OpenDental.exe"));
+			File.Delete(Path.Combine(folder,"OpenPmsDental.exe"));
 			StringAssert.Contains(releaseManifest.VerifyFolder(folder).Single(),"Missing");
-			File.WriteAllBytes(Path.Combine(folder,"OpenDental.exe"),new byte[] { 1,2,3 });
+			File.WriteAllBytes(Path.Combine(folder,"OpenPmsDental.exe"),new byte[] { 1,2,3 });
 			File.WriteAllText(Path.Combine(folder,"extra.dll"),"x");
 			StringAssert.Contains(releaseManifest.VerifyFolder(folder).Single(),"Not in the manifest");
 		}
@@ -216,13 +216,13 @@ namespace ReleaseFlowTests {
 
 		[TestMethod]
 		public void BuiltOpenDentalExe_CarriesItsBuildTime() {
-			string path=Path.Combine(TestPaths.RepoRoot,"OpenDental","bin","Debug","OpenDental.exe");
+			string path=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug","OpenPmsDental.exe");
 			if(!File.Exists(path)) {
-				Assert.Inconclusive("OpenDental is not built.");
+				Assert.Inconclusive("OpenPmsDental is not built.");
 			}
 			//Loaded only to read its attributes; nothing in it runs.
 			DateTime dateTimeBuildUtc=ForkReleases.GetBuildUtc(System.Reflection.Assembly.LoadFrom(path));
-			Assert.AreNotEqual(DateTime.MinValue,dateTimeBuildUtc,"OpenDental.csproj stamps "+ForkReleases.BUILD_UTC_METADATA_KEY+" into OpenDental.exe.");
+			Assert.AreNotEqual(DateTime.MinValue,dateTimeBuildUtc,"OpenPmsDental.csproj stamps "+ForkReleases.BUILD_UTC_METADATA_KEY+" into OpenPmsDental.exe.");
 			Assert.IsTrue(dateTimeBuildUtc<=DateTime.UtcNow.AddMinutes(5));
 		}
 
@@ -299,7 +299,7 @@ namespace ReleaseFlowTests {
 		[TestMethod]
 		public void BuildIdFiles_AreAllInTheBuildOutput() {
 			string dirTests=Path.GetDirectoryName(typeof(ReleaseManifestTests).Assembly.Location);//tests/ReleaseFlowTests/bin/Debug
-			string folder=Path.Combine(TestPaths.RepoRoot,"OpenDental","bin",Path.GetFileName(dirTests));
+			string folder=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin",Path.GetFileName(dirTests));
 			if(!File.Exists(Path.Combine(folder,ProgramNames.ExeFileName))) {
 				Assert.Inconclusive(Path.Combine(folder,ProgramNames.ExeFileName)+" is not built.");
 			}

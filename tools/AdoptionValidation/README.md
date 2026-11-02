@@ -224,7 +224,7 @@ client programs.
 | `OfficeFixture.cs` | Office-like rows added before the baseline |
 | `DatabaseCopier.cs` | The runbook's server-side copy; backup and restore (`mariadb-dump`, `restore`) |
 | `DumpCheck.cs` | The restore's check that a backup file names no database |
-| `BusinessLayer.cs` | Connects OpenDentBusiness (with the port); hash counts |
+| `BusinessLayer.cs` | Connects OpenPmsDentalBusiness (with the port); hash counts |
 | `OdStartupCheck.cs` | Model of Open Dental's startup version checks |
 | `DataLayerRoundTrip.cs` | Load, save and write through the generated CRUD classes |
 | `CredentialInventory.cs` | Stored passwords to re-enter |

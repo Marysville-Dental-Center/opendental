@@ -25,7 +25,7 @@ namespace M2TERMTests {
 				"Standard Fee","Co-Pay" };
 			CollectionAssert.AreEqual(listMedical.Concat(listDental.Skip(5)).ToList(),listHeaders,
 				"The shared columns, then the medical branch, then the dental branch.");
-			string sql=TestPaths.ReadRepoFile("OpenDentBusiness/Reports/RpCapitation.cs");
+			string sql=TestPaths.ReadRepoFile("OpenPmsDentalBusiness/Reports/RpCapitation.cs");
 			Assert.IsTrue(Regex.IsMatch(sql,@"procedurelog\.ProcDate,procedurelog\.ProcFee\s*,procedurelog\.ProcFee-claimproc\.WriteOff\s"),
 				"The query's fee follows the date and comes before the co-pay, as the headers do.");
 		}

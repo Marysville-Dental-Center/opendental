@@ -31,13 +31,13 @@ namespace VendorDirectTests.Dropbox {
 			string nsCloud=assemblyCloud.GetTypes().Single(x => x.Name=="Sftp" && !x.IsNested).Namespace;
 			Assert.IsNull(assemblyCloud.GetType(nsCloud+".Dropbox"),"The Dropbox client should have been removed.");
 			Assert.IsFalse(assemblyCloud.GetReferencedAssemblies().Any(x => x.Name.StartsWith("Dropbox",StringComparison.OrdinalIgnoreCase)),
-				"OpenDentalCloud should not reference the Dropbox SDK.");
+				"OpenPmsDentalCloud should not reference the Dropbox SDK.");
 			Assert.IsFalse(typeof(CloudStorage).Assembly.GetReferencedAssemblies().Any(x => x.Name.StartsWith("Dropbox",StringComparison.OrdinalIgnoreCase)));
 			//The project stays for SFTP A to Z storage.
 			Assert.IsNotNull(assemblyCloud.GetType(nsCloud+".Sftp"));
-			string csproj=ReadRepoFile(@"OpenDentalCloud\OpenDentalCloud.csproj");
-			Assert.IsFalse(csproj.Contains("Dropbox"),"OpenDentalCloud.csproj should not mention Dropbox.");
-			Assert.IsFalse(File.Exists(Path.Combine(FoundationLayoutTests.GetRepositoryRoot(),@"OpenDentalCloud\Storage\Dropbox.cs")));
+			string csproj=ReadRepoFile(@"OpenPmsDentalCloud\OpenPmsDentalCloud.csproj");
+			Assert.IsFalse(csproj.Contains("Dropbox"),"OpenPmsDentalCloud.csproj should not mention Dropbox.");
+			Assert.IsFalse(File.Exists(Path.Combine(FoundationLayoutTests.GetRepositoryRoot(),@"OpenPmsDentalCloud\Storage\Dropbox.cs")));
 		}
 
 		[TestMethod]
@@ -60,19 +60,19 @@ namespace VendorDirectTests.Dropbox {
 		[TestMethod]
 		public void SetupWindows_HaveNoDropboxOption() {
 			string root=FoundationLayoutTests.GetRepositoryRoot();
-			Assert.IsFalse(File.Exists(Path.Combine(root,@"OpenDental\Forms\FormDropboxAuthorize.cs")));
-			Assert.IsFalse(ReadRepoFile(@"OpenDental\OpenDental.csproj").Contains("FormDropboxAuthorize"));
-			foreach(string file in new[] { @"OpenDental\Forms\FormPath.cs",@"OpenDental\Forms\FormPath.designer.cs" }) {
+			Assert.IsFalse(File.Exists(Path.Combine(root,@"OpenPmsDental\Forms\FormDropboxAuthorize.cs")));
+			Assert.IsFalse(ReadRepoFile(@"OpenPmsDental\OpenPmsDental.csproj").Contains("FormDropboxAuthorize"));
+			foreach(string file in new[] { @"OpenPmsDental\Forms\FormPath.cs",@"OpenPmsDental\Forms\FormPath.designer.cs" }) {
 				string text=ReadRepoFile(file);
-				foreach(string removed in new[] { "radioDropboxStorage","FormDropboxAuthorize","butAuthorize","textAccessToken","OpenDentalCloud.Dropbox" }) {
+				foreach(string removed in new[] { "radioDropboxStorage","FormDropboxAuthorize","butAuthorize","textAccessToken","OpenPmsDentalCloud.Dropbox" }) {
 					Assert.IsFalse(text.Contains(removed),file+" should not contain "+removed);
 				}
 			}
-			foreach(string file in new[] { @"OpenDental\Forms\FormLicense.cs",@"OpenDental\Forms\FormRegistrationKey.cs" }) {
+			foreach(string file in new[] { @"OpenPmsDental\Forms\FormLicense.cs",@"OpenPmsDental\Forms\FormRegistrationKey.cs" }) {
 				Assert.IsFalse(ReadRepoFile(file).Contains("Dropbox"),file+" should not list a Dropbox licence.");
 			}
-			string startupCheck=ReadRepoFile(@"OpenDental\Logic\VendorDirect\DropboxStartupCheck.cs");
-			Assert.IsFalse(startupCheck.Contains("OpenDentalCloud"),"The startup check must not contact Dropbox.");
+			string startupCheck=ReadRepoFile(@"OpenPmsDental\Logic\VendorDirect\DropboxStartupCheck.cs");
+			Assert.IsFalse(startupCheck.Contains("OpenPmsDentalCloud"),"The startup check must not contact Dropbox.");
 			StringAssert.Contains(startupCheck,"Dropbox.StorageRemovedMessage");
 		}
 
@@ -80,7 +80,7 @@ namespace VendorDirectTests.Dropbox {
 		public void Source_NamesNoDropboxHost() {
 			string root=FoundationLayoutTests.GetRepositoryRoot();
 			List<string> listHits=new List<string>();
-			foreach(string project in new[] { "OpenDental","OpenDentBusiness","OpenDentalCloud","CodeBase","WpfControlsOD","OpenDentHL7" }) {
+			foreach(string project in new[] { "OpenPmsDental","OpenPmsDentalBusiness","OpenPmsDentalCloud","CodeBase","WpfControlsOD","OpenPmsDentalHL7" }) {
 				string folder=Path.Combine(root,project);
 				if(!Directory.Exists(folder)) {
 					continue;
@@ -130,7 +130,7 @@ namespace VendorDirectTests.Dropbox {
 					exception=ex;
 				}
 				Assert.IsNotNull(exception,"hasExceptions:true reports the failure.");
-				Assert.AreEqual("OpenDentalCloud.StorageRemovedException",exception.GetType().FullName);
+				Assert.AreEqual("OpenPmsDentalCloud.StorageRemovedException",exception.GetType().FullName);
 				Assert.AreEqual(OpenPmsDentalBusiness.Dropbox.StorageRemovedMessage,exception.Message);
 				exception=null;
 				try {

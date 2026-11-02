@@ -58,9 +58,9 @@ namespace M2CANTests {
 					}
 				});
 			}
-			string code=TestPaths.ReadRepoFile("OpenDental","Forms","FormProcTools.cs");
+			string code=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProcTools.cs");
 			StringAssert.Contains(code,"AddOtherCodesButton();");
-			string codeOther=TestPaths.ReadRepoFile("OpenDental","Forms","FormProcTools.OtherCodes.cs");
+			string codeOther=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProcTools.OtherCodes.cs");
 			StringAssert.Contains(codeOther,"_butOtherCodes.Click+=butOtherCodes_Click;");
 			StringAssert.Contains(codeOther,"_butOtherCodes.Anchor=AnchorStyles.Bottom|AnchorStyles.Left;");
 			StringAssert.Contains(codeOther,"using FormProcCodesOther formProcCodesOther=new FormProcCodesOther();");
@@ -91,11 +91,11 @@ namespace M2CANTests {
 					Assert.AreEqual(updatesAll,(EnumOtherCodeUpdates)methodGetUpdates.Invoke(formProcCodesOther,null),pair.Key);
 				}
 			});
-			string designer=TestPaths.ReadRepoFile("OpenDental","Forms","FormProcCodesOther.Designer.cs");
+			string designer=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProcCodesOther.Designer.cs");
 			StringAssert.Contains(designer,"this.butOK.Click += new System.EventHandler(this.butOK_Click);");
 			StringAssert.Contains(designer,"this.butBrowse.Click += new System.EventHandler(this.butBrowse_Click);");
 			StringAssert.Contains(designer,"this.Load += new System.EventHandler(this.FormProcCodesOther_Load);");
-			string code=TestPaths.ReadRepoFile("OpenDental","Forms","FormProcCodesOther.cs");
+			string code=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProcCodesOther.cs");
 			//The list holds every code system, in the enum's order.
 			StringAssert.Contains(code,"foreach(EnumOtherCodeSystem codeSystem in Enum.GetValues(typeof(EnumOtherCodeSystem)))");
 			StringAssert.Contains(code,"DataValid.SetInvalid(InvalidType.Defs,InvalidType.ProcCodes);");
@@ -115,10 +115,10 @@ namespace M2CANTests {
 				Assert.AreEqual(butWriteOff.Top,butPayLabs.Top,"Next to Write-off.");
 				Assert.IsTrue(butPayLabs.Left>=butWriteOff.Right);
 			});
-			string designer=TestPaths.ReadRepoFile("OpenDental","Forms","FormClaimPayTotal.designer.cs");
+			string designer=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormClaimPayTotal.designer.cs");
 			StringAssert.Contains(designer,"this.butPayLabs.Visible = false;");
 			StringAssert.Contains(designer,"this.butPayLabs.Click += new System.EventHandler(this.butPayLabs_Click);");
-			string code=TestPaths.ReadRepoFile("OpenDental","Forms","FormClaimPayTotal.cs");
+			string code=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormClaimPayTotal.cs");
 			StringAssert.Contains(code,"butPayLabs.Visible=CultureInfo.CurrentCulture.Name.EndsWith(\"CA\") && ClaimProcs.HasPayLabsGroups(ClaimProcArray,_listProcedures);");
 			StringAssert.Contains(code,"ClaimProcs.PayLabs(ClaimProcArray,_listProcedures)");
 			//The typed amounts are read from the grid first, and the grid is filled again after.

@@ -24,12 +24,12 @@ namespace BINBTests {
 		[TestMethod]
 		public void BuiltAssemblies_ReferenceNoneOfTheRemovedAssemblies() {
 			Dictionary<string,AssemblyName[]> dictionaryReferences=new Dictionary<string,AssemblyName[]> {
-				{ "OpenDentBusiness",typeof(LetterMerges).Assembly.GetReferencedAssemblies() },
+				{ "OpenPmsDentalBusiness",typeof(LetterMerges).Assembly.GetReferencedAssemblies() },
 				{ "CodeBase",typeof(ODZip).Assembly.GetReferencedAssemblies() },
 				{ "PasswordVaultWrapper",typeof(PasswordVaultWrapper.WindowsPasswordVaultWrapper).Assembly.GetReferencedAssemblies() },
 			};
 			//The program itself, when this checkout has built it. Its public references are read without running any of its code.
-			foreach(string relative in new[] { @"OpenDental\bin\Debug\OpenDental.exe",@"ServiceManager\bin\Debug\ServiceManager.exe",
+			foreach(string relative in new[] { @"OpenPmsDental\bin\Debug\OpenPmsDental.exe",@"ServiceManager\bin\Debug\ServiceManager.exe",
 				@"SparksToothChart\bin\Debug\SparksToothChart.dll" })
 			{
 				string path=Path.Combine(TestPaths.RepoRoot,relative);
@@ -54,7 +54,7 @@ namespace BINBTests {
 			Assert.AreEqual(2,LetterMerges.WORD_WINDOW_STATE_MINIMIZE);
 			Regex regexTyped=new Regex(@"(\bWord\.(_?Application|_?Document|MailMerge)\s+\w+\s*[;=]|\bWord\.Wd\w+\.|new\s+Word\.)");
 			List<string> listViolations=new List<string>();
-			foreach(string folder in new[] { "OpenDental","OpenDentBusiness","CodeBase","WpfControlsOD" }) {
+			foreach(string folder in new[] { "OpenPmsDental","OpenPmsDentalBusiness","CodeBase","WpfControlsOD" }) {
 				foreach(string path in TestPaths.GetFiles(Path.Combine(TestPaths.RepoRoot,folder),".cs")) {
 					string[] arrayLines=File.ReadAllLines(path);
 					for(int i=0;i<arrayLines.Length;i++) {

@@ -17,7 +17,7 @@ namespace BACCTTests {
 
 		[TestMethod]
 		public void SelectProduction_HeaderReadsAmountUnpaid() {
-			string source=ReadSource("OpenDental","Forms","FormProdSelect.cs");
+			string source=ReadSource("OpenPmsDental","Forms","FormProdSelect.cs");
 			StringAssert.Contains(source,"\"Amount\\r\\nUnpaid\"");
 			Assert.IsFalse(source.Contains("\"Amount\\r\\nEnd\""),"The old header is gone.");
 			StringAssert.Contains(source,".AmountEnd.ToString(\"C\")","Only the label changes: the column still shows AmountEnd.");
@@ -25,8 +25,8 @@ namespace BACCTTests {
 
 		[TestMethod]
 		public void OrthoCase_LongInstructionTextsAreRemoved() {
-			string designer=ReadSource("OpenDental","Forms","FormOrthoCase.designer.cs");
-			string resx=ReadSource("OpenDental","Forms","FormOrthoCase.resx");
+			string designer=ReadSource("OpenPmsDental","Forms","FormOrthoCase.designer.cs");
+			string resx=ReadSource("OpenPmsDental","Forms","FormOrthoCase.resx");
 			Assert.IsFalse(designer.Contains("label2"),"The numbered steps label is gone.");
 			Assert.IsFalse(designer.Contains("label4"),"The purpose paragraph label is gone.");
 			Assert.IsFalse(resx.Contains("label2.Text"));
@@ -37,8 +37,8 @@ namespace BACCTTests {
 
 		[TestMethod]
 		public void DailyPayments_HasOneMerchantFeeBox() {
-			string designer=ReadSource("OpenDental","Forms Reports","FormRpPaySheet.designer.cs");
-			string form=ReadSource("OpenDental","Forms Reports","FormRpPaySheet.cs");
+			string designer=ReadSource("OpenPmsDental","Forms Reports","FormRpPaySheet.designer.cs");
+			string form=ReadSource("OpenPmsDental","Forms Reports","FormRpPaySheet.cs");
 			StringAssert.Contains(designer,"\"Show merchant fees\"");
 			Assert.IsFalse(designer.Contains("checkShowCareCreditFees"));
 			Assert.IsFalse(designer.Contains("checkShowPayConnectFees"));
@@ -51,10 +51,10 @@ namespace BACCTTests {
 
 		[TestMethod]
 		public void QuickProcs_AndPreferences_OfferSalesTax() {
-			string account=ReadSource("OpenDental","Main Modules","ControlAccount.SalesTax.cs");
-			string accountMain=ReadSource("OpenDental","Main Modules","ControlAccount.cs");
-			string prefs=ReadSource("OpenDental","User Controls","Preferences","UserControlAccountAdjustments.cs");
-			string prefsDesigner=ReadSource("OpenDental","User Controls","Preferences","UserControlAccountAdjustments.Designer.cs");
+			string account=ReadSource("OpenPmsDental","Main Modules","ControlAccount.SalesTax.cs");
+			string accountMain=ReadSource("OpenPmsDental","Main Modules","ControlAccount.cs");
+			string prefs=ReadSource("OpenPmsDental","User Controls","Preferences","UserControlAccountAdjustments.cs");
+			string prefsDesigner=ReadSource("OpenPmsDental","User Controls","Preferences","UserControlAccountAdjustments.Designer.cs");
 			StringAssert.Contains(account,"contextMenuQuickProcs.MenuItems.Add(0,new MenuItem(Lan.g(this,\"Sales Tax\")");
 			StringAssert.Contains(account,"EnumPermType.AccountProcsQuickAdd");
 			StringAssert.Contains(account,"EnumPermType.ProcComplCreate");

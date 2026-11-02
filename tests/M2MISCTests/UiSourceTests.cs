@@ -11,7 +11,7 @@ namespace M2MISCTests {
 		#region About and Diagnostics
 		[TestMethod]
 		public void About_DiagnosticsAreLocal_AndTheAttributionStays() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormAbout.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormAbout.cs");
 			StringAssert.Contains(TaskAttachmentWindowTests.GetMethod(code,"private void butDiagnostics_Click("),
 				"LocalDiagnostics.GetDiagnostics(FormOpenDental.PatNumCur)");
 			StringAssert.Contains(code,"labelAttribution.Text=AboutBoxInfo.Attribution;");
@@ -20,7 +20,7 @@ namespace M2MISCTests {
 
 		[TestMethod]
 		public void Diagnostics_SendNothing() {
-			string code=TestDb.ReadRepoFile("OpenDentBusiness","Misc","LocalDiagnostics.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDentalBusiness","Misc","LocalDiagnostics.cs");
 			foreach(string forbidden in new[] { "http://","https://","WebClient","HttpClient","WebRequest","WebServiceMainHQ","Socket","IsODHQ" }) {
 				Assert.IsFalse(code.Contains(forbidden),"LocalDiagnostics.cs contains "+forbidden);
 			}
@@ -30,7 +30,7 @@ namespace M2MISCTests {
 		#region Printers
 		[TestMethod]
 		public void PrinterSetup_ShowsPrinterUsedRuleAndStatus() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormPrinterSetup.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPrinterSetup.cs");
 			StringAssert.Contains(code,"new GridColumn(\"Printer Used\",");
 			StringAssert.Contains(code,"new GridColumn(\"Rule\",");
 			StringAssert.Contains(code,"new GridColumn(\"Status\",");
@@ -45,11 +45,11 @@ namespace M2MISCTests {
 
 		[TestMethod]
 		public void EditPrinter_KeepsAPrinterThatIsNotInstalled_AndShowsItsState() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormPrinterEdit.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPrinterEdit.cs");
 			StringAssert.Contains(code,"_printerNameNotInstalled=printerName;");
 			StringAssert.Contains(TaskAttachmentWindowTests.GetMethod(code,"private void butSave_Click("),"printerName=GetPrinterNameSelected();");
 			StringAssert.Contains(code,"labelStatus.Text=");
-			string designer=TestDb.ReadRepoFile("OpenDental","Forms","FormPrinterEdit.Designer.cs");
+			string designer=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPrinterEdit.Designer.cs");
 			StringAssert.Contains(designer,"this.Controls.Add(this.labelStatus);");
 			StringAssert.Contains(designer,"this.Controls.Add(this.labelPrinterRule);");
 		}
@@ -76,7 +76,7 @@ namespace M2MISCTests {
 		#region Automations
 		[TestMethod]
 		public void ConditionEdit_ListsTheClinicMismatchFieldOnlyForProcedureComplete() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormAutomationConditionEdit.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormAutomationConditionEdit.cs");
 			string method=TaskAttachmentWindowTests.GetMethod(code,"private bool IsFieldListed(");
 			StringAssert.Contains(method,"AutomationClinicMismatches.IsTriggerAllowed(AutomationTriggerCur.Value)");
 			//The list index is no longer the enum value.
@@ -90,7 +90,7 @@ namespace M2MISCTests {
 
 		[TestMethod]
 		public void AutomationEdit_PassesTheTrigger_AndRefusesTheWrongTrigger() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormAutomationEdit.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormAutomationEdit.cs");
 			Assert.AreEqual(2,Regex.Matches(code,@"\.AutomationTriggerCur=GetTriggerSelected\(\);").Count,"Add and edit");
 			StringAssert.Contains(TaskAttachmentWindowTests.GetMethod(code,"private void butSave_Click("),"AutomationClinicMismatches.GetSaveError(");
 		}

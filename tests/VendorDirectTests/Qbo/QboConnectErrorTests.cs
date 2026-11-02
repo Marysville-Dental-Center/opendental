@@ -105,7 +105,7 @@ namespace VendorDirectTests.Qbo {
 
 		[TestMethod]
 		public void SetupWindow_CatchesInsideEveryProgressWinAction() {
-			string pathForm=Path.Combine(FoundationLayoutTests.GetRepositoryRoot(),"OpenDental","Forms","FormQuickBooksOnlineSetup.cs");
+			string pathForm=Path.Combine(FoundationLayoutTests.GetRepositoryRoot(),"OpenPmsDental","Forms","FormQuickBooksOnlineSetup.cs");
 			string source=File.ReadAllText(pathForm);
 			int countProgressWins=CountOccurrences(source,"new UI.ProgressWin()");
 			Assert.IsTrue(countProgressWins>=3,"Load, Connect and Disconnect each run behind a progress window.");

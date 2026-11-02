@@ -81,7 +81,7 @@ namespace M202Tests {
 
 		[TestMethod]
 		public void PreferencesWindow_EntriesHaveHoverInfo() {
-			XDocument xDocument=XDocument.Load(TestPaths.GetRepoFile("OpenDental","Resources","PrefInfos.xml"));
+			XDocument xDocument=XDocument.Load(TestPaths.GetRepoFile("OpenPmsDental","Resources","PrefInfos.xml"));
 			List<XElement> listPrefInfs=xDocument.Root.Elements("PrefInf").ToList();
 			HashSet<string> setCategories=new HashSet<string>(Enum.GetNames(typeof(EnumPrefInfoCategory)));
 			foreach((string name,string category,string controlName) in _listPrefInfos) {

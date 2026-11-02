@@ -1,4 +1,4 @@
-// Tests for the Perio Chart grid (OpenDental.ContrPerio) against this run's scratch database (see TestDb): the auto Att Ging rows, the
+// Tests for the Perio Chart grid (OpenPmsDental.ContrPerio) against this run's scratch database (see TestDb): the auto Att Ging rows, the
 // Recession label, the implant marker and the row layout that FormPerio's voice navigation relies on. The control is created and drawn
 // off screen; the desktop client is never launched. Synthetic rows only.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

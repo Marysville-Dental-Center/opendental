@@ -38,10 +38,10 @@ namespace UnitTests.MiddleTier.ParamCheck_Tests {
 			StringBuilder strBuilderNoGetCurrentMethod=new StringBuilder();
 			StringBuilder strBuilderIncorrectParameters=new StringBuilder();
 			StringBuilder strBuilderIncorrectParametersOrder=new StringBuilder();
-			//Get type definitions from OpenDentBusiness that need to have their parameters checked.
+			//Get type definitions from OpenPmsDentalBusiness that need to have their parameters checked.
 			//Do not check method signatures for CRUD and Meth types.
 			List<TypeDefinition> listTypeDefinitions=GetTypeDefinitions()
-				.FindAll(x => x.Name!=typeof(Meth).Name && !x.FullName.StartsWith("OpenDentBusiness.Crud"));
+				.FindAll(x => x.Name!=typeof(Meth).Name && !x.FullName.StartsWith("OpenPmsDentalBusiness.Crud"));
 			List<MethodDefinition> listMethodDefinitions=GetMethodDefinitions(listTypeDefinitions:listTypeDefinitions);
 			foreach(MethodDefinition method in listMethodDefinitions) {
 				if(method.Name==SymbolExtensions.GetMethodInfo(() => WebServiceTests.InvalidWebMethod()).Name) {
@@ -589,17 +589,17 @@ namespace UnitTests.MiddleTier.ParamCheck_Tests {
 			return listMethodDefinitions;
 		}
 
-		///<summary>Returns a list of lowercase strings that represent the names of the S classes in OpenDentBusiness.</summary>
+		///<summary>Returns a list of lowercase strings that represent the names of the S classes in OpenPmsDentalBusiness.</summary>
 		private static List<string> GetSClassNames() {
-			List<string> arraySClassPaths=Directory.GetFiles(@"..\..\..\OpenDentBusiness\Data Interface").ToList();
-			arraySClassPaths.AddRange(Directory.GetFiles(@"..\..\..\OpenDentBusiness\Db Multi Table"));
+			List<string> arraySClassPaths=Directory.GetFiles(@"..\..\..\OpenPmsDentalBusiness\Data Interface").ToList();
+			arraySClassPaths.AddRange(Directory.GetFiles(@"..\..\..\OpenPmsDentalBusiness\Db Multi Table"));
 			//Get just the names of the classes without the path and extension information.
 			return arraySClassPaths.Select(x => Path.GetFileNameWithoutExtension(x).ToLower()).ToList();
 		}
 
-		///<summary>Returns all type definitions from the OpenDentBusiness assembly.</summary>
+		///<summary>Returns all type definitions from the OpenPmsDentalBusiness assembly.</summary>
 		private static List<TypeDefinition> GetTypeDefinitions() {
-			AssemblyDefinition assemblyDefinition=AssemblyDefinition.ReadAssembly(@"OpenDentBusiness.dll");
+			AssemblyDefinition assemblyDefinition=AssemblyDefinition.ReadAssembly(@"OpenPmsDentalBusiness.dll");
 			List<TypeDefinition> listTypeDefinitions=assemblyDefinition.Modules
 				.SelectMany(x => x.Types)
 				.ToList();
@@ -675,7 +675,7 @@ namespace UnitTests.MiddleTier.ParamCheck_Tests {
 			List<Instruction> listCallingInstructions=method.Body.Instructions.Where(x => x.Operand!=null && x.OpCode==OpCodes.Call)
 				.Where(x => (x.Operand as MethodDefinition)!=null).ToList();
 			bool isCrudCalled=listCallingInstructions
-				.Any(x => ((MethodDefinition)x.Operand).DeclaringType.FullName.StartsWith("OpenDentBusiness.Crud") 
+				.Any(x => ((MethodDefinition)x.Operand).DeclaringType.FullName.StartsWith("OpenPmsDentalBusiness.Crud") 
 				&& !((MethodDefinition)x.Operand).Name.In("TableToList","ListToTable","UpdateComparison"));//Skip these as they do not call the db.
 			if(isCrudCalled) {
 				//Skip the db check to speed up the process if we know the method already calls the crud.

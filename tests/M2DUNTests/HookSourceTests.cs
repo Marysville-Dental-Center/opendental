@@ -24,7 +24,7 @@ namespace M2DUNTests {
 		///its body after the tags are replaced.</summary>
 		[TestMethod]
 		public void Statements_EmailForStatementAppliesTheEmailType() {
-			string body=GetMethodBody(ReadRepoFile(Path.Combine("OpenDentBusiness","Data Interface","Statements.cs")),
+			string body=GetMethodBody(ReadRepoFile(Path.Combine("OpenPmsDentalBusiness","Data Interface","Statements.cs")),
 				"public static EmailMessage GetEmailMessageForStatement(");
 			int indexReplace=body.IndexOf("emailMessage.BodyText=MessageTagReplacer.ReplaceTagsForStatement(");
 			int indexApply=body.IndexOf("BillingEmailHtml.ApplyEmailType(emailMessage,BillingEmailHtml.GetEmailTypeForStatement(statement,patient))");
@@ -34,26 +34,26 @@ namespace M2DUNTests {
 
 		[TestMethod]
 		public void Statements_ReceiptErrorEmailIsPlainText() {
-			string source=ReadRepoFile(Path.Combine("OpenDentBusiness","Data Interface","Statements.cs"));
+			string source=ReadRepoFile(Path.Combine("OpenPmsDentalBusiness","Data Interface","Statements.cs"));
 			StringAssert.Contains(source,"emailMessageError.BodyText=errorMessage;");
 			Assert.IsTrue(Regex.IsMatch(source,@"emailMessageError\.BodyText=errorMessage;\s*emailMessageError\.HtmlType=EmailType\.Regular;"));
 		}
 
 		[TestMethod]
 		public void BillingL_HtmlEmailTakesTheAutographAsHtml() {
-			string source=ReadRepoFile(Path.Combine("OpenDentBusiness","Logic","BillingL.cs"));
+			string source=ReadRepoFile(Path.Combine("OpenPmsDentalBusiness","Logic","BillingL.cs"));
 			Assert.IsTrue(Regex.IsMatch(source,
 				@"if\(BillingEmailHtml\.TryInsertAutograph\(emailMessage,emailAutograph\)\)\s*\{[^}]*emailAutograph=null;\s*\}\s*if\(emailAutograph!=null\)"));
 		}
 
 		[TestMethod]
 		public void FormDunningEdit_LoadsAndSavesTheEmailType() {
-			string source=ReadRepoFile(Path.Combine("OpenDental","Forms","FormDunningEdit.cs"));
+			string source=ReadRepoFile(Path.Combine("OpenPmsDental","Forms","FormDunningEdit.cs"));
 			StringAssert.Contains(source,"comboEmailType.SetSelectedEnum(BillingEmailHtml.ToEmailType((int)_dunning.EmailType));");
 			StringAssert.Contains(source,"_dunning.EmailType=comboEmailType.GetSelected<EmailType>();");
 			StringAssert.Contains(source,"BillingEmailHtml.GetBodyError(textEmailBody.Text,comboEmailType.GetSelected<EmailType>())");
 			StringAssert.Contains(source,"FormEmailEdit formEmailEdit=new FormEmailEdit();");
-			string designer=ReadRepoFile(Path.Combine("OpenDental","Forms","FormDunningEdit.designer.cs"));
+			string designer=ReadRepoFile(Path.Combine("OpenPmsDental","Forms","FormDunningEdit.designer.cs"));
 			StringAssert.Contains(designer,"this.groupBox4.Controls.Add(this.comboEmailType);");
 			StringAssert.Contains(designer,"this.groupBox4.Controls.Add(this.butEditHtml);");
 			StringAssert.Contains(designer,"this.butEditHtml.Click += new System.EventHandler(this.butEditHtml_Click);");
@@ -61,7 +61,7 @@ namespace M2DUNTests {
 
 		[TestMethod]
 		public void FormBillingDefaults_LoadsAndSavesTheEmailType() {
-			string source=ReadRepoFile(Path.Combine("OpenDental","Forms","FormBillingDefaults.cs"));
+			string source=ReadRepoFile(Path.Combine("OpenPmsDental","Forms","FormBillingDefaults.cs"));
 			StringAssert.Contains(source,"comboBillingEmailType.SetSelectedEnum(BillingEmailHtml.GetBillingDefaultsEmailType());");
 			StringAssert.Contains(source,"Prefs.UpdateInt(PrefName.BillingEmailType,(int)comboBillingEmailType.GetSelected<EmailType>())");
 			string save=GetMethodBody(source,"private void butSave_Click(");
@@ -69,7 +69,7 @@ namespace M2DUNTests {
 			StringAssert.Contains(save,"SaveBillingEmailType();");
 			string load=GetMethodBody(source,"private void FormBillingDefaults_Load(");
 			StringAssert.Contains(load,"FillBillingEmailType();");
-			string designer=ReadRepoFile(Path.Combine("OpenDental","Forms","FormBillingDefaults.Designer.cs"));
+			string designer=ReadRepoFile(Path.Combine("OpenPmsDental","Forms","FormBillingDefaults.Designer.cs"));
 			StringAssert.Contains(designer,"this.groupBox3.Controls.Add(this.comboBillingEmailType);");
 			StringAssert.Contains(designer,"this.butBillingEmailEditHtml.Click += new System.EventHandler(this.butBillingEmailEditHtml_Click);");
 		}

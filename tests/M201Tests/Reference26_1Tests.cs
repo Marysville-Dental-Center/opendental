@@ -1,4 +1,4 @@
-// Tests of the Open Dental 26.1.70 reference schema (OpenDentBusiness/Misc/ForkMigrations/Reference/OdSchema-26.1.70.sql), the step levels and
+// Tests of the Open Dental 26.1.70 reference schema (OpenPmsDentalBusiness/Misc/ForkMigrations/Reference/OdSchema-26.1.70.sql), the step levels and
 // the table classes that map it. No database. The checks against Open Dental's published database documents run only when the documents are in
 // the folder named by M201_OD_DOCS_DIR (they are not in the repository); otherwise they are inconclusive.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

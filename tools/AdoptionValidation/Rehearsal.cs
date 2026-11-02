@@ -271,10 +271,10 @@ namespace AdoptionValidation {
 				//report from before it; the second pass is compared with the report from after it.
 				ValidationReport afterFirstPass=afterAdoption;
 				if(!_options.SkipRoundTrip) {
-					_run.RoundTrip=Time("Data-layer round trip (load and save through OpenDentBusiness)",() => DataLayerRoundTrip.Run(db,adopted,_log));
+					_run.RoundTrip=Time("Data-layer round trip (load and save through OpenPmsDentalBusiness)",() => DataLayerRoundTrip.Run(db,adopted,_log));
 					RoundTripSummary roundTrip=_run.RoundTrip;
 					List<string> listNormalizations=roundTrip.ListNormalizations;
-					Check("R1","The 24.4-25.3 columns load and save through OpenDentBusiness (documented exceptions aside); those that Insert or the server do not "
+					Check("R1","The 24.4-25.3 columns load and save through OpenPmsDentalBusiness (documented exceptions aside); those that Insert or the server do not "
 						+"set take new values",roundTrip.Passed,
 						DescribeRoundTrip(roundTrip)+"; first-save normalizations (same meaning in the program): "
 						+(listNormalizations.Count==0 ? "none" : string.Join("; ",listNormalizations))

@@ -214,7 +214,7 @@ namespace DevDbTool {
 			string engines=string.Join(", ",table.Rows.Cast<DataRow>().Select(x => x[1]+" "+x[0]));
 			ListNotes.Add("Tables by engine: "+engines);
 			if(table.Rows.Count>1) {
-				ListNotes.Add("Mixed storage engines. OpenDental.exe converts them all to the default engine (after a backup) before its next "
+				ListNotes.Add("Mixed storage engines. OpenPmsDental.exe converts them all to the default engine (after a backup) before its next "
 					+"database conversion.");
 			}
 		}

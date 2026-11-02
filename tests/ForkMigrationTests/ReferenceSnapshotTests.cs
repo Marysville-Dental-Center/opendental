@@ -63,7 +63,7 @@ namespace ForkMigrationTests {
 				Assert.Inconclusive("The schema-only dump is not on this computer: "+DumpPath);
 			}
 			string built=SchemaVerifier.BuildReferenceDdlFromDump(File.ReadAllText(DumpPath,Encoding.UTF8));
-			string pathReference=TestDb.FindRepoFile(Path.Combine("OpenDentBusiness","Misc","ForkMigrations","Reference","OdSchema-25.3.48.sql"));
+			string pathReference=TestDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","Misc","ForkMigrations","Reference","OdSchema-25.3.48.sql"));
 			if(Environment.GetEnvironmentVariable("FORKMIGRATION_WRITE_REFERENCE")=="1") {
 				File.WriteAllText(pathReference,built,new UTF8Encoding(false));
 				Assert.Inconclusive("Rewrote "+pathReference+". Rebuild so the new file is embedded.");
@@ -71,7 +71,7 @@ namespace ForkMigrationTests {
 			//Line endings depend on the checkout (core.autocrlf), so they are not compared.
 			Assert.AreEqual(built,NormalizeLineEndings(File.ReadAllText(pathReference,Encoding.UTF8)),"The committed reference differs from the dump. Regenerate it.");
 			Assert.AreEqual(built,NormalizeLineEndings(SchemaVerifier.ReadReferenceDdl(SchemaVerifier.ReferenceResourceName25_3_48)),
-				"The embedded reference is stale. Rebuild OpenDentBusiness.");
+				"The embedded reference is stale. Rebuild OpenPmsDentalBusiness.");
 		}
 
 		private static string NormalizeLineEndings(string text) {

@@ -1,4 +1,4 @@
-// Checks that the windows (WpfControlsOD and OpenDental.exe, which these tests do not load) call the M2-EF business rules. They read the source.
+// Checks that the windows (WpfControlsOD and OpenPmsDental.exe, which these tests do not load) call the M2-EF business rules. They read the source.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -27,17 +27,17 @@ namespace M2EFTests {
 
 		[TestMethod]
 		public void FillAndImport_UsePatientFields() {
-			StringAssert.Contains(Read(@"OpenDentBusiness\EForms\EFormFiller.cs"),"EFormPatFields.FillFields(eForm);");
-			StringAssert.Contains(Read(@"OpenDentBusiness\Data Interface\EForms.cs"),"EFormPatFields.Validate(listEFormFields[i]);");
-			StringAssert.Contains(Read(@"OpenDentBusiness\Data Interface\PatFields.cs"),"EFormPatFields.UpdateDbLinksForRename(patFieldNameNew,patFieldNameOld);");
-			string sourceImport=Read(@"OpenDental\Forms\FormSheetImport.cs");
+			StringAssert.Contains(Read(@"OpenPmsDentalBusiness\EForms\EFormFiller.cs"),"EFormPatFields.FillFields(eForm);");
+			StringAssert.Contains(Read(@"OpenPmsDentalBusiness\Data Interface\EForms.cs"),"EFormPatFields.Validate(listEFormFields[i]);");
+			StringAssert.Contains(Read(@"OpenPmsDentalBusiness\Data Interface\PatFields.cs"),"EFormPatFields.UpdateDbLinksForRename(patFieldNameNew,patFieldNameOld);");
+			string sourceImport=Read(@"OpenPmsDental\Forms\FormSheetImport.cs");
 			StringAssert.Contains(sourceImport,"FillRowsPatFields();");
 			StringAssert.Contains(sourceImport,"ImportPatFieldRows();");
-			string sourceImportPatFields=Read(@"OpenDental\Forms\FormSheetImport.PatFields.cs");
+			string sourceImportPatFields=Read(@"OpenPmsDental\Forms\FormSheetImport.PatFields.cs");
 			StringAssert.Contains(sourceImportPatFields,"EFormPatFields.GetImports(EFormCur)");
 			StringAssert.Contains(sourceImportPatFields,"importRow.DoImport=eFormPatFieldImport.IsChange() && !eFormPatFieldImport.IsClearing();");
 			StringAssert.Contains(sourceImportPatFields,"EFormPatFields.Import(_patient.PatNum,listImports,");
-			StringAssert.Contains(Read(@"OpenDental\OpenDental.csproj"),@"<Compile Include=""Forms\FormSheetImport.PatFields.cs"">");
+			StringAssert.Contains(Read(@"OpenPmsDental\OpenPmsDental.csproj"),@"<Compile Include=""Forms\FormSheetImport.PatFields.cs"">");
 		}
 
 		[TestMethod]
@@ -73,13 +73,13 @@ namespace M2EFTests {
 
 		[TestMethod]
 		public void FillSheet_AndPatientForms_ShowDateSubmitted() {
-			string source=Read(@"OpenDental\Forms\FormSheetFillEdit.cs");
+			string source=Read(@"OpenPmsDental\Forms\FormSheetFillEdit.cs");
 			StringAssert.Contains(source,"LoadDateSubmitted();");
 			StringAssert.Contains(source,"if(!TrySetDateSubmitted()) {");
-			StringAssert.Contains(Read(@"OpenDental\Forms\FormSheetFillEdit.Submitted.cs"),
+			StringAssert.Contains(Read(@"OpenPmsDental\Forms\FormSheetFillEdit.Submitted.cs"),
 				"SheetCur.DateTimeSubmitted=FormSubmittedDates.GetToSave(dateTimeSubmitted,SheetCur.IsNew,IsAnySignatureEntered(),DateTime.Now);");
-			StringAssert.Contains(Read(@"OpenDental\OpenDental.csproj"),@"<Compile Include=""Forms\FormSheetFillEdit.Submitted.cs"">");
-			string sourceForms=Read(@"OpenDental\Forms\FormPatientForms.cs");
+			StringAssert.Contains(Read(@"OpenPmsDental\OpenPmsDental.csproj"),@"<Compile Include=""Forms\FormSheetFillEdit.Submitted.cs"">");
+			string sourceForms=Read(@"OpenPmsDental\Forms\FormPatientForms.cs");
 			StringAssert.Contains(sourceForms,"new GridColumn(Lan.g(this,\"Submitted\"),115,GridSortingStrategy.DateParse)");
 			StringAssert.Contains(sourceForms,"FormSubmittedDates.GetDisplayForRow(tableSubmitted,");
 		}

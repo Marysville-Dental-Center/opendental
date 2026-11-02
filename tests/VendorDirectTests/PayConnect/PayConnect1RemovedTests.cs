@@ -17,7 +17,7 @@ namespace VendorDirectTests.PayConnectV1Removal {
 	public class PayConnect1RemovedTests {
 		private static readonly string[] _arrayRemovedAssemblies=new[] { "DpsPos","log4net" };
 		///<summary>The projects whose source the program is built from.</summary>
-		private static readonly string[] _arraySourceProjects=new[] { "OpenDental","OpenDentBusiness","WpfControlsOD","CodeBase","OpenDentalServer" };
+		private static readonly string[] _arraySourceProjects=new[] { "OpenPmsDental","OpenPmsDentalBusiness","WpfControlsOD","CodeBase","OpenPmsDentalServer" };
 
 		private static string GetRoot() {
 			return FoundationLayoutTests.GetRepositoryRoot();
@@ -68,9 +68,9 @@ namespace VendorDirectTests.PayConnectV1Removal {
 				Assert.IsNull(assemblyBusiness.GetType(nsService+"."+typeName),"PayConnectService."+typeName+" should be gone.");
 			}
 			Assert.IsNull(assemblyBusiness.GetType(typeof(Patient).Namespace+".PayConnectREST"),"The PayConnect 1.0 REST class should be gone.");
-			Assert.IsFalse(Directory.Exists(Path.Combine(GetRoot(),@"OpenDentBusiness\Web References\PayConnectService")));
-			foreach(string file in new[] { @"OpenDentBusiness\OpenDentBusiness.csproj",@"OpenDentBusiness\app.config",
-				@"OpenDentBusiness\Properties\Settings.settings",@"OpenDentBusiness\Properties\Settings.Designer.cs" })
+			Assert.IsFalse(Directory.Exists(Path.Combine(GetRoot(),@"OpenPmsDentalBusiness\Web References\PayConnectService")));
+			foreach(string file in new[] { @"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj",@"OpenPmsDentalBusiness\app.config",
+				@"OpenPmsDentalBusiness\Properties\Settings.settings",@"OpenPmsDentalBusiness\Properties\Settings.Designer.cs" })
 			{
 				Assert.IsFalse(ReadRepoFile(file).Contains("PayConnectService"),file+" still names the PayConnect 1.0 web reference.");
 			}
@@ -121,9 +121,9 @@ namespace VendorDirectTests.PayConnectV1Removal {
 			Assert.AreEqual(0,listOffenders.Count,"Still references DpsPos or log4net: "+string.Join(", ",listOffenders));
 			Assert.IsFalse(File.Exists(Path.Combine(root,"Required dlls","DpsPos.dll")),"Required dlls\\DpsPos.dll should have been deleted.");
 			Assert.IsFalse(File.Exists(Path.Combine(root,"Required dlls","log4net.dll")),"Required dlls\\log4net.dll should have been deleted (only DpsPos used it).");
-			Assert.IsFalse(File.Exists(Path.Combine(root,@"OpenDental\Resources\DpsPos.dll.config")));
-			Assert.IsFalse(ReadRepoFile(@"OpenDental\Properties\Resources.resx").Contains("DpsPos"));
-			Assert.IsFalse(ReadRepoFile(@"OpenDental\Properties\Resources.Designer.cs").Contains("DpsPos"));
+			Assert.IsFalse(File.Exists(Path.Combine(root,@"OpenPmsDental\Resources\DpsPos.dll.config")));
+			Assert.IsFalse(ReadRepoFile(@"OpenPmsDental\Properties\Resources.resx").Contains("DpsPos"));
+			Assert.IsFalse(ReadRepoFile(@"OpenPmsDental\Properties\Resources.Designer.cs").Contains("DpsPos"));
 		}
 
 		[TestMethod]
@@ -138,7 +138,7 @@ namespace VendorDirectTests.PayConnectV1Removal {
 
 		[TestMethod]
 		public void DpsPosAndLog4net_AreNotReferencedByTheProgram() {
-			foreach(string pathRelative in new[] { @"OpenDental\bin\Debug\OpenDental.exe",@"WpfControlsOD\bin\Debug\WpfControlsOD.dll" }) {
+			foreach(string pathRelative in new[] { @"OpenPmsDental\bin\Debug\OpenPmsDental.exe",@"WpfControlsOD\bin\Debug\WpfControlsOD.dll" }) {
 				string path=Path.Combine(GetRoot(),pathRelative);
 				if(!File.Exists(path)) {
 					Assert.Inconclusive(path+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
@@ -154,10 +154,10 @@ namespace VendorDirectTests.PayConnectV1Removal {
 		public void Version1Window_IsGone() {
 			string root=GetRoot();
 			foreach(string file in new[] { "FormPayConnect.cs","FormPayConnect.designer.cs","FormPayConnect.resx" }) {
-				Assert.IsFalse(File.Exists(Path.Combine(root,@"OpenDental\Forms",file)),file+" should have been deleted.");
+				Assert.IsFalse(File.Exists(Path.Combine(root,@"OpenPmsDental\Forms",file)),file+" should have been deleted.");
 			}
-			string csproj=ReadRepoFile(@"OpenDental\OpenDental.csproj");
-			Assert.IsFalse(csproj.Contains(@"Forms\FormPayConnect.cs"""),"OpenDental.csproj still compiles FormPayConnect.");
+			string csproj=ReadRepoFile(@"OpenPmsDental\OpenPmsDental.csproj");
+			Assert.IsFalse(csproj.Contains(@"Forms\FormPayConnect.cs"""),"OpenPmsDental.csproj still compiles FormPayConnect.");
 			Assert.IsFalse(csproj.Contains(@"Forms\FormPayConnect.resx"""));
 			List<string> listHits=new List<string>();
 			foreach(string relative in GetSourceFiles(".cs")) {
@@ -173,7 +173,7 @@ namespace VendorDirectTests.PayConnectV1Removal {
 
 		[TestMethod]
 		public void SetupWindow_HasNoVersion1Fields() {
-			foreach(string file in new[] { @"OpenDental\Forms\FormPayConnectSetup.cs",@"OpenDental\Forms\FormPayConnectSetup.designer.cs" }) {
+			foreach(string file in new[] { @"OpenPmsDental\Forms\FormPayConnectSetup.cs",@"OpenPmsDental\Forms\FormPayConnectSetup.designer.cs" }) {
 				string text=ReadRepoFile(file);
 				foreach(string removed in new[] { "radioVersion1","textUsername","textPassword","butGenerateToken","textToken","checkForceRecurring",
 					"GetAccountToken" })
@@ -181,7 +181,7 @@ namespace VendorDirectTests.PayConnectV1Removal {
 					Assert.IsFalse(text.Contains(removed),file+" should not contain "+removed);
 				}
 			}
-			StringAssert.Contains(ReadRepoFile(@"OpenDental\Forms\FormPayConnectSetup.cs"),"PayConnect.Version2",
+			StringAssert.Contains(ReadRepoFile(@"OpenPmsDental\Forms\FormPayConnectSetup.cs"),"PayConnect.Version2",
 				"Saving setup writes version 2.");
 		}
 
@@ -198,7 +198,7 @@ namespace VendorDirectTests.PayConnectV1Removal {
 				}
 			}
 			Assert.AreEqual(0,listHits.Count,"PayConnect 1.0 hosts or client headers still named in: "+string.Join(", ",listHits));
-			string payConnect=ReadRepoFile(@"OpenDentBusiness\WebBridges\PayConnect.cs");
+			string payConnect=ReadRepoFile(@"OpenPmsDentalBusiness\WebBridges\PayConnect.cs");
 			Assert.IsFalse(payConnect.Contains("ServiceID"),"PayConnect.cs must not carry a compiled-in service ID.");
 		}
 	}

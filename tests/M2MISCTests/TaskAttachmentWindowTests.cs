@@ -1,4 +1,4 @@
-// v26_1-misc-task-attach-nonmodal: the Task Attachments and Task Attachment Edit windows are non-modal (OpenDental.TaskAttachmentWindows).
+// v26_1-misc-task-attach-nonmodal: the Task Attachments and Task Attachment Edit windows are non-modal (OpenPmsDental.TaskAttachmentWindows).
 // The windows themselves are not opened here (the desktop client is never launched); their bookkeeping and the code that opens them are tested.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
@@ -79,7 +79,7 @@ namespace M2MISCTests {
 		#region The code that opens the windows
 		[TestMethod]
 		public void TaskEdit_OpensAttachmentsNonModal_AndClosesThemWithTheTask() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormTaskEdit.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormTaskEdit.cs");
 			string method=GetMethod(code,"private void butAttachmnents_Click(");
 			StringAssert.Contains(method,"TaskAttachmentWindows.ShowAttachments(this,TaskCur,checkIsReadOnly.Checked,OnTaskAttachmentsChanged);");
 			Assert.IsFalse(method.Contains("ShowDialog"),"The Task Attachments window is shown modally again.");
@@ -93,7 +93,7 @@ namespace M2MISCTests {
 
 		[TestMethod]
 		public void AttachmentsWindow_OpensEditWindowsNonModal() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormTaskAttachments.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormTaskAttachments.cs");
 			Assert.IsFalse(code.Contains("ShowDialog"),"An attachment edit window is shown modally again.");
 			Assert.AreEqual(2,Regex.Matches(code,@"TaskAttachmentWindows\.ShowAttachmentEdit\(this,_task,").Count,"Add and double-click");
 			StringAssert.Contains(GetMethod(code,"private void OnAttachmentSaved("),"ActionAttachmentsChanged?.Invoke();");
@@ -101,7 +101,7 @@ namespace M2MISCTests {
 
 		[TestMethod]
 		public void EditWindow_ClosesItselfAfterSaveAndDelete_AndDiscardsWhenTheTaskIsGone() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormTaskAttachmentEdit.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormTaskAttachmentEdit.cs");
 			//A non-modal window does not close when DialogResult is set: every DialogResult must be followed by Close().
 			MatchCollection matchCollection=Regex.Matches(code,@"DialogResult=DialogResult\.\w+;\s*\r?\n\s*(\S[^\r\n]*)");
 			Assert.IsTrue(matchCollection.Count>=4);
@@ -116,7 +116,7 @@ namespace M2MISCTests {
 
 		[TestMethod]
 		public void TaskList_OpensAnAttachmentNonModal() {
-			string code=TestDb.ReadRepoFile("OpenDental","User Controls","UserControlTasks.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","User Controls","UserControlTasks.cs");
 			string method=GetMethod(code,"private void NavAtt_Clicked(");
 			StringAssert.Contains(method,"TaskAttachmentWindows.ShowAttachmentEdit(FindForm(),task,taskAttachment,");
 			Assert.IsFalse(method.Contains("ShowDialog"));

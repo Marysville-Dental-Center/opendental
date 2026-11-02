@@ -59,23 +59,23 @@ namespace BSHELLTests {
 
 		[TestMethod]
 		public void MainWindow_BlursAfterAModuleBarClick_Only() {
-			string source=TestPaths.ReadRepoFile("OpenDental","Main Modules","FormOpenDental.cs");
-			string clicked=TestPaths.GetMethodBody(source,"private void moduleBar_ButtonClicked(object sender, OpenDental.ButtonClicked_EventArgs e)");
+			string source=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","FormOpenDental.cs");
+			string clicked=TestPaths.GetMethodBody(source,"private void moduleBar_ButtonClicked(object sender, OpenPmsDental.ButtonClicked_EventArgs e)");
 			int indexSelect=clicked.IndexOf("SetModuleSelected(true);");
 			int indexBlur=clicked.IndexOf("ShowModuleSwitchBlur(isUserClick:e.OutlookButton!=null);");
 			Assert.IsTrue(indexSelect>0 && indexBlur>indexSelect,"The cover goes up after the new module is selected and filled.");
 			Assert.AreEqual(1,TestPaths.Count(source,"ShowModuleSwitchBlur("),"Only module bar clicks blur; Go To and refreshes do not.");
-			string shell=TestPaths.ReadRepoFile("OpenDental","Main Modules","FormOpenDentalBShell.cs");
+			string shell=TestPaths.ReadRepoFile("OpenPmsDental","Main Modules","FormOpenDentalBShell.cs");
 			StringAssert.Contains(shell,"ModuleSwitchBlur.ShouldBlur(ModuleSwitchBlur.IsEnabled(),isUserClick)");
 			StringAssert.Contains(shell,"m.Result=(IntPtr)MA_NOACTIVATEANDEAT;");
 		}
 
 		[TestMethod]
 		public void Preferences_MainWindowMisc_HasTheCheckbox() {
-			string designer=TestPaths.ReadRepoFile("OpenDental","User Controls","Preferences","UserControlMainWindowMisc.Designer.cs");
+			string designer=TestPaths.ReadRepoFile("OpenPmsDental","User Controls","Preferences","UserControlMainWindowMisc.Designer.cs");
 			StringAssert.Contains(designer,"\"Blur when switching between modules to prevent accidental clicking\"");
 			StringAssert.Contains(designer,"this.Controls.Add(this.checkModuleSwitchBlur);");
-			string source=TestPaths.ReadRepoFile("OpenDental","User Controls","Preferences","UserControlMainWindowMisc.cs");
+			string source=TestPaths.ReadRepoFile("OpenPmsDental","User Controls","Preferences","UserControlMainWindowMisc.cs");
 			StringAssert.Contains(source,"checkModuleSwitchBlur.Checked=ModuleSwitchBlur.IsEnabled();");
 			StringAssert.Contains(source,"ModuleSwitchBlur.Save(checkModuleSwitchBlur.Checked)");
 		}
@@ -91,7 +91,7 @@ namespace BSHELLTests {
 		[TestMethod]
 		public void NoMigrationStep_AddsTheRow_SoAdoptedDatabasesStayAsTheyAre() {
 			Assert.IsFalse(ForkMigrationRunner.GetSteps().Any(x => x.GetType().Name.Contains("ModuleSwitchBlur")));
-			string steps=TestPaths.ReadRepoFile("OpenDentBusiness","Misc","ForkMigrations","BShellSteps.cs");
+			string steps=TestPaths.ReadRepoFile("OpenPmsDentalBusiness","Misc","ForkMigrations","BShellSteps.cs");
 			Assert.IsFalse(steps.Contains("ModuleSwitchBlur"));
 		}
 

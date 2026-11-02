@@ -1,6 +1,6 @@
 // Database tests for the Open Dental 25.1 PayConnect columns (backlog package V-PC): computerpref.CreditCardTerminalId (the last terminal used on
 // this workstation) and creditcard.CardHolderName (the cardholder on receipts). Each run builds a scratch MariaDB database on this computer whose
-// tables are created from the schema reference embedded in OpenDentBusiness (SchemaVerifier.GetReference(), Open Dental 26.1.70 since M2-01), the
+// tables are created from the schema reference embedded in OpenPmsDentalBusiness (SchemaVerifier.GetReference(), Open Dental 26.1.70 since M2-01), the
 // schema the table classes and CRUD match, so a column the CRUD writes (such as the 25.4 payterminal.CCIntegration) is always there. Schema only, no
 // rows. Skipped (inconclusive) when no server answers at 127.0.0.1:3306 as root with a blank password, or when VENDORDIRECT_TEST_DB=skip.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

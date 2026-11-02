@@ -28,7 +28,7 @@ namespace UnitTests{
 			panel.BorderStyle=BorderStyle.FixedSingle;
 			panel.Location=new Point(71,290);//LayoutManager.Scale(71),LayoutManager.Scale(290));
 			panel.Size=new Size(367,212);//LayoutManager.Scale(367),LayoutManager.Scale(212));
-			OpenDental.UI.TabControl tabControl=new OpenDental.UI.TabControl();
+			OpenPmsDental.UI.TabControl tabControl=new OpenPmsDental.UI.TabControl();
 			tabControl.Size=new Size(357,202);
 			tabControl.Location=new Point(5,5);
 			//first tab page

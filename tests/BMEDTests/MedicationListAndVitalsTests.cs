@@ -12,8 +12,8 @@ namespace BMEDTests {
 	public class MissingTabRemovedTests {
 		[TestMethod]
 		public void MedicationsWindow_HasNoMissingTab() {
-			string source=BMedDb.ReadRepoFile("OpenDental","Forms","FormMedications.cs");
-			string designer=BMedDb.ReadRepoFile("OpenDental","Forms","FormMedications.designer.cs");
+			string source=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormMedications.cs");
+			string designer=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormMedications.designer.cs");
 			foreach(string name in new[] { "tabMissing","gridMissing","FillGridMissing","butConvertGeneric","butConvertBrand","GetAllMissingMedications",
 				"tabMedications","tabAllMedications","Missing Generic/Brand" })
 			{
@@ -23,14 +23,14 @@ namespace BMEDTests {
 			//Any namespace before UI.TabControl, so the check still sees the control after the namespaces are renamed. A window that keeps its
 			//tab control shows that the pattern finds one.
 			Regex regexTabControl=new Regex(@"\bUI\.TabControl\b");
-			Assert.IsTrue(regexTabControl.IsMatch(BMedDb.ReadRepoFile("OpenDental","Forms","FormPatientEdit.Designer.cs")));
+			Assert.IsTrue(regexTabControl.IsMatch(BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormPatientEdit.Designer.cs")));
 			Assert.IsFalse(regexTabControl.IsMatch(designer),"The tab control is gone.");
 		}
 
 		[TestMethod]
 		public void MedicationsWindow_KeepsTheListAndItsSearch() {
-			string source=BMedDb.ReadRepoFile("OpenDental","Forms","FormMedications.cs");
-			string designer=BMedDb.ReadRepoFile("OpenDental","Forms","FormMedications.designer.cs");
+			string source=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormMedications.cs");
+			string designer=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormMedications.designer.cs");
 			foreach(string control in new[] { "gridAllMedications","textSearch","butAddGeneric","butAddBrand","butImportMedications","butExportMedications",
 				"checkShowHidden","butOK" })
 			{
@@ -46,8 +46,8 @@ namespace BMEDTests {
 	public class VitalsignNotesWiringTests {
 		[TestMethod]
 		public void EditWindow_LoadsAndSavesTheNotesBox() {
-			string source=BMedDb.ReadRepoFile("OpenDental","Forms","FormVitalsignEdit2014.cs");
-			string designer=BMedDb.ReadRepoFile("OpenDental","Forms","FormVitalsignEdit2014.Designer.cs");
+			string source=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormVitalsignEdit2014.cs");
+			string designer=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormVitalsignEdit2014.Designer.cs");
 			StringAssert.Contains(source,"textNotes.Text=VitalsignCur.Documentation??\"\";");
 			StringAssert.Contains(source,"VitalsignCur.Documentation=textNotes.Text;");
 			//Loaded before the early returns of the load method, saved before the insert or update.
@@ -62,7 +62,7 @@ namespace BMEDTests {
 
 		[TestMethod]
 		public void MedicalWindow_ShowsTheColumnAsNotes() {
-			string source=BMedDb.ReadRepoFile("OpenDental","Forms","FormMedical.cs");
+			string source=BMedDb.ReadRepoFile("OpenPmsDental","Forms","FormMedical.cs");
 			StringAssert.Contains(source,"col=new GridColumn(\"Notes\",150);");
 			Assert.IsFalse(source.Contains("Documentation for Followup or Ineligible"));
 			StringAssert.Contains(source,"row.Cells.Add(_listVitalSigns[i].Documentation);","The column still shows vitalsign.Documentation.");

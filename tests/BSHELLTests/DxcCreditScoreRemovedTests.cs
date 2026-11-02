@@ -43,7 +43,7 @@ namespace BSHELLTests {
 
 		[TestMethod]
 		public void ProgramLinkEdit_CannotEnableIt() {
-			string source=TestPaths.ReadRepoFile("OpenDental","Forms","FormProgramLinkEdit.cs");
+			string source=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProgramLinkEdit.cs");
 			string load=TestPaths.GetMethodBody(source,"private void FormProgramLinkEdit_Load(");
 			StringAssert.Contains(load,"checkEnabled.Enabled=false;");
 			StringAssert.Contains(load,"listToolBars.Enabled=false;");
@@ -51,7 +51,7 @@ namespace BSHELLTests {
 			int indexEnabled=save.IndexOf("ProgramCur.Enabled=checkEnabled.Checked;");
 			int indexForceOff=save.IndexOf("ProgramCur.Enabled=false;");
 			Assert.IsTrue(indexEnabled>0 && indexForceOff>indexEnabled,"Saved as disabled whatever the box says.");
-			string list=TestPaths.ReadRepoFile("OpenDental","Forms","FormProgramLinks.cs");
+			string list=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProgramLinks.cs");
 			StringAssert.Contains(list,"ProgramLinksDiscontinued.GetLabeledDesc(_listPrograms[i].ProgDesc)","Program Links labels it (discontinued).");
 		}
 

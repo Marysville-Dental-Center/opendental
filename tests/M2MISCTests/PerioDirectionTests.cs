@@ -208,7 +208,7 @@ namespace M2MISCTests {
 		#region The window
 		[TestMethod]
 		public void Window_DirectionButtons_ApplyAtOnce_AndReturnInputToTheChart() {
-			string code=TestDb.ReadRepoFile("OpenDental","Forms","FormPerio.cs");
+			string code=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPerio.cs");
 			foreach(string direction in new[] { "Right","Left" }) {
 				string method=TaskAttachmentWindowTests.GetMethod(code,"private void radio"+direction+"_Click(");
 				StringAssert.Contains(method,"contrPerio.SetDirectionManual(EnumCurrentDirection."+direction+");");

@@ -95,14 +95,14 @@ namespace BTASKTests {
 
 		[TestMethod]
 		public void TaskList_FilterText_NamesUnassigned() {
-			string code=ReadRepoFile("OpenDental","User Controls","UserControlTasks.cs");
+			string code=ReadRepoFile("OpenPmsDental","User Controls","UserControlTasks.cs");
 			StringAssert.Contains(code,"_listClinicNumsFilter.Select(x => TaskFilters.GetClinicFilterText(x))");
 			StringAssert.Contains(code,"_listDefNumsRegionFilter.Select(x => TaskFilters.GetRegionFilterText(x))");
 		}
 
 		[TestMethod]
 		public void TaskQueries_UseTheUnassignedHook() {
-			string code=ReadRepoFile("OpenDentBusiness","Data Interface","Tasks.cs");
+			string code=ReadRepoFile("OpenPmsDentalBusiness","Data Interface","Tasks.cs");
 			StringAssert.Contains(code,"TaskFilters.AddUnassignedClinicNums(listClinicNumsForQuery,listClinicNumsFilter,listDefNumsRegionFilter,listClinicsUnrestricted)");
 			StringAssert.Contains(code,"if(listClinicNumsForQuery.Count>1 || isUnassignedFilter) {");
 		}
