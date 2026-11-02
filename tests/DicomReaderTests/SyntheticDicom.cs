@@ -28,8 +28,8 @@ namespace DicomReaderTests {
 		public bool IsUndefinedLength;
 	}
 
-	///<summary>A small PS3.10 writer for test files.</summary>
-	internal static class SyntheticDicom {
+	///<summary>A small PS3.10 writer for test files. SyntheticEncodings.cs adds the other encodings, encapsulation, RLE and JPEG.</summary>
+	internal static partial class SyntheticDicom {
 		public const string ExplicitVrLittleEndian="1.2.840.10008.1.2.1";
 		public const string ImplicitVrLittleEndian="1.2.840.10008.1.2";
 		public const string ExplicitVrBigEndian="1.2.840.10008.1.2.2";
