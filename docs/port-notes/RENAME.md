@@ -66,13 +66,15 @@ The display name is "Open PMS - Dental" (`ProductIdentity.ProductName`).
 - `tools/Rename-ToOpenPmsDental.ps1`: the scripted rename (re-runnable on a straggling branch made before the rename). It moves the six
   project folders and project files with git mv, renames code tokens (a small C# lexer keeps strings, comments and enum members), the XAML
   namespaces, project and solution entries, configuration sections, ResourceManager names, the CrudTable overrides, xCrudGenerator's paths
-  and namespaces, and the `ProgramNames` values. The scripted commit is in `.git-blame-ignore-revs`.
+  and namespaces, and the `ProgramNames` values. The scripted commits (`01c141339`, and `897f748dc`, the same script run again for the
+  tools' repository paths) are in `.git-blame-ignore-revs`.
 - The legacy service prefix (`LegacyServicePrefix`, `HasServicePrefix`).
 
 ## Stage 2 (`rn/rename-2`)
 
 - **Tests and tools:** every test, test helper and tool that read a source by its old folder, loaded an old exe or dll, built an old type
-  name by string or wrote synthetic old file names now names the new ones (scripted token pass, then reviewed). `ProgramNamesTests` pins
+  name by string or wrote synthetic old file names now names the new ones (scripted token pass, then reviewed). The token pass is
+  `tools/Rename-TokenPass.py`; it ran over the tests and tools, then the product code, then the docs (`--docs`). `ProgramNamesTests` pins
   every value and checks the old and the new literals stay out of the routed sites; `AttributionTests` asserts the renamed assembly and
   namespace. Tests that check removed things still take their names from `typeof`.
 - **Visible text:** the strings that name this program say "Open PMS - Dental" (splash, designer title, logoff warning, restart prompts,
@@ -126,6 +128,31 @@ where Release has been built.
 Not checked here: the rename inventory's §6 items that need the running program or an office database. These are the launch and
 module walk-through, CentralManager, the RDL reports, the cursors, the second instance and the Event Log sources (left to the owner's
 first start after the installer), and the deferred scan of the office database.
+
+## A branch made before the rename
+
+A branch made before the rename (for example an unfinished feature port branch) still has the old folders and names. Bring it over with
+the two scripted passes, then build and test. Both tools are on main only: run main's copies with the branch's worktree as the root. On main
+both change nothing (`Rename-ToOpenPmsDental.ps1 -DryRun` reports "Nothing to change", and the token pass's keeps are what the stage 2
+review kept), so on the branch they change only what still has the old names.
+
+1. In the branch's own worktree, with a clean tree, list the files the branch changed since it left main:
+   `git diff --name-only --diff-filter=AMR (git merge-base HEAD main) HEAD > $env:TEMP\branch-files.txt`.
+2. **The scripted rename:** `powershell -NoProfile -ExecutionPolicy Bypass -File <main>\tools\Rename-ToOpenPmsDental.ps1 -Root .
+   -ReportFile $env:TEMP\rename-report.txt`. It moves files still in an old project folder into the new one and renames the code tokens.
+   Read the report, then commit the result alone ("... (scripted)").
+3. **The token pass** over the branch's own files: `Get-Content $env:TEMP\branch-files.txt | python -I <main>\tools\Rename-TokenPass.py
+   --docs . $env:TEMP\tokenpass.txt`. It renames the old names left in strings, comments and docs; the paths of step 1 still work after
+   the folders moved. Review the diff against "Kept as they are" above (text about Open Dental itself and values sent to other systems
+   keep their names, as in stage 2), commit the pass alone ("... (scripted)"), then the review's fixes. Every other file comes from main
+   in the merge, which already has the reviewed result. (`--ls-files` instead of a list takes every tracked file; `--dry-run` only counts.)
+4. **Visible text:** neither pass touches "Open Dental" written as two words. Strings the branch added that name this program say
+   "Open PMS - Dental"; text about Open Dental itself stays.
+5. **Merge main.** Lines both sides renamed the same way merge cleanly; resolve the rest.
+6. **Check, build and test:** `tools\Test-NoOldNames.ps1 -Strict` (rename what it lists, or add a narrow allow-list entry with its
+   reason), `tools\Test-NoHqHosts.ps1`, a build of the whole `OpenDental.Local.slnf` through the build lane (Debug x86; Release x86 too
+   before a release), and the tests (`run-tests -Mode Full`, or `-Mode Targeted` with the assemblies the branch touches).
+7. Optionally add the two scripted commits to `.git-blame-ignore-revs`.
 
 ## Not done here
 

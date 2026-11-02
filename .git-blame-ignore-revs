@@ -1,3 +1,5 @@
 # Commits that only rename or reformat, which git blame skips (git config blame.ignoreRevsFile .git-blame-ignore-revs).
 # The scripted rename of the internal code names to Open PMS Dental (tools/Rename-ToOpenPmsDental.ps1).
 01c141339ccfab3dd2088b600460a059ab574872
+# The same script run again: the project folders in the tools' repository paths.
+897f748dce730e6f03df5549ceab9384ac7e8452

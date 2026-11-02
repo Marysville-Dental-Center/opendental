@@ -73,7 +73,7 @@ $TokenPattern='(?<![A-Za-z0-9_])(?:'+($OldNames -join '|')+')(?![A-Za-z0-9_])'
 #Text files that are read. Everything else is skipped as binary.
 $ScanExtensions=@('.cs','.xaml','.resx','.csproj','.vcxproj','.vcxitems','.filters','.sln','.slnf','.config','.settings','.targets','.props',
 	'.ps1','.psm1','.psd1','.cmd','.bat','.sh','.md','.txt','.xml','.xsd','.json','.asmx','.asax','.aspx','.htm','.html','.rdl','.tt',
-	'.manifest','.iss','.sql','.js','.css','.yml','.yaml','.editorconfig','.gitattributes','.gitignore')
+	'.manifest','.iss','.sql','.js','.css','.yml','.yaml','.py','.editorconfig','.gitattributes','.gitignore')
 $ScanFileNames=@('LICENSE','NOTICE','Makefile')
 $SkipFolders=@('bin','obj','packages','.git','.vs','.claude','TestResults','node_modules')
 
@@ -90,6 +90,7 @@ $AllowList=@(
 	@{ Path='UnitTests\Resources\dump.txt'; Match='OpenDental\.Imaging\.FileStore'; Reason="Open Dental's seed database dump: the ImageStore preference value." }
 	@{ Path='tools\Test-NoOldNames.ps1'; Reason='This scanner names the old names.' }
 	@{ Path='tools\Rename-ToOpenPmsDental.ps1'; Reason='The rename script names the old names it maps.' }
+	@{ Path='tools\Rename-TokenPass.py'; Reason="The rename's token pass names the old names it maps and the ones it keeps." }
 
 	#--- Attribution, licences and GPL headers: whole lines.
 	@{ Path='*'; Line='(?i)GNU General Public License|Copyright \(C\) \d{4}|Jordan Sparks'; Reason='Licence and copyright notices.' }
