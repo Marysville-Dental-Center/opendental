@@ -243,6 +243,16 @@ namespace OpenPmsDentalBusiness {
 		///<summary>51 - Reserved (Open Dental 26.1). eConnector listener firewall rules failed.</summary>
 		[Description("eService Listener Error"),ReservedEnumValue("Raised by the Open Dental eConnector.")]
 		EServiceListenerError,
+		//This program's own values count down from 127: alertitem.Type, alertcategorylink.AlertType and alertsub.Type are tinyint(4), so 10000 and up
+		//do not fit, and Open Dental's own values count up from 0 (docs/port-notes/FORK-ENUMS.md, "tinyint enums"). 127 to 120: routine maintenance.
+		///<summary>127 - Routine maintenance (fork only): a maintenance item entered its reminder lead time. One per item and assigned user
+		///(UserNum), FKey the MaintItemNum. Raised and removed by MaintAlerts.Sync.</summary>
+		[Description("Maintenance Due Soon")]
+		MaintenanceDueSoon=127,
+		///<summary>126 - Routine maintenance (fork only): a maintenance item is overdue. One per item and assigned user (UserNum), FKey the
+		///MaintItemNum. Replaces MaintenanceDueSoon. Raised and removed by MaintAlerts.Sync.</summary>
+		[Description("Maintenance Overdue")]
+		MaintenanceOverdue=126,
 	}
 
 	///<summary>Represents the urgency of the alert.  Also determines the color for the menu item in the main menu.</summary>
@@ -339,6 +349,11 @@ namespace OpenPmsDentalBusiness {
 		///<summary>21 - Reserved (Open Dental 25.4). PaySuite reconciliation window, not built yet. Opening it does nothing.</summary>
 		[Description("PaySuite Reconciliation"),ReservedEnumValue("PaySuite is not built yet.")]
 		FrmPaySuiteReconciliation,
+		//This program's own values count down from 127, because alertitem.FormToOpen is tinyint(4) (docs/port-notes/FORK-ENUMS.md, "tinyint
+		//enums"). 127 to 120: routine maintenance.
+		///<summary>127 - Routine maintenance (fork only): FormMaintBoard, the maintenance board.</summary>
+		[Description("Maintenance Board")]
+		FormMaintenanceBoard=127,
 	}
 
 }

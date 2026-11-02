@@ -887,6 +887,14 @@ namespace OpenPmsDentalBusiness{
 		///<summary>276 - Reserved. Open Dental HQ only (26.1): changes to which services have their log folders collected.</summary>
 		[Description("Log Scraper HQ"),IsODHQ]
 		LogScraperHQ,
+		//10000 and up: this program's own values, so that Open Dental's later values never collide with them (docs/port-notes/FORK-ENUMS.md).
+		//Code must not loop over 0..count-1 of this enum; use Enum.GetValues.
+		///<summary>10000 - Routine maintenance (fork only): add, edit, hide and delete maintenance items, their checklists and result fields.</summary>
+		[Description("Maintenance Setup")]
+		MaintenanceSetup=10000,
+		///<summary>10001 - Routine maintenance (fork only): record a completion of a maintenance item.</summary>
+		[Description("Maintenance Record Completion")]
+		MaintenanceRecord=10001,
 	}
 }
 
