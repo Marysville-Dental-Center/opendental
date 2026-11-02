@@ -4,6 +4,7 @@ Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and co
 
 The program's own source files are free software: you can redistribute them and/or modify them under the terms of the GNU General Public License, version 2 or (at your option) any later version. The program as installed includes PDFsharp and MigraDoc, which are licensed under the GNU Affero General Public License, version 3, so it is distributed under the GNU General Public License, version 3, whose text is on the License Agreement page, with PDFsharp and MigraDoc under the GNU AGPL, version 3. By section 13 of both licenses, the AGPL's requirements on interaction through a network apply to the combination as a whole (see NOTICE below). It comes with ABSOLUTELY NO WARRANTY. The complete source code of this release is published at
 https://github.com/Marysville-Dental-Center/opendental/tree/v@VERSION@
+The release there also has its source archive, OpenPmsDental-@VERSION@-source.zip: the program's source at the release commit with the source of PDFsharp, MigraDoc and WeCantSpell.Hunspell as built for this setup (git submodules; PDFsharp with the one file this project replaces, see NOTICE below). It is the Corresponding Source of everything this setup installs.
 
 What this setup does:
 - It installs the program files in the program folder (by default C:\Program Files (x86)\Open PMS - Dental). The uninstaller goes to its "uninstall" sub folder.

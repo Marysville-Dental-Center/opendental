@@ -4,6 +4,8 @@ As installed, the program is conveyed under the GNU General Public License, vers
 
 The program's own source files are licensed under the GNU General Public License, version 2 or (at your option) any later version (LICENSE in the program folder). The other third-party components keep their own licenses (THIRD-PARTY-NOTICES.txt in the program folder).
 
+The Corresponding Source of this program as installed, including PDFsharp, MigraDoc and WeCantSpell.Hunspell as built for this setup, is the source archive OpenPmsDental-@VERSION@-source.zip published with this release (NOTICE in the program folder says where).
+
 The program comes with ABSOLUTELY NO WARRANTY, to the extent permitted by law (sections 15 and 16 below).
 
 @GPL3@

@@ -47,10 +47,25 @@ GNU General Public License, version 3, and PDFsharp and MigraDoc keep the
 terms of the GNU AGPL, version 3 (section 13 of each license). Their full
 texts are LICENSE-GPL-3.0.txt and LICENSE-AGPL-3.0.txt. The program's source
 files keep their own notices, so they can still be used under version 2 apart
-from PDFsharp and MigraDoc. The program's source is published at the source
-address of each release, PDFsharp's and MigraDoc's at
-https://github.com/empira/PDFsharp; THIRD-PARTY-NOTICES.txt names the one
-PDFsharp file whose source empira does not publish (PdfSharp.License.dll).
+from PDFsharp and MigraDoc.
+
+PDFsharp and MigraDoc 6.5.0 are built by this project from empira's AGPL
+source (https://github.com/empira/PDFsharp, tag v6.5.0, commit
+96d5ef81d304d314228712e28e5d7ac3d5e29f86), a git submodule of this
+repository, and so is the WeCantSpell.Hunspell 7.0.1 spell checker. The
+PDFsharp built here is a modified version (GNU AGPL version 3, section 5a):
+one file, src/foundation/src/PDFsharp/src/PdfSharp/root/PdfSharpLicense.cs,
+is replaced by third-party/build/PdfSharp-gdi/PdfSharpLicense.cs, changed on
+2026-11-02, which keeps empira's copyright and holds the AGPL license check
+itself, so the program needs no PdfSharp.License.dll, empira's prebuilt
+license library whose source is not published. THIRD-PARTY-NOTICES.txt and
+docs/third-party-source-builds.md say more.
+
+Where the source is: the complete source of each release, the Corresponding
+Source of everything its setup installs, is the source archive
+OpenPmsDental-<version>-source.zip published with the release, next to the
+setup. It holds this repository at the release commit and the PDFsharp and
+WeCantSpell.Hunspell submodules at the commits that commit pins.
 
 Use over a network: by section 13 of the GNU GPL version 3, the special
 requirements of section 13 of the GNU AGPL, concerning interaction through
