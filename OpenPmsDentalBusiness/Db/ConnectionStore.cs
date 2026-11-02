@@ -33,16 +33,20 @@ namespace OpenPmsDentalBusiness {
 					cn.MySqlPassword=PrefC.ReportingServer.Server=="" ? DataConnection.GetMysqlPass() : PrefC.ReportingServer.MySqlPass;
 					//no ternary operator because URI will be blank if they're not using a middle tier reporting server.
 					cn.ServiceURI=PrefC.ReportingServer.URI;
-					//The main server's own CA when no reporting server is set; for a reporting server over the network always this computer's office
-					//CA, never the CA path in the preference, which anyone who can change the preferences could point at a CA of their own (owner
-					//decision Q5, docs/specs/db-connection-security.md section 5). The preference's CA is used only for a server on this computer.
-					cn.SslCa=PrefC.ReportingServer.Server=="" ? DataConnection.GetSslCa()
-						: DataConnection.GetSslCaForServer(PrefC.ReportingServer.Server,PrefC.ReportingServer.SslCa);
+					//need to add PrefC.ReportingServer.SslCa call later to reporting server implementation Job:45000
+					//No server in the preference: the main connection, with the main connection's CA.
+					cn.SslCa=PrefC.ReportingServer.Server=="" || PrefC.ReportingServer.SslCa=="" ? DataConnection.GetSslCa() : PrefC.ReportingServer.SslCa;
 					//Connection string is not currently supported for report servers.
 					//If ServerName is null or empty, then the current instance of Open Dental is utilizing a connection string.
 					//The connection string should be preserved in order for reports to continue to work for non-report server queries.
 					if(string.IsNullOrEmpty(cn.ServerName)) {
 						cn.ConnectionString=PrefC.ReportingServer.ConnectionString=="" ? DataConnection.GetConnectionString() : PrefC.ReportingServer.ConnectionString;
+					}
+					if(PrefC.ReportingServer.Server!="") {
+						//A reporting server of its own connects as before the connection rule, with the server, user, password and CA of its preferences
+						//(owner decision of 2026-11-02, docs/specs/db-connection-security.md section 5.1). Without a server in the preference this is the
+						//main connection, which stays under the rule.
+						cn.MarkPreferenceServer();
 					}
 				});
 				return cn;
@@ -59,14 +63,18 @@ namespace OpenPmsDentalBusiness {
 					cn.MySqlPassword=PrefC.ReadOnlyServer.Server=="" ? DataConnection.GetMysqlPass() : PrefC.ReadOnlyServer.MySqlPass;
 					//no ternary operator because URI will be blank if they're not using a middle tier read-only server.
 					cn.ServiceURI=PrefC.ReadOnlyServer.URI;
-					//As for the reporting server: the main server's CA, or this computer's office CA for a read-only server over the network.
-					cn.SslCa=PrefC.ReadOnlyServer.Server=="" ? DataConnection.GetSslCa()
-						: DataConnection.GetSslCaForServer(PrefC.ReadOnlyServer.Server,PrefC.ReadOnlyServer.SslCa);
+					//need to add PrefC.ReportingServer.SslCa call later to reporting server implementation Job:45000
+					//No server in the preference: the main connection, with the main connection's CA.
+					cn.SslCa=PrefC.ReadOnlyServer.Server=="" || PrefC.ReadOnlyServer.SslCa=="" ? DataConnection.GetSslCa() : PrefC.ReadOnlyServer.SslCa;
 					//Connection string is not currently supported for read-only servers.
 					//If ServerName is null or empty, then the current instance of Open Dental is utilizing a connection string.
 					//The connection string should be preserved in order for reports(stuff) to continue to work for non-read-only server queries.
 					if(string.IsNullOrEmpty(cn.ServerName)) {
 						cn.ConnectionString=PrefC.ReadOnlyServer.ConnectionString=="" ? DataConnection.GetConnectionString() : PrefC.ReadOnlyServer.ConnectionString;
+					}
+					if(PrefC.ReadOnlyServer.Server!="") {
+						//As for the reporting server: a read-only server of its own connects as before, the main connection stays under the rule.
+						cn.MarkPreferenceServer();
 					}
 				});
 				return cn;

@@ -11,10 +11,14 @@ using MySqlConnector;
 
 namespace DataConnectionBase {
 	///<summary>The one place that decides whether a database connection may be made (owner decisions Q3 to Q5 of 2026-11-02,
-	///docs/specs/db-connection-security.md). A connection to the same computer (localhost, any loopback address) is exempt. Any other needs
+	///docs/specs/db-connection-security.md). The rule is for the program's own database account: the main connection of FreeDentalConfig.xml
+	///and everything that reuses its settings. A connection to the same computer (localhost, any loopback address) is exempt. Any other needs
 	///SslMode=VerifyFull, SslCa (the office CA certificate file, this computer's own once one is configured) and a client credential: a
 	///certificate from the LocalMachine store by thumbprint, or a password. Every MySqlConnection a shipped binary creates comes from
 	///NewMySqlConnection, so the refusal happens before any network connection is attempted. DNS is never asked to decide.
+	///A read-only or reporting server of its own, named in the database preferences, connects as it did before (owner decision of 2026-11-02,
+	///spec section 5.1): only the exact strings DataConnection.BuildPreferenceServerConnectionString built in this process pass without the rule
+	///(IsPreferenceServerConnection), never a string because of what it contains.
 	///Two notations for a server have their own loopback tests: IsLoopbackConnectorServer reads a connection string's Server value exactly as
 	///MySqlConnector does; IsLoopbackServer reads the program's own notation (ComputerName, "host:port", "[v6]:port").</summary>
 	public static class DbConnectionSecurity {
@@ -24,6 +28,14 @@ namespace DataConnectionBase {
 		private static readonly object _lockPassed=new object();
 		///<summary>The cache is emptied when it grows past this (connection strings change only when the database is switched).</summary>
 		private const int MAX_PASSED=256;
+		///<summary>The connection strings of read-only and reporting servers of their own, exactly as DataConnection.BuildPreferenceServerConnectionString
+		///built them in this process (AllowPreferenceServerConnection, internal to DataConnectionBase). Nothing else adds to it: a connection string
+		///from a file, a preference, the command line or another program never gets in by its content. The main connection's strings come from
+		///BuildSimpleConnectionString, which writes SslMode=VerifyFull for every server over the network, and never match one.</summary>
+		private static readonly HashSet<string> _hashSetPreferenceServer=new HashSet<string>(StringComparer.Ordinal);
+		private static readonly object _lockPreferenceServer=new object();
+		///<summary>Emptied when it grows past this; such strings change only when the preferences change.</summary>
+		private const int MAX_PREFERENCE_SERVER=256;
 
 		#region Hosts of a connection string (MySqlConnector's reading)
 		///<summary>True when entry, one comma-separated entry of a connection string's Server value exactly as MySqlConnector receives it (no
@@ -216,7 +228,7 @@ namespace DataConnectionBase {
 				listMissing.Add("the office CA certificate file (SslCa)");
 			}
 			else if(!string.IsNullOrWhiteSpace(officeCaPath) && !IsSamePath(sslCa,officeCaPath)) {
-				//A CA named anywhere else (a database preference, a connection string) must never become what this computer trusts (Q5).
+				//A CA named anywhere else (a connection string, a caller's own CA) must never become what the program's own account trusts (Q5).
 				listMissing.Add("this computer's office CA certificate file (SslCa="+officeCaPath+", now "+sslCa+")");
 			}
 			else if(!File.Exists(sslCa)) {
@@ -247,13 +259,18 @@ namespace DataConnectionBase {
 				builder.CertificateThumbprint,!string.IsNullOrEmpty(builder.Password),builder.ServerRedirectionMode,DataConnection.OfficeCaPath);
 		}
 
-		///<summary>Throws DbConnectionRefusedException when the connection string fails the rule. Makes no connection.</summary>
+		///<summary>Throws DbConnectionRefusedException when the connection string fails the rule. Makes no connection. A string that
+		///DataConnection.BuildPreferenceServerConnectionString built in this process (a read-only or reporting server of its own) passes as it did
+		///before this rule (IsPreferenceServerConnection).</summary>
 		public static void CheckConnectionString(string connectionString) {
 			connectionString=connectionString??"";
 			lock(_lockPassed) {
 				if(_hashSetPassed.Contains(connectionString)) {
 					return;
 				}
+			}
+			if(IsPreferenceServerConnection(connectionString)) {
+				return;
 			}
 			MySqlConnectionStringBuilder builder=new MySqlConnectionStringBuilder(connectionString);
 			List<string> listMissing=GetMissing(builder);
@@ -283,8 +300,56 @@ namespace DataConnectionBase {
 			return new MySqlConnection(connectionString);
 		}
 
+		///<summary>NewMySqlConnection for a connection of its own, outside the pool (Pooling=false), as DataConnectionCancelable keeps for a user
+		///query that can be cancelled. The string is checked as it is, then only Pooling is changed, so the connection of a read-only or reporting
+		///server of its own keeps its way through (IsPreferenceServerConnection) and every other connection is checked by the rule.</summary>
+		public static MySqlConnection NewMySqlConnectionWithoutPooling(string connectionString) {
+			CheckConnectionString(connectionString);
+			MySqlConnectionStringBuilder builder=new MySqlConnectionStringBuilder(connectionString??"");
+			builder.Pooling=false;
+			return new MySqlConnection(builder.ConnectionString);
+		}
+		#endregion The rule
+
+		#region Read-only and reporting servers of their own
+		///<summary>Lets exactly this connection string through without the rule: a read-only or reporting server of its own, named in the
+		///database preferences (owner decision of 2026-11-02, docs/specs/db-connection-security.md section 5.1). Only
+		///DataConnection.BuildPreferenceServerConnectionString calls it, with the string it built (the old SslMode behaviour, the server's own
+		///user, password and CA). Throws DbConnectionRefusedException for a string with a client certificate of any kind, which that builder never
+		///writes: this computer's certificate belongs to the program's own account.</summary>
+		internal static void AllowPreferenceServerConnection(string connectionString) {
+			MySqlConnectionStringBuilder builder=new MySqlConnectionStringBuilder(connectionString??"");
+			if(!string.IsNullOrEmpty(builder.CertificateThumbprint) || builder.CertificateStoreLocation!=MySqlCertificateStoreLocation.None
+				|| !string.IsNullOrEmpty(builder.CertificateFile) || !string.IsNullOrEmpty(builder.SslCert) || !string.IsNullOrEmpty(builder.SslKey))
+			{
+				throw new DbConnectionRefusedException(builder.Server,"A read-only or reporting server connection never carries a client certificate: "
+					+"this computer's certificate is for the program's own database account only.");
+			}
+			lock(_lockPreferenceServer) {
+				if(_hashSetPreferenceServer.Count>=MAX_PREFERENCE_SERVER && !_hashSetPreferenceServer.Contains(connectionString)) {
+					_hashSetPreferenceServer.Clear();
+				}
+				_hashSetPreferenceServer.Add(connectionString);
+			}
+		}
+
+		///<summary>True when connectionString is, character for character, one that DataConnection.BuildPreferenceServerConnectionString built in
+		///this process for a read-only or reporting server of its own. Such a connection is made as before this rule (SslMode=None, or VerifyCA
+		///with the server's own CA) and never carries this computer's client certificate or the password stored on this computer.</summary>
+		public static bool IsPreferenceServerConnection(string connectionString) {
+			if(string.IsNullOrEmpty(connectionString)) {
+				return false;
+			}
+			lock(_lockPreferenceServer) {
+				return _hashSetPreferenceServer.Contains(connectionString);
+			}
+		}
+		#endregion Read-only and reporting servers of their own
+
+		#region Reports
 		///<summary>The check for RdlEngine's connection hook (RdlEngineConfig.CheckConnection): a report may only use MySqlConnector, and its
-		///connection string must pass the rule. provider is the report's data provider name; className the class the engine will create.</summary>
+		///connection string must pass the rule (or be the connection of a read-only or reporting server of its own, IsPreferenceServerConnection).
+		///provider is the report's data provider name; className the class the engine will create.</summary>
 		public static void CheckReportConnection(string provider,string className,string connectionString) {
 			if(className!=typeof(MySqlConnection).FullName) {
 				throw new DbConnectionRefusedException("","A report may connect only through MySqlConnector, not through the data provider "
@@ -292,7 +357,7 @@ namespace DataConnectionBase {
 			}
 			CheckConnectionString(connectionString);
 		}
-		#endregion The rule
+		#endregion Reports
 
 		#region Messages
 		///<summary>The sentence every refusal ends with: what to do.</summary>

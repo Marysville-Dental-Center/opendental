@@ -49,8 +49,9 @@ namespace OpenPmsDentalBusiness {
 			else {
 				connectStr=DataConnection.GetCurrentConnectionString();
 			}
-			//Append pooling=false to the connection string.
-			MySqlConnection con=DbConnectionSecurity.NewMySqlConnection(connectStr+";pooling=false");
+			//Pooling=false. The string is checked as it is, so a reporting or read-only server of its own keeps its way through
+			//(DbConnectionSecurity.IsPreferenceServerConnection) and every other connection is checked by the connection rule.
+			MySqlConnection con=DbConnectionSecurity.NewMySqlConnectionWithoutPooling(connectStr);
 			con.Open();
 			int serverThread=con.ServerThread;
 			//If the dictionary already contains the ServerThread key, then something went wrong. Just stop and throw.

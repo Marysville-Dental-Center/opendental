@@ -246,6 +246,11 @@ namespace DataConnectionBase {
 		///<summary>Sets the connection of the current thread to the ConnectionName indicated. Connection details will be retrieved from ConnectionStore.xml.</summary>
 		public static CentralConnectionBase SetDb(ConnectionNames dbName,bool skipValidation=false) {
 			CentralConnectionBase conn=GetConnection(dbName);
+			if(conn.IsPreferenceServer) {
+				//The main connection is the program's own account (docs/specs/db-connection-security.md): a read-only or reporting server of its own is
+				//used on a thread of its own only (SetDbT), never as the main connection, which would give it this computer's client certificate.
+				throw new ApplicationException("The "+dbName+" connection from the database preferences is used on a thread of its own only.");
+			}
 			_currentConnection=dbName;
 			if(!string.IsNullOrEmpty(conn.ServiceURI)) {
 				SetServerURI(conn.ServiceURI);
@@ -262,7 +267,15 @@ namespace DataConnectionBase {
 			CentralConnectionBase conn=GetConnection(dbName);
 			_currentConnectionT=dbName;
 			if(!string.IsNullOrEmpty(conn.ServiceURI)) {
-				SetRemotingT(conn.ServiceURI,dbName==ConnectionNames.DentalOfficeReportServer,dbName==ConnectionNames.DentalOfficeReadOnlyServer); 
+				SetRemotingT(conn.ServiceURI,dbName==ConnectionNames.DentalOfficeReportServer,dbName==ConnectionNames.DentalOfficeReadOnlyServer);
+			}
+			else if(conn.IsPreferenceServer
+				&& (dbName==ConnectionNames.DentalOfficeReadOnlyServer || dbName==ConnectionNames.DentalOfficeReportServer))
+			{
+				//A read-only or reporting server of its own, from the database preferences: as before the connection rule, with its own user, password
+				//and CA (owner decision of 2026-11-02, docs/specs/db-connection-security.md section 5.1). Every other connection here is checked by
+				//the rule: an empty preference (the main connection) and every entry of ConnectionStore.xml.
+				dataConn.SetDbTPreferenceServer(conn.ServerName,conn.DatabaseName,conn.MySqlUser,conn.MySqlPassword,conn.SslCa);
 			}
 			else if(!string.IsNullOrEmpty(conn.ConnectionString)) {
 				dataConn.SetDbT(conn.ConnectionString,"",DatabaseType.MySql);

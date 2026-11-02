@@ -1,4 +1,6 @@
-﻿namespace DataConnectionBase {
+﻿using System.Xml.Serialization;
+
+namespace DataConnectionBase {
 	///<summary>Copy of OpenPmsDentalBusiness.CentralConnection.</summary>
 	public class CentralConnectionBase {
 		///<summary>Primary key.</summary>
@@ -35,6 +37,19 @@
 		public string ConnectionString;
 		///<summary>Helper variable to keep track of the password hash that was passed in as a command line argument. This is necessary for automatically logging eCW users in when they are utilizing the Middle Tier.</summary>
 		public string OdPassHash;
+		///<summary>True for a read-only or reporting server of its own that ConnectionStore made from the database preferences (MarkPreferenceServer):
+		///ConnectionStoreBase.SetDbT connects to it as before the connection rule (DataConnection.SetDbTPreferenceServer, owner decision of
+		///2026-11-02, docs/specs/db-connection-security.md section 5.1). Never read from or written to a file (XmlIgnore, no public setter), so a
+		///ConnectionStore.xml entry can never claim it; every such entry stays under the rule.</summary>
+		[XmlIgnore]
+		public bool IsPreferenceServer { get; private set; }
+
+		///<summary>Marks this connection as a read-only or reporting server of its own, made from the database preferences (IsPreferenceServer).
+		///Only ConnectionStore calls it, for a preference that names a server; an empty preference is the main connection and is never marked.
+		///</summary>
+		public void MarkPreferenceServer() {
+			IsPreferenceServer=true;
+		}
 	}
 
 	///<summary>List of typically available database names. Used in conjunction with ConnectionStore.GetConnection().
