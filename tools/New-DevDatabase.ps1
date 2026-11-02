@@ -138,7 +138,7 @@ function Find-MSBuild {
 }
 
 function Write-DevConfig {
-	$binDir = Join-Path $repoRoot "OpenDental\bin\$Configuration"
+	$binDir = Join-Path $repoRoot "OpenPmsDental\bin\$Configuration"
 	if (-not (Test-Path -LiteralPath $binDir)) {
 		New-Item -ItemType Directory -Path $binDir | Out-Null
 	}

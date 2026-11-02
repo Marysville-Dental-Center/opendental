@@ -54,9 +54,9 @@ $AllowList=@(
 	@{ Path='WpfControlsOD\Bridges\PracticeByNumbers.cs'; Match='(?i)opendental\.com/manual/'; Reason='Practice by Numbers portal page on the Open Dental manual site (still to be pointed at the vendor).' }
 
 	#--- Not network access.
-	@{ Path='OpenDentalServer\ServiceMain.asmx.cs'; Match='WebService\(Namespace='; Reason='XML namespace identifier of the middle tier web service. Never contacted.' }
-	@{ Path='OpenDental\Main Modules\ControlChart.cs'; Match='UpdateServerAddress\)\.ToLower\(\)\.Contains\('; Reason='String comparison on an old preference value. Nothing is contacted.' }
-	@{ Path='OpenDentBusiness\WebServiceTests.cs'; Match='@opendental\.com'; Reason='Sample e-mail address used only by unit tests.' }
+	@{ Path='OpenPmsDentalServer\ServiceMain.asmx.cs'; Match='WebService\(Namespace='; Reason='XML namespace identifier of the middle tier web service. Never contacted.' }
+	@{ Path='OpenPmsDental\Main Modules\ControlChart.cs'; Match='UpdateServerAddress\)\.ToLower\(\)\.Contains\('; Reason='String comparison on an old preference value. Nothing is contacted.' }
+	@{ Path='OpenPmsDentalBusiness\WebServiceTests.cs'; Match='@opendental\.com'; Reason='Sample e-mail address used only by unit tests.' }
 
 	#--- Developer-only windows.
 	@{ Path='WpfControlsOD\Frms\FrmTestAllControls.xaml*'; Reason='Developer UI test window, only opened from the UnitTests project.' }
@@ -67,7 +67,7 @@ $AllowList=@(
 	@{ Path='tests\VendorDirectTests\Foundation\HqHostsTests.cs'; Reason='Unit tests of the blocked-host list. Nothing is contacted.' }
 
 	#--- Vendor integrations whose Open Dental hosted part is replaced in the direct vendor integrations wave.
-	@{ Path='OpenDentBusiness\Properties\Resources.resx'; Reason='GoogleAuthCodeResponseHtml, the page shown in the browser after Google sign-in. It loads Open Dental styling; replaced with the direct Google integration.' }
+	@{ Path='OpenPmsDentalBusiness\Properties\Resources.resx'; Reason='GoogleAuthCodeResponseHtml, the page shown in the browser after Google sign-in. It loads Open Dental styling; replaced with the direct Google integration.' }
 )
 
 #Comment stripping in C#, so that "//" inside a string literal (like a URL) is not mistaken for a comment.

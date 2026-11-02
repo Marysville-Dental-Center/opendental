@@ -64,7 +64,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$referenceDir = Join-Path $repoRoot 'OpenDentBusiness\Misc\ForkMigrations\Reference'
+$referenceDir = Join-Path $repoRoot 'OpenPmsDentalBusiness\Misc\ForkMigrations\Reference'
 $references = @{
 	'26.1.70' = @{ File = 'OdSchema-26.1.70.sql'; Name = 'od_261_schema'; Tables = 427 }
 	'25.3.48' = @{ File = 'OdSchema-25.3.48.sql'; Name = 'od_253_schema'; Tables = 422 }
