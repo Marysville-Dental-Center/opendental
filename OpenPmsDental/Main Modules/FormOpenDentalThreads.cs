@@ -337,7 +337,11 @@ namespace OpenPmsDental {
 				Func<bool> funcTestConnection=() => {
 					using(DataConnection dconn=new DataConnection()) {
 						try {
-							dconn.SetDb(e.ConnectionString,"",DataConnection.DBtype);
+							//Only a test: the event can come from any thread, also from one whose connection is a read-only or reporting server of its
+							//own (docs/specs/db-connection-security.md section 5.1). So it never becomes the main (static) connection, nor this thread's
+							//context, from which the exit handler below starts the program's threads again (SetThreads). For a loss on the main
+							//connection the static connection already holds that string.
+							dconn.TestConnectionString(e.ConnectionString,DataConnection.DBtype);
 							//Tell everyone that the data connection has been found.
 							Logger.LogToPath("Database connection restored",LogPath.Threads,LogPhase.Unspecified);
 							DataConnectionEvent.Fire(new DataConnectionEventArgs(DataConnectionEventType.ConnectionRestored,true,e.ConnectionString));

@@ -698,8 +698,19 @@ namespace DataConnectionBase {
 			_isPreferenceServerT=false;//This thread's server is now the program's own connection.
 		}
 
-		///<summary>This needs to be run every time we switch databases, especially on startup.  Will throw an exception if fails.  Calling class should catch exception.</summary>
+		///<summary>This needs to be run every time we switch databases, especially on startup.  Will throw an exception if fails.  Calling class should catch exception.
+		///Throws DbConnectionRefusedException, before any connection, for the connection string of a read-only or reporting server of its own
+		///(DbConnectionSecurity.IsPreferenceServerConnection): such a string is for a thread of its own only (SetDbTPreferenceServer, SetDbT), never
+		///the main connection, which every thread without a context of its own uses (docs/specs/db-connection-security.md section 5.1).</summary>
 		public void SetDb(string connectStr,string connectStrLow,DatabaseType dbtype,bool skipValidation) {
+			string connectStrPreference=DbConnectionSecurity.IsPreferenceServerConnection(connectStr) ? connectStr
+				: (DbConnectionSecurity.IsPreferenceServerConnection(connectStrLow) ? connectStrLow : null);
+			if(connectStrPreference!=null) {
+				//As ConnectionStoreBase.SetDb refuses a connection marked as such a server. The main connection is the program's own account, under
+				//the rule; a string that passes without the rule must never become it. Such a string always parses (AllowPreferenceServerConnection).
+				throw new DbConnectionRefusedException(new MySqlConnectionStringBuilder(connectStrPreference).Server,"The connection of a read-only or "
+					+"reporting server from the database preferences is used on a thread of its own only, never as the main connection.");
+			}
 			TestConnection(connectStr,connectStrLow,dbtype,skipValidation);
 			//connection string must be valid, so OK to set permanently
 			ConnectionString=connectStr;
@@ -785,6 +796,15 @@ namespace DataConnectionBase {
 		}
 
 		#endregion
+
+		///<summary>Opens connectStr and runs the check SetDb runs, as StartConnectionErrorRetry tests a lost connection, but sets neither the main
+		///(static) connection nor this thread's. For the Connection Lost window (FormOpenDental), whose connection can be any thread's, also that
+		///of a read-only or reporting server of its own (docs/specs/db-connection-security.md section 5.1); the threads the window's thread starts
+		///again afterwards inherit its context, which stays the main connection. The rule checks connectStr as always. Throws when the connection
+		///fails.</summary>
+		public void TestConnectionString(string connectStr,DatabaseType dbtype) {
+			TestConnection(connectStr,"",dbtype,skipValidation:false);
+		}
 
 		private void TestConnection(string connectStr,string connectStrLow,DatabaseType dbtype,bool skipValidation) {
 			DBtype=dbtype;
