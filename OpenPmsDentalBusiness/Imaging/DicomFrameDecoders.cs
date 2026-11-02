@@ -239,9 +239,16 @@ namespace OpenPmsDentalBusiness {
 	}
 
 	///<summary>JPEG Baseline (Process 1, PS3.5 A.4.1 and 8.2.1) through the .NET Framework's own JPEG decoder (GDI+), which applies the
-	///JPEG stream's own color transform, so YBR_FULL_422 and YBR_FULL data come back as RGB. The stream's frame header is checked first: 8-bit
-	///precision, one or three components as Samples per Pixel says, and the size of Rows and Columns.</summary>
+	///JPEG stream's own color transform, so YBR_FULL_422, YBR_PARTIAL_422 and YBR_FULL data come back as RGB. The stream's markers are checked
+	///first (ITU-T T.81 B.2): a frame header of baseline, extended or progressive Huffman coding (fo-dicom 4 decoded progressive streams under
+	///this transfer syntax too), 8-bit precision, one or three components as Samples per Pixel says, the size of Rows and Columns, an end of
+	///image marker, and at most MaxScans scans.</summary>
 	public sealed class DicomJpegBaselineDecoder : IDicomFrameDecoder {
+		///<summary>The most scans a stream may have. A sequential stream has one per component at most, and a progressive one as encoders write it
+		///about ten (T.81 Annex G). The decoder passes over every block of the image in each scan, and an end-of-band run lets a few bytes cover
+		///a whole scan, so a small hostile stream of thousands of scans would take minutes; it is declined before the decoder runs.</summary>
+		public const int MaxScans=32;
+
 		public string Name {
 			get { return "JPEG Baseline (.NET Framework decoder)"; }
 		}
@@ -257,9 +264,9 @@ namespace OpenPmsDentalBusiness {
 			if(frameInfo.PhotometricInterpretation=="PALETTE COLOR") {
 				return DicomFrameDecodeResult.NotSupported("Palette color in a lossy JPEG is not supported.");
 			}
-			string error=CheckFrameHeader(frameBytes,frameInfo,out int countComponents);
+			string error=CheckStream(frameBytes,frameInfo,out int countComponents,out bool isUnsupported);
 			if(error!=null) {
-				return DicomFrameDecodeResult.Failed(error);
+				return isUnsupported ? DicomFrameDecodeResult.NotSupported(error) : DicomFrameDecodeResult.Failed(error);
 			}
 			byte[] arrayPixels;
 			try {
@@ -284,10 +291,13 @@ namespace OpenPmsDentalBusiness {
 			return DicomFrameDecodeResult.Decoded(arrayPixels,frameInfoOut);
 		}
 
-		///<summary>Null when the JPEG frame header (ITU-T T.81 B.2.2) fits the image; otherwise why not. Reads only marker segments before the
-		///first scan.</summary>
-		private static string CheckFrameHeader(byte[] bytes,DicomFrameInfo frameInfo,out int countComponents) {
+		///<summary>Null when the JPEG stream's markers (ITU-T T.81 B.1 and B.2) fit the image; otherwise why not, with isUnsupported true for a
+		///valid stream this decoder does not take. Walks every marker segment by its length, and every scan's entropy-coded data (and, after
+		///the frame header, any bytes outside a marker segment) up to the next marker (B.1.1.5: in entropy-coded data an FF byte is followed by
+		///a stuffed 00 or a restart marker D0 to D7, so any other FF xx is a marker), so each SOS marker counted is a scan the decoder sees.</summary>
+		private static string CheckStream(byte[] bytes,DicomFrameInfo frameInfo,out int countComponents,out bool isUnsupported) {
 			countComponents=0;
+			isUnsupported=false;
 			if(bytes.Length<4 || bytes[0]!=0xFF || bytes[1]!=0xD8) {
 				return "The frame is not a JPEG stream (no start of image marker).";
 			}
@@ -298,54 +308,123 @@ namespace OpenPmsDentalBusiness {
 			if(end<4 || bytes[end-2]!=0xFF || bytes[end-1]!=0xD9) {
 				return "The JPEG stream is cut off (no end of image marker).";
 			}
+			bool hasFrameHeader=false;
+			int countScans=0;
 			int pos=2;
-			while(pos+4<=bytes.Length) {
+			while(true) {
+				if(pos+2>end) {
+					return "The JPEG stream is cut off (no end of image marker).";
+				}
 				if(bytes[pos]!=0xFF) {
-					return "The JPEG stream has no frame header before its data.";
+					if(!hasFrameHeader) {
+						return "The JPEG stream has no frame header before its data.";
+					}
+					//Bytes that belong to no marker segment, such as a pad byte where a writer split the stream into odd fragments (PS3.5 A.4): the
+					//decoder passes over them to the next marker, and so does the count.
+					pos=FindMarkerAfterEntropyData(bytes,pos,end);
+					continue;
 				}
 				byte marker=bytes[pos+1];
 				if(marker==0xFF) {//fill byte
 					pos++;
 					continue;
 				}
+				if(marker==0xD9) {//end of image
+					break;
+				}
 				if(marker==0x01 || (marker>=0xD0 && marker<=0xD7)) {//markers without a length
 					pos+=2;
 					continue;
 				}
-				if(marker==0xD9 || marker==0xDA) {
-					return "The JPEG stream has no frame header before its data.";
+				if(pos+4>end) {
+					return "A JPEG marker segment runs past the end of the frame.";
 				}
 				int length=(bytes[pos+2]<<8) | bytes[pos+3];
-				if(length<2 || pos+2+length>bytes.Length) {
+				if(length<2 || pos+2+length>end) {
 					return "A JPEG marker segment runs past the end of the frame.";
 				}
 				bool isFrameHeader=marker>=0xC0 && marker<=0xCF && marker!=0xC4 && marker!=0xC8 && marker!=0xCC;
 				if(isFrameHeader) {
-					if(marker!=0xC0 && marker!=0xC1 && marker!=0xC2) {
-						return "The JPEG stream uses a process other than baseline, extended or progressive Huffman coding (SOF marker 0x"
-							+marker.ToString("X2",CultureInfo.InvariantCulture)+").";
+					if(hasFrameHeader) {
+						return "The JPEG stream has more than one frame header.";
 					}
-					if(length<8) {
-						return "The JPEG frame header is too short.";
+					string error=CheckFrameHeader(bytes,pos,length,marker,frameInfo,out countComponents);
+					if(error!=null) {
+						return error;
 					}
-					int precision=bytes[pos+4];
-					int height=(bytes[pos+5]<<8) | bytes[pos+6];
-					int width=(bytes[pos+7]<<8) | bytes[pos+8];
-					countComponents=bytes[pos+9];
-					if(precision!=8) {
-						return "The JPEG stream has "+precision+"-bit samples; JPEG Baseline has 8.";
+					hasFrameHeader=true;
+				}
+				if(marker==0xDA) {
+					if(!hasFrameHeader) {
+						return "The JPEG stream has no frame header before its data.";
 					}
-					if(width!=frameInfo.Columns || height!=frameInfo.Rows) {
-						return "The JPEG stream is "+width+" x "+height+", the image attributes say "+frameInfo.Columns+" x "+frameInfo.Rows+".";
+					countScans++;
+					if(countScans>MaxScans) {
+						isUnsupported=true;
+						return "The JPEG stream has more than "+MaxScans+" scans; this version does not decode such streams.";
 					}
-					if(countComponents!=frameInfo.SamplesPerPixel || (countComponents!=1 && countComponents!=3)) {
-						return "The JPEG stream has "+countComponents+" components; Samples per Pixel is "+frameInfo.SamplesPerPixel+".";
-					}
-					return null;
+					pos=FindMarkerAfterEntropyData(bytes,pos+2+length,end);
+					continue;
 				}
 				pos+=2+length;
 			}
-			return "The JPEG stream has no frame header.";
+			if(!hasFrameHeader) {
+				return "The JPEG stream has no frame header.";
+			}
+			if(countScans==0) {
+				return "The JPEG stream has no scan.";
+			}
+			return null;
+		}
+
+		///<summary>Null when the frame header (SOFn, T.81 B.2.2) at pos fits the image; otherwise why not.</summary>
+		private static string CheckFrameHeader(byte[] bytes,int pos,int length,byte marker,DicomFrameInfo frameInfo,out int countComponents) {
+			countComponents=0;
+			if(marker!=0xC0 && marker!=0xC1 && marker!=0xC2) {
+				return "The JPEG stream uses a process other than baseline, extended or progressive Huffman coding (SOF marker 0x"
+					+marker.ToString("X2",CultureInfo.InvariantCulture)+").";
+			}
+			if(length<8) {
+				return "The JPEG frame header is too short.";
+			}
+			int precision=bytes[pos+4];
+			int height=(bytes[pos+5]<<8) | bytes[pos+6];
+			int width=(bytes[pos+7]<<8) | bytes[pos+8];
+			countComponents=bytes[pos+9];
+			if(precision!=8) {
+				return "The JPEG stream has "+precision+"-bit samples; JPEG Baseline has 8.";
+			}
+			if(width!=frameInfo.Columns || height!=frameInfo.Rows) {
+				return "The JPEG stream is "+width+" x "+height+", the image attributes say "+frameInfo.Columns+" x "+frameInfo.Rows+".";
+			}
+			if(countComponents!=frameInfo.SamplesPerPixel || (countComponents!=1 && countComponents!=3)) {
+				return "The JPEG stream has "+countComponents+" components; Samples per Pixel is "+frameInfo.SamplesPerPixel+".";
+			}
+			return null;
+		}
+
+		///<summary>The position of the next marker from start, past entropy-coded data or other bytes outside a marker segment: the first FF
+		///followed by neither 00 (a stuffed byte) nor D0 to D7 (a restart marker) nor another FF (fill). The stream's end of image marker is
+		///found at the latest.</summary>
+		private static int FindMarkerAfterEntropyData(byte[] bytes,int start,int end) {
+			int pos=start;
+			while(pos+1<end) {
+				if(bytes[pos]!=0xFF) {
+					pos++;
+					continue;
+				}
+				byte next=bytes[pos+1];
+				if(next==0x00 || (next>=0xD0 && next<=0xD7)) {
+					pos+=2;
+					continue;
+				}
+				if(next==0xFF) {
+					pos++;
+					continue;
+				}
+				return pos;
+			}
+			return end-2;
 		}
 
 		///<summary>The pixels of a JPEG stream through GDI+ (System.Drawing), with no color management: gray samples for one component, RGB

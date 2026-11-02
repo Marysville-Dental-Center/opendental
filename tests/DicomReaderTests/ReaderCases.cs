@@ -208,7 +208,45 @@ namespace DicomReaderTests {
 				.Concat(Delimiter(0xE00D)).Concat(Delimiter(0xE0DD)).ToArray();
 			synImageUn.ListExtra.Add(new SynElement { Tag=Tag(0x0009,0x1020),Vr="UN",Value=bytesUnValue,LengthOverride=0xFFFFFFFF });
 			listCases.Add(new ReaderCase("enc-explicit-le-un-undefined-12",MakeFileIn(synImageUn,ExplicitVrLittleEndian)));
+			listCases.AddRange(MislabelledEncodings());
 			return listCases;
+		}
+
+		///<summary>Files that break PS3.5 or PS3.10 in ways real writers did, which fo-dicom 4 read: an Implicit VR data set under an Explicit VR
+		///transfer syntax, two spaces where an Explicit VR element's VR goes, File Meta Information in Implicit VR, and data sets with no File
+		///Meta Information whose first element is private or out of tag order.</summary>
+		public static List<ReaderCase> MislabelledEncodings() {
+			List<ReaderCase> listCases=new List<ReaderCase>();
+			List<SynElement> listTwelve=Twelve().ToDataset();
+			listCases.Add(new ReaderCase("enc-ts-explicit-dataset-implicit-12",MakeFileIn(listTwelve,ExplicitVrLittleEndian,encoding:SynEncoding.ImplicitLittle)));
+			listCases.Add(new ReaderCase("enc-ts-deflate-dataset-implicit-12",MakeDeflatedFileOf(EncodeAs(listTwelve,SynEncoding.ImplicitLittle))));
+			listCases.Add(new ReaderCase("enc-explicit-le-vr-spaces-12",MakeFileIn(WithVr(listTwelve,Tag(0x0028,0x0010),"  "),ExplicitVrLittleEndian)));
+			//Big endian: the encoder swaps values by their VR, and "  " has none, so the value is given big-endian here (Rows 5).
+			listCases.Add(new ReaderCase("enc-explicit-be-vr-spaces-12",MakeFileIn(With(listTwelve,Raw(0x0028,0x0010,"  ",new byte[] { 0x00,0x05 })),
+				ExplicitVrBigEndian)));
+			//Pixel Data with two spaces for its VR, in the layout of OW: two reserved bytes and a 32-bit length.
+			SynElement elementPixels=listTwelve.Single(x => x.Tag==Tag(0x7FE0,0x0010));
+			byte[] bytesPixelsSpaces=MakeFileIn(Without(listTwelve,Tag(0x7FE0,0x0010)),ExplicitVrLittleEndian)
+				.Concat(new byte[] { 0xE0,0x7F,0x10,0x00,0x20,0x20,0x00,0x00 }).Concat(BitConverter.GetBytes((uint)elementPixels.Value.Length))
+				.Concat(elementPixels.Value).ToArray();
+			listCases.Add(new ReaderCase("enc-explicit-le-vr-spaces-pixel-data-12",bytesPixelsSpaces));
+			listCases.Add(new ReaderCase("enc-meta-implicit-ts-implicit-12",MakeFileIn(listTwelve,ImplicitVrLittleEndian,SynLayout.MetaImplicit)));
+			listCases.Add(new ReaderCase("enc-meta-implicit-ts-explicit-12",MakeFileIn(listTwelve,ExplicitVrLittleEndian,SynLayout.MetaImplicit)));
+			listCases.Add(new ReaderCase("enc-meta-implicit-no-preamble-12",MakeFileIn(listTwelve,ImplicitVrLittleEndian,SynLayout.MetaImplicitWithoutPreamble)));
+			listCases.Add(new ReaderCase("enc-meta-implicit-no-preamble-ts-explicit-12",
+				MakeFileIn(listTwelve,ExplicitVrLittleEndian,SynLayout.MetaImplicitWithoutPreamble)));
+			//No File Meta Information, and the first element is a private one (group 0009), or of group 0040 because the tags are out of order.
+			List<SynElement> listPrivateFirst=With(listTwelve.Where(x => (x.Tag>>16)!=0x0008).ToList(),Text(0x0009,0x0010,"LO","PRIVATE CREATOR"));
+			listCases.Add(new ReaderCase("enc-dataset-only-implicit-private-first-12",MakeFileIn(listPrivateFirst,ImplicitVrLittleEndian,SynLayout.DatasetOnly)));
+			listCases.Add(new ReaderCase("enc-dataset-only-explicit-private-first-12",MakeFileIn(listPrivateFirst,ExplicitVrLittleEndian,SynLayout.DatasetOnly)));
+			List<SynElement> listGroup40First=new List<SynElement> { Text(0x0040,0x0254,"LO","STUDY") }.Concat(listTwelve).ToList();
+			listCases.Add(new ReaderCase("enc-dataset-only-implicit-group-0040-first-12",MakeFileIn(listGroup40First,ImplicitVrLittleEndian,SynLayout.DatasetOnly)));
+			return listCases;
+		}
+
+		///<summary>The elements, with another VR written for the one of the tag.</summary>
+		public static List<SynElement> WithVr(List<SynElement> listElements,uint tag,string vr) {
+			return listElements.Select(x => x.Tag!=tag ? x : new SynElement { Tag=x.Tag,Vr=vr,Value=x.Value,LengthOverride=x.LengthOverride }).ToList();
 		}
 
 		public static List<ReaderCase> Images() {
@@ -383,6 +421,11 @@ namespace DicomReaderTests {
 			listCases.Add(new ReaderCase("jpeg-ybr-full-422",MakeFileIn(Encapsulated8("YBR_FULL_422",14,22,3,Encapsulated(null,bytesJpegRgb)),JpegBaseline)));
 			listCases.Add(new ReaderCase("jpeg-ybr-full",MakeFileIn(Encapsulated8("YBR_FULL",14,22,3,Encapsulated(null,bytesJpegRgb)),JpegBaseline)));
 			listCases.Add(new ReaderCase("jpeg-rgb-declared",MakeFileIn(Encapsulated8("RGB",14,22,3,Encapsulated(null,bytesJpegRgb)),JpegBaseline)));
+			//YBR_PARTIAL_422, which older writers put on lossy JPEG color: the stream's own color transform decides, as for the other labels.
+			listCases.Add(new ReaderCase("jpeg-ybr-partial-422",MakeFileIn(Encapsulated8("YBR_PARTIAL_422",14,22,3,Encapsulated(null,bytesJpegRgb)),JpegBaseline)));
+			//Progressive JPEG (SOF2) under the JPEG Baseline transfer syntax, which PS3.5 A.4.1 reserves for Process 1: a few scans, as encoders write.
+			listCases.Add(new ReaderCase("jpeg-progressive-gray",MakeFileIn(Encapsulated8("MONOCHROME2",16,24,1,
+				Encapsulated(null,JpegProgressiveFlat(24,16,80,5))),JpegBaseline)));
 			//Encapsulated Uncompressed (PS3.5 A.4.11): one native frame per fragment.
 			listCases.Add(new ReaderCase("encapsulated-uncompressed",MakeFileIn(Encapsulated8("MONOCHROME2",6,10,1,Encapsulated(null,bytesGray)),
 				EncapsulatedUncompressed)));

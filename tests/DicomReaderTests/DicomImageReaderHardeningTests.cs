@@ -29,8 +29,9 @@ namespace DicomReaderTests {
 
 		private static readonly string[] _arrayBaseCases={ "enc-implicit-le-12","enc-explicit-be-12","enc-explicit-be-8-ow","enc-deflate-12",
 			"enc-explicit-le-sequences-12","enc-implicit-le-sequences-12","enc-explicit-be-sequences-12","enc-explicit-le-un-undefined-12",
-			"enc-dataset-only-explicit-be-12","enc-no-preamble-meta-implicit-12","img-palette-8-lut16","img-ybr-full-422","img-rgb-planar1","rle-mono2-16",
-			"rle-rgb","jpeg-gray","jpeg-ybr-full-422","jpeg-gray-two-fragments","encapsulated-uncompressed" };
+			"enc-dataset-only-explicit-be-12","enc-no-preamble-meta-implicit-12","enc-ts-explicit-dataset-implicit-12","enc-explicit-le-vr-spaces-pixel-data-12",
+			"enc-meta-implicit-no-preamble-12","enc-dataset-only-implicit-private-first-12","img-palette-8-lut16","img-ybr-full-422","img-rgb-planar1",
+			"rle-mono2-16","rle-rgb","jpeg-gray","jpeg-ybr-full-422","jpeg-gray-two-fragments","jpeg-progressive-gray","encapsulated-uncompressed" };
 
 		#region Truncation and lengths
 		[TestMethod]
@@ -335,6 +336,142 @@ namespace DicomReaderTests {
 			return -1;
 		}
 		#endregion Encapsulation, RLE and JPEG
+
+		#region Work limits
+		private static byte[] Repeat(byte[] bytesUnit,int count) {
+			byte[] bytes=new byte[(long)bytesUnit.Length*count];
+			for(int i=0;i<count;i++) {
+				Buffer.BlockCopy(bytesUnit,0,bytes,i*bytesUnit.Length,bytesUnit.Length);
+			}
+			return bytes;
+		}
+
+		private static byte[] Join(params byte[][] arrayParts) {
+			byte[] bytes=new byte[arrayParts.Sum(x => (long)x.Length)];
+			int offset=0;
+			foreach(byte[] bytesPart in arrayParts) {
+				Buffer.BlockCopy(bytesPart,0,bytes,offset,bytesPart.Length);
+				offset+=bytesPart.Length;
+			}
+			return bytes;
+		}
+
+		private static void AssertTooManyHeaders(byte[] bytes,string message) {
+			System.Diagnostics.Stopwatch stopwatch=System.Diagnostics.Stopwatch.StartNew();
+			DicomImageReadResult result=Read(bytes);
+			stopwatch.Stop();
+			Assert.AreEqual(DicomImageReadStatus.TooLarge,result.Status,message+": "+result);
+			StringAssert.Contains(result.Reason,"elements, items and fragments",message);
+			//About half a second at the measured cost of a header; the bound only catches work that grows without the limit.
+			Assert.IsTrue(stopwatch.ElapsedMilliseconds<10000,message+": took "+stopwatch.ElapsedMilliseconds+" ms.");
+		}
+
+		[TestMethod]
+		public void FloodOfTinyElements_InADeflatedDataSet_IsDeclined() {
+			//Empty private elements of 8 bytes: past MaxElements they are 8 MB inflated and a few kilobytes in the file. Without the limit, a
+			//1 GB flood of them took over a minute.
+			List<SynElement> listGood=ReaderCases.Twelve().ToDataset();
+			byte[] bytesHead=EncodeAs(listGood.Where(x => x.Tag<Tag(0x0009,0x0010)).ToList(),SynEncoding.ExplicitLittle);
+			byte[] bytesTail=EncodeAs(listGood.Where(x => x.Tag>Tag(0x0009,0x0010)).ToList(),SynEncoding.ExplicitLittle);
+			byte[] bytesEmptyElement={ 0x09,0x00,0x10,0x00,(byte)'L',(byte)'O',0x00,0x00 };
+			byte[] bytesFlood=MakeDeflatedFileOf(Join(bytesHead,Repeat(bytesEmptyElement,DicomImageReader.MaxElements),bytesTail));
+			Assert.IsTrue(bytesFlood.Length<256*1024,"The file is small: "+bytesFlood.Length);
+			AssertTooManyHeaders(bytesFlood,"deflated");
+			AssertTooManyHeaders(Join(MakeFileIn(new List<SynElement>(),ExplicitVrLittleEndian),bytesHead,Repeat(bytesEmptyElement,DicomImageReader.MaxElements),
+				bytesTail),"not deflated");
+			//A large data set within the limit reads.
+			DicomImageReadResult result=Read(MakeDeflatedFileOf(Join(bytesHead,Repeat(bytesEmptyElement,200000),bytesTail)));
+			Assert.AreEqual(DicomImageReadStatus.Read,result.Status,result.ToString());
+			CollectionAssert.AreEqual(ReaderCases.Words(35,4095),result.BitmapDicom.ArrayDataRaw);
+		}
+
+		[TestMethod]
+		public void FloodsOfItemsAndFragments_AreDeclined() {
+			List<SynElement> listGood=ReaderCases.Twelve().ToDataset();
+			byte[] bytesHead=MakeFileIn(listGood.Where(x => x.Tag<Tag(0x0008,0x1115)).ToList(),ExplicitVrLittleEndian);
+			byte[] bytesTail=EncodeAs(listGood.Where(x => x.Tag>Tag(0x0008,0x1115)).ToList(),SynEncoding.ExplicitLittle);
+			byte[] bytesSequenceUndefined={ 0x08,0x00,0x15,0x11,(byte)'S',(byte)'Q',0,0,0xFF,0xFF,0xFF,0xFF };
+			//Empty items of defined length in a sequence of undefined length.
+			AssertTooManyHeaders(Join(bytesHead,bytesSequenceUndefined,Repeat(ItemHeaderLE(0),DicomImageReader.MaxElements),Delimiter(0xE0DD),bytesTail),
+				"items of defined length");
+			//Empty items of undefined length, each closed by its Item Delimitation Item.
+			AssertTooManyHeaders(Join(bytesHead,bytesSequenceUndefined,Repeat(Join(ItemHeaderLE(0xFFFFFFFF),Delimiter(0xE00D)),DicomImageReader.MaxElements/2),
+				Delimiter(0xE0DD),bytesTail),"items of undefined length");
+			//Empty fragments that the Basic Offset Table puts before the first frame.
+			byte[] bytesFrame=RleFrame(SyntheticDicom.Words(ReaderCases.Words(60,65535)),6,10,1,2,0);
+			byte[] bytesPixels=Join(ItemHeaderLE(4),BitConverter.GetBytes(8*DicomImageReader.MaxElements),Repeat(ItemHeaderLE(0),DicomImageReader.MaxElements),
+				ItemHeaderLE((uint)bytesFrame.Length),bytesFrame,Delimiter(0xE0DD));
+			SynImage synImage=ReaderCases.Mono16(6,10,16,15,new ushort[60]);
+			synImage.PixelElement=new SynElement { Tag=Tag(0x7FE0,0x0010),Vr="OB",Value=bytesPixels,LengthOverride=0xFFFFFFFF };
+			AssertTooManyHeaders(MakeFileIn(synImage,RleLossless),"fragments");
+		}
+
+		///<summary>A PS3.10 file in Deflated Explicit VR Little Endian whose data set is bytesStart, countZeros zero bytes and bytesEnd, deflated as
+		///it is written, so that a data set of a gigabyte never exists in memory.</summary>
+		private static byte[] DeflatedFile(byte[] bytesStart,long countZeros,byte[] bytesEnd) {
+			byte[] bytesDeflated;
+			using(MemoryStream memoryStream=new MemoryStream()) {
+				using(System.IO.Compression.DeflateStream deflateStream=new System.IO.Compression.DeflateStream(memoryStream,
+					System.IO.Compression.CompressionLevel.Fastest,true))
+				{
+					deflateStream.Write(bytesStart,0,bytesStart.Length);
+					byte[] bytesZeros=new byte[1024*1024];
+					for(long written=0;written<countZeros;written+=bytesZeros.Length) {
+						deflateStream.Write(bytesZeros,0,(int)Math.Min(bytesZeros.Length,countZeros-written));
+					}
+					deflateStream.Write(bytesEnd,0,bytesEnd.Length);
+				}
+				bytesDeflated=memoryStream.ToArray();
+			}
+			byte[] bytesEmpty=MakeFileIn(new List<SynElement>(),DeflatedExplicitVrLittleEndian);
+			return bytesEmpty.Take(bytesEmpty.Length-Deflate(new byte[0]).Length).Concat(bytesDeflated).ToArray();
+		}
+
+		///<summary>The data set of Twelve() with Number of Frames countFrames, up to the Pixel Data header (OW, 32-bit length of every frame),
+		///then the first frame; the other frames are the zeros DeflatedFile adds.</summary>
+		private static byte[] MultiFrameStart(int countFrames,out long countZerosAfter) {
+			SynImage synImage=ReaderCases.Twelve();
+			synImage.NumberOfFrames=countFrames.ToString(System.Globalization.CultureInfo.InvariantCulture);
+			List<SynElement> listDataset=Without(synImage.ToDataset(),Tag(0x7FE0,0x0010));
+			byte[] bytesFrame0=SyntheticDicom.Words(ReaderCases.Words(35,4095));
+			countZerosAfter=(long)bytesFrame0.Length*(countFrames-1);
+			return Join(EncodeAs(listDataset,SynEncoding.ExplicitLittle),new byte[] { 0xE0,0x7F,0x10,0x00,(byte)'O',(byte)'W',0,0 },
+				BitConverter.GetBytes((uint)(bytesFrame0.Length*(long)countFrames)),bytesFrame0);
+		}
+
+		[TestMethod]
+		public void DeflatedDataSet_ThatInflatesPastTheLimitBeforeItsPixelData_IsDeclined() {
+			//A private OB value of zeros larger than MaxInflatedBytesBeforePixelData deflates to about a thousandth of its size.
+			long lengthFiller=DicomImageReader.MaxInflatedBytesBeforePixelData+1024*1024;
+			List<SynElement> listDataset=ReaderCases.Twelve().ToDataset();
+			int idxBefore=listDataset.FindIndex(x => x.Tag>Tag(0x0009,0x1010));
+			byte[] bytesStart=EncodeAs(listDataset.Take(idxBefore).ToList(),SynEncoding.ExplicitLittle)
+				.Concat(new byte[] { 0x09,0x00,0x10,0x10,(byte)'O',(byte)'B',0,0 }).Concat(BitConverter.GetBytes((uint)lengthFiller)).ToArray();
+			byte[] bytesFile=DeflatedFile(bytesStart,lengthFiller,EncodeAs(listDataset.Skip(idxBefore).ToList(),SynEncoding.ExplicitLittle));
+			Assert.IsTrue(bytesFile.Length<1024*1024,"The file is small: "+bytesFile.Length);
+			DicomImageReadResult result=Read(bytesFile);
+			Assert.AreEqual(DicomImageReadStatus.TooLarge,result.Status,result.ToString());
+			StringAssert.Contains(result.Reason,"inflated data set before its Pixel Data");
+		}
+
+		[TestMethod]
+		public void DeflatedPixelData_MayInflatePastTheLimitBeforeIt_ButNotPastMaxInflatedBytes() {
+			//1.2 million frames of 70 bytes: 84 MB of Pixel Data, more than the limit before it. The frames after the first are read through to
+			//check that they are there, never held.
+			byte[] bytesStart=MultiFrameStart(1200000,out long countZeros);
+			DicomImageReadResult result=Read(DeflatedFile(bytesStart,countZeros,new byte[0]));
+			Assert.AreEqual(DicomImageReadStatus.Read,result.Status,result.ToString());
+			CollectionAssert.AreEqual(ReaderCases.Words(35,4095),result.BitmapDicom.ArrayDataRaw);
+			//Pixel Data that inflates past MaxInflatedBytes is declined: a small file cannot expand without end.
+			int countFrames=(int)(DicomImageReader.MaxInflatedBytes/70)+20000;
+			bytesStart=MultiFrameStart(countFrames,out countZeros);
+			byte[] bytesFile=DeflatedFile(bytesStart,countZeros,new byte[0]);
+			Assert.IsTrue(bytesFile.Length<16*1024*1024,"The file is small: "+bytesFile.Length);
+			result=Read(bytesFile);
+			Assert.AreEqual(DicomImageReadStatus.TooLarge,result.Status,result.ToString());
+			StringAssert.Contains(result.Reason,"inflated data set is larger than");
+		}
+		#endregion Work limits
 
 		#region Random damage and inputs that are not files
 		[TestMethod]

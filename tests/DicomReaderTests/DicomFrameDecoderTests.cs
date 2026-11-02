@@ -104,6 +104,50 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
+		public void PluggedDecoder_GetsColorWithTheCompressedColorSpaces_AndItsRgbIsShown() {
+			//PS3.5 8.2.4 and A.4.4 ask for YBR_ICT or YBR_RCT on color JPEG 2000 and HTJ2K that use the multiple-component transform; YBR_PARTIAL_420
+			//and YBR_PARTIAL_422 label other compressed color. The decoder returns RGB, which is shown.
+			byte[] bytesRgb=ReaderCases.Color8(60);
+			ushort[] arrayGray=Enumerable.Range(0,60).Select(p => (ushort)((bytesRgb[3*p]+bytesRgb[3*p+1]+bytesRgb[3*p+2])/3)).ToArray();
+			foreach((string photometric,string uid) testCase in new[] { ("YBR_ICT",Jpeg2000),("YBR_RCT",Jpeg2000Lossless),("YBR_ICT",HtJpeg2000),
+				("YBR_RCT",HtJpeg2000Lossless),("YBR_PARTIAL_420",Jpeg2000),("YBR_PARTIAL_422",JpegExtended) })
+			{
+				FakeDecoder decoder=new FakeDecoder { Uid=testCase.uid };
+				decoder.FuncDecode=(bytes,frameInfo) => {
+					DicomFrameInfo frameInfoOut=frameInfo.Clone();
+					frameInfoOut.PhotometricInterpretation="RGB";
+					frameInfoOut.PlanarConfiguration=0;
+					return DicomFrameDecodeResult.Decoded(bytesRgb,frameInfoOut);
+				};
+				SynImage synImage=ReaderCases.Encapsulated8(testCase.photometric,6,10,3,Encapsulated(null,Fragment(40,1)));
+				DicomImageReadResult result=ReadWith(decoder,MakeFileIn(synImage,testCase.uid));
+				string name=testCase.photometric+" in "+testCase.uid;
+				Assert.AreEqual(DicomImageReadStatus.Read,result.Status,name+": "+result);
+				Assert.AreEqual(1,decoder.CountCalls,name);
+				Assert.AreEqual(testCase.photometric,decoder.FrameInfoSeen.PhotometricInterpretation,name);
+				Assert.AreEqual(3,decoder.FrameInfoSeen.SamplesPerPixel,name);
+				Assert.AreEqual(EnumDicomPhotometricInterp.RGB,result.BitmapDicom.PhotometricInterp,name);
+				CollectionAssert.AreEqual(arrayGray,result.BitmapDicom.ArrayDataRaw,name);
+			}
+			//Before decoding only the size, the bits and the samples are checked: one sample of YBR_ICT is broken, and the decoder is not asked.
+			FakeDecoder decoderNotAsked=new FakeDecoder { Uid=Jpeg2000,FuncDecode=(bytes,frameInfo) => DicomFrameDecodeResult.Decoded(bytesRgb,frameInfo.Clone()) };
+			DicomImageReadResult resultOneSample=ReadWith(decoderNotAsked,MakeFileIn(ReaderCases.Encapsulated8("YBR_ICT",6,10,1,Encapsulated(null,Fragment(40,1))),
+				Jpeg2000));
+			Assert.AreEqual(DicomImageReadStatus.Malformed,resultOneSample.Status,resultOneSample.ToString());
+			Assert.AreEqual(0,decoderNotAsked.CountCalls);
+			//Photometric interpretations the standard does not allow for any pixel data are still declined before decoding.
+			DicomImageReadResult resultCmyk=ReadWith(decoderNotAsked,MakeFileIn(ReaderCases.Encapsulated8("CMYK",6,10,3,Encapsulated(null,Fragment(40,1))),Jpeg2000));
+			Assert.AreEqual(DicomImageReadStatus.Unsupported,resultCmyk.Status,resultCmyk.ToString());
+			Assert.AreEqual(0,decoderNotAsked.CountCalls);
+			//Native pixel data in these color spaces is not shown (they describe compressed data only).
+			foreach(string photometric in new[] { "YBR_ICT","YBR_RCT","YBR_PARTIAL_422","YBR_PARTIAL_420" }) {
+				DicomImageReadResult resultNative=DicomHelper.FullReader.Read(MakeFileIn(ReaderCases.Color(photometric,3,4,ReaderCases.Color8(12),0),
+					ExplicitVrLittleEndian));
+				Assert.AreEqual(DicomImageReadStatus.Unsupported,resultNative.Status,photometric+": "+resultNative);
+			}
+		}
+
+		[TestMethod]
 		public void FirstFrame_IsFoundByTheOffsetTables_OrTheEndMarker() {
 			byte[] bytesA=Fragment(20,1);
 			byte[] bytesB=Fragment(22,50).Concat(new byte[] { 0xFF,0xD9 }).ToArray();//ends with FFD9
@@ -170,9 +214,10 @@ namespace DicomReaderTests {
 		[TestMethod]
 		public void JpegBaseline_GivesTheSamePixelsFoDicomDecoded() {
 			//jpeg-gray matches fo-dicom's record exactly (EveryCase test). The color stream fo-dicom decoded under the RGB label gives the same gray
-			//as under YBR_FULL_422 and YBR_FULL, which fo-dicom's path did not show: the JPEG stream's own transform decides, not the label.
+			//as under YBR_FULL_422, YBR_FULL and YBR_PARTIAL_422, which fo-dicom's path did not show: the JPEG stream's own transform decides, not
+			//the label.
 			string expected=FoDicomBaseline.DictRecorded["jpeg-rgb-declared"];
-			foreach(string caseName in new[] { "jpeg-ybr-full-422","jpeg-ybr-full","jpeg-rgb-declared" }) {
+			foreach(string caseName in new[] { "jpeg-ybr-full-422","jpeg-ybr-full","jpeg-ybr-partial-422","jpeg-rgb-declared" }) {
 				DicomImageReadResult result=DicomHelper.FullReader.Read(ReaderCases.Get(caseName).Bytes);
 				Assert.AreEqual(expected,FoDicomBaseline.Fingerprint(result.BitmapDicom),caseName);
 			}
@@ -222,6 +267,46 @@ namespace DicomReaderTests {
 					.Average(p => Math.Abs((arrayRgb[3*p]+arrayRgb[3*p+1]+arrayRgb[3*p+2])/3-result.BitmapDicom.ArrayDataRaw[p]));
 				Assert.IsTrue(meanDifference<=8,size+": color differs from the source by "+meanDifference+" on average (chroma is subsampled)");
 			}
+		}
+		private static byte[] ProgressiveFile(int width,int height,int countAcScans) {
+			return MakeFileIn(ReaderCases.Encapsulated8("MONOCHROME2",height,width,1,Encapsulated(null,JpegProgressiveFlat(width,height,80,countAcScans))),JpegBaseline);
+		}
+
+		[TestMethod]
+		public void JpegProgressive_WithTheScansEncodersWrite_IsDecodedAsFoDicomDid() {
+			//fo-dicom 4 decoded progressive streams under the JPEG Baseline transfer syntax (jpeg-progressive-gray in FoDicomBaseline.cs): a flat 138.
+			Assert.AreEqual(FoDicomBaseline.DictRecorded["jpeg-progressive-gray"],
+				"24x16 8/8 MONOCHROME2 "+FoDicomBaseline.HashValues(Enumerable.Repeat((ushort)138,24*16).ToArray()));
+			//A DC scan and up to MaxScans - 1 AC scans: MaxScans in all.
+			foreach(int countAcScans in new[] { 1,5,DicomJpegBaselineDecoder.MaxScans-1 }) {
+				DicomImageReadResult result=DicomHelper.FullReader.Read(ProgressiveFile(24,16,countAcScans));
+				Assert.AreEqual(DicomImageReadStatus.Read,result.Status,countAcScans+": "+result);
+				Assert.IsTrue(result.BitmapDicom.ArrayDataRaw.All(x => x==138),countAcScans+": "+string.Join(",",result.BitmapDicom.ArrayDataRaw.Distinct()));
+			}
+			DicomImageReadResult resultOver=DicomHelper.FullReader.Read(ProgressiveFile(24,16,DicomJpegBaselineDecoder.MaxScans));
+			Assert.AreEqual(DicomImageReadStatus.Unsupported,resultOver.Status,resultOver.ToString());
+			StringAssert.Contains(resultOver.Reason,"scans");
+		}
+
+		[TestMethod]
+		public void JpegWithThousandsOfScans_IsDeclinedBeforeTheDecoderRuns() {
+			//The hostile shape: 8192 x 8192 pixels, a DC scan and 2000 AC scans of end-of-band runs, a third of a megabyte. GDI+ passes over all
+			//million blocks in each scan, about half a minute in all; the scans are counted first.
+			byte[] bytesFile=ProgressiveFile(8192,8192,2000);
+			Assert.IsTrue(bytesFile.Length<512*1024,"The file is small: "+bytesFile.Length);
+			System.Diagnostics.Stopwatch stopwatch=System.Diagnostics.Stopwatch.StartNew();
+			DicomImageReadResult result=DicomHelper.ReadStreamResult(new System.IO.MemoryStream(bytesFile));
+			stopwatch.Stop();
+			Assert.AreEqual(DicomImageReadStatus.Unsupported,result.Status,result.ToString());
+			StringAssert.Contains(result.Reason,"more than "+DicomJpegBaselineDecoder.MaxScans+" scans");
+			Assert.IsTrue(stopwatch.ElapsedMilliseconds<5000,"Took "+stopwatch.ElapsedMilliseconds+" ms.");
+			//Scan markers inside another marker segment are not scans: an APP1 segment full of FF DA before the frame header.
+			byte[] bytesJpeg=ReaderCases.JpegGrayFixed();
+			byte[] bytesApp=new byte[] { 0xFF,0xE1,0x00,202 }.Concat(Enumerable.Range(0,100).SelectMany(x => new byte[] { 0xFF,0xDA })).ToArray();
+			byte[] bytesWithApp=bytesJpeg.Take(2).Concat(bytesApp).Concat(bytesJpeg.Skip(2)).ToArray();
+			DicomImageReadResult resultApp=DicomHelper.FullReader.Read(MakeFileIn(ReaderCases.Encapsulated8("MONOCHROME2",13,21,1,Encapsulated(null,bytesWithApp)),
+				JpegBaseline));
+			Assert.AreEqual(FoDicomBaseline.DictRecorded["jpeg-gray"],FoDicomBaseline.Fingerprint(resultApp.BitmapDicom),resultApp.ToString());
 		}
 		#endregion JPEG Baseline through the .NET Framework's decoder
 

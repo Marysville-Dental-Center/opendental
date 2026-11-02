@@ -1,8 +1,8 @@
 // The other encodings of NEMA PS3.5 for the test files: Implicit VR Little Endian (7.1.3, A.1), Explicit VR Big Endian (7.3, A.3, retired),
 // Deflated Explicit VR Little Endian (A.5), PS3.10 files without the preamble or without File Meta Information, encapsulated pixel data
-// (A.4: Basic Offset Table, fragments, Sequence Delimitation Item), an RLE Lossless encoder (Annex G) and JPEG Baseline streams made by the
-// .NET Framework's own JPEG encoder (WPF's JpegBitmapEncoder). Everything is synthetic. Licensed under the GNU General Public License, version 2
-// or later. See LICENSE in the repository root.
+// (A.4: Basic Offset Table, fragments, Sequence Delimitation Item), an RLE Lossless encoder (Annex G), JPEG Baseline streams made by the
+// .NET Framework's own JPEG encoder (WPF's JpegBitmapEncoder), and flat progressive JPEG streams written here from ITU-T T.81 Annex G.
+// Everything is synthetic. Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -32,6 +32,10 @@ namespace DicomReaderTests {
 		DatasetOnly,
 		///<summary>PS3.10 preamble and prefix, File Meta Information without a Transfer Syntax UID.</summary>
 		MetaWithoutTransferSyntax,
+		///<summary>PS3.10 preamble and prefix, File Meta Information encoded in Implicit VR Little Endian, against PS3.10 7.1, as some writers did.</summary>
+		MetaImplicit,
+		///<summary>File Meta Information in Implicit VR Little Endian at the very start: no preamble and no "DICM".</summary>
+		MetaImplicitWithoutPreamble,
 	}
 
 	///<summary>One image for the test files: the Image Pixel module (PS3.3 C.7.6.3) and the pixel bytes of every frame, native and little-endian.
@@ -283,13 +287,23 @@ namespace DicomReaderTests {
 				listMeta.Add(Text(0x0002,0x0010,"UI",transferSyntax));
 			}
 			listMeta.Add(Text(0x0002,0x0012,"UI","2.25.98765432109876543210"));
-			byte[] bytesMeta=Encode(listMeta);
-			byte[] bytesGroupLength=Encode(new List<SynElement> { UL(0x0002,0x0000,(uint)bytesMeta.Length) });
+			byte[] bytesMeta;
+			byte[] bytesGroupLength;
+			if(layout==SynLayout.MetaImplicit || layout==SynLayout.MetaImplicitWithoutPreamble) {
+				bytesMeta=EncodeAs(listMeta,SynEncoding.ImplicitLittle);
+				bytesGroupLength=EncodeAs(new List<SynElement> { UL(0x0002,0x0000,(uint)bytesMeta.Length) },SynEncoding.ImplicitLittle);
+			}
+			else {
+				bytesMeta=Encode(listMeta);
+				bytesGroupLength=Encode(new List<SynElement> { UL(0x0002,0x0000,(uint)bytesMeta.Length) });
+			}
 			using(MemoryStream memoryStream=new MemoryStream()) {
-				if(layout==SynLayout.Standard || layout==SynLayout.MetaWithoutTransferSyntax) {
+				if(layout==SynLayout.Standard || layout==SynLayout.MetaWithoutTransferSyntax || layout==SynLayout.MetaImplicit) {
 					memoryStream.Write(new byte[128],0,128);
 				}
-				if(layout==SynLayout.Standard || layout==SynLayout.MetaWithoutTransferSyntax || layout==SynLayout.PrefixWithoutPreamble) {
+				if(layout==SynLayout.Standard || layout==SynLayout.MetaWithoutTransferSyntax || layout==SynLayout.PrefixWithoutPreamble
+					|| layout==SynLayout.MetaImplicit)
+				{
 					memoryStream.Write(Encoding.ASCII.GetBytes("DICM"),0,4);
 				}
 				if(layout!=SynLayout.DatasetOnly) {
@@ -303,6 +317,13 @@ namespace DicomReaderTests {
 
 		public static byte[] MakeFileIn(SynImage synImage,string transferSyntax,SynLayout layout=SynLayout.Standard) {
 			return MakeFileIn(synImage.ToDataset(),transferSyntax,layout);
+		}
+
+		///<summary>A PS3.10 file in Deflated Explicit VR Little Endian whose data set, before it is deflated, is bytesDataset, encoded however the
+		///test wants.</summary>
+		public static byte[] MakeDeflatedFileOf(byte[] bytesDataset) {
+			byte[] bytesEmpty=MakeFileIn(new List<SynElement>(),DeflatedExplicitVrLittleEndian);
+			return bytesEmpty.Take(bytesEmpty.Length-Deflate(new byte[0]).Length).Concat(Deflate(bytesDataset)).ToArray();
 		}
 
 		///<summary>(FFFE,E000) with a length, little-endian.</summary>
@@ -424,5 +445,100 @@ namespace DicomReaderTests {
 			}
 		}
 		#endregion JPEG Baseline
+
+		#region Progressive JPEG, written here
+		///<summary>Entropy-coded bits, most significant first, with a stuffed 00 after every FF byte and the last byte padded with 1 bits (ITU-T
+		///T.81 F.1.2.3, B.1.1.5).</summary>
+		private sealed class JpegBitWriter {
+			private readonly List<byte> _listBytes=new List<byte>();
+			private int _bits;
+			private int _countBits;
+
+			public void Write(int value,int countBits) {
+				for(int i=countBits-1;i>=0;i--) {
+					_bits=(_bits<<1) | ((value>>i) & 1);
+					_countBits++;
+					if(_countBits==8) {
+						Emit();
+					}
+				}
+			}
+
+			private void Emit() {
+				byte value=(byte)_bits;
+				_listBytes.Add(value);
+				if(value==0xFF) {
+					_listBytes.Add(0x00);
+				}
+				_bits=0;
+				_countBits=0;
+			}
+
+			public byte[] ToBytes() {
+				while(_countBits!=0) {
+					Write(1,1);
+				}
+				return _listBytes.ToArray();
+			}
+		}
+
+		private static int BitLength(int value) {
+			int count=0;
+			while(value>0) {
+				count++;
+				value>>=1;
+			}
+			return count;
+		}
+
+		///<summary>A progressive JPEG (ITU-T T.81 Annex G, SOF2, Huffman coding) of a flat 8-bit gray image, written here bit by bit, since the .NET
+		///Framework's encoders write only baseline streams: a DC first scan, then countAcScans AC first scans of the band 1 to 63 that hold only
+		///end-of-band runs (EOBRUN, G.1.2.2). Every 8 x 8 block has the DC coefficient dc (1 to 2047) and no other, and the quantization table is
+		///all ones, so every sample is 128 + dc/8. A repeated AC first scan of the same band is redundant (G.1.1.1.1), but decoders go through it;
+		///a stream of thousands of them is the hostile kind DicomJpegBaselineDecoder declines.</summary>
+		public static byte[] JpegProgressiveFlat(int width,int height,int dc,int countAcScans) {
+			List<byte> listOut=new List<byte> { 0xFF,0xD8 };
+			//DQT: table 0, 8-bit entries, all ones.
+			listOut.AddRange(new byte[] { 0xFF,0xDB,0x00,0x43,0x00 });
+			listOut.AddRange(Enumerable.Repeat((byte)1,64));
+			//SOF2: 8-bit samples, the size, one component (identifier 1, sampling 1 x 1, quantization table 0).
+			listOut.AddRange(new byte[] { 0xFF,0xC2,0x00,0x0B,0x08,(byte)(height>>8),(byte)height,(byte)(width>>8),(byte)width,0x01,0x01,0x11,0x00 });
+			int categoryDc=BitLength(dc);
+			//DHT, DC table 0: code 0 for difference category 0, code 10 for the category of dc (C.2, canonical codes).
+			listOut.AddRange(new byte[] { 0xFF,0xC4,0x00,2+1+16+2,0x00,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0x00,(byte)categoryDc });
+			//DHT, AC table 0: the end-of-band run symbols EOB0 to EOB14 (0x00, 0x10, ... 0xE0), with the 4-bit codes 0000 to 1110 in that order.
+			listOut.AddRange(new byte[] { 0xFF,0xC4,0x00,2+1+16+15,0x10,0,0,0,15,0,0,0,0,0,0,0,0,0,0,0,0 });
+			for(int r=0;r<15;r++) {
+				listOut.Add((byte)(r<<4));
+			}
+			int countBlocks=((width+7)/8)*((height+7)/8);
+			//The DC first scan: component 1, tables 0 and 0, Ss 0, Se 0, Ah 0, Al 0. The first block's difference is dc, every other one 0.
+			listOut.AddRange(new byte[] { 0xFF,0xDA,0x00,0x08,0x01,0x01,0x00,0x00,0x00,0x00 });
+			JpegBitWriter writerDc=new JpegBitWriter();
+			writerDc.Write(2,2);
+			writerDc.Write(dc,categoryDc);
+			for(int block=1;block<countBlocks;block++) {
+				writerDc.Write(0,1);
+			}
+			listOut.AddRange(writerDc.ToBytes());
+			for(int scan=0;scan<countAcScans;scan++) {
+				//An AC first scan: component 1, Ss 1, Se 63, Ah 0, Al 0. EOBn with its n extra bits is a run of 2^n to 2^(n+1)-1 blocks.
+				listOut.AddRange(new byte[] { 0xFF,0xDA,0x00,0x08,0x01,0x01,0x00,0x01,0x3F,0x00 });
+				JpegBitWriter writerAc=new JpegBitWriter();
+				int countLeft=countBlocks;
+				while(countLeft>0) {
+					int run=Math.Min(countLeft,32767);
+					int n=BitLength(run)-1;
+					writerAc.Write(n,4);
+					writerAc.Write(run-(1<<n),n);
+					countLeft-=run;
+				}
+				listOut.AddRange(writerAc.ToBytes());
+			}
+			listOut.Add(0xFF);
+			listOut.Add(0xD9);
+			return listOut.ToArray();
+		}
+		#endregion Progressive JPEG
 	}
 }

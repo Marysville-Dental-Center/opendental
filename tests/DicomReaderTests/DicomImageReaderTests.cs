@@ -31,7 +31,7 @@ namespace DicomReaderTests {
 				"img-mono2-16-4-3","img-mono2-8-6-5","img-mono2-8-4-7","img-mono2-8-1-0","img-mono2-8-7-6","img-signed-16-16-15","img-signed-16-12-11",
 				"img-signed-16-12-11-masked","img-signed-16-14-13","img-signed-mono1-16-16-15","img-signed-rescale-window-16","img-ybr-full-planar0",
 				"img-ybr-full-planar1","img-ybr-full-422","img-palette-8-lut16","img-palette-8-lut8","img-palette-16-lut16","img-palette-8-first-mapped",
-				"rle-signed-16","rle-ybr-full","jpeg-ybr-full-422","jpeg-ybr-full","encapsulated-uncompressed" })
+				"rle-signed-16","rle-ybr-full","jpeg-ybr-full-422","jpeg-ybr-full","jpeg-ybr-partial-422","encapsulated-uncompressed" })
 			{
 				dict.Add(name,DicomImageReadStatus.Read);
 			}
@@ -275,6 +275,37 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
+		public void MislabelledEncodings_AreReadFromTheData_AsFoDicomReadThem() {
+			//Every one gives the source pixels, as fo-dicom 4 did (FoDicomBaseline.cs); the reported transfer syntax is still the file's label.
+			ushort[] arraySource=ReaderCases.Words(35,4095);
+			foreach(ReaderCase readerCase in ReaderCases.MislabelledEncodings()) {
+				DicomImageReadResult result=ReadThroughHelper(readerCase.Bytes);
+				Assert.AreEqual(DicomImageReadStatus.Read,result.Status,readerCase.Name+": "+result);
+				CollectionAssert.AreEqual(arraySource,result.BitmapDicom.ArrayDataRaw,readerCase.Name);
+				Assert.AreEqual(DicomImageReadStatus.Read,DicomHelper.FullReader.Read(readerCase.Bytes).Status,readerCase.Name+": the full reader alone");
+			}
+			Assert.AreEqual(ExplicitVrLittleEndian,ReadThroughHelper(ReaderCases.Get("enc-ts-explicit-dataset-implicit-12").Bytes).TransferSyntaxUid);
+			Assert.AreEqual(ImplicitVrLittleEndian,ReadThroughHelper(ReaderCases.Get("enc-meta-implicit-no-preamble-12").Bytes).TransferSyntaxUid);
+			Assert.IsNull(ReadThroughHelper(ReaderCases.Get("enc-dataset-only-implicit-private-first-12").Bytes).TransferSyntaxUid);
+		}
+
+		[TestMethod]
+		public void MislabelledEncodings_ThatFoDicomDidNotShowEither_AreDeclined() {
+			//fo-dicom 4.0.7 found no Rows in any of these when the cases above were recorded, so version 0.0 showed none of them.
+			List<SynElement> listTwelve=ReaderCases.Twelve().ToDataset();
+			var listCases=new List<(string name,byte[] bytes)> {
+				("zero bytes for the VR",MakeFileIn(ReaderCases.WithVr(listTwelve,Tag(0x0028,0x0010),"\0\0"),ExplicitVrLittleEndian)),
+				("an unknown VR",MakeFileIn(ReaderCases.WithVr(listTwelve,Tag(0x0028,0x0010),"XX"),ExplicitVrLittleEndian)),
+				("an Explicit VR data set labelled Implicit VR",MakeFileIn(listTwelve,ImplicitVrLittleEndian,encoding:SynEncoding.ExplicitLittle)),
+			};
+			foreach((string name,byte[] bytes) testCase in listCases) {
+				DicomImageReadResult result=ReadThroughHelper(testCase.bytes);
+				Assert.AreEqual(DicomImageReadStatus.Malformed,result.Status,testCase.name+": "+result);
+				Assert.AreNotEqual("",result.Reason,testCase.name);
+			}
+		}
+
+		[TestMethod]
 		public void TransferSyntax_IsReported() {
 			Assert.AreEqual(ImplicitVrLittleEndian,ReadThroughHelper(ReaderCases.Get("enc-implicit-le-12").Bytes).TransferSyntaxUid);
 			Assert.AreEqual(DeflatedExplicitVrLittleEndian,ReadThroughHelper(ReaderCases.Get("enc-deflate-12").Bytes).TransferSyntaxUid);
@@ -293,6 +324,14 @@ namespace DicomReaderTests {
 				("a JPEG file",ReaderCases.JpegGrayFixed()),
 				("text",System.Text.Encoding.ASCII.GetBytes("This is a text file that someone named .dcm by mistake.")),
 				("preamble without DICM",new byte[128].Concat(EncodeAs(ReaderCases.Twelve().ToDataset(),SynEncoding.ExplicitLittle)).ToArray()),
+				("a first group above 00FF",MakeFileIn(new List<SynElement> { Text(0x0100,0x0010,"LO","X") }.Concat(ReaderCases.Twelve().ToDataset()).ToList(),
+					ImplicitVrLittleEndian,SynLayout.DatasetOnly)),
+				("a first group below 0008",MakeFileIn(new List<SynElement> { Text(0x0004,0x0010,"LO","X") }.Concat(ReaderCases.Twelve().ToDataset()).ToList(),
+					ImplicitVrLittleEndian,SynLayout.DatasetOnly)),
+				("an Implicit VR length past the end",MakeFileIn(With(ReaderCases.Twelve().ToDataset().Where(x => (x.Tag>>16)!=0x0008).ToList(),
+					new SynElement { Tag=Tag(0x0009,0x0010),Vr="LO",Value=new byte[2],LengthOverride=0x00FFFFF0 }),ImplicitVrLittleEndian,SynLayout.DatasetOnly)),
+				("group 0002 at byte 0 with an Implicit VR length past the end",new byte[] { 0x02,0x00,0x10,0x00,0xF0,0xFF,0xFF,0x00 }
+					.Concat(EncodeAs(ReaderCases.Twelve().ToDataset(),SynEncoding.ImplicitLittle)).ToArray()),
 			}) {
 				DicomImageReadResult result=DicomHelper.FullReader.Read(testCase.bytes);
 				Assert.AreEqual(DicomImageReadStatus.NotDicom,result.Status,testCase.name+": "+result);
@@ -394,36 +433,7 @@ namespace DicomReaderTests {
 			Assert.IsTrue(DicomImageReader.MaxFramePixels>=8192*8192);
 		}
 
-		[TestMethod]
-		public void DeflatedDataSet_ThatInflatesWithoutEnd_IsDeclined() {
-			//A private OB value of zeros larger than MaxInflatedBytes deflates to about a thousandth of its size.
-			long lengthFiller=DicomImageReader.MaxInflatedBytes+1024*1024;
-			List<SynElement> listDataset=ReaderCases.Twelve().ToDataset();
-			int idxBefore=listDataset.FindIndex(x => x.Tag>Tag(0x0009,0x1010));
-			byte[] bytesDeflated;
-			using(MemoryStream memoryStream=new MemoryStream()) {
-				using(System.IO.Compression.DeflateStream deflateStream=new System.IO.Compression.DeflateStream(memoryStream,
-					System.IO.Compression.CompressionLevel.Fastest,true))
-				{
-					byte[] bytesStart=EncodeAs(listDataset.Take(idxBefore).ToList(),SynEncoding.ExplicitLittle)
-						.Concat(new byte[] { 0x09,0x00,0x10,0x10,(byte)'O',(byte)'B',0,0 }).Concat(BitConverter.GetBytes((uint)lengthFiller)).ToArray();
-					deflateStream.Write(bytesStart,0,bytesStart.Length);
-					byte[] bytesZeros=new byte[1024*1024];
-					for(long written=0;written<lengthFiller;written+=bytesZeros.Length) {
-						deflateStream.Write(bytesZeros,0,bytesZeros.Length);
-					}
-					byte[] bytesEnd=EncodeAs(listDataset.Skip(idxBefore).ToList(),SynEncoding.ExplicitLittle);
-					deflateStream.Write(bytesEnd,0,bytesEnd.Length);
-				}
-				bytesDeflated=memoryStream.ToArray();
-			}
-			byte[] bytesMeta=MakeFileIn(new List<SynElement>(),DeflatedExplicitVrLittleEndian);
-			byte[] bytesFile=bytesMeta.Take(bytesMeta.Length-Deflate(new byte[0]).Length).Concat(bytesDeflated).ToArray();
-			Assert.IsTrue(bytesFile.Length<16*1024*1024,"The file is small: "+bytesFile.Length);
-			DicomImageReadResult result=ReadThroughHelper(bytesFile);
-			Assert.AreEqual(DicomImageReadStatus.TooLarge,result.Status,result.ToString());
-			StringAssert.Contains(result.Reason,"inflated");
-		}
+		//Deflated data sets that inflate past the limits: DicomImageReaderHardeningTests, Work limits.
 		#endregion Multi-frame and large files
 
 		#region Test streams

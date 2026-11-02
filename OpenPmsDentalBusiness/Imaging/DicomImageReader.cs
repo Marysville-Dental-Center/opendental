@@ -24,8 +24,9 @@ namespace OpenPmsDentalBusiness {
 		///<summary>The encoding is broken: a length past the end of the file, an unknown VR, a missing attribute, an item where none belongs,
 		///sequences nested too deep, a frame that cannot be decoded.</summary>
 		Malformed,
-		///<summary>The first frame is larger than MaxFramePixels or its compressed bytes larger than MaxCompressedFrameBytes, or a deflated data
-		///set inflates past MaxInflatedBytes.</summary>
+		///<summary>The first frame is larger than MaxFramePixels or its compressed bytes larger than MaxCompressedFrameBytes, a deflated data
+		///set inflates past MaxInflatedBytesBeforePixelData before its Pixel Data or past MaxInflatedBytes in all, or the file has more than
+		///MaxElements elements, items and fragments.</summary>
 		TooLarge,
 		///<summary>The file or stream could not be read.</summary>
 		FileError,
@@ -71,7 +72,9 @@ namespace OpenPmsDentalBusiness {
 	///Encodings: Implicit VR Little Endian, Explicit VR Little Endian, Explicit VR Big Endian (retired) and Deflated Explicit VR Little Endian
 	///(System.IO.Compression), in a PS3.10 file (128-byte preamble, "DICM", File Meta Information), in a file that starts directly with the
 	///File Meta Information, or as a data set with no File Meta Information or without a Transfer Syntax UID, whose encoding is then told from
-	///its first element (the files fo-dicom 4 opened too; it refused "DICM" at byte 0 without the preamble, and so does this reader).
+	///its first element. The encoding is decided from the data where writers broke the standard in ways fo-dicom 4 read: File Meta
+	///Information in Implicit VR, an Implicit VR data set labelled Explicit VR Little Endian, two spaces where an element's VR goes. fo-dicom
+	///refused "DICM" at byte 0 without the preamble, and so does this reader (docs/imaging/dicom-reader.md lists exactly what is accepted).
 	///Encapsulated pixel data (PS3.5 A.4): the items, the fragments, the Basic Offset Table and the Extended Offset Table are parsed here, and
 	///the first frame's bytes go to the decoder DicomFrameDecoderRegistry has for the transfer syntax. A compressed transfer syntax without a
 	///decoder is declined as UnsupportedCompression with the format's name, before any fragment is read.
@@ -86,8 +89,9 @@ namespace OpenPmsDentalBusiness {
 	///Hardening: it never throws to callers; it reads the stream forward once and checks every length against what is left before it reads or
 	///skips (a seekable stream knows its end; a non-seekable one is read, never trusted); sequences of undefined length are nested at most
 	///MaxSequenceDepth deep; it allocates only the attributes it keeps (each at most a quarter megabyte), the first frame (at most MaxFramePixels
-	///pixels) and that frame's compressed bytes (at most MaxCompressedFrameBytes); a deflated data set may inflate to at most MaxInflatedBytes.
-	///Everything else is skipped, and frames after the first are never read.</summary>
+	///pixels) and that frame's compressed bytes (at most MaxCompressedFrameBytes); a deflated data set may inflate to at most
+	///MaxInflatedBytesBeforePixelData before its Pixel Data and MaxInflatedBytes in all; at most MaxElements headers are read, which bounds
+	///the work. Everything else is skipped, and frames after the first are never read.</summary>
 	public sealed class DicomImageReader : IDicomPixelReader {
 		///<summary>The largest first frame read: 2^26 pixels (8192 x 8192). A panoramic or cephalometric image is a few million.</summary>
 		public const int MaxFramePixels=1<<26;
@@ -97,8 +101,15 @@ namespace OpenPmsDentalBusiness {
 		public const int MaxSequenceDepth=16;
 		///<summary>A deflated data set that inflates past this many bytes is declined (TooLarge), so a small file cannot expand without end.</summary>
 		public const long MaxInflatedBytes=1L<<30;
+		///<summary>A deflated data set that inflates past this many bytes before its Pixel Data is declined (TooLarge): only the pixels need to
+		///be large, and the attributes of a real image are kilobytes.</summary>
+		public const long MaxInflatedBytesBeforePixelData=64L*1024*1024;
 		///<summary>Fragments of the first frame at most.</summary>
 		public const int MaxFragmentsPerFrame=65536;
+		///<summary>The most element, item, delimiter and fragment headers the reader reads in one file (TooLarge past it). Reading a header costs
+		///about half a microsecond, so this bounds the work of a file of millions of tiny elements, which deflate makes small on disk, to about
+		///half a second. A real data set has a few thousand.</summary>
+		public const int MaxElements=1000000;
 		private const int _maxKeptValueBytes=256*1024;
 		private const uint _undefinedLength=0xFFFFFFFF;
 		private const uint _tagItem=0xFFFEE000;
@@ -247,8 +258,8 @@ namespace OpenPmsDentalBusiness {
 			private readonly Stream _stream;
 			private readonly bool _canSeek;
 			private readonly long _streamEnd;
-			private readonly long _maxBytes;
-			private readonly string _nameLimit;
+			private long _maxBytes;
+			private string _nameLimit;
 			private byte[] _arrayPeek=new byte[0];
 			private int _peekStart;
 			private long _consumed;
@@ -263,6 +274,12 @@ namespace OpenPmsDentalBusiness {
 
 			private int PeekCount {
 				get { return _arrayPeek.Length-_peekStart; }
+			}
+
+			///<summary>From now on, at most maxBytes may be consumed in all, counted from the start of this source.</summary>
+			public void SetLimit(long maxBytes,string nameLimit) {
+				_maxBytes=maxBytes;
+				_nameLimit=nameLimit;
 			}
 
 			///<summary>Bytes left when the stream can seek; -1 when that is unknown.</summary>
@@ -455,6 +472,9 @@ namespace OpenPmsDentalBusiness {
 			Rgb,
 			YbrFull,
 			YbrFull422,
+			///<summary>YBR_PARTIAL_422, YBR_PARTIAL_420, YBR_ICT or YBR_RCT: these describe compressed pixel data only (PS3.3 C.7.6.3.1.2; PS3.5
+			///8.2), which a decoder returns as RGB or YBR_FULL. Accepted for the attributes a decoder is given, never shown as they are.</summary>
+			YbrCompressed,
 		}
 
 		///<summary>The checked attributes of one frame and how many bytes it has.</summary>
@@ -495,6 +515,8 @@ namespace OpenPmsDentalBusiness {
 			private ulong[] _arrayExtendedOffsets;
 			private ulong[] _arrayExtendedLengths;
 			private Stream _streamInflated;
+			///<summary>Element, item, delimiter and fragment headers read so far (MaxElements).</summary>
+			private int _countHeaders;
 
 			///<summary>The Transfer Syntax UID of the File Meta Information, once read.</summary>
 			public string TransferSyntaxUid { get; private set; }
@@ -534,6 +556,33 @@ namespace OpenPmsDentalBusiness {
 				}
 				return _hashSetVrs.Contains(""+(char)byte1+(char)byte2);
 			}
+
+			///<summary>Two spaces where an Explicit VR element's VR goes: some writers put them for a VR they did not know.</summary>
+			private static bool IsBlankVr(byte byte1,byte byte2) {
+				return byte1==0x20 && byte2==0x20;
+			}
+
+			///<summary>Whether the 8-byte element header at the current position is Explicit VR (PS3.5 7.1.2): VR letters, or two spaces, at
+			///bytes 4 and 5.</summary>
+			private static bool IsExplicitHeader(byte[] bytesHeader) {
+				return IsVr(bytesHeader[4],bytesHeader[5]) || IsBlankVr(bytesHeader[4],bytesHeader[5]);
+			}
+
+			///<summary>Whether the 8-byte element header at the current position, read as Implicit VR Little Endian (PS3.5 7.1.3), has a length
+			///that fits what is left of the file: undefined, within the file, or the end is not known.</summary>
+			private bool IsImplicitLengthThatFits(byte[] bytesHeader) {
+				uint length=U32(bytesHeader,4,false);
+				long remaining=_source.Remaining;
+				return length==_undefinedLength || remaining<0 || length<=remaining-8;
+			}
+
+			///<summary>Counts one element, item, delimiter or fragment header, and declines the file past MaxElements.</summary>
+			private void CountHeader() {
+				_countHeaders++;
+				if(_countHeaders>MaxElements) {
+					throw TooLarge("The file has more than "+FormatCount(MaxElements)+" elements, items and fragments; this version reads at most that many.");
+				}
+			}
 			#endregion Numbers
 
 			public BitmapDicom Parse() {
@@ -553,8 +602,10 @@ namespace OpenPmsDentalBusiness {
 				else if(bytesHead.Length>=4 && bytesHead[0]=='D' && bytesHead[1]=='I' && bytesHead[2]=='C' && bytesHead[3]=='M') {
 					throw new DeclineException(DicomImageReadStatus.NotDicom,"The file starts with \"DICM\" without the 128-byte preamble before it (PS3.10 7.1).");
 				}
-				else if(bytesHead.Length>=8 && bytesHead[0]==0x02 && bytesHead[1]==0x00 && IsVr(bytesHead[4],bytesHead[5])) {
-					hasMeta=true;//File Meta Information at the very start, without the preamble
+				else if(bytesHead.Length>=8 && bytesHead[0]==0x02 && bytesHead[1]==0x00
+					&& (IsExplicitHeader(bytesHead) || IsImplicitLengthThatFits(bytesHead)))
+				{
+					hasMeta=true;//File Meta Information at the very start, without the preamble, in Explicit or Implicit VR
 				}
 				if(hasMeta) {
 					ReadFileMeta();
@@ -578,7 +629,12 @@ namespace OpenPmsDentalBusiness {
 					case DicomTransferSyntaxKind.DeflatedExplicitLittleEndian:
 						//PS3.5 A.5: everything after the File Meta Information is deflated, with no zlib header.
 						_streamInflated=new DeflateStream(_source.AsStream(),CompressionMode.Decompress,true);
-						_source=new ByteSource(_streamInflated,MaxInflatedBytes,"inflated data set");
+						_source=new ByteSource(_streamInflated,MaxInflatedBytesBeforePixelData,"inflated data set before its Pixel Data");
+						CheckExplicitVrLabel();
+						break;
+					case DicomTransferSyntaxKind.ExplicitLittleEndian:
+					case DicomTransferSyntaxKind.EncapsulatedImage:
+						CheckExplicitVrLabel();
 						break;
 					case DicomTransferSyntaxKind.EncapsulatedVideo:
 						throw new DeclineException(DicomImageReadStatus.UnsupportedCompression,"The file holds video ("+_transferSyntax.Name+").");
@@ -588,15 +644,28 @@ namespace OpenPmsDentalBusiness {
 				}
 			}
 
-			///<summary>The group 0002 elements, always Explicit VR Little Endian (PS3.10 7.1). Only the Transfer Syntax UID is kept; the group
-			///length is not needed, since the group ends where the elements of group 0002 end.</summary>
+			///<summary>A data set the transfer syntax says is Explicit VR Little Endian, whose first element has neither VR letters nor two spaces
+			///where the VR goes but an Implicit VR length that fits the file, is read as Implicit VR Little Endian: some writers labelled Implicit
+			///VR data sets Explicit VR in the File Meta Information. The same test DetectEncoding applies, made on the data, not the label.</summary>
+			private void CheckExplicitVrLabel() {
+				byte[] bytesPeek=_source.Peek(8);
+				if(bytesPeek.Length==8 && !IsExplicitHeader(bytesPeek) && IsImplicitLengthThatFits(bytesPeek)) {
+					_isImplicit=true;
+				}
+			}
+
+			///<summary>The group 0002 elements (PS3.10 7.1). Only the Transfer Syntax UID is kept; the group length is not needed, since the group
+			///ends where the elements of group 0002 end. PS3.10 asks for Explicit VR Little Endian; when the first element has no VR letters where
+			///the VR goes, the group is read as Implicit VR Little Endian, as some writers wrote it.</summary>
 			private void ReadFileMeta() {
+				byte[] bytesFirst=_source.Peek(8);
+				bool isImplicit=bytesFirst.Length==8 && U16(bytesFirst,0,false)==0x0002 && !IsExplicitHeader(bytesFirst);
 				while(true) {
 					byte[] bytesPeek=_source.Peek(2);
 					if(bytesPeek.Length<2 || U16(bytesPeek,0,false)!=0x0002) {
 						return;
 					}
-					ReadElementHeader(false,false,out uint tag,out string vr,out uint length);
+					ReadElementHeader(isImplicit,false,out uint tag,out string vr,out uint length);
 					if(length==_undefinedLength) {
 						throw Malformed("File Meta element "+FormatTag(tag)+" has an undefined length.");
 					}
@@ -614,30 +683,27 @@ namespace OpenPmsDentalBusiness {
 				}
 			}
 
-			///<summary>A data set without a Transfer Syntax UID: Explicit VR when the first element has VR letters where the VR goes (PS3.5 7.1.2),
-			///big endian when its group reads smaller that way, otherwise Implicit VR Little Endian. The first element must look like the start of
-			///an image's data set (an even group from 0008 to 0028: identification, patient, study, acquisition or image attributes; in Implicit
-			///VR, a length that fits the file), or the file is not DICOM.</summary>
+			///<summary>A data set without a Transfer Syntax UID: Explicit VR when the first element has VR letters (or two spaces) where the VR
+			///goes (PS3.5 7.1.2), big endian when its group reads smaller that way, otherwise Implicit VR Little Endian. The first element must
+			///look like the start of a data set: a group from 0008 to 00FF, standard or private (groups below 0008 are command and File Meta
+			///groups, PS3.5 7.1; a file of zeros has group 0000), and in Implicit VR a length that fits the file. Otherwise the file is not
+			///DICOM.</summary>
 			private void DetectEncoding() {
 				byte[] bytesPeek=_source.Peek(8);
 				string notDicom="Neither a PS3.10 file (no \"DICM\" prefix after a 128-byte preamble) nor a DICOM data set.";
 				if(bytesPeek.Length<8) {
 					throw new DeclineException(DicomImageReadStatus.NotDicom,"The file is too short to be DICOM.");
 				}
-				bool isExplicit=IsVr(bytesPeek[4],bytesPeek[5]);
+				bool isExplicit=IsExplicitHeader(bytesPeek);
 				ushort groupLittle=U16(bytesPeek,0,false);
 				ushort groupBig=U16(bytesPeek,0,true);
 				bool isBig=isExplicit && groupBig<groupLittle;
 				ushort group=isBig ? groupBig : groupLittle;
-				if(group<0x0008 || group>0x0028 || group%2==1) {
+				if(group<0x0008 || group>0x00FF) {
 					throw new DeclineException(DicomImageReadStatus.NotDicom,notDicom);
 				}
-				if(!isExplicit) {
-					uint length=U32(bytesPeek,4,false);
-					long remaining=_source.Remaining;
-					if(length!=_undefinedLength && remaining>=0 && length>remaining-8) {
-						throw new DeclineException(DicomImageReadStatus.NotDicom,notDicom);
-					}
+				if(!isExplicit && !IsImplicitLengthThatFits(bytesPeek)) {
+					throw new DeclineException(DicomImageReadStatus.NotDicom,notDicom);
 				}
 				_isImplicit=!isExplicit;
 				_isBigEndian=isBig;
@@ -646,8 +712,11 @@ namespace OpenPmsDentalBusiness {
 
 			#region Elements
 			///<summary>The tag, VR and length of the element at the current position (PS3.5 7.1.2 and 7.1.3). In Implicit VR, the VR is the one
-			///the reader knows for the attributes it keeps, otherwise "UN".</summary>
+			///the reader knows for the attributes it keeps, otherwise "UN". In Explicit VR, two spaces where the VR goes take the VR the reader
+			///knows for the tag the same way, with the layout of that VR: OW (two reserved bytes and a 32-bit length) for Pixel Data and the
+			///palette tables, and a 16-bit length for every other element.</summary>
 			private void ReadElementHeader(bool isImplicit,bool isBig,out uint tag,out string vr,out uint length) {
+				CountHeader();
 				byte[] bytes=new byte[8];
 				_source.ReadExact(bytes,0,8,"an element header");
 				tag=((uint)U16(bytes,0,isBig)<<16) | U16(bytes,2,isBig);
@@ -656,11 +725,19 @@ namespace OpenPmsDentalBusiness {
 					length=U32(bytes,4,false);
 					return;
 				}
-				if(!IsVr(bytes[4],bytes[5])) {
+				bool isLongLayout;
+				if(IsVr(bytes[4],bytes[5])) {
+					vr=""+(char)bytes[4]+(char)bytes[5];
+					isLongLayout=_hashSetLongVrs.Contains(vr);
+				}
+				else if(IsBlankVr(bytes[4],bytes[5])) {
+					vr=ImplicitVr(tag);
+					isLongLayout=vr=="OW";
+				}
+				else {
 					throw Malformed("Element "+FormatTag(tag)+" has no valid VR; the data set is not "+(isBig ? "Explicit VR Big Endian." : "Explicit VR."));
 				}
-				vr=""+(char)bytes[4]+(char)bytes[5];
-				if(_hashSetLongVrs.Contains(vr)) {
+				if(isLongLayout) {
 					byte[] bytesLength=_source.ReadBytes(4,"an element header");
 					length=U32(bytesLength,0,isBig);
 				}
@@ -727,6 +804,9 @@ namespace OpenPmsDentalBusiness {
 					}
 					ReadElementHeader(_isImplicit,_isBigEndian,out uint tag,out string vr,out uint length);
 					if(tag==_tagPixelData) {
+						if(_streamInflated!=null) {
+							_source.SetLimit(MaxInflatedBytes,"inflated data set");
+						}
 						return ReadPixelData(vr,length);
 					}
 					if(tag==_tagFloatPixelData || tag==_tagDoubleFloatPixelData) {
@@ -772,6 +852,7 @@ namespace OpenPmsDentalBusiness {
 					throw Malformed("Sequences are nested more than "+MaxSequenceDepth.ToString(CultureInfo.InvariantCulture)+" deep.");
 				}
 				while(true) {
+					CountHeader();
 					byte[] bytes=_source.ReadBytes(8,"a sequence of undefined length (no Sequence Delimitation Item)");
 					uint tag=((uint)U16(bytes,0,isBig)<<16) | U16(bytes,2,isBig);
 					uint length=U32(bytes,4,isBig);
@@ -797,6 +878,7 @@ namespace OpenPmsDentalBusiness {
 					}
 					uint tagPeek=((uint)U16(bytesPeek,0,isBig)<<16) | U16(bytesPeek,2,isBig);
 					if(tagPeek==_tagItemDelimitation) {
+						CountHeader();
 						_source.Skip(8,"the Item Delimitation Item");
 						return;
 					}
@@ -991,8 +1073,11 @@ namespace OpenPmsDentalBusiness {
 			}
 
 			///<summary>Checks the attributes against what the reader shows and computes the size of one frame of native pixel data (PS3.5 8.1.1;
-			///PS3.3 C.7.6.3). isNativeLayout is false for the attributes of encapsulated pixel data before decoding: there YBR_FULL_422 describes
-			///the compressed stream's subsampling (PS3.5 8.2.1), so its native layout rules do not apply.</summary>
+			///PS3.3 C.7.6.3). isNativeLayout is false for the attributes of encapsulated pixel data before decoding: then only the size, the bits
+			///and the samples are checked, every photometric interpretation PS3.5 8.2 allows for compressed data is accepted (YBR_PARTIAL_422,
+			///YBR_PARTIAL_420, YBR_ICT and YBR_RCT too, which describe the compressed stream), and the rules of what is shown apply to the decoder's
+			///answer, which is checked again as native pixel data. YBR_FULL_422 there describes the stream's subsampling (PS3.5 8.2.1), so its
+			///native layout rules do not apply either.</summary>
 			private ImageLayout CheckLayout(DicomFrameInfo frameInfo,bool isNativeLayout) {
 				ImageLayout layout=new ImageLayout();
 				layout.FrameInfo=frameInfo;
@@ -1003,10 +1088,20 @@ namespace OpenPmsDentalBusiness {
 					case "RGB": layout.Kind=PhotometricKind.Rgb; break;
 					case "YBR_FULL": layout.Kind=PhotometricKind.YbrFull; break;
 					case "YBR_FULL_422": layout.Kind=PhotometricKind.YbrFull422; break;
+					case "YBR_PARTIAL_422":
+					case "YBR_PARTIAL_420":
+					case "YBR_ICT":
+					case "YBR_RCT":
+						if(isNativeLayout) {
+							throw Unsupported("Photometric Interpretation "+frameInfo.PhotometricInterpretation+" is not one this version shows.");
+						}
+						layout.Kind=PhotometricKind.YbrCompressed;
+						break;
 					default:
 						throw Unsupported("Photometric Interpretation "+frameInfo.PhotometricInterpretation+" is not one this version shows.");
 				}
-				bool isColor=layout.Kind==PhotometricKind.Rgb || layout.Kind==PhotometricKind.YbrFull || layout.Kind==PhotometricKind.YbrFull422;
+				bool isColor=layout.Kind==PhotometricKind.Rgb || layout.Kind==PhotometricKind.YbrFull || layout.Kind==PhotometricKind.YbrFull422
+					|| layout.Kind==PhotometricKind.YbrCompressed;
 				if(frameInfo.SamplesPerPixel!=(isColor ? 3 : 1)) {
 					throw Malformed("Samples per Pixel is "+frameInfo.SamplesPerPixel+" with Photometric Interpretation "+frameInfo.PhotometricInterpretation+".");
 				}
@@ -1030,7 +1125,7 @@ namespace OpenPmsDentalBusiness {
 				if(frameInfo.PixelRepresentation!=0 && frameInfo.PixelRepresentation!=1) {
 					throw Malformed("Pixel Representation is "+frameInfo.PixelRepresentation+".");
 				}
-				if(frameInfo.PixelRepresentation==1 && (isColor || layout.Kind==PhotometricKind.Palette)) {
+				if(isNativeLayout && frameInfo.PixelRepresentation==1 && (isColor || layout.Kind==PhotometricKind.Palette)) {
 					throw Unsupported("Signed color or palette pixel values are not supported.");
 				}
 				if(isColor && frameInfo.PlanarConfiguration!=0 && frameInfo.PlanarConfiguration!=1) {
@@ -1059,6 +1154,7 @@ namespace OpenPmsDentalBusiness {
 			///every fragment; with one fragment per frame (RLE, Encapsulated Uncompressed), the first fragment; otherwise the first fragment that
 			///ends with the JPEG family's end marker FFD9 (EOI, and the EOC of JPEG 2000), as PS3.5 A.4 lets a reader find frames.</summary>
 			private byte[] ReadFirstFrameFragments() {
+				CountHeader();
 				byte[] bytesItem=_source.ReadBytes(8,"the Basic Offset Table");
 				uint tagTable=((uint)U16(bytesItem,0,false)<<16) | U16(bytesItem,2,false);
 				uint lengthTable=U32(bytesItem,4,false);
@@ -1107,6 +1203,7 @@ namespace OpenPmsDentalBusiness {
 					if(offset>=offsetEnd && listFragments.Count>0) {
 						break;
 					}
+					CountHeader();
 					byte[] bytesHeader=_source.ReadBytes(8,"the encapsulated pixel data (no Sequence Delimitation Item)");
 					uint tag=((uint)U16(bytesHeader,0,false)<<16) | U16(bytesHeader,2,false);
 					uint length=U32(bytesHeader,4,false);
