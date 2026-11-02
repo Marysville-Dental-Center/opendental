@@ -33,10 +33,10 @@ Run-time names (`CodeBase/Utilities/ProgramNames.cs`, pinned by `ReleaseFlowTest
 | `TempFolderName` | `openpms-dental` (`UpdateFileCopierTempFolderName` stays `updatefilecopier`) |
 | `EventLogSource` | `OpenPMS-Dental` |
 | `HL7ServiceName`, `EventLogSourceHL7`, `EventLogSourceHL7Main` | `OpenPmsDentalHL7`, `OpenPmsDentalHL7`, `OpenPmsDentalHL7.Main` |
-| `ServicePrefix` | `OpenPmsDental`; `LegacyServicePrefix` `OpenDent` is also recognised where installed services are looked up (`HasServicePrefix`: ServicesHelper.GetAllOpenDentServices and the HL7 service finding its own name), so an installation from before the rename is still found |
+| `ServicePrefix` | `OpenPmsDental`. The program starts only services with this prefix (`IsProgramServiceName`, `ServicesHelper.GetServicesToStart`). `LegacyServicePrefix` `OpenDent`, Open Dental's prefix, is also recognised where installed services are looked up or listed (`HasServicePrefix`: the HL7 service finding its own name, ServiceManager's list, which shows them as Open Dental's), so an installation from before the rename is still found; such a service is never started automatically |
 | `DefaultInstallFolder` | `C:\Program Files (x86)\Open PMS - Dental` |
 | `LegacyLocalAppDataFolderName` | stays `OpenDental`: chart letters still scan it for unsaved work |
-| `HL7ServiceFallbackName` | stays Open Dental's run-time default `OpenDentalHL7`, used only as the name the HL7 service runs under when no installed service with either prefix was installed from its folder. The HL7 setups of an adopted database saved that name (HL7Def.HL7ServiceName, the eCW HL7ServiceName property) and the service refuses to start when its name differs. Everywhere else the new name applies |
+| `HL7ServiceFallbackName` | stays Open Dental's run-time default `OpenDentalHL7`, used only as the name the HL7 service runs under when no installed service with either prefix was installed from its folder. The HL7 setups of an adopted database saved that name (HL7Def.HL7ServiceName, the eCW HL7ServiceName property) and the service refuses to start when its name differs. Everywhere else the new name applies; the HL7 setup windows suggest `HL7ServiceName` |
 
 The display name is "Open PMS - Dental" (`ProductIdentity.ProductName`).
 

@@ -571,48 +571,25 @@ namespace OpenPmsDental {
 		#endregion
 		#region ODServiceStarterThread
 
-		///<summary>Executable names of Open Dental Software, Inc.'s own services that relay to Open Dental HQ: the eConnector (heartbeats, eService
-		///relay, statistics and log uploads, supplemental backups to HQ) and the legacy CustListener it replaced. Neither is built from this repo.</summary>
-		private static readonly string[] _arrayHqRelayServiceExeNames=new string[] { "OpenDentalEConnector.exe","OpenDentalCustListener.exe" };
-
-		///<summary>Spawns a thread that attempts to start all Open Dental services.</summary>
+		///<summary>Spawns a thread that attempts to start this program's own services (ServicesHelper.GetServicesToStart). Open Dental's
+		///services, whose names start with ProgramNames.LegacyServicePrefix, are never started.</summary>
 		private void BeginODServiceStarterThread() {
 			if(IsThreadAlreadyRunning(FormODThreadNames.ODServiceStarter)) {
 				return;
 			}
 			ODThread odThread=new ODThread((o) => {
 				if(PrefC.GetString(PrefName.WebServiceServerName)!="" && ODEnvironment.IdIsThisComputer(PrefC.GetString(PrefName.WebServiceServerName))) {
-					//An InvalidOperationException can get thrown if services could not start.  E.g. current user is not running Open Dental as an 
-					//administrator.	We do not want to halt the startup sequence here.  If we want to notify customers of a downed service, there needs to 
+					//An InvalidOperationException can get thrown if services could not start.  E.g. current user is not running the program as an
+					//administrator.	We do not want to halt the startup sequence here.  If we want to notify customers of a downed service, there needs to
 					//be an additional monitoring service installed.
-					ServicesHelper.StartServices(GetOpenDentServicesToStart());
+					ServicesHelper.StartServices(ServicesHelper.GetServicesToStart());
 				}
 			});
-			//If the thread that attempts to start all Open Dental services fails for any reason, silently fail.
+			//If the thread that attempts to start the services fails for any reason, silently fail.
 			odThread.AddExceptionHandler(ex => ex.DoNothing());
 			odThread.GroupName=FormODThreadNames.ODServiceStarter.GetDescription();
 			odThread.Name=FormODThreadNames.ODServiceStarter.GetDescription();
 			odThread.Start(true);
-		}
-
-		///<summary>Returns the installed services whose names start with "OpenDent" that this computer should start, such as OpenDentalService,
-		///OpenDentalAPIService and OpenPmsDentalHL7. When Open Dental HQ is not available (always, outside of unit tests), the eConnector and CustListener
-		///are left out, so a copy left behind by an Open Dental install is never restarted after an administrator stopped it.</summary>
-		private static List<System.ServiceProcess.ServiceController> GetOpenDentServicesToStart() {
-			List<System.ServiceProcess.ServiceController> listServiceControllers=ServicesHelper.GetAllOpenDentServices();
-			if(WebServiceMainHQProxy.IsHqAvailable) {
-				return listServiceControllers;
-			}
-			List<string> listServiceNamesExcluded=new List<string>();
-			for(int i=0;i<_arrayHqRelayServiceExeNames.Length;i++) {
-				string exeName=_arrayHqRelayServiceExeNames[i];
-				//GetServicesByExe reads each service's ImagePath from the registry and throws if a key can't be read.
-				ODException.SwallowAnyException(() => listServiceNamesExcluded.AddRange(ServicesHelper.GetServicesByExe(exeName).Select(x => x.ServiceName)));
-			}
-			return listServiceControllers.FindAll(x => !listServiceNamesExcluded.Contains(x.ServiceName)
-				//Also leave out the default service names, in case the registry lookup above failed.
-				&& x.ServiceName.IndexOf("EConnector",StringComparison.OrdinalIgnoreCase)<0
-				&& x.ServiceName.IndexOf("CustListener",StringComparison.OrdinalIgnoreCase)<0);
 		}
 
 		///<summary>Spawns a thread that attempts to start the Patient Dashboard.</summary>

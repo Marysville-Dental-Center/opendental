@@ -61,19 +61,21 @@ namespace CodeBase {
 		///<summary>The name the HL7 service runs under when no installed service whose name starts with ServicePrefix or LegacyServicePrefix
 		///was installed from its folder (a service installed with /ServiceName=&lt;another name&gt;). This is Open Dental's run-time default, and
 		///it differs from the installer's HL7ServiceName. The service saves its name into a blank HL7Def.HL7ServiceName or eCW HL7ServiceName
-		///program property on its first start and refuses to start when they differ later, and the setup windows tell users to type this name,
-		///so it keeps this value through the rename: the HL7 setups of an adopted database hold it, and changing it would stop the HL7 feed of
-		///such an install.</summary>
+		///program property on its first start and refuses to start when they differ later, and Open Dental's setup windows told users to type
+		///this name, so it keeps this value through the rename: the HL7 setups of an adopted database hold it, and changing it would stop the
+		///HL7 feed of such an install. This program's setup windows suggest HL7ServiceName, the name of the service its installers write.</summary>
 		public const string HL7ServiceFallbackName="OpenDentalHL7";
 		///<summary>The Event Log source of the HL7 service's messages.</summary>
 		public const string EventLogSourceHL7=HL7ServiceName;
 		///<summary>The Event Log source of the HL7 service's start and stop messages, written before the service has its name.</summary>
 		public const string EventLogSourceHL7Main=HL7ServiceName+".Main";
 		///<summary>Every Windows service of this program has a name that starts with this. ServiceManager refuses other names for a new
-		///service. Installed services are looked up by this prefix or LegacyServicePrefix (HasServicePrefix).</summary>
+		///service, and the program starts only services whose names start with it (IsProgramServiceName). Installed services are looked up and
+		///listed by this prefix or LegacyServicePrefix (HasServicePrefix).</summary>
 		public const string ServicePrefix="OpenPmsDental";
-		///<summary>The service prefix of builds before the rename (and of Open Dental). It stays this value: installed services are still looked
-		///up by it (HasServicePrefix), so a service installed before the rename, such as an HL7 service named OpenDentHL7, is still found.</summary>
+		///<summary>The service prefix of Open Dental (and of builds before the rename). It stays this value: installed services are still looked
+		///up and listed by it (HasServicePrefix), so a service installed before the rename, such as an HL7 service named OpenDentHL7, still finds
+		///its own name. A service with this prefix is Open Dental's and is never started automatically (IsLegacyServiceName).</summary>
 		public const string LegacyServicePrefix="OpenDent";
 		#endregion Event Log and Windows services
 
@@ -83,13 +85,30 @@ namespace CodeBase {
 		public const string DefaultInstallFolder=@"C:\Program Files (x86)\Open PMS - Dental";
 		#endregion UpdateFileCopier defaults
 
-		///<summary>True when serviceName is the name of an installed service of this program: it starts with ServicePrefix, or with
-		///LegacyServicePrefix (a service installed before the rename). Case-sensitive, like the service names the installers write.</summary>
+		///<summary>True when serviceName starts with ServicePrefix or with LegacyServicePrefix. Use it only where installed services are looked
+		///up or listed: the HL7 service finding its own name, ServiceManager's list. Never use it to choose services to start, because it also
+		///matches Open Dental's services; use IsProgramServiceName. Case-sensitive, like the service names the installers write.</summary>
 		public static bool HasServicePrefix(string serviceName) {
+			return IsProgramServiceName(serviceName) || IsLegacyServiceName(serviceName);
+		}
+
+		///<summary>True when serviceName is the name of one of this program's own services: it starts with ServicePrefix. These are the only
+		///services the program ever starts by itself (CodeBase.ServicesHelper.GetServicesToStart). Case-sensitive.</summary>
+		public static bool IsProgramServiceName(string serviceName) {
 			if(string.IsNullOrEmpty(serviceName)) {
 				return false;
 			}
-			return serviceName.StartsWith(ServicePrefix,StringComparison.Ordinal) || serviceName.StartsWith(LegacyServicePrefix,StringComparison.Ordinal);
+			return serviceName.StartsWith(ServicePrefix,StringComparison.Ordinal);
+		}
+
+		///<summary>True when serviceName starts with LegacyServicePrefix (and not with ServicePrefix): a service of Open Dental, such as
+		///OpenDentalService, its HL7 service or an eConnector left behind by an Open Dental install, or one installed before the rename. Such a
+		///service is looked up and listed, and ServiceManager shows it as Open Dental's, but it is never started automatically. Case-sensitive.</summary>
+		public static bool IsLegacyServiceName(string serviceName) {
+			if(string.IsNullOrEmpty(serviceName) || IsProgramServiceName(serviceName)) {
+				return false;
+			}
+			return serviceName.StartsWith(LegacyServicePrefix,StringComparison.Ordinal);
 		}
 
 		///<summary>True when processName is the main program's process name. Matches the whole name, ignoring case; never a prefix.</summary>

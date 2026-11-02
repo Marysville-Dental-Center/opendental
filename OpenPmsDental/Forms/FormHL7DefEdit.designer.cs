@@ -448,7 +448,7 @@ namespace OpenPmsDental{
 			this.label16.Name = "label16";
 			this.label16.Size = new System.Drawing.Size(205, 16);
 			this.label16.TabIndex = 0;
-			this.label16.Text = "--Typically OpenDentalHL7.";
+			this.label16.Text = "--Typically " + CodeBase.ProgramNames.HL7ServiceName + ".";
 			this.label16.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
 			// label17

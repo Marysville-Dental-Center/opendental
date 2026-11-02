@@ -252,10 +252,61 @@ namespace CodeBase {
 			return null;
 		}
 
-		///<summary>Returns all services whose names start with ProgramNames.ServicePrefix, or with ProgramNames.LegacyServicePrefix (installed
-		///before the rename).</summary>
+		///<summary>Returns all services whose names start with ProgramNames.ServicePrefix, or with ProgramNames.LegacyServicePrefix (Open
+		///Dental's services, or ones installed before the rename). For listing only (ServiceManager); never start these. The services the program
+		///starts are GetServicesToStart.</summary>
 		public static List<ServiceController> GetAllOpenDentServices() {
 			return GetServices().FindAll(x => ProgramNames.HasServicePrefix(x.ServiceName));
+		}
+
+		///<summary>Executable names of Open Dental Software, Inc.'s own services that relay to Open Dental HQ: the eConnector (heartbeats, eService
+		///relay, statistics and log uploads, supplemental backups to HQ) and the legacy CustListener it replaced. Neither is built from this repo.</summary>
+		private static readonly string[] _arrayHqRelayServiceExeNames=new string[] { "OpenDentalEConnector.exe","OpenDentalCustListener.exe" };
+
+		///<summary>The installed services the program starts by itself (FormOpenDental's service starter, on the computer named in the
+		///WebServiceServerName preference): this program's own services only, see GetServiceNamesToStart. Services that run an Open Dental HQ
+		///relay exe are found by their exe and left out.</summary>
+		public static List<ServiceController> GetServicesToStart() {
+			List<ServiceController> listServiceControllers=GetServices().FindAll(x => ProgramNames.IsProgramServiceName(x.ServiceName));
+			if(listServiceControllers.Count==0) {
+				return listServiceControllers;
+			}
+			List<string> listServiceNamesExcluded=new List<string>();
+			for(int i=0;i<_arrayHqRelayServiceExeNames.Length;i++) {
+				//GetServicesByExe reads each service's ImagePath from the registry and throws if a key can't be read.
+				try {
+					listServiceNamesExcluded.AddRange(GetServicesByExe(_arrayHqRelayServiceExeNames[i]).Select(x => x.ServiceName));
+				}
+				catch(Exception ex) {
+					ex.DoNothing();
+				}
+			}
+			List<string> listServiceNamesToStart=GetServiceNamesToStart(listServiceControllers.Select(x => x.ServiceName),listServiceNamesExcluded);
+			return listServiceControllers.FindAll(x => listServiceNamesToStart.Contains(x.ServiceName));
+		}
+
+		///<summary>The names in listServiceNames of the services the program may start by itself, in their order: only this program's own
+		///services, whose names start with ProgramNames.ServicePrefix (ProgramNames.IsProgramServiceName). A name that starts with
+		///ProgramNames.LegacyServicePrefix is Open Dental's service (OpenDentalService, its HL7 service, an eConnector left behind by an Open
+		///Dental install) and is never started. Also left out: the names in listServiceNamesExcluded (the services that run an HQ relay exe), and any
+		///name containing EConnector or CustListener, in case the lookup by exe failed. Never null.</summary>
+		public static List<string> GetServiceNamesToStart(IEnumerable<string> listServiceNames,IEnumerable<string> listServiceNamesExcluded) {
+			List<string> listServiceNamesToStart=new List<string>();
+			if(listServiceNames==null) {
+				return listServiceNamesToStart;
+			}
+			List<string> listExcluded=(listServiceNamesExcluded==null) ? new List<string>() : listServiceNamesExcluded.ToList();
+			foreach(string serviceName in listServiceNames) {
+				if(!ProgramNames.IsProgramServiceName(serviceName)
+					|| listExcluded.Contains(serviceName)
+					|| serviceName.IndexOf("EConnector",StringComparison.OrdinalIgnoreCase)>=0
+					|| serviceName.IndexOf("CustListener",StringComparison.OrdinalIgnoreCase)>=0)
+				{
+					continue;
+				}
+				listServiceNamesToStart.Add(serviceName);
+			}
+			return listServiceNamesToStart;
 		}
 
 		public static string GetMySQLPathToExe(string imagePath) {

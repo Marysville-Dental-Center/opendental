@@ -66,8 +66,8 @@ namespace ReleaseFlowTests {
 			Assert.IsTrue(ProgramNames.HL7ServiceName.StartsWith(ProgramNames.ServicePrefix),"The HL7 service must carry the service prefix.");
 		}
 
-		///<summary>Installed services are found by today's prefix and by the prefix of builds before the rename, so an HL7 service installed then
-		///still finds its own name and the program still starts it. Case-sensitive, like the names the installers write.</summary>
+		///<summary>Installed services are looked up and listed by today's prefix and by Open Dental's (the prefix of builds before the rename), so
+		///an HL7 service installed then still finds its own name. Case-sensitive, like the names the installers write.</summary>
 		[TestMethod]
 		public void HasServicePrefix_MatchesTodaysAndThePreRenamePrefix() {
 			Assert.IsTrue(ProgramNames.HasServicePrefix(ProgramNames.HL7ServiceName));
@@ -81,6 +81,89 @@ namespace ReleaseFlowTests {
 			}
 		}
 
+		///<summary>This program's own services carry ServicePrefix; Open Dental's carry LegacyServicePrefix. The two never overlap, so a service is
+		///either one of the program's, which it may start, or Open Dental's, which it only lists.</summary>
+		[TestMethod]
+		public void ServiceNames_AreTheProgramsOrOpenDentals() {
+			foreach(string name in new[] { ProgramNames.HL7ServiceName,ProgramNames.ServicePrefix+"Service",ProgramNames.ServicePrefix }) {
+				Assert.IsTrue(ProgramNames.IsProgramServiceName(name),name);
+				Assert.IsFalse(ProgramNames.IsLegacyServiceName(name),name);
+			}
+			foreach(string name in new[] { ProgramNames.LegacyServicePrefix+"HL7",ProgramNames.HL7ServiceFallbackName,"OpenDentalService","OpenDentalAPIService",
+				"OpenDentalEConnector","OpenDentalCustListener","OpenDentalReplicationService" })
+			{
+				Assert.IsTrue(ProgramNames.IsLegacyServiceName(name),name);
+				Assert.IsFalse(ProgramNames.IsProgramServiceName(name),name);
+			}
+			foreach(string name in new[] { ProgramNames.ServicePrefix.ToLowerInvariant()+"HL7",ProgramNames.LegacyServicePrefix.ToUpperInvariant()+"HL7",
+				"MySQL","MariaDB","",null })
+			{
+				Assert.IsFalse(ProgramNames.IsProgramServiceName(name),"Matched "+(name??"null"));
+				Assert.IsFalse(ProgramNames.IsLegacyServiceName(name),"Matched "+(name??"null"));
+			}
+			Assert.IsFalse(ProgramNames.ServicePrefix.StartsWith(ProgramNames.LegacyServicePrefix,StringComparison.Ordinal),"The prefixes must not overlap.");
+		}
+
+		///<summary>The program starts only its own services. Open Dental's services left on a computer (OpenDentalService, its HL7 services, the
+		///eConnector, ...) are never started automatically, and neither is a service that runs an Open Dental HQ relay exe, whatever its name.</summary>
+		[TestMethod]
+		public void ServicesToStart_AreOnlyThisProgramsOwn() {
+			string[] arrayInstalled=new[] { ProgramNames.LegacyServicePrefix+"HL7","OpenDentalHL7","OpenDentalService","OpenDentalAPIService","OpenDentalEConnector",
+				"OpenDentalCustListener","OpenDentalReplicationService","MariaDB",ProgramNames.HL7ServiceName,ProgramNames.ServicePrefix+"EConnector",
+				ProgramNames.ServicePrefix+"CustListener",ProgramNames.ServicePrefix+"Relay",ProgramNames.ServicePrefix+"Service",null,"" };
+			//OpenPmsDentalRelay stands for a service found by an HQ relay exe (GetServicesToStart looks them up in the registry).
+			List<string> listToStart=ServicesHelper.GetServiceNamesToStart(arrayInstalled,new[] { ProgramNames.ServicePrefix+"Relay" });
+			CollectionAssert.AreEqual(new[] { ProgramNames.HL7ServiceName,ProgramNames.ServicePrefix+"Service" },listToStart);
+			Assert.AreEqual(0,ServicesHelper.GetServiceNamesToStart(null,null).Count);
+			CollectionAssert.AreEqual(new[] { ProgramNames.HL7ServiceName },ServicesHelper.GetServiceNamesToStart(new[] { ProgramNames.HL7ServiceName },null));
+			CollectionAssert.AreEqual(new string[0],ServicesHelper.GetServiceNamesToStart(new[] { ProgramNames.LegacyServicePrefix+"HL7" },null));
+		}
+
+		///<summary>The service starter takes its services from ServicesHelper.GetServicesToStart. The lookups that also match Open Dental's
+		///prefix (HasServicePrefix, GetAllOpenDentServices) are used only where installed services are looked up or listed: the HL7 service
+		///finding its own name and ServiceManager's list.</summary>
+		[TestMethod]
+		public void LegacyServicePrefix_IsOnlyUsedToLookUpOrList() {
+			string starter=Regex.Replace(File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","Main Modules","FormOpenDentalThreads.cs")),
+				@"//.*$","",RegexOptions.Multiline);
+			int indexStart=starter.IndexOf("private void BeginODServiceStarterThread()");
+			Assert.IsTrue(indexStart>=0,"BeginODServiceStarterThread");
+			string method=starter.Substring(indexStart,starter.IndexOf("odThread.Start(",indexStart)-indexStart);
+			StringAssert.Contains(method,"ServicesHelper.StartServices(ServicesHelper.GetServicesToStart())");
+			Dictionary<string,string[]> dictAllowed=new Dictionary<string,string[]> {
+				["HasServicePrefix("]=new[] { @"CodeBase\Utilities\ProgramNames.cs",@"CodeBase\Utilities\ServicesHelper.cs",@"OpenPmsDentalHL7\Program.cs" },
+				["GetAllOpenDentServices("]=new[] { @"CodeBase\Utilities\ServicesHelper.cs",@"ServiceManager\FormMain.cs" },
+				["LegacyServicePrefix"]=new[] { @"CodeBase\Utilities\ProgramNames.cs" },
+			};
+			List<string> listProblems=new List<string>();
+			foreach(string path in GetProductSourceFiles(TestPaths.RepoRoot)) {
+				string relativePath=path.Substring(TestPaths.RepoRoot.TrimEnd('\\').Length+1);
+				string code=Regex.Replace(File.ReadAllText(path),@"//.*$","",RegexOptions.Multiline);//Comments may name them.
+				foreach(KeyValuePair<string,string[]> pair in dictAllowed) {
+					if(code.Contains(pair.Key) && !pair.Value.Contains(relativePath,StringComparer.OrdinalIgnoreCase)) {
+						listProblems.Add(relativePath+": "+pair.Key);
+					}
+				}
+			}
+			Assert.AreEqual(0,listProblems.Count,"The old service prefix is used outside a lookup or list: "+string.Join("; ",listProblems));
+		}
+
+		///<summary>The .cs files of the program below folder: without the test and tool folders at the top of the repository, and without build
+		///output and other worktrees at any depth.</summary>
+		private static List<string> GetProductSourceFiles(string folder,bool isTop=true) {
+			string[] arraySkipped=new[] { "bin","obj","packages",".git",".vs",".claude","TestResults","node_modules" };
+			string[] arraySkippedTop=new[] { "tests","tools","NoHqTests","UnitTests","UnitTestsCore" };
+			List<string> listFiles=new List<string>(Directory.GetFiles(folder,"*.cs"));
+			foreach(string subfolder in Directory.GetDirectories(folder)) {
+				string name=Path.GetFileName(subfolder);
+				if(arraySkipped.Contains(name,StringComparer.OrdinalIgnoreCase) || (isTop && arraySkippedTop.Contains(name,StringComparer.OrdinalIgnoreCase))) {
+					continue;
+				}
+				listFiles.AddRange(GetProductSourceFiles(subfolder,isTop:false));
+			}
+			return listFiles;
+		}
+
 		///<summary>The HL7 service's fallback name is Open Dental's run-time default, not the installer's name. Existing HL7 setups saved it into
 		///HL7Def.HL7ServiceName or the eCW HL7ServiceName property, and the service refuses to start when its name differs from the saved one, so
 		///a different value would stop their HL7 feed.</summary>
@@ -90,11 +173,41 @@ namespace ReleaseFlowTests {
 			string code=Regex.Replace(File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"OpenPmsDentalHL7","Program.cs")),@"//.*$","",RegexOptions.Multiline);
 			StringAssert.Contains(code,"serviceHL7.ServiceName=ProgramNames.HL7ServiceFallbackName;","The service's default name must be the fallback name.");
 			Assert.IsFalse(code.Contains("serviceHL7.ServiceName=ProgramNames.HL7ServiceName"),"The installer's name is not the run-time fallback.");
-			//The setup windows tell users to type the fallback name.
-			foreach(string designer in new[] { "FormHL7DefEdit.designer.cs","FormEClinicalWorks.designer.cs" }) {
-				StringAssert.Contains(File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","Forms",designer)),
-					"Typically "+ProgramNames.HL7ServiceFallbackName+".",designer);
+		}
+
+		///<summary>InstallUtil.exe installs the HL7 service through the public Installer type marked RunInstaller(true), which it finds whatever its
+		///namespace. AssemblyInstaller.CheckIfInstallable is the check InstallUtil makes first: it loads the exe and creates its installers, and
+		///installs nothing.</summary>
+		[TestMethod]
+		public void HL7Service_InstallUtilFindsItsInstaller() {
+			string source=File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"OpenPmsDentalHL7","ProjectInstaller.cs"));
+			StringAssert.Contains(source,"namespace OpenPmsDentalHL7 {");
+			string path=Path.Combine(TestPaths.RepoRoot,"OpenPmsDentalHL7","bin","Debug","OpenPmsDentalHL7.exe");
+			if(!File.Exists(path)) {
+				Assert.Inconclusive("OpenPmsDentalHL7 is not built.");
 			}
+			System.Configuration.Install.AssemblyInstaller.CheckIfInstallable(path);
+			Type typeInstaller=System.Reflection.Assembly.LoadFrom(path).GetType("OpenPmsDentalHL7.MyProjectInstaller",throwOnError:true);
+			Assert.IsTrue(typeof(System.Configuration.Install.Installer).IsAssignableFrom(typeInstaller));
+			System.ComponentModel.RunInstallerAttribute runInstallerAttribute=(System.ComponentModel.RunInstallerAttribute)
+				Attribute.GetCustomAttribute(typeInstaller,typeof(System.ComponentModel.RunInstallerAttribute));
+			Assert.IsNotNull(runInstallerAttribute);
+			Assert.IsTrue(runInstallerAttribute.RunInstaller);
+		}
+
+		///<summary>The HL7 setup windows suggest the installer's service name, ProgramNames.HL7ServiceName, which carries ServicePrefix like every
+		///service ServiceManager installs, and never Open Dental's names (the fallback OpenDentalHL7 or the installer's name before the rename).</summary>
+		[TestMethod]
+		public void HL7SetupWindows_SuggestTheInstallersServiceName() {
+			foreach(string designer in new[] { "FormHL7DefEdit.designer.cs","FormEClinicalWorks.designer.cs" }) {
+				string code=File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","Forms",designer));
+				Assert.IsTrue(Regex.IsMatch(code,@"\.Text = ""(?:--)?Typically ""\s*\+\s*CodeBase\.ProgramNames\.HL7ServiceName\s*\+\s*""\.""\s*;"),
+					designer+" must suggest ProgramNames.HL7ServiceName.");
+				foreach(string name in new[] { ProgramNames.HL7ServiceFallbackName,ProgramNames.LegacyServicePrefix+"HL7" }) {
+					Assert.IsFalse(code.Contains("Typically "+name),designer+" still suggests "+name+".");
+				}
+			}
+			Assert.IsTrue(ProgramNames.IsProgramServiceName(ProgramNames.HL7ServiceName));
 		}
 
 		///<summary>The sites that spelled the program's names out now read them from ProgramNames. A literal left behind would keep the old name

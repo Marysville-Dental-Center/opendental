@@ -5,7 +5,9 @@ using System.ServiceProcess;
 using System.ComponentModel;
 using System.Windows.Forms;
 
-namespace OpenDentServer {
+namespace OpenPmsDentalHL7 {
+	///<summary>The installer InstallUtil.exe runs for this service. InstallUtil finds it by the RunInstaller attribute on a public Installer
+	///type, whatever its namespace. /ServiceName=&lt;name&gt; installs the service under another name.</summary>
 	[RunInstallerAttribute(true)]
 	public class MyProjectInstaller:Installer {
 		private ServiceInstaller serviceInstaller1;
