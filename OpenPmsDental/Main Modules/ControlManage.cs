@@ -964,7 +964,7 @@ namespace OpenPmsDental{
 				}
 				string userName=listProgPropsForClinic.Find(x => x.PropertyDesc=="SftpUsername")?.PropertyValue??"";
 				string userPassword=Secrets.TryDecrypt(listProgPropsForClinic.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
-				if(Sftp.IsConnectionValid(sftpAddress,userName,userPassword,sftpPort)) {
+				if(Sftp.IsConnectionValid(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort)) {
 					return true;
 				}
 			}

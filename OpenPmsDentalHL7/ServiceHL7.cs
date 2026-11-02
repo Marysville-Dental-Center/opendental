@@ -305,7 +305,9 @@ namespace OpenPmsDentalHL7 {
 					port=int.Parse(serverHostPort[1]);//port verified to be an int
 				}
 				//timeout after 15 seconds
-				sftpSession=new SftpSession(serverHostPort[0],port,sftpUsername,sftpPassword,TimeSpan.FromSeconds(15));
+				//The server's host key is checked against the stored one (SshHostKeys); a refused key is in the message below and in Setup, SSH Host
+				//Keys.
+				sftpSession=new SftpSession(serverHostPort[0],port,sftpUsername,sftpPassword,SshHostKeys.Store,TimeSpan.FromSeconds(15));
 				if(IsVerboseLogging) {
 					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Connecting to the SFTP server to retrieve HL7 message files.",EventLogEntryType.Information);
 				}

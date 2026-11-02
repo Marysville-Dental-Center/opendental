@@ -57,7 +57,7 @@ namespace OpenPmsDentalBusiness.Eclaims
 				return false;
 			}
 			try{
-				sftpSession=new SftpSession(remoteHost,22,_clearinghouseClin.LoginID,_clearinghouseClin.Password);
+				sftpSession=new SftpSession(remoteHost,22,_clearinghouseClin.LoginID,_clearinghouseClin.Password,SshHostKeys.Store);
 				sftpSession.Connect();
 			}
 			catch(Exception ex){

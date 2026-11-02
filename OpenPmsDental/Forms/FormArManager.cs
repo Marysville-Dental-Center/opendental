@@ -1570,7 +1570,7 @@ namespace OpenPmsDental {
 				string userPassword=Secrets.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 				byte[] fileContents=Encoding.ASCII.GetBytes(TsiMsgConstructor.GetPlacementFileHeader()+"\r\n"+string.Join("\r\n",kvp.Value.Values));
 				try {
-					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,sftpPort) {
+					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort) {
 						Folder="/xfer/incoming",
 						FileName="TsiPlacements_"+DateTime.Now.ToString("yyyyMMddhhmmss")+".txt",
 						ByteArray=fileContents,
@@ -1623,7 +1623,7 @@ namespace OpenPmsDental {
 				string userPassword=Secrets.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 				byte[] fileContents=Encoding.ASCII.GetBytes(TsiMsgConstructor.GetUpdateFileHeader()+"\r\n"+string.Join("\r\n",kvp.Value.Values));
 				try {
-					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,sftpPort) {
+					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort) {
 						Folder="/xfer/incoming",
 						FileName="TsiUpdates_"+DateTime.Now.ToString("yyyyMMddhhmmss")+".txt",
 						ByteArray=fileContents,
@@ -2115,7 +2115,7 @@ namespace OpenPmsDental {
 				string userPassword=Secrets.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 				byte[] fileContents=Encoding.ASCII.GetBytes(TsiMsgConstructor.GetUpdateFileHeader()+"\r\n"+string.Join("\r\n",kvp.Value.Values));
 				try {
-					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,sftpPort) {
+					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort) {
 						Folder="/xfer/incoming",
 						FileName="TsiUpdates_"+DateTime.Now.ToString("yyyyMMddhhmmss")+".txt",
 						ByteArray=fileContents,

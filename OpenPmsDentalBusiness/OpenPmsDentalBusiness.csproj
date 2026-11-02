@@ -1175,6 +1175,7 @@
     <Compile Include="InternalTools\Job Manager\BugCrud.cs" />
     <Compile Include="Data Interface\UserClinics.cs" />
     <Compile Include="Data Interface\ProviderErxs.cs" />
+    <Compile Include="Data Interface\SshHostKeys.cs" />
     <Compile Include="Data Interface\StateAbbrs.cs" />
     <Compile Include="Data Interface\RequiredFieldConditions.cs" />
     <Compile Include="Data Interface\RequiredFields.cs" />

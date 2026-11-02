@@ -288,7 +288,7 @@ namespace OpenPmsDentalBusiness{
 				return false;
 			}
 			if(hasConnection) {
-				return Sftp.IsConnectionValid(sftpAddress,userName,userPassword,sftpPort);
+				return Sftp.IsConnectionValid(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort);
 			}
 			return true;
 		}
@@ -384,7 +384,7 @@ namespace OpenPmsDentalBusiness{
 			}
 			string msg=TsiMsgConstructor.GenerateUpdate(patAging.PatNum,clientId,TsiTransType.SS,0.00,patAging.AmountDue);
 			byte[] byteArrayFileContents=Encoding.ASCII.GetBytes(TsiMsgConstructor.GetUpdateFileHeader()+"\r\n"+msg);
-			TaskStateUpload taskStateUpload=new Sftp.Upload(sftpAddress,userName,userPassword,sftpPort);
+			TaskStateUpload taskStateUpload=new Sftp.Upload(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort);
 			taskStateUpload.Folder="/xfer/incoming";
 			taskStateUpload.FileName="TsiUpdates_"+DateTime.Now.ToString("yyyyMMddhhmmss")+".txt";
 			taskStateUpload.ByteArray=byteArrayFileContents;

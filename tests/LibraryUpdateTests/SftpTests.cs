@@ -1,6 +1,7 @@
-// SFTP with SSH.NET 2026 in place of SharpSSH: remote path handling (the A to Z folders, the Denti-Cal server field), the host key check every
-// SSH connection gets (SshHostKeys: a server's key may not change while the program runs), and a connection to something that is not an SSH
-// server failing within its timeout. Keys are generated for each run with BouncyCastle; no SSH server, network or key file is needed.
+// SFTP with SSH.NET 2026 in place of SharpSSH: remote path handling (the A to Z folders, the Denti-Cal server field), the host key type read
+// from the key blob, and a connection to something that is not an SSH server failing within its timeout. The remembered host keys themselves
+// (SshHostKeyCheck and the sshhostkey table) are tested in tests/SshHostKeyTests. Keys are generated for each run with BouncyCastle; no SSH
+// server, network or key file is needed.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -14,10 +15,8 @@ using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness.Eclaims;
 using OpenPmsDentalStorage;
-using Org.BouncyCastle.Asn1.Sec;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Generators;
-using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Pkcs;
 using Org.BouncyCastle.Security;
 using Renci.SshNet;
@@ -27,39 +26,32 @@ using Renci.SshNet.Security;
 namespace LibraryUpdateTests {
 	[TestClass]
 	public class SftpTests {
-		[TestInitialize]
-		public void TestInitialize() {
-			SshHostKeys.ForgetAll();
-		}
+		///<summary>A host key store in memory, for connections that never get as far as a host key.</summary>
+		private class MemoryHostKeyStore:ISshHostKeyStore {
+			public readonly Dictionary<string,SshHostKeyFingerprint> DictKeys=new Dictionary<string,SshHostKeyFingerprint>();
+			public int CountRefusals;
 
-		[TestCleanup]
-		public void TestCleanup() {
-			SshHostKeys.ForgetAll();
-		}
+			public SshHostKeyFingerprint GetStoredKey(string host,int port) {
+				DictKeys.TryGetValue(host+":"+port,out SshHostKeyFingerprint fingerprint);
+				return fingerprint;
+			}
 
-		///<summary>A PKCS#8 PEM private key, new for each call.</summary>
-		private static string MakeEd25519Pem() {
-			Ed25519KeyPairGenerator ed25519KeyPairGenerator=new Ed25519KeyPairGenerator();
-			ed25519KeyPairGenerator.Init(new Ed25519KeyGenerationParameters(new SecureRandom()));
-			return ToPem(ed25519KeyPairGenerator.GenerateKeyPair().Private);
+			public SshHostKeyFingerprint StoreFirstKey(string host,int port,SshHostKeyFingerprint fingerprint) {
+				if(!DictKeys.ContainsKey(host+":"+port)) {
+					DictKeys[host+":"+port]=fingerprint;
+				}
+				return DictKeys[host+":"+port];
+			}
+
+			public void RecordRefusedKey(string host,int port,SshHostKeyFingerprint fingerprintStored,SshHostKeyFingerprint fingerprintRefused) {
+				CountRefusals++;
+			}
 		}
 
 		private static string MakeRsaPem() {
 			RsaKeyPairGenerator rsaKeyPairGenerator=new RsaKeyPairGenerator();
 			rsaKeyPairGenerator.Init(new KeyGenerationParameters(new SecureRandom(),1024));
-			return ToPem(rsaKeyPairGenerator.GenerateKeyPair().Private);
-		}
-
-		///<summary>A SEC 1 PEM private key on nistp256 ("EC PRIVATE KEY", as OpenSSL writes it), new for each call. Not PKCS#8: BouncyCastle writes
-		///the curve inside the EC key as well, which SSH.NET's PKCS#8 reader does not expect.</summary>
-		private static string MakeEcdsaPem() {
-			ECKeyPairGenerator ecKeyPairGenerator=new ECKeyPairGenerator("ECDSA");
-			ecKeyPairGenerator.Init(new ECKeyGenerationParameters(SecObjectIdentifiers.SecP256r1,new SecureRandom()));
-			byte[] arrayDer=PrivateKeyInfoFactory.CreatePrivateKeyInfo(ecKeyPairGenerator.GenerateKeyPair().Private).ParsePrivateKey().GetDerEncoded();
-			return "-----BEGIN EC PRIVATE KEY-----\n"+Convert.ToBase64String(arrayDer,Base64FormattingOptions.InsertLineBreaks)+"\n-----END EC PRIVATE KEY-----\n";
-		}
-
-		private static string ToPem(AsymmetricKeyParameter asymmetricKeyParameter) {
+			AsymmetricKeyParameter asymmetricKeyParameter=rsaKeyPairGenerator.GenerateKeyPair().Private;
 			byte[] arrayDer=PrivateKeyInfoFactory.CreatePrivateKeyInfo(asymmetricKeyParameter).GetEncoded();
 			return "-----BEGIN PRIVATE KEY-----\n"+Convert.ToBase64String(arrayDer,Base64FormattingOptions.InsertLineBreaks)+"\n-----END PRIVATE KEY-----\n";
 		}
@@ -71,10 +63,6 @@ namespace LibraryUpdateTests {
 			{
 				return privateKeyFile.HostKeyAlgorithms.Cast<KeyHostAlgorithm>().Select(x => new HostKeyEventArgs(x)).ToList();
 			}
-		}
-
-		private static bool CanTrust(string host,int port,HostKeyEventArgs hostKeyEventArgs) {
-			return SshHostKeys.CanTrust(host,port,SshHostKeys.GetKeyType(hostKeyEventArgs.HostKey),hostKeyEventArgs.FingerPrintSHA256);
 		}
 
 		[TestMethod]
@@ -106,96 +94,24 @@ namespace LibraryUpdateTests {
 		}
 
 		[TestMethod]
-		public void HostKey_IsTrustedFirst_ThenOnlyTheSameKey() {
-			List<HostKeyEventArgs> listKeyA=GetHostKeyEvents(MakeEd25519Pem());
-			List<HostKeyEventArgs> listKeyB=GetHostKeyEvents(MakeEd25519Pem());
-			Assert.AreEqual("ssh-ed25519",SshHostKeys.GetKeyType(listKeyA[0].HostKey));
-			Assert.AreNotEqual(listKeyA[0].FingerPrintSHA256,listKeyB[0].FingerPrintSHA256);
-			Assert.IsTrue(CanTrust("sftp.example.test",22,listKeyA[0]),"The first key of a server is trusted, as before.");
-			Assert.IsTrue(CanTrust("sftp.example.test",22,listKeyA[0]),"The same key again.");
-			Assert.IsTrue(CanTrust("SFTP.Example.Test ",22,listKeyA[0]),"Host names compare without case.");
-			Assert.IsNull(SshHostKeys.GetRefusalMessage("sftp.example.test",22));
-			Assert.IsFalse(CanTrust("sftp.example.test",22,listKeyB[0]),"Another key of the same type from the same server is refused.");
-			string message=SshHostKeys.GetRefusalMessage("sftp.example.test",22);
-			StringAssert.Contains(message,"SHA256:"+listKeyA[0].FingerPrintSHA256);
-			StringAssert.Contains(message,"SHA256:"+listKeyB[0].FingerPrintSHA256);
-			StringAssert.Contains(message,"fingerprint changed");
-			Assert.IsFalse(CanTrust("sftp.example.test",22,listKeyB[0]),"Still refused.");
-			Assert.IsTrue(CanTrust("sftp.example.test",2222,listKeyB[0]),"Another port is another server.");
-			Assert.IsTrue(CanTrust("sftp2.example.test",22,listKeyB[0]),"Another host is another server.");
-			Assert.IsTrue(CanTrust("sftp.example.test",22,listKeyA[0]),"The remembered key is still good.");
-			Assert.IsNull(SshHostKeys.GetRefusalMessage("sftp.example.test",22),"A good key clears the refusal.");
-			Assert.IsFalse(SshHostKeys.CanTrust("sftp3.example.test",22,"ssh-ed25519",""),"No fingerprint, no trust.");
+		public void KeyType_IsReadFromTheKeyBlob() {
+			Assert.AreEqual("",SshHostKeyCheck.GetKeyType(null));
+			Assert.AreEqual("",SshHostKeyCheck.GetKeyType(new byte[] { 0,0,0 }));
+			Assert.AreEqual("",SshHostKeyCheck.GetKeyType(new byte[] { 0,0,0,20,(byte)'s' }),"A length past the end.");
+			Assert.AreEqual("",SshHostKeyCheck.GetKeyType(new byte[] { 0xff,0xff,0xff,0xff,(byte)'s' }));
+			Assert.AreEqual("ssh-rsa",SshHostKeyCheck.GetKeyType(new byte[] { 0,0,0,7,(byte)'s',(byte)'s',(byte)'h',(byte)'-',(byte)'r',(byte)'s',(byte)'a',0,0 }));
 		}
 
 		[TestMethod]
 		public void HostKey_OneRsaKeyUnderEverySignatureAlgorithm_IsOneKey() {
-			//SSH.NET offers an RSA key as rsa-sha2-512, rsa-sha2-256 and ssh-rsa; whichever the server picks, it is the same key.
+			//SSH.NET offers an RSA key as rsa-sha2-512, rsa-sha2-256 and ssh-rsa; whichever the server picks, it is the same stored key.
 			List<HostKeyEventArgs> listRsa=GetHostKeyEvents(MakeRsaPem());
 			Assert.IsTrue(listRsa.Count>=2,"Algorithms: "+string.Join(", ",listRsa.Select(x => x.HostKeyName)));
-			Assert.IsTrue(listRsa.All(x => SshHostKeys.GetKeyType(x.HostKey)=="ssh-rsa"));
-			Assert.AreEqual(1,listRsa.Select(x => x.FingerPrintSHA256).Distinct().Count());
+			SshHostKeyFingerprint fingerprintFirst=SshHostKeyFingerprint.FromHostKeyEvent(listRsa[0]);
+			Assert.AreEqual("ssh-rsa",fingerprintFirst.KeyType);
 			foreach(HostKeyEventArgs hostKeyEventArgs in listRsa) {
-				Assert.IsTrue(CanTrust("sftp.example.test",22,hostKeyEventArgs),hostKeyEventArgs.HostKeyName);
+				Assert.IsTrue(fingerprintFirst.Matches(SshHostKeyFingerprint.FromHostKeyEvent(hostKeyEventArgs)),hostKeyEventArgs.HostKeyName);
 			}
-			Assert.IsNull(SshHostKeys.GetRefusalMessage("sftp.example.test",22));
-			//SSH.NET offers the same algorithms in the same order every time, so the server picks the same key type every time. A key of another
-			//type is what a man in the middle would offer to get past the check: it is refused like a changed key.
-			List<HostKeyEventArgs> listEd25519=GetHostKeyEvents(MakeEd25519Pem());
-			Assert.IsFalse(CanTrust("sftp.example.test",22,listEd25519[0]),"A key of another type from the same server is refused.");
-			string message=SshHostKeys.GetRefusalMessage("sftp.example.test",22);
-			StringAssert.Contains(message,"key type changed");
-			StringAssert.Contains(message,"ssh-rsa (SHA256:"+listRsa[0].FingerPrintSHA256+")");
-			StringAssert.Contains(message,"ssh-ed25519 (SHA256:"+listEd25519[0].FingerPrintSHA256+")");
-			Assert.IsFalse(CanTrust("sftp.example.test",22,GetHostKeyEvents(MakeRsaPem())[0]),"A new RSA key is still refused.");
-			StringAssert.Contains(SshHostKeys.GetRefusalMessage("sftp.example.test",22),"fingerprint changed");
-			foreach(HostKeyEventArgs hostKeyEventArgs in listRsa) {
-				Assert.IsTrue(CanTrust("sftp.example.test",22,hostKeyEventArgs),"The remembered RSA key is still good: "+hostKeyEventArgs.HostKeyName);
-			}
-		}
-
-		[TestMethod]
-		public void HostKey_Ed25519First_ThenEcdsa_IsRefused() {
-			List<HostKeyEventArgs> listEd25519=GetHostKeyEvents(MakeEd25519Pem());
-			List<HostKeyEventArgs> listEcdsa=GetHostKeyEvents(MakeEcdsaPem());
-			Assert.AreEqual("ecdsa-sha2-nistp256",SshHostKeys.GetKeyType(listEcdsa[0].HostKey));
-			Assert.IsTrue(CanTrust("sftp.example.test",22,listEd25519[0]),"The first key of a server is trusted.");
-			Assert.IsFalse(CanTrust("sftp.example.test",22,listEcdsa[0]),"An ECDSA key after the Ed25519 one is refused.");
-			string message=SshHostKeys.GetRefusalMessage("sftp.example.test",22);
-			StringAssert.Contains(message,"key type changed");
-			StringAssert.Contains(message,"ssh-ed25519 (SHA256:"+listEd25519[0].FingerPrintSHA256+")");
-			StringAssert.Contains(message,"ecdsa-sha2-nistp256 (SHA256:"+listEcdsa[0].FingerPrintSHA256+")");
-			Assert.IsFalse(CanTrust("sftp.example.test",22,listEcdsa[0]),"Still refused.");
-			//The type alone is enough: even a fingerprint the server presented before is refused under another type.
-			Assert.IsFalse(SshHostKeys.CanTrust("sftp.example.test",22,"ecdsa-sha2-nistp256",listEd25519[0].FingerPrintSHA256));
-			Assert.IsTrue(CanTrust("sftp.example.test",22,listEd25519[0]),"The remembered key is still good.");
-			Assert.IsNull(SshHostKeys.GetRefusalMessage("sftp.example.test",22));
-			Assert.IsTrue(CanTrust("sftp.example.test",2222,listEcdsa[0]),"Another port is another server.");
-		}
-
-		[TestMethod]
-		public void KeyType_IsReadFromTheKeyBlob() {
-			Assert.AreEqual("",SshHostKeys.GetKeyType(null));
-			Assert.AreEqual("",SshHostKeys.GetKeyType(new byte[] { 0,0,0 }));
-			Assert.AreEqual("",SshHostKeys.GetKeyType(new byte[] { 0,0,0,20,(byte)'s' }),"A length past the end.");
-			Assert.AreEqual("",SshHostKeys.GetKeyType(new byte[] { 0xff,0xff,0xff,0xff,(byte)'s' }));
-			Assert.AreEqual("ssh-rsa",SshHostKeys.GetKeyType(new byte[] { 0,0,0,7,(byte)'s',(byte)'s',(byte)'h',(byte)'-',(byte)'r',(byte)'s',(byte)'a',0,0 }));
-		}
-
-		[TestMethod]
-		public void Refusal_IsExplainedOnlyForThatServer() {
-			List<HostKeyEventArgs> listKeyA=GetHostKeyEvents(MakeEd25519Pem());
-			List<HostKeyEventArgs> listKeyB=GetHostKeyEvents(MakeEd25519Pem());
-			Assert.IsTrue(CanTrust("sftp.example.test",22,listKeyA[0]));
-			Assert.IsFalse(CanTrust("sftp.example.test",22,listKeyB[0]));
-			SshConnectionException exNegotiation=new SshConnectionException("Key exchange negotiation failed.");
-			Exception exExplained=SshHostKeys.Explain(exNegotiation,"sftp.example.test",22);
-			Assert.AreNotSame(exNegotiation,exExplained);
-			StringAssert.Contains(exExplained.Message,"changed while the program was running");
-			Assert.AreSame(exNegotiation,exExplained.InnerException);
-			Assert.AreSame(exNegotiation,SshHostKeys.Explain(exNegotiation,"other.example.test",22));
-			Exception exOther=new SocketException();
-			Assert.AreSame(exOther,SshHostKeys.Explain(exOther,"sftp.example.test",22),"Only SSH connection failures.");
 		}
 
 		[TestMethod]
@@ -219,9 +135,10 @@ namespace LibraryUpdateTests {
 			});
 			thread.IsBackground=true;
 			thread.Start();
+			MemoryHostKeyStore memoryHostKeyStore=new MemoryHostKeyStore();
 			Stopwatch stopwatch=Stopwatch.StartNew();
 			try {
-				using(SftpSession sftpSession=new SftpSession("127.0.0.1",port,"user","synthetic-password",TimeSpan.FromSeconds(2))) {
+				using(SftpSession sftpSession=new SftpSession("127.0.0.1",port,"user","synthetic-password",memoryHostKeyStore,TimeSpan.FromSeconds(2))) {
 					sftpSession.Connect();
 				}
 				Assert.Fail("Connect should fail.");
@@ -231,12 +148,14 @@ namespace LibraryUpdateTests {
 			}
 			catch(Exception ex) {
 				Assert.IsTrue(ex is SshException || ex is SocketException,ex.GetType().Name+": "+ex.Message);
+				Assert.IsFalse(ex is SshHostKeyRefusedException,"No host key was seen, so none was refused: "+ex.Message);
 			}
 			finally {
 				tcpListener.Stop();
 			}
 			Assert.IsTrue(stopwatch.Elapsed<TimeSpan.FromSeconds(10),"Took "+stopwatch.Elapsed);
-			Assert.IsNull(SshHostKeys.GetRefusalMessage("127.0.0.1",port),"No host key was seen, so none was refused.");
+			Assert.AreEqual(0,memoryHostKeyStore.DictKeys.Count,"A connection that failed stores no key.");
+			Assert.AreEqual(0,memoryHostKeyStore.CountRefusals);
 		}
 	}
 }

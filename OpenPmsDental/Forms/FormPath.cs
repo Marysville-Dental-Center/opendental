@@ -365,8 +365,9 @@ namespace OpenPmsDental{
 			if(radioSftp.Checked) {
 				bool doesFileExist;
 				try {
-					doesFileExist=OpenPmsDentalStorage.Sftp.FileExists(textSftpHostname.Text,textSftpUsername.Text,textSftpPassword.Text,
-						ODFileUtils.CombinePaths(textSftpAtoZ.Text,"A",'/'));
+					//A refused host key throws, so its message (the server and both keys) is shown below.
+					doesFileExist=OpenPmsDentalStorage.Sftp.FileExists(textSftpHostname.Text,textSftpUsername.Text,textSftpPassword.Text,SshHostKeys.Store,
+						ODFileUtils.CombinePaths(textSftpAtoZ.Text,"A",'/'),doThrowHostKeyRefusal:true);
 				}
 				catch(Exception ex) {
 					Cursor=Cursors.Default;
