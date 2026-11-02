@@ -110,8 +110,10 @@ namespace OpenPmsDental{
 
 		///<summary>The text of the first entry: the attribution, the GPL notice of the source headers ("version 2 of the License, or (at your
 		///option) any later version"), how the program is distributed with PDFsharp and MigraDoc (GNU GPL version 3 with their GNU AGPL version 3,
-		///whose network clause then applies to the combination as a whole), the GPL version 2 text (Resources\GPL.txt; the same license as LICENSE in the repository root) and the GPL version 3 text
-		///(LICENSE-GPL-3.0.txt).</summary>
+		///whose network clause then applies to the combination as a whole, and, since PDFsharp as built here is a modified version, to any version
+		///of the program that users reach over a network), where the source of the release is (its source archive, with PDFsharp,
+		///MigraDoc and WeCantSpell.Hunspell as built), the GPL version 2 text (Resources\GPL.txt; the same license as LICENSE in the repository root)
+		///and the GPL version 3 text (LICENSE-GPL-3.0.txt).</summary>
 		public static string GetProgramLicenseText() {
 			return AboutBoxInfo.ProductName+"\r\n\r\n"
 				+AboutBoxInfo.Attribution+"\r\n\r\n"
@@ -123,9 +125,17 @@ namespace OpenPmsDental{
 				+"version 3. The program as a whole is therefore distributed under the terms of the GNU General Public License, version 3, which "
 				+"\"any later version\" above allows, and PDFsharp and MigraDoc keep the terms of the GNU Affero General Public License, version 3 "
 				+"(section 13 of each license). By the same section 13, the GNU Affero General Public License's requirements on interaction "
-				+"through a network apply to the combination as a whole; NOTICE in the program folder says what that means for a modified version "
-				+"that users reach over a network. The text of version 3 follows the text of version 2 below; both are in the program folder, as "
-				+"LICENSE-GPL-3.0.txt and LICENSE-AGPL-3.0.txt.\r\n\r\n"
+				+"through a network apply to the combination as a whole. They apply to a modified version, and PDFsharp as built for this program is "
+				+"itself one (see below), so they apply to any version of the program that users reach over a network, not only to versions that "
+				+"someone else modifies: such a version must prominently offer those users its Corresponding Source. NOTICE in the program folder "
+				+"says more. The text of version 3 follows the text of version 2 below; both are in the program folder, as LICENSE-GPL-3.0.txt and "
+				+"LICENSE-AGPL-3.0.txt.\r\n\r\n"
+				+"Where the source is: the complete source of this release, the Corresponding Source of everything its setup installs, is the source "
+				+"archive OpenPmsDental-"+OpenPmsDentalBusiness.ForkVersions.GetReleaseVersion(typeof(LicenseList).Assembly)+"-source.zip published "
+				+"with the release, next to the setup. It holds the "
+				+"program's source at the release commit and the source of PDFsharp, MigraDoc and WeCantSpell.Hunspell as built (git submodules of "
+				+"the repository). PDFsharp is built with one file changed: empira's licence wrapper, which needs empira's prebuilt "
+				+"PdfSharp.License.dll, is replaced by an open one that holds the AGPL licence check itself (NOTICE in the program folder).\r\n\r\n"
 				+"Third-party components keep their own licenses: see \""+NameThirdPartyNotices+"\" and the entries after it.\r\n\r\n"
 				+NormalizeNewLines(Properties.Resources.GPL)+"\r\n\r\n"
 				+NormalizeNewLines(Properties.Resources.LicenseGpl3);

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <!-- PdfSharp.Shared 6.5.0 from empira's source in the submodule third-party\PDFsharp (src\foundation\src\shared\src\PdfSharp.Shared), as
+       upstream's PdfSharp.Shared.csproj builds it for netstandard2.0. docs\third-party-source-builds.md. -->
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProjectGuid>{E7DBF664-0058-4F44-96A8-A58F064271DC}</ProjectGuid>
+    <RootNamespace>PdfSharp</RootNamespace>
+    <AssemblyName>PdfSharp.Shared</AssemblyName>
+  </PropertyGroup>
+  <Import Project="..\SourceBuild.props" />
+  <Import Project="..\PDFsharp.props" />
+  <PropertyGroup>
+    <SourceBuildUpstreamProject>$(PdfSharpSourceRoot)shared\src\PdfSharp.Shared\PdfSharp.Shared.csproj</SourceBuildUpstreamProject>
+    <DefineConstants>TRACE;$(PdfSharpNetStandard20Symbols);$(PdfSharpUpstreamConstants)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions">
+      <HintPath>..\..\..\Required dlls\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <!-- Not used by the code; without it, reference resolution looks for the exact System.Memory that Microsoft.Extensions.Logging.Abstractions
+         was built against and copies an older one from Visual Studio's test platform folder (Directory.Build.targets adds it to the search
+         path) into the output, instead of the file of Required dlls. -->
+    <Reference Include="System.Memory">
+      <HintPath>..\..\..\Required dlls\System.Memory.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Upstream: every .cs file of the project folder. -->
+    <Compile Include="$(PdfSharpSourceRoot)shared\src\PdfSharp.Shared\**\*.cs" Exclude="$(PdfSharpSourceRoot)shared\src\PdfSharp.Shared\bin\**;$(PdfSharpSourceRoot)shared\src\PdfSharp.Shared\obj\**">
+      <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\SourceBuild.targets" />
+</Project>

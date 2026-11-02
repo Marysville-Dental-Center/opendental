@@ -8,7 +8,9 @@ This is a fork of the [Open Dental](https://www.opendental.com) source code, wri
 
 The source files say "either version 2 of the License, or (at your option) any later version", so the program is licensed under the **GNU GPL v2 or later**. LICENSE holds the version 2 text.
 
-The program as distributed includes PDFsharp and MigraDoc 6.5, which are licensed under the **GNU AGPL v3**. The AGPL combines with GPL version 3 but not with version 2, so the program with them is distributed under the **GNU GPL v3** (which "or later" allows), and PDFsharp and MigraDoc keep the AGPL's terms. By section 13 of both licenses, the AGPL's requirements on interaction through a network apply to the combination as a whole: a modified version that users reach over a network (a hosted Middle Tier, say) must offer them the Corresponding Source of the whole program. That is certain when PDFsharp or MigraDoc are modified, and not settled for changes to the other parts only. [LICENSE-GPL-3.0.txt](LICENSE-GPL-3.0.txt) and [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt) hold those texts; [NOTICE](NOTICE) explains it.
+The program as distributed includes PDFsharp and MigraDoc 6.5, which are licensed under the **GNU AGPL v3**. The AGPL combines with GPL version 3 but not with version 2, so the program with them is distributed under the **GNU GPL v3** (which "or later" allows), and PDFsharp and MigraDoc keep the AGPL's terms. By section 13 of both licenses, the AGPL's requirements on interaction through a network apply to the combination as a whole. They apply to a modified version, and the PDFsharp built here is itself one (one file replaced, see below), so they cover any version of the program that users reach over a network, not only versions someone else modifies: a hosted Middle Tier, even one without local changes, must prominently offer its users the Corresponding Source of the whole program, such as a link to the release's `OpenPmsDental-<version>-source.zip`. [LICENSE-GPL-3.0.txt](LICENSE-GPL-3.0.txt) and [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt) hold those texts; [NOTICE](NOTICE) explains it.
+
+PDFsharp and MigraDoc 6.5.0 (empira's AGPL source, tag v6.5.0) and WeCantSpell.Hunspell 7.0.1 are built here from their source, git submodules under `third-party/`. The PDFsharp built here replaces one file, empira's wrapper around its closed `PdfSharp.License.dll`, with an open one (a modified version under AGPL section 5a), so every file the setup installs has published source. Each release publishes its complete source, the repository and the submodules at the release commit, as `OpenPmsDental-<version>-source.zip` next to the setup ([docs/third-party-source-builds.md](docs/third-party-source-builds.md)).
 
 The program's namespaces, assemblies and executable carry its code name, `OpenPmsDental` (`OpenPmsDental.exe`, `OpenPmsDentalBusiness.dll`; the mapping from Open Dental's names is in [docs/port-notes/RENAME.md](docs/port-notes/RENAME.md)). The product name, "Open PMS - Dental", appears in the window title, the splash, the About box, the program's messages, the file properties of every shipped assembly (version 0.0), the product identity sent to vendors, and this repository's documents. Names that existing installations and databases depend on keep Open Dental's spelling: the database (tables, columns, preference names, stored enum values), `FreeDentalConfig.xml`, the Middle Tier's web service names and IIS path, and internal type names such as `FormOpenDental`. The solution files keep their names, `OpenDental.sln` and `OpenDental.Local.slnf`.
 
@@ -82,6 +84,17 @@ One command installs the Build Tools with everything above:
 ```bash
 winget install --id Microsoft.VisualStudio.2022.BuildTools --exact --override "--passive --wait --norestart --add Microsoft.VisualStudio.Workload.ManagedDesktopBuildTools --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --add Microsoft.VisualStudio.Workload.WebBuildTools --add Microsoft.Net.Component.4.8.TargetingPack --add Microsoft.Net.Component.4.8.SDK --add Microsoft.Net.Component.4.7.2.TargetingPack --add Microsoft.VisualStudio.Component.NuGet.BuildTools --add Microsoft.VisualStudio.Component.TestTools.BuildTools"
 ```
+
+### Get the source
+
+PDFsharp/MigraDoc and the WeCantSpell.Hunspell spell checker are built from their upstream source, which this repository references as git submodules instead of copying it (`third-party/PDFsharp`, `third-party/WeCantSpell.Hunspell`; [docs/third-party-source-builds.md](docs/third-party-source-builds.md)). Clone with them, or fetch them after cloning:
+
+```bash
+git clone --recurse-submodules <repository address>
+git submodule update --init
+```
+
+Without them the build stops with "The upstream source is missing".
 
 ### Build
 
@@ -178,6 +191,7 @@ Then build the solution (see [Build](#build)), start `OpenPmsDental\bin\Debug\Op
 | `installer/` | The Inno Setup 6 script of the workstation setup (`OpenPmsDental.iss`) and its information page |
 | `docs/` | Design notes, the release process, the adoption runbook, the binaries audit and one port note per package (`docs/port-notes/`) |
 | `Required dlls/` | Third-party assemblies the build references. What ships is listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt); the rest is reviewed in [docs/third-party-binaries-audit.md](docs/third-party-binaries-audit.md) |
+| `third-party/` | Upstream source the program builds instead of shipping prebuilt files: the git submodules `PDFsharp` (PDFsharp/MigraDoc 6.5.0, empira's AGPL source) and `WeCantSpell.Hunspell` (7.0.1), pinned to their release commits, and `build/`, this project's own project files that compile them in the solution, with the one PDFsharp file the build replaces ([docs/third-party-source-builds.md](docs/third-party-source-builds.md)) |
 | `ODR/`, `RdlEngine/`, `RdlViewer/` | RDL reports: `ODR.dll`, the code module report definitions call, and the fyiReporting RDL engine and viewer (LGPL 2.1), built from source in the solution and copied next to `OpenPmsDental.exe` ([docs/port-notes/RDL-SRC.md](docs/port-notes/RDL-SRC.md)) |
 | `RdlDesign/`, `DocumentationBuilder/`, `PluginExample/` | Older or standalone projects, not in the solution filter and not built |
 

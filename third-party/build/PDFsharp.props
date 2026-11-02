@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- PDFsharp and MigraDoc 6.5.0, built from empira's AGPL source in the git submodule third-party\PDFsharp
+       (https://github.com/empira/PDFsharp.git, tag v6.5.0). The six projects next to this file build exactly the assemblies the program ships,
+       under upstream's names and strong-name key (src\StrongnameKey.snk), so their identities (name, version 6.5.0.0, public key token
+       f94615aa0424f9eb) are empira's. An upgrade moves the submodule pin and changes the values below (docs\third-party-source-builds.md). -->
+  <PropertyGroup>
+    <SourceBuildRepository>https://github.com/empira/PDFsharp</SourceBuildRepository>
+    <SourceBuildTag>v6.5.0</SourceBuildTag>
+    <SourceBuildCommit>96d5ef81d304d314228712e28e5d7ac3d5e29f86</SourceBuildCommit>
+    <SourceBuildCommitDate>2026-10-14</SourceBuildCommitDate>
+    <SourceBuildVersion>6.5.0</SourceBuildVersion>
+    <SourceBuildAssemblyVersion>6.5.0.0</SourceBuildAssemblyVersion>
+    <SourceBuildFileVersion>6.5.0.0</SourceBuildFileVersion>
+    <!-- Marks this build: upstream's version, the commit, and who built it. empira's NuGet files say 6.5.0+<their build commit>. -->
+    <SourceBuildInformationalVersion>6.5.0+96d5ef81d304.open-pms-dental-source-build</SourceBuildInformationalVersion>
+    <SourceBuildCompany>empira Software</SourceBuildCompany>
+    <SourceBuildCopyright>© 2026 empira</SourceBuildCopyright>
+    <SourceBuildProduct>PDFsharp</SourceBuildProduct>
+    <!-- GitVersion generates a GitVersionInformation class into every upstream assembly; PdfSharp.Shared and MigraDoc.Rendering read it. This
+         build writes the same class (SourceBuild.targets). Its InformationalVersion stays "6.5.0", as in empira's files, because PDFsharp puts
+         it in every PDF's Producer and Creator ("PDFsharp 6.5.0-gdi"). -->
+    <SourceBuildGitVersionInformation>true</SourceBuildGitVersionInformation>
+    <SourceBuildGitInformationalVersion>6.5.0</SourceBuildGitInformationalVersion>
+    <SourceBuildGitBranchName>v6.5.0</SourceBuildGitBranchName>
+    <!-- The upstream source: src\foundation\src of the submodule. -->
+    <PdfSharpSourceRoot>$(ThirdPartyRoot)PDFsharp\src\foundation\src\</PdfSharpSourceRoot>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(ThirdPartyRoot)PDFsharp\src\StrongnameKey.snk</AssemblyOriginatorKeyFile>
+    <LangVersion>latest</LangVersion>
+    <!-- Upstream builds the .NET Framework targets with warning level 0. -->
+    <WarningLevel>0</WarningLevel>
+    <!-- src\Directory.Build.targets: USE_LONG_SIZE (files over 2 GiB) and TEST_CODE_xxx, which every upstream release build sets. -->
+    <PdfSharpUpstreamConstants>USE_LONG_SIZE;TEST_CODE_xxx</PdfSharpUpstreamConstants>
+    <!-- The symbols the .NET SDK sets for upstream's two .NET Framework kinds of build. The -gdi assemblies and MigraDoc.DocumentObjectModel
+         ship as upstream's net462 build, PdfSharp.Shared and PdfSharp.System as its netstandard2.0 build; each project here compiles with
+         those symbols, so the same code paths are taken, and targets the .NET Framework 4.8. -->
+    <PdfSharpNet462Symbols>NETFRAMEWORK;NET462;NET20_OR_GREATER;NET30_OR_GREATER;NET35_OR_GREATER;NET40_OR_GREATER;NET45_OR_GREATER;NET451_OR_GREATER;NET452_OR_GREATER;NET46_OR_GREATER;NET461_OR_GREATER;NET462_OR_GREATER</PdfSharpNet462Symbols>
+    <PdfSharpNetStandard20Symbols>NETSTANDARD;NETSTANDARD2_0;NETSTANDARD1_0_OR_GREATER;NETSTANDARD1_1_OR_GREATER;NETSTANDARD1_2_OR_GREATER;NETSTANDARD1_3_OR_GREATER;NETSTANDARD1_4_OR_GREATER;NETSTANDARD1_5_OR_GREATER;NETSTANDARD1_6_OR_GREATER;NETSTANDARD2_0_OR_GREATER</PdfSharpNetStandard20Symbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Upstream's ImplicitUsings=enable, which classic project files do not have. -->
+    <Compile Include="$(SourceBuildFolder)PDFsharp\GlobalUsings.cs">
+      <Link>SourceBuild\GlobalUsings.cs</Link>
+    </Compile>
+  </ItemGroup>
+</Project>

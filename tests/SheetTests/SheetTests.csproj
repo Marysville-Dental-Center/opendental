@@ -49,9 +49,6 @@
     <Reference Include="MySqlConnector">
       <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
-    <Reference Include="PdfSharp-gdi">
-      <HintPath>..\..\Required dlls\PdfSharp-gdi.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
@@ -67,6 +64,10 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\third-party\build\PdfSharp-gdi\PdfSharp-gdi.csproj">
+      <Project>{60E6C1F3-233C-48E6-8E3F-ADB3AD3FF44A}</Project>
+      <Name>PdfSharp-gdi</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj">
       <Project>{18F7BC78-4B99-48D3-A1F1-0D13A63E3CF9}</Project>
       <Name>xCodeBase</Name>

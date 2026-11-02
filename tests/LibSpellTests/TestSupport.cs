@@ -48,6 +48,14 @@ namespace LibSpellTests {
 			return full;
 		}
 
+		///<summary>True for a file of a git submodule under third-party\ (upstream source, which third-party\build compiles; never changed here).
+		///</summary>
+		public static bool IsInSubmodule(string path) {
+			string relative=Relative(path);
+			return relative.StartsWith(@"third-party\PDFsharp\",StringComparison.OrdinalIgnoreCase)
+				|| relative.StartsWith(@"third-party\WeCantSpell.Hunspell\",StringComparison.OrdinalIgnoreCase);
+		}
+
 		///<summary>Folders never searched: build output, git data, the packages folder, worktrees, editor data.</summary>
 		private static readonly string[] _arraySkippedFolders=new string[] { "bin","obj",".git",".claude",".vs","packages","node_modules" };
 
@@ -97,14 +105,14 @@ namespace LibSpellTests {
 		}
 	}
 
-	///<summary>Scratch databases on the local MariaDB. Every name starts with test_libspell_, so a test can never drop anything else. Only the two
+	///<summary>Scratch databases on the local MariaDB. Every name starts with test_srcref_spell_, so a test can never drop anything else. Only the two
 	///tables the office's own words need are created, from db\init\new-database.sql: dictcustom, and preference with RandomPrimaryKeys off.
 	///</summary>
 	internal static class ScratchDb {
 		public const string Server="127.0.0.1";
 		public const string User="root";
 		public const string Password="";
-		private const string PREFIX="test_libspell_";
+		private const string PREFIX="test_srcref_spell_";
 		///<summary>Scratch databases a crashed run left behind are dropped by later runs once they are this old.</summary>
 		private static readonly TimeSpan _timeSpanStale=TimeSpan.FromHours(12);
 		///<summary>Unique to this test run (start time, process id, a random number), so runs from other worktrees never touch each other's
@@ -166,13 +174,13 @@ namespace LibSpellTests {
 			}
 		}
 
-		///<summary>Drops the test_libspell_ databases of runs that started more than 12 hours ago (a crashed run). Never one of a run that may still
+		///<summary>Drops the test_srcref_spell_ databases of runs that started more than 12 hours ago (a crashed run). Never one of a run that may still
 		///be going.</summary>
 		public static void DropStale() {
 			Regex regex=new Regex("^"+PREFIX+@"(\d{12})_\d+_\d+_[a-z0-9_]+$");
 			List<string> listNames=new List<string>();
 			using(MySqlConnection mySqlConnection=OpenServer())
-			using(MySqlCommand mySqlCommand=new MySqlCommand("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'test\\_libspell\\_%'",
+			using(MySqlCommand mySqlCommand=new MySqlCommand("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'test\\_srcref\\_spell\\_%'",
 				mySqlConnection))
 			using(MySqlDataReader mySqlDataReader=mySqlCommand.ExecuteReader())
 			{

@@ -12,13 +12,13 @@ using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.ForkMigrations;
 
 namespace PdfLibraryTests {
-	///<summary>Creates, connects to and drops the scratch database. Every database name starts with "test_libpdf_" so these tests can never drop
+	///<summary>Creates, connects to and drops the scratch database. Every database name starts with "test_srcref_pdf_" so these tests can never drop
 	///anything else.</summary>
 	public static class TestDb {
 		public const string Server="127.0.0.1";
 		public const string User="root";
 		public const string Password="";
-		private const string PREFIX="test_libpdf_";
+		private const string PREFIX="test_srcref_pdf_";
 		///<summary>Scratch databases left behind by a run that started this long ago are dropped by later runs.</summary>
 		private static readonly TimeSpan _timeSpanStale=TimeSpan.FromHours(12);
 		///<summary>Unique to this test run (UTC start time, process id, random number), because several runs can share the local server.</summary>
@@ -64,7 +64,7 @@ namespace PdfLibraryTests {
 			Regex regex=new Regex("^"+PREFIX+@"(\d{12})_\d+_\d+_[a-z0-9_]+$");
 			List<string> listNames=new List<string>();
 			using(MySqlConnection connection=OpenServer())
-			using(MySqlCommand command=new MySqlCommand("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'test\\_libpdf\\_%'",
+			using(MySqlCommand command=new MySqlCommand("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'test\\_srcref\\_pdf\\_%'",
 				connection))
 			using(MySqlDataReader reader=command.ExecuteReader()) {
 				while(reader.Read()) {

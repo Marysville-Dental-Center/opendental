@@ -23,6 +23,14 @@ version 2, in LICENSE, version 3 in LICENSE-GPL-3.0.txt, and the GNU Affero
 General Public License, version 3, in LICENSE-AGPL-3.0.txt.
 Copyright years are in each project's own license file at its source address.
 
+PDFsharp, MigraDoc and WeCantSpell.Hunspell are built by this project from
+their source: git submodules of this repository (third-party/PDFsharp and
+third-party/WeCantSpell.Hunspell) pinned to the upstream release commits named
+below, compiled by the project files in third-party/build. The source archive
+of each release, OpenPmsDental-<version>-source.zip next to the setup, holds
+the repository and both submodules at the commits the release was built from
+(docs/third-party-source-builds.md).
+
 Files in the repository's "Required dlls" folder that are not listed here are
 not part of the release (see docs/third-party-binaries-audit.md). Among them
 is a support library for the coming library updates, listed here once a
@@ -109,28 +117,38 @@ License:   MIT License
 Source:    https://github.com/bcgit/bc-csharp
 
 --- Component: PDFsharp
-Files:     PdfSharp-gdi.dll, PdfSharp.Charting-gdi.dll, PdfSharp.Shared.dll, PdfSharp.System.dll,
-           PdfSharp.License.dll
-Version:   6.5.0 (NuGet package PDFsharp-GDI 6.5.0, its .NET Framework build; PdfSharp.License.dll
-           is assembly version 7.0.0.0)
+Files:     PdfSharp-gdi.dll, PdfSharp.Charting-gdi.dll, PdfSharp.Shared.dll, PdfSharp.System.dll
+Version:   6.5.0, built by this project from empira's AGPL source: the git submodule
+           third-party/PDFsharp at tag v6.5.0 (commit 96d5ef81d304d314228712e28e5d7ac3d5e29f86),
+           compiled by third-party/build for the .NET Framework 4.8 and signed with empira's
+           strong-name key (assembly version 6.5.0.0, public key token f94615aa0424f9eb)
 Copyright: empira Software GmbH
-License:   GNU Affero General Public License, version 3 (LICENSE-AGPL-3.0.txt). The NuGet package
-           says AGPL-3.0-only; the LICENSE file of the source says "version 3 of the License, or
-           (at your option) any later version". empira's own notice and the license text follow.
-           empira also sells a commercial license; this project does not have one and uses the
-           AGPL license (PdfSharpLicense.SetAgplLicense).
-Source:    https://github.com/empira/PDFsharp (branch release/6.5.0)
-Note:      PdfSharp.License.dll, the license check that PdfSharp-gdi.dll calls before it makes or
-           reads a PDF, is a prebuilt file whose source is not in the public repository. Owner
-           question (docs/owner-questions.md).
+License:   GNU Affero General Public License, version 3 (LICENSE-AGPL-3.0.txt). The LICENSE file of
+           the source says "version 3 of the License, or (at your option) any later version".
+           empira's own notice and the license text follow. empira also sells a commercial
+           license; this project does not have one and uses the AGPL license
+           (PdfSharpLicense.SetAgplLicense).
+Source:    https://github.com/empira/PDFsharp (tag v6.5.0); as built, in the source archive of
+           each release (third-party/PDFsharp and third-party/build)
+Note:      Modified version (GNU AGPL version 3, section 5a). One file of empira's source,
+           src/foundation/src/PDFsharp/src/PdfSharp/root/PdfSharpLicense.cs, is replaced by
+           third-party/build/PdfSharp-gdi/PdfSharpLicense.cs, changed by the Open PMS - Dental
+           contributors on 2026-11-02. empira's file passes the license check to
+           PdfSharp.License.dll, a library empira publishes only prebuilt, without its source; the
+           changed file keeps empira's copyright and holds the AGPL license path itself (no key,
+           no network connection, no message), so the release ships no PdfSharp.License.dll.
+           Every other file is compiled as empira published it.
 
 --- Component: MigraDoc
 Files:     MigraDoc.DocumentObjectModel.dll, MigraDoc.Rendering-gdi.dll
-Version:   6.5.0 (NuGet package PDFsharp-MigraDoc-GDI 6.5.0, its .NET Framework build)
+Version:   6.5.0, built by this project from empira's AGPL source, unmodified: the git submodule
+           third-party/PDFsharp at tag v6.5.0 (commit 96d5ef81d304d314228712e28e5d7ac3d5e29f86),
+           compiled by third-party/build like PDFsharp
 Copyright: empira Software GmbH
 License:   GNU Affero General Public License, version 3 (LICENSE-AGPL-3.0.txt), as PDFsharp.
            empira's own notice and the license text follow.
-Source:    https://github.com/empira/PDFsharp (branch release/6.5.0; MigraDoc is part of it)
+Source:    https://github.com/empira/PDFsharp (tag v6.5.0; MigraDoc is part of it); as built, in
+           the source archive of each release (third-party/PDFsharp and third-party/build)
 
 --- Component: SharpDX
 Files:     SharpDX.dll, SharpDX.Direct3D9.dll, SharpDX.Mathematics.dll
@@ -155,15 +173,18 @@ Source:    https://github.com/DirectProject/nhin-d-dotnet
 
 --- Component: WeCantSpell.Hunspell
 Files:     WeCantSpell.Hunspell.dll
-Version:   7.0.1 (a .NET port of Hunspell 1.7.2 with later upstream fixes; the netstandard2.0 build of the NuGet package)
+Version:   7.0.1 (a .NET port of Hunspell 1.7.2 with later upstream fixes), built by this project from
+           its source, unmodified: the git submodule third-party/WeCantSpell.Hunspell at tag 7.0.1 (commit
+           ab5709d95b2d23541984d22baa0ab2d1e783582f), the library project only, compiled by
+           third-party/build for the .NET Framework 4.8 (assembly version 7.0.0.0, as upstream's)
 Copyright: Aaron Dandy and contributors (the port); Kevin Hendricks (MySpell), Laszlo Nemeth and the Hunspell contributors (Hunspell)
 License:   MPL 1.1 / GPL 2.0 or later / LGPL 2.1 or later tri-license, at the user's choice (the project's own
            text follows). This release uses it under the GPL / LGPL: it distributes it under the GNU Lesser
            General Public License, version 2.1 or later (LICENSE-LGPL-2.1.txt), which also allows its use
            under the GNU General Public License, version 2 or later (LICENSE). No MPL 1.1 text is needed.
            https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt
-Source:    https://github.com/aarondandy/WeCantSpell.Hunspell (release 7.0.1, commit ab5709d95b2d)
-           https://www.nuget.org/packages/WeCantSpell.Hunspell/7.0.1
+Source:    https://github.com/aarondandy/WeCantSpell.Hunspell (tag 7.0.1); as built, in the source archive
+           of each release (third-party/WeCantSpell.Hunspell and third-party/build)
 
 --- Component: Hunspell en_US dictionary
 Files:     embedded in WpfControlsOD.dll (WpfControlsOD/Resources/en_US_aff, en_US_dic)

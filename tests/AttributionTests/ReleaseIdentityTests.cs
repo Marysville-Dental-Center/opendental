@@ -29,7 +29,7 @@ namespace AttributionTests {
 			"System.Numerics.Vectors.dll","System.Runtime.CompilerServices.Unsafe.dll","System.Text.Encodings.Web.dll","System.Text.Json.dll",
 			"System.Threading.Tasks.Extensions.dll","Newtonsoft.Json.dll","MimeKit.dll","MailKit.dll",
 			"Microsoft.Identity.Client.dll","Microsoft.IdentityModel.Abstractions.dll","Renci.SshNet.dll","BouncyCastle.Cryptography.dll",
-			"PdfSharp-gdi.dll","PdfSharp.Charting-gdi.dll","PdfSharp.Shared.dll","PdfSharp.System.dll","PdfSharp.License.dll",
+			"PdfSharp-gdi.dll","PdfSharp.Charting-gdi.dll","PdfSharp.Shared.dll","PdfSharp.System.dll",
 			"MigraDoc.DocumentObjectModel.dll","MigraDoc.Rendering-gdi.dll","SharpDX.dll",
 			"SharpDX.Direct3D9.dll","SharpDX.Mathematics.dll","Tao.OpenGl.dll","Tao.Platform.Windows.dll","Health.Direct.Agent.dll",
 			"Health.Direct.Common.dll","Health.Direct.ResolverPlugins.dll","WeCantSpell.Hunspell.dll","RdlEngine.dll","RdlViewer.dll",

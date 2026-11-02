@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <!-- WeCantSpell.Hunspell 7.0.1 from its source in the git submodule third-party\WeCantSpell.Hunspell
+       (https://github.com/aarondandy/WeCantSpell.Hunspell.git, tag 7.0.1), the library project only (WeCantSpell.Hunspell\), as upstream's
+       WeCantSpell.Hunspell.csproj builds it for netstandard2.0: the same symbols (NO_... for what netstandard2.0 lacks) and its own polyfills
+       (HashCode.cs and the others in the folder), for the .NET Framework 4.8 with System.Memory, System.Buffers and
+       System.Runtime.CompilerServices.Unsafe from "Required dlls". Not strong-named, as upstream's is not. Upstream's AssemblyVersion is the
+       major version (MinVer), 7.0.0.0, so the assembly's identity stays that of the NuGet file it replaces. MinVer, the NuGet packaging and
+       the tests, benchmarks and samples of the repository are not used. The MPL 1.1 / GPL 2.0 or later / LGPL 2.1 or later library is used
+       under its LGPL 2.1 or later option (THIRD-PARTY-NOTICES.txt). docs\third-party-source-builds.md. -->
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProjectGuid>{77D92EA5-468E-49DC-A7FC-10428834806A}</ProjectGuid>
+    <RootNamespace>WeCantSpell.Hunspell</RootNamespace>
+    <AssemblyName>WeCantSpell.Hunspell</AssemblyName>
+  </PropertyGroup>
+  <Import Project="..\SourceBuild.props" />
+  <PropertyGroup>
+    <SourceBuildRepository>https://github.com/aarondandy/WeCantSpell.Hunspell</SourceBuildRepository>
+    <SourceBuildTag>7.0.1</SourceBuildTag>
+    <SourceBuildCommit>ab5709d95b2d23541984d22baa0ab2d1e783582f</SourceBuildCommit>
+    <SourceBuildCommitDate>2025-11-30</SourceBuildCommitDate>
+    <SourceBuildVersion>7.0.1</SourceBuildVersion>
+    <SourceBuildAssemblyVersion>7.0.0.0</SourceBuildAssemblyVersion>
+    <SourceBuildFileVersion>7.0.1.0</SourceBuildFileVersion>
+    <SourceBuildInformationalVersion>7.0.1+ab5709d95b2d.open-pms-dental-source-build</SourceBuildInformationalVersion>
+    <SourceBuildCompany>aarondandy</SourceBuildCompany>
+    <SourceBuildProduct>WeCantSpell.Hunspell</SourceBuildProduct>
+    <SourceBuildDescription>A port of Hunspell for .NET.</SourceBuildDescription>
+    <WeCantSpellSourceFolder>$(ThirdPartyRoot)WeCantSpell.Hunspell\WeCantSpell.Hunspell\</WeCantSpellSourceFolder>
+    <SourceBuildUpstreamProject>$(WeCantSpellSourceFolder)WeCantSpell.Hunspell.csproj</SourceBuildUpstreamProject>
+    <!-- Upstream: LangVersion 14.0 (the field keyword, null-conditional assignment), which this compiler offers as preview. -->
+    <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WarningLevel>4</WarningLevel>
+    <!-- Upstream's netstandard2.0 symbols, and the ones the .NET SDK sets for netstandard2.0. No DEBUG, as in upstream's Release build. -->
+    <DefineConstants>TRACE;NETSTANDARD;NETSTANDARD2_0;NETSTANDARD2_0_OR_GREATER;NO_NUMERICS_BITOPERATIONS;NO_HASHCODE;NO_ENCODING_SPANS;NO_DICTIONARY_GETVALUE;NO_HASHSET_CAPACITY;NO_EXPOSED_NULLANNOTATIONS;NO_SPAN_DECODE;NO_VALUETASK;NO_STREAM_SYSMEM;NO_STRING_SPAN;NO_STRING_CONTAINS;NO_SPAN_CONTAINS;NO_SPAN_CONTAINSANY;NO_KVP_DECONSTRUCT;NO_STATIC_STRINGCHAR_METHODS;NO_SPAN_COMPARISON_SORT;NO_SPAN_SORT;NO_SPAN_REPLACE;NO_NONENUMERATED_COUNT</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Buffers">
+      <HintPath>..\..\..\Required dlls\System.Buffers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Memory">
+      <HintPath>..\..\..\Required dlls\System.Memory.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe">
+      <HintPath>..\..\..\Required dlls\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Upstream: every .cs file of the library folder. -->
+    <Compile Include="$(WeCantSpellSourceFolder)**\*.cs" Exclude="$(WeCantSpellSourceFolder)bin\**;$(WeCantSpellSourceFolder)obj\**">
+      <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\SourceBuild.targets" />
+</Project>

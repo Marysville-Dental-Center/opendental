@@ -1,6 +1,8 @@
 // NHunspell 0.9.6 and its native Hunspell 1.2 (Hunspellx86.dll, Hunspellx64.dll) are gone from the repository, the projects, the sources and the
-// build output; WeCantSpell.Hunspell 7.0.1 (netstandard2.0, managed) is the one spell checker library, used only through WpfControls.SpellCheckL,
-// which both boxes call.
+// build output; WeCantSpell.Hunspell 7.0.1 (managed) is the one spell checker library, used only through WpfControls.SpellCheckL, which both
+// boxes call. It is built from its source: the git submodule third-party\WeCantSpell.Hunspell (GitHub, tag 7.0.1) compiled by
+// third-party\build\WeCantSpell.Hunspell, the library folder whole and nothing else, with upstream's assembly identity and a marked build; no
+// DLL of it is in "Required dlls".
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -19,8 +21,12 @@ namespace LibSpellTests {
 	[TestClass]
 	public class SpellLibraryFilesTests {
 		private static readonly string[] _arrayRemovedFiles=new string[] { "NHunspell.dll","Hunspellx86.dll","Hunspellx64.dll" };
-		///<summary>SHA-256 of lib/netstandard2.0/WeCantSpell.Hunspell.dll of the NuGet package WeCantSpell.Hunspell 7.0.1.</summary>
-		private const string SHA256_WECANTSPELL="e2b117024fa6ee39de757b73f536cbb86214d263f8e00645d4307a48bd729eea";
+		private const string SUBMODULE_PATH="third-party/WeCantSpell.Hunspell";
+		private const string SUBMODULE_URL="https://github.com/aarondandy/WeCantSpell.Hunspell.git";
+		private const string TAG="7.0.1";
+		private const string COMMIT="ab5709d95b2d23541984d22baa0ab2d1e783582f";
+		///<summary>The informational version of the build here: upstream's version, the commit and the mark of this build.</summary>
+		private const string INFORMATIONAL_VERSION="7.0.1+ab5709d95b2d.open-pms-dental-source-build";
 
 		private static string Sha256(string path) {
 			using(SHA256 sha256=SHA256.Create()) {
@@ -28,23 +34,115 @@ namespace LibSpellTests {
 			}
 		}
 
+		///<summary>git with the arguments in the folder; its output, or Inconclusive when git is not on the PATH.</summary>
+		private static string Git(string arguments,string folder) {
+			ProcessStartInfo processStartInfo=new ProcessStartInfo("git.exe",arguments);
+			processStartInfo.WorkingDirectory=folder;
+			processStartInfo.UseShellExecute=false;
+			processStartInfo.RedirectStandardOutput=true;
+			processStartInfo.RedirectStandardError=true;
+			processStartInfo.CreateNoWindow=true;
+			try {
+				using(Process process=Process.Start(processStartInfo)) {
+					System.Threading.Tasks.Task<string> taskErr=process.StandardError.ReadToEndAsync();
+					string output=process.StandardOutput.ReadToEnd();
+					process.WaitForExit();
+					Assert.AreEqual(0,process.ExitCode,"git "+arguments+": "+output+taskErr.Result);
+					return output.Trim();
+				}
+			}
+			catch(System.ComponentModel.Win32Exception) {
+				Assert.Inconclusive("git.exe is not on the PATH.");
+				return null;
+			}
+		}
+
 		[TestMethod]
-		public void RequiredDlls_HoldWeCantSpell701_AndNoneOfNHunspell() {
+		public void RequiredDlls_HoldNoSpellCheckerDll() {
 			string folder=RepoPaths.Combine("Required dlls");
-			List<string> listLeft=_arrayRemovedFiles.Where(x => File.Exists(Path.Combine(folder,x))).ToList();
-			Assert.AreEqual(0,listLeft.Count,"Back in Required dlls: "+string.Join(", ",listLeft));
-			string path=Path.Combine(folder,"WeCantSpell.Hunspell.dll");
-			Assert.IsTrue(File.Exists(path));
-			Assert.AreEqual(SHA256_WECANTSPELL,Sha256(path),"The netstandard2.0 file of the package, unchanged.");
-			Assert.AreEqual(new Version(7,0,0,0),AssemblyName.GetAssemblyName(path).Version,"Assembly version (no strong name, so no redirect).");
-			Assert.AreEqual("7.0.1.0",FileVersionInfo.GetVersionInfo(path).FileVersion);
-			//The assembly the tests load is that file, a netstandard2.0 build that needs no native file.
+			List<string> listLeft=_arrayRemovedFiles.Concat(new[] { "WeCantSpell.Hunspell.dll" }).Where(x => File.Exists(Path.Combine(folder,x))).ToList();
+			Assert.AreEqual(0,listLeft.Count,"In Required dlls: "+string.Join(", ",listLeft));
+		}
+
+		[TestMethod]
+		public void BuiltAssembly_IsWeCantSpell701_BuiltFromTheSource() {
+			//The assembly the tests load: the output of third-party\build\WeCantSpell.Hunspell, managed, no native file.
 			Assembly assembly=typeof(WordList).Assembly;
-			Assert.AreEqual(SHA256_WECANTSPELL,Sha256(assembly.Location));
-			Assert.AreEqual(".NETStandard,Version=v2.0",assembly.GetCustomAttribute<TargetFrameworkAttribute>().FrameworkName);
-			Assert.AreEqual(0,assembly.GetName().GetPublicKeyToken().Length);
-			CollectionAssert.AreEquivalent(new[] { "netstandard","System.Memory","System.Buffers","System.Runtime.CompilerServices.Unsafe" },
+			Assert.AreEqual(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"WeCantSpell.Hunspell.dll"),assembly.Location,true);
+			Assert.AreEqual(new Version(7,0,0,0),assembly.GetName().Version,"Upstream's assembly version (MinVer: the major version), as the NuGet file had.");
+			Assert.AreEqual(0,assembly.GetName().GetPublicKeyToken().Length,"No strong name, as upstream's.");
+			FileVersionInfo fileVersionInfo=FileVersionInfo.GetVersionInfo(assembly.Location);
+			Assert.AreEqual("7.0.1.0",fileVersionInfo.FileVersion);
+			Assert.AreEqual(INFORMATIONAL_VERSION,fileVersionInfo.ProductVersion);
+			Assert.AreEqual(INFORMATIONAL_VERSION,assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion);
+			Dictionary<string,string> dictMetadata=assembly.GetCustomAttributes<AssemblyMetadataAttribute>().ToDictionary(x => x.Key,x => x.Value);
+			Assert.AreEqual(COMMIT,dictMetadata["SourceCommit"]);
+			Assert.AreEqual(TAG,dictMetadata["SourceTag"]);
+			Assert.AreEqual("https://github.com/aarondandy/WeCantSpell.Hunspell",dictMetadata["SourceRepository"]);
+			Assert.AreEqual(@"Open PMS - Dental, third-party\build\WeCantSpell.Hunspell",dictMetadata["SourceBuild"]);
+			Assert.AreEqual(".NETFramework,Version=v4.8",assembly.GetCustomAttribute<TargetFrameworkAttribute>().FrameworkName);
+			Assert.AreEqual("aarondandy",assembly.GetCustomAttribute<AssemblyCompanyAttribute>().Company);
+			CollectionAssert.AreEquivalent(new[] { "mscorlib","System.Core","System.Memory","System.Buffers","System.Runtime.CompilerServices.Unsafe" },
 				assembly.GetReferencedAssemblies().Select(x => x.Name).ToArray());
+		}
+
+		[TestMethod]
+		public void Submodule_IsTheGitHubProject_PinnedToTag701_AndTheBuildCompilesTheLibraryFolderWhole() {
+			string gitModules=RepoPaths.ReadText(".gitmodules");
+			Match match=Regex.Match(gitModules,@"\[submodule """+Regex.Escape(SUBMODULE_PATH)+@"""\]\s*path\s*=\s*([^\r\n]+)\s*url\s*=\s*([^\r\n]+)");
+			Assert.IsTrue(match.Success,gitModules);
+			Assert.AreEqual(SUBMODULE_PATH,match.Groups[1].Value.Trim());
+			Assert.AreEqual(SUBMODULE_URL,match.Groups[2].Value.Trim());
+			Assert.AreEqual("160000 commit "+COMMIT+"\t"+SUBMODULE_PATH,Git("ls-tree HEAD -- "+SUBMODULE_PATH,RepoPaths.Root),"The pin.");
+			string folderSubmodule=RepoPaths.Combine(SUBMODULE_PATH.Replace('/','\\'));
+			Assert.AreEqual(COMMIT,Git("rev-parse HEAD",folderSubmodule),"Checked out at the pin.");
+			Assert.AreEqual(COMMIT,Git("rev-parse "+TAG+"^{commit}",folderSubmodule),"The pin is the commit of the tag "+TAG+".");
+			Assert.AreEqual("",Git("status --porcelain",folderSubmodule),"Nothing inside the submodule is changed.");
+			//What the build compiled (obj\...\SourceBuildItems.txt): every .cs of the library folder, as upstream's project does by default, and
+			//nothing of the build folder but the generated assembly attributes. No other file of the repository is used.
+			string folderLibrary=Path.Combine(folderSubmodule,"WeCantSpell.Hunspell");
+			List<string> listUpstream=Directory.GetFiles(folderLibrary,"*.cs",SearchOption.AllDirectories).Where(x => x.EndsWith(".cs"))
+				.Where(x => !x.Substring(folderLibrary.Length).StartsWith(@"\bin\") && !x.Substring(folderLibrary.Length).StartsWith(@"\obj\"))
+				.Select(x => Path.GetFullPath(x).ToLowerInvariant()).ToList();
+			string folderObj=RepoPaths.Combine("third-party","build","WeCantSpell.Hunspell","obj");
+			FileInfo fileInfo=new DirectoryInfo(folderObj).GetFiles("SourceBuildItems.txt",SearchOption.AllDirectories).OrderByDescending(x => x.LastWriteTimeUtc)
+				.FirstOrDefault();
+			Assert.IsNotNull(fileInfo,"third-party\\build\\WeCantSpell.Hunspell is not built.");
+			List<string> listCompiled=File.ReadAllLines(fileInfo.FullName).Where(x => x.StartsWith("Compile|")).Select(x => Path.GetFullPath(x.Substring(8)).ToLowerInvariant())
+				.ToList();
+			CollectionAssert.AreEquivalent(listUpstream.ToArray(),listCompiled.Where(x => x.StartsWith(folderLibrary.ToLowerInvariant()+"\\")).ToArray());
+			CollectionAssert.AreEquivalent(new[] { "sourcebuildinfo.g.cs",".netframework,version=v4.8.assemblyattributes.cs" },
+				listCompiled.Where(x => !x.StartsWith(folderLibrary.ToLowerInvariant()+"\\")).Select(x => Path.GetFileName(x)).ToArray(),
+				"Besides the library folder, only the generated attributes.");
+			Assert.IsFalse(File.ReadAllLines(fileInfo.FullName).Any(x => x.StartsWith("EmbeddedResource|")),"No resources, as upstream.");
+			//The project file: no NuGet, no MinVer, not strong-named; the support assemblies from Required dlls; in the solution and the filter.
+			string project=RepoPaths.ReadText("third-party","build","WeCantSpell.Hunspell","WeCantSpell.Hunspell.csproj");
+			foreach(string forbidden in new[] { "<PackageReference","MinVer\"","<SignAssembly>","Sdk=\"Microsoft.NET.Sdk" }) {
+				Assert.IsFalse(project.Contains(forbidden),"WeCantSpell.Hunspell.csproj: "+forbidden);
+			}
+			StringAssert.Contains(project,"<SourceBuildCommit>"+COMMIT+"</SourceBuildCommit>");
+			StringAssert.Contains(project,"<SourceBuildInformationalVersion>"+INFORMATIONAL_VERSION+"</SourceBuildInformationalVersion>");
+			StringAssert.Contains(RepoPaths.ReadText("OpenDental.sln"),@"""WeCantSpell.Hunspell"", ""third-party\build\WeCantSpell.Hunspell\WeCantSpell.Hunspell.csproj""");
+			StringAssert.Contains(RepoPaths.ReadText("OpenDental.Local.slnf"),@"""third-party\\build\\WeCantSpell.Hunspell\\WeCantSpell.Hunspell.csproj""");
+		}
+
+		[TestMethod]
+		public void Notices_SayItIsBuiltFromSource_UnderTheLgpl_WithNoMplText() {
+			string notices=RepoPaths.ReadText("THIRD-PARTY-NOTICES.txt");
+			Match match=Regex.Match(notices,@"(?ms)^--- Component: WeCantSpell\.Hunspell\r?\n(.*?)(?=^--- )");
+			Assert.IsTrue(match.Success);
+			string section=Regex.Replace(match.Groups[1].Value,@"\s+"," ");
+			StringAssert.Contains(section,"built by this project from its source, unmodified: the git submodule third-party/WeCantSpell.Hunspell at tag 7.0.1 (commit "+COMMIT+")");
+			StringAssert.Contains(section,"This release uses it under the GPL / LGPL: it distributes it under the GNU Lesser General Public License, version 2.1 or later "
+				+"(LICENSE-LGPL-2.1.txt), which also allows its use under the GNU General Public License, version 2 or later (LICENSE). No MPL 1.1 text is needed.");
+			StringAssert.Contains(section,"as built, in the source archive of each release");
+			Assert.IsFalse(section.Contains("nuget.org"),"Not the NuGet file any more.");
+			//The LGPL 2.1 text ships with the release; no MPL text does.
+			string script=RepoPaths.ReadText("tools","Build-Release.ps1");
+			StringAssert.Contains(script,"'LICENSE-LGPL-2.1.txt'='LICENSE-LGPL-2.1.txt'");
+			Assert.IsFalse(Regex.IsMatch(script,@"MPL[^ ]*\.txt"),"No MPL text is staged.");
+			Assert.IsFalse(Directory.GetFiles(RepoPaths.Root,"*MPL*").Any(),"No MPL text in the repository root.");
+			StringAssert.Contains(script,@"$ThirdPartyFiles[$name+'.dll']='third-party\build\'+$name+'\bin\Release'");
 		}
 
 		[TestMethod]
@@ -54,7 +152,15 @@ namespace LibSpellTests {
 			foreach(string path in RepoPaths.Files(".csproj").Concat(RepoPaths.Files(".vcxproj")).Concat(RepoPaths.Files(".targets"))
 				.Concat(RepoPaths.Files(".props")))
 			{
+				if(RepoPaths.IsInSubmodule(path)) {
+					continue;//upstream's own projects (WeCantSpell's NHunspell benchmark among them) are not built
+				}
 				XDocument xDocument=XDocument.Load(path);
+				foreach(XElement xElement in xDocument.Descendants().Where(x => x.Name.LocalName=="ProjectReference")) {
+					if(((string)xElement.Attribute("Include")??"").EndsWith(@"third-party\build\WeCantSpell.Hunspell\WeCantSpell.Hunspell.csproj",StringComparison.OrdinalIgnoreCase)) {
+						listUsers.Add(RepoPaths.Relative(path));
+					}
+				}
 				foreach(XElement xElement in xDocument.Descendants()) {
 					string local=xElement.Name.LocalName;
 					List<string> listValues=new List<string>();
@@ -71,13 +177,13 @@ namespace LibSpellTests {
 						{
 							listProblems.Add(RepoPaths.Relative(path)+": <"+local+"> "+value.Trim());
 						}
-						if(local=="HintPath" && fileName.Equals("WeCantSpell.Hunspell.dll",StringComparison.OrdinalIgnoreCase)) {
-							listUsers.Add(RepoPaths.Relative(path));
+						if(fileName.StartsWith("WeCantSpell",StringComparison.OrdinalIgnoreCase) && local!="None") {
+							listProblems.Add(RepoPaths.Relative(path)+": <"+local+"> "+value.Trim()+" (the library is a project of third-party\\build)");
 						}
 					}
 				}
 			}
-			Assert.AreEqual(0,listProblems.Count,"NHunspell is named again: "+string.Join("; ",listProblems));
+			Assert.AreEqual(0,listProblems.Count,"NHunspell, or a WeCantSpell DLL, is named: "+string.Join("; ",listProblems));
 			//The program code reaches the library only through WpfControlsOD; this test project reads the dictionary with it too.
 			CollectionAssert.AreEquivalent(new[] { @"WpfControlsOD\WpfControlsOD.csproj",@"tests\LibSpellTests\LibSpellTests.csproj" },listUsers.ToArray());
 		}
@@ -96,8 +202,8 @@ namespace LibSpellTests {
 			Assert.IsTrue(listSources.Count>1000,"The sources were not found under "+RepoPaths.Root);
 			foreach(string path in listSources) {
 				string relative=RepoPaths.Relative(path);
-				if(relative.StartsWith(@"tests\LibSpellTests\",StringComparison.OrdinalIgnoreCase)) {
-					continue;
+				if(relative.StartsWith(@"tests\LibSpellTests\",StringComparison.OrdinalIgnoreCase) || RepoPaths.IsInSubmodule(path)) {
+					continue;//the library's own source (and upstream's tests and benchmarks) is not the program's
 				}
 				string text=File.ReadAllText(path);
 				if(text.IndexOf("Hunspell",StringComparison.Ordinal)<0 && text.IndexOf("WordList",StringComparison.Ordinal)<0
@@ -143,6 +249,11 @@ namespace LibSpellTests {
 					listFolders.Add(folder);
 				}
 			}
+			//Every copy is the file built from source: the same bytes as the project's output.
+			string pathBuilt=RepoPaths.Combine("third-party","build","WeCantSpell.Hunspell","bin","Debug","WeCantSpell.Hunspell.dll");
+			Assert.IsTrue(File.Exists(pathBuilt),"third-party\\build\\WeCantSpell.Hunspell is not built.");
+			string sha256Built=Sha256(pathBuilt);
+			Assert.AreEqual(INFORMATIONAL_VERSION,FileVersionInfo.GetVersionInfo(pathBuilt).ProductVersion);
 			List<string> listProblems=new List<string>();
 			foreach(string folder in listFolders) {
 				listProblems.AddRange(_arrayRemovedFiles.Where(x => File.Exists(Path.Combine(folder,x))).Select(x => Path.Combine(folder,x)+" is there."));
@@ -150,8 +261,8 @@ namespace LibSpellTests {
 				if(!File.Exists(path)) {
 					listProblems.Add(path+" is missing.");
 				}
-				else if(Sha256(path)!=SHA256_WECANTSPELL) {
-					listProblems.Add(path+" is not the file in Required dlls.");
+				else if(Sha256(path)!=sha256Built) {
+					listProblems.Add(path+" is not the file built from source ("+FileVersionInfo.GetVersionInfo(path).ProductVersion+").");
 				}
 			}
 			Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));

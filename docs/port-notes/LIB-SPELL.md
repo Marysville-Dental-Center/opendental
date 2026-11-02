@@ -66,3 +66,10 @@ part of the fork's test runs and was not re-run.
 
 - The corresponding source of `WeCantSpell.Hunspell.dll` under the LGPL (`docs/owner-questions.md`, "The source of the spell checker"): the
   notices point to the upstream repository at the release commit and to the package.
+
+## Later: built from source (2026-11-02)
+
+The owner decided the question above the same day: WeCantSpell.Hunspell is built from its source, the git submodule
+`third-party/WeCantSpell.Hunspell` at tag 7.0.1, by `third-party/build/WeCantSpell.Hunspell` (the library project only, unmodified;
+same assembly identity 7.0.0.0, no strong name), and `Required dlls/WeCantSpell.Hunspell.dll` is gone. No MPL text ships. Each release
+publishes the source in its source archive. See `docs/third-party-source-builds.md`.

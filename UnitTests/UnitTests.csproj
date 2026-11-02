@@ -102,8 +102,6 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
-    <Reference Include="MigraDoc.DocumentObjectModel, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb" />
-    <Reference Include="MigraDoc.Rendering-gdi, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb" />
     <Reference Include="Mono.Cecil, Version=0.10.3.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e, processorArchitecture=MSIL">
       <HintPath>..\packages\Mono.Cecil.0.10.3\lib\net40\Mono.Cecil.dll</HintPath>
       <Private>True</Private>
@@ -128,6 +126,18 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <ProjectReference Include="..\third-party\build\MigraDoc.DocumentObjectModel\MigraDoc.DocumentObjectModel.csproj">
+      <Project>{3F1D73FB-1575-4188-8E92-214AFF173E32}</Project>
+      <Name>MigraDoc.DocumentObjectModel</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\third-party\build\MigraDoc.Rendering-gdi\MigraDoc.Rendering-gdi.csproj">
+      <Project>{9A7017D5-588B-416A-8069-E893A25746A7}</Project>
+      <Name>MigraDoc.Rendering-gdi</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\third-party\build\PdfSharp-gdi\PdfSharp-gdi.csproj">
+      <Project>{60E6C1F3-233C-48E6-8E3F-ADB3AD3FF44A}</Project>
+      <Name>PdfSharp-gdi</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ODCrypt\xODCrypt.csproj">
       <Project>{c37b8157-f665-4ebe-8fd6-20d1c92a0797}</Project>
       <Name>xODCrypt</Name>
@@ -137,10 +147,6 @@
       <HintPath>..\OpenPmsDentalStorage\bin\Debug\OpenPmsDentalStorage.dll</HintPath>
     </Reference>
     <Reference Include="OpenPmsDentalGraph, Version=16.1.1.0, Culture=neutral, PublicKeyToken=null" />
-    <Reference Include="PdfSharp-gdi, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\PdfSharp-gdi.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="ServiceManager, Version=15.4.1.0, Culture=neutral, PublicKeyToken=null" />

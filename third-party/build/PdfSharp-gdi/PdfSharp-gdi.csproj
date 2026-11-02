@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <!-- PdfSharp-gdi 6.5.0 (the GDI+ build of PDFsharp) from empira's source in the submodule third-party\PDFsharp, as upstream's
+       src\foundation\src\PDFsharp\src\PdfSharp-gdi\PdfSharp-gdi.csproj builds it for net462: the shared PdfSharp source folder without the
+       files that project leaves out, and the -gdi folder's own forms.
+       One upstream file is replaced: root\PdfSharpLicense.cs, empira's wrapper around the closed PdfSharp.License.dll, by this folder's
+       PdfSharpLicense.cs, a modified version that holds the AGPL licence path itself. No PdfSharp.License.dll is referenced or shipped.
+       docs\third-party-source-builds.md. -->
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
+    <ProjectGuid>{60E6C1F3-233C-48E6-8E3F-ADB3AD3FF44A}</ProjectGuid>
+    <RootNamespace>PdfSharp</RootNamespace>
+    <AssemblyName>PdfSharp-gdi</AssemblyName>
+  </PropertyGroup>
+  <Import Project="..\SourceBuild.props" />
+  <Import Project="..\PDFsharp.props" />
+  <PropertyGroup>
+    <SourceBuildUpstreamProject>$(PdfSharpSourceRoot)PDFsharp\src\PdfSharp-gdi\PdfSharp-gdi.csproj</SourceBuildUpstreamProject>
+    <DefineConstants>TRACE;GDI;$(PdfSharpNet462Symbols);$(PdfSharpUpstreamConstants)</DefineConstants>
+    <PdfSharpCoreFolder>$(PdfSharpSourceRoot)PDFsharp\src\PdfSharp\</PdfSharpCoreFolder>
+    <PdfSharpGdiFolder>$(PdfSharpSourceRoot)PDFsharp\src\PdfSharp-gdi\</PdfSharpGdiFolder>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions">
+      <HintPath>..\..\..\Required dlls\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Memory">
+      <HintPath>..\..\..\Required dlls\System.Memory.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The shared PdfSharp folder, without what PdfSharp-gdi.csproj does not compile: the Core build's font resolvers, the Core and WPF
+         preview controls (the -gdi folder has its own), and BigGustave (the Core build's PNG reader, under another licence). And without
+         root\PdfSharpLicense.cs, which this build replaces. A file upstream adds to the folder is compiled unless it is excluded here;
+         PdfLibraryTests compares this list with PdfSharp-gdi.csproj. -->
+    <Compile Include="$(PdfSharpCoreFolder)**\*.cs" Exclude="$(PdfSharpCoreFolder)bin\**;$(PdfSharpCoreFolder)obj\**;$(PdfSharpCoreFolder)Forms\**;$(PdfSharpCoreFolder)Windows\**;$(PdfSharpCoreFolder)Internal\Png\BigGustave\**;$(PdfSharpCoreFolder)Fonts\CoreBuildFontResolver.cs;$(PdfSharpCoreFolder)Fonts\WindowsPlatformFontResolver.cs;$(PdfSharpCoreFolder)root\PdfSharpLicense.cs">
+      <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+    <!-- The -gdi folder: the GDI+ preview control. -->
+    <Compile Include="$(PdfSharpGdiFolder)**\*.cs" Exclude="$(PdfSharpGdiFolder)bin\**;$(PdfSharpGdiFolder)obj\**">
+      <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Compile>
+    <EmbeddedResource Include="$(PdfSharpGdiFolder)**\*.resx" Exclude="$(PdfSharpGdiFolder)bin\**;$(PdfSharpGdiFolder)obj\**">
+      <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </EmbeddedResource>
+    <!-- The colour profile the library embeds (PdfSharp.Resources.sRGB2014.icc). -->
+    <EmbeddedResource Include="$(PdfSharpCoreFolder)Resources\**">
+      <Link>Resources\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </EmbeddedResource>
+    <!-- The compiler attributes for the .NET Framework that PdfSharp-gdi.csproj links from PdfSharp.System. -->
+    <Compile Include="$(PdfSharpSourceRoot)shared\src\PdfSharp.System\System\CompilerServices.cs">
+      <Link>root\CompilerServices.cs</Link>
+    </Compile>
+    <Compile Include="$(PdfSharpSourceRoot)shared\src\PdfSharp.System\System\CodeAnalysis.cs">
+      <Link>root\CodeAnalysis.cs</Link>
+    </Compile>
+    <!-- The replacement of root\PdfSharpLicense.cs. -->
+    <Compile Include="PdfSharpLicense.cs" />
+    <!-- What the logging source generator of Microsoft.Extensions.Logging.Abstractions writes for Logging\LogMessages.cs. -->
+    <Compile Include="LoggerMessages.cs" />
+    <!-- Upstream's UseWindowsForms with ImplicitUsings. -->
+    <Compile Include="$(SourceBuildFolder)PDFsharp\GlobalUsings.WindowsForms.cs">
+      <Link>SourceBuild\GlobalUsings.WindowsForms.cs</Link>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\PdfSharp.Shared\PdfSharp.Shared.csproj">
+      <Project>{E7DBF664-0058-4F44-96A8-A58F064271DC}</Project>
+      <Name>PdfSharp.Shared</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\PdfSharp.System\PdfSharp.System.csproj">
+      <Project>{780459C6-739E-4C8D-9462-58D6E23B1DAC}</Project>
+      <Name>PdfSharp.System</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\SourceBuild.targets" />
+</Project>

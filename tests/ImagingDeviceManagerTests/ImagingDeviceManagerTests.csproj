@@ -44,10 +44,6 @@
   <ItemGroup>
     <!-- MSTest v1, found through the search path added in Directory.Build.targets. -->
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
-    <Reference Include="PdfSharp-gdi, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Required dlls\PdfSharp-gdi.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -59,6 +55,10 @@
     <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\third-party\build\PdfSharp-gdi\PdfSharp-gdi.csproj">
+      <Project>{60E6C1F3-233C-48E6-8E3F-ADB3AD3FF44A}</Project>
+      <Name>PdfSharp-gdi</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\ImagingDeviceManager\xImagingDeviceManager.csproj">
       <Project>{783079E6-A13F-4F43-A28D-9D7731F945D1}</Project>
       <Name>xImagingDeviceManager</Name>

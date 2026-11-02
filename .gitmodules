@@ -1,0 +1,6 @@
+[submodule "third-party/PDFsharp"]
+	path = third-party/PDFsharp
+	url = https://github.com/empira/PDFsharp.git
+[submodule "third-party/WeCantSpell.Hunspell"]
+	path = third-party/WeCantSpell.Hunspell
+	url = https://github.com/aarondandy/WeCantSpell.Hunspell.git
