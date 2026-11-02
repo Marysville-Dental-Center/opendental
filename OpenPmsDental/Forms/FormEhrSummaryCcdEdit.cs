@@ -42,7 +42,12 @@ namespace OpenPmsDental {
 				html=HtmlPage.BuildText(Lan.g(this,"The document could not be shown with its stylesheet.")+"\r\n"+ex.Message);
 			}
 			webViewMain.LinkClicked+=webViewMain_LinkClicked;
-			webViewMain.NavigateToHtml(html);
+			try {
+				webViewMain.NavigateToHtml(html);
+			}
+			catch(Exception ex) {
+				FriendlyException.Show(Lan.g(this,"The document could not be shown."),ex);
+			}
 			Cursor=Cursors.Default;
 		}
 

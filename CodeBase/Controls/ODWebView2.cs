@@ -144,11 +144,12 @@ namespace CodeBase.Controls {
 			WebView2Policy.ApplySecureSettings(this.CoreWebView2.Settings);
 			this.CoreWebView2.NewWindowRequested+=CoreWebView2_NewWindowRequested;
 			this.CoreWebView2.FrameNavigationStarting+=CoreWebView2_FrameNavigationStarting;
-			this.CoreWebView2.LaunchingExternalUriScheme+=CoreWebView2_LaunchingExternalUriScheme;
-			this.CoreWebView2.DownloadStarting+=CoreWebView2_DownloadStarting;
 			this.CoreWebView2.PermissionRequested+=CoreWebView2_PermissionRequested;
-			this.CoreWebView2.ContextMenuRequested+=CoreWebView2_ContextMenuRequested;
-			this.CoreWebView2.StatusBarTextChanged+=CoreWebView2_StatusBarTextChanged;
+			//Events of newer runtimes: an older runtime that lacks one throws here, and the control still works without it.
+			ODException.SwallowAnyException(() => this.CoreWebView2.DownloadStarting+=CoreWebView2_DownloadStarting);
+			ODException.SwallowAnyException(() => this.CoreWebView2.ContextMenuRequested+=CoreWebView2_ContextMenuRequested);
+			ODException.SwallowAnyException(() => this.CoreWebView2.StatusBarTextChanged+=CoreWebView2_StatusBarTextChanged);
+			ODException.SwallowAnyException(() => this.CoreWebView2.LaunchingExternalUriScheme+=CoreWebView2_LaunchingExternalUriScheme);
 			if(_isScriptEnabled!=null) {
 				this.CoreWebView2.Settings.IsScriptEnabled=_isScriptEnabled.Value;
 			}
@@ -270,7 +271,8 @@ namespace CodeBase.Controls {
 		///A file page can show the local images such html refers to (file paths), which a page from a string cannot. The file goes into folder, or
 		///into the program's temp folder when folder is null (give a folder that already holds the images a relative path names). While the page is
 		///shown, scripts are off and the control stays on it: links raise LinkClicked. Initializes the control first when needed (the user is told
-		///if the WebView2 Runtime is missing); the page then shows when initialization completes. Never throws for a missing runtime.</summary>
+		///if the WebView2 Runtime is missing); the page then shows when initialization completes. Never throws for a missing runtime; throws when
+		///the page file cannot be written.</summary>
 		public void NavigateToHtml(string html,string folder=null) {
 			if(IsDisposed) {
 				return;
@@ -301,6 +303,8 @@ namespace CodeBase.Controls {
 			ShowPendingDocument();
 		}
 
+		///<summary>Runs from the initialization's event and continuation, where an exception would end the program, so a page file that cannot be
+		///written leaves the control blank.</summary>
 		private void ShowPendingDocument() {
 			if(IsDisposed || CoreWebView2==null || _htmlPending==null) {
 				return;
@@ -309,7 +313,7 @@ namespace CodeBase.Controls {
 			string folder=_folderPending;
 			_htmlPending=null;
 			_folderPending=null;
-			ShowDocument(html,folder);
+			ODException.SwallowAnyException(() => ShowDocument(html,folder));
 		}
 
 		private void ShowDocument(string html,string folder) {

@@ -65,7 +65,12 @@ namespace OpenPmsDental {
 				Text=Title;//Since we are not browsing, we need to clear the title stored within the Text.
 				if(!string.IsNullOrEmpty(HtmlContent)) {
 					webViewMain.LinkClicked+=WebViewMain_LinkClicked;
-					webViewMain.NavigateToHtml(HtmlContent);
+					try {
+						webViewMain.NavigateToHtml(HtmlContent);
+					}
+					catch(Exception ex) {
+						FriendlyException.Show("Error loading window.",ex);
+					}
 				}
 				Cursor=Cursors.Default;
 				return;
