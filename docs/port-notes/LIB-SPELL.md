@@ -43,8 +43,8 @@ The dictionary is unchanged: the OpenOffice.org en_US dictionary embedded in Wpf
 The boxes keep their behaviour: the red underline, the first five suggestions in the context menu, "Add to Dictionary" and "Disable Spell
 Check". ODtextBox keeps its own word cache and drawing; TextRich shares the answers of one pass across its runs of text.
 
-Hunspell 1.7.2 (the port) is newer than NHunspell's Hunspell 1.2, so a few words may be judged or suggested differently with the same
-dictionary.
+The port follows Hunspell 1.7.2 with later upstream fixes, much newer than NHunspell's Hunspell 1.2, so a few words may be judged or suggested
+differently with the same dictionary.
 
 ## Release
 

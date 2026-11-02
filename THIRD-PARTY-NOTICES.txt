@@ -141,7 +141,7 @@ Source:    distributed with SharpSSH, https://sourceforge.net/projects/sharpssh/
 
 --- Component: WeCantSpell.Hunspell
 Files:     WeCantSpell.Hunspell.dll
-Version:   7.0.1 (a .NET port of Hunspell 1.7.2; the netstandard2.0 build of the NuGet package)
+Version:   7.0.1 (a .NET port of Hunspell 1.7.2 with later upstream fixes; the netstandard2.0 build of the NuGet package)
 Copyright: Aaron Dandy and contributors (the port); Kevin Hendricks (MySpell), Laszlo Nemeth and the Hunspell contributors (Hunspell)
 License:   MPL 1.1 / GPL 2.0 or later / LGPL 2.1 or later tri-license, at the user's choice (the project's own
            text follows). This release uses it under the GPL / LGPL: it distributes it under the GNU Lesser
