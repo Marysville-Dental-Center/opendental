@@ -30,6 +30,24 @@ namespace DbConnectionSecurityTests {
 			return null;
 		}
 
+		///<summary>The text of a file of the repository: the first folder above the test assembly that holds LICENSE and NOTICE, then pathParts.
+		///For source checks of code the tests cannot run (a window).</summary>
+		public static string ReadRepoFile(params string[] pathParts) {
+			DirectoryInfo directoryInfo=new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+			while(directoryInfo!=null
+				&& !(File.Exists(Path.Combine(directoryInfo.FullName,"LICENSE")) && File.Exists(Path.Combine(directoryInfo.FullName,"NOTICE"))))
+			{
+				directoryInfo=directoryInfo.Parent;
+			}
+			Microsoft.VisualStudio.TestTools.UnitTesting.Assert.IsNotNull(directoryInfo,"Repository root not found above "
+				+AppDomain.CurrentDomain.BaseDirectory);
+			List<string> listParts=new List<string>() { directoryInfo.FullName };
+			listParts.AddRange(pathParts);
+			string path=Path.Combine(listParts.ToArray());
+			Microsoft.VisualStudio.TestTools.UnitTesting.Assert.IsTrue(File.Exists(path),"Missing file: "+path);
+			return File.ReadAllText(path);
+		}
+
 		public static string NewTempFolder() {
 			string folder=Path.Combine(Path.GetTempPath(),"dbsec_tests_"+Guid.NewGuid().ToString("N"));
 			Directory.CreateDirectory(folder);

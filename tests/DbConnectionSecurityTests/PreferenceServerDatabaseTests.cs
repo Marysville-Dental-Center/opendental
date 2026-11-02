@@ -120,5 +120,52 @@ namespace DbConnectionSecurityTests {
 			Assert.AreEqual(_dbMain,DataConnection.GetDatabaseName(),"The main connection is unchanged.");
 			Assert.IsFalse(DbConnectionSecurity.IsPreferenceServerConnection(DataConnection.GetConnectionString()));
 		}
+
+		[TestMethod]
+		public void ConnectionLost_OnTheReadOnlyServer_IsOnlyTested_ItNeverBecomesTheMainConnection() {
+			Thread.CurrentThread.CurrentCulture=new CultureInfo("en-US");
+			new DataConnection().SetDb(SERVER,_dbMain,"root","","","",DatabaseType.MySql,true);
+			SeedPreferences(SERVER,_dbReplica,"root","");
+			//The string StartConnectionErrorRetry fires when the read-only server's connection is lost: GetCurrentConnectionString on that thread.
+			string connectionStringLost=DataAction.GetString(() => DataConnection.GetCurrentConnectionString(),ConnectionNames.DentalOfficeReadOnlyServer);
+			Assert.IsTrue(DbConnectionSecurity.IsPreferenceServerConnection(connectionStringLost));
+			string connectionStringMain=null;
+			PreferenceServerTests.RunOnThread(() => connectionStringMain=DataConnection.GetConnectionString());
+			Assert.AreEqual(_dbMain,new MySqlConnectionStringBuilder(connectionStringMain).Database);
+			//The Connection Lost window's thread (FormOpenDentalThreads.BeginDataConnectionLostThread) has the main connection's context, as an
+			//ODThread started from the UI thread. Its test of the lost connection reaches the read-only server and changes no connection.
+			string connectionStringWindowThread=null;
+			string connectionStringRestarted=null;
+			PreferenceServerTests.RunOnThread(() => {
+				using(DataConnection dataConnection=new DataConnection(DatabaseType.MySql)) {
+					dataConnection.SetDbT(connectionStringMain,"",DatabaseType.MySql,true,true);
+				}
+				using(DataConnection dataConnection=new DataConnection()) {
+					dataConnection.TestConnectionString(connectionStringLost,DatabaseType.MySql);
+				}
+				connectionStringWindowThread=DataConnection.GetConnectionString();
+				//The threads its exit handler starts again (SetThreads) inherit its context.
+				ODThread odThread=new ODThread(o => connectionStringRestarted=DataConnection.GetCurrentConnectionString());
+				Exception exceptionChild=null;
+				odThread.AddExceptionHandler(ex => exceptionChild=ex);
+				odThread.Start(true);
+				odThread.Join(Timeout.Infinite);
+				if(exceptionChild!=null) {
+					throw exceptionChild;
+				}
+				//Upstream's SetDb of the lost string would have made it the main connection; it is refused, before any connection.
+				RuleTests.AssertRefused(() => new DataConnection(DatabaseType.MySql).SetDb(connectionStringLost,"",DatabaseType.MySql));
+			});
+			Assert.AreEqual(connectionStringMain,connectionStringWindowThread,"The window's thread keeps the main connection.");
+			Assert.AreEqual(connectionStringMain,connectionStringRestarted,"The restarted threads get the main connection.");
+			string connectionStringMainAfter=null;
+			PreferenceServerTests.RunOnThread(() => connectionStringMainAfter=DataConnection.GetConnectionString());
+			Assert.AreEqual(connectionStringMain,connectionStringMainAfter,"The main (static) connection is unchanged.");
+			Assert.AreEqual(_dbMain,DataConnection.GetDatabaseName());
+			//A thread without a context of its own (a raw Thread, Task.Run) still goes to the main database.
+			string databaseRawThread=null;
+			PreferenceServerTests.RunOnThread(() => databaseRawThread=DataCore.GetScalar("SELECT DATABASE()"));
+			Assert.AreEqual(_dbMain,databaseRawThread);
+		}
 	}
 }

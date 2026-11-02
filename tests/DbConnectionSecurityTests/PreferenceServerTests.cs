@@ -42,7 +42,7 @@ namespace DbConnectionSecurityTests {
 		}
 
 		///<summary>Runs action on a thread of its own, so the thread context it sets never stays on a test thread. Rethrows what it threw.</summary>
-		private static void RunOnThread(Action action) {
+		internal static void RunOnThread(Action action) {
 			Exception exception=null;
 			Thread thread=new Thread(() => {
 				try {
@@ -235,6 +235,50 @@ namespace DbConnectionSecurityTests {
 				Assert.IsTrue(DbConnectionSecurity.IsPreferenceServerConnection(DataConnection.GetCurrentConnectionString()),
 					"A refused SetDbT leaves the thread's context as it was.");
 			});
+		}
+
+		[TestMethod]
+		public void SetDb_RefusesThePreferenceServersString_AndTheMainConnectionStaysAsItIs() {
+			//The string a lost read-only connection reports (StartConnectionErrorRetry: GetCurrentConnectionString on that thread).
+			string connectionStringPreference=null;
+			RunOnThread(() => {
+				new DataConnection(DatabaseType.MySql).SetDbTPreferenceServer(PREFERENCE_HOST,"opendental","ro","","",skipTestConnection:true);
+				connectionStringPreference=DataConnection.GetCurrentConnectionString();
+			});
+			Assert.IsTrue(DbConnectionSecurity.IsPreferenceServerConnection(connectionStringPreference));
+			string connectionStringMainBefore=null;
+			RunOnThread(() => connectionStringMainBefore=DataConnection.GetConnectionString());
+			Assert.AreNotEqual(connectionStringPreference,connectionStringMainBefore);
+			//Refused before any connection (the host is never contacted; a connection attempt would end in a MySqlException), as the main
+			//connection or as its lower user's string, on any thread.
+			RunOnThread(() => {
+				DataConnection dataConnection=new DataConnection(DatabaseType.MySql);
+				DbConnectionRefusedException ex=RuleTests.AssertRefused(() => dataConnection.SetDb(connectionStringPreference,"",DatabaseType.MySql));
+				StringAssert.Contains(ex.Message,"thread of its own only");
+				Assert.AreEqual(PREFERENCE_HOST,ex.Server);
+				RuleTests.AssertRefused(() => dataConnection.SetDb(connectionStringPreference,"",DatabaseType.MySql,true));
+				string connectionStringLoopback=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,"localhost","opendental","root","");
+				RuleTests.AssertRefused(() => dataConnection.SetDb(connectionStringLoopback,connectionStringPreference,DatabaseType.MySql,true));
+				Assert.AreEqual(connectionStringMainBefore,DataConnection.GetConnectionString(),"This thread has no context of its own: the main one.");
+			});
+			string connectionStringMainAfter=null;
+			RunOnThread(() => connectionStringMainAfter=DataConnection.GetConnectionString());
+			Assert.AreEqual(connectionStringMainBefore,connectionStringMainAfter,"The main connection is never set to the preference's server.");
+		}
+
+		[TestMethod]
+		public void ConnectionLostWindow_OnlyTestsTheLostConnection() {
+			//A window, so a source check: the lost connection can be any thread's, also a read-only or reporting server's (section 5.1 of the spec).
+			string source=TestHelpers.ReadRepoFile("OpenPmsDental","Main Modules","FormOpenDentalThreads.cs");
+			int indexStart=source.IndexOf("private void BeginDataConnectionLostThread(",StringComparison.Ordinal);
+			Assert.IsTrue(indexStart>=0);
+			int indexEnd=source.IndexOf("#endregion",indexStart,StringComparison.Ordinal);
+			Assert.IsTrue(indexEnd>indexStart);
+			string method=source.Substring(indexStart,indexEnd-indexStart);
+			StringAssert.Contains(method,".TestConnectionString(e.ConnectionString,");
+			foreach(string call in new[] { ".SetDb(",".SetDbT(" }) {
+				Assert.IsFalse(method.Contains(call),"The window sets no connection: "+call);
+			}
 		}
 		#endregion The thread context
 
