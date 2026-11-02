@@ -59,6 +59,16 @@ namespace PdfLibraryTests {
 			return stringBuilder.ToString();
 		}
 
+		///<summary>True when the page's text holds the expected text, ignoring white space: MigraDoc places each word (and each part of a
+		///hyphenated word) with its own operator and draws no spaces.</summary>
+		public static bool ContainsText(string pageText,string expected) {
+			return Squash(pageText).Contains(Squash(expected));
+		}
+
+		private static string Squash(string text) {
+			return new string(text.Where(x => !char.IsWhiteSpace(x)).ToArray());
+		}
+
 		///<summary>The font resources of the page by name ("/F0"): their BaseFont.</summary>
 		public static Dictionary<string,string> GetFonts(PdfPage pdfPage) {
 			Dictionary<string,string> dictFonts=new Dictionary<string,string>();

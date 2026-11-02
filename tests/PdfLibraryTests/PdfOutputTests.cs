@@ -55,8 +55,8 @@ namespace PdfLibraryTests {
 			Assert.AreEqual(1,pdfDocument.PageCount);
 			Assert.AreEqual("612 x 792",PdfRead.Size(pdfDocument.Pages[0]),"850 x 1100 sheet pixels (1/100 inch) are a letter page.");
 			string text=PdfRead.ExtractText(pdfDocument.Pages[0]);
-			StringAssert.Contains(text,"Patient form LIBPDF");
-			StringAssert.Contains(text,"Second line, right aligned");
+			Assert.IsTrue(PdfRead.ContainsText(text,"Patient form LIBPDF"),text);
+			Assert.IsTrue(PdfRead.ContainsText(text,"Second line, right aligned"),text);
 			Assert.IsTrue(PdfRead.GetOperatorNames(pdfDocument.Pages[0]).Contains("re"),"The rectangle is drawn.");
 		}
 
@@ -68,7 +68,7 @@ namespace PdfLibraryTests {
 			PdfDocument pdfDocument=PdfRead.Open(PdfRead.Save(new SheetDrawingJob().CreatePdf(sheet)));
 			Assert.AreEqual(1,pdfDocument.PageCount);
 			Assert.AreEqual("792 x 612",PdfRead.Size(pdfDocument.Pages[0]));
-			StringAssert.Contains(PdfRead.ExtractText(pdfDocument.Pages[0]),"Landscape LIBPDF");
+			Assert.IsTrue(PdfRead.ContainsText(PdfRead.ExtractText(pdfDocument.Pages[0]),"Landscape LIBPDF"),PdfRead.ExtractText(pdfDocument.Pages[0]));
 		}
 
 		[TestMethod]
@@ -78,7 +78,7 @@ namespace PdfLibraryTests {
 			RequireFonts(PdfSharpSetup.FALLBACK_FONT_FAMILY);
 			Sheet sheet=NewSheet(850,1100,isLandscape:false,TextField("Missing font LIBPDF",50,50,fontName:"No Such Font LIBPDF"));
 			PdfDocument pdfDocument=PdfRead.Open(PdfRead.Save(new SheetDrawingJob().CreatePdf(sheet)));
-			StringAssert.Contains(PdfRead.ExtractText(pdfDocument.Pages[0]),"Missing font LIBPDF");
+			Assert.IsTrue(PdfRead.ContainsText(PdfRead.ExtractText(pdfDocument.Pages[0]),"Missing font LIBPDF"),PdfRead.ExtractText(pdfDocument.Pages[0]));
 			Assert.IsTrue(PdfRead.GetFonts(pdfDocument.Pages[0]).Values.Any(x => x.Replace(" ","").Contains("MicrosoftSansSerif")),
 				string.Join(", ",PdfRead.GetFonts(pdfDocument.Pages[0]).Values));
 		}
@@ -152,9 +152,9 @@ namespace PdfLibraryTests {
 				Assert.AreEqual(1,pdfDocument.PageCount);
 				Assert.AreEqual("612 x 792",PdfRead.Size(pdfDocument.Pages[0]));
 				string text=PdfRead.ExtractText(pdfDocument.Pages[0]);
-				StringAssert.Contains(text,"Treatment plan LIBPDF");
-				StringAssert.Contains(text,"Cell 0-0");
-				StringAssert.Contains(text,"Cell 3-2");
+				Assert.IsTrue(PdfRead.ContainsText(text,"Treatment plan LIBPDF"),text);
+				Assert.IsTrue(PdfRead.ContainsText(text,"Cell 0-0"),text);
+				Assert.IsTrue(PdfRead.ContainsText(text,"Cell 3-2"),text);
 				List<PdfDictionary> listImages=PdfRead.GetImages(pdfDocument.Pages[0]);
 				Assert.AreEqual(1,listImages.Count);
 				Assert.AreEqual(120,listImages[0].Elements.GetInteger("/Width"));
@@ -171,7 +171,7 @@ namespace PdfLibraryTests {
 			MigraDoc.DocumentObjectModel.Document document=MigraDocHelper.CreateDocument();
 			MigraDocHelper.AddSection(document).AddParagraph("Default font LIBPDF");
 			PdfDocument pdfDocument=PdfRead.Open(Render(document));
-			StringAssert.Contains(PdfRead.ExtractText(pdfDocument.Pages[0]),"Default font LIBPDF");
+			Assert.IsTrue(PdfRead.ContainsText(PdfRead.ExtractText(pdfDocument.Pages[0]),"Default font LIBPDF"),PdfRead.ExtractText(pdfDocument.Pages[0]));
 			Assert.IsTrue(PdfRead.GetFonts(pdfDocument.Pages[0]).Values.Any(x => x.Contains("Verdana")),
 				string.Join(", ",PdfRead.GetFonts(pdfDocument.Pages[0]).Values));
 		}
@@ -229,9 +229,9 @@ namespace PdfLibraryTests {
 			PdfDocument pdfDocument=PdfRead.Open(Render(document));
 			Assert.AreEqual(1,pdfDocument.PageCount);
 			string text=PdfRead.ExtractText(pdfDocument.Pages[0]);
-			StringAssert.Contains(text,"Chart LIBPDF");
-			StringAssert.Contains(text,"Month LIBPDF");
-			StringAssert.Contains(text,"Feb");
+			Assert.IsTrue(PdfRead.ContainsText(text,"Chart LIBPDF"),text);
+			Assert.IsTrue(PdfRead.ContainsText(text,"Month LIBPDF"),text);
+			Assert.IsTrue(PdfRead.ContainsText(text,"Feb"),text);
 			List<string> listOperators=PdfRead.GetOperatorNames(pdfDocument.Pages[0]);
 			Assert.IsTrue(listOperators.Count(x => x=="re" || x=="f" || x=="l")>3,"The columns are drawn.");
 			Assert.IsTrue(AppDomain.CurrentDomain.GetAssemblies().Any(x => x.GetName().Name=="PdfSharp.Charting-gdi"),"MigraDoc draws it with PdfSharp.Charting.");
@@ -282,21 +282,31 @@ namespace PdfLibraryTests {
 					pdfDocumentMerged.AddPage(pdfDocumentInput.Pages[i]);
 				}
 			}
-			PdfDocument pdfDocumentRead=PdfRead.Open(PdfRead.Save(pdfDocumentMerged));
+			byte[] arrayBytesMerged=PdfRead.Save(pdfDocumentMerged);
+			PdfDocument pdfDocumentRead=PdfRead.Open(arrayBytesMerged);
 			Assert.AreEqual(3,pdfDocumentRead.PageCount);
 			Assert.AreEqual("612 x 792",PdfRead.Size(pdfDocumentRead.Pages[0]));
 			Assert.AreEqual("792 x 612",PdfRead.Size(pdfDocumentRead.Pages[2]));
 			Assert.AreEqual("Statement A page 1\n",PdfRead.ExtractText(pdfDocumentRead.Pages[0]));
 			Assert.AreEqual("Statement A page 2\n",PdfRead.ExtractText(pdfDocumentRead.Pages[1]));
 			Assert.AreEqual("Statement B page 1\n",PdfRead.ExtractText(pdfDocumentRead.Pages[2]));
-			//Split: the second page on its own.
-			PdfDocument pdfDocumentImport=PdfRead.Open(PdfRead.Save(pdfDocumentRead),PdfDocumentOpenMode.Import);
+			//Split: the second page of the merged file on its own.
+			PdfDocument pdfDocumentImport=PdfRead.Open(arrayBytesMerged,PdfDocumentOpenMode.Import);
 			PdfDocument pdfDocumentSplit=new PdfDocument();
 			pdfDocumentSplit.AddPage(pdfDocumentImport.Pages[1]);
-			PdfDocument pdfDocumentSplitRead=PdfRead.Open(PdfRead.Save(pdfDocumentSplit));
+			byte[] arrayBytesSplit=PdfRead.Save(pdfDocumentSplit);
+			Assert.IsTrue(PdfReader.TestPdfFile(arrayBytesSplit)>0);
+			PdfDocument pdfDocumentSplitRead=PdfRead.Open(arrayBytesSplit);
 			Assert.AreEqual(1,pdfDocumentSplitRead.PageCount);
 			Assert.AreEqual("Statement A page 2\n",PdfRead.ExtractText(pdfDocumentSplitRead.Pages[0]));
-			Assert.IsTrue(PdfReader.TestPdfFile(PdfRead.Save(pdfDocumentSplitRead))>0,"Still a PDF after a second save.");
+			//A document opened for modification is saved again with its changes.
+			PdfDocument pdfDocumentModify=PdfRead.Open(arrayBytesSplit,PdfDocumentOpenMode.Modify);
+			using(XGraphics xGraphics=XGraphics.FromPdfPage(pdfDocumentModify.Pages[0])) {
+				xGraphics.DrawString("Added",new XFont("Arial",12),XBrushes.Black,72,144);
+			}
+			PdfDocument pdfDocumentModifiedRead=PdfRead.Open(PdfRead.Save(pdfDocumentModify));
+			Assert.AreEqual(1,pdfDocumentModifiedRead.PageCount);
+			Assert.IsTrue(PdfRead.ContainsText(PdfRead.ExtractText(pdfDocumentModifiedRead.Pages[0]),"Statement A page 2 Added"));
 		}
 
 		[TestMethod]
@@ -306,8 +316,10 @@ namespace PdfLibraryTests {
 			using(Bitmap bitmapArgb=new Bitmap(200,100,PixelFormat.Format32bppArgb))
 			using(Bitmap bitmapRgb=new Bitmap(320,240,PixelFormat.Format24bppRgb)) {
 				using(Graphics graphics=Graphics.FromImage(bitmapArgb)) {
+					//Smooth edges, so the alpha has values between clear and opaque, as text drawn into a sheet image has.
 					graphics.Clear(Color.Transparent);
-					graphics.FillRectangle(Brushes.Navy,20,20,100,50);
+					graphics.SmoothingMode=SmoothingMode.AntiAlias;
+					graphics.FillEllipse(Brushes.Navy,20,20,100,50);
 				}
 				using(Graphics graphics=Graphics.FromImage(bitmapRgb))
 				using(LinearGradientBrush linearGradientBrush=new LinearGradientBrush(new Rectangle(0,0,320,240),Color.White,Color.DarkGreen,45f)) {
@@ -328,7 +340,7 @@ namespace PdfLibraryTests {
 			Assert.AreEqual(2,listImages.Count);
 			PdfDictionary dictPng=listImages.Single(x => x.Elements.GetInteger("/Width")==200);
 			Assert.AreEqual(100,dictPng.Elements.GetInteger("/Height"));
-			Assert.IsTrue(dictPng.Elements.ContainsKey("/SMask"),"The transparent part stays transparent.");
+			Assert.IsTrue(dictPng.Elements.ContainsKey("/SMask"),"The transparent part stays transparent. Keys: "+string.Join(" ",dictPng.Elements.Keys));
 			PdfDictionary dictJpeg=listImages.Single(x => x.Elements.GetInteger("/Width")==320);
 			Assert.AreEqual(240,dictJpeg.Elements.GetInteger("/Height"));
 			StringAssert.Contains(dictJpeg.Elements["/Filter"].ToString(),"DCTDecode","A JPEG stays a JPEG.");
