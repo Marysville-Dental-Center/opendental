@@ -918,7 +918,6 @@
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.butPin);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormApptEdit";

@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEtrans835PickEob));
 			this.label1 = new System.Windows.Forms.Label();
 			this.gridEobs = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
@@ -56,7 +55,6 @@ namespace OpenPmsDental{
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.Controls.Add(this.gridEobs);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEtrans835PickEob";
 			this.Text = "EOBs";
 			this.Load += new System.EventHandler(this.FormEtrans835PickEob_Load);

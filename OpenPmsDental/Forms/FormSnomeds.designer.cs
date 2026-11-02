@@ -128,7 +128,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.textCode);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSnomeds";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "SNOMED CT";

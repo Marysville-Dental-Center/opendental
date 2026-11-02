@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPatListEHR2014));
 			this.butShow = new System.Windows.Forms.Button();
 			this.butGender = new System.Windows.Forms.Button();
 			this.butLabResult = new System.Windows.Forms.Button();
@@ -163,7 +162,6 @@
 			this.Controls.Add(this.butGender);
 			this.Controls.Add(this.butShow);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPatListEHR2014";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Patient List";

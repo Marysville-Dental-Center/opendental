@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProcLockTool));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.backgroundWorker1 = new System.ComponentModel.BackgroundWorker();
 			this.textDate2 = new OpenPmsDental.ValidDate();
@@ -82,7 +81,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textDate1);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormProcLockTool";
 			this.Text = "Procedure Lock Tool";
 			this.Load += new System.EventHandler(this.FormProcLockTool_Load);

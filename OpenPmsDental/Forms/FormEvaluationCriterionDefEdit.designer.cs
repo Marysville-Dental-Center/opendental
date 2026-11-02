@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEvaluationCriterionDefEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.checkIsCategoryName = new OpenPmsDental.UI.CheckBox();
 			this.textDescript = new System.Windows.Forms.TextBox();
@@ -154,7 +153,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textDescript);
 			this.Controls.Add(this.checkIsCategoryName);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEvaluationCriterionDefEdit";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Evaluation Criterion Def Edit";

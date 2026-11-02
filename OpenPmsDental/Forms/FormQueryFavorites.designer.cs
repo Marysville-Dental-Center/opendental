@@ -26,7 +26,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormQueryFavorites));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.butAdd = new OpenPmsDental.UI.Button();
 			this.butDelete = new OpenPmsDental.UI.Button();
@@ -207,7 +206,6 @@ namespace OpenPmsDental {
 			this.ClientSize = new System.Drawing.Size(1084, 656);
 			this.Controls.Add(this.splitContainer);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormQueryFavorites";

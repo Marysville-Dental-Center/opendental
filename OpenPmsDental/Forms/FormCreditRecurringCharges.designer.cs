@@ -26,7 +26,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCreditRecurringCharges));
 			this.checkHideBold = new OpenPmsDental.UI.CheckBox();
 			this.groupCounts = new OpenPmsDental.UI.GroupBox();
 			this.labelUpdated = new System.Windows.Forms.Label();
@@ -300,7 +299,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butSend);
 			this.Controls.Add(this.groupClinics);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCreditRecurringCharges";
 			this.Text = "Credit Card Recurring Charges";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormCreditRecurringCharges_FormClosing);

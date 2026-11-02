@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormDatabaseMaintenancePat));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.textPatient = new System.Windows.Forms.TextBox();
 			this.butPatientSelect = new OpenPmsDental.UI.Button();
@@ -316,7 +315,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.textBox2);
 			this.Controls.Add(this.butPatientSelect);
 			this.Controls.Add(this.textPatient);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormDatabaseMaintenancePat";
 			this.Text = "Database Maintenance for Patient";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormDatabaseMaintenancePat_FormClosing);

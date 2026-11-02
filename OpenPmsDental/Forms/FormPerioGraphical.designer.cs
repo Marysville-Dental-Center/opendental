@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPerioGraphical));
 			this.toothChartWrapper = new SparksToothChart.ToothChartWrapper();
 			this.butPrint = new OpenPmsDental.UI.Button();
 			this.butSave = new OpenPmsDental.UI.Button();
@@ -99,7 +98,6 @@
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.toothChartWrapper);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPerioGraphical";
 			this.Text = "Graphical Perio Chart";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormPerioGraphical_FormClosing);

@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormClaimFormEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.pictureBoxClaimForm = new System.Windows.Forms.PictureBox();
 			this.textDescription = new System.Windows.Forms.TextBox();
@@ -400,7 +399,6 @@ namespace OpenPmsDental {
 			this.ClientSize = new System.Drawing.Size(992, 745);
 			this.Controls.Add(this.panel1);
 			this.Controls.Add(this.panelControls);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MinimizeBox = false;
 			this.Name = "FormClaimFormEdit";
 			this.ShowInTaskbar = false;

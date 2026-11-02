@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsVerificationSetup));
 			this.checkExcludePatientClones = new OpenPmsDental.UI.CheckBox();
 			this.checkInsVerifyExcludePatVerify = new OpenPmsDental.UI.CheckBox();
 			this.groupStandard = new OpenPmsDental.UI.GroupBox();
@@ -422,7 +421,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.groupStandard);
 			this.Controls.Add(this.checkInsVerifyUseCurrentUser);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormInsVerificationSetup";
 			this.Text = "Insurance Verification Setup";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormInsVerificationSetup_FormClosing);

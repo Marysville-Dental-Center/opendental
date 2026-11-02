@@ -409,7 +409,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butPrintPreview);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.butExportTxt);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormUserQuery";
 			this.Text = "User Query";
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

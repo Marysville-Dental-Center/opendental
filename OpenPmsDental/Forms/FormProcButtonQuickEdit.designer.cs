@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProcButtonQuickEdit));
 			this.checkIsLabel = new OpenPmsDental.UI.CheckBox();
 			this.textProcedureCode = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
@@ -139,7 +138,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textSurfaces);
 			this.Controls.Add(this.labelSurfaces);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormProcButtonQuickEdit";
 			this.Text = "Edit Quick Procedure Button";
 			this.Load += new System.EventHandler(this.FormProcButtonQuickEdit_Load);

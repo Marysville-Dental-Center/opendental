@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormOrthoAutoClaims));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butSelectAll = new OpenPmsDental.UI.Button();
 			this.butGenerate = new OpenPmsDental.UI.Button();
@@ -81,7 +80,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butSelectAll);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butGenerate);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormOrthoAutoClaims";
 			this.Text = "Ortho Auto Claims";
 			this.Load += new System.EventHandler(this.FormAutoOrtho_Load);

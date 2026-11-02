@@ -165,7 +165,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butTransfer);
 			this.Controls.Add(this.gridImbalances);
 			this.Controls.Add(this.gridTransfers);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormIncomeTransferManage";

@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrLabPanels));
 			this.butAdd = new System.Windows.Forms.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butSubmit = new System.Windows.Forms.Button();
@@ -110,7 +109,6 @@
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrLabPanels";
 			this.Text = "Lab Panels";
 			this.Load += new System.EventHandler(this.FormLabPanels_Load);

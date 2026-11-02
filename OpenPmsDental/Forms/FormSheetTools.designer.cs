@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSheetTools));
 			this.butExport = new OpenPmsDental.UI.Button();
 			this.butImport = new OpenPmsDental.UI.Button();
 			this.label2 = new System.Windows.Forms.Label();
@@ -76,7 +75,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.butExport);
 			this.Controls.Add(this.butImport);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSheetTools";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Sheet Tools";

@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormMessageReplacementTextEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.textBoxEditor = new OpenPmsDental.ODtextBox();
 			this.butReplacementText = new OpenPmsDental.UI.Button();
@@ -72,7 +71,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butReplacementText);
 			this.Controls.Add(this.textBoxEditor);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormMessageReplacementTextEdit";
 			this.Text = "Payment Plan Terms and Conditions";
 			this.Load += new System.EventHandler(this.FormMessageReplacementTextEdit_Load);

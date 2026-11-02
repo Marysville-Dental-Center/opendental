@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormLicense));
 			this.listBoxLicense = new OpenPmsDental.UI.ListBox();
 			this.textLicense = new System.Windows.Forms.RichTextBox();
 			this.labelLicense = new System.Windows.Forms.Label();
@@ -74,7 +73,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelLicense);
 			this.Controls.Add(this.textLicense);
 			this.Controls.Add(this.listBoxLicense);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormLicense";

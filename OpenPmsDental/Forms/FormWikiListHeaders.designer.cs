@@ -152,7 +152,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridPickList);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormWikiListHeaders";
 			this.Text = "Edit Wiki List Headers";
 			this.Load += new System.EventHandler(this.FormWikiListHeaders_Load);

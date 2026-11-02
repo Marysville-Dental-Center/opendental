@@ -130,9 +130,6 @@
   <data name="CursorCrosshair" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\CursorCrosshair.cur;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="ODLogo" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\ODLogo.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="Twain" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Twain.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
   </data>
@@ -177,9 +174,6 @@
   </data>
   <data name="Med_History" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Med History.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="splashCanada" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\splashCanada.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Add" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Add.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -364,9 +358,6 @@
   <data name="DeleteX" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\DeleteX.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="bencoLogo" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\benco_logo.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="MigraDoc" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\MigraDoc.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
   </data>
@@ -444,9 +435,6 @@
   </data>
   <data name="CursorMeasure" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\CursorMeasure.cur;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="splashBenco" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\splashBenco.jpg;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Check_mark_23x20_02" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Check_mark_23x20_02.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

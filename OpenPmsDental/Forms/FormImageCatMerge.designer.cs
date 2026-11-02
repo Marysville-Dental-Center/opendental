@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormImageCatMerge));
 			this.butMerge = new OpenPmsDental.UI.Button();
 			this.groupBoxInto = new OpenPmsDental.UI.GroupBox();
 			this.buttonChangeInto = new OpenPmsDental.UI.Button();
@@ -135,7 +134,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.groupBoxFrom);
 			this.Controls.Add(this.groupBoxInto);
 			this.Controls.Add(this.butMerge);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormImageCatMerge";
 			this.Text = "Merge Image Categories";
 			this.groupBoxInto.ResumeLayout(false);

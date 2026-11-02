@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCCDPrint));
 			this.printPreviewControl1 = new System.Windows.Forms.PrintPreviewControl();
 			this.labelPage = new System.Windows.Forms.Label();
 			this.butForward = new OpenPmsDental.UI.Button();
@@ -119,7 +118,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.labelPage);
 			this.Controls.Add(this.printPreviewControl1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCCDPrint";
 			this.Text = "Carrier Response";
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

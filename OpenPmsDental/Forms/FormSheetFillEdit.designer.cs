@@ -29,7 +29,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSheetFillEdit));
 			this.textNote = new System.Windows.Forms.TextBox();
 			this.labelNote = new System.Windows.Forms.Label();
 			this.labelDateTime = new System.Windows.Forms.Label();
@@ -390,7 +389,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelDateTime);
 			this.Controls.Add(this.textNote);
 			this.Controls.Add(this.labelNote);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSheetFillEdit";
 			this.Text = "Fill Sheet";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormSheetFillEdit_FormClosing);

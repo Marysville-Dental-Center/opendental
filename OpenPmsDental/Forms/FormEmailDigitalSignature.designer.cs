@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEmailDigitalSignature));
 			this.butTrust = new OpenPmsDental.UI.Button();
 			this.label2 = new System.Windows.Forms.Label();
 			this.textCertificateAuthority = new System.Windows.Forms.TextBox();
@@ -195,7 +194,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.butTrust);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEmailDigitalSignature";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Email Digital Signature";

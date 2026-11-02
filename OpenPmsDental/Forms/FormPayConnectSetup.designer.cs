@@ -30,7 +30,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPayConnectSetup));
 			this.checkEnabled = new OpenPmsDental.UI.CheckBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.comboPaymentType = new OpenPmsDental.UI.ComboBox();
@@ -346,7 +345,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.checkEnabled);
 			this.Controls.Add(this.groupPracticeWide);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormPayConnectSetup";

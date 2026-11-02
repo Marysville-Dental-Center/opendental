@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormDisplayFieldCategories));
 			this.listCategory = new OpenPmsDental.UI.ListBox();
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
@@ -76,7 +75,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.listCategory);
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormDisplayFieldCategories";

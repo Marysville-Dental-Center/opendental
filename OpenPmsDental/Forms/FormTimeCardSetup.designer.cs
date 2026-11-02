@@ -30,7 +30,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTimeCardSetup));
 			this.checkUseDecimal = new OpenPmsDental.UI.CheckBox();
 			this.groupBox1 = new OpenPmsDental.UI.GroupBox();
 			this.checkShowSeconds = new OpenPmsDental.UI.CheckBox();
@@ -244,7 +243,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.gridRules);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butAdd);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormTimeCardSetup";

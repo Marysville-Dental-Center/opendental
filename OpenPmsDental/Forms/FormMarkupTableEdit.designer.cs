@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormMarkupTableEdit));
 			this.groupBox1 = new OpenPmsDental.UI.GroupBox();
 			this.butColumnDelete = new OpenPmsDental.UI.Button();
 			this.butHeaders = new OpenPmsDental.UI.Button();
@@ -223,7 +222,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butManEdit);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormMarkupTableEdit";
 			this.Text = "Edit Wiki Table";
 			this.Load += new System.EventHandler(this.FormMarkupTableEdit_Load);

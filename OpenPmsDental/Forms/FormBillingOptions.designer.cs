@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormBillingOptions));
 			this.butCreate = new OpenPmsDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
 			this.butSaveDefault = new OpenPmsDental.UI.Button();
@@ -576,7 +575,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butCreate);
 			this.Controls.Add(this.butDunningSetup);
 			this.Controls.Add(this.gridDunning);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormBillingOptions";

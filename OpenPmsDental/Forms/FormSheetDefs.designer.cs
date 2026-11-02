@@ -31,7 +31,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSheetDefs));
 			this.label3 = new System.Windows.Forms.Label();
 			this.butDefault = new OpenPmsDental.UI.Button();
 			this.butTools = new OpenPmsDental.UI.Button();
@@ -157,7 +156,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.grid1);
 			this.Controls.Add(this.grid2);
 			this.Controls.Add(this.butNew);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSheetDefs";
 			this.Text = "Sheet Defs";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormSheetDefs_FormClosing);

@@ -85,7 +85,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.listMain);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormTaskInboxSetup";
 			this.Text = "Task Inbox Setup";
 			this.Load += new System.EventHandler(this.FormTaskInboxSetup_Load);

@@ -24,7 +24,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormDrCeph));
 			this.labelRace = new System.Windows.Forms.Label();
 			this.labelDate = new System.Windows.Forms.Label();
 			this.labelXRayPath = new System.Windows.Forms.Label();
@@ -172,7 +171,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelXRayPath);
 			this.Controls.Add(this.labelDate);
 			this.Controls.Add(this.labelRace);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormDrCeph";
 			this.Text = "FormDrCeph";
 			this.Load += new System.EventHandler(this.FormDrCeph_Load);

@@ -24,7 +24,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormQueryMonitor));
 			this.butStart = new OpenPmsDental.UI.Button();
 			this.butLog = new OpenPmsDental.UI.Button();
 			this.gridFeed = new OpenPmsDental.UI.GridOD();
@@ -266,7 +265,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butCopy);
 			this.Controls.Add(this.butLog);
 			this.Controls.Add(this.butStart);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormQueryMonitor";
 			this.Text = "Query Monitor";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormQueryMonitor_FormClosing);

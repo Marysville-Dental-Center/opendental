@@ -68,7 +68,6 @@ namespace OpenPmsDental.UI {
 			this.ClientSize = new System.Drawing.Size(831, 570);
 			this.Controls.Add(this.printPreviewControl2);
 			this.Controls.Add(this.ToolBarMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPrintPreview";
 			this.ShowInTaskbar = false;
 			this.Text = "Print Preview";

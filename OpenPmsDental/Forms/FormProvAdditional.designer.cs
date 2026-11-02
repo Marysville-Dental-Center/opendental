@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProvAdditional));
 			this.gridProvProperties = new OpenPmsDental.UI.GridOD();
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.labelMerchantClosedDescription = new System.Windows.Forms.Label();
@@ -71,7 +70,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelMerchantClosedDescription);
 			this.Controls.Add(this.gridProvProperties);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormProvAdditional";
 			this.Text = "Additional Provider Properties";
 			this.Load += new System.EventHandler(this.FormProvAdditional_Load);

@@ -55,7 +55,6 @@ namespace OpenPmsDental{
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.Controls.Add(this.textBoxDescript);
 			this.Controls.Add(this.butRun);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormInsPayFix";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Insurance Payment Fix";

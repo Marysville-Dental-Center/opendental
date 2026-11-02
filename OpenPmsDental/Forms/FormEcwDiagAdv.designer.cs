@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEcwDiagAdv));
 			this.textQuery = new System.Windows.Forms.TextBox();
 			this.textConnString = new System.Windows.Forms.TextBox();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
@@ -115,7 +114,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butRunQ);
 			this.Controls.Add(this.textConnString);
 			this.Controls.Add(this.textQuery);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEcwDiagAdv";
 			this.Text = "eClinical Works Diagnostic";
 			this.Load += new System.EventHandler(this.FormEcwDiagAdv_Load);

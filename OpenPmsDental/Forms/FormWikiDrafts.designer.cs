@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormWikiDrafts));
 			this.textNumbers = new System.Windows.Forms.TextBox();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butEdit = new OpenPmsDental.UI.Button();
@@ -146,7 +145,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.textNumbers);
 			this.Controls.Add(this.webBrowserWiki);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormWikiDrafts";
 			this.Text = "Wiki Drafts";
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

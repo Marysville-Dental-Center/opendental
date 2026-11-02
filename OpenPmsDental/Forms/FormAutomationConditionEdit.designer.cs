@@ -148,7 +148,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelCompareString);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.labelWarning);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAutomationConditionEdit";
 			this.Text = "Automation Condition Edit";
 			this.Load += new System.EventHandler(this.FormAutomationConditionEdit_Load);

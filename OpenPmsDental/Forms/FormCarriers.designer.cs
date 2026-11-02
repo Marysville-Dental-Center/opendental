@@ -32,7 +32,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCarriers));
 			this.butAdd = new OpenPmsDental.UI.Button();
 			this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
 			this.butCombine = new OpenPmsDental.UI.Button();
@@ -231,7 +230,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butCombine);
 			this.Controls.Add(this.butAdd);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormCarriers";

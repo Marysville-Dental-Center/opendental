@@ -112,7 +112,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridTabNames);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormOrthoChartSetup";
 			this.Text = "Ortho Chart Tabs";
 			this.Load += new System.EventHandler(this.FormOrthoChartSetup_Load);

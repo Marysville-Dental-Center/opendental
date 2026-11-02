@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCDSSetup));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.radioGroup = new System.Windows.Forms.RadioButton();
 			this.radioUser = new System.Windows.Forms.RadioButton();
@@ -96,7 +95,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.radioGroup);
 			this.Controls.Add(this.radioUser);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCDSSetup";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Clinical Decision Support Setup";

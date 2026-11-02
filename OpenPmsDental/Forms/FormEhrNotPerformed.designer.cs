@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrNotPerformed));
 			this.butAdd = new System.Windows.Forms.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
@@ -58,7 +57,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(917, 423);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrNotPerformed";
 			this.Text = "CQM Items Not Performed";
 			this.Load += new System.EventHandler(this.FormEhrNotPerformed_Load);

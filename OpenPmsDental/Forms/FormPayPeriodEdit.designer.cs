@@ -35,7 +35,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			OpenPmsDental.UI.Button butDelete;
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPayPeriodEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.textDateStart = new OpenPmsDental.ValidDate();
 			this.label1 = new System.Windows.Forms.Label();
@@ -127,7 +126,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.textDateStart);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormPayPeriodEdit";

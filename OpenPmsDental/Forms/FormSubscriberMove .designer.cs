@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSubscriberMove));
 			this.groupBox1 = new OpenPmsDental.UI.GroupBox();
 			this.butViewInsPlanInto = new OpenPmsDental.UI.Button();
 			this.butPickInsPlanInto = new OpenPmsDental.UI.Button();
@@ -146,7 +145,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.butSave);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSubscriberMove";
 			this.Text = "Move Subscribers";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormSubscriberMove_FormClosing);

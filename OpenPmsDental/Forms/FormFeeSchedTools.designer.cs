@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormFeeSchedTools));
 			this.checkShowGroups = new OpenPmsDental.UI.CheckBox();
 			this.comboClinicTo = new OpenPmsDental.UI.ComboBoxClinicPicker();
 			this.groupBox7 = new OpenPmsDental.UI.GroupBox();
@@ -733,7 +732,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.checkShowGroups);
 			this.Controls.Add(this.groupBox7);
 			this.Controls.Add(this.tabControlTools);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormFeeSchedTools";

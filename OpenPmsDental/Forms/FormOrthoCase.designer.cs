@@ -24,7 +24,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormOrthoCase));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.groupVisit = new OpenPmsDental.UI.GroupBox();
 			this.textVisitPercent = new OpenPmsDental.ValidDouble();
@@ -823,7 +822,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butAddBandingProcedure);
 			this.Controls.Add(this.textBandingProc);
 			this.Controls.Add(this.checkIsTransfer);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormOrthoCase";
 			this.Text = "Ortho Case";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormOrthoCase_FormClosing);

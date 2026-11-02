@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInvoiceItemSelect));
 			this.label1 = new System.Windows.Forms.Label();
 			this._gridMain = new OpenPmsDental.UI.GridOD();
 			this.butOK = new OpenPmsDental.UI.Button();
@@ -117,7 +116,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butAll);
 			this.Controls.Add(this._gridMain);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormInvoiceItemSelect";

@@ -23,7 +23,6 @@ namespace OpenDentalImaging{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormImagingDevices));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butAdd = new OpenPmsDental.UI.Button();
 			this.label2 = new System.Windows.Forms.Label();
@@ -129,7 +128,6 @@ namespace OpenDentalImaging{
 			this.Controls.Add(this.textComputer);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormImagingDevices";
 			this.Text = "Imaging Devices";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormImagingDevices_FormClosing);

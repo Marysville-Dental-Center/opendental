@@ -143,16 +143,6 @@ namespace OpenPmsDental.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        public static System.Drawing.Bitmap bencoLogo {
-            get {
-                object obj = ResourceManager.GetObject("bencoLogo", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         public static System.Drawing.Bitmap bola_launch {
             get {
                 object obj = ResourceManager.GetObject("bola_launch", resourceCulture);
@@ -842,16 +832,6 @@ namespace OpenPmsDental.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        public static System.Drawing.Bitmap ODLogo {
-            get {
-                object obj = ResourceManager.GetObject("ODLogo", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         public static System.Drawing.Bitmap padlock_closed {
             get {
                 object obj = ResourceManager.GetObject("padlock_closed", resourceCulture);
@@ -1149,26 +1129,6 @@ namespace OpenPmsDental.Properties {
         public static string SharpDX {
             get {
                 return ResourceManager.GetString("SharpDX", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap splashBenco {
-            get {
-                object obj = ResourceManager.GetObject("splashBenco", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        public static System.Drawing.Bitmap splashCanada {
-            get {
-                object obj = ResourceManager.GetObject("splashCanada", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
             }
         }
         

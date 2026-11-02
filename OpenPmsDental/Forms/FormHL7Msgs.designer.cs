@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormHL7Msgs));
 			this.groupBox1 = new OpenPmsDental.UI.GroupBox();
 			this.butCurrent = new OpenPmsDental.UI.Button();
 			this.butAll = new OpenPmsDental.UI.Button();
@@ -186,7 +185,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(939, 663);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormHL7Msgs";
 			this.Text = "HL7 Messages";
 			this.Load += new System.EventHandler(this.FormHL7Msgs_Load);

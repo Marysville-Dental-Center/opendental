@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormGroupPermEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.textName = new System.Windows.Forms.TextBox();
 			this.label10 = new System.Windows.Forms.Label();
@@ -132,7 +131,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.textName);
 			this.Controls.Add(this.label10);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormGroupPermEdit";

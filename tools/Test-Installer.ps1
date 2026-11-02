@@ -34,6 +34,12 @@ if(-not $OutDir){ $OutDir=Join-Path $RepoRoot 'installer\bin\install-test' }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $AppId='{D5640A25-F302-4CAD-96DC-84AAA8B22F98}_is1'
 $UninstallKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$AppId"
+#An all-users (administrative) installation of the same AppId on this PC. With one, Inno Setup names the per-user uninstall entry
+#"<UninstallDisplayName> (Current user)" so the two entries can be told apart.
+$AllUsersInstalled=(Test-Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\$AppId") -or
+	(Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$AppId")
+$ExpectedNames=@('Open PMS - Dental')
+if($AllUsersInstalled){ $ExpectedNames+='Open PMS - Dental (Current user)' }
 $StartMenuLink=Join-Path ([Environment]::GetFolderPath('Programs')) 'Open PMS - Dental.lnk'
 $DesktopLink=Join-Path ([Environment]::GetFolderPath('Desktop')) 'Open PMS - Dental.lnk'
 $script:Failures=New-Object 'System.Collections.Generic.List[string]'
@@ -80,6 +86,7 @@ if(-not $Setup -or -not (Test-Path -LiteralPath $Setup -PathType Leaf)){ Write-H
 if(-not (Test-Path -LiteralPath $Staging -PathType Container)){ Write-Host "No staging folder at $Staging"; exit 1 }
 if(Test-Path $UninstallKey){ Write-Host "A per-user installation exists already ($UninstallKey); uninstall it first."; exit 1 }
 Write-Host "Setup: $Setup"
+if($AllUsersInstalled){ Write-Host 'An all-users installation exists on this PC; the per-user uninstall entry may end in " (Current user)".' }
 Write-Host ("Setup SHA-256: {0}" -f (Get-FileHash -LiteralPath $Setup -Algorithm SHA256).Hash.ToLowerInvariant())
 $pidsBefore=Get-ProgramPids
 $stagingMap=Get-FileMap (Resolve-Path -LiteralPath $Staging).Path
@@ -123,7 +130,7 @@ Check (Test-Path $UninstallKey) 'per-user uninstall entry written'
 if(Test-Path $UninstallKey){
 	$entry=Get-ItemProperty $UninstallKey
 	Check ($entry.DisplayVersion -eq '0.0') "uninstall entry version 0.0 (was $($entry.DisplayVersion))"
-	Check ($entry.DisplayName -eq 'Open PMS - Dental') "uninstall entry name Open PMS - Dental (was $($entry.DisplayName))"
+	Check ($ExpectedNames -ccontains $entry.DisplayName) "uninstall entry name $($ExpectedNames -join ' or ') (was $($entry.DisplayName))"
 }
 $logA=Get-Content -LiteralPath (Join-Path $OutDir 'a-install.log') -Raw
 Check ($logA -match 'Installation process succeeded') 'the setup log says the installation succeeded'

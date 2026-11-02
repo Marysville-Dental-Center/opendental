@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEtrans835ClaimEdit));
 			this.textPatientName = new System.Windows.Forms.TextBox();
 			this.label8 = new System.Windows.Forms.Label();
 			this.textDateService = new System.Windows.Forms.TextBox();
@@ -416,7 +415,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textPatientName);
 			this.Controls.Add(this.label8);
 			this.Controls.Add(this.gridProcedureBreakdown);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEtrans835ClaimEdit";
 			this.Text = "Claim Explanation of Benefits (EOB)";
 			this.Load += new System.EventHandler(this.FormEtrans835ClaimEdit_Load);

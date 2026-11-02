@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTestLatency));
 			this.label1 = new System.Windows.Forms.Label();
 			this.textLatency = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
@@ -144,7 +143,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(360, 150);
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.groupBox1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormTestLatency";
 			this.Text = "Roundtrip latency";
 			this.Load += new System.EventHandler(this.FormTestLatency_Load);

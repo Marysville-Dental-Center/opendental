@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormHouseCalls));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.groupBox2 = new OpenPmsDental.UI.GroupBox();
 			this.butAll = new OpenPmsDental.UI.Button();
@@ -139,7 +138,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.radioConfirm);
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormHouseCalls";

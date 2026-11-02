@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormWikiHistory));
 			this.labelNotAuthorized = new System.Windows.Forms.Label();
 			this.butRevert = new OpenPmsDental.UI.Button();
 			this.textContent = new OpenPmsDental.ODcodeBox();
@@ -106,7 +105,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butRevert);
 			this.Controls.Add(this.textContent);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormWikiHistory";
 			this.Text = "Wiki History";
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

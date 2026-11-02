@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormQuickBooksSetup));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.buttonRemoveClassRefQB = new OpenPmsDental.UI.Button();
 			this.buttonAddClassRefQB = new OpenPmsDental.UI.Button();
@@ -276,7 +275,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label7);
 			this.Controls.Add(this.labelDepositsQB);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormQuickBooksSetup";
 			this.Text = "Setup QuickBooks";
 			this.Load += new System.EventHandler(this.FormQuickBooksSetup_Load);

@@ -106,7 +106,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butNone);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butDropIndexes);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRedundantIndexes";
 			this.Text = "Drop Redundant Indexes";
 			this.Load += new System.EventHandler(this.FormRedundantIndexes_Load);

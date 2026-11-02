@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSupplyInventory));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butAddNeeded = new OpenPmsDental.UI.Button();
 			this.butEquipment = new OpenPmsDental.UI.Button();
@@ -164,7 +163,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butOrders);
 			this.Controls.Add(this.butSupplies);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSupplyInventory";
 			this.Text = "Supply Inventory";
 			this.Load += new System.EventHandler(this.FormInventory_Load);

@@ -146,7 +146,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butAddSpan);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormInsCatsSetup";

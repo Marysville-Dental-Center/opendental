@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrPatientExport));
 			this.comboProv = new System.Windows.Forms.ComboBox();
 			this.label4 = new System.Windows.Forms.Label();
 			this.comboSite = new System.Windows.Forms.ComboBox();
@@ -214,7 +213,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelClinic);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.comboProv);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrPatientExport";
 			this.Text = "EHR Patient Export";
 			this.Load += new System.EventHandler(this.FormEhrPatientExport_Load);

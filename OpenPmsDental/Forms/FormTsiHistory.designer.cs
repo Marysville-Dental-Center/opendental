@@ -26,7 +26,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTsiHistory));
 			this.contextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.menuItemGoTo = new System.Windows.Forms.ToolStripMenuItem();
 			this.checkShowPatNums = new OpenPmsDental.UI.CheckBox();
@@ -337,7 +336,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.groupFilters);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.groupRawMsg);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormTsiHistory";
 			this.Text = "TSI Message History";
 			this.Load += new System.EventHandler(this.FormTsiHistory_Load);

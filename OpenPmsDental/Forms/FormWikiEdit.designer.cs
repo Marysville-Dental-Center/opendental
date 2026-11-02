@@ -161,7 +161,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.webBrowserWiki);
 			this.Controls.Add(this.toolBar2);
 			this.Controls.Add(this.ToolBarMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormWikiEdit";
 			this.Text = "Wiki Edit";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormWikiEdit_FormClosing);

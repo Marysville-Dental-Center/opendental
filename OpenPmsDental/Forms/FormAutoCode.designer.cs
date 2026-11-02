@@ -25,7 +25,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAutoCode));
 			this.listAutoCodes = new OpenPmsDental.UI.ListBox();
 			this.butAdd = new OpenPmsDental.UI.Button();
 			this.butDelete = new OpenPmsDental.UI.Button();
@@ -67,7 +66,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.listAutoCodes);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormAutoCode";

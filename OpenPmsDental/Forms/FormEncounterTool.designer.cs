@@ -232,7 +232,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butEncSnomed);
 			this.Controls.Add(this.butEncCdt);
 			this.Controls.Add(this.butRun);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEncounterTool";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Insert Encounters";

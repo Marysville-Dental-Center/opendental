@@ -424,7 +424,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butLineItem);
 			this.Controls.Add(this.checkHidePaysplits);
 			this.Controls.Add(this.butSimple);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAllocationsSetup";
 			this.Text = "Allocations Setup";
 			this.Load += new System.EventHandler(this.FormAllocationsSetup_Load);

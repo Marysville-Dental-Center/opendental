@@ -146,7 +146,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.ToolBarMain);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAccounting";
 			this.Text = "Accounting";
 			this.Load += new System.EventHandler(this.FormAccounting_Load);

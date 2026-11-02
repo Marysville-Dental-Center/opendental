@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrMeasureEvents));
 			this.labelType = new System.Windows.Forms.Label();
 			this.comboType = new System.Windows.Forms.ComboBox();
 			this.labelEndDate = new System.Windows.Forms.Label();
@@ -132,7 +131,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.comboType);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butRefresh);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrMeasureEvents";
 			this.Text = "EHR Measure Events";
 			this.Load += new System.EventHandler(this.FormEhrMeasureEvents_Load);

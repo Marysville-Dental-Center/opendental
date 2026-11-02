@@ -128,7 +128,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridClinics);
 			this.Controls.Add(this.gridGroups);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormFeeSchedGroups";
 			this.Text = "Fee Schedule Groups";
 			this.Load += new System.EventHandler(this.FormFeeSchedGroups_Load);

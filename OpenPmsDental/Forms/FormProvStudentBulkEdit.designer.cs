@@ -24,7 +24,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProvStudentBulkEdit));
 			this.butBulkEdit = new OpenPmsDental.UI.Button();
 			this.gridStudents = new OpenPmsDental.UI.GridOD();
 			this.label7 = new System.Windows.Forms.Label();
@@ -165,7 +164,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.comboClass);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.gridStudents);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormProvStudentBulkEdit";
 			this.Text = "Student Bulk Edit";
 			this.Load += new System.EventHandler(this.FormProvStudentBulkEdit_Load);

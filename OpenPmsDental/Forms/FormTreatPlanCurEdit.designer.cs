@@ -24,7 +24,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTreatPlanCurEdit));
 			this.contextMenuProcs = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.menuItemGotToAppt = new System.Windows.Forms.ToolStripMenuItem();
 			this.menuItemGoToPlanned = new System.Windows.Forms.ToolStripMenuItem();
@@ -222,7 +221,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butRight);
 			this.Controls.Add(this.butLeft);
 			this.Controls.Add(this.gridTP);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormTreatPlanCurEdit";
 			this.Text = "Current Treatment Plan - {Active}";
 			this.Load += new System.EventHandler(this.FormTreatPlanCurEdit_Load);

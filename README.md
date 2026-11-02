@@ -1,3 +1,5 @@
+<img src="branding/logo-256.png" alt="Open PMS - Dental logo" width="96">
+
 # Open PMS - Dental
 
 Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and contributors, licensed under the GNU GPL v2. It is not affiliated with or endorsed by Open Dental Software, Inc.

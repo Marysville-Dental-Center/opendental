@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormOperatoryEdit));
 			this.butPickHyg = new OpenPmsDental.UI.Button();
 			this.butPickProv = new OpenPmsDental.UI.Button();
 			this.comboClinic = new OpenPmsDental.UI.ComboBoxClinicPicker();
@@ -302,7 +301,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.textOpName);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormOperatoryEdit";

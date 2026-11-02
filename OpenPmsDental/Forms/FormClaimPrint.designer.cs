@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormClaimPrint));
 			this.Preview2 = new OpenPmsDental.UI.ODPrintPreviewControl();
 			this.butPrint = new OpenPmsDental.UI.Button();
 			this.labelTotPages = new System.Windows.Forms.Label();
@@ -91,7 +90,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butFwd);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.Preview2);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormClaimPrint";
 			this.ShowInTaskbar = false;
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;

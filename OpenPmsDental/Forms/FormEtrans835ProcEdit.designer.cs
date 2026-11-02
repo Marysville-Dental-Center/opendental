@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEtrans835ProcEdit));
 			this.textProcSubmitted = new System.Windows.Forms.TextBox();
 			this.label8 = new System.Windows.Forms.Label();
 			this.textProcAdjudicated = new System.Windows.Forms.TextBox();
@@ -391,7 +390,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label9);
 			this.Controls.Add(this.textProcSubmitted);
 			this.Controls.Add(this.label8);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEtrans835ProcEdit";
 			this.Text = "Procedure Paid";
 			this.Load += new System.EventHandler(this.FormEtrans835ClaimEdit_Load);

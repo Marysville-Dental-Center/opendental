@@ -32,7 +32,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEmailMessageEdit));
 			this.labelTemplate = new System.Windows.Forms.Label();
 			this.listTemplates = new System.Windows.Forms.ListBox();
 			this.panelTemplates = new System.Windows.Forms.Panel();
@@ -348,7 +347,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.panelTemplates);
 			this.Controls.Add(this.emailPreview);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEmailMessageEdit";
 			this.Text = "Edit Email Message";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormEmailMessageEdit_FormClosing);

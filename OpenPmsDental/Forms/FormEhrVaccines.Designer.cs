@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrVaccines));
 			this.butSubmitImmunization = new System.Windows.Forms.Button();
 			this.butAddVaccine = new System.Windows.Forms.Button();
 			this.butExport = new System.Windows.Forms.Button();
@@ -114,7 +113,6 @@
 			this.Controls.Add(this.butAddVaccine);
 			this.Controls.Add(this.butSubmitImmunization);
 			this.Controls.Add(this.gridVaccine);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrVaccines";
 			this.Text = "FormVaccines";
 			this.Load += new System.EventHandler(this.FormVaccines_Load);

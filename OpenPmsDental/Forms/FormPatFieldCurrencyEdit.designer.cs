@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPatFieldCurrencyEdit));
 			this.labelName = new System.Windows.Forms.Label();
 			this.textFieldCurrency = new OpenPmsDental.ValidDouble();
 			this.butSave = new OpenPmsDental.UI.Button();
@@ -63,7 +62,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textFieldCurrency);
 			this.Controls.Add(this.labelName);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPatFieldCurrencyEdit";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Edit Patient Field Currency";

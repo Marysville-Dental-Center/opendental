@@ -28,7 +28,6 @@ namespace OpenPmsDental
         /// </summary>
         private void InitializeComponent()
         {
-					System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAutoNoteControls));
 					this.gridMain = new OpenPmsDental.UI.GridOD();
 					this.butAdd = new OpenPmsDental.UI.Button();
 					this.butOK = new OpenPmsDental.UI.Button();
@@ -92,7 +91,6 @@ namespace OpenPmsDental
 					this.Controls.Add(this.gridMain);
 					this.Controls.Add(this.butAdd);
 					this.Controls.Add(this.butOK);
-					this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 					this.Name = "FormAutoNoteControls";
 					this.ShowInTaskbar = false;
 					this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;

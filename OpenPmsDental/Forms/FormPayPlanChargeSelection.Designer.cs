@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPayPlanChargeSelection));
 			this.listBoxPayPlanCharges = new OpenPmsDental.UI.ListBox();
 			this.butZeroOutCharges = new OpenPmsDental.UI.Button();
 			this.butOK = new OpenPmsDental.UI.Button();
@@ -64,7 +63,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.butZeroOutCharges);
 			this.Controls.Add(this.listBoxPayPlanCharges);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPayPlanChargeSelection";
 			this.Text = "Pay Plan Charge Selection";
 			this.Load += new System.EventHandler(this.FormPayPlanChargeSelection_Load);

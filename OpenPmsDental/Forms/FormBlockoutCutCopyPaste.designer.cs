@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormBlockoutCutCopyPaste));
 			this.groupBox1 = new OpenPmsDental.UI.GroupBox();
 			this.textClipboard = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
@@ -194,7 +193,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.checkWeekend);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.groupBox2);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormBlockoutCutCopyPaste";

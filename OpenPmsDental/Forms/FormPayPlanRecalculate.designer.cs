@@ -99,7 +99,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.checkRecalculateInterest);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPayPlanRecalculate";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Payment Plan Recalculate";

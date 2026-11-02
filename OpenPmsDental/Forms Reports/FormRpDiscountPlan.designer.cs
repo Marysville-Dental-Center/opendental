@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpDiscountPlan));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.labelDescription = new System.Windows.Forms.Label();
 			this.textDescription = new System.Windows.Forms.TextBox();
@@ -62,7 +61,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelDescription);
 			this.Controls.Add(this.textDescription);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpDiscountPlan";
 			this.Text = "Discount Plan Report";
 			this.ResumeLayout(false);

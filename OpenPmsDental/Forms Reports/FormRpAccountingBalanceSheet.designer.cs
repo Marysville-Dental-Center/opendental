@@ -26,7 +26,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpAccountingBalanceSheet));
 			this.labelTO = new System.Windows.Forms.Label();
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.monthCalendar = new OpenPmsDental.UI.MonthCalendarOD();
@@ -65,7 +64,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.monthCalendar);
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.labelTO);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormRpAccountingBalanceSheet";

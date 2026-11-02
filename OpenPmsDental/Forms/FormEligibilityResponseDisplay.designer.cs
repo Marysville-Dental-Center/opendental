@@ -26,7 +26,6 @@ namespace OpenPmsDental {
 			System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
 			System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
 			System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEligibilityResponseDisplay));
 			this.LblPatientName = new System.Windows.Forms.Label();
 			this.dataGridView1 = new System.Windows.Forms.DataGridView();
 			this.MyPrintDocument = new System.Drawing.Printing.PrintDocument();
@@ -113,7 +112,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butPrintPreview);
 			this.Controls.Add(this.LblPatientName);
 			this.Controls.Add(this.dataGridView1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormEligibilityResponseDisplay";

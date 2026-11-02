@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormHL7Defs));
 			this.grid1 = new OpenPmsDental.UI.GridOD();
 			this.grid2 = new OpenPmsDental.UI.GridOD();
 			this.butDuplicate = new OpenPmsDental.UI.Button();
@@ -108,7 +107,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butCopy);
 			this.Controls.Add(this.grid1);
 			this.Controls.Add(this.grid2);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormHL7Defs";

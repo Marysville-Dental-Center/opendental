@@ -3727,7 +3727,6 @@
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.label6);
 			this.Controls.Add(this.label8);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormClaimEdit";

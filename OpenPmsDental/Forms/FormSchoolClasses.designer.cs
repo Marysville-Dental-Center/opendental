@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSchoolClasses));
 			this.listMain = new OpenPmsDental.UI.ListBox();
 			this.butAdd = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
@@ -55,7 +54,6 @@ namespace OpenPmsDental {
 			this.ClientSize = new System.Drawing.Size(300, 459);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.listMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormSchoolClasses";

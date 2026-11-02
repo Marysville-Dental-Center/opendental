@@ -59,6 +59,11 @@ PrivilegesRequiredOverridesAllowed=commandline
 UninstallFilesDir={app}\uninstall
 UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\{#ExeName}
+; The Open PMS - Dental logo (branding/README.md): setup's own icon and the wizard images, at 100% and 200% (Setup picks the one for the
+; screen's dpi). They are part of setup only, never installed files.
+SetupIconFile=..\branding\app.ico
+WizardImageFile=..\branding\installer-wizard.bmp,..\branding\installer-wizard-2x.bmp
+WizardSmallImageFile=..\branding\installer-small.bmp,..\branding\installer-small-2x.bmp
 LicenseFile={#StagingDir}\LICENSE
 InfoBeforeFile={#InfoFile}
 OutputDir=bin

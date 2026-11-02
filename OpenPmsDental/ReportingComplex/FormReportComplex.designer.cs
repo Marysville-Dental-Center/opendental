@@ -73,7 +73,6 @@ namespace OpenPmsDental.ReportingComplex {
 			this.ClientSize = new System.Drawing.Size(831, 616);
 			this.Controls.Add(this.printPreviewControl2);
 			this.Controls.Add(this.ToolBarMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormReportComplex";
 			this.Text = "Report";
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormWikiCompare));
 			this.textContentRight = new OpenPmsDental.ODcodeBox();
 			this.textContentLeft = new OpenPmsDental.ODcodeBox();
 			this.label1 = new System.Windows.Forms.Label();
@@ -109,7 +108,6 @@
 			this.Controls.Add(this.textContentRight);
 			this.Controls.Add(this.textContentLeft);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormWikiCompare";
 			this.Text = "Wiki Compare";
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

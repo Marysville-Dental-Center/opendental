@@ -33,7 +33,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormMountDefEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.butDelete = new OpenPmsDental.UI.Button();
 			this.textDescription = new System.Windows.Forms.TextBox();
@@ -524,7 +523,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label3);
 			this.Controls.Add(this.textDescription);
 			this.Controls.Add(this.panelRight);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.ImeMode = System.Windows.Forms.ImeMode.On;
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;

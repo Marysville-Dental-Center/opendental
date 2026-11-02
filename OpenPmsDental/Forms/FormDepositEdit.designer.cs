@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormDepositEdit));
 			this.groupSelect = new OpenPmsDental.UI.GroupBox();
 			this.comboClassRefs = new OpenPmsDental.UI.ComboBox();
 			this.labelClassRef = new System.Windows.Forms.Label();
@@ -547,7 +546,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.labelDepositAccountNum);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormDepositEdit";

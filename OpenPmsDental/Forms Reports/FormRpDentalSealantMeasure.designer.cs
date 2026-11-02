@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpDentalSealantMeasure));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
 			this.textYear = new OpenPmsDental.ValidNum();
@@ -65,7 +64,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textYear);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpDentalSealantMeasure";
 			this.Text = "UDS Report for FQHC Dental Sealant Measure";
 			this.Load += new System.EventHandler(this.FormRpDentalSealantMeasure_Load);

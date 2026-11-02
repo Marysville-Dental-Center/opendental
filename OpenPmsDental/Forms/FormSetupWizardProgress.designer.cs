@@ -112,7 +112,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butBack);
 			this.Controls.Add(this.labelTitle);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSetupWizardProgress";
 			this.Text = "Setup Items";
 			this.Load += new System.EventHandler(this.FormSetupWizardProgress_Load);

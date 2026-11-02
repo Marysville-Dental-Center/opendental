@@ -24,7 +24,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormClaimAttachSnipDXC));
 			this.labelImageType = new System.Windows.Forms.Label();
 			this.label1 = new System.Windows.Forms.Label();
 			this.textDateCreated = new OpenPmsDental.ValidDate();
@@ -234,7 +233,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.labelImageType);
 			this.Controls.Add(this.labelClaimAttachWarning);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormClaimAttachSnipDXC";
 			this.Text = "Image Info";
 			this.Load += new System.EventHandler(this.FormClaimAttachmentItemEdit_Load);

@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsBenefits));
 			this.panelSimple = new System.Windows.Forms.Panel();
 			this.gridAgeLimits = new OpenPmsDental.UI.GridOD();
 			this.label14 = new System.Windows.Forms.Label();
@@ -960,7 +959,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butEditBenefit);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.groupCategories);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormInsBenefits";

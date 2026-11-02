@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpRecall));
 			this.labelPatient = new System.Windows.Forms.Label();
 			this.listPatientSelect = new OpenPmsDental.UI.ListBox();
 			this.butOK = new OpenPmsDental.UI.Button();
@@ -91,7 +90,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.listPatientSelect2);
 			this.Controls.Add(this.labelPatient);
 			this.Controls.Add(this.listPatientSelect);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormRpRecall";

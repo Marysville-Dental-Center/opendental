@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsPlansOverrides));
 			this.textPlanNum = new System.Windows.Forms.TextBox();
 			this.labelInsPlanID = new System.Windows.Forms.Label();
 			this.butGetAll = new OpenPmsDental.UI.Button();
@@ -345,7 +344,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.groupBoxFilters);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.groupOverrides);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormInsPlansOverrides";
 			this.ShowInTaskbar = false;
 			this.Text = "Insurance Plans Overrides";

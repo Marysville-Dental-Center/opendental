@@ -31,7 +31,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormScreenGroups));
 			this.textDateFrom = new System.Windows.Forms.TextBox();
 			this.label2 = new System.Windows.Forms.Label();
 			this.textDateTo = new System.Windows.Forms.TextBox();
@@ -152,7 +151,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butRefresh);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.label2);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormScreenGroups";
 			this.ShowInTaskbar = false;
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;

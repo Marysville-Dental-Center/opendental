@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPatFieldDefEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.textName = new System.Windows.Forms.TextBox();
 			this.buttonDelete = new OpenPmsDental.UI.Button();
@@ -184,7 +183,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelStatus);
 			this.Controls.Add(this.buttonDelete);
 			this.Controls.Add(this.textName);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormPatFieldDefEdit";

@@ -246,7 +246,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.groupBoxOD2);
 			this.Controls.Add(this.groupBoxOD1);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSheetDefDefaults";
 			this.Text = "Sheet Def Defaults";
 			this.Load += new System.EventHandler(this.FormSheetDefDefaults_Load);

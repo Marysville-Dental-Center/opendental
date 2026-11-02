@@ -59,7 +59,6 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProcSelect));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.groupCreditLogic = new OpenPmsDental.UI.GroupBox();
@@ -428,7 +427,6 @@
 			this.Controls.Add(this.groupBreakdown);
 			this.Controls.Add(this.groupCreditLogic);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormProcSelect";

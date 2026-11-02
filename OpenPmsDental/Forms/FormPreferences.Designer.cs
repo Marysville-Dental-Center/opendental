@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPreferences));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.treeMain = new System.Windows.Forms.TreeView();
 			this.panelMain = new OpenPmsDental.UI.PanelOD();
@@ -100,7 +99,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.panelMain);
 			this.Controls.Add(this.treeMain);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPreferences";
 			this.Text = "Preferences";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormPreferences_FormClosing);

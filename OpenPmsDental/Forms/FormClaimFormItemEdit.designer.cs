@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormClaimFormItemEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.labelImageFileName = new System.Windows.Forms.Label();
 			this.textImageFileName = new System.Windows.Forms.TextBox();
@@ -142,7 +141,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.labelImageFileName);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MinimizeBox = false;
 			this.Name = "FormClaimFormItemEdit";
 			this.ShowInTaskbar = false;

@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAutoNoteControlEdit));
 			this.labelOptions = new System.Windows.Forms.Label();
 			this.textBoxOptionsControl = new System.Windows.Forms.TextBox();
 			this.labelLabel = new System.Windows.Forms.Label();
@@ -310,7 +309,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.comboType);
 			this.Controls.Add(this.textBoxControlLabel);
 			this.Controls.Add(this.textBoxControlDescript);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormAutoNoteControlEdit";

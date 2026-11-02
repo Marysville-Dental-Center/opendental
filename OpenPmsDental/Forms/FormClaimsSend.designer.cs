@@ -330,7 +330,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.ToolBarMain);
 			this.Controls.Add(this.label6);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormClaimsSend";
 			this.Text = "Insurance Claims";
 			this.Load += new System.EventHandler(this.FormClaimsSend_Load);

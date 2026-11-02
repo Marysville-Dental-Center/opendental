@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormDatabaseMaintTemp));
 			this.linkLabel1 = new System.Windows.Forms.LinkLabel();
 			this.label1 = new System.Windows.Forms.Label();
 			this.comboDbs = new OpenPmsDental.UI.ComboBox();
@@ -246,7 +245,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.comboDbs);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.linkLabel1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormDatabaseMaintTemp";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Temporary Database Integrity Check";

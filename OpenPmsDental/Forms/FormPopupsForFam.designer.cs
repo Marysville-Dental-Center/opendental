@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPopupsForFam));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butAdd = new OpenPmsDental.UI.Button();
 			this.checkDeleted = new OpenPmsDental.UI.CheckBox();
@@ -71,7 +70,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.checkDeleted);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butAdd);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPopupsForFam";
 			this.Text = "Popups for Family";
 			this.Load += new System.EventHandler(this.FormPopupsForFam_Load);

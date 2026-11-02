@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEtrans835ClaimSelect));
 			this.textPatient = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.label3 = new System.Windows.Forms.Label();
@@ -192,7 +191,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butPatFind);
 			this.Controls.Add(this.textPatient);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEtrans835ClaimSelect";
 			this.Text = "ERA 835 Claim Select - Original Claim Not Found";
 			this.Load += new System.EventHandler(this.FormEtrans835ClaimSelect_Load);

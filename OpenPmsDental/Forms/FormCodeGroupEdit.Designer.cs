@@ -261,7 +261,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.textGroupName);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCodeGroupEdit";
 			this.Text = "Code Group Edit";
 			this.Load += new System.EventHandler(this.FormCodeGroupEdit_Load);

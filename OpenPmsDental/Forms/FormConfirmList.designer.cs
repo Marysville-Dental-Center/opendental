@@ -24,7 +24,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormConfirmList));
 			this.groupBox1 = new OpenPmsDental.UI.GroupBox();
 			this.checkGroupFamilies = new OpenPmsDental.UI.CheckBox();
 			this.labelConfirmList = new System.Windows.Forms.Label();
@@ -357,7 +356,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butLabels);
 			this.Controls.Add(this.butReport);
 			this.Controls.Add(this.groupBox1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.Name = "FormConfirmList";
 			this.Text = "Confirmation List";

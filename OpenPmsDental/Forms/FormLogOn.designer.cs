@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormLogOn));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.listUser = new OpenPmsDental.UI.ListBox();
 			this.label1 = new System.Windows.Forms.Label();
@@ -162,7 +161,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.listUser);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.Name = "FormLogOn";
 			this.Text = "Log On";

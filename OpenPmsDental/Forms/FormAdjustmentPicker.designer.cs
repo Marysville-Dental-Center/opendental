@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAdjustmentPicker));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.checkUnattached = new OpenPmsDental.UI.CheckBox();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
@@ -69,7 +68,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.checkUnattached);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAdjustmentPicker";
 			this.Text = "Adjustment Picker";
 			this.Load += new System.EventHandler(this.FormAdjustmentPicker_Load);

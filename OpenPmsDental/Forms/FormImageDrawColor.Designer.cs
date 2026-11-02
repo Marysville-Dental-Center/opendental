@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormImageDrawColor));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.labelColorFore = new System.Windows.Forms.Label();
 			this.butColorFore = new System.Windows.Forms.Button();
@@ -106,7 +105,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelColorFore);
 			this.Controls.Add(this.butColorFore);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormImageDrawColor";
 			this.Text = "Edit Color";
 			this.Load += new System.EventHandler(this.FormImageDrawEdit_Load);

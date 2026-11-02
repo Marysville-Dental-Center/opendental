@@ -402,7 +402,6 @@
 			this.Controls.Add(this.panelZoom);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.butExport);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormQuery";
 			this.Text = "User Query";
 			this.WindowState = System.Windows.Forms.FormWindowState.Maximized;

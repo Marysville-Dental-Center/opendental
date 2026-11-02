@@ -24,7 +24,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpUnfinalizedInsPay));
 			this.labelType = new System.Windows.Forms.Label();
 			this.comboBoxMultiType = new OpenPmsDental.UI.ComboBox();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
@@ -211,7 +210,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butExport);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpUnfinalizedInsPay";
 			this.Text = "Unfinalized Insurance Payment";
 			this.Load += new System.EventHandler(this.FormRpInsPayPlansPastDue_Load);

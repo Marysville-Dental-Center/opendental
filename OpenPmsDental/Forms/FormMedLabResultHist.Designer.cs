@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormMedLabResultHist));
 			this.gridResultHist = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
 			// 
@@ -44,7 +43,6 @@
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.ClientSize = new System.Drawing.Size(974, 409);
 			this.Controls.Add(this.gridResultHist);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormMedLabResultHist";
 			this.Text = "MedLab Result History";
 			this.Load += new System.EventHandler(this.FormMedLabResultHist_Load);

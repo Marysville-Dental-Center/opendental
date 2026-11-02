@@ -252,7 +252,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelDateFrom);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.ToolBarMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormJournal";

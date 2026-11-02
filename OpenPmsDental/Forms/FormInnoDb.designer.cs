@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInnoDb));
 			this.textBox1 = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.butToMyIsam = new OpenPmsDental.UI.Button();
@@ -81,7 +80,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butToMyIsam);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.textBox1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormInnoDb";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Convert Database Storage Engine";

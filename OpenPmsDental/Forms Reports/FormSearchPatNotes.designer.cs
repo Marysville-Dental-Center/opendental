@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSearchPatNotes));
 			this.lblSearchPharse = new System.Windows.Forms.Label();
 			this.textPharse = new System.Windows.Forms.TextBox();
 			this.butOK = new OpenPmsDental.UI.Button();
@@ -80,7 +79,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.textPharse);
 			this.Controls.Add(this.lblSearchPharse);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormSearchPatNotes";

@@ -24,7 +24,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormXWebTransactions));
 			this.contextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.menuItemGoTo = new System.Windows.Forms.ToolStripMenuItem();
 			this.openPaymentToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -167,7 +166,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.label3);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormXWebTransactions";
 			this.Text = "Patient Portal Transactions";
 			this.Load += new System.EventHandler(this.FormXWebTransactions_Load);

@@ -25,7 +25,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTaskAttachments));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butAdd = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
@@ -59,7 +58,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(674, 450);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormTaskAttachments";
 			this.Text = "Task Attachments";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormTaskAttachments_FormClosing);

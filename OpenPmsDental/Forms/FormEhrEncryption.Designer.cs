@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrEncryption));
 			this.butEncrypt = new System.Windows.Forms.Button();
 			this.butDecrypt = new System.Windows.Forms.Button();
 			this.textInput = new System.Windows.Forms.TextBox();
@@ -126,7 +125,6 @@
 			this.Controls.Add(this.textInput);
 			this.Controls.Add(this.butDecrypt);
 			this.Controls.Add(this.butEncrypt);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrEncryption";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Encryption";

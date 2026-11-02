@@ -24,7 +24,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSpellChecker));
 			this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.textMain = new OpenPmsDental.ODtextBox();
 			this.menuMain = new OpenPmsDental.UI.MenuOD();
@@ -65,7 +64,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(842, 603);
 			this.Controls.Add(this.textMain);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSpellChecker";
 			this.Text = "Spell Checker";
 			this.Load += new System.EventHandler(this.FormSpellChecker_Load);

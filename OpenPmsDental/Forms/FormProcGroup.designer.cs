@@ -25,7 +25,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProcGroup));
 			this.label7 = new System.Windows.Forms.Label();
 			this.label15 = new System.Windows.Forms.Label();
 			this.label16 = new System.Windows.Forms.Label();
@@ -418,7 +417,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label15);
 			this.Controls.Add(this.label7);
 			this.Controls.Add(this.butDelete);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MinimizeBox = false;
 			this.Name = "FormProcGroup";
 			this.ShowInTaskbar = false;

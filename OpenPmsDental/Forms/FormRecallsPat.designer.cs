@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRecallsPat));
 			this.butPerio = new OpenPmsDental.UI.Button();
 			this.butAdd = new OpenPmsDental.UI.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
@@ -72,7 +71,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butPerio);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRecallsPat";
 			this.Text = "Recalls for Patient";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormRecallsPat_FormClosing);

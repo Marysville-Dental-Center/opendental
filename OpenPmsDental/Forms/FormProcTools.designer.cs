@@ -170,7 +170,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.checkNcodes);
 			this.Controls.Add(this.checkTcodes);
 			this.Controls.Add(this.checkAutocodes);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormProcTools";

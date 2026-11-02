@@ -923,7 +923,6 @@ namespace OpenPmsDental {
 			this.ClientSize = new System.Drawing.Size(802, 494);
 			this.Controls.Add(this.tabControlFormMedical);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormMedical";

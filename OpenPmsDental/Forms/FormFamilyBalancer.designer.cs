@@ -524,7 +524,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.progressBarTransfer);
 			this.Controls.Add(this.labelPayments);
 			this.Controls.Add(this.labelProgress);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormFamilyBalancer";
 			this.Text = "Family Balancer";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormFamilyBalancer_FormClosing);

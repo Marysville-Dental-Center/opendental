@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormChartViewDateFilter));
 			this.label1 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.listPresetDateRanges = new OpenPmsDental.UI.ListBox();
@@ -114,7 +113,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textDateEnd);
 			this.Controls.Add(this.textDateStart);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormChartViewDateFilter";
 			this.Text = "Date Range Filter";
 			this.Load += new System.EventHandler(this.FormChartViewDateFilter_Load);

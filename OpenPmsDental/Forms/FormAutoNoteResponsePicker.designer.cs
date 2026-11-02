@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAutoNoteResponsePicker));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.labelResponseText = new System.Windows.Forms.Label();
 			this.textResponseText = new System.Windows.Forms.TextBox();
@@ -76,7 +75,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.labelResponseText);
 			this.Controls.Add(this.textResponseText);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAutoNoteResponsePicker";
 			this.Text = "Auto Note Response Picker";
 			this.Load += new System.EventHandler(this.FormAutoNoteResponsePicker_Load);

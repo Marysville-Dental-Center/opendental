@@ -180,7 +180,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.checkDiscontinued);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormMedicationReconcile";
 			this.Text = "Medication Reconcile";
 			this.Load += new System.EventHandler(this.FormMedicationReconcile_Load);

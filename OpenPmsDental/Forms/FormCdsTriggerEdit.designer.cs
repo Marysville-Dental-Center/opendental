@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCdsTriggerEdit));
 			this.butDelete = new OpenPmsDental.UI.Button();
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.groupBox1 = new OpenPmsDental.UI.GroupBox();
@@ -454,7 +453,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butDelete);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCdsTriggerEdit";
 			this.Text = "CDS Trigger Edit";
 			this.Load += new System.EventHandler(this.FormEhrTriggerEdit_Load);

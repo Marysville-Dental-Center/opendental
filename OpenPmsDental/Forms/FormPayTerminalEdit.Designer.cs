@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPayTerminalEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.textName = new System.Windows.Forms.TextBox();
 			this.labelName = new System.Windows.Forms.Label();
@@ -107,7 +106,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelName);
 			this.Controls.Add(this.textName);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPayTerminalEdit";
 			this.Text = "Edit Payment Terminal";
 			this.Load += new System.EventHandler(this.FormPayTerminalEdit_Load);

@@ -34,6 +34,11 @@ namespace OpenPmsDental {
 		private bool _isImageFloatDragging=false;
 		///<summary>Property backer</summary>
 		private bool _isImageFloatSelected=false;
+		///<summary>The program icon (Properties.Resources.Icon, branding/app.ico), loaded once and shared by every frame for its window icon and its
+		///title bar. Never disposed.</summary>
+		private static readonly Lazy<Icon> _lazyIconApp=new Lazy<Icon>(() => WpfControls.Properties.Resources.Icon);
+		///<summary>The icon this frame had at the end of its constructor. OnHandleCreated sets the program icon only on a frame that still has it.</summary>
+		private Icon _iconAtConstruction;
 		#endregion Fields - Private
 
 		#region Fields - Private - Drawing, Border, Dpi
@@ -105,6 +110,7 @@ namespace OpenPmsDental {
 			timerHoverSnap=new Timer();
 			timerHoverSnap.Interval=400;//try to get this from Windows
 			timerHoverSnap.Tick += timerHoverSnap_Tick;
+			_iconAtConstruction=this.Icon;//Windows Forms' default icon (see OnHandleCreated)
 		}
 		#endregion Constructor
 
@@ -213,6 +219,15 @@ namespace OpenPmsDental {
 
 		private void ODForm_FormClosed(object sender,FormClosedEventArgs e) {
 
+		}
+
+		///<summary>Every WPF window shows the program icon in its title bar, the taskbar and Alt+Tab, like the FormODBase windows. A frame that was
+		///given an icon of its own before its handle was created keeps it.</summary>
+		protected override void OnHandleCreated(EventArgs e) {
+			if(!DesignMode && ReferenceEquals(this.Icon,_iconAtConstruction)) {
+				this.Icon=_lazyIconApp.Value;
+			}
+			base.OnHandleCreated(e);
 		}
 
 		protected override void OnLoad(EventArgs e){
@@ -619,10 +634,9 @@ namespace OpenPmsDental {
 			}
 			Rectangle rectangleIcon=new Rectangle(MaxInset()+5,MaxInset()+4,ScaleI(20),ScaleI(20));
 			if(ShowIcon){
-				//for some reason, I couldn't get form.Icon to work.
-				Icon icon=WpfControls.Properties.Resources.Icon;
-				g.DrawImage(icon.ToBitmap(),rectangleIcon);
-				icon?.Dispose();
+				//The shared program icon, loaded once (Properties.Resources.Icon makes a new Icon on every call).
+				using Bitmap bitmapIcon=_lazyIconApp.Value.ToBitmap();
+				g.DrawImage(bitmapIcon,rectangleIcon);
 			}
 			//if(_fontTitle==null){
 			RectangleF rectangleText=new RectangleF(MaxInset()+ScaleF(30),MaxInset()+ScaleF(7),
@@ -1341,14 +1355,12 @@ Refresh();
 		#endregion Signal Processing
 
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormFrame));
 			this.SuspendLayout();
 			// 
 			// FormFrame
 			// 
 			this.BackColor = System.Drawing.SystemColors.Control;
 			this.ClientSize = new System.Drawing.Size(284, 261);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormFrame";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
 			this.ResumeLayout(false);

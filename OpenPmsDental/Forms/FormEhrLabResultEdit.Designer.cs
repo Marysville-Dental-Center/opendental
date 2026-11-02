@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrLabResultEdit));
 			this.butSave = new System.Windows.Forms.Button();
 			this.butDelete = new System.Windows.Forms.Button();
 			this.textDateTimeTest = new System.Windows.Forms.TextBox();
@@ -222,7 +221,6 @@
 			this.Controls.Add(this.textDateTimeTest);
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrLabResultEdit";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "FormLabResultEdit";

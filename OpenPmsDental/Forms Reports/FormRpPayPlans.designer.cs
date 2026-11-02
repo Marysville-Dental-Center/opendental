@@ -24,7 +24,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormRpPayPlans));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.checkHideCompletePlans = new OpenPmsDental.UI.CheckBox();
 			this.checkAllProv = new OpenPmsDental.UI.CheckBox();
@@ -230,7 +229,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.checkHideCompletePlans);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRpPayPlans";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Payment Plans Report";

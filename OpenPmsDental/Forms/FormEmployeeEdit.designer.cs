@@ -22,7 +22,6 @@ namespace OpenPmsDental {
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEmployeeEdit));
 			this.textLName = new System.Windows.Forms.TextBox();
 			this.textFName = new System.Windows.Forms.TextBox();
 			this.textMI = new System.Windows.Forms.TextBox();
@@ -297,7 +296,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label10);
 			this.Controls.Add(this.label8);
 			this.Controls.Add(this.label7);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormEmployeeEdit";

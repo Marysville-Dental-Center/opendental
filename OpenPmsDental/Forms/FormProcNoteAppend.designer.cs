@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormProcNoteAppend));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.signatureBoxWrapper = new OpenPmsDental.UI.SignatureBoxWrapper();
 			this.label15 = new System.Windows.Forms.Label();
@@ -166,7 +165,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label15);
 			this.Controls.Add(this.signatureBoxWrapper);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormProcNoteAppend";
 			this.Text = "Procedure Note Append";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormProcNoteAppend_FormClosing);

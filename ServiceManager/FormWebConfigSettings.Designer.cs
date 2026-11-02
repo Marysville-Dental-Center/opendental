@@ -23,6 +23,7 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
+			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormWebConfigSettings));
 			this.butCancel = new System.Windows.Forms.Button();
 			this.butOk = new System.Windows.Forms.Button();
 			this.groupBox1 = new System.Windows.Forms.GroupBox();
@@ -381,6 +382,7 @@
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.butOk);
 			this.Controls.Add(this.butCancel);
+			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormWebConfigSettings";
 			this.Text = "OpenDentalWebConfig.xml Settings";
 			this.Load += new System.EventHandler(this.FormWebConfigSettings_Load);

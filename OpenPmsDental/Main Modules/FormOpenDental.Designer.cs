@@ -186,7 +186,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.panelSplitter);
 			this.Controls.Add(this.lightSignalGrid1);
 			this.Controls.Add(this.menuMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormOpenDental";
 			this.RightToLeft = System.Windows.Forms.RightToLeft.No;
 			this.Text = "Open PMS - Dental";

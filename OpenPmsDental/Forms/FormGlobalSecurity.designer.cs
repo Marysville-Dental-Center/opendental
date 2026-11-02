@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormGlobalSecurity));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.labelDomainPath = new System.Windows.Forms.Label();
 			this.textDomainLoginPath = new System.Windows.Forms.TextBox();
@@ -352,7 +351,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.checkCannotEditOwn);
 			this.Controls.Add(this.checkTimecardSecurityEnabled);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormGlobalSecurity";
 			this.Text = "Global Security Settings";
 			this.Load += new System.EventHandler(this.FormGlobalSecurity_Load);

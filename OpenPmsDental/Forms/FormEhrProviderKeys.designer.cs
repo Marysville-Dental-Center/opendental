@@ -69,7 +69,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrProviderKeys";
 			this.Text = "Ehr Provider Keys";
 			this.Load += new System.EventHandler(this.FormEhrProviderKeys_Load);

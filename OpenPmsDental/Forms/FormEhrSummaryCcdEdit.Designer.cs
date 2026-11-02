@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrSummaryCcdEdit));
 			this.webBrowser1 = new System.Windows.Forms.WebBrowser();
 			this.butPrint = new System.Windows.Forms.Button();
 			this.butReconcileMedications = new System.Windows.Forms.Button();
@@ -121,7 +120,6 @@
 			this.Controls.Add(this.butReconcileMedications);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.webBrowser1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrSummaryCcdEdit";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Summary of Care";

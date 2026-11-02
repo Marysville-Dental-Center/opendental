@@ -1,14 +1,13 @@
 using System;
 using OpenPmsDentalBusiness;
 using CodeBase;
-using System.Globalization;
 using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
-using DataConnectionBase;
 
 namespace OpenPmsDental {
-	///<summary>A splash screen to show when the program launches.</summary>
+	///<summary>A splash screen to show when the program launches. The background is branding/splash.png (in FormSplash.resx), with a
+	///copyright line that points to Help > About and the GPL notice. An office's own Splash.jpg in the program folder takes its place.</summary>
 	public partial class FormSplash : Form {
 
 		///<summary>Launches a splash screen.</summary>
@@ -18,29 +17,12 @@ namespace OpenPmsDental {
 		}
 
 		private void FormSplash_Load(object sender,EventArgs e) {
-			CreateBencoSplash(); 
-			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
-				BackgroundImage=Properties.Resources.splashCanada;
-			}
+			//Open PMS - Dental: no reseller (Benco) or country (Canada) splash; vendor branding is not shipped.
 			if(File.Exists(Directory.GetCurrentDirectory()+@"\Splash.jpg")) {
 				BackgroundImage=new Bitmap(Directory.GetCurrentDirectory()+@"\Splash.jpg");
 			}
 			if(Plugins.PluginsAreLoaded) {
 				Plugins.HookAddCode(this,"FormSplash.FormSplash_Load_end");
-			}
-		}
-
-		/// <summary>Only creates the Benco splash if Benco is enabled and a splash does not exist</summary>
-		private void CreateBencoSplash() {
-			try {
-				if(DataConnection.HasDatabaseConnection && Programs.GetCur(ProgramName.BencoPracticeManagement).Enabled
-					&& !File.Exists(Directory.GetCurrentDirectory()+@"\Splash.jpg")) 
-				{
-					Properties.Resources.splashBenco.Save(Directory.GetCurrentDirectory()+@"\Splash.jpg");
-				}
-			}
-			catch (Exception ex) {
-				ex.DoNothing();
 			}
 		}
   }

@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormMultiVisitGroup));
 			this.gridGroupedProcs = new OpenPmsDental.UI.GridOD();
 			this.butUngroup = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
@@ -58,7 +57,6 @@ namespace OpenPmsDental {
 			this.ClientSize = new System.Drawing.Size(734, 561);
 			this.Controls.Add(this.butUngroup);
 			this.Controls.Add(this.gridGroupedProcs);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormMultiVisitGroup";
 			this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
 			this.Text = "View Multi Visit Group";

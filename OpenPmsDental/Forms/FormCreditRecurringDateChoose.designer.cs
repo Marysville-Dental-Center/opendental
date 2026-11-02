@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCreditRecurringDateChoose));
 			this.butLastMonth = new OpenPmsDental.UI.Button();
 			this.butThisMonth = new OpenPmsDental.UI.Button();
 			this.labelMessage = new System.Windows.Forms.Label();
@@ -130,7 +129,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelMessage);
 			this.Controls.Add(this.butThisMonth);
 			this.Controls.Add(this.butLastMonth);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCreditRecurringDateChoose";
 			this.Text = "Recurring Charge Month";
 			this.Load += new System.EventHandler(this.FormCreditRecurringDateChoose_Load);

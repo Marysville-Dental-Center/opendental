@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormXWeb));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.labelRefNumber = new System.Windows.Forms.Label();
 			this.textRefNumber = new System.Windows.Forms.TextBox();
@@ -235,7 +234,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textAmount);
 			this.Controls.Add(this.labelAmount);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormXWeb";
 			this.Text = "XWeb";
 			this.Load += new System.EventHandler(this.FormXWeb_Load);

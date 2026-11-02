@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSheetFieldCheckBox));
 			this.label2 = new System.Windows.Forms.Label();
 			this.listBoxFields = new OpenPmsDental.UI.ListBox();
 			this.label5 = new System.Windows.Forms.Label();
@@ -587,7 +586,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.listBoxFields);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSheetFieldCheckBox";
 			this.Text = "Edit CheckBox";
 			this.Load += new System.EventHandler(this.FormSheetFieldCheckBox_Load);

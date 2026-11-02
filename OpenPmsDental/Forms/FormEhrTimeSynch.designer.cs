@@ -199,7 +199,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textNistTime);
 			this.Controls.Add(this.butRefreshTime);
 			this.Controls.Add(this.textNistUrl);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrTimeSynch";
 			this.Text = "Time Synchronization";
 			this.Load += new System.EventHandler(this.FormEhrTime_Load);

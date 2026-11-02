@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(BasicTemplate));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.splitContainer = new OpenPmsDental.UI.SplitContainer();
 			this.splitterPanel1 = new OpenPmsDental.UI.SplitterPanel();
@@ -141,7 +140,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.tabControl);
 			this.Controls.Add(this.splitContainer);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "BasicTemplate";
 			this.Text = "Basic Template";
 			this.splitContainer.ResumeLayout(false);

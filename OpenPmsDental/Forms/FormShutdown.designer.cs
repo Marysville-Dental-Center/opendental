@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormShutdown));
 			this.gridActiveInstances = new OpenPmsDental.UI.GridOD();
 			this.label1 = new System.Windows.Forms.Label();
 			this.butCloseSessions = new OpenPmsDental.UI.Button();
@@ -76,7 +75,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.gridActiveInstances);
 			this.Controls.Add(this.butShutdown);
 			this.Controls.Add(this.label1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormShutdown";
 			this.Text = "Shutdown Workstations";
 			this.Load += new System.EventHandler(this.FormShutdown_Load);

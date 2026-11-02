@@ -32,7 +32,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAccountingAutoPayEdit));
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.comboPayType = new OpenPmsDental.UI.ComboBox();
 			this.label7 = new System.Windows.Forms.Label();
@@ -126,7 +125,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.listAccounts);
 			this.Controls.Add(this.label6);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormAccountingAutoPayEdit";

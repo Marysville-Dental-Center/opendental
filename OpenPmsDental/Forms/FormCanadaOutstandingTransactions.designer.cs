@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCanadaOutstandingTransactions));
             this.listCarriers = new OpenPmsDental.UI.ListBox();
             this.groupCarrier = new OpenPmsDental.UI.GroupBox();
             this.radioVersion4Itrans = new System.Windows.Forms.RadioButton();
@@ -112,7 +111,6 @@ namespace OpenPmsDental{
             this.Controls.Add(this.groupCarrier);
             this.Controls.Add(this.butOK);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "FormCanadaOutstandingTransactions";
             this.Text = "Outstanding Transactions Request (ROT)";
             this.Load += new System.EventHandler(this.FormCanadaOutstandingTransactions_Load);

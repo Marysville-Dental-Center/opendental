@@ -32,7 +32,6 @@ namespace OpenPmsDental {
 		private void InitializeComponent()
 		{
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormTrackNext));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.menuRightClick = new System.Windows.Forms.ContextMenuStrip(this.components);
 			this.toolStripMenuItemSelectPatient = new System.Windows.Forms.ToolStripMenuItem();
@@ -245,7 +244,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.menuMain);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.Name = "FormTrackNext";
 			this.Text = "Track Planned Appointments";

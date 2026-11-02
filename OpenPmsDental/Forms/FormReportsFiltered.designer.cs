@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormReportsFiltered));
 			this.listBoxFavorites = new OpenPmsDental.UI.ListBox();
 			this.SuspendLayout();
 			// 
@@ -40,7 +39,6 @@ namespace OpenPmsDental{
 			// 
 			this.ClientSize = new System.Drawing.Size(391, 638);
 			this.Controls.Add(this.listBoxFavorites);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormReportsFiltered";
 			this.Text = "Standard Reports Favorites";
 			this.Load += new System.EventHandler(this.FormReportsFiltered_Load);

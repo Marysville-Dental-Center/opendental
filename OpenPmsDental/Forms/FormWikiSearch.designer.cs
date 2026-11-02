@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormWikiSearch));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.textSearch = new System.Windows.Forms.TextBox();
 			this.checkIgnoreContent = new OpenPmsDental.UI.CheckBox();
@@ -204,7 +203,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.webBrowserWiki);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormWikiSearch";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
 			this.Text = "Wiki Search";

@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormChartView));
 			this.label2 = new System.Windows.Forms.Label();
 			this.listAvailable = new OpenPmsDental.UI.ListBox();
 			this.label3 = new System.Windows.Forms.Label();
@@ -531,7 +530,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.butDefault);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormChartView";

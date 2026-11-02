@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCareCreditSetup));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.checkEnabled = new OpenPmsDental.UI.CheckBox();
 			this.groupClinicSettings = new OpenPmsDental.UI.GroupBox();
@@ -682,7 +681,6 @@
 			this.Controls.Add(this.groupClinicSettings);
 			this.Controls.Add(this.checkEnabled);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCareCreditSetup";
 			this.Text = "CareCredit Setup";
 			this.Load += new System.EventHandler(this.FormCareCreditSetup_Load);

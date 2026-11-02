@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrEduBrowser));
 			this.webBrowser1 = new System.Windows.Forms.WebBrowser();
 			this.butPrint = new System.Windows.Forms.Button();
 			this.SuspendLayout();
@@ -57,7 +56,6 @@
 			this.ClientSize = new System.Drawing.Size(884, 639);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.webBrowser1);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrEduBrowser";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Educational Resources";

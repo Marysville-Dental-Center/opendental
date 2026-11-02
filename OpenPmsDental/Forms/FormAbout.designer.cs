@@ -28,7 +28,6 @@ namespace OpenPmsDental{
 		#region Windows Form Designer generated code
 
 		private void InitializeComponent(){
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAbout));
 			this.labelVersion = new System.Windows.Forms.Label();
 			this.labelCopyright = new System.Windows.Forms.Label();
 			this.labelMySQLCopyright = new System.Windows.Forms.Label();
@@ -46,6 +45,7 @@ namespace OpenPmsDental{
 			this.labelAttribution = new System.Windows.Forms.Label();
 			this.butDiagnostics = new OpenPmsDental.UI.Button();
 			this.labelMariaDBCopyright = new System.Windows.Forms.Label();
+			this.pictureLogo = new OpenPmsDental.UI.ODPictureBox();
 			this.groupBox3.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -214,10 +214,20 @@ namespace OpenPmsDental{
 			this.labelMariaDBCopyright.TabIndex = 60;
 			this.labelMariaDBCopyright.Text = "MariaDB - Copyright 2009-2021, www.mariadb.com";
 			this.labelMariaDBCopyright.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			// 
+			//
+			// pictureLogo
+			//
+			this.pictureLogo.HasBorder = false;
+			this.pictureLogo.Location = new System.Drawing.Point(561, 6);
+			this.pictureLogo.Name = "pictureLogo";
+			this.pictureLogo.Size = new System.Drawing.Size(48, 48);
+			this.pictureLogo.TabIndex = 62;
+			this.pictureLogo.TextNullImage = null;
+			//
 			// FormAbout
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(628, 410);
+			this.Controls.Add(this.pictureLogo);
 			this.Controls.Add(this.butDiagnostics);
 			this.Controls.Add(this.labelMariaDBCopyright);
 			this.Controls.Add(this.labelAttribution);
@@ -229,7 +239,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelMySQLCopyright);
 			this.Controls.Add(this.labelCopyright);
 			this.Controls.Add(this.labelVersion);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormAbout";
@@ -260,6 +269,7 @@ namespace OpenPmsDental{
 		private UI.Button butDiagnostics;
 		private Label labelDatabase;
 		private Label labelMariaDBCopyright;
+		private UI.ODPictureBox pictureLogo;
 	}
 }
 

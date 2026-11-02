@@ -33,7 +33,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormElectIDs));
 			this.gridElectIDs = new OpenPmsDental.UI.GridOD();
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.butAdd = new OpenPmsDental.UI.Button();
@@ -102,7 +101,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridElectIDs);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormElectIDs";

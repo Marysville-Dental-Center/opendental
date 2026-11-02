@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrPatListElementEdit));
 			this.labelOperand = new System.Windows.Forms.Label();
 			this.butSave = new System.Windows.Forms.Button();
 			this.butDelete = new System.Windows.Forms.Button();
@@ -172,7 +171,6 @@
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.labelCompareString);
 			this.Controls.Add(this.labelOperand);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrPatListElementEdit";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "PatList Element Edit";

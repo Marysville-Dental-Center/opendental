@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSheetDef));
 			this.labelSheetType = new System.Windows.Forms.Label();
 			this.listSheetType = new OpenPmsDental.UI.ListBox();
 			this.groupBox1 = new OpenPmsDental.UI.GroupBox();
@@ -301,7 +300,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.labelSheetType);
 			this.Controls.Add(this.listSheetType);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSheetDef";
 			this.Text = "Sheet Def";
 			this.Load += new System.EventHandler(this.FormSheetDef_Load);

@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormClaimPayList));
 			this.butPickPaymentGroup = new OpenPmsDental.UI.Button();
 			this.comboPayGroup = new OpenPmsDental.UI.ComboBox();
 			this.label1 = new System.Windows.Forms.Label();
@@ -151,7 +150,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textDateFrom);
 			this.Controls.Add(this.labelToDate);
 			this.Controls.Add(this.labelFromDate);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormClaimPayList";
 			this.Text = "Batch Insurance Payments";
 			this.Load += new System.EventHandler(this.FormClaimPayList_Load);

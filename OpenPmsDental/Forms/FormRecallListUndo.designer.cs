@@ -101,7 +101,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.odDatePicker);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormRecallListUndo";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Recall List Undo";

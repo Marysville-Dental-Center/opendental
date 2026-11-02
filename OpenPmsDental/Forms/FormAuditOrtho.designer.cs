@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAuditOrtho));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.gridHist = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
@@ -60,7 +59,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(921, 601);
 			this.Controls.Add(this.gridHist);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAuditOrtho";
 			this.Text = "Audit Trail";
 			this.Load += new System.EventHandler(this.FormAuditOrtho_Load);

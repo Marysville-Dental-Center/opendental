@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormCommPrefPicker));
 			this.butOK = new System.Windows.Forms.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
@@ -59,7 +58,6 @@
 			this.ClientSize = new System.Drawing.Size(522, 640);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butOK);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormCommPrefPicker";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Pick Communication Preference";

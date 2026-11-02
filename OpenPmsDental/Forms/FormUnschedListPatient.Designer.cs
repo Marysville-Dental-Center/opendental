@@ -23,7 +23,6 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormUnschedListPatient));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
@@ -57,7 +56,6 @@
 			this.ClientSize = new System.Drawing.Size(594, 369);
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormUnschedListPatient";
 			this.Text = "Unscheduled Appointments for";
 			this.Load += new System.EventHandler(this.FormPatientUnschedList_Load);

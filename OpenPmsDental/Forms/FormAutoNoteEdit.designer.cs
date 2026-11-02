@@ -28,7 +28,6 @@ namespace OpenPmsDental
         /// </summary>
         private void InitializeComponent()
         {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormAutoNoteEdit));
 			this.textBoxAutoNoteName = new System.Windows.Forms.TextBox();
 			this.labelName = new System.Windows.Forms.Label();
 			this.textMain = new System.Windows.Forms.TextBox();
@@ -150,7 +149,6 @@ namespace OpenPmsDental
 			this.Controls.Add(this.butInsert);
 			this.Controls.Add(this.labelName);
 			this.Controls.Add(this.textBoxAutoNoteName);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormAutoNoteEdit";
 			this.ShowInTaskbar = false;
 			this.Text = "Auto Note Edit";

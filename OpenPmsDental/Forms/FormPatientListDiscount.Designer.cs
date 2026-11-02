@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPatientListDiscount));
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.SuspendLayout();
 			// 
@@ -43,7 +42,6 @@ namespace OpenPmsDental{
 			// 
 			this.ClientSize = new System.Drawing.Size(517, 634);
 			this.Controls.Add(this.gridMain);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPatientListDiscount";
 			this.Text = "Patient List";
 			this.Load += new System.EventHandler(this.FormPatientListDiscount_Load);

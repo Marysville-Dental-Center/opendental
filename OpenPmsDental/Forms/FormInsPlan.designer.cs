@@ -23,7 +23,6 @@ namespace OpenPmsDental {
 
 		private void InitializeComponent(){
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormInsPlan));
 			this.label5 = new System.Windows.Forms.Label();
 			this.label6 = new System.Windows.Forms.Label();
 			this.label28 = new System.Windows.Forms.Label();
@@ -2009,7 +2008,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butDelete);
 			this.Controls.Add(this.groupRequestBen);
 			this.Controls.Add(this.groupSubscriber);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormInsPlan";

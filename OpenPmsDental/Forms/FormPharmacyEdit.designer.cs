@@ -34,7 +34,6 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPharmacyEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
 			this.textStoreName = new System.Windows.Forms.TextBox();
@@ -268,7 +267,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.label6);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormPharmacyEdit";

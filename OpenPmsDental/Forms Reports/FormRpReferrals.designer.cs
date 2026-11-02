@@ -227,7 +227,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.tabReferrals);
 			this.Controls.Add(this.textSQL);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
 			this.Name = "FormRpReferrals";

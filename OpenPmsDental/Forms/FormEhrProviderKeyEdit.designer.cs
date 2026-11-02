@@ -161,7 +161,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textKey);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormEhrProviderKeyEdit";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "EHR Provider Key Edit";

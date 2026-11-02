@@ -24,7 +24,6 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormPaySimple));
 			this.checkOneTimePayment = new OpenPmsDental.UI.CheckBox();
 			this.labelRefNumber = new System.Windows.Forms.Label();
 			this.textRefNumber = new System.Windows.Forms.TextBox();
@@ -449,7 +448,6 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(456, 379);
 			this.Controls.Add(this.tabControl);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormPaySimple";
 			this.Text = "PaySimple Payment Information";
 			this.Load += new System.EventHandler(this.FormPaySimple_Load);

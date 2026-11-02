@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormSheetFieldGrid));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.butDelete = new OpenPmsDental.UI.Button();
 			this.comboGrowthBehavior = new OpenPmsDental.UI.ComboBox();
@@ -209,7 +208,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.textXPos);
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.butSave);
-			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "FormSheetFieldGrid";
 			this.Text = "Edit Sheet Grid";
 			this.Load += new System.EventHandler(this.FormSheetFieldGrid_Load);
