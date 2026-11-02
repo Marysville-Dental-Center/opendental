@@ -93,6 +93,7 @@
       "tests\\M2UDSTests\\M2UDSTests.csproj",
       "tests\\MedicationTests\\MedicationTests.csproj",
       "tests\\PayPlanTests\\PayPlanTests.csproj",
+      "tests\\PdfLibraryTests\\PdfLibraryTests.csproj",
       "tests\\QueryMonitorTests\\QueryMonitorTests.csproj",
       "tests\\RegistryTests\\RegistryTests.csproj",
       "tests\\ReleaseFlowTests\\ReleaseFlowTests.csproj",

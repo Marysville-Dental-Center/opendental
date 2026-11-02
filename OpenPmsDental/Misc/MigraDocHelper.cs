@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using MigraDoc.DocumentObjectModel;
 using MigraDoc.DocumentObjectModel.Shapes;
@@ -15,12 +16,43 @@ using PdfSharp.Pdf;
 namespace OpenPmsDental {
 	///<summary>Used to add functionality to the MigraDoc framework.  Specifically, it helps with absolute positioning.</summary>
 	public class MigraDocHelper {
+		///<summary>The page setup of each document's sections, by document (see GetPageSetup).</summary>
+		private static readonly ConditionalWeakTable<MigraDoc.DocumentObjectModel.Document,PageSetup> _tablePageSetups=
+			new ConditionalWeakTable<MigraDoc.DocumentObjectModel.Document,PageSetup>();
+
 		///<summary>A new MigraDoc document. Its Normal style uses Verdana, the default of MigraDoc 1.2 (MigraDoc 6 uses Arial), so text without a
 		///font of its own looks as it did.</summary>
 		public static MigraDoc.DocumentObjectModel.Document CreateDocument() {
 			MigraDoc.DocumentObjectModel.Document document=new MigraDoc.DocumentObjectModel.Document();
 			document.Styles.Normal.Font.Name="Verdana";
 			return document;
+		}
+
+		///<summary>The page size and margins of the document's sections. MigraDoc 1.2 let the program set them on Document.DefaultPageSetup, which
+		///every section then used; MigraDoc 6 throws when DefaultPageSetup is changed (it is one object shared by every document). Set them here
+		///instead, before the sections are added with AddSection, which gives each section a copy. PageWidth and PageHeight are those of the portrait
+		///page, as they were on DefaultPageSetup; SetLandscape turns a section.</summary>
+		public static PageSetup GetPageSetup(MigraDoc.DocumentObjectModel.Document document) {
+			return _tablePageSetups.GetValue(document,x => x.DefaultPageSetup.Clone());
+		}
+
+		///<summary>Adds a section with the page size and margins of GetPageSetup.</summary>
+		public static Section AddSection(MigraDoc.DocumentObjectModel.Document document) {
+			Section section=document.AddSection();
+			section.PageSetup=GetPageSetup(document).Clone();
+			return section;
+		}
+
+		///<summary>Prints the section's pages in landscape. MigraDoc 1.2 turned the page when Orientation was Landscape; MigraDoc 6 takes the
+		///orientation from PageWidth and PageHeight when both are set, so they are swapped to make the page wider than it is tall.</summary>
+		public static void SetLandscape(Section section) {
+			PageSetup pageSetup=section.PageSetup;
+			if(!pageSetup.PageWidth.IsEmpty && !pageSetup.PageHeight.IsEmpty && pageSetup.PageWidth.Point<pageSetup.PageHeight.Point) {
+				Unit unitWidth=pageSetup.PageWidth;
+				pageSetup.PageWidth=pageSetup.PageHeight;
+				pageSetup.PageHeight=unitWidth;
+			}
+			pageSetup.Orientation=MigraDoc.DocumentObjectModel.Orientation.Landscape;
 		}
 
 		///<Summary>Creates a container frame in a section.  This allows other objects to be placed absolutely within a given area by adding more textframes within this one.  This frame is full width and is automatically placed after previous elements.</Summary>
@@ -342,7 +374,7 @@ namespace OpenPmsDental {
 			}
 			//in 100ths/inch
 			double widthAllColumns=(double)grid.Columns.WidthAll()/.96;
-			double lmargin=section.Document.DefaultPageSetup.LeftMargin.Inch*100;
+			double lmargin=GetPageSetup(section.Document).LeftMargin.Inch*100;
 			double dummyColW=(pageW-widthAllColumns)/2-lmargin;
 			Table table=new Table();
 			Column col;
