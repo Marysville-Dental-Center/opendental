@@ -66,10 +66,17 @@ Source:    https://github.com/JamesNK/Newtonsoft.Json
 
 --- Component: MimeKit
 Files:     MimeKit.dll
-Version:   2.4.1
-Copyright: Jeffrey Stedfast and Xamarin Inc.
+Version:   4.18.2
+Copyright: .NET Foundation and Contributors; Jeffrey Stedfast and Xamarin Inc.
 License:   MIT License
 Source:    https://github.com/jstedfast/MimeKit
+
+--- Component: MailKit
+Files:     MailKit.dll
+Version:   4.18.2
+Copyright: .NET Foundation and Contributors; Jeffrey Stedfast and Xamarin Inc.
+License:   MIT License
+Source:    https://github.com/jstedfast/MailKit
 
 --- Component: MSAL.NET
 Files:     Microsoft.Identity.Client.dll (4.47.1), Microsoft.IdentityModel.Abstractions.dll (6.23.1)
@@ -127,13 +134,6 @@ Version:   1.2 (.NET reference implementation)
 Copyright: The Direct Project
 License:   BSD 3-Clause License
 Source:    https://github.com/DirectProject/nhin-d-dotnet
-
---- Component: OpenPop.NET
-Files:     OpenPop.dll
-Version:   2.0.5
-Copyright: none (dedicated to the public domain by its authors)
-License:   Public domain
-Source:    https://www.nuget.org/packages/OpenPop.NET
 
 --- Component: NHunspell and Hunspell
 Files:     NHunspell.dll (0.9.6), Hunspellx86.dll (Hunspell 1.2, x86)

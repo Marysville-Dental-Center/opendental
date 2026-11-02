@@ -97,6 +97,7 @@ Source: "{tmp}\{#ConfigFileName}"; DestDir: "{app}"; Flags: external onlyifdoesn
 Type: files; Name: "{app}\Tamir.SharpSSH.dll"
 Type: files; Name: "{app}\Org.Mentalis.Security.dll"
 Type: files; Name: "{app}\DiffieHellman.dll"
+Type: files; Name: "{app}\OpenPop.dll"
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#ExeName}"; WorkingDir: "{app}"; Check: not WizardNoIcons

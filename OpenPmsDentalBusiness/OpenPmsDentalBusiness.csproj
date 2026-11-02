@@ -117,6 +117,8 @@
     <Reference Include="Health.Direct.ResolverPlugins">
       <HintPath>..\Required dlls\Health.Direct.ResolverPlugins.dll</HintPath>
     </Reference>
+    <!-- MailKit and MimeKit 4.18.2 (lib\net48): POP3 receive (EmailMessages.ReceiveFromInbox) and the MIME messages of Gmail and Microsoft 365.
+         Both use BouncyCastle.Cryptography 2.7 from Required dlls. -->
     <Reference Include="MailKit">
       <HintPath>..\Required dlls\MailKit.dll</HintPath>
     </Reference>
@@ -147,9 +149,6 @@
       <Project>{c37b8157-f665-4ebe-8fd6-20d1c92a0797}</Project>
       <Name>xODCrypt</Name>
     </ProjectReference>
-    <Reference Include="OpenPop">
-      <HintPath>..\Required dlls\OpenPop.dll</HintPath>
-    </Reference>
     <Reference Include="PdfSharp, Version=1.2.1269.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\PdfSharp.dll</HintPath>

@@ -12,11 +12,10 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace LibraryBindingTests {
 	[TestClass]
 	public class ReleaseListTests {
-		///<summary>References of shipped files that neither the release nor the .NET Framework has, with why the program still runs. The library
-		///updates that follow remove them; keep this list short and exact.</summary>
+		///<summary>References of shipped files that neither the release nor the .NET Framework has, with why the program still runs. Keep this list
+		///short and exact. (MimeKit 2.4.1's BouncyCastle.Crypto left it with the MailKit and MimeKit 4 update, which ships BouncyCastle.Cryptography.)
+		///</summary>
 		private static readonly Dictionary<string,string> _dictKnownGaps=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
-			{ "BouncyCastle.Crypto","MimeKit 2.4.1 uses it only for S/MIME, OpenPGP and DKIM, which the program does not call; the MailKit and MimeKit "
-				+"update ships BouncyCastle.Cryptography" },
 			{ "Health.Direct.Config.Client","Health.Direct.ResolverPlugins uses it only for the Direct configuration service; the program uses only its "
 				+"LdapCertResolver" },
 			{ "Health.Direct.Config.Store","Health.Direct.ResolverPlugins uses it only for the Direct configuration service; the program uses only its "

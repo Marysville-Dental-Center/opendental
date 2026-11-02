@@ -16,8 +16,8 @@ namespace AttributionTests {
 	public class ReleaseIdentityTests {
 		///<summary>Every third-party component the release ships, by its name in THIRD-PARTY-NOTICES.txt (report-release.md 1.3 to 1.5).</summary>
 		private static readonly string[] _arrayShippedComponents=new string[] {
-			"MySqlConnector",".NET libraries","Newtonsoft.Json","MimeKit","MSAL.NET","SSH.NET","Bouncy Castle Cryptography","PDFsharp","MigraDoc",
-			"SharpDX","Tao Framework","Direct Project","OpenPop.NET","NHunspell and Hunspell","Hunspell en_US dictionary",
+			"MySqlConnector",".NET libraries","Newtonsoft.Json","MimeKit","MailKit","MSAL.NET","SSH.NET","Bouncy Castle Cryptography","PDFsharp",
+			"MigraDoc","SharpDX","Tao Framework","Direct Project","NHunspell and Hunspell","Hunspell en_US dictionary",
 			"RDL Project","Google APIs Client Library for .NET","fo-dicom","NDde","Microsoft Edge WebView2 SDK","TWAIN","Pearl API notice",
 		};
 
@@ -26,11 +26,11 @@ namespace AttributionTests {
 			"MySqlConnector.dll","Microsoft.Bcl.AsyncInterfaces.dll","Microsoft.Bcl.Cryptography.dll",
 			"Microsoft.Extensions.DependencyInjection.Abstractions.dll","Microsoft.Extensions.Logging.Abstractions.dll","System.Buffers.dll",
 			"System.Diagnostics.DiagnosticSource.dll","System.Formats.Asn1.dll","System.Memory.dll","System.Numerics.Vectors.dll",
-			"System.Runtime.CompilerServices.Unsafe.dll","System.Threading.Tasks.Extensions.dll","Newtonsoft.Json.dll","MimeKit.dll",
+			"System.Runtime.CompilerServices.Unsafe.dll","System.Threading.Tasks.Extensions.dll","Newtonsoft.Json.dll","MimeKit.dll","MailKit.dll",
 			"Microsoft.Identity.Client.dll","Microsoft.IdentityModel.Abstractions.dll","Renci.SshNet.dll","BouncyCastle.Cryptography.dll","PdfSharp.dll",
 			"PdfSharp.Charting.dll","MigraDoc.DocumentObjectModel.dll","MigraDoc.Rendering.dll","MigraDoc.RtfRendering.dll","SharpDX.dll",
 			"SharpDX.Direct3D9.dll","SharpDX.Mathematics.dll","Tao.OpenGl.dll","Tao.Platform.Windows.dll","Health.Direct.Agent.dll",
-			"Health.Direct.Common.dll","Health.Direct.ResolverPlugins.dll","OpenPop.dll","NHunspell.dll","Hunspellx86.dll","RdlEngine.dll","RdlViewer.dll",
+			"Health.Direct.Common.dll","Health.Direct.ResolverPlugins.dll","NHunspell.dll","Hunspellx86.dll","RdlEngine.dll","RdlViewer.dll",
 			"Google.Apis.dll","Google.Apis.Auth.dll","Google.Apis.Core.dll","Google.Apis.Gmail.v1.dll","Dicom.Core.dll","Dicom.Native.dll","NDde.dll",
 			"Microsoft.Web.WebView2.Core.dll","Microsoft.Web.WebView2.WinForms.dll","Microsoft.Web.WebView2.Wpf.dll","WebView2Loader.dll",
 		};

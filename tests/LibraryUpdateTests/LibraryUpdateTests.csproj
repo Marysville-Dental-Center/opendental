@@ -49,6 +49,19 @@
     <Reference Include="BouncyCastle.Cryptography">
       <HintPath>..\..\Required dlls\BouncyCastle.Cryptography.dll</HintPath>
     </Reference>
+    <!-- The Direct Project parser every downloaded email goes through (EmailMessages.RawEmailToIncomingMessage). -->
+    <Reference Include="Health.Direct.Agent">
+      <HintPath>..\..\Required dlls\Health.Direct.Agent.dll</HintPath>
+    </Reference>
+    <Reference Include="Health.Direct.Common">
+      <HintPath>..\..\Required dlls\Health.Direct.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="MailKit">
+      <HintPath>..\..\Required dlls\MailKit.dll</HintPath>
+    </Reference>
+    <Reference Include="MimeKit">
+      <HintPath>..\..\Required dlls\MimeKit.dll</HintPath>
+    </Reference>
     <Reference Include="MySqlConnector">
       <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
@@ -63,7 +76,9 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
+    <Reference Include="System.Security" />
     <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
