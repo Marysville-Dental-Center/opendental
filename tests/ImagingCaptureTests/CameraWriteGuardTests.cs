@@ -17,7 +17,7 @@ namespace ImagingCapture.Tests {
 		private static List<Tuple<string,string>> _listSources;
 		///<summary>Files outside ImagingCapture that run the camera, from the repository root, scanned when present: the Video window
 		///(design 8.7: it has no button for the camera's property pages).</summary>
-		private static readonly string[] _arrayFilesOutside={ @"OpenDental\Forms\FormVideo.cs",@"OpenDental\Forms\FormVideo.designer.cs" };
+		private static readonly string[] _arrayFilesOutside={ @"OpenPmsDental\Forms\FormVideo.cs",@"OpenPmsDental\Forms\FormVideo.designer.cs" };
 
 		///<summary>(path, code without comments) for every .cs file of ImagingCapture outside bin and obj, with the path relative to
 		///ImagingCapture, and for each of _arrayFilesOutside that exists, with the path relative to the repository root.</summary>

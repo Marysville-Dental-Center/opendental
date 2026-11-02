@@ -1184,16 +1184,16 @@ namespace ImagingCapture.Tests {
 			Assert.IsFalse(Controller.IsSettingsVerified);
 			_harness.BeginArmed();
 			Assert.AreEqual(CaptureIndicatorState.Error,Controller.IndicatorState);
-			StringAssert.StartsWith(Controller.IndicatorText,"Capture settings were changed outside Open Dental; review them in Setup.");
+			StringAssert.StartsWith(Controller.IndicatorText,"Capture settings were changed outside Open PMS - Dental; review them in Setup.");
 			Assert.AreEqual(Controller.SettingsNoticeText,Controller.IndicatorText);
 			Assert.AreEqual(CaptureStartKind.None,Controller.StartKind);
 			Assert.IsFalse(Controller.CanStart);
 			Assert.IsFalse(_harness.Start());
 			Assert.AreEqual(0,_harness.ListSessions.Count,"Nothing opens.");
-			Assert.IsTrue(_harness.ListLogFile.Any(x => x.Contains("Not started: Capture settings were changed outside Open Dental")));
+			Assert.IsTrue(_harness.ListLogFile.Any(x => x.Contains("Not started: Capture settings were changed outside Open PMS - Dental")));
 			CaptureSessionViewModel viewModel=new CaptureSessionViewModel(Controller);
 			Assert.IsFalse(viewModel.IsStartVisible);
-			StringAssert.StartsWith(viewModel.IndicatorText,"Capture settings were changed outside Open Dental");
+			StringAssert.StartsWith(viewModel.IndicatorText,"Capture settings were changed outside Open PMS - Dental");
 			_harness.Setup.SettingsCheck=null;
 			StringAssert.Contains(Controller.SettingsNoticeText,"not checked");
 		}

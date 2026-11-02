@@ -173,7 +173,7 @@ namespace OpenPmsDental{
 			this.label11.Name = "label11";
 			this.label11.Size = new System.Drawing.Size(295, 18);
 			this.label11.TabIndex = 14;
-			this.label11.Text = "Open Dental User (not MySQL user)";
+			this.label11.Text = "Open PMS - Dental User (not MySQL user)";
 			this.label11.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
 			// 
 			// label9

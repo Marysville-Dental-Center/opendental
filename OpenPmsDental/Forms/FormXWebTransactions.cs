@@ -260,7 +260,7 @@ namespace OpenPmsDental {
 			if(IsXWebTransaction(gridMain.SelectedIndices[0])) {
 				long patNum=PIn.Long(_tableTrans.Rows[gridMain.SelectedIndices[0]]["PatNum"].ToString());
 				long responseNum=PIn.Long(_tableTrans.Rows[gridMain.SelectedIndices[0]]["ResponseNum"].ToString());
-				string payNote=Lan.g(this,"Void XWeb payment made from within Open Dental")+"\r\n"
+				string payNote=Lan.g(this,"Void XWeb payment made from within Open PMS - Dental")+"\r\n"
 					+Lan.g(this,"Amount:")+" "+PIn.Double(_tableTrans.Rows[gridMain.SelectedIndices[0]]["Amount"].ToString()).ToString("f")+"\r\n"
 					+Lan.g(this,"Transaction ID:")+" "+_tableTrans.Rows[gridMain.SelectedIndices[0]]["TransactionID"].ToString()+"\r\n"
 					+Lan.g(this,"Card Number:")+" "+_tableTrans.Rows[gridMain.SelectedIndices[0]]["MaskedAcctNum"].ToString()+"\r\n"

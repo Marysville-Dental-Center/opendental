@@ -130,7 +130,7 @@ namespace OpenPmsDental{
 				checkEnabled.Checked=!checkEnabled.Checked;
 				return;
 			}
-			MsgBox.Show(this,"You will need to restart Open Dental to see the effects.");
+			MsgBox.Show(this,"You will need to restart Open PMS - Dental to see the effects.");
 		}
 
 		private void radioModeTight_Click(object sender,EventArgs e) {
@@ -203,7 +203,7 @@ namespace OpenPmsDental{
 		}
 
 		private void checkShowImages_Click(object sender,EventArgs e) {
-			MsgBox.Show(this,"You will need to restart Open Dental to see the effects.");
+			MsgBox.Show(this,"You will need to restart Open PMS - Dental to see the effects.");
 		}
 
 		private bool SaveToDb() {

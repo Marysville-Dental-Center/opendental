@@ -79,8 +79,8 @@ namespace OpenPmsDental {
 			{//mismatch
 				msgText=Lan.g(this,"The two patients do not have the same first name, last name, and birthdate.");
 				if(Programs.UsingEcwTightOrFullMode()) {
-					msgText+="\r\n"+Lan.g(this,"The patients must first be merged from within eCW, then immediately merged in the same order in Open Dental.  "
-						+"If the patients are not merged in this manner, some information may not properly bridge between eCW and Open Dental.");
+					msgText+="\r\n"+Lan.g(this,"The patients must first be merged from within eCW, then immediately merged in the same order in Open PMS - Dental.  "
+						+"If the patients are not merged in this manner, some information may not properly bridge between eCW and Open PMS - Dental.");
 				}
 				msgText+="\r\n\r\n"
 					+Lan.g(this,"Into patient name")+": "+Patients.GetNameFLnoPref(_patientTo.LName,_patientTo.FName,"")+", "//using Patients.GetNameFLnoPref to omit MiddleI

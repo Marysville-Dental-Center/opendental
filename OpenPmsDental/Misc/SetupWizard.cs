@@ -216,7 +216,7 @@ namespace OpenPmsDental {
 			public override string GetDescript {
 				get {
 					return "You have indicated that you will be using the Clinics feature. "
-						+"Clinics can be used when you have multiple locations. Once clinics are set up, you can assign clinics throughout Open Dental. "
+						+"Clinics can be used when you have multiple locations. Once clinics are set up, you can assign clinics throughout Open PMS - Dental. "
 						+"If you follow basic guidelines, default clinic assignments for patient information should be accurate, thus reducing data entry.";
 				}
 			}
@@ -304,7 +304,7 @@ namespace OpenPmsDental {
 			}
 			public override string GetDescript {
 				get {
-					return "Providers will show up in almost every part of OpenDental. "
+					return "Providers will show up in almost every part of Open PMS - Dental. "
 						+"It is important that all provider information is up-to-date so that "
 						+"claims, reports, procedures, fee schedules, and estimates will function correctly.";
 				}
@@ -711,7 +711,7 @@ namespace OpenPmsDental {
 
 		//	//public override string GetDescript {
 		//	//	get {
-		//	//		return "Providers will show up in almost every part of OpenDental. "
+		//	//		return "Providers will show up in almost every part of Open PMS - Dental. "
 		//	//			+"It is important that all provider information is up-to-date so that "
 		//	//			+"claims, reports, and procedures, fee schedules, and estimates will function correctly.";
 		//	//	}

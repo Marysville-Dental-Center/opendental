@@ -10,7 +10,7 @@ using OpenPmsDentalBusiness;
 using UnitTestsCore;
 
 namespace ImagingCapture.Tests.Db {
-	///<summary>OdCaptureSessionStore on the scratch database (CaptureDb): every member does its OpenDentBusiness call against real rows, caches and
+	///<summary>OdCaptureSessionStore on the scratch database (CaptureDb): every member does its OpenPmsDentalBusiness call against real rows, caches and
 	///permissions.</summary>
 	[TestClass]
 	public class OdCaptureSessionStoreDbTests {

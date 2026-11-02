@@ -29,7 +29,7 @@
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <IsCodedUITest>False</IsCodedUITest>
     <TestProjectType>UnitTest</TestProjectType>
-    <!-- MySqlConnector and the business layer need binding redirects for the database tests, as OpenDental.exe gets them. -->
+    <!-- MySqlConnector and the business layer need binding redirects for the database tests, as OpenPmsDental.exe gets them. -->
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
@@ -74,7 +74,7 @@
       <Project>{783079E6-A13F-4F43-A28D-9D7731F945D1}</Project>
       <Name>xImagingDeviceManager</Name>
     </ProjectReference>
-    <!-- PatientBinding tests build ODEventArgs (CodeBase) and Patient tags (OpenDentBusiness). No database is used. -->
+    <!-- PatientBinding tests build ODEventArgs (CodeBase) and Patient tags (OpenPmsDentalBusiness). No database is used. -->
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj">
       <Project>{18f7bc78-4b99-48d3-a1f1-0d13a63e3cf9}</Project>
       <Name>xCodeBase</Name>

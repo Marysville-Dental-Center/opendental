@@ -484,7 +484,7 @@ namespace OpenPmsDental {
 				return;//No available deposit account selected.
 			}
 			if(!QboEntityList.IsStorableName(account.Name)) {
-				MsgBox.Show(this,"Accounts from QuickBooks Online with names that contain commas or vertical bars cannot be used in Open Dental.");
+				MsgBox.Show(this,"Accounts from QuickBooks Online with names that contain commas or vertical bars cannot be used in Open PMS - Dental.");
 				return;
 			}
 			_listDepositAccountsInOD.Add(account);
@@ -506,7 +506,7 @@ namespace OpenPmsDental {
 				return;//No available income account selected.
 			}
 			if(!QboEntityList.IsStorableName(account.Name)) {
-				MsgBox.Show(this,"Accounts from QuickBooks Online with names that contain commas or vertical bars cannot be used in Open Dental.");
+				MsgBox.Show(this,"Accounts from QuickBooks Online with names that contain commas or vertical bars cannot be used in Open PMS - Dental.");
 				return;
 			}
 			_listIncomeAccountsInOD.Add(account);
@@ -528,7 +528,7 @@ namespace OpenPmsDental {
 				return;//No available class ref selected.
 			}
 			if(!QboEntityList.IsStorableName(classRef.Name)) {
-				MsgBox.Show(this,"Classes from QuickBooks Online with names that contain commas or vertical bars cannot be used in Open Dental.");
+				MsgBox.Show(this,"Classes from QuickBooks Online with names that contain commas or vertical bars cannot be used in Open PMS - Dental.");
 				return;
 			}
 			_listClassRefsInOD.Add(classRef);

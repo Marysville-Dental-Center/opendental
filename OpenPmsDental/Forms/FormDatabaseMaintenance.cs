@@ -871,7 +871,7 @@ namespace OpenPmsDental {
 				else {
 					strTotalTime += totalTime.TotalSeconds.ToString("0") + " seconds";
 				}
-				string warningMessage="CHECK TABLES will be run first.  This will take an estimated "+strTotalTime+" and may limit users from accessing Open Dental while this action runs. Would you like to continue?";
+				string warningMessage="CHECK TABLES will be run first.  This will take an estimated "+strTotalTime+" and may limit users from accessing Open PMS - Dental while this action runs. Would you like to continue?";
 				//In binary 6442450944 bytes is 6GBs.
 				//After some testing (0.00000008 seconds per byte) 0.00000008 * 6442450944 = 515 seconds per 6 GBs or about 8 minutes.
 				//A typical small office might take two minutes.

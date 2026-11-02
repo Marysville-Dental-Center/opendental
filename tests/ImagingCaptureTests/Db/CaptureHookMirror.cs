@@ -25,9 +25,9 @@ namespace ImagingCapture.Tests.Db {
 		public List<string> ListMessages=new List<string>();
 	}
 
-	///<summary>The database path of OpenDental/Main Modules/ControlImages.Acquire.cs (TryAcquireWithCaptureSession, DeleteEmptyMountAfterSession
+	///<summary>The database path of OpenPmsDental/Main Modules/ControlImages.Acquire.cs (TryAcquireWithCaptureSession, DeleteEmptyMountAfterSession
 	///and RefreshAfterCaptureSession), statement for statement, with the module's display calls (FillImageSelector, SelectTreeNode1,
-	///ThumbnailRefresh, LayoutControls), which need the Imaging module, recorded in the outcome instead. OpenDental.exe is a WinForms program
+	///ThumbnailRefresh, LayoutControls), which need the Imaging module, recorded in the outcome instead. OpenPmsDental.exe is a WinForms program
 	///these tests cannot load, so the partial's business calls run from here; CaptureHookDbTests.Mirror_MatchesThePartial pins every statement
 	///copied here to the partial's text, so the two cannot drift apart unnoticed. funcGetPatient stands for ControlImages' _patient field, read
 	///before the session and again after it (the module may have been refreshed for another patient, or none, while the modal session ran); the

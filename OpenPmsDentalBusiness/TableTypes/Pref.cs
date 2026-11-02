@@ -2915,7 +2915,7 @@ namespace OpenPmsDentalBusiness {
 
 	///<summary>Used by pref "AccountingSoftware".  0=OpenDental, 1=QuickBooks, 2=QuickBooksOnline</summary>
 	public enum AccountingSoftware {
-		[Description("Open Dental")]
+		[Description("Open PMS - Dental")]
 		OpenDental,
 		[Description("QuickBooks")]
 		QuickBooks,

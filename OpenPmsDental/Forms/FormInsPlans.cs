@@ -193,7 +193,7 @@ namespace OpenPmsDental{
 			if(insPlanMergeComputerName!="") {
 				if(insPlanMergeComputerName==ODEnvironment.MachineName){
 					if(!MsgBox.Show(MsgBoxButtons.YesNo,$"A merge is already in progress on this workstation. Please wait for the merge to complete before beginning a new merge." +
-						$" Only begin a new merge if you have verified there is no instance of Open Dental on this machine with a merge in progess. Beginning a new merge while another" +
+						$" Only begin a new merge if you have verified there is no instance of Open PMS - Dental on this machine with a merge in progess. Beginning a new merge while another" +
 						$" merge is in progress could cause errors. Continue?")){
 						return;
 					}

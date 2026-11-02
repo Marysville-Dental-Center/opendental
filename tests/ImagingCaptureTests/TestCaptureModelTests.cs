@@ -132,7 +132,7 @@ Name=Not gated
 			Assert.AreEqual(CaptureSettingsStatus.ChangedOutside,settingsCheck.Status);
 			TestCaptureDevice device=new TestCaptureDevice { ImagingDeviceNum=12,Description="Intraoral sensor",TwainName="Example Sensor DS" };
 			TestCaptureModel model=new TestCaptureModel(device,config,"OPPC1",new ImageCategoryRule(Categories),null,null,settingsCheck);
-			StringAssert.StartsWith(model.SettingsCheckText,"Capture settings were changed outside Open Dental; review them in Setup.");
+			StringAssert.StartsWith(model.SettingsCheckText,"Capture settings were changed outside Open PMS - Dental; review them in Setup.");
 			CollectionAssert.AreEqual(new[] { "Scanner" },model.Options.AllowedSources,"RestrictSources and AllowedSources as last saved.");
 			Assert.IsTrue(model.Options.RestrictSources);
 			Assert.AreEqual(8,model.Options.Bits);

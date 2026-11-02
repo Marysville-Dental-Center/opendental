@@ -130,10 +130,10 @@ namespace ImagingCapture.Tests {
 				new[] { CaptureSettingsTestKit.SavedLog(configSaved,12,"OPERATORY1",dateTime:new DateTime(2026,10,29,8,0,0)) });
 			Assert.AreEqual(CaptureSettingsStatus.ChangedOutside,check.Status);
 			CollectionAssert.AreEqual(new[] { "Twain.Allow16Bit","Device.Bits" },check.ListChangedLabels);
-			StringAssert.StartsWith(check.Text,"Capture settings were changed outside Open Dental; review them in Setup.");
+			StringAssert.StartsWith(check.Text,"Capture settings were changed outside Open PMS - Dental; review them in Setup.");
 			StringAssert.Contains(check.Text,"2026-10-29 08:00");
 			StringAssert.Contains(check.Text,"(Twain.Allow16Bit, Device.Bits)");
-			StringAssert.Contains(check.ReasonFallback,"changed outside Open Dental");
+			StringAssert.Contains(check.ReasonFallback,"changed outside Open PMS - Dental");
 		}
 
 		///<summary>A Setup entry of a Capture settings save logged before 2026-11-01 for config, whose Bits and Allow16Bit were missing: its hash

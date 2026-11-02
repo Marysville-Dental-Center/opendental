@@ -525,8 +525,8 @@ namespace OpenPmsDental {
 										writer.WriteStartElement("td");//PatNum
 											writer.WriteString(pat.PatNum.ToString());
 										writer.WriteEndElement();
-										writer.WriteStartElement("td");//"Open Dental PatNum"
-											writer.WriteString("Open Dental PatNum");
+										writer.WriteStartElement("td");//"Open PMS - Dental PatNum"
+											writer.WriteString("Open PMS - Dental PatNum");
 										writer.WriteEndElement();
 										writer.WriteStartElement("td");//Address/Phone
 											writer.WriteString(pat.Address+" "+pat.Address2+"\r\n"+pat.City+", "

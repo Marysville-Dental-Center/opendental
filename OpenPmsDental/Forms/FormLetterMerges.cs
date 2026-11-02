@@ -261,7 +261,7 @@ namespace OpenPmsDental{
 
 		private void butPrint_Click(object sender, System.EventArgs e) {//TODO: Implement ODprintout pattern
 #if DISABLE_MICROSOFT_OFFICE
-			MessageBox.Show(this, "This version of Open Dental does not support Microsoft Word.");
+			MessageBox.Show(this, "This version of Open PMS - Dental does not support Microsoft Word.");
 			return;
 #endif
 			if(listLetters.SelectedIndex==-1){
@@ -453,7 +453,7 @@ namespace OpenPmsDental{
 			commlog.UserNum=Security.CurUser.UserNum;
 			Commlogs.Insert(commlog);
 #else
-			MessageBox.Show(this, "This version of Open Dental does not support Microsoft Word.");
+			MessageBox.Show(this, "This version of Open PMS - Dental does not support Microsoft Word.");
 #endif
 			//this window now closes regardless of whether the user saved the comm item.
 			DialogResult=DialogResult.OK;
@@ -529,7 +529,7 @@ namespace OpenPmsDental{
 			}
 			_wordDocument=null;
 #else
-			MessageBox.Show(this, "This version of Open Dental does not support Microsoft Word.");
+			MessageBox.Show(this, "This version of Open PMS - Dental does not support Microsoft Word.");
 #endif
 		}
 

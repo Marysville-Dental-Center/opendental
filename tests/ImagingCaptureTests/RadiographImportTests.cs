@@ -13,7 +13,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Tests {
-	///<summary>RadiographImport and RadiographSavePlanner (design 7.8, 7.9, 7.10, 7.12, 9.1, 10.8) against a stand-in for OpenDentBusiness:
+	///<summary>RadiographImport and RadiographSavePlanner (design 7.8, 7.9, 7.10, 7.12, 9.1, 10.8) against a stand-in for OpenPmsDentalBusiness:
 	///the order of the calls, the document fields, the 8-bit security-log entry, and the undo of a partial save. No database is used, so
 	///ImageStore, Documents, MountItems, Mounts and SecurityLogs themselves are not exercised here.</summary>
 	[TestClass]

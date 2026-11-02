@@ -121,7 +121,7 @@
     <value>17, 17</value>
   </metadata>
   <data name="label6.Text" xml:space="preserve">
-    <value>In order to continue using Open Dental you must ensure your local machine time and server time are in sync with an NIST time server.
+    <value>In order to continue using Open PMS - Dental you must ensure your local machine time and server time are in sync with an NIST time server.
 Note: You may only send a time request to the NIST time server once every four seconds.</value>
   </data>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />

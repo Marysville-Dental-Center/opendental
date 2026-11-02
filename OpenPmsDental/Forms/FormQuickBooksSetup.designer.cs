@@ -149,7 +149,7 @@ namespace OpenPmsDental{
 			this.labelConnectQB.Size = new System.Drawing.Size(397, 46);
 			this.labelConnectQB.TabIndex = 73;
 			this.labelConnectQB.Text = "Push the connect button with QuickBooks running in the background if this is your" +
-    " first time using QuickBooks with Open Dental. (Only need to do this once)";
+    " first time using QuickBooks with Open PMS - Dental. (Only need to do this once)";
 			this.labelConnectQB.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
 			// labelIncomeAccountQB
@@ -168,7 +168,7 @@ namespace OpenPmsDental{
 			this.labelWarning.Name = "labelWarning";
 			this.labelWarning.Size = new System.Drawing.Size(448, 27);
 			this.labelWarning.TabIndex = 71;
-			this.labelWarning.Text = "Open Dental will run faster if your QuickBooks company file is open in the backgr" +
+			this.labelWarning.Text = "Open PMS - Dental will run faster if your QuickBooks company file is open in the backgr" +
     "ound.";
 			this.labelWarning.TextAlign = System.Drawing.ContentAlignment.TopCenter;
 			// 

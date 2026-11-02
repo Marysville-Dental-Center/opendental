@@ -5138,7 +5138,7 @@ namespace OpenPmsDentalBusiness{
 			catch(ODException odex) {//Warn
 				switch((ApptSchedEnforceSpecialty)odex.ErrorCode) {
 					case ApptSchedEnforceSpecialty.Warn:
-						throw new ODException(odex.Message+"\r\nTo schedule appointment anyway, please use the desktop application of OpenDental.");
+						throw new ODException(odex.Message+"\r\nTo schedule appointment anyway, please use the desktop application of Open PMS - Dental.");
 					case ApptSchedEnforceSpecialty.Block:
 						throw new ODException(odex.Message);
 				}

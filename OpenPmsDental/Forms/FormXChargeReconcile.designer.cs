@@ -99,7 +99,7 @@ namespace OpenPmsDental{
 			this.label7.Name = "label7";
 			this.label7.Size = new System.Drawing.Size(296, 20);
 			this.label7.TabIndex = 14;
-			this.label7.Text = "View credit card payments in Open Dental.";
+			this.label7.Text = "View credit card payments in Open PMS - Dental.";
 			this.label7.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 			// 
 			// butExtra

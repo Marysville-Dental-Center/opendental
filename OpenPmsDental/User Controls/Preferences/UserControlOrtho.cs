@@ -136,7 +136,7 @@ namespace OpenPmsDental {
 				return false;
 			}
 			if(PrefC.GetBool(PrefName.ShowFeaturePatientClone)!=checkPatClone.Checked) {
-				MsgBox.Show(this,"You will need to restart OpenDental for this change to take effect.");
+				MsgBox.Show(this,"You will need to restart Open PMS - Dental for this change to take effect.");
 			}
 			Changed|=Prefs.UpdateBool(PrefName.OrthoShowInChart,checkOrthoShowInChart.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.OrthoEnabled,checkOrthoEnabled.Checked);

@@ -331,7 +331,7 @@ namespace ImagingCapture.Tests {
 		public void SettingsNotVerified_8Bits_EvenWithAMatchingRecord() {
 			//Design 9.3: a hand edit after the last save in Capture settings; Test capture's record may even match the edited file.
 			AssertFallback(x => x.SettingsCheck=CaptureSettingsCheck.CheckHash(_hash,12,"OPERATORY1",
-				new List<SecurityLog> { CaptureSettingsTestKit.SavedLog(new string('c',64),12,"OPERATORY1") }),"changed outside Open Dental");
+				new List<SecurityLog> { CaptureSettingsTestKit.SavedLog(new string('c',64),12,"OPERATORY1") }),"changed outside Open PMS - Dental");
 			//Never saved: "not verified". Saved on another computer only: still never saved here (the settings check stays per computer).
 			AssertFallback(x => x.SettingsCheck=CaptureSettingsCheck.CheckHash(_hash,12,"OPERATORY1",new List<SecurityLog>()),"never been saved");
 			AssertFallback(x => x.SettingsCheck=CaptureSettingsCheck.CheckHash(_hash,12,"OPERATORY1",

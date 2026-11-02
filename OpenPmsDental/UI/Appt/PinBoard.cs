@@ -60,7 +60,7 @@ namespace OpenPmsDental.UI {
 						continue;
 					}
 					//Make a security log if we still have a valid user logged in. 
-					string logText=Lan.g(this,"Deleted from pinboard while closing Open Dental")+": ";
+					string logText=Lan.g(this,"Deleted from pinboard while closing Open PMS - Dental")+": ";
 					if(appt.AptDateTime.Year>1880) {
 						logText+=appt.AptDateTime.ToString()+", ";
 					}

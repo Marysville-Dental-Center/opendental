@@ -166,7 +166,7 @@ namespace OpenPmsDental {
 			reportComplex.ReportName="Missing";
 			reportComplex.AddTitle("Title","XCharge Transactions From "+date1.SelectionStart.ToShortDateString()+" To "+date2.SelectionStart.ToShortDateString(),fontTitle);
 			reportComplex.GetTitle("Title").IsUnderlined=true;
-			reportComplex.AddSubTitle("SubTitle","No Matching Transaction Found in Open Dental",fontSubTitle);
+			reportComplex.AddSubTitle("SubTitle","No Matching Transaction Found in Open PMS - Dental",fontSubTitle);
 			QueryObject queryObject;
 			DataTable table=XChargeTransactions.GetMissingPaymentsTable(date1.SelectionStart,date2.SelectionStart);
 			queryObject=reportComplex.AddQuery(table,"Missing Payments","",SplitByKind.None,1,true);//Valid entries to count have result code 0

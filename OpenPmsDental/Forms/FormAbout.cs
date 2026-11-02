@@ -65,8 +65,8 @@ namespace OpenPmsDental{
 	///<summary>The fork identity the About box shows: product name, attribution to Open Dental, and release version. Kept apart from the form
 	///so it can be tested without a database or a window (except the methods that say they read the preferences or the database).</summary>
 	public static class AboutBoxInfo {
-		///<summary>The product name. The assemblies keep their Open Dental names until the final cosmetic rename step. The MainWindowTitle and
-		///SoftwareName preferences keep their stored values; GetDisplayName shows this name in place of Open Dental's defaults.</summary>
+		///<summary>The product name. The assemblies carry its code name, OpenPmsDental. The MainWindowTitle and SoftwareName preferences keep
+		///their stored values; GetDisplayName shows this name in place of Open Dental's defaults.</summary>
 		public const string ProductName=CodeBase.VendorDirect.ProductIdentity.ProductName;
 		///<summary>The values of the MainWindowTitle and SoftwareName preferences that are shown as ProductName: Open Dental's defaults ("Open
 		///Dental", "Open Dental Software"; an adopted database keeps them) and the two values the Benco branding switch, since removed from

@@ -48,7 +48,7 @@ namespace ImagingCapture.Tests.Db {
 		#region The mirror
 		[TestMethod]
 		public void Mirror_MatchesThePartial() {
-			string text=File.ReadAllText(TestDb.FindRepoFile(Path.Combine("OpenDental","Main Modules","ControlImages.Acquire.cs")));
+			string text=File.ReadAllText(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","Main Modules","ControlImages.Acquire.cs")));
 			List<string> listLines=text.Split('\n').Select(x => x.Trim()).ToList();
 			foreach(string statement in CaptureHookMirror.ArrayStatementsCopied) {
 				Assert.IsTrue(listLines.Any(x => x.StartsWith(statement,StringComparison.Ordinal)),"The partial no longer has this statement, which "

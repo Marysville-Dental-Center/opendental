@@ -174,7 +174,7 @@
   </data>
   <data name="labelInfoMedIns.Tag" xml:space="preserve">
     <value>Turns on Medical Insurance.
-Open Dental has good support for medical insurance making it useful in oral surgery and hospital settings. Checking this is the first step to turn on these medical features. Consult the manual to see how to set up the rest of the features.</value>
+Open PMS - Dental has good support for medical insurance making it useful in oral surgery and hospital settings. Checking this is the first step to turn on these medical features. Consult the manual to see how to set up the rest of the features.</value>
   </data>
   <data name="labelInfoEHR.Tag" xml:space="preserve">
     <value>Turn on EHR features. 

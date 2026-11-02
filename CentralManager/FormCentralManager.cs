@@ -932,7 +932,7 @@ namespace CentralManager {
 					}
 					else if(dictDomainUsers.Count>1) {
 						//multiple users returned
-						InputBox box=new InputBox(Lan.g(this,"Select an Open Dental user to log in with:"),dictDomainUsers.Values.ToList());
+						InputBox box=new InputBox(Lan.g(this,"Select an Open PMS - Dental user to log in with:"),dictDomainUsers.Values.ToList());
 						box.ShowDialog();
 						if(box.IsDialogOK) {
 							Security.CurUser=Userods.GetUserNoCache(dictDomainUsers.Keys.ElementAt(box.SelectedIndex));

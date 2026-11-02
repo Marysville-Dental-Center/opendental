@@ -156,7 +156,7 @@ namespace ImagingCapture.Tests {
 			CaptureSessionLaunchResult result=Launcher().Run(Request());
 			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,result.Kind,"The safe value of [Session] Enabled is off.");
 			StringAssert.Contains(result.Reason,"ChangedOutside");
-			StringAssert.StartsWith(_listNotices.Single(),"Capture settings were changed outside Open Dental; review them in Setup.");
+			StringAssert.StartsWith(_listNotices.Single(),"Capture settings were changed outside Open PMS - Dental; review them in Setup.");
 			StringAssert.Contains(_listNotices.Single(),"Session.Enabled","It names what changed.");
 			Assert.AreEqual(0,_windowRunner.CountShown);
 		}

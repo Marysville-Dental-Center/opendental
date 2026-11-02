@@ -4871,7 +4871,7 @@ namespace OpenPmsDental {
 					String strAppServer="";
 					if(Bridges.ECW.UserId==0 || String.IsNullOrEmpty(Bridges.ECW.EcwConfigPath)) {
 						webBrowserEcw.Url=null;
-						labelECWerror.Text="This panel does not display unless\r\nOpen Dental is launched from inside eCW";
+						labelECWerror.Text="This panel does not display unless\r\nOpen PMS - Dental is launched from inside eCW";
 						labelECWerror.Visible=true;
 					}
 					else {

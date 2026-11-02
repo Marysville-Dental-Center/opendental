@@ -107,7 +107,7 @@ namespace ImagingCapture.Settings {
 				+"Mount/Acquire loop runs (the rollback).");
 			Add(session,"IdleDisableMinutes",CaptureSettingKind.WholeNumber,"10",true,"Minutes without an exposure after which the session disables the "
 				+"source. Used only with DisableIsSafe=1. Longer than the source's own session timeout, shorter than the automatic logoff.");
-			Add(twain,"ThreadModal",CaptureSettingKind.Switch,"1",true,"1: Open Dental's windows are disabled while a named source acquires on the legacy "
+			Add(twain,"ThreadModal",CaptureSettingKind.Switch,"1",true,"1: Open PMS - Dental's windows are disabled while a named source acquires on the legacy "
 				+"path.");
 			Add(twain,"AcquireTimeoutMinutes",CaptureSettingKind.WholeNumber,"0",true,"Legacy path: minutes after which an acquisition is stopped; 0 is "
 				+"none. Only with PerSlot and the sources in DisableIsSafeSources.");

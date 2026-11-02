@@ -195,7 +195,7 @@ namespace OpenPmsDental{
 				return;
 			}
 			#if DISABLE_MICROSOFT_OFFICE
-				MessageBox.Show(this, "This version of Open Dental does not support Microsoft Word.");
+				MessageBox.Show(this, "This version of Open PMS - Dental does not support Microsoft Word.");
 				return;
 			#endif
 			if(!Directory.Exists(PrefC.GetString(PrefName.LetterMergePath))){

@@ -80,7 +80,7 @@ namespace OpenPmsDental {
 					FillGrid();
 					if(terminalActiveCurrent.PatNum==0) { //we are trying to load the patient
 						if(FormOpenDental.PatNumCur==0) {
-							MsgBox.Show(this,"There is currently no patient selected to send to the device Select a patient in Open Dental " +
+							MsgBox.Show(this,"There is currently no patient selected to send to the device Select a patient in Open PMS - Dental " +
 								"in order to continue.");
 							return;
 						}

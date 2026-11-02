@@ -108,7 +108,7 @@ namespace ImagingCapture.Tests.Db {
 			SecurityLog securityLogB=CaptureDb.GetLogsByFKey(EnumPermType.Setup,imagingDeviceB.ImagingDeviceNum,CaptureSettingsLogEntry.LogPrefix).Last();
 			Assert.AreEqual(entryB.ToLogText(),securityLogB.LogText,"Written with device B's number as its FKey.");
 			Assert.AreEqual(CaptureSettingsStatus.Verified,Check(imagingDeviceA).Status);
-			Assert.AreEqual(CaptureSettingsStatus.Verified,Check(imagingDeviceB).Status,"The change made here is no change outside Open Dental for B.");
+			Assert.AreEqual(CaptureSettingsStatus.Verified,Check(imagingDeviceB).Status,"The change made here is no change outside Open PMS - Dental for B.");
 		}
 
 		[TestMethod]

@@ -48,7 +48,7 @@ namespace OpenPmsDental{
 			_dateTimeUpdate=PrefC.GetDateT(PrefName.UpdateDateTime);
 			textUpdateTime.Text=_dateTimeUpdate.ToString();
 			if(PrefC.AtoZfolderUsed!=DataStorageType.LocalAtoZ) {
-				labelRecopy.Text=@"Recopy all of the files from C:\Program Files\Open Dental\ into a special place in the database for future use in updating other computers.";
+				labelRecopy.Text=@"Recopy all of the files from C:\Program Files (x86)\Open PMS - Dental\ into a special place in the database for future use in updating other computers.";
 			}
 			//These settings only pointed at Open Dental's update servers, which this build never contacts. Their preference values are left unchanged.
 			label1.Visible=false;

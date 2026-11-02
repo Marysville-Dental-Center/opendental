@@ -102,7 +102,7 @@ namespace UpdateFileCopier {
 				return;
 			}
 			SetLabelText("Critical Error: "+error
-				+"\r\n\r\nPlease address the error above, make sure all instances of Open Dental are closed, then click Retry.");
+				+"\r\n\r\nPlease address the error above, make sure all instances of Open PMS - Dental are closed, then click Retry.");
 			butRetry.Visible=true;
 		}
 
@@ -403,9 +403,9 @@ namespace UpdateFileCopier {
 			}
 			Cursor=Cursors.Default;
 			if(_hasFilesInUse) {
-				string error="There are files still in use.  Please make sure all instances of Open Dental are closed then click Retry.";
+				string error="There are files still in use.  Please make sure all instances of Open PMS - Dental are closed then click Retry.";
 				if(!string.IsNullOrEmpty(_error)) {
-					error=_error+"\r\n\r\nPlease address the error above, make sure all instances of Open Dental are closed, then click Retry.";
+					error=_error+"\r\n\r\nPlease address the error above, make sure all instances of Open PMS - Dental are closed, then click Retry.";
 				}
 				SetLabelText(error,isLongText:true);
 				butRetry.Visible=true;

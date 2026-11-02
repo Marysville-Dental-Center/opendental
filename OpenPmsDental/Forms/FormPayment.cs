@@ -3598,7 +3598,7 @@ namespace OpenPmsDental {
 				return;
 			}
 			Cursor=Cursors.WaitCursor;
-			string payNote=Lan.g(this,"Void XWeb payment made from within Open Dental");
+			string payNote=Lan.g(this,"Void XWeb payment made from within Open PMS - Dental");
 			try {
 				XWebs.VoidPayment(_patient.PatNum,payNote,_xWebResponse.XWebResponseNum);
 			}

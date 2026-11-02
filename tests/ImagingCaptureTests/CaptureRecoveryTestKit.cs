@@ -380,7 +380,7 @@ namespace ImagingCapture.Tests {
 		public static List<Gray16Refusal> All() {
 			return new List<Gray16Refusal> {
 				new Gray16Refusal { Name="settings not verified",FuncFields=() => RecoveryFiles.SessionFieldsWithDriver(),
-					ReasonStart="the capture settings of this device have never been saved in Open Dental on this computer (not verified)" },
+					ReasonStart="the capture settings of this device have never been saved in Open PMS - Dental on this computer (not verified)" },
 				new Gray16Refusal { Name="Allow16Bit=0",FuncFields=() => RecoveryFiles.SessionFieldsWithDriver(),
 					ActionSetup=harness => {
 						harness.Config=CaptureSessionTestConfig.Load("[Twain]","Allow16Bit=0");

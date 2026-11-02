@@ -124,7 +124,7 @@ namespace ImagingCapture.UI {
 			}
 			if(listChangesOutside.Count>0) {
 				//Design 9.3, 10.7: a value changed outside Open Dental is accepted only once it was shown, also by a save that edits another key.
-				question+="\r\n\r\n"+Lang.g(this,"These gated values were changed outside Open Dental since the last save. Saving accepts them as they "
+				question+="\r\n\r\n"+Lang.g(this,"These gated values were changed outside Open PMS - Dental since the last save. Saving accepts them as they "
 					+"are in the file (last saved value -> value in the file):")+"\r\n"+string.Join("\r\n",listChangesOutside.Select(x => x.GetText()));
 			}
 			if(!MsgBox.Show(MsgBoxButtons.OKCancel,question)) {
@@ -235,7 +235,7 @@ namespace ImagingCapture.UI {
 			}
 			List<string> listNotes=new List<string>();
 			if(row.IsChangedOutside) {
-				listNotes.Add(Lang.g(this,"changed outside Open Dental"));
+				listNotes.Add(Lang.g(this,"changed outside Open PMS - Dental"));
 			}
 			if(row.IsChanged) {
 				listNotes.Add(Lang.g(this,"edited, was")+" "+(row.BaselineText=="" ? Lang.g(this,"(empty)") : row.BaselineText));

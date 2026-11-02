@@ -48,7 +48,7 @@ namespace OpenPmsDental
 			this.Name = "FormSplash";
 			this.ShowInTaskbar = false;
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-			this.Text = "Welcome to Open Dental";
+			this.Text = "Welcome to Open PMS - Dental";
 			this.Load += new System.EventHandler(this.FormSplash_Load);
 			this.ResumeLayout(false);
 

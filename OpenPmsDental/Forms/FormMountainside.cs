@@ -46,7 +46,7 @@ namespace OpenPmsDental{
 		}
 
 		private void checkEnabled_Click(object sender,EventArgs e) {
-			MsgBox.Show(this,"You will need to restart Open Dental to see the effects.");
+			MsgBox.Show(this,"You will need to restart Open PMS - Dental to see the effects.");
 		}
 
 		private bool SaveToDb(){

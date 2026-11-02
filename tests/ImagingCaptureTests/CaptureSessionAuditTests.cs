@@ -85,9 +85,9 @@ namespace ImagingCapture.Tests {
 			StringAssert.Contains(_harness.Store.GetLogs(EnumPermType.ImageCreate).Single(x => x.Contains("Capture session summary")),
 				"in effect: Continuous, 8-bit (fallback: The source sent 8-bit images)");
 			settings.IsSettingsVerified=false;
-			settings.SettingsNotVerifiedText="Capture settings were changed outside Open Dental.";
+			settings.SettingsNotVerifiedText="Capture settings were changed outside Open PMS - Dental.";
 			StringAssert.StartsWith(settings.GetText(isWithReasons:true),
-				"capture settings not verified, so the safe values (Capture settings were changed outside Open Dental), Continuous");
+				"capture settings not verified, so the safe values (Capture settings were changed outside Open PMS - Dental), Continuous");
 		}
 
 		[TestMethod]

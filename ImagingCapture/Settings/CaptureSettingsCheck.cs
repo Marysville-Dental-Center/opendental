@@ -33,8 +33,8 @@ namespace ImagingCapture.Settings {
 	///"Before CAP-4, and on the legacy path").</summary>
 	public sealed class CaptureSettingsCheck {
 		///<summary>Design 9.3's sentence for a hash that differs from the one last saved.</summary>
-		public const string TextChangedOutside="Capture settings were changed outside Open Dental; review them in Setup.";
-		public const string TextNeverSaved="The capture settings of this device have never been saved in Open Dental on this computer; review and "
+		public const string TextChangedOutside="Capture settings were changed outside Open PMS - Dental; review them in Setup.";
+		public const string TextNeverSaved="The capture settings of this device have never been saved in Open PMS - Dental on this computer; review and "
 			+"save them in Setup (Imaging Devices, the device, Capture settings).";
 		public const string TextConsequences="Until then the capture session stays off on this computer, Test capture uses safe values, and capture "
 			+"of more than 8 bits is not verified.";
@@ -81,7 +81,7 @@ namespace ImagingCapture.Settings {
 					case CaptureSettingsStatus.NeverSaved:
 						return TextNeverSaved+" "+TextConsequences;
 					default:
-						return "The capture settings saved in Open Dental could not be checked: "+(ErrorText??"").Trim().TrimEnd('.')+". They count as "
+						return "The capture settings saved in Open PMS - Dental could not be checked: "+(ErrorText??"").Trim().TrimEnd('.')+". They count as "
 							+"not verified. "+TextConsequences;
 				}
 			}
@@ -95,11 +95,11 @@ namespace ImagingCapture.Settings {
 					case CaptureSettingsStatus.Verified:
 						return null;
 					case CaptureSettingsStatus.ChangedOutside:
-						return "capture settings were changed outside Open Dental since they were last saved in Capture settings (not verified)";
+						return "capture settings were changed outside Open PMS - Dental since they were last saved in Capture settings (not verified)";
 					case CaptureSettingsStatus.NeverSaved:
-						return "the capture settings of this device have never been saved in Open Dental on this computer (not verified)";
+						return "the capture settings of this device have never been saved in Open PMS - Dental on this computer (not verified)";
 					default:
-						return "the capture settings saved in Open Dental could not be checked (not verified)";
+						return "the capture settings saved in Open PMS - Dental could not be checked (not verified)";
 				}
 			}
 		}

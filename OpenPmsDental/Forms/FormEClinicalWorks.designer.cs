@@ -302,11 +302,11 @@ namespace OpenPmsDental {
 			// 
 			// label6
 			// 
-			this.label6.Location = new System.Drawing.Point(54, 174);
+			this.label6.Location = new System.Drawing.Point(14, 174);
 			this.label6.Name = "label6";
-			this.label6.Size = new System.Drawing.Size(179, 18);
+			this.label6.Size = new System.Drawing.Size(219, 18);
 			this.label6.TabIndex = 64;
-			this.label6.Text = "OpenDental Database Server";
+			this.label6.Text = "Open PMS - Dental Database Server";
 			this.label6.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
 			// textHL7ServiceName
@@ -334,11 +334,11 @@ namespace OpenPmsDental {
 			// 
 			// label7
 			// 
-			this.label7.Location = new System.Drawing.Point(54, 200);
+			this.label7.Location = new System.Drawing.Point(14, 200);
 			this.label7.Name = "label7";
-			this.label7.Size = new System.Drawing.Size(179, 18);
+			this.label7.Size = new System.Drawing.Size(219, 18);
 			this.label7.TabIndex = 66;
-			this.label7.Text = "OpenDental HL7 Server";
+			this.label7.Text = "Open PMS - Dental HL7 Server";
 			this.label7.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			//
 			// label8

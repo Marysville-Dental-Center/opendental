@@ -295,7 +295,7 @@ namespace ImagingCapture.Tests {
 			Write(Ini.Replace("Allow16Bit=0","Allow16Bit=1"));
 			CaptureSettingsModel model=Model();
 			Assert.AreEqual(CaptureSettingsStatus.ChangedOutside,model.SettingsCheck.Status);
-			StringAssert.StartsWith(model.SettingsCheck.Text,"Capture settings were changed outside Open Dental; review them in Setup.");
+			StringAssert.StartsWith(model.SettingsCheck.Text,"Capture settings were changed outside Open PMS - Dental; review them in Setup.");
 			CaptureSettingRow row=Row(model,"Twain","Allow16Bit");
 			Assert.IsTrue(row.IsChangedOutside);
 			Assert.AreEqual("0",row.SavedText);
@@ -335,7 +335,7 @@ namespace ImagingCapture.Tests {
 			Assert.AreEqual("0",changeAllow.OldValue,"The value last saved.");
 			Assert.AreEqual("1",changeAllow.NewValue,"The value in the file.");
 			Assert.IsTrue(changeAllow.IsChangedOutside);
-			StringAssert.Contains(changeAllow.GetText(),"changed outside Open Dental");
+			StringAssert.Contains(changeAllow.GetText(),"changed outside Open PMS - Dental");
 			Assert.IsTrue(model.SetText(Idx(model,"Sounds","Error"),"Beep"),"A key that is not gated.");
 			Assert.AreEqual(1,model.GetPendingChanges().Count,"Only the non-gated key was edited.");
 			Assert.AreEqual(2,model.GetChangesOutside().Count,"The confirmation lists the values changed outside as well.");
@@ -343,7 +343,7 @@ namespace ImagingCapture.Tests {
 			Assert.IsTrue(result.IsLogged,result.Error);
 			Assert.AreEqual(3,result.Entry.ListChanges.Count);
 			Assert.AreEqual(2,result.Entry.ListChanges.Count(x => x.IsChangedOutside));
-			StringAssert.Contains(result.Entry.Note,"changed outside Open Dental");
+			StringAssert.Contains(result.Entry.Note,"changed outside Open PMS - Dental");
 			CaptureSettingsLogEntry entryRead=_store.GetEntries(12).Last();
 			CaptureSettingChange changeRead=entryRead.ListChanges.Single(x => x.Label=="Twain.Allow16Bit");
 			Assert.IsTrue(changeRead.IsChangedOutside,"Read back from the security log.");

@@ -759,7 +759,7 @@ namespace ImagingCapture.Tests {
 			Assert.IsTrue(plan.IsIntoOriginalSlot);
 			Assert.IsTrue(plan.Is8BitCopy,"The capture settings are not verified here.");
 			StringAssert.StartsWith(plan.Note,"8-bit copy: 16 bits are not allowed for it now (the capture settings of this device have never been saved in "
-				+"Open Dental on this computer (not verified)); the 16-bit original is kept.");
+				+"Open PMS - Dental on this computer (not verified)); the 16-bit original is kept.");
 			CaptureFilingResult result=_harness.Filer.Assign(entry,0,0,plan);
 			Assert.IsTrue(result.IsDone,result.Error);
 			Assert.AreEqual(".png",RadiographStore.ListExtensions.Single());

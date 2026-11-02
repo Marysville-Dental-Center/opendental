@@ -65,7 +65,7 @@ namespace OpenPmsDental {
 			this.label1.Name = "label1";
 			this.label1.Size = new System.Drawing.Size(409, 44);
 			this.label1.TabIndex = 43;
-			this.label1.Text = "Computers are added to this list every time you use Open Dental.  You can safely " +
+			this.label1.Text = "Computers are added to this list every time you use Open PMS - Dental.  You can safely " +
     "delete unused computer names from this list to speed up messaging.";
 			// 
 			// butDelete

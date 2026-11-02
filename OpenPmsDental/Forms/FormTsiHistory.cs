@@ -326,7 +326,7 @@ namespace OpenPmsDental {
 					return;
 				case "DEBTOR REFERENCE":
 				case "TRANSMITTAL/REFERENCE NUMBER":
-					textSelectedFieldDetails.Text="Open Dental PatNum for the guarantor of the family";
+					textSelectedFieldDetails.Text="Open PMS - Dental PatNum for the guarantor of the family";
 					return;
 				case "DEBTOR PHONE":
 					textSelectedFieldDetails.Text="Home phone for the guarantor of the family";

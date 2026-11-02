@@ -139,7 +139,7 @@
 			this.labelInfoClinics.TabIndex = 98;
 			this.labelInfoClinics.Tag = "Turn on Clinics (e.g. for practices with multiple locations). \r\nClinics can be us" +
     "ed when you have multiple locations. Once clinics are set up, you can assign cli" +
-    "nics throughout Open Dental. ";
+    "nics throughout Open PMS - Dental. ";
 			this.labelInfoClinics.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			this.labelInfoClinics.MouseClick += new System.Windows.Forms.MouseEventHandler(this.labelInfo_MouseClick);
 			// 

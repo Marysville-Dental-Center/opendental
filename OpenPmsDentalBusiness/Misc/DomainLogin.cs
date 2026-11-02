@@ -208,7 +208,7 @@ namespace OpenPmsDentalBusiness {
 			}
 			if(listUserodsOpen.Count==0) {
 				result.Status=DomainSwitchStatus.NoLinkedUser;
-				result.Message=Lans.g("DomainLogin","No Open Dental user is linked to that domain account.");
+				result.Message=Lans.g("DomainLogin","No Open PMS - Dental user is linked to that domain account.");
 				return result;
 			}
 			//Re-read so the returned users carry the lockout columns just written.

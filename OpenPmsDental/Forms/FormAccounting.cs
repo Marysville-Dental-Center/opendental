@@ -40,7 +40,7 @@ namespace OpenPmsDental{
 			//Setup-----------------------------------------------------------------------------------------------------------
 			MenuItemOD menuItemSetup=new MenuItemOD("Setup");
 			menuMain.Add(menuItemSetup);
-			menuItemSetup.Add("Open Dental", menuItemOpenDental_Click);
+			menuItemSetup.Add("Open PMS - Dental", menuItemOpenDental_Click);
 			menuItemSetup.Add("QuickBooks", menuItemQuickBooks_Click);
 			menuItemSetup.Add("QuickBooks Online", menuItemQuickBooksOnline_Click);
 			//Lock-----------------------------------------------------------------------------------------------------------

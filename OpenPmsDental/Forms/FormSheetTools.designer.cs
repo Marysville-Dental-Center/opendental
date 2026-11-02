@@ -56,7 +56,7 @@ namespace OpenPmsDental{
 			this.label2.Name = "label2";
 			this.label2.Size = new System.Drawing.Size(251, 60);
 			this.label2.TabIndex = 27;
-			this.label2.Text = "Import a sheet file in xml format that has been exported from another Open Dental" +
+			this.label2.Text = "Import a sheet file in xml format that has been exported from another Open PMS - Dental or Open Dental" +
     " database.\r\n";
 			// 
 			// label1
@@ -66,7 +66,7 @@ namespace OpenPmsDental{
 			this.label1.Size = new System.Drawing.Size(251, 60);
 			this.label1.TabIndex = 28;
 			this.label1.Text = "Export a custom sheet to an xml file so that you can later import it to any other" +
-    " Open Dental database.";
+    " Open PMS - Dental database.";
 			// 
 			// FormSheetTools
 			// 

@@ -462,7 +462,7 @@ namespace OpenPmsDentalBusiness{
 					}
 					userNames+=table.Rows[i]["UserName"].ToString();
 				}
-				throw new Exception(Lans.g("Clinics","Cannot delete clinic because the following Open Dental users are using it:")+userNames);
+				throw new Exception(Lans.g("Clinics","Cannot delete clinic because the following Open PMS - Dental users are using it:")+userNames);
 			}
 			#endregion
 			#region AlertSub
@@ -479,7 +479,7 @@ namespace OpenPmsDentalBusiness{
 					}
 					listUsers.Add(userod.UserName);
 				}
-				throw new Exception(Lans.g("Clinics","Cannot delete clinic because the following Open Dental users are subscribed to it:")+"\r"+String.Join("\r",listUsers.OrderBy(x => x).ToList()));
+				throw new Exception(Lans.g("Clinics","Cannot delete clinic because the following Open PMS - Dental users are subscribed to it:")+"\r"+String.Join("\r",listUsers.OrderBy(x => x).ToList()));
 			}
 			#endregion
 			#region UserClinics

@@ -411,7 +411,7 @@ namespace OpenPmsDental{
 				}
 				else {//Not a silent update.  Show a warning message.
 							//No MsgBox or Lan.g() here, because we don't want to access the database if there is a version conflict.
-					MessageBox.Show("Mismatched program file versions. Please run the Open Dental setup file again on this computer.");
+					MessageBox.Show("Mismatched program file versions. Please run the Open PMS - Dental setup file again on this computer.");
 				}
 				Environment.Exit(ExitCode);
 				return;
@@ -1372,7 +1372,7 @@ namespace OpenPmsDental{
 				}
 			}
 			if((!string.IsNullOrEmpty(message))) {
-				message+="Please fix this to run Open Dental properly.";
+				message+="Please fix this to run Open PMS - Dental properly.";
 				if(!isSilentUpdate) {
 					MsgBox.Show(message);
 				}
@@ -6510,7 +6510,7 @@ namespace OpenPmsDental{
 							ShowLogOn();
 						}
 						else if(dictDomainUserNumsAndNames.Count > 1) { //Select a user if multiple users linked to the current domain user
-							InputBox inputBox=new InputBox(Lan.g(this,"Select an Open Dental user to log in with:"),dictDomainUserNumsAndNames.Select(x => x.Value).ToList());
+							InputBox inputBox=new InputBox(Lan.g(this,"Select an Open PMS - Dental user to log in with:"),dictDomainUserNumsAndNames.Select(x => x.Value).ToList());
 							inputBox.ShowDialog();
 							if(inputBox.IsDialogOK) {
 								Security.CurUser=Userods.GetUserNoCache(dictDomainUserNumsAndNames.Keys.ElementAt(inputBox.SelectedIndex));
@@ -6904,7 +6904,7 @@ namespace OpenPmsDental{
 		private void InitiateShutdown(bool doShutdownAll=true) {
 			//If no user is logged in, simply process the kill command immediately.
 			if(Security.CurUser==null) {
-				Logger.WriteLine("Shutdown signal found while logged out. Closing Open Dental.","Signals");
+				Logger.WriteLine("Shutdown signal found while logged out. Closing Open PMS - Dental.","Signals");
 				ProcessKillCommand();
 				return;
 			}
@@ -6916,10 +6916,10 @@ namespace OpenPmsDental{
 			timerSignals.Tag="shutdown";
 			string msg = "";
 			if(!doShutdownAll) {
-				msg="Your instance of Open Dental ";
+				msg="Your instance of Open PMS - Dental ";
 			}
 			else if(ProgramNames.IsProgramProcessName(Process.GetCurrentProcess().ProcessName)) {
-				msg+="All copies of Open Dental ";
+				msg+="All copies of Open PMS - Dental ";
 			}
 			else {
 				msg+=Process.GetCurrentProcess().ProcessName+" ";

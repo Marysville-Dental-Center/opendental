@@ -92,7 +92,7 @@ namespace OpenPmsDental {
 						Application.Exit();
 						return;
 					}
-					MessageBox.Show("Registry updated to EnablePerProcessSystemDPI. Please restart Open Dental.");
+					MessageBox.Show("Registry updated to EnablePerProcessSystemDPI. Please restart Open PMS - Dental.");
 					Application.Exit();
 					return;
 				}

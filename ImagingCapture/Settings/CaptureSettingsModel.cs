@@ -268,7 +268,7 @@ namespace ImagingCapture.Settings {
 			string note=listRowsChanged.Count==0 ? "Saved in Capture settings without changes: the values in the file were reviewed and accepted."
 				: "Saved in Capture settings.";
 			if(listChangesOutside.Count>0) {
-				note+=" "+listChangesOutside.Count.ToString(CultureInfo.InvariantCulture)+" gated value(s) changed outside Open Dental since the last "
+				note+=" "+listChangesOutside.Count.ToString(CultureInfo.InvariantCulture)+" gated value(s) changed outside Open PMS - Dental since the last "
 					+"save were accepted; each is listed from its last saved value to the one in the file.";
 			}
 			CaptureSettingsLogEntry entry=BuildEntry(Device.ImagingDeviceNum,Device.Description,configAfter,hashBefore,now,listChanges,note);
@@ -297,7 +297,7 @@ namespace ImagingCapture.Settings {
 			}
 			catch(Exception ex) {
 				result.ListWarnings.Add("The other imaging devices could not be read ("+ex.Message+"); their capture settings may count as changed outside "
-					+"Open Dental until they are saved again.");
+					+"Open PMS - Dental until they are saved again.");
 				return dictHashes;
 			}
 			foreach(long imagingDeviceNum in listImagingDevices.Where(x => x!=null).Select(x => x.ImagingDeviceNum)
@@ -334,7 +334,7 @@ namespace ImagingCapture.Settings {
 				}
 				catch(Exception ex) {
 					result.ListWarnings.Add("The security-log entry for device "+pair.Key.ToString(CultureInfo.InvariantCulture)+" could not be written ("
-						+ex.Message+"); its capture settings count as changed outside Open Dental until they are saved again.");
+						+ex.Message+"); its capture settings count as changed outside Open PMS - Dental until they are saved again.");
 				}
 			}
 		}

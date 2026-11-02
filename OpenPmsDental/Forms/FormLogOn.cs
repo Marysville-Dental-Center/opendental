@@ -150,7 +150,7 @@ namespace OpenPmsDental {
 			}
 			Userod userod=domainSwitchResult.ListUserods[0];
 			if(domainSwitchResult.ListUserods.Count>1) {//The same pick list that program start shows.
-				InputBox inputBox=new InputBox(Lan.g(this,"Select an Open Dental user to log in with:"),domainSwitchResult.ListUserods.Select(x => x.UserName).ToList());
+				InputBox inputBox=new InputBox(Lan.g(this,"Select an Open PMS - Dental user to log in with:"),domainSwitchResult.ListUserods.Select(x => x.UserName).ToList());
 				inputBox.ShowDialog();
 				if(!inputBox.IsDialogOK) {
 					return;

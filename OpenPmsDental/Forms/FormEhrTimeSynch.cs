@@ -172,10 +172,10 @@ namespace OpenPmsDental {
 			Prefs.UpdateString(PrefName.NistTimeServerUrl,textNistUrl.Text);
 			//Update message textbox
 			if(!LocalInSynch()) { //This should not happen, time is updated automatically. If you get to this point, you should have already had a message box pop up saying there was an error updating your local time.
-				textMessage.Text="Your local machine time is out of sync.  Please ensure Open Dental is running with Administrator Windows privileges.  If you have done this and you still see this message, please call Open Dental support.";
+				textMessage.Text="Your local machine time is out of sync.  Please ensure Open PMS - Dental is running with Administrator Windows privileges.  If you have done this and you still see this message, please contact your support provider.";
 			}
 			else if(!ServerInSynch()) {
-				textMessage.Text="Your database time is out of sync with your local machine.  Please start the Open Dental application on your database server and leave it running to keep times synchronized as required for EHR compliance.  If you have done this and you still see this message, please call Open Dental support.";
+				textMessage.Text="Your database time is out of sync with your local machine.  Please start the Open PMS - Dental application on your database server and leave it running to keep times synchronized as required for EHR compliance.  If you have done this and you still see this message, please contact your support provider.";
 			}
 			else {//All times in synch
 				textMessage.Text="All times synchronized within one second.  You may close this window.";

@@ -68,7 +68,7 @@ namespace OpenPmsDental {
 				newBut.ButtonText=textButText.Text;
 				ToolButItems.Insert(newBut);
 			}
-			MsgBox.Show(this,"You will need to restart Open Dental for these changes to take effect.");
+			MsgBox.Show(this,"You will need to restart Open PMS - Dental for these changes to take effect.");
 			IsDialogOK=true;
 		}
 

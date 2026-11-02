@@ -22,7 +22,7 @@ namespace ImagingCapture.Settings {
 		///OldValue is the value last saved, NewValue the one in the file (design 9.3, 10.7).</summary>
 		public bool IsChangedOutside { get; set; }
 
-		public const string TextChangedOutside="(changed outside Open Dental)";
+		public const string TextChangedOutside="(changed outside Open PMS - Dental)";
 
 		///<summary>"Device.12.Bits".</summary>
 		public string Label => Section+"."+Key;
