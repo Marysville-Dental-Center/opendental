@@ -1362,6 +1362,9 @@ namespace OpenPmsDentalBusiness {
 		public static long Insert(Procedure procedure,bool doCalcTax=true,bool isRepeatCharge=false,bool skipDiscountPlanAdjustment=false) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT){
 				procedure.ProcNum=Meth.GetLong(MethodBase.GetCurrentMethod(),procedure,doCalcTax,isRepeatCharge,skipDiscountPlanAdjustment);
+				if(procedure.ProcStatus==ProcStat.C) {
+					InventoryTracking.NotifyProcSetComplete(procedure.ProcNum);//Inventory tracking: the program opens the Materials used panel.
+				}
 				return procedure.ProcNum;
 			}
 			//Security.CurUser.UserNum gets set on MT by the DtoProcessor so it matches the user from the client WS.
@@ -1396,6 +1399,11 @@ namespace OpenPmsDentalBusiness {
 				note.UserNum=procedure.UserNum;
 				note.Note=procedure.Note;
 				ProcNotes.Insert(note);
+			}
+			if(procedure.ProcStatus==ProcStat.C) {
+				//Inventory tracking: records the procedure as awaiting materials (never deducts), and in the program opens the Materials used panel.
+				InventoryTracking.OnProcSetComplete(procedure);
+				InventoryTracking.NotifyProcSetComplete(procedure.ProcNum);
 			}
 			return procedure.ProcNum;
 		}
@@ -1595,6 +1603,9 @@ namespace OpenPmsDentalBusiness {
 				if(procedure.ProcStatus!=oldProcedure.ProcStatus) {//This conditional must match below where we call ProcMultiVisits.UpdateGroupForProc().
 					ProcMultiVisits.RefreshCache();//This refresh must be run on the client to be useful.
 				}
+				if(oldProcedure.ProcStatus!=ProcStat.C && procedure.ProcStatus==ProcStat.C) {
+					InventoryTracking.NotifyProcSetComplete(procedure.ProcNum);//Inventory tracking: the program opens the Materials used panel.
+				}
 				return retVal;
 			}
 			//Setting any procedure to TP, get a tax estimate only if the procedure amount is changing and the procedure is taxable
@@ -1665,6 +1676,14 @@ namespace OpenPmsDentalBusiness {
 			}
 			if(procedure.ProcStatus!=oldProcedure.ProcStatus) {
 				ProcMultiVisits.UpdateGroupForProc(procedure.ProcNum,procedure.ProcStatus);
+			}
+			//Inventory tracking: completing records the procedure as awaiting materials (never deducts); leaving complete puts back what it used.
+			if(oldProcedure.ProcStatus!=ProcStat.C && procedure.ProcStatus==ProcStat.C) {
+				InventoryTracking.OnProcSetComplete(procedure);
+				InventoryTracking.NotifyProcSetComplete(procedure.ProcNum);
+			}
+			else if(oldProcedure.ProcStatus==ProcStat.C && procedure.ProcStatus!=ProcStat.C) {
+				InventoryTracking.OnProcNoLongerComplete(procedure.ProcNum,isDeleted:procedure.ProcStatus==ProcStat.D);
 			}
 			//The note text (compared exactly), its user, a signature or the 26.1 group note second signature changed. One rule, shared with the
 			//Procedure Note Merge check (M2-NOTES).
@@ -2147,6 +2166,8 @@ namespace OpenPmsDentalBusiness {
 			PayPlanCharges.DeleteForProc(procNum);
 			//delete and update procmultivisits
 			ProcMultiVisits.UpdateGroupForProc(procNum,ProcStat.D);
+			//Inventory tracking: puts back what the procedure used and removes it from the awaiting list.
+			InventoryTracking.OnProcNoLongerComplete(procNum,isDeleted:true);
 			command="SELECT AptNum,PlannedAptNum,DateComplete FROM procedurelog WHERE ProcNum = "+POut.Long(procNum);
 			DataTable table = Db.GetTable(command);
 			DateTime dateComplete = PIn.Date(table.Rows[0]["DateComplete"].ToString());

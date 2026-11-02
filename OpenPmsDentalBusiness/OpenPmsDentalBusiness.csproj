@@ -1584,6 +1584,11 @@
     <Compile Include="Data Interface\SupplyNeededs.cs" />
     <Compile Include="Data Interface\SupplyOrderItems.cs" />
     <Compile Include="Data Interface\SupplyOrders.cs" />
+    <Compile Include="Data Interface\SupplyLedgers.cs" />
+    <Compile Include="Data Interface\SupplyLots.cs" />
+    <Compile Include="Data Interface\SupplyProcCodes.cs" />
+    <Compile Include="Data Interface\SupplyProcPendings.cs" />
+    <Compile Include="Data Interface\SupplySettings.cs" />
     <Compile Include="Data Interface\TaskAncestors.cs" />
     <Compile Include="Data Interface\TaskFilters.cs" />
     <Compile Include="Data Interface\TaskLists.cs" />
@@ -1621,6 +1626,7 @@
     <Compile Include="Data Interface\Appointments.PreAuth.cs" />
     <Compile Include="Logic\BenefitLogic.cs" />
     <Compile Include="Db Multi Table\ChartModules.cs" />
+    <Compile Include="Db Multi Table\InventoryTracking.cs" />
     <Compile Include="Db\DataCore.cs" />
     <Compile Include="Logic\PatientLogic.cs" />
     <Compile Include="Logic\ProcedureLogic.cs" />

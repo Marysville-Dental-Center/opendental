@@ -42,6 +42,14 @@ namespace OpenPmsDentalBusiness{
 			return Crud.SupplyOrderCrud.SelectMany(command);
 		}
 
+		///<summary>One order, or null.</summary>
+		public static SupplyOrder GetOne(long supplyOrderNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<SupplyOrder>(MethodBase.GetCurrentMethod(),supplyOrderNum);
+			}
+			return Crud.SupplyOrderCrud.SelectOne(supplyOrderNum);
+		}
+
 		///<summary></summary>
 		public static long Insert(SupplyOrder supplyOrder) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {

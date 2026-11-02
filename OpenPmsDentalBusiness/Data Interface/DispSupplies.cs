@@ -19,13 +19,15 @@ namespace OpenPmsDentalBusiness{
 			return Db.GetTable(command);
 		}
 
-		///<summary></summary>
+		///<summary>While inventory tracking is on, also writes a Dispense row to the stock ledger.</summary>
 		public static long Insert(DispSupply dispSupply){
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT){
 				dispSupply.DispSupplyNum=Meth.GetLong(MethodBase.GetCurrentMethod(),dispSupply);
 				return dispSupply.DispSupplyNum;
 			}
-			return Crud.DispSupplyCrud.Insert(dispSupply);
+			Crud.DispSupplyCrud.Insert(dispSupply);
+			InventoryTracking.OnDispensed(dispSupply);
+			return dispSupply.DispSupplyNum;
 		}
 
 		/*

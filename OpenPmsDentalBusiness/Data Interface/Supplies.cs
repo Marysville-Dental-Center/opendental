@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
+using System.Linq;
 using System.Reflection;
 using CodeBase;
 
@@ -26,6 +27,7 @@ namespace OpenPmsDentalBusiness{
 			if(textFind!=""){
 				command+="AND (supply.Descript LIKE '%"+POut.String(textFind)+"%' "
 					+"OR supply.CatalogNumber LIKE '%"+POut.String(textFind)+"%' "
+					+"OR supply.BarCodeOrID LIKE '%"+POut.String(textFind)+"%' "//Inventory tracking: a scan in the search box finds the supply.
 					+")";
 			}
 			if(listCategories!=null && listCategories.Count>0){
@@ -43,16 +45,59 @@ namespace OpenPmsDentalBusiness{
 			return Crud.SupplyCrud.SelectOne(supplyNum);
 		}
 
-		///<summary></summary>
+		///<summary>Supplies by key, in no particular order. Hidden supplies included.</summary>
+		public static List<Supply> GetMany(List<long> listSupplyNums) {
+			if(listSupplyNums.IsNullOrEmpty()) {
+				return new List<Supply>();
+			}
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<Supply>>(MethodBase.GetCurrentMethod(),listSupplyNums);
+			}
+			return Crud.SupplyCrud.SelectMany("SELECT * FROM supply WHERE SupplyNum IN("+string.Join(",",listSupplyNums.Select(x => POut.Long(x)))+")");
+		}
+
+		///<summary>Inventory tracking: the supplies a barcode scan names. A scan is matched against BarCodeOrID (exactly, ignoring case and blanks
+		///around it); when no supply has that barcode, against CatalogNumber. Supplies that are not hidden come first. Empty for a blank code.</summary>
+		public static List<Supply> GetByScan(string code) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<Supply>>(MethodBase.GetCurrentMethod(),code);
+			}
+			code=(code??"").Trim();
+			if(code=="") {
+				return new List<Supply>();
+			}
+			List<Supply> listSupplies=Crud.SupplyCrud.SelectMany("SELECT * FROM supply WHERE TRIM(BarCodeOrID)='"+POut.String(code)+"' "
+				+"ORDER BY IsHidden,SupplyNum");
+			if(listSupplies.Count==0) {
+				listSupplies=Crud.SupplyCrud.SelectMany("SELECT * FROM supply WHERE TRIM(CatalogNumber)='"+POut.String(code)+"' ORDER BY IsHidden,SupplyNum");
+			}
+			return listSupplies;
+		}
+
+		///<summary>Inserts the supply with LevelOnHand 0. A typed LevelOnHand becomes an opening stock ledger row (inventory tracking), so the stock
+		///always equals the sum of the ledger.</summary>
 		public static long Insert(Supply supply){
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				supply.SupplyNum=Meth.GetLong(MethodBase.GetCurrentMethod(),supply);
 				return supply.SupplyNum;
 			}
-			return Crud.SupplyCrud.Insert(supply);
+			double qtyOpening=Math.Round(supply.LevelOnHand,2);
+			supply.LevelOnHand=0;
+			Crud.SupplyCrud.Insert(supply);
+			if(qtyOpening!=0 && InventoryTracking.IsInstalled()) {
+				SupplyLedger supplyLedger=new SupplyLedger();
+				supplyLedger.SupplyNum=supply.SupplyNum;
+				supplyLedger.LedgerType=SupplyLedgerType.Opening;
+				supplyLedger.Quantity=qtyOpening;
+				supplyLedger.UnitCost=supply.Price;
+				supplyLedger.Reason=InventoryTracking.REASON_OPENING;
+				SupplyLedgers.InsertMany(new List<SupplyLedger> { supplyLedger });
+				supply.LevelOnHand=(float)qtyOpening;
+			}
+			return supply.SupplyNum;
 		}
 
-		///<summary></summary>
+		///<summary>Never writes LevelOnHand (ExcludeFromUpdate): stock changes only through the stock ledger.</summary>
 		public static void Update(Supply supply) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),supply);
@@ -72,6 +117,13 @@ namespace OpenPmsDentalBusiness{
 			int count=PIn.Int(Db.GetCount(command));
 			if(count>0){
 				throw new ApplicationException(Lans.g("Supplies","Supply is already in use on an order. Not allowed to delete."));
+			}
+			if(InventoryTracking.IsInstalled()) {
+				//Inventory tracking: a supply with receipts, uses, counts or dispensing keeps its history and is hidden instead (throws).
+				SupplyLedgers.DeleteForSupplyWithoutHistory(supply.SupplyNum);
+				SupplyLots.DeleteForSupply(supply.SupplyNum);
+				SupplySettings.DeleteForSupply(supply.SupplyNum);
+				SupplyProcCodes.DeleteForSupply(supply.SupplyNum);
 			}
 			Crud.SupplyCrud.Delete(supply.SupplyNum);
 			command="UPDATE supply SET ItemOrder=(ItemOrder-1) WHERE Category="+POut.Long(supply.Category)+" AND ItemOrder>"+POut.Int(supply.ItemOrder);
