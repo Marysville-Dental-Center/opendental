@@ -136,8 +136,8 @@ Names are case-insensitive, `/name=value` or `/name="value"`. No switch: the win
 | `/pfx=<file>` | Import this client certificate (certificate mode). Its password comes from the secrets file or the prompt. |
 | `/thumbprint=<hex>` | Use a certificate already in LocalMachine\My (certificate mode, per-computer certificates). |
 | `/auth=certificate\|password` | The mode, when neither `/pfx` nor `/thumbprint` says it. |
-| `/secretsfile=<file>` | UTF-8 lines `PfxPassword=...` and `DbPassword=...`. The tool reads it and never writes it, logs it or deletes it: the caller deletes it. |
-| `/prompt` | Ask for missing secrets in a small password dialog (interactive installs). |
+| `/secretsfile=<file>` | UTF-8 lines `PfxPassword=...` and `DbPassword=...` (the value is everything after the first `=`; blank lines and `#` lines are ignored). The tool reads it and never writes it, logs it or deletes it: the caller deletes it. This is how silent installs pass secrets; interactive runs type them into the window or the prompt. |
+| `/prompt` | With `/silent`: ask for missing secrets in a small password dialog instead of failing. (Without `/silent` the window asks.) |
 | `/silent` | No window. Apply the values, write the file, exit with a code. |
 | `/check` | No window, no change: exit 0 when the current file passes the rule without connecting, 5 when it does not. |
 | `/test` | With `/silent`: test the connection after saving; a failed test gives exit code 4. |
@@ -176,10 +176,12 @@ program runs as the signed-in user. A previous client certificate stays in the s
 - Silent switches: `/DBSERVER=`, `/DBNAME=`, `/DBUSER=` (as before), `/DBCA=<file>`, `/DBPFX=<file>`, `/DBTHUMBPRINT=<hex>`,
   `/DBSECRETSFILE=<file>` (passed to the tool; the caller deletes it).
 - Setup writes the base file as before (no password) and no longer gives Users modify rights on it.
-- All-users (administrator) installs: after the files are installed, setup runs the tool with the page's values and `/prompt` (interactive)
-  or `/silent` with the secrets file (silent), and `/log=` in setup's temporary folder; the tool's result is in setup's log. A failure is
-  shown (suppressible) and the install finishes; the program then shows the run-the-tool message. On an upgrade (the file exists) setup runs
-  `/check` and, interactive, offers to open the tool when the settings fail the rule.
+- All-users (administrator) installs: after the files are installed (`ssPostInstall`), for a new connection to a server over the network
+  or when a security switch is given, setup runs the tool with the pages' values: interactive, its window opens filled with them and asks
+  for the `.pfx` password or the database password; silent, `/silent` with the secrets file. `/log=` points into setup's temporary folder
+  and the tool's result line goes into setup's log. A failure is shown (suppressible) and the install finishes; the program then shows the
+  run-the-tool message. On an upgrade (the file exists) setup runs `/check` and, interactive, offers to open the tool when the settings fail
+  the rule. A loopback server without security switches needs no tool.
 - Per-user installs (`/CURRENTUSER`, tests only) cannot run the administrator tool: they write the base file; a network server is logged
   and shown as needing the tool.
 
