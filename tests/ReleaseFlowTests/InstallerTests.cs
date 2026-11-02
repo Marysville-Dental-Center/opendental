@@ -239,6 +239,23 @@ namespace ReleaseFlowTests {
 		}
 
 		[TestMethod]
+		public void Direct2dWrapper_EachConfigurationBuildsIntoItsOwnFolder() {
+			//With one bin\ for Debug and Release, an incremental Release build after a Debug build copied the Debug DLL (debug C runtime) into
+			//OpenPmsDental\bin\Release. Build-Release.ps1 compares the staged DLL with Direct2dWrapper\bin\Release.
+			string vcxproj=TestPaths.ReadSource("Direct2dWrapper","Direct2dWrapper.vcxproj");
+			MatchCollection matchCollection=Regex.Matches(vcxproj,
+				@"<PropertyGroup Condition=""'\$\(Configuration\)\|\$\(Platform\)'=='(\w+)\|(\w+)'"">(?:(?!</PropertyGroup>).)*?<OutDir>([^<]+)</OutDir>",
+				RegexOptions.Singleline);
+			//The folder each configuration resolves to: its OutDir with $(Configuration) and $(Platform) expanded.
+			Dictionary<string,string> dictOutDirs=matchCollection.Cast<Match>().ToDictionary(x => x.Groups[1].Value+"|"+x.Groups[2].Value,
+				x => x.Groups[3].Value.Replace("$(Configuration)",x.Groups[1].Value).Replace("$(Platform)",x.Groups[2].Value));
+			CollectionAssert.AreEquivalent(new[] { "Debug|Win32","Debug|x64","Release|Win32","Release|x64" },dictOutDirs.Keys.ToArray());
+			Assert.AreEqual(4,dictOutDirs.Values.Distinct(StringComparer.OrdinalIgnoreCase).Count(),"One output folder per configuration.");
+			Assert.AreEqual(@"$(ProjectDir)bin\Release\",dictOutDirs["Release|Win32"]);
+			StringAssert.Contains(TestPaths.ReadSource("tools","Build-Release.ps1"),@"'Direct2dWrapper.dll'='Direct2dWrapper\bin\Release'");
+		}
+
+		[TestMethod]
 		public void BuildRelease_PinsTheCompatibilityVersion() {
 			string script=TestPaths.ReadSource("tools","Build-Release.ps1");
 			Match match=Regex.Match(script,@"(?m)^\$CompatVersion='([^']+)'");

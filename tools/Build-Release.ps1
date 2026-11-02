@@ -80,8 +80,8 @@ $CompatVersion='24.3.63.0'
 
 #Files built from this repository, at the top of the program folder. Value: the project output (repository-relative) the staged file must
 #equal, so that a prebuilt file of the same name can never ship in its place (Open Dental's closed ImagingDeviceManager.dll had this
-#name; ODR.dll ships only when built from source). '' = OpenPmsDental's own output, a generated file or a native file whose project
-#output folder Debug and Release builds share (Direct2dWrapper: the native checks cover it).
+#name; ODR.dll ships only when built from source; Direct2dWrapper.dll must be the Release build). '' = OpenPmsDental's own output or a
+#generated file.
 $OwnFiles=[ordered]@{
 	'OpenPmsDental.exe'=''
 	'OpenPmsDental.exe.config'=''
@@ -103,7 +103,7 @@ $OwnFiles=[ordered]@{
 	'ImagingDeviceManager.dll'='ImagingDeviceManager\bin\Release'
 	'ImagingCapture.dll'='ImagingCapture\bin\Release'
 	'ODR.dll'='ODR\bin\Release'
-	'Direct2dWrapper.dll'=''
+	'Direct2dWrapper.dll'='Direct2dWrapper\bin\Release'
 	'ServiceManager.exe'='ServiceManager\bin\Release'
 	'ServiceManager.exe.config'=''
 	'UpdateFileCopier.exe'='UpdateFileCopier\bin\Release'

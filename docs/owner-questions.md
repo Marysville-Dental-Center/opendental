@@ -436,6 +436,7 @@ The review that put the capture work on main added these:
 - (BIN-A 5) Delete the DirectX 11 preference (`DirectX11ToothChartUseIfAvail`) and `computerpref.GraphicsUseDirectX11` in a future fork migration, or keep them? Nothing reads them since Sparks3D went.
 - (BIN-B 2) Remove the always-false AvaTax branches in the shared billing files (Adjustments, Procedures, RepeatCharges and their windows), and the disabled stub with them, in a later cleanup?
 - (BIN-B 3) RAMQ and QRDA zips store their XML in the system code page, as DotNetZip did. Keep that, or store UTF-8?
+- (this release) `Direct2dWrapper.dll` is neither one of the build id files (`ForkReleases.ListBuildIdFiles`) nor an input of the build time stamped into `OpenPmsDental.exe`, so a release that changes only that native DLL has the build id of the release before it, and no workstation pulls it. Add it (it must then build before `OpenPmsDental`)? **Today:** not part of the build id; it changes rarely. (The same release work fixed its build: Debug and Release now have their own output folders, so a Release build can no longer pick up the Debug DLL.)
 
 ---
 
