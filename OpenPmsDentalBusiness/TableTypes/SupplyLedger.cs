@@ -39,6 +39,10 @@ namespace OpenPmsDentalBusiness {
 		public DateTime DateTimeEntry;
 		///<summary>Why. Required for count adjustments and manual adjustments.</summary>
 		public string Reason;
+		///<summary>FK to supplycountline.SupplyCountLineNum. For a CountAdjust row, the saved stock count line it was posted from
+		///(InventoryTracking.PostCount), written in the row's own INSERT: a post that failed or did not finish is opened again knowing which lines it
+		///adjusted (InventoryTracking.ReopenAfterFailedPost). 0 for every other row, and for a count posted from lines that are not saved.</summary>
+		public long SupplyCountLineNum;
 
 		///<summary></summary>
 		public SupplyLedger Copy() {

@@ -984,7 +984,8 @@ namespace AdoptionValidation {
 
 		///<summary>The inventory stock ledger (supplyledger, InventoryTables), the one exception to "this program's own tables are created empty":
 		///the step that creates it writes the opening balances (InventoryLedgerStep). Added by adoption, it must hold exactly the opening rows the plan
-		///lists (InventoryPlan, what migration-preview printed: one per supply with stock, at its price, without a lot, user, procedure or order item)
+		///lists (InventoryPlan, what migration-preview printed: one per supply with stock, at its price, without a lot, user, procedure, order item or
+		///stock count line)
 		///and nothing else. A database that had the ledger before keeps its row count (adoption leaves a table it finds alone). The other inventory
 		///tables are CheckNewTablesAndColumns' (empty).</summary>
 		private static void CheckInventoryLedger(Db db,string original,string adopted,Result result) {
@@ -1009,8 +1010,8 @@ namespace AdoptionValidation {
 				return;
 			}
 			result.IsLedgerAdded=true;
-			List<object[]> listRows=db.Rows("SELECT SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,DispSupplyNum,UserNum,Reason "
-				+"FROM `"+adopted+"`.`"+table+"` ORDER BY SupplyLedgerNum");
+			List<object[]> listRows=db.Rows("SELECT SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,DispSupplyNum,UserNum,Reason,"
+				+"SupplyCountLineNum FROM `"+adopted+"`.`"+table+"` ORDER BY SupplyLedgerNum");
 			List<InventoryPlan.OpeningRow> listPlanned=result.PlanInventory.ListOpening;
 			if(listRows.Count!=listPlanned.Count) {
 				result.ListFailures.Add("The stock ledger holds "+listRows.Count+" row(s); migration-preview lists "+listPlanned.Count+" opening balance row(s).");
@@ -1023,7 +1024,7 @@ namespace AdoptionValidation {
 						&& Math.Round(Convert.ToDouble(row[3],CultureInfo.InvariantCulture),2)==planned.Quantity
 						&& Convert.ToDouble(row[4],CultureInfo.InvariantCulture)==planned.UnitCost
 						&& Convert.ToInt64(row[2],CultureInfo.InvariantCulture)==(long)SupplyLedgerType.Opening
-						&& new[] { 1,5,6,7,8,9 }.All(x => Convert.ToInt64(row[x],CultureInfo.InvariantCulture)==0)
+						&& new[] { 1,5,6,7,8,9,11 }.All(x => Convert.ToInt64(row[x],CultureInfo.InvariantCulture)==0)
 						&& Convert.ToString(row[10])==InventoryLedgerStep.REASON_OPENING;
 					if(!isPlanned) {
 						result.ListFailures.Add("Stock ledger row "+(i+1)+" (SupplyNum "+row[0]+") is not the opening balance migration-preview lists (SupplyNum "

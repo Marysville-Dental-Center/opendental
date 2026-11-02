@@ -33,6 +33,11 @@ namespace OpenPmsDentalBusiness {
 		public double QtyProgram;
 		///<summary>The counted quantity.</summary>
 		public double QtyCounted;
+		///<summary>The sum of the line's CountAdjust ledger rows (supplyledger.SupplyCountLineNum) that its snapshot QtyProgram already includes. 0
+		///until a post that failed or did not finish adjusted the line; opening that count again adds the line's rows that are not in it yet to
+		///QtyProgram and sets this to their sum (InventoryTracking.ReopenAfterFailedPost), so the line shows no difference any more. A line counted
+		///again keeps it: its new snapshot, read from the ledger, includes those rows too. Never changed while the count is Open.</summary>
+		public double QtyPosted;
 		///<summary>FK to userod.UserNum. The user who counted the line last.</summary>
 		public long UserNum;
 		///<summary>When the line was last counted, server time (set by the statement that saves it).</summary>

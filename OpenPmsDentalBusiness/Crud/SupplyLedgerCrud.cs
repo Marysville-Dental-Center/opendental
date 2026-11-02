@@ -60,6 +60,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				supplyLedger.UserNum           = PIn.Long  (row["UserNum"].ToString());
 				supplyLedger.DateTimeEntry     = PIn.DateT (row["DateTimeEntry"].ToString());
 				supplyLedger.Reason            = PIn.String(row["Reason"].ToString());
+				supplyLedger.SupplyCountLineNum= PIn.Long  (row["SupplyCountLineNum"].ToString());
 				retVal.Add(supplyLedger);
 			}
 			return retVal;
@@ -84,6 +85,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			table.Columns.Add("UserNum");
 			table.Columns.Add("DateTimeEntry");
 			table.Columns.Add("Reason");
+			table.Columns.Add("SupplyCountLineNum");
 			foreach(SupplyLedger supplyLedger in listSupplyLedgers) {
 				table.Rows.Add(new object[] {
 					POut.Long  (supplyLedger.SupplyLedgerNum),
@@ -99,6 +101,7 @@ namespace OpenPmsDentalBusiness.Crud{
 					POut.Long  (supplyLedger.UserNum),
 					POut.DateT (supplyLedger.DateTimeEntry,false),
 					            supplyLedger.Reason,
+					POut.Long  (supplyLedger.SupplyCountLineNum),
 				});
 			}
 			return table;
@@ -118,7 +121,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="SupplyLedgerNum,";
 			}
-			command+="SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,DispSupplyNum,UserNum,DateTimeEntry,Reason) VALUES(";
+			command+="SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,DispSupplyNum,UserNum,DateTimeEntry,Reason,SupplyCountLineNum) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(supplyLedger.SupplyLedgerNum)+",";
 			}
@@ -134,7 +137,8 @@ namespace OpenPmsDentalBusiness.Crud{
 				+    POut.Long  (supplyLedger.DispSupplyNum)+","
 				+    POut.Long  (supplyLedger.UserNum)+","
 				+    DbHelper.Now()+","
-				+"'"+POut.String(supplyLedger.Reason)+"')";
+				+"'"+POut.String(supplyLedger.Reason)+"',"
+				+    POut.Long  (supplyLedger.SupplyCountLineNum)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -159,7 +163,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="SupplyLedgerNum,";
 			}
-			command+="SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,DispSupplyNum,UserNum,DateTimeEntry,Reason) VALUES(";
+			command+="SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,DispSupplyNum,UserNum,DateTimeEntry,Reason,SupplyCountLineNum) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(supplyLedger.SupplyLedgerNum)+",";
 			}
@@ -175,7 +179,8 @@ namespace OpenPmsDentalBusiness.Crud{
 				+    POut.Long  (supplyLedger.DispSupplyNum)+","
 				+    POut.Long  (supplyLedger.UserNum)+","
 				+    DbHelper.Now()+","
-				+"'"+POut.String(supplyLedger.Reason)+"')";
+				+"'"+POut.String(supplyLedger.Reason)+"',"
+				+    POut.Long  (supplyLedger.SupplyCountLineNum)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -199,7 +204,8 @@ namespace OpenPmsDentalBusiness.Crud{
 				+"DispSupplyNum     =  "+POut.Long  (supplyLedger.DispSupplyNum)+", "
 				+"UserNum           =  "+POut.Long  (supplyLedger.UserNum)+", "
 				//DateTimeEntry not allowed to change
-				+"Reason            = '"+POut.String(supplyLedger.Reason)+"' "
+				+"Reason            = '"+POut.String(supplyLedger.Reason)+"', "
+				+"SupplyCountLineNum=  "+POut.Long  (supplyLedger.SupplyCountLineNum)+" "
 				+"WHERE SupplyLedgerNum = "+POut.Long(supplyLedger.SupplyLedgerNum);
 			Db.NonQ(command);
 		}
@@ -252,6 +258,10 @@ namespace OpenPmsDentalBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="Reason = '"+POut.String(supplyLedger.Reason)+"'";
 			}
+			if(supplyLedger.SupplyCountLineNum != oldSupplyLedger.SupplyCountLineNum) {
+				if(command!="") { command+=",";}
+				command+="SupplyCountLineNum = "+POut.Long(supplyLedger.SupplyCountLineNum)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -296,6 +306,9 @@ namespace OpenPmsDentalBusiness.Crud{
 			}
 			//DateTimeEntry not allowed to change
 			if(supplyLedger.Reason != oldSupplyLedger.Reason) {
+				return true;
+			}
+			if(supplyLedger.SupplyCountLineNum != oldSupplyLedger.SupplyCountLineNum) {
 				return true;
 			}
 			return false;

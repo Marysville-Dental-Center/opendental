@@ -55,6 +55,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				supplyCountLine.DateExpiry        = PIn.Date  (row["DateExpiry"].ToString());
 				supplyCountLine.QtyProgram        = PIn.Double(row["QtyProgram"].ToString());
 				supplyCountLine.QtyCounted        = PIn.Double(row["QtyCounted"].ToString());
+				supplyCountLine.QtyPosted         = PIn.Double(row["QtyPosted"].ToString());
 				supplyCountLine.UserNum           = PIn.Long  (row["UserNum"].ToString());
 				supplyCountLine.DateTimeEntry     = PIn.DateT (row["DateTimeEntry"].ToString());
 				retVal.Add(supplyCountLine);
@@ -76,6 +77,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			table.Columns.Add("DateExpiry");
 			table.Columns.Add("QtyProgram");
 			table.Columns.Add("QtyCounted");
+			table.Columns.Add("QtyPosted");
 			table.Columns.Add("UserNum");
 			table.Columns.Add("DateTimeEntry");
 			foreach(SupplyCountLine supplyCountLine in listSupplyCountLines) {
@@ -88,6 +90,7 @@ namespace OpenPmsDentalBusiness.Crud{
 					POut.DateT (supplyCountLine.DateExpiry,false),
 					POut.Double(supplyCountLine.QtyProgram),
 					POut.Double(supplyCountLine.QtyCounted),
+					POut.Double(supplyCountLine.QtyPosted),
 					POut.Long  (supplyCountLine.UserNum),
 					POut.DateT (supplyCountLine.DateTimeEntry,false),
 				});
@@ -109,7 +112,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="SupplyCountLineNum,";
 			}
-			command+="SupplyCountNum,SupplyNum,SupplyLotNum,LotNumber,DateExpiry,QtyProgram,QtyCounted,UserNum,DateTimeEntry) VALUES(";
+			command+="SupplyCountNum,SupplyNum,SupplyLotNum,LotNumber,DateExpiry,QtyProgram,QtyCounted,QtyPosted,UserNum,DateTimeEntry) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(supplyCountLine.SupplyCountLineNum)+",";
 			}
@@ -121,6 +124,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				+    POut.Date  (supplyCountLine.DateExpiry)+","
 				+		 POut.Double(supplyCountLine.QtyProgram)+","
 				+		 POut.Double(supplyCountLine.QtyCounted)+","
+				+		 POut.Double(supplyCountLine.QtyPosted)+","
 				+    POut.Long  (supplyCountLine.UserNum)+","
 				+    DbHelper.Now()+")";
 			if(useExistingPK || PrefC.RandomKeys) {
@@ -147,7 +151,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="SupplyCountLineNum,";
 			}
-			command+="SupplyCountNum,SupplyNum,SupplyLotNum,LotNumber,DateExpiry,QtyProgram,QtyCounted,UserNum,DateTimeEntry) VALUES(";
+			command+="SupplyCountNum,SupplyNum,SupplyLotNum,LotNumber,DateExpiry,QtyProgram,QtyCounted,QtyPosted,UserNum,DateTimeEntry) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(supplyCountLine.SupplyCountLineNum)+",";
 			}
@@ -159,6 +163,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				+    POut.Date  (supplyCountLine.DateExpiry)+","
 				+	   POut.Double(supplyCountLine.QtyProgram)+","
 				+	   POut.Double(supplyCountLine.QtyCounted)+","
+				+	   POut.Double(supplyCountLine.QtyPosted)+","
 				+    POut.Long  (supplyCountLine.UserNum)+","
 				+    DbHelper.Now()+")";
 			if(useExistingPK || isRandomKeys) {
@@ -180,6 +185,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				+"DateExpiry        =  "+POut.Date  (supplyCountLine.DateExpiry)+", "
 				+"QtyProgram        =  "+POut.Double(supplyCountLine.QtyProgram)+", "
 				+"QtyCounted        =  "+POut.Double(supplyCountLine.QtyCounted)+", "
+				+"QtyPosted         =  "+POut.Double(supplyCountLine.QtyPosted)+", "
 				+"UserNum           =  "+POut.Long  (supplyCountLine.UserNum)+" "
 				//DateTimeEntry not allowed to change
 				+"WHERE SupplyCountLineNum = "+POut.Long(supplyCountLine.SupplyCountLineNum);
@@ -217,6 +223,10 @@ namespace OpenPmsDentalBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="QtyCounted = "+POut.Double(supplyCountLine.QtyCounted)+"";
 			}
+			if(supplyCountLine.QtyPosted != oldSupplyCountLine.QtyPosted) {
+				if(command!="") { command+=",";}
+				command+="QtyPosted = "+POut.Double(supplyCountLine.QtyPosted)+"";
+			}
 			if(supplyCountLine.UserNum != oldSupplyCountLine.UserNum) {
 				if(command!="") { command+=",";}
 				command+="UserNum = "+POut.Long(supplyCountLine.UserNum)+"";
@@ -253,6 +263,9 @@ namespace OpenPmsDentalBusiness.Crud{
 				return true;
 			}
 			if(supplyCountLine.QtyCounted != oldSupplyCountLine.QtyCounted) {
+				return true;
+			}
+			if(supplyCountLine.QtyPosted != oldSupplyCountLine.QtyPosted) {
 				return true;
 			}
 			if(supplyCountLine.UserNum != oldSupplyCountLine.UserNum) {

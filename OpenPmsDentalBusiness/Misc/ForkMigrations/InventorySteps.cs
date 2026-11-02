@@ -33,12 +33,14 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
   `UserNum` bigint(20) NOT NULL,
   `DateTimeEntry` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
   `Reason` varchar(255) NOT NULL,
+  `SupplyCountLineNum` bigint(20) NOT NULL DEFAULT 0,
   PRIMARY KEY (`SupplyLedgerNum`),
   KEY `SupplyNum` (`SupplyNum`),
   KEY `SupplyLotNum` (`SupplyLotNum`),
   KEY `ProcNum` (`ProcNum`),
   KEY `SupplyOrderItemNum` (`SupplyOrderItemNum`),
-  KEY `DateTimeEntry` (`DateTimeEntry`)
+  KEY `DateTimeEntry` (`DateTimeEntry`),
+  KEY `SupplyCountLineNum` (`SupplyCountLineNum`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci";
 
 		public const string CREATE_SUPPLYLOT=@"CREATE TABLE `supplylot` (
@@ -109,6 +111,7 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
   `DateExpiry` date NOT NULL DEFAULT '0001-01-01',
   `QtyProgram` double NOT NULL,
   `QtyCounted` double NOT NULL,
+  `QtyPosted` double NOT NULL,
   `UserNum` bigint(20) NOT NULL,
   `DateTimeEntry` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
   PRIMARY KEY (`SupplyCountLineNum`),
@@ -168,12 +171,22 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 	}
 
 	///<summary>Stock counts saved while they are counted (owner decision INV 11, 2026-11-02): the counts and their counted lines. Creates the two
-	///empty tables; writes no row, so a database migrated or adopted has no open count.</summary>
+	///empty tables; writes no row, so a database migrated or adopted has no open count. A stock ledger that an earlier build created (2026110211
+	///without the column) gets supplyledger.SupplyCountLineNum, 0 on every row it has, and its key: the count line a CountAdjust row was posted
+	///from, so a post that failed or did not finish is opened again knowing which lines it adjusted. 2026110211 creates the ledger with them.
+	///</summary>
 	[ForkMigration(2026110213,"Inventory tracking: stock counts saved line by line")]
 	public class InventoryCountsStep:ForkMigrationStep {
+		public const string COLUMN_LEDGER_COUNT_LINE="SupplyCountLineNum";
+
 		public override void Apply(ForkMigrationContext context) {
 			context.CreateTableIfMissing(InventoryTables.CREATE_SUPPLYCOUNT);
 			context.CreateTableIfMissing(InventoryTables.CREATE_SUPPLYCOUNTLINE);
+			if(!context.TableExists(InventoryTables.TABLE_LEDGER)) {
+				return;//No ledger yet: 2026110211, which runs first, creates it with the column.
+			}
+			context.AddColumnIfMissing(InventoryTables.TABLE_LEDGER,COLUMN_LEDGER_COUNT_LINE,"bigint(20) NOT NULL DEFAULT 0","Reason");
+			context.EnsureIndex(InventoryTables.TABLE_LEDGER,COLUMN_LEDGER_COUNT_LINE,"`"+COLUMN_LEDGER_COUNT_LINE+"`");
 		}
 	}
 }
