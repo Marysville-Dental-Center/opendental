@@ -145,7 +145,8 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>The item's due date given its completions (the records of this item only). The anchor is the first due date.
 		///- Interval and Weekdays: the first occurrence after the day the completions cover (GetCoveredThrough); with none, the first occurrence.
-		///- AfterCompletion: the latest date done plus IntervalCount units; with no completion, the anchor.
+		///- AfterCompletion: the latest date done plus IntervalCount days, weeks, months or years (AddUnits, so a month end or February 29 that the
+		///  target month lacks becomes that month's last day); with no completion, the anchor.
 		///DateTime.MinValue when the schedule gives no date (see GetScheduleError).</summary>
 		public static DateTime GetDueDate(MaintItem maintItem,List<MaintRecord> listMaintRecords) {
 			if(maintItem.DateAnchor.Year<1880) {
@@ -287,8 +288,8 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
-		///<summary>Why the item cannot be saved, or null when it can: a name, a valid anchor date, IntervalCount 1 to 1000 (Interval and
-		///AfterCompletion), at least one weekday (Weekdays), no Years after the last completion, lead time 0 to 365, and at most one assignee.</summary>
+		///<summary>Why the item cannot be saved, or null when it can: a name, a valid anchor date, IntervalCount 1 to 1000 in days, weeks, months or
+		///years (Interval and AfterCompletion), at least one weekday (Weekdays), lead time 0 to 365, and at most one assignee.</summary>
 		public static string GetItemError(MaintItem maintItem) {
 			if(string.IsNullOrWhiteSpace(maintItem.ItemName)) {
 				return Lans.g("MaintSchedules","Please enter a name.");
@@ -307,9 +308,6 @@ namespace OpenPmsDentalBusiness {
 				}
 				if(!Enum.IsDefined(typeof(EnumMaintIntervalUnit),maintItem.IntervalUnit)) {
 					return Lans.g("MaintSchedules","Please choose days, weeks, months or years.");
-				}
-				if(maintItem.ScheduleType==EnumMaintScheduleType.AfterCompletion && maintItem.IntervalUnit==EnumMaintIntervalUnit.Years) {
-					return Lans.g("MaintSchedules","After the last completion, use days, weeks or months.");
 				}
 			}
 			if(!Enum.IsDefined(typeof(EnumMaintScheduleType),maintItem.ScheduleType)) {

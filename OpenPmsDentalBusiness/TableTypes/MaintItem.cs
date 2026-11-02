@@ -23,7 +23,7 @@ namespace OpenPmsDentalBusiness {
 		public EnumMaintScheduleType ScheduleType;
 		///<summary>N of "every N units" (Interval) or "N units after the last completion" (AfterCompletion). 1 or more. Not used by Weekdays.</summary>
 		public int IntervalCount;
-		///<summary>Enum:EnumMaintIntervalUnit The unit of IntervalCount. Years only for Interval.</summary>
+		///<summary>Enum:EnumMaintIntervalUnit The unit of IntervalCount, for Interval and AfterCompletion.</summary>
 		public EnumMaintIntervalUnit IntervalUnit;
 		///<summary>Weekdays schedule: one bit per day, bit (int)DayOfWeek (Sunday 1, Monday 2 ... Saturday 64). 0 for the other schedules.</summary>
 		public int Weekdays;
@@ -61,7 +61,7 @@ namespace OpenPmsDentalBusiness {
 		///<summary>1 - On the checked weekdays, from the anchor date.</summary>
 		[Description("On weekdays")]
 		Weekdays,
-		///<summary>2 - N days, weeks or months after the last completion; the anchor date until the first completion.</summary>
+		///<summary>2 - N days, weeks, months or years after the last completion; the anchor date until the first completion.</summary>
 		[Description("After last done")]
 		AfterCompletion,
 	}
@@ -74,7 +74,7 @@ namespace OpenPmsDentalBusiness {
 		Weeks,
 		///<summary>2</summary>
 		Months,
-		///<summary>3 - Interval schedules only.</summary>
+		///<summary>3 - Every N years, or N years after the last completion (12 times N months, so February 29 becomes February 28 in other years).</summary>
 		Years,
 	}
 }

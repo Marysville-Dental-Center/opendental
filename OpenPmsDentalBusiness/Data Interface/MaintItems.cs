@@ -8,6 +8,9 @@ using System.Reflection;
 namespace OpenPmsDentalBusiness {
 	///<summary>Maintenance items the office defines. Not cached: the board reads them when it opens and refreshes.</summary>
 	public class MaintItems {
+		///<summary>The reminder lead time of a new item, in days.</summary>
+		public const int LEAD_DAYS_DEFAULT=7;
+
 		#region Get Methods
 		///<summary>Every item, hidden ones only when includeHidden, ordered by name.</summary>
 		public static List<MaintItem> GetAll(bool includeHidden) {
@@ -77,6 +80,22 @@ namespace OpenPmsDentalBusiness {
 		#endregion Modification Methods
 
 		#region Misc Methods
+		///<summary>A new, unsaved item with the setup window's defaults: every 1 month, a reminder lead time of 7 days, nobody assigned, not hidden,
+		///and the anchor, which is the first due date, today. dateToday is the server's date (MaintAlerts.GetToday), so the new item is due today
+		///unless the office picks another first due date.</summary>
+		public static MaintItem CreateNew(DateTime dateToday) {
+			Meth.NoCheckMiddleTierRole();
+			MaintItem maintItem=new MaintItem();
+			maintItem.ItemName="";
+			maintItem.Description="";
+			maintItem.ScheduleType=EnumMaintScheduleType.Interval;
+			maintItem.IntervalCount=1;
+			maintItem.IntervalUnit=EnumMaintIntervalUnit.Months;
+			maintItem.DateAnchor=dateToday.Date;
+			maintItem.LeadDays=LEAD_DAYS_DEFAULT;
+			return maintItem;
+		}
+
 		///<summary>What changed between the two versions of an item, for the audit trail, for example "name, schedule, assignee". Empty when
 		///nothing that is shown changed.</summary>
 		public static string DescribeChanges(MaintItem maintItem,MaintItem maintItemOld) {

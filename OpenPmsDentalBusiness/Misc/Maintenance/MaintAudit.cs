@@ -4,7 +4,8 @@ using System;
 
 namespace OpenPmsDentalBusiness {
 	///<summary>The audit trail (securitylog) entries of routine maintenance. Item changes are logged under MaintenanceSetup, recorded completions
-	///under MaintenanceRecord; FKey is the MaintItemNum. The user and time are the logged-on user and the server's, as for every entry.</summary>
+	///and their corrections under MaintenanceRecord; FKey is the MaintItemNum. The user and time are the logged-on user and the server's, as for
+	///every entry.</summary>
 	public static class MaintAudit {
 		public static string GetTextAdded(MaintItem maintItem) {
 			return "Maintenance item added: "+maintItem.ItemName;
@@ -31,6 +32,18 @@ namespace OpenPmsDentalBusiness {
 			}
 			if(maintRecord.IsFlagged) {
 				text+=", flagged";
+			}
+			return text;
+		}
+
+		///<summary>"Maintenance completion corrected: name, done 2026-11-02 (MaintRecordNum 7): " and every change of the plan, separated by "; ", for
+		///example "Temperature: '119.5 C' to '121.5 C'; Spore test: 'fail' to 'pass'; note: '(blank)' to 'Re-read the gauge'", then ", now flagged"
+		///or ", no longer flagged" when the completion's flag changes. itemName is the item's name (it may be blank when the item is gone).</summary>
+		public static string GetTextCorrected(string itemName,MaintRecord maintRecordOld,MaintCorrections.CorrectionPlan correctionPlan) {
+			string text="Maintenance completion corrected: "+itemName+", done "+MaintValues.DateToDb(maintRecordOld.DateDone)+" (MaintRecordNum "
+				+maintRecordOld.MaintRecordNum+"): "+string.Join("; ",correctionPlan.ListChanges);
+			if(correctionPlan.IsFlagChanged(maintRecordOld)) {
+				text+=correctionPlan.MaintRecord.IsFlagged ? ", now flagged" : ", no longer flagged";
 			}
 			return text;
 		}

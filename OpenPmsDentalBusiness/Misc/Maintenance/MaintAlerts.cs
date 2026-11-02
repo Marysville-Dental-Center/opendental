@@ -7,8 +7,9 @@ using System.Linq;
 namespace OpenPmsDentalBusiness {
 	///<summary>Keeps the maintenance alerts (AlertType MaintenanceDueSoon and MaintenanceOverdue) equal to what the items' status calls for: one
 	///alert per item, type and recipient, for the item's current due date. The recipient is the assigned user, or each user of the assigned user
-	///group; the alert carries the recipient's UserNum, so it reaches that user whatever alert categories they subscribe to, and only that user.
-	///An item without an assignee, a hidden item and an item that is not due soon or overdue have none. The due date is part of an alert's
+	///group, or, for an item without an assignee, each user who has MaintenanceSetup; the alert carries the recipient's UserNum, so it reaches that
+	///user whatever alert categories they subscribe to, and only that user. A hidden item and an item that is not due soon or overdue have none;
+	///once an unassigned item gets an assignee, the alerts of the MaintenanceSetup users are no longer wanted. The due date is part of an alert's
 	///identity (ItemValue, yyyy-MM-dd): a new due date (the next occurrence, once one is recorded) is a new reminder, inserted unread, and the
 	///alert of the old one goes with its read marks. Sync can run on several workstations at once: the next run deletes any duplicate it finds,
 	///and running it again changes nothing.</summary>
@@ -132,7 +133,8 @@ namespace OpenPmsDentalBusiness {
 		#endregion Pure logic
 
 		#region Database
-		///<summary>The users an item's alerts go to: the assigned user, or every user of the assigned user group; hidden users never.</summary>
+		///<summary>The users an item's alerts go to: the assigned user, or every user of the assigned user group, or, when nobody is assigned, every
+		///user who has MaintenanceSetup through any of their user groups (GetSetupUserNums); hidden users never, and each user once.</summary>
 		public static List<long> GetRecipientUserNums(MaintItem maintItem) {
 			Meth.NoCheckMiddleTierRole();
 			if(maintItem.UserNumAssigned!=0) {
@@ -145,7 +147,15 @@ namespace OpenPmsDentalBusiness {
 			if(maintItem.UserGroupNumAssigned!=0) {
 				return Userods.GetForGroup(maintItem.UserGroupNumAssigned).Where(x => !x.IsHidden).Select(x => x.UserNum).Distinct().OrderBy(x => x).ToList();
 			}
-			return new List<long>();
+			return GetSetupUserNums();
+		}
+
+		///<summary>Every user who is not hidden and has MaintenanceSetup through any of their user groups, each once, in UserNum order: the recipients of
+		///the alerts of items that nobody is assigned to. Read from the user, user group and permission caches.</summary>
+		public static List<long> GetSetupUserNums() {
+			Meth.NoCheckMiddleTierRole();
+			return Userods.GetUsersByPermission(EnumPermType.MaintenanceSetup,false).Where(x => !x.IsHidden).Select(x => x.UserNum).Distinct().OrderBy(x => x)
+				.ToList();
 		}
 
 		///<summary>The due date of each item, from its completions.</summary>
