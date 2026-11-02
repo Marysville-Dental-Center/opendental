@@ -20,4 +20,16 @@
       <AssemblySearchPaths Condition="Exists('$(VsInstallRoot)\Common7\IDE\Extensions\TestPlatform')">$(AssemblySearchPaths);$(VsInstallRoot)\Common7\IDE\Extensions\TestPlatform</AssemblySearchPaths>
     </PropertyGroup>
   </Target>
+
+  <!--
+    A test project with no app.config of its own builds with tests\BindingRedirects.config, the programs'
+    binding redirects. Reference resolution follows them: without them it looks for the exact older version
+    a library was built against (System.Memory 4.0.1.2 for MySqlConnector, say), skips the newer copy in
+    "Required dlls" and takes the old one in the test platform folder above. With them the test's output
+    gets the files of "Required dlls", and its generated .dll.config redirects to them
+    (tests\LibraryBindingTests).
+  -->
+  <PropertyGroup Condition="'$(AppConfig)' == '' and $(MSBuildProjectName.EndsWith('Tests')) and !Exists('$(MSBuildProjectDirectory)\app.config')">
+    <AppConfig>$(MSBuildThisFileDirectory)tests\BindingRedirects.config</AppConfig>
+  </PropertyGroup>
 </Project>

@@ -18,9 +18,14 @@ version 2, in LICENSE.
 Copyright years are in each project's own license file at its source address.
 
 Files in the repository's "Required dlls" folder that are not listed here are
-not part of the release (see docs/third-party-binaries-audit.md). The MariaDB
-server, the .NET Framework, the Visual C++ runtime, the WebView2 runtime and
-the TWAIN data source manager are installed separately and are not shipped.
+not part of the release (see docs/third-party-binaries-audit.md). Among them
+are support libraries for the coming library updates, listed here once a
+shipped library uses them: System.Formats.Asn1 10.0.13, System.IO.Pipelines
+10.0.14, System.Security.Cryptography.Pkcs 8.0.1 and Microsoft.Bcl.Cryptography
+10.0.10, by the .NET Foundation and Contributors under the MIT License, source
+at https://github.com/dotnet/runtime. The MariaDB server, the .NET Framework,
+the Visual C++ runtime, the WebView2 runtime and the TWAIN data source manager
+are installed separately and are not shipped.
 
 GPL compatibility: the components marked "Owner question" below have
 licenses whose compatibility with the GNU GPL is not settled; see
@@ -34,14 +39,20 @@ License:   MIT License
 Source:    https://github.com/mysql-net/MySqlConnector
 
 --- Component: .NET libraries
-Files:     Microsoft.Bcl.AsyncInterfaces.dll, Microsoft.Extensions.Logging.Abstractions.dll,
-           System.Buffers.dll, System.Diagnostics.DiagnosticSource.dll, System.Memory.dll,
-           System.Numerics.Vectors.dll, System.Runtime.CompilerServices.Unsafe.dll,
-           System.Threading.Tasks.Extensions.dll
-Version:   as published with MySqlConnector 2.3.7 and Microsoft.Bcl.AsyncInterfaces 6.0
+Files:     Microsoft.Bcl.AsyncInterfaces.dll, Microsoft.Extensions.DependencyInjection.Abstractions.dll,
+           Microsoft.Extensions.Logging.Abstractions.dll, System.Buffers.dll,
+           System.Diagnostics.DiagnosticSource.dll, System.Memory.dll, System.Numerics.Vectors.dll,
+           System.Runtime.CompilerServices.Unsafe.dll, System.Threading.Tasks.Extensions.dll
+Version:   NuGet packages Microsoft.Bcl.AsyncInterfaces 10.0.14,
+           Microsoft.Extensions.DependencyInjection.Abstractions 8.0.2,
+           Microsoft.Extensions.Logging.Abstractions 8.0.3, System.Buffers 4.6.1,
+           System.Diagnostics.DiagnosticSource 8.0.1, System.Memory 4.6.3, System.Numerics.Vectors 4.6.1,
+           System.Runtime.CompilerServices.Unsafe 6.1.2, System.Threading.Tasks.Extensions 4.6.3
 Copyright: .NET Foundation and Contributors
 License:   MIT License
 Source:    https://github.com/dotnet/runtime
+           https://github.com/dotnet/maintenance-packages (System.Buffers, System.Memory, System.Numerics.Vectors,
+           System.Runtime.CompilerServices.Unsafe, System.Threading.Tasks.Extensions)
 
 --- Component: Newtonsoft.Json
 Files:     Newtonsoft.Json.dll
