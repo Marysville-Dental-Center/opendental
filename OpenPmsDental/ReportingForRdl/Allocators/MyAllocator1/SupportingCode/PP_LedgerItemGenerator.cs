@@ -92,7 +92,7 @@ namespace OpenPmsDental.Reporting.Allocators.MyAllocator1
 		public DataTable LedgerItemsRaw(int Guarantor, bool IsPulledStatus)
 		{
 			DataTable rValdtWorking = new DataTable();
-			MySqlConnection con = new MySqlConnection(this._MySqlConnectionString);
+			MySqlConnection con = global::DataConnectionBase.DbConnectionSecurity.NewMySqlConnection(this._MySqlConnectionString);
 			try
 			{
 				con.Open();
@@ -127,7 +127,7 @@ namespace OpenPmsDental.Reporting.Allocators.MyAllocator1
 		{
 			DataTable rValdtWorking = new DataTable();
 			int ItemsInRawQuery = -1;
-			MySqlConnection con = new MySqlConnection(this._MySqlConnectionString);
+			MySqlConnection con = global::DataConnectionBase.DbConnectionSecurity.NewMySqlConnection(this._MySqlConnectionString);
 			try
 			{
 				con.Open();

@@ -430,8 +430,12 @@ namespace UpdateFileCopier {
 						if(!string.IsNullOrWhiteSpace(_serverName)) {
 							proc.StartInfo.Arguments=" ServerName="+_serverName
 								+" DatabaseName="+_databaseName
-								+" MySqlUser="+_mySqlUser
-								+" MySqlPassHash="+_mySqlPassHash;
+								+" MySqlUser="+_mySqlUser;
+							//The program passes a password hash only for a server on this computer. For a server over the network the restarted program
+							//uses the password stored on this computer (docs/specs/db-connection-security.md), so none is passed on.
+							if(!string.IsNullOrEmpty(_mySqlPassHash)) {
+								proc.StartInfo.Arguments+=" MySqlPassHash="+_mySqlPassHash;
+							}
 						}
 						proc.StartInfo.FileName=destFileName;
 						proc.Start();

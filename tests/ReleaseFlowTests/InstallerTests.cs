@@ -157,7 +157,8 @@ namespace ReleaseFlowTests {
 			List<KeyValuePair<string,string>> listFiles=ListFiles();
 			List<string> listPaths=listFiles.Select(x => x.Value).ToList();
 			foreach(string name in new[] { "WebView2Loader.dll","WeCantSpell.Hunspell.dll","ODR.dll","OpenPmsDental.exe","OpenPmsDental.exe.config","UpdateFileCopier.exe",
-				"ImagingDeviceManager.dll","ImagingCapture.dll","RdlEngine.dll","RdlViewer.dll","Direct2dWrapper.dll" })
+				"ImagingDeviceManager.dll","ImagingCapture.dll","RdlEngine.dll","RdlViewer.dll","Direct2dWrapper.dll",ProgramNames.DbSettingsExeFileName,
+				ProgramNames.DbSettingsExeFileName+".config" })
 			{
 				CollectionAssert.Contains(listPaths,name);
 			}
@@ -419,20 +420,37 @@ namespace ReleaseFlowTests {
 		}
 
 		[TestMethod]
-		public void Iss_WritesTheConfigWithoutAPassword_AndOpensOnlyThatFileToUsers() {
+		public void Iss_WritesTheConfigWithoutAPassword_AndChangesNoPermissions() {
+			//Only an administrator changes the connection settings, with the connection settings tool (docs/specs/db-connection-security.md), so
+			//the config file no longer gives Users modify rights.
 			string iss=ReadIss();
-			string[] arrayPermissionLines=iss.Split('\n').Where(x => x.Contains("Permissions:")).ToArray();
-			Assert.AreEqual(1,arrayPermissionLines.Length,"Exactly one entry changes permissions.");
-			StringAssert.Contains(arrayPermissionLines[0],@"Source: ""{tmp}\{#ConfigFileName}""");
-			StringAssert.Contains(arrayPermissionLines[0],"Permissions: users-modify");
-			StringAssert.Contains(arrayPermissionLines[0],"onlyifdoesntexist");
+			Assert.IsFalse(iss.Split('\n').Any(x => x.Contains("Permissions:")),"No entry changes permissions.");
+			string configLine=iss.Split('\n').Single(x => x.StartsWith(@"Source: ""{tmp}\{#ConfigFileName}"""));
+			StringAssert.Contains(configLine,"onlyifdoesntexist");
 			StringAssert.Contains(iss,"#define ConfigFileName \""+ProgramNames.ConfigFileName+"\"");
 			Assert.IsFalse(Regex.IsMatch(iss,@"(?m)^\[Dirs\]"),"No folder permissions.");
 			StringAssert.Contains(iss,"'        <Password></Password>'");
 			StringAssert.Contains(iss,"'        <MySQLPassHash></MySQLPassHash>'");
 			StringAssert.Contains(iss,"'        <NoShowOnStartup>False</NoShowOnStartup>'");
-			foreach(string param in new[] { "{param:DBSERVER|","{param:DBNAME|","{param:DBUSER|","{param:PREREQS|" }) {
+			foreach(string param in new[] { "{param:DBSERVER|","{param:DBNAME|","{param:DBUSER|","{param:PREREQS|","{param:DBCA|","{param:DBPFX|",
+				"{param:DBTHUMBPRINT|","{param:DBSECRETSFILE|" })
+			{
 				StringAssert.Contains(iss,param);
+			}
+		}
+
+		[TestMethod]
+		public void Iss_SetsUpTheConnectionWithTheSettingsTool_AndNeverPassesASecret() {
+			string iss=ReadIss();
+			StringAssert.Contains(iss,"#define DbSettingsExeName \""+ProgramNames.DbSettingsExeFileName+"\"");
+			StringAssert.Contains(iss,"procedure SetUpConnection;");
+			StringAssert.Contains(iss,"CurStep = ssPostInstall");
+			StringAssert.Contains(iss,"RunDbSettings('/check', False)");
+			StringAssert.Contains(iss,"' /secretsfile='");
+			StringAssert.Contains(iss,"if not IsAdminInstallMode then");
+			//The tool refuses secrets on its command line; setup never builds one.
+			foreach(string forbidden in new[] { "/password=","/dbpassword=","/pfxpassword=","{param:DBPASSWORD","{param:PFXPASSWORD" }) {
+				Assert.IsFalse(iss.IndexOf(forbidden,StringComparison.OrdinalIgnoreCase)>=0,"The script names "+forbidden);
 			}
 		}
 

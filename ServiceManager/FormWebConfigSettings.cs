@@ -36,19 +36,23 @@ namespace ServiceManager {
 				if(nav==null) {
 					throw new Exception("DatabaseConnection element missing from FreeDentalConfig.xml, which is required.");
 				}
-				textServer.Text=nav.SelectSingleNode("ComputerName").Value;
-				textDatabase.Text=nav.SelectSingleNode("Database").Value;
-				textUser.Text=nav.SelectSingleNode("User").Value;
-				textPassword.Text=nav.SelectSingleNode("Password").Value;
-				textPEM.Text=nav.SelectSingleNode("SslCa")?.Value??"";
-				XPathNavigator encryptedPwdNode=nav.SelectSingleNode("MySQLPassHash");
-				string decryptedPwd;
-				if(textPassword.Text==""
-					&& encryptedPwdNode!=null
-					&& encryptedPwdNode.Value!=""
-					&& Secrets.Decrypt(encryptedPwdNode.Value,out decryptedPwd))
-				{
-					textPassword.Text=decryptedPwd;
+				//The program's reader of this computer's settings: the office CA, the client certificate, the password stored with DPAPI (an
+				//old-style password only for a server on this computer). docs/specs/db-connection-security.md
+				DbConnectionConfig dbConnectionConfig=DbConnectionConfig.FromNavigator(Navigator);
+				textServer.Text=dbConnectionConfig.ServerName;
+				textDatabase.Text=dbConnectionConfig.Database;
+				textUser.Text=dbConnectionConfig.User;
+				textPEM.Text=dbConnectionConfig.SslCa;
+				//Test connection presents this computer's client certificate to a server over the network and verifies it against this computer's
+				//office CA, as the program does.
+				DataConnection.ClientCertificateThumbprint=dbConnectionConfig.ClientCertThumbprint;
+				DataConnection.OfficeCaPath=dbConnectionConfig.SslCa;
+				try {
+					textPassword.Text=dbConnectionConfig.GetPassword();
+				}
+				catch(DbConnectionRefusedException ex) {
+					textPassword.Text="";
+					MessageBox.Show(ex.Message);
 				}
 				textPassword.PasswordChar=textPassword.Text==""?default(char):'*';//mask password
 				textUserLow.Text="";

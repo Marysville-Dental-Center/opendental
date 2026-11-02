@@ -55,6 +55,12 @@ namespace DataConnectionBase {
 		private static string _connectionStringT="";
 		[ThreadStatic]
 		private static DatabaseType _dBtypeT;
+		///<summary>True on a thread whose database context is a read-only or reporting server of its own, named in the database preferences
+		///(SetDbTPreferenceServer). A connection string this thread builds again from its context (the lower user, another database on that
+		///server, a new command timeout) then comes from BuildPreferenceServerConnectionString as well, so this computer's client certificate
+		///never goes to that server. Every other SetDb and SetDbT clears it.</summary>
+		[ThreadStatic]
+		private static bool _isPreferenceServerT;
 		private static int _commandTimeout=0;
 		///<summary>Will be set to true if a DataConnectionEvent signifying the connection has been restored is received.</summary>
 		private bool _isConnectionRestored;
@@ -131,6 +137,11 @@ namespace DataConnectionBase {
 			}
 			set {
 				_commandTimeout=value;
+				if(_isPreferenceServerT) {
+					//A read-only or reporting server of its own: only this thread's connection, built the old way. The main connection stays as it is.
+					_connectionStringT=BuildPreferenceServerConnectionString(ServerName,Database,MysqlUser,MysqlPass,SslCa);
+					return;
+				}
 				if(!string.IsNullOrEmpty(ServerName)) {
 					ConnectionString=BuildSimpleConnectionString(DBtype,ServerName,Database,MysqlUser,MysqlPass,sslCa:SslCa);
 				}
@@ -242,6 +253,41 @@ namespace DataConnectionBase {
 				_sslCa=value;
 			}
 		}
+
+		///<summary>The thumbprint of this computer's client certificate in the LocalMachine store (FreeDentalConfig.xml ClientCertThumbprint), or
+		///"" when it has none. One per computer, so one per process, not per thread. It belongs to the program's own database account:
+		///BuildSimpleConnectionString adds it to every connection of that account to a server over the network. A read-only or reporting server of
+		///its own never gets it (BuildPreferenceServerConnectionString).</summary>
+		public static string ClientCertificateThumbprint {
+			get {
+				return _clientCertificateThumbprint;
+			}
+			set {
+				_clientCertificateThumbprint=value??"";
+			}
+		}
+		private static string _clientCertificateThumbprint="";
+
+		///<summary>This computer's office CA certificate file (FreeDentalConfig.xml SslCa), or "" when it has none. One per computer, so one per
+		///process, set wherever ClientCertificateThumbprint is set. Once it is set, BuildSimpleConnectionString uses it for every connection of the
+		///program's own account to a server over the network, whatever CA the caller names, and the rule (DbConnectionSecurity) refuses such a
+		///connection string with any other SslCa: a CA path in a connection string never becomes what this account trusts (owner decision Q5).
+		///The read-only and reporting servers of their own keep the CA of their preferences, as before (BuildPreferenceServerConnectionString).
+		///Changing it makes the rule check every connection string again.</summary>
+		public static string OfficeCaPath {
+			get {
+				return _officeCaPath;
+			}
+			set {
+				string officeCaPath=(value??"").Trim();
+				if(officeCaPath==_officeCaPath) {
+					return;
+				}
+				_officeCaPath=officeCaPath;
+				DbConnectionSecurity.ClearPassed();
+			}
+		}
+		private static string _officeCaPath="";
 
 		private static string ConnectionString {
 			get {
@@ -447,7 +493,8 @@ namespace DataConnectionBase {
 			if(isLow) {
 				//Forcefully use mysqlUserLow and mysqlPassLow regardless if a connectStr was passed in or not.
 				//There is no such thing as a "connectiong string low" so it needs to fail if the lower user credentials were not passed in correctly.
-				connectStr=BuildSimpleConnectionString(dtype,serverName,database,mysqlUserLow,mysqlPassLow,"");
+				//The same CA as the main user: a server over the network needs it (DbConnectionSecurity).
+				connectStr=BuildContextConnectionString(dtype,serverName,database,mysqlUserLow,mysqlPassLow,string.IsNullOrEmpty(sslCa) ? SslCa : sslCa);
 				ServerNameCur=serverName;
 				UserCur=mysqlUserLow;
 			}
@@ -456,11 +503,11 @@ namespace DataConnectionBase {
 				if(sslCa=="") {
 					sslCa=SslCa;
 				}
-				connectStr=BuildSimpleConnectionString(dtype,serverName,database,mysqlUser,mysqlPass,sslCa);
+				connectStr=BuildContextConnectionString(dtype,serverName,database,mysqlUser,mysqlPass,sslCa);
 				ServerNameCur=serverName;
 				UserCur=mysqlUser;
 			}
-			_con=new MySqlConnection(connectStr);
+			_con=DbConnectionSecurity.NewMySqlConnection(connectStr);
 			_cmd=new MySqlCommand();
 			_cmd.Connection=_con;
 		}
@@ -468,37 +515,118 @@ namespace DataConnectionBase {
 
 		#region ConnectionString
 
-		///<summary>The sslCa can be null or empty if not using SSL.</summary>
-		public static string BuildSimpleConnectionString(DatabaseType pDbType,string pServer,string pDatabase,string pUserID,string pPassword,string sslCa="") {
-			string serverName=pServer;
-			string port=DefaultPortNum().ToString();
-			if(pServer.Contains(":")) {
-				string[] serverNamePort=pServer.Split(new char[] { ':' },StringSplitOptions.RemoveEmptyEntries);
-				serverName=serverNamePort[0];
-				port=serverNamePort[1];
+		///<summary>The connection string for a server in the program's notation ("host", "host:port", "[v6]", "[v6]:port", a bare IPv6 address,
+		///or a comma-separated list of them with one port). Server= gets the hosts without ports or brackets, as MySqlConnector takes them, and
+		///Port= the port. A server on this computer (DbConnectionSecurity.IsLoopbackConnectorServer of that Server value) connects as it always
+		///did: SslMode=none, or VerifyCA when sslCa is set. Any other server gets SslMode=VerifyFull, the office CA (OfficeCaPath once this
+		///computer has one, otherwise sslCa) and, when this computer has one, the client certificate from the LocalMachine store
+		///(certificateThumbprint; null means ClientCertificateThumbprint). The string passes the rule only when the CA and a certificate or a
+		///password are there (docs/specs/db-connection-security.md); DbConnectionSecurity checks it before any connection is made. This is the
+		///builder of the program's own database account; a read-only or reporting server of its own is built by
+		///BuildPreferenceServerConnectionString. Throws DbConnectionRefusedException for a list whose entries name different ports.</summary>
+		public static string BuildSimpleConnectionString(DatabaseType pDbType,string pServer,string pDatabase,string pUserID,string pPassword,string sslCa="",
+			string certificateThumbprint=null)
+		{
+			string connectStr=BuildConnectionStringStart(pServer,pDatabase,pUserID,pPassword,out string serverName);
+			//Decided on the Server value written above, with MySqlConnector's own reading of it, so the decision and the connection always agree.
+			if(DbConnectionSecurity.IsLoopbackConnectorServer(serverName)) {
+				return connectStr+GetOldSslOptions(sslCa);
+			}
+			//Over the network: encrypted, and the server's certificate must chain to the office CA and name the host (owner decision Q5). This
+			//computer's office CA wins over any other the caller names.
+			if(!String.IsNullOrEmpty(OfficeCaPath)) {
+				sslCa=OfficeCaPath;
+			}
+			connectStr+=";SslMode=VerifyFull";
+			if(!String.IsNullOrEmpty(sslCa)) {
+				connectStr+=";SslCa="+QuoteValue(sslCa);
+			}
+			string thumbprint=certificateThumbprint??ClientCertificateThumbprint;
+			if(!String.IsNullOrEmpty(thumbprint)) {
+				connectStr+=";CertificateStoreLocation=LocalMachine"
+					+";CertificateThumbprint="+QuoteValue(thumbprint);
+			}
+			return connectStr;
+		}
+
+		///<summary>The connection string for a read-only or reporting server of its own, named in the database preferences (ReadOnlyServerCompName,
+		///ReportingServerCompName) or in their set-up windows: that server, database, user and password, and the SslMode behaviour from before the
+		///connection rule (SslMode=none, or VerifyCA with sslCa, the CA path the caller takes from the preference). Owner decision of 2026-11-02
+		///(docs/specs/db-connection-security.md section 5.1): these servers are outside the rule, which is for the program's own database account.
+		///So the string never gets this computer's client certificate or its office CA in place of sslCa, and the rule lets exactly this string
+		///through (DbConnectionSecurity.IsPreferenceServerConnection), nothing built any other way. The values are quoted as in
+		///BuildSimpleConnectionString, so no preference can add an option such as a certificate. Throws ArgumentException for an empty server: an
+		///empty preference means the main connection, which BuildSimpleConnectionString builds and the rule checks. Throws
+		///DbConnectionRefusedException for a list whose entries name different ports.</summary>
+		public static string BuildPreferenceServerConnectionString(string pServer,string pDatabase,string pUserID,string pPassword,string sslCa) {
+			if(string.IsNullOrEmpty(pServer)) {
+				throw new ArgumentException("A read-only or reporting server preference without a server means the main connection.",nameof(pServer));
+			}
+			string connectStr=BuildConnectionStringStart(pServer,pDatabase,pUserID,pPassword,out _)+GetOldSslOptions(sslCa);
+			DbConnectionSecurity.AllowPreferenceServerConnection(connectStr);
+			return connectStr;
+		}
+
+		///<summary>The part every connection string of the program shares: Server= the hosts of pServer (the program's notation, SplitServerList)
+		///without ports or brackets, as MySqlConnector takes them (serverName), Port=, Database=, User ID=, Password= with each value quoted when
+		///needed, and the fixed options. Throws DbConnectionRefusedException for a list whose entries name different ports.</summary>
+		private static string BuildConnectionStringStart(string pServer,string pDatabase,string pUserID,string pPassword,out string serverName) {
+			if(!DbConnectionSecurity.SplitServerList(pServer,out serverName,out string port)) {
+				throw new DbConnectionRefusedException(pServer,"The database servers "+DbConnectionSecurity.GetServerDisplay(pServer)+" name different "
+					+"ports, but a connection has one port for all of its servers. "+DbConnectionSecurity.ToolSentence());
+			}
+			if(port=="") {
+				port=DefaultPortNum().ToString();
 			}
 			string connectStr="";
 			connectStr=
-				"Server="+serverName
+				"Server="+QuoteValue(serverName)
 				+";Port="+port//although this does seem to cause a bug in Mono.  We will revisit this bug if needed to exclude the port option only for Mono.
-				+";Database="+pDatabase
+				+";Database="+QuoteValue(pDatabase)
 				//+";Connect Timeout=20"
-				+";User ID="+pUserID
-				+";Password="+pPassword
+				+";User ID="+QuoteValue(pUserID)
+				+";Password="+QuoteValue(pPassword)
 				+";CharSet=utf8"
 				+";Treat Tiny As Boolean=false"
 				+";Allow User Variables=true"
 				+";Convert Zero Datetime=true"//Convert all MySQL dates 0000-00-00 to 0001-01-01, since C# crashes for 0000-00-00 dates.
 				+";Default Command Timeout="+CommandTimeout;//one hour timeout on commands.  Prevents crash during conversions, etc.
 			//+";Pooling=false";
-			if(String.IsNullOrEmpty(sslCa)) {
-				connectStr+=";SslMode=none";
-			}
-			else {
-				connectStr+=";SslMode=VerifyCA"
-				+";SslCa="+sslCa;
-			}
 			return connectStr;
+		}
+
+		///<summary>The SslMode options from before the connection rule: SslMode=none, or VerifyCA with sslCa when it is set.</summary>
+		private static string GetOldSslOptions(string sslCa) {
+			if(String.IsNullOrEmpty(sslCa)) {
+				return ";SslMode=none";
+			}
+			return ";SslMode=VerifyCA"
+				+";SslCa="+QuoteValue(sslCa);
+		}
+
+		///<summary>BuildSimpleConnectionString, or BuildPreferenceServerConnectionString for the server of a thread whose context is a read-only or
+		///reporting server of its own (SetDbTPreferenceServer): what such a thread builds again from its context (the lower user, another database
+		///on that server, a new command timeout) reaches that server as before, never with this computer's client certificate. Any other server is
+		///built by BuildSimpleConnectionString and checked by the rule.</summary>
+		private static string BuildContextConnectionString(DatabaseType pDbType,string pServer,string pDatabase,string pUserID,string pPassword,
+			string sslCa)
+		{
+			if(_isPreferenceServerT && !string.IsNullOrEmpty(pServer) && pServer==_serverNameT) {
+				return BuildPreferenceServerConnectionString(pServer,pDatabase,pUserID,pPassword,sslCa);
+			}
+			return BuildSimpleConnectionString(pDbType,pServer,pDatabase,pUserID,pPassword,sslCa);
+		}
+
+		///<summary>A connection string value as it is, or in double quotes (inner double quotes doubled) when it holds a semicolon, starts with a
+		///quote or has spaces at either end, so that a password or a path can never end the value early.</summary>
+		private static string QuoteValue(string value) {
+			if(string.IsNullOrEmpty(value)) {
+				return value??"";
+			}
+			if(value.IndexOf(';')<0 && value[0]!='"' && value[0]!='\'' && value.Trim()==value) {
+				return value;
+			}
+			return "\""+value.Replace("\"","\"\"")+"\"";
 		}
 
 		private string BuildSimpleConnectionString(string pServer,string pDatabase,string pUserID,string pPassword,string sslCa) {
@@ -512,7 +640,21 @@ namespace DataConnectionBase {
 
 		///<summary>Returns a connection string constructed with the lower privileged MySQL user and password.</summary>
 		public static string GetLowConnectionString() {
-			return BuildSimpleConnectionString(DatabaseType.MySql,ServerName,Database,MysqlUserLow,MysqlPassLow,SslCa);
+			return BuildContextConnectionString(DatabaseType.MySql,ServerName,Database,MysqlUserLow,MysqlPassLow,SslCa);
+		}
+
+		///<summary>A connection to a read-only or reporting server of its own, as its set-up window lists the server's databases: the string of
+		///BuildPreferenceServerConnectionString (as before the connection rule, nothing of this computer's own connection but the CA file the
+		///caller passes, which is only read here to verify that server). Throws ArgumentException for an empty server.</summary>
+		public static DataConnection CreateForPreferenceServer(string server,string database,string user,string password,string sslCa) {
+			string connectStr=BuildPreferenceServerConnectionString(server,database,user,password,sslCa);
+			DataConnection dataConnection=new DataConnection(DatabaseType.MySql);
+			dataConnection._con=DbConnectionSecurity.NewMySqlConnection(connectStr);
+			dataConnection._cmd=new MySqlCommand();
+			dataConnection._cmd.Connection=dataConnection._con;
+			dataConnection.ServerNameCur=server;
+			dataConnection.UserCur=user;
+			return dataConnection;
 		}
 
 		public static string GetReportConnectionString(string pServer,string pDatabase,string pUserID,string pPassword) {
@@ -553,10 +695,22 @@ namespace DataConnectionBase {
 			ServerNameCur=server;
 			UserCur=user;
 			SslCa=sslCa;
+			_isPreferenceServerT=false;//This thread's server is now the program's own connection.
 		}
 
-		///<summary>This needs to be run every time we switch databases, especially on startup.  Will throw an exception if fails.  Calling class should catch exception.</summary>
+		///<summary>This needs to be run every time we switch databases, especially on startup.  Will throw an exception if fails.  Calling class should catch exception.
+		///Throws DbConnectionRefusedException, before any connection, for the connection string of a read-only or reporting server of its own
+		///(DbConnectionSecurity.IsPreferenceServerConnection): such a string is for a thread of its own only (SetDbTPreferenceServer, SetDbT), never
+		///the main connection, which every thread without a context of its own uses (docs/specs/db-connection-security.md section 5.1).</summary>
 		public void SetDb(string connectStr,string connectStrLow,DatabaseType dbtype,bool skipValidation) {
+			string connectStrPreference=DbConnectionSecurity.IsPreferenceServerConnection(connectStr) ? connectStr
+				: (DbConnectionSecurity.IsPreferenceServerConnection(connectStrLow) ? connectStrLow : null);
+			if(connectStrPreference!=null) {
+				//As ConnectionStoreBase.SetDb refuses a connection marked as such a server. The main connection is the program's own account, under
+				//the rule; a string that passes without the rule must never become it. Such a string always parses (AllowPreferenceServerConnection).
+				throw new DbConnectionRefusedException(new MySqlConnectionStringBuilder(connectStrPreference).Server,"The connection of a read-only or "
+					+"reporting server from the database preferences is used on a thread of its own only, never as the main connection.");
+			}
 			TestConnection(connectStr,connectStrLow,dbtype,skipValidation);
 			//connection string must be valid, so OK to set permanently
 			ConnectionString=connectStr;
@@ -593,6 +747,33 @@ namespace DataConnectionBase {
 			_mysqlUserLowT=userLow;
 			_mysqlPassLowT=passLow;
 			_sslCaT=sslCa;
+			_isPreferenceServerT=false;
+			ServerNameCur=server;
+			UserCur=user;
+		}
+
+		///<summary>Sets this thread's database context to a read-only or reporting server of its own, named in the database preferences
+		///(ConnectionStoreBase.SetDbT for a connection that ConnectionStore made from them, CentralConnectionBase.IsPreferenceServer): its own
+		///server, database, user, password and CA, with the SslMode behaviour from before the connection rule (BuildPreferenceServerConnectionString,
+		///owner decision of 2026-11-02, docs/specs/db-connection-security.md section 5.1). Nothing of this computer's own connection is sent: no
+		///client certificate, and the password is password even when it is empty (the main connection's password is never taken for it). Leaves
+		///the main (static) connection alone. Opens the connection once without writing to it, as ConnectionStoreBase.SetDbT always did, unless
+		///skipTestConnection. Throws ArgumentException for an empty server, which means the main connection.</summary>
+		public void SetDbTPreferenceServer(string server,string db,string user,string password,string sslCa,bool skipTestConnection=false) {
+			_dBtypeT=DatabaseType.MySql;
+			string connectStr=BuildPreferenceServerConnectionString(server,db,user,password,sslCa);
+			if(!skipTestConnection) {
+				TestConnection(connectStr,"",DatabaseType.MySql,skipValidation:true);
+			}
+			_connectionStringT=connectStr;
+			_databaseT=db;
+			_serverNameT=server;//yes, it includes the port
+			_mysqlUserT=user;
+			_mysqlPassT=password??"";//Never null: a null would read the main connection's password (MysqlPass).
+			_mysqlUserLowT="";
+			_mysqlPassLowT="";
+			_sslCaT=sslCa;
+			_isPreferenceServerT=true;
 			ServerNameCur=server;
 			UserCur=user;
 		}
@@ -616,9 +797,18 @@ namespace DataConnectionBase {
 
 		#endregion
 
+		///<summary>Opens connectStr and runs the check SetDb runs, as StartConnectionErrorRetry tests a lost connection, but sets neither the main
+		///(static) connection nor this thread's. For the Connection Lost window (FormOpenDental), whose connection can be any thread's, also that
+		///of a read-only or reporting server of its own (docs/specs/db-connection-security.md section 5.1); the threads the window's thread starts
+		///again afterwards inherit its context, which stays the main connection. The rule checks connectStr as always. Throws when the connection
+		///fails.</summary>
+		public void TestConnectionString(string connectStr,DatabaseType dbtype) {
+			TestConnection(connectStr,"",dbtype,skipValidation:false);
+		}
+
 		private void TestConnection(string connectStr,string connectStrLow,DatabaseType dbtype,bool skipValidation) {
 			DBtype=dbtype;
-			_con=new MySqlConnection(connectStr);
+			_con=DbConnectionSecurity.NewMySqlConnection(connectStr);
 			_cmd=new MySqlCommand();
 			_cmd.Connection=_con;
 			_con.Open();
@@ -628,7 +818,7 @@ namespace DataConnectionBase {
 			}
 			_con.Close();
 			if(connectStrLow!="") {
-				_con=new MySqlConnection(connectStrLow);
+				_con=DbConnectionSecurity.NewMySqlConnection(connectStrLow);
 				_cmd = new MySqlCommand();
 				_cmd.Connection=_con;
 				_con.Open();
@@ -643,7 +833,7 @@ namespace DataConnectionBase {
 		}
 
 		public static bool GetCorruptedDatabasePref(string connectStr) {
-			MySqlConnection connection=new MySqlConnection(connectStr);
+			MySqlConnection connection=DbConnectionSecurity.NewMySqlConnection(connectStr);
 			MySqlCommand command=new MySqlCommand();
 			command.Connection=connection;
 			command.CommandText="SELECT ValueString FROM preference WHERE PrefName='CorruptedDatabase'";
@@ -658,7 +848,7 @@ namespace DataConnectionBase {
 		}
 
 		public static string GetUpdateInProgressPref(string connectStr) {
-			MySqlConnection connection=new MySqlConnection(connectStr);
+			MySqlConnection connection=DbConnectionSecurity.NewMySqlConnection(connectStr);
 			MySqlCommand command=new MySqlCommand();
 			command.Connection=connection;
 			command.CommandText="SELECT ValueString FROM preference WHERE PrefName='UpdateInProgressOnComputerName'";
@@ -670,7 +860,7 @@ namespace DataConnectionBase {
 		}
 
 		public static string GetProgramVersion(string connectStr) {
-			MySqlConnection connection=new MySqlConnection(connectStr);
+			MySqlConnection connection=DbConnectionSecurity.NewMySqlConnection(connectStr);
 			MySqlCommand command=new MySqlCommand();
 			command.Connection=connection;
 			command.CommandText="SELECT ValueString FROM preference WHERE PrefName='ProgramVersion'";

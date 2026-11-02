@@ -32,6 +32,9 @@ namespace CodeBase {
 		public const string LegacyCloudDllFileName="OpenPmsDentalCloud.dll";
 		///<summary>The program that copies a pulled release into the installation folder and restarts the program.</summary>
 		public const string UpdateFileCopierExeFileName="UpdateFileCopier.exe";
+		///<summary>The administrator tool in the program folder that sets up and changes this computer's database connection settings
+		///(docs/specs/db-connection-security.md). The connection refusal messages name it.</summary>
+		public const string DbSettingsExeFileName="OpenPmsDentalDbSettings.exe";
 		#endregion Program files
 
 		#region Local configuration files
@@ -52,6 +55,11 @@ namespace CodeBase {
 		public const string LegacyLocalAppDataFolderName="OpenDental";
 		///<summary>The program's folder under %ProgramData%: the SFTP download stash, and the logs of web applications.</summary>
 		public const string ProgramDataFolderName="OpenPMS-Dental";
+		///<summary>The sub folder of the program folder where the connection settings tool keeps its copy of the office CA certificate
+		///(administrator-only; a release publishes only the top-level files, so it never carries it).</summary>
+		public const string DbSettingsFolderName="ConnectionSettings";
+		///<summary>The file name of that copy of the office CA certificate (PEM).</summary>
+		public const string OfficeCaFileName="office-ca.pem";
 		///<summary>The program's folder under %TEMP% (PrefC.GetTempFolderPath). The program empties it when it closes.</summary>
 		public const string TempFolderName="openpms-dental";
 		///<summary>UpdateFileCopier's sub folder of TempFolderName, which the close-time clean-up keeps.</summary>

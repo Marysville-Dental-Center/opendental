@@ -126,8 +126,12 @@ namespace OpenPmsDental{
 			menuItemFile.Add(_menuItemPrinter);
 			menuItemFile.Add("Graphics",menuItemGraphics_Click);
 			menuItemFile.AddSeparator();
-			menuItemFile.Add("&Choose Database",menuItemConfig_Click);
-			menuItemFile.AddSeparator();
+			//Choose Database is for local testing and debugging only (docs/specs/db-connection-security.md). A Release build's connection is
+			//changed with the connection settings tool (OpenPmsDentalDbSettings.exe, as an administrator).
+			if(ODBuild.IsDebug()) {
+				menuItemFile.Add("&Choose Database",menuItemConfig_Click);
+				menuItemFile.AddSeparator();
+			}
 			menuItemFile.Add("E&xit",menuItemExit_Click);
 		}
 		#endregion File

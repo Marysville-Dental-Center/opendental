@@ -40,6 +40,10 @@ namespace OpenPmsDentalBusiness{
 		///<summary>Used for MariaDB SkySql</summary>
 		[CrudColumn(IsNotDbColumn=true)]
 		public string SslCA;
+		///<summary>The thumbprint of this computer's client certificate in the LocalMachine store, from FreeDentalConfig.xml
+		///(docs/specs/db-connection-security.md). Not an actual DB column.</summary>
+		[CrudColumn(IsNotDbColumn=true)]
+		public string ClientCertThumbprint;
 		///<summary>Set when reading from the config file. Not an actual DB column.</summary>
 		[CrudColumn(IsNotDbColumn=true)]
 		public bool IsAutomaticLogin;

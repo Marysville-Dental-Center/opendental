@@ -254,8 +254,18 @@ namespace OpenPmsDentalBusiness{
 			else {
 				Logger.LogToPath("DataConnection.SetDb",LogPath.Startup,LogPhase.Start);
 				DataConnection.DBtype=databaseType;
+				//This computer's client certificate and office CA, for this connection and the read-only and reporting servers. The connection rule
+				//(DbConnectionSecurity) refuses a server over the network without encryption, or with any other CA, before anything is sent.
+				DataConnection.ClientCertificateThumbprint=centralConnection.ClientCertThumbprint??"";
+				DataConnection.OfficeCaPath=centralConnection.SslCA??"";
 				DataConnection dataConnection=new DataConnection();
 				if(connectionString.Length > 0) {
+					//A connection string is for a database on this computer only: its credential is neither the client certificate nor the password
+					//stored with DPAPI (owner decision Q2, docs/specs/db-connection-security.md section 3.1).
+					string connectionStringProblem=DbConnectionSecurity.GetConnectionStringProblem(connectionString);
+					if(connectionStringProblem!="") {
+						throw new DbConnectionRefusedException("",connectionStringProblem);
+					}
 					dataConnection.SetDb(connectionString,"",DataConnection.DBtype);
 				}
 				else {
@@ -330,6 +340,17 @@ namespace OpenPmsDentalBusiness{
 					#endregion
 					********************************************************************************************************/
 				}
+				if(!ODBuild.IsDebug() && RemotingClient.MiddleTierRole==MiddleTierRole.ClientDirect) {
+					//Release: only the connection settings tool (OpenPmsDentalDbSettings.exe, run as an administrator) writes this computer's database
+					//connection (docs/specs/db-connection-security.md). The program never rewrites it.
+					return false;
+				}
+				//The password goes into the file protected for this computer (DPAPI, machine scope), never in plain text or as osd1$.
+				//Protect it before the file is opened, so that a failure leaves the file as it was.
+				string passwordDpapi="";
+				if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientDirect && connectionString=="") {
+					passwordDpapi=MachineSecret.Protect(centralConnection.MySqlPassword);
+				}
 				XmlWriterSettings xmlWriterSettings=new XmlWriterSettings();
 				xmlWriterSettings.Indent=true;
 				xmlWriterSettings.IndentChars=("    ");
@@ -355,15 +376,16 @@ namespace OpenPmsDentalBusiness{
 					xmlWriter.WriteStartElement("User");
 					xmlWriter.WriteString(centralConnection.MySqlUser);
 					xmlWriter.WriteEndElement();
-					string encryptedPwd;
-					Secrets.Encrypt(centralConnection.MySqlPassword,out encryptedPwd);//sets encryptedPwd ot value or null
-					xmlWriter.WriteStartElement("Password");
-					//If encryption fails, write plain text password to xml file; maintains old behavior.
-					xmlWriter.WriteString(string.IsNullOrEmpty(encryptedPwd) ? centralConnection.MySqlPassword : "");
+					//The old-style elements stay, empty, for older readers (DbConnectionConfig.WriteTo does the same).
+					xmlWriter.WriteStartElement(DbConnectionConfig.ELEMENT_PASSWORD);
+					xmlWriter.WriteString("");
 					xmlWriter.WriteEndElement();
-					xmlWriter.WriteStartElement("MySQLPassHash");
-					xmlWriter.WriteString(encryptedPwd??"");
+					xmlWriter.WriteStartElement(DbConnectionConfig.ELEMENT_PASS_HASH);
+					xmlWriter.WriteString("");
 					xmlWriter.WriteEndElement();
+					if(passwordDpapi!="") {
+						xmlWriter.WriteElementString(DbConnectionConfig.ELEMENT_PASS_DPAPI,passwordDpapi);
+					}
 					xmlWriter.WriteStartElement("NoShowOnStartup");
 					if(noShowOnStartup) {
 						xmlWriter.WriteString("True");
@@ -376,6 +398,9 @@ namespace OpenPmsDentalBusiness{
 						xmlWriter.WriteStartElement("SslCa");
 						xmlWriter.WriteString(centralConnection.SslCA);
 						xmlWriter.WriteEndElement();
+					}
+					if(!string.IsNullOrEmpty(centralConnection.ClientCertThumbprint)) {
+						xmlWriter.WriteElementString(DbConnectionConfig.ELEMENT_CLIENT_CERT_THUMBPRINT,centralConnection.ClientCertThumbprint);
 					}
 				}
 				else if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
@@ -473,7 +498,19 @@ namespace OpenPmsDentalBusiness{
 		#region Misc Methods
 
 		///<summary>Gets all of the connection setting information from the FreeDentalConfig.xml. Throws exceptions.</summary>
-		public static ChooseDatabaseInfo GetChooseDatabaseConnectionSettings() 
+		public static ChooseDatabaseInfo GetChooseDatabaseConnectionSettings() {
+			Meth.NoCheckMiddleTierRole();
+			return GetChooseDatabaseConnectionSettings(ODFileUtils.CombinePaths(Application.StartupPath,ProgramNames.ConfigFileName),
+				isDebug:ODBuild.IsDebug());
+		}
+
+		///<summary>Gets all of the connection setting information from the config file at xmlPath. isDebug is ODBuild.IsDebug(); tests pass
+		///either. Debug: a missing file is created and an unreadable one gives the localhost defaults, as Choose Database then shows them. Release
+		///(Choose Database is not offered there): a missing, unreadable or empty file, an old-style password for a server over the network or a
+		///stored password this computer cannot read sets ChooseDatabaseInfo.ConfigProblem, which the program shows before it exits
+		///(docs/specs/db-connection-security.md). Debug sets ConfigProblem for the password cases too. In both, a ConnectionString element that
+		///names a server over the network sets ConfigProblem and is never used. Throws exceptions.</summary>
+		public static ChooseDatabaseInfo GetChooseDatabaseConnectionSettings(string xmlPath,bool isDebug)
 		{
 			Meth.NoCheckMiddleTierRole();
 			ChooseDatabaseInfo chooseDatabaseInfo=new ChooseDatabaseInfo();
@@ -484,13 +521,19 @@ namespace OpenPmsDentalBusiness{
 			List<string> listAdminCompNames=new List<string>();
 			bool useDynamicMode=false;
 			bool allowAutoLogin=true;
-			string xmlPath=ODFileUtils.CombinePaths(Application.StartupPath,"FreeDentalConfig.xml");
+			string configProblem="";
 			#region Permission Check
 			//Improvement should be made here to avoid requiring admin priv.
 			//Search path should be something like this:
 			//1. /home/username/.opendental/config.xml (or corresponding user path in Windows)
-			//2. /etc/opendental/config.xml (or corresponding machine path in Windows) (should be default for new installs) 
+			//2. /etc/opendental/config.xml (or corresponding machine path in Windows) (should be default for new installs)
 			//3. Application Directory/FreeDentalConfig.xml (read-only if user is not admin)
+			if(!isDebug && !File.Exists(xmlPath)) {
+				//Release: only the connection settings tool writes the file.
+				chooseDatabaseInfo.ConfigProblem=ProgramNames.ConfigFileName+" is missing from the program folder. "+DbConnectionSecurity.ToolSentence();
+				chooseDatabaseInfo.CentralConnectionCur=centralConnection;
+				return chooseDatabaseInfo;
+			}
 			if(!File.Exists(xmlPath)) {
 				FileStream fileStream;
 				try {
@@ -541,10 +584,18 @@ namespace OpenPmsDentalBusiness{
 					databaseType=DatabaseType.Oracle;
 				}
 				//ConnectionString
-				xPathNavigator2=xPathNavigator.SelectSingleNode("//ConnectionString");
+				xPathNavigator2=xPathNavigator.SelectSingleNode("//"+DbConnectionConfig.ELEMENT_CONNECTION_STRING);
 				if(xPathNavigator2!=null) {
 					//If there is a ConnectionString, then use it.
 					connectionString=xPathNavigator2.Value;
+				}
+				//A connection string is for a database on this computer only, in Release and Debug alike: one that names a server over the network
+				//carries its own credential, which is neither the client certificate nor the password stored with DPAPI (owner decision Q2,
+				//docs/specs/db-connection-security.md section 3.1). It is never used; the problem names the connection settings tool.
+				string connectionStringProblem=DbConnectionSecurity.GetConnectionStringProblem(connectionString);
+				if(connectionStringProblem!="") {
+					connectionString="";
+					configProblem=connectionStringProblem;
 				}
 				//UseDynamicMode
 				xPathNavigator2=xPathNavigator.SelectSingleNode("//UseDynamicMode");
@@ -555,28 +606,27 @@ namespace OpenPmsDentalBusiness{
 				#endregion
 				#region Connection Settings Group Box
 				//See if there's a DatabaseConnection
-				xPathNavigator2=xPathNavigator.SelectSingleNode("//DatabaseConnection");
-				if(xPathNavigator2!=null) {
+				//One reader for this computer's connection settings (DbConnectionConfig): the office CA, the client certificate and the password
+				//stored with DPAPI. An old-style password (Password, MySQLPassHash) is used only for a server on this computer.
+				DbConnectionConfig dbConnectionConfig=DbConnectionConfig.FromNavigator(xPathNavigator);
+				if(dbConnectionConfig!=null) {
 					//If there is a DatabaseConnection, then use it.
-					centralConnection.ServerName=xPathNavigator2.SelectSingleNode("ComputerName").Value;
-					centralConnection.DatabaseName=xPathNavigator2.SelectSingleNode("Database").Value;
-					centralConnection.MySqlUser=xPathNavigator2.SelectSingleNode("User").Value;
-					centralConnection.MySqlPassword=xPathNavigator2.SelectSingleNode("Password").Value;
-					centralConnection.SslCA=xPathNavigator2.SelectSingleNode("SslCa")?.Value??"";
-					XPathNavigator xPathNavigatorEncryptedPwdNode=xPathNavigator2.SelectSingleNode("MySQLPassHash");
-					//If the Password node is empty, but there is a value in the MySQLPassHash node, decrypt the node value and use that instead
-					string _decryptedPwd;
-					if(centralConnection.MySqlPassword==""
-						&& xPathNavigatorEncryptedPwdNode!=null
-						&& xPathNavigatorEncryptedPwdNode.Value!=""
-						&& Secrets.Decrypt(xPathNavigatorEncryptedPwdNode.Value,out _decryptedPwd))
-					{
-						//decrypted value could be an empty string, which means they don't have a password set, so textPassword will be an empty string
-						centralConnection.MySqlPassword=_decryptedPwd;
+					centralConnection.ServerName=dbConnectionConfig.ServerName;
+					centralConnection.DatabaseName=dbConnectionConfig.Database;
+					centralConnection.MySqlUser=dbConnectionConfig.User;
+					centralConnection.SslCA=dbConnectionConfig.SslCa;
+					centralConnection.ClientCertThumbprint=dbConnectionConfig.ClientCertThumbprint;
+					try {
+						centralConnection.MySqlPassword=dbConnectionConfig.GetPassword();
 					}
-					XPathNavigator xPathNavigatorNoShow=xPathNavigator2.SelectSingleNode("NoShowOnStartup");
-					if(xPathNavigatorNoShow!=null) {
-						if(xPathNavigatorNoShow.Value=="True") {
+					catch(DbConnectionRefusedException ex) {
+						centralConnection.MySqlPassword="";
+						if(configProblem=="") {//A refused connection string, which the program would have used first, is named first.
+							configProblem=ex.Message;
+						}
+					}
+					if(dbConnectionConfig.NoShowOnStartup!=null) {
+						if(dbConnectionConfig.NoShowOnStartup=="True") {
 							yNNoShow=YN.Yes;
 						}
 						else {
@@ -626,17 +676,28 @@ namespace OpenPmsDentalBusiness{
 				#endregion
 				#endregion
 			}
-			catch(Exception) {
+			catch(Exception ex) {
 				//Common error: root element is missing
+				if(!isDebug) {
+					//Release has no Choose Database to correct the file in, and must never fall back to settings nobody chose.
+					configProblem=ProgramNames.ConfigFileName+" cannot be read: "+ex.Message+" "+DbConnectionSecurity.ToolSentence();
+				}
+				centralConnection=new CentralConnection();
 				centralConnection.ServerName="localhost";
 				if(ODBuild.IsTrial()) {
 					centralConnection.DatabaseName="demo";
 				}
-				else { 
+				else {
 					centralConnection.DatabaseName="opendental";
 				}
 				centralConnection.MySqlUser="root";
 			}
+			if(!isDebug && configProblem=="" && connectionString=="" && string.IsNullOrEmpty(centralConnection.ServerName)
+				&& string.IsNullOrEmpty(centralConnection.ServiceURI))
+			{
+				configProblem=ProgramNames.ConfigFileName+" has no database connection. "+DbConnectionSecurity.ToolSentence();
+			}
+			chooseDatabaseInfo.ConfigProblem=configProblem;
 			chooseDatabaseInfo.AllowAutoLogin=allowAutoLogin;
 			chooseDatabaseInfo.CentralConnectionCur=centralConnection;
 			chooseDatabaseInfo.ConnectionString=connectionString;
@@ -823,6 +884,10 @@ namespace OpenPmsDentalBusiness{
 		public List<string> ListAdminCompNames=new List<string>();
 		///<summary>Defaults to true. Allows the user to choose whether or not they can select 'Log me in automatically.'</summary>
 		public bool AllowAutoLogin=true;
+		///<summary>Why this computer's connection settings cannot be used, as a message for the user that ends by naming the connection settings
+		///tool; "" when there is no such problem. Never contains a secret. Release builds show it and exit (docs/specs/db-connection-security.md).
+		///</summary>
+		public string ConfigProblem="";
 
 		public ChooseDatabaseInfo() {
 		}
@@ -839,6 +904,11 @@ namespace OpenPmsDentalBusiness{
 				Logger.LogToPath("GetChooseDatabaseConnectionSettings",LogPath.Startup,LogPhase.Start);
 				chooseDatabaseInfo=CentralConnections.GetChooseDatabaseConnectionSettings();
 				Logger.LogToPath("GetChooseDatabaseConnectionSettings",LogPath.Startup,LogPhase.End);
+			}
+			if(serverName!="" || databaseName!="" || mySqlUser!="" || mySqlPassword!="" || mySqlPassHash!="") {
+				//A connection on the command line still uses this computer's office CA, client certificate and stored password.
+				DbConnectionConfig dbConnectionConfig=ReadConfigQuietly(ODFileUtils.CombinePaths(Application.StartupPath,ProgramNames.ConfigFileName));
+				ApplyCommandLineConnection(chooseDatabaseInfo,dbConnectionConfig,serverName,databaseName,mySqlUser,mySqlPassword,mySqlPassHash);
 			}
 			//Command line args should always trump settings from the config file.
 			#region Command Line Arguements
@@ -857,23 +927,6 @@ namespace OpenPmsDentalBusiness{
 			if(!string.IsNullOrEmpty(odPassHash)) {
 				chooseDatabaseInfo.CentralConnectionCur.OdPassHash=odPassHash;
 			}
-			if(serverName!="") {
-				chooseDatabaseInfo.CentralConnectionCur.ServerName=serverName;
-			}
-			if(databaseName!="") {
-				chooseDatabaseInfo.CentralConnectionCur.DatabaseName=databaseName;
-			}
-			if(mySqlUser!="") {
-				chooseDatabaseInfo.CentralConnectionCur.MySqlUser=mySqlUser;
-			}
-			if(mySqlPassword!="") {
-				chooseDatabaseInfo.CentralConnectionCur.MySqlPassword=mySqlPassword;
-			}
-			if(mySqlPassHash!="") {
-				string decryptedPwd;
-				Secrets.Decrypt(mySqlPassHash,out decryptedPwd);
-				chooseDatabaseInfo.CentralConnectionCur.MySqlPassword=decryptedPwd;
-			}
 			if(yNNoShow!=YN.Unknown) {
 				chooseDatabaseInfo.NoShow=yNNoShow;
 			}
@@ -888,6 +941,76 @@ namespace OpenPmsDentalBusiness{
 			return chooseDatabaseInfo;
 		}
 
+		///<summary>The DatabaseConnection settings of the config file at xmlPath, or null when it is missing or cannot be read.</summary>
+		public static DbConnectionConfig ReadConfigQuietly(string xmlPath) {
+			try {
+				return DbConnectionConfig.ReadFile(xmlPath);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return null;
+			}
+		}
+
+		///<summary>Applies a connection given on the command line (ServerName, DatabaseName, MySqlUser, MySqlPassword or MySqlPassHash) to
+		///chooseDatabaseInfo. The office CA and the client certificate always come from this computer's settings (dbConnectionConfig, null when
+		///there are none). A command-line password is used only for a server on this computer: for a server over the network it sets
+		///ConfigProblem instead (docs/specs/db-connection-security.md). Without one, the password stored on this computer is used when the user
+		///is the configured user.</summary>
+		public static void ApplyCommandLineConnection(ChooseDatabaseInfo chooseDatabaseInfo,DbConnectionConfig dbConnectionConfig,string serverName,
+			string databaseName,string mySqlUser,string mySqlPassword,string mySqlPassHash)
+		{
+			CentralConnection centralConnection=chooseDatabaseInfo.CentralConnectionCur;
+			//The command line chooses the connection, so a problem of the file's own connection no longer applies; one of this one may.
+			chooseDatabaseInfo.ConfigProblem="";
+			if(dbConnectionConfig!=null) {
+				centralConnection.SslCA=dbConnectionConfig.SslCa;
+				centralConnection.ClientCertThumbprint=dbConnectionConfig.ClientCertThumbprint;
+			}
+			if(serverName!="") {
+				centralConnection.ServerName=serverName;
+			}
+			if(databaseName!="") {
+				centralConnection.DatabaseName=databaseName;
+			}
+			if(mySqlUser!="") {
+				centralConnection.MySqlUser=mySqlUser;
+			}
+			string server=centralConnection.ServerName??"";
+			if(mySqlPassword!="" || mySqlPassHash!="") {
+				if(!DbConnectionSecurity.IsLoopbackServer(server)) {
+					centralConnection.MySqlPassword="";
+					chooseDatabaseInfo.ConfigProblem="A database password on the command line is not accepted for the database server "
+						+string.Join(", ",DbConnectionSecurity.GetHosts(server))+" over the network: the password is stored on this computer by the "
+						+"connection settings tool. "+DbConnectionSecurity.ToolSentence();
+					return;
+				}
+				if(mySqlPassword!="") {
+					centralConnection.MySqlPassword=mySqlPassword;
+				}
+				if(mySqlPassHash!="") {
+					string decryptedPwd;
+					Secrets.Decrypt(mySqlPassHash,out decryptedPwd);
+					centralConnection.MySqlPassword=decryptedPwd;
+				}
+				return;
+			}
+			if(dbConnectionConfig==null) {
+				return;
+			}
+			if((centralConnection.MySqlUser??"")!=dbConnectionConfig.User) {
+				centralConnection.MySqlPassword="";//The password stored on this computer is the configured user's.
+				return;
+			}
+			try {
+				centralConnection.MySqlPassword=dbConnectionConfig.GetPassword(server);
+			}
+			catch(DbConnectionRefusedException ex) {
+				centralConnection.MySqlPassword="";
+				chooseDatabaseInfo.ConfigProblem=ex.Message;
+			}
+		}
+
 		///<summary>Updates the passed in ChooseDatabaseInfo with the current database/middle tier connection. Only updates values that are stored in
 		///FreeDentalConfig and are also kept in memory.</summary>
 		public static void UpdateChooseDatabaseInfoFromCurrentConnection(ChooseDatabaseInfo chooseDatabaseInfo) {
@@ -896,6 +1019,8 @@ namespace OpenPmsDentalBusiness{
 				chooseDatabaseInfo.CentralConnectionCur.DatabaseName=DataConnection.GetDatabaseName();
 				chooseDatabaseInfo.CentralConnectionCur.MySqlUser=DataConnection.GetMysqlUser();
 				chooseDatabaseInfo.CentralConnectionCur.MySqlPassword=DataConnection.GetMysqlPass();
+				chooseDatabaseInfo.CentralConnectionCur.SslCA=DataConnection.GetSslCa();
+				chooseDatabaseInfo.CentralConnectionCur.ClientCertThumbprint=DataConnection.ClientCertificateThumbprint;
 				chooseDatabaseInfo.CentralConnectionCur.ServiceURI="";
 			}
 			else {//using Middle Tier

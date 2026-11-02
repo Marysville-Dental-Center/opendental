@@ -79,11 +79,15 @@ namespace OpenPmsDental {
 			DataTable table;
 			string command="SHOW DATABASES";
 			//use the one table that we know exists
+			//The reporting server of its own connects as before the connection rule, with the CA of its preference (this window has no CA field)
+			//and nothing of this computer's own connection (docs/specs/db-connection-security.md section 5.1).
 			if(textReportingServerMySqlUser.Text=="") {
-				dataConnection=new DataConnection(textReportingServerCompName.Text,"mysql","root",textMysqlPass.Text,DatabaseType.MySql);
+				dataConnection=DataConnection.CreateForPreferenceServer(textReportingServerCompName.Text,"mysql","root",textMysqlPass.Text,
+					PrefC.ReportingServer.SslCa);
 			}
 			else {
-				dataConnection=new DataConnection(textReportingServerCompName.Text,"mysql",textReportingServerMySqlUser.Text,textMysqlPass.Text,DatabaseType.MySql);
+				dataConnection=DataConnection.CreateForPreferenceServer(textReportingServerCompName.Text,"mysql",textReportingServerMySqlUser.Text,
+					textMysqlPass.Text,PrefC.ReportingServer.SslCa);
 			}
 			try {	//if this next step fails, table will simply have 0 rows
 				table=dataConnection.GetTable(command,false);

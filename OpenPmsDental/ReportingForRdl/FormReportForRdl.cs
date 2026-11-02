@@ -22,6 +22,8 @@ namespace OpenPmsDental{
 		///<summary></summary>
 		public FormReportForRdl()
 		{
+			//Every report connection goes through the program's connection rule (docs/specs/db-connection-security.md).
+			RdlEngineConfig.CheckConnection=DataConnectionBase.DbConnectionSecurity.CheckReportConnection;
 			//
 			// Required for Windows Form Designer support
 			//

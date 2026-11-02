@@ -109,6 +109,8 @@
     <Compile Include="DataConnection.cs" />
     <Compile Include="DataConnectionEvent.cs" />
     <Compile Include="DbAdminMysql.cs" />
+    <Compile Include="DbConnectionConfig.cs" />
+    <Compile Include="DbConnectionSecurity.cs" />
     <Compile Include="DbQueryObj.cs" />
     <Compile Include="MySqlHelper.cs" />
     <Compile Include="QueryMonitor.cs" />
