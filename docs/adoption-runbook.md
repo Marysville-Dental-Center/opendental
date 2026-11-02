@@ -47,8 +47,10 @@ same code):
    the ten Insurance History code preferences of Open Dental 25.3 (Preferences, Treatment Plan) into code groups, as Open Dental 26.1 shows
    Insurance History from code groups: the code group of each category whose preference has codes is marked Show In History, with the
    preference's first code as its History Proc Code (the SRP group with four quadrant rows), the preference's codes the group lacks are added
-   to it, and a category without a code group of its kind gets a new group; the preferences themselves are kept. Step 0.2 lists all these
-   changes in advance (`migration-preview`); step 4 checks that adoption made exactly them.
+   to it, and a category without a code group of its kind gets a new group; the preferences themselves are kept. Then the routine
+   maintenance steps create this program's own maintenance tables (empty) and give every user group that has Security Admin the two new
+   routine maintenance permissions (Maintenance Setup and Maintenance Record Completion). Step 0.2 lists all these changes in advance
+   (`migration-preview`); step 4 checks that adoption made exactly them.
 7. records the finish and adds a security log entry
 
 All tables are MyISAM: there are no transactions. If anything goes wrong, the way back is the original. That is why the procedure never
@@ -279,6 +281,12 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature
   quadrant rows" for the SRP group, "codes added: ..." when the preference held codes the group lacks, and "Added code group '<name>' (<kind>,
   ItemOrder N), ..." for a category without a group of its kind. These parts are the lines the adoption log will show. On a database whose
   ten Insurance History preferences are all empty it says `changes nothing: none of the ten InsHist*Codes preferences has a value`.
+- `Step 2026110206 (routine maintenance permissions) adds N grouppermission row(s) (FKey 0, no date limit) for the N user group(s) with
+  Security Admin: MaintenanceSetup to N (user group ...); MaintenanceRecord to N (user group ...).` It quotes the lines the adoption log will
+  show ("Granted MaintenanceSetup to N Security Admin user group(s)", the same for MaintenanceRecord). Every Open Dental database has a
+  Security Admin group, so this is normal: the people who run the program's security get the new routine maintenance permissions and can
+  give them to others. `... changes nothing: each of the N user group(s) with Security Admin has both permissions already.` is just as
+  normal.
 - `Plug-ins: N program row(s) name a plug-in DLL (PluginDllName); a plug-in built for Open Dental does not load in this program ...: <ProgName>
   (ProgramNum N, enabled, <dll>); ...` (or `Plug-ins: no program row names a plug-in DLL ...`). Adoption changes none of these rows, but a
   plug-in built against Open Dental's assemblies stops loading after the switch, without a message. Give the list to the developers before
@@ -287,7 +295,7 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature
 **Write the numbers on the checklist**: NULL notes, preferences, PhoneExtension grants moved, user groups for BlockoutAdd and for
 BlockoutDelete, the DXC Patient Credit Score row disabled (ProgramNum, or "none") and its buttons deleted (ToolButItemNum, or "none"), the
 UDS+ row's DisplayReportNum of the sealant measure, the Public Health rows moved, the user groups granted the UDS+
-report, and the code groups marked for Insurance History (CodeGroupNum and History Proc Code) and added (name). Step 4 must show exactly these. Zero PhoneExtension grants is normal (Open Dental's Set All grants it, so it is there only where
+report, the user groups granted the two routine maintenance permissions, and the code groups marked for Insurance History (CodeGroupNum and History Proc Code) and added (name). Step 4 must show exactly these. Zero PhoneExtension grants is normal (Open Dental's Set All grants it, so it is there only where
 someone used Set All).
 
 0.3. **Inventory of Open Dental services and jobs** (for step 2): on every Windows computer of the office that runs Open Dental, its services
@@ -587,10 +595,13 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   ODUdsPlus" with the step 0.2 number
 - step 2026110104 ("Insurance History rows from the InsHist preferences to code groups (26.1)") "changed the database:", followed by the
   lines of step 0.2's Insurance History list ("Code group '<name>' (CodeGroupNum N) shown in Insurance History, ..." and "Added code group
-  ..."), each once, and "Insurance History: ..." notes for an added group and for perio quadrant preferences that held different codes; then
-  "Fork migrations: 21 step(s) run, 0 already done. Fork schema level 2026110205.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)."
+  ..."), each once, and "Insurance History: ..." notes for an added group and for perio quadrant preferences that held different codes
+- step 2026110206 ("Routine maintenance: grant Maintenance Setup and Maintenance Record Completion to the Security Admin groups") "changed the
+  database:", followed by "Granted MaintenanceSetup to N Security Admin user group(s)" and "Granted MaintenanceRecord to N Security Admin user
+  group(s)" with the step 0.2 numbers (or "found nothing to change" if step 0.2 said it changes nothing); then
+  "Fork migrations: 23 step(s) run, 0 already done. Fork schema level 2026110207.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)."
   and "Adoption finished."
-- "Fork migration, every step again: 21 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables), plus 5 table(s) of this program that match their declarations."
+- "Fork migration, every step again: 23 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables), plus 5 table(s) of this program that match their declarations."
 - the rehash of step 5
 - "Row check against opendental ..." with twelve lines and no line starting `FAIL`: `preference` (the markers added, "N of the N 25.4 and 26.1
   preference(s) migration-preview lists added with their defaults", `DataBaseVersion` and `ProgramVersion` set to 99.0.0.0, the preferences of
@@ -601,7 +612,8 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   or column changed, no other row added, none removed"), `grouppermission` ("N of the N Open Dental 25.3 PhoneExtension grant(s) moved from
   272 to 274; BlockoutAdd granted to N of N user group(s), BlockoutDelete granted to N of N user group(s), as migration-preview lists, ...;
   Reports for the UDS+ report row granted to N of the N user group(s) that may run the FQHC Dental Sealant Measure, as migration-preview
-  lists; no other row changed, added or removed"), `codegroup` ("N of the N code group(s) migration-preview lists marked Show In History as
+  lists; MaintenanceSetup and MaintenanceRecord for the user groups with Security Admin: N of the N planned row(s) added (FKey 0, no date
+  limit), as migration-preview lists; no other row changed, added or removed"), `codegroup` ("N of the N code group(s) migration-preview lists marked Show In History as
   planned, ProcCodes and the history columns only (...); N of the N planned code group(s) added with the planned values (CodeGroupNum ...); no
   other row or column changed, none removed"), `program` ("N of the N DXC Patient Credit Score row(s) migration-preview lists disabled,
   Enabled only (ProgramNum N); no other row or column changed, none added or removed", or "identical row by row (migration-preview lists no

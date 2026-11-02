@@ -56,8 +56,9 @@ Commands:
                  (PhoneExtension grants moved from 272 to 274, BlockoutAdd and BlockoutDelete granted); the discontinued DXC
                  Patient Credit Score program link that step 2026110101 disables (Enabled only) and whose toolbar buttons it
                  deletes; the row of the 25.4 UDS+ report that step 2026110103 adds after the FQHC Dental Sealant Measure (later
-                 Public Health rows moved down one place, the sealant measure's report grants copied); and the code groups step
-                 2026110104 marks for Insurance History. adopt's row check later requires exactly these changes.
+                 Public Health rows moved down one place, the sealant measure's report grants copied); the code groups step
+                 2026110104 marks for Insurance History; and the Maintenance Setup and Maintenance Record Completion grants step
+                 2026110206 gives the user groups with Security Admin. adopt's row check later requires exactly these changes.
                  Read-only. Exit code 0.
   copy           Copies ORIGINAL into the NEW database on the same server (runbook step 3.2): CREATE TABLE ... LIKE, the
                  AUTO_INCREMENT counters and INSERT ... SELECT, so the copy is exact (FLOAT values included) and no row leaves the
@@ -67,7 +68,8 @@ Commands:
                  the fork migration with every step again, the schema verifier (Open Dental 26.1.70) and SecurityHash.RehashNow,
                  exactly as the rehearsal does, then checks row by row against --original what adoption changed in preference,
                  documentmisc, securitylog, securityloghash, displayreport (only the renames, the UDS+ row and the moves
-                 migration-preview lists), grouppermission (only the permission split and the UDS+ report grants it lists),
+                 migration-preview lists), grouppermission (only the permission split, the UDS+ report grants and the routine
+                 maintenance grants to the Security Admin groups it lists),
                  codegroup (only the Insurance History groups it lists), program and toolbutitem (only the DXC Patient Credit
                  Score row disabled and its buttons deleted, as it lists), claimpayment.Note and DateLastAssigned, the new tables
                  and columns (empty, at their defaults) and updatehistory. Before it changes
