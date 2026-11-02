@@ -309,7 +309,7 @@ namespace CodeBase.Controls {
 
 		///<summary>On attempting to navigate, if DoBlockNavigation is true, cancel the event. A page shown with NavigateToHtml stays: anything else is
 		///cancelled, and a link the user clicked raises LinkClicked. WebView2 counts its own Navigate and GoBack calls, Back and Forward (mouse
-		///buttons, keys) and reloads as user initiated too, so a navigation to a page file of this control, or one that is not to a new document,
+		///buttons, keys) and reloads as user initiated too, so a navigation to a page this control showed, or one that is not to a new document,
 		///is cancelled without it.</summary>
 		public void CoreWebView2_NavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e) {
 			if(_uriDocument!=null) {
