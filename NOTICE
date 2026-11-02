@@ -70,15 +70,22 @@ WeCantSpell.Hunspell submodules at the commits that commit pins.
 Use over a network: by section 13 of the GNU GPL version 3, the special
 requirements of section 13 of the GNU AGPL, concerning interaction through
 a network, apply to the combination as such, that is, to the program as a
-whole and not only to PDFsharp and MigraDoc. Anyone who runs a modified
-version of the program and lets users interact with it remotely through a
-computer network (a hosted Middle Tier, for example) must offer those users
-the Corresponding Source of the whole modified program, from a network
-server at no charge. That surely applies when PDFsharp or MigraDoc are
-modified; whether a change to the other parts of the program alone
-triggers it is not settled, so seek legal advice before offering such a
-version over a network. Running the unmodified program, or a modified
-version that no one reaches over a network, does not trigger it.
+whole and not only to PDFsharp and MigraDoc. Those requirements apply to a
+modified version, and the PDFsharp built here is itself a modified version
+(see above), so they apply to the program as this project distributes it,
+not only to versions that someone else modifies. Anyone who lets users
+interact with any version of the program remotely through a computer
+network (a hosted Middle Tier, for example, even one without local changes)
+must prominently offer those users the Corresponding Source of the whole
+program they interact with, from a network server at no charge: for the
+program as released, a link to that release's source archive
+OpenPmsDental-<version>-source.zip; for a version with further changes,
+the source of that version. Whether a change to the parts outside PDFsharp
+and MigraDoc alone would trigger this is not settled, but that decides
+nothing for a version built from this repository, which always holds the
+modified PDFsharp. Seek legal advice before offering the program over a
+network. Running the program where no one interacts with it remotely
+through a computer network does not trigger it.
 
 Third-party components
 ----------------------

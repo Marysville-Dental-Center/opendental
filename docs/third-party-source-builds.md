@@ -73,6 +73,8 @@ empira's NuGet files were built from a commit that is not public (their informat
 
 `tests/PdfLibraryTests` checks all of this.
 
+Because of this file, every build of this repository contains a modified version of PDFsharp, so the AGPL's section 13 (through GPL 3.0 section 13, for the program as a whole) applies to any version of the program that users reach over a network, not only to versions someone else modifies: a hosted Middle Tier, even one without local changes, must prominently offer its users the Corresponding Source, such as a link to the release's source archive (NOTICE; [owner-questions.md](owner-questions.md), decision 13).
+
 ## The source archive
 
 Every release publishes its Corresponding Source next to the setup: `tools/Build-Release.ps1` writes `OpenPmsDental-<version>-source.zip`, the repository at the release commit with every submodule at its pinned commit (`git archive`) and `SOURCE-COMMITS.txt`, so the source of everything shipped stays available even if an upstream repository goes away ([release-process.md](release-process.md)). The script refuses to build when a submodule is not checked out at its pin.
