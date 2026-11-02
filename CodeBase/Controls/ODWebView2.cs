@@ -45,6 +45,18 @@ namespace CodeBase.Controls {
 		private bool _isInitStarted=false;
 		///<summary>Backs AreBrowserKeysEnabled.</summary>
 		private bool _areBrowserKeysEnabled=false;
+		///<summary>The start failure this control last reported (Init and the initialization's event both see the same exception), so it is logged once.</summary>
+		private Exception _exceptionStartReported=null;
+		///<summary>True once a WebView2 Runtime that would not start was shown to the user in this program session, so the message shows once: the
+		///inbox's two previews and every wiki window would otherwise each show it. Locked by _lockStartFailure.</summary>
+		private static bool _isStartFailureShown=false;
+		private static object _lockStartFailure=new object();
+		///<summary>Whether the WebView2 Runtime is installed, as Init checks it (IsRuntimeAvailable). LibWebTests replaces it.</summary>
+		internal static Func<bool> FuncIsRuntimeAvailable=IsRuntimeAvailable;
+		///<summary>Creates the environment Init uses (CreateEnvironmentAsync). LibWebTests replaces it with one that fails.</summary>
+		internal static Func<Task<CoreWebView2Environment>> FuncCreateEnvironment=CreateEnvironmentAsync;
+		///<summary>Shows Init's messages to the user (a message box). LibWebTests replaces it, so no window shows.</summary>
+		internal static Action<string> ActionShowMessage=x => MessageBox.Show(x,"Error");
 
 		///<summary>Raised when the user clicks a link (or opens one in a new window) in a page shown with NavigateToHtml. The navigation is always
 		///cancelled; the window decides what the link does, and a window without a handler ignores links. Never raised for a navigation the page
@@ -127,36 +139,84 @@ namespace CodeBase.Controls {
 		}
 
 		///<summary>Like Init(), but first lets the caller set the controller options, which are created from this control's environment. For example,
-		///x => x.IsInPrivateModeEnabled=true gives an InPrivate profile, so no cookies, history or form data persist in the shared user data folder.</summary>
+		///x => x.IsInPrivateModeEnabled=true gives an InPrivate profile, so no cookies, history or form data persist in the shared user data folder.
+		///Throws ODException after telling the user what is wrong: the runtime is missing, or it would not start (ReportStartFailure, once per
+		///program session).</summary>
 		public async Task Init(Action<CoreWebView2ControllerOptions> actionSetControllerOptions) {
-			bool doShowError=false;
-			try {
-				if(CoreWebView2Environment.GetAvailableBrowserVersionString().IsNullOrEmpty()) {
-					doShowError=true;
-				}
-			}
-			catch(Exception ex) {
-				ex.DoNothing();
-				doShowError=true;
-			}
-			if(doShowError) {
+			if(!FuncIsRuntimeAvailable()) {
 				//The program never downloads or installs the runtime itself: an administrator installs it (Windows 11 includes it).
 				string warning="The Microsoft Edge WebView2 Runtime is not installed on this computer, so this window cannot show its page.\r\n"
 					+"Windows 11 includes it. On other computers an administrator can install it from Microsoft: "+WebView2Policy.RuntimeDownloadUrl;
 				if(ODBuild.IsDebug()) {
 					warning+="\r\nIf you are in debug, make sure you are running in x86 config instead of Any CPU. Also, make sure RequiredDlls\\WebView2Loader.dll has been copied to your bin folder.";
 				}
-				MessageBox.Show(warning,"Error");
+				ActionShowMessage(warning);
 				throw new ODException();
 			}
-			CoreWebView2Environment environment=await CreateEnvironmentAsync();
-			if(actionSetControllerOptions==null) {
-				await this.EnsureCoreWebView2Async(environment);
+			try {
+				CoreWebView2Environment environment=await FuncCreateEnvironment();
+				if(actionSetControllerOptions==null) {
+					await this.EnsureCoreWebView2Async(environment);
+					return;
+				}
+				CoreWebView2ControllerOptions coreWebView2ControllerOptions=environment.CreateCoreWebView2ControllerOptions();
+				actionSetControllerOptions(coreWebView2ControllerOptions);
+				await this.EnsureCoreWebView2Async(environment,coreWebView2ControllerOptions);
+			}
+			catch(Exception ex) {
+				//The runtime is there but would not start: damaged, blocked (antivirus, AppLocker), or the profile folder cannot be used.
+				ReportStartFailure(ex);
+				throw new ODException(ex.Message,ex);
+			}
+		}
+
+		///<summary>Logs a WebView2 Runtime that is installed but would not start, and tells the user once per program session what an administrator
+		///can do about it. Nothing is reported for a control that was closed while it started (the window closed), which is no failure.</summary>
+		private void ReportStartFailure(Exception ex) {
+			if(ex==null || ReferenceEquals(ex,_exceptionStartReported) || IsDisposed || Disposing || IsCancelledByClose(ex)) {
 				return;
 			}
-			CoreWebView2ControllerOptions coreWebView2ControllerOptions=environment.CreateCoreWebView2ControllerOptions();
-			actionSetControllerOptions(coreWebView2ControllerOptions);
-			await this.EnsureCoreWebView2Async(environment,coreWebView2ControllerOptions);
+			_exceptionStartReported=ex;
+			ODException.SwallowAnyException(() => Logger.WriteException(ex,"WebView2"));
+			lock(_lockStartFailure) {
+				if(_isStartFailureShown) {
+					return;
+				}
+				_isStartFailureShown=true;
+			}
+			ActionShowMessage(GetStartFailureMessage(ex));
+		}
+
+		///<summary>True for the error WebView2 gives when the control's window goes away while it starts (E_ABORT, or a cancellation).</summary>
+		private static bool IsCancelledByClose(Exception ex) {
+			return ex is OperationCanceledException || ex is ObjectDisposedException || ex.HResult==unchecked((int)0x80004004);
+		}
+
+		///<summary>The message for a WebView2 Runtime that would not start: the error and its HRESULT, and what an administrator can check.</summary>
+		internal static string GetStartFailureMessage(Exception ex) {
+			string folder;
+			try {
+				folder=WebView2Policy.GetUserDataFolder();
+			}
+			catch(Exception exFolder) {
+				exFolder.DoNothing();
+				folder="%LOCALAPPDATA%\\"+ProgramNames.LocalAppDataFolderName+"\\"+WebView2Policy.UserDataFolderName;
+			}
+			return "The Microsoft Edge WebView2 Runtime could not start, so the program cannot show web pages, emails or wiki pages.\r\n"
+				+"Error: "+ex.Message+" (HRESULT 0x"+ex.HResult.ToString("X8")+")\r\n\r\n"
+				+"An administrator can:\r\n"
+				+"- repair the runtime in Windows Settings, Apps and features (Microsoft Edge WebView2 Runtime, Modify, Repair), or reinstall it from "
+				+"Microsoft: "+WebView2Policy.RuntimeDownloadUrl+"\r\n"
+				+"- check that antivirus software or AppLocker does not block msedgewebview2.exe\r\n"
+				+"- check that this Windows user can write to "+folder+"\r\n\r\n"
+				+"This message shows once until the program is started again.";
+		}
+
+		///<summary>Lets LibWebTests see the once-per-session message again.</summary>
+		internal static void ResetStartFailureShown() {
+			lock(_lockStartFailure) {
+				_isStartFailureShown=false;
+			}
 		}
 
 		/// <summary>
@@ -171,7 +231,11 @@ namespace CodeBase.Controls {
 		/// Turns off host objects, and dev tools outside Debug builds (WebView2Policy.ApplySecureSettings).
 		/// </summary>
 		public void CoreWebView2_InitializationCompleted(object sender, CoreWebView2InitializationCompletedEventArgs e) {
-			if(!e.IsSuccess || this.CoreWebView2==null) {
+			if(!e.IsSuccess) {
+				ReportStartFailure(e.InitializationException);
+				return;
+			}
+			if(this.CoreWebView2==null) {
 				return;
 			}
 			this.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled=AreBrowserKeysEnabled;
@@ -385,8 +449,8 @@ namespace CodeBase.Controls {
 		///listFoldersAllowed (the A to Z folder its images come from, for example), never from another computer's share, and http and https images,
 		///style sheets and fonts only when isRemoteContentAllowed is true: leave it false for html from outside the office, such as a received email
 		///(RemoteContentBlocked then tells the window that the page wanted some). Initializes the control first when needed (the user is told if the
-		///WebView2 Runtime is missing); the page then shows when initialization completes. Never throws for a missing runtime; throws when the page
-		///file cannot be written.</summary>
+		///WebView2 Runtime is missing or would not start); the page then shows when initialization completes. Never throws for a missing or failing
+		///runtime; throws when the page file cannot be written.</summary>
 		public void NavigateToHtml(string html,string folder=null,bool isRemoteContentAllowed=false,List<string> listFoldersAllowed=null) {
 			if(IsDisposed) {
 				return;
@@ -415,7 +479,7 @@ namespace CodeBase.Controls {
 				await Init();
 			}
 			catch(Exception ex) {
-				ex.DoNothing();//Init already told the user what is missing, or another caller is initializing the control.
+				ex.DoNothing();//Init told the user that the runtime is missing or would not start (once per program session), and logged it.
 				return;
 			}
 			ShowPendingDocument();

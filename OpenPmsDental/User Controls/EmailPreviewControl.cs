@@ -538,7 +538,7 @@ namespace OpenPmsDental {
 							patEmail=_patient;//Only allow reconcile if received via Direct.
 						}
 						string strAlterateFilPathXslCCD="";
-						//Try to find a corresponding stylesheet. This will only be used in the event that the default stylesheet cannot be loaded from the EHR dll.
+						//The stylesheet that came with the CCD, if any. DisplayCCD never reads or runs it; the CCD then opens in its window, shown as XML.
 						for(int i=0;i<_listEmailAttachDisplayed.Count;i++) {
 							if(Path.GetExtension(_listEmailAttachDisplayed[i].ActualFileName).ToLower()==".xsl") {
 								strAlterateFilPathXslCCD=FileAtoZ.CombinePaths(EmailAttaches.GetAttachPath(),_listEmailAttachDisplayed[i].ActualFileName);

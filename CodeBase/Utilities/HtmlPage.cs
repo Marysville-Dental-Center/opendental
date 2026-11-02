@@ -6,7 +6,6 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Xml;
-using System.Xml.Xsl;
 
 namespace CodeBase {
 	///<summary>Builds the HTML pages the program generates itself.</summary>
@@ -44,44 +43,47 @@ namespace CodeBase {
 			return Build("<p>"+EncodeWithLineBreaks(text)+"</p>",title,"font-family:sans-serif");
 		}
 
-		///<summary>Transforms xml with the XSLT stylesheet xsl into the HTML a browser shows (the browser itself no longer runs stylesheets). The
-		///stylesheet may not run scripts, read other files (document(), xsl:import and xsl:include) or load external DTDs, so a stylesheet that came
-		///with an email reaches nothing on this computer, and the text of the xml is encoded by the transform. Throws on invalid xml or xsl.</summary>
-		public static string TransformXsl(string xml,string xsl) {
-			XslCompiledTransform xslCompiledTransform=new XslCompiledTransform();
-			using(XmlReader xmlReaderXsl=XmlReader.Create(new StringReader(xsl??""),GetReaderSettings())) {
-				//XsltSettings.Default: no document() function and no embedded scripts. A null resolver: no xsl:import or xsl:include.
-				xslCompiledTransform.Load(xmlReaderXsl,XsltSettings.Default,null);
+		///<summary>A page that shows an XML document as text: indented (IndentXml), encoded, so neither its markup nor the text in it becomes markup
+		///of the page, in a fixed-width font below note (encoded too) when one is given. Nothing of the document runs: no stylesheet is applied, the
+		///program has no XSLT in its own process, because a stylesheet that recurses without end overflows the stack, which ends the program
+		///whatever catches it, and one that loops never returns.</summary>
+		public static string BuildXml(string xml,string note="",string title="") {
+			StringBuilder stringBuilder=new StringBuilder();
+			if(!string.IsNullOrEmpty(note)) {
+				stringBuilder.Append("<p>"+EncodeWithLineBreaks(note)+"</p>");
 			}
-			using(XmlReader xmlReader=XmlReader.Create(new StringReader(xml??""),GetReaderSettings()))
-			using(StringWriter stringWriter=new Utf8StringWriter()) {
-				XmlWriterSettings xmlWriterSettings=xslCompiledTransform.OutputSettings.Clone();
-				xmlWriterSettings.ConformanceLevel=ConformanceLevel.Auto;
-				using(XmlWriter xmlWriter=XmlWriter.Create(stringWriter,xmlWriterSettings)) {
-					xslCompiledTransform.Transform(xmlReader,null,xmlWriter,null);
-				}
-				return stringWriter.ToString();
-			}
+			stringBuilder.Append("<pre style=\"white-space:pre-wrap;word-wrap:break-word\">"+Encode(IndentXml(xml))+"</pre>");
+			return Build(stringBuilder.ToString(),title,"font-family:sans-serif");
 		}
 
-		///<summary>A StringWriter that says UTF-8, so the transform's html output declares the charset the page is written in
-		///(ODWebView2.NavigateToHtml writes UTF-8).</summary>
-		private class Utf8StringWriter:StringWriter {
-			public override Encoding Encoding {
-				get {
-					return Encoding.UTF8;
-				}
+		///<summary>xml with one element per line, indented two spaces per level, without its XML declaration. The document type declaration is
+		///skipped, so no entity expands and nothing external is read. A document that cannot be read that way (not well-formed, or it uses an entity
+		///of its document type) is returned as it is. Null gives "".</summary>
+		public static string IndentXml(string xml) {
+			if(string.IsNullOrWhiteSpace(xml)) {
+				return xml??"";
 			}
-		}
-
-		///<summary>An internal DTD subset is read (some stylesheets define entities there); nothing external is ever loaded, and entities may not
-		///expand without limit.</summary>
-		private static XmlReaderSettings GetReaderSettings() {
 			XmlReaderSettings xmlReaderSettings=new XmlReaderSettings();
-			xmlReaderSettings.DtdProcessing=DtdProcessing.Parse;
+			xmlReaderSettings.DtdProcessing=DtdProcessing.Ignore;
 			xmlReaderSettings.XmlResolver=null;
-			xmlReaderSettings.MaxCharactersFromEntities=1000000;
-			return xmlReaderSettings;
+			xmlReaderSettings.IgnoreWhitespace=true;
+			XmlWriterSettings xmlWriterSettings=new XmlWriterSettings();
+			xmlWriterSettings.Indent=true;
+			xmlWriterSettings.IndentChars="  ";
+			xmlWriterSettings.OmitXmlDeclaration=true;
+			try {
+				using(XmlReader xmlReader=XmlReader.Create(new StringReader(xml),xmlReaderSettings))
+				using(StringWriter stringWriter=new StringWriter()) {
+					using(XmlWriter xmlWriter=XmlWriter.Create(stringWriter,xmlWriterSettings)) {
+						xmlWriter.WriteNode(xmlReader,true);
+					}
+					return stringWriter.ToString();
+				}
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//Not well-formed, or an entity of the skipped document type: shown as it came.
+				return xml;
+			}
 		}
 	}
 }

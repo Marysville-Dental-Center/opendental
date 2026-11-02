@@ -12,17 +12,16 @@ namespace OpenPmsDental {
 		public bool DidPrint;
 		///<summary>Will be set to the patient that this CCD message is indicated for.  Can be null if not meant for incorporating into a patient's account.</summary>
 		private Patient _patCur;
-		///<summary>The display stylesheet (XSLT) of the document. The browser no longer runs stylesheets itself, so the program turns the document
-		///into HTML with it (HtmlPage.TransformXsl: no scripts, no other files) and shows that, with scripts off.</summary>
-		private string _xslText;
+		///<summary>The line shown above the document, for example that the stylesheet that came with it was not run. Can be empty.</summary>
+		private string _note;
 
-		///<summary>Patient can be null.  If null, or if PatNum is 0, reconciles will not be available. xslText is the document's display stylesheet.</summary>
-		public FormEhrSummaryCcdEdit(string strXmlFilePath,Patient patCur,string xslText) {
+		///<summary>Patient can be null.  If null, or if PatNum is 0, reconciles will not be available. note is shown above the document.</summary>
+		public FormEhrSummaryCcdEdit(string strXmlFilePath,Patient patCur,string note) {
 			InitializeComponent();
 			InitializeLayoutManager();
 			StrXmlFilePath=strXmlFilePath;
 			_patCur=patCur;
-			_xslText=xslText;
+			_note=note;
 		}
 
 		private void FormEhrSummaryCcdEdit_Load(object sender,EventArgs e) {
@@ -35,15 +34,16 @@ namespace OpenPmsDental {
 			Cursor=Cursors.WaitCursor;
 			string html;
 			try {
-				html=HtmlPage.TransformXsl(File.ReadAllText(StrXmlFilePath),_xslText);
+				//The document is shown as XML, encoded, so patient data is never markup. No stylesheet runs in the program: one that came with an email
+				//could recurse without end, and the stack overflow would end the program whatever catches it, or loop for ever.
+				html=HtmlPage.BuildXml(File.ReadAllText(StrXmlFilePath),_note);
 			}
 			catch(Exception ex) {
-				//Patient data in the message is encoded, never shown as markup.
-				html=HtmlPage.BuildText(Lan.g(this,"The document could not be shown with its stylesheet.")+"\r\n"+ex.Message);
+				html=HtmlPage.BuildText(Lan.g(this,"The document could not be shown.")+"\r\n"+ex.Message);
 			}
 			webViewMain.LinkClicked+=webViewMain_LinkClicked;
 			try {
-				//The document and its stylesheet can come with a received email: the page loads no file but its own and nothing from the web.
+				//The document can come with a received email: the page loads no file but its own and nothing from the web.
 				webViewMain.NavigateToHtml(html);
 			}
 			catch(Exception ex) {

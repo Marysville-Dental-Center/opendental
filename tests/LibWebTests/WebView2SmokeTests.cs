@@ -4,8 +4,10 @@
 // navigation the page starts by itself (a meta refresh, a frame), the earlier of two pages shown back to back and Back are cancelled without
 // raising it. A second test checks what a page may load: files from its own folder and the allowed folders only (never the system's or another
 // computer's share), and http images only when the window allows them. Every address is local or under .invalid and is cancelled or answered
-// before a request goes out, and the browser runs with its background networking off: no network. Skipped (inconclusive) when the WebView2
-// Runtime is missing, when no window can be shown, or when LIBWEB_SKIP_WEBVIEW2=1.
+// before a request goes out, and the browser runs with its background networking off: no network. Inconclusive only when the WebView2 Runtime
+// is missing or does not start here (in a plain WebView2 control, none of the program's code; also when no window can be shown), or when
+// LIBWEB_SKIP_WEBVIEW2=1. Once it started, any error fails the test: an exception of the control, one in an event handler on the window's
+// thread (caught there, never WinForms' error dialog), a message the control shows, or the 3 minutes running out.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -34,7 +36,6 @@ namespace LibWebTests {
 		///<summary>What the off-screen window saw, filled on its thread and checked on the test's.</summary>
 		private class Results {
 			public string BrowserVersion="";
-			public string Error=null;
 			public bool IsLoaded;
 			public string TextName;
 			public string TextScriptCheck;
@@ -71,7 +72,6 @@ namespace LibWebTests {
 		///<summary>What the second test's window saw.</summary>
 		private class ResourceResults {
 			public string BrowserVersion="";
-			public string Error=null;
 			public string UriOutsideImage;
 			public Dictionary<string,int> DictWidthsUntrusted=new Dictionary<string,int>();
 			public Dictionary<string,int> DictWidthsShare=new Dictionary<string,int>();
@@ -166,12 +166,85 @@ namespace LibWebTests {
 			}
 		}
 
-		///<summary>Runs funcRun in a small off-screen window on a thread of its own and returns the error it threw, or null. Inconclusive when the
-		///window does not finish within 3 minutes.</summary>
-		private static string RunOffScreen(Func<Form,Task> funcRun) {
-			string error=null;
+		///<summary>How an off-screen run ended: the first error (an exception of the test's code or of the control, or the time running out), and
+		///whether the WebView2 Runtime had started by then.</summary>
+		private class OffScreenRun {
+			private object _lock=new object();
+			private string _error=null;
+			private bool _isRuntimeStarted=false;
+
+			public string Error {
+				get {
+					lock(_lock) {
+						return _error;
+					}
+				}
+			}
+
+			///<summary>True once a plain WebView2 control started in the test's environment (StartRuntime). Before that an error means that the
+			///runtime cannot be used here; after it, an error is a failure of the code under test.</summary>
+			public bool IsRuntimeStarted {
+				get {
+					lock(_lock) {
+						return _isRuntimeStarted;
+					}
+				}
+			}
+
+			public void SetRuntimeStarted() {
+				lock(_lock) {
+					_isRuntimeStarted=true;
+				}
+			}
+
+			///<summary>Keeps the first error only.</summary>
+			public void SetError(string error) {
+				lock(_lock) {
+					if(_error==null) {
+						_error=error;
+					}
+				}
+			}
+
+			///<summary>Inconclusive when the runtime never started here; a failure of the test when it did.</summary>
+			public void AssertNoError() {
+				string error=Error;
+				if(error==null) {
+					return;
+				}
+				if(!IsRuntimeStarted) {
+					Assert.Inconclusive("WebView2 could not be used here: "+error);
+				}
+				Assert.Fail("Failed after the WebView2 Runtime started: "+error);
+			}
+		}
+
+		///<summary>Proves that the runtime starts here, with the test's environment, in a plain WebView2 control (none of the program's code; it
+		///shows nothing and stays until the window closes, so the browser process keeps running), and tells offScreenRun so. Everything after it,
+		///ODWebView2's own initialization included, is the code under test.</summary>
+		private static async Task StartRuntime(Form form,CoreWebView2Environment coreWebView2Environment,OffScreenRun offScreenRun) {
+			Microsoft.Web.WebView2.WinForms.WebView2 webView2=new Microsoft.Web.WebView2.WinForms.WebView2();
+			webView2.Size=new Size(10,10);
+			form.Controls.Add(webView2);
+			await webView2.EnsureCoreWebView2Async(coreWebView2Environment);
+			offScreenRun.SetRuntimeStarted();
+		}
+
+		///<summary>Runs funcRun in a small off-screen window on a thread of its own. An exception in an event handler on that thread (the control's,
+		///or a continuation of funcRun) goes to Application.ThreadException, never to WinForms' error dialog, which would block the thread: it is
+		///recorded and closes the window. The window may take 3 minutes. Check the result with OffScreenRun.AssertNoError.</summary>
+		private static OffScreenRun RunOffScreen(Func<Form,OffScreenRun,Task> funcRun) {
+			OffScreenRun offScreenRun=new OffScreenRun();
 			Thread thread=new Thread(() => {
+				//Before the thread's first window. Thread scope: the test host may have windows on other threads.
+				Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException,true);
+				Form formRun=null;
+				Application.ThreadException+=(sender,e) => {
+					offScreenRun.SetError("Unhandled on the window's thread: "+e.Exception);
+					formRun?.Close();
+				};
 				using Form form=new Form();
+				formRun=form;
 				form.StartPosition=FormStartPosition.Manual;
 				form.Location=new Point(-6000,-6000);//Off screen; WebView2 still lays out and runs the page.
 				form.Size=new Size(600,500);
@@ -179,10 +252,10 @@ namespace LibWebTests {
 				form.FormBorderStyle=FormBorderStyle.None;
 				form.Load+=async (sender,e) => {
 					try {
-						await funcRun(form);
+						await funcRun(form,offScreenRun);
 					}
 					catch(Exception ex) {
-						error=ex.GetType().Name+": "+ex.Message;
+						offScreenRun.SetError(ex.ToString());
 					}
 					form.Close();
 				};
@@ -190,16 +263,23 @@ namespace LibWebTests {
 			});
 			thread.SetApartmentState(ApartmentState.STA);
 			thread.IsBackground=true;
+			//A message from the control (ODWebView2.ReportStartFailure) would block the window's thread: recorded as an error instead.
+			Action<string> actionShowMessageOld=ODWebView2.ActionShowMessage;
+			ODWebView2.ActionShowMessage=x => offScreenRun.SetError("The control showed a message: "+x);
 			thread.Start();
 			if(!thread.Join(TimeSpan.FromMinutes(3))) {
-				Assert.Inconclusive("The WebView2 window did not finish within 3 minutes.");
+				//The window's thread still runs: it keeps the recording seam, so it never shows a message box in the test host.
+				offScreenRun.SetError("The WebView2 window did not finish within 3 minutes.");
+				return offScreenRun;
 			}
-			return error;
+			ODWebView2.ActionShowMessage=actionShowMessageOld;
+			return offScreenRun;
 		}
 
-		private static async Task Run(Form form,string folder,Results results) {
+		private static async Task Run(Form form,OffScreenRun offScreenRun,string folder,Results results) {
 			CoreWebView2Environment coreWebView2Environment=await CreateEnvironmentAsync(folder);
 			results.BrowserVersion=coreWebView2Environment.BrowserVersionString;
+			await StartRuntime(form,coreWebView2Environment,offScreenRun);
 			ODWebView2 odWebView2=new ODWebView2();
 			odWebView2.Dock=DockStyle.Fill;
 			form.Controls.Add(odWebView2);
@@ -283,16 +363,14 @@ namespace LibWebTests {
 			SkipWithoutRuntime();
 			string folder=TestPaths.NewTempFolder("smoke");
 			Results results=new Results();
+			OffScreenRun offScreenRun;
 			try {
-				string error=RunOffScreen(form => Run(form,folder,results));
-				results.Error=error;
+				offScreenRun=RunOffScreen((form,run) => Run(form,run,folder,results));
 			}
 			finally {
 				TestPaths.DeleteFolder(folder);
 			}
-			if(results.Error!=null) {
-				Assert.Inconclusive("WebView2 could not be used here: "+results.Error);
-			}
+			offScreenRun.AssertNoError();
 			string details="WebView2 Runtime "+results.BrowserVersion+"; navigations: "+string.Join(" | ",results.ListNavigations)
 				+"; frames: "+string.Join(" | ",results.ListFrames)+"; links: "+string.Join(" | ",results.ListLinks.Select(x => x.Uri+(x.IsNewWindow ? " (new)" : "")));
 			Console.WriteLine(details);
@@ -369,9 +447,10 @@ namespace LibWebTests {
 			return dictWidths;
 		}
 
-		private static async Task RunResources(Form form,string folder,ResourceResults results) {
+		private static async Task RunResources(Form form,OffScreenRun offScreenRun,string folder,ResourceResults results) {
 			CoreWebView2Environment coreWebView2Environment=await CreateEnvironmentAsync(folder);
 			results.BrowserVersion=coreWebView2Environment.BrowserVersionString;
+			await StartRuntime(form,coreWebView2Environment,offScreenRun);
 			ODWebView2 odWebView2=new ODWebView2();
 			odWebView2.Dock=DockStyle.Fill;
 			form.Controls.Add(odWebView2);
@@ -436,15 +515,14 @@ namespace LibWebTests {
 			SkipWithoutRuntime();
 			string folder=TestPaths.NewTempFolder("resources");
 			ResourceResults results=new ResourceResults();
+			OffScreenRun offScreenRun;
 			try {
-				results.Error=RunOffScreen(form => RunResources(form,folder,results));
+				offScreenRun=RunOffScreen((form,run) => RunResources(form,run,folder,results));
 			}
 			finally {
 				TestPaths.DeleteFolder(folder);
 			}
-			if(results.Error!=null) {
-				Assert.Inconclusive("WebView2 could not be used here: "+results.Error);
-			}
+			offScreenRun.AssertNoError();
 			Func<List<Request>,string> funcRequests=list => string.Join(" | ",list.Select(x => x.Uri+(x.IsBlocked ? " blocked" : "")));
 			string details="WebView2 Runtime "+results.BrowserVersion
 				+"; untrusted: "+string.Join(",",results.DictWidthsUntrusted.Select(x => x.Key+"="+x.Value))+" requests: "+funcRequests(results.ListRequestsUntrusted)
