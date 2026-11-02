@@ -49,8 +49,8 @@ namespace MaintenanceTests {
 		public const long GROUP_FRONT=20;
 
 		///<summary>The tables the tests write. Emptied before every database test.</summary>
-		private static readonly string[] _arrayTablesWritten=new string[] { "alertitem","alertread","equipment","maintfield","maintitem","maintrecord",
-			"maintrecordvalue","maintstep","preference","securitylog","securityloghash","usergroup","usergroupattach","userod" };
+		private static readonly string[] _arrayTablesWritten=new string[] { "alertitem","alertread","equipment","grouppermission","maintfield","maintitem",
+			"maintrecord","maintrecordvalue","maintstep","preference","securitylog","securityloghash","usergroup","usergroupattach","userod" };
 
 		[AssemblyInitialize]
 		public static void AssemblyInitialize(TestContext testContext) {
@@ -105,6 +105,29 @@ namespace MaintenanceTests {
 			return ForkMigrationRunner.GetSteps().Where(x => x.Level>=2026110201 && x.Level<=2026110209).OrderBy(x => x.Level).ToList();
 		}
 
+		///<summary>The steps that create the routine maintenance tables (levels 2026110201 to 2026110205), in level order.</summary>
+		public static List<ForkMigrationStep> GetMaintenanceTableSteps() {
+			return GetMaintenanceSteps().Where(x => x.Level<=2026110205).ToList();
+		}
+
+		///<summary>Gives a user group a permission as an administrator does (FKey 0, no date limit) and refreshes the permission cache.</summary>
+		public static void Grant(long userGroupNum,EnumPermType permType) {
+			DataCore.NonQ("INSERT INTO grouppermission (NewerDate,NewerDays,UserGroupNum,PermType,FKey) VALUES('0001-01-01',0,"+userGroupNum+","
+				+(int)permType+",0)");
+			GroupPermissions.RefreshCache();
+		}
+
+		///<summary>Adds a user group (and puts the users in it), and refreshes the caches.</summary>
+		public static void AddGroup(long userGroupNum,string description,params long[] arrayUserNums) {
+			DataCore.NonQ("INSERT INTO usergroup (UserGroupNum,Description) VALUES ("+userGroupNum+",'"+POut.String(description)+"')");
+			foreach(long userNum in arrayUserNums) {
+				DataCore.NonQ("INSERT INTO usergroupattach (UserNum,UserGroupNum) VALUES ("+userNum+","+userGroupNum+")");
+			}
+			UserGroups.RefreshCache();
+			UserGroupAttaches.RefreshCache();
+			Userods.RefreshCache();
+		}
+
 		public static void Connect() {
 			new DataConnection().SetDb(Server,DbName,User,Password,"","",DatabaseType.MySql,true);
 		}
@@ -135,6 +158,7 @@ namespace MaintenanceTests {
 			Userods.RefreshCache();
 			UserGroups.RefreshCache();
 			UserGroupAttaches.RefreshCache();
+			GroupPermissions.RefreshCache();
 			Security.CurUser=Userods.GetUser(USER_ADMIN);
 		}
 

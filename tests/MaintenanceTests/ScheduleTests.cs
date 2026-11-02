@@ -214,6 +214,37 @@ namespace MaintenanceTests {
 				new List<MaintRecord> { Done(D(2026,11,30),DateTime.MinValue) }));
 		}
 
+		///<summary>N years after the last completion (owner decision of 2026-11-02), with the month-end and February 29 handling of the fixed
+		///schedules: AddMonths(12 times N) from the latest date done.</summary>
+		[TestMethod]
+		public void AfterCompletion_NYearsAfterTheLastDateDone_WithFebruary29() {
+			MaintItem maintItem=AfterCompletion(1,EnumMaintIntervalUnit.Years,D(2026,11,10));
+			//Never done: the anchor is the first due date.
+			Assert.AreEqual(D(2026,11,10),MaintSchedules.GetDueDate(maintItem,new List<MaintRecord>()));
+			//Done late, on November 20: a year after that, whatever the due date was.
+			Assert.AreEqual(D(2027,11,20),MaintSchedules.GetDueDate(maintItem,new List<MaintRecord> { Done(D(2026,11,20),D(2026,11,10)) }));
+			//The latest date done counts, not the latest entry.
+			Assert.AreEqual(D(2028,3,1),MaintSchedules.GetDueDate(maintItem,new List<MaintRecord> { Done(D(2027,3,1),D(2026,11,10)),
+				Done(D(2026,11,20),D(2026,11,10)) }));
+			//Done on February 29: February 28 in the next years, February 29 again four years on.
+			List<MaintRecord> listLeapDay=new List<MaintRecord> { Done(D(2028,2,29),D(2028,2,29)) };
+			Assert.AreEqual(D(2029,2,28),MaintSchedules.GetDueDate(maintItem,listLeapDay));
+			Assert.AreEqual(D(2030,2,28),MaintSchedules.GetDueDate(AfterCompletion(2,EnumMaintIntervalUnit.Years,D(2026,1,1)),listLeapDay));
+			Assert.AreEqual(D(2032,2,29),MaintSchedules.GetDueDate(AfterCompletion(4,EnumMaintIntervalUnit.Years,D(2026,1,1)),listLeapDay));
+			//Done on February 28 of a year before a leap year: February 28, not 29 (counted from the day done).
+			Assert.AreEqual(D(2028,2,28),MaintSchedules.GetDueDate(maintItem,new List<MaintRecord> { Done(D(2027,2,28),DateTime.MinValue) }));
+			//The anchor on February 29, never done: due that day; the status follows the usual rule.
+			MaintItem maintItemLeapAnchor=AfterCompletion(1,EnumMaintIntervalUnit.Years,D(2028,2,29));
+			Assert.AreEqual(D(2028,2,29),MaintSchedules.GetDueDate(maintItemLeapAnchor,new List<MaintRecord>()));
+			Assert.AreEqual(EnumMaintStatus.Overdue,MaintSchedules.GetStatus(maintItemLeapAnchor,D(2028,2,29),D(2028,3,1)));
+			//The same handling as a fixed yearly schedule from a February 29 anchor.
+			Assert.AreEqual(MaintSchedules.GetOccurrence(Interval(1,EnumMaintIntervalUnit.Years,D(2028,2,29)),1),
+				MaintSchedules.GetDueDate(maintItem,listLeapDay));
+			//Past year 9999 there is no date.
+			Assert.AreEqual(DateTime.MinValue,MaintSchedules.GetDueDate(AfterCompletion(5,EnumMaintIntervalUnit.Years,D(2026,1,1)),
+				new List<MaintRecord> { Done(D(9997,6,1),DateTime.MinValue) }));
+		}
+
 		[TestMethod]
 		public void ChangingTheSchedule_KeepsTheCompletionsCovered() {
 			List<MaintRecord> listRecords=new List<MaintRecord> { Done(D(2026,11,2),D(2026,11,2)) };
@@ -256,9 +287,13 @@ namespace MaintenanceTests {
 			maintItem.DateAnchor=DateTime.MinValue;
 			Assert.IsNotNull(MaintSchedules.GetItemError(maintItem),"An anchor date is required.");
 			MaintItem maintItemAfter=AfterCompletion(1,EnumMaintIntervalUnit.Years,D(2026,11,2));
-			Assert.IsNotNull(MaintSchedules.GetItemError(maintItemAfter),"Years are not offered after the last completion.");
-			maintItemAfter.IntervalUnit=EnumMaintIntervalUnit.Months;
-			Assert.IsNull(MaintSchedules.GetItemError(maintItemAfter));
+			Assert.IsNull(MaintSchedules.GetItemError(maintItemAfter),"Years are offered after the last completion too (owner decision of 2026-11-02).");
+			foreach(EnumMaintIntervalUnit intervalUnit in Enum.GetValues(typeof(EnumMaintIntervalUnit))) {
+				maintItemAfter.IntervalUnit=intervalUnit;
+				Assert.IsNull(MaintSchedules.GetItemError(maintItemAfter),intervalUnit.ToString());
+			}
+			maintItemAfter.IntervalUnit=(EnumMaintIntervalUnit)9;
+			Assert.IsNotNull(MaintSchedules.GetItemError(maintItemAfter),"An unknown unit is refused.");
 			Assert.IsNull(MaintSchedules.GetItemError(Weekdays(D(2026,11,2),DayOfWeek.Monday)),"A weekday schedule ignores the interval count.");
 		}
 
@@ -268,6 +303,8 @@ namespace MaintenanceTests {
 			Assert.AreEqual("Every 3 days from 11/2/2026",MaintSchedules.GetScheduleText(Interval(3,EnumMaintIntervalUnit.Days,D(2026,11,2))));
 			Assert.AreEqual("Mon, Wed, Fri",MaintSchedules.GetScheduleText(Weekdays(D(2026,11,2),DayOfWeek.Friday,DayOfWeek.Monday,DayOfWeek.Wednesday)));
 			Assert.AreEqual("2 weeks after last done",MaintSchedules.GetScheduleText(AfterCompletion(2,EnumMaintIntervalUnit.Weeks,D(2026,11,2))));
+			Assert.AreEqual("1 year after last done",MaintSchedules.GetScheduleText(AfterCompletion(1,EnumMaintIntervalUnit.Years,D(2026,11,2))));
+			Assert.AreEqual("5 years after last done",MaintSchedules.GetScheduleText(AfterCompletion(5,EnumMaintIntervalUnit.Years,D(2026,11,2))));
 		}
 		#endregion Validation and text
 	}

@@ -203,6 +203,91 @@ namespace MaintenanceTests {
 			Assert.AreEqual(0,listForFront.Count(x => MaintAlerts.ArrayAlertTypes.Contains(x.Type)));
 		}
 
+		///<summary>Maintenance Setup for the Sterilization group (Assistant A, Assistant B and the hidden former assistant) and for Front (Front
+		///Desk); Assistant A is in Front too, so they qualify twice. An Administrators group (Admin) has Security Admin but not Maintenance Setup.
+		///</summary>
+		private static void GrantSetup() {
+			TestDb.Grant(TestDb.GROUP_STERILIZATION,EnumPermType.MaintenanceSetup);
+			TestDb.Grant(TestDb.GROUP_FRONT,EnumPermType.MaintenanceSetup);
+			DataCore.NonQ("INSERT INTO usergroupattach (UserNum,UserGroupNum) VALUES ("+TestDb.USER_ASSISTANT_A+","+TestDb.GROUP_FRONT+")");
+			TestDb.AddGroup(30,"Administrators",TestDb.USER_ADMIN);
+			TestDb.Grant(30,EnumPermType.SecurityAdmin);
+			TestDb.Grant(30,EnumPermType.MaintenanceRecord);
+		}
+
+		[TestMethod]
+		public void Unassigned_AlertsEveryVisibleMaintenanceSetupUser_OnceEach() {
+			GrantSetup();
+			CollectionAssert.AreEqual(new[] { TestDb.USER_ASSISTANT_A,TestDb.USER_ASSISTANT_B,TestDb.USER_FRONT },MaintAlerts.GetSetupUserNums(),
+				"Each visible user with Maintenance Setup, once; not the hidden user, not Admin (Security Admin and Maintenance Record only).");
+			MaintItem maintItemOverdue=CrudDbTests.InsertItem("Overdue, nobody assigned",_dateToday.AddDays(-3));
+			MaintItem maintItemDueSoon=CrudDbTests.InsertItem("Due soon, nobody assigned",_dateToday.AddDays(2));
+			CrudDbTests.InsertItem("Upcoming, nobody assigned",_dateToday.AddDays(30));
+			MaintItem maintItemAssigned=CrudDbTests.InsertItem("Overdue for Admin",_dateToday.AddDays(-1),userNum:TestDb.USER_ADMIN);
+			MaintAlerts.SyncPlan syncPlan=MaintAlerts.Sync(_dateToday);
+			List<AlertItem> listAlerts=MaintenanceAlerts();
+			Assert.AreEqual(7,listAlerts.Count,Describe(listAlerts));
+			Assert.AreEqual(7,syncPlan.ListInserts.Count);
+			CollectionAssert.AreEquivalent(new[] { TestDb.USER_ASSISTANT_A,TestDb.USER_ASSISTANT_B,TestDb.USER_FRONT },
+				listAlerts.Where(x => x.FKey==maintItemOverdue.MaintItemNum).Select(x => x.UserNum).ToList(),"One alert per user, Assistant A once.");
+			Assert.IsTrue(listAlerts.Where(x => x.FKey==maintItemOverdue.MaintItemNum).All(x => x.Type==AlertType.MaintenanceOverdue && x.Severity==SeverityType.High));
+			CollectionAssert.AreEquivalent(new[] { TestDb.USER_ASSISTANT_A,TestDb.USER_ASSISTANT_B,TestDb.USER_FRONT },
+				listAlerts.Where(x => x.FKey==maintItemDueSoon.MaintItemNum).Select(x => x.UserNum).ToList());
+			Assert.IsTrue(listAlerts.Where(x => x.FKey==maintItemDueSoon.MaintItemNum).All(x => x.Type==AlertType.MaintenanceDueSoon),"Entering the lead time.");
+			Assert.AreEqual(TestDb.USER_ADMIN,listAlerts.Single(x => x.FKey==maintItemAssigned.MaintItemNum).UserNum,
+				"An assigned item still goes to its assignee only.");
+			Assert.AreEqual(0,listAlerts.Count(x => x.UserNum==TestDb.USER_HIDDEN));
+			//The next run (this or another workstation) changes nothing: no duplicates.
+			Assert.IsFalse(MaintAlerts.Sync(_dateToday).IsChanging);
+			CollectionAssert.AreEqual(listAlerts.Select(x => x.AlertItemNum).ToList(),MaintenanceAlerts().Select(x => x.AlertItemNum).ToList());
+			//Each of them sees it in their own Alerts menu.
+			AlertCategoryLinks.GetTableFromCache(doRefreshCache:true);
+			Assert.AreEqual(2,AlertItems.GetAlertsItemsForUser(TestDb.USER_FRONT,0).Count(x => MaintAlerts.ArrayAlertTypes.Contains(x.Type)));
+		}
+
+		[TestMethod]
+		public void Unassigned_TheAlertsStopWhenTheItemGetsAnAssignee() {
+			GrantSetup();
+			MaintItem maintItem=CrudDbTests.InsertItem("Overdue, nobody assigned",_dateToday.AddDays(-3));
+			MaintAlerts.Sync(_dateToday);
+			List<AlertItem> listBefore=MaintenanceAlerts();
+			Assert.AreEqual(3,listBefore.Count,Describe(listBefore));
+			AlertItem alertRead=listBefore.First(x => x.UserNum==TestDb.USER_FRONT);
+			AlertReads.Insert(new AlertRead(alertRead.AlertItemNum,TestDb.USER_FRONT));
+			//Assigned to a user: only that user's alert is left.
+			MaintItem maintItemOld=maintItem.Copy();
+			maintItem.UserNumAssigned=TestDb.USER_ADMIN;
+			MaintItems.Update(maintItem,maintItemOld);
+			MaintAlerts.SyncPlan syncPlan=MaintAlerts.Sync(_dateToday);
+			Assert.AreEqual(3,syncPlan.ListAlertItemNumsDeleted.Count);
+			Assert.AreEqual(1,syncPlan.ListInserts.Count);
+			AlertItem alertAssigned=MaintenanceAlerts().Single();
+			Assert.AreEqual(TestDb.USER_ADMIN,alertAssigned.UserNum);
+			Assert.AreEqual(0,TestDb.GetLong("SELECT COUNT(*) FROM alertread"),"The read marks went with the Maintenance Setup users' alerts.");
+			//Assigned to a group instead: its members, not the Maintenance Setup users who are not in it.
+			maintItemOld=maintItem.Copy();
+			maintItem.UserNumAssigned=0;
+			maintItem.UserGroupNumAssigned=30;
+			MaintItems.Update(maintItem,maintItemOld);
+			MaintAlerts.Sync(_dateToday);
+			Assert.AreEqual(TestDb.USER_ADMIN,MaintenanceAlerts().Single().UserNum);
+			//Nobody again: back to the Maintenance Setup users.
+			maintItemOld=maintItem.Copy();
+			maintItem.UserGroupNumAssigned=0;
+			MaintItems.Update(maintItem,maintItemOld);
+			MaintAlerts.Sync(_dateToday);
+			CollectionAssert.AreEquivalent(new[] { TestDb.USER_ASSISTANT_A,TestDb.USER_ASSISTANT_B,TestDb.USER_FRONT },
+				MaintenanceAlerts().Select(x => x.UserNum).ToList());
+		}
+
+		[TestMethod]
+		public void Unassigned_NobodyWithMaintenanceSetup_NoAlert() {
+			CrudDbTests.InsertItem("Overdue, nobody assigned",_dateToday.AddDays(-3));
+			Assert.AreEqual(0,MaintAlerts.GetSetupUserNums().Count);
+			Assert.IsFalse(MaintAlerts.Sync(_dateToday).IsChanging,"The board still shows the item.");
+			Assert.AreEqual(0,MaintenanceAlerts().Count);
+		}
+
 		[TestMethod]
 		public void Sync_SkipsOtherAlertTypes() {
 			AlertItems.CreateGenericAlert("A generic alert","synthetic");

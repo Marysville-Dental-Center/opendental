@@ -28,6 +28,9 @@ namespace MaintenanceTests {
 			if(maintItem.UserGroupNumAssigned==10) {
 				return new List<long> { 2,3,2 };//A duplicate on purpose: each user gets one alert.
 			}
+			if(maintItem.UserGroupNumAssigned==0) {
+				return new List<long> { 5,6,5 };//Nobody assigned: the users with Maintenance Setup (MaintAlerts.GetSetupUserNums), a duplicate on purpose.
+			}
 			return new List<long>();
 		}
 
@@ -62,12 +65,18 @@ namespace MaintenanceTests {
 		}
 
 		[TestMethod]
-		public void Wanted_GroupAssigneeGetsOneAlertPerMember_UnassignedAndHiddenNone() {
+		public void Wanted_GroupAssigneeGetsOneAlertPerMember_UnassignedGoesToTheSetupUsers_HiddenNone() {
 			MaintItem maintItemHidden=Item(3,_dateToday.AddDays(-1),7,userNum:2);
 			maintItemHidden.IsHidden=true;
-			List<AlertItem> listAlerts=Wanted(Item(1,_dateToday,7,userGroupNum:10),Item(2,_dateToday.AddDays(-1),7),maintItemHidden);
-			CollectionAssert.AreEquivalent(new long[] { 2,3 },listAlerts.Select(x => x.UserNum).ToList());
-			Assert.IsTrue(listAlerts.All(x => x.FKey==1 && x.Type==AlertType.MaintenanceDueSoon));
+			MaintItem maintItemHiddenUnassigned=Item(4,_dateToday.AddDays(-1),7);
+			maintItemHiddenUnassigned.IsHidden=true;
+			List<AlertItem> listAlerts=Wanted(Item(1,_dateToday,7,userGroupNum:10),Item(2,_dateToday.AddDays(-1),7),maintItemHidden,maintItemHiddenUnassigned);
+			CollectionAssert.AreEquivalent(new long[] { 2,3 },listAlerts.Where(x => x.FKey==1).Select(x => x.UserNum).ToList());
+			Assert.IsTrue(listAlerts.Where(x => x.FKey==1).All(x => x.Type==AlertType.MaintenanceDueSoon));
+			CollectionAssert.AreEquivalent(new long[] { 5,6 },listAlerts.Where(x => x.FKey==2).Select(x => x.UserNum).ToList(),
+				"Nobody assigned: each Maintenance Setup user once.");
+			Assert.IsTrue(listAlerts.Where(x => x.FKey==2).All(x => x.Type==AlertType.MaintenanceOverdue));
+			Assert.AreEqual(4,listAlerts.Count,"Hidden items have none, assigned or not.");
 		}
 
 		[TestMethod]

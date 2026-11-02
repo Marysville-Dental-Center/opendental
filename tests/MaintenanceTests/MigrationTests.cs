@@ -1,8 +1,10 @@
-﻿// The routine maintenance schema: the fork-only table declarations, the steps 2026110201 to 2026110205 on scratch databases, the schema
-// verifier's view of them, and the adoption tools' rules (docs/specs/routine-maintenance.md, "Schema migration and the adoption tools").
+﻿// The routine maintenance schema: the fork-only table declarations, the steps 2026110201 to 2026110205 and 2026110207 on scratch databases, the
+// schema verifier's view of them, and the adoption tools' rules (docs/specs/routine-maintenance.md, "Schema migration and the adoption tools").
+// The grant step 2026110206 has its own tests (GrantStepTests).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -105,9 +107,14 @@ namespace MaintenanceTests {
 		}
 
 		[TestMethod]
-		public void Steps_AreLevels2026110201To2026110205_OneTableEach() {
+		public void Steps_AreLevels2026110201To2026110207_TheTablesThenTheGrantThenTheCorrectionColumns() {
 			List<ForkMigrationStep> listSteps=TestDb.GetMaintenanceSteps();
-			CollectionAssert.AreEqual(new long[] { 2026110201,2026110202,2026110203,2026110204,2026110205 },listSteps.Select(x => x.Level).ToList());
+			CollectionAssert.AreEqual(new long[] { 2026110201,2026110202,2026110203,2026110204,2026110205,2026110206,2026110207 },
+				listSteps.Select(x => x.Level).ToList());
+			CollectionAssert.AreEqual(new long[] { 2026110201,2026110202,2026110203,2026110204,2026110205 },
+				TestDb.GetMaintenanceTableSteps().Select(x => x.Level).ToList());
+			Assert.IsInstanceOfType(listSteps[5],typeof(MaintPermissionGrantStep));
+			Assert.IsInstanceOfType(listSteps[6],typeof(MaintRecordCorrectionColumnsStep));
 			foreach(ForkMigrationStep step in listSteps) {
 				ForkMigrationRunner.ValidateStep(step);
 				StringAssert.StartsWith(step.Name,"Routine maintenance: ");
@@ -179,12 +186,15 @@ namespace MaintenanceTests {
 			try {
 				new DataConnectionBase.DataConnection().SetDb(TestDb.Server,dbName,TestDb.User,TestDb.Password,"","",DataConnectionBase.DatabaseType.MySql,true);
 				ForkMigrationContext context=new ForkMigrationContext(dbName);
-				List<ForkMigrationStep> listSteps=TestDb.GetMaintenanceSteps();
+				List<ForkMigrationStep> listSteps=TestDb.GetMaintenanceTableSteps();
 				for(int i=0;i<listSteps.Count;i++) {
 					int countBefore=context.ListChanges.Count;
 					listSteps[i].Apply(context);
 					Assert.AreEqual(countBefore+1,context.ListChanges.Count,listSteps[i]+" creates one table.");
 				}
+				//The table step created maintrecord complete, so the correction columns step finds nothing to add.
+				new MaintRecordCorrectionColumnsStep().Apply(context);
+				Assert.AreEqual(listSteps.Count,context.ListChanges.Count,string.Join("\r\n",context.ListChanges));
 				SchemaVerifyResult result=ForkTables.VerifyDatabase(dbName);
 				Assert.AreEqual(0,result.ListDifferences.Count,result.GetReport());
 				Assert.AreEqual(5,SchemaSnapshot.FromDatabase(dbName).Tables.Count);
@@ -195,6 +205,59 @@ namespace MaintenanceTests {
 				DataCore.NonQ("DROP TABLE maintfield");
 				SchemaVerifyResult resultMissing=ForkTables.VerifyDatabase(dbName);
 				Assert.IsTrue(resultMissing.ListMismatches.Any(x => x.Table=="maintfield" && x.Kind==SchemaDifferenceKind.MissingTable),resultMissing.GetReport());
+			}
+			finally {
+				TestDb.Drop(dbName);
+				TestDb.Connect();
+			}
+		}
+
+		///<summary>maintrecord as the first build of the feature (next/maint-2) created it, without the correction columns.</summary>
+		private const string CREATE_RECORD_FIRST_BUILD=@"CREATE TABLE `maintrecord` (
+  `MaintRecordNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `MaintItemNum` bigint(20) NOT NULL,
+  `DateDone` date NOT NULL DEFAULT '0001-01-01',
+  `DateDue` date NOT NULL DEFAULT '0001-01-01',
+  `UserNum` bigint(20) NOT NULL,
+  `Note` text NOT NULL,
+  `IsFlagged` tinyint(4) NOT NULL,
+  `SecDateTEntry` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  PRIMARY KEY (`MaintRecordNum`),
+  KEY `MaintItemNum` (`MaintItemNum`),
+  KEY `UserNum` (`UserNum`),
+  KEY `DateDone` (`DateDone`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci";
+
+		///<summary>Step 2026110207 on a database where the first build created maintrecord: it adds the two columns and the key, the table then matches
+		///its declaration exactly, a recorded completion keeps its values (never corrected), and a second run changes nothing.</summary>
+		[TestMethod]
+		public void CorrectionColumnsStep_AddsTheColumnsToTheFirstBuildsTable_ThenChangesNothing() {
+			TestDb.ResetOrSkip();
+			string dbName=TestDb.CreateExtra("correct");
+			try {
+				new DataConnectionBase.DataConnection().SetDb(TestDb.Server,dbName,TestDb.User,TestDb.Password,"","",DataConnectionBase.DatabaseType.MySql,true);
+				ForkMigrationContext context=new ForkMigrationContext(dbName);
+				foreach(string statement in new MaintenanceTables().ArrayCreateTables) {
+					context.CreateTableIfMissing(SchemaTable.Parse(statement).Name=="maintrecord" ? CREATE_RECORD_FIRST_BUILD : statement);
+				}
+				Assert.IsFalse(ForkTables.VerifyDatabase(dbName).IsMatch,"The first build's maintrecord lacks the correction columns.");
+				DataCore.NonQ("INSERT INTO maintrecord (MaintItemNum,DateDone,DateDue,UserNum,Note,IsFlagged,SecDateTEntry) "
+					+"VALUES (3,'2026-10-30','2026-11-01',2,'Done early',1,'2026-10-30 09:15:00')");
+				int countBefore=context.ListChanges.Count;
+				new MaintRecordCorrectionColumnsStep().Apply(context);
+				Assert.AreEqual(countBefore+3,context.ListChanges.Count,"Two columns and the key: "+string.Join("\r\n",context.ListChanges));
+				SchemaVerifyResult result=ForkTables.VerifyDatabase(dbName);
+				Assert.AreEqual(0,result.ListDifferences.Count,result.GetReport());
+				DataTable table=DataCore.GetTable("SELECT MaintItemNum,DateDone,UserNum,Note,IsFlagged,SecDateTEntry,UserNumCorrected,DateTCorrected FROM maintrecord");
+				Assert.AreEqual(1,table.Rows.Count);
+				Assert.AreEqual("3",table.Rows[0]["MaintItemNum"].ToString());
+				Assert.AreEqual("Done early",table.Rows[0]["Note"].ToString());
+				Assert.AreEqual(new DateTime(2026,10,30,9,15,0),PIn.DateT(table.Rows[0]["SecDateTEntry"].ToString()));
+				Assert.AreEqual("0",table.Rows[0]["UserNumCorrected"].ToString(),"Never corrected.");
+				Assert.IsTrue(PIn.DateT(table.Rows[0]["DateTCorrected"].ToString()).Year<1880);
+				int countAfter=context.ListChanges.Count;
+				new MaintRecordCorrectionColumnsStep().Apply(context);
+				Assert.AreEqual(countAfter,context.ListChanges.Count,"A second run changes nothing.");
 			}
 			finally {
 				TestDb.Drop(dbName);

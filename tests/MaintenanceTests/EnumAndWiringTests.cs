@@ -119,6 +119,38 @@ namespace MaintenanceTests {
 		}
 
 		[TestMethod]
+		public void NewItemWindow_DefaultsTheFirstDueDateToToday_AndOffersYearsAfterTheLastCompletion() {
+			string board=Source("OpenPmsDental","Forms","FormMaintBoard.cs");
+			StringAssert.Contains(Between(board,"private void butAdd_Click","using FormMaintItemEdit"),"MaintItems.CreateNew(MaintAlerts.GetToday())");
+			string edit=Source("OpenPmsDental","Forms","FormMaintItemEdit.cs");
+			string load=Between(edit,"private void FormMaintItemEdit_Load","#region Combos");
+			StringAssert.Contains(load,"if(_isNew && _maintItem.DateAnchor.Year<1880) {");
+			StringAssert.Contains(load,"_maintItem.DateAnchor=_dateToday;");
+			Assert.IsTrue(load.IndexOf("_maintItem.DateAnchor=_dateToday;")<load.IndexOf("textAnchor.Text="),"Today is filled in before the anchor is shown.");
+			string fillUnit=Between(edit,"private void FillComboUnit(","private void SetUnassignedLabel()");
+			StringAssert.Contains(fillUnit,"EnumMaintIntervalUnit.Years");
+			Assert.IsFalse(fillUnit.Contains("AfterCompletion"),"Years are offered for every schedule that has a unit.");
+			Assert.IsFalse(edit.Contains("no reminder alert will be sent"),"An unassigned item reminds the Maintenance Setup users now.");
+			StringAssert.Contains(Source("OpenPmsDental","Forms","FormMaintItemEdit.Designer.cs"),"the reminders go to every user with Maintenance Setup");
+		}
+
+		[TestMethod]
+		public void HistoryWindow_ShowsTheCorrection_AndCorrectsThroughTheBusinessLayer() {
+			string history=Source("OpenPmsDental","Forms","FormMaintHistory.cs");
+			string fill=Between(history,"private void FillGrid()","private void FillGridValues()");
+			StringAssert.Contains(fill,"\"Corrected\"");
+			StringAssert.Contains(fill,"MaintCorrections.GetCorrectedText(maintRecord,");
+			string correct=Between(history,"private void butCorrect_Click","private void butExport_Click");
+			StringAssert.Contains(correct,"MaintRecords.CanCorrect(Security.CurUser,maintRecord)");
+			StringAssert.Contains(correct,"new FormMaintRecordEdit(maintItem,maintRecord)");
+			StringAssert.Contains(Source("OpenPmsDental","Forms","FormMaintHistory.Designer.cs"),
+				"this.butCorrect.Click += new System.EventHandler(this.butCorrect_Click);");
+			string record=Source("OpenPmsDental","Forms","FormMaintRecordEdit.cs");
+			StringAssert.Contains(Between(record,"private void SaveCorrection()","private bool CopyAttachments()"),"MaintRecords.Correct(");
+			Assert.IsFalse(Regex.IsMatch(history+record,@"MaintRecords\.Delete|MaintRecordCrud\.Delete|MaintRecordValueCrud\.Delete"),"A completion is never deleted.");
+		}
+
+		[TestMethod]
 		public void ForkEnumsDocument_HasTheTinyintRule() {
 			string text=Source("docs","port-notes","FORK-ENUMS.md");
 			StringAssert.Contains(text,"tinyint");
