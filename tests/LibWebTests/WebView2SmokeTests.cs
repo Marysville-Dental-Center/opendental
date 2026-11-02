@@ -1,13 +1,14 @@
 // Shows pages the program generated in the WebView2 wrapper (CodeBase ODWebView2.NavigateToHtml), in a small off-screen window, and checks the
 // page mode the wiki and email windows rely on: the encoded text shows as text, the page's own script does not run (the program's scripts do),
-// a local image next to the page loads, host objects and web messages are off, a clicked link raises LinkClicked and is never followed, and a
+// an image of the page's own folder loads, host objects and web messages are off, a clicked link raises LinkClicked and is never followed, and a
 // navigation the page starts by itself (a meta refresh, a frame), the earlier of two pages shown back to back and Back are cancelled without
 // raising it. A second test checks what a page may load: files from its own folder and the allowed folders only (never the system's or another
-// computer's share), and http images only when the window allows them. Every address is local or under .invalid and is cancelled or answered
-// before a request goes out, and the browser runs with its background networking off: no network. Inconclusive only when the WebView2 Runtime
-// is missing or does not start here (in a plain WebView2 control, none of the program's code; also when no window can be shown), or when
-// LIBWEB_SKIP_WEBVIEW2=1. Once it started, any error fails the test: an exception of the control, one in an event handler on the window's
-// thread (caught there, never WinForms' error dialog), a message the control shows, or the 3 minutes running out.
+// computer's share), and http images only when the window allows them. The pages and the files of their own folders are in memory
+// (WebView2PageStore): nothing of them is on disk. Every address is local or under .invalid and is cancelled or answered before a request goes
+// out, and the browser runs with its background networking off: no network. Inconclusive only when the WebView2 Runtime is missing or does not
+// start here (in a plain WebView2 control, none of the program's code; also when no window can be shown), or when LIBWEB_SKIP_WEBVIEW2=1. Once
+// it started, any error fails the test: an exception of the control, one in an event handler on the window's thread (caught there, never
+// WinForms' error dialog), a message the control shows, or the 3 minutes running out.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -26,7 +27,7 @@ using OpenPmsDental;
 
 namespace LibWebTests {
 	[TestClass]
-	public class WebView2SmokeTests {
+	public partial class WebView2SmokeTests {
 		private const string PATIENT_TEXT="Jane <b>Doe</b> & \"Sons\"";
 		///<summary>The web address of the image the second test answers itself (never the network).</summary>
 		private const string URL_REMOTE_IMAGE="http://img.invalid/x.png";
@@ -49,7 +50,12 @@ namespace LibWebTests {
 			public string DocumentUriAfterRefresh;
 			public string SourceAfterRefresh;
 			public string PathDocument;
-			public bool IsDocumentFileDeleted;
+			///<summary>True when no page the control showed was ever a file on disk, nor the folder of the in-memory pages.</summary>
+			public bool IsNoPageOnDisk=true;
+			///<summary>True when the store still held each page while it was shown.</summary>
+			public bool IsPageInMemoryWhileShown=true;
+			///<summary>True when the store no longer holds the pages once they were replaced and the control was disposed.</summary>
+			public bool IsPageRemovedFromMemory;
 			public List<ODWebView2LinkEventArgs> ListLinks=new List<ODWebView2LinkEventArgs>();
 			public int CountLinksBeforeRefresh;
 			public List<string> ListNavigations=new List<string>();
@@ -66,7 +72,10 @@ namespace LibWebTests {
 		///<summary>A request the page made, as the second test's own WebResourceRequested handler saw it after the control's.</summary>
 		private class Request {
 			public string Uri;
+			///<summary>True when the control refused it (403).</summary>
 			public bool IsBlocked;
+			///<summary>The status of the control's own answer (an in-memory file: 200, or 404), or 0 when the control let the request through.</summary>
+			public int StatusCode;
 		}
 
 		///<summary>What the second test's window saw.</summary>
@@ -106,8 +115,8 @@ namespace LibWebTests {
 			return funcIsDone();
 		}
 
-		private static async Task<bool> NavigateAndWait(ODWebView2 odWebView2,string html,string folder,bool isRemoteContentAllowed=false,
-			List<string> listFoldersAllowed=null)
+		private static async Task<bool> NavigateAndWait(ODWebView2 odWebView2,string html,Dictionary<string,byte[]> dictFiles,
+			bool isRemoteContentAllowed=false,List<string> listFoldersAllowed=null)
 		{
 			bool isCompleted=false;
 			bool isSuccess=false;
@@ -116,10 +125,23 @@ namespace LibWebTests {
 				isSuccess=e.IsSuccess;
 			};
 			odWebView2.NavigationCompleted+=eventHandler;
-			odWebView2.NavigateToHtml(html,folder,isRemoteContentAllowed,listFoldersAllowed);
+			odWebView2.NavigateToHtml(html,isRemoteContentAllowed,listFoldersAllowed,dictFiles);
 			await WaitFor(() => isCompleted,20000);
 			odWebView2.NavigationCompleted-=eventHandler;
 			return isSuccess;
+		}
+
+		///<summary>The files of a page's own folder: dot.png, the 8x8 image the pages show by a relative path.</summary>
+		private static Dictionary<string,byte[]> GetPageFiles() {
+			return new Dictionary<string,byte[]> { { "dot.png",GetPngBytes() } };
+		}
+
+		///<summary>True when the page odWebView2 shows now is in memory and not on disk: its file and folder are not there, nor the store's root.</summary>
+		private static bool IsShownFromMemory(ODWebView2 odWebView2) {
+			string uri=odWebView2.DocumentUri;
+			string path=new Uri(uri).LocalPath;
+			return WebView2PageStore.IsInRoot(uri) && WebView2PageStore.TryGetFile(uri,out _,out _) && !File.Exists(path)
+				&& !Directory.Exists(Path.GetDirectoryName(path)) && !Directory.Exists(WebView2PageStore.GetRootFolder());
 		}
 
 		///<summary>A real click (the browser's input pipeline, so the page sees a user gesture) at x,y CSS pixels.</summary>
@@ -328,12 +350,12 @@ namespace LibWebTests {
 				results.ListNavigations.Add(e.Uri+" user="+e.IsUserInitiated+" kind="+kind);
 			};
 			odWebView2.CoreWebView2.FrameNavigationStarting+=(sender,e) => results.ListFrames.Add(e.Uri);
-			string folderPage=Path.Combine(folder,"page");
-			Directory.CreateDirectory(folderPage);
-			File.WriteAllBytes(Path.Combine(folderPage,"dot.png"),GetPngBytes());
-			results.IsLoaded=await NavigateAndWait(odWebView2,BuildPage(),folderPage);
+			List<string> listUrisPage=new List<string>();
+			results.IsLoaded=await NavigateAndWait(odWebView2,BuildPage(),GetPageFiles());
 			results.DocumentUri=odWebView2.DocumentUri;
 			results.PathDocument=new Uri(odWebView2.DocumentUri).LocalPath;
+			listUrisPage.Add(odWebView2.DocumentUri);
+			results.IsNoPageOnDisk&=IsShownFromMemory(odWebView2);
 			await Task.Delay(500);
 			results.TextName=ReadJsonString(await odWebView2.CoreWebView2.ExecuteScriptAsync("document.getElementById('name').textContent"));
 			results.TextScriptCheck=ReadJsonString(await odWebView2.CoreWebView2.ExecuteScriptAsync("document.getElementById('check').textContent"));
@@ -353,12 +375,13 @@ namespace LibWebTests {
 			results.CountLinksBeforeRefresh=results.ListLinks.Count;
 			string htmlRefresh="<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta http-equiv=\"refresh\" content=\"0;url=https://refresh.example.invalid/\">"
 				+"</head><body><p>refresh</p></body></html>";
-			await NavigateAndWait(odWebView2,htmlRefresh,folderPage);
+			await NavigateAndWait(odWebView2,htmlRefresh,GetPageFiles());
 			await WaitFor(() => results.ListNavigations.Any(x => x.StartsWith("https://refresh.example.invalid")),5000);
 			await Task.Delay(1000);
 			results.DocumentUriAfterRefresh=odWebView2.DocumentUri;
 			results.SourceAfterRefresh=odWebView2.CoreWebView2.Source;
-			string pathRefresh=new Uri(odWebView2.DocumentUri).LocalPath;
+			listUrisPage.Add(odWebView2.DocumentUri);
+			results.IsNoPageOnDisk&=IsShownFromMemory(odWebView2);
 			//Two pages back to back without waiting (as when the user arrows through the inbox): the first page's own navigation starts after the
 			//second took its place. Then Back, to a page that was replaced. Neither is a link the user clicked.
 			results.CountLinksBeforeQuickPages=results.ListLinks.Count;
@@ -369,9 +392,11 @@ namespace LibWebTests {
 				}
 			};
 			odWebView2.NavigationCompleted+=eventHandler;
-			odWebView2.NavigateToHtml(HtmlPage.Build("<p>first</p>","First",""),folderPage);
+			odWebView2.NavigateToHtml(HtmlPage.Build("<p>first</p>","First",""),dictFiles:GetPageFiles());
 			results.UriFirstQuickPage=odWebView2.DocumentUri;
-			odWebView2.NavigateToHtml(HtmlPage.Build("<p>second</p>","Second",""),folderPage);
+			listUrisPage.Add(odWebView2.DocumentUri);
+			odWebView2.NavigateToHtml(HtmlPage.Build("<p>second</p>","Second",""),dictFiles:GetPageFiles());
+			listUrisPage.Add(odWebView2.DocumentUri);
 			await WaitFor(() => isSecondShown,20000);
 			odWebView2.NavigationCompleted-=eventHandler;
 			await Task.Delay(1000);
@@ -384,10 +409,13 @@ namespace LibWebTests {
 			await Task.Delay(1000);
 			results.SourceAfterBack=odWebView2.CoreWebView2.Source;
 			results.CountLinksAfterQuickPages=results.ListLinks.Count;
-			string pathSecond=new Uri(odWebView2.DocumentUri).LocalPath;
+			results.IsNoPageOnDisk&=IsShownFromMemory(odWebView2);
+			//Only the page shown now is in memory: the ones it replaced are gone.
+			results.IsPageInMemoryWhileShown=listUrisPage.Count(x => WebView2PageStore.TryGetFile(x,out _,out _))==1;
 			form.Controls.Remove(odWebView2);
 			odWebView2.Dispose();
-			results.IsDocumentFileDeleted=!File.Exists(results.PathDocument) && !File.Exists(pathRefresh) && !File.Exists(pathSecond);
+			results.IsPageRemovedFromMemory=!listUrisPage.Any(x => WebView2PageStore.TryGetFile(x,out _,out _));
+			results.IsNoPageOnDisk&=!listUrisPage.Any(x => File.Exists(new Uri(x).LocalPath));
 		}
 
 		[TestMethod]
@@ -406,11 +434,12 @@ namespace LibWebTests {
 			string details="WebView2 Runtime "+results.BrowserVersion+"; navigations: "+string.Join(" | ",results.ListNavigations)
 				+"; frames: "+string.Join(" | ",results.ListFrames)+"; links: "+string.Join(" | ",results.ListLinks.Select(x => x.Uri+(x.IsNewWindow ? " (new)" : "")));
 			Console.WriteLine(details);
-			Assert.IsTrue(results.IsLoaded,"The page loads from its file. "+details);
+			Assert.IsTrue(results.IsLoaded,"The page loads from memory. "+details);
 			StringAssert.StartsWith(results.DocumentUri,"file:///");
+			Assert.IsTrue(WebView2PageStore.IsInRoot(results.DocumentUri),"The page's address is in the in-memory pages' folder: "+results.DocumentUri);
 			Assert.AreEqual(PATIENT_TEXT,results.TextName,"The encoded text shows as text. "+details);
 			Assert.AreEqual("not run",results.TextScriptCheck,"The page's own script never runs (the program's script read this). "+details);
-			Assert.AreEqual(8,results.ImageWidth,"The local image next to the page loads. "+details);
+			Assert.AreEqual(8,results.ImageWidth,"The image of the page's own folder loads from memory. "+details);
 			Assert.IsFalse(results.IsScriptEnabled);
 			Assert.IsFalse(results.AreHostObjectsAllowed);
 			Assert.IsFalse(results.IsWebMessageEnabled);
@@ -444,7 +473,9 @@ namespace LibWebTests {
 				+results.SourceAfterBack+" "+details);
 			Assert.AreEqual(results.CountLinksBeforeQuickPages,results.CountLinksAfterQuickPages,
 				"Neither the first of two pages shown back to back ("+results.UriFirstQuickPage+") nor Back raises LinkClicked. "+details);
-			Assert.IsTrue(results.IsDocumentFileDeleted,"The page files are deleted when the page changes and when the control is disposed.");
+			Assert.IsTrue(results.IsNoPageOnDisk,"No page, nor the folder of the in-memory pages, is ever on disk.");
+			Assert.IsTrue(results.IsPageInMemoryWhileShown,"The page shown is in memory, and only that one.");
+			Assert.IsTrue(results.IsPageRemovedFromMemory,"The pages leave memory when the page changes and when the control is disposed.");
 		}
 
 		///<summary>The page of the second test: one image per case, by id.</summary>
@@ -496,9 +527,10 @@ namespace LibWebTests {
 				string uri=e.Request.Uri;
 				Request request=new Request();
 				request.Uri=uri;
-				request.IsBlocked=e.Response!=null;
+				request.StatusCode=e.Response?.StatusCode??0;
+				request.IsBlocked=request.StatusCode==403;
 				listRequests.Add(request);
-				if(request.IsBlocked || uri.StartsWith("file:///")) {
+				if(e.Response!=null || uri.StartsWith("file:///")) {
 					return;
 				}
 				if(uri==URL_REMOTE_IMAGE) {
@@ -507,20 +539,17 @@ namespace LibWebTests {
 				}
 				e.Response=coreWebView2Environment.CreateWebResourceResponse(null,404,"Not found","");
 			};
-			string folderPage=Path.Combine(folder,"page");
 			string folderAllowed=Path.Combine(folder,"allowed");
 			string folderOutside=Path.Combine(folder,"outside");
-			Directory.CreateDirectory(folderPage);
 			Directory.CreateDirectory(folderAllowed);
 			Directory.CreateDirectory(folderOutside);
-			File.WriteAllBytes(Path.Combine(folderPage,"dot.png"),byteArrayPng);
 			File.WriteAllBytes(Path.Combine(folderAllowed,"allowed.png"),byteArrayPng);
 			File.WriteAllBytes(Path.Combine(folderOutside,"outside.png"),byteArrayPng);
 			string uriAllowedImage=new Uri(Path.Combine(folderAllowed,"allowed.png")).AbsoluteUri;
 			results.UriOutsideImage=new Uri(Path.Combine(folderOutside,"outside.png")).AbsoluteUri;
 			string html=BuildResourcePage(uriAllowedImage,results.UriOutsideImage);
 			//Html from outside the office (a received email): its own folder only, nothing from the web.
-			await NavigateAndWait(odWebView2,html,folderPage);
+			await NavigateAndWait(odWebView2,html,GetPageFiles());
 			results.DictWidthsUntrusted=await ReadImageWidths(odWebView2,_arrayResourceImageIds);
 			await Task.Delay(500);
 			results.CountRemoteBlockedAfterUntrusted=results.CountRemoteBlocked;
@@ -530,12 +559,12 @@ namespace LibWebTests {
 				results.IsShareChecked=true;
 				listRequests=results.ListRequestsShare;
 				string htmlShare=HtmlPage.Build("<img id=\"own\" src=\"dot.png\"><img id=\"share\" src=\""+URL_SHARE_IMAGE+"\">","Share","margin:0");
-				await NavigateAndWait(odWebView2,htmlShare,folderPage);
+				await NavigateAndWait(odWebView2,htmlShare,GetPageFiles());
 				results.DictWidthsShare=await ReadImageWidths(odWebView2,new[] { "own","share" });
 			}
 			//The office's own page (a wiki page, a sent email): the allowed folder and the web too.
 			listRequests=results.ListRequestsTrusted;
-			await NavigateAndWait(odWebView2,html,folderPage,isRemoteContentAllowed:true,listFoldersAllowed:new List<string> { folderAllowed });
+			await NavigateAndWait(odWebView2,html,GetPageFiles(),isRemoteContentAllowed:true,listFoldersAllowed:new List<string> { folderAllowed });
 			results.DictWidthsTrusted=await ReadImageWidths(odWebView2,_arrayResourceImageIds);
 			await Task.Delay(500);
 			form.Controls.Remove(odWebView2);
@@ -563,6 +592,10 @@ namespace LibWebTests {
 			Console.WriteLine(details);
 			//Html from outside the office.
 			Assert.AreEqual(8,results.DictWidthsUntrusted["own"],"The image in the page's folder loads. "+details);
+			Assert.IsTrue(results.ListRequestsUntrusted.Any(x => x.Uri.EndsWith("/dot.png") && WebView2PageStore.IsInRoot(x.Uri) && x.StatusCode==200),
+				"The control answered the image of the page's own folder from memory. "+details);
+			Assert.IsTrue(results.ListRequestsUntrusted.Any(x => x.Uri.EndsWith("/outside/outside.png") && WebView2PageStore.IsInRoot(x.Uri) && x.IsBlocked),
+				"../ out of the page's own folder stays refused. "+details);
 			foreach(string id in new[] { "allowed","outside","parent","system","remote" }) {
 				Assert.AreEqual(0,results.DictWidthsUntrusted[id],id+" does not load. "+details);
 			}

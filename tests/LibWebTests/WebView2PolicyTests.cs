@@ -260,7 +260,7 @@ namespace LibWebTests {
 			//A received email loads web images only after Show Images, which also appears when the email asked for some.
 			string email=TestPaths.ReadSource("OpenPmsDental","User Controls","EmailPreviewControl.cs");
 			Assert.IsTrue(Regex.IsMatch(email,@"if\(IsReceived\(\)\)\s*\{\s*webViewEmail\.NavigateToHtml\(HtmlText\);"),"A received email: the defaults.");
-			StringAssert.Contains(email,"webViewEmail.NavigateToHtml(html,htmlFolderPath,isRemoteContentAllowed:true,listFoldersAllowed:listFoldersAllowed);");
+			StringAssert.Contains(email,"webViewEmail.NavigateToHtml(html,isRemoteContentAllowed:true,listFoldersAllowed:listFoldersAllowed,dictFiles:dictFiles);");
 			StringAssert.Contains(email,"webViewEmail.RemoteContentBlocked+=webViewEmail_RemoteContentBlocked;");
 			//The wiki windows load the wiki's images.
 			foreach(string name in new[] { "FormWiki.cs","FormWikiAllPages.cs","FormWikiDrafts.cs","FormWikiEdit.cs","FormWikiHistory.cs",
@@ -338,10 +338,17 @@ namespace LibWebTests {
 		}
 
 		[TestMethod]
-		public void PageFolder_IsTheProgramsTempFolder() {
-			string folder=WebView2Policy.GetPageFolder();
-			Assert.AreEqual(Path.Combine(Path.GetTempPath(),ProgramNames.TempFolderName),folder,"Emptied when the program closes.");
-			Assert.IsTrue(Directory.Exists(folder));
+		public void InMemoryPagesFolder_IsUnderTheProgramsTempFolder_AndNeverCreated() {
+			string folder=WebView2PageStore.GetRootFolder();
+			Assert.AreEqual(Path.Combine(Path.GetTempPath(),ProgramNames.TempFolderName,WebView2PageStore.RootFolderName),folder);
+			WebView2Page webView2Page=WebView2PageStore.AddPage("<p>page</p>");
+			try {
+				Assert.IsFalse(Directory.Exists(folder),"Adding a page writes nothing.");
+				Assert.IsFalse(File.Exists(webView2Page.Path));
+			}
+			finally {
+				WebView2PageStore.RemovePage(webView2Page);
+			}
 		}
 	}
 }
