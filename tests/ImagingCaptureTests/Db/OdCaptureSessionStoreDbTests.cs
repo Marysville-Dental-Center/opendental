@@ -79,7 +79,8 @@ namespace ImagingCapture.Tests.Db {
 			Assert.AreEqual(provNumPrimary,_store.GetDefaultProvNum(patient),"No appointment: the primary provider.");
 			AppointmentT.CreateAppointment(patient.PatNum,DateTime.Today.AddDays(-1).AddHours(9),0,provNumAppt);
 			Assert.AreEqual(provNumPrimary,_store.GetDefaultProvNum(patient),"Yesterday's appointment does not count.");
-			Appointment appointment=AppointmentT.CreateAppointment(patient.PatNum,DateTime.Now.AddMinutes(-30),0,provNumAppt);
+			//The start of today: always today and always started by now (DateTime.Now minus 30 minutes is yesterday just after midnight).
+			Appointment appointment=AppointmentT.CreateAppointment(patient.PatNum,DateTime.Today,0,provNumAppt);
 			Assert.AreEqual(provNumAppt,_store.GetDefaultProvNum(patient),"Today's appointment: its provider.");
 			Appointment appointmentOld=appointment.Copy();
 			appointment.IsHygiene=true;
