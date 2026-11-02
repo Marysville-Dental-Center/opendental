@@ -927,9 +927,9 @@ Here is the desired behavior:
 
 		/// <summary>Prints the top-level PDF in _odWebView2 using the default printer. https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/print?tabs=dotnetcsharp</summary>
 		private async Task<bool> odWebView2_Print() {
-			//Create default print settings
-			CoreWebView2Environment webView2Environment=await CoreWebView2Environment.CreateAsync();
-			CoreWebView2PrintSettings printerSettings=webView2Environment.CreatePrintSettings();
+			//Create default print settings, from the control's own environment: a new environment without a user data folder would put its
+			//profile next to the exe, in the installation folder, which users cannot write to.
+			CoreWebView2PrintSettings printerSettings=_odWebView2.CoreWebView2.Environment.CreatePrintSettings();
 			//Print the current document
 			CoreWebView2PrintStatus printStatus=await _odWebView2.CoreWebView2.PrintAsync(printerSettings);
 			IsPrinting=false;

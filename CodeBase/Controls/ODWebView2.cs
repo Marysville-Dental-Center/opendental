@@ -27,19 +27,34 @@ namespace CodeBase.Controls {
 		private string _pathDocument=null;
 		///<summary>The file: address of _pathDocument.</summary>
 		private string _uriDocument=null;
-		///<summary>The html that NavigateToHtml received before the control was initialized, shown as soon as it is. Only the last one counts.</summary>
-		private string _htmlPending=null;
-		///<summary>The folder that goes with _htmlPending.</summary>
-		private string _folderPending=null;
+		///<summary>The file: address (without a #fragment) of every page this control wrote for NavigateToHtml. A navigation to one of them that is
+		///not the current page is cancelled without raising LinkClicked: the earlier of two pages shown in quick succession, whose own navigation
+		///starts after the second page took its place, or a page that Back or Forward would show again.</summary>
+		private HashSet<string> _hashSetUrisPage=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		///<summary>True when the current page of NavigateToHtml may load http and https images, style sheets and fonts.</summary>
+		private bool _isRemoteContentAllowed=false;
+		///<summary>The local folders whose files the current page of NavigateToHtml may load, besides the files in its own folder.</summary>
+		private List<string> _listFoldersAllowed=new List<string>();
+		///<summary>True while the WebResourceRequested filter of NavigateToHtml's pages is in place.</summary>
+		private bool _isResourceFilterAdded=false;
+		///<summary>True once RemoteContentBlocked was raised for the current page, so it is raised once per page.</summary>
+		private bool _isRemoteContentBlockedRaised=false;
+		///<summary>The page that NavigateToHtml received before the control was initialized, shown as soon as it is. Only the last one counts.</summary>
+		private PagePending _pagePending=null;
 		///<summary>True once NavigateToHtml has started the initialization itself, so it starts only once.</summary>
 		private bool _isInitStarted=false;
+		///<summary>Backs AreBrowserKeysEnabled.</summary>
+		private bool _areBrowserKeysEnabled=false;
 
 		///<summary>Raised when the user clicks a link (or opens one in a new window) in a page shown with NavigateToHtml. The navigation is always
 		///cancelled; the window decides what the link does, and a window without a handler ignores links. Never raised for a navigation the page
-		///starts by itself (a meta refresh, for example), so a received email cannot open anything.</summary>
+		///starts by itself (a meta refresh, for example), so a received email cannot open anything, nor for Back, Forward or Reload.</summary>
 		public event EventHandler<ODWebView2LinkEventArgs> LinkClicked;
 		///<summary>Raised when StatusText changes, for example when the mouse moves over a link.</summary>
 		public event EventHandler StatusTextChanged;
+		///<summary>Raised once per page shown with NavigateToHtml when the page asked for an http or https image, style sheet or font that it may
+		///not load (NavigateToHtml's isRemoteContentAllowed was false). A window can then offer to show the page with them.</summary>
+		public event EventHandler RemoteContentBlocked;
 
 		///<summary>False removes the right-click menu from the pages shown with NavigateToHtml. When true, those pages keep only Copy, Select all,
 		///the link and image copy commands and "Open link in new window" (WebView2Policy).</summary>
@@ -47,6 +62,25 @@ namespace CodeBase.Controls {
 		[Category("OD")]
 		[Description("False removes the right-click menu from the pages shown with NavigateToHtml.")]
 		public bool IsContextMenuEnabled { get; set; }=true;
+
+		///<summary>True keeps the browser's own keys, as the old browser control had them: Ctrl+F and F3 (find in the page), Ctrl+P (print),
+		///Ctrl+R and F5 (reload), Ctrl+Plus and Ctrl+Minus (zoom), Alt+Left and Alt+Right (back and forward). False, the default, turns them off.
+		///The dev tools stay off in Release builds either way (WebView2Policy.ApplySecureSettings). A page shown with NavigateToHtml stays with
+		///either value: a reload shows it again, and back and forward are cancelled.</summary>
+		[DefaultValue(false)]
+		[Category("OD")]
+		[Description("True keeps the browser's own keys, such as Ctrl+F to find text in the page.")]
+		public bool AreBrowserKeysEnabled {
+			get {
+				return _areBrowserKeysEnabled;
+			}
+			set {
+				_areBrowserKeysEnabled=value;
+				if(this.CoreWebView2!=null) {
+					this.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled=value;
+				}
+			}
+		}
 
 		///<summary>The text WebView2 would show in its status bar: the address of the link under the mouse. Empty before initialization.</summary>
 		[Browsable(false)]
@@ -126,8 +160,8 @@ namespace CodeBase.Controls {
 		}
 
 		/// <summary>
-		/// Runs after webView2 has initialized, before navigating, disable accelerator key combos for the browser.
-		/// Disables the following browser features:
+		/// Runs after webView2 has initialized, before navigating. Unless AreBrowserKeysEnabled is true, disables the accelerator key combos of
+		/// the browser, which turns off the following browser features:
 		/// Find: Ctrl+f and F3,
 		/// Print: Ctrl+p,
 		/// Refresh: Ctrl+r and F5,
@@ -140,11 +174,12 @@ namespace CodeBase.Controls {
 			if(!e.IsSuccess || this.CoreWebView2==null) {
 				return;
 			}
-			this.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled=false;
+			this.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled=AreBrowserKeysEnabled;
 			WebView2Policy.ApplySecureSettings(this.CoreWebView2.Settings);
 			this.CoreWebView2.NewWindowRequested+=CoreWebView2_NewWindowRequested;
 			this.CoreWebView2.FrameNavigationStarting+=CoreWebView2_FrameNavigationStarting;
 			this.CoreWebView2.PermissionRequested+=CoreWebView2_PermissionRequested;
+			this.CoreWebView2.WebResourceRequested+=CoreWebView2_WebResourceRequested;
 			//Events of newer runtimes: an older runtime that lacks one throws here, and the control still works without it.
 			ODException.SwallowAnyException(() => this.CoreWebView2.DownloadStarting+=CoreWebView2_DownloadStarting);
 			ODException.SwallowAnyException(() => this.CoreWebView2.ContextMenuRequested+=CoreWebView2_ContextMenuRequested);
@@ -167,20 +202,45 @@ namespace CodeBase.Controls {
 		}
 
 		///<summary>On attempting to navigate, if DoBlockNavigation is true, cancel the event. A page shown with NavigateToHtml stays: anything else is
-		///cancelled, and a link the user clicked raises LinkClicked.</summary>
+		///cancelled, and a link the user clicked raises LinkClicked. WebView2 counts its own Navigate and GoBack calls, Back and Forward (mouse
+		///buttons, keys) and reloads as user initiated too, so a navigation to a page file of this control, or one that is not to a new document,
+		///is cancelled without it.</summary>
 		public void CoreWebView2_NavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e) {
 			if(_uriDocument!=null) {
 				if(WebView2Policy.IsSameDocument(e.Uri,_uriDocument)) {
 					return;
 				}
 				e.Cancel=true;
-				if(e.IsUserInitiated) {
+				if(IsPageUri(e.Uri)) {
+					return;//An earlier page of this control, never a link.
+				}
+				if(e.IsUserInitiated && IsNewDocument(e)) {
 					RaiseLinkClicked(e.Uri,isNewWindow:false);
 				}
 				return;
 			}
 			if(_doBlockNavigation) {
 				e.Cancel=true;
+			}
+		}
+
+		///<summary>True when uri is a page this control wrote for NavigateToHtml, the current one included, ignoring a #fragment.</summary>
+		private bool IsPageUri(string uri) {
+			if(string.IsNullOrEmpty(uri)) {
+				return false;
+			}
+			return _hashSetUrisPage.Contains(WebView2Policy.RemoveFragment(uri));
+		}
+
+		///<summary>False for Back, Forward and Reload, which are never a click on a link. True for a new document, and when the runtime is too old to
+		///tell (NavigationKind came with SDK 1.0.1901; an older runtime throws for it).</summary>
+		private static bool IsNewDocument(CoreWebView2NavigationStartingEventArgs e) {
+			try {
+				return e.NavigationKind==CoreWebView2NavigationKind.NewDocument;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return true;
 			}
 		}
 
@@ -192,7 +252,7 @@ namespace CodeBase.Controls {
 			if(_uriDocument!=null) {
 				//Never a second browser window from a page the program shows. Handled without NewWindow set means nothing opens.
 				e.Handled=true;
-				if(e.IsUserInitiated) {
+				if(e.IsUserInitiated && !IsPageUri(e.Uri)) {
 					RaiseLinkClicked(e.Uri,isNewWindow:true);
 				}
 				return;
@@ -219,6 +279,50 @@ namespace CodeBase.Controls {
 			if(e.IsUserInitiated) {
 				RaiseLinkClicked(e.Uri,isNewWindow:false);
 			}
+		}
+
+		///<summary>What a page shown with NavigateToHtml may load besides itself (WebView2Policy.IsPageResourceAllowed): files in its own folder and
+		///in the folders NavigateToHtml allows, data:, blob: and about: addresses, and http and https only when NavigateToHtml allows them. Anything
+		///else gets an empty 403 response, so the request never leaves the computer: an image on another computer's share would otherwise make
+		///Windows send the user's credentials there. Until the browser shows the current page, a request can still come from the page before it,
+		///so nothing remote loads then.</summary>
+		private void CoreWebView2_WebResourceRequested(object sender,CoreWebView2WebResourceRequestedEventArgs e) {
+			if(_uriDocument==null) {
+				return;
+			}
+			string uri="";
+			bool isPageShown=false;
+			bool isAllowed=false;
+			try {
+				uri=e.Request.Uri;
+				isPageShown=WebView2Policy.IsSameDocument(this.CoreWebView2.Source,_uriDocument);
+				isAllowed=WebView2Policy.IsPageResourceAllowed(uri,_uriDocument,_listFoldersAllowed,_isRemoteContentAllowed && isPageShown);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				isAllowed=false;
+			}
+			if(isAllowed) {
+				return;
+			}
+			e.Response=this.CoreWebView2.Environment.CreateWebResourceResponse(null,403,"Blocked","");
+			if(isPageShown && WebView2Policy.IsRemoteUri(uri)) {
+				RaiseRemoteContentBlocked();
+			}
+		}
+
+		///<summary>Raises RemoteContentBlocked once for the current page, after the browser event returns, and only while that page is still shown.</summary>
+		private void RaiseRemoteContentBlocked() {
+			if(_isRemoteContentBlockedRaised || RemoteContentBlocked==null || IsDisposed) {
+				return;
+			}
+			_isRemoteContentBlockedRaised=true;
+			string uriDocument=_uriDocument;
+			BeginInvoke((Action)(() => {
+				if(!IsDisposed && _uriDocument==uriDocument) {
+					RemoteContentBlocked?.Invoke(this,EventArgs.Empty);
+				}
+			}));
 		}
 
 		private void CoreWebView2_DownloadStarting(object sender,CoreWebView2DownloadStartingEventArgs e) {
@@ -263,6 +367,7 @@ namespace CodeBase.Controls {
 		///<summary>This method will always be allowed to navigate.</summary>
 		public async void ODWebView2Navigate(string path) {
 			ClearDocument();
+			RemoveResourceFilter();
 			_doBlockNavigation=false;
 			CoreWebView2.Navigate(path);
 		}
@@ -270,20 +375,27 @@ namespace CodeBase.Controls {
 		///<summary>Shows html that the program generated or received (a wiki page, an email, a report): writes it to a new file and shows that file.
 		///A file page can show the local images such html refers to (file paths), which a page from a string cannot. The file goes into folder, or
 		///into the program's temp folder when folder is null (give a folder that already holds the images a relative path names). While the page is
-		///shown, scripts are off and the control stays on it: links raise LinkClicked. Initializes the control first when needed (the user is told
-		///if the WebView2 Runtime is missing); the page then shows when initialization completes. Never throws for a missing runtime; throws when
-		///the page file cannot be written.</summary>
-		public void NavigateToHtml(string html,string folder=null) {
+		///shown, scripts are off and the control stays on it: links raise LinkClicked. The page loads files only from its own folder and from
+		///listFoldersAllowed (the A to Z folder its images come from, for example), never from another computer's share, and http and https images,
+		///style sheets and fonts only when isRemoteContentAllowed is true: leave it false for html from outside the office, such as a received email
+		///(RemoteContentBlocked then tells the window that the page wanted some). Initializes the control first when needed (the user is told if the
+		///WebView2 Runtime is missing); the page then shows when initialization completes. Never throws for a missing runtime; throws when the page
+		///file cannot be written.</summary>
+		public void NavigateToHtml(string html,string folder=null,bool isRemoteContentAllowed=false,List<string> listFoldersAllowed=null) {
 			if(IsDisposed) {
 				return;
 			}
+			PagePending pagePending=new PagePending();
+			pagePending.Html=html??"";
+			pagePending.Folder=folder;
+			pagePending.IsRemoteContentAllowed=isRemoteContentAllowed;
+			pagePending.ListFoldersAllowed=listFoldersAllowed;
 			if(CoreWebView2==null) {
-				_htmlPending=html??"";
-				_folderPending=folder;
+				_pagePending=pagePending;
 				InitForDocument();
 				return;
 			}
-			ShowDocument(html??"",folder);
+			ShowDocument(pagePending);
 		}
 
 		///<summary>Starts the initialization for NavigateToHtml, once. The pending page shows when initialization completes
@@ -306,28 +418,39 @@ namespace CodeBase.Controls {
 		///<summary>Runs from the initialization's event and continuation, where an exception would end the program, so a page file that cannot be
 		///written leaves the control blank.</summary>
 		private void ShowPendingDocument() {
-			if(IsDisposed || CoreWebView2==null || _htmlPending==null) {
+			if(IsDisposed || CoreWebView2==null || _pagePending==null) {
 				return;
 			}
-			string html=_htmlPending;
-			string folder=_folderPending;
-			_htmlPending=null;
-			_folderPending=null;
-			ODException.SwallowAnyException(() => ShowDocument(html,folder));
+			PagePending pagePending=_pagePending;
+			_pagePending=null;
+			ODException.SwallowAnyException(() => ShowDocument(pagePending));
 		}
 
-		private void ShowDocument(string html,string folder) {
+		private void ShowDocument(PagePending pagePending) {
 			string pathOld=_pathDocument;
+			string folder=pagePending.Folder;
 			if(string.IsNullOrEmpty(folder)) {
 				folder=WebView2Policy.GetPageFolder();
 			}
 			string path=ODFileUtils.CreateRandomFile(folder,".html");
 			//UTF-8 with a byte order mark, so the page reads as UTF-8 whatever its meta tags say.
-			File.WriteAllText(path,html,new UTF8Encoding(true));
+			File.WriteAllText(path,pagePending.Html,new UTF8Encoding(true));
 			_pathDocument=path;
 			_uriDocument=new Uri(path).AbsoluteUri;
+			_hashSetUrisPage.Add(WebView2Policy.RemoveFragment(_uriDocument));
+			_isRemoteContentAllowed=pagePending.IsRemoteContentAllowed;
+			_listFoldersAllowed=new List<string>();
+			if(pagePending.ListFoldersAllowed!=null) {
+				_listFoldersAllowed.AddRange(pagePending.ListFoldersAllowed.FindAll(x => !string.IsNullOrWhiteSpace(x)));
+			}
+			_isRemoteContentBlockedRaised=false;
 			_doBlockNavigation=false;
 			WebView2Policy.ApplyDocumentSettings(CoreWebView2.Settings,IsContextMenuEnabled);
+			if(!_isResourceFilterAdded) {
+				//Every request of every kind, the page's own included, goes through CoreWebView2_WebResourceRequested.
+				CoreWebView2.AddWebResourceRequestedFilter("*",CoreWebView2WebResourceContext.All);
+				_isResourceFilterAdded=true;
+			}
 			CoreWebView2.Navigate(_uriDocument);
 			DeleteFile(pathOld);
 		}
@@ -337,9 +460,19 @@ namespace CodeBase.Controls {
 			string pathOld=_pathDocument;
 			_pathDocument=null;
 			_uriDocument=null;
-			_htmlPending=null;
-			_folderPending=null;
+			_pagePending=null;
+			_isRemoteContentAllowed=false;
+			_listFoldersAllowed=new List<string>();
 			DeleteFile(pathOld);
+		}
+
+		///<summary>Removes the WebResourceRequested filter of NavigateToHtml's pages, so other pages load without a detour through the program.</summary>
+		private void RemoveResourceFilter() {
+			if(!_isResourceFilterAdded || CoreWebView2==null) {
+				return;
+			}
+			CoreWebView2.RemoveWebResourceRequestedFilter("*",CoreWebView2WebResourceContext.All);
+			_isResourceFilterAdded=false;
 		}
 
 		private static void DeleteFile(string path) {
@@ -424,6 +557,14 @@ namespace CodeBase.Controls {
 		///<summary>Makes a call to dev tools to clear WebView2 browser cache. Use a fire and forget pattern as you shouldn't care about the result of this method.</summary>
 		private async Task ClearCache() {
 			await this.CoreWebView2.CallDevToolsProtocolMethodAsync("Network.clearBrowserCache","{}");
+		}
+
+		///<summary>A page for NavigateToHtml: its html, its folder and what it may load besides that folder's files.</summary>
+		private class PagePending {
+			public string Html;
+			public string Folder;
+			public bool IsRemoteContentAllowed;
+			public List<string> ListFoldersAllowed;
 		}
 	}
 }

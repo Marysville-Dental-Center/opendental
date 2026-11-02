@@ -1,6 +1,6 @@
 // The rules every embedded browser (WebView2) of the program follows: where its profile lives, the settings that keep pages away from the program,
-// and the link handling of the pages the program shows itself (ODWebView2.NavigateToHtml). The WinForms wrapper (ODWebView2) and the WPF one
-// (WpfControls.UI.WebView2) both use it, so this class needs only Microsoft.Web.WebView2.Core.
+// and, for the pages the program shows itself (ODWebView2.NavigateToHtml), the link handling and what they may load. The WinForms wrapper
+// (ODWebView2) and the WPF one (WpfControls.UI.WebView2) both use it, so this class needs only Microsoft.Web.WebView2.Core.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -60,7 +60,8 @@ namespace CodeBase.Controls {
 		}
 
 		///<summary>The settings of a page the program shows itself (wiki pages, email previews, generated reports): no scripts (scripts the
-		///program runs with ExecuteScriptAsync still work), no web messages, no script dialogs, autofill or password saving.</summary>
+		///program runs with ExecuteScriptAsync still work), no web messages, no script dialogs, autofill or password saving, and no swipe to go back
+		///or forward on a touch screen (the page stays; ODWebView2 cancels such a navigation anyway).</summary>
 		public static void ApplyDocumentSettings(CoreWebView2Settings coreWebView2Settings,bool isContextMenuEnabled) {
 			coreWebView2Settings.IsScriptEnabled=false;
 			coreWebView2Settings.IsWebMessageEnabled=false;
@@ -68,6 +69,8 @@ namespace CodeBase.Controls {
 			coreWebView2Settings.IsGeneralAutofillEnabled=false;
 			coreWebView2Settings.IsPasswordAutosaveEnabled=false;
 			coreWebView2Settings.AreDefaultContextMenusEnabled=isContextMenuEnabled;
+			//A setting of newer runtimes: an older runtime that lacks it throws, and the page still works without it.
+			ODException.SwallowAnyException(() => coreWebView2Settings.IsSwipeNavigationEnabled=false);
 		}
 
 		///<summary>True when uri is the page uriDocument itself, ignoring a #fragment (an in-page bookmark) and letter case.</summary>
@@ -78,12 +81,110 @@ namespace CodeBase.Controls {
 			return string.Equals(RemoveFragment(uri),RemoveFragment(uriDocument),StringComparison.OrdinalIgnoreCase);
 		}
 
-		private static string RemoveFragment(string uri) {
+		///<summary>uri without its #fragment (an in-page bookmark). Null stays null.</summary>
+		public static string RemoveFragment(string uri) {
+			if(uri==null) {
+				return null;
+			}
 			int idx=uri.IndexOf('#');
 			if(idx<0) {
 				return uri;
 			}
 			return uri.Substring(0,idx);
+		}
+
+		///<summary>True for an http or https address.</summary>
+		public static bool IsRemoteUri(string uri) {
+			Uri uriParsed;
+			if(string.IsNullOrWhiteSpace(uri) || !Uri.TryCreate(uri.Trim(),UriKind.Absolute,out uriParsed)) {
+				return false;
+			}
+			return uriParsed.Scheme==Uri.UriSchemeHttp || uriParsed.Scheme==Uri.UriSchemeHttps;
+		}
+
+		///<summary>True when a page the program shows (uriDocument, a file written by ODWebView2.NavigateToHtml) may load uri: the page itself, or an
+		///image, style sheet, font or the like it names. data:, blob: and about: addresses always (they bring nothing from outside the page); http
+		///and https only when isRemoteContentAllowed; file: only for a file inside the page's own folder or inside one of listFoldersAllowed (a
+		///folder on a server share counts only for that share). A file on any other share or computer never: opening it would make Windows send the
+		///user's credentials there. Every other scheme never.</summary>
+		public static bool IsPageResourceAllowed(string uri,string uriDocument,IList<string> listFoldersAllowed,bool isRemoteContentAllowed) {
+			Uri uriResource;
+			if(string.IsNullOrWhiteSpace(uri) || !Uri.TryCreate(uri.Trim(),UriKind.Absolute,out uriResource)) {
+				return false;
+			}
+			string scheme=uriResource.Scheme.ToLowerInvariant();
+			if(scheme=="data" || scheme=="blob" || scheme=="about") {
+				return true;
+			}
+			if(scheme==Uri.UriSchemeHttp || scheme==Uri.UriSchemeHttps) {
+				return isRemoteContentAllowed && uriResource.Host!="";
+			}
+			if(!uriResource.IsFile) {
+				return false;
+			}
+			string path=GetLocalFilePath(uri);
+			string pathDocument=GetLocalFilePath(uriDocument);
+			if(path==null || pathDocument==null) {
+				return false;
+			}
+			List<string> listFolders=new List<string>();
+			listFolders.Add(Path.GetDirectoryName(pathDocument));
+			if(listFoldersAllowed!=null) {
+				listFolders.AddRange(listFoldersAllowed);
+			}
+			return listFolders.Any(x => IsInFolder(path,x));
+		}
+
+		///<summary>The full path (local, or \\server\share\...) of a file: address. Null when uri is not a file: address, or when a segment holds an
+		///escaped slash or backslash, is "." or "..", or holds a ':' other than a drive letter's, since such a path could name another file than the
+		///one it seems to.</summary>
+		public static string GetLocalFilePath(string uri) {
+			Uri uriFile;
+			if(string.IsNullOrWhiteSpace(uri) || !Uri.TryCreate(uri.Trim(),UriKind.Absolute,out uriFile) || !uriFile.IsFile) {
+				return null;
+			}
+			string[] arraySegments=uriFile.AbsolutePath.Split(new char[] { '/' },StringSplitOptions.RemoveEmptyEntries);
+			for(int i=0;i<arraySegments.Length;i++) {
+				string segment=Uri.UnescapeDataString(arraySegments[i]);
+				if(segment=="." || segment==".." || segment.IndexOfAny(new char[] { '/','\\' })>=0) {
+					return null;
+				}
+				int idxColon=segment.IndexOf(':');
+				bool isDrive=(i==0 && !uriFile.IsUnc && segment.Length==2 && idxColon==1 && char.IsLetter(segment[0]));
+				if(idxColon>=0 && !isDrive) {
+					return null;
+				}
+			}
+			try {
+				return Path.GetFullPath(uriFile.LocalPath);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return null;
+			}
+		}
+
+		///<summary>True when path (a full path from GetLocalFilePath) is inside folder or one of its sub folders. Only a folder with a drive letter
+		///(C:\...) or on a server share (\\server\share\...) counts, never a relative one.</summary>
+		private static bool IsInFolder(string path,string folder) {
+			if(string.IsNullOrWhiteSpace(folder)) {
+				return false;
+			}
+			bool isUnc=folder.StartsWith(@"\\");
+			bool isDrive=(folder.Length>=3 && char.IsLetter(folder[0]) && folder[1]==':' && (folder[2]=='\\' || folder[2]=='/'));
+			if(!isUnc && !isDrive) {
+				return false;
+			}
+			string folderFull;
+			try {
+				folderFull=Path.GetFullPath(folder);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return false;
+			}
+			folderFull=folderFull.TrimEnd('\\')+"\\";
+			return path.StartsWith(folderFull,StringComparison.OrdinalIgnoreCase);
 		}
 
 		///<summary>True for the only addresses a frame of a generated page may load: about:blank and about:srcdoc. A frame never loads a remote
@@ -110,7 +211,8 @@ namespace CodeBase.Controls {
 
 		///<summary>The address to open in the default browser for a link the user clicked in a page the program shows (uriDocument), or "" when
 		///the link must not leave the program. Only http, https and mailto links qualify. A relative link (which the browser resolves into the
-		///page's own folder) counts as a web address, as with the old browser control: "www.example.com" opens http://www.example.com/.</summary>
+		///page's own folder) counts as a web address, as with the old browser control: "www.example.com" opens http://www.example.com/. A link to a
+		///file or folder that is there, such as another page file of the program, is a file and never a web address.</summary>
 		public static string GetSystemBrowserUrl(string uriLink,string uriDocument) {
 			if(string.IsNullOrWhiteSpace(uriLink)) {
 				return "";
@@ -134,6 +236,11 @@ namespace CodeBase.Controls {
 			string relative=Uri.UnescapeDataString(link.Substring(folderDocument.Length));
 			Uri uriWeb;
 			if(relative=="" || relative.Contains("\\") || !Uri.TryCreate("http://"+relative,UriKind.Absolute,out uriWeb) || !uriWeb.Host.Contains(".")) {
+				return "";
+			}
+			//Only checked here, inside the page's own (local) folder, so a link never makes the program look at another computer's share.
+			string pathLink=GetLocalFilePath(uriLink);//Null for "www.example.com:8080/page", which is no file name.
+			if(pathLink!=null && (File.Exists(pathLink) || Directory.Exists(pathLink))) {
 				return "";
 			}
 			return uriWeb.AbsoluteUri;
