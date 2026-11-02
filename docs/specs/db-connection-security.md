@@ -206,7 +206,8 @@ the others nor removes it. `%ProgramData%` is not used: standard users may creat
   link), or whose owner is not BUILTIN\Administrators, SYSTEM, TrustedInstaller or the account the tool runs as (the elevated
   administrator);
 - creates the folder with a protected DACL (inheritance removed): SYSTEM and Administrators full control, Users read and execute, owner
-  Administrators when the process may set it; an existing folder gets the same DACL;
+  Administrators (the tool always runs elevated; only the tests run this code without elevation, and then their own account also gets full
+  control, since it is not an administrator then); an existing folder gets the same DACL;
 - writes `office-ca.pem.new` as a new file with an explicit protected `FileSecurity` (SYSTEM and Administrators full control, Users read),
   moves it over the old copy, and sets the same DACL on the result, so nothing of a file a user may have made survives.
 
