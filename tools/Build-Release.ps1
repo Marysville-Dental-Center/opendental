@@ -107,6 +107,9 @@ $OwnFiles=[ordered]@{
 	'ServiceManager.exe'='ServiceManager\bin\Release'
 	'ServiceManager.exe.config'=''
 	'UpdateFileCopier.exe'='UpdateFileCopier\bin\Release'
+	#The connection settings tool (docs/specs/db-connection-security.md); the installer runs it for the connection page.
+	'OpenPmsDentalDbSettings.exe'='OpenPmsDentalDbSettings\bin\Release'
+	'OpenPmsDentalDbSettings.exe.config'=''
 }
 
 #Third-party files. Each must be named in THIRD-PARTY-NOTICES.txt. Value: where its bytes come from, a byte copy of the repository's
