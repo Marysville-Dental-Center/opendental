@@ -1,7 +1,9 @@
 // What the licence statements say. PdfSharp.License.dll no longer blocks a release: PDFsharp is built from empira's source with an open licence
 // check (third-party\build), so tools\Build-Release.ps1 has no release blocker and no -PdfSharpLicenceResolved, denies the file, and the owner
-// questions record the decision (route B, 2026-11-02). Also what the statements say about the AGPL's network clause, and empira's own reading
-// of its licence, which stays a dispute risk for counsel. Nothing is built; the script runs only its list checks.
+// questions record the decision (route B, 2026-11-02). Also what the statements say about the AGPL's network clause (which, since the PDFsharp
+// built here is a modified version, covers any version of the program that users reach over a network, a hosted Middle Tier without local
+// changes too), and empira's own reading of its licence, which stays a dispute risk for counsel. Nothing is built; the script runs only its list
+// checks.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -93,7 +95,7 @@ namespace PdfLibraryTests {
 			Assert.IsTrue(match.Success,"The owner question of the AGPL.");
 			string question=match.Groups[1].Value;
 			StringAssert.Contains(question,"\""+quote+"\"");
-			StringAssert.Contains(question,"the Corresponding Source of the whole modified program");
+			StringAssert.Contains(question,"the Corresponding Source of the whole program they use");
 			StringAssert.Contains(question,"is not settled");
 			StringAssert.Contains(question,"`DtoProcessor` now calls `PdfSharpSetup.Init`");
 			//empira's own reading (https://pdfsharp.com/Pricing), and what its commercial licence covers.
@@ -103,9 +105,67 @@ namespace PdfLibraryTests {
 			StringAssert.Contains(question,"6.5.x and 7.0.x");
 			string notice=Unwrap(ReadRepoFile("NOTICE"));
 			StringAssert.Contains(notice,"apply to the combination as such, that is, to the program as a whole and not only to PDFsharp and MigraDoc");
-			StringAssert.Contains(notice,"must offer those users the Corresponding Source of the whole modified program");
+			StringAssert.Contains(notice,"must prominently offer those users the Corresponding Source of the whole program they interact with");
 			StringAssert.Contains(notice,"is not settled");
 			StringAssert.Contains(ReadRepoFile("README.md"),"apply to the combination as a whole");
+		}
+
+		[TestMethod]
+		public void NetworkClause_CoversEveryVersionUsersReach_SinceThePdfSharpBuiltHereIsModified() {
+			//Route B replaces one PDFsharp file, so the program as this project distributes it is already a modified AGPL work: the network clause
+			//covers a hosted Middle Tier even without local changes, not only a version that someone else modifies.
+			string notice=Unwrap(ReadRepoFile("NOTICE"));
+			StringAssert.Contains(notice,"Those requirements apply to a modified version, and the PDFsharp built here is itself a modified version (see above), "
+				+"so they apply to the program as this project distributes it, not only to versions that someone else modifies.");
+			StringAssert.Contains(notice,"(a hosted Middle Tier, for example, even one without local changes) must prominently offer those users the "
+				+"Corresponding Source of the whole program they interact with, from a network server at no charge");
+			StringAssert.Contains(notice,"a link to that release's source archive OpenPmsDental-<version>-source.zip");
+			StringAssert.Contains(notice,"which always holds the modified PDFsharp");
+			string readme=Unwrap(ReadRepoFile("README.md"));
+			StringAssert.Contains(readme,"the PDFsharp built here is itself one (one file replaced, see below), so they cover any version of the program that "
+				+"users reach over a network, not only versions someone else modifies: a hosted Middle Tier, even one without local changes, must prominently "
+				+"offer its users the Corresponding Source of the whole program");
+			string ownerQuestions=ReadRepoFile("docs","owner-questions.md");
+			//Decision 13: the Middle Tier is not shipped, and it must carry the source offer before it ever is.
+			Match match=Regex.Match(ownerQuestions,@"(?m)^13\. \*\*The side programs are not shipped\*\*(.*)$");
+			Assert.IsTrue(match.Success,"Decision 13.");
+			string decision=match.Groups[1].Value;
+			StringAssert.Contains(decision,"a hosted Middle Tier, even one without local changes, falls under the AGPL's network clause");
+			StringAssert.Contains(decision,"Before the Middle Tier is ever shipped or hosted, it must prominently offer its remote users the Corresponding Source, "
+				+"such as a link to the release's `OpenPmsDental-<version>-source.zip`");
+			//Point 3 of the AGPL question, and the note for counsel.
+			match=Regex.Match(ownerQuestions,@"(?m)^- \(LIB-PDF, your decision of 2026-11-02 to use PDFsharp/MigraDoc 6\.5[^)]*\) \*\*What the AGPL changes\.\*\*(.*)$");
+			Assert.IsTrue(match.Success,"The owner question of the AGPL.");
+			string question=match.Groups[1].Value;
+			StringAssert.Contains(question,"since route B the program as this project distributes it already is one");
+			StringAssert.Contains(question,"whoever lets users interact with **any version** of the program remotely through a network, not only a version someone "
+				+"else has modified");
+			StringAssert.Contains(question,"an office or vendor that hosted the Middle Tier would be in it, **even with no local changes**: before the Middle Tier "
+				+"is ever shipped or hosted, it must prominently offer its remote users the Corresponding Source");
+			int indexCounsel=question.IndexOf("**This stays open as a dispute risk for counsel**");
+			Assert.IsTrue(indexCounsel>=0);
+			StringAssert.Contains(question.Substring(indexCounsel),"Route B adds one point for counsel: the program as distributed now contains a modified version "
+				+"of PDFsharp, so the AGPL's network clause applies to any copy of the program that users reach over a network, a hosted Middle Tier without "
+				+"local changes included");
+			//The About box (Help > About > View Licenses), the setup's License Agreement page and the source-build notes say the same.
+			Dictionary<string,string> dictTexts=new Dictionary<string,string> {
+				{ "the About box",OpenPmsDental.LicenseList.GetProgramLicenseText() },
+				{ "installer/setup-license.txt",ReadRepoFile("installer","setup-license.txt") },
+				{ "docs/third-party-source-builds.md",ReadRepoFile("docs","third-party-source-builds.md") },
+			};
+			foreach(KeyValuePair<string,string> pair in dictTexts) {
+				StringAssert.Contains(Unwrap(pair.Value),"to any version of the program that users reach over a network, not only to versions",pair.Key);
+			}
+			//The old wording, by which only a version that someone else modified was affected, is gone everywhere.
+			dictTexts.Add("NOTICE",notice);
+			dictTexts.Add("README.md",readme);
+			dictTexts.Add("docs/owner-questions.md",Unwrap(ownerQuestions));
+			foreach(KeyValuePair<string,string> pair in dictTexts) {
+				foreach(string old in new[] { "surely applies","Running the unmodified program","That is certain when PDFsharp or MigraDoc are modified",
+					"hosted a modified Middle Tier","whoever runs a **modified** version","what that means for a modified version" }) {
+					Assert.IsFalse(Unwrap(pair.Value).Contains(old),pair.Key+" still says: "+old);
+				}
+			}
 		}
 	}
 }
