@@ -887,6 +887,11 @@ namespace OpenPmsDentalBusiness{
 		///<summary>276 - Reserved. Open Dental HQ only (26.1): changes to which services have their log folders collected.</summary>
 		[Description("Log Scraper HQ"),IsODHQ]
 		LogScraperHQ,
+		//Fork-only values start at 10000 so that a later Open Dental release never reuses one (docs/port-notes/FORK-ENUMS.md).
+		///<summary>10050 - Inventory tracking (fork): posting stock counts and manual stock adjustments, and repairing stock from the ledger. Every
+		///count and adjustment writes an audit entry under it. No date limit. Upgrade grant: every user group that holds Supplier Edit (242).</summary>
+		[Description("Inventory Adjust")]
+		InventoryAdjust=10050,
 	}
 }
 

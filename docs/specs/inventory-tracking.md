@@ -50,7 +50,7 @@ Every change of stock is a ledger row; nothing else changes stock.
 | `SupplyNum` | the supply |
 | `SupplyLotNum` | the lot, or 0 for stock without a lot |
 | `LedgerType` | `SupplyLedgerType`: 0 Opening, 1 Receive, 2 Use, 3 Restore, 4 CountAdjust, 5 Adjust, 6 Dispense |
-| `Quantity` | signed: receipts, restores and positive adjustments add, uses, dispenses and negative adjustments subtract |
+| `Quantity` | signed: receipts, restores and positive adjustments add, uses, dispenses and negative adjustments subtract. Quantities have at most 2 decimals (the CRUD writes doubles with 2) |
 | `UnitCost` | cost of one unit at the time: the order item's price for a receipt, the supply's price otherwise |
 | `ProcNum`, `PatNum` | the procedure and patient, for Use and Restore |
 | `SupplyOrderItemNum` | the order item, for Receive |
@@ -186,7 +186,7 @@ Supply Inventory, Usage Report: for a date range (by ledger date), Use minus Res
 
 ### 3.9 Existing data
 
-The migration writes an Opening ledger row for every supply whose `LevelOnHand` is not 0 (rounded to 4 decimals, at the supply's price), so the
+The migration writes an Opening ledger row for every supply whose `LevelOnHand` is not 0 (rounded to 2 decimals, at the supply's price), so the
 ledger and the stock agree from the start. Supplies, orders, suppliers and categories are unchanged.
 
 ## 4. Settings, permissions and enum values
@@ -196,9 +196,10 @@ ledger and the stock agree from the start. Supplies, orders, suppliers and categ
 - `EnumPermType.InventoryAdjust` (10050, "Inventory Adjust"): posting counts, manual adjustments and the repair. Security log entries for
   each. The migration grants it to every user group that has Supplier Edit, the permission of the people who look after supplies today.
 - Receiving uses Supply Purchases (`SupplyPurchases`) for its log entry, as orders do.
-- Fork-only values stored in the database, in the inventory range 10050-10099 (`docs/port-notes/FORK-ENUMS.md`):
-  `EnumPermType.InventoryAdjust` 10050, `AlertType.InventoryLowStock` 10050, `AlertType.InventoryExpiring` 10051,
-  `FormType.FormSupplyInventory` 10050. The security tree's Set All and Set None loop over the defined values, not over 0 to count-1.
+- Fork-only values stored in the database (`docs/port-notes/FORK-ENUMS.md`): `EnumPermType.InventoryAdjust` 10050, in the inventory
+  range 10050-10099. `AlertType` and `FormType` are stored in `tinyint(4)` columns (at most 127), so their fork values come from the
+  inventory range 110-119 of the tinyint rule: `AlertType.InventoryLowStock` 110, `AlertType.InventoryExpiring` 111,
+  `FormType.FormSupplyInventory` 110. The security tree's Set All and Set None loop over the defined values, not over 0 to count-1.
 
 ## 5. Migration steps
 

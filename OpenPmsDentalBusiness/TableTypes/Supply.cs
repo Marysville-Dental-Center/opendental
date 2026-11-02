@@ -25,7 +25,7 @@ namespace OpenPmsDentalBusiness{
 		public bool IsHidden;
 		/// <summary>The price per unit that the supplier charges for this supply.  If this is 0.00, then no price will be displayed.</summary>
 		public double Price;
-		/// <summary>Scanned code from a reader.</summary>
+		/// <summary>Scanned code from a reader. A barcode scan in receiving, stock counts and the Materials used panel is matched against it.</summary>
 		public string BarCodeOrID;
 		/// <summary>Only used for dental schools.  This is the typical quantity dispensed at the window.</summary>
 		public float DispDefaultQuant;
@@ -33,7 +33,10 @@ namespace OpenPmsDentalBusiness{
 		public int DispUnitsCount;
 		/// <summary>Only used in dental schools.  Description of the units when dispensing for use.  For example: Capsule, cartridge, carpule, glove, or needle.</summary>
 		public string DispUnitDesc;
-		///<summary>Deprecated.</summary>
+		///<summary>The quantity on hand. Inventory tracking (docs/specs/inventory-tracking.md) keeps it equal to the sum of the supply's stock ledger
+		///rows (supplyledger): only SupplyLedgers sets it, from the ledger, so it is never written by Update (an edit made from an old copy of the
+		///row can never overwrite stock). Insert writes 0 and records a typed quantity as an opening ledger row.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.ExcludeFromUpdate)]
 		public float LevelOnHand;
 		///<summary>The amount to order when the next SupplyOrder is created.  Creating a SupplyOrder then zeroes this out, so it's just a temporary value.</summary>
 		public int OrderQty;

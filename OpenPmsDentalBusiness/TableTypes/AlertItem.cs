@@ -243,6 +243,16 @@ namespace OpenPmsDentalBusiness {
 		///<summary>51 - Reserved (Open Dental 26.1). eConnector listener firewall rules failed.</summary>
 		[Description("eService Listener Error"),ReservedEnumValue("Raised by the Open Dental eConnector.")]
 		EServiceListenerError,
+		//Fork-only values. alertitem.Type, alertsub.Type and alertcategorylink.AlertType are tinyint(4) (at most 127), so this enum's fork values
+		//are 100 to 127, counted from the top of Open Dental's range, not from 10000 (docs/port-notes/FORK-ENUMS.md, "tinyint enums").
+		///<summary>110 - Inventory tracking (fork): a supply's on hand is at or below its reorder level. FKey is the SupplyNum. Opens the Supply
+		///Inventory window.</summary>
+		[Description("Inventory Low Stock")]
+		InventoryLowStock=110,
+		///<summary>111 - Inventory tracking (fork): a lot with stock expires within the lead days of InventoryExpiryAlertDays, or has expired.
+		///FKey is the SupplyLotNum. Opens the Supply Inventory window.</summary>
+		[Description("Inventory Expiring")]
+		InventoryExpiring=111,
 	}
 
 	///<summary>Represents the urgency of the alert.  Also determines the color for the menu item in the main menu.</summary>
@@ -339,6 +349,11 @@ namespace OpenPmsDentalBusiness {
 		///<summary>21 - Reserved (Open Dental 25.4). PaySuite reconciliation window, not built yet. Opening it does nothing.</summary>
 		[Description("PaySuite Reconciliation"),ReservedEnumValue("PaySuite is not built yet.")]
 		FrmPaySuiteReconciliation,
+		//Fork-only values. alertitem.FormToOpen is tinyint(4) (at most 127), so this enum's fork values are 100 to 127, not from 10000
+		//(docs/port-notes/FORK-ENUMS.md, "tinyint enums").
+		///<summary>110 - Inventory tracking (fork): FormSupplyInventory, for the low-stock and expiring alerts.</summary>
+		[Description("Supply Inventory")]
+		FormSupplyInventory=110,
 	}
 
 }

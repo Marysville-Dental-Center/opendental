@@ -25,6 +25,7 @@ The legacy `ConvertDatabases` chain (`OpenPmsDentalBusiness/Misc/ConvertDatabase
 | 2026110102 | `NoBillInsBackfillStep.cs`: Do Not Bill to Ins decisions moved to `procedurelog.NoBillIns`. Not active: the class is abstract, so the runner skips it; the owner has not decided whether it runs (see `docs/port-notes/M2-EST.md`) | M2-EST |
 | 2026110103 | `ReportRowUdsPlus.cs`: the UDS+ report row after the FQHC Dental Sealant Measure, on a database from before 25.4 | M2-UDS |
 | 2026110104 | `InsHistCodeGroupsStep.cs`: Insurance History rows from the `InsHist*Codes` preferences to code groups, on a database from before 25.4 | M2-HIST |
+| 2026110211 to 2026110215 | `InventorySteps.cs`: the inventory tracking tables (`supplyledger` with the opening balance of every supply in the same step, `supplylot`, `supplyproccode`, `supplysetting`, `supplyprocpending`), the `InventoryTrackingEnabled` (off) and `InventoryExpiryAlertDays` preferences, the "All" alert category links of the two inventory alert types and the Inventory Adjust grant to groups with Supplier Edit (`docs/specs/inventory-tracking.md`). 2026110216 to 2026110219 are kept for this feature. | INV |
 
 The last four were renumbered on 2026-11-01 from the retired package range levels 2027002301, 2027002701, 2027003501 and 2027004701, keeping their order. No office database carried a fork level then.
 
@@ -50,6 +51,10 @@ Tables, columns (type, NULL, default, extra, charset, position), keys, engine an
 - `patient._portal_active_email` and its unique key `portal_active_email_uniq`: an office-specific customization, not Open Dental schema. The adoption step drops both.
 - The 54 Open Dental HQ-only tables that the 24.3 code declares, when present.
 - Legacy tables that long-lived databases (including our development seed) still carry: the `anesth*` tables, `files` and `instructor`.
+- Fork tables (`SchemaVerifier.ArrayForkTables`): a fork feature keeps its data in tables of its own, created by its fork migration step, and
+  never adds a column to an Open Dental table (an extra column would make the Open Dental table differ from the reference, and the adoption
+  tools and `Migrated_MatchesEmbeddedReference` allow only extra tables). A new fork table is added to this list in the same change as its
+  step. The feature's own tests check its tables.
 
 Tests: `tests/ForkMigrationTests` (runner, 25.3 steps, both references) and `tests/M201Tests` (25.4 and 26.1 steps, the 26.1.70 reference, the regenerated CRUD; set `M201_OD_DOCS_DIR` to a folder with the published XML documents to also check the reference against them).
 

@@ -98,7 +98,8 @@ namespace ForkMigrationTests {
 				string tableName=CrudTableAttribute.GetTableName(type).ToLowerInvariant();
 				SchemaTable table=reference.GetTable(tableName);
 				if(table==null) {
-					if(!SchemaVerifier.ArrayHqOnlyTables.Contains(tableName)) {
+					//Fork tables are not Open Dental schema; their fork migration step creates them (InventoryTests checks them).
+					if(!SchemaVerifier.ArrayHqOnlyTables.Contains(tableName) && !SchemaVerifier.ArrayForkTables.Contains(tableName)) {
 						listProblems.Add("No table "+tableName+" for "+type.Name);
 					}
 					continue;

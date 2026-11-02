@@ -210,7 +210,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				+"DispDefaultQuant=  "+POut.Float (supply.DispDefaultQuant)+", "
 				+"DispUnitsCount  =  "+POut.Int   (supply.DispUnitsCount)+", "
 				+"DispUnitDesc    = '"+POut.String(supply.DispUnitDesc)+"', "
-				+"LevelOnHand     =  "+POut.Float (supply.LevelOnHand)+", "
+				//LevelOnHand excluded from update
 				+"OrderQty        =  "+POut.Int   (supply.OrderQty)+" "
 				+"WHERE SupplyNum = "+POut.Long(supply.SupplyNum);
 			Db.NonQ(command);
@@ -267,10 +267,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="DispUnitDesc = '"+POut.String(supply.DispUnitDesc)+"'";
 			}
-			if(supply.LevelOnHand != oldSupply.LevelOnHand) {
-				if(command!="") { command+=",";}
-				command+="LevelOnHand = "+POut.Float(supply.LevelOnHand)+"";
-			}
+			//LevelOnHand excluded from update
 			if(supply.OrderQty != oldSupply.OrderQty) {
 				if(command!="") { command+=",";}
 				command+="OrderQty = "+POut.Int(supply.OrderQty)+"";
@@ -323,9 +320,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(supply.DispUnitDesc != oldSupply.DispUnitDesc) {
 				return true;
 			}
-			if(supply.LevelOnHand != oldSupply.LevelOnHand) {
-				return true;
-			}
+			//LevelOnHand excluded from update
 			if(supply.OrderQty != oldSupply.OrderQty) {
 				return true;
 			}

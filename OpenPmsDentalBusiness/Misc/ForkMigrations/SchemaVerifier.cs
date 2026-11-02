@@ -54,6 +54,13 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 			"anesthmedsuppliers","anesthscore","anesthvsdata","files","instructor",
 		};
 
+		///<summary>Tables that only this program has: fork features keep their data in tables of their own, never in new columns of Open Dental
+		///tables, so the Open Dental tables still match the reference exactly. Each is created by a fork migration step and listed here with its
+		///feature, so the verifier allows it as an extra table. Inventory tracking (docs/specs/inventory-tracking.md, InventorySteps.cs).</summary>
+		public static readonly string[] ArrayForkTables=new string[] {
+			"supplyledger","supplylot","supplyproccode","supplyprocpending","supplysetting",
+		};
+
 		private static SchemaSnapshot _reference25_3_48;
 		private static SchemaSnapshot _reference26_1_70;
 		private static readonly object _lockReference=new object();
@@ -88,6 +95,10 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 				foreach(string table in ArrayLegacyTables) {
 					listExceptions.Add(new SchemaException(SchemaDifferenceKind.ExtraTable,table,null,
 						"Legacy table from old Open Dental versions that some long-lived databases still carry. No code uses it; left in place."));
+				}
+				foreach(string table in ArrayForkTables) {
+					listExceptions.Add(new SchemaException(SchemaDifferenceKind.ExtraTable,table,null,
+						"Open PMS - Dental table of a fork feature, created by a fork migration step. Not Open Dental schema."));
 				}
 				return listExceptions;
 			}
