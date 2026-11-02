@@ -1,0 +1,321 @@
+// What the connection settings tool does, without its window: check, apply and test this computer's connection settings.
+// Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using CodeBase;
+using DataConnectionBase;
+using MySqlConnector;
+
+namespace OpenPmsDentalDbSettings {
+	///<summary>What the user or the switches ask the tool to save. Null means: keep what the settings have.</summary>
+	public class DbSettingsRequest {
+		public string Server;
+		public string Database;
+		public string User;
+		///<summary>An office CA certificate file to copy in; null keeps the configured SslCa.</summary>
+		public string CaFile;
+		///<summary>Certificate or Password; Unchanged keeps the mode of the current settings.</summary>
+		public DbSettingsAuth Auth=DbSettingsAuth.Unchanged;
+		///<summary>A .pfx to import (certificate mode).</summary>
+		public string PfxFile;
+		public string PfxPassword;
+		///<summary>A certificate already in LocalMachine\My (certificate mode); null keeps the configured one.</summary>
+		public string Thumbprint;
+		///<summary>The database password (password mode); null keeps the stored one when the user stays the same.</summary>
+		public string DbPassword;
+	}
+
+	///<summary>The result of a run: the exit code and a message for the user and the log, never with a secret in it.</summary>
+	public class DbSettingsResult {
+		public int ExitCode;
+		public string Message="";
+
+		public DbSettingsResult(int exitCode,string message) {
+			ExitCode=exitCode;
+			Message=message??"";
+		}
+	}
+
+	///<summary>Checks, applies and tests this computer's database connection settings (docs/specs/db-connection-security.md section 4). The
+	///window and the silent switches both come here. Everything is checked before anything is changed: the CA file, the .pfx and its password,
+	///the certificate in the store, the rule. Then the CA is copied, the .pfx imported, the password protected (DPAPI, machine scope) and
+	///FreeDentalConfig.xml written, keeping its other elements.</summary>
+	public static class DbSettingsRunner {
+		public const int EXIT_OK=0;
+		public const int EXIT_BAD_ARGS=1;
+		public const int EXIT_BAD_VALUE=2;
+		public const int EXIT_WRITE_FAILED=3;
+		public const int EXIT_TEST_FAILED=4;
+		public const int EXIT_REFUSED=5;
+		public const int EXIT_CANCELLED=6;
+
+		///<summary>The settings of the file at configPath, or new empty ones when there is no file or no DatabaseConnection element. Throws
+		///DbSettingsException (exit code 2) when the file is not XML.</summary>
+		public static DbConnectionConfig ReadCurrent(string configPath) {
+			try {
+				return DbConnectionConfig.ReadFile(configPath)??new DbConnectionConfig();
+			}
+			catch(Exception ex) when(ex is System.Xml.XmlException || ex is IOException || ex is UnauthorizedAccessException) {
+				throw new DbSettingsException(EXIT_BAD_VALUE,ProgramNames.ConfigFileName+" cannot be read: "+ex.Message);
+			}
+		}
+
+		///<summary>/check: whether the file at configPath passes the rule, without connecting. 0, or 5 with what is missing.</summary>
+		public static DbSettingsResult Check(string configPath) {
+			DbConnectionConfig dbConnectionConfig;
+			try {
+				dbConnectionConfig=DbConnectionConfig.ReadFile(configPath);
+			}
+			catch(Exception ex) {
+				return new DbSettingsResult(EXIT_REFUSED,ProgramNames.ConfigFileName+" cannot be read: "+ex.Message);
+			}
+			if(dbConnectionConfig==null) {
+				return new DbSettingsResult(EXIT_REFUSED,ProgramNames.ConfigFileName+" has no database connection.");
+			}
+			try {
+				dbConnectionConfig.ThrowIfRefused();
+			}
+			catch(DbConnectionRefusedException ex) {
+				return new DbSettingsResult(EXIT_REFUSED,ex.Message);
+			}
+			return new DbSettingsResult(EXIT_OK,"The connection settings for "+dbConnectionConfig.ServerName+" pass the rule.");
+		}
+
+		///<summary>The request the switches make, with secrets from secrets (null when none were given).</summary>
+		public static DbSettingsRequest RequestFromArgs(DbSettingsArgs dbSettingsArgs,DbSettingsSecrets dbSettingsSecrets) {
+			DbSettingsRequest dbSettingsRequest=new DbSettingsRequest();
+			dbSettingsRequest.Server=dbSettingsArgs.Server;
+			dbSettingsRequest.Database=dbSettingsArgs.Database;
+			dbSettingsRequest.User=dbSettingsArgs.User;
+			dbSettingsRequest.CaFile=dbSettingsArgs.CaFile;
+			dbSettingsRequest.Auth=dbSettingsArgs.Auth;
+			dbSettingsRequest.PfxFile=dbSettingsArgs.PfxFile;
+			dbSettingsRequest.Thumbprint=dbSettingsArgs.Thumbprint;
+			if(dbSettingsSecrets!=null) {
+				dbSettingsRequest.PfxPassword=dbSettingsSecrets.PfxPassword;
+				dbSettingsRequest.DbPassword=dbSettingsSecrets.DbPassword;
+			}
+			return dbSettingsRequest;
+		}
+
+		///<summary>The mode the request ends in: its own, or that of the current settings (certificate when they have a thumbprint).</summary>
+		public static DbSettingsAuth ResolveAuth(DbSettingsRequest dbSettingsRequest,DbConnectionConfig dbConnectionConfigCurrent) {
+			if(dbSettingsRequest.Auth!=DbSettingsAuth.Unchanged) {
+				return dbSettingsRequest.Auth;
+			}
+			if(dbSettingsRequest.PfxFile!=null || dbSettingsRequest.Thumbprint!=null || dbConnectionConfigCurrent.IsCertificateMode) {
+				return DbSettingsAuth.Certificate;
+			}
+			return DbSettingsAuth.Password;
+		}
+
+		///<summary>Applies the request to the file at configPath, with the office CA copied to caCopyPath (DbConnectionConfig.GetOfficeCaCopyPath
+		///in the program; tests pass their own). Checks everything first, then changes things. Never throws: the result has the exit code.</summary>
+		public static DbSettingsResult Apply(DbSettingsRequest dbSettingsRequest,string configPath,string caCopyPath) {
+			try {
+				string warning=ApplyOrThrow(dbSettingsRequest,configPath,caCopyPath,out DbConnectionConfig dbConnectionConfigNew);
+				string message="Saved the connection settings for the database "+dbConnectionConfigNew.Database+" on "+dbConnectionConfigNew.ServerName
+					+(dbConnectionConfigNew.IsCertificateMode ? " (client certificate)." : " (password).");
+				if(warning!="") {
+					message+=" "+warning;
+				}
+				return new DbSettingsResult(EXIT_OK,message);
+			}
+			catch(DbSettingsException ex) {
+				return new DbSettingsResult(ex.ExitCode,ex.Message);
+			}
+		}
+
+		private static string ApplyOrThrow(DbSettingsRequest dbSettingsRequest,string configPath,string caCopyPath,
+			out DbConnectionConfig dbConnectionConfigNew)
+		{
+			DbConnectionConfig dbConnectionConfigCurrent=ReadCurrent(configPath);
+			dbConnectionConfigNew=new DbConnectionConfig();
+			dbConnectionConfigNew.ServerName=(dbSettingsRequest.Server??dbConnectionConfigCurrent.ServerName).Trim();
+			dbConnectionConfigNew.Database=(dbSettingsRequest.Database??dbConnectionConfigCurrent.Database).Trim();
+			dbConnectionConfigNew.User=(dbSettingsRequest.User??dbConnectionConfigCurrent.User).Trim();
+			dbConnectionConfigNew.NoShowOnStartup=dbConnectionConfigCurrent.NoShowOnStartup;
+			DbSettingsArgs.CheckValue("The server",dbConnectionConfigNew.ServerName,isDatabase:false,isServer:true);
+			DbSettingsArgs.CheckValue("The database",dbConnectionConfigNew.Database,isDatabase:true,isServer:false);
+			DbSettingsArgs.CheckValue("The user",dbConnectionConfigNew.User,isDatabase:false,isServer:false);
+			bool isLoopback=DbConnectionSecurity.IsLoopbackServer(dbConnectionConfigNew.ServerName);
+			#region Check everything
+			List<X509Certificate2> listCaCertificates=null;
+			if(!string.IsNullOrWhiteSpace(dbSettingsRequest.CaFile)) {
+				listCaCertificates=OfficeCaFile.Load(dbSettingsRequest.CaFile.Trim());
+				dbConnectionConfigNew.SslCa=caCopyPath;
+			}
+			else {
+				dbConnectionConfigNew.SslCa=dbConnectionConfigCurrent.SslCa;
+			}
+			if(!isLoopback && string.IsNullOrWhiteSpace(dbConnectionConfigNew.SslCa)) {
+				throw new DbSettingsException(EXIT_REFUSED,"A database server over the network ("+dbConnectionConfigNew.ServerName+") needs the office "
+					+"CA certificate file (/ca=).");
+			}
+			DbSettingsAuth dbSettingsAuth=ResolveAuth(dbSettingsRequest,dbConnectionConfigCurrent);
+			bool isPfxImport=false;
+			string password="";
+			if(dbSettingsAuth==DbSettingsAuth.Certificate) {
+				if(!string.IsNullOrWhiteSpace(dbSettingsRequest.PfxFile)) {
+					if(dbSettingsRequest.PfxPassword==null) {
+						throw new DbSettingsException(EXIT_BAD_VALUE,"The password of the client certificate file is missing (PfxPassword in the secrets "
+							+"file, or /prompt).");
+					}
+					using(X509Certificate2 x509Certificate2=ClientCertificateStore.LoadPfxForCheck(dbSettingsRequest.PfxFile.Trim(),
+						dbSettingsRequest.PfxPassword))
+					{
+						dbConnectionConfigNew.ClientCertThumbprint=DbConnectionConfig.NormalizeThumbprint(x509Certificate2.Thumbprint);
+					}
+					isPfxImport=true;
+				}
+				else {
+					string thumbprint=DbConnectionConfig.NormalizeThumbprint(dbSettingsRequest.Thumbprint??dbConnectionConfigCurrent.ClientCertThumbprint);
+					if(thumbprint=="") {
+						throw new DbSettingsException(EXIT_BAD_VALUE,"No client certificate: import a .pfx (/pfx=) or name one in the computer's store "
+							+"(/thumbprint=).");
+					}
+					X509Certificate2 x509Certificate2=ClientCertificateStore.FindInStore(thumbprint);
+					if(x509Certificate2==null) {
+						throw new DbSettingsException(EXIT_BAD_VALUE,"The certificate "+thumbprint+" is not in the computer's certificate store "
+							+"(LocalMachine\\My).");
+					}
+					ClientCertificateStore.CheckClientCertificate(x509Certificate2,"LocalMachine\\My");
+					dbConnectionConfigNew.ClientCertThumbprint=thumbprint;
+				}
+			}
+			else {
+				if(dbSettingsRequest.DbPassword!=null) {
+					password=dbSettingsRequest.DbPassword;
+				}
+				else if(dbConnectionConfigNew.User==dbConnectionConfigCurrent.User) {
+					//Keep the stored password of the same user; an old-style one is moved into DPAPI, but only for a server on this computer.
+					try {
+						password=dbConnectionConfigCurrent.GetPassword(dbConnectionConfigNew.ServerName);
+					}
+					catch(DbConnectionRefusedException) {
+						throw new DbSettingsException(EXIT_REFUSED,"The stored password cannot be kept for "+dbConnectionConfigNew.ServerName+": it is "
+							+"stored the old way or cannot be read on this computer. Give the database password (DbPassword in the secrets file, or /prompt).");
+					}
+				}
+				if(!isLoopback && password=="") {
+					throw new DbSettingsException(EXIT_REFUSED,"A database server over the network ("+dbConnectionConfigNew.ServerName+") needs a client "
+						+"certificate or a database password (DbPassword in the secrets file, or /prompt).");
+				}
+			}
+			//The rule, as the program will apply it. The CA copy does not exist yet; the rule checks the file the copy is made from.
+			string sslCaToCheck=dbConnectionConfigNew.SslCa;
+			if(listCaCertificates!=null) {
+				sslCaToCheck=dbSettingsRequest.CaFile.Trim();
+			}
+			string connectionString=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,dbConnectionConfigNew.ServerName,
+				dbConnectionConfigNew.Database,dbConnectionConfigNew.User,password,sslCaToCheck,dbConnectionConfigNew.ClientCertThumbprint);
+			List<string> listMissing=DbConnectionSecurity.GetMissing(connectionString);
+			if(listMissing.Count>0) {
+				throw new DbSettingsException(EXIT_REFUSED,DbConnectionSecurity.GetRefusalMessage(dbConnectionConfigNew.ServerName,listMissing));
+			}
+			#endregion Check everything
+			#region Change things
+			string warning="";
+			try {
+				if(listCaCertificates!=null) {
+					OfficeCaFile.WriteCopy(listCaCertificates,caCopyPath);
+				}
+				if(isPfxImport) {
+					string thumbprintImported=ClientCertificateStore.ImportPfx(dbSettingsRequest.PfxFile.Trim(),dbSettingsRequest.PfxPassword,out warning);
+					dbConnectionConfigNew.ClientCertThumbprint=DbConnectionConfig.NormalizeThumbprint(thumbprintImported);
+				}
+				if(dbSettingsAuth==DbSettingsAuth.Certificate) {
+					dbConnectionConfigNew.SetPassword("");
+				}
+				else {
+					dbConnectionConfigNew.ClientCertThumbprint="";
+					dbConnectionConfigNew.SetPassword(password);
+				}
+				dbConnectionConfigNew.SaveFile(configPath);
+			}
+			catch(DbSettingsException) {
+				throw;
+			}
+			catch(Exception ex) when(ex is IOException || ex is UnauthorizedAccessException || ex is CryptographicException
+				|| ex is System.Xml.XmlException)
+			{
+				throw new DbSettingsException(EXIT_WRITE_FAILED,"The connection settings could not be saved: "+ex.Message);
+			}
+			#endregion Change things
+			return warning;
+		}
+
+		///<summary>Connects with the saved settings at configPath (through the connection rule) and asks the server for its version. Returns the
+		///result; never throws.</summary>
+		public static DbSettingsResult TestSaved(string configPath) {
+			DbConnectionConfig dbConnectionConfig;
+			string password;
+			try {
+				dbConnectionConfig=DbConnectionConfig.ReadFile(configPath);
+				if(dbConnectionConfig==null) {
+					return new DbSettingsResult(EXIT_TEST_FAILED,ProgramNames.ConfigFileName+" has no database connection.");
+				}
+				password=dbConnectionConfig.GetPassword();
+			}
+			catch(DbConnectionRefusedException ex) {
+				return new DbSettingsResult(EXIT_REFUSED,ex.Message);
+			}
+			catch(Exception ex) {
+				return new DbSettingsResult(EXIT_TEST_FAILED,ProgramNames.ConfigFileName+" cannot be read: "+ex.Message);
+			}
+			return TestConnection(dbConnectionConfig.ServerName,dbConnectionConfig.Database,dbConnectionConfig.User,password,dbConnectionConfig.SslCa,
+				dbConnectionConfig.ClientCertThumbprint);
+		}
+
+		///<summary>Connects with these values (through the connection rule, so a refused connection is never attempted) and asks the server for
+		///its version and the database for its program version. Never throws; the message never contains the password.</summary>
+		public static DbSettingsResult TestConnection(string server,string database,string user,string password,string sslCa,string thumbprint) {
+			string connectionString=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,server,database,user,password,sslCa,thumbprint);
+			try {
+				using(MySqlConnection mySqlConnection=DbConnectionSecurity.NewMySqlConnection(connectionString)) {
+					mySqlConnection.Open();
+					string serverVersion;
+					using(MySqlCommand mySqlCommand=new MySqlCommand("SELECT VERSION()",mySqlConnection)) {
+						serverVersion=Convert.ToString(mySqlCommand.ExecuteScalar());
+					}
+					string programVersion="";
+					try {
+						using(MySqlCommand mySqlCommand=new MySqlCommand("SELECT ValueString FROM preference WHERE PrefName='ProgramVersion'",mySqlConnection)) {
+							programVersion=Convert.ToString(mySqlCommand.ExecuteScalar());
+						}
+					}
+					catch(MySqlException) {
+						//Not a database of the program (yet); the connection itself works.
+					}
+					string encrypted=DbConnectionSecurity.IsLoopbackServer(server) ? "" : ", encrypted, server verified";
+					return new DbSettingsResult(EXIT_OK,"Connected to "+server+" (MariaDB/MySQL "+serverVersion+encrypted+")."
+						+(programVersion=="" ? " The database "+database+" has no program version." : " Database "+database+", version "+programVersion+"."));
+				}
+			}
+			catch(DbConnectionRefusedException ex) {
+				return new DbSettingsResult(EXIT_REFUSED,ex.Message);
+			}
+			catch(Exception ex) {
+				return new DbSettingsResult(EXIT_TEST_FAILED,"The connection test failed: "+ex.Message);
+			}
+		}
+
+		///<summary>Appends "time exit=N message" to logPath. Never throws, never writes a secret (messages have none).</summary>
+		public static void AppendLog(string logPath,DbSettingsResult dbSettingsResult) {
+			if(string.IsNullOrWhiteSpace(logPath)) {
+				return;
+			}
+			try {
+				File.AppendAllText(logPath,DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")+" "+ProgramNames.DbSettingsExeFileName+" exit="
+					+dbSettingsResult.ExitCode+" "+dbSettingsResult.Message+Environment.NewLine,new UTF8Encoding(false));
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+		}
+	}
+}
