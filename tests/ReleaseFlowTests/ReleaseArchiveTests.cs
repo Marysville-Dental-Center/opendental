@@ -74,7 +74,7 @@ namespace ReleaseFlowTests {
 				List<string> listExpected=ForkReleases.GetReleaseFiles(folder).Select(x => x.Replace('\\','/')).ToList();
 				listExpected.Add(ReleaseManifest.FILE_NAME);
 				CollectionAssert.AreEqual(listExpected,zipArchive.Entries.Select(x => x.FullName).ToList());
-				CollectionAssert.AreEqual(new[] { "Big.dll","OpenPmsDental.exe","OpenDentalReplicationService/shader.dat",ReleaseManifest.FILE_NAME },
+				CollectionAssert.AreEqual(new[] { "Big.dll","OpenDentalReplicationService/shader.dat","OpenPmsDental.exe",ReleaseManifest.FILE_NAME },
 					zipArchive.Entries.Select(x => x.FullName).ToArray());
 				foreach(ReleaseManifestFile releaseManifestFile in releaseManifest.ListFiles) {
 					ZipArchiveEntry zipArchiveEntry=zipArchive.GetEntry(releaseManifestFile.RelativePath.Replace('\\','/'));

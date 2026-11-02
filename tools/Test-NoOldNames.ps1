@@ -86,6 +86,7 @@ $AllowList=@(
 	@{ Path='docs\specs\*'; Reason='Port specs: the record of the 24.4-26.1 port, with the paths of the time.' }
 	@{ Path='docs\third-party-binaries-audit.md'; Reason='Audit record of the binaries as they were.' }
 	@{ Path='docs\m1-validation-report.md'; Reason='Validation report of milestone M1, as run.' }
+	@{ Path='tests\ReportTests\RdlSourceBuildTests.cs'; Match='(?:ProjectReference|HintPath): OpenDental\b'; Reason='Checks rows of the binaries audit, which keeps the names of its time.' }
 	@{ Path='UnitTests\Resources\dump.txt'; Match='OpenDental\.Imaging\.FileStore'; Reason="Open Dental's seed database dump: the ImageStore preference value." }
 	@{ Path='tools\Test-NoOldNames.ps1'; Reason='This scanner names the old names.' }
 	@{ Path='tools\Rename-ToOpenPmsDental.ps1'; Reason='The rename script names the old names it maps.' }

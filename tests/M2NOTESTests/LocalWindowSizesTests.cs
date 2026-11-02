@@ -32,7 +32,7 @@ namespace M2NOTESTests {
 			LocalWindowSizes.PathOverride=null;
 			string path=LocalWindowSizes.GetPath();
 			StringAssert.StartsWith(path,Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
-			StringAssert.EndsWith(path,Path.Combine("OpenPmsDental","WindowSizes.txt"));
+			StringAssert.EndsWith(path,Path.Combine("OpenPMS-Dental","WindowSizes.txt"),"ProgramNames.LocalAppDataFolderName since the rename.");
 		}
 
 		[TestMethod]

@@ -210,8 +210,9 @@ namespace ReportTests {
 			foreach(string fileName in _arrayDeletedDlls) {
 				string row=arrayAuditLines.Single(x => x.StartsWith("| `"+fileName+"` |") && x.Contains("RDL-SRC"));
 				StringAssert.Contains(row,"built from source",fileName+" audit row");
-				StringAssert.Contains(row,"ProjectReference: OpenPmsDental",fileName+" audit row");
-				Assert.IsFalse(row.Contains("HintPath: OpenPmsDental"),fileName+" audit row still names the old HintPath.");
+				//The audit is a record and keeps the project names of its time (before the rename).
+				StringAssert.Contains(row,"ProjectReference: OpenDental",fileName+" audit row");
+				Assert.IsFalse(row.Contains("HintPath: OpenDental"),fileName+" audit row still names the old HintPath.");
 				Assert.IsFalse(row.Contains("so the build never copies it"),fileName+" audit row still says it is not copied.");
 			}
 		}
