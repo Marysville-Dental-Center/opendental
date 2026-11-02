@@ -37,6 +37,7 @@ namespace InventoryTests {
 		private static int _countGrantedFirst;
 		private static int _countGrantedSecond;
 		private static SchemaVerifyResult _schemaVerifyResult;
+		private static SchemaVerifyResult _forkVerifyResult;
 		private static Dictionary<string,SchemaTable> _dictTables;
 
 		[ClassInitialize]
@@ -73,6 +74,7 @@ namespace InventoryTests {
 					+"ORDER BY supply.CatalogNumber");
 				_tableSupply=DataCore.GetTable("SELECT CatalogNumber,LevelOnHand FROM supply WHERE CatalogNumber LIKE 'MIG-%' ORDER BY CatalogNumber");
 				_schemaVerifyResult=SchemaVerifier.VerifyDatabase(_dbName);
+				_forkVerifyResult=ForkTables.VerifyDatabase(_dbName);
 				_dictTables=_arrayInventoryTables.ToDictionary(x => x,x => SchemaTable.FromDatabase(_dbName,x));
 				//The office turns tracking on, twice (Supply Inventory, Inventory, Setup).
 				_countGrantedFirst=InventoryTracking.SaveSettings(true,30);
@@ -185,16 +187,22 @@ namespace InventoryTests {
 			Assert.AreEqual(_listGroupsGranted.Count,_listGroupsGranted.Distinct().Count());
 		}
 
-		///<summary>The verifier leaves the fork tables out, so the Open Dental tables still match exactly: no difference names a fork table, and the
-		///only allowed differences are the legacy tables the seed of new-database.sql carries.</summary>
+		///<summary>The database still matches Open Dental 26.1.70: the inventory tables are extra tables the verifier allows (this program's own
+		///tables, ForkTables), every other difference is an extra legacy table the seed of new-database.sql carries, so no column is added to an Open
+		///Dental table. And each inventory table is exactly as declared (ForkTables.VerifyDatabase).</summary>
 		[TestMethod]
-		public void Schema_StillMatchesOpenDental_TheForkTablesLeftOut() {
+		public void Schema_StillMatchesOpenDental_AndTheInventoryTablesTheirDeclarations() {
 			Assert.IsTrue(_schemaVerifyResult.IsMatch,_schemaVerifyResult.GetReport());
-			Assert.IsFalse(_schemaVerifyResult.ListDifferences.Any(x => _arrayInventoryTables.Contains(x.Table)),_schemaVerifyResult.GetReport());
-			Assert.IsTrue(_schemaVerifyResult.ListDifferences.All(x => x.Kind==SchemaDifferenceKind.ExtraTable),"No column is added to an Open Dental table.");
+			Assert.IsTrue(_schemaVerifyResult.ListDifferences.All(x => x.Kind==SchemaDifferenceKind.ExtraTable && x.IsExcepted),"No column is added to an Open Dental table.");
+			foreach(string table in _arrayInventoryTables) {
+				Assert.IsTrue(_schemaVerifyResult.ListDifferences.Any(x => x.Table==table && x.ExceptionReason.Contains("Inventory tracking")),table);
+			}
 			Assert.AreEqual(_schemaVerifyResult.CountTablesExpected,_schemaVerifyResult.CountTablesActual
 				-_schemaVerifyResult.ListDifferences.Count(x => x.Kind==SchemaDifferenceKind.ExtraTable));
-			CollectionAssert.AreEquivalent(_arrayInventoryTables,SchemaVerifier.ArrayForkTables);
+			//The steps of other features did not run here, so only the inventory tables are held to their declarations.
+			List<SchemaDifference> listDifferences=_forkVerifyResult.ListDifferences.FindAll(x => _arrayInventoryTables.Contains(x.Table));
+			Assert.AreEqual(0,listDifferences.Count,string.Join("\r\n",listDifferences));
+			CollectionAssert.AreEquivalent(_arrayInventoryTables,InvDb.ArrayInventoryTables);
 		}
 
 		[TestMethod]

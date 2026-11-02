@@ -28,10 +28,11 @@ Status: 2026-11-02. Package INV (roadmap "Next" item 4), from the owner decision
 
 ## 2. Data
 
-All new data is in new tables. No column is added to an Open Dental table, so the schema verifier still compares the Open Dental tables with
-the Open Dental 26.1.70 reference exactly; the new tables are listed as fork tables (`SchemaVerifier.ArrayForkTables`), which the verifier
-leaves out of the comparison (they are not Open Dental schema; `InventoryTests` checks them against their classes). The tables are MyISAM and
-utf8mb3 like every other table.
+All new data is in new tables. No column is added to an Open Dental table, so a migrated database still matches the Open Dental 26.1.70
+reference. The new tables are this program's own tables, declared once with their exact definitions in `InventoryTables` (a `ForkTableSet`,
+in `InventorySteps.cs`), the shared mechanism for fork-only tables (`OpenPmsDentalBusiness/Misc/ForkMigrations/README.md`, "Fork-only
+tables"): the schema verifier allows each as an extra table (a documented exception), `ForkTables.VerifyDatabase` holds each to its
+declaration, and the migration steps create them from those definitions. The tables are MyISAM and utf8mb3 like every other table.
 
 | Table | Class | One row is |
 |---|---|---|
@@ -276,9 +277,11 @@ ledger and the stock agree from the start. Supplies, orders, suppliers and categ
 | 2026110212 | `supplylot`, `supplyproccode`, `supplysetting`, `supplyprocpending` |
 
 2026110213 to 2026110219 are kept for this feature. The steps change no Open Dental table, so adopting an Open Dental 25.3.48 database for
-this feature only adds the five tables and the opening rows: the adoption tools (`tools/AdoptionValidation`) list the opening rows in
-migration-preview, allow the five tables (`allowed-differences.adoption.json`) and hold the adopted copy's ledger to exactly the planned
-opening rows (`AdoptionRowCheck`), the other four tables empty.
+this feature only adds the five tables and the opening rows. The adoption tools (`tools/AdoptionValidation`) treat them as every fork-only
+table (a `TableAdded` rule each in `allowed-differences.adoption.json`, the four tables without rows listed under "Fork tables:" and required
+empty), with one documented exception: the stock ledger is the one table of this program that adoption writes rows into, so migration-preview
+lists its opening rows (`InventoryPlan`) and adopt's row check holds it to exactly those rows ("Stock ledger:",
+`AdoptionRowCheck.CheckInventoryLedger`) instead of requiring it empty.
 
 ## 6. Tests
 
@@ -292,7 +295,8 @@ inside them, the Materials used panel loaded and scanned into with a window hand
 windows change procedures only through the business layer, the Middle Tier branches that raise the event, and the order of the writes in
 `Procedures.Delete`. The running program with a scanner was not tried (the build rules forbid starting the program). The main test database is the committed `db/init/new-database.sql` with this build's fork migrations run on it, so the tests
 pass before and after the file is regenerated with the inventory steps. `RegistryTests` and `M202Tests` treat fork-only enum members as fork
-values; `ForkMigrationTests` skips the fork tables where it checks that every table class has an Open Dental table.
+values; `ForkMigrationTests` maps the table classes of fork-only tables to their declarations where it checks that every table class has a
+table.
 
 ## 7. Owner questions
 

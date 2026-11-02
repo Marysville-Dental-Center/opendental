@@ -279,6 +279,11 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature
   quadrant rows" for the SRP group, "codes added: ..." when the preference held codes the group lacks, and "Added code group '<name>' (<kind>,
   ItemOrder N), ..." for a category without a group of its kind. These parts are the lines the adoption log will show. On a database whose
   ten Insurance History preferences are all empty it says `changes nothing: none of the ten InsHist*Codes preferences has a value`.
+- `Steps 2026110211 and 2026110212 (inventory tracking) create the tables of this program supplyledger, supplylot, supplyproccode,
+  supplysetting, supplyprocpending and change no Open Dental table; the stock ledger gets N opening balance row(s), one per supply with stock
+  (SupplyNum ...), LevelOnHand rounded to 2 decimals at the supply's price; supply itself is not changed. Tracking stays off ...` (or `...
+  no supply has stock (supply.LevelOnHand), so the stock ledger starts empty. ...`). The stock ledger is the one table of this program that
+  adoption writes rows into; step 4 holds it to exactly these rows.
 - `Plug-ins: N program row(s) name a plug-in DLL (PluginDllName); a plug-in built for Open Dental does not load in this program ...: <ProgName>
   (ProgramNum N, enabled, <dll>); ...` (or `Plug-ins: no program row names a plug-in DLL ...`). Adoption changes none of these rows, but a
   plug-in built against Open Dental's assemblies stops loading after the switch, without a message. Give the list to the developers before
@@ -287,7 +292,8 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature
 **Write the numbers on the checklist**: NULL notes, preferences, PhoneExtension grants moved, user groups for BlockoutAdd and for
 BlockoutDelete, the DXC Patient Credit Score row disabled (ProgramNum, or "none") and its buttons deleted (ToolButItemNum, or "none"), the
 UDS+ row's DisplayReportNum of the sealant measure, the Public Health rows moved, the user groups granted the UDS+
-report, and the code groups marked for Insurance History (CodeGroupNum and History Proc Code) and added (name). Step 4 must show exactly these. Zero PhoneExtension grants is normal (Open Dental's Set All grants it, so it is there only where
+report, the code groups marked for Insurance History (CodeGroupNum and History Proc Code) and added (name), and the opening balance rows of
+the stock ledger. Step 4 must show exactly these. Zero PhoneExtension grants is normal (Open Dental's Set All grants it, so it is there only where
 someone used Set All).
 
 0.3. **Inventory of Open Dental services and jobs** (for step 2): on every Windows computer of the office that runs Open Dental, its services
@@ -588,11 +594,11 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
 - step 2026110104 ("Insurance History rows from the InsHist preferences to code groups (26.1)") "changed the database:", followed by the
   lines of step 0.2's Insurance History list ("Code group '<name>' (CodeGroupNum N) shown in Insurance History, ..." and "Added code group
   ..."), each once, and "Insurance History: ..." notes for an added group and for perio quadrant preferences that held different codes; then
-  "Fork migrations: 16 step(s) run, 0 already done. Fork schema level 2026110104.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)."
+  "Fork migrations: 18 step(s) run, 0 already done. Fork schema level 2026110212.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)."
   and "Adoption finished."
-- "Fork migration, every step again: 16 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables)."
+- "Fork migration, every step again: 18 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables), plus 5 table(s) of this program that match their declarations."
 - the rehash of step 5
-- "Row check against opendental ..." with twelve lines and no line starting `FAIL`: `preference` (the markers added, "N of the N 25.4 and 26.1
+- "Row check against opendental ..." with fourteen lines and no line starting `FAIL`: `preference` (the markers added, "N of the N 25.4 and 26.1
   preference(s) migration-preview lists added with their defaults", `DataBaseVersion` and `ProgramVersion` set to 99.0.0.0, the preferences of
   the "Blanked" line blanked, "no other row changed or removed"), `documentmisc` (the update-file rows deleted, "0 other row(s) deleted; 0
   added; 0 changed"), `securitylog` ("2 entries added (1 adoption, 1 rehash); no existing row changed or removed"), `securityloghash`,
@@ -609,8 +615,9 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   other row changed, added or removed", or "identical row by row ..."), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
   migration-preview counts now empty, every other note unchanged", and `insverify` and `insverifyhist.DateLastAssigned` "the original date at
   midnight in all N row(s)"), "New tables and columns:" ("5 new table(s), all empty (...); 28 new column(s) in 21 table(s) hold their default
-  in every row."), "Fork tables (inventory tracking):" ("5 added (...); N of the N opening balance row(s) migration-preview lists in the
-  stock ledger, the other fork tables empty.") and `updatehistory` ("identical row by row")
+  in every row."), "Fork tables:" ("4 new table(s) of this program, all empty (supplylot, supplyproccode, supplyprocpending,
+  supplysetting).": the inventory tables but the stock ledger), "Stock ledger:" ("supplyledger added (inventory tracking), N of the N opening
+  balance row(s) migration-preview lists and no other row.") and `updatehistory` ("identical row by row")
 - "Adopt: PASS." with the report rows renamed (or "the fork migration renamed no report row"), the UDS+ report row added and, if step 0.2
   listed them, the DXC Patient Credit Score row disabled and its buttons deleted, and exit code 0
 
@@ -662,15 +669,16 @@ person reads them all):
   Credit Score buttons of step 0.2, if it listed any (`RowsChanged toolbutitem` and `ColumnChanged toolbutitem.<column>`);
 - `ColumnChanged program.Enabled`, only if step 0.2 listed the DXC Patient Credit Score row as disabled: a report can only allow it as a
   whole column, and step 4's row check printed that only that row changed, `Enabled` only;
+- this program's own tables of inventory tracking (steps 2026110211 and 2026110212): `TableAdded` for `supplylot`, `supplyproccode`,
+  `supplysetting` and `supplyprocpending` (0 rows; step 4's row check printed them under "Fork tables:", all empty) and for `supplyledger`, the
+  one table of this program adoption writes rows into (one opening balance row per supply with stock, as step 0.2 listed; step 4's row check
+  printed "Stock ledger:" with exactly those rows). These steps change no Open Dental table; inventory tracking stays off until the office
+  turns it on;
 - the Open Dental 25.4 and 26.1 schema: `TableAdded` for `deletedobj`, `paysuitepayment`, `paysuitepaymentdetail`, `schoolcourseenrollee`
   and `schoolcourseinstructor` (0 rows), `ColumnAdded <table>.<column>` for the 28 new columns (`allowed-differences.adoption.json` names
   each), and `ColumnChanged` for `claimpayment.Note` (if step 0.2 counted NULL notes) and `insverify` and `insverifyhist.DateLastAssigned`
   (if those tables hold rows). A report can only allow these as whole columns; step 4's row check printed that the new tables are empty, the
   new columns hold their defaults, only NULL notes changed and every `DateLastAssigned` is its old date at midnight;
-- the fork tables of inventory tracking (steps 2026110211 and 2026110212): `TableAdded` for `supplyledger` (one opening balance row per
-  supply with stock, as step 0.2 listed), `supplylot`, `supplyproccode`, `supplysetting` and `supplyprocpending` (0 rows); step 4's row
-  check printed that the ledger holds exactly the listed opening rows and the other four are empty. These steps change no Open Dental table;
-  inventory tracking stays off until the office turns it on;
 - `ChecksumTableChanged` lines "explained by the differences listed for this table", for the tables above.
 
 A line for any other table in the Allowed section: stop, go to Rollback, and give `compare.txt` to the developers. Every business total

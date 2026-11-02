@@ -25,7 +25,7 @@ The legacy `ConvertDatabases` chain (`OpenPmsDentalBusiness/Misc/ConvertDatabase
 | 2026110102 | `NoBillInsBackfillStep.cs`: Do Not Bill to Ins decisions moved to `procedurelog.NoBillIns`. Not active: the class is abstract, so the runner skips it; the owner has not decided whether it runs (see `docs/port-notes/M2-EST.md`) | M2-EST |
 | 2026110103 | `ReportRowUdsPlus.cs`: the UDS+ report row after the FQHC Dental Sealant Measure, on a database from before 25.4 | M2-UDS |
 | 2026110104 | `InsHistCodeGroupsStep.cs`: Insurance History rows from the `InsHist*Codes` preferences to code groups, on a database from before 25.4 | M2-HIST |
-| 2026110211 and 2026110212 | `InventorySteps.cs`: the inventory tracking tables (`supplyledger` with the opening balance of every supply in the same step, then `supplylot`, `supplyproccode`, `supplysetting`, `supplyprocpending`); no Open Dental table changes. The preferences, the alert category links and the Inventory Adjust grant are written when the office turns tracking on (`InventoryTracking.SaveSettings`), not by a step (`docs/specs/inventory-tracking.md`). 2026110213 to 2026110219 are kept for this feature. | INV |
+| 2026110211 and 2026110212 | `InventorySteps.cs`: the inventory tracking tables `supplyledger` (with the opening balance of every supply in the same step), then `supplylot`, `supplyproccode`, `supplysetting` and `supplyprocpending`, created from `InventoryTables` (a `ForkTableSet`; see "Fork-only tables"); no Open Dental table changes. The preferences, the alert category links and the Inventory Adjust grant are written when the office turns tracking on (`InventoryTracking.SaveSettings`), not by a step. 2026110213 to 2026110219 are kept for this feature. | Inventory tracking (`docs/specs/inventory-tracking.md`) |
 
 The last four were renumbered on 2026-11-01 from the retired package range levels 2027002301, 2027002701, 2027003501 and 2027004701, keeping their order. No office database carried a fork level then.
 
@@ -51,14 +51,18 @@ Tables, columns (type, NULL, default, extra, charset, position), keys, engine an
 - `patient._portal_active_email` and its unique key `portal_active_email_uniq`: an office-specific customization, not Open Dental schema. The adoption step drops both.
 - The 54 Open Dental HQ-only tables that the 24.3 code declares, when present.
 - Legacy tables that long-lived databases (including our development seed) still carry: the `anesth*` tables, `files` and `instructor`.
-
-Fork tables (`SchemaVerifier.ArrayForkTables`) are not compared at all: `SchemaVerifier.Compare` leaves them out on both sides, so a migrated
-database still matches Open Dental exactly, with no documented exception. A fork feature keeps its data in tables of its own, created by its
-fork migration step, and never adds a column to an Open Dental table (that column would make the Open Dental table differ from the
-reference). A new fork table is added to the list in the same change as its step, with a `TableAdded` rule in
-`tools/SyntheticData/allowed-differences.adoption.json` and what adopt's row check (`AdoptionRowCheck.CheckForkTables`) holds it to; the
-feature's own tests check its columns.
+- This program's own tables, declared in `ForkTableSet` classes (see "Fork-only tables" below).
 
 Tests: `tests/ForkMigrationTests` (runner, 25.3 steps, both references) and `tests/M201Tests` (25.4 and 26.1 steps, the 26.1.70 reference, the regenerated CRUD; set `M201_OD_DOCS_DIR` to a folder with the published XML documents to also check the reference against them).
 
+## Fork-only tables
+
+A table that only this program has (a feature of the fork, not Open Dental schema) is declared once, with its exact DDL as `SHOW CREATE TABLE` prints it on MariaDB 10.11, in a class derived from `ForkTableSet` in the feature's own step file (for example `MaintenanceTables` in `MaintenanceSteps.cs`). `ForkTables` finds every set by reflection, as the runner finds steps, and refuses a table declared twice or a name the 26.1.70 reference has. The feature's steps create the tables from those statements with `CreateTableIfMissing`.
+
+- `SchemaVerifier.DocumentedExceptions` allows every fork-only table as an `ExtraTable`, so a migrated database still matches Open Dental 26.1.70 and gets `OdSchemaCompat`. `ForkTables.VerifyDatabase` compares the fork-only tables with their declarations exactly.
+- The adoption tools: `tools/SyntheticData/allowed-differences.adoption.json` has a `TableAdded` rule per fork-only table (a test checks the rules equal `ForkTables.GetTableNames()`), and `AdoptionRowCheck` lists them under "Fork tables:" and requires them empty. A step that writes rows into an existing table on adoption also needs a plan and a row check there, so the routine maintenance steps write none.
+- Table classes of fork-only tables map to their declaration instead of the reference (`ReferenceSnapshotTests.TableClasses_MapToReferenceColumns`).
+
 Scratch databases that tests build from a reference file must use the reference the code expects, `OdSchema-26.1.70.sql` (or `GetReference()`), since the CRUD writes the 26.1 columns.
+
+One fork-only table gets rows on adoption: the inventory stock ledger `supplyledger`, whose step (2026110211) writes an opening balance per supply with stock, so that `supply.LevelOnHand` is the sum of the ledger from the start. It is the one exception to "created empty": migration-preview lists the rows (`tools/AdoptionValidation/InventoryPlan.cs`), `AdoptionRowCheck` leaves it out of "Fork tables:" and holds it to exactly those rows ("Stock ledger:"), and its `TableAdded` rule says so. Its definition is checked like every other fork-only table.

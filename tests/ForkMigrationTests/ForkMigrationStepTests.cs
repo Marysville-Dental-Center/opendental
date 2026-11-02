@@ -41,8 +41,9 @@ namespace ForkMigrationTests {
 			Assert.IsNull(typeof(ForkMigrationRunner).GetMethod("IsReservedPackageLevel"),"The package range rule is gone.");
 			//GetSteps validates every step of this build; the renumbered package steps (2026-11-01) run after the M2-02 seed step, in their old order.
 			List<ForkMigrationStep> listSteps=ForkMigrationRunner.GetSteps();
-			CollectionAssert.AreEqual(new long[] { 2026102501,2026110101,2026110103,2026110104 },listSteps.Where(x => x.Level>=2026102501).Select(x => x.Level).ToList(),
-				"2026110102 (M2-EST's back-fill) is abstract, so the runner skips it.");
+			//Up to the steps of 2026-11-01; later dated steps (routine maintenance from 2026110201) are checked by their own packages.
+			CollectionAssert.AreEqual(new long[] { 2026102501,2026110101,2026110103,2026110104 },listSteps.Where(x => x.Level>=2026102501 && x.Level<2026110200)
+				.Select(x => x.Level).ToList(),"2026110102 (M2-EST's back-fill) is abstract, so the runner skips it.");
 		}
 
 		[TestMethod]

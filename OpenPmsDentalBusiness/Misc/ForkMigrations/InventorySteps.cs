@@ -1,16 +1,22 @@
-// Inventory tracking (docs/specs/inventory-tracking.md): the fork tables and the opening balances. Levels 2026110211 and 2026110212 of the
-// inventory range 2026110211 to 2026110219. The preferences, the alert category links and the Inventory Adjust grant are written when the office
-// turns tracking on (InventoryTracking.SaveSettings), not here, so adopting an Open Dental database changes no Open Dental table for this feature.
+// Inventory tracking (docs/specs/inventory-tracking.md): the five fork-only tables, the steps that create them and the opening balances. Levels
+// 2026110211 and 2026110212 of the inventory range 2026110211 to 2026110219. The preferences, the alert category links and the Inventory Adjust
+// grant are written when the office turns tracking on (InventoryTracking.SaveSettings), not here, so adopting an Open Dental database changes no
+// Open Dental table for this feature.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 
 namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
-	///<summary>The stock ledger, and in the same step the opening balances: an Opening row for every supply whose LevelOnHand is not 0 (rounded to 2
-	///decimals, at the supply's price), so supply.LevelOnHand equals the sum of its ledger rows from the start. The opening rows are written only
-	///when this step created the table (README rule 4), never again. supply itself is not changed.</summary>
-	[ForkMigration(2026110211,"Inventory tracking: stock ledger and opening balances")]
-	public class InventoryLedgerStep:ForkMigrationStep {
-		///<summary>The table as SHOW CREATE TABLE prints it on MariaDB 10.11.</summary>
+	///<summary>The inventory tracking tables, exactly as SHOW CREATE TABLE prints them on MariaDB 10.11. Not Open Dental schema: the schema
+	///verifier allows them as extra tables and ForkTables.VerifyDatabase checks them. The steps below create them from these definitions. Of the
+	///five, only supplyledger gets rows on adoption (the opening balances, InventoryLedgerStep); the adoption tools hold it to those rows
+	///(tools/AdoptionValidation, InventoryPlan) and the other four to empty.</summary>
+	public class InventoryTables:ForkTableSet {
+		public const string TABLE_LEDGER="supplyledger";
+		public const string TABLE_LOT="supplylot";
+		public const string TABLE_PROC_CODE="supplyproccode";
+		public const string TABLE_SETTING="supplysetting";
+		public const string TABLE_PROC_PENDING="supplyprocpending";
+
 		public const string CREATE_SUPPLYLEDGER=@"CREATE TABLE `supplyledger` (
   `SupplyLedgerNum` bigint(20) NOT NULL AUTO_INCREMENT,
   `SupplyNum` bigint(20) NOT NULL,
@@ -33,29 +39,6 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
   KEY `DateTimeEntry` (`DateTimeEntry`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci";
 
-		///<summary>The reason written on the opening rows.</summary>
-		public const string REASON_OPENING="Opening balance";
-
-		public override void Apply(ForkMigrationContext context) {
-			if(!context.CreateTableIfMissing(CREATE_SUPPLYLEDGER)) {
-				return;
-			}
-			string where="WHERE ROUND(LevelOnHand,2)<>0";
-			if(PIn.Long(Db.GetScalar("SELECT COUNT(*) FROM supply "+where))==0) {
-				return;
-			}
-			//DateTimeEntry 0001-01-01: the stock from before tracking has no time of its own, and the same database always migrates to the same rows
-			//(the adoption rehearsal compares two runs). It also sorts the opening rows first.
-			context.ExecuteData("INSERT INTO supplyledger (SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,"
-				+"DispSupplyNum,UserNum,DateTimeEntry,Reason) "
-				+"SELECT SupplyNum,0,"+(int)SupplyLedgerType.Opening+",ROUND(LevelOnHand,2),Price,0,0,0,0,0,'0001-01-01 00:00:00','"+REASON_OPENING+"' "
-				+"FROM supply "+where+" ORDER BY SupplyNum");
-		}
-	}
-
-	///<summary>Lots, default materials of procedure codes, supply settings and procedures awaiting materials. Schema only.</summary>
-	[ForkMigration(2026110212,"Inventory tracking: lots, default materials, supply settings, awaiting materials")]
-	public class InventoryTablesStep:ForkMigrationStep {
 		public const string CREATE_SUPPLYLOT=@"CREATE TABLE `supplylot` (
   `SupplyLotNum` bigint(20) NOT NULL AUTO_INCREMENT,
   `SupplyNum` bigint(20) NOT NULL,
@@ -100,11 +83,53 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
   KEY `PatNum` (`PatNum`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci";
 
+		public override string Feature {
+			get { return "Inventory tracking"; }
+		}
+
+		public override string Levels {
+			get { return "2026110211 and 2026110212"; }
+		}
+
+		public override string[] ArrayCreateTables {
+			get { return new[] { CREATE_SUPPLYLEDGER,CREATE_SUPPLYLOT,CREATE_SUPPLYPROCCODE,CREATE_SUPPLYSETTING,CREATE_SUPPLYPROCPENDING }; }
+		}
+	}
+
+	///<summary>The stock ledger, and in the same step the opening balances: an Opening row for every supply whose LevelOnHand is not 0 (rounded to 2
+	///decimals, at the supply's price), so supply.LevelOnHand equals the sum of its ledger rows from the start. The opening rows are written only
+	///when this step created the table (README rule 4), never again. supply itself is not changed.</summary>
+	[ForkMigration(2026110211,"Inventory tracking: stock ledger and opening balances")]
+	public class InventoryLedgerStep:ForkMigrationStep {
+		///<summary>The reason written on the opening rows.</summary>
+		public const string REASON_OPENING="Opening balance";
+
 		public override void Apply(ForkMigrationContext context) {
-			context.CreateTableIfMissing(CREATE_SUPPLYLOT);
-			context.CreateTableIfMissing(CREATE_SUPPLYPROCCODE);
-			context.CreateTableIfMissing(CREATE_SUPPLYSETTING);
-			context.CreateTableIfMissing(CREATE_SUPPLYPROCPENDING);
+			if(!context.CreateTableIfMissing(InventoryTables.CREATE_SUPPLYLEDGER)) {
+				return;
+			}
+			string where="WHERE ROUND(LevelOnHand,2)<>0";
+			if(PIn.Long(Db.GetScalar("SELECT COUNT(*) FROM supply "+where))==0) {
+				return;
+			}
+			//DateTimeEntry 0001-01-01: the stock from before tracking has no time of its own, and the same database always migrates to the same rows
+			//(the adoption rehearsal compares two runs). It also sorts the opening rows first.
+			context.ExecuteData("INSERT INTO supplyledger (SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,"
+				+"DispSupplyNum,UserNum,DateTimeEntry,Reason) "
+				+"SELECT SupplyNum,0,"+(int)SupplyLedgerType.Opening+",ROUND(LevelOnHand,2),Price,0,0,0,0,0,'0001-01-01 00:00:00','"+REASON_OPENING+"' "
+				+"FROM supply "+where+" ORDER BY SupplyNum");
+		}
+	}
+
+	///<summary>Lots, default materials of procedure codes, supply settings and procedures awaiting materials. Creates the empty tables; writes no
+	///row.</summary>
+	[ForkMigration(2026110212,"Inventory tracking: lots, default materials, supply settings, awaiting materials")]
+	public class InventoryTablesStep:ForkMigrationStep {
+		public override void Apply(ForkMigrationContext context) {
+			context.CreateTableIfMissing(InventoryTables.CREATE_SUPPLYLOT);
+			context.CreateTableIfMissing(InventoryTables.CREATE_SUPPLYPROCCODE);
+			context.CreateTableIfMissing(InventoryTables.CREATE_SUPPLYSETTING);
+			context.CreateTableIfMissing(InventoryTables.CREATE_SUPPLYPROCPENDING);
 		}
 	}
 }

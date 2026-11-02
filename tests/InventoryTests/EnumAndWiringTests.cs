@@ -8,6 +8,7 @@ using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.ForkMigrations;
+using OpenPmsDentalBusiness.ForkMigrations.FeatureSteps;
 
 namespace InventoryTests {
 	[TestClass]
@@ -83,22 +84,36 @@ namespace InventoryTests {
 			Assert.AreEqual(1,source.Split(new[] { "SetNode(EnumPermType.InventoryAdjust)" },StringSplitOptions.None).Length-1);
 		}
 
+		///<summary>The inventory tables are this program's own tables, declared once in InventoryTables (a ForkTableSet, the shared mechanism of
+		///OpenPmsDentalBusiness/Misc/ForkMigrations/README.md, "Fork-only tables"): the schema verifier allows each as an extra table, so a migrated
+		///database still matches Open Dental, and ForkTables.VerifyDatabase holds each to its declaration (MigrationTests).</summary>
 		[TestMethod]
-		public void ForkTables_AreTheInventoryTables() {
-			CollectionAssert.AreEquivalent(new[] { "supplyledger","supplylot","supplyproccode","supplysetting","supplyprocpending" },SchemaVerifier.ArrayForkTables);
-			Assert.IsFalse(SchemaVerifier.DocumentedExceptions.Any(x => SchemaVerifier.IsForkTable(x.Table)),"Left out, not excepted.");
-			foreach(string table in SchemaVerifier.ArrayForkTables) {
+		public void ForkTables_TheInventoryTablesAreDeclared_AndAllowedAsExtraTables() {
+			string[] arrayTables=new[] { "supplyledger","supplylot","supplyproccode","supplysetting","supplyprocpending" };
+			CollectionAssert.AreEquivalent(arrayTables,InvDb.ArrayInventoryTables);
+			foreach(string table in arrayTables) {
+				Assert.IsTrue(ForkTables.IsForkTable(table),table);
+				Assert.IsInstanceOfType(ForkTables.GetSet(table),typeof(InventoryTables),table);
+				Assert.IsTrue(ForkTables.GetTableNames().Contains(table),table);
 				Assert.IsFalse(SchemaVerifier.GetReference().HasTable(table),table+" is not Open Dental schema.");
+				Assert.IsTrue(SchemaVerifier.DocumentedExceptions.Any(x => x.Kind==SchemaDifferenceKind.ExtraTable && x.Table==table),
+					table+" is an allowed extra table, not left out of the comparison.");
 			}
-			//A snapshot with a fork table compares exactly with one without it.
+			Assert.AreEqual("Inventory tracking",new InventoryTables().Feature);
+			//Against Open Dental, a database with a fork table matches: the table is an extra table the verifier allows.
 			SchemaSnapshot snapshotOd=SchemaSnapshot.Parse("CREATE TABLE `account` (\n  `AccountNum` bigint(20) NOT NULL AUTO_INCREMENT,\n  PRIMARY KEY (`AccountNum`)\n"
 				+") ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;");
-			SchemaSnapshot snapshotFork=SchemaSnapshot.Parse(snapshotOd.ToDdl("")+"\n"
-				+OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.InventoryTablesStep.CREATE_SUPPLYLOT+";");
+			SchemaSnapshot snapshotFork=SchemaSnapshot.Parse(snapshotOd.ToDdl("")+"\n"+InventoryTables.CREATE_SUPPLYLOT+";");
 			Assert.AreEqual(2,snapshotFork.Tables.Count);
-			SchemaVerifyResult result=SchemaVerifier.Compare(snapshotOd,snapshotFork);
-			Assert.AreEqual(0,result.ListDifferences.Count,result.GetReport());
-			Assert.AreEqual(0,SchemaVerifier.Compare(snapshotFork,snapshotOd).ListDifferences.Count);
+			SchemaVerifyResult result=SchemaVerifier.Compare(snapshotOd,snapshotFork,SchemaVerifier.DocumentedExceptions);
+			Assert.IsTrue(result.IsMatch,result.GetReport());
+			Assert.AreEqual(1,result.ListDifferences.Count,result.GetReport());
+			Assert.AreEqual(SchemaDifferenceKind.ExtraTable,result.ListDifferences[0].Kind);
+			Assert.IsTrue(result.ListDifferences[0].IsExcepted);
+			//Without the exceptions it is a mismatch: the verifier does not leave fork tables out.
+			Assert.IsFalse(SchemaVerifier.Compare(snapshotOd,snapshotFork).IsMatch);
+			//Each declaration parses to the table its class maps, so the steps create exactly what is declared.
+			Assert.AreEqual(InventoryTables.CREATE_SUPPLYLOT,new InventoryTables().GetCreateTable("supplylot"));
 		}
 
 		[TestMethod]
@@ -109,6 +124,10 @@ namespace InventoryTests {
 				StringAssert.Contains(spec,"| "+level+" |");
 			}
 			StringAssert.Contains(readme,"2026110211 and 2026110212 | `InventorySteps.cs`");
+			//One rule for fork-only tables (the shared section), and the stock ledger written once as its one exception.
+			Assert.AreEqual(1,readme.Split(new[] { "## Fork-only tables" },StringSplitOptions.None).Length-1);
+			StringAssert.Contains(readme,"It is the one exception to \"created empty\"");
+			Assert.IsFalse(readme.Contains("ArrayForkTables"),"The verifier has no list of its own.");
 		}
 	}
 }

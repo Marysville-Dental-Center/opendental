@@ -13,7 +13,8 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 	///- Open Dental 25.3.48 (Reference/OdSchema-25.3.48.sql), built from the schema-only dump of the office database: what the 25.3 steps
 	///  (OdParity25_3.cs) produce and what an office database must have before it is adopted.
 	///Tables, columns (type, NULL, default, extra, charset, position), keys, engine and charset must match, except for the documented exceptions,
-	///each of which says why it is allowed.</summary>
+	///each of which says why it is allowed. This program's own tables (ForkTableSet, for example the routine maintenance tables) are extra tables
+	///of that kind; ForkTables.VerifyDatabase compares them with their own declarations.</summary>
 	public static class SchemaVerifier {
 		///<summary>The Open Dental version a migrated database must match: the version of the default reference. Written to OdSchemaCompat when a
 		///database matches it.</summary>
@@ -54,15 +55,6 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 			"anesthmedsuppliers","anesthscore","anesthvsdata","files","instructor",
 		};
 
-		///<summary>Tables that only this program has: fork features keep their data in tables of their own, never in new columns of Open Dental
-		///tables, so the Open Dental tables still match the reference exactly. Each is created by a fork migration step and listed here with its
-		///feature. Compare leaves them out on both sides: they are not Open Dental schema, so a migrated database still matches Open Dental exactly,
-		///with no documented exception; each feature's own tests check its tables. Inventory tracking (docs/specs/inventory-tracking.md,
-		///InventorySteps.cs).</summary>
-		public static readonly string[] ArrayForkTables=new string[] {
-			"supplyledger","supplylot","supplyproccode","supplyprocpending","supplysetting",
-		};
-
 		private static SchemaSnapshot _reference25_3_48;
 		private static SchemaSnapshot _reference26_1_70;
 		private static readonly object _lockReference=new object();
@@ -98,6 +90,8 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 					listExceptions.Add(new SchemaException(SchemaDifferenceKind.ExtraTable,table,null,
 						"Legacy table from old Open Dental versions that some long-lived databases still carry. No code uses it; left in place."));
 				}
+				//This program's own tables (ForkTableSet), which Open Dental does not have. ForkTables.VerifyDatabase checks their definitions.
+				listExceptions.AddRange(ForkTables.GetSchemaExceptions());
 				return listExceptions;
 			}
 		}
@@ -180,11 +174,11 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 		}
 
 		///<summary>Lists every difference between expected and actual. A difference that matches an exception is kept in the result with the reason,
-		///but does not make IsMatch false. The fork tables (ArrayForkTables) are left out on both sides.</summary>
+		///but does not make IsMatch false.</summary>
 		public static SchemaVerifyResult Compare(SchemaSnapshot expected,SchemaSnapshot actual,IEnumerable<SchemaException> exceptions=null) {
 			List<SchemaException> listExceptions=(exceptions??new List<SchemaException>()).ToList();
 			SchemaVerifyResult result=new SchemaVerifyResult();
-			foreach(SchemaTable tableExpected in expected.Tables.Where(x => !IsForkTable(x.Name))) {
+			foreach(SchemaTable tableExpected in expected.Tables) {
 				SchemaTable tableActual=actual.GetTable(tableExpected.Name);
 				if(tableActual==null) {
 					result.Add(SchemaDifferenceKind.MissingTable,tableExpected.Name,null,"table exists","missing",listExceptions);
@@ -192,19 +186,14 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 				}
 				CompareTables(tableExpected,tableActual,result,listExceptions);
 			}
-			foreach(SchemaTable tableActual in actual.Tables.Where(x => !IsForkTable(x.Name))) {
+			foreach(SchemaTable tableActual in actual.Tables) {
 				if(!expected.HasTable(tableActual.Name)) {
 					result.Add(SchemaDifferenceKind.ExtraTable,tableActual.Name,null,"no table","table exists",listExceptions);
 				}
 			}
-			result.CountTablesExpected=expected.Tables.Count(x => !IsForkTable(x.Name));
-			result.CountTablesActual=actual.Tables.Count(x => !IsForkTable(x.Name));
+			result.CountTablesExpected=expected.Tables.Count;
+			result.CountTablesActual=actual.Tables.Count;
 			return result;
-		}
-
-		///<summary>True for a table of a fork feature (ArrayForkTables), which is not Open Dental schema.</summary>
-		public static bool IsForkTable(string tableName) {
-			return ArrayForkTables.Contains(tableName,StringComparer.OrdinalIgnoreCase);
 		}
 
 		private static void CompareTables(SchemaTable expected,SchemaTable actual,SchemaVerifyResult result,List<SchemaException> listExceptions) {

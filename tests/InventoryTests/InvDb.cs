@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -32,6 +33,9 @@ namespace InventoryTests {
 		///<summary>Null when the main database is ready; otherwise why the database tests are skipped.</summary>
 		public static string SkipReason;
 		public const string RepoPathInitSql=@"db\init\new-database.sql";
+		///<summary>The inventory tracking tables, from their declaration (InventoryTables, a ForkTableSet).</summary>
+		public static readonly string[] ArrayInventoryTables=new OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.InventoryTables().ArrayCreateTables
+			.Select(x => SchemaTable.Parse(x).Name).ToArray();
 		private static bool _isBuilt;
 
 		[AssemblyInitialize]

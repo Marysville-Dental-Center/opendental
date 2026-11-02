@@ -356,7 +356,7 @@ namespace InventoryTests {
 			Assert.IsTrue(SupplyLedgers.GetForProcs(new List<long> { procedureUsed.ProcNum }).All(x => x.PatNum==patNumTo));
 			//Every PatNum column of the inventory tables is moved by a merge.
 			List<string> listColumns=DataCore.GetList<string>("SELECT CONCAT(TABLE_NAME,'.',COLUMN_NAME) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() "
-				+"AND COLUMN_NAME LIKE '%PatNum%' AND TABLE_NAME IN('"+string.Join("','",OpenPmsDentalBusiness.ForkMigrations.SchemaVerifier.ArrayForkTables)+"')",
+				+"AND COLUMN_NAME LIKE '%PatNum%' AND TABLE_NAME IN('"+string.Join("','",InvDb.ArrayInventoryTables)+"')",
 				x => x.GetString(0));
 			CollectionAssert.AreEquivalent(new[] { "supplyledger.PatNum","supplyprocpending.PatNum" },listColumns);
 			foreach(string column in listColumns) {

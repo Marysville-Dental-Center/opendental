@@ -137,19 +137,22 @@ namespace ForkMigrationTests {
 			Assert.IsTrue(_resultVerify25_3_48.IsMatch,_resultVerify25_3_48.GetReport());
 			CollectionAssert.AreEquivalent(new[] { "patient."+SchemaVerifier.PortalActiveEmailColumn,"patient."+SchemaVerifier.PortalActiveEmailIndex },
 				_resultVerify25_3_48.ListDifferences.Select(x => x.Table+"."+x.Item).ToList(),_resultVerify25_3_48.GetReport());
-			//After every step, against 26.1.70.
+			//After every step, against 26.1.70. This program's own tables (ForkTables, added by the later feature steps) are extra tables the
+			//verifier allows; they are checked by ForkTables.VerifyDatabase.
 			SchemaVerifyResult result=SchemaVerifier.VerifyDatabase(DB_NAME);
 			Assert.IsTrue(result.IsMatch,result.GetReport());
 			CollectionAssert.AreEquivalent(new[] { "patient."+SchemaVerifier.PortalActiveEmailColumn,"patient."+SchemaVerifier.PortalActiveEmailIndex },
-				result.ListDifferences.Select(x => x.Table+"."+x.Item).ToList(),result.GetReport());
+				result.ListDifferences.Where(x => !ForkTables.IsForkTable(x.Table)).Select(x => x.Table+"."+x.Item).ToList(),result.GetReport());
 			Assert.IsTrue(result.ListDifferences.All(x => x.IsExcepted));
+			Assert.IsTrue(result.ListDifferences.Where(x => ForkTables.IsForkTable(x.Table)).All(x => x.Kind==SchemaDifferenceKind.ExtraTable));
+			Assert.AreEqual(0,ForkTables.VerifyDatabase(DB_NAME).ListDifferences.Count);
 		}
 
 		[TestMethod]
 		public void Verifier_WithoutExceptionsFlagsTheOfficeCustomization() {
 			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaVerifier.GetReference(),SchemaSnapshot.FromDatabase(DB_NAME));
 			Assert.IsFalse(result.IsMatch);
-			Assert.AreEqual(2,result.ListMismatches.Count,result.GetReport());
+			Assert.AreEqual(2,result.ListMismatches.Count(x => !ForkTables.IsForkTable(x.Table)),result.GetReport());
 		}
 
 		///<summary>On the 25.3.48 office database, only the Open Dental 25.4 and 26.1 steps change anything, and only the tables those versions
@@ -183,7 +186,9 @@ namespace ForkMigrationTests {
 				Assert.IsTrue(context.DropColumnIfExists("patient",SchemaVerifier.PortalActiveEmailColumn));
 				Assert.IsFalse(context.DropColumnIfExists("patient",SchemaVerifier.PortalActiveEmailColumn),"Idempotent.");
 				SchemaVerifyResult result=SchemaVerifier.VerifyDatabase(DB_NAME);
-				Assert.AreEqual(0,result.ListDifferences.Count,result.GetReport());
+				//Apart from this program's own tables (ForkTables), which the verifier allows as extra tables.
+				Assert.AreEqual(0,result.ListDifferences.Count(x => !ForkTables.IsForkTable(x.Table)),result.GetReport());
+				Assert.IsTrue(result.IsMatch,result.GetReport());
 				//Family members can share an e-mail address again.
 				DataCore.NonQ("INSERT INTO patient (LName,FName,Email,PatStatus) VALUES ('Synthetic','Kid','pat@example.invalid',0)");
 			}

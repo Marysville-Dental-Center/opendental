@@ -12,12 +12,18 @@ using Db=SyntheticData.Infrastructure.Db;
 namespace AdoptionValidation {
 	///<summary>What the fork migration's inventory tracking steps (InventoryLedgerStep 2026110211 and InventoryTablesStep 2026110212, package INV,
 	///docs/specs/inventory-tracking.md) change when adoption brings an Open Dental 25.3.48 database to this program, worked out before adoption and
-	///read-only. They change no Open Dental table: they create the five fork tables (SchemaVerifier.ArrayForkTables) and, in the step that creates
+	///read-only. They change no Open Dental table: they create the five tables of InventoryTables (a ForkTableSet) and, in the step that creates
 	///supplyledger, write one Opening row per supply whose LevelOnHand rounded to 2 decimals is not 0, at the supply's price, without a lot, user,
 	///procedure or order item, with the reason "Opening balance". migration-preview prints the plan, and adopt's row check (AdoptionRowCheck) holds
 	///the adopted copy's ledger to it and the other four fork tables to empty. Reads supply.</summary>
 	public static class InventoryPlan {
-		public const string TABLE_LEDGER="supplyledger";
+		public const string TABLE_LEDGER=InventoryTables.TABLE_LEDGER;
+
+		///<summary>True for the one table of this program that adoption writes rows into, the stock ledger: adopt's row check holds it to this plan
+		///(AdoptionRowCheck.CheckInventoryLedger) instead of requiring it empty, as it does for this program's other tables.</summary>
+		public static bool IsHeldToPlan(string tableName) {
+			return string.Equals(tableName,TABLE_LEDGER,StringComparison.OrdinalIgnoreCase);
+		}
 
 		///<summary>Level of the step that writes the rows, for messages.</summary>
 		public static long StepLevel {
@@ -43,7 +49,8 @@ namespace AdoptionValidation {
 				if(HasLedger) {
 					return new List<string> { step+" change nothing: the database already has the inventory tables." };
 				}
-				string text=step+" create the fork tables "+string.Join(", ",SchemaVerifier.ArrayForkTables)+" and change no Open Dental table; ";
+				string text=step+" create the tables of this program "+string.Join(", ",new InventoryTables().ArrayCreateTables.Select(x => SchemaTable.Parse(x).Name))
+					+" and change no Open Dental table; ";
 				if(ListOpening.Count==0) {
 					text+="no supply has stock (supply.LevelOnHand), so the stock ledger starts empty.";
 				}
