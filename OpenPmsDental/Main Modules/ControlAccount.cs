@@ -4315,7 +4315,7 @@ namespace OpenPmsDental {
 			//}
 			Patient patientGuarantor=Patients.GetPat(statement.PatNum);
 			string guarFolder=ImageStore.GetPatientFolder(patientGuarantor,ImageStore.GetPreferredAtoZpath());
-			//OpenDental.Imaging.ImageStoreBase imageStore = OpenDental.Imaging.ImageStore.GetImageStore(guar);
+			//OpenPmsDental.Imaging.ImageStoreBase imageStore = OpenPmsDental.Imaging.ImageStore.GetImageStore(guar);
 			if(statement.Mode_==StatementMode.Email) {
 				if(!Security.IsAuthorized(EnumPermType.EmailSend)) {
 					Cursor=Cursors.Default;

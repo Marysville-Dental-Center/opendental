@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 using System.Drawing;
-using OpenPmsDentalBusiness;//Only ReleaseManifest, linked from OpenDentBusiness/Misc/ForkRelease/ReleaseManifest.cs.
+using OpenPmsDentalBusiness;//Only ReleaseManifest, linked from OpenPmsDentalBusiness/Misc/ForkRelease/ReleaseManifest.cs.
 
 namespace UpdateFileCopier {
 	public partial class FormMain:Form {
@@ -130,7 +130,7 @@ namespace UpdateFileCopier {
 			SetLabelText("Preparing to Copy Files...");
 			//Delay the thread for 300 milliseconds to make sure the above processes have really exited.
 			Thread.Sleep(300);
-			//Any file exclusions happened when the release was published (OpenDentBusiness.ForkReleases.ShouldPublishFile). Ex: FreeDentalConfig.xml
+			//Any file exclusions happened when the release was published (OpenPmsDentalBusiness.ForkReleases.ShouldPublishFile). Ex: FreeDentalConfig.xml
 			_hasFilesInUse=false;
 			_hasCopyFailed=false;
 			_hasVerifyFailed=false;
@@ -173,7 +173,7 @@ namespace UpdateFileCopier {
 			LaunchOpenDental();
 		}
 
-		///<summary>Checks the folder against its release manifest (OpenDentBusiness.ReleaseManifest, compiled into this program). Returns false and sets
+		///<summary>Checks the folder against its release manifest (OpenPmsDentalBusiness.ReleaseManifest, compiled into this program). Returns false and sets
 		///_error if the manifest is missing, unreadable or for another product, or if any file is missing, extra, or has the wrong size or SHA-256.
 		///</summary>
 		private bool VerifyRelease(string folder) {

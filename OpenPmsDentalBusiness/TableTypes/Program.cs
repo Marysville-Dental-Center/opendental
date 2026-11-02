@@ -204,7 +204,7 @@ namespace OpenPmsDentalBusiness{
 		///<summary>PostcardMania (PCM Integrations) DirectMail API v3 with the office's own API key.</summary>
 		PostcardMania,
 		//Open Dental 25.1 and 25.2 program links (V-BRIDGE1), appended so existing values keep their numbers. Rows are inserted at runtime with
-		//Enabled=0 (OpenDentBusiness/VendorDirect/ProgramLinks). The names are our proposal; confirm them against program.ProgName in the office data.
+		//Enabled=0 (OpenPmsDentalBusiness/VendorDirect/ProgramLinks). The names are our proposal; confirm them against program.ProgName in the office data.
 		///<summary>Overjet: opens the vendor's web app in the browser (Open Dental 25.1).</summary>
 		Overjet,
 		///<summary>DTX Studio: opens the patient in DTX Studio Clinic through DTXsync.exe (Open Dental 25.2).</summary>

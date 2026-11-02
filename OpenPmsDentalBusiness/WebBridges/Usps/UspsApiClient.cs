@@ -59,7 +59,7 @@ namespace OpenPmsDentalBusiness {
 		}
 	}
 
-	///<summary>The query for GET /addresses/v3/address, built from an OpenDentBusiness.Address under the rules of the USPS OpenAPI spec. Values that
+	///<summary>The query for GET /addresses/v3/address, built from an OpenPmsDentalBusiness.Address under the rules of the USPS OpenAPI spec. Values that
 	///don't match USPS's patterns are left out, not sent. The firm is never sent, and neither is anything that names the patient.</summary>
 	public sealed class UspsAddressQuery {
 		///<summary>The longest streetAddress USPS returns; longer input is cut to this.</summary>

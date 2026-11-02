@@ -10,7 +10,7 @@ using CodeBase;
 
 namespace OpenPmsDental {
 	public class PluginLoader {
-		///<summary>There is a similar method for Middle Tier at OpenDentBusiness.Plugins.LoadAllPlugins.</summary>
+		///<summary>There is a similar method for Middle Tier at OpenPmsDentalBusiness.Plugins.LoadAllPlugins.</summary>
 		public static void LoadAllPlugins(Form host) {
 			Meth.NoCheckMiddleTierRole();
 			List<PluginContainer> listPluginContainers=new List<PluginContainer>();

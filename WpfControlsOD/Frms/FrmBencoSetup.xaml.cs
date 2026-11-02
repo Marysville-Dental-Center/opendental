@@ -44,7 +44,7 @@ namespace OpenPmsDental {
 		//The Benco branding switch (UpdateBencoSettings) was removed (decision D7, ground rule 7): enabling this program link used to rename the
 		//main window title and the SoftwareName preference to Benco's reseller branding, and disabling it set them back. The program link itself
 		//(path, description, toolbar buttons) is unchanged. A database that still holds the Benco values shows the product name instead
-		//(OpenDental.AboutBoxInfo.GetDisplayName); the rows are left as they are.
+		//(OpenPmsDental.AboutBoxInfo.GetDisplayName); the rows are left as they are.
 
 		private void FrmBencoSetup_PreviewKeyDown(object sender,KeyEventArgs e) {
 			if(butSave.IsAltKey(Key.S,e)) {

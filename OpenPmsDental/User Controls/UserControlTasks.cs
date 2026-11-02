@@ -809,7 +809,7 @@ namespace OpenPmsDental {
 				}
 			}
 			else {
-				//Remove any Task related signals that originated from this instance of OpenDental.
+				//Remove any Task related signals that originated from this instance of OpenPmsDental.
 				listSignalods=RemoveSentSignalNums(listSignalods.FindAll(x => new List<InvalidType>()
 					{ InvalidType.Task,InvalidType.TaskList,InvalidType.TaskAuthor,InvalidType.TaskPatient }.Contains(x.IType)));
 				//User is observing a task list for which a TaskList signal is specified, or TaskList from signal is a sublist of current view.

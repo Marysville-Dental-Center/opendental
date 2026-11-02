@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <!--
-    fyiReporting RDL Project 2.9.3 engine, LGPL 2.1 or later. OpenDental.csproj builds it from this source and ships the result, in place
+    fyiReporting RDL Project 2.9.3 engine, LGPL 2.1 or later. OpenPmsDental.csproj builds it from this source and ships the result, in place
     of the prebuilt RdlEngine.dll it used to reference (package RDL-SRC, docs/port-notes/RDL-SRC.md).
     Changed by Open PMS - Dental contributors, 2026-11-01: targets .NET Framework 4.8 like the program (was 4.5); no MySql.Data reference,
     package or app.config (no compiled file used MySql.Data; the MySQL.NET data provider is loaded by name, see Runtime\RdlEngineConfig.cs).

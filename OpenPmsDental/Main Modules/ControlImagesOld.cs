@@ -2972,7 +2972,7 @@ namespace OpenPmsDental {
 
 		///<summary>When storing PDFs directly in DB/Cloud, we download a temp file to display. This could cause local temp storage bloat if not cleaned 
 		///up when tree selection changes. Need to delete the temp file associated to NodeIdentifierOld, which persists even across module changes, so 
-		///while changing module will not cause the temp file to delete, returning to the image module or closing OpenDental cleans it up.</summary>
+		///while changing module will not cause the temp file to delete, returning to the image module or closing OpenPmsDental cleans it up.</summary>
 		private void DeleteTempPdf(long docNum) {
 			Document doc=Documents.GetByNum(docNum,doReturnNullIfNotFound:true);//Get old document.
 			if(doc!=null && Path.GetExtension(doc.FileName).ToLower()==".pdf") {//Adobe acrobat file.

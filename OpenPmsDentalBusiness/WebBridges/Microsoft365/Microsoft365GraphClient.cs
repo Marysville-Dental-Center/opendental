@@ -18,7 +18,7 @@ using MimeKit;
 using Newtonsoft.Json.Linq;
 
 namespace OpenPmsDentalBusiness.Microsoft365 {
-	//OpenDentBusiness.Task (the task list table type) would hide System.Threading.Tasks.Task otherwise.
+	//OpenPmsDentalBusiness.Task (the task list table type) would hide System.Threading.Tasks.Task otherwise.
 	using Task=System.Threading.Tasks.Task;
 
 	///<summary>Returns a bearer token for Graph with the given scopes. forceRefresh true means the last token got a 401: get a new one, or throw

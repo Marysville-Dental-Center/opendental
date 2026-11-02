@@ -364,7 +364,7 @@ namespace OpenPmsDentalBusiness {
 					}
 					sendStatementsIO.CurStatementBatch.ListStatementDatas.Add(new StatementData(dataSet,statement.DocNum));
 				}
-				//imageStore = OpenDental.Imaging.ImageStore.GetImageStore(pat);
+				//imageStore = OpenPmsDental.Imaging.ImageStore.GetImageStore(pat);
 				//If stmt.DocNum==0, savedPdfPath will be "".  A blank savedPdfPath is fine for electronic statements.
 				Document documentStatement=Documents.GetByNum(statement.DocNum);
 				savedPdfPath=sendStatementsIO.FuncGetPatientPdfPath(tempPdfFile,ImageStore.GetFilePath(documentStatement,patFolder));
@@ -739,7 +739,7 @@ namespace OpenPmsDentalBusiness {
 		///<summary>Creates statements for a single clinic.  Returns statements created, or empty list.
 		///Uses ClinicPrefs preference billing options when generating statements. Otherwise, uses the practice default preference values. 
 		///It will also use the default practice preference values for ClinicPrefs that are missing for the Clinic. 
-		///This method closely mimics OpenDental.FormBillingOptions.CreateHelper(). Changes to this method will also need to be considered there.</summary>
+		///This method closely mimics OpenPmsDental.FormBillingOptions.CreateHelper(). Changes to this method will also need to be considered there.</summary>
 		///<param name="clinicNum">The clinic that billing is being generated for. Passing in a value of -1 indicates clinics not being enabled.</param>
 		public static List<Statement> CreateStatementHelper(long clinicNum,SendStatementsIO sendStatementsIO,Dictionary<long,PatAgingData> dictPatAgingData=null) {
 			//If clinics are enabled, the list will be filled with the passed in clinicNum. Otherwise, it will be empty.
@@ -1255,7 +1255,7 @@ namespace OpenPmsDentalBusiness {
 		public long ClinicNum;
 		public List<StatementPref> ListStatementPrefs;
 
-		///<summary>Sets the all of the billing preferences for the clinic passed in. The preferences used for this method are the same ones used in OpenDental.FormBillingOptions.cs. Changes to the preference list will also need to be modified in OpenDental.FormBillingOptions.cs.</summary>
+		///<summary>Sets the all of the billing preferences for the clinic passed in. The preferences used for this method are the same ones used in OpenPmsDental.FormBillingOptions.cs. Changes to the preference list will also need to be modified in OpenPmsDental.FormBillingOptions.cs.</summary>
 		public ClinicBillingOptions(long clinicNum) {
 			ClinicNum=clinicNum;
 			List<StatementPref> listStatementPrefs=new List<StatementPref>();

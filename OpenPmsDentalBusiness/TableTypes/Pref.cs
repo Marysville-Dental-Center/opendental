@@ -1454,7 +1454,7 @@ namespace OpenPmsDentalBusiness {
 		///Should only be present in testing databases. The presence of this preference means the program will be put into "Testing Mode" which is specifically designed for
 		///pointing 3rd party bridges and web references to "development" or "testing" URLs.
 		///The value of each entity can be treated as "Tag" and does not have to be confined to being a simple string (e.g. can be a serialized object stored as a string).
-		///Never directly ask the cache for this preference.  Instead, use the Introspection class within the Misc folder of the OpenDentBusiness project in order to access it.</summary>
+		///Never directly ask the cache for this preference.  Instead, use the Introspection class within the Misc folder of the OpenPmsDentalBusiness project in order to access it.</summary>
 		IntrospectionItems,
 		///<summary>Preference to show writeoffs in the StatementInvoicePayment grid.</summary>
 		InvoicePaymentsGridShowNetProd,

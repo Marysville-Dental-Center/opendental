@@ -10098,14 +10098,14 @@ namespace OpenPmsDentalBusiness {
 		//		arrTypes=assembly.GetTypes();
 		//	}
 		//	catch(ReflectionTypeLoadException ex) {//Some dependencies were probably not able to be loaded
-		//		log+="Error: Unable to load types from OpenDentBusiness. Try running the method on a different computer.\r\n";
+		//		log+="Error: Unable to load types from OpenPmsDentalBusiness. Try running the method on a different computer.\r\n";
 		//		if(verbose) {
 		//			log+="Types successfully loaded:\r\n"+string.Join("\r\n",ex.Types.Where(x => x!=null))+"\r\n";
 		//		}
 		//		return log;
 		//	}
 		//	foreach(Type type in arrTypes) {
-		//		if(type.Namespace!="OpenDentBusiness" || !type.IsClass) {
+		//		if(type.Namespace!="OpenPmsDentalBusiness" || !type.IsClass) {
 		//			continue;
 		//		}
 		//		string tableName=type.Name.ToLower();

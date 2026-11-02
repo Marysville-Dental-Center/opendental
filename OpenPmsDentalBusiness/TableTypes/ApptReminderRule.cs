@@ -20,7 +20,7 @@ namespace OpenPmsDentalBusiness {
 	///now users are allowed to define them on a per clinic basis. Reminders should be considered one way communications and should not be desingned with a
 	///customer response in mind.</para>
 	///<para>CONFIRMATIONS - confirmations are sent using the new automated-confirmation system implemented by RM (proper) and SO (web backend). Confirmations
-	///are intended to allow end patients to respond to OpenDental via text or email and automatically confirm, or set to a desired status, the appointments
+	///are intended to allow end patients to respond to OpenPmsDental via text or email and automatically confirm, or set to a desired status, the appointments
 	///on the schedule.</para>
 	/// </summary>
 	[Serializable()]

@@ -20,7 +20,7 @@ namespace OpenPmsDentalBusiness.Eclaims
 			+"create another batch.");
 
 		static x837Controller() {
-			//Need to initialize this here because the shared half of this class (Shared\ODCloudClient\x837Controller.cs) does not use OpenDentBusiness.Lans.
+			//Need to initialize this here because the shared half of this class (Shared\ODCloudClient\x837Controller.cs) does not use OpenPmsDentalBusiness.Lans.
 			_lans_g=Lans.g;
 		}
 

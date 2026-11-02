@@ -693,14 +693,14 @@ namespace OpenPmsDentalBusiness {
 			//todo?: make sure no users have blank passwords.
 		}
 
-		///<summary>DEPRICATED DO NOT USE.  Use OpenDentBusiness.Authentication class instead.  For middle tier backward-compatability only.</summary>
+		///<summary>DEPRICATED DO NOT USE.  Use OpenPmsDentalBusiness.Authentication class instead.  For middle tier backward-compatability only.</summary>
 		public static string HashPassword(string inputPass) {
 			Meth.NoCheckMiddleTierRole();
 			bool useEcwAlgorithm=Programs.IsEnabled(ProgramName.eClinicalWorks);
 			return HashPassword(inputPass,useEcwAlgorithm);
 		}
 
-		///<summary>DEPRICATED DO NOT USE.  Use OpenDentBusiness.Authentication class instead.  For middle tier backward-compatability only.</summary>
+		///<summary>DEPRICATED DO NOT USE.  Use OpenPmsDentalBusiness.Authentication class instead.  For middle tier backward-compatability only.</summary>
 		public static string HashPassword(string inputPass,bool useEcwAlgorithm) {
 			Meth.NoCheckMiddleTierRole();
 			if(inputPass=="") {
@@ -774,7 +774,7 @@ namespace OpenPmsDentalBusiness {
 			UserodCrud.UpdateCemt(userod);
 		}
 
-		///<summary>DEPRICATED DO NOT USE. Use OpenDentBusiness.Authentication class instead.  For middle tier backward-compatability only.</summary>
+		///<summary>DEPRICATED DO NOT USE. Use OpenPmsDentalBusiness.Authentication class instead.  For middle tier backward-compatability only.</summary>
 		public static void UpdatePassword(Userod userod,string newPassHashed,bool isPasswordStrong) {
 			//Before 18.3, we only used MD5
 			UpdatePassword(userod,new PasswordContainer(HashTypes.MD5,"",newPassHashed),isPasswordStrong);

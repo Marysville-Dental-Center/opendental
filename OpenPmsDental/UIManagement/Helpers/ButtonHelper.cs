@@ -19,7 +19,7 @@ namespace OpenPmsDental.UIManagement {
 	/*
 	///<summary>This class is for internal use by UIManagement. Calls from OD proper should use Um.</summary>
 	public class ButtonHelper{
-		public static Button CreateButton(OpenDental.UI.Button button,UIManager uIManager){
+		public static Button CreateButton(OpenPmsDental.UI.Button button,UIManager uIManager){
 			//Button contains a Grid with two columns and one row.  The two cells contain an image and a textBlock.
 			//The Button already has an internal Border that I can control.
 			Button buttonNew=new Button();

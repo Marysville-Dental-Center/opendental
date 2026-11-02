@@ -205,7 +205,7 @@ namespace OpenPmsDental.Reporting.Allocators.MyAllocator1 {
 		///					c.	Calcuates provider balances to match (for the split entries only)
 		///					d.  If different drop and write (as indicated in 3.i. ) else leave alone
 		///			ii.		Marke htCurrentRecord items as "used" if there is an ODEntry corresponding to the record.
-		///		4.	Delete entries not used in htCurrentRecord (ie data that has been deleted from OpenDental)
+		///		4.	Delete entries not used in htCurrentRecord (ie data that has been deleted from OpenPmsDental)
 		///			i.		makes use of the key values in htCurrentRecord
 		///			ii.		key = [tablenum]-[tableitemnum]
 		///		5.	Delete and add entries that are in the SplitsToDrop,SplitsToWrite lists
@@ -702,7 +702,7 @@ namespace OpenPmsDental.Reporting.Allocators.MyAllocator1 {
 		/// Method Roadmap:
 		/// 
 		///		1. Generate 2 Tables
-		///			i.		Table1:		dt_ODItems			Contains all the items of Ledger Interest from OpenDental Tables
+		///			i.		Table1:		dt_ODItems			Contains all the items of Ledger Interest from OpenPmsDental Tables
 		///			ii.		Table2:		dt2_AllocTbl_Items	Contains all the Allocation Data that exists in the allocation_provider table
 		///		2. Look For Differences
 		///			i.		Build a Ledger Item from the dt_ODItems (ie from the opendental tables)

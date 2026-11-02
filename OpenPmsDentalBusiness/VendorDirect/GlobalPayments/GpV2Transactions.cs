@@ -17,7 +17,7 @@ namespace OpenPmsDentalBusiness.VendorDirect.GlobalPayments {
 		public static readonly TimeSpan PollIntervalDefault=TimeSpan.FromSeconds(2);
 		private readonly GpV2Client _gpV2Client;
 		private readonly Func<DateTime> _funcUtcNow;
-		//System.Threading.Tasks.Task is written out: OpenDentBusiness.Task (the task list) would be found first.
+		//System.Threading.Tasks.Task is written out: OpenPmsDentalBusiness.Task (the task list) would be found first.
 		private readonly Func<TimeSpan,CancellationToken,System.Threading.Tasks.Task> _funcDelay;
 		public TimeSpan TerminalWait=TerminalWaitDefault;
 		public TimeSpan PollInterval=PollIntervalDefault;

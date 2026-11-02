@@ -802,10 +802,10 @@ namespace OpenPmsDentalBusiness{
 						+") ehrlabs ON ehrlab.EhrLabNum=ehrlabs.EhrLabNum "
 						+"WHERE (CASE WHEN ehrlab.OrderingProviderIdentifierTypeCode='NPI' THEN ehrlab.OrderingProviderID IN("+POut.String(provNPIs)+") " //When the lab is using a NPI number to determine provider.
 							+"WHEN ehrlab.OrderingProviderIdentifierTypeCode='PRN' THEN ( " //When the lab is using provider number to determine provider.
-								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenDental.
+								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenPmsDental.
 									+"SELECT IDRoot FROM oidinternal WHERE IDType='Provider' GROUP BY IDType "
 								+") THEN ehrlab.OrderingProviderID IN("+POut.String(provs)+") END) " //Use the ProvNum to determine provider.
-							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenDental, we have no way to tell who the provider is.
+							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenPmsDental, we have no way to tell who the provider is.
 						+"AND ehrlab.ObservationDateTimeStart BETWEEN DATE_FORMAT("+POut.Date(dateStart)+",'%Y%m%d') AND DATE_FORMAT("+POut.Date(dateEnd)+",'%Y%m%d') "
 						+"AND (CASE WHEN ehrlab.UsiCodeSystemName='LN' THEN ehrlab.UsiID WHEN ehrlab.UsiCodeSystemNameAlt='LN' THEN ehrlab.UsiIDAlt ELSE '' END) "
 							+"NOT IN (SELECT LoincCode FROM loinc WHERE loinc.ClassType LIKE '%RAD%')";
@@ -2883,10 +2883,10 @@ namespace OpenPmsDentalBusiness{
 						+"INNER JOIN patient ON ehrlab.PatNum=patient.PatNum "
 						+"WHERE (CASE WHEN ehrlab.OrderingProviderIdentifierTypeCode='NPI' THEN ehrlab.OrderingProviderID IN("+POut.String(provNPIs)+") " //When the lab is using a NPI number to determine provider.
 							+"WHEN ehrlab.OrderingProviderIdentifierTypeCode='PRN' THEN ( " //When the lab is using provider number to determine provider.
-								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenDental.
+								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenPmsDental.
 									+"SELECT IDRoot FROM oidinternal WHERE IDType='Provider' GROUP BY IDType "
 								+") THEN ehrlab.OrderingProviderID IN("+POut.String(provs)+") END) " //Use the ProvNum to determine provider.
-							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenDental, we have no way to tell who the provider is.
+							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenPmsDental, we have no way to tell who the provider is.
 						+"AND ehrlab.ObservationDateTimeStart BETWEEN DATE_FORMAT("+POut.Date(dateStart)+",'%Y%m%d') AND DATE_FORMAT("+POut.Date(dateEnd)+",'%Y%m%d') "
 						+"AND (CASE WHEN ehrlab.UsiCodeSystemName='LN' THEN ehrlab.UsiID WHEN ehrlab.UsiCodeSystemNameAlt='LN' THEN ehrlab.UsiIDAlt ELSE '' END) "
 							+"NOT IN (SELECT LoincCode FROM loinc WHERE loinc.ClassType LIKE '%RAD%')";
@@ -2901,10 +2901,10 @@ namespace OpenPmsDentalBusiness{
 						+"INNER JOIN patient ON ehrlab.PatNum=patient.PatNum "
 						+"WHERE (CASE WHEN ehrlab.OrderingProviderIdentifierTypeCode='NPI' THEN ehrlab.OrderingProviderID IN("+POut.String(provNPIs)+") " //When the lab is using a NPI number to determine provider.
 							+"WHEN ehrlab.OrderingProviderIdentifierTypeCode='PRN' THEN ( " //When the lab is using provider number to determine provider.
-								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenDental.
+								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenPmsDental.
 									+"SELECT IDRoot FROM oidinternal WHERE IDType='Provider' GROUP BY IDType "
 								+") THEN ehrlab.OrderingProviderID IN("+POut.String(provs)+") END) " //Use the ProvNum to determine provider.
-							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenDental, we have no way to tell who the provider is.
+							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenPmsDental, we have no way to tell who the provider is.
 						+"AND ehrlab.ObservationDateTimeStart BETWEEN DATE_FORMAT("+POut.Date(dateStart)+",'%Y%m%d') AND DATE_FORMAT("+POut.Date(dateEnd)+",'%Y%m%d') "
 						+"AND (CASE WHEN ehrlab.UsiCodeSystemName='LN' THEN ehrlab.UsiID WHEN ehrlab.UsiCodeSystemNameAlt='LN' THEN ehrlab.UsiIDAlt ELSE '' END) "
 							+"IN (SELECT LoincCode FROM loinc WHERE loinc.ClassType LIKE '%RAD%')";
@@ -3139,10 +3139,10 @@ namespace OpenPmsDentalBusiness{
 						+") ehrlabs ON ehrlab.EhrLabNum=ehrlabs.EhrLabNum "
 						+"WHERE (CASE WHEN ehrlab.OrderingProviderIdentifierTypeCode='NPI' THEN ehrlab.OrderingProviderID IN("+POut.String(provNPIs)+") " //When the lab is using a NPI number to determine provider.
 							+"WHEN ehrlab.OrderingProviderIdentifierTypeCode='PRN' THEN ( " //When the lab is using provider number to determine provider.
-								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenDental.
+								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenPmsDental.
 									+"SELECT IDRoot FROM oidinternal WHERE IDType='Provider' GROUP BY IDType "
 								+") THEN ehrlab.OrderingProviderID IN("+POut.String(provs)+") END) " //Use the ProvNum to determine provider.
-							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenDental, we have no way to tell who the provider is.
+							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenPmsDental, we have no way to tell who the provider is.
 						+"AND ehrlab.ObservationDateTimeStart BETWEEN DATE_FORMAT("+POut.Date(dateStart)+",'%Y%m%d') AND DATE_FORMAT("+POut.Date(dateEnd)+",'%Y%m%d') "
 						+"AND (CASE WHEN ehrlab.UsiCodeSystemName='LN' THEN ehrlab.UsiID WHEN ehrlab.UsiCodeSystemNameAlt='LN' THEN ehrlab.UsiIDAlt ELSE '' END) "
 							+"NOT IN (SELECT LoincCode FROM loinc WHERE loinc.ClassType LIKE '%RAD%')"; //Not sure if we need this since rad labs shouldnt be set to numeric results
@@ -3371,10 +3371,10 @@ namespace OpenPmsDentalBusiness{
 							+"INNER JOIN patient ON ehrlab.PatNum=Patient.PatNum "
 							+"WHERE (CASE WHEN ehrlab.OrderingProviderIdentifierTypeCode='NPI' THEN ehrlab.OrderingProviderID IN("+POut.String(provNPIs)+") " //When the lab is using a NPI number to determine provider.
 								+"WHEN ehrlab.OrderingProviderIdentifierTypeCode='PRN' THEN ( " //When the lab is using provider number to determine provider.
-								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenDental.
+								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenPmsDental.
 									+"SELECT IDRoot FROM oidinternal WHERE IDType='Provider' GROUP BY IDType "
 								+") THEN ehrlab.OrderingProviderID IN("+POut.String(provs)+") END) " //Use the ProvNum to determine provider.
-							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenDental, we have no way to tell who the provider is.
+							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenPmsDental, we have no way to tell who the provider is.
 							+"AND ehrlab.ObservationDateTimeStart BETWEEN DATE_FORMAT("+POut.Date(dateStart)+",'%Y%m%d') AND DATE_FORMAT("+POut.Date(dateEnd)+",'%Y%m%d') "
 						+") as labsTable "
 						+"INNER JOIN (SELECT DISTINCT EhrLabNum,DocNum FROM ehrlabimage) AS labImage ON labsTable.EhrLabNum=labImage.EhrLabNum";
@@ -5893,10 +5893,10 @@ namespace OpenPmsDentalBusiness{
 						+"INNER JOIN patient ON ehrlab.PatNum=patient.PatNum "
 						+"WHERE (CASE WHEN ehrlab.OrderingProviderIdentifierTypeCode='NPI' THEN ehrlab.OrderingProviderID IN("+POut.String(provNPIs)+") " //When the lab is using a NPI number to determine provider.
 							+"WHEN ehrlab.OrderingProviderIdentifierTypeCode='PRN' THEN ( " //When the lab is using provider number to determine provider.
-								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenDental.
+								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenPmsDental.
 									+"SELECT IDRoot FROM oidinternal WHERE IDType='Provider' GROUP BY IDType "
 								+") THEN ehrlab.OrderingProviderID IN("+POut.String(provs)+") END) " //Use the ProvNum to determine provider.
-							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenDental, we have no way to tell who the provider is.
+							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenPmsDental, we have no way to tell who the provider is.
 						+"AND ehrlab.ObservationDateTimeStart BETWEEN DATE_FORMAT("+POut.Date(dateStart)+",'%Y%m%d') AND DATE_FORMAT("+POut.Date(dateEnd)+",'%Y%m%d') "
 						+"AND (CASE WHEN ehrlab.UsiCodeSystemName='LN' THEN ehrlab.UsiID WHEN ehrlab.UsiCodeSystemNameAlt='LN' THEN ehrlab.UsiIDAlt ELSE '' END) "
 							+"NOT IN (SELECT LoincCode FROM loinc WHERE loinc.ClassType LIKE '%RAD%')";
@@ -5911,10 +5911,10 @@ namespace OpenPmsDentalBusiness{
 						+"INNER JOIN patient ON ehrlab.PatNum=patient.PatNum "
 						+"WHERE (CASE WHEN ehrlab.OrderingProviderIdentifierTypeCode='NPI' THEN ehrlab.OrderingProviderID IN("+POut.String(provNPIs)+") " //When the lab is using a NPI number to determine provider.
 							+"WHEN ehrlab.OrderingProviderIdentifierTypeCode='PRN' THEN ( " //When the lab is using provider number to determine provider.
-								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenDental.
+								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenPmsDental.
 									+"SELECT IDRoot FROM oidinternal WHERE IDType='Provider' GROUP BY IDType "
 								+") THEN ehrlab.OrderingProviderID IN("+POut.String(provs)+") END) " //Use the ProvNum to determine provider.
-							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenDental, we have no way to tell who the provider is.
+							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenPmsDental, we have no way to tell who the provider is.
 						+"AND ehrlab.ObservationDateTimeStart BETWEEN DATE_FORMAT("+POut.Date(dateStart)+",'%Y%m%d') AND DATE_FORMAT("+POut.Date(dateEnd)+",'%Y%m%d') "
 						+"AND (CASE WHEN ehrlab.UsiCodeSystemName='LN' THEN ehrlab.UsiID WHEN ehrlab.UsiCodeSystemNameAlt='LN' THEN ehrlab.UsiIDAlt ELSE '' END) "
 							+"IN (SELECT LoincCode FROM loinc WHERE loinc.ClassType LIKE '%RAD%')";
@@ -6142,10 +6142,10 @@ namespace OpenPmsDentalBusiness{
 						+") ehrlabs ON ehrlab.EhrLabNum=ehrlabs.EhrLabNum "
 						+"WHERE (CASE WHEN ehrlab.OrderingProviderIdentifierTypeCode='NPI' THEN ehrlab.OrderingProviderID IN("+POut.String(provNPIs)+") " //When the lab is using a NPI number to determine provider.
 							+"WHEN ehrlab.OrderingProviderIdentifierTypeCode='PRN' THEN ( " //When the lab is using provider number to determine provider.
-								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenDental.
+								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenPmsDental.
 									+"SELECT IDRoot FROM oidinternal WHERE IDType='Provider' GROUP BY IDType "
 								+") THEN ehrlab.OrderingProviderID IN("+POut.String(provs)+") END) " //Use the ProvNum to determine provider.
-							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenDental, we have no way to tell who the provider is.
+							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenPmsDental, we have no way to tell who the provider is.
 						+"AND ehrlab.ObservationDateTimeStart BETWEEN DATE_FORMAT("+POut.Date(dateStart)+",'%Y%m%d') AND DATE_FORMAT("+POut.Date(dateEnd)+",'%Y%m%d') "
 						+"AND (CASE WHEN ehrlab.UsiCodeSystemName='LN' THEN ehrlab.UsiID WHEN ehrlab.UsiCodeSystemNameAlt='LN' THEN ehrlab.UsiIDAlt ELSE '' END) "
 							+"NOT IN (SELECT LoincCode FROM loinc WHERE loinc.ClassType LIKE '%RAD%')"; //Not sure if we need this since rad labs shouldnt be set to numeric results
@@ -6382,10 +6382,10 @@ namespace OpenPmsDentalBusiness{
 							+"INNER JOIN patient ON ehrlab.PatNum=Patient.PatNum "
 							+"WHERE (CASE WHEN ehrlab.OrderingProviderIdentifierTypeCode='NPI' THEN ehrlab.OrderingProviderID IN("+POut.String(provNPIs)+") " //When the lab is using a NPI number to determine provider.
 								+"WHEN ehrlab.OrderingProviderIdentifierTypeCode='PRN' THEN ( " //When the lab is using provider number to determine provider.
-								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenDental.
+								+"CASE WHEN ehrlab.OrderingProviderAssigningAuthorityUniversalID=( " //If the AssigningAuthority is OpenPmsDental.
 									+"SELECT IDRoot FROM oidinternal WHERE IDType='Provider' GROUP BY IDType "
 								+") THEN ehrlab.OrderingProviderID IN("+POut.String(provs)+") END) " //Use the ProvNum to determine provider.
-							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenDental, we have no way to tell who the provider is.
+							+"ELSE FALSE END) " //If the AssigningAuthority is not OpenPmsDental, we have no way to tell who the provider is.
 							+"AND ehrlab.ObservationDateTimeStart BETWEEN DATE_FORMAT("+POut.Date(dateStart)+",'%Y%m%d') AND DATE_FORMAT("+POut.Date(dateEnd)+",'%Y%m%d') "
 						+") as labsTable "
 						+"INNER JOIN (SELECT DISTINCT EhrLabNum,DocNum FROM ehrlabimage) AS labImage ON labsTable.EhrLabNum=labImage.EhrLabNum";

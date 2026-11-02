@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Net.Sockets;
 
-namespace OpenDental{
+namespace OpenPmsDental{
 	/// <summary>Retrieves email from a POP3 server.</summary>
 	public class Pop3 : System.Net.Sockets.TcpClient {
 		//public Pop3(){

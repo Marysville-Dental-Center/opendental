@@ -96,18 +96,31 @@ $AllowList=@(
 	@{ Path='*\TableTypes\ImageDraw.cs'; Match='^\s*OpenDental,'; Reason='EnumImageAnnotVendor.OpenDental: an enum member stored in the database.' }
 	@{ Path='*\TableTypes\Pref.cs'; Match='^\s*OpenDental,'; Reason='AccountingSoftware.OpenDental: an enum member stored as a preference value.' }
 	@{ Path='*'; Match='\b(EnumImageAnnotVendor|AccountingSoftware)\.OpenDental\b'; Reason='Enum members stored in the database are never renamed.' }
+	@{ Path='*'; Match='\b0=OpenDental\b'; Reason='AccountingSoftware.OpenDental (0): the enum member stored as a preference value.' }
+	@{ Path='DocumentationBuilder\OpenDentalDocumentation.xml'; Match='<EnumValue name="OpenDental">'; Reason='EnumImageAnnotVendor.OpenDental: an enum member stored in the database.' }
+	@{ Path='tests\RegistryTests\Data\OdEnums25_3.txt'; Match='\|OpenDental\|'; Reason="EnumImageAnnotVendor.OpenDental in Open Dental 25.3's enum reference: an enum member stored in the database." }
 	@{ Path='*'; Match='OpenDental\.Imaging\.(FileStore|SqlStore)'; Reason='The legacy ImageStore preference value.' }
 
-	#--- Values sent to vendors (vendor-direct decisions keep them).
+	#--- Values sent to vendors and other systems (vendor-direct decisions keep them).
 	@{ Path='WpfControlsOD\Bridges\Sirona.cs'; Match='line\.Append\("OpenDental"\)'; Reason='The sender name Sirona expects.' }
 	@{ Path='WpfControlsOD\Bridges\Vipersoft.cs'; Match='"OpenDental\|"'; Reason='The program name Vipersoft expects.' }
 	@{ Path='*\Bridges\EHG_statements.cs'; Match='UploaderName=OpenDental'; Reason='The uploader name EHG expects.' }
+	@{ Path='db\init\new-database.sql'; Match='--source \\"OpenDental\\"'; Reason='The --source value Shining3D expects (program.CommandLine).' }
+	@{ Path='*\X12\X837_4010.cs'; Match='Sometimes OpenDental\.'; Reason='The X12 GS02 sender code, a value sent to clearinghouses.' }
+	@{ Path='*\Data Interface\EmailMessages.cs'; Match='CreateAcks\("OpenDental "'; Reason='The reporting agent of Direct message acknowledgements, a value sent to other systems.' }
+	@{ Path='tests\VendorDirectTests\DentalXChange\DxcPartnerIdentityTests.cs'; Match='Client=\\"OpenDental\\"|UploaderName=OpenDental'; Reason='Checks that the removed vendor values stay removed.' }
+	@{ Path='tests\VendorDirectTests\Erx\ErxSourceTests.cs'; Match='\\"OpenDental\(Lexi\)\?\\"'; Reason='Checks that the removed eRx vendor values stay removed.' }
 
 	#--- The Middle Tier's wire contract and deployment path (decision D4).
 	@{ Path='*'; Match='open-dent\.com/OpenDentalServer'; Reason='The SOAP namespace and action of the Middle Tier web service.' }
 	@{ Path='*'; Match='/OpenDentalServer/ServiceMain\.asmx'; Reason="The Middle Tier's IIS path in its default URL." }
-	@{ Path='*'; Match='"OpenDental Middle Tier:"'; Reason='The Windows Credential Manager prefix of saved Middle Tier logins.' }
+	@{ Path='*'; Match='(?:localhost|>|\s|^)/OpenDentalServer\b'; Reason="The Middle Tier's IIS virtual path (/OpenDentalServer)." }
+	@{ Path='*'; Match='"?OpenDental Middle Tier\b:?"?'; Reason='The Windows Credential Manager prefix of saved Middle Tier logins.' }
 	@{ Path='*'; Match='(?<=\.|Web References\\)OpenDentalServer\b'; Reason='The Middle Tier web reference, named after the web service.' }
+	@{ Path='*'; Match='\bOpenDentalServer\.ServiceMain\b'; Reason='The web reference proxy class (OpenPmsDentalBusiness.OpenDentalServer.ServiceMain).' }
+
+	#--- The solution and solution filter keep their file names (the shared build lane, run-tests, Test-NoHqHosts and the merge driver use them).
+	@{ Path='*'; Match='\bOpenDental\.(?:Local\.slnf|sln)\b'; Reason='The OpenDental.sln and OpenDental.Local.slnf file names stay.' }
 
 	#--- Translation keys and plugin hook names.
 	@{ Path='*'; Match='Lans?\.g\("OpenDental"'; Reason='A translation key (translations are keyed by this text).' }
@@ -116,8 +129,18 @@ $AllowList=@(
 	#--- Open Dental itself.
 	@{ Path='*'; Match="(?i)\b[a-z0-9.-]*opendental\.(com|cloud)\b"; Reason="Open Dental's host names (the blocked-host list and its tests)." }
 	@{ Path='docs\adoption-runbook.md'; Line="'C:\\Program Files\*\\Open Dental\*'"; Reason="Finds Open Dental's own files in its install folders." }
+	@{ Path='*'; Match='\bOpenDental, Inc\.'; Reason='Open Dental Software, Inc., the company.' }
+	@{ Path='*'; Match='\bOpenDental Service\b'; Reason="Open Dental's own Windows service (OpenDentalService), which this program does not ship." }
+	@{ Path='*'; Match='Versioned\\+OpenDental\b'; Reason="Open Dental developers' checkout folder in developer-only default paths." }
+	@{ Path='DocumentationBuilder\PreferenceTable\*'; Reason="Open Dental's generated preference tables of versions 23.3 to 24.2 (history)." }
+	@{ Path='tests\AttributionTests\ReleaseIdentityTests.cs'; Match='"OpenDental(?: API End User)?"'; Reason="Entries of Open Dental's licence list that are gone." }
+
+	#--- Names of builds before the rename, kept so that what they left on a computer is still found.
 	@{ Path='CodeBase\Utilities\ProgramNames.cs'; Match='LegacyLocalAppDataFolderName="OpenDental"'; Reason='The folder builds before the rename used, still scanned for unsaved work.' }
+	@{ Path='CodeBase\Utilities\ProgramNames.cs'; Match='named OpenDentHL7'; Reason='The HL7 service name of builds before the rename, still found by LegacyServicePrefix.' }
+	@{ Path='*HL7\Program.cs'; Match='\(OpenDentHL7\)'; Reason='The HL7 service name of builds before the rename, still found by LegacyServicePrefix.' }
 	@{ Path='tests\ReleaseFlowTests\ProgramNamesTests.cs'; Match='"OpenDental",ProgramNames\.LegacyLocalAppDataFolderName'; Reason='The test that the pre-rename folder never changes.' }
+	@{ Path='tests\ReleaseFlowTests\ProgramNamesTests.cs'; Line='^\s*\[@"[^"]+"\]=new\[\]'; Reason='The pre-rename literals that must stay out of the sites routed through ProgramNames.' }
 )
 
 #The file walk and the line scan, in C#: a PowerShell loop over every old name in the repository takes minutes.

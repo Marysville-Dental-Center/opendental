@@ -16,7 +16,7 @@ using MimeKit;
 using OpenPmsDentalBusiness.VendorDirect;
 
 namespace OpenPmsDentalBusiness.Microsoft365 {
-	//OpenDentBusiness.Task (the task list table type) would hide System.Threading.Tasks.Task otherwise.
+	//OpenPmsDentalBusiness.Task (the task list table type) would hide System.Threading.Tasks.Task otherwise.
 	using Task=System.Threading.Tasks.Task;
 
 	///<summary>A mailbox's stored sign-in: the encrypted MSAL cache (emailaddress.RefreshToken) and the account marker (emailaddress.AccessToken).</summary>

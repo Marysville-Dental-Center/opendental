@@ -165,7 +165,7 @@ namespace CodeBase {
 						if(sw!=null) {
 							sw.WriteLine(message);
 							sw.Flush();
-							sw.Dispose();//Close the file to allow exclusive access by other instances of OpenDental.
+							sw.Dispose();//Close the file to allow exclusive access by other instances of OpenPmsDental.
 						}
 					}
 				}

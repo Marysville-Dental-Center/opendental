@@ -1,7 +1,7 @@
 /*using System;
 using System.Collections;
 
-namespace OpenDentBusiness{
+namespace OpenPmsDentalBusiness{
 
 	///<summary>Was used by dental schools.  Obsolete.</summary>
 	public class Instructor{

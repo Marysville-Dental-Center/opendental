@@ -6,7 +6,7 @@ contributors. The program itself is licensed under the GNU General Public
 License, version 2 or (at your option) any later version; see LICENSE and
 NOTICE.
 
-The release ships the third-party components below next to OpenDental.exe.
+The release ships the third-party components below next to OpenPmsDental.exe.
 Each keeps its own license. For each component this file names the files,
 the version in this repository, the copyright holders, the license and where
 its source is published. The license texts follow the components: the short

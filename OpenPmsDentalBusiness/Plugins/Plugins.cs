@@ -64,7 +64,7 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
-		///<summary>This is only for middle tier. See the similar method OpenDental.PluginLoader.LoadAllPlugins for the normal loading. Not sure why anyone would load a plugin in MT, but left this in place until we figure it out.  This MT version does not check any sort of plugin whitelist.</summary>
+		///<summary>This is only for middle tier. See the similar method OpenPmsDental.PluginLoader.LoadAllPlugins for the normal loading. Not sure why anyone would load a plugin in MT, but left this in place until we figure it out.  This MT version does not check any sort of plugin whitelist.</summary>
 		public static void LoadAllPlugins(Form host=null) {
 			Meth.NoCheckMiddleTierRole();
 			List<PluginContainer> listPluginContainers=new List<PluginContainer>();
@@ -144,7 +144,7 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Returns null if no plugin assembly loaded with the given name.
-		///So OpenDentBusiness can be passed through here quickly to return null.</summary>
+		///So OpenPmsDentalBusiness can be passed through here quickly to return null.</summary>
 		public static Assembly GetAssembly(string name) {
 			if(ListPlugins==null) {
 				return null;//Fail silently if plugins could not be loaded.

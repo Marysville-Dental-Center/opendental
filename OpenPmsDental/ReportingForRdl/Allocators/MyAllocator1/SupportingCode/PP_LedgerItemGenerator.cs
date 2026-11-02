@@ -373,7 +373,7 @@ namespace OpenPmsDental.Reporting.Allocators.MyAllocator1
 	//           + "\n     Procedurelog, Patient"
 	//           + "\nWHERE "
 	//           + "\n     Patient.PatNum = Procedurelog.Patnum " 
-	//           + "\n     && Procedurelog.ProcStatus = " + ((int)OpenDentBusiness.ProcStat.C).ToString(); ;
+	//           + "\n     && Procedurelog.ProcStatus = " + ((int)OpenPmsDentalBusiness.ProcStat.C).ToString(); ;
 	//        if (Guarantor != 0)
 	//            rVal += "\n      && Patient.Guarantor = " + Guarantor;
 	//        if (IsPulledFlag)

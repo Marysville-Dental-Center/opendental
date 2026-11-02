@@ -686,7 +686,7 @@ namespace xCrudGenerator {
 			process.WaitForExit();
 		}
 
-		///<summary>Adds these files to the OpenDentBusiness project.  If the file is already a part of OpenDentBusiness, no harm, no foul.</summary>
+		///<summary>Adds these files to the OpenPmsDentalBusiness project.  If the file is already a part of OpenPmsDentalBusiness, no harm, no foul.</summary>
 		public static void AddToOpenDentBusiness(List<string> listFileNames) {
 			if(listFileNames.Count==0) {
 				return;

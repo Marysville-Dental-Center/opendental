@@ -1420,7 +1420,7 @@ namespace OpenPmsDentalBusiness {
 	}
 
 	///<summary>The vendor job that runs EdgeExpress.CNP.ReconcilePending every 2 minutes, on one workstation at a time, while the EdgeExpress
-	///program link is enabled and pending pay-page sessions exist. Found by the vendor job host (OpenDental.VendorDirect.VendorJobHost); it replaces
+	///program link is enabled and pending pay-page sessions exist. Found by the vendor job host (OpenPmsDental.VendorDirect.VendorJobHost); it replaces
 	///the eConnector's polling of pending hosted-pay transactions.</summary>
 	public class EdgeExpressReconcileJob:VendorDirect.IVendorBackgroundJob {
 		public string Name {

@@ -16,7 +16,7 @@ namespace OpenPmsDental {
 			//This switch doesn't actually do anything except ensure that every type of form has an actual reference here.
 			//This is needed because of our late binding. We want to know about these references.
 			switch(e.EnumFormName_){
-				//FullName looks like this: OpenDental.FormWhatever
+				//FullName looks like this: OpenPmsDental.FormWhatever
 				case EnumFormName.FormAllergySetup:
 					type=Type.GetType((typeof(FormAllergySetup)).FullName);
 					break;

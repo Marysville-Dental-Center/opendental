@@ -6,7 +6,7 @@
 //
 // Code is broken up into Common section and a section for each Tab
 //
-// Some code is copied from other sections of OpenDental
+// Some code is copied from other sections of OpenPmsDental
 //
 // Report was designed in response to Client requests for more types of sheet labels
 // with more selection choices.

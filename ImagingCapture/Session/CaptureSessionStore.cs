@@ -9,7 +9,7 @@ using OpenPmsDentalBusiness;
 namespace ImagingCapture.Session {
 	///<summary>The database reads and writes of the capture session apart from saving an image (RadiographImport has its own seam,
 	///IRadiographStore), as a thin seam so that the launcher and the controller can be tested without a database. OdCaptureSessionStore is the
-	///real one; every member is one OpenDentBusiness call. Called on the UI thread only.</summary>
+	///real one; every member is one OpenPmsDentalBusiness call. Called on the UI thread only.</summary>
 	public interface ICaptureSessionStore {
 		///<summary>Security.IsAuthorized(permType,suppressMessage:true): the caller shows the refusal itself.</summary>
 		bool IsAuthorized(EnumPermType permType);
@@ -37,7 +37,7 @@ namespace ImagingCapture.Session {
 		void UpdateMountItem(MountItem mountItem);
 	}
 
-	///<summary>ICaptureSessionStore through OpenDentBusiness. Not exercised by the unit tests, which have no database.</summary>
+	///<summary>ICaptureSessionStore through OpenPmsDentalBusiness. Not exercised by the unit tests, which have no database.</summary>
 	public sealed class OdCaptureSessionStore:ICaptureSessionStore {
 		public bool IsAuthorized(EnumPermType permType) {
 			return Security.IsAuthorized(permType,suppressMessage:true);

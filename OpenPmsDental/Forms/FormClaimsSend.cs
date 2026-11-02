@@ -51,7 +51,7 @@ namespace OpenPmsDental{
 		public FormClaimsSend(){
 			InitializeComponent();
 			InitializeLayoutManager();
-			//tbQueue.CellDoubleClicked += new OpenDental.ContrTable.CellEventHandler(tbQueue_CellDoubleClicked);
+			//tbQueue.CellDoubleClicked += new OpenPmsDental.ContrTable.CellEventHandler(tbQueue_CellDoubleClicked);
 			Lan.F(this);
 		}
 

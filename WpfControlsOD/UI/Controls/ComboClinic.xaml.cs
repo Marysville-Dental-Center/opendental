@@ -527,7 +527,7 @@ RunReport(listClinicNums,stringDisplayClinics);
 				return;
 			}
 			if(IsTestModeNoDb){
-				//OpenDental.MsgBox.Show(this,"Not allowed");
+				//OpenPmsDental.MsgBox.Show(this,"Not allowed");
 				//e.Handled=true;
 				return;
 			}

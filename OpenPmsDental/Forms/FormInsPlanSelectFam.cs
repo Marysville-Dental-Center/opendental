@@ -11,7 +11,7 @@ using System.Linq;
 namespace OpenPmsDental{
 ///<summary>Lists all insurance plans for which the supplied patient is the subscriber. Lets you select an insurance plan based on a patNum. SelectedPlan will contain the plan selected.</summary>
 	public partial class FormInsPlanSelectFam : FormODBase {
-		//private OpenDental.TableInsPlans tbPlans;
+		//private OpenPmsDental.TableInsPlans tbPlans;
 		///<summary></summary>
 		public Relat Relat;
 		///<summary>Set to true to view the relationship selection</summary>
@@ -53,7 +53,7 @@ namespace OpenPmsDental{
 				InsSubSelected=null;
 				InsPlanSelected=null;
 			}
-			//tbPlans.CellDoubleClicked += new OpenDental.ContrTable.CellEventHandler(tbPlans_CellDoubleClicked);
+			//tbPlans.CellDoubleClicked += new OpenPmsDental.ContrTable.CellEventHandler(tbPlans_CellDoubleClicked);
 		}
 
 		private void FormInsPlansSelect_Load(object sender, System.EventArgs e) {

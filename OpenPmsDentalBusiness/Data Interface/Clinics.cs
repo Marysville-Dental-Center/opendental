@@ -61,7 +61,7 @@ namespace OpenPmsDentalBusiness{
 		}
 		#endregion
 
-		///<summary>Currently active clinic within OpenDental.  Reflects FormOpenDental.ClinicNum</summary>
+		///<summary>Currently active clinic within OpenPmsDental.  Reflects FormOpenDental.ClinicNum</summary>
 		private static long _clinicNum=0;
 		///<summary>Only used with Web Apps. The currently active clinic within the thread that is currently executing.</summary>
 		[ThreadStatic]

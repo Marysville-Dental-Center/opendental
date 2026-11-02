@@ -18,7 +18,7 @@ namespace OpenPmsDentalBusiness {
 		private static bool _isMiddleTierInitialized=false;
 		///<summary>Date and time that this ServerMT instance has processed signals.</summary>
 		private static DateTime _dateTimeProcessSignals=DateTime.MinValue;
-		///<summary>The string representation of the AssemblyVersion for OpenDentBusiness.dll.</summary>
+		///<summary>The string representation of the AssemblyVersion for OpenPmsDentalBusiness.dll.</summary>
 		private static string _strOpenDentBusinessVersion=null;
 		///<summary>The raw ValueString of the ProgramVersion preference.</summary>
 		private static string _strProgramVersion=null;
@@ -47,7 +47,7 @@ namespace OpenPmsDentalBusiness {
 					//Ditto for CurComputerName
 					ODThread.AddInitializeHandler<string>(() => Security.CurComputerName,computerName => Security.CurComputerName=computerName);
 					//Calling Secrets.Decrypt will cause CDT to verify the assembly and then save the encryption key. This needs to be done here because
-					//if we later call Secrets.Decrypt inside a thread, we won't we able to find OpenDentalServer.dll in the call stack.
+					//if we later call Secrets.Decrypt inside a thread, we won't we able to find OpenPmsDentalServer.dll in the call stack.
 					ODException.SwallowAnyException(() => Secrets.Decrypt("odv2e$fakeciphertext",out _));
 					_strOpenDentBusinessVersion=Assembly.GetAssembly(typeof(Db)).GetName().Version.ToString();
 					_isMiddleTierInitialized=true;
@@ -196,7 +196,7 @@ namespace OpenPmsDentalBusiness {
 				#region DtoGetObject
 				else if(type == typeof(DtoGetObject)) {
 					if(dtoInformation.ClassName==nameof(Security) && dtoInformation.MethodName==nameof(Security.LogInWeb)) {
-						dtoInformation.Parameters[2]=new DtoObject(serverMapPath,typeof(string));//because we can't access this variable from within OpenDentBusiness.
+						dtoInformation.Parameters[2]=new DtoObject(serverMapPath,typeof(string));//because we can't access this variable from within OpenPmsDentalBusiness.
 						RemotingClient.MiddleTierRole=MiddleTierRole.ServerMT;
 						//We just changed the number of parameters so we need to regenerate ParamObjs.
 						dtoInformation.ParamObjs=DtoObject.GenerateObjects(dtoInformation.Parameters);
@@ -304,10 +304,10 @@ namespace OpenPmsDentalBusiness {
 		private class DtoInformation {
 			///<summary>The full name of the method include namespace, class, and method.</summary>
 			public string[] FullNameComponents;
-			///<summary>The name of the assembly/namespace. Usually OpenDentBusiness, but may be a plugin.</summary>
+			///<summary>The name of the assembly/namespace. Usually OpenPmsDentalBusiness, but may be a plugin.</summary>
 			public string AssemblyName;
 			///<summary>The name of the class that stores the method that will be invoked. If the namespace has a sub-namespace, such as 
-			///OpenDentBusiness.Eclaims, the ClassName will include both the sub-namespace and the class such as Eclaims.Eclaims.</summary>
+			///OpenPmsDentalBusiness.Eclaims, the ClassName will include both the sub-namespace and the class such as Eclaims.Eclaims.</summary>
 			public string ClassName;
 			///<summary>The name of the method that will be invoked.</summary>
 			public string MethodName;
@@ -326,7 +326,7 @@ namespace OpenPmsDentalBusiness {
 
 			public DtoInformation(DataTransferObject dto) {
 				FullNameComponents=GetComponentsFromDtoMeth(dto.MethodName);
-				AssemblyName=FullNameComponents[0];//OpenDentBusiness or else a plugin name
+				AssemblyName=FullNameComponents[0];//OpenPmsDentalBusiness or else a plugin name
 				ClassName=FullNameComponents[1];
 				MethodName=FullNameComponents[2];
 				ClassType=null;
@@ -362,12 +362,12 @@ namespace OpenPmsDentalBusiness {
 			///<summary>Helper function to handle full method name and turn it into 3 components.  The 3 components returned are:
 			///1. Assembly name
 			///2. Class name (however, this may contain the portion of the namespace after the assembly, 
-			///e.g. if "OpenDentBusiness.Eclaims.Eclaims.GetMissingData" is passed in, this component will contain "Eclaims.Eclaims".)
+			///e.g. if "OpenPmsDentalBusiness.Eclaims.Eclaims.GetMissingData" is passed in, this component will contain "Eclaims.Eclaims".)
 			///3. Method name</summary>
 			private static string[] GetComponentsFromDtoMeth(string methodName) {
 				if(methodName.Split('.').Length==2) {
-					//Versions prior to 14.3 will send 2 components. 14.3 and above will send the assembly name OpenDentBusiness or plugin assembly name.  
-					//If only 2 components are received, we will prepend OpenDentBusiness so this will be backward compatible with versions prior to 14.3.
+					//Versions prior to 14.3 will send 2 components. 14.3 and above will send the assembly name OpenPmsDentalBusiness or plugin assembly name.  
+					//If only 2 components are received, we will prepend OpenPmsDentalBusiness so this will be backward compatible with versions prior to 14.3.
 					methodName=typeof(DtoProcessor).Namespace+"."+methodName;//This assembly's name, which its root namespace equals by convention.
 				}
 				if(methodName.Split('.').Length<=3) {

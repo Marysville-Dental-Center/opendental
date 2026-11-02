@@ -1,7 +1,7 @@
-﻿//These notes describe when to use this Logic folder in OpenDentBusiness.
+﻿//These notes describe when to use this Logic folder in OpenPmsDentalBusiness.
 
-//There is another Logic folder in OpenDental that is slightly different.
-//Use that one when there are MsgBoxes or you don't need to access from OpenDentBusiness.
+//There is another Logic folder in OpenPmsDental that is slightly different.
+//Use that one when there are MsgBoxes or you don't need to access from OpenPmsDentalBusiness.
 
 //Classes in this Logic folder typically end in "Logic" rather than s.  
 //They contain business logic that does not belong in the UI.  

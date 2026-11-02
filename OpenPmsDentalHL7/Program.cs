@@ -23,7 +23,7 @@ namespace OpenPmsDentalHL7 {
 				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7Main, DateTime.Now.ToLongTimeString() +" - Service main method starting...");
 				ServiceHL7 serviceHL7=new ServiceHL7();
 				serviceHL7.ServiceName=ProgramNames.HL7ServiceFallbackName;//default when no installed service matches this folder (not the installer's name)
-				//Get the executing assembly location directory (location of this OpenDentHL7.exe)
+				//Get the executing assembly location directory (location of this OpenPmsDentalHL7.exe)
 				string executingDir=Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
 				//Get all installed services
 				List<ServiceController> serviceControllersOD=new List<ServiceController>();

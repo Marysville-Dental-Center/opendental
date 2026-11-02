@@ -65,7 +65,7 @@ namespace DocumentationBuilder {
 			this.label2.Name = "label2";
 			this.label2.Size = new System.Drawing.Size(558, 41);
 			this.label2.TabIndex = 2;
-			this.label2.Text = "Step 1: Build the release of OpenDental and UnitTests. This generates OpenDentBus" +
+			this.label2.Text = "Step 1: Build the release of OpenPmsDental and UnitTests. This generates OpenPmsDentalBus" +
     "iness.xml etc. which contain all the xml Summaries that we will then pull from. " +
     "";
 			// 

@@ -596,7 +596,7 @@ namespace OpenPmsDental {
 		}
 
 		///<summary>Returns the installed services whose names start with "OpenDent" that this computer should start, such as OpenDentalService,
-		///OpenDentalAPIService and OpenDentHL7. When Open Dental HQ is not available (always, outside of unit tests), the eConnector and CustListener
+		///OpenDentalAPIService and OpenPmsDentalHL7. When Open Dental HQ is not available (always, outside of unit tests), the eConnector and CustListener
 		///are left out, so a copy left behind by an Open Dental install is never restarted after an administrator stopped it.</summary>
 		private static List<System.ServiceProcess.ServiceController> GetOpenDentServicesToStart() {
 			List<System.ServiceProcess.ServiceController> listServiceControllers=ServicesHelper.GetAllOpenDentServices();
@@ -743,7 +743,7 @@ namespace OpenPmsDental {
 		#endregion
 		#region TimeSyncThread
 
-		///<summary>This begins the time sync thread. If OpenDental is running on the same machine as the mysql server, then a thread is runs in the 
+		///<summary>This begins the time sync thread. If OpenPmsDental is running on the same machine as the mysql server, then a thread is runs in the 
 		///background to update the local machine's time using NTPv4 from the NIST time server set in the NistTimeServerUrl pref.</summary>
 		private void BeginTimeSyncThread() {
 			if(IsThreadAlreadyRunning(FormODThreadNames.TimeSync)) {
@@ -752,7 +752,7 @@ namespace OpenPmsDental {
 			if(!(ODEnvironment.IsRunningOnDbServer(MiscData.GetODServer()) && PrefC.GetBool(PrefName.ShowFeatureEhr))) {
 				return;
 			}
-			//OpenDental has EHR enabled and is running on the same machine as the mysql server it is connected to.
+			//OpenPmsDental has EHR enabled and is running on the same machine as the mysql server it is connected to.
 			ODThread odThread=new ODThread((int)TimeSpan.FromHours(4).TotalMilliseconds,TimeSyncWorker);
 			odThread.AddExceptionHandler((e) => e.DoNothing());
 			odThread.GroupName=FormODThreadNames.TimeSync.GetDescription();

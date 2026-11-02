@@ -1,5 +1,5 @@
 // M2-MISC (Open Dental 25.4, "minor Print window enhancements"): the printer rules of Setup, Printers, as the 25.4 database documentation
-// clarifies them, and the online/offline state Windows reports for a printer. Used when printing (OpenDental.PrinterL.SetPrinter and WPF
+// clarifies them, and the online/offline state Windows reports for a printer. Used when printing (OpenPmsDental.PrinterL.SetPrinter and WPF
 // printing, PrintOptionsWpf), by the Printers setup windows to show which rule picks the printer for each print situation, and by the Print
 // Options window (B-PRINT's FrmPrintOptions) to show which rule picked the printer and its state.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
@@ -47,7 +47,7 @@ namespace OpenPmsDentalBusiness {
 		public List<string> ListPrinterNamesNotInstalled=new List<string>();
 	}
 
-	///<summary>The printer rules of Setup, Printers. OpenDental.PrinterL.SetPrinter (WinForms printing) and WpfControls.PrintOptionsWpf (WPF
+	///<summary>The printer rules of Setup, Printers. OpenPmsDental.PrinterL.SetPrinter (WinForms printing) and WpfControls.PrintOptionsWpf (WPF
 	///printing) pick the printer with ResolveForThisComputer, so the setup windows, the Print Options window and printing cannot drift apart.</summary>
 	public static class PrintSituationRules {
 		///<summary>Applies the rules to the rows of one computer. printerDefault is the computer's row for PrintSituation.Default, printerSit its row

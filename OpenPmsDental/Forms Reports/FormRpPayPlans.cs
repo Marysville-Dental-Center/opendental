@@ -25,7 +25,7 @@ namespace OpenPmsDental
 		//private DataTable BirthdayTable;
 		//private int patientsPrinted;
 		//private PrintDocument pd;
-		//private OpenDental.UI.PrintPreview printPreview;
+		//private OpenPmsDental.UI.PrintPreview printPreview;
 		private List<Provider> _listProviders;
 
 		///<summary></summary>

@@ -1107,8 +1107,8 @@ namespace OpenPmsDentalBusiness {
 			return true;
 		}
 
-		///<summary>Will create a payment plan PDF without any references to OpenDental. This method is only used in areas that don't have access to 
-		///OpenDental and should only be used in such a case. Returns true if it successfully saved a document.</summary>
+		///<summary>Will create a payment plan PDF without any references to OpenPmsDental. This method is only used in areas that don't have access to 
+		///OpenPmsDental and should only be used in such a case. Returns true if it successfully saved a document.</summary>
 		public static bool CreateAndSavePaymentPlanPDF(PayPlan paymentPlan) {
 			Meth.NoCheckMiddleTierRole();
 			try {
@@ -1187,8 +1187,8 @@ namespace OpenPmsDentalBusiness {
 			return "";
 		}
 
-		///<summary>Will create a treatment plan PDF without any references to OpenDental. This method is only used in areas that don't have access to 
-		///OpenDental and should only be used in such a case. Returns empty string if it successfully saved a document.</summary>
+		///<summary>Will create a treatment plan PDF without any references to OpenPmsDental. This method is only used in areas that don't have access to 
+		///OpenPmsDental and should only be used in such a case. Returns empty string if it successfully saved a document.</summary>
 		public static string CreateAndSaveTreatmentPlanPDF(TreatPlan treatPlan) {
 			Meth.NoCheckMiddleTierRole();
 			string errorMessage="";
@@ -1340,7 +1340,7 @@ namespace OpenPmsDentalBusiness {
 		}
 		#endregion Xam Methods
 
-		///<summary>Will create a treatment plan PDF without any references to OpenDental. This method is only used for the API. 
+		///<summary>Will create a treatment plan PDF without any references to OpenPmsDental. This method is only used for the API. 
 		///Returns a list of DocNums when successfully saved a document. Throws errors, surround with a Try / Catch.</summary>
 		public static List<long> CreateAndSaveTreatmentPlanPdfForApi(TreatPlan treatPlan) {
 			Meth.NoCheckMiddleTierRole();

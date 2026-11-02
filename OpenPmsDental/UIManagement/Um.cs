@@ -109,7 +109,7 @@ namespace OpenPmsDental.UIManagement {
 		public bool? GetIsChecked(string controlName){
 			System.Windows.Forms.Control control=GetControl(controlName);
 			if(UIManager_.IsDpiSystem){
-				if(control is OpenDental.UI.CheckBox checkBox){
+				if(control is OpenPmsDental.UI.CheckBox checkBox){
 					if(checkBox.ThreeState){
 						if(checkBox.CheckState==System.Windows.Forms.CheckState.Checked){
 							return true;

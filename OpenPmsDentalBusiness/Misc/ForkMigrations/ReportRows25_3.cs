@@ -6,7 +6,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 
-//Feature data steps (as opposed to the Open Dental 25.3.48 schema steps and the M1-02 seed in OpenDentBusiness.ForkMigrations) live in this
+//Feature data steps (as opposed to the Open Dental 25.3.48 schema steps and the M1-02 seed in OpenPmsDentalBusiness.ForkMigrations) live in this
 //namespace. The runner finds them the same way, by reflection over the assembly.
 namespace OpenPmsDentalBusiness.ForkMigrations.Features {
 	///<summary>Makes sure the displayreport rows for the 24.4 and 25.2 standard reports exist, without duplicating rows that Open Dental itself already

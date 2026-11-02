@@ -46,7 +46,7 @@ using System.Xml;
 using System.Xml.XPath;
 using System.Xml.Serialization;
 using SparksToothChart;
-//using OpenDental.SmartCards;
+//using OpenPmsDental.SmartCards;
 using OpenPmsDental.UI;
 using System.ServiceProcess;
 using System.Linq;
@@ -4846,7 +4846,7 @@ namespace OpenPmsDental{
 				//MessageBox.Show("Not Authorized to Run Setup for Provider Allocation Tool");
 				return;
 			}
-			using Reporting.Allocators.MyAllocator1.FormInstallAllocator_Provider fap = new OpenDental.Reporting.Allocators.MyAllocator1.FormInstallAllocator_Provider();
+			using Reporting.Allocators.MyAllocator1.FormInstallAllocator_Provider fap = new OpenPmsDental.Reporting.Allocators.MyAllocator1.FormInstallAllocator_Provider();
 			fap.ShowDialog();
 		}*/
 

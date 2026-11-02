@@ -92,7 +92,7 @@ namespace OpenPmsDentalBusiness {
 			return versionInfo;
 		}
 
-		///<summary>Gets the assembly version from the OpenDentBusiness assembly (technically the assembly of the MiscData Type) for the Middle Tier.
+		///<summary>Gets the assembly version from the OpenPmsDentalBusiness assembly (technically the assembly of the MiscData Type) for the Middle Tier.
 		///Returns an empty string if this is not the ServerWeb or if not currently utilizing the Middle Tier (e.g. ClientWeb).</summary>
 		public static string GetAssemblyVersionForMiddleTier() {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
@@ -114,7 +114,7 @@ namespace OpenPmsDentalBusiness {
 			return "SET SESSION sql_log_bin=0;"+command+"SET SESSION sql_log_bin=1;";
 		}
 
-		///<summary>Gets the assembly version from the OpenDentBusiness assembly (technically the assembly of the MiscData Type).</summary>
+		///<summary>Gets the assembly version from the OpenPmsDentalBusiness assembly (technically the assembly of the MiscData Type).</summary>
 		public static string GetAssemblyVersion() {
 			Meth.NoCheckMiddleTierRole();
 			return typeof(MiscData).Assembly.GetName().Version.ToString();

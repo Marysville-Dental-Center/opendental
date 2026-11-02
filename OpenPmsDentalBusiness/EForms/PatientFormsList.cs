@@ -54,7 +54,7 @@ namespace OpenPmsDentalBusiness {
 	}
 
 	///<summary>Logic behind the Patient Forms window: the Status column, the Show filter, which toolbar actions apply to the selected row, the audit
-	///entries that record an import, and the per-user view settings. The window itself is OpenDental/Forms/FormPatientForms.cs.
+	///entries that record an import, and the per-user view settings. The window itself is OpenPmsDental/Forms/FormPatientForms.cs.
 	///eClipboard and Web Forms are not part of this program. Rows they created in an office database still show, with a neutral status.</summary>
 	public class PatientFormsList {
 		///<summary>Column added to the patient forms table: the text of the Status column.</summary>

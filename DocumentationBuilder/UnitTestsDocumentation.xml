@@ -992,7 +992,7 @@ If instead the preference was off for this unit test, then Writeoff2 would have 
 		<td>Income Transfer on Payplan without Procedure attached</td>
 	</tr>
 </table>
-This can cause the Dynamic Payment Plan to be considered overpaid since we are Explicitly adding money to it and the attached production but Implicitly removing money from the plan itself. OpenDental should see these splits and calculate that two of them are intended offsets which should net to 0. The resulting Account Entries should look like:<br/>
+This can cause the Dynamic Payment Plan to be considered overpaid since we are Explicitly adding money to it and the attached production but Implicitly removing money from the plan itself. OpenPmsDental should see these splits and calculate that two of them are intended offsets which should net to 0. The resulting Account Entries should look like:<br/>
 <table>
 	<tr>
 		<td><b>Patient</b></td>
@@ -1788,7 +1788,7 @@ Dynamic payment plan final total should be $78.00.<br/>
 		<td>Income Transfer on Payplan without Procedure attached</td>
 	</tr>
 </table>
-This can cause the Dynamic Payment Plan to be considered overpaid since we are Explicitly adding money to it and the attached production but Implicitly removing money from the plan itself. OpenDental should see these splits and calculate that two of them are intended offsets which should net to 0. The resulting Account Entries should look like:<br/>
+This can cause the Dynamic Payment Plan to be considered overpaid since we are Explicitly adding money to it and the attached production but Implicitly removing money from the plan itself. OpenPmsDental should see these splits and calculate that two of them are intended offsets which should net to 0. The resulting Account Entries should look like:<br/>
 <table>
 	<tr>
 		<td><b>Patient</b></td>

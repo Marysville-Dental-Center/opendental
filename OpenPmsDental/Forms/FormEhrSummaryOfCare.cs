@@ -91,7 +91,7 @@ namespace OpenPmsDental {
 			DisplayCCD(xmltext,PatCur);
 		}
 
-		///<summary>Returns true if user performed a print job on the CCD.  Cannot be moved to OpenDentBusiness/Misc/EhrCCD.cs, because this function uses windows UI components.  
+		///<summary>Returns true if user performed a print job on the CCD.  Cannot be moved to OpenPmsDentalBusiness/Misc/EhrCCD.cs, because this function uses windows UI components.  
 		///Strictly used for displaying CCD messages.  Will not allow user to reconcile meds, problems, or allergies into the patient's account.</summary>
 		public static bool DisplayCCD(string strXmlCCD) {
 			return DisplayCCD(strXmlCCD,null);
@@ -101,7 +101,7 @@ namespace OpenPmsDental {
 			return DisplayCCD(strXmlCCD,patCur,"");
 		}
 
-		///<summary>Returns true if user performed a print job on the CCD.  Cannot be moved to OpenDentBusiness/Misc/EhrCCD.cs, because this function uses windows UI components. 
+		///<summary>Returns true if user performed a print job on the CCD.  Cannot be moved to OpenPmsDentalBusiness/Misc/EhrCCD.cs, because this function uses windows UI components. 
 		///Pass in a valid patient if the CCD is being displayed to reconcile (incoporate into patient record) medications and/or problems and/or allergies.
 		///patCur can be null, or patCur.PatNum can be 0, to hide the three reconcile buttons. 
 		///strXmlCCD is the actual text of the CCD. 

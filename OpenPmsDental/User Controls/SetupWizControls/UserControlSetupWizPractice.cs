@@ -74,7 +74,7 @@ namespace OpenPmsDental.User_Controls.SetupWizard {
 			if(_listProviders.Count > 0
 				&& _listProviders[listProvider.SelectedIndex].FeeSched==0)//Default provider must have a fee schedule set.
 			{
-				//listProvider.BackColor = OpenDental.SetupWizard.GetColor(ODSetupStatus.NeedsAttention);
+				//listProvider.BackColor = OpenPmsDental.SetupWizard.GetColor(ODSetupStatus.NeedsAttention);
 				IsDone=false;
 				StrIncomplete+="\r\n "+Lan.g("FormSetupWizard","-Practice Provider must have a default fee schedule.");
 			}

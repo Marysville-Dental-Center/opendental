@@ -536,7 +536,7 @@ namespace OpenPmsDentalBusiness {
 	}
 
 	///<summary>Runs the ACH status check once an hour on one workstation, while PaySimple is enabled and the hourly check is on. Found by the vendor
-	///job host (OpenDental/Logic/VendorDirect/VendorJobHost.cs); its lease row is "VendorJobLease.PaySimpleAchStatus".</summary>
+	///job host (OpenPmsDental/Logic/VendorDirect/VendorJobHost.cs); its lease row is "VendorJobLease.PaySimpleAchStatus".</summary>
 	public class PaySimpleAchStatusJob:IVendorBackgroundJob {
 		public string Name {
 			get {

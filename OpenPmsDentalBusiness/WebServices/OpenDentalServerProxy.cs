@@ -26,7 +26,7 @@ namespace OpenPmsDentalBusiness.WebServices {
 				service.Proxy=proxy;
 			}
 			//5/12/2020 - Cameron made the following change to the service timeout so long processes could finish using the middle tier.  This was
-			//discussed with Jordan, Nathan, and Allen and was reviewed by Jason.  Changes were also made in the OpenDentalServer/Web.config file to
+			//discussed with Jordan, Nathan, and Allen and was reviewed by Jason.  Changes were also made in the OpenPmsDentalServer/Web.config file to
 			//increase the ASP.NET maxRequestLength and executionTimeout as well as the IIS maxAllowedContentLength.  The max request lengths were
 			//increased to 1 GB and the timeout was increased to 1 hour here and in the Web.config file.
 			service.Timeout=3600000;//default timeout is 100000 ms (1 min 40 sec), increased so longer running processes don't timeout

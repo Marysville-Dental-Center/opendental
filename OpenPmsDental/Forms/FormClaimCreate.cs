@@ -11,7 +11,7 @@ using OpenPmsDentalBusiness;
 namespace OpenPmsDental{
 ///<summary>Lists all insurance plans for which the supplied patient is the subscriber. Lets you select an insurance plan based on a patNum. InsPlanSelected will contain the plan selected.</summary>
 	public partial class FormClaimCreate : FormODBase {
-		//private OpenDental.TableInsPlans tbPlans;
+		//private OpenPmsDental.TableInsPlans tbPlans;
 		///<summary></summary>
 		public Relat RelatPat;
 		//<summary>Set to true to view the relationship selection</summary>
@@ -33,7 +33,7 @@ namespace OpenPmsDental{
 			InitializeComponent();
 			InitializeLayoutManager();
 			_patNum=patNum;
-			//tbPlans.CellDoubleClicked += new OpenDental.ContrTable.CellEventHandler(tbPlans_CellDoubleClicked);
+			//tbPlans.CellDoubleClicked += new OpenPmsDental.ContrTable.CellEventHandler(tbPlans_CellDoubleClicked);
 			Lan.F(this);
 		}
 

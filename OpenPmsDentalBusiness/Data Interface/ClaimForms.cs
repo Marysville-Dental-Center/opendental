@@ -176,7 +176,7 @@ namespace OpenPmsDentalBusiness{
 			return GetFirstOrDefault(x => x.ClaimFormNum==claimFormNum);
 		}
 
-		///<summary>Returns a list of all internal claims within the OpenDentBusiness resources.  Throws exceptions.</summary>
+		///<summary>Returns a list of all internal claims within the OpenPmsDentalBusiness resources.  Throws exceptions.</summary>
 		public static List<ClaimForm> GetInternalClaims() {
 			Meth.NoCheckMiddleTierRole();
 			List<ClaimForm> listClaimFormsInternal = new List<ClaimForm>();
@@ -198,7 +198,7 @@ namespace OpenPmsDentalBusiness{
 		///preprinted stock (Open Dental 25.4). Also the key that finds an installed copy.</summary>
 		public const string DescriptionDentiCalDC217_2019="Denti-Cal DC217_2019";
 
-		///<summary>Returns the internal claim form with this description from the OpenDentBusiness resources, or null if there is none.  Throws if a
+		///<summary>Returns the internal claim form with this description from the OpenPmsDentalBusiness resources, or null if there is none.  Throws if a
 		///resource can't be read.</summary>
 		public static ClaimForm GetInternalClaim(string description) {
 			Meth.NoCheckMiddleTierRole();

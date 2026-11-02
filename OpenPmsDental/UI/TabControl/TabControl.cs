@@ -15,7 +15,7 @@ using System.Windows.Forms.Design;
 using System.Windows.Forms.Layout;
 
 namespace OpenPmsDental.UI {
-	///<summary>This is meant to replace all existing MS tab controls. The best way to use it is to copy an existing blank UI.TabControl from OpenDental/Forms/BasicTemplate.cs because it already has two tabPages.</summary>
+	///<summary>This is meant to replace all existing MS tab controls. The best way to use it is to copy an existing blank UI.TabControl from OpenPmsDental/Forms/BasicTemplate.cs because it already has two tabPages.</summary>
 	//Jordan is the only one allowed to edit this file.
 	[Designer(typeof(Design.TabControlDesigner))]
 	public class TabControl:UserControl {

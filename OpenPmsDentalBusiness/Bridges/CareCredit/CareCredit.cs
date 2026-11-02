@@ -38,7 +38,7 @@ namespace OpenPmsDentalBusiness.Bridges {
 
 	///<summary>CareCredit: prefill hosted pages, pull results back, merchant numbers. Everything runs on the client workstation, never on the middle
 	///tier server. With the program link disabled or the connection settings incomplete, nothing here contacts Synchrony. Opening windows
-	///(ShowPage) lives in OpenDental's CareCreditL.</summary>
+	///(ShowPage) lives in OpenPmsDental's CareCreditL.</summary>
 	public static class CareCredit {
 		///<summary>A CareCredit HTTP error answer, or a configuration the request can't be sent with (ErrorCode 0).</summary>
 		public class CareCreditException:Exception {
@@ -384,7 +384,7 @@ namespace OpenPmsDentalBusiness.Bridges {
 			ResponseStore.Update(careCreditWebResponse,careCreditWebResponseOld);
 		}
 
-		///<summary>Calls pullback for the row. Records refused credentials for the setup window. Network failures become ODException. The OpenDental
+		///<summary>Calls pullback for the row. Records refused credentials for the setup window. Network failures become ODException. The OpenPmsDental
 		///program reaches it through CareCreditJobs.PullbackNow, which also applies the result.</summary>
 		internal static CareCreditPullbackResult Pullback(CareCreditConfig config,CareCreditWebResponse careCreditWebResponse) {
 			bool isQuickScreen=careCreditWebResponse.ServiceType.In(CareCreditServiceType.Batch,CareCreditServiceType.IndividualQS);

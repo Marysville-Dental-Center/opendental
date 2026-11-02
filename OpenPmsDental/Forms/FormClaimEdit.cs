@@ -100,9 +100,9 @@ namespace OpenPmsDental{
 			InitializeComponent();// Required for Windows Form Designer support
 			InitializeLayoutManager();
 			SetBounds();//this calculates the height but does not set it.
-			//tbPay.CellDoubleClicked += new OpenDental.ContrTable.CellEventHandler(tbPay_CellDoubleClicked);
-			//tbProc.CellClicked += new OpenDental.ContrTable.CellEventHandler(tbProc_CellClicked);
-			//tbPay.CellClicked += new OpenDental.ContrTable.CellEventHandler(tbPay_CellClicked);
+			//tbPay.CellDoubleClicked += new OpenPmsDental.ContrTable.CellEventHandler(tbPay_CellDoubleClicked);
+			//tbProc.CellClicked += new OpenPmsDental.ContrTable.CellEventHandler(tbProc_CellClicked);
+			//tbPay.CellClicked += new OpenPmsDental.ContrTable.CellEventHandler(tbPay_CellClicked);
 			Lan.F(this);
 			listAttachments.ContextMenu=contextMenuAttachments;
 			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {

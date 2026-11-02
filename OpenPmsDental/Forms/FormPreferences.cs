@@ -104,7 +104,7 @@ namespace OpenPmsDental {
 			xmlSerializer.Serialize(xmlWriter,listPrefInfs);
 			xmlWriter.Close();
 			string str=stringWriter.ToString();
-			string fileName=@"E:\Documents\GIT REPOS\Versioned\OpenDental\OpenDental\Resources\PrefInfos.xml";
+			string fileName=@"E:\Documents\GIT REPOS\Versioned\OpenDental\OpenPmsDental\Resources\PrefInfos.xml";
 			File.WriteAllText(fileName,str);
 		}*/
 

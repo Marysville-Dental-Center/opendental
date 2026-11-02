@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-//Not in OpenDentBusiness.ForkMigrations: that namespace holds the 25.3.48 schema steps and Seed25_3Step, which must come first
+//Not in OpenPmsDentalBusiness.ForkMigrations: that namespace holds the 25.3.48 schema steps and Seed25_3Step, which must come first
 //(HandOffIntegrationTests). The runner finds steps in any namespace.
 namespace OpenPmsDentalBusiness.ForkMigrations.Seeds26_1 {
 	///<summary>Rows that the 25.4 and 26.1 registries need in the database.

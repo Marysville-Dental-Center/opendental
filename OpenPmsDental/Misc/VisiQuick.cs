@@ -8,7 +8,7 @@ using System.Collections;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
-namespace OpenDental
+namespace OpenPmsDental
 {
 
 	class VQDDE32

@@ -8,9 +8,9 @@ using System.Collections;
 using System.Data;
 using System.Diagnostics;
 using System.Windows.Forms;
-using OpenDentBusiness;
+using OpenPmsDentalBusiness;
 
-namespace OpenDental{
+namespace OpenPmsDental{
 
 	///<summary>This is replacing the DataClass as the preferred way to interact with the database.</summary>
 	public class DataConnection{//

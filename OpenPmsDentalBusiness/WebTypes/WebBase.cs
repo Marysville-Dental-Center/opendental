@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace OpenPmsDentalBusiness.WebTypes {
-	///<summary>This is a base class for all classes that are not associated to a table in the database but both OpenDentBusiness and OpenDentalWebCore 
+	///<summary>This is a base class for all classes that are not associated to a table in the database but both OpenPmsDentalBusiness and OpenDentalWebCore 
 	///need to know about.  Currently this class is used via reflection to quickly find all classes that extend this base class.</summary>
 	public abstract class WebBase {
 	}

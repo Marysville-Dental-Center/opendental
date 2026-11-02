@@ -18,7 +18,7 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 		///<summary>The Open Dental version a migrated database must match: the version of the default reference. Written to OdSchemaCompat when a
 		///database matches it.</summary>
 		public const string ReferenceVersion=ReferenceVersion26_1_70;
-		///<summary>Name of the default embedded reference snapshot (its LogicalName in OpenDentBusiness.csproj).</summary>
+		///<summary>Name of the default embedded reference snapshot (its LogicalName in OpenPmsDentalBusiness.csproj).</summary>
 		public const string ReferenceResourceName=ReferenceResourceName26_1_70;
 		///<summary>Open Dental 26.1.70: the target of the M2 migration.</summary>
 		public const string ReferenceVersion26_1_70="26.1.70";

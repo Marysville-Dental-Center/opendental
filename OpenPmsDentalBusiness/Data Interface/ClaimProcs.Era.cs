@@ -1,7 +1,7 @@
 // M2-ERA, v26_1-account-era-claimproc-link: claimproc.Etrans835AttachNum (Open Dental 26.1) remembers the ERA claim, one CLP loop of one 835
 // (an etrans835attach row), that a received or supplemental claimproc was entered from. This file holds the claimproc side: setting the link when
 // an ERA import enters payment, and clearing it when the claimproc is un-received or the ERA claim is detached. How the ERA windows read the link
-// is in OpenDentBusiness/X12/EraClaimProcLinks.cs.
+// is in OpenPmsDentalBusiness/X12/EraClaimProcLinks.cs.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

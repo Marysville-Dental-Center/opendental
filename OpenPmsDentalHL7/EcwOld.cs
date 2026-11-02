@@ -156,7 +156,7 @@ namespace OpenPmsDentalHL7 {
 				}
 			}
 			catch(Exception ex) {
-				EventLog.WriteEntry("OpenDentHL7 error when sending HL7 message: "+ex.Message,EventLogEntryType.Warning);//Warning because the service will spawn a new thread in 1.8 seconds
+				EventLog.WriteEntry("OpenPmsDentalHL7 error when sending HL7 message: "+ex.Message,EventLogEntryType.Warning);//Warning because the service will spawn a new thread in 1.8 seconds
 			}
 			finally {
 				_ecwOldIsSending=false;

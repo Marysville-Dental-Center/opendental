@@ -30,7 +30,7 @@ namespace OpenPmsDentalGraph {
 		///<summary>If you override this and your override can return true, make sure you check to see if Clinics are enabled before showing the grouping options.</summary>
 		public virtual bool HasGroupOptions {
 			get {
-				if(OpenPmsDentalBusiness.PrefC.HasClinicsEnabled) { //reference to OpenDentBusiness
+				if(OpenPmsDentalBusiness.PrefC.HasClinicsEnabled) { //reference to OpenPmsDentalBusiness
 					return true;
 				}
 				else {

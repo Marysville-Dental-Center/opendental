@@ -8,7 +8,7 @@ using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Save {
 	///<summary>The database and file calls RadiographImport makes, as a thin seam so that its decisions can be tested without a database.
-	///OdRadiographStore is the real one; every member is one OpenDentBusiness call.</summary>
+	///OdRadiographStore is the real one; every member is one OpenPmsDentalBusiness call.</summary>
 	public interface IRadiographStore {
 		///<summary>Defs.GetDef(DefCat.ImageCats,defNum) is not null.</summary>
 		bool IsCategoryValid(long defNum);
@@ -53,7 +53,7 @@ namespace ImagingCapture.Save {
 		public List<string> ListWarnings { get; set; }=new List<string>();
 	}
 
-	///<summary>Stores one captured image for a patient through OpenDentBusiness public APIs only (design 7.8, 7.9, 7.10, 9.1, 10.8): an 8-bit
+	///<summary>Stores one captured image for a patient through OpenPmsDentalBusiness public APIs only (design 7.8, 7.9, 7.10, 9.1, 10.8): an 8-bit
 	///image as lossless PNG, a 16-bit image as DICOM when the caller allows it, with ImageStore.Import, then one Documents.Update for the
 	///fields Import does not set (DateCreated, ProvNum, PrintHeading, WindowingMin/Max) and the placement of MountPlacement. The decisions
 	///are RadiographSavePlanner's; this class only orders the calls and undoes a partial save. Runs on the UI thread, like every database
@@ -65,7 +65,7 @@ namespace ImagingCapture.Save {
 		private readonly IRadiographStore _radiographStore;
 		private readonly Func<DateTime> _funcNow;
 
-		///<summary>The real store (OpenDentBusiness).</summary>
+		///<summary>The real store (OpenPmsDentalBusiness).</summary>
 		public RadiographImport() : this(new OdRadiographStore(),() => DateTime.Now) {
 		}
 
@@ -239,7 +239,7 @@ namespace ImagingCapture.Save {
 		}
 	}
 
-	///<summary>IRadiographStore through OpenDentBusiness. Not exercised by the unit tests, which have no database.</summary>
+	///<summary>IRadiographStore through OpenPmsDentalBusiness. Not exercised by the unit tests, which have no database.</summary>
 	public sealed class OdRadiographStore:IRadiographStore {
 		public bool IsCategoryValid(long defNum) {
 			return Defs.GetDef(DefCat.ImageCats,defNum)!=null;

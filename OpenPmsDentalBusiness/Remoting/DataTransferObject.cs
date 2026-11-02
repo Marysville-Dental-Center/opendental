@@ -9,7 +9,7 @@ using System.Xml;
 using System.Xml.Serialization;
 
 namespace OpenPmsDentalBusiness {
-	///<summary>Provides a base class for DTO classes.  A DTO class is a simple data storage object.  A DTO is the only format accepted by OpenDentBusiness.dll.</summary>
+	///<summary>Provides a base class for DTO classes.  A DTO class is a simple data storage object.  A DTO is the only format accepted by OpenPmsDentalBusiness.dll.</summary>
 	public abstract class DataTransferObject {
 		///<summary>Always passed with new web service.  Never null.</summary>
 		public Credentials Credentials;
@@ -114,7 +114,7 @@ namespace OpenPmsDentalBusiness {
 
 	///<summary>Gets an object which must be serializable.  Calling code will convert object to specific type.</summary>
 	public class DtoGetObject:DataTransferObject{
-		///<summary>This is the "FullName" string representation of the type of object that we expect back as a result.  Examples: System.Int32, OpenDentBusiness.Patient, OpenDentBusiness.Patient[], List&lt;OpenDentBusiness.Patient&gt;.  DataTable and DataSet not allowed.</summary>
+		///<summary>This is the "FullName" string representation of the type of object that we expect back as a result.  Examples: System.Int32, OpenPmsDentalBusiness.Patient, OpenPmsDentalBusiness.Patient[], List&lt;OpenPmsDentalBusiness.Patient&gt;.  DataTable and DataSet not allowed.</summary>
 		public string ObjectType;
 	}
 
@@ -137,7 +137,7 @@ namespace OpenPmsDentalBusiness {
 	//	public int IDorRows;
 	//}
 
-	///<summary>OpenDentBusiness and all the DA classes are designed to throw an exception if something goes wrong.  If using OpenDentBusiness through the remote server, then the server catches the exception and passes it back to the main program using this DTO.  The client then turns it back into an exception so that it behaves just as if OpenDentBusiness was getting called locally.</summary>
+	///<summary>OpenPmsDentalBusiness and all the DA classes are designed to throw an exception if something goes wrong.  If using OpenPmsDentalBusiness through the remote server, then the server catches the exception and passes it back to the main program using this DTO.  The client then turns it back into an exception so that it behaves just as if OpenPmsDentalBusiness was getting called locally.</summary>
 	public class DtoException:DataTransferObject {
 		public string Message;
 		///<summary>String representation of the type of Exception that was thrown.</summary>

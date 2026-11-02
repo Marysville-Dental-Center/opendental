@@ -3,9 +3,9 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!--
     ODR: the helper functions that RDL report definitions load as a code module (<CodeModule>ODR.dll</CodeModule>, classes ODR.Query,
-    ODR.DataConnection, ODR.GetData, ODR.Format, ODR.Aggregate): OpenDental/Resources/Unsched Treat Plans.rdl, ReportAccountingBalanceSheet.txt,
+    ODR.DataConnection, ODR.GetData, ODR.Format, ODR.Aggregate): OpenPmsDental/Resources/Unsched Treat Plans.rdl, ReportAccountingBalanceSheet.txt,
     ReportAccountingGenLedger.txt, and possibly an office's own reports in the A to Z folder. Built from this source and copied next to
-    OpenDental.exe by OpenDental.csproj's reference (package RDL-SRC, docs/port-notes/RDL-SRC.md); there is no prebuilt ODR.dll any more.
+    OpenPmsDental.exe by OpenPmsDental.csproj's reference (package RDL-SRC, docs/port-notes/RDL-SRC.md); there is no prebuilt ODR.dll any more.
     The assembly name ODR and the ODR.* class names are named inside report definitions, so they never change.
   -->
   <PropertyGroup>
@@ -38,7 +38,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
-  <!-- Loaded into OpenDental.exe, which is x86, like the business layer it calls. -->
+  <!-- Loaded into OpenPmsDental.exe, which is x86, like the business layer it calls. -->
   <PropertyGroup Condition=" '$(Platform)' == 'x86' ">
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>

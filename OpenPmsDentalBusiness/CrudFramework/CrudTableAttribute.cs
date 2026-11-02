@@ -79,14 +79,14 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		private string _crudLocationOverride;
-		///<summary>If crud file location is different than .../OpenDentBusiness/Crud.</summary>
+		///<summary>If crud file location is different than .../OpenPmsDentalBusiness/Crud.</summary>
 		public string CrudLocationOverride {
 			get { return _crudLocationOverride; }
 			set { _crudLocationOverride=value; }
 		}
 
 		private string _namespaceOverride;
-		///<summary>If namespace is different than OpenDentBusiness.Crud.</summary>
+		///<summary>If namespace is different than OpenPmsDentalBusiness.Crud.</summary>
 		public string NamespaceOverride {
 			get { return _namespaceOverride; }
 			set { _namespaceOverride=value; }

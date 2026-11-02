@@ -675,8 +675,8 @@ namespace SparksToothChart {
 					return;
 				}
 			}
-			//fix this.  No calls to OpenDentBusiness that require database.
-			//string displayNum=OpenDentBusiness.Tooth.GetToothLabelGraphic(tooth_id);
+			//fix this.  No calls to OpenPmsDentalBusiness that require database.
+			//string displayNum=OpenPmsDentalBusiness.Tooth.GetToothLabelGraphic(tooth_id);
 			string displayNum=tooth_id;
 			float toMm=1f/TcData.ScaleMmToPix;
 			Rectangle rec=TcData.GetNumberRecPix(tooth_id,g);

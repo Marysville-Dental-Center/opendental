@@ -131,7 +131,7 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>What a print without the Print Options window prints with: the printer the situation's rules picked (Setup, Printers; "" for the
-		///Windows default), one copy, collated, every page. The same as WinForms printing (OpenDental.PrinterL.SetPrinter) without the window. Never
+		///Windows default), one copy, collated, every page. The same as WinForms printing (OpenPmsDental.PrinterL.SetPrinter) without the window. Never
 		///the remembered choice.</summary>
 		public static PrintOptionsChoice GetChoiceForUnpromptedPrint(string printerNameFromRules) {
 			PrintOptionsChoice printOptionsChoice=new PrintOptionsChoice();

@@ -1,6 +1,6 @@
 // Global Payments V2 (Open Dental 25.4, v25_4-payments-globalpayments-v2): the transaction window opened from the payment window. Runs a sale or a
 // refund on a card terminal or a saved card, or voids an earlier Global Payments V2 transaction. Talks to Global Payments directly with the office's own
-// API app (OpenDentBusiness/VendorDirect/GlobalPayments). Vendor-neutral: no logos or links.
+// API app (OpenPmsDentalBusiness/VendorDirect/GlobalPayments). Vendor-neutral: no logos or links.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

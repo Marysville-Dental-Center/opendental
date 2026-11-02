@@ -21,7 +21,7 @@ namespace OpenPmsDental.UIManagement {
 	/*
 	///<summary>This class is for internal use by UIManagement. Calls from OD proper should use Um.</summary>
 	public class ToolBarHelper{
-		public static ToolBar CreateToolBar(OpenDental.UI.ToolBarOD toolBarOD){
+		public static ToolBar CreateToolBar(OpenPmsDental.UI.ToolBarOD toolBarOD){
 			//Contains a list of Buttons, which are built very similarly to our normal buttons.
 			//Each has a Grid with two columns and one row.  The two cells contain an image and a textBlock.
 			ToolBar toolBarNew=new ToolBar();

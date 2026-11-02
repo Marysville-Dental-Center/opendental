@@ -12,7 +12,7 @@ using OpenPmsDentalBusiness;
 namespace ImagingCapture.Recovery {
 	///<summary>The database reads and writes of the quarantine window and Recover recent captures apart from saving an image (RadiographImport
 	///has its own seam, IRadiographStore), as a thin seam so that the filing rules can be tested without a database. OdCaptureRecoveryStore is
-	///the real one; every member is one OpenDentBusiness call. UI thread only.</summary>
+	///the real one; every member is one OpenPmsDentalBusiness call. UI thread only.</summary>
 	public interface ICaptureRecoveryStore {
 		///<summary>Security.IsAuthorized(permType,date) with no message box: false with message (the refusal, translated) when the user lacks
 		///the permission or the date is before its lock date. DateTime.MinValue checks no date.</summary>
@@ -49,7 +49,7 @@ namespace ImagingCapture.Recovery {
 		string GetUserName();
 	}
 
-	///<summary>ICaptureRecoveryStore through OpenDentBusiness. Not exercised by the unit tests, which have no database.</summary>
+	///<summary>ICaptureRecoveryStore through OpenPmsDentalBusiness. Not exercised by the unit tests, which have no database.</summary>
 	public sealed class OdCaptureRecoveryStore:ICaptureRecoveryStore {
 		public bool IsAuthorized(EnumPermType permType,DateTime date,out string message) {
 			string messageRefused="";

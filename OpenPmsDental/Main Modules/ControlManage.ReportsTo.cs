@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using OpenPmsDentalBusiness;
 
 namespace OpenPmsDental {
-	///<summary>The Reports To filter of the employee time clock (Open Dental 25.3). The rules are in OpenDentBusiness.EmployeeReportsTo.</summary>
+	///<summary>The Reports To filter of the employee time clock (Open Dental 25.3). The rules are in OpenPmsDentalBusiness.EmployeeReportsTo.</summary>
 	public partial class ControlManage {
 		///<summary>Fills the Reports To filter from the time clock's employees (after the clinic filter) and returns the supervisor to filter on, 0
 		///for All. The user's choice is kept for the session. A supervisor who is no longer offered (hidden, deleted, or with no reports left in

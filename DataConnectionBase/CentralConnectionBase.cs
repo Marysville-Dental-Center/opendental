@@ -1,5 +1,5 @@
 ﻿namespace DataConnectionBase {
-	///<summary>Copy of OpenDentBusiness.CentralConnection.</summary>
+	///<summary>Copy of OpenPmsDentalBusiness.CentralConnection.</summary>
 	public class CentralConnectionBase {
 		///<summary>Primary key.</summary>
 		public long CentralConnectionNum;

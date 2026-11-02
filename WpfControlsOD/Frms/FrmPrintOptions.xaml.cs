@@ -81,7 +81,7 @@ namespace OpenPmsDental {
 		///not wait for it), then shows the selected printer's state.</summary>
 		private void FillPrinterStatusesInBackground() {
 			System.Windows.Threading.Dispatcher dispatcher=Dispatcher;
-			System.Threading.Tasks.Task.Run(() => {//OpenDentBusiness.Task is the task table
+			System.Threading.Tasks.Task.Run(() => {//OpenPmsDentalBusiness.Task is the task table
 				Dictionary<string,PrinterOnlineStatus> dictPrinterStatuses=PrinterStatuses.GetAll();//never throws; empty when WMI does not answer
 				dispatcher.BeginInvoke(new Action(() => {
 					_dictPrinterStatuses=dictPrinterStatuses;

@@ -13,7 +13,7 @@ namespace OpenPmsDentalBusiness {
 		///<summary>Tests point this at a scratch file. Null means the default file.</summary>
 		public static string PathOverride;
 
-		///<summary>%LocalAppData%\OpenDental\WindowSizes.txt, one line per window and user: name, UserNum, width, height, separated by tabs.</summary>
+		///<summary>%LocalAppData%\OpenPMS-Dental\WindowSizes.txt (ProgramNames.LocalAppDataFolderName), one line per window and user: name, UserNum, width, height, separated by tabs.</summary>
 		public static string GetPath() {
 			if(!string.IsNullOrEmpty(PathOverride)) {
 				return PathOverride;

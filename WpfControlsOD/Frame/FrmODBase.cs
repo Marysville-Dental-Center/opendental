@@ -170,7 +170,7 @@ How to:
 		_formFrame.FormWindowState(get and set), _formFrame.Select, _formFrame.Restore, etc are all available and work as normal.
 -BitmapImage
 		This is the new object for storing bitmaps. You can specify BitmapImage.StreamSource to load any bitmap.
-		See OpenDental.Drawing.Graphics.ConvertBitmapFromWpf() and ConvertBitmapToWpf().
+		See OpenPmsDental.Drawing.Graphics.ConvertBitmapFromWpf() and ConvertBitmapToWpf().
 		It does not implement the IDisposable interface, so no worry about memory leaks. The GC handles these completely automatically.
 		But the GC does wait until the BitmapImage goes out of scope. Set it to null if you want to clean up a long-lived BitmapImage.
 -DialogResult

@@ -229,7 +229,7 @@ namespace OpenPmsDentalBusiness.HL7 {
 						seg.AddField(6,"obsUnits");
 						//OBX.7, Reference Range.
 						seg.AddField(7,"obsRefRange");
-						//OBX.8, Abnormal Flags.  For values see enum OpenDentBusiness.AbnormalFlag
+						//OBX.8, Abnormal Flags.  For values see enum OpenPmsDentalBusiness.AbnormalFlag
 						seg.AddField(8,"obsAbnormalFlag");
 						//OBX.11, Observation Result Status.
 						//LabCorp values: 'F' - Final, 'P' - Preliminary, 'X' - Cancelled, 'C' - Corrected, 'I' - Incomplete

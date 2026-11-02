@@ -80,7 +80,7 @@ namespace OpenPmsDentalBusiness {
 			}
 			else{
 				//We don't have a real crop, so this handles the math.
-				//We don't have access here to OpenDental.ImageTools.CalcScaleFit, so this is a copy of that code
+				//We don't have access here to OpenPmsDental.ImageTools.CalcScaleFit, so this is a copy of that code
 				Size sizeUnscaled=ImageHelper.CalcSizeFit(bitmap.Width,bitmap.Height,document.DegreesRotated,new Size(mountItem.Width,mountItem.Height));
 				//sizeUnscaled is correct proportions
 				scale=(float)mountItem.Width/sizeUnscaled.Width;

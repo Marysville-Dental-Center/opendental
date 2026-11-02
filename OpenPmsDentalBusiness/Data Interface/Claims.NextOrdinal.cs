@@ -195,7 +195,7 @@ namespace OpenPmsDentalBusiness {
 	}
 
 	///<summary>Wording and decisions for the related-claims prompt shown after a claim is received (Open Dental 26.1, package M2-CLAIMRCV). The
-	///prompt itself is ClaimL.PromptForPrimaryOrSecondaryClaim in the OpenDental project; this class holds the parts that need no window, so they
+	///prompt itself is ClaimL.PromptForPrimaryOrSecondaryClaim in the OpenPmsDental project; this class holds the parts that need no window, so they
 	///can be tested.</summary>
 	public static class ClaimReceiveRelated {
 		///<summary>Open Dental 26.1 shows claim status H as "Hold Until Prior Received" (the 26.1 database document describes H as hold until prior

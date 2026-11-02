@@ -137,7 +137,7 @@ namespace OpenPmsDental.Reporting.Allocators {
 					)
 					DEFAULT CHARSET=utf8";
 			}
-			//else if (type1 == OpenDentBusiness.DatabaseType.Oracle)
+			//else if (type1 == OpenPmsDentalBusiness.DatabaseType.Oracle)
 			//;// not implemented yet
 			return command;
 
@@ -183,7 +183,7 @@ namespace OpenPmsDental.Reporting.Allocators {
 					+ "   AllocStatus TINYINT\n)\n"
 					+ "DEFAULT CHARSET=utf8";
 			}
-			//else if(type1 == OpenDentBusiness.DatabaseType.Oracle)
+			//else if(type1 == OpenPmsDentalBusiness.DatabaseType.Oracle)
 			//	;// not implemented yet
 			return command;
 		}

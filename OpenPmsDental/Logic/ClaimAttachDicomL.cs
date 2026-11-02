@@ -1,5 +1,5 @@
 // CLAIM-DCM: the claim attachment windows' side of DICOM X-rays on claims. Every window that lets the user choose a claim image calls these
-// for a DICOM document or a .dcm file, gets the 8-bit copy (OpenDentBusiness.ClaimAttachDicom) and attaches it the way it attaches any other
+// for a DICOM document or a .dcm file, gets the 8-bit copy (OpenPmsDentalBusiness.ClaimAttachDicom) and attaches it the way it attaches any other
 // image. A DICOM file the program cannot read shows a clear message and nothing is attached. See docs/port-notes/CLAIM-DCM.md.
 // This file is part of the open source dental practice management software derived from Open Dental.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

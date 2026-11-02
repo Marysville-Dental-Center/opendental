@@ -69,7 +69,7 @@ namespace WpfControls {
 			return true;
 		}
 
-		///<summary>The printer the rules pick for the situation, the same rules as WinForms printing (OpenDental.PrinterL.SetPrinter), both through
+		///<summary>The printer the rules pick for the situation, the same rules as WinForms printing (OpenPmsDental.PrinterL.SetPrinter), both through
 		///PrintSituationRules: the situation's own printer when its row names an installed printer, otherwise the Default situation's printer.
 		///Never "" unless Windows has no default printer: the Windows default printer's name is returned when no row names an installed printer.
 		///isPrompt is the Prompt setting of the situation's row, otherwise of the Default row.</summary>

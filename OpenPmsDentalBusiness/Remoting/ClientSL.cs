@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace OpenDentBusiness {
+namespace OpenPmsDentalBusiness {
 	///<summary>This class was a placeholder and will soon be gone.</summary>
 	class ClientSL {
 		

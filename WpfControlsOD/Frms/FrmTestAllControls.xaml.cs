@@ -528,7 +528,7 @@ Line2\par
 		}
 
 		private void butLaunchWin_Click(object sender,EventArgs e) {
-			//OpenDental.Wui.WindowTest windowTest=new OpenDental.Wui.WindowTest();
+			//OpenPmsDental.Wui.WindowTest windowTest=new OpenPmsDental.Wui.WindowTest();
 			//windowTest.ShowDialog();
 			//OpenFileDialog openFileDialog=new OpenFileDialog();
 			//openFileDialog.ShowDialog();

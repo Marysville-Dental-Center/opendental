@@ -1,5 +1,5 @@
 // B-PRINT: automatic copy of saved sheets to Imaging (Open Dental 25.1). The "Autosave to Images" box is gone; the rules are in
-// OpenDentBusiness.SheetAutoSaveImages.
+// OpenPmsDentalBusiness.SheetAutoSaveImages.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using OpenPmsDentalBusiness;

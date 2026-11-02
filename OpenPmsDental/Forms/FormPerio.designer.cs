@@ -1173,8 +1173,8 @@ namespace OpenPmsDental {
 		private UI.Button butCopyNote;
 		private OpenPmsDental.ContrPerio contrPerio;
 		/// <summary>This control is located behind gridP in the upper left corner.  It is used to allow text voice activated perio charting.  This also allows text to be pasted in the perio chart.</summary>
-		//private OpenDental.ContrPerio gridP;
-		//private OpenDental.ContrPerio contrPerio1;
+		//private OpenPmsDental.ContrPerio gridP;
+		//private OpenPmsDental.ContrPerio contrPerio1;
 		#endregion Controls
 		private UI.Button butDefault;
 		private UI.MenuOD menuMain;

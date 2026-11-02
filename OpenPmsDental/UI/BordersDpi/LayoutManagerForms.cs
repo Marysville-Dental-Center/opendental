@@ -70,11 +70,11 @@ Labels, radiobuttons, MS checkboxes, etc: There is a choice on these controls be
 
 Menu: Main menus should be MenuOD, not Menu or MenuStrip.  Context menus don't matter.
 
-Splitter/SplitContainer: Do not use System.Windows.Forms.Splitter or System.Windows.Forms.SplitContainer.  Use OpenDental.UI.SplitContainer instead. You can grab a fresh copy from BasicTemplate.cs designer. 
+Splitter/SplitContainer: Do not use System.Windows.Forms.Splitter or System.Windows.Forms.SplitContainer.  Use OpenPmsDental.UI.SplitContainer instead. You can grab a fresh copy from BasicTemplate.cs designer. 
 
-ListBoxes: Do not use System.Windows.Forms.ListBoxes. Instead use OpenDental.UI.ListBox (fka ListBoxOD).  In the extremely rare situation where you must use a MS listbox, be aware that Microsoft has a bug/annoyance where it resets the selected indices of a listbox when we change the font.  The layout manager must change the font in order to support different dpi, so it also fixes the selected indices.  For example, this could change the selected index from 0 to -1 and back to 0 again.  If you have an event for SelectedIndexChanged, that event might be fired twice during this process. One way to solve this is to add logic to test for SelectedIndex==-1 in your event handler.
+ListBoxes: Do not use System.Windows.Forms.ListBoxes. Instead use OpenPmsDental.UI.ListBox (fka ListBoxOD).  In the extremely rare situation where you must use a MS listbox, be aware that Microsoft has a bug/annoyance where it resets the selected indices of a listbox when we change the font.  The layout manager must change the font in order to support different dpi, so it also fixes the selected indices.  For example, this could change the selected index from 0 to -1 and back to 0 again.  If you have an event for SelectedIndexChanged, that event might be fired twice during this process. One way to solve this is to add logic to test for SelectedIndex==-1 in your event handler.
 
-TabControl: Do not use System.Windows.Forms.TabControl. Instead, use OpenDental.UI.TabControl. You can grab a fresh copy from BasicTemplate.cs designer.  The historical problem with MS tabControls is that they do not layout tabPages that are not visible/selected. So secondary tab pages won't lay out properly, which is especially noticeable with LL anchor or dock fill. This is not a problem with the UI.TabControl.
+TabControl: Do not use System.Windows.Forms.TabControl. Instead, use OpenPmsDental.UI.TabControl. You can grab a fresh copy from BasicTemplate.cs designer.  The historical problem with MS tabControls is that they do not layout tabPages that are not visible/selected. So secondary tab pages won't lay out properly, which is especially noticeable with LL anchor or dock fill. This is not a problem with the UI.TabControl.
 
 Scrollable Control: For example, a panel that's set to AutoScroll=true.  These can cause artifacts such as additional white space.  See the method below called LayoutSkipChildren().  There's a section in there for scrollable controls.  There are usually some additional steps that need to be taken in the form itself, but now at least the LayoutManager will not be fighting you.  To keep a panel from jumping, see the small class at the bottom of FormSheetFillEdit.
 		*/
@@ -884,7 +884,7 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 					//scaledFont gets set above to 12.375, which used to behave well, showing as 12.375 in UI.
 					//But after the Color reference, it shows an additional 50% bigger, meaning it shouldn't be scaled above in that scenario.
 					//There's something in the black box that's altering it.
-					//But the scary part is that it only behaves this way in one project: Unit Tests. Additional scaling does not happen in OpenDental.exe.
+					//But the scary part is that it only behaves this way in one project: Unit Tests. Additional scaling does not happen in OpenPmsDental.exe.
 					//I cannot find any difference between the two projects.
 					//It's easy enough to avoid hitting Media.Color in a public static field.
 					//But if I get into a mixed window environment, then the first time I hit Media.Color (and probably other namespaces), all TextBoxes could flip to new behavior.
@@ -976,7 +976,7 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 					height=control96Info.RectangleF96Orig.Height;
 					rectangleRemaining96.Height-=height;
 					rectangleRemaining96.Y+=height;
-					//if(listControlsDocked[i].GetType()==typeof(OpenDental.UI.MenuOD)){
+					//if(listControlsDocked[i].GetType()==typeof(OpenPmsDental.UI.MenuOD)){
 						//y-=2;//menus seem to want to draw one pixel down.  Not sure why.  Move up.
 					//}
 				}
@@ -1068,7 +1068,7 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 				return true;
 			}
 			if(control is UI.GridOD gridOD){
-				gridOD.SetScaleAndZoom(_scaleMS,_zoomLocal);//grids are over in OpenDentBusiness, so this is instead of a ref to LayoutManager.
+				gridOD.SetScaleAndZoom(_scaleMS,_zoomLocal);//grids are over in OpenPmsDentalBusiness, so this is instead of a ref to LayoutManager.
 				return true;//grids handle their own layout of scrollbars, etc.
 			}
 			if(control is UI.GridOld gridOld){
@@ -1080,7 +1080,7 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 				return true;
 			}
 			if(control is SignatureBoxWrapper signatureBoxWrapper){
-				signatureBoxWrapper.SetScaleAndZoom(_scaleMS,_zoomLocal);//Sig boxes are over in OpenDentBusiness, so this is instead of a ref to LayoutManager.
+				signatureBoxWrapper.SetScaleAndZoom(_scaleMS,_zoomLocal);//Sig boxes are over in OpenPmsDentalBusiness, so this is instead of a ref to LayoutManager.
 				return true;//ignore the child SignatureBox and TopazWrapper
 			}
 			//if(control is UI.TextBox){
@@ -1260,7 +1260,7 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 				return;
 			}
 			//if(control.GetType()==typeof(UI.GridOD)){
-			//Because grids are in OpenDentBusiness, we can't send them a ref to LayoutManager.
+			//Because grids are in OpenPmsDentalBusiness, we can't send them a ref to LayoutManager.
 			//We can send them a scale, but it needs to be more frequent than just once here.
 			//Grid scales are instead handled in LayoutChildren
 			//	((UI.GridOD)control).ScaleMy=this.ScaleMy;

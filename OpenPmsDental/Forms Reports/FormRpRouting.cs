@@ -11,7 +11,7 @@ namespace OpenPmsDental {
 		//private List<Appointment> Appts;
 		//private int pagesPrinted;
 		//private PrintDocument pd;
-		//private OpenDental.UI.PrintPreview printPreview;
+		//private OpenPmsDental.UI.PrintPreview printPreview;
 		///<summary>The date that the user selected.</summary>
 		private DateTime date;
 		///<summary>If set externally beforehand, then the user will not see any choices, and only a routing slip for the one appt will print.</summary>

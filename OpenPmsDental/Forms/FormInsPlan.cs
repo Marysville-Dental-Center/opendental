@@ -121,8 +121,8 @@ namespace OpenPmsDental {
 			_listBoxCarriers.MouseLeave += new System.EventHandler(listBoxCarriers_MouseLeave);
 			LayoutManager.Add(_listBoxCarriers,this);
 			_listBoxCarriers.BringToFront();
-			//tbPercentPlan.CellClicked += new OpenDental.ContrTable.CellEventHandler(tbPercentPlan_CellClicked);
-			//tbPercentPat.CellClicked += new OpenDental.ContrTable.CellEventHandler(tbPercentPat_CellClicked);
+			//tbPercentPlan.CellClicked += new OpenPmsDental.ContrTable.CellEventHandler(tbPercentPlan_CellClicked);
+			//tbPercentPat.CellClicked += new OpenPmsDental.ContrTable.CellEventHandler(tbPercentPat_CellClicked);
 			Lan.F(this);
 			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {//Canadian. en-CA or fr-CA
 				labelPatID.Text=Lan.g(this,"Dependant Code");

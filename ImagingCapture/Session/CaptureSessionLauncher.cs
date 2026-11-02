@@ -104,7 +104,7 @@ namespace ImagingCapture.Session {
 		///change, which Open Dental would not see otherwise, so a pedal-only series is not interrupted by a logoff. Null notes nothing.</summary>
 		public Action ActionNoteActivity { get; set; }
 
-		///<summary>OpenDentBusiness, TwainCaptureSession, the UI thread's SynchronizationContext, capture.ini, the capture log and the session window
+		///<summary>OpenPmsDentalBusiness, TwainCaptureSession, the UI thread's SynchronizationContext, capture.ini, the capture log and the session window
 		///(FrmCaptureSession through CaptureSessionWindowRunner).</summary>
 		public static CaptureSessionServices CreateDefault() {
 			return new CaptureSessionServices {

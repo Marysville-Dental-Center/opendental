@@ -791,7 +791,7 @@
             used for that clinic.REMINDERS - reminders are sent out using the ApptComm system implemented by DG. These used to be stored as preferences for the practice only,
             now users are allowed to define them on a per clinic basis. Reminders should be considered one way communications and should not be desingned with a
             customer response in mind.CONFIRMATIONS - confirmations are sent using the new automated-confirmation system implemented by RM (proper) and SO (web backend). Confirmations
-            are intended to allow end patients to respond to OpenDental via text or email and automatically confirm, or set to a desired status, the appointments
+            are intended to allow end patients to respond to OpenPmsDental via text or email and automatically confirm, or set to a desired status, the appointments
             on the schedule.</summary>
     <column order="0" name="ApptReminderRuleNum" type="bigint(20)">
       <summary>Primary key.</summary>
@@ -2467,7 +2467,7 @@
       <summary>Font size for all text on the form.</summary>
     </column>
     <column order="5" name="UniqueID" type="varchar(255)">
-      <summary>Deprecated as of version 17.2. Internal claimforms have been moved over to XML files in OpenDentBusiness.Properties.Resources.</summary>
+      <summary>Deprecated as of version 17.2. Internal claimforms have been moved over to XML files in OpenPmsDentalBusiness.Properties.Resources.</summary>
     </column>
     <column order="6" name="PrintImages" type="tinyint">
       <summary>Set to false to not print images.  This removes the background for printing on premade forms.</summary>
@@ -5118,7 +5118,7 @@
     </column>
     <column order="6" name="ValueString" type="text">
       <summary>The data as entered by patient or pulled from the db. We do not need this in EFormFieldDef because that has no patient or db data. Used differently for different types:
-            TextField: value in textBox. For allergiesOther, medsOther, and problemsOther, this is a comma-delimited list. Spaces by commas are ok. Like this: "Aspirin, Iodine, Latex"Label: Not used because no patient input.DateField: date in culture format, like 4/25/2024.Checkbox: "X" or blank "".RadioButton: String value chosen by patient. Pulled from PickListDb, not PickListVis. When importing, empty signifies that patient did not enter any choice, so do not import.ComboBox (not yet added): String value chosen by patient.SigBox: First char is 0 for our sigbox and 1 for Topaz. The remainder is the signature string. See OpenDentBusiness\UI\SignatureBoxWrapper.cs for details. Same format as used for all signatures in OD. Does not get imported.MedicationList: This holds a list of EFormMed objects, serialized as json.</summary>
+            TextField: value in textBox. For allergiesOther, medsOther, and problemsOther, this is a comma-delimited list. Spaces by commas are ok. Like this: "Aspirin, Iodine, Latex"Label: Not used because no patient input.DateField: date in culture format, like 4/25/2024.Checkbox: "X" or blank "".RadioButton: String value chosen by patient. Pulled from PickListDb, not PickListVis. When importing, empty signifies that patient did not enter any choice, so do not import.ComboBox (not yet added): String value chosen by patient.SigBox: First char is 0 for our sigbox and 1 for Topaz. The remainder is the signature string. See OpenPmsDentalBusiness\UI\SignatureBoxWrapper.cs for details. Same format as used for all signatures in OD. Does not get imported.MedicationList: This holds a list of EFormMed objects, serialized as json.</summary>
     </column>
     <column order="7" name="ItemOrder" type="int(11)">
       <summary>0 based.</summary>
@@ -8711,7 +8711,7 @@
       <summary></summary>
     </column>
     <column order="17" name="HL7Server" type="varchar(255)">
-      <summary>The machine name of the computer where the OpenDentHL7 service for this def is running.</summary>
+      <summary>The machine name of the computer where the OpenPmsDentalHL7 service for this def is running.</summary>
     </column>
     <column order="18" name="HL7ServiceName" type="varchar(255)">
       <summary>The name of the HL7 service for this def.  Must begin with OpenDent...</summary>
@@ -11944,7 +11944,7 @@
         <EnumValue name="Undefined">0</EnumValue>
         <EnumValue name="Merge">1 - The two patients have been merged into each other.</EnumValue>
         <EnumValue name="Clone">2 - A clone has been made of the From patient.  PatNumFrom is the original or master and PatNumTo is the clone.</EnumValue>
-        <EnumValue name="PaySimple">3 - The PatNumFrom column will hold the ID for PaySimple.  This should not be used in OpenDental to get a patient.</EnumValue>
+        <EnumValue name="PaySimple">3 - The PatNumFrom column will hold the ID for PaySimple.  This should not be used in OpenPmsDental to get a patient.</EnumValue>
       </Enumeration>
     </column>
     <column order="4" name="DateTimeLink" type="datetime">

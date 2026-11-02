@@ -237,7 +237,7 @@ namespace OpenPmsDentalBusiness{
 		EIP,
 		///<summary>Formatted text data.  We support new lines identified by '\.br\' (where '\' is the defined escape char, \ is the default)</summary>
 		FT,
-		///<summary>Hierarchic designator.  Application identifier.  Example: "OD" for OpenDental.</summary>
+		///<summary>Hierarchic designator.  Application identifier.  Example: "OD" for OpenPmsDental.</summary>
 		HD,
 		///<summary>Coded value for HL7 defined tables.  Must include TableId.  Example: 0003 is eCW's event type table id.</summary>
 		ID,

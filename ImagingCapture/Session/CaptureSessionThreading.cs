@@ -39,7 +39,7 @@ namespace ImagingCapture.Session {
 			if(action==null) {
 				return;
 			}
-			System.Threading.Tasks.Task.Run(action);//Task is named in full: OpenDentBusiness has a Task table type
+			System.Threading.Tasks.Task.Run(action);//Task is named in full: OpenPmsDentalBusiness has a Task table type
 		}
 	}
 

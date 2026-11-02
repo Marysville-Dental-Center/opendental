@@ -22,7 +22,7 @@ namespace ImagingCapture.Settings {
 		List<ImagingDevice> GetImagingDevices();
 	}
 
-	///<summary>ICaptureSettingsStore through OpenDentBusiness. Not exercised by the unit tests, which have no database.</summary>
+	///<summary>ICaptureSettingsStore through OpenPmsDentalBusiness. Not exercised by the unit tests, which have no database.</summary>
 	public sealed class OdCaptureSettingsStore:ICaptureSettingsStore {
 		public bool IsAuthorized(EnumPermType permType) {
 			return Security.IsAuthorized(permType,suppressMessage:true);

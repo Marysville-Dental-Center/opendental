@@ -1,5 +1,5 @@
 // Email text clean-up for Database Maintenance (backlog package B-DBM): the EmailmessageInvalidCharactersInBodyText check (Open Dental 25.1, also
-// 24.4.42) and the Unicode white space handling of the Raw Emails tool (24.4). Character rules: OpenDentBusiness/Misc/DbmTextCleaner.cs.
+// 24.4.42) and the Unicode white space handling of the Raw Emails tool (24.4). Character rules: OpenPmsDentalBusiness/Misc/DbmTextCleaner.cs.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

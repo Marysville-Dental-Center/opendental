@@ -529,7 +529,7 @@ namespace WpfControls {
 		}
 
 
-		///<summary>Any changes here should also be made in OpenDental.ProgramL.LoadToolBar.</summary>
+		///<summary>Any changes here should also be made in OpenPmsDental.ProgramL.LoadToolBar.</summary>
 		public static void LoadToolBar(ToolBar toolBar,EnumToolBar toolBarsAvail,EventHandler eventHandlerClick) {
 			List<ToolButItem> listToolButItems=ToolButItems.GetForToolBar(toolBarsAvail);
 			for(int i=0;i<listToolButItems.Count;i++){

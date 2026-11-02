@@ -13,7 +13,7 @@ namespace OpenPmsDentalBusiness {
 
 	///<summary>The BugSubmission table lives on the bugs database.
 	///All queries should be done with the bugs database context from WebServiceMainHQ.
-	///This table is only in OpenDentBusiness because the bug table from the bugs database lives here as well,
+	///This table is only in OpenPmsDentalBusiness because the bug table from the bugs database lives here as well,
 	/// and we want to follow that pattern since this table links to it.</summary>
 	[Serializable]
 	[CrudTable(IsMissingInGeneral=true,CrudExcludePrefC=true)]

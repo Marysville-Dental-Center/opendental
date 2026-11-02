@@ -1,5 +1,5 @@
 // Global Payments V2 (Open Dental 25.4): recurring charges on cards saved through Global Payments V2. A partial of RecurringChargerator
-// (OpenDentBusiness/Data Interface/RecurringCharges.cs), which calls IsGlobalPaymentsV2Charge and SendGlobalPaymentsV2 from SendCharges and
+// (OpenPmsDentalBusiness/Data Interface/RecurringCharges.cs), which calls IsGlobalPaymentsV2Charge and SendGlobalPaymentsV2 from SendCharges and
 // GetGlobalPaymentsV2PayType from CreatePayment. The Recurring Charges window calls GetGlobalPaymentsV2InDoubt and
 // BuildGlobalPaymentsV2InDoubtPrompt before a run, and fills SetRecurringChargeNumsRetryInDoubt only when the user answers Yes.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

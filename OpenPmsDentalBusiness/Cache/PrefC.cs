@@ -454,7 +454,7 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
-		///<summary>Returns the program's temporary folder, %TEMP%\opendental (ProgramNames.TempFolderName), creating it when it is missing.
+		///<summary>Returns the program's temporary folder, %TEMP%\openpms-dental (ProgramNames.TempFolderName), creating it when it is missing.
 		///FormOpenDental_FormClosing empties it. Open Dental also emptied the user's whole %TEMP% folder the first time it created this folder within
 		///a month of the TempFolderDateFirstCleaned preference. That clean-up is removed: a new folder name (a rename, or a dev database whose
 		///conversion set the date to today) would have deleted other programs' files.</summary>

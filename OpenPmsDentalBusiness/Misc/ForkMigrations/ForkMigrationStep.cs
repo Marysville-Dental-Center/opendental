@@ -22,7 +22,7 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 	}
 
 	///<summary>One fork migration step: schema changes and the data migrations that belong to them. Put each step in its own class, usually in its own
-	///file under OpenDentBusiness/Misc/ForkMigrations/, and mark it with ForkMigrationAttribute. Feature packages add steps the same way; they never
+	///file under OpenPmsDentalBusiness/Misc/ForkMigrations/, and mark it with ForkMigrationAttribute. Feature packages add steps the same way; they never
 	///edit a shared file to register one.
 	///Rules for a step:
 	///1. Idempotent. Apply must leave a database that is already in the target state unchanged, so the same steps upgrade a 24.3 database and leave

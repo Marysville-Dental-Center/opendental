@@ -40,7 +40,7 @@ namespace CodeBase {
 			}
 		}
 
-		///<summary>The directory in \OpenDental\OpenDentalService\Logger that holds the log files that are written to by CodeBase.Logger.cs</summary>
+		///<summary>The directory in Open Dental's OpenDentalService\Logger folder that holds the log files that are written to by CodeBase.Logger.cs</summary>
 		public abstract string GetLogDirectoryName();
 		
 		///<summary>The name of the thread for debugging/development purposes.</summary>

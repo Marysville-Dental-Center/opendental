@@ -665,7 +665,7 @@ namespace OpenPmsDental {
 
 		//	public override ODSetupStatus GetStatus {
 		//		get {
-		//			Clearinghouse clearHouseCur = OpenDentBusiness.Clearinghouses.GetDefaultDental();
+		//			Clearinghouse clearHouseCur = OpenPmsDentalBusiness.Clearinghouses.GetDefaultDental();
 		//			if(clearHouseCur == null) {
 		//				return ODSetupStatus.NotStarted;
 		//			}

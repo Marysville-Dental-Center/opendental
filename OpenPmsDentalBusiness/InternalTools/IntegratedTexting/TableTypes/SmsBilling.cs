@@ -17,7 +17,7 @@ namespace OpenPmsDentalBusiness{
 		///<summary>Indicates which calendar month this usage metric is for. Should be 1st of month at midnight. Example '2012-01-01 00:00:00'</summary>
 		public DateTime DateUsage;
 		///<summary>The aggregate cost of all message parts charged by Open Dental to the customer. Will need to be summed as the sum of all parts of multi-part messages.
-		///Is a function of MsgCost and is calculated from SMSResponse as a result of SendSMS. Maps to OpenDentBusiness.SmsToMobile.MsgCostUSD.</summary>
+		///Is a function of MsgCost and is calculated from SMSResponse as a result of SendSMS. Maps to OpenPmsDentalBusiness.SmsToMobile.MsgCostUSD.</summary>
 		public float MsgChargeTotalUSD;
 		///<summary>The aggregate cost of all clinic access charges. Calculated using ClinicsActive * RepeatingCharge.ChargeAmt WHERE ProcCode='038'.</summary>
 		public float AccessChargeTotalUSD;

@@ -2487,7 +2487,7 @@ namespace OpenPmsDental {
 			if(formLabCases.GoToAptNum!=0) {
 				Appointment appointment=Appointments.GetOneApt(formLabCases.GoToAptNum);
 				Patient patient=Patients.GetPat(appointment.PatNum);
-				//PatientSelectedEventArgs eArgs=new OpenDental.PatientSelectedEventArgs(pat.PatNum,pat.GetNameLF(),pat.Email!="",pat.ChartNumber);
+				//PatientSelectedEventArgs eArgs=new OpenPmsDental.PatientSelectedEventArgs(pat.PatNum,pat.GetNameLF(),pat.Email!="",pat.ChartNumber);
 				//if(PatientSelected!=null){
 				//	PatientSelected(this,eArgs);
 				//}

@@ -38,7 +38,7 @@ namespace OpenPmsDentalBusiness {
 		///<para>Checkbox: "X" or blank "".</para>
 		///<para>RadioButton: String value chosen by patient. Pulled from PickListDb, not PickListVis. When importing, empty signifies that patient did not enter any choice, so do not import.</para>
 		///<para>ComboBox (not yet added): String value chosen by patient.</para>
-		///<para>SigBox: First char is 0 for our sigbox and 1 for Topaz. The remainder is the signature string. See OpenDentBusiness\UI\SignatureBoxWrapper.cs for details. Same format as used for all signatures in OD. Does not get imported.</para>
+		///<para>SigBox: First char is 0 for our sigbox and 1 for Topaz. The remainder is the signature string. See OpenPmsDentalBusiness\UI\SignatureBoxWrapper.cs for details. Same format as used for all signatures in OD. Does not get imported.</para>
 		///<para>MedicationList: This holds a list of EFormMed objects, serialized as json.</para>
 		/// </summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]

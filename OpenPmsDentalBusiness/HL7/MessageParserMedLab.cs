@@ -177,7 +177,7 @@ namespace OpenPmsDentalBusiness.HL7 {
 		///provided and the name and birthdate in the PID segment match the name and birthdate of the patient located,
 		///it will be stored in the oidexternal table linked to the patient's PatNum.</summary>
 		public static Patient GetPatFromPID(HL7DefSegment pidSegDef,SegmentHL7 pidSeg) {
-			//PID.2 should contain the OpenDental PatNum.
+			//PID.2 should contain the OpenPmsDental PatNum.
 			//If there is no patient with PatNum=PID.2, we will attempt to find the value in PID.4 in the oidexternals table IDExternal column
 			//with root MedLabv2_3.Patient and type IdentifierType.Patient.
 			//The PatNum found in the oidexternals table will only be trusted if the name and birthdate of the pat match the name and birthdate in the msg.

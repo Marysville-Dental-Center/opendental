@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Threading.Tasks;//Task itself is named in full: OpenDentBusiness has a Task table type
+using System.Threading.Tasks;//Task itself is named in full: OpenPmsDentalBusiness has a Task table type
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;

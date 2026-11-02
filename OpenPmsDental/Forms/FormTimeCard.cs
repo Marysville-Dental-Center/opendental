@@ -20,7 +20,7 @@ namespace OpenPmsDental{
 		public int IdxPayPeriodSelected;
 		private List<TimeAdjust> _listTimeAdjusts;
 		private int _linesPrinted;
-		//private OpenDental.UI.PrintPreview printPreview;
+		//private OpenPmsDental.UI.PrintPreview printPreview;
 		///<summary>An array list of ojects representing the rows in the table. Can be either clockEvents or timeAdjusts.</summary>
 		private ArrayList _arrayListMerged;
 		///<summary>The running weekly total, whether it gets displayed or not.</summary>

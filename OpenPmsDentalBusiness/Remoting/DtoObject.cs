@@ -16,7 +16,7 @@ using CodeBase;
 namespace OpenPmsDentalBusiness {
 	///<summary>Packages any object with a TypeName so that it can be serialized and deserialized better.</summary>
 	public class DtoObject:IXmlSerializable {
-		///<summary>Fully qualified name, including the namespace but not the assembly.  Examples: System.Int32, OpenDentBusiness.Patient, OpenDentBusiness.Patient[], List&lt;OpenDentBusiness.Patient&gt;, PluginOC.OcContainer.  When the xml element is created for the Obj, the namespace is not included.  So this field properly stores it.</summary>
+		///<summary>Fully qualified name, including the namespace but not the assembly.  Examples: System.Int32, OpenPmsDentalBusiness.Patient, OpenPmsDentalBusiness.Patient[], List&lt;OpenPmsDentalBusiness.Patient&gt;, PluginOC.OcContainer.  When the xml element is created for the Obj, the namespace is not included.  So this field properly stores it.</summary>
 		public string TypeName;
 		///<summary>The actual object.</summary>
 		public object Obj;
@@ -259,7 +259,7 @@ namespace OpenPmsDentalBusiness {
 			return retVal;
 		}
 
-		///<summary>Examples of strTypeName passed in: System.Int32, System.Drawing.Color, OpenDentBusiness.Patient, OpenDentBusiness.Patient[], List&lt;OpenDentBusiness.Patient&gt;, PluginOC.OcContainer</summary>
+		///<summary>Examples of strTypeName passed in: System.Int32, System.Drawing.Color, OpenPmsDentalBusiness.Patient, OpenPmsDentalBusiness.Patient[], List&lt;OpenPmsDentalBusiness.Patient&gt;, PluginOC.OcContainer</summary>
 		private static Type ConvertNameToType(string strTypeName){//,string strAssembDeprecating) {
 			Type typeObj=null;
 			if(strTypeName.StartsWith("List<")) {
@@ -268,7 +268,7 @@ namespace OpenPmsDentalBusiness {
 				Assembly assemb=Plugins.GetAssembly(strTypeGenName);//usually null, unless the type is for a plugin
 				if(assemb==null) {
 					typeGen=Type.GetType(strTypeGenName);//strTypeName includes the namespace, which we require to be same as assembly by convention
-					if(typeGen==null) {//For assemblies other than OpenDentBusiness, i.e. CodeBase
+					if(typeGen==null) {//For assemblies other than OpenPmsDentalBusiness, i.e. CodeBase
 						typeGen=Type.GetType(strTypeGenName+","+StringTools.SubstringBefore(strTypeGenName,"."));
 					}
 				}
@@ -287,7 +287,7 @@ namespace OpenPmsDentalBusiness {
 			else if(strTypeName=="System.TimeSpan") {
 				typeObj=typeof(TimeSpan);
 			}
-			else {//system types, OpenDentBusiness, and plugins
+			else {//system types, OpenPmsDentalBusiness, and plugins
 				string strAssembName=strTypeName.Substring(0,strTypeName.IndexOf("."));//example: System.String: index=6, substring(0,6)="System"
 				Assembly assemb=null;
 				ODException.SwallowAnyException(() => {
@@ -295,7 +295,7 @@ namespace OpenPmsDentalBusiness {
 				});
 				if(assemb==null) {
 					typeObj=Type.GetType(strTypeName);//strTypeName includes the namespace, which we require to be same as assembly by convention
-					if(typeObj==null) {//For assemblies other than OpenDentBusiness, i.e. CodeBase
+					if(typeObj==null) {//For assemblies other than OpenPmsDentalBusiness, i.e. CodeBase
 						typeObj=Type.GetType(strTypeName+","+StringTools.SubstringBefore(strTypeName,"."));
 					}
 				}

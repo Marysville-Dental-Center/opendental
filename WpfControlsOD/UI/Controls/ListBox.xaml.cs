@@ -22,7 +22,7 @@ using OpenPmsDentalBusiness;
 namespace WpfControls.UI{
 /*
 Jordan is the only one allowed to edit this file.
-This listBox is written from scratch in a way that should exactly duplicate the OpenDental.UI.ListBox.
+This listBox is written from scratch in a way that should exactly duplicate the OpenPmsDental.UI.ListBox.
 Compared to ComboBox, this is optimized for smaller lists that can all fit inside a form without scrolling. Enums are the typical example.
 (todo: implement arrow up/down keys)
 Naming should be like listBox... if possible, in order to differentiate these from generic lists.

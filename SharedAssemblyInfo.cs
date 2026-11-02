@@ -5,9 +5,9 @@ using System.Reflection;
 //Linked into each shipped project as Properties\SharedAssemblyInfo.cs (<Compile Include="..\SharedAssemblyInfo.cs">). The project's own
 //Properties\AssemblyInfo.cs keeps its title, description and version numbers, and must not repeat the attributes below.
 //
-//Never put AssemblyVersion or AssemblyFileVersion here. AssemblyVersion stays on each project's own line: 24.3.63.0 for OpenDental.exe and
-//OpenDentBusiness.dll is the compatibility version (ForkVersions.CompatVersion) that startup and the database version checks compare, and
-//OpenDental.exe's Win32 file version follows it (tests/ReleaseFlowTests/VersionSourceTests.cs).
+//Never put AssemblyVersion or AssemblyFileVersion here. AssemblyVersion stays on each project's own line: 24.3.63.0 for OpenPmsDental.exe and
+//OpenPmsDentalBusiness.dll is the compatibility version (ForkVersions.CompatVersion) that startup and the database version checks compare, and
+//OpenPmsDental.exe's Win32 file version follows it (tests/ReleaseFlowTests/VersionSourceTests.cs).
 
 [assembly: AssemblyProduct("Open PMS - Dental")]
 [assembly: AssemblyCompany("Open PMS - Dental contributors")]

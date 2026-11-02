@@ -20,7 +20,7 @@ namespace OpenPmsDental.Bridges {
 		//OD accepts commandline arguments from eCW.  That's handled in FormOpenDental.
 
 		//public static void SendHL7(Appointment apt,Patient pat) {
-		//  OpenDentBusiness.HL7.DFT dft=new OpenDentBusiness.HL7.DFT(apt,pat);
+		//  OpenPmsDentalBusiness.HL7.DFT dft=new OpenPmsDentalBusiness.HL7.DFT(apt,pat);
 		//  HL7Msg msg=new HL7Msg();
 		//  msg.AptNum=apt.AptNum;
 		//  msg.HL7Status=HL7MessageStatus.OutPending;//it will be marked outSent by the HL7 service.

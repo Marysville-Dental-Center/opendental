@@ -121,7 +121,7 @@ namespace OpenPmsDental{
 				+NormalizeNewLines(Properties.Resources.GPL);
 		}
 
-		///<summary>The project's own license texts kept from Open Dental's list (OpenDental\Resources), by the component name used in
+		///<summary>The project's own license texts kept from Open Dental's list (OpenPmsDental\Resources), by the component name used in
 		///THIRD-PARTY-NOTICES.txt.</summary>
 		public static Dictionary<string,string> GetVendorTexts() {
 			Dictionary<string,string> dictVendorTexts=new Dictionary<string,string>();

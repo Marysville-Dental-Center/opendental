@@ -5,8 +5,8 @@
     Native image capture for the Imaging module: the generic UVC camera layer (DirectShow, through COM interfaces declared
     in this project from the public Windows SDK documentation), camera triggers, and the capture windows. It uses no NuGet
     package and ships no native binary. DirectShow and its Sample Grabber (qedit.dll) are part of Windows.
-    WPF-enabled class library, always x86 like the host. It references ImagingDeviceManager, OpenDentBusiness, CodeBase and
-    WpfControlsOD, never the OpenDental assembly.
+    WPF-enabled class library, always x86 like the host. It references ImagingDeviceManager, OpenPmsDentalBusiness, CodeBase and
+    WpfControlsOD, never the OpenPmsDental assembly.
   -->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>

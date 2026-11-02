@@ -178,7 +178,7 @@ namespace OpenPmsDentalBusiness {
 			return hadChanges;
 		}
 
-		///<summary>Sets the GraphicsSimple column to 1.  Added to fix machines (lately tablets) that are having graphics problems and cannot start OpenDental.</summary>
+		///<summary>Sets the GraphicsSimple column to 1.  Added to fix machines (lately tablets) that are having graphics problems and cannot start OpenPmsDental.</summary>
 		///<summary>Remembers terminalId as the card terminal this workstation used last (computerpref.CreditCardTerminalId, Open Dental 25.1), so the
 		///PayConnect window preselects it next time. Writes only when the value changes.</summary>
 		public static void UpdateCreditCardTerminalId(string terminalId) {

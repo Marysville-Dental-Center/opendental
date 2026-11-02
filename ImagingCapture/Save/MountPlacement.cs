@@ -7,11 +7,11 @@ using System.Linq;
 using OpenPmsDentalBusiness;
 
 namespace ImagingCapture.Save {
-	///<summary>The mount placement rules of the Imaging module, copied onto OpenDentBusiness types so that the capture session can use them
-	///(design 6.4: ImagingCapture cannot reference the OpenDental assembly, where ControlImageDisplay lives). Every function is pure: it
+	///<summary>The mount placement rules of the Imaging module, copied onto OpenPmsDentalBusiness types so that the capture session can use them
+	///(design 6.4: ImagingCapture cannot reference the OpenPmsDental assembly, where ControlImageDisplay lives). Every function is pure: it
 	///works on the mount items and documents it is given and calls no database, so the rules can be tested without one.
 	///
-	///The rules are those of ControlImageDisplay and ControlImages (OpenDental), which stay the reference:
+	///The rules are those of ControlImageDisplay and ControlImages (OpenPmsDental), which stay the reference:
 	///- GetAvailSlots: ControlImageDisplay.GetAvailSlots.
 	///- GetFirstAvailIdx: ControlImageDisplay.PreselectFirstItem.
 	///- GetPlacementIdx and GetNextTargetIdx: the slot choice of ControlImages.PlaceAcquiredBitmapInUI.

@@ -322,7 +322,7 @@ namespace CodeBase {
 		///The location names that are passed in are the name of what just happened, so that the names match up with the intervals.</summary>
 		public static void DebugLogInterval(string locationName){
 			//Temporarily add SPEEDTESTING to the CodeBase, properties, Build, conditional compilation symbols section.  But don't commit that change.
-			//Also add SPEEDTESTING TO OpenDentBusiness and OpenDental projects.  Also don't commit those changes.
+			//Also add SPEEDTESTING TO OpenPmsDentalBusiness and OpenPmsDental projects.  Also don't commit those changes.
 #if !SPEEDTESTING
 			return;
 #endif
@@ -439,7 +439,7 @@ namespace CodeBase {
 					regVal=browserVersion*1000+1;//Guess the regVal code needed based on the historic pattern.
 				}
 				//Set the actual key.  This key can be set without admin rights, because it is within the current user's registry store.
-				string applicationName=Process.GetCurrentProcess().ProcessName+".exe";//This is OpenDental.vhost.exe when debugging, different for distributors.
+				string applicationName=Process.GetCurrentProcess().ProcessName+".exe";//This is OpenPmsDental.vhost.exe when debugging, different for distributors.
 				string keyPath=@"SOFTWARE\Microsoft\Internet Explorer\Main\FeatureControl\FEATURE_BROWSER_EMULATION";
 				Microsoft.Win32.RegistryKey key=Microsoft.Win32.Registry.CurrentUser.OpenSubKey(keyPath,true);
 				if(key==null) {

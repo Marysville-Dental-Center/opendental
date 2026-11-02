@@ -152,7 +152,7 @@ namespace ImagingCapture.Save {
 	}
 
 	///<summary>The decisions of the capture saver (design 7.8, 7.9, 7.10, 9.1, 10.8), as pure functions with no database: which format, the
-	///file bytes, and the document fields. RadiographImport applies the plan through OpenDentBusiness.</summary>
+	///file bytes, and the document fields. RadiographImport applies the plan through OpenPmsDentalBusiness.</summary>
 	public static class RadiographSavePlanner {
 		public const string MimePng="image/png";
 		public const string MimeDicom="application/dicom";

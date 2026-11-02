@@ -169,7 +169,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
-namespace OpenDental {
+namespace OpenPmsDental {
 	public partial class FormGrowthCharts:ODForm {
 		private float patNum;
 		private const float border=10f;

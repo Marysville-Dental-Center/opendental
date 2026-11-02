@@ -53,7 +53,7 @@ namespace WpfControls.UI {
 
 		public async Task Init() {
 			//Was like below by default, which didn't work because of file permissions in that folder.
-			//string userDataFolder= "C:\\Program Files (x86)\\OpenDental\\OpenDental.exe.WebView2";
+			//string userDataFolder= "C:\\Program Files (x86)\\OpenPmsDental\\OpenPmsDental.exe.WebView2";
 			//New location is like this:
 			//C:\\Users\\User\\AppData\\Local\\Temp\\opendental
 			string userDataFolder=OpenPmsDentalBusiness.PrefC.GetTempFolderPath();

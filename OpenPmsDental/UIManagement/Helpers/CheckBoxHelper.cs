@@ -17,7 +17,7 @@ namespace OpenPmsDental.UIManagement {
 	/*
 	///<summary>This class is for internal use by UIManagement. Calls from OD proper should use Um.</summary>
 	public class CheckBoxHelper{
-		public static CheckBox CreateCheckBox(OpenDental.UI.CheckBox checkBox){
+		public static CheckBox CreateCheckBox(OpenPmsDental.UI.CheckBox checkBox){
 			CheckBox checkBoxNew=new CheckBox();
 			checkBoxNew.Width=checkBox.Width;
 			checkBoxNew.Height=checkBox.Height;

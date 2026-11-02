@@ -569,8 +569,8 @@ namespace OpenPmsDental {
 		}
 
 		private void butPatList14_Click(object sender,EventArgs e) {
-			MessageBox.Show("This form was moved to the OpenDental project and should be launched from Reports ?");
-			//using OpenDental.FormPatList2014 FormPL14=new OpenDental.FormPatList2014();
+			MessageBox.Show("This form was moved to the OpenPmsDental project and should be launched from Reports ?");
+			//using OpenPmsDental.FormPatList2014 FormPL14=new OpenPmsDental.FormPatList2014();
 			//FormPL14.ShowDialog();
 		}
 

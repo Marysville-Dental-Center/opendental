@@ -16,7 +16,7 @@ namespace OpenPmsDentalBusiness {
 	public class ReleaseIdentity {
 		public string ReleaseVersion="";
 		public string BuildId="";
-		///<summary>When the build was compiled (UTC), from the ForkBuildUtc assembly metadata that OpenDental.csproj writes. Orders two builds of the
+		///<summary>When the build was compiled (UTC), from the ForkBuildUtc assembly metadata that OpenPmsDental.csproj writes. Orders two builds of the
 		///same release version. DateTime.MinValue when unknown.</summary>
 		public DateTime BuildUtc=DateTime.MinValue;
 
@@ -93,7 +93,7 @@ namespace OpenPmsDentalBusiness {
 			"ImagingCapture.dll",
 			ProgramNames.UpdateFileCopierExeFileName,
 		};
-		///<summary>Key of the AssemblyMetadata attribute that holds the build time of OpenDental.exe (written by OpenDental.csproj).</summary>
+		///<summary>Key of the AssemblyMetadata attribute that holds the build time of OpenPmsDental.exe (written by OpenPmsDental.csproj).</summary>
 		public const string BUILD_UTC_METADATA_KEY="ForkBuildUtc";
 		private static ReleaseIdentity _releaseIdentityRunning;
 
@@ -111,7 +111,7 @@ namespace OpenPmsDentalBusiness {
 			return ReleaseManifest.ComputeSha256(Encoding.UTF8.GetBytes(stringBuilder.ToString()));
 		}
 
-		///<summary>The running program's identity: release version and build time from OpenDental.exe, and build id of the installation folder.
+		///<summary>The running program's identity: release version and build time from OpenPmsDental.exe, and build id of the installation folder.
 		///Computed once.</summary>
 		public static ReleaseIdentity GetRunningIdentity() {
 			if(_releaseIdentityRunning==null) {
@@ -124,7 +124,7 @@ namespace OpenPmsDentalBusiness {
 			return _releaseIdentityRunning;
 		}
 
-		///<summary>The build time (UTC) that OpenDental.csproj stamps into OpenDental.exe as [assembly: AssemblyMetadata("ForkBuildUtc",...)] each time
+		///<summary>The build time (UTC) that OpenPmsDental.csproj stamps into OpenPmsDental.exe as [assembly: AssemblyMetadata("ForkBuildUtc",...)] each time
 		///the program is compiled. Reads the given assembly, else the entry assembly. DateTime.MinValue when it has no readable stamp.</summary>
 		public static DateTime GetBuildUtc(Assembly assembly=null) {
 			assembly=assembly??Assembly.GetEntryAssembly();

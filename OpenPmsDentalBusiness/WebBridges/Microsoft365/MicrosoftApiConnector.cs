@@ -10,11 +10,11 @@ using MimeKit;
 using OpenPmsDentalBusiness.Email;
 
 namespace OpenPmsDentalBusiness.Microsoft365 {
-	//OpenDentBusiness.Task (the task list table type) would hide System.Threading.Tasks.Task otherwise.
+	//OpenPmsDentalBusiness.Task (the task list table type) would hide System.Threading.Tasks.Task otherwise.
 	using Task=System.Threading.Tasks.Task;
 
 	///<summary>The surface the email code called on Bridges.dll, with the same names, now talking to Microsoft directly with the office's own app
-	///registration (Setup > Program Links > Microsoft 365 email). Callers swap "using Bridges;" for "using OpenDentBusiness.Microsoft365;".
+	///registration (Setup > Program Links > Microsoft 365 email). Callers swap "using Bridges;" for "using OpenPmsDentalBusiness.Microsoft365;".
 	///Differences from the Bridges.dll version (docs/specs/vendor-direct/microsoft-365.md, 4.2):
 	///- MicrosoftTokenHelper.AccessToken is the account marker, not a bearer token. AccountInfo is the osd1$ MSAL cache.
 	///- GetAccessToken: blank accountInfo signs in interactively (UI callers only); non-blank is silent only and never prompts.

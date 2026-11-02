@@ -12,12 +12,12 @@ using Newtonsoft.Json;
 namespace OpenPmsDentalBusiness.SheetFramework{
 	public class ToothChartHelper{
 		//The image used to be drawn by Open Dental's closed DirectX 11 chart (Sparks3D.dll), which this program does not ship (removed 2026-11-01).
-		//SparksToothChart, the only chart now, is a WinForms control in a project that references this one, so it cannot draw here. OpenDental.exe
+		//SparksToothChart, the only chart now, is a WinForms control in a project that references this one, so it cannot draw here. OpenPmsDental.exe
 		//draws its own tooth chart images through SheetPrinting.GetToothChartHelper. The callers here are the treatment plan and perio PDFs of the
-		//API and mobile paths and procedure-complete automation, which OpenDental.exe does not use; they get a plain image that says the chart is
+		//API and mobile paths and procedure-complete automation, which OpenPmsDental.exe does not use; they get a plain image that says the chart is
 		//not available, so a sheet still prints.
 		
-		///<summary>Do not call this from OpenDental.exe. There's a better version there in SheetPrinting.  This generates an Image of the ToothChart.  Set isForSheet=true for dimensions and colors appropriate for Sheets, false for dimensions and colors appropriate for display in Patient Dashboard (matches dimensions for). Set isForWinForms to true if there is an associated window handle. Set isForPerio to true in order to get an image of the Perio Chart.</summary>
+		///<summary>Do not call this from OpenPmsDental.exe. There's a better version there in SheetPrinting.  This generates an Image of the ToothChart.  Set isForSheet=true for dimensions and colors appropriate for Sheets, false for dimensions and colors appropriate for display in Patient Dashboard (matches dimensions for). Set isForWinForms to true if there is an associated window handle. Set isForPerio to true in order to get an image of the Perio Chart.</summary>
 		public static Image GetImage(long patNum,bool showCompleted,TreatPlan treatPlan=null,List<Procedure> listProceduresFilteredOverride=null
 			,bool isInPatientDashboard=false,bool isForWinForms=false,bool isForPerio=false,PerioExam perioExam=null
 			,List<PerioMeasure> listPerioMeasures=null,int width=500,int height=370,bool isSmaller=false,bool isForChartModule=false) 
@@ -86,7 +86,7 @@ namespace OpenPmsDentalBusiness.SheetFramework{
 				args.IsForWinForms,args.IsForPerio,args.Width,args.Height,args.IsSmaller,args.IsForChartModule);
 		}
 
-		///<summary>Do not call this from OpenDental.exe. There's a better version there in SheetPrinting.  This generates an Image of the ToothChart.  Set isForSheet=true for dimensions and colors appropriate for Sheets, false for dimensions and colors appropriate for display in Patient Dashboard (matches dimensions for). Set isForWinForms to true if there is an associated window handle. Set isForPerio to true in order to get an image of the Perio Chart.</summary>
+		///<summary>Do not call this from OpenPmsDental.exe. There's a better version there in SheetPrinting.  This generates an Image of the ToothChart.  Set isForSheet=true for dimensions and colors appropriate for Sheets, false for dimensions and colors appropriate for display in Patient Dashboard (matches dimensions for). Set isForWinForms to true if there is an associated window handle. Set isForPerio to true in order to get an image of the Perio Chart.</summary>
 		public static ToothChartHelperData GetDAta(long patNum,bool showCompleted,TreatPlan treatPlan=null,List<Procedure> listProceduresFilteredOverride=null
 			,bool isInPatientDashboard=false,bool isForWinForms=false,bool isForPerio=false,PerioExam perioExam=null
 			,List<PerioMeasure> listPerioMeasures=null,int width=500,int height=370,bool isSmaller=false,bool isForChartModule=false) 

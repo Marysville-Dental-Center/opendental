@@ -29,7 +29,7 @@ There are four supported drawing scenarios:
 			g.Clear(Color.White);
 			g.DrawRectangle... etc
 4. Measuring some text rather than drawing
-			(using OpenDental.Drawing;)
+			(using OpenPmsDental.Drawing;)
 			Graphics g=Graphics.MeasureBegin();
 			double width=g.MeasureString("some text").Width;
 			//or:
@@ -37,7 +37,7 @@ There are four supported drawing scenarios:
 			(if using this to measure screen elements, see the discussions further down and in the Font class)
 These three different strategies are closely interrelated and you can use a single set of drawing code to draw to all three.
 This class should allow you to use existing WinForms code with very little modification.
-Just like we used "g" for an instance of System.Drawing.Graphics, we will use "g" for an instance of OpenDental.Drawing.Graphics.
+Just like we used "g" for an instance of System.Drawing.Graphics, we will use "g" for an instance of OpenPmsDental.Drawing.Graphics.
 Our old drawing code was all adapted to use the LayoutManager to scale everything.
 You will need to remove all such scaling. It will be easy to see as red not compiling because LayoutManager doesn't exist here.
 This will result in simpler code with everything simply drawn as if at 96 dpi.
@@ -52,10 +52,10 @@ Doubles: All your variables will probably need to be changed from float, sizeF, 
 	Rectangle and RectangleF become Rect
 Add using statements at the top of any file where you need to use these new drawing and printing classes:
 	using System.Windows.Media (for colors)
-	using OpenDental.Drawing;
+	using OpenPmsDental.Drawing;
 Font:
 	WPF doesn't have a Font object, so we made our own to encapsulate fontFamily, size, bold, and underline into a single object.
-	Create an OpenDental.Drawing.Font like this: Font font=new Font();//this will have normal defaults which you can then change.
+	Create an OpenPmsDental.Drawing.Font like this: Font font=new Font();//this will have normal defaults which you can then change.
 Brushes and Pens:
 	You can't use the System.Drawing brushes and pens.
 	Instead, our methods are all designed to just take colors.

@@ -184,7 +184,7 @@ namespace SparksToothChart {
 				}
 			}
 			xPos+=GetTransX(tooth_id);
-			//string displayNum=OpenDentBusiness.Tooth.GetToothLabelGraphic(tooth_id,ToothNumberingNomenclature);
+			//string displayNum=OpenPmsDentalBusiness.Tooth.GetToothLabelGraphic(tooth_id,ToothNumberingNomenclature);
 			//float strWidthMm=g.MeasureString(displayNum,Font).Width/ScaleMmToPix;
 			//xPos-=strWidthMm/2f;
 			xPos-=labelSizeF.Width/2f;
@@ -224,7 +224,7 @@ namespace SparksToothChart {
 				}
 			}
 			string displayNum =tooth_id;
-			//displayNum =OpenDentBusiness.Tooth.GetToothLabel(tooth_id);
+			//displayNum =OpenPmsDentalBusiness.Tooth.GetToothLabel(tooth_id);
 			float strWidth=g.MeasureString(displayNum,Font).Width;
 			xPos-=strWidth/2f;
 			RectangleF rec=new RectangleF(xPos-1,yPos-1,strWidth,12);//this rec has origin at UL

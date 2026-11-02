@@ -17,7 +17,7 @@ namespace OpenPmsDental.UIManagement {
 	/*
 	///<summary></summary>
 	public class GroupBoxHelper{
-		public static FrameworkElement CreateGroupBox(OpenDental.UI.GroupBox groupBox){
+		public static FrameworkElement CreateGroupBox(OpenPmsDental.UI.GroupBox groupBox){
 			//for a GroupBox, we will use a border-canvas-textBlock
 			Border border=new Border();
 			border.BorderBrush=Brushes.Silver;

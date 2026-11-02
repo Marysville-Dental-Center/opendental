@@ -844,7 +844,7 @@ namespace OpenPmsDental {
 			this.tabSchedule.Padding = new System.Windows.Forms.Padding(3);
 			this.tabSchedule.Size = new System.Drawing.Size(669, 488);
 			this.tabSchedule.TabIndex = 0;
-			this.tabSchedule.Tag = "gridCharges[OpenDental.UI.ODGrid]";
+			this.tabSchedule.Tag = "gridCharges[OpenPmsDental.UI.ODGrid]";
 			this.tabSchedule.Text = "Charges Due";
 			// 
 			// butAddCharge
@@ -976,7 +976,7 @@ namespace OpenPmsDental {
 			this.tabProduction.Padding = new System.Windows.Forms.Padding(3);
 			this.tabProduction.Size = new System.Drawing.Size(669, 488);
 			this.tabProduction.TabIndex = 1;
-			this.tabProduction.Tag = "gridLinkedProduction[OpenDental.UI.ODGrid]";
+			this.tabProduction.Tag = "gridLinkedProduction[OpenPmsDental.UI.ODGrid]";
 			this.tabProduction.Text = "Production";
 			// 
 			// checkShowAttachedPnI

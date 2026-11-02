@@ -33,7 +33,7 @@ namespace OpenPmsDentalBusiness{
 
 	///<summary>Stored in guardian.Relationship. Numbering matches Open Dental 25.1 and later (published database documentation): None was added
 	///as 0 and the two values that used to be 0 (Father) and 6 (Sitter) moved to 6 and 23. Databases from 24.x are renumbered by the fork
-	///migration step in OpenDentBusiness/Misc/ForkMigrations/OdParity25_3.cs. Keep the values contiguous: the guardian edit windows map a
+	///migration step in OpenPmsDentalBusiness/Misc/ForkMigrations/OdParity25_3.cs. Keep the values contiguous: the guardian edit windows map a
 	///position in Enum.GetNames to the value.</summary>
 	public enum GuardianRelationship {
 		///<summary>0 - Not a relationship. Only used by eForm imports; never stored in a guardian row and never offered in pickers.</summary>

@@ -28,7 +28,7 @@ namespace ImagingCapture.Templates {
 		void SignalMountDefsChanged();
 	}
 
-	///<summary>IStandardTemplateStore through OpenDentBusiness. Not exercised by the unit tests, which have no database.</summary>
+	///<summary>IStandardTemplateStore through OpenPmsDentalBusiness. Not exercised by the unit tests, which have no database.</summary>
 	public sealed class OdStandardTemplateStore:IStandardTemplateStore {
 		public bool IsAuthorized(EnumPermType permType) {
 			return Security.IsAuthorized(permType,suppressMessage:true);

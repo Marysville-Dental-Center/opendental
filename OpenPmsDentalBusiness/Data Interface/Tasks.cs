@@ -1183,7 +1183,7 @@ namespace OpenPmsDentalBusiness{
 			long newTaskNum=Tasks.Insert(taskNext);
 			//If we could we'd just call DataValid.SetInvalidTask(newTaskNum,true); but we're in ODBuisness so we'll do what we can to emulate it
 			TaskUnreads.AddUnreads(taskNext,Security.CurUser.UserNum);  //We need the new copy to marked as unread for everyone for when it is "due"
-			//Here we do our best to follow the signal logic in OpenDental namespace.  This may be unneccessary because the copied task isn't due 
+			//Here we do our best to follow the signal logic in OpenPmsDental namespace.  This may be unneccessary because the copied task isn't due 
 			//for at least a day.  There will already be one signal for the old task being marked due, this is just for the copied task.
 			Signalods.SetInvalid(InvalidType.TaskPopup,KeyType.Task,newTaskNum);
 			return taskNext;

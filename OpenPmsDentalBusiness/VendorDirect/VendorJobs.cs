@@ -85,7 +85,7 @@ namespace OpenPmsDentalBusiness.VendorDirect {
 		private static readonly Lazy<string> _lazyCurrentOwner=new Lazy<string>(() =>
 			ODEnvironment.MachineName+"/"+System.Diagnostics.Process.GetCurrentProcess().Id+"/"+Guid.NewGuid().ToString("N"));
 
-		///<summary>This process's lease owner: "{computer}/{process ID}/{random ID}". Unique per process, so two OpenDental sessions on one terminal
+		///<summary>This process's lease owner: "{computer}/{process ID}/{random ID}". Unique per process, so two OpenPmsDental sessions on one terminal
 		///server never share a lease, and a later process that reuses a process ID doesn't inherit one.</summary>
 		public static string CurrentOwner {
 			get {
@@ -114,7 +114,7 @@ namespace OpenPmsDentalBusiness.VendorDirect {
 		}
 	}
 
-	///<summary>Runs the vendor background jobs that are due. The OpenDental job host calls RunDueJobs about once a minute on a background thread.
+	///<summary>Runs the vendor background jobs that are due. The OpenPmsDental job host calls RunDueJobs about once a minute on a background thread.
 	///Each job runs when its interval has passed, its program link is enabled, ShouldRun is true and this workstation takes its lease.</summary>
 	public sealed class VendorJobScheduler {
 		private readonly List<IVendorBackgroundJob> _listJobs;
@@ -135,7 +135,7 @@ namespace OpenPmsDentalBusiness.VendorDirect {
 			_actionLog=actionLog ?? (x => Logger.WriteLine(x,"VendorJobs"));
 		}
 
-		///<summary>Every job class in OpenDentBusiness and in the given assemblies (pass the OpenDental assembly).</summary>
+		///<summary>Every job class in OpenPmsDentalBusiness and in the given assemblies (pass the OpenPmsDental assembly).</summary>
 		public static List<IVendorBackgroundJob> DiscoverJobs(params Assembly[] arrayAssemblies) {
 			List<Assembly> listAssemblies=new List<Assembly> { typeof(IVendorBackgroundJob).Assembly };
 			listAssemblies.AddRange(arrayAssemblies.Where(x => x!=null));

@@ -634,7 +634,7 @@ Only used once in Imaging module.
 			Rectangle rectangleLineBottom=new Rectangle();
 			rectangleLineBottom.Height=1;
 			rectangleLineBottom.VerticalAlignment=VerticalAlignment.Bottom;
-			rectangleLineBottom.Fill=new SolidColorBrush(OpenDental.ColorOD.Gray_Wpf(210));
+			rectangleLineBottom.Fill=new SolidColorBrush(OpenPmsDental.ColorOD.Gray_Wpf(210));
 			System.Windows.Controls.Grid.SetColumnSpan(rectangleLineBottom,3);
 			grid.Children.Add(rectangleLineBottom);*/
 			border.Child=grid;

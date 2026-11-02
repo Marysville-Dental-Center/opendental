@@ -24,7 +24,7 @@ namespace OpenPmsDental.UI {
 	
 This is a template of typical grid code which can be quickly pasted into any form.
  
-using OpenDental.UI;
+using OpenPmsDental.UI;
 
 		private void FillGrid(){
 			gridMain.BeginUpdate();
@@ -4387,7 +4387,7 @@ using OpenDental.UI;
 
 		///<summary>Converts from 96dpi to current total scale.</summary>
 		private int ScaleI(float val96){
-			//This is here because Dpi.Scale is over in OD. Here, Scale is already used by Windows, so we call it ScaleI.  A refactor could use OpenDentBusiness.UI.DpiScale, but that's too much work, with no benefit.
+			//This is here because Dpi.Scale is over in OD. Here, Scale is already used by Windows, so we call it ScaleI.  A refactor could use OpenPmsDentalBusiness.UI.DpiScale, but that's too much work, with no benefit.
 			float scaleTotal=_scaleMS*_zoomLocal;//example 1.5*1.2
 			return (int)(Math.Round(val96*scaleTotal));
 		}

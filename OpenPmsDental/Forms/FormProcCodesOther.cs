@@ -1,5 +1,5 @@
 // Other Procedure Codes (Canada): Procedure Code Tools, Other Codes. Open Dental 25.4 (the window and the CDHA, DAC and RAMQ code systems) and
-// 26.1 (Advanced Options need a password). Backlog package M2-CAN. The rules are in OpenDentBusiness.ProcCodesOther.
+// 26.1 (Advanced Options need a password). Backlog package M2-CAN. The rules are in OpenPmsDentalBusiness.ProcCodesOther.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

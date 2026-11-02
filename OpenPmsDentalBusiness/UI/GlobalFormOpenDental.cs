@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace OpenPmsDentalBusiness {
-	///<summary>These global methods can be called from anywhere. FormOpenDental subscribes to the resulting events so that it can do things like refresh a module or select a patient. Even some classes in OpenDentBusiness take advantage of this, although those sections really don't belong in the business layer if they are telling FormOpenDental what to do. These will replace the public static methods in FormOpenDental that use the singleton pattern. The main reason for switching to this event pattern is that the WPF windows don't have access to FormOpenDental. Also see CodeBased.ODEvent which is being deprecated. Also, see DataValid.EventInvalid, which handles all Signalod events.</summary>
+	///<summary>These global methods can be called from anywhere. FormOpenDental subscribes to the resulting events so that it can do things like refresh a module or select a patient. Even some classes in OpenPmsDentalBusiness take advantage of this, although those sections really don't belong in the business layer if they are telling FormOpenDental what to do. These will replace the public static methods in FormOpenDental that use the singleton pattern. The main reason for switching to this event pattern is that the WPF windows don't have access to FormOpenDental. Also see CodeBased.ODEvent which is being deprecated. Also, see DataValid.EventInvalid, which handles all Signalod events.</summary>
 	public class GlobalFormOpenDental {
 		public delegate void GoToModuleDelegate(EnumModuleType moduleType, DateTime? dateSelected=null,List<long> listPinApptNums=null,
 			long selectedAptNum=0,long claimNum=0,long patNum=0,long docNum=0,bool doShowSearch=false);

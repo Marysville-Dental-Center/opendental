@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
-namespace OpenDental.Eclaims{
+namespace OpenPmsDental.Eclaims{
 	/// <summary>
 	/// Summary description for Rs232.
 	/// </summary>

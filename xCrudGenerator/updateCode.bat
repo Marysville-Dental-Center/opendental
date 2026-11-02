@@ -5,7 +5,7 @@ REM Update Code. If you have repositories in other directories, include them in 
 TortoiseProc.exe /command:update /path:"C:\development\OPEN DENTAL SUBVERSION*C:\development\Shared Projects Subversion" /closeonend:2
 
 echo Building Crud Generator project
-REM Build xCrudGenerator project (this will also build OpenDentBusiness)
+REM Build xCrudGenerator project (this will also build OpenPmsDentalBusiness)
 "C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\IDE\devenv.exe" /build Debug "C:\development\OPEN DENTAL SUBVERSION\head\xCrudGenerator\xCrudGenerator.csproj"
 
 echo Updating databases

@@ -718,7 +718,7 @@ namespace OpenPmsDentalBusiness{
 			return rawBase64;
 		}
 
-		///<summary>To be used when you need a sheet for a TreatPlan and you don't have a reference to OpenDental.</summary>
+		///<summary>To be used when you need a sheet for a TreatPlan and you don't have a reference to OpenPmsDental.</summary>
 		public static Sheet CreateSheetFromTreatmentPlan(TreatPlan treatPlan) {
 			Meth.NoCheckMiddleTierRole();
 			treatPlan.ListProcTPs=ProcTPs.RefreshForTP(treatPlan.TreatPlanNum);

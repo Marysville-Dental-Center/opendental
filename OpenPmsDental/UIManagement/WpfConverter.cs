@@ -258,7 +258,7 @@ namespace OpenPmsDental {";
 			else if(control is OpenPmsDental.UI.ODDateRangePicker){
 				return ConvertODDateRangePicker(control,indentLevel);
 			}
-			//else if(control is OpenDental.UI.ODPrintPreviewControl){
+			//else if(control is OpenPmsDental.UI.ODPrintPreviewControl){
 			//	return ConvertODPrintPreviewControl(control,indentLevel);
 			//}
 			else if(control.GetType()==typeof(OpenPmsDental.ODtextBox)){
@@ -1009,13 +1009,13 @@ if(dateFrom.Year > 1880 && dateTo.Year>1880) {//if both dates are valid
 		}
 
 		//private string ConvertODPrintPreviewControl(System.Windows.Forms.Control control,int indentLevel){
-		//	OpenDental.UI.ODPrintPreviewControl oDPrintPreviewControl=(OpenDental.UI.ODPrintPreviewControl)control;
+		//	OpenPmsDental.UI.ODPrintPreviewControl oDPrintPreviewControl=(OpenPmsDental.UI.ODPrintPreviewControl)control;
 		//	string wName="WindowsFormsHost";
 		//	string s=GetIndents(indentLevel)+"<"+wName+" ";
 		//	s+=SetBoundsAndAnchoring(control);
 		//	//this is not one of our custom controls, so we have to think about alignments.
 		//	//But the only two uses seem to be either fill or anchor all, which we have already handled.
-		//	_issues+="For "+control.Name+", verify alignments in XAML and add the following line to the xaml namespace area: xmlns:odui=\"clr-namespace:OpenDental.UI\"\r\n";
+		//	_issues+="For "+control.Name+", verify alignments in XAML and add the following line to the xaml namespace area: xmlns:odui=\"clr-namespace:OpenPmsDental.UI\"\r\n";
 		//	s+=">\r\n";
 		//	s+=GetIndents(indentLevel+1)+"<odui:ODPrintPreviewControl ";
 		//	s+="x:Name=\""+control.Name+"\" ";

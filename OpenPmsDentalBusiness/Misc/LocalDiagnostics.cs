@@ -109,13 +109,13 @@ namespace OpenPmsDentalBusiness {
 			diagnosticsText.AddLine("Product",() => CodeBase.VendorDirect.ProductIdentity.ProductName);
 			diagnosticsText.AddLine("Release version",() => ForkVersions.GetReleaseVersion());
 			diagnosticsText.AddLine("Program version (preference)",() => PrefC.GetString(PrefName.ProgramVersion));
-			diagnosticsText.AddLine("OpenDentBusiness version",() => MiscData.GetAssemblyVersion());
+			diagnosticsText.AddLine("OpenPmsDentalBusiness version",() => MiscData.GetAssemblyVersion());
 			diagnosticsText.AddLine("Program path",() => GetProgramPath());
 			diagnosticsText.AddLine(".NET runtime",() => "CLR "+Environment.Version);
 			diagnosticsText.AddLine(".NET Framework release",() => GetNetFrameworkRelease());
 			diagnosticsText.AddLine("Process",() => Environment.Is64BitProcess ? "64-bit" : "32-bit");
 			diagnosticsText.AddLine("Middle tier role",() => RemotingClient.MiddleTierRole.ToString());
-			diagnosticsText.AddLine("Middle tier OpenDentBusiness version",() => MiscData.GetAssemblyVersionForMiddleTier());
+			diagnosticsText.AddLine("Middle tier OpenPmsDentalBusiness version",() => MiscData.GetAssemblyVersionForMiddleTier());
 			diagnosticsText.AddLine("Culture",() => CultureInfo.CurrentCulture.Name);
 		}
 

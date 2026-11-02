@@ -1,5 +1,5 @@
 // V-BRIDGE1: the Overjet program link button (Open Dental 25.1). Opens the vendor's web app in the default browser; the rules are in
-// OpenDentBusiness/VendorDirect/ProgramLinks/OverjetLink.cs.
+// OpenPmsDentalBusiness/VendorDirect/ProgramLinks/OverjetLink.cs.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using CodeBase;

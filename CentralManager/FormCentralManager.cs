@@ -59,7 +59,7 @@ namespace CentralManager {
 			//CEMT does not support report or read only servers.
 			//Poke something in ConnectionStore.cs to initialize internal static constructor.
 			ConnectionNames connectionName=ConnectionStore.CurrentConnection;
-			//Undo the funcs that OpenDentBusiness.ConnectionStore just hooked up.
+			//Undo the funcs that OpenPmsDentalBusiness.ConnectionStore just hooked up.
 			ConnectionStoreBase.GetDentalOfficeReportServerFromPrefC=() => { return null; };
 			ConnectionStoreBase.GetDentalOfficeReadOnlyServerFromPrefC=() => { return null; };
 		}

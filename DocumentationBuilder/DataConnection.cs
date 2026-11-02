@@ -55,7 +55,7 @@ namespace DocumentationBuilder{
 		///<summary></summary>
 		private string GetConnectionString(){
 			XmlDocument document=new XmlDocument();
-			string configFile=ODFileUtils.CombinePaths(new string[] {"..","..","..","OpenDental","bin","Release","FreeDentalConfig.xml"} );
+			string configFile=ODFileUtils.CombinePaths(new string[] {"..","..","..","OpenPmsDental","bin","Release","FreeDentalConfig.xml"} );
 			if(!File.Exists(configFile)){
 				MessageBox.Show(configFile+" does not exist.");
 				Application.Exit();

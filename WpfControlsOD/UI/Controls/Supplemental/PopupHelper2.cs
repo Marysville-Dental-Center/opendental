@@ -10,7 +10,7 @@ using CodeBase;
 using OpenPmsDentalBusiness;
 
 namespace WpfControls.UI {
-	//=====WARNING! THERE IS A DUPLICATE OF THIS FILE OVER IN OpenDentBusiness.UI.PopupHelper.
+	//=====WARNING! THERE IS A DUPLICATE OF THIS FILE OVER IN OpenPmsDentalBusiness.UI.PopupHelper.
 	//=====UNTIL THAT FILE IS COMPLETELY DEPRECATED, BOTH FILES MUST BE KEPT IN SYNC.
 	//=====ANY CHANGES TO ONE MUST ALSO BE MADE IN THE OTHER.
 	///<summary>A helper class used add reference links to context menus</summary>

@@ -1,5 +1,5 @@
 // V-BRIDGE1: the DTX Studio and DTX Studio Acquire program link buttons (Open Dental 25.2). Start DTXsync.exe with the selected patient; the
-// rules are in OpenDentBusiness/VendorDirect/ProgramLinks/DtxStudioLink.cs.
+// rules are in OpenPmsDentalBusiness/VendorDirect/ProgramLinks/DtxStudioLink.cs.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using CodeBase;

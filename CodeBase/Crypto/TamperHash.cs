@@ -4,7 +4,7 @@
 namespace CodeBase {
 	///<summary>Keyed hashes stored in the SecurityHash tamper-detection columns (appointment, claim, claimproc, patient, payplan, paysplit):
 	///HMAC-SHA256, "osh1$" prefix, fixed public key. Tamper detection only; anyone with this source can compute a valid hash.
-	///See CodeBase/Crypto/README.md. OpenDentBusiness.SecurityHash decides which rows get hashed and verified.</summary>
+	///See CodeBase/Crypto/README.md. OpenPmsDentalBusiness.SecurityHash decides which rows get hashed and verified.</summary>
 	public static class TamperHash {
 		private static readonly object _lock=new object();
 		private static SaltedHash _saltedHash;

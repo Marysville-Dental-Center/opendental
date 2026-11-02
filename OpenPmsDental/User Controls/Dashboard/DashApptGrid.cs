@@ -11,7 +11,7 @@ using OpenPmsDentalBusiness;
 
 namespace OpenPmsDental {
 	public partial class DashApptGrid:UserControl,IDashWidgetField {
-		//if the name of this changes, it also will need to be changed manually in OpenDentBusiness.SheetUtil.GetGridColumnsAvailable:353
+		//if the name of this changes, it also will need to be changed manually in OpenPmsDentalBusiness.SheetUtil.GetGridColumnsAvailable:353
 		public const string SheetFieldName="ApptsGrid";
 		public LayoutManagerForms LayoutManager=new LayoutManagerForms();
 		public Patient PatientCur;

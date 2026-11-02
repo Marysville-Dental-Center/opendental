@@ -18,7 +18,7 @@ namespace CodeBase {
 		public static void Initialize() {
 #if !DOT_NET_CORE && !DOT_NET_STANDARD
 			//Causes all Application threads to use the same short date format.  Namely, forces computers with a two digit year format (e.g. M/d/yy) to use
-			//a four digit format inside OpenDental (bug manifested as DateTime.MinValue being pulled into OD as 01/01/2001), as well as two digit month 
+			//a four digit format inside OpenPmsDental (bug manifested as DateTime.MinValue being pulled into OD as 01/01/2001), as well as two digit month 
 			//and year formatting, which is essential for threads that use date strings in validation.
 			DateTimeOD.NormalizeApplicationShortDateFormat();
 #endif

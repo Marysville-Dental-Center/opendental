@@ -6,7 +6,7 @@ using OpenPmsDentalBusiness;
 
 namespace OpenPmsDental {
 	///<summary>Open Dental 25.4: eForm fields linked to the office's patient fields are reviewed and imported here, in their own "Patient Fields"
-	///section. The logic is in OpenDentBusiness.EFormPatFields; this file only builds the rows and applies them.</summary>
+	///section. The logic is in OpenPmsDentalBusiness.EFormPatFields; this file only builds the rows and applies them.</summary>
 	public partial class FormSheetImport {
 		///<summary>Row FieldName prefix for patient field rows. It never matches a built-in field name.</summary>
 		private const string PATFIELD_ROW_PREFIX="PatField:";

@@ -19,7 +19,7 @@ namespace OpenPmsDental.UIManagement {
 	///<summary></summary>
 	public class MenuHelper{
 		#region Methods - public
-		public static FrameworkElement CreateMenu(OpenDental.UI.MenuOD menu){
+		public static FrameworkElement CreateMenu(OpenPmsDental.UI.MenuOD menu){
 			Menu menuNew=new Menu();
 			menuNew.Background=Brushes.White;//just for the main bar. Other backgrounds are set in style.
 			menuNew.BorderBrush=Brushes.DarkGray;

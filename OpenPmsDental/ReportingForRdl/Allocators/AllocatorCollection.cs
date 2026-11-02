@@ -21,7 +21,7 @@ namespace OpenPmsDental.Reporting.Allocators {
 		/// <summary>
 		/// jsparks-NOT GETTING CALLED.
 		/// The only place that it was being used was in ProcedureL.SetCompleteInAppt().  But once that method was moved into the business layer,
-		/// it was no longer possible to make a call into OpenDental UI layer.
+		/// it was no longer possible to make a call into OpenPmsDental UI layer.
 		/// So for this to work, it will all need to be moved into the business layer.
 		/// Calls all of the allocators created for this patient.
 		/// Determines the guarantor form this patient first

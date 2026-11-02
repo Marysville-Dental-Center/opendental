@@ -18,7 +18,7 @@ namespace OpenPmsDental.UIManagement {
 	/*
 	///<summary></summary>
 	public class ListBoxHelper{
-		public static Wui.ListBox CreateListBox(OpenDental.UI.ListBox listBox){
+		public static Wui.ListBox CreateListBox(OpenPmsDental.UI.ListBox listBox){
 			Wui.ListBox listBoxNew=new Wui.ListBox();
 			listBoxNew.Width=listBox.Width;
 			listBoxNew.Height=listBox.Height;
@@ -42,7 +42,7 @@ namespace OpenPmsDental.UIManagement {
 		}
 
 
-		//public static void Item_Add(ListBox wListBox,OpenDental.UI.ListBox oListBox,string txt){
+		//public static void Item_Add(ListBox wListBox,OpenPmsDental.UI.ListBox oListBox,string txt){
 		//	ListBoxItem listBoxItem=new ListBoxItem();
 		//	listBoxItem.Content=txt;
 		//	float heightFont=oListBox.Font.GetHeight();

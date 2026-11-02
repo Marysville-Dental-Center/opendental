@@ -14,7 +14,7 @@ Typically dock it to the top of a form in the designer.
 Unlike the MS menu, we don't add menu items in the designer.
 Boilerplate for adding menu items:
 
-using OpenDental.UI;
+using OpenPmsDental.UI;
 
 		private void LayoutToolBar() {
 			toolBarMain.Buttons.Clear();
@@ -24,7 +24,7 @@ using OpenDental.UI;
 			toolBarMain.Buttons.Add(new ODToolBarButton(Lan.g(this,"Info"),bitmap,"","Info"));
 		}
 
-		private void toolBarMain_ButtonClick(object sender,OpenDental.UI.ODToolBarButtonClickEventArgs e) {
+		private void toolBarMain_ButtonClick(object sender,OpenPmsDental.UI.ODToolBarButtonClickEventArgs e) {
 			switch(e.Button.Tag.ToString()) {
 				case "Add":
 					Add_Click();//or, put short block of code here

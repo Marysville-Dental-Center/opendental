@@ -20,7 +20,7 @@ namespace OpenPmsDental.UIManagement {
 	/*
 	///<summary></summary>
 	public class DataGridHelper{
-		public static FrameworkElement CreateDataGrid(OpenDental.UI.GridOD grid){
+		public static FrameworkElement CreateDataGrid(OpenPmsDental.UI.GridOD grid){
 			Wui.DataGrid dataGrid=new Wui.DataGrid();
 			dataGrid.CanUserSortColumns=grid.AllowSortingByColumn;//not sure why no triangle
 			switch(grid.SelectionMode){
@@ -85,13 +85,13 @@ namespace OpenPmsDental.UIManagement {
 				for(int c = 0;c<ListGridRows[r].Cells.Count;c++) {
 					UI.GridCell uIGridCell = new UI.GridCell();
 					if(ListGridRows[r].Cells[c].Bold is null){
-						uIGridCell.Bold=OpenDentBusiness.YN.Unknown;
+						uIGridCell.Bold=OpenPmsDentalBusiness.YN.Unknown;
 					}
 					else if(ListGridRows[r].Cells[c].Bold.Value){
-						uIGridCell.Bold=OpenDentBusiness.YN.Yes;
+						uIGridCell.Bold=OpenPmsDentalBusiness.YN.Yes;
 					}
 					else{
-						uIGridCell.Bold=OpenDentBusiness.YN.No;
+						uIGridCell.Bold=OpenPmsDentalBusiness.YN.No;
 					}
 					uIGridCell.ColorBackG=System.Drawing.Color.Empty;
 					if(ListGridRows[r].Cells[c].ColorBackG!=Colors.Transparent){
@@ -120,10 +120,10 @@ namespace OpenPmsDental.UIManagement {
 				Wui.GridRow wGridRow=new Wui.GridRow();
 				for(int c=0;c<listUIGridRows[r].Cells.Count;c++){
 					Wui.GridCell wGridCell=new Wui.GridCell();
-					if(listUIGridRows[r].Cells[c].Bold==OpenDentBusiness.YN.Unknown){
+					if(listUIGridRows[r].Cells[c].Bold==OpenPmsDentalBusiness.YN.Unknown){
 						wGridCell.Bold=null;
 					}
-					else if(listUIGridRows[r].Cells[c].Bold==OpenDentBusiness.YN.Yes){
+					else if(listUIGridRows[r].Cells[c].Bold==OpenPmsDentalBusiness.YN.Yes){
 						wGridCell.Bold=true;
 					}
 					else{

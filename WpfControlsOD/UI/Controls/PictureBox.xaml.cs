@@ -22,7 +22,7 @@ Jordan is the only one allowed to edit this file.
 How to use the PictureBox control:
 -There are only 2 ways to add images:
 	1. Set the BitmapFileName property as follows:
-		a. Do some research to find the file you need. It's probably in OpenDental/Resources, or Unversioned/Icons is also an option.
+		a. Do some research to find the file you need. It's probably in OpenPmsDental/Resources, or Unversioned/Icons is also an option.
 		b. You'll be adding the bitmap to WpfControlsOD/Resources.
 		c. Right click WpfControlsOD, Properties, Resources.
 		d. On the Add Resource dropdown, Add Existing File. It will make a copy, which is what you want.

@@ -254,7 +254,7 @@ namespace OpenPmsDental.Reporting.Allocators.MyAllocator1
 
 		#region  Commented out code used to update Danstables
 		///// <summary>
-		///// How can items not be in OpenDental?  Good Question:
+		///// How can items not be in OpenPmsDental?  Good Question:
 		///// 
 		///// What happens is that in OD the Guarantor relationship will change so that 
 		///// the person becomes a guarantor of another person.  (Say a child was on their own
@@ -267,7 +267,7 @@ namespace OpenPmsDental.Reporting.Allocators.MyAllocator1
 		/////         Patient1  : 10001     Patient2  : 20001
 		/////         Guarantor1: 20001     Guarantor2: 20001
 		///// 
-		///// OpenDental:             DansLedger:
+		///// OpenPmsDental:             DansLedger:
 		/////             100             99
 		/////             101             100
 		/////             102             101
@@ -309,7 +309,7 @@ namespace OpenPmsDental.Reporting.Allocators.MyAllocator1
 		///// 
 		///// Example:
 		///// 
-		///// OpenDental:             DansLedger:
+		///// OpenPmsDental:             DansLedger:
 		/////             100             99
 		/////             101             100
 		/////             102             101

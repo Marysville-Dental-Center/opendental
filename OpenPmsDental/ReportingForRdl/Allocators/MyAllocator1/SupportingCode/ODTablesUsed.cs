@@ -65,7 +65,7 @@ namespace OpenPmsDental.Reporting.Allocators.MyAllocator1
 		#endregion
 		#region Constructors
 		/// <summary>
-		/// <param name="name">the OpenDental Table name that is used</param>
+		/// <param name="name">the OpenPmsDental Table name that is used</param>
 		/// <param name="columns">the array of column names that are used</param>
 		/// <param name="types">the types of the columns listed in columns</param>
 		public ODTablesUsed(string name, string [] columns, Type [] types1)

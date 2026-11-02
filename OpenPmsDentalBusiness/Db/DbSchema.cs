@@ -6,7 +6,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 
-namespace OpenDentBusiness {
+namespace OpenPmsDentalBusiness {
 	public class DbSchema {
 		
 		/// <summary></summary>

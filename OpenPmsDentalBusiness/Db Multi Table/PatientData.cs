@@ -10,7 +10,7 @@ namespace OpenPmsDentalBusiness {//Jordan is the only one allowed to edit this f
 		//There is one instance of this object at the level of FormOpenDental. References are passed to each module. This object is never reinitialized.
 		//Data is grabbed as Lists or single rows.
 		//We might eventually deprecate the strategy of grabbing DataTables, but the transition would take a long time.
-		//In that case, we would instead process lists into datatables at the client level using methods in OpenDentBusiness.
+		//In that case, we would instead process lists into datatables at the client level using methods in OpenPmsDentalBusiness.
 		//This would give us access to formalized data from lists rather than just human-readable data in tables for grids.
 		//In some cases, this would be tricky because the Lists would need to include rows from other patients.
 		//Example is when a PaySplit for a child shows in the account for the guarantor.

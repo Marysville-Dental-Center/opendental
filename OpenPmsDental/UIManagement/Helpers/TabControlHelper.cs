@@ -18,7 +18,7 @@ namespace OpenPmsDental.UIManagement {
 	/*
 	///<summary></summary>
 	public class TabControlHelper{
-		public static TabControl CreateTabControl(OpenDental.UI.TabControl tabControl){
+		public static TabControl CreateTabControl(OpenPmsDental.UI.TabControl tabControl){
 			//Content is simple grid with one cell
 			TabControl tabControlNew=new TabControl();
 			//See notes over in listBoxHelper for how this works:
@@ -31,7 +31,7 @@ namespace OpenPmsDental.UIManagement {
 		}
 
 
-		public static TabItem CreateTabPage(OpenDental.UI.TabPage tabPage,FrameworkElement frameworkElementTabControl){
+		public static TabItem CreateTabPage(OpenPmsDental.UI.TabPage tabPage,FrameworkElement frameworkElementTabControl){
 			TabControl tabControl=(TabControl)frameworkElementTabControl;
 			TabItem tabItem=new TabItem();
 			tabItem.Header=tabPage.Text;

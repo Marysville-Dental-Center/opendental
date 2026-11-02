@@ -207,16 +207,16 @@ namespace OpenPmsDentalBusiness {
 		///<summary>Helper method for xODApi.ProcNotes POST to use digital signature stamp logic.</summary>
 		public static ProcNote ProcNoteSignatureForApi(ProcNote odbProcNote,string apiSignatureString) {
 			Meth.NoCheckMiddleTierRole();
-			//OpenDentBusiness.Procedures.GetSignatureKeyData()
+			//OpenPmsDentalBusiness.Procedures.GetSignatureKeyData()
 			string keyData=odbProcNote.Note+odbProcNote.UserNum.ToString();
 			keyData=keyData.Replace("\r\n","\n");//We need all newlines to be the same, a mix of \r\n and \n can invalidate the procedure signature.
-			//OpenDentBusiness.UI.SignatureBox.SetKeyString()
+			//OpenPmsDentalBusiness.UI.SignatureBox.SetKeyString()
 			UTF8Encoding utf8Encoding=new UTF8Encoding();
-			//OpenDental.UI.SignatureBoxWrapper.GetSignature()
+			//OpenPmsDental.UI.SignatureBoxWrapper.GetSignature()
 			byte[] hashNew=utf8Encoding.GetBytes("0000000000000000"); //Set it to "0000000000000000" (16 zeros) to indicate no key string to be used for encryption.
-			//OpenDental.UI.SignatureBox.SetAutoKeyData()
+			//OpenPmsDental.UI.SignatureBox.SetAutoKeyData()
 			hashNew=ODCrypt.MD5.Hash(Encoding.UTF8.GetBytes(keyData));
-			//OpenDental.UI.SignatureBox.GetSigString()
+			//OpenPmsDental.UI.SignatureBox.GetSigString()
 			odbProcNote.Signature=UI.SigBox.EncryptSigString(hashNew,apiSignatureString);
 			return odbProcNote;
 		}

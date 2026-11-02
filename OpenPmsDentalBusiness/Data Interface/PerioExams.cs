@@ -162,7 +162,7 @@ namespace OpenPmsDentalBusiness{
 		}
 
 		#region ODXam Methods
-		///<summary>Do not use this method in OpenDental.exe. This method is to be used in ODXam only. Creates a PDF of the Perio Chart to 
+		///<summary>Do not use this method in OpenPmsDental.exe. This method is to be used in ODXam only. Creates a PDF of the Perio Chart to 
 		///be used in eClipboard.</summary>
 		public static PdfDocument CreatePerioPDF(Patient pat,PerioExam perioExam,List<PerioMeasure> listPerioMeasures=null) {
 			Rectangle marginBounds=new Rectangle();

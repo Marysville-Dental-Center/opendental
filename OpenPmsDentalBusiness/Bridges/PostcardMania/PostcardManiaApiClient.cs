@@ -16,7 +16,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace OpenPmsDentalBusiness.PostcardMania {
-	//OpenDentBusiness.Task (the task table) would hide System.Threading.Tasks.Task inside this namespace.
+	//OpenPmsDentalBusiness.Task (the task table) would hide System.Threading.Tasks.Task inside this namespace.
 	using Task=System.Threading.Tasks.Task;
 
 	///<summary>The DirectMail API v3 over VendorHttp (HTTPS only, never an Open Dental host, redacted logging).

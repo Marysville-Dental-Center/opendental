@@ -18,7 +18,7 @@ namespace OpenPmsDental.UIManagement {
 	/*
 	///<summary></summary>
 	public class ComboBoxHelper{
-		public static ComboBox CreateComboBox(OpenDental.UI.ComboBox comboBox){
+		public static ComboBox CreateComboBox(OpenPmsDental.UI.ComboBox comboBox){
 			ComboBox comboBoxNew=new ComboBox();
 			comboBoxNew.Width=comboBox.Width;
 			comboBoxNew.Height=comboBox.Height;
@@ -37,7 +37,7 @@ namespace OpenPmsDental.UIManagement {
 			return comboBoxNew;
 		}
 
-		public static void Item_Add(ComboBox wComboBox,OpenDental.UI.ComboBox oComboBox,string txt){
+		public static void Item_Add(ComboBox wComboBox,OpenPmsDental.UI.ComboBox oComboBox,string txt){
 			ListBoxItem listBoxItem=new ListBoxItem();
 			listBoxItem.Content=txt;
 			float heightFont=oComboBox.Font.GetHeight();

@@ -13,8 +13,8 @@ namespace OpenPmsDentalBusiness {
 	public class ConnectionStore {
 
 		static ConnectionStore() {
-			//Because ConnectionStoreBase does not have access to classes in OpenDentBusiness, we need to "override" a few methods to inject logic from 
-			//OpenDentBusiness.
+			//Because ConnectionStoreBase does not have access to classes in OpenPmsDentalBusiness, we need to "override" a few methods to inject logic from 
+			//OpenPmsDentalBusiness.
 			ConnectionStoreBase.SetRemotingT=(string serverURI,bool isReportServer,bool isReadOnlyServer) => {
 				RemotingClient.SetRemotingT(serverURI,MiddleTierRole.ClientMT,isReportServer,isReadOnlyServer);
 			};

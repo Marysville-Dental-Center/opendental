@@ -7,7 +7,7 @@ using System.Xml.Serialization;
 using CodeBase;
 
 namespace DataConnectionBase {
-	///<summary>Used to retrieve connections from a configuration file. If you have access to OpenDentBusiness, you should call methods in OpenDentBusiness.ConeectionStore because that class contains additional logic relevant to OpenDentBusiness.</summary>
+	///<summary>Used to retrieve connections from a configuration file. If you have access to OpenPmsDentalBusiness, you should call methods in OpenPmsDentalBusiness.ConeectionStore because that class contains additional logic relevant to OpenPmsDentalBusiness.</summary>
 	public class ConnectionStoreBase {
 		public delegate void SetServerURIDelegate(string serverURI);
 		public delegate void SetRemotingTDelegate(string serverURI,bool isReportServer,bool isReadOnlyServer);

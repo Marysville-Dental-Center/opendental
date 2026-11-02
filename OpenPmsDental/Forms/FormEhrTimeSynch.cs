@@ -14,7 +14,7 @@ namespace OpenPmsDental {
 		private DateTime _timeNist;
 		private DateTime _timeServer;
 		private DateTime _timeLocal;
-		///<summary>Set true when launched while OpenDental starts.  Will automatically check times and close form silently if server time is in synch with local time.</summary>
+		///<summary>Set true when launched while OpenPmsDental starts.  Will automatically check times and close form silently if server time is in synch with local time.</summary>
 		public bool IsAutoLaunch;
 
 		public FormEhrTimeSynch() {

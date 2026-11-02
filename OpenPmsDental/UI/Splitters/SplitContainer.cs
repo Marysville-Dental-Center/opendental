@@ -14,7 +14,7 @@ using System.Windows.Forms;
 using System.Windows.Forms.Design;
 
 namespace OpenPmsDental.UI {
-	///<summary>This is meant to replace all existing MS Splitters and SplitContainers. The best way to use it is to copy an existing blank SplitContainer from OpenDental/Forms/BasicTemplate.cs because it already has both splitter panels.</summary>
+	///<summary>This is meant to replace all existing MS Splitters and SplitContainers. The best way to use it is to copy an existing blank SplitContainer from OpenPmsDental/Forms/BasicTemplate.cs because it already has both splitter panels.</summary>
 	//Jordan is the only one allowed to edit this file.
 	[Designer(typeof(Design.SplitContainerDesigner))]//,typeof(IRootDesigner))]
 	public class SplitContainer:UserControl {
@@ -327,7 +327,7 @@ namespace OpenPmsDental.UI {
 				return;
 			}
 			string str="You must set Panel1 and/or Panel2 properties.\r\n"
-				+"The best way to do this is to copy an existing blank SplitContainer from OpenDental/Forms/BasicTemplate.cs because it already has both splitter panels.";
+				+"The best way to do this is to copy an existing blank SplitContainer from OpenPmsDental/Forms/BasicTemplate.cs because it already has both splitter panels.";
 			StringFormat stringFormat=new StringFormat();
 			stringFormat.Alignment = StringAlignment.Center;
 			stringFormat.LineAlignment = StringAlignment.Center;

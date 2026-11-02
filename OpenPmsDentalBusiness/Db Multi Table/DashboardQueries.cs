@@ -593,7 +593,7 @@ namespace OpenPmsDentalBusiness {
 			return retVal;
 		}
 
-		#region OpenDentalGraph Queries
+		#region OpenPmsDentalGraph Queries
 		public static DataTable GetTable(string command,bool doRunOnReportServer=true) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetTable(MethodBase.GetCurrentMethod(),command,doRunOnReportServer);

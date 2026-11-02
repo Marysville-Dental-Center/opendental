@@ -1,6 +1,6 @@
 // V-PEARL2 (Open Dental 26.1): the Pearl bridge's "Log Level" program property and the local troubleshooting log it controls.
 // The file sits in the VendorDirect folder so the business project compiles it without a csproj edit; it belongs to the Pearl bridge and uses the
-// bridge's namespace, OpenDentBusiness.Pearl, like PearlApiClient.
+// bridge's namespace, OpenPmsDentalBusiness.Pearl, like PearlApiClient.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

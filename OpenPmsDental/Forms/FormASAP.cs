@@ -517,7 +517,7 @@ namespace OpenPmsDental {
 		///<summary>If multiple patients are selected in the list, it will use the last patient to show the chart for.</summary>
 		private void SeeChart_Click(long patnum) {
 			Patient patient=Patients.GetPat(patnum); //If multiple selected, just use the last one.
-			GlobalFormOpenDental.PatientSelected(patient,isRefreshCurModule: false); //Selects the patient in OpenDental.
+			GlobalFormOpenDental.PatientSelected(patient,isRefreshCurModule: false); //Selects the patient in OpenPmsDental.
 			GlobalFormOpenDental.GoToModule(EnumModuleType.Chart,patNum:patient.PatNum);
 		}
 

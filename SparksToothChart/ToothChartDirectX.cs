@@ -1313,7 +1313,7 @@ namespace SparksToothChart {
 					Render(true);//Since were are only adding lines to the scene, we can draw the new lines over the old scene for efficiency.
 				}
 				catch(Exception ex) {
-					ex.ToString();//We cannot reference OpenDentBusiness, so we cannot use our ex.DoNothing() extention.
+					ex.ToString();//We cannot reference OpenPmsDentalBusiness, so we cannot use our ex.DoNothing() extention.
 					ReinitailizeIfNeeded();//Happens when the chart loads for the first time after the program is launched.
 				}
 			} 

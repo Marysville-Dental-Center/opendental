@@ -23,7 +23,7 @@ namespace OpenPmsDentalBusiness {
 		void RunPending(Action<string> actionLog);
 	}
 
-	///<summary>Finds the fork migration runner. The runner registers itself by implementing IForkMigrationRunner in OpenDentBusiness (any public
+	///<summary>Finds the fork migration runner. The runner registers itself by implementing IForkMigrationRunner in OpenPmsDentalBusiness (any public
 	///non-abstract class with a parameterless constructor); tests and tools can also set Runner. Until a runner exists the baseline runner is used:
 	///no steps, latest level SCHEMA_LEVEL_BASELINE.</summary>
 	public class ForkMigrationHandOff {

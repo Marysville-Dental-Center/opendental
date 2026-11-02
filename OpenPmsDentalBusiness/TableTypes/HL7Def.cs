@@ -46,7 +46,7 @@ namespace OpenPmsDentalBusiness{
 //TODO: This column may need to be changed to the TextIsClobNote attribute to remove more than 50 consecutive new line characters.
 		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
 		public string Note;
-		///<summary>The machine name of the computer where the OpenDentHL7 service for this def is running.</summary>
+		///<summary>The machine name of the computer where the OpenPmsDentalHL7 service for this def is running.</summary>
 		public string HL7Server;
 		///<summary>The name of the HL7 service for this def.  Must begin with OpenDent...</summary>
 		public string HL7ServiceName;

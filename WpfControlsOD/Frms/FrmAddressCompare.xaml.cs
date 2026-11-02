@@ -3,7 +3,7 @@ using CodeBase;
 using System;
 
 namespace OpenPmsDental {
-	///<summary> Shows an OpenDentBusiness.Address, and a USPSAddressValidationResponse, and allows the user to select between the two, or cancelling. </summary>
+	///<summary> Shows an OpenPmsDentalBusiness.Address, and a USPSAddressValidationResponse, and allows the user to select between the two, or cancelling. </summary>
 	public partial class FrmAddressCompare:FrmODBase {
 		///<summary> Address entered by the user </summary>
 		public OpenPmsDentalBusiness.Address AddressFromUserInput;

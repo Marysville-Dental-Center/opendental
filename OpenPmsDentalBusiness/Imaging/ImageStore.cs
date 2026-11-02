@@ -724,8 +724,8 @@ namespace OpenPmsDentalBusiness {
 			doc=Documents.GetByNum(doc.DocNum);
 			try {
 				if(CloudStorage.IsCloudStorage) {
-					//byte[] bytes=OpenDentBusiness.FileIO.FileAtoZ.ReadAllBytes(pathSourceFile);
-					//OpenDentBusiness.FileIO.FileAtoZ.WriteAllBytes(CloudStorage.PathTidy(ODFileUtils.CombinePaths(patFolder,doc.FileName)),bytes);
+					//byte[] bytes=OpenPmsDentalBusiness.FileIO.FileAtoZ.ReadAllBytes(pathSourceFile);
+					//OpenPmsDentalBusiness.FileIO.FileAtoZ.WriteAllBytes(CloudStorage.PathTidy(ODFileUtils.CombinePaths(patFolder,doc.FileName)),bytes);
 					CloudStorage.Copy(pathSourceFile,CloudStorage.PathTidy(ODFileUtils.CombinePaths(patFolder,doc.FileName)));
 					ImageStore.LogDocument(Lans.g("ContrImages","Document Created")+": ",EnumPermType.ImageEdit,doc,DateTime.MinValue); //new doc, min date.
 				}

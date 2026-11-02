@@ -1,7 +1,7 @@
 // Package B-APPT (docs/specs/port-backlog.md): drawing for the two time bar preferences of Preferences, Appts, Appearance.
 // - v25_2-appts-provider-timebars-op-background: provider time on the operatory background (hooked from DrawMainBackground).
 // - v25_3-appts-timebar-secondary-color: secondary provider color in an empty appointment time bar (hooked from DrawOneAppt).
-// The rules are in OpenDentBusiness/Misc/ApptModule/ApptTimeBars.cs.
+// The rules are in OpenPmsDentalBusiness/Misc/ApptModule/ApptTimeBars.cs.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

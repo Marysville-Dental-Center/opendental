@@ -10,7 +10,7 @@ using DataConnectionBase;
 
 namespace OpenPmsDentalBusiness {
 	///<summary>The fork keeps two meanings of "version" apart. The release (product) version is our own scheme ("0.0", the
-	///AssemblyInformationalVersion of OpenDental.exe) and is never compared with Open Dental numbers. The compatibility version is the Open Dental
+	///AssemblyInformationalVersion of OpenPmsDental.exe) and is never compared with Open Dental numbers. The compatibility version is the Open Dental
 	///line our legacy conversion chain ends at (24.3.63.0). Database state lives in four fork-owned preference rows, read and written here with plain
 	///SQL so they need no PrefName entry and work before the preference cache is filled:
 	///ForkSchemaLevel (last applied fork migration step), ForkProgramVersion (release and build last published from the update server),
@@ -45,7 +45,7 @@ namespace OpenPmsDentalBusiness {
 			return version!=null && ListAdoptableVersions.Contains(version);
 		}
 
-		///<summary>The release version of the running program: the AssemblyInformationalVersion of the entry assembly (OpenDental.exe), e.g. "0.0".
+		///<summary>The release version of the running program: the AssemblyInformationalVersion of the entry assembly (OpenPmsDental.exe), e.g. "0.0".
 		///Falls back to the given assembly, then to "0.0".</summary>
 		public static string GetReleaseVersion(Assembly assembly=null) {
 			assembly=assembly??Assembly.GetEntryAssembly();

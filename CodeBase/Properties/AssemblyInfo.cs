@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("CodeBase")]
-[assembly: AssemblyDescription("This is the core of all other projects the program. Code in this project should only inherit or use functionality external to the OpenDental program, including C# native code, and external libraires/dlls/projects which are not managed by OpenDental staff, such as Tao.")]
+[assembly: AssemblyDescription("This is the core of all other projects the program. Code in this project should only inherit or use functionality external to the OpenPmsDental program, including C# native code, and external libraires/dlls/projects which are not managed by the program's developers, such as Tao.")]
 [assembly: AssemblyConfiguration("")]
 //AssemblyProduct, AssemblyCompany, AssemblyCopyright and AssemblyInformationalVersion come from SharedAssemblyInfo.cs in the repository root.
 [assembly: AssemblyTrademark("")]

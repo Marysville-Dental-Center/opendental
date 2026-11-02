@@ -7,7 +7,7 @@ using System.Windows.Forms;
 using OpenPmsDentalBusiness;
 
 /*
-namespace OpenDental{
+namespace OpenPmsDental{
 	public class Modules {
 		///<summary>This is just the first version of this function.  It only gets selected parts of the Account refresh.</summary>
 		public static DataSet GetAccount(int patNum){

@@ -20,7 +20,7 @@ namespace OpenPmsDentalBusiness{
 		public string FontName="";
 		///<summary>Font size for all text on the form.</summary>
 		public float FontSize;
-		///<summary>Deprecated as of version 17.2. Internal claimforms have been moved over to XML files in OpenDentBusiness.Properties.Resources.</summary>
+		///<summary>Deprecated as of version 17.2. Internal claimforms have been moved over to XML files in OpenPmsDentalBusiness.Properties.Resources.</summary>
 		public string UniqueID="";
 		///<summary>Set to false to not print images.  This removes the background for printing on premade forms.</summary>
 		public bool PrintImages;

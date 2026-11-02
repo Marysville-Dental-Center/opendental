@@ -37,7 +37,7 @@ Documents in WPF are a new concept. We can choose between FlowDocuments and Fixe
 	FlowDocuments are very different and would need to use a totally different class and a different kind of print preview.
 
 Example:
-using OpenDental.Drawing;
+using OpenPmsDental.Drawing;
 
 		private void butPrint_Click(object sender,EventArgs e) {
 			_pagesPrinted=0;

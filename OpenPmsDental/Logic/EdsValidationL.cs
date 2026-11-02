@@ -1,5 +1,5 @@
 // EDS claim validation in the program (Open Dental 26.1, v26_1-manage-eds-claim-validation): when Edit Claim sends or saves a claim, and when the
-// Send Claims window sends claims, a claim that goes to EDS gets the EDS checks (OpenDentBusiness/VendorDirect/Eds) and one validation window.
+// Send Claims window sends claims, a claim that goes to EDS gets the EDS checks (OpenPmsDentalBusiness/VendorDirect/Eds) and one validation window.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

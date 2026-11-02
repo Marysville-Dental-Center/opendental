@@ -1,5 +1,5 @@
 // B-ACCT (Open Dental 24.4): Quick Procs > Sales Tax in the Account module. Adds one completed procedure with the office's sales-tax procedure code
-// whose fee is the tax on the highlighted completed procedures. The rules live in OpenDentBusiness/Data Interface/SalesTaxProcs.cs.
+// whose fee is the tax on the highlighted completed procedures. The rules live in OpenPmsDentalBusiness/Data Interface/SalesTaxProcs.cs.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

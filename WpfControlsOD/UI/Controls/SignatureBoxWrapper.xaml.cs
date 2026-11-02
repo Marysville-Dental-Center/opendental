@@ -23,14 +23,14 @@ Jordan is the only one allowed to edit this file.
 
 How to use the SignatureBoxWrapper control:
 	-Size must always 362,79 or scaled proportionally and tested.
-	-Read instructions at the top of OpenDentBusiness\UI\SignatureBoxWrapper.cs
+	-Read instructions at the top of OpenPmsDentalBusiness\UI\SignatureBoxWrapper.cs
 	-You must have the following lines in your Frm Load event:
 			float scale=(float)VisualTreeHelper.GetDpi(this).DpiScaleX;
 			signatureBoxWrapper.SetScaleAndZoom(scale,GetZoom());
 */
-	///<summary>Read instructions at the top of OpenDentBusiness\UI\SignatureBoxWrapper.cs</summary>
+	///<summary>Read instructions at the top of OpenPmsDentalBusiness\UI\SignatureBoxWrapper.cs</summary>
 	public partial class SignatureBoxWrapper:UserControl {
-		///<summary>The namespace on this field is misleading. This is the winforms wrapper that's over in OpenDentBusiness.</summary>
+		///<summary>The namespace on this field is misleading. This is the winforms wrapper that's over in OpenPmsDentalBusiness.</summary>
 		public OpenPmsDental.UI.SignatureBoxWrapper signatureBoxWrapper;
 		//private Window window;
 

@@ -35,7 +35,7 @@ namespace OpenPmsDentalBusiness {
 		public string ReleaseVersion="";
 		///<summary>Identifies the exact build: SHA-256 over the program's own assemblies (see ForkReleases.ComputeBuildId).</summary>
 		public string BuildId="";
-		///<summary>When the build was compiled (UTC, ForkBuildUtc metadata of OpenDental.exe). Orders two builds of the same release version.
+		///<summary>When the build was compiled (UTC, ForkBuildUtc metadata of OpenPmsDental.exe). Orders two builds of the same release version.
 		///DateTime.MinValue when unknown; the "BuildUtc" line is then left out.</summary>
 		public DateTime BuildUtc=DateTime.MinValue;
 		///<summary>The Open Dental compatible version line of the build (24.3.63.0 until the fork markers take over). Information only.</summary>
