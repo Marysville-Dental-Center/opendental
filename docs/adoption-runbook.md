@@ -279,11 +279,12 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature
   quadrant rows" for the SRP group, "codes added: ..." when the preference held codes the group lacks, and "Added code group '<name>' (<kind>,
   ItemOrder N), ..." for a category without a group of its kind. These parts are the lines the adoption log will show. On a database whose
   ten Insurance History preferences are all empty it says `changes nothing: none of the ten InsHist*Codes preferences has a value`.
-- `Steps 2026110211 and 2026110212 (inventory tracking) create the tables of this program supplyledger, supplylot, supplyproccode,
-  supplysetting, supplyprocpending and change no Open Dental table; the stock ledger gets N opening balance row(s), one per supply with stock
-  (SupplyNum ...), LevelOnHand rounded to 2 decimals at the supply's price; supply itself is not changed. Tracking stays off ...` (or `...
-  no supply has stock (supply.LevelOnHand), so the stock ledger starts empty. ...`). The stock ledger is the one table of this program that
-  adoption writes rows into; step 4 holds it to exactly these rows.
+- `Steps 2026110211 to 2026110213 (inventory tracking) create the tables of this program supplyledger, supplylot, supplyproccode,
+  supplysetting, supplyprocpending, supplycount, supplycountline and change no Open Dental table; the stock ledger gets N opening balance
+  row(s), one per supply with stock (SupplyNum ...), LevelOnHand rounded to 2 decimals at the supply's price; supply itself is not changed.
+  Tracking stays off ...` (or `... no supply has stock (supply.LevelOnHand), so the stock ledger starts empty. ...`). The stock ledger is the
+  one table of this program that adoption writes rows into; step 4 holds it to exactly these rows, and the others, the stock counts too, to
+  empty.
 - `Plug-ins: N program row(s) name a plug-in DLL (PluginDllName); a plug-in built for Open Dental does not load in this program ...: <ProgName>
   (ProgramNum N, enabled, <dll>); ...` (or `Plug-ins: no program row names a plug-in DLL ...`). Adoption changes none of these rows, but a
   plug-in built against Open Dental's assemblies stops loading after the switch, without a message. Give the list to the developers before
@@ -615,8 +616,8 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   other row changed, added or removed", or "identical row by row ..."), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
   migration-preview counts now empty, every other note unchanged", and `insverify` and `insverifyhist.DateLastAssigned` "the original date at
   midnight in all N row(s)"), "New tables and columns:" ("5 new table(s), all empty (...); 28 new column(s) in 21 table(s) hold their default
-  in every row."), "Fork tables:" ("4 new table(s) of this program, all empty (supplylot, supplyproccode, supplyprocpending,
-  supplysetting).": the inventory tables but the stock ledger), "Stock ledger:" ("supplyledger added (inventory tracking), N of the N opening
+  in every row."), "Fork tables:" ("6 new table(s) of this program, all empty (supplycount, supplycountline, supplylot, supplyproccode,
+  supplyprocpending, supplysetting).": the inventory tables but the stock ledger, so no stock count is open), "Stock ledger:" ("supplyledger added (inventory tracking), N of the N opening
   balance row(s) migration-preview lists and no other row.") and `updatehistory` ("identical row by row")
 - "Adopt: PASS." with the report rows renamed (or "the fork migration renamed no report row"), the UDS+ report row added and, if step 0.2
   listed them, the DXC Patient Credit Score row disabled and its buttons deleted, and exit code 0
@@ -669,8 +670,9 @@ person reads them all):
   Credit Score buttons of step 0.2, if it listed any (`RowsChanged toolbutitem` and `ColumnChanged toolbutitem.<column>`);
 - `ColumnChanged program.Enabled`, only if step 0.2 listed the DXC Patient Credit Score row as disabled: a report can only allow it as a
   whole column, and step 4's row check printed that only that row changed, `Enabled` only;
-- this program's own tables of inventory tracking (steps 2026110211 and 2026110212): `TableAdded` for `supplylot`, `supplyproccode`,
-  `supplysetting` and `supplyprocpending` (0 rows; step 4's row check printed them under "Fork tables:", all empty) and for `supplyledger`, the
+- this program's own tables of inventory tracking (steps 2026110211 to 2026110213): `TableAdded` for `supplylot`, `supplyproccode`,
+  `supplysetting`, `supplyprocpending`, `supplycount` and `supplycountline` (0 rows; step 4's row check printed them under "Fork tables:",
+  all empty) and for `supplyledger`, the
   one table of this program adoption writes rows into (one opening balance row per supply with stock, as step 0.2 listed; step 4's row check
   printed "Stock ledger:" with exactly those rows). These steps change no Open Dental table; inventory tracking stays off until the office
   turns it on;

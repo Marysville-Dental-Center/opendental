@@ -1171,6 +1171,8 @@
     <Compile Include="Crud\SupplyNeededCrud.cs" />
     <Compile Include="Crud\SupplyOrderCrud.cs" />
     <Compile Include="Crud\SupplyOrderItemCrud.cs" />
+    <Compile Include="Crud\SupplyCountCrud.cs" />
+    <Compile Include="Crud\SupplyCountLineCrud.cs" />
     <Compile Include="Crud\SupplyLedgerCrud.cs" />
     <Compile Include="Crud\SupplyLotCrud.cs" />
     <Compile Include="Crud\SupplyProcCodeCrud.cs" />
@@ -2024,6 +2026,8 @@
     <Compile Include="TableTypes\Supply.cs" />
     <Compile Include="TableTypes\Supplier.cs" />
     <Compile Include="TableTypes\SupplyNeeded.cs" />
+    <Compile Include="TableTypes\SupplyCount.cs" />
+    <Compile Include="TableTypes\SupplyCountLine.cs" />
     <Compile Include="TableTypes\SupplyLedger.cs" />
     <Compile Include="TableTypes\SupplyLot.cs" />
     <Compile Include="TableTypes\SupplyProcCode.cs" />

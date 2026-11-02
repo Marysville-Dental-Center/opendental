@@ -482,7 +482,8 @@ namespace AdoptionValidation.Tests {
 				Assert.IsTrue(resultClean.IsLedgerAdded);
 				Assert.AreEqual(resultClean.PlanInventory.ListOpening.Count,resultClean.CountOpeningRows);
 				Assert.IsFalse(resultClean.ListForkTablesAdded.Contains("supplyledger"),"Held to the plan, not to empty.");
-				CollectionAssert.IsSubsetOf(new[] { "supplylot","supplyproccode","supplyprocpending","supplysetting" },resultClean.ListForkTablesAdded);
+				CollectionAssert.IsSubsetOf(new[] { "supplylot","supplyproccode","supplyprocpending","supplysetting","supplycount","supplycountline" },
+					resultClean.ListForkTablesAdded,"Every other inventory table is held to empty: an adopted database has no stock count.");
 				Assert.IsTrue(resultClean.ListLines.Any(x => x.StartsWith("Stock ledger: supplyledger added (inventory tracking), ")),string.Join("\r\n",resultClean.ListLines));
 				db.Use(tampered);
 				Assert.AreEqual(1,db.Execute("INSERT INTO supplyledger (SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,"

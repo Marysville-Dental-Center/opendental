@@ -993,21 +993,4 @@ namespace OpenPmsDentalBusiness {
 		///<summary>MinValue when the lot has no expiry date.</summary>
 		public DateTime DateExpiry;
 	}
-
-	///<summary>One counted line of a stock count: the supply and lot, the quantity the program had when the line was counted, and the counted
-	///quantity.</summary>
-	[Serializable]
-	public class SupplyCountLine {
-		///<summary>FK to supply.SupplyNum.</summary>
-		public long SupplyNum;
-		///<summary>FK to supplylot.SupplyLotNum. 0 for stock without a lot, or for a lot found in the count (LotNumber set).</summary>
-		public long SupplyLotNum;
-		///<summary>The lot number, also for a lot found in the count. Blank for stock without a lot.</summary>
-		public string LotNumber="";
-		///<summary>The expiry date of a lot found in the count. MinValue for none.</summary>
-		public DateTime DateExpiry;
-		///<summary>What the program had when the line was counted.</summary>
-		public double QtyProgram;
-		public double QtyCounted;
-	}
 }

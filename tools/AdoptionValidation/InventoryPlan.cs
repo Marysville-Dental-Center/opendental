@@ -10,12 +10,13 @@ using SyntheticData.Infrastructure;
 using Db=SyntheticData.Infrastructure.Db;
 
 namespace AdoptionValidation {
-	///<summary>What the fork migration's inventory tracking steps (InventoryLedgerStep 2026110211 and InventoryTablesStep 2026110212, package INV,
-	///docs/specs/inventory-tracking.md) change when adoption brings an Open Dental 25.3.48 database to this program, worked out before adoption and
-	///read-only. They change no Open Dental table: they create the five tables of InventoryTables (a ForkTableSet) and, in the step that creates
-	///supplyledger, write one Opening row per supply whose LevelOnHand rounded to 2 decimals is not 0, at the supply's price, without a lot, user,
-	///procedure or order item, with the reason "Opening balance". migration-preview prints the plan, and adopt's row check (AdoptionRowCheck) holds
-	///the adopted copy's ledger to it and the other four fork tables to empty. Reads supply.</summary>
+	///<summary>What the fork migration's inventory tracking steps (InventoryLedgerStep 2026110211, InventoryTablesStep 2026110212 and
+	///InventoryCountsStep 2026110213, package INV, docs/specs/inventory-tracking.md) change when adoption brings an Open Dental 25.3.48 database to
+	///this program, worked out before adoption and read-only. They change no Open Dental table: they create the seven tables of InventoryTables (a
+	///ForkTableSet) and, in the step that creates supplyledger, write one Opening row per supply whose LevelOnHand rounded to 2 decimals is not 0,
+	///at the supply's price, without a lot, user, procedure or order item, with the reason "Opening balance". migration-preview prints the plan, and
+	///adopt's row check (AdoptionRowCheck) holds the adopted copy's ledger to it and the other six fork tables to empty (no stock count, so none is
+	///open). Reads supply.</summary>
 	public static class InventoryPlan {
 		public const string TABLE_LEDGER=InventoryTables.TABLE_LEDGER;
 
@@ -45,9 +46,9 @@ namespace AdoptionValidation {
 
 			///<summary>What migration-preview prints for the steps.</summary>
 			public List<string> Lines() {
-				string step="Steps "+StepLevel+" and "+new InventoryTablesStep().Level+" (inventory tracking)";
+				string step="Steps "+StepLevel+" to "+new InventoryCountsStep().Level+" (inventory tracking)";
 				if(HasLedger) {
-					return new List<string> { step+" change nothing: the database already has the inventory tables." };
+					return new List<string> { step+" write no row: the database already has the stock ledger; they create only the inventory tables it lacks, empty." };
 				}
 				string text=step+" create the tables of this program "+string.Join(", ",new InventoryTables().ArrayCreateTables.Select(x => SchemaTable.Parse(x).Name))
 					+" and change no Open Dental table; ";
