@@ -95,6 +95,9 @@ namespace OpenPmsDental {
 
 		private void gridLots_CellDoubleClick(object sender,ODGridClickEventArgs e) {
 			//Correct a lot number or expiry date typed wrong.
+			if(!Security.IsAuthorized(EnumPermType.InventoryAdjust)) {
+				return;
+			}
 			SupplyLot supplyLot=(SupplyLot)gridLots.ListGridRows[e.Row].Tag;
 			InputBox inputBoxNumber=new InputBox(Lan.g(this,"Lot number"),supplyLot.LotNumber);
 			inputBoxNumber.ShowDialog();
