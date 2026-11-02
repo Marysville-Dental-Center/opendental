@@ -48,7 +48,12 @@ namespace OpenPmsDentalBusiness {
 		///<summary>The stored name of a file picked at dateTime: yyyyMMdd-HHmmss_ and the original name, with characters a file name cannot hold
 		///replaced by '_' and the name shortened to 150 characters (keeping the extension).</summary>
 		public static string MakeFileName(string pathOriginal,DateTime dateTime) {
-			string name=Path.GetFileName(pathOriginal??"");
+			//The last part of the path, without Path.GetFileName, which throws on characters a path cannot hold.
+			string name=pathOriginal??"";
+			int indexSeparator=Math.Max(name.LastIndexOf('\\'),name.LastIndexOf('/'));
+			if(indexSeparator>=0) {
+				name=name.Substring(indexSeparator+1);
+			}
 			char[] arrayInvalid=Path.GetInvalidFileNameChars();
 			name=new string(name.Select(x => arrayInvalid.Contains(x) ? '_' : x).ToArray()).Trim();
 			if(name=="") {

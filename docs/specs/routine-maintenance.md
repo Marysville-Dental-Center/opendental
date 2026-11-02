@@ -107,7 +107,7 @@ Each value keeps a copy of its step's or field's label and unit, so the history 
 | `ValueText` | `text NOT NULL` | The value, stored culture-independent: ChecklistStep and PassFail "1" (done, pass) or "0" (not done, fail), Number in invariant culture ("4.5"), Date `yyyy-MM-dd`, Text as typed, Attachment the file name in the item's folder. Empty when left blank. |
 | `IsFlagged` | `tinyint(4) NOT NULL` | Fail, or a number outside its limits. |
 
-Key: `MaintRecordNum`.
+Keys: `MaintRecordNum`, `MaintStepNum`, `MaintFieldNum`.
 
 ## 2. Schedule rules
 

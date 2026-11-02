@@ -90,7 +90,9 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
   `ValueText` text NOT NULL,
   `IsFlagged` tinyint(4) NOT NULL,
   PRIMARY KEY (`MaintRecordValueNum`),
-  KEY `MaintRecordNum` (`MaintRecordNum`)
+  KEY `MaintRecordNum` (`MaintRecordNum`),
+  KEY `MaintStepNum` (`MaintStepNum`),
+  KEY `MaintFieldNum` (`MaintFieldNum`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci";
 
 		public override string Feature {
