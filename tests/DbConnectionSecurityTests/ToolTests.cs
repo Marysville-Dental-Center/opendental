@@ -364,6 +364,31 @@ namespace DbConnectionSecurityTests {
 		}
 
 		[TestMethod]
+		public void RootUser_OverTheNetwork_IsWarnedAbout_NeverRefused() {
+			//Owner decision of 2026-11-02: the office's own account (opmsd in the guide), not root. A warning, the settings are still saved.
+			foreach(string user in new[] { "root","ROOT"," root " }) {
+				StringAssert.Contains(DbSettingsRunner.GetRootUserWarning(TestHelpers.NETWORK_HOST,user),"its own account",user);
+			}
+			StringAssert.Contains(DbSettingsRunner.GetRootUserWarning(TestHelpers.NETWORK_ADDRESS+":3307","root"),"docs/db-connection-security.md");
+			Assert.AreEqual("",DbSettingsRunner.GetRootUserWarning(TestHelpers.NETWORK_HOST,"opmsd"));
+			Assert.AreEqual("",DbSettingsRunner.GetRootUserWarning(TestHelpers.NETWORK_HOST,"rootless"));
+			foreach(string server in new[] { "localhost","127.0.0.1:3306","[::1]","" }) {
+				Assert.AreEqual("",DbSettingsRunner.GetRootUserWarning(server,"root"),"Same computer: the developer default, no warning.");
+			}
+			string config=TestHelpers.WriteConfig(_folder,"ComputerName","localhost","Database","opendental","User","root","Password","");
+			DbSettingsResult dbSettingsResult=DbSettingsRunner.Apply(new DbSettingsRequest() { Server=TestHelpers.NETWORK_HOST,User="root",
+				CaFile=TestHelpers.WriteCaPem(_folder),Auth=DbSettingsAuth.Password,DbPassword=TestHelpers.SECRET },config,Path.Combine(_folder,"ca-copy.pem"));
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,dbSettingsResult.ExitCode,dbSettingsResult.Message);
+			StringAssert.Contains(dbSettingsResult.Message,"Warning: the database user root");
+			Assert.IsFalse(dbSettingsResult.Message.Contains(TestHelpers.SECRET));
+			Assert.AreEqual("root",DbConnectionConfig.ReadFile(config).User,"Saved as asked.");
+			DbSettingsResult dbSettingsResultLocal=DbSettingsRunner.Apply(new DbSettingsRequest() { Server="localhost",User="root",
+				Auth=DbSettingsAuth.Password,DbPassword="" },config,Path.Combine(_folder,"ca-copy.pem"));
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,dbSettingsResultLocal.ExitCode,dbSettingsResultLocal.Message);
+			Assert.IsFalse(dbSettingsResultLocal.Message.Contains("Warning"));
+		}
+
+		[TestMethod]
 		public void Apply_Network_OldStylePassword_CannotBeKept() {
 			string config=TestHelpers.WriteConfig(_folder,"ComputerName",TestHelpers.NETWORK_HOST,"Database","opendental","User","opmsd",
 				"Password",TestHelpers.SECRET);

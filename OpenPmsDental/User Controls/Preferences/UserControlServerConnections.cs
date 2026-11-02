@@ -164,13 +164,13 @@ namespace OpenPmsDental {
 			try {
 				DataConnection dcon;
 				//use the one table that we know exists
-				//The read-only server of its own connects as before the connection rule, with the CA of the main connection as it always did here
-				//(docs/specs/db-connection-security.md section 5.1).
+				//The read-only server of its own connects as before the connection rule, with the CA of this window (its preference) and nothing of
+				//this computer's own connection (docs/specs/db-connection-security.md section 5.1).
 				if(textMysqlUser.Text=="") {
-					dcon=DataConnection.CreateForPreferenceServer(comboServerName.Text,"mysql","root",textMysqlPass.Text,DataConnection.GetSslCa());
+					dcon=DataConnection.CreateForPreferenceServer(comboServerName.Text,"mysql","root",textMysqlPass.Text,textSslCaPem.Text.Trim());
 				}
 				else {
-					dcon=DataConnection.CreateForPreferenceServer(comboServerName.Text,"mysql",textMysqlUser.Text,textMysqlPass.Text,DataConnection.GetSslCa());
+					dcon=DataConnection.CreateForPreferenceServer(comboServerName.Text,"mysql",textMysqlUser.Text,textMysqlPass.Text,textSslCaPem.Text.Trim());
 				}
 				string command = "SHOW DATABASES";
 				//if this next step fails, table will simply have 0 rows

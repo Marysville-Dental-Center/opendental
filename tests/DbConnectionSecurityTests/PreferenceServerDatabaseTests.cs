@@ -52,13 +52,16 @@ namespace DbConnectionSecurityTests {
 			}
 		}
 
-		///<summary>The read-only server preferences (server, database, user, password) and empty reporting server preferences, in _dbMain.</summary>
-		private static void SeedPreferences(string readOnlyServer,string readOnlyDatabase,string readOnlyUser,string readOnlyPassword) {
+		///<summary>The read-only server preferences (server, database, user, password, CA) and empty reporting server preferences, in
+		///_dbMain.</summary>
+		private static void SeedPreferences(string readOnlyServer,string readOnlyDatabase,string readOnlyUser,string readOnlyPassword,
+			string readOnlySslCa="")
+		{
 			Assert.IsTrue(Secrets.Encrypt(readOnlyPassword,out string passHash));
 			Exec("USE `"+_dbMain+"`","SET SESSION sql_mode=''","DELETE FROM preference",
 				"INSERT INTO preference (PrefName,ValueString) VALUES ('ReadOnlyServerCompName','"+readOnlyServer+"'),('ReadOnlyServerURI',''),"
 					+"('ReadOnlyServerDbName','"+readOnlyDatabase+"'),('ReadOnlyServerMySqlUser','"+readOnlyUser+"'),"
-					+"('ReadOnlyServerMySqlPassHash','"+passHash+"'),('ReadOnlyServerSslCa',''),"
+					+"('ReadOnlyServerMySqlPassHash','"+passHash+"'),('ReadOnlyServerSslCa','"+readOnlySslCa.Replace("\\","\\\\")+"'),"
 					+"('ReportingServerCompName',''),('ReportingServerURI',''),('ReportingServerDbName',''),('ReportingServerMySqlUser',''),"
 					+"('ReportingServerMySqlPassHash',''),('ReportingServerSslCa','')",
 				"USE `"+_dbReplica+"`","DELETE FROM preference","INSERT INTO preference (PrefName,ValueString) VALUES ('DbSecProbe','replica')");
@@ -72,13 +75,17 @@ namespace DbConnectionSecurityTests {
 			new DataConnection().SetDb(SERVER,_dbMain,"root","","","",DatabaseType.MySql,true);
 			System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(ConnectionStore).TypeHandle);
 			//A read-only server of its own: its own server, database, user and password (never the main connection's, which is empty here).
-			SeedPreferences(SERVER,_dbReplica,"replica_user",TestHelpers.SECRET);
+			const string CA_PREFERENCE=@"C:\Certificates\replica-ca.pem";
+			SeedPreferences(SERVER,_dbReplica,"replica_user",TestHelpers.SECRET,CA_PREFERENCE);
 			CentralConnectionBase centralConnectionReadOnly=ConnectionStoreBase.GetDentalOfficeReadOnlyServerFromPrefC();
 			Assert.IsTrue(centralConnectionReadOnly.IsPreferenceServer);
 			Assert.AreEqual(SERVER,centralConnectionReadOnly.ServerName);
 			Assert.AreEqual(_dbReplica,centralConnectionReadOnly.DatabaseName);
 			Assert.AreEqual("replica_user",centralConnectionReadOnly.MySqlUser);
 			Assert.AreEqual(TestHelpers.SECRET,centralConnectionReadOnly.MySqlPassword);
+			Assert.AreEqual(CA_PREFERENCE,centralConnectionReadOnly.SslCa,"Its own CA preference.");
+			SeedPreferences(SERVER,_dbReplica,"replica_user","");
+			Assert.AreEqual("",ConnectionStoreBase.GetDentalOfficeReadOnlyServerFromPrefC().SslCa,"No CA preference: none (SslMode=none).");
 			//No reporting server in the preferences: the main connection, not marked, under the rule.
 			CentralConnectionBase centralConnectionReport=ConnectionStoreBase.GetDentalOfficeReportServerFromPrefC();
 			Assert.IsFalse(centralConnectionReport.IsPreferenceServer);
