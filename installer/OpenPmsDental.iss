@@ -16,8 +16,11 @@
 ;                       settings tool, which reads the file and never changes it: the caller deletes it. Secrets never go on a command line.
 ;   Setup writes FreeDentalConfig.xml without a password. An administrative install then runs OpenPmsDentalDbSettings.exe (the connection
 ;   settings tool) for a server over the network or when any of the DB* security switches is given: its window, filled from these values,
-;   in an interactive install, or /silent in a silent one. On an upgrade it runs the tool's /check and, interactive, offers its window
-;   when the settings do not meet the connection rule.
+;   in an interactive install, or /silent in a silent one. For a server on this computer an interactive install opens the window in
+;   password mode (the program never asks for the database password; Cancel keeps it blank). On an upgrade (FreeDentalConfig.xml exists)
+;   setup never passes the connection page's defaults: with any of /DBCA, /DBPFX, /DBTHUMBPRINT, /DBSECRETSFILE it runs the tool with only
+;   the switches given (/DBSERVER, /DBNAME, /DBUSER too when given), /silent in a silent install; without them it runs the tool's /check
+;   and, interactive, offers its window when the settings do not meet the connection rule.
 ;   /PREREQS=ask|download|skip
 ;                       a missing Visual C++ 2015-2022 x86 runtime or WebView2 runtime: ask (the default; a silent install skips),
 ;                       download and install them from Microsoft, or skip them with a warning.
@@ -447,8 +450,9 @@ begin
     Result := CheckConnectionValue('User', ConfigUser, False);
 end;
 
-{ The same layout the program writes (CentralConnections.TrySaveConnectionSettings), with no password. NoShowOnStartup=False makes the
-  program show Choose Database at its first start, where the user enters the password. }
+{ The layout the program reads (DbConnectionConfig), with no password. The connection settings tool, which setup runs after the files are
+  installed (SetUpConnection), adds the office CA and the client certificate or the password stored with DPAPI; the program never asks for
+  the password. NoShowOnStartup stays False as v0.0 wrote it; Release builds ignore it (they have no Choose Database). }
 procedure WriteConfigToTemp;
 var
   Lines: TArrayOfString;
@@ -563,8 +567,48 @@ begin
     Result := Trim(String(ToolLog));
 end;
 
-{ After the files are installed. A new connection: the tool sets up the office CA and the client certificate or password. An existing one:
-  the tool checks it against the connection rule of this version. }
+{ True when a security switch is on setup's command line. On an upgrade the security page is skipped, so only these count. }
+function HasSecurityParams: Boolean;
+begin
+  Result := (ExpandConstant('{param:DBCA|}') <> '') or (ExpandConstant('{param:DBPFX|}') <> '') or
+    (ExpandConstant('{param:DBTHUMBPRINT|}') <> '') or (ExpandConstant('{param:DBSECRETSFILE|}') <> '');
+end;
+
+{ ' /switch="value"' when setup's command line has /Param=value, else ''. }
+function GivenSwitch(const Param, Switch: String): String;
+var
+  Value: String;
+begin
+  Value := Trim(ExpandConstant('{param:' + Param + '|}'));
+  if Value <> '' then
+    Result := ' ' + Switch + '=' + AddQuotes(Value)
+  else
+    Result := '';
+end;
+
+{ The tool's switches for an upgrade: only those given on setup's command line, never the connection page's defaults (localhost,
+  opendental, root), which would replace the computer's existing connection. Never a secret. }
+function UpgradeParams: String;
+begin
+  Result := GivenSwitch('DBSERVER', '/server') + GivenSwitch('DBNAME', '/database') + GivenSwitch('DBUSER', '/user') + GivenSwitch('DBCA', '/ca');
+  if ExpandConstant('{param:DBPFX|}') <> '' then
+    Result := Result + GivenSwitch('DBPFX', '/pfx')
+  else
+    Result := Result + GivenSwitch('DBTHUMBPRINT', '/thumbprint');
+  Result := Trim(Result + GivenSwitch('DBSECRETSFILE', '/secretsfile'));
+end;
+
+{ Shows (suppressibly) that the tool did not finish; its result line is in setup's log already. Cancel (6) is the user's choice. }
+procedure ReportDbSettingsFailure(const ToolExit: Integer);
+begin
+  if (ToolExit <> 0) and (ToolExit <> 6) then
+    SuppressibleMsgBox('The connection settings were not completed (' + IntToStr(ToolExit) + '): ' + DbSettingsLogText + #13#10#13#10 +
+      'The program will not connect until an administrator runs {#DbSettingsExeName} in the program folder.', mbError, MB_OK, IDOK);
+end;
+
+{ After the files are installed. A new connection: the tool sets up the office CA and the client certificate or password (for a database on
+  this computer, interactive, the password). An existing one: the tool applies the security switches given, or checks the settings
+  against the connection rule of this version. }
 procedure SetUpConnection;
 var
   ToolExit: Integer;
@@ -572,26 +616,39 @@ var
 begin
   if ConfigWanted then begin
     NeedsTool := (not IsLoopbackServer(ConfigServer)) or HasSecuritySwitches;
-    if not NeedsTool then
-      Exit;
     if not IsAdminInstallMode then begin
-      Log('The connection to ' + ConfigServer + ' needs the connection settings tool, which needs administrator rights.');
-      SuppressibleMsgBox('The database server ' + ConfigServer + ' is reached over the network, encrypted. An administrator must run ' +
-        '{#DbSettingsExeName} in the program folder to set up the office CA certificate and the client certificate or password.',
-        mbInformation, MB_OK, IDOK);
+      if NeedsTool then begin
+        Log('The connection to ' + ConfigServer + ' needs the connection settings tool, which needs administrator rights.');
+        SuppressibleMsgBox('The database server ' + ConfigServer + ' is reached over the network, encrypted. An administrator must run ' +
+          '{#DbSettingsExeName} in the program folder to set up the office CA certificate and the client certificate or password.',
+          mbInformation, MB_OK, IDOK);
+      end;
       Exit;
     end;
-    if WizardSilent then
-      ToolExit := RunDbSettings(DbSettingsParams + ' /silent', False)
-    else
-      ToolExit := RunDbSettings(DbSettingsParams, True);
-    if (ToolExit <> 0) and (ToolExit <> 6) then
-      SuppressibleMsgBox('The connection settings were not completed (' + IntToStr(ToolExit) + '): ' + DbSettingsLogText + #13#10#13#10 +
-        'The program will not connect until an administrator runs {#DbSettingsExeName} in the program folder.', mbError, MB_OK, IDOK);
+    if NeedsTool then begin
+      if WizardSilent then
+        ToolExit := RunDbSettings(DbSettingsParams + ' /silent', False)
+      else
+        ToolExit := RunDbSettings(DbSettingsParams, True);
+      ReportDbSettingsFailure(ToolExit);
+      Exit;
+    end;
+    { A database on this computer. Release builds have no Choose Database to ask for its password, so an interactive install opens the
+      tool in password mode, to store it with DPAPI; Cancel keeps it blank. A silent one gives it with /DBSECRETSFILE= (NeedsTool above). }
+    if not WizardSilent then
+      ReportDbSettingsFailure(RunDbSettings(DbSettingsParams + ' /auth=password', True));
     Exit;
   end;
   if not IsAdminInstallMode then
     Exit;
+  if HasSecurityParams then begin
+    if WizardSilent then
+      ToolExit := RunDbSettings(UpgradeParams + ' /silent', False)
+    else
+      ToolExit := RunDbSettings(UpgradeParams, True);
+    ReportDbSettingsFailure(ToolExit);
+    Exit;
+  end;
   ToolExit := RunDbSettings('/check', False);
   if (ToolExit = 0) or (ToolExit = -1) then
     Exit;
@@ -641,7 +698,8 @@ var
 begin
   ConfigPage := CreateInputQueryPage(wpSelectTasks, 'Database connection', 'Which database does this computer use?',
     'Setup writes these values to {#ConfigFileName} in the program folder. A server over the network is reached only encrypted: ' +
-    'the next page asks for the office CA certificate and the client certificate.' + #13#10#13#10 +
+    'the next page asks for the office CA certificate and the client certificate. For a server on this computer the connection ' +
+    'settings tool opens after the install and asks for the database password (Cancel when the user has none).' + #13#10#13#10 +
     'Server: the name the server''s certificate carries, as the computers reach it (host:port for a port other than 3306).');
   ConfigPage.Add('&Server:', False);
   ConfigPage.Add('&Database:', False);

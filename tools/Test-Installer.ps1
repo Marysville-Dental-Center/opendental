@@ -8,7 +8,11 @@ OpenPmsDental.exe (the setup has no [Run] entry) and touches no database. Each s
 
 A. Fresh install with the configuration page values on the command line (/DBSERVER, /DBNAME, /DBUSER) and /NOICONS:
    - the program folder holds exactly the staging folder (same files, same SHA-256), FreeDentalConfig.xml and the uninstall folder;
-   - FreeDentalConfig.xml has the given values, no password and NoShowOnStartup False, and BUILTIN\Users may modify it;
+   - FreeDentalConfig.xml has the given values, no password and NoShowOnStartup False, and setup added no access rule to it: it keeps
+     the folder's rights, so BUILTIN\Users get no modify right from setup (only an administrator changes the connection settings, with
+     the connection settings tool, docs/specs/db-connection-security.md);
+   - the server dbserver.test:3307 is over the network, and a per-user setup cannot run the administrator tool: the setup log says the
+     connection needs the connection settings tool, and setup still exits 0;
    - no uninstaller file at the top level, no Start menu or desktop shortcut, the uninstall entry says version 0.0;
    - no OpenPmsDental process was started;
    then the silent uninstall: the folder and the uninstall entry are gone.
@@ -118,11 +122,16 @@ if(Test-Path -LiteralPath $configPath){
 	Check (($connection.Password -eq '') -and ($connection.MySQLPassHash -eq '')) 'config has no password'
 	Check ($connection.NoShowOnStartup -eq 'False') 'config NoShowOnStartup False'
 	Check ($config.ConnectionSettings.DatabaseType -eq 'MySql') 'config DatabaseType MySql'
+	#Setup no longer gives Users modify rights (owner decision Q7): every rule on the file comes from its folder.
 	$usersSid=New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-545')
-	$rules=@((Get-Acl -LiteralPath $configPath).Access | Where-Object {
-		$_.AccessControlType -eq 'Allow' -and $_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Equals($usersSid) -and
+	$acl=Get-Acl -LiteralPath $configPath
+	$explicitRules=@($acl.Access | Where-Object { -not $_.IsInherited })
+	Check ($explicitRules.Count -eq 0) "setup added no access rule to FreeDentalConfig.xml (explicit: $(@($explicitRules | ForEach-Object { $_.IdentityReference.Value }) -join ', '))"
+	Check (-not $acl.AreAccessRulesProtected) 'FreeDentalConfig.xml keeps the rights of its folder'
+	$usersModify=@($acl.Access | Where-Object {
+		-not $_.IsInherited -and $_.AccessControlType -eq 'Allow' -and $_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Equals($usersSid) -and
 		($_.FileSystemRights -band [System.Security.AccessControl.FileSystemRights]::Modify) -eq [System.Security.AccessControl.FileSystemRights]::Modify })
-	Check ($rules.Count -gt 0) 'BUILTIN\Users may modify FreeDentalConfig.xml'
+	Check ($usersModify.Count -eq 0) 'setup gave BUILTIN\Users no modify right on FreeDentalConfig.xml'
 }
 Check (-not (Test-Path -LiteralPath $StartMenuLink)) 'no Start menu shortcut with /NOICONS'
 Check (-not (Test-Path -LiteralPath $DesktopLink)) 'no desktop shortcut (the task is unchecked)'
@@ -135,6 +144,9 @@ if(Test-Path $UninstallKey){
 $logA=Get-Content -LiteralPath (Join-Path $OutDir 'a-install.log') -Raw
 Check ($logA -match 'Installation process succeeded') 'the setup log says the installation succeeded'
 Check ($logA -match 'Wrote FreeDentalConfig\.xml') 'the setup log records the config file'
+#A per-user setup cannot run the administrator tool; it says so for a server over the network and still succeeds (exit code checked above).
+Check ($logA -match 'The connection to dbserver\.test:3307 needs the connection settings tool') 'the setup log says the network server needs the connection settings tool'
+Check ($logA -notmatch 'Running OpenPmsDentalDbSettings\.exe') 'a per-user setup does not run the connection settings tool'
 $pidsNow=Get-ProgramPids
 Check (@($pidsNow | Where-Object { $pidsBefore -notcontains $_ }).Count -eq 0) 'setup started no OpenPmsDental process'
 $exit=Invoke-Uninstall $dirA (Join-Path $OutDir 'a-uninstall.log')
