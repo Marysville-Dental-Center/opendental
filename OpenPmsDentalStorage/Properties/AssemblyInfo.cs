@@ -20,8 +20,10 @@ using System.Runtime.InteropServices;
 // The following GUID is for the ID of the typelib if this project is exposed to COM
 [assembly: Guid("f90d0481-3d97-4c72-af6e-dd81177e3de1")]
 
-// The library update tests reach the SSH host key check's test seam (SshHostKeys.ForgetAll).
+// The library update tests and the SSH host key tests reach the host key check's test seam (the SshHostKeyCheck constructor with its own
+// connect and disconnect, CanTrust and OnHostKeyReceived).
 [assembly: InternalsVisibleTo("LibraryUpdateTests")]
+[assembly: InternalsVisibleTo("SshHostKeyTests")]
 
 // Version information for an assembly consists of the following four values:
 //

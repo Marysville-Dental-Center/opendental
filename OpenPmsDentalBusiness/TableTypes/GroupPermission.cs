@@ -889,7 +889,7 @@ namespace OpenPmsDentalBusiness{
 		LogScraperHQ,
 		//10000 and up: this program's own values, so that Open Dental's later values never collide with them (docs/port-notes/FORK-ENUMS.md).
 		//Code must not loop over 0..count-1 of this enum; use Enum.GetValues. 10000 to 10049: routine maintenance; 10050 to 10099: inventory
-		//tracking.
+		//tracking; 10100 to 10149: SSH host keys.
 		///<summary>10000 - Routine maintenance (fork only): add, edit, hide and delete maintenance items, their checklists and result fields.</summary>
 		[Description("Maintenance Setup")]
 		MaintenanceSetup=10000,
@@ -901,6 +901,11 @@ namespace OpenPmsDentalBusiness{
 		///</summary>
 		[Description("Inventory Adjust")]
 		InventoryAdjust=10050,
+		///<summary>10100 - SSH host keys (fork only). Audit trail only: a server's host key stored on first use, a changed key refused, and an
+		///administrator accepting or removing a stored key (SshHostKeys; FKey is the SshHostKeyNum). Never granted, so it does not show in the
+		///security tree; changing stored keys needs SecurityAdmin.</summary>
+		[Description("SSH Host Keys")]
+		SshHostKeys=10100,
 	}
 }
 

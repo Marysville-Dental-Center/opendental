@@ -1171,6 +1171,7 @@
     <Compile Include="InternalTools\Job Manager\BugCrud.cs" />
     <Compile Include="Data Interface\UserClinics.cs" />
     <Compile Include="Data Interface\ProviderErxs.cs" />
+    <Compile Include="Data Interface\SshHostKeys.cs" />
     <Compile Include="Data Interface\StateAbbrs.cs" />
     <Compile Include="Data Interface\RequiredFieldConditions.cs" />
     <Compile Include="Data Interface\RequiredFields.cs" />
@@ -1178,6 +1179,7 @@
     <Compile Include="Crud\SmsFromMobileCrud.cs" />
     <Compile Include="Crud\SmsToMobileCrud.cs" />
     <Compile Include="Crud\SmsPhoneCrud.cs" />
+    <Compile Include="Crud\SshHostKeyCrud.cs" />
     <Compile Include="Crud\SnomedCrud.cs" />
     <Compile Include="Crud\SopCrud.cs" />
     <Compile Include="Crud\StatementCrud.cs" />
@@ -1761,6 +1763,7 @@
     <Compile Include="TableTypes\RequiredField.cs" />
     <Compile Include="TableTypes\RequiredFieldCondition.cs" />
     <Compile Include="TableTypes\SmsPhone.cs" />
+    <Compile Include="TableTypes\SshHostKey.cs" />
     <Compile Include="TableTypes\SmsToMobile.cs" />
     <Compile Include="TableTypes\SmsFromMobile.cs" />
     <Compile Include="TableTypes\MedLabFacAttach.cs" />

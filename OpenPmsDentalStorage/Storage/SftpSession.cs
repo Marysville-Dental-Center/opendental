@@ -8,39 +8,26 @@ using Renci.SshNet.Sftp;
 
 namespace OpenPmsDentalStorage {
 	///<summary>One SFTP connection with a user name and password (SSH.NET), for the clearinghouse transfers (Denti-Cal, Mercury) and the HL7 SFTP
-	///mode, which used SharpSSH before. The host key is checked by SshHostKeys. Synchronous: callers run on a background thread or a progress
-	///window's worker. Dispose disconnects.</summary>
+	///mode, which used SharpSSH before. The host key is checked against the store by SshHostKeyCheck. Synchronous: callers run on a background
+	///thread or a progress window's worker. Dispose disconnects.</summary>
 	public class SftpSession:IDisposable {
 		private readonly SftpClient _sftpClient;
-		private readonly string _host;
-		private readonly int _port;
 
-		///<summary>connectTimeout: for connecting and signing in; null keeps SSH.NET's 30 seconds. SFTP requests have no time limit, as with
-		///SharpSSH.</summary>
-		public SftpSession(string host,int port,string userName,string password,TimeSpan? connectTimeout=null) {
-			_host=host;
-			_port=port;
+		///<summary>store: the host keys the server's key is checked against (in the program, SshHostKeys.Store). connectTimeout: for connecting and
+		///signing in; null keeps SSH.NET's 30 seconds. SFTP requests have no time limit, as with SharpSSH.</summary>
+		public SftpSession(string host,int port,string userName,string password,ISshHostKeyStore store,TimeSpan? connectTimeout=null) {
 			ConnectionInfo connectionInfo=new ConnectionInfo(host,port,userName,new PasswordAuthenticationMethod(userName,password??""));
 			if(connectTimeout!=null) {
 				connectionInfo.Timeout=connectTimeout.Value;
 			}
 			_sftpClient=new SftpClient(connectionInfo);
-			SshHostKeys.Attach(_sftpClient);
+			SshHostKeyCheck.Attach(_sftpClient,store);
 		}
 
-		///<summary>Connects and signs in. Throws if the server can't be reached, refuses the password, or presents a host key SshHostKeys refuses
-		///(the message says so).</summary>
+		///<summary>Connects and signs in, through the host key check. Throws if the server can't be reached or refuses the password, and
+		///SshHostKeyRefusedException (whose message names the server and both keys) if its host key is not the stored one.</summary>
 		public void Connect() {
-			try {
-				_sftpClient.Connect();
-			}
-			catch(Exception ex) {
-				Exception exExplained=SshHostKeys.Explain(ex,_host,_port);
-				if(exExplained==ex) {
-					throw;
-				}
-				throw exExplained;
-			}
+			SshHostKeyCheck.Connect(_sftpClient);
 		}
 
 		///<summary>Every entry of a remote folder as the server lists it, "." and ".." (folders) included. Throws if the folder does not exist.

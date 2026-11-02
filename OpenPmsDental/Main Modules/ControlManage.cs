@@ -293,7 +293,23 @@ namespace OpenPmsDental{
 				return;//The button is only visible when the Transworld program link is enabled.
 			}
 			if(_formArManager==null || _formArManager.IsDisposed) {
-				while(!ValidateConnectionDetails()) {//only validate connection details if the ArManager form does not exist yet
+				List<string> listRefusalMessages;
+				while(!ValidateConnectionDetails(out listRefusalMessages)) {//only validate connection details if the ArManager form does not exist yet
+					if(listRefusalMessages.Count>0) {
+						//The server's host key is not the stored one (SshHostKeyCheck). Retyping the program link does not help; Setup, SSH Host Keys does.
+						string msgRefused=Lan.g(this,"The SFTP server of the Transworld (TSI) program link was refused for its SSH host key.")+"\r\n\r\n"
+							+string.Join("\r\n\r\n",listRefusalMessages);
+						if(!Security.IsAuthorized(EnumPermType.SecurityAdmin,true)) {
+							MsgBox.Show(msgRefused);
+							return;
+						}
+						if(!MsgBox.Show(MsgBoxButtons.YesNo,msgRefused+"\r\n\r\n"+Lan.g(this,"Would you like to open Setup, SSH Host Keys now?"))) {
+							return;
+						}
+						using FormSshHostKeys formSshHostKeys=new FormSshHostKeys();
+						formSshHostKeys.ShowDialog();
+						continue;//test the connection again with the key the administrator accepted or removed
+					}
 					string msgText="An SFTP connection could not be made using the connection details "+(PrefC.HasClinicsEnabled ? "for any clinic " : "")
 						+"in the enabled Transworld (TSI) program link.  Would you like to edit the Transworld program link now?";
 					if(!MsgBox.Show(this,MsgBoxButtons.YesNo,msgText)) {//if user does not want to edit program link, return
@@ -938,7 +954,10 @@ namespace OpenPmsDental{
 			}
 		}
 
-		private bool ValidateConnectionDetails() {
+		///<summary>True when the Transworld program link's SFTP details of any of the user's clinics connect. listRefusalMessages: the messages of the
+		///connections refused because the server's host key is not the stored one (SshHostKeyCheck), each once; empty when none was.</summary>
+		private bool ValidateConnectionDetails(out List<string> listRefusalMessages) {
+			listRefusalMessages=new List<string>();
 			Program program=Programs.GetCur(ProgramName.Transworld);
 			List<long> listClinicNums=new List<long>();
 			if(PrefC.HasClinicsEnabled) {
@@ -964,8 +983,17 @@ namespace OpenPmsDental{
 				}
 				string userName=listProgPropsForClinic.Find(x => x.PropertyDesc=="SftpUsername")?.PropertyValue??"";
 				string userPassword=Secrets.TryDecrypt(listProgPropsForClinic.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
-				if(Sftp.IsConnectionValid(sftpAddress,userName,userPassword,sftpPort)) {
-					return true;
+				try {
+					if(Sftp.IsConnectionValid(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort,doThrowHostKeyRefusal:true)) {
+						return true;
+					}
+				}
+				catch(Exception ex) {
+					//Only a host key refusal is thrown. Clinics that share the server get the same message once.
+					string refusalMessage=SshHostKeyCheck.GetRefusalMessage(ex)??ex.Message;
+					if(!listRefusalMessages.Contains(refusalMessage)) {
+						listRefusalMessages.Add(refusalMessage);
+					}
 				}
 			}
 			return false;

@@ -691,7 +691,9 @@ namespace OpenPmsDental {
 			}
 		}
 
-		///<summary>Fills listClinicsSkipped with ClinicNums for those clinics that fail connection detail validation.</summary>
+		///<summary>Fills listClinicsSkipped with ClinicNums for those clinics that fail connection detail validation. A clinic skipped because the
+		///SFTP server's host key was refused (SshHostKeyCheck) is reported here, with the refusal; when that leaves no clinic to send for, returns false
+		///so the caller stops without its own message.</summary>
 		///<param name="listClinicNums">The list of ClinicNums whose connection details should be validated by connecting to the sftp server.</param>
 		private bool ValidateSendUpdateData(List<long> listClinicNums,out List<long> listClinicsSkipped) {
 			listClinicsSkipped=new List<long>();
@@ -708,6 +710,8 @@ namespace OpenPmsDental {
 				return false;
 			}
 			Cursor=Cursors.WaitCursor;
+			//key=the message of a host key refusal, value=the clinics skipped for it (clinics that share the server share the message)
+			Dictionary<string,List<long>> dictRefusalClinicNums=new Dictionary<string,List<long>>();
 			foreach(long clinicNum in listClinicNums.Distinct()) {
 				if(!PrefC.HasClinicsEnabled && clinicNum>0) {
 					continue;//Only test the HQ clinic (ClinicNum=0) if clinics are not enabled
@@ -718,8 +722,14 @@ namespace OpenPmsDental {
 					listClinicsSkipped.Add(clinicNum);
 					continue;
 				}
-				if(!TsiTransLogs.ValidateClinicSftpDetails(listProgProps)) {
+				if(!TsiTransLogs.ValidateClinicSftpDetails(listProgProps,out string refusalMessage)) {
 					listClinicsSkipped.Add(clinicNum);
+					if(refusalMessage!=null) {
+						if(!dictRefusalClinicNums.ContainsKey(refusalMessage)) {
+							dictRefusalClinicNums[refusalMessage]=new List<long>();
+						}
+						dictRefusalClinicNums[refusalMessage].Add(clinicNum);
+					}
 					continue;
 				}
 			}
@@ -727,7 +737,32 @@ namespace OpenPmsDental {
 				listClinicsSkipped.AddRange(_listClinics.FindAll(x => !_dictClinicProgProps.ContainsKey(x.ClinicNum)).Select(x => x.ClinicNum));
 			}
 			Cursor=Cursors.Default;
-			return true;
+			if(dictRefusalClinicNums.Count==0) {
+				return true;
+			}
+			//The server's host key is not the stored one. Retyping the program link does not help; Setup, SSH Host Keys does, as the message says.
+			List<long> listClinicNumsSkipped=listClinicsSkipped;//an out parameter cannot be used in a lambda
+			bool isNothingToSend=_dictClinicProgProps.All(x => listClinicNumsSkipped.Contains(x.Key));
+			StringBuilder stringBuilder=new StringBuilder();
+			foreach(KeyValuePair<string,List<long>> kvp in dictRefusalClinicNums) {
+				if(stringBuilder.Length>0) {
+					stringBuilder.Append("\r\n\r\n");
+				}
+				stringBuilder.Append(Lan.g(this,"The SFTP server of the Transworld (TSI) program link was refused for its SSH host key"));
+				if(PrefC.HasClinicsEnabled) {
+					stringBuilder.Append(" "+Lan.g(this,"for these clinics")+": "+string.Join(", ",kvp.Value.Select(x => Clinics.GetAbbr(x,_listClinics))));
+				}
+				stringBuilder.Append(".\r\n"+kvp.Key);
+			}
+			stringBuilder.Append("\r\n\r\n");
+			if(isNothingToSend) {
+				stringBuilder.Append(Lan.g(this,"Nothing was sent to Transworld."));
+			}
+			else {
+				stringBuilder.Append(Lan.g(this,"The accounts of the clinics named above will not be sent to Transworld."));
+			}
+			MessageBox.Show(this,stringBuilder.ToString());
+			return !isNothingToSend;
 		}
 
 		///<summary>Gets the selected PatAgings for the given grid.</summary>
@@ -1570,7 +1605,7 @@ namespace OpenPmsDental {
 				string userPassword=Secrets.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 				byte[] fileContents=Encoding.ASCII.GetBytes(TsiMsgConstructor.GetPlacementFileHeader()+"\r\n"+string.Join("\r\n",kvp.Value.Values));
 				try {
-					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,sftpPort) {
+					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort) {
 						Folder="/xfer/incoming",
 						FileName="TsiPlacements_"+DateTime.Now.ToString("yyyyMMddhhmmss")+".txt",
 						ByteArray=fileContents,
@@ -1623,7 +1658,7 @@ namespace OpenPmsDental {
 				string userPassword=Secrets.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 				byte[] fileContents=Encoding.ASCII.GetBytes(TsiMsgConstructor.GetUpdateFileHeader()+"\r\n"+string.Join("\r\n",kvp.Value.Values));
 				try {
-					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,sftpPort) {
+					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort) {
 						Folder="/xfer/incoming",
 						FileName="TsiUpdates_"+DateTime.Now.ToString("yyyyMMddhhmmss")+".txt",
 						ByteArray=fileContents,
@@ -2115,7 +2150,7 @@ namespace OpenPmsDental {
 				string userPassword=Secrets.TryDecrypt(listProps.Find(x => x.PropertyDesc=="SftpPassword")?.PropertyValue??"");
 				byte[] fileContents=Encoding.ASCII.GetBytes(TsiMsgConstructor.GetUpdateFileHeader()+"\r\n"+string.Join("\r\n",kvp.Value.Values));
 				try {
-					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,sftpPort) {
+					TaskStateUpload state=new Sftp.Upload(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort) {
 						Folder="/xfer/incoming",
 						FileName="TsiUpdates_"+DateTime.Now.ToString("yyyyMMddhhmmss")+".txt",
 						ByteArray=fileContents,

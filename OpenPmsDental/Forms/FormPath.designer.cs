@@ -52,6 +52,7 @@ namespace OpenPmsDental {
 			this.tabSftp = new OpenPmsDental.UI.TabPage();
 			this.label11 = new System.Windows.Forms.Label();
 			this.butSftpClear = new OpenPmsDental.UI.Button();
+			this.butSshHostKeys = new OpenPmsDental.UI.Button();
 			this.label10 = new System.Windows.Forms.Label();
 			this.label9 = new System.Windows.Forms.Label();
 			this.textSftpPassword = new System.Windows.Forms.TextBox();
@@ -312,6 +313,7 @@ namespace OpenPmsDental {
 			this.tabSftp.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(253)))), ((int)(((byte)(254)))));
 			this.tabSftp.Controls.Add(this.label11);
 			this.tabSftp.Controls.Add(this.butSftpClear);
+			this.tabSftp.Controls.Add(this.butSshHostKeys);
 			this.tabSftp.Controls.Add(this.label10);
 			this.tabSftp.Controls.Add(this.label9);
 			this.tabSftp.Controls.Add(this.textSftpPassword);
@@ -345,6 +347,15 @@ namespace OpenPmsDental {
 			this.butSftpClear.TabIndex = 97;
 			this.butSftpClear.Text = "Clear";
 			this.butSftpClear.Click += new System.EventHandler(this.butSftpClear_Click);
+			//
+			// butSshHostKeys
+			//
+			this.butSshHostKeys.Location = new System.Drawing.Point(246, 167);
+			this.butSshHostKeys.Name = "butSshHostKeys";
+			this.butSshHostKeys.Size = new System.Drawing.Size(134, 24);
+			this.butSshHostKeys.TabIndex = 98;
+			this.butSshHostKeys.Text = "SSH Host Keys";
+			this.butSshHostKeys.Click += new System.EventHandler(this.butSshHostKeys_Click);
 			// 
 			// label10
 			// 
@@ -513,6 +524,7 @@ namespace OpenPmsDental {
 		private TextBox textSftpUsername;
 		private Label label10;
 		private UI.Button butSftpClear;
+		private UI.Button butSshHostKeys;
 		private Label label11;
 		private FolderBrowserDialog folderBrowserDialog;
 	}

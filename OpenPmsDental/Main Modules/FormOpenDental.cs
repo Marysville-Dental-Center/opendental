@@ -702,10 +702,14 @@ namespace OpenPmsDental{
 					Secrets.DecryptSftp(programPropertyPassword.PropertyValue,out decryptedPassword); //Password is encrypted when stored, so	we have to decrypt it in order to get the plaintext.
 					try {
 						hasConnected=OpenPmsDentalStorage.Sftp.FileExists(programPropertyHost.PropertyValue,programPropertyUsername.PropertyValue,decryptedPassword,
-							ODFileUtils.CombinePaths(programPropertyPath.PropertyValue,"A",'/'));
+							SshHostKeys.Store,ODFileUtils.CombinePaths(programPropertyPath.PropertyValue,"A",'/'),doThrowHostKeyRefusal:true);
 					}
-					catch(Exception) {
+					catch(Exception ex) {
 						hasConnected=false;//If an error occurs, DataStorageType does not connect
+						string refusalMessage=OpenPmsDentalStorage.SshHostKeyCheck.GetRefusalMessage(ex);
+						if(refusalMessage!=null) {
+							storageErrMsg=refusalMessage;//The server's host key is not the stored one: say so, with both keys.
+						}
 					}
 				}
 				OpenPmsDentalStorage.Sftp.Download.CleanupStashes(false);//Cleanup stashes which are no longer in use. No need to cleanup stash for current instance yet.
@@ -5131,6 +5135,15 @@ namespace OpenPmsDental{
 		private void menuItemSpellCheck_Click(object sender,EventArgs e) {
 			using FormSpellCheck formSpellCheck=new FormSpellCheck();
 			formSpellCheck.ShowDialog();
+		}
+
+		private void menuItemSshHostKeys_Click(object sender,EventArgs e) {
+			//Accepting or removing a server's host key decides which server the program trusts with passwords and files.
+			if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
+				return;
+			}
+			using FormSshHostKeys formSshHostKeys=new FormSshHostKeys();
+			formSshHostKeys.ShowDialog();
 		}
 
 		private void menuItemTimeCards_Click(object sender,EventArgs e) {

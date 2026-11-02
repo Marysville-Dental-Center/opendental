@@ -21,17 +21,20 @@ namespace OpenPmsDentalStorage {
 		///with the prebuilt Bridges assembly.</summary>
 		internal static readonly Type TypeAsyncInterfacesDependency=typeof(IAsyncDisposable);
 
-		private static SftpClient Init(string host,string user,string pass,int port=22) {
+		///<summary>A client whose host keys are checked against store (SshHostKeyCheck). It connects only through ConnectIfNeeded or
+		///IsConnectionValid, which go through the check.</summary>
+		private static SftpClient Init(string host,string user,string pass,ISshHostKeyStore store,int port=22) {
 			SftpClient sftpClient=new SftpClient(new ConnectionInfo(host,port,user,new AuthenticationMethod[] { new PasswordAuthenticationMethod(user,pass) }));
-			SshHostKeys.Attach(sftpClient);
+			SshHostKeyCheck.Attach(sftpClient,store);
 			return sftpClient;
 		}
 
 		public class Upload : TaskStateUpload {
 			private SftpClient _client;
 
-			public Upload(string host,string user,string pass,int port=22) {
-				_client=Init(host,user,pass,port);
+			///<summary>store: the host keys the server's key is checked against (in the program, SshHostKeys.Store).</summary>
+			public Upload(string host,string user,string pass,ISshHostKeyStore store,int port=22) {
+				_client=Init(host,user,pass,store,port);
 			}
 
 			protected override async Task PerformIO() {
@@ -65,8 +68,8 @@ namespace OpenPmsDentalStorage {
 			internal SftpClient _client;
 			public static bool DoUseStash=true;
 
-			public Download(string host,string user,string pass,int port=22) {
-				_client=Init(host,user,pass,port);
+			public Download(string host,string user,string pass,ISshHostKeyStore store,int port=22) {
+				_client=Init(host,user,pass,store,port);
 			}
 
 			internal Download() {
@@ -180,8 +183,8 @@ namespace OpenPmsDentalStorage {
 		public class Delete : TaskStateDelete {
 			internal SftpClient _client;
 
-			public Delete(string host,string user,string pass) {
-				_client=Init(host,user,pass);
+			public Delete(string host,string user,string pass,ISshHostKeyStore store) {
+				_client=Init(host,user,pass,store);
 			}
 
 			internal Delete() {
@@ -198,8 +201,8 @@ namespace OpenPmsDentalStorage {
 		public class Thumbnail : TaskStateThumbnail {
 			private SftpClient _client;
 
-			public Thumbnail(string host,string user,string pass) {
-				_client=Init(host,user,pass);
+			public Thumbnail(string host,string user,string pass,ISshHostKeyStore store) {
+				_client=Init(host,user,pass,store);
 			}
 
 			protected override async Task PerformIO() {
@@ -217,8 +220,8 @@ namespace OpenPmsDentalStorage {
 		public class ListFolders : TaskStateListFolders {
 			internal SftpClient _client;
 
-			public ListFolders(string host,string user,string pass) {
-				_client=Init(host,user,pass);
+			public ListFolders(string host,string user,string pass,ISshHostKeyStore store) {
+				_client=Init(host,user,pass,store);
 			}
 
 			internal ListFolders() {
@@ -241,13 +244,15 @@ namespace OpenPmsDentalStorage {
 			private string _host;
 			private string _user;
 			private string _pass;
+			private ISshHostKeyStore _store;
 
-			public Move(string host,string user,string pass) {
-				_client=Init(host,user,pass);
+			public Move(string host,string user,string pass,ISshHostKeyStore store) {
+				_client=Init(host,user,pass,store);
 				_host=host;
 				_user=user;
 				_pass=pass;
-			}			
+				_store=store;
+			}
 
 			protected override async Task PerformIO() {
 				bool hadToConnect=_client.ConnectIfNeeded();
@@ -288,7 +293,7 @@ namespace OpenPmsDentalStorage {
 						if(IsCopy) {
 							//Throws if fails.
 							await Task.Run(() => {
-								TaskStateDownload stateDown=new Download(_host,_user,_pass) {
+								TaskStateDownload stateDown=new Download(_host,_user,_pass,_store) {
 									Folder=Path.GetDirectoryName(fromPathFull).Replace('\\','/'),
 									FileName=Path.GetFileName(fromPathFull),
 									HasExceptions=HasExceptions
@@ -301,7 +306,7 @@ namespace OpenPmsDentalStorage {
 									_client.DisconnectIfNeeded(hadToConnect);
 									return;
 								}
-								TaskStateUpload stateUp=new Upload(_host,_user,_pass) {
+								TaskStateUpload stateUp=new Upload(_host,_user,_pass,_store) {
 									Folder=Path.GetDirectoryName(toPathFull).Replace('\\','/'),
 									FileName=Path.GetFileName(toPathFull),
 									ByteArray=stateDown.ByteArray,
@@ -337,8 +342,8 @@ namespace OpenPmsDentalStorage {
 		public class Copy:TaskStateCopy {
 			TaskStateMove _stateMove;
 
-			public Copy(string host,string user,string pass) {
-				_stateMove=new Move(host,user,pass) {
+			public Copy(string host,string user,string pass,ISshHostKeyStore store) {
+				_stateMove=new Move(host,user,pass,store) {
 					IsCopy=true
 				};
 			}
@@ -357,14 +362,16 @@ namespace OpenPmsDentalStorage {
 			}
 		}
 
-		///<summary>Synchronous.  Returns true if a file exists in the passed in filePath</summary>
-		public static bool FileExists(string host,string user,string pass,string filePath) {
-			SftpClient client=Init(host,user,pass);
-			return FileExists(client,filePath);
+		///<summary>Synchronous.  Returns true if a file exists in the passed in filePath. False when it does not or the server can't be reached; when
+		///the server's host key is refused (SshHostKeyCheck), throws the SshHostKeyRefusedException if doThrowHostKeyRefusal, otherwise false too.
+		///</summary>
+		public static bool FileExists(string host,string user,string pass,ISshHostKeyStore store,string filePath,bool doThrowHostKeyRefusal=false) {
+			SftpClient client=Init(host,user,pass,store);
+			return FileExists(client,filePath,doThrowHostKeyRefusal);
 		}
 
 		///<summary>Synchronous.  Returns true if a file exists in the passed in filePath</summary>
-		private static bool FileExists(SftpClient client,string filePath) {
+		private static bool FileExists(SftpClient client,string filePath,bool doThrowHostKeyRefusal=false) {
 			bool retVal=false;
 			try {
 				bool hadToConnect=client.ConnectIfNeeded();
@@ -372,23 +379,33 @@ namespace OpenPmsDentalStorage {
 				client.DisconnectIfNeeded(hadToConnect);
 				retVal=true;
 			}
-			catch(Exception) {
+			catch(Exception ex) {
+				SshHostKeyRefusedException sshHostKeyRefusedException=SshHostKeyCheck.FindRefusal(ex);
+				if(doThrowHostKeyRefusal && sshHostKeyRefusedException!=null) {
+					throw sshHostKeyRefusedException;
+				}
 			}
 			return retVal;
 		}
 
-		public static bool IsConnectionValid(string host,string user,string pass,int port=22) {
+		///<summary>True when a connection signs in, false when it does not (a wrong password, a network error). A server whose host key the check
+		///refuses is not valid either: the refusal is recorded in store, where Setup, SSH Host Keys shows it, and the SshHostKeyRefusedException
+		///(whose message names the server and both fingerprints) is thrown if doThrowHostKeyRefusal, otherwise false is returned.</summary>
+		public static bool IsConnectionValid(string host,string user,string pass,ISshHostKeyStore store,int port=22,bool doThrowHostKeyRefusal=false) {
 			bool retval=false;
 			try {
-				SftpClient client=Init(host,user,pass,port);
-				client.Connect();
+				SftpClient client=Init(host,user,pass,store,port);
+				SshHostKeyCheck.Connect(client);
 				if(client.IsConnected) {
 					retval=true;
 					client.Disconnect();
 				}
 			}
 			catch(Exception ex) {
-				ex.DoNothing();
+				SshHostKeyRefusedException sshHostKeyRefusedException=SshHostKeyCheck.FindRefusal(ex);
+				if(doThrowHostKeyRefusal && sshHostKeyRefusedException!=null) {
+					throw sshHostKeyRefusedException;
+				}
 			}
 			return retval;
 		}
@@ -439,15 +456,15 @@ namespace OpenPmsDentalStorage {
 			return listPrefixes;
 		}
 
-		///<summary>Returns true if it was not connected and had to connect.</summary>
+		///<summary>Returns true if it was not connected and had to connect. Connects through the client's host key check (SshHostKeyCheck); a refused
+		///host key fails with its message.</summary>
 		public static bool ConnectIfNeeded(this SftpClient client) {
 			if(!client.IsConnected) {
 				try {
-					client.Connect();
+					SshHostKeyCheck.Connect(client);
 				}
 				catch(Exception ex) {
-					Exception e=SshHostKeys.Explain(ex,client.ConnectionInfo.Host,client.ConnectionInfo.Port);
-					throw new Exception("Connecting to "+client.ConnectionInfo.Host+" has failed with user: "+client.ConnectionInfo.Username+"\r\n"+e.Message,e);
+					throw new Exception("Connecting to "+client.ConnectionInfo.Host+" has failed with user: "+client.ConnectionInfo.Username+"\r\n"+ex.Message,ex);
 				}
 				return true;
 			}

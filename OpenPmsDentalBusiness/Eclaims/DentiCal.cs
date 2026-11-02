@@ -53,7 +53,7 @@ namespace OpenPmsDentalBusiness.Eclaims {
 			}
 			try {
 				GetRemoteHostAndPort(clearinghouseClin.ClientProgram,out string remoteHost,out int remotePort);
-				sftpSession=new SftpSession(remoteHost,remotePort,clearinghouseClin.LoginID,clearinghouseClin.Password);
+				sftpSession=new SftpSession(remoteHost,remotePort,clearinghouseClin.LoginID,clearinghouseClin.Password,SshHostKeys.Store);
 				sftpSession.Connect();
 			}
 			catch(Exception ex) {

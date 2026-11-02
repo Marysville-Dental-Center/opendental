@@ -88,7 +88,7 @@
     <Compile Include="Shared\TaskState.cs" />
     <Compile Include="Storage\Sftp.cs" />
     <Compile Include="Storage\SftpSession.cs" />
-    <Compile Include="Storage\SshHostKeys.cs" />
+    <Compile Include="Storage\SshHostKeyCheck.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CodeBase\xCodeBase.csproj">

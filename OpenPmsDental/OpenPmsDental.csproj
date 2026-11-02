@@ -2811,6 +2811,12 @@
     <Compile Include="Forms\FormSpellChecker.designer.cs">
       <DependentUpon>FormSpellChecker.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormSshHostKeys.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormSshHostKeys.Designer.cs">
+      <DependentUpon>FormSshHostKeys.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormConnectionLost.cs">
       <SubType>Form</SubType>
     </Compile>

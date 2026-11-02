@@ -326,6 +326,15 @@ namespace OpenPmsDental{
 			textSftpPassword.UseSystemPasswordChar=false;
 			textSftpPassword.ReadOnly=false;
 		}
+
+		///<summary>The remembered SSH host keys (Setup, SSH Host Keys), where a changed key of the SFTP server is accepted. Security Admin only.</summary>
+		private void butSshHostKeys_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
+				return;
+			}
+			using FormSshHostKeys formSshHostKeys=new FormSshHostKeys();
+			formSshHostKeys.ShowDialog();
+		}
 		
 		private void radioSftp_Click(object sender,EventArgs e) {
 			if(!VerifySwitchingAwayFromDBStorage()) { //they clicked cancel
@@ -365,8 +374,9 @@ namespace OpenPmsDental{
 			if(radioSftp.Checked) {
 				bool doesFileExist;
 				try {
-					doesFileExist=OpenPmsDentalStorage.Sftp.FileExists(textSftpHostname.Text,textSftpUsername.Text,textSftpPassword.Text,
-						ODFileUtils.CombinePaths(textSftpAtoZ.Text,"A",'/'));
+					//A refused host key throws, so its message (the server and both keys) is shown below.
+					doesFileExist=OpenPmsDentalStorage.Sftp.FileExists(textSftpHostname.Text,textSftpUsername.Text,textSftpPassword.Text,SshHostKeys.Store,
+						ODFileUtils.CombinePaths(textSftpAtoZ.Text,"A",'/'),doThrowHostKeyRefusal:true);
 				}
 				catch(Exception ex) {
 					Cursor=Cursors.Default;

@@ -265,6 +265,19 @@ namespace OpenPmsDentalBusiness{
 
 		public static bool ValidateClinicSftpDetails(List<ProgramProperty> listProgramProperties,bool hasConnection=true) {
 			Meth.NoCheckMiddleTierRole();
+			return ValidateClinicSftpDetails(listProgramProperties,hasConnection,out _);
+		}
+
+		///<summary>Validates the clinic's SFTP details and tests the connection with them. refusalMessage: when the connection was refused because
+		///the server's host key is not the stored one (SshHostKeyCheck), the refusal's message, which names the server and both fingerprints and
+		///says the key is accepted in Setup, SSH Host Keys; otherwise null.</summary>
+		public static bool ValidateClinicSftpDetails(List<ProgramProperty> listProgramProperties,out string refusalMessage) {
+			Meth.NoCheckMiddleTierRole();
+			return ValidateClinicSftpDetails(listProgramProperties,true,out refusalMessage);
+		}
+
+		private static bool ValidateClinicSftpDetails(List<ProgramProperty> listProgramProperties,bool hasConnection,out string refusalMessage) {
+			refusalMessage=null;
 			if(listProgramProperties==null || listProgramProperties.Count==0) {
 				return false;
 			}
@@ -288,7 +301,14 @@ namespace OpenPmsDentalBusiness{
 				return false;
 			}
 			if(hasConnection) {
-				return Sftp.IsConnectionValid(sftpAddress,userName,userPassword,sftpPort);
+				try {
+					return Sftp.IsConnectionValid(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort,doThrowHostKeyRefusal:true);
+				}
+				catch(Exception ex) {
+					//Only a host key refusal is thrown. Retyping the program link does not help; Setup, SSH Host Keys does, as the message says.
+					refusalMessage=SshHostKeyCheck.GetRefusalMessage(ex)??ex.Message;
+					return false;
+				}
 			}
 			return true;
 		}
@@ -344,9 +364,15 @@ namespace OpenPmsDentalBusiness{
 			if(clinicNum==0) {
 				clinicDesc="Headquarters";
 			}
+			string refusalMessage=null;
 			if(listProgramPropertiesClinic.Count==0
-				||  !ValidateClinicSftpDetails(listProgramPropertiesClinic,true)) //the props should be valid, but this will test the connection using the props
+				||  !ValidateClinicSftpDetails(listProgramPropertiesClinic,out refusalMessage)) //the props should be valid, but this will test the connection using the props
 			{
+				if(refusalMessage!=null) {//The server's host key is not the stored one: say so, with both keys, instead of blaming the program link.
+					return Lans.g("TsiTransLogs","The SFTP server of the Transworld program link")
+						+(PrefC.HasClinicsEnabled?(" "+Lans.g("TsiTransLogs","for the guarantor's clinic")+", "+clinicDesc+","):"")
+						+" "+Lans.g("TsiTransLogs","was refused for its SSH host key, so the suspend message was not sent.")+"\r\n"+refusalMessage;
+				}
 				return Lans.g("TsiTransLogs","The Transworld program link is not enabled")+" "
 					+(PrefC.HasClinicsEnabled?(Lans.g("TsiTransLogs","for the guarantor's clinic")+", "+clinicDesc+", "):"")
 					+Lans.g("TsiTransLogs","or is not setup properly.");
@@ -384,7 +410,7 @@ namespace OpenPmsDentalBusiness{
 			}
 			string msg=TsiMsgConstructor.GenerateUpdate(patAging.PatNum,clientId,TsiTransType.SS,0.00,patAging.AmountDue);
 			byte[] byteArrayFileContents=Encoding.ASCII.GetBytes(TsiMsgConstructor.GetUpdateFileHeader()+"\r\n"+msg);
-			TaskStateUpload taskStateUpload=new Sftp.Upload(sftpAddress,userName,userPassword,sftpPort);
+			TaskStateUpload taskStateUpload=new Sftp.Upload(sftpAddress,userName,userPassword,SshHostKeys.Store,sftpPort);
 			taskStateUpload.Folder="/xfer/incoming";
 			taskStateUpload.FileName="TsiUpdates_"+DateTime.Now.ToString("yyyyMMddhhmmss")+".txt";
 			taskStateUpload.ByteArray=byteArrayFileContents;

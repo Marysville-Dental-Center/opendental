@@ -115,6 +115,7 @@ namespace RegistryTests {
 			Assert.AreEqual(10000,(int)EnumPermType.MaintenanceSetup);
 			Assert.AreEqual(10001,(int)EnumPermType.MaintenanceRecord);
 			Assert.AreEqual(10050,(int)EnumPermType.InventoryAdjust);
+			Assert.AreEqual(10100,(int)EnumPermType.SshHostKeys);
 			Assert.AreEqual(127,(int)AlertType.MaintenanceDueSoon);
 			Assert.AreEqual(126,(int)AlertType.MaintenanceOverdue);
 			Assert.AreEqual(119,(int)AlertType.InventoryLowStock);
@@ -127,7 +128,8 @@ namespace RegistryTests {
 			Assert.AreEqual(ForkEnums.FEATURE_MAINTENANCE,ForkEnums.GetFeature(AlertType.MaintenanceOverdue));
 			Assert.AreEqual(ForkEnums.FEATURE_INVENTORY,ForkEnums.GetFeature(FormType.FormSupplyInventory));
 			Assert.AreEqual(ForkEnums.FEATURE_PATIENT_FORMS_VIEW,ForkEnums.GetFeature(UserOdFkeyType.PatientFormsView));
-			Assert.AreEqual(12,GetForkValuesInCode().Count,"A new fork-only value goes into FORK-ENUMS.md and into this test.");
+			Assert.AreEqual(ForkEnums.FEATURE_SSH_HOST_KEYS,ForkEnums.GetFeature(EnumPermType.SshHostKeys));
+			Assert.AreEqual(13,GetForkValuesInCode().Count,"A new fork-only value goes into FORK-ENUMS.md and into this test.");
 		}
 
 		[TestMethod]

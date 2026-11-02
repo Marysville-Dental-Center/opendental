@@ -109,6 +109,7 @@
       "tests\\RowHashTests\\RowHashTests.csproj",
       "tests\\SheetTests\\SheetTests.csproj",
       "tests\\SignatureTests\\SignatureTests.csproj",
+      "tests\\SshHostKeyTests\\SshHostKeyTests.csproj",
       "tests\\StatementTests\\StatementTests.csproj",
       "tests\\TaskCategoryTests\\TaskCategoryTests.csproj",
       "tests\\VBRIDGE1Tests\\VBRIDGE1Tests.csproj",
