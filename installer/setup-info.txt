@@ -1,0 +1,21 @@
+Open PMS - Dental @VERSION@
+
+Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and contributors, licensed under the GNU GPL v2. It is not affiliated with or endorsed by Open Dental Software, Inc.
+
+The program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License, version 2 or (at your option) any later version. It comes with ABSOLUTELY NO WARRANTY. The complete source code of this release is published at
+https://github.com/Marysville-Dental-Center/opendental/tree/v@VERSION@
+
+What this setup does:
+- It installs the program files in the program folder (by default C:\Program Files (x86)\Open PMS - Dental). The uninstaller goes to its "uninstall" sub folder.
+- It writes FreeDentalConfig.xml (database server, database and user) if the program folder has none. The password is never stored by setup: the program asks for it the first time it starts.
+- It does not install or change a database server or a database, and it never touches the A to Z images folder.
+- Uninstalling removes the whole program folder, including files that later updates added. The database and the A to Z folder are not touched.
+
+The program folder also gets LICENSE (the GNU GPL), NOTICE, THIRD-PARTY-NOTICES.txt (the licenses of the third-party components), and db\README.md with db\init\new-database.sql (how to create a new office database).
+
+This setup is not digitally signed. Windows SmartScreen may warn about it; compare its SHA-256 with SHA256SUMS.txt of the release.
+
+NOTICE
+======
+
+@NOTICE@
