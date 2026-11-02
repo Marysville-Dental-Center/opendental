@@ -143,6 +143,10 @@ namespace CodeBase.Controls {
 			if(string.IsNullOrWhiteSpace(uri) || !Uri.TryCreate(uri.Trim(),UriKind.Absolute,out uriFile) || !uriFile.IsFile) {
 				return null;
 			}
+			//The browser keeps an escaped separator in the file name, while Uri turns it into a separator before the segments can be checked.
+			if(uri.IndexOf("%2f",StringComparison.OrdinalIgnoreCase)>=0 || uri.IndexOf("%5c",StringComparison.OrdinalIgnoreCase)>=0) {
+				return null;
+			}
 			string[] arraySegments=uriFile.AbsolutePath.Split(new char[] { '/' },StringSplitOptions.RemoveEmptyEntries);
 			for(int i=0;i<arraySegments.Length;i++) {
 				string segment=Uri.UnescapeDataString(arraySegments[i]);

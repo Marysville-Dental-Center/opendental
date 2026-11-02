@@ -1,9 +1,11 @@
-// Shows a page the program generated in the WebView2 wrapper (CodeBase ODWebView2.NavigateToHtml), in a small off-screen window, and checks the
+// Shows pages the program generated in the WebView2 wrapper (CodeBase ODWebView2.NavigateToHtml), in a small off-screen window, and checks the
 // page mode the wiki and email windows rely on: the encoded text shows as text, the page's own script does not run (the program's scripts do),
 // a local image next to the page loads, host objects and web messages are off, a clicked link raises LinkClicked and is never followed, and a
-// navigation the page starts by itself (a meta refresh, a frame) is cancelled without raising it. Every address is local or under .invalid and
-// is cancelled before a request goes out, and the browser runs with its background networking off: no network. Skipped (inconclusive) when the
-// WebView2 Runtime is missing, when no window can be shown, or when LIBWEB_SKIP_WEBVIEW2=1.
+// navigation the page starts by itself (a meta refresh, a frame), the earlier of two pages shown back to back and Back are cancelled without
+// raising it. A second test checks what a page may load: files from its own folder and the allowed folders only (never the system's or another
+// computer's share), and http images only when the window allows them. Every address is local or under .invalid and is cancelled or answered
+// before a request goes out, and the browser runs with its background networking off: no network. Skipped (inconclusive) when the WebView2
+// Runtime is missing, when no window can be shown, or when LIBWEB_SKIP_WEBVIEW2=1.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -24,6 +26,10 @@ namespace LibWebTests {
 	[TestClass]
 	public class WebView2SmokeTests {
 		private const string PATIENT_TEXT="Jane <b>Doe</b> & \"Sons\"";
+		///<summary>The web address of the image the second test answers itself (never the network).</summary>
+		private const string URL_REMOTE_IMAGE="http://img.invalid/x.png";
+		///<summary>An image on another computer's share: Windows would send the user's credentials there if it were opened.</summary>
+		private const string URL_SHARE_IMAGE="file://unc.invalid/s/x.png";
 
 		///<summary>What the off-screen window saw, filled on its thread and checked on the test's.</summary>
 		private class Results {
@@ -47,6 +53,35 @@ namespace LibWebTests {
 			public int CountLinksBeforeRefresh;
 			public List<string> ListNavigations=new List<string>();
 			public List<string> ListFrames=new List<string>();
+			public int CountLinksBeforeQuickPages;
+			public int CountLinksAfterQuickPages;
+			public string UriFirstQuickPage;
+			public string DocumentUriAfterQuickPages;
+			public string SourceAfterQuickPages;
+			public bool CanGoBack;
+			public string SourceAfterBack;
+		}
+
+		///<summary>A request the page made, as the second test's own WebResourceRequested handler saw it after the control's.</summary>
+		private class Request {
+			public string Uri;
+			public bool IsBlocked;
+		}
+
+		///<summary>What the second test's window saw.</summary>
+		private class ResourceResults {
+			public string BrowserVersion="";
+			public string Error=null;
+			public string UriOutsideImage;
+			public Dictionary<string,int> DictWidthsUntrusted=new Dictionary<string,int>();
+			public Dictionary<string,int> DictWidthsShare=new Dictionary<string,int>();
+			public Dictionary<string,int> DictWidthsTrusted=new Dictionary<string,int>();
+			public List<Request> ListRequestsUntrusted=new List<Request>();
+			public List<Request> ListRequestsShare=new List<Request>();
+			public List<Request> ListRequestsTrusted=new List<Request>();
+			public bool IsShareChecked;
+			public int CountRemoteBlocked;
+			public int CountRemoteBlockedAfterUntrusted;
 		}
 
 		private static string BuildPage() {
@@ -71,7 +106,9 @@ namespace LibWebTests {
 			return funcIsDone();
 		}
 
-		private static async Task<bool> NavigateAndWait(ODWebView2 odWebView2,string html,string folder) {
+		private static async Task<bool> NavigateAndWait(ODWebView2 odWebView2,string html,string folder,bool isRemoteContentAllowed=false,
+			List<string> listFoldersAllowed=null)
+		{
 			bool isCompleted=false;
 			bool isSuccess=false;
 			EventHandler<CoreWebView2NavigationCompletedEventArgs> eventHandler=(sender,e) => {
@@ -79,7 +116,7 @@ namespace LibWebTests {
 				isSuccess=e.IsSuccess;
 			};
 			odWebView2.NavigationCompleted+=eventHandler;
-			odWebView2.NavigateToHtml(html,folder);
+			odWebView2.NavigateToHtml(html,folder,isRemoteContentAllowed,listFoldersAllowed);
 			await WaitFor(() => isCompleted,20000);
 			odWebView2.NavigationCompleted-=eventHandler;
 			return isSuccess;
@@ -101,27 +138,87 @@ namespace LibWebTests {
 			return System.Text.RegularExpressions.Regex.Unescape(json.Substring(1,json.Length-2));
 		}
 
-		private static async Task Run(Form form,string folder,Results results) {
+		///<summary>An 8x8 black PNG.</summary>
+		private static byte[] GetPngBytes() {
+			using Bitmap bitmap=new Bitmap(8,8);
+			using(Graphics g=Graphics.FromImage(bitmap)) {
+				g.Clear(Color.Black);
+			}
+			using MemoryStream memoryStream=new MemoryStream();
+			bitmap.Save(memoryStream,ImageFormat.Png);
+			return memoryStream.ToArray();
+		}
+
+		///<summary>The WebView2 environment of a test: its own user data folder under folder, background networking off.</summary>
+		private static Task<CoreWebView2Environment> CreateEnvironmentAsync(string folder) {
 			CoreWebView2EnvironmentOptions coreWebView2EnvironmentOptions=new CoreWebView2EnvironmentOptions();
 			coreWebView2EnvironmentOptions.AdditionalBrowserArguments="--disable-background-networking --disable-component-update --no-first-run";
-			CoreWebView2Environment coreWebView2Environment=await CoreWebView2Environment.CreateAsync(null,Path.Combine(folder,"data"),
-				coreWebView2EnvironmentOptions);
+			return CoreWebView2Environment.CreateAsync(null,Path.Combine(folder,"data"),coreWebView2EnvironmentOptions);
+		}
+
+		///<summary>Inconclusive when the test cannot use WebView2 here.</summary>
+		private static void SkipWithoutRuntime() {
+			if(Environment.GetEnvironmentVariable("LIBWEB_SKIP_WEBVIEW2")=="1") {
+				Assert.Inconclusive("LIBWEB_SKIP_WEBVIEW2=1");
+			}
+			if(!ODWebView2.IsRuntimeAvailable()) {
+				Assert.Inconclusive("The Microsoft WebView2 Runtime is not installed.");
+			}
+		}
+
+		///<summary>Runs funcRun in a small off-screen window on a thread of its own and returns the error it threw, or null. Inconclusive when the
+		///window does not finish within 3 minutes.</summary>
+		private static string RunOffScreen(Func<Form,Task> funcRun) {
+			string error=null;
+			Thread thread=new Thread(() => {
+				using Form form=new Form();
+				form.StartPosition=FormStartPosition.Manual;
+				form.Location=new Point(-6000,-6000);//Off screen; WebView2 still lays out and runs the page.
+				form.Size=new Size(600,500);
+				form.ShowInTaskbar=false;
+				form.FormBorderStyle=FormBorderStyle.None;
+				form.Load+=async (sender,e) => {
+					try {
+						await funcRun(form);
+					}
+					catch(Exception ex) {
+						error=ex.GetType().Name+": "+ex.Message;
+					}
+					form.Close();
+				};
+				Application.Run(form);
+			});
+			thread.SetApartmentState(ApartmentState.STA);
+			thread.IsBackground=true;
+			thread.Start();
+			if(!thread.Join(TimeSpan.FromMinutes(3))) {
+				Assert.Inconclusive("The WebView2 window did not finish within 3 minutes.");
+			}
+			return error;
+		}
+
+		private static async Task Run(Form form,string folder,Results results) {
+			CoreWebView2Environment coreWebView2Environment=await CreateEnvironmentAsync(folder);
 			results.BrowserVersion=coreWebView2Environment.BrowserVersionString;
 			ODWebView2 odWebView2=new ODWebView2();
 			odWebView2.Dock=DockStyle.Fill;
 			form.Controls.Add(odWebView2);
 			await odWebView2.EnsureCoreWebView2Async(coreWebView2Environment);
 			odWebView2.LinkClicked+=(sender,e) => results.ListLinks.Add(e);
-			odWebView2.CoreWebView2.NavigationStarting+=(sender,e) => results.ListNavigations.Add(e.Uri+" user="+e.IsUserInitiated);
+			odWebView2.CoreWebView2.NavigationStarting+=(sender,e) => {
+				string kind;
+				try {
+					kind=e.NavigationKind.ToString();
+				}
+				catch(Exception) {
+					kind="unknown";
+				}
+				results.ListNavigations.Add(e.Uri+" user="+e.IsUserInitiated+" kind="+kind);
+			};
 			odWebView2.CoreWebView2.FrameNavigationStarting+=(sender,e) => results.ListFrames.Add(e.Uri);
 			string folderPage=Path.Combine(folder,"page");
 			Directory.CreateDirectory(folderPage);
-			using(Bitmap bitmap=new Bitmap(8,8)) {
-				using(Graphics g=Graphics.FromImage(bitmap)) {
-					g.Clear(Color.Black);
-				}
-				bitmap.Save(Path.Combine(folderPage,"dot.png"),ImageFormat.Png);
-			}
+			File.WriteAllBytes(Path.Combine(folderPage,"dot.png"),GetPngBytes());
 			results.IsLoaded=await NavigateAndWait(odWebView2,BuildPage(),folderPage);
 			results.DocumentUri=odWebView2.DocumentUri;
 			results.PathDocument=new Uri(odWebView2.DocumentUri).LocalPath;
@@ -150,46 +247,45 @@ namespace LibWebTests {
 			results.DocumentUriAfterRefresh=odWebView2.DocumentUri;
 			results.SourceAfterRefresh=odWebView2.CoreWebView2.Source;
 			string pathRefresh=new Uri(odWebView2.DocumentUri).LocalPath;
+			//Two pages back to back without waiting (as when the user arrows through the inbox): the first page's own navigation starts after the
+			//second took its place. Then Back, to a page that was replaced. Neither is a link the user clicked.
+			results.CountLinksBeforeQuickPages=results.ListLinks.Count;
+			bool isSecondShown=false;
+			EventHandler<CoreWebView2NavigationCompletedEventArgs> eventHandler=(sender,e) => {
+				if(e.IsSuccess && WebView2Policy.IsSameDocument(odWebView2.CoreWebView2.Source,odWebView2.DocumentUri)) {
+					isSecondShown=true;
+				}
+			};
+			odWebView2.NavigationCompleted+=eventHandler;
+			odWebView2.NavigateToHtml(HtmlPage.Build("<p>first</p>","First",""),folderPage);
+			results.UriFirstQuickPage=odWebView2.DocumentUri;
+			odWebView2.NavigateToHtml(HtmlPage.Build("<p>second</p>","Second",""),folderPage);
+			await WaitFor(() => isSecondShown,20000);
+			odWebView2.NavigationCompleted-=eventHandler;
+			await Task.Delay(1000);
+			results.DocumentUriAfterQuickPages=odWebView2.DocumentUri;
+			results.SourceAfterQuickPages=odWebView2.CoreWebView2.Source;
+			results.CanGoBack=odWebView2.CoreWebView2.CanGoBack;
+			int countNavigations=results.ListNavigations.Count;
+			odWebView2.CoreWebView2.GoBack();
+			await WaitFor(() => results.ListNavigations.Count>countNavigations,5000);
+			await Task.Delay(1000);
+			results.SourceAfterBack=odWebView2.CoreWebView2.Source;
+			results.CountLinksAfterQuickPages=results.ListLinks.Count;
+			string pathSecond=new Uri(odWebView2.DocumentUri).LocalPath;
 			form.Controls.Remove(odWebView2);
 			odWebView2.Dispose();
-			results.IsDocumentFileDeleted=!File.Exists(results.PathDocument) && !File.Exists(pathRefresh);
+			results.IsDocumentFileDeleted=!File.Exists(results.PathDocument) && !File.Exists(pathRefresh) && !File.Exists(pathSecond);
 		}
 
 		[TestMethod]
 		public void GeneratedPage_ShowsTextLocalImages_RunsNoScript_AndFollowsNoLink() {
-			if(Environment.GetEnvironmentVariable("LIBWEB_SKIP_WEBVIEW2")=="1") {
-				Assert.Inconclusive("LIBWEB_SKIP_WEBVIEW2=1");
-			}
-			if(!ODWebView2.IsRuntimeAvailable()) {
-				Assert.Inconclusive("The Microsoft WebView2 Runtime is not installed.");
-			}
+			SkipWithoutRuntime();
 			string folder=TestPaths.NewTempFolder("smoke");
 			Results results=new Results();
 			try {
-				Thread thread=new Thread(() => {
-					using Form form=new Form();
-					form.StartPosition=FormStartPosition.Manual;
-					form.Location=new Point(-6000,-6000);//Off screen; WebView2 still lays out and runs the page.
-					form.Size=new Size(600,500);
-					form.ShowInTaskbar=false;
-					form.FormBorderStyle=FormBorderStyle.None;
-					form.Load+=async (sender,e) => {
-						try {
-							await Run(form,folder,results);
-						}
-						catch(Exception ex) {
-							results.Error=ex.GetType().Name+": "+ex.Message;
-						}
-						form.Close();
-					};
-					Application.Run(form);
-				});
-				thread.SetApartmentState(ApartmentState.STA);
-				thread.IsBackground=true;
-				thread.Start();
-				if(!thread.Join(TimeSpan.FromMinutes(3))) {
-					Assert.Inconclusive("The WebView2 window did not finish within 3 minutes.");
-				}
+				string error=RunOffScreen(form => Run(form,folder,results));
+				results.Error=error;
 			}
 			finally {
 				TestPaths.DeleteFolder(folder);
@@ -211,7 +307,7 @@ namespace LibWebTests {
 			Assert.AreEqual(WebView2Policy.AreDevToolsAllowed,results.AreDevToolsEnabled,"Dev tools only in Debug builds.");
 			Assert.IsTrue(results.ListFrames.Any(x => x.StartsWith("https://frame.example.invalid")),"The frame asked to load. "+details);
 			//The clicks.
-			Assert.AreEqual(2,results.ListLinks.Count,"Each click raised LinkClicked once. "+details);
+			Assert.AreEqual(2,results.CountLinksBeforeRefresh,"Each click raised LinkClicked once. "+details);
 			Assert.AreEqual(EnumWikiLink.WikiPage,FormWiki.ParseLink(results.ListLinks[0].Uri,out string target),details);
 			Assert.AreEqual("Test Page",target);
 			Assert.AreEqual(results.DocumentUri,results.ListLinks[0].UriDocument);
@@ -219,12 +315,168 @@ namespace LibWebTests {
 			Assert.AreEqual("https://example.invalid/page",results.ListLinks[1].GetSystemBrowserUrl(),details);
 			Assert.IsTrue(WebView2Policy.IsSameDocument(results.SourceAfterClicks,results.DocumentUri),"The page stayed: "+results.SourceAfterClicks);
 			//The meta refresh.
-			Assert.IsTrue(results.ListNavigations.Any(x => x.StartsWith("https://refresh.example.invalid") && x.EndsWith("user=False")),
+			Assert.IsTrue(results.ListNavigations.Any(x => x.StartsWith("https://refresh.example.invalid") && x.Contains(" user=False")),
 				"The page tried to navigate by itself. "+details);
-			Assert.AreEqual(results.CountLinksBeforeRefresh,results.ListLinks.Count,"A navigation the page starts by itself never raises LinkClicked. "+details);
 			Assert.IsTrue(WebView2Policy.IsSameDocument(results.SourceAfterRefresh,results.DocumentUriAfterRefresh),"The refresh was cancelled: "
 				+results.SourceAfterRefresh);
+			//Two pages back to back, then Back.
+			Assert.AreEqual(results.CountLinksBeforeRefresh,results.CountLinksBeforeQuickPages,
+				"A navigation the page starts by itself never raises LinkClicked. "+details);
+			Assert.IsTrue(WebView2Policy.IsSameDocument(results.SourceAfterQuickPages,results.DocumentUriAfterQuickPages),
+				"The second of two pages shown back to back is the one shown: "+results.SourceAfterQuickPages+" "+details);
+			//WebView2 starts the first page's navigation, counted as user initiated, after the second page took its place (checked with Runtime 156).
+			Assert.IsTrue(results.ListNavigations.Any(x => x.StartsWith(results.UriFirstQuickPage+" ")),
+				"The first page's own navigation started after the second page took its place. "+details);
+			Assert.IsTrue(results.CanGoBack,"There is a page to go back to. "+details);
+			Assert.IsTrue(results.ListNavigations.Last().Contains(" kind=BackOrForward") || results.ListNavigations.Last().Contains(" kind=unknown"),
+				"Back started a navigation. "+details);
+			Assert.IsTrue(WebView2Policy.IsSameDocument(results.SourceAfterBack,results.DocumentUriAfterQuickPages),"Back was cancelled: "
+				+results.SourceAfterBack+" "+details);
+			Assert.AreEqual(results.CountLinksBeforeQuickPages,results.CountLinksAfterQuickPages,
+				"Neither the first of two pages shown back to back ("+results.UriFirstQuickPage+") nor Back raises LinkClicked. "+details);
 			Assert.IsTrue(results.IsDocumentFileDeleted,"The page files are deleted when the page changes and when the control is disposed.");
+		}
+
+		///<summary>The page of the second test: one image per case, by id.</summary>
+		private static string BuildResourcePage(string uriAllowedImage,string uriOutsideImage) {
+			string body="<img id=\"own\" src=\"dot.png\">"
+				+"<img id=\"allowed\" src=\""+uriAllowedImage+"\">"
+				+"<img id=\"outside\" src=\""+uriOutsideImage+"\">"
+				+"<img id=\"parent\" src=\"../outside/outside.png\">"
+				+"<img id=\"system\" src=\"file:///C:/Windows/win.ini\">"
+				+"<img id=\"remote\" src=\""+URL_REMOTE_IMAGE+"\">";
+			return HtmlPage.Build(body,"Resources","margin:0");
+		}
+
+		private static readonly string[] _arrayResourceImageIds={ "own","allowed","outside","parent","system","remote" };
+
+		///<summary>The naturalWidth of each image with one of the ids once every image finished (loaded or failed): 0 for an image that did not load.</summary>
+		private static async Task<Dictionary<string,int>> ReadImageWidths(ODWebView2 odWebView2,IEnumerable<string> listIds) {
+			DateTime dateTimeEnd=DateTime.Now.AddSeconds(15);
+			while(DateTime.Now<dateTimeEnd) {
+				string result=await odWebView2.CoreWebView2.ExecuteScriptAsync("Array.prototype.every.call(document.images,function(x){return x.complete;})");
+				if(result=="true") {
+					break;
+				}
+				await Task.Delay(100);
+			}
+			Dictionary<string,int> dictWidths=new Dictionary<string,int>();
+			foreach(string id in listIds) {
+				int width;
+				int.TryParse(await odWebView2.CoreWebView2.ExecuteScriptAsync("document.getElementById('"+id+"').naturalWidth"),out width);
+				dictWidths[id]=width;
+			}
+			return dictWidths;
+		}
+
+		private static async Task RunResources(Form form,string folder,ResourceResults results) {
+			CoreWebView2Environment coreWebView2Environment=await CreateEnvironmentAsync(folder);
+			results.BrowserVersion=coreWebView2Environment.BrowserVersionString;
+			ODWebView2 odWebView2=new ODWebView2();
+			odWebView2.Dock=DockStyle.Fill;
+			form.Controls.Add(odWebView2);
+			await odWebView2.EnsureCoreWebView2Async(coreWebView2Environment);
+			odWebView2.RemoteContentBlocked+=(sender,e) => results.CountRemoteBlocked++;
+			byte[] byteArrayPng=GetPngBytes();
+			List<Request> listRequests=results.ListRequestsUntrusted;
+			//Runs after the control's own handler (subscribed when the control was initialized), so e.Response tells whether the control blocked
+			//the request. Whatever the control lets through that is not a local file is answered here: the test never reaches the network.
+			odWebView2.CoreWebView2.WebResourceRequested+=(sender,e) => {
+				string uri=e.Request.Uri;
+				Request request=new Request();
+				request.Uri=uri;
+				request.IsBlocked=e.Response!=null;
+				listRequests.Add(request);
+				if(request.IsBlocked || uri.StartsWith("file:///")) {
+					return;
+				}
+				if(uri==URL_REMOTE_IMAGE) {
+					e.Response=coreWebView2Environment.CreateWebResourceResponse(new MemoryStream(byteArrayPng),200,"OK","Content-Type: image/png");
+					return;
+				}
+				e.Response=coreWebView2Environment.CreateWebResourceResponse(null,404,"Not found","");
+			};
+			string folderPage=Path.Combine(folder,"page");
+			string folderAllowed=Path.Combine(folder,"allowed");
+			string folderOutside=Path.Combine(folder,"outside");
+			Directory.CreateDirectory(folderPage);
+			Directory.CreateDirectory(folderAllowed);
+			Directory.CreateDirectory(folderOutside);
+			File.WriteAllBytes(Path.Combine(folderPage,"dot.png"),byteArrayPng);
+			File.WriteAllBytes(Path.Combine(folderAllowed,"allowed.png"),byteArrayPng);
+			File.WriteAllBytes(Path.Combine(folderOutside,"outside.png"),byteArrayPng);
+			string uriAllowedImage=new Uri(Path.Combine(folderAllowed,"allowed.png")).AbsoluteUri;
+			results.UriOutsideImage=new Uri(Path.Combine(folderOutside,"outside.png")).AbsoluteUri;
+			string html=BuildResourcePage(uriAllowedImage,results.UriOutsideImage);
+			//Html from outside the office (a received email): its own folder only, nothing from the web.
+			await NavigateAndWait(odWebView2,html,folderPage);
+			results.DictWidthsUntrusted=await ReadImageWidths(odWebView2,_arrayResourceImageIds);
+			await Task.Delay(500);
+			results.CountRemoteBlockedAfterUntrusted=results.CountRemoteBlocked;
+			//Another computer's share, only once a local file outside the page's folder was seen to be blocked: then a file: request cannot get past
+			//the control, and nothing is ever sent to unc.invalid.
+			if(results.ListRequestsUntrusted.Any(x => x.Uri==results.UriOutsideImage && x.IsBlocked)) {
+				results.IsShareChecked=true;
+				listRequests=results.ListRequestsShare;
+				string htmlShare=HtmlPage.Build("<img id=\"own\" src=\"dot.png\"><img id=\"share\" src=\""+URL_SHARE_IMAGE+"\">","Share","margin:0");
+				await NavigateAndWait(odWebView2,htmlShare,folderPage);
+				results.DictWidthsShare=await ReadImageWidths(odWebView2,new[] { "own","share" });
+			}
+			//The office's own page (a wiki page, a sent email): the allowed folder and the web too.
+			listRequests=results.ListRequestsTrusted;
+			await NavigateAndWait(odWebView2,html,folderPage,isRemoteContentAllowed:true,listFoldersAllowed:new List<string> { folderAllowed });
+			results.DictWidthsTrusted=await ReadImageWidths(odWebView2,_arrayResourceImageIds);
+			await Task.Delay(500);
+			form.Controls.Remove(odWebView2);
+			odWebView2.Dispose();
+		}
+
+		[TestMethod]
+		public void GeneratedPage_LoadsOnlyItsFoldersFiles_AndTheWebOnlyWhenAllowed() {
+			SkipWithoutRuntime();
+			string folder=TestPaths.NewTempFolder("resources");
+			ResourceResults results=new ResourceResults();
+			try {
+				results.Error=RunOffScreen(form => RunResources(form,folder,results));
+			}
+			finally {
+				TestPaths.DeleteFolder(folder);
+			}
+			if(results.Error!=null) {
+				Assert.Inconclusive("WebView2 could not be used here: "+results.Error);
+			}
+			Func<List<Request>,string> funcRequests=list => string.Join(" | ",list.Select(x => x.Uri+(x.IsBlocked ? " blocked" : "")));
+			string details="WebView2 Runtime "+results.BrowserVersion
+				+"; untrusted: "+string.Join(",",results.DictWidthsUntrusted.Select(x => x.Key+"="+x.Value))+" requests: "+funcRequests(results.ListRequestsUntrusted)
+				+"; share: "+string.Join(",",results.DictWidthsShare.Select(x => x.Key+"="+x.Value))+" requests: "+funcRequests(results.ListRequestsShare)
+				+"; trusted: "+string.Join(",",results.DictWidthsTrusted.Select(x => x.Key+"="+x.Value))+" requests: "+funcRequests(results.ListRequestsTrusted);
+			Console.WriteLine(details);
+			//Html from outside the office.
+			Assert.AreEqual(8,results.DictWidthsUntrusted["own"],"The image in the page's folder loads. "+details);
+			foreach(string id in new[] { "allowed","outside","parent","system","remote" }) {
+				Assert.AreEqual(0,results.DictWidthsUntrusted[id],id+" does not load. "+details);
+			}
+			foreach(string uri in new[] { results.UriOutsideImage,"file:///C:/Windows/win.ini",URL_REMOTE_IMAGE }) {
+				Assert.IsTrue(results.ListRequestsUntrusted.Any(x => x.Uri==uri && x.IsBlocked),uri+" was refused by the control. "+details);
+			}
+			Assert.AreEqual(1,results.CountRemoteBlockedAfterUntrusted,"RemoteContentBlocked once for the page. "+details);
+			//Another computer's share.
+			Assert.IsTrue(results.IsShareChecked,"A local file outside the page's folder reached the control's filter. "+details);
+			Assert.AreEqual(8,results.DictWidthsShare["own"],details);
+			Assert.AreEqual(0,results.DictWidthsShare["share"],details);
+			Assert.IsTrue(results.ListRequestsShare.Any(x => x.Uri==URL_SHARE_IMAGE && x.IsBlocked),
+				"The image on another computer's share was refused by the control before Windows opened it. "+details);
+			Assert.IsFalse(results.ListRequestsShare.Concat(results.ListRequestsUntrusted).Concat(results.ListRequestsTrusted)
+				.Any(x => x.Uri.StartsWith("file://unc.invalid") && !x.IsBlocked),details);
+			//The office's own page.
+			foreach(string id in new[] { "own","allowed","remote" }) {
+				Assert.AreEqual(8,results.DictWidthsTrusted[id],id+" loads. "+details);
+			}
+			foreach(string id in new[] { "outside","parent","system" }) {
+				Assert.AreEqual(0,results.DictWidthsTrusted[id],id+" does not load. "+details);
+			}
+			Assert.IsTrue(results.ListRequestsTrusted.Any(x => x.Uri==URL_REMOTE_IMAGE && !x.IsBlocked),"The web image passed the control. "+details);
+			Assert.AreEqual(1,results.CountRemoteBlocked,"Nothing more was blocked from the web. "+details);
 		}
 	}
 }
