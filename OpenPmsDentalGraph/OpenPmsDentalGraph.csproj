@@ -64,12 +64,12 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="PdfSharp, Version=1.2.1269.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+    <Reference Include="PdfSharp-gdi, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\PdfSharp.dll</HintPath>
+      <HintPath>..\Required dlls\PdfSharp-gdi.dll</HintPath>
     </Reference>
-    <Reference Include="PdfSharp.Charting">
-      <HintPath>..\Required dlls\PdfSharp.Charting.dll</HintPath>
+    <Reference Include="PdfSharp.Charting-gdi">
+      <HintPath>..\Required dlls\PdfSharp.Charting-gdi.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="System" />

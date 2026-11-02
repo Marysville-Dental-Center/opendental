@@ -197,10 +197,10 @@ namespace OpenPmsDentalBusiness {
 			//It does not need to be adjusted by 4% like for the printer.
 			//We need to do all our measurement using Graphics, not XGraphics.
 			FontStyle fontstyle=FontStyle.Regular;
-			if(xfont.Style==XFontStyle.Bold) {
+			if(xfont.Style==XFontStyleEx.Bold) {
 				fontstyle=FontStyle.Bold;
 			}
-			Font font=new Font(xfont.Name,(float)xfont.Size,fontstyle);
+			Font font=new Font(xfont.FontFamily.Name,(float)xfont.Size,fontstyle);
 			SizeF sizeLayout=new SizeF(rectangleF.Width,font.Height);
 			StringFormat stringFormat=new StringFormat();
 			stringFormat.SetTabStops(0.0f, new float[] {50.0f});//helps with measurement further down.

@@ -154,9 +154,23 @@
     <Reference Include="OpenPop">
       <HintPath>..\Required dlls\OpenPop.dll</HintPath>
     </Reference>
-    <Reference Include="PdfSharp, Version=1.2.1269.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+    <!-- PDFsharp 6.5 (GDI+ build) and the three assemblies it loads at run time, so every program that uses this library copies them.
+         PdfSharp.License holds the licence check that PdfSharpSetup.Init satisfies with the AGPL licence. -->
+    <Reference Include="PdfSharp-gdi, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\PdfSharp.dll</HintPath>
+      <HintPath>..\Required dlls\PdfSharp-gdi.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.License, Version=7.0.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Required dlls\PdfSharp.License.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Shared, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Required dlls\PdfSharp.Shared.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.System, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Required dlls\PdfSharp.System.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -457,6 +471,7 @@
     <Compile Include="InternalTools\Cloud\TableTypes\CloudBilling.cs" />
     <Compile Include="Data Interface\BugSubmissions.cs" />
     <Compile Include="Misc\LocalDiagnostics.cs" />
+    <Compile Include="Misc\PdfSharpSetup.cs" />
     <Compile Include="Data Interface\ClaimTrackings.cs" />
     <Compile Include="Data Interface\ClinicErxs.cs" />
     <Compile Include="Data Interface\CommOptOuts.cs" />

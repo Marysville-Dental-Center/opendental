@@ -147,16 +147,16 @@ namespace M2SHEETSTests {
 		[TestMethod]
 		public void RealFonts_PdfEmbedding() {
 			Samples.RequireFonts("Arial");
-			Assert.IsTrue(SheetFonts.CanEmbedInPdf("Arial",XFontStyle.Regular));
-			Assert.IsTrue(SheetFonts.CanEmbedInPdf("Arial",XFontStyle.Bold));
-			Assert.IsFalse(SheetFonts.CanEmbedInPdf("",XFontStyle.Regular));
+			Assert.IsTrue(SheetFonts.CanEmbedInPdf("Arial",XFontStyleEx.Regular));
+			Assert.IsTrue(SheetFonts.CanEmbedInPdf("Arial",XFontStyleEx.Bold));
+			Assert.IsFalse(SheetFonts.CanEmbedInPdf("",XFontStyleEx.Regular));
 		}
 
 		[TestMethod]
 		public void RealFonts_FontCollectionsCannotBeEmbedded() {
 			//Windows keeps Microsoft YaHei in a font collection (.ttc), which the PDF library cannot embed. Such text becomes an image in PDFs.
 			Samples.RequireFonts("Microsoft YaHei");
-			Assert.IsFalse(SheetFonts.CanEmbedInPdf("Microsoft YaHei",XFontStyle.Regular));
+			Assert.IsFalse(SheetFonts.CanEmbedInPdf("Microsoft YaHei",XFontStyleEx.Regular));
 		}
 		#endregion Real fonts of this computer
 	}

@@ -94,7 +94,7 @@ namespace OpenPmsDentalBusiness{
 					bodyFontX=new Font("Arial",9f,FontStyle.Regular,GraphicsUnit.World);
 				}
 				else {
-					bodyFontX=new XFont(bodyFont.SystemFontName,bodyFont.Size,XFontStyle.Regular);
+					bodyFontX=new XFont(bodyFont.SystemFontName,bodyFont.Size,XFontStyleEx.Regular);
 				}
 				float yPos=y-yPosPrint;
 				float xPos;

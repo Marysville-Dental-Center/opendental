@@ -703,7 +703,7 @@ namespace UnitTests.Billing_Tests {
 						totalPages+=pages;
 						//Make a pdf doc with a few pages.
 						PdfDocument pdfDocument=new PdfDocument();
-						XFont font=new XFont("Verdana", 20, XFontStyle.BoldItalic);
+						XFont font=new XFont("Verdana", 20, XFontStyleEx.BoldItalic);
 						for(int i = 1;i<=pages;i++) {
 							PdfPage pdfPage=pdfDocument.AddPage();
 							using(XGraphics gfx=XGraphics.FromPdfPage(pdfPage)){

@@ -76,7 +76,7 @@ namespace M2SHEETSTests {
 			PdfDocument pdfDocument=new PdfDocument();
 			PdfPage pdfPage=pdfDocument.AddPage();
 			using(XGraphics xg=XGraphics.FromPdfPage(pdfPage)) {
-				SheetTextDrawing.DrawStringX(xg,text,new XFont("Arial",11,XFontStyle.Regular),XBrushes.Black,new RectangleF(10,10,800,4000),HorizontalAlignment.Right);
+				SheetTextDrawing.DrawStringX(xg,text,new XFont("Arial",11,XFontStyleEx.Regular),XBrushes.Black,new RectangleF(10,10,800,4000),HorizontalAlignment.Right);
 			}
 			PdfImageInfo pdfImageInfo=PdfInspect.ReadFirstPage(pdfDocument).ListImages.Single();
 			Assert.IsTrue((float)pdfImageInfo.Width*pdfImageInfo.Height<=SheetTextDrawing.MAX_RASTER_PIXELS*1.01f,pdfImageInfo.Width+" x "+pdfImageInfo.Height);
@@ -137,7 +137,7 @@ namespace M2SHEETSTests {
 			PdfDocument pdfDocument=new PdfDocument();
 			PdfPage pdfPage=pdfDocument.AddPage();
 			using(XGraphics xg=XGraphics.FromPdfPage(pdfPage)) {
-				actionDraw(xg,new XFont("Arial",11,XFontStyle.Regular),new RectangleF(50,50,300,40));
+				actionDraw(xg,new XFont("Arial",11,XFontStyleEx.Regular),new RectangleF(50,50,300,40));
 			}
 			return PdfInspect.ReadFirstPage(pdfDocument).Content;
 		}

@@ -73,9 +73,9 @@
     <Reference Include="NHunspell">
       <HintPath>..\Required dlls\NHunspell.dll</HintPath>
     </Reference>
-    <Reference Include="PdfSharp, Version=1.2.1269.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+    <Reference Include="PdfSharp-gdi, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\PdfSharp.dll</HintPath>
+      <HintPath>..\Required dlls\PdfSharp-gdi.dll</HintPath>
     </Reference>
     <Reference Include="ReachFramework" />
     <Reference Include="System.Printing" />
