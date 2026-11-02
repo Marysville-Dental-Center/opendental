@@ -189,18 +189,20 @@ Windows Update or device management), and the log says the same for silent insta
 
 1. The installer still downloads the Visual C++ runtime on request (`/PREREQS=download`, or the wizard's choice). This package read "the installer
    downloads nothing" as the WebView2 Runtime only. Should the Visual C++ download go too (then setup only names Microsoft's installer)?
+   **Answered 2026-11-02: keep it** (the optional download stays).
 2. Pages the program shows (wiki pages, emails) are written as temporary files in the program's temp folder while they are shown (deleted when the
    page changes, the window closes and the program exits). An in-memory alternative (a virtual host) would need the images served the same way.
    Is the temp-file approach acceptable for email content? **Answered 2026-11-02: no; patient email must not sit on disk. Done on
    `next/fu-web-1`, see [Follow-up](#follow-up-owner-answers-to-questions-2-and-7).**
-3. The old WebView2 profile folders (`%LOCALAPPDATA%\WindowsFormsWebView2`) are left on workstations. Remove them on upgrade?
+3. The old WebView2 profile folders (`%LOCALAPPDATA%\WindowsFormsWebView2`) are left on workstations. Remove them on upgrade? **Answered
+   2026-11-02: leave them.**
 4. A received email no longer loads images from the web until the user clicks Show Images (Internet Explorer loaded them at once). Keep this,
-   or add a preference to load them always?
+   or add a preference to load them always? **Answered 2026-11-02: keep Show Images.**
 5. The browser keys (`AreBrowserKeysEnabled`) bring back find in page where Internet Explorer had it, and with it Ctrl+P (the browser's
-   print preview) and Ctrl+Plus/Minus (zoom). Keep all of them, or only find?
+   print preview) and Ctrl+Plus/Minus (zoom). Keep all of them, or only find? **Answered 2026-11-02: keep all of them.**
 6. A CCD that came by email with a stylesheet now shows as XML (the stylesheet is never run in the program). A styled view would need either
    a stylesheet the program ships itself (reviewed, then safe to run) or the received one run in a short-lived child process with a time
-   and output limit. Is the XML view enough, or which of the two?
+   and output limit. Is the XML view enough, or which of the two? **Answered 2026-11-02: the XML view is enough.**
 7. `FormCareCreditWeb`, `FormPayConnect2`, `FormPayConnect2iFrame` and the Images module's PDF print show two error dialogs when the WebView2
    Runtime is missing or fails (`Init`'s message, then the window's own `FriendlyException`). **Answered 2026-11-02: show exactly one clear
    message. Done on `next/fu-web-1`, see [Follow-up](#follow-up-owner-answers-to-questions-2-and-7).**

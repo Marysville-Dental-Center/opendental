@@ -65,7 +65,8 @@ part of the fork's test runs and was not re-run.
 ## Owner questions
 
 - The corresponding source of `WeCantSpell.Hunspell.dll` under the LGPL (`docs/owner-questions.md`, "The source of the spell checker"): the
-  notices point to the upstream repository at the release commit and to the package.
+  notices pointed to the upstream repository at the release commit and to the package. **Answered 2026-11-02: built from its GitHub source
+  as a git submodule, and no MPL text ships** (below).
 
 ## Later: built from source (2026-11-02)
 

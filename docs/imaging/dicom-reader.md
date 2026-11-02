@@ -150,6 +150,16 @@ Checked with the version 0.0 `Dicom.Core.dll` and `Dicom.Native.dll` and the old
 
 Apart from these and the two corrections above, every case of `ReaderCases.cs` that fo-dicom showed reads the same, and so do the JPEG oddities of the decoder table that were checked (stray bytes and FF 00 before or after the frame header, junk, FF 00, FF FF or an FF pad after the end of image marker, an APP0 length 2 short, COM and APPn of length 0 or 1, TEM, RST and DNL between segments).
 
+### Owner decisions (2026-11-02)
+
+The owner kept the reader as described here ([owner-questions.md](../owner-questions.md), "Library updates and the DICOM reader"):
+
+- Compressed DICOM without a decoder shows the message that names its format; the decoders are deferred (docs/roadmap.md, Later).
+- The two corrections stay: signed 8-bit and 16-bit RGB images show correctly, not as version 0.0 showed them.
+- Progressive JPEG under JPEG Baseline stays, with the 32-scan cap.
+- A JPEG Baseline image whose frame header gives another size than Rows and Columns stays declined, and so does a JPEG stream with no end
+  of image marker.
+
 ## Tests
 
 `tests/DicomReaderTests`:

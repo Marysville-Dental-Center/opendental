@@ -73,7 +73,7 @@ empira's NuGet files were built from a commit that is not public (their informat
 
 `tests/PdfLibraryTests` checks all of this.
 
-Because of this file, every build of this repository contains a modified version of PDFsharp, so the AGPL's section 13 (through GPL 3.0 section 13, for the program as a whole) applies to any version of the program that users reach over a network, not only to versions someone else modifies: a hosted Middle Tier, even one without local changes, must prominently offer its users the Corresponding Source, such as a link to the release's source archive (NOTICE; [owner-questions.md](owner-questions.md), decision 13).
+Because of this file, every build of this repository contains a modified version of PDFsharp, so the AGPL's section 13 (through GPL 3.0 section 13, for the program as a whole) applies to any version of the program that users reach over a network, not only to versions someone else modifies: a hosted Middle Tier, even one without local changes, must prominently offer its users the Corresponding Source, such as a link to the release's source archive (NOTICE; [owner-questions.md](owner-questions.md), decision 13). The Middle Tier is not shipped, and by the owner's decision of 2026-11-02 that offer is built when it is first shipped.
 
 ## The source archive
 

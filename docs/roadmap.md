@@ -4,25 +4,19 @@ Planned work after v0.0, as agreed with the owner. Each item is discussed and sc
 
 ## Next
 
-1. **Library updates (security) and client-side database security**: Newtonsoft.Json 13, MailKit/MimeKit 4 (replacing OpenPop), SSH.NET in
-   place of Tamir.SharpSSH, built-in cryptography in place of Org.Mentalis.Security and DiffieHellman, current Google APIs and
-   Microsoft.Identity.Client, kept as DLL files in `Required dlls` as today (NuGet comes with the .NET work below). The database connection: TLS required for every connection over the network (the server
-   certificate must chain to the office's certificate authority and name the server), connections to the same computer exempt, one shared client
-   certificate from the Windows certificate store with a DPAPI-protected password as the fallback, set up by the installer and changed later with
-   a small admin-only settings tool; Choose Database is for local testing and debugging only.
-2. **Library updates (maintenance)**: WebView2 in place of the Internet Explorer WebBrowser control, a managed Hunspell (no native DLL),
-   PDFsharp/MigraDoc 6.5, kept as DLL files in `Required dlls`. PDFsharp 6.5 is AGPL-3.0-only, so the program as distributed is under GPL v3
-   terms together with that part. fo-dicom is not updated but removed (owner decision 2026-11-02, option C): the in-house DICOM reader
-   (`docs/imaging/dicom-reader.md`) opens the uncompressed, RLE and JPEG Baseline files version 0.0 opened, apart from a few malformed
-   ones it now refuses (release notes), and some that 0.0 could not open. JPEG Extended, JPEG Lossless, JPEG-LS and JPEG 2000 files,
-   which 0.0 opened through fo-dicom's native codecs, no longer open: their decoders are deferred (Later, below).
-3. **Routine maintenance around the practice**: maintenance items the office defines itself (equipment, rooms, systems, compliance routines),
-   each with its own schedule, checklist, result fields, assignee and reminder; a due and overdue board; a history of who did what and when.
-   The list starts empty.
-4. **Inventory tracking**: one storage location; barcode scanning when an order is received and during periodic counts; a "Materials used"
-   panel that opens when a procedure is completed, filled with the procedure code's default materials for the assistant to confirm or adjust;
-   lot and expiration tracking (soonest-expiring lot first, implant lots recorded on the patient's procedure); low-stock and expiring-soon
-   alerts; usage and cost reports.
+Nothing is scheduled yet: the next items are chosen with the owner, from Later below. The owner questions still open from the work done in
+the next version (the SSH host key defaults, and the Backup window's backup to another server) are in `docs/owner-questions.md`.
+
+## Done in the next version
+
+Built for the version after 0.0; what each one changes is in its release notes, `docs/release-notes/next.md`.
+
+1. **Library updates (security) and client-side database security**: the tier 1 library updates (SSH.NET, MailKit/MimeKit 4, Newtonsoft.Json
+   13, MSAL and the Google APIs) with remembered SSH host keys, and encrypted database connections with the program's own database account.
+2. **Library updates (maintenance)**: WebView2 in place of the Internet Explorer control, the managed WeCantSpell.Hunspell spell checker,
+   PDFsharp/MigraDoc 6.5 (both libraries built from their source), and the in-house DICOM reader in place of fo-dicom.
+3. **Routine maintenance around the practice**.
+4. **Inventory tracking**.
 5. **Storage rename**: `OpenPmsDentalCloud` becomes `OpenPmsDentalStorage`, since it holds only the SFTP storage option.
 
 ## Later

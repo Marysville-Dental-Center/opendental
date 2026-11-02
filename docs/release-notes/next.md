@@ -4,7 +4,18 @@ Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and co
 
 This file collects the notes of the version after 0.0 until it is released; the release renames it to `v<version>.md`.
 
-Each section below was written by the package that made the change; the sections stand on their own.
+What this version brings, each in its section below (the roadmap's "Done in the next version", `docs/roadmap.md`):
+
+- encrypted database connections with the program's own database account;
+- the security updates of the libraries (SSH.NET, MailKit and MimeKit 4, Newtonsoft.Json 13, MSAL, the Google APIs), with remembered SSH
+  host keys;
+- the maintenance updates: WebView2 in place of Internet Explorer, a managed spell checker, PDFsharp and MigraDoc 6.5 (both libraries built
+  from their source), and the program's own DICOM reader in place of fo-dicom;
+- routine maintenance around the practice, and inventory tracking for materials;
+- the storage library under its new name, and a Database Maintenance check that works again.
+
+The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
+inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below).
 
 ## Before you install this version
 
@@ -85,6 +96,29 @@ server computer must then connect with `<db-server>` (the name the workstations 
 - **Setup exit code 10.** A silent setup that installed the files but could not finish the connection settings (the tool failed, or an
   existing install's settings fail the connection rule) ends with exit code 10, so deployment scripts see it; the setup log says why.
 
+## Library updates for security
+
+The libraries below replace unmaintained ones or versions with known problems. They are still DLL files in `Required dlls`, listed with
+their licences in `THIRD-PARTY-NOTICES.txt`.
+
+- **SSH: SSH.NET 2026.0.0** (with Bouncy Castle Cryptography 2.7.0) in place of SharpSSH, which was unmaintained since 2013, and its two
+  cryptography libraries (Mentalis.org Security Library and DiffieHellman). It serves every SSH connection of the program: the SFTP image
+  storage, the Transworld (TSI) uploads, the Denti-Cal and Mercury clearinghouses and the HL7 service's SFTP mode. DSA host keys
+  (`ssh-dss`) are not supported: a server that has only a DSA key cannot be reached (owner decision of 2026-11-02: accepted). Host keys are
+  now remembered (next section).
+- **E-mail: MailKit and MimeKit 4.18.2** in place of OpenPop.NET (POP3) and MimeKit 2. POP3 signs in with the user name and password as
+  before, and with Use SSL it uses TLS from the first byte; MailKit checks the server's certificate and its revocation, and the program
+  keeps that check (owner decision of 2026-11-02). The program still adds no background check of POP3 inboxes (owner decision of
+  2026-11-02: no POP3 polling).
+- **Newtonsoft.Json 13.0.4** in place of 9.
+- **Microsoft 365 sign-in: MSAL.NET 4.92.0.** It reads the token caches the older MSAL stored for Microsoft 365 mailboxes, but writes its
+  own format from then on (owner decision of 2026-11-02: accepted).
+- **Gmail: the Google APIs client libraries 1.78.0**, without the platform shims of the old version.
+- **Upgrading.** Setup removes `Tamir.SharpSSH.dll`, `Org.Mentalis.Security.dll`, `DiffieHellman.dll` and `OpenPop.dll` from the program
+  folder. A workstation that updates itself through the release channel copies the new files over the old ones and deletes nothing, so it
+  keeps such files a release no longer ships; nothing loads them, and the release channel never publishes them again (owner decision of
+  2026-11-02: it stays that way).
+
 ## SSH servers: their host keys are remembered
 
 Every SSH connection the program makes (the SFTP image storage, the Transworld (TSI) uploads, the Denti-Cal and Mercury clearinghouses and
@@ -106,11 +140,54 @@ all. The design is in `docs/specs/ssh-host-keys.md`.
   compare the stored fingerprints in Setup, SSH Host Keys with the ones its servers' administrators give.
 - **DSA keys** (`ssh-dss`) are still not supported, as in the SSH.NET update: a server with only a DSA key cannot be reached.
 
-## Database Maintenance: every check runs again
+## WebView2 in place of Internet Explorer
 
-The check `ProcedurelogTpAttachedToClaim` failed on every database with an SQL syntax error, inherited from Open Dental 24.3.22, and
-Database Maintenance stops at the first error: running all checks (or fixes) never reached the checks after it in the list. The check
-works again, so a full run goes through every check.
+Every window that showed a page with the Internet Explorer control (the wiki and its previews, the e-mail windows and previews, the
+clearinghouse's benefits response, the EHR education pages and the CCD view, the eCW panel, the preference details) now uses Microsoft Edge
+WebView2, as the windows that had it already did. The design is in `docs/port-notes/LIB-WEB.md`.
+
+- **The WebView2 Runtime is needed.** Windows 11 includes it. Setup never downloads it: when it is missing, setup says so and how an
+  administrator installs it from Microsoft. The optional download of the Visual C++ runtime stays as it was (owner decision of 2026-11-02).
+- **One message when a browser cannot start.** A missing, damaged or blocked runtime is reported once, with what an administrator can do;
+  the payment and PDF windows no longer show a second dialog after it (owner decision of 2026-11-02).
+- **Pages are served from memory.** Wiki pages, e-mails (received ones included), their images and the CCD are never written to disk while
+  they are shown (owner decision of 2026-11-02), so a patient's e-mail never sits in the temp folder.
+- **Received e-mail is safer.** Scripts never run in the pages the program shows itself (wiki pages, e-mails, the CCD), and a received e-mail loads nothing from the web until the
+  user clicks Show Images (Internet Explorer loaded web images at once; kept so, owner decision of 2026-11-02). Links open in the default
+  browser.
+- **Find in page** (Ctrl+F) is back where Internet Explorer had it, with the browser's print preview (Ctrl+P) and zoom (kept, owner decision
+  of 2026-11-02).
+- **A CCD that came with a stylesheet shows as XML**: the program never runs a received stylesheet (the XML view is enough, owner decision
+  of 2026-11-02).
+- **The browser's profile** is in `%LOCALAPPDATA%\OpenPMS-Dental\WebView2`, per Windows user. The old profile folder,
+  `%LOCALAPPDATA%\WindowsFormsWebView2`, is left alone (owner decision of 2026-11-02).
+
+## The spell checker: WeCantSpell.Hunspell
+
+The spell check of every text box (the red underline, the suggestions, Add to Dictionary) now uses WeCantSpell.Hunspell 7.0.1, a managed
+port of Hunspell, in place of NHunspell and its native Hunspell 1.2. The dictionary (en_US) and the office's own words are unchanged. The
+port follows Hunspell 1.7.2 with later upstream fixes, so a few words may be judged or suggested differently. It is built by this project
+from its GitHub source (a git submodule) and ships under the GNU LGPL 2.1 or later, with no MPL text (owner decision of 2026-11-02). Setup
+removes `NHunspell.dll` and `Hunspellx86.dll`.
+
+## PDFsharp and MigraDoc 6.5, built from source
+
+Statements, sheets, reports, treatment plans and claim attachments are made with PDFsharp and MigraDoc 6.5.0 in place of 1.2.
+
+- **Licence.** PDFsharp and MigraDoc 6.5 are under the GNU AGPL, version 3, so the program as distributed is conveyed under the GNU GPL,
+  version 3, with them under the AGPL (`NOTICE`, the setup's License Agreement page, Help > About > View Licenses). The program's own source
+  files stay "GPL version 2 or later". Every PDF's Producer and Creator properties say "(AGPL license)"; nothing is drawn on the pages, no
+  key is needed and no network connection is opened.
+- **Built from empira's source** (owner decision of 2026-11-02, route B): the git submodule `third-party/PDFsharp` at tag v6.5.0, compiled
+  by this project, with one file replaced by an open one that holds the AGPL licence check, so empira's closed `PdfSharp.License.dll` is
+  neither needed nor shipped (`docs/third-party-source-builds.md`).
+- **The source archive.** Every release publishes `OpenPmsDental-<version>-source.zip` next to the setup: the program's source at the
+  release commit with the source of PDFsharp, MigraDoc and WeCantSpell.Hunspell as built (the submodules). It is the Corresponding Source of
+  everything the setup installs.
+- **Over a network.** Because the PDFsharp built here is a modified version, the AGPL's network clause applies to any version of the
+  program that users reach over a network, a hosted Middle Tier without local changes included: it must offer its users the Corresponding
+  Source. The Middle Tier is not shipped; that offer is built when it is first shipped (owner decision of 2026-11-02).
+- **Upgrading.** Setup removes `PdfSharp.dll`, `PdfSharp.Charting.dll` and `MigraDoc.Rendering.dll` of version 0.0.
 
 ## DICOM: fo-dicom is gone, the program reads DICOM itself
 
@@ -124,3 +201,64 @@ fo-dicom 4.0.7, the DICOM library Open Dental shipped (`Dicom.Core.dll` and `Dic
 - **Compressed formats that do not open:** JPEG Extended (12-bit JPEG), JPEG Lossless, JPEG-LS, JPEG 2000, High-Throughput JPEG 2000 (HTJ2K), JPEG XL and DICOM video. Version 0.0 opened JPEG Extended, JPEG Lossless, JPEG-LS and JPEG 2000 through fo-dicom's native codecs; this version does not. Opening such an image in the Imaging module says which format it is and that this version does not open it, instead of showing an image; a mount names it next to the mount position. The image is never changed or lost: it can still be imported and stays in the patient's images. Decoders for these formats are deferred (roadmap, Later: only if such files turn up), not part of a coming update. An office that receives such images from another program (for example a CBCT or panoramic unit that exports JPEG 2000) should have that program export uncompressed or JPEG Baseline DICOM.
 - **Upgrading.** Setup removes `Dicom.Core.dll` and `Dicom.Native.dll` from the program folder. The Visual C++ runtime is still needed, by `Direct2dWrapper.dll`.
 - **Licences.** `THIRD-PARTY-NOTICES.txt` no longer lists fo-dicom, and the program's license list no longer carries the MS-PL.
+- **Owner decisions of 2026-11-02.** All of the above stays as described: the message for the compressed formats that do not open, the two
+  corrections, progressive JPEG with at most 32 scans, and the refusal of a JPEG image whose size differs from the DICOM header and of JPEG
+  data with no end-of-image marker.
+
+## Routine maintenance around the practice
+
+The office defines its own maintenance items (any piece of equipment, a room, a system or a compliance routine) and records each time one is
+done. Nothing is built in: the list starts empty. The design is in `docs/specs/routine-maintenance.md`.
+
+- **The board.** Manage module, Maintenance: every item with its status (overdue, due soon, upcoming), due date, assignee, schedule and last
+  completion, filtered by assignee or to the user's own items, with Print and Export.
+- **Items.** A name and description, an optional link to an item of the Equipment list, a schedule (every N days, weeks, months or years
+  from a first due date; on chosen weekdays; or N units after the last completion), a reminder lead time, an assignee (a user or a user
+  group), an ordered checklist and result fields (pass/fail, a number with optional limits, text, a date, an attached file). An item with
+  history can be hidden, not deleted.
+- **Recording.** A completion records the date done, the ticked steps, the results and a note, with the user and the time; an out-of-range
+  number or a Fail flags it. A recorded completion is never deleted; its ticks, results and note can be corrected by the user who recorded it
+  or by a user with Maintenance Setup, and every correction is in the Audit Trail.
+- **History**, per item or for all items, with the checklist and the results in the grid, so a printout or an export shows them.
+- **Reminders** through the Alerts menu: Maintenance Due Soon within the lead time and Maintenance Overdue after the due date, to the
+  assignee, or, for an item without one, to every user with Maintenance Setup.
+- **Permissions.** Maintenance Setup (set up items, correct any completion) and Maintenance Record Completion, in the security tree under
+  Manage Module. The update grants both, once, to every user group that has Security Admin; other groups get them from an administrator.
+  The board and the history need only the Manage module.
+
+## Inventory tracking for materials
+
+Stock of supplies, built on the existing Supply Inventory windows. **It is off until the office turns it on** (Supply Inventory,
+Inventory, Setup), on every existing and every new database; while it is off nothing is deducted. The design is in
+`docs/specs/inventory-tracking.md`.
+
+- **Barcode scanning** with a keyboard-wedge scanner when an order is received, during a stock count and in the Materials used panel.
+- **Materials used.** When procedures whose codes have default materials (Supply Inventory, Inventory, Default Materials of Procedure Codes)
+  are completed, the Materials used panel opens with those materials; the assistant confirms or changes them, and what is confirmed is
+  deducted. A cancelled panel, or a completion without a user, deducts nothing: the procedures wait on the Awaiting Materials list.
+  Un-completing or deleting a procedure puts back what it used.
+- **Lots and expiry.** A supply can be tracked by lot, with a lot number and an expiry date; the lot that expires first is used first. For
+  implants the lot is recorded with the patient's procedure; an implant used without a lot number asks for the number on the package, or a
+  reason, which goes to the Audit Trail.
+- **Receiving** an order with lot numbers and expiry dates, **stock counts** saved line by line as they are counted (any user who may count
+  can resume the office's open count on any workstation; posting writes the differences with a reason), and **manual adjustments**.
+- **Alerts**: Inventory Low Stock (on hand at or below the supply's new reorder level) and Inventory Expiring (lots within 30 days of their
+  expiry date, or past it; the days are a setting, 0 turns it off).
+- **Usage reports**: quantity and cost used, by item or by procedure code, for a date range.
+- **Permissions.** Inventory Adjust (posting and discarding counts, adjustments, correcting a lot). The first time the office turns tracking
+  on, it is granted to every user group that has Supplier Edit.
+- **After the update** the stock ledger starts with one opening row for every supply whose on-hand quantity is not 0, so the ledger and the
+  stock agree; supplies, orders, suppliers and categories are unchanged.
+
+## The storage library has a new name
+
+The library that holds the SFTP option of the images folder is now `OpenPmsDentalStorage.dll` (`docs/port-notes/RENAME.md`, "Storage
+rename"). Nothing stored in the database or in a settings file names it, so nothing changes for the office. Setup deletes the file version
+0.0 installed under its old name; the release channel never publishes that file again. Whoever copies the Middle Tier into IIS by hand
+deletes the old file from its `bin` folder.
+
+## Database Maintenance: every check runs again
+
+The check `ProcedurelogTpAttachedToClaim` failed on every database with an SQL syntax error, inherited from Open Dental 24.3.22, and
+Database Maintenance stops at the first error: running all checks (or fixes) never reached the checks after it in the list. The check
+works again, so a full run goes through every check.

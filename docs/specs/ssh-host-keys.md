@@ -33,7 +33,7 @@ trusted whatever key the server presented.
 - **An administrator accepts a changed key.** Setup, SSH Host Keys (Security Admin) lists the stored keys. For a server whose key was
   refused it shows the stored and the new fingerprint side by side; Accept Changed Key replaces the stored key with the refused one. Remove
   forgets a stored key, so the next connection stores the key the server presents then. Both are in the audit trail.
-- **DSA keys stay unsupported** (owner accepted): SSH.NET 2026 does not offer `ssh-dss`, so a server that has only a DSA key cannot be
+- **DSA keys stay unsupported** (owner accepted on 2026-11-02, tier 1 question 2): SSH.NET 2026 does not offer `ssh-dss`, so a server that has only a DSA key cannot be
   reached, as with the SSH.NET port before this package. Ed25519, ECDSA (nistp256, nistp384, nistp521) and RSA keys work.
 
 ## 2. Which connections
