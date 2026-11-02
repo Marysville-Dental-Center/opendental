@@ -15,6 +15,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using CodeBase;
 using OpenPmsDentalBusiness;
 using WpfControls.UI;
 using Microsoft.Win32;
@@ -86,8 +87,7 @@ namespace OpenPmsDental {
 			textRich.Text="Line1\r\n Line2\r\nLine3, of additional (text with line) bre-aks and some mispel'd words.\r\n so tht I can text spellcheking and highliting. I need\r\nto add enough text for it to trigger the vertical scrollbar.";
 			FillTree();
 			//textBox5_Copy.Focus();
-			webBrowser.Navigate("https://www.opendental.com/");
-			//InitializeWebView2Async();
+			InitializeWebView2Async();
 			Size sizeCanvas=new Size(1000,1000);
 			Size sizeImage=new Size(500,800);
 			//zoomSlider.SetValueInitialFit(sizeCanvas,sizeImage,0);
@@ -99,17 +99,18 @@ namespace OpenPmsDental {
 			}
 		}
 
-		//private async void InitializeWebView2Async() {
-		//	try {
-		//		await webView2.Init();
-		//	}
-		//	catch(Exception ex) {
-		//		FriendlyException.Show("Error loading window. Run in x86 for debug.",ex);
-		//		Close();
-		//		return;
-		//	}
-		//	webView2.Navigate("https://www.opendental.com/");
-		//}
+		///<summary>A local test page: this window never goes online.</summary>
+		private async void InitializeWebView2Async() {
+			try {
+				await webView2.Init();
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//No WebView2 Runtime (or not x86 in debug): the panel stays empty.
+				return;
+			}
+			webView2.NavigateToString(CodeBase.HtmlPage.Build("<p><b>WebView2</b> test page</p><p>"+CodeBase.HtmlPage.Encode("Text & <markup>")+"</p>",
+				"Test page","font-family:sans-serif"));
+		}
 
 		private void FillTree(){
 			//TreeViewItem treeViewItem1=new TreeViewItem();
@@ -453,7 +454,7 @@ namespace OpenPmsDental {
 
 		private void butToggleVis_Click(object sender,EventArgs e) {
 			//label3.Visible=!label3.Visible;
-			webBrowser.IsEnabled=!webBrowser.IsEnabled;
+			webView2.IsEnabled=!webView2.IsEnabled;
 		}
 
 		private void FrmODBase_FormClosed(object sender,EventArgs e) {
@@ -567,7 +568,7 @@ Line2\par
 		}
 
 		private void FrmODBase_FormClosing_1(object sender,System.ComponentModel.CancelEventArgs e) {
-			//webView2.Dispose();
+			webView2.Dispose();
 		}
 	}
 }

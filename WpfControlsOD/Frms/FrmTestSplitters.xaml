@@ -18,7 +18,7 @@
 			<Border BorderBrush="#FFC1C0C0" BorderThickness="1" Grid.RowSpan="3"/>
 			<GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="Silver"/>
 			<ui:Panel HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-				<WebBrowser x:Name="webBrowser"/>
+				<ui:WebView2 x:Name="webView2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 
 			</ui:Panel>
 			<ui:Panel Grid.Row="2"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">

@@ -42,7 +42,7 @@
 			</ui:Panel>
 			<GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" Background="Silver"/>
 			<ui:Panel x:Name="splitterPanel2" Grid.Row="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" >
-				<ui:WebBrowser x:Name="webBrowser" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+				<ui:WebView2 x:Name="webView2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
 			</ui:Panel>
 		</ui:SplitContainer>
 		<ui:TextRich x:Name="richTextBox3" Width="154" Height="18" Margin="692,242,0,0" Text="Rich text" />
