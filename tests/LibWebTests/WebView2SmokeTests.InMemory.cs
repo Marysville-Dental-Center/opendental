@@ -33,6 +33,41 @@ namespace LibWebTests {
 			public bool IsEmailInMemory;
 			public string UriEmail;
 			public List<Request> ListRequests=new List<Request>();
+			///<summary>The temporary files that held a page's text or the email's image while the pages were shown (an older version deleted its
+			///page files when the page changed, so only a look while a page is shown finds them).</summary>
+			public List<string> ListTempCopiesWhileShown=new List<string>();
+		}
+
+		///<summary>Records every file created in a folder while the test runs, also one deleted again before the test looks.</summary>
+		private class FolderWatch:IDisposable {
+			private FileSystemWatcher _fileSystemWatcher;
+			private List<string> _listCreated=new List<string>();
+
+			public FolderWatch(string folder,bool isRecursive) {
+				_fileSystemWatcher=new FileSystemWatcher(folder);
+				_fileSystemWatcher.IncludeSubdirectories=isRecursive;
+				_fileSystemWatcher.NotifyFilter=NotifyFilters.FileName|NotifyFilters.DirectoryName;
+				_fileSystemWatcher.InternalBufferSize=64*1024;
+				_fileSystemWatcher.Created+=(sender,e) => Add(e.FullPath);
+				_fileSystemWatcher.Renamed+=(sender,e) => Add(e.FullPath);
+				_fileSystemWatcher.EnableRaisingEvents=true;
+			}
+
+			private void Add(string path) {
+				lock(_listCreated) {
+					_listCreated.Add(path);
+				}
+			}
+
+			public List<string> GetCreated() {
+				lock(_listCreated) {
+					return _listCreated.ToList();
+				}
+			}
+
+			public void Dispose() {
+				_fileSystemWatcher.Dispose();
+			}
 		}
 
 		///<summary>The size and time of each file under folder (and its sub folders), by path. Empty when folder is missing; a file that goes away
@@ -127,7 +162,7 @@ namespace LibWebTests {
 		}
 
 		private static async Task RunInMemory(Form form,OffScreenRun offScreenRun,string folder,string markerWiki,string markerEmail,byte[] byteArrayEmailImage,
-			InMemoryResults results)
+			Func<List<string>> funcFindTempCopies,InMemoryResults results)
 		{
 			CoreWebView2Environment coreWebView2Environment=await CreateEnvironmentAsync(folder);
 			results.BrowserVersion=coreWebView2Environment.BrowserVersionString;
@@ -158,6 +193,7 @@ namespace LibWebTests {
 			results.WidthWikiImage=(await ReadImageWidths(odWebView2,new[] { "img" }))["img"];
 			results.TextWiki=await ReadText(odWebView2,"text");
 			results.IsWikiInMemory=IsShownFromMemory(odWebView2);
+			results.ListTempCopiesWhileShown.AddRange(funcFindTempCopies());
 			//A received email after Show Images: its image in the page's own folder by the name that replaced its cid: address
 			//(EmailPreviewControl.ParseAttachedImages), the web allowed, no other folder.
 			string bodyEmail="<p id=\"text\">"+HtmlPage.Encode(markerEmail)+"</p><img id=\"img\" src=\"image001.png\">";
@@ -167,6 +203,7 @@ namespace LibWebTests {
 			results.TextEmail=await ReadText(odWebView2,"text");
 			results.IsEmailInMemory=IsShownFromMemory(odWebView2);
 			results.UriEmail=odWebView2.DocumentUri;
+			results.ListTempCopiesWhileShown.AddRange(funcFindTempCopies());
 			await Task.Delay(500);
 			form.Controls.Remove(odWebView2);
 			odWebView2.Dispose();
@@ -182,17 +219,24 @@ namespace LibWebTests {
 			byte[] byteArrayEmailImage=GetEmailImageBytes();
 			List<byte[]> listNeedles=new List<byte[]> { Encoding.UTF8.GetBytes(markerWiki),Encoding.UTF8.GetBytes(markerEmail),
 				Encoding.Unicode.GetBytes(markerWiki),Encoding.Unicode.GetBytes(markerEmail),byteArrayEmailImage };
+			Directory.CreateDirectory(folderProgramTemp);//The program makes it whenever it needs it; the watch needs it now.
 			Dictionary<string,string> dictProgramTempBefore=ListFiles(folderProgramTemp,isRecursive:true);
 			Dictionary<string,string> dictTempBefore=ListFiles(Path.GetTempPath(),isRecursive:false);
+			//New files, now: in the program's temp folder (where the pages were written) and in the temp folder itself.
+			Func<List<string>> funcFindTempCopies=() => FindFilesHolding(GetNewFiles(dictProgramTempBefore,ListFiles(folderProgramTemp,isRecursive:true))
+				.Concat(GetNewFiles(dictTempBefore,ListFiles(Path.GetTempPath(),isRecursive:false))),listNeedles);
 			InMemoryResults results=new InMemoryResults();
 			OffScreenRun offScreenRun;
 			List<string> listNewProgramTemp;
-			List<string> listNewTemp;
+			List<string> listCreatedProgramTemp;
+			List<string> listTempCopiesAfter;
 			List<string> listProfileHolding;
 			try {
-				offScreenRun=RunOffScreen((form,run) => RunInMemory(form,run,folder,markerWiki,markerEmail,byteArrayEmailImage,results));
+				using FolderWatch folderWatch=new FolderWatch(folderProgramTemp,isRecursive:true);
+				offScreenRun=RunOffScreen((form,run) => RunInMemory(form,run,folder,markerWiki,markerEmail,byteArrayEmailImage,funcFindTempCopies,results));
+				listCreatedProgramTemp=folderWatch.GetCreated();
 				listNewProgramTemp=GetNewFiles(dictProgramTempBefore,ListFiles(folderProgramTemp,isRecursive:true));
-				listNewTemp=GetNewFiles(dictTempBefore,ListFiles(Path.GetTempPath(),isRecursive:false));
+				listTempCopiesAfter=funcFindTempCopies();
 				listProfileHolding=FindFilesHolding(ListFiles(Path.Combine(folder,"data"),isRecursive:true).Keys,listNeedles);
 			}
 			finally {
@@ -201,7 +245,7 @@ namespace LibWebTests {
 			offScreenRun.AssertNoError();
 			string details="WebView2 Runtime "+results.BrowserVersion+"; requests: "
 				+string.Join(" | ",results.ListRequests.Select(x => x.Uri+" "+x.StatusCode))
-				+"; new in the program's temp folder (other test runs may write there): "+string.Join(" | ",listNewProgramTemp);
+				+"; created in the program's temp folder (other test runs may write there): "+string.Join(" | ",listCreatedProgramTemp);
 			Console.WriteLine(details);
 			//Both pages show, with their images.
 			Assert.IsTrue(results.IsWikiLoaded,details);
@@ -213,11 +257,13 @@ namespace LibWebTests {
 			Assert.AreEqual(9,results.WidthEmailImage,"The email's image loads from memory. "+details);
 			Assert.IsTrue(results.IsEmailInMemory,"The email is in memory, not on disk. "+details);
 			Assert.IsTrue(results.ListRequests.Any(x => x.Uri==results.UriEmail && x.StatusCode==200),"The control answered the email page itself. "+details);
-			//No temporary file: nothing new holds either page's text or the email's image, and no page file appeared.
-			List<string> listHolding=FindFilesHolding(listNewProgramTemp.Concat(listNewTemp),listNeedles);
-			Assert.AreEqual(0,listHolding.Count,"A new temporary file holds a page or the email's image: "+string.Join(" | ",listHolding));
-			List<string> listPageFiles=listNewProgramTemp.Where(x => x.EndsWith(".html",StringComparison.OrdinalIgnoreCase)
-				|| x.EndsWith(".htm",StringComparison.OrdinalIgnoreCase)).ToList();
+			//No temporary file: nothing new holds either page's text or the email's image, while the pages were shown or after, and no page file
+			//or folder of the in-memory pages was created, not even for a moment.
+			Assert.AreEqual(0,results.ListTempCopiesWhileShown.Count,"A temporary file held a page or the email's image while it was shown: "
+				+string.Join(" | ",results.ListTempCopiesWhileShown));
+			Assert.AreEqual(0,listTempCopiesAfter.Count,"A new temporary file holds a page or the email's image: "+string.Join(" | ",listTempCopiesAfter));
+			List<string> listPageFiles=listCreatedProgramTemp.Concat(listNewProgramTemp).Where(x => x.EndsWith(".html",StringComparison.OrdinalIgnoreCase)
+				|| x.EndsWith(".htm",StringComparison.OrdinalIgnoreCase) || WebView2PageStore.IsPathInRoot(x)).Distinct().ToList();
 			Assert.AreEqual(0,listPageFiles.Count,"A page file was written: "+string.Join(" | ",listPageFiles));
 			Assert.IsFalse(Directory.Exists(WebView2PageStore.GetRootFolder()),"The folder of the in-memory pages is never created.");
 			//Nor does the browser keep a copy in its profile (its cache, for example).
