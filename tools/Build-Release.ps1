@@ -114,8 +114,8 @@ $OwnFiles=[ordered]@{
 $ThirdPartyFiles=[ordered]@{}
 foreach($name in @('Dicom.Core.dll','Dicom.Native.dll','DiffieHellman.dll','Google.Apis.dll','Google.Apis.Auth.dll','Google.Apis.Core.dll',
 	'Google.Apis.Gmail.v1.dll','Health.Direct.Agent.dll','Health.Direct.Common.dll','Health.Direct.ResolverPlugins.dll','Hunspellx86.dll',
-	'Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Extensions.Logging.Abstractions.dll','Microsoft.Identity.Client.dll',
-	'Microsoft.IdentityModel.Abstractions.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll',
+	'Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Extensions.DependencyInjection.Abstractions.dll','Microsoft.Extensions.Logging.Abstractions.dll',
+	'Microsoft.Identity.Client.dll','Microsoft.IdentityModel.Abstractions.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll',
 	'Microsoft.Web.WebView2.Wpf.dll','MigraDoc.DocumentObjectModel.dll','MigraDoc.Rendering.dll','MimeKit.dll','MySqlConnector.dll','NDde.dll',
 	'NHunspell.dll','Newtonsoft.Json.dll','OpenPop.dll','Org.Mentalis.Security.dll','PdfSharp.dll','PdfSharp.Charting.dll','Renci.SshNet.dll',
 	'SharpDX.dll','SharpDX.Direct3D9.dll','SharpDX.Mathematics.dll','System.Buffers.dll','System.Diagnostics.DiagnosticSource.dll',

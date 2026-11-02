@@ -168,7 +168,7 @@ namespace VendorDirectTests.BridgesRemoval {
 
 		[TestMethod]
 		public void SshNetDependency_StillReachesTheProgram() {
-			//Renci.SshNet (SSH.NET 2024.1.0, net462) references Microsoft.Bcl.AsyncInterfaces 1.0.0.0. The Graph SDK used to bring the 6.0.0.0 copy and
+			//Renci.SshNet (SSH.NET 2024.1.0, net462) references Microsoft.Bcl.AsyncInterfaces 1.0.0.0. The Graph SDK used to bring a newer copy and
 			//its redirect in, so OpenPmsDentalCloud now references it itself. Without it, SFTP A to Z storage and the TSI uploads fail when SftpClient loads.
 			Assert.IsTrue(Regex.IsMatch(ReadRepoFile(@"OpenPmsDentalCloud\OpenPmsDentalCloud.csproj"),
 				@"<Reference Include=""Microsoft\.Bcl\.AsyncInterfaces[,""][^>]*>\s*<HintPath>\.\.\\Required dlls\\Microsoft\.Bcl\.AsyncInterfaces\.dll</HintPath>"),
@@ -178,14 +178,14 @@ namespace VendorDirectTests.BridgesRemoval {
 				Assert.Inconclusive(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Renci.SshNet.dll")));
-			//A HintPath alone does not carry it to the hosts: the compiler drops unused references, and the hosts' build will not take 6.0.0.0 for
+			//A HintPath alone does not carry it to the hosts: the compiler drops unused references, and the hosts' build will not take 10.0.0.14 for
 			//SSH.NET's 1.0.0.0. OpenPmsDentalCloud must use it, so its own reference is what every host copies.
 			Assert.IsTrue(GetReferencedAssemblyNames(Path.Combine(folder,"OpenPmsDentalCloud.dll")).Contains("Microsoft.Bcl.AsyncInterfaces"),
 				"OpenPmsDentalCloud.dll should reference Microsoft.Bcl.AsyncInterfaces.");
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Bcl.AsyncInterfaces.dll")),"SSH.NET's dependency is not copied to the program folder.");
 			string pathConfig=Path.Combine(folder,"OpenPmsDental.exe.config");
 			StringAssert.Matches(File.ReadAllText(pathConfig),
-				new Regex(@"name=""Microsoft\.Bcl\.AsyncInterfaces""[^>]*/>\s*<bindingRedirect oldVersion=""0\.0\.0\.0-6\.0\.0\.0"" newVersion=""6\.0\.0\.0"""),
+				new Regex(@"name=""Microsoft\.Bcl\.AsyncInterfaces""[^>]*/>\s*<bindingRedirect oldVersion=""0\.0\.0\.0-10\.0\.0\.14"" newVersion=""10\.0\.0\.14"""),
 				"OpenPmsDental.exe.config needs the binding redirect SSH.NET relies on.");
 			//Load SftpClient the way the program does: from its folder, with its config, in a domain of its own so nothing stays loaded or locked.
 			AppDomainSetup setup=new AppDomainSetup();

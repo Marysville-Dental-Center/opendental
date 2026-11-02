@@ -23,7 +23,8 @@ namespace AttributionTests {
 
 		///<summary>Files of every listed component that ships in the output folder.</summary>
 		private static readonly string[] _arrayShippedFiles=new string[] {
-			"MySqlConnector.dll","Microsoft.Bcl.AsyncInterfaces.dll","Microsoft.Extensions.Logging.Abstractions.dll","System.Buffers.dll",
+			"MySqlConnector.dll","Microsoft.Bcl.AsyncInterfaces.dll","Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+			"Microsoft.Extensions.Logging.Abstractions.dll","System.Buffers.dll",
 			"System.Diagnostics.DiagnosticSource.dll","System.Memory.dll","System.Numerics.Vectors.dll","System.Runtime.CompilerServices.Unsafe.dll",
 			"System.Threading.Tasks.Extensions.dll","Newtonsoft.Json.dll","MimeKit.dll","Microsoft.Identity.Client.dll",
 			"Microsoft.IdentityModel.Abstractions.dll","Renci.SshNet.dll","PdfSharp.dll","PdfSharp.Charting.dll","MigraDoc.DocumentObjectModel.dll",
