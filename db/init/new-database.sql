@@ -1,7 +1,7 @@
 /*
 Open PMS - Dental: a new database.
 
-Creates the 441 tables of a database at fork schema level 2026110104 (the Open Dental 26.1.70 schema and the
+Creates the 453 tables of a database at fork schema level 2026110213 (the Open Dental 26.1.70 schema and the
 fork's), with the rows the program needs to start: preferences, definitions, user groups and permissions, the user Admin,
 program links (all off) and procedure codes (named by their code only). No patients and no office data. Admin has a blank
 password, which the program asks to set at the first logon.
@@ -6738,7 +6738,9 @@ INSERT INTO `grouppermission` (`GroupPermNum`,`NewerDate`,`NewerDays`,`UserGroup
 (335,'0001-01-01',0,1,22,61),
 (336,'0001-01-01',0,1,272,0),
 (337,'0001-01-01',0,1,273,0),
-(338,'0001-01-01',0,1,22,62);
+(338,'0001-01-01',0,1,22,62),
+(339,'0001-01-01',0,1,10000,0),
+(340,'0001-01-01',0,1,10001,0);
 
 /*Table structure for table `guardian` */
 
@@ -23279,6 +23281,100 @@ CREATE TABLE `loinc` (
   KEY `LoincCode` (`LoincCode`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
+/*Table structure for table `maintfield` */
+
+CREATE TABLE `maintfield` (
+  `MaintFieldNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `MaintItemNum` bigint(20) NOT NULL,
+  `ItemOrder` int(11) NOT NULL,
+  `FieldName` varchar(255) NOT NULL,
+  `FieldType` tinyint(4) NOT NULL,
+  `Unit` varchar(255) NOT NULL,
+  `HasMin` tinyint(4) NOT NULL,
+  `ValueMin` double NOT NULL,
+  `HasMax` tinyint(4) NOT NULL,
+  `ValueMax` double NOT NULL,
+  `IsRequired` tinyint(4) NOT NULL,
+  PRIMARY KEY (`MaintFieldNum`),
+  KEY `MaintItemNum` (`MaintItemNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `maintitem` */
+
+CREATE TABLE `maintitem` (
+  `MaintItemNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `ItemName` varchar(255) NOT NULL,
+  `Description` text NOT NULL,
+  `EquipmentNum` bigint(20) NOT NULL,
+  `ScheduleType` tinyint(4) NOT NULL,
+  `IntervalCount` int(11) NOT NULL,
+  `IntervalUnit` tinyint(4) NOT NULL,
+  `Weekdays` int(11) NOT NULL,
+  `DateAnchor` date NOT NULL DEFAULT '0001-01-01',
+  `LeadDays` int(11) NOT NULL,
+  `UserNumAssigned` bigint(20) NOT NULL,
+  `UserGroupNumAssigned` bigint(20) NOT NULL,
+  `IsHidden` tinyint(4) NOT NULL,
+  `SecUserNumEntry` bigint(20) NOT NULL,
+  `SecDateTEntry` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  `SecDateTEdit` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`MaintItemNum`),
+  KEY `EquipmentNum` (`EquipmentNum`),
+  KEY `UserNumAssigned` (`UserNumAssigned`),
+  KEY `UserGroupNumAssigned` (`UserGroupNumAssigned`),
+  KEY `SecUserNumEntry` (`SecUserNumEntry`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `maintrecord` */
+
+CREATE TABLE `maintrecord` (
+  `MaintRecordNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `MaintItemNum` bigint(20) NOT NULL,
+  `DateDone` date NOT NULL DEFAULT '0001-01-01',
+  `DateDue` date NOT NULL DEFAULT '0001-01-01',
+  `UserNum` bigint(20) NOT NULL,
+  `Note` text NOT NULL,
+  `IsFlagged` tinyint(4) NOT NULL,
+  `SecDateTEntry` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  `UserNumCorrected` bigint(20) NOT NULL,
+  `DateTCorrected` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  PRIMARY KEY (`MaintRecordNum`),
+  KEY `MaintItemNum` (`MaintItemNum`),
+  KEY `UserNum` (`UserNum`),
+  KEY `DateDone` (`DateDone`),
+  KEY `UserNumCorrected` (`UserNumCorrected`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `maintrecordvalue` */
+
+CREATE TABLE `maintrecordvalue` (
+  `MaintRecordValueNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `MaintRecordNum` bigint(20) NOT NULL,
+  `MaintStepNum` bigint(20) NOT NULL,
+  `MaintFieldNum` bigint(20) NOT NULL,
+  `ItemOrder` int(11) NOT NULL,
+  `FieldType` tinyint(4) NOT NULL,
+  `Label` varchar(255) NOT NULL,
+  `Unit` varchar(255) NOT NULL,
+  `ValueText` text NOT NULL,
+  `IsFlagged` tinyint(4) NOT NULL,
+  PRIMARY KEY (`MaintRecordValueNum`),
+  KEY `MaintRecordNum` (`MaintRecordNum`),
+  KEY `MaintStepNum` (`MaintStepNum`),
+  KEY `MaintFieldNum` (`MaintFieldNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `maintstep` */
+
+CREATE TABLE `maintstep` (
+  `MaintStepNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `MaintItemNum` bigint(20) NOT NULL,
+  `ItemOrder` int(11) NOT NULL,
+  `Description` varchar(255) NOT NULL,
+  PRIMARY KEY (`MaintStepNum`),
+  KEY `MaintItemNum` (`MaintItemNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
 /*Table structure for table `maparea` */
 
 CREATE TABLE `maparea` (
@@ -25718,11 +25814,11 @@ INSERT INTO `preference` (`PrefName`,`ValueString`,`PrefNum`,`Comments`) VALUES
 ('BackupIndexesDisabled','1',1163,NULL),
 ('InsOutOfNetworkBlankLikeZero','0',1164,NULL),
 ('EformsSpaceToRightEachField','10',1165,NULL),
-('ForkAdoptedFrom','new=1;source=24.3.63.0;level=2026110104;adopted=db/init/new-database.sql',1166,''),
+('ForkAdoptedFrom','new=1;source=24.3.63.0;level=2026110213;adopted=db/init/new-database.sql',1166,''),
 ('OdSchemaCompat','26.1.70',1167,''),
-('ForkSchemaLevel','2026110104',1168,''),
+('ForkSchemaLevel','2026110213',1168,''),
 ('ForkMigrationInProgress','',1169,NULL),
-('ForkMigrationsApplied','2026101901,2026101902,2026101903,2026101904,2026101905,2026101906,2026101907,2026101951,2026101971,2026102401,2026102402,2026102403,2026102501,2026110101,2026110103,2026110104',1170,NULL),
+('ForkMigrationsApplied','2026101901,2026101902,2026101903,2026101904,2026101905,2026101906,2026101907,2026101951,2026101971,2026102401,2026102402,2026102403,2026102501,2026110101,2026110103,2026110104,2026110201,2026110202,2026110203,2026110204,2026110205,2026110206,2026110207,2026110211,2026110212,2026110213',1170,NULL),
 ('ApptMirrorSecondary','0',1171,NULL),
 ('TaskCategoryShow','0',1172,NULL),
 ('IncomeTransfersLimitToPatPayments','0',1173,NULL),
@@ -28684,6 +28780,79 @@ CREATE TABLE `supply` (
   KEY `SupplierNum` (`SupplierNum`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
+/*Table structure for table `supplycount` */
+
+CREATE TABLE `supplycount` (
+  `SupplyCountNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `CountStatus` tinyint(4) NOT NULL,
+  `UserNum` bigint(20) NOT NULL,
+  `DateTimeEntry` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  `UserNumClosed` bigint(20) NOT NULL,
+  `DateTimeClosed` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  `Reason` varchar(255) NOT NULL,
+  PRIMARY KEY (`SupplyCountNum`),
+  KEY `CountStatus` (`CountStatus`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `supplycountline` */
+
+CREATE TABLE `supplycountline` (
+  `SupplyCountLineNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `SupplyCountNum` bigint(20) NOT NULL,
+  `SupplyNum` bigint(20) NOT NULL,
+  `SupplyLotNum` bigint(20) NOT NULL,
+  `LotNumber` varchar(255) NOT NULL,
+  `DateExpiry` date NOT NULL DEFAULT '0001-01-01',
+  `QtyProgram` double NOT NULL,
+  `QtyCounted` double NOT NULL,
+  `QtyPosted` double NOT NULL,
+  `UserNum` bigint(20) NOT NULL,
+  `DateTimeEntry` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  PRIMARY KEY (`SupplyCountLineNum`),
+  UNIQUE KEY `SupplyCountNum` (`SupplyCountNum`,`SupplyNum`,`SupplyLotNum`,`LotNumber`),
+  KEY `SupplyNum` (`SupplyNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `supplyledger` */
+
+CREATE TABLE `supplyledger` (
+  `SupplyLedgerNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `SupplyNum` bigint(20) NOT NULL,
+  `SupplyLotNum` bigint(20) NOT NULL,
+  `LedgerType` tinyint(4) NOT NULL,
+  `Quantity` double NOT NULL,
+  `UnitCost` double NOT NULL,
+  `ProcNum` bigint(20) NOT NULL,
+  `PatNum` bigint(20) NOT NULL,
+  `SupplyOrderItemNum` bigint(20) NOT NULL,
+  `DispSupplyNum` bigint(20) NOT NULL,
+  `UserNum` bigint(20) NOT NULL,
+  `DateTimeEntry` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  `Reason` varchar(255) NOT NULL,
+  `SupplyCountLineNum` bigint(20) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`SupplyLedgerNum`),
+  KEY `SupplyNum` (`SupplyNum`),
+  KEY `SupplyLotNum` (`SupplyLotNum`),
+  KEY `ProcNum` (`ProcNum`),
+  KEY `SupplyOrderItemNum` (`SupplyOrderItemNum`),
+  KEY `DateTimeEntry` (`DateTimeEntry`),
+  KEY `SupplyCountLineNum` (`SupplyCountLineNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `supplylot` */
+
+CREATE TABLE `supplylot` (
+  `SupplyLotNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `SupplyNum` bigint(20) NOT NULL,
+  `LotNumber` varchar(255) NOT NULL,
+  `DateExpiry` date NOT NULL DEFAULT '0001-01-01',
+  `QtyOnHand` double NOT NULL,
+  `SupplyOrderItemNum` bigint(20) NOT NULL,
+  `DateTimeEntry` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  PRIMARY KEY (`SupplyLotNum`),
+  KEY `SupplyNum` (`SupplyNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
 /*Table structure for table `supplyneeded` */
 
 CREATE TABLE `supplyneeded` (
@@ -28721,6 +28890,44 @@ CREATE TABLE `supplyorderitem` (
   PRIMARY KEY (`SupplyOrderItemNum`),
   KEY `SupplyOrderNum` (`SupplyOrderNum`),
   KEY `SupplyNum` (`SupplyNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `supplyproccode` */
+
+CREATE TABLE `supplyproccode` (
+  `SupplyProcCodeNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `CodeNum` bigint(20) NOT NULL,
+  `SupplyNum` bigint(20) NOT NULL,
+  `Quantity` double NOT NULL,
+  `ItemOrder` int(11) NOT NULL,
+  PRIMARY KEY (`SupplyProcCodeNum`),
+  KEY `CodeNum` (`CodeNum`),
+  KEY `SupplyNum` (`SupplyNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `supplyprocpending` */
+
+CREATE TABLE `supplyprocpending` (
+  `SupplyProcPendingNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `ProcNum` bigint(20) NOT NULL,
+  `PatNum` bigint(20) NOT NULL,
+  `UserNum` bigint(20) NOT NULL,
+  `DateTimeEntry` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  PRIMARY KEY (`SupplyProcPendingNum`),
+  UNIQUE KEY `ProcNum` (`ProcNum`),
+  KEY `PatNum` (`PatNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `supplysetting` */
+
+CREATE TABLE `supplysetting` (
+  `SupplySettingNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `SupplyNum` bigint(20) NOT NULL,
+  `ReorderLevel` double NOT NULL,
+  `IsLotTracked` tinyint(4) NOT NULL,
+  `IsImplant` tinyint(4) NOT NULL,
+  PRIMARY KEY (`SupplySettingNum`),
+  UNIQUE KEY `SupplyNum` (`SupplyNum`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 /*Table structure for table `task` */
