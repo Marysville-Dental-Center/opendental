@@ -707,7 +707,7 @@ namespace UnitTests.Billing_Tests {
 						for(int i = 1;i<=pages;i++) {
 							PdfPage pdfPage=pdfDocument.AddPage();
 							using(XGraphics gfx=XGraphics.FromPdfPage(pdfPage)){
-								gfx.DrawString($"Page {i}", font, XBrushes.Black, new XRect(0, 0, pdfPage.Width, pdfPage.Height), XStringFormats.Center);
+								gfx.DrawString($"Page {i}", font, XBrushes.Black, new XRect(0, 0, pdfPage.Width.Point, pdfPage.Height.Point), XStringFormats.Center);
 							}
 						}
 						//Save to a memstream and subsequently re-open a new pdf from the stream, this time using Import mode (which allows BillingL.PrintBatch to read from the pdf).

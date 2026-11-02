@@ -23,7 +23,7 @@ namespace PdfLibraryTests {
 		}
 
 		///<summary>Opens saved bytes again with PdfReader. The stream is closed before the document is used, as BillingL does.</summary>
-		public static PdfDocument Open(byte[] arrayBytes,PdfDocumentOpenMode pdfDocumentOpenMode=PdfDocumentOpenMode.ReadOnly) {
+		public static PdfDocument Open(byte[] arrayBytes,PdfDocumentOpenMode pdfDocumentOpenMode=PdfDocumentOpenMode.Import) {
 			using(MemoryStream memoryStream=new MemoryStream(arrayBytes)) {
 				return PdfReader.Open(memoryStream,pdfDocumentOpenMode);
 			}
