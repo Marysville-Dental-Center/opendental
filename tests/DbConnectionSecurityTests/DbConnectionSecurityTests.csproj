@@ -74,6 +74,11 @@
       <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
       <Name>OpenPmsDentalBusiness</Name>
     </ProjectReference>
+    <!-- The RDL engine's connection hook (RdlEngineConfig.CheckConnection). -->
+    <ProjectReference Include="..\..\RdlEngine\RdlEngine.csproj">
+      <Project>{C97E91F4-B310-44E2-9B6C-96775395722D}</Project>
+      <Name>RdlEngine</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\OpenPmsDentalDbSettings\OpenPmsDentalDbSettings.csproj">
       <Project>{D6FD58F6-9324-4533-93A6-1BA0804CB9C6}</Project>
       <Name>OpenPmsDentalDbSettings</Name>

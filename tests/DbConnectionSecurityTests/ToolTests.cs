@@ -1,0 +1,296 @@
+// The connection settings tool: its switches, its secrets file, the CA and .pfx checks, and saving the settings (no certificate store writes).
+// Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Xml;
+using CodeBase;
+using DataConnectionBase;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using OpenPmsDentalDbSettings;
+
+namespace DbConnectionSecurityTests {
+	[TestClass]
+	public class ToolTests {
+		private string _folder;
+
+		[TestInitialize]
+		public void SetUp() {
+			_folder=TestHelpers.NewTempFolder();
+		}
+
+		[TestCleanup]
+		public void CleanUp() {
+			TestHelpers.DeleteFolder(_folder);
+		}
+
+		#region Switches
+		[TestMethod]
+		public void Args_TheInstallersSilentCall() {
+			DbSettingsArgs dbSettingsArgs=DbSettingsArgs.Parse(new[] { "/server="+TestHelpers.NETWORK_HOST+":3307","/database=opendental","/user=opmsd",
+				@"/ca=C:\Temp\office ca.pem",@"/PFX=""C:\Temp\client.pfx""",@"/secretsfile=C:\Temp\s.txt","/silent","/TEST",@"/log=C:\Temp\l.txt" });
+			Assert.AreEqual(TestHelpers.NETWORK_HOST+":3307",dbSettingsArgs.Server);
+			Assert.AreEqual("opendental",dbSettingsArgs.Database);
+			Assert.AreEqual("opmsd",dbSettingsArgs.User);
+			Assert.AreEqual(@"C:\Temp\office ca.pem",dbSettingsArgs.CaFile);
+			Assert.AreEqual(@"C:\Temp\client.pfx",dbSettingsArgs.PfxFile,"Quotes and case of the name do not matter.");
+			Assert.AreEqual(DbSettingsAuth.Certificate,dbSettingsArgs.Auth,"/pfx means certificate mode.");
+			Assert.AreEqual(@"C:\Temp\s.txt",dbSettingsArgs.SecretsFile);
+			Assert.IsTrue(dbSettingsArgs.IsSilent && dbSettingsArgs.IsTest);
+			Assert.IsTrue(dbSettingsArgs.HasChanges);
+		}
+
+		[TestMethod]
+		public void Args_NoSwitches_TheWindow_AndCheck_AndThumbprintNormalized() {
+			DbSettingsArgs dbSettingsArgs=DbSettingsArgs.Parse(new string[0]);
+			Assert.IsFalse(dbSettingsArgs.IsSilent||dbSettingsArgs.IsCheck||dbSettingsArgs.HasChanges);
+			Assert.IsTrue(DbSettingsArgs.Parse(new[] { "-check" }).IsCheck);
+			Assert.IsTrue(DbSettingsArgs.Parse(new[] { "/?" }).IsHelp);
+			DbSettingsArgs dbSettingsArgsThumbprint=DbSettingsArgs.Parse(new[] { "/thumbprint=\u200e01 23 45 67 89 ab cd ef 01 23 45 67 89 ab cd ef 01 23 45 67" });
+			Assert.AreEqual("0123456789ABCDEF0123456789ABCDEF01234567",dbSettingsArgsThumbprint.Thumbprint);
+			Assert.AreEqual(DbSettingsAuth.Certificate,dbSettingsArgsThumbprint.Auth);
+			Assert.AreEqual(DbSettingsAuth.Password,DbSettingsArgs.Parse(new[] { "/auth=Password" }).Auth);
+			StringAssert.Contains(DbSettingsArgs.Usage(),"Exit codes: 0 done");
+		}
+
+		[TestMethod]
+		public void Args_RefuseSecretsOnTheCommandLine_WithoutRepeatingThem() {
+			foreach(string name in new[] { "password","PASSWORD","dbpassword","pfxpassword","pwd","pass" }) {
+				DbSettingsException ex=TestHelpers.AssertThrows<DbSettingsException>(() => DbSettingsArgs.Parse(new[] { "/"+name+"="+TestHelpers.SECRET }));
+				Assert.AreEqual(DbSettingsRunner.EXIT_BAD_ARGS,ex.ExitCode);
+				StringAssert.Contains(ex.Message,"not accepted on the command line");
+				Assert.IsFalse(ex.Message.Contains(TestHelpers.SECRET),name);
+			}
+			DbSettingsException exBare=TestHelpers.AssertThrows<DbSettingsException>(() => DbSettingsArgs.Parse(new[] { "/silent",TestHelpers.SECRET }));
+			Assert.AreEqual("Argument 2 is not a switch. Switches start with /.",exBare.Message,"A stray value is never repeated.");
+		}
+
+		[TestMethod]
+		public void Args_RefuseBadSwitchesAndCombinations() {
+			foreach(string[] arrayArgs in new[] {
+				new[] { "/unknown=1" },
+				new[] { "/server=a","/server=b" },
+				new[] { "/server=" },
+				new[] { "/silent=yes" },
+				new[] { "/pfx=a.pfx","/thumbprint=0123456789ABCDEF0123456789ABCDEF01234567" },
+				new[] { "/auth=password","/pfx=a.pfx" },
+				new[] { "/auth=both" },
+				new[] { "/thumbprint=1234" },
+				new[] { "/check","/server=a" },
+				new[] { "/check","/silent" },
+				new[] { "/test" },
+			})
+			{
+				DbSettingsException ex=TestHelpers.AssertThrows<DbSettingsException>(() => DbSettingsArgs.Parse(arrayArgs));
+				Assert.AreEqual(DbSettingsRunner.EXIT_BAD_ARGS,ex.ExitCode,string.Join(" ",arrayArgs));
+			}
+			foreach(string[] arrayArgs in new[] { new[] { "/server=a;b" },new[] { "/server=a b" },new[] { "/server=a,b" },new[] { "/database=x.y" },
+				new[] { "/user=a;b" } })
+			{
+				DbSettingsException ex=TestHelpers.AssertThrows<DbSettingsException>(() => DbSettingsArgs.Parse(arrayArgs));
+				Assert.AreEqual(DbSettingsRunner.EXIT_BAD_VALUE,ex.ExitCode,string.Join(" ",arrayArgs));
+			}
+		}
+		#endregion Switches
+
+		#region Secrets file
+		[TestMethod]
+		public void Secrets_ParseTheTwoLines_KeepingEveryCharacterOfTheValue() {
+			DbSettingsSecrets dbSettingsSecrets=DbSettingsSecrets.Parse("\uFEFF# synthetic\r\nPfxPassword= a=b;c \r\n\r\ndbpassword="+TestHelpers.SECRET+"\n");
+			Assert.AreEqual(" a=b;c ",dbSettingsSecrets.PfxPassword);
+			Assert.AreEqual(TestHelpers.SECRET,dbSettingsSecrets.DbPassword);
+			DbSettingsSecrets dbSettingsSecretsOne=DbSettingsSecrets.Parse("DbPassword=");
+			Assert.AreEqual("",dbSettingsSecretsOne.DbPassword,"An empty password is a password.");
+			Assert.IsNull(dbSettingsSecretsOne.PfxPassword);
+		}
+
+		[TestMethod]
+		public void Secrets_RefuseOtherLines_WithoutRepeatingValues() {
+			foreach(string text in new[] { TestHelpers.SECRET,"Other="+TestHelpers.SECRET,"DbPassword=a\nDbPassword="+TestHelpers.SECRET,"="+TestHelpers.SECRET }) {
+				DbSettingsException ex=TestHelpers.AssertThrows<DbSettingsException>(() => DbSettingsSecrets.Parse(text));
+				Assert.AreEqual(DbSettingsRunner.EXIT_BAD_VALUE,ex.ExitCode);
+				Assert.IsFalse(ex.Message.Contains(TestHelpers.SECRET),text);
+			}
+		}
+
+		[TestMethod]
+		public void Secrets_ReadFile_ReadsUtf8_AndNeverChangesTheFile() {
+			string path=Path.Combine(_folder,"secrets.txt");
+			File.WriteAllText(path,"DbPassword=pässwörd\r\n",new UTF8Encoding(true));
+			DateTime dateTimeWritten=File.GetLastWriteTimeUtc(path);
+			Assert.AreEqual("pässwörd",DbSettingsSecrets.ReadFile(path).DbPassword);
+			Assert.IsTrue(File.Exists(path),"The caller deletes it.");
+			Assert.AreEqual(dateTimeWritten,File.GetLastWriteTimeUtc(path));
+			Assert.AreEqual(DbSettingsRunner.EXIT_BAD_VALUE,
+				TestHelpers.AssertThrows<DbSettingsException>(() => DbSettingsSecrets.ReadFile(Path.Combine(_folder,"none.txt"))).ExitCode);
+			File.WriteAllBytes(path,new byte[70000]);
+			StringAssert.Contains(TestHelpers.AssertThrows<DbSettingsException>(() => DbSettingsSecrets.ReadFile(path)).Message,"too large");
+		}
+		#endregion Secrets file
+
+		#region The office CA and the client certificate
+		[TestMethod]
+		public void OfficeCa_PemOrDer_ACaOnly() {
+			string pem=TestHelpers.WriteCaPem(_folder);
+			List<X509Certificate2> listCertificates=OfficeCaFile.Load(pem);
+			Assert.AreEqual(1,listCertificates.Count);
+			StringAssert.Contains(OfficeCaFile.Describe(listCertificates),"CN=Synthetic Office CA");
+			string der=Path.Combine(_folder,"office-ca.cer");
+			File.WriteAllBytes(der,listCertificates[0].RawData);
+			Assert.AreEqual(listCertificates[0].Thumbprint,OfficeCaFile.Load(der)[0].Thumbprint);
+			string leaf=Path.Combine(_folder,"server.pem");
+			using(X509Certificate2 x509Certificate2=TestHelpers.NewCertificate("CN="+TestHelpers.NETWORK_HOST,isCa:false)) {
+				File.WriteAllText(leaf,OfficeCaFile.ToPem(new List<X509Certificate2> { new X509Certificate2(x509Certificate2.RawData) }));
+			}
+			StringAssert.Contains(TestHelpers.AssertThrows<DbSettingsException>(() => OfficeCaFile.Load(leaf)).Message,"not a certificate authority");
+			string garbage=Path.Combine(_folder,"garbage.pem");
+			File.WriteAllText(garbage,"not a certificate");
+			Assert.AreEqual(DbSettingsRunner.EXIT_BAD_VALUE,TestHelpers.AssertThrows<DbSettingsException>(() => OfficeCaFile.Load(garbage)).ExitCode);
+			string withKey=Path.Combine(_folder,"with-key.pfx");
+			using(X509Certificate2 x509Certificate2=TestHelpers.NewCertificate("CN=Synthetic Office CA",isCa:true)) {
+				File.WriteAllBytes(withKey,x509Certificate2.Export(X509ContentType.Pfx,""));
+			}
+			StringAssert.Contains(TestHelpers.AssertThrows<DbSettingsException>(() => OfficeCaFile.Load(withKey)).Message,"private key");
+		}
+
+		[TestMethod]
+		public void OfficeCa_WriteCopy_IsPemThatLoadsAgain() {
+			List<X509Certificate2> listCertificates=OfficeCaFile.Load(TestHelpers.WriteCaPem(_folder));
+			string pathCopy=Path.Combine(_folder,"ProgramData","Database","office-ca.pem");
+			OfficeCaFile.WriteCopy(listCertificates,pathCopy);
+			OfficeCaFile.WriteCopy(listCertificates,pathCopy);//a second time replaces it
+			StringAssert.StartsWith(File.ReadAllText(pathCopy),"-----BEGIN CERTIFICATE-----");
+			Assert.AreEqual(listCertificates[0].Thumbprint,OfficeCaFile.Load(pathCopy)[0].Thumbprint);
+		}
+
+		[TestMethod]
+		public void Pfx_CheckedWithoutStoringItsKey_PasswordAndUse() {
+			string pfx=TestHelpers.WritePfx(_folder,TestHelpers.SECRET);
+			using(X509Certificate2 x509Certificate2=ClientCertificateStore.LoadPfxForCheck(pfx,TestHelpers.SECRET)) {
+				Assert.IsTrue(x509Certificate2.HasPrivateKey);
+				StringAssert.Contains(ClientCertificateStore.Describe(x509Certificate2),"CN=synthetic-workstations");
+			}
+			DbSettingsException exWrong=TestHelpers.AssertThrows<DbSettingsException>(() => ClientCertificateStore.LoadPfxForCheck(pfx,"wrong"));
+			Assert.AreEqual(DbSettingsRunner.EXIT_BAD_VALUE,exWrong.ExitCode);
+			StringAssert.Contains(exWrong.Message,"password is wrong");
+			string pfxServer=TestHelpers.WritePfx(_folder,"x",isClientAuth:false,isServerAuthOnly:true,fileName:"server.pfx");
+			StringAssert.Contains(TestHelpers.AssertThrows<DbSettingsException>(() => ClientCertificateStore.LoadPfxForCheck(pfxServer,"x")).Message,
+				"not for client authentication");
+			Assert.IsNull(ClientCertificateStore.FindInStore("00000000000000000000000000000000000000AA"),"Not in LocalMachine\\My.");
+		}
+		#endregion The office CA and the client certificate
+
+		#region Saving
+		[TestMethod]
+		public void Apply_Loopback_PasswordMode_WritesTheFile() {
+			string config=TestHelpers.WriteConfig(_folder,"ComputerName","localhost","Database","opendental","User","root","Password","",
+				"MySQLPassHash","","NoShowOnStartup","False");
+			DbSettingsResult dbSettingsResult=DbSettingsRunner.Apply(new DbSettingsRequest() { Database="opendental_test" },config,
+				Path.Combine(_folder,"ca-copy.pem"));
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,dbSettingsResult.ExitCode,dbSettingsResult.Message);
+			DbConnectionConfig dbConnectionConfig=DbConnectionConfig.ReadFile(config);
+			Assert.AreEqual("localhost",dbConnectionConfig.ServerName);
+			Assert.AreEqual("opendental_test",dbConnectionConfig.Database);
+			Assert.AreEqual("",dbConnectionConfig.PasswordDpapi,"A blank password stays blank.");
+			Assert.AreEqual("False",dbConnectionConfig.NoShowOnStartup);
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,DbSettingsRunner.Check(config).ExitCode);
+		}
+
+		[TestMethod]
+		public void Apply_Loopback_OldStylePassword_MovesIntoDpapi() {
+			string config=TestHelpers.WriteConfig(_folder,"ComputerName","localhost","Database","opendental","User","root","Password",TestHelpers.SECRET);
+			DbSettingsResult dbSettingsResult=DbSettingsRunner.Apply(new DbSettingsRequest(),config,Path.Combine(_folder,"ca-copy.pem"));
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,dbSettingsResult.ExitCode,dbSettingsResult.Message);
+			Assert.IsFalse(File.ReadAllText(config).Contains(TestHelpers.SECRET));
+			DbConnectionConfig dbConnectionConfig=DbConnectionConfig.ReadFile(config);
+			Assert.IsFalse(dbConnectionConfig.HasLegacyPassword);
+			Assert.AreEqual(TestHelpers.SECRET,dbConnectionConfig.GetPassword());
+		}
+
+		[TestMethod]
+		public void Apply_Network_PasswordMode_CopiesTheCa_AndStoresThePasswordWithDpapi() {
+			string config=TestHelpers.WriteConfig(_folder,"ComputerName","localhost","Database","opendental","User","root","Password","");
+			string caCopy=Path.Combine(_folder,"ProgramData","office-ca.pem");
+			DbSettingsRequest dbSettingsRequest=new DbSettingsRequest() { Server=TestHelpers.NETWORK_HOST,Database="opendental",User="opmsd",
+				CaFile=TestHelpers.WriteCaPem(_folder,"picked-ca.pem"),Auth=DbSettingsAuth.Password,DbPassword=TestHelpers.SECRET };
+			DbSettingsResult dbSettingsResult=DbSettingsRunner.Apply(dbSettingsRequest,config,caCopy);
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,dbSettingsResult.ExitCode,dbSettingsResult.Message);
+			Assert.IsFalse(dbSettingsResult.Message.Contains(TestHelpers.SECRET));
+			Assert.IsTrue(File.Exists(caCopy));
+			string text=File.ReadAllText(config);
+			Assert.IsFalse(text.Contains(TestHelpers.SECRET));
+			StringAssert.Contains(text,"<CompName>SYNTHETIC-PC</CompName>");
+			DbConnectionConfig dbConnectionConfig=DbConnectionConfig.ReadFile(config);
+			Assert.AreEqual(caCopy,dbConnectionConfig.SslCa,"SslCa points to the tool's own copy.");
+			Assert.AreEqual(TestHelpers.SECRET,dbConnectionConfig.GetPassword());
+			Assert.IsFalse(dbConnectionConfig.IsCertificateMode);
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,DbSettingsRunner.Check(config).ExitCode,"It passes the rule as the program applies it.");
+			//The same user again without a password keeps the stored one.
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,DbSettingsRunner.Apply(new DbSettingsRequest() { Database="opendental2" },config,caCopy).ExitCode);
+			Assert.AreEqual(TestHelpers.SECRET,DbConnectionConfig.ReadFile(config).GetPassword());
+		}
+
+		[TestMethod]
+		public void Apply_Network_RefusesWithoutCaOrCredential_AndChangesNothing() {
+			string config=TestHelpers.WriteConfig(_folder,"ComputerName","localhost","Database","opendental","User","root","Password","");
+			string before=File.ReadAllText(config);
+			string caCopy=Path.Combine(_folder,"ca-copy.pem");
+			DbSettingsResult dbSettingsResultNoCa=DbSettingsRunner.Apply(new DbSettingsRequest() { Server=TestHelpers.NETWORK_HOST,
+				Auth=DbSettingsAuth.Password,DbPassword="x" },config,caCopy);
+			Assert.AreEqual(DbSettingsRunner.EXIT_REFUSED,dbSettingsResultNoCa.ExitCode);
+			StringAssert.Contains(dbSettingsResultNoCa.Message,"office CA certificate");
+			DbSettingsResult dbSettingsResultNoPassword=DbSettingsRunner.Apply(new DbSettingsRequest() { Server=TestHelpers.NETWORK_HOST,
+				CaFile=TestHelpers.WriteCaPem(_folder),Auth=DbSettingsAuth.Password,User="other" },config,caCopy);
+			Assert.AreEqual(DbSettingsRunner.EXIT_REFUSED,dbSettingsResultNoPassword.ExitCode);
+			StringAssert.Contains(dbSettingsResultNoPassword.Message,"certificate or a database password");
+			DbSettingsResult dbSettingsResultBadCa=DbSettingsRunner.Apply(new DbSettingsRequest() { Server=TestHelpers.NETWORK_HOST,
+				CaFile=Path.Combine(_folder,"missing.pem"),DbPassword="x" },config,caCopy);
+			Assert.AreEqual(DbSettingsRunner.EXIT_BAD_VALUE,dbSettingsResultBadCa.ExitCode);
+			DbSettingsResult dbSettingsResultNoCert=DbSettingsRunner.Apply(new DbSettingsRequest() { Server=TestHelpers.NETWORK_HOST,
+				CaFile=TestHelpers.WriteCaPem(_folder),Thumbprint="00000000000000000000000000000000000000AA" },config,caCopy);
+			Assert.AreEqual(DbSettingsRunner.EXIT_BAD_VALUE,dbSettingsResultNoCert.ExitCode);
+			StringAssert.Contains(dbSettingsResultNoCert.Message,"not in the computer's certificate store");
+			DbSettingsResult dbSettingsResultPfxWrong=DbSettingsRunner.Apply(new DbSettingsRequest() { Server=TestHelpers.NETWORK_HOST,
+				CaFile=TestHelpers.WriteCaPem(_folder),PfxFile=TestHelpers.WritePfx(_folder,"right"),PfxPassword="wrong" },config,caCopy);
+			Assert.AreEqual(DbSettingsRunner.EXIT_BAD_VALUE,dbSettingsResultPfxWrong.ExitCode,"Checked before anything is imported.");
+			Assert.AreEqual(before,File.ReadAllText(config),"Nothing was written.");
+			Assert.IsFalse(File.Exists(caCopy),"The CA was not copied.");
+		}
+
+		[TestMethod]
+		public void Apply_Network_OldStylePassword_CannotBeKept() {
+			string config=TestHelpers.WriteConfig(_folder,"ComputerName",TestHelpers.NETWORK_HOST,"Database","opendental","User","opmsd",
+				"Password",TestHelpers.SECRET);
+			DbSettingsResult dbSettingsResult=DbSettingsRunner.Apply(new DbSettingsRequest() { CaFile=TestHelpers.WriteCaPem(_folder) },config,
+				Path.Combine(_folder,"ca-copy.pem"));
+			Assert.AreEqual(DbSettingsRunner.EXIT_REFUSED,dbSettingsResult.ExitCode);
+			StringAssert.Contains(dbSettingsResult.Message,"stored the old way");
+			Assert.IsFalse(dbSettingsResult.Message.Contains(TestHelpers.SECRET));
+			Assert.AreEqual(DbSettingsRunner.EXIT_REFUSED,DbSettingsRunner.Check(config).ExitCode);
+		}
+
+		[TestMethod]
+		public void Check_MissingFile_OrNoConnection_IsRefused() {
+			Assert.AreEqual(DbSettingsRunner.EXIT_REFUSED,DbSettingsRunner.Check(Path.Combine(_folder,"none.xml")).ExitCode);
+			string path=Path.Combine(_folder,"FreeDentalConfig.xml");
+			File.WriteAllText(path,"<ConnectionSettings />");
+			Assert.AreEqual(DbSettingsRunner.EXIT_REFUSED,DbSettingsRunner.Check(path).ExitCode);
+		}
+
+		[TestMethod]
+		public void RequestFromArgs_TakesTheSecretsFromTheFile_AndAppendLogWritesTheResult() {
+			DbSettingsArgs dbSettingsArgs=DbSettingsArgs.Parse(new[] { "/auth=password","/user=opmsd" });
+			DbSettingsRequest dbSettingsRequest=DbSettingsRunner.RequestFromArgs(dbSettingsArgs,DbSettingsSecrets.Parse("DbPassword=x"));
+			Assert.AreEqual("x",dbSettingsRequest.DbPassword);
+			Assert.AreEqual(DbSettingsAuth.Password,dbSettingsRequest.Auth);
+			Assert.IsNull(dbSettingsRequest.Server,"Not given: the current value is kept.");
+			string log=Path.Combine(_folder,"dbsettings.log");
+			DbSettingsRunner.AppendLog(log,new DbSettingsResult(DbSettingsRunner.EXIT_REFUSED,"synthetic message"));
+			StringAssert.Contains(File.ReadAllText(log),ProgramNames.DbSettingsExeFileName+" exit=5 synthetic message");
+		}
+		#endregion Saving
+	}
+}
