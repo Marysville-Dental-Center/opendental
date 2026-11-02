@@ -81,10 +81,13 @@ namespace OpenPmsDentalBusiness{
 				supply.SupplyNum=Meth.GetLong(MethodBase.GetCurrentMethod(),supply);
 				return supply.SupplyNum;
 			}
+			if(!InventoryTracking.IsInstalled()) {//A database without the inventory tables: as before.
+				return Crud.SupplyCrud.Insert(supply);
+			}
 			double qtyOpening=Math.Round(supply.LevelOnHand,2);
 			supply.LevelOnHand=0;
 			Crud.SupplyCrud.Insert(supply);
-			if(qtyOpening!=0 && InventoryTracking.IsInstalled()) {
+			if(qtyOpening!=0) {
 				SupplyLedger supplyLedger=new SupplyLedger();
 				supplyLedger.SupplyNum=supply.SupplyNum;
 				supplyLedger.LedgerType=SupplyLedgerType.Opening;

@@ -48,8 +48,8 @@ namespace InventoryTests {
 				Cache.Refresh(InvalidType.Prefs,InvalidType.ProcCodes,InvalidType.Providers,InvalidType.Defs);
 				Userods.RefreshCache();
 				Security.CurUser=Userods.GetUser(1)??new Userod { UserNum=1,UserName="Admin" };
-				Prefs.UpdateBool(PrefName.InventoryTrackingEnabled,true);
-				Cache.Refresh(InvalidType.Prefs);
+				InventoryTracking.SaveSettings(true,30);//As Supply Inventory, Inventory, Setup does.
+				Cache.Refresh(InvalidType.Prefs,InvalidType.Security,InvalidType.AlertCategoryLinks);
 				_isBuilt=true;
 			}
 			catch(Exception ex) {
@@ -75,7 +75,7 @@ namespace InventoryTests {
 			Connect(DbMain);
 			Security.CurUser=Userods.GetUser(1)??new Userod { UserNum=1,UserName="Admin" };
 			if(!InventoryTracking.IsEnabled()) {
-				Prefs.UpdateBool(PrefName.InventoryTrackingEnabled,true);
+				InventoryTracking.SaveSettings(true,30);
 				Cache.Refresh(InvalidType.Prefs);
 			}
 		}

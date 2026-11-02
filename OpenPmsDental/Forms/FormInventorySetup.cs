@@ -24,12 +24,24 @@ namespace OpenPmsDental {
 				return;
 			}
 			bool wasEnabled=InventoryTracking.IsEnabled();
-			bool isChanged=Prefs.UpdateBool(PrefName.InventoryTrackingEnabled,checkEnabled.Checked);
-			isChanged|=Prefs.UpdateInt(PrefName.InventoryExpiryAlertDays,PIn.Int(textExpiryDays.Text));
-			if(isChanged) {
-				DataValid.SetInvalid(InvalidType.Prefs);
+			int daysOld=InventoryTracking.GetExpiryAlertDays();
+			int countGroupsGranted;
+			try {
+				countGroupsGranted=InventoryTracking.SaveSettings(checkEnabled.Checked,PIn.Int(textExpiryDays.Text));
+			}
+			catch(Exception ex) {
+				MessageBox.Show(this,ex.Message);
+				return;
+			}
+			Cache.Refresh(InvalidType.Prefs,InvalidType.Security,InvalidType.AlertCategoryLinks);
+			DataValid.SetInvalid(InvalidType.Prefs,InvalidType.Security,InvalidType.AlertCategoryLinks);
+			if(wasEnabled!=checkEnabled.Checked || daysOld!=PIn.Int(textExpiryDays.Text)) {
 				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Inventory tracking "+(checkEnabled.Checked ? "on" : "off")+", expiring alert "
 					+PIn.Int(textExpiryDays.Text)+" days.");
+			}
+			if(countGroupsGranted>0) {
+				MessageBox.Show(this,Lan.g(this,"Inventory Adjust (stock counts and adjustments) was granted to the user groups with Supplier Edit")+": "
+					+countGroupsGranted);
 			}
 			if(wasEnabled && !checkEnabled.Checked) {
 				InventoryTracking.DeleteAllAlerts();

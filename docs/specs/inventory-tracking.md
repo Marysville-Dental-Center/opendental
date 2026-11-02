@@ -75,12 +75,13 @@ MyISAM has no transactions, and two workstations can complete procedures at the 
    did not run (a lost connection between the two statements) is corrected by the next movement of that supply, or by the repair.
 3. **`supply.LevelOnHand` is never written by `Supplies.Update`.** The column is `ExcludeFromUpdate` in the CRUD, so a supply edited in a
    window with an old copy of the row can never overwrite stock. `Supplies.Insert` inserts 0 and writes an opening ledger row for a typed
-   quantity.
+   quantity (on a database without the inventory tables, as before).
 4. **The procedure's own record is written last.** Confirming materials writes the ledger rows, recomputes, and only then deletes the pending
    row. Confirming compares what the panel says with what the ledger already holds for the procedure and writes only the difference, so
    confirming again after a failure part-way never deducts twice.
-5. **Repair** (Supply Inventory, Stock, Repair stock from ledger): recomputes every supply's and every lot's quantity from the ledger and
-   reports how many changed. It is safe at any time and writes a security log entry.
+5. **Repair** (Supply Inventory, Inventory, Repair Stock from Ledger; Inventory Adjust): recomputes every supply's and every lot's quantity
+   from the ledger and reports how many changed (`SupplyLedgers.RecomputeAll`, `InventoryTracking.Repair`). It is safe at any time and writes
+   a security log entry.
 
 Nothing in this package is cached, so there is no cache to go stale and no signal to send. Every window reads the database when it opens or
 refreshes.
@@ -124,7 +125,10 @@ panel for every procedure of that action that awaits materials. So the panel ope
 Chart module Set Complete (one or several procedures, or an appointment), procedures entered as complete (procedure buttons, quick buttons,
 the procedure list), the procedure edit window, the appointment module and the appointment edit window, broken appointment procedures,
 Account module procedures. Several procedures completed at once share one panel. Procedures whose codes have no default materials do not open
-the panel; materials can still be recorded for them from the procedure edit window (Materials).
+the panel; materials can still be recorded for them from the procedure edit window (Materials). The program's windows change procedures only
+through `Procedures.Insert` and `Procedures.Update` (a test in `InventoryTests` checks the source), which is what makes this hold for every path.
+The main window starts the collector (`MaterialsUsedL.Start`); procedures completed on another thread of the program are only put on the
+Awaiting Materials list.
 
 Cancelling the panel deducts nothing; the procedures stay on the Awaiting Materials list.
 
@@ -133,9 +137,11 @@ Cancelling the panel deducts nothing; the procedures stay on the Awaiting Materi
 One row per material per procedure: procedure (date, code, tooth), supply, quantity, lot, and the stock on hand. It opens filled with the codes'
 default materials; for supplies tracked by lot the lots are filled in soonest-expiring first, split over lots when needed. The assistant can
 change a quantity, pick another lot, add a supply from the supply list or by scanning, and remove a row. OK deducts. Opened again for a
-procedure that already has materials (Materials in the procedure edit window), it shows what the procedure used, with lots, and OK writes only
-the differences (Use rows for more, Restore rows for less). Changing materials that were already confirmed needs Completed Procedure Edit Misc
-(`ProcCompleteEditMisc`) for the procedure's date; confirming awaiting materials needs no permission beyond completing the procedure.
+procedure that already has materials (Materials in the procedure edit window, shown while tracking is on), it shows what the procedure used,
+with lots, and OK writes only the differences (Use rows for more, Restore rows for less). For an implant this is where the lot is seen from
+the procedure. Changing the materials of a procedure that does not await materials needs Completed Procedure Edit Misc
+(`ProcCompleteEditMisc`) for the procedure's date (without it the panel is read-only); confirming awaiting materials needs no permission
+beyond completing the procedure.
 
 ### 3.3 Un-completing and deleting
 
@@ -145,19 +151,22 @@ has been turned off since, so stock stays right.
 
 ### 3.4 Receiving
 
-Supply Order edit window, Receive. The grid lists the order's items with ordered quantity, received so far (the order item's Receive ledger
+Supply Orders, Receive (for a placed order). The grid lists the order's items with ordered quantity, received so far (the order item's Receive ledger
 rows) and the quantity to receive now, plus lot number and expiry date for supplies tracked by lot. A scan adds one to the matching item; a
 supply that is not on the order is reported. Post writes one Receive row per item (and lot), at the order item's price, creates or finds the
 lot, recomputes stock, sets the order item's received date when it is fully received and the order's received date when every item is, and
-writes a Supply Purchases security log entry. Receiving more than was ordered asks first.
+writes a Supply Purchases security log entry. Receiving more than was ordered asks first. An item that arrives in two lots gets a second row
+(Add Lot Row).
 
 ### 3.5 Stock counts and adjustments
 
-Supply Inventory, Stock Count. Items are added by scanning or from the supply list; each row (supply, and lot for supplies tracked by lot) shows
+Supply Inventory, Inventory, Stock Count. Items are added by scanning or from the supply list; each row (supply, and lot for supplies tracked by lot) shows
 the quantity the program had when the row was added and the counted quantity. A reason is required. Post writes a CountAdjust row with the
 difference counted minus the program's quantity at that time (so procedures completed during the count are not counted twice) and one Inventory
-Adjust security log entry per item. A manual adjustment (supply stock window, Adjust) writes an Adjust row with its reason and a security log
-entry. While tracking is off, the existing On Hand fields of the supply windows still work: an edit becomes an Adjust row ("On hand edited").
+Adjust security log entry per item. A lot found in the count (Lot...) is created when the count is posted. The count lives only while the
+window is open. A manual adjustment (supply edit window, Stock..., Adjust; Inventory Adjust) writes an Adjust row with its reason and a
+security log entry; the same window lists the supply's lots (a lot number or expiry date typed wrong can be corrected there) and every
+ledger row. While tracking is off, the existing On Hand fields of the supply windows still work: an edit becomes an Adjust row ("On hand edited").
 While tracking is on, On Hand is read-only there and changes go through counts and adjustments.
 
 ### 3.6 Dispensing
@@ -167,22 +176,24 @@ today.
 
 ### 3.7 Alerts
 
-Two alert types, raised for all clinics (`ClinicNum` -1), linked to the "All" alert category by the migration:
+Two alert types, raised for all clinics (`ClinicNum` -1), linked to the "All" alert category when tracking is turned on:
 
 - **Inventory Low Stock** (`AlertType.InventoryLowStock`, `FKey` the supply): a supply that is not hidden, whose reorder level is above 0
   and whose on hand is at or below it.
 - **Inventory Expiring** (`AlertType.InventoryExpiring`, `FKey` the lot): a lot with stock whose expiry date is within the preference's lead
   days (`InventoryExpiryAlertDays`, default 30) or already past.
 
-Both open the Supply Inventory window. They are refreshed for the supplies of every stock movement, and in full by the program's alert check
+Both open the Supply Inventory window (`FormType.FormSupplyInventory`), with Mark as Read and Open Form (no Delete: a deleted alert that
+still applies would come back). They are refreshed for the supplies of every stock movement, and in full by the program's alert check
 at most every 10 minutes. The refresh adds an alert only with one `INSERT ... SELECT ... WHERE NOT EXISTS` statement, which MyISAM runs under
 one table lock, so two workstations never create the same alert twice; it removes alerts that no longer apply. Turning tracking off removes
 them.
 
 ### 3.8 Usage reports
 
-Supply Inventory, Usage Report: for a date range (by ledger date), Use minus Restore rows, by item (quantity, cost) or by procedure code
-(procedures, quantity, cost per supply). Cost is quantity times the row's unit cost.
+Supply Inventory, Inventory, Usage Report: for a date range (by ledger date), Use minus Restore rows (and Dispense rows, by item), by item
+(quantity, cost) or by procedure code (procedures, quantity, cost per supply), with a total and Print. Cost is quantity times the row's unit
+cost.
 
 ### 3.9 Existing data
 
@@ -191,10 +202,17 @@ ledger and the stock agree from the start. Supplies, orders, suppliers and categ
 
 ## 4. Settings, permissions and enum values
 
-- Preferences: `InventoryTrackingEnabled` (0 on every database), `InventoryExpiryAlertDays` (30). Supply Inventory, Setup, needs Setup.
-- The default materials window needs Setup.
-- `EnumPermType.InventoryAdjust` (10050, "Inventory Adjust"): posting counts, manual adjustments and the repair. Security log entries for
-  each. The migration grants it to every user group that has Supplier Edit, the permission of the people who look after supplies today.
+- Preferences: `InventoryTrackingEnabled` and `InventoryExpiryAlertDays` (30; 0 turns the expiring alert off). Their rows are written the first
+  time the office saves Supply Inventory, Inventory, Setup (needs Setup; a Setup security log entry), by `InventoryTracking.SaveSettings`;
+  without a row tracking is off, so every existing and every new database starts with tracking off. Turning tracking on also links the two
+  alert types to the "All" alert category where a link is missing, and the first time only grants Inventory Adjust (below).
+- Whether the inventory tables exist is checked once per database (`InventoryTracking.IsInstalled`), so the hooks in `Procedures` and
+  `Supplies` leave a database without them (a scratch database built from the Open Dental reference) as before.
+- Supply Inventory, Inventory, Default Materials of Procedure Codes needs Setup. Changes are saved right away.
+- The supply edit window has the barcode (`BarCodeOrID`, which it did not show before), the reorder level, tracked by lot and implant.
+- `EnumPermType.InventoryAdjust` (10050, "Inventory Adjust"): posting counts, manual adjustments, correcting a lot and the repair. Security
+  log entries for each. The first time tracking is turned on it is granted to every user group that has Supplier Edit, the permission of the
+  people who look after supplies today, unless a group has it already (a Security Admin log entry names the groups).
 - Receiving uses Supply Purchases (`SupplyPurchases`) for its log entry, as orders do.
 - Fork-only values stored in the database (`docs/port-notes/FORK-ENUMS.md`): `EnumPermType.InventoryAdjust` 10050, in the inventory
   range 10050-10099. `AlertType` and `FormType` are stored in `tinyint(4)` columns (at most 127), so their fork values come from the
@@ -207,16 +225,22 @@ ledger and the stock agree from the start. Supplies, orders, suppliers and categ
 |---|---|
 | 2026110211 | `supplyledger`, and in the same step (only when it created the table) the opening ledger rows |
 | 2026110212 | `supplylot`, `supplyproccode`, `supplysetting`, `supplyprocpending` |
-| 2026110213 | the two preferences, when missing |
-| 2026110214 | the "All" alert category links of the two alert types, when missing |
-| 2026110215 | the Inventory Adjust grant to user groups with Supplier Edit, only when no group has Inventory Adjust yet |
+
+2026110213 to 2026110219 are kept for this feature. The steps change no Open Dental table, so adopting an Open Dental 25.3.48 database for
+this feature only adds the five tables and the opening rows: the adoption tools (`tools/AdoptionValidation`) list the opening rows in
+migration-preview, allow the five tables (`allowed-differences.adoption.json`) and hold the adopted copy's ledger to exactly the planned
+opening rows (`AdoptionRowCheck`), the other four tables empty.
 
 ## 6. Tests
 
 `tests/InventoryTests` (scratch databases `test_inv_*` on the local MariaDB, synthetic rows only): ledger and `LevelOnHand` consistency,
 soonest-expiring first, receiving, counts and adjustments, deduct and restore on complete, un-complete and delete, several procedures in one
-confirmation, the implant lot on the procedure, alerts without duplicates, the opening-balance migration, and the repair.
+confirmation, the implant lot on the procedure, alerts without duplicates, the opening-balance migration, and the repair; the inventory
+windows built in memory with every control inside them, and the source rule that the program's windows change procedures only through the
+business layer. The main test database is the committed `db/init/new-database.sql` with this build's fork migrations run on it, so the tests
+pass before and after the file is regenerated with the inventory steps. `RegistryTests` and `M202Tests` treat fork-only enum members as fork
+values; `ForkMigrationTests` skips the fork tables where it checks that every table class has an Open Dental table.
 
 ## 7. Owner questions
 
-Recorded in the package report and in `docs/owner-questions.md`, each with what the program does today.
+In `docs/owner-questions.md`, "Inventory tracking (INV, 2026-11-02)", each with what the program does today.

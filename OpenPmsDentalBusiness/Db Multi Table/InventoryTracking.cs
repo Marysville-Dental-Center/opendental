@@ -31,15 +31,35 @@ namespace OpenPmsDentalBusiness {
 		public static event Action<long> ProcSetComplete;
 
 		#region Settings
-		///<summary>True when the inventory tracking migration has run on this database: its preference row exists. Every hook checks this first, so a
-		///database without the inventory tables (a scratch database built from the Open Dental reference) is never asked for them.</summary>
+		///<summary>Databases (server and name) known to have the inventory tables. Only a positive answer is remembered: a database gets the tables
+		///from the fork migration while the program runs, never loses them.</summary>
+		private static readonly HashSet<string> _hashSetDatabasesInstalled=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		private static readonly object _lockInstalled=new object();
+
+		///<summary>True when the connected database has the inventory tables (the fork migration ran on it). Every hook that reads or writes them
+		///checks this first, so a database without them (a scratch database built from the Open Dental reference) is never asked for them.</summary>
 		public static bool IsInstalled() {
-			Meth.NoCheckMiddleTierRole();
-			return PrefC.GetRawOrDefault(nameof(PrefName.InventoryTrackingEnabled),null)!=null;
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetBool(MethodBase.GetCurrentMethod());
+			}
+			string key=DataConnectionBase.DataConnection.GetServerName()+"/"+DataConnectionBase.DataConnection.GetDatabaseName();
+			lock(_lockInstalled) {
+				if(_hashSetDatabasesInstalled.Contains(key)) {
+					return true;
+				}
+			}
+			bool isInstalled=PIn.Long(Db.GetCount("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() "
+				+"AND TABLE_NAME='supplyledger'"))>0;
+			if(isInstalled) {
+				lock(_lockInstalled) {
+					_hashSetDatabasesInstalled.Add(key);
+				}
+			}
+			return isInstalled;
 		}
 
-		///<summary>True when the office turned inventory tracking on (PrefName.InventoryTrackingEnabled). False when the preference row is missing.
-		///</summary>
+		///<summary>True when the office turned inventory tracking on (PrefName.InventoryTrackingEnabled). The preference row exists only once the
+		///office saved the settings (SaveSettings); without it tracking is off.</summary>
 		public static bool IsEnabled() {
 			Meth.NoCheckMiddleTierRole();
 			return PIn.Bool(PrefC.GetRawOrDefault(nameof(PrefName.InventoryTrackingEnabled),"0"));
@@ -49,6 +69,74 @@ namespace OpenPmsDentalBusiness {
 		public static int GetExpiryAlertDays() {
 			Meth.NoCheckMiddleTierRole();
 			return PIn.Int(PrefC.GetRawOrDefault(nameof(PrefName.InventoryExpiryAlertDays),"30"));
+		}
+
+		///<summary>Supply Inventory, Inventory, Setup: saves the two preferences, writing their rows when missing (a database gets them the first time
+		///the office saves the settings, so adopting a database adds none). Turning tracking on also links the two alert types to the "All" alert
+		///category where missing, and the first time ever (no preference row yet) grants Inventory Adjust to every user group that holds Supplier
+		///Edit, unless a group has it already. The caller refreshes the preference, security and alert category caches. Returns the number of user
+		///groups granted Inventory Adjust.</summary>
+		public static int SaveSettings(bool isEnabled,int expiryAlertDays) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetInt(MethodBase.GetCurrentMethod(),isEnabled,expiryAlertDays);
+			}
+			bool isFirstTime=Db.GetScalar("SELECT COUNT(*) FROM preference WHERE PrefName='"+nameof(PrefName.InventoryTrackingEnabled)+"'")=="0";
+			int countGroupsGranted=0;
+			if(isEnabled) {
+				//Links and grant first, the preference that turns tracking on last.
+				AddAlertLinksIfMissing();
+				if(isFirstTime) {
+					countGroupsGranted=GrantAdjustToSupplierGroups();
+				}
+			}
+			SetPrefRaw(nameof(PrefName.InventoryExpiryAlertDays),POut.Int(Math.Max(0,expiryAlertDays)));
+			SetPrefRaw(nameof(PrefName.InventoryTrackingEnabled),POut.Bool(isEnabled));
+			return countGroupsGranted;
+		}
+
+		private static void SetPrefRaw(string prefName,string valueString) {
+			string where="WHERE PrefName='"+POut.String(prefName)+"'";
+			if(Db.GetScalar("SELECT COUNT(*) FROM preference "+where)=="0") {
+				Db.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES('"+POut.String(prefName)+"','"+POut.String(valueString)+"')");
+				return;
+			}
+			Db.NonQ("UPDATE preference SET ValueString='"+POut.String(valueString)+"' "+where);
+		}
+
+		///<summary>Links the two inventory alert types to the "All" alert category (InternalName OdAllTypes), as every alert type is linked
+		///(AlertType's summary), so users subscribed to All see them. Only missing links are added.</summary>
+		private static void AddAlertLinksIfMissing() {
+			long alertCategoryNum=PIn.Long(Db.GetScalar("SELECT AlertCategoryNum FROM alertcategory WHERE InternalName='OdAllTypes' AND IsHQCategory=1 "
+				+"ORDER BY AlertCategoryNum LIMIT 1"));
+			if(alertCategoryNum==0) {
+				return;
+			}
+			foreach(AlertType alertType in new[] { AlertType.InventoryLowStock,AlertType.InventoryExpiring }) {
+				string where="WHERE AlertCategoryNum="+POut.Long(alertCategoryNum)+" AND AlertType="+(int)alertType;
+				if(PIn.Long(Db.GetCount("SELECT COUNT(*) FROM alertcategorylink "+where))>0) {
+					continue;
+				}
+				Crud.AlertCategoryLinkCrud.Insert(new AlertCategoryLink { AlertCategoryNum=alertCategoryNum,AlertType=alertType });
+			}
+		}
+
+		///<summary>Grants Inventory Adjust to every user group that holds Supplier Edit, the people who look after supplies today, unless some group
+		///has Inventory Adjust already. Writes a Security Admin audit entry. Returns the number of groups granted.</summary>
+		private static int GrantAdjustToSupplierGroups() {
+			if(PIn.Long(Db.GetCount("SELECT COUNT(*) FROM grouppermission WHERE PermType="+(int)EnumPermType.InventoryAdjust))>0) {
+				return 0;
+			}
+			List<long> listUserGroupNums=Db.GetTable("SELECT DISTINCT UserGroupNum FROM grouppermission WHERE PermType="+(int)EnumPermType.SupplierEdit
+				+" ORDER BY UserGroupNum").Select().Select(x => PIn.Long(x[0].ToString())).ToList();
+			foreach(long userGroupNum in listUserGroupNums) {
+				Crud.GroupPermissionCrud.Insert(new GroupPermission { UserGroupNum=userGroupNum,PermType=EnumPermType.InventoryAdjust,FKey=0,
+					NewerDate=DateTime.MinValue,NewerDays=0 });
+			}
+			if(listUserGroupNums.Count>0) {
+				SecurityLogs.MakeLogEntry(EnumPermType.SecurityAdmin,0,"Inventory tracking turned on: Inventory Adjust granted to the "+listUserGroupNums.Count
+					+" user group(s) with Supplier Edit (UserGroupNum "+string.Join(", ",listUserGroupNums)+").");
+			}
+			return listUserGroupNums.Count;
 		}
 		#endregion Settings
 
@@ -421,6 +509,10 @@ namespace OpenPmsDentalBusiness {
 		public static void SetOnHand(long supplyNum,double qtyOnHandNew) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),supplyNum,qtyOnHandNew);
+				return;
+			}
+			if(!IsInstalled()) {//A database without the inventory tables: as before.
+				Db.NonQ("UPDATE supply SET LevelOnHand="+POut.Float((float)qtyOnHandNew)+" WHERE SupplyNum="+POut.Long(supplyNum));
 				return;
 			}
 			double qtyChange=Math.Round(qtyOnHandNew-SupplyLedgers.GetSumForSupply(supplyNum),2);

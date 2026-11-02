@@ -80,10 +80,10 @@ namespace InventoryTests {
 		public void SpecAndReadme_DescribeTheSteps() {
 			string spec=ReadRepoFile("docs","specs","inventory-tracking.md");
 			string readme=ReadRepoFile("OpenPmsDentalBusiness","Misc","ForkMigrations","README.md");
-			foreach(string level in new[] { "2026110211","2026110212","2026110213","2026110214","2026110215" }) {
+			foreach(string level in new[] { "2026110211","2026110212" }) {
 				StringAssert.Contains(spec,"| "+level+" |");
 			}
-			StringAssert.Contains(readme,"2026110211 to 2026110215 | `InventorySteps.cs`");
+			StringAssert.Contains(readme,"2026110211 and 2026110212 | `InventorySteps.cs`");
 		}
 	}
 }

@@ -609,7 +609,8 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   other row changed, added or removed", or "identical row by row ..."), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
   migration-preview counts now empty, every other note unchanged", and `insverify` and `insverifyhist.DateLastAssigned` "the original date at
   midnight in all N row(s)"), "New tables and columns:" ("5 new table(s), all empty (...); 28 new column(s) in 21 table(s) hold their default
-  in every row.") and `updatehistory` ("identical row by row")
+  in every row."), "Fork tables (inventory tracking):" ("5 added (...); N of the N opening balance row(s) migration-preview lists in the
+  stock ledger, the other fork tables empty.") and `updatehistory` ("identical row by row")
 - "Adopt: PASS." with the report rows renamed (or "the fork migration renamed no report row"), the UDS+ report row added and, if step 0.2
   listed them, the DXC Patient Credit Score row disabled and its buttons deleted, and exit code 0
 
@@ -666,6 +667,10 @@ person reads them all):
   each), and `ColumnChanged` for `claimpayment.Note` (if step 0.2 counted NULL notes) and `insverify` and `insverifyhist.DateLastAssigned`
   (if those tables hold rows). A report can only allow these as whole columns; step 4's row check printed that the new tables are empty, the
   new columns hold their defaults, only NULL notes changed and every `DateLastAssigned` is its old date at midnight;
+- the fork tables of inventory tracking (steps 2026110211 and 2026110212): `TableAdded` for `supplyledger` (one opening balance row per
+  supply with stock, as step 0.2 listed), `supplylot`, `supplyproccode`, `supplysetting` and `supplyprocpending` (0 rows); step 4's row
+  check printed that the ledger holds exactly the listed opening rows and the other four are empty. These steps change no Open Dental table;
+  inventory tracking stays off until the office turns it on;
 - `ChecksumTableChanged` lines "explained by the differences listed for this table", for the tables above.
 
 A line for any other table in the Allowed section: stop, go to Rollback, and give `compare.txt` to the developers. Every business total

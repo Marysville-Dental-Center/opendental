@@ -101,6 +101,12 @@ namespace AdoptionValidation {
 			public List<string> ListColumnsAddedChecked=new List<string>();
 			///<summary>The new tables, each empty.</summary>
 			public List<string> ListTablesAdded=new List<string>();
+			///<summary>The inventory tracking steps' plan made from the original (what migration-preview lists for it).</summary>
+			public InventoryPlan.Plan PlanInventory;
+			///<summary>The fork tables found (SchemaVerifier.ArrayForkTables).</summary>
+			public List<string> ListForkTablesAdded=new List<string>();
+			///<summary>The opening balance rows found in the stock ledger, all of them planned.</summary>
+			public int CountOpeningRows;
 
 			public bool Passed {
 				get { return ListFailures.Count==0; }
@@ -116,6 +122,7 @@ namespace AdoptionValidation {
 			result.PlanUdsPlus=UdsPlusRowPlan.Make(db,original,listRowsOriginal,ReportRows25_3.PlanRenames(listRowsOriginal),result.Plan26_1.IsFromBefore25_4);
 			result.PlanInsHist=InsHistCodeGroupPlan.Make(db,original,result.Plan26_1.IsFromBefore25_4);
 			result.PlanDxc=DxcCreditScorePlan.Make(db,original);
+			result.PlanInventory=InventoryPlan.Make(db,original);
 			CheckPreferences(db,original,adopted,result);
 			CheckDocumentMisc(db,original,adopted,result);
 			List<long> listLogAdded=CheckSecurityLog(db,original,adopted,result);
@@ -127,6 +134,7 @@ namespace AdoptionValidation {
 			CheckToolButItem(db,original,adopted,result);
 			CheckValueChangingColumns(db,original,adopted,result);
 			CheckNewTablesAndColumns(db,original,adopted,result);
+			CheckForkTables(db,original,adopted,result);
 			RowComparer.TableDiff diffHistory=RowComparer.Compare(db,original,adopted,"updatehistory");
 			if(diffHistory.IsIdentical) {
 				result.ListLines.Add("updatehistory: identical row by row.");
@@ -860,7 +868,8 @@ namespace AdoptionValidation {
 			int countFailuresBefore=result.ListFailures.Count;
 			HashSet<string> setTablesOriginal=new HashSet<string>(TableNames(db,original),StringComparer.OrdinalIgnoreCase);
 			int countTablesWithRows=0;
-			foreach(string table in TableNames(db,adopted).Where(x => !setTablesOriginal.Contains(x))) {
+			foreach(string table in TableNames(db,adopted).Where(x => !setTablesOriginal.Contains(x) && !SchemaVerifier.ArrayForkTables.Contains(x,StringComparer.OrdinalIgnoreCase))) {
+				//The fork tables are CheckForkTables'.
 				LocalOnly.EnsureSafeIdentifier(table);
 				result.ListTablesAdded.Add(table);
 				long countRows=db.ScalarLong("SELECT COUNT(*) FROM `"+adopted+"`.`"+table+"`");
@@ -912,6 +921,65 @@ namespace AdoptionValidation {
 				+(result.ListTablesAdded.Count==0 ? "" : " ("+string.Join(", ",result.ListTablesAdded)+")")+"; "+result.ListColumnsAddedChecked.Count
 				+" new column(s) in "+result.ListColumnsAddedChecked.Select(x => x.Split('.')[0]).Distinct(StringComparer.OrdinalIgnoreCase).Count()
 				+" table(s) hold their default in every row"+(isClean ? "." : " (see the failures)."));
+		}
+
+		///<summary>The fork tables of the inventory tracking steps (InventoryPlan): each one is added, the stock ledger holds exactly the planned
+		///opening balance rows (one per supply with stock, at its price, without a lot, user, procedure or order item) and the other tables are
+		///empty. On a database that already had the tables, they must be unchanged in row count.</summary>
+		private static void CheckForkTables(Db db,string original,string adopted,Result result) {
+			int countFailuresBefore=result.ListFailures.Count;
+			HashSet<string> setTablesOriginal=new HashSet<string>(TableNames(db,original),StringComparer.OrdinalIgnoreCase);
+			HashSet<string> setTablesAdopted=new HashSet<string>(TableNames(db,adopted),StringComparer.OrdinalIgnoreCase);
+			foreach(string table in SchemaVerifier.ArrayForkTables) {
+				LocalOnly.EnsureSafeIdentifier(table);
+				if(!setTablesAdopted.Contains(table)) {
+					result.ListFailures.Add("The fork table "+table+" is missing from "+adopted+".");
+					continue;
+				}
+				if(setTablesOriginal.Contains(table)) {
+					long countOriginal=db.ScalarLong("SELECT COUNT(*) FROM `"+original+"`.`"+table+"`");
+					long countAdopted=db.ScalarLong("SELECT COUNT(*) FROM `"+adopted+"`.`"+table+"`");
+					if(countOriginal!=countAdopted) {
+						result.ListFailures.Add("The fork table "+table+" had "+countOriginal+" row(s) and has "+countAdopted+"; adoption leaves a table it finds alone.");
+					}
+					continue;
+				}
+				result.ListForkTablesAdded.Add(table);
+				if(!string.Equals(table,InventoryPlan.TABLE_LEDGER,StringComparison.OrdinalIgnoreCase)) {
+					long countRows=db.ScalarLong("SELECT COUNT(*) FROM `"+adopted+"`.`"+table+"`");
+					if(countRows>0) {
+						result.ListFailures.Add("The new fork table "+table+" holds "+countRows+" row(s); the fork migration only creates it.");
+					}
+					continue;
+				}
+				List<object[]> listRows=db.Rows("SELECT SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,DispSupplyNum,UserNum,Reason "
+					+"FROM `"+adopted+"`."+InventoryPlan.TABLE_LEDGER+" ORDER BY SupplyLedgerNum");
+				List<InventoryPlan.OpeningRow> listPlanned=result.PlanInventory.ListOpening;
+				if(listRows.Count!=listPlanned.Count) {
+					result.ListFailures.Add("The stock ledger holds "+listRows.Count+" row(s); migration-preview lists "+listPlanned.Count+" opening balance row(s).");
+					continue;
+				}
+				for(int i=0;i<listRows.Count;i++) {
+					object[] row=listRows[i];
+					InventoryPlan.OpeningRow planned=listPlanned[i];
+					bool isPlanned=Convert.ToInt64(row[0],CultureInfo.InvariantCulture)==planned.SupplyNum
+						&& Math.Round(Convert.ToDouble(row[3],CultureInfo.InvariantCulture),2)==planned.Quantity
+						&& Convert.ToDouble(row[4],CultureInfo.InvariantCulture)==planned.UnitCost
+						&& Convert.ToInt64(row[2],CultureInfo.InvariantCulture)==(long)SupplyLedgerType.Opening
+						&& new[] { 1,5,6,7,8,9 }.All(x => Convert.ToInt64(row[x],CultureInfo.InvariantCulture)==0)
+						&& Convert.ToString(row[10])==InventoryLedgerStep.REASON_OPENING;
+					if(!isPlanned) {
+						result.ListFailures.Add("Stock ledger row "+(i+1)+" (SupplyNum "+row[0]+") is not the opening balance migration-preview lists (SupplyNum "
+							+planned.SupplyNum+", "+planned.Quantity.ToString(CultureInfo.InvariantCulture)+" at "+planned.UnitCost.ToString(CultureInfo.InvariantCulture)+").");
+						continue;
+					}
+					result.CountOpeningRows++;
+				}
+			}
+			bool isClean=result.ListFailures.Count==countFailuresBefore;
+			result.ListLines.Add("Fork tables (inventory tracking): "+result.ListForkTablesAdded.Count+" added ("+string.Join(", ",result.ListForkTablesAdded)+"); "
+				+result.CountOpeningRows+" of the "+(result.PlanInventory?.ListOpening.Count??0)+" opening balance row(s) migration-preview lists in the stock ledger, "
+				+"the other fork tables empty"+(isClean ? "." : " (see the failures)."));
 		}
 
 		///<summary>The SQL value every existing row of a column added by ALTER TABLE ... ADD COLUMN holds, from information_schema.COLUMNS: its declared

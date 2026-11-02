@@ -453,6 +453,28 @@ These came out of the review of all 55 packages together. Items 4, 5, 8 and 10 a
 
 ---
 
+## Inventory tracking (INV, 2026-11-02)
+
+From `docs/specs/inventory-tracking.md`. Each item says what the program does today.
+
+- (INV 1) **[SWITCH-OVER]** Inventory tracking is off on every database, new databases too, until the office turns it on (Supply Inventory, Inventory, Setup). Should a new database start with it on? **Today:** off everywhere.
+- (INV 2) The Materials used window opens by itself only when at least one of the completed procedures has default materials. Open it for every completed procedure instead? **Today:** a procedure without default materials gets materials only from the procedure edit window (Materials).
+- (INV 3) Completions without a user (another thread of the program, an interface, the Middle Tier server's own work) and a cancelled Materials used window deduct nothing; the procedures wait on Supply Inventory, Inventory, Awaiting Materials. **Today:** as described; no default materials are ever deducted without a user confirming them.
+- (INV 4) A use is never blocked: stock can go below zero, and a use with no lot in stock is recorded without a lot. **Today:** allowed.
+- (INV 5) Stock without a lot (opening balances, receipts without a lot number) is used after every lot, and lots without an expiry date after dated lots. **Today:** as described.
+- (INV 6) Any change away from complete (to treatment planned, existing, referred, deleted...) puts back what the procedure used, also while tracking is off. **Today:** as described.
+- (INV 7) The first time the office turns tracking on, the new Inventory Adjust permission (counts, adjustments, the repair) is granted to every user group that has Supplier Edit, unless a group has it already. No grant instead? **Today:** granted then (the update itself grants nothing).
+- (INV 8) Changing the materials of a procedure that does not await materials (already confirmed) needs Completed Procedure Edit Misc for the procedure's date; without it the window is read-only. **Today:** as described.
+- (INV 9) The low-stock alert uses a new per-supply reorder level (blank: no alert), not the existing Stock Level (the level an order fills up to). **Today:** as described.
+- (INV 10) The expiring alert also lists lots that have already expired; the lead time is 30 days (Setup; 0 turns it off). **Today:** as described.
+- (INV 11) A stock count is kept only while its window is open; closing it (after a warning) loses an unposted count. Save counts in progress? **Today:** not saved.
+- (INV 12) Dispensing through the dental-school dispensary deducts stock while tracking is on, but the program has no window that dispenses. **Today:** only the business layer.
+- (INV 13) The window opens once the program is idle and the window the user worked in is active again; while a message box of the same action, or another program, is in front, it waits. **Today:** as described.
+- (INV 14) Quantities have at most two decimals (the data layer writes decimal numbers with two). **Today:** rounded to two.
+- (INV 15) A supply with stock history (receipts, uses, counts, dispensing) cannot be deleted; it can be hidden. **Today:** refused with that message.
+
+---
+
 ## Not asked again (already settled)
 
 - How package migration levels are numbered (B-ACCT 2, B-PRINT 1, B-SHELL 6, M2-EST 1, M2-UDS 1, V-BRIDGE1 2, V-PEARL2 1, M2-SHELL's old question 4): decided on 2026-11-01 and done: the package steps now have dated levels 2026110101 to 2026110104, and new steps always go above the highest one.
