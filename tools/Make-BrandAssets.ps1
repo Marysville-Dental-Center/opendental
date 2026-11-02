@@ -5,6 +5,7 @@ Draws the Open PMS - Dental brand assets from the logo in branding\logo.svg.
 .DESCRIPTION
 The logo is a white molar on a teal rounded square (branding\logo.svg is the vector master). This script draws, with WPF and no other tool:
   branding\app.ico            program and window icon: 16, 20, 24, 32, 40, 48, 64, 128 (32-bit) and 256 (PNG) pixels
+  branding\window.ico         the compact window icon (16 and 32 pixels, 32-bit) of the forms that embed their own icon
   branding\logo-256.png       the logo for documents and the installer
   branding\splash.png         the 500x300 start-up splash
   branding\installer-small.bmp, installer-small-2x.bmp   the installer's small wizard image (55 and 110 pixels)
@@ -181,6 +182,7 @@ public static class BrandArt {
 Add-Type -TypeDefinition $code -ReferencedAssemblies PresentationCore,PresentationFramework,WindowsBase,System.Xaml
 
 [BrandArt]::SaveIco([int[]]@(16,20,24,32,40,48,64,128,256),(Join-Path $OutDir 'app.ico'))
+[BrandArt]::SaveIco([int[]]@(16,32),(Join-Path $OutDir 'window.ico'))
 [BrandArt]::SavePng([BrandArt]::Logo(256),(Join-Path $OutDir 'logo-256.png'))
 [BrandArt]::SavePng([BrandArt]::Splash(),(Join-Path $OutDir 'splash.png'))
 [BrandArt]::SaveBmp24([BrandArt]::InstallerSmall(55),(Join-Path $OutDir 'installer-small.bmp'))
