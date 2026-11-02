@@ -8,7 +8,9 @@
 ; Command line (besides Inno Setup's own switches, such as /SILENT, /VERYSILENT, /SUPPRESSMSGBOXES, /DIR=, /NOICONS, /TASKS=, /LOG=):
 ;   /DBSERVER=name      database server for FreeDentalConfig.xml (host, or host:port for a port other than 3306). Default localhost.
 ;   /DBNAME=name        database. Default opendental.
-;   /DBUSER=name        database user. Default root.
+;   /DBUSER=name        database user. Default opmsd, the program's own account in the server guide (docs/db-connection-security.md,
+;                       section 5); the program no longer uses root. The connection settings tool warns about root for a server
+;                       over the network.
 ;   /DBCA=file          the office CA certificate file. Needed for a server over the network (docs/specs/db-connection-security.md).
 ;   /DBPFX=file         the client certificate (.pfx) to import into the computer's store, or
 ;   /DBTHUMBPRINT=hex   a client certificate already in LocalMachine\My. Neither: the database password is used instead.
@@ -587,7 +589,7 @@ begin
 end;
 
 { The tool's switches for an upgrade: only those given on setup's command line, never the connection page's defaults (localhost,
-  opendental, root), which would replace the computer's existing connection. Never a secret. }
+  opendental, opmsd), which would replace the computer's existing connection. Never a secret. }
 function UpgradeParams: String;
 begin
   Result := GivenSwitch('DBSERVER', '/server') + GivenSwitch('DBNAME', '/database') + GivenSwitch('DBUSER', '/user') + GivenSwitch('DBCA', '/ca');
@@ -700,13 +702,14 @@ begin
     'Setup writes these values to {#ConfigFileName} in the program folder. A server over the network is reached only encrypted: ' +
     'the next page asks for the office CA certificate and the client certificate. For a server on this computer the connection ' +
     'settings tool opens after the install and asks for the database password (Cancel when the user has none).' + #13#10#13#10 +
-    'Server: the name the server''s certificate carries, as the computers reach it (host:port for a port other than 3306).');
+    'Server: the name the server''s certificate carries, as the computers reach it (host:port for a port other than 3306). ' +
+    'User: the program''s own database account from the server set-up (opmsd in the guide), not root.');
   ConfigPage.Add('&Server:', False);
   ConfigPage.Add('&Database:', False);
   ConfigPage.Add('&User:', False);
   ConfigPage.Values[0] := ExpandConstant('{param:DBSERVER|localhost}');
   ConfigPage.Values[1] := ExpandConstant('{param:DBNAME|opendental}');
-  ConfigPage.Values[2] := ExpandConstant('{param:DBUSER|root}');
+  ConfigPage.Values[2] := ExpandConstant('{param:DBUSER|opmsd}');
 
   SecurityPage := CreateInputFilePage(ConfigPage.ID, 'Encrypted connection', 'The office CA and the client certificate',
     'After the files are installed, setup opens the connection settings tool ({#DbSettingsExeName}) with these files. It asks there for ' +

@@ -61,6 +61,8 @@ namespace OpenPmsDentalDbSettings {
 			_textServer=AddRow("&Server:",12);
 			_textDatabase=AddRow("&Database:",40);
 			_textUser=AddRow("&User:",68);
+			_textServer.Leave+=(sender,e) => ShowRootWarning();
+			_textUser.Leave+=(sender,e) => ShowRootWarning();
 			Controls.Add(new Label() { Text="Office &CA certificate:",Location=new Point(12,103),Size=new Size(116,18) });
 			_textCaFile=new TextBox() { Location=new Point(130,100),Size=new Size(330,20) };
 			Controls.Add(_textCaFile);
@@ -132,6 +134,22 @@ namespace OpenPmsDentalDbSettings {
 			_radioCertificate.Checked=isCertificate;
 			_radioPassword.Checked=!isCertificate;
 			SetCredentialEnabled();
+			ShowRootWarning();
+		}
+
+		///<summary>Shows the warning about the user root for a server over the network in the status line (DbSettingsRunner.GetRootUserWarning),
+		///or clears it when it no longer applies. Only a warning: Save still saves.</summary>
+		private void ShowRootWarning() {
+			string warning=DbSettingsRunner.GetRootUserWarning(_textServer.Text.Trim(),_textUser.Text.Trim());
+			if(warning!="") {
+				_labelStatus.Text=warning;
+				_labelStatus.ForeColor=Color.DarkRed;
+				return;
+			}
+			if(_labelStatus.ForeColor==Color.DarkRed) {
+				_labelStatus.Text="";
+				_labelStatus.ForeColor=SystemColors.ControlText;
+			}
 		}
 
 		private void FormDbSettings_Shown(object sender,EventArgs e) {
@@ -200,6 +218,7 @@ namespace OpenPmsDentalDbSettings {
 					return;
 				}
 				try {
+					_labelStatus.ForeColor=SystemColors.ControlText;
 					_labelStatus.Text="CA: "+OfficeCaFile.Describe(OfficeCaFile.Load(openFileDialog.FileName));
 					_textCaFile.Text=openFileDialog.FileName;
 				}
@@ -286,18 +305,27 @@ namespace OpenPmsDentalDbSettings {
 			DbSettingsResult dbSettingsResult=DbSettingsRunner.TestConnection(dbSettingsRequest.Server,dbSettingsRequest.Database,dbSettingsRequest.User,
 				password,sslCa,thumbprint);
 			Cursor=Cursors.Default;
+			_labelStatus.ForeColor=SystemColors.ControlText;
 			_labelStatus.Text=dbSettingsResult.Message;
 			MessageBox.Show(dbSettingsResult.Message,TITLE,MessageBoxButtons.OK,
 				dbSettingsResult.ExitCode==DbSettingsRunner.EXIT_OK ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
+			string warningRoot=DbSettingsRunner.GetRootUserWarning(_textServer.Text.Trim(),_textUser.Text.Trim());
+			if(warningRoot!="" && MessageBox.Show(warningRoot+"\r\n\r\nSave with the user root anyway?",TITLE,MessageBoxButtons.YesNo,
+				MessageBoxIcon.Warning)!=DialogResult.Yes)
+			{
+				_textUser.Focus();
+				return;//A warning only: the administrator may change the user, or save anyway.
+			}
 			if(_radioCertificate.Checked && !EnsurePfxPassword()) {
 				return;//The .pfx still waits for its password; nothing is saved.
 			}
 			Cursor=Cursors.WaitCursor;
 			DbSettingsResult dbSettingsResult=DbSettingsRunner.Apply(RequestFromScreen(),_configPath,_caCopyPath);
 			Cursor=Cursors.Default;
+			_labelStatus.ForeColor=SystemColors.ControlText;
 			_labelStatus.Text=dbSettingsResult.Message;
 			if(dbSettingsResult.ExitCode!=DbSettingsRunner.EXIT_OK) {
 				MessageBox.Show(dbSettingsResult.Message,TITLE,MessageBoxButtons.OK,MessageBoxIcon.Warning);
