@@ -10,8 +10,10 @@
 ;   /DBNAME=name        database. Default opendental.
 ;   /DBUSER=name        database user. Default root. No password is ever written: the program asks for it at its first start.
 ;   /PREREQS=ask|download|skip
-;                       a missing Visual C++ 2015-2022 x86 runtime or WebView2 runtime: ask (the default; a silent install skips),
-;                       download and install them from Microsoft, or skip them with a warning.
+;                       a missing Visual C++ 2015-2022 x86 runtime: ask (the default; a silent install skips), download and install it
+;                       from Microsoft, or skip it with a warning.
+; The Microsoft Edge WebView2 Runtime (part of Windows 11) is only checked: when it is missing, setup tells the administrator how to install
+; it (and logs it). Setup never downloads it.
 ;   /CURRENTUSER        install without administrator rights, for tests only (no Event Log source; pass /DIR= too).
 ; Setup never starts the program, silent or not. The office switch-over (adopting an Open Dental database) is not part of this setup.
 
@@ -106,8 +108,8 @@ const
   VcRedistUrl = 'https://aka.ms/vs/17/release/vc_redist.x86.exe';
   VcRedistFile = 'vc_redist.x86.exe';
   VcRedistKey = 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86';
+  { Microsoft's Evergreen bootstrapper, for the administrator. Setup only names it and never downloads it. }
   WebView2Url = 'https://go.microsoft.com/fwlink/p/?LinkId=2124703';
-  WebView2File = 'MicrosoftEdgeWebview2Setup.exe';
   WebView2Key = 'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
   VcRedistName = 'Microsoft Visual C++ 2015-2022 Redistributable (x86)';
   WebView2Name = 'Microsoft Edge WebView2 Runtime';
@@ -115,6 +117,7 @@ const
 var
   ConfigPage: TInputQueryWizardPage;
   PrereqPage: TInputOptionWizardPage;
+  WebView2Page: TOutputMsgWizardPage;
   DownloadPage: TDownloadWizardPage;
   ProgressPage: TOutputProgressWizardPage;
   NeedVcRedist: Boolean;
@@ -162,8 +165,17 @@ begin
   Result := '';
   if NeedVcRedist then
     Result := Result + '- ' + VcRedistName + ': the DICOM codecs and Direct2dWrapper.dll need it.' + #13#10;
-  if NeedWebView2 then
-    Result := Result + '- ' + WebView2Name + ': every window that shows web content needs it.' + #13#10;
+end;
+
+{ What the administrator does when the WebView2 Runtime is missing. Setup goes on without it and downloads nothing. }
+function WebView2MissingText: String;
+begin
+  Result := 'This computer does not have the ' + WebView2Name + '. Windows 11 includes it.' + #13#10#13#10 +
+    'Every window of the program that shows a page needs it: the wiki, the email previews, PDFs in the Imaging module, and the ' +
+    'pages of vendors (card entry, eRx, reports). Until it is installed, those windows say that it is missing.' + #13#10#13#10 +
+    'Setup does not download it. An administrator installs it from Microsoft: run the Evergreen Bootstrapper (' + WebView2Url + '), ' +
+    'or deploy Microsoft''s Evergreen Standalone Installer for the x86 or x64 runtime, or install it through Windows Update or the ' +
+    'office''s device management.';
 end;
 
 procedure AddPrereqWarning(const Text: String);
@@ -252,16 +264,8 @@ begin
         NeedVcRedist := not IsVcRedistInstalled;
     end;
   end;
-  if NeedWebView2 then begin
-    if DownloadPrereq(WebView2Url, WebView2File, WebView2Name) then begin
-      if RunPrereq(WebView2File, '/silent /install', WebView2Name) then
-        NeedWebView2 := not IsWebView2Installed;
-    end;
-  end;
   if NeedVcRedist then
     AddPrereqWarning(VcRedistName + ' is still missing. Install it from ' + VcRedistUrl);
-  if NeedWebView2 then
-    AddPrereqWarning(WebView2Name + ' is still missing. Install it from ' + WebView2Url);
 end;
 
 { ---------- The program folder ---------- }
@@ -494,7 +498,7 @@ begin
   else
     Log(VcRedistName + ': installed');
   if NeedWebView2 then
-    Log(WebView2Name + ': missing')
+    Log(WebView2Name + ': missing. Setup does not download it; the administrator installs it from ' + WebView2Url)
   else
     Log(WebView2Name + ': installed');
 end;
@@ -513,12 +517,13 @@ begin
   ConfigPage.Values[1] := ExpandConstant('{param:DBNAME|opendental}');
   ConfigPage.Values[2] := ExpandConstant('{param:DBUSER|root}');
 
-  PrereqPage := CreateInputOptionPage(ConfigPage.ID, 'Microsoft components', 'Components the program needs are missing.',
+  PrereqPage := CreateInputOptionPage(ConfigPage.ID, 'Microsoft components', 'A component the program needs is missing.',
     'This computer does not have:' + #13#10 + MissingPrereqText + #13#10 +
-    'Setup can download them from Microsoft and install them now (an internet connection is needed), or you can install them later.',
+    'Setup can download it from Microsoft and install it now (an internet connection is needed), or you can install it later.',
     True, False);
-  PrereqPage.Add('Download and install them now from Microsoft');
-  PrereqPage.Add('Skip them for now (the program does not work fully until they are installed)');
+  PrereqPage.Add('Download and install it now from Microsoft');
+  PrereqPage.Add('Skip it for now (the program does not work fully until it is installed)');
+  WebView2Page := CreateOutputMsgPage(PrereqPage.ID, WebView2Name, 'The program''s browser windows need it.', WebView2MissingText);
   Mode := Lowercase(ExpandConstant('{param:PREREQS|ask}'));
   if Mode = 'skip' then
     PrereqPage.SelectedValueIndex := 1
@@ -536,7 +541,9 @@ begin
   if PageID = ConfigPage.ID then
     Result := ConfigExistsInFolder
   else if PageID = PrereqPage.ID then
-    Result := not (NeedVcRedist or NeedWebView2);
+    Result := not NeedVcRedist
+  else if PageID = WebView2Page.ID then
+    Result := not NeedWebView2;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -570,12 +577,12 @@ begin
     if not DownloadPrereqs then begin
       Log('Prerequisites skipped: ' + MissingPrereqText);
       if not WizardSilent then
-        SuppressibleMsgBox('The program does not work fully until these are installed:' + #13#10 + MissingPrereqText + #13#10 +
-          'Install them later from Microsoft:' + #13#10 + VcRedistUrl + #13#10 + WebView2Url, mbInformation, MB_OK, IDOK);
+        SuppressibleMsgBox('The program does not work fully until this is installed:' + #13#10 + MissingPrereqText + #13#10 +
+          'Install it later from Microsoft:' + #13#10 + VcRedistUrl, mbInformation, MB_OK, IDOK);
     end;
   end
   else if CurPageID = wpReady then begin
-    if DownloadPrereqs and (NeedVcRedist or NeedWebView2) then begin
+    if DownloadPrereqs and NeedVcRedist then begin
       InstallPrereqs;
       if (PrereqWarnings <> '') and (not WizardSilent) then
         SuppressibleMsgBox('Setup continues, but:' + PrereqWarnings, mbInformation, MB_OK, IDOK);
