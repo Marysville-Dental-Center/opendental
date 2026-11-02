@@ -56,7 +56,7 @@ Source:    https://github.com/dotnet/runtime
 
 --- Component: Newtonsoft.Json
 Files:     Newtonsoft.Json.dll
-Version:   12.0.3
+Version:   13.0.4
 Copyright: James Newton-King
 License:   MIT License (the project's own text follows)
 Source:    https://github.com/JamesNK/Newtonsoft.Json
@@ -168,7 +168,7 @@ Source:    RdlEngine/ and RdlViewer/ in this repository (the corresponding sourc
 
 --- Component: Google APIs Client Library for .NET
 Files:     Google.Apis.dll, Google.Apis.Auth.dll, Google.Apis.Core.dll, Google.Apis.Gmail.v1.dll
-Version:   1.44
+Version:   1.78.0 (Google.Apis.Gmail.v1 1.77.0.4295)
 Copyright: Google LLC
 License:   Apache License 2.0
 Source:    https://github.com/googleapis/google-api-dotnet-client

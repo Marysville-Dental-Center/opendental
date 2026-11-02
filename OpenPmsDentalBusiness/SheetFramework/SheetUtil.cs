@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using CodeBase;
-using Google.Apis.Util;
 using Health.Direct.Common.Extensions;
 using OpenPmsDental.UI;
 using OpenPmsDentalBusiness;

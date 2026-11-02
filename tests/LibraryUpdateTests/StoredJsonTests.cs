@@ -124,6 +124,21 @@ namespace LibraryUpdateTests {
 				Formatting.Indented));
 		}
 
+		[TestMethod]
+		public void Reader_StopsAtNewtonsoftsDepthLimit_FarAboveWhatTheProgramStores() {
+			//Newtonsoft.Json 13 reads at most 64 levels by default (12 had no limit), so hostile input cannot exhaust the stack. What the program
+			//stores is at most three levels deep (a list of objects), and the Middle Tier's objects stay well below the limit.
+			Assert.IsNotNull(JsonConvert.DeserializeObject(new string('[',60)+new string(']',60)));
+			try {
+				JsonConvert.DeserializeObject(new string('[',70)+new string(']',70));
+				Assert.Fail("70 levels should be refused.");
+			}
+			catch(JsonReaderException ex) {
+				StringAssert.Contains(ex.Message,"MaxDepth");
+			}
+			Assert.AreEqual(64,new JsonSerializerSettings().MaxDepth);
+		}
+
 		///<summary>A Middle Tier method signature for DtoObject.ConstructArray.</summary>
 		public static void MiddleTierSample(string text,List<EFormMed> listMeds,DateTime dateTime,DataTable table) {
 		}
