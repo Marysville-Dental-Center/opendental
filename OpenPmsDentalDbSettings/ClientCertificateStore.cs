@@ -52,6 +52,56 @@ namespace OpenPmsDentalDbSettings {
 			return x509Certificate2.Thumbprint;
 		}
 
+		///<summary>Removes the certificate with this thumbprint from the store (LocalMachine\My; the tests use CurrentUser\My) and deletes its
+		///private key, so that no key that BUILTIN\Users may read is left behind. Only for the client certificate this tool imported itself and
+		///the saved settings no longer use (DbSettingsRunner.PlanImportedCertificate, owner decision of 2026-11-02): a certificate the tool did not
+		///import is never removed. Returns "" when it is gone (or was not there), else a warning that says to remove it by hand. Never throws.
+		///</summary>
+		public static string RemoveImported(string thumbprint,StoreLocation storeLocation=StoreLocation.LocalMachine) {
+			if(string.IsNullOrEmpty(thumbprint)) {
+				return "";
+			}
+			try {
+				using(X509Store x509Store=new X509Store(StoreName.My,storeLocation)) {
+					x509Store.Open(OpenFlags.ReadWrite|OpenFlags.OpenExistingOnly);
+					foreach(X509Certificate2 x509Certificate2 in x509Store.Certificates.Find(X509FindType.FindByThumbprint,thumbprint,false)) {
+						x509Store.Remove(x509Certificate2);
+						DeletePrivateKey(x509Certificate2);
+					}
+				}
+				return "";
+			}
+			catch(Exception ex) when(ex is CryptographicException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException
+				|| ex is IOException)
+			{
+				return "The client certificate "+thumbprint+" that this tool imported before could not be removed from the computer's certificate "
+					+"store: "+ex.Message+" Remove it in certlm.msc, Personal > Certificates.";
+			}
+		}
+
+		///<summary>Deletes the private key of the certificate from its key store: a CNG key (RSA or ECDSA) or a CAPI key container. Throws
+		///CryptographicException.</summary>
+		private static void DeletePrivateKey(X509Certificate2 x509Certificate2) {
+			if(!x509Certificate2.HasPrivateKey) {
+				return;
+			}
+			RSA rsa=x509Certificate2.GetRSAPrivateKey();
+			if(rsa is RSACng) {
+				((RSACng)rsa).Key.Delete();
+				return;
+			}
+			if(rsa is RSACryptoServiceProvider) {
+				RSACryptoServiceProvider rsaCryptoServiceProvider=(RSACryptoServiceProvider)rsa;
+				rsaCryptoServiceProvider.PersistKeyInCsp=false;//Clear then deletes the key container.
+				rsaCryptoServiceProvider.Clear();
+				return;
+			}
+			ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey();
+			if(ecdsa is ECDsaCng) {
+				((ECDsaCng)ecdsa).Key.Delete();
+			}
+		}
+
 		///<summary>The certificate with this thumbprint in LocalMachine\My, or null.</summary>
 		public static X509Certificate2 FindInStore(string thumbprint) {
 			if(string.IsNullOrEmpty(thumbprint)) {

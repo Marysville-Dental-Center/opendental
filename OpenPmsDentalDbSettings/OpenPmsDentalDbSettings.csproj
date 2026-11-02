@@ -81,6 +81,7 @@
     <Compile Include="FormSecretPrompt.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="ImportedCertificateRecord.cs" />
     <Compile Include="OfficeCaFile.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

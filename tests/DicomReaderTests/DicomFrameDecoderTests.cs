@@ -1,6 +1,6 @@
 // The decoder seam (IDicomFrameDecoder, DicomFrameDecoderRegistry): which transfer syntaxes this version decodes, what a decoder gets and
 // what the reader does with its answer, how the first frame's fragments are found, JPEG Baseline through the .NET Framework's decoder, and
-// the message for compressed formats this version cannot open yet. Licensed under the GNU General Public License, version 2 or later. See
+// the message for compressed formats this version does not open. Licensed under the GNU General Public License, version 2 or later. See
 // LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -432,7 +432,7 @@ namespace DicomReaderTests {
 		}
 		#endregion JPEG Baseline through the .NET Framework's decoder
 
-		#region Formats this version cannot open yet
+		#region Formats this version does not open
 		[TestMethod]
 		public void UnsupportedCompression_NamesTheFormat_AndSaysThisVersionCannotOpenItYet() {
 			foreach(ReaderCase readerCase in ReaderCases.Compressed().Where(x => x.Name.StartsWith("unsupported-"))) {
@@ -445,7 +445,8 @@ namespace DicomReaderTests {
 				StringAssert.Contains(result.Reason,name,readerCase.Name);
 				string message=DicomHelper.GetNotReadMessage(result);
 				StringAssert.Contains(message,name,readerCase.Name);
-				StringAssert.Contains(message,"cannot open that format yet",readerCase.Name);
+				StringAssert.Contains(message,"does not open that format: decoders for compressed DICOM are planned for a later version",readerCase.Name);
+				Assert.IsFalse(message.Contains(" yet"),"Deferred, not about to come: "+message);
 			}
 			//Named in the message: JPEG Extended, JPEG Lossless, JPEG-LS, JPEG 2000, HTJ2K.
 			foreach(string uid in new[] { JpegExtended,JpegLosslessProcess14,JpegLossless,JpegLsLossless,Jpeg2000Lossless,Jpeg2000,HtJpeg2000Lossless,HtJpeg2000 }) {
@@ -478,6 +479,6 @@ namespace DicomReaderTests {
 				}
 			}
 		}
-		#endregion Formats this version cannot open yet
+		#endregion Formats this version does not open
 	}
 }

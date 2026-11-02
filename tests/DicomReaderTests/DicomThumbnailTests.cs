@@ -189,7 +189,7 @@ namespace DicomReaderTests {
 			Assert.IsNull(ImageStore.OpenBitmapDicom(document,_patFolder));
 			string message=DicomHelper.GetNotReadMessage(result);
 			StringAssert.Contains(message,"JPEG 2000 Image Compression");
-			StringAssert.Contains(message,"cannot open that format yet");
+			StringAssert.Contains(message,"does not open that format");
 			//The display paths behave as for any other file they cannot show: no thumbnail, and GetImageCropped throws as it always did.
 			using(Bitmap bitmapNotAvailable=Documents.NoAvailablePhoto())
 			using(Bitmap bitmapThumb=Documents.GetThumbnail(document,_patFolder)) {

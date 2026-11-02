@@ -4571,7 +4571,7 @@ Here is the desired behavior:
 				DicomImageReadResult dicomImageReadResult=ImageStore.OpenBitmapDicomResult(_documentArrayShowing[idx],PatFolder);
 				_bitmapDicomRaw=dicomImageReadResult.BitmapDicom;
 				if(_bitmapDicomRaw==null){
-					//A missing file keeps its "File not found" message; any other reason (such as a compressed format this version cannot open yet) is said.
+					//A missing file keeps its "File not found" message; any other reason (such as a compressed format this version does not open) is said.
 					if(dicomImageReadResult.Status!=DicomImageReadStatus.FileError){
 						_dicomNotShownMessage=DicomHelper.GetNotReadMessage(dicomImageReadResult);
 					}

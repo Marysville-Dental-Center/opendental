@@ -213,7 +213,8 @@ them; remove old backups with your own administrator account.
 What the account does not get, and why it does not need it:
 
 - No `SUPER`. At every start the program sets the server's `sql_mode` to blank when it is anything else, which needs `SUPER`; with
-  `sql_mode=""` in the option file (section 4) it never tries. Without that line every start stops with "Unable to set global sql mode."
+  `sql_mode=""` in the option file (section 4) it never tries. Without that line every start stops (owner decision of 2026-11-02), with a
+  message that names this fix: add `sql_mode=""` to the `[mariadb]` section of the server's option file and restart MariaDB.
 - No `ALL PRIVILEGES`, no `GRANT OPTION`, no `CREATE USER`, no `FILE`, no `PROCESS`, no `SHOW DATABASES`: the program's own statements
   need none of them. Cancelling a running user query (`KILL QUERY`) stops the account's own query only.
 - A server that replicates (a replication set-up in the program, or binary logging with replicas) also needs `BINLOG ADMIN` for the
@@ -255,6 +256,13 @@ del C:\Temp\dbsecrets.txt
 
 `dbsecrets.txt` holds the line `PfxPassword=...` (or `DbPassword=...` for the password fallback); delete it right after setup. The tool's
 result line is in the setup log.
+
+**Setup's exit code** (`echo %ERRORLEVEL%` after `start "" /wait OpenPmsDental-<version>-Setup.exe ...`, or the exit code your deployment
+tool reports): 0 done; 1 to 8 are Inno Setup's own (setup did not finish, for example 2 or 5 cancelled); **10** means a silent setup
+installed the files but its connection settings step did not finish: the connection settings tool failed or could not start, or on an
+existing install without security switches the kept settings fail the connection rule. The program does not connect on that workstation
+until an administrator runs the tool (below). The setup log (`/LOG=`) has the tool's result line and its own exit code (section 4.2 of the
+spec). An interactive setup shows such a failure on screen and ends with 0.
 
 **An existing install of a later version** (setup keeps its `FreeDentalConfig.xml`). Setup run with any of `/DBCA=`, `/DBPFX=`,
 `/DBTHUMBPRINT=`, `/DBSECRETSFILE=` runs the tool with only the switches given (silent: `/silent`; interactive: the tool's window), so the

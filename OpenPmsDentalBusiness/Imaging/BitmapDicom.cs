@@ -70,7 +70,8 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>What to tell the user when a DICOM file is not shown, from ReadFileResult or ReadStreamResult. "" when it was read. A compressed
-		///format this version has no decoder for is named, with the note that this version cannot open it yet.</summary>
+		///format this version has no decoder for is named, with the note that this version does not open it (compressed-DICOM decoders are
+		///deferred: docs/roadmap.md, Later).</summary>
 		public static string GetNotReadMessage(DicomImageReadResult result){
 			if(result==null){
 				return Lans.g("DicomHelper","The DICOM file could not be read.");
@@ -87,7 +88,9 @@ namespace OpenPmsDentalBusiness {
 						format=Lans.g("DicomHelper","an unknown format (transfer syntax")+" "+result.TransferSyntaxUid+")";
 					}
 					return Lans.g("DicomHelper","This DICOM image is stored as")+" "+format+". "
-						+Lans.g("DicomHelper","This version of the program cannot open that format yet.");
+						+Lans.g("DicomHelper","This version of the program does not open that format: decoders for compressed DICOM are planned for a later "
+							+"version, not this one. The image stays in the patient's images. The program that made it can export it uncompressed or as "
+							+"JPEG Baseline DICOM.");
 				case DicomImageReadStatus.TooLarge:
 					return Lans.g("DicomHelper","This DICOM image is too large to open.")+" "+result.Reason;
 				case DicomImageReadStatus.NotDicom:

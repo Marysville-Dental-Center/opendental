@@ -265,7 +265,7 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>The pixels of a .dcm document from its storage (the patient's folder, cloud storage, or the database row), read by DicomHelper
 		///(the in-house subset reader, then the full reader), with the reason when there is no image: DicomHelper.GetNotReadMessage turns it
-		///into the message the user sees, for example for a compressed format this version cannot open yet.</summary>
+		///into the message the user sees, for example for a compressed format this version does not open.</summary>
 		public static DicomImageReadResult OpenBitmapDicomResult(Document doc,string patFolder,string localPath=""){
 			if(doc==null || doc.FileName==null || !doc.FileName.EndsWith(".dcm")){
 				return new DicomImageReadResult(DicomImageReadStatus.NotDicom,"The document is not a .dcm file.",null,null);
@@ -580,7 +580,7 @@ namespace OpenPmsDentalBusiness {
 				doc.ImgType=ImageType.Radiograph;
 				BitmapDicom bitmapDicom=DicomHelper.GetFromFile(pathImportFrom);
 				doc.PrintHeading=true;
-				//A file no reader can read (for example a compressed format this version cannot open yet) is still imported, with no windowing,
+				//A file no reader can read (for example a compressed format this version does not open) is still imported, with no windowing,
 				//as Documents.InsertMissing attaches it; opening it says why it is not shown.
 				if(bitmapDicom!=null) {
 					DicomHelper.CalculateWindowingOnImport(bitmapDicom);

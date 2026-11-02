@@ -15,7 +15,7 @@ namespace OpenPmsDentalBusiness {
 		Read,
 		///<summary>Not a DICOM file: no PS3.10 header and no data set the reader recognizes.</summary>
 		NotDicom,
-		///<summary>A valid DICOM file whose pixel data is compressed in a format this version cannot decode yet (no decoder is registered for
+		///<summary>A valid DICOM file whose pixel data is compressed in a format this version does not decode (no decoder is registered for
 		///its transfer syntax), video, pixel data that is not in the file, or a transfer syntax the standard does not list.</summary>
 		UnsupportedCompression,
 		///<summary>A valid image the program does not show: floating point pixels, 1 or 32 bits allocated, a photometric interpretation other
@@ -1150,7 +1150,7 @@ namespace OpenPmsDentalBusiness {
 					IDicomFrameDecoder decoder=_registry.Find(_transferSyntax.Uid);
 					if(decoder==null) {
 						throw new DeclineException(DicomImageReadStatus.UnsupportedCompression,"The pixel data is compressed as "+_transferSyntax.Name
-							+", which this version cannot decode yet.");
+							+", which this version does not decode (compressed-DICOM decoders are deferred).");
 					}
 					if(length!=_undefinedLength) {
 						throw Malformed("The transfer syntax is "+_transferSyntax.Name+", but Pixel Data is not encapsulated.");

@@ -3,8 +3,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Principal;
 using System.Text;
 using CodeBase;
 using DataConnectionBase;
@@ -46,7 +48,8 @@ namespace OpenPmsDentalDbSettings {
 	///<summary>Checks, applies and tests this computer's database connection settings (docs/specs/db-connection-security.md section 4). The
 	///window and the silent switches both come here. Everything is checked before anything is changed: the CA file, the .pfx and its password,
 	///the certificate in the store, the rule. Then the CA is copied, the .pfx imported, the password protected (DPAPI, machine scope) and
-	///FreeDentalConfig.xml written, keeping its other elements.</summary>
+	///FreeDentalConfig.xml written, keeping its other elements; after that, a client certificate the tool imported itself and the saved
+	///settings no longer use is removed from the store (PlanImportedCertificate).</summary>
 	public static class DbSettingsRunner {
 		public const int EXIT_OK=0;
 		public const int EXIT_BAD_ARGS=1;
@@ -183,6 +186,8 @@ namespace OpenPmsDentalDbSettings {
 			}
 			DbSettingsAuth dbSettingsAuth=ResolveAuth(dbSettingsRequest,dbConnectionConfigCurrent);
 			bool isPfxImport=false;
+			//Whether the store had the .pfx's certificate before this save: then the tool did not import it, and it never removes it.
+			bool isPfxCertInStoreBefore=false;
 			string password="";
 			if(dbSettingsAuth==DbSettingsAuth.Certificate) {
 				if(!string.IsNullOrWhiteSpace(dbSettingsRequest.PfxFile)) {
@@ -197,6 +202,7 @@ namespace OpenPmsDentalDbSettings {
 						dbConnectionConfigNew.ClientCertThumbprint=DbConnectionConfig.NormalizeThumbprint(x509Certificate2.Thumbprint);
 					}
 					isPfxImport=true;
+					isPfxCertInStoreBefore=ClientCertificateStore.FindInStore(dbConnectionConfigNew.ClientCertThumbprint)!=null;
 				}
 				else {
 					string thumbprint=DbConnectionConfig.NormalizeThumbprint(dbSettingsRequest.Thumbprint??dbConnectionConfigCurrent.ClientCertThumbprint);
@@ -248,6 +254,8 @@ namespace OpenPmsDentalDbSettings {
 			#endregion Check everything
 			#region Change things
 			string warning="";
+			string pathRecord=ImportedCertificateRecord.GetPath(caCopyPath);
+			string thumbprintRecorded=ImportedCertificateRecord.Read(pathRecord);
 			try {
 				if(listCaCertificates!=null) {
 					OfficeCaFile.WriteCopy(listCaCertificates,caCopyPath);
@@ -273,8 +281,78 @@ namespace OpenPmsDentalDbSettings {
 			{
 				throw new DbSettingsException(EXIT_WRITE_FAILED,"The connection settings could not be saved: "+ex.Message);
 			}
+			try {
+				ResetConfigFileRights(configPath);
+			}
+			catch(Exception ex) when(ex is IOException || ex is UnauthorizedAccessException || ex is InvalidOperationException
+				|| ex is System.Security.SecurityException)
+			{
+				throw new DbSettingsException(EXIT_WRITE_FAILED,"The connection settings were saved, but the rights of "+ProgramNames.ConfigFileName
+					+" could not be set back to those of the program folder: "+ex.Message+" Remove any right of Users on the file in its Properties, "
+					+"Security tab, then save again.");
+			}
+			//The settings are saved: only now does the certificate they replaced go, and only one this tool imported itself.
+			PlanImportedCertificate(thumbprintRecorded,dbConnectionConfigCurrent.ClientCertThumbprint,dbConnectionConfigNew.ClientCertThumbprint,isPfxImport,
+				isPfxCertInStoreBefore,out string thumbprintToRecord,out string thumbprintToRemove);
+			try {
+				ImportedCertificateRecord.Write(pathRecord,thumbprintToRecord);
+			}
+			catch(Exception ex) when(ex is DbSettingsException || ex is IOException || ex is UnauthorizedAccessException || ex is InvalidOperationException) {
+				warning=AppendSentence(warning,"The tool could not record which client certificate it imported ("+ex.Message+"), so it will not remove "
+					+"that certificate when it is replaced.");
+			}
+			warning=AppendSentence(warning,ClientCertificateStore.RemoveImported(thumbprintToRemove));
 			#endregion Change things
 			return warning;
+		}
+
+		///<summary>What a save does with the certificate the tool imported itself (owner decision of 2026-11-02). thumbprintToRecord: the
+		///certificate the saved settings use when the tool imported it (from a .pfx whose certificate the store did not have before), or the one
+		///already recorded when the settings keep it; else "". thumbprintToRemove: the recorded certificate when the settings used it and now stop
+		///(another certificate, or the password); else "". A certificate the tool did not import (one named by thumbprint, or one that was in the
+		///store before its .pfx was imported) is never recorded, so never removed. Thumbprints are normalized; "" means none.</summary>
+		public static void PlanImportedCertificate(string thumbprintRecorded,string thumbprintCurrent,string thumbprintNew,bool isPfxImported,
+			bool isPfxCertInStoreBefore,out string thumbprintToRecord,out string thumbprintToRemove)
+		{
+			thumbprintRecorded=DbConnectionConfig.NormalizeThumbprint(thumbprintRecorded);
+			thumbprintCurrent=DbConnectionConfig.NormalizeThumbprint(thumbprintCurrent);
+			thumbprintNew=DbConnectionConfig.NormalizeThumbprint(thumbprintNew);
+			thumbprintToRecord="";
+			if(thumbprintNew!="") {
+				if(isPfxImported && !isPfxCertInStoreBefore) {
+					thumbprintToRecord=thumbprintNew;
+				}
+				else if(thumbprintNew==thumbprintRecorded) {
+					thumbprintToRecord=thumbprintRecorded;//The tool's own certificate, kept (or its .pfx imported again).
+				}
+			}
+			thumbprintToRemove="";
+			if(thumbprintRecorded!="" && thumbprintRecorded==thumbprintCurrent && thumbprintRecorded!=thumbprintNew) {
+				thumbprintToRemove=thumbprintRecorded;
+			}
+		}
+
+		///<summary>Gives FreeDentalConfig.xml the rights of the program folder it is in, and no others (owner decision of 2026-11-02): every
+		///explicit rule is removed (the Users modify right v0.0's setup gave, or any a user added) and the folder's rules are inherited, so in an
+		///all-users install only administrators change the connection settings. The owner becomes BUILTIN\Administrators (as for the office CA
+		///copy), since an owner may always change a file's rules; not elevated (only the tests run this code that way) the owner stays. Runs at
+		///every save; DbConnectionConfig.SaveFile replaces the file with File.Replace, which keeps the old file's rules. Throws IOException,
+		///UnauthorizedAccessException, InvalidOperationException.</summary>
+		public static void ResetConfigFileRights(string configPath) {
+			FileSecurity fileSecurity=new FileSecurity();
+			//Not protected: the rules of the folder flow in. No explicit rule: what the file had before is gone.
+			fileSecurity.SetAccessRuleProtection(false,false);
+			if(OfficeCaFile.IsElevated()) {
+				fileSecurity.SetOwner(new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid,null));
+			}
+			File.SetAccessControl(configPath,fileSecurity);
+		}
+
+		private static string AppendSentence(string text,string sentence) {
+			if(string.IsNullOrEmpty(sentence)) {
+				return text;
+			}
+			return string.IsNullOrEmpty(text) ? sentence : text+" "+sentence;
 		}
 
 		///<summary>The warning for the database user root on a server over the network, or "" when it does not apply (a server on this

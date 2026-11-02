@@ -32,6 +32,10 @@
 ; it (and logs it). Setup never downloads it.
 ;   /CURRENTUSER        install without administrator rights, for tests only (no Event Log source; pass /DIR= too).
 ; Setup never starts the program, silent or not. The office switch-over (adopting an Open Dental database) is not part of this setup.
+; Exit code: Inno Setup's own (0 done, 1 to 8 setup did not finish), and 10 for a silent install that finished but whose connection settings
+; step did not: the connection settings tool failed or could not start, or, on an upgrade without security switches, the kept settings fail
+; the connection rule (/check). The files are installed; setup's /LOG has the tool's result line and exit code. Run the tool as an
+; administrator to finish (docs/db-connection-security.md, section 6). Interactive installs show the failure and end with 0.
 
 #define AppVersion "0.0"
 #define AppName "Open PMS - Dental"
@@ -157,6 +161,9 @@ const
   WebView2Key = 'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
   VcRedistName = 'Microsoft Visual C++ 2015-2022 Redistributable (x86)';
   WebView2Name = 'Microsoft Edge WebView2 Runtime';
+  { Setup's exit code when a silent install finished but its connection settings step did not: the tool failed or could not start, or the
+    kept settings fail the connection rule (GetCustomSetupExitCode). Inno Setup's own codes are 0 to 8. }
+  DbSettingsFailedExitCode = 10;
 
 var
   ConfigPage: TInputQueryWizardPage;
@@ -170,6 +177,7 @@ var
   DownloadPrereqs: Boolean;
   ConfigWanted: Boolean;
   PrereqWarnings: String;
+  DbSettingsFailed: Boolean;
 
 { ---------- Prerequisites ---------- }
 
@@ -633,12 +641,16 @@ begin
   Result := Trim(Result + GivenSwitch('DBSECRETSFILE', '/secretsfile'));
 end;
 
-{ Shows (suppressibly) that the tool did not finish; its result line is in setup's log already. Cancel (6) is the user's choice. }
+{ Shows (suppressibly) that the tool did not finish; its result line is in setup's log already. Cancel (6) is the user's choice. A silent
+  install then ends with DbSettingsFailedExitCode. }
 procedure ReportDbSettingsFailure(const ToolExit: Integer);
 begin
-  if (ToolExit <> 0) and (ToolExit <> 6) then
+  if (ToolExit <> 0) and (ToolExit <> 6) then begin
+    if WizardSilent then
+      DbSettingsFailed := True;
     SuppressibleMsgBox('The connection settings were not completed (' + IntToStr(ToolExit) + '): ' + DbSettingsLogText + #13#10#13#10 +
       'The program will not connect until an administrator runs {#DbSettingsExeName} in the program folder.', mbError, MB_OK, IDOK);
+  end;
 end;
 
 { After the files are installed. A new connection: the tool sets up the office CA and the client certificate or password (for a database on
@@ -685,12 +697,18 @@ begin
     Exit;
   end;
   ToolExit := RunDbSettings('/check', False);
-  if (ToolExit = 0) or (ToolExit = -1) then
+  if ToolExit = 0 then
     Exit;
   if WizardSilent then begin
-    Log('The connection settings do not meet the connection rule of this version; run {#DbSettingsExeName} as an administrator.');
+    DbSettingsFailed := True;
+    if ToolExit = -1 then
+      Log('The connection settings could not be checked; run {#DbSettingsExeName} as an administrator.')
+    else
+      Log('The connection settings do not meet the connection rule of this version; run {#DbSettingsExeName} as an administrator.');
     Exit;
   end;
+  if ToolExit = -1 then
+    Exit;
   if SuppressibleMsgBox('The connection settings of this computer do not meet the connection rule of this version:' + #13#10#13#10 +
     DbSettingsLogText + #13#10#13#10 + 'Set them up now?', mbConfirmation, MB_YESNO, IDYES) = IDYES then
     RunDbSettings('', True);
@@ -847,6 +865,18 @@ begin
   end
   else if CurStep = ssPostInstall then
     SetUpConnection;
+end;
+
+{ Called when setup finished. A silent install whose connection settings step failed (ReportDbSettingsFailure, the /check of an upgrade)
+  ends with DbSettingsFailedExitCode, so that a deployment script sees it; the files are installed, and setup's log has the tool's result
+  line. Interactive installs showed the failure and end with 0. }
+function GetCustomSetupExitCode: Integer;
+begin
+  Result := 0;
+  if DbSettingsFailed then begin
+    Log('Setup exit code ' + IntToStr(DbSettingsFailedExitCode) + ': the connection settings were not completed.');
+    Result := DbSettingsFailedExitCode;
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

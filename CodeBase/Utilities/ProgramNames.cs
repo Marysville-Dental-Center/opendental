@@ -60,6 +60,9 @@ namespace CodeBase {
 		public const string DbSettingsFolderName="ConnectionSettings";
 		///<summary>The file name of that copy of the office CA certificate (PEM).</summary>
 		public const string OfficeCaFileName="office-ca.pem";
+		///<summary>The file in the same folder that records the thumbprint of the client certificate the tool imported itself, the only one it
+		///ever removes from the computer's certificate store.</summary>
+		public const string ImportedClientCertFileName="imported-client-certificate.txt";
 		///<summary>The program's folder under %TEMP% (PrefC.GetTempFolderPath). The program empties it when it closes.</summary>
 		public const string TempFolderName="openpms-dental";
 		///<summary>UpdateFileCopier's sub folder of TempFolderName, which the close-time clean-up keeps.</summary>

@@ -84,8 +84,9 @@ namespace OpenPmsDentalBusiness {
 	}
 
 	///<summary>Which decoder decodes which transfer syntax. Default holds the in-house decoders of this version: RLE Lossless, JPEG Baseline
-	///(through the .NET Framework's own JPEG decoder) and Encapsulated Uncompressed. A later package plugs in another decoder with Register; a
-	///decoder registered later for a transfer syntax replaces the earlier one. Thread-safe.</summary>
+	///(through the .NET Framework's own JPEG decoder) and Encapsulated Uncompressed. Decoders for the other compressed formats are deferred
+	///(docs/roadmap.md, Later); one would plug in with Register, and a decoder registered later for a transfer syntax replaces the earlier
+	///one. Thread-safe.</summary>
 	public sealed class DicomFrameDecoderRegistry {
 		private readonly object _lock=new object();
 		private readonly Dictionary<string,IDicomFrameDecoder> _dictDecoders=new Dictionary<string,IDicomFrameDecoder>();

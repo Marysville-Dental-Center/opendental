@@ -86,54 +86,61 @@ namespace OpenPmsDentalDbSettings {
 		///belongs to anyone but an administrator is refused (DbSettingsException, exit code 3) before anything is written. Throws IOException or
 		///UnauthorizedAccessException.</summary>
 		public static void WriteCopy(List<X509Certificate2> listCertificates,string pathCopy) {
-			string folder=Path.GetDirectoryName(Path.GetFullPath(pathCopy));
-			string pathTemp=pathCopy+".new";
+			WriteProtectedFile(pathCopy,new UTF8Encoding(false).GetBytes(ToPem(listCertificates)),"the office CA certificate");
+		}
+
+		///<summary>Writes bytes to path in the ConnectionSettings folder, replacing an earlier file, with the protection of the office CA copy
+		///(WriteCopy): the folder and the file get the protected DACL, and an existing folder or file that is a link or belongs to anyone but an
+		///administrator is refused (DbSettingsException, exit code 3) before anything is written. what names the file in messages. Throws
+		///IOException or UnauthorizedAccessException.</summary>
+		public static void WriteProtectedFile(string path,byte[] arrayBytes,string what) {
+			string folder=Path.GetDirectoryName(Path.GetFullPath(path));
+			string pathTemp=path+".new";
 			if(Directory.Exists(folder) || File.Exists(folder)) {
-				CheckExisting(folder,isFolderExpected:true);
+				CheckExisting(folder,true,what);
 				Directory.SetAccessControl(folder,GetFolderSecurity());
 			}
 			else {
 				Directory.CreateDirectory(folder,GetFolderSecurity());
 			}
-			foreach(string path in new[] { pathCopy,pathTemp }) {
-				if(File.Exists(path) || Directory.Exists(path)) {
-					CheckExisting(path,isFolderExpected:false);
+			foreach(string pathExisting in new[] { path,pathTemp }) {
+				if(File.Exists(pathExisting) || Directory.Exists(pathExisting)) {
+					CheckExisting(pathExisting,false,what);
 				}
 			}
 			if(File.Exists(pathTemp)) {
 				File.Delete(pathTemp);
 			}
-			byte[] arrayBytes=new UTF8Encoding(false).GetBytes(ToPem(listCertificates));
 			//A new file with its own protected security from the start, never one a user may have made (FileMode.CreateNew).
 			using(FileStream fileStream=new FileStream(pathTemp,FileMode.CreateNew,FileSystemRights.Write,FileShare.None,4096,FileOptions.WriteThrough,
 				GetFileSecurity()))
 			{
 				fileStream.Write(arrayBytes,0,arrayBytes.Length);
 			}
-			if(File.Exists(pathCopy)) {
-				File.Replace(pathTemp,pathCopy,null);
+			if(File.Exists(path)) {
+				File.Replace(pathTemp,path,null);
 			}
 			else {
-				File.Move(pathTemp,pathCopy);
+				File.Move(pathTemp,path);
 			}
 			//File.Replace keeps the replaced file's DACL, so the result always gets the protected one again.
-			File.SetAccessControl(pathCopy,GetFileSecurity());
+			File.SetAccessControl(path,GetFileSecurity());
 		}
 
 		///<summary>Throws DbSettingsException (exit code 3) when path is a link (a reparse point: a junction or a symbolic link), is a file where a
 		///folder is expected or the other way round, or belongs to anyone but BUILTIN\Administrators, SYSTEM, TrustedInstaller or the account the
 		///tool runs as (the elevated administrator). A standard user who made the folder or the file first must never own what the computer
-		///trusts.</summary>
-		public static void CheckExisting(string path,bool isFolderExpected) {
+		///trusts. what names the file in messages.</summary>
+		public static void CheckExisting(string path,bool isFolderExpected,string what="the office CA certificate") {
 			FileAttributes fileAttributes=File.GetAttributes(path);
 			if((fileAttributes & FileAttributes.ReparsePoint)!=0) {
-				throw new DbSettingsException(DbSettingsRunner.EXIT_WRITE_FAILED,path+" is a link (a junction or a symbolic link), so the office CA "
-					+"certificate is not written there. Delete it, then save again.");
+				throw new DbSettingsException(DbSettingsRunner.EXIT_WRITE_FAILED,path+" is a link (a junction or a symbolic link), so "+what
+					+" is not written there. Delete it, then save again.");
 			}
 			bool isFolder=(fileAttributes & FileAttributes.Directory)!=0;
 			if(isFolder!=isFolderExpected) {
 				throw new DbSettingsException(DbSettingsRunner.EXIT_WRITE_FAILED,path+" is a "+(isFolder ? "folder" : "file")+", not the "
-					+(isFolderExpected ? "folder" : "file")+" of the office CA certificate. Delete it, then save again.");
+					+(isFolderExpected ? "folder" : "file")+" of "+what+". Delete it, then save again.");
 			}
 			SecurityIdentifier securityIdentifierOwner;
 			if(isFolder) {
@@ -144,7 +151,7 @@ namespace OpenPmsDentalDbSettings {
 			}
 			if(!IsTrustedOwner(securityIdentifierOwner)) {
 				throw new DbSettingsException(DbSettingsRunner.EXIT_WRITE_FAILED,path+" belongs to "+GetAccountName(securityIdentifierOwner)+", not to an "
-					+"administrator, so the office CA certificate is not written there. Delete it, then save again.");
+					+"administrator, so "+what+" is not written there. Delete it, then save again.");
 			}
 		}
 

@@ -136,7 +136,10 @@ Certificate mode and password mode are exclusive in what the tool writes; a read
 `osd1$`: `CentralConnections.TrySaveConnectionSettings` (Debug builds only, section 5) writes `MySQLPassDpapi`.
 
 DPAPI with machine scope means any process on this computer can decrypt the password and no other computer can (Q2). The file's ACL is
-what keeps other local users out; the installer no longer gives Users modify rights on it (section 6).
+what keeps other local users out; the installer no longer gives Users modify rights on it (section 6), and every save of the tool sets the
+file's rights back to the program folder's (owner decision of 2026-11-02, `DbSettingsRunner.ResetConfigFileRights`): every explicit rule
+is removed, so a Users modify right a v0.0 setup gave or anyone added is gone, the folder's rules are inherited, and the owner becomes
+BUILTIN\Administrators. `DbConnectionConfig.SaveFile` replaces the file with `File.Replace`, which on its own keeps the old file's rules.
 
 The DPAPI helper is `CodeBase.MachineSecret` (`System.Security.Cryptography.ProtectedData`, `DataProtectionScope.LocalMachine`, a fixed
 entropy). Its exceptions never carry the secret.
@@ -147,7 +150,7 @@ Offices on v0.0 uninstall v0.0 before they install this version (S4): its uninst
 `FreeDentalConfig.xml` its setup wrote, so no v0.0 file is upgraded in place and no handling for one was added. That holds only because
 the release is published after v0.0 is uninstalled on every workstation: v0.0 pulls any newer published build at its next start
 (v0.0's `docs/release-process.md`, "A newer build is published": Pull) and installs it over itself, keeping its file with the Users
-modify right of v0.0's setup, and nothing in this version checks that file's ACL (`CentralConnections` reads `SslCA`, the office CA,
+modify right of v0.0's setup, and the program never checks that file's ACL (only a save with the tool resets it, section 3) (`CentralConnections` reads `SslCA`, the office CA,
 from it as it is). The guide's section 0 and the release notes therefore have the update server answer Cancel to the publish offer
 (`PrefL.CheckProgramVersion`) until v0.0 is uninstalled everywhere, then publish with Update Setup > Recopy, and have a workstation that
 pulled the build anyway uninstalled through Apps (the entry is still v0.0's) before setup runs, never set up with the tool alone. The
@@ -215,8 +218,16 @@ are unless `/server=`, `/database=`, `/user=` are given).
 
 `X509Certificate2Collection.Import(pfx, password, MachineKeySet | PersistKeySet)`, never `Exportable`; the certificate with a private key is
 added to LocalMachine\My and BUILTIN\Users get read access to its private key file (CAPI `MachineKeys` or CNG `Keys`), because the
-program runs as the signed-in user. A previous client certificate stays in the store (remove it with certlm.msc). Other certificates in the
-`.pfx` are not imported.
+program runs as the signed-in user. Other certificates in the `.pfx` are not imported.
+
+The certificate it replaces (owner decision of 2026-11-02): the tool removes a client certificate from the store, with its private key
+(CNG `Delete`, or the CAPI key container), only when it imported that certificate itself and a save stops using it (another certificate,
+or the password). It records the thumbprint of what it imported in `<program folder>\ConnectionSettings\imported-client-certificate.txt`
+(`ImportedCertificateRecord`), written with the protection of the office CA copy (section 4.4), not in `FreeDentalConfig.xml`, whose
+content must never decide what the tool deletes. Only a certificate the store did not have before its `.pfx` was imported is recorded; one
+named with `/thumbprint=`, or put into the store some other way, is never recorded and never removed (remove it with certlm.msc). A
+missing or untrusted record (a link, or a file an administrator does not own) means none. The certificate goes only after the new
+settings are saved (`DbSettingsRunner.PlanImportedCertificate`); when it cannot be removed, the result says so and the save stands.
 
 ### 4.4 The office CA copy
 
@@ -342,21 +353,24 @@ databases `test_dbsec_*`).
     Choose Database to ask for it). Cancel keeps the file without a password, which suits a database user with a blank password.
   - a loopback server without security switches, silent: no tool (`/DBSECRETSFILE=` with `DbPassword=` runs it, `/silent`).
   - `/log=` points into setup's temporary folder and the tool's result line goes into setup's log. A failure is shown (suppressible) and
-    the install finishes; the program then shows the run-the-tool message.
+    the install finishes; the program then shows the run-the-tool message. A silent install then ends with exit code 10
+    (`DbSettingsFailedExitCode`, through `GetCustomSetupExitCode`; owner decision of 2026-11-02), so a deployment script sees it; Inno
+    Setup's own codes are 0 to 8. Interactive installs end with 0.
 - All-users installs, upgrade (the file exists; for the versions after this one, S4): setup never passes the connection page's defaults
   (`localhost`, `opendental`, `opmsd`).
   - Any of `/DBCA=`, `/DBPFX=`, `/DBTHUMBPRINT=`, `/DBSECRETSFILE=` given: setup runs the tool with only the switches that were given
     (`/DBSERVER=`, `/DBNAME=`, `/DBUSER=` too, when given): silent, `/silent`; interactive, the window. A failure is shown (suppressible)
-    and logged.
+    and logged; a silent install ends with exit code 10.
   - No security switch: setup runs `/check` and, interactive, offers to open the tool when the settings fail the rule; silent, it logs the
-    result.
+    result and, when the settings fail the rule or the tool could not start, ends with exit code 10.
 - Per-user installs (`/CURRENTUSER`, tests only) cannot run the administrator tool: they write the base file; a network server is logged
   ("needs the connection settings tool") and shown as needing the tool; setup still ends with exit code 0.
 - v0.0 is uninstalled before this version is installed (S4), and its uninstaller removes the program folder with the
   `FreeDentalConfig.xml` to which its setup gave Users modify rights, so no computer keeps that right, on the condition of section 3.1:
   the release is published only after v0.0 is uninstalled on every workstation, and a workstation that pulled it anyway is uninstalled
-  through Apps before setup runs. Setup still never rewrites an existing file, and the tool's save keeps the file's rights, for the
-  upgrades of later versions; so a v0.0 file that a pull kept in place keeps its Users modify right if it is set up with the tool alone.
+  through Apps before setup runs. Setup still never rewrites an existing file, for the upgrades of later versions. The tool's save sets the
+  file's rights back to the program folder's (section 3, owner decision of 2026-11-02), so a v0.0 file that a pull kept in place loses its
+  Users modify right at the first save with the tool; until that save it keeps it.
 
 ## 7. Paths reviewed
 
@@ -395,17 +409,23 @@ Answered on 2026-11-02:
   (the chain, not the host name), as before.
 - The former question 2 (the Users modify right of a v0.0 `FreeDentalConfig.xml`): S4. v0.0 is uninstalled first, which removes that file,
   and the release is published only when v0.0 is uninstalled on every workstation, so that no v0.0 pulls it in place (section 3.1).
+- The former question 3 (`sql_mode` at start-up): the program keeps stopping when it must set `sql_mode` and cannot, and its message
+  names the one-line fix of the guide, `sql_mode=""` in the `[mariadb]` section of the server's option file
+  (`MiscData.GetSetSqlModeFailedMessage`).
+- The replaced client certificate: the tool removes it, with its private key, but only one it imported itself (section 4.3).
+- A silent setup whose connection settings step fails ends with exit code 10 (section 6).
+- `FreeDentalConfig.xml`: every save with the tool sets its rights back to the program folder's (section 3).
+- The read-only and reporting servers keep their old TLS behaviour (S1, section 5.1): nothing changes.
 
 Still open:
 
-1. The account rights of section 9 are untested against a real MariaDB server: no user was created for this package. Try them on a test
-   copy before the switch-over.
+1. The account rights of section 9 are untested against a real MariaDB server: no user was created for this package. The owner allowed
+   testing them on the local MariaDB with a temporary account (2026-11-02); that test is a step of its own. Until it has run, try them on a
+   test copy before the switch-over.
 2. Two of the three server-wide rights exist only because of two old checks: every backup asks whether the server replicates (`SHOW
    MASTER STATUS`, `SHOW SLAVE STATUS`: `BINLOG MONITOR`, `REPLICA MONITOR`), and flushes each copied table (`FLUSH TABLE`: `RELOAD`).
    Should the backup treat "access denied" on the replication question as "no replication" when the program's replication table is
    empty, and skip the flush, so that the account needs no server-wide right at all? Today they are granted (section 9).
-3. Start-up still sets `sql_mode` server-wide when it is not blank (`SUPER`). The guide sets it in the option file instead. Should a
-   failure there become a warning (the program then runs with the server's `sql_mode`), or stay a stop as today?
 
 ## 9. The rights of the program's database account (S2)
 

@@ -111,6 +111,10 @@ namespace PdfLibraryTests {
 			StringAssert.Contains(question,"`-PdfSharpLicenceResolved`");
 			StringAssert.Contains(question,"6.2.4 (MIT)");
 			Assert.IsFalse(question.Contains("**Today:** it ships"),"The file no longer ships by default.");
+			//The owner's answer of 2026-11-02: 6.5 stays, and the release stays blocked until the licence DLL is resolved.
+			StringAssert.Contains(question,"You chose on 2026-11-02 to keep PDFsharp/MigraDoc 6.5");
+			StringAssert.Contains(question,"the release stays blocked until the licence DLL is resolved, by empira's commercial licence, by empira's "
+				+"source of it or a written permission to convey it as it is, or by counsel");
 			string releaseProcess=ReadRepoFile("docs","release-process.md");
 			StringAssert.Contains(releaseProcess,"**Release blocker:** while `PdfSharp.License.dll` is on the allow-list");
 			StringAssert.Contains(releaseProcess,"`-PdfSharpLicenceResolved`");

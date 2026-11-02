@@ -559,6 +559,17 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
+		///<summary>What the start-up says when SetSqlMode fails. The program still stops then (owner decision of 2026-11-02), and the message names
+		///the one-line fix of the server guide (docs/db-connection-security.md, section 4): sql_mode="" in the server's option file, so that the
+		///program never has to set it, and its own database account needs no SUPER right.</summary>
+		public static string GetSetSqlModeFailedMessage() {
+			return "The program cannot start: the database server's sql_mode is not blank, and the program's database account may not change it "
+				+"(SET GLOBAL sql_mode needs the SUPER right).\r\n\r\n"
+				+"On the database server, add this line to the [mariadb] section of the server's option file (my.ini on Windows):\r\n\r\n"
+				+"sql_mode=\"\"\r\n\r\n"
+				+"Then restart MariaDB and start the program again (docs/db-connection-security.md, section 4).";
+		}
+
 		public static string GetStorageEngine() {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetString(MethodBase.GetCurrentMethod());

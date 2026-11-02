@@ -1293,7 +1293,8 @@ namespace OpenPmsDental{
 						Environment.Exit(ExitCode);
 						return false;
 					}
-					MessageBox.Show("Unable to set global sql mode.  User probably does not have enough permission.");
+					//The program still stops (owner decision of 2026-11-02); the message names the option-file fix of the server guide.
+					MessageBox.Show(MiscData.GetSetSqlModeFailedMessage());
 					return false;
 				}
 				string updateComputerName=PrefC.GetStringSilent(PrefName.UpdateInProgressOnComputerName);
