@@ -54,13 +54,23 @@ namespace CodeBase {
 				xslCompiledTransform.Load(xmlReaderXsl,XsltSettings.Default,null);
 			}
 			using(XmlReader xmlReader=XmlReader.Create(new StringReader(xml??""),GetReaderSettings()))
-			using(StringWriter stringWriter=new StringWriter()) {
+			using(StringWriter stringWriter=new Utf8StringWriter()) {
 				XmlWriterSettings xmlWriterSettings=xslCompiledTransform.OutputSettings.Clone();
 				xmlWriterSettings.ConformanceLevel=ConformanceLevel.Auto;
 				using(XmlWriter xmlWriter=XmlWriter.Create(stringWriter,xmlWriterSettings)) {
 					xslCompiledTransform.Transform(xmlReader,null,xmlWriter,null);
 				}
 				return stringWriter.ToString();
+			}
+		}
+
+		///<summary>A StringWriter that says UTF-8, so the transform's html output declares the charset the page is written in
+		///(ODWebView2.NavigateToHtml writes UTF-8).</summary>
+		private class Utf8StringWriter:StringWriter {
+			public override Encoding Encoding {
+				get {
+					return Encoding.UTF8;
+				}
 			}
 		}
 
