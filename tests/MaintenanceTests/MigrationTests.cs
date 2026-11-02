@@ -19,6 +19,13 @@ namespace MaintenanceTests {
 		private static readonly string[] _arrayTables={ "maintfield","maintitem","maintrecord","maintrecordvalue","maintstep" };
 		private static readonly Type[] _arrayTypes={ typeof(MaintField),typeof(MaintItem),typeof(MaintRecord),typeof(MaintRecordValue),typeof(MaintStep) };
 
+		///<summary>The differences of the routine maintenance tables only. ForkTables.VerifyDatabase holds every fork-only table to its
+		///declaration, and the scratch databases here run only the routine maintenance steps, so the other features' tables (inventory tracking)
+		///are missing there by design.</summary>
+		private static List<SchemaDifference> GetMaintenanceDifferences(SchemaVerifyResult result) {
+			return result.ListDifferences.FindAll(x => _arrayTables.Contains(x.Table));
+		}
+
 		[TestInitialize]
 		public void TestInitialize() {
 			TestDb.SetCultureUs();
@@ -156,7 +163,10 @@ namespace MaintenanceTests {
 		public void Tables_MatchTheirDeclarationsExactly() {
 			TestDb.ResetOrSkip();
 			SchemaVerifyResult result=ForkTables.VerifyDatabase(TestDb.DbName);
-			Assert.AreEqual(0,result.ListDifferences.Count,result.GetReport());
+			Assert.AreEqual(0,GetMaintenanceDifferences(result).Count,result.GetReport());
+			//What is left is the other features' tables, missing because their steps did not run here.
+			Assert.IsTrue(result.ListDifferences.All(x => x.Kind==SchemaDifferenceKind.MissingTable && !(ForkTables.GetSet(x.Table) is MaintenanceTables)),
+				result.GetReport());
 		}
 
 		[TestMethod]
@@ -196,11 +206,11 @@ namespace MaintenanceTests {
 				new MaintRecordCorrectionColumnsStep().Apply(context);
 				Assert.AreEqual(listSteps.Count,context.ListChanges.Count,string.Join("\r\n",context.ListChanges));
 				SchemaVerifyResult result=ForkTables.VerifyDatabase(dbName);
-				Assert.AreEqual(0,result.ListDifferences.Count,result.GetReport());
+				Assert.AreEqual(0,GetMaintenanceDifferences(result).Count,result.GetReport());
 				Assert.AreEqual(5,SchemaSnapshot.FromDatabase(dbName).Tables.Count);
 				DataCore.NonQ("ALTER TABLE maintstep MODIFY COLUMN Description varchar(100) NOT NULL");
 				SchemaVerifyResult resultChanged=ForkTables.VerifyDatabase(dbName);
-				Assert.IsFalse(resultChanged.IsMatch);
+				Assert.IsTrue(GetMaintenanceDifferences(resultChanged).Count>0,resultChanged.GetReport());
 				Assert.IsTrue(resultChanged.ListMismatches.Any(x => x.Table=="maintstep" && x.Item=="Description"),resultChanged.GetReport());
 				DataCore.NonQ("DROP TABLE maintfield");
 				SchemaVerifyResult resultMissing=ForkTables.VerifyDatabase(dbName);
@@ -240,14 +250,15 @@ namespace MaintenanceTests {
 				foreach(string statement in new MaintenanceTables().ArrayCreateTables) {
 					context.CreateTableIfMissing(SchemaTable.Parse(statement).Name=="maintrecord" ? CREATE_RECORD_FIRST_BUILD : statement);
 				}
-				Assert.IsFalse(ForkTables.VerifyDatabase(dbName).IsMatch,"The first build's maintrecord lacks the correction columns.");
+				Assert.IsTrue(GetMaintenanceDifferences(ForkTables.VerifyDatabase(dbName)).Any(x => x.Table=="maintrecord"),
+					"The first build's maintrecord lacks the correction columns.");
 				DataCore.NonQ("INSERT INTO maintrecord (MaintItemNum,DateDone,DateDue,UserNum,Note,IsFlagged,SecDateTEntry) "
 					+"VALUES (3,'2026-10-30','2026-11-01',2,'Done early',1,'2026-10-30 09:15:00')");
 				int countBefore=context.ListChanges.Count;
 				new MaintRecordCorrectionColumnsStep().Apply(context);
 				Assert.AreEqual(countBefore+3,context.ListChanges.Count,"Two columns and the key: "+string.Join("\r\n",context.ListChanges));
 				SchemaVerifyResult result=ForkTables.VerifyDatabase(dbName);
-				Assert.AreEqual(0,result.ListDifferences.Count,result.GetReport());
+				Assert.AreEqual(0,GetMaintenanceDifferences(result).Count,result.GetReport());
 				DataTable table=DataCore.GetTable("SELECT MaintItemNum,DateDone,UserNum,Note,IsFlagged,SecDateTEntry,UserNumCorrected,DateTCorrected FROM maintrecord");
 				Assert.AreEqual(1,table.Rows.Count);
 				Assert.AreEqual("3",table.Rows[0]["MaintItemNum"].ToString());

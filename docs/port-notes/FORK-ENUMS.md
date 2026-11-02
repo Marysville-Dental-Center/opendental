@@ -15,20 +15,32 @@ Rules:
 
 - A released value is never renumbered or reused.
 - Each fork-only value has a comment that names its feature.
+- No two names of an enum share a fork-only value, and every fork-only value is in its feature's range (or is one of the earlier values
+  below).
 - Before adding a value, check that no code sizes an array from the enum's count, indexes by the value or treats the enum as flags.
   If a high value is unsafe for one enum, say so here and give that enum its own rule.
 - Check the type of every column that stores the enum. 10000 needs at least `smallint`.
 
 `OpenPmsDentalBusiness.ForkEnums` holds the first fork-only value of each kind (`FIRST_VALUE`, `FIRST_VALUE_TINYINT`) and tells
 whether a value is fork-only (`ForkEnums.IsForkOnly`); tests use it to leave fork-only values out of the checks against Open Dental's
-published numbers.
+published numbers. It also holds the ranges of the two tables here (`ForkEnums.ListRanges`), the earlier values
+(`ForkEnums.ListEarlierValues`) and every enum that has fork-only values (`ForkEnums.ArrayEnums`). `tests/RegistryTests`
+(`ForkEnumRangeTests`) checks that every fork-only value in the code is unique in its enum and inside its feature's range, that no other
+enum of the business layer has a value from 10000 up (flags enums aside), and that this document lists exactly those ranges and
+values.
 
-## tinyint enums: AlertType and FormType
+To add a value: take the next free number of the feature's range (from the bottom in the table above, from the top in the tinyint
+table), add it to the table of every fork-only value below, and for a new enum add the enum to `ForkEnums` (`ArrayTinyIntEnums` for a
+tinyint column).
 
-`AlertType` is stored in `tinyint(4)` columns (`alertitem.Type`, `alertcategorylink.AlertType`, `alertsub.Type`), and so is `FormType`
-(`alertitem.FormToOpen`). A `tinyint(4)` holds -128 to 127, so 10000 does not fit, and widening Open Dental's columns would make the
-schema differ from Open Dental's (the schema verifier). Their fork-only values therefore count **down from 127**, while Open Dental's
-count up from 0 (51 for `AlertType` and 21 for `FormType` in 26.1); 100 to 127 is the fork-only region (`ForkEnums.FIRST_VALUE_TINYINT`).
+## tinyint enums: AlertType, FormType, DocumentMiscType and UserOdFkeyType
+
+`AlertType` is stored in `tinyint(4)` columns (`alertitem.Type`, `alertcategorylink.AlertType`, `alertsub.Type`), and so are `FormType`
+(`alertitem.FormToOpen`), `DocumentMiscType` (`documentmisc.DocMiscType`) and `UserOdFkeyType` (`userodpref.FkeyType`). A `tinyint(4)`
+holds -128 to 127, so 10000 does not fit, and widening Open Dental's columns would make the schema differ from Open Dental's (the schema
+verifier). Their fork-only values therefore count **down from 127**, while Open Dental's count up from 0 (51 for `AlertType`, 21 for
+`FormType`, 2 for `DocumentMiscType` and 29 for `UserOdFkeyType` in 26.1); 100 to 127 is the fork-only region
+(`ForkEnums.FIRST_VALUE_TINYINT`).
 
 | Range (tinyint enums) | Feature                         |
 |-----------------------|---------------------------------|
@@ -39,6 +51,27 @@ count up from 0 (51 for `AlertType` and 21 for `FormType` in 26.1); 100 to 127 i
 Within a range, values are taken from the top down (routine maintenance: `AlertType` 127 `MaintenanceDueSoon`, 126
 `MaintenanceOverdue`; `FormType` 127 `FormMaintenanceBoard`). If Open Dental's own values ever come near 100, a port must stop and
 the owner decides.
+
+**Earlier values.** Version 0.0 released three tinyint fork-only values before these ranges were set. They keep their numbers, and no
+feature may take them in their enum: `DocumentMiscType` 100 and 101 (the release channel, below every range), and `UserOdFkeyType` 114
+(the Patient Forms view of package B-EF, inside inventory tracking's range, so in `UserOdFkeyType` inventory tracking has 114 taken).
+
+## Every fork-only value
+
+| Enum             | Value | Name                  | Feature             |
+|------------------|-------|-----------------------|---------------------|
+| EnumPermType     | 10000 | MaintenanceSetup      | Routine maintenance |
+| EnumPermType     | 10001 | MaintenanceRecord     | Routine maintenance |
+| EnumPermType     | 10050 | InventoryAdjust       | Inventory tracking  |
+| AlertType        | 127   | MaintenanceDueSoon    | Routine maintenance |
+| AlertType        | 126   | MaintenanceOverdue    | Routine maintenance |
+| AlertType        | 119   | InventoryLowStock     | Inventory tracking  |
+| AlertType        | 118   | InventoryExpiring     | Inventory tracking  |
+| FormType         | 127   | FormMaintenanceBoard  | Routine maintenance |
+| FormType         | 119   | FormSupplyInventory   | Inventory tracking  |
+| DocumentMiscType | 100   | ForkReleaseManifest   | Release channel     |
+| DocumentMiscType | 101   | ForkReleaseSegment    | Release channel     |
+| UserOdFkeyType   | 114   | PatientFormsView      | Patient Forms view  |
 
 ## Code that was unsafe for high values (fixed with routine maintenance)
 
