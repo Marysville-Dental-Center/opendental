@@ -13,7 +13,9 @@ Planned work after v0.0, as agreed with the owner. Each item is discussed and sc
 2. **Library updates (maintenance)**: WebView2 in place of the Internet Explorer WebBrowser control, a managed Hunspell (no native DLL),
    PDFsharp/MigraDoc 6.5, kept as DLL files in `Required dlls`. PDFsharp 6.5 is AGPL-3.0-only, so the program as distributed is under GPL v3
    terms together with that part. fo-dicom is not updated but removed (owner decision 2026-11-02, option C): the in-house DICOM reader
-   (`docs/imaging/dicom-reader.md`) reads every file it read. Decoders for compressed DICOM are deferred (Later, below).
+   (`docs/imaging/dicom-reader.md`) opens the uncompressed, RLE and JPEG Baseline files version 0.0 opened, apart from a few malformed
+   ones it now refuses (release notes), and some that 0.0 could not open. JPEG Extended, JPEG Lossless, JPEG-LS and JPEG 2000 files,
+   which 0.0 opened through fo-dicom's native codecs, no longer open: their decoders are deferred (Later, below).
 3. **Routine maintenance around the practice**: maintenance items the office defines itself (equipment, rooms, systems, compliance routines),
    each with its own schedule, checklist, result fields, assignee and reminder; a due and overdue board; a history of who did what and when.
    The list starts empty.
