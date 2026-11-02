@@ -84,6 +84,24 @@ server computer must then connect with `<db-server>` (the name the workstations 
 - **Setup exit code 10.** A silent setup that installed the files but could not finish the connection settings (the tool failed, or an
   existing install's settings fail the connection rule) ends with exit code 10, so deployment scripts see it; the setup log says why.
 
+## SSH servers: their host keys are remembered
+
+Every SSH connection the program makes (the SFTP image storage, the Transworld (TSI) uploads, the Denti-Cal and Mercury clearinghouses and
+the HL7 service's SFTP mode) now checks the server's host key against the one the program remembers. Version 0.0 checked no host key at
+all. The design is in `docs/specs/ssh-host-keys.md`.
+
+- **First connection.** The first successful connection to a server (host name and port) stores its key type and SHA-256 fingerprint, with
+  when and by whom, in the new table `sshhostkey`. The Audit Trail gets an entry under the new type SSH Host Keys.
+- **Every later connection must present the same key.** A server that presents another key is refused during the key exchange, before the
+  user name, the password or any file is sent. The message names the server and both fingerprints, and the refused key is recorded.
+- **When a server's key really changed** (a new server, a reinstalled one, a clearinghouse that renewed its key), a user with Security Admin
+  opens Setup, SSH Host Keys (or the SSH Host Keys button on the SFTP tab of Setup, Data Paths), compares the new fingerprint with the one the
+  server's administrator gives, and clicks Accept Changed Key. Remove forgets a stored key, so the next connection stores the key the server
+  presents then. Both are in the Audit Trail.
+- **After the update** no key is stored yet: the first connection to each server stores its key. An office that wants to be sure should
+  compare the stored fingerprints in Setup, SSH Host Keys with the ones its servers' administrators give.
+- **DSA keys** (`ssh-dss`) are still not supported, as in the SSH.NET update: a server with only a DSA key cannot be reached.
+
 ## DICOM: fo-dicom is gone, the program reads DICOM itself
 
 fo-dicom 4.0.7, the DICOM library Open Dental shipped (`Dicom.Core.dll` and `Dicom.Native.dll`, under the Microsoft Public License, which is not compatible with the GNU GPL), is no longer part of the program. Every DICOM image is now read by the program's own reader, written from the DICOM standard (NEMA PS3) alone. The design is in `docs/imaging/dicom-reader.md`.

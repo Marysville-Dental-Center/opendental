@@ -61,9 +61,9 @@ through the check).
 
 1. Before connecting, on the caller's thread, it reads the stored key of the server from the store (host in lower case, trimmed, and port).
    If the store cannot be read, the connection is refused (nothing is sent to the server).
-2. SSH.NET connects. During the key exchange SSH.NET verifies that the server holds the private key of the host key it presents (it signs
-   the exchange hash), then raises `HostKeyReceived`. The check compares the presented key (the key type read from the key blob, and the
-   SHA-256 fingerprint) with the stored key:
+2. SSH.NET connects. During the key exchange SSH.NET raises `HostKeyReceived` with the host key the server presents, and checks that the
+   server holds its private key (the server signs the exchange hash with it); a key that fails either check ends the key exchange. The check
+   compares the presented key (the key type read from the key blob, and the SHA-256 fingerprint) with the stored key:
    - no stored key: trusted for now (first use), and remembered for this connection;
    - the same key type and fingerprint: trusted;
    - anything else: not trusted. SSH.NET then ends the key exchange; it never sends the user name or the password (authentication only
@@ -155,8 +155,11 @@ service's event log):
 "its key type changed" instead of "its fingerprint changed" when the type differs. When the store cannot be read or written, the message
 names the server and says the connection was refused because its stored host key could not be read (or stored), with the database error.
 
-The TSI connection test (`Sftp.IsConnectionValid`) still answers only valid or not valid, as before; the refusal is recorded on the row and
-in the audit trail, where the SSH Host Keys window shows it.
+Where it goes: the Denti-Cal and Mercury windows show it as their connection error, the HL7 service writes it to its event log, an SFTP
+image upload or download fails with it, and the SFTP checks of Setup, Data Paths (Save) and of the program's start-up show it in place of
+their general "not available" message (`Sftp.FileExists` with `doThrowHostKeyRefusal`). `Sftp.FileExists` otherwise still answers only
+whether the file exists, and the TSI connection test (`Sftp.IsConnectionValid`) only valid or not valid, as before; the refusal is recorded on
+the row and in the audit trail, where the SSH Host Keys window shows it.
 
 ## 8. Middle Tier, services and caching
 

@@ -480,6 +480,20 @@ From `docs/specs/inventory-tracking.md`. Each item says what the program does to
 
 ---
 
+## Remembered SSH host keys (SSH-KEYS, 2026-11-02)
+
+From `docs/specs/ssh-host-keys.md`, section 11: your decision of 2026-11-02 (tier 1, question 1) is built (stored on first use, a changed key refused before credentials, accepted or removed in Setup, SSH Host Keys by Security Admin). These details were taken as the simplest option consistent with it. Change any you disagree with.
+
+- (SSH-KEYS 1) The key a connection refused is recorded on the server's row, and Accept Changed Key accepts exactly that key (the business layer refuses when another key was refused since the window was filled). There is no "check the server now" button and no typing of a fingerprint. **Today:** as described.
+- (SSH-KEYS 2) One audit entry per refused key, not per refused connection: the HL7 service retries every minute. **Today:** as described; every refusal still updates the time on the row.
+- (SSH-KEYS 3) A refusal raises no alert; the caller's error message, the row and the audit trail say it. **Today:** no alert.
+- (SSH-KEYS 4) The first key is stored after the connection signed in, so a server that refuses the password does not get its key stored. **Today:** as described.
+- (SSH-KEYS 5) The table is not cached: each connection reads its server's row, so an accepted or removed key counts on every workstation from its next connection. **Today:** as described.
+- (SSH-KEYS 6) Servers are told apart by host name and port, the name compared without case; a server's name and its IP address are two servers, as in OpenSSH's `known_hosts`. **Today:** as described.
+- (SSH-KEYS 7) The audit type is a new fork-only permission value, SSH Host Keys (10100, the first of the reserved range 10100-10149 in `docs/port-notes/FORK-ENUMS.md`), audit only: never granted and not in the security tree; the window and both changes need Security Admin. **Today:** as described.
+
+---
+
 ## Not asked again (already settled)
 
 - How package migration levels are numbered (B-ACCT 2, B-PRINT 1, B-SHELL 6, M2-EST 1, M2-UDS 1, V-BRIDGE1 2, V-PEARL2 1, M2-SHELL's old question 4): decided on 2026-11-01 and done: the package steps now have dated levels 2026110101 to 2026110104, and new steps always go above the highest one.
