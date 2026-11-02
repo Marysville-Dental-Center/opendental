@@ -55,7 +55,7 @@ Open Dental's public manual describes the ACH tab as requiring a registration ke
 
 ### 1.2 What Open Dental's HQ provided
 
-From `D:/Dev/opendental-schema/hq-vendor-table.md` (PaySimple row) and the code on `main`:
+From the HQ vendor table (kept outside the repository) (PaySimple row) and the code on `main`:
 
 | HQ piece | Code on `main` | What it did | State now |
 |---|---|---|---|
@@ -434,7 +434,7 @@ Plus elapsed time waiting for PaySimple's sandbox and answers.
 5. The code sends `Issuer` as integers (12 to 15), but the docs list strings (`Visa`, `Master`, `Amex`, `Discover`). Verify in the sandbox, and switch to strings if the integers are rejected.
 6. ACH `PaymentSubType`: the code always sends `PPD`. Phone-authorized debits arguably need `Tel`, and PaySimple's default is `Web`. This is a compliance choice for the office. A per-transaction option would be a later UI change.
 7. Rate limits are unpublished. Ask PaySimple, and set the poller pace to match.
-8. Did the office's Open Dental 25.3 database (`fox-db`) store the PaySimple key encrypted by Open Dental? Ground rule 3 says the owner reports no encrypted data, and 24.3 stores this key in plain text. If 25.3 did encrypt it, though, `TryDecrypt` passes the ciphertext through, auth fails, and the key must be re-entered after migration (`CDT/README.md`). Add a check to the Phase 5 re-entry checklist.
+8. Did the office's Open Dental 25.3 database store the PaySimple key encrypted by Open Dental? Ground rule 3 says the owner reports no encrypted data, and 24.3 stores this key in plain text. If 25.3 did encrypt it, though, `TryDecrypt` passes the ciphertext through, auth fails, and the key must be re-entered after migration (`CDT/README.md`). Add a check to the Phase 5 re-entry checklist.
 9. Can the sandbox simulate ACH returns (Returned or ReverseNSF on a settled payment)? Only MarkPaymentStatus Settled is documented.
 10. Later, to reduce PCI scope: should card and bank entry move to PaySimpleJS?
     - The flow: a checkout token from `POST /v4/checkouttoken`, then PaySimple's iframe inside a WebView2 page ([PaySimpleJS guide](https://documentation.paysimple.com/docs/paysimplejs-getting-started)).
@@ -447,4 +447,4 @@ Plus elapsed time waiting for PaySimple's sandbox and answers.
 - PaySimple legal: [API Terms of Use](https://paysimple.com/api-terms-of-use/), [Terms of Service](https://paysimple.com/terms-of-service/), [Acceptable Use Policy](https://paysimple.com/acceptable-use-policy/), [Integrated Partner Program guide](https://pages.paysimple.com/rs/982-FCR-503/images/Integrated%20Partner%20Program%20Guide%20-%20v1.0.pdf)
 - HIPAA §1179: [HHS Omnibus Final Rule, 78 FR 5566 (2013)](https://www.federalregister.gov/d/2013-01073)
 - Open Dental public manual, used for behaviour only: [PaySimple](https://opendental.com/manual/paysimple.html), [PaySimple Setup](https://opendental.com/manual/paysimplesetup.html)
-- This repo on `main`: `OpenDentBusiness/WebBridges/PaySimple.cs`, `OpenDental/Forms/FormPaySimpleSetup.cs`, `OpenDental/Forms/FormPaySimple.cs`, `OpenDental/Forms/FormPayment.cs`, `OpenDentBusiness/Data Interface/RecurringCharges.cs`, `OpenDentBusiness/WebServices/WebServiceMainHQNoHq.cs`, `CDT/README.md`; `D:/Dev/opendental-schema/hq-vendor-table.md`; `docs/decoupling-plan.md`
+- This repo on `main`: `OpenDentBusiness/WebBridges/PaySimple.cs`, `OpenDental/Forms/FormPaySimpleSetup.cs`, `OpenDental/Forms/FormPaySimple.cs`, `OpenDental/Forms/FormPayment.cs`, `OpenDentBusiness/Data Interface/RecurringCharges.cs`, `OpenDentBusiness/WebServices/WebServiceMainHQNoHq.cs`, `CDT/README.md`; the HQ vendor table (kept outside the repository); `docs/decoupling-plan.md`

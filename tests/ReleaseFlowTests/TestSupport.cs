@@ -148,7 +148,7 @@ namespace ReleaseFlowTests {
 				Exec(dbName,"CREATE TABLE patient LIKE od_253_schema.patient");
 			}
 			else if(is253) {
-				//The columns the tests use, plus the office-only generated column and unique index exactly as fox-db-schema.sql has them.
+				//The columns the tests use, plus the office-only generated column and unique index exactly as the office's schema-only dump has them.
 				Exec(dbName,"CREATE TABLE patient (PatNum bigint(20) NOT NULL AUTO_INCREMENT,LName varchar(100) NOT NULL DEFAULT '',"
 					+"FName varchar(100) NOT NULL DEFAULT '',PatStatus tinyint(4) NOT NULL DEFAULT 0,Email varchar(100) NOT NULL DEFAULT '',"
 					+"_portal_active_email varchar(100) GENERATED ALWAYS AS (case when PatStatus = 0 and Email <> '' then Email else NULL end) VIRTUAL,"

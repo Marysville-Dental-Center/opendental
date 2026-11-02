@@ -12,7 +12,7 @@ at least one row for every table and column that is new or changed between 24.3 
 
 - **Local only.** The tool connects only to `localhost`, `127.0.0.1` or `::1`. Any other `--server` is refused before a
   connection is attempted; there is no override. Outbound HTTP through the .NET web stack is routed to a dead local proxy, and an
-  attempt makes the run fail with exit code 3. The office server (`fox-db`) can never be reached from this tool.
+  attempt makes the run fail with exit code 3. The office database server can never be reached from this tool.
 - **Writes only `synth*` databases.** `generate` and `schema` refuse any database name that does not start with `synth`
   (lower-case letters, digits and underscores), and refuse an existing database unless `--force` is given. `validate`,
   `coverage` and `--config-from` only read.
@@ -29,8 +29,9 @@ at least one row for every table and column that is new or changed between 24.3 
 ## Quick start
 
 Requirements: MariaDB or MySQL on this machine (`127.0.0.1:3306`, user `root`; a password, if any, goes in the
-`SYNTH_DB_PASSWORD` environment variable), and the schema source: `D:\Dev\opendental-schema\fox-db-schema.sql` (25.3.48 DDL,
-schema only) or, failing that, the local empty database `od_253_schema`.
+`SYNTH_DB_PASSWORD` environment variable), and the schema source: a schema-only dump of an Open Dental 25.3.48 database, kept outside
+the repository, whose path is in the `SYNTH_SCHEMA_SQL` environment variable (or given with `--schema-sql`), or, failing that, the local
+empty database `od_253_schema`.
 
 ```powershell
 # Build and generate synth_253 (small preset), writing the validation report:

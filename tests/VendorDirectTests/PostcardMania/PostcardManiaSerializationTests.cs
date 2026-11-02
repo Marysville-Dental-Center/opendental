@@ -12,14 +12,14 @@ namespace VendorDirectTests.PostcardMania {
 		[TestMethod]
 		public void OrderRequest_UsesTheDocumentedCamelCaseNamesAndOmitsNulls() {
 			PcmPostcardOrderRequest request=PostcardManiaFixture.MakeOrder("ops-0-20261019120000-abcdef",1);
-			request.ReturnAddress=new PcmReturnAddress { Company="Practice",Address="1 Office Way",City="Marysville",State="WA",ZipCode="98270" };
+			request.ReturnAddress=new PcmReturnAddress { Company="Practice",Address="1 Office Way",City="Springfield",State="IL",ZipCode="62701" };
 			JObject jObject=JObject.Parse(PcmJson.Serialize(request));
 			Assert.AreEqual(77,(long)jObject["designID"]);
 			Assert.AreEqual("FirstClass",(string)jObject["mailClass"]);
 			Assert.AreEqual("ops-0-20261019120000-abcdef",(string)jObject["extRefNbr"]);
 			Assert.AreEqual("2026-11-02",(string)jObject["mailDate"],"mailDate is yyyy-MM-dd.");
 			Assert.AreEqual("1 Office Way",(string)jObject["returnAddress"]["address"]);
-			Assert.AreEqual("98270",(string)jObject["returnAddress"]["zipCode"]);
+			Assert.AreEqual("62701",(string)jObject["returnAddress"]["zipCode"]);
 			Assert.IsNull(jObject["addressing"],"Null optionals are left out.");
 			Assert.IsNull(jObject["globalDesignVariables"]);
 			Assert.IsNull(jObject["returnAddress"]["address2"]);

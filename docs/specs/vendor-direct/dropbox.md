@@ -346,7 +346,7 @@ Nothing else is contacted. In particular there is no `opendental.com`, `opendent
 
 ### 3.9 Data migrated from Open Dental
 
-On a restored `fox-db` copy:
+On a restored copy of the office database:
 
 - **If `AtoZfolderUsed=2`,** the "Dropbox API Token" holds a token issued to Open Dental's app. It is **not used**.
   - Startup reports "not authorized" (3.5).
@@ -559,7 +559,7 @@ Option B is about the same, plus the Newtonsoft.Json 13 upgrade and its regressi
 ### 7.3 Open questions
 
 1. **Keep the feature?** Given ground rule 6 and risk 1, the owner may prefer to remove Dropbox storage and point offices at SFTP or local storage. In that case: remove the radio, `FormDropboxAuthorize`, the `OpenDentalCloud` Dropbox classes and `Dropbox.Api.dll`, and keep the enum value and rows for compatibility. That is **S**.
-2. **Does the office use Dropbox storage today?** Run `SELECT ValueString FROM preference WHERE PrefName='AtoZfolderUsed'` on the restored `fox-db` copy (2 means Dropbox). If it does, also find where the A to Z tree lives in the account.
+2. **Does the office use Dropbox storage today?** Run `SELECT ValueString FROM preference WHERE PrefName='AtoZfolderUsed'` on the restored copy of the office database (2 means Dropbox). If it does, also find where the A to Z tree lives in the account.
 3. **Per-office app (proposed) or one project-wide app?** A project-wide app needs:
    - a project Dropbox developer account
    - production review once 50 users link

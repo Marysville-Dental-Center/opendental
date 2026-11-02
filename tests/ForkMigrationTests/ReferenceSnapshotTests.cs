@@ -13,15 +13,11 @@ using OpenPmsDentalBusiness.ForkMigrations;
 namespace ForkMigrationTests {
 	[TestClass]
 	public class ReferenceSnapshotTests {
-		///<summary>The schema-only dump of the office's Open Dental 25.3.48 database. It is not in the repository; the tests that need it are skipped
-		///where it is missing. Override with FORKMIGRATION_REFERENCE_DUMP.</summary>
+		///<summary>The schema-only dump of the office's Open Dental 25.3.48 database. It is not in the repository: the environment variable
+		///FORKMIGRATION_REFERENCE_DUMP gives its path, and the tests that need it are skipped where it is not set or the file is missing.</summary>
 		private static string DumpPath {
 			get {
-				string path=Environment.GetEnvironmentVariable("FORKMIGRATION_REFERENCE_DUMP");
-				if(string.IsNullOrEmpty(path)) {
-					path=@"D:\Dev\opendental-schema\fox-db-schema.sql";
-				}
-				return path;
+				return Environment.GetEnvironmentVariable("FORKMIGRATION_REFERENCE_DUMP");
 			}
 		}
 
@@ -60,7 +56,7 @@ namespace ForkMigrationTests {
 		[TestMethod]
 		public void Reference_EqualsSnapshotBuiltFromDump() {
 			if(!File.Exists(DumpPath)) {
-				Assert.Inconclusive("The schema-only dump is not on this computer: "+DumpPath);
+				Assert.Inconclusive("The schema-only dump is not on this computer (FORKMIGRATION_REFERENCE_DUMP): "+DumpPath);
 			}
 			string built=SchemaVerifier.BuildReferenceDdlFromDump(File.ReadAllText(DumpPath,Encoding.UTF8));
 			string pathReference=TestDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","Misc","ForkMigrations","Reference","OdSchema-25.3.48.sql"));
@@ -82,7 +78,7 @@ namespace ForkMigrationTests {
 		[TestMethod]
 		public void Dump_DiffersFromReferenceOnlyByOfficeCustomization() {
 			if(!File.Exists(DumpPath)) {
-				Assert.Inconclusive("The schema-only dump is not on this computer: "+DumpPath);
+				Assert.Inconclusive("The schema-only dump is not on this computer (FORKMIGRATION_REFERENCE_DUMP): "+DumpPath);
 			}
 			SchemaSnapshot dump=SchemaSnapshot.Parse(File.ReadAllText(DumpPath,Encoding.UTF8));
 			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaVerifier.GetReference25_3_48(),dump,SchemaVerifier.DocumentedExceptions25_3_48);

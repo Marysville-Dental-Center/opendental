@@ -71,7 +71,7 @@ The upload request carried the whole `List<PatientInfo>` (the `PayloadItem` seri
 - `WebServiceMainHQNoHq` lines 74-77: all four methods throw `HqNotAvailableException.ForVendor("PostcardMania")`.
 - The menu item is always shown (`FormOpenDentalMenus.cs:385-388`, `437-440`). `menuItemAdvertisingPostcards_Click` (`FormOpenDental.cs:6514-6524`) opens Setup whenever the pref is blank, and Setup shows the error from `RefreshData`. The handler then opens Send regardless, and Send's `FillData` hits the same error.
 - Setup still contains promotional UI that ground rule 7 forbids: `labelNotEnabled` ("No accounts added, click here to signup") and the `webBrowser` that navigated to HQ's `displayURL`.
-- No `program` row exists for this feature. The only stored state is pref `AdvertisingPostCardGuid`, matching clinicpref rows, and the permission. After a `fox-db` migration, those GUIDs are ServicesHQ identifiers with no meaning here.
+- No `program` row exists for this feature. The only stored state is pref `AdvertisingPostCardGuid`, matching clinicpref rows, and the permission. After the office database is migrated, those GUIDs are ServicesHQ identifiers with no meaning here.
 
 ## 2. The vendor's public API
 
@@ -529,7 +529,7 @@ All of these run against a fake `HttpMessageHandler` or `PostcardManiaApiClientM
 5. **Proof image host.** Which host serves `proofFront`? If it isn't a vendor domain, show the preview only on request.
 6. **Mail classes.** Should `Standard` be offered? The docs list it but say nothing about minimums or pricing. Default to `FirstClass`.
 7. **Shared helpers.** `Programs.InsertIfMissing` and `ProgramProperties.InsertIfMissing` should be shared with the other vendor-direct specs that add program rows at runtime. Agree on them once.
-8. **`fox-db`.** On the restored copy, check for a stray program row (`SELECT ProgName FROM program WHERE ProgName LIKE '%Postcard%'`). None is expected, because Open Dental used prefs only.
+8. **The office database.** On the restored copy, check for a stray program row (`SELECT ProgName FROM program WHERE ProgName LIKE '%Postcard%'`). None is expected, because Open Dental used prefs only.
 9. **Undeliverable reports.** With "Send patient reference" on, should undeliverable recipients be surfaced so staff can fix addresses? That would read `GET /recipient/undeliverable`. It's out of scope for v1.
 10. **Mass Email.** Tools > Advertising had only Postcards in this build, and Mass Email is an HQ eService outside this spec. Should the Advertising submenu be renamed to "Postcards" once it holds a single item?
 
@@ -575,5 +575,5 @@ In-repo:
 - `OpenDental/Forms/FormAdvertisingPostcards{Setup,Send,AccountSetup}.cs`, `FormAdvertisingPatientList.cs`
 - `OpenDentBusiness/WebTypes/Shared/PatientInfo.cs`
 - `CDT/Class1.cs`, `CDT/README.md`
-- `D:/Dev/opendental-schema/hq-vendor-table.md`
+- The HQ vendor table (kept outside the repository)
 - `docs/decoupling-plan.md`

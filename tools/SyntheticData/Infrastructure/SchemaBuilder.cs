@@ -6,15 +6,23 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 namespace SyntheticData.Infrastructure {
-	///<summary>Creates an empty copy of the Open Dental 25.3.48 schema: either from the schema-only dump (fox-db-schema.sql, the default)
-	///or by copying the table definitions of the local reference database od_253_schema. Table AUTO_INCREMENT counters are reset.</summary>
+	///<summary>Creates an empty copy of the Open Dental 25.3.48 schema: either from a schema-only dump of an Open Dental 25.3.48 database (the
+	///default when SYNTH_SCHEMA_SQL names one) or by copying the table definitions of the local reference database od_253_schema. Table
+	///AUTO_INCREMENT counters are reset.</summary>
 	public static class SchemaBuilder {
-		public const string DefaultSchemaSqlPath=@"D:\Dev\opendental-schema\fox-db-schema.sql";
+		///<summary>The schema-only dump used when --schema-sql is not given: the path in the SYNTH_SCHEMA_SQL environment variable. The dump is
+		///not in the repository. Null when the variable is not set; then the local database od_253_schema is the source.</summary>
+		public static readonly string DefaultSchemaSqlPath=GetDefaultSchemaSqlPath();
 		public const string DefaultReferenceDatabase="od_253_schema";
 		///<summary>Number of tables in the Open Dental 25.3.48 schema.</summary>
 		public const int ExpectedTableCount=422;
 
 		private static readonly Regex _regexAutoIncrement=new Regex(@"\s+AUTO_INCREMENT=\d+",RegexOptions.Compiled);
+
+		private static string GetDefaultSchemaSqlPath() {
+			string path=Environment.GetEnvironmentVariable("SYNTH_SCHEMA_SQL");
+			return string.IsNullOrWhiteSpace(path) ? null : path.Trim();
+		}
 
 		///<summary>Drops (with force) and creates the target database, then creates every table. Returns where the definitions came from.</summary>
 		public static string Create(Db db,string database,bool force,string schemaSqlPath,string referenceDatabase) {
@@ -36,7 +44,8 @@ namespace SyntheticData.Infrastructure {
 				source="database "+referenceDatabase;
 			}
 			else {
-				throw new RefusedException("No schema source: neither the file '"+schemaSqlPath+"' nor the local database '"+referenceDatabase+"' exists.");
+				throw new RefusedException("No schema source: neither the file '"+schemaSqlPath+"' (--schema-sql or SYNTH_SCHEMA_SQL) nor the local database '"
+					+referenceDatabase+"' exists.");
 			}
 			db.Execute("CREATE DATABASE `"+database+"` CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
 			db.Use(database);

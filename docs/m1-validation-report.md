@@ -113,7 +113,7 @@ from the applied levels (`ForkMigrationsApplied`), not from the highest one, and
 
 | Task step (M1-Z) | How it was done | Evidence |
 |---|---|---|
-| 1. Generate a medium 25.3.48 database | `tools/SyntheticData`, medium preset (600 families, 2 years, seed 20261018, as of 2026-09-30) on the real 25.3.48 schema (`fox-db-schema.sql`, checked against `od_253_schema`), plus 2 filler rows in every table the generator leaves empty and an office fixture (see below) | G1 |
+| 1. Generate a medium 25.3.48 database | `tools/SyntheticData`, medium preset (600 families, 2 years, seed 20261018, as of 2026-09-30) on the real 25.3.48 schema (the office's schema-only dump, checked against `od_253_schema`), plus 2 filler rows in every table the generator leaves empty and an office fixture (see below) | G1 |
 | 2. Record the validation baseline | Row counts, `CHECKSUM TABLE ... EXTENDED`, a checksum per column (FLOAT values read exactly), and 146 business totals (aging buckets, production, income, write-offs, deposits, insurance estimates, payment-plan debits, credits, payments and balances, appointments, dated fees, accounting, statements, feature counts) | `run1-1-baseline.json`; G1 |
 | 3. Run the adoption tool on a copy | The FLOAT check of runbook step 0.2; the copy made on the server with the code of `AdoptionValidation copy` (runbook step 3.2: new name only, nobody connected, every table's row count and `AUTO_INCREMENT` checked); check the copy equals the baseline (its report is the runbook's `baseline-copy.json`); then `HeadlessAdoption`, the code `AdoptionValidation adopt` runs in runbook step 4: `Adoption.Preflight` and `Adoption.Run`, the calls `FormAdoptDatabase` makes (the GUI itself was not launched) | G2, A1-A4 |
 | 4. Fork migration and schema verifier | The fork migration preview of the source (`migration-preview`, runbook step 0.2) before the copy; in the same class: `ForkMigrationRunner.Run` with every step again (`RunAll`), `SchemaVerifier.VerifyDatabase`; then the rehash (`SecurityHash.RehashNow`, runbook step 5) and the row check against the source; the report rows `Adoption.Run`'s fork migration renamed, against the preview | M1, M2, M3, H1 |
@@ -136,7 +136,7 @@ all synthetic, before the baseline:
   may have written them (F17), which the fork migration renames; and one under an unknown name with another description
   (`ODSyntheticFutureReport`) and one under a known name (`ODToday`), which it must keep
 
-**Environment.** Windows 11 Pro, MariaDB 10.11.19 on `127.0.0.1:3306` (the local development server; `fox-db` was never contacted), Debug x86
+**Environment.** Windows 11 Pro, MariaDB 10.11.19 on `127.0.0.1:3306` (the local development server; the office database server was never contacted), Debug x86
 build of this branch. The dry run reached that server through a relay on `127.0.0.1:13306`, standing in for the SSH forward of runbook step
 0.0. The server was shared with other test runs throughout (some 25 other connections, 3 to 14 statements running whenever it was
 sampled; see "Timings"), so the times below are above what an idle server needs. All tools refuse any server other than this machine and
@@ -331,8 +331,8 @@ security log and re-enter it. The dry run runs these server-side checks.
 
 **F11. Fixed (second review): the runbook was written for a Windows database server; the office's runs Ubuntu.** The first revision ran every
 command "as administrator on the database server" in PowerShell, with the tools copied there and `<mariadb>` in `C:\Program Files\MariaDB
-10.11\bin`. The office schema dump the project works from reads "Host: fox-db" and "Server version 10.11.14-MariaDB-0ubuntu0.24.04.1"
-(`D:/Dev/opendental-schema/fox-db-schema.sql`, lines 4 to 6): Ubuntu 24.04's MariaDB package, dumped from a Windows client. The tools are .NET
+10.11\bin`. The office schema dump the project works from (a schema-only dump of an Open Dental 25.3.48 office database, kept outside the
+repository) names, in lines 4 to 6, a Linux server running MariaDB 10.11 from a Debian or Ubuntu package, dumped from a Windows client. The tools are .NET
 Framework x86 programs and cannot run there, and they refuse every server but the computer they run on (`LocalOnly`, deliberately without an
 override), so restore, the reports, adopt, the startup check and the dry run could not have run as written; Ubuntu's `root@localhost` also
 logs in only through the local socket, which the tools cannot use. Nothing stated or checked the platform; on the day the operator would have
@@ -360,7 +360,7 @@ random port in every run). What could not run here, because there is no Ubuntu s
 Three more gaps of the new procedure were closed before sign-off. The Open Dental services stay connected to `opendental` day and night, so
 `connections`, `copy` and `adopt` would have refused on the preparation night: step 0.6 now stops the services first and starts them again
 the same night, and on the day step 1.1 expects their connections until step 2 stops them (step 3.1 then requires none). The forward
-arrives at `127.0.0.1` on `fox-db`, so step 0.0.1 now checks that MariaDB listens there (`@@bind_address`) and which port to forward to.
+arrives at `127.0.0.1` on the database server, so step 0.0.1 now checks that MariaDB listens there (`@@bind_address`) and which port to forward to.
 And the tools do read some rows through the forward while they work (the rehash's keys, dates, amounts and statuses), so the runbook and
 this report now say that no copy of the database is made off the server, not that no row leaves it.
 
@@ -493,14 +493,14 @@ The appendix is regenerated with these titles and this detail. Test: `RoundTripD
 - **Open Dental's own report rows.** Open Dental's internal names for the three reports of F17 are not published, so the rehearsal's rows
   under unknown names are synthetic. Which rows the office database holds, and so which renames the switch makes, is known only from runbook
   step 0.2 (`migration-preview` on `opendental`), which only reads and runs whatever the owner decides about step 0.6.
-- **The database server's own commands.** There is no Ubuntu server in this environment, so the commands the runbook runs on `fox-db` itself
+- **The database server's own commands.** There is no Ubuntu server in this environment, so the commands the runbook runs on the database server itself
   were not run: the platform check and the account of step 0.0, the folder copy of step 3.1 with MariaDB stopped (`systemctl`, `cp -a`,
   `diff -rq`), the listing, dump and drop of Rollback step 2, the folder restore of Rollback step 3, and the drops of steps 0.6.4 and 11.2. They
-  are standard commands, each with an expected output and a stop when it is missing. They first run on `fox-db` in step 0.6 (folder copy and
+  are standard commands, each with an expected output and a stop when it is missing. They first run on the database server in step 0.6 (folder copy and
   dry run, with the owner's agreement) or in step 0.7's tools and server check (synthetic data), and otherwise on the day.
 - **The SSH forward and the tools' account.** The dry run reached MariaDB through a relay on port 13306 of the same PC, not through `ssh`, and as
   `root`, not `adoption_admin`; the `PROCESS` check is unit-tested and `root` passes it. Step 0.0.4 checks the forward and the account on the
-  office's admin PC before anything depends on them. The network between the admin PC and `fox-db` carries the reports and the rows the
+  office's admin PC before anything depends on them. The network between the admin PC and the database server carries the reports and the rows the
   tools read (the rehash's above all), not the copy; it adds time to every tool command (not measured).
 - **Golden totals from Open Dental 25.3.48** (backlog M1-Z work item 2, R2 item 7). Comparing the fork's reports with Open Dental's own
   needs the licensed client and office data. The rehearsal proves instead that adoption changes no total. The runbook adds a comparison with
@@ -527,7 +527,7 @@ The appendix is regenerated with these titles and this detail. Test: `RoundTripD
    runs (they would count as connected), so eServices wait until they are started again the same night. If not, runbook step 0.7 applies: the password list is made during the outage, and the window
    is planned from the rehearsal with a larger margin.
 4. Agree the rollback deadline (runbook step 0.9).
-5. Decide whether the rollback point (runbook step 3.1, a folder copy of the database on `fox-db`) may also be copied to the office's backup
+5. Decide whether the rollback point (runbook step 3.1, a folder copy of the database on the database server) may also be copied to the office's backup
    disk. Without that second copy it is on the server only: it protects against a failed adoption and against mistakes, not against losing the
    server's disk during the switch (the office's own nightly backups still do).
 6. For information: the FLOAT check (runbook step 0.2, F12) tells you whether the office's nightly backups, if they are `mariadb-dump` files,

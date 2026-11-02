@@ -11,7 +11,9 @@ Background: [release-process.md](release-process.md) (version guard and adoption
 risks R1 and R2 in the backlog.
 
 This is the procedure for the day the office switches. It is written for the office administrator, with a second person checking each
-step. Every step says what to run, where, what to expect, and what to do when the result is different.
+step. Every step says what to run, where, what to expect, and what to do when the result is different. Names in angle brackets, such as
+`<db-server>` (the office database server's host name) and `<admin>`, stand for the office's own values: fill them in before the day
+("Names used below").
 
 ## What adoption does, and what it cannot undo
 
@@ -79,19 +81,19 @@ the program's own writes are normal use.
 
 ## Where each command runs
 
-The office database server is `fox-db`. The schema dump the project works from was taken from it and reads "Host: fox-db" and "Server version
-10.11.14-MariaDB-0ubuntu0.24.04.1": MariaDB 10.11 as packaged by Ubuntu 24.04. Step 0.0 confirms this before anything else; the commands
-below are written for it. The tools (`AdoptionValidation.exe`, `SyntheticData.exe`) are Windows programs, so they run on a Windows PC and
+The office database server is `<db-server>`. This runbook is written for MariaDB 10.11 on Linux, installed from a Debian or Ubuntu
+package, as on the server the project's schema dump was taken from. Step 0.0 confirms this before anything else; the commands below are
+written for it. The tools (`AdoptionValidation.exe`, `SyntheticData.exe`) are Windows programs, so they run on a Windows PC and
 reach the server through an SSH forward. They refuse every server but the PC itself (127.0.0.1), whatever the command line says; the
-forward is the one, visible, way from there to `fox-db`.
+forward is the one, visible, way from there to `<db-server>`.
 
 | Mark | Where | How |
 |---|---|---|
-| **[server]** | `fox-db` | `bash` in an SSH session, `ssh <admin>@fox-db`, as an administrator who can use `sudo`. MariaDB commands there run as `sudo mariadb ...`: Ubuntu's MariaDB lets the system administrator in through its local socket without a MariaDB password. |
-| **[admin PC]** | One Windows 10 or 11 PC of the office, the same one throughout | PowerShell. Every window starts with the lines of step 0.0.4; the tools then reach `fox-db` through the forward of step 0.0.3, as the MariaDB account of step 0.0.2. |
+| **[server]** | `<db-server>` | `bash` in an SSH session, `ssh <admin>@<db-server>`, as an administrator who can use `sudo`. MariaDB commands there run as `sudo mariadb ...`: the Debian and Ubuntu MariaDB packages let the system administrator in through the local socket without a MariaDB password. |
+| **[admin PC]** | One Windows 10 or 11 PC of the office, the same one throughout | PowerShell. Every window starts with the lines of step 0.0.4; the tools then reach `<db-server>` through the forward of step 0.0.3, as the MariaDB account of step 0.0.2. |
 | **[workstation]** | Each computer of the step 0.5 list | Its own settings and programs. |
 
-**No copy of the office database is made off `fox-db` in this procedure.** The copy that is adopted is made by the server itself (step
+**No copy of the office database is made off `<db-server>` in this procedure.** The copy that is adopted is made by the server itself (step
 3.2), and the rollback point is a folder copy on the server (step 3.1). The tools on the admin PC read through the forward (encrypted by
 SSH) only what they work on, and keep none of it: `adopt` reads the preferences it changes and, for the rehash, the keys, dates, amounts and
 statuses of the rows it hashes; `credentials` reads the rows that hold stored passwords to tell their format, and prints only where they are.
@@ -103,13 +105,14 @@ owner's decision (validation report, "For the owner", item 5).
 
 | Name | Meaning |
 |---|---|
-| `fox-db`, `<admin>` | The database server and an administrator account on it that can use `sudo` and log in by SSH. |
+| `<db-server>`, `<admin>` | The database server's host name, and an administrator account on it that can use `sudo` and log in by SSH. |
+| `<db-server-ip>` | The database server's network address, where the workstations' `FreeDentalConfig.xml` gives the server by address. |
 | `opendental` | The office database today (Open Dental 25.3.48). Use the real name from `FreeDentalConfig.xml` on any workstation. |
 | `opendental_pms` | The adopted copy. Any name works; it must not exist yet. |
 | `od_prep_pms` | The adopted copy of the preparation dry run (step 0.6, only with the owner's agreement). A name that must not exist yet. |
 | `adoption_admin` | The MariaDB account the tools use (step 0.0.2). |
-| `<datadir>` | MariaDB's data folder on `fox-db` (`@@datadir`, step 0.0.1; normally `/var/lib/mysql/`). The database `opendental` is the folder `<datadir>opendental`. The bash commands below write it as `/var/lib/mysql/`: if step 0.0.1 shows another folder, use that one instead, and the database's real name instead of `opendental`. |
-| `<backup>` | `/var/backups/opendental-adoption` on `fox-db`: the folder copies and dumps of this procedure. Never inside `<datadir>`. |
+| `<datadir>` | MariaDB's data folder on `<db-server>` (`@@datadir`, step 0.0.1; normally `/var/lib/mysql/`). The database `opendental` is the folder `<datadir>opendental`. The bash commands below write it as `/var/lib/mysql/`: if step 0.0.1 shows another folder, use that one instead, and the database's real name instead of `opendental`. |
+| `<backup>` | `/var/backups/opendental-adoption` on `<db-server>`: the folder copies and dumps of this procedure. Never inside `<datadir>`. |
 | `C:\Adoption` | A folder on the admin PC for the reports and logs. |
 | `<tools>` | A folder on the admin PC holding a copy of the built `tools\AdoptionValidation\bin\Release` (or `bin\Debug`) folder: `AdoptionValidation.exe`, `SyntheticData.exe`, their DLLs, `allowed-differences.adoption.json`, `sql\business-totals.sql` and `Invoke-RunbookDryRun.ps1`. They need .NET Framework 4.8, which Windows 10 and 11 include, and no MariaDB program on the PC. |
 | `<date>` | The switch date, `yyyy-MM-dd`, for every `--as-of`. All reports of one switch use the same date, so their totals can be compared. |
@@ -120,7 +123,7 @@ Measured by the dry run of these steps with these commands (`Invoke-RunbookDryRu
 data, through a forwarded port as on the admin PC (validation report, "Runbook dry run"). That server was shared with other test runs at the
 time, so these are upper bounds: the same medium copy took 28 s in one rehearsal run, 24 s in another and 17 s in the dry run. Step 3.1 runs on the server and was
 not measured: it copies the database folder once and reads it twice (`cp` and `diff`), so allow two to three times what copying a file of the
-database's size takes on `fox-db`, plus a minute to stop and start MariaDB.
+database's size takes on `<db-server>`, plus a minute to stop and start MariaDB.
 
 | Step | Medium: 101,886 rows, 1,355 patients, 36 MB of tables | Large: 777,827 rows, 9,158 patients, 286 MB of tables |
 |---|---:|---:|
@@ -134,7 +137,7 @@ database's size takes on `fox-db`, plus a minute to stop and start MariaDB.
 
 The copy and the reports grow with the data; adoption is dominated by one `ALTER TABLE patient` and the rehash by the number of patients.
 The office database also holds documents, logs and history the synthetic data does not, and the server is not this PC, and the forward adds
-the network between the admin PC and `fox-db` (the reports and the rows the rehash reads cross it; the copy does not). Plan the outage window from the office's own dry run (step
+the network between the admin PC and `<db-server>` (the reports and the rows the rehash reads cross it; the copy does not). Plan the outage window from the office's own dry run (step
 0.6) when the owner allows it, or else from these figures (step 0.7): the steps above + step 3.1 + password and setting re-entry (step 7) +
 workstations + smoke test, plus a margin of 50% (dry run) or 200% (no dry run).
 
@@ -142,7 +145,7 @@ workstations + smoke test, plus a margin of 50% (dry run) or 200% (no dry run).
 
 0.0. **Platform, access and the tools' account.** Do this first; every later step depends on it.
 
-0.0.1. **[server] Record the platform** (read-only). `ssh <admin>@fox-db`, then:
+0.0.1. **[server] Record the platform** (read-only). `ssh <admin>@<db-server>`, then:
 
 ```bash
 lsb_release -ds; uname -m; systemctl is-active mariadb
@@ -152,25 +155,26 @@ sudo mariadb -e "SELECT ROUTINE_TYPE, ROUTINE_NAME FROM information_schema.ROUTI
 sudo mariadb -e "SHOW DATABASES"
 ```
 
-Expect: `Ubuntu 24.04...`, `x86_64`, `active`; a version `10.11.x-MariaDB-0ubuntu0.24.04.1`, a compile OS containing `linux`, the data folder
+Expect: a Debian or Ubuntu release, `x86_64`, `active`; a version `10.11.x-MariaDB-` with the package's suffix (for example
+`10.11.x-MariaDB-0+deb12u1`), a compile OS containing `linux`, the data folder
 (normally `/var/lib/mysql/`) and port `3306`; one line `MyISAM 422`; no routine, trigger, event or view. Write every value on the
 checklist; `<datadir>` below is the data folder shown here. `SHOW DATABASES` lists, besides `opendental`, the system databases
 (`information_schema`, `mysql`, `performance_schema`, `sys`): note any other one, because step 3.1 stops the MariaDB server for a few minutes
 and so stops it too.
 
-- **Not Linux** (for example `Win64`): the office database has moved to a Windows server. Stop: this runbook is written for the Ubuntu server,
+- **Not Linux** (for example `Win64`): the office database has moved to a Windows server. Stop: this runbook is written for a Linux server,
   and the developers must revise it before the day.
-- **`@@bind_address`** must let a program on `fox-db` itself reach MariaDB at `127.0.0.1`, where the forward of step 0.0.3 arrives: `0.0.0.0`,
+- **`@@bind_address`** must let a program on `<db-server>` itself reach MariaDB at `127.0.0.1`, where the forward of step 0.0.3 arrives: `0.0.0.0`,
   `::`, `*`, blank or `NULL` (every address), or a list that includes `127.0.0.1`. If it names only another address (for example only the
   server's network address), stop and ask the developers before the day. Do not change the server's settings yourself: the workstations
   depend on them.
 - **A port other than `3306`**: write it down and use it in place of the second `3306` in the forward of step 0.0.3.
-- **No SSH login** to `fox-db` (no SSH server, or no account that can use `sudo`): stop and ask the developers. Do not open MariaDB on
-  `fox-db` to the network for the tools instead; they refuse any address but the PC's own anyway.
+- **No SSH login** to `<db-server>` (no SSH server, or no account that can use `sudo`): stop and ask the developers. Do not open MariaDB on
+  `<db-server>` to the network for the tools instead; they refuse any address but the PC's own anyway.
 - **A table that is not MyISAM**, or a routine, trigger, event or view: stop and tell the developers. The folder copy of step 3.1 is a
   complete backup only of MyISAM tables, and the copy of step 3.2 refuses what it would not carry.
 
-0.0.2. **[server] The tools' MariaDB account.** On Ubuntu, MariaDB's `root` logs in only through the server's local socket, which a program on
+0.0.2. **[server] The tools' MariaDB account.** With the Debian and Ubuntu packages, MariaDB's `root` logs in only through the server's local socket, which a program on
 another computer cannot use, so the tools get an account of their own with a password. Choose a password of at least 20 letters and digits
 (no other characters: the tools pass it in a connection string) and keep it in the office password manager. Then `sudo mariadb` and, at the
 MariaDB prompt:
@@ -184,7 +188,7 @@ exit
 ```
 
 then `sudo rm -f /root/.mariadb_history /root/.mysql_history` (the client's history file would keep the password). The account can only log
-in from `fox-db` itself (the forward of step 0.0.3 arrives there as `localhost` or `127.0.0.1`, depending on `@@skip_name_resolve`, hence both
+in from `<db-server>` itself (the forward of step 0.0.3 arrives there as `localhost` or `127.0.0.1`, depending on `@@skip_name_resolve`, hence both
 lines). It needs every privilege: it creates `opendental_pms`, and its checks that nobody is connected need `PROCESS` to see other accounts'
 connections (the tools refuse an account without it). It is dropped in step 11.2, or at the end of a rollback.
 
@@ -192,12 +196,12 @@ connections (the tools refuse an account without it). It is dropped in step 11.2
 long as the tools are used:
 
 ```powershell
-ssh -N -L 127.0.0.1:13306:127.0.0.1:3306 <admin>@fox-db
+ssh -N -L 127.0.0.1:13306:127.0.0.1:3306 <admin>@<db-server>
 ```
 
 (The second `3306` is the port of step 0.0.1.) The first time, `ssh` shows the server's key fingerprint: compare it with `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` run [server],
 and answer `yes` only if they match. Type the password of `<admin>`; nothing more is printed while the forward runs. From then on, port 13306 of
-the admin PC is MariaDB on `fox-db`. (13306, not 3306, so that it can never be mistaken for a MariaDB the admin PC might run itself.) If the
+the admin PC is MariaDB on `<db-server>`. (13306, not 3306, so that it can never be mistaken for a MariaDB the admin PC might run itself.) If the
 window is closed or the connection drops, start it again; the tools then fail to connect, and change nothing.
 
 0.0.4. **[admin PC] Every PowerShell window that runs the tools starts with:**
@@ -212,7 +216,7 @@ New-Item -ItemType Directory -Force C:\Adoption | Out-Null
 The password is asked for and kept only in this window (not in its history). Every tool command below ends with `@db`, which points it at
 the forward and the account. **Check**: `& $av connections --database opendental @db` lists the connections of the workstations that have
 Open Dental open, each "from" its computer name, and ends "N connection(s) use opendental" (exit code 6) during office hours, or "No connection
-uses opendental." (exit code 0) when everyone is out. Either shows that the tools reach `fox-db` and see every connection. "Refused: ... lacks
+uses opendental." (exit code 0) when everyone is out. Either shows that the tools reach `<db-server>` and see every connection. "Refused: ... lacks
 the PROCESS privilege" means the grants of step 0.0.2 are missing; a connection error means the forward is not running or the password is
 wrong.
 
@@ -287,7 +291,7 @@ report, and the code groups marked for Insurance History (CodeGroupNum and Histo
 someone used Set All).
 
 0.3. **Inventory of Open Dental services and jobs** (for step 2): on every Windows computer of the office that runs Open Dental, its services
-or its scheduled tasks (the workstations, and any Windows server; `fox-db` runs none of them, being Ubuntu):
+or its scheduled tasks (the workstations, and any Windows server; `<db-server>` runs none of them, being Linux):
 
 ```powershell
 Get-Service OpenDent* | Format-Table Name,DisplayName,Status,StartType
@@ -301,7 +305,7 @@ second command also finds services installed under another name. Also note the m
 office uses it. Write the list down, per computer.
 
 0.4. **Other programs that use the database directly** (reporting tools, imaging or phone bridges, backup scripts): list the MariaDB accounts
-[server] `sudo mariadb -e "SELECT user,host FROM mysql.user"`, the jobs on `fox-db` (`sudo crontab -l; ls /etc/cron.d /etc/cron.daily;
+[server] `sudo mariadb -e "SELECT user,host FROM mysql.user"`, the jobs on `<db-server>` (`sudo crontab -l; ls /etc/cron.d /etc/cron.daily;
 systemctl list-timers --all --no-pager`), and ask each vendor. They are paused in step 1.2 and pointed at `opendental_pms` in step 9.
 
 0.5. **Workstations.** For every computer that runs Open Dental, write down: its name, the Open Dental folder (usually
@@ -309,7 +313,7 @@ systemctl list-timers --all --no-pager`), and ask each vendor. They are paused i
 2.1, 8 and 10, and in Rollback step 1. If the user is not `root`, also record that account's rights: [server] `sudo mariadb -e "SHOW GRANTS FOR '<user>'@'<host>'"`
 (step 2.1 may revoke them on `opendental`).
 
-0.6. **Preparation dry run: only if the owner agrees.** This makes a copy of the office database on `fox-db` (it never leaves the server), to
+0.6. **Preparation dry run: only if the owner agrees.** This makes a copy of the office database on `<db-server>` (it never leaves the server), to
 list the passwords to re-enter, to time the steps, and to run every tool command of the day once on real data before the day. It is office
 data on the office server; but the owner's decisions so far rule out office data for the rehearsal, and this one is **still open**
 (validation report, "For the owner", item 3). Record the owner's answer on the checklist. If the answer is no, skip to 0.7.
@@ -671,7 +675,7 @@ release client line says `Exits` with `database writes no`, and the last line is
 
 6.2. **[workstation] First start and smoke test.** On the update server (the workstation named in Update Setup, `WebServiceServerName`),
 install this program's release build in its own folder (for example `C:\Program Files (x86)\Open PMS - Dental`), never over the Open Dental
-folder. Start it (`OpenPmsDental.exe`); in the Choose Database window enter the server (`fox-db`, as in the workstations' `FreeDentalConfig.xml`) and the database
+folder. Start it (`OpenPmsDental.exe`); in the Choose Database window enter the server (`<db-server>` or `<db-server-ip>`, as in the workstations' `FreeDentalConfig.xml`) and the database
 `opendental_pms`. The version guard says the database is adopted and up to date (if it offers to publish this build, see step 8.1); log in. If
 it says instead that the database "has not been adopted" and offers the adoption tool, it is pointed at the wrong database: answer No and
 correct the database name. Never adopt from a workstation.
@@ -730,7 +734,7 @@ Fill this table; every line needs both marks before step 10. A workstation that 
 ## 9. Point the other programs at the adopted database
 
 Repoint every program and job from step 0.4 at `opendental_pms` (same server, same accounts; grant the accounts on `opendental_pms` if they
-were database-specific grants) and resume them. Set the office's backup jobs on `fox-db` to back up `opendental_pms`.
+were database-specific grants) and resume them. Set the office's backup jobs on `<db-server>` to back up `opendental_pms`.
 
 ## 10. Go live
 
@@ -771,7 +775,7 @@ backup. That work is not in `opendental_pms`, and dropping the original (step 11
 1. Stop it: find the computer (the "from" of `connections`, or `CompName` below), close Open Dental there and finish step 2.1 on it.
 2. List what was done. The comparison names the tables that changed; the security log names the actions, users and patients:
    [server] `sudo mariadb opendental -e "SELECT LogDateTime,CompName,UserNum,PatNum,PermType,LogText FROM securitylog WHERE LogDateTime>='<start of step 3.1, yyyy-MM-dd HH:mm:ss>' ORDER BY LogDateTime" | sudo tee /var/backups/opendental-adoption/work-in-original.txt`
-   (the times are the workstations' local times, as on the server's clock). This list shows patients: it stays on `fox-db`; read it there.
+   (the times are the workstations' local times, as on the server's clock). This list shows patients: it stays on `<db-server>`; read it there.
 3. Re-enter that work in this program by hand, with a second person checking each item against the list.
 4. Record a new reference of the original: [admin PC] `& $sd validate --database opendental --as-of <date> --out C:\Adoption\baseline-original-2.json @db`,
    note on the checklist why, and use it instead of `baseline-original.json` in step 11.1 and in Rollback step 3.
@@ -795,7 +799,7 @@ are skipped.
 
 2. **Take `opendental_pms` out of use.** [admin PC] `& $av connections --database opendental_pms @db` until it says "No connection uses
    opendental_pms." (exit code 0); a line names the computer that still has this program open. Then [server]:
-   - if this program was used after step 6.2, list what was entered, for re-entry in Open Dental (it shows patients; it stays on `fox-db`):
+   - if this program was used after step 6.2, list what was entered, for re-entry in Open Dental (it shows patients; it stays on `<db-server>`):
      `sudo mariadb opendental_pms -e "SELECT LogDateTime,CompName,UserNum,PatNum,PermType,LogText FROM securitylog WHERE LogDateTime>='<time of step 6.2>' ORDER BY LogDateTime" | sudo tee /var/backups/opendental-adoption/work-in-pms.txt`;
    - keep it for the analysis, then drop it, so that no program can open it any more:
 
@@ -841,7 +845,7 @@ Sign each line with time and initials.
 
 | # | Step | Expected | Done |
 |---|---|---|---|
-| 0.0.1 | Platform recorded | Ubuntu 24.04, MariaDB 10.11 (`...ubuntu0.24.04.1`, compile OS linux), `<datadir>` and port written down; bind address lets `127.0.0.1` in; MyISAM 422; no routine, trigger, event or view; other databases noted | |
+| 0.0.1 | Platform recorded | Debian or Ubuntu, MariaDB 10.11 (version with its package suffix, compile OS linux), `<datadir>` and port written down; bind address lets `127.0.0.1` in; MyISAM 422; no routine, trigger, event or view; other databases noted | |
 | 0.0.2 | `adoption_admin` created, history file removed | Password in the password manager | |
 | 0.0.3, 0.0.4 | Forward and tools checked from the admin PC | `connections` lists the workstations' connections, or none | |
 | 0.1 | Validation report signed, release build ready | Owner signature | |

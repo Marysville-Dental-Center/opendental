@@ -58,7 +58,7 @@ namespace SyntheticData.Validation {
 			["emailmessage.FailReason"]=255,
 		};
 
-		///<summary>Widened columns that the reference schema (the office's 25.3.48 database, fox-db-schema.sql) still has at the old width,
+		///<summary>Widened columns that the reference schema (the office's 25.3.48 database, from its schema-only dump) still has at the old width,
 		///so no longer value can be stored before adoption. For these, coverage requires the longest value to fill the old width exactly,
 		///which still catches a step that redefines the column narrower.</summary>
 		public static readonly Dictionary<string,string> DictWideningNotInReference=new Dictionary<string,string> {

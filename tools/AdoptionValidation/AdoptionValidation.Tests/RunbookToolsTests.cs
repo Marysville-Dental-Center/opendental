@@ -18,7 +18,7 @@ namespace AdoptionValidation.Tests {
 			StringAssert.Contains(DataConnectionBase.DataConnection.BuildSimpleConnectionString(DataConnectionBase.DatabaseType.MySql,
 				BusinessLayer.ServerAndPort(new ServerSettings { Port=13306 }),"synth_x","root",""),"Port=13306");
 			AssertThrows<ArgumentException>(() => BusinessLayer.ServerAndPort(new ServerSettings { Server="::1" }));
-			AssertThrows<RefusedException>(() => BusinessLayer.ServerAndPort(new ServerSettings { Server="192.168.10.10" }));
+			AssertThrows<RefusedException>(() => BusinessLayer.ServerAndPort(new ServerSettings { Server="192.0.2.10" }));
 		}
 
 		///<summary>Without PROCESS, information_schema.PROCESSLIST lists only the account's own connections, so "nobody is connected" would always be
@@ -64,11 +64,11 @@ namespace AdoptionValidation.Tests {
 			AssertThrows<ArgumentException>(() => Program.Run(new[] { "rehearse","--copy","sideways" },listLog.Add));
 			AssertThrows<ArgumentException>(() => Program.Run(new[] { "rehearse","--prefix","opendental_" },listLog.Add));
 			AssertThrows<ArgumentException>(() => Program.Run(new[] { "rehearse","--prefix","synth_rv" },listLog.Add));
-			AssertThrows<RefusedException>(() => Program.Run(new[] { "connections","--database","opendental","--server","192.168.10.10" },listLog.Add));
-			AssertThrows<RefusedException>(() => Program.Run(new[] { "float-check","--database","opendental","--server","fox-db" },listLog.Add));
+			AssertThrows<RefusedException>(() => Program.Run(new[] { "connections","--database","opendental","--server","192.0.2.10" },listLog.Add));
+			AssertThrows<RefusedException>(() => Program.Run(new[] { "float-check","--database","opendental","--server","db.example.test" },listLog.Add));
 			AssertThrows<ArgumentException>(() => Program.Run(new[] { "migration-preview" },listLog.Add));
 			AssertThrows<RefusedException>(() => Program.Run(new[] { "migration-preview","--database","open;dental" },listLog.Add));
-			AssertThrows<RefusedException>(() => Program.Run(new[] { "migration-preview","--database","opendental","--server","fox-db" },listLog.Add));
+			AssertThrows<RefusedException>(() => Program.Run(new[] { "migration-preview","--database","opendental","--server","db.example.test" },listLog.Add));
 			StringAssert.Contains(Program.Usage,"migration-preview --database DB");
 			StringAssert.Contains(Program.Usage,"copy --original ORIGINAL --database NEW_DB");
 			StringAssert.Contains(Program.Usage,"connections --database DB");

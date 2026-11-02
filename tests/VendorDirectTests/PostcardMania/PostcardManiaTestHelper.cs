@@ -57,9 +57,9 @@ namespace VendorDirectTests.PostcardMania {
 				FirstName="First"+number,
 				LastName="Last",
 				Address=number+" Main St",
-				City="Marysville",
-				State="WA",
-				ZipCode="98270",
+				City="Springfield",
+				State="IL",
+				ZipCode="62701",
 			};
 		}
 

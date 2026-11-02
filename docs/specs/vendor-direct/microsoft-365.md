@@ -394,7 +394,7 @@ New `OpenDentBusiness/WebBridges/Microsoft365/Microsoft365Session.cs`:
 
 ### 3.9 Data migrated from Open Dental
 
-On a restored `fox-db` copy:
+On a restored copy of the office database:
 
 - **Rows with `AuthenticationType=2`** carry a `RefreshToken` that isn't `osd1$` (it uses the `MiscUtils.Encrypt` key) and an MSAL cache for **Open Dental's** client ID.
   - `Microsoft365Session` treats a non-`osd1$` or undecryptable value as "not signed in". It never decrypts it with `MiscUtils.Decrypt`.

@@ -10,7 +10,7 @@ using OpenPmsDentalBusiness.PostcardMania;
 namespace VendorDirectTests.PostcardMania {
 	[TestClass]
 	public class PostcardManiaRecipientTests {
-		private static PatientInfo MakePatient(long patNum,string fName,string lName,string address,string zip="98270",string country="",
+		private static PatientInfo MakePatient(long patNum,string fName,string lName,string address,string zip="62701",string country="",
 			string preferred="",string email="")
 		{
 			return new PatientInfo {
@@ -20,8 +20,8 @@ namespace VendorDirectTests.PostcardMania {
 				Preferred=preferred,
 				Address=address,
 				Address2="",
-				City="Marysville",
-				State="WA",
+				City="Springfield",
+				State="IL",
 				Zip=zip,
 				Country=country,
 				Email=email,

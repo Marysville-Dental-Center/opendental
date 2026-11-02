@@ -14,7 +14,7 @@ Status: draft, 2026-10-18; fact-checked the same day (see "Fact-check log" at th
     - Summary text changed for `claimproc.IsOverpay`, `procnote.Signature` (decimal points allowed), the `PatStatus` Archived value, `feeschedgroup`, `insfilingcode`, `claimattach` and `orionproc` (summary blanked).
     - `ImageEdit` (89) lost the "tracking only" note. Our code already has it in the security tree with a date restriction.
 - **Online manual.** The public manual at `https://www.opendental.com/manual/` is frozen at 24.3; it's the same content as `/manual243/`. It describes the *baseline* behavior. The 24.4+ manual (`/help244/` … `/help263/`) is customer-only: it needs a cookie that the program's help button sets. **We did not access it.** For a few gated pages we used only the short summaries that public web search returns; those citations are marked *(gated, search summary)*. The public "Quick Manual" pages under `https://www.opendental.com/site/0_*.html` are current and were also used.
-- **Schema** was cross-checked against the 25.3.48 DDL in `D:/Dev/opendental-schema/fox-db-schema.sql`. Every 24.4 table and column below matches that dump exactly. In the measured diff (`schema-diff-24.3.63-vs-25.3.48.txt`: 15 new tables, 47 new columns, 1 rename), 24.4 accounts for 2 tables (`feeschednote`, `queryfilter`) and 7 columns: `document.ChartLetterStatus`, `document.UserNum`, `document.ChartLetterHash`, `fee.DateEffective`, `imagedraw.BetterDiagLayer`, `payplan.SheetDefNum` and `payplantemplate.SheetDefNum`. The rename (`task.TriageCategory` → `Category`) is not from 24.4.
+- **Schema** was cross-checked against the 25.3.48 DDL in the office schema dump (a schema-only dump of an Open Dental 25.3.48 office database, kept outside the repository). Every 24.4 table and column below matches that dump exactly. In the measured diff (`schema-diff-24.3.63-vs-25.3.48.txt`: 15 new tables, 47 new columns, 1 rename), 24.4 accounts for 2 tables (`feeschednote`, `queryfilter`) and 7 columns: `document.ChartLetterStatus`, `document.UserNum`, `document.ChartLetterHash`, `fee.DateEffective`, `imagedraw.BetterDiagLayer`, `payplan.SheetDefNum` and `payplantemplate.SheetDefNum`. The rename (`task.TriageCategory` → `Category`) is not from 24.4.
 - **Baseline check.** Three 24.4 items were backported by OD into 24.3.x and are **already in our code** (ERA mismatch matching in 24.3.43, Report Server audit in 24.3.35, and 2025 CDA codes in 24.3.32). eForms code is also already present but hidden in Release builds.
 
 Notation used in the item sections:
@@ -80,7 +80,7 @@ Counts: **25 desktop**, **2 vendor-direct**, **32 excluded** (59 items in total)
 
 ### Consolidated schema for 24.4
 
-All of the following match `fox-db-schema.sql` (25.3.48). Tables are MyISAM, `utf8mb3`. These go into one conversion step (for example a new `To24_4_0()` in `OpenDentBusiness/Misc/ConvertDatabases8.cs`). Then regenerate the CRUD classes with `xCrudGenerator`.
+All of the following match the office schema dump (25.3.48). Tables are MyISAM, `utf8mb3`. These go into one conversion step (for example a new `To24_4_0()` in `OpenDentBusiness/Misc/ConvertDatabases8.cs`). Then regenerate the CRUD classes with `xCrudGenerator`.
 
 ```sql
 ALTER TABLE document ADD ChartLetterStatus tinyint(4) NOT NULL,
@@ -961,7 +961,7 @@ A second pass re-read the release page and the blog, checked public manual pages
   - Chart letters: the future-date rule and the signature-algorithm caveat were added.
   - Pearl: the exact methods that block a resend are now named.
   - DentalXChange: the X12 "anything but Mail" pitfall and the hard-coded OD partner identity were added.
-- **Schema:** all 24.4 DDL matches `fox-db-schema.sql`. Added the reconciliation with the measured diff (2 of 15 tables, 7 of 47 columns, not the rename) and a list of the DB-doc wording changes that need no work.
+- **Schema:** all 24.4 DDL matches the office schema dump. Added the reconciliation with the measured diff (2 of 15 tables, 7 of 47 columns, not the rename) and a list of the DB-doc wording changes that need no work.
 - **Classification:** no item moved. Added public evidence for the BetterDiagnostics exclusion and a note on the eForms desktop decision.
 - **Wording:** release-note titles and blog headings that were quoted in Sources lines are now paraphrased. The remaining exact strings are UI labels or messages from our own code.
 

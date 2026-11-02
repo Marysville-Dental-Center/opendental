@@ -183,7 +183,7 @@ There are no `Content` or `None` copy items in `OpenDental.csproj`, and no packa
 - Logs are written to `{app}\Logger` by default (`CodeBase/Utilities/Logger.cs:184`). In Program Files, standard users can't write there.
 
 ### Server
-The office installs MariaDB 10.11 itself (`README.md:65-68`; the runbook confirms Ubuntu 24.04 10.11.14). It needs:
+The office installs MariaDB 10.11 itself (`README.md:65-68`; the runbook's step 0.0.1 confirms the server's platform and its MariaDB 10.11 version). It needs:
 - `sql_mode` blank (the program sets it with `SET GLOBAL`, which requires privileges: `MiscData.cs:557`);
 - `default-storage-engine=MyISAM`;
 - `max_allowed_packet` of at least 40 MB (`DataConnectionBase/DataConnection.cs:782`);
@@ -255,7 +255,7 @@ Nothing is installed on the server by us.
 | In-app licence list (`FormLicense.cs:35-61`; the same list in `FormRegistrationKey.cs:45-68`, reachable from `FormUpdateSetup.cs:91`) | The default entry "OpenDental" is `opendentallicense.txt`: Open Dental's paid registration-key terms (line 3), which contradict the GPL. It also lists the removed API's EULA, the ADA CDT EULA, Sparks3D, a Visual Studio 2015 pre-release licence for stdole, and "Drifty" (the wrong licence for DotNetZip). Missing: the GPL v2 itself (`Resources/GPL.txt` exists but isn't in the resx), MySqlConnector, MimeKit, Google APIs, fo-dicom, DotNetZip, RdlEngine, NHunspell and the Hunspell dictionary, Direct Project, MSAL, WebView2 and the MIT System.* libraries. |
 | Third-party notices file | None exists. |
 | Installer | Needs a GPL page, the attribution page, `NOTICE` and the third-party notices in the program folder, and a source link for GPL v2 section 3 (the GitHub tag). |
-| Public repository | `Marysville-Dental-Center/opendental` is a public GitHub fork of `OpenDental/opendental`, and it still carries the binaries in 1.1 and 1.2 at the tip and in its history. |
+| Public repository | This repository is a public GitHub fork of `OpenDental/opendental`, and it still carries the binaries in 1.1 and 1.2 at the tip and in its history. |
 
 ## 5. Installer tooling on this PC, and my recommendation
 

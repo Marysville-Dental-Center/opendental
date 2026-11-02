@@ -48,7 +48,7 @@ Open Dental's public manual describes the office side: identity proofing through
 
 ### 1.2 What Open Dental provided
 
-Sources: `D:/Dev/opendental-schema/hq-vendor-table.md` (row "NewCrop eRx account ID (also OID root)") and the code below.
+Sources: the HQ vendor table (kept outside the repository) (row "NewCrop eRx account ID (also OID root)") and the code below.
 
 | What | How it reached the office | Code | Needed after decoupling? |
 |---|---|---|---|
@@ -282,7 +282,7 @@ New behaviour in `FormOIDRegistryInternal`:
 
 ## 6. Test plan
 
-**Step 1, discovery on a restored copy of `fox-db` (read-only).** Don't select password values.
+**Step 1, discovery on a restored copy of the office database (read-only).** Don't select password values.
 
 ```sql
 SELECT PrefName, IF(PrefName='NewCropPassword', LENGTH(ValueString), ValueString) AS v
@@ -363,7 +363,7 @@ SELECT COUNT(*) FROM oidexternal WHERE rootExternal LIKE '2.16.840.1.113883.3.43
 **Sources used:**
 
 - Code in this repo (paths above)
-- `D:/Dev/opendental-schema/hq-vendor-table.md`
+- The HQ vendor table (kept outside the repository)
 - `docs/decoupling-plan.md`
 - `docs/specs/vendor-direct/dosespot.md`
 - the vendor and registry pages cited inline

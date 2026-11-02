@@ -172,7 +172,7 @@ vstest.console.exe tests/ReleaseFlowTests/bin/Debug/ReleaseFlowTests.dll /Platfo
 ```
 
 - Guard decisions for the full startup matrix: fresh 24.3.63, office copy 25.3.48, copies edited to 25.3.50 and 25.4.0, adopted, adopted with markers removed, adopted by a newer build, unfinished adoption.
-- Adoption on scratch databases with synthetic data. The 25.3.48 case uses the `od_253_schema` patient definition when it's loaded, otherwise the column and index from `fox-db-schema.sql`.
+- Adoption on scratch databases with synthetic data. The 25.3.48 case uses the `od_253_schema` patient definition when it's loaded, otherwise the column and index as the office's schema-only dump has them.
 - Publish and pull round trips, including tampered segments, a tampered manifest and a manifest for another product.
 - The publish/pull decision for the named, blank and other update server cases, with and without build times; the restart rule of `IsDbConnectionSafe`; and the build time stamped into `OpenPmsDental.exe`.
 - An adopted copy with only `ForkSchemaLevel`, or `ForkSchemaLevel` and `OdSchemaCompat`, removed: refused (exit 173) and never adopted again.
