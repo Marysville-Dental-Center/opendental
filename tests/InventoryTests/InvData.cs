@@ -131,6 +131,41 @@ namespace InventoryTests {
 			return null;
 		}
 
+		///<summary>Closes every open stock count (Open or Posting) as Discarded, so a test starts without one: the office has at most one.</summary>
+		public static void CloseOpenCounts() {
+			DataCore.NonQ("UPDATE supplycount SET CountStatus="+(int)SupplyCountStatus.Discarded+" WHERE CountStatus IN("+(int)SupplyCountStatus.Open+","
+				+(int)SupplyCountStatus.Posting+")");
+		}
+
+		///<summary>The number of stock counts that are Open or Posting.</summary>
+		public static int CountOpenCounts() {
+			return PIn.Int(DataCore.GetScalar("SELECT COUNT(*) FROM supplycount WHERE CountStatus IN("+(int)SupplyCountStatus.Open+","
+				+(int)SupplyCountStatus.Posting+")"));
+		}
+
+		///<summary>A synthetic user without a group, in the cache.</summary>
+		public static Userod User() {
+			int n=Next();
+			long userNum=DataCore.NonQ("INSERT INTO userod (UserName) VALUES ('InvCounter"+n+"')",true,"UserNum","userod");
+			Userods.RefreshCache();
+			return Userods.GetUser(userNum);
+		}
+
+		///<summary>One counted line saved as the Stock Count window saves it (InventoryTracking.SaveCountLine): into supplyCountNum, or into the
+		///office's open count (or a new one) when 0. A lot found in the count has lotNumber and no supplyLotNum.</summary>
+		public static SupplyCountLine CountLine(Supply supply,double qty,long supplyLotNum=0,bool isAdded=false,long supplyCountNum=0,string lotNumber="",
+			DateTime dateExpiry=default)
+		{
+			SupplyCountLine supplyCountLine=new SupplyCountLine();
+			supplyCountLine.SupplyCountNum=supplyCountNum;
+			supplyCountLine.SupplyNum=supply.SupplyNum;
+			supplyCountLine.SupplyLotNum=supplyLotNum;
+			supplyCountLine.LotNumber=lotNumber;
+			supplyCountLine.DateExpiry=dateExpiry;
+			supplyCountLine.QtyCounted=qty;
+			return InventoryTracking.SaveCountLine(supplyCountLine,isAdded);
+		}
+
 		///<summary>The number of security log entries of the permission whose text contains the fragment.</summary>
 		public static int CountLogs(EnumPermType permType,string textFragment) {
 			return (int)PIn.Long(DataCore.GetScalar("SELECT COUNT(*) FROM securitylog WHERE PermType="+(int)permType+" AND LogText LIKE '%"

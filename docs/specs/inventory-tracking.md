@@ -159,8 +159,10 @@ Without transactions (`SupplyCounts`, `SupplyCountLines`, `InventoryTracking`):
 2. **Saving a line** is one `INSERT ... SELECT ... FROM supplycount WHERE` (the count is Open) `... ON DUPLICATE KEY UPDATE` statement. It
    writes a line only into an open count, and a supply and lot counted again replaces its line (counted quantity, a new snapshot, user and
    time) instead of adding a second one, also when two workstations save it at the same moment. A scan adds one to the line's counted quantity
-   inside that statement, so scans of the same item on two workstations all count. A line the statement refuses because the count is no
-   longer open is reported to the user, never lost without a word. A lot found in the count whose number has become a lot of the supply since
+   inside that statement, so scans of the same item on two workstations all count. A line is saved into the count the window shows; a window
+   that shows none saves into the open count (one started elsewhere meanwhile is joined) or starts one. A line the statement refuses because
+   the count is no longer open (posted or discarded elsewhere) is reported to the user, never lost or moved into a new count without a word;
+   the window then shows the office's count as it is now. A lot found in the count whose number has become a lot of the supply since
    (received meanwhile) is saved as that lot, and its earlier line follows it.
 3. **Posting** first marks the count Posting (`UPDATE ... WHERE CountStatus=Open`): of two workstations posting the same count only one
    posts it, and from then on no line can be saved into it. Then it reads the lines, writes the count adjustments (`PostCount`, 3.5) and marks

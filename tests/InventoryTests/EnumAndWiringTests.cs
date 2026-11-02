@@ -105,7 +105,7 @@ namespace InventoryTests {
 		///database still matches Open Dental, and ForkTables.VerifyDatabase holds each to its declaration (MigrationTests).</summary>
 		[TestMethod]
 		public void ForkTables_TheInventoryTablesAreDeclared_AndAllowedAsExtraTables() {
-			string[] arrayTables=new[] { "supplyledger","supplylot","supplyproccode","supplysetting","supplyprocpending" };
+			string[] arrayTables=new[] { "supplyledger","supplylot","supplyproccode","supplysetting","supplyprocpending","supplycount","supplycountline" };
 			CollectionAssert.AreEquivalent(arrayTables,InvDb.ArrayInventoryTables);
 			foreach(string table in arrayTables) {
 				Assert.IsTrue(ForkTables.IsForkTable(table),table);
@@ -132,14 +132,31 @@ namespace InventoryTests {
 			Assert.AreEqual(InventoryTables.CREATE_SUPPLYLOT,new InventoryTables().GetCreateTable("supplylot"));
 		}
 
+		///<summary>The owner's answers of 2026-11-02 ("all as recommended") are marked: INV 1 to 15, 17 and 18 decided, INV 11 the one change (saved
+		///stock counts); INV 16 is left for the merge of the packages.</summary>
+		[TestMethod]
+		public void OwnerQuestions_AreMarkedDecided() {
+			string[] arrayLines=ReadRepoFile("docs","owner-questions.md").Split('\n');
+			for(int n=1;n<=18;n++) {
+				string line=arrayLines.Single(x => x.StartsWith("- (INV "+n+") "));
+				Assert.AreEqual(n!=16,line.Contains("**Decided (2026-11-02):**"),"INV "+n);
+			}
+			StringAssert.Contains(arrayLines.Single(x => x.StartsWith("- (INV 11) ")),"**Decided (2026-11-02):** saved, and built");
+			string spec=ReadRepoFile("docs","specs","inventory-tracking.md");
+			StringAssert.Contains(spec,"- INV 1 to 10, 12 to 15, 17 and 18: kept as built");
+			StringAssert.Contains(spec,"- INV 11: changed. A stock count is saved while it is counted");
+		}
+
 		[TestMethod]
 		public void SpecAndReadme_DescribeTheSteps() {
 			string spec=ReadRepoFile("docs","specs","inventory-tracking.md");
 			string readme=ReadRepoFile("OpenPmsDentalBusiness","Misc","ForkMigrations","README.md");
-			foreach(string level in new[] { "2026110211","2026110212" }) {
+			foreach(string level in new[] { "2026110211","2026110212","2026110213" }) {
 				StringAssert.Contains(spec,"| "+level+" |");
 			}
-			StringAssert.Contains(readme,"2026110211 and 2026110212 | `InventorySteps.cs`");
+			StringAssert.Contains(readme,"2026110211 to 2026110213 | `InventorySteps.cs`");
+			StringAssert.Contains(spec,"2026110214 to 2026110219 are kept for this feature.");
+			Assert.AreEqual("2026110211 to 2026110213",new InventoryTables().Levels);
 			//One rule for fork-only tables (the shared section), and the stock ledger written once as its one exception.
 			Assert.AreEqual(1,readme.Split(new[] { "## Fork-only tables" },StringSplitOptions.None).Length-1);
 			StringAssert.Contains(readme,"It is the one exception to \"created empty\"");

@@ -135,11 +135,18 @@ namespace InventoryTests {
 			Assert.AreEqual(0,countAdjusted);
 			Assert.AreEqual(3,SupplyLedgers.GetSumForLot(supplyLot.SupplyLotNum));
 			Assert.AreEqual(1,SupplyLedgers.GetForSupply(supply.SupplyNum).Count(x => x.LedgerType==SupplyLedgerType.CountAdjust),"Adjusted once.");
-			//The window reads the ledger through these, never the counters.
+			//The window reads the ledger through these, never the counters; the reload after a failed post is the business layer's, from the ledger
+			//too, and so is every saved line's snapshot.
 			string source=System.IO.File.ReadAllText(InvDb.FindRepoFile(System.IO.Path.Combine("OpenPmsDental","Forms","FormSupplyCount.cs")));
 			Assert.IsFalse(source.Contains("QtyOnHand"),"FormSupplyCount reads no lot counter.");
 			StringAssert.Contains(source,"InventoryTracking.GetCountLines(supply.SupplyNum)");
-			Assert.AreEqual(2,source.Split(new[] { "InventoryTracking.GetQtyProgram(" },StringSplitOptions.None).Length-1,"New lot and the reload after a failure.");
+			Assert.AreEqual(1,source.Split(new[] { "InventoryTracking.GetQtyProgram(" },StringSplitOptions.None).Length-1,"A lot found by its number.");
+			string sourceBusiness=System.IO.File.ReadAllText(InvDb.FindRepoFile(System.IO.Path.Combine("OpenPmsDentalBusiness","Db Multi Table","InventoryTracking.cs")));
+			int indexReopen=sourceBusiness.IndexOf("private static void ReopenAfterFailedPost(");
+			int indexSave=sourceBusiness.IndexOf("public static SupplyCountLine SaveCountLine(");
+			Assert.IsTrue(indexReopen>0 && indexSave>0);
+			StringAssert.Contains(sourceBusiness.Substring(indexReopen,sourceBusiness.IndexOf("#endregion Saved stock counts")-indexReopen),"GetQtyProgram(");
+			StringAssert.Contains(sourceBusiness.Substring(indexSave,indexReopen>indexSave ? indexReopen-indexSave : sourceBusiness.Length-indexSave),"GetQtyProgram(");
 			SupplyLedgers.RecomputeForSupplies(new List<long> { supply.SupplyNum });
 			SupplyLedgers.RecomputeForLots(new List<long> { supplyLot.SupplyLotNum });
 		}

@@ -20,8 +20,10 @@ namespace InventoryTests {
 	public class MigrationTests {
 		private static readonly string _dbName=InvDb.Name("mig");
 		private static string _skipReason;
-		private static readonly string[] _arrayInventoryTables=new[] { "supplyledger","supplylot","supplyproccode","supplysetting","supplyprocpending" };
-		private static readonly List<ForkMigrationStep> _listSteps=new List<ForkMigrationStep> { new InventoryLedgerStep(),new InventoryTablesStep() };
+		private static readonly string[] _arrayInventoryTables=new[] { "supplyledger","supplylot","supplyproccode","supplysetting","supplyprocpending","supplycount",
+			"supplycountline" };
+		private static readonly List<ForkMigrationStep> _listSteps=new List<ForkMigrationStep> { new InventoryLedgerStep(),new InventoryTablesStep(),
+			new InventoryCountsStep() };
 		private static List<string> _listChangesFirst;
 		private static List<string> _listChangesSecond;
 		private static DataTable _tableOpening;
@@ -158,7 +160,7 @@ namespace InventoryTests {
 
 		[TestMethod]
 		public void Steps_SecondRunChangesNothing() {
-			Assert.AreEqual(6,_listChangesFirst.Count,string.Join("\r\n",_listChangesFirst));
+			Assert.AreEqual(8,_listChangesFirst.Count,"Seven tables and the opening rows: "+string.Join("\r\n",_listChangesFirst));
 			Assert.AreEqual(0,_listChangesSecond.Count,string.Join("\r\n",_listChangesSecond));
 			Assert.AreEqual(3,_tableOpening.Rows.Count,"The opening rows are written once.");
 		}
@@ -207,7 +209,9 @@ namespace InventoryTests {
 
 		[TestMethod]
 		public void Tables_MapTheirClassesColumnByColumn() {
-			foreach(Type type in new[] { typeof(SupplyLedger),typeof(SupplyLot),typeof(SupplyProcCode),typeof(SupplySetting),typeof(SupplyProcPending) }) {
+			foreach(Type type in new[] { typeof(SupplyLedger),typeof(SupplyLot),typeof(SupplyProcCode),typeof(SupplySetting),typeof(SupplyProcPending),
+				typeof(SupplyCount),typeof(SupplyCountLine) })
+			{
 				SchemaTable schemaTable=_dictTables[CrudTableAttribute.GetTableName(type).ToLowerInvariant()];
 				Assert.IsNotNull(schemaTable,type.Name);
 				List<string> listFields=type.GetFields(BindingFlags.Public|BindingFlags.Instance).Select(x => x.Name).ToList();
@@ -217,6 +221,9 @@ namespace InventoryTests {
 			}
 			Assert.IsNotNull(_dictTables["supplysetting"].GetIndex("SupplyNum"));
 			Assert.AreEqual("UNIQUE KEY",_dictTables["supplyprocpending"].GetIndex("ProcNum").Kind);
+			//A supply and lot counted again replaces its line: one line per count, supply, lot and lot number.
+			Assert.AreEqual("UNIQUE KEY",_dictTables["supplycountline"].GetIndex("SupplyCountNum").Kind);
+			Assert.IsNotNull(_dictTables["supplycount"].GetIndex("CountStatus"));
 		}
 
 		[TestMethod]
@@ -224,7 +231,7 @@ namespace InventoryTests {
 			List<ForkMigrationStep> listSteps=ForkMigrationRunner.GetSteps();
 			List<long> listLevels=listSteps.Where(x => x.GetType().Namespace==typeof(InventoryLedgerStep).Namespace && x.GetType().Name.StartsWith("Inventory"))
 				.Select(x => x.Level).ToList();
-			CollectionAssert.AreEqual(new long[] { 2026110211,2026110212 },listLevels);
+			CollectionAssert.AreEqual(new long[] { 2026110211,2026110212,2026110213 },listLevels);
 			Assert.IsTrue(listLevels.All(x => x>=2026110211 && x<=2026110219),"The inventory range.");
 			foreach(ForkMigrationStep step in listSteps) {
 				ForkMigrationRunner.ValidateStep(step);

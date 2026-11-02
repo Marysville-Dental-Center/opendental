@@ -878,13 +878,14 @@ namespace OpenPmsDentalBusiness {
 				.Find(x => string.Equals((x.LotNumber??"").Trim(),(lotNumber??"").Trim(),StringComparison.OrdinalIgnoreCase));
 		}
 
-		///<summary>Saves one counted line into the office's open count as soon as it is counted, starting a count when none is open
-		///(SupplyCounts.InsertOpenIfNone; two workstations starting at once share one). The line is the supply and its lot (SupplyLotNum), or a lot
-		///found in the count (SupplyLotNum 0 and LotNumber, with DateExpiry), or stock without a lot. A lot found in the count whose number is a lot of
-		///the supply by now is saved as that lot. The line gets a new snapshot of the program's quantity, read from the ledger now (GetQtyProgram;
-		///0 for a lot found in the count), and replaces the count's earlier line of the same supply and lot; QtyCounted replaces its counted
-		///quantity, or with isAdded (a scan) is added to it in the same statement (SupplyCountLines.Upsert). Throws when the count is being posted or
-		///was closed by another workstation meanwhile: the line is then not saved, and the window says so. Returns the line as saved, with the lot
+		///<summary>Saves one counted line as soon as it is counted, into the count the window shows (supplyCountLine.SupplyCountNum), or, when the
+		///window shows none (0), into the office's open count, starting one when none is open (SupplyCounts.InsertOpenIfNone; two workstations
+		///starting at once share one). The line is the supply and its lot (SupplyLotNum), or a lot found in the count (SupplyLotNum 0 and LotNumber,
+		///with DateExpiry), or stock without a lot. A lot found in the count whose number is a lot of the supply by now is saved as that lot. The
+		///line gets a new snapshot of the program's quantity, read from the ledger now (GetQtyProgram; 0 for a lot found in the count), and replaces
+		///the count's earlier line of the same supply and lot; QtyCounted replaces its counted quantity, or with isAdded (a scan) is added to it in
+		///the same statement (SupplyCountLines.Upsert). Throws when the count is being posted or was closed by another workstation meanwhile: the
+		///line is then not saved (never moved into a new count without a word), and the window says so. Returns the line as saved, with the lot
 		///number and expiry date of an existing lot filled in.</summary>
 		public static SupplyCountLine SaveCountLine(SupplyCountLine supplyCountLine,bool isAdded) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
@@ -899,10 +900,20 @@ namespace OpenPmsDentalBusiness {
 				throw new ApplicationException(Lans.g("InventoryTracking","The supply was deleted by another user."));
 			}
 			long userNum=Security.CurUser?.UserNum??0;
-			SupplyCount supplyCount=SupplyCounts.InsertOpenIfNone(userNum);
-			if(supplyCount==null) {
-				throw new ApplicationException(Lans.g("InventoryTracking","The stock count is being posted, or its post did not finish. Open Supply Inventory to "
-					+"resume it."));
+			SupplyCount supplyCount;
+			if(supplyCountLine.SupplyCountNum>0) {
+				supplyCount=SupplyCounts.GetOne(supplyCountLine.SupplyCountNum);//Whether it is still open, the statement below checks.
+				if(supplyCount==null) {
+					throw new ApplicationException(Lans.g("InventoryTracking","The stock count was posted or discarded by another user, or is being posted. "
+						+"This line was not saved."));
+				}
+			}
+			else {
+				supplyCount=SupplyCounts.InsertOpenIfNone(userNum);
+				if(supplyCount==null) {
+					throw new ApplicationException(Lans.g("InventoryTracking","The stock count is being posted, or its post did not finish. Open Supply Inventory "
+						+"to resume it."));
+				}
 			}
 			SupplyCountLine supplyCountLineSave=new SupplyCountLine();
 			supplyCountLineSave.SupplyCountNum=supplyCount.SupplyCountNum;

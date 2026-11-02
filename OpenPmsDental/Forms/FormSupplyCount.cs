@@ -216,12 +216,15 @@ namespace OpenPmsDental {
 			}
 		}
 
-		///<summary>Saves the row at once as a counted line of the open count (InventoryTracking.SaveCountLine, which starts a count when none is
-		///open): qty replaces its counted quantity, or with isAdded (a scan) is added to it. The line gets the program's quantity of this moment.
-		///Then reads the count again. Returns false when it was not saved (a message says why; another workstation posted or discarded the count).
+		///<summary>Saves the row at once as a counted line of the count this window shows, or of the office's open count (or a new one) while it
+		///shows none (InventoryTracking.SaveCountLine): qty replaces its counted quantity, or with isAdded (a scan) is added to it. The line gets the
+		///program's quantity of this moment. Then reads the count again. Returns false when it was not saved (a message says why: another
+		///workstation posted or discarded the count; the window then shows the office's count as it is now, and counting the row again saves it).
 		///</summary>
 		private bool SaveRow(CountRow countRow,double qty,bool isAdded) {
 			SupplyCountLine supplyCountLine=new SupplyCountLine();
+			//The count this window shows: a line is never moved into another count without a word. None (0): the office's open count, or a new one.
+			supplyCountLine.SupplyCountNum=_supplyCount?.SupplyCountNum??0;
 			supplyCountLine.SupplyNum=countRow.Supply.SupplyNum;
 			supplyCountLine.SupplyLotNum=countRow.SupplyLotNum;
 			supplyCountLine.LotNumber=countRow.LotNumber;

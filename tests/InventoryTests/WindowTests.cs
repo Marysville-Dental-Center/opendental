@@ -18,7 +18,7 @@ namespace InventoryTests {
 	[TestClass]
 	public class WindowTests {
 		///<summary>WinForms controls are created on a single-threaded apartment thread, as the program does.</summary>
-		private static void RunSta(Action action) {
+		internal static void RunSta(Action action) {
 			Exception exception=null;
 			Thread thread=new Thread(() => {
 				try {
@@ -42,7 +42,7 @@ namespace InventoryTests {
 			List<Func<Form>> listFuncs=new List<Func<Form>> {
 				() => new FormMaterialsUsed(),() => new FormInventorySetup(),() => new FormSupplyAdjust(),() => new FormSupplyCount(),
 				() => new FormSupplyProcCodes(),() => new FormSupplyProcPendings(),() => new FormSupplyReceive(),() => new FormSupplyStock(),
-				() => new FormSupplyUsageReport(),() => new FormSupplyEdit(),
+				() => new FormSupplyUsageReport(),() => new FormSupplyEdit(),() => new FormSupplyInventory(),
 			};
 			RunSta(() => {
 				foreach(Func<Form> func in listFuncs) {
@@ -63,11 +63,11 @@ namespace InventoryTests {
 			});
 		}
 
-		private static T GetPrivate<T>(object obj,string fieldName) {
+		internal static T GetPrivate<T>(object obj,string fieldName) {
 			return (T)obj.GetType().GetField(fieldName,BindingFlags.NonPublic|BindingFlags.Instance).GetValue(obj);
 		}
 
-		private static void InvokePrivate(object obj,string methodName,params object[] arrayArgs) {
+		internal static void InvokePrivate(object obj,string methodName,params object[] arrayArgs) {
 			obj.GetType().GetMethod(methodName,BindingFlags.NonPublic|BindingFlags.Instance).Invoke(obj,arrayArgs);
 		}
 
