@@ -213,8 +213,9 @@ namespace DicomReaderTests {
 		}
 
 		///<summary>Files that break PS3.5 or PS3.10 in ways real writers did, which fo-dicom 4 read: an Implicit VR data set under an Explicit VR
-		///transfer syntax, two spaces where an Explicit VR element's VR goes, File Meta Information in Implicit VR, and data sets with no File
-		///Meta Information whose first element is private or out of tag order.</summary>
+		///transfer syntax, two spaces where an Explicit VR element's VR goes, File Meta Information in Implicit VR, data sets with no File Meta
+		///Information whose first element is private, of group 0004 or out of tag order, and a preamble of zeros without "DICM" (fo-dicom read
+		///the Implicit VR data set after it, not the Explicit VR one).</summary>
 		public static List<ReaderCase> MislabelledEncodings() {
 			List<ReaderCase> listCases=new List<ReaderCase>();
 			List<SynElement> listTwelve=Twelve().ToDataset();
@@ -241,6 +242,12 @@ namespace DicomReaderTests {
 			listCases.Add(new ReaderCase("enc-dataset-only-explicit-private-first-12",MakeFileIn(listPrivateFirst,ExplicitVrLittleEndian,SynLayout.DatasetOnly)));
 			List<SynElement> listGroup40First=new List<SynElement> { Text(0x0040,0x0254,"LO","STUDY") }.Concat(listTwelve).ToList();
 			listCases.Add(new ReaderCase("enc-dataset-only-implicit-group-0040-first-12",MakeFileIn(listGroup40First,ImplicitVrLittleEndian,SynLayout.DatasetOnly)));
+			//Group 0004 (directory structuring, PS3.3 F.3) first.
+			List<SynElement> listGroup4First=new List<SynElement> { Text(0x0004,0x1130,"CS","FILESET") }.Concat(listTwelve).ToList();
+			listCases.Add(new ReaderCase("enc-dataset-only-implicit-group-0004-first-12",MakeFileIn(listGroup4First,ImplicitVrLittleEndian,SynLayout.DatasetOnly)));
+			//A preamble of zeros without "DICM" or File Meta Information.
+			listCases.Add(new ReaderCase("enc-zero-preamble-no-prefix-implicit-12",MakeFileIn(listTwelve,ImplicitVrLittleEndian,SynLayout.PreambleWithoutPrefix)));
+			listCases.Add(new ReaderCase("enc-zero-preamble-no-prefix-explicit-12",MakeFileIn(listTwelve,ExplicitVrLittleEndian,SynLayout.PreambleWithoutPrefix)));
 			return listCases;
 		}
 

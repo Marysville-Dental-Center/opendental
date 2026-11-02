@@ -27,6 +27,8 @@ namespace DicomReaderTests {
 		private static Dictionary<string,DicomImageReadStatus> BuildNewOutcomes() {
 			Dictionary<string,DicomImageReadStatus> dict=new Dictionary<string,DicomImageReadStatus>();
 			dict.Add("enc-prefix-no-preamble-12",DicomImageReadStatus.NotDicom);
+			//fo-dicom read the Implicit VR data set after a preamble of zeros without "DICM", but not the Explicit VR one; both are read now.
+			dict.Add("enc-zero-preamble-no-prefix-explicit-12",DicomImageReadStatus.Read);
 			foreach(string name in new[] { "img-mono2-16-10-9","img-mono2-16-13-12","img-mono2-16-14-13","img-mono2-16-15-14","img-mono2-16-1-0",
 				"img-mono2-16-4-3","img-mono2-8-6-5","img-mono2-8-4-7","img-mono2-8-1-0","img-mono2-8-7-6","img-signed-16-16-15","img-signed-16-12-11",
 				"img-signed-16-12-11-masked","img-signed-16-14-13","img-signed-mono1-16-16-15","img-signed-rescale-window-16","img-ybr-full-planar0",
@@ -276,7 +278,8 @@ namespace DicomReaderTests {
 
 		[TestMethod]
 		public void MislabelledEncodings_AreReadFromTheData_AsFoDicomReadThem() {
-			//Every one gives the source pixels, as fo-dicom 4 did (FoDicomBaseline.cs); the reported transfer syntax is still the file's label.
+			//Every one gives the source pixels, as fo-dicom 4 did for all but the Explicit VR data set after a preamble of zeros, which it did not
+			//show (FoDicomBaseline.cs); the reported transfer syntax is still the file's label.
 			ushort[] arraySource=ReaderCases.Words(35,4095);
 			foreach(ReaderCase readerCase in ReaderCases.MislabelledEncodings()) {
 				DicomImageReadResult result=ReadThroughHelper(readerCase.Bytes);
@@ -323,11 +326,12 @@ namespace DicomReaderTests {
 				("zeros",new byte[400]),
 				("a JPEG file",ReaderCases.JpegGrayFixed()),
 				("text",System.Text.Encoding.ASCII.GetBytes("This is a text file that someone named .dcm by mistake.")),
-				("preamble without DICM",new byte[128].Concat(EncodeAs(ReaderCases.Twelve().ToDataset(),SynEncoding.ExplicitLittle)).ToArray()),
+				("a preamble that is not zeros, without DICM",Enumerable.Repeat((byte)0x41,128).Concat(EncodeAs(ReaderCases.Twelve().ToDataset(),
+					SynEncoding.ExplicitLittle)).ToArray()),
 				("a first group above 00FF",MakeFileIn(new List<SynElement> { Text(0x0100,0x0010,"LO","X") }.Concat(ReaderCases.Twelve().ToDataset()).ToList(),
 					ImplicitVrLittleEndian,SynLayout.DatasetOnly)),
-				("a first group below 0008",MakeFileIn(new List<SynElement> { Text(0x0004,0x0010,"LO","X") }.Concat(ReaderCases.Twelve().ToDataset()).ToList(),
-					ImplicitVrLittleEndian,SynLayout.DatasetOnly)),
+				("a first group below 0008 other than 0004",MakeFileIn(new List<SynElement> { Text(0x0006,0x0010,"LO","X") }
+					.Concat(ReaderCases.Twelve().ToDataset()).ToList(),ImplicitVrLittleEndian,SynLayout.DatasetOnly)),
 				("an Implicit VR length past the end",MakeFileIn(With(ReaderCases.Twelve().ToDataset().Where(x => (x.Tag>>16)!=0x0008).ToList(),
 					new SynElement { Tag=Tag(0x0009,0x0010),Vr="LO",Value=new byte[2],LengthOverride=0x00FFFFF0 }),ImplicitVrLittleEndian,SynLayout.DatasetOnly)),
 				("group 0002 at byte 0 with an Implicit VR length past the end",new byte[] { 0x02,0x00,0x10,0x00,0xF0,0xFF,0xFF,0x00 }

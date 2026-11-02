@@ -36,6 +36,8 @@ namespace DicomReaderTests {
 		MetaImplicit,
 		///<summary>File Meta Information in Implicit VR Little Endian at the very start: no preamble and no "DICM".</summary>
 		MetaImplicitWithoutPreamble,
+		///<summary>A 128-byte preamble of zeros, then the data set: no "DICM" and no File Meta Information.</summary>
+		PreambleWithoutPrefix,
 	}
 
 	///<summary>One image for the test files: the Image Pixel module (PS3.3 C.7.6.3) and the pixel bytes of every frame, native and little-endian.
@@ -298,7 +300,9 @@ namespace DicomReaderTests {
 				bytesGroupLength=Encode(new List<SynElement> { UL(0x0002,0x0000,(uint)bytesMeta.Length) });
 			}
 			using(MemoryStream memoryStream=new MemoryStream()) {
-				if(layout==SynLayout.Standard || layout==SynLayout.MetaWithoutTransferSyntax || layout==SynLayout.MetaImplicit) {
+				if(layout==SynLayout.Standard || layout==SynLayout.MetaWithoutTransferSyntax || layout==SynLayout.MetaImplicit
+					|| layout==SynLayout.PreambleWithoutPrefix)
+				{
 					memoryStream.Write(new byte[128],0,128);
 				}
 				if(layout==SynLayout.Standard || layout==SynLayout.MetaWithoutTransferSyntax || layout==SynLayout.PrefixWithoutPreamble
@@ -306,7 +310,7 @@ namespace DicomReaderTests {
 				{
 					memoryStream.Write(Encoding.ASCII.GetBytes("DICM"),0,4);
 				}
-				if(layout!=SynLayout.DatasetOnly) {
+				if(layout!=SynLayout.DatasetOnly && layout!=SynLayout.PreambleWithoutPrefix) {
 					memoryStream.Write(bytesGroupLength,0,bytesGroupLength.Length);
 					memoryStream.Write(bytesMeta,0,bytesMeta.Length);
 				}

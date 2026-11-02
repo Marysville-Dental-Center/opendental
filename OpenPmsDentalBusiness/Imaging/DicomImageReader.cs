@@ -73,7 +73,8 @@ namespace OpenPmsDentalBusiness {
 	///(System.IO.Compression), in a PS3.10 file (128-byte preamble, "DICM", File Meta Information), in a file that starts directly with the
 	///File Meta Information, or as a data set with no File Meta Information or without a Transfer Syntax UID, whose encoding is then told from
 	///its first element. The encoding is decided from the data where writers broke the standard in ways fo-dicom 4 read: File Meta
-	///Information in Implicit VR, an Implicit VR data set labelled Explicit VR Little Endian, two spaces where an element's VR goes. fo-dicom
+	///Information in Implicit VR, an Implicit VR data set labelled Explicit VR Little Endian, two spaces where an element's VR goes, a preamble
+	///of zeros without "DICM", a first element of a private group or out of tag order. fo-dicom
 	///refused "DICM" at byte 0 without the preamble, and so does this reader (docs/imaging/dicom-reader.md lists exactly what is accepted).
 	///Encapsulated pixel data (PS3.5 A.4): the items, the fragments, the Basic Offset Table and the Extended Offset Table are parsed here, and
 	///the first frame's bytes go to the decoder DicomFrameDecoderRegistry has for the transfer syntax. A compressed transfer syntax without a
@@ -593,7 +594,7 @@ namespace OpenPmsDentalBusiness {
 			#region File header and encoding
 			///<summary>The PS3.10 header, if any, and the encoding of the data set (PS3.10 7.1; PS3.5 10).</summary>
 			private void ReadHeader() {
-				byte[] bytesHead=_source.Peek(132);
+				byte[] bytesHead=_source.Peek(136);
 				bool hasMeta=false;
 				if(bytesHead.Length>=132 && bytesHead[128]=='D' && bytesHead[129]=='I' && bytesHead[130]=='C' && bytesHead[131]=='M') {
 					_source.Skip(132,"the PS3.10 preamble");
@@ -602,10 +603,18 @@ namespace OpenPmsDentalBusiness {
 				else if(bytesHead.Length>=4 && bytesHead[0]=='D' && bytesHead[1]=='I' && bytesHead[2]=='C' && bytesHead[3]=='M') {
 					throw new DeclineException(DicomImageReadStatus.NotDicom,"The file starts with \"DICM\" without the 128-byte preamble before it (PS3.10 7.1).");
 				}
-				else if(bytesHead.Length>=8 && bytesHead[0]==0x02 && bytesHead[1]==0x00
-					&& (IsExplicitHeader(bytesHead) || IsImplicitLengthThatFits(bytesHead)))
-				{
-					hasMeta=true;//File Meta Information at the very start, without the preamble, in Explicit or Implicit VR
+				else {
+					if(bytesHead.Length>=136 && bytesHead.Take(128).All(x => x==0)) {
+						//A preamble of zeros without the "DICM" prefix after it. fo-dicom 4 read an Implicit VR data set after one (as empty elements
+						//of group 0000); this reader skips the zeros and tells what follows as it would at byte 0, so a file of zeros stays not DICOM.
+						_source.Skip(128,"the preamble");
+						bytesHead=_source.Peek(8);
+					}
+					if(bytesHead.Length>=8 && bytesHead[0]==0x02 && bytesHead[1]==0x00
+						&& (IsExplicitHeader(bytesHead) || IsImplicitLengthThatFits(bytesHead)))
+					{
+						hasMeta=true;//File Meta Information without the preamble and prefix, in Explicit or Implicit VR
+					}
 				}
 				if(hasMeta) {
 					ReadFileMeta();
@@ -685,9 +694,9 @@ namespace OpenPmsDentalBusiness {
 
 			///<summary>A data set without a Transfer Syntax UID: Explicit VR when the first element has VR letters (or two spaces) where the VR
 			///goes (PS3.5 7.1.2), big endian when its group reads smaller that way, otherwise Implicit VR Little Endian. The first element must
-			///look like the start of a data set: a group from 0008 to 00FF, standard or private (groups below 0008 are command and File Meta
-			///groups, PS3.5 7.1; a file of zeros has group 0000), and in Implicit VR a length that fits the file. Otherwise the file is not
-			///DICOM.</summary>
+			///look like the start of a data set: group 0004 (directory structuring) or a group from 0008 to 00FF, standard or private (0000 is the
+			///command group, 0002 the File Meta Information, and a file of zeros has group 0000), and in Implicit VR a length that fits the file.
+			///Otherwise the file is not DICOM.</summary>
 			private void DetectEncoding() {
 				byte[] bytesPeek=_source.Peek(8);
 				string notDicom="Neither a PS3.10 file (no \"DICM\" prefix after a 128-byte preamble) nor a DICOM data set.";
@@ -699,7 +708,7 @@ namespace OpenPmsDentalBusiness {
 				ushort groupBig=U16(bytesPeek,0,true);
 				bool isBig=isExplicit && groupBig<groupLittle;
 				ushort group=isBig ? groupBig : groupLittle;
-				if(group<0x0008 || group>0x00FF) {
+				if(group!=0x0004 && (group<0x0008 || group>0x00FF)) {
 					throw new DeclineException(DicomImageReadStatus.NotDicom,notDicom);
 				}
 				if(!isExplicit && !IsImplicitLengthThatFits(bytesPeek)) {
