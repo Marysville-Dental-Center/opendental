@@ -299,12 +299,59 @@ namespace ReleaseFlowTests {
 		[TestMethod]
 		public void BuildIdFiles_AreAllInTheBuildOutput() {
 			string dirTests=Path.GetDirectoryName(typeof(ReleaseManifestTests).Assembly.Location);//tests/ReleaseFlowTests/bin/Debug
-			string folder=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin",Path.GetFileName(dirTests));
+			AssertBuildIdFilesInOutput(Path.GetFileName(dirTests));
+		}
+
+		///<summary>Releases are published from a Release build, and the tests usually run from the Debug one, so the Release output is checked by
+		///name as well: every listed file is there, no file there still has a pre-rename name, and the build id of that output changes when only
+		///the exe or only the business layer changes. Inconclusive until the Release configuration is built.</summary>
+		[TestMethod]
+		public void BuildIdFiles_AreAllInTheReleaseOutput() {
+			string folder=AssertBuildIdFilesInOutput("Release");
+			//Every pre-rename program file (the exe, the business, graph and cloud dlls, the HL7 service) starts with Open Dental's prefix.
+			List<string> listOldNames=Directory.GetFiles(folder).Select(x => Path.GetFileName(x))
+				.Where(x => x.StartsWith(ProgramNames.LegacyServicePrefix,StringComparison.OrdinalIgnoreCase))
+				.ToList();
+			Assert.AreEqual(0,listOldNames.Count,"Pre-rename files in "+folder+": "+string.Join(", ",listOldNames));
+			//A copy of the listed files (about 40 MB, removed afterwards), so the real output is never changed.
+			string folderCopy=TestPaths.NewTempFolder("buildid_release");
+			try {
+				foreach(string fileName in ForkReleases.ListBuildIdFiles) {
+					File.Copy(Path.Combine(folder,fileName),Path.Combine(folderCopy,fileName));
+				}
+				string buildId=ForkReleases.ComputeBuildId(folderCopy);
+				Assert.AreEqual(ForkReleases.ComputeBuildId(folder),buildId,"The build id comes from the listed files only.");
+				foreach(string fileName in new[] { ProgramNames.ExeFileName,ProgramNames.BusinessDllFileName }) {
+					string buildIdBefore=ForkReleases.ComputeBuildId(folderCopy);
+					using(FileStream fileStream=new FileStream(Path.Combine(folderCopy,fileName),FileMode.Append)) {
+						fileStream.WriteByte(0);
+					}
+					Assert.AreNotEqual(buildIdBefore,ForkReleases.ComputeBuildId(folderCopy),"The build id of the Release output does not cover "+fileName+".");
+				}
+			}
+			finally {
+				try {
+					Directory.Delete(folderCopy,true);
+				}
+				catch(IOException) {
+				}
+				catch(UnauthorizedAccessException) {
+				}
+			}
+			Assert.AreEqual("OpenPmsDental.exe",ProgramNames.ExeFileName);
+			Assert.AreEqual("OpenPmsDentalBusiness.dll",ProgramNames.BusinessDllFileName);
+		}
+
+		///<summary>Asserts that every ListBuildIdFiles file is in OpenPmsDental\bin\(configuration) and returns that folder. Inconclusive when the
+		///exe is not built in that configuration.</summary>
+		private static string AssertBuildIdFilesInOutput(string configuration) {
+			string folder=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin",configuration);
 			if(!File.Exists(Path.Combine(folder,ProgramNames.ExeFileName))) {
 				Assert.Inconclusive(Path.Combine(folder,ProgramNames.ExeFileName)+" is not built.");
 			}
 			List<string> listMissing=ForkReleases.ListBuildIdFiles.Where(x => !File.Exists(Path.Combine(folder,x))).ToList();
 			Assert.AreEqual(0,listMissing.Count,"Missing from the build output "+folder+": "+string.Join(", ",listMissing));
+			return folder;
 		}
 	}
 }
