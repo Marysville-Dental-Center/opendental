@@ -90,6 +90,7 @@
       "tests\\M2SHELLTests\\M2SHELLTests.csproj",
       "tests\\M2TERMTests\\M2TERMTests.csproj",
       "tests\\M2UDSTests\\M2UDSTests.csproj",
+      "tests\\MaintenanceTests\\MaintenanceTests.csproj",
       "tests\\MedicationTests\\MedicationTests.csproj",
       "tests\\PayPlanTests\\PayPlanTests.csproj",
       "tests\\QueryMonitorTests\\QueryMonitorTests.csproj",
