@@ -153,9 +153,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="NHunspell">
-      <HintPath>..\Required dlls\NHunspell.dll</HintPath>
-    </Reference>
     <ProjectReference Include="..\ODCrypt\xODCrypt.csproj">
       <Project>{c37b8157-f665-4ebe-8fd6-20d1c92a0797}</Project>
       <Name>xODCrypt</Name>
@@ -8922,7 +8919,7 @@
     <None Include="Resources\Tamir.txt" />
     <None Include="Resources\SshNet.txt" />
     <None Include="Resources\PdfSharp.txt" />
-    <None Include="Resources\NHunSpell.txt" />
+    <None Include="Resources\WeCantSpellHunspell.txt" />
     <None Include="Resources\NewtonSoft_Json.txt" />
     <None Include="Resources\GPL.txt" />
     <None Include="Resources\NDde.txt" />
@@ -9493,14 +9490,9 @@
     </COMReference>
   </ItemGroup>
   <ItemGroup>
-    <!-- Native (x86) files that the program loads at run time but that no reference brings into the output, in Debug and Release alike:
-         Hunspellx86.dll is loaded by NHunspell.dll for the spell check in every ODtextBox (a Release build throws without it), and
-         WebView2Loader.dll by Microsoft.Web.WebView2.Core.dll for every WebView2 window (CodeBase/Controls/ODWebView2.cs). -->
-    <None Include="..\Required dlls\Hunspellx86.dll">
-      <Link>Hunspellx86.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Visible>False</Visible>
-    </None>
+    <!-- The native (x86) file that the program loads at run time but that no reference brings into the output, in Debug and Release alike:
+         WebView2Loader.dll, loaded by Microsoft.Web.WebView2.Core.dll for every WebView2 window (CodeBase/Controls/ODWebView2.cs). The spell
+         checker needs no native file: WeCantSpell.Hunspell is managed and comes with WpfControlsOD. -->
     <None Include="..\Required dlls\WebView2Loader.dll">
       <Link>WebView2Loader.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

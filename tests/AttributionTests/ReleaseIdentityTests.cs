@@ -17,7 +17,7 @@ namespace AttributionTests {
 		///<summary>Every third-party component the release ships, by its name in THIRD-PARTY-NOTICES.txt (report-release.md 1.3 to 1.5).</summary>
 		private static readonly string[] _arrayShippedComponents=new string[] {
 			"MySqlConnector",".NET libraries","Newtonsoft.Json","MimeKit","MSAL.NET","SSH.NET","PDFsharp","MigraDoc","SharpDX","Tao Framework",
-			"Direct Project","OpenPop.NET","SharpSSH","Mentalis.org Security Library","NHunspell and Hunspell","Hunspell en_US dictionary",
+			"Direct Project","OpenPop.NET","SharpSSH","Mentalis.org Security Library","WeCantSpell.Hunspell","Hunspell en_US dictionary",
 			"RDL Project","Google APIs Client Library for .NET","fo-dicom","NDde","Microsoft Edge WebView2 SDK","TWAIN","Pearl API notice",
 		};
 
@@ -31,7 +31,7 @@ namespace AttributionTests {
 			"PdfSharp.System.dll","PdfSharp.License.dll","MigraDoc.DocumentObjectModel.dll","MigraDoc.Rendering-gdi.dll","SharpDX.dll",
 			"SharpDX.Direct3D9.dll","SharpDX.Mathematics.dll","Tao.OpenGl.dll",
 			"Tao.Platform.Windows.dll","Health.Direct.Agent.dll","Health.Direct.Common.dll","Health.Direct.ResolverPlugins.dll","OpenPop.dll",
-			"Tamir.SharpSSH.dll","Org.Mentalis.Security.dll","DiffieHellman.dll","NHunspell.dll","Hunspellx86.dll","RdlEngine.dll","RdlViewer.dll",
+			"Tamir.SharpSSH.dll","Org.Mentalis.Security.dll","DiffieHellman.dll","WeCantSpell.Hunspell.dll","RdlEngine.dll","RdlViewer.dll",
 			"Google.Apis.dll","Google.Apis.Auth.dll","Google.Apis.Core.dll","Google.Apis.Gmail.v1.dll","Dicom.Core.dll","Dicom.Native.dll","NDde.dll",
 			"Microsoft.Web.WebView2.Core.dll","Microsoft.Web.WebView2.WinForms.dll","Microsoft.Web.WebView2.Wpf.dll","WebView2Loader.dll",
 		};
@@ -43,10 +43,11 @@ namespace AttributionTests {
 			"Oracle","Tao_Freeglut",
 		};
 
-		///<summary>What packages BIN-A and BIN-B delete, and Open Dental's own closed binaries: never listed as shipped.</summary>
+		///<summary>What packages BIN-A and BIN-B delete, Open Dental's own closed binaries, and the spell checker the library updates replaced
+		///(NHunspell with its native Hunspellx86.dll and Hunspellx64.dll): never listed as shipped.</summary>
 		private static readonly string[] _arrayNotShipped=new string[] {
 			"Sparks3D","SigPlusNET","Interop.Word","Interop.Microsoft.Office","Interop.VBIDE","stdole","AcroPDF","Acrobat","zxing","Avalara","RS232","DotNetZip",
-			"Ionic","Drifty","VBbridges","xImageDeviceManager","EZTwain","Eztwain","SuniUSB","VideoCamLib",
+			"Ionic","Drifty","VBbridges","xImageDeviceManager","EZTwain","Eztwain","SuniUSB","VideoCamLib","NHunspell","Hunspellx86","Hunspellx64",
 		};
 
 		#region Helpers
@@ -146,6 +147,11 @@ namespace AttributionTests {
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="fo-dicom").Text,"Microsoft Public License (MS-PL)");
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="Direct Project").Text,"Redistribution and use in source and binary forms");
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="NDde").Text,"Shared Source License for NDde");
+			//The spell checker's own licence file (license.txt of the package): Hunspell's tri-licence header with its contributors.
+			string textWeCantSpell=listLicenseEntries.Single(x => x.Name=="WeCantSpell.Hunspell").Text;
+			StringAssert.Contains(textWeCantSpell,"Version: MPL 1.1/GPL 2.0/LGPL 2.1");
+			StringAssert.Contains(textWeCantSpell,"the GNU Lesser General Public License Version 2.1 or later");
+			StringAssert.Contains(textWeCantSpell,"LICENSE-LGPL-2.1.txt");
 		}
 
 		[TestMethod]

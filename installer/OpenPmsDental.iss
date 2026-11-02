@@ -103,6 +103,11 @@ Source: "{tmp}\{#ConfigFileName}"; DestDir: "{app}"; Flags: external onlyifdoesn
 Type: files; Name: "{app}\PdfSharp.dll"
 Type: files; Name: "{app}\PdfSharp.Charting.dll"
 Type: files; Name: "{app}\MigraDoc.Rendering.dll"
+; Libraries an earlier release installed that the program no longer uses (the library updates). An upgrade removes them, so no stale copy
+; stays next to the program. tests\LibraryBindingTests checks that the release ships none of them.
+; The spell checker: NHunspell and its native Hunspell (v0.0 shipped the x86 one only), replaced by the managed WeCantSpell.Hunspell.dll.
+Type: files; Name: "{app}\NHunspell.dll"
+Type: files; Name: "{app}\Hunspellx86.dll"
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#ExeName}"; WorkingDir: "{app}"; Check: not WizardNoIcons

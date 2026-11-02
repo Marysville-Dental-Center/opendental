@@ -30,7 +30,7 @@ namespace ReleaseFlowTests {
 			"Eztwain4.dll","Bridges.dll","CDT.dll","stdole.dll","Interop.Word.dll","Interop.Microsoft.Office.Core.dll","Interop.VBIDE.dll",
 			"Interop.QBFC10.dll","AxInterop.AcroPDFLib.dll","Interop.AcroPDFLib.dll","Windows.winmd","installutil.exe","vcruntime140.dll","MSVCR71.dll",
 			"RS232.dll","SigPlusNET.dll","zxing.dll","zxing.presentation.dll","Avalara.AvaTax.RestClient.net45.dll","Ionic.Zip.dll","TWAINDSM.dll",
-			"FreeDentalConfig.xml","OpenPmsDental.pdb","unins000.exe","unins000.dat","OpenDental.exe","OpenDentBusiness.dll",
+			"NHunspell.dll","Hunspellx86.dll","Hunspellx64.dll","FreeDentalConfig.xml","OpenPmsDental.pdb","unins000.exe","unins000.dat","OpenDental.exe","OpenDentBusiness.dll",
 		};
 
 		///<summary>The program folder's documents, staged from the repository.</summary>
@@ -47,7 +47,7 @@ namespace ReleaseFlowTests {
 		private const string LGPL_SHA256_LF="20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95";
 
 		///<summary>The components of THIRD-PARTY-NOTICES.txt that ship under the LGPL 2.1, and so with its text.</summary>
-		private static readonly string[] _arrayLgplComponents=new string[] { "NHunspell and Hunspell","Hunspell en_US dictionary","RDL Project" };
+		private static readonly string[] _arrayLgplComponents=new string[] { "WeCantSpell.Hunspell","Hunspell en_US dictionary","RDL Project" };
 
 		#region Helpers
 		private class ScriptResult {
@@ -154,7 +154,7 @@ namespace ReleaseFlowTests {
 		public void AllowList_ShipsTheRuntimeFiles_TheDocuments_AndEveryBuildIdFile() {
 			List<KeyValuePair<string,string>> listFiles=ListFiles();
 			List<string> listPaths=listFiles.Select(x => x.Value).ToList();
-			foreach(string name in new[] { "WebView2Loader.dll","Hunspellx86.dll","ODR.dll","OpenPmsDental.exe","OpenPmsDental.exe.config","UpdateFileCopier.exe",
+			foreach(string name in new[] { "WebView2Loader.dll","WeCantSpell.Hunspell.dll","ODR.dll","OpenPmsDental.exe","OpenPmsDental.exe.config","UpdateFileCopier.exe",
 				"ImagingDeviceManager.dll","ImagingCapture.dll","RdlEngine.dll","RdlViewer.dll","Direct2dWrapper.dll" })
 			{
 				CollectionAssert.Contains(listPaths,name);
@@ -243,12 +243,12 @@ namespace ReleaseFlowTests {
 		public void CheckFolder_FailsWhenTheRuntimeFilesOrTheDocumentsAreMissing() {
 			string folder=NewFakeStaging("missing");
 			try {
-				foreach(string path in new[] { "WebView2Loader.dll","Hunspellx86.dll","ODR.dll","LICENSE",LGPL_FILE,@"db\init\new-database.sql" }) {
+				foreach(string path in new[] { "WebView2Loader.dll","WeCantSpell.Hunspell.dll","ODR.dll","LICENSE",LGPL_FILE,@"db\init\new-database.sql" }) {
 					File.Delete(Path.Combine(folder,path));
 				}
 				ScriptResult scriptResult=CheckFolder(folder);
 				Assert.AreEqual(1,scriptResult.ExitCode,scriptResult.Output);
-				foreach(string name in new[] { "WebView2Loader.dll","Hunspellx86.dll","ODR.dll",LGPL_FILE }) {
+				foreach(string name in new[] { "WebView2Loader.dll","WeCantSpell.Hunspell.dll","ODR.dll",LGPL_FILE }) {
 					Assert.IsTrue(scriptResult.Lines.Any(x => x.StartsWith("Missing: "+name+" (")),"No reason for "+name+"\r\n"+scriptResult.Output);
 				}
 				CollectionAssert.Contains(scriptResult.Lines,"Missing: LICENSE");
@@ -279,8 +279,8 @@ namespace ReleaseFlowTests {
 
 		[TestMethod]
 		public void LgplText_IsTheLicenceVerbatim_AndEveryLgplComponentPointsToIt() {
-			//RdlEngine.dll, RdlViewer.dll, NHunspell.dll, Hunspellx86.dll and the en_US word list ship under the LGPL 2.1, which asks for a copy of
-			//the licence with every copy of the library. The release stages the text (the allow-list test above) from this file.
+			//RdlEngine.dll, RdlViewer.dll, WeCantSpell.Hunspell.dll and the en_US word list ship under the LGPL 2.1, which asks for a copy of the
+			//licence with every copy of the library. The release stages the text (the allow-list test above) from this file.
 			string text=TestPaths.ReadSource(LGPL_FILE).Replace("\r\n","\n");
 			StringAssert.StartsWith(text.TrimStart(),"GNU LESSER GENERAL PUBLIC LICENSE");
 			StringAssert.Contains(text,"Version 2.1, February 1999");
@@ -297,8 +297,8 @@ namespace ReleaseFlowTests {
 				Assert.IsTrue(match.Success,"No License field for "+component);
 				StringAssert.Contains(match.Groups[1].Value,LGPL_FILE,component);
 			}
-			//The tri-licensed NHunspell and Hunspell ship under their LGPL option, so no MPL 1.1 text is needed.
-			StringAssert.Contains(notices,"This release distributes them under the GNU Lesser General Public License, version 2.1");
+			//The tri-licensed WeCantSpell.Hunspell ships under its GPL/LGPL option, so no MPL 1.1 text is needed.
+			StringAssert.Contains(notices,"This release uses it under the GPL / LGPL");
 			StringAssert.Contains(TestPaths.ReadSource("NOTICE"),LGPL_FILE);
 			StringAssert.Contains(TestPaths.ReadSource("installer","setup-info.txt"),LGPL_FILE);
 		}

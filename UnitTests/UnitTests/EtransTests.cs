@@ -6,7 +6,6 @@ using System.Text;
 using System.Threading.Tasks;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using NHunspell;
 using OpenPmsDental;
 using OpenPmsDentalBusiness;
 using UnitTestsCore;
