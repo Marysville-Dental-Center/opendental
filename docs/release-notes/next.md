@@ -25,8 +25,9 @@ section 0):
    `sql_mode=""`, restart MariaDB, and leave `require_secure_transport` OFF. Create the program's own database account, `opmsd`, with
    only the rights the guide lists (the office database, the backup databases the update makes first, and three server-wide rights),
    after removing the rights MariaDB's own setup may give every account on `test` databases (the guide, section 5); the program no
-   longer uses `root`. The guide's list was tested on a local MariaDB 10.11 server, not yet on an office server: try it on a test copy
-   first. The 0.0 workstations keep working.
+   longer uses `root`. The guide's list was tested on a local MariaDB 10.11 server (the program did everything it does, each right was
+   shown to be needed, and every other right was refused), not yet on an office server: try it on a test copy first. The 0.0
+   workstations keep working.
 2. On the update server: uninstall 0.0, then install this version with its setup, as an administrator. Setup runs the connection settings
    tool (`OpenPmsDentalDbSettings.exe`), which sets up the office CA certificate and imports the client certificate (or stores the
    database password). Start the program there as an administrator; it backs up and updates the database. **Do not publish yet:** when
@@ -83,6 +84,12 @@ server computer must then connect with `<db-server>` (the name the workstations 
   thumbprint or put there another way stays.
 - **Setup exit code 10.** A silent setup that installed the files but could not finish the connection settings (the tool failed, or an
   existing install's settings fail the connection rule) ends with exit code 10, so deployment scripts see it; the setup log says why.
+
+## Database Maintenance: every check runs again
+
+The check `ProcedurelogTpAttachedToClaim` failed on every database with an SQL syntax error, inherited from Open Dental 24.3.22, and
+Database Maintenance stops at the first error: running all checks (or fixes) never reached the checks after it in the list. The check
+works again, so a full run goes through every check.
 
 ## DICOM: fo-dicom is gone, the program reads DICOM itself
 
