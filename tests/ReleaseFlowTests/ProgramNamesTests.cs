@@ -46,7 +46,7 @@ namespace ReleaseFlowTests {
 			Assert.AreEqual("OpenPmsDental.exe",ProgramNames.ExeFileName);
 			Assert.AreEqual("OpenPmsDentalBusiness.dll",ProgramNames.BusinessDllFileName);
 			Assert.AreEqual("OpenPmsDentalGraph.dll",ProgramNames.GraphDllFileName);
-			Assert.AreEqual("OpenPmsDentalStorage.dll",ProgramNames.CloudDllFileName,"The storage rename (2026-11-02) changed this value.");
+			Assert.AreEqual("OpenPmsDentalStorage.dll",ProgramNames.StorageDllFileName,"The storage rename (2026-11-02) changed this value.");
 			Assert.AreEqual("OpenPmsDentalCloud.dll",ProgramNames.LegacyCloudDllFileName,"The storage library of v0.0; it never changes.");
 			Assert.AreEqual("UpdateFileCopier.exe",ProgramNames.UpdateFileCopierExeFileName);
 			//The configuration files keep their names (decision D3), so existing installs and the publish filter still find them.

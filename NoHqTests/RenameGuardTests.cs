@@ -63,7 +63,7 @@ namespace NoHqTests {
 		[TestMethod]
 		public void StorageLibrary_IsNamedLikeItsAssembly_AndTheOldOneIsNotReferenced() {
 			Assembly assemblyBusiness=typeof(CloudStorage).Assembly;
-			string nameStorage=Path.GetFileNameWithoutExtension(ProgramNames.CloudDllFileName);
+			string nameStorage=Path.GetFileNameWithoutExtension(ProgramNames.StorageDllFileName);
 			string nameLegacy=Path.GetFileNameWithoutExtension(ProgramNames.LegacyCloudDllFileName);
 			Assert.AreEqual("OpenPmsDentalStorage",nameStorage);
 			AssemblyName assemblyNameStorage=assemblyBusiness.GetReferencedAssemblies().FirstOrDefault(x => x.Name==nameStorage);

@@ -19,7 +19,7 @@ namespace VendorDirectTests.Dropbox {
 		}
 
 		private static Assembly GetCloudAssembly() {
-			string name=Path.GetFileNameWithoutExtension(CodeBase.ProgramNames.CloudDllFileName);
+			string name=Path.GetFileNameWithoutExtension(CodeBase.ProgramNames.StorageDllFileName);
 			AssemblyName assemblyName=typeof(CloudStorage).Assembly.GetReferencedAssemblies().First(x => x.Name==name);
 			return Assembly.Load(assemblyName);
 		}

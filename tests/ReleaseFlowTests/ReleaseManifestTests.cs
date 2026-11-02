@@ -255,7 +255,7 @@ namespace ReleaseFlowTests {
 			Assert.IsFalse(ForkReleases.ShouldPublishFile("Plugin__local.dll"));
 			Assert.IsFalse(ForkReleases.ShouldPublishFile(ReleaseManifest.FILE_NAME));
 			Assert.IsFalse(ForkReleases.ShouldPublishFile("Manifest.txt"),"Open Dental's manifest is never shipped.");
-			Assert.IsTrue(ForkReleases.ShouldPublishFile(ProgramNames.CloudDllFileName));
+			Assert.IsTrue(ForkReleases.ShouldPublishFile(ProgramNames.StorageDllFileName));
 			//Today's names (decision D3 keeps them), which a rename would change in ProgramNames only.
 			Assert.AreEqual("FreeDentalConfig.xml",ProgramNames.ConfigFileName);
 			Assert.AreEqual("OpenDentalServerConfig.xml",ProgramNames.MiddleTierConfigFileName);
@@ -266,18 +266,18 @@ namespace ReleaseFlowTests {
 		[TestMethod]
 		public void PublishFilter_NeverPublishesARetiredFile() {
 			CollectionAssert.Contains(ForkReleases.ListRetiredFiles,ProgramNames.LegacyCloudDllFileName);
-			Assert.AreNotEqual(ProgramNames.CloudDllFileName,ProgramNames.LegacyCloudDllFileName,"The storage library has a new name.");
+			Assert.AreNotEqual(ProgramNames.StorageDllFileName,ProgramNames.LegacyCloudDllFileName,"The storage library has a new name.");
 			string folder=TestPaths.NewTempFolder("retired");
 			try {
 				File.WriteAllText(Path.Combine(folder,ProgramNames.ExeFileName),"synthetic exe");
-				File.WriteAllText(Path.Combine(folder,ProgramNames.CloudDllFileName),"synthetic storage");
+				File.WriteAllText(Path.Combine(folder,ProgramNames.StorageDllFileName),"synthetic storage");
 				foreach(string fileName in ForkReleases.ListRetiredFiles) {
 					Assert.IsFalse(ForkReleases.ShouldPublishFile(fileName),fileName);
 					Assert.IsFalse(ForkReleases.ShouldPublishFile(fileName.ToUpperInvariant()),"File names ignore case: "+fileName);
 					Assert.IsFalse(ForkReleases.ListBuildIdFiles.Contains(fileName,StringComparer.OrdinalIgnoreCase),"A retired file is not part of the build id: "+fileName);
 					File.WriteAllText(Path.Combine(folder,fileName),"synthetic leftover "+fileName);
 				}
-				CollectionAssert.AreEqual(new[] { ProgramNames.ExeFileName,ProgramNames.CloudDllFileName }.OrderBy(x => x,StringComparer.OrdinalIgnoreCase).ToList(),
+				CollectionAssert.AreEqual(new[] { ProgramNames.ExeFileName,ProgramNames.StorageDllFileName }.OrderBy(x => x,StringComparer.OrdinalIgnoreCase).ToList(),
 					ForkReleases.GetReleaseFiles(folder),"Only today's files are published.");
 				ReleaseIdentity releaseIdentity=new ReleaseIdentity { ReleaseVersion="0.0",BuildId=ForkReleases.ComputeBuildId(folder) };
 				ReleaseManifest releaseManifest=ForkReleases.BuildRelease(folder,releaseIdentity,"SERVER1",new DateTime(2026,11,2,12,0,0,DateTimeKind.Utc),
@@ -315,7 +315,7 @@ namespace ReleaseFlowTests {
 		[TestMethod]
 		public void BuildIdFiles_NameTheProgramAndItsOwnAssemblies() {
 			foreach(string fileName in new[] { ProgramNames.ExeFileName,ProgramNames.BusinessDllFileName,"CodeBase.dll","DataConnectionBase.dll",
-				"WpfControlsOD.dll",ProgramNames.GraphDllFileName,ProgramNames.CloudDllFileName,"ImagingDeviceManager.dll","ImagingCapture.dll",
+				"WpfControlsOD.dll",ProgramNames.GraphDllFileName,ProgramNames.StorageDllFileName,"ImagingDeviceManager.dll","ImagingCapture.dll",
 				ProgramNames.UpdateFileCopierExeFileName })
 			{
 				Assert.IsTrue(ForkReleases.ListBuildIdFiles.Contains(fileName),fileName);
@@ -325,8 +325,8 @@ namespace ReleaseFlowTests {
 			Assert.AreEqual(typeof(Patient).Assembly.GetName().Name+".dll",ProgramNames.BusinessDllFileName);
 			Assert.AreEqual(typeof(CodeBase.ODBuild).Assembly.GetName().Name+".dll","CodeBase.dll");
 			//The same for the storage library, which the business layer references (the storage rename changed its name).
-			Assert.IsTrue(typeof(CloudStorage).Assembly.GetReferencedAssemblies().Any(x => x.Name+".dll"==ProgramNames.CloudDllFileName),
-				ProgramNames.CloudDllFileName+" is not the storage library the business layer references.");
+			Assert.IsTrue(typeof(CloudStorage).Assembly.GetReferencedAssemblies().Any(x => x.Name+".dll"==ProgramNames.StorageDllFileName),
+				ProgramNames.StorageDllFileName+" is not the storage library the business layer references.");
 			Assert.IsFalse(typeof(CloudStorage).Assembly.GetReferencedAssemblies().Any(x => x.Name+".dll"==ProgramNames.LegacyCloudDllFileName),
 				"Nothing references the storage library of v0.0.");
 		}

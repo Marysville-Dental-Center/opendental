@@ -28,7 +28,7 @@ Run-time names (`CodeBase/Utilities/ProgramNames.cs`, pinned by `ReleaseFlowTest
 | Constant | Value |
 |---|---|
 | `ProcessName`, `ExeFileName` | `OpenPmsDental`, `OpenPmsDental.exe` |
-| `BusinessDllFileName`, `GraphDllFileName`, `CloudDllFileName` | `OpenPmsDentalBusiness.dll`, `OpenPmsDentalGraph.dll`, `OpenPmsDentalCloud.dll` (`OpenPmsDentalStorage.dll` since the storage rename; `LegacyCloudDllFileName` keeps the old file name) |
+| `BusinessDllFileName`, `GraphDllFileName`, `CloudDllFileName` | `OpenPmsDentalBusiness.dll`, `OpenPmsDentalGraph.dll`, `OpenPmsDentalCloud.dll` (since the storage rename `StorageDllFileName` = `OpenPmsDentalStorage.dll`; `LegacyCloudDllFileName` keeps the old file name) |
 | `LocalAppDataFolderName`, `ProgramDataFolderName` | `OpenPMS-Dental` |
 | `TempFolderName` | `openpms-dental` (`UpdateFileCopierTempFolderName` stays `updatefilecopier`) |
 | `EventLogSource` | `OpenPMS-Dental` |
@@ -138,10 +138,9 @@ Owner decision 2026-11-02, branch `next/storage-1`. The project `OpenPmsDentalCl
 |---|---|
 | Folder `OpenPmsDentalCloud\`, `OpenPmsDentalCloud.csproj`, AssemblyName, RootNamespace, AssemblyTitle, `OpenPmsDentalCloud.dll` | `OpenPmsDentalStorage` (`OpenPmsDentalStorage\OpenPmsDentalStorage.csproj`, `OpenPmsDentalStorage.dll`) |
 | Namespaces `OpenPmsDentalCloud`, `OpenPmsDentalCloud.Core` | `OpenPmsDentalStorage`, `OpenPmsDentalStorage.Core` (every `using` and fully qualified reference) |
-| `ProgramNames.CloudDllFileName` = `OpenPmsDentalCloud.dll` | `OpenPmsDentalStorage.dll`; the new `ProgramNames.LegacyCloudDllFileName` keeps `OpenPmsDentalCloud.dll` |
+| `ProgramNames.CloudDllFileName` = `OpenPmsDentalCloud.dll` | `ProgramNames.StorageDllFileName` = `OpenPmsDentalStorage.dll` (the constant renamed too, owner decision 2026-11-02); the new `ProgramNames.LegacyCloudDllFileName` keeps `OpenPmsDentalCloud.dll` |
 
-Kept: the type names (`CloudStorage`, `Sftp`, `RemovedStorage`, `StorageRemovedException`, `TaskState*`, `ProgressHandler`), the constant
-name `CloudDllFileName`, the project GUID `{F90D0481-3D97-4C72-AF6E-DD81177E3DE1}` (and the COM `Guid` attribute), every configuration line
+Kept: the type names (`CloudStorage`, `Sftp`, `RemovedStorage`, `StorageRemovedException`, `TaskState*`, `ProgressHandler`), the project GUID `{F90D0481-3D97-4C72-AF6E-DD81177E3DE1}` (and the COM `Guid` attribute), every configuration line
 of `OpenDental.sln`, AssemblyVersion 16.4.0.0 and AssemblyFileVersion 1.0.0.0. The product name comes from `SharedAssemblyInfo.cs` as
 before.
 
@@ -159,7 +158,7 @@ deletes a file (as for the rename of 2026-11-01, below). A workstation that pull
 
 - No assembly references it any more (NoHqTests `RenameGuardTests.StorageLibrary_IsNamedLikeItsAssembly_AndTheOldOneIsNotReferenced`
   checks the business layer, the storage library and CodeBase; ReleaseFlowTests `BuildIdFiles_NameTheProgramAndItsOwnAssemblies` checks
-  that `CloudDllFileName` is the assembly the business layer references). No `.config` file has a binding redirect for it.
+  that `StorageDllFileName` is the assembly the business layer references). No `.config` file has a binding redirect for it.
 - The program never loads a DLL by scanning its folder. Plug-ins load by the file name in their program row. A plug-in built against
   v0.0's storage library would bind to the leftover copy; plug-ins are not carried across a rename (decision D5).
 - The build id lists `OpenPmsDentalStorage.dll` (`ForkReleases.ListBuildIdFiles`), so the leftover file never counts.
@@ -184,7 +183,7 @@ types are in the old namespaces and nothing calls them), but it is loaded.
 - Middle Tier: no remoted method takes or returns one of its types. `CloudStorage`, `TsiTransLogs` and the windows call it on the client
   (`Meth.NoCheckMiddleTierRole`), so no type name of it travels. Every type is under the assembly's name anyway (the RenameGuardTests check
   above), should one ever cross.
-- Reflection: no product code loads the assembly or its types by name. Tests reach it through `ProgramNames.CloudDllFileName` and the
+- Reflection: no product code loads the assembly or its types by name. Tests reach it through `ProgramNames.StorageDllFileName` and the
   business layer's reference.
 
 **A branch made before this rename** (from v0.0, or from before the rename of 2026-11-01, after the two scripted passes below, which keep

@@ -15,7 +15,7 @@ it (it replaces CodeBase.dll while it runs; `UpdateFileCopier.csproj` links it l
 | Constant | Value today | Used by |
 |---|---|---|
 | `ProcessName`, `ExeFileName`, `IsProgramProcessName` | `OpenDental`, `OpenDental.exe`; whole-name match, ignoring case | ProgramEntry (second instance), FormOpenDental (shutdown message), SFTP stash liveness, UpdateFileCopier (kill and relaunch), CentralManager (`Process.Start`), the build id |
-| `BusinessDllFileName`, `GraphDllFileName`, `CloudDllFileName`, `UpdateFileCopierExeFileName` | today's file names | the build id; FormOpenDental's close-time clean-up keeps the copier |
+| `BusinessDllFileName`, `GraphDllFileName`, `CloudDllFileName` (`StorageDllFileName` since the storage rename of 2026-11-02), `UpdateFileCopierExeFileName` | today's file names | the build id; FormOpenDental's close-time clean-up keeps the copier |
 | `ConfigFileName`, `MiddleTierConfigFileName`, `ReplicationServiceConfigFileName` | `FreeDentalConfig.xml`, `OpenDentalServerConfig.xml`, `OpenDentalReplicationServiceConfig.xml` | `ForkReleases.ShouldPublishFile`; DtoProcessor reads the Middle Tier config |
 | `LocalAppDataFolderName` | `OpenDental` | window sizes, Query Monitor filters, Waiting Room position, chart letter working copies |
 | `LegacyLocalAppDataFolderName` | `OpenDental`, and it stays that after the rename | chart letters scan it for unsaved work (`GetLocalAppDataFolders`) |
@@ -73,7 +73,7 @@ solution name.
 - RefDataTests: the exe's window names use the entry point's namespace (`TypeLookup.GetEntryNamespace`), WpfControlsOD's use FrmODBase's.
 - PayConnect1RemovedTests: namespaces from `transType` and `Patient`, with both asserted to resolve; a missing project folder fails instead of
   being skipped.
-- DropboxRemovedTests: the cloud assembly by `ProgramNames.CloudDllFileName`, its namespace from the `Sftp` type.
+- DropboxRemovedTests: the cloud assembly by `ProgramNames.StorageDllFileName` (`CloudDllFileName` until 2026-11-02), its namespace from the `Sftp` type.
 - BridgesDllRemovedTests: the DoseSpot check uses `typeof(Patient).Namespace` and first asserts that `.Bridges` holds types; a missing project folder
   fails instead of being skipped.
 - MedicationListAndVitalsTests: looks for `UI.TabControl` under any namespace, and proves the pattern on a window that keeps its tab control.

@@ -252,7 +252,7 @@ namespace ReleaseFlowTests {
 			foreach(string name in ForkReleases.ListRetiredFiles) {
 				Assert.IsFalse(listPaths.Contains(name,StringComparer.OrdinalIgnoreCase),"A retired file is on the allow-list: "+name);
 			}
-			CollectionAssert.Contains(listPaths,ProgramNames.CloudDllFileName,"The storage library ships under its new name.");
+			CollectionAssert.Contains(listPaths,ProgramNames.StorageDllFileName,"The storage library ships under its new name.");
 			string folder=NewFakeStaging("retired");
 			try {
 				foreach(string name in ForkReleases.ListRetiredFiles) {

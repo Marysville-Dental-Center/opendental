@@ -24,7 +24,7 @@ namespace CodeBase {
 		///<summary>The dashboard graphs' file name.</summary>
 		public const string GraphDllFileName="OpenPmsDentalGraph.dll";
 		///<summary>The SFTP storage library's file name (the OpenPmsDentalStorage project).</summary>
-		public const string CloudDllFileName="OpenPmsDentalStorage.dll";
+		public const string StorageDllFileName="OpenPmsDentalStorage.dll";
 		///<summary>The storage library's file name up to v0.0, before the storage rename of 2026-11-02 (docs\port-notes\RENAME.md). Nothing
 		///references it any more, so nothing loads it. UpdateFileCopier never deletes a file, so a workstation updated from v0.0 keeps it: the
 		///release channel never publishes it again (OpenPmsDentalBusiness.ForkReleases.ListRetiredFiles), Build-Release.ps1 refuses to stage it

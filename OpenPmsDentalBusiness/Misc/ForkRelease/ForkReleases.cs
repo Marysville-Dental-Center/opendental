@@ -85,7 +85,7 @@ namespace OpenPmsDentalBusiness {
 			"DataConnectionBase.dll",
 			"WpfControlsOD.dll",
 			ProgramNames.GraphDllFileName,
-			ProgramNames.CloudDllFileName,
+			ProgramNames.StorageDllFileName,
 			"SparksToothChart.dll",
 			"ODCrypt.dll",
 			"PasswordVaultWrapper.dll",
