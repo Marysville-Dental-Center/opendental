@@ -79,6 +79,56 @@ namespace DbConnectionSecurityTests {
 			Assert.AreEqual(hostExpected,host,server);
 			Assert.AreEqual(portExpected,port,server);
 		}
+
+		[TestMethod]
+		public void SplitServerList_EveryEntry_OnePort() {
+			AssertSplitList("a.example.test:3307,b.example.test:3307","a.example.test,b.example.test","3307");
+			AssertSplitList("a.example.test,b.example.test","a.example.test,b.example.test","");
+			AssertSplitList("[::1]:3307,localhost","::1,localhost","3307");
+			AssertSplitList("localhost:3306,127.0.0.1:3306","localhost,127.0.0.1","3306");
+			AssertSplitList("[127.0.0.1],[::1]","127.0.0.1,::1","");
+			AssertSplitList(" a.example.test , ,b.example.test:3307","a.example.test,b.example.test","3307");
+			AssertSplitList("","","");
+			Assert.IsFalse(DbConnectionSecurity.SplitServerList("a.example.test:3307,b.example.test:3308",out string hosts,out string port),
+				"MySqlConnector has one Port for all hosts.");
+		}
+
+		private static void AssertSplitList(string server,string hostsExpected,string portExpected) {
+			Assert.IsTrue(DbConnectionSecurity.SplitServerList(server,out string hosts,out string port),server);
+			Assert.AreEqual(hostsExpected,hosts,server);
+			Assert.AreEqual(portExpected,port,server);
+		}
+
+		[TestMethod]
+		public void IsLoopbackConnectorHost_OnlyWhatMySqlConnectorReachesWithoutAskingTheResolver() {
+			//MySqlConnector hands each entry unchanged to Dns.GetHostAddresses, which answers by itself only for what IPAddress.TryParse reads.
+			foreach(string entry in new[] { "localhost","LOCALHOST","LocalHost","127.0.0.1","127.0.0.2","127.1","2130706433","::1","[::1]","[::1]:3306",
+				"0:0:0:0:0:0:0:1","::ffff:127.0.0.1","[::ffff:127.0.0.1]" })
+			{
+				Assert.IsTrue(DbConnectionSecurity.IsLoopbackConnectorHost(entry),entry);
+			}
+			foreach(string entry in new[] { "localhost:3306","127.0.0.1:3306","[127.0.0.1]","[127.0.0.1]:3306"," localhost","localhost "," 127.0.0.1",
+				"127.0.0.1 ","localhost.","[localhost]","","  ",null,TestHelpers.NETWORK_HOST,TestHelpers.NETWORK_ADDRESS,"[::ffff:192.0.2.10]","0.0.0.0",
+				"::" })
+			{
+				Assert.IsFalse(DbConnectionSecurity.IsLoopbackConnectorHost(entry),"'"+(entry??"null")+"'");
+			}
+		}
+
+		[TestMethod]
+		public void IsLoopbackConnectorServer_SplitsAtCommasOnly_AsMySqlConnectorDoes() {
+			foreach(string server in new[] { "","localhost,127.0.0.1","[::1],::1,127.0.0.5" }) {
+				Assert.IsTrue(DbConnectionSecurity.IsLoopbackConnectorServer(server),server);
+			}
+			foreach(string server in new[] { "localhost:3306,127.0.0.1:3306","[127.0.0.1],[::1]","localhost, 127.0.0.1","localhost,","localhost,,::1",
+				"localhost,"+TestHelpers.NETWORK_HOST })
+			{
+				Assert.IsFalse(DbConnectionSecurity.IsLoopbackConnectorServer(server),server);
+			}
+			//The program's notation reads several of them as this computer, so the two tests must never be swapped.
+			Assert.IsTrue(DbConnectionSecurity.IsLoopbackServer("localhost:3306,127.0.0.1:3306"));
+			Assert.IsTrue(DbConnectionSecurity.IsLoopbackServer("[127.0.0.1],[::1]"));
+		}
 		#endregion Loopback
 
 		#region What the network needs
@@ -137,6 +187,71 @@ namespace DbConnectionSecurityTests {
 			Assert.AreEqual(3,DbConnectionSecurity.GetMissing("Server=localhost,"+TestHelpers.NETWORK_HOST+";SslMode=None").Count,
 				"One host over the network is enough to need everything.");
 			Assert.AreEqual(0,DbConnectionSecurity.GetMissing("Server=localhost,"+TestHelpers.NETWORK_HOST+good).Count);
+		}
+
+		[TestMethod]
+		public void CheckConnectionString_PortsOrBracketsInServer_AreTheNetwork_AndRefusedWithoutTls() {
+			//Each of these goes to the system's name resolution in MySqlConnector, so a spoofed answer would get an unencrypted connection.
+			foreach(string server in new[] { "localhost:3306","127.0.0.1:3306","[127.0.0.1]","[127.0.0.1],[::1]","localhost:3306,127.0.0.1:3306",
+				"localhost, 127.0.0.1" })
+			{
+				string connectionString="Server="+server+";User ID=root;Password=;SslMode=None";
+				Assert.AreNotEqual(0,DbConnectionSecurity.GetMissing(connectionString).Count,server);
+				DbConnectionRefusedException ex=AssertRefused(() => DbConnectionSecurity.CheckConnectionString(connectionString));
+				StringAssert.Contains(ex.Message,"server verification (SslMode=VerifyFull, now None)",server);
+			}
+			DbConnectionRefusedException exPort=AssertRefused(() => DbConnectionSecurity.CheckConnectionString("Server=localhost:3306;SslMode=None"));
+			StringAssert.Contains(exPort.Message,"database server localhost:3306:","The entry is named as MySqlConnector takes it.");
+			StringAssert.Contains(exPort.Message,"give the port with Port=");
+			//What MySqlConnector does take for this computer.
+			foreach(string server in new[] { "localhost","127.0.0.1","[::1]","::1","localhost,127.0.0.1" }) {
+				DbConnectionSecurity.CheckConnectionString("Server="+server+";Port=3306;SslMode=None");
+			}
+		}
+
+		[TestMethod]
+		public void GetMissing_OnceThisComputerHasAnOfficeCa_NoOtherCaIsTrusted() {
+			string ca=TestHelpers.WriteCaPem(_folder);
+			string caOther=TestHelpers.WriteCaPem(_folder,"preference-ca.pem");
+			string officeCaPathOld=DataConnection.OfficeCaPath;
+			try {
+				string connectionStringOther="Server="+TestHelpers.NETWORK_HOST+";SslMode=VerifyFull;SslCa="+caOther+";Password=x";
+				DataConnection.OfficeCaPath="";
+				DbConnectionSecurity.CheckConnectionString(connectionStringOther);//No office CA yet: any CA file that exists.
+				DataConnection.OfficeCaPath=ca;
+				List<string> listMissing=DbConnectionSecurity.GetMissing(connectionStringOther);
+				CollectionAssert.AreEqual(new[] { "this computer's office CA certificate file (SslCa="+ca+", now "+caOther+")" },listMissing);
+				AssertRefused(() => DbConnectionSecurity.CheckConnectionString(connectionStringOther));//Not passed from memory: checked again.
+				Assert.AreEqual(0,DbConnectionSecurity.GetMissing("Server="+TestHelpers.NETWORK_HOST+";SslMode=VerifyFull;SslCa="+ca+";Password=x").Count);
+				Assert.AreEqual(0,DbConnectionSecurity.GetMissing("Server="+TestHelpers.NETWORK_HOST+";SslMode=VerifyFull;SslCa="+ca.ToUpperInvariant()
+					+";Password=x").Count,"Windows compares paths without case.");
+				Assert.AreEqual(0,DbConnectionSecurity.GetMissing("Server=localhost;SslMode=VerifyCA;SslCa="+caOther).Count,"This computer is exempt.");
+			}
+			finally {
+				DataConnection.OfficeCaPath=officeCaPathOld;
+			}
+		}
+
+		[TestMethod]
+		public void GetConnectionStringProblem_ConnectionStringsAreForThisComputerOnly() {
+			foreach(string connectionString in new[] { "","  ","Server=localhost;Database=opendental;User ID=root;Password=x",
+				"Server=127.0.0.1;Port=3306;Pwd=x;SslMode=None","Server=[::1],127.0.0.1" })
+			{
+				Assert.AreEqual("",DbConnectionSecurity.GetConnectionStringProblem(connectionString),connectionString);
+			}
+			string ca=TestHelpers.WriteCaPem(_folder);
+			foreach(string connectionString in new[] { "Server="+TestHelpers.NETWORK_HOST+";SslMode=VerifyFull;SslCa="+ca+";Password="+TestHelpers.SECRET
+				.Replace(";","").Replace("=",""),"Server="+TestHelpers.NETWORK_ADDRESS+";Pwd=x","Server=localhost:3306;Password=x",
+				"Server=127.0.0.1,"+TestHelpers.NETWORK_HOST })
+			{
+				string problem=DbConnectionSecurity.GetConnectionStringProblem(connectionString);
+				StringAssert.Contains(problem,"Connection strings are for a database on this computer only",connectionString);
+				StringAssert.Contains(problem,ProgramNames.DbSettingsExeFileName);
+				Assert.IsFalse(problem.Contains("Synthetic-Secret") || problem.Contains("Pwd=x"),"No part of the string's password in the message.");
+			}
+			string problemUnreadable=DbConnectionSecurity.GetConnectionStringProblem("Unknown Option=1;Password="+TestHelpers.SECRET.Replace(";",""));
+			StringAssert.Contains(problemUnreadable,"cannot be read");
+			Assert.IsFalse(problemUnreadable.Contains("Synthetic-Secret"));
 		}
 
 		[TestMethod]

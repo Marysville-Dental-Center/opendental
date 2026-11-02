@@ -4,7 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.AccessControl;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Principal;
 using System.Text;
 using System.Xml;
 using CodeBase;
@@ -159,11 +161,112 @@ namespace DbConnectionSecurityTests {
 		[TestMethod]
 		public void OfficeCa_WriteCopy_IsPemThatLoadsAgain() {
 			List<X509Certificate2> listCertificates=OfficeCaFile.Load(TestHelpers.WriteCaPem(_folder));
-			string pathCopy=Path.Combine(_folder,"ProgramData","Database","office-ca.pem");
+			string pathCopy=DbConnectionConfig.GetOfficeCaCopyPath(Path.Combine(_folder,"program"));
 			OfficeCaFile.WriteCopy(listCertificates,pathCopy);
 			OfficeCaFile.WriteCopy(listCertificates,pathCopy);//a second time replaces it
 			StringAssert.StartsWith(File.ReadAllText(pathCopy),"-----BEGIN CERTIFICATE-----");
 			Assert.AreEqual(listCertificates[0].Thumbprint,OfficeCaFile.Load(pathCopy)[0].Thumbprint);
+			Assert.IsFalse(File.Exists(pathCopy+".new"));
+		}
+
+		[TestMethod]
+		public void OfficeCa_CopyPath_IsInTheProgramFolder_NeverProgramData() {
+			string folderProgram=Path.Combine(_folder,"Open PMS - Dental");
+			Assert.AreEqual(Path.Combine(folderProgram,"ConnectionSettings","office-ca.pem"),DbConnectionConfig.GetOfficeCaCopyPath(folderProgram));
+			string folderProgramData=Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+			Assert.IsFalse(DbConnectionConfig.GetOfficeCaCopyPath(folderProgram).StartsWith(folderProgramData,StringComparison.OrdinalIgnoreCase));
+		}
+
+		[TestMethod]
+		public void OfficeCa_WriteCopy_ProtectsTheFolderAndTheFile_UsersMayOnlyRead() {
+			List<X509Certificate2> listCertificates=OfficeCaFile.Load(TestHelpers.WriteCaPem(_folder));
+			string pathCopy=DbConnectionConfig.GetOfficeCaCopyPath(Path.Combine(_folder,"program"));
+			OfficeCaFile.WriteCopy(listCertificates,pathCopy);
+			OfficeCaFile.WriteCopy(listCertificates,pathCopy);//File.Replace keeps the old file's DACL; the protected one is set again
+			AssertProtected(File.GetAccessControl(pathCopy).GetAccessRules(true,true,typeof(SecurityIdentifier)),
+				File.GetAccessControl(pathCopy).AreAccessRulesProtected,pathCopy);
+			string folder=Path.GetDirectoryName(pathCopy);
+			AssertProtected(Directory.GetAccessControl(folder).GetAccessRules(true,true,typeof(SecurityIdentifier)),
+				Directory.GetAccessControl(folder).AreAccessRulesProtected,folder);
+			SecurityIdentifier securityIdentifierOwner=(SecurityIdentifier)File.GetAccessControl(pathCopy).GetOwner(typeof(SecurityIdentifier));
+			if(OfficeCaFile.IsElevated()) {
+				Assert.IsTrue(securityIdentifierOwner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid),"Owner Administrators.");
+			}
+		}
+
+		///<summary>Nothing inherited; SYSTEM and Administrators full control; Users read only; no Everyone or Authenticated Users. Not elevated
+		///(the tests), the account running them may have full control too; elevated (the tool), nobody else.</summary>
+		private static void AssertProtected(AuthorizationRuleCollection authorizationRuleCollection,bool isProtected,string path) {
+			Assert.IsTrue(isProtected,"Nothing inherited: "+path);
+			SecurityIdentifier securityIdentifierUser;
+			using(WindowsIdentity windowsIdentity=WindowsIdentity.GetCurrent()) {
+				securityIdentifierUser=windowsIdentity.User;
+			}
+			FileSystemRights fileSystemRightsWrite=FileSystemRights.WriteData|FileSystemRights.AppendData|FileSystemRights.WriteAttributes
+				|FileSystemRights.WriteExtendedAttributes|FileSystemRights.Delete|FileSystemRights.DeleteSubdirectoriesAndFiles
+				|FileSystemRights.ChangePermissions|FileSystemRights.TakeOwnership;
+			bool hasSystem=false;
+			bool hasAdministrators=false;
+			bool hasUsers=false;
+			foreach(FileSystemAccessRule fileSystemAccessRule in authorizationRuleCollection) {
+				SecurityIdentifier securityIdentifier=(SecurityIdentifier)fileSystemAccessRule.IdentityReference;
+				Assert.IsFalse(fileSystemAccessRule.IsInherited,path);
+				Assert.AreEqual(AccessControlType.Allow,fileSystemAccessRule.AccessControlType,path);
+				if(securityIdentifier.IsWellKnown(WellKnownSidType.LocalSystemSid)) {
+					hasSystem=fileSystemAccessRule.FileSystemRights.HasFlag(FileSystemRights.FullControl);
+				}
+				else if(securityIdentifier.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid)) {
+					hasAdministrators=fileSystemAccessRule.FileSystemRights.HasFlag(FileSystemRights.FullControl);
+				}
+				else if(securityIdentifier.IsWellKnown(WellKnownSidType.BuiltinUsersSid)) {
+					hasUsers=true;
+					Assert.AreEqual((FileSystemRights)0,fileSystemAccessRule.FileSystemRights & fileSystemRightsWrite,"Users may only read: "+path);
+					Assert.IsTrue(fileSystemAccessRule.FileSystemRights.HasFlag(FileSystemRights.ReadData),"Users may read: "+path);
+				}
+				else {
+					Assert.IsFalse(OfficeCaFile.IsElevated(),"Elevated, nobody else has a rule: "+securityIdentifier.Value);
+					Assert.AreEqual(securityIdentifierUser,securityIdentifier,"Only the account running the tests: "+path);
+				}
+			}
+			Assert.IsTrue(hasSystem && hasAdministrators && hasUsers,"SYSTEM, Administrators and Users: "+path);
+		}
+
+		[TestMethod]
+		public void OfficeCa_WriteCopy_RefusesALinkOrAFileForTheFolder_AndWritesNothing() {
+			List<X509Certificate2> listCertificates=OfficeCaFile.Load(TestHelpers.WriteCaPem(_folder));
+			//A junction, as a user could plant one to send the administrator's write elsewhere. Junctions need no privilege to make.
+			string folderProgram=Path.Combine(_folder,"program");
+			string folderElsewhere=Path.Combine(_folder,"elsewhere");
+			Directory.CreateDirectory(folderProgram);
+			Directory.CreateDirectory(folderElsewhere);
+			string pathCopy=DbConnectionConfig.GetOfficeCaCopyPath(folderProgram);
+			MakeJunction(Path.GetDirectoryName(pathCopy),folderElsewhere);
+			DbSettingsException ex=TestHelpers.AssertThrows<DbSettingsException>(() => OfficeCaFile.WriteCopy(listCertificates,pathCopy));
+			Assert.AreEqual(DbSettingsRunner.EXIT_WRITE_FAILED,ex.ExitCode);
+			StringAssert.Contains(ex.Message,"is a link");
+			Assert.AreEqual(0,Directory.GetFileSystemEntries(folderElsewhere).Length,"Nothing written through the link.");
+			Directory.Delete(Path.GetDirectoryName(pathCopy));//removes the junction only
+			//A file where the folder belongs, and a folder where the file belongs.
+			File.WriteAllText(Path.GetDirectoryName(pathCopy),"synthetic");
+			StringAssert.Contains(TestHelpers.AssertThrows<DbSettingsException>(() => OfficeCaFile.WriteCopy(listCertificates,pathCopy)).Message,"is a file");
+			File.Delete(Path.GetDirectoryName(pathCopy));
+			Directory.CreateDirectory(pathCopy);
+			StringAssert.Contains(TestHelpers.AssertThrows<DbSettingsException>(() => OfficeCaFile.WriteCopy(listCertificates,pathCopy)).Message,"is a folder");
+		}
+
+		private static void MakeJunction(string pathLink,string pathTarget) {
+			System.Diagnostics.ProcessStartInfo processStartInfo=new System.Diagnostics.ProcessStartInfo(
+				Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"cmd.exe"),
+				"/c mklink /J \""+pathLink+"\" \""+pathTarget+"\"");
+			processStartInfo.UseShellExecute=false;
+			processStartInfo.CreateNoWindow=true;
+			processStartInfo.RedirectStandardOutput=true;
+			using(System.Diagnostics.Process process=System.Diagnostics.Process.Start(processStartInfo)) {
+				process.StandardOutput.ReadToEnd();
+				process.WaitForExit();
+				Assert.AreEqual(0,process.ExitCode,"mklink /J");
+			}
+			Assert.IsTrue((File.GetAttributes(pathLink) & FileAttributes.ReparsePoint)!=0,"The junction exists.");
 		}
 
 		[TestMethod]
@@ -213,7 +316,7 @@ namespace DbConnectionSecurityTests {
 		[TestMethod]
 		public void Apply_Network_PasswordMode_CopiesTheCa_AndStoresThePasswordWithDpapi() {
 			string config=TestHelpers.WriteConfig(_folder,"ComputerName","localhost","Database","opendental","User","root","Password","");
-			string caCopy=Path.Combine(_folder,"ProgramData","office-ca.pem");
+			string caCopy=DbConnectionConfig.GetOfficeCaCopyPath(Path.Combine(_folder,"program"));
 			DbSettingsRequest dbSettingsRequest=new DbSettingsRequest() { Server=TestHelpers.NETWORK_HOST,Database="opendental",User="opmsd",
 				CaFile=TestHelpers.WriteCaPem(_folder,"picked-ca.pem"),Auth=DbSettingsAuth.Password,DbPassword=TestHelpers.SECRET };
 			DbSettingsResult dbSettingsResult=DbSettingsRunner.Apply(dbSettingsRequest,config,caCopy);
@@ -270,6 +373,54 @@ namespace DbConnectionSecurityTests {
 			StringAssert.Contains(dbSettingsResult.Message,"stored the old way");
 			Assert.IsFalse(dbSettingsResult.Message.Contains(TestHelpers.SECRET));
 			Assert.AreEqual(DbSettingsRunner.EXIT_REFUSED,DbSettingsRunner.Check(config).ExitCode);
+		}
+
+		[TestMethod]
+		public void Apply_FromTheWindow_MessagesNameTheWindowsFields_NotTheSecretsFile() {
+			string config=TestHelpers.WriteConfig(_folder,"ComputerName","localhost","Database","opendental","User","root","Password","");
+			string caCopy=Path.Combine(_folder,"ca-copy.pem");
+			string ca=TestHelpers.WriteCaPem(_folder);
+			string pfx=TestHelpers.WritePfx(_folder,"right");
+			foreach(bool isWindow in new[] { true,false }) {
+				DbSettingsResult dbSettingsResultPassword=DbSettingsRunner.Apply(new DbSettingsRequest() { Server=TestHelpers.NETWORK_HOST,CaFile=ca,
+					Auth=DbSettingsAuth.Password,User="other",IsWindow=isWindow },config,caCopy);
+				Assert.AreEqual(DbSettingsRunner.EXIT_REFUSED,dbSettingsResultPassword.ExitCode);
+				DbSettingsResult dbSettingsResultPfx=DbSettingsRunner.Apply(new DbSettingsRequest() { Server=TestHelpers.NETWORK_HOST,CaFile=ca,
+					PfxFile=pfx,IsWindow=isWindow },config,caCopy);
+				Assert.AreEqual(DbSettingsRunner.EXIT_BAD_VALUE,dbSettingsResultPfx.ExitCode);
+				DbSettingsResult dbSettingsResultCa=DbSettingsRunner.Apply(new DbSettingsRequest() { Server=TestHelpers.NETWORK_HOST,
+					Auth=DbSettingsAuth.Password,DbPassword="x",IsWindow=isWindow },config,caCopy);
+				Assert.AreEqual(DbSettingsRunner.EXIT_REFUSED,dbSettingsResultCa.ExitCode);
+				foreach(DbSettingsResult dbSettingsResult in new[] { dbSettingsResultPassword,dbSettingsResultPfx,dbSettingsResultCa }) {
+					Assert.AreEqual(!isWindow,dbSettingsResult.Message.Contains("secrets file") || dbSettingsResult.Message.Contains("/"),
+						dbSettingsResult.Message);
+				}
+				if(isWindow) {
+					StringAssert.Contains(dbSettingsResultPassword.Message,"Password field");
+					StringAssert.Contains(dbSettingsResultPfx.Message,"Import .pfx...");
+					StringAssert.Contains(dbSettingsResultCa.Message,"Browse...");
+				}
+			}
+			Assert.IsFalse(File.Exists(caCopy),"Nothing was saved.");
+		}
+
+		[TestMethod]
+		public void Check_AConnectionStringElement_ComesFirst_AndOnlyForThisComputer() {
+			string path=Path.Combine(_folder,"FreeDentalConfig.xml");
+			File.WriteAllText(path,"<ConnectionSettings><ConnectionString>Server="+TestHelpers.NETWORK_HOST+";SslMode=VerifyFull;Password=x"
+				+"</ConnectionString></ConnectionSettings>");
+			DbSettingsResult dbSettingsResult=DbSettingsRunner.Check(path);
+			Assert.AreEqual(DbSettingsRunner.EXIT_REFUSED,dbSettingsResult.ExitCode);
+			StringAssert.Contains(dbSettingsResult.Message,"Connection strings are for a database on this computer only");
+			File.WriteAllText(path,"<ConnectionSettings><ConnectionString>Server=localhost;Password=x</ConnectionString></ConnectionSettings>");
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,DbSettingsRunner.Check(path).ExitCode,"The program uses it, and it is this computer.");
+			//Saving with the tool removes the element (DbConnectionConfig.WriteTo).
+			File.WriteAllText(path,"<ConnectionSettings><ConnectionString>Server="+TestHelpers.NETWORK_HOST+";Password=x</ConnectionString>"
+				+"<DatabaseConnection><ComputerName>localhost</ComputerName><Database>opendental</Database><User>root</User></DatabaseConnection>"
+				+"</ConnectionSettings>");
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,DbSettingsRunner.Apply(new DbSettingsRequest(),path,Path.Combine(_folder,"ca-copy.pem")).ExitCode);
+			Assert.IsFalse(File.ReadAllText(path).Contains("ConnectionString>"));
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,DbSettingsRunner.Check(path).ExitCode);
 		}
 
 		[TestMethod]

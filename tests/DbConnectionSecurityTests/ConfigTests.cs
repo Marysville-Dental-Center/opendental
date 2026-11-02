@@ -7,6 +7,7 @@ using CodeBase;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using OpenPmsDentalDbSettings;
 
 namespace DbConnectionSecurityTests {
 	[TestClass]
@@ -203,6 +204,63 @@ namespace DbConnectionSecurityTests {
 			StringAssert.Contains(CentralConnections.GetChooseDatabaseConnectionSettings(path,isDebug:false).ConfigProblem,"cannot be read");
 			File.WriteAllText(path,"<ConnectionSettings><DatabaseType>MySql</DatabaseType></ConnectionSettings>");
 			StringAssert.Contains(CentralConnections.GetChooseDatabaseConnectionSettings(path,isDebug:false).ConfigProblem,"has no database connection");
+		}
+
+		///<summary>A FreeDentalConfig.xml with a ConnectionString element and a DatabaseConnection for this computer.</summary>
+		private string WriteConfigWithConnectionString(string connectionString) {
+			string path=Path.Combine(_folder,"FreeDentalConfig.xml");
+			File.WriteAllText(path,"<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<ConnectionSettings>\r\n    <ConnectionString>"
+				+System.Security.SecurityElement.Escape(connectionString)+"</ConnectionString>\r\n    <DatabaseConnection>\r\n"
+				+"        <ComputerName>localhost</ComputerName>\r\n        <Database>opendental</Database>\r\n        <User>root</User>\r\n"
+				+"        <Password></Password>\r\n        <MySQLPassHash></MySQLPassHash>\r\n    </DatabaseConnection>\r\n"
+				+"    <DatabaseType>MySql</DatabaseType>\r\n</ConnectionSettings>\r\n");
+			return path;
+		}
+
+		[TestMethod]
+		public void StartUp_ConnectionStringForANetworkServer_IsAProblemInReleaseAndDebug_AndIsNeverUsed() {
+			//Its credential would be neither the client certificate nor the password stored with DPAPI (owner decision Q2), even with TLS.
+			string ca=TestHelpers.WriteCaPem(_folder);
+			string secret=TestHelpers.SECRET.Replace(";","").Replace("=","");
+			foreach(string connectionString in new[] { "Server="+TestHelpers.NETWORK_HOST+";SslMode=VerifyFull;SslCa="+ca+";Password="+secret,
+				"Server=localhost:3306;SslMode=None;Pwd="+secret,"Server=127.0.0.1,"+TestHelpers.NETWORK_ADDRESS+";Password="+secret })
+			{
+				string path=WriteConfigWithConnectionString(connectionString);
+				foreach(bool isDebug in new[] { false,true }) {
+					ChooseDatabaseInfo chooseDatabaseInfo=CentralConnections.GetChooseDatabaseConnectionSettings(path,isDebug);
+					StringAssert.Contains(chooseDatabaseInfo.ConfigProblem,"Connection strings are for a database on this computer only",connectionString);
+					StringAssert.Contains(chooseDatabaseInfo.ConfigProblem,ProgramNames.DbSettingsExeFileName);
+					Assert.IsFalse(chooseDatabaseInfo.ConfigProblem.Contains(secret),"No password in the problem.");
+					Assert.AreEqual("",chooseDatabaseInfo.ConnectionString,"The string is never used.");
+				}
+				Assert.AreEqual(DbSettingsRunner.EXIT_REFUSED,DbSettingsRunner.Check(path).ExitCode,"The tool's /check sees it too.");
+			}
+		}
+
+		[TestMethod]
+		public void StartUp_ConnectionStringForThisComputer_IsUsedAsBefore() {
+			string connectionString="Server=127.0.0.1;Port=3306;Database=opendental;User ID=root;Password=;SslMode=None";
+			string path=WriteConfigWithConnectionString(connectionString);
+			ChooseDatabaseInfo chooseDatabaseInfo=CentralConnections.GetChooseDatabaseConnectionSettings(path,isDebug:false);
+			Assert.AreEqual("",chooseDatabaseInfo.ConfigProblem);
+			Assert.AreEqual(connectionString,chooseDatabaseInfo.ConnectionString);
+			Assert.AreEqual(DbSettingsRunner.EXIT_OK,DbSettingsRunner.Check(path).ExitCode);
+		}
+
+		[TestMethod]
+		public void TryToConnect_RefusesAConnectionStringForANetworkServer_BeforeConnecting() {
+			string thumbprintOld=DataConnection.ClientCertificateThumbprint;
+			string officeCaPathOld=DataConnection.OfficeCaPath;
+			try {
+				string ca=TestHelpers.WriteCaPem(_folder);
+				DbConnectionRefusedException ex=RuleTests.AssertRefused(() => CentralConnections.TryToConnect(new CentralConnection(),DatabaseType.MySql,
+					"Server="+TestHelpers.NETWORK_ADDRESS+";SslMode=VerifyFull;SslCa="+ca+";Password=x"));
+				StringAssert.Contains(ex.Message,"Connection strings are for a database on this computer only");
+			}
+			finally {
+				DataConnection.ClientCertificateThumbprint=thumbprintOld;
+				DataConnection.OfficeCaPath=officeCaPathOld;
+			}
 		}
 
 		[TestMethod]

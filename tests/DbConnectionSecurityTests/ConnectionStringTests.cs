@@ -12,17 +12,21 @@ namespace DbConnectionSecurityTests {
 		private const string THUMBPRINT="0123456789ABCDEF0123456789ABCDEF01234567";
 		private string _folder;
 		private string _thumbprintOld;
+		private string _officeCaPathOld;
 
 		[TestInitialize]
 		public void SetUp() {
 			_folder=TestHelpers.NewTempFolder();
 			_thumbprintOld=DataConnection.ClientCertificateThumbprint;
+			_officeCaPathOld=DataConnection.OfficeCaPath;
 			DataConnection.ClientCertificateThumbprint="";
+			DataConnection.OfficeCaPath="";
 		}
 
 		[TestCleanup]
 		public void CleanUp() {
 			DataConnection.ClientCertificateThumbprint=_thumbprintOld;
+			DataConnection.OfficeCaPath=_officeCaPathOld;
 			TestHelpers.DeleteFolder(_folder);
 		}
 
@@ -99,6 +103,52 @@ namespace DbConnectionSecurityTests {
 			MySqlConnectionStringBuilder builderNetwork=Build("[2001:db8::1]:3307","","");
 			Assert.AreEqual("2001:db8::1",builderNetwork.Server);
 			Assert.AreEqual(MySqlSslMode.VerifyFull,builderNetwork.SslMode);
+		}
+
+		[TestMethod]
+		public void PortsAndBrackets_BecomeWhatMySqlConnectorTakes_AndTheDecisionFollowsTheWrittenServer() {
+			//The program's notation for this computer: written without ports or brackets, so MySqlConnector also takes it for this computer.
+			foreach(string[] arrayCase in new[] {
+				new[] { "localhost:3306,127.0.0.1:3306","localhost,127.0.0.1","3306" },
+				new[] { "[127.0.0.1]","127.0.0.1","3306" },
+				new[] { "[127.0.0.1],[::1]:3307","127.0.0.1,::1","3307" },
+				new[] { "localhost, 127.0.0.1:13306","localhost,127.0.0.1","13306" },
+			})
+			{
+				MySqlConnectionStringBuilder builder=Build(arrayCase[0],"","");
+				Assert.AreEqual(arrayCase[1],builder.Server,arrayCase[0]);
+				Assert.AreEqual(uint.Parse(arrayCase[2]),builder.Port,arrayCase[0]);
+				Assert.AreEqual(MySqlSslMode.None,builder.SslMode,arrayCase[0]);
+				Assert.IsTrue(DbConnectionSecurity.IsLoopbackConnectorServer(builder.Server),arrayCase[0]);
+				Assert.AreEqual(0,DbConnectionSecurity.GetMissing(builder.ConnectionString).Count,arrayCase[0]);
+			}
+			MySqlConnectionStringBuilder builderNetwork=Build("localhost:3306,"+TestHelpers.NETWORK_HOST+":3306","x",TestHelpers.WriteCaPem(_folder));
+			Assert.AreEqual("localhost,"+TestHelpers.NETWORK_HOST,builderNetwork.Server);
+			Assert.AreEqual(MySqlSslMode.VerifyFull,builderNetwork.SslMode,"One host over the network: encrypted.");
+			DbConnectionRefusedException ex=TestHelpers.AssertThrows<DbConnectionRefusedException>(() =>
+				Build("a.example.test:3307,b.example.test:3308","",""));
+			StringAssert.Contains(ex.Message,"different ports");
+		}
+
+		[TestMethod]
+		public void Network_ThisComputersOfficeCa_WinsOverTheCaTheCallerNames() {
+			string ca=TestHelpers.WriteCaPem(_folder);
+			string caPreference=TestHelpers.WriteCaPem(_folder,"preference-ca.pem");
+			//No office CA on this computer: a read-only or reporting server over the network gets none from its preference, and is refused.
+			Assert.AreEqual("",DataConnection.GetSslCaForServer(TestHelpers.NETWORK_HOST,caPreference));
+			string connectionStringNone=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,TestHelpers.NETWORK_HOST,"opendental","opmsd","x",
+				DataConnection.GetSslCaForServer(TestHelpers.NETWORK_HOST,caPreference));
+			CollectionAssert.AreEqual(new[] { "the office CA certificate file (SslCa)" },DbConnectionSecurity.GetMissing(connectionStringNone));
+			DataConnection.OfficeCaPath=ca;
+			Assert.AreEqual(ca,DataConnection.GetSslCaForServer(TestHelpers.NETWORK_HOST+":3307",caPreference));
+			Assert.AreEqual(ca,Build(TestHelpers.NETWORK_HOST,"x",caPreference).SslCa,"The caller's CA is never used over the network.");
+			Assert.AreEqual(ca,Build(TestHelpers.NETWORK_HOST,"x","").SslCa,"Also when the caller names none (ConnectionStoreBase.SetDb).");
+			Assert.AreEqual(0,DbConnectionSecurity.GetMissing(Build(TestHelpers.NETWORK_HOST,"x",caPreference).ConnectionString).Count);
+			//A server on this computer keeps the CA of its own settings, as before.
+			Assert.AreEqual(caPreference,DataConnection.GetSslCaForServer("localhost:3306",caPreference));
+			MySqlConnectionStringBuilder builderLocal=Build("localhost","",caPreference);
+			Assert.AreEqual(caPreference,builderLocal.SslCa);
+			Assert.AreEqual(MySqlSslMode.VerifyCA,builderLocal.SslMode);
 		}
 
 		[TestMethod]
