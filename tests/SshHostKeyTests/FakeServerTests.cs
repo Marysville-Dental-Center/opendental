@@ -123,5 +123,42 @@ namespace SshHostKeyTests {
 				Assert.AreEqual(2,store.ListRefusals.Count);
 			}
 		}
+
+		[TestMethod]
+		public void IsConnectionValid_WithTheFlag_ThrowsTheRefusal_NamingTheServerAndBothKeys() {
+			using(FakeSshServer fakeSshServer=new FakeSshServer()) {
+				MemoryHostKeyStore store=new MemoryHostKeyStore();
+				SshHostKeyFingerprint fingerprintStored=SshHostKeyFingerprint.FromHostKeyEvent(TestKeys.NewEd25519Event());
+				store.DictKeys["127.0.0.1:"+fakeSshServer.Port]=fingerprintStored;
+				//The TSI connection test of the A/R Manager, the suspend message and FormArManager (TsiTransLogs.ValidateClinicSftpDetails).
+				SshHostKeyRefusedException ex=TestAssert.Throws<SshHostKeyRefusedException>(
+					() => Sftp.IsConnectionValid("127.0.0.1","user","synthetic-password",store,fakeSshServer.Port,doThrowHostKeyRefusal:true));
+				AssertRefusedBeforeAuthentication(fakeSshServer.WaitForConnections(1)[0]);
+				StringAssert.Contains(ex.Message,"127.0.0.1:"+fakeSshServer.Port);
+				StringAssert.Contains(ex.Message,"Stored key: "+fingerprintStored);
+				StringAssert.Contains(ex.Message,"The server now presents: ssh-ed25519 SHA256:"+fakeSshServer.FingerprintSha256);
+				StringAssert.Contains(ex.Message,"Setup, SSH Host Keys");
+				Assert.AreEqual(ex.Message,SshHostKeyCheck.GetRefusalMessage(ex),"What callers without SSH.NET read.");
+				Assert.AreEqual(1,store.ListRefusals.Count,"The refusal is recorded too.");
+				Assert.AreEqual(0,store.CountStores);
+			}
+		}
+
+		[TestMethod]
+		public void IsConnectionValid_WithTheFlag_OtherFailuresStillReturnFalse() {
+			using(FakeSshServer fakeSshServer=new FakeSshServer()) {
+				MemoryHostKeyStore store=new MemoryHostKeyStore();
+				//First use: the key is accepted, then the fake server closes after the key exchange, so the connection fails, not for its host key.
+				Assert.IsFalse(Sftp.IsConnectionValid("127.0.0.1","user","synthetic-password",store,fakeSshServer.Port,doThrowHostKeyRefusal:true));
+				//The stored key: accepted, the same failure afterwards.
+				store.DictKeys["127.0.0.1:"+fakeSshServer.Port]=new SshHostKeyFingerprint("ssh-ed25519",fakeSshServer.FingerprintSha256);
+				Assert.IsFalse(Sftp.IsConnectionValid("127.0.0.1","user","synthetic-password",store,fakeSshServer.Port,doThrowHostKeyRefusal:true));
+				foreach(FakeSshConnection fakeSshConnection in fakeSshServer.WaitForConnections(2)) {
+					AssertKeyAccepted(fakeSshConnection);
+				}
+				Assert.AreEqual(0,store.ListRefusals.Count);
+				Assert.AreEqual(0,store.CountStores,"Only a connection that signed in stores the key.");
+			}
+		}
 	}
 }

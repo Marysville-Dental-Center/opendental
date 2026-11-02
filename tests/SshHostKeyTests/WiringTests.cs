@@ -89,6 +89,43 @@ namespace SshHostKeyTests {
 		}
 
 		[TestMethod]
+		public void EveryConnectionTest_SurfacesTheHostKeyRefusal() {
+			//Every caller of Sftp.IsConnectionValid (the TSI connection tests) asks for the refusal, so it is never turned into "not valid".
+			List<string> listProblems=new List<string>();
+			int countCalls=0;
+			foreach(string path in GetProductSourceFiles("*.cs").Where(x => !x.Contains(Path.DirectorySeparatorChar+"OpenPmsDentalStorage"+Path.DirectorySeparatorChar))) {
+				string source=File.ReadAllText(path);
+				foreach(Match match in Regex.Matches(source,@"Sftp\.IsConnectionValid\(")) {
+					countCalls++;
+					string statement=source.Substring(match.Index,source.IndexOf(';',match.Index)-match.Index);
+					if(!statement.Contains("doThrowHostKeyRefusal:true")) {
+						listProblems.Add(Path.GetFileName(path)+": "+statement.Trim());
+					}
+				}
+			}
+			Assert.AreEqual(2,countCalls,"ControlManage and TsiTransLogs.");
+			Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));
+			//The suspend message and FormArManager use the overload that returns the refusal.
+			string tsiTransLogs=TestDb.ReadRepoFile("OpenPmsDentalBusiness","Data Interface","TsiTransLogs.cs");
+			StringAssert.Contains(tsiTransLogs,"!ValidateClinicSftpDetails(listProgramPropertiesClinic,out refusalMessage)");
+			string formArManager=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormArManager.cs");
+			StringAssert.Contains(formArManager,"TsiTransLogs.ValidateClinicSftpDetails(listProgProps,out string refusalMessage)");
+			Assert.IsFalse(Regex.IsMatch(formArManager,@"ValidateClinicSftpDetails\(listProgProps\)"),"FormArManager reports the refusal for the clinic it skips.");
+			//The A/R Manager button shows the refusal instead of offering the program link, and opens the window only for a Security Admin.
+			string controlManage=TestDb.ReadRepoFile("OpenPmsDental","Main Modules","ControlManage.cs");
+			int start=controlManage.IndexOf("private void butManageAR_Click(");
+			int end=controlManage.IndexOf("private void butDaycare_Click(");
+			Assert.IsTrue(start>=0 && end>start);
+			string body=controlManage.Substring(start,end-start);
+			int indexRefusal=body.IndexOf("listRefusalMessages.Count>0");
+			int indexCheck=body.IndexOf("Security.IsAuthorized(EnumPermType.SecurityAdmin,true)");
+			int indexOpen=body.IndexOf("new FormSshHostKeys()");
+			int indexProgramLink=body.IndexOf("new FormTransworldSetup()");
+			Assert.IsTrue(indexRefusal>0 && indexCheck>indexRefusal && indexOpen>indexCheck && indexProgramLink>indexOpen,
+				"The refusal comes before the program link prompt, and Security Admin before the window.");
+		}
+
+		[TestMethod]
 		public void Window_MenuAndButton_NeedSecurityAdmin() {
 			string menus=TestDb.ReadRepoFile("OpenPmsDental","Main Modules","FormOpenDentalMenus.cs");
 			StringAssert.Contains(menus,"menuItemSetup.Add(\"SSH Host Keys\",menuItemSshHostKeys_Click);");

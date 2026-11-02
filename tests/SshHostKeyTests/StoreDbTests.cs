@@ -236,6 +236,46 @@ namespace SshHostKeyTests {
 			Assert.AreEqual(1,GetLogs().Count);
 		}
 
+		///<summary>A clinic's Transworld program link properties, pointing at the fake SSH server.</summary>
+		private static List<ProgramProperty> GetTsiProperties(int port) {
+			return new List<ProgramProperty>() {
+				new ProgramProperty() { PropertyDesc="SftpServerAddress",PropertyValue="127.0.0.1" },
+				new ProgramProperty() { PropertyDesc="SftpServerPort",PropertyValue=port.ToString() },
+				new ProgramProperty() { PropertyDesc="SftpUsername",PropertyValue="user" },
+				new ProgramProperty() { PropertyDesc="SftpPassword",PropertyValue="synthetic-password" },
+				new ProgramProperty() { PropertyDesc="SelectedServices",PropertyValue="0" },
+			};
+		}
+
+		[TestMethod]
+		public void TsiConnectionTest_WithTheDatabaseStore_ReturnsTheRefusal() {
+			using(FakeSshServer fakeSshServer=new FakeSshServer()) {
+				List<ProgramProperty> listProgramProperties=GetTsiProperties(fakeSshServer.Port);
+				//No stored key: the key is accepted, the fake server then closes, so the test fails as a plain connection failure, with no refusal.
+				Assert.IsFalse(TsiTransLogs.ValidateClinicSftpDetails(listProgramProperties,out string refusalMessageNone));
+				Assert.IsNull(refusalMessageNone);
+				Assert.AreEqual(0,SshHostKeys.GetAll().Count,"Only a connection that signed in stores the key.");
+				//Another key is stored for the server: the test is refused for its host key, and says so.
+				SshHostKeyFingerprint fingerprintStored=NewFingerprint();
+				SshHostKeys.Store.StoreFirstKey("127.0.0.1",fakeSshServer.Port,fingerprintStored);
+				Assert.IsFalse(TsiTransLogs.ValidateClinicSftpDetails(listProgramProperties,out string refusalMessage));
+				Assert.IsNotNull(refusalMessage);
+				StringAssert.Contains(refusalMessage,"127.0.0.1:"+fakeSshServer.Port);
+				StringAssert.Contains(refusalMessage,"Stored key: ssh-ed25519 SHA256:"+fingerprintStored.Sha256);
+				StringAssert.Contains(refusalMessage,"The server now presents: ssh-ed25519 SHA256:"+fakeSshServer.FingerprintSha256);
+				StringAssert.Contains(refusalMessage,"Setup, SSH Host Keys");
+				SshHostKey sshHostKey=SshHostKeys.GetForServer("127.0.0.1",fakeSshServer.Port);
+				Assert.AreEqual(fakeSshServer.FingerprintSha256,sshHostKey.RefusedFingerprintSha256,"The refused key is recorded for the window.");
+				Assert.AreEqual(fingerprintStored.Sha256,sshHostKey.FingerprintSha256,"The stored key stays.");
+				//The overload without the message still answers only valid or not.
+				Assert.IsFalse(TsiTransLogs.ValidateClinicSftpDetails(listProgramProperties));
+				//Without the connection test nothing connects.
+				Assert.IsTrue(TsiTransLogs.ValidateClinicSftpDetails(listProgramProperties,false));
+				Assert.AreEqual(3,fakeSshServer.WaitForConnections(3).Count);
+				Assert.AreEqual(2,GetLogs().Count,"Stored on first use, then refused once (the second refusal of the same key adds no entry).");
+			}
+		}
+
 		[TestMethod]
 		public void Check_WithTheDatabaseStore_FirstUse_SameKey_ChangedKeyRefused_Accepted() {
 			HostKeyEventArgs keyA=TestKeys.NewEd25519Event();
