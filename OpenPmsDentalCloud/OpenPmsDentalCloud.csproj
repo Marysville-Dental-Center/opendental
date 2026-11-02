@@ -51,8 +51,10 @@
     <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Renci.SshNet (SSH.NET 2024.1.0, net462) references Microsoft.Bcl.AsyncInterfaces 1.0.0.0. Sftp.TypeAsyncInterfacesDependency uses the
-    shipped 6.0.0.0 copy, so every host copies it and its auto-generated binding redirect points SSH.NET at it. -->
+    <!-- Renci.SshNet (SSH.NET 2026.0.0, net462) references Microsoft.Bcl.AsyncInterfaces 8.0.0.0. Sftp.TypeAsyncInterfacesDependency uses the
+    shipped 10.0.0.14 copy, so every host copies it and the binding redirect points SSH.NET at it. SSH.NET's other dependencies
+    (BouncyCastle.Cryptography, Microsoft.Bcl.Cryptography, Microsoft.Extensions.Logging.Abstractions and the System.* support assemblies) are
+    in Required dlls next to it. -->
     <Reference Include="Microsoft.Bcl.AsyncInterfaces">
       <HintPath>..\Required dlls\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
     </Reference>
@@ -85,6 +87,8 @@
     <Compile Include="Storage\RemovedStorage.cs" />
     <Compile Include="Shared\TaskState.cs" />
     <Compile Include="Storage\Sftp.cs" />
+    <Compile Include="Storage\SftpSession.cs" />
+    <Compile Include="Storage\SshHostKeys.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CodeBase\xCodeBase.csproj">

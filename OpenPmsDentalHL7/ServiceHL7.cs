@@ -14,7 +14,7 @@ using CodeBase;
 using DataConnectionBase;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.HL7;
-using Tamir.SharpSsh.jsch;
+using OpenPmsDentalCloud;
 using System.Collections;
 using System.Text.RegularExpressions;
 
@@ -284,10 +284,7 @@ namespace OpenPmsDentalHL7 {
 				EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"The SFTP HL7 message archive directory is not accessible or could not be created.  "
 					+"The inbound HL7 messages will not be archived.  Once processed, the original message text will be deleted.",EventLogEntryType.Warning);
 			}
-			Session session=null;
-			Channel ch=null;
-			ChannelSftp chsftp=null;
-			JSch jsch=new JSch();
+			SftpSession sftpSession=null;
 			string[] serverHostPort;
 			string sftpUsername;
 			string sftpPassword;
@@ -303,23 +300,16 @@ namespace OpenPmsDentalHL7 {
 			}
 			bool isConnected=false;
 			try {
-				if(serverHostPort.Length==1) {
-					session=jsch.getSession(sftpUsername,serverHostPort[0]);
+				int port=22;
+				if(serverHostPort.Length>=2) {
+					port=int.Parse(serverHostPort[1]);//port verified to be an int
 				}
-				else if(serverHostPort.Length>=2) {
-					session=jsch.getSession(sftpUsername,serverHostPort[0],int.Parse(serverHostPort[1]));//port verified to be an int
-				}
-				session.setPassword(sftpPassword);
-				Hashtable config=new Hashtable();
-				config.Add("StrictHostKeyChecking","no");
-				session.setConfig(config);
+				//timeout after 15 seconds
+				sftpSession=new SftpSession(serverHostPort[0],port,sftpUsername,sftpPassword,TimeSpan.FromSeconds(15));
 				if(IsVerboseLogging) {
 					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Connecting to the SFTP server to retrieve HL7 message files.",EventLogEntryType.Information);
 				}
-				session.connect(15000);//timeout after 15 seconds
-				ch=session.openChannel("sftp");
-				ch.connect();
-				chsftp=(ChannelSftp)ch;
+				sftpSession.Connect();
 				//this is the only place this flag is set to true.  If anything above here fails, whether an exception or not, the next line will not run
 				//and the finally will set the receiving flag to false for the next thread
 				isConnected=true;
@@ -336,15 +326,9 @@ namespace OpenPmsDentalHL7 {
 				return;
 			}
 			finally {
-				if(!isConnected) {//an error happened, make sure the session and channels are disconnected and reset the receiving flag
-					if(chsftp!=null) {
-						chsftp.disconnect();
-					}
-					if(ch!=null) {
-						ch.disconnect();
-					}
-					if(session!=null) {
-						session.disconnect();
+				if(!isConnected) {//an error happened, make sure the session is disconnected and reset the receiving flag
+					if(sftpSession!=null) {
+						sftpSession.Dispose();
 					}
 				}
 			}
@@ -376,9 +360,9 @@ namespace OpenPmsDentalHL7 {
 					resultsPath+="/"+pathDirs[i];
 				}
 			}
-			Tamir.SharpSsh.java.util.Vector fileList=null;
+			List<SftpEntry> fileList=null;
 			try {//test to see if the path specified is a valid path, otherwise revert to the default root directory
-				fileList=chsftp.ls(resultsPath);//if this throws an exception, it is probably because the directory specified doesn't exist
+				fileList=sftpSession.ListDirectory(resultsPath);//if this throws an exception, it is probably because the directory specified doesn't exist
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
@@ -394,7 +378,7 @@ namespace OpenPmsDentalHL7 {
 					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Getting list of file names to retrieve from the SFTP server.",EventLogEntryType.Information);
 				}
 				if(fileList==null) {//fileList will be initialized if the path specified in the def was valid, otherwise default to root dir and fill here
-					fileList=chsftp.ls(resultsPath);//fileList will be ArrayList filled with LsEntry objects
+					fileList=sftpSession.ListDirectory(resultsPath);//every entry of the folder, "." and ".." included
 				}
 				if(IsVerboseLogging) {
 					EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Processing SFTP HL7 message files.",EventLogEntryType.Information);
@@ -404,25 +388,19 @@ namespace OpenPmsDentalHL7 {
 				}
 				for(int i=0;i<fileList.Count;i++) {
 					StringBuilder sb=new StringBuilder();
-					string listItem=fileList[i].ToString().Trim();//LsEntry.ToString() overridden to return the file's longname
-					if(listItem[0]=='d') {
+					if(fileList[i].IsDirectory) {
 						continue;//skip directories
 					}
 					countFilesFound++;
-					Match filenameMatch=Regex.Match(listItem,".*\\s+(.*)$");
-					string filePath=resultsPath+"/"+filenameMatch.Result("$1");
-					Tamir.SharpSsh.java.io.InputStream fileStream=null;
+					string filePath=resultsPath+"/"+fileList[i].Name;
 					try {
 						if(IsVerboseLogging) {
 							EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Begin reading in the next SFTP HL7 file.",EventLogEntryType.Information);
 						}
-						fileStream=chsftp.get(filePath);
-						byte[] fileBytes=new byte[100000];//100,000 byte chunks, 350 KB file size, average time to retrieve file 3.2 seconds
-						int numBytes=fileStream.Read(fileBytes,0,fileBytes.Length);
-						while(numBytes>0) {
-							sb.Append(Tamir.SharpSsh.java.String.getStringUTF8(fileBytes,0,numBytes));
-							numBytes=fileStream.Read(fileBytes,0,fileBytes.Length);
-						}
+						//350 KB file size, average time to retrieve file 3.2 seconds. The whole file is decoded at once, so a UTF-8 character is never
+						//split between two reads.
+						byte[] fileBytes=sftpSession.DownloadFile(filePath);
+						sb.Append(Encoding.UTF8.GetString(fileBytes));
 						string msgArchiveFilePath="";
 						string fileName="";
 						if(isMedLab && msgArchivePath!="") {
@@ -479,17 +457,12 @@ namespace OpenPmsDentalHL7 {
 							MedLabs.UpdateFileNames(medLabNumList,ODFileUtils.CombinePaths("MedLabHL7","Processed",fileName).Replace("\\","/"));
 						}
 						countFilesProcessed++;
-						//chsftp.rm(filePath);//not necessary to remove the file for MedLab, once it is read it is deleted.
+						//sftpSession.DeleteFile(filePath);//not necessary to remove the file for MedLab, once it is read it is deleted.
 					}
 					catch(Exception ex) {
 						EventLog.WriteEntry(ProgramNames.EventLogSourceHL7,"Error retrieving or processing a SFTP HL7 message.  If the file was not processed, it will remain "
 							+"on the server and another attempt will be made later.\r\n"+ex.Message,EventLogEntryType.Information);
 						continue;
-					}
-					finally {
-						if(fileStream!=null) {
-							fileStream.Dispose();
-						}
 					}
 				}
 			}
@@ -504,14 +477,8 @@ namespace OpenPmsDentalHL7 {
 						+countFilesProcessed.ToString()+"\r\nDisconnecting from the SFTP server.",EventLogEntryType.Information);
 				}
 				//Disconnect from the SFTP server.
-				if(chsftp!=null) {
-					chsftp.disconnect();
-				}
-				if(ch!=null) {
-					ch.disconnect();
-				}
-				if(session!=null) {
-					session.disconnect();
+				if(sftpSession!=null) {
+					sftpSession.Dispose();
 				}
 				if(isMedLab) {
 					_medLabSftpModeIsReceiving=false;

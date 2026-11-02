@@ -20,7 +20,6 @@ using System.Xml.Serialization;
 using System.Xml.XPath;
 using CodeBase;
 using OpenPmsDentalBusiness;
-using Tamir.SharpSsh.jsch;
 
 namespace OpenPmsDentalBusiness.Eclaims {
 	class EdsMedical {

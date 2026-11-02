@@ -112,15 +112,16 @@ $OwnFiles=[ordered]@{
 #Third-party files. Each must be named in THIRD-PARTY-NOTICES.txt. Value: where its bytes come from, a byte copy of the repository's
 #"Required dlls" file or the project output it is built from.
 $ThirdPartyFiles=[ordered]@{}
-foreach($name in @('Dicom.Core.dll','Dicom.Native.dll','DiffieHellman.dll','Google.Apis.dll','Google.Apis.Auth.dll','Google.Apis.Core.dll',
-	'Google.Apis.Gmail.v1.dll','Health.Direct.Agent.dll','Health.Direct.Common.dll','Health.Direct.ResolverPlugins.dll','Hunspellx86.dll',
-	'Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Extensions.DependencyInjection.Abstractions.dll','Microsoft.Extensions.Logging.Abstractions.dll',
-	'Microsoft.Identity.Client.dll','Microsoft.IdentityModel.Abstractions.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll',
-	'Microsoft.Web.WebView2.Wpf.dll','MigraDoc.DocumentObjectModel.dll','MigraDoc.Rendering.dll','MimeKit.dll','MySqlConnector.dll','NDde.dll',
-	'NHunspell.dll','Newtonsoft.Json.dll','OpenPop.dll','Org.Mentalis.Security.dll','PdfSharp.dll','PdfSharp.Charting.dll','Renci.SshNet.dll',
-	'SharpDX.dll','SharpDX.Direct3D9.dll','SharpDX.Mathematics.dll','System.Buffers.dll','System.Diagnostics.DiagnosticSource.dll',
-	'System.Memory.dll','System.Numerics.Vectors.dll','System.Runtime.CompilerServices.Unsafe.dll','System.Threading.Tasks.Extensions.dll',
-	'Tamir.SharpSSH.dll','Tao.OpenGl.dll','Tao.Platform.Windows.dll','WebView2Loader.dll'))
+foreach($name in @('BouncyCastle.Cryptography.dll','Dicom.Core.dll','Dicom.Native.dll','Google.Apis.dll','Google.Apis.Auth.dll',
+	'Google.Apis.Core.dll','Google.Apis.Gmail.v1.dll','Health.Direct.Agent.dll','Health.Direct.Common.dll','Health.Direct.ResolverPlugins.dll',
+	'Hunspellx86.dll','Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Bcl.Cryptography.dll','Microsoft.Extensions.DependencyInjection.Abstractions.dll',
+	'Microsoft.Extensions.Logging.Abstractions.dll','Microsoft.Identity.Client.dll','Microsoft.IdentityModel.Abstractions.dll',
+	'Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','Microsoft.Web.WebView2.Wpf.dll','MigraDoc.DocumentObjectModel.dll',
+	'MigraDoc.Rendering.dll','MimeKit.dll','MySqlConnector.dll','NDde.dll','NHunspell.dll','Newtonsoft.Json.dll','OpenPop.dll','PdfSharp.dll',
+	'PdfSharp.Charting.dll','Renci.SshNet.dll','SharpDX.dll','SharpDX.Direct3D9.dll','SharpDX.Mathematics.dll','System.Buffers.dll',
+	'System.Diagnostics.DiagnosticSource.dll','System.Formats.Asn1.dll','System.Memory.dll','System.Numerics.Vectors.dll',
+	'System.Runtime.CompilerServices.Unsafe.dll','System.Threading.Tasks.Extensions.dll','Tao.OpenGl.dll','Tao.Platform.Windows.dll',
+	'WebView2Loader.dll'))
 {
 	$ThirdPartyFiles[$name]='Required dlls'
 }
@@ -193,6 +194,11 @@ $DenyList=@(
 	@('Avalara*','the AvaTax SDK, a dead reference (removed in BIN-B)'),
 	@('Ionic.*','DotNetZip: MS-PL, abandoned, CVE-2024-48510 (replaced in BIN-B)'),
 	@('DotNetZip*','DotNetZip: MS-PL, abandoned, CVE-2024-48510 (replaced in BIN-B)'),
+	@('Tamir.SharpSSH.dll','SharpSSH, unmaintained since 2013 (replaced by SSH.NET in the tier 1 library updates)'),
+	@('Org.Mentalis.Security.dll',"SharpSSH's cryptography library (removed with SharpSSH)"),
+	@('DiffieHellman.dll',"SharpSSH's key exchange library (removed with SharpSSH)"),
+	@('BouncyCastle.Crypto.dll',"MimeKit 2's Bouncy Castle 1.8; MimeKit 4 uses BouncyCastle.Cryptography.dll"),
+	@('Google.Apis*.PlatformServices.dll','the Google APIs 1.44 platform shims; the library has none since 1.50'),
 	@('TWAINDSM.dll',"the TWAIN data source manager comes with the scanner's driver; one in the program folder would be loaded first"),
 	@('FreeDentalConfig.xml','the connection settings of each computer; the installer writes it, a release never carries it'),
 	@('OpenDentalServerConfig.xml','the Middle Tier settings of each server'),

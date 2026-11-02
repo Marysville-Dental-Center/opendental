@@ -168,7 +168,7 @@ namespace VendorDirectTests.BridgesRemoval {
 
 		[TestMethod]
 		public void SshNetDependency_StillReachesTheProgram() {
-			//Renci.SshNet (SSH.NET 2024.1.0, net462) references Microsoft.Bcl.AsyncInterfaces 1.0.0.0. The Graph SDK used to bring a newer copy and
+			//Renci.SshNet (SSH.NET 2026.0.0, net462) references Microsoft.Bcl.AsyncInterfaces 8.0.0.0. The Graph SDK used to bring a newer copy and
 			//its redirect in, so OpenPmsDentalCloud now references it itself. Without it, SFTP A to Z storage and the TSI uploads fail when SftpClient loads.
 			Assert.IsTrue(Regex.IsMatch(ReadRepoFile(@"OpenPmsDentalCloud\OpenPmsDentalCloud.csproj"),
 				@"<Reference Include=""Microsoft\.Bcl\.AsyncInterfaces[,""][^>]*>\s*<HintPath>\.\.\\Required dlls\\Microsoft\.Bcl\.AsyncInterfaces\.dll</HintPath>"),

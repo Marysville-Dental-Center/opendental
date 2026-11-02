@@ -22,6 +22,8 @@ using System.Runtime.InteropServices;
 
 // The vendor-direct tests reach the email layer's test seams (fake HTTP handlers, no real waits).
 [assembly: InternalsVisibleTo("VendorDirectTests")]
+// The library update tests reach the email layer's test seams too (the MIME builder, the POP3 certificate check of the fake server).
+[assembly: InternalsVisibleTo("LibraryUpdateTests")]
 
 // Version information for an assembly consists of the following four values:
 //

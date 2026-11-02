@@ -19,7 +19,7 @@ using System.Xml;
 using System.Xml.Serialization;
 using System.Xml.XPath;
 using OpenPmsDentalBusiness;
-using Tamir.SharpSsh.jsch;
+using OpenPmsDentalCloud;
 using CodeBase;
 
 namespace OpenPmsDentalBusiness.Eclaims
@@ -50,29 +50,20 @@ namespace OpenPmsDentalBusiness.Eclaims
 			//Step 2: Send new claims in a new batch.
 			bool success=true;
 			//Connect to the MDE SFTP server.
-			Session session=null;
-			Channel channel=null;
-			ChannelSftp ch=null;
-			JSch jsch=new JSch();
+			SftpSession sftpSession=null;
 			progress.UpdateProgress(Lans.g(progress.LanThis,"Contacting web server"),"reports","17%",17);
 			if(progress.IsPauseOrCancel()) {
 				progress.UpdateProgress(Lans.g(progress.LanThis,"Canceled by user."));
 				return false;
 			}
 			try{
-				session=jsch.getSession(_clearinghouseClin.LoginID,remoteHost,22);
-				session.setPassword(_clearinghouseClin.Password);
-				Hashtable config=new Hashtable();
-				config.Add("StrictHostKeyChecking", "no");
-				session.setConfig(config);
-				session.connect();
-				channel=session.openChannel("sftp");
-				channel.connect();
-				ch=(ChannelSftp)channel;
+				sftpSession=new SftpSession(remoteHost,22,_clearinghouseClin.LoginID,_clearinghouseClin.Password);
+				sftpSession.Connect();
 			}
 			catch(Exception ex){
 				progress.UpdateProgress(Lans.g(progress.LanThis,"Connection Failed"));
 				ErrorMessage=Lans.g("MercuryDE","Connection Failed")+": "+ex.Message;
+				sftpSession?.Dispose();
 				return false;
 			}
 			progress.UpdateProgress(Lans.g(progress.LanThis,"Web server contact successful."));
@@ -89,7 +80,7 @@ namespace OpenPmsDentalBusiness.Eclaims
 					}
 					//Only retrieving reports so do not send new claims.
 					string retrievePath="/"+rootFolderName+"/Out/997/";
-					Tamir.SharpSsh.java.util.Vector fileList=ch.ls(retrievePath);
+					List<SftpEntry> fileList=sftpSession.ListDirectory(retrievePath);
 					for(int i=0;i<fileList.Count;i++){
 						int percent=(i/fileList.Count)*100;
 						//We re-use the bar again for importing later, hence the tag.
@@ -98,25 +89,15 @@ namespace OpenPmsDentalBusiness.Eclaims
 							progress.UpdateProgress(Lans.g(progress.LanThis,"Canceled by user."));
 							return false;
 						}
-						string listItem=fileList[i].ToString().Trim();
-						if(listItem[0]=='d'){
-							continue;//Skip directories and focus on files.
+						if(fileList[i].IsDirectory){
+							continue;//Skip directories (including "." and "..") and focus on files.
 						}
-						Match fileNameMatch=Regex.Match(listItem,".*\\s+(.*)$");
-						string getFileName=fileNameMatch.Result("$1");
+						string getFileName=fileList[i].Name;
 						string getFilePath=retrievePath+getFileName;
-						string exportFilePath=CodeBase.ODFileUtils.CombinePaths(clearinghouseClin.ResponsePath,getFileName);						
-						Tamir.SharpSsh.java.io.InputStream fileStream=null;
-						FileStream exportFileStream=null;
+						string exportFilePath=CodeBase.ODFileUtils.CombinePaths(clearinghouseClin.ResponsePath,getFileName);
 						try{
-							fileStream=ch.get(getFilePath);
-							exportFileStream=File.Open(exportFilePath,FileMode.Create,FileAccess.Write);//Creates or overwrites.
-							byte[] dataBytes=new byte[4096];
-							int numBytes=fileStream.Read(dataBytes,0,dataBytes.Length);
-							while(numBytes>0){
-								exportFileStream.Write(dataBytes,0,numBytes);
-								numBytes=fileStream.Read(dataBytes,0,dataBytes.Length);
-							}
+							byte[] dataBytes=sftpSession.DownloadFile(getFilePath);
+							File.WriteAllBytes(exportFilePath,dataBytes);//Creates or overwrites.
 							float overallpercent=33+(i/fileList.Count)*17;//33 is starting point. 17 is the amount of bar space we have before our next major spot (50%)
 							progress.UpdateProgress(Lans.g(progress.LanThis,"Getting files"),"reports",overallpercent+"%",(int)overallpercent);
 							if(progress.IsPauseOrCancel()) {
@@ -128,22 +109,14 @@ namespace OpenPmsDentalBusiness.Eclaims
 							ErrorMessage=ex.Message;
 							success=false;
 						}
-						finally {
-							if(exportFileStream!=null){
-								exportFileStream.Dispose();
-							}
-							if(fileStream!=null){
-								fileStream.Dispose();
-							}
-						}
 						string archiveFilePath=retrievePath+"Archive/"+getFileName;
 						try{
-							ch.rm(archiveFilePath);
+							sftpSession.DeleteFile(archiveFilePath);
 						}
 						catch {
 							//Remove any destination files by the same exact name. The file will most likely not be present.
 						}
-						ch.rename(getFilePath,archiveFilePath);
+						sftpSession.RenameFile(getFilePath,archiveFilePath);
 					}
 				}
 				else {
@@ -169,11 +142,11 @@ namespace OpenPmsDentalBusiness.Eclaims
 						string dateTimeStr=DateTime.Now.ToString("yyyyMMddhhmmss");
 						string remoteFileName=accountNumber+dateTimeStr+i.ToString().PadLeft(3,'0')+".837D.txt";
 						string remoteTempFilePath="/"+rootFolderName+"/In/837D/Temp/"+remoteFileName;
-						ch.put(files[i],remoteTempFilePath);
-						//Read, Write and Execute permissions for everyone. This appears to cause no effect.
-						ch.chmod((((7<<3)|7)<<3)|7,remoteTempFilePath);
+						sftpSession.UploadFile(files[i],remoteTempFilePath);
+						//Read, Write and Execute permissions for everyone (octal 777). This appears to cause no effect.
+						sftpSession.ChangePermissions(remoteTempFilePath,777);
 						string remoteFilePath="/"+rootFolderName+"/In/837D/"+remoteFileName;
-						ch.rename(remoteTempFilePath,remoteFilePath);
+						sftpSession.RenameFile(remoteTempFilePath,remoteFilePath);
 						File.Delete(files[i]);//Remove the processed file.
 						float overallpercent=33+(i/files.Length)*17;//33 is starting point. 17 is the amount of bar space we have before our next major spot (50%)
 						progress.UpdateProgress(Lans.g(progress.LanThis,"Uploading files"),"reports",overallpercent+"%",(int)overallpercent);
@@ -193,10 +166,8 @@ namespace OpenPmsDentalBusiness.Eclaims
 			}
 			finally {
 				//Disconnect from the MDE SFTP server.
-				progress.UpdateProgress("","import","");//Clear import bar for now. 
-				channel.disconnect();
-				ch.disconnect();
-				session.disconnect();
+				progress.UpdateProgress("","import","");//Clear import bar for now.
+				sftpSession.Dispose();
 			}
 			return success;
 		}

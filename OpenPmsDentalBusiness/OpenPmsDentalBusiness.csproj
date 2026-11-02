@@ -181,9 +181,6 @@
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
-    <Reference Include="Tamir.SharpSSH">
-      <HintPath>..\Required dlls\Tamir.SharpSSH.dll</HintPath>
-    </Reference>
     <Reference Include="System.IO.Compression" />
     <Reference Include="WindowsBase" />
   </ItemGroup>

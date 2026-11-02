@@ -15,14 +15,16 @@ using Renci.SshNet.Sftp;
 namespace OpenPmsDentalCloud {
 
 	public static class Sftp {
-		///<summary>SSH.NET (Renci.SshNet 2024.1, net462) references Microsoft.Bcl.AsyncInterfaces 1.0.0.0 for its async enumerables, and loading
+		///<summary>SSH.NET (Renci.SshNet 2026.0, net462) references Microsoft.Bcl.AsyncInterfaces 8.0.0.0 for its async enumerables, and loading
 		///SftpClient fails without it. Naming one of its types here puts the shipped copy (10.0.0.14) in this assembly's references, so every program
 		///that uses OpenPmsDentalCloud copies the DLL and gets the binding redirect SSH.NET needs. The Graph SDK brought both in until it was deleted
 		///with the prebuilt Bridges assembly.</summary>
 		internal static readonly Type TypeAsyncInterfacesDependency=typeof(IAsyncDisposable);
 
 		private static SftpClient Init(string host,string user,string pass,int port=22) {
-			return new SftpClient(new ConnectionInfo(host,port,user,new AuthenticationMethod[] { new PasswordAuthenticationMethod(user,pass) }));
+			SftpClient sftpClient=new SftpClient(new ConnectionInfo(host,port,user,new AuthenticationMethod[] { new PasswordAuthenticationMethod(user,pass) }));
+			SshHostKeys.Attach(sftpClient);
+			return sftpClient;
 		}
 
 		public class Upload : TaskStateUpload {
@@ -401,13 +403,7 @@ namespace OpenPmsDentalCloud {
 			if(string.IsNullOrEmpty(path)) {
 				return;
 			}
-			string currentDir="";
-			string[] directories=path.Split("/",StringSplitOptions.RemoveEmptyEntries);
-			for(int i=0;i<directories.Length;i++) {
-				if(i>0 || path[0]=='/') {
-					currentDir+="/";
-				}
-				currentDir+=directories[i];
+			foreach(string currentDir in GetDirectoryPrefixes(path)) {
 				try {
 					//This will throw an exception of SftpPathNotFoundException if the directory does not exist
 					SftpFileAttributes attributes=client.GetAttributes(currentDir);
@@ -424,13 +420,33 @@ namespace OpenPmsDentalCloud {
 			client.DisconnectIfNeeded(hadToConnect);
 		}
 
+		///<summary>Every folder along a remote path, outermost first: "/a/b/c" gives "/a", "/a/b" and "/a/b/c"; "a/b" gives "a" and "a/b". Empty
+		///parts (a doubled or trailing "/") are skipped.</summary>
+		public static List<string> GetDirectoryPrefixes(string path) {
+			List<string> listPrefixes=new List<string>();
+			if(string.IsNullOrEmpty(path)) {
+				return listPrefixes;
+			}
+			string currentDir="";
+			string[] directories=path.Split("/",StringSplitOptions.RemoveEmptyEntries);
+			for(int i=0;i<directories.Length;i++) {
+				if(i>0 || path[0]=='/') {
+					currentDir+="/";
+				}
+				currentDir+=directories[i];
+				listPrefixes.Add(currentDir);
+			}
+			return listPrefixes;
+		}
+
 		///<summary>Returns true if it was not connected and had to connect.</summary>
 		public static bool ConnectIfNeeded(this SftpClient client) {
 			if(!client.IsConnected) {
 				try {
 					client.Connect();
 				}
-				catch(Exception e) {
+				catch(Exception ex) {
+					Exception e=SshHostKeys.Explain(ex,client.ConnectionInfo.Host,client.ConnectionInfo.Port);
 					throw new Exception("Connecting to "+client.ConnectionInfo.Host+" has failed with user: "+client.ConnectionInfo.Username+"\r\n"+e.Message,e);
 				}
 				return true;

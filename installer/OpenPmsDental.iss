@@ -91,6 +91,13 @@ Source: "{#StagingDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 ; program saves the connection there); the folder itself keeps the default rights.
 Source: "{tmp}\{#ConfigFileName}"; DestDir: "{app}"; Flags: external onlyifdoesntexist; Permissions: users-modify; Check: ShouldInstallConfig
 
+[InstallDelete]
+; Libraries an earlier release installed that the program no longer uses (the tier 1 library updates). An upgrade removes them, so no
+; stale copy stays next to the program. tests\LibraryBindingTests checks that the release ships none of them.
+Type: files; Name: "{app}\Tamir.SharpSSH.dll"
+Type: files; Name: "{app}\Org.Mentalis.Security.dll"
+Type: files; Name: "{app}\DiffieHellman.dll"
+
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#ExeName}"; WorkingDir: "{app}"; Check: not WizardNoIcons
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#ExeName}"; WorkingDir: "{app}"; Tasks: desktopicon

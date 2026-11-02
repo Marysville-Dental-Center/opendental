@@ -20,10 +20,10 @@ Copyright years are in each project's own license file at its source address.
 Files in the repository's "Required dlls" folder that are not listed here are
 not part of the release (see docs/third-party-binaries-audit.md). Among them
 are support libraries for the coming library updates, listed here once a
-shipped library uses them: System.Formats.Asn1 10.0.13, System.IO.Pipelines
-10.0.14, System.Security.Cryptography.Pkcs 8.0.1 and Microsoft.Bcl.Cryptography
-10.0.10, by the .NET Foundation and Contributors under the MIT License, source
-at https://github.com/dotnet/runtime. The MariaDB server, the .NET Framework,
+shipped library uses them: System.IO.Pipelines 10.0.14 and
+System.Security.Cryptography.Pkcs 8.0.1, by the .NET Foundation and
+Contributors under the MIT License, source at https://github.com/dotnet/runtime.
+The MariaDB server, the .NET Framework,
 the Visual C++ runtime, the WebView2 runtime and the TWAIN data source manager
 are installed separately and are not shipped.
 
@@ -39,15 +39,18 @@ License:   MIT License
 Source:    https://github.com/mysql-net/MySqlConnector
 
 --- Component: .NET libraries
-Files:     Microsoft.Bcl.AsyncInterfaces.dll, Microsoft.Extensions.DependencyInjection.Abstractions.dll,
+Files:     Microsoft.Bcl.AsyncInterfaces.dll, Microsoft.Bcl.Cryptography.dll,
+           Microsoft.Extensions.DependencyInjection.Abstractions.dll,
            Microsoft.Extensions.Logging.Abstractions.dll, System.Buffers.dll,
-           System.Diagnostics.DiagnosticSource.dll, System.Memory.dll, System.Numerics.Vectors.dll,
-           System.Runtime.CompilerServices.Unsafe.dll, System.Threading.Tasks.Extensions.dll
-Version:   NuGet packages Microsoft.Bcl.AsyncInterfaces 10.0.14,
+           System.Diagnostics.DiagnosticSource.dll, System.Formats.Asn1.dll, System.Memory.dll,
+           System.Numerics.Vectors.dll, System.Runtime.CompilerServices.Unsafe.dll,
+           System.Threading.Tasks.Extensions.dll
+Version:   NuGet packages Microsoft.Bcl.AsyncInterfaces 10.0.14, Microsoft.Bcl.Cryptography 10.0.10,
            Microsoft.Extensions.DependencyInjection.Abstractions 8.0.2,
            Microsoft.Extensions.Logging.Abstractions 8.0.3, System.Buffers 4.6.1,
-           System.Diagnostics.DiagnosticSource 8.0.1, System.Memory 4.6.3, System.Numerics.Vectors 4.6.1,
-           System.Runtime.CompilerServices.Unsafe 6.1.2, System.Threading.Tasks.Extensions 4.6.3
+           System.Diagnostics.DiagnosticSource 8.0.1, System.Formats.Asn1 10.0.13, System.Memory 4.6.3,
+           System.Numerics.Vectors 4.6.1, System.Runtime.CompilerServices.Unsafe 6.1.2,
+           System.Threading.Tasks.Extensions 4.6.3
 Copyright: .NET Foundation and Contributors
 License:   MIT License
 Source:    https://github.com/dotnet/runtime
@@ -78,10 +81,17 @@ Source:    https://github.com/AzureAD/microsoft-authentication-library-for-dotne
 
 --- Component: SSH.NET
 Files:     Renci.SshNet.dll
-Version:   2024.1
+Version:   2026.0.0
 Copyright: RENCI and the SSH.NET contributors
 License:   MIT License (the project's own text follows)
 Source:    https://github.com/sshnet/SSH.NET
+
+--- Component: Bouncy Castle Cryptography
+Files:     BouncyCastle.Cryptography.dll
+Version:   2.7.0
+Copyright: Legion of the Bouncy Castle Inc.
+License:   MIT License
+Source:    https://github.com/bcgit/bc-csharp
 
 --- Component: PDFsharp
 Files:     PdfSharp.dll, PdfSharp.Charting.dll
@@ -124,20 +134,6 @@ Version:   2.0.5
 Copyright: none (dedicated to the public domain by its authors)
 License:   Public domain
 Source:    https://www.nuget.org/packages/OpenPop.NET
-
---- Component: SharpSSH
-Files:     Tamir.SharpSSH.dll
-Version:   1.1.1.13
-Copyright: Tamir Gal; JSch, of which it is a port: Atsuhiko Yamanaka, JCraft, Inc.
-License:   BSD-style license of JSch (the project's own text follows)
-Source:    https://sourceforge.net/projects/sharpssh/
-
---- Component: Mentalis.org Security Library
-Files:     Org.Mentalis.Security.dll (1.0.13), DiffieHellman.dll
-Version:   1.0.13
-Copyright: The Mentalis.org Team
-License:   BSD-style Mentalis.org license (the project's own text follows)
-Source:    distributed with SharpSSH, https://sourceforge.net/projects/sharpssh/
 
 --- Component: NHunspell and Hunspell
 Files:     NHunspell.dll (0.9.6), Hunspellx86.dll (Hunspell 1.2, x86)
