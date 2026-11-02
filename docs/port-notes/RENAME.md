@@ -5,8 +5,8 @@ time. Read them with the mapping below: `OpenDental\Forms\FormX.cs` is now `Open
 `OpenPmsDentalBusiness\...`, `OpenDental.exe` is `OpenPmsDental.exe`, the namespace `OpenDental.UI` is `OpenPmsDental.UI`, and so on. Their
 text is not rewritten; it is the record of what was done.
 
-The rename ran in two stages on branches `rn/rename-1` (the scripted rename) and `rn/rename-2` (tests, tools, visible text, docs and the
-leftover names). It is the owner's last step before the installer and the v0.0 release. The plan is the rename inventory's sections 2 to 6;
+The rename ran in three stages on branches `rn/rename-1` (the scripted rename), `rn/rename-2` (tests, tools, visible text, docs and the
+leftover names) and `rn/rename-3` (verification). It is the owner's last step before the installer and the v0.0 release. The plan is the rename inventory's sections 2 to 6;
 [REN-PROOF.md](REN-PROOF.md) made the code safe to rename first.
 
 ## Mapping (owner decisions)
@@ -95,6 +95,37 @@ The display name is "Open PMS - Dental" (`ProductIdentity.ProductName`).
 - **Leftover scanner:** `tools/Test-NoOldNames.ps1 -Strict` passes. Every old name left is in its allow-list with a reason (attribution and
   GPL headers, enum members and stored values, vendor and other wire values, the Middle Tier contract, the solution file names, frozen
   ConvertDatabases, text about Open Dental itself, the pre-rename names still looked up, and docs history).
+
+## Stage 3 (`rn/rename-3`): verification
+
+Synthetic data and the local server (127.0.0.1:3306) only; the program's windows were never started. Every check passed, so the
+rename needed no fix. One test was added.
+
+| Check | Result |
+|---|---|
+| Cold builds of `OpenDental.Local.slnf` through the build lane (a fresh worktree, no `bin` or `obj`) | **Debug x86:** 0 errors, 374 warnings, the same as main. **Release x86:** 0 errors, 1,114 warnings. There is no Release baseline from main (the lane log has no Release build). 745 of the Release warnings are XML documentation warnings (CS1591, CS1570, CS1587, CS1572, CS1573, CS1658, CS1584). They come from CodeBase, OpenPmsDental and OpenPmsDentalBusiness, which write their XML documentation file only in Release. `git blame` puts each of their 712 lines in a commit from before main (two are in `FormSplash.Designer.cs`, which the compiler reports in other letter case; they are the same lines on main). So the rename added none of them. The other warnings are the Debug build's. |
+| Old names in the output | No file whose name starts with `OpenDent` (no `OpenDental*.exe`, no `OpenDentBusiness*.dll`) in any `bin` or `obj` folder of either configuration. |
+| Files in `OpenPmsDental\bin\Debug` and `\Release` | Both folders hold `OpenPmsDental.exe`, `OpenPmsDentalBusiness.dll`, `ODR.dll`, `ImagingCapture.dll`, `ImagingDeviceManager.dll`, `Hunspellx86.dll`, `WebView2Loader.dll` and every `ForkReleases.ListBuildIdFiles` file. |
+| Full suite (`run-tests -Mode Full`, Debug) | 88 assemblies; 5,807 tests found, 5,805 passed, 0 failed. Two were skipped, as in stage 2: the M201Tests checks against Open Dental's published database documents, which run only when `M201_OD_DOCS_DIR` is set. Stage 2 had the same counts: 5,807 found, and 5,801 passed in its full run plus the 4 it fixed and re-ran. The rename guards are part of this run: NoHqTests `RenameGuardTests`, and BSERVERTests `MiddleTierNamesTests`, whose in-process Middle Tier round trips include LogInWeb. |
+| `tools/Test-NoOldNames.ps1 -Strict` | Passed: 8,113 files scanned, 0 old names outside the allow-list, 3,626 allowed (3,631 with this note, which as a port note is history). |
+| `tools/Test-NoHqHosts.ps1` | Passed: 7,196 files in 115 projects, 26 allowed references. |
+| `tools/New-DevDatabase.ps1 -Name rn_<digits> -Force -SkipBuild -NoAtoZ` (DevDbTool and AdoptionValidation built through the lane first) | Exit code 0. The database was adopted (DataBaseVersion 99.0.0.0, fork schema level 2026110104, OdSchemaCompat 26.1.70), all 16 fork migration steps ran, and verification passed: the schema matches Open Dental 26.1.70. The database was dropped afterwards. |
+| AdoptionValidation `rehearse --size medium --runs 1 --prefix synth_rn3_<digits>_` | PASS, 31 of 31 checks, in 36 s. Among them: V10 "every Open Dental release client refuses the adopted copy" (10 of 10 release-client scenarios); A1, the fork's startup guard refuses the unadopted copy; M2, the schema is exactly 26.1.70; V11, the row-by-row check; R1 and R2, the data-layer round trip through `OpenPmsDentalBusiness`; I1 to I4, idempotence. Its scratch databases were dropped. |
+| Release channel (ReleaseFlowTests, Debug, after the new test) | 91 of 91 passed, among them the publish and pull tests: `PublishThenPull_RoundTripsEveryFile`, `Republish_ReplacesThePreviousRelease`, the publish and pull decisions, `PublishFilter_KeepsLocalSettingsLocal` and `BuildId_ChangesWithAnyOwnAssembly`. |
+
+**Added:** `ReleaseManifestTests.BuildIdFiles_AreAllInTheReleaseOutput`. The suite runs from the Debug build, but releases are
+published from the Release build, so the existing check (`BuildIdFiles_AreAllInTheBuildOutput`) never saw `bin\Release`. The new
+test checks `OpenPmsDental\bin\Release` by name:
+- every `ListBuildIdFiles` file is there;
+- no file there starts with Open Dental's prefix, such as a stale `OpenDental.exe` or `OpenDentBusiness.dll`;
+- the build id of a copy of those files changes when only `OpenPmsDental.exe` or only `OpenPmsDentalBusiness.dll` changes.
+
+It is inconclusive until the Release configuration is built. From now on a full run finds 5,808 tests, and passes 5,806 of them only
+where Release has been built.
+
+Not checked here: the rename inventory's §6 items that need the running program or an office database. These are the launch and
+module walk-through, CentralManager, the RDL reports, the cursors, the second instance and the Event Log sources (left to the owner's
+first start after the installer), and the deferred scan of the office database.
 
 ## Not done here
 
