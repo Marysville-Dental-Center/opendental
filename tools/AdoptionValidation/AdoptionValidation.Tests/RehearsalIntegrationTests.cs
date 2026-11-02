@@ -467,6 +467,38 @@ namespace AdoptionValidation.Tests {
 			}
 		}
 
+		///<summary>Negative control for the inventory tables: the report comparison allows each as an added table without its rows; adopt's row check
+		///holds the stock ledger, the one table of this program adoption writes rows into, to exactly the opening rows the plan lists (none here: the
+		///synthetic office has no supply with stock) and the other inventory tables, like every other table of this program, to empty.</summary>
+		[TestMethod]
+		public void RowCheck_HoldsTheStockLedgerToItsOpeningRows_AndTheOtherInventoryTablesEmpty() {
+			SkipIfNeeded();
+			string tampered=Rehearsal.DbPrefix+Tag+"_tamperedinv";
+			List<string> listLog=new List<string>();
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Adopted(1),"--database",tampered },listLog.Add),string.Join("\r\n",listLog));
+			using(Db db=Db.Open(_server)) {
+				AdoptionRowCheck.Result resultClean=AdoptionRowCheck.Run(db,Source(1),tampered);
+				Assert.IsTrue(resultClean.Passed,"An untouched adopted copy passes. "+string.Join("\r\n",resultClean.ListFailures));
+				Assert.IsTrue(resultClean.IsLedgerAdded);
+				Assert.AreEqual(resultClean.PlanInventory.ListOpening.Count,resultClean.CountOpeningRows);
+				Assert.IsFalse(resultClean.ListForkTablesAdded.Contains("supplyledger"),"Held to the plan, not to empty.");
+				CollectionAssert.IsSubsetOf(new[] { "supplylot","supplyproccode","supplyprocpending","supplysetting" },resultClean.ListForkTablesAdded);
+				Assert.IsTrue(resultClean.ListLines.Any(x => x.StartsWith("Stock ledger: supplyledger added (inventory tracking), ")),string.Join("\r\n",resultClean.ListLines));
+				db.Use(tampered);
+				Assert.AreEqual(1,db.Execute("INSERT INTO supplyledger (SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,"
+					+"DispSupplyNum,UserNum,DateTimeEntry,Reason) VALUES (1,0,0,5,1,0,0,0,0,0,'0001-01-01 00:00:00','Opening balance')"));
+				Assert.AreEqual(1,db.Execute("INSERT INTO supplylot (SupplyNum,LotNumber,DateExpiry,QtyOnHand,SupplyOrderItemNum,DateTimeEntry) "
+					+"VALUES (1,'SYN-LOT','0001-01-01',0,0,'0001-01-01 00:00:00')"));
+				AdoptionRowCheck.Result result=AdoptionRowCheck.Run(db,Source(1),tampered);
+				string failures=string.Join("\r\n",result.ListFailures);
+				Assert.IsFalse(result.Passed);
+				StringAssert.Contains(failures,"The stock ledger holds "+(result.PlanInventory.ListOpening.Count+1)+" row(s); migration-preview lists "
+					+result.PlanInventory.ListOpening.Count+" opening balance row(s).");
+				StringAssert.Contains(failures,"The new table supplylot holds 1 row(s)");
+				db.Execute("DROP DATABASE IF EXISTS `"+tampered+"`");//This run's own copy; ClassCleanup drops it too if an assert stopped the test.
+			}
+		}
+
 		///<summary>Negative control for the 26.1 rules: the report comparison allows grouppermission as a whole table, the new tables and columns without
 		///their values, and claimpayment.Note and DateLastAssigned as whole columns; adopt's row check does not let a change through that the 25.4 and 26.1
 		///steps do not make.</summary>
