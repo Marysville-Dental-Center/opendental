@@ -60,8 +60,9 @@ Every change of stock is a ledger row; nothing else changes stock.
 | `DateTimeEntry` | when (server time, set on insert) |
 | `Reason` | free text; required for count adjustments and manual adjustments |
 
-Rows are never edited or deleted (the one exception: deleting a supply that has only opening and manual adjustment rows deletes those rows
-with it). A correction is a new row.
+Rows are never edited or deleted (the exceptions: deleting a supply that has only opening and manual adjustment rows deletes those rows
+with it, and merging two patients moves `PatNum` of the ledger and awaiting rows to the patient kept, as it moves the procedures:
+`supplyledger.PatNum` and `supplyprocpending.PatNum` are in `Patients.StringArrayPatNumForeignKeys`). A correction is a new row.
 
 `supply.LevelOnHand` is always the sum of the supply's ledger rows, and `supplylot.QtyOnHand` the sum of the lot's ledger rows.
 

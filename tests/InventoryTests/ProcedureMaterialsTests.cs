@@ -197,6 +197,38 @@ namespace InventoryTests {
 			Assert.AreEqual(2,InvData.OnHand(supplyImplant.SupplyNum));
 		}
 
+		///<summary>Merging two patients moves the procedures to the patient kept; the ledger rows and the awaiting rows follow them, so the stock
+		///window and a recall by lot name the chart that is kept, not the archived one.</summary>
+		[TestMethod]
+		public void PatientMerge_LedgerAndAwaitingRowsFollowTheProcedures() {
+			Supply supply=InvData.Supply(onHand:5);
+			long codeNum=InvData.Code((supply,2));
+			long patNumFrom=InvData.Patient();
+			long patNumTo=InvData.Patient();
+			Procedure procedureUsed=InvData.SetStatus(InvData.Proc(patNumFrom,codeNum),ProcStat.C);
+			InventoryTracking.ConfirmMaterials(new List<long> { procedureUsed.ProcNum },InventoryTracking.GetDefaultMaterials(new List<Procedure> { procedureUsed }));
+			Procedure procedureAwaiting=InvData.SetStatus(InvData.Proc(patNumFrom,codeNum),ProcStat.C);
+			Assert.IsTrue(IsPending(procedureAwaiting.ProcNum));
+			Patients.MergeTwoPatientPointOfNoReturn(patNumTo,patNumFrom,new List<PatField>(),new List<PatField>());
+			Assert.AreEqual(patNumTo,Procedures.GetOneProc(procedureUsed.ProcNum,false).PatNum);
+			List<SupplyLedger> listSupplyLedgers=SupplyLedgers.GetForProcs(new List<long> { procedureUsed.ProcNum });
+			Assert.AreEqual(1,listSupplyLedgers.Count);
+			Assert.AreEqual(patNumTo,listSupplyLedgers[0].PatNum,"The Use row names the patient kept.");
+			Assert.AreEqual(patNumTo,SupplyProcPendings.GetForProcs(new List<long> { procedureAwaiting.ProcNum }).Single().PatNum);
+			//Un-completing after the merge puts back under the patient kept.
+			InvData.SetStatus(procedureUsed,ProcStat.TP);
+			Assert.AreEqual(5,InvData.OnHand(supply.SupplyNum));
+			Assert.IsTrue(SupplyLedgers.GetForProcs(new List<long> { procedureUsed.ProcNum }).All(x => x.PatNum==patNumTo));
+			//Every PatNum column of the inventory tables is moved by a merge.
+			List<string> listColumns=DataCore.GetList<string>("SELECT CONCAT(TABLE_NAME,'.',COLUMN_NAME) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() "
+				+"AND COLUMN_NAME LIKE '%PatNum%' AND TABLE_NAME IN('"+string.Join("','",OpenPmsDentalBusiness.ForkMigrations.SchemaVerifier.ArrayForkTables)+"')",
+				x => x.GetString(0));
+			CollectionAssert.AreEquivalent(new[] { "supplyledger.PatNum","supplyprocpending.PatNum" },listColumns);
+			foreach(string column in listColumns) {
+				Assert.IsTrue(Patients.StringArrayPatNumForeignKeys.Contains(column),column+" is moved by a patient merge.");
+			}
+		}
+
 		[TestMethod]
 		public void TrackingOff_CompletingRecordsNothing_ButUncompletingStillRestores() {
 			Supply supply=InvData.Supply(onHand:10);

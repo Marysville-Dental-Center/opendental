@@ -66,9 +66,12 @@ namespace InventoryTests {
 			return codeNum;
 		}
 
+		///<summary>A synthetic patient who is the guarantor of the family.</summary>
 		public static long Patient() {
 			int n=Next();
-			return DataCore.NonQ("INSERT INTO patient (LName,FName,PriProv,ClinicNum) VALUES ('Inventory','Synthetic"+n+"',1,0)",true,"PatNum","patient");
+			long patNum=DataCore.NonQ("INSERT INTO patient (LName,FName,PriProv,ClinicNum) VALUES ('Inventory','Synthetic"+n+"',1,0)",true,"PatNum","patient");
+			DataCore.NonQ("UPDATE patient SET Guarantor=PatNum WHERE PatNum="+POut.Long(patNum));
+			return patNum;
 		}
 
 		///<summary>A procedure inserted with the status (Procedures.Insert, as the Chart module does).</summary>
