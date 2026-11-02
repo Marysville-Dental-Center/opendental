@@ -2,9 +2,11 @@
 
 From the version after 0.0, Open PMS - Dental connects to a database server over the network only encrypted, and only when the server's
 certificate comes from the office's own certificate authority (CA) and names the server
-([docs/specs/db-connection-security.md](specs/db-connection-security.md)). A connection to the same computer (`localhost`, `127.0.0.1`,
-`::1`) is exempt. **Switch over in the order below**: version 0.0 connects without TLS and pulls its updates from the database, so the
-server must keep taking connections without TLS until every workstation runs the new version.
+([docs/specs/db-connection-security.md](specs/db-connection-security.md)). This is for the program's own database account, the
+connection in `FreeDentalConfig.xml`, and no longer `root` (section 5). A connection to the same computer (`localhost`, `127.0.0.1`,
+`::1`) is exempt. A read-only or reporting server named in the program's preferences (Setup) keeps working as before, with its own
+account and its own CA setting (spec, section 5.1); this guide does not cover it. **Switch over in the order below**: version 0.0 connects
+without TLS, so the server must keep taking connections without TLS until every workstation runs the new version.
 
 This guide covers the certificates and the MariaDB settings only. Firewalls, the network and backups of the keys are the office's own
 business. Placeholders: `<office-ca>` is a name for the office CA (for example "Example Dental Office CA"), `<db-server>` the name the
@@ -16,18 +18,21 @@ an encrypted USB drive: whoever has it can issue certificates the workstations t
 
 ## 0. The order of the switch-over
 
-1. **TLS on the server, not yet required.** Make the certificates (sections 1 to 3), set `ssl_ca`, `ssl_cert` and `ssl_key` and restart
-   MariaDB with `require_secure_transport` still OFF (section 4). Create the new database users (section 5). The v0.0 workstations keep
-   working: they connect as before, without TLS, with their old user.
-2. **The update server.** Install the new version there with its setup, as an administrator (section 6): setup runs the connection settings
-   tool, which sets up the office CA and the client certificate or the password. Start the program there as an administrator and publish
-   the release ([docs/release-process.md](release-process.md)).
-3. **The other workstations.** Each pulls the release at its next start (the pull still works without TLS) and restarts into the new
-   version, which stops with the message to run the connection settings tool until its connection is set up. An administrator then runs
-   `OpenPmsDentalDbSettings.exe` in the program folder on each (section 6), or runs the new setup there with the security switches.
+1. **TLS on the server, not yet required.** Make the certificates (sections 1 to 3), set `ssl_ca`, `ssl_cert`, `ssl_key` and `sql_mode`
+   and restart MariaDB with `require_secure_transport` still OFF (section 4). Create the program's database account (section 5). The v0.0
+   workstations keep working: they connect as before, without TLS, with their old user.
+2. **The update server.** Uninstall version 0.0 there first (Windows Settings > Apps, or Control Panel > Programs and Features). Its
+   uninstaller removes the whole program folder, including the `FreeDentalConfig.xml` its setup wrote. Then install the new version with
+   its setup, as an administrator (section 6): setup runs the connection settings tool, which sets up the office CA and the client
+   certificate or the password. Start the program there as an administrator: it makes the backup database and updates the database
+   (section 5 lists the rights this needs). Then publish the release ([docs/release-process.md](release-process.md)) for the versions
+   after this one.
+3. **The other workstations.** On each, uninstall version 0.0 the same way, then run the new setup as an administrator, with its pages or
+   with the silent switches of section 6. There is no in-place upgrade from version 0.0 (owner decision of 2026-11-02): setup's upgrade
+   path, for a program folder that already has `FreeDentalConfig.xml`, is for the versions after this one.
 4. **TLS required.** When no workstation connects without TLS any more (section 4.1), turn on `require_secure_transport`, keep it in the
-   option file, and drop the old users or make them require TLS. From then on a program on the server computer itself must connect with
-   `<db-server>`, not `localhost` (section 4.1).
+   option file, and drop the old users (such as the `root` accounts v0.0 used over the network) or make them require TLS. From then on a
+   program on the server computer itself must connect with `<db-server>`, not `localhost` (section 4.1).
 
 ## 1. The office CA
 
@@ -114,6 +119,8 @@ ssl_ca=/etc/mysql/ssl/office-ca.pem
 ssl_cert=/etc/mysql/ssl/server-cert.pem
 ssl_key=/etc/mysql/ssl/server-key.pem
 tls_version=TLSv1.2,TLSv1.3
+# The program needs a blank sql_mode. Set here, the program's account needs no SUPER right to set it at every start (section 5).
+sql_mode=""
 # require_secure_transport=ON comes in step 4, when every workstation runs the new version (section 4.1).
 ```
 
@@ -121,6 +128,7 @@ Use forward slashes in Windows paths too (`C:/ProgramData/MariaDB/ssl/office-ca.
 
 ```sql
 SHOW GLOBAL VARIABLES LIKE 'have_ssl';                 -- YES
+SHOW GLOBAL VARIABLES LIKE 'sql_mode';                 -- blank (NO_AUTO_CREATE_USER also does)
 SHOW GLOBAL VARIABLES LIKE 'require_secure_transport'; -- OFF until step 4
 ```
 
@@ -155,36 +163,74 @@ and add `require_secure_transport=ON` to the `[mariadb]` section of the option f
 connects to `localhost` without TLS (such a connection is exempt from the program's rule, but MariaDB refuses it). If the program also runs
 on the server computer, give it `<db-server>` in its connection settings, not `localhost`, and set it up like any workstation.
 
-## 5. The database users
+## 5. The program's database account
 
-The workstations' user, authenticated by the client certificate:
+The program no longer uses `root` (owner decision of 2026-11-02). The office gives it an account of its own, `opmsd` in this guide (the
+installer's default user), with only the rights it needs to run, to update the database and to make the backup that comes before every
+update. `<database>` is the office database (`opendental` by default). **This list is untested against a real server**: try it on a test
+copy (a restored backup on a test server) before step 2 of the switch-over. The spec lists where in the program each right is needed
+([specs/db-connection-security.md](specs/db-connection-security.md), section 9).
+
+The workstations' account, authenticated by the client certificate:
 
 ```sql
 CREATE USER 'opmsd'@'<office-network>'
   REQUIRE SUBJECT '/CN=opmsd-workstations' AND ISSUER '/CN=<office-ca>';
-GRANT ALL PRIVILEGES ON *.* TO 'opmsd'@'<office-network>';
+
+-- The office database.
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, INDEX, CREATE TEMPORARY TABLES
+  ON `<database>`.* TO 'opmsd'@'<office-network>';
+
+-- The backup databases: before every database update the program copies the office database into <database>backup_MM_dd_yyyy
+-- (<database>backup_MM_dd_yyyy_1, _2, ... when that name exists). Without them the update stops with "Backup failed. Your database
+-- has not been altered."
+GRANT SELECT, INSERT, CREATE, ALTER
+  ON `<database>backup\_%`.* TO 'opmsd'@'<office-network>';
+
+-- Server-wide: FLUSH TABLE after each table the backup copies (RELOAD), and the question every backup asks whether the server
+-- replicates, SHOW MASTER STATUS and SHOW SLAVE STATUS (BINLOG MONITOR, REPLICA MONITOR). None of them reads or changes data.
+GRANT RELOAD, BINLOG MONITOR, REPLICA MONITOR ON *.* TO 'opmsd'@'<office-network>';
 ```
 
-The program needs rights beyond its own database: before every database update it copies the database into a new backup database
-(`<database>backup_<date>`, made with `CREATE DATABASE`; without it the update stops with "Backup failed. Your database has not been
-altered."), and archiving old data and the large-table tools create databases of their own. `ALL PRIVILEGES ON *.*` gives what it needs,
-the same rights a v0.0 office's `root` user had; without `WITH GRANT OPTION` the user cannot give rights to anyone else.
+In a database name in `GRANT`, `_` and `%` are wildcards: write every `_` of `<database>` as `\_` in both grants (for `opendental_pms`:
+`` `opendental\_pms`.* `` and `` `opendental\_pmsbackup\_%`.* ``), so that they cover exactly these databases. The backup grant is a
+wildcard on purpose: each backup is a new database, and the grant lets the account create those and nothing else. It never needs to drop
+them; remove old backups with your own administrator account.
+
+What the account does not get, and why it does not need it:
+
+- No `SUPER`. At every start the program sets the server's `sql_mode` to blank when it is anything else, which needs `SUPER`; with
+  `sql_mode=""` in the option file (section 4) it never tries. Without that line every start stops with "Unable to set global sql mode."
+- No `ALL PRIVILEGES`, no `GRANT OPTION`, no `CREATE USER`, no `FILE`, no `PROCESS`, no `SHOW DATABASES`: the program's own statements
+  need none of them. Cancelling a running user query (`KILL QUERY`) stops the account's own query only.
+- A server that replicates (a replication set-up in the program, or binary logging with replicas) also needs `BINLOG ADMIN` for the
+  backup, which then turns binary logging off for its own session (`SET SESSION sql_log_bin`). The program's replication set-up window
+  (stop and start the replica) needs `REPLICATION SLAVE ADMIN`: run it as your administrator, not as `opmsd`.
+- `RELOAD` also allows the other `FLUSH` statements (and some `RESET` statements) server-wide. It gives no access to any data.
 
 A database not set up for certificates uses the password fallback, still over TLS (the program refuses anything else), with the same
-rights:
+three grants (`'opmsd_pw'@'<office-network>'` in place of `'opmsd'@'<office-network>'`):
 
 ```sql
 CREATE USER 'opmsd_pw'@'<office-network>' IDENTIFIED BY '<a long random password>' REQUIRE SSL;
-GRANT ALL PRIVILEGES ON *.* TO 'opmsd_pw'@'<office-network>';
 ```
 
 The installer or the tool stores that password on each workstation with DPAPI (`DbPassword=` in a secrets file, or typed in the tool).
 
+The connection settings tool warns, without refusing, when `root` is the user for a server over the network. A program on the server
+computer that connects to `localhost` (section 6) does so without TLS until step 4, so it needs a password account for the server's own
+address without `REQUIRE SSL` (`'opmsd_pw'@'localhost'`, or `'opmsd_pw'@'127.0.0.1'` when the server does not resolve names), with the
+same three grants. From step 4 on it connects with `<db-server>` like any workstation.
+
 ## 6. The workstations
 
+**Version 0.0 first.** A workstation with version 0.0 is uninstalled before the new setup runs (section 0): its uninstaller removes the
+program folder with the `FreeDentalConfig.xml` its setup wrote, so the new setup makes a new install. Nothing of the v0.0 connection is
+carried over.
+
 **A new install** (the program folder has no `FreeDentalConfig.xml`). Interactive: run the setup as an administrator and give the server,
-database, user, `office-ca.pem` and `client.pfx` on the connection pages; the connection settings tool opens filled with them and asks for
-the `.pfx` password (or, without a `.pfx`, for the database password). Silent:
+database, user (`opmsd` by default, section 5), `office-ca.pem` and `client.pfx` on the connection pages; the connection settings tool
+opens filled with them and asks for the `.pfx` password (or, without a `.pfx`, for the database password). Silent:
 
 ```bat
 OpenPmsDental-<version>-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /LOG=C:\Temp\setup.log /DBSERVER=<db-server> /DBNAME=opendental ^
@@ -195,11 +241,11 @@ del C:\Temp\dbsecrets.txt
 `dbsecrets.txt` holds the line `PfxPassword=...` (or `DbPassword=...` for the password fallback); delete it right after setup. The tool's
 result line is in the setup log.
 
-**An existing install** (every v0.0 workstation: setup keeps its `FreeDentalConfig.xml`). Setup run with any of `/DBCA=`, `/DBPFX=`,
+**An existing install of a later version** (setup keeps its `FreeDentalConfig.xml`). Setup run with any of `/DBCA=`, `/DBPFX=`,
 `/DBTHUMBPRINT=`, `/DBSECRETSFILE=` runs the tool with only the switches given (silent: `/silent`; interactive: the tool's window), so the
 silent command above sets up an upgraded workstation as well; `/DBSERVER=`, `/DBNAME=` and `/DBUSER=` change the server, database and user
 only when they are given. Without those switches setup only checks the settings against the rule (and, interactive, offers the tool's
-window when they fail). After a self-update, run the tool itself from an elevated command prompt:
+window when they fail). To change the settings of an installed workstation, run the tool itself from an elevated command prompt:
 
 ```bat
 start "" /wait "C:\Program Files (x86)\Open PMS - Dental\OpenPmsDentalDbSettings.exe" /silent /ca=\\<file-share>\office-ca.pem ^
@@ -217,6 +263,13 @@ with a `DbPassword=...` line. Once `require_secure_transport` is ON (section 4.1
 
 Later changes: `OpenPmsDentalDbSettings.exe` in the program folder, as an administrator. The tool keeps its copy of the office CA in the
 program folder (`ConnectionSettings\office-ca.pem`), which only administrators may change.
+
+**Shortcuts and scripts that start the program with a connection** (owner decision of 2026-11-02, kept as built). `ServerName=`,
+`DatabaseName=` and `MySqlUser=` still choose the database, and the connection always takes this computer's office CA and client
+certificate. A database password on the launch command (`MySqlPassword=`, `MySqlPassHash=`, `MySqlPassObfuscated=`) is refused for a
+server over the network: the program uses the password or the certificate the tool stored on this computer, for the user configured
+there. For a server on the same computer it is accepted as before. The program's own log-in on the launch command (`UserName=`,
+`OdPassword=`, `OdPassObfuscated=`) stays as it was.
 
 ## 7. Renewing
 
