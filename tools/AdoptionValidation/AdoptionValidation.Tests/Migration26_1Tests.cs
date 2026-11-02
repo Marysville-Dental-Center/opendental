@@ -42,7 +42,12 @@ namespace AdoptionValidation.Tests {
 			Assert.AreEqual(5,changes.ListTablesAdded.Count,string.Join(", ",changes.ListTablesAdded));
 			Assert.AreEqual(28,changes.ListColumnsAdded.Count,string.Join(", ",changes.ListColumnsAdded));
 			Assert.AreEqual(21,changes.ListColumnsAdded.Select(x => x.Split('.')[0]).Distinct().Count());
-			CollectionAssert.AreEqual(Sorted(changes.ListTablesAdded),Sorted(allowed.Rules.Where(x => x.Kind=="TableAdded").Select(x => x.Table)));
+			CollectionAssert.AreEqual(Sorted(changes.ListTablesAdded),Sorted(allowed.Rules.Where(x => x.Kind=="TableAdded" && !ForkTables.IsForkTable(x.Table))
+				.Select(x => x.Table)));
+			//This program's own tables (ForkTableSet) have a TableAdded rule each, and no rule allows anything else in them.
+			CollectionAssert.AreEqual(Sorted(ForkTables.GetTableNames()),Sorted(allowed.Rules.Where(x => x.Kind=="TableAdded" && ForkTables.IsForkTable(x.Table))
+				.Select(x => x.Table)));
+			Assert.IsFalse(allowed.Rules.Any(x => x.Kind!="TableAdded" && ForkTables.IsForkTable(x.Table)),"A fork table is only ever added, empty.");
 			CollectionAssert.AreEqual(Sorted(changes.ListColumnsAdded),Sorted(allowed.Rules.Where(x => x.Kind=="ColumnAdded").Select(x => x.Table+"."+x.Column)));
 			//The 25.4 and 26.1 value changes; program.Enabled is the DXC Patient Credit Score step's (AllowedDifferences_TheDxcStepAllowsOnlyItsColumnAndTable).
 			List<string> listColumnsChanged=allowed.Rules.Where(x => x.Kind=="ColumnChanged" && x.Column!="SecurityHash" && x.Table!="displayreport"

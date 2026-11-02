@@ -140,7 +140,8 @@ or `Program Files\MariaDB*`), `--keep`, `--skip-roundtrip`, `--prefix` (default 
     rule and held to the plan by the same check; the DXC step's changes show as `ColumnChanged program.Enabled` (a whole-column rule) and
     `RowsChanged toolbutitem` and `ColumnChanged toolbutitem.*` (a deleted row changes every column checksum; a whole-table rule), held to the
     plan by the same check; so do the 25.4 and 26.1 changes: `grouppermission` (a whole-table rule), the new tables and columns
-    (`TableAdded`, `ColumnAdded`; V1 allows exactly those tables to come) and `claimpayment.Note` and `DateLastAssigned` (`ColumnChanged`). Then a snapshot of `preference`, `securitylog` and `securityloghash` (the `_snap` database) for the
+    (`TableAdded`, `ColumnAdded`; V1 allows exactly those tables to come) and `claimpayment.Note` and `DateLastAssigned` (`ColumnChanged`);
+    and this program's own tables (`ForkTables`, the routine maintenance tables): `TableAdded`, held empty by the row check ("Fork tables:"). Then a snapshot of `preference`, `securitylog` and `securityloghash` (the `_snap` database) for the
     row-by-row comparisons of the second pass and across runs.
 12. **Open Dental-style startup check** ([OdStartupCheck.cs](OdStartupCheck.cs)): every Open Dental release client must exit without converting,
     writing, installing services or copying binaries, the 26.1.70 client (whose schema the adopted copy has) included. Then the row check's

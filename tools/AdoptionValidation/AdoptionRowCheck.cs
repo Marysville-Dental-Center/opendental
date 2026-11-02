@@ -40,7 +40,7 @@ namespace AdoptionValidation {
 	///- claimpayment.Note: only NULL notes become empty strings, as many as migration-preview counts; insverify and insverifyhist.DateLastAssigned: every
 	///  value is the original date at midnight;
 	///- the tables the 25.4 and 26.1 steps add stay empty, and the columns they add hold the column's default in every row (the codegroup rows the
-	///  Insurance History step writes aside);
+	///  Insurance History step writes aside); this program's own tables (ForkTables, for example routine maintenance) are created empty too;
 	///- updatehistory: nothing.
 	///Read-only; it names rows, preferences, permissions, columns and report names, never other values. The original must be the unchanged database the
 	///copy was made from (runbook step 3.3 showed they were equal, and step 10.2 shows the original did not change).</summary>
@@ -99,8 +99,10 @@ namespace AdoptionValidation {
 			public long CountNotesBlanked;
 			///<summary>The new columns checked (table.column), each holding its default in every row.</summary>
 			public List<string> ListColumnsAddedChecked=new List<string>();
-			///<summary>The new tables, each empty.</summary>
+			///<summary>The new tables of the Open Dental 25.4 and 26.1 schema steps, each empty.</summary>
 			public List<string> ListTablesAdded=new List<string>();
+			///<summary>The new tables that are this program's own (ForkTables, for example routine maintenance), each empty.</summary>
+			public List<string> ListForkTablesAdded=new List<string>();
 
 			public bool Passed {
 				get { return ListFailures.Count==0; }
@@ -852,7 +854,8 @@ namespace AdoptionValidation {
 			result.ListLines.Add("Changed columns: "+string.Join("; ",listParts)+".");
 		}
 
-		///<summary>The tables the copy has and the original lacks must be empty, and every column the copy's tables have and the original's lack must hold
+		///<summary>The tables the copy has and the original lacks must be empty (the Open Dental 25.4 and 26.1 tables and this program's own tables,
+		///ForkTables, listed apart), and every column the copy's tables have and the original's lack must hold
 		///the column's default in every row: the 25.4 and 26.1 schema steps add them and write nothing into them (evaluation.GradeOverride's default is
 		///-1, the "no override" back-fill). The one exception is the codegroup rows the Insurance History step writes (and any added row), which
 		///CheckCodeGroup holds to the plan.</summary>
@@ -860,12 +863,25 @@ namespace AdoptionValidation {
 			int countFailuresBefore=result.ListFailures.Count;
 			HashSet<string> setTablesOriginal=new HashSet<string>(TableNames(db,original),StringComparer.OrdinalIgnoreCase);
 			int countTablesWithRows=0;
+			int countForkTablesWithRows=0;
 			foreach(string table in TableNames(db,adopted).Where(x => !setTablesOriginal.Contains(x))) {
 				LocalOnly.EnsureSafeIdentifier(table);
-				result.ListTablesAdded.Add(table);
+				//This program's own tables (ForkTableSet, for example routine maintenance) are listed apart from the Open Dental 25.4 and 26.1 ones.
+				bool isForkTable=ForkTables.IsForkTable(table);
+				if(isForkTable) {
+					result.ListForkTablesAdded.Add(table);
+				}
+				else {
+					result.ListTablesAdded.Add(table);
+				}
 				long countRows=db.ScalarLong("SELECT COUNT(*) FROM `"+adopted+"`.`"+table+"`");
 				if(countRows>0) {
-					countTablesWithRows++;
+					if(isForkTable) {
+						countForkTablesWithRows++;
+					}
+					else {
+						countTablesWithRows++;
+					}
 					result.ListFailures.Add("The new table "+table+" holds "+countRows+" row(s); the fork migration only creates it.");
 				}
 			}
@@ -912,6 +928,9 @@ namespace AdoptionValidation {
 				+(result.ListTablesAdded.Count==0 ? "" : " ("+string.Join(", ",result.ListTablesAdded)+")")+"; "+result.ListColumnsAddedChecked.Count
 				+" new column(s) in "+result.ListColumnsAddedChecked.Select(x => x.Split('.')[0]).Distinct(StringComparer.OrdinalIgnoreCase).Count()
 				+" table(s) hold their default in every row"+(isClean ? "." : " (see the failures)."));
+			result.ListLines.Add("Fork tables: "+result.ListForkTablesAdded.Count+" new table(s) of this program, "
+				+(countForkTablesWithRows==0 ? "all empty" : countForkTablesWithRows+" not empty")
+				+(result.ListForkTablesAdded.Count==0 ? "." : " ("+string.Join(", ",result.ListForkTablesAdded)+")."));
 		}
 
 		///<summary>The SQL value every existing row of a column added by ALTER TABLE ... ADD COLUMN holds, from information_schema.COLUMNS: its declared

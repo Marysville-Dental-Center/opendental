@@ -569,13 +569,17 @@ namespace AdoptionValidation {
 			_run.TablesUntouched=baseline.Tables.Count(x => !setTouched.Contains(x.Name));
 			int countUntouchedWithRows=baseline.Tables.Count(x => !setTouched.Contains(x.Name) && x.Rows>0);
 			List<Difference> listRows=listDiffs.Where(x => x.Kind==DifferenceKind.RowsChanged).ToList();
-			//The only tables that may come or go are the new tables of the Open Dental 25.4 and 26.1 schema steps (allowed TableAdded differences).
+			//The only tables that may come or go are the new tables of the Open Dental 25.4 and 26.1 schema steps and this program's own tables
+			//(ForkTables), each an allowed TableAdded difference.
 			List<Difference> listTablesAdded=listDiffs.Where(x => x.Kind==DifferenceKind.TableAdded).ToList();
+			List<Difference> listTablesAddedOd=listTablesAdded.Where(x => !ForkTables.IsForkTable(x.Table)).ToList();
+			List<Difference> listTablesAddedFork=listTablesAdded.Where(x => ForkTables.IsForkTable(x.Table)).ToList();
 			bool isTableCountExpected=listTablesAdded.All(x => x.IsAllowed) && !listDiffs.Any(x => x.Kind==DifferenceKind.TableRemoved)
 				&& after.TableCount==baseline.TableCount+listTablesAdded.Count;
 			Check("V1","Row counts unchanged except where adoption deletes or adds rows, and no table gone",listRows.All(x => x.IsAllowed) && isTableCountExpected,
-				baseline.TableCount+" tables before, "+after.TableCount+" after ("+listTablesAdded.Count+" new from the Open Dental 25.4 and 26.1 schema steps"
-				+(listTablesAdded.Count==0 ? "" : ": "+string.Join(", ",listTablesAdded.Select(x => x.Table)))+"); "+(baseline.TotalRows).ToString("N0")+" rows before, "
+				baseline.TableCount+" tables before, "+after.TableCount+" after ("+listTablesAddedOd.Count+" new from the Open Dental 25.4 and 26.1 schema steps"
+				+(listTablesAddedOd.Count==0 ? "" : ": "+string.Join(", ",listTablesAddedOd.Select(x => x.Table)))+"; "+listTablesAddedFork.Count+" of this program"
+				+(listTablesAddedFork.Count==0 ? "" : ": "+string.Join(", ",listTablesAddedFork.Select(x => x.Table)))+"); "+(baseline.TotalRows).ToString("N0")+" rows before, "
 				+after.TotalRows.ToString("N0")+" after; changed: "+(listRows.Count==0 ? "none" : string.Join(", ",listRows.Select(x => x.Table+" "+x.Before+" -> "+x.After))));
 			Check("V2","Checksums of untouched tables identical",listDiffs.Where(x => x.Table!=null).All(x => x.IsAllowed),
 				_run.TablesUntouched+" of "+baseline.TableCount+" tables ("+countUntouchedWithRows+" that hold rows and "+(_run.TablesUntouched-countUntouchedWithRows)

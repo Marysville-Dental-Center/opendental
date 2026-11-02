@@ -609,7 +609,8 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   other row changed, added or removed", or "identical row by row ..."), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
   migration-preview counts now empty, every other note unchanged", and `insverify` and `insverifyhist.DateLastAssigned` "the original date at
   midnight in all N row(s)"), "New tables and columns:" ("5 new table(s), all empty (...); 28 new column(s) in 21 table(s) hold their default
-  in every row.") and `updatehistory` ("identical row by row")
+  in every row."), "Fork tables:" ("5 new table(s) of this program, all empty (maintfield, maintitem, maintrecord, maintrecordvalue,
+  maintstep).": the routine maintenance tables) and `updatehistory` ("identical row by row")
 - "Adopt: PASS." with the report rows renamed (or "the fork migration renamed no report row"), the UDS+ report row added and, if step 0.2
   listed them, the DXC Patient Credit Score row disabled and its buttons deleted, and exit code 0
 
@@ -666,6 +667,8 @@ person reads them all):
   each), and `ColumnChanged` for `claimpayment.Note` (if step 0.2 counted NULL notes) and `insverify` and `insverifyhist.DateLastAssigned`
   (if those tables hold rows). A report can only allow these as whole columns; step 4's row check printed that the new tables are empty, the
   new columns hold their defaults, only NULL notes changed and every `DateLastAssigned` is its old date at midnight;
+- this program's own tables (routine maintenance, steps 2026110201 to 2026110205): `TableAdded` for `maintfield`, `maintitem`, `maintrecord`,
+  `maintrecordvalue` and `maintstep` (0 rows); step 4's row check printed them under "Fork tables:", all empty;
 - `ChecksumTableChanged` lines "explained by the differences listed for this table", for the tables above.
 
 A line for any other table in the Allowed section: stop, go to Rollback, and give `compare.txt` to the developers. Every business total
