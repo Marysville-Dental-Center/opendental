@@ -25,11 +25,24 @@ an encrypted USB drive: whoever has it can issue certificates the workstations t
    uninstaller removes the whole program folder, including the `FreeDentalConfig.xml` its setup wrote. Then install the new version with
    its setup, as an administrator (section 6): setup runs the connection settings tool, which sets up the office CA and the client
    certificate or the password. Start the program there as an administrator: it makes the backup database and updates the database
-   (section 5 lists the rights this needs). Then publish the release ([docs/release-process.md](release-process.md)) for the versions
-   after this one.
+   (section 5 lists the rights this needs). **Do not publish the new version yet.** At this start, and at every start until it is
+   published, the program offers to publish it ([docs/release-process.md](release-process.md), `PrefL.CheckProgramVersion`): answer
+   **Cancel**. Do not start it with `IsSilentUpdate=true` either: a silent start publishes by itself when nothing is published yet. A
+   workstation that still runs version 0.0 pulls any newer published build at its next start and installs it over itself, and that keeps
+   the `FreeDentalConfig.xml` to which 0.0's setup gave every user of the computer modify rights: a user who is not an administrator could
+   then point the program at another CA and another server, to which it would send the stored password or present the client
+   certificate.
 3. **The other workstations.** On each, uninstall version 0.0 the same way, then run the new setup as an administrator, with its pages or
-   with the silent switches of section 6. There is no in-place upgrade from version 0.0 (owner decision of 2026-11-02): setup's upgrade
-   path, for a program folder that already has `FreeDentalConfig.xml`, is for the versions after this one.
+   with the silent switches of section 6. Uninstall first also on a workstation that already runs the new build because it pulled it (the
+   release was published too early): the "Open PMS - Dental" entry in Apps is still the one of 0.0, and its uninstaller removes the
+   program folder with the old `FreeDentalConfig.xml`. Never set such a workstation up only with the connection settings tool, or by
+   running the new setup over it: both keep that file and its rights. When the program offers to publish on a workstation, answer
+   **Cancel** there too; when it says to
+   run the new release on the update server first (Update Setup names another computer as the update server), close it: it starts once
+   the release is published. When version 0.0 is uninstalled on every workstation, publish the release on the update server with Update
+   Setup > **Recopy** ([docs/release-process.md](release-process.md)). There is no in-place upgrade from version 0.0 (owner decision of
+   2026-11-02) as long as the release is published only then: setup's upgrade path, for a program folder that already has
+   `FreeDentalConfig.xml`, is for the versions after this one.
 4. **TLS required.** When no workstation connects without TLS any more (section 4.1), turn on `require_secure_transport`, keep it in the
    option file, and drop the old users (such as the `root` accounts v0.0 used over the network) or make them require TLS. From then on a
    program on the server computer itself must connect with `<db-server>`, not `localhost` (section 4.1).
@@ -226,7 +239,9 @@ same three grants. From step 4 on it connects with `<db-server>` like any workst
 
 **Version 0.0 first.** A workstation with version 0.0 is uninstalled before the new setup runs (section 0): its uninstaller removes the
 program folder with the `FreeDentalConfig.xml` its setup wrote, so the new setup makes a new install. Nothing of the v0.0 connection is
-carried over.
+carried over. This holds only while the new release is not published: publish it when 0.0 is uninstalled on every workstation (section 0,
+steps 2 and 3). A workstation that pulled the new build anyway is uninstalled through Apps like any 0.0 workstation (the entry is still
+0.0's) before the setup runs.
 
 **A new install** (the program folder has no `FreeDentalConfig.xml`). Interactive: run the setup as an administrator and give the server,
 database, user (`opmsd` by default, section 5), `office-ca.pem` and `client.pfx` on the connection pages; the connection settings tool

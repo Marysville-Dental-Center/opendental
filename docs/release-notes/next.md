@@ -6,10 +6,12 @@ This file collects the notes of the version after 0.0 until it is released; the 
 
 ## Before you install this version
 
-**Offices on version 0.0: uninstall 0.0 first, then install this version with its setup.** There is no in-place upgrade or self-update
-from 0.0 to this version (owner decision of 2026-11-02). The 0.0 uninstaller removes the whole program folder, including the
-`FreeDentalConfig.xml` its setup wrote, so this version's setup then makes a new install and its connection pages (or silent switches)
-set up the connection. Setup's upgrade path for an existing `FreeDentalConfig.xml` stays for the versions after this one.
+**Offices on version 0.0: uninstall 0.0 first, then install this version with its setup.** There is no in-place upgrade from 0.0 to
+this version (owner decision of 2026-11-02), and no self-update from 0.0 as long as this version is published only after 0.0 is
+uninstalled on every workstation (steps 2 and 3 below): 0.0 pulls any newer published build at its next start and installs it over
+itself, which would keep 0.0's `FreeDentalConfig.xml` and the modify rights its setup gave every user on it. The 0.0 uninstaller removes
+the whole program folder, including that file, so this version's setup then makes a new install and its connection pages (or silent
+switches) set up the connection. Setup's upgrade path for an existing `FreeDentalConfig.xml` stays for the versions after this one.
 
 **The office database server must have TLS first, but must not require it yet.** From this version the program connects to a database
 server over the network only encrypted, and only when the server's certificate comes from the office's own certificate authority and names
@@ -24,10 +26,16 @@ section 0):
    workstations keep working.
 2. On the update server: uninstall 0.0, then install this version with its setup, as an administrator. Setup runs the connection settings
    tool (`OpenPmsDentalDbSettings.exe`), which sets up the office CA certificate and imports the client certificate (or stores the
-   database password). Start the program there as an administrator; it backs up and updates the database. Publish the release for the
-   versions after this one.
+   database password). Start the program there as an administrator; it backs up and updates the database. **Do not publish yet:** when
+   the program offers to publish this version (at every start until it is published), answer Cancel, and do not start it with
+   `IsSilentUpdate=true`, which publishes by itself when nothing is published yet.
 3. On every other workstation: uninstall 0.0, then run this version's setup as an administrator, interactive or with `/DBSERVER=`,
-   `/DBNAME=`, `/DBUSER=`, `/DBCA=`, `/DBPFX=` (or `/DBTHUMBPRINT=`) and `/DBSECRETSFILE=`.
+   `/DBNAME=`, `/DBUSER=`, `/DBCA=`, `/DBPFX=` (or `/DBTHUMBPRINT=`) and `/DBSECRETSFILE=`. A workstation that already pulled this version
+   (it was published too early) is uninstalled the same way first, through Apps: the "Open PMS - Dental" entry there is still 0.0's. Never
+   set such a workstation up only with the connection settings tool, or by running this setup over it: both keep 0.0's
+   `FreeDentalConfig.xml` and its rights. Answer Cancel to a publish offer here too; a workstation that says to run the new release on the
+   update server first starts once it is published. When 0.0 is uninstalled on every workstation, publish this version on the update
+   server with Update Setup > Recopy.
 4. When no workstation connects without TLS any more, run `SET GLOBAL require_secure_transport=ON`, add `require_secure_transport=ON` to
    the server's option file, and drop the old database users (the `root` accounts used over the network) or make them `REQUIRE SSL`.
 

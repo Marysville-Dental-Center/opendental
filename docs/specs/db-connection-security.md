@@ -20,7 +20,7 @@ The owner's follow-up: "We are only touching the Open Dental account and auth, a
 | S1 | Scope. The rule (encryption with `VerifyFull`, the office CA, the client certificate or the DPAPI password, refusal before connecting) is for the program's own database account: the main connection of `FreeDentalConfig.xml` and everything that reuses its settings (the reports through ODR and RDL, ServiceManager's test, the settings tool, the self-update). The read-only and reporting servers configured in the database preferences work exactly as before this work: their own server, user, password and `SslCa` preferences, with the old `SslMode` behaviour (section 5.1). An empty server preference is the main connection and stays under the rule. |
 | S2 | Not root. The installer's `/DBUSER` default and its connection page default are `opmsd`, the guide's account. The settings tool warns (never refuses) about `root` for a server over the network (section 4.5). The server guide gives the account the narrowest rights the program needs (section 9), not `ALL PRIVILEGES ON *.*`. The Debug-only and same-computer defaults stay `root` for developers (section 4.5). |
 | S3 | The launch command (decision a): kept as built. A database password on the program's command line is refused for a server over the network, and the password or certificate stored on the computer is used; the program's own user-login parameters stay as they are (section 5). |
-| S4 | Offices on v0.0 uninstall v0.0 and install the new version: no in-place upgrade handling for v0.0. Its uninstaller removes the program folder with the `FreeDentalConfig.xml` its setup wrote. The upgrade checks for later versions stay as built (sections 3.1 and 6). |
+| S4 | Offices on v0.0 uninstall v0.0 and install the new version: no in-place upgrade handling for v0.0. Its uninstaller removes the program folder with the `FreeDentalConfig.xml` its setup wrote. The release is published only when v0.0 is uninstalled on every workstation, so that no v0.0 pulls it in place (section 3.1). The upgrade checks for later versions stay as built (sections 3.1 and 6). |
 
 ## 2. The rule
 
@@ -144,9 +144,15 @@ entropy). Its exceptions never carry the secret.
 ### 3.1 Configurations in the old form
 
 Offices on v0.0 uninstall v0.0 before they install this version (S4): its uninstaller removes the whole program folder, including the
-`FreeDentalConfig.xml` its setup wrote, so no v0.0 file is upgraded in place and no handling for one was added. The checks below stay as
-built, for any file in the old form the program still meets (a developer's configuration, a file copied in by hand, a later version's
-upgrade):
+`FreeDentalConfig.xml` its setup wrote, so no v0.0 file is upgraded in place and no handling for one was added. That holds only because
+the release is published after v0.0 is uninstalled on every workstation: v0.0 pulls any newer published build at its next start
+(v0.0's `docs/release-process.md`, "A newer build is published": Pull) and installs it over itself, keeping its file with the Users
+modify right of v0.0's setup, and nothing in this version checks that file's ACL (`CentralConnections` reads `SslCA`, the office CA,
+from it as it is). The guide's section 0 and the release notes therefore have the update server answer Cancel to the publish offer
+(`PrefL.CheckProgramVersion`) until v0.0 is uninstalled everywhere, then publish with Update Setup > Recopy, and have a workstation that
+pulled the build anyway uninstalled through Apps (the entry is still v0.0's) before setup runs, never set up with the tool alone. The
+checks below stay as built, for any file in the old form the program still meets (a developer's configuration, a file copied in by
+hand, a later version's upgrade):
 
 | Configuration | This version |
 |---|---|
@@ -158,7 +164,8 @@ upgrade):
 
 The office server must have TLS before workstations switch to this version's encrypted connections; the release notes and the server guide
 give the order (the server's TLS first with `require_secure_transport` still off, then uninstalling v0.0 and installing this version on
-each workstation, the update server first, then `require_secure_transport=ON`).
+each workstation, the update server first, publishing the release only when v0.0 is uninstalled everywhere, then
+`require_secure_transport=ON`).
 
 ## 4. The settings tool: `OpenPmsDentalDbSettings.exe`
 
@@ -346,8 +353,10 @@ databases `test_dbsec_*`).
 - Per-user installs (`/CURRENTUSER`, tests only) cannot run the administrator tool: they write the base file; a network server is logged
   ("needs the connection settings tool") and shown as needing the tool; setup still ends with exit code 0.
 - v0.0 is uninstalled before this version is installed (S4), and its uninstaller removes the program folder with the
-  `FreeDentalConfig.xml` to which its setup gave Users modify rights, so no computer keeps that right. Setup still never rewrites an
-  existing file, and the tool's save keeps the file's rights, for the upgrades of later versions.
+  `FreeDentalConfig.xml` to which its setup gave Users modify rights, so no computer keeps that right, on the condition of section 3.1:
+  the release is published only after v0.0 is uninstalled on every workstation, and a workstation that pulled it anyway is uninstalled
+  through Apps before setup runs. Setup still never rewrites an existing file, and the tool's save keeps the file's rights, for the
+  upgrades of later versions; so a v0.0 file that a pull kept in place keeps its Users modify right if it is set up with the tool alone.
 
 ## 7. Paths reviewed
 
@@ -384,7 +393,8 @@ Answered on 2026-11-02:
   preferences (`ReadOnlyServerMySqlPassHash`, `ReportingServerMySqlPassHash`, the reversible `osd1$` form) and their own CA preferences,
   outside the rule, as in v0.0 (section 5.1). Such a server without a CA preference is reached without TLS, and with one by `VerifyCA`
   (the chain, not the host name), as before.
-- The former question 2 (the Users modify right of a v0.0 `FreeDentalConfig.xml`): S4. v0.0 is uninstalled first, which removes that file.
+- The former question 2 (the Users modify right of a v0.0 `FreeDentalConfig.xml`): S4. v0.0 is uninstalled first, which removes that file,
+  and the release is published only when v0.0 is uninstalled on every workstation, so that no v0.0 pulls it in place (section 3.1).
 
 Still open:
 
