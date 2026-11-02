@@ -69,11 +69,19 @@ namespace InventoryTests {
 		[TestMethod]
 		public void ForkTables_AreTheInventoryTables() {
 			CollectionAssert.AreEquivalent(new[] { "supplyledger","supplylot","supplyproccode","supplysetting","supplyprocpending" },SchemaVerifier.ArrayForkTables);
-			Assert.IsTrue(SchemaVerifier.DocumentedExceptions.Count(x => SchemaVerifier.ArrayForkTables.Contains(x.Table)
-				&& x.Kind==SchemaDifferenceKind.ExtraTable)==SchemaVerifier.ArrayForkTables.Length);
+			Assert.IsFalse(SchemaVerifier.DocumentedExceptions.Any(x => SchemaVerifier.IsForkTable(x.Table)),"Left out, not excepted.");
 			foreach(string table in SchemaVerifier.ArrayForkTables) {
 				Assert.IsFalse(SchemaVerifier.GetReference().HasTable(table),table+" is not Open Dental schema.");
 			}
+			//A snapshot with a fork table compares exactly with one without it.
+			SchemaSnapshot snapshotOd=SchemaSnapshot.Parse("CREATE TABLE `account` (\n  `AccountNum` bigint(20) NOT NULL AUTO_INCREMENT,\n  PRIMARY KEY (`AccountNum`)\n"
+				+") ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;");
+			SchemaSnapshot snapshotFork=SchemaSnapshot.Parse(snapshotOd.ToDdl("")+"\n"
+				+OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.InventoryTablesStep.CREATE_SUPPLYLOT+";");
+			Assert.AreEqual(2,snapshotFork.Tables.Count);
+			SchemaVerifyResult result=SchemaVerifier.Compare(snapshotOd,snapshotFork);
+			Assert.AreEqual(0,result.ListDifferences.Count,result.GetReport());
+			Assert.AreEqual(0,SchemaVerifier.Compare(snapshotFork,snapshotOd).ListDifferences.Count);
 		}
 
 		[TestMethod]

@@ -144,6 +144,8 @@ namespace InventoryTests {
 			Assert.IsTrue(listRows.All(x => x["Reason"].ToString()==InventoryLedgerStep.REASON_OPENING && PIn.Long(x["SupplyLotNum"].ToString())==0));
 			CollectionAssert.AreEqual(new[] { 2.5,-1.25,3.33 },listRows.Select(x => Math.Round(PIn.Double(x["Quantity"].ToString()),4)).ToArray());
 			Assert.AreEqual(4,PIn.Double(listRows[0]["UnitCost"].ToString()));
+			Assert.IsTrue(listRows.All(x => PIn.DateT(x["DateTimeEntry"].ToString()).Year<1880),"No time of their own, the same on every run.");
+			Assert.IsTrue(listRows.All(x => PIn.Long(x["UserNum"].ToString())==0));
 			Assert.AreEqual(InventoryTracking.REASON_OPENING,InventoryLedgerStep.REASON_OPENING);
 		}
 
@@ -183,15 +185,15 @@ namespace InventoryTests {
 			Assert.AreEqual(_listGroupsGranted.Count,_listGroupsGranted.Distinct().Count());
 		}
 
+		///<summary>The verifier leaves the fork tables out, so the Open Dental tables still match exactly: no difference names a fork table, and the
+		///only allowed differences are the legacy tables the seed of new-database.sql carries.</summary>
 		[TestMethod]
-		public void Schema_StillMatchesOpenDental_WithTheForkTablesAllowed() {
+		public void Schema_StillMatchesOpenDental_TheForkTablesLeftOut() {
 			Assert.IsTrue(_schemaVerifyResult.IsMatch,_schemaVerifyResult.GetReport());
-			foreach(string table in _arrayInventoryTables) {
-				SchemaDifference schemaDifference=_schemaVerifyResult.ListAllowed.Single(x => x.Table==table);
-				Assert.AreEqual(SchemaDifferenceKind.ExtraTable,schemaDifference.Kind);
-				StringAssert.Contains(schemaDifference.ExceptionReason,"fork feature");
-			}
-			Assert.IsTrue(_schemaVerifyResult.ListAllowed.All(x => x.Kind==SchemaDifferenceKind.ExtraTable),"No column is added to an Open Dental table.");
+			Assert.IsFalse(_schemaVerifyResult.ListDifferences.Any(x => _arrayInventoryTables.Contains(x.Table)),_schemaVerifyResult.GetReport());
+			Assert.IsTrue(_schemaVerifyResult.ListDifferences.All(x => x.Kind==SchemaDifferenceKind.ExtraTable),"No column is added to an Open Dental table.");
+			Assert.AreEqual(_schemaVerifyResult.CountTablesExpected,_schemaVerifyResult.CountTablesActual
+				-_schemaVerifyResult.ListDifferences.Count(x => x.Kind==SchemaDifferenceKind.ExtraTable));
 			CollectionAssert.AreEquivalent(_arrayInventoryTables,SchemaVerifier.ArrayForkTables);
 		}
 

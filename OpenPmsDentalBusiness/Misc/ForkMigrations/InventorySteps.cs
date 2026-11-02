@@ -40,10 +40,16 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 			if(!context.CreateTableIfMissing(CREATE_SUPPLYLEDGER)) {
 				return;
 			}
+			string where="WHERE ROUND(LevelOnHand,2)<>0";
+			if(PIn.Long(Db.GetScalar("SELECT COUNT(*) FROM supply "+where))==0) {
+				return;
+			}
+			//DateTimeEntry 0001-01-01: the stock from before tracking has no time of its own, and the same database always migrates to the same rows
+			//(the adoption rehearsal compares two runs). It also sorts the opening rows first.
 			context.ExecuteData("INSERT INTO supplyledger (SupplyNum,SupplyLotNum,LedgerType,Quantity,UnitCost,ProcNum,PatNum,SupplyOrderItemNum,"
 				+"DispSupplyNum,UserNum,DateTimeEntry,Reason) "
-				+"SELECT SupplyNum,0,"+(int)SupplyLedgerType.Opening+",ROUND(LevelOnHand,2),Price,0,0,0,0,0,NOW(),'"+REASON_OPENING+"' "
-				+"FROM supply WHERE ROUND(LevelOnHand,2)<>0 ORDER BY SupplyNum");
+				+"SELECT SupplyNum,0,"+(int)SupplyLedgerType.Opening+",ROUND(LevelOnHand,2),Price,0,0,0,0,0,'0001-01-01 00:00:00','"+REASON_OPENING+"' "
+				+"FROM supply "+where+" ORDER BY SupplyNum");
 		}
 	}
 

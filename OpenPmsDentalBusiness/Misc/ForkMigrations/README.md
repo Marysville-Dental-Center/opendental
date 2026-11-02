@@ -51,10 +51,13 @@ Tables, columns (type, NULL, default, extra, charset, position), keys, engine an
 - `patient._portal_active_email` and its unique key `portal_active_email_uniq`: an office-specific customization, not Open Dental schema. The adoption step drops both.
 - The 54 Open Dental HQ-only tables that the 24.3 code declares, when present.
 - Legacy tables that long-lived databases (including our development seed) still carry: the `anesth*` tables, `files` and `instructor`.
-- Fork tables (`SchemaVerifier.ArrayForkTables`): a fork feature keeps its data in tables of its own, created by its fork migration step, and
-  never adds a column to an Open Dental table (an extra column would make the Open Dental table differ from the reference, and the adoption
-  tools and `Migrated_MatchesEmbeddedReference` allow only extra tables). A new fork table is added to this list in the same change as its
-  step. The feature's own tests check its tables.
+
+Fork tables (`SchemaVerifier.ArrayForkTables`) are not compared at all: `SchemaVerifier.Compare` leaves them out on both sides, so a migrated
+database still matches Open Dental exactly, with no documented exception. A fork feature keeps its data in tables of its own, created by its
+fork migration step, and never adds a column to an Open Dental table (that column would make the Open Dental table differ from the
+reference). A new fork table is added to the list in the same change as its step, with a `TableAdded` rule in
+`tools/SyntheticData/allowed-differences.adoption.json` and what adopt's row check (`AdoptionRowCheck.CheckForkTables`) holds it to; the
+feature's own tests check its columns.
 
 Tests: `tests/ForkMigrationTests` (runner, 25.3 steps, both references) and `tests/M201Tests` (25.4 and 26.1 steps, the 26.1.70 reference, the regenerated CRUD; set `M201_OD_DOCS_DIR` to a folder with the published XML documents to also check the reference against them).
 

@@ -68,7 +68,7 @@ namespace OpenPmsDental {
 			Dictionary<long,string> dictPatNames=Patients.GetPatientNames(listSupplyLedgers.Select(x => x.PatNum).Where(x => x!=0).Distinct().ToList());
 			foreach(SupplyLedger supplyLedger in listSupplyLedgers) {
 				GridRow row=new GridRow();
-				row.Cells.Add(supplyLedger.DateTimeEntry.ToString("g"));
+				row.Cells.Add(supplyLedger.DateTimeEntry.Year<1880 ? "" : supplyLedger.DateTimeEntry.ToString("g"));//Opening rows of the migration have none.
 				row.Cells.Add(Lan.g("enumSupplyLedgerType",supplyLedger.LedgerType.GetDescription()));
 				row.Cells.Add((supplyLedger.Quantity>0 ? "+" : "")+InventoryTracking.FormatQty(supplyLedger.Quantity));
 				row.Cells.Add(listSupplyLotsAll.Find(x => x.SupplyLotNum==supplyLedger.SupplyLotNum)?.LotNumber??"");

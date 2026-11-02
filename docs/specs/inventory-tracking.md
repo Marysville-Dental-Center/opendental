@@ -29,8 +29,9 @@ Status: 2026-11-02. Package INV (roadmap "Next" item 4), from the owner decision
 ## 2. Data
 
 All new data is in new tables. No column is added to an Open Dental table, so the schema verifier still compares the Open Dental tables with
-the Open Dental 26.1.70 reference exactly; the new tables are listed as fork tables (`SchemaVerifier.ArrayForkTables`), the documented
-exception for tables that only this program has. The tables are MyISAM and utf8mb3 like every other table.
+the Open Dental 26.1.70 reference exactly; the new tables are listed as fork tables (`SchemaVerifier.ArrayForkTables`), which the verifier
+leaves out of the comparison (they are not Open Dental schema; `InventoryTests` checks them against their classes). The tables are MyISAM and
+utf8mb3 like every other table.
 
 | Table | Class | One row is |
 |---|---|---|
@@ -197,7 +198,7 @@ cost.
 
 ### 3.9 Existing data
 
-The migration writes an Opening ledger row for every supply whose `LevelOnHand` is not 0 (rounded to 2 decimals, at the supply's price), so the
+The migration writes an Opening ledger row for every supply whose `LevelOnHand` is not 0 (rounded to 2 decimals, at the supply's price, dated 0001-01-01 because the stock from before has no time of its own), so the
 ledger and the stock agree from the start. Supplies, orders, suppliers and categories are unchanged.
 
 ## 4. Settings, permissions and enum values
