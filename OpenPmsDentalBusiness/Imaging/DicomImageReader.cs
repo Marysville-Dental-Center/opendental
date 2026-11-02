@@ -605,8 +605,9 @@ namespace OpenPmsDentalBusiness {
 				}
 				else {
 					if(bytesHead.Length>=136 && bytesHead.Take(128).All(x => x==0)) {
-						//A preamble of zeros without the "DICM" prefix after it. fo-dicom 4 read an Implicit VR data set after one (as empty elements
-						//of group 0000); this reader skips the zeros and tells what follows as it would at byte 0, so a file of zeros stays not DICOM.
+						//A preamble of zeros without the "DICM" prefix after it. fo-dicom 4 read an Implicit VR data set after one (in Implicit VR
+						//the zeros are empty elements of group 0000); this reader skips the zeros and tells what follows as it would at byte 0, so a
+						//file of zeros stays not DICOM.
 						_source.Skip(128,"the preamble");
 						bytesHead=_source.Peek(8);
 					}
