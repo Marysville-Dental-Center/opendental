@@ -723,8 +723,8 @@ namespace OpenPmsDentalBusiness {
 			#region Elements
 			///<summary>The tag, VR and length of the element at the current position (PS3.5 7.1.2 and 7.1.3). In Implicit VR, the VR is the one
 			///the reader knows for the attributes it keeps, otherwise "UN". In Explicit VR, two spaces where the VR goes take the VR the reader
-			///knows for the tag the same way, with the layout of that VR: OW (two reserved bytes and a 32-bit length) for Pixel Data and the
-			///palette tables, and a 16-bit length for every other element.</summary>
+			///knows for the tag the same way, with the layout of that VR: two reserved bytes and a 32-bit length for Pixel Data and the palette
+			///tables (OW) and the Extended Offset Table (OV), and a 16-bit length for every other element.</summary>
 			private void ReadElementHeader(bool isImplicit,bool isBig,out uint tag,out string vr,out uint length) {
 				CountHeader();
 				byte[] bytes=new byte[8];
@@ -742,7 +742,7 @@ namespace OpenPmsDentalBusiness {
 				}
 				else if(IsBlankVr(bytes[4],bytes[5])) {
 					vr=ImplicitVr(tag);
-					isLongLayout=vr=="OW";
+					isLongLayout=vr=="OW" || vr=="OV";
 				}
 				else {
 					throw Malformed("Element "+FormatTag(tag)+" has no valid VR; the data set is not "+(isBig ? "Explicit VR Big Endian." : "Explicit VR."));
@@ -768,6 +768,9 @@ namespace OpenPmsDentalBusiness {
 					case 0x00281202:
 					case _tagBlueData:
 						return "OW";
+					case _tagExtendedOffsetTable:
+					case _tagExtendedOffsetTableLengths:
+						return "OV";
 					case 0xFFFEE000:
 					case 0xFFFEE00D:
 					case 0xFFFEE0DD:

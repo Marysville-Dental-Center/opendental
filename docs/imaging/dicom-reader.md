@@ -40,7 +40,7 @@ The full reader reads from the start of the file the subset reader declined. A s
 The encoding is decided from the data where writers broke the standard in ways fo-dicom 4 read:
 
 - **An Implicit VR data set labelled Explicit VR.** When the transfer syntax is Explicit VR Little Endian (native, encapsulated or deflated, after inflating), the first element of the data set is looked at: if bytes 4 and 5 are neither VR letters nor two spaces, and its length read as Implicit VR fits the file, the whole data set is read as Implicit VR Little Endian. The transfer syntax reported is still the file's.
-- **Two spaces where the VR goes.** An Explicit VR element (little or big endian) whose VR is 0x20 0x20 takes the VR the reader knows for its tag, with that VR's layout: OW (two reserved bytes, a 32-bit length) for Pixel Data and the palette tables, a 16-bit length for every other element. Any other bytes that are not a VR of PS3.5 Table 6.2-1 are `Malformed`, as before (fo-dicom found no Rows in such files and showed nothing).
+- **Two spaces where the VR goes.** An Explicit VR element (little or big endian) whose VR is 0x20 0x20 takes the VR the reader knows for its tag, with that VR's layout: two reserved bytes and a 32-bit length for Pixel Data and the palette tables (OW) and the Extended Offset Table (OV), a 16-bit length for every other element. Any other bytes that are not a VR of PS3.5 Table 6.2-1 are `Malformed`, as before (fo-dicom found no Rows in such files and showed nothing).
 
 ### Files with and without the PS3.10 header
 

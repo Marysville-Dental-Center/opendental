@@ -177,6 +177,20 @@ namespace DicomReaderTests {
 				CollectionAssert.AreEqual(testCase.expected,decoder.BytesSeen,testCase.name);
 				Assert.AreEqual(2,decoder.FrameInfoSeen.NumberOfFrames,testCase.name);
 			}
+			//The Extended Offset Table with two spaces for its VR: the layout of OV, two reserved bytes and a 32-bit length. Its first frame is
+			//fragment A alone, where the end marker would give A and B.
+			byte[] bytesOffsets=BitConverter.GetBytes(0UL).Concat(BitConverter.GetBytes((ulong)(8+bytesA.Length))).ToArray();
+			byte[] bytesLengths=BitConverter.GetBytes((ulong)bytesA.Length).Concat(BitConverter.GetBytes((ulong)(bytesB.Length+bytesC.Length+bytesD.Length))).ToArray();
+			SynImage synImageBlank=ReaderCases.Mono8(6,10,8,7,null);
+			synImageBlank.NumberOfFrames="2";
+			byte[] bytesFile=MakeFileIn(synImageBlank.ToDataset(),Jpeg2000)
+				.Concat(new byte[] { 0xE0,0x7F,0x01,0x00,0x20,0x20,0,0 }).Concat(BitConverter.GetBytes((uint)bytesOffsets.Length)).Concat(bytesOffsets)
+				.Concat(new byte[] { 0xE0,0x7F,0x02,0x00,0x20,0x20,0,0 }).Concat(BitConverter.GetBytes((uint)bytesLengths.Length)).Concat(bytesLengths)
+				.Concat(EncodeAs(new List<SynElement> { Encapsulated(null,bytesA,bytesB,bytesC,bytesD) },SynEncoding.ExplicitLittle)).ToArray();
+			FakeDecoder decoderBlank=new FakeDecoder { Uid=Jpeg2000,FuncDecode=(bytes,frameInfo) => DicomFrameDecodeResult.Decoded(new byte[60],frameInfo.Clone()) };
+			DicomImageReadResult resultBlank=ReadWith(decoderBlank,bytesFile);
+			Assert.AreEqual(DicomImageReadStatus.Read,resultBlank.Status,resultBlank.ToString());
+			CollectionAssert.AreEqual(bytesA,decoderBlank.BytesSeen,"blank VR on the Extended Offset Table");
 		}
 
 		[TestMethod]
