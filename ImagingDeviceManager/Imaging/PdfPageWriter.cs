@@ -21,6 +21,8 @@ namespace ImagingDeviceManager.Imaging {
 		private PdfDocument _pdfDocument;
 		///<summary>Images, streams and XImages that PdfSharp may read again when the document is saved.</summary>
 		private readonly List<IDisposable> _listKeepAlive=new List<IDisposable>();
+		///<summary>Pages added. Kept here because PDFsharp 6 refuses to answer PageCount once the document is saved.</summary>
+		private int _pageCount;
 
 		///<summary>quality is the JPEG quality, 0 to 100. 100 or more means lossless.</summary>
 		public PdfPageWriter(int quality) {
@@ -28,7 +30,8 @@ namespace ImagingDeviceManager.Imaging {
 			_pdfDocument=new PdfDocument();
 		}
 
-		public int PageCount => _pdfDocument.PageCount;
+		///<summary>The number of pages added, also after Save.</summary>
+		public int PageCount => _pageCount;
 
 		public void AddPage(DibImage dib) {
 			int xDpi=dib.XResolutionDpi>0 ? dib.XResolutionDpi : DefaultDpi;
@@ -44,6 +47,7 @@ namespace ImagingDeviceManager.Imaging {
 			using(XGraphics xGraphics=XGraphics.FromPdfPage(pdfPage)) {
 				xGraphics.DrawImage(xImage,0,0,widthPoints,heightPoints);
 			}
+			_pageCount++;
 		}
 
 		private Image CreatePageImage(DibImage dib) {

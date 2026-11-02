@@ -1,0 +1,9 @@
+Open PMS - Dental @VERSION@: license
+
+As installed, the program is conveyed under the GNU General Public License, version 3, below. It includes PDFsharp and MigraDoc, which are licensed under the GNU Affero General Public License, version 3 (LICENSE-AGPL-3.0.txt in the program folder). By section 13 of both licenses, the AGPL's requirements on interaction through a network apply to the combination as a whole; NOTICE in the program folder says what that means for a modified version that users reach over a network.
+
+The program's own source files are licensed under the GNU General Public License, version 2 or (at your option) any later version (LICENSE in the program folder). The other third-party components keep their own licenses (THIRD-PARTY-NOTICES.txt in the program folder).
+
+The program comes with ABSOLUTELY NO WARRANTY, to the extent permitted by law (sections 15 and 16 below).
+
+@GPL3@

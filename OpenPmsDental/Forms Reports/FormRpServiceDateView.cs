@@ -146,20 +146,21 @@ namespace OpenPmsDental {
 		}
 
 		private void CreatePDF(string tempFile) {
-			MigraDoc.Rendering.PdfDocumentRenderer pdfRenderer=new MigraDoc.Rendering.PdfDocumentRenderer(true,PdfFontEmbedding.Always);
+			MigraDoc.Rendering.PdfDocumentRenderer pdfRenderer=new MigraDoc.Rendering.PdfDocumentRenderer();
 			pdfRenderer.Document=CreateDocument();
 			pdfRenderer.RenderDocument();
 			pdfRenderer.PdfDocument.Save(tempFile);
 		}
 
 		private MigraDoc.DocumentObjectModel.Document CreateDocument() {
-			MigraDoc.DocumentObjectModel.Document doc= new MigraDoc.DocumentObjectModel.Document();
-			doc.DefaultPageSetup.PageWidth=MigraDoc.DocumentObjectModel.Unit.FromInch(8.5);
-			doc.DefaultPageSetup.PageHeight=MigraDoc.DocumentObjectModel.Unit.FromInch(11);
-			doc.DefaultPageSetup.TopMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(.5);
-			doc.DefaultPageSetup.LeftMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(.5);
-			doc.DefaultPageSetup.RightMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(.5);
-			MigraDoc.DocumentObjectModel.Section section=doc.AddSection();
+			MigraDoc.DocumentObjectModel.Document doc=MigraDocHelper.CreateDocument();
+			MigraDoc.DocumentObjectModel.PageSetup pageSetup=MigraDocHelper.GetPageSetup(doc);
+			pageSetup.PageWidth=MigraDoc.DocumentObjectModel.Unit.FromInch(8.5);
+			pageSetup.PageHeight=MigraDoc.DocumentObjectModel.Unit.FromInch(11);
+			pageSetup.TopMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(.5);
+			pageSetup.LeftMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(.5);
+			pageSetup.RightMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(.5);
+			MigraDoc.DocumentObjectModel.Section section=MigraDocHelper.AddSection(doc);
 			MigraDoc.DocumentObjectModel.Font headingFont=MigraDocHelper.CreateFont(13,true);
 			MigraDoc.DocumentObjectModel.Font subHeadingFont=MigraDocHelper.CreateFont(10,true);
 			#region printHeading
@@ -179,7 +180,7 @@ namespace OpenPmsDental {
 			par.AddFormattedText(text,subHeadingFont);
 			#endregion
 			MigraDocHelper.InsertSpacer(section,10);
-			section.PageSetup.Orientation=MigraDoc.DocumentObjectModel.Orientation.Landscape;
+			MigraDocHelper.SetLandscape(section);
 			MigraDocHelper.DrawGrid(section,gridMain);
 			return doc;
 		}

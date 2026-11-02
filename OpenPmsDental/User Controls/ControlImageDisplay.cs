@@ -967,7 +967,7 @@ Here is the desired behavior:
 			XGraphics xg;
 			using Font fontTitle=new Font(FontFamily.GenericSansSerif,12,FontStyle.Bold);
 			using Font fontSubTitle=new Font(FontFamily.GenericSansSerif,10);
-			XFont xFontTitle=new XFont(fontTitle.Name,fontTitle.Size,XFontStyle.Bold);
+			XFont xFontTitle=new XFont(fontTitle.Name,fontTitle.Size,XFontStyleEx.Bold);
 			XFont xFontSubTitle=new XFont(fontSubTitle.Name,fontSubTitle.Size);
 			//Only image printing is supported at this time
 			List<Document> listDocuments=listDocumentsCategory.FindAll(x => x.MountItemNum == 0 && ImageStore.HasImageExtension(x.FileName));

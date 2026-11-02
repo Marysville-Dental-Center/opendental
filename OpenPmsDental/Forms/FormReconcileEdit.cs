@@ -255,7 +255,7 @@ namespace OpenPmsDental {
 				printDocument.DefaultPageSettings.PaperSize=new PaperSize("default",850,1100);
 			}
 			MigraDoc.DocumentObjectModel.Document document=CreatePrintDocument(printDocument);
-			MigraDoc.Rendering.Printing.MigraDocPrintDocument migraDocPrintDocument=new MigraDoc.Rendering.Printing.MigraDocPrintDocument();
+			MigraDocPrintDocument migraDocPrintDocument=new MigraDocPrintDocument();
 			MigraDoc.Rendering.DocumentRenderer documentRenderer=new MigraDoc.Rendering.DocumentRenderer(document);
 			documentRenderer.PrepareDocument();
 			migraDocPrintDocument.PrinterSettings=printDocument.PrinterSettings;
@@ -270,14 +270,15 @@ namespace OpenPmsDental {
 
 		private MigraDoc.DocumentObjectModel.Document CreatePrintDocument(PrintDocument pd) {
 			string text;
-			MigraDoc.DocumentObjectModel.Document document=new MigraDoc.DocumentObjectModel.Document();
-			document.DefaultPageSetup.PageWidth=Unit.FromInch((double)pd.DefaultPageSettings.PaperSize.Width/100);
-			document.DefaultPageSetup.PageHeight=Unit.FromInch((double)pd.DefaultPageSettings.PaperSize.Height/100);
-			document.DefaultPageSetup.TopMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Top/100);
-			document.DefaultPageSetup.LeftMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Left/100);
-			document.DefaultPageSetup.RightMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Right/100);
-			document.DefaultPageSetup.BottomMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Bottom/100);
-			MigraDoc.DocumentObjectModel.Section section=document.AddSection();
+			MigraDoc.DocumentObjectModel.Document document=MigraDocHelper.CreateDocument();
+			MigraDoc.DocumentObjectModel.PageSetup pageSetup=MigraDocHelper.GetPageSetup(document);
+			pageSetup.PageWidth=Unit.FromInch((double)pd.DefaultPageSettings.PaperSize.Width/100);
+			pageSetup.PageHeight=Unit.FromInch((double)pd.DefaultPageSettings.PaperSize.Height/100);
+			pageSetup.TopMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Top/100);
+			pageSetup.LeftMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Left/100);
+			pageSetup.RightMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Right/100);
+			pageSetup.BottomMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Bottom/100);
+			MigraDoc.DocumentObjectModel.Section section=MigraDocHelper.AddSection(document);
 			section.PageSetup.StartingNumber=1;
 			MigraDoc.DocumentObjectModel.Font fontHeading=MigraDocHelper.CreateFont(13,true);
 			MigraDoc.DocumentObjectModel.Font fontBodyx=MigraDocHelper.CreateFont(9,false);

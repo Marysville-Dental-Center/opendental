@@ -37,7 +37,8 @@ namespace ReleaseFlowTests {
 
 		///<summary>The program folder's documents, staged from the repository.</summary>
 		private static readonly string[] _arrayDocuments=new string[] {
-			"LICENSE","LICENSE-LGPL-2.1.txt","NOTICE","THIRD-PARTY-NOTICES.txt",@"db\init\new-database.sql",@"db\README.md",
+			"LICENSE","LICENSE-GPL-3.0.txt","LICENSE-AGPL-3.0.txt","LICENSE-LGPL-2.1.txt","NOTICE","THIRD-PARTY-NOTICES.txt",@"db\init\new-database.sql",
+			@"db\README.md",
 		};
 
 		///<summary>The file the GNU LGPL 2.1 text ships as (LGPL 2.1 sections 1 and 4: a copy of the licence with every copy of the library).</summary>
@@ -114,7 +115,13 @@ namespace ReleaseFlowTests {
 			return folder;
 		}
 
-		private static ScriptResult CheckFolder(string folder) {
+		///<summary>The list checks of Build-Release.ps1 on the folder. With isResolved (the default), the switches that record the owner's answers
+		///to the release blockers are passed (-PdfSharpLicenceResolved), so that the other checks are tested by themselves; the blocker has its own
+		///test.</summary>
+		private static ScriptResult CheckFolder(string folder,bool isResolved=true) {
+			if(isResolved) {
+				return RunBuildRelease("-CheckFolder",Quote(folder),"-PdfSharpLicenceResolved");
+			}
 			return RunBuildRelease("-CheckFolder",Quote(folder));
 		}
 
@@ -180,6 +187,27 @@ namespace ReleaseFlowTests {
 				CollectionAssert.Contains(scriptResult.Lines,"The check passed.");
 				//The fake build id files differ from each other, so a list that differs from ForkReleases.ListBuildIdFiles gives another id.
 				CollectionAssert.Contains(scriptResult.Lines,"Build id: "+ForkReleases.ComputeBuildId(folder),scriptResult.Output);
+			}
+			finally {
+				DeleteFolder(folder);
+			}
+		}
+
+		[TestMethod]
+		public void CheckFolder_BlocksTheReleaseWhilePdfSharpLicenseDllShips_UntilTheOwnersResolutionIsGiven() {
+			//PdfSharp.License.dll has no published source, so its Corresponding Source cannot be supplied (GPL 3.0 and AGPL 3.0, sections 1 and 6;
+			//docs/owner-questions.md). A staging folder that is otherwise complete fails on that alone.
+			string folder=NewFakeStaging("blocker");
+			try {
+				Assert.IsTrue(ListFiles().Any(x => x.Key=="third" && x.Value=="PdfSharp.License.dll"),"PdfSharp.License.dll is on the allow-list.");
+				ScriptResult scriptResult=CheckFolder(folder,isResolved:false);
+				Assert.AreEqual(1,scriptResult.ExitCode,scriptResult.Output);
+				CollectionAssert.Contains(scriptResult.Lines,"The check failed, 1 problem(s):",scriptResult.Output);
+				Assert.IsTrue(scriptResult.Lines.Any(x => x.StartsWith("Release blocked: PdfSharp.License.dll (") && x.Contains("-PdfSharpLicenceResolved")),
+					scriptResult.Output);
+				scriptResult=CheckFolder(folder);
+				Assert.AreEqual(0,scriptResult.ExitCode,scriptResult.Output);
+				CollectionAssert.Contains(scriptResult.Lines,"The check passed.");
 			}
 			finally {
 				DeleteFolder(folder);
@@ -344,7 +372,10 @@ namespace ReleaseFlowTests {
 			Assert.AreEqual(@"{commonpf32}\Open PMS - Dental",SetupDirective(iss,"DefaultDirName"));
 			Assert.AreEqual(ProgramNames.DefaultInstallFolder,@"C:\Program Files (x86)\Open PMS - Dental");
 			Assert.AreEqual("OpenPmsDental-{#AppVersion}-Setup",SetupDirective(iss,"OutputBaseFilename"));
-			Assert.AreEqual(@"{#StagingDir}\LICENSE",SetupDirective(iss,"LicenseFile"));
+			//The License Agreement page is the text Build-Release.ps1 writes from installer\setup-license.txt (LicensePage_ test below), not the
+			//GPL version 2 of LICENSE: as installed, with PDFsharp and MigraDoc, the program is conveyed under the GPL version 3.
+			Assert.AreEqual("{#LicenseTextFile}",SetupDirective(iss,"LicenseFile"));
+			StringAssert.Contains(iss,"#define LicenseTextFile \"bin\\setup-license.txt\"");
 			Assert.AreEqual("{#InfoFile}",SetupDirective(iss,"InfoBeforeFile"));
 			StringAssert.Contains(iss,"#define ExeName \""+ProgramNames.ExeFileName+"\"");
 			Assert.IsTrue(Regex.IsMatch(SetupDirective(iss,"AppId"),@"^\{\{[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}\}$"),"AppId is a GUID of its own.");
@@ -437,6 +468,49 @@ namespace ReleaseFlowTests {
 			StringAssert.Contains(info,"https://github.com/Marysville-Dental-Center/opendental/tree/v@VERSION@");
 			StringAssert.Contains(info,"@NOTICE@");
 			StringAssert.Contains(TestPaths.ReadSource("NOTICE"),ATTRIBUTION,"NOTICE, shown on the same page, starts with it too.");
+			//"Version 2 or later" is the licence of the program's own source files; the installed program, with PDFsharp and MigraDoc, is GPL 3.
+			StringAssert.Contains(info,"The program's own source files are free software: you can redistribute them and/or modify them under the terms of "
+				+"the GNU General Public License, version 2 or (at your option) any later version.");
+			StringAssert.Contains(info,"so it is distributed under the GNU General Public License, version 3, whose text is on the License Agreement page");
+			Assert.IsFalse(info.Contains("The program is free software: you can redistribute it"),"Not true of the installed program.");
+		}
+
+		[TestMethod]
+		public void LicensePage_SaysHowTheInstalledProgramIsLicensed_ThenShowsTheGpl3TextVerbatim() {
+			//Inno Setup's License Agreement page, which the user must accept, comes before the information page. It shows the GPL version 3,
+			//under which the program is conveyed as installed, after a header that names the AGPL parts and the program's own GPL v2 or later.
+			string template=TestPaths.ReadSource("installer","setup-license.txt");
+			StringAssert.Contains(template,"@GPL3@");
+			string script=TestPaths.ReadSource("tools","Build-Release.ps1");
+			StringAssert.Contains(script,"\"/DLicenseTextFile=$licensePath\"");
+			string folder=TestPaths.NewTempFolder("setuptexts");
+			try {
+				ScriptResult scriptResult=RunBuildRelease("-WriteSetupTexts",Quote(folder));
+				Assert.AreEqual(0,scriptResult.ExitCode,scriptResult.Output);
+				string licensePath=Path.Combine(folder,"setup-license.txt");
+				byte[] arrayBytes=File.ReadAllBytes(licensePath);
+				Assert.IsTrue(arrayBytes.Length>3 && arrayBytes[0]==0xEF && arrayBytes[1]==0xBB && arrayBytes[2]==0xBF,"UTF-8 with a byte order mark.");
+				string license=File.ReadAllText(licensePath);
+				Assert.IsFalse(Regex.IsMatch(license,"(?<!\r)\n"),"CRLF line ends only.");
+				StringAssert.StartsWith(license,"Open PMS - Dental "+ReleaseVersion()+": license");
+				string header=license.Substring(0,license.IndexOf("GNU GENERAL PUBLIC LICENSE"));
+				StringAssert.Contains(header,"As installed, the program is conveyed under the GNU General Public License, version 3, below.");
+				StringAssert.Contains(header,"PDFsharp and MigraDoc, which are licensed under the GNU Affero General Public License, version 3 (LICENSE-AGPL-3.0.txt");
+				StringAssert.Contains(header,"apply to the combination as a whole");
+				StringAssert.Contains(header,"The program's own source files are licensed under the GNU General Public License, version 2 or (at your option) any "
+					+"later version (LICENSE");
+				Assert.IsFalse(license.Contains("@"+"GPL3@") || license.Contains("@"+"VERSION@"),"Every placeholder is filled.");
+				string gpl3=TestPaths.ReadSource("LICENSE-GPL-3.0.txt").Replace("\r\n","\n").Trim('\r','\n');
+				StringAssert.Contains(license.Replace("\r\n","\n"),gpl3,"The GPL 3.0 text, whole and unchanged.");
+				Assert.IsFalse(license.Contains("Version 2, June 1991"),"Not the GPL version 2.");
+				string info=File.ReadAllText(Path.Combine(folder,"setup-info.txt"));
+				StringAssert.Contains(info,ATTRIBUTION);
+				StringAssert.Contains(info,"https://github.com/Marysville-Dental-Center/opendental/tree/v"+ReleaseVersion());
+				StringAssert.Contains(info.Replace("\r\n","\n"),TestPaths.ReadSource("NOTICE").Replace("\r\n","\n").TrimEnd());
+			}
+			finally {
+				DeleteFolder(folder);
+			}
 		}
 
 		[TestMethod]

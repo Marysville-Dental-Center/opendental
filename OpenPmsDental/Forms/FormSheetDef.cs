@@ -303,7 +303,7 @@ namespace OpenPmsDental {
 				SheetDefCur.BypassGlobalLock=BypassLockStatus.NeverBypass;
 			}
 			try {// check if font is compatible with PDFSharp by running it through XFont, if it suceeds, add to the list, otherwise throw error.
-				XFont _=new XFont(comboFontName.GetSelected<string>(),fontSize,XFontStyle.Regular);
+				XFont _=new XFont(comboFontName.GetSelected<string>(),fontSize,XFontStyleEx.Regular);
 			}
 			catch {
 				MsgBox.Show(Lan.g(this,$"Unsupported font: {comboFontName.GetSelected<string>()}. Please choose another font."));

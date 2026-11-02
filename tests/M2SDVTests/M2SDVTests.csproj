@@ -49,8 +49,8 @@
     <Reference Include="MySqlConnector">
       <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
-    <Reference Include="PdfSharp">
-      <HintPath>..\..\Required dlls\PdfSharp.dll</HintPath>
+    <Reference Include="PdfSharp-gdi">
+      <HintPath>..\..\Required dlls\PdfSharp-gdi.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

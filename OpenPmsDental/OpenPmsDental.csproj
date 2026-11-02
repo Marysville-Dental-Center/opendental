@@ -126,13 +126,13 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Microsoft.Web.WebView2.WinForms.dll</HintPath>
     </Reference>
-    <Reference Include="MigraDoc.DocumentObjectModel, Version=1.2.2546.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+    <Reference Include="MigraDoc.DocumentObjectModel, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\MigraDoc.DocumentObjectModel.dll</HintPath>
     </Reference>
-    <Reference Include="MigraDoc.Rendering, Version=1.2.2546.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+    <Reference Include="MigraDoc.Rendering-gdi, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\MigraDoc.Rendering.dll</HintPath>
+      <HintPath>..\Required dlls\MigraDoc.Rendering-gdi.dll</HintPath>
     </Reference>
     <Reference Include="MySqlConnector">
       <HintPath>..\Required dlls\MySqlConnector.dll</HintPath>
@@ -152,13 +152,13 @@
       <Project>{c37b8157-f665-4ebe-8fd6-20d1c92a0797}</Project>
       <Name>xODCrypt</Name>
     </ProjectReference>
-    <Reference Include="PdfSharp, Version=1.2.1269.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+    <Reference Include="PdfSharp-gdi, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\PdfSharp.dll</HintPath>
+      <HintPath>..\Required dlls\PdfSharp-gdi.dll</HintPath>
     </Reference>
-    <Reference Include="PdfSharp.Charting, Version=1.2.1269.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
+    <Reference Include="PdfSharp.Charting-gdi, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\PdfSharp.Charting.dll</HintPath>
+      <HintPath>..\Required dlls\PdfSharp.Charting-gdi.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -5411,6 +5411,7 @@
     <Compile Include="Misc\DataConnectionOld.cs" />
     <Compile Include="Misc\FileAtoZ.cs" />
     <Compile Include="Misc\MigraDocHelper.cs" />
+    <Compile Include="Misc\MigraDocPrintDocument.cs" />
     <Compile Include="ReportingComplex\ParameterField.cs" />
     <Compile Include="ReportingComplex\ParameterFieldCollection.cs" />
     <Compile Include="Properties\Resources.Designer.cs">

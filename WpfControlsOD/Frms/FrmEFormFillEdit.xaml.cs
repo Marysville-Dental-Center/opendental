@@ -198,7 +198,7 @@ namespace OpenPmsDental {
 				pdfDocument.AddPage(pdfPage);
 				using XGraphics xGraphics=XGraphics.FromPdfPage(pdfPage);
 				XImage xImage=XImage.FromFile(tempImgFile);
-				xGraphics.DrawImage(xImage,0,0,pdfPage.Width,pdfPage.Height);
+				xGraphics.DrawImage(xImage,0,0,pdfPage.Width.Point,pdfPage.Height.Point);
 			}
 			pdfDocument.Save(tempFilePath);
 			Document document=ImageStore.Import(tempFilePath,EFormCur.SaveImageCategory,patient);

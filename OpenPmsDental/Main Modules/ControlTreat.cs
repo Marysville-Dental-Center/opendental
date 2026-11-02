@@ -16,7 +16,6 @@ using PdfSharp.Pdf;
 using MigraDoc.DocumentObjectModel;
 using MigraDoc.DocumentObjectModel.Shapes;
 using MigraDoc.Rendering;
-using MigraDoc.Rendering.Printing;
 using Document=OpenPmsDentalBusiness.Document;
 using OpenPmsDentalBusiness.WebTypes;
 using System.Text.RegularExpressions;
@@ -1443,7 +1442,7 @@ namespace OpenPmsDental{
 			else { //clasic TPs
 				PrepImageForPrinting();
 				MigraDoc.DocumentObjectModel.Document document=CreateDocument();
-				MigraDoc.Rendering.Printing.MigraDocPrintDocument migraDocPrintDocument=new MigraDoc.Rendering.Printing.MigraDocPrintDocument();
+				MigraDocPrintDocument migraDocPrintDocument=new MigraDocPrintDocument();
 				MigraDoc.Rendering.DocumentRenderer documentRenderer=new MigraDoc.Rendering.DocumentRenderer(document);
 				documentRenderer.PrepareDocument();
 				migraDocPrintDocument.Renderer=documentRenderer;
@@ -1506,7 +1505,7 @@ namespace OpenPmsDental{
 				SaveTPAsDocument(isSigSave:false,sheetTP);
 			}
 			else{//generate and save a new document from scratch
-				MigraDoc.Rendering.PdfDocumentRenderer pdfRenderer=new MigraDoc.Rendering.PdfDocumentRenderer(true,PdfFontEmbedding.Always);
+				MigraDoc.Rendering.PdfDocumentRenderer pdfRenderer=new MigraDoc.Rendering.PdfDocumentRenderer();
 				pdfRenderer.Document=CreateDocument();
 				pdfRenderer.RenderDocument();
 				pdfRenderer.PdfDocument.Save(filePathAndName);
@@ -1816,13 +1815,14 @@ namespace OpenPmsDental{
 		}
 
 		private MigraDoc.DocumentObjectModel.Document CreateDocument(){
-			MigraDoc.DocumentObjectModel.Document document=new MigraDoc.DocumentObjectModel.Document();
-			document.DefaultPageSetup.PageWidth=Unit.FromInch(8.5);
-			document.DefaultPageSetup.PageHeight=Unit.FromInch(11);
-			document.DefaultPageSetup.TopMargin=Unit.FromInch(.5);
-			document.DefaultPageSetup.LeftMargin=Unit.FromInch(.5);
-			document.DefaultPageSetup.RightMargin=Unit.FromInch(.5);
-			MigraDoc.DocumentObjectModel.Section section=document.AddSection();
+			MigraDoc.DocumentObjectModel.Document document=MigraDocHelper.CreateDocument();
+			MigraDoc.DocumentObjectModel.PageSetup pageSetup=MigraDocHelper.GetPageSetup(document);
+			pageSetup.PageWidth=Unit.FromInch(8.5);
+			pageSetup.PageHeight=Unit.FromInch(11);
+			pageSetup.TopMargin=Unit.FromInch(.5);
+			pageSetup.LeftMargin=Unit.FromInch(.5);
+			pageSetup.RightMargin=Unit.FromInch(.5);
+			MigraDoc.DocumentObjectModel.Section section=MigraDocHelper.AddSection(document);
 			string text;
 			MigraDoc.DocumentObjectModel.Font headingFont=MigraDocHelper.CreateFont(13,true);
 			MigraDoc.DocumentObjectModel.Font bodyFontx=MigraDocHelper.CreateFont(9,false);
@@ -2521,7 +2521,7 @@ namespace OpenPmsDental{
 			//Send TP DFT HL7 message to ECW with embedded PDF when using tight or full integration only.
 			if(Programs.UsingEcwTightOrFullMode() && Bridges.ECW.AptNum!=0){
 				PrepImageForPrinting();
-				MigraDoc.Rendering.PdfDocumentRenderer pdfDocumentRenderer=new MigraDoc.Rendering.PdfDocumentRenderer(true,PdfFontEmbedding.Always);
+				MigraDoc.Rendering.PdfDocumentRenderer pdfDocumentRenderer=new MigraDoc.Rendering.PdfDocumentRenderer();
 				pdfDocumentRenderer.Document=CreateDocument();
 				pdfDocumentRenderer.RenderDocument();
 				MemoryStream memoryStream=new MemoryStream();
@@ -2593,7 +2593,7 @@ namespace OpenPmsDental{
 			else {//Classic TPs
 				PrepImageForPrinting();
 				MigraDoc.DocumentObjectModel.Document document=CreateDocument();
-				MigraDocPrintDocument migraDocPrintDocument=new MigraDoc.Rendering.Printing.MigraDocPrintDocument();
+				MigraDocPrintDocument migraDocPrintDocument=new MigraDocPrintDocument();
 				DocumentRenderer documentRenderer=new MigraDoc.Rendering.DocumentRenderer(document);
 				documentRenderer.PrepareDocument();
 				migraDocPrintDocument.Renderer=documentRenderer;
@@ -2647,15 +2647,13 @@ namespace OpenPmsDental{
 			}
 			else {//classic TPs
 				MigraDoc.Rendering.PdfDocumentRenderer pdfDocumentRenderer;
-				pdfDocumentRenderer=new MigraDoc.Rendering.PdfDocumentRenderer(false,PdfFontEmbedding.Always);
+				pdfDocumentRenderer=new MigraDoc.Rendering.PdfDocumentRenderer();
 				pdfDocumentRenderer.Document=CreateDocument();
 				pdfDocumentRenderer.RenderDocument();
 				pdfDocumentRenderer.Save(tempFile);
 				if(PrefC.AtoZfolderUsed!=DataStorageType.LocalAtoZ) {
-					using MemoryStream memoryStream=new MemoryStream();
-					pdfDocumentRenderer.Save(memoryStream,false);
-					rawBase64=Convert.ToBase64String(memoryStream.ToArray());
-					memoryStream.Close();
+					//The saved file's bytes: PDFsharp 6 saves a document only once.
+					rawBase64=Convert.ToBase64String(System.IO.File.ReadAllBytes(tempFile));
 				}
 			}
 			for(int i=0;i< listNumsCategories.Count;i++) {//usually only one, but do allow them to be saved once per image category.

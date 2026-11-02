@@ -2,9 +2,10 @@
 ; Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 ;
 ; Compile it with tools\Build-Release.ps1. The script builds Release x86, checks the files, stages them in one folder and passes that
-; folder as StagingDir, and the information page text (installer\setup-info.txt with NOTICE) as InfoFile. Everything in the staging
-; folder is installed as it is; this script adds only FreeDentalConfig.xml and the uninstaller, and on an upgrade deletes the files of
-; an earlier release that this one no longer ships ([InstallDelete]).
+; folder as StagingDir, the information page text (installer\setup-info.txt with NOTICE) as InfoFile, and the License Agreement page text
+; (installer\setup-license.txt: how the program is licensed as installed, then LICENSE-GPL-3.0.txt) as LicenseTextFile. Everything in the
+; staging folder is installed as it is; this script adds only FreeDentalConfig.xml and the uninstaller, and on an upgrade deletes the
+; files of an earlier release that this one no longer ships ([InstallDelete]).
 ;
 ; Command line (besides Inno Setup's own switches, such as /SILENT, /VERYSILENT, /SUPPRESSMSGBOXES, /DIR=, /NOICONS, /TASKS=, /LOG=):
 ;   /DBSERVER=name      database server for FreeDentalConfig.xml (host, or host:port for a port other than 3306). Default localhost.
@@ -28,6 +29,9 @@
 #ifndef InfoFile
   #define InfoFile "bin\setup-info.txt"
 #endif
+#ifndef LicenseTextFile
+  #define LicenseTextFile "bin\setup-license.txt"
+#endif
 
 [Setup]
 ; A new id of our own: this setup never upgrades or removes an Open Dental installation.
@@ -39,7 +43,7 @@ AppPublisher=Open PMS - Dental contributors
 AppPublisherURL={#SourceUrl}
 AppSupportURL={#SourceUrl}/issues
 AppUpdatesURL={#SourceUrl}/releases
-AppCopyright=Copyright (C) 2003 and later years, Jordan Sparks, D.M.D., Open Dental Software, Inc. and contributors. Changes in Open PMS - Dental: Copyright (C) 2026 and later years, Open PMS - Dental contributors. GNU GPL v2 or later.
+AppCopyright=Copyright (C) 2003 and later years, Jordan Sparks, D.M.D., Open Dental Software, Inc. and contributors. Changes in Open PMS - Dental: Copyright (C) 2026 and later years, Open PMS - Dental contributors. Source files: GNU GPL v2 or later. As installed, with PDFsharp and MigraDoc (GNU AGPL v3): GNU GPL v3.
 VersionInfoVersion=0.0.0.0
 VersionInfoTextVersion={#AppVersion}
 VersionInfoProductName={#AppName}
@@ -47,7 +51,7 @@ VersionInfoProductVersion=0.0.0.0
 VersionInfoProductTextVersion={#AppVersion}
 VersionInfoCompany=Open PMS - Dental contributors
 VersionInfoDescription={#AppName} Setup
-VersionInfoCopyright=Open PMS - Dental contributors; a fork of Open Dental (c) Open Dental Software, Inc. and contributors. GNU GPL v2 or later.
+VersionInfoCopyright=Open PMS - Dental contributors; a fork of Open Dental (c) Open Dental Software, Inc. and contributors. Source files: GNU GPL v2 or later. As installed, with PDFsharp and MigraDoc (GNU AGPL v3): GNU GPL v3.
 ; Never Open Dental's folder. The release channel and UpdateFileCopier work on this per-machine folder (docs/release-process.md).
 DefaultDirName={commonpf32}\Open PMS - Dental
 UsePreviousAppDir=yes
@@ -65,7 +69,9 @@ UninstallDisplayIcon={app}\{#ExeName}
 SetupIconFile=..\branding\app.ico
 WizardImageFile=..\branding\installer-wizard.bmp,..\branding\installer-wizard-2x.bmp
 WizardSmallImageFile=..\branding\installer-small.bmp,..\branding\installer-small-2x.bmp
-LicenseFile={#StagingDir}\LICENSE
+; The License Agreement page: as installed, with PDFsharp and MigraDoc (GNU AGPL v3), the program is conveyed under the GNU GPL v3, so the page
+; shows that text, after a header that names the AGPL part and the GPL v2 or later of the program's own source files (LICENSE).
+LicenseFile={#LicenseTextFile}
 InfoBeforeFile={#InfoFile}
 OutputDir=bin
 OutputBaseFilename=OpenPmsDental-{#AppVersion}-Setup
@@ -100,6 +106,10 @@ Type: files; Name: "{app}\OpenPop.dll"
 ; fo-dicom 4 (MS-PL), replaced by the in-house DICOM reader (docs/imaging/dicom-reader.md).
 Type: files; Name: "{app}\Dicom.Core.dll"
 Type: files; Name: "{app}\Dicom.Native.dll"
+; PDFsharp and MigraDoc 1.2 (0.0), which PDFsharp and MigraDoc 6.5 replace under other file names (THIRD-PARTY-NOTICES.txt).
+Type: files; Name: "{app}\PdfSharp.dll"
+Type: files; Name: "{app}\PdfSharp.Charting.dll"
+Type: files; Name: "{app}\MigraDoc.Rendering.dll"
 
 [Files]
 Source: "{#StagingDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

@@ -106,7 +106,7 @@ namespace OpenPmsDental{
 				}
 			}
 			MigraDoc.DocumentObjectModel.Document doc=CreateDocument(ODprintout.CurPrintout.PrintDoc,fam,pat,dataSet);
-			MigraDoc.Rendering.Printing.MigraDocPrintDocument printdoc=new MigraDoc.Rendering.Printing.MigraDocPrintDocument();
+			MigraDocPrintDocument printdoc=new MigraDocPrintDocument();
 			MigraDoc.Rendering.DocumentRenderer renderer=new MigraDoc.Rendering.DocumentRenderer(doc);
 			renderer.PrepareDocument();
 			totalPages=renderer.FormattedDocument.PageCount;
@@ -128,17 +128,18 @@ namespace OpenPmsDental{
 
 		///<summary>Supply pd so that we know the paper size and margins.</summary>
 		private MigraDoc.DocumentObjectModel.Document CreateDocument(PrintDocument pd,Family fam,Patient pat,DataSet dataSet){
-			MigraDoc.DocumentObjectModel.Document doc= new MigraDoc.DocumentObjectModel.Document();
+			MigraDoc.DocumentObjectModel.Document doc=MigraDocHelper.CreateDocument();
 			if(Plugins.HookMethod(this,"FormRpStatement.CreateDocument",doc,pd,fam,pat,dataSet,Stmt)) {
 				return doc;
 			}
-			doc.DefaultPageSetup.PageWidth=Unit.FromInch((double)pd.DefaultPageSettings.PaperSize.Width/100);
-			doc.DefaultPageSetup.PageHeight=Unit.FromInch((double)pd.DefaultPageSettings.PaperSize.Height/100);
-			doc.DefaultPageSetup.TopMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Top/100);
-			doc.DefaultPageSetup.LeftMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Left/100);
-			doc.DefaultPageSetup.RightMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Right/100);
-			doc.DefaultPageSetup.BottomMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Bottom/100);
-			MigraDoc.DocumentObjectModel.Section section=doc.AddSection();//so that Swiss will have different footer for each patient.
+			MigraDoc.DocumentObjectModel.PageSetup pageSetup=MigraDocHelper.GetPageSetup(doc);
+			pageSetup.PageWidth=Unit.FromInch((double)pd.DefaultPageSettings.PaperSize.Width/100);
+			pageSetup.PageHeight=Unit.FromInch((double)pd.DefaultPageSettings.PaperSize.Height/100);
+			pageSetup.TopMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Top/100);
+			pageSetup.LeftMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Left/100);
+			pageSetup.RightMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Right/100);
+			pageSetup.BottomMargin=Unit.FromInch((double)pd.DefaultPageSettings.Margins.Bottom/100);
+			MigraDoc.DocumentObjectModel.Section section=MigraDocHelper.AddSection(doc);//so that Swiss will have different footer for each patient.
 			string text;
 			MigraDoc.DocumentObjectModel.Font font;
 			//GetPatGuar(PatNums[famIndex][0]);
@@ -1015,8 +1016,8 @@ namespace OpenPmsDental{
 				//Total
 				frame=MigraDocHelper.CreateContainer(section);
 				font=MigraDocHelper.CreateFont(9,true);
-				float totalPos=((float)(doc.DefaultPageSetup.PageWidth.Inch//-doc.DefaultPageSetup.LeftMargin.Inch
-					//-doc.DefaultPageSetup.RightMargin.Inch)
+				float totalPos=((float)(MigraDocHelper.GetPageSetup(doc).PageWidth.Inch//-MigraDocHelper.GetPageSetup(doc).LeftMargin.Inch
+					//-MigraDocHelper.GetPageSetup(doc).RightMargin.Inch)
 					)*100f)/2f+(float)gridPat.Columns.WidthAll()/2f+7;
 				RectangleF rectF=new RectangleF(0,0,totalPos,16);
 				if(patnum!=0){

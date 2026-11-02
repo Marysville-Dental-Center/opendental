@@ -176,7 +176,7 @@ namespace OpenPmsDentalGraph {
 					pdfDoc.Pages.Add(page);
 					page.Orientation=checkLandscape.Checked ? PdfSharp.PageOrientation.Landscape : PdfSharp.PageOrientation.Portrait;
 					using(XGraphics xGraphics = XGraphics.FromPdfPage(page)) {
-						xGraphics.DrawImage(_bmpSheet,_xPos+_marginWidth,_yPos+_marginHeight,page.Width,page.Height);
+						xGraphics.DrawImage(_bmpSheet,_xPos+_marginWidth,_yPos+_marginHeight,page.Width.Point,page.Height.Point);
 					}
 					pdfDoc.Save(sd.FileName);
 					MessageBox.Show(Lans.g(this,"File saved."));

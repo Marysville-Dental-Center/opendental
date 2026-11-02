@@ -25,6 +25,8 @@ namespace OpenPmsDental {
 			Application.SetCompatibleTextRenderingDefault(false);//designer uses new text rendering.  This makes the exe use matching text rendering.  Before this was added, it was common for labels to be longer in the running program than they were in the designer.
 			try {
 				ODInitialize.Initialize();
+				//The PDF library's licence and font fallback, before anything makes a PDF.
+				PdfSharpSetup.Init();
 				Security.CurComputerName=ODEnvironment.MachineName;
 			}
 			catch(Exception e) {

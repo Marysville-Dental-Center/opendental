@@ -2,7 +2,7 @@ Open PMS - Dental @VERSION@
 
 Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and contributors, licensed under the GNU GPL v2. It is not affiliated with or endorsed by Open Dental Software, Inc.
 
-The program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License, version 2 or (at your option) any later version. It comes with ABSOLUTELY NO WARRANTY. The complete source code of this release is published at
+The program's own source files are free software: you can redistribute them and/or modify them under the terms of the GNU General Public License, version 2 or (at your option) any later version. The program as installed includes PDFsharp and MigraDoc, which are licensed under the GNU Affero General Public License, version 3, so it is distributed under the GNU General Public License, version 3, whose text is on the License Agreement page, with PDFsharp and MigraDoc under the GNU AGPL, version 3. By section 13 of both licenses, the AGPL's requirements on interaction through a network apply to the combination as a whole (see NOTICE below). It comes with ABSOLUTELY NO WARRANTY. The complete source code of this release is published at
 https://github.com/Marysville-Dental-Center/opendental/tree/v@VERSION@
 
 What this setup does:
@@ -11,7 +11,7 @@ What this setup does:
 - It does not install or change a database server or a database, and it never touches the A to Z images folder.
 - Uninstalling removes the whole program folder, including files that later updates added. The database and the A to Z folder are not touched.
 
-The program folder also gets LICENSE (the GNU GPL), LICENSE-LGPL-2.1.txt (the GNU LGPL 2.1, under which the report engine and the spell checker ship), NOTICE, THIRD-PARTY-NOTICES.txt (the licenses of the third-party components), and db\README.md with db\init\new-database.sql (how to create a new office database).
+The program folder also gets LICENSE (the GNU GPL version 2, the license of the program's own source files), LICENSE-GPL-3.0.txt (the GNU GPL version 3, under which the program as installed is distributed), LICENSE-AGPL-3.0.txt (the GNU AGPL version 3, under which PDFsharp and MigraDoc ship), LICENSE-LGPL-2.1.txt (the GNU LGPL 2.1, under which the report engine and the spell checker ship), NOTICE, THIRD-PARTY-NOTICES.txt (the licenses of the third-party components), and db\README.md with db\init\new-database.sql (how to create a new office database).
 
 This setup is not digitally signed. Windows SmartScreen may warn about it; compare its SHA-256 with SHA256SUMS.txt of the release.
 

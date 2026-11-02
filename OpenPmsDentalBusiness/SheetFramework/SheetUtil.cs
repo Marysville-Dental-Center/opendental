@@ -799,7 +799,7 @@ namespace OpenPmsDentalBusiness{
 			bool hasErrors=false;
 			List<string> listStrBadFonts=new List<string>();
 			try {// check if font is compatible with PDFSharp by running it through XFont, if it suceeds, add to the list, otherwise throw error.
-				XFont _=new XFont(sheetCur.FontName,sheetCur.FontSize,XFontStyle.Regular);
+				XFont _=new XFont(sheetCur.FontName,sheetCur.FontSize,XFontStyleEx.Regular);
 			}
 			catch {
 				hasErrors=true;
@@ -812,7 +812,7 @@ namespace OpenPmsDentalBusiness{
 					||sheetCur.SheetFields[i].FieldType==SheetFieldType.InputField
 					||sheetCur.SheetFields[i].FieldType==SheetFieldType.OutputText) {
 					try {// check if font is compatible with PDFSharp by running it through XFont, if it suceeds, add to the list, otherwise throw error.
-						XFont _=new XFont(sheetCur.SheetFields[i].FontName,sheetCur.SheetFields[i].FontSize,XFontStyle.Regular);
+						XFont _=new XFont(sheetCur.SheetFields[i].FontName,sheetCur.SheetFields[i].FontSize,XFontStyleEx.Regular);
 					}
 					catch {
 						hasErrors=true;

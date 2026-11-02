@@ -1903,13 +1903,14 @@ namespace OpenPmsDental{
 
 		///<summary>Creates a new .pdf file containing all of the procedures attached to this appointment and returns the contents of the .pdf file as a base64 encoded string.</summary>
 		private string GenerateProceduresIntoPdf() {
-			MigraDoc.DocumentObjectModel.Document document=new MigraDoc.DocumentObjectModel.Document();
-			document.DefaultPageSetup.PageWidth=Unit.FromInch(8.5);
-			document.DefaultPageSetup.PageHeight=Unit.FromInch(11);
-			document.DefaultPageSetup.TopMargin=Unit.FromInch(.5);
-			document.DefaultPageSetup.LeftMargin=Unit.FromInch(.5);
-			document.DefaultPageSetup.RightMargin=Unit.FromInch(.5);
-			MigraDoc.DocumentObjectModel.Section section=document.AddSection();
+			MigraDoc.DocumentObjectModel.Document document=MigraDocHelper.CreateDocument();
+			MigraDoc.DocumentObjectModel.PageSetup pageSetup=MigraDocHelper.GetPageSetup(document);
+			pageSetup.PageWidth=Unit.FromInch(8.5);
+			pageSetup.PageHeight=Unit.FromInch(11);
+			pageSetup.TopMargin=Unit.FromInch(.5);
+			pageSetup.LeftMargin=Unit.FromInch(.5);
+			pageSetup.RightMargin=Unit.FromInch(.5);
+			MigraDoc.DocumentObjectModel.Section section=MigraDocHelper.AddSection(document);
 			MigraDoc.DocumentObjectModel.Font headingFont=MigraDocHelper.CreateFont(13,isBold: true);
 			MigraDoc.DocumentObjectModel.Font bodyFontx=MigraDocHelper.CreateFont(9,isBold: false);
 			string text;
@@ -2045,7 +2046,7 @@ namespace OpenPmsDental{
 			}
 			gridProg.EndUpdate();
 			MigraDocHelper.DrawGrid(section,gridProg);
-			MigraDoc.Rendering.PdfDocumentRenderer pdfRenderer=new MigraDoc.Rendering.PdfDocumentRenderer(unicode: true,PdfFontEmbedding.Always);
+			MigraDoc.Rendering.PdfDocumentRenderer pdfRenderer=new MigraDoc.Rendering.PdfDocumentRenderer();
 			pdfRenderer.Document=document;
 			pdfRenderer.RenderDocument();
 			using MemoryStream memorystream=new MemoryStream();

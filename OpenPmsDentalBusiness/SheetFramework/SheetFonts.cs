@@ -329,15 +329,16 @@ namespace OpenPmsDentalBusiness {
 
 		#region PDF
 		///<summary>Font options that make the PDF library embed the font and write text as Unicode, as ImageHelper and GridOD already do for
-		///non-ASCII text.</summary>
+		///non-ASCII text. The font is embedded as a subset of the characters used, as PDFsharp 1.2 embedded it ("Always" means the whole font file
+		///in PDFsharp 6).</summary>
 		public static XPdfFontOptions GetPdfFontOptionsUnicode() {
-			return new XPdfFontOptions(PdfFontEncoding.Unicode,PdfFontEmbedding.Always);
+			return new XPdfFontOptions(PdfFontEncoding.Unicode,PdfFontEmbedding.TryComputeSubset);
 		}
 
 		///<summary>True when the PDF library can embed the font for Unicode text. It cannot use fonts that Windows stores in font collections (.ttc
 		///files, which hold most Chinese and Japanese fonts and, on recent Windows, Nirmala UI and Cambria); text in such a font is drawn into the PDF
 		///by the print engine instead (see SheetTextDrawing). Checked once per font and style.</summary>
-		public static bool CanEmbedInPdf(string fontName,XFontStyle xFontStyle) {
+		public static bool CanEmbedInPdf(string fontName,XFontStyleEx xFontStyle) {
 			if(string.IsNullOrWhiteSpace(fontName)) {
 				return false;
 			}

@@ -584,13 +584,14 @@ namespace OpenPmsDental {
 					_claimResponseDefNum=0;//Do not save PDF to images.
 				}
 				if(_claimResponseDefNum!=0) {//Only save PDF to images when the Claim Responses ImageCat is set and the response print document was generated correclty.
-					_pdfDocument=new MigraDoc.DocumentObjectModel.Document();
-					_pdfDocument.DefaultPageSetup.PageWidth=MigraDoc.DocumentObjectModel.Unit.FromInch(e.PageBounds.Size.Width/100.0);
-					_pdfDocument.DefaultPageSetup.PageHeight=MigraDoc.DocumentObjectModel.Unit.FromInch(e.PageBounds.Size.Height/100.0);
-					_pdfDocument.DefaultPageSetup.TopMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(0);//Margin is 0 because the page image contains built-in margins.
-					_pdfDocument.DefaultPageSetup.LeftMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(0);//Margin is 0 because the page image contains built-in margins.
-					_pdfDocument.DefaultPageSetup.BottomMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(0);//Margin is 0 because the page image contains built-in margins.
-					_pdfDocument.DefaultPageSetup.RightMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(0);//Margin is 0 because the page image contains built-in margins.
+					_pdfDocument=MigraDocHelper.CreateDocument();
+					MigraDoc.DocumentObjectModel.PageSetup pageSetup=MigraDocHelper.GetPageSetup(_pdfDocument);
+					pageSetup.PageWidth=MigraDoc.DocumentObjectModel.Unit.FromInch(e.PageBounds.Size.Width/100.0);
+					pageSetup.PageHeight=MigraDoc.DocumentObjectModel.Unit.FromInch(e.PageBounds.Size.Height/100.0);
+					pageSetup.TopMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(0);//Margin is 0 because the page image contains built-in margins.
+					pageSetup.LeftMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(0);//Margin is 0 because the page image contains built-in margins.
+					pageSetup.BottomMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(0);//Margin is 0 because the page image contains built-in margins.
+					pageSetup.RightMargin=MigraDoc.DocumentObjectModel.Unit.FromInch(0);//Margin is 0 because the page image contains built-in margins.
 				}
 			}
 			e.Graphics.DrawRectangle(Pens.LightGray,e.MarginBounds);//Draw light border for context.
@@ -603,7 +604,7 @@ namespace OpenPmsDental {
 					//However, the summary of AntiAliasGridFit makes it sound more expensive than SingleBitPerPixelGridFit.
 					g.TextRenderingHint=System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
 					_documentGenerator.PrintPage(g,_pagesPrinted);
-					MigraDoc.DocumentObjectModel.Section section=_pdfDocument.AddSection();
+					MigraDoc.DocumentObjectModel.Section section=MigraDocHelper.AddSection(_pdfDocument);
 					TextFrame textFrame=MigraDocHelper.CreateContainer(section);
 					//Draw light border for context.
 					MigraDocHelper.DrawRectangle(textFrame,Color.LightGray,e.MarginBounds.X,e.MarginBounds.Y,e.MarginBounds.Width,e.MarginBounds.Height);
@@ -622,7 +623,7 @@ namespace OpenPmsDental {
 				e.HasMorePages=false;
 				labelPage.Text=(printPreviewControl1.StartPage+1).ToString()+" / "+_totalPages.ToString();
 				if(_claimResponseDefNum!=0) {//Import the PDF to the patient images in the Claim Response folder.
-					PdfDocumentRenderer pdfDocumentRenderer=new PdfDocumentRenderer(true,PdfFontEmbedding.Always);
+					PdfDocumentRenderer pdfDocumentRenderer=new PdfDocumentRenderer();
 					pdfDocumentRenderer.Document=_pdfDocument;
 					pdfDocumentRenderer.RenderDocument();
 					using(MemoryStream ms=new MemoryStream()) {

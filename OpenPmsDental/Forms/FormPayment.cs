@@ -12,7 +12,6 @@ using System.Windows.Forms;
 using CodeBase;
 using MigraDoc.DocumentObjectModel;
 using MigraDoc.Rendering;
-using MigraDoc.Rendering.Printing;
 using OpenPmsDental.Bridges;
 using OpenPmsDental.UI;
 using OpenPmsDentalBusiness;
@@ -533,7 +532,7 @@ namespace OpenPmsDental {
 			Random random=new Random();
 			string tempFile=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),
 				DateTime.Now.ToString("yyyyMMdd")+"_"+DateTime.Now.TimeOfDay.Ticks.ToString()+random.Next(1000).ToString()+".pdf");
-			PdfDocumentRenderer pdfDocumentRenderer=new PdfDocumentRenderer(true,PdfFontEmbedding.Always);
+			PdfDocumentRenderer pdfDocumentRenderer=new PdfDocumentRenderer();
 			pdfDocumentRenderer.Document=CreatePDFDoc(_payment.Receipt);
 			pdfDocumentRenderer.RenderDocument();
 			pdfDocumentRenderer.PdfDocument.Save(tempFile);
@@ -1349,15 +1348,16 @@ namespace OpenPmsDental {
 
 		private MigraDoc.DocumentObjectModel.Document CreatePDFDoc(string receiptStr) {
 			string[] stringArrayReceiptLines=receiptStr.Split("\r\n",StringSplitOptions.None);
-			MigraDoc.DocumentObjectModel.Document document=new MigraDoc.DocumentObjectModel.Document();
-			document.DefaultPageSetup.PageWidth=Unit.FromInch(3.0);
-			document.DefaultPageSetup.PageHeight=Unit.FromInch(0.181*stringArrayReceiptLines.Length+0.56);//enough to print text plus 9/16 in. (0.56) extra space at bottom.
-			document.DefaultPageSetup.TopMargin=Unit.FromInch(0.25);
-			document.DefaultPageSetup.LeftMargin=Unit.FromInch(0.25);
-			document.DefaultPageSetup.RightMargin=Unit.FromInch(0.25);
+			MigraDoc.DocumentObjectModel.Document document=MigraDocHelper.CreateDocument();
+			MigraDoc.DocumentObjectModel.PageSetup pageSetup=MigraDocHelper.GetPageSetup(document);
+			pageSetup.PageWidth=Unit.FromInch(3.0);
+			pageSetup.PageHeight=Unit.FromInch(0.181*stringArrayReceiptLines.Length+0.56);//enough to print text plus 9/16 in. (0.56) extra space at bottom.
+			pageSetup.TopMargin=Unit.FromInch(0.25);
+			pageSetup.LeftMargin=Unit.FromInch(0.25);
+			pageSetup.RightMargin=Unit.FromInch(0.25);
 			MigraDoc.DocumentObjectModel.Font fontBodyX=MigraDocHelper.CreateFont(8,false);
 			fontBodyX.Name=FontFamily.GenericMonospace.Name;
-			Section section=document.AddSection();
+			Section section=MigraDocHelper.AddSection(document);
 			Paragraph paragraph=section.AddParagraph();
 			ParagraphFormat paragraphFormat=new ParagraphFormat();
 			paragraphFormat.Alignment=ParagraphAlignment.Left;

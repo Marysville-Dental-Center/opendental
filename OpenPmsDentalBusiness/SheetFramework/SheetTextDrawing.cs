@@ -76,7 +76,7 @@ namespace OpenPmsDentalBusiness {
 			if(SheetScripts.IsWinAnsiEncodable(str)) {
 				return GraphicsHelper.DrawStringX(xg,str,xfont,xbrush,rectangleF,horizontalAlignment);
 			}
-			string fontName=SheetFonts.GetFontNameForText(SheetFonts.NormalizeFontName(fontNameRequested??xfont.Name),str);
+			string fontName=SheetFonts.GetFontNameForText(SheetFonts.NormalizeFontName(fontNameRequested??xfont.FontFamily.Name),str);
 			if(!IsVectorInPdf(str,fontName,xfont.Style)) {
 				try {
 					DrawStringAsImageX(xg,str,fontName,xfont,GetColor(xbrush),rectangleF,horizontalAlignment);
@@ -95,7 +95,7 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>True when text that the old PDF encoding cannot hold can still be written into a PDF as text in this font: it has no right-to-left
 		///or complex-script characters and the PDF library can embed the font. Otherwise DrawStringX draws it as an image.</summary>
-		public static bool IsVectorInPdf(string str,string fontName,XFontStyle xFontStyle) {
+		public static bool IsVectorInPdf(string str,string fontName,XFontStyleEx xFontStyle) {
 			return !SheetScripts.NeedsShaping(str) && SheetFonts.CanEmbedInPdf(fontName,xFontStyle);
 		}
 

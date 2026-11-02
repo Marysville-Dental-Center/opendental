@@ -736,22 +736,22 @@ namespace OpenPmsDentalBusiness {
 		public static XFont GetXFont(string str,Font font) {
 			string fontFamily=font.FontFamily.ToString();
 			XFont xfont;
-			XFontStyle xfontStyle=XFontStyle.Regular;
+			XFontStyleEx xfontStyle=XFontStyleEx.Regular;
 			if(font.Style.HasFlag(FontStyle.Bold)) {
-				xfontStyle|=XFontStyle.Bold;
+				xfontStyle|=XFontStyleEx.Bold;
 			}
 			if(font.Style.HasFlag(FontStyle.Italic)) {
-				xfontStyle|=XFontStyle.Italic;
+				xfontStyle|=XFontStyleEx.Italic;
 			}
 			if(font.Style.HasFlag(FontStyle.Strikeout)) {
-				xfontStyle|=XFontStyle.Strikeout;
+				xfontStyle|=XFontStyleEx.Strikeout;
 			}
 			if(font.Style.HasFlag(FontStyle.Underline)) {
-				xfontStyle|=XFontStyle.Underline;
+				xfontStyle|=XFontStyleEx.Underline;
 			}
 			bool hasNonAscii=str.Any(x => x > 127);
 			if(hasNonAscii) {
-				XPdfFontOptions xpdfFontOptions=new XPdfFontOptions(PdfFontEncoding.Unicode,PdfFontEmbedding.Always);
+				XPdfFontOptions xpdfFontOptions=new XPdfFontOptions(PdfFontEncoding.Unicode,PdfFontEmbedding.TryComputeSubset);
 				xfont=new XFont(fontFamily,font.Size,xfontStyle,xpdfFontOptions);
 			}
 			else {

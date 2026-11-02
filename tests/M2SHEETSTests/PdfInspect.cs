@@ -63,7 +63,7 @@ namespace M2SHEETSTests {
 			}
 			PdfPageInfo pdfPageInfo=new PdfPageInfo();
 			using(MemoryStream memoryStream=new MemoryStream(arrayBytes)) {
-				PdfDocument pdfDocument=PdfReader.Open(memoryStream,PdfDocumentOpenMode.ReadOnly);
+				PdfDocument pdfDocument=PdfReader.Open(memoryStream,PdfDocumentOpenMode.Import);
 				PdfPage pdfPage=pdfDocument.Pages[0];
 				PdfDictionary dictResources=pdfPage.Elements.GetDictionary("/Resources");
 				PdfDictionary dictFonts=dictResources?.Elements.GetDictionary("/Font");
@@ -92,7 +92,7 @@ namespace M2SHEETSTests {
 						pdfPageInfo.ListImages.Add(new PdfImageInfo {
 							Width=dictXObject.Elements.GetInteger("/Width"),
 							Height=dictXObject.Elements.GetInteger("/Height"),
-							HasSoftMask=dictXObject.Elements.Contains("/SMask"),
+							HasSoftMask=dictXObject.Elements.ContainsKey("/SMask"),
 						});
 					}
 				}

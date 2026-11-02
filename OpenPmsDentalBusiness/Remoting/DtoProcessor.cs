@@ -37,6 +37,8 @@ namespace OpenPmsDentalBusiness {
 				if(!_isMiddleTierInitialized) {
 					//If this fails, the exception will throw and be serialized and sent to the client.
 					ODInitialize.Initialize();
+					//The PDF library's licence and font fallback, for methods that make PDFs here.
+					PdfSharpSetup.Init();
 					//Correct the System.Runtime.CompilerServices.Unsafe assembly reference for the new MySqlConnector library.
 					string pathCompilerServicesUnsafe=Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"bin","System.Runtime.CompilerServices.Unsafe.dll");
 					ODInitialize.FixPackageAssembly("System.Runtime.CompilerServices.Unsafe",pathCompilerServicesUnsafe);

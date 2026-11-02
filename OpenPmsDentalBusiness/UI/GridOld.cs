@@ -2248,10 +2248,10 @@ namespace OpenPmsDental.UI {
 		///<summary></summary>
 		public void SheetDrawRowX(int rowI,XGraphics g,int x=0,int y=0,bool isBottom=false,bool isSheetGrid=false) {
 			XFont fontNormal=new XFont(_fontCell.Name,_fontCell.Size);//There is no Dispose for xfonts, or we would.
-			XFont fontBold=new XFont(_fontCellBold.Name,_fontCellBold.Size,XFontStyle.Bold);
+			XFont fontBold=new XFont(_fontCellBold.Name,_fontCellBold.Size,XFontStyleEx.Bold);
 			if(_fontForSheets!=null) {
 				fontNormal=new XFont(_fontForSheets.Name,_fontForSheets.Size);
-				fontBold=new XFont(_fontForSheetsBold.Name,_fontForSheetsBold.Size,XFontStyle.Bold);;
+				fontBold=new XFont(_fontForSheetsBold.Name,_fontForSheetsBold.Size,XFontStyleEx.Bold);;
 			}
 			XFont font;
 			XRect textRect;
@@ -2407,7 +2407,7 @@ namespace OpenPmsDental.UI {
 				}
 				//do not underline row if we are printing to PDF
 				//if(rows[rowI].Cells[i].Underline==YN.Yes) {//Underline the current cell.  If it is already bold, make the cell bold and underlined.
-				//	cellFont=new XFont(cellFont,(cellFont.Bold)?(XFontStyle.Bold | XFontStyle.Underline):XFontStyle.Underline);
+				//	cellFont=new XFont(cellFont,(cellFont.Bold)?(XFontStyleEx.Bold | XFontStyleEx.Underline):XFontStyleEx.Underline);
 				//}
 				if(Columns[i].ImageList==null) {
 					DrawStringX(g, ListGridRows[rowI].Cells[i].Text, font, textBrush, textRect, _xAlign);
@@ -2485,7 +2485,7 @@ namespace OpenPmsDental.UI {
 			LinearGradientBrush brushTitleBackground=new LinearGradientBrush(new Rectangle(x,y,Width,_heightTitle),cTitleTop,cTitleBottom,LinearGradientMode.Vertical);
 			XSolidBrush brushTitleText=new XSolidBrush(cTitleText);
 			g.DrawRectangle(brushTitleBackground,ToPoints(x),ToPoints(y),ToPoints(Width),ToPoints(_heightTitle));
-			XFont xTitleFont=new XFont(_fontTitle.FontFamily.ToString(),_fontTitle.Size,XFontStyle.Bold);
+			XFont xTitleFont=new XFont(_fontTitle.FontFamily.ToString(),_fontTitle.Size,XFontStyleEx.Bold);
 			//g.DrawString(title,titleFont,brushTitleText,p((float)x+(float)(Width/2-g.MeasureString(title,titleFont).Width/2)),p(y+2));
 			DrawStringX(g,_title,xTitleFont,brushTitleText,new XRect((float)x+(float)(Width/2),y,100,100),XStringAlignment.Center);
 			//Outline the Title
@@ -2566,7 +2566,7 @@ namespace OpenPmsDental.UI {
 			Color cTitleBackG=Color.LightGray;
 			g.DrawRectangle(new XSolidBrush(cTitleBackG),ToPoints(x),ToPoints(y),ToPoints(Width),ToPoints(_heightHeader));//background
 			g.DrawLine(new XPen(Color.FromArgb(102,102,122)),ToPoints(x),ToPoints(y),ToPoints(x+Width),ToPoints(y));//line between title and headers
-			XFont xHeaderFont=new XFont(_fontHeader.FontFamily.Name.ToString(),_fontHeader.Size,XFontStyle.Bold);
+			XFont xHeaderFont=new XFont(_fontHeader.FontFamily.Name.ToString(),_fontHeader.Size,XFontStyleEx.Bold);
 			for(int i=0; i < Columns.Count; i++) {
 				if(i != 0) {
 					g.DrawLine(new XPen(cOutline), ToPoints(x + (-hScroll.Value + Columns[i].State.XPos)), ToPoints(y),
@@ -3772,18 +3772,18 @@ namespace OpenPmsDental.UI {
 				(int)(scaleToPix*xbounds.Width),
 				(int)(scaleToPix*xbounds.Height));
 			FontStyle fontstyle=FontStyle.Regular;
-			if(xfont.Style==XFontStyle.Bold) {
+			if(xfont.Style==XFontStyleEx.Bold) {
 				fontstyle=FontStyle.Bold;
 			}
 			//pixels: (except Size is em-size)
-			Font font=new Font(xfont.Name,(float)xfont.Size,fontstyle);
+			Font font=new Font(xfont.FontFamily.Name,(float)xfont.Size,fontstyle);
 			bool hasNonAscii=str.Any(x => x > 127);
 			if(hasNonAscii) {
-				XPdfFontOptions options=new XPdfFontOptions(PdfFontEncoding.Unicode,PdfFontEmbedding.Always);
-				xfont=new XFont(xfont.Name,xfont.Size,xfont.Style,options);
+				XPdfFontOptions options=new XPdfFontOptions(PdfFontEncoding.Unicode,PdfFontEmbedding.TryComputeSubset);
+				xfont=new XFont(xfont.FontFamily.Name,xfont.Size,xfont.Style,options);
 			}
 			else {
-				xfont=new XFont(xfont.Name,xfont.Size,xfont.Style);
+				xfont=new XFont(xfont.FontFamily.Name,xfont.Size,xfont.Style);
 			}
 			//pixels:
 			SizeF fit=new SizeF((float)(bounds.Width-rightPad),(float)(font.Height));

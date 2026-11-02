@@ -19,22 +19,23 @@ namespace OpenPmsDental {
 
 		public static void PrintReceipt(string receiptStr,Patient patient) {
 			string[] stringArrayReceiptLines=receiptStr.Split(new string[] { Environment.NewLine },StringSplitOptions.None);
-			MigraDoc.DocumentObjectModel.Document doc=new MigraDoc.DocumentObjectModel.Document();
-			doc.DefaultPageSetup.PageWidth=Unit.FromInch(3.0);
-			doc.DefaultPageSetup.PageHeight=Unit.FromInch(0.181*stringArrayReceiptLines.Length+0.56);//enough to print receipt text plus 9/16 inch (0.56) extra space at bottom.
-			doc.DefaultPageSetup.TopMargin=Unit.FromInch(0.25);
-			doc.DefaultPageSetup.LeftMargin=Unit.FromInch(0.25);
-			doc.DefaultPageSetup.RightMargin=Unit.FromInch(0.25);
+			MigraDoc.DocumentObjectModel.Document doc=MigraDocHelper.CreateDocument();
+			MigraDoc.DocumentObjectModel.PageSetup pageSetup=MigraDocHelper.GetPageSetup(doc);
+			pageSetup.PageWidth=Unit.FromInch(3.0);
+			pageSetup.PageHeight=Unit.FromInch(0.181*stringArrayReceiptLines.Length+0.56);//enough to print receipt text plus 9/16 inch (0.56) extra space at bottom.
+			pageSetup.TopMargin=Unit.FromInch(0.25);
+			pageSetup.LeftMargin=Unit.FromInch(0.25);
+			pageSetup.RightMargin=Unit.FromInch(0.25);
 			MigraDoc.DocumentObjectModel.Font bodyFontx=MigraDocHelper.CreateFont(8,false);
 			bodyFontx.Name=FontFamily.GenericMonospace.Name;
-			MigraDoc.DocumentObjectModel.Section section=doc.AddSection();
+			MigraDoc.DocumentObjectModel.Section section=MigraDocHelper.AddSection(doc);
 			Paragraph paragraph=section.AddParagraph();
 			ParagraphFormat paragraphFormat=new ParagraphFormat();
 			paragraphFormat.Alignment=ParagraphAlignment.Left;
 			paragraphFormat.Font=bodyFontx;
 			paragraph.Format=paragraphFormat;
 			paragraph.AddFormattedText(receiptStr,bodyFontx);
-			MigraDoc.Rendering.Printing.MigraDocPrintDocument migraDocPrintDocument=new MigraDoc.Rendering.Printing.MigraDocPrintDocument();
+			MigraDocPrintDocument migraDocPrintDocument=new MigraDocPrintDocument();
 			MigraDoc.Rendering.DocumentRenderer documentRenderer=new MigraDoc.Rendering.DocumentRenderer(doc);
 			documentRenderer.PrepareDocument();
 			migraDocPrintDocument.Renderer=documentRenderer;

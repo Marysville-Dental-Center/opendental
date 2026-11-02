@@ -165,6 +165,7 @@ namespace OpenPmsDentalBusiness{
 		///<summary>Do not use this method in OpenPmsDental.exe. This method is to be used in ODXam only. Creates a PDF of the Perio Chart to 
 		///be used in eClipboard.</summary>
 		public static PdfDocument CreatePerioPDF(Patient pat,PerioExam perioExam,List<PerioMeasure> listPerioMeasures=null) {
+			PdfSharpSetup.Init();//Called outside OpenPmsDental.
 			Rectangle marginBounds=new Rectangle();
 			//The GraphicsHelper is used to specifically convert pixels to the correct points that PdfSharp uses, so it will be used in several places
 			//The numbers used for width, height, etc, were taken from our printing logic
