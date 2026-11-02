@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Imported last by every project of third-party\build (docs\third-party-source-builds.md).
+
+       SourceBuildGenerateInfo writes obj\...\SourceBuildInfo.g.cs, what the .NET SDK and GitVersion generate for the upstream projects:
+       the assembly attributes (title, product, company, copyright, the fixed versions of the library's props file, an informational version
+       that marks this build, and where the source came from), the InternalsVisibleTo attributes read from the upstream project file named by
+       $(SourceBuildUpstreamProject), so they follow upstream on every upgrade, and, for PDFsharp, the GitVersionInformation class.
+       SourceBuildWriteItems writes obj\...\SourceBuildItems.txt, the files the compiler and the resource generator were given, which
+       tests\PdfLibraryTests and tests\LibSpellTests compare with the upstream project files. -->
+  <PropertyGroup>
+    <SourceBuildInfoFile>$(IntermediateOutputPath)SourceBuildInfo.g.cs</SourceBuildInfoFile>
+    <SourceBuildItemsFile>$(IntermediateOutputPath)SourceBuildItems.txt</SourceBuildItemsFile>
+  </PropertyGroup>
+
+  <Target Name="SourceBuildGenerateInfo" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(SourceBuildUpstreamProject)')"
+      Text="The upstream source is missing: $(SourceBuildUpstreamProject). Check out the submodules: git -c protocol.file.allow=always submodule update --init (docs\third-party-source-builds.md)." />
+    <XmlPeek XmlInputPath="$(SourceBuildUpstreamProject)" Query="/Project/ItemGroup/InternalsVisibleTo/@Include">
+      <Output TaskParameter="Result" ItemName="_SourceBuildUpstreamIvt" />
+    </XmlPeek>
+    <ItemGroup>
+      <!-- Upstream writes $(AssemblyName) in some of them. -->
+      <_SourceBuildIvt Include="$([System.String]::Copy('%(_SourceBuildUpstreamIvt.Identity)').Replace('%24(AssemblyName)','$(AssemblyName)'))" Condition="'@(_SourceBuildUpstreamIvt)'!=''" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_SourceBuildVersionMajor>$([System.Version]::Parse('$(SourceBuildVersion)').Major)</_SourceBuildVersionMajor>
+      <_SourceBuildVersionMinor>$([System.Version]::Parse('$(SourceBuildVersion)').Minor)</_SourceBuildVersionMinor>
+      <_SourceBuildVersionPatch>$([System.Version]::Parse('$(SourceBuildVersion)').Build)</_SourceBuildVersionPatch>
+      <_SourceBuildShortCommit>$(SourceBuildCommit.Substring(0,7))</_SourceBuildShortCommit>
+    </PropertyGroup>
+    <ItemGroup>
+      <_SourceBuildLine Include="// &lt;auto-generated&gt;" />
+      <_SourceBuildLine Include="// Written by third-party\build\SourceBuild.targets for $(AssemblyName), built from $(SourceBuildRepository) $(SourceBuildTag) ($(SourceBuildCommit))." />
+      <_SourceBuildLine Include="// &lt;/auto-generated&gt;" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyTitle(&quot;$(AssemblyName)&quot;)]" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyProduct(&quot;$(SourceBuildProduct)&quot;)]" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyDescription(&quot;$(SourceBuildDescription)&quot;)]" Condition="'$(SourceBuildDescription)'!=''" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyCompany(&quot;$(SourceBuildCompany)&quot;)]" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyCopyright(&quot;$(SourceBuildCopyright)&quot;)]" Condition="'$(SourceBuildCopyright)'!=''" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyConfiguration(&quot;$(Configuration)&quot;)]" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyVersion(&quot;$(SourceBuildAssemblyVersion)&quot;)]" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyFileVersion(&quot;$(SourceBuildFileVersion)&quot;)]" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyInformationalVersion(&quot;$(SourceBuildInformationalVersion)&quot;)]" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyMetadata(&quot;SourceRepository&quot;, &quot;$(SourceBuildRepository)&quot;)]" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyMetadata(&quot;SourceTag&quot;, &quot;$(SourceBuildTag)&quot;)]" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyMetadata(&quot;SourceCommit&quot;, &quot;$(SourceBuildCommit)&quot;)]" />
+      <_SourceBuildLine Include="[assembly: global::System.Reflection.AssemblyMetadata(&quot;SourceBuild&quot;, &quot;Open PMS - Dental, third-party\\build\\$(MSBuildProjectName)&quot;)]" />
+      <_SourceBuildLine Include="@(_SourceBuildIvt->'[assembly: global::System.Runtime.CompilerServices.InternalsVisibleTo(&quot;%(Identity)&quot;)]')" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(SourceBuildGitVersionInformation)'=='true'">
+      <_SourceBuildLine Include="[global::System.Runtime.CompilerServices.CompilerGenerated]" />
+      <_SourceBuildLine Include="static class GitVersionInformation" />
+      <_SourceBuildLine Include="{" />
+      <_SourceBuildLine Include="public static string Major = &quot;$(_SourceBuildVersionMajor)&quot;%3B" />
+      <_SourceBuildLine Include="public static string Minor = &quot;$(_SourceBuildVersionMinor)&quot;%3B" />
+      <_SourceBuildLine Include="public static string Patch = &quot;$(_SourceBuildVersionPatch)&quot;%3B" />
+      <_SourceBuildLine Include="public static string PreReleaseTag = &quot;&quot;%3B" />
+      <_SourceBuildLine Include="public static string PreReleaseTagWithDash = &quot;&quot;%3B" />
+      <_SourceBuildLine Include="public static string PreReleaseLabel = &quot;&quot;%3B" />
+      <_SourceBuildLine Include="public static string PreReleaseLabelWithDash = &quot;&quot;%3B" />
+      <_SourceBuildLine Include="public static string PreReleaseNumber = &quot;&quot;%3B" />
+      <_SourceBuildLine Include="public static string BuildMetaData = &quot;&quot;%3B" />
+      <_SourceBuildLine Include="public static string FullBuildMetaData = &quot;Tag.$(SourceBuildTag).Sha.$(SourceBuildCommit)&quot;%3B" />
+      <_SourceBuildLine Include="public static string MajorMinorPatch = &quot;$(SourceBuildVersion)&quot;%3B" />
+      <_SourceBuildLine Include="public static string SemVer = &quot;$(SourceBuildVersion)&quot;%3B" />
+      <_SourceBuildLine Include="public static string FullSemVer = &quot;$(SourceBuildVersion)&quot;%3B" />
+      <_SourceBuildLine Include="public static string AssemblySemVer = &quot;$(SourceBuildAssemblyVersion)&quot;%3B" />
+      <_SourceBuildLine Include="public static string AssemblySemFileVer = &quot;$(SourceBuildFileVersion)&quot;%3B" />
+      <_SourceBuildLine Include="public static string InformationalVersion = &quot;$(SourceBuildGitInformationalVersion)&quot;%3B" />
+      <_SourceBuildLine Include="public static string BranchName = &quot;$(SourceBuildGitBranchName)&quot;%3B" />
+      <_SourceBuildLine Include="public static string EscapedBranchName = &quot;$(SourceBuildGitBranchName.Replace('/','-').Replace('.','-'))&quot;%3B" />
+      <_SourceBuildLine Include="public static string Sha = &quot;$(SourceBuildCommit)&quot;%3B" />
+      <_SourceBuildLine Include="public static string ShortSha = &quot;$(_SourceBuildShortCommit)&quot;%3B" />
+      <_SourceBuildLine Include="public static string CommitDate = &quot;$(SourceBuildCommitDate)&quot;%3B" />
+      <_SourceBuildLine Include="public static string UncommittedChanges = &quot;0&quot;%3B" />
+      <_SourceBuildLine Include="}" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(SourceBuildInfoFile)" Lines="@(_SourceBuildLine)" Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="utf-8" />
+    <ItemGroup>
+      <Compile Include="$(SourceBuildInfoFile)" />
+      <FileWrites Include="$(SourceBuildInfoFile)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="SourceBuildWriteItems" AfterTargets="CoreCompile">
+    <ItemGroup>
+      <_SourceBuildItemLine Include="@(Compile->'Compile|%(FullPath)')" />
+      <_SourceBuildItemLine Include="@(EmbeddedResource->'EmbeddedResource|%(FullPath)|%(ManifestResourceName)')" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(SourceBuildItemsFile)" Lines="@(_SourceBuildItemLine)" Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="utf-8" />
+    <ItemGroup>
+      <FileWrites Include="$(SourceBuildItemsFile)" />
+    </ItemGroup>
+  </Target>
+</Project>
