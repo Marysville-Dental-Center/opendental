@@ -2,8 +2,9 @@
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!-- Tests for inventory tracking (docs/specs/inventory-tracking.md): the stock ledger and LevelOnHand, soonest-expiring lots first, receiving,
-       counts and adjustments, deducting and restoring when procedures are completed, un-completed and deleted, the implant lot on the
-       procedure, the alerts, the opening-balance migration and the repair. Database tests use scratch MariaDB databases on 127.0.0.1 whose
+       counts and adjustments, stock counts saved while they are counted (resumed, posted, discarded), deducting and restoring when
+       procedures are completed, un-completed and deleted, the implant lot on the procedure, the alerts, the opening-balance migration and
+       the repair. Database tests use scratch MariaDB databases on 127.0.0.1 whose
        names start with test_inv_, synthetic rows only, and drop them afterwards. Every .cs file under this folder is compiled. -->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>

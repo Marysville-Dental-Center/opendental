@@ -382,7 +382,7 @@ rows ("Stock ledger:", `AdoptionRowCheck.CheckInventoryLedger`) instead of requi
 soonest-expiring first (lots chosen when deducted: a raised quantity splits over lots, two confirmations against the last unit of a lot,
 explicit lots kept beside lot -1), receiving, counts and adjustments (and a failure after the ledger write; the program quantity read from the
 ledger after a missed recompute, so a re-post writes nothing more; a lot below zero listed and corrected by a full count), saved stock counts
-(`CountTests`: lines saved at once and read back after the window is closed and reopened, resumed by another user, one open count only, a
+(`CountTests` and `CountMigrationTests`: lines saved at once and read back after the window is closed and reopened, resumed by another user, one open count only, a
 recount replacing its line with a new snapshot, two workstations saving lines into the same open count at the same moment, a post after a
 resume giving the same results as an uninterrupted count, a failed post opened again, a post interrupted by a crash resumed, a discard with
 its audit entry, and step 2026110213 on a database without the inventory tables and on one already migrated with stock), deduct and restore
