@@ -84,6 +84,7 @@ $AllowList=@(
 	@{ Path='*ConvertDatabases*.cs'; Reason='Frozen database upgrade scripts (Open Dental history); their string literals are data.' }
 	@{ Path='docs\port-notes\*'; Reason='Port notes: the record of what was done, with the paths of the time. A mapping note covers the rename.' }
 	@{ Path='docs\specs\*'; Reason='Port specs: the record of the 24.4-26.1 port, with the paths of the time.' }
+	@{ Path='docs\reviews\*'; Reason='Dated review snapshots (organization, rename, release readiness), with the names and paths of the time.' }
 	@{ Path='docs\third-party-binaries-audit.md'; Reason='Audit record of the binaries as they were.' }
 	@{ Path='docs\m1-validation-report.md'; Reason='Validation report of milestone M1, as run.' }
 	@{ Path='tests\ReportTests\RdlSourceBuildTests.cs'; Match='(?:ProjectReference|HintPath): OpenDental\b'; Reason='Checks rows of the binaries audit, which keeps the names of its time.' }
