@@ -1,6 +1,7 @@
 # Routine maintenance around the practice
 
-Owner decisions of 2026-11-02 (final). Roadmap item 3 of "Next" (`docs/roadmap.md`).
+Owner decisions of 2026-11-02 (final), and the owner's answers to the questions of section 10, also of 2026-11-02 ("all as recommended").
+Roadmap item 3 of "Next" (`docs/roadmap.md`).
 
 The office defines its own maintenance items (any piece of equipment, a room, a system or a compliance routine) and records each time one
 is done. Nothing is hard-coded: there is no built-in list of equipment or routines and no starter template. The list starts empty.
@@ -11,7 +12,7 @@ is done. Nothing is hard-coded: there is no built-in list of equipment or routin
 2. Schedule rules
 3. Status: due, due soon, overdue
 4. Result fields and validation
-5. Windows: board, item setup, recording, history
+5. Windows: board, item setup, recording, correcting, history
 6. Alerts
 7. Permissions and the audit trail
 8. Menus
@@ -20,8 +21,10 @@ is done. Nothing is hard-coded: there is no built-in list of equipment or routin
 
 ## 1. Tables
 
-Five fork-only tables (not Open Dental schema), created by fork migration steps 2026110201 to 2026110205. All are MyISAM, utf8mb3, with a
-`bigint` primary key named `<Table>Num`, as Open Dental's own tables. Rows are never written by a migration step.
+Five fork-only tables (not Open Dental schema), created by fork migration steps 2026110201 to 2026110205; step 2026110207 adds the two
+correction columns of `maintrecord` to a table an earlier build created without them. All are MyISAM, utf8mb3, with a `bigint` primary key
+named `<Table>Num`, as Open Dental's own tables. No migration step writes a row into them (step 2026110206 writes `grouppermission` rows,
+section 7).
 
 ### maintitem: one maintenance item
 
@@ -33,11 +36,11 @@ Five fork-only tables (not Open Dental schema), created by fork migration steps 
 | `EquipmentNum` | `bigint(20) NOT NULL` | FK to `equipment.EquipmentNum` (Manage, Equipment). 0 when the item is not linked to an asset. |
 | `ScheduleType` | `tinyint(4) NOT NULL` | `EnumMaintScheduleType`: 0 Interval, 1 Weekdays, 2 AfterCompletion. |
 | `IntervalCount` | `int(11) NOT NULL` | N of "every N units" or "N units after the last completion". 1 or more. Not used by Weekdays. |
-| `IntervalUnit` | `tinyint(4) NOT NULL` | `EnumMaintIntervalUnit`: 0 Days, 1 Weeks, 2 Months, 3 Years. Years only for Interval. |
+| `IntervalUnit` | `tinyint(4) NOT NULL` | `EnumMaintIntervalUnit`: 0 Days, 1 Weeks, 2 Months, 3 Years (Interval and AfterCompletion). |
 | `Weekdays` | `int(11) NOT NULL` | Weekdays schedule: a bit per day, bit `(int)DayOfWeek` (Sunday 1, Monday 2, ... Saturday 64). 0 otherwise. |
 | `DateAnchor` | `date NOT NULL DEFAULT '0001-01-01'` | The first due date (Interval, AfterCompletion) or the first day the weekday schedule applies (Weekdays). Required. |
 | `LeadDays` | `int(11) NOT NULL` | Reminder lead time in days, 0 to 365: the item is "due soon" from this many days before its due date. |
-| `UserNumAssigned` | `bigint(20) NOT NULL` | FK to `userod.UserNum`: the user who does the task. 0 when assigned to a group or to nobody. |
+| `UserNumAssigned` | `bigint(20) NOT NULL` | FK to `userod.UserNum`: the user who does the task. 0 when assigned to a group or to nobody (then the reminders go to every user with Maintenance Setup, section 6). |
 | `UserGroupNumAssigned` | `bigint(20) NOT NULL` | FK to `usergroup.UserGroupNum`: a user group as the role that does the task. 0 when assigned to a user or to nobody. At most one of the two assignee columns is set. |
 | `IsHidden` | `tinyint(4) NOT NULL` | Retired. Hidden items leave the board (unless "Show hidden" is checked) and raise no alerts; their history is kept. |
 | `SecUserNumEntry` | `bigint(20) NOT NULL` | The user who added the item. Never updated. |
@@ -91,8 +94,11 @@ others) writes valid SQL too.
 | `Note` | `text NOT NULL` | Free text. |
 | `IsFlagged` | `tinyint(4) NOT NULL` | A result failed (Fail) or a number was outside its limits. |
 | `SecDateTEntry` | `datetime NOT NULL DEFAULT '0001-01-01 00:00:00'` | When it was recorded (server time), set by the program. |
+| `UserNumCorrected` | `bigint(20) NOT NULL` | FK to `userod.UserNum`: who made the last correction (section 5, "Correcting a completion"). 0 when it was never corrected. |
+| `DateTCorrected` | `datetime NOT NULL DEFAULT '0001-01-01 00:00:00'` | When the last correction was saved (server time). `0001-01-01 00:00:00` when it was never corrected. |
 
-Keys: `MaintItemNum`, `UserNum`, `DateDone`. A completion is never edited or deleted.
+Keys: `MaintItemNum`, `UserNum`, `DateDone`, `UserNumCorrected`. A completion is never deleted. Its checklist ticks, results (attachments
+included) and note can be corrected; its item, date done, due date and who did it never change.
 
 ### maintrecordvalue: the checklist and results of one completion
 
@@ -124,15 +130,18 @@ All dates are calendar days without time. "Today" is the server's date (`MiscDat
   the anchor, never from the previous occurrence, so a month end does not drift: anchor January 31, monthly, gives February 28 (29 in a leap
   year), March 31, April 30, May 31. An anchor on February 29, yearly, gives February 28 in other years and February 29 again in leap years.
 - **Weekdays**: every day on or after the anchor whose weekday is checked (for example Monday, Wednesday and Friday). At least one weekday.
-- **AfterCompletion, N days, weeks or months after the last completion**: there is one open occurrence only, the latest `DateDone` plus N
-  units (`AddMonths` for months, so January 31 plus one month is February 28 or 29). With no completion yet, the anchor.
+- **AfterCompletion, N days, weeks, months or years after the last completion**: there is one open occurrence only, the latest `DateDone`
+  plus N units, with the month-end and February 29 handling of the fixed schedules (`AddMonths` for months and `AddMonths(12×N)` for years):
+  January 31 plus one month is February 28 or 29; February 29 plus one year is February 28, plus four years February 29 again. With no
+  completion yet, the anchor.
 
 No occurrence is earlier than the anchor.
 
 ### The due date
 
 The **anchor is the first due date**. An item set up with an anchor in the past and never done is overdue from the anchor; an office that
-starts a schedule now sets the anchor to the next date the task is due (the setup window defaults it to today).
+starts a schedule now sets the anchor to the next date the task is due. The setup window of a new item defaults the anchor to today (the
+server's date), so a new item is due today unless the office picks another first due date.
 
 A completion closes the occurrence it was recorded against (its `DateDue`, the item's due date at that moment), whether it was done early or
 late, and also every occurrence up to the day it was done. So for Interval and Weekdays:
@@ -205,8 +214,12 @@ Name, Description, Equipment (none or an item of the Equipment list), schedule (
 days, Assigned To (nobody, a user or a user group), Hidden. Two grids with Add, Edit, Delete, Up and Down: **Checklist** steps (edited in a
 small text box) and **Result fields** (FormMaintFieldEdit: name, type, unit, minimum, maximum, required). A line under the schedule shows the
 next due date the current settings give. **Delete** removes an item that has no completion; an item with history can only be hidden.
-Validation: a name; N from 1 to 1000; at least one weekday for a weekday schedule; no Years for AfterCompletion; a valid anchor; lead time
-0 to 365; field names; minimum not above maximum.
+A new item starts as every 1 month, lead time 7 days, with the first due date (the anchor) set to today, the server's date
+(`MaintItems.CreateNew`); the window also fills in today when a new item reaches it without an anchor. Every unit (days, weeks, months, years)
+is offered for both "every N" and "N after the last completion". An item saved without an assignee sends its reminders to every user with
+Maintenance Setup (section 6); the window says so under Assigned To.
+Validation: a name; N from 1 to 1000; at least one weekday for a weekday schedule; a valid anchor; lead time 0 to 365; field names; minimum
+not above maximum.
 
 ### Recording a completion (FormMaintRecordEdit)
 
@@ -215,16 +228,37 @@ a later one), the **checklist** (click a line to tick it), the **results** (doub
 a file picker; out-of-range numbers and Fail are marked) and a note. The user and the time are recorded automatically; there is no second
 sign-off. OK saves the completion, its values and the audit entry, and updates the item's alerts at once.
 
+### Correcting a completion (FormMaintRecordEdit, correction mode)
+
+A recorded completion is never deleted, but its checklist ticks, its results (attachments included) and its note can be corrected, from the
+history's **Correct** button:
+
+- **Who**: the user who recorded it (`maintrecord.UserNum`) or a user with Maintenance Setup. Anybody else gets a message and the window does
+  not open. `MaintRecords.Correct` checks it again, so the rule also holds through the middle tier.
+- **What**: the window shows the completion as it was recorded: the item, the due date it closed, the date done and who did it (read only),
+  its checklist lines and its result lines (the labels and units copied when it was recorded; no line is added or removed, whatever the item's
+  steps and fields are now), and the note. Ticks are clicked and values entered as when recording.
+- **Validation**: as when recording, against the item's current field when it still exists (required, type, limits). A line whose field was
+  deleted since is checked for its type only, and a corrected number on such a line is not flagged, because its limits are no longer known.
+  A line whose value does not change keeps its flag. The completion's flag is worked out again from its lines.
+- **Attachments**: a new file is copied into the item's folder as when recording. A replaced or removed attachment's file stays in the
+  folder, so nothing that was recorded is lost; the completion no longer refers to it.
+- **Saving** writes the changed lines and the note, sets `UserNumCorrected` (the logged-on user) and `DateTCorrected` (the server's time),
+  and writes one audit trail entry (section 7) naming the completion and every change. A correction that changes nothing saves and logs
+  nothing. The dates, the item and who did it never change, so a correction does not move the due date or the alerts.
+
 ### History (FormMaintHistory)
 
 Per item (from the board's History button) or overall (All History), for a date range (default: the last 12 months) of the date done.
 Columns: Date Done, Item (overall only), Done By, Due, Late (days after the due date, blank when on time), Flagged, Checklist ("5 of 5"
 when every step was ticked, "3 of 5, not done: Drain, Refill" when some were not, blank when the item had no steps), Results (each filled
-result as "name: value"), Note, Recorded (date and time). The checklist and the results are in this grid so that a printout or an export
-shows them: a completion recorded with skipped steps never looks like a full one. A row is light red when the completion is flagged, light
-yellow when a checklist step was not done (an unticked step is not a failed result, so it does not flag the completion). A second grid shows
-the selected completion's checklist and results, with not-done steps light yellow; **Open Attachment** opens an attached file. **Print** and
-**Export** as on the board.
+result as "name: value"), Note, Recorded (date and time), Corrected (blank when never corrected, otherwise the date and time of the last
+correction and who made it, for example "11/03/2026 10:15 AM by Admin"). The checklist and the results are in this grid so that a printout
+or an export shows them: a completion recorded with skipped steps never looks like a full one, and a corrected one shows that it was
+corrected. A row is light red when the completion is flagged, light yellow when a checklist step was not done (an unticked step is not a
+failed result, so it does not flag the completion). A second grid shows the selected completion's checklist and results, with not-done steps
+light yellow; **Open Attachment** opens an attached file; **Correct** corrects the selected completion (above). **Print** and **Export** as
+on the board.
 
 ## 6. Alerts
 
@@ -234,9 +268,11 @@ Reminders use the program's alert system (`alertitem`, the Alerts menu of the ma
 - **AlertType 126 MaintenanceOverdue** ("Maintenance Overdue") while it is Overdue. It replaces the due-soon alert.
 - Why 127 and 126, not 10000: `alertitem.Type`, `alertcategorylink.AlertType` and `alertsub.Type` are `tinyint(4)` (-128 to 127) in Open
   Dental's schema, so `FORK-ENUMS.md` gives the tinyint enums their own rule: fork-only values count down from 127.
-- Recipients: the assigned user, or every user of the assigned user group (hidden users excluded). Each recipient gets an alert of their own
-  (`UserNum` set), so it reaches them whatever alert categories they subscribe to, and nobody else sees it. An item with no assignee raises no
-  alert; the board shows it.
+- Recipients: the assigned user, or every user of the assigned user group; an item with no assignee goes to every user who has Maintenance
+  Setup (through any of their user groups), so an unassigned item is never forgotten. Hidden users are left out, and a user who qualifies
+  twice (two groups with Maintenance Setup) gets one alert. Each recipient gets an alert of their own (`UserNum` set), so it reaches them
+  whatever alert categories they subscribe to, and nobody else sees it. When the item gets an assignee, the next sync deletes the alerts of
+  the Maintenance Setup users (with their read marks) and adds the assignee's.
 - `FKey` is the MaintItemNum, `ClinicNum` -1 (every clinic), severity Low for due soon and High for overdue, actions Mark As Read and Open
   Form, `FormToOpen` FormType 127 FormMaintenanceBoard (opens the board; `alertitem.FormToOpen` is `tinyint(4)` too). There is no Delete action: the alert goes away by itself.
 - **One reminder per due date**: `ItemValue` holds the due date the alert is about, as `yyyy-MM-dd` (the same on every workstation, whatever
@@ -249,7 +285,8 @@ Reminders use the program's alert system (`alertitem`, the Alerts menu of the ma
   never on the description, which depends on the workstation's culture and language. A wanted alert that exists is kept; when only its text
   or options differ (a renamed item, or a description written by a workstation in another culture) it is updated in place, so its read state
   survives. A missing one is added, extra copies of one alert (two workstations syncing at the same moment) are deleted, and alerts no
-  longer wanted (recorded, so the due date moved on; hidden; reassigned; moved from due soon to overdue) are deleted with their read marks.
+  longer wanted (recorded, so the due date moved on; hidden; reassigned, or assigned after it had nobody; moved from due soon to overdue) are
+  deleted with their read marks.
   Running it again changes nothing.
 - When: every 10 minutes on each workstation (a thread of the main window), right after a completion is recorded, and after an item is
   saved.
@@ -259,17 +296,33 @@ Reminders use the program's alert system (`alertitem`, the Alerts menu of the ma
 Fork-only permission values (`docs/port-notes/FORK-ENUMS.md`, range 10000-10049; the alert and window values above are in the tinyint
 range 127-120, because `alertitem.Type`, `alertcategorylink.AlertType`, `alertsub.Type` and `alertitem.FormToOpen` are `tinyint(4)`):
 
-- **EnumPermType 10000 MaintenanceSetup** ("Maintenance Setup"): add, edit, hide and delete maintenance items, their checklists and fields.
+- **EnumPermType 10000 MaintenanceSetup** ("Maintenance Setup"): add, edit, hide and delete maintenance items, their checklists and fields;
+  correct any recorded completion; receive the reminders of items that have no assignee.
 - **EnumPermType 10001 MaintenanceRecord** ("Maintenance Record Completion"): record a completion.
 
 Both sit in the security tree under Manage Module, "Routine Maintenance". Viewing the board and the history needs only the Manage module.
-No migration grants them: an administrator gives them to the user groups that need them (Setup, Security), as for any new permission.
+
+**The grant, once** (fork migration step 2026110206, `MaintPermissionGrantStep`): every user group that has Security Admin (any
+`grouppermission` row with PermType 24) gets Maintenance Setup and Maintenance Record Completion, so the people who run the program's
+security can use the feature and give it to others. The step inserts only the rows that are missing (a group that already has one of the
+two keeps its row and gets only the other), each as the program's other grant steps write theirs (`Seed25_3`, `Seed26_1`): FKey 0,
+NewerDate `0001-01-01`, NewerDays 0. It changes nothing else. The rows are worked out by `MaintPermissionGrants.Plan` from the
+grouppermission rows, which the adoption tools use too (migration-preview lists the grants, adopt's row check requires exactly them). It runs
+once per database: the runner runs it once, and a forced second run (`RunAll`) of a database whose `ForkMigrationsApplied` already holds
+2026110206 skips it, so a grant an administrator removed later is not given back. Running it twice on the same rows changes nothing. Other
+user groups get the permissions from an administrator (Setup, Security), as for any new permission. Log lines: "Granted MaintenanceSetup to
+<n> Security Admin user group(s)" and the same for MaintenanceRecord.
 
 Audit trail (`securitylog`, FKey the MaintItemNum):
 
 - MaintenanceSetup: "Maintenance item added: <name>", "Maintenance item edited: <name> (<what changed>)", "Maintenance item hidden: <name>",
   "Maintenance item shown again: <name>", "Maintenance item deleted: <name>".
 - MaintenanceRecord: "Maintenance recorded: <name>, done <date>, due <date>" plus ", flagged" when a value was flagged.
+- MaintenanceRecord, for a correction (written by `MaintRecords.Correct`): "Maintenance completion corrected: <name>, done <date> (MaintRecordNum
+  <n>): " and every change, separated by "; ": a checklist line or a result as "<label>: '<old>' to '<new>'", the note as "note: '<old>' to
+  '<new>'", an attachment as "<label>: attachment removed <file>" and/or "attachment added <file>", and ", now flagged" or ", no longer flagged"
+  when the completion's flag changes. Values are written the same on every workstation: "done" / "not done", "pass" / "fail", numbers in
+  invariant culture with their unit, dates as yyyy-MM-dd, "(blank)" for an empty value.
 
 ## 8. Menus
 
@@ -280,8 +333,14 @@ Audit trail (`securitylog`, FKey the MaintItemNum):
 ## 9. Schema migration and the adoption tools
 
 - Steps `2026110201` to `2026110205` (`OpenPmsDentalBusiness/Misc/ForkMigrations/MaintenanceSteps.cs`) each create one table with
-  `CreateTableIfMissing`, from the DDL in `MaintenanceTables` (a `ForkTableSet`). They write no row, so adoption changes nothing else.
-  Levels 2026110206 to 2026110209 stay free for this package.
+  `CreateTableIfMissing`, from the DDL in `MaintenanceTables` (a `ForkTableSet`). They write no row.
+- Step `2026110206` (`MaintPermissionGrantStep`, same file) grants Maintenance Setup and Maintenance Record Completion to the Security Admin
+  user groups (section 7): the only rows the feature writes on adoption. migration-preview lists them (`MaintenanceGrantPlan` in
+  `tools/AdoptionValidation`), and adopt's row check allows exactly those `grouppermission` rows.
+- Step `2026110207` (`MaintRecordCorrectionColumnsStep`) adds `maintrecord.UserNumCorrected`, `maintrecord.DateTCorrected` and the key on
+  `UserNumCorrected` to a `maintrecord` table that an earlier build of this unreleased feature created without them. The declaration in
+  `MaintenanceTables` already has them, so on any other database step 2026110204 creates the table complete and this step changes nothing.
+  Levels 2026110208 and 2026110209 stay free for this package.
 - `SchemaVerifier` compares a database with the Open Dental 26.1.70 reference; a table that reference lacks is an `ExtraTable` difference.
   Fork-only tables are declared once, with their DDL, in `ForkTableSet` classes (`ForkTables`, found by reflection like the migration
   steps). `SchemaVerifier.DocumentedExceptions` allows them as extra tables, so `OdSchemaCompat` is still set, and `ForkTables.VerifyDatabase`
@@ -290,17 +349,27 @@ Audit trail (`securitylog`, FKey the MaintItemNum):
   `AdoptionValidation`'s row check (`AdoptionRowCheck`) lists fork tables apart from the Open Dental 25.4 and 26.1 tables and requires
   them empty.
 
-## 10. Decisions taken here (owner questions)
+## 10. Decisions taken (owner questions)
 
-Taken as the simplest option consistent with the decisions above; each can change.
+The first build took each of these as the simplest option consistent with the decisions above and asked the owner. The owner answered on
+2026-11-02, "all as recommended": questions 1, 2, 3, 6 and 7 changed as below, and 4, 5, 8 and 9 stay as they were. All nine are decided.
 
-1. No permission is granted by the migration; the administrator grants Maintenance Setup and Maintenance Record Completion.
-2. Items without an assignee raise no alert (the board shows them).
-3. A completion cannot be edited or deleted after it is saved.
-4. An item without completions can be deleted; with completions it can only be hidden.
-5. Items belong to the whole practice, not to a clinic; alerts show in every clinic.
-6. The anchor is the first due date, so an anchor in the past makes a never-done item overdue at once.
-7. Years are not offered for "after the last completion" (the decision lists days, weeks and months).
-8. The alert types and the alert's window are 127, 126 and 127 instead of the 10000 range, because their columns are `tinyint(4)`
-   (`FORK-ENUMS.md`, "tinyint enums"); widening Open Dental's columns was not chosen, since the schema must stay Open Dental's.
-9. The reminder check runs every 10 minutes on every workstation that is logged on; the sync makes that safe (no duplicates).
+1. **Decided: granted once to the Security Admin groups.** Fork migration step 2026110206 gives Maintenance Setup and Maintenance Record
+   Completion to every user group that has Security Admin, inserting only the missing rows, once per database (section 7). Other groups get
+   them from an administrator. (Asked: no permission granted by the migration.)
+2. **Decided: unassigned items remind every user with Maintenance Setup**, through the same alert sync, without duplicates, until the item
+   gets an assignee (section 6). (Asked: items without an assignee raise no alert.)
+3. **Decided: a completion can be corrected, never deleted.** Its checklist ticks, results, attachments and note can be corrected by the user
+   who recorded it or a user with Maintenance Setup; each correction is in the audit trail with the old and new values, and the history shows
+   when and by whom it was last corrected (`maintrecord.UserNumCorrected` and `DateTCorrected`, step 2026110207; section 5). (Asked: a
+   completion cannot be edited or deleted after it is saved.)
+4. **Decided: kept as is.** An item without completions can be deleted; with completions it can only be hidden.
+5. **Decided: kept as is.** Items belong to the whole practice, not to a clinic; alerts show in every clinic.
+6. **Decided: the anchor stays the first due date, and the new-item window defaults it to today** (sections 2 and 5), so an anchor in the
+   past still makes a never-done item overdue at once. (Asked: whether the anchor is the first due date.)
+7. **Decided: years are offered for "after the last completion" too**, with the same month-end and February 29 handling as the fixed
+   schedules (section 2). (Asked: years not offered there.)
+8. **Decided: kept as is.** The alert types and the alert's window are 127, 126 and 127 instead of the 10000 range, because their columns
+   are `tinyint(4)` (`FORK-ENUMS.md`, "tinyint enums"); widening Open Dental's columns was not chosen, since the schema must stay Open Dental's.
+9. **Decided: kept as is.** The reminder check runs every 10 minutes on every workstation that is logged on; the sync makes that safe (no
+   duplicates).
