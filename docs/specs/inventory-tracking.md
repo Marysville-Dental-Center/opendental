@@ -64,6 +64,7 @@ Every change of stock is a ledger row; nothing else changes stock.
 | `UserNum` | who made the movement (0 for the migration) |
 | `DateTimeEntry` | when (server time, set on insert) |
 | `Reason` | free text; required for count adjustments and manual adjustments |
+| `SupplyCountLineNum` | for a CountAdjust row, the saved stock count line it was posted from (2.7), written in the row's own `INSERT`; 0 for every other row and for a count posted from lines that are not saved |
 
 Rows are never edited or deleted (the exceptions: deleting a supply that has only opening and manual adjustment rows deletes those rows
 with it, and merging two patients moves `PatNum` of the ledger and awaiting rows to the patient kept, as it moves the procedures:
@@ -149,8 +150,9 @@ location, one count): "the open count". Closed counts stay, with their lines, as
 `supplycountline`: `SupplyCountLineNum`, `SupplyCountNum`, `SupplyNum`, `SupplyLotNum` (0 for stock without a lot, and for a lot found in
 the count), `LotNumber` and `DateExpiry` (only for a lot found in the count, which the post creates; blank for an existing lot, whose number
 and expiry date are read from `supplylot`), `QtyProgram` (the program's quantity of that supply and lot, from the ledger, when the line was
-last counted: its snapshot), `QtyCounted`, `UserNum` and `DateTimeEntry` (who counted it last, and when). One line per supply and lot: a
-unique key on `SupplyCountNum`, `SupplyNum`, `SupplyLotNum`, `LotNumber`.
+last counted: its snapshot), `QtyCounted`, `QtyPosted` (the sum of the line's CountAdjust rows that its snapshot already includes: 0 until a
+post that failed or did not finish adjusted it, item 3), `UserNum` and `DateTimeEntry` (who counted it last, and when). One line per supply
+and lot: a unique key on `SupplyCountNum`, `SupplyNum`, `SupplyLotNum`, `LotNumber`.
 
 Without transactions (`SupplyCounts`, `SupplyCountLines`, `InventoryTracking`):
 
@@ -165,12 +167,19 @@ Without transactions (`SupplyCounts`, `SupplyCountLines`, `InventoryTracking`):
    the window then shows the office's count as it is now. A lot found in the count whose number has become a lot of the supply since
    (received meanwhile) is saved as that lot, and its earlier line follows it.
 3. **Posting** first marks the count Posting (`UPDATE ... WHERE CountStatus=Open`): of two workstations posting the same count only one
-   posts it, and from then on no line can be saved into it. Then it reads the lines, writes the count adjustments (`PostCount`, 3.5) and marks
-   the count Posted. When the ledger write fails, the count is made Open again with each line's program quantity read again from the ledger,
-   so posting again writes only what still differs (the window did the same in memory before counts were saved). When even that fails (a lost
-   connection, a crash, a power cut during the post), the count stays Posting; the Supply Inventory window offers to resume it once the post
-   began more than 5 minutes ago (`InventoryTracking.MINUTES_POST_STALE`; before that another workstation may still be posting it), which
-   does the same reading again and opens it.
+   posts it, and from then on no line can be saved into it. Then it reads the lines, writes the count adjustments (`PostCount`, 3.5), each
+   CountAdjust row with its line in `supplyledger.SupplyCountLineNum` (in the row's own `INSERT`, so a row is never written without it), and
+   marks the count Posted. When the post fails, wherever it fails, the count is made Open again (`ReopenAfterFailedPost`). A snapshot is never
+   replaced with the program's quantity of that moment: a saved count can stay open for days, and the stock used since a line was counted
+   would be counted again. Instead each line takes the CountAdjust rows of its own that its snapshot does not include yet into it
+   (`QtyProgram` plus their sum minus `QtyPosted`, then `QtyPosted` is that sum, in one `UPDATE` per line). So a line the post adjusted now
+   shows no difference and posting again writes nothing for it, and every other line keeps the snapshot of when it was counted, so posting
+   again writes exactly its difference: the same stock as an uninterrupted count, whatever was used meanwhile. A lot found in the count that
+   the post created becomes that lot's line. A line counted again afterwards gets a new snapshot as always, which includes what was written;
+   `QtyPosted` keeps saying so, so a second failed post never takes the first one's rows for its own. When even opening it again fails (a lost
+   connection, a crash, a power cut during the post), or everything was written and only closing the count failed, the count stays Posting;
+   the Supply Inventory window offers to resume it once the post began more than 5 minutes ago (`InventoryTracking.MINUTES_POST_STALE`;
+   before that another workstation may still be posting it), which opens it the same way.
 4. **Discarding** marks the open count Discarded (`UPDATE ... WHERE CountStatus=Open`) and writes no ledger row.
 
 ## 3. Behaviour
@@ -279,6 +288,9 @@ tracked by lot) shows the program's quantity and the counted quantity. The progr
 (`InventoryTracking.GetCountLines`, `GetQtyProgram`), never from the counters, which a write that failed part-way can leave stale. Every lot
 whose stock is not 0 gets a row, a lot below zero too (a lot taken past its stock, a lot number entered from the package, two workstations
 taking the last unit), so a full count corrects it; a scan adds to the selected row of the supply, otherwise to its first row with stock.
+A supply the window shows from saved lines (a resumed count, or lines another workstation counted) also gets the rows of its lots not
+counted yet, after its counted rows, and Add or a scan of a supply that has rows adds only the rows it is missing: a partly counted supply is
+finished in its own lots, never scanned into a lot that was counted.
 
 **Each counted row is saved at once** (`InventoryTracking.SaveCountLine`): a scan, a typed quantity, and a lot found in the count (Lot...)
 once it is counted. Saving takes the program's quantity at that moment as the line's snapshot, so a supply and lot counted again replaces its
@@ -290,8 +302,8 @@ workstations counted. The window closes without a warning, since nothing is lost
 counted quantity differs from its snapshot, a CountAdjust row of the difference (counted minus the program's quantity when the line was
 counted, so procedures completed during the count are not counted twice) with the reason, and one Inventory Adjust security log entry per
 adjusted line; a lot found in the count is created when the count is posted. Then the count is closed as Posted (who, when, the reason). A
-failed post leaves the count open with each line's program quantity read again from the ledger, so posting again writes only what still
-differs (2.7).
+failed post leaves the count open: the lines it adjusted show no difference any more, and every other line keeps the program's quantity of
+when it was counted, so posting again writes only what the failed post did not (2.7).
 
 **Discard** (Inventory Adjust, after a confirmation; `InventoryTracking.DiscardOpenCount`) closes the open count without changing stock and
 writes an Inventory Adjust security log entry naming who started it, when, and how many lines it had.
@@ -367,7 +379,7 @@ ledger and the stock agree from the start. Supplies, orders, suppliers and categ
 |---|---|
 | 2026110211 | `supplyledger`, and in the same step (only when it created the table) the opening ledger rows |
 | 2026110212 | `supplylot`, `supplyproccode`, `supplysetting`, `supplyprocpending` |
-| 2026110213 | `supplycount`, `supplycountline` (stock counts saved while they are counted, owner decision INV 11) |
+| 2026110213 | `supplycount`, `supplycountline` (stock counts saved while they are counted, owner decision INV 11), and `supplyledger.SupplyCountLineNum` with its key on a ledger an earlier build created without them (2026110211 creates the ledger with them) |
 
 2026110214 to 2026110219 are kept for this feature. The steps change no Open Dental table, so adopting an Open Dental 25.3.48 database for
 this feature only adds the seven tables and the opening rows. The adoption tools (`tools/AdoptionValidation`) treat them as every fork-only
@@ -384,8 +396,12 @@ explicit lots kept beside lot -1), receiving, counts and adjustments (and a fail
 ledger after a missed recompute, so a re-post writes nothing more; a lot below zero listed and corrected by a full count), saved stock counts
 (`CountTests` and `CountMigrationTests`: lines saved at once and read back after the window is closed and reopened, resumed by another user, one open count only, a
 recount replacing its line with a new snapshot, two workstations saving lines into the same open count at the same moment, a post after a
-resume giving the same results as an uninterrupted count, a failed post opened again, a post interrupted by a crash resumed, a discard with
-its audit entry, and step 2026110213 on a database without the inventory tables and on one already migrated with stock), deduct and restore
+resume giving the same results as an uninterrupted count, a failed post opened again and a post interrupted by a crash resumed (each with
+stock used between counting and the failure, and between the failure and the post again: the same stock and adjustments as an
+uninterrupted count), a post that failed before it wrote anything, a line counted again after a failed post followed by a second failed
+post, a lot-tracked supply counted in one lot and resumed in the window (its other lot shown, a scan into the selected lot, Add without
+duplicates), a discard with its audit entry, and step 2026110213 on a database without the inventory tables and on one already migrated
+with stock, where it also adds the ledger's `SupplyCountLineNum` and keeps every row), deduct and restore
 on complete, un-complete and delete (a procedure un-completed while it is confirmed, restores written twice, and the stock ledger and default
 materials renamed away: the procedure is still completed, un-completed with its note and deleted, and the repair puts back afterwards), several
 procedures in one confirmation, the implant lot on the procedure (a lot entered for stock without a lot, an implant without a lot), the
