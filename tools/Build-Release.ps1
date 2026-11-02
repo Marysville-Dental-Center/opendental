@@ -3,6 +3,8 @@
 Builds an Open PMS - Dental release: a Release x86 build, one checked staging folder, SHA256SUMS.txt and the Inno Setup installer.
 
 .DESCRIPTION
+0. Refuses a release while a file that blocks it is on the allow-list and its owner question is not settled (the release blockers below:
+   PdfSharp.License.dll, whose source empira does not publish, until -PdfSharpLicenceResolved). The staging check refuses it again.
 1. Builds OpenDental.Local.slnf as Release x86, through the shared build lane when -BuildLane is given.
 2. Checks OpenPmsDental\bin\Release: every file must be on the allow-list below or be one the release never ships (debug symbols,
    XML documentation). A file on the deny-list, an unknown file or a sub folder fails the script.
@@ -12,7 +14,9 @@ Builds an Open PMS - Dental release: a Release x86 build, one checked staging fo
    native files x86 and free of the debug C runtime, and OpenPmsDental.exe's versions (file version 24.3.63.0, the database compatibility version; product version the
    release version of SharedAssemblyInfo.cs).
 4. Prints the build id (ForkReleases.ComputeBuildId over ForkReleases.ListBuildIdFiles) and writes <OutDir>\SHA256SUMS.txt.
-5. Compiles installer\OpenPmsDental.iss with Inno Setup 6 into <OutDir>, and adds the setup's SHA-256 to SHA256SUMS.txt.
+5. Writes the setup's information page (installer\setup-info.txt with NOTICE) and License Agreement page (installer\setup-license.txt:
+   how the installed program is licensed, then LICENSE-GPL-3.0.txt) into <OutDir>, compiles installer\OpenPmsDental.iss with Inno Setup 6
+   into <OutDir>, and adds the setup's SHA-256 to SHA256SUMS.txt.
 6. With -CopyTo, copies the setup, SHA256SUMS.txt and the release notes (docs\release-notes\v<version>.md) there.
 
 The staging folder is exactly what the installer puts in the program folder. The uninstaller goes to the program folder's "uninstall"
@@ -54,6 +58,18 @@ and print its build id. Nothing is built or written. Used by tests\ReleaseFlowTe
 .PARAMETER ListFiles
 Only print the allow-list, one "own|name", "third|name" or "doc|path" line per file.
 
+.PARAMETER WriteSetupTexts
+Only write the setup's two pages, setup-info.txt and setup-license.txt, into this folder (created if missing), as a release writes them
+into <OutDir>. Nothing is built or checked. Used by tests\ReleaseFlowTests\InstallerTests.cs.
+
+.PARAMETER PdfSharpLicenceResolved
+Records that the owner has settled the question of PdfSharp.License.dll (docs/owner-questions.md, "PdfSharp.License.dll has no published
+source"), so a release may ship it. The file is a prebuilt part of PDFsharp 6.5 whose source empira does not publish, while the GNU GPL 3.0
+and AGPL 3.0 (sections 1 and 6) ask whoever conveys the program for the Corresponding Source of every library it is designed to require.
+Pass it only once empira has supplied the source or a written permission, counsel has cleared shipping it, or the commercial licence has
+been bought. Without it, a release that ships the file fails (exit 1). The other way out is PDFsharp/MigraDoc 6.2.4 (MIT), which has no
+licence file.
+
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\Build-Release.ps1 -BuildLane C:\path\to\odbuild.ps1 -CopyTo D:\releases\v0.0
 #>
@@ -68,7 +84,9 @@ param(
 	[string]$Iscc='',
 	[string]$CopyTo='',
 	[string]$CheckFolder='',
-	[switch]$ListFiles
+	[switch]$ListFiles,
+	[string]$WriteSetupTexts='',
+	[switch]$PdfSharpLicenceResolved
 )
 Set-StrictMode -Version 2
 $ErrorActionPreference='Stop'
@@ -155,6 +173,16 @@ $RequiredReasons=[ordered]@{
 	'LICENSE-GPL-3.0.txt'='the program with PDFsharp and MigraDoc is conveyed under the GNU GPL 3.0, whose section 4 asks for its text with every copy'
 	'PdfSharp.License.dll'='PdfSharp-gdi.dll checks the licence through it before it makes or reads any PDF'
 }
+
+#Release blockers: an allowed file that no release may ship until the owner settles its question (docs/owner-questions.md), the switch
+#that records the answer, and why. A blocker ends when its file leaves the allow-list or its switch is given.
+#PdfSharp.License.dll: PDFsharp 6.5 refuses to work until PdfSharpSetup.Init selects the AGPL licence through it, but empira publishes it
+#only as a prebuilt file (its source is not in https://github.com/empira/PDFsharp), so this project cannot supply its Corresponding Source
+#(GPL 3.0 and AGPL 3.0, sections 1 and 6). The leading comma keeps a list of one entry a list of entries.
+$ReleaseBlockers=@(
+	,@('PdfSharp.License.dll','PdfSharpLicenceResolved',
+		'empira publishes it only prebuilt, so its Corresponding Source cannot be supplied under the GNU GPL 3.0 and AGPL 3.0, sections 1 and 6. Pass -PdfSharpLicenceResolved only once empira has supplied the source or a written permission, counsel has cleared it, or the commercial licence has been bought; or go back to PDFsharp/MigraDoc 6.2.4 (MIT). See docs/owner-questions.md, "PdfSharp.License.dll has no published source"')
+)
 
 #Native files: they must be x86 and must not need the debug C runtime, which may not be redistributed.
 $NativeFiles=@('Direct2dWrapper.dll','Hunspellx86.dll','WebView2Loader.dll','Dicom.Native.dll')
@@ -300,6 +328,43 @@ function Get-AllowedPaths {
 	return $list
 }
 
+#The release blockers still open: one "Release blocked: <file> (<why>)" line for each blocker whose file is on the allow-list and whose
+#switch was not given.
+function Get-ReleaseBlockers {
+	$blockers=New-Object 'System.Collections.Generic.List[string]'
+	$allowedSet=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+	foreach($path in Get-AllowedPaths){ [void]$allowedSet.Add($path) }
+	foreach($entry in $ReleaseBlockers){
+		$resolved=[bool](Get-Variable -Name $entry[1] -Scope Script -ValueOnly)
+		if($allowedSet.Contains($entry[0]) -and -not $resolved){
+			$blockers.Add("Release blocked: $($entry[0]) ($($entry[2]))")
+		}
+	}
+	return ,$blockers
+}
+
+#The setup's two pages, written into the folder: setup-info.txt (the information page: installer\setup-info.txt with NOTICE) and
+#setup-license.txt (the License Agreement page: installer\setup-license.txt, which says how the installed program is licensed, with
+#LICENSE-GPL-3.0.txt, the license the program is conveyed under as installed). UTF-8 with a byte order mark and CRLF line ends, as Inno
+#Setup reads them. Returns the two paths.
+function Write-SetupTexts([string]$folder,[string]$version){
+	New-Item -ItemType Directory -Force -Path $folder | Out-Null
+	$utf8Bom=New-Object System.Text.UTF8Encoding($true)
+	$notice=[System.IO.File]::ReadAllText((Join-Path $RepoRoot 'NOTICE'))
+	$info=[System.IO.File]::ReadAllText((Join-Path $RepoRoot 'installer\setup-info.txt'))
+	$info=$info.Replace('@VERSION@',$version).Replace('@NOTICE@',$notice.TrimEnd())
+	$info=($info -replace "`r`n","`n") -replace "`n","`r`n"
+	$infoPath=Join-Path $folder 'setup-info.txt'
+	[System.IO.File]::WriteAllText($infoPath,$info,$utf8Bom)
+	$gpl3=[System.IO.File]::ReadAllText((Join-Path $RepoRoot $DocumentFiles['LICENSE-GPL-3.0.txt']))
+	$license=[System.IO.File]::ReadAllText((Join-Path $RepoRoot 'installer\setup-license.txt'))
+	$license=$license.Replace('@VERSION@',$version).Replace('@GPL3@',$gpl3.Trim([char[]]"`r`n"))
+	$license=($license -replace "`r`n","`n") -replace "`n","`r`n"
+	$licensePath=Join-Path $folder 'setup-license.txt'
+	[System.IO.File]::WriteAllText($licensePath,$license,$utf8Bom)
+	return @($infoPath,$licensePath)
+}
+
 #The checks of a staging folder. -Full adds the checks that need the real build: built-from-source copies, native files, versions.
 #Returns the problems found; none means the folder may ship.
 function Test-StagingFolder([string]$folder,[switch]$Full){
@@ -332,6 +397,9 @@ function Test-StagingFolder([string]$folder,[switch]$Full){
 			else{ $problems.Add("Missing: $path") }
 		}
 	}
+	#No release ships a file whose owner question is open.
+	$blockers=Get-ReleaseBlockers
+	foreach($blocker in $blockers){ $problems.Add($blocker) }
 	#Every third-party file is named in the notices file that ships with it.
 	$noticesPath=Join-Path $folder 'THIRD-PARTY-NOTICES.txt'
 	if(Test-Path -LiteralPath $noticesPath -PathType Leaf){
@@ -419,6 +487,11 @@ if($ListFiles){
 	exit 0
 }
 
+if($WriteSetupTexts){
+	foreach($path in Write-SetupTexts $WriteSetupTexts (Read-ReleaseVersion)){ Write-Host "Wrote $path" }
+	exit 0
+}
+
 if($CheckFolder){
 	if(-not (Test-Path -LiteralPath $CheckFolder -PathType Container)){
 		Write-Host "No such folder: $CheckFolder"
@@ -443,6 +516,20 @@ if($installerVersion -ne $releaseVersion){
 }
 Write-Host "Release version $releaseVersion (compatibility version $CompatVersion)"
 #endregion Versions
+
+#region Release blockers
+#Before the build, so that a release that may not ship stops at once; the staging check refuses it again.
+$blockers=Get-ReleaseBlockers
+if($blockers.Count -gt 0){
+	Write-Problems $blockers 'The release check'
+	exit 1
+}
+foreach($entry in $ReleaseBlockers){
+	if([bool](Get-Variable -Name $entry[1] -Scope Script -ValueOnly)){
+		Write-Host "$($entry[0]) ships on the owner's resolution (-$($entry[1]))."
+	}
+}
+#endregion Release blockers
 
 #region Build
 if(-not $SkipBuild){
@@ -551,15 +638,13 @@ if(-not $SkipInstaller){
 		Write-Host 'Inno Setup 6 (ISCC.exe) not found. Pass -Iscc, or -SkipInstaller to stage only.'
 		exit 4
 	}
-	#The information page: the attribution and the source address, then NOTICE.
-	$template=[System.IO.File]::ReadAllText((Join-Path $RepoRoot 'installer\setup-info.txt'))
-	$notice=[System.IO.File]::ReadAllText((Join-Path $RepoRoot 'NOTICE'))
-	$info=$template.Replace('@VERSION@',$releaseVersion).Replace('@NOTICE@',$notice.TrimEnd())
-	$info=($info -replace "`r`n","`n") -replace "`n","`r`n"
-	$infoPath=Join-Path $OutDir 'setup-info.txt'
-	[System.IO.File]::WriteAllText($infoPath,$info,(New-Object System.Text.UTF8Encoding($true)))
+	#The information page (the attribution and the source address, then NOTICE) and the License Agreement page (how the installed program is
+	#licensed, then the GNU GPL 3.0 it is conveyed under). Both stay out of the staging folder, which is exactly what is installed.
+	$setupTexts=Write-SetupTexts $OutDir $releaseVersion
+	$infoPath=$setupTexts[0]
+	$licensePath=$setupTexts[1]
 	if(Test-Path -LiteralPath $setupPath){ Remove-Item -LiteralPath $setupPath -Force }
-	& $Iscc "/DStagingDir=$staging" "/DInfoFile=$infoPath" "/O$OutDir" '/Q' (Join-Path $RepoRoot 'installer\OpenPmsDental.iss')
+	& $Iscc "/DStagingDir=$staging" "/DInfoFile=$infoPath" "/DLicenseTextFile=$licensePath" "/O$OutDir" '/Q' (Join-Path $RepoRoot 'installer\OpenPmsDental.iss')
 	if($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $setupPath -PathType Leaf)){
 		Write-Host "The installer did not compile (ISCC exit $LASTEXITCODE)."
 		exit 3
