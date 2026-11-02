@@ -53,8 +53,9 @@ namespace OpenPmsDental {
 
 		///<summary>Reads the open count and its saved lines again (other workstations' too) and merges them into the rows: a saved line updates its
 		///row, a row whose line is gone (removed elsewhere, or the count was closed) is no longer counted, and a line this window has no row for
-		///gets one after the other rows of its supply. Rows not counted yet stay. Returns false, after a message, when the count could not be read.
-		///</summary>
+		///gets one after the other rows of its supply. A supply that got such a row then also gets the rows of its lots not counted yet
+		///(AddRowsForSupply), after its counted rows: a resumed count shows every row each supply had when it was first scanned, so the rest of it
+		///is counted in its own lots. Rows not counted yet stay. Returns false, after a message, when the count could not be read.</summary>
 		private bool LoadCount() {
 			List<SupplyCountLine> listSupplyCountLines;
 			List<Supply> listSupplies;
@@ -80,14 +81,30 @@ namespace OpenPmsDental {
 				listLinesLeft.Remove(supplyCountLine);
 				ApplyLine(countRow,supplyCountLine);
 			}
+			List<Supply> listSuppliesWithNewRows=new List<Supply>();
 			foreach(SupplyCountLine supplyCountLine in listLinesLeft) {
 				Supply supply=_listCountRows.Select(x => x.Supply).FirstOrDefault(x => x.SupplyNum==supplyCountLine.SupplyNum)
-					??listSupplies.Find(x => x.SupplyNum==supplyCountLine.SupplyNum)
-					??new Supply { SupplyNum=supplyCountLine.SupplyNum,Descript=Lan.g(this,"(deleted supply)") };
+					??listSupplies.Find(x => x.SupplyNum==supplyCountLine.SupplyNum);
+				bool isDeleted=supply==null;
+				if(isDeleted) {
+					supply=new Supply { SupplyNum=supplyCountLine.SupplyNum,Descript=Lan.g(this,"(deleted supply)") };
+				}
+				else if(!listSuppliesWithNewRows.Any(x => x.SupplyNum==supply.SupplyNum)) {
+					listSuppliesWithNewRows.Add(supply);
+				}
 				CountRow countRow=new CountRow { Supply=supply };
 				ApplyLine(countRow,supplyCountLine);
 				int indexLast=_listCountRows.FindLastIndex(x => x.Supply.SupplyNum==supply.SupplyNum);
 				_listCountRows.Insert(indexLast<0 ? _listCountRows.Count : indexLast+1,countRow);
+			}
+			try {
+				foreach(Supply supply in listSuppliesWithNewRows) {
+					AddRowsForSupply(supply);
+				}
+			}
+			catch(Exception ex) {
+				MessageBox.Show(this,Lan.g(this,"The stock count could not be read")+": "+ex.Message);
+				return false;
 			}
 			return true;
 		}
@@ -116,12 +133,12 @@ namespace OpenPmsDental {
 		}
 
 		///<summary>The open count is Posting: its post runs on another workstation, or did not finish (a crash, a lost connection). Offers to resume
-		///it (InventoryTracking.ResumeCount), which reads every line's program quantity again from the ledger; otherwise nothing can be counted here.
-		///</summary>
+		///it (InventoryTracking.ResumeCount): the lines that post adjusted show no difference any more, and the others keep the program's quantity of
+		///when they were counted. Otherwise nothing can be counted here.</summary>
 		private void ResumePosting() {
 			string description=InventoryTracking.GetOpenCountDescription()??"";
-			if(!MsgBox.Show(MsgBoxButtons.OKCancel,description+"\r\n\r\n"+Lan.g(this,"Resume the count? Each line's program quantity is read again "
-				+"from the ledger, so posting again writes only what still differs.")))
+			if(!MsgBox.Show(MsgBoxButtons.OKCancel,description+"\r\n\r\n"+Lan.g(this,"Resume the count? The lines its post adjusted show no difference "
+				+"any more, and the others keep the program's quantity of when they were counted, so posting again writes only what that post did not.")))
 			{
 				SetReadOnly();
 				return;
@@ -204,15 +221,22 @@ namespace OpenPmsDental {
 
 		///<summary>Adds the rows of the supply that are not in the grid yet, with the quantities the program has now, from the ledger
 		///(InventoryTracking.GetCountLines): one row per lot whose stock is not 0, negative lots too, so the count can correct them, and one for stock
-		///without a lot when there is some, or when the supply is not tracked by lot, or has no such lot. They are saved once they are counted.
-		///</summary>
+		///without a lot when there is some, or when the supply is not tracked by lot, or has no such lot. A row the supply has already (counted or
+		///not, matched by lot, by lot number for a lot found in the count, and stock without a lot only by a row without a lot number) is not added
+		///again, so Add, a scan or a resumed count bring back the lots of a partly counted supply that have no row, after the supply's rows. They are
+		///saved once they are counted.</summary>
 		private void AddRowsForSupply(Supply supply) {
-			if(_listCountRows.Any(x => x.Supply.SupplyNum==supply.SupplyNum)) {
-				return;
+			int indexInsert=_listCountRows.FindLastIndex(x => x.Supply.SupplyNum==supply.SupplyNum)+1;
+			if(indexInsert==0) {
+				indexInsert=_listCountRows.Count;
 			}
 			foreach(SupplyCountLine supplyCountLine in InventoryTracking.GetCountLines(supply.SupplyNum)) {
-				_listCountRows.Add(new CountRow { Supply=supply,SupplyLotNum=supplyCountLine.SupplyLotNum,LotNumber=supplyCountLine.LotNumber??"",
+				if(_listCountRows.Any(x => IsRowOfLine(x,supplyCountLine))) {
+					continue;
+				}
+				_listCountRows.Insert(indexInsert,new CountRow { Supply=supply,SupplyLotNum=supplyCountLine.SupplyLotNum,LotNumber=supplyCountLine.LotNumber??"",
 					DateExpiry=supplyCountLine.DateExpiry,QtyProgram=supplyCountLine.QtyProgram });
+				indexInsert++;
 			}
 		}
 
@@ -401,13 +425,14 @@ namespace OpenPmsDental {
 				countAdjusted=InventoryTracking.PostOpenCount(_supplyCount.SupplyCountNum,textReason.Text);
 			}
 			catch(Exception ex) {
-				//Some or all of it may be posted (a failure part-way, or the answer was lost). The count was opened again with each line's program
-				//quantity read again from the ledger, so posting again writes only what still differs; read it again here.
+				//Some or all of it may be posted (a failure part-way, or the answer was lost). The count was opened again: the lines the post adjusted
+				//took their adjustment into their snapshot, the others kept the snapshot of when they were counted; read it again here.
 				if(!LoadCount()) {
 					SetReadOnly();
 				}
 				FillGrid();
-				MessageBox.Show(this,ex.Message+"\r\n\r\n"+Lan.g(this,"Part of the count may have been posted. The program's quantities were read again: posting again writes only what still differs."));
+				MessageBox.Show(this,ex.Message+"\r\n\r\n"+Lan.g(this,"Part of the count may have been posted. The lines that were posted show no difference "
+					+"any more, and the others keep the program's quantity of when they were counted, so posting again writes only what was not posted."));
 				return;
 			}
 			_listCountRows.RemoveAll(x => x.IsCounted);
