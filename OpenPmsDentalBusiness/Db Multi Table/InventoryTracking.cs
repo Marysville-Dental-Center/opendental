@@ -620,8 +620,10 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>Posts a stock count: for every line whose counted quantity differs from the quantity the program had when the line was counted, a
 		///CountAdjust row of the difference, so that procedures completed during the count are not counted twice. A line with a lot number and no
-		///SupplyLotNum is a lot found in the count: it is found or created. Writes an Inventory Adjust audit entry per adjusted line. The reason is
-		///required. Returns the number of adjusted lines. The window posts the office's saved count through PostOpenCount, which calls this.</summary>
+		///SupplyLotNum is a lot found in the count: it is found or created. Each row names its saved line (SupplyLedger.SupplyCountLineNum, 0 for a
+		///line that is not saved) in its own INSERT, so after a post that failed part-way the count knows which lines were adjusted. Writes an
+		///Inventory Adjust audit entry per adjusted line. The reason is required. Returns the number of adjusted lines. The window posts the
+		///office's saved count through PostOpenCount, which calls this.</summary>
 		public static int PostCount(List<SupplyCountLine> listSupplyCountLines,string reason) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetInt(MethodBase.GetCurrentMethod(),listSupplyCountLines,reason);
@@ -653,6 +655,7 @@ namespace OpenPmsDentalBusiness {
 				supplyLedger.Quantity=qtyDiff;
 				supplyLedger.UnitCost=supply.Price;
 				supplyLedger.Reason=reason.Trim();
+				supplyLedger.SupplyCountLineNum=supplyCountLine.SupplyCountLineNum;
 				listSupplyLedgers.Add(supplyLedger);
 				listLogTexts.Add("Stock count: "+supply.Descript+(lotNumber=="" ? "" : ", lot "+lotNumber)+": program had "+FormatQty(supplyCountLine.QtyProgram)
 					+", counted "+FormatQty(supplyCountLine.QtyCounted)+", adjusted by "+FormatQtySigned(qtyDiff)+". Reason: "+reason.Trim());
@@ -977,9 +980,10 @@ namespace OpenPmsDentalBusiness {
 		///<summary>Posts the open count (Inventory Adjust; the reason is required), exactly as an unsaved count is posted (PostCount: a CountAdjust row
 		///of the difference to each line's snapshot, an Inventory Adjust audit entry per adjusted line), and closes it. First marks the count Posting in
 		///one UPDATE ... WHERE CountStatus=Open, so of two workstations posting it only one does, and no line can be saved into it any more; then reads
-		///its lines, writes the adjustments and marks it Posted. When the adjustments fail, the count is opened again with each line's program
-		///quantity read again from the ledger, so posting again writes only what still differs; if even that fails, the count stays Posting and is
-		///resumed later (ResumeCount). Returns the number of adjusted lines.</summary>
+		///its lines, writes the adjustments, each naming its line, and marks it Posted. When the post fails, wherever it fails, the count is opened
+		///again (ReopenAfterFailedPost): the lines it adjusted take their adjustment into their snapshot, the others keep the snapshot of when they
+		///were counted, so posting again writes only what the failed post did not. If even that fails, the count stays Posting and is resumed later
+		///(ResumeCount). Returns the number of adjusted lines.</summary>
 		public static int PostOpenCount(long supplyCountNum,string reason) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetInt(MethodBase.GetCurrentMethod(),supplyCountNum,reason);
@@ -994,17 +998,15 @@ namespace OpenPmsDentalBusiness {
 			if(!SupplyCounts.SetStatus(supplyCountNum,SupplyCountStatus.Open,SupplyCountStatus.Posting,userNum,reason)) {
 				throw new ApplicationException(Lans.g("InventoryTracking","The stock count was posted or discarded by another user, or is being posted."));
 			}
-			bool isLedgerWriteStarted=false;
 			int countAdjusted;
 			try {
 				List<SupplyCountLine> listSupplyCountLines=GetSavedCountLines(supplyCountNum);//Every line: none can be saved into it now.
-				isLedgerWriteStarted=true;
 				countAdjusted=PostCount(listSupplyCountLines,reason);
 				ActionAfterCountPosted?.Invoke(supplyCountNum);
 			}
 			catch(Exception) {
 				try {
-					ReopenAfterFailedPost(supplyCountNum,isLedgerWriteStarted);
+					ReopenAfterFailedPost(supplyCountNum);
 				}
 				catch(Exception exReopen) {
 					//The count stays Posting; ResumeCount opens it again later. The caller gets the post's own failure.
@@ -1013,7 +1015,7 @@ namespace OpenPmsDentalBusiness {
 				throw;
 			}
 			//Stock is written: closing the count never makes this call report a failure (posting again would adjust twice). A count this leaves
-			//Posting is resumed later, which reads every line's program quantity again, so posting it then writes nothing more.
+			//Posting is resumed later, where every line takes the adjustment it got into its snapshot, so posting it then writes nothing more.
 			RunAfterStockWritten(() => SupplyCounts.SetPosted(supplyCountNum));
 			return countAdjusted;
 		}
@@ -1022,28 +1024,28 @@ namespace OpenPmsDentalBusiness {
 		///would.</summary>
 		internal static Action<long> ActionAfterCountPosted;
 
-		///<summary>Opens a Posting count again after a post that failed or did not finish. When the post may have written ledger rows
-		///(isLedgerTouched), each line's snapshot is first read again from the ledger (GetQtyProgram), never from the counters, and a lot found in the
-		///count that the post created becomes that lot's line, so posting again writes only what still differs. The count stays Posting when this
-		///fails part-way.</summary>
-		private static void ReopenAfterFailedPost(long supplyCountNum,bool isLedgerTouched) {
-			if(isLedgerTouched) {
-				foreach(SupplyCountLine supplyCountLine in SupplyCountLines.GetForCount(supplyCountNum).Where(x => x.IsLotFound())) {
-					SupplyLot supplyLot=FindLotByNumber(supplyCountLine.SupplyNum,supplyCountLine.LotNumber);
-					if(supplyLot!=null) {
-						SupplyCountLines.MoveLotFound(supplyCountNum,supplyCountLine.SupplyNum,supplyCountLine.LotNumber,supplyLot.SupplyLotNum,SupplyCountStatus.Posting);
-					}
-				}
-				foreach(SupplyCountLine supplyCountLine in SupplyCountLines.GetForCount(supplyCountNum).Where(x => !x.IsLotFound())) {
-					SupplyCountLines.UpdateQtyProgramWhilePosting(supplyCountLine.SupplyCountLineNum,GetQtyProgram(supplyCountLine.SupplyNum,supplyCountLine.SupplyLotNum));
+		///<summary>Opens a Posting count again after a post that failed or did not finish, wherever it stopped: before any ledger row, part-way, or
+		///after every row. A snapshot is never read again: a saved count can stay open for days, and the program's quantity of today has the stock
+		///used since the line was counted in it, which posting again would count a second time. Instead each line takes the CountAdjust rows the post
+		///wrote for it (supplyledger.SupplyCountLineNum) into its snapshot (SupplyCountLines.TakeAdjustmentsIntoSnapshotsWhilePosting): a line the post
+		///adjusted shows no difference any more, and every other line keeps the program's quantity of when it was counted. Then a lot found in the
+		///count that exists by now (the post created it) becomes that lot's line, keeping its snapshot. So posting again writes exactly what the
+		///failed post did not, as an uninterrupted count would have. Running it again changes nothing; the count stays Posting when it fails part-way.
+		///</summary>
+		private static void ReopenAfterFailedPost(long supplyCountNum) {
+			SupplyCountLines.TakeAdjustmentsIntoSnapshotsWhilePosting(supplyCountNum);
+			foreach(SupplyCountLine supplyCountLine in SupplyCountLines.GetForCount(supplyCountNum).Where(x => x.IsLotFound())) {
+				SupplyLot supplyLot=FindLotByNumber(supplyCountLine.SupplyNum,supplyCountLine.LotNumber);
+				if(supplyLot!=null) {
+					SupplyCountLines.MoveLotFound(supplyCountNum,supplyCountLine.SupplyNum,supplyCountLine.LotNumber,supplyLot.SupplyLotNum,SupplyCountStatus.Posting);
 				}
 			}
 			SupplyCounts.SetStatus(supplyCountNum,SupplyCountStatus.Posting,SupplyCountStatus.Open,0,"");
 		}
 
 		///<summary>Resumes the open count: returns it when it is Open. A count that is Posting longer than MINUTES_POST_STALE (a post that did not
-		///finish) is opened again first, with each line's program quantity read again from the ledger (ReopenAfterFailedPost), and an Inventory Adjust
-		///audit entry. Throws when the count is no longer open, or while its post may still be running.</summary>
+		///finish) is opened again first (ReopenAfterFailedPost: the lines the post adjusted take their adjustment into their snapshot, the others keep
+		///theirs), with an Inventory Adjust audit entry. Throws when the count is no longer open, or while its post may still be running.</summary>
 		public static SupplyCount ResumeCount(long supplyCountNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetObject<SupplyCount>(MethodBase.GetCurrentMethod(),supplyCountNum);
@@ -1060,10 +1062,11 @@ namespace OpenPmsDentalBusiness {
 					+Lans.g("InventoryTracking","If that post did not finish, the count can be resumed")+" "+MINUTES_POST_STALE+" "
 					+Lans.g("InventoryTracking","minutes after it began."));
 			}
-			ReopenAfterFailedPost(supplyCountNum,isLedgerTouched:true);
+			ReopenAfterFailedPost(supplyCountNum);
 			RunAfterStockWritten(() => SecurityLogs.MakeLogEntry(EnumPermType.InventoryAdjust,0,"Stock count resumed after a post that did not finish (begun by "
 				+Userods.GetName(supplyCount.UserNumClosed)+" on "+supplyCount.DateTimeClosed.ToShortDateString()+" "+supplyCount.DateTimeClosed.ToShortTimeString()
-				+"): each line's program quantity read again from the ledger (SupplyCountNum "+supplyCountNum+")."));
+				+"): the lines it adjusted show no difference any more, the others keep the program's quantity of when they were counted "
+				+"(SupplyCountNum "+supplyCountNum+")."));
 			return SupplyCounts.GetOne(supplyCountNum);
 		}
 

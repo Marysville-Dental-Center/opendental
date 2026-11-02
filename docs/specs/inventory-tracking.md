@@ -172,7 +172,8 @@ Without transactions (`SupplyCounts`, `SupplyCountLines`, `InventoryTracking`):
    marks the count Posted. When the post fails, wherever it fails, the count is made Open again (`ReopenAfterFailedPost`). A snapshot is never
    replaced with the program's quantity of that moment: a saved count can stay open for days, and the stock used since a line was counted
    would be counted again. Instead each line takes the CountAdjust rows of its own that its snapshot does not include yet into it
-   (`QtyProgram` plus their sum minus `QtyPosted`, then `QtyPosted` is that sum, in one `UPDATE` per line). So a line the post adjusted now
+   (`QtyProgram` plus their sum minus `QtyPosted`, then `QtyPosted` is that sum, in one `UPDATE` that sums the rows from the ledger itself,
+   so running it again changes nothing). So a line the post adjusted now
    shows no difference and posting again writes nothing for it, and every other line keeps the snapshot of when it was counted, so posting
    again writes exactly its difference: the same stock as an uninterrupted count, whatever was used meanwhile. A lot found in the count that
    the post created becomes that lot's line. A line counted again afterwards gets a new snapshot as always, which includes what was written;

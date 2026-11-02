@@ -7,7 +7,7 @@ using CodeBase;
 
 namespace OpenPmsDentalBusiness {
 	///<summary>Counted lines of stock counts (supplycountline). Not cached. A line is written only while its count is in the state the statement
-	///names (Open, or Posting for the re-read after a failed post), checked inside the same statement, which MyISAM runs under its locks of
+	///names (Open, or Posting for opening it again after a failed post), checked inside the same statement, which MyISAM runs under its locks of
 	///supplycount and supplycountline: a line can never slip into a count another workstation is posting or has closed. InventoryTracking runs the
 	///counts; call these through it.</summary>
 	public class SupplyCountLines {
@@ -54,9 +54,10 @@ namespace OpenPmsDentalBusiness {
 		///<summary>Saves the line into its count, only while the count is Open: one INSERT ... SELECT ... FROM supplycount WHERE the count is Open
 		///... ON DUPLICATE KEY UPDATE statement. A supply and lot the count has a line of already (the unique key SupplyCountNum, SupplyNum,
 		///SupplyLotNum, LotNumber) gets its line replaced: the new snapshot QtyProgram, the user, the time, the expiry date of a lot found in the
-		///count, and QtyCounted, which isAdded adds to the line's counted quantity inside the statement (a scan) instead of replacing it. Two
-		///workstations saving the same line at the same moment leave one line, with both scans. Returns the rows the statement reports: 0 when the
-		///count is not Open (or, with a connection that reports changed rows, when nothing changed).</summary>
+		///count, and QtyCounted, which isAdded adds to the line's counted quantity inside the statement (a scan) instead of replacing it. QtyPosted
+		///is 0 for a new line and kept for a replaced one: the new snapshot, read from the ledger, includes the line's adjustments that QtyPosted
+		///sums. Two workstations saving the same line at the same moment leave one line, with both scans. Returns the rows the statement reports: 0
+		///when the count is not Open (or, with a connection that reports changed rows, when nothing changed).</summary>
 		public static long Upsert(SupplyCountLine supplyCountLine,bool isAdded) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetLong(MethodBase.GetCurrentMethod(),supplyCountLine,isAdded);
@@ -68,10 +69,10 @@ namespace OpenPmsDentalBusiness {
 			//With random primary keys (replication) the key is taken from ReplicationServers.GetKey, as the generated CRUD does; on a duplicate of
 			//the unique key it is not used.
 			string command="INSERT INTO supplycountline ("+(PrefC.RandomKeys ? "SupplyCountLineNum," : "")
-				+"SupplyCountNum,SupplyNum,SupplyLotNum,LotNumber,DateExpiry,QtyProgram,QtyCounted,UserNum,DateTimeEntry) "
+				+"SupplyCountNum,SupplyNum,SupplyLotNum,LotNumber,DateExpiry,QtyProgram,QtyCounted,QtyPosted,UserNum,DateTimeEntry) "
 				+"SELECT "+(PrefC.RandomKeys ? POut.Long(ReplicationServers.GetKey("supplycountline","SupplyCountLineNum"))+"," : "")
 				+"supplycount.SupplyCountNum,"+POut.Long(supplyCountLine.SupplyNum)+","+POut.Long(supplyCountLine.SupplyLotNum)+",'"+POut.String(lotNumber)+"',"
-				+POut.Date(supplyCountLine.DateExpiry)+","+POut.Double(supplyCountLine.QtyProgram)+","+POut.Double(supplyCountLine.QtyCounted)+","
+				+POut.Date(supplyCountLine.DateExpiry)+","+POut.Double(supplyCountLine.QtyProgram)+","+POut.Double(supplyCountLine.QtyCounted)+",0,"
 				+POut.Long(supplyCountLine.UserNum)+","+DbHelper.Now()+" "
 				+"FROM supplycount WHERE supplycount.SupplyCountNum="+POut.Long(supplyCountLine.SupplyCountNum)+" "
 				+"AND supplycount.CountStatus="+POut.Int((int)SupplyCountStatus.Open)+" "
@@ -99,15 +100,25 @@ namespace OpenPmsDentalBusiness {
 			Db.NonQ("DELETE FROM supplycountline "+where);
 		}
 
-		///<summary>Sets the line's snapshot QtyProgram, only while its count is Posting: the re-read from the ledger after a post that failed.
-		///</summary>
-		public static void UpdateQtyProgramWhilePosting(long supplyCountLineNum,double qtyProgram) {
+		///<summary>After a post of the count that failed or did not finish, only while the count is Posting: every line takes its own CountAdjust
+		///ledger rows (supplyledger.SupplyCountLineNum) that its snapshot does not include yet into the snapshot. QtyProgram gains their sum minus
+		///QtyPosted, and QtyPosted becomes their sum. A line the post adjusted then shows no difference, so posting again writes nothing for it; a
+		///line it did not adjust keeps its snapshot, the program's quantity of when it was counted, never today's, so posting again writes exactly
+		///its difference. One UPDATE that sums the rows from the ledger itself, so running it again (a second failure, a resume) changes nothing.
+		///Returns the rows the statement reports.</summary>
+		public static long TakeAdjustmentsIntoSnapshotsWhilePosting(long supplyCountNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),supplyCountLineNum,qtyProgram);
-				return;
+				return Meth.GetLong(MethodBase.GetCurrentMethod(),supplyCountNum);
 			}
-			Db.NonQ("UPDATE supplycountline SET QtyProgram="+POut.Double(qtyProgram)+" WHERE SupplyCountLineNum="+POut.Long(supplyCountLineNum)+" "
-				+"AND SupplyCountNum IN(SELECT supplycount.SupplyCountNum FROM supplycount WHERE supplycount.CountStatus="
+			string sumPosted="ROUND(COALESCE((SELECT SUM(supplyledger.Quantity) FROM supplyledger "
+				+"WHERE supplyledger.SupplyCountLineNum=supplycountline.SupplyCountLineNum "
+				+"AND supplyledger.LedgerType="+POut.Int((int)SupplyLedgerType.CountAdjust)+"),0),2)";
+			//QtyProgram is set first, from QtyPosted as it was: a single-table UPDATE assigns from left to right (and with SIMULTANEOUS_ASSIGNMENT
+			//every assignment reads the old values), so both modes give the same result.
+			return Db.NonQ("UPDATE supplycountline SET QtyProgram=ROUND(supplycountline.QtyProgram+"+sumPosted+"-supplycountline.QtyPosted,2),"
+				+"QtyPosted="+sumPosted+" "
+				+"WHERE supplycountline.SupplyCountNum="+POut.Long(supplyCountNum)+" "
+				+"AND supplycountline.SupplyCountNum IN(SELECT supplycount.SupplyCountNum FROM supplycount WHERE supplycount.CountStatus="
 				+POut.Int((int)SupplyCountStatus.Posting)+")");
 		}
 
