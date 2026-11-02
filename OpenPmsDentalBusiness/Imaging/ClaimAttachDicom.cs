@@ -1,7 +1,7 @@
 // CLAIM-DCM: DICOM X-rays on insurance claims. A DICOM document (for example a 16-bit X-ray that ImagingCapture's DicomIntraOralWriter
 // wrote: Explicit VR Little Endian, uncompressed MONOCHROME2, with its window stored in Document.WindowingMin and WindowingMax) is never
 // sent or stored as a claim attachment. Every place a claim image can be chosen renders an 8-bit copy through the program's own DICOM
-// display path (ImageStore.OpenBitmapDicom and DicomHelper, whose IDicomPixelReader asks DicomSubsetReader first, then fo-dicom), with the
+// display path (ImageStore.OpenBitmapDicom and DicomHelper, whose IDicomPixelReader asks DicomSubsetReader first, then DicomImageReader), with the
 // stored window and the crop, rotation and flip the Imaging module applies, and attaches that copy in the format the path already uses.
 // The stored DICOM file and its document row are never changed. See docs/port-notes/CLAIM-DCM.md.
 // This file is part of the open source dental practice management software derived from Open Dental.
@@ -67,7 +67,7 @@ namespace OpenPmsDentalBusiness {
 
 		#region Reading
 		///<summary>The raw pixels of a DICOM document, read through the Imaging module's own path: ImageStore.OpenBitmapDicom, which uses the
-		///patient's folder, cloud storage or the database row, and DicomHelper's reader (DicomSubsetReader first, then fo-dicom). A document
+		///patient's folder, cloud storage or the database row, and DicomHelper's reader (DicomSubsetReader first, then DicomImageReader). A document
 		///whose name ends in .DCM in another case, which OpenBitmapDicom does not open, is read from its file bytes with the same reader.
 		///Throws an ODException with GetUnreadableMessage when the file is missing or cannot be read. The document is not changed.</summary>
 		public static BitmapDicom ReadDocument(Document document,string patFolder) {
@@ -90,7 +90,7 @@ namespace OpenPmsDentalBusiness {
 			return CheckRead(bitmapDicom,document.FileName);
 		}
 
-		///<summary>The raw pixels of a DICOM file on disk, read with DicomHelper.GetFromFile (DicomSubsetReader first, then fo-dicom). Throws an
+		///<summary>The raw pixels of a DICOM file on disk, read with DicomHelper.GetFromFile (DicomSubsetReader first, then DicomImageReader). Throws an
 		///ODException with GetUnreadableMessage when the file is missing or cannot be read.</summary>
 		public static BitmapDicom ReadFile(string path) {
 			BitmapDicom bitmapDicom;
@@ -103,7 +103,7 @@ namespace OpenPmsDentalBusiness {
 			return CheckRead(bitmapDicom,path);
 		}
 
-		///<summary>DicomHelper.GetFromStream on the bytes, or null when there are none. May throw, as fo-dicom does for a file it cannot parse.</summary>
+		///<summary>DicomHelper.GetFromStream on the bytes, or null when there are none or they are not an image the readers read.</summary>
 		private static BitmapDicom ReadBytes(byte[] arrayBytes) {
 			if(arrayBytes==null || arrayBytes.Length==0) {
 				return null;

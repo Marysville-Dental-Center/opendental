@@ -1,6 +1,6 @@
 // The support assemblies in "Required dlls" are the versions of the library updates (lib\net462 of the NuGet packages the owner approved), the
-// .NET Framework's own System.ValueTuple is used instead of a copy, and the packages only fo-dicom 5 needed stay out (the owner dropped fo-dicom
-// for the in-house DICOM reader on 2026-11-02). A later package that replaces one of these files changes its line here on purpose.
+// .NET Framework's own System.ValueTuple is used instead of a copy, and fo-dicom 4 and the packages only fo-dicom 5 needed stay out (the owner
+// dropped fo-dicom for the in-house DICOM reader on 2026-11-02). A later package that replaces one of these files changes its line here on purpose.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -32,9 +32,11 @@ namespace LibraryBindingTests {
 			new[] { "System.Threading.Tasks.Extensions.dll","4.2.4.0","4.600.325.20307","4.6.3" },
 		};
 
-		///<summary>The packages only fo-dicom 5 needed (and fo-dicom 5 itself). No library that stays uses them: MimeKit's net48 build does not
-		///reference System.Text.Encoding.CodePages, and Microsoft.Extensions.Logging.Abstractions 8.0.3 needs only DependencyInjection.Abstractions.</summary>
-		private static readonly string[] _arrayFoDicom5Only=new[] {
+		///<summary>fo-dicom 4 (Dicom.Core.dll and its native codecs Dicom.Native.dll), which the in-house DICOM reader replaced, and the packages
+		///only fo-dicom 5 needed (and fo-dicom 5 itself). No library that stays uses them: MimeKit's net48 build does not reference
+		///System.Text.Encoding.CodePages, and Microsoft.Extensions.Logging.Abstractions 8.0.3 needs only DependencyInjection.Abstractions.</summary>
+		private static readonly string[] _arrayFoDicomOnly=new[] {
+			"Dicom.Core.dll","Dicom.Native.dll",
 			"CommunityToolkit.HighPerformance.dll","Microsoft.Bcl.HashCode.dll","Microsoft.Extensions.Configuration.Abstractions.dll",
 			"Microsoft.Extensions.Configuration.Binder.dll","Microsoft.Extensions.DependencyInjection.dll","Microsoft.Extensions.Logging.dll",
 			"Microsoft.Extensions.Options.dll","Microsoft.Extensions.Options.ConfigurationExtensions.dll","Microsoft.Extensions.Primitives.dll",
@@ -75,9 +77,13 @@ namespace LibraryBindingTests {
 		}
 
 		[TestMethod]
-		public void FoDicom5Dependencies_AreNotInRequiredDlls() {
-			List<string> listFound=_arrayFoDicom5Only.Where(x => RequiredDlls.Files.ContainsKey(x)).ToList();
-			Assert.AreEqual(0,listFound.Count,"fo-dicom 5 was dropped, so these are not needed: "+string.Join(", ",listFound));
+		public void FoDicomAndItsDependencies_AreNotInRequiredDlls() {
+			List<string> listFound=_arrayFoDicomOnly.Where(x => RequiredDlls.Files.ContainsKey(x)).ToList();
+			Assert.AreEqual(0,listFound.Count,"fo-dicom was dropped for the in-house DICOM reader, so these are not needed: "+string.Join(", ",listFound));
+			//Nothing that stays references a DICOM library.
+			List<string> listReferencing=RequiredDlls.Assemblies.Values.Where(x => x.ListReferences.Any(y => y.Name.StartsWith("Dicom.",StringComparison.OrdinalIgnoreCase)
+				|| y.Name.StartsWith("fo-dicom",StringComparison.OrdinalIgnoreCase))).Select(x => x.FileName).ToList();
+			Assert.AreEqual(0,listReferencing.Count,"These reference fo-dicom: "+string.Join(", ",listReferencing));
 		}
 	}
 }

@@ -71,6 +71,9 @@ Here is the desired behavior:
 		private Document[] _documentArrayShowing;
 		///<summary>This contains the raw image data for a single selected doc or mount item.  Used for Dicom instead of the usual _bitmapRaw.  Can be null.</summary>
 		private BitmapDicom _bitmapDicomRaw;
+		///<summary>Why the DICOM file of the last LoadBitmap is not shown, for the user (DicomHelper.GetNotReadMessage); "" when it is shown, is not
+		///DICOM, or is missing.</summary>
+		private string _dicomNotShownMessage="";
 		///<summary>Only used when a single doc or mount item is selected.  This is the raw image that is the basis for BrightContrast adjustments.  Mount image might be scaled but it won't have any color adj.  If scaled, it's the same ratio as original.  We use width to calc scale, since height could be off by a partial pixel.  Does not have applied crop, flip, rotation, etc.  If the current selected bitmap is a Dicom image, then see _arrayDicomRaw instead.</summary>
 		private Bitmap _bitmapRaw;
 		///<summary></summary>
@@ -1062,7 +1065,10 @@ Here is the desired behavior:
 					panelMain.Visible=false;
 					if(ImageHelper.HasImageExtension(document.FileName) || Path.GetExtension(document.FileName).ToLower()==".dcm") {
 						string srcFileName = ODFileUtils.CombinePaths(PatFolder,document.FileName);
-						if(File.Exists(srcFileName)) {
+						if(_dicomNotShownMessage!="") {
+							MessageBox.Show(_dicomNotShownMessage+"\r\n"+document.FileName);
+						}
+						else if(File.Exists(srcFileName)) {
 							MessageBox.Show(Lan.g(this,"File found but cannot be opened, probably because it's too big:")+srcFileName);
 						}
 						else {
@@ -1091,6 +1097,7 @@ Here is the desired behavior:
 				//_arrayBitmapsRaw=ImageStore.OpenImages(_arrayDocumentsShowing,_patFolder,localPathImportedCloud);
 				_bitmapArrayShowing=new Bitmap[_documentArrayShowing.Length]; 
 				List<int> listMissingMountNums=new List<int>();//List to count missing images not found in the A-Z folder
+				Dictionary<int,string> dictDicomNotShown=new Dictionary<int,string>();//why a DICOM item that was found is not shown
 				Cursor=Cursors.WaitCursor;
 				for(int i=0;i<_documentArrayShowing.Length;i++){
 					if(_documentArrayShowing[i]==null){
@@ -1113,6 +1120,9 @@ Here is the desired behavior:
 					}
 					if(_bitmapArrayShowing[i]==null) {
 						listMissingMountNums.Add(i);
+						if(_dicomNotShownMessage!="") {
+							dictDicomNotShown[i]=_dicomNotShownMessage;
+						}
 					}
 					else{
 						ImageHelper.ConvertCropIfNeeded(_documentArrayShowing[i],_bitmapArrayShowing[i]);
@@ -1122,6 +1132,9 @@ Here is the desired behavior:
 					string errorMessage=Lan.g(this,"Files not found for mount:")+"\r\n";
 					for(int m=0;m<listMissingMountNums.Count;m++) {
 						errorMessage+=Lan.g(this,"Mount position ")+(listMissingMountNums[m]+1)+": "+_documentArrayShowing[listMissingMountNums[m]].FileName;
+						if(dictDicomNotShown.TryGetValue(listMissingMountNums[m],out string dicomNotShown)) {
+							errorMessage+=" ("+dicomNotShown+")";
+						}
 						if(m!=listMissingMountNums.Count-1) {
 							errorMessage+="\r\n";
 						}
@@ -4520,6 +4533,7 @@ Here is the desired behavior:
 
 		///<summary>Loads bitmap from disk, resizes, applies bright/contrast, and saves it to _arrayBitmapsShowing and/or _bitmapRaw.</summary>
 		private void LoadBitmap(int idx,EnumLoadBitmapType loadBitmapType){
+			_dicomNotShownMessage="";
 			if(idx==-1 || _bitmapArrayShowing==null || idx > _bitmapArrayShowing.Length-1){
 				return;
 			}
@@ -4554,8 +4568,13 @@ Here is the desired behavior:
 			Bitmap bitmapTemp=null;
 			//BitmapDicom bitmapDicom=null;
 			if(_documentArrayShowing[idx].FileName.EndsWith(".dcm")){
-				_bitmapDicomRaw=ImageStore.OpenBitmapDicom(_documentArrayShowing[idx],PatFolder);
+				DicomImageReadResult dicomImageReadResult=ImageStore.OpenBitmapDicomResult(_documentArrayShowing[idx],PatFolder);
+				_bitmapDicomRaw=dicomImageReadResult.BitmapDicom;
 				if(_bitmapDicomRaw==null){
+					//A missing file keeps its "File not found" message; any other reason (such as a compressed format this version cannot open yet) is said.
+					if(dicomImageReadResult.Status!=DicomImageReadStatus.FileError){
+						_dicomNotShownMessage=DicomHelper.GetNotReadMessage(dicomImageReadResult);
+					}
 					return;
 				}
 			}

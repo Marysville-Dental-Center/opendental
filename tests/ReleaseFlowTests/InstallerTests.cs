@@ -32,6 +32,7 @@ namespace ReleaseFlowTests {
 			"RS232.dll","SigPlusNET.dll","zxing.dll","zxing.presentation.dll","Avalara.AvaTax.RestClient.net45.dll","Ionic.Zip.dll","TWAINDSM.dll",
 			"Tamir.SharpSSH.dll","Org.Mentalis.Security.dll","DiffieHellman.dll","OpenPop.dll","BouncyCastle.Crypto.dll","Google.Apis.PlatformServices.dll",
 			"Google.Apis.Auth.PlatformServices.dll","FreeDentalConfig.xml","OpenPmsDental.pdb","unins000.exe","unins000.dat","OpenDental.exe","OpenDentBusiness.dll",
+			"Dicom.Core.dll","Dicom.Native.dll","fo-dicom.core.dll",
 		};
 
 		///<summary>The program folder's documents, staged from the repository.</summary>

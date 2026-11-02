@@ -112,7 +112,7 @@ $OwnFiles=[ordered]@{
 #Third-party files. Each must be named in THIRD-PARTY-NOTICES.txt. Value: where its bytes come from, a byte copy of the repository's
 #"Required dlls" file or the project output it is built from.
 $ThirdPartyFiles=[ordered]@{}
-foreach($name in @('BouncyCastle.Cryptography.dll','Dicom.Core.dll','Dicom.Native.dll','Google.Apis.dll','Google.Apis.Auth.dll',
+foreach($name in @('BouncyCastle.Cryptography.dll','Google.Apis.dll','Google.Apis.Auth.dll',
 	'Google.Apis.Core.dll','Google.Apis.Gmail.v1.dll','Health.Direct.Agent.dll','Health.Direct.Common.dll','Health.Direct.ResolverPlugins.dll',
 	'Hunspellx86.dll','MailKit.dll','Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Bcl.Cryptography.dll',
 	'Microsoft.Extensions.DependencyInjection.Abstractions.dll','Microsoft.Extensions.Logging.Abstractions.dll','Microsoft.Identity.Client.dll',
@@ -150,7 +150,7 @@ $RequiredReasons=[ordered]@{
 }
 
 #Native files: they must be x86 and must not need the debug C runtime, which may not be redistributed.
-$NativeFiles=@('Direct2dWrapper.dll','Hunspellx86.dll','WebView2Loader.dll','Dicom.Native.dll')
+$NativeFiles=@('Direct2dWrapper.dll','Hunspellx86.dll','WebView2Loader.dll')
 $DebugRuntimeNames=@('VCRUNTIME140D.dll','MSVCP140D.dll','ucrtbased.dll','VCRUNTIME140_1D.dll')
 
 #Files of OpenPmsDental's Release output that are never shipped.
@@ -193,6 +193,8 @@ $DenyList=@(
 	@('zxing*','a dead reference (removed in BIN-B)'),
 	@('Avalara*','the AvaTax SDK, a dead reference (removed in BIN-B)'),
 	@('Ionic.*','DotNetZip: MS-PL, abandoned, CVE-2024-48510 (replaced in BIN-B)'),
+	@('Dicom.*.dll','fo-dicom 4 (MS-PL): replaced by the in-house DICOM reader (docs/imaging/dicom-reader.md)'),
+	@('fo-dicom*','fo-dicom (MS-PL): replaced by the in-house DICOM reader (docs/imaging/dicom-reader.md)'),
 	@('DotNetZip*','DotNetZip: MS-PL, abandoned, CVE-2024-48510 (replaced in BIN-B)'),
 	@('Tamir.SharpSSH.dll','SharpSSH, unmaintained since 2013 (replaced by SSH.NET in the tier 1 library updates)'),
 	@('Org.Mentalis.Security.dll',"SharpSSH's cryptography library (removed with SharpSSH)"),

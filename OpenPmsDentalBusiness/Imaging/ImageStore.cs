@@ -255,28 +255,45 @@ namespace OpenPmsDentalBusiness {
 			return Encoding.ASCII.GetString(ODCrypt.MD5.Hash(buffer));
 		}
 
-		///<summary>Can be null. Analogous to OpenImage.</summary>
+		///<summary>Can be null. Analogous to OpenImage. OpenBitmapDicomResult says why there is no image.</summary>
 		public static BitmapDicom OpenBitmapDicom(Document doc,string patFolder,string localPath=""){
 			if(!doc.FileName.EndsWith(".dcm")){
 				return null;
 			}
+			return OpenBitmapDicomResult(doc,patFolder,localPath).BitmapDicom;
+		}
+
+		///<summary>The pixels of a .dcm document from its storage (the patient's folder, cloud storage, or the database row), read by DicomHelper
+		///(the in-house subset reader, then the full reader), with the reason when there is no image: DicomHelper.GetNotReadMessage turns it
+		///into the message the user sees, for example for a compressed format this version cannot open yet.</summary>
+		public static DicomImageReadResult OpenBitmapDicomResult(Document doc,string patFolder,string localPath=""){
+			if(doc==null || doc.FileName==null || !doc.FileName.EndsWith(".dcm")){
+				return new DicomImageReadResult(DicomImageReadStatus.NotDicom,"The document is not a .dcm file.",null,null);
+			}
 			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
-				string srcFileName = ODFileUtils.CombinePaths(patFolder,doc.FileName);
-				return DicomHelper.GetFromFile(srcFileName);
+				return DicomHelper.ReadFileResult(ODFileUtils.CombinePaths(patFolder,doc.FileName));
 			}
-			else if(CloudStorage.IsCloudStorage) {
+			if(CloudStorage.IsCloudStorage) {
 				if(localPath!="") {
-					return DicomHelper.GetFromFile(localPath);
+					return DicomHelper.ReadFileResult(localPath);
 				}
-				BitmapDicom bitmapDicom=null;
 				byte[] byteArray=CloudStorage.Download(patFolder.Replace("\\","/"),doc.FileName);
-				using(MemoryStream ms=new MemoryStream(byteArray)) {
-					bitmapDicom=DicomHelper.GetFromStream(ms);//Warning! Untested!
+				if(byteArray==null) {
+					return new DicomImageReadResult(DicomImageReadStatus.FileError,"The file could not be downloaded.",null,null);
 				}
-				return bitmapDicom;
+				using(MemoryStream ms=new MemoryStream(byteArray)) {
+					return DicomHelper.ReadStreamResult(ms);
+				}
 			}
-			else {//db
-				return DicomHelper.GetFromBase64(doc.RawBase64);//Warning! Untested!
+			byte[] bytesRaw;
+			try {
+				bytesRaw=Convert.FromBase64String(doc.RawBase64);
+			}
+			catch(Exception) {//null or not base64
+				return new DicomImageReadResult(DicomImageReadStatus.FileError,"The document holds no image data.",null,null);
+			}
+			using(MemoryStream ms=new MemoryStream(bytesRaw)) {
+				return DicomHelper.ReadStreamResult(ms);
 			}
 		}
 
@@ -562,10 +579,14 @@ namespace OpenPmsDentalBusiness {
 			else if(doc.FileName.ToLower().EndsWith(".dcm")){
 				doc.ImgType=ImageType.Radiograph;
 				BitmapDicom bitmapDicom=DicomHelper.GetFromFile(pathImportFrom);
-				DicomHelper.CalculateWindowingOnImport(bitmapDicom);
 				doc.PrintHeading=true;
-				doc.WindowingMin=bitmapDicom.WindowingMin;
-				doc.WindowingMax=bitmapDicom.WindowingMax;
+				//A file no reader can read (for example a compressed format this version cannot open yet) is still imported, with no windowing,
+				//as Documents.InsertMissing attaches it; opening it says why it is not shown.
+				if(bitmapDicom!=null) {
+					DicomHelper.CalculateWindowingOnImport(bitmapDicom);
+					doc.WindowingMin=bitmapDicom.WindowingMin;
+					doc.WindowingMax=bitmapDicom.WindowingMax;
+				}
 			}
 			else {
 				doc.ImgType=ImageType.Document;

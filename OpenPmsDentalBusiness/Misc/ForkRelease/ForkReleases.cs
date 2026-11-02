@@ -105,6 +105,8 @@ namespace OpenPmsDentalBusiness {
 			"Org.Mentalis.Security.dll",//SharpSSH's cryptography library.
 			"DiffieHellman.dll",//SharpSSH's key exchange library.
 			"OpenPop.dll",//OpenPop.NET, replaced by MailKit's POP3 client.
+			"Dicom.Core.dll",//fo-dicom 4, replaced by the in-house DICOM reader (2026-11-02).
+			"Dicom.Native.dll",//fo-dicom 4's native codecs.
 		};
 		///<summary>Key of the AssemblyMetadata attribute that holds the build time of OpenPmsDental.exe (written by OpenPmsDental.csproj).</summary>
 		public const string BUILD_UTC_METADATA_KEY="ForkBuildUtc";

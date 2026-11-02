@@ -1,10 +1,7 @@
-// Test files from the two other writers: the program's own DicomIntraOralWriter (ImagingCapture), and fo-dicom. All pixel values are made up.
-// Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
+// Test files from the program's own DicomIntraOralWriter (ImagingCapture) and from the test's PS3.10 writer in other layouts and transfer
+// syntaxes. All pixel values are made up. Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.IO;
-using Dicom;
-using Dicom.Imaging;
-using Dicom.IO.Buffer;
 using ImagingCapture.Dicom;
 using ImagingCapture.Metadata;
 using ImagingDeviceManager.Capture;
@@ -36,42 +33,14 @@ namespace DicomReaderTests {
 			return result.Bytes;
 		}
 
-		///<summary>A one-frame grayscale file written by fo-dicom in the given transfer syntax (uncompressed ones only).</summary>
-		public static byte[] FromFoDicom(DicomTransferSyntax transferSyntax,int rows,int columns,ushort bitsAllocated,ushort bitsStored,
-			ushort pixelRepresentation,string photometric,byte[] arrayPixelBytes)
+		///<summary>A one-frame grayscale file in the given transfer syntax (uncompressed ones), as another writer than the capture writer would
+		///make it: the test's PS3.10 writer, with the elements of SynImage (no intra-oral sequences).</summary>
+		public static byte[] FromOtherWriter(string transferSyntax,int rows,int columns,ushort bitsAllocated,ushort bitsStored,ushort pixelRepresentation,
+			string photometric,byte[] arrayPixelBytes)
 		{
-			DicomDataset dicomDataset=new DicomDataset(transferSyntax);
-			dicomDataset.Add(DicomTag.SOPClassUID,DicomUID.DigitalIntraOralXRayImageStorageForPresentation);
-			dicomDataset.Add(DicomTag.SOPInstanceUID,DicomUID.Generate());
-			dicomDataset.Add(DicomTag.PhotometricInterpretation,photometric);
-			dicomDataset.Add(DicomTag.Rows,(ushort)rows);
-			dicomDataset.Add(DicomTag.Columns,(ushort)columns);
-			dicomDataset.Add(DicomTag.BitsAllocated,bitsAllocated);
-			dicomDataset.Add(DicomTag.BitsStored,bitsStored);
-			dicomDataset.Add(DicomTag.HighBit,(ushort)(bitsStored-1));
-			dicomDataset.Add(DicomTag.PixelRepresentation,pixelRepresentation);
-			dicomDataset.Add(DicomTag.SamplesPerPixel,(ushort)1);
-			DicomPixelData dicomPixelData=DicomPixelData.Create(dicomDataset,true);
-			dicomPixelData.AddFrame(new MemoryByteBuffer(arrayPixelBytes));
-			DicomFile dicomFile=new DicomFile(dicomDataset);
-			using(MemoryStream memoryStream=new MemoryStream()) {
-				dicomFile.Save(memoryStream,null);
-				return memoryStream.ToArray();
-			}
-		}
-
-		///<summary>What the old path (fo-dicom, unchanged) makes of the bytes, or null when it reads nothing; "throws" when it throws.</summary>
-		public static BitmapDicom ReadWithFoDicom(byte[] bytes,out string error) {
-			error=null;
-			try {
-				using(MemoryStream memoryStream=new MemoryStream(bytes)) {
-					return DicomHelper.FoDicomReader.ReadStream(memoryStream);
-				}
-			}
-			catch(Exception ex) {
-				error=ex.GetType().Name+": "+ex.Message;
-				return null;
-			}
+			SynImage synImage=new SynImage { Rows=rows,Columns=columns,Photometric=photometric,BitsAllocated=bitsAllocated,BitsStored=bitsStored,
+				HighBit=(ushort)(bitsStored-1),PixelRepresentation=pixelRepresentation,PixelBytes=arrayPixelBytes,PixelVr=bitsAllocated==8 ? "OB" : "OW" };
+			return SyntheticDicom.MakeFileIn(synImage,transferSyntax);
 		}
 
 		public static void AssertSame(BitmapDicom expected,BitmapDicom actual,string message) {
@@ -85,13 +54,14 @@ namespace DicomReaderTests {
 			CollectionAssert.AreEqual(expected.ArrayDataRaw,actual.ArrayDataRaw,message+": pixels");
 		}
 
-		///<summary>The subset reader reads the bytes, and fo-dicom (the old path) reads them to the very same BitmapDicom.</summary>
-		public static BitmapDicom AssertReadAndSameAsFoDicom(byte[] bytes,string message) {
+		///<summary>The subset reader reads the bytes, and the full reader reads them to the very same BitmapDicom (the full reader gives what
+		///fo-dicom's old path gave for every such file, FoDicomBaseline.cs).</summary>
+		public static BitmapDicom AssertReadAndSameAsFullReader(byte[] bytes,string message) {
 			DicomSubsetReadResult result=DicomSubsetReader.Read(bytes);
 			Assert.AreEqual(DicomSubsetReadStatus.Read,result.Status,message+": "+result);
-			BitmapDicom bitmapDicomFoDicom=ReadWithFoDicom(bytes,out string error);
-			Assert.IsNull(error,message+": fo-dicom "+error);
-			AssertSame(bitmapDicomFoDicom,result.BitmapDicom,message+" (subset reader against fo-dicom)");
+			DicomImageReadResult resultFull=DicomHelper.FullReader.Read(bytes);
+			Assert.AreEqual(DicomImageReadStatus.Read,resultFull.Status,message+": full reader "+resultFull);
+			AssertSame(resultFull.BitmapDicom,result.BitmapDicom,message+" (subset reader against the full reader)");
 			return result.BitmapDicom;
 		}
 	}

@@ -12,7 +12,8 @@ Planned work after v0.0, as agreed with the owner. Each item is discussed and sc
    a small admin-only settings tool; Choose Database is for local testing and debugging only.
 2. **Library updates (maintenance)**: WebView2 in place of the Internet Explorer WebBrowser control, a managed Hunspell (no native DLL),
    PDFsharp/MigraDoc 6.5, kept as DLL files in `Required dlls`. PDFsharp 6.5 is AGPL-3.0-only, so the program as distributed is under GPL v3
-   terms together with that part. fo-dicom is removed: the in-house DICOM reader reads every file it read.
+   terms together with that part. fo-dicom is not updated but removed (owner decision 2026-11-02, option C): the in-house DICOM reader
+   (`docs/imaging/dicom-reader.md`) reads every file it read. Decoders for compressed DICOM are deferred (Later, below).
 3. **Routine maintenance around the practice**: maintenance items the office defines itself (equipment, rooms, systems, compliance routines),
    each with its own schedule, checklist, result fields, assignee and reminder; a due and overdue board; a history of who did what and when.
    The list starts empty.
@@ -50,7 +51,7 @@ The program is built as 32-bit today. Decided: go to full 64-bit (no interim lar
 - **Other TWAIN devices** (document scanners, a second sensor) need 64-bit drivers; most current devices ship both. For a device with only a
   32-bit driver, an optional 32-bit TWAIN bridge helper loads that driver and passes the images on.
 - **Native DLLs**: the library updates above remove most of them (the spell checker becomes managed); `Direct2dWrapper` is built 64-bit from
-  our source; WebView2 has 64-bit versions. fo-dicom and its native codecs are gone.
+  our source; WebView2 has 64-bit versions. fo-dicom and its native codecs are gone: the DICOM reader is managed code of our own.
 - **Code**: P/Invoke signatures and structures (the TWAIN structures above all) are made pointer-size-safe, with tests that run in both
   bitnesses, while the program still ships as 32-bit.
 - **Installer and updates**: 64-bit install folder and prerequisites, and a defined way for an office to move from a 32-bit install to a

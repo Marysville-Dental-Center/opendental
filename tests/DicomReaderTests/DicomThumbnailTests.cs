@@ -181,6 +181,38 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
+		public void CompressedFormatThisVersionCannotOpen_SaysWhy_AndThumbnailIsNotAvailable() {
+			File.WriteAllBytes(Path.Combine(_patFolder,"j2k.dcm"),ReaderCases.Get("unsupported-"+SyntheticDicom.Jpeg2000).Bytes);
+			Document document=new Document { FileName="j2k.dcm",WindowingMax=255,DateTStamp=DateTime.Now.AddDays(-1) };
+			DicomImageReadResult result=ImageStore.OpenBitmapDicomResult(document,_patFolder);
+			Assert.AreEqual(DicomImageReadStatus.UnsupportedCompression,result.Status,result.ToString());
+			Assert.IsNull(ImageStore.OpenBitmapDicom(document,_patFolder));
+			string message=DicomHelper.GetNotReadMessage(result);
+			StringAssert.Contains(message,"JPEG 2000 Image Compression");
+			StringAssert.Contains(message,"cannot open that format yet");
+			//The display paths behave as for any other file they cannot show: no thumbnail, and GetImageCropped throws as it always did.
+			using(Bitmap bitmapNotAvailable=Documents.NoAvailablePhoto())
+			using(Bitmap bitmapThumb=Documents.GetThumbnail(document,_patFolder)) {
+				Assert.IsTrue(IsSameImage(bitmapNotAvailable,bitmapThumb));
+			}
+			bool isThrown=false;
+			try {
+				ImageHelper.GetImageCropped(document,_patFolder)?.Dispose();
+			}
+			catch(CodeBase.ODException) {
+				isThrown=true;
+			}
+			Assert.IsTrue(isThrown,"GetImageCropped throws for a DICOM file it cannot read, as before.");
+			//A readable document and a missing one, through the same call.
+			Document documentHalves=SaveHalves("readable.dcm");
+			DicomImageReadResult resultReadable=ImageStore.OpenBitmapDicomResult(documentHalves,_patFolder);
+			Assert.AreEqual(DicomImageReadStatus.Read,resultReadable.Status);
+			Assert.AreEqual(40,resultReadable.BitmapDicom.Width);
+			Assert.AreEqual(DicomImageReadStatus.FileError,ImageStore.OpenBitmapDicomResult(new Document { FileName="missing.dcm" },_patFolder).Status);
+			Assert.AreEqual(DicomImageReadStatus.NotDicom,ImageStore.OpenBitmapDicomResult(new Document { FileName="photo.jpg" },_patFolder).Status);
+		}
+
+		[TestMethod]
 		public void IsDicomFileName_MatchesTheDisplayPath() {
 			Assert.IsTrue(ImageHelper.IsDicomFileName("a.dcm"));
 			Assert.IsFalse(ImageHelper.IsDicomFileName("a.DCM"),"The Imaging module's display path and ImageStore.OpenBitmapDicom test the same way.");

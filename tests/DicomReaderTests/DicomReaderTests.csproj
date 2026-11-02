@@ -2,11 +2,12 @@
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!-- Tests for the capture display and DICOM reader packages CAP-W1, CAP-W2 and CAP-DR (docs/imaging-capture-design.md 7.8; package
-       TWAIN-W): IDicomPixelReader and the in-house DicomSubsetReader, the .dcm branches of Documents.GetThumbnail and
-       ImageHelper.GetImageCropped, and the windowing of legacy stored values. Every DICOM file is made in the tests: by ImagingCapture's
-       DicomIntraOralWriter, by fo-dicom, or byte by byte from PS3.5 and PS3.10 (SyntheticDicom.cs), including malformed ones. No database
-       is used; the thumbnail tests fill the preference cache in memory and use a temporary folder. Every .cs file under this folder is
-       compiled. -->
+       TWAIN-W) and for the in-house full reader that replaced fo-dicom (docs/imaging/dicom-reader.md): IDicomPixelReader, DicomSubsetReader,
+       DicomImageReader and its decoders, the .dcm branches of Documents.GetThumbnail and ImageHelper.GetImageCropped, and the windowing of
+       legacy stored values. Every DICOM file is made in the tests: by ImagingCapture's DicomIntraOralWriter, or byte by byte from PS3.5 and
+       PS3.10 (SyntheticDicom.cs, SyntheticEncodings.cs), including malformed ones; FoDicomBaseline.cs holds what fo-dicom 4 read from them
+       before it was removed. No database is used; the thumbnail tests fill the preference cache in memory and use a temporary folder. Every
+       .cs file under this folder is compiled. -->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
@@ -47,16 +48,16 @@
   <ItemGroup>
     <!-- MSTest v1, found through the search path added in Directory.Build.targets. -->
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
-    <!-- fo-dicom, only to make test files with another writer and to check that the old path reads them too. -->
-    <Reference Include="Dicom.Core, Version=4.0.7.0, Culture=neutral, PublicKeyToken=3a13f649e28eb09a, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Required dlls\Dicom.Core.dll</HintPath>
-    </Reference>
+    <!-- The .NET Framework's JPEG encoder (WPF's JpegBitmapEncoder) makes the JPEG Baseline test streams. -->
+    <Reference Include="PresentationCore" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />

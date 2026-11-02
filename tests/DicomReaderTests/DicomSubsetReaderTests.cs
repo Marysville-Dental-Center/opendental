@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Dicom;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
 using static DicomReaderTests.SyntheticDicom;
@@ -29,13 +28,13 @@ namespace DicomReaderTests {
 
 		#region The capture writer's files
 		[TestMethod]
-		public void CaptureWriterFiles_AreReadExactly_AndAsFoDicomReadsThem() {
+		public void CaptureWriterFiles_AreReadExactly_AndAsTheFullReaderReadsThem() {
 			foreach(int? effectiveBits in new int?[] { null,12 }) {
 				int width=37;//odd, so rows are not word-aligned by accident
 				int height=23;
 				ushort[] arrayPixels=Ramp(width*height,effectiveBits==12 ? 4095 : 65535);
 				byte[] bytes=TestFiles.FromCaptureWriter(width,height,arrayPixels,effectiveBits);
-				BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFoDicom(bytes,"writer, effectiveBits "+effectiveBits);
+				BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFullReader(bytes,"writer, effectiveBits "+effectiveBits);
 				Assert.AreEqual(width,bitmapDicom.Width);
 				Assert.AreEqual(height,bitmapDicom.Height);
 				Assert.AreEqual(16,bitmapDicom.BitsAllocated);
@@ -76,7 +75,7 @@ namespace DicomReaderTests {
 		public void EightBit_OddSampleCount_PadByteIgnored() {
 			byte[] arraySamples=Enumerable.Range(0,15).Select(x => (byte)(x*17)).ToArray();
 			byte[] bytes=MakeFile(ImageDataset(3,5,8,8,7,0,"MONOCHROME2",Bytes8(arraySamples),"OB"));
-			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFoDicom(bytes,"8 bit, 3 x 5");
+			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFullReader(bytes,"8 bit, 3 x 5");
 			Assert.AreEqual(8,bitmapDicom.BitsAllocated);
 			Assert.AreEqual(8,bitmapDicom.BitsStored);
 			CollectionAssert.AreEqual(arraySamples.Select(x => (ushort)x).ToArray(),bitmapDicom.ArrayDataRaw);
@@ -86,15 +85,15 @@ namespace DicomReaderTests {
 		public void EightBit_InOW_ReadsTheSameBytes() {
 			byte[] arraySamples=Enumerable.Range(0,12).Select(x => (byte)(255-x*20)).ToArray();
 			byte[] bytes=MakeFile(ImageDataset(3,4,8,8,7,0,"MONOCHROME2",arraySamples,"OW"));
-			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFoDicom(bytes,"8 bit in OW");
+			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFullReader(bytes,"8 bit in OW");
 			CollectionAssert.AreEqual(arraySamples.Select(x => (ushort)x).ToArray(),bitmapDicom.ArrayDataRaw);
 		}
 
 		[TestMethod]
-		public void TwelveBit_BitsAboveHighBitAreCleared_AsFoDicomDoes() {
+		public void TwelveBit_BitsAboveHighBitAreCleared() {
 			ushort[] arrayStored={ 0x0000,0x0FFF,0xF123,0x8800,0x0ABC,0x7001 };
 			byte[] bytes=Image16MakeFile(2,3,12,arrayStored);
-			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFoDicom(bytes,"12 bit with bits above High Bit set");
+			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFullReader(bytes,"12 bit with bits above High Bit set");
 			CollectionAssert.AreEqual(arrayStored.Select(x => (ushort)(x & 0x0FFF)).ToArray(),bitmapDicom.ArrayDataRaw);
 		}
 
@@ -102,7 +101,7 @@ namespace DicomReaderTests {
 		public void EightBitsStoredInSixteen_KeepsTheLowByte() {
 			ushort[] arrayStored={ 0x0012,0xFF34,0x0100,0x00FF };
 			byte[] bytes=MakeFile(ImageDataset(2,2,16,8,7,0,"MONOCHROME2",Words(arrayStored)));
-			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFoDicom(bytes,"8 bits stored in 16");
+			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFullReader(bytes,"8 bits stored in 16");
 			CollectionAssert.AreEqual(new ushort[] { 0x12,0x34,0x00,0xFF },bitmapDicom.ArrayDataRaw);
 		}
 
@@ -110,7 +109,7 @@ namespace DicomReaderTests {
 		public void SixteenBit_Monochrome1AndMonochrome2_ValuesUntouched() {
 			ushort[] arrayStored={ 0,1,255,256,4095,4096,32768,65534,65535 };
 			foreach(string photometric in new[] { "MONOCHROME1","MONOCHROME2" }) {
-				BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFoDicom(Image16MakeFile(3,3,16,arrayStored,photometric),photometric);
+				BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFullReader(Image16MakeFile(3,3,16,arrayStored,photometric),photometric);
 				Assert.AreEqual(photometric,bitmapDicom.PhotometricInterp.ToString());
 				CollectionAssert.AreEqual(arrayStored,bitmapDicom.ArrayDataRaw,"No inversion here; the windowing handles MONOCHROME1 as before.");
 			}
@@ -135,14 +134,14 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
-		public void FoDicomWrittenExplicitVrFile_IsReadBySubsetReader() {
+		public void OtherWritersExplicitVrFile_IsReadBySubsetReader() {
 			ushort[] arrayStored=Ramp(5*7,65535);
-			byte[] bytes=TestFiles.FromFoDicom(DicomTransferSyntax.ExplicitVRLittleEndian,5,7,16,16,0,"MONOCHROME2",Words(arrayStored));
-			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFoDicom(bytes,"fo-dicom Explicit VR Little Endian");
+			byte[] bytes=TestFiles.FromOtherWriter(ExplicitVrLittleEndian,5,7,16,16,0,"MONOCHROME2",Words(arrayStored));
+			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFullReader(bytes,"another writer's Explicit VR Little Endian");
 			CollectionAssert.AreEqual(arrayStored,bitmapDicom.ArrayDataRaw);
-			byte[] bytes12=TestFiles.FromFoDicom(DicomTransferSyntax.ExplicitVRLittleEndian,1,5,16,12,0,"MONOCHROME1",
+			byte[] bytes12=TestFiles.FromOtherWriter(ExplicitVrLittleEndian,1,5,16,12,0,"MONOCHROME1",
 				Words(new ushort[] { 0,1024,2048,3072,4095 }));
-			TestFiles.AssertReadAndSameAsFoDicom(bytes12,"fo-dicom 12 bit MONOCHROME1");
+			TestFiles.AssertReadAndSameAsFullReader(bytes12,"another writer's 12 bit MONOCHROME1");
 		}
 		#endregion
 
@@ -164,7 +163,7 @@ namespace DicomReaderTests {
 			listDataset=With(listDataset,Sequence(0x0088,0x0200,false,itemIcon));//Icon Image Sequence, defined length
 			listDataset=With(listDataset,Raw(0x0009,0x1010,"UN",new byte[] { 1,2,3,4 }));//a private element of defined length
 			byte[] bytes=MakeFile(listDataset);
-			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFoDicom(bytes,"sequences");
+			BitmapDicom bitmapDicom=TestFiles.AssertReadAndSameAsFullReader(bytes,"sequences");
 			Assert.AreEqual(3,bitmapDicom.Width);
 			Assert.AreEqual(2,bitmapDicom.Height);
 			Assert.AreEqual(16,bitmapDicom.BitsAllocated,"The icon's 8 bits do not count.");
@@ -190,7 +189,7 @@ namespace DicomReaderTests {
 		}
 		#endregion
 
-		#region Declined, for fo-dicom to read as before
+		#region Declined, for the full reader to read
 		[TestMethod]
 		public void OtherTransferSyntaxes_AreNotTheSubset() {
 			foreach(string transferSyntax in new[] { ImplicitVrLittleEndian,ExplicitVrBigEndian,DeflatedExplicitVrLittleEndian,JpegLossless }) {
@@ -201,18 +200,17 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
-		public void ImplicitVrFile_GoesToFoDicom_AsBefore() {
+		public void ImplicitVrFile_GoesToTheFullReader() {
 			ushort[] arrayStored=Ramp(4*6,4095);
-			byte[] bytes=TestFiles.FromFoDicom(DicomTransferSyntax.ImplicitVRLittleEndian,4,6,16,12,0,"MONOCHROME2",Words(arrayStored));
+			byte[] bytes=TestFiles.FromOtherWriter(ImplicitVrLittleEndian,4,6,16,12,0,"MONOCHROME2",Words(arrayStored));
 			Assert.AreEqual(DicomSubsetReadStatus.NotSubset,Read(bytes).Status);
 			BitmapDicom bitmapDicom;
 			using(MemoryStream memoryStream=new MemoryStream(bytes)) {
 				bitmapDicom=DicomHelper.GetFromStream(memoryStream);
 			}
-			BitmapDicom bitmapDicomFoDicom=TestFiles.ReadWithFoDicom(bytes,out string error);
-			Assert.IsNull(error);
-			TestFiles.AssertSame(bitmapDicomFoDicom,bitmapDicom,"implicit VR through DicomHelper");
+			TestFiles.AssertSame(DicomHelper.FullReader.Read(bytes).BitmapDicom,bitmapDicom,"implicit VR through DicomHelper");
 			CollectionAssert.AreEqual(arrayStored,bitmapDicom.ArrayDataRaw);
+			Assert.AreEqual(12,bitmapDicom.BitsStored);
 		}
 
 		[TestMethod]
@@ -246,7 +244,7 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
-		public void SignedValues_AreDeclined_AndDicomHelperBehavesAsBefore() {
+		public void SignedValues_AreDeclined_AndDicomHelperReadsThemWithTheFullReader() {
 			short[] arraySigned={ -2048,-1,0,1,2047,-100 };
 			ushort[] arrayWords=arraySigned.Select(x => unchecked((ushort)x)).ToArray();
 			foreach(ushort bitsStored in new ushort[] { 12,16 }) {
@@ -254,15 +252,14 @@ namespace DicomReaderTests {
 				DicomSubsetReadResult result=Read(bytes);
 				Assert.AreEqual(DicomSubsetReadStatus.Unsupported,result.Status,result.ToString());
 				StringAssert.Contains(result.Reason,"signed");
-				//DicomHelper hands the file to fo-dicom, which gives what it always gave for signed data (no image).
-				BitmapDicom bitmapDicomFoDicom=TestFiles.ReadWithFoDicom(bytes,out string error);
+				//fo-dicom's path showed no signed image; the full reader moves the values up by half their range (DicomImageReaderTests).
 				BitmapDicom bitmapDicomHelper;
 				using(MemoryStream memoryStream=new MemoryStream(bytes)) {
 					bitmapDicomHelper=DicomHelper.GetFromStream(memoryStream);
 				}
-				Assert.IsNull(error,error);
-				Assert.IsNull(bitmapDicomFoDicom,"fo-dicom's path never showed signed data.");
-				Assert.IsNull(bitmapDicomHelper);
+				int half=1<<(bitsStored-1);
+				CollectionAssert.AreEqual(arraySigned.Select(x => (ushort)(x+half)).ToArray(),bitmapDicomHelper.ArrayDataRaw);
+				Assert.AreEqual(bitsStored,bitmapDicomHelper.BitsStored);
 			}
 		}
 
@@ -433,7 +430,7 @@ namespace DicomReaderTests {
 		public void LargeFileOutsideTheSubset_OnlyTheHeaderIsRead() {
 			//An implicit VR file of about 200 KB: the transfer syntax in the first 64 KB settles it.
 			ushort[] arrayStored=Ramp(320*320,4095);
-			byte[] bytes=TestFiles.FromFoDicom(DicomTransferSyntax.ImplicitVRLittleEndian,320,320,16,12,0,"MONOCHROME2",Words(arrayStored));
+			byte[] bytes=TestFiles.FromOtherWriter(ImplicitVrLittleEndian,320,320,16,12,0,"MONOCHROME2",Words(arrayStored));
 			Assert.IsTrue(bytes.Length>3*64*1024);
 			using(CountingStream stream=new CountingStream(bytes)) {
 				DicomSubsetReadResult result=DicomSubsetReader.ReadStreamResult(stream);
@@ -441,7 +438,7 @@ namespace DicomReaderTests {
 				Assert.IsTrue(stream.CountRead<=64*1024,"Read "+stream.CountRead+" bytes.");
 			}
 			using(MemoryStream memoryStream=new MemoryStream(bytes)) {
-				CollectionAssert.AreEqual(arrayStored,DicomHelper.GetFromStream(memoryStream).ArrayDataRaw,"fo-dicom reads it after the subset reader declined.");
+				CollectionAssert.AreEqual(arrayStored,DicomHelper.GetFromStream(memoryStream).ArrayDataRaw,"The full reader reads it after the subset reader declined.");
 			}
 		}
 

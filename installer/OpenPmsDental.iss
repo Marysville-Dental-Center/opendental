@@ -97,6 +97,9 @@ Type: files; Name: "{app}\Tamir.SharpSSH.dll"
 Type: files; Name: "{app}\Org.Mentalis.Security.dll"
 Type: files; Name: "{app}\DiffieHellman.dll"
 Type: files; Name: "{app}\OpenPop.dll"
+; fo-dicom 4 (MS-PL), replaced by the in-house DICOM reader (docs/imaging/dicom-reader.md).
+Type: files; Name: "{app}\Dicom.Core.dll"
+Type: files; Name: "{app}\Dicom.Native.dll"
 
 [Files]
 Source: "{#StagingDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -174,7 +177,7 @@ function MissingPrereqText: String;
 begin
   Result := '';
   if NeedVcRedist then
-    Result := Result + '- ' + VcRedistName + ': the DICOM codecs and Direct2dWrapper.dll need it.' + #13#10;
+    Result := Result + '- ' + VcRedistName + ': Direct2dWrapper.dll, the program''s drawing, needs it.' + #13#10;
   if NeedWebView2 then
     Result := Result + '- ' + WebView2Name + ': every window that shows web content needs it.' + #13#10;
 end;
