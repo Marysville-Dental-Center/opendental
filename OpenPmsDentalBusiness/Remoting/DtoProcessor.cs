@@ -46,9 +46,9 @@ namespace OpenPmsDentalBusiness {
 					ODThread.AddInitializeHandler<string>(() => Security.PasswordTyped,password => Security.PasswordTyped=password);
 					//Ditto for CurComputerName
 					ODThread.AddInitializeHandler<string>(() => Security.CurComputerName,computerName => Security.CurComputerName=computerName);
-					//Calling Secrets.Decrypt will cause CDT to verify the assembly and then save the encryption key. This needs to be done here because
-					//if we later call Secrets.Decrypt inside a thread, we won't we able to find OpenPmsDentalServer.dll in the call stack.
-					ODException.SwallowAnyException(() => Secrets.Decrypt("odv2e$fakeciphertext",out _));
+					//Open Dental called Secrets.Decrypt here, so that its closed crypto library (CDT.dll) verified the Middle Tier's assembly in the
+					//call stack and saved the encryption key before any thread ran. CodeBase.Secrets has a fixed key and checks no call stack, and it
+					//rejected that call's odv2e$ value at once, so nothing needs to be done here.
 					_strOpenDentBusinessVersion=Assembly.GetAssembly(typeof(Db)).GetName().Version.ToString();
 					_isMiddleTierInitialized=true;
 				}
