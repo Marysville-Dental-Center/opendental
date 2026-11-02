@@ -25,6 +25,9 @@ namespace DataConnectionBase {
 		public const string ELEMENT_SSL_CA="SslCa";
 		public const string ELEMENT_CLIENT_CERT_THUMBPRINT="ClientCertThumbprint";
 		public const string ELEMENT_NO_SHOW_ON_STARTUP="NoShowOnStartup";
+		///<summary>A connection string at any depth of the file. The program prefers it to DatabaseConnection; it may name only a database on this
+		///computer (DbConnectionSecurity.GetConnectionStringProblem).</summary>
+		public const string ELEMENT_CONNECTION_STRING="ConnectionString";
 		#endregion Element names
 
 		///<summary>The server, "host" or "host:port". Element ComputerName.</summary>
@@ -67,11 +70,21 @@ namespace DataConnectionBase {
 			return Path.Combine(folder,ProgramNames.ConfigFileName);
 		}
 
-		///<summary>Where the connection settings tool keeps its copy of the office CA certificate:
-		///%ProgramData%\OpenPMS-Dental\Database\office-ca.pem.</summary>
-		public static string GetOfficeCaCopyPath() {
-			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),ProgramNames.ProgramDataFolderName,
-				ProgramNames.DbSettingsProgramDataFolderName,ProgramNames.OfficeCaFileName);
+		///<summary>Where the connection settings tool keeps its copy of the office CA certificate: ConnectionSettings\office-ca.pem in folder (the
+		///program folder, next to FreeDentalConfig.xml). The program folder of an all-users install is administrator-only, and a sub folder is
+		///never part of a release (docs/specs/db-connection-security.md section 4.4). Never %ProgramData%, where standard users may create the
+		///folder or the file first and own it.</summary>
+		public static string GetOfficeCaCopyPath(string folder) {
+			return Path.Combine(folder,ProgramNames.DbSettingsFolderName,ProgramNames.OfficeCaFileName);
+		}
+
+		///<summary>The value of the ConnectionString element of the file's navigator (any depth), or "" when there is none.</summary>
+		public static string ReadConnectionStringElement(XPathNavigator xPathNavigator) {
+			XPathNavigator xPathNavigatorConnectionString=xPathNavigator.SelectSingleNode("//"+ELEMENT_CONNECTION_STRING);
+			if(xPathNavigatorConnectionString==null) {
+				return "";
+			}
+			return xPathNavigatorConnectionString.Value??"";
 		}
 		#endregion Paths
 
@@ -228,7 +241,7 @@ namespace DataConnectionBase {
 			SetChild(xmlElementConn,ELEMENT_SSL_CA,SslCa,false);
 			SetChild(xmlElementConn,ELEMENT_CLIENT_CERT_THUMBPRINT,ClientCertThumbprint,false);
 			//A ConnectionString element would take precedence over DatabaseConnection, and a ServerConnection (Middle Tier) over both.
-			foreach(string name in new[] { "ConnectionString","ServerConnection" }) {
+			foreach(string name in new[] { ELEMENT_CONNECTION_STRING,"ServerConnection" }) {
 				XmlNode xmlNode=xmlElementRoot.SelectSingleNode("//"+name);
 				if(xmlNode!=null) {
 					xmlNode.ParentNode.RemoveChild(xmlNode);

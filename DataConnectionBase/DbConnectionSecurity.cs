@@ -12,21 +12,60 @@ using MySqlConnector;
 namespace DataConnectionBase {
 	///<summary>The one place that decides whether a database connection may be made (owner decisions Q3 to Q5 of 2026-11-02,
 	///docs/specs/db-connection-security.md). A connection to the same computer (localhost, any loopback address) is exempt. Any other needs
-	///SslMode=VerifyFull, SslCa (the office CA certificate file) and a client credential: a certificate from the LocalMachine store by
-	///thumbprint, or a password. Every MySqlConnection a shipped binary creates comes from NewMySqlConnection, so the refusal happens before
-	///any network connection is attempted. DNS is never asked to decide.</summary>
+	///SslMode=VerifyFull, SslCa (the office CA certificate file, this computer's own once one is configured) and a client credential: a
+	///certificate from the LocalMachine store by thumbprint, or a password. Every MySqlConnection a shipped binary creates comes from
+	///NewMySqlConnection, so the refusal happens before any network connection is attempted. DNS is never asked to decide.
+	///Two notations for a server have their own loopback tests: IsLoopbackConnectorServer reads a connection string's Server value exactly as
+	///MySqlConnector does; IsLoopbackServer reads the program's own notation (ComputerName, "host:port", "[v6]:port").</summary>
 	public static class DbConnectionSecurity {
 		///<summary>Connection strings that passed the check. A query creates a new DataConnection each time, so the check of an unchanged string
-		///is one look-up. Never holds a refused string.</summary>
+		///is one look-up. Never holds a refused string. Emptied when this computer's office CA changes (ClearPassed).</summary>
 		private static readonly HashSet<string> _hashSetPassed=new HashSet<string>(StringComparer.Ordinal);
 		private static readonly object _lockPassed=new object();
 		///<summary>The cache is emptied when it grows past this (connection strings change only when the database is switched).</summary>
 		private const int MAX_PASSED=256;
 
-		#region Hosts
-		///<summary>True when host (one host name or address, without a port) is this computer: "localhost" in any case, or an address that
-		///IPAddress.TryParse reads and IPAddress.IsLoopback accepts (127.0.0.0/8, ::1, an IPv4-mapped loopback). Square brackets around an IPv6
-		///address are allowed. Never resolves a name: every other name is the network, even one that resolves to this computer.</summary>
+		#region Hosts of a connection string (MySqlConnector's reading)
+		///<summary>True when entry, one comma-separated entry of a connection string's Server value exactly as MySqlConnector receives it (no
+		///trimming, no port or bracket removal), is this computer: "localhost" in any case with nothing around it, or a string that
+		///IPAddress.TryParse reads as it is and IPAddress.IsLoopback accepts (after MapToIPv4 for an IPv4-mapped address). MySqlConnector hands
+		///every entry unchanged to Dns.GetHostAddresses, which answers by itself only for what IPAddress.TryParse reads and sends every other
+		///entry to the system's name resolution. So "localhost:3306", "127.0.0.1:3306", "[127.0.0.1]" and " localhost" are names for the
+		///network, while "[::1]" (and "[::1]:3306", which TryParse reads as ::1) is this computer. Never resolves a name.</summary>
+		public static bool IsLoopbackConnectorHost(string entry) {
+			if(string.IsNullOrEmpty(entry)) {
+				return false;
+			}
+			if(string.Equals(entry,"localhost",StringComparison.OrdinalIgnoreCase)) {
+				return true;
+			}
+			IPAddress ipAddress;
+			if(!IPAddress.TryParse(entry,out ipAddress)) {
+				return false;
+			}
+			if(ipAddress.AddressFamily==AddressFamily.InterNetworkV6 && ipAddress.IsIPv4MappedToIPv6) {
+				ipAddress=ipAddress.MapToIPv4();
+			}
+			return IPAddress.IsLoopback(ipAddress);
+		}
+
+		///<summary>True when every entry of server, a connection string's Server value as MySqlConnectionStringBuilder.Server gives it, is this
+		///computer (IsLoopbackConnectorHost). The value is split at commas only, as MySqlConnector splits it; an empty entry in a list counts as
+		///the network. An empty value names no host on the network (a connection object made before a database is chosen) and counts as this
+		///computer.</summary>
+		public static bool IsLoopbackConnectorServer(string server) {
+			if(string.IsNullOrEmpty(server)) {
+				return true;
+			}
+			return server.Split(',').All(x => IsLoopbackConnectorHost(x));
+		}
+		#endregion Hosts of a connection string (MySqlConnector's reading)
+
+		#region Hosts in the program's notation
+		///<summary>True when host (one host name or address, without a port, in the program's notation) is this computer: "localhost" in any case,
+		///or an address that IPAddress.TryParse reads and IPAddress.IsLoopback accepts (127.0.0.0/8, ::1, an IPv4-mapped loopback). Square
+		///brackets around an address are allowed, as the program's notation has them. Never resolves a name: every other name is the network,
+		///even one that resolves to this computer. For a connection string's Server value use IsLoopbackConnectorServer.</summary>
 		public static bool IsLoopbackHost(string host) {
 			if(host==null) {
 				return false;
@@ -84,7 +123,8 @@ namespace DataConnectionBase {
 			host=host.Substring(0,indexColon);
 		}
 
-		///<summary>The hosts of a MySqlConnector Server value (a comma-separated list), each without a port, empty entries left out.</summary>
+		///<summary>The hosts of a server in the program's notation, or a comma-separated list of them, each without a port (SplitServer), empty
+		///entries left out.</summary>
 		public static List<string> GetHosts(string server) {
 			List<string> listHosts=new List<string>();
 			foreach(string entry in (server??"").Split(',')) {
@@ -96,23 +136,74 @@ namespace DataConnectionBase {
 			return listHosts;
 		}
 
-		///<summary>True when every host of server is a loopback host (IsLoopbackHost). An empty server names no host on the network (a connection
-		///object made before a database is chosen) and counts as this computer.</summary>
+		///<summary>Turns a server in the program's notation (SplitServer), or a comma-separated list of them, into what MySqlConnector takes:
+		///hosts, the Server value (the hosts without ports or brackets, comma-separated, empty entries left out), and the one port ("" when no
+		///entry names one). Returns false when the entries name different ports: MySqlConnector has one Port for all hosts.</summary>
+		public static bool SplitServerList(string server,out string hosts,out string port) {
+			List<string> listHosts=new List<string>();
+			port="";
+			foreach(string entry in (server??"").Split(',')) {
+				SplitServer(entry,out string host,out string portEntry);
+				if(host=="") {
+					continue;
+				}
+				listHosts.Add(host);
+				if(portEntry=="") {
+					continue;
+				}
+				if(port!="" && port!=portEntry) {
+					hosts=string.Join(",",listHosts);
+					return false;
+				}
+				port=portEntry;
+			}
+			hosts=string.Join(",",listHosts);
+			return true;
+		}
+
+		///<summary>True when every host of server, in the program's notation (ComputerName, "host:port", "[v6]:port", a preference, the command
+		///line), is a loopback host (IsLoopbackHost). An empty server names no host on the network (a connection object made before a database is
+		///chosen) and counts as this computer. A connection string's Server value is read differently: IsLoopbackConnectorServer.</summary>
 		public static bool IsLoopbackServer(string server) {
 			List<string> listHosts=GetHosts(server);
 			return listHosts.All(x => IsLoopbackHost(x));
 		}
-		#endregion Hosts
+		#endregion Hosts in the program's notation
+
+		#region Paths
+		///<summary>True when the two paths name the same file (full paths, case-insensitive, as Windows compares them). False when either is
+		///empty.</summary>
+		public static bool IsSamePath(string path1,string path2) {
+			if(string.IsNullOrWhiteSpace(path1) || string.IsNullOrWhiteSpace(path2)) {
+				return false;
+			}
+			return string.Equals(GetFullPathQuietly(path1),GetFullPathQuietly(path2),StringComparison.OrdinalIgnoreCase);
+		}
+
+		private static string GetFullPathQuietly(string path) {
+			path=path.Trim();
+			try {
+				return Path.GetFullPath(path).TrimEnd('\\');
+			}
+			catch(Exception ex) when(ex is ArgumentException || ex is NotSupportedException || ex is PathTooLongException
+				|| ex is System.Security.SecurityException)
+			{
+				return path;
+			}
+		}
+		#endregion Paths
 
 		#region The rule
-		///<summary>What a connection to server lacks under the rule, in the order of the refusal message. Empty when the connection may be made:
-		///the server is this computer, or every requirement is met. Never contains a secret.</summary>
+		///<summary>What a connection to server, a connection string's Server value as MySqlConnector reads it (IsLoopbackConnectorServer), lacks
+		///under the rule, in the order of the refusal message. Empty when the connection may be made: the server is this computer, or every
+		///requirement is met. officeCaPath is this computer's office CA (DataConnection.OfficeCaPath); when it is set, SslCa must be that file.
+		///Never contains a secret.</summary>
 		public static List<string> GetMissing(string server,MySqlConnectionProtocol protocol,MySqlSslMode sslMode,string sslCa,
 			MySqlCertificateStoreLocation certificateStoreLocation,string certificateThumbprint,bool hasPassword,
-			MySqlServerRedirectionMode serverRedirectionMode=MySqlServerRedirectionMode.Disabled)
+			MySqlServerRedirectionMode serverRedirectionMode=MySqlServerRedirectionMode.Disabled,string officeCaPath="")
 		{
 			List<string> listMissing=new List<string>();
-			if(IsLoopbackServer(server)) {
+			if(IsLoopbackConnectorServer(server)) {
 				return listMissing;
 			}
 			if(protocol!=MySqlConnectionProtocol.Sockets) {
@@ -123,6 +214,10 @@ namespace DataConnectionBase {
 			}
 			if(string.IsNullOrWhiteSpace(sslCa)) {
 				listMissing.Add("the office CA certificate file (SslCa)");
+			}
+			else if(!string.IsNullOrWhiteSpace(officeCaPath) && !IsSamePath(sslCa,officeCaPath)) {
+				//A CA named anywhere else (a database preference, a connection string) must never become what this computer trusts (Q5).
+				listMissing.Add("this computer's office CA certificate file (SslCa="+officeCaPath+", now "+sslCa+")");
 			}
 			else if(!File.Exists(sslCa)) {
 				listMissing.Add("the office CA certificate file "+sslCa+" (the file does not exist)");
@@ -140,12 +235,16 @@ namespace DataConnectionBase {
 			return listMissing;
 		}
 
-		///<summary>What the connection string lacks under the rule (GetMissing). Throws ArgumentException when MySqlConnector cannot read the
-		///string.</summary>
+		///<summary>What the connection string lacks under the rule (GetMissing), with this computer's office CA (DataConnection.OfficeCaPath).
+		///Throws ArgumentException when MySqlConnector cannot read the string.</summary>
 		public static List<string> GetMissing(string connectionString) {
 			MySqlConnectionStringBuilder builder=new MySqlConnectionStringBuilder(connectionString??"");
+			return GetMissing(builder);
+		}
+
+		private static List<string> GetMissing(MySqlConnectionStringBuilder builder) {
 			return GetMissing(builder.Server,builder.ConnectionProtocol,builder.SslMode,builder.SslCa,builder.CertificateStoreLocation,
-				builder.CertificateThumbprint,!string.IsNullOrEmpty(builder.Password),builder.ServerRedirectionMode);
+				builder.CertificateThumbprint,!string.IsNullOrEmpty(builder.Password),builder.ServerRedirectionMode,DataConnection.OfficeCaPath);
 		}
 
 		///<summary>Throws DbConnectionRefusedException when the connection string fails the rule. Makes no connection.</summary>
@@ -157,8 +256,7 @@ namespace DataConnectionBase {
 				}
 			}
 			MySqlConnectionStringBuilder builder=new MySqlConnectionStringBuilder(connectionString);
-			List<string> listMissing=GetMissing(builder.Server,builder.ConnectionProtocol,builder.SslMode,builder.SslCa,
-				builder.CertificateStoreLocation,builder.CertificateThumbprint,!string.IsNullOrEmpty(builder.Password),builder.ServerRedirectionMode);
+			List<string> listMissing=GetMissing(builder);
 			if(listMissing.Count>0) {
 				throw new DbConnectionRefusedException(builder.Server,listMissing);
 			}
@@ -167,6 +265,14 @@ namespace DataConnectionBase {
 					_hashSetPassed.Clear();
 				}
 				_hashSetPassed.Add(connectionString);
+			}
+		}
+
+		///<summary>Forgets every connection string that passed, so each is checked again. DataConnection.OfficeCaPath calls it when this
+		///computer's office CA changes.</summary>
+		public static void ClearPassed() {
+			lock(_lockPassed) {
+				_hashSetPassed.Clear();
 			}
 		}
 
@@ -194,11 +300,48 @@ namespace DataConnectionBase {
 			return "Run "+ProgramNames.DbSettingsExeFileName+" in the program folder as an administrator to set up the connection.";
 		}
 
-		///<summary>The message of a refusal by the rule. No secret is ever part of it.</summary>
+		///<summary>The message of a refusal by the rule. server is a connection string's Server value or a server in the program's notation; its
+		///entries are named as they are. No secret is ever part of it.</summary>
 		public static string GetRefusalMessage(string server,List<string> listMissing) {
-			string hosts=string.Join(", ",GetHosts(server));
-			return "Open PMS - Dental did not connect to the database server "+hosts+": a connection over the network must be encrypted and the "
-				+"server verified, and this computer's connection settings are missing: "+string.Join("; ",listMissing)+". "+ToolSentence();
+			string hosts=GetServerDisplay(server);
+			string message="Open PMS - Dental did not connect to the database server "+hosts+": a connection over the network must be encrypted and "
+				+"the server verified, and this computer's connection settings are missing: "+string.Join("; ",listMissing)+". ";
+			if(IsLoopbackServer(server) && !IsLoopbackConnectorServer(server)) {
+				//"localhost:3306" or "[127.0.0.1]" in a connection string: the program's notation, but not what MySqlConnector reads as this computer.
+				message+="MySqlConnector takes each entry of Server as a host name exactly as it is, so a port or square brackets in it make a name on "
+					+"the network; give the port with Port=. ";
+			}
+			return message+ToolSentence();
+		}
+
+		///<summary>The entries of server, trimmed, joined by ", ", empty ones left out.</summary>
+		public static string GetServerDisplay(string server) {
+			return string.Join(", ",(server??"").Split(',').Select(x => x.Trim()).Where(x => x!=""));
+		}
+
+		///<summary>The refusal of a connection string that names a server over the network (owner decision Q2: such a server's credential is the
+		///client certificate or the password stored with DPAPI, never one in a connection string). "" when every host of its Server value is this
+		///computer (IsLoopbackConnectorServer). A string MySqlConnector cannot read is refused too; its own parse message is left out, because it
+		///could quote part of the string.</summary>
+		public static string GetConnectionStringProblem(string connectionString) {
+			if(string.IsNullOrWhiteSpace(connectionString)) {
+				return "";
+			}
+			MySqlConnectionStringBuilder builder;
+			try {
+				builder=new MySqlConnectionStringBuilder(connectionString);
+			}
+			catch(Exception ex) when(ex is ArgumentException || ex is FormatException || ex is InvalidOperationException) {
+				return "The connection string (ConnectionString in "+ProgramNames.ConfigFileName+") cannot be read as a MySqlConnector connection "
+					+"string. "+ToolSentence();
+			}
+			if(IsLoopbackConnectorServer(builder.Server)) {
+				return "";
+			}
+			return "The connection string (ConnectionString in "+ProgramNames.ConfigFileName+") names the database server "
+				+GetServerDisplay(builder.Server)+" over the network. Connection strings are for a database on this computer only: a server over the "
+				+"network is set up with the office CA certificate and the client certificate or a database password stored on this computer. "
+				+ToolSentence();
 		}
 		#endregion Messages
 	}

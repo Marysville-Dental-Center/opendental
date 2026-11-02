@@ -256,6 +256,37 @@ namespace DataConnectionBase {
 		}
 		private static string _clientCertificateThumbprint="";
 
+		///<summary>This computer's office CA certificate file (FreeDentalConfig.xml SslCa), or "" when it has none. One per computer, so one per
+		///process, set wherever ClientCertificateThumbprint is set. Once it is set, BuildSimpleConnectionString uses it for every server over the
+		///network, whatever CA the caller names, and the rule (DbConnectionSecurity) refuses a connection string over the network with any other
+		///SslCa: a CA path from the database preferences (read-only and reporting servers) or a connection string never becomes what this
+		///computer trusts (owner decision Q5). Changing it makes the rule check every connection string again.</summary>
+		public static string OfficeCaPath {
+			get {
+				return _officeCaPath;
+			}
+			set {
+				string officeCaPath=(value??"").Trim();
+				if(officeCaPath==_officeCaPath) {
+					return;
+				}
+				_officeCaPath=officeCaPath;
+				DbConnectionSecurity.ClearPassed();
+			}
+		}
+		private static string _officeCaPath="";
+
+		///<summary>The CA certificate file for a connection to server (the program's notation) whose own settings name sslCaOther, such as the CA
+		///path of a read-only or reporting server preference: for a server over the network this computer's office CA (OfficeCaPath) and never
+		///sslCaOther, which anyone who can change the database preferences could point at a CA of their own; for a server on this computer
+		///sslCaOther, as before. Callers handle a blank server (the main connection) themselves.</summary>
+		public static string GetSslCaForServer(string server,string sslCaOther) {
+			if(DbConnectionSecurity.IsLoopbackServer(server)) {
+				return sslCaOther??"";
+			}
+			return OfficeCaPath;
+		}
+
 		private static string ConnectionString {
 			get {
 				if(String.IsNullOrEmpty(_connectionStringT)) {
@@ -482,21 +513,27 @@ namespace DataConnectionBase {
 
 		#region ConnectionString
 
-		///<summary>The connection string for a server ("host", "host:port", "[v6]:port" or a bare IPv6 address). A server on this computer
-		///(DbConnectionSecurity.IsLoopbackServer) connects as it always did: SslMode=none, or VerifyCA when sslCa is set. Any other server gets
-		///SslMode=VerifyFull, the office CA (sslCa) and, when this computer has one, the client certificate from the LocalMachine store
+		///<summary>The connection string for a server in the program's notation ("host", "host:port", "[v6]", "[v6]:port", a bare IPv6 address,
+		///or a comma-separated list of them with one port). Server= gets the hosts without ports or brackets, as MySqlConnector takes them, and
+		///Port= the port. A server on this computer (DbConnectionSecurity.IsLoopbackConnectorServer of that Server value) connects as it always
+		///did: SslMode=none, or VerifyCA when sslCa is set. Any other server gets SslMode=VerifyFull, the office CA (OfficeCaPath once this
+		///computer has one, otherwise sslCa) and, when this computer has one, the client certificate from the LocalMachine store
 		///(certificateThumbprint; null means ClientCertificateThumbprint). The string passes the rule only when the CA and a certificate or a
-		///password are there (docs/specs/db-connection-security.md); DbConnectionSecurity checks it before any connection is made.</summary>
+		///password are there (docs/specs/db-connection-security.md); DbConnectionSecurity checks it before any connection is made. Throws
+		///DbConnectionRefusedException for a list whose entries name different ports.</summary>
 		public static string BuildSimpleConnectionString(DatabaseType pDbType,string pServer,string pDatabase,string pUserID,string pPassword,string sslCa="",
 			string certificateThumbprint=null)
 		{
-			DbConnectionSecurity.SplitServer(pServer,out string serverName,out string port);
+			if(!DbConnectionSecurity.SplitServerList(pServer,out string serverName,out string port)) {
+				throw new DbConnectionRefusedException(pServer,"The database servers "+DbConnectionSecurity.GetServerDisplay(pServer)+" name different "
+					+"ports, but a connection has one port for all of its servers. "+DbConnectionSecurity.ToolSentence());
+			}
 			if(port=="") {
 				port=DefaultPortNum().ToString();
 			}
 			string connectStr="";
 			connectStr=
-				"Server="+serverName
+				"Server="+QuoteValue(serverName)
 				+";Port="+port//although this does seem to cause a bug in Mono.  We will revisit this bug if needed to exclude the port option only for Mono.
 				+";Database="+QuoteValue(pDatabase)
 				//+";Connect Timeout=20"
@@ -508,7 +545,8 @@ namespace DataConnectionBase {
 				+";Convert Zero Datetime=true"//Convert all MySQL dates 0000-00-00 to 0001-01-01, since C# crashes for 0000-00-00 dates.
 				+";Default Command Timeout="+CommandTimeout;//one hour timeout on commands.  Prevents crash during conversions, etc.
 			//+";Pooling=false";
-			if(DbConnectionSecurity.IsLoopbackServer(pServer)) {
+			//Decided on the Server value written above, with MySqlConnector's own reading of it, so the decision and the connection always agree.
+			if(DbConnectionSecurity.IsLoopbackConnectorServer(serverName)) {
 				if(String.IsNullOrEmpty(sslCa)) {
 					connectStr+=";SslMode=none";
 				}
@@ -518,7 +556,11 @@ namespace DataConnectionBase {
 				}
 				return connectStr;
 			}
-			//Over the network: encrypted, and the server's certificate must chain to the office CA and name the host (owner decision Q5).
+			//Over the network: encrypted, and the server's certificate must chain to the office CA and name the host (owner decision Q5). This
+			//computer's office CA wins over any other the caller names (a read-only or reporting server preference).
+			if(!String.IsNullOrEmpty(OfficeCaPath)) {
+				sslCa=OfficeCaPath;
+			}
 			connectStr+=";SslMode=VerifyFull";
 			if(!String.IsNullOrEmpty(sslCa)) {
 				connectStr+=";SslCa="+QuoteValue(sslCa);

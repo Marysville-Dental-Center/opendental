@@ -54,7 +54,7 @@ namespace OpenPmsDentalDbSettings {
 					return ex.ExitCode;
 				}
 			}
-			using(FormDbSettings formDbSettings=new FormDbSettings(configPath,DbConnectionConfig.GetOfficeCaCopyPath(),
+			using(FormDbSettings formDbSettings=new FormDbSettings(configPath,DbConnectionConfig.GetOfficeCaCopyPath(Application.StartupPath),
 				DbSettingsRunner.RequestFromArgs(dbSettingsArgs,dbSettingsSecrets)))
 			{
 				Application.Run(formDbSettings);
@@ -83,7 +83,7 @@ namespace OpenPmsDentalDbSettings {
 							+(dbSettingsRequest.User??dbConnectionConfigCurrent.User)+":");
 					}
 				}
-				DbSettingsResult dbSettingsResult=DbSettingsRunner.Apply(dbSettingsRequest,configPath,DbConnectionConfig.GetOfficeCaCopyPath());
+				DbSettingsResult dbSettingsResult=DbSettingsRunner.Apply(dbSettingsRequest,configPath,DbConnectionConfig.GetOfficeCaCopyPath(Application.StartupPath));
 				if(dbSettingsResult.ExitCode!=DbSettingsRunner.EXIT_OK || !dbSettingsArgs.IsTest) {
 					return dbSettingsResult;
 				}

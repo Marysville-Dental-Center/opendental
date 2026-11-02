@@ -1367,8 +1367,10 @@ namespace OpenPmsDental{
 					connectStrReadOnly=PrefC.ReadOnlyServer.URI;
 				}
 				else {
+					//Here and below: for a server over the network this computer's office CA, never the CA path in the preference
+					//(docs/specs/db-connection-security.md section 5).
 					connectStrReadOnly=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,PrefC.ReadOnlyServer.Server, PrefC.ReadOnlyServer.Database,
-						PrefC.ReadOnlyServer.MySqlUser,PrefC.ReadOnlyServer.MySqlPass,PrefC.ReadOnlyServer.SslCa);
+						PrefC.ReadOnlyServer.MySqlUser,PrefC.ReadOnlyServer.MySqlPass,DataConnection.GetSslCaForServer(PrefC.ReadOnlyServer.Server,PrefC.ReadOnlyServer.SslCa));
 				}
 				try {
 					programVersionReadOnly=DataConnection.GetProgramVersion(connectStrReadOnly);
@@ -1389,7 +1391,7 @@ namespace OpenPmsDental{
 					connectStrReport=PrefC.ReportingServer.URI;
 				}
 				else {
-					string reportingSslCa=PrefC.GetStringSilent(PrefName.ReportingServerSslCa);
+					string reportingSslCa=DataConnection.GetSslCaForServer(PrefC.ReportingServer.Server,PrefC.GetStringSilent(PrefName.ReportingServerSslCa));
 					connectStrReport=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,PrefC.ReportingServer.Server,PrefC.ReportingServer.Database, 
 						PrefC.ReportingServer.MySqlUser, PrefC.ReportingServer.MySqlPass,reportingSslCa);
 				}
@@ -1427,7 +1429,7 @@ namespace OpenPmsDental{
 				}
 				else {
 					connectStrReadOnly=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,PrefC.ReadOnlyServer.Server, PrefC.ReadOnlyServer.Database,
-						PrefC.ReadOnlyServer.MySqlUser,PrefC.ReadOnlyServer.MySqlPass,PrefC.ReadOnlyServer.SslCa);
+						PrefC.ReadOnlyServer.MySqlUser,PrefC.ReadOnlyServer.MySqlPass,DataConnection.GetSslCaForServer(PrefC.ReadOnlyServer.Server,PrefC.ReadOnlyServer.SslCa));
 				}
 				try {
 					isReadOnlyCorrupted=DataConnection.GetCorruptedDatabasePref(connectStrReadOnly);
@@ -1447,7 +1449,7 @@ namespace OpenPmsDental{
 				}
 				else {
 					connectStrReport=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,PrefC.ReportingServer.Server,PrefC.ReportingServer.Database, 
-						PrefC.ReportingServer.MySqlUser, PrefC.ReportingServer.MySqlPass,PrefC.ReportingServer.SslCa);
+						PrefC.ReportingServer.MySqlUser, PrefC.ReportingServer.MySqlPass,DataConnection.GetSslCaForServer(PrefC.ReportingServer.Server,PrefC.ReportingServer.SslCa));
 				}
 				try {
 					isReportCorrupted=DataConnection.GetCorruptedDatabasePref(connectStrReport);
@@ -1476,7 +1478,7 @@ namespace OpenPmsDental{
 				}
 				else {
 					connectStrReadOnly=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,PrefC.ReadOnlyServer.Server, PrefC.ReadOnlyServer.Database,
-						PrefC.ReadOnlyServer.MySqlUser,PrefC.ReadOnlyServer.MySqlPass,PrefC.ReadOnlyServer.SslCa);
+						PrefC.ReadOnlyServer.MySqlUser,PrefC.ReadOnlyServer.MySqlPass,DataConnection.GetSslCaForServer(PrefC.ReadOnlyServer.Server,PrefC.ReadOnlyServer.SslCa));
 				}
 				try {
 					isReadOnlyUpdating=DataConnection.GetUpdateInProgressPref(connectStrReadOnly);
@@ -1497,7 +1499,7 @@ namespace OpenPmsDental{
 				}
 				else {
 					connectStrReport=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,PrefC.ReportingServer.Server,PrefC.ReportingServer.Database, 
-						PrefC.ReportingServer.MySqlUser, PrefC.ReportingServer.MySqlPass,PrefC.ReportingServer.SslCa);
+						PrefC.ReportingServer.MySqlUser, PrefC.ReportingServer.MySqlPass,DataConnection.GetSslCaForServer(PrefC.ReportingServer.Server,PrefC.ReportingServer.SslCa));
 				}
 				try {
 					isReportUpdating=DataConnection.GetUpdateInProgressPref(connectStrReport);

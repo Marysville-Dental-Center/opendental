@@ -50,8 +50,9 @@ namespace CodeBase {
 		public const string LegacyLocalAppDataFolderName="OpenDental";
 		///<summary>The program's folder under %ProgramData%: the SFTP download stash, and the logs of web applications.</summary>
 		public const string ProgramDataFolderName="OpenPMS-Dental";
-		///<summary>The sub folder of ProgramDataFolderName where the connection settings tool keeps its copy of the office CA certificate.</summary>
-		public const string DbSettingsProgramDataFolderName="Database";
+		///<summary>The sub folder of the program folder where the connection settings tool keeps its copy of the office CA certificate
+		///(administrator-only; a release publishes only the top-level files, so it never carries it).</summary>
+		public const string DbSettingsFolderName="ConnectionSettings";
 		///<summary>The file name of that copy of the office CA certificate (PEM).</summary>
 		public const string OfficeCaFileName="office-ca.pem";
 		///<summary>The program's folder under %TEMP% (PrefC.GetTempFolderPath). The program empties it when it closes.</summary>

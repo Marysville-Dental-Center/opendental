@@ -254,11 +254,18 @@ namespace OpenPmsDentalBusiness{
 			else {
 				Logger.LogToPath("DataConnection.SetDb",LogPath.Startup,LogPhase.Start);
 				DataConnection.DBtype=databaseType;
-				//This computer's client certificate, for this connection and the read-only and reporting servers. The connection rule
-				//(DbConnectionSecurity) refuses a server over the network without encryption before anything is sent.
+				//This computer's client certificate and office CA, for this connection and the read-only and reporting servers. The connection rule
+				//(DbConnectionSecurity) refuses a server over the network without encryption, or with any other CA, before anything is sent.
 				DataConnection.ClientCertificateThumbprint=centralConnection.ClientCertThumbprint??"";
+				DataConnection.OfficeCaPath=centralConnection.SslCA??"";
 				DataConnection dataConnection=new DataConnection();
 				if(connectionString.Length > 0) {
+					//A connection string is for a database on this computer only: its credential is neither the client certificate nor the password
+					//stored with DPAPI (owner decision Q2, docs/specs/db-connection-security.md section 3.1).
+					string connectionStringProblem=DbConnectionSecurity.GetConnectionStringProblem(connectionString);
+					if(connectionStringProblem!="") {
+						throw new DbConnectionRefusedException("",connectionStringProblem);
+					}
 					dataConnection.SetDb(connectionString,"",DataConnection.DBtype);
 				}
 				else {
@@ -501,7 +508,8 @@ namespace OpenPmsDentalBusiness{
 		///either. Debug: a missing file is created and an unreadable one gives the localhost defaults, as Choose Database then shows them. Release
 		///(Choose Database is not offered there): a missing, unreadable or empty file, an old-style password for a server over the network or a
 		///stored password this computer cannot read sets ChooseDatabaseInfo.ConfigProblem, which the program shows before it exits
-		///(docs/specs/db-connection-security.md). Debug sets ConfigProblem for the password cases too. Throws exceptions.</summary>
+		///(docs/specs/db-connection-security.md). Debug sets ConfigProblem for the password cases too. In both, a ConnectionString element that
+		///names a server over the network sets ConfigProblem and is never used. Throws exceptions.</summary>
 		public static ChooseDatabaseInfo GetChooseDatabaseConnectionSettings(string xmlPath,bool isDebug)
 		{
 			Meth.NoCheckMiddleTierRole();
@@ -576,10 +584,18 @@ namespace OpenPmsDentalBusiness{
 					databaseType=DatabaseType.Oracle;
 				}
 				//ConnectionString
-				xPathNavigator2=xPathNavigator.SelectSingleNode("//ConnectionString");
+				xPathNavigator2=xPathNavigator.SelectSingleNode("//"+DbConnectionConfig.ELEMENT_CONNECTION_STRING);
 				if(xPathNavigator2!=null) {
 					//If there is a ConnectionString, then use it.
 					connectionString=xPathNavigator2.Value;
+				}
+				//A connection string is for a database on this computer only, in Release and Debug alike: one that names a server over the network
+				//carries its own credential, which is neither the client certificate nor the password stored with DPAPI (owner decision Q2,
+				//docs/specs/db-connection-security.md section 3.1). It is never used; the problem names the connection settings tool.
+				string connectionStringProblem=DbConnectionSecurity.GetConnectionStringProblem(connectionString);
+				if(connectionStringProblem!="") {
+					connectionString="";
+					configProblem=connectionStringProblem;
 				}
 				//UseDynamicMode
 				xPathNavigator2=xPathNavigator.SelectSingleNode("//UseDynamicMode");
@@ -605,7 +621,9 @@ namespace OpenPmsDentalBusiness{
 					}
 					catch(DbConnectionRefusedException ex) {
 						centralConnection.MySqlPassword="";
-						configProblem=ex.Message;
+						if(configProblem=="") {//A refused connection string, which the program would have used first, is named first.
+							configProblem=ex.Message;
+						}
 					}
 					if(dbConnectionConfig.NoShowOnStartup!=null) {
 						if(dbConnectionConfig.NoShowOnStartup=="True") {

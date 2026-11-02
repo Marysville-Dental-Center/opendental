@@ -43,8 +43,10 @@ namespace ServiceManager {
 				textDatabase.Text=dbConnectionConfig.Database;
 				textUser.Text=dbConnectionConfig.User;
 				textPEM.Text=dbConnectionConfig.SslCa;
-				//Test connection presents this computer's client certificate to a server over the network, as the program does.
+				//Test connection presents this computer's client certificate to a server over the network and verifies it against this computer's
+				//office CA, as the program does.
 				DataConnection.ClientCertificateThumbprint=dbConnectionConfig.ClientCertThumbprint;
+				DataConnection.OfficeCaPath=dbConnectionConfig.SslCa;
 				try {
 					textPassword.Text=dbConnectionConfig.GetPassword();
 				}
