@@ -63,6 +63,7 @@
       "tests\\InitSqlTests\\InitSqlTests.csproj",
       "tests\\InsuranceTests\\InsuranceTests.csproj",
       "tests\\LibraryBindingTests\\LibraryBindingTests.csproj",
+      "tests\\LibSpellTests\\LibSpellTests.csproj",
       "tests\\M201Tests\\M201Tests.csproj",
       "tests\\M202Tests\\M202Tests.csproj",
       "tests\\M2ADJTests\\M2ADJTests.csproj",
