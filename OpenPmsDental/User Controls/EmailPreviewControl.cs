@@ -682,9 +682,10 @@ namespace OpenPmsDental {
 		}
 
 		///<summary>Accepts a list of MimeEntity and parses it for paths, htmls and other key factors. It will test that the resulting parts
-		///have a valid image extension. If they do, they are saved to a temporary web page for presentation to the user. If they are not
+		///have a valid image extension. If they do, their images go into dictFiles by file name, the name the html now uses for them, for the
+		///in-memory page that shows them (nothing is written to disk). If they are not
 		///then they are disreguarded an a message is sent to the user warning them of potentially malicious content.</summary>
-		private string ParseAndSaveAttachement(string htmlFolderPath,string html,List<MimeEntity> listParts) {
+		private string ParseAttachedImages(string html,List<MimeEntity> listParts,Dictionary<string,byte[]> dictFiles) {
 				bool hasDangerousAttachment=false;
 				foreach(MimeEntity entity in listParts) {
 					string contentId=EmailMessages.GetMimeImageContentId(entity);
@@ -700,7 +701,10 @@ namespace OpenPmsDental {
 					EmailAttach attachment=_listEmailAttachDisplayed.FirstOrDefault(x => x.DisplayedFileName.ToLower().Trim()==fileName.ToLower().Trim());
 					//The path and filename must be directly accessed from the EmailAttach object in question, otherwise subsequent code would have accessed
 					//an empty bodied message and never shown an image.
-					EmailMessages.SaveMimeImageToFile(entity,htmlFolderPath,attachment?.ActualFileName);
+					byte[] byteArrayImage=EmailMessages.GetMimeImageBytes(entity,attachment?.ActualFileName);
+					if(byteArrayImage!=null) {
+						dictFiles[fileName]=byteArrayImage;
+					}
 				}
 				if(hasDangerousAttachment) {
 					//Since the extension is not within the image formats it may contain mallware and we will not parse or present it.
@@ -711,8 +715,6 @@ namespace OpenPmsDental {
 
 		private void butShowImages_Click(object sender,EventArgs e) {
 			try {
-				//We need a folder in order to place the images beside the html file in order for the relative image paths to work correctly.
-				string htmlFolderPath=ODFileUtils.CreateRandomFolder(PrefC.GetTempFolderPath());//Throws exceptions.
 				string html=HtmlText??"";
 				List<MimeEntity> listMimeEntries=new List<MimeEntity>();
 				if(_listAppParts!=null) {
@@ -721,15 +723,18 @@ namespace OpenPmsDental {
 				if(_listImageParts!=null) {
 					listMimeEntries.AddRange(_listImageParts);
 				}
-				html=ParseAndSaveAttachement(htmlFolderPath,html,listMimeEntries);
-				//The page goes into the images' folder, so their relative paths work. Still no scripts, and links still only go through LinkClicked.
-				//The user asked for the images, so the email's web images load too. Files still come only from that folder (and, for the office's
-				//own email, from the email images folder), never from another computer's share.
+				//The images stay in memory: they go into the page's own folder with the page, which the browser gets from memory too, so their
+				//relative paths work and nothing of the email is written to disk.
+				Dictionary<string,byte[]> dictFiles=new Dictionary<string,byte[]>(StringComparer.OrdinalIgnoreCase);
+				html=ParseAttachedImages(html,listMimeEntries,dictFiles);
+				//Still no scripts, and links still only go through LinkClicked. The user asked for the images, so the email's web images load too.
+				//Files still come only from the page's own folder (and, for the office's own email, from the email images folder), never from another
+				//computer's share.
 				List<string> listFoldersAllowed=null;
 				if(!IsReceived()) {
 					listFoldersAllowed=MarkupEdit.GetImageFolders(isEmail:true);
 				}
-				webViewEmail.NavigateToHtml(html,htmlFolderPath,isRemoteContentAllowed:true,listFoldersAllowed:listFoldersAllowed);
+				webViewEmail.NavigateToHtml(html,isRemoteContentAllowed:true,listFoldersAllowed:listFoldersAllowed,dictFiles:dictFiles);
 				butShowImages.Visible=false;
 			}
 			catch(Exception ex) {

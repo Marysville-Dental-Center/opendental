@@ -1872,6 +1872,7 @@
     <Compile Include="Logic\CareCreditL.cs" />
     <Compile Include="UI\BordersDpi\MouseWatcher\MouseWatcher.cs" />
     <Compile Include="Logic\PayConnectL.cs" />
+    <Compile Include="Logic\WebView2L.cs" />
     <Compile Include="Logic\PayPlanL.cs" />
     <Compile Include="Logic\aaLogicUI.cs" />
     <Compile Include="Logic\AppointmentL.cs" />

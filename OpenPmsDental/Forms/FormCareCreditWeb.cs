@@ -44,11 +44,8 @@ namespace OpenPmsDental {
 				Close();
 				return;
 			}
-			try {
-				await webViewMain.Init();
-			}
-			catch(Exception ex){
-				FriendlyException.Show("Error loading window.",ex);
+			//One message when the browser cannot start: Init's own for the WebView2 Runtime, this one for anything else.
+			if(!await WebView2L.TryInit(webViewMain,"Error loading window.")) {
 				Close();
 				return;
 			}
