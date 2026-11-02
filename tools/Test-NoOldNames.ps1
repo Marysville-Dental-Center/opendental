@@ -1,7 +1,8 @@
 <#
 .SYNOPSIS
-	Lists the old internal code names (OpenDental, OpenDentBusiness, OpenDentalGraph, OpenDentalCloud, OpenDentalServer, OpenDentHL7) that are
-	left outside a reviewed allow-list. Report mode by default; -Strict fails while any remain.
+	Lists the old internal code names (OpenDental, OpenDentBusiness, OpenDentalGraph, OpenDentalCloud, OpenDentalServer, OpenDentHL7) and the
+	names retired since (OpenPmsDentalCloud) that are left outside a reviewed allow-list. Report mode by default; -Strict fails while any
+	remain.
 
 .DESCRIPTION
 	Scans the text files of the repository (code, XAML, resources, project and solution files, scripts, configuration and Markdown) for the
@@ -26,7 +27,11 @@
 	- text and checks about Open Dental itself (its company, its own Windows service, its developers' checkout folders, its leftover files
 	  on a workstation, its host names, its licence list entries and generated preference tables);
 	- the names of builds before the rename that are still looked up (the %LOCALAPPDATA% folder, the HL7 service name) and the test that
-	  keeps the old literals out of the sites routed through CodeBase\Utilities\ProgramNames.cs.
+	  keeps the old literals out of the sites routed through CodeBase\Utilities\ProgramNames.cs;
+	- a retired name (OpenPmsDentalCloud, the storage library up to v0.0; OpenPmsDentalStorage since 2026-11-02) in the history that
+	  records it (the port notes, specs and reviews, as for the older names, plus the v0.0 release notes, the decoupling plan, the roadmap
+	  item and the owner questions) and where a leftover v0.0 file is removed or refused (ProgramNames.LegacyCloudDllFileName, setup's
+	  [InstallDelete], the Build-Release.ps1 deny-list, and the test that pins the old value).
 	An entry has a Path, a wildcard matched against the repository relative path (backslashes), and at most one of Match and Line, regular
 	expressions. With neither it allows the whole file. Match allows only the old names that lie inside a match of the expression, so another
 	old name on the same line is still reported. Line allows every old name on a line that the expression matches. Keep entries narrow.
@@ -66,8 +71,9 @@ param(
 Set-StrictMode -Version 2.0
 $ErrorActionPreference='Stop'
 
-#The old names, as whole words, matching case.
-$OldNames=@('OpenDental','OpenDentBusiness','OpenDentalGraph','OpenDentalCloud','OpenDentalServer','OpenDentHL7')
+#The old names, as whole words, matching case: Open Dental's six code names (the rename of 2026-11-01), then the names retired since.
+#Retired: OpenPmsDentalCloud, the storage library's name up to v0.0 (OpenPmsDentalStorage since the storage rename of 2026-11-02).
+$OldNames=@('OpenDental','OpenDentBusiness','OpenDentalGraph','OpenDentalCloud','OpenDentalServer','OpenDentHL7','OpenPmsDentalCloud')
 $TokenPattern='(?<![A-Za-z0-9_])(?:'+($OldNames -join '|')+')(?![A-Za-z0-9_])'
 
 #Text files that are read. Everything else is skipped as binary.
@@ -151,6 +157,17 @@ $AllowList=@(
 	@{ Path='tests\ReleaseFlowTests\ProgramNamesTests.cs'; Match='"OpenDental",ProgramNames\.LegacyLocalAppDataFolderName'; Reason='The test that the pre-rename folder never changes.' }
 	@{ Path='tests\ReleaseFlowTests\ProgramNamesTests.cs'; Line='^\s*\[@"[^"]+"\]=new\[\]'; Reason='The pre-rename literals that must stay out of the sites routed through ProgramNames.' }
 	@{ Path='tests\ReleaseFlowTests\InstallerTests.cs'; Match='"OpenDental\.exe","OpenDentBusiness\.dll"'; Reason="The release's deny-list test: a release never carries a file of the pre-rename names." }
+
+	#--- Retired names: OpenPmsDentalCloud, the storage library up to v0.0 (OpenPmsDentalStorage since the storage rename of 2026-11-02,
+	#docs\port-notes\RENAME.md). The port notes, specs and reviews are history for every name (above); these entries allow only this name.
+	@{ Path='docs\release-notes\v0.0.md'; Match='\bOpenPmsDentalCloud\b'; Reason='The v0.0 release notes name the storage library as v0.0 shipped it (history).' }
+	@{ Path='docs\decoupling-plan.md'; Match='\bOpenPmsDentalCloud\b'; Reason='The decoupling plan records the rename of 2026-11-01 with the names it gave (history).' }
+	@{ Path='docs\roadmap.md'; Match='`OpenPmsDentalCloud` becomes `OpenPmsDentalStorage`'; Reason='The roadmap item of the storage rename.' }
+	@{ Path='docs\owner-questions.md'; Match='`OpenPmsDentalCloud` in v0\.0'; Reason="The storage library's name in v0.0, next to its name since." }
+	@{ Path='CodeBase\Utilities\ProgramNames.cs'; Match='LegacyCloudDllFileName="OpenPmsDentalCloud\.dll"'; Reason="The storage library's file name in v0.0: a retired file that is never published or staged, and that setup deletes." }
+	@{ Path='tests\ReleaseFlowTests\ProgramNamesTests.cs'; Match='"OpenPmsDentalCloud\.dll",ProgramNames\.LegacyCloudDllFileName'; Reason="The test that the v0.0 storage library's file name never changes." }
+	@{ Path='installer\OpenPmsDental.iss'; Match='Name: "\{app\}\\OpenPmsDentalCloud\.dll"'; Reason='Setup deletes the storage library of v0.0 on an upgrade ([InstallDelete]).' }
+	@{ Path='tools\Build-Release.ps1'; Match="@\('OpenPmsDentalCloud\.dll',"; Reason='The deny-list: a release never stages the storage library of v0.0.' }
 )
 
 #The file walk and the line scan, in C#: a PowerShell loop over every old name in the repository takes minutes.
