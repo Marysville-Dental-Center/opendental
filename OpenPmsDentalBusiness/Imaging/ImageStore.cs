@@ -531,6 +531,22 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
+		///<summary>The DICOM part of Import, for a document of a .dcm file: a radiograph with a printed heading, and the initial window from the
+		///image (DicomHelper.CalculateWindowingOnImport). Returns the image read, or null: a file no reader can read (for example a compressed
+		///format this version does not open) is still imported, with no windowing, as Documents.InsertMissing attaches it; opening it says why it
+		///is not shown.</summary>
+		public static BitmapDicom SetDicomImportFields(Document doc,string pathImportFrom) {
+			doc.ImgType=ImageType.Radiograph;
+			BitmapDicom bitmapDicom=DicomHelper.GetFromFile(pathImportFrom);
+			doc.PrintHeading=true;
+			if(bitmapDicom!=null) {
+				DicomHelper.CalculateWindowingOnImport(bitmapDicom);
+				doc.WindowingMin=bitmapDicom.WindowingMin;
+				doc.WindowingMax=bitmapDicom.WindowingMax;
+			}
+			return bitmapDicom;
+		}
+
 		/// <summary>Imports any document, not just images.  Also handles dicom by calculating initial windowing.  Also processes Exif rotation info on jpg files.
 		/// Set doAvoidOverwrite to give the new file a numbered suffix when a file of its name is already in the patient's folder; otherwise the import fails then.</summary>
 		public static Document Import(string pathImportFrom,long docCategory,Patient pat,bool doAvoidOverwrite=false) {
@@ -577,16 +593,7 @@ namespace OpenPmsDentalBusiness {
 				}
 			}
 			else if(doc.FileName.ToLower().EndsWith(".dcm")){
-				doc.ImgType=ImageType.Radiograph;
-				BitmapDicom bitmapDicom=DicomHelper.GetFromFile(pathImportFrom);
-				doc.PrintHeading=true;
-				//A file no reader can read (for example a compressed format this version does not open) is still imported, with no windowing,
-				//as Documents.InsertMissing attaches it; opening it says why it is not shown.
-				if(bitmapDicom!=null) {
-					DicomHelper.CalculateWindowingOnImport(bitmapDicom);
-					doc.WindowingMin=bitmapDicom.WindowingMin;
-					doc.WindowingMax=bitmapDicom.WindowingMax;
-				}
+				SetDicomImportFields(doc,pathImportFrom);
 			}
 			else {
 				doc.ImgType=ImageType.Document;
