@@ -86,7 +86,7 @@ namespace DbConnectionSecurityTests {
 		public void Network_TheComputersCertificate_IsUsedWhenNoneIsGiven_AndAnEmptyOneTurnsItOff() {
 			string ca=TestHelpers.WriteCaPem(_folder);
 			DataConnection.ClientCertificateThumbprint=THUMBPRINT;
-			Assert.AreEqual(THUMBPRINT,Build(TestHelpers.NETWORK_HOST,"",ca).CertificateThumbprint,"The read-only and reporting servers get it too.");
+			Assert.AreEqual(THUMBPRINT,Build(TestHelpers.NETWORK_HOST,"",ca).CertificateThumbprint,"Every connection of the program's own account.");
 			Assert.AreEqual("",Build(TestHelpers.NETWORK_HOST,"x",ca,"").CertificateThumbprint??"");
 			Assert.AreEqual("",Build("localhost","","").CertificateThumbprint??"","Never sent to this computer's server.");
 		}
@@ -132,22 +132,20 @@ namespace DbConnectionSecurityTests {
 
 		[TestMethod]
 		public void Network_ThisComputersOfficeCa_WinsOverTheCaTheCallerNames() {
+			//The program's own account (BuildSimpleConnectionString). The read-only and reporting servers of their own keep their preference's CA:
+			//PreferenceServerTests.
 			string ca=TestHelpers.WriteCaPem(_folder);
-			string caPreference=TestHelpers.WriteCaPem(_folder,"preference-ca.pem");
-			//No office CA on this computer: a read-only or reporting server over the network gets none from its preference, and is refused.
-			Assert.AreEqual("",DataConnection.GetSslCaForServer(TestHelpers.NETWORK_HOST,caPreference));
-			string connectionStringNone=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,TestHelpers.NETWORK_HOST,"opendental","opmsd","x",
-				DataConnection.GetSslCaForServer(TestHelpers.NETWORK_HOST,caPreference));
+			string caOther=TestHelpers.WriteCaPem(_folder,"other-ca.pem");
+			//No office CA on this computer yet and none named: refused.
+			string connectionStringNone=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,TestHelpers.NETWORK_HOST,"opendental","opmsd","x","");
 			CollectionAssert.AreEqual(new[] { "the office CA certificate file (SslCa)" },DbConnectionSecurity.GetMissing(connectionStringNone));
 			DataConnection.OfficeCaPath=ca;
-			Assert.AreEqual(ca,DataConnection.GetSslCaForServer(TestHelpers.NETWORK_HOST+":3307",caPreference));
-			Assert.AreEqual(ca,Build(TestHelpers.NETWORK_HOST,"x",caPreference).SslCa,"The caller's CA is never used over the network.");
-			Assert.AreEqual(ca,Build(TestHelpers.NETWORK_HOST,"x","").SslCa,"Also when the caller names none (ConnectionStoreBase.SetDb).");
-			Assert.AreEqual(0,DbConnectionSecurity.GetMissing(Build(TestHelpers.NETWORK_HOST,"x",caPreference).ConnectionString).Count);
+			Assert.AreEqual(ca,Build(TestHelpers.NETWORK_HOST,"x",caOther).SslCa,"The caller's CA is never used over the network.");
+			Assert.AreEqual(ca,Build(TestHelpers.NETWORK_HOST,"x","").SslCa,"Also when the caller names none.");
+			Assert.AreEqual(0,DbConnectionSecurity.GetMissing(Build(TestHelpers.NETWORK_HOST,"x",caOther).ConnectionString).Count);
 			//A server on this computer keeps the CA of its own settings, as before.
-			Assert.AreEqual(caPreference,DataConnection.GetSslCaForServer("localhost:3306",caPreference));
-			MySqlConnectionStringBuilder builderLocal=Build("localhost","",caPreference);
-			Assert.AreEqual(caPreference,builderLocal.SslCa);
+			MySqlConnectionStringBuilder builderLocal=Build("localhost","",caOther);
+			Assert.AreEqual(caOther,builderLocal.SslCa);
 			Assert.AreEqual(MySqlSslMode.VerifyCA,builderLocal.SslMode);
 		}
 
