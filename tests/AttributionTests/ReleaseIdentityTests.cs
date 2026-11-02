@@ -43,10 +43,13 @@ namespace AttributionTests {
 			"Oracle","Tao_Freeglut",
 		};
 
-		///<summary>What packages BIN-A and BIN-B delete, and Open Dental's own closed binaries: never listed as shipped.</summary>
+		///<summary>What packages BIN-A and BIN-B delete, Open Dental's own closed binaries, and the libraries the tier 1 library updates removed
+		///(OpenPop.NET, SharpSSH with Mentalis.org and DiffieHellman, MimeKit 2's BouncyCastle.Crypto, the Google APIs 1.44 platform shims): never
+		///listed as shipped.</summary>
 		private static readonly string[] _arrayNotShipped=new string[] {
 			"Sparks3D","SigPlusNET","Interop.Word","Interop.Microsoft.Office","Interop.VBIDE","stdole","AcroPDF","Acrobat","zxing","Avalara","RS232","DotNetZip",
-			"Ionic","Drifty","VBbridges","xImageDeviceManager","EZTwain","Eztwain","SuniUSB","VideoCamLib",
+			"Ionic","Drifty","VBbridges","xImageDeviceManager","EZTwain","Eztwain","SuniUSB","VideoCamLib","OpenPop","SharpSSH","Mentalis",
+			"DiffieHellman","BouncyCastle.Crypto.dll","PlatformServices",
 		};
 
 		#region Helpers
