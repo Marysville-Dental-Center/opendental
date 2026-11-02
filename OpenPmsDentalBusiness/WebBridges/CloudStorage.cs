@@ -1,6 +1,6 @@
 ﻿using CodeBase;
-using OpenPmsDentalCloud;
-using OpenPmsDentalCloud.Core;
+using OpenPmsDentalStorage;
+using OpenPmsDentalStorage.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -82,7 +82,7 @@ namespace OpenPmsDentalBusiness {
 			TaskStateUpload taskStateUpload=null;
 			switch(PrefC.AtoZfolderUsed) {					
 				case DataStorageType.DropboxAtoZ:
-					taskStateUpload=new OpenPmsDentalCloud.RemovedStorage.Upload(Dropbox.StorageRemovedMessage) {
+					taskStateUpload=new OpenPmsDentalStorage.RemovedStorage.Upload(Dropbox.StorageRemovedMessage) {
 						Folder=PathTidy(folder),
 						FileName=fileName,
 						ByteArray=byteArray,
@@ -90,7 +90,7 @@ namespace OpenPmsDentalBusiness {
 					};
 					break;
 				case DataStorageType.SftpAtoZ:
-					taskStateUpload=new OpenPmsDentalCloud.Sftp.Upload(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
+					taskStateUpload=new OpenPmsDentalStorage.Sftp.Upload(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
 						Folder=PathTidy(folder),
 						FileName=fileName,
 						ByteArray=byteArray,
@@ -135,12 +135,12 @@ namespace OpenPmsDentalBusiness {
 			TaskStateDownload taskStateDownload=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					taskStateDownload=new OpenPmsDentalCloud.RemovedStorage.Download(Dropbox.StorageRemovedMessage);
+					taskStateDownload=new OpenPmsDentalStorage.RemovedStorage.Download(Dropbox.StorageRemovedMessage);
 					taskStateDownload.Folder=PathTidy(folder);
 					taskStateDownload.FileName=fileName;
 					break;
 				case DataStorageType.SftpAtoZ:
-					taskStateDownload=new OpenPmsDentalCloud.Sftp.Download(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password);
+					taskStateDownload=new OpenPmsDentalStorage.Sftp.Download(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password);
 					taskStateDownload.Folder=PathTidy(folder);
 					taskStateDownload.FileName=fileName;
 					break;
@@ -160,7 +160,7 @@ namespace OpenPmsDentalBusiness {
 			TaskStateDelete taskStateDelete=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					taskStateDelete=new OpenPmsDentalCloud.RemovedStorage.Delete(Dropbox.StorageRemovedMessage) {
+					taskStateDelete=new OpenPmsDentalStorage.RemovedStorage.Delete(Dropbox.StorageRemovedMessage) {
 						Path=PathTidy(path)
 					};
 					break;
@@ -168,7 +168,7 @@ namespace OpenPmsDentalBusiness {
 					if(!FileExists(path)) {
 						return;
 					}
-					taskStateDelete=new OpenPmsDentalCloud.Sftp.Delete(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
+					taskStateDelete=new OpenPmsDentalStorage.Sftp.Delete(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
 						Path=PathTidy(path)
 					};
 					break;
@@ -189,13 +189,13 @@ namespace OpenPmsDentalBusiness {
 			TaskStateThumbnail taskStateThumbnail=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					taskStateThumbnail=new OpenPmsDentalCloud.RemovedStorage.Thumbnail(Dropbox.StorageRemovedMessage) {
+					taskStateThumbnail=new OpenPmsDentalStorage.RemovedStorage.Thumbnail(Dropbox.StorageRemovedMessage) {
 						Folder=PathTidy(folder),
 						FileName=fileName
 					};
 					break;
 				case DataStorageType.SftpAtoZ:
-					taskStateThumbnail=new OpenPmsDentalCloud.Sftp.Thumbnail(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
+					taskStateThumbnail=new OpenPmsDentalStorage.Sftp.Thumbnail(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
 						Folder=PathTidy(folder),
 						FileName=fileName
 					};
@@ -218,14 +218,14 @@ namespace OpenPmsDentalBusiness {
 			TaskStateMove taskStateMove=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					taskStateMove=new OpenPmsDentalCloud.RemovedStorage.Move(Dropbox.StorageRemovedMessage) {
+					taskStateMove=new OpenPmsDentalStorage.RemovedStorage.Move(Dropbox.StorageRemovedMessage) {
 						FromPath=PathTidy(fromPath),
 						ToPath=PathTidy(toPath),
 						HasExceptions=hasExceptions
 					};
 					break;
 				case DataStorageType.SftpAtoZ:
-					taskStateMove=new OpenPmsDentalCloud.Sftp.Move(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
+					taskStateMove=new OpenPmsDentalStorage.Sftp.Move(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
 						FromPath=PathTidy(fromPath),
 						ToPath=PathTidy(toPath),
 						HasExceptions=hasExceptions
@@ -252,13 +252,13 @@ namespace OpenPmsDentalBusiness {
 			TaskStateMove state=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					state=new OpenPmsDentalCloud.RemovedStorage.Copy(Dropbox.StorageRemovedMessage) {
+					state=new OpenPmsDentalStorage.RemovedStorage.Copy(Dropbox.StorageRemovedMessage) {
 						FromPath=PathTidy(fromPath),
 						ToPath=PathTidy(toPath)
 					};
 					break;
 				case DataStorageType.SftpAtoZ:
-					state=new OpenPmsDentalCloud.Sftp.Copy(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
+					state=new OpenPmsDentalStorage.Sftp.Copy(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
 						FromPath=PathTidy(fromPath),
 						ToPath=PathTidy(toPath)
 					};
@@ -280,13 +280,13 @@ namespace OpenPmsDentalBusiness {
 			TaskStateListFolders taskStateListFolders=null;
 			switch(PrefC.AtoZfolderUsed) {
 				case DataStorageType.DropboxAtoZ:
-					taskStateListFolders=new OpenPmsDentalCloud.RemovedStorage.ListFolders(Dropbox.StorageRemovedMessage) {
+					taskStateListFolders=new OpenPmsDentalStorage.RemovedStorage.ListFolders(Dropbox.StorageRemovedMessage) {
 						FolderPath=PathTidy(folderPath)
 					};
 					break;
 				case DataStorageType.SftpAtoZ:
 					try {
-						taskStateListFolders=new OpenPmsDentalCloud.Sftp.ListFolders(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
+						taskStateListFolders=new OpenPmsDentalStorage.Sftp.ListFolders(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password) {
 							FolderPath=PathTidy(folderPath)
 						};
 					}
@@ -314,7 +314,7 @@ namespace OpenPmsDentalBusiness {
 					retVal=false;//Dropbox storage was removed. Nothing can be read from it.
 					break;
 				case DataStorageType.SftpAtoZ:
-					retVal=OpenPmsDentalCloud.Sftp.FileExists(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password,path);
+					retVal=OpenPmsDentalStorage.Sftp.FileExists(ODSftp.Hostname,ODSftp.UserName,ODSftp.Password,path);
 					break;
 				case DataStorageType.InDatabase:
 				case DataStorageType.LocalAtoZ:

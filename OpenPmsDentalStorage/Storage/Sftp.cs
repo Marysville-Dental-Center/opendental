@@ -7,17 +7,17 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using CodeBase;
-using OpenPmsDentalCloud.Core;
+using OpenPmsDentalStorage.Core;
 using Renci.SshNet;
 using Renci.SshNet.Common;
 using Renci.SshNet.Sftp;
 
-namespace OpenPmsDentalCloud {
+namespace OpenPmsDentalStorage {
 
 	public static class Sftp {
 		///<summary>SSH.NET (Renci.SshNet 2024.1, net462) references Microsoft.Bcl.AsyncInterfaces 1.0.0.0 for its async enumerables, and loading
 		///SftpClient fails without it. Naming one of its types here puts the shipped 6.0.0.0 copy in this assembly's references, so every program
-		///that uses OpenPmsDentalCloud copies the DLL and gets the binding redirect SSH.NET needs. The Graph SDK brought both in until it was deleted
+		///that uses OpenPmsDentalStorage copies the DLL and gets the binding redirect SSH.NET needs. The Graph SDK brought both in until it was deleted
 		///with the prebuilt Bridges assembly.</summary>
 		internal static readonly Type TypeAsyncInterfacesDependency=typeof(IAsyncDisposable);
 

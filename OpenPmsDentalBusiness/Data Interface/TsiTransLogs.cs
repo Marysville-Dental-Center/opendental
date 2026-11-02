@@ -5,8 +5,8 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using CodeBase;
-using OpenPmsDentalCloud;
-using OpenPmsDentalCloud.Core;
+using OpenPmsDentalStorage;
+using OpenPmsDentalStorage.Core;
 
 namespace OpenPmsDentalBusiness{
 	///<summary></summary>

@@ -2129,9 +2129,9 @@
       <Project>{29c41020-4411-41f2-9061-9b71b5b32b5d}</Project>
       <Name>xDataConnectionBase</Name>
     </ProjectReference>
-    <ProjectReference Include="..\OpenPmsDentalCloud\OpenPmsDentalCloud.csproj">
+    <ProjectReference Include="..\OpenPmsDentalStorage\OpenPmsDentalStorage.csproj">
       <Project>{f90d0481-3d97-4c72-af6e-dd81177e3de1}</Project>
-      <Name>OpenPmsDentalCloud</Name>
+      <Name>OpenPmsDentalStorage</Name>
     </ProjectReference>
     <ProjectReference Include="..\PasswordVaultWrapper\PasswordVaultWrapper.csproj">
       <Project>{59052a4b-ec6f-44e3-8c3f-26749d28bcf3}</Project>

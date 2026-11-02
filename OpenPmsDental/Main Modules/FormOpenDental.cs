@@ -664,14 +664,14 @@ namespace OpenPmsDental{
 					string decryptedPassword;
 					Secrets.DecryptSftp(programPropertyPassword.PropertyValue,out decryptedPassword); //Password is encrypted when stored, so	we have to decrypt it in order to get the plaintext.
 					try {
-						hasConnected=OpenPmsDentalCloud.Sftp.FileExists(programPropertyHost.PropertyValue,programPropertyUsername.PropertyValue,decryptedPassword,
+						hasConnected=OpenPmsDentalStorage.Sftp.FileExists(programPropertyHost.PropertyValue,programPropertyUsername.PropertyValue,decryptedPassword,
 							ODFileUtils.CombinePaths(programPropertyPath.PropertyValue,"A",'/'));
 					}
 					catch(Exception) {
 						hasConnected=false;//If an error occurs, DataStorageType does not connect
 					}
 				}
-				OpenPmsDentalCloud.Sftp.Download.CleanupStashes(false);//Cleanup stashes which are no longer in use. No need to cleanup stash for current instance yet.
+				OpenPmsDentalStorage.Sftp.Download.CleanupStashes(false);//Cleanup stashes which are no longer in use. No need to cleanup stash for current instance yet.
 			}
 			if(!hasConnected) {//It does not successfully connect to Dropbox or Sftp, showing an error message.
 				MsgBox.Show(storageErrMsg);
@@ -7067,7 +7067,7 @@ namespace OpenPmsDental{
 			//  }
 			//}
 			if(PrefC.AtoZfolderUsed==DataStorageType.SftpAtoZ) {
-				OpenPmsDentalCloud.Sftp.Download.CleanupStashes(true);//Cleanup current stash as well as stashes which are no longer in use.
+				OpenPmsDentalStorage.Sftp.Download.CleanupStashes(true);//Cleanup current stash as well as stashes which are no longer in use.
 			}
 			string tempPath="";
 			string[] stringArrayFileNames;

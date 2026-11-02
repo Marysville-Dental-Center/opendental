@@ -365,7 +365,7 @@ namespace OpenPmsDental{
 			if(radioSftp.Checked) {
 				bool doesFileExist;
 				try {
-					doesFileExist=OpenPmsDentalCloud.Sftp.FileExists(textSftpHostname.Text,textSftpUsername.Text,textSftpPassword.Text,
+					doesFileExist=OpenPmsDentalStorage.Sftp.FileExists(textSftpHostname.Text,textSftpUsername.Text,textSftpPassword.Text,
 						ODFileUtils.CombinePaths(textSftpAtoZ.Text,"A",'/'));
 				}
 				catch(Exception ex) {

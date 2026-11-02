@@ -12,7 +12,7 @@ using CodeBase;
 using Health.Direct.Common.Metadata;
 using OpenPmsDentalBusiness.FileIO;
 using static OpenPmsDentalBusiness.Eclaims.Canadian;
-using OpenPmsDentalCloud.Core;
+using OpenPmsDentalStorage.Core;
 using System.Transactions;
 using System.Windows.Media.Imaging;
 

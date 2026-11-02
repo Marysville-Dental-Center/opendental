@@ -4,9 +4,9 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Threading.Tasks;
-using OpenPmsDentalCloud.Core;
+using OpenPmsDentalStorage.Core;
 
-namespace OpenPmsDentalCloud {
+namespace OpenPmsDentalStorage {
 	///<summary>Thrown, or stored in TaskState.Error, when the database still names an A to Z storage type that this program no longer supports.</summary>
 	public class StorageRemovedException:Exception {
 		public StorageRemovedException(string message):base(message) {
