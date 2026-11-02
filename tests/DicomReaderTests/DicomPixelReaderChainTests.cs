@@ -111,7 +111,7 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
-		public void CaptureWriterFile_IsReadWithoutFoDicom_OtherFilesStillWithIt() {
+		public void CaptureWriterFileAndOtherFiles_AreReadWithoutFoDicom() {
 			string folder=Path.Combine(Path.GetTempPath(),"dicomreadertests_"+Guid.NewGuid().ToString("N"));
 			Directory.CreateDirectory(folder);
 			try {
@@ -122,8 +122,8 @@ namespace DicomReaderTests {
 				File.WriteAllBytes(pathImplicit,TestFiles.FromFoDicom(DicomTransferSyntax.ImplicitVRLittleEndian,10,20,16,16,0,"MONOCHROME2",
 					SyntheticDicom.Words(arrayPixels)));
 				long sum=arrayPixels.Sum(x => (long)x);
-				Assert.AreEqual("20x10 sum "+sum+"|fo-dicom not loaded",RunIsolated(pathSubset),"The subset is read by the in-house reader alone.");
-				Assert.AreEqual("20x10 sum "+sum+"|fo-dicom loaded",RunIsolated(pathImplicit),"Other files still go to fo-dicom.");
+				Assert.AreEqual("20x10 sum "+sum+"|fo-dicom not loaded",RunIsolated(pathSubset),"The subset is read by the in-house subset reader.");
+				Assert.AreEqual("20x10 sum "+sum+"|fo-dicom not loaded",RunIsolated(pathImplicit),"Other files are read by the in-house full reader.");
 			}
 			finally {
 				try {

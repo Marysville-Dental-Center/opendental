@@ -246,7 +246,7 @@ namespace DicomReaderTests {
 		}
 
 		[TestMethod]
-		public void SignedValues_AreDeclined_AndDicomHelperBehavesAsBefore() {
+		public void SignedValues_AreDeclined_AndDicomHelperReadsThemWithTheFullReader() {
 			short[] arraySigned={ -2048,-1,0,1,2047,-100 };
 			ushort[] arrayWords=arraySigned.Select(x => unchecked((ushort)x)).ToArray();
 			foreach(ushort bitsStored in new ushort[] { 12,16 }) {
@@ -254,15 +254,14 @@ namespace DicomReaderTests {
 				DicomSubsetReadResult result=Read(bytes);
 				Assert.AreEqual(DicomSubsetReadStatus.Unsupported,result.Status,result.ToString());
 				StringAssert.Contains(result.Reason,"signed");
-				//DicomHelper hands the file to fo-dicom, which gives what it always gave for signed data (no image).
-				BitmapDicom bitmapDicomFoDicom=TestFiles.ReadWithFoDicom(bytes,out string error);
+				//fo-dicom's path showed no signed image; the full reader moves the values up by half their range (DicomImageReaderTests).
 				BitmapDicom bitmapDicomHelper;
 				using(MemoryStream memoryStream=new MemoryStream(bytes)) {
 					bitmapDicomHelper=DicomHelper.GetFromStream(memoryStream);
 				}
-				Assert.IsNull(error,error);
-				Assert.IsNull(bitmapDicomFoDicom,"fo-dicom's path never showed signed data.");
-				Assert.IsNull(bitmapDicomHelper);
+				int half=1<<(bitsStored-1);
+				CollectionAssert.AreEqual(arraySigned.Select(x => (ushort)(x+half)).ToArray(),bitmapDicomHelper.ArrayDataRaw);
+				Assert.AreEqual(bitsStored,bitmapDicomHelper.BitsStored);
 			}
 		}
 

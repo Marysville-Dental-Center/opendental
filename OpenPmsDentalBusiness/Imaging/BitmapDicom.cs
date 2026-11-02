@@ -30,10 +30,83 @@ namespace OpenPmsDentalBusiness {
 	public class DicomHelper{
 		///<summary>The in-house reader of uncompressed Explicit VR Little Endian files (design 7.8, CAP-DR): the subset the capture writer emits.</summary>
 		public static readonly IDicomPixelReader SubsetReader=new DicomSubsetReader();
-		///<summary>fo-dicom (MS-PL), the reader Open Dental has always used, unchanged. It reads every file the subset reader declines.</summary>
+		///<summary>The in-house reader of every other DICOM file (docs/imaging/dicom-reader.md): every encoding, the photometric interpretations
+		///the program shows, RLE Lossless and JPEG Baseline, and a clear reason for what it declines.</summary>
+		public static readonly DicomImageReader FullReader=new DicomImageReader();
+		///<summary>fo-dicom (MS-PL), the reader Open Dental used. No longer used by the program; kept only until the tests have compared the
+		///in-house reader with it.</summary>
 		public static readonly IDicomPixelReader FoDicomReader=new FoDicomPixelReader();
-		///<summary>What GetFromFile, GetFromStream and GetFromBase64 read with: the subset reader first, then fo-dicom.</summary>
-		public static readonly IDicomPixelReader PixelReader=new DicomPixelReaderChain(SubsetReader,FoDicomReader);
+		///<summary>What GetFromFile, GetFromStream and GetFromBase64 read with: the subset reader first, for the files the capture writes, then
+		///the full reader for every file the subset reader declines.</summary>
+		public static readonly IDicomPixelReader PixelReader=new DicomPixelReaderChain(SubsetReader,FullReader);
+
+		///<summary>Reads the file as GetFromFile does (the subset reader, then the full reader), and says why when there is no image. Never
+		///throws.</summary>
+		public static DicomImageReadResult ReadFileResult(string path){
+			if(!File.Exists(path)){
+				return new DicomImageReadResult(DicomImageReadStatus.FileError,"The file does not exist.",null,null);
+			}
+			DicomSubsetReadResult resultSubset=DicomSubsetReader.ReadFileResult(path);
+			if(resultSubset.Status==DicomSubsetReadStatus.Read){
+				return new DicomImageReadResult(DicomImageReadStatus.Read,"",resultSubset.BitmapDicom,DicomSubsetReader.TransferSyntaxExplicitVrLittleEndian);
+			}
+			return FullReader.ReadFileResult(path);
+		}
+
+		///<summary>Reads the stream as GetFromStream does (the subset reader, then the full reader from the same position), and says why when
+		///there is no image. Never throws.</summary>
+		public static DicomImageReadResult ReadStreamResult(Stream stream){
+			if(stream==null || !stream.CanRead){
+				return new DicomImageReadResult(DicomImageReadStatus.FileError,"No stream to read.",null,null);
+			}
+			try{
+				Stream streamReplay=DicomPixelReaderChain.GetReplayableStream(stream,out bool isFirstReaderPossible);
+				if(isFirstReaderPossible){
+					long position=streamReplay.Position;
+					DicomSubsetReadResult resultSubset=DicomSubsetReader.ReadStreamResult(streamReplay);
+					if(resultSubset.Status==DicomSubsetReadStatus.Read){
+						return new DicomImageReadResult(DicomImageReadStatus.Read,"",resultSubset.BitmapDicom,DicomSubsetReader.TransferSyntaxExplicitVrLittleEndian);
+					}
+					streamReplay.Position=position;
+				}
+				return FullReader.ReadStreamResult(streamReplay);
+			}
+			catch(Exception ex){
+				return new DicomImageReadResult(DicomImageReadStatus.FileError,"The file could not be read: "+ex.Message,null,null);
+			}
+		}
+
+		///<summary>What to tell the user when a DICOM file is not shown, from ReadFileResult or ReadStreamResult. "" when it was read. A compressed
+		///format this version has no decoder for is named, with the note that this version cannot open it yet.</summary>
+		public static string GetNotReadMessage(DicomImageReadResult result){
+			if(result==null){
+				return Lans.g("DicomHelper","The DICOM file could not be read.");
+			}
+			switch(result.Status){
+				case DicomImageReadStatus.Read:
+					return "";
+				case DicomImageReadStatus.UnsupportedCompression:
+					string format=result.TransferSyntaxName;
+					if(format==""){
+						format=Lans.g("DicomHelper","a format the file does not name");
+					}
+					else if(DicomTransferSyntaxes.Find(result.TransferSyntaxUid)==null){
+						format=Lans.g("DicomHelper","an unknown format (transfer syntax")+" "+result.TransferSyntaxUid+")";
+					}
+					return Lans.g("DicomHelper","This DICOM image is stored as")+" "+format+". "
+						+Lans.g("DicomHelper","This version of the program cannot open that format yet.");
+				case DicomImageReadStatus.TooLarge:
+					return Lans.g("DicomHelper","This DICOM image is too large to open.")+" "+result.Reason;
+				case DicomImageReadStatus.NotDicom:
+					return Lans.g("DicomHelper","This file is not a DICOM file the program can open.")+" "+result.Reason;
+				case DicomImageReadStatus.Unsupported:
+					return Lans.g("DicomHelper","This DICOM image cannot be shown by this version of the program.")+" "+result.Reason;
+				case DicomImageReadStatus.Malformed:
+					return Lans.g("DicomHelper","This DICOM file is damaged or not valid DICOM, so it cannot be opened.")+" "+result.Reason;
+				default:
+					return Lans.g("DicomHelper","The DICOM file could not be read.")+" "+result.Reason;
+			}
+		}
 
 		///<summary>Windowing values (document.WindowingMin and WindowingMax) are always stored from 0 to 255, whatever the bit depth of the image.
 		///Returns how many raw pixel values one windowing step covers: 1 for 8 bit data, 16 for 12 bit data (4095/255, as before), and 256 for true
@@ -131,17 +204,23 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>Returns null if something goes wrong.</summary>
 		public static BitmapDicom GetFromBase64(string rawBase64){
-			byte[] bytesRaw=Convert.FromBase64String(rawBase64);
+			byte[] bytesRaw;
+			try{
+				bytesRaw=Convert.FromBase64String(rawBase64);
+			}
+			catch(Exception){//null or not base64
+				return null;
+			}
 			using MemoryStream memoryStream=new MemoryStream(bytesRaw);
 			return GetFromStream(memoryStream);
 		}
 
-		///<summary>Returns null if something goes wrong. Reads with PixelReader: the in-house subset reader first, then fo-dicom, which may throw for a file it cannot parse, as it always could.</summary>
+		///<summary>Returns null if something goes wrong. Reads with PixelReader: the in-house subset reader first, then the in-house full reader. Neither throws; ReadStreamResult says why a stream gave no image.</summary>
 		public static BitmapDicom GetFromStream(Stream stream){
 			return PixelReader.ReadStream(stream);
 		}
 
-		///<summary>Returns null if something goes wrong. Reads with PixelReader: the in-house subset reader first, then fo-dicom, which may throw for a file it cannot open, as it always could.</summary>
+		///<summary>Returns null if something goes wrong. Reads with PixelReader: the in-house subset reader first, then the in-house full reader. Neither throws; ReadFileResult says why a file gave no image.</summary>
 		public static BitmapDicom GetFromFile(string filename){
 			if(!File.Exists(filename)){
 				return null;
