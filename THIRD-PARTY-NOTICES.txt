@@ -4,7 +4,12 @@ Open PMS - Dental: third-party notices
 Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and
 contributors. The program itself is licensed under the GNU General Public
 License, version 2 or (at your option) any later version; see LICENSE and
-NOTICE.
+NOTICE. PDFsharp and MigraDoc, below, are licensed under the GNU Affero
+General Public License, version 3, which can be combined with version 3 of
+the GNU GPL but not with version 2. The program as distributed is therefore
+conveyed under the GNU GPL, version 3, with PDFsharp and MigraDoc under the
+GNU AGPL, version 3 (section 13 of each license); the full texts are
+LICENSE-GPL-3.0.txt and LICENSE-AGPL-3.0.txt next to this file.
 
 The release ships the third-party components below next to OpenPmsDental.exe.
 Each keeps its own license. For each component this file names the files,
@@ -13,8 +18,9 @@ its source is published. The license texts follow the components: the short
 standard texts in full, and the vendor texts kept from Open Dental's license
 list in the program (Help > About > View Licenses), under the component's name.
 The GNU Lesser General Public License, version 2.1, is in full in
-LICENSE-LGPL-2.1.txt next to this file, and the GNU General Public License,
-version 2, in LICENSE.
+LICENSE-LGPL-2.1.txt next to this file, the GNU General Public License,
+version 2, in LICENSE, version 3 in LICENSE-GPL-3.0.txt, and the GNU Affero
+General Public License, version 3, in LICENSE-AGPL-3.0.txt.
 Copyright years are in each project's own license file at its source address.
 
 Files in the repository's "Required dlls" folder that are not listed here are
@@ -84,18 +90,28 @@ License:   MIT License (the project's own text follows)
 Source:    https://github.com/sshnet/SSH.NET
 
 --- Component: PDFsharp
-Files:     PdfSharp.dll, PdfSharp.Charting.dll
-Version:   1.2
+Files:     PdfSharp-gdi.dll, PdfSharp.Charting-gdi.dll, PdfSharp.Shared.dll, PdfSharp.System.dll,
+           PdfSharp.License.dll
+Version:   6.5.0 (NuGet package PDFsharp-GDI 6.5.0, its .NET Framework build; PdfSharp.License.dll
+           is assembly version 7.0.0.0)
 Copyright: empira Software GmbH
-License:   MIT License (the project's own text follows)
-Source:    https://github.com/empira/PDFsharp
+License:   GNU Affero General Public License, version 3 (LICENSE-AGPL-3.0.txt). The NuGet package
+           says AGPL-3.0-only; the LICENSE file of the source says "version 3 of the License, or
+           (at your option) any later version". empira's own notice and the license text follow.
+           empira also sells a commercial license; this project does not have one and uses the
+           AGPL license (PdfSharpLicense.SetAgplLicense).
+Source:    https://github.com/empira/PDFsharp (branch release/6.5.0)
+Note:      PdfSharp.License.dll, the license check that PdfSharp-gdi.dll calls before it makes or
+           reads a PDF, is a prebuilt file whose source is not in the public repository. Owner
+           question (docs/owner-questions.md).
 
 --- Component: MigraDoc
-Files:     MigraDoc.DocumentObjectModel.dll, MigraDoc.Rendering.dll, MigraDoc.RtfRendering.dll
-Version:   1.2
+Files:     MigraDoc.DocumentObjectModel.dll, MigraDoc.Rendering-gdi.dll
+Version:   6.5.0 (NuGet package PDFsharp-MigraDoc-GDI 6.5.0, its .NET Framework build)
 Copyright: empira Software GmbH
-License:   MIT License (the project's own text follows)
-Source:    https://github.com/empira/MigraDoc
+License:   GNU Affero General Public License, version 3 (LICENSE-AGPL-3.0.txt), as PDFsharp.
+           empira's own notice and the license text follow.
+Source:    https://github.com/empira/PDFsharp (branch release/6.5.0; MigraDoc is part of it)
 
 --- Component: SharpDX
 Files:     SharpDX.dll, SharpDX.Direct3D9.dll, SharpDX.Mathematics.dll

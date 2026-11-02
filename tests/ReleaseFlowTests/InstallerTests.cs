@@ -35,7 +35,8 @@ namespace ReleaseFlowTests {
 
 		///<summary>The program folder's documents, staged from the repository.</summary>
 		private static readonly string[] _arrayDocuments=new string[] {
-			"LICENSE","LICENSE-LGPL-2.1.txt","NOTICE","THIRD-PARTY-NOTICES.txt",@"db\init\new-database.sql",@"db\README.md",
+			"LICENSE","LICENSE-GPL-3.0.txt","LICENSE-AGPL-3.0.txt","LICENSE-LGPL-2.1.txt","NOTICE","THIRD-PARTY-NOTICES.txt",@"db\init\new-database.sql",
+			@"db\README.md",
 		};
 
 		///<summary>The file the GNU LGPL 2.1 text ships as (LGPL 2.1 sections 1 and 4: a copy of the licence with every copy of the library).</summary>

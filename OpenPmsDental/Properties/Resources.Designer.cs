@@ -1483,5 +1483,23 @@ namespace OpenPmsDental.Properties {
                 return ResourceManager.GetString("ThirdPartyNotices", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   LICENSE-AGPL-3.0.txt in the repository root: the GNU Affero General Public License, version 3, the license of PDFsharp and MigraDoc.
+        /// </summary>
+        public static string LicenseAgpl3 {
+            get {
+                return ResourceManager.GetString("LicenseAgpl3", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   LICENSE-GPL-3.0.txt in the repository root: the GNU General Public License, version 3, under which the program is distributed with PDFsharp and MigraDoc.
+        /// </summary>
+        public static string LicenseGpl3 {
+            get {
+                return ResourceManager.GetString("LicenseGpl3", resourceCulture);
+            }
+        }
     }
 }

@@ -109,7 +109,9 @@ namespace OpenPmsDental{
 		private const string HEADER_LICENSE="--- License: ";
 
 		///<summary>The text of the first entry: the attribution, the GPL notice of the source headers ("version 2 of the License, or (at your
-		///option) any later version") and the GPL version 2 text (Resources\GPL.txt; the same license as LICENSE in the repository root).</summary>
+		///option) any later version"), how the program is distributed with PDFsharp and MigraDoc (GNU GPL version 3 with their GNU AGPL version 3),
+		///the GPL version 2 text (Resources\GPL.txt; the same license as LICENSE in the repository root) and the GPL version 3 text
+		///(LICENSE-GPL-3.0.txt).</summary>
 		public static string GetProgramLicenseText() {
 			return AboutBoxInfo.ProductName+"\r\n\r\n"
 				+AboutBoxInfo.Attribution+"\r\n\r\n"
@@ -117,18 +119,24 @@ namespace OpenPmsDental{
 				+"published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.\r\n\r\n"
 				+"This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of "
 				+"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.\r\n\r\n"
+				+"As distributed, the program includes PDFsharp and MigraDoc, which are licensed under the GNU Affero General Public License, "
+				+"version 3. The program as a whole is therefore distributed under the terms of the GNU General Public License, version 3, which "
+				+"\"any later version\" above allows, and PDFsharp and MigraDoc keep the terms of the GNU Affero General Public License, version 3 "
+				+"(section 13 of each license). The text of version 3 follows the text of version 2 below; both are in the program folder, as "
+				+"LICENSE-GPL-3.0.txt and LICENSE-AGPL-3.0.txt.\r\n\r\n"
 				+"Third-party components keep their own licenses: see \""+NameThirdPartyNotices+"\" and the entries after it.\r\n\r\n"
-				+NormalizeNewLines(Properties.Resources.GPL);
+				+NormalizeNewLines(Properties.Resources.GPL)+"\r\n\r\n"
+				+NormalizeNewLines(Properties.Resources.LicenseGpl3);
 		}
 
 		///<summary>The project's own license texts kept from Open Dental's list (OpenPmsDental\Resources), by the component name used in
-		///THIRD-PARTY-NOTICES.txt.</summary>
+		///THIRD-PARTY-NOTICES.txt. PDFsharp and MigraDoc show empira's notice for version 6.5 and the GNU AGPL version 3 in full.</summary>
 		public static Dictionary<string,string> GetVendorTexts() {
 			Dictionary<string,string> dictVendorTexts=new Dictionary<string,string>();
 			dictVendorTexts.Add("Newtonsoft.Json",Properties.Resources.NewtonSoft_Json);
 			dictVendorTexts.Add("SSH.NET",Properties.Resources.SshNet);
-			dictVendorTexts.Add("PDFsharp",Properties.Resources.PdfSharp);
-			dictVendorTexts.Add("MigraDoc",Properties.Resources.MigraDoc);
+			dictVendorTexts.Add("PDFsharp",Properties.Resources.PdfSharp.TrimEnd()+"\r\n\r\n"+Properties.Resources.LicenseAgpl3);
+			dictVendorTexts.Add("MigraDoc",Properties.Resources.MigraDoc.TrimEnd()+"\r\n\r\n"+Properties.Resources.LicenseAgpl3);
 			dictVendorTexts.Add("SharpDX",Properties.Resources.SharpDX);
 			dictVendorTexts.Add("Tao Framework",Properties.Resources.Tao_OpenGL);
 			dictVendorTexts.Add("SharpSSH",Properties.Resources.Tamir);

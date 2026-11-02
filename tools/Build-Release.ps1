@@ -6,8 +6,8 @@ Builds an Open PMS - Dental release: a Release x86 build, one checked staging fo
 1. Builds OpenDental.Local.slnf as Release x86, through the shared build lane when -BuildLane is given.
 2. Checks OpenPmsDental\bin\Release: every file must be on the allow-list below or be one the release never ships (debug symbols,
    XML documentation). A file on the deny-list, an unknown file or a sub folder fails the script.
-3. Stages the allowed files into one folder (<OutDir>\staging), with LICENSE, LICENSE-LGPL-2.1.txt, NOTICE, THIRD-PARTY-NOTICES.txt,
-   db\init\new-database.sql and db\README.md, and checks the staging folder again: allow-list, deny-list, every allowed file present,
+3. Stages the allowed files into one folder (<OutDir>\staging), with LICENSE, LICENSE-GPL-3.0.txt, LICENSE-AGPL-3.0.txt,
+   LICENSE-LGPL-2.1.txt, NOTICE, THIRD-PARTY-NOTICES.txt, db\init\new-database.sql and db\README.md, and checks the staging folder again: allow-list, deny-list, every allowed file present,
    every third-party file named in THIRD-PARTY-NOTICES.txt, every file built from this repository equal to its project's own output, the
    native files x86 and free of the debug C runtime, and OpenPmsDental.exe's versions (file version 24.3.63.0, the database compatibility version; product version the
    release version of SharedAssemblyInfo.cs).
@@ -116,8 +116,9 @@ foreach($name in @('Dicom.Core.dll','Dicom.Native.dll','DiffieHellman.dll','Goog
 	'Google.Apis.Gmail.v1.dll','Health.Direct.Agent.dll','Health.Direct.Common.dll','Health.Direct.ResolverPlugins.dll','Hunspellx86.dll',
 	'Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Extensions.DependencyInjection.Abstractions.dll','Microsoft.Extensions.Logging.Abstractions.dll',
 	'Microsoft.Identity.Client.dll','Microsoft.IdentityModel.Abstractions.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll',
-	'Microsoft.Web.WebView2.Wpf.dll','MigraDoc.DocumentObjectModel.dll','MigraDoc.Rendering.dll','MimeKit.dll','MySqlConnector.dll','NDde.dll',
-	'NHunspell.dll','Newtonsoft.Json.dll','OpenPop.dll','Org.Mentalis.Security.dll','PdfSharp.dll','PdfSharp.Charting.dll','Renci.SshNet.dll',
+	'Microsoft.Web.WebView2.Wpf.dll','MigraDoc.DocumentObjectModel.dll','MigraDoc.Rendering-gdi.dll','MimeKit.dll','MySqlConnector.dll','NDde.dll',
+	'NHunspell.dll','Newtonsoft.Json.dll','OpenPop.dll','Org.Mentalis.Security.dll','PdfSharp-gdi.dll','PdfSharp.Charting-gdi.dll',
+	'PdfSharp.License.dll','PdfSharp.Shared.dll','PdfSharp.System.dll','Renci.SshNet.dll',
 	'SharpDX.dll','SharpDX.Direct3D9.dll','SharpDX.Mathematics.dll','System.Buffers.dll','System.Diagnostics.DiagnosticSource.dll',
 	'System.Memory.dll','System.Numerics.Vectors.dll','System.Runtime.CompilerServices.Unsafe.dll','System.Threading.Tasks.Extensions.dll',
 	'Tamir.SharpSSH.dll','Tao.OpenGl.dll','Tao.Platform.Windows.dll','WebView2Loader.dll'))
@@ -129,9 +130,13 @@ $ThirdPartyFiles['RdlViewer.dll']='RdlViewer\bin\Release'
 
 #Files from the repository: the path in the program folder, and the repository-relative source. LICENSE-LGPL-2.1.txt is the licence
 #text the LGPL 2.1 asks for with every copy of the libraries the release ships under it (RdlEngine.dll, RdlViewer.dll, NHunspell.dll,
-#Hunspellx86.dll and the en_US word list in WpfControlsOD.dll; THIRD-PARTY-NOTICES.txt).
+#Hunspellx86.dll and the en_US word list in WpfControlsOD.dll; THIRD-PARTY-NOTICES.txt). PDFsharp and MigraDoc 6.5 are under the GNU AGPL
+#version 3, so the program as distributed is conveyed under the GNU GPL version 3 (its own code is "version 2 or later"): both texts ship,
+#LICENSE-AGPL-3.0.txt and LICENSE-GPL-3.0.txt (NOTICE).
 $DocumentFiles=[ordered]@{
 	'LICENSE'='LICENSE'
+	'LICENSE-GPL-3.0.txt'='LICENSE-GPL-3.0.txt'
+	'LICENSE-AGPL-3.0.txt'='LICENSE-AGPL-3.0.txt'
 	'LICENSE-LGPL-2.1.txt'='LICENSE-LGPL-2.1.txt'
 	'NOTICE'='NOTICE'
 	'THIRD-PARTY-NOTICES.txt'='THIRD-PARTY-NOTICES.txt'
@@ -146,6 +151,9 @@ $RequiredReasons=[ordered]@{
 	'Hunspellx86.dll'='NHunspell loads it for the spell check of every ODtextBox; a Release build throws without it'
 	'ODR.dll'='RDL report definitions load it by file name (<CodeModule>ODR.dll</CodeModule>)'
 	'LICENSE-LGPL-2.1.txt'='the LGPL 2.1 (sections 1 and 4) asks for its text with every copy of RdlEngine.dll, RdlViewer.dll, NHunspell.dll and Hunspellx86.dll'
+	'LICENSE-AGPL-3.0.txt'='the GNU AGPL 3.0 (section 4) asks for its text with every copy of PDFsharp and MigraDoc'
+	'LICENSE-GPL-3.0.txt'='the program with PDFsharp and MigraDoc is conveyed under the GNU GPL 3.0, whose section 4 asks for its text with every copy'
+	'PdfSharp.License.dll'='PdfSharp-gdi.dll checks the licence through it before it makes or reads any PDF'
 }
 
 #Native files: they must be x86 and must not need the debug C runtime, which may not be redistributed.

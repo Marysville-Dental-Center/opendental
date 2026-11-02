@@ -38,7 +38,7 @@ AppPublisher=Open PMS - Dental contributors
 AppPublisherURL={#SourceUrl}
 AppSupportURL={#SourceUrl}/issues
 AppUpdatesURL={#SourceUrl}/releases
-AppCopyright=Copyright (C) 2003 and later years, Jordan Sparks, D.M.D., Open Dental Software, Inc. and contributors. Changes in Open PMS - Dental: Copyright (C) 2026 and later years, Open PMS - Dental contributors. GNU GPL v2 or later.
+AppCopyright=Copyright (C) 2003 and later years, Jordan Sparks, D.M.D., Open Dental Software, Inc. and contributors. Changes in Open PMS - Dental: Copyright (C) 2026 and later years, Open PMS - Dental contributors. GNU GPL v2 or later; distributed with PDFsharp and MigraDoc (GNU AGPL v3) under the GNU GPL v3.
 VersionInfoVersion=0.0.0.0
 VersionInfoTextVersion={#AppVersion}
 VersionInfoProductName={#AppName}
@@ -90,6 +90,13 @@ Source: "{#StagingDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 ; Written by the [Code] below into {tmp} only when the program folder has no FreeDentalConfig.xml. Users may change this one file (the
 ; program saves the connection there); the folder itself keeps the default rights.
 Source: "{tmp}\{#ConfigFileName}"; DestDir: "{app}"; Flags: external onlyifdoesntexist; Permissions: users-modify; Check: ShouldInstallConfig
+
+[InstallDelete]
+; Files an earlier release installed that this one no longer ships, so an upgrade does not keep them: PDFsharp and MigraDoc 1.2 (0.0), which
+; PDFsharp and MigraDoc 6.5 replace under other file names (THIRD-PARTY-NOTICES.txt).
+Type: files; Name: "{app}\PdfSharp.dll"
+Type: files; Name: "{app}\PdfSharp.Charting.dll"
+Type: files; Name: "{app}\MigraDoc.Rendering.dll"
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#ExeName}"; WorkingDir: "{app}"; Check: not WizardNoIcons

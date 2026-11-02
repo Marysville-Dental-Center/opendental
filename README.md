@@ -8,6 +8,8 @@ This is a fork of the [Open Dental](https://www.opendental.com) source code, wri
 
 The source files say "either version 2 of the License, or (at your option) any later version", so the program is licensed under the **GNU GPL v2 or later**. LICENSE holds the version 2 text.
 
+The program as distributed includes PDFsharp and MigraDoc 6.5, which are licensed under the **GNU AGPL v3**. The AGPL combines with GPL version 3 but not with version 2, so the program with them is distributed under the **GNU GPL v3** (which "or later" allows), and PDFsharp and MigraDoc keep the AGPL's terms. [LICENSE-GPL-3.0.txt](LICENSE-GPL-3.0.txt) and [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt) hold those texts; [NOTICE](NOTICE) explains it.
+
 The program's namespaces, assemblies and executable carry its code name, `OpenPmsDental` (`OpenPmsDental.exe`, `OpenPmsDentalBusiness.dll`; the mapping from Open Dental's names is in [docs/port-notes/RENAME.md](docs/port-notes/RENAME.md)). The product name, "Open PMS - Dental", appears in the window title, the splash, the About box, the program's messages, the file properties of every shipped assembly (version 0.0), the product identity sent to vendors, and this repository's documents. Names that existing installations and databases depend on keep Open Dental's spelling: the database (tables, columns, preference names, stored enum values), `FreeDentalConfig.xml`, the Middle Tier's web service names and IIS path, and internal type names such as `FormOpenDental`. The solution files keep their names, `OpenDental.sln` and `OpenDental.Local.slnf`.
 
 Open PMS - Dental is a Windows desktop practice management system written in C#: WinForms, with some WPF, on .NET Framework 4.8, backed by MariaDB.
@@ -196,4 +198,4 @@ The upstream branches are not merged into `main` any more (see [The solution and
 - [Subversion (SVN)](https://opendentalsoft.com:23793/svn/opendental): source before 2022 (username **guest**, password **od123**)
 - [Downloads](https://www.opendental.com/manual/downloads.html): source before 2007
 
-Open Dental does not accept outside code contributions. See [Programming Assistance](https://www.opendental.com/site/programmingassistance.html). This repository is licensed under the GNU GPL v2 or later; see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Open Dental does not accept outside code contributions. See [Programming Assistance](https://www.opendental.com/site/programmingassistance.html). This repository is licensed under the GNU GPL v2 or later, and the program as distributed with PDFsharp and MigraDoc under the GNU GPL v3; see [LICENSE](LICENSE), [LICENSE-GPL-3.0.txt](LICENSE-GPL-3.0.txt) and [NOTICE](NOTICE).

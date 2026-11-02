@@ -36,6 +36,22 @@ Every copyright line and license notice in the source files is kept as it
 is. The full text of the GNU General Public License, version 2, is in
 LICENSE.
 
+The program as distributed
+--------------------------
+The program includes PDFsharp and MigraDoc 6.5 (empira Software GmbH),
+which are licensed under the GNU Affero General Public License, version 3.
+The AGPL can be combined with the GNU GPL version 3, not with version 2. The
+program's own code is "version 2 or any later version", so the program as
+distributed, with PDFsharp and MigraDoc, is conveyed under the terms of the
+GNU General Public License, version 3, and PDFsharp and MigraDoc keep the
+terms of the GNU AGPL, version 3 (section 13 of each license). Their full
+texts are LICENSE-GPL-3.0.txt and LICENSE-AGPL-3.0.txt. The program's source
+files keep their own notices, so they can still be used under version 2 apart
+from PDFsharp and MigraDoc. The program's source is published at the source
+address of each release, PDFsharp's and MigraDoc's at
+https://github.com/empira/PDFsharp; THIRD-PARTY-NOTICES.txt names the one
+PDFsharp file whose source empira does not publish (PdfSharp.License.dll).
+
 Third-party components
 ----------------------
 Third-party libraries keep their own licenses. THIRD-PARTY-NOTICES.txt lists
@@ -44,7 +60,8 @@ its source is published; the program shows the same list, and the license
 texts, under Help > About > View Licenses. The components that ship under the
 GNU Lesser General Public License, version 2.1 (the RDL Project's report
 engine and viewer, NHunspell and Hunspell, and the en_US word list) come with
-its full text, LICENSE-LGPL-2.1.txt. CDT codes are copyrighted by the
+its full text, LICENSE-LGPL-2.1.txt; PDFsharp and MigraDoc come with the GNU
+AGPL's, LICENSE-AGPL-3.0.txt. CDT codes are copyrighted by the
 American Dental Association; by this project's ground rules, no CDT code text
 or ADA claim-form artwork is included.
 
