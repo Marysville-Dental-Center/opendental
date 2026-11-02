@@ -200,6 +200,7 @@
 			this.buttonUseAutoNote = new OpenPmsDental.UI.Button();
 			this.textNotes = new OpenPmsDental.ODtextBox();
 			this.butSetComplete = new OpenPmsDental.UI.Button();
+			this.butMaterials = new OpenPmsDental.UI.Button();
 			this.butEditAnyway = new OpenPmsDental.UI.Button();
 			this.butDelete = new OpenPmsDental.UI.Button();
 			this.butSave = new OpenPmsDental.UI.Button();
@@ -2065,8 +2066,19 @@
 			this.butDelete.Text = "&Delete";
 			this.butDelete.Click += new System.EventHandler(this.butDelete_Click);
 			// 
+			// butMaterials
+			//
+			this.butMaterials.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.butMaterials.Location = new System.Drawing.Point(800, 670);
+			this.butMaterials.Name = "butMaterials";
+			this.butMaterials.Size = new System.Drawing.Size(90, 24);
+			this.butMaterials.TabIndex = 212;
+			this.butMaterials.Text = "Materials";
+			this.butMaterials.Visible = false;
+			this.butMaterials.Click += new System.EventHandler(this.butMaterials_Click);
+			//
 			// butSave
-			// 
+			//
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
 			this.butSave.Location = new System.Drawing.Point(902, 670);
 			this.butSave.Name = "butSave";
@@ -2118,6 +2130,7 @@
 			// FormProcEdit
 			// 
 			this.ClientSize = new System.Drawing.Size(984, 696);
+			this.Controls.Add(this.butMaterials);
 			this.Controls.Add(this.butEditAutoNote);
 			this.Controls.Add(this.labelPermAlert);
 			this.Controls.Add(this.butChangeUser);
@@ -2202,6 +2215,7 @@
 		private System.Windows.Forms.TextBox textDesc;
 		private System.Windows.Forms.Label label7;
 		private OpenPmsDental.UI.Button butSave;
+		private OpenPmsDental.UI.Button butMaterials;
 		private OpenPmsDental.UI.Button butDelete;
 		private System.Windows.Forms.TextBox textRange;
 		private System.Windows.Forms.Label labelTooth;

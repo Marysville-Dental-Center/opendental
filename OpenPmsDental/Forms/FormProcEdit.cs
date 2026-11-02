@@ -153,6 +153,8 @@ namespace OpenPmsDental {
 			else {
 				butLock.Visible=false;
 			}
+			//Inventory tracking: the materials (and implant lots) the procedure used, recorded with it.
+			butMaterials.Visible=InventoryTracking.IsEnabled() && !IsNew;
 			Def def=Defs.GetDef(DefCat.AdjTypes,PrefC.GetLong(PrefName.TreatPlanDiscountAdjustmentType));
 			if(!GroupPermissions.HasPermissionForAdjType(EnumPermType.AdjustmentCreate,def,DateTime.Today)) {
 				textDiscount.Enabled=false;
@@ -611,6 +613,12 @@ namespace OpenPmsDental {
 			string keyData=Procedures.GetSignatureKeyData(_procedure);
 			signatureBoxWrapper.FillSignature(_procedure.SigIsTopaz,keyData,_procedure.Signature);
 			Plugins.HookAddCode(this,"FormProcEdit.FillControlsOnStartup_end",_procedure,_procedureOld);
+		}
+
+		///<summary>Inventory tracking: the Materials used panel for this procedure, with the lots it used (implants are traced by lot). Works on the
+		///saved procedure: a procedure set complete in this window gets its panel by itself after Save.</summary>
+		private void butMaterials_Click(object sender,EventArgs e) {
+			MaterialsUsedL.ShowForProcedure(this,_procedure.ProcNum);
 		}
 
 		private void FormProcEdit_Shown(object sender,EventArgs e) {

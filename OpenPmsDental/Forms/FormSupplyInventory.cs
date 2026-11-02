@@ -34,8 +34,64 @@ namespace OpenPmsDental {
 			menuMain.Add(new MenuItemOD("Suppliers",menuItemSuppliers_Click));
 			//Categories-----------------------------------------------------------------------------------------------------------
 			menuMain.Add(new MenuItemOD("Categories",menuItemCategories_Click));
+			//Inventory tracking (docs/specs/inventory-tracking.md)----------------------------------------------------------------
+			MenuItemOD menuItemInventory=new MenuItemOD("Inventory");
+			menuItemInventory.Add("Setup",menuItemInventorySetup_Click);
+			menuItemInventory.Add("Default Materials of Procedure Codes",menuItemDefaultMaterials_Click);
+			menuItemInventory.AddSeparator();
+			menuItemInventory.Add("Stock Count",menuItemStockCount_Click);
+			menuItemInventory.Add("Awaiting Materials",menuItemAwaitingMaterials_Click);
+			menuItemInventory.Add("Usage Report",menuItemUsageReport_Click);
+			menuItemInventory.AddSeparator();
+			menuItemInventory.Add("Repair Stock from Ledger",menuItemRepairStock_Click);
+			menuMain.Add(menuItemInventory);
 			menuMain.EndUpdate();
 		}
+
+		#region Inventory tracking
+		private void menuItemInventorySetup_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.Setup)) {
+				return;
+			}
+			using FormInventorySetup formInventorySetup=new FormInventorySetup();
+			formInventorySetup.ShowDialog();
+		}
+
+		private void menuItemDefaultMaterials_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.Setup)) {
+				return;
+			}
+			using FormSupplyProcCodes formSupplyProcCodes=new FormSupplyProcCodes();
+			formSupplyProcCodes.ShowDialog();
+		}
+
+		private void menuItemStockCount_Click(object sender,EventArgs e) {
+			using FormSupplyCount formSupplyCount=new FormSupplyCount();
+			formSupplyCount.ShowDialog();
+		}
+
+		private void menuItemAwaitingMaterials_Click(object sender,EventArgs e) {
+			using FormSupplyProcPendings formSupplyProcPendings=new FormSupplyProcPendings();
+			formSupplyProcPendings.ShowDialog();
+		}
+
+		private void menuItemUsageReport_Click(object sender,EventArgs e) {
+			using FormSupplyUsageReport formSupplyUsageReport=new FormSupplyUsageReport();
+			formSupplyUsageReport.ShowDialog();
+		}
+
+		private void menuItemRepairStock_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.InventoryAdjust)) {
+				return;
+			}
+			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Set every supply's and lot's stock to the sum of its ledger rows?")) {
+				return;
+			}
+			SupplyRepairResult supplyRepairResult=InventoryTracking.Repair();
+			MessageBox.Show(this,Lan.g(this,"Supplies corrected")+": "+supplyRepairResult.CountSupplies+"\r\n"+Lan.g(this,"Lots corrected")+": "
+				+supplyRepairResult.CountLots);
+		}
+		#endregion Inventory tracking
 
 		private void FillGridNeeded(){
 			_listSupplyNeededs=SupplyNeededs.CreateObjects();

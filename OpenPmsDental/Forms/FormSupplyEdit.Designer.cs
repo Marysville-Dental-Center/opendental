@@ -44,6 +44,15 @@ namespace OpenPmsDental{
 			this.textOrderQty = new OpenPmsDental.ValidNum();
 			this.textOnHand = new System.Windows.Forms.TextBox();
 			this.labelOnHand = new System.Windows.Forms.Label();
+			this.labelBarcode = new System.Windows.Forms.Label();
+			this.textBarcode = new System.Windows.Forms.TextBox();
+			this.labelReorderLevel = new System.Windows.Forms.Label();
+			this.textReorderLevel = new OpenPmsDental.ValidDouble();
+			this.labelReorderNote = new System.Windows.Forms.Label();
+			this.checkLotTracked = new OpenPmsDental.UI.CheckBox();
+			this.checkImplant = new OpenPmsDental.UI.CheckBox();
+			this.labelOnHandNote = new System.Windows.Forms.Label();
+			this.butStock = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -176,7 +185,7 @@ namespace OpenPmsDental{
 			this.butDelete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.butDelete.Icon = OpenPmsDental.UI.EnumIcons.DeleteX;
 			this.butDelete.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butDelete.Location = new System.Drawing.Point(20, 279);
+			this.butDelete.Location = new System.Drawing.Point(20, 412);
 			this.butDelete.Name = "butDelete";
 			this.butDelete.Size = new System.Drawing.Size(81, 24);
 			this.butDelete.TabIndex = 9;
@@ -186,7 +195,7 @@ namespace OpenPmsDental{
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(512, 279);
+			this.butSave.Location = new System.Drawing.Point(512, 412);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 7;
@@ -235,10 +244,101 @@ namespace OpenPmsDental{
 			this.labelOnHand.TabIndex = 17;
 			this.labelOnHand.Text = "On Hand Qty";
 			this.labelOnHand.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
+			//
+			// labelBarcode
+			//
+			this.labelBarcode.Location = new System.Drawing.Point(32, 280);
+			this.labelBarcode.Name = "labelBarcode";
+			this.labelBarcode.Size = new System.Drawing.Size(132, 18);
+			this.labelBarcode.TabIndex = 22;
+			this.labelBarcode.Text = "Barcode";
+			this.labelBarcode.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textBarcode
+			//
+			this.textBarcode.Location = new System.Drawing.Point(166, 279);
+			this.textBarcode.MaxLength = 255;
+			this.textBarcode.Name = "textBarcode";
+			this.textBarcode.Size = new System.Drawing.Size(200, 20);
+			this.textBarcode.TabIndex = 23;
+			//
+			// labelReorderLevel
+			//
+			this.labelReorderLevel.Location = new System.Drawing.Point(32, 306);
+			this.labelReorderLevel.Name = "labelReorderLevel";
+			this.labelReorderLevel.Size = new System.Drawing.Size(132, 18);
+			this.labelReorderLevel.TabIndex = 24;
+			this.labelReorderLevel.Text = "Reorder Level";
+			this.labelReorderLevel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textReorderLevel
+			//
+			this.textReorderLevel.Location = new System.Drawing.Point(166, 305);
+			this.textReorderLevel.MaxVal = 1000000D;
+			this.textReorderLevel.MinVal = 0D;
+			this.textReorderLevel.Name = "textReorderLevel";
+			this.textReorderLevel.Size = new System.Drawing.Size(62, 20);
+			this.textReorderLevel.TabIndex = 25;
+			//
+			// labelReorderNote
+			//
+			this.labelReorderNote.Location = new System.Drawing.Point(231, 301);
+			this.labelReorderNote.Name = "labelReorderNote";
+			this.labelReorderNote.Size = new System.Drawing.Size(282, 28);
+			this.labelReorderNote.TabIndex = 26;
+			this.labelReorderNote.Text = "Low-stock alert when on hand is at or below this level. Blank: no alert.";
+			this.labelReorderNote.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
+			// checkLotTracked
+			//
+			this.checkLotTracked.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkLotTracked.Location = new System.Drawing.Point(16, 333);
+			this.checkLotTracked.Name = "checkLotTracked";
+			this.checkLotTracked.Size = new System.Drawing.Size(164, 18);
+			this.checkLotTracked.TabIndex = 27;
+			this.checkLotTracked.Text = "Tracked by lot and expiry";
+			//
+			// checkImplant
+			//
+			this.checkImplant.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkImplant.Location = new System.Drawing.Point(16, 357);
+			this.checkImplant.Name = "checkImplant";
+			this.checkImplant.Size = new System.Drawing.Size(164, 18);
+			this.checkImplant.TabIndex = 28;
+			this.checkImplant.Text = "Implant (lot on procedure)";
+			this.checkImplant.Click += new System.EventHandler(this.checkImplant_Click);
+			//
+			// labelOnHandNote
+			//
+			this.labelOnHandNote.Location = new System.Drawing.Point(272, 152);
+			this.labelOnHandNote.Name = "labelOnHandNote";
+			this.labelOnHandNote.Size = new System.Drawing.Size(241, 28);
+			this.labelOnHandNote.TabIndex = 29;
+			this.labelOnHandNote.Text = "Changed by receiving, use, counts and adjustments (Stock).";
+			this.labelOnHandNote.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.labelOnHandNote.Visible = false;
+			//
+			// butStock
+			//
+			this.butStock.Location = new System.Drawing.Point(166, 381);
+			this.butStock.Name = "butStock";
+			this.butStock.Size = new System.Drawing.Size(90, 24);
+			this.butStock.TabIndex = 30;
+			this.butStock.Text = "Stock...";
+			this.butStock.Click += new System.EventHandler(this.butStock_Click);
+			//
 			// FormSupplyEdit
-			// 
-			this.ClientSize = new System.Drawing.Size(599, 315);
+			//
+			this.ClientSize = new System.Drawing.Size(599, 448);
+			this.Controls.Add(this.butStock);
+			this.Controls.Add(this.labelOnHandNote);
+			this.Controls.Add(this.checkImplant);
+			this.Controls.Add(this.checkLotTracked);
+			this.Controls.Add(this.labelReorderNote);
+			this.Controls.Add(this.textReorderLevel);
+			this.Controls.Add(this.labelReorderLevel);
+			this.Controls.Add(this.textBarcode);
+			this.Controls.Add(this.labelBarcode);
 			this.Controls.Add(this.labelOnHand);
 			this.Controls.Add(this.textOnHand);
 			this.Controls.Add(this.textOrderQty);
@@ -291,5 +391,14 @@ namespace OpenPmsDental{
 		private ValidNum textOrderQty;
 		private System.Windows.Forms.TextBox textOnHand;
 		private System.Windows.Forms.Label labelOnHand;
+		private System.Windows.Forms.Label labelBarcode;
+		private System.Windows.Forms.TextBox textBarcode;
+		private System.Windows.Forms.Label labelReorderLevel;
+		private ValidDouble textReorderLevel;
+		private System.Windows.Forms.Label labelReorderNote;
+		private OpenPmsDental.UI.CheckBox checkLotTracked;
+		private OpenPmsDental.UI.CheckBox checkImplant;
+		private System.Windows.Forms.Label labelOnHandNote;
+		private OpenPmsDental.UI.Button butStock;
 	}
 }

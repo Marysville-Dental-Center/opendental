@@ -31,6 +31,7 @@ namespace OpenPmsDental{
 			this.butAddSupply = new OpenPmsDental.UI.Button();
 			this.butNewOrder = new OpenPmsDental.UI.Button();
 			this.checkShowReceived = new OpenPmsDental.UI.CheckBox();
+			this.butReceive = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
 			// 
 			// comboSupplier
@@ -119,10 +120,21 @@ namespace OpenPmsDental{
 			this.checkShowReceived.TabIndex = 27;
 			this.checkShowReceived.Text = "Show received";
 			this.checkShowReceived.MouseClick += new System.Windows.Forms.MouseEventHandler(this.checkShowReceived_MouseClick);
-			// 
+			//
+			// butReceive
+			//
+			this.butReceive.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butReceive.Location = new System.Drawing.Point(260, 672);
+			this.butReceive.Name = "butReceive";
+			this.butReceive.Size = new System.Drawing.Size(95, 24);
+			this.butReceive.TabIndex = 28;
+			this.butReceive.Text = "Receive";
+			this.butReceive.Click += new System.EventHandler(this.butReceive_Click);
+			//
 			// FormSupplyOrders
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(761, 703);
+			this.Controls.Add(this.butReceive);
 			this.Controls.Add(this.checkShowReceived);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.butAddSupply);
@@ -149,5 +161,6 @@ namespace OpenPmsDental{
 		private UI.Button butAddSupply;
 		private UI.Button butPrint;
 		private OpenPmsDental.UI.CheckBox checkShowReceived;
+		private UI.Button butReceive;
 	}
 }

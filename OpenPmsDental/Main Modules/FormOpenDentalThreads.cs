@@ -193,6 +193,8 @@ namespace OpenPmsDental {
 				}
 				long clinicNumCur=Clinics.ClinicNum;
 				long userNumCur=Security.CurUser.UserNum;
+				//Inventory tracking: low-stock and expiring alerts, at most every 10 minutes per program; never adds an alert twice.
+				InventoryTracking.RefreshAlertsIfDue();
 				Logger.LogToPath("",LogPath.Signals,LogPhase.Start);
 				List<AlertItem> listAlertItemsForUser=AlertItems.GetAlertsItemsForUser(userNumCur,clinicNumCur);
 				List<AlertItem> listAlertItemsUnique=new List<AlertItem>();

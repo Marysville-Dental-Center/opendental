@@ -2211,6 +2211,7 @@
     <Compile Include="Logic\ProgramL.cs" />
     <Compile Include="Logic\RefAttachL.cs" />
     <Compile Include="Logic\RxAlertL.cs" />
+    <Compile Include="Logic\MaterialsUsedL.cs" />
     <Compile Include="Logic\SecurityL.cs" />
     <Compile Include="Main Modules\FormOpenDentalThreads.cs">
       <SubType>Form</SubType>
@@ -4582,6 +4583,60 @@
     </Compile>
     <Compile Include="Forms\FormSupplyOrderItemEdit.Designer.cs">
       <DependentUpon>FormSupplyOrderItemEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormInventorySetup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormInventorySetup.Designer.cs">
+      <DependentUpon>FormInventorySetup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormMaterialsUsed.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormMaterialsUsed.Designer.cs">
+      <DependentUpon>FormMaterialsUsed.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSupplyAdjust.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormSupplyAdjust.Designer.cs">
+      <DependentUpon>FormSupplyAdjust.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSupplyCount.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormSupplyCount.Designer.cs">
+      <DependentUpon>FormSupplyCount.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSupplyProcCodes.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormSupplyProcCodes.Designer.cs">
+      <DependentUpon>FormSupplyProcCodes.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSupplyProcPendings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormSupplyProcPendings.Designer.cs">
+      <DependentUpon>FormSupplyProcPendings.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSupplyReceive.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormSupplyReceive.Designer.cs">
+      <DependentUpon>FormSupplyReceive.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSupplyStock.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormSupplyStock.Designer.cs">
+      <DependentUpon>FormSupplyStock.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormSupplyUsageReport.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormSupplyUsageReport.Designer.cs">
+      <DependentUpon>FormSupplyUsageReport.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormSupplies.cs">
       <SubType>Form</SubType>
