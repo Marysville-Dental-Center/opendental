@@ -3496,9 +3496,17 @@ namespace OpenPmsDentalBusiness{
 			Patient patient,Family family,bool updateProcFees,bool removeCompleteProcs,bool createSecLog,bool insertHL7) 
 		{
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<ApptSaveHelperResult>(MethodBase.GetCurrentMethod(),appointment,appointmentOld,isInsertRequired,listProceduresForAppt,listAppointments,
-					listSelectedIndices,listProcNumsAttachedStart,isPlanned,listInsPlans,listInsSubs,selectedProvNum,selectedProvHygNum,listProceduresSelected,isNew,
-					patient,family,updateProcFees,removeCompleteProcs,createSecLog,insertHL7);
+				//Inventory tracking: the procedures' statuses before the call. UpdateProcsInApptHelper (SetCompleteInAppt) and the per-visit procedures
+				//complete procedures on the Middle Tier server, where the program does not hear it.
+				List<Procedure> listProceduresBefore=(listProceduresForAppt??new List<Procedure>()).Select(x => x.Copy()).ToList();
+				ApptSaveHelperResult apptSaveHelperResultRemote=Meth.GetObject<ApptSaveHelperResult>(MethodBase.GetCurrentMethod(),appointment,appointmentOld,
+					isInsertRequired,listProceduresForAppt,listAppointments,listSelectedIndices,listProcNumsAttachedStart,isPlanned,listInsPlans,listInsSubs,
+					selectedProvNum,selectedProvHygNum,listProceduresSelected,isNew,patient,family,updateProcFees,removeCompleteProcs,createSecLog,insertHL7);
+				//Tell the program which procedures of the appointment are complete now and were not, so it opens the Materials used panel.
+				if(InventoryTracking.IsEnabled() && apptSaveHelperResultRemote?.AptCur!=null) {
+					InventoryTracking.NotifyProcsNowComplete(listProceduresBefore,Procedures.GetProcsForSingle(apptSaveHelperResultRemote.AptCur.AptNum,false));
+				}
+				return apptSaveHelperResultRemote;
 			}
 			ApptSaveHelperResult apptSaveHelperResult=new ApptSaveHelperResult();
 			DateTime dateTPrevious=appointment.DateTStamp;

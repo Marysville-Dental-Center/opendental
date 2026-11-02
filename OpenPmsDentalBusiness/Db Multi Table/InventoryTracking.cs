@@ -60,17 +60,27 @@ namespace OpenPmsDentalBusiness {
 			return isInstalled;
 		}
 
-		///<summary>True when the office turned inventory tracking on (PrefName.InventoryTrackingEnabled). The preference row exists only once the
-		///office saved the settings (SaveSettings); without it tracking is off.</summary>
+		///<summary>The preference row that turns inventory tracking on (boolean, "0" or "1"). A fork-owned preference, not in PrefName (the registry of
+		///the names Open Dental publishes; the "Fork" prefix keeps a later Open Dental name from clashing with it): read with PrefC.GetRawOrDefault,
+		///written by SaveSettings. No database has the row until the office saves the settings, and without it tracking is off. While off the
+		///Materials used panel never opens, completing a procedure records nothing and nothing is deducted; receipts, counts and manual adjustments
+		///still go through the stock ledger.</summary>
+		public const string PREF_ENABLED="ForkInventoryTrackingEnabled";
+		///<summary>The preference row with the lead days of the Inventory Expiring alert (integer, 30 when the row is missing; 0 turns the alert off).
+		///Fork-owned, not in PrefName, like PREF_ENABLED.</summary>
+		public const string PREF_EXPIRY_ALERT_DAYS="ForkInventoryExpiryAlertDays";
+
+		///<summary>True when the office turned inventory tracking on (PREF_ENABLED). The preference row exists only once the office saved the settings
+		///(SaveSettings); without it tracking is off.</summary>
 		public static bool IsEnabled() {
 			Meth.NoCheckMiddleTierRole();
-			return PIn.Bool(PrefC.GetRawOrDefault(nameof(PrefName.InventoryTrackingEnabled),"0"));
+			return PIn.Bool(PrefC.GetRawOrDefault(PREF_ENABLED,"0"));
 		}
 
-		///<summary>The lead days of the expiring alert (PrefName.InventoryExpiryAlertDays); 30 when the row is missing.</summary>
+		///<summary>The lead days of the expiring alert (PREF_EXPIRY_ALERT_DAYS); 30 when the row is missing.</summary>
 		public static int GetExpiryAlertDays() {
 			Meth.NoCheckMiddleTierRole();
-			return PIn.Int(PrefC.GetRawOrDefault(nameof(PrefName.InventoryExpiryAlertDays),"30"));
+			return PIn.Int(PrefC.GetRawOrDefault(PREF_EXPIRY_ALERT_DAYS,"30"));
 		}
 
 		///<summary>Supply Inventory, Inventory, Setup: saves the two preferences, writing their rows when missing (a database gets them the first time
@@ -82,7 +92,7 @@ namespace OpenPmsDentalBusiness {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetInt(MethodBase.GetCurrentMethod(),isEnabled,expiryAlertDays);
 			}
-			bool isFirstTime=Db.GetScalar("SELECT COUNT(*) FROM preference WHERE PrefName='"+nameof(PrefName.InventoryTrackingEnabled)+"'")=="0";
+			bool isFirstTime=PIn.Long(Db.GetScalar("SELECT COUNT(*) FROM preference WHERE PrefName='"+POut.String(PREF_ENABLED)+"'"))==0;
 			int countGroupsGranted=0;
 			if(isEnabled) {
 				//Links and grant first, the preference that turns tracking on last.
@@ -91,18 +101,10 @@ namespace OpenPmsDentalBusiness {
 					countGroupsGranted=GrantAdjustToSupplierGroups();
 				}
 			}
-			SetPrefRaw(nameof(PrefName.InventoryExpiryAlertDays),POut.Int(Math.Max(0,expiryAlertDays)));
-			SetPrefRaw(nameof(PrefName.InventoryTrackingEnabled),POut.Bool(isEnabled));
+			//The shared helper for fork-owned preference rows (B-SERVER): inserts the row the first time, updates it afterwards.
+			PrefC.UpsertRawNoCache(PREF_EXPIRY_ALERT_DAYS,POut.Int(Math.Max(0,expiryAlertDays)));
+			PrefC.UpsertRawNoCache(PREF_ENABLED,POut.Bool(isEnabled));
 			return countGroupsGranted;
-		}
-
-		private static void SetPrefRaw(string prefName,string valueString) {
-			string where="WHERE PrefName='"+POut.String(prefName)+"'";
-			if(Db.GetScalar("SELECT COUNT(*) FROM preference "+where)=="0") {
-				Db.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES('"+POut.String(prefName)+"','"+POut.String(valueString)+"')");
-				return;
-			}
-			Db.NonQ("UPDATE preference SET ValueString='"+POut.String(valueString)+"' "+where);
 		}
 
 		///<summary>Links the two inventory alert types to the "All" alert category (InternalName OdAllTypes), as every alert type is linked
@@ -143,17 +145,34 @@ namespace OpenPmsDentalBusiness {
 		#endregion Settings
 
 		#region Procedure hooks
-		///<summary>Called by Procedures.Insert and Procedures.Update (on the server side) after a procedure became complete. While tracking is on and
-		///the code has default materials, records the procedure as awaiting materials. Never deducts.</summary>
+		///<summary>Called by Procedures.Insert and Procedures.Update (on the server side) after a procedure became complete, its note included. While
+		///tracking is on and the code has default materials, records the procedure as awaiting materials. Never deducts, and never throws
+		///(RunProcHook): a failure is logged, and the procedure is simply not on the Awaiting Materials list, so nothing is deducted for it, which is
+		///never a silent deduction.</summary>
 		public static void OnProcSetComplete(Procedure procedure) {
 			Meth.NoCheckMiddleTierRole();
-			if(!IsEnabled() || procedure==null || procedure.ProcNum==0) {
-				return;
+			RunProcHook(() => {
+				if(!IsEnabled() || procedure==null || procedure.ProcNum==0) {
+					return;
+				}
+				if(!SupplyProcCodes.HasMaterials(procedure.CodeNum)) {
+					return;
+				}
+				SupplyProcPendings.InsertIfMissing(procedure.ProcNum,procedure.PatNum,Security.CurUser?.UserNum??0);
+			});
+		}
+
+		///<summary>Runs a hook of the procedure save path (OnProcSetComplete, OnProcNoLongerComplete) so that it can never stop a procedure from being
+		///saved, deleted or given its note: a fork table that fails (a crashed MyISAM table, a lost connection, a deadlock) also on a database whose
+		///office never turned tracking on. A failure is written to the log (folder InventoryTracking) and not thrown. A restore that did not run is
+		///put back by the repair (SupplyLedgers.GetProcNumsHeldNotComplete).</summary>
+		private static void RunProcHook(Action action) {
+			try {
+				action();
 			}
-			if(!SupplyProcCodes.HasMaterials(procedure.CodeNum)) {
-				return;
+			catch(Exception ex) {
+				ODException.SwallowAnyException(() => Logger.WriteException(ex,"InventoryTracking"));
 			}
-			SupplyProcPendings.InsertIfMissing(procedure.ProcNum,procedure.PatNum,Security.CurUser?.UserNum??0);
 		}
 
 		///<summary>Called by Procedures.Insert and Procedures.Update in the program, on the calling thread, after a procedure became complete. Raises
@@ -186,15 +205,19 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
-		///<summary>Called by Procedures.Update when a complete procedure gets another status, and by Procedures.Delete: puts back what the procedure
-		///still holds (RestoreForProc) and removes it from the awaiting list. Runs also while tracking is off, so stock stays right.</summary>
+		///<summary>Called by Procedures.Update when a complete procedure gets another status (after its note is written), and by Procedures.Delete
+		///(after the deleted status is written): puts back what the procedure still holds (RestoreForProc) and removes it from the awaiting list. Runs
+		///also while tracking is off, so stock stays right. Never throws (RunProcHook): a failure is logged, and what was not put back is put back by
+		///the repair, which finds procedures no longer complete that still hold materials.</summary>
 		public static void OnProcNoLongerComplete(long procNum,bool isDeleted) {
 			Meth.NoCheckMiddleTierRole();
-			if(procNum==0 || !IsInstalled()) {
-				return;
-			}
-			RestoreForProc(procNum,isDeleted ? REASON_DELETED : REASON_UNCOMPLETED);
-			SupplyProcPendings.DeleteForProcs(new List<long> { procNum });
+			RunProcHook(() => {
+				if(procNum==0 || !IsInstalled()) {
+					return;
+				}
+				RestoreForProc(procNum,isDeleted ? REASON_DELETED : REASON_UNCOMPLETED);
+				SupplyProcPendings.DeleteForProcs(new List<long> { procNum });
+			});
 		}
 		#endregion Procedure hooks
 
@@ -645,6 +668,44 @@ namespace OpenPmsDentalBusiness {
 			return listSupplyLedgers.Count;
 		}
 
+		///<summary>The program's quantity of a stock count line: the stock of the lot (supplyLotNum>0) or of the supply's stock without a lot (0), from
+		///the ledger, never from the counters. A counter is brought up to date only at the end of a stock write (SupplyLedgers.InsertMany), so after a
+		///write that failed part-way it can still hold the quantity from before; a count compared with it would write the same difference twice.
+		///Rounded to 2 decimals.</summary>
+		public static double GetQtyProgram(long supplyNum,long supplyLotNum) {
+			Meth.NoCheckMiddleTierRole();
+			if(supplyLotNum>0) {
+				return Math.Round(SupplyLedgers.GetSumForLot(supplyLotNum),2);
+			}
+			return Math.Round(SupplyLedgers.GetSumWithoutLot(supplyNum),2);
+		}
+
+		///<summary>The lines a stock count starts with for the supply, each with the program's quantity from the ledger (GetQtyProgram's rule): one per
+		///lot whose stock is not 0, negative lots too (a lot taken past its stock, a lot number entered from the package, two workstations taking the
+		///last unit), so that counting it corrects it; soonest-expiring first. Then one line for the stock without a lot when there is some, or when
+		///the supply is not tracked by lot, or when no lot has a line. QtyCounted is 0.</summary>
+		public static List<SupplyCountLine> GetCountLines(long supplyNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<SupplyCountLine>>(MethodBase.GetCurrentMethod(),supplyNum);
+			}
+			bool isLotTracked=SupplySettings.GetForSupply(supplyNum).IsLotTracked;
+			SerializableDictionary<long,double> dictQtyByLot=SupplyLedgers.GetSumsByLot(supplyNum);
+			List<SupplyCountLine> listSupplyCountLines=new List<SupplyCountLine>();
+			foreach(SupplyLot supplyLot in SupplyLots.GetForSupply(supplyNum,isEmptyIncluded:true)) {
+				double qtyLot=Math.Round(dictQtyByLot.TryGetValue(supplyLot.SupplyLotNum,out double qty) ? qty : 0,2);
+				if(qtyLot==0) {
+					continue;
+				}
+				listSupplyCountLines.Add(new SupplyCountLine { SupplyNum=supplyNum,SupplyLotNum=supplyLot.SupplyLotNum,LotNumber=supplyLot.LotNumber,
+					DateExpiry=supplyLot.DateExpiry,QtyProgram=qtyLot });
+			}
+			double qtyWithoutLot=Math.Round(dictQtyByLot.TryGetValue(0,out double qtyNoLot) ? qtyNoLot : 0,2);
+			if(qtyWithoutLot!=0 || !isLotTracked || listSupplyCountLines.Count==0) {
+				listSupplyCountLines.Add(new SupplyCountLine { SupplyNum=supplyNum,QtyProgram=qtyWithoutLot });
+			}
+			return listSupplyCountLines;
+		}
+
 		///<summary>A manual adjustment of the supply (and lot) by qtyChange, with a reason (required), and an Inventory Adjust audit entry.</summary>
 		public static void Adjust(long supplyNum,long supplyLotNum,double qtyChange,string reason) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
@@ -879,8 +940,12 @@ namespace OpenPmsDentalBusiness {
 				return Meth.GetBool(MethodBase.GetCurrentMethod(),alertType,fKey,description);
 			}
 			string where="Type="+(int)alertType+" AND FKey="+POut.Long(fKey);
-			long countAdded=Db.NonQ("INSERT INTO alertitem (ClinicNum,Description,Type,Severity,Actions,FormToOpen,FKey,ItemValue,UserNum,SecDateTEntry) "
-				+"SELECT -1,'"+POut.String(description)+"',"+(int)alertType+","+(int)SeverityType.Medium+","
+			//With random primary keys (replication) the key is taken from ReplicationServers.GetKey, as the generated CRUD does, never from
+			//AUTO_INCREMENT: two replicated servers would hand out the same next key, and the duplicate key would stop replication.
+			long countAdded=Db.NonQ("INSERT INTO alertitem ("+(PrefC.RandomKeys ? "AlertItemNum," : "")
+				+"ClinicNum,Description,Type,Severity,Actions,FormToOpen,FKey,ItemValue,UserNum,SecDateTEntry) "
+				+"SELECT "+(PrefC.RandomKeys ? POut.Long(ReplicationServers.GetKey("alertitem","AlertItemNum"))+"," : "")
+				+"-1,'"+POut.String(description)+"',"+(int)alertType+","+(int)SeverityType.Medium+","
 				+(int)(ActionType.MarkAsRead|ActionType.OpenForm)+","+(int)FormType.FormSupplyInventory+","+POut.Long(fKey)+",'',0,"+DbHelper.Now()+" "
 				+"FROM DUAL WHERE NOT EXISTS(SELECT 1 FROM alertitem WHERE "+where+")");
 			return countAdded>0;

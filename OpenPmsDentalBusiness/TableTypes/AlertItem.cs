@@ -249,8 +249,8 @@ namespace OpenPmsDentalBusiness {
 		///Inventory window.</summary>
 		[Description("Inventory Low Stock")]
 		InventoryLowStock=119,
-		///<summary>118 - Inventory tracking (fork only): a lot with stock expires within the lead days of InventoryExpiryAlertDays, or has expired.
-		///FKey is the SupplyLotNum. Opens the Supply Inventory window.</summary>
+		///<summary>118 - Inventory tracking (fork only): a lot with stock expires within the lead days of the ForkInventoryExpiryAlertDays preference
+		///(InventoryTracking.PREF_EXPIRY_ALERT_DAYS), or has expired. FKey is the SupplyLotNum. Opens the Supply Inventory window.</summary>
 		[Description("Inventory Expiring")]
 		InventoryExpiring=118,
 	}

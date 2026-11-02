@@ -84,6 +84,30 @@ namespace OpenPmsDentalBusiness {
 				+" AND SupplyLotNum=0"));
 		}
 
+		///<summary>The lot's stock from the ledger: the sum of its ledger rows, what its QtyOnHand must be. Read this, not QtyOnHand, where a missed
+		///recompute would matter (the program quantity of a stock count).</summary>
+		public static double GetSumForLot(long supplyLotNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetDouble(MethodBase.GetCurrentMethod(),supplyLotNum);
+			}
+			return PIn.Double(Db.GetScalar("SELECT COALESCE(SUM(Quantity),0) FROM supplyledger WHERE SupplyLotNum="+POut.Long(supplyLotNum)));
+		}
+
+		///<summary>The supply's stock from the ledger per lot: SupplyLotNum (0 for stock without a lot) to the sum of its ledger rows. Lots without a
+		///ledger row are not in it.</summary>
+		public static SerializableDictionary<long,double> GetSumsByLot(long supplyNum) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<SerializableDictionary<long,double>>(MethodBase.GetCurrentMethod(),supplyNum);
+			}
+			SerializableDictionary<long,double> dict=new SerializableDictionary<long,double>();
+			DataTable table=Db.GetTable("SELECT SupplyLotNum,COALESCE(SUM(Quantity),0) Qty FROM supplyledger WHERE SupplyNum="+POut.Long(supplyNum)
+				+" GROUP BY SupplyLotNum");
+			foreach(DataRow dataRow in table.Rows) {
+				dict[PIn.Long(dataRow["SupplyLotNum"].ToString())]=PIn.Double(dataRow["Qty"].ToString());
+			}
+			return dict;
+		}
+
 		///<summary>True when the supply has ledger rows other than opening balances and manual adjustments: it has a history that must be kept.
 		///</summary>
 		public static bool HasHistory(long supplyNum) {

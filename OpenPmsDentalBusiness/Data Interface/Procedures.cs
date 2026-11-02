@@ -1677,14 +1677,6 @@ namespace OpenPmsDentalBusiness {
 			if(procedure.ProcStatus!=oldProcedure.ProcStatus) {
 				ProcMultiVisits.UpdateGroupForProc(procedure.ProcNum,procedure.ProcStatus);
 			}
-			//Inventory tracking: completing records the procedure as awaiting materials (never deducts); leaving complete puts back what it used.
-			if(oldProcedure.ProcStatus!=ProcStat.C && procedure.ProcStatus==ProcStat.C) {
-				InventoryTracking.OnProcSetComplete(procedure);
-				InventoryTracking.NotifyProcSetComplete(procedure.ProcNum);
-			}
-			else if(oldProcedure.ProcStatus==ProcStat.C && procedure.ProcStatus!=ProcStat.C) {
-				InventoryTracking.OnProcNoLongerComplete(procedure.ProcNum,isDeleted:procedure.ProcStatus==ProcStat.D);
-			}
 			//The note text (compared exactly), its user, a signature or the 26.1 group note second signature changed. One rule, shared with the
 			//Procedure Note Merge check (M2-NOTES).
 			if(ProcNotes.IsNoteRowNeeded(procedure,oldProcedure)) {
@@ -1697,6 +1689,16 @@ namespace OpenPmsDentalBusiness {
 				note.Signature=procedure.Signature;
 				ProcNotes.SetSecondSignature(note,procedure,oldProcedure);//26.1 group note second signature (M2-NOTES)
 				ProcNotes.Insert(note);
+			}
+			//Inventory tracking, last, once the procedure and its note are saved: completing records the procedure as awaiting materials (never
+			//deducts); leaving complete puts back what it used. Neither hook ever throws (a failing inventory table is logged, and the repair puts back a
+			//restore that did not run), so they cannot stop a procedure from being saved.
+			if(oldProcedure.ProcStatus!=ProcStat.C && procedure.ProcStatus==ProcStat.C) {
+				InventoryTracking.OnProcSetComplete(procedure);
+				InventoryTracking.NotifyProcSetComplete(procedure.ProcNum);
+			}
+			else if(oldProcedure.ProcStatus==ProcStat.C && procedure.ProcStatus!=ProcStat.C) {
+				InventoryTracking.OnProcNoLongerComplete(procedure.ProcNum,isDeleted:procedure.ProcStatus==ProcStat.D);
 			}
 			return hasChanged;
 		}
@@ -1941,7 +1943,17 @@ namespace OpenPmsDentalBusiness {
 
 		public static void SetCanadianLabFeesCompleteForProc(Procedure proc) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				//Inventory tracking: this completes the lab fees, and for a lab fee its parent procedure, on the Middle Tier server, where the program
+				//does not hear the Update calls. Read them before and after, and tell the program which became complete.
+				List<Procedure> listProcsBefore=null;
+				if(InventoryTracking.IsEnabled()) {
+					List<long> listProcNumsParent=new List<long> { proc.ProcNumLab==0 ? proc.ProcNum : proc.ProcNumLab };
+					listProcsBefore=GetManyProc(listProcNumsParent,false).Concat(GetCanadianLabFees(listProcNumsParent)).ToList();
+				}
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),proc);
+				if(!listProcsBefore.IsNullOrEmpty()) {
+					InventoryTracking.NotifyProcsNowComplete(listProcsBefore,GetManyProc(listProcsBefore.Select(x => x.ProcNum).Distinct().ToList(),false));
+				}
 				return;
 			}
 			//If this gets run on a lab fee itself, nothing will happen because result will be zero procs.
@@ -2184,7 +2196,8 @@ namespace OpenPmsDentalBusiness {
 			command+=" WHERE ProcNum="+POut.Long(procNum);
 			Db.NonQ(command);
 			//Inventory tracking: puts back what the procedure used and removes it from the awaiting list. After the status is written, as in Update:
-			//a failure in between leaves a deleted procedure that still holds materials, which the repair puts back (InventoryTracking.Repair).
+			//a failure in between leaves a deleted procedure that still holds materials, which the repair puts back (InventoryTracking.Repair). The
+			//hook never throws, so a failing inventory table cannot stop the delete or the appointment description below.
 			InventoryTracking.OnProcNoLongerComplete(procNum,isDeleted:true);
 			//resynch appointment description-------------------------------------------------------------------------------------
 			if(aptNum != 0) {

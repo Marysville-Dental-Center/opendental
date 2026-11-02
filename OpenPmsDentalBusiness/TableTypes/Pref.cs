@@ -1456,13 +1456,6 @@ namespace OpenPmsDentalBusiness {
 		///The value of each entity can be treated as "Tag" and does not have to be confined to being a simple string (e.g. can be a serialized object stored as a string).
 		///Never directly ask the cache for this preference.  Instead, use the Introspection class within the Misc folder of the OpenPmsDentalBusiness project in order to access it.</summary>
 		IntrospectionItems,
-		///<summary>Inventory tracking (fork, docs/specs/inventory-tracking.md). Integer, 30 by default. A lot with stock gets an Inventory Expiring
-		///alert when it expires within this many days (or has expired). 0 turns the expiring alert off. Seeded by InventoryPrefsStep.</summary>
-		InventoryExpiryAlertDays,
-		///<summary>Inventory tracking (fork, docs/specs/inventory-tracking.md). Boolean, false on every database until the office turns it on in
-		///Supply Inventory, Setup. While false the Materials used panel never opens, completing a procedure records nothing and nothing is deducted;
-		///receipts, counts and manual adjustments still go through the stock ledger. Seeded by InventoryPrefsStep.</summary>
-		InventoryTrackingEnabled,
 		///<summary>Preference to show writeoffs in the StatementInvoicePayment grid.</summary>
 		InvoicePaymentsGridShowNetProd,
 		///<summary>True if there is a row in the ehrprovkey table.  The OpenDentalService will check this preference and if it is false it will not query
