@@ -2652,10 +2652,8 @@ namespace OpenPmsDental{
 				pdfDocumentRenderer.RenderDocument();
 				pdfDocumentRenderer.Save(tempFile);
 				if(PrefC.AtoZfolderUsed!=DataStorageType.LocalAtoZ) {
-					using MemoryStream memoryStream=new MemoryStream();
-					pdfDocumentRenderer.Save(memoryStream,false);
-					rawBase64=Convert.ToBase64String(memoryStream.ToArray());
-					memoryStream.Close();
+					//The saved file's bytes: PDFsharp 6 saves a document only once.
+					rawBase64=Convert.ToBase64String(System.IO.File.ReadAllBytes(tempFile));
 				}
 			}
 			for(int i=0;i< listNumsCategories.Count;i++) {//usually only one, but do allow them to be saved once per image category.

@@ -51,6 +51,7 @@ namespace UnitTests {
 		public static void Initialize(TestContext context) {
 			ODBuild.IsUnitTest=true;//Causes FormFriendlyException to throw rather than displaying a MessageBox.
 			ODInitialize.Initialize();
+			PdfSharpSetup.Init();//The PDF library's licence and font fallback, as OpenPmsDental sets them at start.
 			if(!UnitTestsCore.DatabaseTools.SetDbConnection(UnitTestDbName,"localhost","3306","root","",false)) {//Put this in a config file in the future.
 				UnitTestsCore.DatabaseTools.SetDbConnection("","localhost","3306","root","",false);
 				DatabaseTools.FreshFromDump("localhost","3306","root","",false);//this also sets database to be unittest.
