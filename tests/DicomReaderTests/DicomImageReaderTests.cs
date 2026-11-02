@@ -348,6 +348,15 @@ namespace DicomReaderTests {
 			DicomImageReadResult resultEmpty=ReadThroughHelper(MakeFileIn(listEmpty,ExplicitVrLittleEndian));
 			Assert.AreEqual(DicomImageReadStatus.Read,resultEmpty.Status,resultEmpty.ToString());
 			CollectionAssert.AreEqual(arrayLarge,resultEmpty.BitmapDicom.ArrayDataRaw);
+			//A blank-VR private OB followed by elements of a lower group (tags out of order): the bytes after its value are not of a later group,
+			//but the 16-bit reading does not look like the next header either, so the long layout is taken, and the file reads, as fo-dicom read it
+			//(checked with the version 0.0 DLLs).
+			List<SynElement> listOutOfOrder=listTwelve.Where(x => (x.Tag>>16)!=0x0008).ToList();
+			listOutOfOrder.Insert(0,ReaderCases.BlankVr(Raw(0x0009,0x1010,"OB",new byte[] { 1,2,3,4,5,6,7,8 })));
+			listOutOfOrder.InsertRange(1,listTwelve.Where(x => (x.Tag>>16)==0x0008));
+			DicomImageReadResult resultOutOfOrder=ReadThroughHelper(MakeFileIn(listOutOfOrder,ExplicitVrLittleEndian));
+			Assert.AreEqual(DicomImageReadStatus.Read,resultOutOfOrder.Status,resultOutOfOrder.ToString());
+			CollectionAssert.AreEqual(arraySource,resultOutOfOrder.BitmapDicom.ArrayDataRaw);
 			//Two spaces with a 16-bit length other than 0 are the 16-bit layout whatever follows; an undefined 32-bit length is a sequence.
 			DicomImageReadResult resultShort=ReadThroughHelper(MakeFileIn(With(listTwelve,ReaderCases.BlankVr(Text(0x0008,0x1030,"LO","00"))),ExplicitVrLittleEndian));
 			Assert.AreEqual(DicomImageReadStatus.Read,resultShort.Status,resultShort.ToString());
