@@ -132,15 +132,16 @@ $OwnFiles=[ordered]@{
 $ThirdPartyFiles=[ordered]@{}
 foreach($name in @('BouncyCastle.Cryptography.dll','Google.Apis.dll','Google.Apis.Auth.dll',
 	'Google.Apis.Core.dll','Google.Apis.Gmail.v1.dll','Health.Direct.Agent.dll','Health.Direct.Common.dll','Health.Direct.ResolverPlugins.dll',
-	'Hunspellx86.dll','MailKit.dll','Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Bcl.Cryptography.dll',
+	'MailKit.dll','Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Bcl.Cryptography.dll',
 	'Microsoft.Extensions.DependencyInjection.Abstractions.dll','Microsoft.Extensions.Logging.Abstractions.dll','Microsoft.Identity.Client.dll',
 	'Microsoft.IdentityModel.Abstractions.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll',
 	'Microsoft.Web.WebView2.Wpf.dll','MigraDoc.DocumentObjectModel.dll','MigraDoc.Rendering-gdi.dll','MimeKit.dll','MySqlConnector.dll','NDde.dll',
-	'NHunspell.dll','Newtonsoft.Json.dll','PdfSharp-gdi.dll','PdfSharp.Charting-gdi.dll','PdfSharp.License.dll','PdfSharp.Shared.dll',
+	'Newtonsoft.Json.dll','PdfSharp-gdi.dll','PdfSharp.Charting-gdi.dll','PdfSharp.License.dll','PdfSharp.Shared.dll',
 	'PdfSharp.System.dll','Renci.SshNet.dll','SharpDX.dll','SharpDX.Direct3D9.dll',
 	'SharpDX.Mathematics.dll','System.Buffers.dll','System.Diagnostics.DiagnosticSource.dll','System.Formats.Asn1.dll','System.IO.Pipelines.dll',
 	'System.Memory.dll','System.Numerics.Vectors.dll','System.Runtime.CompilerServices.Unsafe.dll','System.Text.Encodings.Web.dll',
-	'System.Text.Json.dll','System.Threading.Tasks.Extensions.dll','Tao.OpenGl.dll','Tao.Platform.Windows.dll','WebView2Loader.dll'))
+	'System.Text.Json.dll','System.Threading.Tasks.Extensions.dll','Tao.OpenGl.dll','Tao.Platform.Windows.dll','WeCantSpell.Hunspell.dll',
+	'WebView2Loader.dll'))
 {
 	$ThirdPartyFiles[$name]='Required dlls'
 }
@@ -148,10 +149,10 @@ $ThirdPartyFiles['RdlEngine.dll']='RdlEngine\bin\Release'
 $ThirdPartyFiles['RdlViewer.dll']='RdlViewer\bin\Release'
 
 #Files from the repository: the path in the program folder, and the repository-relative source. LICENSE-LGPL-2.1.txt is the licence
-#text the LGPL 2.1 asks for with every copy of the libraries the release ships under it (RdlEngine.dll, RdlViewer.dll, NHunspell.dll,
-#Hunspellx86.dll and the en_US word list in WpfControlsOD.dll; THIRD-PARTY-NOTICES.txt). PDFsharp and MigraDoc 6.5 are under the GNU AGPL
-#version 3, so the program as distributed is conveyed under the GNU GPL version 3 (its own code is "version 2 or later"): both texts ship,
-#LICENSE-AGPL-3.0.txt and LICENSE-GPL-3.0.txt (NOTICE).
+#text the LGPL 2.1 asks for with every copy of the libraries the release ships under it (RdlEngine.dll, RdlViewer.dll,
+#WeCantSpell.Hunspell.dll and the en_US word list in WpfControlsOD.dll; THIRD-PARTY-NOTICES.txt). PDFsharp and MigraDoc 6.5 are under the
+#GNU AGPL version 3, so the program as distributed is conveyed under the GNU GPL version 3 (its own code is "version 2 or later"): both
+#texts ship, LICENSE-AGPL-3.0.txt and LICENSE-GPL-3.0.txt (NOTICE).
 $DocumentFiles=[ordered]@{
 	'LICENSE'='LICENSE'
 	'LICENSE-GPL-3.0.txt'='LICENSE-GPL-3.0.txt'
@@ -167,9 +168,9 @@ $StagedFolders=@('db','db\init')
 #Files the program cannot run or ship without, and why. They are on the allow-list too; these get a reason when missing.
 $RequiredReasons=[ordered]@{
 	'WebView2Loader.dll'='Microsoft.Web.WebView2.Core.dll loads it for every WebView2 window (CodeBase/Controls/ODWebView2.cs)'
-	'Hunspellx86.dll'='NHunspell loads it for the spell check of every ODtextBox; a Release build throws without it'
+	'WeCantSpell.Hunspell.dll'='the spell check of every ODtextBox and TextRich (WpfControlsOD/Logic/SpellCheckL.cs) uses it'
 	'ODR.dll'='RDL report definitions load it by file name (<CodeModule>ODR.dll</CodeModule>)'
-	'LICENSE-LGPL-2.1.txt'='the LGPL 2.1 (sections 1 and 4) asks for its text with every copy of RdlEngine.dll, RdlViewer.dll, NHunspell.dll and Hunspellx86.dll'
+	'LICENSE-LGPL-2.1.txt'='the LGPL 2.1 (sections 1 and 4) asks for its text with every copy of RdlEngine.dll, RdlViewer.dll and WeCantSpell.Hunspell.dll'
 	'LICENSE-AGPL-3.0.txt'='the GNU AGPL 3.0 (section 4) asks for its text with every copy of PDFsharp and MigraDoc'
 	'LICENSE-GPL-3.0.txt'='the program with PDFsharp and MigraDoc is conveyed under the GNU GPL 3.0, whose section 4 asks for its text with every copy'
 	'PdfSharp.License.dll'='PdfSharp-gdi.dll checks the licence through it before it makes or reads any PDF'
@@ -186,7 +187,7 @@ $ReleaseBlockers=@(
 )
 
 #Native files: they must be x86 and must not need the debug C runtime, which may not be redistributed.
-$NativeFiles=@('Direct2dWrapper.dll','Hunspellx86.dll','WebView2Loader.dll')
+$NativeFiles=@('Direct2dWrapper.dll','WebView2Loader.dll')
 $DebugRuntimeNames=@('VCRUNTIME140D.dll','MSVCP140D.dll','ucrtbased.dll','VCRUNTIME140_1D.dll')
 
 #Files of OpenPmsDental's Release output that are never shipped.
@@ -238,6 +239,8 @@ $DenyList=@(
 	@('OpenPop.dll',"OpenPop.NET, unmaintained (replaced by MailKit's POP3 client in the tier 1 library updates)"),
 	@('BouncyCastle.Crypto.dll',"MimeKit 2's Bouncy Castle 1.8; MimeKit 4 uses BouncyCastle.Cryptography.dll"),
 	@('Google.Apis*.PlatformServices.dll','the Google APIs 1.44 platform shims; the library has none since 1.50'),
+	@('NHunspell.dll','NHunspell 0.9.6, a wrapper of the native Hunspell 1.2 (replaced by the managed WeCantSpell.Hunspell in the library updates)'),
+	@('Hunspellx*.dll',"NHunspell's native Hunspell 1.2 (removed with NHunspell; WeCantSpell.Hunspell needs no native file)"),
 	@('TWAINDSM.dll',"the TWAIN data source manager comes with the scanner's driver; one in the program folder would be loaded first"),
 	@('FreeDentalConfig.xml','the connection settings of each computer; the installer writes it, a release never carries it'),
 	@('OpenDentalServerConfig.xml','the Middle Tier settings of each server'),

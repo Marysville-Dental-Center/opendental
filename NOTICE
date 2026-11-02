@@ -72,9 +72,9 @@ every third-party component the program ships, with its license and where
 its source is published; the program shows the same list, and the license
 texts, under Help > About > View Licenses. The components that ship under the
 GNU Lesser General Public License, version 2.1 (the RDL Project's report
-engine and viewer, NHunspell and Hunspell, and the en_US word list) come with
-its full text, LICENSE-LGPL-2.1.txt; PDFsharp and MigraDoc come with the GNU
-AGPL's, LICENSE-AGPL-3.0.txt. CDT codes are copyrighted by the
+engine and viewer, the WeCantSpell.Hunspell spell checker, and the en_US word
+list) come with its full text, LICENSE-LGPL-2.1.txt; PDFsharp and MigraDoc come
+with the GNU AGPL's, LICENSE-AGPL-3.0.txt. CDT codes are copyrighted by the
 American Dental Association; by this project's ground rules, no CDT code text
 or ADA claim-form artwork is included.
 

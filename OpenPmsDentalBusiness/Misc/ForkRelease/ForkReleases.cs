@@ -111,6 +111,9 @@ namespace OpenPmsDentalBusiness {
 			"PdfSharp.dll",
 			"PdfSharp.Charting.dll",
 			"MigraDoc.Rendering.dll",
+			//NHunspell and its native Hunspell, replaced by the managed WeCantSpell.Hunspell (2026-11-02).
+			"NHunspell.dll",
+			"Hunspellx86.dll",
 		};
 		///<summary>Key of the AssemblyMetadata attribute that holds the build time of OpenPmsDental.exe (written by OpenPmsDental.csproj).</summary>
 		public const string BUILD_UTC_METADATA_KEY="ForkBuildUtc";

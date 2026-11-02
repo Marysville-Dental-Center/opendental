@@ -112,6 +112,9 @@ Type: files; Name: "{app}\Dicom.Native.dll"
 Type: files; Name: "{app}\PdfSharp.dll"
 Type: files; Name: "{app}\PdfSharp.Charting.dll"
 Type: files; Name: "{app}\MigraDoc.Rendering.dll"
+; The spell checker: NHunspell and its native Hunspell (v0.0 shipped the x86 one only), replaced by the managed WeCantSpell.Hunspell.dll.
+Type: files; Name: "{app}\NHunspell.dll"
+Type: files; Name: "{app}\Hunspellx86.dll"
 
 [Files]
 Source: "{#StagingDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

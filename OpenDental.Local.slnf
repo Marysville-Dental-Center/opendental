@@ -64,6 +64,7 @@
       "tests\\InsuranceTests\\InsuranceTests.csproj",
       "tests\\LibraryBindingTests\\LibraryBindingTests.csproj",
       "tests\\LibraryUpdateTests\\LibraryUpdateTests.csproj",
+      "tests\\LibSpellTests\\LibSpellTests.csproj",
       "tests\\LibWebTests\\LibWebTests.csproj",
       "tests\\M201Tests\\M201Tests.csproj",
       "tests\\M202Tests\\M202Tests.csproj",

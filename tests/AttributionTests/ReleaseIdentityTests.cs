@@ -17,7 +17,7 @@ namespace AttributionTests {
 		///<summary>Every third-party component the release ships, by its name in THIRD-PARTY-NOTICES.txt (report-release.md 1.3 to 1.5).</summary>
 		private static readonly string[] _arrayShippedComponents=new string[] {
 			"MySqlConnector",".NET libraries","Newtonsoft.Json","MimeKit","MailKit","MSAL.NET","SSH.NET","Bouncy Castle Cryptography","PDFsharp",
-			"MigraDoc","SharpDX","Tao Framework","Direct Project","NHunspell and Hunspell","Hunspell en_US dictionary",
+			"MigraDoc","SharpDX","Tao Framework","Direct Project","WeCantSpell.Hunspell","Hunspell en_US dictionary",
 			"RDL Project","Google APIs Client Library for .NET","NDde","Microsoft Edge WebView2 SDK","TWAIN","Pearl API notice",
 		};
 
@@ -32,7 +32,7 @@ namespace AttributionTests {
 			"PdfSharp-gdi.dll","PdfSharp.Charting-gdi.dll","PdfSharp.Shared.dll","PdfSharp.System.dll","PdfSharp.License.dll",
 			"MigraDoc.DocumentObjectModel.dll","MigraDoc.Rendering-gdi.dll","SharpDX.dll",
 			"SharpDX.Direct3D9.dll","SharpDX.Mathematics.dll","Tao.OpenGl.dll","Tao.Platform.Windows.dll","Health.Direct.Agent.dll",
-			"Health.Direct.Common.dll","Health.Direct.ResolverPlugins.dll","NHunspell.dll","Hunspellx86.dll","RdlEngine.dll","RdlViewer.dll",
+			"Health.Direct.Common.dll","Health.Direct.ResolverPlugins.dll","WeCantSpell.Hunspell.dll","RdlEngine.dll","RdlViewer.dll",
 			"Google.Apis.dll","Google.Apis.Auth.dll","Google.Apis.Core.dll","Google.Apis.Gmail.v1.dll","NDde.dll",
 			"Microsoft.Web.WebView2.Core.dll","Microsoft.Web.WebView2.WinForms.dll","Microsoft.Web.WebView2.Wpf.dll","WebView2Loader.dll",
 		};
@@ -44,13 +44,14 @@ namespace AttributionTests {
 			"Oracle","Tao_Freeglut","fo-dicom",
 		};
 
-		///<summary>What packages BIN-A and BIN-B delete, Open Dental's own closed binaries, and the libraries the tier 1 library updates removed
-		///(OpenPop.NET, SharpSSH with Mentalis.org and DiffieHellman, MimeKit 2's BouncyCastle.Crypto, the Google APIs 1.44 platform shims), and
-		///fo-dicom, replaced by the in-house DICOM reader: never listed as shipped.</summary>
+		///<summary>What packages BIN-A and BIN-B delete, Open Dental's own closed binaries, the libraries the tier 1 library updates removed
+		///(OpenPop.NET, SharpSSH with Mentalis.org and DiffieHellman, MimeKit 2's BouncyCastle.Crypto, the Google APIs 1.44 platform shims),
+		///fo-dicom, replaced by the in-house DICOM reader, and the spell checker the library updates replaced (NHunspell with its native
+		///Hunspellx86.dll and Hunspellx64.dll): never listed as shipped.</summary>
 		private static readonly string[] _arrayNotShipped=new string[] {
 			"Sparks3D","SigPlusNET","Interop.Word","Interop.Microsoft.Office","Interop.VBIDE","stdole","AcroPDF","Acrobat","zxing","Avalara","RS232","DotNetZip",
 			"Ionic","Drifty","VBbridges","xImageDeviceManager","EZTwain","Eztwain","SuniUSB","VideoCamLib","OpenPop","SharpSSH","Mentalis",
-			"DiffieHellman","BouncyCastle.Crypto.dll","PlatformServices","fo-dicom","Dicom.Core","Dicom.Native",
+			"DiffieHellman","BouncyCastle.Crypto.dll","PlatformServices","fo-dicom","Dicom.Core","Dicom.Native","NHunspell","Hunspellx86","Hunspellx64",
 		};
 
 		#region Helpers
@@ -149,6 +150,11 @@ namespace AttributionTests {
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="Google APIs Client Library for .NET").Text,"Version 2.0, January 2004");
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="Direct Project").Text,"Redistribution and use in source and binary forms");
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="NDde").Text,"Shared Source License for NDde");
+			//The spell checker's own licence file (license.txt of the package): Hunspell's tri-licence header with its contributors.
+			string textWeCantSpell=listLicenseEntries.Single(x => x.Name=="WeCantSpell.Hunspell").Text;
+			StringAssert.Contains(textWeCantSpell,"Version: MPL 1.1/GPL 2.0/LGPL 2.1");
+			StringAssert.Contains(textWeCantSpell,"the GNU Lesser General Public License Version 2.1 or later");
+			StringAssert.Contains(textWeCantSpell,"LICENSE-LGPL-2.1.txt");
 		}
 
 		[TestMethod]

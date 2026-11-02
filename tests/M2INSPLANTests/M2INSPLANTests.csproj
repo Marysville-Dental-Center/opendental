@@ -65,16 +65,6 @@
     <None Include="Data\*.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <!-- The spell checker of the window's note boxes (ODtextBox) loads these native libraries from the program folder; a Debug build otherwise
-         tries to copy them from a path relative to OpenPmsDental\bin\Debug. -->
-    <None Include="..\..\Required dlls\Hunspellx86.dll">
-      <Link>Hunspellx86.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\..\Required dlls\Hunspellx64.dll">
-      <Link>Hunspellx64.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj">

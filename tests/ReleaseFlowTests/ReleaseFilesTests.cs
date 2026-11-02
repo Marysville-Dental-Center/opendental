@@ -47,7 +47,7 @@ namespace ReleaseFlowTests {
 		};
 
 		///<summary>The native x86 files the program loads at run time that no reference copies (Required dlls).</summary>
-		private static readonly string[] _arrayRuntimeDlls=new string[] { "Hunspellx86.dll","WebView2Loader.dll" };
+		private static readonly string[] _arrayRuntimeDlls=new string[] { "WebView2Loader.dll" };
 
 		[TestMethod]
 		public void SharedAssemblyInfo_NamesTheProductTheReleaseAndBothCopyrights() {

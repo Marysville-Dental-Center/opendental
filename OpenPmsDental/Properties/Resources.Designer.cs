@@ -760,17 +760,6 @@ namespace OpenPmsDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to NHunspell - Free Spell Checker, Hyphenation and Thesaurus
-        ///License
-        ///NHunspell is licensed under: GPL/LGPL/MPL. Free use in commercial applications is permitted according to the LGPL and MPL licenses. Your commercial application can link against the NHunspell DLLs..
-        /// </summary>
-        public static string NHunSpell {
-            get {
-                return ResourceManager.GetString("NHunSpell", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
         ///&lt;ArrayOfProcedureCode xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xmlns:xsd=&quot;http://www.w3.org/2001/XMLSchema&quot;&gt;
         ///  &lt;ProcedureCode&gt;
@@ -1303,7 +1292,19 @@ namespace OpenPmsDental.Properties {
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-        
+
+        /// <summary>
+        ///   Looks up a localized string similar to Note that this license is inherited from the original Hunspell project
+        ///as this is derived from that work. Original license:
+        ///
+        ///Version: MPL 1.1/GPL 2.0/LGPL 2.1 [rest of string was truncated]&quot;;.
+        /// </summary>
+        public static string WeCantSpellHunspell {
+            get {
+                return ResourceManager.GetString("WeCantSpellHunspell", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to &lt;Style x:Key=&quot;DataGridStyle&quot; TargetType=&quot;{x:Type DataGrid}&quot;
         ///    xmlns=&quot;http://schemas.microsoft.com/winfx/2006/xaml/presentation&quot;
