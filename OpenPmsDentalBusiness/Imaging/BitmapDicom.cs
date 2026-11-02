@@ -88,9 +88,8 @@ namespace OpenPmsDentalBusiness {
 						format=Lans.g("DicomHelper","an unknown format (transfer syntax")+" "+result.TransferSyntaxUid+")";
 					}
 					return Lans.g("DicomHelper","This DICOM image is stored as")+" "+format+". "
-						+Lans.g("DicomHelper","This version of the program does not open that format: decoders for compressed DICOM are planned for a later "
-							+"version, not this one. The image stays in the patient's images. The program that made it can export it uncompressed or as "
-							+"JPEG Baseline DICOM.");
+						+Lans.g("DicomHelper","This version of the program does not open that format. The image stays in the patient's images. The "
+							+"program that made it can export it uncompressed or as JPEG Baseline DICOM.");
 				case DicomImageReadStatus.TooLarge:
 					return Lans.g("DicomHelper","This DICOM image is too large to open.")+" "+result.Reason;
 				case DicomImageReadStatus.NotDicom:
@@ -224,6 +223,12 @@ namespace OpenPmsDentalBusiness {
 			return PixelReader.ReadFile(filename);
 		}
 
+		///<summary>The largest data step GetHistogramStep reports: the step of 9 bits stored, which the full reader moves up by 3 bits to 12.</summary>
+		private const int HISTOGRAM_STEP_MAX=8;
+		///<summary>How many pixels a histogram bin must hold, at a data step of 1, for the hunt from the peak to go on past it. The hunt stops at
+		///the first bin under 150 times the step.</summary>
+		private const int HISTOGRAM_THRESHOLD=150;
+
 		public static void CalculateWindowingOnImport(BitmapDicom bitmapDicom){
 			if(bitmapDicom.BitsAllocated==8) {
 				bitmapDicom.WindowingMax=255;
@@ -239,6 +244,7 @@ namespace OpenPmsDentalBusiness {
 			for(int i=0;i<bitmapDicom.ArrayDataRaw.Length;i++){
 				histogram[bitmapDicom.ArrayDataRaw[i]]++;
 			}
+			int step=GetHistogramStep(bitmapDicom.ArrayDataRaw);
 			int idxBlackPixels=GetIndexForValue(histogram,histogram.Max());//max value will hopefully be the black pixels.
 			if(idxBlackPixels < 100) { //it's at the left, so it's almost certainly black
 				histogram[idxBlackPixels]=0;//throw out the large number of black pixels
@@ -247,26 +253,49 @@ namespace OpenPmsDentalBusiness {
 			if(bitmapDicom.PhotometricInterp==EnumDicomPhotometricInterp.MONOCHROME1) {
 				//MONOCHROME1 Grayscale ranges from bright to dark. Our logic below expects the grayscale to go from dark to bright.
 				//Because of that, we need to hunt up(GetWindowingMax) to find the min, and hunt down(GetWindowingMin) to find the max.
-				bitmapDicom.WindowingMin=GetWindowingMax(histogram,idxPeak);
+				bitmapDicom.WindowingMin=GetWindowingMax(histogram,idxPeak,step);
 				if(bitmapDicom.WindowingMin==4095) {
 					//Default value of max. Change to default value of min
 					bitmapDicom.WindowingMin=0;
 				}
-				bitmapDicom.WindowingMax=GetWindowingMin(histogram,idxPeak);
+				bitmapDicom.WindowingMax=GetWindowingMin(histogram,idxPeak,step);
 				if(bitmapDicom.WindowingMax==0) {
 					//Default value. Set to the actual max default value of 4095
 					bitmapDicom.WindowingMax=4095;
 				}
 			}
 			else {
-				bitmapDicom.WindowingMin=GetWindowingMin(histogram,idxPeak);
-				bitmapDicom.WindowingMax=GetWindowingMax(histogram,idxPeak);
+				bitmapDicom.WindowingMin=GetWindowingMin(histogram,idxPeak,step);
+				bitmapDicom.WindowingMax=GetWindowingMax(histogram,idxPeak,step);
 			}
 		}
 
-		private static int GetWindowingMin(int[] histogram,int idxPeak) {
-			int threshold=150;
-			for(int i=idxPeak;i>=0;i--){//hunt down
+		///<summary>The step between the values the data can hold on the 12 bit scale of the import histogram: 1, 2, 4 or 8. Gray data with 9 to 11
+		///bits stored is moved up to 12 bits by the full reader (value shifted left by 12 minus Bits Stored), so it holds only every 2nd, 4th or
+		///8th value, and a 12 bit file can hold only even values. The step is the lowest bit set in any non-zero value (1 shifted left by the
+		///trailing zero bits of their OR), at most HISTOGRAM_STEP_MAX. It is 1 when any non-zero value is odd, which is every ordinary 12 bit
+		///image, and then the import window is exactly what it always was.</summary>
+		public static int GetHistogramStep(ushort[] arrayDataRaw) {
+			int valuesOr=0;
+			for(int i=0;i<arrayDataRaw.Length;i++) {
+				valuesOr|=arrayDataRaw[i];
+				if((valuesOr & 1)==1) {
+					return 1;
+				}
+			}
+			if(valuesOr==0) {
+				return 1;
+			}
+			int step=valuesOr & -valuesOr;//the lowest bit set
+			return Math.Min(step,HISTOGRAM_STEP_MAX);
+		}
+
+		///<summary>Hunts down from idxPeak, step by step, to the first bin with fewer than HISTOGRAM_THRESHOLD times step pixels. At a step above
+		///1 the bins in between are always empty, and one bin holds what step bins hold at 12 bits, so the threshold grows with the step: the
+		///window then depends on how the pixels are spread, not on the bit depth.</summary>
+		private static int GetWindowingMin(int[] histogram,int idxPeak,int step) {
+			int threshold=HISTOGRAM_THRESHOLD*step;
+			for(int i=idxPeak;i>=0;i-=step){//hunt down
 				if(histogram[i]<threshold){
 					return i/16;//converting from 12 bit to 8 bit
 				}
@@ -274,9 +303,11 @@ namespace OpenPmsDentalBusiness {
 			return 0;
 		}
 
-		private static int GetWindowingMax(int[] histogram,int idxPeak) {
-			int threshold=150;
-			for(int i=idxPeak;i<histogram.Length;i++){//hunt up
+		///<summary>Hunts up from idxPeak, step by step, to the first bin with fewer than HISTOGRAM_THRESHOLD times step pixels (see
+		///GetWindowingMin).</summary>
+		private static int GetWindowingMax(int[] histogram,int idxPeak,int step) {
+			int threshold=HISTOGRAM_THRESHOLD*step;
+			for(int i=idxPeak;i<histogram.Length;i+=step){//hunt up
 				if(histogram[i]<threshold){
 					return i/16;//converting from 12 bit to 8 bit
 				}

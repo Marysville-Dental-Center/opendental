@@ -434,7 +434,7 @@ namespace DicomReaderTests {
 
 		#region Formats this version does not open
 		[TestMethod]
-		public void UnsupportedCompression_NamesTheFormat_AndSaysThisVersionCannotOpenItYet() {
+		public void UnsupportedCompression_NamesTheFormat_AndSaysThisVersionDoesNotOpenIt() {
 			foreach(ReaderCase readerCase in ReaderCases.Compressed().Where(x => x.Name.StartsWith("unsupported-"))) {
 				string uid=readerCase.Name.Substring("unsupported-".Length);
 				string name=DicomTransferSyntaxes.Find(uid).Name;
@@ -445,8 +445,9 @@ namespace DicomReaderTests {
 				StringAssert.Contains(result.Reason,name,readerCase.Name);
 				string message=DicomHelper.GetNotReadMessage(result);
 				StringAssert.Contains(message,name,readerCase.Name);
-				StringAssert.Contains(message,"does not open that format: decoders for compressed DICOM are planned for a later version",readerCase.Name);
+				StringAssert.Contains(message,"This version of the program does not open that format.",readerCase.Name);
 				Assert.IsFalse(message.Contains(" yet"),"Deferred, not about to come: "+message);
+				Assert.IsFalse(message.Contains("planned") || message.Contains("later version"),"Deferred, not promised: "+message);
 			}
 			//Named in the message: JPEG Extended, JPEG Lossless, JPEG-LS, JPEG 2000, HTJ2K.
 			foreach(string uid in new[] { JpegExtended,JpegLosslessProcess14,JpegLossless,JpegLsLossless,Jpeg2000Lossless,Jpeg2000,HtJpeg2000Lossless,HtJpeg2000 }) {
