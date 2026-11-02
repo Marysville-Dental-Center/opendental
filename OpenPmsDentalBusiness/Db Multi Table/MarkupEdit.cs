@@ -137,6 +137,30 @@ namespace OpenPmsDentalBusiness {
 			return s;
 		}
 
+		///<summary>The local folders the images of TranslateToXhtml's html come from, for the browser that shows it (ODWebView2.NavigateToHtml loads
+		///files from no other folder): the A to Z folder's Wiki folder, or its EmailImages folder when isEmail, when the A to Z folder is a local or
+		///network folder, and the program's temp folder, which holds the images downloaded from cloud storage. Never throws: a folder that cannot be
+		///found is left out.</summary>
+		public static List<string> GetImageFolders(bool isEmail) {
+			Meth.NoCheckMiddleTierRole();
+			List<string> listFolders=new List<string>();
+			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
+				try {
+					listFolders.Add(isEmail ? ImageStore.GetEmailImagePath() : WikiPages.GetWikiPath());
+				}
+				catch(Exception ex) {
+					ex.DoNothing();
+				}
+			}
+			try {
+				listFolders.Add(PrefC.GetTempFolderPath());
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			return listFolders;
+		}
+
 		public static Regex GetHtmlTagRegex() {
 			return new Regex(@"<\s*([^ >]+)[^>]*>.*?<\s*/\s*\1\s*>");
 		}

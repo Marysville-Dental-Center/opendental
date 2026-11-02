@@ -96,7 +96,8 @@ namespace OpenPmsDental {
 			if(IsDisposed) {
 				return;
 			}
-			ODException.SwallowAnyException(() => webViewWiki.NavigateToHtml(html));//async void: a temp folder that cannot be written leaves the old preview
+			ODException.SwallowAnyException(() => webViewWiki.NavigateToHtml(html,isRemoteContentAllowed:true,
+				listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:false)));//async void: a temp folder that cannot be written leaves the old preview
 		}
 
 		private void webViewWiki_NavigationCompleted(object sender,Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e) {

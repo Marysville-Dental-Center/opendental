@@ -65,7 +65,9 @@ namespace OpenPmsDental {
 				Text=Title;//Since we are not browsing, we need to clear the title stored within the Text.
 				if(!string.IsNullOrEmpty(HtmlContent)) {
 					webViewMain.LinkClicked+=WebViewMain_LinkClicked;
+					webViewMain.AreBrowserKeysEnabled=true;//Ctrl+F finds text in the response, as in the old browser window.
 					try {
+						//Html from outside the office (a clearinghouse's response): no file but its own, nothing from the web.
 						webViewMain.NavigateToHtml(HtmlContent);
 					}
 					catch(Exception ex) {

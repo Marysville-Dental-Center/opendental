@@ -63,7 +63,8 @@ namespace OpenPmsDental {
 			}
 			textContent.Text=WikiPages.GetWikiPageContentWithWikiPageTitles(wikiPageHist.PageContent);
 			try {
-				webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(textContent.Text,false,hasWikiPageTitles: true));
+				webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(textContent.Text,false,hasWikiPageTitles: true),isRemoteContentAllowed:true,
+					listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:false));
 			}
 			catch(Exception ex) {
 				webViewWiki.NavigateToHtml("");

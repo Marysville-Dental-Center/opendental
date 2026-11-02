@@ -82,6 +82,7 @@ namespace OpenPmsDental{
 			this.webViewWiki.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
             | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
+			this.webViewWiki.AreBrowserKeysEnabled = true;
 			this.webViewWiki.CreationProperties = null;
 			this.webViewWiki.DefaultBackgroundColor = System.Drawing.Color.White;
 			this.webViewWiki.Location = new System.Drawing.Point(0, 28);

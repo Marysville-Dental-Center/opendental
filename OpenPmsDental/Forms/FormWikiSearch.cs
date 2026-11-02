@@ -70,11 +70,13 @@ namespace OpenPmsDental {
 			butRestore.Enabled=false;
 			try {
 				if(checkArchivedOnly.Checked) {
-					webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(WikiPages.GetByTitle(wikiPageTitle,isDeleted:true).PageContent,true));
+					webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(WikiPages.GetByTitle(wikiPageTitle,isDeleted:true).PageContent,true),
+						isRemoteContentAllowed:true,listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:false));
 					butRestore.Enabled=true;
 				}
 				else {
-					webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(WikiPages.GetByTitle(wikiPageTitle).PageContent,true));
+					webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(WikiPages.GetByTitle(wikiPageTitle).PageContent,true),
+						isRemoteContentAllowed:true,listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:false));
 				}
 			}
 			catch(Exception ex) {

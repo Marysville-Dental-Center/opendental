@@ -121,7 +121,9 @@ namespace OpenPmsDental {
 			WikiPageCur=wikiPage;
 			try {
 				float scale=LayoutManager.ScaleMyFont();//Include any Zoom adjustment to increase the font size of the Wiki
-				webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(WikiPageCur.PageContent,false,scale:scale));
+				//The office's own pages: their images come from the wiki folder, and the master page may name a web style sheet.
+				webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(WikiPageCur.PageContent,false,scale:scale),isRemoteContentAllowed:true,
+					listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:false));
 			}
 			catch(Exception ex) {
 				webViewWiki.NavigateToHtml("");

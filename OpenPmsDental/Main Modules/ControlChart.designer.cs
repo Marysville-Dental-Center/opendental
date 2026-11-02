@@ -2348,6 +2348,7 @@
             | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.webViewEcw.AllowExternalDrop = false;
+			this.webViewEcw.AreBrowserKeysEnabled = true;
 			this.webViewEcw.DefaultBackgroundColor = System.Drawing.Color.White;
 			this.webViewEcw.Location = new System.Drawing.Point(1, 11);
 			this.webViewEcw.Name = "webViewEcw";

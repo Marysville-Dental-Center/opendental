@@ -128,6 +128,12 @@ namespace OpenPmsDental {
 			InitializeComponent();
 			gridAttachments.ContextMenu=contextMenuAttachments;
 			webViewEmail.LinkClicked+=webViewEmail_LinkClicked;
+			webViewEmail.RemoteContentBlocked+=webViewEmail_RemoteContentBlocked;
+		}
+
+		///<summary>True for an email the office received, whose html comes from outside the office. False while composing and for sent email.</summary>
+		private bool IsReceived() {
+			return _emailMessage!=null && EmailMessages.IsReceived(_emailMessage.SentOrReceived);
 		}
 
 		///<summary>Loads the given emailMessage into the control.
@@ -240,6 +246,10 @@ namespace OpenPmsDental {
 		private void DisplayEmailUnsafe() {
 			textBodyText.Visible=true;
 			webViewEmail.Visible=false;
+			//The inbox shows one email after another in this control: nothing of the one before stays.
+			butShowImages.Visible=false;
+			_listImageParts=null;
+			_listAppParts=null;
 			textBodyText.Text=_emailMessage.BodyText;
 			textSentOrReceived.Text=_emailMessage.SentOrReceived.ToString();
 			textFromAddress.Text=_emailMessage.FromAddress;
@@ -295,8 +305,15 @@ namespace OpenPmsDental {
 				webViewEmail.Visible=true;
 				LayoutManager.MoveLocation(webViewEmail,textBodyText.Location);
 				LayoutManager.MoveSize(webViewEmail,textBodyText.Size);
-				//A received email is shown as a page of its own: no scripts, nothing it links to loads in the preview (webViewEmail_LinkClicked).
-				webViewEmail.NavigateToHtml(HtmlText);
+				//An email is shown as a page of its own: no scripts, nothing it links to loads in the preview (webViewEmail_LinkClicked).
+				//A received email loads no file but its own and nothing from the web until the user clicks Show Images
+				//(webViewEmail_RemoteContentBlocked); the office's own emails load their images from the email images folder and the web.
+				if(IsReceived()) {
+					webViewEmail.NavigateToHtml(HtmlText);
+				}
+				else {
+					webViewEmail.NavigateToHtml(HtmlText,isRemoteContentAllowed:true,listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:true));
+				}
 				webViewEmail.BringToFront();
 			}
 			catch(Exception) {
@@ -698,11 +715,21 @@ namespace OpenPmsDental {
 				string htmlFolderPath=ODFileUtils.CreateRandomFolder(PrefC.GetTempFolderPath());//Throws exceptions.
 				string html=HtmlText??"";
 				List<MimeEntity> listMimeEntries=new List<MimeEntity>();
-				listMimeEntries.AddRange(_listAppParts);
-				listMimeEntries.AddRange(_listImageParts);
+				if(_listAppParts!=null) {
+					listMimeEntries.AddRange(_listAppParts);
+				}
+				if(_listImageParts!=null) {
+					listMimeEntries.AddRange(_listImageParts);
+				}
 				html=ParseAndSaveAttachement(htmlFolderPath,html,listMimeEntries);
 				//The page goes into the images' folder, so their relative paths work. Still no scripts, and links still only go through LinkClicked.
-				webViewEmail.NavigateToHtml(html,htmlFolderPath);
+				//The user asked for the images, so the email's web images load too. Files still come only from that folder (and, for the office's
+				//own email, from the email images folder), never from another computer's share.
+				List<string> listFoldersAllowed=null;
+				if(!IsReceived()) {
+					listFoldersAllowed=MarkupEdit.GetImageFolders(isEmail:true);
+				}
+				webViewEmail.NavigateToHtml(html,htmlFolderPath,isRemoteContentAllowed:true,listFoldersAllowed:listFoldersAllowed);
 				butShowImages.Visible=false;
 			}
 			catch(Exception ex) {
@@ -719,6 +746,14 @@ namespace OpenPmsDental {
 		///(WebView2Policy.GetSystemBrowserUrl). Anything else, a file: link for example, does nothing.</summary>
 		private void webViewEmail_LinkClicked(object sender,CodeBase.Controls.ODWebView2LinkEventArgs e) {
 			CodeBase.Controls.WebView2Policy.OpenInSystemBrowser(e.GetSystemBrowserUrl());
+		}
+
+		///<summary>A received email asked for images (or style sheets, fonts) from the web, which do not load until the user clicks Show Images:
+		///a remote image tells the sender when, and from where, the email was opened.</summary>
+		private void webViewEmail_RemoteContentBlocked(object sender,EventArgs e) {
+			if(webViewEmail.Visible) {
+				butShowImages.Visible=true;
+			}
 		}
 
 		#endregion Body

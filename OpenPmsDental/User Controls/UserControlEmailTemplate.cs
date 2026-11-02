@@ -36,7 +36,8 @@ namespace OpenPmsDental {
 						ex.DoNothing();
 					}
 				}
-				webViewEmail.NavigateToHtml(xhtml);
+				//Images from the email images folder only; nothing from the web.
+				webViewEmail.NavigateToHtml(xhtml,listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:true));
 			}
 		}
 

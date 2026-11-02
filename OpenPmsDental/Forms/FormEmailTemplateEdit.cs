@@ -217,7 +217,8 @@ namespace OpenPmsDental {
 				try {
 					textBodyText.Visible=false;
 					webViewHtml.Visible=true;
-					webViewHtml.NavigateToHtml(_htmlDocument);
+					//The office's own template: its images come from the email images folder or the web, as they will for the recipient.
+					webViewHtml.NavigateToHtml(_htmlDocument,isRemoteContentAllowed:true,listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:true));
 					webViewHtml.BringToFront();
 				}
 				catch(Exception ex) {

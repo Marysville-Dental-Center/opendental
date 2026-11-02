@@ -236,6 +236,7 @@ namespace OpenPmsDental {
 			this.webViewHtml.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+			this.webViewHtml.AreBrowserKeysEnabled = true;
 			this.webViewHtml.Location = new System.Drawing.Point(97, 86);
 			this.webViewHtml.Name = "webViewHtml";
 			this.webViewHtml.Size = new System.Drawing.Size(861, 564);

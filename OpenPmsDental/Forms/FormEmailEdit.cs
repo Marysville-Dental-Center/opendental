@@ -433,7 +433,8 @@ namespace OpenPmsDental {
 					AreImagesDownloaded=true;
 				}
 				_htmlPreview=text;
-				webViewEmail.NavigateToHtml(text);
+				//The office's own email: its images come from the email images folder or the web, as they will for the recipient.
+				webViewEmail.NavigateToHtml(text,isRemoteContentAllowed:true,listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:true));
 				_isInvalidPreview=false;
 			}
 			catch(Exception ex) {

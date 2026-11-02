@@ -29,7 +29,8 @@ namespace OpenPmsDental {
 			bool includeArchived=checkIncludeArchived.Checked;
 			WikiPage wikiPage=WikiPages.GetByTitle(wikiPageTitle,isDeleted:includeArchived);
 			try {
-				webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(wikiPage.PageContent,isPreviewOnly:true));
+				webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(wikiPage.PageContent,isPreviewOnly:true),isRemoteContentAllowed:true,
+					listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:false));
 			}
 			catch(Exception ex) {
 				webViewWiki.NavigateToHtml("");

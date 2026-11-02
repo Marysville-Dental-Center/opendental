@@ -87,6 +87,7 @@
 			this.webViewEmail.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+			this.webViewEmail.AreBrowserKeysEnabled = true;
 			this.webViewEmail.Location = new System.Drawing.Point(433, 28);
 			this.webViewEmail.Name = "webViewEmail";
 			this.webViewEmail.Size = new System.Drawing.Size(425, 214);

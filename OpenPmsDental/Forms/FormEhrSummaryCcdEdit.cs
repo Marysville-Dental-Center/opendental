@@ -43,6 +43,7 @@ namespace OpenPmsDental {
 			}
 			webViewMain.LinkClicked+=webViewMain_LinkClicked;
 			try {
+				//The document and its stylesheet can come with a received email: the page loads no file but its own and nothing from the web.
 				webViewMain.NavigateToHtml(html);
 			}
 			catch(Exception ex) {
