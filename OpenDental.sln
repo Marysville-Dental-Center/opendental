@@ -37,7 +37,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "xCrudGenerator", "xCrudGene
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenPmsDentalGraph", "OpenPmsDentalGraph\OpenPmsDentalGraph.csproj", "{015E240B-23FB-4D91-B20C-CE221DDCCB0F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenPmsDentalCloud", "OpenPmsDentalCloud\OpenPmsDentalCloud.csproj", "{F90D0481-3D97-4C72-AF6E-DD81177E3DE1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenPmsDentalStorage", "OpenPmsDentalStorage\OpenPmsDentalStorage.csproj", "{F90D0481-3D97-4C72-AF6E-DD81177E3DE1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTestsCore", "UnitTestsCore\UnitTestsCore.csproj", "{7BBDDEDF-C015-43C0-A532-FED224993281}"
 EndProject

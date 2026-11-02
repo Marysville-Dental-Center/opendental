@@ -8,7 +8,7 @@ using System.Threading;
 using System.Windows.Forms;
 using CodeBase;
 using OpenPmsDental.UI;
-using OpenPmsDentalCloud;
+using OpenPmsDentalStorage;
 using OpenPmsDentalBusiness;
 
 namespace OpenPmsDental{

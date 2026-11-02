@@ -56,6 +56,30 @@ namespace NoHqTests {
 			Assert.AreEqual(assemblyName+".Security.LogInWeb",Security.LogInWebMethodName);
 		}
 
+		///<summary>The storage rename (2026-11-02) renamed the SFTP storage library's assembly and both of its namespaces. Its file name in
+		///ProgramNames is the assembly the business layer references, every type of it lives under the assembly's name (the rule the Middle Tier
+		///relies on, should one of its types ever cross it), and nothing references the assembly of v0.0 any more, so a copy of it left in an
+		///installation folder is never loaded.</summary>
+		[TestMethod]
+		public void StorageLibrary_IsNamedLikeItsAssembly_AndTheOldOneIsNotReferenced() {
+			Assembly assemblyBusiness=typeof(CloudStorage).Assembly;
+			string nameStorage=Path.GetFileNameWithoutExtension(ProgramNames.CloudDllFileName);
+			string nameLegacy=Path.GetFileNameWithoutExtension(ProgramNames.LegacyCloudDllFileName);
+			Assert.AreEqual("OpenPmsDentalStorage",nameStorage);
+			AssemblyName assemblyNameStorage=assemblyBusiness.GetReferencedAssemblies().FirstOrDefault(x => x.Name==nameStorage);
+			Assert.IsNotNull(assemblyNameStorage,assemblyBusiness.GetName().Name+" does not reference "+nameStorage+".");
+			Assembly assemblyStorage=Assembly.Load(assemblyNameStorage);
+			List<Type> listTypes=GetLoadableTypes(assemblyStorage).Where(x => !x.IsNested && !x.Name.StartsWith("<")).ToList();
+			Assert.IsTrue(listTypes.Any(x => x.Name=="Sftp"),"The SFTP client is in "+nameStorage+".");
+			Assert.IsTrue(listTypes.Any(x => x.Name=="TaskStateUpload"),"The task states are in "+nameStorage+".");
+			List<string> listWrong=listTypes.Where(x => !HasAssemblyNameAsRootNamespace(x,nameStorage)).Select(x => x.FullName).OrderBy(x => x).ToList();
+			Assert.AreEqual(0,listWrong.Count,"Types of "+nameStorage+" outside its namespace: "+string.Join(", ",listWrong));
+			foreach(Assembly assembly in new[] { assemblyBusiness,assemblyStorage,typeof(ODBuild).Assembly }) {
+				Assert.IsFalse(assembly.GetReferencedAssemblies().Any(x => string.Equals(x.Name,nameLegacy,StringComparison.OrdinalIgnoreCase)),
+					assembly.GetName().Name+" still references "+nameLegacy+".");
+			}
+		}
+
 		///<summary>WpfControlsOD loads its images and its TabControl theme through pack URIs that name the assembly as text
 		///("/WPFControlsOD;component/Resources/..."). Checks that every such URI names the built assembly (pack URIs ignore case), and that what
 		///they load is in the assembly's resources: the TabControl theme, every Resource item of the project and every BitmapFileName the

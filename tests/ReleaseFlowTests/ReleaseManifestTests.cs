@@ -255,9 +255,41 @@ namespace ReleaseFlowTests {
 			Assert.IsFalse(ForkReleases.ShouldPublishFile("Plugin__local.dll"));
 			Assert.IsFalse(ForkReleases.ShouldPublishFile(ReleaseManifest.FILE_NAME));
 			Assert.IsFalse(ForkReleases.ShouldPublishFile("Manifest.txt"),"Open Dental's manifest is never shipped.");
+			Assert.IsTrue(ForkReleases.ShouldPublishFile(ProgramNames.CloudDllFileName));
 			//Today's names (decision D3 keeps them), which a rename would change in ProgramNames only.
 			Assert.AreEqual("FreeDentalConfig.xml",ProgramNames.ConfigFileName);
 			Assert.AreEqual("OpenDentalServerConfig.xml",ProgramNames.MiddleTierConfigFileName);
+		}
+
+		///<summary>UpdateFileCopier never deletes a file, so a workstation updated from an earlier release keeps the files that release shipped and
+		///this one does not (the storage library of v0.0, say). A release published from such a workstation must not carry them on.</summary>
+		[TestMethod]
+		public void PublishFilter_NeverPublishesARetiredFile() {
+			CollectionAssert.Contains(ForkReleases.ListRetiredFiles,ProgramNames.LegacyCloudDllFileName);
+			Assert.AreNotEqual(ProgramNames.CloudDllFileName,ProgramNames.LegacyCloudDllFileName,"The storage library has a new name.");
+			string folder=TestPaths.NewTempFolder("retired");
+			try {
+				File.WriteAllText(Path.Combine(folder,ProgramNames.ExeFileName),"synthetic exe");
+				File.WriteAllText(Path.Combine(folder,ProgramNames.CloudDllFileName),"synthetic storage");
+				foreach(string fileName in ForkReleases.ListRetiredFiles) {
+					Assert.IsFalse(ForkReleases.ShouldPublishFile(fileName),fileName);
+					Assert.IsFalse(ForkReleases.ShouldPublishFile(fileName.ToUpperInvariant()),"File names ignore case: "+fileName);
+					Assert.IsFalse(ForkReleases.ListBuildIdFiles.Contains(fileName,StringComparer.OrdinalIgnoreCase),"A retired file is not part of the build id: "+fileName);
+					File.WriteAllText(Path.Combine(folder,fileName),"synthetic leftover "+fileName);
+				}
+				CollectionAssert.AreEqual(new[] { ProgramNames.ExeFileName,ProgramNames.CloudDllFileName }.OrderBy(x => x,StringComparer.OrdinalIgnoreCase).ToList(),
+					ForkReleases.GetReleaseFiles(folder),"Only today's files are published.");
+				ReleaseIdentity releaseIdentity=new ReleaseIdentity { ReleaseVersion="0.0",BuildId=ForkReleases.ComputeBuildId(folder) };
+				ReleaseManifest releaseManifest=ForkReleases.BuildRelease(folder,releaseIdentity,"SERVER1",new DateTime(2026,11,2,12,0,0,DateTimeKind.Utc),
+					out byte[] arrayArchive);
+				Assert.IsFalse(releaseManifest.ListFiles.Any(x => ForkReleases.ListRetiredFiles.Contains(x.RelativePath,StringComparer.OrdinalIgnoreCase)),
+					"The manifest lists no retired file.");
+				Assert.AreEqual(2,releaseManifest.ListFiles.Count);
+				Assert.IsTrue(arrayArchive.Length>0);
+			}
+			finally {
+				Directory.Delete(folder,true);
+			}
 		}
 
 		[TestMethod]
@@ -292,6 +324,11 @@ namespace ReleaseFlowTests {
 			//The business layer's file name agrees with its assembly: a rename that missed ProgramNames would leave it out of the id unnoticed.
 			Assert.AreEqual(typeof(Patient).Assembly.GetName().Name+".dll",ProgramNames.BusinessDllFileName);
 			Assert.AreEqual(typeof(CodeBase.ODBuild).Assembly.GetName().Name+".dll","CodeBase.dll");
+			//The same for the storage library, which the business layer references (the storage rename changed its name).
+			Assert.IsTrue(typeof(CloudStorage).Assembly.GetReferencedAssemblies().Any(x => x.Name+".dll"==ProgramNames.CloudDllFileName),
+				ProgramNames.CloudDllFileName+" is not the storage library the business layer references.");
+			Assert.IsFalse(typeof(CloudStorage).Assembly.GetReferencedAssemblies().Any(x => x.Name+".dll"==ProgramNames.LegacyCloudDllFileName),
+				"Nothing references the storage library of v0.0.");
 		}
 
 		///<summary>ComputeBuildId skips a missing file without a word, so a listed name that the build no longer writes (after a rename, say) would

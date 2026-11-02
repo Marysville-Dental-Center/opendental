@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenPmsDentalCloud.Core {
+namespace OpenPmsDentalStorage.Core {
 	public abstract class TaskStateFile : TaskState {
 
 		///<summary>If a file is greater than 2MB in size, we will break it up into chunks when uploading it.</summary>

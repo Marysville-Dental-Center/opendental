@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OpenPmsDentalCloud.Core {
+namespace OpenPmsDentalStorage.Core {
 	public abstract class TaskStateDownload : TaskStateFile {
 
 		private ulong _downloadFileSize;

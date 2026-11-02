@@ -95,7 +95,7 @@ $OwnFiles=[ordered]@{
 	'WpfControlsOD.dll.config'=''
 	'OpenPmsDentalGraph.dll'='OpenPmsDentalGraph\bin\Release'
 	'OpenPmsDentalGraph.dll.config'=''
-	'OpenPmsDentalCloud.dll'='OpenPmsDentalCloud\bin\Release'
+	'OpenPmsDentalStorage.dll'='OpenPmsDentalStorage\bin\Release'
 	'SparksToothChart.dll'='SparksToothChart\bin\Release'
 	'SparksToothChart.dll.config'=''
 	'ODCrypt.dll'='ODCrypt\bin\x86\Release'
@@ -157,7 +157,7 @@ $NotShippedPatterns=@('*.pdb','OpenPmsDental.xml','OpenPmsDentalBusiness.xml','C
 
 #ForkReleases.ListBuildIdFiles: the build id is the SHA-256 over these files' lower-case names and SHA-256 values.
 $BuildIdFiles=@('OpenPmsDental.exe','OpenPmsDentalBusiness.dll','CodeBase.dll','DataConnectionBase.dll','WpfControlsOD.dll',
-	'OpenPmsDentalGraph.dll','OpenPmsDentalCloud.dll','SparksToothChart.dll','ODCrypt.dll','PasswordVaultWrapper.dll','ImagingDeviceManager.dll',
+	'OpenPmsDentalGraph.dll','OpenPmsDentalStorage.dll','SparksToothChart.dll','ODCrypt.dll','PasswordVaultWrapper.dll','ImagingDeviceManager.dll',
 	'ImagingCapture.dll','UpdateFileCopier.exe')
 
 #Never shipped, at any depth (matched against file and folder names, ignoring case), with the reason (report-release.md section 2;
@@ -202,7 +202,9 @@ $DenyList=@(
 	@('unins*.dat','the uninstaller lives in the uninstall sub folder; a release publishes every top-level file'),
 	@('unins*.msg','the uninstaller lives in the uninstall sub folder; a release publishes every top-level file'),
 	@('OpenDent*.exe','a file of the pre-rename names; the program is OpenPmsDental.exe'),
-	@('OpenDent*.dll','a file of the pre-rename names; the program uses OpenPmsDentalBusiness.dll')
+	@('OpenDent*.dll','a file of the pre-rename names; the program uses OpenPmsDentalBusiness.dll'),
+	#ForkReleases.ListRetiredFiles: files of an earlier release that this one no longer ships (ReleaseFlowTests checks the two lists agree).
+	@('OpenPmsDentalCloud.dll','the storage library of v0.0, renamed OpenPmsDentalStorage.dll on 2026-11-02; a leftover of an older build')
 )
 #endregion The lists
 

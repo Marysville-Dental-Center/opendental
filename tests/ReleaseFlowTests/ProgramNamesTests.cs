@@ -46,7 +46,8 @@ namespace ReleaseFlowTests {
 			Assert.AreEqual("OpenPmsDental.exe",ProgramNames.ExeFileName);
 			Assert.AreEqual("OpenPmsDentalBusiness.dll",ProgramNames.BusinessDllFileName);
 			Assert.AreEqual("OpenPmsDentalGraph.dll",ProgramNames.GraphDllFileName);
-			Assert.AreEqual("OpenPmsDentalCloud.dll",ProgramNames.CloudDllFileName);
+			Assert.AreEqual("OpenPmsDentalStorage.dll",ProgramNames.CloudDllFileName,"The storage rename (2026-11-02) changed this value.");
+			Assert.AreEqual("OpenPmsDentalCloud.dll",ProgramNames.LegacyCloudDllFileName,"The storage library of v0.0; it never changes.");
 			Assert.AreEqual("UpdateFileCopier.exe",ProgramNames.UpdateFileCopierExeFileName);
 			//The configuration files keep their names (decision D3), so existing installs and the publish filter still find them.
 			Assert.AreEqual("FreeDentalConfig.xml",ProgramNames.ConfigFileName);
@@ -221,7 +222,7 @@ namespace ReleaseFlowTests {
 				[@"UpdateFileCopier\Program.cs"]=new[] { @"@""C:\Program Files\Open Dental""",@"@""C:\Program Files (x86)\Open PMS - Dental""" },
 				[@"OpenPmsDental\Main Modules\ProgramEntry.cs"]=new[] { "ProcessName.StartsWith(" },
 				[@"OpenPmsDental\Main Modules\FormOpenDental.cs"]=new[] { "ProcessName==\"OpenDental\"","ProcessName==\"OpenPmsDental\"","Contains(\"updatefilecopier\")" },
-				[@"OpenPmsDentalCloud\Storage\Sftp.cs"]=new[] { "ProcessName.StartsWith(","\"OpenDental\",\"Stash\"","\"OpenPMS-Dental\",\"Stash\"" },
+				[@"OpenPmsDentalStorage\Storage\Sftp.cs"]=new[] { "ProcessName.StartsWith(","\"OpenDental\",\"Stash\"","\"OpenPMS-Dental\",\"Stash\"" },
 				[@"OpenPmsDentalBusiness\Cache\PrefC.cs"]=new[] { "\"opendental\"","\"openpms-dental\"","Directory.GetFiles(Path.GetTempPath())" },
 				[@"OpenPmsDentalBusiness\Misc\NTPv4.cs"]=new[] { "WriteEntry(\"OpenDental\"","WriteEntry(\"OpenPMS-Dental\"" },
 				[@"OpenPmsDentalBusiness\Misc\WindowsTime.cs"]=new[] { "WriteEntry(\"OpenDental\"","WriteEntry(\"OpenPMS-Dental\"" },

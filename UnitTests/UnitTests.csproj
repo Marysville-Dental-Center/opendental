@@ -133,9 +133,9 @@
       <Project>{c37b8157-f665-4ebe-8fd6-20d1c92a0797}</Project>
       <Name>xODCrypt</Name>
     </ProjectReference>
-    <Reference Include="OpenPmsDentalCloud, Version=16.4.0.0, Culture=neutral, processorArchitecture=x86">
+    <Reference Include="OpenPmsDentalStorage, Version=16.4.0.0, Culture=neutral, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\OpenPmsDentalCloud\bin\Debug\OpenPmsDentalCloud.dll</HintPath>
+      <HintPath>..\OpenPmsDentalStorage\bin\Debug\OpenPmsDentalStorage.dll</HintPath>
     </Reference>
     <Reference Include="OpenPmsDentalGraph, Version=16.1.1.0, Culture=neutral, PublicKeyToken=null" />
     <Reference Include="PdfSharp, Version=1.2.1269.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">

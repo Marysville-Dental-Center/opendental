@@ -182,7 +182,7 @@ namespace OpenPmsDental {
 				destinationFileName=CloudStorage.PathTidy(destinationFileName);
 				UI.ProgressWin progressWin = new UI.ProgressWin();
 				progressWin.StartingMessage=uploadMessage;
-				OpenPmsDentalCloud.TaskState state;
+				OpenPmsDentalStorage.TaskState state;
 				if(sourceDestination==FileAtoZSourceDestination.AtoZToAtoZ) {
 					progressWin.ActionMain=() => CloudStorage.Copy(sourceFileName,destinationFileName);
 					progressWin.ShowDialog();

@@ -16,7 +16,7 @@ leftover names) and `rn/rename-3` (verification). It is the owner's last step be
 | `OpenDental` (exe, assembly, root namespace, folder, `OpenDental.csproj`) | `OpenPmsDental` (`OpenPmsDental.exe`, `OpenPmsDental\OpenPmsDental.csproj`). The `OpenDental` namespace becomes `OpenPmsDental` everywhere it is declared (the exe, WpfControlsOD's Frms and Bridges, the business layer's `OpenDental.UI`, CentralManager): `OpenPmsDental.UI`, `OpenPmsDental.Bridges`, ... |
 | `OpenDentBusiness` | `OpenPmsDentalBusiness` |
 | `OpenDentalGraph` | `OpenPmsDentalGraph` |
-| `OpenDentalCloud` | `OpenPmsDentalCloud` |
+| `OpenDentalCloud` | `OpenPmsDentalCloud`; `OpenPmsDentalStorage` since the [storage rename](#storage-rename-2026-11-02) of 2026-11-02 |
 | `OpenDentalServer` (project, assembly, namespace, `ServiceMain.asmx` Class=) | `OpenPmsDentalServer` |
 | `OpenDentHL7` | `OpenPmsDentalHL7` |
 
@@ -28,7 +28,7 @@ Run-time names (`CodeBase/Utilities/ProgramNames.cs`, pinned by `ReleaseFlowTest
 | Constant | Value |
 |---|---|
 | `ProcessName`, `ExeFileName` | `OpenPmsDental`, `OpenPmsDental.exe` |
-| `BusinessDllFileName`, `GraphDllFileName`, `CloudDllFileName` | `OpenPmsDentalBusiness.dll`, `OpenPmsDentalGraph.dll`, `OpenPmsDentalCloud.dll` |
+| `BusinessDllFileName`, `GraphDllFileName`, `CloudDllFileName` | `OpenPmsDentalBusiness.dll`, `OpenPmsDentalGraph.dll`, `OpenPmsDentalCloud.dll` (`OpenPmsDentalStorage.dll` since the storage rename; `LegacyCloudDllFileName` keeps the old file name) |
 | `LocalAppDataFolderName`, `ProgramDataFolderName` | `OpenPMS-Dental` |
 | `TempFolderName` | `openpms-dental` (`UpdateFileCopierTempFolderName` stays `updatefilecopier`) |
 | `EventLogSource` | `OpenPMS-Dental` |
@@ -128,6 +128,80 @@ where Release has been built.
 Not checked here: the rename inventory's §6 items that need the running program or an office database. These are the launch and
 module walk-through, CentralManager, the RDL reports, the cursors, the second instance and the Event Log sources (left to the owner's
 first start after the installer), and the deferred scan of the office database.
+
+## Storage rename (2026-11-02)
+
+Owner decision 2026-11-02, branch `next/storage-1`. The project `OpenPmsDentalCloud` held only the SFTP A to Z storage option (`Sftp`, and
+`RemovedStorage` for the removed Dropbox) and the file task states, so it is now `OpenPmsDentalStorage`.
+
+| Before | After |
+|---|---|
+| Folder `OpenPmsDentalCloud\`, `OpenPmsDentalCloud.csproj`, AssemblyName, RootNamespace, AssemblyTitle, `OpenPmsDentalCloud.dll` | `OpenPmsDentalStorage` (`OpenPmsDentalStorage\OpenPmsDentalStorage.csproj`, `OpenPmsDentalStorage.dll`) |
+| Namespaces `OpenPmsDentalCloud`, `OpenPmsDentalCloud.Core` | `OpenPmsDentalStorage`, `OpenPmsDentalStorage.Core` (every `using` and fully qualified reference) |
+| `ProgramNames.CloudDllFileName` = `OpenPmsDentalCloud.dll` | `OpenPmsDentalStorage.dll`; the new `ProgramNames.LegacyCloudDllFileName` keeps `OpenPmsDentalCloud.dll` |
+
+Kept: the type names (`CloudStorage`, `Sftp`, `RemovedStorage`, `StorageRemovedException`, `TaskState*`, `ProgressHandler`), the constant
+name `CloudDllFileName`, the project GUID `{F90D0481-3D97-4C72-AF6E-DD81177E3DE1}` (and the COM `Guid` attribute), every configuration line
+of `OpenDental.sln`, AssemblyVersion 16.4.0.0 and AssemblyFileVersion 1.0.0.0. The product name comes from `SharedAssemblyInfo.cs` as
+before.
+
+Changed with it: the project entries of `OpenDental.sln` and `OpenDental.Local.slnf` (name and path); the ProjectReference entries of
+`OpenPmsDental`, `OpenPmsDentalBusiness` and `OpenPmsDentalHL7`, and the `UnitTests` reference with its HintPath; `tools\Build-Release.ps1`
+(allow-list, build id list, and a deny-list entry for the old file); `installer\OpenPmsDental.iss` (`[InstallDelete]`); the release
+channel (`ForkReleases.ListRetiredFiles`); the tests that named the project, folder or file (ReleaseFlowTests `ProgramNamesTests`,
+`ReleaseFilesTests`; VendorDirectTests `BridgesDllRemovedTests`, `DropboxRemovedTests`; NoHqTests `CloudEditionTests`);
+`tools\Test-NoOldNames.ps1`; README and the owner questions. The history keeps the old name: this folder, `docs\reviews`,
+`docs\release-notes\v0.0.md`, `docs\decoupling-plan.md`, and the roadmap item.
+
+**Workstations that update themselves.** UpdateFileCopier has no delete list: it copies a release over the installation folder and never
+deletes a file (as for the rename of 2026-11-01, below). A workstation that pulls this release from v0.0 therefore keeps
+`OpenPmsDentalCloud.dll`. Nothing loads it:
+
+- No assembly references it any more (NoHqTests `RenameGuardTests.StorageLibrary_IsNamedLikeItsAssembly_AndTheOldOneIsNotReferenced`
+  checks the business layer, the storage library and CodeBase; ReleaseFlowTests `BuildIdFiles_NameTheProgramAndItsOwnAssemblies` checks
+  that `CloudDllFileName` is the assembly the business layer references). No `.config` file has a binding redirect for it.
+- The program never loads a DLL by scanning its folder. Plug-ins load by the file name in their program row. A plug-in built against
+  v0.0's storage library would bind to the leftover copy; plug-ins are not carried across a rename (decision D5).
+- The build id lists `OpenPmsDentalStorage.dll` (`ForkReleases.ListBuildIdFiles`), so the leftover file never counts.
+
+So that the leftover does not spread, the release channel never publishes it again: `ForkReleases.ListRetiredFiles` names it and
+`ShouldPublishFile` leaves it out, so a workstation that still has it and publishes (the update server, or any workstation with a blank
+`WebServiceServerName`) cannot pass it on. Setup deletes it on an upgrade (`[InstallDelete]`), and `Build-Release.ps1` refuses to stage it.
+A `bin\Release` folder that still holds it from a v0.0 build stops the script with that reason: build clean. ReleaseFlowTests checks that the
+three lists agree (`PublishFilter_NeverPublishesARetiredFile`, `CheckFolder_RefusesARetiredFile`, `Iss_DeletesTheRetiredFilesOnAnUpgrade`).
+
+The Middle Tier (`OpenPmsDentalServer`, copied into IIS by hand) gets the storage library through the business layer. ASP.NET loads every
+DLL in its `bin` folder, so delete `OpenPmsDentalCloud.dll` there when copying the new build in. A leftover copy loads without harm (its
+types are in the old namespaces and nothing calls them), but it is loaded.
+
+**Names stored as text.** None of this assembly's names is stored, so no old name has to be read:
+
+- Database: no table, row, preference or program property names the assembly, its namespaces or its types (`db\init\new-database.sql`,
+  the `ConvertDatabases` scripts and the fork migrations have none). The storage type is the `AtoZfolderUsed` number (`DataStorageType`);
+  the SFTP settings are program properties found by their descriptions.
+- Serialized data: none of its types is serializable or serialized (no `[Serializable]`, XmlSerializer or JSON). The SFTP download stash
+  is a folder under `ProgramNames.ProgramDataFolderName`, named after the process, not the assembly.
+- Middle Tier: no remoted method takes or returns one of its types. `CloudStorage`, `TsiTransLogs` and the windows call it on the client
+  (`Meth.NoCheckMiddleTierRole`), so no type name of it travels. Every type is under the assembly's name anyway (the RenameGuardTests check
+  above), should one ever cross.
+- Reflection: no product code loads the assembly or its types by name. Tests reach it through `ProgramNames.CloudDllFileName` and the
+  business layer's reference.
+
+**A branch made before this rename** (from v0.0, or from before the rename of 2026-11-01, after the two scripted passes below, which keep
+the mapping of their day): `tools\Test-NoOldNames.ps1 -Strict` lists every `OpenPmsDentalCloud` left. Rename those to
+`OpenPmsDentalStorage` (the folder and project file with `git mv`) before merging main.
+
+**Verification** (the local server only; no program window was started):
+
+| Check | Result |
+|---|---|
+| Rebuild of `OpenDental.Local.slnf` through the build lane (Debug x86) | 0 errors, 374 warnings, the same as main. No file named `OpenPmsDentalCloud*` in any `bin` or `obj` folder. |
+| Targeted tests (NoHqTests, ReleaseFlowTests, VendorDirectTests) | NoHqTests 58 of 58, ReleaseFlowTests 116 of 117 (`BuildIdFiles_AreAllInTheReleaseOutput` is skipped until Release is built), VendorDirectTests 873 of 873; 0 failed. |
+| `tools\Test-NoOldNames.ps1 -Strict` (with `OpenPmsDentalCloud` as a retired name) | Passed: 8,134 files scanned, 0 old names outside the allow-list, 4,103 allowed (this note included, which as a port note is history). |
+| `tools\Test-NoHqHosts.ps1` | Passed: 7,200 files in 115 projects, 26 allowed references. |
+
+Not run here: the `UnitTests` assembly (only its reference changed; it builds), a Release build, the Inno Setup compile and
+`tools\Test-Installer.ps1`, and an upgrade of a real v0.0 installation.
 
 ## A branch made before the rename
 

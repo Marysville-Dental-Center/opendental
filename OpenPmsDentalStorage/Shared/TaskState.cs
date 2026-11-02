@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace OpenPmsDentalCloud {
+namespace OpenPmsDentalStorage {
 
 	public delegate void ProgressHandler(double newCurVal,string newDisplayText,double newMaxVal,string errorMessage);
 

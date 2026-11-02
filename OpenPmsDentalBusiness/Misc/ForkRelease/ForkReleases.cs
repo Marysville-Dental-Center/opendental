@@ -93,6 +93,14 @@ namespace OpenPmsDentalBusiness {
 			"ImagingCapture.dll",
 			ProgramNames.UpdateFileCopierExeFileName,
 		};
+		///<summary>Files that an earlier release put in the installation folder and this one no longer ships. UpdateFileCopier copies a release over
+		///the installation folder and never deletes a file, so a workstation updated from such a release keeps them; no assembly references them,
+		///so nothing loads them. They are never published again (ShouldPublishFile), so a workstation that still has one cannot pass it on. Setup
+		///deletes each one on an upgrade ([InstallDelete] in installer\OpenPmsDental.iss) and Build-Release.ps1 refuses to stage one; ReleaseFlowTests
+		///checks both lists against this one.</summary>
+		public static readonly List<string> ListRetiredFiles=new List<string>() {
+			ProgramNames.LegacyCloudDllFileName,//The storage library of v0.0, renamed on 2026-11-02.
+		};
 		///<summary>Key of the AssemblyMetadata attribute that holds the build time of OpenPmsDental.exe (written by OpenPmsDental.csproj).</summary>
 		public const string BUILD_UTC_METADATA_KEY="ForkBuildUtc";
 		private static ReleaseIdentity _releaseIdentityRunning;
@@ -276,12 +284,16 @@ namespace OpenPmsDentalBusiness {
 
 		#region Publish
 		///<summary>True for files of the installation folder that are published. Local settings, logs and files a plugin marks with a double underscore
-		///stay local (the same rules Open Dental used for its update files).</summary>
+		///stay local (the same rules Open Dental used for its update files). Files an earlier release shipped and this one does not
+		///(ListRetiredFiles) are never published.</summary>
 		public static bool ShouldPublishFile(string fileName) {
 			if(fileName.In(ProgramNames.ConfigFileName,ProgramNames.MiddleTierConfigFileName,"ProximitySettings.txt",
 				ProgramNames.ReplicationServiceConfigFileName,
 				ReleaseManifest.FILE_NAME,"Manifest.txt"))
 			{
+				return false;
+			}
+			if(ListRetiredFiles.Contains(fileName,StringComparer.OrdinalIgnoreCase)) {
 				return false;
 			}
 			if(fileName.StartsWith("openlog",StringComparison.OrdinalIgnoreCase) || fileName.Contains("__")) {
