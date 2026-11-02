@@ -50,10 +50,13 @@ namespace LibraryUpdateTests {
 			return ToPem(rsaKeyPairGenerator.GenerateKeyPair().Private);
 		}
 
+		///<summary>A SEC 1 PEM private key on nistp256 ("EC PRIVATE KEY", as OpenSSL writes it), new for each call. Not PKCS#8: BouncyCastle writes
+		///the curve inside the EC key as well, which SSH.NET's PKCS#8 reader does not expect.</summary>
 		private static string MakeEcdsaPem() {
 			ECKeyPairGenerator ecKeyPairGenerator=new ECKeyPairGenerator("ECDSA");
 			ecKeyPairGenerator.Init(new ECKeyGenerationParameters(SecObjectIdentifiers.SecP256r1,new SecureRandom()));
-			return ToPem(ecKeyPairGenerator.GenerateKeyPair().Private);
+			byte[] arrayDer=PrivateKeyInfoFactory.CreatePrivateKeyInfo(ecKeyPairGenerator.GenerateKeyPair().Private).ParsePrivateKey().GetDerEncoded();
+			return "-----BEGIN EC PRIVATE KEY-----\n"+Convert.ToBase64String(arrayDer,Base64FormattingOptions.InsertLineBreaks)+"\n-----END EC PRIVATE KEY-----\n";
 		}
 
 		private static string ToPem(AsymmetricKeyParameter asymmetricKeyParameter) {
