@@ -30,7 +30,7 @@ namespace DbGrantsTests {
 		}
 
 		public void Note(string text) {
-			_listLines.Add("   note     "+Clean(text));
+			_listLines.Add("   note        "+Clean(text));
 		}
 
 		///<summary>Runs the action and expects it to be allowed. With isOtherErrorTolerated, an error that is not "access denied" is recorded and
@@ -47,7 +47,7 @@ namespace DbGrantsTests {
 			}
 			if(isOtherErrorTolerated) {
 				CountTolerated++;
-				_listLines.Add("   other    "+_sectionCur+" | "+what+" | not a rights error: "+Clean(Describe(exception)));
+				_listLines.Add("   other       "+_sectionCur+" | "+what+" | not a rights error: "+Clean(Describe(exception)));
 				return false;
 			}
 			Fail("allowed",what,"ERROR: "+Describe(exception));
@@ -88,13 +88,13 @@ namespace DbGrantsTests {
 
 		private void Pass(string kind,string what,string detail) {
 			CountPass++;
-			_listLines.Add("   "+("ok "+kind).PadRight(9)+_sectionCur+" | "+Clean(what)+(detail==""?"":" | "+Clean(detail)));
+			_listLines.Add("   "+("ok "+kind).PadRight(12)+_sectionCur+" | "+Clean(what)+(detail==""?"":" | "+Clean(detail)));
 		}
 
 		private void Fail(string kind,string what,string detail) {
 			string line=_sectionCur+" | "+Clean(what)+" | "+Clean(detail);
 			ListFailures.Add(kind+": "+line);
-			_listLines.Add("   "+("FAIL "+kind).PadRight(9)+line);
+			_listLines.Add("   "+("FAIL "+kind).PadRight(12)+line);
 		}
 
 		private static Exception Run(Action action) {
@@ -157,7 +157,7 @@ namespace DbGrantsTests {
 		}
 
 		public string GetSummary() {
-			return CountPass+" checks passed, "+ListFailures.Count+" failed, "+CountTolerated+" maintenance methods stopped on an error that is not a "
+			return CountPass+" checks passed, "+ListFailures.Count+" failed, "+CountTolerated+" calls stopped on an error that is not a "
 				+"rights error.";
 		}
 

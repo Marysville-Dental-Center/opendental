@@ -267,9 +267,8 @@ namespace DbGrantsTests {
 		///the redundant index tool, the mixed storage engine conversion, the replication question.</summary>
 		private void RunWorkTablesAndHelpers() {
 			Report.Section("Work tables, user queries and schema helpers");
-			Report.Allowed("EhrMeasures.GetTable(TimelyAccess): DROP TABLE IF EXISTS and CREATE TABLE of a work table, dropped after",
-				() => EhrMeasures.GetTable(EhrMeasureType.TimelyAccess,DateTime.Today.AddYears(-1),DateTime.Today,
-					PrefC.GetLong(PrefName.PracticeDefaultProv)));
+			Report.Allowed("DatabaseMaintenances.ClearOldEtransMessageText (the Etrans tool): DROP TABLE IF EXISTS, CREATE TABLE ... SELECT of a work "
+				+"table, ALTER TABLE ADD INDEX on it, DELETE, DROP TABLE, OPTIMIZE TABLE",DatabaseMaintenances.ClearOldEtransMessageText);
 			Report.Allowed("DashboardARs.Truncate (TRUNCATE dashboardar)",DashboardARs.Truncate);
 			Report.Allowed("RecallTypes.SetToDefaultCA (DELETE, INSERT, TRUNCATE recalltrigger)",RecallTypes.SetToDefaultCA);
 			Report.Allowed("Ledgers.ComputeAging for two families (TRUNCATE TABLE famaging, INSERT, UPDATE patient)",
@@ -382,13 +381,50 @@ namespace DbGrantsTests {
 			}
 		}
 
-		///<summary>LargeTableHelper.AlterTable on the table of the run: DROP TABLE IF EXISTS, RENAME TABLE, CREATE TABLE LIKE, ALTER TABLE, DISABLE
-		///and ENABLE KEYS, INSERT in batches, DROP TABLE.</summary>
+		///<summary>LargeTableHelper.AlterTable on the table of the run. With the UpdateAlterLargeTablesDirectly preference on (a new database's
+		///value) it runs one ALTER TABLE. With it off (an office may have it off) and a table of more than one batch (a wide column, so that a batch
+		///holds 1,000 rows, and 2,003 rows): DROP TABLE IF EXISTS, RENAME TABLE, CREATE TABLE LIKE, ALTER TABLE, DISABLE KEYS, INSERT in batches,
+		///ENABLE KEYS, DROP TABLE. The preference stays off for the refusals.</summary>
 		private void RunLargeTableHelper() {
-			Report.Allowed("LargeTableHelper.AlterTable (RENAME TABLE, CREATE TABLE LIKE, ALTER TABLE, INSERT ... SELECT, DROP TABLE)",
-				() => LargeTableHelper.AlterTable(TABLE_PROBE,"GrantProbeNum",new LargeTableHelper.ColNameAndDef("Extra","int NOT NULL"),
-					new LargeTableHelper.IndexColsAndName("Extra","Extra")));
-			Report.Expect("The large-table helper kept the rows",ScalarAccount("SELECT COUNT(*) FROM grantprobe")=="3");
+			Report.Allowed("LargeTableHelper.AlterTable with UpdateAlterLargeTablesDirectly on: one ALTER TABLE",
+				() => LargeTableHelper.AlterTable(TABLE_PROBE,"GrantProbeNum",new LargeTableHelper.ColNameAndDef("Direct","int NOT NULL"),
+					new LargeTableHelper.IndexColsAndName("Direct","Direct")));
+			GrantServer.ExecRoot("UPDATE `"+Db+"`.preference SET ValueString='0' WHERE PrefName='"+nameof(PrefName.UpdateAlterLargeTablesDirectly)+"'");
+			Report.Note("As root: UpdateAlterLargeTablesDirectly set to 0, so the large-table helper copies the table.");
+			ForkMigrationContext context=new ForkMigrationContext(Db);
+			Report.Allowed("The table of the run made wide (ALTER TABLE ADD COLUMN) and long (INSERT ... SELECT, 2,000 rows)",() => {
+				context.AddColumnIfMissing(TABLE_PROBE,"Wide","varchar(7000) NOT NULL DEFAULT ''");
+				string digits="(SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 "
+					+"UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9)";
+				for(int i=0;i<2;i++) {
+					context.ExecuteData("INSERT INTO grantprobe (Descript,Amount) SELECT 'bulk',a.n*100+b.n*10+c.n FROM "+digits+" a,"+digits+" b,"
+						+digits+" c");
+				}
+			});
+			RunLargeTableAlter("Allowed","Extra",isExpectedAllowed:true);
+		}
+
+		///<summary>LargeTableHelper.AlterTable adding the column, expected allowed or refused for the missing right. When allowed, checks that it
+		///took the path for a large table (more than one batch) and kept every row.</summary>
+		private void RunLargeTableAlter(string right,string columnName,bool isExpectedAllowed) {
+			string countBefore=GrantServer.ScalarRoot("SELECT COUNT(*) FROM `"+Db+"`.grantprobe");
+			string what="LargeTableHelper.AlterTable on a table of more than one batch (DROP TABLE IF EXISTS, RENAME TABLE, CREATE TABLE LIKE, "
+				+"ALTER TABLE, DISABLE KEYS, INSERT, ENABLE KEYS, DROP TABLE)";
+			Action action=() => LargeTableHelper.AlterTable(TABLE_PROBE,"GrantProbeNum",new LargeTableHelper.ColNameAndDef(columnName,"int NOT NULL"),
+				new LargeTableHelper.IndexColsAndName(columnName,columnName));
+			if(isExpectedAllowed) {
+				Report.Allowed(what,action);
+				int countBatches=LargeTableHelper.ListPriKeyMaxPerBatch?.Count??0;
+				Report.Expect("The large-table helper used more than one batch, so it renamed and copied the table",countBatches>1,
+					countBatches+" batch(es)");
+			}
+			else {
+				Report.Refused(what,right,action);
+			}
+			Report.Expect("The large-table helper kept every row and the table's name",
+				GrantServer.ScalarRoot("SELECT COUNT(*) FROM `"+Db+"`.grantprobe")==countBefore
+				&& GrantServer.ScalarRoot("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='"+Db+"' AND TABLE_NAME LIKE 'tempConv\\_%'")=="0",
+				countBefore+" rows");
 		}
 		#endregion Work tables, user queries and schema helpers
 
@@ -480,11 +516,19 @@ namespace DbGrantsTests {
 				() => MiscData.MakeABackup(isAutoBackup:false));
 			Report.Allowed("MiscData.MakeABackup(serverName,user,pass,doVerify:true) on this server: the archive tab's backup with the row counts",
 				() => MiscData.MakeABackup(serverName:GrantServer.SERVER,user:Account,pass:_password,doVerify:true));
-			Report.Refused("MiscData.MakeABackup to another server (the archive tab; here this server under another name, "+GrantServer.SERVER
-				+":3306): DataConnection.BulkCopy's LOAD DATA INFILE","FILE",
-				() => MiscData.MakeABackup(serverName:GrantServer.SERVER+":3306",user:Account,pass:_password,doVerify:true));
-			Report.Note("The backup to another server needs FILE for the account typed into the archive tab, on that server: it is that "
-				+"server's account, not the program's.");
+			//The archive tab's backup to another server (here this server under another name, so that the program takes that path) creates the
+			//backup database and its tables there, then copies each table's rows with DataConnection.BulkCopy (MySqlBulkLoader, LOAD DATA LOCAL
+			//INFILE). MySqlConnector refuses that without AllowLoadLocalInfile=true in the connection string, which the program never sets, so
+			//the copy stops at the first table with rows before any right is checked. Recorded, not failed: it is not a question of rights.
+			bool isOtherServerBackupMade=Report.Allowed("MiscData.MakeABackup to another server (the archive tab; here "+GrantServer.SERVER
+				+":3306): CREATE DATABASE and the tables there, then DataConnection.BulkCopy",
+				() => MiscData.MakeABackup(serverName:GrantServer.SERVER+":3306",user:Account,pass:_password,doVerify:true),
+				isOtherErrorTolerated:true);
+			if(!isOtherServerBackupMade) {
+				Report.Note("The archive tab's backup to another server stops at the first table with rows: MySqlConnector refuses MySqlBulkLoader "
+					+"(LOAD DATA LOCAL INFILE) without AllowLoadLocalInfile=true, which the program's connection strings do not set. Not a "
+					+"question of rights (LOAD DATA LOCAL needs INSERT only); the program's own backups never take this path.");
+			}
 			Report.Allowed("Backup, repair and optimize after a MariaDB version change (Shared.BackupRepairAndOptimize: MakeABackup, "
 				+"RepairAndOptimize)",() => {
 					MiscData.MakeABackup();

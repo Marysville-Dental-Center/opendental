@@ -31,7 +31,6 @@ namespace DbGrantsTests {
 		///<summary>Each right on the office database, revoked alone: the program's calls that need it are refused, and allowed again once it is
 		///granted back.</summary>
 		private void RunOfficeRights() {
-			ForkMigrationContext context=new ForkMigrationContext(Db);
 			Report.Section("Office database: SELECT");
 			WithoutRight("SELECT",OnOffice,() => {
 				Report.Refused("Prefs.RefreshCache (SELECT * FROM preference)","SELECT",() => Prefs.RefreshCache());
@@ -41,10 +40,13 @@ namespace DbGrantsTests {
 			Report.Section("Office database: INSERT");
 			WithoutRight("INSERT",OnOffice,() => {
 				Report.Refused("Commlogs.Insert","INSERT",() => Commlogs.Insert(NewCommlog()));
-				Report.Refused("ForkMigrationContext.AddColumnIfMissing (ALTER TABLE: MariaDB checks INSERT and CREATE on the database)","INSERT",
-					() => context.AddColumnIfMissing(TABLE_PROBE,"NoInsert","int NOT NULL"));
 				Report.Refused("DatabaseMaintenances.OptimizeTable (OPTIMIZE TABLE needs SELECT and INSERT)","INSERT",
 					() => DatabaseMaintenances.OptimizeTable(TABLE_PROBE,forceOptimize:true));
+				Report.Allowed("ForkMigrationContext.AddColumnIfMissing without INSERT: an ALTER TABLE that renames nothing needs ALTER only",
+					() => new ForkMigrationContext(Db).AddColumnIfMissing(TABLE_PROBE,"AlterNoInsert","int NOT NULL DEFAULT 0"));
+				Report.Refused("ALTER TABLE ... RENAME TO (MariaDB checks INSERT and CREATE on the new name)","INSERT",
+					() => DataCore.NonQ("ALTER TABLE grantprobe RENAME TO grantprobex"));
+				RunLargeTableAlter("INSERT","NoInsert",isExpectedAllowed:false);
 			});
 			Report.Allowed("Commlogs.Insert with INSERT again",() => Commlogs.Insert(NewCommlog()));
 			Report.Section("Office database: UPDATE");
@@ -63,14 +65,28 @@ namespace DbGrantsTests {
 			WithoutRight("CREATE",OnOffice,() => {
 				Report.Refused("ForkMigrationContext.CreateTableIfMissing (CREATE TABLE)","CREATE",
 					() => new ForkMigrationContext(Db).CreateTableIfMissing(CREATE_PROBE.Replace("`grantprobe`","`grantprobetwo`")));
-				Report.Refused("ForkMigrationContext.AddColumnIfMissing (ALTER TABLE: MariaDB checks INSERT and CREATE on the database)","CREATE",
-					() => context.AddColumnIfMissing(TABLE_PROBE,"NoCreate","int NOT NULL"));
-				Report.Refused("EhrMeasures.GetTable(TimelyAccess): CREATE TABLE of a work table","CREATE",
-					() => EhrMeasures.GetTable(EhrMeasureType.TimelyAccess,DateTime.Today.AddYears(-1),DateTime.Today,
-						PrefC.GetLong(PrefName.PracticeDefaultProv)));
+				Report.Refused("DatabaseMaintenances.ClearOldEtransMessageText (CREATE TABLE ... SELECT of its work table)","CREATE",
+					DatabaseMaintenances.ClearOldEtransMessageText);
+				Report.Allowed("ForkMigrationContext.AddColumnIfMissing without CREATE: an ALTER TABLE that renames nothing needs ALTER only",
+					() => new ForkMigrationContext(Db).AddColumnIfMissing(TABLE_PROBE,"AlterNoCreate","int NOT NULL DEFAULT 0"));
+				Report.Refused("ALTER TABLE ... RENAME TO (MariaDB checks INSERT and CREATE on the new name)","CREATE",
+					() => DataCore.NonQ("ALTER TABLE grantprobe RENAME TO grantprobex"));
+				RunLargeTableAlter("CREATE","NoCreate",isExpectedAllowed:false);
 			});
-			Report.Allowed("ForkMigrationContext.AddColumnIfMissing with CREATE again",
-				() => new ForkMigrationContext(Db).AddColumnIfMissing(TABLE_PROBE,"WithCreate","int NOT NULL"));
+			Report.Allowed("ForkMigrationContext.CreateTableIfMissing with CREATE again, then DROP TABLE",() => {
+				ForkMigrationContext contextTwo=new ForkMigrationContext(Db);
+				contextTwo.CreateTableIfMissing(CREATE_PROBE.Replace("`grantprobe`","`grantprobetwo`"));
+				contextTwo.Execute("DROP TABLE `grantprobetwo`","grantprobetwo");
+			});
+			Report.Section("Office database: INSERT and CREATE together");
+			WithoutRight("INSERT, CREATE",OnOffice,() => {
+				Report.Allowed("ForkMigrationContext.AddColumnIfMissing, EnsureIndex, EnsureColumnDefinition without INSERT and CREATE",() => {
+					ForkMigrationContext contextNone=new ForkMigrationContext(Db);
+					contextNone.AddColumnIfMissing(TABLE_PROBE,"AlterNeither","int NOT NULL DEFAULT 0");
+					contextNone.EnsureIndex(TABLE_PROBE,"AlterNeither","`AlterNeither`");
+					contextNone.EnsureColumnDefinition(TABLE_PROBE,"AlterNeither","bigint(20) NOT NULL DEFAULT 0");
+				});
+			});
 			Report.Section("Office database: DROP");
 			WithoutRight("DROP",OnOffice,() => {
 				Report.Refused("DashboardARs.Truncate (TRUNCATE needs DROP)","DROP",DashboardARs.Truncate);
@@ -78,11 +94,12 @@ namespace DbGrantsTests {
 					() => Ledgers.ComputeAging(new List<long> { _patient.PatNum,_patient2.PatNum },DateTime.Today));
 				Report.Refused("DatabaseMaintenances.ClearOldEtransMessageText (DROP TABLE IF EXISTS of its work table)","DROP",
 					DatabaseMaintenances.ClearOldEtransMessageText);
-				Report.Refused("LargeTableHelper.AlterTable (DROP TABLE IF EXISTS and RENAME TABLE)","DROP",
-					() => LargeTableHelper.AlterTable(TABLE_PROBE,"GrantProbeNum",new LargeTableHelper.ColNameAndDef("NoDrop","int NOT NULL")));
+				Report.Refused("ALTER TABLE ... RENAME TO (needs DROP on the old name)","DROP",
+					() => DataCore.NonQ("ALTER TABLE grantprobe RENAME TO grantprobex"));
+				RunLargeTableAlter("DROP","NoDrop",isExpectedAllowed:false);
 			});
 			Report.Allowed("DashboardARs.Truncate with DROP again",DashboardARs.Truncate);
-			Report.Expect("The large-table helper left the table as it was",ScalarAccount("SELECT COUNT(*) FROM grantprobe")=="3");
+			RunLargeTableAlter("","WithDrop",isExpectedAllowed:true);
 			Report.Section("Office database: ALTER");
 			WithoutRight("ALTER",OnOffice,() => {
 				Report.Refused("ForkMigrationContext.AddColumnIfMissing (ALTER TABLE ADD COLUMN)","ALTER",
@@ -91,6 +108,7 @@ namespace DbGrantsTests {
 					() => new ForkMigrationContext(Db).EnsureIndex(TABLE_PROBE,"NoAlter","`Amount`"));
 				Report.Refused("MiscData.EnableIndexesIfNeeded (ALTER TABLE ENABLE KEYS)","ALTER",
 					() => MiscData.EnableIndexesIfNeeded(new List<string> { TABLE_PROBE }));
+				RunLargeTableAlter("ALTER","NoAlter",isExpectedAllowed:false);
 			});
 			Report.Allowed("MiscData.EnableIndexesIfNeeded with ALTER again",() => MiscData.EnableIndexesIfNeeded(new List<string> { TABLE_PROBE }));
 			Report.Section("Office database: CREATE TEMPORARY TABLES");
