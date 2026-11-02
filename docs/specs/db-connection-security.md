@@ -432,21 +432,22 @@ Answered on 2026-11-02:
   Dental 24.3.22 (a column line without a comma), so it failed in Check and Fix on every database, and the maintenance window, which stops
   at the first error, never ran the methods after it.
 
-Still open:
+Still open (both are in `docs/owner-questions.md`, "The program's database account", as DB-SEC 1 and DB-SEC 2):
 
-1. Two of the three server-wide rights exist only because of two old checks: every backup asks whether the server replicates (`SHOW
-   MASTER STATUS`, `SHOW SLAVE STATUS`: `BINLOG MONITOR`, `REPLICA MONITOR`), and flushes each copied table (`FLUSH TABLE`: `RELOAD`).
-   Should the backup treat "access denied" on the replication question as "no replication" when the program's replication table is
-   empty, and skip the flush, so that the account needs no server-wide right at all? Today they are granted, and both tests showed that
-   without any one of them every backup fails (section 9.5).
-2. The Backup window's archive tab can back up to another server first (`MiscData.MakeABackup(serverName,user,pass,doVerify:true)`), with
-   an account of that server typed in the window. That path copies rows with `DataConnection.BulkCopy` (`MySqlBulkLoader`, a `LOAD DATA
-   LOCAL INFILE`), and MySqlConnector refuses it without `AllowLoadLocalInfile=true` in the connection string, which no connection of the
-   program sets: the backup stops at the first table with rows, before any right is checked (second test, section 9.5), so archiving
-   with "back up first" to another server fails as built. Not a question of the guide's grants: with the option, the load needs `INSERT`
-   on the target table and `local_infile=ON` on that server, no `FILE`. Should the program set `AllowLoadLocalInfile=true` for that
-   connection only (MySqlConnector keeps it off by default because a server may then ask the client for local files), copy the rows with
-   `INSERT` statements instead, or drop the option of a backup to another server? Today nothing was changed.
+1. (DB-SEC 1) Two of the three server-wide rights exist only because of two old checks: every backup asks whether the server
+   replicates (`SHOW MASTER STATUS`, `SHOW SLAVE STATUS`: `BINLOG MONITOR`, `REPLICA MONITOR`), and flushes each copied table
+   (`FLUSH TABLE`: `RELOAD`). Should the backup treat "access denied" on the replication question as "no replication" when the
+   program's replication table is empty, and skip the flush, so that the account needs no server-wide right at all? Today they are
+   granted, and both tests showed that without any one of them every backup fails (section 9.5).
+2. (DB-SEC 2) The Backup window's archive tab can back up to another server first
+   (`MiscData.MakeABackup(serverName,user,pass,doVerify:true)`), with an account of that server typed in the window. That path copies
+   rows with `DataConnection.BulkCopy` (`MySqlBulkLoader`, a `LOAD DATA LOCAL INFILE`), and MySqlConnector refuses it without
+   `AllowLoadLocalInfile=true` in the connection string, which no connection of the program sets: the backup stops at the first table
+   with rows, before any right is checked (second test, section 9.5), so archiving with "back up first" to another server fails as
+   built. Not a question of the guide's grants: with the option, the load needs `INSERT` on the target table and `local_infile=ON` on
+   that server, no `FILE`. Should the program set `AllowLoadLocalInfile=true` for that connection only (MySqlConnector keeps it off by
+   default because a server may then ask the client for local files), copy the rows with `INSERT` statements instead, or drop the
+   option of a backup to another server? Today nothing was changed.
 
 ## 9. The rights of the program's database account (S2)
 

@@ -5,7 +5,8 @@ Planned work after v0.0, as agreed with the owner. Each item is discussed and sc
 ## Next
 
 Nothing is scheduled yet: the next items are chosen with the owner, from Later below. The owner questions still open from the work done in
-the next version (the SSH host key defaults, and the Backup window's backup to another server) are in `docs/owner-questions.md`.
+the next version (the SSH host key defaults, the server-wide rights the backup needs, and the Backup window's backup to another server)
+are in `docs/owner-questions.md`.
 
 ## Done in the next version
 

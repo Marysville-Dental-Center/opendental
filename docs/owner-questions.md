@@ -494,9 +494,18 @@ From `docs/specs/ssh-host-keys.md`, section 11: your decision of 2026-11-02 (tie
 
 ---
 
+## The program's database account (DB-SEC, 2026-11-02)
+
+From [specs/db-connection-security.md](specs/db-connection-security.md), section 8, still open. Your answers of 2026-11-02 settled the other points of that section; these two were not answered.
+
+- (DB-SEC 1) Every backup asks whether the server replicates (`SHOW MASTER STATUS`, `SHOW SLAVE STATUS`: the server-wide rights `BINLOG MONITOR` and `REPLICA MONITOR`) and runs `FLUSH TABLE` on each table it copies (the server-wide right `RELOAD`). Should "access denied" on the replication question count as "no replication" when the program's replication table is empty, and the flush be skipped, so that the program's account `opmsd` needs no server-wide right at all? **Today:** all three are granted ([db-connection-security.md](db-connection-security.md), section 5); without any one of them every backup fails ([specs/db-connection-security.md](specs/db-connection-security.md), section 9.5).
+- (DB-SEC 2) The Backup window's archive tab can back up to another server first ("back up first"), with an account of that server typed in the window. That path copies the rows with a bulk load (`LOAD DATA LOCAL INFILE`), which MySqlConnector refuses without `AllowLoadLocalInfile=true` in the connection string, so it fails at the first table with rows. Should the program set `AllowLoadLocalInfile=true` for that connection only (MySqlConnector keeps it off by default because a server may then ask the client for local files), copy the rows with `INSERT` statements instead, or drop the option of a backup to another server? **Today:** fails as built; nothing was changed.
+
+---
+
 ## Library updates and the DICOM reader (answered on 2026-11-02)
 
-The questions of the library updates and of the in-house DICOM reader, with your answers of 2026-11-02. They are all decided; the program is as each answer says. Still open from the same work: SSH-KEYS 1 to 7 above, and the Backup window's archive tab ([specs/db-connection-security.md](specs/db-connection-security.md), section 8, open point 2).
+The questions of the library updates and of the in-house DICOM reader, with your answers of 2026-11-02. They are all decided; the program is as each answer says. Still open from the same work: SSH-KEYS 1 to 7 and DB-SEC 1 and 2 above.
 
 **Tier 1 libraries (LIB-T1)**
 - (LIB-T1 1) Remember the host key of every SSH server? **Decided:** yes. Built: "Remembered SSH host keys" above and [specs/ssh-host-keys.md](specs/ssh-host-keys.md).
