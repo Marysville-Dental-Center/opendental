@@ -218,6 +218,28 @@ namespace OpenPmsDentalBusiness {
 		public static string GetDisplayText(MaintRecordValue maintRecordValue) {
 			return GetDisplayText(maintRecordValue.FieldType,maintRecordValue.ValueText,maintRecordValue.Unit);
 		}
+
+		///<summary>The checklist of one completion in a few words, for the history grid and so for its printout and export: "5 of 5" when every step
+		///was ticked, "3 of 5, not done: Drain, Refill" when some were not, "" when the item had no steps. listMaintRecordValues holds the
+		///completion's values in their order; values that are not checklist steps are ignored.</summary>
+		public static string GetChecklistText(List<MaintRecordValue> listMaintRecordValues) {
+			List<MaintRecordValue> listSteps=(listMaintRecordValues??new List<MaintRecordValue>()).FindAll(x => x.FieldType==EnumMaintFieldType.ChecklistStep);
+			if(listSteps.Count==0) {
+				return "";
+			}
+			List<MaintRecordValue> listStepsNotDone=listSteps.FindAll(x => x.ValueText!=VALUE_TRUE);
+			string text=(listSteps.Count-listStepsNotDone.Count)+" "+Lans.g("MaintValues","of")+" "+listSteps.Count;
+			if(listStepsNotDone.Count>0) {
+				text+=", "+Lans.g("MaintValues","not done")+": "+string.Join(", ",listStepsNotDone.Select(x => x.Label));
+			}
+			return text;
+		}
+
+		///<summary>True when the completion had a checklist step that was not ticked. Such a completion is not flagged (an unticked step is not a
+		///failed result), but the history shows it.</summary>
+		public static bool HasStepNotDone(List<MaintRecordValue> listMaintRecordValues) {
+			return (listMaintRecordValues??new List<MaintRecordValue>()).Any(x => x.FieldType==EnumMaintFieldType.ChecklistStep && x.ValueText!=VALUE_TRUE);
+		}
 		#endregion Recorded values
 	}
 }

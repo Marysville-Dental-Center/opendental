@@ -67,8 +67,9 @@ namespace OpenPmsDental {
 			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Due"),80));
 			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Late"),50,HorizontalAlignment.Right));
 			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Flagged"),55,HorizontalAlignment.Center));
+			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Checklist"),120));
 			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Results"),200){ IsWidthDynamic=true });
-			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Note"),150));
+			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Note"),130));
 			gridMain.Columns.Add(new GridColumn(Lan.g(gridMain.TranslationName,"Recorded"),120));
 			gridMain.ListGridRows.Clear();
 			foreach(MaintRecord maintRecord in _listMaintRecords) {
@@ -85,13 +86,18 @@ namespace OpenPmsDental {
 				}
 				row.Cells.Add(late);
 				row.Cells.Add(maintRecord.IsFlagged ? "X" : "");
-				List<MaintRecordValue> listValues=_listMaintRecordValues.FindAll(x => x.MaintRecordNum==maintRecord.MaintRecordNum
-					&& x.FieldType!=EnumMaintFieldType.ChecklistStep && x.ValueText!="");
+				List<MaintRecordValue> listValuesRecord=_listMaintRecordValues.FindAll(x => x.MaintRecordNum==maintRecord.MaintRecordNum);
+				//The checklist outcome is in the main grid, so the printout and the export show a completion with skipped steps as such.
+				row.Cells.Add(MaintValues.GetChecklistText(listValuesRecord));
+				List<MaintRecordValue> listValues=listValuesRecord.FindAll(x => x.FieldType!=EnumMaintFieldType.ChecklistStep && x.ValueText!="");
 				row.Cells.Add(string.Join("; ",listValues.Select(x => x.Label+": "+MaintValues.GetDisplayText(x))));
 				row.Cells.Add(maintRecord.Note);
 				row.Cells.Add(maintRecord.SecDateTEntry.Year>1880 ? maintRecord.SecDateTEntry.ToString() : "");
 				if(maintRecord.IsFlagged) {
 					row.ColorBackG=Color.FromArgb(255,215,215);
+				}
+				else if(MaintValues.HasStepNotDone(listValuesRecord)) {
+					row.ColorBackG=Color.FromArgb(255,245,200);//Light yellow: a checklist step was not done.
 				}
 				row.Tag=maintRecord;
 				gridMain.ListGridRows.Add(row);
@@ -116,6 +122,9 @@ namespace OpenPmsDental {
 					row.Cells.Add(maintRecordValue.IsFlagged ? "X" : "");
 					if(maintRecordValue.IsFlagged) {
 						row.ColorBackG=Color.FromArgb(255,215,215);
+					}
+					else if(maintRecordValue.FieldType==EnumMaintFieldType.ChecklistStep && maintRecordValue.ValueText!=MaintValues.VALUE_TRUE) {
+						row.ColorBackG=Color.FromArgb(255,245,200);
 					}
 					row.Tag=maintRecordValue;
 					gridValues.ListGridRows.Add(row);

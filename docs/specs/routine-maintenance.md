@@ -218,10 +218,13 @@ sign-off. OK saves the completion, its values and the audit entry, and updates t
 ### History (FormMaintHistory)
 
 Per item (from the board's History button) or overall (All History), for a date range (default: the last 12 months) of the date done.
-Columns: Date Done, Item (overall only), Done By, Due, Late (days after the due date, blank when on time), Flagged, Results (each filled
-result as "name: value", so a printout shows them), Note, Recorded (date and time). A second
-grid shows the selected completion's checklist and results; **Open Attachment** opens an attached file. **Print** and **Export** as on the
-board.
+Columns: Date Done, Item (overall only), Done By, Due, Late (days after the due date, blank when on time), Flagged, Checklist ("5 of 5"
+when every step was ticked, "3 of 5, not done: Drain, Refill" when some were not, blank when the item had no steps), Results (each filled
+result as "name: value"), Note, Recorded (date and time). The checklist and the results are in this grid so that a printout or an export
+shows them: a completion recorded with skipped steps never looks like a full one. A row is light red when the completion is flagged, light
+yellow when a checklist step was not done (an unticked step is not a failed result, so it does not flag the completion). A second grid shows
+the selected completion's checklist and results, with not-done steps light yellow; **Open Attachment** opens an attached file. **Print** and
+**Export** as on the board.
 
 ## 6. Alerts
 

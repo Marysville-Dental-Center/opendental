@@ -1,7 +1,9 @@
 // Result-field validation and limits (docs/specs/routine-maintenance.md, "Result fields and validation"). No database.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
@@ -144,6 +146,32 @@ namespace MaintenanceTests {
 			Assert.AreEqual(8,maintRecordValue.MaintStepNum);
 			Assert.IsFalse(maintRecordValue.IsFlagged,"An unticked step is not a failed result.");
 			Assert.AreEqual("0",MaintValues.CreateStepValue(new MaintStep { Description="x" },false).ValueText);
+		}
+
+		[TestMethod]
+		public void ChecklistText_ForTheHistoryAndItsPrintout() {
+			MaintField maintFieldTemp=Number(true,121,false,0);
+			List<MaintRecordValue> listValues=new List<MaintRecordValue> {
+				MaintValues.CreateStepValue(new MaintStep { Description="Drain" },true),
+				MaintValues.CreateStepValue(new MaintStep { Description="Shock" },true),
+				MaintValues.CreateFieldValue(maintFieldTemp,"134"),
+				MaintValues.CreateStepValue(new MaintStep { Description="Refill" },true),
+			};
+			Assert.AreEqual("3 of 3",MaintValues.GetChecklistText(listValues),"Result fields are not steps.");
+			Assert.IsFalse(MaintValues.HasStepNotDone(listValues));
+			listValues[0].ValueText=MaintValues.VALUE_FALSE;
+			listValues[3].ValueText=MaintValues.VALUE_FALSE;
+			Assert.AreEqual("1 of 3, not done: Drain, Refill",MaintValues.GetChecklistText(listValues));
+			Assert.IsTrue(MaintValues.HasStepNotDone(listValues));
+			//Every step skipped (after the confirmation when recording): not flagged, but the history says so.
+			listValues[1].ValueText=MaintValues.VALUE_FALSE;
+			Assert.AreEqual("0 of 3, not done: Drain, Shock, Refill",MaintValues.GetChecklistText(listValues));
+			Assert.IsFalse(listValues.Any(x => x.IsFlagged));
+			//An item without steps: blank.
+			Assert.AreEqual("",MaintValues.GetChecklistText(new List<MaintRecordValue> { MaintValues.CreateFieldValue(maintFieldTemp,"119") }));
+			Assert.IsFalse(MaintValues.HasStepNotDone(new List<MaintRecordValue> { MaintValues.CreateFieldValue(maintFieldTemp,"119") }));
+			Assert.AreEqual("",MaintValues.GetChecklistText(new List<MaintRecordValue>()));
+			Assert.AreEqual("",MaintValues.GetChecklistText(null));
 		}
 
 		[TestMethod]
