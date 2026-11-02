@@ -13,9 +13,13 @@ versions are re-implemented from Open Dental's public documentation; no
 Open Dental binaries are decompiled.
 
 "Open Dental" is a name of Open Dental Software, Inc. It is used here only to
-say where this program comes from. Some internal names (namespaces,
-assemblies and the executable) still read "Open Dental" until a later rename
-step; they do not mean this program is Open Dental's product.
+say where this program comes from. The program's namespaces, assemblies and
+executable carry its own code name, OpenPmsDental (OpenPmsDental.exe). A few
+names still read "Open Dental" because existing installations and databases
+depend on them: database tables, columns and stored values, the
+FreeDentalConfig.xml and OpenDentalServerConfig.xml file names, the Middle
+Tier's web service names, and a number of internal type names such as
+FormOpenDental. They do not mean this program is Open Dental's product.
 
 Copyright and license
 ---------------------

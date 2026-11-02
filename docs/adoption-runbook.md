@@ -275,6 +275,10 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature
   quadrant rows" for the SRP group, "codes added: ..." when the preference held codes the group lacks, and "Added code group '<name>' (<kind>,
   ItemOrder N), ..." for a category without a group of its kind. These parts are the lines the adoption log will show. On a database whose
   ten Insurance History preferences are all empty it says `changes nothing: none of the ten InsHist*Codes preferences has a value`.
+- `Plug-ins: N program row(s) name a plug-in DLL (PluginDllName); a plug-in built for Open Dental does not load in this program ...: <ProgName>
+  (ProgramNum N, enabled, <dll>); ...` (or `Plug-ins: no program row names a plug-in DLL ...`). Adoption changes none of these rows, but a
+  plug-in built against Open Dental's assemblies stops loading after the switch, without a message. Give the list to the developers before
+  the day: each such plug-in must be rebuilt against this program's assemblies or done without.
 
 **Write the numbers on the checklist**: NULL notes, preferences, PhoneExtension grants moved, user groups for BlockoutAdd and for
 BlockoutDelete, the DXC Patient Credit Score row disabled (ProgramNum, or "none") and its buttons deleted (ToolButItemNum, or "none"), the
@@ -469,7 +473,8 @@ check A2): whatever is entered there is missing from `opendental_pms` and would 
 2. If the Open Dental folder is still there, rename `FreeDentalConfig.xml` in it to `FreeDentalConfig.xml.before-switch` (keep it for
    rollback), and delete any Open Dental shortcut left on the desktop, the Start menu or the taskbar.
 3. Check: `Get-ChildItem 'C:\Program Files*\Open Dental*' -Recurse -Include OpenDental.exe,FreeDentalConfig.xml -ErrorAction SilentlyContinue`
-   lists nothing.
+   lists nothing. An `OpenDental.exe` is always Open Dental's own program (this program is `OpenPmsDental.exe`). This program keeps the
+   file name `FreeDentalConfig.xml` in its own folder, so the check looks only in the `Open Dental*` folders.
 4. Mark it in the table of step 8.
 
 If the workstations connect with their own MariaDB account (step 0.5: the user is not `root`) and `SHOW GRANTS` shows its rights on
@@ -666,7 +671,7 @@ release client line says `Exits` with `database writes no`, and the last line is
 
 6.2. **[workstation] First start and smoke test.** On the update server (the workstation named in Update Setup, `WebServiceServerName`),
 install this program's release build in its own folder (for example `C:\Program Files (x86)\Open PMS - Dental`), never over the Open Dental
-folder. Start it; in the Choose Database window enter the server (`fox-db`, as in the workstations' `FreeDentalConfig.xml`) and the database
+folder. Start it (`OpenPmsDental.exe`); in the Choose Database window enter the server (`fox-db`, as in the workstations' `FreeDentalConfig.xml`) and the database
 `opendental_pms`. The version guard says the database is adopted and up to date (if it offers to publish this build, see step 8.1); log in. If
 it says instead that the database "has not been adopted" and offers the adoption tool, it is pointed at the wrong database: answer No and
 correct the database name. Never adopt from a workstation.

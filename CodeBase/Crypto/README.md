@@ -7,7 +7,7 @@ They replace the proprietary prebuilt `CDT.dll` that Open Dental shipped in `Req
 | Class | Members | Summary |
 |---|---|---|
 | `CodeBase.Secrets` | `Encrypt`, `Decrypt`, `TryEncrypt`, `TryDecrypt`, `EncryptSftp`, `DecryptSftp`, `ConcealClearinghouse`, `RevealClearinghouse`, `IsEncrypted`, `Prefix` | Reversible obfuscation of stored passwords and tokens: AES-256-CBC plus HMAC-SHA256, deterministic, prefix `osd1$`, fixed public key |
-| `CodeBase.TamperHash` | `Compute`, `IsCurrentFormat`, `Prefix`, `ReleaseProviders` | Keyed hashes for the tamper-detection columns: HMAC-SHA256, prefix `osh1$`, fixed public key. `OpenDentBusiness.Misc.SecurityHash` decides which rows are hashed and verified. |
+| `CodeBase.TamperHash` | `Compute`, `IsCurrentFormat`, `Prefix`, `ReleaseProviders` | Keyed hashes for the tamper-detection columns: HMAC-SHA256, prefix `osh1$`, fixed public key. `OpenPmsDentalBusiness.Misc.SecurityHash` decides which rows are hashed and verified. |
 
 `SecretBox`, `SaltedHash` and `HmacSha256` are the internal implementations.
 
@@ -57,7 +57,7 @@ Changing the IV derivation wouldn't break decryption, but every unchanged secret
 Secrets live in two kinds of places, and both have to decrypt:
 
 1. **The database**: program properties (bridge passwords, SFTP passwords, QuickBooks Online tokens, PDMP credentials), clearinghouse passwords, and preferences such as `ReportingServerMySqlPassHash`, `ReadOnlyServerMySqlPassHash`, `ArchivePassHash` and the eBill password. Every workstation, the middle tier server and the services must be able to decrypt them.
-2. **Local files and command lines**: `MySQLPassHash` in `FreeDentalConfig.xml`, the service configs (`OpenDentalServiceConfig.xml`, `OpenDentalWebConfig.xml`, the eConnector config), the CEMT connection store, and the obfuscated passwords that CEMT and the updater pass to `OpenDental.exe` on the command line. These have to decrypt **before any database connection exists**.
+2. **Local files and command lines**: `MySQLPassHash` in `FreeDentalConfig.xml`, the service configs (`OpenDentalServiceConfig.xml`, `OpenDentalWebConfig.xml`, the eConnector config), the CEMT connection store, and the obfuscated passwords that CEMT and the updater pass to `OpenPmsDental.exe` on the command line. These have to decrypt **before any database connection exists**.
 
 We considered and rejected these options:
 

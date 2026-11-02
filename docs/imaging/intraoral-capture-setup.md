@@ -2,7 +2,7 @@
 
 Status: 2026-10-25; bit depth defaults, the 16-bit filing route, "fall back to 8" and the rule for 16-bit X-rays on patient computers updated 2026-11-01 (section 14). Package CAP-0 of the native capture design. For the clinic administrator, and for the staff who take X-rays.
 
-This runbook covers intraoral X-rays from a digital sensor through Open Dental's existing **Mount / Acquire**, with the protections built into Open Dental's TWAIN client:
+This runbook covers intraoral X-rays from a digital sensor through Open PMS - Dental's existing **Mount / Acquire**, with the protections built into Open PMS - Dental's TWAIN client:
 
 - the **source gate**, which decides per computer which TWAIN sources may be opened;
 - the **locked main window** and the small **Capture** window with Cancel, while the sensor software is open;
@@ -39,14 +39,14 @@ The runbook names no sensor, camera or software vendor. It uses these terms:
 
 ## 2. Prerequisites (every capture computer)
 
-1. **Windows accounts.** Staff run Open Dental as ordinary Windows users, not administrators. You need an administrator account only for the setup steps.
-2. **32-bit TWAIN data source manager.** Open Dental is a 32-bit program and uses the first of these files that exists:
-   1. `TWAINDSM.dll` next to `OpenDental.exe`;
+1. **Windows accounts.** Staff run Open PMS - Dental as ordinary Windows users, not administrators. You need an administrator account only for the setup steps.
+2. **32-bit TWAIN data source manager.** Open PMS - Dental is a 32-bit program and uses the first of these files that exists:
+   1. `TWAINDSM.dll` next to `OpenPmsDental.exe`;
    2. `C:\Windows\SysWOW64\TWAINDSM.dll`;
    3. `C:\Windows\twain_32.dll`, which is part of Windows.
 
    If none exists, no TWAIN source can be listed or opened. If the sensor's source is missing from the Twain Name list (section 6) while only `twain_32.dll` is present, install the TWAIN Working Group's signed 32-bit data source manager (`TWAINDSM.dll`) and check again.
-3. **The sensor's TWAIN source.** Install it, and the sensor's driver, with the supplier's own installer. Open Dental installs and configures nothing for it. It must be a 32-bit source. Connect the sensor.
+3. **The sensor's TWAIN source.** Install it, and the sensor's driver, with the supplier's own installer. Open PMS - Dental installs and configures nothing for it. It must be a 32-bit source. Connect the sensor.
 4. **The source's contract.** Get the contract for the installed version of the source. Record its version line. While it is marked as a draft, record its revision identifier as well. Keep a copy with the acceptance record.
 5. **Installation settings.** The contract lists the source's installation settings that change what the source delivers or how its sessions end. Typical examples:
    - a mode that overrides how many images a session delivers;
@@ -55,7 +55,7 @@ The runbook names no sensor, camera or software vendor. It uses these terms:
    - the reported resolution;
    - timeouts.
 
-   Check each one against the neutral value the contract gives, by reading the setting or from the source's log, as the contract describes. Open Dental never reads these settings. Rotation and flip must be neutral, because Open Dental applies each mount slot's own rotation; a rotation in the source would be applied twice. Record every value. The one allowed exception is the source's own session timeout (section 4.3).
+   Check each one against the neutral value the contract gives, by reading the setting or from the source's log, as the contract describes. Open PMS - Dental never reads these settings. Rotation and flip must be neutral, because Open PMS - Dental applies each mount slot's own rotation; a rotation in the source would be applied twice. Record every value. The one allowed exception is the source's own session timeout (section 4.3).
 6. **No Import Automatically.** Make sure nobody runs Imaging > Import > Import Automatically on a capture computer. It keeps running when the patient changes and can file images under the wrong patient.
 7. **Automatic logoff.** Know the automatic logoff time that applies to each capture user (section 4.3).
 
@@ -76,7 +76,7 @@ capture.ini holds this computer's capture settings. Create it by hand, once per 
    icacls "%ProgramData%\OpenPMS-Dental\Imaging" /grant *S-1-5-32-545:(OI)(CI)M
    ```
 
-   `S-1-5-32-545` is the local Users group in any Windows language. Every Windows user who runs Open Dental on this computer must be able to write capture.ini and the capture folders. Open Dental adds the same rule itself when it creates the folder, but it cannot add it to a folder an administrator created, so this command is the backstop.
+   `S-1-5-32-545` is the local Users group in any Windows language. Every Windows user who runs Open PMS - Dental on this computer must be able to write capture.ini and the capture folders. Open PMS - Dental adds the same rule itself when it creates the folder, but it cannot add it to a folder an administrator created, so this command is the backstop.
 4. Create the file:
 
    ```
@@ -92,7 +92,7 @@ capture.ini holds this computer's capture settings. Create it by hand, once per 
 
    The output must list `BUILTIN\Users` with `(M)`, usually shown as `(I)(M)`.
 
-How Open Dental uses the file:
+How Open PMS - Dental uses the file:
 
 - It reads capture.ini again before it opens any TWAIN source. A change therefore applies from the next slot or scan, without a restart. Do not edit the file during a series.
 - Without the ProgramData file, it reads `%LOCALAPPDATA%\OpenPMS-Dental\Imaging\capture.ini` of the Windows user instead. Without either file it uses the defaults: no source gate, journal on. A file it cannot read counts as empty, so the gate is then off too. Every journal sidecar records which file was read (`ConfigFile`) and any problem reading it (`ConfigError`).
@@ -105,17 +105,17 @@ Mount / Acquire reads only the `[Twain]` section. Other sections are for later v
 
 | Key | Default | Set it to | What it does |
 |---|---|---|---|
-| `ThreadModal` | `1` | `1` | While the sensor software is open for a Mount / Acquire slot, Open Dental's windows are locked and the Capture window offers Cancel. Use `0` only to troubleshoot, with the phantom and the test patient: then Open Dental's main window stays usable during a slot, there is no Capture window and no Cancel, and nothing stops a patient change in the middle of a series. Scans are never affected. |
+| `ThreadModal` | `1` | `1` | While the sensor software is open for a Mount / Acquire slot, Open PMS - Dental's windows are locked and the Capture window offers Cancel. Use `0` only to troubleshoot, with the phantom and the test patient: then Open PMS - Dental's main window stays usable during a slot, there is no Capture window and no Cancel, and nothing stops a patient change in the middle of a series. Scans are never affected. |
 | `RestrictSources` | `0` | `1` on every computer | Only sources listed in `AllowedSources` can be opened, by Mount / Acquire and by the Scan buttons. Any other source is refused with "This TWAIN source is not enabled on this computer." |
 | `AllowedSources` | empty | first every scanner this computer already uses; then the sensor's source, but only on a computer that passed acceptance, or while its own acceptance runs (phantom and test patient only) | Product names separated by `\|`. Each must match a whole product name; case and surrounding spaces are ignored. The gate checks the source that would actually open, so a shortened Twain Name does not get round it. With `RestrictSources=1` and an empty list, nothing can be opened, not even a scanner. A name that contains `;` cannot be listed. |
 | `JournalKeep` | `200` | `200` or more | How many of the most recent journal copies are kept. The journal cannot be turned off: `0` or less counts as `200`, and the capture log says so. Each copy is the uncompressed image, about 1 to 3 MB for an intraoral image, so 200 copies take roughly 0.2 to 0.6 GB. Only copies (section 11) are kept in addition. |
-| `DisableIsSafeSources` | empty | the sensor's product name, only when the installed contract version has safe disable: on the test computer for the safe-disable test, on other computers only after that test passed on the test computer | Open Dental asks the listed source for safe disable before each slot. |
+| `DisableIsSafeSources` | empty | the sensor's product name, only when the installed contract version has safe disable: on the test computer for the safe-disable test, on other computers only after that test passed on the test computer | Open PMS - Dental asks the listed source for safe disable before each slot. |
 | `SafeDisableCap` | empty | the safe-disable capability number from the contract, in hex | Set together with `DisableIsSafeSources`. |
-| `RefusedDisableCodes` | empty | the contract's "disable refused" condition codes, in hex, separated by `\|` | Set together with `DisableIsSafeSources`. When the source refuses a stop with one of these codes, Open Dental waits up to 30 s for it to finish and keeps every image it then delivers. |
+| `RefusedDisableCodes` | empty | the contract's "disable refused" condition codes, in hex, separated by `\|` | Set together with `DisableIsSafeSources`. When the source refuses a stop with one of these codes, Open PMS - Dental waits up to 30 s for it to finish and keeps every image it then delivers. |
 | `AcquireTimeoutMinutes` | `0` (off) | `0` until the safe-disable test passed on this computer; then a value in the order of section 4.3 | Stops a slot in which no image arrived after this many minutes, which ends the series. It counts per slot, from the moment the sensor software opens. It is honoured only for Twain Radiograph slots of a source listed in `DisableIsSafeSources` that accepted safe disable and one image per slot for that slot; otherwise the capture log says why not. When it expires, the series ends without a notice, like a cancel. |
 | `Allow16Bit` | `1` (since 2026-11-01; it was `0`) | `0` on every computer that captures for patients, until counsel has reviewed the 16-bit labelling and the computed window and the clinic run has signed off (section 14, "Before 16-bit X-rays for patients"); otherwise leave it out | Not used by Mount / Acquire, which never asks the source for a bit depth and stays 8-bit. The later capture session reads it: `1` allows more than 8 bits (16 or 14) on this computer, `0` forces 8 bits for every device on it. The key keeps its old name. See section 14. |
 
-Leave `DisableIsSafeSources`, `SafeDisableCap` and `RefusedDisableCodes` empty when the installed contract version has no safe disable. Then Cancel shows a warning first, `AcquireTimeoutMinutes` is not honoured, and any stop that Open Dental starts can lose an exposure that the sensor software still holds (section 10.3).
+Leave `DisableIsSafeSources`, `SafeDisableCap` and `RefusedDisableCodes` empty when the installed contract version has no safe disable. Then Cancel shows a warning first, `AcquireTimeoutMinutes` is not honoured, and any stop that Open PMS - Dental starts can lose an exposure that the sensor software still holds (section 10.3).
 
 ### 4.1 Finding the exact product names
 
@@ -169,13 +169,13 @@ The order must be:
 **the source's own session timeout < `AcquireTimeoutMinutes` < automatic logoff time**, and **automatic logoff time > the longest series**.
 
 1. **Find the automatic logoff time** that applies to each capture user. It is set in Setup > Security, Global Security Settings: "Automatic logoff time in minutes (0 to disable)". If "Allow user override for automatic logoff" is checked there, a user's own value in the user's edit window applies: "Automatic logoff time in minutes (0 is disabled, blank is global value)".
-2. **Compare it with the longest series.** Time the longest series (usually a full-mouth series) on the phantom. Time spent in the sensor software and pressing the sensor's controls does not count as activity in Open Dental, so a whole series counts as idle time. Every capture user's logoff time must be longer than the longest series, with a margin: for example 30 minutes for a series that takes 20. If it is shorter, raise the office-wide value or that user's own value.
+2. **Compare it with the longest series.** Time the longest series (usually a full-mouth series) on the phantom. Time spent in the sensor software and pressing the sensor's controls does not count as activity in Open PMS - Dental, so a whole series counts as idle time. Every capture user's logoff time must be longer than the longest series, with a margin: for example 30 minutes for a series that takes 20. If it is shorter, raise the office-wide value or that user's own value.
 3. **AcquireTimeoutMinutes**, only after the safe-disable test passed on this computer: shorter than the logoff time, and longer than one slot normally takes (placing the sensor and exposing).
-4. **The source's own session timeout**, if its contract has one: when you use `AcquireTimeoutMinutes`, set the source's session timeout shorter, so that the source ends the session cleanly with its own reason before Open Dental stops it. This is the one installation setting that may differ from its neutral value; record it. With `AcquireTimeoutMinutes=0` it may stay neutral.
+4. **The source's own session timeout**, if its contract has one: when you use `AcquireTimeoutMinutes`, set the source's session timeout shorter, so that the source ends the session cleanly with its own reason before Open PMS - Dental stops it. This is the one installation setting that may differ from its neutral value; record it. With `AcquireTimeoutMinutes=0` it may stay neutral.
 
 Example: source session timeout 4 minutes, `AcquireTimeoutMinutes=5`, automatic logoff 30 minutes.
 
-Without safe disable, a stop that Open Dental starts (Cancel anyway, an automatic logoff) can make the source wait while the sensor software closes; the contract says how long, often about 15 s. Open Dental looks busy during that time. Wait. Never end Open Dental in Task Manager during a series.
+Without safe disable, a stop that Open PMS - Dental starts (Cancel anyway, an automatic logoff) can make the source wait while the sensor software closes; the contract says how long, often about 15 s. Open PMS - Dental looks busy during that time. Wait. Never end Open PMS - Dental in Task Manager during a series.
 
 ## 5. Updating the sensor's source
 
@@ -187,7 +187,7 @@ When the supplier releases a new version of the source:
 4. Before patient use, repeat acceptance steps 1, 2 and 5 (section 12) and one phantom series on the test computer.
 5. With the capture session (section 14): update the source on every computer that uses the device row first, then run Test capture again on one computer with the new version. A verification record names the driver version the source reports, so until a record for the new version passes, every computer that runs it takes 8 bits ("8-bit (fallback: no Test capture record for this sensor's driver version and image settings)"). The latest record for the device row counts: once the record for the new version is written, a computer still on the old version takes 8 bits too ("... is for driver <new>, and this source reports <old>") until its source is updated.
 
-## 6. Set up the imaging device in Open Dental
+## 6. Set up the imaging device in Open PMS - Dental
 
 1. Open Setup > Imaging > Devices and click **Add**. The Edit Imaging Device window opens.
 2. **Description:** a plain name, for example "Intraoral sensor". Staff pick the device by this name.
@@ -226,9 +226,9 @@ Open Setup > Imaging > Mounts and edit or add the mount definitions (for example
 
 1. Select the patient and open Imaging. In the tree, select a category or another item that is not a mount.
 2. Click **Mount / Acquire**. In Select Mount and Acquire, pick the mount and the device ("Intraoral sensor"), then click **Create Mount and Acquire**.
-3. The sensor software opens for the first slot. Open Dental's windows are locked, and a small **Capture** window says "Sensor software is open. Cancel ends this series." If the capture quarantine holds images, it also says "N unassigned capture(s) on this computer."
+3. The sensor software opens for the first slot. Open PMS - Dental's windows are locked, and a small **Capture** window says "Sensor software is open. Cancel ends this series." If the capture quarantine holds images, it also says "N unassigned capture(s) on this computer."
 4. Expose. With Twain Radiograph the sensor software closes by itself after one image. The image appears in the slot, with that slot's rotation and tooth numbers.
-5. The sensor software opens for the next empty slot, and so on. After the last slot the series ends, and Adj mode opens if the mount has it set. Open Dental comes back to the front about 1 s later, unless another program is in front.
+5. The sensor software opens for the next empty slot, and so on. After the last slot the series ends, and Adj mode opens if the mount has it set. Open PMS - Dental comes back to the front about 1 s later, unless another program is in front.
 6. Check every slot before the patient leaves.
 
 ### 8.2 Ending a series early: close, Done or Cancel
@@ -236,11 +236,11 @@ Open Setup > Imaging > Mounts and edit or add the mount definitions (for example
 - **Preferred:** when the sensor software opens for a slot you do not want, close its window before exposing. The series stops without a notice, and the unmounted bar stays open.
 - **Batch (Twain Multi, phantom only):** end with **Done** in the sensor software, or close its window. Every image taken arrives, in order.
 - **Cancel** in the Capture window is for when the sensor software cannot be reached or does not respond.
-  - **Without safe disable**, the first Cancel shows a warning instead of stopping. For one exposure per slot: "If an exposure was just taken, wait until it appears before cancelling." For a batch: "Cancel here may lose images already taken in this series; use Done in the sensor software to keep them." **Keep waiting** goes back. **Cancel anyway** stops, and an exposure that the sensor software still holds may then be lost for Open Dental: follow section 10.3.
+  - **Without safe disable**, the first Cancel shows a warning instead of stopping. For one exposure per slot: "If an exposure was just taken, wait until it appears before cancelling." For a batch: "Cancel here may lose images already taken in this series; use Done in the sensor software to keep them." **Keep waiting** goes back. **Cancel anyway** stops, and an exposure that the sensor software still holds may then be lost for Open PMS - Dental: follow section 10.3.
   - **With safe disable**, Cancel stops at once, without a warning, and no image is lost. An image that the source still delivers goes to the capture quarantine, not into the mount, and an administrator must recover it (section 10.2). Done or closing the sensor software is therefore still better.
   - Closing the Capture window (for example with Alt+F4) counts as Cancel.
 - **"Waiting for the sensor software to finish."** After a stop, the source may finish first. This can take up to 30 s, and Cancel is off meanwhile. Wait.
-- Do not close Open Dental and do not log off during a series.
+- Do not close Open PMS - Dental and do not log off during a series.
 
 ### 8.3 Single PA
 
@@ -268,7 +268,7 @@ Capture notices appear in a small window titled **Capture**. One window lists ev
 
 | What you see | What it means | What to do |
 |---|---|---|
-| "This TWAIN source is not enabled on this computer.", usually followed by Open Dental's own "Imaging Device unavailable." or "Default scanner could not be opened" | The source gate refused the source. | On a computer that has not passed acceptance, this is expected for the sensor. For a scanner, add its exact product name to `AllowedSources`. |
+| "This TWAIN source is not enabled on this computer.", usually followed by Open PMS - Dental's own "Imaging Device unavailable." or "Default scanner could not be opened" | The source gate refused the source. | On a computer that has not passed acceptance, this is expected for the sensor. For a scanner, add its exact product name to `AllowedSources`. |
 | "Sensor software is open. Cancel ends this series." | Normal: the sensor software is open for a slot. | Expose, or close the sensor software to stop. |
 | "N unassigned capture(s) on this computer." In the Capture window. After 30 days it adds "The oldest is from (date). Ask an administrator to recover them now (see the runbook)." | The capture quarantine holds images. | Tell the administrator (section 10.2). |
 | "If an exposure was just taken, wait until it appears before cancelling." or "Cancel here may lose images already taken in this series; ..." | Cancel was clicked without safe disable. | Click Keep waiting, and close the sensor software or use Done instead (section 8.2). |
@@ -277,14 +277,14 @@ Capture notices appear in a small window titled **Capture**. One window lists ev
 | "N image(s) received after the series stopped could not be saved to the capture quarantine folder (time): (reason). A copy is in the capture journal folder. Do not re-expose. ..." | As above, but the quarantine could not be written. When the notice mentions the journal, the journal copy is the only copy. Its name ends in `-only`, and the journal never removes it. | Do not re-expose. The administrator fixes the folder (permissions, disk space) and recovers the journal copy as in section 10.2 before more X-rays are taken on this computer. |
 | "The sensor software may still hold images from this series. Do not re-expose. See the runbook." | The source did not finish within 30 s after a stop, or an image it offered after a stop could not be transferred. Images it took may still be in the sensor software. | Section 10.3. |
 | "Sensor software ended without an image: (reason). Do not re-expose until you have checked the sensor software." | The source ended the session with a reason: for example no sensor connected, no calibration, a session timeout, or a failure. The reason is the source's text, or a hex code whose meaning is in the source's contract. | Section 10.4. |
-| "Image not received. Do not re-expose until you have checked the sensor software." As Open Dental's message box, or as a notice (when the source stopped responding, and in a Twain Multi batch). | A transfer failed, or the source stopped responding. | Section 10.4. |
-| "Unable to save: (message)" (Open Dental's own message box) | The image arrived but could not be stored. Its journal copy may be the only copy. | Section 10.1, before anything else. |
+| "Image not received. Do not re-expose until you have checked the sensor software." As Open PMS - Dental's message box, or as a notice (when the source stopped responding, and in a Twain Multi batch). | A transfer failed, or the source stopped responding. | Section 10.4. |
+| "Unable to save: (message)" (Open PMS - Dental's own message box) | The image arrived but could not be stored. Its journal copy may be the only copy. | Section 10.1, before anything else. |
 
 ## 10. Failure procedures
 
 ### 10.1 "Unable to save": recover from the journal
 
-The image reached Open Dental, and its journal copy may now be the only copy. The journal keeps only the newest `JournalKeep` copies, so recover the image **before the series is restarted** and before more X-rays are taken on this computer.
+The image reached Open PMS - Dental, and its journal copy may now be the only copy. The journal keeps only the newest `JournalKeep` copies, so recover the image **before the series is restarted** and before more X-rays are taken on this computer.
 
 1. **Stop.** Do not re-expose. Do not restart the series.
 2. **Note** the time of the message, the patient, the mount and the slot that stayed empty.
@@ -308,12 +308,12 @@ Import the image only once. Leave the journal copy in place; the journal removes
 Quarantine images are marked "patient unknown": Mount / Acquire does not tell the TWAIN client which patient a series is for. Never file one by guesswork. Recover each one like this:
 
 1. **Read the sidecar.** Open `%ProgramData%\OpenPMS-Dental\Imaging\Capture\quarantine`. For each `.bmp`, open the `.txt` of the same name and note `ReceivedAt`, `Source`, `Computer`, `WindowsUser`, `AcquireId`, `Reason` and `StopReason`. A `.bmp` without a sidecar is also "patient unknown"; its name starts with the receive time (`yyyyMMdd-HHmmss-fff`).
-2. **Read the capture log.** In `Capture\capture-log.txt` (and `capture-log.1.txt` for older entries), find the line "Quarantine image (file name) ...". The lines before it, "Journal copy ... (acquire ..., delivered: Caller)", are the images of the same series that went into Open Dental, with their times.
+2. **Read the capture log.** In `Capture\capture-log.txt` (and `capture-log.1.txt` for older entries), find the line "Quarantine image (file name) ...". The lines before it, "Journal copy ... (acquire ..., delivered: Caller)", are the images of the same series that went into Open PMS - Dental, with their times.
 3. **Find the series in the audit trail.** Open Tools > Audit Trail. Choose that day and the ImageCreate permission. Look for the entries from the same computer at the times of those journal-copy lines: a "Mount Created" entry and "Radiograph Created" entries for one patient. That patient's series is the candidate. Allow for a small difference between the computer's clock and the database server's clock.
 4. **Find the empty slot.** Open the candidate mount. The image belongs to the slot that was next when the series stopped: the empty slot after the last filled one. A `Reason` that says the source sent more images than asked for is an extra exposure of the same series.
 5. **Second person.** A second person checks the image against the patient: the anatomy fits the slot's teeth and the other images of the series, and nothing contradicts it. If either person is not certain, stop here: leave the file in the quarantine, record it, and refer it to the dentist.
 6. **Import.** Select the patient, the mount and the empty slot. Click **Import** and choose the quarantine `.bmp`. Every quarantine image also has a journal copy with the same `Sha256`, whose sidecar says `Delivered=Quarantine`. Import only one of the two. Then finish the image as in section 10.1, step 7.
-   - If the slot is no longer empty (for example, the slot was re-exposed), select the patient's X-ray category instead of the mount, import the image there, and in Info set its Description to "Recovered: (mount) slot (n)". Every exposure that reached Open Dental is kept.
+   - If the slot is no longer empty (for example, the slot was re-exposed), select the patient's X-ray category instead of the mount, import the image there, and in Info set its Description to "Recovered: (mount) slot (n)". Every exposure that reached Open PMS - Dental is kept.
 7. **Record** the date, the file name, the patient, the mount and slot, who recovered it and who checked it.
 8. **Move the files** (`.bmp` and `.txt`) out of the quarantine folder into a protected archive folder, for example `%ProgramData%\OpenPMS-Dental\Imaging\Capture\recovered`, and keep them per the office's retention policy. Nothing is removed automatically. Until a file leaves the quarantine folder (subfolders count too), the Capture window keeps counting it, and after 30 days it warns.
 
@@ -323,14 +323,14 @@ A journal copy whose name ends in `-only` (sidecar `Delivered=None`) is an image
 
 ### 10.3 "The sensor software may still hold images"
 
-Open Dental stopped the source, but the source did not finish within 30 s, or an image it offered after the stop could not be transferred. Images it took may still be held by the sensor software. Open Dental did not receive them, so they are in neither the journal nor the quarantine.
+Open PMS - Dental stopped the source, but the source did not finish within 30 s, or an image it offered after the stop could not be transferred. Images it took may still be held by the sensor software. Open PMS - Dental did not receive them, so they are in neither the journal nor the quarantine.
 
 1. Do not re-expose.
-2. Check the source's contract for redelivery. A source that offers it delivers the undelivered images of its most recent session again on a later enable, often only for a limited time. Open Dental can ask for this only from the capture session of a later phase ("Request undelivered images again"). The Mount/Acquire loop of this phase has no redelivery action. So:
+2. Check the source's contract for redelivery. A source that offers it delivers the undelivered images of its most recent session again on a later enable, often only for a limited time. Open PMS - Dental can ask for this only from the capture session of a later phase ("Request undelivered images again"). The Mount/Acquire loop of this phase has no redelivery action. So:
    - do not start another series with that source on that computer until the images are recovered or the dentist decides they are lost, because a new series replaces the "most recent session";
    - record the time and the stopped slot in the acceptance or incident record.
 3. Do not rely on any other recovery. A source may keep undelivered image files on the computer, but unless its contract describes a way to get them back, there is no supported tool for it. Never take image files from a source's own folders into a patient's record. If images do come back by a supported route, file them like a journal copy: match the time to the stopped slot, have a second person check, then Import (section 10.1, steps 5 to 8).
-4. Without safe disable there is no such notice. Treat any stop that Open Dental started during a slot in which an exposure may have been taken (Cancel anyway, an automatic logoff, closing Open Dental) the same way. The capture log shows each such stop as "Stopping ... safe disable in effect: no".
+4. Without safe disable there is no such notice. Treat any stop that Open PMS - Dental started during a slot in which an exposure may have been taken (Cancel anyway, an automatic logoff, closing Open PMS - Dental) the same way. The capture log shows each such stop as "Stopping ... safe disable in effect: no".
 
 ### 10.4 "Ended without an image" and "Image not received"
 
@@ -340,9 +340,9 @@ Open Dental stopped the source, but the source did not finish within 30 s, or an
 4. For "Image not received", check the journal for a copy received at that time. If there is one, recover it (section 10.1). If there is none, the source may still hold the image (section 10.3).
 5. Re-expose only after these checks, and only when the dentist decides to.
 
-### 10.5 Automatic logoff or Open Dental closing during a series
+### 10.5 Automatic logoff or Open PMS - Dental closing during a series
 
-The automatic logoff closes Open Dental's windows and shows the logon window. The series stops only once someone logs back in, and any image that arrives afterwards goes to the quarantine. When Open Dental is closed during a series, the series stops too, and late images also go to the quarantine. The logoff can also close a Capture notice before anyone reads it.
+The automatic logoff closes Open PMS - Dental's windows and shows the logon window. The series stops only once someone logs back in, and any image that arrives afterwards goes to the quarantine. When Open PMS - Dental is closed during a series, the series stops too, and late images also go to the quarantine. The logoff can also close a Capture notice before anyone reads it.
 
 1. Log back in. Do not re-expose.
 2. Open the mount and note the last filled slot.
@@ -356,7 +356,7 @@ Everything is under `%ProgramData%\OpenPMS-Dental\Imaging\Capture`:
 
 | Path | Contents |
 |---|---|
-| `journal\` | A copy of every image the sensor delivered to Mount / Acquire, written before Open Dental stores it, and of every quarantine image. Only the newest `JournalKeep` are kept, apart from only copies (names ending in `-only`), which stay until they are recovered. |
+| `journal\` | A copy of every image the sensor delivered to Mount / Acquire, written before Open PMS - Dental stores it, and of every quarantine image. Only the newest `JournalKeep` are kept, apart from only copies (names ending in `-only`), which stay until they are recovered. |
 | `quarantine\` | Images that arrived after a series stopped. Nothing is removed automatically. |
 | `capture-log.txt` | One line per event, with the time and the Windows user. Above 1 MB it becomes `capture-log.1.txt`, replacing the previous one. |
 
@@ -366,7 +366,7 @@ Everything is under `%ProgramData%\OpenPMS-Dental\Imaging\Capture`:
 
 - `ReceivedAt`, `Source`, `Computer`, `WindowsUser`, `AcquireId` (ties together the journal, quarantine and log entries of one acquisition);
 - `PatNum`: always empty with Mount / Acquire;
-- `Delivered`: `Caller` (Open Dental received it and may have stored it), `Quarantine` (it went to the quarantine; `DeliveredDetail` names the file) or `None` (this copy is the only one: the quarantine could not be written, and `DeliveredDetail` says why; its name ends in `-only`, and the journal never removes it);
+- `Delivered`: `Caller` (Open PMS - Dental received it and may have stored it), `Quarantine` (it went to the quarantine; `DeliveredDetail` names the file) or `None` (this copy is the only one: the quarantine could not be written, and `DeliveredDetail` says why; its name ends in `-only`, and the journal never removes it);
 - `Width`, `Height`, `BitsPerPixel`, `XDpi`, `YDpi`, `Sha256`;
 - the `Twain.*` values in effect, `ThreadModalInEffect`, `SafeDisableInEffect`, and `ConfigFile` (which capture.ini was read).
 - for an image of the capture session (section 14) also `RequestedBits` and `BitDepthInEffect` (16, 14 or 8: the depth asked for and the one used), `BitDepth16InEffect` (`1` for more than 8 bits, kept for older readers), `BitDepthReason` when it fell back to fewer bits, and `DriverProductName`, `DriverVersion` and `DriverVersionInfo` (the driver build the source reported).
@@ -375,7 +375,7 @@ Everything is under `%ProgramData%\OpenPMS-Dental\Imaging\Capture`:
 
 - `Reason`: the explanation in words;
 - `DrainReason`: `Stop` (it was waiting when the series stopped), `RefusedDisable` (the source delivered it while finishing after a stop) or `ExtraImage` (the source sent more images than asked for);
-- `StopReason`: why the series stopped: `Cancel`, `Timeout` (`AcquireTimeoutMinutes`), `ParentDestroyed` (the window that started the series was closed, for example by an automatic logoff), `Quit` (Open Dental was closing), `Closed`, `Error` or `None`.
+- `StopReason`: why the series stopped: `Cancel`, `Timeout` (`AcquireTimeoutMinutes`), `ParentDestroyed` (the window that started the series was closed, for example by an automatic logoff), `Quit` (Open PMS - Dental was closing), `Closed`, `Error` or `None`.
 
 **What to look for in the capture log:**
 
@@ -385,7 +385,7 @@ Everything is under `%ProgramData%\OpenPMS-Dental\Imaging\Capture`:
 | "Safe disable is in effect for" | Safe disable was accepted for this slot. Expected on every slot once it is configured. |
 | "does not support the safe-disable capability" or "did not accept TRUE for the safe-disable capability" | The installed source has no safe disable, or the number is wrong. Check the contract and the keys. |
 | "[Twain] AcquireTimeoutMinutes is not honoured" | Says why the timeout was ignored. |
-| "Stopping "(source)" (reason); safe disable in effect: yes" or "...: no; an exposure the source still held may not be delivered" | Open Dental stopped the series itself: `Cancel`, `Timeout`, `ParentDestroyed` (for example an automatic logoff), `Quit`, `Closed` or `Error`. With "no", follow section 10.3. |
+| "Stopping "(source)" (reason); safe disable in effect: yes" or "...: no; an exposure the source still held may not be delivered" | Open PMS - Dental stopped the series itself: `Cancel`, `Timeout`, `ParentDestroyed` (for example an automatic logoff), `Quit`, `Closed` or `Error`. With "no", follow section 10.3. |
 | "refused MSG_DISABLEDS (condition code ...). Waiting up to 30 s" | Normal after a stop with safe disable. |
 | "was disabled after MSG_XFERREADY, (n) s into the wait" or "was disabled after MSG_CLOSEDSREQ, ..." | The source finished after the refused stop, and the stop completed. Normal with safe disable. |
 | "Contract deviation:" | The source refused a stop with a code that `RefusedDisableCodes` does not list. Check the codes against the contract; if they are right, report the lines to the supplier. |
@@ -394,7 +394,7 @@ Everything is under `%ProgramData%\OpenPMS-Dental\Imaging\Capture`:
 | "Journal copy" / "Quarantine image" | Each copy written, with its file name and acquisition id. |
 | "delivered more images than the one asked for" | Extra images went to the quarantine. Check the installation settings. |
 
-**Permissions.** The local Users group needs Modify on these folders (section 3). When a permission problem stops the journal or the quarantine, the capture log says so. When the Capture folder lacks that rule, the first capture-log line after Open Dental starts says "Could not give the Users group access to ...": run the `icacls` command of section 3 again.
+**Permissions.** The local Users group needs Modify on these folders (section 3). When a permission problem stops the journal or the quarantine, the capture log says so. When the Capture folder lacks that rule, the first capture-log line after Open PMS - Dental starts says "Could not give the Users group access to ...": run the `icacls` command of section 3 again.
 
 **Backup.** Add `%ProgramData%\OpenPMS-Dental\Imaging` to the computer's backup. It holds patient images.
 
@@ -413,7 +413,7 @@ Run this on the test computer first, with a phantom and a test patient record on
 
 1. **Installation and source gate.**
    1. The Twain Name list shows the sensor's source (with `twain_32.dll`, or with `TWAINDSM.dll` if needed). Record which data source manager is in use.
-   2. The sensor software starts when Open Dental runs as an ordinary Windows user. Record whether it needs write access to its own installation folder.
+   2. The sensor software starts when Open PMS - Dental runs as an ordinary Windows user. Record whether it needs write access to its own installation folder.
    3. Every installation setting in the contract has its neutral value (or the recorded exception of section 4.3), checked by a person or from the source's log. If the contract lists more than one kind of delivered 8-bit image, record which one real exposures deliver.
    4. Record the contract version (and its revision identifier while it is a draft).
    5. On a computer that has not passed acceptance (`RestrictSources=1`, sensor not listed), Mount / Acquire with the device shows "This TWAIN source is not enabled on this computer." **Scan Document still works** there, and on the test computer.
@@ -427,9 +427,9 @@ Run this on the test computer first, with a phantom and a test patient record on
    4. **Save failure:** on the test patient, make storage fail just before an exposure (for example, remove write access to the test patient's image folder, or disconnect the image share), then restore it. "Unable to save" appears, and journal recovery (section 10.1) brings the image into the mount.
    5. **Stop with images pending (safe disable):** on the phantom, with a Twain Multi batch, take 3 exposures and click Cancel before Done. No warning appears; all 3 images arrive in the quarantine with the quarantine notice. With Twain Radiograph, click Cancel while the sensor software is still processing an exposure: that image arrives in the quarantine. The capture log shows "refused MSG_DISABLEDS ... Waiting up to 30 s", then "... was disabled after MSG_XFERREADY", and no "Contract deviation" or "may still hold images" lines.
    6. **Stop while idle (safe disable):** click Cancel while the sensor software waits for an exposure. "Waiting for the sensor software to finish." appears briefly, then the series ends. The capture log shows "refused MSG_DISABLEDS ... Waiting up to 30 s", then "... was disabled after MSG_CLOSEDSREQ, (n) s into the wait", and no "No notification" line. Only after 5.5 and 5.6 pass, set `AcquireTimeoutMinutes` (section 4.3).
-   7. **The source's session timeout first:** with the source's session timeout shorter than `AcquireTimeoutMinutes`, leave a slot waiting. The source ends the session with its own reason ("Sensor software ended without an image: ...") before Open Dental's timeout.
-   8. **Open Dental's timeout before the logoff:** with the source's session timeout neutral, leave a slot waiting. The series ends after `AcquireTimeoutMinutes`, without a notice, and Open Dental is still logged in.
-   9. **Automatic logoff during an acquisition (safe disable):** give a test user a short logoff time (for example 2 minutes) and `AcquireTimeoutMinutes=0`. On the phantom with Twain Multi, take 2 exposures and wait without clicking Done. The logoff closes Open Dental's windows and shows the logon window; the series stops only after someone logs back in. Log back in. Then the Capture notice appears, both images are in the quarantine, and their sidecars' `StopReason` is `ParentDestroyed` or `Cancel` (closing the Capture window counts as Cancel). Without safe disable the images stay with the sensor software instead: the expected result is then that of section 10.3. Restore the logoff time afterwards.
+   7. **The source's session timeout first:** with the source's session timeout shorter than `AcquireTimeoutMinutes`, leave a slot waiting. The source ends the session with its own reason ("Sensor software ended without an image: ...") before Open PMS - Dental's timeout.
+   8. **Open PMS - Dental's timeout before the logoff:** with the source's session timeout neutral, leave a slot waiting. The series ends after `AcquireTimeoutMinutes`, without a notice, and Open PMS - Dental is still logged in.
+   9. **Automatic logoff during an acquisition (safe disable):** give a test user a short logoff time (for example 2 minutes) and `AcquireTimeoutMinutes=0`. On the phantom with Twain Multi, take 2 exposures and wait without clicking Done. The logoff closes Open PMS - Dental's windows and shows the logon window; the series stops only after someone logs back in. Log back in. Then the Capture notice appears, both images are in the quarantine, and their sidecars' `StopReason` is `ParentDestroyed` or `Cancel` (closing the Capture window counts as Cancel). Without safe disable the images stay with the sensor software instead: the expected result is then that of section 10.3. Restore the logoff time afterwards.
 6. **Patient change and logoff time.** While the sensor software is open, try to select another patient in the main window: it is locked. Confirm that every capture user's automatic logoff time is longer than the longest series (section 4.3).
 7. **Storage.** Repeat one series in each storage mode the clinic uses.
 8. **Quarantine recovery.** Recover one quarantine image from step 5 with the procedure in section 10.2, on the test patient.
@@ -439,7 +439,7 @@ Run this on the test computer first, with a phantom and a test patient record on
 
 Record at least:
 
-- the date, the computer name, the people present, and the Open Dental build;
+- the date, the computer name, the people present, and the Open PMS - Dental build;
 - the source's version and the contract version (with its revision identifier while it is a draft);
 - the data source manager in use;
 - every installation setting and its value;
@@ -464,7 +464,7 @@ Use the smallest step that solves the problem. Settings take effect from the nex
 
 1. **Stop sensor capture on one computer:** remove the sensor's product name from `AllowedSources` (keep `RestrictSources=1`). Mount / Acquire with the sensor is then refused with the gate notice.
 2. **Stop it everywhere:** set the device row's Computer Name back to the test computer, or delete the device row (Setup > Imaging > Devices).
-3. **Problems with the locked windows or the Capture window:** set `ThreadModal=0`, only to troubleshoot with the phantom and the test patient, or with the series supervised. Open Dental's main window then stays usable during a slot, there is no Capture window and no Cancel, and nothing stops a patient change in the middle of a series: staff must not click in Open Dental or change the patient until the slot ends. Report the problem, and set `ThreadModal=1` again as soon as it is solved.
+3. **Problems with the locked windows or the Capture window:** set `ThreadModal=0`, only to troubleshoot with the phantom and the test patient, or with the series supervised. Open PMS - Dental's main window then stays usable during a slot, there is no Capture window and no Cancel, and nothing stops a patient change in the middle of a series: staff must not click in Open PMS - Dental or change the patient until the slot ends. Report the problem, and set `ThreadModal=1` again as soon as it is solved.
 4. **Remove the source gate:** set `RestrictSources=0`. Every source can then be opened again, so do this only on a computer where the sensor's source is not installed (step 5). Elsewhere it could be opened like any scanner.
 5. **Remove the sensor's source:** uninstall it with the supplier's uninstaller.
 6. Keep the Capture folder until every quarantine image is recovered (section 10.2).
@@ -510,7 +510,7 @@ A record written by an earlier version of the program (format `capture-verificat
 - "14-bit in a 16-bit file": 14-bit data, stored unchanged in a 16-bit DICOM file (Bits Stored 16, with `effectiveBits=14` in its Image Comments);
 - "8-bit (fallback: <reason>)", for example "8-bit (fallback: no Test capture record for this sensor's driver version and image settings)". With `Bits=8` or `Allow16Bit=0` it is simply "8-bit".
 
-If the source delivers a 14- or 16-bit image in a layout Open Dental cannot read, that image is not received ("Image not received. Do not re-expose yet.", with the reason), nothing of it is kept, and the session takes 8 bits for the rest of that session. Follow section 10.4. In a continuous series the sensor software stays armed after an image, so every later exposure of that series would be lost the same way: with safe disable in effect the series is stopped after that image; without it the indicator says "Image not received: <reason>. Do not expose again; end the series." Press Disable, then Start: the rest of this session takes 8 bits. The 8 bits last only for that session: after End, set `Bits=8` in Capture settings for this device before the next session with this sensor, or the next session asks for more than 8 bits again and can lose another exposure. (Running Test capture again does not help: it cannot read such an image either, so it writes no record, and the record that passed still counts.)
+If the source delivers a 14- or 16-bit image in a layout Open PMS - Dental cannot read, that image is not received ("Image not received. Do not re-expose yet.", with the reason), nothing of it is kept, and the session takes 8 bits for the rest of that session. Follow section 10.4. In a continuous series the sensor software stays armed after an image, so every later exposure of that series would be lost the same way: with safe disable in effect the series is stopped after that image; without it the indicator says "Image not received: <reason>. Do not expose again; end the series." Press Disable, then Start: the rest of this session takes 8 bits. The 8 bits last only for that session: after End, set `Bits=8` in Capture settings for this device before the next session with this sensor, or the next session asks for more than 8 bits again and can lose another exposure. (Running Test capture again does not help: it cannot read such an image either, so it writes no record, and the record that passed still counts.)
 
 A 14-bit image whose values are not right-justified 14-bit values (some above 16383) is stored unchanged, but is not labelled `effectiveBits=14`, and a Test capture of such an image does not pass ("the 14-bit samples are not right-justified").
 

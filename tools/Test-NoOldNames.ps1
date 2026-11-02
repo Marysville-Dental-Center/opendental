@@ -9,8 +9,8 @@
 	FormOpenDental, OpenDentalVendor, OpenDentalServerConfig.xml or OpenDentalService are never reported. Letter case must match, so database
 	names such as opendental_dev are not reported either.
 
-	Before the rename almost every line matches, so the default run prints only a summary and exits 0. The rename run turns on -Strict, which
-	exits 1 while any name is left outside the allow-list, and reviews what it lists.
+	Since the rename (docs\port-notes\RENAME.md) every old name left is in the allow-list, so -Strict passes; run it with -Strict after a
+	merge or on a branch made before the rename, and rename what it lists or add a narrow entry with its reason.
 
 	Not scanned: bin, obj, packages, .git, .vs, .claude, TestResults and node_modules folders, and binary files (only the extensions in
 	$ScanExtensions and the files in $ScanFileNames are read).
@@ -19,10 +19,14 @@
 	- the frozen ConvertDatabases*.cs upgrade scripts and the history in docs (port notes, specs, audits and reports);
 	- attribution and licence text, and GPL headers;
 	- preference values and enum members stored in the database (the database never changes names);
-	- values sent to vendors and the Middle Tier's wire contract (SOAP namespace, IIS path, Credential Manager prefix, web reference name);
+	- values sent to vendors and other systems, and the Middle Tier's wire contract (SOAP namespace, IIS path, Credential Manager prefix,
+	  web reference name and proxy class);
+	- the OpenDental.sln and OpenDental.Local.slnf file names, which stay;
 	- translation keys and plugin hook names;
-	- text and checks about Open Dental itself (its leftover files on a workstation, its host names);
-	- the folder name kept on purpose for files that builds before the rename wrote (CodeBase\Utilities\ProgramNames.cs).
+	- text and checks about Open Dental itself (its company, its own Windows service, its developers' checkout folders, its leftover files
+	  on a workstation, its host names, its licence list entries and generated preference tables);
+	- the names of builds before the rename that are still looked up (the %LOCALAPPDATA% folder, the HL7 service name) and the test that
+	  keeps the old literals out of the sites routed through CodeBase\Utilities\ProgramNames.cs.
 	An entry has a Path, a wildcard matched against the repository relative path (backslashes), and at most one of Match and Line, regular
 	expressions. With neither it allows the whole file. Match allows only the old names that lie inside a match of the expression, so another
 	old name on the same line is still reported. Line allows every old name on a line that the expression matches. Keep entries narrow.
@@ -33,7 +37,7 @@
 	Repository root. Defaults to the parent of the folder that contains this script.
 
 .PARAMETER Strict
-	Fail (exit 1) when any old name is outside the allow-list. The rename run turns this on.
+	Fail (exit 1) when any old name is outside the allow-list. Passes since the rename.
 
 .PARAMETER List
 	Print every line with an old name outside the allow-list (path:line: text), not only the summary.
@@ -129,6 +133,8 @@ $AllowList=@(
 	#--- Open Dental itself.
 	@{ Path='*'; Match="(?i)\b[a-z0-9.-]*opendental\.(com|cloud)\b"; Reason="Open Dental's host names (the blocked-host list and its tests)." }
 	@{ Path='docs\adoption-runbook.md'; Line="'C:\\Program Files\*\\Open Dental\*'"; Reason="Finds Open Dental's own files in its install folders." }
+	@{ Path='docs\adoption-runbook.md'; Match='An `OpenDental\.exe` is always Open Dental|no `OpenDental\.exe` or `FreeDentalConfig\.xml` left'; Reason="Open Dental's own exe on a workstation." }
+	@{ Path='docs\adoption-runbook.md'; Match='`OpenDentalServer`(?= (?:web application )?in IIS)'; Reason="Open Dental's Middle Tier web application in IIS, stopped before the switch." }
 	@{ Path='*'; Match='\bOpenDental, Inc\.'; Reason='Open Dental Software, Inc., the company.' }
 	@{ Path='*'; Match='\bOpenDental Service\b'; Reason="Open Dental's own Windows service (OpenDentalService), which this program does not ship." }
 	@{ Path='*'; Match='Versioned\\+OpenDental\b'; Reason="Open Dental developers' checkout folder in developer-only default paths." }

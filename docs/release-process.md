@@ -20,9 +20,9 @@ Nothing here talks to Open Dental's servers or reads Open Dental's update files.
 
 Raise the release version by editing `AssemblyInformationalVersion` in `SharedAssemblyInfo.cs`, for example to `0.1`. Leave `AssemblyVersion` at `24.3.63.0`. Once the fork markers take over, the database checks no longer look at it.
 
-A build is identified by its **build id**: a SHA-256 over the program's own assemblies (`ForkReleases.ListBuildIdFiles`: `OpenDental.exe`, `OpenDentBusiness.dll`, `CodeBase.dll` and the others). Every rebuild of `0.0` therefore counts as a different build, and third-party DLLs aren't hashed at every startup.
+A build is identified by its **build id**: a SHA-256 over the program's own assemblies (`ForkReleases.ListBuildIdFiles`: `OpenPmsDental.exe`, `OpenPmsDentalBusiness.dll`, `CodeBase.dll` and the others). Every rebuild of `0.0` therefore counts as a different build, and third-party DLLs aren't hashed at every startup.
 
-Because the release version stays `0.0` across rebuilds, it can't tell an older build from a newer one. Each build therefore also carries its **build time**. `OpenDental.csproj` (target `ForkWriteBuildStamp`) writes `[assembly: AssemblyMetadata("ForkBuildUtc", "…Z")]` into `OpenDental.exe`. It rewrites the stamp only when something compiled into `OpenDental.exe` changed (its sources, references, resources, the project file or `UpdateFileCopier.exe`), so an unchanged rebuild keeps its build id. The release manifest records the stamp as `BuildUtc`. A higher release version is newer. Within one release version, the later build time is newer. If either time is missing or the two are equal, the order is unknown.
+Because the release version stays `0.0` across rebuilds, it can't tell an older build from a newer one. Each build therefore also carries its **build time**. `OpenPmsDental.csproj` (target `ForkWriteBuildStamp`) writes `[assembly: AssemblyMetadata("ForkBuildUtc", "…Z")]` into `OpenPmsDental.exe`. It rewrites the stamp only when something compiled into `OpenPmsDental.exe` changed (its sources, references, resources, the project file or `UpdateFileCopier.exe`), so an unchanged rebuild keeps its build id. The release manifest records the stamp as `BuildUtc`. A higher release version is newer. Within one release version, the later build time is newer. If either time is missing or the two are equal, the order is unknown.
 
 ## Fork version markers
 
@@ -96,8 +96,8 @@ Before adopting the office copy, stop and uninstall the Open Dental services and
 
 The **update server** is the workstation named in the `WebServiceServerName` preference (Update Setup). Name it before you publish rebuilds. If that preference is blank (the default), any workstation may act as the update server, but only within limits: it may publish the first release, or a build known to be newer than the published one (a higher release version, or the same release with a later build time). It never replaces a published build that is newer or whose order is unknown. It updates to that build instead.
 
-1. Build the solution in Release. `OpenDental.csproj` copies `UpdateFileCopier.exe` next to `OpenDental.exe`, because every release ships it.
-2. Install the build on the update server, for example by copying the output folder over the installation, and start it as an administrator.
+1. Build the solution in Release. `OpenPmsDental.csproj` copies `UpdateFileCopier.exe` next to `OpenPmsDental.exe`, because every release ships it.
+2. Install the build on the update server, for example by copying the output folder over the installation, and start it as an administrator. Builds from before the rename to `OpenPmsDental.exe` (2026-11-01) cannot be upgraded in place, because UpdateFileCopier never deletes the exe and DLLs of the old names: install a renamed build into a clean folder ([port-notes/RENAME.md](port-notes/RENAME.md)).
 3. At startup, `PrefL.CheckProgramVersion` sees that this build isn't the published one and asks whether to publish it. If you click Cancel, this workstation runs the build without publishing it. Update Setup's Recopy button publishes the running build at any time, under the same rules: with a blank `WebServiceServerName` it refuses to replace a different published build that this one isn't known to be newer than. A silent run publishes only when nothing is published yet. It never replaces a published release, because nobody is asked.
 4. Publishing (`ForkReleases.Publish`) works like this:
    - While it runs, `UpdateInProgressOnComputerName` is set, so other workstations wait.
@@ -146,8 +146,8 @@ vstest.console.exe tests/ReleaseFlowTests/bin/Debug/ReleaseFlowTests.dll /Platfo
 - Guard decisions for the full startup matrix: fresh 24.3.63, office copy 25.3.48, copies edited to 25.3.50 and 25.4.0, adopted, adopted with markers removed, adopted by a newer build, unfinished adoption.
 - Adoption on scratch databases with synthetic data. The 25.3.48 case uses the `od_253_schema` patient definition when it's loaded, otherwise the column and index from `fox-db-schema.sql`.
 - Publish and pull round trips, including tampered segments, a tampered manifest and a manifest for another product.
-- The publish/pull decision for the named, blank and other update server cases, with and without build times; the restart rule of `IsDbConnectionSafe`; and the build time stamped into `OpenDental.exe`.
+- The publish/pull decision for the named, blank and other update server cases, with and without build times; the restart rule of `IsDbConnectionSafe`; and the build time stamped into `OpenPmsDental.exe`.
 - An adopted copy with only `ForkSchemaLevel`, or `ForkSchemaLevel` and `OdSchemaCompat`, removed: refused (exit 173) and never adopted again.
-- Source checks: `OpenDental.exe` reports `0.0` and `24.3.63.0`; the legacy chain is frozen; the guard code has no Debug bypass; Open Dental's update file types are only ever deleted; no downgrade prompt; UpdateFileCopier checks the manifest before copying.
+- Source checks: `OpenPmsDental.exe` reports `0.0` and `24.3.63.0`; the legacy chain is frozen; the guard code has no Debug bypass; Open Dental's update file types are only ever deleted; no downgrade prompt; UpdateFileCopier checks the manifest before copying.
 
 Database tests use `127.0.0.1:3306` (root, blank password). They are inconclusive if no server answers, or if `RELEASEFLOW_TEST_DB=skip` is set.

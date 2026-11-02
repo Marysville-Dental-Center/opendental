@@ -1,6 +1,6 @@
 # Fork migrations
 
-The legacy `ConvertDatabases` chain (`OpenDentBusiness/Misc/ConvertDatabases*.cs`) is frozen at 24.3.63. Every schema or data change after that is a fork migration step in this folder, run by `ForkMigrationRunner`.
+The legacy `ConvertDatabases` chain (`OpenPmsDentalBusiness/Misc/ConvertDatabases*.cs`) is frozen at 24.3.63. Every schema or data change after that is a fork migration step in this folder, run by `ForkMigrationRunner`.
 
 ## Adding a step
 

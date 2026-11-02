@@ -71,11 +71,11 @@ Total: about 54 dev-days, or about 50 without CAP-DR. This excludes the DS proje
 ### 2.2 What main already removed
 
 - Commit ed1bcf27f removed the support-plan gate (`ODHelp.IsEncryptedKeyValid`) from FormImagingDevices, FrmMountAndAcquire and the Video button. Commit 1dd732fd1 deleted `OpenDentalHelp.dll`. The only check left on these paths is `ImageCreate` (ControlImages.cs:2857-2861, 3553-3557).
-- Main's schema is Open Dental 25.3.48. The schema verifier requires an exact match (OpenDentBusiness/Misc/ForkMigrations/README.md).
+- Main's schema is Open Dental 25.3.48. The schema verifier requires an exact match (OpenPmsDentalBusiness/Misc/ForkMigrations/README.md).
 
 ### 2.3 What is broken in fork builds today
 
-- `Required dlls/ImagingDeviceManager.dll` stands in for a missing sibling project (Directory.Build.targets:5-7; OpenDental.csproj:9303-9305), but `Eztwain4.dll` is not copied. Scan, Scan Multi-Page and Mount/Acquire therefore cannot work in a fork build.
+- `Required dlls/ImagingDeviceManager.dll` stands in for a missing sibling project (Directory.Build.targets:5-7; OpenPmsDental.csproj:9303-9305), but `Eztwain4.dll` is not copied. Scan, Scan Multi-Page and Mount/Acquire therefore cannot work in a fork build.
 - No project item references `VideoCamLib.dll` and nothing copies it, so Video throws `DllNotFoundException` on load (FormVideo.cs:135).
 - Where these paths do run, they have known defects:
   - The main window stays live during a TWAIN acquire, because a hidden form is the parent (ControlImages.cs:3620-3626).
@@ -140,7 +140,7 @@ The user asked the two sessions to coordinate and to work independently on separ
 | Offline, local | Ground rules 5 and 6. | All capture is local. Images go through `ImageStore` to the configured storage. The journal and quarantine are local folders under `%ProgramData%`. |
 | Vendor stack out of process | The vendor's DLLs never enter the fork and are never loaded by fork code. | The fork talks only to the TWAIN DSM. The sensor DS is a thin DLL that the DSM loads into the host. It contains no vendor code and is installed separately, like any vendor TWAIN source. twain-contract 1.0 had one gap: the DS briefly changed the host process's PATH while it started the sensor software, and then restored it. The change was process-wide, so during that time a DLL loaded by name on any host thread could resolve from the vendor folder. Ask W14 removes this: in twain-contract 1.1 the sensor software is started with its own environment block, and the host's environment, PATH included, is never changed (its section 7; implemented in 1.1, fake-mode tests only, no hardware run). |
 | Ownership | ControlImages.cs: A-CL (A1), A-IMG (A2), B-IMG (B1), V-PEARL1 (B2), B-SHELL (B3) (port-backlog.md:1709). ImageStore.cs: A-CL, A-IMG, B-DBM (B2), B-SHELL (port-backlog.md:1718). ControlImageDisplay: A-IMG, B-IMG, then M2-IMG (C1). FormImagingSetup: B-IMG (port-backlog.md:574). BitmapDicom, ImageHelper and UserControlImagingGeneral: M2-IMG (C1) (port-backlog.md:1013-1016). FormImageSelectClaimAttach: B-CLAIM (B2) (port-backlog.md:682). ProgramL and FormProgramLinkEdit: V-BRIDGE1, B-SHELL and later owners (port-backlog.md:1725). Only the owner edits a file while its wave runs, and ownership passes on merge (port-backlog.md:28-29). | No CAP package edits ImageStore.cs, ControlImageDisplay.cs, FormImages, FormImagingSetup, ProgramL, FormProgramLinkEdit or FormImageSelectClaimAttach. The ControlImages hook is a line item for that file's owner in its wave (section 7.3). Other edits are in new files or in files no package owns in that wave: FormImagingDevices, FormImagingDeviceEdit, FormVideo, UI/VideoCamera, BitmapDicom, ImageHelper and Documents (between A2 and C1), and ControlImagesOld (after A2). |
-| csproj wiring | Packages in one wave must not both own OpenDental.csproj, OpenDental.sln or OpenDental.Local.slnf. | Project wiring goes through commits the coordinator merges. New projects use wildcard Compile and Page includes. OpenDental.csproj changes are limited to: re-pointing the existing ImagingDeviceManager ProjectReference to `..\ImagingDeviceManager\` and, if the old module's direct sensor path is removed, deleting the xImageDeviceManager reference (CAP-TW); one ProjectReference to ImagingCapture and removal of the UI/VideoCamera items (CAP-2); one Compile item for the partial (hook). OpenDentBusiness.csproj lists its Compile items explicitly, so it gets one each for `IDicomPixelReader` (CAP-W1) and the DICOM reader (CAP-DR). |
+| csproj wiring | Packages in one wave must not both own OpenPmsDental.csproj, OpenDental.sln or OpenDental.Local.slnf. | Project wiring goes through commits the coordinator merges. New projects use wildcard Compile and Page includes. OpenPmsDental.csproj changes are limited to: re-pointing the existing ImagingDeviceManager ProjectReference to `..\ImagingDeviceManager\` and, if the old module's direct sensor path is removed, deleting the xImageDeviceManager reference (CAP-TW); one ProjectReference to ImagingCapture and removal of the UI/VideoCamera items (CAP-2); one Compile item for the partial (hook). OpenPmsDentalBusiness.csproj lists its Compile items explicitly, so it gets one each for `IDicomPixelReader` (CAP-W1) and the DICOM reader (CAP-DR). |
 | Regulatory | The fork stays on the image-management side (FDA MDDS guidance, 28 Sep 2022; 21 USC 360j(o)(1)(D)). That means acting "without controlling or altering the functions or parameters of any connected medical devices". Intraoral sensors are Class II devices (21 CFR 872.1800, product code MUH). Some are cleared together with their acquisition software. Others are cleared as a bare sensor with an API, which leaves the acquisition software to the integrator (public 510(k) records of both kinds are cited in the coordination record). No clearance record was found for the clinic's sensor as sold, and the sensor helper is the DS project's own program, not cleared vendor software. Who carries acquisition-software responsibility, and whether the fork-computed presentation window falls under 21 CFR 892.2050, go to counsel (decision 18). | The fork does not set exposure, trigger, calibration or image-processing parameters. It does drive the TWAIN Enable/Disable lifecycle: it enables the source for each slot and disables it on cancel, timeout, idle and patient change. The DS and its helper decide whether and when the sensor arms. It also negotiates transfer parameters (XFERCOUNT, mechanism, bit depth, UI flags) and selects the camera stream format. It writes no camera control or ProcAmp values programmatically and opens no driver property pages. The lifecycle, stream-format selection and rendering choices are review flags (sections 7.6, 7.8 and 8.7, decision 18). Section 13 lists exactly which features are gated before review. |
 | 32-bit | The host is x86, and the DSM loads only 32-bit sources. | Every new project is x86. |
 | NuGet | NuGet restore is unavailable in the sandbox. | No new NuGet packages. The interop is written in the repository. |
@@ -159,19 +159,19 @@ The user asked the two sessions to coordinate and to work independently on separ
 | A save failure disposes the bitmap, shows "Unable to save" and ends the series. | ControlImages.cs:3742-3747 |
 | Slot order is ItemOrder. The next slot is the first empty, non-text slot, wrapping around. Overflow goes to unmounted items (ItemOrder -1). TwainMulti places extras in unmounted items. | MountItems.cs:43-49; ControlImageDisplay.cs:395-436; ControlImages.cs:3761-3814 |
 | Placement sets MountItemNum, DegreesRotated=RotateOnAcquire, IsFlipped and ToothNumbers. It is a display transform; pixels are never rotated. | ControlImageDisplay.cs:291-321 |
-| Mount and MountItem have no link back to MountDef or MountItemDef. | OpenDentBusiness/TableTypes/Mount.cs:13-44; MountItem.cs:11-32 |
+| Mount and MountItem have no link back to MountDef or MountItemDef. | OpenPmsDentalBusiness/TableTypes/Mount.cs:13-44; MountItem.cs:11-32 |
 | Retake moves the image to unmounted, then calls an empty `butStart_Click`. | ControlImages.cs:2073-2125, 900-902 |
 | No ProvNum, Description or windowing is set on acquired images. | ControlImages.cs:3750-3759; ImageStore.cs:552-602 |
 | Pearl auto-upload runs on acquired radiographs when the category is configured for it. | ControlImages.cs:3753-3756 |
 | Video saves the frame as a Photo JPEG into VideoImageCategoryDefault before it checks the mount. On a full mount, or with no empty slot selected, it shows a message box and leaves an unplaced document. | ControlImages.cs:1646-1670; ControlImageDisplay.cs:351-361 |
 | The mount path disposes the bitmap it was passed, which is the live PictureBox image. The non-mount path never disposes it. | ControlImageDisplay.cs:377; ControlImages.cs:1667-1669 |
-| FormVideo derives from FormODBase, which lives in the OpenDental assembly. It stays open across patient changes, and `_patient` refreshes only when Imaging is reselected. | FormVideo.cs:16; ControlImages.cs:517-533, 3305-3328 |
+| FormVideo derives from FormODBase, which lives in the OpenPmsDental assembly. It stays open across patient changes, and `_patient` refreshes only when Imaging is reselected. | FormVideo.cs:16; ControlImages.cs:517-533, 3305-3328 |
 | FormVideo is opened through FormLauncher, and its only link back is the `BitmapCaptured` event. Slot selection is private to ControlImages. | ControlImages.cs:2862-2864, 1642 |
 | Space typed in the main window is routed to FormVideo by reflection. | ControlImages.cs:219-227; FormOpenDental.cs:902-906 |
 | Import Automatically handles only Created events, keeps running across patient changes, ignores files present at Start, stops on a failed import and deletes source files. | ControlImages.cs:838-875, 1527-1644 |
 | The `PatNumCur` setter fires `ODEvent(ODEventType.Patient, long)`. `Patients` also fires it with a `Patient` object. | FormOpenDental.cs:251-261; Patients.cs:5428 |
 | Auto-logoff runs through `Invoke` from a background thread. It closes every open form, modal ones included, and disposes any form still open after about 1 s (FormOpenDental.cs:6699-6767). PatNumCur becomes 0 only after the next login, and only in some multi-clinic cases (6852, 6864). | FormOpenDentalThreads.cs:424-427, 496-505; FormOpenDental.cs:6699-6767, 6844-6864 |
-| `GlobalFormOpenDental.LockODForMountAcquire` exists and FormOpenDental subscribes to it, but nothing raises it. | OpenDentBusiness/UI/GlobalFormOpenDental.cs:16-29; FormOpenDental.cs:233, 972 |
+| `GlobalFormOpenDental.LockODForMountAcquire` exists and FormOpenDental subscribes to it, but nothing raises it. | OpenPmsDentalBusiness/UI/GlobalFormOpenDental.cs:16-29; FormOpenDental.cs:233, 972 |
 | `ImageStore.Import(byte[] ..., fileExtension)` saves bytes unchanged with any ImgType. | ImageStore.cs:605-636 |
 | The DICOM loader accepts BitsStored 8, 12 or 16 and rejects 14. | BitmapDicom.cs:103-166 |
 | `ApplyWindowing` divides by 16 whenever BitsAllocated is 16, so true 16-bit data saturates once a window of 255 or less is stored (the slider clamps to 255). | BitmapDicom.cs:32-74; WindowingSlider.xaml.cs:113-118 |
@@ -184,7 +184,7 @@ The user asked the two sessions to coordinate and to work independently on separ
 | `LogDocument` dereferences the category without a null check. | ImageStore.cs:1332-1349 |
 | imagingdevice has 7 columns and no free-form settings column. | ImagingDevice.cs:9-46 |
 | The clinic database shows no mount or device use. | Office schema dump: no AUTO_INCREMENT on imagingdevice, mount, mountitem, mountdef or mountitemdef |
-| `decouple/twain` is 4 commits ahead of main and 292 behind. Against main and against A2 the only textual conflict is OpenDental.csproj; ControlImagesOld.cs (182 changed lines) and UnitTests.csproj are changed on both sides but merge cleanly. It has 69 MSTest tests, 34 of them through FakeTwainDsm. Every EZTwain member used on main exists in it. | `git merge-tree` (read-only) against main and m1/integration-a2-patch; `git show decouple/twain:ImagingDeviceManager.Tests/*.cs`; decouple/twain:ImagingDeviceManager/EZTwain.cs:26-337 |
+| `decouple/twain` is 4 commits ahead of main and 292 behind. Against main and against A2 the only textual conflict is OpenPmsDental.csproj; ControlImagesOld.cs (182 changed lines) and UnitTests.csproj are changed on both sides but merge cleanly. It has 69 MSTest tests, 34 of them through FakeTwainDsm. Every EZTwain member used on main exists in it. | `git merge-tree` (read-only) against main and m1/integration-a2-patch; `git show decouple/twain:ImagingDeviceManager.Tests/*.cs`; decouple/twain:ImagingDeviceManager/EZTwain.cs:26-337 |
 | The library's project file lists Compile items explicitly. | decouple/twain:ImagingDeviceManager/xImagingDeviceManager.csproj |
 | The library disables only the root of the hwnd it is given, which on the device path is the hidden form. | decouple/twain:TwainSession.cs:716-728 |
 | Its nested `GetMessage` loop dispatches every message. There is no app-side cancel. The timeout is test-only. | decouple/twain:TwainSession.cs:833-905 |
@@ -208,11 +208,11 @@ The user asked the two sessions to coordinate and to work independently on separ
 |---|---|---|---|
 | ImagingDeviceManager | `ImagingDeviceManager/` (from `decouple/twain`) | new to main | In-repo TWAIN client. Provides the EZTwain facade for legacy callers, the source gate, the journal, thread-modal device acquisitions and, from CAP-3, `TwainCaptureSession`, a worker-thread API. Holds the shared `LocalCaptureConfig` reader. |
 | ImagingCapture | `ImagingCapture/xImagingCapture.csproj` | new WPF-enabled class library (net48, x86, C# 7.3, WPF ProjectTypeGuids, wildcard `Compile` and `Page` includes) | DirectShow UVC layer, triggers, Learn tool, DICOM writer, capture-metadata parser, placement helper, session window, saver, quarantine, Test capture window and capture settings screen. Windows are `FrmODBase`, like FrmMountAndAcquire. |
-| ControlImages.Acquire.cs | `OpenDental/Main Modules/` | new partial file | Called by the hook. Checks PatNumCur, opens the session or falls through to the legacy loop, and refreshes the module afterwards. |
-| FormVideo | `OpenDental/Forms/` | rewritten internals | Same class, FormLauncher name, `BitmapCaptured(Bitmap)`, `Parent_KeyDown` and `VideoRectangle`. Now built on ImagingCapture. |
-| FormImagingDevices | `OpenDental/Forms/` | small edit (no owner) | "Add standard templates" action (CAP-4), calling ImagingCapture Templates (FrmMountAndAcquire is in WpfControlsOD and cannot reference ImagingCapture) |
-| FormImagingDeviceEdit | `OpenDental/Forms/` | small edit (no owner) | "Test capture" and "Capture settings" buttons (CAP-3, CAP-4) |
-| BitmapDicom, ImageHelper, Documents | `OpenDentBusiness/` | small edits (CAP-W, CAP-DR) | 16-bit windowing with legacy values read compatibly; explicit .dcm thumbnail branches through `IDicomPixelReader`; DICOM reads try the in-house reader first |
+| ControlImages.Acquire.cs | `OpenPmsDental/Main Modules/` | new partial file | Called by the hook. Checks PatNumCur, opens the session or falls through to the legacy loop, and refreshes the module afterwards. |
+| FormVideo | `OpenPmsDental/Forms/` | rewritten internals | Same class, FormLauncher name, `BitmapCaptured(Bitmap)`, `Parent_KeyDown` and `VideoRectangle`. Now built on ImagingCapture. |
+| FormImagingDevices | `OpenPmsDental/Forms/` | small edit (no owner) | "Add standard templates" action (CAP-4), calling ImagingCapture Templates (FrmMountAndAcquire is in WpfControlsOD and cannot reference ImagingCapture) |
+| FormImagingDeviceEdit | `OpenPmsDental/Forms/` | small edit (no owner) | "Test capture" and "Capture settings" buttons (CAP-3, CAP-4) |
+| BitmapDicom, ImageHelper, Documents | `OpenPmsDentalBusiness/` | small edits (CAP-W, CAP-DR) | 16-bit windowing with legacy values read compatibly; explicit .dcm thumbnail branches through `IDicomPixelReader`; DICOM reads try the in-house reader first |
 | capture.ini | `%ProgramData%\OpenPMS-Dental\Imaging\` | local file | Settings for one workstation (section 9.3) |
 | Journal and quarantine | `%ProgramData%\OpenPMS-Dental\Imaging\Capture\` | local folders | Recovery copies (journal) and unfiled images (quarantine) (sections 7.1 and 7.12) |
 
@@ -220,7 +220,7 @@ The user asked the two sessions to coordinate and to work independently on separ
 
 | Process | Contains | Owner |
 |---|---|---|
-| OpenDental.exe (x86) | Fork code; the TWAIN DSM; any TWAIN `.ds` the DSM loads (for the clinic, the sensor DS, which contains no vendor code); DirectShow filters from Windows | this repository, Windows, the DS vendor |
+| OpenPmsDental.exe (x86) | Fork code; the TWAIN DSM; any TWAIN `.ds` the DSM loads (for the clinic, the sensor DS, which contains no vendor code); DirectShow filters from Windows | this repository, Windows, the DS vendor |
 | Sensor helper (the sensor software, a separate process) | The vendor's sensor libraries. Sensor arming, trigger and calibration. | the DS project (private) and the sensor vendor (proprietary) |
 
 The fork never starts the helper, never reads its command line, configuration, manifests, logs or session folders, and never loads a vendor DLL. None of these is part of twain-contract 1.1 (its section 0). The camera helper and camera TWAIN source are not used by the fork (decision 11).
@@ -229,7 +229,7 @@ The fork never starts the helper, never reads its command line, configuration, m
 
 ```mermaid
 flowchart LR
-  subgraph FORK["OpenDental.exe, x86, GPL fork"]
+  subgraph FORK["OpenPmsDental.exe, x86, GPL fork"]
     CI["ControlImages (owned chain)<br/>dormant hook in Mount/Acquire"]
     CIA["ControlImages.Acquire.cs<br/>new partial"]
     FV["FormVideo<br/>rewritten internals"]
@@ -244,7 +244,7 @@ flowchart LR
       TCS["TwainCaptureSession<br/>STA worker thread"]
       CFG["LocalCaptureConfig"]
     end
-    ODB["OpenDentBusiness<br/>ImageStore, Documents, Mounts"]
+    ODB["OpenPmsDentalBusiness<br/>ImageStore, Documents, Mounts"]
   end
   DSM["TWAIN DSM (Windows)<br/>TWAINDSM.dll or twain_32.dll"]
   subgraph WP["The DS project (private, installed separately)"]
@@ -271,9 +271,9 @@ flowchart LR
 
 ### 6.4 Assembly layering
 
-- ImagingCapture references ImagingDeviceManager, OpenDentBusiness, CodeBase and WpfControlsOD. OpenDental.exe references ImagingCapture.
-- ImagingCapture never references the OpenDental assembly, so it cannot see `FormOpenDental`, `ControlImages` or `ControlImageDisplay` (that would be a circular reference). Its windows derive from `FrmODBase` (WpfControlsOD/Frame/FrmODBase.cs), so the WinForms base `FormODBase` in OpenDental is not needed.
-- The partial file in OpenDental passes the session everything it needs:
+- ImagingCapture references ImagingDeviceManager, OpenPmsDentalBusiness, CodeBase and WpfControlsOD. OpenPmsDental.exe references ImagingCapture.
+- ImagingCapture never references the OpenPmsDental assembly, so it cannot see `FormOpenDental`, `ControlImages` or `ControlImageDisplay` (that would be a circular reference). Its windows derive from `FrmODBase` (WpfControlsOD/Frame/FrmODBase.cs), so the WinForms base `FormODBase` in OpenPmsDental is not needed.
+- The partial file in OpenPmsDental passes the session everything it needs:
   - `PatNum` and the `Patient`;
   - `Func<long> getPatNumCur`, which returns `FormOpenDental.PatNumCur` and is used at start and at every re-enable;
   - the target `Mount` or null, and the `MountDef` or null;
@@ -281,8 +281,8 @@ flowchart LR
   - the category;
   - an owner window.
 - ImagingCapture tracks patient changes through `ODEvent` (`ODEventType.Patient`). A `long` Tag that differs from the bound PatNum counts as a patient change, and a Tag of 0 means no patient. A `Patient` Tag (Patients.cs:5428) is ignored unless its PatNum differs. Logoff raises no Patient event in a typical office (section 5); FormClosing is the logoff signal.
-- Placement rules live in ControlImageDisplay (DocumentAcquiredForMount, GetAvailSlots: ControlImageDisplay.cs:291-321, 395-436), which ImagingCapture cannot call. A small `MountPlacement` helper in ImagingCapture copies those rules onto OpenDentBusiness calls. Tests pin it to the same results.
-- The hardware-facing parts of ImagingCapture (UVC, triggers, config, DICOM writer) do not touch OpenDentBusiness, so they can be unit-tested with no database.
+- Placement rules live in ControlImageDisplay (DocumentAcquiredForMount, GetAvailSlots: ControlImageDisplay.cs:291-321, 395-436), which ImagingCapture cannot call. A small `MountPlacement` helper in ImagingCapture copies those rules onto OpenPmsDentalBusiness calls. Tests pin it to the same results.
+- The hardware-facing parts of ImagingCapture (UVC, triggers, config, DICOM writer) do not touch OpenPmsDentalBusiness, so they can be unit-tested with no database.
 
 ## 7. X-ray capture design
 
@@ -290,11 +290,11 @@ flowchart LR
 
 **CAP-TW.** Land `decouple/twain` with its behaviour unchanged, after wave A2 merges.
 
-- Point `OpenDental.sln` and OpenDental.csproj's ProjectReference (OpenDental.csproj:9303) at `ImagingDeviceManager\xImagingDeviceManager.csproj`. Switch it and its test project to wildcard `Compile` includes.
+- Point `OpenDental.sln` and OpenPmsDental.csproj's ProjectReference (OpenPmsDental.csproj:9303) at `ImagingDeviceManager\xImagingDeviceManager.csproj`. Switch it and its test project to wildcard `Compile` includes.
 - Add the dependency-free `LocalCaptureConfig` reader (about 80 lines, section 9.3), so CAP-1 and CAP-2 can both start after CAP-TW.
 - Move the tests to `tests\ImagingDeviceManagerTests` and add them to the slnf.
 - Remove the `Directory.Build.targets` substitution (lines 5-7 and 19-34).
-- Re-run the conflict check against `main` after A2 merges, and list every conflict in the PR. Known overlaps are OpenDental.csproj, UnitTests.csproj and ControlImagesOld.cs.
+- Re-run the conflict check against `main` after A2 merges, and list every conflict in the PR. Known overlaps are OpenPmsDental.csproj, UnitTests.csproj and ControlImagesOld.cs.
 - Removing the old module's direct sensor path, with `xImageDeviceManager.dll` and its vendor USB DLL, depends on owner decision 2.
   - If the owner keeps that path for now, CAP-TW keeps those two DLLs and its ControlImagesOld code, and deletes only the EZTwain DLLs.
   - If it is removed, FormImagingSetup's direct sensor group box (FormImagingSetup.cs:68-80, 130) becomes dead UI. Its cleanup is handed to B-IMG (B1) or a later owner as a coordinated item.
@@ -542,7 +542,7 @@ The DS may hold exposed images that it has not delivered. twain-contract 1.1 off
 **Writer and reader.**
 - `DicomIntraOralWriter`, in-house in ImagingCapture, is written from NEMA PS3.5, PS3.6 and PS3.10 only. Its tests check bytes and attributes with the in-house reader and do not depend on fo-dicom.
 - While fo-dicom still ships, one compatibility test also reads the files back through `BitmapDicom` and checks the pixels are identical.
-- The in-house reader (CAP-DR, decision 7) lives in OpenDentBusiness and handles only uncompressed Explicit VR Little Endian, the subset the writer emits. It sits behind `IDicomPixelReader`, and `DicomHelper.GetFromFile` and `GetFromStream` try it first, so every DICOM display path uses it for that subset. Other DICOM files keep going through fo-dicom until the owner decides otherwise.
+- The in-house reader (CAP-DR, decision 7) lives in OpenPmsDentalBusiness and handles only uncompressed Explicit VR Little Endian, the subset the writer emits. It sits behind `IDicomPixelReader`, and `DicomHelper.GetFromFile` and `GetFromStream` try it first, so every DICOM display path uses it for that subset. Other DICOM files keep going through fo-dicom until the owner decides otherwise.
 
 **Storing.** `ImageStore.Import(bytes, cat, ImageType.Radiograph, pat, "application/dicom", ".dcm")` (ImageStore.cs:605-636), then one `Documents.Update` that sets PrintHeading, ProvNum, DateCreated and WindowingMin/Max. WindowingMin/Max are stored on the 0-255 scale (CAP-W reading rule below).
 
@@ -702,7 +702,7 @@ An `IFrameSource` / `IUvcBackend` seam leaves room for a later Media Foundation 
 
 It stays non-modal. `ControlImages.formVideo_BitmapCaptured` keeps saving a Photo JPEG into VideoImageCategoryDefault and filling mount slots (ControlImages.cs:1646-1670), so no ControlImages edit is needed.
 
-`OpenDental/UI/VideoCamera/*.cs`, `Required dlls/VideoCamLib.dll` and the unreferenced `MediaFoundation*.dll` are deleted.
+`OpenPmsDental/UI/VideoCamera/*.cs`, `Required dlls/VideoCamLib.dll` and the unreferenced `MediaFoundation*.dll` are deleted.
 
 ### 8.2 Preview and frame handling
 
@@ -851,7 +851,7 @@ Only one program can hold the camera. Other camera software must be closed while
     - 8-bit, AsDelivered, Headless off, PerSlot;
     - RestrictSources as last logged;
     - DisableIsSafe off, DisableIsSafeSources empty, no custom capabilities.
-  - The capture session and Test capture then show "Capture settings were changed outside Open Dental; review them in Setup."
+  - The capture session and Test capture then show "Capture settings were changed outside Open PMS - Dental; review them in Setup."
   - When CAP-4 first runs on a PC that has a gated block but no logged entry, it shows the values and requires a Setup save before the session can be enabled. RestrictSources and AllowedSources keep their file values.
 - **Before CAP-4, and on the legacy path.** In phases 0-2 there is no Capture settings screen and no hash check. The clinic administrator sets the `[Twain]` gated keys by hand, following the CAP-0 runbook, and ImagingDeviceManager reads them without a hash check, because the library has no database access. The EZTwain facade used by the legacy loop keeps reading them that way after CAP-4, including after a rollback with `[Session] Enabled=0`. A hand edit there is neither prevented nor detected, because the file is user-writable (see above). The acceptance report records the values, and each journal sidecar records the gated values in effect. The source gate guards against accidental use; it is not access control.
 - **Verification records.** Test capture writes a verification record (securitylog, Setup, FKey=ImagingDeviceNum, capture-verification/2) naming the device row, its TWAIN source, the driver identity the source reported at open (TW_IDENTITY ProductName and Version: MajorNum, MinorNum, Info), a hash of the image settings ([Device.N] Bits, ByteOrder16, Polarity), the depth verified and the date; the computer name and the whole gated-settings hash are kept for the audit trail only. The session uses the latest record for the device row made on any computer, and refuses more than 8 bits, or an inverted capture, unless that record matches and passed at the depth asked for (owner decision 2026-11-01: one test covers every computer that runs the same driver version with the same image settings). capture-verification/1 records never match. The per-computer capture settings check above stays a separate gate.
@@ -1149,14 +1149,14 @@ Never in the fork: vendor DLLs in process, vendor constants or names in code pat
 
 | ID | Contents | New files | Edits to existing files (owner state) | Size | Depends on | Proposed slot |
 |---|---|---|---|---|---|---|
-| CAP-TW | Land `decouple/twain`; wildcard Compile; `LocalCaptureConfig`; build fixes; EZTwain DLL deletions; removal of the old direct sensor path per decision 2 | `ImagingDeviceManager/**`, `tests/ImagingDeviceManagerTests/**` | ControlImagesOld.cs and designer (no owner after A2; only if that path is removed); Directory.Build.targets; `Required dlls` deletions. Wiring commit (coordinator): OpenDental.csproj, UnitTests.csproj, OpenDental.sln, OpenDental.Local.slnf. Planning-doc text goes to the coordinator. | S (~3 d) | A2 merged; coordinator decision 1; owner decision 2 | B1 |
+| CAP-TW | Land `decouple/twain`; wildcard Compile; `LocalCaptureConfig`; build fixes; EZTwain DLL deletions; removal of the old direct sensor path per decision 2 | `ImagingDeviceManager/**`, `tests/ImagingDeviceManagerTests/**` | ControlImagesOld.cs and designer (no owner after A2; only if that path is removed); Directory.Build.targets; `Required dlls` deletions. Wiring commit (coordinator): OpenPmsDental.csproj, UnitTests.csproj, OpenDental.sln, OpenDental.Local.slnf. Planning-doc text goes to the coordinator. | S (~3 d) | A2 merged; coordinator decision 1; owner decision 2 | B1 |
 | CAP-1 | Thread-modal device acquire with Cancel window, activation handling, safe stop order with drain, safe-disable capability MSG_SET in state 4 (W13, by ProductName), bounded wait for MSG_XFERREADY or MSG_CLOSEDSREQ after a refused disable, parent-destroyed and WM_QUIT handling, extra-image handling, journal, a minimal quarantine writer with "patient unknown" sidecars and the quarantine notice, source gate, honest UICONTROLLABLE, optional timeout, DSM kept loaded, handle ownership (DSM_MemFree or GlobalFree), DAT_STATUS read-out and error notice, fake tests | `ImagingDeviceManager/Journal/*` (journal and `Quarantine*`), `ImagingDeviceManager/UI/AcquireStatusWindow.cs` | `TwainProtocol/TwainSession.cs`, `NativeMethods.cs`, `EZTwain.cs`, FakeTwainDsm (no owner) | M (~5 d) | CAP-TW | B2 |
 | CAP-0 | Generic clinic runbook: TWAIN sensor devices, the source gate (with each PC's existing scanners listed), the hand-set `[Twain]` keys, mounts with 1:1 slots, ScaleValue, the single-PA and retake rules, safety and failure procedures, journal recovery before a series is restarted, quarantine recovery (an administrator matches each file's receive time against that series' ImageCreate log entries and the mount's empty slot, a second person checks the image against the patient, and the administrator then imports it), the timeout below auto-logoff and a logoff time longer than the longest series, the DS's own session timeout (W4, in twain-contract 1.1) shorter than the fork's timeouts, the check of the DS's installation settings against twain-contract 1.1 section 3 (by a person or from the DS log), no Import Automatically watcher on capture PCs (W17); plus acceptance, recording the contract version | `docs/imaging/intraoral-capture-setup.md` | none | S (~2 d plus clinic time) | CAP-TW and CAP-1 in a build; W2; W4 and W13 (implemented in twain-contract 1.1) passing their hardware acceptance tests before patient use | after CAP-1 |
-| CAP-2 | ImagingCapture project skeleton (WPF-enabled, wildcard Compile and Page); DirectShow interop; UvcCamera; triggers; debounce; re-entrancy guard; Learn and Button test; level inputs; camera sections of capture.ini; FormVideo rewrite; delete VideoCamLib and MF DLLs | `ImagingCapture/**`, `tests/ImagingCaptureTests/**` | FormVideo.cs and designer (no owner); delete `OpenDental/UI/VideoCamera/*`. Wiring commit: one ProjectReference, removal of UI/VideoCamera items, sln/slnf entries | L (~13 d) | CAP-TW | B2 |
-| CAP-W1 | `IDicomPixelReader`; explicit .dcm branches in GetThumbnail and GetImageCropped (always) | `OpenDentBusiness/Imaging/IDicomPixelReader.cs` | ImageHelper.cs, Documents.cs (no owner between A2 and C1). Wiring commit (coordinator): one Compile item in OpenDentBusiness.csproj. | S (~2 d) | A2 merged | B1 |
+| CAP-2 | ImagingCapture project skeleton (WPF-enabled, wildcard Compile and Page); DirectShow interop; UvcCamera; triggers; debounce; re-entrancy guard; Learn and Button test; level inputs; camera sections of capture.ini; FormVideo rewrite; delete VideoCamLib and MF DLLs | `ImagingCapture/**`, `tests/ImagingCaptureTests/**` | FormVideo.cs and designer (no owner); delete `OpenPmsDental/UI/VideoCamera/*`. Wiring commit: one ProjectReference, removal of UI/VideoCamera items, sln/slnf entries | L (~13 d) | CAP-TW | B2 |
+| CAP-W1 | `IDicomPixelReader`; explicit .dcm branches in GetThumbnail and GetImageCropped (always) | `OpenPmsDentalBusiness/Imaging/IDicomPixelReader.cs` | ImageHelper.cs, Documents.cs (no owner between A2 and C1). Wiring commit (coordinator): one Compile item in OpenPmsDentalBusiness.csproj. | S (~2 d) | A2 merged | B1 |
 | CAP-W2 | v25_4 windowing (BitsStored scaling; 16-bit import window on the 0-255 scale; legacy values above 255 read as 12-bit scale) (decision 6a only) | none | BitmapDicom.cs (no owner between A2 and C1). The M2-IMG backlog change goes to the coordinator as text. | S (~2 d) | A2 merged; owner decision 6 | B1 (if it slips to B2, CAP-DR moves to B3). M2-IMG then keeps only the PDF preference and the finer-slider follow-up. |
-| CAP-DR | In-house DICOM reader for uncompressed Explicit VR Little Endian, behind `IDicomPixelReader` | `OpenDentBusiness/Imaging/DicomSubsetReader.cs` and tests | BitmapDicom.cs (no owner between A2 and C1): `DicomHelper.GetFromFile` and `GetFromStream` try DicomSubsetReader first for uncompressed Explicit VR Little Endian, then fall back to fo-dicom. Wiring commit (coordinator): one Compile item in OpenDentBusiness.csproj. | S (~4 d) | CAP-W1; owner decision 7 | B2; must merge before C1, when M2-IMG takes over BitmapDicom.cs |
-| Hook | Dormant hook (at most 10 lines) plus a stub partial that returns false | `OpenDental/Main Modules/ControlImages.Acquire.cs` (stub) | ControlImages.cs, inserted by its owner in that wave. Wiring: one Compile item. | XS (~0.5 d) | coordinator decision 5 | line item in B-IMG (B1), else V-PEARL1 (B2); fallback CAP-HOOK after B3 |
+| CAP-DR | In-house DICOM reader for uncompressed Explicit VR Little Endian, behind `IDicomPixelReader` | `OpenPmsDentalBusiness/Imaging/DicomSubsetReader.cs` and tests | BitmapDicom.cs (no owner between A2 and C1): `DicomHelper.GetFromFile` and `GetFromStream` try DicomSubsetReader first for uncompressed Explicit VR Little Endian, then fall back to fo-dicom. Wiring commit (coordinator): one Compile item in OpenPmsDentalBusiness.csproj. | S (~4 d) | CAP-W1; owner decision 7 | B2; must merge before C1, when M2-IMG takes over BitmapDicom.cs |
+| Hook | Dormant hook (at most 10 lines) plus a stub partial that returns false | `OpenPmsDental/Main Modules/ControlImages.Acquire.cs` (stub) | ControlImages.cs, inserted by its owner in that wave. Wiring: one Compile item. | XS (~0.5 d) | coordinator decision 5 | line item in B-IMG (B1), else V-PEARL1 (B2); fallback CAP-HOOK after B3 |
 | CAP-3 | Raw 16-bit memory path (MEMORY set before 16), AcquiredImage, ICAP_EXTIMAGEINFO and EXTIMAGEINFO in state 7, MSG_GET/QUERYSUPPORT/custom SET, TwainCaptureSession worker with the safe stop order; DicomIntraOralWriter with the full IOD checklist; Universal-to-ISO 3950 map; capture-metadata v1 parser and doc; RadiographImport; MountPlacement; Test capture window with verification record and the gated-block hash function | `ImagingDeviceManager/Capture/*`, `ImagingCapture/Dicom/*`, `ImagingCapture/Save/*`, `ImagingCapture/UI/FrmTestCapture*`, `docs/specs/capture-metadata-v1.md` | TwainSession.cs, TwainConstants.cs, TwainStructs.cs (no owner); FormImagingDeviceEdit.cs (no owner; Test capture button) | L (~11 d) | CAP-1, CAP-2 skeleton | B3 (new files) |
 | CAP-4 | Modal session window; banner and deliberate confirmation; single-target mode with tooth picker and "Take another"; indicator; sounds; hotkeys; slot mini-map; Retake, Skip, Next/Previous, tap-to-target; rotation and "Always rotate this slot"; provider and date stamping; idle disable; ODEvent monitor and forced close; Gray8 PNG saver; quarantine with sidecars, Assign, Reassign and Discard; recover-from-journal view; capture settings screen with hash check; "Add standard templates" (FormImagingDevices); fills the partial | `ImagingCapture/Session/*`, `Save/*`, `UI/*`, `Templates/*`, `Settings/*` | ControlImages.Acquire.cs (owned by CAP-4 after the hook); FormImagingDevices.cs (no owner); FormImagingDeviceEdit.cs (Capture settings button) | L (~12 d) | hook, CAP-3 | the first wave after B3 (F2 at the earliest) once the hook and CAP-3 have merged; else after CAP-HOOK |
 | Later | Continuous mode (W8), device events (W9), camera slot stepping (FormLauncher event plus a ControlImages subscriber), standby on lift, calibrated measurement from Imager Pixel Spacing, DICOM print category, .dcm export for claims, a quarantine count on every Imaging load, post-batch review step, finer windowing slider, Media Foundation backend | as needed | as needed | not scoped | the DS project's work; owners of ControlImages, ImageHelper and FormImageSelectClaimAttach | C1 or later |
@@ -1166,7 +1166,7 @@ Total: about 54 dev-days (about 50 without CAP-DR). Elsewhere in this document, 
 Rules for every package:
 
 - No CAP package shares a file with a backlog package in the same wave. No CAP package depends on, or shares a file with, another CAP package in the same wave (port-backlog.md "How to use" item 1).
-- No CAP package owns OpenDental.csproj, OpenDental.sln or OpenDental.Local.slnf. Each hands the coordinator a small wiring patch.
+- No CAP package owns OpenPmsDental.csproj, OpenDental.sln or OpenDental.Local.slnf. Each hands the coordinator a small wiring patch.
 - ImagingCapture uses `<Compile Include="**\*.cs" Exclude="bin\**;obj\**" />` and `<Page Include="**\*.xaml" Exclude="bin\**;obj\**" />` with `MSBuild:Compile`, so CAP-2, CAP-3 and CAP-4 never conflict over its project file. xImagingDeviceManager.csproj gets the same wildcard in CAP-TW.
 - Packages do not edit planning documents (decoupling-plan.md, port-backlog.md, third-party-binaries-audit.md). They hand proposed text to the coordinator.
 
@@ -1364,24 +1364,24 @@ The phantom carries radiopaque laterality and orientation markers (a lead letter
 
 **Fork code (`main` 33dc92789)**
 
-- `OpenDental/Main Modules/ControlImages.cs`: 25 (partial class), 219-227 (Space routed by reflection), 517-533 (`_patient` not cleared), 838-875 and 1527-1644 (Import Automatically), 900-902 (empty `butStart_Click`), 1642 (SetIdxSelectedInMount), 1646-1670 (video save), 2073-2125 (Retake), 2562-2687 and 2717-2730 (Scan: default source, forced pixel type), 2857-2874 (Video, FormLauncher), 3553-3599 (Mount/Acquire), 3563 (mountDef local), 3584-3586 (device check), 3587-3590 (PreselectFirstItem, unmounted bar), 3608-3613 (ShowTwainUI), 3620-3674 (hidden form, per-slot loop), 3631 and 3686 (OpenSource by name), 3670-3672 (single break only when no mount is showing), 3685-3734 (AcquireMulti), 3737-3815 (placement), 3742-3747 (save failure), 3753-3756 (Pearl)
-- `OpenDental/User Controls/ControlImageDisplay.cs`: 291-321 (DocumentAcquiredForMount), 351-391 and 377 (video to mount, dispose), 395-436 (GetAvailSlots), 578-585 (IsMountShowing), 4512-4516 and 4554-4566 (DICOM mount render)
-- `OpenDental/Main Modules/FormOpenDental.cs`: 233, 251-261 (PatNumCur fires ODEvent), 557-575, 902-906, 972, 6699-6767 (logoff closes every form), 6844-6864 (PatNumCur after the next login)
-- `OpenDental/Main Modules/FormOpenDentalThreads.cs`: 424-427, 496-505 (auto-logoff through Invoke)
-- `OpenDentBusiness/UI/GlobalFormOpenDental.cs`: 16-29
-- `OpenDentBusiness/Data Interface/Patients.cs`: 5428
+- `OpenPmsDental/Main Modules/ControlImages.cs`: 25 (partial class), 219-227 (Space routed by reflection), 517-533 (`_patient` not cleared), 838-875 and 1527-1644 (Import Automatically), 900-902 (empty `butStart_Click`), 1642 (SetIdxSelectedInMount), 1646-1670 (video save), 2073-2125 (Retake), 2562-2687 and 2717-2730 (Scan: default source, forced pixel type), 2857-2874 (Video, FormLauncher), 3553-3599 (Mount/Acquire), 3563 (mountDef local), 3584-3586 (device check), 3587-3590 (PreselectFirstItem, unmounted bar), 3608-3613 (ShowTwainUI), 3620-3674 (hidden form, per-slot loop), 3631 and 3686 (OpenSource by name), 3670-3672 (single break only when no mount is showing), 3685-3734 (AcquireMulti), 3737-3815 (placement), 3742-3747 (save failure), 3753-3756 (Pearl)
+- `OpenPmsDental/User Controls/ControlImageDisplay.cs`: 291-321 (DocumentAcquiredForMount), 351-391 and 377 (video to mount, dispose), 395-436 (GetAvailSlots), 578-585 (IsMountShowing), 4512-4516 and 4554-4566 (DICOM mount render)
+- `OpenPmsDental/Main Modules/FormOpenDental.cs`: 233, 251-261 (PatNumCur fires ODEvent), 557-575, 902-906, 972, 6699-6767 (logoff closes every form), 6844-6864 (PatNumCur after the next login)
+- `OpenPmsDental/Main Modules/FormOpenDentalThreads.cs`: 424-427, 496-505 (auto-logoff through Invoke)
+- `OpenPmsDentalBusiness/UI/GlobalFormOpenDental.cs`: 16-29
+- `OpenPmsDentalBusiness/Data Interface/Patients.cs`: 5428
 - `WpfControlsOD/Frms/FrmMountAndAcquire.xaml.cs`: 33-56, 99-143; `WpfControlsOD/Frame/FrmODBase.cs`
-- `OpenDental/Forms/FormImagingDeviceEdit.cs`: 22-92; `OpenDental/Forms/FormImagingSetup.cs`: 68-80, 98-104, 130
-- `OpenDental/Forms/FormVideo.cs`: 16, 36-84, 133-143; `OpenDental/UI/VideoCamera/VideoCamLib.cs`: 9-27
-- `OpenDental/Forms/FormImageSelectClaimAttach.cs`: 155-175, 191; `OpenDental/Logic/EmailAttachL.cs`: 109, 139-157
-- `OpenDentBusiness/TableTypes/ImagingDevice.cs`: 9-46; `ComputerPref.cs`: 19-79; `Mount.cs`: 13-44; `MountItem.cs`: 11-32
-- `OpenDentBusiness/Imaging/ImageStore.cs`: 258, 306-354, 482-549, 552-602, 605-636, 1009-1030, 1322-1328, 1332-1349
-- `OpenDentBusiness/Imaging/ImageHelper.cs`: 16-19, 461-474, 513-517, 538-544, 552-570, 572-576, 597-611
-- `OpenDentBusiness/Imaging/BitmapDicom.cs`: 32-74, 103-166, 168-224
+- `OpenPmsDental/Forms/FormImagingDeviceEdit.cs`: 22-92; `OpenPmsDental/Forms/FormImagingSetup.cs`: 68-80, 98-104, 130
+- `OpenPmsDental/Forms/FormVideo.cs`: 16, 36-84, 133-143; `OpenPmsDental/UI/VideoCamera/VideoCamLib.cs`: 9-27
+- `OpenPmsDental/Forms/FormImageSelectClaimAttach.cs`: 155-175, 191; `OpenPmsDental/Logic/EmailAttachL.cs`: 109, 139-157
+- `OpenPmsDentalBusiness/TableTypes/ImagingDevice.cs`: 9-46; `ComputerPref.cs`: 19-79; `Mount.cs`: 13-44; `MountItem.cs`: 11-32
+- `OpenPmsDentalBusiness/Imaging/ImageStore.cs`: 258, 306-354, 482-549, 552-602, 605-636, 1009-1030, 1322-1328, 1332-1349
+- `OpenPmsDentalBusiness/Imaging/ImageHelper.cs`: 16-19, 461-474, 513-517, 538-544, 552-570, 572-576, 597-611
+- `OpenPmsDentalBusiness/Imaging/BitmapDicom.cs`: 32-74, 103-166, 168-224
 - `WpfControlsOD/UI/Controls/ImagingModule/WindowingSlider.xaml.cs`: 113-118
-- `OpenDentBusiness/Data Interface/Documents.cs`: 133-185, 278-303, 389, 431-438, 537-595; `Mounts.cs`: 64-106; `MountItems.cs`: 43-49; `ProgramProperties.cs`: 278-341
-- `OpenDental/OpenDental.csproj`: 274-276, 1554-1558, 5442-5446, 9303-9305; `Directory.Build.targets`: 5-7, 19-34; `OpenDental.sln`: 61
-- `OpenDentBusiness/Misc/ForkMigrations/README.md` (schema verifier)
+- `OpenPmsDentalBusiness/Data Interface/Documents.cs`: 133-185, 278-303, 389, 431-438, 537-595; `Mounts.cs`: 64-106; `MountItems.cs`: 43-49; `ProgramProperties.cs`: 278-341
+- `OpenPmsDental/OpenPmsDental.csproj`: 274-276, 1554-1558, 5442-5446, 9303-9305; `Directory.Build.targets`: 5-7, 19-34; `OpenDental.sln`: 61
+- `OpenPmsDentalBusiness/Misc/ForkMigrations/README.md` (schema verifier)
 
 **Fork docs**
 
