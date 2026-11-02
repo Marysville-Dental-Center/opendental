@@ -125,7 +125,8 @@ namespace OpenPmsDentalBusiness {
 					}
 					fullPath=FileAtoZ.CombinePaths(imagePath,POut.String(imgName));
 					if(CloudStorage.IsCloudStorage) {				
-						//The browser shows the page from a local file (ODWebView2.NavigateToHtml) and needs local image files too, so we download the images to temp files.	
+						//Sending the email attaches its images from local files (this html, EmailMessages.FindAndReplaceImageTags), so we download the images
+						//to temp files; the preview loads them from there too (GetImageFolders).
 						byte[] byteArray=CloudStorage.Download(Path.GetDirectoryName(fullPath),Path.GetFileName(fullPath));
 						string tempFile=PrefC.GetRandomTempFile(Path.GetExtension(fullPath));
 						File.WriteAllBytes(tempFile,byteArray);
@@ -139,8 +140,9 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>The local folders the images of TranslateToXhtml's html come from, for the browser that shows it (ODWebView2.NavigateToHtml loads
 		///files from no other folder): the A to Z folder's Wiki folder, or its EmailImages folder when isEmail, when the A to Z folder is a local or
-		///network folder, and the program's temp folder, which holds the images downloaded from cloud storage. Never throws: a folder that cannot be
-		///found is left out.</summary>
+		///network folder; for the wiki, the in-memory pages' shared folder (WebView2PageStore), which holds the wiki images downloaded from cloud
+		///storage; for email, the program's temp folder, which holds the email images downloaded from cloud storage (as files, because sending the
+		///email attaches them from there, see EmailMessages.FindAndReplaceImageTags). Never throws: a folder that cannot be found is left out.</summary>
 		public static List<string> GetImageFolders(bool isEmail) {
 			Meth.NoCheckMiddleTierRole();
 			List<string> listFolders=new List<string>();
@@ -151,6 +153,10 @@ namespace OpenPmsDentalBusiness {
 				catch(Exception ex) {
 					ex.DoNothing();
 				}
+			}
+			if(!isEmail) {
+				listFolders.Add(CodeBase.Controls.WebView2PageStore.GetSharedFolder());
+				return listFolders;
 			}
 			try {
 				listFolders.Add(PrefC.GetTempFolderPath());
@@ -264,15 +270,20 @@ namespace OpenPmsDentalBusiness {
 						throw;
 					}
 					string fullPath=FileAtoZ.CombinePaths(wikiPath,POut.String(imgName));
-					if(CloudStorage.IsCloudStorage) {				
-						//The browser shows the page from a local file (ODWebView2.NavigateToHtml) and needs local image files too, so we download the images to temp files.
+					Image image;
+					if(CloudStorage.IsCloudStorage) {
+						//The browser loads the page's images by their file: address (ODWebView2.NavigateToHtml). A downloaded image stays in memory: it gets
+						//an address in the in-memory pages' shared folder, which the browser gets from memory, so no copy is written to disk.
 						byte[] byteArray=CloudStorage.Download(Path.GetDirectoryName(fullPath),Path.GetFileName(fullPath));
-						string tempFile=PrefC.GetRandomTempFile(Path.GetExtension(fullPath));
-						File.WriteAllBytes(tempFile,byteArray);
-						fullPath=tempFile;
+						//Read from the downloaded bytes: FileAtoZ.GetImage would download the image again. The image needs its stream while it is used, and a
+						//MemoryStream holds nothing that needs disposing.
+						image=Image.FromStream(new MemoryStream(byteArray));
+						fullPath=CodeBase.Controls.WebView2PageStore.AddSharedFile(fullPath,byteArray,Path.GetExtension(fullPath));
+					}
+					else {
+						image=FileAtoZ.GetImage(fullPath);
 					}
 					//If our imported image has orientation changes, we want to make sure that gets reflected in the HTML render.
-					Image image=FileAtoZ.GetImage(fullPath);
 					PropertyItem propertyItem=image.PropertyItems.FirstOrDefault(x=>x.Id==0x0112);//Exif orientation PropertyTagOrientation
 					long degreesRotated=0;
 					long height=image.Height;

@@ -1947,9 +1947,11 @@ namespace OpenPmsDentalBusiness {
 			return mimeEntityForImage.Headers["Content-ID"].Value.Replace("<","").Replace(">","");
 		}
 
-		///<summary>Generates the image and returns the path to where the file was saved.  Returns null if the image could not be created.
-		///Used to save images for received html messages.</summary>
-		public static string SaveMimeImageToFile(Health.Direct.Common.Mime.MimeEntity mimeEntityForImage,string directoryPath,string sourceFileName) {
+		///<summary>The image of a MIME part of a received html message, as the bytes of an image file of the type its file name's extension names
+		///(GetMimeImageFileName): read from the email's saved attachment (sourceFileName in the email attachments folder) when it can be, else from
+		///the part itself. Null when the part is not base64 or the image could not be read. In memory only: the email preview's Show Images hands
+		///these to the browser (ODWebView2.NavigateToHtml), so no image of a received email is written to disk to show it.</summary>
+		public static byte[] GetMimeImageBytes(Health.Direct.Common.Mime.MimeEntity mimeEntityForImage,string sourceFileName) {
 			Meth.NoCheckMiddleTierRole();
 			if(!IsMimeEntityBase64(mimeEntityForImage)) {
 				return null;
@@ -1957,7 +1959,6 @@ namespace OpenPmsDentalBusiness {
 			try {
 				string fileName=GetMimeImageFileName(mimeEntityForImage);
 				string fileExt=Path.GetExtension(fileName);
-				string filePath=ODFileUtils.CombinePaths(directoryPath,fileName);
 				MemoryStream memoryStream=null;
 				Bitmap bitmap=null;
 				try {
@@ -2011,10 +2012,18 @@ namespace OpenPmsDentalBusiness {
 						imageFormat=System.Drawing.Imaging.ImageFormat.Wmf;
 						break;
 				}
-				bitmap.Save(filePath,imageFormat);
+				//Saving to a file falls back to PNG for a format without an encoder (Emf, Exif, Icon, Wmf); saving to a stream would throw instead.
+				System.Drawing.Imaging.ImageCodecInfo[] arrayImageCodecInfos=System.Drawing.Imaging.ImageCodecInfo.GetImageEncoders();
+				System.Drawing.Imaging.ImageCodecInfo imageCodecInfo=arrayImageCodecInfos.FirstOrDefault(x => x.FormatID==imageFormat.Guid)
+					??arrayImageCodecInfos.First(x => x.FormatID==System.Drawing.Imaging.ImageFormat.Png.Guid);
+				byte[] byteArrayImage;
+				using(MemoryStream memoryStreamImage=new MemoryStream()) {
+					bitmap.Save(memoryStreamImage,imageCodecInfo,null);
+					byteArrayImage=memoryStreamImage.ToArray();
+				}
 				bitmap.Dispose();
 				memoryStream?.Dispose();
-				return filePath;
+				return byteArrayImage;
 			}
 			catch {
 			}
