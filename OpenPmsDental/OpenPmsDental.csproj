@@ -4349,6 +4349,36 @@
     <Compile Include="Forms\FormEquipment.Designer.cs">
       <DependentUpon>FormEquipment.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormMaintBoard.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormMaintBoard.Designer.cs">
+      <DependentUpon>FormMaintBoard.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormMaintFieldEdit.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormMaintFieldEdit.Designer.cs">
+      <DependentUpon>FormMaintFieldEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormMaintHistory.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormMaintHistory.Designer.cs">
+      <DependentUpon>FormMaintHistory.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormMaintItemEdit.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormMaintItemEdit.Designer.cs">
+      <DependentUpon>FormMaintItemEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormMaintRecordEdit.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormMaintRecordEdit.Designer.cs">
+      <DependentUpon>FormMaintRecordEdit.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormAutomationEdit.cs">
       <SubType>Form</SubType>
     </Compile>
