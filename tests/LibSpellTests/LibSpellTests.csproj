@@ -50,11 +50,7 @@
     <Reference Include="MySqlConnector">
       <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
-    <!-- The tests read the embedded dictionary with the library itself too (its encoding and warnings). The ReadOnlySpan<char> overloads of
-         WordList need System.Memory to compile. -->
-    <Reference Include="WeCantSpell.Hunspell">
-      <HintPath>..\..\Required dlls\WeCantSpell.Hunspell.dll</HintPath>
-    </Reference>
+    <!-- The ReadOnlySpan<char> overloads of WeCantSpell.Hunspell's WordList need System.Memory to compile. -->
     <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\Required dlls\System.Memory.dll</HintPath>
@@ -76,6 +72,11 @@
     <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The tests read the embedded dictionary with the library itself too (its encoding and warnings). -->
+    <ProjectReference Include="..\..\third-party\build\WeCantSpell.Hunspell\WeCantSpell.Hunspell.csproj">
+      <Project>{77D92EA5-468E-49DC-A7FC-10428834806A}</Project>
+      <Name>WeCantSpell.Hunspell</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj">
       <Project>{18F7BC78-4B99-48D3-A1F1-0D13A63E3CF9}</Project>
       <Name>xCodeBase</Name>

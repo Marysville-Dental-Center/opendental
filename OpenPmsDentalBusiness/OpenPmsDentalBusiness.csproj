@@ -147,30 +147,26 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <!-- PDFsharp 6.5 (GDI+ build) and the two assemblies it loads at run time, built from empira's source (third-party\build), so every
+         program that uses this library copies them. PdfSharp-gdi holds the AGPL licence check that PdfSharpSetup.Init satisfies. -->
+    <ProjectReference Include="..\third-party\build\PdfSharp-gdi\PdfSharp-gdi.csproj">
+      <Project>{60E6C1F3-233C-48E6-8E3F-ADB3AD3FF44A}</Project>
+      <Name>PdfSharp-gdi</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\third-party\build\PdfSharp.Shared\PdfSharp.Shared.csproj">
+      <Project>{E7DBF664-0058-4F44-96A8-A58F064271DC}</Project>
+      <Name>PdfSharp.Shared</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\third-party\build\PdfSharp.System\PdfSharp.System.csproj">
+      <Project>{780459C6-739E-4C8D-9462-58D6E23B1DAC}</Project>
+      <Name>PdfSharp.System</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ODCrypt\xODCrypt.csproj">
       <Project>{c37b8157-f665-4ebe-8fd6-20d1c92a0797}</Project>
       <Name>xODCrypt</Name>
     </ProjectReference>
     <Reference Include="OpenPop">
       <HintPath>..\Required dlls\OpenPop.dll</HintPath>
-    </Reference>
-    <!-- PDFsharp 6.5 (GDI+ build) and the three assemblies it loads at run time, so every program that uses this library copies them.
-         PdfSharp.License holds the licence check that PdfSharpSetup.Init satisfies with the AGPL licence. -->
-    <Reference Include="PdfSharp-gdi, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\PdfSharp-gdi.dll</HintPath>
-    </Reference>
-    <Reference Include="PdfSharp.License, Version=7.0.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\PdfSharp.License.dll</HintPath>
-    </Reference>
-    <Reference Include="PdfSharp.Shared, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\PdfSharp.Shared.dll</HintPath>
-    </Reference>
-    <Reference Include="PdfSharp.System, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\PdfSharp.System.dll</HintPath>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />

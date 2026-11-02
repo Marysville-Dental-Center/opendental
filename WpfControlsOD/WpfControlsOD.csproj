@@ -70,10 +70,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="PdfSharp-gdi, Version=6.5.0.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\PdfSharp-gdi.dll</HintPath>
-    </Reference>
     <Reference Include="ReachFramework" />
     <Reference Include="System.Printing" />
     <Reference Include="System" />
@@ -103,11 +99,6 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="WindowsFormsIntegration" />
-    <!-- The spell checker of every ODtextBox and TextRich (Logic\SpellCheckL.cs): a managed port of Hunspell, netstandard2.0 build, no native
-         DLL. MPL 1.1 / GPL 2.0 or later / LGPL 2.1 or later, used under the GPL/LGPL (THIRD-PARTY-NOTICES.txt). -->
-    <Reference Include="WeCantSpell.Hunspell">
-      <HintPath>..\Required dlls\WeCantSpell.Hunspell.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bridges\AaTemplate.cs" />
@@ -1728,6 +1719,17 @@
     <None Include="Resources\en_US_dic" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\third-party\build\PdfSharp-gdi\PdfSharp-gdi.csproj">
+      <Project>{60E6C1F3-233C-48E6-8E3F-ADB3AD3FF44A}</Project>
+      <Name>PdfSharp-gdi</Name>
+    </ProjectReference>
+    <!-- The spell checker of every ODtextBox and TextRich (Logic\SpellCheckL.cs): a managed port of Hunspell, built from its source
+         (third-party\build), no native DLL. MPL 1.1 / GPL 2.0 or later / LGPL 2.1 or later, used under the GPL/LGPL
+         (THIRD-PARTY-NOTICES.txt). -->
+    <ProjectReference Include="..\third-party\build\WeCantSpell.Hunspell\WeCantSpell.Hunspell.csproj">
+      <Project>{77D92EA5-468E-49DC-A7FC-10428834806A}</Project>
+      <Name>WeCantSpell.Hunspell</Name>
+    </ProjectReference>
     <ProjectReference Include="..\CodeBase\xCodeBase.csproj">
       <Project>{18f7bc78-4b99-48d3-a1f1-0d13a63e3cf9}</Project>
       <Name>xCodeBase</Name>
