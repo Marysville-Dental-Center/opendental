@@ -105,6 +105,30 @@ namespace ReleaseFlowTests {
 			Assert.AreEqual("24.3.63.0",FileVersionInfo.GetVersionInfo(Path.Combine(folder,"OpenPmsDentalBusiness.dll")).FileVersion);
 		}
 
+		///<summary>The native Direct2dWrapper.dll is built from source too, so its version resource names the fork like the shared assembly info
+		///does, and keeps its file version.</summary>
+		[TestMethod]
+		public void Direct2dWrapper_NamesTheForkAndKeepsItsFileVersion() {
+			string rc=TestPaths.ReadSource("Direct2dWrapper","xDirect2dWrapper.rc");
+			StringAssert.Contains(rc,"VALUE \"CompanyName\", \"Open PMS - Dental contributors\"");
+			StringAssert.Contains(rc,"VALUE \"ProductName\", \"Open PMS - Dental\"");
+			StringAssert.Contains(rc,"VALUE \"ProductVersion\", \"0.0\"");
+			StringAssert.Contains(rc,"VALUE \"FileVersion\", \"24.3.63.0\"");
+			StringAssert.Contains(rc," FILEVERSION 24,3,63,0");
+			Assert.IsFalse(rc.Contains("\"Open Dental Software\"") || rc.Contains("\"Open Dental\""),"The version resource still names Open Dental as the company or product.");
+			string path=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug","Direct2dWrapper.dll");
+			if(!File.Exists(path)) {
+				Assert.Inconclusive("Direct2dWrapper is not built.");
+			}
+			FileVersionInfo fileVersionInfo=FileVersionInfo.GetVersionInfo(path);
+			Assert.AreEqual("Open PMS - Dental contributors",fileVersionInfo.CompanyName);
+			Assert.AreEqual("Open PMS - Dental",fileVersionInfo.ProductName);
+			Assert.AreEqual("0.0",fileVersionInfo.ProductVersion);
+			Assert.AreEqual("24.3.63.0",fileVersionInfo.FileVersion);
+			StringAssert.Contains(fileVersionInfo.LegalCopyright,"Jordan Sparks");
+			StringAssert.Contains(fileVersionInfo.LegalCopyright,"Open PMS - Dental contributors");
+		}
+
 		[TestMethod]
 		public void OutputFolder_HasTheNativeRuntimeDlls() {
 			string folder=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug");
