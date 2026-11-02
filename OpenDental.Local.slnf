@@ -54,6 +54,7 @@
       "tests\\CLAIMDCMTests\\CLAIMDCMTests.csproj",
       "tests\\CryptoTests\\CryptoTests.csproj",
       "tests\\DbConnectionSecurityTests\\DbConnectionSecurityTests.csproj",
+      "tests\\DbGrantsTests\\DbGrantsTests.csproj",
       "tests\\DicomReaderTests\\DicomReaderTests.csproj",
       "tests\\EFormTests\\EFormTests.csproj",
       "tests\\FeeTests\\FeeTests.csproj",
