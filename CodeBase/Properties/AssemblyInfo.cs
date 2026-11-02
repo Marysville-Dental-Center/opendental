@@ -32,4 +32,5 @@ using System.Runtime.InteropServices;
 [assembly: InternalsVisibleTo("CryptoTests")]
 //The WebView2 tests make ODWebView2's start fail and keep its messages off the screen (ODWebView2.FuncCreateEnvironment, ActionShowMessage).
 [assembly: InternalsVisibleTo("LibWebTests")]
+[assembly: InternalsVisibleTo("M2IMGTests")]
 //[assembly: AssemblyFileVersion("1.0.0.0")]
