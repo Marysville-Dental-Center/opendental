@@ -13,7 +13,8 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 	///- Open Dental 25.3.48 (Reference/OdSchema-25.3.48.sql), built from the schema-only dump of the office database: what the 25.3 steps
 	///  (OdParity25_3.cs) produce and what an office database must have before it is adopted.
 	///Tables, columns (type, NULL, default, extra, charset, position), keys, engine and charset must match, except for the documented exceptions,
-	///each of which says why it is allowed.</summary>
+	///each of which says why it is allowed. This program's own tables (ForkTableSet, for example the routine maintenance tables) are extra tables
+	///of that kind; ForkTables.VerifyDatabase compares them with their own declarations.</summary>
 	public static class SchemaVerifier {
 		///<summary>The Open Dental version a migrated database must match: the version of the default reference. Written to OdSchemaCompat when a
 		///database matches it.</summary>
@@ -89,6 +90,8 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 					listExceptions.Add(new SchemaException(SchemaDifferenceKind.ExtraTable,table,null,
 						"Legacy table from old Open Dental versions that some long-lived databases still carry. No code uses it; left in place."));
 				}
+				//This program's own tables (ForkTableSet), which Open Dental does not have. ForkTables.VerifyDatabase checks their definitions.
+				listExceptions.AddRange(ForkTables.GetSchemaExceptions());
 				return listExceptions;
 			}
 		}

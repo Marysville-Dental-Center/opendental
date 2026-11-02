@@ -97,6 +97,10 @@ namespace ForkMigrationTests {
 			foreach(Type type in GetTableTypes()) {
 				string tableName=CrudTableAttribute.GetTableName(type).ToLowerInvariant();
 				SchemaTable table=reference.GetTable(tableName);
+				if(table==null && ForkTables.IsForkTable(tableName)) {
+					//This program's own table (ForkTableSet): its declaration is the schema it maps to.
+					table=ForkTables.GetSnapshot().GetTable(tableName);
+				}
 				if(table==null) {
 					if(!SchemaVerifier.ArrayHqOnlyTables.Contains(tableName)) {
 						listProblems.Add("No table "+tableName+" for "+type.Name);
