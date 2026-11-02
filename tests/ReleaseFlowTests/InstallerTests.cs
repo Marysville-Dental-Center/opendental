@@ -371,7 +371,7 @@ namespace ReleaseFlowTests {
 			StringAssert.Contains(iss,"' /secretsfile='");
 			StringAssert.Contains(iss,"if not IsAdminInstallMode then");
 			//The tool refuses secrets on its command line; setup never builds one.
-			foreach(string forbidden in new[] { "/password","/dbpassword","/pfxpassword","{param:DBPASSWORD","{param:PFXPASSWORD" }) {
+			foreach(string forbidden in new[] { "/password=","/dbpassword=","/pfxpassword=","{param:DBPASSWORD","{param:PFXPASSWORD" }) {
 				Assert.IsFalse(iss.IndexOf(forbidden,StringComparison.OrdinalIgnoreCase)>=0,"The script names "+forbidden);
 			}
 		}

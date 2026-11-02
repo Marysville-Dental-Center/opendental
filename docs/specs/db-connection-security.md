@@ -159,7 +159,10 @@ program runs as the signed-in user. A previous client certificate stays in the s
 - Release: the start-up never shows Choose Database. When the settings are missing or wrong, or the rule refuses, a message names the
   problem and says to run the tool as an administrator, and the program exits. `File > Choose Database` is not in the menu.
   `TrySaveConnectionSettings` does not write a direct connection (the tool owns the file). A replication failure message exits.
-- Debug: Choose Database stays, for local testing. The rule applies to it as everywhere.
+- Debug: Choose Database stays, for local testing. The rule applies to it as everywhere. A settings problem is shown first, then Choose
+  Database opens.
+- A Middle Tier client configuration (`ServerConnection`; the Middle Tier server is not shipped) starts in Release only with automatic
+  log-in, since there is no Choose Database to type the password into.
 - Command-line connections (`ServerName=`, `DatabaseName=`, `MySqlUser=`) take the office CA and the client certificate from this computer's
   settings. For a network server a command-line password is refused and the stored DPAPI password is used when the command-line user is
   the configured user.
@@ -184,6 +187,9 @@ program runs as the signed-in user. A previous client certificate stays in the s
   the rule. A loopback server without security switches needs no tool.
 - Per-user installs (`/CURRENTUSER`, tests only) cannot run the administrator tool: they write the base file; a network server is logged
   and shown as needing the tool.
+- An upgraded v0.0 install keeps the Users modify right its setup gave the file (setup never rewrites an existing file, and the tool's
+  save keeps the file's rights). Machine-scope DPAPI and a client key that Users may read already let a local user use the credentials,
+  so this adds no exposure; an owner question is whether the tool should reset the rights.
 
 ## 7. Paths reviewed
 
@@ -196,5 +202,9 @@ program runs as the signed-in user. A previous client certificate stays in the s
 | `RdlEngine.dll` | yes | `RdlEngineConfig.CheckConnection` hook. (`Definition/DataSource.cs` is not compiled.) |
 | `ServiceManager.exe` | yes | Test connection through `DataConnection.SetDb` with this computer's CA and certificate. The service configuration files it writes are for services this fork does not ship and are unchanged. |
 | `UpdateFileCopier.exe` | yes | Passes on what the program gave it; no password for a network server. |
+| `OpenDentalServiceConfig.xml` (`PrefL.CreateConfigForOpenDentalService`, `ServicesHelper.CreateServiceConfigFile`) | written by the program | For the OpenDentalService, which this fork does not ship; unchanged (it still writes the osd1$ form). |
 | Middle Tier server (`DtoProcessor`, `Userods`), `OpenPmsDentalHL7` | no | Connect through `DataConnection`, so the rule applies; their configuration files have no CA or certificate elements, so only a loopback database works for them. |
-| `DatabaseIntegrityCheck`, `DocumentationBuilder`, `CentralManager`, `MySQLManager`, `tools/*` | no | Dev-only, unchanged; they are used against loopback databases only. |
+| `DatabaseIntegrityCheck` | no | Dev-only. Its connection now goes through `NewMySqlConnection`, so with its `SslMode=none` it reaches loopback databases only. |
+| `CentralManager`, `MySQLManager` | no | Dev-only; they connect through `DataConnection`, so the rule applies. |
+| `DocumentationBuilder` | no | Dev-only, not in the solution filter, unchanged: it reads the config of a local Release build (`..\..\..\OpenPmsDental\bin\Release`), a loopback database. |
+| `tools/SyntheticData`, `tools/AdoptionValidation` | no | Dev-only, unchanged: they refuse any server but this computer themselves (`LocalOnly.EnsureLocalHost`, the adoption tools' loopback and SSH-forward checks). |

@@ -15,7 +15,9 @@ namespace DbConnectionSecurityTests {
 				string protectedText=MachineSecret.Protect(plain);
 				StringAssert.StartsWith(protectedText,MachineSecret.Prefix);
 				Assert.IsTrue(MachineSecret.IsProtected(protectedText));
-				Assert.IsFalse(protectedText.Contains(plain),"The plain text is not in the stored value.");
+				if(plain.Length>=8) {//a short text can turn up in any Base64 by chance
+					Assert.IsFalse(protectedText.Contains(plain),"The plain text is not in the stored value.");
+				}
 				Assert.IsTrue(MachineSecret.TryUnprotect(protectedText,out string roundTrip));
 				Assert.AreEqual(plain,roundTrip);
 			}
