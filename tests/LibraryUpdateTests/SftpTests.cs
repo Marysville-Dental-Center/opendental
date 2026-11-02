@@ -14,6 +14,7 @@ using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness.Eclaims;
 using OpenPmsDentalCloud;
+using Org.BouncyCastle.Asn1.Sec;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -47,6 +48,12 @@ namespace LibraryUpdateTests {
 			RsaKeyPairGenerator rsaKeyPairGenerator=new RsaKeyPairGenerator();
 			rsaKeyPairGenerator.Init(new KeyGenerationParameters(new SecureRandom(),1024));
 			return ToPem(rsaKeyPairGenerator.GenerateKeyPair().Private);
+		}
+
+		private static string MakeEcdsaPem() {
+			ECKeyPairGenerator ecKeyPairGenerator=new ECKeyPairGenerator("ECDSA");
+			ecKeyPairGenerator.Init(new ECKeyGenerationParameters(SecObjectIdentifiers.SecP256r1,new SecureRandom()));
+			return ToPem(ecKeyPairGenerator.GenerateKeyPair().Private);
 		}
 
 		private static string ToPem(AsymmetricKeyParameter asymmetricKeyParameter) {
@@ -109,6 +116,7 @@ namespace LibraryUpdateTests {
 			string message=SshHostKeys.GetRefusalMessage("sftp.example.test",22);
 			StringAssert.Contains(message,"SHA256:"+listKeyA[0].FingerPrintSHA256);
 			StringAssert.Contains(message,"SHA256:"+listKeyB[0].FingerPrintSHA256);
+			StringAssert.Contains(message,"fingerprint changed");
 			Assert.IsFalse(CanTrust("sftp.example.test",22,listKeyB[0]),"Still refused.");
 			Assert.IsTrue(CanTrust("sftp.example.test",2222,listKeyB[0]),"Another port is another server.");
 			Assert.IsTrue(CanTrust("sftp2.example.test",22,listKeyB[0]),"Another host is another server.");
@@ -127,10 +135,39 @@ namespace LibraryUpdateTests {
 			foreach(HostKeyEventArgs hostKeyEventArgs in listRsa) {
 				Assert.IsTrue(CanTrust("sftp.example.test",22,hostKeyEventArgs),hostKeyEventArgs.HostKeyName);
 			}
-			//A server that also has an Ed25519 key may present it next time: a key of another type is remembered on its own.
+			Assert.IsNull(SshHostKeys.GetRefusalMessage("sftp.example.test",22));
+			//SSH.NET offers the same algorithms in the same order every time, so the server picks the same key type every time. A key of another
+			//type is what a man in the middle would offer to get past the check: it is refused like a changed key.
 			List<HostKeyEventArgs> listEd25519=GetHostKeyEvents(MakeEd25519Pem());
-			Assert.IsTrue(CanTrust("sftp.example.test",22,listEd25519[0]));
+			Assert.IsFalse(CanTrust("sftp.example.test",22,listEd25519[0]),"A key of another type from the same server is refused.");
+			string message=SshHostKeys.GetRefusalMessage("sftp.example.test",22);
+			StringAssert.Contains(message,"key type changed");
+			StringAssert.Contains(message,"ssh-rsa (SHA256:"+listRsa[0].FingerPrintSHA256+")");
+			StringAssert.Contains(message,"ssh-ed25519 (SHA256:"+listEd25519[0].FingerPrintSHA256+")");
 			Assert.IsFalse(CanTrust("sftp.example.test",22,GetHostKeyEvents(MakeRsaPem())[0]),"A new RSA key is still refused.");
+			StringAssert.Contains(SshHostKeys.GetRefusalMessage("sftp.example.test",22),"fingerprint changed");
+			foreach(HostKeyEventArgs hostKeyEventArgs in listRsa) {
+				Assert.IsTrue(CanTrust("sftp.example.test",22,hostKeyEventArgs),"The remembered RSA key is still good: "+hostKeyEventArgs.HostKeyName);
+			}
+		}
+
+		[TestMethod]
+		public void HostKey_Ed25519First_ThenEcdsa_IsRefused() {
+			List<HostKeyEventArgs> listEd25519=GetHostKeyEvents(MakeEd25519Pem());
+			List<HostKeyEventArgs> listEcdsa=GetHostKeyEvents(MakeEcdsaPem());
+			Assert.AreEqual("ecdsa-sha2-nistp256",SshHostKeys.GetKeyType(listEcdsa[0].HostKey));
+			Assert.IsTrue(CanTrust("sftp.example.test",22,listEd25519[0]),"The first key of a server is trusted.");
+			Assert.IsFalse(CanTrust("sftp.example.test",22,listEcdsa[0]),"An ECDSA key after the Ed25519 one is refused.");
+			string message=SshHostKeys.GetRefusalMessage("sftp.example.test",22);
+			StringAssert.Contains(message,"key type changed");
+			StringAssert.Contains(message,"ssh-ed25519 (SHA256:"+listEd25519[0].FingerPrintSHA256+")");
+			StringAssert.Contains(message,"ecdsa-sha2-nistp256 (SHA256:"+listEcdsa[0].FingerPrintSHA256+")");
+			Assert.IsFalse(CanTrust("sftp.example.test",22,listEcdsa[0]),"Still refused.");
+			//The type alone is enough: even a fingerprint the server presented before is refused under another type.
+			Assert.IsFalse(SshHostKeys.CanTrust("sftp.example.test",22,"ecdsa-sha2-nistp256",listEd25519[0].FingerPrintSHA256));
+			Assert.IsTrue(CanTrust("sftp.example.test",22,listEd25519[0]),"The remembered key is still good.");
+			Assert.IsNull(SshHostKeys.GetRefusalMessage("sftp.example.test",22));
+			Assert.IsTrue(CanTrust("sftp.example.test",2222,listEcdsa[0]),"Another port is another server.");
 		}
 
 		[TestMethod]

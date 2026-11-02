@@ -9,13 +9,17 @@ namespace OpenPmsDentalCloud {
 	///<summary>The host key check of every SSH connection the program makes (SFTP image storage, the TSI uploads, the Denti-Cal and Mercury
 	///clearinghouses and the HL7 SFTP mode). SSH.NET itself verifies, during each key exchange, that the server holds the private key of the host
 	///key it presents, and refuses the connection otherwise; that check cannot be switched off. On top of it, this class remembers the first key a
-	///server presents, per host, port and key type, for the life of the process, and refuses a different key of the same type from the same
-	///server: a server's key must not change while the program runs (a changed key means someone else answers). A restart trusts the server's key
-	///again, as SharpSSH (StrictHostKeyChecking=no) and SSH.NET's default (no check) did before. Nothing is written to the database or disk.
-	///</summary>
+	///server presents, one key per host and port, for the life of the process, and refuses any other key from the same server, whether its
+	///fingerprint or its key type differs: a server's key must not change while the program runs (a changed key means someone else answers).
+	///SSH.NET offers the same host key algorithms in the same order on every connection, so a server picks the same key type each time; a server
+	///that suddenly presents a key of another type is refused like one whose key changed, because a man in the middle could otherwise get past the
+	///check just by offering a type not seen yet. One RSA key is one entry under every RSA signature algorithm (see GetKeyType). A restart trusts
+	///the server's key again, as SharpSSH (StrictHostKeyChecking=no) and SSH.NET's default (no check) did before. Nothing is written to the
+	///database or disk.</summary>
 	public static class SshHostKeys {
-		///<summary>Key "host:port|key type" (host in lower case), value: the SHA-256 fingerprint of the server's key.</summary>
-		private static readonly ConcurrentDictionary<string,string> _dictFingerprints=new ConcurrentDictionary<string,string>();
+		///<summary>Key "host:port" (host in lower case), value: the key type and the SHA-256 fingerprint of the first key the server presented.
+		///</summary>
+		private static readonly ConcurrentDictionary<string,Tuple<string,string>> _dictHostKeys=new ConcurrentDictionary<string,Tuple<string,string>>();
 		///<summary>Key "host:port": the message of the last refusal, so the caller can say why the connection failed.</summary>
 		private static readonly ConcurrentDictionary<string,string> _dictRefusals=new ConcurrentDictionary<string,string>();
 
@@ -28,22 +32,34 @@ namespace OpenPmsDentalCloud {
 			};
 		}
 
-		///<summary>True if the server's key may be trusted: the first key of its type from this host and port in this process, or the same key
-		///again. False for a different key of a type already seen; the refusal is kept for GetRefusalMessage.</summary>
+		///<summary>True if the server's key may be trusted: the first key from this host and port in this process, or the same key (same type, same
+		///fingerprint) again. False for any other key, of the same type or another; the refusal, which says whether the key type or the fingerprint
+		///changed, is kept for GetRefusalMessage.</summary>
 		public static bool CanTrust(string host,int port,string keyType,string fingerprintSha256) {
 			if(string.IsNullOrEmpty(fingerprintSha256)) {
 				return false;
 			}
+			keyType=keyType??"";
 			string server=GetServerKey(host,port);
-			string fingerprintKnown=_dictFingerprints.GetOrAdd(server+"|"+(keyType??""),fingerprintSha256);
-			if(fingerprintKnown==fingerprintSha256) {
+			Tuple<string,string> tupleKnown=_dictHostKeys.GetOrAdd(server,Tuple.Create(keyType,fingerprintSha256));
+			string keyTypeKnown=tupleKnown.Item1;
+			string fingerprintKnown=tupleKnown.Item2;
+			if(keyTypeKnown==keyType && fingerprintKnown==fingerprintSha256) {
 				string refusal;
 				_dictRefusals.TryRemove(server,out refusal);
 				return true;
 			}
-			_dictRefusals[server]="The SSH host key of "+host+":"+port+" ("+keyType+") changed while the program was running: it was SHA256:"
-				+fingerprintKnown+", the server now presents SHA256:"+fingerprintSha256+". The connection was refused. If the server's key really "
-				+"changed, restart the program; otherwise someone else may be answering for the server.";
+			string message;
+			if(keyTypeKnown!=keyType) {
+				message="The SSH host key of "+host+":"+port+" changed while the program was running: its key type changed. It was a key of type "
+					+keyTypeKnown+" (SHA256:"+fingerprintKnown+"), the server now presents a key of type "+keyType+" (SHA256:"+fingerprintSha256+").";
+			}
+			else {
+				message="The SSH host key of "+host+":"+port+" ("+keyType+") changed while the program was running: its fingerprint changed. It was "
+					+"SHA256:"+fingerprintKnown+", the server now presents SHA256:"+fingerprintSha256+".";
+			}
+			_dictRefusals[server]=message+" The connection was refused. If the server's key really changed, restart the program; otherwise someone "
+				+"else may be answering for the server.";
 			return false;
 		}
 
@@ -81,7 +97,7 @@ namespace OpenPmsDentalCloud {
 
 		///<summary>Forgets every remembered key. Tests only.</summary>
 		internal static void ForgetAll() {
-			_dictFingerprints.Clear();
+			_dictHostKeys.Clear();
 			_dictRefusals.Clear();
 		}
 
