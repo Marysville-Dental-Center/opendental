@@ -1,7 +1,8 @@
 # Database connection security (client side)
 
 Status: 2026-11-02. Owner decisions Q1 to Q7 and the follow-up decisions S1 to S4 of 2026-11-02, all final. Packages `next/dbsec-1`, its
-review fixes `next/dbsec-2`, and the follow-up `next/dbsec-scope-1`. The server-side set-up is in
+review fixes `next/dbsec-2`, the follow-up `next/dbsec-scope-1`, and the test of the account's rights `next/fu-grants-1` (section 9.5).
+The server-side set-up is in
 [docs/db-connection-security.md](../db-connection-security.md).
 
 The owner's follow-up: "We are only touching the Open Dental account and auth, and the goal is to not use root anymore."
@@ -421,28 +422,41 @@ Answered on 2026-11-02:
   standing grant (granted only to convert an Open Dental database older than 17.4.46, section 9.4), the guide removes MariaDB's default
   rights on `test` databases before it creates the account, and it says what the backup, `DROP` and `CREATE` grants allow beyond what the
   program does.
+- The next open point 1 (the database-level rights not shown by refusal, because the development server's `PUBLIC` role holds nearly every
+  right on `test` and `test\_%` databases): the owner allowed a test with a temporary account on an office database named outside
+  `test\_%`, an exception to the scratch-database naming (answer of 2026-11-02). The second test of section 9.5 did that: every right of
+  the three grants was shown to be needed by refusal, and every right they leave out was refused. The grants stay as they are. One claim
+  of the guide was wrong and is corrected: MariaDB checks `CREATE` and `INSERT` for an `ALTER TABLE` only when it renames the table, not
+  for every `ALTER TABLE` (section 9.1). The test is kept as `tests/DbGrantsTests`, to run again before the switch-over.
+- The test found one program bug, fixed: Database Maintenance's `ProcedurelogTpAttachedToClaim` had an SQL syntax error since Open
+  Dental 24.3.22 (a column line without a comma), so it failed in Check and Fix on every database, and the maintenance window, which stops
+  at the first error, never ran the methods after it.
 
 Still open:
 
-1. The database-level rights were not checked against refusals (section 9.5): the development server's `PUBLIC` role holds nearly every
-   right on `test` and `test\_%` databases, and the scratch databases of the test are named `test_int_...`, so revoking a database-level
-   right refused nothing. Finishing it needs either a test database named outside `test\_%` (an exception to the scratch-database naming
-   rule) or removing `PUBLIC`'s test rights on the development server (a server change). Which one, if either? Until then, and before the
-   switch-over in any case, try the guide's grants on a test copy (a restored backup on a test server).
-2. Two of the three server-wide rights exist only because of two old checks: every backup asks whether the server replicates (`SHOW
+1. Two of the three server-wide rights exist only because of two old checks: every backup asks whether the server replicates (`SHOW
    MASTER STATUS`, `SHOW SLAVE STATUS`: `BINLOG MONITOR`, `REPLICA MONITOR`), and flushes each copied table (`FLUSH TABLE`: `RELOAD`).
    Should the backup treat "access denied" on the replication question as "no replication" when the program's replication table is
-   empty, and skip the flush, so that the account needs no server-wide right at all? Today they are granted, and the test showed that
+   empty, and skip the flush, so that the account needs no server-wide right at all? Today they are granted, and both tests showed that
    without any one of them every backup fails (section 9.5).
+2. The Backup window's archive tab can back up to another server first (`MiscData.MakeABackup(serverName,user,pass,doVerify:true)`), with
+   an account of that server typed in the window. That path copies rows with `DataConnection.BulkCopy` (`MySqlBulkLoader`, a `LOAD DATA
+   LOCAL INFILE`), and MySqlConnector refuses it without `AllowLoadLocalInfile=true` in the connection string, which no connection of the
+   program sets: the backup stops at the first table with rows, before any right is checked (second test, section 9.5), so archiving
+   with "back up first" to another server fails as built. Not a question of the guide's grants: with the option, the load needs `INSERT`
+   on the target table and `local_infile=ON` on that server, no `FILE`. Should the program set `AllowLoadLocalInfile=true` for that
+   connection only (MySqlConnector keeps it off by default because a server may then ask the client for local files), copy the rows with
+   `INSERT` statements instead, or drop the option of a backup to another server? Today nothing was changed.
 
 ## 9. The rights of the program's database account (S2)
 
 The guide ([docs/db-connection-security.md](../db-connection-security.md), section 5) gives the account, `opmsd` (and `opmsd_pw` for the
 password fallback), the narrowest rights with which the program runs, updates the database and makes the backup before every update, in
-place of `ALL PRIVILEGES ON *.*`. **Tested on a local MariaDB 10.11 server on 2026-11-02 (section 9.5), not yet on the office server.**
-The privilege names are MariaDB 10.11's (`BINLOG MONITOR` is 10.5.2's name for `REPLICATION CLIENT`; `REPLICA MONITOR`, alias `SLAVE
-MONITOR`, exists from 10.5.9, and `SHOW GRANTS` prints it as `SLAVE MONITOR`). Line numbers are those of this package's last commit.
-`<database>` is the office database.
+place of `ALL PRIVILEGES ON *.*`. **Tested on a local MariaDB 10.11 server on 2026-11-02 (section 9.5), not yet on the office server:**
+with these grants the program did everything it does, each right was shown to be needed by a refusal, and every right they leave out was
+refused. The privilege names are MariaDB 10.11's (`BINLOG MONITOR` is 10.5.2's name for `REPLICATION CLIENT`; `REPLICA MONITOR`, alias
+`SLAVE MONITOR`, exists from 10.5.9, and `SHOW GRANTS` prints it as `SLAVE MONITOR`). Line numbers are those of `next/fu-grants-1`, the
+package of the second test. `<database>` is the office database.
 
 ```sql
 GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, CREATE TEMPORARY TABLES ON `<database>`.* TO ...;
@@ -457,11 +471,11 @@ Before it creates the account, the guide removes the rights MariaDB's own setup 
 
 | Right | Why | Evidence |
 |---|---|---|
-| `SELECT`, `INSERT`, `UPDATE`, `DELETE` | Every module (the `Crud` classes); the connection test writes a preference. `CHECK TABLE`, `REPAIR TABLE` and `OPTIMIZE TABLE` (database maintenance, the backup-repair-optimize after a MariaDB version change) need `SELECT` and `INSERT` only. | `DataConnectionBase/DataConnection.cs:796`; `OpenPmsDentalBusiness/Data Interface/DatabaseMaintenances.cs:256`, `:326`, `:368`; `DataConnectionBase/DataConnection.cs:857` |
-| `CREATE` | Fork migration steps create tables; work tables of reports and maintenance. MariaDB's `ALTER TABLE` also checks `CREATE` and `INSERT` on the table's database, so `CREATE` stays required for steps that only alter. With `DROP`, it also allows creating the office database again. | `OpenPmsDentalBusiness/Misc/ForkMigrations/ForkMigrationContext.cs:67`; `OpenPmsDentalBusiness/Data Interface/EhrMeasures.cs:533`; `DatabaseMaintenances.cs:11483` |
-| `DROP` | Dropping those work tables; `TRUNCATE` needs `DROP` (family aging, the A/R dashboard, recall triggers); database maintenance's `DROP TABLE IF EXISTS` of the old `signal` table; the large-table helper's `RENAME TABLE`. A database-level `DROP` also allows `DROP DATABASE <database>`, the whole office database: there is no narrower right that allows the statements above, so backups kept off the server are the protection. | `DatabaseMaintenances.cs:239`, `:11492`; `EhrMeasures.cs:531`; `OpenPmsDentalBusiness/Data Interface/DashboardARs.cs:34`; `OpenPmsDentalBusiness/Data Interface/RecallTypes.cs:369`; `OpenPmsDentalBusiness/Db Multi Table/Ledgers.cs:114`; `OpenPmsDentalBusiness/Db/LargeTableHelper.cs:585`, `:757` |
-| `ALTER` | Fork migration steps (columns, keys, character sets), adoption, re-enabling the keys of a restored backup, dropping redundant indexes; every index the program adds or drops (`ALTER TABLE ... ADD INDEX`, `DROP INDEX`); `RENAME TABLE` of the large-table helper (also `DROP`, `CREATE`, `INSERT`, all on this database). | `ForkMigrationContext.cs:78`, `:107`, `:119`, `:133`, `:135`, `:147`, `:157`, `:168`; `OpenPmsDentalBusiness/Misc/ForkMigrations/Adoption.cs:210`, `:217`; `OpenPmsDentalBusiness/Db Multi Table/MiscData.cs:602`; `DatabaseMaintenances.cs:12084`; `LargeTableHelper.cs:555`, `:585`, `:716`, `:727`, `:757` |
-| `CREATE TEMPORARY TABLES` | User queries (the query window, the query examples) may create temporary tables; the program lets them through. In the test only the query window used it. | `OpenPmsDentalBusiness/Db/Db.cs:104`, `:171` |
+| `SELECT`, `INSERT`, `UPDATE`, `DELETE` | Every module (the `Crud` classes); the connection test writes a preference, so without `UPDATE` the program does not start. `CHECK TABLE`, `REPAIR TABLE` and `OPTIMIZE TABLE` (database maintenance, the backup-repair-optimize after a MariaDB version change) need `SELECT` and `INSERT` only. | `DataConnectionBase/DataConnection.cs:816`; `OpenPmsDentalBusiness/Data Interface/DatabaseMaintenances.cs:256`, `:326`, `:368`; `DataConnectionBase/DataConnection.cs:877` |
+| `CREATE` | Fork migration steps create tables; work tables of reports and maintenance; the large-table helper's copy (`CREATE TABLE ... LIKE`) and the new name of its `RENAME TABLE`, for which MariaDB also checks `INSERT`. An `ALTER TABLE` that renames nothing does not need it: MariaDB checks `CREATE` and `INSERT` only for a rename's new name (the second test added columns and keys without either). With `DROP`, it also allows creating the office database again. | `OpenPmsDentalBusiness/Misc/ForkMigrations/ForkMigrationContext.cs:67`; `DatabaseMaintenances.cs:11482`; `OpenPmsDentalBusiness/Db/LargeTableHelper.cs:585`, `:587`, `:757`, `:759`; `OpenPmsDentalBusiness/Data Interface/EhrMeasures.cs:533` |
+| `DROP` | Dropping those work tables; `TRUNCATE` needs `DROP` (family aging, the A/R dashboard, recall triggers); database maintenance's `DROP TABLE IF EXISTS` of the old `signal` table; the large-table helper's `RENAME TABLE` and the `DROP TABLE` of its old copy. The helper copies a table only when the hidden preference `UpdateAlterLargeTablesDirectly` is off and the table needs more than one batch; a new database has the preference on, and the helper then runs one `ALTER TABLE`. A database-level `DROP` also allows `DROP DATABASE <database>`, the whole office database: there is no narrower right that allows the statements above, so backups kept off the server are the protection. | `DatabaseMaintenances.cs:239`, `:11491`; `EhrMeasures.cs:531`; `OpenPmsDentalBusiness/Data Interface/DashboardARs.cs:34`; `OpenPmsDentalBusiness/Data Interface/RecallTypes.cs:369`; `OpenPmsDentalBusiness/Db Multi Table/Ledgers.cs:114`; `LargeTableHelper.cs:734`, `:755`, `:757`, `:783` |
+| `ALTER` | Fork migration steps (columns, keys, character sets), adoption, re-enabling the keys of a restored backup, dropping redundant indexes, converting a table to the default storage engine; every index the program adds or drops (`ALTER TABLE ... ADD INDEX`, `DROP INDEX`); `RENAME TABLE` of the large-table helper (also `DROP`, `CREATE`, `INSERT`, all on this database). | `ForkMigrationContext.cs:78`, `:107`, `:119`, `:133`, `:135`, `:147`, `:157`, `:168`; `OpenPmsDentalBusiness/Misc/ForkMigrations/Adoption.cs:210`, `:217`; `OpenPmsDentalBusiness/Db Multi Table/MiscData.cs:602`; `DatabaseMaintenances.cs:12083`; `LargeTableHelper.cs:555`, `:585`, `:716`, `:727`, `:757` |
+| `CREATE TEMPORARY TABLES` | User queries (the query window, the query examples) may create temporary tables; the program lets them through. In the first test only the query window used it; the second showed a user query with `CREATE TEMPORARY TABLE` refused without it, and an index on such a table needs no `INDEX`. | `OpenPmsDentalBusiness/Db/Db.cs:104`, `:171` |
 
 ### 9.2 The backup databases
 
@@ -482,23 +496,23 @@ MariaDB wildcard: `\_` is a literal `_`, `%` any name) covers exactly these name
 | Right | Why | Evidence |
 |---|---|---|
 | `CREATE` | `CREATE DATABASE` of the backup, and its tables from `SHOW CREATE TABLE` of the office database (`SELECT` there). | `MiscData.cs:189`, `:203`, `:211` |
-| `ALTER` | `ALTER TABLE ... DISABLE KEYS` when the `BackupIndexesDisabled` preference is on, which it is unless the office turned it off (a new database and the Open Dental update that added the preference both set `1`), so every default backup issues it: 908 times in the test. | `MiscData.cs:212`, `:215`; `db/init/new-database.sql:25814`; `OpenPmsDentalBusiness/Misc/ConvertDatabases8.cs:2248` |
+| `ALTER` | `ALTER TABLE ... DISABLE KEYS` when the `BackupIndexesDisabled` preference is on, which it is unless the office turned it off (a new database and the Open Dental update that added the preference both set `1`), so every default backup issues it, once for each table it copies. With the preference off a backup needs no `ALTER` (second test). | `MiscData.cs:212`, `:215`; `db/init/new-database.sql:25814`; `OpenPmsDentalBusiness/Misc/ConvertDatabases8.cs:2248` |
 | `INSERT` | `INSERT INTO <backup>.<table> SELECT * FROM <database>.<table>`. | `MiscData.cs:221` |
-| `SELECT` | The row counts that verify the copy, only in `MakeABackup(doVerify:true)` (the archive tab's backup). | `MiscData.cs:258` |
+| `SELECT` | The row counts that verify the copy, only in `MakeABackup(doVerify:true)` (the archive tab's backup). Every other backup runs without it (second test). | `MiscData.cs:258` |
 
 `SHOW DATABASES` (`MiscData.cs:178`) needs no right: it lists the databases the account has rights on, so it sees the existing backup names
 of the wildcard. What the grant allows beyond the program's use: the account can create any database whose name starts with
 `<database>backup_`, fill it, add tables to it, read every backup and alter the backups' tables (`ALTER` includes `DROP COLUMN` and
-changing the engine). It cannot update, delete, truncate, drop or rename anything in them. The account never drops a backup; the
-office's administrator does.
+changing the engine). It cannot update, delete, truncate, drop or rename anything in them. The second test showed each of these. The
+account never drops a backup; the office's administrator does.
 
 ### 9.3 Server-wide rights
 
-Each of the three was shown to be needed in the test (section 9.5): without any one of them every backup fails.
+Each of the three was shown to be needed in both tests (section 9.5): without any one of them every backup fails.
 
 | Right | Why | Evidence |
 |---|---|---|
-| `RELOAD` | `FLUSH TABLE <backup>.<table>` after each table the backup copies on the same server; `FLUSH TABLES` before the Backup window's file copy. | `MiscData.cs:226`; `MiscData.cs:587` through `FormBackup.cs:307` |
+| `RELOAD` | `FLUSH TABLE <backup>.<table>` after each table the backup copies on the same server; `FLUSH TABLES` before the Backup window's file copy. | `MiscData.cs:226`; `MiscData.cs:598` through `FormBackup.cs:307` |
 | `BINLOG MONITOR` | Every backup on MariaDB first asks whether the server replicates: `SHOW MASTER STATUS`, when the program's `replicationserver` table is empty and the `DatabaseGlobalVariablesDontSet` preference is off. An "access denied" fails the backup. The replication check of the frozen update chain asks the same (it issued both statements in the test). | `MiscData.cs:153`; `OpenPmsDentalBusiness/Data Interface/ReplicationServers.cs:282`, `:286`, `:290`; `OpenPmsDentalBusiness/Misc/ConvertDatabases7.cs:28` |
 | `REPLICA MONITOR` | The same question, `SHOW SLAVE STATUS`. | `ReplicationServers.cs:292`, `:271`; `ConvertDatabases7.cs:30` |
 
@@ -506,26 +520,29 @@ Each of the three was shown to be needed in the test (section 9.5): without any 
 
 | Not granted | Where the program would need it | Why it is left out |
 |---|---|---|
-| `SUPER` | `SET GLOBAL sql_mode=''` at every start when the server's `sql_mode` is neither blank nor `NO_AUTO_CREATE_USER` (`MiscData.cs:552`, `:557`; `OpenPmsDental/Main Modules/FormOpenDental.cs:1286`, failure message `:1294`). `SET GLOBAL max_allowed_packet` (`MiscData.cs:472`) has no caller. | The guide sets `sql_mode=""` in the server's option file, so the statement never runs (section 8, the former question 3). Without `SUPER` it is refused (1227), so the option-file line is required. |
-| `INDEX` | `CREATE INDEX` and `DROP INDEX ... ON` of three Open Dental steps on MariaDB: `ConvertDatabases5.cs:7024` (17.4.46), `:7031`, `:7034` (17.4.51), `:7065` and `:7073` (17.4.53, whose failure is ignored). Every other `CREATE INDEX` of `ConvertDatabases1.cs` to `ConvertDatabases5.cs`, `DbSchema.cs` and the table types is in an Oracle branch, `ConvertDatabases1.cs:4970` among them. The program's own index changes are `ALTER TABLE` (9.1, `ALTER`). A user query's `CREATE INDEX` on its own temporary table (`Db.cs:171`) is not privilege-checked, by MariaDB's documentation (not confirmed by the test, section 9.5). | Only to convert an Open Dental database older than 17.4.46: the guide grants it for that first start and revokes it after, or the administrator runs that start. No statement of the test needed it, the chain from 21.1.9, the adoption, the fork steps, database maintenance and backups included. |
+| `SUPER` | `SET GLOBAL sql_mode=''` at every start when the server's `sql_mode` is neither blank nor `NO_AUTO_CREATE_USER` (`MiscData.cs:552`, `:557`; `OpenPmsDental/Main Modules/FormOpenDental.cs:1288`, failure message `:1293`). `SET GLOBAL max_allowed_packet` (`MiscData.cs:472`) has no caller. | The guide sets `sql_mode=""` in the server's option file, so the statement never runs (section 8, the former question 3). Without `SUPER` it is refused (1227), so the option-file line is required. |
+| `INDEX` | `CREATE INDEX` and `DROP INDEX ... ON` of three Open Dental steps on MariaDB: `ConvertDatabases5.cs:7024` (17.4.46), `:7031`, `:7034` (17.4.51), `:7065` and `:7073` (17.4.53, whose failure is ignored). Every other `CREATE INDEX` of `ConvertDatabases1.cs` to `ConvertDatabases5.cs`, `DbSchema.cs` and the table types is in an Oracle branch, `ConvertDatabases1.cs:4970` among them. The program's own index changes are `ALTER TABLE` (9.1, `ALTER`). A user query's `CREATE INDEX` on its own temporary table (`Db.cs:171`) is not privilege-checked (MariaDB's documentation; the second test confirmed it). | Only to convert an Open Dental database older than 17.4.46: the guide grants it for that first start and revokes it after, or the administrator runs that start. No statement of either test needed it, the chain from 21.1.9, the adoption, the fork steps, database maintenance and backups included; the 17.4.46 step itself was refused without it (1142) and allowed with it. |
 | `BINLOG ADMIN` | `SET SESSION sql_log_bin=0` around the backup's statements, only on a replicating MariaDB server (`MiscData.cs:114`, used at `:204`, `:222`, `:231`, `:242`). Refused without it (1227). | Only a replicating office; the guide says to add it there. |
 | `REPLICATION SLAVE ADMIN` | `STOP SLAVE; START SLAVE` of the replication set-up window (`OpenPmsDental/Forms/FormReplicationSetup.cs:186`). | An administrator's task, with the administrator's own account. The replication check of the frozen update chain (`ConvertDatabases7.cs:28`, `:30`, used at `:1562`) needs the two monitor rights above. |
 | `PROCESS`, `CONNECTION ADMIN` | No `SHOW PROCESSLIST` or `information_schema.PROCESSLIST` in a shipped binary. Cancelling a user query is `KILL QUERY` of the account's own connection (`OpenPmsDentalBusiness/Db/DataConnectionCancelable.cs:147`): it works, and `KILL QUERY` of another account's connection is refused (1095). | Not needed. |
-| `FILE` | No `SELECT ... INTO OUTFILE` or `LOAD DATA` for the program's account. `MySqlBulkLoader` (`DataConnection.cs:1042`) is used only by a backup to another server (`MiscData.cs:247`), with that server's account typed into the Backup window. | Not needed. |
+| `FILE` | No `SELECT ... INTO OUTFILE` or `LOAD DATA` for the program's account (refused, 1227 and 1045; `LOAD_FILE` returns NULL). `MySqlBulkLoader` (`DataConnection.cs:1062`) is used only by a backup to another server (`MiscData.cs:247`), with that server's account typed into the Backup window; it loads with `LOAD DATA LOCAL INFILE`, which needs `INSERT`, not `FILE`, and stops before the load as built (section 8, open point 2). | Not needed. |
 | `SHOW DATABASES` | Choose Database's list (`OpenPmsDentalBusiness/Data Interface/CentralConnections.cs:197`) is Debug only and lists what the account may use. | Not needed. |
 | `CREATE USER`, `GRANT OPTION` | `DbAdminMysql` (`DataConnectionBase/DbAdminMysql.cs:164`, `:241`) is used only by MySQLManager, which is not shipped. | Not needed. |
 | `CREATE`, `DROP` of other databases | `<database>_archive` (`MiscData.cs:281`, `:335`) has no caller. `LargeTableHelper.RenameDatabase` (`LargeTableHelper.cs:175`, `:197`) runs only in an Open Dental 18.x step of the frozen chain (`ConvertDatabases5.cs:8804`). | Not needed for a 24.3 or later database. |
-| `LOCK TABLES`, `CREATE VIEW`, `SHOW VIEW`, `TRIGGER`, `CREATE ROUTINE`, `ALTER ROUTINE`, `EXECUTE`, `EVENT`, `REFERENCES` | No statement of a shipped binary; the only trigger statement is Oracle's (`OpenPmsDentalBusiness/Db/DbSchema.cs:408`). | Not needed. |
-| `SELECT` on `mysql.*` | `mysql.wsrep_cluster` only on a Galera cluster with `wsrep_on=ON` (`ReplicationServers.cs:302`). `SELECT` on `mysql.user` is refused (1142). | Not needed without Galera. |
+| `LOCK TABLES`, `CREATE VIEW`, `SHOW VIEW`, `TRIGGER`, `CREATE ROUTINE`, `ALTER ROUTINE`, `EXECUTE`, `EVENT`, `REFERENCES` | No statement of a shipped binary; the only trigger statement is Oracle's (`OpenPmsDentalBusiness/Db/DbSchema.cs:408`). `LOCK TABLES`, `CREATE PROCEDURE`, `CREATE EVENT` (1044), `CREATE VIEW` and `CREATE TRIGGER` (1142) are refused. | Not needed. |
+| `SELECT` on `mysql.*` | `mysql.wsrep_cluster` only on a Galera cluster with `wsrep_on=ON` (`ReplicationServers.cs:302`). `SELECT` on `mysql.user` and `mysql.db` is refused (1142), `SHOW GRANTS` for another account too (1044). | Not needed without Galera. |
 
 A read-only or reporting server of its own (section 5.1) has its own account on its own server; its rights are the office's business
 and not part of this list.
 
-### 9.5 The test on a local MariaDB 10.11 (2026-11-02)
+### 9.5 The tests on a local MariaDB 10.11 (2026-11-02)
 
-The owner allowed testing the rights on the local MariaDB 10.11 (Windows) of the development computer with a temporary account. The
-account had exactly the grants above, on a scratch office database and its backups, with synthetic data; the account and every database
-of the test were dropped afterwards, and no other user, role or server setting was changed.
+The owner allowed testing the rights on the local MariaDB 10.11 (Windows) of the development computer with a temporary account. In both
+tests the account had exactly the grants above, on a scratch office database and its backups, with synthetic data; the account and every
+database of the test were dropped afterwards, and no other user, role or server setting was changed. The server's global `sql_mode` was
+blank and binary logging was off.
+
+**The first test**, on scratch databases named `test_int_...`:
 
 - **Covered.** Start-up; the modules' reads and writes; work tables; user queries, and cancelling them with `KILL QUERY`; the fork
   migration runner and each of its context helpers; the large-table helper; four backups (the default, `BackupIndexesDisabled` off, with
@@ -536,12 +553,83 @@ of the test were dropped afterwards, and no other user, role or server setting w
   refused (1227), and all four backups fail at their first table. Without `BINLOG MONITOR`, `SHOW MASTER STATUS` is refused in
   `ReplicationServers.IsUsingReplication`: the database maintenance window's replication check fails, and so does every backup, before
   `CREATE DATABASE`. Without `REPLICA MONITOR`, `SHOW SLAVE STATUS` is refused in the same places.
-- **Refused as section 9.4 says.** `SET GLOBAL sql_mode` (`SUPER`), `SET SESSION sql_log_bin` (`SUPER`, `BINLOG ADMIN`), `SELECT` on
-  `mysql.user`, and `KILL QUERY` of another account's connection.
 - **Database-level rights: by statement, not by refusal.** The server's `PUBLIC` role holds nearly every right on `test`.* and
   `test\_%`.* (MariaDB's own setup gave it), and the test's databases fall under `test\_%`, so revoking a database-level right refused
-  nothing (open point 1). Which rights are used comes from classifying the statements that ran: the office `SELECT`, `INSERT`, `UPDATE`,
-  `DELETE`, `CREATE`, `DROP` and `ALTER` throughout; `CREATE TEMPORARY TABLES` only by the query window; the backups' `CREATE`, `INSERT`
-  and `ALTER` by every default backup, and their `SELECT` only by the verified one; `INDEX` by no statement, so it left the grant.
+  nothing. The second test was made for that.
 - **The host.** `'opmsd'@'localhost'` matched TCP connections to `127.0.0.1` on a server that resolves names (`skip_name_resolve=0`), as
-  the guide's note on the server computer says.
+  the guide's note on the server computer says. The second test found the same.
+
+**The second test**, `tests/DbGrantsTests`: the account `'opmsd_granttest'@'localhost'` with a random password, the office database
+`opmsdgrant_od` built from `db/init/new-database.sql`, its backups `opmsdgrant_odbackup_...`. The names are outside `test%`, so the
+`PUBLIC` role's rights did not apply, and the test refuses to start when they would. Everything ran as the account through the program's
+own code (`DataConnection` and the connection rule; a loopback server, so without TLS). 616 checks, none failed.
+
+- **Allowed with exactly the grants.** The start-up as far as it runs without a window: the connection test, the preference cache,
+  `PrefL.CheckForkVersionGuard`, the indexes of a restored backup, `PrefL.CheckMySqlVersion`, `MiscData.SetSqlMode` (nothing to set),
+  the fork migration hand-off of `PrefL.RunForkMigrations` with the backup a Release build makes first and ten pending steps (2026110201
+  to 2026110213: the routine maintenance and inventory tables created again, the stock ledger's opening balance written),
+  `PrefL.CheckProgramVersion`, the computer's preferences, every cache, the log-on and the signals. Reads and writes on `patient`,
+  `commlog`, `adjustment`, `procedurelog`, `appointment`, `definition`, `preference`, `securitylog` and `signalod`. `TRUNCATE` of the
+  A/R dashboard, the recall triggers and family aging; a user query with a temporary table and an index on it; cancelling a running user
+  query; every `ForkMigrationContext` helper; the keys of a restored backup re-enabled; the redundant index tool; the conversion of a table
+  to the default storage engine; the large-table helper both ways (one `ALTER TABLE`, and with `UpdateAlterLargeTablesDirectly` off a
+  table of three batches renamed, copied and dropped); the replication question. Database maintenance: the table check, all 201 methods
+  in Check and in Fix with their last-run dates, the tools that work on the database (special characters, nulls, the Etrans work table,
+  active treatment plans, missing patients, ortho chart duplicates, estimates, payment plan payments, duplicate e-mails, insurance plan
+  types) and repair and optimize of every table. Backups: the default one, with `BackupIndexesDisabled` off, not as an automatic backup
+  (the Backup window), the archive tab's with the row counts on the same server, the backup-repair-optimize of a MariaDB version change,
+  and `FLUSH TABLES`. The release channel: publishing (twice), reading the manifest, downloading and checking the release, deleting Open
+  Dental's update files. The Open Dental update chain from 21.1.9 to 24.3.63 (after its backup), `Adoption.Preflight` and `Adoption.Run`
+  (the office's generated patient column and its unique key dropped, every fork migration step), the version guard and the 26.1.70
+  schema verifier, which found an exact match.
+- **Each granted right is needed.** Revoked alone, each made these calls of the program fail with "access denied", and they were allowed
+  again once it was granted back:
+
+  | Right | Refused without it |
+  |---|---|
+  | office `SELECT` | the preference cache, `Patients.GetPat` (1142) |
+  | office `INSERT` | `Commlogs.Insert`, `OPTIMIZE TABLE`, `ALTER TABLE ... RENAME TO`, the large-table helper's `RENAME TABLE` (1142) |
+  | office `UPDATE` | the start-up's connection test, so the program cannot start; `Prefs.UpdateString` (1142) |
+  | office `DELETE` | `Commlogs.Delete` (1142) |
+  | office `CREATE` | `ForkMigrationContext.CreateTableIfMissing`, the Etrans tool's work table, `ALTER TABLE ... RENAME TO`, the large-table helper's `RENAME TABLE` (1142) |
+  | office `DROP` | `TRUNCATE` of the A/R dashboard and of family aging, the Etrans tool's `DROP TABLE IF EXISTS`, `ALTER TABLE ... RENAME TO`, the large-table helper (1142) |
+  | office `ALTER` | `AddColumnIfMissing`, `EnsureIndex`, re-enabling the keys of a restored backup, the large-table helper (1142) |
+  | office `CREATE TEMPORARY TABLES` | a user query with `CREATE TEMPORARY TABLE` (1044) |
+  | backup `CREATE` | every backup, at its `CREATE DATABASE` (1044) |
+  | backup `INSERT` | every backup, at its first `INSERT ... SELECT` (1142) |
+  | backup `ALTER` | the default backup, at its first `DISABLE KEYS` (1142); with `BackupIndexesDisabled` off the backup was allowed |
+  | backup `SELECT` | the archive tab's backup, at its row counts (1142); the default backup was allowed |
+  | `RELOAD` | every backup (`FLUSH TABLE`), the Backup window's `FLUSH TABLES` (1227) |
+  | `BINLOG MONITOR` | every backup and the maintenance window's replication check (`SHOW MASTER STATUS`, 1227) |
+  | `REPLICA MONITOR` | every backup, `ReplicationServers.GetSlaveStatus` (`SHOW SLAVE STATUS`, 1227) |
+
+- **An `ALTER TABLE` needs `ALTER` only.** Without `INSERT`, without `CREATE`, and without both, `ALTER TABLE` adding a column and a key
+  and changing a column's definition was allowed: MariaDB checks those two rights only for the new name of a rename. The guide said every
+  `ALTER TABLE` needs them; corrected (section 9.1). The grants do not change: `CREATE` and `INSERT` are needed for the reasons above.
+- **Refused, as the guide leaves them out.** `INDEX`: `CREATE INDEX` (Open Dental's 17.4.46 step itself, invoked as the chain invokes
+  it) and `DROP INDEX ... ON` (1142); granted for a first start as the guide says, both were allowed, and refused again once it was
+  revoked. Other databases: `CREATE DATABASE` of `<database>_new`, of `<database>backupx1` (an unescaped `_` in the grant would cover it)
+  and of `<database>backup`, `DROP DATABASE` and `USE` of another database (1044), `SELECT` from it (1142). In a backup: `UPDATE`,
+  `DELETE`, `TRUNCATE`, `DROP TABLE`, `RENAME TABLE`, `ALTER TABLE ... RENAME` (1142) and `DROP DATABASE` (1044); `SELECT`, `INSERT`,
+  `CREATE TABLE` and `ALTER TABLE ... DROP COLUMN` were allowed. `SELECT` on `mysql.user` and `mysql.db` (1142), `SHOW GRANTS` for another
+  account (1044); `SELECT ... INTO OUTFILE` (1227) and `LOAD DATA INFILE` (1045), while `LOAD_FILE` returned NULL; `GRANT` (1044);
+  `CREATE USER`, `SET GLOBAL sql_mode`, `SET SESSION sql_log_bin` and `STOP SLAVE` (1227); `KILL QUERY` of another account's connection
+  (1095), while `information_schema.PROCESSLIST` listed the account's own connections only; `LOCK TABLES`, `CREATE PROCEDURE`, `CREATE
+  EVENT` (1044), `CREATE VIEW` and `CREATE TRIGGER` (1142).
+- **The office database itself.** As the account, `DROP DATABASE <database>` and `CREATE DATABASE <database>` were allowed, as the guide
+  warns.
+- **`PUBLIC` seen.** `SHOW DATABASES` as the account listed `test`, which only the `PUBLIC` role's rights make visible to it.
+- **Stopped for other reasons.** The archive tab's backup to another server stops at its first table with rows before any right is
+  checked (section 8, open point 2). The EHR measures, whose reports also build work tables, need an EHR provider key, so the test used
+  the Etrans tool's work table instead. Database Maintenance's `ProcedurelogTpAttachedToClaim` failed with a syntax error on every
+  database; fixed (section 8).
+- **What neither test could show.** An office server: its MariaDB version, a `sql_mode` that is not blank (only `SET GLOBAL sql_mode`
+  itself was shown refused), binary logging or replication (`BINLOG ADMIN`), TLS (the tests connected over loopback), and an office's
+  own data and preferences. Try the grants on a test copy before the switch-over.
+
+**Running the second test again**, before the switch-over, on the local MariaDB of a development computer where `root` has a blank
+password: build `DbGrantsTests`, set `DBGRANTS_ACCOUNT` and `DBGRANTS_DATABASE` to names that exist nowhere on that server (the test
+refuses to start otherwise, or when the `PUBLIC` role covers the database name), optionally `DBGRANTS_REPORT` (the report file; default
+`%TEMP%\dbgrants-report-<time>.txt`) and `DBGRANTS_SKIP_CHAIN=1` (without the update chain and the adoption), and run the test assembly
+(`vstest.console.exe tests\DbGrantsTests\bin\Debug\DbGrantsTests.dll /Platform:x86`). Without the two names the test is inconclusive and
+connects nowhere, so the full test runs pass it by. It took about a minute here; the report lists every check with MariaDB's answer.

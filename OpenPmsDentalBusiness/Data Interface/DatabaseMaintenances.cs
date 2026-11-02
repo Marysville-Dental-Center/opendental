@@ -8957,7 +8957,6 @@ namespace OpenPmsDentalBusiness {
 			string command=$@"SELECT patient.PatNum,patient.LName,patient.FName,claim.ClaimNum,claim.DateService,
 					procedurelog.ProcNum,procedurecode.ProcCode,procedurelog.ProcStatus,procedurelog.ProcDate,
 					procedurelog.ProcNumLab,procedurecodelab.ProcCode ProcCodeLab,procedureloglab.ProcStatus ProcStatusLab,procedureloglab.ProcDate ProcDateLab
-					procedurelog.ProcNumLab,claim.ClaimNum
 				FROM procedurelog
 				INNER JOIN claimproc ON procedurelog.ProcNum=claimproc.ProcNum
 				INNER JOIN claim ON claimproc.ClaimNum=claim.ClaimNum
