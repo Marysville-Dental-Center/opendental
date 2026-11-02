@@ -217,13 +217,21 @@ namespace DatabaseIntegrityCheck {
 					port=arrayServerNameAndPort[1];
 				}
 			}
-			_con=new MySqlConnection("Server="+serverName
-				+";Port="+port
-				+";Database="+textDatabase.Text
-				+";User ID="+textUser.Text
-				+";Password="+textPassword.Text
-				+";SslMode=none"
-				+";CharSet=utf8");
+			try {
+				//A dev-only tool without TLS settings: the connection rule lets it reach a database on this computer only
+				//(docs/specs/db-connection-security.md).
+				_con=DataConnectionBase.DbConnectionSecurity.NewMySqlConnection("Server="+serverName
+					+";Port="+port
+					+";Database="+textDatabase.Text
+					+";User ID="+textUser.Text
+					+";Password="+textPassword.Text
+					+";SslMode=none"
+					+";CharSet=utf8");
+			}
+			catch(DataConnectionBase.DbConnectionRefusedException ex) {
+				MessageBox.Show(ex.Message);
+				return false;
+			}
 			try {
 				_con.Open();
 			}

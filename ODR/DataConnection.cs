@@ -4,6 +4,8 @@ See header in FormOpenDental.cs for complete text.  Redistributions must retain 
 ===============================================================================================================*/
 //Changed in Open PMS - Dental (package RDL-SRC, docs/port-notes/RDL-SRC.md): MySqlConnector replaces MySql.Data, which the program no longer
 //ships, and the connection string is the one the running program uses, with FreeDentalConfig.xml as the fallback.
+//Changed in Open PMS - Dental (docs/specs/db-connection-security.md): connections go through the program's connection rule, and the
+//fallback reads FreeDentalConfig.xml with the program's own reader and connection string builder.
 using MySqlConnector;
 using System;
 using System.Collections;
@@ -32,7 +34,8 @@ namespace ODR{
 
 		///<summary>Constructor sets the connection values.</summary>
 		public DataConnection(){
-		  con=new MySqlConnection(GetODConnStr());
+			//Through the program's connection rule: a server over the network must be encrypted and verified (docs/specs/db-connection-security.md).
+		  con=global::DataConnectionBase.DbConnectionSecurity.NewMySqlConnection(GetODConnStr());
 			//dr = null;
 			cmd = new MySqlCommand();
 			cmd.Connection=con;
@@ -67,64 +70,25 @@ namespace ODR{
 			}
 		}
 
-		///<summary>Built from FreeDentalConfig.xml in the program folder. Empty if the file is missing or unreadable.</summary>
+		///<summary>Built from FreeDentalConfig.xml in the program folder with the program's own reader and builder (DbConnectionConfig,
+		///BuildSimpleConnectionString), so a server over the network gets the office CA, the client certificate and the password stored on this
+		///computer, as the program does (docs/specs/db-connection-security.md). Empty if the file is missing or unreadable, or its settings are
+		///refused (an old-style password for a server over the network).</summary>
 		private static string GetConfigFileConnStr() {
-			XmlDocument document=new XmlDocument();
-			string path=ODFileUtils.CombinePaths(Application.StartupPath,"FreeDentalConfig.xml");
-			if(!File.Exists(path)) {
-				return "";
-			}
-			string computerName="";
-			string database="";
-			string user="";
-			string password="";
-			string passHash="";
+			string path=ODFileUtils.CombinePaths(Application.StartupPath,ProgramNames.ConfigFileName);
 			try {
-				document.Load(path);
-				XmlNodeReader reader=new XmlNodeReader(document);
-				string currentElement="";
-				while(reader.Read()) {
-					if(reader.NodeType==XmlNodeType.Element) {
-						currentElement=reader.Name;
-					}
-					else if(reader.NodeType==XmlNodeType.Text) {
-						switch(currentElement) {
-							case "ComputerName":
-								computerName=reader.Value;
-								break;
-							case "Database":
-								database=reader.Value;
-								break;
-							case "User":
-								user=reader.Value;
-								break;
-							case "Password":
-								password=reader.Value;
-								break;
-							case "MySQLPassHash":
-								passHash=reader.Value;
-								break;
-						}
-					}
+				global::DataConnectionBase.DbConnectionConfig dbConnectionConfig=global::DataConnectionBase.DbConnectionConfig.ReadFile(path);
+				if(dbConnectionConfig==null) {
+					return "";
 				}
-				reader.Close();
+				string password=dbConnectionConfig.GetPassword();
+				return global::DataConnectionBase.DataConnection.BuildSimpleConnectionString(global::DataConnectionBase.DatabaseType.MySql,
+					dbConnectionConfig.ServerName,dbConnectionConfig.Database,dbConnectionConfig.User,password,dbConnectionConfig.SslCa,
+					dbConnectionConfig.ClientCertThumbprint);
 			}
 			catch {
 				return "";
 			}
-			string decryptedPwd;
-			if(password=="" && passHash!="" && Secrets.Decrypt(passHash,out decryptedPwd)) {
-				//if plain text password is blank but encrypted pwd isn't and decryption is successful, use decryptedPwd
-				password=decryptedPwd;
-			}
-			//example:
-			//Server=localhost;Database=opendental;User ID=root;Password=;CharSet=utf8
-			return "Server="+computerName
-				+";Database="+database
-				+";User ID="+user
-				+";Password="+password
-				+";SslMode=none"
-				+";CharSet=utf8";
 		}
 
 		///<summary>Fills table with data from the database.</summary>

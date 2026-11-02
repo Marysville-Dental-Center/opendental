@@ -578,7 +578,12 @@ namespace OpenPmsDental {
 				+" "+killServices.ToString()//and whether to kill all processes or not
 				+" "+openCopiedFiles.ToString();//and whether to open the copied files or not.
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientDirect && !string.IsNullOrEmpty(DataConnection.GetServerName())) {
-				Secrets.Encrypt(DataConnection.GetMysqlPass(),out string mySqlDatabasePassHash);//sets encryptedPwd ot value or null
+				string mySqlDatabasePassHash="";
+				//The password goes on the command line only for a server on this computer, as before. For a server over the network the restarted
+				//program takes the password stored on this computer (DPAPI); it refuses one on the command line (docs/specs/db-connection-security.md).
+				if(DbConnectionSecurity.IsLoopbackServer(DataConnection.GetServerName())) {
+					Secrets.Encrypt(DataConnection.GetMysqlPass(),out mySqlDatabasePassHash);//sets encryptedPwd ot value or null
+				}
 				arguments+=" \""+DataConnection.GetServerName()+"\""//and server name for reconnecting to database
 					+" \""+DataConnection.GetDatabaseName()+"\""//and database name for reconnecting to database
 					+" \""+DataConnection.GetMysqlUser()+"\""//and mysqluser for reconnecting to database

@@ -25,8 +25,9 @@ connection is attempted:
   `MySqlConnectionStringBuilder` and throws `DbConnectionRefusedException` when the rule fails. A string that passed is remembered, so the
   check costs one dictionary look-up per query.
 - `RdlEngine.dll` (LGPL, no reference to the program's assemblies) calls the hook `RdlEngineConfig.CheckConnection` before it creates a
-  connection. The program installs the hook (`RdlConnectionCheck.Install`) before it renders a report. The hook refuses every provider other
-  than MySqlConnector and checks MySqlConnector strings with the rule.
+  connection. The program sets the hook to `DbConnectionSecurity.CheckReportConnection` in the constructors of `FormReportForRdl` and
+  `FormReportCustom`, the two windows that render reports. The hook refuses every provider other than MySqlConnector and checks
+  MySqlConnector strings with the rule.
 - `DataConnection.BuildSimpleConnectionString` builds strings that pass: for a server over the network it adds `SslMode=VerifyFull`, `SslCa`
   and, when this computer has a client certificate, `CertificateStoreLocation=LocalMachine;CertificateThumbprint=...`.
 

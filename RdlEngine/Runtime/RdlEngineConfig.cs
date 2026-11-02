@@ -23,6 +23,8 @@
 // Changed by Open PMS - Dental contributors, 2026-11-01 (package RDL-SRC, docs/port-notes/RDL-SRC.md): the built-in MySQL.NET data
 // provider is MySqlConnector (MySqlConnector.dll, class MySqlConnector.MySqlConnection), the MySQL client the program ships, in place of
 // MySql.Data.dll, which it no longer ships. Report definitions keep naming the provider MySQL.NET.
+// Changed by Open PMS - Dental contributors, 2026-11-02 (docs/specs/db-connection-security.md): GetConnection calls the host's
+// CheckConnection hook, when one is set, before it creates any connection.
 using System;
 using System.Xml;
 using System.Collections;
@@ -44,6 +46,10 @@ namespace fyiReporting.RDL
 	public class RdlEngineConfig
 	{
 		static internal IDictionary SqlEntries=new ListDictionary();	// list of entries
+		///<summary>Set by the host program: called with the data provider name, the name of the connection class the engine would create
+		///(SqlConnection, OdbcConnection, OleDbConnection, or the configured class of the provider) and the connection string, before any
+		///connection is created. It throws to refuse the connection. Null: no check.</summary>
+		public static Action<string,string,string> CheckConnection;
         static internal IDictionary<string, CustomReportItemEntry> CustomReportItemEntries = new System.Collections.Generic.Dictionary<string, CustomReportItemEntry>(5);	// list of entries
 
 		// Compression entries
@@ -305,18 +311,25 @@ namespace fyiReporting.RDL
 		public static IDbConnection GetConnection(string provider, string cstring)
 		{
 			IDbConnection cn = null;
+			Action<string,string,string> checkConnection = CheckConnection;
 			switch (provider.ToLower())
 			{
 				case "sql":
-					// can't connect unless information provided; 
+					// can't connect unless information provided;
 					//   when user wants to set the connection programmatically this they should do this
-					if (cstring.Length > 0)	
+					if (checkConnection != null)
+						checkConnection(provider, typeof(SqlConnection).FullName, cstring);
+					if (cstring.Length > 0)
 						cn = new SqlConnection(cstring);
 					break;
 				case "odbc":
+					if (checkConnection != null)
+						checkConnection(provider, typeof(OdbcConnection).FullName, cstring);
 					cn = new OdbcConnection(cstring);
 					break;
 				case "oledb":
+					if (checkConnection != null)
+						checkConnection(provider, typeof(OleDbConnection).FullName, cstring);
 					cn = new OleDbConnection(cstring);
 					break;
 				default:
@@ -327,6 +340,8 @@ namespace fyiReporting.RDL
 							throw new Exception(sce.ErrorMsg);
 						break;
 					}
+					if (checkConnection != null)
+						checkConnection(provider, sce.ClassName, cstring);
 					object[] args = new object[] {cstring};
 					Assembly asm = sce.CodeModule;
 					object o = asm.CreateInstance(sce.ClassName, false, 

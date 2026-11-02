@@ -393,12 +393,14 @@ namespace OpenPmsDental{
 				noShow=YN.Yes;
 			}
 			//Users that want to silently update MUST pass in the following command line args.
+			//A MySQL password only for a server on this computer: for a server over the network the password stored on this computer is used
+			//and one on the command line is refused (docs/specs/db-connection-security.md).
 			if(isSilentUpdate && (odUser.Trim()==""
 					|| (odPassword.Trim()=="" && odPassHash.Trim()=="")
 					|| serverName.Trim()==""
 					|| databaseName.Trim()==""
 					|| mySqlUser.Trim()==""
-					|| (mySqlPassword.Trim()=="" && mySqlPassHash.Trim()==""))) {
+					|| (mySqlPassword.Trim()=="" && mySqlPassHash.Trim()=="" && DbConnectionSecurity.IsLoopbackServer(serverName)))) {
 				ExitCode=104;//Required command line arguments have not been set for silent updating
 				Environment.Exit(ExitCode);
 				return;
@@ -432,6 +434,25 @@ namespace OpenPmsDental{
 				Environment.Exit(ExitCode);
 				return;
 			}
+			//Choose Database is for local testing and debugging only (owner decision Q6 of 2026-11-02). A Release build connects with this computer's
+			//settings, which only the connection settings tool writes, and names the problem when it cannot.
+			bool canChooseDatabase=ODBuild.IsDebug();
+			if(chooseDatabaseInfo.ConfigProblem!="") {
+				if(isSilentUpdate) {
+					ExitCode=106;//Connection to specified database has failed
+					Environment.Exit(ExitCode);
+					return;
+				}
+				MessageBox.Show(chooseDatabaseInfo.ConfigProblem,"Open PMS - Dental");//No translation: there is no database connection yet.
+				if(!canChooseDatabase) {
+					Environment.Exit(ExitCode);
+					return;
+				}
+				chooseDatabaseInfo.NoShow=YN.No;//Debug: correct the settings in Choose Database.
+			}
+			if(!canChooseDatabase) {
+				chooseDatabaseInfo.NoShow=YN.Yes;
+			}
 			//Hook up MT connection lost event. Nothing prior to this point fires LostConnection events.
 			MiddleTierConnectionEvent.Fired+=MiddleTierConnection_ConnectionLost;
 			RemotingClient.HasAutomaticConnectionLostRetry=true;
@@ -447,11 +468,19 @@ namespace OpenPmsDental{
 							isCommandLineArgs: (CommandLineArgs_.ArrayCommandLineArgs.Length!=0),useDynamicMode: chooseDatabaseInfo.UseDynamicMode);
 						Logger.LogToPath("CentralConnections.TryToConnect",LogPath.Startup,LogPhase.End);
 					}
-					catch(Exception) {
+					catch(Exception ex) {
 						if(isSilentUpdate) {
 							ExitCode=106;//Connection to specified database has failed
 							Environment.Exit(ExitCode);
 							return;
+						}
+						if(!canChooseDatabase) {
+							MessageBox.Show(GetConnectionFailedMessage(chooseDatabaseInfo,ex),"Open PMS - Dental");
+							Environment.Exit(ExitCode);
+							return;
+						}
+						if(ex is DbConnectionRefusedException) {
+							MessageBox.Show(ex.Message,"Open PMS - Dental");//Debug: say why before Choose Database opens.
 						}
 						//The current connection settings are invalid so simply show the choose database window for the user to correct them.
 						formChooseDatabase.ShowDialog();
@@ -509,6 +538,12 @@ namespace OpenPmsDental{
 				}
 				if(ReplicationServers.GetServerId()!=0 && ReplicationServers.GetServerId()==PrefC.GetLong(PrefName.ReplicationFailureAtServer_id)) {
 					MsgBox.Show(this,"This database is temporarily unavailable.  Please connect instead to your alternate database at the other location.");
+					if(!canChooseDatabase) {
+						//Release has no Choose Database to pick the alternate database in: the connection settings tool changes it.
+						formSplash.Close();
+						Environment.Exit(ExitCode);
+						return;
+					}
 					chooseDatabaseInfo.NoShow=YN.No;//This ensures they will get a choose db window next time through the loop.
 					ReplicationServers.SetServerId(-1);
 					formSplash.Close();
@@ -4055,6 +4090,27 @@ namespace OpenPmsDental{
 		#endregion Modules
 
 		#region DataConnection
+		///<summary>The start-up message of a Release build that could not connect (it has no Choose Database): a refusal by the connection rule as
+		///it is, otherwise the server, the database and the error, and what to do. Never contains a password.</summary>
+		public static string GetConnectionFailedMessage(ChooseDatabaseInfo chooseDatabaseInfo,Exception ex) {
+			if(ex is DbConnectionRefusedException) {
+				return ex.Message;
+			}
+			CentralConnection centralConnection=chooseDatabaseInfo.CentralConnectionCur;
+			string where;
+			if(!string.IsNullOrEmpty(centralConnection.ServiceURI)) {
+				where="the Middle Tier server "+centralConnection.ServiceURI;
+			}
+			else if(!string.IsNullOrEmpty(chooseDatabaseInfo.ConnectionString)) {
+				where="the database of the connection string in "+ProgramNames.ConfigFileName;
+			}
+			else {
+				where="the database "+centralConnection.DatabaseName+" on the server "+centralConnection.ServerName;
+			}
+			return "Open PMS - Dental could not connect to "+where+": "+ex.Message+"\r\n\r\nIf the connection settings of this computer are wrong, run "
+				+ProgramNames.DbSettingsExeFileName+" in the program folder as an administrator.";
+		}
+
 		///<summary>Decrypt the connection string and try to connect to the database directly. Only called if using a connection string and ChooseDatabase is not to be shown. Must call GetOraConfig first.</summary>
 		public bool TryWithConnStr() {
 			DataConnection dataConnection=new DataConnection();
@@ -4330,6 +4386,9 @@ namespace OpenPmsDental{
 		}
 
 		private void menuItemConfig_Click(object sender, System.EventArgs e) {
+			if(!ODBuild.IsDebug()) {
+				return;//Choose Database is for local testing and debugging only; the menu item exists only in Debug builds.
+			}
 			if(!Security.IsAuthorized(EnumPermType.ChooseDatabase)){
 				return;
 			}
