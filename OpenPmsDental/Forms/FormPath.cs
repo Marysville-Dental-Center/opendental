@@ -326,6 +326,15 @@ namespace OpenPmsDental{
 			textSftpPassword.UseSystemPasswordChar=false;
 			textSftpPassword.ReadOnly=false;
 		}
+
+		///<summary>The remembered SSH host keys (Setup, SSH Host Keys), where a changed key of the SFTP server is accepted. Security Admin only.</summary>
+		private void butSshHostKeys_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
+				return;
+			}
+			using FormSshHostKeys formSshHostKeys=new FormSshHostKeys();
+			formSshHostKeys.ShowDialog();
+		}
 		
 		private void radioSftp_Click(object sender,EventArgs e) {
 			if(!VerifySwitchingAwayFromDBStorage()) { //they clicked cancel

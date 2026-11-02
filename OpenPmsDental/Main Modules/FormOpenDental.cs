@@ -5137,6 +5137,15 @@ namespace OpenPmsDental{
 			formSpellCheck.ShowDialog();
 		}
 
+		private void menuItemSshHostKeys_Click(object sender,EventArgs e) {
+			//Accepting or removing a server's host key decides which server the program trusts with passwords and files.
+			if(!Security.IsAuthorized(EnumPermType.SecurityAdmin)) {
+				return;
+			}
+			using FormSshHostKeys formSshHostKeys=new FormSshHostKeys();
+			formSshHostKeys.ShowDialog();
+		}
+
 		private void menuItemTimeCards_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.Setup)) {
 				return;

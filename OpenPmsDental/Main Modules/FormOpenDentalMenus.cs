@@ -202,6 +202,8 @@ namespace OpenPmsDental{
 			menuItemSetup.Add("Security Badges",menuItemSecurityBadges_Click);
 			menuItemSetup.Add("Sheets",menuItemSheets_Click);
 			menuItemSetup.Add("Spell Check",menuItemSpellCheck_Click);
+			//The remembered host keys of the SSH servers: SFTP image storage (Data Paths), the SFTP clearinghouses, TSI and HL7.
+			menuItemSetup.Add("SSH Host Keys",menuItemSshHostKeys_Click);
 			menuItemSetup.Add("Tasks",menuItemTask_Click);
 			//Web Forms were hosted by Open Dental and are not available in this build.
 			menuItemSetup.AddSeparator();
