@@ -332,6 +332,10 @@ namespace OpenPmsDentalBusiness {
 				if(marker==0xD9) {//end of image
 					break;
 				}
+				if(marker==0x00 && hasFrameHeader) {//FF 00 is not a marker: more bytes outside a marker segment
+					pos=FindMarkerAfterEntropyData(bytes,pos,end);
+					continue;
+				}
 				if(marker==0x01 || (marker>=0xD0 && marker<=0xD7)) {//markers without a length
 					pos+=2;
 					continue;
