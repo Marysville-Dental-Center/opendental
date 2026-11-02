@@ -23,7 +23,7 @@
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			this.webBrowser1 = new System.Windows.Forms.WebBrowser();
+			this.webViewMain = new CodeBase.Controls.ODWebView2();
 			this.butPrint = new System.Windows.Forms.Button();
 			this.butReconcileMedications = new System.Windows.Forms.Button();
 			this.labelReconcile = new System.Windows.Forms.Label();
@@ -32,16 +32,15 @@
 			this.butShowXml = new System.Windows.Forms.Button();
 			this.SuspendLayout();
 			// 
-			// webBrowser1
+			// webViewMain
 			// 
-			this.webBrowser1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+			this.webViewMain.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowser1.Location = new System.Drawing.Point(1, 1);
-			this.webBrowser1.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowser1.Name = "webBrowser1";
-			this.webBrowser1.Size = new System.Drawing.Size(882, 603);
-			this.webBrowser1.TabIndex = 1;
+			this.webViewMain.Location = new System.Drawing.Point(1, 1);
+			this.webViewMain.Name = "webViewMain";
+			this.webViewMain.Size = new System.Drawing.Size(882, 603);
+			this.webViewMain.TabIndex = 1;
 			// 
 			// butPrint
 			// 
@@ -119,7 +118,7 @@
 			this.Controls.Add(this.labelReconcile);
 			this.Controls.Add(this.butReconcileMedications);
 			this.Controls.Add(this.butPrint);
-			this.Controls.Add(this.webBrowser1);
+			this.Controls.Add(this.webViewMain);
 			this.Name = "FormEhrSummaryCcdEdit";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Summary of Care";
@@ -130,7 +129,7 @@
 		}
 
 		#endregion
-		private System.Windows.Forms.WebBrowser webBrowser1;
+		private CodeBase.Controls.ODWebView2 webViewMain;
 		private System.Windows.Forms.Button butPrint;
 		private System.Windows.Forms.Button butReconcileMedications;
 		private System.Windows.Forms.Label labelReconcile;

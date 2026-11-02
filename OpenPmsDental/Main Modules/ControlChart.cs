@@ -20,7 +20,6 @@ using CodeBase;
 using OpenPmsDental.UI;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.HL7;
-using SHDocVw;
 using SparksToothChart;
 using OpenPmsDental.Bridges;
 using System.Drawing.Imaging;
@@ -71,8 +70,12 @@ namespace OpenPmsDental {
 		private float _heightTabProcOrig96=0;
 		private int _yValImageSplitterOriginal;
 		private bool _isInitializedOnStartup;
-		[DllImport("wininet.dll",CharSet = CharSet.Auto,SetLastError = true)]
-		static extern bool InternetSetCookie(string lpszUrlName,string lbszCookieName,string lpszCookieData);
+		///<summary>True while the eCW medical panel (webViewEcw) shows eCW's page, false when it is blank.</summary>
+		private bool _isEcwPanelShown;
+		///<summary>Counts the eCW panel's page loads, so a load that a newer one replaced while the browser was starting does not navigate.</summary>
+		private int _countEcwPanelLoads;
+		///<summary>The start of the eCW panel's browser, once.</summary>
+		private System.Threading.Tasks.Task _taskEcwPanelInit;
 		///<summary>This keeps track of if the progress notes are being filled.</summary>
 		private bool _isFillingProgNotes;
 		///<summary>For various reasons, this module can become unselected while clicking around, and there are certain actions we shouldn't take if this happens. See IsPatientNull for further comments.</summary>
@@ -4502,7 +4505,7 @@ namespace OpenPmsDental {
 			ToolBarMain.Buttons["ExamSheet"].Enabled=false;
 			if(UsingEcwTight()) {
 				ToolBarMain.Buttons["Commlog"].Enabled=false;
-				webBrowserEcw.Url=null;
+				ClearEcwPanel();
 			}
 			if(PrefC.GetBool(PrefName.ShowFeatureEhr)) {
 				ToolBarMain.Buttons["EHR"].Enabled=false;
@@ -4804,7 +4807,7 @@ namespace OpenPmsDental {
 				ToolBarMain.Buttons["ExamSheet"].Enabled=false;
 				if(UsingEcwTight()) {
 					ToolBarMain.Buttons["Commlog"].Enabled=false;
-					webBrowserEcw.Url=null;
+					ClearEcwPanel();
 				}
 				if(ToolBarMain.Buttons["CCD"]!=null) {
 					ToolBarMain.Buttons["CCD"].Enabled=false;
@@ -4870,7 +4873,7 @@ namespace OpenPmsDental {
 					//the following sequence also gets repeated after exiting the Rx window to refresh.
 					String strAppServer="";
 					if(Bridges.ECW.UserId==0 || String.IsNullOrEmpty(Bridges.ECW.EcwConfigPath)) {
-						webBrowserEcw.Url=null;
+						ClearEcwPanel();
 						labelECWerror.Text="This panel does not display unless\r\nOpen PMS - Dental is launched from inside eCW";
 						labelECWerror.Visible=true;
 					}
@@ -4878,6 +4881,7 @@ namespace OpenPmsDental {
 						//this property will not exist if using Oracle, eCW will never use Oracle
 						string uriString=ProgramProperties.GetPropVal(Programs.GetProgramNum(ProgramName.eClinicalWorks),"MedicalPanelUrl");
 						string path="";
+						string cookieUrl="";
 						if(uriString=="") {
 							XmlTextReader xmlTextReader=new XmlTextReader(Bridges.ECW.EcwConfigPath);
 							while(xmlTextReader.Read()) {
@@ -4888,21 +4892,7 @@ namespace OpenPmsDental {
 							path="http://"+strAppServer+"/mobiledoc/jsp/dashboard/Overview.jsp"
 								+"?ptId="+Pd.PatNum.ToString()+"&panelName=overview&pnencid="
 								+Bridges.ECW.AptNum.ToString()+"&context=progressnotes&TrUserId="+Bridges.ECW.UserId.ToString();
-							//set cookie
-							if(!String.IsNullOrEmpty(Bridges.ECW.JSessionId)) {
-								InternetSetCookie("http://"+strAppServer,null,"JSESSIONID = "+Bridges.ECW.JSessionId);
-							}
-							if(!String.IsNullOrEmpty(Bridges.ECW.JSessionIdSSO)) {
-								InternetSetCookie("http://"+strAppServer,null,"JSESSIONIDSSO = "+Bridges.ECW.JSessionIdSSO);
-							}
-							if(!String.IsNullOrEmpty(Bridges.ECW.LBSessionId)) {
-								if(ProgramProperties.GetPropVal(Programs.GetProgramNum(ProgramName.eClinicalWorks),"IsLBSessionIdExcluded")=="0") {
-									InternetSetCookie("http://"+strAppServer,null,"LBSESSIONID = "+Bridges.ECW.LBSessionId);
-								}
-								else {
-									InternetSetCookie("http://"+strAppServer,null,Bridges.ECW.LBSessionId);
-								}
-							}
+							cookieUrl="http://"+strAppServer;
 						}
 						else {
 							path=uriString
@@ -4911,43 +4901,33 @@ namespace OpenPmsDental {
 							//parse out with regex: uristring
 							Match match=Regex.Match(uriString,@"\b([^:]+://[^/]+)/");//http://servername
 							if(!match.Success || match.Groups.Count<2) {//if no match, or match but no group 1 to grab
-								webBrowserEcw.Url=null;
+								ClearEcwPanel();
 								labelECWerror.Text="Error: "+"Invalid URL saved in the Medical Panel URL field of the eClinicalWorks program link.";
 								labelECWerror.Visible=true;
+								path="";
 							}
-							string cookieUrl=match.Groups[1].Value;
-							//set cookie
+							else {
+								cookieUrl=match.Groups[1].Value;
+							}
+						}
+						if(path!="") {
+							//The session cookies eCW handed over at launch, for eCW's server only.
+							List<string> listCookies=new List<string>();
 							if(!String.IsNullOrEmpty(Bridges.ECW.JSessionId)) {
-								InternetSetCookie(cookieUrl,null,"JSESSIONID = "+Bridges.ECW.JSessionId);
+								listCookies.Add("JSESSIONID = "+Bridges.ECW.JSessionId);
 							}
 							if(!String.IsNullOrEmpty(Bridges.ECW.JSessionIdSSO)) {
-								InternetSetCookie(cookieUrl,null,"JSESSIONIDSSO = "+Bridges.ECW.JSessionIdSSO);
+								listCookies.Add("JSESSIONIDSSO = "+Bridges.ECW.JSessionIdSSO);
 							}
 							if(!String.IsNullOrEmpty(Bridges.ECW.LBSessionId)) {
 								if(ProgramProperties.GetPropVal(Programs.GetProgramNum(ProgramName.eClinicalWorks),"IsLBSessionIdExcluded")=="0") {
-									InternetSetCookie(cookieUrl,null,"LBSESSIONID = "+Bridges.ECW.LBSessionId);
+									listCookies.Add("LBSESSIONID = "+Bridges.ECW.LBSessionId);
 								}
 								else {
-									InternetSetCookie(cookieUrl,null,Bridges.ECW.LBSessionId);
+									listCookies.Add(Bridges.ECW.LBSessionId);
 								}
 							}
-						}
-						try {
-							//navigate
-							webBrowserEcw.Navigate(path);
-						}
-						catch(Exception ex) {
-							if(webBrowserEcw.Url==null){
-								//error msg already set above.
-							}
-							else{
-								webBrowserEcw.Url=null;
-								labelECWerror.Text="Error: "+ex.Message;
-								labelECWerror.Visible=true;
-							}
-						}
-						if(webBrowserEcw.Url!=null){
-							labelECWerror.Visible=false;
+							ShowEcwPanel(path,cookieUrl,listCookies);
 						}
 					}
 				}
@@ -5061,6 +5041,82 @@ namespace OpenPmsDental {
 			if(checkShowOrtho.Checked){
 				Logger.LogAction("FillOrtho",LogPath.ChartModule,() => FillGridOrtho());
 			}
+		}
+
+		///<summary>Shows eCW's medical panel for the patient in webViewEcw (WebView2). listCookies are the session cookies eCW handed over at
+		///launch ("name=value"), set for cookieUrl's host only, in the browser's own cookie store (the old browser control used Internet Explorer's).
+		///The panel stays on http and https pages; a page that asks for a new window gets the default browser. Without the WebView2 Runtime the
+		///panel says so instead (no message box, since this runs at every refresh).</summary>
+		private async void ShowEcwPanel(string path,string cookieUrl,List<string> listCookies) {
+			int countLoad=++_countEcwPanelLoads;
+			if(!CodeBase.Controls.ODWebView2.IsRuntimeAvailable()) {
+				_isEcwPanelShown=false;
+				labelECWerror.Text=Lan.g(this,"This panel needs the Microsoft Edge WebView2 Runtime, which is not installed on this computer.");
+				labelECWerror.Visible=true;
+				return;
+			}
+			labelECWerror.Visible=false;
+			_isEcwPanelShown=true;
+			try {
+				if(webViewEcw.CoreWebView2==null) {
+					if(_taskEcwPanelInit==null) {
+						_taskEcwPanelInit=InitEcwPanel();
+					}
+					await _taskEcwPanelInit;
+				}
+				if(countLoad!=_countEcwPanelLoads || IsDisposed) {
+					return;//A newer load or a clear came while the browser was starting.
+				}
+				for(int i=0;i<listCookies.Count;i++) {
+					webViewEcw.SetCookie(cookieUrl,listCookies[i]);
+				}
+				webViewEcw.CoreWebView2.Navigate(path);
+			}
+			catch(Exception ex) {
+				_isEcwPanelShown=false;
+				labelECWerror.Text="Error: "+ex.Message;
+				labelECWerror.Visible=true;
+			}
+		}
+
+		///<summary>Starts the eCW panel's browser once, with its navigation rules.</summary>
+		private async System.Threading.Tasks.Task InitEcwPanel() {
+			await webViewEcw.Init();
+			webViewEcw.CoreWebView2.NavigationStarting+=webViewEcw_NavigationStarting;
+			webViewEcw.CoreWebView2.NewWindowRequested+=webViewEcw_NewWindowRequested;
+		}
+
+		///<summary>Blanks the eCW panel.</summary>
+		private void ClearEcwPanel() {
+			_countEcwPanelLoads++;
+			if(!_isEcwPanelShown) {
+				return;
+			}
+			_isEcwPanelShown=false;
+			if(webViewEcw.CoreWebView2!=null) {
+				webViewEcw.CoreWebView2.Navigate("about:blank");
+			}
+		}
+
+		///<summary>The eCW panel loads only http and https pages (and about:blank to clear it), never a file or another program's protocol.</summary>
+		private void webViewEcw_NavigationStarting(object sender,Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e) {
+			if(e.Uri=="about:blank") {
+				return;
+			}
+			Uri uri;
+			if(!Uri.TryCreate(e.Uri??"",UriKind.Absolute,out uri) || (uri.Scheme!=Uri.UriSchemeHttp && uri.Scheme!=Uri.UriSchemeHttps)) {
+				e.Cancel=true;
+			}
+		}
+
+		///<summary>Never a second WebView2 window from the eCW panel: an http or https address opens in the default browser.</summary>
+		private void webViewEcw_NewWindowRequested(object sender,Microsoft.Web.WebView2.Core.CoreWebView2NewWindowRequestedEventArgs e) {
+			e.Handled=true;
+			if(!e.IsUserInitiated) {
+				return;
+			}
+			string uri=e.Uri;
+			BeginInvoke((Action)(() => CodeBase.Controls.WebView2Policy.OpenInSystemBrowser(uri)));
 		}
 
 		public void UpdateTreatmentNote() {

@@ -157,8 +157,8 @@ namespace OpenPmsDental {
 				pi.Value="type=\"text/xsl\" href=\""+xslFileName+"\"";
 			}
 			File.WriteAllText(Path.Combine(PrefC.GetTempFolderPath(),xmlFileName),doc.InnerXml.ToString());
-			File.WriteAllText(Path.Combine(PrefC.GetTempFolderPath(),xslFileName),xslContents);
-			using FormEhrSummaryCcdEdit formESCD=new FormEhrSummaryCcdEdit(ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),xmlFileName),patCur);
+			//The window applies the stylesheet itself (the browser does not run stylesheets), so the stylesheet is not written next to the document.
+			using FormEhrSummaryCcdEdit formESCD=new FormEhrSummaryCcdEdit(ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),xmlFileName),patCur,xslContents);
 			formESCD.ShowDialog();
 			string[] arrayFileNames={"ccd.xml","ccd.xsl","ccr.xml","ccr.xsl"};
 			for(int i=0;i<arrayFileNames.Length;i++) {

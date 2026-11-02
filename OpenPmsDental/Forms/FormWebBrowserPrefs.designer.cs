@@ -27,7 +27,6 @@ namespace OpenPmsDental{
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormWebBrowserPrefs));
 			this.imageList1 = new System.Windows.Forms.ImageList(this.components);
 			this.webView = new CodeBase.Controls.ODWebView2();
-			this.webBrowser = new System.Windows.Forms.WebBrowser();
 			((System.ComponentModel.ISupportInitialize)(this.webView)).BeginInit();
 			this.SuspendLayout();
 			// 
@@ -51,23 +50,10 @@ namespace OpenPmsDental{
 			this.webView.TabIndex = 4;
 			this.webView.Visible = false;
 			this.webView.ZoomFactor = 1D;
-			// 
-			// webBrowser
-			// 
-			this.webBrowser.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowser.Location = new System.Drawing.Point(12, 12);
-			this.webBrowser.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowser.Name = "webBrowser";
-			this.webBrowser.Size = new System.Drawing.Size(360, 187);
-			this.webBrowser.TabIndex = 5;
-			this.webBrowser.Visible = false;
-			// 
+			//
 			// FormWebBrowserPrefs
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(384, 211);
-			this.Controls.Add(this.webBrowser);
 			this.Controls.Add(this.webView);
 			this.Cursor = System.Windows.Forms.Cursors.Default;
 			this.Name = "FormWebBrowserPrefs";
@@ -82,6 +68,5 @@ namespace OpenPmsDental{
 		#endregion
 		private System.Windows.Forms.ImageList imageList1;
 		private CodeBase.Controls.ODWebView2 webView;
-		private System.Windows.Forms.WebBrowser webBrowser;
 	}
 }

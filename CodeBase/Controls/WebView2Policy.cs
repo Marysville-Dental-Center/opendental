@@ -148,6 +148,32 @@ namespace CodeBase.Controls {
 			return Uri.UnescapeDataString(uriLink.Substring(scheme.Length+1));
 		}
 
+		///<summary>Splits cookieData of the form "name=value" (InternetSetCookie's format; spaces around either are ignored and attributes after a
+		///';' are dropped). False when there is no '=' or no name, or the name holds a character a cookie name may not have.</summary>
+		public static bool TryParseCookie(string cookieData,out string name,out string value) {
+			name="";
+			value="";
+			if(string.IsNullOrWhiteSpace(cookieData)) {
+				return false;
+			}
+			string data=cookieData;
+			int idxSemicolon=data.IndexOf(';');
+			if(idxSemicolon>=0) {
+				data=data.Substring(0,idxSemicolon);
+			}
+			int idxEquals=data.IndexOf('=');
+			if(idxEquals<=0) {
+				return false;
+			}
+			string nameCookie=data.Substring(0,idxEquals).Trim();
+			if(nameCookie=="" || nameCookie.Any(x => char.IsWhiteSpace(x) || char.IsControl(x) || "()<>@,;:\\\"/[]?={}".Contains(x))) {
+				return false;
+			}
+			name=nameCookie;
+			value=data.Substring(idxEquals+1).Trim();
+			return true;
+		}
+
 		///<summary>Opens url in the default browser (or mail program for mailto) when IsSystemBrowserUrl allows it. Returns false, and starts
 		///nothing, otherwise or when the shell fails.</summary>
 		public static bool OpenInSystemBrowser(string url) {

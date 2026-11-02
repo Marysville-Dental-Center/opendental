@@ -27,7 +27,7 @@ namespace OpenPmsDental {
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butEdit = new OpenPmsDental.UI.Button();
 			this.textContent = new OpenPmsDental.TextBoxWiki();
-			this.webBrowserWiki = new System.Windows.Forms.WebBrowser();
+			this.webViewWiki = new CodeBase.Controls.ODWebView2();
 			this.butDelete = new OpenPmsDental.UI.Button();
 			this.butCompare = new OpenPmsDental.UI.Button();
 			this.labelNotAuthorized = new System.Windows.Forms.Label();
@@ -87,20 +87,17 @@ namespace OpenPmsDental {
 			this.textContent.Size = new System.Drawing.Size(347, 614);
 			this.textContent.TabIndex = 82;
 			// 
-			// webBrowserWiki
+			// webViewWiki
 			// 
-			this.webBrowserWiki.AllowWebBrowserDrop = false;
-			this.webBrowserWiki.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+			this.webViewWiki.AllowExternalDrop = false;
+			this.webViewWiki.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowserWiki.IsWebBrowserContextMenuEnabled = false;
-			this.webBrowserWiki.Location = new System.Drawing.Point(647, 12);
-			this.webBrowserWiki.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowserWiki.Name = "webBrowserWiki";
-			this.webBrowserWiki.Size = new System.Drawing.Size(414, 614);
-			this.webBrowserWiki.TabIndex = 6;
-			this.webBrowserWiki.WebBrowserShortcutsEnabled = false;
-			this.webBrowserWiki.Navigated += new System.Windows.Forms.WebBrowserNavigatedEventHandler(this.webBrowserWiki_Navigated);
+			this.webViewWiki.IsContextMenuEnabled = false;
+			this.webViewWiki.Location = new System.Drawing.Point(647, 12);
+			this.webViewWiki.Name = "webViewWiki";
+			this.webViewWiki.Size = new System.Drawing.Size(414, 614);
+			this.webViewWiki.TabIndex = 6;
 			// 
 			// butDelete
 			// 
@@ -143,7 +140,7 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butEdit);
 			this.Controls.Add(this.textContent);
 			this.Controls.Add(this.textNumbers);
-			this.Controls.Add(this.webBrowserWiki);
+			this.Controls.Add(this.webViewWiki);
 			this.Controls.Add(this.gridMain);
 			this.Name = "FormWikiDrafts";
 			this.Text = "Wiki Drafts";
@@ -156,7 +153,7 @@ namespace OpenPmsDental {
 
 		#endregion
 		private UI.GridOD gridMain;
-		private System.Windows.Forms.WebBrowser webBrowserWiki;
+		private CodeBase.Controls.ODWebView2 webViewWiki;
 		private TextBoxWiki textContent;
 		private System.Windows.Forms.TextBox textNumbers;
 		private UI.Button butEdit;

@@ -13,8 +13,8 @@ namespace OpenPmsDental {
 	public partial class FormEmailEdit:FormODBase {
 		///<summary></summary>
 		private bool _isInvalidPreview;
-		///<summary>Used to handle the webBrowser navigation events in the case a user clicks the external link in the edit window. </summary>
-		private bool _isLoading;
+		///<summary>The HTML the preview shows: what the window returns in HtmlText (the old browser control's DocumentText).</summary>
+		private string _htmlPreview="";
 		///<summary>The message text that will be displayed in plain text on the left side.</summary>
 		public string MarkupText;
 		///<summary>The full HTML text of the email.</summary>
@@ -37,6 +37,7 @@ namespace OpenPmsDental {
 			InitializeComponent();
 			InitializeLayoutManager();
 			Lan.F(this);
+			webViewEmail.LinkClicked+=webViewEmail_LinkClicked;
 		}
 
 		private void FormEmailEdit_Load(object sender,EventArgs e) {
@@ -58,7 +59,6 @@ namespace OpenPmsDental {
 				checkIsRaw.Enabled=false;
 			}
 			RefreshHTML();
-			_isLoading=true;
 		}
 
 		private void FormEmailEdit_SizeChanged(object sender,EventArgs e) {
@@ -403,25 +403,10 @@ namespace OpenPmsDental {
 			TableOrDoubleClick(idx);//we don't care what this returns because we don't want to do anything else.
 		}
 
-		private void webBrowserEmail_Navigating(object sender,WebBrowserNavigatingEventArgs e) {
-			if(_isLoading) {
-				return;
-			}
-			e.Cancel=true;//Cancel browser navigation (for links clicked within the email message).
-			if(e.Url.AbsoluteUri=="about:blank") {
-				return;
-			}
-			//if user did not specify a valid url beginning with http:// then the event args would make the url start with "about:" 
-			//ex: about:www.google.com and then would ask the user to get a separate app to open the link since it is unrecognized
-			string url=e.Url.ToString();
-			if(url.StartsWith("about")) {
-				url=url.Replace("about:","http://");
-			}
-			Process.Start(url);//Instead launch the URL into a new default browser window.
-		}
-
-		private void webBrowserEmail_Navigated(object sender,WebBrowserNavigatedEventArgs e) {
-			_isLoading=false;
+		///<summary>A link clicked within the email message: the preview never follows it. An http, https or mailto link opens in the default
+		///browser or mail program instead; a link without a scheme, such as www.example.com, counts as http (WebView2Policy.GetSystemBrowserUrl).</summary>
+		private void webViewEmail_LinkClicked(object sender,CodeBase.Controls.ODWebView2LinkEventArgs e) {
+			CodeBase.Controls.WebView2Policy.OpenInSystemBrowser(e.GetSystemBrowserUrl());
 		}
 
 		private void checkIsRaw_CheckedChanged(object sender,EventArgs e) {
@@ -438,8 +423,6 @@ namespace OpenPmsDental {
 		}
 
 		private void RefreshHTML() {
-			webBrowserEmail.AllowNavigation=true;
-			_isLoading=true;
 			try {
 				var text="";
 				if(checkIsRaw.Checked) {
@@ -449,7 +432,8 @@ namespace OpenPmsDental {
 					text=MarkupEdit.TranslateToXhtml(textContentEmail.Text,isPreviewOnly:true,hasWikiPageTitles:false,isEmail:true);
 					AreImagesDownloaded=true;
 				}
-				webBrowserEmail.DocumentText=text;
+				_htmlPreview=text;
+				webViewEmail.NavigateToHtml(text);
 				_isInvalidPreview=false;
 			}
 			catch(Exception ex) {
@@ -490,7 +474,7 @@ namespace OpenPmsDental {
 				MsgBox.Show(this,Lan.g(this,"Message cannot contain the URL")+" "+errorText+" "+Lan.g(this,"as this is only allowed for eServices."));
 				return;
 			}
-			HtmlText=webBrowserEmail.DocumentText;
+			HtmlText=_htmlPreview;
 			MarkupText=textContentEmail.Text;
 			DialogResult=DialogResult.OK;
 			Close();

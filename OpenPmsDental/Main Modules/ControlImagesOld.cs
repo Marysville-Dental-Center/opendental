@@ -52,8 +52,6 @@ namespace OpenPmsDental {
 		///<summary>If this is not zero, the same EOB mode as for a claimpayment, but for the EOBs of this preauthorization (Open Dental 25.2,
 		///eobattach.ClaimNumPreAuth). Only one of _claimPaymentNum and _claimNumPreAuth is ever set.</summary>
 		private long _claimNumPreAuth;
-		///<summary>Tracker to keep track of how many pages are loaded on our webBrowser object.</summary>
-		private int _countWebBrowserLoads=0;
 		DateTime _dateTimeMouseMoved=new DateTime(1,1,1);
 		//private List<Def> DefListExpandedCats=new List<Def>();
 		///<summary>List of documents within the currently selected mount (if any).</summary>
@@ -1457,12 +1455,6 @@ namespace OpenPmsDental {
 		///<summary></summary>
 		public void ModuleUnselected() {
 			_family=null;
-			//foreach(Control c in this.Controls) {
-			//	if(c.GetType()==typeof(WebBrowser)) {//_webBrowserDocument
-			//		Controls.Remove(c);
-			//		c.Dispose();
-			//	}
-			//}
 			_patNumLastSecurityLog=0;//Clear out the last pat num so that a security log gets entered that the module was "visited" or "refreshed".
 			Plugins.HookAddCode(this,"ContrImages.ModuleUnselected_end");
 		}

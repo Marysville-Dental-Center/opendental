@@ -27,7 +27,7 @@ namespace OpenPmsDental{
 			this.textSearch = new System.Windows.Forms.TextBox();
 			this.checkIgnoreContent = new OpenPmsDental.UI.CheckBox();
 			this.checkArchivedOnly = new OpenPmsDental.UI.CheckBox();
-			this.webBrowserWiki = new System.Windows.Forms.WebBrowser();
+			this.webViewWiki = new CodeBase.Controls.ODWebView2();
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.butRestore = new OpenPmsDental.UI.Button();
 			this.checkBoxMatchWholeWord = new OpenPmsDental.UI.CheckBox();
@@ -78,21 +78,17 @@ namespace OpenPmsDental{
 			this.checkArchivedOnly.Text = "Archived Only";
 			this.checkArchivedOnly.CheckedChanged += new System.EventHandler(this.checkArchivedOnly_CheckedChanged);
 			// 
-			// webBrowserWiki
+			// webViewWiki
 			// 
-			this.webBrowserWiki.AllowNavigation = false;
-			this.webBrowserWiki.AllowWebBrowserDrop = false;
-			this.webBrowserWiki.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+			this.webViewWiki.AllowExternalDrop = false;
+			this.webViewWiki.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowserWiki.IsWebBrowserContextMenuEnabled = false;
-			this.webBrowserWiki.Location = new System.Drawing.Point(266, 62);
-			this.webBrowserWiki.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowserWiki.Name = "webBrowserWiki";
-			this.webBrowserWiki.Size = new System.Drawing.Size(825, 588);
-			this.webBrowserWiki.TabIndex = 11;
-			this.webBrowserWiki.WebBrowserShortcutsEnabled = false;
-			this.webBrowserWiki.Navigated += new System.Windows.Forms.WebBrowserNavigatedEventHandler(this.webBrowserWiki_Navigated);
+			this.webViewWiki.IsContextMenuEnabled = false;
+			this.webViewWiki.Location = new System.Drawing.Point(266, 62);
+			this.webViewWiki.Name = "webViewWiki";
+			this.webViewWiki.Size = new System.Drawing.Size(825, 588);
+			this.webViewWiki.TabIndex = 11;
 			// 
 			// butOK
 			// 
@@ -200,7 +196,7 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.checkArchivedOnly);
 			this.Controls.Add(this.checkIgnoreContent);
 			this.Controls.Add(this.textSearch);
-			this.Controls.Add(this.webBrowserWiki);
+			this.Controls.Add(this.webViewWiki);
 			this.Controls.Add(this.gridMain);
 			this.Controls.Add(this.butOK);
 			this.Name = "FormWikiSearch";
@@ -216,7 +212,7 @@ namespace OpenPmsDental{
 		#endregion
 
 		private OpenPmsDental.UI.Button butOK;
-		private System.Windows.Forms.WebBrowser webBrowserWiki;
+		private CodeBase.Controls.ODWebView2 webViewWiki;
 		private UI.GridOD gridMain;
 		private System.Windows.Forms.TextBox textSearch;
 		private OpenPmsDental.UI.CheckBox checkIgnoreContent;

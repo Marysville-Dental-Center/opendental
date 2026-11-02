@@ -23,20 +23,10 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			this.webBrowserMain = new System.Windows.Forms.WebBrowser();
 			this.webViewMain = new CodeBase.Controls.ODWebView2();
 			((System.ComponentModel.ISupportInitialize)(this.webViewMain)).BeginInit();
 			this.SuspendLayout();
-			// 
-			// webBrowserMain
-			// 
-			this.webBrowserMain.Location = new System.Drawing.Point(12, 13);
-			this.webBrowserMain.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowserMain.Name = "webBrowserMain";
-			this.webBrowserMain.Size = new System.Drawing.Size(500, 400);
-			this.webBrowserMain.TabIndex = 5;
-			this.webBrowserMain.DocumentCompleted += new System.Windows.Forms.WebBrowserDocumentCompletedEventHandler(this.webBrowserMain_DocumentCompleted);
-			// 
+			//
 			// webViewMain
 			// 
 			this.webViewMain.CreationProperties = null;
@@ -51,7 +41,6 @@ namespace OpenPmsDental{
 			// 
 			this.ClientSize = new System.Drawing.Size(524, 432);
 			this.Controls.Add(this.webViewMain);
-			this.Controls.Add(this.webBrowserMain);
 			this.Name = "FormPayConnect2iFrame";
 			this.Text = "PayConnect";
 			this.Load += new System.EventHandler(this.FormPayConnect2iFrame_Load);
@@ -61,7 +50,6 @@ namespace OpenPmsDental{
 		}
 
 		#endregion
-		private System.Windows.Forms.WebBrowser webBrowserMain;
 		private CodeBase.Controls.ODWebView2 webViewMain;
 	}
 }

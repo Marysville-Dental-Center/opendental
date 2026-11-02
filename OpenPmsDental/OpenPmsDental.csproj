@@ -2560,12 +2560,6 @@
     <Compile Include="Forms\FormTransworldSetup.designer.cs">
       <DependentUpon>FormTransworldSetup.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormWebBrowser.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormWebBrowser.designer.cs">
-      <DependentUpon>FormWebBrowser.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormEtrans835s.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -6568,9 +6562,6 @@
     <EmbeddedResource Include="Forms\FormTransworldSetup.resx">
       <DependentUpon>FormTransworldSetup.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormWebBrowser.resx">
-      <DependentUpon>FormWebBrowser.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormEtrans835s.resx">
       <DependentUpon>FormEtrans835s.cs</DependentUpon>
     </EmbeddedResource>
@@ -9479,17 +9470,6 @@
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Service References\" />
-  </ItemGroup>
-  <ItemGroup>
-    <COMReference Include="SHDocVw">
-      <Guid>{EAB22AC0-30C1-11CF-A7EB-0000C05BAE0B}</Guid>
-      <VersionMajor>1</VersionMajor>
-      <VersionMinor>1</VersionMinor>
-      <Lcid>0</Lcid>
-      <WrapperTool>tlbimp</WrapperTool>
-      <Isolated>False</Isolated>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-    </COMReference>
   </ItemGroup>
   <ItemGroup>
     <!-- Native (x86) files that the program loads at run time but that no reference brings into the output, in Debug and Release alike:

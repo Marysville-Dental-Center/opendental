@@ -31,10 +31,10 @@ namespace OpenPmsDental {
 
 		private void LoadWikiPage(WikiPage wikiPage) {
 			try {
-				webBrowserWiki.DocumentText=MarkupEdit.TranslateToXhtml(wikiPage.PageContent,false);
+				webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(wikiPage.PageContent,false));
 			}
 			catch(Exception ex) {
-				webBrowserWiki.DocumentText="";
+				webViewWiki.NavigateToHtml("");
 				MessageBox.Show(this,Lan.g(this,"This page is broken and cannot be viewed.  Error message:")+" "+ex.Message);
 			}
 		}
@@ -62,7 +62,6 @@ namespace OpenPmsDental {
 			if(gridMain.SelectedIndices.Length<1) {
 				return;
 			}
-			webBrowserWiki.AllowNavigation=true;
 			LoadWikiPage(_listWikiPages[gridMain.SelectedIndices[0]]);
 			gridMain.Focus();
 		}
@@ -70,10 +69,6 @@ namespace OpenPmsDental {
 		private void gridMain_CellDoubleClick(object sender,UI.ODGridClickEventArgs e) {
 			WikiPageJumpTo=_listWikiPages[e.Row];
 			DialogResult=DialogResult.OK;
-		}
-
-		private void webBrowserWiki_Navigated(object sender,WebBrowserNavigatedEventArgs e) {
-			webBrowserWiki.AllowNavigation=false;//to disable links in pages.
 		}
 
 	}

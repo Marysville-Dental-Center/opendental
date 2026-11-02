@@ -62,9 +62,6 @@ namespace OpenPmsDental {
 				case EnumFormName.FormVideo:
 					type=Type.GetType((typeof(FormVideo)).FullName);
 					break;
-				case EnumFormName.FormWebBrowser:
-					type=Type.GetType((typeof(FormWebBrowser)).FullName);
-					break;
 				case EnumFormName.FormWebView:
 					type=Type.GetType((typeof(FormWebView)).FullName);
 					break;

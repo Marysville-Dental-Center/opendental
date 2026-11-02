@@ -33,7 +33,7 @@ namespace OpenPmsDental{
 			this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripSeparator();
 			this.menuItemUndo = new System.Windows.Forms.ToolStripMenuItem();
 			this.toolBar2 = new OpenPmsDental.UI.ToolBarOD();
-			this.webBrowserWiki = new System.Windows.Forms.WebBrowser();
+			this.webViewWiki = new CodeBase.Controls.ODWebView2();
 			this.ToolBarMain = new OpenPmsDental.UI.ToolBarOD();
 			this.textContent = new OpenPmsDental.ODcodeBox();
 			this.contextMenuMain.SuspendLayout();
@@ -119,17 +119,13 @@ namespace OpenPmsDental{
 			this.toolBar2.TabIndex = 82;
 			this.toolBar2.ButtonClick += new OpenPmsDental.UI.ODToolBarButtonClickEventHandler(this.toolBar2_ButtonClick);
 			// 
-			// webBrowserWiki
+			// webViewWiki
 			// 
-			this.webBrowserWiki.AllowWebBrowserDrop = false;
-			this.webBrowserWiki.Location = new System.Drawing.Point(474, 58);
-			this.webBrowserWiki.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowserWiki.Name = "webBrowserWiki";
-			this.webBrowserWiki.Size = new System.Drawing.Size(470, 514);
-			this.webBrowserWiki.TabIndex = 78;
-			this.webBrowserWiki.WebBrowserShortcutsEnabled = false;
-			this.webBrowserWiki.DocumentCompleted += new System.Windows.Forms.WebBrowserDocumentCompletedEventHandler(this.webBrowserWiki_DocumentCompleted);
-			this.webBrowserWiki.Navigated += new System.Windows.Forms.WebBrowserNavigatedEventHandler(this.webBrowserWiki_Navigated);
+			this.webViewWiki.AllowExternalDrop = false;
+			this.webViewWiki.Location = new System.Drawing.Point(474, 58);
+			this.webViewWiki.Name = "webViewWiki";
+			this.webViewWiki.Size = new System.Drawing.Size(470, 514);
+			this.webViewWiki.TabIndex = 78;
 			// 
 			// ToolBarMain
 			// 
@@ -158,7 +154,7 @@ namespace OpenPmsDental{
 			// 
 			this.ClientSize = new System.Drawing.Size(944, 573);
 			this.Controls.Add(this.textContent);
-			this.Controls.Add(this.webBrowserWiki);
+			this.Controls.Add(this.webViewWiki);
 			this.Controls.Add(this.toolBar2);
 			this.Controls.Add(this.ToolBarMain);
 			this.Name = "FormWikiEdit";
@@ -174,7 +170,7 @@ namespace OpenPmsDental{
 		#endregion
 
 		private UI.ToolBarOD ToolBarMain;
-		private System.Windows.Forms.WebBrowser webBrowserWiki;
+		private CodeBase.Controls.ODWebView2 webViewWiki;
 		private System.Windows.Forms.ImageList imageListMain;
 		private System.Windows.Forms.ContextMenuStrip contextMenuMain;
 		private System.Windows.Forms.ToolStripMenuItem menuItemCut;

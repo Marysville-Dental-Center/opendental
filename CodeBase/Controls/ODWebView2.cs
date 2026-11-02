@@ -345,6 +345,27 @@ namespace CodeBase.Controls {
 			ODException.SwallowAnyException(() => File.Delete(path));
 		}
 
+		///<summary>Sets a session cookie for url's host in the browser's cookie store, as InternetSetCookie did for Internet Explorer's control.
+		///cookieData is "name=value" (spaces around either are ignored, attributes after a ';' are dropped). Returns false, and sets nothing, before
+		///initialization or when url or cookieData cannot be used.</summary>
+		public bool SetCookie(string url,string cookieData) {
+			if(CoreWebView2==null) {
+				return false;
+			}
+			Uri uri;
+			if(!Uri.TryCreate(url??"",UriKind.Absolute,out uri) || uri.Host=="") {
+				return false;
+			}
+			string name;
+			string value;
+			if(!WebView2Policy.TryParseCookie(cookieData,out name,out value)) {
+				return false;
+			}
+			CoreWebView2Cookie coreWebView2Cookie=CoreWebView2.CookieManager.CreateCookie(name,value,uri.Host,"/");
+			CoreWebView2.CookieManager.AddOrUpdateCookie(coreWebView2Cookie);
+			return true;
+		}
+
 		///<summary>Shows Windows' print dialog for what the control shows (WebView2's print API). Does nothing before initialization.</summary>
 		public void ShowPrintDialog() {
 			if(CoreWebView2==null) {

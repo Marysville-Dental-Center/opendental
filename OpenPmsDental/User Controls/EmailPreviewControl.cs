@@ -18,7 +18,6 @@ namespace OpenPmsDental {
 
 		///<summary>TODO: Replace this flag with a new flag on the email address object.</summary>
 		private bool _isSigningEnabled=true;
-		private bool _isLoading=false;
 		private bool _isComposing=false;
 		private bool _isSecureEmailReply=false;
 		private EmailMessage _emailMessage=null;		
@@ -52,7 +51,7 @@ namespace OpenPmsDental {
 		private long _patNum;
 		///<summary>_patient's ClinicNum. 0 if _patient is null.</summary>
 		private long _clinicNum;
-		///<summary>string to return the updated htmlText for a composing or sent email. webBrowser.DocumentText doesn't always work. </summary>
+		///<summary>string to return the updated htmlText for a composing or sent email. It is also the HTML the preview shows.</summary>
 		public string HtmlText;
 		public LayoutManagerForms LayoutManager=new LayoutManagerForms();
 		///<summary>lock for _listHistoricContacts and _hasSetHistoricContacts.</summary>
@@ -62,7 +61,7 @@ namespace OpenPmsDental {
 		public string Subject { get { return textSubject.Text; } set { textSubject.Text=value; } }
 		public string BodyText { get { return textBodyText.Text; } set { textBodyText.Text=value; } }
 		///<summary>returns true if the current view is the HTML web browser, false if it is currently on the plain text box.</summary>
-		public bool IsHtml { get {return webBrowser.Visible; } }
+		public bool IsHtml { get {return webViewEmail.Visible; } }
 		public string FromAddress { get { return textFromAddress.Text; } }
 		public string ToAddress { get { return textToAddress.Text; } set { textToAddress.Text=value; } }
 		public string CcAddress { get { return textCcAddress.Text; } set { textCcAddress.Text=value; } }
@@ -128,6 +127,7 @@ namespace OpenPmsDental {
 		public EmailPreviewControl() {
 			InitializeComponent();
 			gridAttachments.ContextMenu=contextMenuAttachments;
+			webViewEmail.LinkClicked+=webViewEmail_LinkClicked;
 		}
 
 		///<summary>Loads the given emailMessage into the control.
@@ -231,7 +231,7 @@ namespace OpenPmsDental {
 			}
 			catch(Exception ex) {
 				textBodyText.Visible=true;
-				webBrowser.Visible=false;
+				webViewEmail.Visible=false;
 				FriendlyException.Show("Error loading HTML.",ex);
 			}
 		}
@@ -239,7 +239,7 @@ namespace OpenPmsDental {
 		///<summary>Attempts to wire EmailMessage into UI.  Can throw.</summary>
 		private void DisplayEmailUnsafe() {
 			textBodyText.Visible=true;
-			webBrowser.Visible=false;
+			webViewEmail.Visible=false;
 			textBodyText.Text=_emailMessage.BodyText;
 			textSentOrReceived.Text=_emailMessage.SentOrReceived.ToString();
 			textFromAddress.Text=_emailMessage.FromAddress;
@@ -291,13 +291,13 @@ namespace OpenPmsDental {
 		///<summary>Sets the email preview window to show the web browser for viewing HTML.</summary>
 		public void InitializeHtmlEmail(bool doThrowException=false) {
 			try {
-				_isLoading=true;
 				textBodyText.Visible=false;
-				webBrowser.Visible=true;
-				LayoutManager.MoveLocation(webBrowser,textBodyText.Location);
-				LayoutManager.MoveSize(webBrowser,textBodyText.Size);
-				webBrowser.DocumentText=HtmlText;
-				webBrowser.BringToFront();
+				webViewEmail.Visible=true;
+				LayoutManager.MoveLocation(webViewEmail,textBodyText.Location);
+				LayoutManager.MoveSize(webViewEmail,textBodyText.Size);
+				//A received email is shown as a page of its own: no scripts, nothing it links to loads in the preview (webViewEmail_LinkClicked).
+				webViewEmail.NavigateToHtml(HtmlText);
+				webViewEmail.BringToFront();
 			}
 			catch(Exception) {
 				if(doThrowException) {
@@ -327,7 +327,7 @@ namespace OpenPmsDental {
 			}
 			else {
 				//load the plain text
-				webBrowser.Visible=false;
+				webViewEmail.Visible=false;
 				textBodyText.Visible=true;
 				textBodyText.BringToFront();
 			}
@@ -696,15 +696,13 @@ namespace OpenPmsDental {
 			try {
 				//We need a folder in order to place the images beside the html file in order for the relative image paths to work correctly.
 				string htmlFolderPath=ODFileUtils.CreateRandomFolder(PrefC.GetTempFolderPath());//Throws exceptions.
-				string filePathHtml=ODFileUtils.CreateRandomFile(htmlFolderPath,".html");
-				string html=webBrowser.DocumentText;
+				string html=HtmlText??"";
 				List<MimeEntity> listMimeEntries=new List<MimeEntity>();
 				listMimeEntries.AddRange(_listAppParts);
 				listMimeEntries.AddRange(_listImageParts);
 				html=ParseAndSaveAttachement(htmlFolderPath,html,listMimeEntries);
-				File.WriteAllText(filePathHtml,html,Encoding.UTF8);
-				_isLoading=true;
-				webBrowser.Navigate(filePathHtml);
+				//The page goes into the images' folder, so their relative paths work. Still no scripts, and links still only go through LinkClicked.
+				webViewEmail.NavigateToHtml(html,htmlFolderPath);
 				butShowImages.Visible=false;
 			}
 			catch(Exception ex) {
@@ -716,25 +714,11 @@ namespace OpenPmsDental {
 			_hasMessageTextChanged=true;
 		}
 
-		private void webBrowser_Navigating(object sender,WebBrowserNavigatingEventArgs e) {
-			if(_isLoading) {
-				return;
-			}
-			e.Cancel=true;//Cancel browser navigation (for links clicked within the email message).
-			if(e.Url.AbsoluteUri=="about:blank") {
-				return;
-			}
-			//if user did not specify a valid url beginning with http:// then the event args would make the url start with "about:" 
-			//ex: about:www.google.com and then would ask the user to get a separate app to open the link since it is unrecognized
-			string url=e.Url.ToString();
-			if(url.StartsWith("about")) {
-				url=url.Replace("about:","http://");
-			}
-			Process.Start(url);//Instead launch the URL into a new default browser window.
-		}
-
-		private void webBrowser_Navigated(object sender,WebBrowserNavigatedEventArgs e) {
-			_isLoading=false;
+		///<summary>A link the user clicked within the email message: the preview never follows it. An http, https or mailto link opens in the
+		///default browser or mail program instead; a link without a scheme, such as www.example.com, counts as http
+		///(WebView2Policy.GetSystemBrowserUrl). Anything else, a file: link for example, does nothing.</summary>
+		private void webViewEmail_LinkClicked(object sender,CodeBase.Controls.ODWebView2LinkEventArgs e) {
+			CodeBase.Controls.WebView2Policy.OpenInSystemBrowser(e.GetSystemBrowserUrl());
 		}
 
 		#endregion Body

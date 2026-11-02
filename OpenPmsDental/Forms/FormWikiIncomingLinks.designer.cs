@@ -24,7 +24,7 @@ namespace OpenPmsDental{
 		/// </summary>
 		private void InitializeComponent() {
 			this.gridMain = new OpenPmsDental.UI.GridOD();
-			this.webBrowserWiki = new System.Windows.Forms.WebBrowser();
+			this.webViewWiki = new CodeBase.Controls.ODWebView2();
 			this.SuspendLayout();
 			// 
 			// gridMain
@@ -40,26 +40,23 @@ namespace OpenPmsDental{
 			this.gridMain.CellDoubleClick += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridMain_CellDoubleClick);
 			this.gridMain.Click += new System.EventHandler(this.gridMain_Click);
 			// 
-			// webBrowserWiki
+			// webViewWiki
 			// 
-			this.webBrowserWiki.AllowNavigation = false;
-			this.webBrowserWiki.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+			this.webViewWiki.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowserWiki.IsWebBrowserContextMenuEnabled = false;
-			this.webBrowserWiki.Location = new System.Drawing.Point(266, 12);
-			this.webBrowserWiki.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowserWiki.Name = "webBrowserWiki";
-			this.webBrowserWiki.Size = new System.Drawing.Size(634, 621);
-			this.webBrowserWiki.TabIndex = 0;
-			this.webBrowserWiki.Navigated += new System.Windows.Forms.WebBrowserNavigatedEventHandler(this.webBrowserWiki_Navigated);
+			this.webViewWiki.IsContextMenuEnabled = false;
+			this.webViewWiki.Location = new System.Drawing.Point(266, 12);
+			this.webViewWiki.Name = "webViewWiki";
+			this.webViewWiki.Size = new System.Drawing.Size(634, 621);
+			this.webViewWiki.TabIndex = 0;
 			// 
 			// FormWikiIncomingLinks
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.ClientSize = new System.Drawing.Size(951, 645);
 			this.Controls.Add(this.gridMain);
-			this.Controls.Add(this.webBrowserWiki);
+			this.Controls.Add(this.webViewWiki);
 			this.Name = "FormWikiIncomingLinks";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 			this.Text = "Incoming Links";
@@ -70,7 +67,7 @@ namespace OpenPmsDental{
 
 		#endregion
 
-		private System.Windows.Forms.WebBrowser webBrowserWiki;
+		private CodeBase.Controls.ODWebView2 webViewWiki;
 		private UI.GridOD gridMain;
 
 	}

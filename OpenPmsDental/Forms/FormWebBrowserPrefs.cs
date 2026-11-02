@@ -14,7 +14,18 @@ namespace OpenPmsDental {
 		///<summary>Default size is 591 x 363. If your info is too big and causes scrolling, then increase the size of the window.</summary>
 		public Size SizeWindow=new Size(0,0);
 
-		///<summary>Used when opening additional details within FormPreferences.  This form will also allow links clicked and opened within this form.</summary>
+		///<summary>The page FormPreferences shows for a preference: the label's text and the preference name, encoded, and the details, which are
+		///HTML from the program's own PrefInfos.xml (links to the manual, line breaks) and stay as they are.</summary>
+		public static string BuildHtml(string labelText,string detailsHtml,string prefName,int fontSizePx) {
+			string body="<p><b>"+HtmlPage.Encode(labelText)+"</b></p>"
+				+"<p>"+(detailsHtml??"")+"</p>";
+			if(!string.IsNullOrEmpty(prefName)) {
+				body+="<p style=\"background-color:rgb(230,230,234)\">Internal PrefName: "+HtmlPage.Encode(prefName)+"</p>";
+			}
+			return HtmlPage.Build(body,bodyStyle:"font-family:sans-serif; font-size:"+fontSizePx+"px");
+		}
+
+		///<summary>Used when opening additional details within FormPreferences. Links in the details open in the default browser.</summary>
 		public FormWebBrowserPrefs() {
 			InitializeComponent();
 			InitializeLayoutManager();
@@ -42,7 +53,6 @@ namespace OpenPmsDental {
 			}
 			try {
 				await webView.Init();
-				webView.CoreWebView2.NewWindowRequested+=CoreWebView2_NewWindowRequested;
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
@@ -54,21 +64,20 @@ namespace OpenPmsDental {
 				return;
 			}
 			webView.Visible=true;
+			webView.LinkClicked+=WebView_LinkClicked;
 			ODException.SwallowAnyException(() => {
-				webView.CoreWebView2.NavigateToString(HtmlContent);
+				webView.NavigateToHtml(HtmlContent);
 			});
-			
 		}
 
-		private void CoreWebView2_NewWindowRequested(object sender,Microsoft.Web.WebView2.Core.CoreWebView2NewWindowRequestedEventArgs e) {
-			//Stop the default Microsoft Edge add-on from launching a new window when a user clicks on a hyperlink
-			//The normal window from control CoreWebView2 does not allow the user to use their default browser and does not allow navigation
-			e.Handled=true;
-			try {
-				Process.Start(e.Uri);
+		///<summary>The page stays as it is: a link opens in the default browser (http and https only), never in this window or a new WebView2 one.</summary>
+		private void WebView_LinkClicked(object sender,CodeBase.Controls.ODWebView2LinkEventArgs e) {
+			string url=e.GetSystemBrowserUrl();
+			if(url=="") {
+				return;
 			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Could not find")+" "+e.Uri+"\r\n"+Lan.g(this,"Please set up a default web browser."));
+			if(!CodeBase.Controls.WebView2Policy.OpenInSystemBrowser(url)) {
+				MessageBox.Show(Lan.g(this,"Could not find")+" "+url+"\r\n"+Lan.g(this,"Please set up a default web browser."));
 			}
 		}
 	}

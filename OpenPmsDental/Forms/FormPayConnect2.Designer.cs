@@ -39,7 +39,6 @@ namespace OpenPmsDental{
 			this.comboTerminal = new OpenPmsDental.UI.ComboBox();
 			this.labelTerminal = new System.Windows.Forms.Label();
 			this.textAmount = new OpenPmsDental.ValidDouble();
-			this.webBrowserMain = new System.Windows.Forms.WebBrowser();
 			this.webViewMain = new CodeBase.Controls.ODWebView2();
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.butRefresh = new OpenPmsDental.UI.Button();
@@ -209,16 +208,7 @@ namespace OpenPmsDental{
 			this.textAmount.Name = "textAmount";
 			this.textAmount.Size = new System.Drawing.Size(118, 20);
 			this.textAmount.TabIndex = 37;
-			// 
-			// webBrowserMain
-			// 
-			this.webBrowserMain.Location = new System.Drawing.Point(420, 23);
-			this.webBrowserMain.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowserMain.Name = "webBrowserMain";
-			this.webBrowserMain.Size = new System.Drawing.Size(500, 400);
-			this.webBrowserMain.TabIndex = 46;
-			this.webBrowserMain.Visible = false;
-			// 
+			//
 			// webViewMain
 			// 
 			this.webViewMain.AllowExternalDrop = true;
@@ -288,7 +278,6 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butRefresh);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.webViewMain);
-			this.Controls.Add(this.webBrowserMain);
 			this.Controls.Add(this.textAmount);
 			this.Controls.Add(this.labelTerminal);
 			this.Controls.Add(this.comboTerminal);
@@ -329,7 +318,6 @@ namespace OpenPmsDental{
 		private UI.ComboBox comboTerminal;
 		private System.Windows.Forms.Label labelTerminal;
 		private ValidDouble textAmount;
-		private System.Windows.Forms.WebBrowser webBrowserMain;
 		private CodeBase.Controls.ODWebView2 webViewMain;
 		private UI.Button butSave;
 		private UI.Button butRefresh;

@@ -4,30 +4,40 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using OpenPmsDentalBusiness;
 using OpenPmsDental.UI;
 using System.Text.RegularExpressions;
 using CodeBase;
+using CodeBase.Controls;
 using DataConnectionBase;
 
 namespace OpenPmsDental {
+	///<summary>What a link in a wiki page points to (FormWiki.ParseLink).</summary>
+	public enum EnumWikiLink {
+		///<summary>Nothing the wiki opens.</summary>
+		None,
+		///<summary>wiki:Page Title</summary>
+		WikiPage,
+		///<summary>wikifile:C:\folder\file.txt</summary>
+		File,
+		///<summary>folder:C:\folder</summary>
+		Folder,
+		///<summary>wikifilecloud:path in the A to Z folder</summary>
+		FileCloud,
+		///<summary>foldercloud:path in the A to Z folder</summary>
+		FolderCloud,
+		///<summary>An http, https or mailto address, for the default browser.</summary>
+		Web,
+	}
+
 	public partial class FormWiki:FormODBase {
-		public WikiPage WikiPageCur;		
+		public WikiPage WikiPageCur;
 		private List<string> _listHistoryNav;
-		private string wikiLinkMouseHoverName=null;
 		///<summary>Number of pages back that you are browsing. Current page == 0, Oldest page == _listHistoryNav.Length. </summary>
 		private int _idxHistoryNavBack;
-		const int FEATURE_DISABLE_NAVIGATION_SOUNDS = 21;
-		const int SET_FEATURE_ON_PROCESS = 0x00000002;
 		private FormWikiSearch _formWikiSearch;
-
-		[DllImport("urlmon.dll")]
-		[PreserveSig]
-		[return: MarshalAs(UnmanagedType.Error)]
-		static extern int CoInternetSetFeatureEnabled(int featureEntry,[MarshalAs(UnmanagedType.U4)] int dwFlags,bool fEnable);
 
 		public FormWiki() {
 			InitializeComponent();
@@ -36,9 +46,6 @@ namespace OpenPmsDental {
 		}
 
 		private void FormWiki_Load(object sender,EventArgs e) {
-			//disable the annoying clicking sound when the browser navigates
-			CoInternetSetFeatureEnabled(FEATURE_DISABLE_NAVIGATION_SOUNDS,SET_FEATURE_ON_PROCESS,true);
-			webBrowserWiki.StatusTextChanged += new EventHandler(WebBrowserWiki_StatusTextChanged);
 			Rectangle rectangleScreen=System.Windows.Forms.Screen.GetWorkingArea(this);
 			Width=LayoutManager.Scale(960);
 			Height=rectangleScreen.Height+(int)LayoutManager.ScaleMS(8);//for the transparent 8 pixels at bottom
@@ -72,17 +79,9 @@ namespace OpenPmsDental {
 			LoadWikiPage(pageTitle);
 		}
 
-		private void WebBrowserWiki_StatusTextChanged(object sender,EventArgs e) {
-			//if(webBrowserWiki.StatusText=="") {
-			//  return;
-			//}
-			labelStatus.Text=webBrowserWiki.StatusText;
-			if(labelStatus.Text=="Done") {
-				labelStatus.Text="";
-			}
-			if(labelStatus.Text!="" && Control.MouseButtons==MouseButtons.Right) {
-				wikiLinkMouseHoverName=webBrowserWiki.StatusText;
-			}
+		///<summary>Shows the address of the link under the mouse.</summary>
+		private void webViewWiki_StatusTextChanged(object sender,EventArgs e) {
+			labelStatus.Text=webViewWiki.StatusText;
 		}
 
 		public void LoadWikiPagePublic(string pageTitle) {
@@ -122,15 +121,15 @@ namespace OpenPmsDental {
 			WikiPageCur=wikiPage;
 			try {
 				float scale=LayoutManager.ScaleMyFont();//Include any Zoom adjustment to increase the font size of the Wiki
-				webBrowserWiki.DocumentText=MarkupEdit.TranslateToXhtml(WikiPageCur.PageContent,false,scale:scale);
+				webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(WikiPageCur.PageContent,false,scale:scale));
 			}
 			catch(Exception ex) {
-				webBrowserWiki.DocumentText="";
+				webViewWiki.NavigateToHtml("");
 				MessageBox.Show(this,Lan.g(this,"This page is broken and cannot be viewed. Click 'Edit' to fix this page.  Error message:")+" "+ex.Message);
 			}
 			Text="Wiki - "+WikiPageCur.PageTitle;
 			#region historyMaint
-			//This region is duplicated in webBrowserWiki_Navigating() for external links.  Modifications here will need to be reflected there.
+			//External links open in the default browser (webViewWiki_LinkClicked), so only wiki pages enter the history.
 			int indexInHistory=_listHistoryNav.Count-(1+_idxHistoryNavBack);//historyNavBack number of pages before the last page in history.  This is the index of the page we are loading.
 			if(_listHistoryNav.Count==0) {//empty history
 				_idxHistoryNavBack=0;
@@ -322,7 +321,7 @@ namespace OpenPmsDental {
 			//else if(pageName.StartsWith("http://")) {//www
 			//  //historyNav.RemoveAt(historyNav.Count-1);//remove the current page from history
 			//  //no need to set the text because the Navigating event will fire and take care of that.
-			//  webBrowserWiki.Navigate(pageName);//adds new page to history
+			//  webViewWiki.Navigate(pageName);//adds new page to history
 			//}
 			//else {
 			//  //?
@@ -355,9 +354,8 @@ namespace OpenPmsDental {
 				LoadWikiPage(pageName);//because it's a duplicate, it won't add it again to the list.
 				return;
 			}
-			if(pageName.StartsWith("http://")) {//www
-				//no need to set the text because the Navigating event will fire and take care of that.
-				webBrowserWiki.Navigate(pageName);
+			if(pageName.StartsWith("http://")) {//www, which the wiki window never shows itself
+				WebView2Policy.OpenInSystemBrowser(pageName);
 			}
 		}
 
@@ -411,7 +409,7 @@ namespace OpenPmsDental {
 			if(WikiPageCur==null) {
 				return;
 			}
-			webBrowserWiki.ShowPrintDialog();
+			webViewWiki.ShowPrintDialog();
 		}
 
 		private void Rename_Click() {
@@ -551,102 +549,93 @@ namespace OpenPmsDental {
 			LoadWikiPage(pageTitle);
 		}
 
-		private void webBrowserWiki_Navigating(object sender,WebBrowserNavigatingEventArgs e) {
-			//For debugging, we need to remember that the following happens when you click on an internal link:
-			//1. This method fires. url includes 'wiki:'
-			//2. This causes LoadWikiPage method to fire.  It loads the document text.
-			//3. Which causes this method to fire again.  url is "about:blank".
-			//This doesn't seem to be a problem.  We wrote it so that it won't go into an infinite loop, but it's something to be aware of.
-			if(e.Url.ToString()=="about:blank" || e.Url.ToString().StartsWith("about:blank#")) {
-				//This is a typical wiki page OR this is an internal bookmark.
-				//We want to let the browser control handle the "navigation" so that it correctly loads the page OR simply auto scrolls to the div.
+		///<summary>Splits a link the user clicked in a wiki page, as the browser reports it, into what it points to (the return value) and the target:
+		///the page title of "wiki:Page Title" (no-break spaces become spaces), the path of "wikifile:" and "folder:" (with backslashes), the A to Z
+		///path of "wikifilecloud:" and "foldercloud:" (the program's own schemes, which MarkupEdit writes), or an http, https or mailto address (Web).
+		///% escapes are undone. Anything else is None, and the click does nothing: the wiki never shows another page, a local file or a remote site
+		///itself. In-page bookmarks never get here (the browser scrolls to them).</summary>
+		public static EnumWikiLink ParseLink(string uri,out string target) {
+			target="";
+			if(string.IsNullOrEmpty(uri)) {
+				return EnumWikiLink.None;
 			}
-			else if(e.Url.ToString().StartsWith("about:")){
-				//All other URLs that start with about: and do not have the required "blank#" are treated as malformed URLs.
-				e.Cancel=true;
-				return;
+			string title=WebView2Policy.GetSchemeTarget(uri,"wiki");
+			if(title!=null) {
+				//It is invalid to have more than one space in a row in URLs, so MarkupEdit's links can hold no-break spaces. Page titles have spaces.
+				target=Regex.Replace(title,@" "," ");
+				return EnumWikiLink.WikiPage;
 			}
-			else if(e.Url.ToString().StartsWith("wiki:")) {//user clicked on an internal link
-				//It is invalid to have more than one space in a row in URLs.
-				//When there is more than one space in a row, WebBrowserNavigatingEventArgs will convert the spaces into '&nbsp'
-				//In order for our internal wiki page links to work, we need to always replace the '&nbsp' chars with spaces again.
-				NavigateToWiki(e.Url.ToString(),isNewWindow:false);
-				e.Cancel=true;
-				return;
+			if(TryGetLinkTarget(uri,"wikifile:",out target)) {
+				target=target.Replace("/","\\");
+				return EnumWikiLink.File;
 			}
-			else if(e.Url.ToString().Contains("wikifile:")) {
-				string fileName=e.Url.ToString().Substring(e.Url.ToString().LastIndexOf("wikifile:")+9).Replace("/","\\");
-				if(!File.Exists(fileName)) {
-					MessageBox.Show(Lan.g(this,"File does not exist: ")+fileName);
-					e.Cancel=true;
+			if(TryGetLinkTarget(uri,"folder:",out target)) {
+				target=target.Replace("/","\\");
+				return EnumWikiLink.Folder;
+			}
+			if(TryGetLinkTarget(uri,"wikifilecloud:",out target)) {
+				return EnumWikiLink.FileCloud;
+			}
+			if(TryGetLinkTarget(uri,"foldercloud:",out target)) {
+				return EnumWikiLink.FolderCloud;
+			}
+			if(WebView2Policy.IsSystemBrowserUrl(uri)) {
+				target=uri;
+				return EnumWikiLink.Web;
+			}
+			return EnumWikiLink.None;
+		}
+
+		///<summary>The text after the last scheme ("wikifile:", for example) in uri, with % escapes undone. False when uri holds no such scheme.</summary>
+		private static bool TryGetLinkTarget(string uri,string scheme,out string target) {
+			target="";
+			int idx=uri.LastIndexOf(scheme,StringComparison.OrdinalIgnoreCase);
+			if(idx<0) {
+				return false;
+			}
+			target=Uri.UnescapeDataString(uri.Substring(idx+scheme.Length));
+			return true;
+		}
+
+		///<summary>A link the user clicked in the wiki page (the browser never follows it): a wiki page loads here, or in a new wiki window for
+		///Ctrl+click and "Open link in new window"; files and folders open with Windows; web addresses open in the default browser.</summary>
+		private void webViewWiki_LinkClicked(object sender,ODWebView2LinkEventArgs e) {
+			string target;
+			switch(ParseLink(e.Uri,out target)) {
+				case EnumWikiLink.WikiPage:
+					NavigateToWiki("wiki:"+target,isNewWindow:e.IsNewWindow);
 					return;
-				}
-				try {
-					System.Diagnostics.Process.Start(fileName);
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-				}
-				e.Cancel=true;
-				return;
-			}
-			else if(e.Url.ToString().Contains("folder:")) {
-				string folderName=e.Url.ToString().Substring(e.Url.ToString().LastIndexOf("folder:")+7).Replace("/","\\");
-				if(!Directory.Exists(folderName)) {
-					MessageBox.Show(Lan.g(this,"Folder does not exist: ")+folderName);
-					e.Cancel=true;
+				case EnumWikiLink.File:
+					if(!File.Exists(target)) {
+						MessageBox.Show(Lan.g(this,"File does not exist: ")+target);
+						return;
+					}
+					ODException.SwallowAnyException(() => System.Diagnostics.Process.Start(target));
 					return;
-				}
-				try {
-					System.Diagnostics.Process.Start(folderName);
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-				}
-				e.Cancel=true;
-				return;
-			}
-			else if(e.Url.ToString().Contains("wikifilecloud:")) {
-				string fileName=e.Url.ToString().Substring(e.Url.ToString().LastIndexOf("wikifilecloud:")+14);
-				if(!FileAtoZ.Exists(fileName)) {
-					MessageBox.Show(Lan.g(this,"File does not exist: ")+fileName);
-					e.Cancel=true;
+				case EnumWikiLink.Folder:
+					if(!Directory.Exists(target)) {
+						MessageBox.Show(Lan.g(this,"Folder does not exist: ")+target);
+						return;
+					}
+					ODException.SwallowAnyException(() => System.Diagnostics.Process.Start(target));
 					return;
-				}
-				try {
-					FileAtoZ.StartProcess(fileName);
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-				}
-				e.Cancel=true;
-				return;
-			}
-			else if(e.Url.ToString().Contains("foldercloud:")) {
-				string folderName=e.Url.ToString().Substring(e.Url.ToString().LastIndexOf("foldercloud:")+12);
-				if(!FileAtoZ.DirectoryExists(folderName)) {
-					MessageBox.Show(Lan.g(this,"Folder does not exist: ")+folderName);
-					e.Cancel=true;
+				case EnumWikiLink.FileCloud:
+					if(!FileAtoZ.Exists(target)) {
+						MessageBox.Show(Lan.g(this,"File does not exist: ")+target);
+						return;
+					}
+					ODException.SwallowAnyException(() => FileAtoZ.StartProcess(target));
 					return;
-				}
-				try {
-					FileAtoZ.OpenDirectory(folderName);
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-				}
-				e.Cancel=true;
-				return;
-			}
-			else if(e.Url.ToString().StartsWith("http")) {//navigating outside of wiki by clicking a link
-				try {
-					System.Diagnostics.Process.Start(e.Url.ToString());
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-				}
-				e.Cancel=true;//Stops the page from loading in FormWiki.
-				return;
+				case EnumWikiLink.FolderCloud:
+					if(!FileAtoZ.DirectoryExists(target)) {
+						MessageBox.Show(Lan.g(this,"Folder does not exist: ")+target);
+						return;
+					}
+					ODException.SwallowAnyException(() => FileAtoZ.OpenDirectory(target));
+					return;
+				case EnumWikiLink.Web://navigating outside of wiki by clicking a link
+					WebView2Policy.OpenInSystemBrowser(target);
+					return;
 			}
 		}
 
@@ -690,32 +679,6 @@ namespace OpenPmsDental {
 			else {
 				_idxHistoryNavBack--;//We have to decrement historyNavBack to tell whether or not we need to branch our page history or add to page history
 				LoadWikiPage(pageTitle);
-			}
-		}
-
-		private void webBrowserWiki_DocumentCompleted(object sender,WebBrowserDocumentCompletedEventArgs e) {			
-		}
-
-		private void webBrowserWiki_NewWindow(object sender,CancelEventArgs e) {
-			//right click option
-			if(wikiLinkMouseHoverName==null) {
-				e.Cancel=true;
-				return;
-			}
-			if(wikiLinkMouseHoverName.StartsWith("http")) {
-				try {
-					System.Diagnostics.Process.Start(wikiLinkMouseHoverName);
-				}
-				catch(Exception ex) {
-					ex.DoNothing();
-				}
-				e.Cancel=true;
-				return;
-			}
-			if(wikiLinkMouseHoverName.StartsWith("wiki:")) {
-				NavigateToWiki(wikiLinkMouseHoverName,isNewWindow:true);
-				e.Cancel=true;
-				return;
 			}
 		}
 

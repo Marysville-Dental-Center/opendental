@@ -27,7 +27,7 @@
 			this.labelHtml = new System.Windows.Forms.Label();
 			this.labelNoHtml = new System.Windows.Forms.Label();
 			this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
-			this.webBrowserEmail = new System.Windows.Forms.WebBrowser();
+			this.webViewEmail = new CodeBase.Controls.ODWebView2();
 			this.textboxPlainText = new OpenPmsDental.ODtextBox();
 			this.tableLayoutPanel1.SuspendLayout();
 			this.SuspendLayout();
@@ -70,7 +70,7 @@
 			this.tableLayoutPanel1.ColumnCount = 2;
 			this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
 			this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-			this.tableLayoutPanel1.Controls.Add(this.webBrowserEmail, 1, 1);
+			this.tableLayoutPanel1.Controls.Add(this.webViewEmail, 1, 1);
 			this.tableLayoutPanel1.Controls.Add(this.textboxPlainText, 0, 1);
 			this.tableLayoutPanel1.Controls.Add(this.labelHtml, 1, 0);
 			this.tableLayoutPanel1.Controls.Add(this.labelPlainText, 0, 0);
@@ -82,16 +82,15 @@
 			this.tableLayoutPanel1.Size = new System.Drawing.Size(861, 245);
 			this.tableLayoutPanel1.TabIndex = 114;
 			// 
-			// webBrowserEmail
+			// webViewEmail
 			// 
-			this.webBrowserEmail.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+			this.webViewEmail.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowserEmail.Location = new System.Drawing.Point(433, 28);
-			this.webBrowserEmail.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowserEmail.Name = "webBrowserEmail";
-			this.webBrowserEmail.Size = new System.Drawing.Size(425, 214);
-			this.webBrowserEmail.TabIndex = 108;
+			this.webViewEmail.Location = new System.Drawing.Point(433, 28);
+			this.webViewEmail.Name = "webViewEmail";
+			this.webViewEmail.Size = new System.Drawing.Size(425, 214);
+			this.webViewEmail.TabIndex = 108;
 			// 
 			// textboxPlainText
 			// 
@@ -127,7 +126,7 @@
 
 		private System.Windows.Forms.Label labelPlainText;
 		private System.Windows.Forms.Label labelHtml;
-		private System.Windows.Forms.WebBrowser webBrowserEmail;
+		private CodeBase.Controls.ODWebView2 webViewEmail;
 		private System.Windows.Forms.Label labelNoHtml;
 		private ODtextBox textboxPlainText;
 		private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;

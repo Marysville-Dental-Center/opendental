@@ -280,7 +280,6 @@ Events:
 		FormTrojanCollect,
 		FormTrophyNamePick,
 		FormVideo,
-		FormWebBrowser,
 		FormWebView
 	}
 }

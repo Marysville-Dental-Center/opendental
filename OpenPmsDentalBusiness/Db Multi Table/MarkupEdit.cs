@@ -125,7 +125,7 @@ namespace OpenPmsDentalBusiness {
 					}
 					fullPath=FileAtoZ.CombinePaths(imagePath,POut.String(imgName));
 					if(CloudStorage.IsCloudStorage) {				
-						//WebBrowser needs to have a local file to open, so we download the images to temp files.	
+						//The browser shows the page from a local file (ODWebView2.NavigateToHtml) and needs local image files too, so we download the images to temp files.	
 						byte[] byteArray=CloudStorage.Download(Path.GetDirectoryName(fullPath),Path.GetFileName(fullPath));
 						string tempFile=PrefC.GetRandomTempFile(Path.GetExtension(fullPath));
 						File.WriteAllBytes(tempFile,byteArray);
@@ -241,7 +241,7 @@ namespace OpenPmsDentalBusiness {
 					}
 					string fullPath=FileAtoZ.CombinePaths(wikiPath,POut.String(imgName));
 					if(CloudStorage.IsCloudStorage) {				
-						//WebBrowser needs to have a local file to open, so we download the images to temp files.
+						//The browser shows the page from a local file (ODWebView2.NavigateToHtml) and needs local image files too, so we download the images to temp files.
 						byte[] byteArray=CloudStorage.Download(Path.GetDirectoryName(fullPath),Path.GetFileName(fullPath));
 						string tempFile=PrefC.GetRandomTempFile(Path.GetExtension(fullPath));
 						File.WriteAllBytes(tempFile,byteArray);
