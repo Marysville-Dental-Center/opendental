@@ -49,7 +49,7 @@ namespace OpenPmsDental {
 			this.menuItemRemove = new System.Windows.Forms.MenuItem();
 			this.butEditHtml = new OpenPmsDental.UI.Button();
 			this.butEditText = new OpenPmsDental.UI.Button();
-			this.webBrowserHtml = new System.Windows.Forms.WebBrowser();
+			this.webViewHtml = new CodeBase.Controls.ODWebView2();
 			this.groupBoxOD1 = new OpenPmsDental.UI.GroupBox();
 			this.label4 = new System.Windows.Forms.Label();
 			this.groupBoxOD1.SuspendLayout();
@@ -231,19 +231,17 @@ namespace OpenPmsDental {
 			this.butEditText.Text = "Edit Text";
 			this.butEditText.Click += new System.EventHandler(this.butEditText_Click);
 			// 
-			// webBrowserHtml
+			// webViewHtml
 			// 
-			this.webBrowserHtml.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+			this.webViewHtml.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowserHtml.Location = new System.Drawing.Point(97, 86);
-			this.webBrowserHtml.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowserHtml.Name = "webBrowserHtml";
-			this.webBrowserHtml.Size = new System.Drawing.Size(861, 564);
-			this.webBrowserHtml.TabIndex = 42;
-			this.webBrowserHtml.Visible = false;
-			this.webBrowserHtml.Navigated += new System.Windows.Forms.WebBrowserNavigatedEventHandler(this.webBrowserHtml_Navigated);
-			this.webBrowserHtml.Navigating += new System.Windows.Forms.WebBrowserNavigatingEventHandler(this.webBrowserHtml_Navigating);
+			this.webViewHtml.AreBrowserKeysEnabled = true;
+			this.webViewHtml.Location = new System.Drawing.Point(97, 86);
+			this.webViewHtml.Name = "webViewHtml";
+			this.webViewHtml.Size = new System.Drawing.Size(861, 564);
+			this.webViewHtml.TabIndex = 42;
+			this.webViewHtml.Visible = false;
 			// 
 			// groupBoxOD1
 			// 
@@ -279,7 +277,7 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.textBodyText);
 			this.Controls.Add(this.label2);
 			this.Controls.Add(this.butSave);
-			this.Controls.Add(this.webBrowserHtml);
+			this.Controls.Add(this.webViewHtml);
 			this.Name = "FormEmailTemplateEdit";
 			this.ShowInTaskbar = false;
 			this.Text = "Edit Email Template";
@@ -306,7 +304,7 @@ namespace OpenPmsDental {
 		private MenuItem menuItemRemove;
 		private UI.Button butEditHtml;
 		private UI.Button butEditText;
-		private WebBrowser webBrowserHtml;
+		private CodeBase.Controls.ODWebView2 webViewHtml;
 		private UI.GroupBox groupBoxOD1;
 		private Label label4;
 	}

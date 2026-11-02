@@ -118,6 +118,7 @@
     <Compile Include="Controls\ODWebView2.Designer.cs">
       <DependentUpon>ODWebView2.cs</DependentUpon>
     </Compile>
+    <Compile Include="Controls\WebView2Policy.cs" />
     <Compile Include="Controls\OpenGLWinFormsControl.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -188,6 +189,7 @@
     <Compile Include="Utilities\EmailUtils.cs" />
     <Compile Include="Progress\IODProgress.cs" />
     <Compile Include="Utilities\LoggerOld.cs" />
+    <Compile Include="Utilities\HtmlPage.cs" />
     <Compile Include="Utilities\ODBuild.cs" />
     <Compile Include="Utilities\ODClassExtensions.cs" />
     <Compile Include="Utilities\ODInitialize.cs" />

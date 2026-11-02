@@ -272,14 +272,7 @@ namespace OpenPmsDental {
 				return;
 			}
 			panelInfo.Visible=false;
-			string html="<!DOCTYPE html><html><head><meta charset=\"UTF-8\"></head>"
-				+"<body style='font-family:sans-serif; font-size:"+(int)LayoutManager.ScaleFontODZoom(11)+"px'>"
-				+"<p><b>"+control.Text+"</b></p>"
-				+"<p>"+prefInf.Details+"</p>";
-			if(prefInf.PrefName!=""){
-				html+="<p style=\"background-color:rgb(230,230,234)\">Internal PrefName: "+prefInf.PrefName+"</p>";
-			}
-			html+="</body><html>";
+			string html=FormWebBrowserPrefs.BuildHtml(control.Text,prefInf.Details,prefInf.PrefName,(int)LayoutManager.ScaleFontODZoom(11));
 			if(formWebBrowserPrefs!=null && formWebBrowserPrefs.Visible){
 				formWebBrowserPrefs.Close();
 			}

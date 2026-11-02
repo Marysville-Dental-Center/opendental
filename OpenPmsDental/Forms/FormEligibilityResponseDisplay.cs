@@ -8,7 +8,6 @@ using System.ComponentModel;
 using System.Windows.Forms;
 using OpenPmsDentalBusiness;
 using System.Xml;
-//using mshtml;
 
 namespace OpenPmsDental {
 	///<summary></summary>

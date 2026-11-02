@@ -67,19 +67,20 @@ namespace OpenPmsDental {
 
 		private void LoadWikiPage(string wikiPageTitle) {
 			bool wantToEdit=false;
-			webBrowserWiki.AllowNavigation=true;
 			butRestore.Enabled=false;
 			try {
 				if(checkArchivedOnly.Checked) {
-					webBrowserWiki.DocumentText=MarkupEdit.TranslateToXhtml(WikiPages.GetByTitle(wikiPageTitle,isDeleted:true).PageContent,true);
+					webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(WikiPages.GetByTitle(wikiPageTitle,isDeleted:true).PageContent,true),
+						isRemoteContentAllowed:true,listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:false));
 					butRestore.Enabled=true;
 				}
 				else {
-					webBrowserWiki.DocumentText=MarkupEdit.TranslateToXhtml(WikiPages.GetByTitle(wikiPageTitle).PageContent,true);
+					webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(WikiPages.GetByTitle(wikiPageTitle).PageContent,true),
+						isRemoteContentAllowed:true,listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:false));
 				}
 			}
 			catch(Exception ex) {
-				webBrowserWiki.DocumentText="";
+				webViewWiki.NavigateToHtml("");
 				FriendlyException.Show("This page is broken and cannot be viewed.",ex);
 				if(MessageBox.Show(this,Lan.g(this,"Would you like to edit this wiki page?"),
 					Lan.g(this,"Wiki page content error"),MessageBoxButtons.YesNo)==DialogResult.No)
@@ -124,7 +125,7 @@ namespace OpenPmsDental {
 				gridMain.ListGridRows.Add(row);
 			}
 			gridMain.EndUpdate();
-			webBrowserWiki.DocumentText="";
+			webViewWiki.NavigateToHtml("");
 			//The search stops at the limit, so reaching it means there may be more matches.
 			labelLimitInfo.Visible=(limit>0 && _listWikiPageTitles.Count>=limit);
 			labelLimitInfo.Text=Lan.g(this,"Showing first")+" "+limit+" "+Lan.g(this,"matches");
@@ -195,10 +196,6 @@ namespace OpenPmsDental {
 
 		private void checkBoxMatchWholeWord_CheckedChanged(object sender,EventArgs e) {
 			FillGrid();
-		}
-
-		private void webBrowserWiki_Navigated(object sender,WebBrowserNavigatedEventArgs e) {
-			webBrowserWiki.AllowNavigation=false;//to disable links in pages.
 		}
 
 		private void butRestore_Click(object sender,EventArgs e) {

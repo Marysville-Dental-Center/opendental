@@ -19,7 +19,6 @@ namespace OpenPmsDental {
 		private List<EmailAttach> _listEmailAttachesOld=new List<EmailAttach>();
 		private bool _hasTextChanged;
 		private bool _isRaw;
-		private bool _isLoading;
 
 		///<summary>The fully translated HTML text with the master template, as it would show in a web browser.</summary>
 		private string _htmlDocument;
@@ -33,10 +32,10 @@ namespace OpenPmsDental {
 			InitializeComponent();
 			InitializeLayoutManager();
 			Lan.F(this);
+			webViewHtml.LinkClicked+=webViewHtml_LinkClicked;
 		}
 
 		private void FormEmailTemplateEdit_Load(object sender, System.EventArgs e) {
-			_isLoading=true;
 			gridAttachments.ContextMenu=contextMenuAttachments;
 			textSubject.Text=EmailTemplateCur.Subject;
 			textDescription.Text=EmailTemplateCur.Description;
@@ -187,25 +186,10 @@ namespace OpenPmsDental {
 		private void textBodyText_KeyDown(object sender,KeyEventArgs e) {
 			_hasTextChanged=true;
 		}
-		private void webBrowserHtml_Navigating(object sender,WebBrowserNavigatingEventArgs e) {
-			if(_isLoading) {
-				return;
-			}
-			e.Cancel=true;//Cancel browser navigation (for links clicked within the email message).
-			if(e.Url.AbsoluteUri=="about:blank") {
-				return;
-			}
-			//if user did not specify a valid url beginning with http:// then the event args would make the url start with "about:" 
-			//ex: about:www.google.com and then would ask the user to get a separate app to open the link since it is unrecognized
-			string url=e.Url.ToString();
-			if(url.StartsWith("about")) {
-				url=url.Replace("about:","http://");
-			}
-			Process.Start(url);//Instead launch the URL into a new default browser window.
-		}
-
-		private void webBrowserHtml_Navigated(object sender,WebBrowserNavigatedEventArgs e) {
-			_isLoading=false;
+		///<summary>A link clicked within the email message: the preview never follows it. An http, https or mailto link opens in the default
+		///browser or mail program instead; a link without a scheme, such as www.example.com, counts as http (WebView2Policy.GetSystemBrowserUrl).</summary>
+		private void webViewHtml_LinkClicked(object sender,CodeBase.Controls.ODWebView2LinkEventArgs e) {
+			CodeBase.Controls.WebView2Policy.OpenInSystemBrowser(e.GetSystemBrowserUrl());
 		}
 
 		///<summary>Refreshes the email preview pane to show the web browser when viewing HTML and the editable text if not.</summary>
@@ -232,9 +216,10 @@ namespace OpenPmsDental {
 			if(isHtml || _isRaw) {
 				try {
 					textBodyText.Visible=false;
-					webBrowserHtml.Visible=true;
-					webBrowserHtml.DocumentText=_htmlDocument;
-					webBrowserHtml.BringToFront();
+					webViewHtml.Visible=true;
+					//The office's own template: its images come from the email images folder or the web, as they will for the recipient.
+					webViewHtml.NavigateToHtml(_htmlDocument,isRemoteContentAllowed:true,listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:true));
+					webViewHtml.BringToFront();
 				}
 				catch(Exception ex) {
 					ex.DoNothing();
@@ -243,7 +228,7 @@ namespace OpenPmsDental {
 			}
 			else {
 				//load the plain text
-				webBrowserHtml.Visible=false;
+				webViewHtml.Visible=false;
 				textBodyText.Visible=true;
 				textBodyText.BringToFront();
 			}
@@ -261,7 +246,7 @@ namespace OpenPmsDental {
 			EmailTemplateCur.Subject=textSubject.Text;
 			EmailTemplateCur.BodyText=textBodyText.Text;//always save as plain text version. We will translate to html on loading. 
 			EmailTemplateCur.Description=textDescription.Text;
-			if(!webBrowserHtml.Visible) {
+			if(!webViewHtml.Visible) {
 				EmailTemplateCur.TemplateType=EmailType.Regular;
 			}
 			else {

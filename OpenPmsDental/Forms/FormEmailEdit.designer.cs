@@ -27,7 +27,7 @@ namespace OpenPmsDental{
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEmailEdit));
 			this.imageListMain = new System.Windows.Forms.ImageList(this.components);
 			this.textContentEmail = new OpenPmsDental.ODcodeBox();
-			this.webBrowserEmail = new System.Windows.Forms.WebBrowser();
+			this.webViewEmail = new CodeBase.Controls.ODWebView2();
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.toolBarBottom = new OpenPmsDental.UI.ToolBarOD();
 			this.toolBarTop = new OpenPmsDental.UI.ToolBarOD();
@@ -77,20 +77,16 @@ namespace OpenPmsDental{
 			this.textContentEmail.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.textContentEmail_KeyPress);
 			this.textContentEmail.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.textContentEmail_MouseDoubleClick);
 			// 
-			// webBrowserEmail
+			// webViewEmail
 			// 
-			this.webBrowserEmail.AllowWebBrowserDrop = false;
-			this.webBrowserEmail.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+			this.webViewEmail.AllowExternalDrop = false;
+			this.webViewEmail.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowserEmail.Location = new System.Drawing.Point(622, 56);
-			this.webBrowserEmail.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowserEmail.Name = "webBrowserEmail";
-			this.webBrowserEmail.Size = new System.Drawing.Size(606, 592);
-			this.webBrowserEmail.TabIndex = 86;
-			this.webBrowserEmail.WebBrowserShortcutsEnabled = false;
-			this.webBrowserEmail.Navigated += new System.Windows.Forms.WebBrowserNavigatedEventHandler(this.webBrowserEmail_Navigated);
-			this.webBrowserEmail.Navigating += new System.Windows.Forms.WebBrowserNavigatingEventHandler(this.webBrowserEmail_Navigating);
+			this.webViewEmail.Location = new System.Drawing.Point(622, 56);
+			this.webViewEmail.Name = "webViewEmail";
+			this.webViewEmail.Size = new System.Drawing.Size(606, 592);
+			this.webViewEmail.TabIndex = 86;
 			// 
 			// butSave
 			// 
@@ -161,7 +157,7 @@ namespace OpenPmsDental{
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.checkIsRaw);
 			this.Controls.Add(this.textContentEmail);
-			this.Controls.Add(this.webBrowserEmail);
+			this.Controls.Add(this.webViewEmail);
 			this.Controls.Add(this.toolBarBottom);
 			this.Controls.Add(this.toolBarTop);
 			this.Controls.Add(this.labelPreview);
@@ -182,7 +178,7 @@ namespace OpenPmsDental{
 		private System.Windows.Forms.ImageList imageListMain;
 		private UI.Button butSave;
 		private ODcodeBox textContentEmail;
-		private System.Windows.Forms.WebBrowser webBrowserEmail;
+		private CodeBase.Controls.ODWebView2 webViewEmail;
 		private System.Windows.Forms.Label labelPreview;
 		private System.Windows.Forms.Label labelPlainText;
 		private System.Windows.Forms.ContextMenu menuAutographDropdown;

@@ -28,7 +28,7 @@ namespace OpenPmsDental{
 			this.textContent = new OpenPmsDental.ODcodeBox();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butCompare = new OpenPmsDental.UI.Button();
-			this.webBrowserWiki = new System.Windows.Forms.WebBrowser();
+			this.webViewWiki = new CodeBase.Controls.ODWebView2();
 			this.SuspendLayout();
 			// 
 			// labelNotAuthorized
@@ -83,23 +83,22 @@ namespace OpenPmsDental{
 			this.butCompare.UseVisualStyleBackColor = false;
 			this.butCompare.Click += new System.EventHandler(this.butCompare_Click);
 			// 
-			// webBrowserWiki
+			// webViewWiki
 			// 
-			this.webBrowserWiki.AllowWebBrowserDrop = false;
-			this.webBrowserWiki.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+			this.webViewWiki.AllowExternalDrop = false;
+			this.webViewWiki.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowserWiki.IsWebBrowserContextMenuEnabled = false;
-			this.webBrowserWiki.Location = new System.Drawing.Point(707, 42);
-			this.webBrowserWiki.Name = "webBrowserWiki";
-			this.webBrowserWiki.Size = new System.Drawing.Size(435, 584);
-			this.webBrowserWiki.TabIndex = 87;
-			this.webBrowserWiki.WebBrowserShortcutsEnabled = false;
+			this.webViewWiki.IsContextMenuEnabled = false;
+			this.webViewWiki.Location = new System.Drawing.Point(707, 42);
+			this.webViewWiki.Name = "webViewWiki";
+			this.webViewWiki.Size = new System.Drawing.Size(435, 584);
+			this.webViewWiki.TabIndex = 87;
 			// 
 			// FormWikiHistory
 			// 
 			this.ClientSize = new System.Drawing.Size(1154, 638);
-			this.Controls.Add(this.webBrowserWiki);
+			this.Controls.Add(this.webViewWiki);
 			this.Controls.Add(this.butCompare);
 			this.Controls.Add(this.labelNotAuthorized);
 			this.Controls.Add(this.butRevert);
@@ -120,6 +119,6 @@ namespace OpenPmsDental{
 		private UI.Button butRevert;
 		private System.Windows.Forms.Label labelNotAuthorized;
 		private UI.Button butCompare;
-		private System.Windows.Forms.WebBrowser webBrowserWiki;
+		private CodeBase.Controls.ODWebView2 webViewWiki;
 	}
 }

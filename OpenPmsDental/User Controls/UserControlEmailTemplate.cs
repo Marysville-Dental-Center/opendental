@@ -9,6 +9,7 @@ namespace OpenPmsDental {
 		public UserControlEmailTemplate() {
 			InitializeComponent();
 			Font=LayoutManagerForms.FontInitial;
+			webViewEmail.LinkClicked+=webViewEmail_LinkClicked;
 		}
 
 		public void RefreshView(string plainText,string htmlText,EmailType emailType) {
@@ -16,7 +17,7 @@ namespace OpenPmsDental {
 			if(string.IsNullOrEmpty(htmlText)) {
 				labelNoHtml.Visible=true;
 				labelHtml.Visible=false;
-				webBrowserEmail.Visible=false;
+				webViewEmail.Visible=false;
 				tableLayoutPanel1.ColumnStyles[1].Width=0;
 				
 			}
@@ -24,7 +25,7 @@ namespace OpenPmsDental {
 				labelNoHtml.Visible=false;
 				labelHtml.Visible=true;
 				tableLayoutPanel1.ColumnStyles[1].Width=50;//50%
-				webBrowserEmail.Visible=true;
+				webViewEmail.Visible=true;
 				string xhtml=htmlText;
 				if(emailType==EmailType.Html) {
 					//This might not work for images, we should consider blocking them or warning them about sending if we detect images
@@ -35,8 +36,14 @@ namespace OpenPmsDental {
 						ex.DoNothing();
 					}
 				}
-				webBrowserEmail.DocumentText=xhtml;
+				//Images from the email images folder only; nothing from the web.
+				webViewEmail.NavigateToHtml(xhtml,listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:true));
 			}
+		}
+
+		///<summary>A link clicked in the preview opens in the default browser or mail program (http, https and mailto only), never in the preview.</summary>
+		private void webViewEmail_LinkClicked(object sender,CodeBase.Controls.ODWebView2LinkEventArgs e) {
+			CodeBase.Controls.WebView2Policy.OpenInSystemBrowser(e.GetSystemBrowserUrl());
 		}
 
 

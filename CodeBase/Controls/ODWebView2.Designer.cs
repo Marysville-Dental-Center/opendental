@@ -13,6 +13,9 @@
 			if(disposing && (components != null)) {
 				components.Dispose();
 			}
+			if(disposing) {
+				ClearDocument();//The page file of NavigateToHtml.
+			}
 			base.Dispose(disposing);
 		}
 

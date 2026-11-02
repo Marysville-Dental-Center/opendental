@@ -112,7 +112,6 @@
 			this.checkBox3 = new OpenPmsDental.UI.CheckBox();
 			this.textBox14 = new System.Windows.Forms.TextBox();
 			this.splitterPanel2 = new OpenPmsDental.UI.SplitterPanel();
-			this.webBrowser = new System.Windows.Forms.WebBrowser();
 			this.monthCalendarOD = new OpenPmsDental.UI.MonthCalendarOD();
 			this.dateTerm = new OpenPmsDental.UI.ODDatePicker();
 			this.label15 = new System.Windows.Forms.Label();
@@ -964,20 +963,10 @@
 			// 
 			// splitterPanel2
 			// 
-			this.splitterPanel2.Controls.Add(this.webBrowser);
 			this.splitterPanel2.Location = new System.Drawing.Point(0, 134);
 			this.splitterPanel2.Name = "splitterPanel2";
 			this.splitterPanel2.Size = new System.Drawing.Size(228, 124);
 			this.splitterPanel2.TabIndex = 14;
-			// 
-			// webBrowser
-			// 
-			this.webBrowser.Dock = System.Windows.Forms.DockStyle.Fill;
-			this.webBrowser.Location = new System.Drawing.Point(0, 0);
-			this.webBrowser.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowser.Name = "webBrowser";
-			this.webBrowser.Size = new System.Drawing.Size(228, 124);
-			this.webBrowser.TabIndex = 0;
 			// 
 			// monthCalendarOD
 			// 
@@ -1318,7 +1307,6 @@
 		private OpenPmsDental.UI.CheckBox checkBox3;
 		private System.Windows.Forms.TextBox textBox14;
 		private OpenPmsDental.UI.SplitterPanel splitterPanel2;
-		private System.Windows.Forms.WebBrowser webBrowser;
 		private OpenPmsDental.UI.MonthCalendarOD monthCalendarOD;
 		private OpenPmsDental.UI.ODDatePicker dateTerm;
 		private System.Windows.Forms.Label label15;

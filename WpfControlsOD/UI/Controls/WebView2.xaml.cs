@@ -16,6 +16,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using CodeBase;
+using CodeBase.Controls;
 using Microsoft.Web.WebView2.Core;
 
 namespace WpfControls.UI {
@@ -32,7 +33,7 @@ namespace WpfControls.UI {
 			Close();
 			return;
 		}
-		webView2.Navigate("https://www.opendental.com/");
+		webView2.Navigate("https://www.example.com/");
 	}
 	-WebView2 must be disposed correctly or it will throw a System.InvalidOperationException.
 	-Call the webView2.Dispose() method on FormClosing:
@@ -51,14 +52,16 @@ namespace WpfControls.UI {
 
 		public event EventHandler<CoreWebView2NavigationCompletedEventArgs> NavigationCompleted;
 
+		///<summary>Initializes the browser in the user data folder that every browser of the program shares, %LOCALAPPDATA%\OpenPMS-Dental\WebView2
+		///(CodeBase.Controls.WebView2Policy). WebView2's own default, next to the exe, is the installation folder, which users cannot write to; the
+		///temp folder is emptied when the program closes. No host objects; dev tools only in Debug builds. Throws if the WebView2 Runtime is not
+		///installed.</summary>
 		public async Task Init() {
-			//Was like below by default, which didn't work because of file permissions in that folder.
-			//string userDataFolder= "C:\\Program Files (x86)\\OpenPmsDental\\OpenPmsDental.exe.WebView2";
-			//New location is like this:
-			//C:\\Users\\User\\AppData\\Local\\Temp\\opendental
-			string userDataFolder=OpenPmsDentalBusiness.PrefC.GetTempFolderPath();
+			string userDataFolder=WebView2Policy.GetUserDataFolder();
 			CoreWebView2Environment webView2Environment=await CoreWebView2Environment.CreateAsync(null,userDataFolder,null);
 			await webView2.EnsureCoreWebView2Async(webView2Environment);
+			WebView2Policy.ApplySecureSettings(webView2.CoreWebView2.Settings);
+			webView2.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled=false;
 		}
 
 		private void WebView2_NavigationStarting(object sender,CoreWebView2NavigationStartingEventArgs e) {
@@ -108,13 +111,11 @@ namespace WpfControls.UI {
 
 		private void WebView2_NavigationCompleted(object sender,CoreWebView2NavigationCompletedEventArgs e) {
 			NavigationCompleted?.Invoke(sender,e);
-			Microsoft.Web.WebView2.Wpf.WebView2 webView2=sender as Microsoft.Web.WebView2.Wpf.WebView2;
-			if(webView2!=null) {
-				dynamic activeX=webView2.GetType().InvokeMember("ActiveXInstance",
-						BindingFlags.GetProperty | BindingFlags.Instance | BindingFlags.NonPublic,
-						binder:null,webView2,new object[] { });
-				activeX.Silent=true;
-			}
+		}
+
+		///<summary>Shows Windows' print dialog for the page (WebView2's print API). Does nothing before Init.</summary>
+		public void ShowPrintDialog() {
+			webView2.CoreWebView2?.ShowPrintUI(CoreWebView2PrintDialogKind.System);
 		}
 
 		public void Dispose() {

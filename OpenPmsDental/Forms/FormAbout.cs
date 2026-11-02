@@ -7,7 +7,6 @@ using System.Windows.Forms;
 using CodeBase;
 using DataConnectionBase;
 using OpenPmsDentalBusiness;
-//using mshtml;
 
 namespace OpenPmsDental{
 	///<summary>Form can be found at Help Tab->About</summary>

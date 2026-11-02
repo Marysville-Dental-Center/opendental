@@ -76,19 +76,20 @@ namespace OpenPmsDental {
 			LayoutManager.MoveLocation(textContent,new Point(rectangleWorkingArea.Left,textContent.Location.Y));
 			LayoutManager.MoveWidth(textContent,rectangleWorkingArea.Width/2-2);
 			//Browser resize
-			LayoutManager.MoveLocation(webBrowserWiki,new Point(webBrowserWiki.Location.X,rectangleWorkingArea.Top));
-			LayoutManager.MoveHeight(webBrowserWiki,rectangleWorkingArea.Height);
-			LayoutManager.MoveLocation(webBrowserWiki,new Point(rectangleWorkingArea.Left+rectangleWorkingArea.Width/2+2,webBrowserWiki.Location.Y));
-			LayoutManager.MoveWidth(webBrowserWiki,rectangleWorkingArea.Width/2-2);
+			LayoutManager.MoveLocation(webViewWiki,new Point(webViewWiki.Location.X,rectangleWorkingArea.Top));
+			LayoutManager.MoveHeight(webViewWiki,rectangleWorkingArea.Height);
+			LayoutManager.MoveLocation(webViewWiki,new Point(rectangleWorkingArea.Left+rectangleWorkingArea.Width/2+2,webViewWiki.Location.Y));
+			LayoutManager.MoveWidth(webViewWiki,rectangleWorkingArea.Width/2-2);
 		}
 
 		private void LoadWikiPage(WikiPage wikiPage) {
 			try {
 				textContent.Text=WikiPages.GetWikiPageContentWithWikiPageTitles(wikiPage.PageContent);
-				webBrowserWiki.DocumentText=MarkupEdit.TranslateToXhtml(textContent.Text,false,hasWikiPageTitles: true);
+				webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(textContent.Text,false,hasWikiPageTitles: true),isRemoteContentAllowed:true,
+					listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:false));
 			}
 			catch(Exception ex) {
-				webBrowserWiki.DocumentText="";
+				webViewWiki.NavigateToHtml("");
 				MessageBox.Show(this,Lan.g(this,"This page is broken and cannot be viewed.  Error message:")+" "+ex.Message);
 			}
 		}
@@ -116,17 +117,12 @@ namespace OpenPmsDental {
 			if(gridMain.SelectedIndices.Length<1) {
 				return;
 			}
-			webBrowserWiki.AllowNavigation=true;
 			LoadWikiPage(_listWikiPages[gridMain.SelectedIndices[0]]);
 			gridMain.Focus();
 		}
 
 		private void gridMain_CellDoubleClick(object sender,UI.ODGridClickEventArgs e) {
 			EditWikiDraft();
-		}
-
-		private void webBrowserWiki_Navigated(object sender,WebBrowserNavigatedEventArgs e) {
-			webBrowserWiki.AllowNavigation=false;//to disable links in pages.
 		}
 
 		private void butEdit_Click(object sender,EventArgs e) {
@@ -149,7 +145,6 @@ namespace OpenPmsDental {
 			}
 			FillGrid();
 			gridMain.SetSelected(idxSelected,true);
-			webBrowserWiki.AllowNavigation=true;
 			LoadWikiPage(_listWikiPages[idxSelected]);
 			gridMain.Focus();
 		}
@@ -181,7 +176,6 @@ namespace OpenPmsDental {
 				return;
 			}
 			gridMain.SetSelected(idxSelected,true);
-			webBrowserWiki.AllowNavigation=true;
 			LoadWikiPage(_listWikiPages[idxSelected]);
 			gridMain.Focus();
 		}

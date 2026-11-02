@@ -406,58 +406,6 @@ namespace CodeBase {
 			}
 		}
 
-		///<summary>Finds installed IE version for this workstation and attempts to modify registry to force browser emualtion to this version.
-		///Typically used in conjunction with WebBrowser control to ensure that the WebBrowser is running in the latest available emulation mode.
-		///Returns true if the emulation version was previously wrong but was successfully updated. Otherwise returns false.
-		///If true is returned than this application will need to be restarted in order for the changes to take effect.</summary>
-		public static bool TryUpdateIeEmulation() {
-			bool ret=false;
-			try {
-				int browserVersion;
-				//Get the installed IE version.
-				using(WebBrowser wb = new WebBrowser()) {
-					browserVersion=wb.Version.Major;
-				}
-				int regVal;
-				//Set the appropriate IE version
-				if(browserVersion>=11) {
-					regVal=11001;
-				}
-				else if(browserVersion==10) {
-					regVal=10001;
-				}
-				else if(browserVersion==9) {
-					regVal=9999;
-				}
-				else if(browserVersion==8) {
-					regVal=8888;
-				}
-				else if(browserVersion==7) {
-					regVal=7000;
-				}
-				else {//Unknown version.  This will happen when version 12 and beyond are released.
-					regVal=browserVersion*1000+1;//Guess the regVal code needed based on the historic pattern.
-				}
-				//Set the actual key.  This key can be set without admin rights, because it is within the current user's registry store.
-				string applicationName=Process.GetCurrentProcess().ProcessName+".exe";//This is OpenPmsDental.vhost.exe when debugging, different for distributors.
-				string keyPath=@"SOFTWARE\Microsoft\Internet Explorer\Main\FeatureControl\FEATURE_BROWSER_EMULATION";
-				Microsoft.Win32.RegistryKey key=Microsoft.Win32.Registry.CurrentUser.OpenSubKey(keyPath,true);
-				if(key==null) {
-					key=Microsoft.Win32.Registry.CurrentUser.CreateSubKey(keyPath);
-				}
-				object keyValueCur=key.GetValue(applicationName);
-				if(keyValueCur==null||keyValueCur.ToString()!=regVal.ToString()) {
-					key.SetValue(applicationName,regVal,Microsoft.Win32.RegistryValueKind.DWord);
-					ret=true;
-				}
-				key.Close();
-			}
-			catch(Exception e) {
-				e.DoNothing();
-			}
-			return ret;
-		}
-
 		///<summary>Returns the file name with the extension of the currently executing program.</summary>
 		public static string GetCurrentExeFileName() {
 			return Path.GetFileName(Application.ExecutablePath);

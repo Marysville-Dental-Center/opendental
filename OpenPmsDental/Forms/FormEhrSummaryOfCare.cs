@@ -104,10 +104,9 @@ namespace OpenPmsDental {
 		///<summary>Returns true if user performed a print job on the CCD.  Cannot be moved to OpenPmsDentalBusiness/Misc/EhrCCD.cs, because this function uses windows UI components. 
 		///Pass in a valid patient if the CCD is being displayed to reconcile (incoporate into patient record) medications and/or problems and/or allergies.
 		///patCur can be null, or patCur.PatNum can be 0, to hide the three reconcile buttons. 
-		///strXmlCCD is the actual text of the CCD. 
-		///strAlterateFilPathXslCCD is a full file path to an alternative style sheet. 
-		///This file will only be used in the case where the EHR dll version of the stylesheet couldn not be loaded. 
-		///If neither method works for attaining the stylesheet then an excption will be thrown.</summary>
+		///strXmlCCD is the actual text of the CCD.
+		///strAlterateFilPathXslCCD is the file of a stylesheet that came with the CCD in an email, or "". The stylesheet is never read or run: the
+		///window shows the CCD as XML instead, with its print and reconcile buttons.</summary>
 		public static bool DisplayCCD(string strXmlCCD,Patient patCur,string strAlterateFilPathXslCCD) {
 			//string xmltext=GetSampleMissingStylesheet();
 			XmlDocument doc=new XmlDocument();
@@ -118,47 +117,32 @@ namespace OpenPmsDental {
 				throw new XmlException("Invalid XML");
 			}
 			string xmlFileName="";
-			string xslFileName="";
-			string xslContents="";
+			bool isStylesheetAttached=false;
 			if(doc.DocumentElement.Name.ToLower()=="clinicaldocument") {//CCD, CCDA, and C32.
 				xmlFileName="ccd.xml";
-				xslFileName="ccd.xsl";
-				xslContents=EhrSummaryCcds.GetEhrResource("CCD");
-				if(xslContents=="") { //XSL load from EHR dll failed so see if caller provided an alternative
-					if(strAlterateFilPathXslCCD!="") { //alternative XSL file was provided so use that for our stylesheet
-						xslContents=FileAtoZ.ReadAllText(strAlterateFilPathXslCCD);
-					}
-				}
+				isStylesheetAttached=!string.IsNullOrEmpty(strAlterateFilPathXslCCD);
 			}
 			else if(doc.DocumentElement.Name.ToLower()=="continuityofcarerecord" || doc.DocumentElement.Name.ToLower()=="ccr:continuityofcarerecord") {//CCR
 				xmlFileName="ccr.xml";
-				xslFileName="ccr.xsl";
-				xslContents=EhrSummaryCcds.GetEhrResource("CCR");
 			}
 			else {
 				MessageBox.Show("This is not a valid CCD, CCDA, CCR, or C32 message.  Only the raw text will be shown");
 				MessageBox.Show(strXmlCCD);
 				return false;
 			}
-			if(xslContents=="") {
-				//The display stylesheets came from Open Dental's proprietary EHR.dll, which is not loaded anymore, and no alternative was provided.
+			//The display stylesheets came from Open Dental's proprietary EHR.dll, which is not loaded anymore (EhrSummaryCcds.GetEhrResource gives "").
+			//A stylesheet that came with an email is never run: the program has no XSLT in its own process, because a stylesheet that recurses
+			//without end overflows the stack, which ends the program whatever catches it, and one that loops never returns.
+			if(!isStylesheetAttached) {
 				MessageBox.Show(Lan.g("FormEhrSummaryOfCare","No stylesheet is available to display this document.  Only the raw text will be shown."));
 				using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(strXmlCCD);
 				msgBoxCopyPaste.ShowDialog();
 				return false;
 			}
-			XmlNode node=doc.SelectSingleNode("/processing-instruction(\"xml-stylesheet\")");
-			if(node==null) {//document does not contain any stylesheet instruction, so add one
-				XmlProcessingInstruction pi=doc.CreateProcessingInstruction("xml-stylesheet","type=\"text/xsl\" href=\""+xslFileName+"\"");
-				doc.InsertAfter(pi,doc.ChildNodes[0]);
-			}
-			else {//alter the existing instruction
-				XmlProcessingInstruction pi=(XmlProcessingInstruction)node;
-				pi.Value="type=\"text/xsl\" href=\""+xslFileName+"\"";
-			}
+			//The email's stylesheet styled this window before. The window still opens, with the CCD as XML, so a Direct message can still be reconciled.
+			string note=Lan.g("FormEhrSummaryOfCare","The stylesheet that came with this document was not run, so the document is shown as XML.");
 			File.WriteAllText(Path.Combine(PrefC.GetTempFolderPath(),xmlFileName),doc.InnerXml.ToString());
-			File.WriteAllText(Path.Combine(PrefC.GetTempFolderPath(),xslFileName),xslContents);
-			using FormEhrSummaryCcdEdit formESCD=new FormEhrSummaryCcdEdit(ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),xmlFileName),patCur);
+			using FormEhrSummaryCcdEdit formESCD=new FormEhrSummaryCcdEdit(ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),xmlFileName),patCur,note);
 			formESCD.ShowDialog();
 			string[] arrayFileNames={"ccd.xml","ccd.xsl","ccr.xml","ccr.xsl"};
 			for(int i=0;i<arrayFileNames.Length;i++) {

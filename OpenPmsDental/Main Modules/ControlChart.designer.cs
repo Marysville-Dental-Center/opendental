@@ -224,7 +224,7 @@
 			this.menuConsent = new System.Windows.Forms.ContextMenu();
 			this.panelEcw = new System.Windows.Forms.Panel();
 			this.labelECWerror = new System.Windows.Forms.Label();
-			this.webBrowserEcw = new System.Windows.Forms.WebBrowser();
+			this.webViewEcw = new CodeBase.Controls.ODWebView2();
 			this.menuToothChart = new System.Windows.Forms.ContextMenu();
 			this.menuItemChartBig = new System.Windows.Forms.MenuItem();
 			this.menuItemChartSave = new System.Windows.Forms.MenuItem();
@@ -2324,7 +2324,7 @@
 			// 
 			this.panelEcw.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
 			this.panelEcw.Controls.Add(this.labelECWerror);
-			this.panelEcw.Controls.Add(this.webBrowserEcw);
+			this.panelEcw.Controls.Add(this.webViewEcw);
 			this.panelEcw.Location = new System.Drawing.Point(417, 539);
 			this.panelEcw.Name = "panelEcw";
 			this.panelEcw.Size = new System.Drawing.Size(373, 52);
@@ -2341,19 +2341,21 @@
 			this.labelECWerror.TabIndex = 199;
 			this.labelECWerror.Text = "Error:";
 			this.labelECWerror.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-			// 
-			// webBrowserEcw
-			// 
-			this.webBrowserEcw.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+			//
+			// webViewEcw
+			//
+			this.webViewEcw.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowserEcw.Location = new System.Drawing.Point(1, 11);
-			this.webBrowserEcw.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowserEcw.Name = "webBrowserEcw";
-			this.webBrowserEcw.Size = new System.Drawing.Size(370, 52);
-			this.webBrowserEcw.TabIndex = 198;
-			this.webBrowserEcw.Url = new System.Uri("", System.UriKind.Relative);
-			// 
+			this.webViewEcw.AllowExternalDrop = false;
+			this.webViewEcw.AreBrowserKeysEnabled = true;
+			this.webViewEcw.DefaultBackgroundColor = System.Drawing.Color.White;
+			this.webViewEcw.Location = new System.Drawing.Point(1, 11);
+			this.webViewEcw.Name = "webViewEcw";
+			this.webViewEcw.Size = new System.Drawing.Size(370, 52);
+			this.webViewEcw.TabIndex = 198;
+			this.webViewEcw.ZoomFactor = 1D;
+			//
 			// menuToothChart
 			// 
 			this.menuToothChart.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
@@ -2859,7 +2861,7 @@
 		private System.Windows.Forms.ContextMenu menuConsent;
 		private System.Windows.Forms.RadioButton radioEntryCn;
 		private OpenPmsDental.UI.CheckBox checkShowCn;
-		private System.Windows.Forms.WebBrowser webBrowserEcw;
+		private CodeBase.Controls.ODWebView2 webViewEcw;
 		private System.Windows.Forms.Panel panelEcw;
 		private System.Windows.Forms.Label labelECWerror;
 		private System.Windows.Forms.ContextMenu menuToothChart;

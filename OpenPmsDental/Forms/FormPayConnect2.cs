@@ -530,7 +530,6 @@ namespace OpenPmsDental {
 				return;
 			}
 			webViewMain.Visible=true;
-			webBrowserMain.Visible=false;
 			if(!update) {
 				try {
 					await webViewMain.Init();

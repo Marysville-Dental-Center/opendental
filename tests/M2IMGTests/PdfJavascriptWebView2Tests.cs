@@ -132,6 +132,9 @@ namespace M2IMGTests {
 			List<int> listDark=new List<int>();
 			string browserVersion="";
 			string error=null;
+			//A start failure the control reports (ODWebView2.ReportStartFailure) is recorded: a message box would block the window's thread.
+			Action<string> actionShowMessageOld=ODWebView2.ActionShowMessage;
+			ODWebView2.ActionShowMessage=x => error=error??"The control showed a message: "+x;
 			try {
 				Thread thread=new Thread(() => {
 					using Form form=new Form();
@@ -184,6 +187,7 @@ namespace M2IMGTests {
 				}
 			}
 			finally {
+				ODWebView2.ActionShowMessage=actionShowMessageOld;
 				DeleteFolder(folder);
 			}
 			if(error!=null) {

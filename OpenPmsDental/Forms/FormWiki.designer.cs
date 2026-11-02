@@ -28,9 +28,10 @@ namespace OpenPmsDental{
 			this.imageListMain = new System.Windows.Forms.ImageList(this.components);
 			this.labelStatus = new System.Windows.Forms.Label();
 			this.ToolBarMain = new OpenPmsDental.UI.ToolBarOD();
-			this.webBrowserWiki = new System.Windows.Forms.WebBrowser();
+			this.webViewWiki = new CodeBase.Controls.ODWebView2();
 			this.menuHomeDropDown = new System.Windows.Forms.ContextMenu();
 			this.menuItemHomePageSave = new System.Windows.Forms.MenuItem();
+			((System.ComponentModel.ISupportInitialize)(this.webViewWiki)).BeginInit();
 			this.SuspendLayout();
 			// 
 			// imageListMain
@@ -74,21 +75,24 @@ namespace OpenPmsDental{
 			this.ToolBarMain.Size = new System.Drawing.Size(944, 25);
 			this.ToolBarMain.TabIndex = 72;
 			this.ToolBarMain.ButtonClick += new OpenPmsDental.UI.ODToolBarButtonClickEventHandler(this.ToolBarMain_ButtonClick);
-			// 
-			// webBrowserWiki
-			// 
-			this.webBrowserWiki.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+			//
+			// webViewWiki
+			//
+			this.webViewWiki.AllowExternalDrop = false;
+			this.webViewWiki.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowserWiki.Location = new System.Drawing.Point(0, 28);
-			this.webBrowserWiki.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowserWiki.Name = "webBrowserWiki";
-			this.webBrowserWiki.Size = new System.Drawing.Size(944, 657);
-			this.webBrowserWiki.TabIndex = 0;
-			this.webBrowserWiki.DocumentCompleted += new System.Windows.Forms.WebBrowserDocumentCompletedEventHandler(this.webBrowserWiki_DocumentCompleted);
-			this.webBrowserWiki.Navigating += new System.Windows.Forms.WebBrowserNavigatingEventHandler(this.webBrowserWiki_Navigating);
-			this.webBrowserWiki.NewWindow += new System.ComponentModel.CancelEventHandler(this.webBrowserWiki_NewWindow);
-			// 
+			this.webViewWiki.AreBrowserKeysEnabled = true;
+			this.webViewWiki.CreationProperties = null;
+			this.webViewWiki.DefaultBackgroundColor = System.Drawing.Color.White;
+			this.webViewWiki.Location = new System.Drawing.Point(0, 28);
+			this.webViewWiki.Name = "webViewWiki";
+			this.webViewWiki.Size = new System.Drawing.Size(944, 657);
+			this.webViewWiki.TabIndex = 0;
+			this.webViewWiki.ZoomFactor = 1D;
+			this.webViewWiki.LinkClicked += new System.EventHandler<CodeBase.Controls.ODWebView2LinkEventArgs>(this.webViewWiki_LinkClicked);
+			this.webViewWiki.StatusTextChanged += new System.EventHandler(this.webViewWiki_StatusTextChanged);
+			//
 			// menuHomeDropDown
 			// 
 			this.menuHomeDropDown.MenuItems.AddRange(new System.Windows.Forms.MenuItem[] {
@@ -105,19 +109,20 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(944, 704);
 			this.Controls.Add(this.labelStatus);
 			this.Controls.Add(this.ToolBarMain);
-			this.Controls.Add(this.webBrowserWiki);
+			this.Controls.Add(this.webViewWiki);
 			this.Name = "FormWiki";
 			this.Text = "Wiki";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormWiki_FormClosing);
 			this.Load += new System.EventHandler(this.FormWiki_Load);
 			this.ResizeEnd += new System.EventHandler(this.FormWiki_ResizeEnd);
+			((System.ComponentModel.ISupportInitialize)(this.webViewWiki)).EndInit();
 			this.ResumeLayout(false);
 
 		}
 
 		#endregion
 
-		private System.Windows.Forms.WebBrowser webBrowserWiki;
+		private CodeBase.Controls.ODWebView2 webViewWiki;
 		private UI.ToolBarOD ToolBarMain;
 		private System.Windows.Forms.ImageList imageListMain;
 		private System.Windows.Forms.Label labelStatus;

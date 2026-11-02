@@ -13,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using CodeBase;
 using OpenPmsDentalBusiness;
 using WpfControls.UI;
 
@@ -28,8 +29,17 @@ namespace OpenPmsDental {
 			Load+=FrmFrmTestSplitters_Load;
 		}
 
-		private void FrmFrmTestSplitters_Load(object sender,EventArgs e) {
-			webBrowser.Source=new Uri("https://www.opendental.com/");
+		///<summary>A local test page in the splitter's top panel: this window never goes online.</summary>
+		private async void FrmFrmTestSplitters_Load(object sender,EventArgs e) {
+			try {
+				await webView2.Init();
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//No WebView2 Runtime (or not x86 in debug): the panel stays empty.
+				return;
+			}
+			webView2.NavigateToString(CodeBase.HtmlPage.Build("<p>Splitter test page</p>","Test page","font-family:sans-serif"));
+			FormClosing+=(sender2,e2) => webView2.Dispose();
 		}
 
 	}

@@ -74,8 +74,8 @@ namespace OpenPmsDental {
 
 		///<summary>Step 2: shows the pay page of a session (xWebResponse from GetUrlForPaymentPage or GetUrlForCreditCardAlias). payPageSession is
 		///the one from BeginPayPage that the session was created with; null means Embedded mode with the clinic's return URL. Uses the WebView2 window
-		///when the runtime is installed. Without it: Loopback mode opens the system browser and waits for the listener; Embedded mode falls back to
-		///the IE control (FormWebBrowser), which closes on the same return URL.</summary>
+		///when the runtime is installed. Without it, or when it cannot start, the page opens in the system browser and a small window waits: for the
+		///listener in Loopback mode, for the user's "I'm finished" in Embedded mode (the Internet Explorer fallback is gone).</summary>
 		public static EdgeExpressPayPageEnd ShowPayPage(XWebResponse xWebResponse,long clinicNum,IWin32Window owner,
 			EdgeExpressPayPageSession payPageSession=null)
 		{
@@ -112,18 +112,12 @@ namespace OpenPmsDental {
 				}
 				//WebView2 is installed but couldn't start. Fall through to the same fallbacks as when it is missing.
 			}
-			if(payPageSession.ReturnMode==EdgeExpressReturnMode.Loopback) {
-				using FormEdgeExpressPayPage formEdgeExpressPayPage=new FormEdgeExpressPayPage(xWebResponse.HpfUrl,payPageSession.ReturnUrl,isTestGateway,
-					timeSpanLifetime,payPageSession.TaskLoopbackReturn,isSystemBrowser:true);
-				formEdgeExpressPayPage.ShowDialog(owner);
-				return formEdgeExpressPayPage.PayPageEnd;
-			}
-			using FormWebBrowser formWebBrowser=new FormWebBrowser(xWebResponse.HpfUrl);
-			formWebBrowser.UrlCloseOn=payPageSession.ReturnUrl;
-			if(formWebBrowser.ShowDialog(owner)==DialogResult.OK) {
-				return EdgeExpressPayPageEnd.Returned;
-			}
-			return EdgeExpressPayPageEnd.Closed;
+			//The system browser, in both modes. Loopback mode: the listener closes the wait window. Embedded mode: nothing intercepts the return in
+			//the system browser (the built-in return address never resolves, so nothing is contacted), and the user presses "I'm finished".
+			using FormEdgeExpressPayPage formEdgeExpressPayPageBrowser=new FormEdgeExpressPayPage(xWebResponse.HpfUrl,payPageSession.ReturnUrl,isTestGateway,
+				timeSpanLifetime,payPageSession.TaskLoopbackReturn,isSystemBrowser:true);
+			formEdgeExpressPayPageBrowser.ShowDialog(owner);
+			return formEdgeExpressPayPageBrowser.PayPageEnd;
 		}
 
 		///<summary>Step 3: asks the card processor for the result, with up to EdgeExpress.CNP.RepollCount more tries while it is still pending, under

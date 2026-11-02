@@ -378,8 +378,11 @@ namespace OpenPmsDental {
 				}
 			}
 			if(!string.IsNullOrEmpty(_htmlResponse)) {
-				FormWebBrowser formWebBrowser=new FormWebBrowser(htmlContent:_htmlResponse);
-				formWebBrowser.Show();
+				//The clearinghouse's HTML benefits page: shown as a page of its own, with scripts off and links opening in the default browser.
+				FormWebView formWebView=new FormWebView();
+				formWebView.HtmlContent=_htmlResponse;
+				formWebView.Title=Lan.g(this,"Benefits");
+				formWebView.Show();
 				return;
 			}
 			PrintoutOrientation printoutOrientation=PrintoutOrientation.Portrait;

@@ -289,7 +289,7 @@ namespace OpenPmsDentalBusiness {
 		public class CNP {
 			///<summary>Where the hosted payment page sends the browser after the card is submitted, when the clinic has no return URL of its own. The
 			///.invalid top level domain is reserved (RFC 2606, RFC 6761) and never resolves, so nothing is contacted: the pay-page window cancels the
-			///navigation before any request goes out and closes (FormEdgeExpressPayPage, or FormWebBrowser.UrlCloseOn). The caller then asks
+			///navigation before any request goes out and closes (FormEdgeExpressPayPage). The caller then asks
 			///EdgeExpress for the result, so nothing the return carries is ever read.</summary>
 			public const string ReturnUrlDefault="https://edgeexpress-return.invalid/PayDone";
 			///<summary>The path of a loopback return address. A per-session random nonce follows it.</summary>

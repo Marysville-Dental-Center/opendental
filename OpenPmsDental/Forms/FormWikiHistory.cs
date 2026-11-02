@@ -47,9 +47,9 @@ namespace OpenPmsDental {
 			if(textContent.Height<=60) {
 				LayoutManager.MoveSize(textContent,new Size(xDivider,61));
 			}
-			//webBrowserWiki
-			LayoutManager.MoveLocation(webBrowserWiki,new Point(textContent.Location.X+xDivider,webBrowserWiki.Location.Y));
-			LayoutManager.MoveSize(webBrowserWiki,new Size(xDivider-15,gridMain.Height));
+			//webViewWiki
+			LayoutManager.MoveLocation(webViewWiki,new Point(textContent.Location.X+xDivider,webViewWiki.Location.Y));
+			LayoutManager.MoveSize(webViewWiki,new Size(xDivider-15,gridMain.Height));
 		}
 
 		private void LoadWikiPage(WikiPageHist wikiPageHist) {
@@ -63,10 +63,11 @@ namespace OpenPmsDental {
 			}
 			textContent.Text=WikiPages.GetWikiPageContentWithWikiPageTitles(wikiPageHist.PageContent);
 			try {
-				webBrowserWiki.DocumentText=MarkupEdit.TranslateToXhtml(textContent.Text,false,hasWikiPageTitles: true);
+				webViewWiki.NavigateToHtml(MarkupEdit.TranslateToXhtml(textContent.Text,false,hasWikiPageTitles: true),isRemoteContentAllowed:true,
+					listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:false));
 			}
 			catch(Exception ex) {
-				webBrowserWiki.DocumentText="";
+				webViewWiki.NavigateToHtml("");
 				MessageBox.Show(this,Lan.g(this,"This page is broken and cannot be viewed.  Error message:")+" "+ex.Message);
 			}
 		}
@@ -104,7 +105,6 @@ namespace OpenPmsDental {
 			if(gridMain.GetSelectedIndex()==-1) {
 				return;
 			}
-			webBrowserWiki.AllowNavigation=true;
 			int[] intArrayIndices=gridMain.SelectedIndices;
 			if(intArrayIndices.Length==1) {//True only when first revision is selected
 				_idxRowFirstSelected=intArrayIndices[0];//Display first seleced revision when multiple revisions are selected
@@ -127,10 +127,6 @@ namespace OpenPmsDental {
 			//}
 			//FillGrid();
 			//LoadWikiPage(listWikiPages[0]);
-		}
-
-		private void webBrowserWiki_Navigated(object sender,WebBrowserNavigatedEventArgs e) {
-			webBrowserWiki.AllowNavigation=false;//to disable links in pages.
 		}
 
 		private void butRevert_Click(object sender,EventArgs e) {

@@ -55,11 +55,11 @@
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
     <Reference Include="Microsoft.VisualBasic" />
-    <Reference Include="Microsoft.Web.WebView2.Core, Version=1.0.2277.86, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
+    <Reference Include="Microsoft.Web.WebView2.Core, Version=1.0.2420.47, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Microsoft.Web.WebView2.Core.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Web.WebView2.Wpf, Version=1.0.2277.86, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
+    <Reference Include="Microsoft.Web.WebView2.Wpf, Version=1.0.2420.47, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Microsoft.Web.WebView2.Wpf.dll</HintPath>
     </Reference>
@@ -775,9 +775,6 @@
     </Compile>
     <Compile Include="UI\Controls\TextVTime.xaml.cs">
       <DependentUpon>TextVTime.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="UI\Controls\WebBrowser.xaml.cs">
-      <DependentUpon>WebBrowser.xaml</DependentUpon>
     </Compile>
     <Compile Include="UI\Controls\TreeView.xaml.cs">
       <DependentUpon>TreeView.xaml</DependentUpon>
@@ -1524,10 +1521,6 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="UI\Controls\TextVTime.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="UI\Controls\WebBrowser.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

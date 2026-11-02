@@ -125,7 +125,7 @@ namespace OpenPmsDentalBusiness {
 					}
 					fullPath=FileAtoZ.CombinePaths(imagePath,POut.String(imgName));
 					if(CloudStorage.IsCloudStorage) {				
-						//WebBrowser needs to have a local file to open, so we download the images to temp files.	
+						//The browser shows the page from a local file (ODWebView2.NavigateToHtml) and needs local image files too, so we download the images to temp files.	
 						byte[] byteArray=CloudStorage.Download(Path.GetDirectoryName(fullPath),Path.GetFileName(fullPath));
 						string tempFile=PrefC.GetRandomTempFile(Path.GetExtension(fullPath));
 						File.WriteAllBytes(tempFile,byteArray);
@@ -135,6 +135,30 @@ namespace OpenPmsDentalBusiness {
 				s=s.Replace($"[[img:{imgName}]]","<img src=\""+fullPath+"\"></img>");//"\" />");
 			}
 			return s;
+		}
+
+		///<summary>The local folders the images of TranslateToXhtml's html come from, for the browser that shows it (ODWebView2.NavigateToHtml loads
+		///files from no other folder): the A to Z folder's Wiki folder, or its EmailImages folder when isEmail, when the A to Z folder is a local or
+		///network folder, and the program's temp folder, which holds the images downloaded from cloud storage. Never throws: a folder that cannot be
+		///found is left out.</summary>
+		public static List<string> GetImageFolders(bool isEmail) {
+			Meth.NoCheckMiddleTierRole();
+			List<string> listFolders=new List<string>();
+			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
+				try {
+					listFolders.Add(isEmail ? ImageStore.GetEmailImagePath() : WikiPages.GetWikiPath());
+				}
+				catch(Exception ex) {
+					ex.DoNothing();
+				}
+			}
+			try {
+				listFolders.Add(PrefC.GetTempFolderPath());
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			return listFolders;
 		}
 
 		public static Regex GetHtmlTagRegex() {
@@ -241,7 +265,7 @@ namespace OpenPmsDentalBusiness {
 					}
 					string fullPath=FileAtoZ.CombinePaths(wikiPath,POut.String(imgName));
 					if(CloudStorage.IsCloudStorage) {				
-						//WebBrowser needs to have a local file to open, so we download the images to temp files.
+						//The browser shows the page from a local file (ODWebView2.NavigateToHtml) and needs local image files too, so we download the images to temp files.
 						byte[] byteArray=CloudStorage.Download(Path.GetDirectoryName(fullPath),Path.GetFileName(fullPath));
 						string tempFile=PrefC.GetRandomTempFile(Path.GetExtension(fullPath));
 						File.WriteAllBytes(tempFile,byteArray);

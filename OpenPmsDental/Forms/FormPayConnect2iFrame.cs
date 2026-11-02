@@ -45,7 +45,6 @@ namespace OpenPmsDental {
 				return;
 			}
 			webViewMain.Visible=true;
-			webBrowserMain.Visible=false;
 			try {
 				await webViewMain.Init();
 				webViewMain.CoreWebView2.WebMessageReceived+=GetTransactionResult;
@@ -178,14 +177,6 @@ namespace OpenPmsDental {
 
 		public PayConnect2Response GetResponse() {
 			return _response;
-		}
-
-		private void GetTransactionResultCloud(object sender, EventArgs e) {
-			string result="";
-		}
-
-		private void webBrowserMain_DocumentCompleted(object sender,WebBrowserDocumentCompletedEventArgs e) {
-			webBrowserMain.Document.AttachEventHandler("message",GetTransactionResultCloud);
 		}
 
 	}

@@ -326,8 +326,8 @@ namespace OpenPmsDental {";
 			else if(control is OpenPmsDental.UI.WarningIntegrity){
 				return ConvertWarningIntegrity(control,indentLevel);
 			}
-			else if(control is System.Windows.Forms.WebBrowser){
-				return ConvertWebBrowser(control,indentLevel);
+			else if(control is CodeBase.Controls.ODWebView2){
+				return ConvertWebView2(control,indentLevel);
 			}
 			else{
 				Type type=control.GetType();
@@ -1604,9 +1604,9 @@ if(dateFrom.Year > 1880 && dateTo.Year>1880) {//if both dates are valid
 			return s;
 		}
 
-		private string ConvertWebBrowser(System.Windows.Forms.Control control,int indentLevel){
-			System.Windows.Forms.WebBrowser webBrowser = (System.Windows.Forms.WebBrowser)control;
-			string wName = "ui:WebBrowser";
+		///<summary>The program's WebView2 control becomes WpfControls.UI.WebView2 (the Internet Explorer control is gone from both).</summary>
+		private string ConvertWebView2(System.Windows.Forms.Control control,int indentLevel){
+			string wName = "ui:WebView2";
 			string s = GetIndents(indentLevel)+"<"+wName+" ";
 			s+="x:Name=\""+control.Name+"\" ";
 			s+=SetBoundsAndAnchoring(control);

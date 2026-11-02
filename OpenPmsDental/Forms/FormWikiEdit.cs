@@ -28,6 +28,7 @@ namespace OpenPmsDental {
 			Lan.F(this);
 			ODEvent.Fired+=WikiSaveEvent_Fired;
 			_actionWikiSaved=actionWikiSaved;
+			webViewWiki.NavigationCompleted+=webViewWiki_NavigationCompleted;
 		}
 
 		private void FormWikiEdit_Load(object sender,EventArgs e) {
@@ -70,13 +71,9 @@ namespace OpenPmsDental {
 		}
 
 		private void RefreshHtml() {
-			webBrowserWiki.AllowNavigation=true;
-			//remember scroll
-			if(webBrowserWiki.Document!=null) {
-				_scrollTop=webBrowserWiki.Document.GetElementsByTagName("HTML")[0].ScrollTop;
-			}
+			string html;
 			try {
-				webBrowserWiki.DocumentText=MarkupEdit.TranslateToXhtml(textContent.Text,true,true);
+				html=MarkupEdit.TranslateToXhtml(textContent.Text,true,true);
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
@@ -86,19 +83,33 @@ namespace OpenPmsDental {
 				return;
 			}
 			_isInvalidPreview=false;
+			ShowPreview(html);
 			//textContent.Focus();//this was causing a bug where it would re-highlight text after a backspace.
 		}
 
-		private void webBrowserWiki_DocumentCompleted(object sender,WebBrowserDocumentCompletedEventArgs e) {
-			webBrowserWiki.Document.Body.Style = "zoom:"+(int)LayoutManager.ScaleFontODZoom(100)+"%";//100% seems to cut off a row at the bottom
-			webBrowserWiki.Document.GetElementsByTagName("HTML")[0].ScrollTop=_scrollTop;
+		///<summary>Shows the preview, at the scroll position of the one it replaces (restored in webViewWiki_NavigationCompleted).</summary>
+		private async void ShowPreview(string html) {
+			//remember scroll
+			if(webViewWiki.DocumentUri!=null) {
+				_scrollTop=await webViewWiki.GetScrollTopAsync();
+			}
+			if(IsDisposed) {
+				return;
+			}
+			ODException.SwallowAnyException(() => webViewWiki.NavigateToHtml(html,isRemoteContentAllowed:true,
+				listFoldersAllowed:MarkupEdit.GetImageFolders(isEmail:false)));//async void: a temp folder that cannot be written leaves the old preview
+		}
+
+		private void webViewWiki_NavigationCompleted(object sender,Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e) {
+			webViewWiki.SetBodyZoom((int)LayoutManager.ScaleFontODZoom(100));//100% seems to cut off a row at the bottom
+			webViewWiki.SetScrollTop(_scrollTop);
 			textContent.Focus();
 		}
 
 		private void ResizeControls() {
 			int top=LayoutManager.Scale(52);
 			LayoutManager.Move(textContent,new Rectangle(0,top,ClientRectangle.Width/2-2,ClientRectangle.Height-top));
-			LayoutManager.Move(webBrowserWiki,new Rectangle(ClientRectangle.Width/2,top,ClientRectangle.Width/2-1,ClientRectangle.Height-top));
+			LayoutManager.Move(webViewWiki,new Rectangle(ClientRectangle.Width/2,top,ClientRectangle.Width/2-1,ClientRectangle.Height-top));
 			LayoutToolBars();
 		}
 
@@ -168,10 +179,6 @@ namespace OpenPmsDental {
 				+(isLastCharacter ? "" : textContent.Text.Substring(match.Index+match.Length));//continue to end, if any text after table markup.
 			textContent.SelectionLength=0;
 			return true;
-		}
-
-		private void webBrowserWiki_Navigated(object sender,WebBrowserNavigatedEventArgs e) {
-			webBrowserWiki.AllowNavigation=false;
 		}
 
 		private void LayoutToolBars() {
@@ -627,7 +634,6 @@ namespace OpenPmsDental {
 			}
 			textContent.SelectionLength=0;
 			textContent.SelectedText="[[img:"+formImagePicker.ImageNameSelected+"]]";
-			//webBrowserWiki.AllowNavigation=true;
 			//RefreshHtml();
 		}
 

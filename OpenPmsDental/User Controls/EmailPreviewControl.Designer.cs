@@ -54,7 +54,7 @@
 			this.textToAddress = new OpenPmsDental.ODtextBox();
 			this.textFromAddress = new OpenPmsDental.ODtextBox();
 			this.butSig = new OpenPmsDental.UI.Button();
-			this.webBrowser = new System.Windows.Forms.WebBrowser();
+			this.webViewEmail = new CodeBase.Controls.ODWebView2();
 			this.textBodyText = new OpenPmsDental.ODtextBox();
 			this.butAddImage = new OpenPmsDental.UI.Button();
 			this.tabAttachmentsShowEmail.SuspendLayout();
@@ -421,22 +421,18 @@
 			this.butSig.Text = "Sig";
 			this.butSig.Click += new System.EventHandler(this.butSig_Click);
 			// 
-			// webBrowser
+			// webViewEmail
 			// 
-			this.webBrowser.AllowWebBrowserDrop = false;
-			this.webBrowser.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+			this.webViewEmail.AllowExternalDrop = false;
+			this.webViewEmail.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.webBrowser.Location = new System.Drawing.Point(950, 14);
-			this.webBrowser.MinimumSize = new System.Drawing.Size(20, 20);
-			this.webBrowser.Name = "webBrowser";
-			this.webBrowser.Size = new System.Drawing.Size(20, 20);
-			this.webBrowser.TabIndex = 0;
-			this.webBrowser.TabStop = false;
-			this.webBrowser.Visible = false;
-			this.webBrowser.WebBrowserShortcutsEnabled = false;
-			this.webBrowser.Navigated += new System.Windows.Forms.WebBrowserNavigatedEventHandler(this.webBrowser_Navigated);
-			this.webBrowser.Navigating += new System.Windows.Forms.WebBrowserNavigatingEventHandler(this.webBrowser_Navigating);
+			this.webViewEmail.Location = new System.Drawing.Point(950, 14);
+			this.webViewEmail.Name = "webViewEmail";
+			this.webViewEmail.Size = new System.Drawing.Size(20, 20);
+			this.webViewEmail.TabIndex = 0;
+			this.webViewEmail.TabStop = false;
+			this.webViewEmail.Visible = false;
 			// 
 			// textBodyText
 			// 
@@ -491,7 +487,7 @@
 			this.Controls.Add(this.textFromAddress);
 			this.Controls.Add(this.labelSignedBy);
 			this.Controls.Add(this.butSig);
-			this.Controls.Add(this.webBrowser);
+			this.Controls.Add(this.webViewEmail);
 			this.Controls.Add(this.textBodyText);
 			this.Controls.Add(this.textMsgDateTime);
 			this.Controls.Add(this.labelSent);
@@ -521,7 +517,7 @@
 		private ODtextBox textSubject;
 		private System.Windows.Forms.Label labelSignedBy;
 		private UI.Button butSig;
-		private System.Windows.Forms.WebBrowser webBrowser;
+		private CodeBase.Controls.ODWebView2 webViewEmail;
 		private ODtextBox textBodyText;
 		private System.Windows.Forms.TextBox textMsgDateTime;
 		private System.Windows.Forms.Label labelSent;

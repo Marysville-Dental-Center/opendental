@@ -251,6 +251,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibraryUpdateTests", "tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PdfLibraryTests", "tests\PdfLibraryTests\PdfLibraryTests.csproj", "{AA697BDF-C5E9-44AE-84D1-6F5D52E039B0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibWebTests", "tests\LibWebTests\LibWebTests.csproj", "{50488924-88DE-4F05-9C09-DA08CC574AE6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1220,6 +1222,14 @@ Global
 		{AA697BDF-C5E9-44AE-84D1-6F5D52E039B0}.Release|Any CPU.Build.0 = Release|x86
 		{AA697BDF-C5E9-44AE-84D1-6F5D52E039B0}.Release|x86.ActiveCfg = Release|x86
 		{AA697BDF-C5E9-44AE-84D1-6F5D52E039B0}.Release|x86.Build.0 = Release|x86
+		{50488924-88DE-4F05-9C09-DA08CC574AE6}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{50488924-88DE-4F05-9C09-DA08CC574AE6}.Debug|Any CPU.Build.0 = Debug|x86
+		{50488924-88DE-4F05-9C09-DA08CC574AE6}.Debug|x86.ActiveCfg = Debug|x86
+		{50488924-88DE-4F05-9C09-DA08CC574AE6}.Debug|x86.Build.0 = Debug|x86
+		{50488924-88DE-4F05-9C09-DA08CC574AE6}.Release|Any CPU.ActiveCfg = Release|x86
+		{50488924-88DE-4F05-9C09-DA08CC574AE6}.Release|Any CPU.Build.0 = Release|x86
+		{50488924-88DE-4F05-9C09-DA08CC574AE6}.Release|x86.ActiveCfg = Release|x86
+		{50488924-88DE-4F05-9C09-DA08CC574AE6}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

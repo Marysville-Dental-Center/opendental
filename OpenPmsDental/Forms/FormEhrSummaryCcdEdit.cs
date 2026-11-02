@@ -12,13 +12,16 @@ namespace OpenPmsDental {
 		public bool DidPrint;
 		///<summary>Will be set to the patient that this CCD message is indicated for.  Can be null if not meant for incorporating into a patient's account.</summary>
 		private Patient _patCur;
+		///<summary>The line shown above the document, for example that the stylesheet that came with it was not run. Can be empty.</summary>
+		private string _note;
 
-		///<summary>Patient can be null.  If null, or if PatNum is 0, reconciles will not be available.</summary>
-		public FormEhrSummaryCcdEdit(string strXmlFilePath,Patient patCur) {
+		///<summary>Patient can be null.  If null, or if PatNum is 0, reconciles will not be available. note is shown above the document.</summary>
+		public FormEhrSummaryCcdEdit(string strXmlFilePath,Patient patCur,string note) {
 			InitializeComponent();
 			InitializeLayoutManager();
 			StrXmlFilePath=strXmlFilePath;
 			_patCur=patCur;
+			_note=note;
 		}
 
 		private void FormEhrSummaryCcdEdit_Load(object sender,EventArgs e) {
@@ -29,8 +32,29 @@ namespace OpenPmsDental {
 				butReconcileProblems.Visible=false;
 			}
 			Cursor=Cursors.WaitCursor;
-			webBrowser1.Url=new Uri(StrXmlFilePath);
+			string html;
+			try {
+				//The document is shown as XML, encoded, so patient data is never markup. No stylesheet runs in the program: one that came with an email
+				//could recurse without end, and the stack overflow would end the program whatever catches it, or loop for ever.
+				html=HtmlPage.BuildXml(File.ReadAllText(StrXmlFilePath),_note);
+			}
+			catch(Exception ex) {
+				html=HtmlPage.BuildText(Lan.g(this,"The document could not be shown.")+"\r\n"+ex.Message);
+			}
+			webViewMain.LinkClicked+=webViewMain_LinkClicked;
+			try {
+				//The document can come with a received email: the page loads no file but its own and nothing from the web.
+				webViewMain.NavigateToHtml(html);
+			}
+			catch(Exception ex) {
+				FriendlyException.Show(Lan.g(this,"The document could not be shown."),ex);
+			}
 			Cursor=Cursors.Default;
+		}
+
+		///<summary>A link in the document opens in the default browser (http, https and mailto only), never in this window.</summary>
+		private void webViewMain_LinkClicked(object sender,CodeBase.Controls.ODWebView2LinkEventArgs e) {
+			CodeBase.Controls.WebView2Policy.OpenInSystemBrowser(e.GetSystemBrowserUrl());
 		}
 
 		///<summary>Can only be called if IsReconcile is true.  This function is for EHR module b.4.</summary>
@@ -96,8 +120,11 @@ namespace OpenPmsDental {
 		}
 
 		private void butPrint_Click(object sender,EventArgs e) {
-			//use the modeless version, which also allows user to choose printer
-			webBrowser1.ShowPrintDialog();
+			if(webViewMain.CoreWebView2==null) {
+				return;
+			}
+			//Windows' print dialog, which also allows user to choose printer (WebView2's print API)
+			webViewMain.ShowPrintDialog();
 			DidPrint = true;
 		}
 

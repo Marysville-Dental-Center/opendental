@@ -30,4 +30,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyVersion("24.3.63.0")]
 //The crypto tests pin the osd1$ synthetic IV and encrypt with fixed IVs through SecretBox's internals.
 [assembly: InternalsVisibleTo("CryptoTests")]
+//The WebView2 tests make ODWebView2's start fail and keep its messages off the screen (ODWebView2.FuncCreateEnvironment, ActionShowMessage).
+[assembly: InternalsVisibleTo("LibWebTests")]
+[assembly: InternalsVisibleTo("M2IMGTests")]
 //[assembly: AssemblyFileVersion("1.0.0.0")]
