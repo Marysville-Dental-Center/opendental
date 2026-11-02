@@ -62,6 +62,7 @@
       "tests\\ImagingTests\\ImagingTests.csproj",
       "tests\\InitSqlTests\\InitSqlTests.csproj",
       "tests\\InsuranceTests\\InsuranceTests.csproj",
+      "tests\\InventoryTests\\InventoryTests.csproj",
       "tests\\M201Tests\\M201Tests.csproj",
       "tests\\M202Tests\\M202Tests.csproj",
       "tests\\M2ADJTests\\M2ADJTests.csproj",
