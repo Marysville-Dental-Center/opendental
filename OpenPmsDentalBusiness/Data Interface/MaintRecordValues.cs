@@ -7,7 +7,8 @@ using System.Reflection;
 using CodeBase;
 
 namespace OpenPmsDentalBusiness {
-	///<summary>Checklist ticks and results of recorded completions. Written only by MaintRecords.Insert; never edited or deleted.</summary>
+	///<summary>Checklist ticks and results of recorded completions. Written only by MaintRecords.Insert and corrected only by MaintRecords.Correct;
+	///never deleted.</summary>
 	public class MaintRecordValues {
 		///<summary>The completion's values: checklist lines first, then results.</summary>
 		public static List<MaintRecordValue> GetForRecord(long maintRecordNum) {

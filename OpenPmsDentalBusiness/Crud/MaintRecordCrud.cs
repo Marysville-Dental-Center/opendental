@@ -47,14 +47,16 @@ namespace OpenPmsDentalBusiness.Crud{
 			MaintRecord maintRecord;
 			foreach(DataRow row in table.Rows) {
 				maintRecord=new MaintRecord();
-				maintRecord.MaintRecordNum= PIn.Long  (row["MaintRecordNum"].ToString());
-				maintRecord.MaintItemNum  = PIn.Long  (row["MaintItemNum"].ToString());
-				maintRecord.DateDone      = PIn.Date  (row["DateDone"].ToString());
-				maintRecord.DateDue       = PIn.Date  (row["DateDue"].ToString());
-				maintRecord.UserNum       = PIn.Long  (row["UserNum"].ToString());
-				maintRecord.Note          = PIn.String(row["Note"].ToString());
-				maintRecord.IsFlagged     = PIn.Bool  (row["IsFlagged"].ToString());
-				maintRecord.SecDateTEntry = PIn.DateT (row["SecDateTEntry"].ToString());
+				maintRecord.MaintRecordNum  = PIn.Long  (row["MaintRecordNum"].ToString());
+				maintRecord.MaintItemNum    = PIn.Long  (row["MaintItemNum"].ToString());
+				maintRecord.DateDone        = PIn.Date  (row["DateDone"].ToString());
+				maintRecord.DateDue         = PIn.Date  (row["DateDue"].ToString());
+				maintRecord.UserNum         = PIn.Long  (row["UserNum"].ToString());
+				maintRecord.Note            = PIn.String(row["Note"].ToString());
+				maintRecord.IsFlagged       = PIn.Bool  (row["IsFlagged"].ToString());
+				maintRecord.SecDateTEntry   = PIn.DateT (row["SecDateTEntry"].ToString());
+				maintRecord.UserNumCorrected= PIn.Long  (row["UserNumCorrected"].ToString());
+				maintRecord.DateTCorrected  = PIn.DateT (row["DateTCorrected"].ToString());
 				retVal.Add(maintRecord);
 			}
 			return retVal;
@@ -74,6 +76,8 @@ namespace OpenPmsDentalBusiness.Crud{
 			table.Columns.Add("Note");
 			table.Columns.Add("IsFlagged");
 			table.Columns.Add("SecDateTEntry");
+			table.Columns.Add("UserNumCorrected");
+			table.Columns.Add("DateTCorrected");
 			foreach(MaintRecord maintRecord in listMaintRecords) {
 				table.Rows.Add(new object[] {
 					POut.Long  (maintRecord.MaintRecordNum),
@@ -84,6 +88,8 @@ namespace OpenPmsDentalBusiness.Crud{
 					            maintRecord.Note,
 					POut.Bool  (maintRecord.IsFlagged),
 					POut.DateT (maintRecord.SecDateTEntry,false),
+					POut.Long  (maintRecord.UserNumCorrected),
+					POut.DateT (maintRecord.DateTCorrected,false),
 				});
 			}
 			return table;
@@ -103,7 +109,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="MaintRecordNum,";
 			}
-			command+="MaintItemNum,DateDone,DateDue,UserNum,Note,IsFlagged,SecDateTEntry) VALUES(";
+			command+="MaintItemNum,DateDone,DateDue,UserNum,Note,IsFlagged,SecDateTEntry,UserNumCorrected,DateTCorrected) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(maintRecord.MaintRecordNum)+",";
 			}
@@ -114,7 +120,9 @@ namespace OpenPmsDentalBusiness.Crud{
 				+    POut.Long  (maintRecord.UserNum)+","
 				+    DbHelper.ParamChar+"paramNote,"
 				+    POut.Bool  (maintRecord.IsFlagged)+","
-				+    DbHelper.Now()+")";
+				+    DbHelper.Now()+","
+				+    POut.Long  (maintRecord.UserNumCorrected)+","
+				+    POut.DateT (maintRecord.DateTCorrected)+")";
 			if(maintRecord.Note==null) {
 				maintRecord.Note="";
 			}
@@ -143,7 +151,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="MaintRecordNum,";
 			}
-			command+="MaintItemNum,DateDone,DateDue,UserNum,Note,IsFlagged,SecDateTEntry) VALUES(";
+			command+="MaintItemNum,DateDone,DateDue,UserNum,Note,IsFlagged,SecDateTEntry,UserNumCorrected,DateTCorrected) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(maintRecord.MaintRecordNum)+",";
 			}
@@ -154,7 +162,9 @@ namespace OpenPmsDentalBusiness.Crud{
 				+    POut.Long  (maintRecord.UserNum)+","
 				+    DbHelper.ParamChar+"paramNote,"
 				+    POut.Bool  (maintRecord.IsFlagged)+","
-				+    DbHelper.Now()+")";
+				+    DbHelper.Now()+","
+				+    POut.Long  (maintRecord.UserNumCorrected)+","
+				+    POut.DateT (maintRecord.DateTCorrected)+")";
 			if(maintRecord.Note==null) {
 				maintRecord.Note="";
 			}
@@ -171,13 +181,15 @@ namespace OpenPmsDentalBusiness.Crud{
 		///<summary>Updates one MaintRecord in the database.</summary>
 		public static void Update(MaintRecord maintRecord) {
 			string command="UPDATE maintrecord SET "
-				+"MaintItemNum  =  "+POut.Long  (maintRecord.MaintItemNum)+", "
-				+"DateDone      =  "+POut.Date  (maintRecord.DateDone)+", "
-				+"DateDue       =  "+POut.Date  (maintRecord.DateDue)+", "
-				+"UserNum       =  "+POut.Long  (maintRecord.UserNum)+", "
-				+"Note          =  "+DbHelper.ParamChar+"paramNote, "
-				+"IsFlagged     =  "+POut.Bool  (maintRecord.IsFlagged)+" "
+				+"MaintItemNum    =  "+POut.Long  (maintRecord.MaintItemNum)+", "
+				+"DateDone        =  "+POut.Date  (maintRecord.DateDone)+", "
+				+"DateDue         =  "+POut.Date  (maintRecord.DateDue)+", "
+				+"UserNum         =  "+POut.Long  (maintRecord.UserNum)+", "
+				+"Note            =  "+DbHelper.ParamChar+"paramNote, "
+				+"IsFlagged       =  "+POut.Bool  (maintRecord.IsFlagged)+", "
 				//SecDateTEntry not allowed to change
+				+"UserNumCorrected=  "+POut.Long  (maintRecord.UserNumCorrected)+", "
+				+"DateTCorrected  =  "+POut.DateT (maintRecord.DateTCorrected)+" "
 				+"WHERE MaintRecordNum = "+POut.Long(maintRecord.MaintRecordNum);
 			if(maintRecord.Note==null) {
 				maintRecord.Note="";
@@ -214,6 +226,14 @@ namespace OpenPmsDentalBusiness.Crud{
 				command+="IsFlagged = "+POut.Bool(maintRecord.IsFlagged)+"";
 			}
 			//SecDateTEntry not allowed to change
+			if(maintRecord.UserNumCorrected != oldMaintRecord.UserNumCorrected) {
+				if(command!="") { command+=",";}
+				command+="UserNumCorrected = "+POut.Long(maintRecord.UserNumCorrected)+"";
+			}
+			if(maintRecord.DateTCorrected != oldMaintRecord.DateTCorrected) {
+				if(command!="") { command+=",";}
+				command+="DateTCorrected = "+POut.DateT(maintRecord.DateTCorrected)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -249,6 +269,12 @@ namespace OpenPmsDentalBusiness.Crud{
 				return true;
 			}
 			//SecDateTEntry not allowed to change
+			if(maintRecord.UserNumCorrected != oldMaintRecord.UserNumCorrected) {
+				return true;
+			}
+			if(maintRecord.DateTCorrected != oldMaintRecord.DateTCorrected) {
+				return true;
+			}
 			return false;
 		}
 

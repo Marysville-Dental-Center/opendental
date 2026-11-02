@@ -5,7 +5,8 @@ using System;
 
 namespace OpenPmsDentalBusiness {
 	///<summary>One line of a recorded completion: a checklist step (ticked or not) or a result field's value. The label and unit are copies taken
-	///when it was recorded, so the history reads the same after the item's steps and fields change. Never edited or deleted.</summary>
+	///when it was recorded, so the history reads the same after the item's steps and fields change. Never deleted, and no line is added after the
+	///completion is recorded; a correction (MaintRecords.Correct) changes only ValueText and IsFlagged.</summary>
 	[Serializable]
 	public class MaintRecordValue:TableBase {
 		///<summary>Primary key.</summary>

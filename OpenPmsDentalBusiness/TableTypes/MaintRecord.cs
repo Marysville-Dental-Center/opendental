@@ -4,7 +4,9 @@ using System;
 
 namespace OpenPmsDentalBusiness {
 	///<summary>One completion of a maintenance item: who did it (the logged-on user, who records it; there is no second sign-off), when, which due
-	///date it closes, and a note. Its checklist ticks and results are in maintrecordvalue. Never edited or deleted.</summary>
+	///date it closes, and a note. Its checklist ticks and results are in maintrecordvalue. Never deleted. Its note, ticks and results can be
+	///corrected (MaintRecords.Correct) by the user who recorded it or a user with MaintenanceSetup; the item, the dates and UserNum never change.
+	///</summary>
 	[Serializable]
 	public class MaintRecord:TableBase {
 		///<summary>Primary key.</summary>
@@ -26,6 +28,11 @@ namespace OpenPmsDentalBusiness {
 		///<summary>When it was recorded. Set by the server.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.DateTEntry)]
 		public DateTime SecDateTEntry;
+		///<summary>FK to userod.UserNum. Who made the last correction. 0 when it was never corrected. Set by MaintRecords.Correct.</summary>
+		public long UserNumCorrected;
+		///<summary>When the last correction was saved (the server's time). MinValue when it was never corrected. Set by MaintRecords.Correct.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.DateT)]
+		public DateTime DateTCorrected;
 
 		///<summary></summary>
 		public MaintRecord Copy() {
