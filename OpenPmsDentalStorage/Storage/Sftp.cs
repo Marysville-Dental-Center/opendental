@@ -388,9 +388,10 @@ namespace OpenPmsDentalStorage {
 			return retVal;
 		}
 
-		///<summary>True when a connection signs in. A server whose host key the check refuses is not valid; the refusal is recorded in store, where
-		///Setup, SSH Host Keys shows it.</summary>
-		public static bool IsConnectionValid(string host,string user,string pass,ISshHostKeyStore store,int port=22) {
+		///<summary>True when a connection signs in, false when it does not (a wrong password, a network error). A server whose host key the check
+		///refuses is not valid either: the refusal is recorded in store, where Setup, SSH Host Keys shows it, and the SshHostKeyRefusedException
+		///(whose message names the server and both fingerprints) is thrown if doThrowHostKeyRefusal, otherwise false is returned.</summary>
+		public static bool IsConnectionValid(string host,string user,string pass,ISshHostKeyStore store,int port=22,bool doThrowHostKeyRefusal=false) {
 			bool retval=false;
 			try {
 				SftpClient client=Init(host,user,pass,store,port);
@@ -401,7 +402,10 @@ namespace OpenPmsDentalStorage {
 				}
 			}
 			catch(Exception ex) {
-				ex.DoNothing();
+				SshHostKeyRefusedException sshHostKeyRefusedException=SshHostKeyCheck.FindRefusal(ex);
+				if(doThrowHostKeyRefusal && sshHostKeyRefusedException!=null) {
+					throw sshHostKeyRefusedException;
+				}
 			}
 			return retval;
 		}
