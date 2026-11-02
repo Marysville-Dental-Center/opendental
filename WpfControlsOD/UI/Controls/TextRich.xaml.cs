@@ -23,7 +23,6 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using OpenPmsDentalBusiness;
 using CodeBase;
-using NHunspell;
 using OpenPmsDental;
 using Newtonsoft.Json;
 
@@ -77,8 +76,6 @@ How to use the TextRich control:
 		private Color _colorText=Colors.Black;
 		private ContextMenu contextMenu;
 		private DispatcherTimer _dispatcherTimer;
-		///<summary>This is shared by all TextRiches in the program.</summary>
-		private static Hunspell HunspellGlobal;
 		private bool _isMultiline=false;
 		private HorizontalAlignment _hAlign=HorizontalAlignment.Left;
 		private bool _isChangingFocusToTextBox;
@@ -145,22 +142,10 @@ How to use the TextRich control:
 			PreviewMouseLeftButtonDown+=This_PreviewMouseLeftButtonDown;
 			Unloaded+=TextRich_Unloaded;
 			bool isDesignMode=DesignerProperties.GetIsInDesignMode(this);
-			if(!isDesignMode && HunspellGlobal==null) {
-				if(ODBuild.IsDebug()) {
-					try {
-						HunspellGlobal=new Hunspell(Properties.Resources.en_US_aff,Properties.Resources.en_US_dic);
-					}
-					catch(Exception ex) {
-						ex.DoNothing();
-//todo:
-						//System.IO.File.Copy(@"..\..\..\..\Required dlls\Hunspellx64.dll","Hunspellx64.dll");
-						//System.IO.File.Copy(@"..\..\..\..\Required dlls\Hunspellx86.dll","Hunspellx86.dll");
-						HunspellGlobal=new Hunspell(Properties.Resources.en_US_aff,Properties.Resources.en_US_dic);
-					}
-				}
-				else {//not debug
-					HunspellGlobal=new Hunspell(Properties.Resources.en_US_aff,Properties.Resources.en_US_dic);
-				}
+			if(!isDesignMode) {
+				//The spell checker is shared by every TextRich and ODtextBox in the program. Its dictionary is read once per process, on a background
+				//thread, so creating this box never waits for it.
+				SpellCheckL.ReadInBackground();
 			}
 			contextMenu=new ContextMenu(this);
 			richTextBox.ContextMenu=contextMenu;
@@ -704,6 +689,8 @@ How to use the TextRich control:
 			_isSpellChecking=true;
 			ClearWavyAll();
 			_listTextRangesMisspelled=new List<TextRange>();
+			//The answers for the words already checked in this pass, shared by all the runs of text.
+			Dictionary<string,bool> dictCorrect=new Dictionary<string,bool>(StringComparer.Ordinal);
 			TextPointer textPointer=richTextBox.Document.ContentStart;
 			while(true){
 				if(textPointer is null){
@@ -716,31 +703,13 @@ How to use the TextRich control:
 				//text run found.
 				string run=textPointer.GetTextInRun(LogicalDirection.Forward);
 				//process the run
-				MatchCollection matchCollection=Regex.Matches(run,@"\b[A-Za-z'-]{3,}\b");
-				//Regex explanation:
-				//\b=word boundary on both sides (whitespace, punctuation, etc)
-				//[...]=matches letters, apost, and hyphen. Notice it will not include any word with a number.
-				//{3,}=word is at least 3 letters long.
-				for(int i=0;i<matchCollection.Count;i++){
-					if(HunspellGlobal.Spell(matchCollection[i].Value)) {//spelled correctly
-						continue;
-					}
-					if(HunspellGlobal.Spell(matchCollection[i].Value.ToLower()) ) {//Hunspell is case sensitive, so this tries different casing.
-						continue;
-					}
-					//if(ODBuild.IsDebug()
-					//	&& (Environment.MachineName.ToLower()=="jordansgalaxybk" || Environment.MachineName.ToLower()=="jordanhome" || Environment.MachineName.ToLower()=="jordancryo"))
-					//{
-						//for some testing without a db
-					//}
-					else{
-						if(DictCustoms.GetFirstOrDefault(x => x.WordText.ToLower()==matchCollection[i].Value.ToLower())!=null) {
-							continue;
-						}
-					}
+				//Words are runs of at least 3 letters, apostrophes and hyphens between word boundaries, so a word with a number is never checked.
+				//A word is correct in the dictionary as typed or in lower case (Hunspell is case sensitive), or as one of the office's own words.
+				List<Match> listMatchesMisspelled=SpellCheckL.GetMisspelledWords(run,dictCorrect);
+				for(int i=0;i<listMatchesMisspelled.Count;i++){
 					//spelling is incorrect
-					TextPointer textPointerWordStart=textPointer.GetPositionAtOffset(matchCollection[i].Index);
-					TextPointer textPointerWordEnd=textPointer.GetPositionAtOffset(matchCollection[i].Index+matchCollection[i].Length);
+					TextPointer textPointerWordStart=textPointer.GetPositionAtOffset(listMatchesMisspelled[i].Index);
+					TextPointer textPointerWordEnd=textPointer.GetPositionAtOffset(listMatchesMisspelled[i].Index+listMatchesMisspelled[i].Length);
 					TextRange textRange=new TextRange(textPointerWordStart,textPointerWordEnd);
 					_listTextRangesMisspelled.Add(textRange);
 				}
@@ -803,7 +772,7 @@ How to use the TextRich control:
 				if(!_listTextRangesMisspelled[i].Contains(textPointer)){
 					continue;
 				}
-				listSuggestions=HunspellGlobal.Suggest(_listTextRangesMisspelled[i].Text);
+				listSuggestions=SpellCheckL.Suggest(_listTextRangesMisspelled[i].Text);
 				break;
 			}
 			if(IsUsingSpellCheck() && listSuggestions.Count>0){
@@ -933,10 +902,7 @@ How to use the TextRich control:
 					return;//should never happen
 				}
 				//guaranteed to not already exist in custom dictionary, or it wouldn't be underlined.
-				DictCustom dictCustom=new DictCustom();
-				dictCustom.WordText=textRange.Text;
-				DictCustoms.Insert(dictCustom);
-				OpenPmsDental.DataValid.SetInvalid(InvalidType.DictCustoms);
+				SpellCheckL.AddCustomWord(textRange.Text);
 				SpellCheck();//to remove the red
 				//_listTextRanges.Remove(textRange);
 				_dispatcherTimer.Start();

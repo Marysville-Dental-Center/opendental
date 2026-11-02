@@ -22,7 +22,6 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using OpenPmsDentalBusiness;
 using CodeBase;
-using NHunspell;
 using OpenPmsDental;
 
 namespace WpfControls.UI{

@@ -70,9 +70,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="NHunspell">
-      <HintPath>..\Required dlls\NHunspell.dll</HintPath>
-    </Reference>
     <Reference Include="PdfSharp, Version=1.2.1269.0, Culture=neutral, PublicKeyToken=f94615aa0424f9eb, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\PdfSharp.dll</HintPath>
@@ -82,6 +79,11 @@
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <!-- The ReadOnlySpan<char> overloads of WeCantSpell.Hunspell's WordList need it to compile; SpellCheckL calls the string ones. -->
+    <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Required dlls\System.Memory.dll</HintPath>
+    </Reference>
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.ServiceProcess" />
@@ -101,6 +103,11 @@
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="WindowsFormsIntegration" />
+    <!-- The spell checker of every ODtextBox and TextRich (Logic\SpellCheckL.cs): a managed port of Hunspell, netstandard2.0 build, no native
+         DLL. MPL 1.1 / GPL 2.0 or later / LGPL 2.1 or later, used under the GPL/LGPL (THIRD-PARTY-NOTICES.txt). -->
+    <Reference Include="WeCantSpell.Hunspell">
+      <HintPath>..\Required dlls\WeCantSpell.Hunspell.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bridges\AaTemplate.cs" />
@@ -691,6 +698,7 @@
     <Compile Include="Logic\ProgramL.cs" />
     <Compile Include="Logic\VendorDirect\PdmpLaunch.cs" />
     <Compile Include="Logic\ReferralL.cs" />
+    <Compile Include="Logic\SpellCheckL.cs" />
     <Compile Include="Misc\DataValid.cs" />
     <Compile Include="Misc\FilterControlsAndAction.cs" />
     <Compile Include="Misc\FormLauncher.cs" />

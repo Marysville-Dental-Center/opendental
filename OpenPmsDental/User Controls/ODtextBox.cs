@@ -8,7 +8,6 @@ using System.IO;
 using System.Windows.Forms;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.UI;
-using NHunspell;
 using System.Text.RegularExpressions;
 using OpenPmsDental.UI;
 using System.Drawing;
@@ -41,7 +40,6 @@ namespace OpenPmsDental {
 		public bool IsDlgOpen=false;
 		private System.Windows.Forms.ContextMenu contextMenu;
 		private IContainer components;// Required designer variable.
-		private static Hunspell HunspellGlobal;//We create this object one time for every instance of this textbox control within the entire program.
 		private EnumQuickPasteType _quickPasteType;
 		private Graphics _graphicsBuffer;
 		public Timer timerSpellCheck;
@@ -191,22 +189,10 @@ namespace OpenPmsDental {
 			//The above line forces AcceptsTab to always be true, even if user had set it to false in the designer.
 			//The result is that there is no way to actually set it to false.
 			this.DetectUrls=false;
-			if(System.ComponentModel.LicenseManager.UsageMode!=System.ComponentModel.LicenseUsageMode.Designtime
-				&& HunspellGlobal==null) {
-				if(ODBuild.IsDebug()) {
-					try {
-						HunspellGlobal=new Hunspell(WpfControls.Properties.Resources.en_US_aff,WpfControls.Properties.Resources.en_US_dic);
-					}
-					catch(Exception ex) {
-						ex.DoNothing();
-						System.IO.File.Copy(@"..\..\..\Required dlls\Hunspellx64.dll","Hunspellx64.dll");
-						System.IO.File.Copy(@"..\..\..\Required dlls\Hunspellx86.dll","Hunspellx86.dll");
-						HunspellGlobal=new Hunspell(WpfControls.Properties.Resources.en_US_aff,WpfControls.Properties.Resources.en_US_dic);
-					}
-				}
-				else {
-					HunspellGlobal=new Hunspell(WpfControls.Properties.Resources.en_US_aff,WpfControls.Properties.Resources.en_US_dic);
-				}
+			if(System.ComponentModel.LicenseManager.UsageMode!=System.ComponentModel.LicenseUsageMode.Designtime) {
+				//The spell checker is shared by every ODtextBox and TextRich in the program. Its dictionary is read once per process, on a background
+				//thread, so creating this box never waits for it.
+				WpfControls.SpellCheckL.ReadInBackground();
 			}
 			EventHandler onClick=new EventHandler(menuItem_Click);
 			contextMenu.MenuItems.Add("",onClick);//These five menu items will hold the suggested spelling for misspelled words.  If no misspelled words, they will not be visible.
@@ -240,7 +226,6 @@ namespace OpenPmsDental {
 					_graphicsBuffer.Dispose();
 					_graphicsBuffer=null;
 				}
-				//We do not dispose the hunspell object because it will be automatially disposed of when the program closes.
 			}
 			base.Dispose(disposing);
 		}
@@ -503,7 +488,7 @@ namespace OpenPmsDental {
 		}
 
 		private List<string> SpellSuggest() {
-			List<string> suggestions=HunspellGlobal.Suggest(MatchReplWord.Value);
+			List<string> suggestions=WpfControls.SpellCheckL.Suggest(MatchReplWord.Value);
 			return suggestions;
 		}
 
@@ -551,10 +536,7 @@ namespace OpenPmsDental {
 					}
 					string newWord=MatchReplWord.Value;
 					//guaranteed to not already exist in custom dictionary, or it wouldn't be underlined.
-					DictCustom word=new DictCustom();
-					word.WordText=newWord;
-					DictCustoms.Insert(word);
-					DataValid.SetInvalid(InvalidType.DictCustoms);
+					WpfControls.SpellCheckL.AddCustomWord(newWord);
 					//When we add a word to the custom dictionary, it is now correct.  We need to update our storage dict for spellcheck.
 					_dictAllWords[newWord.ToLower()]=SpellingType.Custom;
 					timerSpellCheck.Start();
@@ -805,7 +787,7 @@ namespace OpenPmsDental {
 			return; 
 		}
 
-		///<summary>Performs spell checking against indiviudal words against the Hunspell dictionary and the custom internal dictionary.
+		///<summary>Performs spell checking against indiviudal words against the Hunspell dictionary (WpfControls.SpellCheckL) and the custom internal dictionary.
 		///Returns a SpellCheckResult which is a helper object designed for unit tests that only gets filled in debug mode.</summary>
 		public SpellCheckResult SpellCheck() {
 			SpellCheckResult spellCheckResult=null;//Never keep track of this type of information in a live environment.
@@ -857,13 +839,13 @@ namespace OpenPmsDental {
 					//see if the casing as they typed it is correct by Hunspell ("google" is incorrect but "Google" is correct)
 					SpellingType wordType;
 					string word=wordCur.Value;
-					if(HunspellGlobal.Spell(wordCur.Value)) {
+					if(WpfControls.SpellCheckL.IsInDictionary(wordCur.Value)) {
 						wordType=SpellingType.HunspellExact;
 					}
-					else if(HunspellGlobal.Spell(wordCur.Value.ToLower()) ) {
+					else if(WpfControls.SpellCheckL.IsInDictionary(wordCur.Value.ToLower()) ) {
 						wordType=SpellingType.HunspellLower;
 					}
-					else if(DictCustoms.GetFirstOrDefault(x => x.WordText.ToLower()==wordCur.Value.ToLower())!=null) {
+					else if(WpfControls.SpellCheckL.IsCustomWord(wordCur.Value)) {
 						wordType=SpellingType.Custom;
 						word=word.ToLower();
 					}
