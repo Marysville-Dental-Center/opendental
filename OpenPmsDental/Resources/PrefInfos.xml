@@ -1500,8 +1500,8 @@ If unchecked, the first Payment Type in the list will be selected by default.</D
     <ControlName>label39</ControlName>
     <ControlText>Paysplits Allocation</ControlText>
     <Details>Determines whether or not users are forced to allocate patient payments to procedures and unearned income. Also sets Paysplits setting in &lt;a href='https://opendental.com/manual/allocationssetup.html' target='_blank'&gt;Allocations Setup&lt;/a&gt;.&lt;br/&gt;&lt;br/&gt;
-Rigorous: Open Dental automatically suggests payment splits (paysplits) allocated to procedures, procedure treating provider, default clinic, and default unearned income types. Users can modify suggested paysplits, but are required to allocate to production (procedures or adjustments) or an unearned income type. Pay Plan Credits are also required to be attached to procedures.&lt;br/&gt;&lt;br/&gt;
-Auto-Split Only: Open Dental automatically suggest paysplits allocated to procedure treating provider, default clinic, and default unearned income types, but user can modify splits or choose to remove allocations to procedures or unearned income types.&lt;br/&gt;&lt;br/&gt;
+Rigorous: Open PMS - Dental automatically suggests payment splits (paysplits) allocated to procedures, procedure treating provider, default clinic, and default unearned income types. Users can modify suggested paysplits, but are required to allocate to production (procedures or adjustments) or an unearned income type. Pay Plan Credits are also required to be attached to procedures.&lt;br/&gt;&lt;br/&gt;
+Auto-Split Only: Open PMS - Dental automatically suggests paysplits allocated to procedure treating provider, default clinic, and default unearned income types, but user can modify splits or choose to remove allocations to procedures or unearned income types.&lt;br/&gt;&lt;br/&gt;
 Manual: Paysplits must be manually created and may optionally be allocated to production or unearned income. If no paysplits are added, a single, unallocated paysplit is automatically created when the payment is posted to the account. The provider assigned to the paysplit defaults to the patients' primary provider and the Clinic is determined by 'Default Clinic for patient payments', found in Account - Payments, which may differ from the Clinic and provider of outstanding charges.</Details>
     <WidthWindow>350</WidthWindow>
     <HeightWindow>550</HeightWindow>
@@ -2250,7 +2250,7 @@ Exclusions are defined using an Other Benefits Exclusions type, or by setting an
     <Category>MainWindowMisc</Category>
     <ControlName>label5</ControlName>
     <ControlText>Disable signal interval after this many minutes of user inactivity</ControlText>
-    <Details>Leave blank to disable. This setting is designed to limit the load on database from idle users. Enter the minutes of workstation inactivity that will cause Open Dental to stop sending automatic signals to refresh information. To continue to update the Appointments Module on an idle workstation, enable the preference, ‘Refresh every 60 seconds’.  </Details>
+    <Details>Leave blank to disable. This setting is designed to limit the load on database from idle users. Enter the minutes of workstation inactivity that will cause Open PMS - Dental to stop sending automatic signals to refresh information. To continue to update the Appointments Module on an idle workstation, enable the preference, ‘Refresh every 60 seconds’.  </Details>
     <WidthWindow>0</WidthWindow>
     <HeightWindow>0</HeightWindow>
   </PrefInf>
@@ -2259,7 +2259,7 @@ Exclusions are defined using an Other Benefits Exclusions type, or by setting an
     <Category>MainWindowMisc</Category>
     <ControlName>label3</ControlName>
     <ControlText>Process signal interval in seconds.  Leave blank to disable autorefresh</ControlText>
-    <Details>Leave blank to disable autorefresh. The interval, in seconds, that Open Dental will automatically refresh the Appointments Module, task lists, and text notifications. This is usually every 6 to 20 seconds. Leave blank to disable auto refresh.</Details>
+    <Details>Leave blank to disable autorefresh. The interval, in seconds, that Open PMS - Dental will automatically refresh the Appointments Module, task lists, and text notifications. This is usually every 6 to 20 seconds. Leave blank to disable auto refresh.</Details>
     <WidthWindow>0</WidthWindow>
     <HeightWindow>0</HeightWindow>
   </PrefInf>
@@ -2633,7 +2633,7 @@ The Default Ortho Auto Proc cannot be a banding procedure. This prevents supplem
     <ControlText>Ortho Placement Procedures</ControlText>
     <Details>Define which procedures can be considered as the initial orthodontic procedure to calculate the Date Start for &lt;a href='https://opendental.com/manual/orthoauto.html' target='_blank'&gt;Auto Ortho&lt;/a&gt;. If the 'Use the first ortho procedure date as the Date of Placement' preference is enabled this also affects 'Date of Placement' on claims. 
 &lt;br/&gt;
-If no procedures are defined, Open Dental attempts to use the first procedure within the code span D8000-D8999 as the initial orthodontic procedure.</Details>
+If no procedures are defined, Open PMS - Dental attempts to use the first procedure within the code span D8000-D8999 as the initial orthodontic procedure.</Details>
     <WidthWindow>400</WidthWindow>
     <HeightWindow>600</HeightWindow>
   </PrefInf>
