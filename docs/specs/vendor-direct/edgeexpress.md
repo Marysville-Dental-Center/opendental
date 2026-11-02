@@ -211,7 +211,7 @@ Add a new `FormEdgeExpressPayPage` on `CodeBase.Controls.ODWebView2` (WebView2, 
   - Turn dev tools off (`ODWebView2.CoreWebView2_InitializationCompleted` already does, along with browser accelerator keys).
   - Hide the Refresh, Back and Forward toolbar buttons.
 - **Test gateway banner:** when the sandbox is selected, the title bar says so.
-- **Fallback:** if the WebView2 runtime is missing, `ODWebView2.Init` throws. Fall back to `FormWebBrowser` with `UrlCloseOn` (already implemented), or to mode B with the system browser if the office chose it.
+- **Fallback:** if the WebView2 runtime is missing, `ODWebView2.Init` throws. Fall back to `FormWebBrowser` with `UrlCloseOn` (already implemented), or to mode B with the system browser if the office chose it. *Since package LIB-WEB (docs/port-notes/LIB-WEB.md) the IE control is gone: without WebView2 both modes open the page in the system browser, and in mode A the user presses "I'm finished".*
 
 ### 3.4 Loopback listener (mode B)
 
@@ -283,7 +283,7 @@ There are no tokens to refresh. Instead:
 | Gateway 820 / 818 / 819 (temporary) | "The card processor is temporarily unavailable. Try again in a minute." No automatic retry of charges. |
 | 805 / 806 / 807 / 808 | Credential or environment message pointing to setup. |
 | 801 (too large) | Caught before sending (`UploadData`). The fix is to drop the optional `CUSTOMIZATION` block, then truncate `CUSTOMERNAME`. |
-| WebView2 runtime missing | Fall back to the IE control (mode A) or the system browser (mode B). `ODWebView2.Init` already offers Microsoft's runtime download. |
+| WebView2 runtime missing | Fall back to the IE control (mode A) or the system browser (mode B). `ODWebView2.Init` already offers Microsoft's runtime download. *LIB-WEB: the system browser in both modes; `ODWebView2.Init` only says that an administrator installs the runtime.* |
 | Loopback bind fails | Fall back to embedded mode A and log a warning. |
 
 Core features never depend on any of this (ground rule 5): charting, scheduling, billing, claims and imaging work with EdgeExpress disabled or offline.
@@ -336,7 +336,7 @@ Core features never depend on any of this (ground rule 5): charting, scheduling,
 **"Not available" stubs replaced:** none.
 - The only HQ dependency, the return page, was already replaced in wave 1.
 - `WebServiceMainHQNoHq.UploadPatientPortalXWebResponses` stays "not available", because the patient portal is an eService and out of scope.
-- `OpenDental/Forms/FormWebBrowser.cs` keeps `UrlCloseOn` for the fallback.
+- `OpenDental/Forms/FormWebBrowser.cs` keeps `UrlCloseOn` for the fallback. *(Removed with the IE control in LIB-WEB.)*
 
 ## 5. Credentials and agreements the office must get
 
@@ -371,7 +371,7 @@ All in the sandbox (`EdgeExpressUseTestGateway=1`) with the office's test creden
 | T3 | Complete a payment in mode B with a debug build that logs **only** the HTTP method and the parameter **names** (never values) | GET or POST, and which fields are sent. Confirm the design ignores them. |
 | T4 | Embedded mode: confirm `NavigationStarting` sees the return URL and that `RETURNTARGET=_self` navigates the top-level document | The window closes immediately with no error page. |
 | T5 | Open a page and submit after 4, 6 and 11 minutes; also open one and press the page's own cancel control, if it has one | Record when it expires and the code returned (101, or 006 as Tudip says), and whether a cancel returns 103. Set `_formTimeout`. |
-| T6 | Load the page in the IE fallback (`FormWebBrowser`) | Works, or document that the fallback is unusable. |
+| T6 | Load the page in the IE fallback (`FormWebBrowser`) | Works, or document that the fallback is unusable. *Obsolete since LIB-WEB: the fallback is the system browser.* |
 
 **Functional.**
 
@@ -430,7 +430,7 @@ Sandbox testing comes on top and waits on OpenEdge supplying test credentials an
 3. **No public spec.** Field behaviour may have changed since 24.3. Mitigation: sandbox run of T1–T6 and F1–F15 before production.
 4. **Abandoned or late-completed sessions** charge a card with no payment recorded. Mitigation: re-poll, local reconciliation and an alert. Staff must act on the alerts.
 5. **Rollback to Open Dental.** After the Auth Key is saved as `osd1$`, Open Dental 25.3 can't read it (it expects plain text). The pilot rollback plan must include re-entering the Auth Key in Open Dental. `xwebresponse` rows that carry the new `XWebResponseCode` names (`SessionTimedOut`, `TransactionCancelled`) are finished rows, but check how Open Dental parses an unknown name before rolling back.
-6. **IE fallback.** The vendor may stop supporting the MSHTML engine. Then the fallback fails and WebView2 becomes a hard requirement for CNP.
+6. **IE fallback.** The vendor may stop supporting the MSHTML engine. Then the fallback fails and WebView2 becomes a hard requirement for CNP. *Settled by LIB-WEB: there is no IE fallback; without WebView2 the page opens in the system browser.*
 7. **Loopback edge cases.** Endpoint security software that blocks local listeners; IPv6-only loopback. Mitigation: fall back to embedded mode A.
 8. **Shared state across workstations.** The reconciliation claim relies on `DateTUpdate` resolution (seconds). Two claims in the same second are unlikely but possible. Mitigation: claim by `XWebResponseNum` and re-read the status after the claim before acting.
 9. **Vendor or brand changes** (Global Payments / OpenEdge naming, host names). Mitigation: base URLs stay overridable through `Introspection` and the test-gateway switch.
