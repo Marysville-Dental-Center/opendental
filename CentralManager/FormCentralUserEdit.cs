@@ -44,10 +44,12 @@ namespace CentralManager {
 			}
 			_listAlertSubsOld=AlertSubs.GetAllForUser(Security.CurUser.UserNum);
 			listAlertSubMulti.Items.Clear();
-			string[] arrayAlertTypes=Enum.GetNames(typeof(AlertType));
-			for(int i=0;i<arrayAlertTypes.Length;i++){
-				listAlertSubMulti.Items.Add(arrayAlertTypes[i]);
-				listAlertSubMulti.SetSelected(i,_listAlertSubsOld.Exists(x => x.Type==(AlertType)i));
+			//Every defined value, not 0..count-1: this program's own values count down from 127 (docs/port-notes/FORK-ENUMS.md).
+			List<AlertType> listAlertTypes=Enum.GetValues(typeof(AlertType)).Cast<AlertType>().ToList();
+			for(int i=0;i<listAlertTypes.Count;i++){
+				AlertType alertType=listAlertTypes[i];
+				listAlertSubMulti.Items.Add(alertType.ToString());
+				listAlertSubMulti.SetSelected(i,_listAlertSubsOld.Exists(x => x.Type==alertType));
 			}
 			if(UserCur.IsNew) {
 				butUnlock.Visible=false;
@@ -149,11 +151,12 @@ namespace CentralManager {
 				return;
 			}
 			List<AlertSub> listAlertSubsCur=new List<AlertSub>();
+			List<AlertType> listAlertTypes=Enum.GetValues(typeof(AlertType)).Cast<AlertType>().ToList();//The order the list was filled in.
 			foreach(int index in listAlertSubMulti.SelectedIndices) {
 				AlertSub alertSub=new AlertSub();
 				alertSub.ClinicNum=0;
 				alertSub.UserNum=Security.CurUser.UserNum;
-				alertSub.Type=(AlertType)index;
+				alertSub.Type=listAlertTypes[index];
 				listAlertSubsCur.Add(alertSub);
 			}
 			AlertSubs.Sync(listAlertSubsCur,_listAlertSubsOld);

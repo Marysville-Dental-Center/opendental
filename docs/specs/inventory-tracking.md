@@ -216,9 +216,11 @@ ledger and the stock agree from the start. Supplies, orders, suppliers and categ
   people who look after supplies today, unless a group has it already (a Security Admin log entry names the groups).
 - Receiving uses Supply Purchases (`SupplyPurchases`) for its log entry, as orders do.
 - Fork-only values stored in the database (`docs/port-notes/FORK-ENUMS.md`): `EnumPermType.InventoryAdjust` 10050, in the inventory
-  range 10050-10099. `AlertType` and `FormType` are stored in `tinyint(4)` columns (at most 127), so their fork values come from the
-  inventory range 110-119 of the tinyint rule: `AlertType.InventoryLowStock` 110, `AlertType.InventoryExpiring` 111,
-  `FormType.FormSupplyInventory` 110. The security tree's Set All and Set None loop over the defined values, not over 0 to count-1.
+  range 10050-10099. `AlertType` and `FormType` are stored in `tinyint(4)` columns (at most 127), so 10050-10099 does not fit them; their
+  fork values count down from 127 (`ForkEnums.FIRST_VALUE_TINYINT`, the rule shared with routine maintenance, which has 127-120), from the
+  inventory range 119-112: `AlertType.InventoryLowStock` 119, `AlertType.InventoryExpiring` 118, `FormType.FormSupplyInventory` 119
+  (an owner question records the move away from 10050-10099). The security tree's Set All and Set None, and the Central Manager's alert
+  list, loop over the defined values, not over 0 to count-1.
 
 ## 5. Migration steps
 

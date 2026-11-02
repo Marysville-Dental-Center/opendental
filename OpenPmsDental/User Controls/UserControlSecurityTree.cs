@@ -682,8 +682,10 @@ namespace OpenPmsDental {
 			}
 			long userGroupNum=_listUserGroupNums.First();
 			GroupPermission perm;
-			//Over the defined values, not 0 to count-1: fork-only values start at 10000 (docs/port-notes/FORK-ENUMS.md).
-			foreach(EnumPermType permType in Enum.GetValues(typeof(EnumPermType))) {
+			//Every defined value, not 0..count-1: this program's own values start at 10000 (docs/port-notes/FORK-ENUMS.md).
+			List<EnumPermType> listPermTypes=Enum.GetValues(typeof(EnumPermType)).Cast<EnumPermType>().ToList();
+			for(int i = 0;i<listPermTypes.Count;i++) {
+				EnumPermType permType=listPermTypes[i];
 				if(permType==EnumPermType.SecurityAdmin
 					|| permType==EnumPermType.StartupMultiUserOld
 					|| permType==EnumPermType.StartupSingleUserOld
@@ -720,12 +722,14 @@ namespace OpenPmsDental {
 			}
 			long userGroupNum=_listUserGroupNums.First();
 			GroupPermission perm;
-			//Over the defined values, not 0 to count-1: fork-only values start at 10000 (docs/port-notes/FORK-ENUMS.md).
-			foreach(EnumPermType permType in Enum.GetValues(typeof(EnumPermType))) {
+			//Every defined value, not 0..count-1: this program's own values start at 10000 (docs/port-notes/FORK-ENUMS.md).
+			List<EnumPermType> listPermTypes=Enum.GetValues(typeof(EnumPermType)).Cast<EnumPermType>().ToList();
+			for(int i = 0;i<listPermTypes.Count;i++) {
+				EnumPermType permType=listPermTypes[i];
 				if(permType==EnumPermType.SecurityAdmin
 					|| permType==EnumPermType.StartupMultiUserOld
 					|| permType==EnumPermType.StartupSingleUserOld
-					|| permType==EnumPermType.EhrKeyAdd) 
+					|| permType==EnumPermType.EhrKeyAdd)
 				{
 					continue;
 				}

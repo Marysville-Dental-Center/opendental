@@ -20,9 +20,15 @@ namespace InventoryTests {
 		public void ForkEnumValues_InTheInventoryRanges() {
 			Assert.AreEqual(10050,(int)EnumPermType.InventoryAdjust,"smallint grouppermission.PermType and securitylog.PermType hold it.");
 			Assert.AreEqual("Inventory Adjust",EnumPermType.InventoryAdjust.GetDescription());
-			Assert.AreEqual(110,(int)AlertType.InventoryLowStock);
-			Assert.AreEqual(111,(int)AlertType.InventoryExpiring);
-			Assert.AreEqual(110,(int)FormType.FormSupplyInventory);
+			//The tinyint enums count down from 127; inventory tracking has 119 to 112 (docs/port-notes/FORK-ENUMS.md, "tinyint enums").
+			Assert.AreEqual(119,(int)AlertType.InventoryLowStock);
+			Assert.AreEqual(118,(int)AlertType.InventoryExpiring);
+			Assert.AreEqual(119,(int)FormType.FormSupplyInventory);
+			foreach(Enum value in new Enum[] { AlertType.InventoryLowStock,AlertType.InventoryExpiring,FormType.FormSupplyInventory }) {
+				Assert.IsTrue(ForkEnums.IsForkOnly(value),value+" is a fork-only value.");
+				Assert.IsTrue(Convert.ToInt32(value)>=112 && Convert.ToInt32(value)<=119,value+" is in the inventory range 119-112.");
+			}
+			Assert.IsTrue(ForkEnums.IsForkOnly(EnumPermType.InventoryAdjust));
 			//alertitem.Type, alertsub.Type, alertcategorylink.AlertType and alertitem.FormToOpen are tinyint(4): every value must fit.
 			Assert.IsTrue(Enum.GetValues(typeof(AlertType)).Cast<int>().All(x => x<=127));
 			Assert.IsTrue(Enum.GetValues(typeof(FormType)).Cast<int>().All(x => x<=127));
@@ -32,13 +38,24 @@ namespace InventoryTests {
 		}
 
 		[TestMethod]
-		public void ForkEnumsDocument_ListsTheValues() {
+		public void ForkEnumsDocument_HasTheRangesOfTheValues() {
 			string text=ReadRepoFile("docs","port-notes","FORK-ENUMS.md");
-			StringAssert.Contains(text,"| `EnumPermType` | 10050 | `InventoryAdjust` | Inventory tracking |");
-			StringAssert.Contains(text,"| `AlertType` | 110 | `InventoryLowStock` | Inventory tracking |");
-			StringAssert.Contains(text,"| `AlertType` | 111 | `InventoryExpiring` | Inventory tracking |");
-			StringAssert.Contains(text,"| `FormType` | 110 | `FormSupplyInventory` | Inventory tracking |");
-			StringAssert.Contains(text,"| 110-119 | Inventory tracking ");
+			StringAssert.Contains(text,"| 10050-10099 | Inventory tracking ");
+			StringAssert.Contains(text,"| 119-112               | Inventory tracking ");
+			StringAssert.Contains(text,"`ForkEnums.FIRST_VALUE_TINYINT`");
+			string spec=ReadRepoFile("docs","specs","inventory-tracking.md");
+			StringAssert.Contains(spec,"`AlertType.InventoryLowStock` 119, `AlertType.InventoryExpiring` 118, `FormType.FormSupplyInventory` 119");
+		}
+
+		///<summary>The security tree's Set All and Set None, and the Central Manager's alert list, loop over the defined values, so a fork-only value
+		///(10050, 119) is reached and no undefined value is ever written.</summary>
+		[TestMethod]
+		public void EnumLoops_GoOverTheDefinedValues() {
+			string sourceTree=ReadRepoFile("OpenPmsDental","User Controls","UserControlSecurityTree.cs");
+			Assert.IsFalse(sourceTree.Contains("(EnumPermType)i"),"No loop casts a counter to a permission.");
+			Assert.AreEqual(2,sourceTree.Split(new[] { "Enum.GetValues(typeof(EnumPermType))" },StringSplitOptions.None).Length-1,"Set All and Set None.");
+			string sourceCentral=ReadRepoFile("CentralManager","FormCentralUserEdit.cs");
+			Assert.IsFalse(sourceCentral.Contains("(AlertType)i") || sourceCentral.Contains("(AlertType)index"),"No loop casts a counter to an alert type.");
 		}
 
 		[TestMethod]

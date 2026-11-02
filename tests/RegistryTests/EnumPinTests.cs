@@ -39,22 +39,16 @@ namespace RegistryTests {
 
 		[TestMethod]
 		public void EnumPermType_IsContiguous() {
-			//Open Dental's values have no gaps. Fork-only values start at 10000 (docs/port-notes/FORK-ENUMS.md); the security tree's Set All and Set
-			//None loop over the defined values, not over 0..count-1.
-			int[] arrayValues=Enum.GetValues(typeof(EnumPermType)).Cast<int>().Where(x => x<10000).OrderBy(x => x).ToArray();
+			//Open Dental's values have no gaps. This program's own values start at 10000 (docs/port-notes/FORK-ENUMS.md); the security tree's Set All
+			//and Set None loop over Enum.GetValues, not 0..count-1.
+			int[] arrayValues=Enum.GetValues(typeof(EnumPermType)).Cast<int>().Where(x => x<ForkEnums.FIRST_VALUE).OrderBy(x => x).ToArray();
 			for(int i=0;i<arrayValues.Length;i++) {
 				Assert.AreEqual(i,arrayValues[i]);
 			}
-		}
-
-		///<summary>True for a fork-only member (docs/port-notes/FORK-ENUMS.md): 10000 and above, or 100 to 127 for the enums stored in tinyint
-		///columns. Open Dental's published documents never list them.</summary>
-		private static bool IsForkOnly(Type type,string name) {
-			long value=Convert.ToInt64(Enum.Parse(type,name));
-			if(type==typeof(AlertType) || type==typeof(FormType)) {
-				return value>=100 && value<=127;
+			foreach(EnumPermType permType in Enum.GetValues(typeof(EnumPermType)).Cast<EnumPermType>().Where(x => (int)x>=ForkEnums.FIRST_VALUE)) {
+				Assert.IsTrue(ForkEnums.IsForkOnly(permType));
+				Assert.IsTrue((int)permType<10100,permType+" is outside the ranges reserved in docs/port-notes/FORK-ENUMS.md.");
 			}
-			return value>=10000;
 		}
 
 		[TestMethod]
@@ -178,7 +172,10 @@ namespace RegistryTests {
 				HashSet<string> setPublished=new HashSet<string>(OdEnumReference.GetEnum(pair.Key.Name).Select(x => x.MemberName));
 				Assert.IsTrue(setPublished.Count>0,pair.Key.Name+" is not in the reference data.");
 				foreach(string name in Enum.GetNames(pair.Key)) {
-					if(!setPublished.Contains(name) && !pair.Value.Contains(name) && !IsForkOnly(pair.Key,name)) {
+					if(ForkEnums.IsForkOnly((Enum)Enum.Parse(pair.Key,name))) {
+						continue;//This program's own value (docs/port-notes/FORK-ENUMS.md), never in Open Dental's documents.
+					}
+					if(!setPublished.Contains(name) && !pair.Value.Contains(name)) {
 						listProblems.Add(pair.Key.Name+"."+name);
 					}
 				}
