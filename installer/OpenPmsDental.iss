@@ -3,7 +3,8 @@
 ;
 ; Compile it with tools\Build-Release.ps1. The script builds Release x86, checks the files, stages them in one folder and passes that
 ; folder as StagingDir, and the information page text (installer\setup-info.txt with NOTICE) as InfoFile. Everything in the staging
-; folder is installed as it is; this script adds only FreeDentalConfig.xml and the uninstaller.
+; folder is installed as it is; this script adds only FreeDentalConfig.xml and the uninstaller, and on an upgrade deletes the files of
+; an earlier release that this one no longer ships ([InstallDelete]).
 ;
 ; Command line (besides Inno Setup's own switches, such as /SILENT, /VERYSILENT, /SUPPRESSMSGBOXES, /DIR=, /NOICONS, /TASKS=, /LOG=):
 ;   /DBSERVER=name      database server for FreeDentalConfig.xml (host, or host:port for a port other than 3306). Default localhost.
@@ -84,6 +85,12 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+
+[InstallDelete]
+; Files of an earlier release that this one no longer ships (ForkReleases.ListRetiredFiles). An upgrade deletes them, so the program folder
+; holds only this release's files: the release channel publishes every top-level file of it. Nothing loads them any more.
+; The storage library of v0.0, renamed OpenPmsDentalStorage.dll on 2026-11-02 (docs\port-notes\RENAME.md).
+Type: files; Name: "{app}\OpenPmsDentalCloud.dll"
 
 [Files]
 Source: "{#StagingDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
