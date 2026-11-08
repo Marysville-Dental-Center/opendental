@@ -79,7 +79,8 @@ namespace BPROCTests {
 			RunSta(() => {
 				using FormFeeSchedTools formFeeSchedTools=new FormFeeSchedTools(0,new List<FeeSched>(),new List<Provider>(),new List<Clinic>());
 				OpenPmsDental.UI.TabControl tabControl=GetField<OpenPmsDental.UI.TabControl>(formFeeSchedTools,"tabControlTools");
-				CollectionAssert.AreEqual(new[] { "Copy","Increase","Clear","Export / Import","Global Updates" },
+				//Copy Code is the Open Dental 26.2 tool that copies fees from one procedure code to another (P262-TOOLS).
+				CollectionAssert.AreEqual(new[] { "Copy","Increase","Clear","Export / Import","Global Updates","Copy Code" },
 					tabControl.TabPages.Select(x => x.Text).ToArray());
 				Dictionary<string,string[]> dictControlsByTab=new Dictionary<string,string[]> {
 					{ "tabPageCopy",new[] { "groupBox1","comboFeeSchedTo","butPickSchedTo","comboClinicTo","comboGroupTo","butPickGroupTo","comboProviderTo",
@@ -89,6 +90,8 @@ namespace BPROCTests {
 					{ "tabPageClear",new[] { "groupBox2","butClear" } },
 					{ "tabPageExportImport",new[] { "groupBox5","butExport","butImport","checkExportFuture","textDateEffectiveImport" } },
 					{ "tabPageGlobalUpdates",new[] { "groupGlobalUpdateFees","comboGlobalUpdateClinics","butUpdate","butUpdateWriteoffs" } },
+					{ "tabPageCopyCode",new[] { "groupBoxCopyCode","textCodeFrom","butPickCodeFrom","textCodeTo","butPickCodeTo","radioCopyCodeAllScheds",
+						"radioCopyCodeOneSched","butCopyCode" } },
 				};
 				List<HashSet<string>> listNamesPerTab=new List<HashSet<string>>();
 				foreach(KeyValuePair<string,string[]> pair in dictControlsByTab) {
@@ -126,6 +129,7 @@ namespace BPROCTests {
 				"this.butImport.Click += new System.EventHandler(this.butImport_Click);",
 				"this.butUpdate.Click += new System.EventHandler(this.butUpdateFees_Click);",
 				"this.butUpdateWriteoffs.Click += new System.EventHandler(this.butUpdateWriteoffs_Click);",
+				"this.butCopyCode.Click += new System.EventHandler(this.butCopyCode_Click);",
 				"this.checkShowGroups.CheckedChanged += new System.EventHandler(this.checkShowGroups_CheckedChanged);",
 				"this.comboFeeSched.SelectionChangeCommitted += new System.EventHandler(this.comboFeeCombos_SelectionChangeCommitted);",
 				"this.comboFeeSchedTo.SelectionChangeCommitted += new System.EventHandler(this.comboFeeCombos_SelectionChangeCommitted);",
