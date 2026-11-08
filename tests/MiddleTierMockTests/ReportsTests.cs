@@ -36,11 +36,15 @@ namespace MiddleTierMockTests {
 		[TestCleanup]
 		public void TearDownTest() {
 			//Put the Middle Tier mock server back to the way it was before the test, then drop the user that SetupTest() created.
-			ScratchDb.UseDirectConnection();
-			if(ScratchDb.SkipReason==null) {
-				ScratchDbCopy.DropAccount(USER_LOW_NAME);
+			try {
+				ScratchDb.UseDirectConnection();
+				if(ScratchDb.SkipReason==null) {
+					ScratchDbCopy.DropAccount(USER_LOW_NAME);
+				}
 			}
-			ScratchDbCopy.EndTest();
+			finally {
+				ScratchDbCopy.EndTest();//Always reconnect to the suite's database, also when the drop fails (ClassCleanup drops the account again).
+			}
 		}
 
 		[ClassCleanup]

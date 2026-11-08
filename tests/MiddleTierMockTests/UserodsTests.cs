@@ -31,12 +31,16 @@ namespace MiddleTierMockTests {
 			ODEvent.Fired-=CredentialsFailedAfterLoginEvent_Fired1;
 			ODEvent.IsCredentialsFailedAfterLogin_EventSubscribed=false;
 			RemotingClient.HasLoginFailed=false;
-			ScratchDb.UseDirectConnection();//The legacy RevertMiddleTierSettingsIfNeeded.
-			if(ScratchDb.SkipReason==null) {
-				Security.CurUser=Userods.GetFirstOrDefault(x => x.UserName==ScratchDb.UnitTestUserName);
-				Security.PasswordTyped=ScratchDb.UnitTestPassword;
+			try {
+				ScratchDb.UseDirectConnection();//The legacy RevertMiddleTierSettingsIfNeeded.
+				if(ScratchDb.SkipReason==null) {
+					Security.CurUser=Userods.GetFirstOrDefault(x => x.UserName==ScratchDb.UnitTestUserName);
+					Security.PasswordTyped=ScratchDb.UnitTestPassword;
+				}
 			}
-			ScratchDbCopy.EndTest();
+			finally {
+				ScratchDbCopy.EndTest();//Always reconnect to the suite's database and empty the copy's caches.
+			}
 		}
 
 		[ClassCleanup]
