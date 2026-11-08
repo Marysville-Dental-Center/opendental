@@ -371,6 +371,13 @@ namespace OpenPmsDentalBusiness{
 		private static bool CheckAutomationConditions<T>(List<AutomationCondition> listAutomationConditions,long patNum,T triggerObj=default(T),
 			Automation automation=null,EnumAutomationTrigger? automationTrigger=null,List<string> listProcCodes=null)
 		{
+			//26.2: the Carriers Match conditions of one automation are ORed with each other (any one carrier is enough) and ANDed with the rest.
+			List<AutomationCondition> listAutomationConditionsCarriers=listAutomationConditions.FindAll(x => x.CompareField==AutoCondField.CarriersMatch);
+			if(listAutomationConditionsCarriers.Count>0
+				&& !AutomationDoNotBillIns.IsConditionMet(automationTrigger,listAutomationConditionsCarriers,patNum))
+			{
+				return false;
+			}
 			//Make sure every condition returns true
 			for(int i=0;i<listAutomationConditions.Count;i++) {
 				switch(listAutomationConditions[i].CompareField) {
@@ -455,6 +462,9 @@ namespace OpenPmsDentalBusiness{
 						{
 							return false;
 						}
+						break;
+					case AutoCondField.CarriersMatch:
+						//26.2. ONLY TO BE USED FOR DoNotBillInsuranceCheck AUTOMATION TRIGGER. Evaluated above, all of them together (ORed).
 						break;
 				}
 			}

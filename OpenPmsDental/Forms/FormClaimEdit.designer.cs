@@ -555,11 +555,11 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.tabControlMain.Controls.Add(this.tabGeneral);
-			this.tabControlMain.Controls.Add(this.tabAttachments);
+			this.tabControlMain.Controls.Add(this.tabHistory);
 			this.tabControlMain.Controls.Add(this.tabMisc);
+			this.tabControlMain.Controls.Add(this.tabAttachments);
 			this.tabControlMain.Controls.Add(this.tabUB04);
 			this.tabControlMain.Controls.Add(this.tabCanadian);
-			this.tabControlMain.Controls.Add(this.tabHistory);
 			this.tabControlMain.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F);
 			this.tabControlMain.Location = new System.Drawing.Point(2, 478);
 			this.tabControlMain.Name = "tabControlMain";

@@ -1392,7 +1392,7 @@ namespace OpenPmsDentalBusiness{
 			claim.IsProsthesis="N";
 			claim.ProvBill=Providers.GetBillingProvNum(claim.ProvTreat,claim.ClinicNum);//OK if zero, because it will get fixed in claim
 			claim.EmployRelated=YN.No;
-			claim.ClaimForm=insPlan.ClaimFormNum;
+			claim.ClaimForm=ClaimFormDefaults.GetClaimFormNumForNewClaim(claim.ProvTreat,insPlan.ClaimFormNum);//26.2: the provider's default form
 			claim.AttachedFlags="Mail";
 			Claims.Insert(claim);
 			claim.ClaimIdentifier=ConvertClaimId(claim,patient);
@@ -1507,7 +1507,7 @@ namespace OpenPmsDentalBusiness{
 			claim.IsProsthesis="N";
 			claim.ProvBill=Providers.GetBillingProvNum(claim.ProvTreat,claim.ClinicNum);//OK if zero, because it will get fixed in claim
 			claim.EmployRelated=YN.No;
-			claim.ClaimForm=insPlan.ClaimFormNum;
+			claim.ClaimForm=ClaimFormDefaults.GetClaimFormNumForNewClaim(claim.ProvTreat,insPlan.ClaimFormNum);//26.2: the provider's default form
 			claim.AttachedFlags="Mail";
 			if(CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
 				//Defaults to X in edit claim form

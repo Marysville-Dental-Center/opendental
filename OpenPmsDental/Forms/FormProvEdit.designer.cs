@@ -72,6 +72,8 @@ namespace OpenPmsDental {
 			this.textProviderID = new System.Windows.Forms.TextBox();
 			this.comboProv = new OpenPmsDental.UI.ComboBox();
 			this.label19 = new System.Windows.Forms.Label();
+			this.comboClaimForm = new OpenPmsDental.UI.ComboBox();
+			this.labelClaimForm = new System.Windows.Forms.Label();
 			this.labelEhrMU = new System.Windows.Forms.Label();
 			this.comboEhrMu = new OpenPmsDental.UI.ComboBox();
 			this.checkIsNotPerson = new OpenPmsDental.UI.CheckBox();
@@ -323,6 +325,8 @@ namespace OpenPmsDental {
 			this.tabGeneral.Controls.Add(this.textProviderID);
 			this.tabGeneral.Controls.Add(this.comboProv);
 			this.tabGeneral.Controls.Add(this.label19);
+			this.tabGeneral.Controls.Add(this.comboClaimForm);
+			this.tabGeneral.Controls.Add(this.labelClaimForm);
 			this.tabGeneral.Controls.Add(this.labelEhrMU);
 			this.tabGeneral.Controls.Add(this.comboEhrMu);
 			this.tabGeneral.Controls.Add(this.checkIsNotPerson);
@@ -634,7 +638,23 @@ namespace OpenPmsDental {
 			this.label19.TabIndex = 321;
 			this.label19.Text = "Claim Billing Prov Override";
 			this.label19.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
+			//
+			// comboClaimForm
+			//
+			this.comboClaimForm.Location = new System.Drawing.Point(536, 548);
+			this.comboClaimForm.Name = "comboClaimForm";
+			this.comboClaimForm.Size = new System.Drawing.Size(213, 21);
+			this.comboClaimForm.TabIndex = 346;
+			//
+			// labelClaimForm
+			//
+			this.labelClaimForm.Location = new System.Drawing.Point(417, 548);
+			this.labelClaimForm.Name = "labelClaimForm";
+			this.labelClaimForm.Size = new System.Drawing.Size(118, 21);
+			this.labelClaimForm.TabIndex = 347;
+			this.labelClaimForm.Text = "Default Claim Form";
+			this.labelClaimForm.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
 			// labelEhrMU
 			// 
 			this.labelEhrMU.Location = new System.Drawing.Point(57, 517);
@@ -1174,6 +1194,8 @@ namespace OpenPmsDental {
 		private TextBox textProviderID;
 		private UI.ComboBox comboProv;
 		private Label label19;
+		private UI.ComboBox comboClaimForm;
+		private Label labelClaimForm;
 		private Label labelEhrMU;
 		private OpenPmsDental.UI.ComboBox comboEhrMu;
 		private TextBox textStateWhereLicensed;

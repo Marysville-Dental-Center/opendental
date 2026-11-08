@@ -1,7 +1,9 @@
 using System;
 using System.Drawing;
 using System.Collections;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows.Forms;
 using OpenPmsDental.UI;
 using OpenPmsDentalBusiness;
@@ -94,11 +96,43 @@ namespace OpenPmsDental{
 		}
 
 		private void butOK_Click(object sender, System.EventArgs e) {
-			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Once insurance plans have been merged, it is not possible to unmerge them. Do not merge insurance plans from multiple copies of the program at the same time. Continue?")) {
+			if(gridMain.GetSelectedIndex()==-1) {
+				MsgBox.Show(this,"Please select a plan first.");
 				return;
 			}
-			InsPlanToMergeTo=InsPlanArrayAll[gridMain.GetSelectedIndex()].Copy();
+			InsPlan insPlanSelected=InsPlanArrayAll[gridMain.GetSelectedIndex()];
+			//Open Dental 26.2: a detailed warning that lists every field of the other plans that does not match the selected plan.
+			List<InsPlanMismatch> listInsPlanMismatches=GetMismatches(insPlanSelected);
+			if(listInsPlanMismatches.Count>0) {
+				Dictionary<long,string> dictPlanDescriptions=InsPlanArrayAll.GroupBy(x => x.PlanNum)
+					.ToDictionary(x => x.Key,x => InsPlanMergeMismatches.GetPlanDescription(x.First()));
+				using FormInsPlansMergeWarning formInsPlansMergeWarning=new FormInsPlansMergeWarning(
+					InsPlanMergeMismatches.GetPlanDescription(insPlanSelected),listInsPlanMismatches,dictPlanDescriptions);
+				formInsPlansMergeWarning.ShowDialog();
+				if(formInsPlansMergeWarning.DialogResult!=DialogResult.OK) {
+					return;
+				}
+			}
+			else if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Once insurance plans have been merged, it is not possible to unmerge them. Do not merge insurance plans from multiple copies of the program at the same time. Continue?")) {
+				return;
+			}
+			InsPlanToMergeTo=insPlanSelected.Copy();
 			DialogResult=DialogResult.OK;
+		}
+
+		///<summary>The fields and benefits of the other plans that do not match the selected plan.</summary>
+		private List<InsPlanMismatch> GetMismatches(InsPlan insPlanSelected) {
+			List<InsPlan> listInsPlansOther=InsPlanArrayAll.Where(x => x.PlanNum!=insPlanSelected.PlanNum).ToList();
+			List<InsPlanMismatch> listInsPlanMismatches=InsPlanMergeMismatches.GetMismatches(insPlanSelected,listInsPlansOther);
+			Dictionary<long,List<Benefit>> dictBenefits=InsPlanMergeMismatches.GetBenefitsForPlans(InsPlanArrayAll.Select(x => x.PlanNum).Distinct().ToList());
+			listInsPlanMismatches.AddRange(InsPlanMergeMismatches.GetBenefitMismatches(insPlanSelected,listInsPlansOther,dictBenefits));
+			//Plan by plan, in the order of the list, each plan's fields in the order of the window and its benefits last.
+			List<long> listPlanNumsOrder=listInsPlansOther.Select(x => x.PlanNum).ToList();
+			return listInsPlanMismatches.Select((x,i) => new { Mismatch=x,Index=i })
+				.OrderBy(x => listPlanNumsOrder.IndexOf(x.Mismatch.PlanNumOther))
+				.ThenBy(x => x.Index)
+				.Select(x => x.Mismatch)
+				.ToList();
 		}
 
 	}

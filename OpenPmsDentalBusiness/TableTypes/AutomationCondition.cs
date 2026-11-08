@@ -71,7 +71,7 @@ namespace OpenPmsDentalBusiness{
 		PatientProcedureClinicMismatch,
 		///<summary>15 - Open Dental 26.2 (automationcondition.CompareField, OpenDentalDiffDocumentation26-2.xml): only for the
 		///DoNotBillInsuranceCheck trigger; true when one of the patient's insurance carriers is the one in CompareString (a CarrierNum). Comparison is
-		///None. The comparison itself belongs to the 26.2 claims package.</summary>
+		///None. Several of them on one automation are ORed with each other (AutomationDoNotBillIns, P262-CLAIMS).</summary>
 		[Description("Carriers Match")]
 		CarriersMatch=15,
 	}

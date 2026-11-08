@@ -58,7 +58,14 @@ namespace OpenPmsDental{
 			gridMain.Columns.Add(new GridColumn(Lan.g("AutomationCondition","Comparison"),75));
 			gridMain.Columns.Add(new GridColumn(Lan.g("AutomationCondition","Text"),100));
 			gridMain.ListGridRows.Clear();
-			_listAutomationConditions.ForEach(x => gridMain.ListGridRows.Add(new GridRow(x.CompareField.ToString(),x.Comparison.ToString(),x.CompareString)));
+			for(int i=0;i<_listAutomationConditions.Count;i++) {
+				string text=_listAutomationConditions[i].CompareString;
+				if(_listAutomationConditions[i].CompareField==AutoCondField.CarriersMatch) {
+					text=AutomationDoNotBillIns.GetDisplayText(_listAutomationConditions[i]);//26.2: the carrier's name, not its number
+				}
+				gridMain.ListGridRows.Add(new GridRow(_listAutomationConditions[i].CompareField.ToString(),_listAutomationConditions[i].Comparison.ToString(),
+					text));
+			}
 			gridMain.EndUpdate();
 		}
 
@@ -240,6 +247,12 @@ namespace OpenPmsDental{
 			string errorClinicMismatch=AutomationClinicMismatches.GetSaveError((EnumAutomationTrigger)comboTrigger.SelectedIndex,_listAutomationConditions);
 			if(errorClinicMismatch!="") {
 				MessageBox.Show(Lan.g(this,errorClinicMismatch));
+				return;
+			}
+			//26.2: the Carriers Match condition works only with the DoNotBillInsuranceCheck trigger.
+			string errorCarriersMatch=AutomationDoNotBillIns.GetSaveError((EnumAutomationTrigger)comboTrigger.SelectedIndex,_listAutomationConditions);
+			if(errorCarriersMatch!="") {
+				MessageBox.Show(Lan.g(this,errorCarriersMatch));
 				return;
 			}
 			_automation.Description=textDescription.Text;
