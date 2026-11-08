@@ -1,10 +1,11 @@
 <#
 .SYNOPSIS
-Runs the fork's MSTest assemblies (tests/*, NoHqTests and tools/*/*Tests) with vstest, a few at a time, and prints one summary.
+Runs the fork's MSTest assemblies (tests/*, NoHqTests, the legacy UnitTests and tools/*/*Tests) with vstest, a few at a time, and prints one summary.
 
 .DESCRIPTION
-The test assemblies are the *Tests / *.Tests projects listed in OpenDental.Local.slnf, except the legacy UnitTests project.
-Build them first (Debug|x86, see README.md).
+The test assemblies are the *Tests / *.Tests projects listed in OpenDental.Local.slnf, the legacy UnitTests project among them
+(it builds 'Unit Tests.exe'; -Include and -List name it UnitTests, and it makes and drops its own database). Build them first
+(Debug|x86, see README.md).
 
 Targeted mode runs NoHqTests plus the assemblies named in -Include. Core mode runs every assembly except the slow migration and
 adoption ones (add them back with -Include). Full mode runs everything.
@@ -85,15 +86,19 @@ if ($WaitOnly) {
 	exit 0
 }
 
-# Discover test projects: every *Tests / *.Tests project listed in OpenDental.Local.slnf (the legacy UnitTests project is not part of the fork's suite).
+# Discover test projects: every *Tests / *.Tests project listed in OpenDental.Local.slnf, the legacy UnitTests project included (package S0-5).
 $slnf = Get-Content (Join-Path $Root 'OpenDental.Local.slnf') -Raw | ConvertFrom-Json
-$projects = $slnf.solution.projects | Where-Object { $_ -match 'Tests\.csproj$' -and $_ -notmatch '(^|[\\/])UnitTests[\\/]' } | ForEach-Object { Get-Item (Join-Path $Root $_) -ErrorAction SilentlyContinue } | Where-Object { $_ }
+$projects = $slnf.solution.projects | Where-Object { $_ -match 'Tests\.csproj$' } | ForEach-Object { Get-Item (Join-Path $Root $_) -ErrorAction SilentlyContinue } | Where-Object { $_ }
 $assemblies = @()
 foreach ($p in $projects) {
 	[xml]$x = Get-Content $p.FullName
-	$name = ($x.Project.PropertyGroup | ForEach-Object { $_.AssemblyName } | Where-Object { $_ } | Select-Object -First 1)
-	if (-not $name) { $name = $p.BaseName }
-	$dll = @('bin\Debug', 'bin\x86\Debug') | ForEach-Object { Join-Path $p.DirectoryName "$_\$name.dll" } | Where-Object { Test-Path $_ } | Select-Object -First 1
+	$assemblyName = ($x.Project.PropertyGroup | ForEach-Object { $_.AssemblyName } | Where-Object { $_ } | Select-Object -First 1)
+	if (-not $assemblyName) { $assemblyName = $p.BaseName }
+	# An assembly name with a space ('Unit Tests') is listed and included by its project name (UnitTests).
+	$name = if ($assemblyName -match '\s') { $p.BaseName } else { $assemblyName }
+	# A test container is a DLL, or an EXE (the legacy UnitTests project is a WinExe); vstest runs either.
+	$dll = foreach ($folder in @('bin\Debug', 'bin\x86\Debug')) { foreach ($extension in @('.dll', '.exe')) { Join-Path $p.DirectoryName "$folder\$assemblyName$extension" } }
+	$dll = $dll | Where-Object { Test-Path $_ } | Select-Object -First 1
 	$assemblies += [pscustomobject]@{ Name = $name; Dll = $dll }
 }
 $assemblies = $assemblies | Sort-Object Name -Unique
