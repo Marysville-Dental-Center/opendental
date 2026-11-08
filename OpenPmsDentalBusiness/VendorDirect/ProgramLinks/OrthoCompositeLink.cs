@@ -47,8 +47,8 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 		public const string Note="Starts OrthoComposite for the selected patient with its patient search filled in: the Patient arguments property gives "
 			+"OrthoComposite the patient's last name, first name and birthdate with its own arguments --lastname, --firstname and --dob, using the "
 			+"tokens [LName], [FName] and [Birthdate] (MM/dd/yyyy). No other patient data is sent. Enter where OrthoComposite is in Path of file to "
-			+"open; a program installed as an app can be entered by its name, for example OrthoComposite.exe. The Command line field is added after "
-			+"the patient arguments. Without a patient, OrthoComposite starts with the Command line only.";
+			+"open; a name without a folder, or a shell: target, is passed to Windows unchecked. The Command line field is added after the patient "
+			+"arguments. Without a patient, OrthoComposite starts with the Command line only.";
 
 		///<summary>The row this program inserts: the public page's defaults (no path, Chart module button "OrthoComposite") and the public arguments.
 		///</summary>
@@ -75,8 +75,8 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 		}
 
 		///<summary>True when the path names a file on a drive or the network ("C:\..." or "\\server\..."), which must then exist. A name without a
-		///folder (an app execution alias such as the ones Microsoft Store programs install) or a "shell:" target is left to Windows to find.
-		///</summary>
+		///folder or a "shell:" target is passed to Windows unchecked; whether Windows finds it is not known here. Neither public source names
+		///OrthoComposite's executable or any app execution alias, so no such name is suggested to the office.</summary>
 		public static bool IsFileSystemPath(string path) {
 			Meth.NoCheckMiddleTierRole();
 			string text=(path??"").Trim();

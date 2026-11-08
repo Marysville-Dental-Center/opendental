@@ -129,12 +129,12 @@ namespace P262LinksTests {
 				+" AND PropertyDesc='Enter 0 to use PatientNum, or 1 to use ChartNum'");
 			DataCore.NonQ("UPDATE programproperty SET PropertyValue='--dob [Birthdate]' WHERE ProgramNum="+programOrtho.ProgramNum
 				+" AND PropertyDesc='Patient arguments'");
-			DataCore.NonQ("UPDATE program SET Path='OrthoComposite.exe' WHERE ProgramNum="+programOrtho.ProgramNum);
+			DataCore.NonQ("UPDATE program SET Path='ExampleImaging.exe' WHERE ProgramNum="+programOrtho.ProgramNum);
 			ScratchDb.RefreshCaches();
 			programOrtho=Programs.GetCur(ProgramName.OrthoComposite);
 			BridgeLaunch launchOrtho=OrthoCompositeLink.GetLaunch(programOrtho,patient);
-			Assert.IsTrue(launchOrtho.IsReady,"An alias is left to Windows to find.");
-			Assert.AreEqual("OrthoComposite.exe",launchOrtho.FileName);
+			Assert.IsTrue(launchOrtho.IsReady,"A name without a folder is passed to Windows unchecked.");
+			Assert.AreEqual("ExampleImaging.exe",launchOrtho.FileName);
 			Assert.AreEqual("--dob 03/09/1980",launchOrtho.Arguments);
 			BridgeFileLaunch launchAllied=AlliedstarConnectLink.GetLaunch(programAllied,patient);
 			if(System.IO.File.Exists(@"C:\Program Files\Alliedstar\Connect\Connect.exe")) {

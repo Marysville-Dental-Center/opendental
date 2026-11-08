@@ -97,16 +97,17 @@ namespace P262LinksTests {
 		}
 
 		[TestMethod]
-		public void Launch_AliasOrShellTargetIsLeftToWindows() {
-			//An app execution alias (what a Microsoft Store program installs) or a shell: target is not a file this program can check.
-			foreach(string path in new[] { "OrthoComposite.exe",@"shell:AppsFolder\Example.OrthoComposite_abc!App" }) {
+		public void Launch_NameWithoutAFolderOrShellTargetIsPassedToWindowsUnchecked() {
+			//A name without a folder or a shell: target is not a file this program can check. The names are made up: neither public source names
+			//OrthoComposite's executable or an app execution alias.
+			foreach(string path in new[] { "ExampleImaging.exe",@"shell:AppsFolder\Example.Imaging_abc!App" }) {
 				BridgeLaunch launch=Launch(path,"[FName]","",SyntheticPatients.Create(),fileExists:false);
 				Assert.IsTrue(launch.IsReady,path);
 				Assert.AreEqual(path,launch.FileName);
 			}
 			Assert.IsTrue(OrthoCompositeLink.IsFileSystemPath(@"\\server\apps\OrthoComposite.exe"));
 			Assert.IsTrue(OrthoCompositeLink.IsFileSystemPath(PATH));
-			Assert.IsFalse(OrthoCompositeLink.IsFileSystemPath("OrthoComposite.exe"));
+			Assert.IsFalse(OrthoCompositeLink.IsFileSystemPath("ExampleImaging.exe"));
 			Assert.IsFalse(OrthoCompositeLink.IsFileSystemPath(@"shell:AppsFolder\X!App"));
 		}
 
@@ -163,6 +164,19 @@ namespace P262LinksTests {
 				StringAssert.Contains(note,argument);
 			}
 			foreach(string word in new[] { "http","www.","Microsoft Store","best","leading","partner","sign up","free trial","!" }) {
+				Assert.IsFalse(note.IndexOf(word,StringComparison.OrdinalIgnoreCase)>=0,"The note says "+word);
+			}
+		}
+
+		///<summary>Nothing invented: neither OrthoComposite's Store listing nor Open Dental's page names an executable or an app execution alias, so the
+		///Note (written into new rows, and over the old built-in Note by step 2026110801) suggests no program name, only what the path check does.
+		///</summary>
+		[TestMethod]
+		public void Note_SuggestsNoProgramName() {
+			string note=OrthoCompositeLink.Note;
+			StringAssert.Contains(note,"Enter where OrthoComposite is in Path of file to open; a name without a folder, or a shell: target, is passed "
+				+"to Windows unchecked.");
+			foreach(string word in new[] { ".exe","alias","installed as an app","for example" }) {
 				Assert.IsFalse(note.IndexOf(word,StringComparison.OrdinalIgnoreCase)>=0,"The note says "+word);
 			}
 		}
