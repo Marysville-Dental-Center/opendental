@@ -21,7 +21,8 @@ namespace OpenPmsDentalBusiness{
 		[XmlIgnore]
 		public TimeSpan StopTime;
 		///<summary>Enum:ScheduleType 0=Practice,1=Provider,2=Blockout,3=Employee.  Practice is used as a way to indicate holidays and as a way to put a
-		///note in for the entire practice for one day.  But whenever type is Practice, times will be ignored.</summary>
+		///note in for the entire practice for one day.  But whenever type is Practice, times will be ignored.  Practice notes and holidays (and
+		///those of the selected clinic) show in the upper left corner of the Appointments module, with a hover tip (Open Dental 26.2).</summary>
 		public ScheduleType SchedType;
 		///<summary>FK to provider.ProvNum if a provider type.</summary>
 		public long ProvNum;

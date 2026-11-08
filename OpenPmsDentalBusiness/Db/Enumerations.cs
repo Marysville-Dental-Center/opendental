@@ -523,7 +523,8 @@ namespace OpenPmsDentalBusiness{
 		Divorced}
 	///<summary>For schedule timeblocks.</summary>
 	public enum ScheduleType{
-		///<summary>0</summary>
+		///<summary>0. Only used for practice and holiday notes (and clinic notes and holidays). They show in the schedule setup and in the upper left
+		///corner of the Appointments module's operatory header, with a hover tip (Open Dental 26.2).</summary>
 		Practice,
 		///<summary>1</summary>
 		Provider,
