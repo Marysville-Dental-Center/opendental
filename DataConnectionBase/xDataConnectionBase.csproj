@@ -95,7 +95,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\System.Threading.Tasks.Extensions.dll</HintPath>
     </Reference>
-    <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
