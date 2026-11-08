@@ -5,7 +5,7 @@ owner said "pull ahead WPF work", so the chart runs alongside the .NET 10 stages
 is built on net48 and moves to net10.0-windows x64 with everything else at 3b. Package briefs are cut from this document the same way as
 from the stage plan.
 
-**Date.** 2026-11-08. **Status.** Proposed; owner questions open (O-17 to O-31, section 10). The numbers continue the open points of
+**Date.** 2026-11-08. **Status.** Decided; the owner answered O-17 to O-31 on 2026-11-08 (section 10). The numbers continue the open points of
 `docs/specs/net10-plan.md` (section 12, O-1 to O-16).
 
 **Basis.**
@@ -495,6 +495,12 @@ packages. The S3b-0 spike confirms this from the lock file.
 ---
 
 ## 10. Owner questions (the numbers continue net10-plan section 12)
+
+**Answered 2026-11-08.** The owner: "1. As recommended 2. Ship dlls we need. Use Helix. It's decided. Rest as recommended." So every
+question below is decided as recommended, with one change to O-18: Helix Toolkit is used, and nothing waits for counsel. The setup ships
+only the DLLs the staged list needs, each with its notice in `THIRD-PARTY-NOTICES.txt`; the fallback to the chart's own geometry code
+is not needed. For O-28: the build PC has the DirectX runtime (`d3dx9_43.dll` in `System32` and `SysWOW64`), so today's DirectX pictures
+are recorded here. For O-19 the choice between (a) and (b) still follows TC-1's measured times.
 
 - **O-17. Batch H download.** The exact list is in section 9. **Recommended:** approve it. TC-0 to TC-3 do not need it. If TC-4's
   offline check resolves a package that the list lacks, TC-4 stops and the lead asks for a batch H2 the same way.

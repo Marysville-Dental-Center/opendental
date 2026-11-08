@@ -710,6 +710,22 @@ for 64bit as well".
 
 ---
 
+## The WPF tooth chart (answered on 2026-11-08)
+
+The questions of the chart plan, [specs/wpf-tooth-chart-plan.md](specs/wpf-tooth-chart-plan.md), section 10 (O-17 to O-31). Your answer
+of 2026-11-08: "1. As recommended 2. Ship dlls we need. Use Helix. It's decided. Rest as recommended."
+
+- **Helix Toolkit.** The download of its 20 packages (batch H) is approved. Helix is used; the setup ships only the DLLs the program
+  needs, each with its notice, and nothing waits for counsel.
+- **Everything else as recommended:** the on-screen chart is the software-rendered image if it is fast enough (else a live view with a
+  software switch); the extraction graphic is an office-wide setting, off by default, drawing a big X; text below the chart goes inside
+  the image along its edges; the Text paint type draws its text; retained root and space maintainer are drawn; ortho mode keeps today's
+  layout; each place keeps its colours; SharpDX and Tao go after the switch package passes an office check; each package merges hidden
+  after you approve its gallery; today's DirectX pictures are recorded on the build PC, which has the DirectX runtime; the business
+  layer's chart placeholder stays; computers set to Simple 2D stay 2D; graphical perio opens on every computer.
+
+---
+
 ## Not asked again (already settled)
 
 - How package migration levels are numbered (B-ACCT 2, B-PRINT 1, B-SHELL 6, M2-EST 1, M2-UDS 1, V-BRIDGE1 2, V-PEARL2 1, M2-SHELL's old question 4): decided on 2026-11-01 and done: the package steps now have dated levels 2026110101 to 2026110104, and new steps always go above the highest one.
