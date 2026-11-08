@@ -4613,6 +4613,17 @@ If instead the preference was off for this unit test, then Writeoff2 would have 
 			Prefs.UpdateDouble(PrefName.SalesTaxPercentage,0);
 		}
 
+		///<summary>Gives the code this amount in the fee schedule, for no clinic and no provider: updates the fee when there is one, else inserts
+		///it. Both HygProcUsePriProvFee tests set the same Standard fee, and the fork refuses a second fee with the same schedule, code, clinic,
+		///provider and start date (Fees.Insert), so whichever runs second updates the row the first one added.</summary>
+		private static void SetFeeNoClinicNoProv(long feeSchedNum,long codeNum,double amount) {
+			if(Fees.GetFeeFromDb(codeNum,feeSchedNum,doGetExactMatch:true)==null) {
+				FeeT.CreateFee(feeSchedNum,codeNum,amount);
+				return;
+			}
+			FeeT.UpdateFee(feeSchedNum,codeNum,amount);
+		}
+
 				///<summary>Tests to ensure the EnterpriseHygProcUsePriProvFee preference is working as intended.</summary>
 		[TestMethod]
 		public void Procedures_ComputeEstimates_HygProcUsePriProvFeeFunctionalityFullCoverage() {
@@ -4625,7 +4636,7 @@ If instead the preference was off for this unit test, then Writeoff2 would have 
 			ProcedureCode procedureCodeProphy=ProcedureCodeT.CreateProcCode("D1110");
 			procedureCodeProphy.IsHygiene=true;
 			ProcedureCodeT.Update(procedureCodeProphy);
-			FeeT.CreateFee(53,procedureCodeProphy.CodeNum,150);
+			SetFeeNoClinicNoProv(53,procedureCodeProphy.CodeNum,150);//53 is the seed's Standard fee schedule.
 			FeeT.CreateFee(feeSchedNumPPO,procedureCodeProphy.CodeNum,100,provNum:priProvNum);
 			FeeT.CreateFee(feeSchedNumPPO,procedureCodeProphy.CodeNum,80,provNum:secProvNum);
 			//Patient with primary and secondary provider, and PPO insurance plan with 80% coverage for D1110
@@ -4679,7 +4690,7 @@ If instead the preference was off for this unit test, then Writeoff2 would have 
 			ProcedureCode procedureCodeProphy=ProcedureCodeT.CreateProcCode("D1110");
 			procedureCodeProphy.IsHygiene=true;
 			ProcedureCodeT.Update(procedureCodeProphy);
-			FeeT.CreateFee(53,procedureCodeProphy.CodeNum,150);
+			SetFeeNoClinicNoProv(53,procedureCodeProphy.CodeNum,150);//53 is the seed's Standard fee schedule.
 			FeeT.CreateFee(feeSchedNumPPO,procedureCodeProphy.CodeNum,100,provNum:priProvNum);
 			FeeT.CreateFee(feeSchedNumPPO,procedureCodeProphy.CodeNum,80,provNum:secProvNum);
 			//Patient with primary and secondary provider, and PPO insurance plan with 80% coverage for D1110

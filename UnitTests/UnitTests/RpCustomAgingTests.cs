@@ -157,6 +157,11 @@ namespace UnitTests.RpCustomAgingTests_Tests {
 
 		[TestMethod]
 		public void RpCustomAging_ComputeAging_PayPlanDynamicProcedureAndAdjustmentDate() {
+			//Open Dental 24.3.1, for which this test was written, always dated a dynamic payment plan's production credits by the procedure and
+			//adjustment dates. Later 24.3 versions do that only with the PayPlanItemDateShowProc preference on (off by default; otherwise the credits
+			//carry the date the plan was linked), in RpCustomAging and Ledgers alike. This test checks the procedure and adjustment dates, so it turns
+			//the preference on rather than depending on LedgersTests having left it on.
+			PrefT.UpdateBool(PrefName.PayPlanItemDateShowProc,true);
 			//Create a patient and set complete a procedure for 61 days ago and an adjustment for 31 days ago
 			Patient patient=PatientT.CreatePatient();
 			Procedure procedure=ProcedureT.CreateProcedure(patient,"D0210",ProcStat.C,"",50,DateTime.Today.AddDays(-61));

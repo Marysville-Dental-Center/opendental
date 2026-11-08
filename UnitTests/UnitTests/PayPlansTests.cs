@@ -877,7 +877,10 @@ Dynamic payment plan final total should be $78.00.
 			//create the production that will be attached to the payment plan with the await option selected, and treatment planned
 			List<Procedure> listProcedures=new List<Procedure>();
 			listProcedures.Add(ProcedureT.CreateProcedure(patient,"D1110",ProcStat.C,"",78.00,DateTime.Today));
-			Adjustment adjustment=AdjustmentT.MakeAdjustment(patient.PatNum,-30.00,procNum:listProcedures[0].ProcNum);
+			//A procedure adjustment has the procedure's provider, as every other test in this class gives it. With no provider it differs from the
+			//procedure, so PayPlanT.CreateDynamicPaymentPlan links it to the plan on its own (an implicitly linked adjustment) and the plan total
+			//becomes 78-30=48 instead of the override.
+			Adjustment adjustment=AdjustmentT.MakeAdjustment(patient.PatNum,-30.00,procNum:listProcedures[0].ProcNum,provNum:listProcedures[0].ProvNum);
 			List<Adjustment> listAdjustments=new List<Adjustment>{adjustment};
 			PayPlan dynamicPayPlan=PayPlanT.CreateDynamicPaymentPlan(patient.PatNum,patient.PatNum,DateTime.Today.AddMonths(-4),0,0,100,listProcedures,listAdjustments
 				,PayPlanFrequency.Monthly,dynamicPayPlanTPOptions:DynamicPayPlanTPOptions.AwaitComplete,runService:true);

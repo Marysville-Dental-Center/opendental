@@ -52,6 +52,9 @@ namespace UnitTests.Providers_Tests {
 		///<summary> Tests the providers a user has access to based on a clinic number. Must refresh providercliniclink caches inside method to use.  </summary>
 		[TestMethod]
 		public void Providers_GetProvsForClinic_UserProviderAcessForClinicNum() {
+			//The clinic rules apply only with clinics on (Providers.GetProvsForClinicList returns every provider with clinics off), and the seed has
+			//EasyNoClinics on. This test passed only after another class had turned clinics on without putting the preference back.
+			PrefT.UpdateBool(PrefName.EasyNoClinics,false);
 			Clinic clinic1=ClinicT.CreateClinic("Clinic1_"+MethodBase.GetCurrentMethod().Name);
 			Clinic clinic2=ClinicT.CreateClinic("Clinic2_"+MethodBase.GetCurrentMethod().Name);
 			Clinic clinic3=ClinicT.CreateClinic("Clinic3_"+MethodBase.GetCurrentMethod().Name);
@@ -93,6 +96,9 @@ namespace UnitTests.Providers_Tests {
 		///<summary> Tests the providers a user has access to based on a clinic number. Must refresh providercliniclink caches inside method to use.  </summary>
 		[TestMethod]
 		public void Providers_GetProvsForClinicList_UseProviderAccessForClinicList() {
+			//The clinic rules apply only with clinics on (Providers.GetProvsForClinicList returns every provider with clinics off), and the seed has
+			//EasyNoClinics on. This test passed only after another class had turned clinics on without putting the preference back.
+			PrefT.UpdateBool(PrefName.EasyNoClinics,false);
 			Clinic clinic1=ClinicT.CreateClinic("Clinic1_"+MethodBase.GetCurrentMethod().Name);
 			Clinic clinic2=ClinicT.CreateClinic("Clinic2_"+MethodBase.GetCurrentMethod().Name);
 			Clinic clinic3=ClinicT.CreateClinic("Clinic3_"+MethodBase.GetCurrentMethod().Name);

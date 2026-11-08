@@ -365,10 +365,12 @@ namespace UnitTests.RecurringCharges_Tests {
 		[TestMethod]
 		public void RecurringCharges_FillCharges_AdjustmentsOnProcs() {
 			PrefT.UpdateBool(PrefName.EasyNoClinics,true);
-			PrefT.UpdateBool(PrefName.DockPhonePanelShow,true);//Run as OD HQ
+			//Open Dental 24.3 ran this as Open Dental HQ (DockPhonePanelShow), where the charge was the procedures' total with no cap. The fork
+			//removed that HQ branch: for every office the charge is the smaller of that total and the card's amount (RecurringCharges.FillCharges),
+			//so the card's amount is set above the total, and the charge shows the adjustments on the authorized procedures.
 			string suffix=MethodBase.GetCurrentMethod().Name;
 			Patient pat=PatientT.CreatePatient(suffix);
-			CreditCard cc=CreditCardT.CreateCard(pat.PatNum,50,DateTime.Today,0,authorizedProcs:"001");
+			CreditCard cc=CreditCardT.CreateCard(pat.PatNum,500,DateTime.Today,0,authorizedProcs:"001");
 			ProcedureCodeT.AddIfNotPresent("001");
 			ProcedureCodes.RefreshCache();
 			Procedure proc=ProcedureT.CreateProcedure(pat,"001",ProcStat.C,"0",100);
@@ -386,10 +388,12 @@ namespace UnitTests.RecurringCharges_Tests {
 		[TestMethod]
 		public void RecurringCharges_FillCharges_TwoAdjustmentsOnProcs() {
 			PrefT.UpdateBool(PrefName.EasyNoClinics,true);
-			PrefT.UpdateBool(PrefName.DockPhonePanelShow,true);//Run as OD HQ
+			//Open Dental 24.3 ran this as Open Dental HQ (DockPhonePanelShow), where the charge was the procedures' total with no cap. The fork
+			//removed that HQ branch: for every office the charge is the smaller of that total and the card's amount (RecurringCharges.FillCharges),
+			//so the card's amount is set above the total, and the charge shows the adjustments on the authorized procedures.
 			string suffix=MethodBase.GetCurrentMethod().Name;
 			Patient pat=PatientT.CreatePatient(suffix);
-			CreditCard cc=CreditCardT.CreateCard(pat.PatNum,50,DateTime.Today,0,authorizedProcs:"001");
+			CreditCard cc=CreditCardT.CreateCard(pat.PatNum,500,DateTime.Today,0,authorizedProcs:"001");
 			ProcedureCodeT.AddIfNotPresent("001");
 			ProcedureCodes.RefreshCache();
 			Procedure proc=ProcedureT.CreateProcedure(pat,"001",ProcStat.C,"0",100);

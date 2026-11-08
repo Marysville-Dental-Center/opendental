@@ -77,6 +77,10 @@ namespace UnitTests {
 			ProcedureCodeT.CreateProcCode("T5678");
 			RecallType recallTypeObs=RecallTypeT.CreateRecallType("Observing","T1234");
 			RecallType recallTypeExa=RecallTypeT.CreateRecallType("Examining","T5678",defaultInterval:new Interval(0,1,0,0));
+			//The Recall List shows only the recall types chosen in Recall Setup (RecallTypesShowingInList; the seed has 1,3), as GetRecallList has done
+			//since Open Dental 24.3.1: show the two new types too.
+			PrefT.UpdateString(PrefName.RecallTypesShowingInList,string.Join(",",PrefC.GetString(PrefName.RecallTypesShowingInList),
+				recallTypeObs.RecallTypeNum,recallTypeExa.RecallTypeNum));
 			//Create recalls as though the patient had completed the recall-triggering procedures.
 			RecallT.CreateRecall(patient.PatNum,recallTypeObs.RecallTypeNum,DateTime_.Now.AddDays(7),new Interval(0,1,0,0));
 			RecallT.CreateRecall(patient.PatNum,recallTypeExa.RecallTypeNum,DateTime_.Now.AddDays(7),new Interval(0,1,0,0));

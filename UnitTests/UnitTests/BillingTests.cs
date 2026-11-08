@@ -425,8 +425,12 @@ namespace UnitTests.Billing_Tests {
 		[TestMethod]
 		public void Billing_HappyPath_Batches() {
 			BillingSetup billingSetup=SetupBilling(true,numClinics:3);
-			//Skip one patient to assert skipped patient messaging works.
-			CommOptOutT.Create(billingSetup.GetAllPats().First(),CommOptOutType.Statements,CommOptOutMode.Text);
+			//Skip one patient to assert skipped patient messaging works: another workstation has already sent this statement ("Statement was
+			//adjusted elsewhere"). Open Dental 24.3 skipped a patient opted out of text statements here instead; statement texting went with Open
+			//Dental's hosted Integrated Texting, so the fork never skips for that.
+			Statement statementSentElsewhere=billingSetup.ListStatements.First();
+			statementSentElsewhere.IsSent=true;
+			Statements.Update(statementSentElsewhere);
 			int batchesProcessed=0;
 			int reportCallbacks=0;
 			SendStatementsIO sendStatementsIO = new SendStatementsIOTest(
