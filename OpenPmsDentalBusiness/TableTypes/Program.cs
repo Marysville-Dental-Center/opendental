@@ -232,7 +232,11 @@ namespace OpenPmsDentalBusiness{
 		///<summary>Allied Star Connect (26.2): writes the selected patient to a .json info file, then starts Alliedstar's Connect program.</summary>
 		AlliedstarConnect,
 		///<summary>OrthoComposite (26.2): an imaging program from the Microsoft Store, started with the patient's name and birthdate.</summary>
-		OrthoComposite
+		OrthoComposite,
+		//Open Dental 26.2 (P262-GLIDEWELL), appended so existing values keep their numbers. program.ProgName stores the name, not the number.
+		///<summary>Glidewell lab cases (Open Dental 26.2): sends lab cases from the Edit Lab Case window to Glidewell with the office's own Glidewell
+		///account, directly. The accounts live in glidewellacct. Open Dental's own program.ProgName for it is not published (INFERRED).</summary>
+		Glidewell
 	}
 
 	

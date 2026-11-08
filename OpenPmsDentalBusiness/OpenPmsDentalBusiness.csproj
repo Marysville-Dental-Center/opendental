@@ -1514,6 +1514,9 @@
     <Compile Include="Data Interface\InsPlans.cs" />
     <Compile Include="Data Interface\InsPendings.cs" />
     <Compile Include="Data Interface\JournalEntries.cs" />
+    <Compile Include="Data Interface\GlidewellAccts.cs" />
+    <Compile Include="Data Interface\GlidewellMsgs.cs" />
+    <Compile Include="Data Interface\LabCaseProducts.cs" />
     <Compile Include="Data Interface\LabCases.cs" />
     <Compile Include="Data Interface\Laboratories.cs" />
     <Compile Include="Data Interface\LabTurnarounds.cs" />

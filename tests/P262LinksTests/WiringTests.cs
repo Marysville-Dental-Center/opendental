@@ -17,7 +17,8 @@ namespace P262LinksTests {
 			List<string> listNames=Enum.GetNames(typeof(ProgramName)).ToList();
 			int indexMeet=listNames.IndexOf("MeetInTheCloud");
 			Assert.IsTrue(indexMeet>0);
-			CollectionAssert.AreEqual(new[] { "AlliedstarConnect","OrthoComposite" },listNames.Skip(indexMeet+1).ToList(),"Appended after Global Payments V2.");
+			//Only the first two names after MeetInTheCloud: P262-GLIDEWELL appends Glidewell after them (docs/port-notes/P262-GLIDEWELL.md).
+			CollectionAssert.AreEqual(new[] { "AlliedstarConnect","OrthoComposite" },listNames.Skip(indexMeet+1).Take(2).ToList(),"Appended after Global Payments V2.");
 			Assert.AreEqual(indexMeet+1,(int)ProgramName.AlliedstarConnect);
 			Assert.IsTrue(listNames.IndexOf("CleverOne")<indexMeet && listNames.IndexOf("DTXStudioAcquire")<listNames.IndexOf("CleverOne"));
 		}
