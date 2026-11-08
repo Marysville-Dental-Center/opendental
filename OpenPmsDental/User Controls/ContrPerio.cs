@@ -101,12 +101,19 @@ namespace OpenPmsDental
 		private float[] _rowPosArray;
 		///<summary>Constant 6. Rows of probing depths.</summary> 
 		private int _rowsProbing6=6;
-		///<summary>Valid values 1-32 int. User can highlight teeth to mark them as skip tooth. The highighting is done completely separately from the normal highlighting functionality because multiple teeth can be highlighted.</summary>
+		///<summary>Valid values 1-32 int. User can highlight teeth by clicking their numbers, to mark them as skip tooth or (Open Dental 26.2) to add
+		///flags to every site of them. The highighting is done completely separately from the normal highlighting functionality because multiple teeth
+		///can be highlighted. A cell selection clears it.</summary>
 		private ArrayList selectedTeeth;
 		///<summary>Used when attempt to auto advance fails due to tooth 1, 32, or all teeth being skipped</summary>
 		bool _shouldJumpBack=false;
-		///<summary>>If false, shows past exams.</summary>
-		private bool _showCurrentExamOnly=true;
+		///<summary>Open Dental 26.2 "Show previous exams" (userodpref PerioCurrentExamOnly false). When false, the grid shows the values of the selected
+		///exam only, probing and non-probing: no rows for earlier exams and no grayed values of earlier exams in the other rows.</summary>
+		private bool _showPreviousExams=true;
+		///<summary>Open Dental 26.2 "Show previous probing values" (userodpref PerioShowCurrentProbingOnly false). When false, earlier exams get no
+		///probing rows, while the other rows still show their grayed values. Only counts while _showPreviousExams is true. False by default: a grid
+		///that nobody configures (the perio image attached to a claim) shows only the selected exam's probing, as it did before 26.2.</summary>
+		private bool _showPreviousProbing=false;
 		///<summary>Width of the left column that holds descriptions and dates.</summary> 
 		private int _widthLeft;
 		///<summary>Because we want to stay on pixel alignment, and because scale varies, there will be some dead space at right and bottom.  This is the width not including that dead space.</summary> 
@@ -227,6 +234,13 @@ namespace OpenPmsDental
 		///<summary>Accepts button clicks from window rather than the usual keyboard entry.  All validation MUST be done before the value is sent here.  Only valid values are b,s,p,c,j,g,f,m,or period (.). Numbers entered using overload.</summary>
 		public void ButtonPressedLetter(string letter){
 			if(!AllowPerioEdit) {
+				return;
+			}
+			BleedingFlags bleedingFlagsForTeeth=GetBleedingFlagForLetter(letter);
+			if(bleedingFlagsForTeeth!=BleedingFlags.None && ListColRowsSelected.IsNullOrEmpty() && HasSelectedTeeth()) {
+				//Open Dental 26.2: with teeth selected (their numbers clicked) and no cell selected, a flag goes to every site of every selected tooth.
+				//Once, also with Triplets on.
+				ToggleFlagOnSelectedTeeth(bleedingFlagsForTeeth);
 				return;
 			}
 			if(ThreeAtATime){
@@ -462,7 +476,9 @@ namespace OpenPmsDental
 			//int examI=selectedExam;
 			string cellText="";
 			int cellBleed=0;
-			for(int examI=0;examI<=_idxExamSelected;examI++){//exams, earliest through current
+			//Without "Show previous exams" (26.2) only the selected exam is loaded, so the other rows get no grayed values of earlier exams either.
+			int examIFirst=_showPreviousExams ? 0 : _idxExamSelected;
+			for(int examI=examIFirst;examI<=_idxExamSelected;examI++){//exams, earliest through current
 				for(int seqI=0;seqI<Enum.GetNames(typeof(PerioSequenceType)).Length;seqI++){//sequences
 					if(seqI==(int)PerioSequenceType.AttGing) {
 						continue;//auto Att Ging is calculated below from MGJ and probing, never loaded.
@@ -787,10 +803,69 @@ namespace OpenPmsDental
 			Invalidate(Rectangle.Ceiling(GetBounds(ListColRowsSelected[0].Col,ListColRowsSelected[0].Row)));
 		}
 
-		///<summary>If false, shows past exams.</summary>
+		///<summary>The check box of the Perio Chart before Open Dental 26.2: true hides the probing rows of earlier exams, false shows them. The grayed
+		///values of earlier exams in the other rows show either way, as they did then. Same as SetShowPrevious(true,!showCurrentExamOnly). Set it
+		///before LoadData.</summary>
 		public void SetShowCurrentExamOnly(bool showCurrentExamOnly) {
-			_showCurrentExamOnly=showCurrentExamOnly;
+			SetShowPrevious(showPreviousExams:true,showPreviousProbing:!showCurrentExamOnly);
+		}
+
+		///<summary>The two settings of Open Dental 26.2. showPreviousExams false ("Show previous exams" unchecked) shows only the selected exam's
+		///values, probing and non-probing. showPreviousProbing false ("Show previous probing values" unchecked) hides the probing rows of earlier
+		///exams but keeps their grayed values in the other rows; it only counts while showPreviousExams is true. Set them before LoadData.</summary>
+		public void SetShowPrevious(bool showPreviousExams,bool showPreviousProbing) {
+			_showPreviousExams=showPreviousExams;
+			_showPreviousProbing=showPreviousProbing;
 			SetOffsetExam();
+		}
+
+		///<summary>True if any tooth is selected (its number clicked), for SkipTeeth or for adding flags to every site of the selected teeth.</summary>
+		public bool HasSelectedTeeth() {
+			return selectedTeeth!=null && selectedTeeth.Count>0;
+		}
+
+		///<summary>The selected teeth (1-32), in the order they were clicked.</summary>
+		public List<int> GetSelectedTeeth() {
+			if(selectedTeeth==null) {
+				return new List<int>();
+			}
+			return selectedTeeth.Cast<int>().ToList();
+		}
+
+		///<summary>Open Dental 26.2: adds a flag (bleeding, suppuration, plaque or calculus; several may be combined) to all six probing sites of every
+		///selected tooth on the selected exam. If every one of those sites already has it, removes it from all of them instead, so a second click
+		///takes back the first. Skipped teeth are left out: a flag goes on a skipped tooth only by clicking its gray cell. The selection stays, so
+		///more flags can be added to the same teeth. Returns the number of sites changed.</summary>
+		public int ToggleFlagOnSelectedTeeth(BleedingFlags bleedingFlags) {
+			if(!AllowPerioEdit || _idxExamSelected==-1 || bleedingFlags==BleedingFlags.None || !HasSelectedTeeth()) {
+				return 0;
+			}
+			List<ColRow> listColRows=new List<ColRow>();
+			List<int> listTeeth=GetSelectedTeeth();
+			for(int i=0;i<listTeeth.Count;i++) {
+				if(_listSkippedTeeth.Contains(listTeeth[i])) {
+					continue;
+				}
+				listColRows.AddRange(GetProbingColRowsForTooth(listTeeth[i]));
+			}
+			List<BleedingFlags> listBleedingFlagsSites=listColRows.Select(x => _perioCellArray[x.Col,x.Row].Bleeding).ToList();
+			bool doRemove=PerioMeasures.IsFlagOnEverySite(listBleedingFlagsSites,bleedingFlags);
+			int countChanged=0;
+			for(int i=0;i<listColRows.Count;i++) {
+				PerioCell perioCell=_perioCellArray[listColRows[i].Col,listColRows[i].Row];
+				BleedingFlags bleedingFlagsNew=PerioMeasures.GetBleedingWithFlag(perioCell.Bleeding,bleedingFlags,doRemove);
+				if(bleedingFlagsNew==perioCell.Bleeding) {
+					continue;
+				}
+				perioCell.Bleeding=bleedingFlagsNew;
+				_perioCellArray[listColRows[i].Col,listColRows[i].Row]=perioCell;
+				SetHasChanged(listColRows[i].Col,listColRows[i].Row);
+				if(_rowPosArray!=null && _colPosArray!=null) {
+					Invalidate(Rectangle.Ceiling(GetBounds(listColRows[i].Col,listColRows[i].Row)));
+				}
+				countChanged++;
+			}
+			return countChanged;
 		}
 
 		///<summary></summary>
@@ -826,6 +901,58 @@ namespace OpenPmsDental
 			}
 			SetNewCell(colRowToSet.Col,colRowToSet.Row);
 			AfterAdvanceDirection(sectionFrom,setDirection);//ContrPerio.Direction.cs
+		}
+
+		///<summary>The flag a letter enters (b, s, p or c), or None for any other letter.</summary>
+		private static BleedingFlags GetBleedingFlagForLetter(string letter) {
+			switch(letter) {
+				case "b":
+					return BleedingFlags.Blood;
+				case "s":
+					return BleedingFlags.Suppuration;
+				case "p":
+					return BleedingFlags.Plaque;
+				case "c":
+					return BleedingFlags.Calculus;
+				default:
+					return BleedingFlags.None;
+			}
+		}
+
+		///<summary>The six probing cells of the tooth on the selected exam: three facial, three lingual.</summary>
+		private List<ColRow> GetProbingColRowsForTooth(int intTooth) {
+			List<ColRow> listColRows=new List<ColRow>();
+			foreach(PerioSurf perioSurf in new[] { PerioSurf.MB,PerioSurf.B,PerioSurf.DB,PerioSurf.ML,PerioSurf.L,PerioSurf.DL }) {
+				ColRow colRow=GetCell(_idxExamSelected,PerioSequenceType.Probing,intTooth,perioSurf);
+				if(colRow.Col<1 || colRow.Row<0) {
+					continue;
+				}
+				listColRows.Add(colRow);
+			}
+			return listColRows;
+		}
+
+		///<summary>True if the cell can take data by mouse: the selected exam's probing row, Mobility (middle cell of a tooth only), Furc, Ging Marg and
+		///MGJ. Never the auto CAL and auto Att Ging rows, the probing rows of earlier exams, the tooth numbers or the date column.</summary>
+		private bool IsEditableCell(ColRow colRow) {
+			if(colRow.Col<1 || colRow.Row<0) {
+				return false;
+			}
+			int section=GetSection(colRow.Row);
+			int sectRowIdx=GetSectionRow(colRow.Row);
+			if(section==-1 || sectRowIdx<0 || sectRowIdx>=_perioSequenceTypeArray[section].Length) {
+				return false;//a tooth number row
+			}
+			PerioSequenceType perioSequenceType=_perioSequenceTypeArray[section][sectRowIdx];
+			if(perioSequenceType==PerioSequenceType.Probing) {
+				return _idxExamSelected-_offsetExam//correct for offset
+					+_perioSequenceTypeArray[section].Length-_rowsProbing6//plus non-probing rows
+					==sectRowIdx;
+			}
+			if(perioSequenceType==PerioSequenceType.Mobility) {
+				return Math.IEEERemainder(((double)colRow.Col+1),3)==0;//{2,5,8,11...}: the middle (B) cell of the tooth
+			}
+			return !PerioMeasures.IsCalculatedSequence(perioSequenceType);
 		}
 
 		private void CalculateCAL(ColRow colRowProbingCell,bool alsoInvalidate){
@@ -974,6 +1101,9 @@ namespace OpenPmsDental
 			if(letter=="b" || letter=="s" || letter=="p" || letter=="c") {
 				bool hasText=false;
 				for(int k=0;k<ListColRowsSelected.Count;k++) {
+					if(ListColRowsSelected.Count>1 && GetSequenceForColRow(ListColRowsSelected[k])!=PerioSequenceType.Probing) {
+						continue;//flags belong to probing sites; several Furc, Ging Marg, MGJ or Mobility cells (26.2) take none
+					}
 					PerioCell perioCell=GetPerioCell(ListColRowsSelected[k],false);
 					bool isSkippedTooth=_listSkippedTeeth.Contains(perioCell.ToothNum);
 					if(ThreeAtATime){
@@ -1596,7 +1726,7 @@ namespace OpenPmsDental
 
 		private void SetOffsetExam() {
 			_offsetExam=0;
-			if(_showCurrentExamOnly) {
+			if(!_showPreviousExams || !_showPreviousProbing) {//only the selected exam gets a probing row
 				_offsetExam=_idxExamSelected;
 				return;
 			}
@@ -1641,7 +1771,25 @@ namespace OpenPmsDental
 		///<summary></summary>
 		protected override void OnKeyDown(KeyEventArgs e)
 		{
-			if(!AllowPerioEdit || ListColRowsSelected.IsNullOrEmpty()) {
+			if(!AllowPerioEdit) {
+				return;
+			}
+			if(ListColRowsSelected.IsNullOrEmpty()) {
+				//No cell selected. With teeth selected, the flag keys add the flag to every site of those teeth (26.2).
+				if(HasSelectedTeeth() && !e.Control) {
+					if(e.KeyCode==Keys.B || e.KeyCode==Keys.Space) {
+						ButtonPressedLetter("b");
+					}
+					else if(e.KeyCode==Keys.S) {
+						ButtonPressedLetter("s");
+					}
+					else if(e.KeyCode==Keys.P) {
+						ButtonPressedLetter("p");
+					}
+					else if(e.KeyCode==Keys.C) {
+						ButtonPressedLetter("c");
+					}
+				}
 				return;
 			}
 			if (_idxExamSelected == -1)
@@ -1811,30 +1959,39 @@ namespace OpenPmsDental
 			if(!_isMouseDown) {
 				return;
 			}
-			//Add cells we drag over to ListColRowsSelected
+			//Add cells we drag over to ListColRowsSelected. Open Dental 26.2: in any editable data row (the selected exam's probing, Mobility, Furc,
+			//Ging Marg, MGJ), not just probing. Every cell of one drag is of the row type where the drag started, so one number goes into one kind
+			//of measurement; skipped teeth are passed over, as before.
 			ColRow colRowCellMovedOver=GetCellFromPixel(e.X,e.Y);
 			if(colRowCellMovedOver.Col==0){
 				return;//Left column only for dates
 			}
 			int section=GetSection(colRowCellMovedOver.Row);
 			int sectRowIdx=GetSectionRow(colRowCellMovedOver.Row);
-			if(sectRowIdx<0 || sectRowIdx>=_perioSequenceTypeArray[section].Length) {
+			if(section==-1 || sectRowIdx<0 || sectRowIdx>=_perioSequenceTypeArray[section].Length) {
 				//User clicked on a tooth row, not a section row.
 				return;
 			}
-			if(_perioSequenceTypeArray[section][sectRowIdx]==PerioSequenceType.Probing){
-				if(_idxExamSelected-_offsetExam//correct for offset
-					+_perioSequenceTypeArray[section].Length-_rowsProbing6//plus non-probing rows
-					!=sectRowIdx)
-				{
-					return;////multi-select only allowed on dated probing rows.
-				}
-				if(!ListColRowsSelected.Exists(x=>x.Col==colRowCellMovedOver.Col && x.Row==colRowCellMovedOver.Row) 
-					&& !_listSkippedTeeth.Contains(GetPerioCellFromColRow(colRowCellMovedOver).ToothNum))
-				{
-					ListColRowsSelected.Add(colRowCellMovedOver);
-					Invalidate(Rectangle.Ceiling(GetBounds(colRowCellMovedOver.Col,colRowCellMovedOver.Row)));
-				}
+			if(_perioSequenceTypeArray[section][sectRowIdx]==PerioSequenceType.Mobility) {
+				//Mobility has one cell per tooth, the middle one: dragging over any part of the tooth selects it.
+				colRowCellMovedOver=new ColRow((colRowCellMovedOver.Col+2)/3*3-1,colRowCellMovedOver.Row);
+			}
+			if(!IsEditableCell(colRowCellMovedOver)) {
+				return;//auto CAL, auto Att Ging and the probing rows of earlier exams take no data
+			}
+			if(ListColRowsSelected.Count>0 && GetSequenceForColRow(ListColRowsSelected[0])!=GetSequenceForColRow(colRowCellMovedOver)) {
+				return;//another kind of row than where the drag started
+			}
+			if(ListColRowsSelected.Exists(x=>x.Col==colRowCellMovedOver.Col && x.Row==colRowCellMovedOver.Row)
+				|| _listSkippedTeeth.Contains(GetPerioCellFromColRow(colRowCellMovedOver).ToothNum))
+			{
+				return;
+			}
+			ListColRowsSelected.Add(colRowCellMovedOver);
+			Invalidate(Rectangle.Ceiling(GetBounds(colRowCellMovedOver.Col,colRowCellMovedOver.Row)));
+			if(HasSelectedTeeth()) {//a cell selection replaces a tooth selection
+				selectedTeeth=new ArrayList();
+				Invalidate();
 			}
 		}
 
@@ -1844,10 +2001,17 @@ namespace OpenPmsDental
 			}
 			base.OnMouseUp(e);
 			_isMouseDown=false;
-			if(!ListColRowsSelected.IsNullOrEmpty()) {
+			if(ListColRowsSelected.Count>1) {
 				return;//ColRows already selected with drag in OnMouseMove
 			}
-			ColRow colRowNewCell=GetCellFromPixel(e.X,e.Y);
+			ColRow colRowNewCell;
+			if(ListColRowsSelected.Count==1) {
+				//The mouse moved, but within one cell (or over one editable cell only): a click on that cell, so it gets the direction and focus below.
+				colRowNewCell=ListColRowsSelected[0];
+			}
+			else {
+				colRowNewCell=GetCellFromPixel(e.X,e.Y);
+			}
 			if(colRowNewCell.Col==0){
 				return;//Left column only for dates
 			}

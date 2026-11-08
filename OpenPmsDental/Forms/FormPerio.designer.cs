@@ -57,7 +57,8 @@ namespace OpenPmsDental {
 			this.butPus = new OpenPmsDental.UI.Button();
 			this.butBleed = new OpenPmsDental.UI.Button();
 			this.but10 = new OpenPmsDental.UI.Button();
-			this.checkShowCurrent = new OpenPmsDental.UI.CheckBox();
+			this.checkShowPreviousExams = new OpenPmsDental.UI.CheckBox();
+			this.checkShowPreviousProbing = new OpenPmsDental.UI.CheckBox();
 			this.colorDialog1 = new System.Windows.Forms.ColorDialog();
 			this.groupBox2 = new OpenPmsDental.UI.GroupBox();
 			this.textCountMob = new System.Windows.Forms.TextBox();
@@ -311,7 +312,7 @@ namespace OpenPmsDental {
 			this.butCalculus.Size = new System.Drawing.Size(72, 24);
 			this.butCalculus.TabIndex = 16;
 			this.butCalculus.Text = "Calculus";
-			this.toolTip1.SetToolTip(this.butCalculus, "C on your keyboard");
+			this.toolTip1.SetToolTip(this.butCalculus, "C on your keyboard. With teeth selected (click their numbers), adds calculus to every site of those teeth");
 			this.butCalculus.Click += new System.EventHandler(this.butCalculus_Click);
 			// 
 			// butPlaque
@@ -321,7 +322,7 @@ namespace OpenPmsDental {
 			this.butPlaque.Size = new System.Drawing.Size(72, 24);
 			this.butPlaque.TabIndex = 15;
 			this.butPlaque.Text = "Plaque";
-			this.toolTip1.SetToolTip(this.butPlaque, "P on your keyboard");
+			this.toolTip1.SetToolTip(this.butPlaque, "P on your keyboard. With teeth selected (click their numbers), adds plaque to every site of those teeth");
 			this.butPlaque.Click += new System.EventHandler(this.butPlaque_Click);
 			// 
 			// butSkip
@@ -331,7 +332,7 @@ namespace OpenPmsDental {
 			this.butSkip.Size = new System.Drawing.Size(88, 24);
 			this.butSkip.TabIndex = 19;
 			this.butSkip.Text = "SkipTeeth";
-			this.toolTip1.SetToolTip(this.butSkip, "Toggle the selected teeth as skipped");
+			this.toolTip1.SetToolTip(this.butSkip, "Toggle the selected teeth as skipped (click the tooth numbers to select teeth)");
 			this.butSkip.Click += new System.EventHandler(this.butSkip_Click);
 			// 
 			// butCount
@@ -351,7 +352,7 @@ namespace OpenPmsDental {
 			this.butPus.Size = new System.Drawing.Size(72, 24);
 			this.butPus.TabIndex = 18;
 			this.butPus.Text = "Suppuration";
-			this.toolTip1.SetToolTip(this.butPus, "S on your keyboard");
+			this.toolTip1.SetToolTip(this.butPus, "S on your keyboard. With teeth selected (click their numbers), adds suppuration to every site of those teeth");
 			this.butPus.Click += new System.EventHandler(this.butPus_Click);
 			// 
 			// butBleed
@@ -361,7 +362,7 @@ namespace OpenPmsDental {
 			this.butBleed.Size = new System.Drawing.Size(72, 24);
 			this.butBleed.TabIndex = 17;
 			this.butBleed.Text = "Bleeding";
-			this.toolTip1.SetToolTip(this.butBleed, "Space bar or B on your keyboard");
+			this.toolTip1.SetToolTip(this.butBleed, "Space bar or B on your keyboard. With teeth selected (click their numbers), adds bleeding to every site of those teeth");
 			this.butBleed.Click += new System.EventHandler(this.butBleed_Click);
 			// 
 			// but10
@@ -374,15 +375,27 @@ namespace OpenPmsDental {
 			this.toolTip1.SetToolTip(this.but10, "Or hold down the Ctrl key");
 			this.but10.Click += new System.EventHandler(this.but10_Click);
 			// 
-			// checkShowCurrent
+			// checkShowPreviousExams
 			// 
-			this.checkShowCurrent.Location = new System.Drawing.Point(17, 267);
-			this.checkShowCurrent.Name = "checkShowCurrent";
-			this.checkShowCurrent.Size = new System.Drawing.Size(150, 19);
-			this.checkShowCurrent.TabIndex = 83;
-			this.checkShowCurrent.Text = "Show current exam only";
-			this.toolTip1.SetToolTip(this.checkShowCurrent, "Only show measurements for the currently selected exam");
-			this.checkShowCurrent.Click += new System.EventHandler(this.checkShowCurrent_Click);
+			this.checkShowPreviousExams.Checked = true;
+			this.checkShowPreviousExams.Location = new System.Drawing.Point(17, 267);
+			this.checkShowPreviousExams.Name = "checkShowPreviousExams";
+			this.checkShowPreviousExams.Size = new System.Drawing.Size(200, 19);
+			this.checkShowPreviousExams.TabIndex = 83;
+			this.checkShowPreviousExams.Text = "Show previous exams";
+			this.toolTip1.SetToolTip(this.checkShowPreviousExams, "Show or hide data for previously completed perio exams");
+			this.checkShowPreviousExams.Click += new System.EventHandler(this.checkShowPreviousExams_Click);
+			// 
+			// checkShowPreviousProbing
+			// 
+			this.checkShowPreviousProbing.Checked = true;
+			this.checkShowPreviousProbing.Location = new System.Drawing.Point(17, 289);
+			this.checkShowPreviousProbing.Name = "checkShowPreviousProbing";
+			this.checkShowPreviousProbing.Size = new System.Drawing.Size(200, 19);
+			this.checkShowPreviousProbing.TabIndex = 86;
+			this.checkShowPreviousProbing.Text = "Show previous probing values";
+			this.toolTip1.SetToolTip(this.checkShowPreviousProbing, "Show or hide probing values for previously completed perio exams");
+			this.checkShowPreviousProbing.Click += new System.EventHandler(this.checkShowPreviousProbing_Click);
 			// 
 			// groupBox2
 			// 
@@ -1020,7 +1033,8 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.gridODExam);
 			this.Controls.Add(this.labelListening);
 			this.Controls.Add(this.butListen);
-			this.Controls.Add(this.checkShowCurrent);
+			this.Controls.Add(this.checkShowPreviousProbing);
+			this.Controls.Add(this.checkShowPreviousExams);
 			this.Controls.Add(this.butCopyPrevious);
 			this.Controls.Add(this.contrPerio);
 			this.Controls.Add(this.textInputBox);
@@ -1165,7 +1179,8 @@ namespace OpenPmsDental {
 		private UI.Button butCopyPrevious;
 		private UI.Button butListen;
 		private Label labelListening;
-		private OpenPmsDental.UI.CheckBox checkShowCurrent;
+		private OpenPmsDental.UI.CheckBox checkShowPreviousExams;
+		private OpenPmsDental.UI.CheckBox checkShowPreviousProbing;
 		private UI.GridOD gridODExam;
 		private Label labelNotes;
 		private ODtextBox textExamNotes;

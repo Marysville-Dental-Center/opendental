@@ -336,6 +336,86 @@ namespace OpenPmsDentalBusiness{
 		}
 		#endregion Perio Chart rules (Open Dental 24.4 and 25.2)
 
+		#region Perio Chart rules (Open Dental 26.2)
+		///<summary>True if every one of the sites has all of the flags. False when there are no sites. Adding a flag to the selected teeth (26.2)
+		///removes it instead when this is true.</summary>
+		public static bool IsFlagOnEverySite(IEnumerable<BleedingFlags> listBleedingFlagsSites,BleedingFlags bleedingFlags) {
+			Meth.NoCheckMiddleTierRole();
+			if(bleedingFlags==BleedingFlags.None || listBleedingFlagsSites==null) {
+				return false;
+			}
+			bool hasSite=false;
+			foreach(BleedingFlags bleedingFlagsSite in listBleedingFlagsSites) {
+				hasSite=true;
+				if((bleedingFlagsSite & bleedingFlags)!=bleedingFlags) {
+					return false;
+				}
+			}
+			return hasSite;
+		}
+
+		///<summary>The flags of a site after adding (or, with doRemove, removing) the given flags. The site's other flags stay.</summary>
+		public static BleedingFlags GetBleedingWithFlag(BleedingFlags bleedingFlagsSite,BleedingFlags bleedingFlags,bool doRemove) {
+			Meth.NoCheckMiddleTierRole();
+			if(doRemove) {
+				return bleedingFlagsSite & ~bleedingFlags;
+			}
+			return bleedingFlagsSite | bleedingFlags;
+		}
+
+		///<summary>The user's Perio Chart setting "Show previous exams" (Open Dental 26.2): the opposite of the userodpref PerioCurrentExamOnly, which
+		///Open Dental 26.2 describes as showing values, both probing and non-probing, from the current exam only. True (shown) when the user has no
+		///row, as before. Reads the userodpref cache.</summary>
+		public static bool GetShowPreviousExams(long userNum) {
+			Meth.NoCheckMiddleTierRole();
+			return !GetUserOdPrefBool(userNum,UserOdFkeyType.PerioCurrentExamOnly);
+		}
+
+		///<summary>The user's Perio Chart setting "Show previous probing values" (Open Dental 26.2): the opposite of the userodpref
+		///PerioShowCurrentProbingOnly, which shows only probing values from the current exam. True (shown) when the user has no row. Reads the
+		///userodpref cache.</summary>
+		public static bool GetShowPreviousProbing(long userNum) {
+			Meth.NoCheckMiddleTierRole();
+			return !GetUserOdPrefBool(userNum,UserOdFkeyType.PerioShowCurrentProbingOnly);
+		}
+
+		///<summary>Saves the user's two Perio Chart settings of Open Dental 26.2 in the userodpref rows PerioCurrentExamOnly and
+		///PerioShowCurrentProbingOnly (each the opposite of its check box). A missing row is inserted, as the Perio Chart has always done for
+		///PerioCurrentExamOnly when it closes. Returns true if a row was inserted or changed; the caller then signals the userodpref cache
+		///(DataValid.SetInvalid(InvalidType.UserOdPrefs)).</summary>
+		public static bool SaveShowPrevious(long userNum,bool showPreviousExams,bool showPreviousProbing) {
+			Meth.NoCheckMiddleTierRole();
+			bool isChanged=UpsertUserOdPrefBool(userNum,UserOdFkeyType.PerioCurrentExamOnly,!showPreviousExams);
+			isChanged|=UpsertUserOdPrefBool(userNum,UserOdFkeyType.PerioShowCurrentProbingOnly,!showPreviousProbing);
+			return isChanged;
+		}
+
+		///<summary>The value of the user's first userodpref row of the type, false when there is none.</summary>
+		private static bool GetUserOdPrefBool(long userNum,UserOdFkeyType userOdFkeyType) {
+			UserOdPref userOdPref=UserOdPrefs.GetByUserAndFkeyType(userNum,userOdFkeyType).FirstOrDefault();
+			if(userOdPref==null) {
+				return false;
+			}
+			return PIn.Bool(userOdPref.ValueString);
+		}
+
+		///<summary>Inserts the user's row of the type, or updates the first one when its value differs. Returns true if the database changed.</summary>
+		private static bool UpsertUserOdPrefBool(long userNum,UserOdFkeyType userOdFkeyType,bool value) {
+			UserOdPref userOdPref=UserOdPrefs.GetByUserAndFkeyType(userNum,userOdFkeyType).FirstOrDefault();
+			if(userOdPref==null) {
+				UserOdPrefs.Insert(new UserOdPref {
+					UserNum=userNum,
+					FkeyType=userOdFkeyType,
+					ValueString=POut.Bool(value)
+				});
+				return true;
+			}
+			UserOdPref userOdPrefOld=userOdPref.Clone();
+			userOdPref.ValueString=POut.Bool(value);
+			return UserOdPrefs.Update(userOdPref,userOdPrefOld);
+		}
+		#endregion Perio Chart rules (Open Dental 26.2)
+
 	}
 	
 	

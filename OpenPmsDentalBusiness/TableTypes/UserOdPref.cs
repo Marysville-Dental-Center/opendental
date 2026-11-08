@@ -49,7 +49,9 @@ namespace OpenPmsDentalBusiness {
 		CommlogPersistClearEndDate,
 		///<summary>7 - When FormCommItem is in Persistent mode, update the Date / Time text box with NOW() whenver the patient changes.</summary>
 		CommlogPersistUpdateDateTimeWithNewPatient,
-		///<summary>8 - Whether or not to display just the currently selected exam in the Perio Chart.</summary>
+		///<summary>8 - Whether or not to display just the currently selected exam in the Perio Chart. When true, this shows values, both probing and
+		///non-probing, from the current exam only (Open Dental 26.2's description). The Perio Chart's "Show previous exams" check box is its opposite
+		///(PerioMeasures.GetShowPreviousExams).</summary>
 		PerioCurrentExamOnly,
 		///<summary>9 - Text message grouping preference. 0 - None; 1 - By Patient;</summary>
 		SmsGroupBy,
@@ -97,7 +99,8 @@ namespace OpenPmsDentalBusiness {
 		DefaultTestingTeamJM,
 		//Open Dental's published documents have no 30 (26.2 goes from 29 to 31).
 		///<summary>31 - Open Dental 26.2 (userodpref.FkeyType, OpenDentalDiffDocumentation26-2.xml): whether the Perio Chart shows the probing values
-		///of the selected exam only. When true, only the current exam's probing values show. Its use belongs to the 26.2 perio package.</summary>
+		///of the selected exam only. When true, only the current exam's probing values show. The Perio Chart's "Show previous probing values" check
+		///box is its opposite (PerioMeasures.GetShowPreviousProbing).</summary>
 		PerioShowCurrentProbingOnly=31,
 		///<summary>114 - Fork only, not an Open Dental value. Open Dental's numbers end at 29 (25.4), so fork values sit at 100 and up, inside the
 		///tinyint column (at most 127). 114 follows the "14" of backlog package B-EF's reserved migration range (2027001401-2027001499), to keep it

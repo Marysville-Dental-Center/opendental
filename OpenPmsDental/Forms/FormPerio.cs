@@ -33,7 +33,6 @@ namespace OpenPmsDental{
 		private PerioCell _perioCellCurLocation;
 		private PerioCell _perioCellPrevLocation;
 		private PerioExam _perioExam;
-		private UserOdPref _userOdPrefCurrentOnly;
 		private VoiceController _voiceController;
 		#endregion Fields - private
 
@@ -103,7 +102,7 @@ namespace OpenPmsDental{
 				_perioExam=contrPerio.ListPerioExams[gridODExam.GetSelectedIndex()];
 			}
 			contrPerio.IdxExamSelected=gridODExam.GetSelectedIndex();
-			contrPerio.SetShowCurrentExamOnly(checkShowCurrent.Checked);
+			contrPerio.SetShowPrevious(checkShowPreviousExams.Checked,checkShowPreviousProbing.Checked);
 			contrPerio.LoadData(selectCell);
 			FillIndexes();
 			FillCounts();
@@ -214,7 +213,8 @@ namespace OpenPmsDental{
 			else {//if(isLingual && toothNum.Between(17,32)) {
 				x=(32-toothNum)*3+3;
 			}
-			//The probing row of the selected exam, which accounts for "Show current exam only" (FillGrid passes checkShowCurrent to the chart).
+			//The probing row of the selected exam, which accounts for "Show previous exams" and "Show previous probing values" (FillGrid passes both
+			//to the chart).
 			int y=contrPerio.GetTableRowForSection(contrPerio.GetSection(toothNum,isFacial),PerioSequenceType.Probing);
 			return new ColRow(x,y);
 		}
@@ -549,21 +549,11 @@ namespace OpenPmsDental{
 			if(_isLocalDefsChanged){
 				DataValid.SetInvalid(InvalidType.Defs, InvalidType.Prefs);
 			}
-			if(_userOdPrefCurrentOnly==null) {
-				UserOdPrefs.Insert(new UserOdPref() {
-					UserNum=Security.CurUser.UserNum,
-					FkeyType=UserOdFkeyType.PerioCurrentExamOnly,
-					ValueString=POut.Bool(checkShowCurrent.Checked)
-				});
+			//Open Dental 26.2: "Show previous exams" and "Show previous probing values", in the userodpref rows PerioCurrentExamOnly and
+			//PerioShowCurrentProbingOnly (each the opposite of its check box).
+			if(PerioMeasures.SaveShowPrevious(Security.CurUser.UserNum,checkShowPreviousExams.Checked,checkShowPreviousProbing.Checked)) {
+				//Only need to signal cache refresh on change.
 				DataValid.SetInvalid(InvalidType.UserOdPrefs);
-			}
-			else {
-				UserOdPref userOdPrefOld=_userOdPrefCurrentOnly.Clone();
-				_userOdPrefCurrentOnly.ValueString=POut.Bool(checkShowCurrent.Checked);
-				if(UserOdPrefs.Update(_userOdPrefCurrentOnly,userOdPrefOld)) {
-					//Only need to signal cache refresh on change.
-					DataValid.SetInvalid(InvalidType.UserOdPrefs);
-				}
 			}
 			UserOdPref userOdPrefAdvance=UserOdPrefs.GetByUserAndFkeyType(Security.CurUser.UserNum,UserOdFkeyType.PerioAutoAdvanceFacialsFirst).FirstOrDefault();
 			if(userOdPrefAdvance==null) {
@@ -621,10 +611,9 @@ namespace OpenPmsDental{
 			_listMissingTeeth=ToothInitials.GetMissingOrHiddenTeeth(listToothInitials);
 			RefreshListExams();
 			gridODExam.SetSelected(contrPerio.ListPerioExams.Count-1,true);//this works even if no items.
-			_userOdPrefCurrentOnly=UserOdPrefs.GetByUserAndFkeyType(Security.CurUser.UserNum,UserOdFkeyType.PerioCurrentExamOnly).FirstOrDefault();
-			if(_userOdPrefCurrentOnly != null && PIn.Bool(_userOdPrefCurrentOnly.ValueString)) {
-				checkShowCurrent.Checked=true;
-			}
+			checkShowPreviousExams.Checked=PerioMeasures.GetShowPreviousExams(Security.CurUser.UserNum);
+			checkShowPreviousProbing.Checked=PerioMeasures.GetShowPreviousProbing(Security.CurUser.UserNum);
+			checkShowPreviousProbing.Enabled=checkShowPreviousExams.Checked;//without previous exams there are no previous probing values to show
 			UserOdPref userOdPrefAdvance=UserOdPrefs.GetByUserAndFkeyType(Security.CurUser.UserNum,UserOdFkeyType.PerioAutoAdvanceFacialsFirst).FirstOrDefault();
 			if(userOdPrefAdvance!=null && PIn.Bool(userOdPrefAdvance.ValueString)) {
 				radioFacialsFirst.Checked=true;
@@ -1344,7 +1333,17 @@ namespace OpenPmsDental{
 			contrPerio.Focus();
 		}
 
-		private void checkShowCurrent_Click(object sender,EventArgs e) {
+		private void checkShowPreviousExams_Click(object sender,EventArgs e) {
+			checkShowPreviousProbing.Enabled=checkShowPreviousExams.Checked;//without previous exams there are no previous probing values to show
+			RefillGridForShowPrevious();
+		}
+
+		private void checkShowPreviousProbing_Click(object sender,EventArgs e) {
+			RefillGridForShowPrevious();
+		}
+
+		///<summary>Saves the exam and shows it again after "Show previous exams" or "Show previous probing values" (Open Dental 26.2) changed.</summary>
+		private void RefillGridForShowPrevious() {
 			if(gridODExam.GetSelectedIndex()==-1) {
 				return;
 			}
