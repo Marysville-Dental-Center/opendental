@@ -101,7 +101,7 @@ namespace OpenPmsDentalBusiness {
 				isParsed=TryParseNumber(number,out value);
 			}
 			if(!isParsed) {
-				error=IsWholeNumber(dbLink) ? "not a whole number" : "not a number";
+				error="not a number";
 				return false;
 			}
 			if(IsWholeNumber(dbLink) && value!=Math.Floor(value)) {
@@ -270,9 +270,12 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>The vital sign entry for the given values, dated dateTaken, before it is inserted. Values not imported stay 0, as in the vital sign
 		///window. With height and weight: the BMI percentile for a patient aged 3 to 16 on January 1 of that year (else -1) and its LOINC code, and the
-		///weight code, as the vital sign window works them out. LOINC exam codes (8302-2 height, 29463-7 weight) only when the value is imported and the
-		///code is in the LOINC table; pass loincExists to decide that (null means none is).</summary>
-		public static Vitalsign CreateVitalsign(Patient patient,DateTime dateTaken,List<EFormVitalImport> listImports,Func<string,bool> loincExists) {
+		///weight code (SNOMED CT 238131007 overweight, 248342006 underweight, for a patient 18 or older), as the vital sign window works them out. LOINC
+		///exam codes (8302-2 height, 29463-7 weight) only when the value is imported. A code is set only when it is in the office's LOINC or SNOMED CT
+		///table: loincExists and snomedExists decide that (null means it is not).</summary>
+		public static Vitalsign CreateVitalsign(Patient patient,DateTime dateTaken,List<EFormVitalImport> listImports,Func<string,bool> loincExists,
+			Func<string,bool> snomedExists)
+		{
 			Vitalsign vitalsign=new Vitalsign();
 			vitalsign.PatNum=patient.PatNum;
 			vitalsign.DateTaken=dateTaken.Date;
@@ -297,6 +300,9 @@ namespace OpenPmsDentalBusiness {
 			if(loincExists==null) {
 				loincExists=x => false;
 			}
+			if(snomedExists==null) {
+				snomedExists=x => false;
+			}
 			if(vitalsign.Height>0 && loincExists("8302-2")) {
 				vitalsign.HeightExamCode="8302-2";//Body height
 			}
@@ -319,7 +325,14 @@ namespace OpenPmsDentalBusiness {
 					vitalsign.BMIExamCode="59576-9";//Body mass index (BMI) [Percentile] Per age and gender
 				}
 				if(patient.Birthdate.Year>1880) {
-					vitalsign.WeightCode=Vitalsigns.SetWeightCodes(Vitalsigns.GetBMIInterventionCode(bmi,ageBeforeJanFirst));
+					//Vitalsigns.SetWeightCodes, with the table check passed in.
+					InterventionCodeSet interventionCodeSet=Vitalsigns.GetBMIInterventionCode(bmi,ageBeforeJanFirst);
+					if(interventionCodeSet==InterventionCodeSet.AboveNormalWeight && snomedExists("238131007")) {
+						vitalsign.WeightCode="238131007";
+					}
+					else if(interventionCodeSet==InterventionCodeSet.BelowNormalWeight && snomedExists("248342006")) {
+						vitalsign.WeightCode="248342006";
+					}
 				}
 			}
 			return vitalsign;
@@ -350,7 +363,7 @@ namespace OpenPmsDentalBusiness {
 			if(patient==null) {
 				return result;
 			}
-			Vitalsign vitalsign=CreateVitalsign(patient,dateTaken,listImportsOk,x => Loincs.GetByCode(x)!=null);
+			Vitalsign vitalsign=CreateVitalsign(patient,dateTaken,listImportsOk,x => Loincs.GetByCode(x)!=null,x => Snomeds.GetByCode(x)!=null);
 			if(Vitalsigns.Refresh(patNum).Exists(x => IsSameMeasurement(x,vitalsign))) {
 				result.IsDuplicate=true;
 				result.Description="The same vital signs are already on file for "+vitalsign.DateTaken.ToShortDateString()+".";
