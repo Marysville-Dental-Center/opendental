@@ -1,7 +1,7 @@
 /*
 Open PMS - Dental: a new database.
 
-Creates the 454 tables of a database at fork schema level 2026110221 (the Open Dental 26.1.70 schema and the
+Creates the 457 tables of a database at fork schema level 2026110781 (the Open Dental 26.2.0 schema and the
 fork's), with the rows the program needs to start: preferences, definitions, user groups and permissions, the user Admin,
 program links (all off) and procedure codes (named by their code only). No patients and no office data. Admin has a blank
 password, which the program asks to set at the first logon.
@@ -493,6 +493,10 @@ CREATE TABLE `apisubscription` (
   `DateTimeStart` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
   `DateTimeStop` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
   `Note` varchar(255) NOT NULL,
+  `DateTimeLastFailure` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  `FailureReason` text NOT NULL,
+  `SubsequentFailures` int(11) NOT NULL,
+  `DateTimeNextRetry` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
   PRIMARY KEY (`ApiSubscriptionNum`),
   KEY `PollingSeconds` (`PollingSeconds`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
@@ -6369,6 +6373,35 @@ CREATE TABLE `formpat` (
   `FormDateTime` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
   PRIMARY KEY (`FormPatNum`),
   KEY `PatNum` (`PatNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `glidewellacct` */
+
+CREATE TABLE `glidewellacct` (
+  `GlidewellAcctNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `AccountNumber` varchar(255) NOT NULL,
+  `ApiKey` varchar(255) NOT NULL,
+  `DateTimeExpires` datetime NOT NULL DEFAULT '0001-01-01 00:00:00',
+  PRIMARY KEY (`GlidewellAcctNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `glidewellmsg` */
+
+CREATE TABLE `glidewellmsg` (
+  `GlidewellMsgNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `LabCaseNum` bigint(20) NOT NULL,
+  `OrderStatus` tinyint(4) NOT NULL,
+  `VendorRxId` varchar(255) NOT NULL,
+  `PatNum` bigint(20) NOT NULL,
+  `GlidewellAcctNum` bigint(20) NOT NULL,
+  `RawJsonResponse` text NOT NULL,
+  `RawJsonRequest` text NOT NULL,
+  `SentITero` tinyint(4) NOT NULL,
+  `SentMedit` tinyint(4) NOT NULL,
+  PRIMARY KEY (`GlidewellMsgNum`),
+  KEY `LabCaseNum` (`LabCaseNum`),
+  KEY `PatNum` (`PatNum`),
+  KEY `GlidewellAcctNum` (`GlidewellAcctNum`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 /*Table structure for table `gradingscale` */
@@ -22693,6 +22726,7 @@ CREATE TABLE `insbluebook` (
   `ProcDate` date NOT NULL DEFAULT '0001-01-01',
   `ClaimType` varchar(10) NOT NULL,
   `ClaimNum` bigint(20) NOT NULL,
+  `DateTStamp` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`InsBlueBookNum`),
   KEY `ProcCodeNum` (`ProcCodeNum`),
   KEY `CarrierNum` (`CarrierNum`),
@@ -23086,6 +23120,22 @@ CREATE TABLE `labcase` (
   `InvoiceNum` varchar(255) NOT NULL,
   PRIMARY KEY (`LabCaseNum`),
   KEY `indexAptNum` (`AptNum`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+/*Table structure for table `labcaseproduct` */
+
+CREATE TABLE `labcaseproduct` (
+  `LabCaseProductNum` bigint(20) NOT NULL AUTO_INCREMENT,
+  `LabCaseNum` bigint(20) NOT NULL,
+  `PatNum` bigint(20) NOT NULL,
+  `GlidewellProduct` tinyint(4) NOT NULL,
+  `Material` varchar(255) NOT NULL,
+  `Shade` varchar(255) NOT NULL,
+  `ToothRange` varchar(255) NOT NULL,
+  `Notes` text NOT NULL,
+  PRIMARY KEY (`LabCaseProductNum`),
+  KEY `LabCaseNum` (`LabCaseNum`),
+  KEY `PatNum` (`PatNum`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 /*Table structure for table `laboratory` */
@@ -25821,11 +25871,11 @@ INSERT INTO `preference` (`PrefName`,`ValueString`,`PrefNum`,`Comments`) VALUES
 ('BackupIndexesDisabled','1',1163,NULL),
 ('InsOutOfNetworkBlankLikeZero','0',1164,NULL),
 ('EformsSpaceToRightEachField','10',1165,NULL),
-('ForkAdoptedFrom','new=1;source=24.3.63.0;level=2026110221;adopted=db/init/new-database.sql',1166,''),
-('OdSchemaCompat','26.1.70',1167,''),
-('ForkSchemaLevel','2026110221',1168,''),
+('ForkAdoptedFrom','new=1;source=24.3.63.0;level=2026110781;adopted=db/init/new-database.sql',1166,''),
+('OdSchemaCompat','26.2.0',1167,''),
+('ForkSchemaLevel','2026110781',1168,''),
 ('ForkMigrationInProgress','',1169,NULL),
-('ForkMigrationsApplied','2026101901,2026101902,2026101903,2026101904,2026101905,2026101906,2026101907,2026101951,2026101971,2026102401,2026102402,2026102403,2026102501,2026110101,2026110103,2026110104,2026110201,2026110202,2026110203,2026110204,2026110205,2026110206,2026110207,2026110211,2026110212,2026110213,2026110221',1170,NULL),
+('ForkMigrationsApplied','2026101901,2026101902,2026101903,2026101904,2026101905,2026101906,2026101907,2026101951,2026101971,2026102401,2026102402,2026102403,2026102501,2026110101,2026110103,2026110104,2026110201,2026110202,2026110203,2026110204,2026110205,2026110206,2026110207,2026110211,2026110212,2026110213,2026110221,2026110701,2026110731,2026110781',1170,NULL),
 ('ApptMirrorSecondary','0',1171,NULL),
 ('TaskCategoryShow','0',1172,NULL),
 ('IncomeTransfersLimitToPatPayments','0',1173,NULL),
@@ -27390,17 +27440,21 @@ CREATE TABLE `provider` (
   `HourlyProdGoalAmt` double NOT NULL,
   `DateTerm` date NOT NULL DEFAULT '0001-01-01',
   `PreferredName` varchar(100) NOT NULL,
+  `ClaimFormNum` bigint(20) NOT NULL,
+  `GlidewellAcctNum` bigint(20) NOT NULL,
   PRIMARY KEY (`ProvNum`),
   KEY `EmailAddressNum` (`EmailAddressNum`),
   KEY `ProvNumBillingOverride` (`ProvNumBillingOverride`),
-  KEY `FeeSched` (`FeeSched`)
+  KEY `FeeSched` (`FeeSched`),
+  KEY `ClaimFormNum` (`ClaimFormNum`),
+  KEY `GlidewellAcctNum` (`GlidewellAcctNum`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
 
 /*Data for the table `provider` */
 
-INSERT INTO `provider` (`ProvNum`,`Abbr`,`ItemOrder`,`LName`,`FName`,`MI`,`Suffix`,`FeeSched`,`Specialty`,`SSN`,`StateLicense`,`DEANum`,`IsSecondary`,`ProvColor`,`IsHidden`,`UsingTIN`,`BlueCrossID`,`SigOnFile`,`MedicaidID`,`OutlineColor`,`SchoolClassNum`,`NationalProvID`,`CanadianOfficeNum`,`DateTStamp`,`AnesthProvType`,`TaxonomyCodeOverride`,`IsCDAnet`,`EcwID`,`StateRxID`,`IsNotPerson`,`StateWhereLicensed`,`EmailAddressNum`,`IsInstructor`,`EhrMuStage`,`ProvNumBillingOverride`,`CustomID`,`ProvStatus`,`IsHiddenReport`,`IsErxEnabled`,`Birthdate`,`SchedNote`,`WebSchedDescript`,`WebSchedImageLocation`,`HourlyProdGoalAmt`,`DateTerm`,`PreferredName`) VALUES
-(1,'DOC',0,'Dentist','','','',53,263,'','','',0,-4602138,0,1,'',1,'',-11711155,0,'','','2026-01-01 00:00:00',0,'',0,'','',0,'',0,0,0,0,'',0,0,0,'0001-01-01','','','',0,'0001-01-01',''),
-(2,'HYG',1,'Hygienist','','','',53,264,'','','',1,-17956,0,0,'',1,'',-11711155,0,'','','2026-01-01 00:00:00',0,'',0,'','',0,'',0,0,0,0,'',0,0,0,'0001-01-01','','','',0,'0001-01-01','');
+INSERT INTO `provider` (`ProvNum`,`Abbr`,`ItemOrder`,`LName`,`FName`,`MI`,`Suffix`,`FeeSched`,`Specialty`,`SSN`,`StateLicense`,`DEANum`,`IsSecondary`,`ProvColor`,`IsHidden`,`UsingTIN`,`BlueCrossID`,`SigOnFile`,`MedicaidID`,`OutlineColor`,`SchoolClassNum`,`NationalProvID`,`CanadianOfficeNum`,`DateTStamp`,`AnesthProvType`,`TaxonomyCodeOverride`,`IsCDAnet`,`EcwID`,`StateRxID`,`IsNotPerson`,`StateWhereLicensed`,`EmailAddressNum`,`IsInstructor`,`EhrMuStage`,`ProvNumBillingOverride`,`CustomID`,`ProvStatus`,`IsHiddenReport`,`IsErxEnabled`,`Birthdate`,`SchedNote`,`WebSchedDescript`,`WebSchedImageLocation`,`HourlyProdGoalAmt`,`DateTerm`,`PreferredName`,`ClaimFormNum`,`GlidewellAcctNum`) VALUES
+(1,'DOC',0,'Dentist','','','',53,263,'','','',0,-4602138,0,1,'',1,'',-11711155,0,'','','2026-01-01 00:00:00',0,'',0,'','',0,'',0,0,0,0,'',0,0,0,'0001-01-01','','','',0,'0001-01-01','',0,0),
+(2,'HYG',1,'Hygienist','','','',53,264,'','','',1,-17956,0,0,'',1,'',-11711155,0,'','','2026-01-01 00:00:00',0,'',0,'','',0,'',0,0,0,0,'',0,0,0,'0001-01-01','','','',0,'0001-01-01','',0,0);
 
 /*Table structure for table `providerclinic` */
 
@@ -29249,7 +29303,6 @@ INSERT INTO `toolbutitem` (`ToolButItemNum`,`ProgramNum`,`ToolBar`,`ButtonText`)
 (77,106,2,'PandaPerioAdvanced'),
 (80,110,2,'Oryx'),
 (81,111,7,'PDMP'),
-(82,112,0,'TrojanCollect'),
 (83,113,2,'DexisIntegrator'),
 (84,114,7,'Benco'),
 (85,115,2,'PreXion Viewer'),
