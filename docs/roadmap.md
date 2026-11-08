@@ -59,7 +59,10 @@ Decided with the owner on 2026-11-07:
   Windows; the program reaches it with a plain HTTPS call instead of the generated SOAP proxy. The 4,458 business methods that can run
   on the Middle Tier keep their messages unchanged. A Linux Middle Tier is deferred to the Linux server plan (the business library would
   first need its Windows-only parts moved out: pictures, fonts and drawing, WinForms, WPF, the registry).
-- **Deployment**: framework-dependent; the installer installs the .NET 10 Desktop Runtime, so the updates stored in the database stay small.
+- **Deployment**: self-contained (owner, 2026-11-08, replacing "framework-dependent"): the program and its 32-bit helper carry their
+  own .NET 10 runtime, so nothing is installed for .NET. The updates stored in the database stay small, because a release keeps the
+  runtime as a separate part, published and pulled only when the runtime version changes. The runtime's security fixes then come only
+  with this program's releases: a release follows each monthly .NET 10 patch.
 - **Libraries**: NuGet packages replace the DLL files in `Required dlls`, from a local package folder the build lane restores from offline,
   with lock files; each batch of downloads is approved by the owner. The generated SOAP clients of services the fork removed are deleted and
   the rest regenerated or replaced; any BinaryFormatter use is replaced; tests built on AppDomains are rewritten; COM interop stays.
@@ -69,8 +72,8 @@ Decided with the owner on 2026-11-07:
   program, the business library, the tests and the Middle Tier on .NET 10 and 64-bit in one step (owner, 2026-11-08: "no go directly to
   64."), with no 32-bit .NET 10 version (see "32-bit to 64-bit").
 - **Switching the office**: the bridge release first, then the new 64-bit setup once on every workstation; it moves the program from
-  `Program Files (x86)` to `Program Files`, downloads the 64-bit .NET 10 runtime, as it does for the Visual C++ runtime, and drops its
-  "install for me only" mode. Windows 11 is the baseline.
+  `Program Files (x86)` to `Program Files`, installs the program with its own .NET 10 runtime (nothing is downloaded for .NET), and
+  drops its "install for me only" mode. Windows 11 is the baseline.
 
 The stage plan, made from a read-only survey of every project, library, API and tool the move touches and an independent critique, is
 `docs/specs/net10-plan.md`. Its owner questions were answered on 2026-11-08 (`docs/owner-questions.md`, "The move to .NET 10"). The

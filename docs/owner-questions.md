@@ -619,7 +619,8 @@ The questions of the .NET 10 stage plan, [specs/net10-plan.md](specs/net10-plan.
 independent critique. You answered on 2026-11-08 in several messages: "As recommended"; then the facts (the office runs Windows 11, uses
 no plugins and does not use Direct secure messaging) and one change (Change Healthcare (Emdeon) medical claims are kept and made to work:
 "no, but make it work"); "Keep signed email"; "Have them rebuilt"; "don't cut" (the DentalXChange eligibility path); the Middle Tier
-answer; the standing rule below, with its correction; "Don't need 'Install for me only'"; and "no go directly to 64.".
+answer; the standing rule below, with its correction; "Don't need 'Install for me only'"; "no go directly to 64."; and "c self-contained
+for 64bit as well".
 
 - **Standing rule (2026-11-08).** "Overall decisions wrt .net 10: don't cut anything including test. Cut test only if it's testing
   something that we deliberately deleted." You confirmed the reading ("Yes"): what you deliberately removed stays removed, and everything
@@ -665,9 +666,17 @@ answer; the standing rule below, with its correction; "Don't need 'Install for m
   later as a release of its own.
 - **Switching the office.** The bridge release first, then the new setup once on every workstation. The bridge release also stops a
   workstation that is not switched yet from publishing its old build over the new one.
-- **The .NET 10 runtime.** The setup downloads it during the install, as it does for the Visual C++ runtime.
-- **"Install for me only".** The setup drops this mode, because it cannot install the runtime. Confirmed after the standing rule
-  ("Don't need 'Install for me only'").
+- **The .NET 10 runtime.** The program and the 32-bit helper ship with their own .NET 10 runtime ("c self-contained for 64bit as
+  well"), so nothing is installed for .NET on the workstations. The runtime's security fixes then no longer come from Microsoft
+  Update: they come with this program's releases, one after each monthly .NET 10 patch. Updates stay small, because a release keeps
+  the runtime as a separate part, published and pulled only when the runtime changes. The first install and each runtime change carry
+  the whole runtime, and the program folder grows to about 400 MB. The runtime packages are part of the approved download batch D.
+- **The 32-bit helper's runtime** (open point O-15). Answered: (c) self-contained ("c self-contained for 64bit as well"). The helper
+  for QuickBooks Desktop, Schick CDR, Topaz and Guru moves to 32-bit .NET 10 with its own runtime, in its own folder, so no 32-bit
+  runtime is installed. Each vendor part it loads must be shown to load on .NET 10; if one does not, you are told, and it does not
+  quietly fall back to .NET Framework.
+- **"Install for me only".** The setup drops this mode. Confirmed after the standing rule ("Don't need 'Install for me only'"). Its
+  first reason, that such a setup cannot install the runtime, is gone, since the setup now installs none.
 - **Windows versions.** Windows 11 is the baseline, and the office's workstations run it; the setup warns below it. Windows 10 is
   supported by .NET 10 only in some editions.
 - **Text size.** With Windows "Make text bigger" above 100%, 72 older windows show slightly larger text. Accepted.
