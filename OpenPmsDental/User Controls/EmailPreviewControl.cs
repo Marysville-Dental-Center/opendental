@@ -10,7 +10,6 @@ using DataConnectionBase;
 using OpenPmsDentalBusiness;
 using System.Linq;
 using OpenPmsDental.UI;
-using Health.Direct.Common.Mime;
 using System.Text;
 
 namespace OpenPmsDental {
@@ -26,9 +25,9 @@ namespace OpenPmsDental {
 		///<summary>Used when sending to get Clinic.</summary>
 		private Patient _patient=null;
 		///<summary>If the message is an html email with images, then this list contains the raw image mime parts.  The user must give permission before converting these to images, for security purposes.  Gmail also does this with images, for example.</summary>
-		private List<Health.Direct.Common.Mime.MimeEntity> _listImageParts=null;
+		private List<EmailMimePart> _listImageParts=null;
 		///<summary>If the message is an html email with attached applications (can be images also), then this list contains the raw image mime parts.  The user must give permission before converting these to images, for security purposes.  Gmail also does this with images, for example.</summary>
-		private List<MimeEntity> _listAppParts=null;
+		private List<EmailMimePart> _listAppParts=null;
     ///<summary>The list of email addresses in email setup. Primarly used for matching From address to internal EmailAddress.</summary>
 		private List<EmailAddress> _listEmailAddresses;
 		///<summary>Can be null. Should be set externally before showing this control to the user. Otherwise will attempt to match _emailMessage.FromAddress
@@ -214,11 +213,11 @@ namespace OpenPmsDental {
 
 		///<summary>Parses the EmailMessage for MIME encoding and performs necessary adjustments.</summary>
 		private void ParseMIME() {			
-			List<List<MimeEntity>> listMimeParts=
+			List<List<EmailMimePart>> listMimeParts=
 				EmailMessages.GetMimePartsForMimeTypes(_emailMessage.RawEmailIn,EmailAddressPreview,
 				"text/html","text/plain","image/","application/octet-stream");//Adding application/octet-stream as sometimes images are sent in this format
-			List<MimeEntity> listHtmlParts=listMimeParts[0];//If RawEmailIn is blank, then this list will also be blank (ex Web Mail messages).
-			List<MimeEntity> listTextParts=listMimeParts[1];//If RawEmailIn is blank, then this list will also be blank (ex Web Mail messages).
+			List<EmailMimePart> listHtmlParts=listMimeParts[0];//If RawEmailIn is blank, then this list will also be blank (ex Web Mail messages).
+			List<EmailMimePart> listTextParts=listMimeParts[1];//If RawEmailIn is blank, then this list will also be blank (ex Web Mail messages).
 			_listImageParts=listMimeParts[2];//If RawEmailIn is blank, then this list will also be blank (ex Web Mail messages).
 			_listAppParts=listMimeParts[3];//If RawEmailIn is blank, then this list will also be blank (ex Web Mail messages).
 			if(listHtmlParts.Count>0) {//Html body found.
@@ -681,13 +680,13 @@ namespace OpenPmsDental {
 			return Recalls.ReplaceRecall(templateText,pat);
 		}
 
-		///<summary>Accepts a list of MimeEntity and parses it for paths, htmls and other key factors. It will test that the resulting parts
+		///<summary>Accepts a list of MIME parts and parses it for paths, htmls and other key factors. It will test that the resulting parts
 		///have a valid image extension. If they do, their images go into dictFiles by file name, the name the html now uses for them, for the
 		///in-memory page that shows them (nothing is written to disk). If they are not
 		///then they are disreguarded an a message is sent to the user warning them of potentially malicious content.</summary>
-		private string ParseAttachedImages(string html,List<MimeEntity> listParts,Dictionary<string,byte[]> dictFiles) {
+		private string ParseAttachedImages(string html,List<EmailMimePart> listParts,Dictionary<string,byte[]> dictFiles) {
 				bool hasDangerousAttachment=false;
-				foreach(MimeEntity entity in listParts) {
+				foreach(EmailMimePart entity in listParts) {
 					string contentId=EmailMessages.GetMimeImageContentId(entity);
 					string fileName=EmailMessages.GetMimeImageFileName(entity);
 					//Only show image types.  Otherwise, prompt user that potentially dangerous code is attached to the email and will not be shown.
@@ -695,7 +694,8 @@ namespace OpenPmsDental {
 						hasDangerousAttachment=true;
 						continue;
 					}
-					if(entity.ContentDisposition.ToLower().Contains("inline")) {
+					//Inline: "Content-Disposition: inline", or an image of a multipart/related html body with a Content-ID and no disposition.
+					if(contentId!="" && entity.IsInline) {
 						html=html.Replace("cid:"+contentId,fileName);
 					}
 					EmailAttach attachment=_listEmailAttachDisplayed.FirstOrDefault(x => x.DisplayedFileName.ToLower().Trim()==fileName.ToLower().Trim());
@@ -716,7 +716,7 @@ namespace OpenPmsDental {
 		private void butShowImages_Click(object sender,EventArgs e) {
 			try {
 				string html=HtmlText??"";
-				List<MimeEntity> listMimeEntries=new List<MimeEntity>();
+				List<EmailMimePart> listMimeEntries=new List<EmailMimePart>();
 				if(_listAppParts!=null) {
 					listMimeEntries.AddRange(_listAppParts);
 				}

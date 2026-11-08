@@ -34,9 +34,63 @@ namespace LibraryUpdateTests {
 		private string _localAtoZpathOld;
 		private bool _isUnitTestOld;
 
-		///<summary>The fields that differ from the Direct-based parser on purpose: "case|field" gives the new value (as the actual file writes it)
-		///and why. Filled by step 2 of S0-3 (received mail on MimeKit).</summary>
-		private static readonly Dictionary<string,Tuple<string,string>> _dictExplained=new Dictionary<string,Tuple<string,string>>();
+		#region The differences from the Direct-based parser, and why
+		private const string R_DEFAULT_TEXT="A message part without a Content-Type is text/plain (RFC 2045 5.2): the preview now gets that text part and shows the same text the stored body showed before.";
+		private const string R_BOUNDARIES="MimeKit reads boundaries that start with another boundary, so the boundaries stay as received; the Direct-based parser replaced them with new GUIDs before it could parse the message.";
+		private const string R_TRAILING_CRLF="The raw message with its attachment content cleared ends as the received message ended; the Direct serializer added one more CRLF (the database tool used to cut it off again).";
+		private const string R_UTF8_BYTES="An 8-bit UTF-8 body of a Gmail or Microsoft 365 import is decoded from its bytes; the Direct-based parser decoded the Latin-1 text of those bytes as UTF-8 a second time (mojibake).";
+		private const string R_RAW_HEADER="A raw 8-bit UTF-8 header is decoded from its bytes; the Direct-based parser kept the Latin-1 text of the bytes (mojibake).";
+		private const string R_FOLDED="A folded header is unfolded as RFC 5322 2.2.3 says (the line break goes, the space stays); the Direct-based parser dropped the space and joined two words.";
+		private const string R_1252="windows-1252 bytes 0x80 to 0x9F (the euro sign, the en dash) come out right; the Direct-based parser turned them into question marks.";
+		private const string R_BASE64_HTML="A base64 html part is only base64-decoded; the Direct-based parser also undid =XX as if the html were quoted-printable, which turned width=100 into a control character and the literal text =3D into =.";
+		private const string R_QP_ATTACHMENT="A quoted-printable attachment is saved decoded (the 22 bytes of the text); the Direct-based parser saved the encoded text (28 bytes).";
+		private const string R_RFC2231="An RFC 2231 file name (filename*=utf-8''...) is read; the Direct-based parser only read a quoted filename=, so the attachment was named \"attach\" and the preview part had no name.";
+		private const string R_7BIT_EQUALS="7bit text is not quoted-printable: \"=41\" and a line that ends with \"=\" stay as typed; the Direct-based parser decoded them anyway.";
+		private const string R_ENCRYPTED="An S/MIME-encrypted message is stored with a body that says it cannot be shown: only the Direct agent could decrypt it, with the office's Direct certificate, and Direct is removed. The body was the whole raw message before; RawEmailIn still holds it unchanged.";
+
+		///<summary>The fields that differ from the Direct-based parser on purpose (step 2 of S0-3, received mail on MimeKit): "case|field" gives the
+		///new value, as the actual file writes it, and why.</summary>
+		private static readonly Dictionary<string,Tuple<string,string>> _dictExplained=new Dictionary<string,Tuple<string,string>> {
+			{ "unittests DateExtraSpace|Preview parts",Tuple.Create(@"0 html, 1 text, 0 image, 0 octet-stream",R_DEFAULT_TEXT) },
+			{ "unittests DateExtraSpace|Preview body",Tuple.Create(@"text This is a message just to say hello.\r\nSo, ""Hello"".\r\n",R_DEFAULT_TEXT) },
+			{ "unittests DateSingleDigitHour|Preview parts",Tuple.Create(@"0 html, 1 text, 0 image, 0 octet-stream",R_DEFAULT_TEXT) },
+			{ "unittests DateSingleDigitHour|Preview body",Tuple.Create(@"text This is a message just to say hello.\r\nSo, ""Hello"".\r\n",R_DEFAULT_TEXT) },
+			{ "unittests DateTimeZoneAbbreviation|Preview parts",Tuple.Create(@"0 html, 1 text, 0 image, 0 octet-stream",R_DEFAULT_TEXT) },
+			{ "unittests DateTimeZoneAbbreviation|Preview body",Tuple.Create(@"text This is a message just to say hello.\r\nSo, ""Hello"".\r\n",R_DEFAULT_TEXT) },
+			{ "unittests UndisclosedRecipients|Preview parts",Tuple.Create(@"0 html, 1 text, 0 image, 0 octet-stream",R_DEFAULT_TEXT) },
+			{ "unittests UndisclosedRecipients|Preview body",Tuple.Create(@"text This is a message just to say hello.\r\nSo, ""Hello"".\r\n",R_DEFAULT_TEXT) },
+			{ "unittests UndisclosedRecipients_NoHyphen|Preview parts",Tuple.Create(@"0 html, 1 text, 0 image, 0 octet-stream",R_DEFAULT_TEXT) },
+			{ "unittests UndisclosedRecipients_NoHyphen|Preview body",Tuple.Create(@"text This is a message just to say hello.\r\nSo, ""Hello"".\r\n",R_DEFAULT_TEXT) },
+			{ "unittests UndisclosedRecipients_ExtraSpace|Preview parts",Tuple.Create(@"0 html, 1 text, 0 image, 0 octet-stream",R_DEFAULT_TEXT) },
+			{ "unittests UndisclosedRecipients_ExtraSpace|Preview body",Tuple.Create(@"text This is a message just to say hello.\r\nSo, ""Hello"".\r\n",R_DEFAULT_TEXT) },
+			{ "unittests UndisclosedRecipients_NoRecipients|Preview parts",Tuple.Create(@"0 html, 1 text, 0 image, 0 octet-stream",R_DEFAULT_TEXT) },
+			{ "unittests UndisclosedRecipients_NoRecipients|Preview body",Tuple.Create(@"text This is a message just to say hello.\r\nSo, ""Hello"".\r\n",R_DEFAULT_TEXT) },
+			{ "mimetests no content type|Preview parts",Tuple.Create(@"0 html, 1 text, 0 image, 0 octet-stream",R_DEFAULT_TEXT) },
+			{ "mimetests no content type|Preview body",Tuple.Create(@"text just text\r\n\r\n",R_DEFAULT_TEXT) },
+			{ "mimetests bcc only|Preview parts",Tuple.Create(@"0 html, 1 text, 0 image, 0 octet-stream",R_DEFAULT_TEXT) },
+			{ "mimetests bcc only|Preview body",Tuple.Create(@"text x\r\n\r\n",R_DEFAULT_TEXT) },
+			{ "unittests InvalidBoundaries|RawEmailIn",Tuple.Create(@"(changed) From: John Doe <jdoe@machine.example>\r\nTo: Mary Smith <mary@example.net>\r\nSubject: Saying Hello\r\nDate: Thu, 11 Feb 2016 06:58:09 CST\r\nMessage-ID: <1234@local.machine.example>\r\nContent-Type: multipart/mixed; boundary=""B1""\r\n\r\nThis is a multi-part message in MIME format.\r\n--B1\r\nContent-Type: multipart/alternative; boundary=""B12""\r\nMIME-Version: 1.0\r\n\r\n--B12\r\nContent-Type: text/plain; charset=us-ascii\r\nContent-Transfer-Encoding: 7bit\r\n\r\nHello from Argentina!\r\n\r\n--B12\r\nContent-Type: text/plain; charset=us-ascii\r\nContent-Transfer-Encoding: 7bit\r\n\r\nThis is a message just to say hello.\r\nSo, ""Hello"".\r\n\r\n--B12--\r\n--B1\r\nContent-Type: image/gif\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=""map_of_Argentina.gif""\r\n\r\n\r\n--B1--\r\n",R_BOUNDARIES) },
+			{ "mimetests utf8 body|BodyText",Tuple.Create(@"Caf\u00e9 \u20ac\r\n\r\n",R_UTF8_BYTES) },
+			{ "mimetests utf8 body|Preview body",Tuple.Create(@"text Caf\u00e9 \u20ac\r\n\r\n",R_UTF8_BYTES) },
+			{ "mimetests raw 8-bit header|Subject",Tuple.Create(@"Caf\u00e9 raw",R_RAW_HEADER) },
+			{ "mimetests multipart|Subject",Tuple.Create(@"folded subject line",R_FOLDED) },
+			{ "mimetests multipart|RawEmailIn",Tuple.Create(@"(changed) From: a@example.test\r\nTo: b@example.test, c@example.test\r\nCc: d@example.test\r\nSubject: folded\r\n subject line\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=""XYZ""\r\n\r\npreamble\r\n--XYZ\r\nContent-Type: text/html; charset=iso-8859-1\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Caf=E9</p>\r\n--XYZ\r\nContent-Type: application/pdf; name=""x.pdf""\r\nContent-Disposition: attachment; filename=""x.pdf""\r\nContent-Transfer-Encoding: base64\r\n\r\n\r\n--XYZ--\r\nepilogue\r\n",R_TRAILING_CRLF) },
+			{ "windows-1252 8bit gmail|BodyText",Tuple.Create(@"Preis: 100 \u20ac \u2013 Caf\u00e9\r\nGr\u00fc\u00dfe\r\n\r\n",R_1252) },
+			{ "windows-1252 8bit gmail|Preview body",Tuple.Create(@"text Preis: 100 \u20ac \u2013 Caf\u00e9\r\nGr\u00fc\u00dfe\r\n\r\n",R_1252) },
+			{ "html with inline images|RawEmailIn",Tuple.Create(@"(changed) From: Clinic Lab <lab@example.test>\r\nTo: inbox@example.test\r\nSubject: Your x-ray report\r\nDate: Fri, 06 Nov 2026 14:30:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: multipart/related; boundary=""rel-1""; type=""multipart/alternative""\r\n\r\n--rel-1\r\nContent-Type: multipart/alternative; boundary=""alt-1""\r\n\r\n--alt-1\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nReport attached. Caf=C3=A9 =3D good.\r\n--alt-1\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: base64\r\n\r\nPGh0bWw+PGJvZHk+PHRhYmxlPjx0cj48dGQgd2lkdGg9MTAwPlJlcG9ydDwvdGQ+PC90cj48L3Rh\r\nYmxlPjxwPkNhZsOpID0zRDwvcD48aW1nIHNyYz0iY2lkOmxvZ28tMUBleGFtcGxlLnRlc3QiPjxp\r\nbWcgc3JjPSJjaWQ6ZG90LTFAZXhhbXBsZS50ZXN0Ij48L2JvZHk+PC9odG1sPg==\r\n--alt-1--\r\n--rel-1\r\nContent-Type: image/png; name=""logo.png""\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <logo-1@example.test>\r\nContent-Disposition: inline; filename=""logo.png""\r\n\r\n\r\n--rel-1\r\nContent-Type: image/gif; name=""dot.gif""\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <dot-1@example.test>\r\n\r\nR0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7\r\n--rel-1--\r\n",R_TRAILING_CRLF) },
+			{ "html with inline images|Preview body",Tuple.Create(@"html <html><body><table><tr><td width=100>Report</td></tr></table><p>Caf\u00e9 =3D</p><img src=""cid:logo-1@example.test""><img src=""cid:dot-1@example.test""></body></html>\r\n",R_BASE64_HTML) },
+			{ "attachments|Subject",Tuple.Create(@"Statement for Ren\u00e9e and more",R_FOLDED) },
+			{ "attachments|RawEmailIn",Tuple.Create(@"(changed) From: Billing <billing@example.test>\r\nTo: ""Smith, Pat"" <pat@example.test>, inbox@example.test\r\nCc: =?utf-8?B?SsO8cmdlbg==?= <juergen@example.test>\r\nSubject: =?utf-8?Q?Statement_for_Ren=C3=A9e?= and\r\n more\r\nDate: Sat, 07 Nov 2026 10:00:00 -0500\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=""mix-1""\r\n\r\n--mix-1\r\nContent-Type: text/plain; charset=iso-8859-1\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nYour statement is attached. =C9t=E9 soft=\r\n break joined.\r\n--mix-1\r\nContent-Type: application/pdf; name=""Statement 2026.pdf""\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=""Statement 2026.pdf""\r\n\r\n\r\n--mix-1\r\nContent-Type: text/plain; charset=utf-8; name=""notes.txt""\r\nContent-Transfer-Encoding: quoted-printable\r\nContent-Disposition: attachment; filename=""notes.txt""\r\n\r\n\r\n--mix-1\r\nContent-Type: application/octet-stream\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename*=utf-8''R%C3%A9sum%C3%A9.bin\r\n\r\n\r\n--mix-1--\r\n",R_TRAILING_CRLF) },
+			{ "attachments|Attachment 1",Tuple.Create(@"notes.txt 22 bytes sha f09d21f89a0ee665",R_QP_ATTACHMENT) },
+			{ "attachments|Attachment 2",Tuple.Create(@"R\u00e9sum\u00e9.bin 6 bytes sha 17e88db187afd62c",R_RFC2231) },
+			{ "attachments|Preview octet-stream 0",Tuple.Create(@"cid  name R\u00e9sum\u00e9.bin",R_RFC2231) },
+			{ "forwarded message|RawEmailIn",Tuple.Create(@"(changed) From: Front Desk <front@example.test>\r\nTo: inbox@example.test\r\nSubject: Fwd: Lab results\r\nDate: Tue, 09 Sep 2014 23:16:36 GMT\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=""fwd-1""\r\n\r\n--fwd-1\r\nContent-Type: text/plain; charset=us-ascii\r\n\r\nSee the forwarded message.\r\n--fwd-1\r\nContent-Type: message/rfc822\r\nContent-Disposition: attachment; filename=""results.eml""\r\n\r\n\r\n--fwd-1--\r\n",R_TRAILING_CRLF) },
+			{ "equals signs in 7bit text|BodyText",Tuple.Create(@"a=41 stays as typed\r\nthis line ends with =\r\nnext line\r\n\r\n",R_7BIT_EQUALS) },
+			{ "equals signs in 7bit text|Preview body",Tuple.Create(@"text a=41 stays as typed\r\nthis line ends with =\r\nnext line\r\n\r\n",R_7BIT_EQUALS) },
+			{ "signed|RawEmailIn",Tuple.Create(@"(changed) From: Signer Example <signer@example.test>\r\nTo: inbox@example.test\r\nSubject: Signed message\r\nDate: Tue, 03 Nov 2026 10:00:00 -0800\r\nMessage-ID: <signed-1@example.test>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/signed; protocol=""application/pkcs7-signature""; micalg=sha-256; boundary=""sig-boundary-1""\r\n\r\nThis is a cryptographically signed message in MIME format.\r\n\r\n--sig-boundary-1\r\nContent-Type: text/plain; charset=us-ascii\r\nContent-Transfer-Encoding: 7bit\r\n\r\nThis message is signed.\r\nSecond line of the signed text.\r\n\r\n--sig-boundary-1\r\nContent-Type: application/pkcs7-signature; name=""smime.p7s""\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=""smime.p7s""\r\nContent-Description: S/MIME Cryptographic Signature\r\n\r\n\r\n--sig-boundary-1--\r\n",R_TRAILING_CRLF) },
+			{ "encrypted|BodyText",Tuple.Create(@"This message is protected with S/MIME (application/pkcs7-mime) and cannot be shown in this program. The original message is kept unchanged: click Raw Message to see it.",R_ENCRYPTED) },
+		};
+		#endregion
 
 		[ClassInitialize]
 		public static void ClassInitialize(TestContext testContext) {
@@ -245,7 +299,7 @@ namespace LibraryUpdateTests {
 		}
 
 		[TestMethod]
-		public void Corpus_ParsesAsRecordedWithTheDirectParser() {
+		public void Corpus_MatchesTheDirectRecordingOrAnExplainedDifference() {
 			List<CorpusMessage> listMessages=ReceivedMailCorpus.GetAll();
 			StringBuilder stringBuilderActual=new StringBuilder();
 			Dictionary<string,List<KeyValuePair<string,string>>> dictActual=new Dictionary<string,List<KeyValuePair<string,string>>>();

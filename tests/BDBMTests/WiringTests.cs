@@ -71,7 +71,9 @@ namespace BDBMTests {
 		public void RawEmails_NormalizesWhiteSpaceBeforeComparing() {
 			string cleanUp=MethodBody(Read("OpenPmsDentalBusiness","Data Interface","DatabaseMaintenances.cs"),"public static string CleanUpRawEmails()");
 			StringAssert.Contains(cleanUp,"FindEmailAddressForRawEmail(listEmailAddresses,emailMessage.RecipientAddress)");
-			AssertBefore(cleanUp,"emailMessageOldCopy.BodyText=inMsgOld.Message.Body.Text;","NormalizeRawEmailWhiteSpace(emailMessageNewCopy,emailMessageOldCopy)");
+			//S0-3: the copies hold the subject and body text MimeKit read (as stored), no longer the raw Subject header and MIME body of the Direct parser.
+			AssertBefore(cleanUp,"emailMessageNewCopy.BodyText=SOut.StringParam(emailMessageNew.BodyText);","NormalizeRawEmailWhiteSpace(emailMessageNewCopy,emailMessageOldCopy)");
+			Assert.IsFalse(cleanUp.Contains("Health.Direct"),"No Direct Project types are left in the tool.");
 			AssertBefore(cleanUp,"NormalizeRawEmailWhiteSpace(emailMessageNewCopy,emailMessageOldCopy)","Crud.EmailMessageCrud.UpdateComparison(");
 		}
 

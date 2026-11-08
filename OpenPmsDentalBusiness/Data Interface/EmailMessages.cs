@@ -1617,236 +1617,176 @@ namespace OpenPmsDentalBusiness {
 			return listNewIds;
 		}
 
-		///<summary>Parses a raw email into a usable object.</summary>
-		public static Health.Direct.Agent.IncomingMessage RawEmailToIncomingMessage(string strRawEmailIn,EmailAddress emailAddressInbox) {
+		///<summary>The body text stored for a received S/MIME message whose whole body is application/pkcs7-mime (encrypted, or signed in the opaque
+		///form). Only the Direct Project agent could open these, with the inbox's private key; Direct was removed in the .NET 10 move (package S0-3)
+		///and the raw message is kept as it came.</summary>
+		public const string ENCRYPTED_BODY_TEXT="This message is protected with S/MIME (application/pkcs7-mime) and cannot be shown in this program. "
+			+"The original message is kept unchanged: click Raw Message to see it.";
+
+		///<summary>Throws ApplicationException when the text can't be read as an email. Parses a raw received email (as RawEmailIn stores it) with
+		///MimeKit. MimeKit's tolerant parser reads boundaries that start with another boundary, blank address headers, "undisclosed-recipients:;"
+		///and messages without recipients, which the Direct Project parser needed workarounds for.</summary>
+		public static MimeKit.MimeMessage RawEmailToMimeMessage(string strRawEmailIn) {
 			Meth.NoCheckMiddleTierRole();
-			Health.Direct.Agent.IncomingMessage incomingMessage=null;
-			string lastErrorMsg="";
-			#region Scrub Boundaries
-			//Find all of the boundaries within the raw email and force them to be unique
-			//Some third parties will format their boundaries in a way that that does not parse correctly. E.g.:
-			//boundary #1 = D775FB8094F7C52EF0C994F5B1152B71
-			//boundary #2 = D775FB8094F7C52EF0C994F5B1152B712
-			//boundary #3 = D775FB8094F7C52EF0C994F5B1152B713
-			//etc.
-			List<string> listBoundaries=new List<string>();
-			MatchCollection matchCollection=Regex.Matches(strRawEmailIn,@"boundary=""(.*)""");
-			for(int i=0;i<matchCollection.Count;i++) {
-				if(!matchCollection[i].Success || matchCollection[i].Groups.Count < 2) {
-					continue;
-				}
-				listBoundaries.Add(matchCollection[i].Groups[1].Value);
+			return RawEmailToMimeMessage(strRawEmailIn,out _);
+		}
+
+		///<summary>RawEmailToMimeMessage; encodingRaw turns bytes back into text in the form strRawEmailIn has (GetRawEmailBytes).</summary>
+		internal static MimeKit.MimeMessage RawEmailToMimeMessage(string strRawEmailIn,out Encoding encodingRaw) {
+			if(string.IsNullOrWhiteSpace(strRawEmailIn)) {
+				//Sent email and secure web mail have no raw message. MimeKit would read nothing as an empty text part.
+				throw new ApplicationException("Failed to parse raw email message.\r\nThe raw message is blank.");
 			}
-			bool hasValidBoundaries=true;
-			for(int i=0;i<listBoundaries.Count;i++) {
-				if(listBoundaries.Exists(x => x!=listBoundaries[i] && x.StartsWith(listBoundaries[i]))) {
-					hasValidBoundaries=false;
+			byte[] byteArrayRaw=GetRawEmailBytes(strRawEmailIn,out encodingRaw);
+			try {
+				using(MemoryStream memoryStream=new MemoryStream(byteArrayRaw,false)) {
+					return MimeKit.MimeMessage.Load(memoryStream);
+				}
+			}
+			catch(Exception ex) {
+				throw new ApplicationException("Failed to parse raw email message.\r\n"+ex.Message,ex);
+			}
+		}
+
+		///<summary>The bytes a raw received email came as. The Gmail and Microsoft 365 imports store each byte as one Latin-1 character
+		///(MimeMessage.ToString); the POP3 download stores the text of the bytes in the charset of the top-level Content-Type (GetPop3BodyEncoding),
+		///which only differs from that for a message of one part with non-ASCII text. encoding turns the bytes back into the same form of text.</summary>
+		internal static byte[] GetRawEmailBytes(string strRawEmail,out Encoding encoding) {
+			Encoding encodingLatin1=Encoding.GetEncoding(28591);
+			bool isAscii=true;
+			bool isLatin1=true;
+			for(int i=0;i<strRawEmail.Length;i++) {
+				if(strRawEmail[i]>0xFF) {
+					isAscii=false;
+					isLatin1=false;
 					break;
 				}
-			}
-			//Replace all of the boundaries if any show up more than 4 times which indicates that they are not unique enough and need to be replaced.
-			if(!hasValidBoundaries) {
-				for(int i=0;i<listBoundaries.Count;i++) {
-					//Replace this boundary within the raw email string with a better formatted boundary.
-					//There are three explicit ways to utilize the boundary and we will replace each one with:
-					//#1:  boundary="[uniqueBoundaryID]"
-					//#2:  --[uniqueBoundaryID]
-					//#3:  --[uniqueBoundaryID]--
-					/******************************************************************************************
-						Boundary syntax via https://www.w3.org/Protocols/rfc1341/7_2_Multipart.html is as follows:
-						boundary := 0*69<bchars> bcharsnospace
-						bchars := bcharsnospace / " "
-						bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" /
-														"+" / "_" / "," / "-" / "." /
-														"/" / ":" / "=" / "?"
-					*******************************************************************************************/
-					//Generate a GUID and use ToString("N") which returns 32 hexadecimal digits with no formatting.
-					//https://docs.microsoft.com/en-us/dotnet/api/system.guid.tostring?view=netframework-4.5.2
-					string boundaryNew=Guid.NewGuid().ToString("N");
-					strRawEmailIn=Regex.Replace(strRawEmailIn,"boundary=\""+listBoundaries[i]+"\"","boundary=\""+boundaryNew+"\"");
-					strRawEmailIn=Regex.Replace(strRawEmailIn,"\r\n--"+listBoundaries[i]+"\r\n","\r\n--"+boundaryNew+"\r\n");
-					strRawEmailIn=Regex.Replace(strRawEmailIn,"\r\n--"+listBoundaries[i]+"--","\r\n--"+boundaryNew+"--");
+				if(strRawEmail[i]>0x7F) {
+					isAscii=false;
 				}
 			}
-			#endregion
-			for(int i=0;i<5;i++) {//We will exit if unknown error or if previous error was the same as current error.
+			byte[] byteArrayLatin1=encodingLatin1.GetBytes(strRawEmail);//Characters beyond Latin-1 become '?', which is enough to read the headers.
+			if(isAscii) {
+				encoding=encodingLatin1;
+				return byteArrayLatin1;
+			}
+			Encoding encodingCharset=GetRawEmailCharset(byteArrayLatin1);
+			if(isLatin1) {
+				//Latin-1 bytes of UTF-8 text are valid UTF-8; text the POP3 download read as UTF-8 with an accented letter is not.
+				if(encodingCharset!=null && encodingCharset.CodePage==65001 && !IsValidUtf8(byteArrayLatin1)) {
+					encoding=new UTF8Encoding(false);
+					return encoding.GetBytes(strRawEmail);
+				}
+				encoding=encodingLatin1;
+				return byteArrayLatin1;
+			}
+			//Characters beyond Latin-1 come only from the POP3 download: the text of the bytes in the top-level charset.
+			if(encodingCharset!=null) {
 				try {
-					incomingMessage=new Health.Direct.Agent.IncomingMessage(strRawEmailIn);//Used to parse all email (encrypted or not).
-					break;
+					Encoding encodingStrict=Encoding.GetEncoding(encodingCharset.CodePage,EncoderFallback.ExceptionFallback,DecoderFallback.ReplacementFallback);
+					byte[] byteArrayCharset=encodingStrict.GetBytes(strRawEmail);
+					encoding=Encoding.GetEncoding(encodingCharset.CodePage);
+					return byteArrayCharset;
 				}
 				catch(Exception ex) {
-					if(ex.Message==lastErrorMsg) {//Our last attempt to fix the issue failed.
-						throw new ApplicationException("Failed to parse raw email message.\r\n"+ex.Message);
-					}
-					if(ex.Message=="Error=MissingHeaderValue") {
-						//The "Welcome to Email" message from GoDaddy has a blank CC field which causes the IncomingMessage() constructor to throw an exception.
-						//The TO header can be blank because it is not required, since the user could put all destination addresses in either CC or BCC alone.  We tested this.
-						strRawEmailIn=Regex.Replace(strRawEmailIn,@"TO:[ \t]*\r\n","",RegexOptions.IgnoreCase);//Remove the TO header if it is any number of spaces or tabs followed by exactly one newline.
-						strRawEmailIn=Regex.Replace(strRawEmailIn,@"BCC:[ \t]*\r\n","",RegexOptions.IgnoreCase);//BCC before CC, since CC is partial match of BCC
-						strRawEmailIn=Regex.Replace(strRawEmailIn,@"CC:[ \t]*\r\n","",RegexOptions.IgnoreCase);//Remove the CC header if it is any number of spaces or tabs followed by exactly one newline.
-					}
-					else if(ex.Message=="An invalid character was found in the mail header: ';'.") {
-						//When all recipients are in the bcc field, some clients (gmail) inputs "undisclosed-recipients:;" into the TO field, which causes an error to be thrown.
-						strRawEmailIn=Regex.Replace(strRawEmailIn,@"undisclosed[ -]*recipients:[\t ]*;","",RegexOptions.IgnoreCase);//Remove "undisclosed-recipients".
-					}
-					else if(ex.Message=="Error=NoRecipients") {
-						//When all recipients are in the bcc field, some clients (Apple mail) remove all address fields (To, cc, bcc) from the header, which causes an error to be thrown.
-						//the code below attempts to add a bcc field with the user's email into the header (seems to work for emails coming from Apple mail)
-						int lengthEmail=strRawEmailIn.Length;
-						string username;
-						if(emailAddressInbox==null) {
-							username="";
-						}
-						else if(emailAddressInbox.EmailUsername==null) {
-							username="Failed to match email address";
-						}
-						else {
-							username=emailAddressInbox.EmailUsername;
-						}
-						strRawEmailIn=Regex.Replace(strRawEmailIn,@"Subject: ",
-							"Bcc: "+username+"\r\nSubject: ",RegexOptions.IgnoreCase);
-						if(strRawEmailIn.Length==lengthEmail) {
-							//If the email didn't have a subject, try again with 'From'.
-							strRawEmailIn=Regex.Replace(strRawEmailIn,@"From: ",
-								"Bcc: "+username+"\r\nFrom: ",RegexOptions.IgnoreCase);
-						}
-					}
-					else {
-						throw new ApplicationException("Failed to parse raw email message.\r\n"+ex.Message);
-					}
-					lastErrorMsg=ex.Message;
+					ex.DoNothing();//The text has characters the charset can't hold: not the POP3 form after all.
 				}
 			}
-			return incomingMessage;
+			encoding=new UTF8Encoding(false);
+			return encoding.GetBytes(strRawEmail);
 		}
 
-		///<summary>Throws various exceptions if decryption fails.  Decryption will fail if the sender is not yet trusted by the recipient.  Decrypts and valudates trust.  If decrypted successfully, removes the sender signature from the decrypted attachments and moves them into incomingMessage.Signatures.</summary>
-		private static Health.Direct.Agent.IncomingMessage DecryptIncomingMessage(Health.Direct.Agent.IncomingMessage incomingMessage) {
-			Meth.NoCheckMiddleTierRole();
-			Health.Direct.Agent.DirectAgent directAgent=GetDirectAgentForEmailAddress(incomingMessage.Message.ToValue.Trim());
-			//throw new ApplicationException("test decryption failure");
-			return directAgent.ProcessIncoming(incomingMessage);//Decrypts and valudates trust.  Also removes the signature from the decrypted attachments and moves them into incomingMessage.Signatures.
+		///<summary>The charset of the top-level Content-Type of the raw message, or null when it names none or one .NET does not know.</summary>
+		private static Encoding GetRawEmailCharset(byte[] byteArrayRaw) {
+			try {
+				MimeKit.HeaderList headerList;
+				using(MemoryStream memoryStream=new MemoryStream(byteArrayRaw,false)) {
+					headerList=MimeKit.HeaderList.Load(memoryStream);
+				}
+				string contentType=headerList[MimeKit.HeaderId.ContentType];
+				if(string.IsNullOrEmpty(contentType) || !MimeKit.ContentType.TryParse(contentType,out MimeKit.ContentType contentTypeParsed)
+					|| string.IsNullOrEmpty(contentTypeParsed.Charset))
+				{
+					return null;
+				}
+				return contentTypeParsed.CharsetEncoding;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return null;
+			}
 		}
 
-		///<summary>Converts any raw email message (encrypted or not) into an EmailMessage object, and saves any email attachments to the emailattach table in the db.
-		///The emailMessageNum will be used to set EmailMessage.EmailMessageNum.  If emailMessageNum is 0, then the EmailMessage will be inserted into the db, otherwise the EmailMessage will be updated in the db.
-		///If the raw message is encrypted, then will attempt to decrypt.  If decryption fails, then the EmailMessage SentOrReceived will be ReceivedEncrypted and the EmailMessage body will be set to the entire contents of the raw email.
-		///If decryption succeeds, then EmailMessage SentOrReceived will be set to ReceivedDirect, the EmailMessage body will contain the decrypted body text, and a Direct Ack "processed" message will be sent back to the sender using the email settings from emailAddressReceiver.
-		///Set isAck to true if decrypting a direct message, false otherwise.
+		private static bool IsValidUtf8(byte[] byteArray) {
+			try {
+				new UTF8Encoding(false,true).GetString(byteArray);
+				return true;
+			}
+			catch(ArgumentException) {
+				return false;
+			}
+		}
+
+		///<summary>Converts any raw received email into an EmailMessage object, and saves its attachments to the emailattach table in the db.
+		///The emailMessageNum will be used to set EmailMessage.EmailMessageNum.  If emailMessageNum is 0, then the EmailMessage will be inserted into
+		///the db, otherwise the EmailMessage will be updated in the db. A message whose whole body is S/MIME (application/pkcs7-mime, encrypted) can't
+		///be opened: it is stored with SentOrReceived ReceivedEncrypted, the body ENCRYPTED_BODY_TEXT and the raw message unchanged, and only when it
+		///is new (an encrypted message that is already in the database throws). A signed message (multipart/signed) shows its content and keeps its
+		///signature as the attachment smime.p7s. isAck is no longer used: it asked for the Direct acknowledgement of a decrypted message.
 		///Setting sentOrReceivedUnencrypted only works for unencrypted emails.  Currently used by DBM so that it doesn't force the status to received.</summary>
 		public static EmailMessage ProcessRawEmailMessageIn(string strRawEmail,long emailMessageNum,EmailAddress emailAddressReceiver,bool isAck
-			,EmailSentOrReceived emailSentOrReceivedUnencrypted=EmailSentOrReceived.Received) 
+			,EmailSentOrReceived emailSentOrReceivedUnencrypted=EmailSentOrReceived.Received)
 		{
 			Meth.NoCheckMiddleTierRole();
-			Health.Direct.Agent.IncomingMessage incomingMessage=RawEmailToIncomingMessage(strRawEmail,emailAddressReceiver);
-			bool isEncrypted=IsMimeEntityEncrypted(incomingMessage.Message);
+			MimeKit.MimeMessage mimeMessage=RawEmailToMimeMessage(strRawEmail,out Encoding encodingRaw);
 			EmailMessage emailMessage=null;
-			if(isEncrypted) {
-				emailMessage=ConvertMessageToEmailMessage(incomingMessage.Message,false,false);//Exclude attachments until we decrypt.
-				emailMessage.RawEmailIn=strRawEmail;//The raw encrypted email, including the message, the attachments, and the signature.  The body of the encrypted email is just a base64 string until decrypted.
+			if(IsMimeMessageEncrypted(mimeMessage)) {
+				emailMessage=ConvertMimeMessageToEmailMessage(mimeMessage,false,emailAddressReceiver);
+				emailMessage.BodyText=Lans.g("EmailMessages",ENCRYPTED_BODY_TEXT);
+				emailMessage.RawEmailIn=strRawEmail;//The raw encrypted email, as it came.
 				emailMessage.EmailMessageNum=emailMessageNum;
 				emailMessage.SentOrReceived=EmailSentOrReceived.ReceivedEncrypted;
 				emailMessage.RecipientAddress=emailAddressReceiver.EmailUsername.Trim();
-				//The entire contents of the email are saved in the emailMessage.BodyText field, so that if decryption fails, the email will still be saved to the db for decryption later if possible.
-				emailMessage.BodyText=strRawEmail;
+				if(emailMessageNum==0) {
+					Insert(emailMessage);
+					return emailMessage;
+				}
+				//Nothing can change for an encrypted message that is already stored.
+				throw new ApplicationException(Lans.g("EmailMessages","Encrypted messages cannot be shown."));
+			}
+			//First check to see if attachments have already been digested for this email.
+			List<EmailAttach> listEmailAttaches=EmailAttaches.GetForEmail(emailMessageNum); //will return an empty list if emailmessagenum == 0
+			bool parseAttachments=true;//Always parse attachments from the strRawEmail unless we've already parsed them before.
+			if(listEmailAttaches.Count > 0) {
+				//Attachments have already been parsed so do not waste time re-parsing.
+				//Re-parsing attachments would be very bad because there is a good chance that strRawEmail has cleared out the body portion of attachments.
+				//The actual attachments will be affected (erased) if these attachments are re-parsed due to the body portions being blank.
+				parseAttachments=false;
+			}
+			emailMessage=ConvertMimeMessageToEmailMessage(mimeMessage,parseAttachments,emailAddressReceiver);
+			emailMessage.RawEmailIn=strRawEmail;
+			//Set the Attachments on emailMessage if the attachments weren't parsed from strRawEmail.
+			if(!parseAttachments) {
+				//Calling EmailMessages.Update() will delete all email attachments and sync them with the current list of attachments even if no changes.
+				//Therefore, we need to make sure to have the Attachments variable set to the "old" (current really) list of attachments.
+				emailMessage.Attachments=listEmailAttaches;
+			}
+			//Only try and trim the fat from the RawEmailIn column if attachments with content are present.
+			if(GetAttachmentMimeParts(mimeMessage).Any(x => HasContent(x))) {
+				//At this point we know that the attachments have been successfully extracted from the raw message (now or some time in the past).
+				//Try to remove the attachment text from the raw email as to save space in the database.
 				try {
-					incomingMessage=DecryptIncomingMessage(incomingMessage);
-					emailMessage=ConvertMessageToEmailMessage(incomingMessage.Message,true,false);//If the message was wrapped, then the To, From, Subject and Date can change after decyption. We also need to create the attachments for the decrypted message.
-					emailMessage.RawEmailIn=strRawEmail;//The raw encrypted email, including the message, the attachments, and the signature.  The body of the encrypted email is just a base64 string until decrypted.
-					emailMessage.EmailMessageNum=emailMessageNum;
-					emailMessage.SentOrReceived=EmailSentOrReceived.ReceivedDirect;
-					emailMessage.RecipientAddress=emailAddressReceiver.EmailUsername.Trim();
-					if(incomingMessage.HasSenderSignatures) {
-						for(int i=0;i<incomingMessage.SenderSignatures.Count;i++) {
-							EmailAttach emailAttach=EmailAttaches.CreateAttach("smime.p7s","",incomingMessage.SenderSignatures[i].Certificate.GetRawCertData(),false);
-							emailMessage.Attachments.Add(emailAttach);
-						}
-					}
+					emailMessage.RawEmailIn=DissolveAttachmentsFromMimeMessage(mimeMessage,encodingRaw);
 				}
-				catch(Exception) {
-					//SentOrReceived will be ReceivedEncrypted, indicating to the calling code that decryption failed.
-					//The decryption step may have failed due to an untrusted sender, in which case the decrypting actually took place and the signature was extracted.
-					//We add the signature to the email message so it will show up next to the email message in the inbox and make it easier for the user to add trust for the sender.
-					if(incomingMessage.HasSenderSignatures) {
-						for(int i=0;i<incomingMessage.SenderSignatures.Count;i++) {
-							EmailAttach emailAttach=EmailAttaches.CreateAttach("smime.p7s","",incomingMessage.SenderSignatures[i].Certificate.GetRawCertData(),false);
-							emailMessage.Attachments.Add(emailAttach);
-						}
-					}
-					if(emailMessageNum==0) {
-						Insert(emailMessage);
-						return emailMessage;//If the message was just downloaded, then this function was called from the inbox, simply return the inserted email without an exception (it can be decypted later manually by the user).
-					}
-					//Do not update if emailMessageNum<>0, because nothing changed (was encrypted and still is).
-					throw;//Throw an exception if trying to decrypt an email that was already in the database, so the user can see the error message in the UI.
+				catch(Exception ex) {
+					ex.DoNothing();//Something went wrong so keep the "bloat" in the database because it is the safest option.
 				}
 			}
-			else {//Unencrypted
-				//First check to see if attachments have already been digested for this email.
-				List<EmailAttach> listEmailAttaches=EmailAttaches.GetForEmail(emailMessageNum); //will return an empty list if emailmessagenum == 0
-				bool parseAttachments=true;//Always parse attachments from the strRawEmail unless we've already parsed them before.
-				if(listEmailAttaches.Count > 0) {
-					//Attachments have already been parsed so do not waste time re-parsing.
-					//Re-parsing attachments would be very bad because there is a good chance that strRawEmail has cleared out the body portion of attachments.
-					//The actual attachments will be affected (erased) if these attachments are re-parsed due to the body portions being blank.
-					parseAttachments=false;
-				}
-				emailMessage=ConvertMessageToEmailMessage(incomingMessage.Message,parseAttachments,false);
-				emailMessage.RawEmailIn=strRawEmail;
-				//Set the Attachments on emailMessage if the attachments weren't parsed from strRawEmail.
-				if(!parseAttachments) {
-					//Calling EmailMessages.Update() will delete all email attachments and sync them with the current list of attachments even if no changes.
-					//Therefore, we need to make sure to have the Attachments variable set to the "old" (current really) list of attachments.
-					emailMessage.Attachments=listEmailAttaches;
-				}
-				//Only try and trim the fat from the RawEmailIn column if attachments are present.
-				if(GetAttachmentMimeParts(incomingMessage.Message,1).Count==1) {
-					//At this point we know that the attachments have been successfully extracted from the raw message (now or some time in the past).
-					//Try to remove the attachment text from the raw email as to save space in the database.
-					try {
-						emailMessage.RawEmailIn=DissolveAttachmentsFromIncomingMessage(incomingMessage);
-					}
-					catch {
-						//Something went wrong so keep the "bloat" in the database because it is the safest option.
-					}
-				}
-				else {//No attachments present.
-					//No need to try and annul attachment body text from strRawEmail because it doesn't have any attachments.
-				}
-				emailMessage.EmailMessageNum=emailMessageNum;
-				emailMessage.SentOrReceived=emailSentOrReceivedUnencrypted;
-				emailMessage.RecipientAddress=emailAddressReceiver.EmailUsername.Trim();
-			}
-			EhrSummaryCcd ehrSummaryCcd=null;
-			if(isEncrypted) {
-				for(int i=0;i<emailMessage.Attachments.Count;i++) {
-					if(Path.GetExtension(emailMessage.Attachments[i].ActualFileName).ToLower()!=".xml") {
-						continue;
-					}
-					string strAttachPath=EmailAttaches.GetAttachPath();
-					string strAttachText=FileAtoZ.ReadAllText(FileAtoZ.CombinePaths(strAttachPath,emailMessage.Attachments[i].ActualFileName));
-					if(EhrCCD.IsCCD(strAttachText)) {
-						if(emailMessage.PatNum==0) {
-							try {
-								XmlDocument xmlDocCcd=new XmlDocument();
-								xmlDocCcd.LoadXml(strAttachText);
-								emailMessage.PatNum=EhrCCD.GetCCDpat(xmlDocCcd);// A match is not guaranteed, which is why we have a button to allow the user to change the patient.
-							}
-							catch {
-								//Invalid XML.  Cannot match patient.
-							}
-						}
-						ehrSummaryCcd=new EhrSummaryCcd();
-						ehrSummaryCcd.ContentSummary=strAttachText;
-						ehrSummaryCcd.DateSummary=DateTime.Today;
-						ehrSummaryCcd.EmailAttachNum=i;//Temporary value, so we can locate the FK down below.
-						ehrSummaryCcd.PatNum=emailMessage.PatNum;
-						break;//We can only handle one CCD message per email, because we only have one patnum field per email record and the ehrsummaryccd record requires a patnum.
-					}
-				}
-			}
+			emailMessage.EmailMessageNum=emailMessageNum;
+			emailMessage.SentOrReceived=emailSentOrReceivedUnencrypted;
+			emailMessage.RecipientAddress=emailAddressReceiver.EmailUsername.Trim();
 			if(emailMessage.PatNum==0) {//If a patient match was not already found, try to locate patient based on the email address sent from.
-				string emailFromAddress=GetAddressSimple(emailMessage.FromAddress); 
+				string emailFromAddress=GetAddressSimple(emailMessage.FromAddress);
 				List<Patient> listPatientsMatched=Patients.GetPatsByEmailAddress(emailFromAddress);
 				if(listPatientsMatched.Count==1) {//If multiple matches, then we do not want to mislead the user by assigning a patient.
 					emailMessage.PatNum=listPatientsMatched[0].PatNum;
@@ -1858,105 +1798,79 @@ namespace OpenPmsDentalBusiness {
 			else {
 				Update(emailMessage);
 			}
-			if(ehrSummaryCcd!=null) {
-				ehrSummaryCcd.EmailAttachNum=emailMessage.Attachments[(int)ehrSummaryCcd.EmailAttachNum].EmailAttachNum;
-				EhrSummaryCcds.Insert(ehrSummaryCcd);
-			}
-			if(isEncrypted && isAck) {
-				//Send a Message Disposition Notification (MDN) message to the sender, as required by the Direct messaging specifications.
-				//The MDN will be attached to the same patient as the incoming message.
-				SendAckDirect(incomingMessage,emailAddressReceiver,emailMessage.PatNum);
-			}
 			return emailMessage;
 		}
 
-		///<summary>Email bodies can have multiple parts.  Usually, for HTML email, there will be one HTML mime part plus one mime part for each image (in base64) which is part of the email message.  HTML messages usually also have one mime part for the text version of the email message, in case the email client does not have html capabilities.  This function extracts the text for all mime body parts which fully or partially match the specified mime content types.  For example, you could specify a mime content of "image/" to find images of all types, or you could specify a mime content type of "image/jpeg" to find only jpeg images.  Always returns one valid list for each specified mime content types, where the individual lists are always present but may be zero length.</summary>
-		public static List<List<Health.Direct.Common.Mime.MimeEntity>> GetMimePartsForMimeTypes(string strRawEmailIn,EmailAddress emailAddressInbox,
+		///<summary>True for an S/MIME message whose whole body is application/pkcs7-mime (or the older x-pkcs7-mime): encrypted (enveloped-data), or
+		///signed in the opaque form.</summary>
+		private static bool IsMimeMessageEncrypted(MimeKit.MimeMessage mimeMessage) {
+			MimeKit.MimeEntity mimeEntityBody=mimeMessage.Body;
+			if(mimeEntityBody==null) {
+				return false;
+			}
+			return mimeEntityBody.ContentType.IsMimeType("application","pkcs7-mime") || mimeEntityBody.ContentType.IsMimeType("application","x-pkcs7-mime");
+		}
+
+		///<summary>Email bodies can have multiple parts.  Usually, for HTML email, there will be one HTML mime part plus one mime part for each image (in base64) which is part of the email message.  HTML messages usually also have one mime part for the text version of the email message, in case the email client does not have html capabilities.  This function extracts all mime body parts which fully or partially match the specified mime content types (type/subtype, compared without case).  For example, you could specify a mime content of "image/" to find images of all types, or you could specify a mime content type of "image/jpeg" to find only jpeg images.  Always returns one valid list for each specified mime content types, where the individual lists are always present but may be zero length. An encrypted message, or text that is not an email, has none.</summary>
+		public static List<List<EmailMimePart>> GetMimePartsForMimeTypes(string strRawEmailIn,EmailAddress emailAddressInbox,
 			params string[] stringArrayMimeContentTypes)
 		{
 			Meth.NoCheckMiddleTierRole();
-			Health.Direct.Agent.IncomingMessage incomingMessage=null;
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntityLeafNodes=null;
+			List<MimeKit.MimePart> listMimePartsLeafNodes;
 			try {
-				incomingMessage=RawEmailToIncomingMessage(strRawEmailIn,emailAddressInbox);
-				if(IsMimeEntityEncrypted(incomingMessage.Message)) {
-					incomingMessage=DecryptIncomingMessage(incomingMessage);
-				}
-				listMimeEntityLeafNodes=GetMimeLeafNodes(incomingMessage.Message);
-				//If we were unable to read the mime parts, we will treat it as none found.
-				listMimeEntityLeafNodes=listMimeEntityLeafNodes??new List<Health.Direct.Common.Mime.MimeEntity>();
+				MimeKit.MimeMessage mimeMessage=RawEmailToMimeMessage(strRawEmailIn);
+				listMimePartsLeafNodes=GetMimeLeafNodes(mimeMessage).OfType<MimeKit.MimePart>().ToList();
 			}
-			catch {
+			catch(Exception ex) {
 				//Since we could not read the message, we cannot read the mime parts.  Therefore, none found.
-				listMimeEntityLeafNodes=new List<Health.Direct.Common.Mime.MimeEntity>();
+				ex.DoNothing();
+				listMimePartsLeafNodes=new List<MimeKit.MimePart>();
 			}
-			List<List<Health.Direct.Common.Mime.MimeEntity>> listListMimeEntitiesRet=new List<List<Health.Direct.Common.Mime.MimeEntity>>();
+			List<List<EmailMimePart>> listListMimePartsRet=new List<List<EmailMimePart>>();
 			for(int i=0;i<stringArrayMimeContentTypes.Length;i++) {
-				string mimeContentType=stringArrayMimeContentTypes[i];
-				List<Health.Direct.Common.Mime.MimeEntity> listMimeEntityParts=new List<Health.Direct.Common.Mime.MimeEntity>();
-				for(int j=0;j<listMimeEntityLeafNodes.Count;j++) {
-					if(listMimeEntityLeafNodes[j].ContentType.Contains(mimeContentType)) {
-						listMimeEntityParts.Add(listMimeEntityLeafNodes[j]);
-					}
-				}
-				listListMimeEntitiesRet.Add(listMimeEntityParts);
-			}			
-			return listListMimeEntitiesRet;
+				string mimeContentType=stringArrayMimeContentTypes[i].ToLowerInvariant();
+				listListMimePartsRet.Add(listMimePartsLeafNodes.FindAll(x => x.ContentType.MimeType.ToLowerInvariant().Contains(mimeContentType))
+					.Select(x => new EmailMimePart(x)).ToList());
+			}
+			return listListMimePartsRet;
 		}
 
-		public static string GetMimeImageFileName(Health.Direct.Common.Mime.MimeEntity mimeEntityForImage) {
+		///<summary>The file name of a MIME part: the name of its Content-Type, else the file name of its Content-Disposition (Gmail sometimes puts it
+		///there). Null when it has neither.</summary>
+		public static string GetMimeImageFileName(EmailMimePart emailMimePart) {
 			Meth.NoCheckMiddleTierRole();
-			string getFileNameFromField(string field) {
-				int nameIndexStart=field.ToLower().IndexOf("name=");
-				if(nameIndexStart>=0) {
-					nameIndexStart+=5;
-				}
-				else {
-					nameIndexStart=field.ToLower().IndexOf("filename=");
-					if(nameIndexStart>=0) {
-						nameIndexStart+=9;
-					}
-				}
-				if(nameIndexStart<0) {
-					return null;
-				}
-				int nameIndexEnd=field.IndexOf(';',nameIndexStart+1);
-				string fileName="";
-				if(nameIndexEnd>=0) {
-					fileName=field.Substring(nameIndexStart,nameIndexEnd-nameIndexStart+1);
-				}
-				else {
-					fileName=field.Substring(nameIndexStart);
-				}
-				return fileName.Replace("\"","").TrimEnd(';');
-			}
-			string filename=getFileNameFromField(mimeEntityForImage.ContentType);
-			if(string.IsNullOrEmpty(filename)) {
-				//Gmail sometimes puts the file name in the ContentDisposition field.
-				filename=getFileNameFromField(mimeEntityForImage.ContentDisposition);
-			}
-			return filename;
+			return GetMimeFileName(emailMimePart.MimePart);
 		}
 
-		public static string GetMimeImageContentId(Health.Direct.Common.Mime.MimeEntity mimeEntityForImage) {
-			Meth.NoCheckMiddleTierRole();
-			if(!mimeEntityForImage.Headers.Contains("Content-ID")) {
-				return "";
+		private static string GetMimeFileName(MimeKit.MimePart mimePartForImage) {
+			string fileName=mimePartForImage.ContentType.Name;
+			if(string.IsNullOrEmpty(fileName)) {
+				fileName=mimePartForImage.ContentDisposition?.FileName;
 			}
-			return mimeEntityForImage.Headers["Content-ID"].Value.Replace("<","").Replace(">","");
+			if(string.IsNullOrEmpty(fileName)) {
+				return null;
+			}
+			return fileName;
+		}
+
+		///<summary>The Content-ID of a MIME part without its angle brackets, the id an html body refers to with "cid:". "" when it has none.</summary>
+		public static string GetMimeImageContentId(EmailMimePart emailMimePart) {
+			Meth.NoCheckMiddleTierRole();
+			return emailMimePart.MimePart.ContentId??"";
 		}
 
 		///<summary>The image of a MIME part of a received html message, as the bytes of an image file of the type its file name's extension names
 		///(GetMimeImageFileName): read from the email's saved attachment (sourceFileName in the email attachments folder) when it can be, else from
 		///the part itself. Null when the part is not base64 or the image could not be read. In memory only: the email preview's Show Images hands
 		///these to the browser (ODWebView2.NavigateToHtml), so no image of a received email is written to disk to show it.</summary>
-		public static byte[] GetMimeImageBytes(Health.Direct.Common.Mime.MimeEntity mimeEntityForImage,string sourceFileName) {
+		public static byte[] GetMimeImageBytes(EmailMimePart emailMimePart,string sourceFileName) {
 			Meth.NoCheckMiddleTierRole();
-			if(!IsMimeEntityBase64(mimeEntityForImage)) {
+			MimeKit.MimePart mimePartForImage=emailMimePart.MimePart;
+			if(mimePartForImage.ContentTransferEncoding!=MimeKit.ContentEncoding.Base64) {
 				return null;
 			}
 			try {
-				string fileName=GetMimeImageFileName(mimeEntityForImage);
+				string fileName=GetMimeFileName(mimePartForImage);
 				string fileExt=Path.GetExtension(fileName);
 				MemoryStream memoryStream=null;
 				Bitmap bitmap=null;
@@ -1966,13 +1880,9 @@ namespace OpenPmsDentalBusiness {
 					bitmap=FileAtoZ.GetImage(FileAtoZ.CombinePaths(EmailAttaches.GetAttachPath(),sourceFileName));
 				}
 				catch(Exception ex) {
-					//Something went wrong fetching image from file. Attempt to get from mimeEntityForImage, in case we didn't extract it during download.
+					//Something went wrong fetching image from file. Attempt to get from mimePartForImage, in case we didn't extract it during download.
 					ex.DoNothing();
-					if(!IsMimeEntityBase64(mimeEntityForImage)) {
-						return null;
-					}
-					byte[] byteArrayForImage=Convert.FromBase64String(mimeEntityForImage.Body.Text);
-					memoryStream=new MemoryStream(byteArrayForImage);
+					memoryStream=new MemoryStream(GetMimeEntityBytes(mimePartForImage));
 					bitmap=new Bitmap(memoryStream);
 				}
 				System.Drawing.Imaging.ImageFormat imageFormat=System.Drawing.Imaging.ImageFormat.Jpeg;
@@ -2027,6 +1937,271 @@ namespace OpenPmsDentalBusiness {
 			catch {
 			}
 			return null;
+		}
+
+		///<summary>The MIME parts of the message that have no child parts, in the order the Direct-based parser listed them: the children of the
+		///top-level part first, then those of each multipart child in turn. An attached message (message/rfc822) is one leaf.</summary>
+		private static List<MimeKit.MimeEntity> GetMimeLeafNodes(MimeKit.MimeMessage mimeMessage) {
+			Meth.NoCheckMiddleTierRole();
+			List<MimeKit.MimeEntity> listMimeEntitiesLeafNodes=new List<MimeKit.MimeEntity>();
+			if(mimeMessage.Body==null) {
+				return listMimeEntitiesLeafNodes;
+			}
+			if(!(mimeMessage.Body is MimeKit.Multipart)) {
+				listMimeEntitiesLeafNodes.Add(mimeMessage.Body);//Single body part.
+				return listMimeEntitiesLeafNodes;
+			}
+			//Think of the mime structure as a tree.
+			List<MimeKit.Multipart> listMultiparts=new List<MimeKit.Multipart>() { (MimeKit.Multipart)mimeMessage.Body };
+			while(listMultiparts.Count>0) {
+				MimeKit.Multipart multipart=listMultiparts[0];
+				listMultiparts.RemoveAt(0);
+				for(int i=0;i<multipart.Count;i++) {
+					if(multipart[i] is MimeKit.Multipart multipartChild) {
+						listMultiparts.Add(multipartChild);
+						continue;
+					}
+					listMimeEntitiesLeafNodes.Add(multipart[i]);
+				}
+			}
+			return listMimeEntitiesLeafNodes;
+		}
+
+		///<summary>All attachment mime parts of the message (leaf parts with a Content-Disposition, 'attachment' and 'inline' alike,
+		///https://www.ietf.org/rfc/rfc2183.txt), including older attachments from the beginning of the email thread.</summary>
+		private static List<MimeKit.MimeEntity> GetAttachmentMimeParts(MimeKit.MimeMessage mimeMessage) {
+			Meth.NoCheckMiddleTierRole();
+			return GetMimeLeafNodes(mimeMessage).FindAll(x => x.ContentDisposition!=null);
+		}
+
+		///<summary>True if the part still holds content: an attached message, or a part whose content is not empty.</summary>
+		private static bool HasContent(MimeKit.MimeEntity mimeEntity) {
+			if(mimeEntity is MimeKit.MessagePart messagePart) {
+				return messagePart.Message!=null;
+			}
+			MimeKit.MimePart mimePart=mimeEntity as MimeKit.MimePart;
+			return mimePart!=null && mimePart.Content!=null && mimePart.Content.Stream.Length>0;
+		}
+
+		///<summary>The decoded content of a leaf part (base64 and quoted-printable undone), or the attached message as its bytes.</summary>
+		private static byte[] GetMimeEntityBytes(MimeKit.MimeEntity mimeEntity) {
+			using(MemoryStream memoryStream=new MemoryStream()) {
+				if(mimeEntity is MimeKit.MessagePart messagePart) {
+					messagePart.Message?.WriteTo(memoryStream);
+				}
+				else if(mimeEntity is MimeKit.MimePart mimePart) {
+					mimePart.Content?.DecodeTo(memoryStream);
+				}
+				return memoryStream.ToArray();
+			}
+		}
+
+		///<summary>Throws exceptions. Annuls the content of all attachment mime parts (the Base64 content); their headers stay. Returns the entire
+		///message as raw text in the form the raw email came in (encodingRaw), which is meant to be stored in the RawEmailIn column as to save space in
+		///the database. Changes mimeMessage. MimeKit writes every other byte as it read it.</summary>
+		private static string DissolveAttachmentsFromMimeMessage(MimeKit.MimeMessage mimeMessage,Encoding encodingRaw) {
+			Meth.NoCheckMiddleTierRole();
+			List<MimeKit.Multipart> listMultiparts=new List<MimeKit.Multipart>();
+			if(mimeMessage.Body is MimeKit.Multipart multipartBody) {
+				listMultiparts.Add(multipartBody);
+			}
+			while(listMultiparts.Count>0) {
+				MimeKit.Multipart multipart=listMultiparts[0];
+				listMultiparts.RemoveAt(0);
+				for(int i=0;i<multipart.Count;i++) {
+					if(multipart[i] is MimeKit.Multipart multipartChild) {
+						listMultiparts.Add(multipartChild);
+						continue;
+					}
+					if(multipart[i].ContentDisposition==null || !HasContent(multipart[i])) {
+						continue;//Not an attachment, or already empty.
+					}
+					if(multipart[i] is MimeKit.MimePart mimePart) {
+						mimePart.Content=new MimeKit.MimeContent(new MemoryStream(),mimePart.ContentTransferEncoding);
+						continue;
+					}
+					//An attached message: an empty part with the same headers in its place.
+					MimeKit.MimePart mimePartEmpty=new MimeKit.MimePart("message","rfc822");
+					mimePartEmpty.Headers.Clear();
+					foreach(MimeKit.Header header in multipart[i].Headers) {
+						mimePartEmpty.Headers.Add(header.Clone());
+					}
+					mimePartEmpty.Content=new MimeKit.MimeContent(new MemoryStream());
+					multipart[i]=mimePartEmpty;
+				}
+			}
+			using(MemoryStream memoryStream=new MemoryStream()) {
+				mimeMessage.WriteTo(memoryStream);
+				return encodingRaw.GetString(memoryStream.ToArray());
+			}
+		}
+
+		///<summary>The text of a header as the program shows it: unfolded and with its encoded words decoded. "" when the message has none.</summary>
+		private static string GetHeaderText(MimeKit.MimeMessage mimeMessage,MimeKit.HeaderId headerId) {
+			return mimeMessage.Headers[headerId]??"";
+		}
+
+		///<summary>The text of an address header, as the inbox shows it. The text is not parsed into addresses (no System.Net.Mail.MailAddress, which
+		///on .NET 10 refuses a local part with consecutive dots), so a sender is kept as the message wrote it. "undisclosed-recipients:;", an empty
+		///group some clients write when every recipient is in Bcc, is no address.</summary>
+		private static string GetAddressText(MimeKit.MimeMessage mimeMessage,MimeKit.HeaderId headerId) {
+			string text=Regex.Replace(GetHeaderText(mimeMessage,headerId),@"undisclosed[ -]*recipients:[\t ]*;","",RegexOptions.IgnoreCase);
+			return ProcessInlineEncodedText(text.Trim()).Replace(@"\","");
+		}
+
+		///<summary>Throws exceptions.  Converts a received MimeKit message into an OD EmailMessage.  Set hasAttachments to false to exclude
+		///attachments (no file is written then).</summary>
+		private static EmailMessage ConvertMimeMessageToEmailMessage(MimeKit.MimeMessage mimeMessage,bool hasAttachments,EmailAddress emailAddressInbox) {
+			Meth.NoCheckMiddleTierRole();
+			EmailMessage emailMessage=new EmailMessage();
+			emailMessage.FromAddress=ProcessInlineEncodedText(GetHeaderText(mimeMessage,MimeKit.HeaderId.From).Trim());
+			string dateValue=GetHeaderText(mimeMessage,MimeKit.HeaderId.Date);
+			if(string.IsNullOrWhiteSpace(dateValue)) {
+				emailMessage.MsgDateTime=DateTime_.Now;
+			}
+			else {
+				//We show the datetime that the email landed onto the email server instead of the datetime that the email was downloaded.
+				emailMessage.MsgDateTime=ParseRawEmailDate(dateValue);
+			}
+			emailMessage.Subject=SubjectTidy(ProcessInlineEncodedText(GetHeaderText(mimeMessage,MimeKit.HeaderId.Subject)));
+			emailMessage.ToAddress=GetAddressText(mimeMessage,MimeKit.HeaderId.To);//Can be blank if recipients were CC or BCC only.
+			emailMessage.CcAddress=GetAddressText(mimeMessage,MimeKit.HeaderId.Cc);
+			emailMessage.BccAddress=GetAddressText(mimeMessage,MimeKit.HeaderId.Bcc);
+			if(emailMessage.ToAddress=="" && emailMessage.CcAddress=="" && emailMessage.BccAddress=="") {
+				//When all recipients are in the bcc field, some clients (Apple mail) remove all address fields (To, cc, bcc) from the header.
+				//The inbox's address stands in as Bcc, as before.
+				if(emailAddressInbox==null) {
+					emailMessage.BccAddress="";
+				}
+				else if(emailAddressInbox.EmailUsername==null) {
+					emailMessage.BccAddress="Failed to match email address";
+				}
+				else {
+					emailMessage.BccAddress=emailAddressInbox.EmailUsername;
+				}
+			}
+			//Think of the mime structure as a tree.
+			//We want to treat one part and multi-part emails the same way below, so we make our own list of leaf node mime parts (mime parts which have no children, also know as single part).
+			List<MimeKit.MimeEntity> listMimeEntitiesLeafNodes=GetMimeLeafNodes(mimeMessage);
+			List<MimeKit.MimeEntity> listMimeEntitiesAttachParts=new List<MimeKit.MimeEntity>();
+			StringBuilder stringBuilderBodyText=new StringBuilder("");
+			for(int i=0;i<listMimeEntitiesLeafNodes.Count;i++) {
+				MimeKit.MimeEntity mimeEntityPart=listMimeEntitiesLeafNodes[i];
+				if(mimeEntityPart.ContentDisposition!=null) {
+					//An email attachment. Leaf node. https://www.ietf.org/rfc/rfc2183.txt we treat both 'attachment' and 'inline' the same. No other options.
+					listMimeEntitiesAttachParts.Add(mimeEntityPart);
+					continue;
+				}
+				//Not an email attachment.  All plain text body parts will show to the user in the chart module progress notes.
+				if(mimeEntityPart is MimeKit.MimePart mimePart && mimePart.ContentType.IsMimeType("text","plain")) {
+					stringBuilderBodyText.Append(GetMimePartText(mimePart));
+				}
+			}
+			emailMessage.BodyText=stringBuilderBodyText.ToString();
+			emailMessage.Attachments=new List<EmailAttach>();
+			if(!hasAttachments) {
+				return emailMessage;
+			}
+			try {
+				for(int i=0;i<listMimeEntitiesAttachParts.Count;i++) {
+					byte[] byteArrayData=GetMimeEntityBytes(listMimeEntitiesAttachParts[i]);
+					string displayFileName=listMimeEntitiesAttachParts[i].ContentType.Name;
+					//If the name directive was not set, check for the filename directive.
+					//The filename is always optional and must not be used blindly by the application: path information should be stripped, and conversion to
+					//the server file system rules should be done. This parameter provides mostly indicative information. When used in combination with
+					//Content-Disposition: attachment, it is used as the default filename for an eventual "Save As" dialog presented to the user.
+					string fileNameDisposition=listMimeEntitiesAttachParts[i].ContentDisposition.FileName;
+					if(string.IsNullOrEmpty(displayFileName) && !string.IsNullOrWhiteSpace(fileNameDisposition)) {
+						//E.g. Content-Disposition: attachment; filename="cool.html" should suggest saving under the "cool.html" filename (by default).
+						displayFileName=ODFileUtils.CleanFileName(fileNameDisposition);
+					}
+					EmailAttach emailAttach=EmailAttaches.CreateAttach(displayFileName,"",byteArrayData,false);
+					emailMessage.Attachments.Add(emailAttach);//The attachment EmailMessageNum is set when the emailMessage is inserted/updated below.
+				}
+			}
+			catch(Exception) {
+				//Failed to extract all attachments from the email message.  Cleanup the attachments which were successfully extracted.
+				for(int i=0;i<emailMessage.Attachments.Count;i++) {
+					string attachFilePath=FileAtoZ.CombinePaths(EmailAttaches.GetAttachPath(),emailMessage.Attachments[i].ActualFileName);
+					if(!FileAtoZ.Exists(attachFilePath)) {
+						continue;
+					}
+					try {
+						FileAtoZ.Delete(attachFilePath);
+					}
+					catch {
+						//Probably nothing else we can do.  At least continue to the remaining attachments to try deleting them as well.
+					}
+				}
+				throw;
+			}
+			return emailMessage;
+		}
+
+		///<summary>Throws ApplicationException. The Date header of a received email as a DateTime. The received email message date must be in a very
+		///specific format and must match the RFC822 standard.  Is a required field for RFC822.  http://tools.ietf.org/html/rfc822
+		///Examples: "3 Dec 2013 17:10:37 -0800", "10 Dec 2013 17:10:37 -0800", "Tue, 5 Nov 2013 17:10:37 +0000 (UTC)", "Tue, 12 Nov 2013 17:10:37 +0000 (UTC)"</summary>
+		private static DateTime ParseRawEmailDate(string dateValue) {
+			if(dateValue.EndsWith("GMT")) {//Examples: Tue, 09 Sep 2014 23:16:36 GMT
+				return DateTime.Parse(dateValue);
+			}
+			//Different email providers send the Date in formats that don't exactly match the RFC standard:  tools.ietf.org/html/rfc2822#section-3.3
+			//This regular expression was created based off of all of the different types of date formats that have been officially whitnessed.
+			//It is not based off of the RFC 2822 standard, as one would want to do.
+			//A new unit test should be added for any scenarios where a 'valid' dateValue cannot parse correctly.
+			string datePattern=@"^\s*(\S+,)?\s*(\d{1,2})\s*(\S+)\s*(\d{4,5})\s+(\d{1,2}):(\d{1,2})(:\d{1,2})?\s*([\+\-]\d+:?\d*)?(\s*\S+)?\s*$";
+			Match match=Regex.Match(dateValue,datePattern);
+			if(!match.Success) {
+				throw new ApplicationException("DateValue was not recognized as a valid DateTime: "+dateValue);
+			}
+			string dayOfMonthNum=match.Result("$2");
+			string monthName=match.Result("$3");
+			string yearNum=match.Result("$4");
+			string hourNum=match.Result("$5");
+			string minuteNum=match.Result("$6");
+			string secondNum=match.Result("$7");
+			string utcOffset=match.Result("$8");
+			//$1 is the day of the week (Mon, Tue, Wed, etc.) and $9 the time zone abbreviation (ex UTC, GMT, CST, MDT, etc.); neither is used.
+			string dateFormat="d MMM yyyy HH:mm";
+			string dateValueConverted=dayOfMonthNum+" "+monthName+" "+yearNum+" "+hourNum.PadLeft(2,'0')+":"+minuteNum.PadLeft(2,'0');
+			if(!string.IsNullOrWhiteSpace(secondNum)) {
+				dateFormat+=":ss";
+				dateValueConverted+=":"+secondNum.TrimStart(':').PadLeft(2,'0');
+			}
+			if(!string.IsNullOrWhiteSpace(utcOffset)) {
+				dateFormat+=" zzz";
+				dateValueConverted+=" "+utcOffset;
+			}
+			if(!DateTime.TryParseExact(dateValueConverted,dateFormat,CultureInfo.CurrentCulture.DateTimeFormat,DateTimeStyles.None,out DateTime dateTime)) {
+				throw new ApplicationException("DateValue was not recognized as a valid DateTime.\r\n"
+					+"message.DateValue: "+dateValue+"\r\n"
+					+"dateValueConverted: "+dateValueConverted);
+			}
+			return dateTime;
+		}
+
+		///<summary>The text of a received text part (plain, html, xml, etc...): MimeKit undoes the transfer encoding (base64, quoted-printable) and
+		///reads the charset. As the Direct-based parser gave it, every line ends with CRLF, the last one too.</summary>
+		public static string ProcessMimeTextPart(EmailMimePart emailMimePart) {
+			Meth.NoCheckMiddleTierRole();
+			return GetMimePartText(emailMimePart.MimePart);
+		}
+
+		private static string GetMimePartText(MimeKit.MimePart mimePart) {
+			string text;
+			if(mimePart is MimeKit.TextPart textPart) {
+				text=textPart.Text??"";
+			}
+			else {
+				text=Encoding.UTF8.GetString(GetMimeEntityBytes(mimePart));
+			}
+			List<string> listLines=text.Split(new string[] { "\r\n","\r","\n" },StringSplitOptions.None).ToList();
+			StringBuilder stringBuilderText=new StringBuilder();
+			for(int i=0;i<listLines.Count;i++) {
+				stringBuilderText.Append(listLines[i]);
+				stringBuilderText.Append("\r\n");
+			}
+			return stringBuilderText.ToString();
 		}
 
 		#endregion Receiving
@@ -2170,30 +2345,6 @@ namespace OpenPmsDentalBusiness {
 			Health.Direct.Common.Certificates.SystemX509Store.OpenPrivateEdit().Dispose();//Create the NHINDPrivate certificate store if it does not already exist on the local machine.
 		}
 
-		///<summary>Throws exceptions. Annuls the attachment text in the body section of all attachment mime parts (the Base64 content). Returns the entire incoming message as raw text which is meant to be stored in the RawEmailIn column as to save space in the database.</summary>
-		private static string DissolveAttachmentsFromIncomingMessage(Health.Direct.Agent.IncomingMessage incomingMessage) {
-			Meth.NoCheckMiddleTierRole();
-			string rawEmail=incomingMessage.SerializeMessage();//The original raw message, unaltered.
-			List <Health.Direct.Common.Mime.MimeEntity> listAttachments=GetAttachmentMimeParts(incomingMessage.Message);
-			for(int i=0;i<listAttachments.Count;i++) {//Clear the body text of each raw attachment body.
-				if(listAttachments[i].Body.Text.Length==0) {
-					continue;//Body is already empty.  Nothing to do.
-				}
-				string rawAttachment=listAttachments[i].ToString();//This includes the mime headers as well as the body text.
-				int attachIndex=rawEmail.IndexOf(rawAttachment);//Uniquely locate the mime text in the raw email (will be unique because of header timestamps)
-				if(attachIndex < 0) {//Mime part not found in raw email?  Should be impossible.
-					continue;//We do not want to crash for any reason when running DBM tools.
-				}
-				//Now find the start index of the attachment body from where the attachment starts.
-				int bodyIndex=rawEmail.IndexOf(listAttachments[i].Body.Text,attachIndex);
-				if(bodyIndex > attachIndex+rawAttachment.Length-1) {//The body text match located was beyond the attachment boundary.  Should be impossible.
-					continue;//We do not want to crash for any reason when running DBM tools.
-				}
-				rawEmail=rawEmail.Remove(bodyIndex,listAttachments[i].Body.Text.Length);
-			}
-			return rawEmail;
-		}
-
 		///<summary>Performs wiki tag replacements for images and attaches images to email. Will return the whole correct html text that needs to be sent. Downloads the files locally if needed. The out variable is a list of local paths.</summary>
 		public static string FindAndReplaceImageTagsWithAttachedImage(string localHtml,bool areImagesDownloaded,out List<string> listLocalImagePaths) {
 			Meth.NoCheckMiddleTierRole();
@@ -2270,43 +2421,6 @@ namespace OpenPmsDentalBusiness {
 				return emailBody;
 			}
 			return emailBody+"\r\n\r\n\r\n"+disclaimerWithAddress.ToString();
-		}
-
-		///<summary>Traverses the mime tree of the given email message and returns all attachment mime parts,
-		///including older attachments from the beginning of the email thread.
-		///Set limitCount to a number greater than 0 if you wish to stop searching for attachments once this threshold is met.</summary>
-		private static List <Health.Direct.Common.Mime.MimeEntity> GetAttachmentMimeParts(Health.Direct.Common.Mail.Message message,int limitCount=0) {
-			Meth.NoCheckMiddleTierRole();
-			List <Health.Direct.Common.Mime.MimeEntity> listMimeEntitesAttachments=new List<Health.Direct.Common.Mime.MimeEntity>();
-			List <Health.Direct.Common.Mime.MimeEntity> listMimeEntitesParts=new List<Health.Direct.Common.Mime.MimeEntity>();
-			if(message.IsMultiPart) {
-				listMimeEntitesParts.AddRange(message.GetParts());
-			}
-			//Traverse all branches of the mime tree to locate all attachment mime parts.
-			while(true) {
-				if(listMimeEntitesParts.Count == 0) {
-					break;
-				}
-				Health.Direct.Common.Mime.MimeEntity mimeEntity=listMimeEntitesParts[0];
-				listMimeEntitesParts.RemoveAt(0);
-				//An email attachment. Leaf node. https://www.ietf.org/rfc/rfc2183.txt we treat both 'attachment' and 'inline' the same. No other options.
-				if(mimeEntity.ContentDisposition!=null) {
-					if(mimeEntity.HasBody) {
-						//Clear out the body or content of the attachment as to reduce the amount of space we take up in the database.
-						//This is safe to do at this point because we have already extracted the attachments and they are stored in the AtoZ folder or db already.
-						//Since the Text of the body for the mimeEntity is protected, we need to replace the current mime body with a new mime body.
-						listMimeEntitesAttachments.Add(mimeEntity);
-						if(limitCount > 0 && listMimeEntitesAttachments.Count==limitCount) {
-							return listMimeEntitesAttachments;
-						}
-					}
-					continue;
-				}
-				if(mimeEntity.IsMultiPart) {//Branch node.
-					listMimeEntitesParts.AddRange(mimeEntity.GetParts());//Push children mime parts to stack to be examined in a later pass through the loop.
-				}
-			}
-			return listMimeEntitesAttachments;
 		}
 
 		///<summary>Gets the value in the EmailDisclaimerTemplate preference with the [PostalAddress] replaced. Returns an empty string if the pref is off.</summary>
@@ -2709,7 +2823,7 @@ namespace OpenPmsDentalBusiness {
 			//We want to treat one part and multi-part emails the same way below, so we make our own list of leaf node mime parts (mime parts which have no children, also know as single part).
 			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesLeafNodes=GetMimeLeafNodes(message);
 			if(listMimeEntitiesLeafNodes==null) {
-				emailMessage.BodyText=ProcessMimeTextPart(message);
+				emailMessage.BodyText=ProcessMimeTextPartDirect(message);
 				return emailMessage;
 			}
 			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesBodyTextParts=new List<Health.Direct.Common.Mime.MimeEntity>();
@@ -2735,7 +2849,7 @@ namespace OpenPmsDentalBusiness {
 						stringBuilderBodyText.Append(listMimeEntitiesBodyTextParts[i].ToString());//Includes not only the body text, but also content type and content disposition.
 						continue;
 					}
-					stringBuilderBodyText.Append(ProcessMimeTextPart(listMimeEntitiesBodyTextParts[i]));
+					stringBuilderBodyText.Append(ProcessMimeTextPartDirect(listMimeEntitiesBodyTextParts[i]));
 				}
 				if(strTextPartBoundary!="") {
 					stringBuilderBodyText.Append("\r\n--"+strTextPartBoundary+"--\r\n");
@@ -2745,7 +2859,7 @@ namespace OpenPmsDentalBusiness {
 				//All plain text body parts will show to the user in the chart module progress notes.
 				for(int i=0;i<listMimeEntitiesBodyTextParts.Count;i++) {
 					if(IsMimeEntityTextPlain(listMimeEntitiesBodyTextParts[i])) {
-						stringBuilderBodyText.Append(ProcessMimeTextPart(listMimeEntitiesBodyTextParts[i]));
+						stringBuilderBodyText.Append(ProcessMimeTextPartDirect(listMimeEntitiesBodyTextParts[i]));
 					}
 				}
 			}
@@ -2924,7 +3038,8 @@ namespace OpenPmsDentalBusiness {
 			return Regex.Replace(text,@"=\?([^?]+)\?([^?]+)\?([^?]+)\?=",matchEvaluator);
 		}
 
-		public static string ProcessMimeTextPart(Health.Direct.Common.Mime.MimeEntity mimeEntity) {
+		///<summary>The Direct Project version, for the Direct sending code only (removed with it).</summary>
+		private static string ProcessMimeTextPartDirect(Health.Direct.Common.Mime.MimeEntity mimeEntity) {
 			Meth.NoCheckMiddleTierRole();
 			string strBodyText=mimeEntity.Body.Text;
 			//Convert clear text mime parts which are base64 encoded into utf8 to make the text readable (plain text, html, xml, etc...)
@@ -3317,11 +3432,11 @@ namespace OpenPmsDentalBusiness {
 		private static EmailMessage SetForwardOrReplyBody(EmailMessage emailMessage,EmailMessage emailMessageReceived,EmailAddress emailAddress) {
 			string bodyTextHeader="\r\n\r\n\r\nOn "+emailMessageReceived.MsgDateTime.ToString()+" "+ProcessInlineEncodedText(emailMessageReceived.FromAddress)+" sent:\r\n";
 			string bodyText;
-			List<List<Health.Direct.Common.Mime.MimeEntity>> listMimeEntitiesPart=
+			List<List<EmailMimePart>> listMimeEntitiesPart=
 				EmailMessages.GetMimePartsForMimeTypes(emailMessageReceived.RawEmailIn,emailAddress,"text/html","text/plain","image/","application/octet-stream");
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesPartHtml=listMimeEntitiesPart[0];//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesPartText=listMimeEntitiesPart[1];//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntriesPartImages=new List<Health.Direct.Common.Mime.MimeEntity>();
+			List<EmailMimePart> listMimeEntitiesPartHtml=listMimeEntitiesPart[0];//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
+			List<EmailMimePart> listMimeEntitiesPartText=listMimeEntitiesPart[1];//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
+			List<EmailMimePart> listMimeEntriesPartImages=new List<EmailMimePart>();
 			listMimeEntriesPartImages.AddRange(listMimeEntitiesPart[2]);//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
 			listMimeEntriesPartImages.AddRange(listMimeEntitiesPart[3]);//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
 			if(listMimeEntriesPartImages.Count>0) {//Email has images that need to be displayed
@@ -3991,6 +4106,29 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 		#endregion Testing
 
 		private delegate string ReplaceImgSrc(string valueOriginal,string imgName,string localFilePath);
+	}
+
+	///<summary>One MIME part of a received email, as the e-mail preview and reply/forward get it from EmailMessages.GetMimePartsForMimeTypes and hand
+	///back to ProcessMimeTextPart and the GetMimeImage helpers. It holds a MimeKit part, which stays inside the business layer: the program's
+	///project does not reference MimeKit.</summary>
+	public class EmailMimePart {
+		///<summary>The MimeKit part.</summary>
+		internal readonly MimeKit.MimePart MimePart;
+
+		internal EmailMimePart(MimeKit.MimePart mimePart) {
+			MimePart=mimePart;
+		}
+
+		///<summary>The type and subtype of the part, as the message wrote them, such as "image/png".</summary>
+		public string MimeType {
+			get { return MimePart.ContentType.MimeType; }
+		}
+
+		///<summary>True for a part with "Content-Disposition: inline", and for one without Content-Disposition, such as an image of a
+		///multipart/related html body that the html refers to by its Content-ID.</summary>
+		public bool IsInline {
+			get { return MimePart.ContentDisposition==null || MimePart.ContentDisposition.Disposition.ToLower().Contains("inline"); }
+		}
 	}
 
 	public class EmailPublicResolver : EmailNameResolver {
