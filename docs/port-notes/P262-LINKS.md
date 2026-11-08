@@ -255,3 +255,62 @@ Not tested: the windows themselves (the program is not launched), starting Conne
 - Fork levels: only 2026110781 is used; 2026110782 to 2026110789 stay free for this package.
 - The adoption tools' row check now combines two discontinued-link plans; a package that retires another link should extend the same way
   (or turn the two plans into a list).
+
+## Vendor follow-up from public documentation (`next/vendorpub-1`, 2026-11-07)
+
+Owner, 2026-11-07: "yes" to building what a verified search of public vendor documentation found. Branch `next/vendorpub-1`, cut from
+`main` e2251ea96. Fork migration level used: 2026110801. Sources read on 2026-11-07, public pages only; nothing was downloaded, no vendor
+program was installed, no sign-in was used.
+
+### Sources
+
+- **OrthoComposite's Microsoft Store listing** (https://apps.microsoft.com/detail/9p2mp6p71zk9): the program supports the command arguments
+  `--lastname`, `--firstname` and `--dob`; a practice program that starts it with them opens its patient list with the search filled in.
+- **Open Dental's OrthoComposite page** (https://www.opendental.com/site/bridgeorthocomposite.html, already listed above): the patient is
+  found by first name, last name and birthdate; the date format is MM/DD/YYYY.
+- **Medit's article on its Open Dental integration** (https://support.medit.com/hc/en-us/articles/4418103622925, read through its public
+  JSON copy https://support.medit.com/api/v2/help_center/en-us/articles/4418103622925.json; title "Open Dental Integration", updated
+  2026-07-12): under "Partner Selection (Optional)", a `PartnerID` key added as the last key of the JSON object in Open Dental's "Optional
+  command line arguments" pre-assigns a partner to every case created through the integration, for example
+  `..., \"Birthdate_yyyyMMdd\": \"[Birthdate_yyyyMMdd]\", \"PartnerID\": \"xxxxx\"}` (the `xxxxx` replaced by the partner's ID); the value
+  is in the command line, so changing the partner means changing the program link's settings; its table of supported partners lists one,
+  Glidewell Dental, PartnerID 7307395.
+
+### OrthoComposite: the public launch arguments (item 45)
+
+- The launch syntax is public, no longer partner-gated. `OrthoCompositeLink.DefaultPatientArguments` is
+  `--lastname "[LName]" --firstname "[FName]" --dob "[Birthdate]"`, with the birthdate as `MM/dd/yyyy` in the invariant culture (always "/").
+  A new row gets it as its Patient arguments value (`GetDefinition`), and the Note says what the link sends.
+- Existing rows: fork migration step `OrthoCompositePatientArgumentsStep`, level 2026110801
+  (`OpenPmsDentalBusiness/Misc/ForkMigrations/OrthoCompositePatientArgumentsStep.cs`, namespace `FeatureSteps`), runs once per database:
+  on each OrthoComposite program row (ProgName compared as MariaDB compares it), a ClinicNum 0 "Patient arguments" row that is blank
+  (empty or white space only, which the button treats as not set) gets the default; a value the office typed is never changed. The row's
+  Note is replaced only where it is still exactly the text `p262/links-1` wrote (`OrthoCompositePatientArguments.NoteBefore`), so an
+  office's own note stays. A row without the property gets it from `EnsureProgram` the next time Program Links opens. A database without an
+  OrthoComposite row (every adopted Open Dental 25.3.48 database: the row is inserted at runtime by this program) changes nothing, so the
+  adoption tools need no rule. Idempotent; the step is needed only because rows inserted by the unreleased 26.2 integration hold the old
+  blank default, and after it ran a blank value is the office's own choice (the button then says the arguments are not set up).
+- The quoting and control-character stripping stay as built: double quotes and control characters are removed from the values, accented
+  letters kept. New: a value no longer ends in a backslash (trailing backslashes are removed), because `"value\"` would escape the closing
+  quote of a quoted token on a Windows command line.
+- Still INFERRED: the ProgName value; that a blank value with a patient is refused; the Command line after the patient arguments; without a
+  patient the program starts with the Command line only; a path without a folder or a `shell:` target is not checked.
+
+### Medit Link: the Partner ID (existing program link)
+
+- New ClinicNum 0 program property "Partner ID" on the Medit Link row (`ProgName` MeditLink, created by Open Dental's 21.1 conversion in
+  every database). Inserted blank at runtime, the first time Program Links opens (`MeditLinkProgramLinkSetup`,
+  `OpenPmsDental/Logic/VendorDirect/MeditLinkProgramLinkSetup.cs`, through `MeditLinkPartner.EnsureProperty`), like the other runtime rows;
+  the program row itself is never inserted or changed, so adoption is unaffected. The setup opens the standard Program Link window as before.
+- The button (`WpfControlsOD/Bridges/MeditLink.cs`, rules in `OpenPmsDentalBusiness/VendorDirect/ProgramLinks/MeditLinkPartner.cs`):
+  blank Partner ID: exactly the arguments as before (`"--commandUuid" "<uuid>"`, and with a patient `"--commandParam" "<Command line with the
+  patient filled in>"`). With a Partner ID and a patient, `, \"PartnerID\": \"<id>\"` is added before the closing `}` of the Command line, as
+  the last key of its JSON object, exactly as Medit's article shows, then the patient is filled in. Without a patient there is no command
+  parameter, so nothing is added.
+- Refused with a message, nothing started (patient selected and Partner ID set): a Partner ID with characters other than letters, digits,
+  hyphens and underscores (INFERRED; Medit's IDs are digits); a Command line that already has a PartnerID key (set by hand, as Medit's
+  article tells Open Dental users; remove one of the two); a Command line that does not end with `}` (not the JSON object Medit gives).
+- How an office uses it: in Setup, Program Links, Medit Link, enter its lab's Medit partner ID in Partner ID (Glidewell's is 7307395 in
+  Medit's table), and every case created from the Chart's Medit Link button is assigned to that lab in Medit Link. Clear it to stop. Medit's
+  article does not say whether the lab must already be a partner in Medit Link; set up the partnership first (for Glidewell: Partner,
+  CDOP@glidewelldental.com, `P262-GLIDEWELL.md`).

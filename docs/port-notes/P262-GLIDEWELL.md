@@ -244,3 +244,58 @@ Answered by the owner on 2026-11-07 ("all as recommended"); built on `next/int26
    usable), or hide it until a transport exists?
 9. If Glidewell's API keys turn out to be longer than 127 characters, widen `glidewellacct.ApiKey` (a fork schema change against Open Dental's
    documented `varchar(255)`, which an Open Dental database would not have) or store the key elsewhere?
+
+## Vendor follow-up from public documentation (`next/vendorpub-1`, 2026-11-07)
+
+Owner, 2026-11-07: "yes" to building what a verified search of public documentation found. Branch `next/vendorpub-1`, cut from `main`
+e2251ea96. No schema change and no migration step for this part. Sources read on 2026-11-07, public pages only; nothing was downloaded and
+no sign-in was used.
+
+### Sources
+
+- **Open Dental's 26.2 database document** (`OpenDentalDocumentation26-2.xml`, listed above): `labcaseproduct.ToothRange` is "the tooth
+  range that this product affects. Retrieved from procedure.ToothRange, formatted for display."
+- **Glidewell, Send a Case** (https://glidewelldental.com/send-case) and **Submit a Digital Case**
+  (https://glidewelldental.com/send-case/submit-digital-case): an iTero office asks Align to add Glidewell (Lab ID 318), then requests a
+  partnership with CDOP@glidewelldental.com, then picks Glidewell in the iTero Rx; a Medit Link office searches for CDOP@glidewelldental.com
+  under Partner, requests a partnership, then picks Glidewell in the Rx; otherwise STL or PLY files are uploaded through Glidewell's My
+  Account, or a physical case is sent with the GL-421 Rx form. These connections are Glidewell's own and need no Glidewell API.
+- **Medit's article on its Open Dental integration** (https://support.medit.com/hc/en-us/articles/4418103622925; `P262-LINKS.md` has the
+  details): a `PartnerID` key in the Medit Link program link's arguments pre-assigns a partner to the cases created through it; Glidewell
+  Dental's PartnerID is 7307395.
+
+### The teeth of a lab case product, from the procedures
+
+- `LabCaseProducts.GetProcsForLabCase(aptNum,plannedAptNum)`: the procedures attached to the lab case through the appointment the program
+  links it to: the procedures of its scheduled appointment (`procedurelog.AptNum`) when it has one, otherwise those of its planned
+  appointment (`procedurelog.PlannedAptNum`); deleted procedures left out; none when it is attached to neither (through the Middle Tier
+  safe `Procedures.GetProcsForSingle`).
+- `LabCaseProducts.FormatToothRange(listProcedures,nomenclature)`: every tooth of those procedures, from `ToothRange` and, for a one-tooth
+  procedure, `ToothNum` (INFERRED: the document names `procedure.ToothRange`, which Open Dental fills only for multi-tooth procedures, and a
+  crown, the most common lab case, has its tooth in `ToothNum`); invalid entries left out, each tooth once, in tooth order, formatted for
+  display as the Chart shows a tooth range (`Tooth.DisplayRange`: runs of three or more as a dash, the office's tooth numbering), for example
+  "8-10,12". Arches, quadrants and sextants are not teeth and are not shown (INFERRED). `Tooth.DisplayRange` gained an overload that takes
+  the nomenclature, so the rule needs no preference cache; the old one reads the preference as before.
+- `LabCaseProducts.GetToothRangeFromProcs(aptNum,plannedAptNum)`: both, with the office's tooth numbering.
+- The product window (`FormLabCaseProductEdit`): a new product's Teeth box is filled from the procedures when it is blank; the button "From
+  Procedures" fills it again at any time (or says that the appointment has no procedures with teeth). What the user types is the manual
+  override and is saved as typed; an existing product's teeth are never replaced without the button, so a later change of the appointment's
+  procedures does not touch them. The Edit Lab Case window passes the lab case's appointment and planned appointment as they are on screen
+  (Detach clears them).
+
+### Sending to Glidewell today, without this program
+
+- The Glidewell setup window (`FormGlidewellSetup`) shows `GlidewellProgram.GetSendWithoutThisProgramText()`: Glidewell's own scanner
+  connections (iTero: Align adds Glidewell, Lab ID 318, then a partnership with CDOP@glidewelldental.com, then Glidewell in the iTero Rx;
+  Medit Link: Partner, CDOP@glidewelldental.com, request a partnership, then Glidewell in the Rx, and the Medit Link program link's Partner ID
+  7307395 to assign the cases created from the Chart to Glidewell; otherwise STL or PLY files through Glidewell's My Account, or a physical
+  case with the GL-421 Rx form). No web address in the code (the wiring test's rule): the text names Glidewell's website pages by their titles.
+- While the program link is hidden in Program Links (owner decision of 2026-11-07, no transport), the window cannot be opened, so the
+  instructions show there only once a transport exists; until then this note and the release notes carry them (owner question below).
+- Sending from this program stays blocked as built (the business associate agreement and the transport).
+
+### Contacts for Glidewell's practice software API
+
+Glidewell publishes no interface for practice management programs; its only practice software integration so far was announced on
+2026-10-15 (with another vendor). Who to ask (from Glidewell's public pages): Glidewell, 800-854-7256, mail@glidewelldental.com; scanner
+partnerships: CDOP@glidewelldental.com. The office itself asks (owner decision of 2026-11-07, question 1).
