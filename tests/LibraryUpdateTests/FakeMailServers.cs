@@ -1,5 +1,6 @@
 // In-process fake POP3 and SMTP servers on 127.0.0.1 for the email tests: plain text or TLS with a self-signed certificate made for each run.
-// They speak just enough of RFC 1939 (POP3, with CAPA, UIDL and TOP) and RFC 5321 (SMTP, with AUTH LOGIN and PLAIN and STARTTLS) for the program's
+// They speak just enough of RFC 1939 (POP3, with CAPA, UIDL and TOP) and RFC 5321 (SMTP, with AUTH LOGIN and PLAIN, STARTTLS or TLS from the
+// first byte) for the program's
 // clients, record every command line, and never reach the network. Licensed under the GNU General Public License, version 2 or later. See LICENSE
 // in the repository root.
 using System;
@@ -26,6 +27,36 @@ namespace LibraryUpdateTests {
 		///<summary>True for the test certificate only: what the program's test seams use in place of a CA's signature.</summary>
 		public static bool IsTestCertificate(object sender,X509Certificate certificate,X509Chain chain,SslPolicyErrors sslPolicyErrors) {
 			return certificate!=null && certificate.GetCertHashString()==Server.GetCertHashString();
+		}
+
+		///<summary>A self-signed email certificate (S/MIME) for the address, made in memory: "E=" in the subject and the address as the
+		///subject alternative name (rfc822 name), digital signature key usage, email protection. With a private key in a key container of this
+		///process only (a PFX round trip; not exportable when isExportable is false). Call Reset() when done, which removes the key container.
+		///dnsName instead of an address gives a domain-level certificate (no "E=", the domain as DNS name).</summary>
+		public static X509Certificate2 CreateEmail(string emailAddress,bool isExportable=true,DateTimeOffset? dateTimeOffsetNotAfter=null,
+			string dnsName=null)
+		{
+			using(RSA rsa=RSA.Create(2048)) {
+				string subject=(dnsName==null) ? "CN=S03 Test Signer, E="+emailAddress : "CN="+dnsName;
+				CertificateRequest certificateRequest=new CertificateRequest(subject,rsa,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
+				SubjectAlternativeNameBuilder subjectAlternativeNameBuilder=new SubjectAlternativeNameBuilder();
+				if(dnsName==null) {
+					subjectAlternativeNameBuilder.AddEmailAddress(emailAddress);
+				}
+				else {
+					subjectAlternativeNameBuilder.AddDnsName(dnsName);
+				}
+				certificateRequest.CertificateExtensions.Add(subjectAlternativeNameBuilder.Build());
+				certificateRequest.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature|X509KeyUsageFlags.KeyEncipherment,false));
+				certificateRequest.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
+					new OidCollection { new Oid("1.3.6.1.5.5.7.3.4") },false));//email protection
+				DateTimeOffset dateTimeOffsetNotAfter2=dateTimeOffsetNotAfter??DateTimeOffset.UtcNow.AddDays(2);
+				DateTimeOffset dateTimeOffsetNotBefore=(dateTimeOffsetNotAfter2<DateTimeOffset.UtcNow) ? dateTimeOffsetNotAfter2.AddDays(-30) : DateTimeOffset.UtcNow.AddDays(-1);
+				using(X509Certificate2 x509Certificate2=certificateRequest.CreateSelfSigned(dateTimeOffsetNotBefore,dateTimeOffsetNotAfter2)) {
+					return new X509Certificate2(x509Certificate2.Export(X509ContentType.Pfx,""),"",
+						isExportable ? X509KeyStorageFlags.Exportable : X509KeyStorageFlags.DefaultKeySet);
+				}
+			}
 		}
 
 		private static X509Certificate2 Create() {
@@ -56,8 +87,9 @@ namespace LibraryUpdateTests {
 		///<summary>An error inside the server thread, for the test to report.</summary>
 		public Exception ServerError;
 
-		protected FakeServerBase() {
-			_tcpListener=new TcpListener(IPAddress.Loopback,0);
+		///<summary>port 0 takes a free port.</summary>
+		protected FakeServerBase(int port=0) {
+			_tcpListener=new TcpListener(IPAddress.Loopback,port);
 			_tcpListener.Start();
 			Port=((IPEndPoint)_tcpListener.LocalEndpoint).Port;
 			_thread=new Thread(AcceptLoop);
@@ -304,6 +336,7 @@ namespace LibraryUpdateTests {
 		private readonly string _userName;
 		private readonly string _password;
 		private readonly bool _isStartTlsOffered;
+		private readonly bool _isImplicitTls;
 
 		public class Received {
 			public string MailFrom;
@@ -315,10 +348,12 @@ namespace LibraryUpdateTests {
 
 		public List<Received> ListReceived=new List<Received>();
 
-		public FakeSmtpServer(string userName,string password,bool isStartTlsOffered) {
+		///<summary>isImplicitTls: TLS from the first byte (SMTPS, as on port 465); STARTTLS is then not offered. port 0 takes a free port.</summary>
+		public FakeSmtpServer(string userName,string password,bool isStartTlsOffered,bool isImplicitTls=false,int port=0) : base(port) {
 			_userName=userName;
 			_password=password;
-			_isStartTlsOffered=isStartTlsOffered;
+			_isStartTlsOffered=isStartTlsOffered && !isImplicitTls;
+			_isImplicitTls=isImplicitTls;
 		}
 
 		private static string Base64(string text) {
@@ -335,8 +370,12 @@ namespace LibraryUpdateTests {
 		}
 
 		protected override void Serve(Connection connection) {
-			connection.Write("220 smtp.example.test Fake ESMTP\r\n");
 			bool isTls=false;
+			if(_isImplicitTls) {
+				connection.StartTls();
+				isTls=true;
+			}
+			connection.Write("220 smtp.example.test Fake ESMTP\r\n");
 			bool isSignedIn=false;
 			Received received=null;
 			while(true) {

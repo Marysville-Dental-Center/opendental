@@ -1,0 +1,392 @@
+=== unittests DateExtraSpace
+FromAddress: John Doe <jdoe@machine.example>
+ToAddress: Mary Smith <mary@example.net>
+CcAddress: 
+BccAddress: 
+Subject: Saying Hello
+MsgDateTime: utc 1997-11-01 15:55:06
+BodyText: This is a message just to say hello.\r\nSo, "Hello".\r\n
+SentOrReceived: Received
+RecipientAddress: jdoe@machine.example
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 0 text, 0 image, 0 octet-stream
+Preview body: (the stored body text)
+=== unittests DateSingleDigitHour
+FromAddress: John Doe <jdoe@machine.example>
+ToAddress: Mary Smith <mary@example.net>
+CcAddress: 
+BccAddress: 
+Subject: Saying Hello
+MsgDateTime: utc 1997-11-01 15:55:06
+BodyText: This is a message just to say hello.\r\nSo, "Hello".\r\n
+SentOrReceived: Received
+RecipientAddress: jdoe@machine.example
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 0 text, 0 image, 0 octet-stream
+Preview body: (the stored body text)
+=== unittests DateTimeZoneAbbreviation
+FromAddress: John Doe <jdoe@machine.example>
+ToAddress: Mary Smith <mary@example.net>
+CcAddress: 
+BccAddress: 
+Subject: Saying Hello
+MsgDateTime: unspecified 2016-02-11 06:58:09
+BodyText: This is a message just to say hello.\r\nSo, "Hello".\r\n
+SentOrReceived: Received
+RecipientAddress: jdoe@machine.example
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 0 text, 0 image, 0 octet-stream
+Preview body: (the stored body text)
+=== unittests MimePartAttachmentNoName
+FromAddress: John Doe <jdoe@machine.example>
+ToAddress: Mary Smith <mary@example.net>
+CcAddress: 
+BccAddress: 
+Subject: Saying Hello
+MsgDateTime: unspecified 2016-02-11 06:58:09
+BodyText: Hello from Argentina!\r\n\r\nThis is a message just to say hello.\r\nSo, "Hello".\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: jdoe@machine.example
+RawEmailIn: (changed) From: John Doe <jdoe@machine.example>\r\nTo: Mary Smith <mary@example.net>\r\nSubject: Saying Hello\r\nDate: Thu, 11 Feb 2016 06:58:09 CST\r\nMessage-ID: <1234@local.machine.example>\r\nContent-Type: multipart/mixed; boundary="B1"\r\n\r\nThis is a multi-part message in MIME format.\r\n--B1\r\nContent-Type: multipart/alternative; boundary="B2"\r\nMIME-Version: 1.0\r\n\r\n--B2\r\nContent-Type: text/plain; charset=us-ascii\r\nContent-Transfer-Encoding: 7bit\r\n\r\nHello from Argentina!\r\n\r\n--B2\r\nContent-Type: text/plain; charset=us-ascii\r\nContent-Transfer-Encoding: 7bit\r\n\r\nThis is a message just to say hello.\r\nSo, "Hello".\r\n\r\n--B2--\r\n--B1\r\nContent-Type: image/gif\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename="map_of_Argentina.gif"\r\n\r\n\r\n--B1--\r\n
+Attachments: 1
+Attachment 0: map_of_Argentina.gif 288 bytes sha 5e27f8a3e8a88abb
+Preview parts: 0 html, 2 text, 1 image, 0 octet-stream
+Preview body: text Hello from Argentina!\r\n\r\n
+Preview image 0: cid  name map_of_Argentina.gif
+=== unittests InvalidBoundaries
+FromAddress: John Doe <jdoe@machine.example>
+ToAddress: Mary Smith <mary@example.net>
+CcAddress: 
+BccAddress: 
+Subject: Saying Hello
+MsgDateTime: unspecified 2016-02-11 06:58:09
+BodyText: Hello from Argentina!\r\n\r\nThis is a message just to say hello.\r\nSo, "Hello".\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: jdoe@machine.example
+RawEmailIn: (changed) From: John Doe <jdoe@machine.example>\r\nTo: Mary Smith <mary@example.net>\r\nSubject: Saying Hello\r\nDate: Thu, 11 Feb 2016 06:58:09 CST\r\nMessage-ID: <1234@local.machine.example>\r\nContent-Type: multipart/mixed; boundary="(guid)"\r\n\r\nThis is a multi-part message in MIME format.\r\n--(guid)\r\nContent-Type: multipart/alternative; boundary="(guid)"\r\nMIME-Version: 1.0\r\n\r\n--(guid)\r\nContent-Type: text/plain; charset=us-ascii\r\nContent-Transfer-Encoding: 7bit\r\n\r\nHello from Argentina!\r\n\r\n--(guid)\r\nContent-Type: text/plain; charset=us-ascii\r\nContent-Transfer-Encoding: 7bit\r\n\r\nThis is a message just to say hello.\r\nSo, "Hello".\r\n\r\n--(guid)--\r\n--(guid)\r\nContent-Type: image/gif\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename="map_of_Argentina.gif"\r\n\r\n\r\n--(guid)--\r\n
+Attachments: 1
+Attachment 0: map_of_Argentina.gif 288 bytes sha 5e27f8a3e8a88abb
+Preview parts: 0 html, 2 text, 1 image, 0 octet-stream
+Preview body: text Hello from Argentina!\r\n\r\n
+Preview image 0: cid  name map_of_Argentina.gif
+=== unittests UndisclosedRecipients
+FromAddress: John Doe <jdoe@machine.example>
+ToAddress: 
+CcAddress: 
+BccAddress: Mary Smith <mary@example.net>
+Subject: Saying Hello
+MsgDateTime: utc 1997-11-01 15:55:06
+BodyText: This is a message just to say hello.\r\nSo, "Hello".\r\n
+SentOrReceived: Received
+RecipientAddress: jdoe@machine.example
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 0 text, 0 image, 0 octet-stream
+Preview body: (the stored body text)
+=== unittests UndisclosedRecipients_NoHyphen
+FromAddress: John Doe <jdoe@machine.example>
+ToAddress: 
+CcAddress: 
+BccAddress: Mary Smith <mary@example.net>
+Subject: Saying Hello
+MsgDateTime: utc 1997-11-01 15:55:06
+BodyText: This is a message just to say hello.\r\nSo, "Hello".\r\n
+SentOrReceived: Received
+RecipientAddress: jdoe@machine.example
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 0 text, 0 image, 0 octet-stream
+Preview body: (the stored body text)
+=== unittests UndisclosedRecipients_ExtraSpace
+FromAddress: John Doe <jdoe@machine.example>
+ToAddress: 
+CcAddress: 
+BccAddress: Mary Smith <mary@example.net>
+Subject: Saying Hello
+MsgDateTime: utc 1997-11-01 15:55:06
+BodyText: This is a message just to say hello.\r\nSo, "Hello".\r\n
+SentOrReceived: Received
+RecipientAddress: jdoe@machine.example
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 0 text, 0 image, 0 octet-stream
+Preview body: (the stored body text)
+=== unittests UndisclosedRecipients_NoRecipients
+FromAddress: John Doe <jdoe@machine.example>
+ToAddress: 
+CcAddress: 
+BccAddress: jdoe@machine.example
+Subject: Saying Hello
+MsgDateTime: utc 1997-11-01 15:55:06
+BodyText: This is a message just to say hello.\r\nSo, "Hello".\r\n
+SentOrReceived: Received
+RecipientAddress: jdoe@machine.example
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 0 text, 0 image, 0 octet-stream
+Preview body: (the stored body text)
+=== mimetests plain
+FromAddress: Front Desk <front@example.test>
+ToAddress: patient@example.test
+CcAddress: 
+BccAddress: 
+Subject: Appointment
+MsgDateTime: utc 2026-11-02 16:30:00
+BodyText: See you at 9.\r\n.leading dot\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 1 text, 0 image, 0 octet-stream
+Preview body: text See you at 9.\r\n.leading dot\r\n\r\n
+=== mimetests utf8 body
+FromAddress: a@example.test
+ToAddress: b@example.test
+CcAddress: 
+BccAddress: 
+Subject: Caf\u00e9
+MsgDateTime: (now)
+BodyText: Caf\u00c3\u00a9 \u00e2\u0082\u00ac\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 1 text, 0 image, 0 octet-stream
+Preview body: text Caf\u00c3\u00a9 \u00e2\u0082\u00ac\r\n\r\n
+=== mimetests raw 8-bit header
+FromAddress: a@example.test
+ToAddress: b@example.test
+CcAddress: 
+BccAddress: 
+Subject: Caf\u00c3\u00a9 raw
+MsgDateTime: (now)
+BodyText: body\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 1 text, 0 image, 0 octet-stream
+Preview body: text body\r\n\r\n
+=== mimetests multipart
+FromAddress: a@example.test
+ToAddress: b@example.test, c@example.test
+CcAddress: d@example.test
+BccAddress: 
+Subject: foldedsubject line
+MsgDateTime: (now)
+BodyText: 
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (changed) From: a@example.test\r\nTo: b@example.test, c@example.test\r\nCc: d@example.test\r\nSubject: folded\r\n subject line\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="XYZ"\r\n\r\npreamble\r\n--XYZ\r\nContent-Type: text/html; charset=iso-8859-1\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>Caf=E9</p>\r\n--XYZ\r\nContent-Type: application/pdf; name="x.pdf"\r\nContent-Disposition: attachment; filename="x.pdf"\r\nContent-Transfer-Encoding: base64\r\n\r\n\r\n--XYZ--\r\nepilogue\r\n\r\n
+Attachments: 1
+Attachment 0: x.pdf 19 bytes sha 840a4b1dbee66ca1
+Preview parts: 1 html, 0 text, 0 image, 0 octet-stream
+Preview body: html <p>Caf\u00e9</p>\r\n
+=== mimetests no content type
+FromAddress: a@example.test
+ToAddress: b@example.test
+CcAddress: 
+BccAddress: 
+Subject: none
+MsgDateTime: (now)
+BodyText: just text\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 0 text, 0 image, 0 octet-stream
+Preview body: (the stored body text)
+=== mimetests bcc only
+FromAddress: a@example.test
+ToAddress: 
+CcAddress: 
+BccAddress: b@example.test
+Subject: bcc only
+MsgDateTime: (now)
+BodyText: x\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 0 text, 0 image, 0 octet-stream
+Preview body: (the stored body text)
+=== pop3 utf8 body
+FromAddress: a@example.test
+ToAddress: b@example.test
+CcAddress: 
+BccAddress: 
+Subject: Caf\u00e9
+MsgDateTime: (now)
+BodyText: Caf\u00e9 \u20ac\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 1 text, 0 image, 0 octet-stream
+Preview body: text Caf\u00e9 \u20ac\r\n\r\n
+=== windows-1252 quoted-printable
+FromAddress: Ren\u00e9e M\u00fcller <renee@example.test>
+ToAddress: inbox@example.test
+CcAddress: 
+BccAddress: 
+Subject: Rechnung \u20ac 100
+MsgDateTime: utc 2026-11-04 08:15:00
+BodyText: Preis: 100 \u20ac \u2013 Caf\u00e9\r\nGr\u00fc\u00dfe\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 1 text, 0 image, 0 octet-stream
+Preview body: text Preis: 100 \u20ac \u2013 Caf\u00e9\r\nGr\u00fc\u00dfe\r\n\r\n
+=== windows-1252 8bit gmail
+FromAddress: Ren\u00e9e M\u00fcller <renee@example.test>
+ToAddress: inbox@example.test
+CcAddress: 
+BccAddress: 
+Subject: Rechnung 8bit
+MsgDateTime: utc 2026-11-04 08:20:00
+BodyText: Preis: 100 ? ? Caf\u00e9\r\nGr\u00fc\u00dfe\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 1 text, 0 image, 0 octet-stream
+Preview body: text Preis: 100 ? ? Caf\u00e9\r\nGr\u00fc\u00dfe\r\n\r\n
+=== windows-1252 8bit pop3
+FromAddress: Ren\u00e9e M\u00fcller <renee@example.test>
+ToAddress: inbox@example.test
+CcAddress: 
+BccAddress: 
+Subject: Rechnung 8bit
+MsgDateTime: utc 2026-11-04 08:20:00
+BodyText: Preis: 100 \u20ac \u2013 Caf\u00e9\r\nGr\u00fc\u00dfe\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 1 text, 0 image, 0 octet-stream
+Preview body: text Preis: 100 \u20ac \u2013 Caf\u00e9\r\nGr\u00fc\u00dfe\r\n\r\n
+=== consecutive dots
+FromAddress: "Pat Q. Smith" <pat..q.smith@example.test>
+ToAddress: inbox@example.test
+CcAddress: front..desk@example.test
+BccAddress: 
+Subject: Dots in the address
+MsgDateTime: utc 2026-11-05 15:00:00
+BodyText: Hello.\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 1 text, 0 image, 0 octet-stream
+Preview body: text Hello.\r\n\r\n
+=== html with inline images
+FromAddress: Clinic Lab <lab@example.test>
+ToAddress: inbox@example.test
+CcAddress: 
+BccAddress: 
+Subject: Your x-ray report
+MsgDateTime: utc 2026-11-06 14:30:00
+BodyText: Report attached. Caf\u00e9 = good.\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (changed) From: Clinic Lab <lab@example.test>\r\nTo: inbox@example.test\r\nSubject: Your x-ray report\r\nDate: Fri, 06 Nov 2026 14:30:00 +0000\r\nMIME-Version: 1.0\r\nContent-Type: multipart/related; boundary="rel-1"; type="multipart/alternative"\r\n\r\n--rel-1\r\nContent-Type: multipart/alternative; boundary="alt-1"\r\n\r\n--alt-1\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nReport attached. Caf=C3=A9 =3D good.\r\n--alt-1\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: base64\r\n\r\nPGh0bWw+PGJvZHk+PHRhYmxlPjx0cj48dGQgd2lkdGg9MTAwPlJlcG9ydDwvdGQ+PC90cj48L3Rh\r\nYmxlPjxwPkNhZsOpID0zRDwvcD48aW1nIHNyYz0iY2lkOmxvZ28tMUBleGFtcGxlLnRlc3QiPjxp\r\nbWcgc3JjPSJjaWQ6ZG90LTFAZXhhbXBsZS50ZXN0Ij48L2JvZHk+PC9odG1sPg==\r\n--alt-1--\r\n--rel-1\r\nContent-Type: image/png; name="logo.png"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <logo-1@example.test>\r\nContent-Disposition: inline; filename="logo.png"\r\n\r\n\r\n--rel-1\r\nContent-Type: image/gif; name="dot.gif"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <dot-1@example.test>\r\n\r\nR0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7\r\n--rel-1--\r\n\r\n
+Attachments: 1
+Attachment 0: logo.png 70 bytes sha c414cd0e204de974
+Preview parts: 1 html, 1 text, 2 image, 0 octet-stream
+Preview body: html <html><body><table><tr><td width\u00100>Report</td></tr></table><p>Caf\u00e9 =</p><img src="cid:logo-1@example.test"><img src="cid:dot-1@example.test"></body></html>\r\n
+Preview image 0: cid logo-1@example.test name logo.png
+Preview image 1: cid dot-1@example.test name dot.gif
+=== attachments
+FromAddress: Billing <billing@example.test>
+ToAddress: "Smith, Pat" <pat@example.test>, inbox@example.test
+CcAddress: J\u00fcrgen <juergen@example.test>
+BccAddress: 
+Subject: Statement for Ren\u00e9e andmore
+MsgDateTime: utc 2026-11-07 15:00:00
+BodyText: Your statement is attached. \u00c9t\u00e9 soft break joined.\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (changed) From: Billing <billing@example.test>\r\nTo: "Smith, Pat" <pat@example.test>, inbox@example.test\r\nCc: =?utf-8?B?SsO8cmdlbg==?= <juergen@example.test>\r\nSubject: =?utf-8?Q?Statement_for_Ren=C3=A9e?= and\r\n more\r\nDate: Sat, 07 Nov 2026 10:00:00 -0500\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="mix-1"\r\n\r\n--mix-1\r\nContent-Type: text/plain; charset=iso-8859-1\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\nYour statement is attached. =C9t=E9 soft=\r\n break joined.\r\n--mix-1\r\nContent-Type: application/pdf; name="Statement 2026.pdf"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename="Statement 2026.pdf"\r\n\r\n\r\n--mix-1\r\nContent-Type: text/plain; charset=utf-8; name="notes.txt"\r\nContent-Transfer-Encoding: quoted-printable\r\nContent-Disposition: attachment; filename="notes.txt"\r\n\r\n\r\n--mix-1\r\nContent-Type: application/octet-stream\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename*=utf-8''R%C3%A9sum%C3%A9.bin\r\n\r\n\r\n--mix-1--\r\n\r\n
+Attachments: 3
+Attachment 0: Statement 2026.pdf 58 bytes sha 32cc82e6c1e11ca1
+Attachment 1: notes.txt 28 bytes sha 7da8e5737fac15d5
+Attachment 2: attach 6 bytes sha 17e88db187afd62c
+Preview parts: 0 html, 2 text, 0 image, 1 octet-stream
+Preview body: text Your statement is attached. \u00c9t\u00e9 soft break joined.\r\n
+Preview octet-stream 0: cid  name (null)
+=== forwarded message
+FromAddress: Front Desk <front@example.test>
+ToAddress: inbox@example.test
+CcAddress: 
+BccAddress: 
+Subject: Fwd: Lab results
+MsgDateTime: utc 2014-09-09 23:16:36
+BodyText: See the forwarded message.\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (changed) From: Front Desk <front@example.test>\r\nTo: inbox@example.test\r\nSubject: Fwd: Lab results\r\nDate: Tue, 09 Sep 2014 23:16:36 GMT\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary="fwd-1"\r\n\r\n--fwd-1\r\nContent-Type: text/plain; charset=us-ascii\r\n\r\nSee the forwarded message.\r\n--fwd-1\r\nContent-Type: message/rfc822\r\nContent-Disposition: attachment; filename="results.eml"\r\n\r\n\r\n--fwd-1--\r\n\r\n
+Attachments: 1
+Attachment 0: results.eml 96 bytes sha c1b3f736ba4a6834
+Preview parts: 0 html, 1 text, 0 image, 0 octet-stream
+Preview body: text See the forwarded message.\r\n
+=== blank cc
+FromAddress: Mail Host <welcome@example.test>
+ToAddress: inbox@example.test
+CcAddress: 
+BccAddress: 
+Subject: Welcome to Email
+MsgDateTime: utc 2026-11-02 14:00:00
+BodyText: 
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 1 html, 0 text, 0 image, 0 octet-stream
+Preview body: html <html><body><p>Welcome!</p></body></html>\r\n\r\n
+=== equals signs in 7bit text
+FromAddress: a@example.test
+ToAddress: inbox@example.test
+CcAddress: 
+BccAddress: 
+Subject: Equations
+MsgDateTime: utc 2013-11-05 17:10:37
+BodyText: aA stays as typed\r\nthis line ends with next line\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 1 text, 0 image, 0 octet-stream
+Preview body: text aA stays as typed\r\nthis line ends with next line\r\n\r\n
+=== signed
+FromAddress: Signer Example <signer@example.test>
+ToAddress: inbox@example.test
+CcAddress: 
+BccAddress: 
+Subject: Signed message
+MsgDateTime: utc 2026-11-03 18:00:00
+BodyText: This message is signed.\r\nSecond line of the signed text.\r\n\r\n
+SentOrReceived: Received
+RecipientAddress: inbox@example.test
+RawEmailIn: (changed) From: Signer Example <signer@example.test>\r\nTo: inbox@example.test\r\nSubject: Signed message\r\nDate: Tue, 03 Nov 2026 10:00:00 -0800\r\nMessage-ID: <signed-1@example.test>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-256; boundary="sig-boundary-1"\r\n\r\nThis is a cryptographically signed message in MIME format.\r\n\r\n--sig-boundary-1\r\nContent-Type: text/plain; charset=us-ascii\r\nContent-Transfer-Encoding: 7bit\r\n\r\nThis message is signed.\r\nSecond line of the signed text.\r\n\r\n--sig-boundary-1\r\nContent-Type: application/pkcs7-signature; name="smime.p7s"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename="smime.p7s"\r\nContent-Description: S/MIME Cryptographic Signature\r\n\r\n\r\n--sig-boundary-1--\r\n\r\n
+Attachments: 1
+Attachment 0: smime.p7s 1379 bytes sha 608b98940dcbb4c1
+Preview parts: 0 html, 1 text, 0 image, 0 octet-stream
+Preview body: text This message is signed.\r\nSecond line of the signed text.\r\n\r\n
+=== encrypted
+FromAddress: Sender Example <sender@example.test>
+ToAddress: inbox@example.test
+CcAddress: 
+BccAddress: 
+Subject: Encrypted message
+MsgDateTime: utc 2026-11-03 19:00:00
+BodyText: From: Sender Example <sender@example.test>\r\nTo: inbox@example.test\r\nSubject: Encrypted message\r\nDate: Tue, 03 Nov 2026 11:00:00 -0800\r\nMessage-ID: <encrypted-1@example.test>\r\nMIME-Version: 1.0\r\nContent-Type: application/pkcs7-mime; smime-type=enveloped-data; name="smime.p7m"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename="smime.p7m"\r\n\r\nMIICDQYJKoZIhvcNAQcDoIIB/jCCAfoCAQAxggFlMIIBYQIBADBJMD0xIjAgBgkqhkiG9w0BCQEW\r\nE3NpZ25lckBleGFtcGxlLnRlc3QxFzAVBgNVBAMTDlNpZ25lciBFeGFtcGxlAggPVGQKHRwv2zAN\r\nBgkqhkiG9w0BAQEFAASCAQAHSaTs1MPhKY/hGB8gBsQLcWB8G+E8H6+7bbUarAYdQqWKzA1vKV7B\r\nd5Xnw5aTAuNPoxk2QohErrEnOgI5Xgwjr3uPgBSPPx6sLBXWL2u6WChMpwalT3JE+C4xCJaAPw6d\r\n/lYTqYSbcCgRFTeLmD1dsw5yBHcz3tNi8DBGAhmyRYLpmxH7h1CmEk/2UZtuIhC+gy0j0QRuQiXO\r\nqRLbVRo/VdtYEiVubUOEGmMn5vGdlByFAhZra+IWOen5iGTsDf6K6pHp0ekSjLTasRJ6C2P70y2V\r\nGiAuW8FE5U5YswrlOtoOOGB/bi1SHZeAuk+niwmkJYgmwH0xtmJUZfda4g80MIGLBgkqhkiG9w0B\r\nBwEwFAYIKoZIhvcNAwcECKCDnjD5ZuiJgGhEJ9wpsIu/KTlxUh5HJlenBYj4+ySi3sF54xB43v+F\r\nUNPFSLdaApIxB5any+NGVixkdVGqTzSPQXMh6b/353ldLYi4CD8NiGORVsbRVnFK2DYWdxXEp91z\r\nqEadOM7biGoZxw+o7RnBng==\r\n
+SentOrReceived: ReceivedEncrypted
+RecipientAddress: inbox@example.test
+RawEmailIn: (as received)
+Attachments: 0
+Preview parts: 0 html, 0 text, 0 image, 0 octet-stream
+Preview body: (the stored body text)

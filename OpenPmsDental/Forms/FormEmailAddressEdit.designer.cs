@@ -50,7 +50,6 @@ namespace OpenPmsDental {
 			this.label10 = new System.Windows.Forms.Label();
 			this.textPortIncoming = new System.Windows.Forms.TextBox();
 			this.label11 = new System.Windows.Forms.Label();
-			this.butRegisterCertificate = new OpenPmsDental.UI.Button();
 			this.butPickUserod = new OpenPmsDental.UI.Button();
 			this.labelUserod = new System.Windows.Forms.Label();
 			this.textUserod = new System.Windows.Forms.TextBox();
@@ -305,16 +304,6 @@ namespace OpenPmsDental {
 			this.label11.TabIndex = 0;
 			this.label11.Text = "Incoming Port";
 			this.label11.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// butRegisterCertificate
-			// 
-			this.butRegisterCertificate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.butRegisterCertificate.Location = new System.Drawing.Point(319, 589);
-			this.butRegisterCertificate.Name = "butRegisterCertificate";
-			this.butRegisterCertificate.Size = new System.Drawing.Size(122, 24);
-			this.butRegisterCertificate.TabIndex = 9;
-			this.butRegisterCertificate.Text = "Certificate";
-			this.butRegisterCertificate.Click += new System.EventHandler(this.butRegisterCertificate_Click);
 			// 
 			// butPickUserod
 			// 
@@ -593,7 +582,6 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.label3);
 			this.Controls.Add(this.textUsername);
-			this.Controls.Add(this.butRegisterCertificate);
 			this.Controls.Add(this.groupIncoming);
 			this.Controls.Add(this.groupOutgoing);
 			this.Controls.Add(this.checkSSL);
@@ -644,7 +632,6 @@ namespace OpenPmsDental {
 		private TextBox textPortIncoming;
 		private Label label11;
 		private Label label9;
-		private UI.Button butRegisterCertificate;
 		private Label label13;
 		private Label label14;
 		private UI.Button butPickUserod;

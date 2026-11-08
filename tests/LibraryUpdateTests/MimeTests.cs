@@ -1,9 +1,8 @@
 // MIME with MimeKit 4.18 (MimeKit 2.4.1 before): the messages the Gmail and Microsoft 365 sends build (SendEmail.CreateMIMEMsg) and read back
-// field for field, attachments byte for byte, and the program's Direct parser reads them too; downloaded messages turn into the same text as
-// MimeKit 2.4.1 made of them (MimeMessage.ToString, checked against 2.4.1 when the update was made); and the POP3 helpers that replace OpenPop's
-// header fields. S/MIME is not done with MimeKit: Direct messages are signed and encrypted by the Direct Project library, which this update does
-// not touch. Synthetic addresses and files only. Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository
-// root.
+// field for field, attachments byte for byte, and the program's received-mail parser (EmailMessages.RawEmailToMimeMessage, MimeKit since package
+// S0-3 of the .NET 10 plan replaced the Direct Project parser) reads them too; downloaded messages turn into the same text as MimeKit 2.4.1 made
+// of them (MimeMessage.ToString, checked against 2.4.1 when the update was made); and the POP3 helpers that replace OpenPop's header fields.
+// Synthetic addresses and files only. Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -102,11 +101,11 @@ namespace LibraryUpdateTests {
 				mimePartImage.Content.DecodeTo(memoryStream);
 				CollectionAssert.AreEqual(arrayPng,memoryStream.ToArray());
 			}
-			//The program's own (Direct) parser reads what MimeKit wrote, as it reads every downloaded email.
-			Health.Direct.Agent.IncomingMessage incomingMessage=EmailMessages.RawEmailToIncomingMessage(Encoding.ASCII.GetString(arrayBytes),null);
-			Assert.AreEqual("Café appointment ✓ reminder",EmailMessages.ProcessInlineEncodedText(incomingMessage.Message.SubjectValue));
-			StringAssert.Contains(incomingMessage.Message.FromValue,"front@example.test");
-			StringAssert.Contains(incomingMessage.Message.ToValue,"lee@example.test");
+			//The program's own received-mail parser reads what MimeKit wrote, as it reads every downloaded email.
+			MimeMessage mimeMessageReceived=EmailMessages.RawEmailToMimeMessage(Encoding.ASCII.GetString(arrayBytes));
+			Assert.AreEqual("Café appointment ✓ reminder",EmailMessages.ProcessInlineEncodedText(mimeMessageReceived.Headers[HeaderId.Subject]));
+			StringAssert.Contains(mimeMessageReceived.Headers[HeaderId.From],"front@example.test");
+			StringAssert.Contains(mimeMessageReceived.Headers[HeaderId.To],"lee@example.test");
 		}
 
 		[TestMethod]

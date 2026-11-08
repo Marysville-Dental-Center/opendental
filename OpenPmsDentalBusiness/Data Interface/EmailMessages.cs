@@ -1,15 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Data;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Mail;
-using System.Net.Mime;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -18,9 +15,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Web;
 using System.Xml;
-using CDO;
 using CodeBase;
-using Health.Direct.Common.Certificates;
 using OpenPmsDentalBusiness.Email;
 using OpenPmsDentalBusiness.FileIO;
 using System.Net.Security;
@@ -33,9 +28,6 @@ using Newtonsoft.Json;
 namespace OpenPmsDentalBusiness {
 	///<summary></summary>
 	public class EmailMessages {
-		[ThreadStatic]
-		private static Health.Direct.Agent.DirectAgent _directAgent=null;
-
 		#region Misc Methods
 		public static bool IsHtmlEmail(EmailType emailType) {
 			Meth.NoCheckMiddleTierRole();
@@ -486,42 +478,28 @@ namespace OpenPmsDentalBusiness {
 
 		#region Sending
 
-		/// <summary>Throws Exception. This is used from wherever sending emails. If a message must be using EHR direct messaging, set the useDirect=true. 
-		/// If the unsecure message needs to be sent with a certificate signature, set the certPrivate.</summary>
-		public static void SendEmail(EmailMessage emailMessage,EmailAddress emailAddressSender,X509Certificate2 x509Certificate2Private=null,bool useDirect=false) {
+		/// <summary>Throws Exception. This is used from wherever sending emails. If the message needs to be sent with a certificate signature (S/MIME,
+		/// not encrypted), set x509Certificate2Private. The message is saved (inserted or updated) whether or not it was sent.</summary>
+		public static void SendEmail(EmailMessage emailMessage,EmailAddress emailAddressSender,X509Certificate2 x509Certificate2Private=null) {
 			Meth.NoCheckMiddleTierRole();
-			//Always insert except when error sending direct message.
-			bool doInsertEmailMessage=true;
 			try {
-				if(useDirect) {
-					string errorMsg=SendEmailDirect(emailMessage,emailAddressSender);
-					if(!string.IsNullOrEmpty(errorMsg)) {
-						doInsertEmailMessage=false;
-						throw new Exception(errorMsg);
-					}
+				if(x509Certificate2Private==null) {
+					SendEmailUnsecure(emailMessage,emailAddressSender);
 				}
-				else {//unsecure
-					if(x509Certificate2Private==null) {
-						SendEmailUnsecure(emailMessage,emailAddressSender,null);
-					}
-					else {//unsecure w sig
-						SendEmailUnsecureWithSig(emailMessage,emailAddressSender,x509Certificate2Private);
-					}
+				else {//unsecure w sig
+					SendEmailUnsecureWithSig(emailMessage,emailAddressSender,x509Certificate2Private);
 				}
-
 			}
 			catch(Exception ex) {
 				SetFailed(emailMessage,ex);
 				throw;
 			}
 			finally {
-				if(doInsertEmailMessage) {
-					if(emailMessage.EmailMessageNum==0) {
-						Insert(emailMessage);
-					}
-					else {
-						Update(emailMessage);
-					}
+				if(emailMessage.EmailMessageNum==0) {
+					Insert(emailMessage);
+				}
+				else {
+					Update(emailMessage);
 				}
 			}
 		}
@@ -533,329 +511,8 @@ namespace OpenPmsDentalBusiness {
 			emailMessage.SentOrReceived=EmailSentOrReceived.SendFailed;
 		}
 
-		///<summary>Encrypts the message, verifies trust, locates the public encryption key for the To address (if already stored locally), etc.
-		///Use this polymorphism when the attachments have already been saved to the email attachments folder in file form.  patNum can be 0.
-		///Returns an empty string upon success, or an error string if there were errors.
-		///It is possible that the email was sent to some trusted recipients and not sent to untrusted recipients (in which case there would be errors but some recipients would receive successfully).
-		///Trust cannot be automatically added for the recipient addresses inside this function, because the patient portal uses this function and as soon as an address is trusted
-		///all patients can then forward their personal information to the recipient address.
-		///Surround with a try catch.</summary>
-		private static string SendEmailDirect(EmailMessage emailMessage,EmailAddress emailAddressFrom) {
-			Meth.NoCheckMiddleTierRole();
-			emailMessage.FromAddress=emailAddressFrom.EmailUsername.Trim();//Cannot be emailAddressFrom.SenderAddress, or else will not find the correct encryption certificate.  Used in ConvertEmailMessageToMessage().
-			//Start by converting the emailMessage to an unencrypted message using the Direct libraries. The email must be in this form to carry out encryption.
-			Health.Direct.Common.Mail.Message msgUnencrypted=ConvertEmailMessageToMessage(emailMessage,true);
-			Health.Direct.Agent.MessageEnvelope msgEnvelopeUnencrypted=new Health.Direct.Agent.MessageEnvelope(msgUnencrypted);
-			Health.Direct.Agent.OutgoingMessage outMsgUnencrypted=new Health.Direct.Agent.OutgoingMessage(msgEnvelopeUnencrypted);
-			string strErrors=SendEmailDirect(outMsgUnencrypted,emailAddressFrom);
-			return strErrors;
-		}
-
-		///<summary>Throws exceptions.  outMsgDirect must be unencrypted, because this function will encrypt.  Encrypts the message, verifies trust, locates the public encryption key for the To address (if already stored locally), etc.
-		///Returns an empty string upon success, or an error string if there were errors.  It is possible that the email was sent to some trusted recipients and not sent to untrusted recipients (in which case there would be errors but some recipients would receive successfully).</summary>
-		private static string SendEmailDirect(Health.Direct.Agent.OutgoingMessage outgoingMessageUnencrypted,EmailAddress emailAddressFrom) {
-			Meth.NoCheckMiddleTierRole();
-			string strErrors="";
-			string strSenderAddress=emailAddressFrom.EmailUsername.Trim();//Cannot be emailAddressFrom.SenderAddress, or else will not find the right encryption certificate.
-			//Locate or discover public certificates for each receiver for encryption purposes.
-			for(int i=0;i<outgoingMessageUnencrypted.Recipients.Count;i++) {
-				string receiveAddress=outgoingMessageUnencrypted.Recipients[i].Address.Trim();
-				List <X509Certificate2> listX509Certificate2sValid=new List<X509Certificate2>();
-				List <X509Certificate2> listX509Certificate2sInvalid=new List<X509Certificate2>();
-				try {
-					TryAddTrustDirect(receiveAddress,listX509Certificate2sValid,listX509Certificate2sInvalid);
-				}
-				catch(Exception ex) {
-					if(strErrors!="") {
-						strErrors+="\r\n";
-					}
-					strErrors+=ex.Message;
-				}
-				//For Direct addresses, only use the current listX509Certificate2sValid for sending.  Otherwise, use all certs in pub cert store.
-				int untrustedCount=-1;
-				if(listX509Certificate2sValid.Count > 0 || listX509Certificate2sInvalid.Count > 0) {//The receiveAddress has a hosted cert, therefore is Direct address.
-					if(listX509Certificate2sValid.Count==0) {
-						untrustedCount=listX509Certificate2sInvalid.Count;
-					}
-				}
-				else {//Standard encrypted email.
-					untrustedCount=GetReceiverUntrustedCount(receiveAddress);
-				}
-				if(untrustedCount >= 0) {
-					if(strErrors!="") {
-						strErrors+="\r\n";
-					}
-					strErrors+=Lans.g("EmailMessages","No active certificates discovered for recipient: ")+" "+receiveAddress;
-					if(untrustedCount > 0) {
-						strErrors+="\r\n"+Lans.g("EmailMessages","Inactive certificates discovered")+": "+untrustedCount;
-					}
-				}
-			}
-			if(strErrors!="") {
-				return strErrors;//Most likely could not find the public certificate for the receiver.  In any case, cannot continue.
-			}
-			List <string> listAddresses=new List<string>();
-			listAddresses.Add(strSenderAddress);
-			for(int i=0;i<outgoingMessageUnencrypted.Recipients.Count;i++) {
-				listAddresses.Add(outgoingMessageUnencrypted.Recipients[i].Address.Trim());
-			}			
-			Health.Direct.Agent.OutgoingMessage outgoingMessageEncrypted=null;
-			try {
-				Health.Direct.Agent.DirectAgent directAgent=GetDirectAgentForEmailAddress(listAddresses.ToArray());	
-				outgoingMessageEncrypted=directAgent.ProcessOutgoing(outgoingMessageUnencrypted);//This is where encryption, signing, and trust verification occurs.
-			}
-			catch(Exception ex) {
-				if(strErrors!="") {
-					strErrors+="\r\n";
-				}
-				strErrors+=ex.Message;
-				return strErrors;//Cannot recover from an encryption error.
-			}
-			outgoingMessageEncrypted.Message.SubjectValue="Encrypted Message";//Prevents a warning in the transport testing tool (TTT). http://tools.ietf.org/html/rfc5322#section-3.6.5
-			EmailMessage emailMessageEncrypted=ConvertMessageToEmailMessage(outgoingMessageEncrypted.Message,false,true);//No point in saving the encrypted attachment, because nobody can read it and it will bloat the OpenDentImages folder.
-			NameValueCollection nameValueCollectionHeaders=new NameValueCollection();
-			for(int i=0;i<outgoingMessageEncrypted.Message.Headers.Count;i++) {
-				nameValueCollectionHeaders.Add(outgoingMessageEncrypted.Message.Headers[i].Name,outgoingMessageEncrypted.Message.Headers[i].ValueRaw);
-			}
-			byte[] byteArrayEncryptedBody=Encoding.UTF8.GetBytes(outgoingMessageEncrypted.Message.Body.Text);//The bytes of the encrypted and base 64 encoded body string.  No need to call Tidy() here because this body text will be in base64.
-			MemoryStream memoryStream=new MemoryStream(byteArrayEncryptedBody);
-			memoryStream.Position=0;
-			//The memory stream for the alternate view must be mime (not an entire email), based on AlternateView use example http://msdn.microsoft.com/en-us/library/system.net.mail.mailmessage.alternateviews.aspx
-			AlternateView alternateView=new AlternateView(memoryStream,outgoingMessageEncrypted.Message.ContentType);//Causes the receiver to recognize this email as an encrypted email.
-			alternateView.TransferEncoding=TransferEncoding.SevenBit;
-			if(emailAddressFrom.ServerPort==465) {//Implicit SSL
-				//See comments inside SendEmailUnsecure() regarding why this does not work.
-				if(strErrors!="") {
-					strErrors+="\r\n";
-				}
-				strErrors+=Lans.g("EmailMessages","Direct messages cannot be sent over implicit SSL.");
-			}
-			else {
-				SendEmailUnsecure(emailMessageEncrypted,emailAddressFrom,nameValueCollectionHeaders,alternateViewArray: alternateView);//Not really unsecure in this spot, because the message is already encrypted.
-			}
-			memoryStream.Dispose();
-			return strErrors;
-		}
-
-		///<summary>Used for creating encrypted Message Disposition Notification (MDN) ack messages for Direct.
-		///An ack must be sent when a message is received/processed, and other acks are supposed be sent when other events occur (but are not required).
-		///For example, when the user reads a decrypted message we must send an ack with notification type of Displayed (not required).</summary>
-		private static string SendAckDirect(Health.Direct.Agent.IncomingMessage incomingMessage,EmailAddress emailAddressFrom,long patNum) {
-			Meth.NoCheckMiddleTierRole();
-			//The CreateAcks() function handles the case where the incoming message is an MDN, in which case we do not reply with anything.
-			//The CreateAcks() function also takes care of figuring out where to send the MDN, because the rules are complicated.
-			//According to http://wiki.directproject.org/Applicability+Statement+for+Secure+Health+Transport+Working+Version#x3.0%20Message%20Disposition%20Notification,
-			//The MDN must be sent to the first available of: Disposition-Notification-To header, MAIL FROM SMTP command, Sender header, From header.
-			Health.Direct.Common.Mail.Notifications.MDNStandard.NotificationType notificationType=Health.Direct.Common.Mail.Notifications.MDNStandard.NotificationType.Failed;
-			notificationType=Health.Direct.Common.Mail.Notifications.MDNStandard.NotificationType.Processed;
-			List<Health.Direct.Common.Mail.Notifications.NotificationMessage> listNotificationMessages=
-				incomingMessage.CreateAcks("OpenDental "+Assembly.GetExecutingAssembly().GetName().Version,"",notificationType).ToList();
-			if(listNotificationMessages==null) {
-				return "";
-			}
-			string strErrorsAll="";
-			for(int i=0;i<listNotificationMessages.Count();i++) {
-				string strErrors="";
-				try {
-					//According to RFC3798, section 3 - Format of a Message Disposition Notification http://tools.ietf.org/html/rfc3798#page-3
-					//A message disposition notification is a MIME message with a top-level
-					//content-type of multipart/report (defined in [RFC-REPORT]).  When
-					//multipart/report content is used to transmit an MDN:
-					//(a)  The report-type parameter of the multipart/report content is "disposition-notification".
-					//(b)  The first component of the multipart/report contains a human-readable explanation of the MDN, as described in [RFC-REPORT].
-					//(c)  The second component of the multipart/report is of content-type message/disposition-notification, described in section 3.1 of this document.
-					//(d)  If the original message or a portion of the message is to be returned to the sender, it appears as the third component of the multipart/report.
-					//     The decision of whether or not to return the message or part of the message is up to the MUA generating the MDN.  However, in the case of 
-					//     encrypted messages requesting MDNs, encrypted message text MUST be returned, if it is returned at all, only in its original encrypted form.
-					Health.Direct.Agent.OutgoingMessage outgoingMessageDirect=new Health.Direct.Agent.OutgoingMessage(listNotificationMessages[i]);
-					if(listNotificationMessages[i].ToValue.Trim().ToLower()==listNotificationMessages[i].FromValue.Trim().ToLower()) {
-						continue;//Do not send an ack to self.
-					}
-					EmailMessage emailMessage=ConvertMessageToEmailMessage(outgoingMessageDirect.Message,false,true);
-					emailMessage.PatNum=patNum;
-					//First save the ack message to the database in case their is a failure sending the email. This way we can remember to try and send it again later, based on SentOrReceived.
-					emailMessage.SentOrReceived=GetUnsentTypes(EmailPlatform.Ack).First();
-					MemoryStream memoryStream=new MemoryStream();
-					listNotificationMessages[i].Save(memoryStream);
-					byte[] byteArrayMdnMessage=memoryStream.ToArray();
-					emailMessage.BodyText=Encoding.UTF8.GetString(byteArrayMdnMessage);
-					memoryStream.Dispose();
-					Insert(emailMessage);
-				}
-				catch(Exception ex) {
-					strErrors=ex.Message;
-				}
-				if(strErrorsAll!="") {
-					strErrorsAll+="\r\n";
-				}
-				strErrorsAll+=strErrors;
-			}
-			try {
-				SendOldestUnsentAck(emailAddressFrom);//Send the ack(s) we created above.
-			}
-			catch {
-				//Not critical to send the acks here, because they will be sent later if they failed now.
-			}
-			return strErrorsAll;
-		}
-
-		///<summary>Gets the oldest Direct Ack (MDN) from the db which has not been sent yet and attempts to send it.
-		///If the Ack fails to send, then it remains in the database with status AckDirectNotSent, so that another attempt will be made when this function is called again.
-		///This function throttles the Ack responses to prevent the email host from flagging the emailAddressFrom as a spam account.  The throttle speed is one Ack per 60 seconds (to mimic human behavior).
-		///Throws exceptions.</summary>
-		public static void SendOldestUnsentAck(EmailAddress emailAddressFrom) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),emailAddressFrom);
-				return;
-			}
-			string command;
-			EmailSentOrReceived emailSentOrReceivedAckSent=GetSentTypes(EmailPlatform.Ack).First();
-			//Get the time that the last Direct Ack was sent for the From address.
-			command=DbHelper.LimitOrderBy(
-				"SELECT MsgDateTime FROM emailmessage "
-					+"WHERE FromAddress='"+POut.String(emailAddressFrom.EmailUsername.Trim())+"' AND SentOrReceived="+POut.Long((int)emailSentOrReceivedAckSent)+" "
-					+"ORDER BY MsgDateTime DESC",
-				1);
-			DateTime dateTimeLastAck=PIn.DateT(Db.GetScalar(command));//dateTimeLastAck will be 0001-01-01 if there is not yet any sent Acks.
-			if((DateTime.Now-dateTimeLastAck).TotalSeconds<60) {
-				//Our last Ack sent was less than 15 seconds ago.  Abort sending Acks right now.
-				return;
-			}
-			//Get the oldest Ack for the From address which has not been sent yet.
-			List<EmailSentOrReceived> listEmailSentOrReceivedsAckNotSent=GetUnsentTypes(EmailPlatform.Ack);
-			string ackNotSentStr=string.Join(",",listEmailSentOrReceivedsAckNotSent.Select(x => POut.Int((int)x)));
-			command=DbHelper.LimitOrderBy(
-				"SELECT * FROM emailmessage "
-					+"WHERE FromAddress='"+POut.String(emailAddressFrom.EmailUsername.Trim())+"' AND SentOrReceived IN ("+ackNotSentStr+") "
-					+"ORDER BY EmailMessageNum",//The oldest Ack is the one that was recorded first.  EmailMessageNum is better than using MsgDateTime, because MsgDateTime is only accurate down to the second.
-				1);
-			List <EmailMessage> listEmailMessagesAckNotSent=Crud.EmailMessageCrud.SelectMany(command);
-			if(listEmailMessagesAckNotSent.Count<1) {
-				return;//No Acks to send.
-			}
-			EmailMessage emailMessageAck=listEmailMessagesAckNotSent[0];
-			string strRawEmailAck=emailMessageAck.BodyText;//Not really body text.  The entire raw Ack is saved here, and we use it to reconstruct the Ack email completely.
-			Health.Direct.Agent.MessageEnvelope messageEnvelopeMdn=new Health.Direct.Agent.MessageEnvelope(strRawEmailAck);
-			Health.Direct.Agent.OutgoingMessage outgoingMessageDirect=new Health.Direct.Agent.OutgoingMessage(messageEnvelopeMdn);
-			string strErrors="";
-			try {
-				strErrors=SendEmailDirect(outgoingMessageDirect,emailAddressFrom);//Encryption is performed in this step. Throws an exception if unable to send (i.e. when internet down).
-			}
-			catch {
-				return;
-			}
-			if(strErrors=="") {
-				emailMessageAck.SentOrReceived=EmailSentOrReceived.AckDirectProcessed;
-				emailMessageAck.MsgDateTime=DateTime_.Now;//Update the time, otherwise the throttle will not work properly.
-				Update(emailMessageAck);
-			}
-		}
-
-		///<summary>Throws exceptions.  Attempts to physically send the message over the network wire.
-		///Perfect for signed or encrypted email, because the MIME Content-Type is strictly defined for these types of emails.
-		///Does not work for implicit SSL, but works for all other email settings, including explicit SSL.
-		///If a message must be encrypted, then encrypt it before calling this function.
-		///The patNum can be 0, but should be included if known, for auditing purposes.</summary>
-		private static void SendDirectUnsecure(Health.Direct.Agent.OutgoingMessage outgoingMessage,EmailAddress emailAddress,long patNum) {
-			Meth.NoCheckMiddleTierRole();
-			//When batch email operations are performed, we sometimes do this check further up in the UI.  This check is here to as a catch-all.
-					//Security.CurUser will be null if this is called from a third party application (like Patient Portal).  We want to continue if that is the case.
-			if(Security.CurUser!=null && !Security.IsAuthorized(EnumPermType.EmailSend,true)) {//we need to suppress the message
-				return;
-			}
-			if(emailAddress.IsImplicitSsl) {
-				//The poor Content-Type header treatment by the System.Web.Mail.MailMessage class is the reason why both encrypted messages (Direct) and also signed unencrypted messages do not work though implicit SSL.
-				//The System.Web.Mail.MailMessage class only understands plain text and html messages.
-				//For a signed unencrypted message, the Content-Type header in the msgOut is "Content-Type: multipart/signed; boundary=PartA; protocol="application/pkcs7-signature"; micalg=sha1"
-				//If the Content-Type header is added to the System.Web.Mail.MailMessage.Headers,
-				//the Content-Type is modified to the following by C# when sending: "Content-Type: text/plain; boundary=PartA; protocol="application/pkcs7-signature"; micalg=sha1"
-				throw new Exception(Lans.g("EmailMessages","Cannot send this type of message over implicit SSL."));
-			}
-			SmtpClient smtpClient=null;
-			MailMessage mailMessage=null;
-			MemoryStream memoryStreamEmailContent=null;
-			AlternateView alternateView=null;
-			try {
-				smtpClient=new SmtpClient(emailAddress.SMTPserver,emailAddress.ServerPort);
-				//The default credentials are not used by default, according to: 
-				//http://msdn2.microsoft.com/en-us/library/system.net.mail.smtpclient.usedefaultcredentials.aspx
-				smtpClient.Credentials=new NetworkCredential(emailAddress.EmailUsername.Trim(),MiscUtils.Decrypt(emailAddress.EmailPassword));
-				smtpClient.DeliveryMethod=SmtpDeliveryMethod.Network;
-				smtpClient.EnableSsl=emailAddress.UseSSL;
-				smtpClient.Timeout=180000;//3 minutes
-				mailMessage=new MailMessage();
-				string contentType="text/plain";//This is the default value that C# would use if we did not specify a Content-Type.  However we need to specify the Content-Type for the AlternateView.
-				for(int i=0;i<outgoingMessage.Message.Headers.Count;i++) {//This copies all headers, including but not limited to: From/To/Subject/Date/MessageID/etc...
-					string name=outgoingMessage.Message.Headers[i].Name;
-					string val=outgoingMessage.Message.Headers[i].ValueRaw;
-					switch(name.ToUpper()) {
-						case "BCC":
-							mailMessage.Bcc.Add(val.Trim());
-							break;
-						case "CC":
-							mailMessage.CC.Add(val.Trim());
-							break;
-						case "CONTENT-TYPE":
-							contentType=val;
-							break;
-						case "FROM":
-							mailMessage.From=new MailAddress(val.Trim());
-							break;
-						case "PRIORITY":
-							mailMessage.Priority=MailPriority.Normal;
-							if(val.ToLower()=="high") {
-								mailMessage.Priority=MailPriority.High;
-							}
-							else if(val.ToLower()=="low") {
-								mailMessage.Priority=MailPriority.Low;
-							}
-							break;
-						case "REPLY-TO":
-							mailMessage.ReplyTo=new MailAddress(val.Trim());
-							break;
-						case "REPLY-TO-LIST":
-							string[] stringArray=val.Split(',');
-							for(int j=0;j<stringArray.Length;j++) {
-								mailMessage.ReplyToList.Add(stringArray[j].Trim());
-							}
-							break;
-						case "SENDER":
-							mailMessage.Sender=new MailAddress(val.Trim());
-							break;
-						case "SUBJECT":
-							mailMessage.Subject=SubjectTidy(val);
-							break;
-						case "TO":
-							mailMessage.To.Add(val.Trim());
-							break;
-						default: //Other headers, such as MessageID, which is needed for Direct messaging, but is not part of the standard MailMessage object.
-							mailMessage.Headers.Add(name,val);//Add to header verbatim.
-							break;
-					}
-				}
-				//Using an AlternateView is the only way to specify a custom Content-Type.  Both encrypted email and signed email messages have special Content-Types.  Necessary for Direct messaging.
-				byte[] byteArrayContent=Encoding.UTF8.GetBytes(outgoingMessage.Message.Body.Text);//This includes the body and all attachments.  Should have already been formatted properly by the Direct library.
-				memoryStreamEmailContent=new MemoryStream(byteArrayContent);
-				memoryStreamEmailContent.Position=0;
-				alternateView=new AlternateView(memoryStreamEmailContent,contentType);
-				alternateView.TransferEncoding=TransferEncoding.SevenBit;//Default is base64, but 7bit is much easier to read/debug.
-				mailMessage.AlternateViews.Add(alternateView);
-				smtpClient.Send(mailMessage);
-				memoryStreamEmailContent.Dispose();
-				SecurityLogs.MakeLogEntry(EnumPermType.EmailSend,patNum,"Email Sent");
-			}
-			finally {
-				//Dispose of the client and messages here. For large customers, sending thousands of emails will start to fail until they restart the
-				//app. Freeing memory here can prevent OutOfMemoryExceptions.
-				smtpClient?.Dispose();
-				mailMessage?.Dispose();
-				memoryStreamEmailContent?.Dispose();
-				alternateView?.Dispose();
-			}
-		}
-
-		///<summary>Throws exceptions.  Attempts to physically send the message over the network wire. This is used from wherever email needs to be sent throughout the program. If a message must be encrypted, then encrypt it before calling this function. nameValueCollectionHeaders can be null.</summary>
-		private static void SendEmailUnsecure(EmailMessage emailMessage,EmailAddress emailAddress,NameValueCollection nameValueCollectionHeaders,params AlternateView[] alternateViewArray) {
+		///<summary>Throws exceptions.  Attempts to physically send the message over the network wire. This is used from wherever email needs to be sent throughout the program. With x509Certificate2Signing the message is signed (SendEmailUnsecureWithSig).</summary>
+		private static void SendEmailUnsecure(EmailMessage emailMessage,EmailAddress emailAddress,X509Certificate2 x509Certificate2Signing=null) {
 			Meth.NoCheckMiddleTierRole();
 			//When batch email operations are performed, we sometimes do this check further up in the UI.  This check is here to as a catch-all.
 			if(RemotingClient.MiddleTierRole!=MiddleTierRole.ServerMT) {//server can send email without checking user
@@ -868,13 +525,13 @@ namespace OpenPmsDentalBusiness {
 			BasicEmailAddress basicEmailAddress=ODEmailAddressToBasic(emailAddress);
 			BasicEmailMessage basicEmailMessage=ODEmailMessageToBasic(emailMessage);
 			if(emailAddress.AuthenticationType==OAuthType.Google) {
-				SendEmailGmail(emailAddress,basicEmailAddress,basicEmailMessage,nameValueCollectionHeaders,alternateViewArray);
+				SendEmailGmail(emailAddress,basicEmailAddress,basicEmailMessage,x509Certificate2Signing);
 			}
 			else if(emailAddress.AuthenticationType==OAuthType.Microsoft) {
-				SendEmailMicrosoft(emailAddress,basicEmailAddress,basicEmailMessage,nameValueCollectionHeaders,alternateViewArray);
+				SendEmailMicrosoft(emailAddress,basicEmailAddress,basicEmailMessage,x509Certificate2Signing);
 			}
 			else {
-				Email.SendEmail.WireEmailUnsecure(basicEmailAddress,basicEmailMessage,nameValueCollectionHeaders,alternateViewArray);
+				Email.SendEmail.WireEmailUnsecure(basicEmailAddress,basicEmailMessage,x509Certificate2Signing);
 			}
 			emailMessage.UserNum=Security.CurUser.UserNum;
 			SecurityLogs.MakeLogEntry(EnumPermType.EmailSend,emailMessage.PatNum,"Email Sent");
@@ -886,7 +543,7 @@ namespace OpenPmsDentalBusiness {
 		///a batch fails at once instead of retrying. A 5xx is never retried, because the message may have been accepted. Throws ODException with a
 		///neutral message (GoogleAuthException when the address has to be authorized again).</summary>
 		internal static void SendEmailGmail(EmailAddress emailAddress,BasicEmailAddress basicEmailAddress,BasicEmailMessage basicEmailMessage,
-			NameValueCollection nameValueCollectionHeaders,AlternateView[] alternateViewArray)
+			X509Certificate2 x509Certificate2Signing=null)
 		{
 			DateTime dateTimeUntilUtc;
 			if(IsGmailSendingLimited(emailAddress.EmailAddressNum,DateTime.UtcNow,out dateTimeUntilUtc)) {
@@ -897,7 +554,7 @@ namespace OpenPmsDentalBusiness {
 			while(true) {
 				basicEmailAddress.AccessToken=GetLoopAccessToken(emailAddress,forceRefresh:hasRefreshed);
 				try {
-					Email.SendEmail.WireEmailUnsecure(basicEmailAddress,basicEmailMessage,nameValueCollectionHeaders,alternateViewArray);
+					Email.SendEmail.WireEmailUnsecure(basicEmailAddress,basicEmailMessage,x509Certificate2Signing);
 					return;
 				}
 				catch(Exception ex) {
@@ -932,13 +589,13 @@ namespace OpenPmsDentalBusiness {
 		///after a 5xx or a timeout (Microsoft365GraphClient reports SendOutcomeUnknown). Throws ODException with a neutral message; its
 		///InnerException is the Microsoft365Exception (Microsoft365AuthException when the mailbox has to sign in again).</summary>
 		internal static void SendEmailMicrosoft(EmailAddress emailAddress,BasicEmailAddress basicEmailAddress,BasicEmailMessage basicEmailMessage,
-			NameValueCollection nameValueCollectionHeaders,AlternateView[] alternateViewArray)
+			X509Certificate2 x509Certificate2Signing=null)
 		{
 			bool hasRefreshed=false;
 			while(true) {
 				basicEmailAddress.AccessToken=GetLoopAccessToken(emailAddress,forceRefresh:hasRefreshed);
 				try {
-					Email.SendEmail.WireEmailUnsecure(basicEmailAddress,basicEmailMessage,nameValueCollectionHeaders,alternateViewArray);
+					Email.SendEmail.WireEmailUnsecure(basicEmailAddress,basicEmailMessage,x509Certificate2Signing);
 					return;
 				}
 				catch(Exception ex) {
@@ -1119,26 +776,14 @@ namespace OpenPmsDentalBusiness {
 
 		#region Sending, signed
 
-		///<summary>Throws exceptions.  Uses the Direct library to sign the message, so that our unencrypted/signed messages are built the same way as our encrypted/signed messages. The provided certificate must contain a private key, or else the signing will fail (exception) when computing the signature digest.</summary>
+		///<summary>Throws exceptions.  Sends the message signed (S/MIME multipart/signed, SHA-256, not encrypted) with the certificate, which must
+		///contain its private key (GetCertFromPrivateStore). Signed with MimeKit; sent through MailKit on every port (implicit SSL too), or through
+		///the Gmail or Microsoft 365 API for those addresses, as unsigned mail is. The From address becomes the account's user name, the address the
+		///certificate is for.</summary>
 		private static void SendEmailUnsecureWithSig(EmailMessage emailMessage,EmailAddress emailAddressFrom,X509Certificate2 x509Certificate2Private) {
-			if(emailAddressFrom.IsImplicitSsl) {
-				throw new Exception(Lans.g("EmailMessages","Digitally signed messages cannot be sent over implicit SSL."));//See detailed comments in the private version of SendEmailUnsecure().
-			}
 			Meth.NoCheckMiddleTierRole();
-			emailMessage.UserNum=Security.CurUser.UserNum;
-			emailMessage.FromAddress=emailAddressFrom.EmailUsername.Trim();//Cannot be emailAddressFrom.SenderAddress, or else will not find the correct signing certificate.  Used in ConvertEmailMessageToMessage().
-			Health.Direct.Common.Mail.Message message=ConvertEmailMessageToMessage(emailMessage,true);
-			Health.Direct.Agent.MessageEnvelope messageEnvelope=new Health.Direct.Agent.MessageEnvelope(message);
-			Health.Direct.Agent.OutgoingMessage messageOut=new Health.Direct.Agent.OutgoingMessage(messageEnvelope);
-			Health.Direct.Agent.DirectAgent directAgent=GetDirectAgentForEmailAddress(emailMessage.FromAddress);
-			try {
-				Health.Direct.Common.Cryptography.SignedEntity signedEntity=directAgent.Cryptographer.Sign(messageOut.Message,x509Certificate2Private);//Compute the signature digest.  A hash of the certificate against the raw email content.
-				messageOut.Message.UpdateBody(signedEntity);//Modify the relevant message headers as well as the entire message body to include the signature digest.
-			}
-			catch(Exception ex) {
-				throw new ApplicationException(Lans.g("EmailMessages","Failed to sign outgoing email message, probably due to permissions: ")+ex.Message);
-			}
-			SendDirectUnsecure(messageOut,emailAddressFrom,emailMessage.PatNum);
+			emailMessage.FromAddress=emailAddressFrom.EmailUsername.Trim();//Cannot be emailAddressFrom.SenderAddress: the signature is for the user name.
+			SendEmailUnsecure(emailMessage,emailAddressFrom,x509Certificate2Private);
 		}
 
 		#endregion Sending
@@ -1163,9 +808,6 @@ namespace OpenPmsDentalBusiness {
 					emailMessageUid.MsgId=msgId;
 					EmailMessageUids.Insert(emailMessageUid);//Remember Uid was downloaded, to avoid email duplication the next time the inbox is refreshed.
 				});
-			//Since this function is fired automatically based on the inbox check interval, we also try to send the oldest unsent Ack.
-			//The goal is to keep trying to send the Acks at a reasonable interval until they are successfully delivered.
-			SendOldestUnsentAck(emailAddress);
 			return countNewEmails;
 		}
 
@@ -1618,236 +1260,176 @@ namespace OpenPmsDentalBusiness {
 			return listNewIds;
 		}
 
-		///<summary>Parses a raw email into a usable object.</summary>
-		public static Health.Direct.Agent.IncomingMessage RawEmailToIncomingMessage(string strRawEmailIn,EmailAddress emailAddressInbox) {
+		///<summary>The body text stored for a received S/MIME message whose whole body is application/pkcs7-mime (encrypted, or signed in the opaque
+		///form). Only the Direct Project agent could open these, with the inbox's private key; Direct was removed in the .NET 10 move (package S0-3)
+		///and the raw message is kept as it came.</summary>
+		public const string ENCRYPTED_BODY_TEXT="This message is protected with S/MIME (application/pkcs7-mime) and cannot be shown in this program. "
+			+"The original message is kept unchanged: click Raw Message to see it.";
+
+		///<summary>Throws ApplicationException when the text can't be read as an email. Parses a raw received email (as RawEmailIn stores it) with
+		///MimeKit. MimeKit's tolerant parser reads boundaries that start with another boundary, blank address headers, "undisclosed-recipients:;"
+		///and messages without recipients, which the Direct Project parser needed workarounds for.</summary>
+		public static MimeKit.MimeMessage RawEmailToMimeMessage(string strRawEmailIn) {
 			Meth.NoCheckMiddleTierRole();
-			Health.Direct.Agent.IncomingMessage incomingMessage=null;
-			string lastErrorMsg="";
-			#region Scrub Boundaries
-			//Find all of the boundaries within the raw email and force them to be unique
-			//Some third parties will format their boundaries in a way that that does not parse correctly. E.g.:
-			//boundary #1 = D775FB8094F7C52EF0C994F5B1152B71
-			//boundary #2 = D775FB8094F7C52EF0C994F5B1152B712
-			//boundary #3 = D775FB8094F7C52EF0C994F5B1152B713
-			//etc.
-			List<string> listBoundaries=new List<string>();
-			MatchCollection matchCollection=Regex.Matches(strRawEmailIn,@"boundary=""(.*)""");
-			for(int i=0;i<matchCollection.Count;i++) {
-				if(!matchCollection[i].Success || matchCollection[i].Groups.Count < 2) {
-					continue;
-				}
-				listBoundaries.Add(matchCollection[i].Groups[1].Value);
+			return RawEmailToMimeMessage(strRawEmailIn,out _);
+		}
+
+		///<summary>RawEmailToMimeMessage; encodingRaw turns bytes back into text in the form strRawEmailIn has (GetRawEmailBytes).</summary>
+		internal static MimeKit.MimeMessage RawEmailToMimeMessage(string strRawEmailIn,out Encoding encodingRaw) {
+			if(string.IsNullOrWhiteSpace(strRawEmailIn)) {
+				//Sent email and secure web mail have no raw message. MimeKit would read nothing as an empty text part.
+				throw new ApplicationException("Failed to parse raw email message.\r\nThe raw message is blank.");
 			}
-			bool hasValidBoundaries=true;
-			for(int i=0;i<listBoundaries.Count;i++) {
-				if(listBoundaries.Exists(x => x!=listBoundaries[i] && x.StartsWith(listBoundaries[i]))) {
-					hasValidBoundaries=false;
+			byte[] byteArrayRaw=GetRawEmailBytes(strRawEmailIn,out encodingRaw);
+			try {
+				using(MemoryStream memoryStream=new MemoryStream(byteArrayRaw,false)) {
+					return MimeKit.MimeMessage.Load(memoryStream);
+				}
+			}
+			catch(Exception ex) {
+				throw new ApplicationException("Failed to parse raw email message.\r\n"+ex.Message,ex);
+			}
+		}
+
+		///<summary>The bytes a raw received email came as. The Gmail and Microsoft 365 imports store each byte as one Latin-1 character
+		///(MimeMessage.ToString); the POP3 download stores the text of the bytes in the charset of the top-level Content-Type (GetPop3BodyEncoding),
+		///which only differs from that for a message of one part with non-ASCII text. encoding turns the bytes back into the same form of text.</summary>
+		internal static byte[] GetRawEmailBytes(string strRawEmail,out Encoding encoding) {
+			Encoding encodingLatin1=Encoding.GetEncoding(28591);
+			bool isAscii=true;
+			bool isLatin1=true;
+			for(int i=0;i<strRawEmail.Length;i++) {
+				if(strRawEmail[i]>0xFF) {
+					isAscii=false;
+					isLatin1=false;
 					break;
 				}
-			}
-			//Replace all of the boundaries if any show up more than 4 times which indicates that they are not unique enough and need to be replaced.
-			if(!hasValidBoundaries) {
-				for(int i=0;i<listBoundaries.Count;i++) {
-					//Replace this boundary within the raw email string with a better formatted boundary.
-					//There are three explicit ways to utilize the boundary and we will replace each one with:
-					//#1:  boundary="[uniqueBoundaryID]"
-					//#2:  --[uniqueBoundaryID]
-					//#3:  --[uniqueBoundaryID]--
-					/******************************************************************************************
-						Boundary syntax via https://www.w3.org/Protocols/rfc1341/7_2_Multipart.html is as follows:
-						boundary := 0*69<bchars> bcharsnospace
-						bchars := bcharsnospace / " "
-						bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" /
-														"+" / "_" / "," / "-" / "." /
-														"/" / ":" / "=" / "?"
-					*******************************************************************************************/
-					//Generate a GUID and use ToString("N") which returns 32 hexadecimal digits with no formatting.
-					//https://docs.microsoft.com/en-us/dotnet/api/system.guid.tostring?view=netframework-4.5.2
-					string boundaryNew=Guid.NewGuid().ToString("N");
-					strRawEmailIn=Regex.Replace(strRawEmailIn,"boundary=\""+listBoundaries[i]+"\"","boundary=\""+boundaryNew+"\"");
-					strRawEmailIn=Regex.Replace(strRawEmailIn,"\r\n--"+listBoundaries[i]+"\r\n","\r\n--"+boundaryNew+"\r\n");
-					strRawEmailIn=Regex.Replace(strRawEmailIn,"\r\n--"+listBoundaries[i]+"--","\r\n--"+boundaryNew+"--");
+				if(strRawEmail[i]>0x7F) {
+					isAscii=false;
 				}
 			}
-			#endregion
-			for(int i=0;i<5;i++) {//We will exit if unknown error or if previous error was the same as current error.
+			byte[] byteArrayLatin1=encodingLatin1.GetBytes(strRawEmail);//Characters beyond Latin-1 become '?', which is enough to read the headers.
+			if(isAscii) {
+				encoding=encodingLatin1;
+				return byteArrayLatin1;
+			}
+			Encoding encodingCharset=GetRawEmailCharset(byteArrayLatin1);
+			if(isLatin1) {
+				//Latin-1 bytes of UTF-8 text are valid UTF-8; text the POP3 download read as UTF-8 with an accented letter is not.
+				if(encodingCharset!=null && encodingCharset.CodePage==65001 && !IsValidUtf8(byteArrayLatin1)) {
+					encoding=new UTF8Encoding(false);
+					return encoding.GetBytes(strRawEmail);
+				}
+				encoding=encodingLatin1;
+				return byteArrayLatin1;
+			}
+			//Characters beyond Latin-1 come only from the POP3 download: the text of the bytes in the top-level charset.
+			if(encodingCharset!=null) {
 				try {
-					incomingMessage=new Health.Direct.Agent.IncomingMessage(strRawEmailIn);//Used to parse all email (encrypted or not).
-					break;
+					Encoding encodingStrict=Encoding.GetEncoding(encodingCharset.CodePage,EncoderFallback.ExceptionFallback,DecoderFallback.ReplacementFallback);
+					byte[] byteArrayCharset=encodingStrict.GetBytes(strRawEmail);
+					encoding=Encoding.GetEncoding(encodingCharset.CodePage);
+					return byteArrayCharset;
 				}
 				catch(Exception ex) {
-					if(ex.Message==lastErrorMsg) {//Our last attempt to fix the issue failed.
-						throw new ApplicationException("Failed to parse raw email message.\r\n"+ex.Message);
-					}
-					if(ex.Message=="Error=MissingHeaderValue") {
-						//The "Welcome to Email" message from GoDaddy has a blank CC field which causes the IncomingMessage() constructor to throw an exception.
-						//The TO header can be blank because it is not required, since the user could put all destination addresses in either CC or BCC alone.  We tested this.
-						strRawEmailIn=Regex.Replace(strRawEmailIn,@"TO:[ \t]*\r\n","",RegexOptions.IgnoreCase);//Remove the TO header if it is any number of spaces or tabs followed by exactly one newline.
-						strRawEmailIn=Regex.Replace(strRawEmailIn,@"BCC:[ \t]*\r\n","",RegexOptions.IgnoreCase);//BCC before CC, since CC is partial match of BCC
-						strRawEmailIn=Regex.Replace(strRawEmailIn,@"CC:[ \t]*\r\n","",RegexOptions.IgnoreCase);//Remove the CC header if it is any number of spaces or tabs followed by exactly one newline.
-					}
-					else if(ex.Message=="An invalid character was found in the mail header: ';'.") {
-						//When all recipients are in the bcc field, some clients (gmail) inputs "undisclosed-recipients:;" into the TO field, which causes an error to be thrown.
-						strRawEmailIn=Regex.Replace(strRawEmailIn,@"undisclosed[ -]*recipients:[\t ]*;","",RegexOptions.IgnoreCase);//Remove "undisclosed-recipients".
-					}
-					else if(ex.Message=="Error=NoRecipients") {
-						//When all recipients are in the bcc field, some clients (Apple mail) remove all address fields (To, cc, bcc) from the header, which causes an error to be thrown.
-						//the code below attempts to add a bcc field with the user's email into the header (seems to work for emails coming from Apple mail)
-						int lengthEmail=strRawEmailIn.Length;
-						string username;
-						if(emailAddressInbox==null) {
-							username="";
-						}
-						else if(emailAddressInbox.EmailUsername==null) {
-							username="Failed to match email address";
-						}
-						else {
-							username=emailAddressInbox.EmailUsername;
-						}
-						strRawEmailIn=Regex.Replace(strRawEmailIn,@"Subject: ",
-							"Bcc: "+username+"\r\nSubject: ",RegexOptions.IgnoreCase);
-						if(strRawEmailIn.Length==lengthEmail) {
-							//If the email didn't have a subject, try again with 'From'.
-							strRawEmailIn=Regex.Replace(strRawEmailIn,@"From: ",
-								"Bcc: "+username+"\r\nFrom: ",RegexOptions.IgnoreCase);
-						}
-					}
-					else {
-						throw new ApplicationException("Failed to parse raw email message.\r\n"+ex.Message);
-					}
-					lastErrorMsg=ex.Message;
+					ex.DoNothing();//The text has characters the charset can't hold: not the POP3 form after all.
 				}
 			}
-			return incomingMessage;
+			encoding=new UTF8Encoding(false);
+			return encoding.GetBytes(strRawEmail);
 		}
 
-		///<summary>Throws various exceptions if decryption fails.  Decryption will fail if the sender is not yet trusted by the recipient.  Decrypts and valudates trust.  If decrypted successfully, removes the sender signature from the decrypted attachments and moves them into incomingMessage.Signatures.</summary>
-		private static Health.Direct.Agent.IncomingMessage DecryptIncomingMessage(Health.Direct.Agent.IncomingMessage incomingMessage) {
-			Meth.NoCheckMiddleTierRole();
-			Health.Direct.Agent.DirectAgent directAgent=GetDirectAgentForEmailAddress(incomingMessage.Message.ToValue.Trim());
-			//throw new ApplicationException("test decryption failure");
-			return directAgent.ProcessIncoming(incomingMessage);//Decrypts and valudates trust.  Also removes the signature from the decrypted attachments and moves them into incomingMessage.Signatures.
+		///<summary>The charset of the top-level Content-Type of the raw message, or null when it names none or one .NET does not know.</summary>
+		private static Encoding GetRawEmailCharset(byte[] byteArrayRaw) {
+			try {
+				MimeKit.HeaderList headerList;
+				using(MemoryStream memoryStream=new MemoryStream(byteArrayRaw,false)) {
+					headerList=MimeKit.HeaderList.Load(memoryStream);
+				}
+				string contentType=headerList[MimeKit.HeaderId.ContentType];
+				if(string.IsNullOrEmpty(contentType) || !MimeKit.ContentType.TryParse(contentType,out MimeKit.ContentType contentTypeParsed)
+					|| string.IsNullOrEmpty(contentTypeParsed.Charset))
+				{
+					return null;
+				}
+				return contentTypeParsed.CharsetEncoding;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return null;
+			}
 		}
 
-		///<summary>Converts any raw email message (encrypted or not) into an EmailMessage object, and saves any email attachments to the emailattach table in the db.
-		///The emailMessageNum will be used to set EmailMessage.EmailMessageNum.  If emailMessageNum is 0, then the EmailMessage will be inserted into the db, otherwise the EmailMessage will be updated in the db.
-		///If the raw message is encrypted, then will attempt to decrypt.  If decryption fails, then the EmailMessage SentOrReceived will be ReceivedEncrypted and the EmailMessage body will be set to the entire contents of the raw email.
-		///If decryption succeeds, then EmailMessage SentOrReceived will be set to ReceivedDirect, the EmailMessage body will contain the decrypted body text, and a Direct Ack "processed" message will be sent back to the sender using the email settings from emailAddressReceiver.
-		///Set isAck to true if decrypting a direct message, false otherwise.
+		private static bool IsValidUtf8(byte[] byteArray) {
+			try {
+				new UTF8Encoding(false,true).GetString(byteArray);
+				return true;
+			}
+			catch(ArgumentException) {
+				return false;
+			}
+		}
+
+		///<summary>Converts any raw received email into an EmailMessage object, and saves its attachments to the emailattach table in the db.
+		///The emailMessageNum will be used to set EmailMessage.EmailMessageNum.  If emailMessageNum is 0, then the EmailMessage will be inserted into
+		///the db, otherwise the EmailMessage will be updated in the db. A message whose whole body is S/MIME (application/pkcs7-mime, encrypted) can't
+		///be opened: it is stored with SentOrReceived ReceivedEncrypted, the body ENCRYPTED_BODY_TEXT and the raw message unchanged, and only when it
+		///is new (an encrypted message that is already in the database throws). A signed message (multipart/signed) shows its content and keeps its
+		///signature as the attachment smime.p7s. isAck is no longer used: it asked for the Direct acknowledgement of a decrypted message.
 		///Setting sentOrReceivedUnencrypted only works for unencrypted emails.  Currently used by DBM so that it doesn't force the status to received.</summary>
 		public static EmailMessage ProcessRawEmailMessageIn(string strRawEmail,long emailMessageNum,EmailAddress emailAddressReceiver,bool isAck
-			,EmailSentOrReceived emailSentOrReceivedUnencrypted=EmailSentOrReceived.Received) 
+			,EmailSentOrReceived emailSentOrReceivedUnencrypted=EmailSentOrReceived.Received)
 		{
 			Meth.NoCheckMiddleTierRole();
-			Health.Direct.Agent.IncomingMessage incomingMessage=RawEmailToIncomingMessage(strRawEmail,emailAddressReceiver);
-			bool isEncrypted=IsMimeEntityEncrypted(incomingMessage.Message);
+			MimeKit.MimeMessage mimeMessage=RawEmailToMimeMessage(strRawEmail,out Encoding encodingRaw);
 			EmailMessage emailMessage=null;
-			if(isEncrypted) {
-				emailMessage=ConvertMessageToEmailMessage(incomingMessage.Message,false,false);//Exclude attachments until we decrypt.
-				emailMessage.RawEmailIn=strRawEmail;//The raw encrypted email, including the message, the attachments, and the signature.  The body of the encrypted email is just a base64 string until decrypted.
+			if(IsMimeMessageEncrypted(mimeMessage)) {
+				emailMessage=ConvertMimeMessageToEmailMessage(mimeMessage,false,emailAddressReceiver);
+				emailMessage.BodyText=Lans.g("EmailMessages",ENCRYPTED_BODY_TEXT);
+				emailMessage.RawEmailIn=strRawEmail;//The raw encrypted email, as it came.
 				emailMessage.EmailMessageNum=emailMessageNum;
 				emailMessage.SentOrReceived=EmailSentOrReceived.ReceivedEncrypted;
 				emailMessage.RecipientAddress=emailAddressReceiver.EmailUsername.Trim();
-				//The entire contents of the email are saved in the emailMessage.BodyText field, so that if decryption fails, the email will still be saved to the db for decryption later if possible.
-				emailMessage.BodyText=strRawEmail;
+				if(emailMessageNum==0) {
+					Insert(emailMessage);
+					return emailMessage;
+				}
+				//Nothing can change for an encrypted message that is already stored.
+				throw new ApplicationException(Lans.g("EmailMessages","Encrypted messages cannot be shown."));
+			}
+			//First check to see if attachments have already been digested for this email.
+			List<EmailAttach> listEmailAttaches=EmailAttaches.GetForEmail(emailMessageNum); //will return an empty list if emailmessagenum == 0
+			bool parseAttachments=true;//Always parse attachments from the strRawEmail unless we've already parsed them before.
+			if(listEmailAttaches.Count > 0) {
+				//Attachments have already been parsed so do not waste time re-parsing.
+				//Re-parsing attachments would be very bad because there is a good chance that strRawEmail has cleared out the body portion of attachments.
+				//The actual attachments will be affected (erased) if these attachments are re-parsed due to the body portions being blank.
+				parseAttachments=false;
+			}
+			emailMessage=ConvertMimeMessageToEmailMessage(mimeMessage,parseAttachments,emailAddressReceiver);
+			emailMessage.RawEmailIn=strRawEmail;
+			//Set the Attachments on emailMessage if the attachments weren't parsed from strRawEmail.
+			if(!parseAttachments) {
+				//Calling EmailMessages.Update() will delete all email attachments and sync them with the current list of attachments even if no changes.
+				//Therefore, we need to make sure to have the Attachments variable set to the "old" (current really) list of attachments.
+				emailMessage.Attachments=listEmailAttaches;
+			}
+			//Only try and trim the fat from the RawEmailIn column if attachments with content are present.
+			if(GetAttachmentMimeParts(mimeMessage).Any(x => HasContent(x))) {
+				//At this point we know that the attachments have been successfully extracted from the raw message (now or some time in the past).
+				//Try to remove the attachment text from the raw email as to save space in the database.
 				try {
-					incomingMessage=DecryptIncomingMessage(incomingMessage);
-					emailMessage=ConvertMessageToEmailMessage(incomingMessage.Message,true,false);//If the message was wrapped, then the To, From, Subject and Date can change after decyption. We also need to create the attachments for the decrypted message.
-					emailMessage.RawEmailIn=strRawEmail;//The raw encrypted email, including the message, the attachments, and the signature.  The body of the encrypted email is just a base64 string until decrypted.
-					emailMessage.EmailMessageNum=emailMessageNum;
-					emailMessage.SentOrReceived=EmailSentOrReceived.ReceivedDirect;
-					emailMessage.RecipientAddress=emailAddressReceiver.EmailUsername.Trim();
-					if(incomingMessage.HasSenderSignatures) {
-						for(int i=0;i<incomingMessage.SenderSignatures.Count;i++) {
-							EmailAttach emailAttach=EmailAttaches.CreateAttach("smime.p7s","",incomingMessage.SenderSignatures[i].Certificate.GetRawCertData(),false);
-							emailMessage.Attachments.Add(emailAttach);
-						}
-					}
+					emailMessage.RawEmailIn=DissolveAttachmentsFromMimeMessage(mimeMessage,encodingRaw);
 				}
-				catch(Exception) {
-					//SentOrReceived will be ReceivedEncrypted, indicating to the calling code that decryption failed.
-					//The decryption step may have failed due to an untrusted sender, in which case the decrypting actually took place and the signature was extracted.
-					//We add the signature to the email message so it will show up next to the email message in the inbox and make it easier for the user to add trust for the sender.
-					if(incomingMessage.HasSenderSignatures) {
-						for(int i=0;i<incomingMessage.SenderSignatures.Count;i++) {
-							EmailAttach emailAttach=EmailAttaches.CreateAttach("smime.p7s","",incomingMessage.SenderSignatures[i].Certificate.GetRawCertData(),false);
-							emailMessage.Attachments.Add(emailAttach);
-						}
-					}
-					if(emailMessageNum==0) {
-						Insert(emailMessage);
-						return emailMessage;//If the message was just downloaded, then this function was called from the inbox, simply return the inserted email without an exception (it can be decypted later manually by the user).
-					}
-					//Do not update if emailMessageNum<>0, because nothing changed (was encrypted and still is).
-					throw;//Throw an exception if trying to decrypt an email that was already in the database, so the user can see the error message in the UI.
+				catch(Exception ex) {
+					ex.DoNothing();//Something went wrong so keep the "bloat" in the database because it is the safest option.
 				}
 			}
-			else {//Unencrypted
-				//First check to see if attachments have already been digested for this email.
-				List<EmailAttach> listEmailAttaches=EmailAttaches.GetForEmail(emailMessageNum); //will return an empty list if emailmessagenum == 0
-				bool parseAttachments=true;//Always parse attachments from the strRawEmail unless we've already parsed them before.
-				if(listEmailAttaches.Count > 0) {
-					//Attachments have already been parsed so do not waste time re-parsing.
-					//Re-parsing attachments would be very bad because there is a good chance that strRawEmail has cleared out the body portion of attachments.
-					//The actual attachments will be affected (erased) if these attachments are re-parsed due to the body portions being blank.
-					parseAttachments=false;
-				}
-				emailMessage=ConvertMessageToEmailMessage(incomingMessage.Message,parseAttachments,false);
-				emailMessage.RawEmailIn=strRawEmail;
-				//Set the Attachments on emailMessage if the attachments weren't parsed from strRawEmail.
-				if(!parseAttachments) {
-					//Calling EmailMessages.Update() will delete all email attachments and sync them with the current list of attachments even if no changes.
-					//Therefore, we need to make sure to have the Attachments variable set to the "old" (current really) list of attachments.
-					emailMessage.Attachments=listEmailAttaches;
-				}
-				//Only try and trim the fat from the RawEmailIn column if attachments are present.
-				if(GetAttachmentMimeParts(incomingMessage.Message,1).Count==1) {
-					//At this point we know that the attachments have been successfully extracted from the raw message (now or some time in the past).
-					//Try to remove the attachment text from the raw email as to save space in the database.
-					try {
-						emailMessage.RawEmailIn=DissolveAttachmentsFromIncomingMessage(incomingMessage);
-					}
-					catch {
-						//Something went wrong so keep the "bloat" in the database because it is the safest option.
-					}
-				}
-				else {//No attachments present.
-					//No need to try and annul attachment body text from strRawEmail because it doesn't have any attachments.
-				}
-				emailMessage.EmailMessageNum=emailMessageNum;
-				emailMessage.SentOrReceived=emailSentOrReceivedUnencrypted;
-				emailMessage.RecipientAddress=emailAddressReceiver.EmailUsername.Trim();
-			}
-			EhrSummaryCcd ehrSummaryCcd=null;
-			if(isEncrypted) {
-				for(int i=0;i<emailMessage.Attachments.Count;i++) {
-					if(Path.GetExtension(emailMessage.Attachments[i].ActualFileName).ToLower()!=".xml") {
-						continue;
-					}
-					string strAttachPath=EmailAttaches.GetAttachPath();
-					string strAttachText=FileAtoZ.ReadAllText(FileAtoZ.CombinePaths(strAttachPath,emailMessage.Attachments[i].ActualFileName));
-					if(EhrCCD.IsCCD(strAttachText)) {
-						if(emailMessage.PatNum==0) {
-							try {
-								XmlDocument xmlDocCcd=new XmlDocument();
-								xmlDocCcd.LoadXml(strAttachText);
-								emailMessage.PatNum=EhrCCD.GetCCDpat(xmlDocCcd);// A match is not guaranteed, which is why we have a button to allow the user to change the patient.
-							}
-							catch {
-								//Invalid XML.  Cannot match patient.
-							}
-						}
-						ehrSummaryCcd=new EhrSummaryCcd();
-						ehrSummaryCcd.ContentSummary=strAttachText;
-						ehrSummaryCcd.DateSummary=DateTime.Today;
-						ehrSummaryCcd.EmailAttachNum=i;//Temporary value, so we can locate the FK down below.
-						ehrSummaryCcd.PatNum=emailMessage.PatNum;
-						break;//We can only handle one CCD message per email, because we only have one patnum field per email record and the ehrsummaryccd record requires a patnum.
-					}
-				}
-			}
+			emailMessage.EmailMessageNum=emailMessageNum;
+			emailMessage.SentOrReceived=emailSentOrReceivedUnencrypted;
+			emailMessage.RecipientAddress=emailAddressReceiver.EmailUsername.Trim();
 			if(emailMessage.PatNum==0) {//If a patient match was not already found, try to locate patient based on the email address sent from.
-				string emailFromAddress=GetAddressSimple(emailMessage.FromAddress); 
+				string emailFromAddress=GetAddressSimple(emailMessage.FromAddress);
 				List<Patient> listPatientsMatched=Patients.GetPatsByEmailAddress(emailFromAddress);
 				if(listPatientsMatched.Count==1) {//If multiple matches, then we do not want to mislead the user by assigning a patient.
 					emailMessage.PatNum=listPatientsMatched[0].PatNum;
@@ -1859,105 +1441,96 @@ namespace OpenPmsDentalBusiness {
 			else {
 				Update(emailMessage);
 			}
-			if(ehrSummaryCcd!=null) {
-				ehrSummaryCcd.EmailAttachNum=emailMessage.Attachments[(int)ehrSummaryCcd.EmailAttachNum].EmailAttachNum;
-				EhrSummaryCcds.Insert(ehrSummaryCcd);
-			}
-			if(isEncrypted && isAck) {
-				//Send a Message Disposition Notification (MDN) message to the sender, as required by the Direct messaging specifications.
-				//The MDN will be attached to the same patient as the incoming message.
-				SendAckDirect(incomingMessage,emailAddressReceiver,emailMessage.PatNum);
-			}
 			return emailMessage;
 		}
 
-		///<summary>Email bodies can have multiple parts.  Usually, for HTML email, there will be one HTML mime part plus one mime part for each image (in base64) which is part of the email message.  HTML messages usually also have one mime part for the text version of the email message, in case the email client does not have html capabilities.  This function extracts the text for all mime body parts which fully or partially match the specified mime content types.  For example, you could specify a mime content of "image/" to find images of all types, or you could specify a mime content type of "image/jpeg" to find only jpeg images.  Always returns one valid list for each specified mime content types, where the individual lists are always present but may be zero length.</summary>
-		public static List<List<Health.Direct.Common.Mime.MimeEntity>> GetMimePartsForMimeTypes(string strRawEmailIn,EmailAddress emailAddressInbox,
+		///<summary>True for an S/MIME message whose whole body is application/pkcs7-mime (or the older x-pkcs7-mime): encrypted (enveloped-data), or
+		///signed in the opaque form.</summary>
+		private static bool IsMimeMessageEncrypted(MimeKit.MimeMessage mimeMessage) {
+			MimeKit.MimeEntity mimeEntityBody=mimeMessage.Body;
+			if(mimeEntityBody==null) {
+				return false;
+			}
+			return mimeEntityBody.ContentType.IsMimeType("application","pkcs7-mime") || mimeEntityBody.ContentType.IsMimeType("application","x-pkcs7-mime");
+		}
+
+		///<summary>Email bodies can have multiple parts.  Usually, for HTML email, there will be one HTML mime part plus one mime part for each image (in base64) which is part of the email message.  HTML messages usually also have one mime part for the text version of the email message, in case the email client does not have html capabilities.  This function extracts all mime body parts which fully or partially match the specified mime content types (type/subtype, compared without case).  For example, you could specify a mime content of "image/" to find images of all types, or you could specify a mime content type of "image/jpeg" to find only jpeg images.  Always returns one valid list for each specified mime content types, where the individual lists are always present but may be zero length. An encrypted message, or text that is not an email, has none.</summary>
+		public static List<List<EmailMimePart>> GetMimePartsForMimeTypes(string strRawEmailIn,EmailAddress emailAddressInbox,
 			params string[] stringArrayMimeContentTypes)
 		{
 			Meth.NoCheckMiddleTierRole();
-			Health.Direct.Agent.IncomingMessage incomingMessage=null;
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntityLeafNodes=null;
+			List<MimeKit.MimePart> listMimePartsLeafNodes;
 			try {
-				incomingMessage=RawEmailToIncomingMessage(strRawEmailIn,emailAddressInbox);
-				if(IsMimeEntityEncrypted(incomingMessage.Message)) {
-					incomingMessage=DecryptIncomingMessage(incomingMessage);
-				}
-				listMimeEntityLeafNodes=GetMimeLeafNodes(incomingMessage.Message);
-				//If we were unable to read the mime parts, we will treat it as none found.
-				listMimeEntityLeafNodes=listMimeEntityLeafNodes??new List<Health.Direct.Common.Mime.MimeEntity>();
+				MimeKit.MimeMessage mimeMessage=RawEmailToMimeMessage(strRawEmailIn);
+				listMimePartsLeafNodes=GetMimeLeafNodes(mimeMessage).OfType<MimeKit.MimePart>().ToList();
 			}
-			catch {
+			catch(Exception ex) {
 				//Since we could not read the message, we cannot read the mime parts.  Therefore, none found.
-				listMimeEntityLeafNodes=new List<Health.Direct.Common.Mime.MimeEntity>();
+				ex.DoNothing();
+				listMimePartsLeafNodes=new List<MimeKit.MimePart>();
 			}
-			List<List<Health.Direct.Common.Mime.MimeEntity>> listListMimeEntitiesRet=new List<List<Health.Direct.Common.Mime.MimeEntity>>();
+			List<List<EmailMimePart>> listListMimePartsRet=new List<List<EmailMimePart>>();
 			for(int i=0;i<stringArrayMimeContentTypes.Length;i++) {
-				string mimeContentType=stringArrayMimeContentTypes[i];
-				List<Health.Direct.Common.Mime.MimeEntity> listMimeEntityParts=new List<Health.Direct.Common.Mime.MimeEntity>();
-				for(int j=0;j<listMimeEntityLeafNodes.Count;j++) {
-					if(listMimeEntityLeafNodes[j].ContentType.Contains(mimeContentType)) {
-						listMimeEntityParts.Add(listMimeEntityLeafNodes[j]);
-					}
-				}
-				listListMimeEntitiesRet.Add(listMimeEntityParts);
-			}			
-			return listListMimeEntitiesRet;
+				string mimeContentType=stringArrayMimeContentTypes[i].ToLowerInvariant();
+				listListMimePartsRet.Add(listMimePartsLeafNodes.FindAll(x => x.ContentType.MimeType.ToLowerInvariant().Contains(mimeContentType))
+					.Select(x => new EmailMimePart(x)).ToList());
+			}
+			return listListMimePartsRet;
 		}
 
-		public static string GetMimeImageFileName(Health.Direct.Common.Mime.MimeEntity mimeEntityForImage) {
+		///<summary>The file name of a MIME part, as CleanReceivedFileName leaves it: the name of its Content-Type, else the file name of its
+		///Content-Disposition (Gmail sometimes puts it there). It is the DisplayedFileName that the part's attachment was saved with, so the preview
+		///finds the saved attachment by it. Null when it has neither, or no name is left.</summary>
+		public static string GetMimeImageFileName(EmailMimePart emailMimePart) {
 			Meth.NoCheckMiddleTierRole();
-			string getFileNameFromField(string field) {
-				int nameIndexStart=field.ToLower().IndexOf("name=");
-				if(nameIndexStart>=0) {
-					nameIndexStart+=5;
-				}
-				else {
-					nameIndexStart=field.ToLower().IndexOf("filename=");
-					if(nameIndexStart>=0) {
-						nameIndexStart+=9;
-					}
-				}
-				if(nameIndexStart<0) {
-					return null;
-				}
-				int nameIndexEnd=field.IndexOf(';',nameIndexStart+1);
-				string fileName="";
-				if(nameIndexEnd>=0) {
-					fileName=field.Substring(nameIndexStart,nameIndexEnd-nameIndexStart+1);
-				}
-				else {
-					fileName=field.Substring(nameIndexStart);
-				}
-				return fileName.Replace("\"","").TrimEnd(';');
-			}
-			string filename=getFileNameFromField(mimeEntityForImage.ContentType);
-			if(string.IsNullOrEmpty(filename)) {
-				//Gmail sometimes puts the file name in the ContentDisposition field.
-				filename=getFileNameFromField(mimeEntityForImage.ContentDisposition);
-			}
-			return filename;
+			return GetMimeFileName(emailMimePart.MimePart);
 		}
 
-		public static string GetMimeImageContentId(Health.Direct.Common.Mime.MimeEntity mimeEntityForImage) {
-			Meth.NoCheckMiddleTierRole();
-			if(!mimeEntityForImage.Headers.Contains("Content-ID")) {
-				return "";
+		///<summary>The file name of a received MIME part (or attached message), cleaned: see GetMimeImageFileName.</summary>
+		private static string GetMimeFileName(MimeKit.MimeEntity mimeEntity) {
+			string fileName=mimeEntity.ContentType.Name;
+			if(string.IsNullOrEmpty(fileName)) {
+				fileName=mimeEntity.ContentDisposition?.FileName;
 			}
-			return mimeEntityForImage.Headers["Content-ID"].Value.Replace("<","").Replace(">","");
+			return CleanReceivedFileName(fileName);
+		}
+
+		///<summary>A file name that came with a received email, as it is shown and saved: the text after its last '/' or '\', with every character
+		///a file name can't hold replaced by '_' (ODFileUtils.CleanFileName). A received name is only a suggestion and its path information must be
+		///stripped (RFC 2183 2.3): the displayed name of an attachment is joined onto a folder when the user opens it (FileAtoZ.OpenFile), and
+		///MimeKit decodes names such as name*=us-ascii''..%5C..%5Cx.bat and an unquoted name=..\x.bat. Null when there is no name, or when only dots,
+		///underscores and spaces are left (such as "." and ".."): the attachment is then named "attach" (EmailAttaches.CreateAttach).</summary>
+		public static string CleanReceivedFileName(string fileName) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrWhiteSpace(fileName)) {
+				return null;
+			}
+			//Not Path.GetFileName: on .NET Framework it throws for '"', '<', '>' and '|'.
+			fileName=ODFileUtils.CleanFileName(fileName.Substring(fileName.LastIndexOfAny(new char[] { '/','\\' })+1));
+			if(fileName.Trim('.','_',' ')=="") {
+				return null;
+			}
+			return fileName;
+		}
+
+		///<summary>The Content-ID of a MIME part without its angle brackets, the id an html body refers to with "cid:". "" when it has none.</summary>
+		public static string GetMimeImageContentId(EmailMimePart emailMimePart) {
+			Meth.NoCheckMiddleTierRole();
+			return emailMimePart.MimePart.ContentId??"";
 		}
 
 		///<summary>The image of a MIME part of a received html message, as the bytes of an image file of the type its file name's extension names
 		///(GetMimeImageFileName): read from the email's saved attachment (sourceFileName in the email attachments folder) when it can be, else from
 		///the part itself. Null when the part is not base64 or the image could not be read. In memory only: the email preview's Show Images hands
 		///these to the browser (ODWebView2.NavigateToHtml), so no image of a received email is written to disk to show it.</summary>
-		public static byte[] GetMimeImageBytes(Health.Direct.Common.Mime.MimeEntity mimeEntityForImage,string sourceFileName) {
+		public static byte[] GetMimeImageBytes(EmailMimePart emailMimePart,string sourceFileName) {
 			Meth.NoCheckMiddleTierRole();
-			if(!IsMimeEntityBase64(mimeEntityForImage)) {
+			MimeKit.MimePart mimePartForImage=emailMimePart.MimePart;
+			if(mimePartForImage.ContentTransferEncoding!=MimeKit.ContentEncoding.Base64) {
 				return null;
 			}
 			try {
-				string fileName=GetMimeImageFileName(mimeEntityForImage);
+				string fileName=GetMimeFileName(mimePartForImage);
 				string fileExt=Path.GetExtension(fileName);
 				MemoryStream memoryStream=null;
 				Bitmap bitmap=null;
@@ -1967,13 +1540,9 @@ namespace OpenPmsDentalBusiness {
 					bitmap=FileAtoZ.GetImage(FileAtoZ.CombinePaths(EmailAttaches.GetAttachPath(),sourceFileName));
 				}
 				catch(Exception ex) {
-					//Something went wrong fetching image from file. Attempt to get from mimeEntityForImage, in case we didn't extract it during download.
+					//Something went wrong fetching image from file. Attempt to get from mimePartForImage, in case we didn't extract it during download.
 					ex.DoNothing();
-					if(!IsMimeEntityBase64(mimeEntityForImage)) {
-						return null;
-					}
-					byte[] byteArrayForImage=Convert.FromBase64String(mimeEntityForImage.Body.Text);
-					memoryStream=new MemoryStream(byteArrayForImage);
+					memoryStream=new MemoryStream(GetMimeEntityBytes(mimePartForImage));
 					bitmap=new Bitmap(memoryStream);
 				}
 				System.Drawing.Imaging.ImageFormat imageFormat=System.Drawing.Imaging.ImageFormat.Jpeg;
@@ -2030,21 +1599,271 @@ namespace OpenPmsDentalBusiness {
 			return null;
 		}
 
+		///<summary>The MIME parts of the message that have no child parts, in the order the Direct-based parser listed them: the children of the
+		///top-level part first, then those of each multipart child in turn. An attached message (message/rfc822) is one leaf.</summary>
+		private static List<MimeKit.MimeEntity> GetMimeLeafNodes(MimeKit.MimeMessage mimeMessage) {
+			Meth.NoCheckMiddleTierRole();
+			List<MimeKit.MimeEntity> listMimeEntitiesLeafNodes=new List<MimeKit.MimeEntity>();
+			if(mimeMessage.Body==null) {
+				return listMimeEntitiesLeafNodes;
+			}
+			if(!(mimeMessage.Body is MimeKit.Multipart)) {
+				listMimeEntitiesLeafNodes.Add(mimeMessage.Body);//Single body part.
+				return listMimeEntitiesLeafNodes;
+			}
+			//Think of the mime structure as a tree.
+			List<MimeKit.Multipart> listMultiparts=new List<MimeKit.Multipart>() { (MimeKit.Multipart)mimeMessage.Body };
+			while(listMultiparts.Count>0) {
+				MimeKit.Multipart multipart=listMultiparts[0];
+				listMultiparts.RemoveAt(0);
+				for(int i=0;i<multipart.Count;i++) {
+					if(multipart[i] is MimeKit.Multipart multipartChild) {
+						listMultiparts.Add(multipartChild);
+						continue;
+					}
+					listMimeEntitiesLeafNodes.Add(multipart[i]);
+				}
+			}
+			return listMimeEntitiesLeafNodes;
+		}
+
+		///<summary>All attachment mime parts of the message (leaf parts with a Content-Disposition, 'attachment' and 'inline' alike,
+		///https://www.ietf.org/rfc/rfc2183.txt), including older attachments from the beginning of the email thread.</summary>
+		private static List<MimeKit.MimeEntity> GetAttachmentMimeParts(MimeKit.MimeMessage mimeMessage) {
+			Meth.NoCheckMiddleTierRole();
+			return GetMimeLeafNodes(mimeMessage).FindAll(x => x.ContentDisposition!=null);
+		}
+
+		///<summary>True if the part still holds content: an attached message, or a part whose content is not empty.</summary>
+		private static bool HasContent(MimeKit.MimeEntity mimeEntity) {
+			if(mimeEntity is MimeKit.MessagePart messagePart) {
+				return messagePart.Message!=null;
+			}
+			MimeKit.MimePart mimePart=mimeEntity as MimeKit.MimePart;
+			return mimePart!=null && mimePart.Content!=null && mimePart.Content.Stream.Length>0;
+		}
+
+		///<summary>The decoded content of a leaf part (base64 and quoted-printable undone), or the attached message as its bytes.</summary>
+		private static byte[] GetMimeEntityBytes(MimeKit.MimeEntity mimeEntity) {
+			using(MemoryStream memoryStream=new MemoryStream()) {
+				if(mimeEntity is MimeKit.MessagePart messagePart) {
+					messagePart.Message?.WriteTo(memoryStream);
+				}
+				else if(mimeEntity is MimeKit.MimePart mimePart) {
+					mimePart.Content?.DecodeTo(memoryStream);
+				}
+				return memoryStream.ToArray();
+			}
+		}
+
+		///<summary>Throws exceptions. Annuls the content of all attachment mime parts (the Base64 content); their headers stay. Returns the entire
+		///message as raw text in the form the raw email came in (encodingRaw), which is meant to be stored in the RawEmailIn column as to save space in
+		///the database. Changes mimeMessage. MimeKit writes every other byte as it read it.</summary>
+		private static string DissolveAttachmentsFromMimeMessage(MimeKit.MimeMessage mimeMessage,Encoding encodingRaw) {
+			Meth.NoCheckMiddleTierRole();
+			List<MimeKit.Multipart> listMultiparts=new List<MimeKit.Multipart>();
+			if(mimeMessage.Body is MimeKit.Multipart multipartBody) {
+				listMultiparts.Add(multipartBody);
+			}
+			while(listMultiparts.Count>0) {
+				MimeKit.Multipart multipart=listMultiparts[0];
+				listMultiparts.RemoveAt(0);
+				for(int i=0;i<multipart.Count;i++) {
+					if(multipart[i] is MimeKit.Multipart multipartChild) {
+						listMultiparts.Add(multipartChild);
+						continue;
+					}
+					if(multipart[i].ContentDisposition==null || !HasContent(multipart[i])) {
+						continue;//Not an attachment, or already empty.
+					}
+					if(multipart[i] is MimeKit.MimePart mimePart) {
+						mimePart.Content=new MimeKit.MimeContent(new MemoryStream(),mimePart.ContentTransferEncoding);
+						continue;
+					}
+					//An attached message: an empty part with the same headers in its place.
+					MimeKit.MimePart mimePartEmpty=new MimeKit.MimePart("message","rfc822");
+					mimePartEmpty.Headers.Clear();
+					foreach(MimeKit.Header header in multipart[i].Headers) {
+						mimePartEmpty.Headers.Add(header.Clone());
+					}
+					mimePartEmpty.Content=new MimeKit.MimeContent(new MemoryStream());
+					multipart[i]=mimePartEmpty;
+				}
+			}
+			using(MemoryStream memoryStream=new MemoryStream()) {
+				mimeMessage.WriteTo(memoryStream);
+				return encodingRaw.GetString(memoryStream.ToArray());
+			}
+		}
+
+		///<summary>The text of a header as the program shows it: unfolded and with its encoded words decoded. "" when the message has none.</summary>
+		private static string GetHeaderText(MimeKit.MimeMessage mimeMessage,MimeKit.HeaderId headerId) {
+			return mimeMessage.Headers[headerId]??"";
+		}
+
+		///<summary>The text of an address header, as the inbox shows it. The text is not parsed into addresses (no System.Net.Mail.MailAddress, which
+		///on .NET 10 refuses a local part with consecutive dots), so a sender is kept as the message wrote it. "undisclosed-recipients:;", an empty
+		///group some clients write when every recipient is in Bcc, is no address.</summary>
+		private static string GetAddressText(MimeKit.MimeMessage mimeMessage,MimeKit.HeaderId headerId) {
+			string text=Regex.Replace(GetHeaderText(mimeMessage,headerId),@"undisclosed[ -]*recipients:[\t ]*;","",RegexOptions.IgnoreCase);
+			return ProcessInlineEncodedText(text.Trim()).Replace(@"\","");
+		}
+
+		///<summary>Throws exceptions.  Converts a received MimeKit message into an OD EmailMessage.  Set hasAttachments to false to exclude
+		///attachments (no file is written then).</summary>
+		private static EmailMessage ConvertMimeMessageToEmailMessage(MimeKit.MimeMessage mimeMessage,bool hasAttachments,EmailAddress emailAddressInbox) {
+			Meth.NoCheckMiddleTierRole();
+			EmailMessage emailMessage=new EmailMessage();
+			emailMessage.FromAddress=ProcessInlineEncodedText(GetHeaderText(mimeMessage,MimeKit.HeaderId.From).Trim());
+			string dateValue=GetHeaderText(mimeMessage,MimeKit.HeaderId.Date);
+			if(string.IsNullOrWhiteSpace(dateValue)) {
+				emailMessage.MsgDateTime=DateTime_.Now;
+			}
+			else {
+				//We show the datetime that the email landed onto the email server instead of the datetime that the email was downloaded.
+				emailMessage.MsgDateTime=ParseRawEmailDate(dateValue);
+			}
+			emailMessage.Subject=SubjectTidy(ProcessInlineEncodedText(GetHeaderText(mimeMessage,MimeKit.HeaderId.Subject)));
+			emailMessage.ToAddress=GetAddressText(mimeMessage,MimeKit.HeaderId.To);//Can be blank if recipients were CC or BCC only.
+			emailMessage.CcAddress=GetAddressText(mimeMessage,MimeKit.HeaderId.Cc);
+			emailMessage.BccAddress=GetAddressText(mimeMessage,MimeKit.HeaderId.Bcc);
+			if(emailMessage.ToAddress=="" && emailMessage.CcAddress=="" && emailMessage.BccAddress=="") {
+				//When all recipients are in the bcc field, some clients (Apple mail) remove all address fields (To, cc, bcc) from the header.
+				//The inbox's address stands in as Bcc, as before.
+				if(emailAddressInbox==null) {
+					emailMessage.BccAddress="";
+				}
+				else if(emailAddressInbox.EmailUsername==null) {
+					emailMessage.BccAddress="Failed to match email address";
+				}
+				else {
+					emailMessage.BccAddress=emailAddressInbox.EmailUsername;
+				}
+			}
+			//Think of the mime structure as a tree.
+			//We want to treat one part and multi-part emails the same way below, so we make our own list of leaf node mime parts (mime parts which have no children, also know as single part).
+			List<MimeKit.MimeEntity> listMimeEntitiesLeafNodes=GetMimeLeafNodes(mimeMessage);
+			List<MimeKit.MimeEntity> listMimeEntitiesAttachParts=new List<MimeKit.MimeEntity>();
+			StringBuilder stringBuilderBodyText=new StringBuilder("");
+			for(int i=0;i<listMimeEntitiesLeafNodes.Count;i++) {
+				MimeKit.MimeEntity mimeEntityPart=listMimeEntitiesLeafNodes[i];
+				if(mimeEntityPart.ContentDisposition!=null) {
+					//An email attachment. Leaf node. https://www.ietf.org/rfc/rfc2183.txt we treat both 'attachment' and 'inline' the same. No other options.
+					listMimeEntitiesAttachParts.Add(mimeEntityPart);
+					continue;
+				}
+				//Not an email attachment.  All plain text body parts will show to the user in the chart module progress notes.
+				if(mimeEntityPart is MimeKit.MimePart mimePart && mimePart.ContentType.IsMimeType("text","plain")) {
+					stringBuilderBodyText.Append(GetMimePartText(mimePart));
+				}
+			}
+			emailMessage.BodyText=stringBuilderBodyText.ToString();
+			emailMessage.Attachments=new List<EmailAttach>();
+			if(!hasAttachments) {
+				return emailMessage;
+			}
+			try {
+				for(int i=0;i<listMimeEntitiesAttachParts.Count;i++) {
+					byte[] byteArrayData=GetMimeEntityBytes(listMimeEntitiesAttachParts[i]);
+					//The name directive of the Content-Type, else the filename directive of the Content-Disposition
+					//(e.g. Content-Disposition: attachment; filename="cool.html" should suggest saving under the "cool.html" filename by default).
+					//The filename is always optional and must not be used blindly by the application: path information should be stripped, and conversion to
+					//the server file system rules should be done. This parameter provides mostly indicative information. When used in combination with
+					//Content-Disposition: attachment, it is used as the default filename for an eventual "Save As" dialog presented to the user.
+					//Whatever its source, the name is cleaned the same way, and is the name the preview finds this attachment by (GetMimeImageFileName).
+					string displayFileName=GetMimeFileName(listMimeEntitiesAttachParts[i]);
+					EmailAttach emailAttach=EmailAttaches.CreateAttach(displayFileName,"",byteArrayData,false);
+					emailMessage.Attachments.Add(emailAttach);//The attachment EmailMessageNum is set when the emailMessage is inserted/updated below.
+				}
+			}
+			catch(Exception) {
+				//Failed to extract all attachments from the email message.  Cleanup the attachments which were successfully extracted.
+				for(int i=0;i<emailMessage.Attachments.Count;i++) {
+					string attachFilePath=FileAtoZ.CombinePaths(EmailAttaches.GetAttachPath(),emailMessage.Attachments[i].ActualFileName);
+					if(!FileAtoZ.Exists(attachFilePath)) {
+						continue;
+					}
+					try {
+						FileAtoZ.Delete(attachFilePath);
+					}
+					catch {
+						//Probably nothing else we can do.  At least continue to the remaining attachments to try deleting them as well.
+					}
+				}
+				throw;
+			}
+			return emailMessage;
+		}
+
+		///<summary>Throws ApplicationException. The Date header of a received email as a DateTime. The received email message date must be in a very
+		///specific format and must match the RFC822 standard.  Is a required field for RFC822.  http://tools.ietf.org/html/rfc822
+		///Examples: "3 Dec 2013 17:10:37 -0800", "10 Dec 2013 17:10:37 -0800", "Tue, 5 Nov 2013 17:10:37 +0000 (UTC)", "Tue, 12 Nov 2013 17:10:37 +0000 (UTC)"</summary>
+		private static DateTime ParseRawEmailDate(string dateValue) {
+			if(dateValue.EndsWith("GMT")) {//Examples: Tue, 09 Sep 2014 23:16:36 GMT
+				return DateTime.Parse(dateValue);
+			}
+			//Different email providers send the Date in formats that don't exactly match the RFC standard:  tools.ietf.org/html/rfc2822#section-3.3
+			//This regular expression was created based off of all of the different types of date formats that have been officially whitnessed.
+			//It is not based off of the RFC 2822 standard, as one would want to do.
+			//A new unit test should be added for any scenarios where a 'valid' dateValue cannot parse correctly.
+			string datePattern=@"^\s*(\S+,)?\s*(\d{1,2})\s*(\S+)\s*(\d{4,5})\s+(\d{1,2}):(\d{1,2})(:\d{1,2})?\s*([\+\-]\d+:?\d*)?(\s*\S+)?\s*$";
+			Match match=Regex.Match(dateValue,datePattern);
+			if(!match.Success) {
+				throw new ApplicationException("DateValue was not recognized as a valid DateTime: "+dateValue);
+			}
+			string dayOfMonthNum=match.Result("$2");
+			string monthName=match.Result("$3");
+			string yearNum=match.Result("$4");
+			string hourNum=match.Result("$5");
+			string minuteNum=match.Result("$6");
+			string secondNum=match.Result("$7");
+			string utcOffset=match.Result("$8");
+			//$1 is the day of the week (Mon, Tue, Wed, etc.) and $9 the time zone abbreviation (ex UTC, GMT, CST, MDT, etc.); neither is used.
+			string dateFormat="d MMM yyyy HH:mm";
+			string dateValueConverted=dayOfMonthNum+" "+monthName+" "+yearNum+" "+hourNum.PadLeft(2,'0')+":"+minuteNum.PadLeft(2,'0');
+			if(!string.IsNullOrWhiteSpace(secondNum)) {
+				dateFormat+=":ss";
+				dateValueConverted+=":"+secondNum.TrimStart(':').PadLeft(2,'0');
+			}
+			if(!string.IsNullOrWhiteSpace(utcOffset)) {
+				dateFormat+=" zzz";
+				dateValueConverted+=" "+utcOffset;
+			}
+			if(!DateTime.TryParseExact(dateValueConverted,dateFormat,CultureInfo.CurrentCulture.DateTimeFormat,DateTimeStyles.None,out DateTime dateTime)) {
+				throw new ApplicationException("DateValue was not recognized as a valid DateTime.\r\n"
+					+"message.DateValue: "+dateValue+"\r\n"
+					+"dateValueConverted: "+dateValueConverted);
+			}
+			return dateTime;
+		}
+
+		///<summary>The text of a received text part (plain, html, xml, etc...): MimeKit undoes the transfer encoding (base64, quoted-printable) and
+		///reads the charset. As the Direct-based parser gave it, every line ends with CRLF, the last one too.</summary>
+		public static string ProcessMimeTextPart(EmailMimePart emailMimePart) {
+			Meth.NoCheckMiddleTierRole();
+			return GetMimePartText(emailMimePart.MimePart);
+		}
+
+		private static string GetMimePartText(MimeKit.MimePart mimePart) {
+			string text;
+			if(mimePart is MimeKit.TextPart textPart) {
+				text=textPart.Text??"";
+			}
+			else {
+				text=Encoding.UTF8.GetString(GetMimeEntityBytes(mimePart));
+			}
+			List<string> listLines=text.Split(new string[] { "\r\n","\r","\n" },StringSplitOptions.None).ToList();
+			StringBuilder stringBuilderText=new StringBuilder();
+			for(int i=0;i<listLines.Count;i++) {
+				stringBuilderText.Append(listLines[i]);
+				stringBuilderText.Append("\r\n");
+			}
+			return stringBuilderText.ToString();
+		}
+
 		#endregion Receiving
 
 		#region Helpers
-
-		///<summary>Refreshes our cached copy of the public key certificate store and the anchor certificate store from the Windows certificate store.</summary>
-		public static void RefreshCertStoreExternal(EmailAddress emailAddressLocal) {
-			Meth.NoCheckMiddleTierRole();
-			string strSenderAddress=emailAddressLocal.EmailUsername.Trim();//Cannot be emailAddressFrom.SenderAddress, or else will not find the right encryption certificate.
-			try {
-				GetDirectAgentForEmailAddress(strSenderAddress);//This line is where the refresh occurs.
-			}
-			catch(Exception ex) {//Likely a permission issue
-				ex.DoNothing();
-			}
-		}
 
 		///<summary>Drops the address's cached Gmail access token and gets a fresh one from Google (google.md 3.4). The token stays in memory: nothing
 		///is written to the database and no signal is sent, because Google doesn't rotate the refresh token and each workstation refreshes on its
@@ -2162,37 +1981,19 @@ namespace OpenPmsDentalBusiness {
 			return bodyText;
 		}
 
-		///<summary>Throws an exception if there is a permission issue.  Creates all of the necessary certificate stores for email encryption (Direct and Standard) if they do not already exist.
-		///There is no way for the user to create these stores manually through Microsoft Management Console (mmc.exe) and they are needed to import certificates.</summary>
+		///<summary>The Windows certificate store (Local Computer) that holds the certificates, with their private keys, that sign outgoing email.
+		///The Direct Project's library created it; offices import their signing certificate into it.</summary>
+		public const string PRIVATE_CERT_STORE_NAME="NHINDPrivate";
+
+		///<summary>Throws an exception if there is a permission issue.  Creates the certificate store for signing email (NHINDPrivate, Local
+		///Computer) if it does not already exist. There is no way for the user to create this store manually through Microsoft Management Console
+		///(mmc.exe) and it is needed to import certificates. The NHINDAnchors and NHINDExternal stores were for Direct messaging only: they are
+		///no longer made, and stores that exist are left alone.</summary>
 		public static void CreateCertificateStoresIfNeeded() {
 			Meth.NoCheckMiddleTierRole();
-			Health.Direct.Common.Certificates.SystemX509Store.OpenAnchorEdit().Dispose();//Create the NHINDAnchor certificate store if it does not already exist on the local machine.
-			Health.Direct.Common.Certificates.SystemX509Store.OpenExternalEdit().Dispose();//Create the NHINDExternal certificate store if it does not already exist on the local machine.
-			Health.Direct.Common.Certificates.SystemX509Store.OpenPrivateEdit().Dispose();//Create the NHINDPrivate certificate store if it does not already exist on the local machine.
-		}
-
-		///<summary>Throws exceptions. Annuls the attachment text in the body section of all attachment mime parts (the Base64 content). Returns the entire incoming message as raw text which is meant to be stored in the RawEmailIn column as to save space in the database.</summary>
-		private static string DissolveAttachmentsFromIncomingMessage(Health.Direct.Agent.IncomingMessage incomingMessage) {
-			Meth.NoCheckMiddleTierRole();
-			string rawEmail=incomingMessage.SerializeMessage();//The original raw message, unaltered.
-			List <Health.Direct.Common.Mime.MimeEntity> listAttachments=GetAttachmentMimeParts(incomingMessage.Message);
-			for(int i=0;i<listAttachments.Count;i++) {//Clear the body text of each raw attachment body.
-				if(listAttachments[i].Body.Text.Length==0) {
-					continue;//Body is already empty.  Nothing to do.
-				}
-				string rawAttachment=listAttachments[i].ToString();//This includes the mime headers as well as the body text.
-				int attachIndex=rawEmail.IndexOf(rawAttachment);//Uniquely locate the mime text in the raw email (will be unique because of header timestamps)
-				if(attachIndex < 0) {//Mime part not found in raw email?  Should be impossible.
-					continue;//We do not want to crash for any reason when running DBM tools.
-				}
-				//Now find the start index of the attachment body from where the attachment starts.
-				int bodyIndex=rawEmail.IndexOf(listAttachments[i].Body.Text,attachIndex);
-				if(bodyIndex > attachIndex+rawAttachment.Length-1) {//The body text match located was beyond the attachment boundary.  Should be impossible.
-					continue;//We do not want to crash for any reason when running DBM tools.
-				}
-				rawEmail=rawEmail.Remove(bodyIndex,listAttachments[i].Body.Text.Length);
+			using(X509Store x509Store=new X509Store(PRIVATE_CERT_STORE_NAME,StoreLocation.LocalMachine)) {
+				x509Store.Open(OpenFlags.ReadWrite);//Opening a store for writing creates it.
 			}
-			return rawEmail;
 		}
 
 		///<summary>Performs wiki tag replacements for images and attaches images to email. Will return the whole correct html text that needs to be sent. Downloads the files locally if needed. The out variable is a list of local paths.</summary>
@@ -2273,43 +2074,6 @@ namespace OpenPmsDentalBusiness {
 			return emailBody+"\r\n\r\n\r\n"+disclaimerWithAddress.ToString();
 		}
 
-		///<summary>Traverses the mime tree of the given email message and returns all attachment mime parts,
-		///including older attachments from the beginning of the email thread.
-		///Set limitCount to a number greater than 0 if you wish to stop searching for attachments once this threshold is met.</summary>
-		private static List <Health.Direct.Common.Mime.MimeEntity> GetAttachmentMimeParts(Health.Direct.Common.Mail.Message message,int limitCount=0) {
-			Meth.NoCheckMiddleTierRole();
-			List <Health.Direct.Common.Mime.MimeEntity> listMimeEntitesAttachments=new List<Health.Direct.Common.Mime.MimeEntity>();
-			List <Health.Direct.Common.Mime.MimeEntity> listMimeEntitesParts=new List<Health.Direct.Common.Mime.MimeEntity>();
-			if(message.IsMultiPart) {
-				listMimeEntitesParts.AddRange(message.GetParts());
-			}
-			//Traverse all branches of the mime tree to locate all attachment mime parts.
-			while(true) {
-				if(listMimeEntitesParts.Count == 0) {
-					break;
-				}
-				Health.Direct.Common.Mime.MimeEntity mimeEntity=listMimeEntitesParts[0];
-				listMimeEntitesParts.RemoveAt(0);
-				//An email attachment. Leaf node. https://www.ietf.org/rfc/rfc2183.txt we treat both 'attachment' and 'inline' the same. No other options.
-				if(mimeEntity.ContentDisposition!=null) {
-					if(mimeEntity.HasBody) {
-						//Clear out the body or content of the attachment as to reduce the amount of space we take up in the database.
-						//This is safe to do at this point because we have already extracted the attachments and they are stored in the AtoZ folder or db already.
-						//Since the Text of the body for the mimeEntity is protected, we need to replace the current mime body with a new mime body.
-						listMimeEntitesAttachments.Add(mimeEntity);
-						if(limitCount > 0 && listMimeEntitesAttachments.Count==limitCount) {
-							return listMimeEntitesAttachments;
-						}
-					}
-					continue;
-				}
-				if(mimeEntity.IsMultiPart) {//Branch node.
-					listMimeEntitesParts.AddRange(mimeEntity.GetParts());//Push children mime parts to stack to be examined in a later pass through the loop.
-				}
-			}
-			return listMimeEntitesAttachments;
-		}
-
 		///<summary>Gets the value in the EmailDisclaimerTemplate preference with the [PostalAddress] replaced. Returns an empty string if the pref is off.</summary>
 		public static string GetEmailDisclaimer(long clinicNum) {
 			Meth.NoCheckMiddleTierRole();
@@ -2341,108 +2105,12 @@ namespace OpenPmsDentalBusiness {
 			return StringBuilder.ToString();
 		}
 
-		///<summary>Throws exceptions if there are permission issues.  Recreates the directagent in order to refresh the certificate stores.</summary>
-		private static Health.Direct.Agent.DirectAgent GetDirectAgentForEmailAddress(params string[] stringArrayEmailAddresses) {
-			Meth.NoCheckMiddleTierRole();
-			List <string> listDomains=new List<string>();
-			for(int i=0;i<stringArrayEmailAddresses.Length;i++) {
-				listDomains.Add(GetDomainForAddress(stringArrayEmailAddresses[i]));
-			}
-			Health.Direct.Common.Domains.StaticDomainResolver staticDomainResolverRes=new Health.Direct.Common.Domains.StaticDomainResolver(listDomains.ToArray());
-			ICertificateResolver iCertificateResolverResPriv=new EmailPrivateResolver();
-			ICertificateResolver iCertificateResolverResPub=new EmailPublicResolver();
-			SystemX509Store systemX509StoreAnchor=SystemX509Store.OpenAnchor();
-			X509Certificate2Collection x509Certificate2CollectionAnchor=systemX509StoreAnchor.GetAllCertificates();
-			systemX509StoreAnchor.Dispose();
-			TrustAnchorResolver TrustAnchorResolverRes=new TrustAnchorResolver(x509Certificate2CollectionAnchor);
-			_directAgent=new Health.Direct.Agent.DirectAgent(staticDomainResolverRes,iCertificateResolverResPriv,iCertificateResolverResPub,TrustAnchorResolverRes);
-			_directAgent.EncryptMessages=true;
-			//The Transport Testing Tool (TTT) complained when we sent a message that was not wrapped.
-			//Specifically, the tool looks for the headers Orig-Date and Message-Id after the message is decrypted.
-			//See http://tools.ietf.org/html/rfc5322#section-3.6.1 and http://tools.ietf.org/html/rfc5322#section-3.6.4 for details about these two header fields.
-			_directAgent.WrapMessages=true;
-			return _directAgent;
-		}
-
-		///<summary>Returns -1 if the given address has at least one known and trusted certificate.
-		///Returns a non-negative count of the number of known untrusted certificates if there are no known trusted certificates.</summary>
-		public static int GetReceiverUntrustedCount(string strAddressTest) {
-			Meth.NoCheckMiddleTierRole();
-			EmailPublicResolver emailPublicResolver=new EmailPublicResolver();
-			List<X509Certificate2> listX509Certificate2sValid=new List<X509Certificate2>();
-			List<X509Certificate2> listX509Certificate2sInvalid=new List<X509Certificate2>();
-			emailPublicResolver.GetCertificates(strAddressTest,listX509Certificate2sValid,listX509Certificate2sInvalid);
-			if(listX509Certificate2sValid.Count > 0) {
-				return -1;
-			}
-			return listX509Certificate2sInvalid.Count;
-		}
-
-		public static bool IsSenderTrusted(string strAddressTest) {
-			Meth.NoCheckMiddleTierRole();
-			if(strAddressTest.Trim()=="") {
-				return false;
-			}
-			if(_directAgent==null) {
-				GetDirectAgentForEmailAddress(strAddressTest);
-			}
-			SystemX509Store systemX509StoreAnchor=SystemX509Store.OpenAnchor();
-			//Look for domain level and address level trust certificates (anchors).
-			MailAddress mailAddress = new MailAddress(strAddressTest);
-			X509Certificate2Collection x509Certificate2CollectionPriv=new EmailPrivateResolver().GetCertificates(mailAddress);
-			X509Certificate2Collection x509Certificate2CollectionAnchor=systemX509StoreAnchor.GetAllCertificates();
-			bool isTrusted=false;
-			for(int i=0;i<x509Certificate2CollectionPriv.Count;i++) {
-				if(_directAgent.TrustModel.CertChainValidator.IsTrustedCertificate(x509Certificate2CollectionPriv[i],x509Certificate2CollectionAnchor)) {
-					isTrusted=true;
-					break;
-				}
-			}
-			systemX509StoreAnchor.Dispose();
-			return isTrusted;
-		}
-
 		/// <summary>Replaces new lines with a space. Emails with new line characters in the subject won't send.</summary>
 		public static string SubjectTidy(string str) {
 			string retVal=str.Replace("\r\n"," ");
 			retVal=retVal.Replace("\r"," ");
 			retVal=retVal.Replace("\n"," ");
 			return retVal;
-		}
-
-		///<summary>Returns true if trust already exists or has just been established for the given email address.</summary>
-		public static bool TryAddTrustDirect(string strAddressTest,
-			List<X509Certificate2> listX509Certificate2sValidDirect=null,List<X509Certificate2> listX509Certificate2sInvalidDirect=null)
-		{
-			Meth.NoCheckMiddleTierRole();
-			if(strAddressTest.Trim()=="") {
-				return false;
-			}
-			if(listX509Certificate2sValidDirect==null) {
-				listX509Certificate2sValidDirect=new List<X509Certificate2>();
-			}
-			if(listX509Certificate2sInvalidDirect==null) {
-				listX509Certificate2sInvalidDirect=new List<X509Certificate2>();
-			}
-			try {
-				FindPublicCertForAddress(strAddressTest,listX509Certificate2sValidDirect,listX509Certificate2sInvalidDirect);
-				EmailPublicResolver emailPublicResolver=new EmailPublicResolver();
-				List<X509Certificate2> listX509Certificate2sValid=new List<X509Certificate2>();
-				List<X509Certificate2> listX509Certificate2sInvalid=new List<X509Certificate2>();
-				emailPublicResolver.GetCertificates(strAddressTest,listX509Certificate2sValid,listX509Certificate2sInvalid);
-				if(listX509Certificate2sValid.Count > 0 || listX509Certificate2sInvalid.Count > 0) {
-					Health.Direct.Common.Certificates.SystemX509Store systemX509StoreAnchors=Health.Direct.Common.Certificates.SystemX509Store.OpenAnchorEdit();//Open for read and write.  Corresponds to NHINDAnchors/Certificates.
-					systemX509StoreAnchors.Add(listX509Certificate2sValid);
-					systemX509StoreAnchors.Add(listX509Certificate2sInvalid);
-					systemX509StoreAnchors.Dispose();
-				}
-				GetDirectAgentForEmailAddress(strAddressTest);//Force the cert stores to be refreshed within our DirectAgent instance.
-				return true;
-			}
-			catch(Exception ex) {//Likely a network issue (FindPublicCertForAddress) or a permissions issue opening the anchors store.
-				ex.DoNothing();
-				return false;
-			}
 		}
 
 		///<summary>Throws exceptions.  The smimeP7sFilePath must point to a smime.p7s file.</summary>
@@ -2459,50 +2127,40 @@ namespace OpenPmsDentalBusiness {
 			return x509Certificate2Signed2;
 		}
 
-		///<summary>Returns the encryption/decryption certificate for the specified emailAddress from the store of private certificates, or returns null if none found.
-		///Used for creating a signing signature in email encryption, which requires the private key (the public key alone is not enough, we tried it and an exception is thrown by Dot NET).
+		///<summary>Returns the signing certificate for the specified emailAddress from the store of private certificates (NHINDPrivate, Local
+		///Computer), or returns null if none found: a valid certificate for the address, else a valid one for its domain.
+		///Used for creating a signing signature, which requires the private key (the public key alone is not enough).
 		///IMPORTANT: Be careful what you do with the private certificate.  It must never be shared with another party.</summary>
 		public static X509Certificate2 GetCertFromPrivateStore(string emailAddress) {
 			Meth.NoCheckMiddleTierRole();
-			//Look for domain level and address level trust certificates.
-			MailAddress mailAddress=null;
-			try {
-				mailAddress=new MailAddress(emailAddress);
-			}
-			catch(Exception ex) {//This can happen if emailAddress is not formatted according to the email standard.
-				ex.DoNothing();
+			return GetCertFromStore(emailAddress,PRIVATE_CERT_STORE_NAME,StoreLocation.LocalMachine);
+		}
+
+		///<summary>GetCertFromPrivateStore for any store; the tests use a store of the current user. Null when the address is not an email address,
+		///the store does not exist or can't be read, or it holds no valid certificate for the address or its domain.</summary>
+		internal static X509Certificate2 GetCertFromStore(string emailAddress,string storeName,StoreLocation storeLocation) {
+			string address=GetAddressSimple(emailAddress);
+			if(!address.Contains("@")) {//Not formatted as an email address.
 				return null;
 			}
-			X509Certificate2Collection x509Certificate2CollectionPriv=null;
+			X509Certificate2Collection x509Certificate2Collection;
 			try {
-				x509Certificate2CollectionPriv=new EmailPrivateResolver().GetCertificates(mailAddress);
+				using(X509Store x509Store=new X509Store(storeName,storeLocation)) {
+					x509Store.Open(OpenFlags.ReadOnly|OpenFlags.OpenExistingOnly);
+					x509Certificate2Collection=x509Store.Certificates;
+				}
 			}
 			catch(Exception ex) {
 				ex.DoNothing();//The private certificate store either does not exist or the user does not have read permission.  Probably does not exist.
-			}
-			if(x509Certificate2CollectionPriv==null || x509Certificate2CollectionPriv.Count==0) {
 				return null;
 			}
-			return x509Certificate2CollectionPriv[0];
-		}
-
-		///<summary>Throws exceptions.</summary>
-		public static void TryAddTrustForSignature(X509Certificate2 x509Certificate2Signed) {
-			Meth.NoCheckMiddleTierRole();
-			try {
-				Health.Direct.Common.Certificates.SystemX509Store storePublicCerts=Health.Direct.Common.Certificates.SystemX509Store.OpenExternalEdit();//Open for read and write.  Corresponds to NHINDExternal/Certificates.
-				storePublicCerts.Add(x509Certificate2Signed);//Write the pubic encryption certificate to the Windows certificate store.
+			List<X509Certificate2> listX509Certificate2sValid=new List<X509Certificate2>();
+			List<X509Certificate2> listX509Certificate2sInvalid=new List<X509Certificate2>();
+			EmailCertificates.GetCertificates(x509Certificate2Collection,address,listX509Certificate2sValid,listX509Certificate2sInvalid);
+			if(listX509Certificate2sValid.Count==0) {
+				return null;
 			}
-			catch(Exception ex) {
-				throw new Exception(Lans.g("EmailMessages","Failed to save signature to encryption certificate store")+". "+ex.Message);
-			}
-			try {
-				Health.Direct.Common.Certificates.SystemX509Store systemX509StoreAnchors=Health.Direct.Common.Certificates.SystemX509Store.OpenAnchorEdit();//Open for read and write.  Corresponds to NHINDAnchors/Certificates.
-				systemX509StoreAnchors.Add(x509Certificate2Signed);//Adds to NHINDAnchors/Certificates within the windows certificate store manager (mmc).
-			}
-			catch(Exception ex) {
-				throw new Exception(Lans.g("EmailMessages","Failed to save signature to trust certificate store")+". "+ex.Message);
-			}
+			return listX509Certificate2sValid[0];
 		}
 
 		///<summary>Sometimes an email From address will contain the person's name along with their email address.  This function strips out the person's name if present.</summary>
@@ -2522,381 +2180,13 @@ namespace OpenPmsDentalBusiness {
 			return emailAddress.Substring(startIndex,endIndex-startIndex+1).Trim();
 		}
 
-		///<summary>The specified emailAddress must be a properly formatted email address or properly formatted domain name.</summary>
-		private static string GetDomainForAddress(string emailAddress) {
-			emailAddress=GetAddressSimple(emailAddress);
-			if(emailAddress.Contains("@")) {
-				return emailAddress.Substring(emailAddress.IndexOf("@")+1);//For example, if ToAddress is ehr@opendental.com, then this will be opendental.com
-			}
-			return emailAddress;
-		}
-
-		///<summary>Searches the internet (DNS and LDAP) for hosted public certificates.
-		///If public certificates are discovered from the Internet, then existing certificates in the store for that address will be replaced with the
-		///discovered certificates.  The trust for any certificate must be added separately.
-		///Returns true if the strAddressTest given is a Direct address (certificates were located in DNS or LDAP).
-		///Returns false if the strAddressTest is to be treated as a standard encrypted email address.
-		///Throws exceptions when no certificates were found or if there was a network failure.</summary>
-		private static bool FindPublicCertForAddress(string strAddressTest,List<X509Certificate2> listX509Certificate2sValid,List<X509Certificate2> listX509Certificate2sInvalid){
-			Meth.NoCheckMiddleTierRole();
-			listX509Certificate2sValid.Clear();
-			listX509Certificate2sInvalid.Clear();
-			//It may be useful in the future to attempt communicating with a secondary DNS server if the primary DNS is not available.
-			//const string strDnsServer = "184.73.237.102";//Amazon - This is the DNS server used within the Direct resolverPlugins test project. Appears to have worked the best for them, compared to the others listed below, but was not accessible.
-			//const string strDnsServer = "10.110.22.16";//This address was tried in the Direct resolverPlugins test project and is commented out, implying that it might not be the best DNS server to use.
-			//const string strDnsServer = "207.170.210.162";//This address was tried in the Direct resolverPlugins test project and is commented out, implying that it might not be the best DNS server to use.
-			const string strGlobalDnsServer = "8.8.8.8";//Google - This address was tried in the Direct resolverPlugins test project and is commented out, implying that it might not be the best DNS server to use.
-			IPAddress ipAddressGlobalDnsServer=IPAddress.Parse(strGlobalDnsServer);
-			MailAddress mailAddressQuery=new MailAddress(strAddressTest);
-			//Attempt to discover the certificate via DNS.
-			DnsQueryForCert(ipAddressGlobalDnsServer,mailAddressQuery,listX509Certificate2sValid,listX509Certificate2sInvalid);
-			//Always look in LDAP even if we found some certificates in DNS.  This is required for Direct Module H.1 to work for stage 3.
-			Health.Direct.Common.Certificates.ICertificateResolver certResolverInternetLdap=new Health.Direct.ResolverPlugins.LdapCertResolver(ipAddressGlobalDnsServer,TimeSpan.FromMinutes(3));
-			X509Certificate2Collection x509Certificate2Collection=certResolverInternetLdap.GetCertificates(mailAddressQuery);//Can return null.
-			if(x509Certificate2Collection!=null) {
-				for(int i=0;i<x509Certificate2Collection.Count;i++) {
-					if(!EmailNameResolver.IsCertValid(x509Certificate2Collection[i])) {
-						//If the certificate is not yet valid or is expired, then discard.
-						listX509Certificate2sInvalid.Add(x509Certificate2Collection[i]);
-						continue;
-					}
-					listX509Certificate2sValid.Add(x509Certificate2Collection[i]);
-				}
-			}
-			//If any certificates were discovered via DNS or LDAP, save them locally for later reference.
-			EmailPublicResolver emailPublicResolver=null;
-			if(listX509Certificate2sValid.Count > 0 || listX509Certificate2sInvalid.Count > 0) {
-				emailPublicResolver=new EmailPublicResolver(false);//Open for read/write.  Requires more permission.  Users do not usually have write permission.
-				//At least one certificate was hosted in DNS or LDAP, which means that the emailAddress is a Direct address,
-				//not a regular encrypted email address.				
-				X509Certificate2Collection x509Certificate2CollectionPubOld=emailPublicResolver.GetCertificatesForAddress(strAddressTest);//Address specific (excludes domain level certificates).
-				if(x509Certificate2CollectionPubOld!=null && x509Certificate2CollectionPubOld.Count > 0) {
-					//Remove other certs which are specifically for the address being queried, to make stores match DNS and LDAP results.
-					emailPublicResolver.Store.Remove(x509Certificate2CollectionPubOld);
-					SystemX509Store systemX509StoreAnchors=SystemX509Store.OpenAnchorEdit();
-					systemX509StoreAnchors.Remove(x509Certificate2CollectionPubOld);
-					systemX509StoreAnchors.Dispose();
-				}
-				emailPublicResolver.Store.Add(listX509Certificate2sValid);//Write the discovered certificates to the Windows certificate store for future reference.
-				emailPublicResolver.Store.Add(listX509Certificate2sInvalid);//Write the discovered certificates to the Windows certificate store for future reference.
-				return true;
-			}
-			if(emailPublicResolver==null) {
-				emailPublicResolver=new EmailPublicResolver(true);//Open for read only.  Nearly all users have read-only permission.
-			}
-			//No certificates discovered in DNS or LDAP.  Either the address is not a Direct address or the servers are down.
-			//Treat the address as a standard encrypted email address and get the existing certificates from the store.
-			emailPublicResolver.GetCertificates(strAddressTest,listX509Certificate2sValid,listX509Certificate2sInvalid);
-			return false;
-		}
-
-		///<summary>Send certificate DNS query to DNS server IP address to look for an email encryption certificate for the given emailAddress.
-		///Adds the discovered certificates (if any) to the two X509Certificate2 lists given.</summary>
-		private static void DnsQueryForCert(IPAddress ipAddressDnsServer,MailAddress emailAddress,
-			List<X509Certificate2> listX509Certificate2sDiscoveredActive,List<X509Certificate2> listX509Certificate2sDiscoveredInactive)
-		{
-			Health.Direct.Common.Certificates.ICertificateResolver certResolverInternetDns=
-				new Health.Direct.Common.Certificates.DnsCertResolver(ipAddressDnsServer);
-			X509Certificate2Collection x509Certificate2Collection=certResolverInternetDns.GetCertificates(emailAddress);//Can return null.
-			if(x509Certificate2Collection==null) {
-				return;
-			}
-			//Certificates found via DNS.  Remove any invalid or expired certificates.
-			for(int i=0;i<x509Certificate2Collection.Count;i++) {
-				if(DateTime.Now<x509Certificate2Collection[i].NotBefore || DateTime.Now>x509Certificate2Collection[i].NotAfter) {
-					//If the certificate is not yet valid or is expired, then discard so we can possibly discover a better certificate below.
-					listX509Certificate2sDiscoveredInactive.Add(x509Certificate2Collection[i]);
-					continue;
-				}
-				listX509Certificate2sDiscoveredActive.Add(x509Certificate2Collection[i]);
-			}
-		}
-
-		///<summary>Gets all mime parts in the message which do not have child mime parts.  Returns null on error.</summary>
-		private static List<Health.Direct.Common.Mime.MimeEntity> GetMimeLeafNodes(Health.Direct.Common.Mail.Message message) {
-			Meth.NoCheckMiddleTierRole();
-			//Think of the mime structure as a tree.
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesLeafNodes=new List<Health.Direct.Common.Mime.MimeEntity>();
-			Health.Direct.Common.Mime.MimeEntity mimeEntity=null;
-			try {
-				mimeEntity=message.ExtractMimeEntity();
-			}
-			catch {
-				return null;
-			}
-			//If GetParts() is called when IsMultiPart is false, then an exception will be thrown by the Direct library.
-			if(!message.IsMultiPart) {
-				//Single body part.
-				listMimeEntitiesLeafNodes.Add(mimeEntity);
-				return listMimeEntitiesLeafNodes;
-			}
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesMultiPart=new List<Health.Direct.Common.Mime.MimeEntity>();
-			listMimeEntitiesMultiPart.Add(mimeEntity);
-			while(true) {
-				if(listMimeEntitiesMultiPart.Count==0) {
-					break;
-				}
-				List<Health.Direct.Common.Mime.MimeEntity> listMimeEntities=listMimeEntitiesMultiPart[0].GetParts().ToList();
-				for(int i=0;i<listMimeEntities.Count();i++) {
-					if(listMimeEntities[i].IsMultiPart) {
-						listMimeEntitiesMultiPart.Add(listMimeEntities[i]);
-						continue;
-					}
-					listMimeEntitiesLeafNodes.Add(listMimeEntities[i]);
-				}
-				listMimeEntitiesMultiPart.RemoveAt(0);
-			}
-			return listMimeEntitiesLeafNodes;
-		}
-
-		///<summary>Throws exceptions.  Converts the Health.Direct.Common.Mail.Message into an OD EmailMessage.  The Direct library is used for both encrypted and unencrypted email.  Set hasAttachments to false to exclude attachments.</summary>
-		private static EmailMessage ConvertMessageToEmailMessage(Health.Direct.Common.Mail.Message message,bool hasAttachments,bool isOutbound) {
-			Meth.NoCheckMiddleTierRole();
-			EmailMessage emailMessage=new EmailMessage();
-			emailMessage.FromAddress=ProcessInlineEncodedText(message.FromValue.Trim());
-			if(message.DateValue!=null) {//Is null when sending, but should not be null when receiving.
-				//The received email message date must be in a very specific format and must match the RFC822 standard.  Is a required field for RFC822.  http://tools.ietf.org/html/rfc822
-				//We show the datetime that the email landed onto the email server instead of the datetime that the email was downloaded.
-				//Examples: "3 Dec 2013 17:10:37 -0800", "10 Dec 2013 17:10:37 -0800", "Tue, 5 Nov 2013 17:10:37 +0000 (UTC)", "Tue, 12 Nov 2013 17:10:37 +0000 (UTC)"
-				if(message.DateValue.EndsWith("GMT")) {//Examples: Tue, 09 Sep 2014 23:16:36 GMT
-					emailMessage.MsgDateTime=DateTime.Parse(message.DateValue);
-				}
-				else {
-					//Different email providers send the Date in formats that don't exactly match the RFC standard:  tools.ietf.org/html/rfc2822#section-3.3
-					//This regular expression was created based off of all of the different types of date formats that have been officially whitnessed.
-					//It is not based off of the RFC 2822 standard, as one would want to do.
-					//A new unit test should be added for any scenarios where a 'valid' message.DateValue cannot parse correctly.
-					string datePattern=@"^\s*(\S+,)?\s*(\d{1,2})\s*(\S+)\s*(\d{4,5})\s+(\d{1,2}):(\d{1,2})(:\d{1,2})?\s*([\+\-]\d+:?\d*)?(\s*\S+)?\s*$";
-					Match match=Regex.Match(message.DateValue,datePattern);
-					if(!match.Success) {
-						throw new ApplicationException("DateValue was not recognized as a valid DateTime: "+message.DateValue);
-					}
-					string dayOfWeekName=match.Result("$1");//Mon, Tue, Wed, etc.
-					string dayOfMonthNum=match.Result("$2");
-					string monthName=match.Result("$3");
-					string yearNum=match.Result("$4");
-					string hourNum=match.Result("$5");
-					string minuteNum=match.Result("$6");
-					string secondNum=match.Result("$7");
-					string utcOffset=match.Result("$8");
-					string timeZoneAbbr=match.Result("$9");//ex UTC, GMT, CST, MDT, etc.
-					string dateFormat="d MMM yyyy HH:mm";
-					string dateValueConverted=dayOfMonthNum+" "+monthName+" "+yearNum+" "+hourNum.PadLeft(2,'0')+":"+minuteNum.PadLeft(2,'0');
-					if(!string.IsNullOrWhiteSpace(secondNum)) {
-						dateFormat+=":ss";
-						dateValueConverted+=":"+secondNum.TrimStart(':').PadLeft(2,'0');
-					}
-					if(!string.IsNullOrWhiteSpace(utcOffset)) {
-						dateFormat+=" zzz";
-						dateValueConverted+=" "+utcOffset;
-					}
-					if(!DateTime.TryParseExact(dateValueConverted,dateFormat,CultureInfo.CurrentCulture.DateTimeFormat,DateTimeStyles.None,
-						out emailMessage.MsgDateTime))
-					{
-						throw new ApplicationException("DateValue was not recognized as a valid DateTime.\r\n"
-							+"message.DateValue: "+message.DateValue+"\r\n"
-							+"dateValueConverted: "+dateValueConverted);
-					}
-				}
-			}
-			else {//Sending the email.
-				emailMessage.MsgDateTime=DateTime_.Now;
-			}
-			emailMessage.Subject=SubjectTidy(ProcessInlineEncodedText(message.SubjectValue));
-			emailMessage.ToAddress=ProcessInlineEncodedText(POut.String(message.ToValue).Trim()).Replace(@"\","");//ToValue can be null if recipients were CC or BCC only.
-			emailMessage.CcAddress=ProcessInlineEncodedText(POut.String(message.CcValue).Trim()).Replace(@"\","");
-			emailMessage.BccAddress=ProcessInlineEncodedText(POut.String(message.BccValue).Trim()).Replace(@"\","");
-			//Think of the mime structure as a tree.
-			//We want to treat one part and multi-part emails the same way below, so we make our own list of leaf node mime parts (mime parts which have no children, also know as single part).
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesLeafNodes=GetMimeLeafNodes(message);
-			if(listMimeEntitiesLeafNodes==null) {
-				emailMessage.BodyText=ProcessMimeTextPart(message);
-				return emailMessage;
-			}
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesBodyTextParts=new List<Health.Direct.Common.Mime.MimeEntity>();
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesAttachParts=new List<Health.Direct.Common.Mime.MimeEntity>();
-			for(int i=0;i<listMimeEntitiesLeafNodes.Count;i++) {
-				Health.Direct.Common.Mime.MimeEntity mimeEntityPart=listMimeEntitiesLeafNodes[i];
-				if(mimeEntityPart.ContentDisposition==null) {//Not an email attachment.  Treat as body text.
-					listMimeEntitiesBodyTextParts.Add(mimeEntityPart);
-					continue;
-				}
-				//An email attachment. Leaf node. https://www.ietf.org/rfc/rfc2183.txt we treat both 'attachment' and 'inline' the same. No other options.
-				listMimeEntitiesAttachParts.Add(mimeEntityPart);
-			}
-			string strTextPartBoundary="";
-			if(listMimeEntitiesBodyTextParts.Count>1) {
-				strTextPartBoundary=message.ParsedContentType.Boundary;
-			}
-			StringBuilder stringBuilderBodyText=new StringBuilder("");
-			if(isOutbound) {
-				for(int i=0;i<listMimeEntitiesBodyTextParts.Count;i++) {
-					if(strTextPartBoundary!="") {//For outgoing Direct Ack messages.
-						stringBuilderBodyText.Append("\r\n--"+strTextPartBoundary+"\r\n");
-						stringBuilderBodyText.Append(listMimeEntitiesBodyTextParts[i].ToString());//Includes not only the body text, but also content type and content disposition.
-						continue;
-					}
-					stringBuilderBodyText.Append(ProcessMimeTextPart(listMimeEntitiesBodyTextParts[i]));
-				}
-				if(strTextPartBoundary!="") {
-					stringBuilderBodyText.Append("\r\n--"+strTextPartBoundary+"--\r\n");
-				}
-			}
-			else {
-				//All plain text body parts will show to the user in the chart module progress notes.
-				for(int i=0;i<listMimeEntitiesBodyTextParts.Count;i++) {
-					if(IsMimeEntityTextPlain(listMimeEntitiesBodyTextParts[i])) {
-						stringBuilderBodyText.Append(ProcessMimeTextPart(listMimeEntitiesBodyTextParts[i]));
-					}
-				}
-			}
-			emailMessage.BodyText=stringBuilderBodyText.ToString();
-			emailMessage.Attachments=new List<EmailAttach>();
-			if(!hasAttachments) {
-				return emailMessage;
-			}
-			//If an encrypted attachment is present (smime.p7m), then ensure the message content type correctly indicates an encrypted message.
-			for(int i=0;i<listMimeEntitiesAttachParts.Count;i++) {
-				if(listMimeEntitiesAttachParts[i].ParsedContentType.Name==null) {
-					continue;
-				}
-				if(listMimeEntitiesAttachParts[i].ParsedContentType.Name.ToLower()!="smime.p7m") {
-					continue;
-				}
-				//encrypted attachment
-				message.ContentType="application/pkcs7-mime; name=smime.p7m; boundary="+strTextPartBoundary+";";
-				break;
-			}
-			try {
-				for(int i=0;i<listMimeEntitiesAttachParts.Count;i++) {
-					byte[] byteArrayData=null;
-					try {
-						if(IsMimeEntityBase64(listMimeEntitiesAttachParts[i])) {
-							byteArrayData=Convert.FromBase64String(listMimeEntitiesAttachParts[i].Body.Text);
-						}
-					}
-					catch {
-					}
-					if(byteArrayData==null) {//Plain attachment.
-						byteArrayData=Encoding.UTF8.GetBytes(listMimeEntitiesAttachParts[i].Body.Text);
-					}
-					string displayFileName=listMimeEntitiesAttachParts[i].ParsedContentType.Name;
-					//If the name directive was not set, check for the filename directive.
-					//The filename is always optional and must not be used blindly by the application: path information should be stripped, and conversion to 
-					//the server file system rules should be done. This parameter provides mostly indicative information. When used in combination with 
-					//Content-Disposition: attachment, it is used as the default filename for an eventual "Save As" dialog presented to the user.
-					if(string.IsNullOrEmpty(displayFileName) 
-						&& !string.IsNullOrWhiteSpace(listMimeEntitiesAttachParts[i].ContentDisposition) 
-						&& listMimeEntitiesAttachParts[i].ContentDisposition.Contains("filename"))
-					{
-						//E.g. Content-Disposition: attachment; filename="cool.html" should suggest saving under the "cool.html" filename (by default).
-						Match match=Regex.Match(listMimeEntitiesAttachParts[i].ContentDisposition,@"filename[\t ]*=[\t ]*""(.*)""");
-						if(match.Success && match.Groups!=null && match.Groups.Count > 1) {
-							displayFileName=ODFileUtils.CleanFileName(match.Groups[1].Value);
-						}
-					}
-					EmailAttach emailAttach=EmailAttaches.CreateAttach(displayFileName,"",byteArrayData,isOutbound);
-					emailMessage.Attachments.Add(emailAttach);//The attachment EmailMessageNum is set when the emailMessage is inserted/updated below.
-				}
-			}
-			catch(Exception) {
-				//Failed to extract all attachments from the email message.  Cleanup the attachments which were successfully extracted.
-				for(int i=0;i<emailMessage.Attachments.Count;i++) {
-					string attachFilePath=FileAtoZ.CombinePaths(EmailAttaches.GetAttachPath(),emailMessage.Attachments[i].ActualFileName);
-					if(!FileAtoZ.Exists(attachFilePath)) { 
-						continue;
-					}
-					try {
-						FileAtoZ.Delete(attachFilePath);
-					}
-					catch {
-						//Probably nothing else we can do.  At least continue to the remaining attachments to try deleting them as well.
-					}
-				}
-				throw;
-			}
-			return emailMessage;
-		}
-
-		///<summary>Converts our internal EmailMessage object to a Direct message object.  Used for outgoing email.  Wraps the message.</summary>
-		private static Health.Direct.Common.Mail.Message ConvertEmailMessageToMessage(EmailMessage emailMessage,bool hasAttachments) {
-			Meth.NoCheckMiddleTierRole();
-			//We need to use emailAddressFrom.Username instead of emailAddressFrom.SenderAddress, because of how strict encryption is for matching the name to the certificate.
-			Health.Direct.Common.Mail.Message message=new Health.Direct.Common.Mail.Message();
-			if(!string.IsNullOrWhiteSpace(emailMessage.ToAddress)) {
-				message.To=new Health.Direct.Common.Mime.Header("To",emailMessage.ToAddress.Trim());
-			}
-			message.From=new Health.Direct.Common.Mime.Header("From",emailMessage.FromAddress.Trim());
-			//message.Body is set below.
-			message.ContentType="text/plain";//Setting the default content type helps with signing.
-			if(!string.IsNullOrWhiteSpace(emailMessage.CcAddress)) {
-				message.CcValue=emailMessage.CcAddress.Trim();//constructor does not accept cc and bcc values
-			}
-			if(!string.IsNullOrWhiteSpace(emailMessage.BccAddress)) {
-				message.BccValue=emailMessage.BccAddress.Trim();
-			}
-			string subject=SubjectTidy(emailMessage.Subject);
-			if(subject!="") {
-				Health.Direct.Common.Mime.Header headerSubject=new Health.Direct.Common.Mime.Header("Subject",subject);
-				message.Headers.Add(headerSubject);
-			}
-			//The Transport Testing Tool (TTT) complained when we sent a message that was not wrapped.
-			//It appears that wrapped messages are preferred when sending a message, although support for incoming wrapped messages is optional (unwrapped is required).  We support both unwrapped and wrapped.
-			//Specifically, the tool looks for the headers Orig-Date and Message-Id after the message is decrypted, so we need to include these two headers before encrypting an outgoing email.
-			//The message date must be in a very specific format and must match the RFC822 standard.  Is a required field for RFC822.  http://tools.ietf.org/html/rfc822
-			string strOrigDate=DateTime.Now.ToString("ddd, dd MMM yyyy HH:mm:ss zzz");//Example: "Tue, 12 Nov 2013 17:10:37 +08:00", which has an extra colon in the Zulu offset.
-			strOrigDate=strOrigDate.Remove(strOrigDate.LastIndexOf(':'),1);//Remove the colon from the Zulu offset, as required by the RFC 822 message format.
-			message.Date=new Health.Direct.Common.Mime.Header("Date",strOrigDate);//http://tools.ietf.org/html/rfc5322#section-3.6.1
-			message.AssignMessageID();//http://tools.ietf.org/html/rfc5322#section-3.6.4
-			string strBoundry="";
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesPart=new List<Health.Direct.Common.Mime.MimeEntity>();
-			string bodyText=BodyTidy(emailMessage.BodyText);
-			if(bodyText.Trim().Length>4 && bodyText.Trim().StartsWith("--") && bodyText.Trim().EndsWith("--")) {//The body text is multi-part.
-				strBoundry=bodyText.Trim().Split(new string[] { "\r\n","\r","\n" },StringSplitOptions.None)[0];
-				List<string> listBodyTextParts=bodyText.Trim().TrimEnd('-').Split(new string[] { strBoundry },StringSplitOptions.RemoveEmptyEntries).ToList();
-				for(int i=0;i<listBodyTextParts.Count;i++) {
-					Health.Direct.Common.Mime.MimeEntity mimeEntityBodyText=new Health.Direct.Common.Mime.MimeEntity(listBodyTextParts[i]);
-					mimeEntityBodyText.ContentType="text/plain;";
-					listMimeEntitiesPart.Add(mimeEntityBodyText);
-				}
-			}
-			else {
-				Health.Direct.Common.Mime.MimeEntity mimeEntityBodyText=new Health.Direct.Common.Mime.MimeEntity(bodyText);
-				mimeEntityBodyText.ContentType="text/plain;";
-				listMimeEntitiesPart.Add(mimeEntityBodyText);
-			}
-			if(hasAttachments && emailMessage.Attachments!=null && emailMessage.Attachments.Count>0) {
-				string strAttachPath=EmailAttaches.GetAttachPath();
-				for(int i=0;i<emailMessage.Attachments.Count;i++) {
-					string strAttachFile=FileAtoZ.CombinePaths(strAttachPath,emailMessage.Attachments[i].ActualFileName);
-					//We always attach with base64 encoding, so that we do not have to worry about violating the RFC822 email format with binary characters or invalid newlines.
-					Health.Direct.Common.Mime.MimeEntity mimeEntityAttach=new Health.Direct.Common.Mime.MimeEntity(Convert.ToBase64String(FileAtoZ.ReadAllBytes(strAttachFile)));
-					mimeEntityAttach.ContentTransferEncoding="base64";
-					mimeEntityAttach.ContentDisposition="attachment; filename=\""+emailMessage.Attachments[i].DisplayedFileName+"\"";
-					mimeEntityAttach.ContentType=Mime.GetMimeTypeForEmail(strAttachFile)+"; name=\""+emailMessage.Attachments[i].DisplayedFileName+"\"";
-					listMimeEntitiesPart.Add(mimeEntityAttach);
-				}
-			}
-			if(strBoundry=="") {
-				strBoundry=CodeBase.MiscUtils.CreateRandomAlphaNumericString(32);
-			}
-			if(listMimeEntitiesPart.Count==1) {//Single body part
-				message.Body=listMimeEntitiesPart[0].Body;
-				return message;
-			}
-			if(listMimeEntitiesPart.Count>1) {//multiple body parts
-				message.SetParts(listMimeEntitiesPart,"multipart/mixed; boundary="+strBoundry+";");
-			}
-			return message;
-		}
-
 		///<summary>Decodes the subject line of an email, which may contain non-ascii characters, either due to base64 or quoted-printable encoding.
 		///</summary>
 		public static string ProcessInlineEncodedText(string text) {
 			//str must be in "=?bodycharset?[B,Q,iso-8859-1,etc]?input?=" format for Attachment to properly decode non-ascii chars.  This is the case for 
 			//the email subject line, and to/from/cc/bcc addresses but not for the body, which is why we decode the body differently.  
-			//Ex. =?UTF-8?B?RndkOiDCoiDDhiAxMjM0NSDDpiDDvyBzb21lIGFzY2lpIGNoYXJzIMOCIMOD?= decodes to "Fwd: ¢ Æ 12345 æ ÿ some ascii chars Â Ã"
-			//=?UTF-8?Q?nu=C2=A4=20=C3=82=20=C3=80=20=C2=A2?= decodes to "nu¤ Â À ¢"
+			//Ex. =?UTF-8?B?RndkOiDCoiDDhiAxMjM0NSDDpiDDvyBzb21lIGFzY2lpIGNoYXJzIMOCIMOD?= decodes to "Fwd: Â¢ Ã† 12345 Ã¦ Ã¿ some ascii chars Ã‚ Ãƒ"
+			//=?UTF-8?Q?nu=C2=A4=20=C3=82=20=C3=80=20=C2=A2?= decodes to "nuÂ¤ Ã‚ Ã€ Â¢"
 			MatchEvaluator matchEvaluator=(match) => {
 				string charsetStr=match.Result("$1");
 				string encodingStr=match.Result("$2");
@@ -2925,45 +2215,6 @@ namespace OpenPmsDentalBusiness {
 			return Regex.Replace(text,@"=\?([^?]+)\?([^?]+)\?([^?]+)\?=",matchEvaluator);
 		}
 
-		public static string ProcessMimeTextPart(Health.Direct.Common.Mime.MimeEntity mimeEntity) {
-			Meth.NoCheckMiddleTierRole();
-			string strBodyText=mimeEntity.Body.Text;
-			//Convert clear text mime parts which are base64 encoded into utf8 to make the text readable (plain text, html, xml, etc...)
-			//This includes messages which were received as encryped and which were successfully decrypted.
-			Encoding encoding=Encoding.GetEncoding("utf-8");
-			ODException.SwallowAnyException(() => encoding=GetMimeEncoding(mimeEntity));
-			if(!IsMimeEntityEncrypted(mimeEntity) && IsMimeEntityText(mimeEntity) && IsMimeEntityBase64(mimeEntity)) {
-				byte[] byteArrayBody=Convert.FromBase64String(mimeEntity.Body.Text);
-				strBodyText=encoding.GetString(byteArrayBody);
-			}
-			//Official documentation regarding text wrapping.  http://www.ietf.org/rfc/rfc2646.txt
-			//Both text and html bodies appear to be commonly wrapped at 75 characters with an extra '=' character added to the end of wrapped lines.
-			//We have seen email wrapped at 75 characters from a number of sources, including GoDaddy and Comodo.
-			//However, lines may be wrapped at any number of characters, so we cannot rely on the length of the line.
-			//Instead we rely on the presence of a "soft line break" (a special character SP followed by CRLF).
-			//I hard line break is a CRLF which is not preceded by the SP character.
-			//The SP character can be any character, and from what we have seen, is usually the '=' character.
-			string sp="=";//Soft line break indicator character.
-			List<string> listMimeBodyLines=strBodyText.Split(new string[] { "\r\n","\r","\n" },StringSplitOptions.None).ToList();
-			StringBuilder stringBuilderBodyText=new StringBuilder();
-			for(int i=0;i<listMimeBodyLines.Count;i++) {
-				if(listMimeBodyLines[i].EndsWith(sp)) {//Soft line break.  The line ends with SP CRLF
-					//The current line is wrapped.  Remove the trailing soft line break indicator character and also remove the new line.
-					//The CRLF was already removed when splitting, so we only need to remove the soft line break indicator at the end.
-					stringBuilderBodyText.Append(listMimeBodyLines[i].Substring(0,listMimeBodyLines[i].Length-1));
-					continue;
-				}
-				//Hard line break.
-				//The current line is not wrapped.  Do not modify this line.  Also ensure that the CRLF is placed back into the output.
-				stringBuilderBodyText.Append(listMimeBodyLines[i]);
-				if(i<listMimeBodyLines.Count) {
-					stringBuilderBodyText.AppendLine();
-				}
-			}
-			//Soft line breaks have now been removed from the message.
-			return DecodeBodyText(sp,stringBuilderBodyText.ToString(),encoding);
-		}
-
 		///<summary>Decodes the body text of an email.</summary>
 		public static string DecodeBodyText(string sp,string strBodyTextUnwrapped,Encoding encoding) {
 			Meth.NoCheckMiddleTierRole();
@@ -2989,101 +2240,6 @@ namespace OpenPmsDentalBusiness {
 				listBytes.AddRange(encoding.GetBytes(listBodyEncodeds[i]));
 			}
 			return encoding.GetString(listBytes.ToArray());
-		}
-
-		private static Encoding GetMimeEncoding(Health.Direct.Common.Mime.MimeEntity mimeEntity) {
-			if(mimeEntity.ContentType==null) {
-				//The body of a message is simply lines of US-ASCII characters.
-				//Default to UTF-8, which can handle US-ASCII characters, because it can interpret more characters just in case the standard is not followed.
-				return Encoding.UTF8;
-			}
-			//However, mime entities can specify other types of encoding via the content type.
-			//We cannot use mimeEntity.ParsedContentType.CharSet because it fails if there are spaces around the equal sign of the charset statement.
-			string contentType=mimeEntity.ContentType.ToLower();
-			int charsetIndex=contentType.IndexOf("charset");
-			if(charsetIndex < 0) {
-				throw new ApplicationException("Mime encoding not specified.");
-			}
-			charsetIndex=contentType.IndexOf("=",charsetIndex+7);//Find the '=' after the "charset" string (ignoring spaces).
-			if(charsetIndex < 0) {
-				throw new ApplicationException("Mime encoding incorrectly specified.");
-			}
-			charsetIndex++;//Skip '='
-			while(charsetIndex < contentType.Length && Char.IsWhiteSpace(contentType[charsetIndex])) {//Skip white space after '='
-				charsetIndex++;
-			}
-			string encName="";
-			while(true) {
-				if(charsetIndex >= contentType.Length) {
-					break;
-				}
-				if(contentType[charsetIndex]==';') {
-					break;
-				}
-				if(Char.IsWhiteSpace(contentType[charsetIndex])) {
-					break;
-				}
-				encName+=contentType[charsetIndex];
-				charsetIndex++;
-			}
-			encName=encName.Replace("\"","");//Remove double-quotes
-			Encoding encoding=null;
-			try {
-				encoding=Encoding.GetEncoding(encName);
-			}
-			catch {
-				if(encName.ToLower().StartsWith("cp")) {
-					string codePage=encName.Substring(2);
-					encoding=Encoding.GetEncoding(int.Parse(codePage));
-				}
-			}
-			return encoding;
-		}
-
-		private static bool IsMimeEntityEncrypted(Health.Direct.Common.Mime.MimeEntity mimeEntity) {
-			Meth.NoCheckMiddleTierRole();
-			if(mimeEntity.ContentType==null) {
-				return false;
-			}
-			if(!mimeEntity.ContentType.ToLower().Contains("application/pkcs7-mime")) {
-				return false;
-			}
-			return true;//The email MIME/body is encrypted (known as S/MIME).  Treated as an Encrypted/Direct message.
-		}
-
-		private static bool IsMimeEntityBase64(Health.Direct.Common.Mime.MimeEntity mimeEntity) {
-			Meth.NoCheckMiddleTierRole();
-			if(mimeEntity.ContentTransferEncoding==null) {
-				return false;
-			}
-			if(!mimeEntity.ContentTransferEncoding.ToLower().Contains("base64")) {
-				return false;
-			}
-			return true;
-		}
-
-		///<summary>Returns true if plain text, xml, html, etc...</summary>
-		private static bool IsMimeEntityText(Health.Direct.Common.Mime.MimeEntity mimeEntity) {
-			Meth.NoCheckMiddleTierRole();
-			if(mimeEntity.ContentType==null) {
-				return false;
-			}
-			if(!mimeEntity.ContentType.ToLower().Contains("text/")) {
-				return false;
-			}
-			return true;
-		}
-
-		///<summary>Returns true if plain text, xml, html, etc...</summary>
-		private static bool IsMimeEntityTextPlain(Health.Direct.Common.Mime.MimeEntity mimeEntity) {
-			Meth.NoCheckMiddleTierRole();
-			if(mimeEntity.ContentType==null) {
-				return false;
-			}
-			if(!mimeEntity.ContentType.ToLower().Contains("text/plain")) {
-				return false;
-			}
-			return true;
 		}
 
 		public static string GetEmailSentOrReceivedDescript(EmailSentOrReceived sentOrReceived) {
@@ -3318,11 +2474,11 @@ namespace OpenPmsDentalBusiness {
 		private static EmailMessage SetForwardOrReplyBody(EmailMessage emailMessage,EmailMessage emailMessageReceived,EmailAddress emailAddress) {
 			string bodyTextHeader="\r\n\r\n\r\nOn "+emailMessageReceived.MsgDateTime.ToString()+" "+ProcessInlineEncodedText(emailMessageReceived.FromAddress)+" sent:\r\n";
 			string bodyText;
-			List<List<Health.Direct.Common.Mime.MimeEntity>> listMimeEntitiesPart=
+			List<List<EmailMimePart>> listMimeEntitiesPart=
 				EmailMessages.GetMimePartsForMimeTypes(emailMessageReceived.RawEmailIn,emailAddress,"text/html","text/plain","image/","application/octet-stream");
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesPartHtml=listMimeEntitiesPart[0];//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntitiesPartText=listMimeEntitiesPart[1];//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
-			List<Health.Direct.Common.Mime.MimeEntity> listMimeEntriesPartImages=new List<Health.Direct.Common.Mime.MimeEntity>();
+			List<EmailMimePart> listMimeEntitiesPartHtml=listMimeEntitiesPart[0];//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
+			List<EmailMimePart> listMimeEntitiesPartText=listMimeEntitiesPart[1];//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
+			List<EmailMimePart> listMimeEntriesPartImages=new List<EmailMimePart>();
 			listMimeEntriesPartImages.AddRange(listMimeEntitiesPart[2]);//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
 			listMimeEntriesPartImages.AddRange(listMimeEntitiesPart[3]);//If RawEmailIn is blank, then this list will also be blank (ex Secure Web Mail messages).
 			if(listMimeEntriesPartImages.Count>0) {//Email has images that need to be displayed
@@ -3337,7 +2493,7 @@ namespace OpenPmsDentalBusiness {
 				bodyText=bodyTextHeader+bodyText;
 				for(int i=0;i<listMimeEntriesPartImages.Count;i++) {//Similar logic to EmailPreviewControl.ParseAndSaveAttachments()
 					string fileName=GetMimeImageFileName(listMimeEntriesPartImages[i]);
-					if(!ImageStore.HasImageExtension(fileName)) {//Check file format against known image format extensions.
+					if(fileName==null || !ImageStore.HasImageExtension(fileName)) {//No name, or not a known image format extension.
 						continue;//Don't show any that are not a known image format
 					}
 					bodyText=bodyText.Replace($"[cid:{fileName}]",$"[[img:{fileName}]]");//Change inline image to image link.
@@ -3994,78 +3150,58 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 		private delegate string ReplaceImgSrc(string valueOriginal,string imgName,string localFilePath);
 	}
 
-	public class EmailPublicResolver : EmailNameResolver {
-		public EmailPublicResolver(bool isReadOnly=true) : base(isReadOnly?SystemX509Store.OpenExternal():SystemX509Store.OpenExternalEdit()) {
+	///<summary>One MIME part of a received email, as the e-mail preview and reply/forward get it from EmailMessages.GetMimePartsForMimeTypes and hand
+	///back to ProcessMimeTextPart and the GetMimeImage helpers. It holds a MimeKit part, which stays inside the business layer: the program's
+	///project does not reference MimeKit.</summary>
+	public class EmailMimePart {
+		///<summary>The MimeKit part.</summary>
+		internal readonly MimeKit.MimePart MimePart;
+
+		internal EmailMimePart(MimeKit.MimePart mimePart) {
+			MimePart=mimePart;
+		}
+
+		///<summary>The type and subtype of the part, as the message wrote them, such as "image/png".</summary>
+		public string MimeType {
+			get { return MimePart.ContentType.MimeType; }
+		}
+
+		///<summary>True for a part with "Content-Disposition: inline", and for one without Content-Disposition, such as an image of a
+		///multipart/related html body that the html refers to by its Content-ID.</summary>
+		public bool IsInline {
+			get { return MimePart.ContentDisposition==null || MimePart.ContentDisposition.Disposition.ToLower().Contains("inline"); }
 		}
 	}
 
-	public class EmailPrivateResolver : EmailNameResolver {
-		public EmailPrivateResolver(bool isReadOnly=true) : base(isReadOnly?SystemX509Store.OpenPrivate():SystemX509Store.OpenPrivateEdit()) {
-		}
-	}
+	///<summary>The names and validity of an email certificate (S/MIME): which address or domain it is for, and whether it is in its time and not
+	///revoked. Used for the signing certificate (EmailMessages.GetCertFromPrivateStore) and to show a received signature (FormEmailDigitalSignature,
+	///EmailPreviewControl).</summary>
+	public static class EmailCertificates {
+		///<summary>The chain problems that make a certificate invalid: the default problem flags of the Direct Project's TrustChainValidator.</summary>
+		public const X509ChainStatusFlags ProblemFlags=X509ChainStatusFlags.NotTimeValid|X509ChainStatusFlags.Revoked|X509ChainStatusFlags.NotSignatureValid
+			|X509ChainStatusFlags.InvalidBasicConstraints|X509ChainStatusFlags.CtlNotTimeValid|X509ChainStatusFlags.CtlNotSignatureValid;
 
-	public class EmailNameResolver : ICertificateResolver {
-
-		public CertificateStore Store=null;
-
-		///<summary>If isPublic is true then will resolve against public certificates, otherwise will resolve against private certificates.</summary>
-		public EmailNameResolver(CertificateStore certificateStore) {
-			Store=certificateStore;
-		}
-
-		~EmailNameResolver() {
-			if(Store!=null) {
-				Store.Dispose();
-				Store=null;
-			}
-		}
-
-		///<summary>Gets all active and valid address-level certificates for the specified email address.
-		///If none found, then gets active and valid domain-level certificates for the specified email address.
-		///If neither type of certificate is found, returns null.</summary>
-		public X509Certificate2Collection GetCertificates(MailAddress address) {
-			List <X509Certificate2> listX509Certificate2sValid=new List<X509Certificate2>();
-			List <X509Certificate2> listX509Certificate2sInvalid=new List<X509Certificate2>();
-			GetCertificates(address.Address,listX509Certificate2sValid,listX509Certificate2sInvalid);
-			if(listX509Certificate2sValid.Count > 0 || listX509Certificate2sInvalid.Count > 0) {
-				return new X509Certificate2Collection(listX509Certificate2sValid.ToArray());
-			}
-			return null;
-		}
-
-		///<summary>Gets all address-level certificates for the specified email address into the two specified lists, separated by validity.
-		///If none found, then gets domain-level certificates for the specified email address into the two specified lists, separated by validity.</summary>
-		public void GetCertificates(string addressOrDomain,List <X509Certificate2> listX509Certificate2sValid,List <X509Certificate2> listlistX509Certificate2sInvalid) {
-			if(addressOrDomain.Contains("@")) {
-				GetCertificatesForAddress(addressOrDomain,listX509Certificate2sValid,listlistX509Certificate2sInvalid);
-				if(listX509Certificate2sValid.Count > 0) {
-					//If we found at least one address specific certificate, then we ignore domain level certificates.
-					//This will be true even if we only find invalid certificates, because we assume the intent of the setup was
-					//to have an address specific certificate and there is currently something wrong which the user might correct.
-					//We do not want to temporarily send a domain level certificate if there is a minor issue that can be easily corrected
-					//for any invalid address specific certificates found.
-					return;
-				}
-			}
+		///<summary>Gets all address-level certificates of the collection for the specified email address into the two specified lists, separated
+		///by validity. If no valid one is found, then also gets the domain-level certificates of its domain, as the Direct Project's certificate
+		///resolver did for the store of private certificates.</summary>
+		public static void GetCertificates(X509Certificate2Collection x509Certificate2Collection,string addressOrDomain,
+			List<X509Certificate2> listX509Certificate2sValid,List<X509Certificate2> listX509Certificate2sInvalid)
+		{
 			string domain=addressOrDomain;
 			if(addressOrDomain.Contains("@")) {
-				MailAddress mailAddress=new MailAddress(addressOrDomain);
-				domain=mailAddress.Host;
+				GetCertificatesForAddress(x509Certificate2Collection,addressOrDomain,listX509Certificate2sValid,listX509Certificate2sInvalid);
+				if(listX509Certificate2sValid.Count > 0) {
+					return;//If we found at least one valid address specific certificate, then we ignore domain level certificates.
+				}
+				domain=addressOrDomain.Substring(addressOrDomain.LastIndexOf("@")+1);//No System.Net.Mail.MailAddress: .NET 10 refuses some local parts.
 			}
-			GetCertificatesForDomain(domain,listX509Certificate2sValid,listlistX509Certificate2sInvalid);
-		}
-
-		///<summary>Gets all active and valid address-level certificates for the specified email address.</summary>
-		public X509Certificate2Collection GetCertificatesForAddress(string emailAddress) {
-			List <X509Certificate2> listX509Certificate2sValid=new List<X509Certificate2>();
-			List <X509Certificate2> listX509Certificate2sInvalid=new List<X509Certificate2>();
-			GetCertificatesForAddress(emailAddress,listX509Certificate2sValid,listX509Certificate2sInvalid);
-			return new X509Certificate2Collection(listX509Certificate2sValid.ToArray());
+			GetCertificatesForDomain(x509Certificate2Collection,domain,listX509Certificate2sValid,listX509Certificate2sInvalid);
 		}
 
 		///<summary>Gets all address-level certificates for the specified email address into the two specified lists, separated by validity.</summary>
-		public void GetCertificatesForAddress(string emailAddress,List <X509Certificate2> listX509Certificate2sValid,List <X509Certificate2> listX509Certificate2sInvalid) {
-			X509Certificate2Collection x509Certificate2Collection=Store.GetAllCertificates();
+		public static void GetCertificatesForAddress(X509Certificate2Collection x509Certificate2Collection,string emailAddress,
+			List<X509Certificate2> listX509Certificate2sValid,List<X509Certificate2> listX509Certificate2sInvalid)
+		{
 			for(int i=0;i<x509Certificate2Collection.Count;i++) {
 				string subjectName=GetCertSubjectName(x509Certificate2Collection[i]);
 				if(subjectName!="" && subjectName.ToLower()!=emailAddress.ToLower()) {
@@ -4082,17 +3218,10 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 			}
 		}
 
-		///<summary>Gets all active and valid domain-level certificates for the specified domain name.</summary>
-		public X509Certificate2Collection GetCertificatesForDomain(string domain) {
-			List <X509Certificate2> listX509Certificate2sValid=new List<X509Certificate2>();
-			List <X509Certificate2> listX509Certificate2sInvalid=new List<X509Certificate2>();
-			GetCertificatesForDomain(domain,listX509Certificate2sValid,listX509Certificate2sInvalid);
-			return new X509Certificate2Collection(listX509Certificate2sValid.ToArray());
-		}
-
 		///<summary>Gets all domain-level certificates for the specified domain name into the two specified lists, separated by validity.</summary>
-		public void GetCertificatesForDomain(string domain,List <X509Certificate2> listX509Certificate2sValid,List <X509Certificate2> listX509Certificate2sInvalid) {
-			X509Certificate2Collection x509Certificate2Collection=Store.GetAllCertificates();
+		public static void GetCertificatesForDomain(X509Certificate2Collection x509Certificate2Collection,string domain,
+			List<X509Certificate2> listX509Certificate2sValid,List<X509Certificate2> listX509Certificate2sInvalid)
+		{
 			for(int i=0;i<x509Certificate2Collection.Count;i++) {
 				string subjectName=GetCertSubjectName(x509Certificate2Collection[i]);
 				if(subjectName!="" && subjectName.ToLower()!=domain.ToLower()) {
@@ -4161,25 +3290,22 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 			return "";
 		}
 
-		///<summary>Before returning the certificate, verify that it is valid using the default trust flags provided by Direct.
+		///<summary>Before returning the certificate, verify that it is valid using the default trust flags the Direct Project used (ProblemFlags).
 		///This is how we avoid returning expired or revoked certificates etc.
 		///This will ignore whether or not the certificate is trusted as a result of a matching trust anchor (this step is done later).
 		///</summary>
 		public static bool IsCertValid(X509Certificate2 x509Certificate2) {
-			//This code mimics Health.Direct.Agent.TrustChainValidator.IsTrustedCertificate().
+			//This code mimics the Direct Project's TrustChainValidator.IsTrustedCertificate().
 			X509Chain x509ChainBuilder=new X509Chain();
 			x509ChainBuilder.ChainPolicy=new X509ChainPolicy();
 			x509ChainBuilder.Build(x509Certificate2);
 			for(int i=0;i<x509ChainBuilder.ChainElements.Count;i++) {
-				if(x509ChainBuilder.ChainElements[i].ChainElementStatus.Any(s => (s.Status & Health.Direct.Agent.TrustChainValidator.DefaultProblemFlags) != 0)) {
+				if(x509ChainBuilder.ChainElements[i].ChainElementStatus.Any(s => (s.Status & ProblemFlags) != 0)) {
 					return false;
 				}
 			}
 			return true;
 		}
-
-		///<summary>This is required by the interface.</summary>
-		public event Action<ICertificateResolver, Exception> Error;
 	}
 
 }

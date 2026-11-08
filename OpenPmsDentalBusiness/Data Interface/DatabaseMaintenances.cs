@@ -11745,21 +11745,16 @@ HAVING cnt>1";
 					EmailMessage emailMessageNew=EmailMessages.ProcessRawEmailMessageIn(emailMessage.RawEmailIn,emailMessage.EmailMessageNum
 						,emailAddress,false,emailMessageOld.SentOrReceived);
 					emailMessageNew.FailReason=emailMessage.FailReason;// not copied over in ProcessRawEmailMessageIn()
-					if(emailMessageNew.RawEmailIn!=emailMessage.RawEmailIn && emailMessageNew.RawEmailIn.EndsWith("\r\n")) {
-						//In Health.Direct.Agent.IncomingMessage.SerializeMessage(), a trailing newline is sometimes added.
-						emailMessageNew.RawEmailIn=emailMessageNew.RawEmailIn.Substring(0,emailMessageNew.RawEmailIn.Length-2);
-					}
 					//Remove characters which would not be valid in the database ex:Emojis.
 					//emailMessageNew has characters which were stripped when inserted into the database (emailMessageOld).
 					EmailMessage emailMessageNewCopy=emailMessageNew.Copy();
 					EmailMessage emailMessageOldCopy=emailMessageOld.Copy();
-					Health.Direct.Agent.IncomingMessage inMsgNew=EmailMessages.RawEmailToIncomingMessage(emailMessageNewCopy.RawEmailIn,emailAddress);
-					Health.Direct.Agent.IncomingMessage inMsgOld=EmailMessages.RawEmailToIncomingMessage(emailMessageOld.RawEmailIn,emailAddress);
-					emailMessageNewCopy.Subject=inMsgNew.Message.SubjectValue;
 					emailMessageNewCopy.RawEmailIn=SOut.StringParam(emailMessageNew.RawEmailIn);
-					emailMessageNewCopy.BodyText=inMsgNew.Message.Body.Text;
-					emailMessageOldCopy.Subject=inMsgOld.Message.SubjectValue;
-					emailMessageOldCopy.BodyText=inMsgOld.Message.Body.Text;
+					//The subject and body text that ProcessRawEmailMessageIn read with MimeKit, as the database stores them. (The Direct-based version
+					//compared the raw Subject header and the raw MIME body here, and so wrote the raw body over the body text of a message whose
+					//attachments it cleared.)
+					emailMessageNewCopy.Subject=SOut.StringParam(emailMessageNew.Subject);
+					emailMessageNewCopy.BodyText=SOut.StringParam(emailMessageNew.BodyText);
 					NormalizeRawEmailWhiteSpace(emailMessageNewCopy,emailMessageOldCopy);//Unicode white space (24.4).
 					if(Crud.EmailMessageCrud.UpdateComparison(emailMessageNewCopy,emailMessageOldCopy)) {
 						countCleaned++;
