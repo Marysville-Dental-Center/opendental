@@ -205,19 +205,24 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>The plan-level benefits (PatPlanNum 0) of these plans, by PlanNum. Plans without benefits are missing.</summary>
 		public static Dictionary<long,List<Benefit>> GetBenefitsForPlans(List<long> listPlanNums) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<Dictionary<long,List<Benefit>>>(MethodBase.GetCurrentMethod(),listPlanNums);
-			}
+			Meth.NoCheckMiddleTierRole();
 			Dictionary<long,List<Benefit>> dict=new Dictionary<long,List<Benefit>>();
-			if(listPlanNums==null || listPlanNums.Count==0) {
-				return dict;
-			}
-			string command="SELECT * FROM benefit WHERE PatPlanNum=0 AND PlanNum IN("+string.Join(",",listPlanNums.Select(x => POut.Long(x)))+")";
-			List<Benefit> listBenefits=Crud.BenefitCrud.SelectMany(command);
-			foreach(IGrouping<long,Benefit> group in listBenefits.GroupBy(x => x.PlanNum)) {
+			foreach(IGrouping<long,Benefit> group in GetPlanLevelBenefits(listPlanNums).GroupBy(x => x.PlanNum)) {
 				dict[group.Key]=group.ToList();
 			}
 			return dict;
+		}
+
+		///<summary>The plan-level benefits (PatPlanNum 0) of these plans. Empty when no plan is given.</summary>
+		public static List<Benefit> GetPlanLevelBenefits(List<long> listPlanNums) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<Benefit>>(MethodBase.GetCurrentMethod(),listPlanNums);
+			}
+			if(listPlanNums==null || listPlanNums.Count==0) {
+				return new List<Benefit>();
+			}
+			string command="SELECT * FROM benefit WHERE PatPlanNum=0 AND PlanNum IN("+string.Join(",",listPlanNums.Select(x => POut.Long(x)))+")";
+			return Crud.BenefitCrud.SelectMany(command);
 		}
 
 		private static List<Benefit> GetBenefitsForPlan(Dictionary<long,List<Benefit>> dictBenefits,long planNum) {
