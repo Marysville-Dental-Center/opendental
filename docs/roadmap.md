@@ -60,12 +60,18 @@ Decided with the owner on 2026-11-07:
 - **Libraries**: NuGet packages replace the DLL files in `Required dlls`, from a local package folder the build lane restores from offline,
   with lock files; each batch of downloads is approved by the owner. The generated SOAP clients of services the fork removed are deleted and
   the rest regenerated or replaced; any BinaryFormatter use is replaced; tests built on AppDomains are rewritten; COM interop stays.
-- **Stages**, each ending with a full test run: (1) SDK-style project files, still on .NET Framework 4.8; (2) NuGet packages; (3) the
-  program, the business library, the tests and the Middle Tier on .NET 10, still 32-bit; (4) MSTest v1 to MSTest 3; (5) 64-bit, once the
-  TWAIN driver project's 64-bit data sources are ready (see "32-bit to 64-bit").
+- **Stages**, in this order (owner, 2026-11-08), each ending with a full test run: a clean-up of dead code and of the integrations that
+  are cut; SDK-style project files, still on .NET Framework 4.8; NuGet packages; MSTest v1 to MSTest 4; the code changes that also work on
+  .NET Framework, ending with the last .NET Framework release (the "bridge release"); the program, the business library, the tests and the
+  Middle Tier on .NET 10, still 32-bit; then 64-bit, once the TWAIN driver project's 64-bit data sources are ready (see "32-bit to
+  64-bit").
+- **Switching the office**: the bridge release first, then the new setup once on every workstation; the setup downloads the .NET 10
+  runtime, as it does for the Visual C++ runtime, and drops its "install for me only" mode. Windows 11 is the baseline.
 
-A read-only survey of every project, library, API and tool the move touches is under way; the detailed stage plan and any further owner
-questions follow from it.
+The stage plan, made from a read-only survey of every project, library, API and tool the move touches and an independent critique, is
+`docs/specs/net10-plan.md`. Its owner questions were answered on 2026-11-08 (`docs/owner-questions.md`, "The move to .NET 10"): among them
+the CallFire, Divvy and BCBS Georgia dial-up links, the report engine's SQL Server, ODBC and OLE DB data sources, and Direct secure
+messaging are removed; Change Healthcare (Emdeon) medical claims, voice perio charting and the plugin loader are kept.
 
 ### The tooth chart's 3D drawing
 
@@ -105,8 +111,8 @@ move (owner, 2026-11-07), once the TWAIN driver project's 64-bit data sources ar
 - **Installer and updates**: 64-bit install folder and prerequisites, and a defined way for an office to move from a 32-bit install to a
   64-bit one, including a mixed set of workstations during the switch.
 
-Prerequisites: .NET 10 (stages 1 to 4) and the 64-bit `.ds` files from the TWAIN driver project. Until the WPF tooth chart replaces them,
-the old DirectX and OpenGL chart engines must work in 64-bit, or the chart falls back to its 2D drawing.
+Prerequisites: the .NET 10 stages before this one and the 64-bit `.ds` files from the TWAIN driver project. Until the WPF tooth chart
+replaces them, the old DirectX and OpenGL chart engines must work in 64-bit, or the chart falls back to its 2D drawing.
 
 ### Compressed DICOM decoders
 

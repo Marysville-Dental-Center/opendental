@@ -1,0 +1,1108 @@
+# Open PMS - Dental: stage plan for the move from .NET Framework 4.8 to .NET 10
+
+**What this is.** The committed stage plan for moving every project of Open PMS - Dental from .NET Framework 4.8 to .NET 10. Package
+briefs are cut from it: each package names the files it owns, its work, its tests and its place in the merge order.
+
+**Date.** 2026-11-08. **Status.** Decided with the owner; stage 0 next.
+
+**Basis.** A read-only survey of every project (project files, APIs, user interface, libraries, tooling, Middle Tier, runtime behaviour)
+and an independent critique of that survey. Nothing was built, run, restored or downloaded for it. File and line references are from
+`main` at `e2251ea96` (the survey) and were re-checked at `8018a815f` for the stage 0 additions. Section 11 lists the owner's decisions of
+2026-11-08, section 12 the open points (O-1 and O-2 were answered and O-4 resolved on 2026-11-08), and the appendix where each finding
+of the critique is handled.
+
+**Ground rules (owner decisions of 2026-11-07, not reopened).** Everything moves to .NET 10, the Middle Tier included (ASP.NET Core on
+Windows; Linux deferred); no dual-targeting; framework-dependent; the setup installs the .NET 10 Desktop Runtime; x86 until stage 5; the
+tests leave MSTest v1 (for MSTest 4, decision 3); NuGet from a local offline folder with lock files, replacing `Required dlls` where a
+package exists; SOAP clients of cut services are dropped and the rest replaced; BinaryFormatter is scanned for and replaced; AppDomain tests
+are rewritten; COM interop stays; the office does not use QuickBooks Desktop (QBFC), Schick CDR or Topaz.
+
+---
+
+## 1. The plan in one page
+
+| Order | Stage | Target | What it achieves | Size (rough) |
+|---|---|---|---|---|
+| 1 | **0. Clean-up and seams** (new) | net48, classic projects | Moves the tests worth keeping out of the legacy UnitTests project, then deletes it and the other unshipped projects; removes Direct messaging and CDO (e-mail on MailKit and MimeKit only), the cut integrations and the two COM references; rebuilds the EOB and amendment window on the current Imaging code and removes the old 2020 Imaging module; adds the Middle Tier host seam. Every later diff gets smaller. | 8 packages, M, 12-17 dev-days |
+| 2 | **1. SDK-style project files** | net48 | The build lane and test runners move to Visual Studio Build Tools 2026 (MSBuild 18) first; then every C# project left after stage 0 becomes SDK-style, built with the pinned .NET SDK 10; the output keeps the same layout and files. | 8 packages, L, 9-13 dev-days |
+| 3 | **2. NuGet replaces Required dlls** | net48 | 26 identical DLLs become PackageReferences (no download); MySqlConnector 2.6.2, the WebView2 package and the 10.0 versions of three shipped Microsoft packages come in; the unused `System.Security.Cryptography.Pkcs` leaves; lock files everywhere. | 4 packages, M, 3-5 dev-days |
+| 4 | **4. MSTest 4** (runs before 3a) | net48 | Every test project leaves MSTest v1, which cannot run on .NET. | 2 packages, M, 2-4 dev-days |
+| 5 | **3a. Prepare the code on net48** | net48 | Every code change that also works on .NET Framework: menus, Thread.Abort, shell launching and elevation, ANSI encodings, number formats, PasswordVault, SOAP clients, services, test rewrites, golden outputs, a setup without per-user mode. Ends with the **last .NET Framework release ("bridge release")**. | 14 packages, XL, 21-32 dev-days |
+| 6 | **3b. Switch to net10.0-windows x86** | net10.0-windows | One integration branch retargets everything, adds the new Middle Tier, release and setup changes; merges to `main` once. | 8 packages, XL, 15-25 dev-days |
+| 7 | **5. x64** (later, unchanged) | net10.0-windows x64 | Needs 64-bit TWAIN data sources from another project. | not planned in detail |
+
+Each stage ends with a Full test run and a Release dry run (section 3). The effort figures are rough developer-day ranges for orientation
+only; the Middle Tier figure (5-6.5 days) comes from the Middle Tier survey, the rest are estimates from the counts in the surveys.
+
+### 1.1 Changes to the agreed stages, and why
+
+1. **The MSTest stage (stage 4) runs before the retarget (stage 3), and targets MSTest 4.** MSTest v1
+   (`Microsoft.VisualStudio.QualityTools.UnitTestFramework`) is a .NET Framework assembly found in the Visual Studio install; it cannot run
+   on .NET. 112 `.csproj` files reference it today. Moving the tests first, while still on net48, means the retarget is checked by an
+   unchanged test framework. MSTest 3.x is a deprecated line on nuget.org; the current 4.5.x line still supports .NET Framework 4.6.2+
+   (decisions 2 and 3).
+2. **New stage 0 (clean-up and seams).** The surveys found dead or unused items that would otherwise be converted, retargeted and tested
+   for nothing: the legacy UnitTests project (1,944 active tests the suite does not run), RdlDesign, DocumentationBuilder,
+   CentralManager; two COM references (ADODB unused, CDO replaceable by the already-shipped MailKit; they also tie the build to
+   MSBuild.exe, MSB4803); the Health.Direct DLLs (CLR 2.0 binaries that also parse every received e-mail); the QBFC, Schick and Topaz
+   bridges (a CLR 1.1 interop DLL; `TopazWrapperTests` compiles code with CodeDom, which throws on .NET); the integrations the owner
+   cut; unused `System.Web.*`/`System.ServiceModel.*` usings that become compile errors; 16 orphaned BinaryFormatter `.resx` entries; 8
+   stale RdlEngine files that SDK globbing would compile as duplicates; and the System.Web calls inside the shared libraries (12 uses in
+   5 files, S0-4) that block the business library from building for .NET. All of it works on today's build.
+3. **Stage 3 is split into 3a (on net48) and 3b (the switch).** Most fixes compile and behave the same on .NET Framework
+   (ContextMenuStrip, cooperative cancellation, `UseShellExecute=true`, explicit ANSI code pages, the Credential Manager, hand-written SOAP
+   calls, AppDomain-free tests). Landing them on net48 lets the existing Full suite and the running program prove them before the runtime
+   changes, keeps the switch diff small, and gives one release (the bridge release) that ships them to the office on the known runtime.
+   Golden outputs and crypto known answers must also be recorded from a net48 build, which is only possible before the switch.
+4. **The build moves to Visual Studio Build Tools 2026 and the .NET SDK 10 in S1-0, before the first SDK-style project** (decision 1).
+   The 9.0.3xx SDK band goes out of support on 2026-11-10
+   (https://learn.microsoft.com/en-us/dotnet/core/porting/versioning-sdk-msbuild-vs,
+   https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core).
+   Under the MSBuild 17.14 of Build Tools 2022, SDK 10 downloads a compiler package for every SDK-style project and warns NETSDK1233;
+   every SDK band after 10.0.1xx needs MSBuild 18; the vstest 17.14 of Build Tools 2022 lacks a fix the x86 .NET test host needs; and
+   Visual Studio 2022 17.14 leaves mainstream support on 2027-01-13. Moving the lane and the test runners in S1-0, on the unchanged classic
+   solution, keeps the toolchain change apart from the project-format change and avoids a second toolchain switch at 3b (section 2.4).
+
+---
+
+## 2. Rules that apply to every stage
+
+### 2.1 Keeping `main` buildable at every commit
+
+- **One writer per package, one worktree per package**, cut from the current `main` (or, in stage 3b, from the integration branch head).
+  Writers iterate with single-project builds through the build lane script (`odbuild.ps1`, kept outside the repository; project names as
+  slnf targets), finish with one full `OpenDental.Local.slnf` build and the package's Targeted tests, and report complete, partial or
+  blocked with the build log.
+- **No two packages edit the same file at the same time.** Each package below names the files and projects it owns. Before launching
+  packages in parallel, the lead greps each package's search patterns, computes the intersection of their file lists, and gives every
+  shared file to exactly one package; the other package's edits to that file wait until the owner's merge. Known overlaps are resolved per
+  stage below.
+- **Project files and shared props have one owner per stage.** `Directory.Build.props`, `Directory.Build.targets`,
+  `tests/Directory.Build.props`, `Directory.Packages.props`, `global.json`, `nuget.config`, `OpenDental.sln`/`.slnf` edits, the build lane
+  script and the local tools folder (`.git/od-tools`, not versioned: test runner, workflow scripts, sln merge driver) are changed only by
+  the stage's foundation package or by the lead.
+- **Merge order is fixed in each stage**; after every merge the lane runs an incremental full slnf build on `main` (about 30 s) and the
+  Targeted tests of the merged package. A red build on `main` is reverted, not fixed forward.
+- **Locked runs are workflow steps, not agent steps.** Core and Full runs take the machine-wide test lock; the workflow script runs them
+  one at a time after merges. Parallel package agents run only Targeted tests (always including NoHqTests). Full runs once per stage gate.
+- **Stage 1 converts leaf-first.** Classic and SDK-style projects build together under MSBuild.exe and reference each other normally, so
+  every wave can merge on its own.
+- **Stage 3b is the only stage that cannot be merged piece by piece.** A net48 project cannot reference a net10.0 project (NuGet NU1201,
+  https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu1201), so the retarget happens bottom-up on one integration
+  branch (`net10/switch`). `main` stays net48 and shippable the whole time; the branch takes regular merges from `main` (never the other
+  way) and merges into `main` once, after its gate. If the switch must be undone after that merge, the merge commit is reverted and the
+  offices stay on the bridge release.
+- **No database schema change in stage 3b**, so going back to the net48 bridge release never needs a database change. Stage 0 changes no
+  schema either: the enum members of removed features stay in the code (S0-2a, S0-6), and their preference, clearinghouse and program-link
+  rows stay in the database.
+- **The sln merge driver** (`sln_merge_driver.py` in the local tools folder, three-way) stays registered; after any merge that touches
+  `.sln`, check the changed Project lines.
+
+### 2.2 How the .NET Framework build and the .NET 10 build coexist
+
+They do not coexist as builds of one tree. There is no dual-targeting at any point:
+
+- Stages 0, 1, 2, 4 and 3a: there is one build, net48. Stage 1 changes the project format only; the output folders and files stay as they
+  are (flat `bin\Debug\` / `bin\Release\`).
+- Stage 3b: `main` is net48; the `net10/switch` branch is net10.0-windows. Release builds of the branch run only against test databases and
+  are never published to an office update channel (Debug builds never publish or pull; the branch's Release builds are not installed in
+  the office).
+- After the 3b merge, `main` is net10.0-windows only. The bridge release (end of 3a) is the last .NET Framework release; it is kept as the
+  rollback installer.
+
+### 2.3 Output layout (decided once, in stage 1)
+
+Repo-wide `Directory.Build.props` for SDK-style projects: `AppendTargetFrameworkToOutputPath=false`,
+`AppendRuntimeIdentifierToOutputPath=false`, `OutputPath=bin\$(Configuration)\`, `GenerateAssemblyInfo=false` (the existing
+`AssemblyInfo.cs` + `SharedAssemblyInfo.cs` stay the only source, keeping AssemblyVersion 24.3.63.0), `ImplicitUsings=disable`,
+`PlatformTarget=x86`, `SatelliteResourceLanguages=en`, `RestorePackagesWithLockFile=true`, `Deterministic=true`
+(https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props), and `AutoGenerateBindingRedirects=false` unless a project sets it
+(see S1-0). Directory.Build.props is imported by classic and SDK projects alike
+(https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory), so SDK-only settings are guarded so the classic Middle Tier
+project and `Direct2dWrapper.vcxproj` are unaffected; check every property with `MSBuild -getProperty`. Flat paths keep about 45 hard-coded
+`bin\Debug`/`bin\Release` references valid (lane, test runner, Build-Release, the Direct2dWrapper post-build `xcopy`, the OpenPmsDental copy
+targets, tests). This is safe only because there is no dual-targeting. From stage 3b the exes and test projects also set
+`RuntimeIdentifier=win-x86` with `SelfContained=false`, so Windows-specific package assets land flat too (S3b-1).
+
+`tests/Directory.Build.props` (new, imports the parent with `GetPathOfFileAbove`, same source) holds everything the test projects share:
+framework, platform, test framework references, MySqlConnector. Stages 2, 4 and 3b then change one shared file instead of every test
+project file.
+
+### 2.4 The toolchain, the SDK pin and how to bump it
+
+- **Build Tools 2026 from S1-0.** From S1-0 the build lane, both test runners and every tool script that builds use the MSBuild.exe
+  (18.x) and vstest.console.exe of Visual Studio Build Tools 2026. They find them with
+  `vswhere -latest -products * -version [18.0,19.0) -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe`
+  (and `-find Common7\IDE\Extensions\TestPlatform\vstest.console.exe` for vstest) or take them as a parameter, never with an unranged
+  `vswhere -latest`. Without `-products *`, vswhere does not list Build Tools. Build Tools 2026 18.11.3 (MSBuild 18.11.1, vstest 18.11)
+  are installed in `Microsoft Visual Studio\18\BuildTools` (Visual Studio 2026 installs under `18`, not `2026`) on the build PC
+  beside Build Tools 2022 17.14.44 (2026-11-08). Until S1-0 the lane stays on Build Tools 2022. Build Tools 2022 stay installed until the
+  stage 1 gate has passed on Build Tools 2026, so the lane can go back by parameter.
+- **Why S1-0 and not 3b.** Under MSBuild 17.14, an SDK 10 build of any SDK-style project, net48 included, sets
+  `RoslynCompilerType=FrameworkPackage` and adds a `PackageDownload` of `Microsoft.Net.Sdk.Compilers.Toolset` at the exact SDK version
+  (unless `DOTNET_HOST_PATH` is set), and warns NETSDK1233 (target `_WarnWhenUsingNET10AndVSPriorTo18`, for MSBuild below 17.15). Every
+  SDK band after 10.0.1xx needs MSBuild 18. vstest 17.14 lacks the x86 test host `DOTNET_ROOT` fix of vstest 18.9. Visual Studio 2022
+  17.14 leaves mainstream support on 2027-01-13 (https://learn.microsoft.com/en-us/visualstudio/productinfo/vs-servicing).
+- **Components the 2026 instance needs** (the S1-0 offline check confirms them): .NET desktop build tools; web development build tools
+  (the classic Middle Tier project until 3b); Desktop development with C++ with the MSVC v143 toolset (`Direct2dWrapper.vcxproj` uses
+  v143, which is supported to 2032); .NET Framework 4.8 SDK and targeting pack; Testing tools core; NuGet build tools; Windows 11 SDK
+  10.0.26100. Component ids: `Microsoft.VisualStudio.Workload.ManagedDesktopBuildTools`, `Microsoft.VisualStudio.Workload.WebBuildTools`,
+  `Microsoft.VisualStudio.Workload.VCTools` with `Microsoft.VisualStudio.Component.VC.14.44.17.14.x86.x64` (MSVC v143),
+  `Microsoft.Net.Component.4.8.SDK`, `Microsoft.Net.Component.4.8.TargetingPack`, `Microsoft.VisualStudio.Component.TestTools.BuildTools`,
+  `Microsoft.VisualStudio.Component.NuGet.BuildTools`, `Microsoft.VisualStudio.Component.Windows11SDK.26100`. On 2026-11-08 the instance
+  has all of them. The owner added MSVC v143 (MSVC 14.44, toolset files under `MSBuild\Microsoft\VC\v170`) beside the default MSVC 14.51
+  (v145). A Win32 v143 DLL built with MSBuild 18.11 links with 14.44 (open point O-4, resolved).
+- `dotnet build` cannot build `Direct2dWrapper.vcxproj` (MSB4278), so MSBuild.exe stays the build engine at every stage.
+- **Licence and lifecycle.** Build Tools 2026 are used under a Visual Studio Community (or higher) licence; Community covers an
+  open-source project under an OSI-approved licence, as this GPL project is (https://visualstudio.microsoft.com/vs/community/). Visual
+  Studio 2026 is supported on 64-bit Windows 11 and follows the Modern Lifecycle: it is supported only when kept current. Its updates are
+  installed between packages, never during a stage gate or a release build, and each one that changes the SDK is followed by the bump
+  steps below.
+- **The SDK pin.** From S1-0, `global.json` at the repository root pins the .NET SDK with `"allowPrerelease": false`. Two 10.0 bands are
+  installed on the build PC (2026-11-08). S1-0 chooses one after its offline check and records the choice and the reason in this section
+  and in the commit (open point O-5):
+  - **(a) The per-user 10.0.1xx band** (10.0.114, installed per user): `"version": "10.0.114"`, `"rollForward": "disable"`. Supported to
+    November 2028; minimum MSBuild 17.14; it changes only through the bump procedure. NuGet advises `disable` with lock files, because
+    SDK-implicit package references change with the SDK
+    (https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#locking-dependencies). MSBuild.exe finds
+    the SDK through its SDK resolver, which locates `dotnet.exe` from `PATH` unless `DOTNET_MSBUILD_SDK_RESOLVER_CLI_DIR` names the folder
+    (https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-environment-variables). The machine-wide dotnet has 9.0.320 and 10.0.403 but
+    not 10.0.114, so every build entry point (the lane, the tool scripts, the README command line, Visual Studio) needs, in its own process:
+    `DOTNET_MSBUILD_SDK_RESOLVER_CLI_DIR` set to the per-user dotnet folder and that folder first in `PATH`. Its packs have no win-x86
+    apphost, which then comes from NuGet at 3b (batch D).
+  - **(b) The band Build Tools 2026 install machine-wide** (10.0.403 on 2026-11-08): `"version": "10.0.403"` with
+    `"rollForward": "latestFeature"` (any later 10.0 band or patch, never 11.0), or with `"disable"` and a documented bump after each
+    Visual Studio update. No per-user SDK and no resolver variables; it is the SDK that ships with the lane's MSBuild; its packs include
+    the win-x86 apphost. Visual Studio updates move it to a later band about every quarter and remove the old one, so the choice must also
+    say what happens when an update brings a later band or the next major version's SDK.
+  - Every option sets `DOTNET_NOLOGO=1` and `DOTNET_CLI_TELEMETRY_OPTOUT=1` in the lane's own process.
+- **Bump procedure** (band (a): each monthly 10.0.1xx patch, or when a security fix needs it; band (b): after each Visual Studio update
+  that changes the machine-wide SDK):
+  1. Band (a): the owner approves the download (a non-NuGet download) and the new 10.0.1NN SDK is installed per user next to the current
+     one. Band (b): the Visual Studio update is installed between packages.
+  2. With `disable`, the lead changes only `sdk.version` in `global.json`, in its own commit on `main`; never during a stage gate or a
+     release build. With `latestFeature` the file does not change, but steps 3 and 4 still run before any other build.
+  3. The lane runs a locked restore of the whole slnf. If NuGet reports a lock-file mismatch, run one unlocked restore, review the
+     lock-file diff (only SDK-implicit packages may change) and commit it with the pin.
+  4. Full slnf build and a Core run on `main`; the next stage gate runs Full as usual.
+  5. Open worktrees rebase onto the new pin (with `rollForward` `disable`, a worktree on an SDK that is no longer installed fails at once
+     with "SDK not found"). With band (a), remove the old SDK after all of them have.
+
+---
+
+## 3. What every stage gate checks
+
+- Full lane build of `OpenDental.Local.slnf` (Debug x86), zero errors; the stage's warning rules (below) hold.
+- Full test run (the test runner `run-tests.ps1 -Mode Full` from the local tools folder, locked, alone), compared per assembly with the
+  previous gate: no new failures, no fewer passed tests except tests retired on purpose (listed in the package report), Inconclusive count
+  not higher. From stage 1 on the lane sets `OPMS_REQUIRE_BUILD_OUTPUT=1` so the 23 "not built" Inconclusive checks in 16 files fail
+  instead of silently skipping.
+- Release dry run on a **Release** x86 build: `tools\Build-Release.ps1 -ListFiles` and `-CheckFolder`, and `tools\Test-Installer.ps1`
+  (elevated from stage 3a on, see S3a-11); the staged file list is diffed against the previous gate and every difference is explained. A
+  Debug build cannot show Release-only steps (for example SGen, which MSBuild turns off for the Debug configuration only).
+- The stage's launch checks (section 6).
+
+---
+
+## 4. Stages
+
+### Stage 0 - Clean-up and seams (net48, classic projects)
+
+**Goal.** Remove what the move would otherwise have to carry, keep every test that still has value, and cut the System.Web ties inside the
+shared libraries, without changing any behaviour the office uses. The EOB and amendment window changes its look and a few behaviours
+on purpose (listed in S0-6): it is rebuilt on the current Imaging code before the old 2020 Imaging module goes (S0-6, decision 17).
+
+**Entry conditions.** `main` green on a Full run. The owner decisions of 2026-11-08 (section 11) settle every removal below except two
+open points: O-6 (the DCI eligibility path, answered before S0-2a starts) and O-9 (the UnitTests developer windows, answered before S0-5
+starts).
+
+**Packages.**
+
+| Package | Owns (files / projects) | Work | Targeted tests |
+|---|---|---|---|
+| **S0-T Tests out of the legacy UnitTests project** (first, alone) | New `tests/MiddleTierMockTests/` (project file; `MiddleTierRoundTripTests.cs` ported from `UnitTests/MiddleTier/MiddleTierTests.cs`, 88 tests; `ParamCheckTests.cs` from `UnitTests/MiddleTier/ParamCheckTests.cs`, 5 tests; a scratch-database helper copied from an existing test assembly); new `tests/LibraryUpdateTests/EmailMessagesTests.cs` (26 of the 27 tests in `UnitTests/UnitTests/EmailTests.cs`: decoding, inline-encoded text, reply/forward, image tags, statements, the 9 `ProcessRawEmailMessageIn_*` cases, `EmailUtils_HasValidChars`); new `tests/LibWebTests/EmailPreviewTemplateTests.cs` (the 27th, `EmailPreviewControl_ReplaceTemplateFields_*`, which needs the program); new `tests/MiddleTierMockTests/ODThreadTests.cs` from `UnitTests/UnitTests/ODThreadTests.cs` (the 7 active tests, the two `SetDb` tests on the scratch database; two more are commented out and are not ported); `tests/LibraryUpdateTests/LibraryUpdateTests.csproj` (UnitTestsCore ProjectReference) and `tests/LibWebTests/LibWebTests.csproj` (UnitTestsCore ProjectReference and MySqlConnector Reference), plus a scratch-database helper in `tests/LibWebTests`; the sln and slnf entries (lead); both test runners find `*Tests` projects in the slnf | Port to the conventions of `tests/`: MSTest v1 for now (stage 4 moves everything), a scratch database built from the seed dump, `UnitTestsCore` helpers allowed, no UnitTests `TestBase`. The mock server is set per test as `UnitTests/Misc/TestBase.cs:88-91` does (`RemotingClient.MiddleTierRole=ClientMT`, `OpenDentalServerProxy.MockOpenDentalServerCur=new OpenDentalServerMockIIS(...)`). The mock round trip runs `DtoProcessor` and `XmlSerializer` (`Remoting/DtoObject.cs:84`), so this suite catches the .NET 10 `XmlSerializer` change for `[Obsolete(IsError=true)]` members: add three round trips, a `Meth.*` call with a `PrefName` argument (`Prefs.GetBoolNoCache`, `Data Interface/Prefs.cs:197`), a `ClinicPref` insert, update and get (`ClinicPrefs.cs:72-97`; `ClinicPref.PrefName` is a public field, `TableTypes/ClinicPref.cs:17`), and an `Adjustment` (its obsolete `TaxTransID`, `TableTypes/Adjustment.cs:47`, starts to travel on .NET 10). Run the old classes once through vstest (they are built but not in the test runner) and the new ones on the same build: same tests, same outcomes. | MiddleTierMockTests (new), LibraryUpdateTests, LibWebTests; the old `UnitTests` MiddleTier, EmailTests and ODThreadTests classes once |
+| **S0-1 Stray usings and dead code** (after S0-T; parallel with S0-3, S0-5) | Only `.cs`/`.resx` content, no project files: `OpenPmsDentalBusiness/Eclaims/ClaimConnect.cs`: line 8 (`using System.Web.Services`) and the commented-out `MyMath` block 1221-1249 only; lines 7 (`HttpUtility` at 77-79, 277) and 9 (`SoapException` at 304 and 817; S3a-6 replaces it) stay; `OpenPmsDentalBusiness/Eclaims/DentiCal.cs`, `EDS.cs`, `EdsMedical.cs`, `MercuryDE.cs`, `NHS.cs`: their `System.Web`, `System.Web.Services` and `System.Web.Services.Protocols` usings (none is used); `OpenPmsDental/Forms/FormClaimOverpay.cs:7,9`; `FormQueryMonitor.cs:3,11`; `DataConnectionBase/MySqlHelper.cs:8`; `OpenPmsDentalBusiness/Db/ConnectionStore.cs:5`; `Eclaims/CanadianOutput.cs:12,16`; unused `Microsoft.VisualBasic` usings (`FormODBase.cs:11`, `FormFrame.cs:11`, `UserControlSetupWizFeeSched.cs:15`, `FormImagingSetup.cs:10`); ADODB usings `Misc/ConvertDatabases7.cs:13`, `ConvertDatabases8.cs:15`; CAS attributes (`CodeBase/Utilities/ODException.cs:76`, `WpfControlsOD/Bridges/CADI.cs:116,124`, `CodeBase/Controls/OpenGLWinFormsControl.cs:150`) and their `System.Security.Permissions` usings; the Health.Direct usings that serve no Direct code: `OpenPmsDental/UI/Appt/ToggleDayWeek.cs:1`, `UI/CheckBox.cs:2`, `UI/ListBox.cs:1`, `Db Multi Table/OrthoCaseProcedureLinker.cs:5`, `SheetFramework/SheetUtil.cs:10`, `Data Interface/RequiredFieldConditions.cs:1`; the 16 orphaned BinaryFormatter `.resx` entries (`Main Modules/ControlAppt.resx` 6 DataTables, `Forms/FormClaimsSend.resx` 2, `Forms/FormTsiHistory.resx` 6, `Forms Reports/FormRpUnfinalizedInsPay.resx` 2, plus any `GetObject` line that reads them); the 8 stale `RdlEngine/Definition/{DataSet,DataSets,DataSource,DataSources,Pages,Report,StyleInfo,XmlUtil}.cs` (not in the project today); `OpenPmsDentalServer/OpenDentalServer.Publish.xml` | Delete. Nothing compiled changes except removed attributes. A call that bound to Direct's `IsNullOrEmpty()` extension uses CodeBase's (`CodeBase/Utilities/ODPrimitiveExtensions.cs:23`, for `List<T>`) or an explicit null-or-empty check. | NoHqTests, ReportTests, BINBTests, VendorDirectTests, ApptTests, BAPPTTests, M2CANTests; open the Appointments module once (ControlAppt resources) |
+| **S0-5 Unshipped projects retired; seed dump moved** (after S0-T; parallel with S0-1, S0-3; merges before S0-2a and S0-3) | Folders `UnitTests/`, `RdlDesign/`, `DocumentationBuilder/`, `CentralManager/` (deleted); their lines in `OpenDental.sln` and `OpenDental.Local.slnf` (lead); `UnitTests/Resources/dump.txt` moved to `db/seed/dump.txt` with every reader: `tests/{ApptTests,BAPPTTests,BAUDITTests,GroupNoteTests,M2AUDITTests,M2NOTESTests,ODOPTSTests,P262ClaimsTests}/ScratchDb.cs`, `tests/{M2APPTTests,M2CARRIERTests}/Shared/ScratchDb.cs`, `tests/{BACCTTests,BEFTests,ChartLetterTests,EFormTests,FeeTests,ForkMigrationTests,M2DUNTests,M2EFTests,M2SDVTests,P262BillingTests,PdfLibraryTests,StatementTests}/TestDb.cs`, the helpers S0-T adds (`tests/MiddleTierMockTests`, `tests/LibWebTests`), `tests/DbGrantsTests/GrantRun.Chain.cs:17,26`, `tests/InitSqlTests/InitSqlFileTests.cs:18`, `tools/DevDbTool/{DevDatabase.cs,DevDbTool.csproj,InitSqlExport.cs,InitSqlWriter.cs,Options.cs,Program.cs}`, `tools/New-DevDatabase.ps1`, `tools/New-InitSql.ps1`, `tools/Rename-TokenPass.py:100`, `tools/Test-NoOldNames.ps1:97,113,149`, `README.md` (139, 186, 189, 196), `db/README.md:44`; `db/init/new-database.sql`, regenerated with `tools/New-InitSql.ps1 -BuildLane` in S0-5's worktree, in the same commit as the seed move (only the header line changes); `UnitTestsCore/TableTypes/CentralManagerT.cs` and `UnitTestsCore/UnitTestsCore.csproj:81` (delete); `WpfControlsOD/Frms/FrmFriendlyException.xaml.cs:186` (comment); the xCrudGenerator option that writes `SchemaCrudTest.cs` (`xCrudGenerator/CrudSchemaForUnitTest.cs` and its item at `xCrudGenerator/xCrudGenerator.csproj:98`, delete; the call at `xCrudGenerator/Form1.cs:105`); tests that read the deleted projects: `tests/AttributionTests/BrandingTests.cs:32-36`, `tests/InventoryTests/EnumAndWiringTests.cs:58`, `tests/MaintenanceTests/EnumAndWiringTests.cs:97-98`, `tests/LibraryBindingTests/BindingRedirectTests.cs:33`, `tests/ReleaseFlowTests/ProgramNamesTests.cs:156,234`, `tests/ReleaseFlowTests/ReleaseFilesTests.cs:19`, `tests/VendorDirectTests/BridgesRemoval/BridgesDllRemovedTests.cs:41,140`, `tests/LibWebTests/TestSupport.cs:15`, `tests/LibWebTests/HtmlGenerationTests.cs:99`, `tests/M2AUDITTests/BirthdateSavePathTests.cs:16`; new `tests/LibraryBindingTests/packages.config` and `tests/LibWebTests/packages.config` and the comment lines in their project files (47, 51); comments `OpenPmsDental/ReportingForRdl/FormReportCustom.cs:281`, `FormReportForRdl.cs:288`, `OpenPmsDentalBusiness/Misc/ItransNCpl.cs:39`, `WpfControlsOD/Frms/InputBox.xaml.cs:24` | Delete the four projects. The prebuilt `RdlDesigner.exe` already left `Required dlls` in an earlier clean-up; only the two comments still name it. Move the seed with `git mv` and update every reader in the same commit, `db/init/new-database.sql` included: its header line names the seed (`tools/DevDbTool/InitSqlWriter.cs:92`), and a ForkMigrationTests test compares the committed file byte for byte with fresh generator output. `OpenPmsDentalBusiness/Db/SchemaCrudTest.cs`, which only the deleted generator option wrote, goes with its project item in S0-2b (the product project files are S0-2a's, then S0-2b's). The developer windows in `UnitTests/UI Testing` follow the owner's answer to open point O-9, given before S0-5 starts. `UnitTests/packages.config` was the only thing that made `nuget restore` fill the ignored `packages/Mono.Cecil.0.10.3` folder that `LibraryBindingTests` and `LibWebTests` read; the two new `packages.config` files keep that working until S1-6 turns both into PackageReferences. CentralManager's preferences stay in the database, and the program's own settings for it (`UserControlMainWindowMisc.cs:127,203`, `FormGlobalSecurity.cs:56`) stay as they are. Tests of the retired programs go: the two CentralManager source checks and the three RdlDesign branding rows. The report lists the UnitTests classes given up (see risks). | InitSqlTests, ApptTests, ForkMigrationTests, AttributionTests, InventoryTests, MaintenanceTests, LibraryBindingTests, LibWebTests, ReleaseFlowTests, VendorDirectTests, M2AUDITTests, NoHqTests; DbGrantsTests (slow tier, by the workflow); `tools/New-DevDatabase.ps1` once |
+| **S0-4 Middle Tier host seam** (after S0-T; starts when a writer is free) | `DataConnectionBase/xDataConnectionBase.csproj` (one new Compile item), new `DataConnectionBase/MiddleTierHost.cs`; `OpenPmsDentalBusiness/Remoting/DtoProcessor.cs`, `Data Interface/Userods.cs`, `Plugins/Plugins.cs`; `WpfControlsOD/Bridges/PluginLoader.cs`; `DataConnectionBase/ConnectionStoreBase.cs`; `OpenPmsDentalServer/ServiceMain.asmx.cs` (also its stray `System.Web` using at line 6) | A static host context (content root, per-request application name and client IP, thread-static) replaces all 12 `HostingEnvironment`/`HttpContext.Current` uses in 5 files; the ASMX code-behind fills it, so net48 behaviour is unchanged. `ProcessDto` gains `(contentRoot, applicationName, clientIp)` and keeps the existing `ProcessDto(dtoString)` form that `OpenDentalServerMockIIS.cs:33` calls. It lives in DataConnectionBase (not the business library) because `ConnectionStoreBase` needs it too and cannot see the business library. `FixPackageAssembly` stays until 3b. | MiddleTierMockTests (the ported suite is the safety net for this change), BSERVERTests, QueryMonitorTests, DbConnectionSecurityTests, NoHqTests |
+| **S0-2a Cut integrations; serializer assemblies retired** (after S0-T; merges after S0-5) | `OpenPmsDental.csproj`, `OpenPmsDentalBusiness.csproj`, `WpfControlsOD.csproj`, `RdlEngine.csproj` until it merges (then S0-2b; `OpenPmsDental.csproj` by way of S0-6). QBFC (QuickBooks Desktop): `WpfControlsOD/Bridges/QuickBooks.cs`, `OpenPmsDental/Forms/FormAccountPick.cs:97`, `OpenPmsDental/Forms/FormQuickBooksSetup.*`, `OpenPmsDental/Forms/FormAccounting.cs:44, 62-65` (the Setup > QuickBooks menu item), `OpenPmsDental/Forms/FormDepositEdit.cs` (the whole file in this stage; its QuickBooks Desktop mode: `IsQuickBooks()` at 52-55 and its uses at 78, 142, 184, 209, 417, 430-470, 607, 641, 923), `OpenPmsDental/User Controls/Preferences/UserControlManageGeneral.cs:47, 108-109, 142` (the deposit software list), `OpenPmsDentalBusiness/Data Interface/Accounts.cs:270` (`DepositsLinked`), `Required dlls/Interop.QBFC10.dll`. Schick: `WpfControlsOD/Bridges/Schick.cs`, `WpfControlsOD/Logic/ProgramL.cs:373-374` (the Schick branch), `CodeBase/Utilities/BridgeNotAvailable.cs:6-7, 19-21` (`SchickVersion4`), `tests/BINATests/BridgeNotAvailableTests.cs:2-3, 15, 19, 41-43`, `Required dlls/Interop.CDRDATALib.dll`, `Interop.CDRDicom.dll`. Topaz: `OpenPmsDentalBusiness/UI/TopazWrapper.cs`; the Topaz paths in `OpenPmsDentalBusiness/UI/SignatureBoxWrapper.cs` and `SignatureBoxWrapper.Designer.cs` (`butTopazSign`); the Topaz parts only of `OpenPmsDental/Main Modules/ControlImages.cs` (67, 96-104, 1985, 3028-3115) and `ControlImagesOld.cs` (118, 150-169, 874, 3138-3188; the old module must build until S0-6 deletes the file); `WpfControlsOD/UI/Controls/SignatureBoxWrapper.xaml.cs` only if the business wrapper's `FillSignature` or `GetSigIsTopaz` signature changes (its `sigIsTopaz` parameter stays, because the `SigIsTopaz` columns stay); `tests/BINBTests/TopazWrapperTests.cs`; the reason text at `tools/Build-Release.ps1:233` ("Topaz signature pads were removed in stage 0"). DCI eligibility, **subject to open point O-6** (dead code behind `CustomizedForPracticeWeb`, which no window sets; default 0): `OpenPmsDentalBusiness/Web References/com.dentalxchange.webservices/*`; `OpenPmsDentalBusiness/Properties/Settings.settings:11-13`, `Settings.Designer.cs:49-50` and `OpenPmsDentalBusiness/app.config:18-21`; `OpenPmsDentalBusiness.csproj:1927-1931, 2258-2265, 2556-2566`; `OpenPmsDental/Forms/FormInsPlan.cs:1876-1880 and 2011-2420`. CallFire SMS: `OpenPmsDental/Web References/CallFireService/*`; `OpenPmsDental/Forms/FormTxtMsgEdit.cs` with its `.designer.cs` and `.resx` (deleted with the form); `OpenPmsDental/Main Modules/FormOpenDental.cs:237, 1866-1870, 2132-2137, 2763-2821, 6327-6332` (the Text button, the SMS Text Messaging region, `IsTextingAvailable`); `OpenPmsDental/Main Modules/ControlAppt.cs:442-444, 469-474, 2122-2148` (the `SendText` and `SendConfirmationText` cases) and 4770-4772; `OpenPmsDentalBusiness/UI/GlobalFormOpenDental.cs:17-18` (`SendTextMessage`); `OpenPmsDental/Forms/FormApptEdit.cs:418-421 and 1204`; `OpenPmsDental/Forms/FormConfirmList.cs:76 and 919`; the `smsService1` component in `OpenPmsDental/Forms/FormEtrans835s.Designer.cs`; its setting in `OpenPmsDental/Properties/Settings*` and `OpenPmsDental/app.config:10-12` (`OpenDental_EmdeonITS_ITSWS` stays in `Settings*` and `app.config` for S3a-6). Divvy postcards: `WpfControlsOD/Bridges/DivvyPostcardService.cs`, `OpenPmsDental/Forms/FormRecallList.cs:76 and 704-856`, `OpenPmsDental/Forms/FormRecallList.designer.cs` (`butECards`), the `system.serviceModel` section of `OpenPmsDental/app.config`. BCBS Georgia dial-up terminal: `Eclaims/TerminalConnector.cs`, `ITerminalConnector.cs`, `BCBSGA.cs`, the dial-up branches in `Eclaims.cs` and `Data Interface/Clearinghouses.cs`, `OpenPmsDentalBusiness/Db/Enumerations.cs:892-893` (no change: `EclaimsCommBridge.BCBSGA` stays), `OpenPmsDental/Forms/FormTerminalConnection.*`, `FormClaimEdit.cs`, `FormClearinghouseEdit.cs`, `Logic/ClaimL.cs`, `tests/BINBTests/TerminalConnectorTests.cs`. RdlEngine SQL Server, ODBC and OLE DB providers: `RdlEngine/Runtime/RdlEngineConfig.cs:35-37` (usings), 103-118 (the built-in SQL, ODBC and OLEDB entries), 317-334 (their `GetConnection` cases), 374-379 and 382-387 (the `OdbcConnection` checks in `GetTableSelect`); `RdlEngine/RdlEngineConfig.xml`, the provider `using`s in RdlEngine (not the stale `Definition` files of S0-1), `tests/QueryMonitorTests/QueryMonitorFilterTests.cs:67-118` (fake connection), `tests/DbConnectionSecurityTests/RuleTests.cs:314-330`. Release files: `tools/Build-Release.ps1` (`$OwnFiles` 106, 109), `ForkReleases.ListRetiredFiles`, `installer/OpenPmsDental.iss` `[InstallDelete]`, `THIRD-PARTY-NOTICES.txt`, the tests that pin these lists | Remove the features and their references; removed DLLs that were shipped go to `ForkReleases.ListRetiredFiles` and `[InstallDelete]`. **What stays.** Enum members of the removed features stay in the code. `EclaimsCommBridge.BCBSGA` and `AccountingSoftware.QuickBooks` keep their numbers: both enums are implicitly numbered, and `clearinghouse.CommBridge` and the `AccountingSoftware` preference store the number. `ProgramName.CallFire`, `Divvy` and `Schick` stay because `program.ProgName` rows name them; `EnumPermType.TextMessageSend` stays too. Program-link, clearinghouse and preference rows stay in the database. **QuickBooks Desktop.** QuickBooks Online stays. The deposit software list no longer offers QuickBooks (Desktop). A database still set to it behaves as Open PMS - Dental (no linked accounting software); the preference value stays stored. **Schick.** An enabled Schick program link shows a `BridgeNotAvailable` message that Schick CDR is not available in this version. **Topaz.** `SignatureBoxWrapper` keeps its public members (`FillSignature`, `GetSigIsTopaz`, `CheckTopaz`, `SignTopazClicked`, `SetControlSigBoxTopaz`), so its callers and `tests/M2NOTESTests/WiringTests.cs:65,67` do not change. `GetSigIsTopaz` returns false. A stored Topaz signature takes today's not-installed path (`ShowTopazNotInstalled`: label shown, signature not valid), with text saying Topaz signature pads are not supported in this version. The Images module does the same for a document with a Topaz signature, and `ControlImagesOld` keeps working as the `FormImages` viewer until S0-6 replaces it. **Texting.** With CallFire gone, no texting integration remains. The Text button, the Appointments texting menu items and the text actions of `FormApptEdit` (418, 1204) and `FormConfirmList` (76, 919) go, and `FormTxtMsgEdit` goes with them, including its two plugin hooks (`SendText_Start`, `SendText_Start2`; the office uses no plugins, decision 16). **RDL providers.** `GetConnection` refuses `sql`, `odbc` and `oledb` with a clear error, instead of falling to the default branch and returning null without calling the connection hook. `RdlEngine_CallsTheHook_BeforeItCreatesAConnection` checks that refusal, and that the hook still sees `MySqlConnector.MySqlConnection`. **Serializer assemblies.** Release builds run SGen whenever a project has `WebReferenceUrl` items and `GenerateSerializationAssemblies` is `Auto` (MSBuild `Microsoft.Common.CurrentVersion.targets`: `Auto` except for the Debug configuration; https://github.com/dotnet/msbuild/blob/main/src/Tasks/Microsoft.Common.CurrentVersion.targets). Both projects leave it `Auto` for Release; the WebReferenceUrl items are `OpenPmsDental.csproj:9478` (CallFire, the exe's only one) and `OpenPmsDentalBusiness.csproj:2501-2556` (6). Cutting CallFire would silently stop `OpenPmsDental.XmlSerializers.dll`, and the Release dry run would fail (`Build-Release.ps1:733-735` reports every missing allowed file). Decision: drop both serializer assemblies now. Set `GenerateSerializationAssemblies=Off` for every configuration of both projects, remove both files from `$OwnFiles`, and add them to `ListRetiredFiles` and `[InstallDelete]` in the same commit. The setup deletes them (`[InstallDelete]`); the release channel never publishes them (`ListRetiredFiles`). A workstation updated by the self-update keeps the old files until its next setup run. That is harmless: XmlSerializer does not use a pre-generated assembly built for another build of its parent assembly. Why drop rather than keep: they only pre-build serializers for the SOAP proxies, which 3a and 3b delete; `XmlSerializer` builds them at run time on both runtimes (a slower first call); keeping them on .NET 10 would need `Microsoft.XmlSerializer.Generator` (https://learn.microsoft.com/en-us/dotnet/core/additional-tools/xml-serializer-generator) for no lasting benefit. Every later removal of a `WebReferenceUrl` (S1-3, S3a-6, S3b-6) is then free. | BINBTests, BINATests, VendorDirectTests, ReleaseFlowTests, LibraryBindingTests, ReportTests, QueryMonitorTests, DbConnectionSecurityTests, CLAIMDCMTests, BCLAIMTests, RegistryTests, BPRINTTests, M2NOTESTests, BIMGTests, M2IMGTests, ImagingTests, VPEARL1Tests, ApptTests, BAPPTTests, M2APPTTests, BSHELLTests, NoHqTests; Release dry run (both XmlSerializers files gone from the staging list and retired) |
+| **S0-3 E-mail on MailKit and MimeKit; CDO and Direct removed** (after S0-T; merges after S0-5; the longest package) | `OpenPmsDentalBusiness/Email/SendEmails.cs`; `Data Interface/EmailMessages.cs`; `Data Interface/DatabaseMaintenances.cs` (only `CleanUpRawEmails`, 11709-11788); `OpenPmsDental/Forms/FormEmailInbox.cs`, `FormEmailMessageEdit.cs`, `FormEmailDigitalSignature.cs`/`.designer.cs`, `FormEmailAddressEdit.cs`/`.designer.cs` (the Register certificate button), `FormEmailCertRegister.cs` (its two calls of the moved certificate-name helper; S0-2b deletes the form); `OpenPmsDental/User Controls/EmailPreviewControl.cs`; `WpfControlsOD/Frms/FrmReferralEdit.xaml`/`.xaml.cs` (the Direct trust check box); tests `tests/LibraryUpdateTests/*` (except the project file), `tests/LibWebTests/WebView2PageStoreTests.cs:255`, `tests/LibWebTests/EmailPreviewTemplateTests.cs`, `tests/VendorDirectTests/Email/*`, `tests/BDBMTests/WiringTests.cs:70-76` (pinned again to the MimeKit code) | In this commit order. **(0) Record.** A corpus of raw messages (the 9 ported receive cases, the `MimeTests` corpus, a signed message, an S/MIME-encrypted one, a `windows-1252` one, one whose sender has consecutive dots in the local part) is parsed with today's Direct-based code; the resulting `EmailMessage` fields are committed as expected values. **(1) CDO to MailKit.** Implicit-TLS SMTP (port 465, `SendEmails.cs:53-108`) uses MailKit `SmtpClient` with `SecureSocketOptions.SslOnConnect` (MailKit is already shipped) and carries over what CDO set: the inline images' `Content-ID` (same `HttpUtility.UrlEncode(fileName)` value, 86-92) and each attachment's `Content-ID` and `Content-Disposition: attachment; filename=<DisplayedFilename>` (97-106). The custom-header pass-through (63-71, "Needed for Direct Acks") has no caller left once Direct goes; step 3 removes the `nameValueCollectionHeaders` parameter from `WireEmailUnsecure` and `BasicEmailMessageToMailMessage` (172-173). **(2) Received mail on MimeKit.** `ProcessRawEmailMessageIn` and its helpers (`RawEmailToIncomingMessage` 1622-1737, `GetMimePartsForMimeTypes` and the `GetMimeImage*` helpers 1875-2034, `DissolveAttachmentsFromIncomingMessage` 2175, `GetAttachmentMimeParts` 2279, `GetMimeLeafNodes` and `ConvertMessageToEmailMessage` 2616-2821, `ProcessMimeTextPart`, `GetMimeEncoding` and the `IsMimeEntity*` checks 2928-3088) parse with `MimeKit.MimeMessage` instead of Health.Direct's `Message`/`MimeEntity`, giving the same fields (addresses, subject, date, text or HTML body, attachments with their names, inline images with their `Content-ID`); MimeKit's tolerant parser replaces the boundary-scrubbing workaround; `RawEmailIn` stays stored unchanged. Signed messages show their content and keep `smime.p7s` as an attachment, as today. S/MIME-encrypted messages (only Direct's agent decrypted them) are stored with a clear "encrypted message, cannot be shown" body. `EmailPreviewControl` and `CleanUpRawEmails` use the MimeKit types. Received-mail parsing no longer builds `System.Net.Mail.MailAddress`, so the .NET 10 rule against consecutive dots cannot reject a received sender; the corpus case keeps the raw address text. **(3) Direct removed.** Sending encrypted (`SendEmailDirect`, `SendAckDirect`, `SendOldestUnsentAck`, `SendDirectUnsecure`, the `useDirect` argument of `SendEmail`), certificate discovery and trust (`GetDirectAgentForEmailAddress`, `GetReceiverUntrustedCount`, `IsSenderTrusted`, `TryAddTrustDirect`, `TryAddTrustForSignature`, `RefreshCertStoreExternal` (its calls at `OpenPmsDental/Forms/FormEmailInbox.cs:731-736` and `OpenPmsDental/User Controls/EmailPreviewControl.cs:619`), `FindPublicCertForAddress`, `DnsQueryForCert`, the LDAP resolver, `EmailNameResolver`/`EmailPublicResolver`/`EmailPrivateResolver` 3990-4185; the static certificate-name helpers of `EmailNameResolver`, `GetCertSubjectName` and the others at 4114-4185, move to a second, static class at the end of `Data Interface/EmailMessages.cs`, which S0-3 owns, because `FormEmailDigitalSignature` and `EmailPreviewControl:635` keep using them; S0-3 updates those callers and adds no file to a classic project, since `OpenPmsDentalBusiness.csproj` lists its `Email` and `Data Interface` files one by one and S0-2a owns it during this stage), and the UI that calls them: "send encrypted" in `FormEmailMessageEdit`; the inbox's acknowledgement resend (`FormEmailInbox.cs:217`) and trust state in its signature column (350, 497; the column still shows that a message is signed); the trust status and Trust button of `FormEmailDigitalSignature` (it keeps showing the certificate); the referral's trust check box; the Register certificate button (its form already fails with `HqNotAvailableException` and is deleted by S0-2b). Historic rows keep their `EmailSentOrReceived` values and still display. **(4) Signed sending** (kept; O-1, answered 2026-11-08): `SendEmailUnsecureWithSig` signs with MimeKit's S/MIME classes (`MultipartSigned` with a `CmsSigner` on the certificate that `GetCertFromPrivateStore` finds in the `NHINDPrivate` Windows store, opened with `X509Store` directly) and sends through MailKit for every port, which also lifts today's "signed messages cannot be sent over implicit SSL" restriction. Today signed sending always uses `System.Net.Mail` with the stored password, even for Gmail and Microsoft 365 (OAuth) addresses, whose plain mail goes through their APIs. After the port, a signed MIME message from such an address either goes through the same API path as unsigned mail, or signing stays refused for them with a clear message; the test covers one OAuth address. `CreateCertificateStoresIfNeeded` stays, reduced to what signing needs. After this package no code uses `Health.Direct.*` or `CDO`; S0-2b removes the references and DLLs. | the corpus comparison (every difference explained in the report), the ported e-mail tests, a test that the implicit-TLS path builds a MailKit message with the inline `Content-ID`, attachment `Content-ID` and disposition file name, a signed message that MimeKit verifies; LibraryUpdateTests (with `FakeMailServers.cs`: POP3 receive, SMTP and implicit-TLS send), VendorDirectTests (Gmail and Microsoft 365 import), LibWebTests, BDBMTests (includes `EmailTextDbTests.RawEmails_ToolProcessesAMessageWithUnicodeWhiteSpace`), NoHqTests |
+| **S0-6 EOB and amendment window on the new Imaging code; old 2020 module removed** (after S0-T; starts when a writer is free; its removal commit waits for S0-2a's merge; merges after S0-2a, before S0-2b) | `OpenPmsDental/Forms/FormImages.cs`, `FormImages.designer.cs`, `FormImages.resx` (rebuilt; the class name, its `FormODBase` base and its public fields `ClaimPaymentNum`, `ClaimNumPreAuth` and `EhrAmendmentCur` stay, so the five call sites `FormClaimEdit.cs:2202,2214`, `FormClaimPayBatch.cs:545`, `FormClaimPayPreAuth.cs:68` and `FormEhrAmendmentEdit.cs:65` do not change); `OpenPmsDentalBusiness/Imaging/ImageStore.cs`: `ExportEobAttach` and `ExportAmdAttach` (1028-1060) and a new second static class `EobAmendmentFiles` at the end of the file (the window's logic without UI; as in S0-3, no file is added to a classic project; it also gives the local path of an EOB's or an amendment's file for each storage mode: the stored file with an A-to-Z folder, a temp copy downloaded from the cloud, a temp copy written from `RawBase64` with images in the database; the PDF viewer and the double-click open use that path); `OpenPmsDental/Main Modules/ControlImagesOld.cs`, `ControlImagesOld.designer.cs`, `ControlImagesOld.resx` (delete) and their items at `OpenPmsDental.csproj:1902-1904, 5498-5500, 8542-8545`; `OpenPmsDental/Main Modules/FormOpenDental.cs` (the start-up choice at 595-613, 908-910, `ImagesModuleUsesOld2020()` at 1223-1233 and its 7 calls at 1730, 2199, 3820, 3985, 4014, 4044, 4084, the comment at 6781), `FormOpenDental.Designer.cs:225`, `FormOpenDentalBShell.cs:69`; `OpenPmsDental/UI/BordersDpi/LayoutManagerForms.cs:1222-1225`; `OpenPmsDental/User Controls/Preferences/UserControlImagingGeneral.cs` (24, 87-92, 103, 129-132) and `.Designer.cs` (30, 61, 86-95, 326, and the rows below the check box); `OpenPmsDental/Forms/FormPreferences.cs:504-508` (the forced restart after a module swap); `OpenPmsDental/Resources/PrefInfos.xml:2131-2139`; `OpenPmsDentalBusiness/TableTypes/Pref.cs:1224` (the summary of `ImagesModuleUsesOld2020`); tests: new `tests/ImagingTests/EobAmendmentFilesDbTests.cs`, `tests/ImagingTests/WiringTests.cs` (41, 81-87, 100-110, 114-115), `tests/M2IMGTests/PdfJavascriptPrefTests.cs:85-91`, `tests/BINATests/ProprietaryBinariesRemovedTests.cs:101-110`; `docs/owner-questions.md` (B-IMG 1, settled by the removal); `OpenPmsDental/Main Modules/ControlImages.cs`, only the comment lines 4093-4097, in the removal commit, after S0-2a's merge. Not edited otherwise: `ControlImages.cs` (S0-2a's Topaz lines) and `ControlImageDisplay.cs`; S0-6 follows their code. | In this commit order. **(1) The window, rebuilt** from the current Imaging module's parts: its WPF toolbar (`WpfControls.UI.ToolBar`) and `ZoomSlider`; PDFs in `ODWebView2`, with the PDF JavaScript preference applied before each navigation as in `ControlImageDisplay.LoadPdf`; image printing through `PrinterL.TryPrintOrDebugClassicPreview` as in `ControlImages.ToolBarPrint_Click`, with today's half-inch margins and origin at the margins as its arguments (`margins:new Margins(50,50,50,50)`, `printoutOrigin:PrintoutOrigin.AtMargin`) and the print log entry as its audit arguments (`auditDescription`, `auditPatNum`; one entry per print); scanning with the module's `EZTwain` calls and this computer's scan settings as in `ControlImages.ToolBarScan_Click` and `ToolBarScanMulti_Click`; paste through `ODClipboard`. Not reused, because they work only on a patient's documents and mounts: `ImageSelector` (image categories, thumbnails in the patient folder), `ControlImageDisplay` (documents, mounts, drawings, windowing; crop and rotation saved on the document row), the floating image windows, `FrmDocInfo`, signatures, Mount/Acquire with the capture session, Video, Import Automatically, Move to Patient, Forms and program links. **Required behaviour, as the old window has it today for the three uses.** On the left, a list of file names: the EOBs of the claim payment or of the preauthorization, oldest first (`EobAttaches.RefreshForOwner`), or the amendment's one file (none while its `FileName` is empty). The first is selected when the window opens. An image shows fitted, with zoom (the module's zoom slider replaces Zoom In, Zoom Out and Zoom 100) and drag to pan; a PDF shows in the PDF viewer, which pages through it; other types show nothing. Double-clicking an EOB other than JPG, JPEG or GIF opens it in its Windows program through `ODFileUtils.ProcessStart` (the stored file, or a downloaded temp copy for cloud storage; with images in the database, the message to export it first). Commands: Print, Delete, Scan Document, Scan Multi-Page Document, Import, Export, Copy, Paste and Close; right-click on the list gives Print and Delete. No Info, Sign, radiograph or photo scan, crop, rotate, flip or windowing, and no file drop onto the list (today a drop imports nothing: on an entry the handler throws, on empty space it returns). A scanned page is saved as JPG at the scan quality setting and also put on the clipboard; a multi-page scan is saved as PDF from a temp file, which is then deleted. Import takes several files for EOBs and one for an amendment; paste takes a bitmap or one image file from the clipboard. A new EOB is a new `eobattach` row of its payment or preauthorization (`ImageStore.ImportEobAttach` with both keys), and it is selected. For an amendment that has a file, scan and import ask "This will delete your old file. Proceed?" and replace it (`ImportAmdAttach`, then `CleanAmdAttach` of the old name). Delete asks "Delete EOB?" or "Delete amendment?", then `DeleteEobAttach` (file and row) or `DeleteAmdAttach` (the file; the row stays with an empty file name). Export saves a copy under the stored name. Copy puts the shown image on the clipboard. Print prints the shown image fitted inside half-inch margins, and an EOB print logs "EOB printed"; a PDF prints from the viewer's own print command. Cloud uploads and downloads show progress. Close returns OK, and each caller refreshes its scanned state as today. The window adds no permission check (there is none today); a preauthorization EOB keeps its ImageCreate and ImageDelete log entries (`ImageStore`). Same tables (`eobattach`, `ehramendment`), folders (`EOBs` and `Amendments` in the A-to-Z folder or the cloud, `RawBase64` with images in the database) and file names; no schema change. The window has no WinForms `ContextMenu` or `MenuItem`, no `Thread.Abort`, no `Process.Start` and no plugin hooks (decision 16), so stage 3a has nothing to convert in it. **Differences, on purpose** (listed in the report): the look; Print uses the program's printer settings and its Print Options window (Setup > Printers, Default situation), as the Images module does, instead of the Windows print dialog, and with the prompt off it prints straight away; paste onto an amendment that has a file asks and removes the old file, as scan and import do (today it leaves the old file); Copy logs the file's own name (today it reads a document with the EOB's key); printing an amendment logs with the amendment's patient (today it shows an error after printing, because the window has no patient); with images in the database, a PDF EOB or amendment shows (today the viewer reads an empty document instead of the file and shows nothing) and export writes the stored bytes (today `ExportEobAttach` and `ExportAmdAttach` read an empty stream there and fail). **Same commit:** `PreAuthWindows_ScanAndViewEob` (`WiringTests.cs:114-115`) checks the rebuilt window (it opens the preauthorization's EOBs from `ClaimNumPreAuth`) instead of `contrImagesMain`, so ImagingTests passes between commits (1) and (2). **(2) The old module removed**, after S0-2a's merge: delete `ControlImagesOld` and its three project items. `FormOpenDental` always creates `ControlImages` and loses `controlImagesOld`, `ImagesModuleUsesOld2020()` and every branch on it. The Setup > Imaging check box "Use old Imaging module interface, pre 2020" goes, with its handler, `DoSwapImagingModule`, the restart in `FormPreferences` and its `PrefInfos.xml` entry; the check boxes below it move up. `PrefName.ImagesModuleUsesOld2020` stays (`ConvertDatabases6.cs:3152` and `ConvertDatabases7.cs:2760,3113` name it), its row stays in the database, and the program no longer reads it; `ImagesModuleTreeIsCollapsed`, read only by the old module, stays unread too. The old module's plugin hooks go with it. The comments that still say the old module serves EOBs, amendments or the module choice go: `FormOpenDental.cs:6781` and `ControlImages.cs:4093-4097`. Its remaining source checks go or move to the rebuilt window: `WiringTests.cs` 41, 81-87 and 100-110, `PdfJavascriptPrefTests.cs:85-91` and `ProprietaryBinariesRemovedTests.cs:102-105` (the Scanning Setup check at 106-108 stays). | new `EobAmendmentFilesDbTests` (ImagingTests) on a scratch database, with an A-to-Z folder and with images in the database: the EOB list of a claim payment and of a preauthorization; adding from a file and from a bitmap (row, file or `RawBase64`, both owner keys, the preauthorization's ImageCreate entry); deleting (file and row gone, the ImageDelete entry); replacing an amendment's file (new name, old file gone) and deleting it (row kept, file name empty); export; the local path for the viewer in each storage mode; the commands of each mode; source checks that the five call sites are unchanged, that the window has no WinForms menu, `Thread.Abort` or `Process.Start`, that it applies the PDF preference before each navigation, and that no program code outside the convert scripts and `Pref.cs` names `ControlImagesOld` or `ImagesModuleUsesOld2020`; ImagingTests, BIMGTests, M2IMGTests, BINATests, BCLAIMTests, BSHELLTests, M202Tests, M2TERMTests (PrefInfos), P262LinksTests (`Pref.cs`), NoHqTests; the stage 0 launch check of the window (section 6) before the removal commit |
+| **S0-2b References and retired DLLs** (last) | `OpenPmsDentalBusiness.csproj` (`COMReference` ADODB and CDO at 2667, 2676; Health.Direct references 103-111); `OpenPmsDental.csproj` (Health.Direct.Common 103-105; the items of `FormEmailCertRegister`); `tests/LibraryUpdateTests/LibraryUpdateTests.csproj:53-58`; `Required dlls/Health.Direct.Agent.dll`, `Health.Direct.Common.dll`, `Health.Direct.ResolverPlugins.dll`; `OpenPmsDental/Forms/FormEmailCertRegister.cs`/`.designer.cs`/`.resx` (delete); `Data Interface/EmailMessages.cs` (only `CreateCertificateStoresIfNeeded`, if S0-3 left it empty); `OpenPmsDental/Main Modules/FormOpenDental.cs` (the store call at 775-776); `OpenPmsDentalBusiness/Db/SchemaCrudTest.cs` and its item at `OpenPmsDentalBusiness.csproj:1407` (delete; S0-5 removed the generator option that wrote it); `tools/Build-Release.ps1:137`; `ForkReleases.ListRetiredFiles`; `installer/OpenPmsDental.iss` `[InstallDelete]`; `THIRD-PARTY-NOTICES.txt:167-173` (the Direct Project block); `docs/third-party-binaries-audit.md` (the three Interop rows and the Health.Direct rows, 158, 362-363, 365, 587, 707-708, 710, marked as removed in the audit's record style); `tests/AttributionTests/ReleaseIdentityTests.cs:34-35`, `tests/LibraryBindingTests/ReleaseListTests.cs:19-21` and any other test that pins these files | Remove the two `COMReference` items; with none left, `dotnet build` stops failing on MSB4803 (https://learn.microsoft.com/en-us/visualstudio/msbuild/resolvecomreference-task). Remove the three Health.Direct references and DLLs (shipped in release 0.0, so retired: the setup deletes them, and the release channel never publishes them; a workstation updated by the self-update keeps them until its next setup run, which is harmless because nothing loads them). Delete `FormEmailCertRegister`. The old Images module and its option are S0-6's work; S0-6 merges before S0-2b starts. | LibraryUpdateTests, ReleaseFlowTests, LibraryBindingTests, AttributionTests, NoHqTests; Release dry run (the three Health.Direct files gone and retired) |
+
+**Order and merge order.** S0-T first and alone. Then S0-1, S0-5 and S0-3 in parallel (at most three writers); S0-4, S0-2a and S0-6
+start when a writer is free (each needs only S0-T merged). S0-6's removal commit waits for S0-2a's merge. Merge order: S0-T, S0-5, S0-1,
+S0-4, S0-2a, S0-3, S0-6, S0-2b; S0-4 may merge at any point after S0-T, and S0-6 may merge before S0-3 (they share no file). S0-2b
+starts only after S0-1, S0-2a, S0-3, S0-5 and S0-6 have merged. The DCI part of S0-2a waits for open point O-6, and S0-5 for open
+point O-9.
+
+Why this order: the ported tests (S0-T) must exist before the UnitTests project goes (S0-5) and before the Middle Tier seam (S0-4) and the
+e-mail rewrite (S0-3) change the code they test. UnitTests is in the slnf and references `Health.Direct.Common`, so S0-5 must merge before
+S0-2b removes the DLL. S0-2b removes references that S0-1 (ADODB usings, Direct usings), S0-3 (CDO, Direct) and S0-2a (project files)
+stop needing. S0-6 deletes `ControlImagesOld.cs` only after S0-2a has removed `TopazWrapper` and the Topaz code in it, and it hands
+`FormOpenDental.cs` and `OpenPmsDental.csproj` on to S0-2b. The old module goes in stage 0, so that stage 3a never converts its menus,
+its Thread.Abort or its shell starts.
+
+**Known overlaps, resolved.** `OpenPmsDentalServer/ServiceMain.asmx.cs` belongs to S0-4 (S0-1 leaves its line 6).
+`Eclaims/CanadianOutput.cs` and `ClaimConnect.cs` belong to S0-1. `Forms/FormEtrans835s.Designer.cs` belongs to S0-2a (its `smsService1` is
+a CallFire proxy). `tests/VendorDirectTests/BridgesRemoval/BridgesDllRemovedTests.cs` belongs to S0-5; S0-2a's edits to it, if any, wait for
+S0-5's merge. `tests/LibWebTests`: S0-5 owns `TestSupport.cs`, `HtmlGenerationTests.cs`, the project file (after S0-T's edit has merged)
+and `packages.config`; S0-3 owns `WebView2PageStoreTests.cs` and the S0-T file. `DatabaseMaintenances.cs` belongs to S0-3 in this stage;
+if S0-2a finds a maintenance check of a cut feature there, that edit waits for S0-3's merge. The four product project files pass from
+S0-2a to S0-2b at S0-2a's merge, except `OpenPmsDental.csproj`, which passes to S0-6 (the three `ControlImagesOld` items) and then to
+S0-2b at S0-6's merge; `ForkReleases.cs`, `Build-Release.ps1`, the setup script and `THIRD-PARTY-NOTICES.txt` pass to S0-2b at S0-2a's
+merge. `OpenPmsDental/Main Modules/FormOpenDental.cs` belongs to S0-2a (the CallFire lines), passes to S0-6 at S0-2a's merge (the
+old-module branches) and to S0-2b at S0-6's merge (the store call). `Main Modules/ControlImagesOld.cs` belongs to S0-2a (its Topaz lines)
+and passes at S0-2a's merge to S0-6, which deletes it. `Main Modules/ControlImages.cs` belongs to S0-2a (its Topaz lines) and passes at
+S0-2a's merge to S0-6 (the comment lines 4093-4097, in the removal commit). S0-6's first commits (the rebuilt window, its business class
+and its tests) touch no file of another package. S0-6 adds no file to a classic project (its business class goes at the end of
+`Imaging/ImageStore.cs`) and does not edit `OpenPmsDentalBusiness.csproj`, so it shares no file with S0-3.
+`Main Modules/ControlAppt.cs` belongs to S0-2a; S0-1 owns only `ControlAppt.resx` and the Designer `GetObject` lines that read its
+orphaned entries. Step 4 of S0-3 may need a `BouncyCastle.Cryptography` reference in `OpenPmsDentalBusiness.csproj` (HintPath
+`Required dlls`; the DLL already ships with MailKit and MimeKit), because `MultipartSigned.Create` has a same-arity overload that takes a
+BouncyCastle `PgpSecretKey`. If it does, S0-3 adds that one Reference item in its worktree, merges after S0-2a and rebases onto it
+(S0-2b starts only after S0-3 has merged).
+
+**Full-test gate.** Section 3. Expected: tests of removed features and retired programs retired and listed; the ported suites pass; the
+e-mail corpus differences reviewed; the Release dry run differs from the previous gate by exactly the two XmlSerializers files and the
+three Health.Direct files (gone and retired).
+
+**Tooling changes.** Add `tests/MiddleTierMockTests` to the slnf (both test runners find `*Tests` projects there); the lead greps the lane
+script and the local tools folder for `UnitTests`, `CentralManager`, `RdlDesign` and `DocumentationBuilder` and removes them. The lead
+also updates the UnitTests mentions in `Directory.Build.targets:12-15` (comment) and `tools/run-tests.ps1:6, 88, 90`, and
+`tools/Test-NoHqHosts.ps1:62-63` as the owner's answer to O-9 requires. The workflow scripts' step that copies
+`packages/Mono.Cecil.0.10.3` into new worktrees stays until S1-6. Build-Release and the setup only gain retired file names. The lane
+and the test runners stay on Build Tools 2022 through stage 0. Build Tools 2026 are already installed. Given no lane or path,
+`tools/Build-Release.ps1`, `tools/New-InitSql.ps1`, `tools/New-DevDatabase.ps1`, `tools/AdoptionValidation/Invoke-AdoptionRehearsal.ps1`
+and `tools/SyntheticData/Invoke-SyntheticData.ps1` find MSBuild with `vswhere -latest -products *`, which now picks the MSBuild 18 of
+Build Tools 2026. The owner added MSVC v143 to that instance (2026-11-08), so such a build works, including `Direct2dWrapper.vcxproj` in
+Build-Release's slnf build. But it uses another compiler than the lane's MSBuild 17.14, runs outside the lane's lock, and writes to the
+same output folders that the lane and the test runs use. So until S1-0 moves everything, `Build-Release.ps1` and `New-InitSql.ps1` run
+with `-BuildLane`, so that release builds use the lane's toolchain. The other three have no `-BuildLane`: they run with `-SkipBuild`
+after a lane build, or with `-MSBuildPath` set to the Build Tools 2022 MSBuild.exe.
+
+**Downloads.** None. MimeKit's S/MIME support is part of the shipped MimeKit.
+
+**Risks and mitigations.**
+- Removing a feature someone uses: only items the owner decided (section 11) or already declared unused (QBFC, Schick, Topaz) are removed,
+  plus the Practice-Web DCI eligibility path if the owner confirms it (O-6); the code stays in git history.
+- The received-mail rewrite changes what users see for odd messages: the corpus is recorded with the Direct-based parser before any change,
+  and every difference is reviewed; the raw message stays stored, so a message can be re-parsed later.
+- CDO to MailKit changes the wire behaviour of one SMTP path: test against the fake SMTP server with implicit TLS and once against a local
+  test SMTP server before merging.
+- The seam changes a Middle Tier code path that no shipped office runs: the ported mock suite (S0-T) and BSERVERTests.
+- The seed move breaks scratch databases: one commit with every reader; `tools/New-DevDatabase.ps1` once; the Full gate.
+- Tests given up with UnitTests: the suite runner has never run the UnitTests project, so no running coverage is lost. The 127 tests that
+  S0-3, S0-4 and S3a-1 rely on (Middle Tier round trips, e-mail parsing, ODThread) are ported first by S0-T. The other 1,817 active tests
+  are given up (the count of 1,951 includes 7 commented-out test attributes). Some of them cover code that later packages change
+  (SInTests for S3a-3, ODFileUtilsTests for S3a-2, SignatureBoxWrapperTests for S0-2a); those packages write their own tests and may
+  start from the git history copy. The given-up tests need the UnitTests program's own database set-up, many cover Open Dental features
+  the fork has since cut or replaced, and they stay in git history. S0-5's report lists the given-up classes. Also given up: the two
+  source checks of CentralManager and the RdlDesign branding rows, because those programs are gone.
+- Developer windows go with UnitTests: `FormWpfConverter` in `UnitTests/UI Testing` is the only front end of the shipped `WpfConverter`
+  class and the only launcher of the WPF test windows `FrmTestAllControls` and `FrmTestSplitters`. The owner decides first (O-9).
+- The rebuilt EOB and amendment window misses something the old one does: S0-6 lists the old window's behaviour for its three uses
+  command by command, tests the file handling on a scratch database in both storage modes, and runs the launch check from all four entry
+  points before its last commit deletes the old module. Rows, folders and file names stay as they are, so a workstation that is not yet
+  updated and an updated one show the same EOBs. A database that still has the old-module option on gets the current Imaging module; the
+  row stays, unread.
+
+**Size.** 8 packages; medium; about 12-17 dev-days (S0-3 is 4-6 of them, S0-6 about 2-3).
+
+---
+
+### Stage 1 - SDK-style project files (net48)
+
+**Goal.** Every C# project in the solution except the Middle Tier becomes `<Project Sdk="Microsoft.NET.Sdk">` targeting `net48`, built
+with the Build Tools 2026 MSBuild and the pinned .NET SDK 10, with the same compiled files, the same embedded resource names, and the same
+output folders, files and config file contents.
+
+**Entry conditions.**
+- Stage 0 merged and green.
+- The toolchain on the build PC (done on 2026-11-08): Visual Studio Build Tools 2026 18.11.3 beside Build Tools 2022 17.14.44; the .NET
+  SDK 10.0.403 machine-wide (installed with Build Tools 2026) and 10.0.114 per user.
+- **MSVC v143 in the Build Tools 2026 instance** (done on 2026-11-08; open point O-4 resolved). `Direct2dWrapper.vcxproj` sets
+  `PlatformToolset` v143 (`Direct2dWrapper.vcxproj:33,39,45,52`). The owner added the component
+  `Microsoft.VisualStudio.Component.VC.14.44.17.14.x86.x64` (MSVC 14.44) to the 2026 instance, and a Win32 v143 DLL built with MSBuild
+  18.11 links with 14.44. The project, its output and the setup's VC++ check stay as they are.
+- The offline folder (in the local tools folder) holds `Mono.Cecil 0.10.3`, copied from the ignored `packages/Mono.Cecil.0.10.3` folder
+  that `nuget restore` fills (no download).
+
+**Packages.**
+
+| Package | Owns | Work | Targeted tests |
+|---|---|---|---|
+| **S1-0 Toolchain and foundation** (first, alone; steps in order) | `Directory.Build.props` (new), `tests/Directory.Build.props` (new), `Directory.Build.targets`, `global.json` (new), `nuget.config` (new), new `tools/Get-ProjectBaseline.ps1`; the MSBuild and vstest look-ups in `tools/Build-Release.ps1` (`Find-MSBuild`, plus the restore switch), `tools/New-InitSql.ps1`, `tools/New-DevDatabase.ps1`, `tools/AdoptionValidation/Invoke-AdoptionRehearsal.ps1`, `tools/SyntheticData/Invoke-SyntheticData.ps1` and `tools/run-tests.ps1` (`Find-VsTest`); `README.md` (Building: prerequisites, install command, command-line build); the build lane script, the test runner in the local tools folder and the workflow scripts in the local tools folder that embed lane steps (lead) | **Step 1, offline check** (in a scratch folder outside the repository, nothing merged; its `nuget.config` has only an empty local source, so any download fails visibly): (a) the Build Tools 2026 MSBuild with each installed SDK band (10.0.114 per user, 10.0.403 machine-wide) builds an SDK-style net48 class library and exe with no `Microsoft.Net.Sdk.Compilers.Toolset` download and no NETSDK1233; (b) the 2026 vstest.console runs an MSTest v1 DLL (NoHqTests, `/Platform:x86`) with the same counts as vstest 17.14, and MSBuild 18 resolves the MSTest v1 assembly through `ODAddMSTestV1SearchPath` in `Directory.Build.targets` (`$(VsInstallRoot)`; the 2026 instance has it under `Common7\IDE\Extensions\TestPlatform`, checked 2026-11-08); (c) the 2026 instance has the components of section 2.4 (`vswhere -products * -version [18.0,19.0) -requires` with their component ids), MSVC v143 included (`Microsoft.VisualStudio.Component.VC.14.44.17.14.x86.x64`, added 2026-11-08); (d) the 2026 MSBuild builds a scratch copy of `Direct2dWrapper` (Release and Debug, Win32, without its post-build copy) with `PlatformToolset` v143, and the DLL links with linker 14.44. A failed part stops S1-0 and goes to the owner. **Step 2, toolchain switch** (lead): the lane and both test runners use the Build Tools 2026 MSBuild.exe and vstest.console.exe, found with the section 2.4 vswhere query and overridable by parameter; the five tool scripts find MSBuild the same way, never with an unranged `-latest`, and their "Visual Studio 2022" messages change; README's Building section names Visual Studio 2026 or Build Tools 2026 with the components of section 2.4 and the SDK; its command line uses the `Microsoft Visual Studio\18\BuildTools` folder (Visual Studio 2026 installs under `18`, not `2026`), and its install command adds the v143 component id. Then, on the unchanged classic solution, a lane build, a Full run (workflow) and a Release dry run, compared with the last Build Tools 2022 runs: the same results and the same staged file list. **Step 3, SDK pin:** choose the band from the step 1 results (section 2.4), write `global.json`, record the choice and the reason; the lane sets the SDK resolver variables only for the per-user band. **Step 4, baseline** with `tools/Get-ProjectBaseline.ps1` on the Build Tools 2026 toolchain, so compiler differences between MSBuild 17.14 and 18 do not mix with the conversion diff: per project `MSBuild -getItem:Compile -getItem:EmbeddedResource -getItem:Page -getItem:None -getItem:Content` (MSBuild 17.8+, https://learn.microsoft.com/en-us/visualstudio/msbuild/evaluate-items-and-properties), every assembly's `GetManifestResourceNames()`, the file list plus SHA-256 of `OpenPmsDental\bin\Debug` and each test `bin\Debug`, and the content of every `*.exe.config` and `*.dll.config` there. **Step 5, props and restore:** props as in section 2.3, guarded for SDK projects. **Binding redirects:** the SDK switches on `AutoGenerateBindingRedirects` for .NET Framework exes that leave it empty (`Microsoft.NET.Sdk.BeforeCommon.targets`, https://github.com/dotnet/sdk/blob/main/src/Tasks/Microsoft.NET.Build.Tasks/targets/Microsoft.NET.Sdk.BeforeCommon.targets); OpenPmsDental, ServiceManager, OpenPmsDentalDbSettings, UpdateFileCopier, OpenPmsDentalHL7 and DatabaseIntegrityCheck leave it empty today, so the props set it to `false` when a project does not set it (MySQLManager, xCrudGenerator and the test projects keep their own value); `tests/LibraryBindingTests/BindingRedirectTests.cs` reads `OpenPmsDental.exe.config`, and the baseline diff of config contents is the check. `nuget.config`: `<clear/>`, one local folder source, empty `auditSources`, no fallback folders (https://learn.microsoft.com/en-us/nuget/reference/nuget-config-file). Lane: `/restore -p:RestoreLockedMode=true`, `NUGET_CERT_REVOCATION_MODE=offline` in-process, `OPMS_REQUIRE_BUILD_OUTPUT=1`. SDK-style projects fail without restore (NETSDK1004, https://learn.microsoft.com/en-us/dotnet/core/tools/sdk-errors/netsdk1004). The lead updates every workflow script in the local tools folder that embeds a lane step (19 of the 20 on 2026-11-08; found by grep for `Mono.Cecil`, `odbuild`, `run-tests` and `vstest`) to the new lane: the Visual Studio 2022 paths and the test runner usage. Their Mono.Cecil copy step stays as it is until S1-6 (the lane's locked restore does not restore the two `packages.config` projects). | The step 1 results in the package report; the step 2 Full run and Release dry run; a lane build of the unchanged classic solution with `/restore` (must be a no-op) and a second baseline run equal to the first; baseline output committed as test data |
+| **S1-T Tests that read project files** (parallel with S1-1, S1-2; must merge before S1-3, S1-5, S1-6) | the 27 test files with 86 literal `<Compile Include>`/`<Page Include>` assertions (e.g. `tests/BERATests/WiringTests.cs:100-104`, `BPRINTTests/WiringTests.cs:113-224`, BTP, BDBM, CLAIMDCM, M2EF, M2NOTES, P262*, VBRIDGE1/2, VEDS, VGP, SshHostKeyTests, ReleaseFlowTests, ReportTests, PdfLibraryTests, `NoHqTests/CdtRetiredTests.cs`), the two parsers using the 2003 namespace (`tests/ReleaseFlowTests/ReleaseFilesTests.cs`, `tests/LibraryBindingTests/TestSupport.cs:312`), `tests/ReleaseFlowTests/InstallerTests.cs:325-336`; the 16 files with "not built" Inconclusive checks | Replace literal-line checks with a shared helper that answers "is this file compiled by this project" for both formats (explicit item, or on disk under the folder and not removed); parse project XML namespace-agnostically; honour `OPMS_REQUIRE_BUILD_OUTPUT`. | the 27 files' assemblies, against the still-classic projects |
+| **S1-1 Leaf libraries and tools** | `CodeBase`, `ODCrypt`, `RdlEngine`, `RdlViewer`, `UpdateFileCopier` (keep the 20 linked CodeBase files and the linked resx explicit), `DataConnectionBase`, `OpenPmsDentalStorage`, `PasswordVaultWrapper`, `OpenPmsDentalDbSettings`, `DatabaseIntegrityCheck`, `MySQLManager`, `ImagingDeviceManager`, `ODR`, `tools/SyntheticData` and `tools/AdoptionValidation` (`DefaultItemExcludes` for their nested test projects), `tools/DevDbTool`, `xCrudGenerator` (delete the csproj-editing code `CrudGenHelper.cs:694-697` and the `Microsoft.Build` reference: globbing makes it pointless); the `ODCrypt`/`PasswordVaultWrapper` source paths in `tools/Build-Release.ps1` (their output becomes flat `bin\Release`) | Convert. Keep only items with real metadata (`Link`, `LogicalName`, `CopyToOutputDirectory`, `DependentUpon`, generator items). Drop ClickOnce/bootstrapper properties, `ResGenToolArchitecture`, `LinuxRelease` configurations, empty build events, `System.Deployment`/`System.EnterpriseServices`/`System.Web.Extensions` references. Check the manifest name of UpdateFileCopier's linked `MsgBoxCopyPaste.resx` (not yet verified). | CryptoTests, DbConnectionSecurityTests, ReportTests, SshHostKeyTests, LibraryUpdateTests, ImagingDeviceManagerTests, SyntheticData.Tests, AdoptionValidation.Tests (build only; its run is a slow-tier locked run), ForkMigrationTests (DevDbTool), NoHqTests |
+| **S1-2 Third-party source-build wrappers** | `third-party/build/*` (7 projects), `SourceBuild.props`, `SourceBuild.targets`, `PDFsharp.props` | Convert with `GenerateAssemblyInfo=false`, `DisableImplicitFrameworkDefines=true` (keeps today's hand-written netstandard2.0/net462 symbol sets), `SourceBuild.targets` imported after the SDK targets so `$(IntermediateOutputPath)` exists; `SourceBuildItems.txt` must not change. | PdfLibraryTests, LibSpellTests, ImagingDeviceManagerTests |
+| **S1-3 Business library** (after S1-T) | `OpenPmsDentalBusiness/OpenPmsDentalBusiness.csproj` | Convert: about 1,926 explicit Compile items and 11 folder globs become the default glob; keep the 3 `LogicalName` schema files, Settings, the remaining `Web References` `Reference.cs` files as normal source. The `WebReferences`/`WebReferenceUrl` items may go: SGen is off since S0-2a (with it at `Auto`, a Release build would still run SGen for them). Drop the 3 unused WPF `Resource` gifs or diff the `.g.resources`. | Core subset run by the package: BSERVERTests, MiddleTierMockTests, BCLAIMTests, VendorDirectTests, ForkMigrationTests (schema LogicalName), NoHqTests, ReleaseFlowTests |
+| **S1-4 UI libraries and services** | `OpenPmsDentalGraph`, `SparksToothChart` (1 Page), `WpfControlsOD` (remove 198 explicit `Page` items; `UseWPF`; make it x86 like the rest), `ImagingCapture` (remove its `**\*.xaml` and `**\*.cs` items), `OpenPmsDentalHL7`, `ServiceManager` | Convert. `UseWPF` with `net48` in Microsoft.NET.Sdk must be verified on the first project. Keep explicit framework `<Reference>` items for net48. | BPERIOTests, BPRINTTests, BSHELLTests, M2MISCTests, ODOPTSTests, ImagingCaptureTests, DicomReaderTests, CLAIMDCMTests, LibSpellTests |
+| **S1-5 The program and the consumers of the exe** (after S1-T; best after S1-1..S1-4) | `OpenPmsDental/OpenPmsDental.csproj`, `UnitTestsCore`, `NoHqTests` | Use explicit `Sdk.props`/`Sdk.targets` imports placed before the custom block so `ForkBuildStampFile` sees `$(IntermediateOutputPath)`. Keep `ForkWriteBuildStamp`, `CopyUpdateFileCopier`, the branding `LogicalName` resources, the WebView2Loader copy. The `Direct2dWrapper` post-build `xcopy` keeps working because the program's output stays `bin\Debug`. `FormReportComplex.resx` keeps its name (see section 8). | Full Core run by the workflow after merge (this is the largest project); BACCTTests, ApptTests, M2SHEETSTests, AttributionTests, ReleaseFlowTests, LibraryBindingTests (`.exe.config` content) |
+| **S1-6 The test projects** (last) | `tests/*/*.csproj` (108 after stage 0), `tools/*/…Tests.csproj` (2), `tests/LibraryBindingTests/packages.config` and `tests/LibWebTests/packages.config` (delete) | Scripted conversion to a 10-20 line project on top of `tests/Directory.Build.props`: remove the `**\*.cs` item (NETSDK1022 otherwise), keep the 36 `TestDb.cs` links and the copied data files; the Mono.Cecil HintPaths in LibraryBindingTests and LibWebTests become a PackageReference (0.10.3 from the offline folder). MSTest v1 stays referenced by name through `Directory.Build.targets`' search path; if that path is not honoured in SDK-style projects, add a HintPath in `tests/Directory.Build.props` (verify on the first test project). | the workflow's Full run is the gate |
+
+**Order and parallelism.** S1-0 alone. Then S1-T, S1-1, S1-2 in parallel (disjoint). Then S1-3 and S1-4 in parallel. Then S1-5. Then
+S1-6. At most three writers at a time (the lane serialises builds). PluginExample stays a classic project outside the slnf until S3b-4
+rebuilds it for .NET 10.
+
+`OpenPmsDentalServer` stays a classic Web Application project: Microsoft.NET.Sdk has no System.Web project type (community SDKs only,
+https://github.com/CZEMacLeod/MSBuild.SDK.SystemWeb); it is replaced in 3b. `Direct2dWrapper.vcxproj` is unchanged (v143, built by
+MSBuild 18 from S1-0).
+
+**Full-test gate.** Section 3, plus: zero differences in the evaluated Compile/EmbeddedResource/Page items and the manifest resource names
+against the baseline (except the deliberately removed ones); an identical output file list for `OpenPmsDental\bin\Debug`; identical
+contents of every `*.exe.config` and `*.dll.config`. Expected and accepted: lock files of exes carry a `win-x86` section, because the SDK
+gives every .NET Framework exe a default runtime identifier from its platform target
+(https://github.com/dotnet/sdk/blob/main/src/Tasks/Microsoft.NET.Build.Tasks/targets/Microsoft.NET.RuntimeIdentifierInference.targets).
+
+**Tooling changes (switch at S1-0).** Lane: the Build Tools 2026 MSBuild and vstest (found with a version range, overridable by
+parameter), `/restore` and locked mode, the SDK pin (and the resolver variables for the per-user band), `OPMS_REQUIRE_BUILD_OUTPUT`. Test
+runners: vstest 18 from Build Tools 2026; paths otherwise unchanged (flat output). Build-Release, New-InitSql, New-DevDatabase and the two
+tool scripts: MSBuild found with a version range instead of `-latest`; Build-Release also gains the restore switch and, in S1-1, the
+ODCrypt/PasswordVaultWrapper paths. Setup: unchanged. README: the Building section. Workflow scripts in the local tools folder: updated
+by the lead in S1-0; after S1-6 merges, the lead removes their Mono.Cecil copy step. Build Tools 2022 stay installed until this stage's
+gate has passed.
+
+**Downloads.** None. Build Tools 2026 and both SDKs are installed (2026-11-08). The owner added the MSVC v143 component with the Visual
+Studio Installer on 2026-11-08 (not an offline-folder item). SDK-style `net48` adds
+`Microsoft.NETFramework.ReferenceAssemblies` only when no targeting pack is installed, see
+https://github.com/dotnet/sdk/blob/main/src/Tasks/Microsoft.NET.Build.Tasks/targets/Microsoft.NET.Sdk.FrameworkReferenceResolution.targets;
+the Build Tools 2026 instance has the 4.8 targeting pack. The S1-0 offline check proves that no package download is needed.
+
+**Risks and mitigations.**
+- Silent item changes (globbing, duplicate items, resource names): the baseline diff is a gate, not a spot check.
+- Silent config changes (automatic binding redirects): `AutoGenerateBindingRedirects=false` by default and the config-content diff.
+- Evaluation order of `$(IntermediateOutputPath)` (OpenPmsDental build stamp, SourceBuild.targets): explicit SDK imports; check that no
+  generated `.cs` lands in a project folder (`git status` clean after a build).
+- Implicit framework symbols changing third-party code paths: `DisableImplicitFrameworkDefines` in the wrappers; `SourceBuildItems.txt`
+  guard tests.
+- Platform mix-ups (WpfControlsOD and CryptoTests mapped to AnyCPU in the sln): `PlatformTarget=x86` centrally, sln mapping corrected by
+  the lead.
+- Restore needing the network: `nuget.config` clears all sources; a missing package is a build error, never a silent download.
+- An SDK arriving by other means (a Visual Studio update brings a new machine-wide SDK): the `global.json` pin makes the build fail
+  clearly or roll forward only as S1-0 decided; the bump procedure of section 2.4 follows every such update.
+- The toolchain switch hiding a behaviour change (the MSBuild 18 compiler on the classic projects): S1-0 compares a Full run and a Release
+  dry run of the unchanged solution with the last Build Tools 2022 runs before any conversion, and takes the baseline after the switch;
+  Build Tools 2022 stay installed, so the lane can go back by parameter.
+- A Visual Studio update during the stage (Modern Lifecycle): updates are installed only between packages, never during a gate.
+
+**Size.** 8 packages; large; about 9-13 dev-days (OpenPmsDental, the business library and WpfControlsOD are the hard ones; S1-0 now
+includes the toolchain switch).
+
+---
+
+### Stage 2 - NuGet replaces Required dlls (net48)
+
+**Goal.** Every file in `Required dlls` that has a NuGet package comes from the offline folder through PackageReference with lock files;
+what is left there has no package. No Microsoft package stays on a line whose support ends on 2026-11-10.
+
+**Entry conditions.** Stage 1 merged and green. Download batch A approved and placed in the offline folder (see Downloads).
+
+**Packages.**
+
+| Package | Owns | Work | Targeted tests |
+|---|---|---|---|
+| **S2-1 Central versions and the 26 identical packages** (first) | `Directory.Packages.props` (new), every `.csproj` with a `Required dlls` HintPath to one of the 26 files, `tests/Directory.Build.props` | Central Package Management (https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management); PackageReference for BouncyCastle.Cryptography 2.7.0, Google.Apis/Auth/Core 1.78.0, Google.Apis.Gmail.v1 1.77.0.4295, MailKit 4.18.2, MimeKit 4.18.2, Microsoft.Identity.Client 4.92.0, Newtonsoft.Json 13.0.4, SSH.NET 2026.0.0 and their transitive polyfills (all byte-identical to the current files, SHA-256 checked); MySqlConnector stays 2.3.7 here (identical bits are not in the feed, so it keeps its HintPath until S2-2); test projects get libraries transitively through ProjectReference; lock files committed. | Diff of the output folders by SHA-256 before and after: identical; Core subset (DataConnection and e-mail tests) |
+| **S2-2 MySqlConnector 2.6.2 and the Microsoft 10.0 packages** (after S2-1) | `Directory.Packages.props`, `DataConnectionBase` and any code that uses changed APIs; every project file with a MySqlConnector HintPath (112 at the survey, fewer after stage 0; they collapse into the transitive reference); the `app.config`/`Web.config` files whose manual binding redirects name the three Microsoft assemblies below, and `tests/BindingRedirects.config` | Upgrade MySqlConnector from 2.3.7 (advisory GHSA-473q-m89c-ghf8, https://github.com/advisories/GHSA-473q-m89c-ghf8). Review the 2.4-2.6 changes: `State=Broken` after network errors, `ResetConnectionAsync` throws `MySqlException`, stricter argument checks, `MySqlConnectorLogManager.Provider` obsolete (https://mysqlconnector.net/overview/version-history/). Move the three shipped Microsoft packages still on 8.0.x to the current 10.0 patch, which still targets net462: `Microsoft.Extensions.DependencyInjection.Abstractions` (8.0.2), `Microsoft.Extensions.Logging.Abstractions` (8.0.3), `System.Diagnostics.DiagnosticSource` (8.0.1). .NET 8 support ends on 2026-11-10 (https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core); the three ship today (`Build-Release.ps1:136-146`), and the bridge release would otherwise ship them months later. `System.Security.Cryptography.Pkcs` 8.0.1 is not shipped and nothing references it (`ReleaseListTests.cs:104-105`). It leaves `Required dlls` in stage 2 (S2-4) instead of being upgraded, and batch A drops it. The binding redirects follow the new assembly versions. **Database TLS check:** add a slow-tier test in `tests/DbConnectionSecurityTests` (skipped unless the lane passes the test server address and the two certificate thumbprints; the environment is open point O-8) that connects over a non-loopback address of the build PC to a local MySQL/MariaDB user created `REQUIRE X509`, with `SslMode=VerifyFull` and the office CA PEM, once with a client certificate imported through a CAPI key provider and once through a CNG key provider (`OpenPmsDentalDbSettings/ClientCertificateStore.cs:30-46,186-204`). Today's tests open only loopback connections, which the connection rule exempts from TLS. | Core run by the workflow (database-heavy); ForkMigrationTests, M201Tests (slow tier, locked); LibraryBindingTests (redirects); the TLS test |
+| **S2-3 WebView2 package** (after S2-2, which edits the same project files) | `CodeBase`, `OpenPmsDental`, `WpfControlsOD`, `tests/LibWebTests`, `tests/M2IMGTests` project files; `Required dlls/WebView2Loader.dll` and the three WebView2 DLLs | PackageReference `Microsoft.Web.WebView2` 1.0.2420.47 (same bits); the package's build targets supply `WebView2Loader.dll` per RID, so the `None` item at `OpenPmsDental.csproj:9598` goes; check the loader lands flat in `bin\Debug` for x86 (https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution). | LibWebTests, M2IMGTests; open an eForm and the e-mail preview |
+| **S2-4 Release tooling for packages** (after S2-3) | `tools/Build-Release.ps1` (ThirdPartyFiles 135-149, NativeFiles 194), `THIRD-PARTY-NOTICES.txt`, `Required dlls/vcruntime140.dll` (delete; unused, the setup installs vc_redist), `Required dlls/System.Security.Cryptography.Pkcs.dll` (delete; not shipped, nothing references it), tests that pin `Required dlls` (`tests/LibraryBindingTests/RequiredDllsTests.cs`, `ReleaseListTests.cs`, `tests/BINBTests/RemovedBinariesTests.cs`, `tests/LibraryUpdateTests/LibraryFilesTests.cs`, ReleaseFlowTests) | Compare staged third-party files with the package files named by the lock files instead of `Required dlls`; update the notices (MySqlConnector 2.6.2 and the three shipped 10.0 packages; remove the Pkcs sentence) and the Pkcs pins in `RequiredDllsTests.cs:31` and `ReleaseListTests.cs:104-105`. | ReleaseFlowTests, LibraryBindingTests, BINBTests, LibraryUpdateTests; `Build-Release.ps1 -ListFiles` diff |
+
+**Left in `Required dlls` after stage 2:** SharpDX x3 and Tao x2 (to be retired by the planned WPF 3D tooth chart, `docs/roadmap.md`),
+`Windows.winmd` (removed in 3a). The Health.Direct and interop DLLs left in stage 0.
+
+**Full-test gate.** Section 3, plus a release dry run with the new third-party source check, and the database TLS test run once against
+the test server (CAPI and CNG; environment per O-8).
+
+**Tooling changes.** Lane: locked restore is now load-bearing; a package that changes dependencies runs one unlocked restore in its
+worktree and commits the new lock files. Build-Release: S2-4. Setup: none.
+
+**Downloads (batch A).** `MySqlConnector` 2.6.2; `Microsoft.Web.WebView2` 1.0.2420.47 (fetching 1.0.4314.35 here instead is possible; the
+plan keeps the same bits first and upgrades in 3b); `Microsoft.Extensions.DependencyInjection.Abstractions`,
+`Microsoft.Extensions.Logging.Abstractions`, `System.Diagnostics.DiagnosticSource` at the current 10.0 patch (10.0.14 at the time of
+writing), with the net462 closure their lock files list. Not `System.Security.Cryptography.Pkcs`: it leaves `Required dlls` (S2-2).
+
+**Risks and mitigations.**
+- MySqlConnector behaviour changes on connection errors: the Core run and the reconnect/"connection lost" paths are exercised by the
+  existing database tests; add one test that a killed connection reports `Broken` and the program's reconnect path recovers.
+- The 10.0 polyfills on net48 change assembly versions: the manual binding redirects and `BindingRedirectTests` move with them.
+- The TLS path differs per key provider and TLS version: the new test covers both providers; it runs again at the 3b gate. Its test
+  environment needs the owner (open point O-8).
+- The classic Middle Tier project may no longer get transitive package DLLs copied (NuGet has limited PackageReference support for ASP.NET
+  Framework apps, https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files). It is not shipped and is
+  replaced in 3b; it must still build. Do not deploy it from stages 2-3a.
+- NuGet audit is silent with an offline-only source (https://learn.microsoft.com/en-us/nuget/concepts/auditing-packages): the lead runs
+  an online audit of the lock files elsewhere whenever the feed changes.
+
+**Size.** 4 packages; medium; about 3-5 dev-days.
+
+---
+
+### Stage 4 - MSTest 4 (on net48, runs after stage 2 and before stage 3a)
+
+**Goal.** All test projects and `UnitTestsCore` run on MSTest 4 with the same results as on MSTest v1.
+
+**Entry conditions.** Stage 2 merged and green; per-assembly test counts and outcomes of the last v1 Full run recorded. Download batch B
+approved.
+
+**Packages.**
+
+| Package | Owns | Work | Targeted tests |
+|---|---|---|---|
+| **S4-1 Framework swap** | `tests/Directory.Build.props`, `Directory.Packages.props`, `UnitTestsCore/UnitTestsCore.csproj`, `Directory.Build.targets` (remove `ODAddMSTestV1SearchPath`; keep the binding-redirect parts while on net48), every test `.cs` that fails to compile | `MSTest.TestFramework` + `MSTest.TestAdapter` 4.5.x and `Microsoft.NET.Test.Sdk` in the shared test props; `UnitTestsCore` gets `MSTest.TestFramework` only. Apply Microsoft's v1-to-v3 guide (https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-migration-from-v1-to-v3) and then the v3-to-v4 guide (https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-migration-v3-v4); check the v4 list of removed APIs against the code before starting. Known now: `Assert.AreEqual` on differently typed values needs explicit types; the two `[Timeout]` tests (`tests/BPERIOTests/ContrPerioTests.cs:262,378`); the one `[ExpectedException]` (`tests/VPEARL2Tests/PearlApiClientLoggingTests.cs`) and the 20 `Assert.ThrowsException` uses in 20 files, which v4 replaces with `Assert.ThrowsExactly`; `ClassCleanup` (163 uses in 81 files): decide its timing explicitly and check that scratch databases are still dropped. | every assembly whose sources changed, then the workflow's Full run |
+| **S4-2 Runners** | the build lane script (`-Test`), the test runner in the local tools folder, `tools/run-tests.ps1`; the workflow scripts in the local tools folder that call vstest or the runner (lead; found by the same grep as in S1-0) | vstest.console finds the MSTest adapter next to each test DLL; keep `/Platform:x86`; check on the first assembly that vstest.console 18.11 (Build Tools 2026, the runners' vstest since S1-0) runs the MSTest 4 adapter; keep both summary formats in the parser; compare discovered test counts per assembly with the v1 record; update the workflow scripts' test steps. | test runner `-Mode Targeted` on 5 assemblies; Full by the workflow |
+
+**Order.** S4-1 then S4-2 (S4-2 is small; it can be prepared in parallel and merged second).
+
+**Full-test gate.** Section 3, plus identical per-assembly discovered-test counts and outcomes compared to the v1 record (differences
+explained one by one).
+
+**Tooling changes.** Lane, both test runner copies and the workflow scripts (S4-2). Build-Release and setup: none.
+
+**Downloads (batch B).** `MSTest.TestFramework` and `MSTest.TestAdapter` 4.5.x (the latest 4.5 patch at download time; 4.5.2 of
+2026-10-27 was current when this plan was made and supports net462, https://www.nuget.org/packages/MSTest.TestFramework/);
+`Microsoft.NET.Test.Sdk` (current stable at download); and the closure the lock files list (`MSTest.Analyzers`,
+`Microsoft.Testing.Platform` and `Microsoft.Testing.Extensions.*` as applicable, `Microsoft.TestPlatform.TestHost`,
+`Microsoft.CodeCoverage`). The lock files' `contentHash` values are the download manifest. The exact versions are recorded in
+`Directory.Packages.props`.
+
+**Risks and mitigations.**
+- Tests that silently stop running (discovery differences): the per-assembly count comparison is part of the gate.
+- APIs removed in v4: the compile errors list them; each replacement keeps the test's meaning (an exact exception type stays exact).
+- Scratch-database lifetime changes with `ClassCleanup`: run the Full suite twice in a row; leftover `scratch_*` databases are a failure.
+
+**Size.** 2 packages; medium; about 2-4 dev-days.
+
+---
+
+### Stage 3a - Prepare the code on net48
+
+**Goal.** Make every change that the .NET 10 move needs and that also works on .NET Framework, prove it on net48, record the net48 golden
+outputs, and ship it all as the last .NET Framework release (the bridge release).
+
+**Entry conditions.** Stage 4 merged and green.
+
+**Packages, wave 1 (parallel, disjoint).**
+
+| Package | Owns | Work | Targeted tests |
+|---|---|---|---|
+| **S3a-1 No more Thread.Abort** | `WpfControlsOD/UI/Progress/FrmProgressAuto.xaml.cs` (Abort at 125, 142 on the success path, 242, 248), `ProgressWin.cs`, `CodeBase/Utilities/ODThread.cs` (Join on timeout, 280), Join callers `FormOpenDental.cs:6840`, `ControlChart.cs:830`; `tests/MiddleTierMockTests/ODThreadTests.cs` (from S0-T; the two abort tests are rewritten for cooperative cancellation) | Cooperative cancellation: no abort on success; Cancel sets a flag the action checks, or closes the window and lets the background thread finish without database writes; `Join(timeout)` returns false instead of aborting. Thread.Abort always throws on .NET 5+ (https://learn.microsoft.com/en-us/dotnet/fundamentals/syslib-diagnostics/syslib0006). Dead `catch(ThreadAbortException)` blocks are left (harmless) and removed after 3b. The old Images module's abort (`ControlImagesOld.cs:3710`) and its two shell opens (308, 336) went with the module in S0-6. | new ProgressWin success/exception/cancel tests (WPF STA test), the ODThread tests; BPERIOTests, M2MISCTests |
+| **S3a-2 Shell launching and elevation** (the helper merges first, as a small first commit) | `CodeBase/Utilities/ODFileUtils.cs` (Process.Start at 172, 190, 196, 307, 309 without `UseShellExecute`; `ProcessStart(Process)` at 162-164), every live `Process.Start(string…)` and `Process.Start(ProcessStartInfo)` site in shipped code except `PrefL.cs` (S3a-10). The list includes these: the lines in menu files, which wave 2 edits only after wave 1 merges (`ControlImages.cs:826,1304,1323`, `PopupHelper.cs:164,177`, `PopupHelper2.cs:162,175`, `FormClaimEdit.cs:1237,1242`, `FormSheetFillEdit.cs:258` and `FormRpTreatmentFinder.cs:204`); the executable starts, routed through `ODFileUtils.ProcessStart` (`Tesia.cs:55`, `Clearinghouses.cs:653,689`, `FrmAtoZFoldersCreate.xaml.cs:60`, `FrmDocInfo.xaml.cs:151`, `Dolphin.cs:30,70,73,78`, `Shining3D.cs:23`, `PracticeBooster.cs:22`, `Owandy.cs:47`, `One2.cs:55`, `MeditLink.cs:32`, `Guru.cs:219`, `Benco.cs:22`, `AiDental.cs:24`, `AaTemplate.cs:26,67` and `OpenPmsDentalBusiness/Shared/ODCloudClient/Sirona.cs:25`); the `net view` starts `UserControlServerConnections.cs:108`, `CentralConnections.cs:118` and `FormReportSetup.cs:128` (UseShellExecute=true keeps the hidden window); the X-Charge style `new ProcessStartInfo(path)` sites (`FormPayment.cs:3450,4036`, `FormCreditCardEdit.cs:594,775`, `FormCreditCardManage.cs:334`, `FormXchargeTokenTool.cs:114`, `RecurringCharges.cs:700`); the `new Process()` sites `FormClaimAttachSnipDXC.cs:241,257`, `FormClaimAttachment.cs:362,378` and `FormImageSelectClaimAttach.cs:425,438` (both whole files, including their `OutOfMemoryException` catches at 499 and 515), `FormCreditCardEdit.cs:614,798`, `FormCreditCardManage.cs:357`, `FormPayment.cs:3480,4149`, `FormXchargeTokenTool.cs:131`, `RecurringCharges.cs:748`, `Eclaims/WebMD.cs:42`, `UpdateFileCopier/FormMain.cs:429`, `WpfControlsOD/Bridges/Dolphin.cs:64`, `Office.cs:37`, `Progeny.cs:38,49`, `WpfControlsOD/Frms/FrmPatientSelect.xaml.cs:832`; new source-scan test file in NoHqTests | Every start that does not redirect output uses `UseShellExecute=true`, the .NET Framework default (https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.processstartinfo.useshellexecute); new `ODFileUtils.ShellOpen(pathOrUrl)`. **Elevation:** with `UseShellExecute=false` (the .NET default) a start goes through CreateProcess, which refuses a program whose manifest asks for elevation (`ERROR_ELEVATION_REQUIRED`); only ShellExecute asks for consent (https://learn.microsoft.com/windows/security/application-security/application-control/user-account-control/architecture). So every `new Process()` start (22 live sites in 16 shipped files, one more in xCrudGenerator `CrudGenHelper.cs:683`, plus one commented out in `SheetPrinting.cs:479`; the PrefL and ServicesHelper ones belong to S3a-10 and S3a-7) and every `ODFileUtils.ProcessStart(Process)` call sets `UseShellExecute` explicitly: true unless it redirects standard streams. osk.exe (`FrmPatientSelect`) is a uiAccess binary and needs true. The `OutOfMemoryException` catches gain `catch(ExternalException)` as in S3a-9. Source-scan test: no `Process.Start(string…)` outside `ODFileUtils`, and every `new Process()`/`new ProcessStartInfo(` block sets `UseShellExecute` explicitly. The scan covers the shipped projects. It leaves out `tests/`, `tools/`, `UnitTestsCore` and `xCrudGenerator`, whose starts redirect output or never ship. The scan commit merges last in wave 1, after S3a-10. | the helper unit test (`UseShellExecute==true` for every overload), the source-scan test, VendorDirectTests, BIMGTests, BPAYTests |
+| **S3a-3 Encodings and numbers** | `ProcCodeImports.cs:133`, `ProcCodesOther.cs:241`, `CodeBase/Utilities/ODZip.cs:43`, `EForms/EFormRichPaste.cs:82`, `FormPatienteBill.cs:100,811`, `Data Interface/EmailMessages.cs` (the charset sites left after S0-3; the whole file is owned here in 3a), `DataConnectionBase/SOut.cs`, `SIn.cs`, the money-formatting helpers, `X12/X837_5010.cs`, `X837_4010.cs`, `Eclaims/Ramq.cs`, `Data Interface/TreatPlans.cs:258-273`, `PayPlans.cs:910`; tests `tests/BPROCTests/ProcCodeImportTests.cs:120`, `tests/M2CANTests/OtherCodesTests.cs:237`, `tests/BINBTests/ODZipTests.cs:63` | Replace `Encoding.Default` (UTF-8 on .NET, https://learn.microsoft.com/en-us/dotnet/api/system.text.encoding.default) with the explicit ANSI page `Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.ANSICodePage)`; give machine-read numbers (X12, claim files, signature keys, exports) explicit formats with `InvariantCulture` and "G15" where text must match today; normalise negative zero in money formatting; `SIn.Double/Float` treat infinity as invalid (.NET parses overflow to infinity, https://learn.microsoft.com/en-us/dotnet/core/compatibility/3.0#floating-point-formatting-and-parsing-behavior-changed). All no-ops on net48. Code-page provider registration waits for 3b (section 8). | the three fixed tests (bytes built with 1252, no guard), BCLAIMTests, M2CLAIMFORMTests, BTPTests, PayPlanTests, StatementTests |
+| **S3a-4 Golden outputs and known answers** | new `tests/GoldenOutputTests` project (+ sln/slnf entry, lead merges), fixture files | From one fixture database built by the existing scratch-database helpers: an 837 batch, statement PDF text, treatment-plan and pay-plan signature keys, the main CSV exports, `SOut.Float` SQL text for computed values, crypto known answers (`MiscUtils.Decrypt`, `CentralConnections.Decrypt`, a stored signature, RDL data-source decryption), a `wikilisthist.ListContent` written by net48. Recorded with the net48 build and committed; the same tests compare byte for byte in 3b. | the new assembly |
+| **S3a-5 PasswordVault to Credential Manager** | `PasswordVaultWrapper/*` (project file drops `Windows.winmd`), `Required dlls/Windows.winmd`, `tests/BINBTests` vault tests | Credential Manager P/Invoke (`CredWriteW`/`CredReadW`/`CredDeleteW`/`CredEnumerateW`), same public interface; on first use a one-time migration copies existing PasswordVault entries over (WinRT still works on net48), so nobody re-enters a password. .NET 5+ cannot consume `.winmd` (https://learn.microsoft.com/en-us/dotnet/core/compatibility/interop/5.0/built-in-support-for-winrt-removed). No TFM change, no download. | BINBTests; the migration test (an entry written through PasswordVault is readable through Credential Manager after first use, and the migration runs once) |
+| **S3a-6 SOAP clients without System.Web.Services** | `OpenPmsDentalBusiness.csproj` (owner in 3a), `Web References/Dentalxchange2016/*`, `DentalxchangePartnerService/*`, `NewCropWebService/*`, `EmdeonITS/*`, new `WebServices/SoapCaller.cs`, `Eclaims/ClaimConnect.cs` (304, 817 `SoapException`), `ElectIDs.cs`, `Eclaims/EmdeonMedical.cs` (`PutFileExt` at 44, `GetFile` at 103), `WebBridges/Erx/NewCrop/NewCrop.cs`, `NewCropConfig.cs`, `OpenPmsDentalBusiness/Properties/Settings*`, its `app.config`; the unused ITS URL setting of the program (`OpenPmsDental/Properties/Settings.Designer.cs:38-41`, `Settings.settings`, its `app.config` entry); tests `tests/VDXC2Tests/FakeDentalXChange.cs`, `DxcPdfAttachmentTests.cs`, `tests/VendorDirectTests/DentalXChange/DxcPartnerIdentityTests.cs`, `Erx/NewCropAndThrottleTests.cs`, `tests/CLAIMDCMTests/WiringTests.cs:134`, new ITS tests | Keep the generated `[XmlType]` data classes, delete the `SoapHttpClientProtocol` classes, and send the 14 used operations (DentalXChange DWS 4, DEA 6, NewCrop 2, Change Healthcare ITS 2) through one `HttpClient` + `XmlSerializer` SOAP caller that reproduces each method's `SoapDocumentMethod` wrapper. ITS is kept and must work on .NET 10 although the office does not use it today (decision 12). Before deleting the old proxies, a test captures the envelope each old proxy sends (through the existing `WebRequest.RegisterPrefix` fake) and asserts the new caller's envelope is equivalent, for every operation including ITS's two. The VDXC2 fake becomes an `HttpMessageHandler`; a new fake ITS endpoint checks the request the caller builds (login, message type, file name, zipped payload) and parses an `ItsReturn`. SGen is off since S0-2a, so removing these `WebReferenceUrl` items changes no release file. This route differs from regenerating with `dotnet-svcutil`; see section 8. The Middle Tier's own proxy stays until 3b. | VDXC2Tests, VendorDirectTests, CLAIMDCMTests, BCLAIMTests, the envelope-equivalence tests, the ITS request test |
+| **S3a-7 Windows services without InstallUtil** | `CodeBase/Utilities/ServicesHelper.cs` (InstallUtil at 18-25, 68, 114; its `new Process()` at 30), `OpenPmsDentalHL7/ProjectInstaller.cs` (delete), `OpenPmsDentalHL7.csproj` (`System.Configuration.Install` reference), `ServiceManager/FormServiceManage.cs:115,154`; tests `tests/ReleaseFlowTests/ProgramNamesTests.cs` (183-196, and S3a-8's exe-loading fix at 191), `tests/BINBTests/RemovedBinariesTests.cs:139-143` | Install and remove services with `sc.exe` (or `CreateService`/`DeleteService` P/Invoke); `System.Configuration.Install` does not exist on .NET (https://learn.microsoft.com/en-us/dotnet/core/porting/net-framework-tech-unavailable) and InstallUtil cannot load a .NET 10 assembly. The `ServicesHelper.Install`/`Uninstall` signatures stay, so the caller `OpenPmsDental/Logic/PrefL.cs:488` needs no edit (if it must change, the edit goes into S3a-10's brief). Elevation: ServiceManager runs elevated by its manifest; the program's call keeps today's "try running as admin" message. | ReleaseFlowTests, BINBTests; manual: install and remove the HL7 service from ServiceManager on a test PC |
+| **S3a-8 Tests that use .NET Framework-only APIs** | AppDomain probes (`NoHqTests/RemovedAssembliesTests.cs`, `tests/DicomReaderTests/DicomPixelReaderChainTests.cs`, `tests/LibSpellTests/TestSupport.cs` + `SpellCheckProbe.cs`, `tests/VendorDirectTests/BridgesRemoval/BridgesDllRemovedTests.cs`, `tests/PdfLibraryTests/IsolatedPdfRun.cs`), ReflectionOnly loads (`NoHqTests/RenameGuardTests.cs`, `tests/BINATests/RepoFiles.cs`, `tests/BINBTests/CompiledReferencesTests.cs`, `tests/LibraryUpdateTests/LibraryFilesTests.cs`, `VendorDirectTests/PayConnect/PayConnect1RemovedTests.cs`, `DdeBridgesRemovedTests.cs`), `tests/LibraryBindingTests/RequiredDllsTests.cs:75` (GAC), `tests/AttributionTests/ReleaseIdentityTests.cs:96`, `AttributionTests.cs:52`, `tests/ImagingCaptureTests/InteropLayoutTests.cs:114,137`, the exe-loading tests `NoHqTests/CdtRetiredTests.cs:108` and `tests/ReleaseFlowTests/ReleaseManifestTests.cs:219-224` | Read assembly references with Mono.Cecil (already used by the tests; no new package) instead of `ReflectionOnlyLoad`; run the probes in-process or in a child process instead of a new AppDomain (AppDomain creation throws on .NET, https://learn.microsoft.com/en-us/dotnet/core/porting/net-framework-tech-unavailable); `AssemblyBuilder.DefineDynamicAssembly`; delete the GAC assertion; assert the COM method order from a list; load "the program's managed assembly" through a helper that takes `OpenPmsDental.dll` when present and the `.exe` otherwise (S3a-7 applies the same helper in `ProgramNamesTests.cs:191`). The binding-redirect tests stay until 3b (still meaningful on net48). | each touched assembly |
+| **S3a-9 Small API fixes** | `OpenPmsDentalDbSettings/OfficeCaFile.cs`, `DbSettingsRunner.cs`, `ClientCertificateStore.cs`, `tests/DbConnectionSecurityTests/ToolTests.cs`, `OwnerAnswersTests.cs`; `SheetFramework/SheetPrintingJob.cs:498`, `Imaging/DicomImageReader.cs:204`, `SheetFramework/SheetDrawingJob.cs:857`, `tests/ImagingDeviceManagerTests/CaptureSessionFilesTests.cs:121`; network guards `tools/DevDbTool/NetworkGuard.cs`, `tools/SyntheticData/Infrastructure/LocalOnly.cs`; `OpenPmsDentalBusiness/TableTypes/Pref.cs`, new `NoHqTests/ObsoletePrefNamesTests.cs`; `OpenPmsDentalBusiness/Email/SendEmails.cs` (142-150, 259-268), `CodeBase/Utilities/EmailUtils.cs:16-18`, `Data Interface/EmailAddresses.cs:221`, new `tests/LibraryUpdateTests/AddressRulesTests.cs` | (i) Static `File/Directory.Get/SetAccessControl` to the `FileInfo`/`DirectoryInfo` instance form, which compiles on both runtimes (https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemaclextensions). (ii) The `OutOfMemoryException` catches gain `catch(ExternalException)` (https://learn.microsoft.com/en-us/dotnet/core/compatibility/windows-forms/10.0/system-drawing-outofmemory-externalexception). (iii) The network guards also set `HttpClient.DefaultProxy`. (iv) **XmlSerializer and obsolete members:** on .NET 10 `XmlSerializer` serializes `[Obsolete]` members and throws while building a serializer for a member marked `IsError=true` (https://learn.microsoft.com/en-us/dotnet/core/compatibility/serialization/10/xmlserializer-obsolete-properties); enum constants count. `Pref.cs` has 25 `[Obsolete("…",true)]` members of `enum PrefName` (for example lines 93, 241, 728), and `PrefName` travels in 15 `Meth.*` calls in 4 files (`Prefs.cs` 12, `PrefC.cs:273`, `LanguagePats.cs:181`, and `ClinicPrefs.cs:267` with a `List<PrefName>`) and in `ClinicPref.PrefName`: every such Middle Tier call would throw. Change the 25 to `IsError=false`; on net48 nothing changes (`XmlSerializer` ignores obsolete members there). The new tests replace the lost compile error: a source scan that no code outside `Pref.cs` references any of the 25 as `PrefName.<name>` (strings in the convert scripts and comments are allowed); and a reflection test that no member of `PrefName` carries an `ObsoleteAttribute` with `IsError==true`, so a newly ported upstream preference marked that way fails on net48 and not only at 3b. The alternative, the AppContext switch that restores "ignore obsolete members", would have to be set in every process that serializes (program, server, tools, tests). (v) **Addresses with consecutive dots:** .NET 10's `MailAddress` rejects them (https://learn.microsoft.com/en-us/dotnet/core/compatibility/10, Networking); the sending and validation sites listed catch the `FormatException` and tell the user the address is not valid instead of failing; the new test pins today's result for `a..b@example.com` and is updated to the .NET 10 result in 3b. | DbConnectionSecurityTests, ImagingDeviceManagerTests, DevDbTool/SyntheticData guard tests, NoHqTests, LibraryUpdateTests, MiddleTierMockTests |
+| **S3a-10 Release-channel hardening (bridge features)** | `OpenPmsDentalBusiness/Misc/ForkRelease/ForkReleases.cs`, `ReleaseManifest.cs`, `OpenPmsDental/Logic/PrefL.cs` (the whole file in 3a), `tests/ReleaseFlowTests` except `ProgramNamesTests.cs` (S3a-7), `ReleaseManifestTests.cs` (S3a-8) and `InstallerTests.cs` (S3a-11) | (i) An unreadable or foreign manifest means "refuse and tell the user", not "nothing is published" (today `GetPublishedManifest` returns null at 405-411 and `Decide(null,…)` publishes for the update server, 237-242). (ii) Accept a new optional manifest key naming the runtime a release needs (for example `Runtime=Microsoft.WindowsDesktop.App 10.0 x86`); if this PC lacks it, refuse the pull with "run the new setup". (iii) Pull copies every file UpdateFileCopier needs, not only the exe (prepares for 3b). (iv) **Elevated copier:** `UpdateFileCopier/app.manifest` asks for `requireAdministrator`, and `PrefL.cs:592-596` starts it with the default `UseShellExecute`; on .NET that is false, CreateProcess refuses the start, and the program would end with `FriendlyException` and `Environment.Exit(305)` (597-601), so every self-update between two .NET 10 builds would fail on a standard workstation. Set `UseShellExecute=true` (the net48 default, so nothing changes today); UAC then asks for consent as it does now. (v) **Apphost resources:** a new test reads `RT_MANIFEST` (requested execution level), `RT_VERSION` (file and product version) and `RT_GROUP_ICON` (present, same icon bytes as the net48 record) from every staged `.exe`; record today's values from the net48 Release build (`requireAdministrator` for OpenPmsDentalDbSettings, ServiceManager and UpdateFileCopier; FileVersion 24.3.63.0 on `OpenPmsDental.exe`, `ReleaseFilesTests.cs:104`), so 3b proves the apphost and the single-file host carry them. | ReleaseFlowTests (new cases for both refusals, the elevated start and the resource test); launch check: self-update from a standard user |
+| **S3a-11 Setup without the per-user mode** | `installer/OpenPmsDental.iss`, `tools/Test-Installer.ps1`, `tests/ReleaseFlowTests/InstallerTests.cs`; `docs/release-process.md` (the administrative-install and installer-test paragraphs, 166 and 170) and `README.md` (the `Test-Installer.ps1` description in the tools table, 190); S3b-7 later adds the runtime to both | The setup always runs as administrator (decision 7): remove `PrivilegesRequiredOverridesAllowed=commandline` (line 83; `PrivilegesRequired=admin` at 82 stays), the `/CURRENTUSER` documentation (33), and the branches only a per-user install reached (`IsAdminInstallMode` in `SetUpConnection` 669-676 and 692-693, the security page condition at 801). `{autodesktop}` then always means the common desktop. Reason: the .NET 10 Desktop Runtime installs machine-wide and needs administrator rights (3b), and a per-user install could never run the connection settings tool anyway. `Test-Installer.ps1` today installs per user without rights (`/CURRENTUSER`, line 67) and checks the per-user uninstall entry under HKCU (40, 138-155). It becomes an elevated test: it refuses to start unelevated; it still installs into new `%TEMP%` folders with `/DIR=`; it reads the uninstall entry under `HKLM\SOFTWARE\WOW6432Node\...`; scenarios A and B use a loopback database server, so the connection settings tool is not needed; a new scenario gives a network server and checks that the silent setup runs the tool `/silent` and ends with exit code 10 when the tool fails (no office CA); and it checks what the uninstall leaves (the Event Log source key per its `[Registry]` flags). Who runs it, and where, is open point O-3. The two documents describe an elevated test install and drop the per-user sentences. | ReleaseFlowTests (InstallerTests: no `PrivilegesRequiredOverridesAllowed`, no `/CURRENTUSER`); one elevated `Test-Installer.ps1` run |
+
+**Packages, wave 2 (after wave 1 merges; WinForms menus and remaining UI).**
+
+| Package | Owns | Work | Targeted tests |
+|---|---|---|---|
+| **S3a-M1 Shared menu code** (first) | `OpenPmsDentalBusiness/UI/GridOD.cs` (1934-2038), `GridOld.cs` (1466-1551), `PopupHelper.cs` and `WpfControlsOD/UI/Controls/Supplemental/PopupHelper2.cs` (the menu code; their shell lines, `PopupHelper.cs:164,177` and `PopupHelper2.cs:162,175`, are S3a-2's and merge in wave 1), `OpenPmsDental/Logic/Lan.cs` (33-154), `UI/ODToolBarButton.cs`, `UI/ToolBarOD.cs`, `Data Interface/SheetFields.cs:287-289`, `ODR/ComboBoxMulti.cs` | `ContextMenu`/`MenuItem`/`Menu` become `ContextMenuStrip`/`ToolStripMenuItem`/`ToolStripDropDown` (`.MenuItems` to `.Items`, `Popup` to `Opening`); `DropDownMenu` moves to the half-built `ContextMenuStripDropDown`; `Lan.C` translates ToolStrip items. These types are binary-compatibility shims on .NET 10 that "can't be instantiated" (WFDEV006, https://learn.microsoft.com/en-us/dotnet/desktop/winforms/wfdev-diagnostics/wfdev006). | GridOD tests, BACCTTests, M2SHELLTests; screenshots of grid right-click menus and toolbar drop-downs |
+| **S3a-M2 Program modules** (after M1; parallel with M3) | `FormOpenDental.Designer.cs`/`.cs`, `ControlAccount.*`, `ControlChart.*`, `ControlAppt.*`, `ControlFamily.*`, `ControlTreat.*`, `ControlImages.*`, `ControlImageDisplay.*` (also its clipboard fix: put `NodeTypeAndKey` on the clipboard as a JSON string under a custom format, which needs no BinaryFormatter, https://learn.microsoft.com/en-us/dotnet/standard/serialization/binaryformatter-migration-guide/winforms-wpf-ole-guidance), `UserControlTasks.*`, `EmailPreviewControl.*`, `ODtextBox.cs`, `UserControlSecurityUserGroup.*` | Same conversion. | ApptTests, BAPPTTests, BACCTTests, BIMGTests (+ its wiring test at `tests/BIMGTests/WiringTests.cs:115`), BTASKTests; in-process clipboard round-trip test |
+| **S3a-M3 Remaining forms, grids, main menus** (after M1; parallel with M2) | the remaining files of the 99 source files that use WinForms `ContextMenu`/`MenuItem`/`Menu` after stage 0 (104 at the survey: OpenPmsDental 96, OpenPmsDentalBusiness 4, ODR 1, RdlDesign 2 and CentralManager 1; stage 0 deletes the last two and, in S0-6, `ControlImagesOld.cs` with its designer file) (Forms, Forms Reports, ReportingForRdl, `FormMedical.cs`, `FormQueryMonitor.cs`), `Forms Reports/FormQuery.designer.cs`/`.cs` (DataGrid to DataGridView or GridOD); the source-text tests `tests/P262BillingTests/WiringSourceTests.cs:48-69`, `tests/M2SDVTests/ServiceDateViewUiSourceTests.cs:35`, `tests/BACCTTests/WindowTextTests.cs:58`; new NoHqTests source-scan test that fails on any WinForms `ContextMenu`/`MenuItem`/`MainMenu`/`DataGrid`/`Control.ContextMenu` use | Same conversion. Spot check: 272 fully qualified constructions of these types in 50 files at the survey (some were in CentralManager, UnitTests and `ControlImagesOld.designer.cs`, deleted in stage 0). | P262BillingTests, M2SDVTests, BACCTTests, M2HISTTests, the source-scan test |
+
+**Order.** Wave 1 packages in parallel (at most three writers at once; the lead computes file intersections first). Wave 2: M1, then M2
+and M3 in parallel. Then the gate. Then the bridge release.
+
+**Known overlaps, resolved.** `PrefL.cs` belongs to S3a-10 (it carries S3a-2's elevation fix; S3a-7 needs no edit there).
+`FormClaimAttachment.cs` and `FormImageSelectClaimAttach.cs` belong to S3a-2, including the `OutOfMemoryException` fixes listed in S3a-9's
+work. `tests/ReleaseFlowTests`: `ProgramNamesTests.cs` to S3a-7 (with S3a-8's line 191), `ReleaseManifestTests.cs` to S3a-8,
+`InstallerTests.cs` to S3a-11, the rest to S3a-10 (its new tests go in new files). NoHqTests: each package adds its own new file.
+S3a-2's source-scan test merges last in wave 1, after S3a-10. The menu files that S3a-2 edits for shell starts
+(`ControlImages.cs`, `PopupHelper.cs`, `PopupHelper2.cs`, `FormClaimEdit.cs`, `FormSheetFillEdit.cs`, `FormRpTreatmentFinder.cs`) pass to
+the wave 2 packages after wave 1 merges.
+
+**Full-test gate.** Section 3, plus: the golden outputs and known answers recorded and committed; the source-scan tests pass; the
+launch checks for 3a (section 6) done with screenshots, including a self-update from a standard user; the elevated installer test; then the
+bridge release is built, installed on a test PC over the previous release by setup and by self-update, and published to the office.
+
+**Tooling changes.** `Test-Installer.ps1` runs elevated (S3a-11); the lead adjusts the release workflow script in the local tools folder
+that runs it. The new manifest key (S3a-10) is defined here and written by 3b's release. Lane and runners: none.
+
+**Downloads.** None (Mono.Cecil is already in use; the source-scan tests replace an analyzer package).
+
+**Risks and mitigations.**
+- Menus look different (native Win32 menus to the ToolStrip renderer: fonts, heights, check marks, `&` accelerators): screenshot pass on
+  net48 (section 6); this is the point to catch it, not in 3b.
+- Cancel in progress windows now stops at the next check instead of immediately: review each long action reachable from a ProgressWin
+  for a check point; the cancel test proves no database write after "cancelled".
+- Hand-written SOAP envelopes could differ from the generated proxies: envelope-equivalence tests run against the old proxies before they
+  are deleted, plus one call against the DentalXChange test endpoint (prelive) if credentials allow. ITS has no test account in the
+  office, so it is proven by envelope equivalence and the fake endpoint only; the release notes say so.
+- Explicit `UseShellExecute=true` changes nothing on net48 (it is the default there); the elevation launch check proves the copier still
+  asks for consent and finishes.
+- Too much product change in one release: the bridge release ships 3a on the known runtime, so the office meets these changes one at a
+  time, before the runtime changes.
+
+**Size.** 14 packages (11 + 3 menu packages); extra large; about 21-32 dev-days, of which the menus are about 6-10.
+
+---
+
+### Stage 3b - Switch to net10.0-windows x86
+
+**Goal.** One integration branch moves every project to `net10.0-windows` (x86, framework-dependent), replaces the Middle Tier with an
+ASP.NET Core host, updates release and setup for the .NET 10 file layout and runtime, and merges to `main` once.
+
+**Entry conditions.** 3a merged; the bridge release installed on every workstation and on the update server. The lane and the test runners
+have been on Build Tools 2026 since S1-0 (decision 1), and the x86 .NET 10 runtimes (10.0.14 on 2026-11-08, kept current by Visual Studio
+updates) are on the build PC. Download batch D, and batch C if a Middle Tier host is used (open point O-7), approved and in place. Branch
+`net10/switch` cut from `main`.
+
+**Packages (all on `net10/switch`).**
+
+| Package | Owns | Work | Targeted tests |
+|---|---|---|---|
+| **S3b-0 Spike** (first; throwaway branch, not merged) | nothing on the integration branch | Prove the unknowns on the real toolchain: (1) The lane's MSBuild 18 with the SDK band pinned in S1-0 builds `net10.0-windows` without NETSDK1233 and without a `Microsoft.Net.Sdk.Compilers.Toolset` download. (2) The win-x86 apphost: the machine-wide SDK 10.0.403 has `Microsoft.NETCore.App.Host.win-x86` (10.0.14) in its `packs` folder, the per-user SDK 10.0.114 has only `Microsoft.NETCore.App.Host.win-x64` (both checked 2026-11-08). With the machine-wide band the pack is local; with the per-user band the build takes `Microsoft.NETCore.App.Host.win-x86` from the offline folder (ResolveAppHosts restores the pack as a package when it is missing, https://source.dot.net/Microsoft.NET.Build.Tasks/ResolveAppHosts.cs.html). Confirm which one the build uses and that the locked restore succeeds. (3) The 10.0 WindowsDesktop reference pack still has System.Resources.Extensions, System.CodeDom, System.DirectoryServices, WindowsFormsIntegration. (4) A minimal `Microsoft.NET.Sdk.Web` x86 project referencing the business library gets a `runtimeconfig.json` with both `Microsoft.AspNetCore.App` and `Microsoft.WindowsDesktop.App` and starts as a Windows service. (5) The WebView2 1.0.4314.35 package layout for `net10.0-windows`. (6) DentalXChange test endpoint responses parse under `HttpClient` without `useUnsafeHeaderParsing`. (7) With `RuntimeIdentifier=win-x86` and `SelfContained=false`, a locked restore asks for no runtime pack, and the Windows assets of System.Management, System.Speech and System.DirectoryServices.AccountManagement/Protocols (`runtimes/win/lib/net10.0` in the packages) land flat in `bin\Release`, not as a PlatformNotSupported stub. (8) The `PrefName`, `ClinicPref` and `Adjustment` round trips of MiddleTierMockTests pass on net10.0. (9) The 10.0 x86 apphost is not large-address-aware, like today's exe (section 9.2). | spike notes only |
+| **S3b-1 Toolchain and shared settings** | `global.json` (stays on the band S1-0 chose; bump per section 2.4 if one is due), `Directory.Build.props`, `Directory.Build.targets` (remove `ODDropValueTupleRedirect` and the test `AppConfig` default), `tests/Directory.Build.props`, `Directory.Packages.props`, `.editorconfig`, the build lane script, both test runner copies | `TargetFramework` `net10.0-windows` for SDK projects; `PlatformTarget x86`; for exes and test projects `RuntimeIdentifier=win-x86` with `SelfContained=false`. Without a RuntimeIdentifier, the Windows implementations of packages such as System.Management land under `bin\Release\runtimes\win\lib\net10.0\` with a PlatformNotSupported stub at the top (https://learn.microsoft.com/en-us/nuget/create-packages/supporting-multiple-target-frameworks#architecture-specific-folders, https://github.com/dotnet/runtime/blob/main/src/libraries/System.Management/src/System.Management.csproj); `Build-Release.ps1:717-722` refuses sub folders, ForkReleases publishes top-level files only and UpdateFileCopier copies non-recursively, so WMI, domain login and voice perio would throw after a self-update. With the RID the SDK copies them flat; `AppendRuntimeIdentifierToOutputPath=false` keeps the folder flat. Remove `Prefer32Bit` and `AutoGenerateBindingRedirects` (no meaning on .NET); pin `LangVersion` to today's effective values (7.3/8.0, never `latest`), raised later on purpose (https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/configure-language-version); `WarningsAsErrors` WFDEV006; WFO1000 as a warning for the switch (https://learn.microsoft.com/en-us/dotnet/desktop/winforms/compiler-messages/wfo1000); `RuntimeHostConfigurationOption System.Globalization.UseNls=true` for the exes and tests (decision 4, https://learn.microsoft.com/en-us/dotnet/core/extensions/globalization-icu). Lane: already on the Build Tools 2026 MSBuild and vstest since S1-0 (vstest 18.11 has the x86 test host `DOTNET_ROOT` fix of 18.9); the x86 test host finds the machine-wide x86 runtime under `Program Files (x86)\dotnet` (the build PC has the x86 8.0, 9.0 and 10.0 runtimes there; `DOTNET_ROOT_X86` only for a per-user install, https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-environment-variables). | the layer builds below |
+| **S3b-2 Layer A: base libraries** | `CodeBase`, `ODCrypt`, `DataConnectionBase`, `OpenPmsDentalStorage`, `PasswordVaultWrapper`, `RdlEngine`, `RdlViewer`, the 7 wrappers (+ `SourceBuild.props`, `PDFsharp.props`: delete the hand-written symbol lists, let the SDK define upstream's net10 symbols; WeCantSpell with upstream's net10.0 constants), `UpdateFileCopier`, `OpenPmsDentalDbSettings`, `ImagingDeviceManager`, `ODR`, tools | Retarget; plain `net10.0-windows` for non-UI libraries, `UseWindowsForms`/`UseWPF` per the project survey; PackageReferences: `System.Management`, `System.ServiceProcess.ServiceController`, `System.Security.Cryptography.ProtectedData` (Storage has no WinForms); the 10.0 `Microsoft.Extensions.*.Abstractions` come from stage 2; remove polyfill references (pruned on net10, https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files#prunepackagereference) and `Sftp.TypeAsyncInterfacesDependency`; `Encoding.RegisterProvider(CodePagesEncodingProvider.Instance)` first in `ODInitialize.Initialize()` (https://learn.microsoft.com/en-us/dotnet/api/system.text.codepagesencodingprovider); the secured-`FileStream` constructor in DbSettings to `FileSystemAclExtensions.Create`; remove `ServicePointManager.SecurityProtocol` (`ODInitialize.cs:27`); `DtoProcessor`'s `FixPackageAssembly` goes in S3b-6. | builds of layer A; CryptoTests, DbConnectionSecurityTests, PdfLibraryTests, LibSpellTests once layer tests retarget (S3b-5 runs them) |
+| **S3b-3 Layer B: business library and services** (after S3b-2) | `OpenPmsDentalBusiness`, `OpenPmsDentalGraph`, `SparksToothChart` (SharpDX/Tao stay file references; drop `Microsoft.VisualC`), `OpenPmsDentalHL7`, `ServiceManager` | Retarget; packages `System.DirectoryServices.AccountManagement` (with `System.DirectoryServices.Protocols` as its dependency), `System.Speech` for voice perio charting (decision 13), `WinForms.DataVisualization` 1.10.2 (MIT, same namespace) for the dashboard and graph charts (decision 10); RDL reports with VB `<Code>` blocks fail with a clear message (decision 14; runtime compilation throws on .NET; the shipped report has none); `LocalDiagnostics` reports `RuntimeInformation.FrameworkDescription`; drop the OSVersion WMI workaround. | builds of layer B |
+| **S3b-4 Layer C: UI and executables** (after S3b-3) | `WpfControlsOD` (incl. `Bridges/PluginLoader.cs`), `ImagingCapture`, `OpenPmsDental` (+ `Main Modules/ProgramEntry.cs`, `app.config`), `PluginExample`, `xCrudGenerator`, `DatabaseIntegrityCheck`, `MySQLManager` (`Direct2dWrapper.vcxproj` is not touched: it stays on v143); PluginExample's sln and `OpenDental.Local.slnf` entries (lead), so the gates build it; not shipped (not in Build-Release's lists) | Retarget. In every exe's `Main`, before anything creates a window: `Application.SetDefaultFont(new Font("Microsoft Sans Serif", 8.25f))` first (72 plain forms rely on the default, which is Segoe UI 9 on .NET; the call throws `InvalidOperationException` once a window exists, so it goes before ProgramEntry's splash screen and its NoDpi handling, https://learn.microsoft.com/en-us/dotnet/api/system.windows.forms.application.setdefaultfont), then `Application.SetHighDpiMode(HighDpiMode.PerMonitorV2)` (the app.config DPI section is .NET Framework only, https://learn.microsoft.com/en-us/dotnet/desktop/winforms/high-dpi-support-in-windows-forms). `SetDefaultFont` applies the Windows text scale factor, so with "Make text bigger" above 100% those 72 forms show slightly larger text than on net48 (accepted, decision 9; release notes). The code-page registration in every `Main` that does not call `ODInitialize` (HL7, ServiceManager, DbSettings, UpdateFileCopier, DatabaseIntegrityCheck, MySQLManager, xCrudGenerator). Delete the ignored app.config sections: binding redirects, `startup` (its `useLegacyV2RuntimeActivationPolicy` at `app.config:112` has no .NET equivalent and nothing needs it: every managed DLL left in `Required dlls` is IL-only), DPI, `system.net`, `system.serviceModel`. The XmlSerializers assemblies are already gone (S0-2a; `Microsoft.XmlSerializer.Generator` exists for .NET and is not adopted, by choice). UpdateFileCopier becomes a framework-dependent single file (`PublishSingleFile`, `RuntimeIdentifier win-x86`, `SelfContained false`, https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview) published by `CopyUpdateFileCopier`; run from `%TEMP%` it would read `UpdateFileCopier.dll.config`, which `OpenFileCopier` never copies, so defaults apply: confirm that none of its `Settings.settings` values or app.config entries matters and remove them. The build stamp lands in `OpenPmsDental.dll`; WebView2 1.0.4314.35. PluginExample becomes an SDK-style `net10.0-windows` project that the lane builds (not shipped) (decision 16); `PluginLoader` reports a plugin built for .NET Framework (its `TargetFrameworkAttribute`, read with `System.Reflection.Metadata` without loading it) with a clear message instead of a load failure. | Core run by the workflow after S3b-5; the plugin test of section 7 (a .NET Framework plugin DLL gets the clear message and is not loaded; the rebuilt PluginExample loads) |
+| **S3b-5 Tests** (after S3b-4) | `tests/Directory.Build.props`, the 24 test projects that reference the exe and the 8 that reference WpfControlsOD (`UseWindowsForms`/`UseWPF`), `tests/LibraryBindingTests` (retire binding-redirect and GAC tests), `tests/BindingRedirects.config` (delete), `tests/VendorDirectTests/BridgesRemoval/BridgesDllRemovedTests.cs:165-190`, `tests/LibSpellTests/SpellLibraryFilesTests.cs:85`, PdfLibraryTests/LibSpellTests upstream-TFM guards, Mono.Cecil 0.11.6, a test `[AssemblyInitialize]` that registers the code-page provider, `tests/LibraryUpdateTests/SmtpTests.cs:108-121`, `tests/LibraryUpdateTests/AddressRulesTests.cs` (the .NET 10 result), `tests/MiddleTierMockTests` | Retarget and fix; add the behaviour tests of section 7. | Full by the workflow (gate) |
+| **S3b-6 Middle Tier** (after S3b-3; parallel with S3b-4) | `OpenPmsDentalServer/*` (replaced: new `Microsoft.NET.Sdk.Web` project, `Program.cs`, `appsettings.json`, IIS `web.config`; ASMX, old `Web.config`, old csproj deleted), `OpenPmsDentalBusiness/WebServices/OpenDentalServerHttp.cs` (new), `OpenDentalServerProxy.cs`, `OpenDentalServerReal.cs` (delete), `Web References/OpenDentalServer/*` (delete), `Remoting/RemotingClient.cs` (353-372), `Remoting/Meth.cs` (484-493), `Remoting/DtoProcessor.cs` (`FixPackageAssembly`), new `tests/MiddleTierHostTests`, `tests/LibraryBindingTests/BindingRedirectTests.cs:33`, `tests/ReleaseFlowTests/ReleaseFilesTests.cs:31`, `tools/Test-NoOldNames.ps1:127-132` | As the Middle Tier survey designed it: one POST endpoint at `{PathBase}/ServiceMain.asmx` and `{PathBase}/` (default `/OpenDentalServer`), raw UTF-8 body, synchronous `ProcessDto` on one thread with the `ServerMT` role set per request (thread-static state), 1 GiB body limit in Kestrel and IIS, no execution timeout, HTTPS only, Windows service by default (https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/windows-service), IIS in-process with a 32-bit pool as an option (https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/iis/); client `OpenDentalServerHttp` on a cached `HttpClient` (1 h timeout, same proxy and User-Agent, `SendAsync(...).GetAwaiter().GetResult()` because TestServer rejects synchronous `Send`); `HttpRequestError.ConnectionError` keeps the connection-lost retry (https://learn.microsoft.com/en-us/dotnet/api/system.net.http.httprequesterror). No SOAP compatibility: the server has never shipped to an office and the version check forces client = server, so client and server switch together. `Adjustment.TaxTransID` now travels (harmless: both ends are the same build). The host must run a Windows Server version on Microsoft's .NET 10 OS list (decision 8). | the mock suite (MiddleTierMockTests, with the `PrefName`, `ClinicPref` and `Adjustment` round trips) and the new host round-trip tests (login good/bad, DtoGetTable/Object/Void/String with XML-special text, IsMiddleTierAvailable, version mismatch, 413, connection refused to retry, 50 MB payload, two concurrent users on two databases); BSERVERTests |
+| **S3b-7 Release, setup, self-update** (parallel with S3b-4 after S3b-3) | `tools/Build-Release.ps1` (OwnFiles 104-131, ThirdPartyFiles, NativeFiles PE 0x14C for every apphost, BuildIdFiles 201-203, version check 450-457), `installer/OpenPmsDental.iss` (Framework 4.8 gate 158, 187-194, 727-738; DbSettings run 580-605, 860-871; `[InstallDelete]` 116-139; prerequisites 243-290 and 783-831; `MinVersion` 103), `tools/Test-Installer.ps1`, `OpenPmsDentalBusiness/Misc/ForkRelease/ForkReleases.cs` (`ListBuildIdFiles` adds `OpenPmsDental.dll`; `ListRetiredFiles` adds the `*.exe.config` files shipped before and the pruned in-box DLLs), `OpenPmsDental/Logic/PrefL.cs` (OpenFileCopier copies the single-file copier; runtime check before pull), `tests/ReleaseFlowTests/*`, README, `docs/release-process.md`, `docs/roadmap.md` (the .NET Framework 4.8 to .NET 10 section: record the switch as done) | The release ships `X.exe` (apphost) + `X.dll` + `X.runtimeconfig.json` + `X.deps.json` for OpenPmsDental, ServiceManager and OpenPmsDentalDbSettings, and the single-file UpdateFileCopier; the manifest carries the runtime key defined in S3a-10. **Runtime (decision 6):** the setup checks for `%ProgramFiles(x86)%\dotnet\shared\Microsoft.WindowsDesktop.App\10.*` (https://learn.microsoft.com/en-us/dotnet/core/install/how-to-detect-installed-versions?pivots=os-windows); when it is missing, it downloads the x86 .NET 10 Desktop Runtime at install time and runs it only if Windows trusts its Authenticode signature and Microsoft Corporation signed it, the check it already applies to vc_redist (`OpenPmsDental.iss:243-290`); it installs silently (`/install /quiet /norestart`, exit 0 or 3010, https://learn.microsoft.com/en-us/dotnet/core/install/windows) **before** it runs the DbSettings tool, which is now a .NET 10 exe. `/PREREQS=` with `ask`, `download` or `skip` covers the runtime as it covers vc_redist; with `skip` (managed installs that deploy the runtime themselves) and no runtime, the setup installs the files, does not start the DbSettings tool, says so, and a silent install ends with exit code 10. The download link is Microsoft's stable link for the latest 10.0 x86 Desktop Runtime, taken from Microsoft's .NET 10 download page when the package is written and recorded in the script comment; the signature check, not the link, makes the file trusted. **Windows versions (decision 8):** Windows 11 is the baseline. Below it (Windows build lower than 22000) the setup warns and lets the user go on. The warning says that .NET 10 supports Windows 10 only in some editions, with the link https://learn.microsoft.com/en-us/dotnet/core/install/windows. `MinVersion` (10.0.18362, `OpenPmsDental.iss:103`) stays the hard floor. | ReleaseFlowTests (the apphost resource test of S3a-10 now on apphosts; the layout test of section 7); `Build-Release.ps1 -ListFiles/-CheckFolder`; the elevated `Test-Installer.ps1`; manual install on a clean VM without .NET 10, and an upgrade over the bridge release |
+
+**Order on the branch.** S3b-0 (spike) and S3b-1 first; then S3b-2, S3b-3 strictly in sequence (each layer must be net10 before the
+layer above can build); then S3b-4 with S3b-6 and S3b-7 in parallel (disjoint files: the Middle Tier package owns the Remoting and
+WebServices files, the release package owns ForkReleases/PrefL/setup/Build-Release; `OpenPmsDentalBusiness.csproj` belongs to S3b-3 and
+needs no edit afterwards because the SDK globs files); then S3b-5. Each commit on the branch builds every project already retargeted
+(single-project lane builds); the full slnf builds again from S3b-5 on. `main` keeps receiving fixes; the lead merges `main` into the
+branch after each of them.
+
+**Full-test gate.** Section 3 on the branch, plus: zero WFDEV006; golden outputs and known answers equal to the net48 records (any
+difference is explained and accepted by the owner or fixed); the behaviour tests of section 7 pass; the database TLS test (CAPI and CNG,
+non-loopback; environment per O-8) passes; the screenshot pass of section 6 is complete with before/after pairs; the self-update between
+two .NET 10 builds works from a standard user; the release is built, installed on a clean VM and over the bridge release; if the office
+runs a Middle Tier (open question B-SERVER 5 in `docs/owner-questions.md`, open point O-7), one manual check per hosting mode with a real
+certificate. Then the branch merges into `main` in one merge commit.
+
+**Tooling at the switch (S3b-1/S3b-7).** The lane and the test runners have used the Build Tools 2026 MSBuild and vstest since S1-0;
+S3b-1 keeps the same SDK pin and adds the x86 runtime for tests. Test runner: same flat paths, adapters unchanged. Build-Release and
+setup: S3b-7. `Direct2dWrapper.vcxproj` keeps v143. MSBuild.exe stays the engine (the vcxproj needs the C++
+targets, https://learn.microsoft.com/en-us/visualstudio/msbuild/errors/msb4278); `dotnet build` becomes possible for everything else.
+
+**Downloads.** Batch C (toolchain, non-NuGet) and batch D (NuGet), section 5.
+
+**Risks and mitigations.**
+- Toolchain support: Build Tools 2026 target net10.0 officially
+  (https://learn.microsoft.com/en-us/dotnet/core/porting/versioning-sdk-msbuild-vs)
+  and have built `main` since S1-0; the spike proves the net10.0 build, the apphost pack and the restore.
+- Compatibility-mode binaries (SharpDX, Tao) might fail at run time: the tooth chart in DirectX, OpenGL and 2D modes.
+- Silent runtime differences: NLS mode (decision 4), golden outputs, section 7 tests, screenshot pass.
+- RID-specific assets landing in sub folders: RID set for exes and tests; Build-Release refuses folders; the layout test calls WMI from
+  the staged folder.
+- The branch drifts from `main`: keep 3b short; merge `main` into it after every fix; no feature work on `main` during 3b except fixes.
+- The Middle Tier's thread-static per-request state: synchronous handler, role set per request, concurrent-user test.
+- Long-lived branch merges and the sln: the merge driver; the lead checks changed Project lines.
+
+**Size.** 8 packages; extra large; about 15-25 dev-days (Middle Tier 5-6.5 of them).
+
+---
+
+### Stage 5 - x64 (later; kept as agreed, not planned in detail)
+
+Everything stays x86 until this stage. Prerequisites: 64-bit TWAIN data sources (another project) and the 64-bit TWAIN data source
+manager (TWAINDSM), which the program's setup installs from this stage on. State of both on 2026-11-08, from the TWAIN driver project:
+
+- The driver project's two 64-bit data sources (version 1.2) are built and pass that project's fake-mode suite in both bitnesses. They are
+  not yet packaged, and not yet tested through the 64-bit TWAINDSM.
+- They install to the standard folder `C:\Windows\twain_64\<name>\`, beside the unchanged 32-bit sources. The 32-bit package must be
+  installed too: the 64-bit source reads the `twain_32` INI file and starts the 32-bit helper.
+- This program's setup ships the 64-bit `TWAINDSM.dll`: TWAIN DSM 2.5.1 from the TWAIN Working Group's GitHub release (both DLLs signed
+  by the TWAIN Working Group), downloaded only with the owner's approval at this stage.
+- Whether two programs may use the sensor at once is still an open owner decision in the driver project.
+
+Further prerequisites: the WPF 3D tooth chart replacing SharpDX/Tao (`docs/roadmap.md`); x64 builds of `Direct2dWrapper` with its own
+copy destination and a corrected sln `Any CPU` mapping; `WebView2Loader.dll` x64 from the package; 32-bit vendor DLLs (VisiQuick
+`vqdde32.dll`, Guru `MedVisorInterface.dll`) checked or dropped; the registry view change (no more WOW6432Node); setup `{commonpf64}` with
+`ArchitecturesInstallIn64BitMode`; the x64 Desktop Runtime and vc_redist x64; PE check 0x8664; `/Platform:x64` in the lane and runners
+(`DOTNET_ROOT_X64` only for a per-user runtime); and the Middle Tier as x64. QuickBooks Desktop (QBFC), Schick CDR and Topaz, whose
+32-bit COM pieces would have blocked x64, are switched off today and removed in S0-2a.
+
+---
+
+## 5. Downloads by stage (exact ids; nothing fetched by this plan)
+
+| Batch | Stage | Items |
+|---|---|---|
+| none | 0, 1, 3a | Mono.Cecil 0.10.3 is copied from the ignored `packages/Mono.Cecil.0.10.3` folder into the offline folder (local file, no download). Already installed by the owner (2026-11-08): Visual Studio Build Tools 2026 18.11.3 with the machine-wide .NET SDK 10.0.403 and the x86 and x64 .NET 10.0.14 runtimes (NETCore, WindowsDesktop, AspNetCore); the .NET SDK 10.0.114 per user. Added by the owner on 2026-11-08 with the Visual Studio Installer (not a download batch): the MSVC v143 component of the Build Tools 2026 instance (O-4 resolved). Later SDK bumps are approved one by one (section 2.4). |
+| A | 2 | `MySqlConnector` 2.6.2; `Microsoft.Web.WebView2` 1.0.2420.47; `Microsoft.Extensions.DependencyInjection.Abstractions`, `Microsoft.Extensions.Logging.Abstractions`, `System.Diagnostics.DiagnosticSource` at the current 10.0 patch (10.0.14 at the time of writing), with the net462 closure the lock files list |
+| B | 4 | `MSTest.TestFramework` 4.5.x; `MSTest.TestAdapter` 4.5.x (same patch, chosen at download); `Microsoft.NET.Test.Sdk` (current stable at download); the closure the lock files list (`MSTest.Analyzers`, `Microsoft.Testing.Platform`, `Microsoft.Testing.Extensions.*`, `Microsoft.TestPlatform.TestHost`, `Microsoft.CodeCoverage` as applicable) |
+| C (non-NuGet) | 3b | Nothing for the build PC: Build Tools 2026 and the x86 .NET 10 Desktop Runtime are already there (batch "none"). Only for a Middle Tier host, if one is used, on that host: ASP.NET Core Runtime 10.0.x x86 and .NET Desktop Runtime 10.0.x x86, or the .NET 10 Hosting Bundle plus the Desktop Runtime x86. The setup itself bundles no runtime: it downloads the Desktop Runtime at install time (decision 6). |
+| D (NuGet) | 3b | Only if S1-0 chose the per-user SDK band: `Microsoft.NETCore.App.Host.win-x86` at the runtime version the pinned SDK names (the per-user SDK has no win-x86 apphost pack; the machine-wide SDK has it). Always: `System.Management` 10.0.14; `System.CodeDom` 10.0.14; `System.Security.Cryptography.ProtectedData` 10.0.14; `System.ServiceProcess.ServiceController` 10.0.14; `System.Diagnostics.EventLog` 10.0.14; `System.DirectoryServices.AccountManagement` 10.0.14; `System.DirectoryServices.Protocols` 10.0.14 (its dependency); `System.Speech` 10.0.14 (voice perio, decision 13); `WinForms.DataVisualization` 1.10.2 (decision 10); `Microsoft.Web.WebView2` 1.0.4314.35; `Mono.Cecil` 0.11.6; `Microsoft.Extensions.Hosting.WindowsServices` 10.0.14 and `Microsoft.AspNetCore.Mvc.Testing` 10.0.14 with the closures their lock files list; optional `Google.Apis.Gmail.v1` 1.78.0.4295. The `Microsoft.Extensions.*.Abstractions` are already in the feed from batch A. `System.Security.Cryptography.Pkcs` is not (it leaves in stage 2); if a net10.0 package lists it, the S3b-0 spike shows it and it joins this batch. Only if the spike shows them requested: runtime packs. All "10.0.14" versions mean the current 10.0 patch at download. |
+
+No conditional batch remains: every conditional item of the survey belonged to a feature the owner cut (the dial-up terminal's
+`System.IO.Ports` packages, the RDL providers' `System.Data.Odbc`/`System.Data.OleDb`/`Microsoft.Data.SqlClient`, a Roslyn compiler
+for RDL `<Code>`, the WCF client packages for Divvy). The kept SOAP clients, Change Healthcare ITS included, need no package.
+
+---
+
+## 6. What must be checked by launching the program (screenshots)
+
+Same database, same monitor, before and after; one PC at 100%, one at 150% (4K), one pair of monitors with different scaling; also with
+`NoDpi.txt`, with `NoCustomBorders.txt`, and with Windows "Make text bigger" above 100%.
+
+- **Stage 0:** e-mail through the fake or a local test mail server: receive a plain, an HTML message with an inline image, one with
+  attachments and a signed one, and view each in the inbox and the preview; send over port 465 (implicit TLS) with an inline image and an
+  attachment, and check what arrives (image shown, attachment name); send a signed message. The rebuilt EOB and amendment window
+  (S0-6) from all four entry points: Scan EOB / View EOB in Insurance Payment (EOB), View EOB in Edit Claim (a payment's EOBs and a
+  preauthorization's), Scan EOB / View EOB in Enter Estimates for PreAuth, and Scan / View in Edit Amendment. In each, scan a page and a
+  multi-page document, import, paste, show an image and a PDF, zoom and pan, print, export, copy, delete and close, then check the
+  caller's scanned state; once with an A-to-Z folder and once with images in the database. Then, after S0-6's removal commit, the
+  Images module and the Imaging preferences page without the old-module check box; the Appointments module
+  (ControlAppt resources). A document and a treatment plan with a stored Topaz signature (the not-supported text); Manage > Accounting
+  setup and the deposit software list without QuickBooks Desktop; an enabled Schick program link (the not-available message); the main
+  toolbar and the appointment right-click menu without the Text items.
+- **Stage 1:** start the program from `bin\Debug`, open each module once; open the Appointments module, a report through
+  FormReportComplex, an RDL report; the screenshots must be identical to the classic build.
+- **Stage 2:** an eForm and the e-mail preview (WebView2 from the package); sign in to the database (MySqlConnector 2.6.2), once over a
+  non-loopback address with TLS and a client certificate (environment per O-8).
+- **Stage 3a (net48):** right-click menus on OD grids (Account, Appointments, Chart progress notes, claims, reports) and every toolbar
+  drop-down arrow (Account Payment/Statement, Images): font, height, width, check marks, separators, `&` accelerators; the User Query
+  window grid (column widths, formatting, copy); a progress window that finishes, one that fails and one that is cancelled; opening a PDF
+  document, an image, a wiki link, a link in a commlog note, the A to Z folder, a claim attachment, the display settings from the zoom
+  window, the on-screen keyboard from the patient search; copy and paste of an image document between two patients (in one program and
+  between two programs); installing the HL7 service from ServiceManager; a self-update from a standard (non-administrator) user: the UAC
+  prompt for UpdateFileCopier appears and the update completes; the setup started without administrator rights asks for elevation.
+- **Stage 3b (net10):** the main window and every module (toolbars, grids, `MenuOD` main menu, custom borders); the forms that used the
+  default font (splash screen, clinic picker, `ToolTipOD`, progress windows, `MsgBoxCopyPaste`, capture notice/status windows, ODR
+  parameter input, dashboard edit and print dialogs, RDL viewer dialogs, `FormSnap`, the DbSettings, ServiceManager and UpdateFileCopier
+  windows), also with "Make text bigger" above 100% (slightly larger text accepted, decision 9); DPI changes when dragging a window between
+  monitors; dashboards and income/production graphs and their printing (`WinForms.DataVisualization`); print previews and real prints to a
+  PDF printer (sheets, statements, claim forms, RDL reports: margins, fonts, page counts); WPF Frm screens hosted in FormFrame with their
+  combo, calendar and tooltip pop-ups and keyboard focus; the Images module's hosted strips and the EOB viewer; the tooth chart in WPF/2D,
+  DirectX and OpenGL modes; voice perio charting; WebView2 panes at each DPI; ImageLists created in code (icon edges with 32-bit depth);
+  TreeView check boxes, DateTimePicker, MonthCalendar, RichTextBox text; e-mail receive and send; a clearinghouse send to a sandbox; a Word
+  letter merge; PluginExample loads and a .NET Framework plugin DLL gets the clear message; the self-update end to end between two .NET 10
+  builds from a standard user (publish on a test update server, pull on a second test PC, UpdateFileCopier runs elevated from `%TEMP%`,
+  program restarts); the setup on a clean VM without .NET 10 (runtime downloaded and signature-checked) and over the bridge release.
+
+---
+
+## 7. Tests to add for behaviour differences
+
+| Difference | Test | Stage |
+|---|---|---|
+| `UseShellExecute` default false on .NET | Unit test that every `ODFileUtils` start overload and `ShellOpen` build a `ProcessStartInfo` with `UseShellExecute==true`; NoHqTests source scan of the shipped projects: no `Process.Start(string…)` outside `ODFileUtils`. | 3a |
+| Elevation (CreateProcess refuses a `requireAdministrator` program) | Source scan of the shipped projects: every `new Process()`/`new ProcessStartInfo(` block sets `UseShellExecute` explicitly; a test that the UpdateFileCopier start in `PrefL` uses `UseShellExecute==true`; launch check: self-update from a standard user. | 3a, 3b |
+| Thread.Abort | ProgressWin success/exception/cancel test on an STA thread; ODThread `Join(timeout)` returns false, never throws. | 3a |
+| Legacy WinForms menus | NoHqTests source scan for `ContextMenu`/`MenuItem`/`MainMenu`/`DataGrid`/`Control.ContextMenu`; WFDEV006 as an error. | 3a, 3b |
+| Default font | Source test that each exe's `Main` calls `SetDefaultFont` first and `SetHighDpiMode` before anything creates a window (before ProgramEntry's splash and NoDpi handling); runtime test, in a child process that the test starts and in which no window exists yet (the extracted start-up font/DPI method, or the exe with a test switch), that a plain `Form` created after the program's start-up routine has the family Microsoft Sans Serif and the size 8.25 pt times the Windows text scale factor (`TextScaleFactor` under `HKCU\Software\Microsoft\Accessibility`, 100 when absent), so it also passes on a PC with "Make text bigger". `SetDefaultFont` throws once any window exists in the process, so a shared test host cannot run it. | 3b |
+| Number formatting | Pins: `(-0.0).ToString("F2")`, `Math.Round(-0.004,2).ToString("F2")`, `(0.1+0.2).ToString()`, `SIn.Double("1e400")` invalid; the golden-output comparison (837, statements, signature keys, exports, SQL text). | 3a (record), 3b (compare) |
+| Encodings | Fresh-process test: right after `ODInitialize.Initialize()`, `Encoding.GetEncoding(1252)` and `(850)` work before any PDF code ran (PDFsharp registers the provider itself, so failures would otherwise look intermittent); round trips for capture.ini (`LocalCaptureConfigTests`), Canadian 850, an e-mail with a `windows-1252` charset; the three ANSI tests use 1252 explicitly. | 3a, 3b |
+| ICU vs NLS | Startup assert that NLS is in use (decision 4); patient-name sort test (`O'Brien`, `OBrien`, `Smith-Jones`, `Smith Jones`, `Smithjones`) against the net48 order; CRLF, NUL and soft-hyphen searches in wiki markup and user queries. | 3a (record), 3b |
+| `XmlSerializer` and obsolete members | Mock round trips with a `PrefName` argument, a `ClinicPref` and an `Adjustment` (S0-T), on net48 and net10; source scan: no `PrefName.<name>` reference to the 25 obsolete members outside `Pref.cs`; reflection test: no `PrefName` member carries an `ObsoleteAttribute` with `IsError==true`. | 0, 3a, 3b |
+| Received mail | The corpus recorded with the Direct-based parser and compared with the MimeKit parser; a sender with consecutive dots keeps its raw text. | 0 |
+| EOB and amendment window rebuilt (S0-6) | `EobAmendmentFilesDbTests` on a scratch database, with an A-to-Z folder and with images in the database: the EOB lists of a claim payment and of a preauthorization, adding, deleting and exporting EOBs, replacing and deleting an amendment's file, with the same rows, files and log entries as the old window, except the differences S0-6 lists (paste onto an amendment that has a file, export and PDFs with images in the database, the Copy and amendment print log entries); the launch check from all four entry points. | 0 |
+| Addresses with consecutive dots (sending, validation) | `AddressRulesTests`: today's result for `a..b@example.com` pinned on net48; on .NET 10 the address is refused with a clear message, not a crash. | 3a, 3b |
+| Config file name | Release-layout test: next to `OpenPmsDental.exe` are `OpenPmsDental.dll`, `.runtimeconfig.json`, `.deps.json` (and `.dll.config` only if kept); no `*.exe.config` is staged; the setup deletes old `*.exe.config`. | 3b |
+| Package assets for a runtime identifier | No folder under `bin\Release` (Build-Release check); a test that calls WMI (`System.Management`) from the staged folder. | 3b |
+| Apphost resources | `RT_MANIFEST` (execution level), `RT_VERSION` (file and product version) and `RT_GROUP_ICON` (present, same icon bytes) of every staged `.exe` equal the net48 record. | 3a (record), 3b |
+| Update files | Test that the staged `UpdateFileCopier.exe` runs alone from an empty temp folder (single file, x86); build id includes `OpenPmsDental.dll`; retired-files list equals `[InstallDelete]`; the bridge release refuses an unreadable manifest and a release needing a missing runtime. | 3a, 3b |
+| Database TLS | Non-loopback connection to a `REQUIRE X509` user with `VerifyFull`, with a CAPI and a CNG client key (environment per O-8). | 2, 3b |
+| Setup | Elevated `Test-Installer.ps1`: no per-user install; network server runs the tool `/silent`; on .NET 10, runtime missing with `/PREREQS=skip` installs the files, does not run the tool, exit code 10. | 3a, 3b |
+| Clipboard | In-process round trip of the image-node copy through the JSON string format. | 3a |
+| Middle Tier | The mock suite (S0-T) on both runtimes; the host round-trip suite in `tests/MiddleTierHostTests` (S3b-6). | 0, 3b |
+| Plugins (decision 16) | A DLL whose `TargetFrameworkAttribute` names .NETFramework gets the clear message and is not loaded; the rebuilt PluginExample loads. | 3b |
+| Crypto | Known answers recorded on net48 (S3a-4) equal on net10. | 3a, 3b |
+| Type names | `wikilisthist.ListContent` written by net48 reads on net10; Middle Tier round trip for every parameter type the remoting layer uses. | 3a, 3b |
+
+---
+
+## 8. Survey disagreements and corrections, and how they were resolved
+
+1. **FormReportComplex.resx manifest name.** One survey: changes under the SDK convention; another: unchanged. Evidence:
+   `OpenPmsDental.csproj:12` RootNamespace `OpenPmsDental`; `FormReportComplex.cs:15,17` namespace `OpenPmsDental.ReportingComplex`, class
+   `FormReportComplex`. The folder-based and class-based names are the same, so nothing changes. UpdateFileCopier's linked
+   `MsgBoxCopyPaste.resx` remains to be verified in S1-1.
+2. **Is the win-x86 apphost pack in the SDK?** The machine-wide SDK folder has it
+   (`%ProgramFiles%\dotnet\packs\Microsoft.NETCore.App.Host.win-x86` with 8.0.33, 9.0.22 and 10.0.14; the 10.0 pack came with SDK 10.0.403).
+   The per-user SDK 10.0.114 has only `Microsoft.NETCore.App.Host.win-x64`. So with the machine-wide band the pack is local, and with the
+   per-user band it comes from NuGet (batch D). The spike checks the restore either way.
+3. **ICU or NLS.** One survey: NLS at the switch; another: ICU plus analyzers, NLS as fallback. Decided: NLS for the first .NET 10
+   release (decision 4): 1,573 culture-sensitive `IndexOf/StartsWith/EndsWith` calls with literals (plus 495 with variables) cannot be
+   reviewed before the switch, and NLS keeps today's behaviour; ICU becomes its own later release after the CA1307/CA1309/CA1310 clean-up.
+4. **Number of ProgressWin sites.** The surveys counted about 180-190 with wider patterns. Grep `new ProgressWin\(` gives 127 in 54 files,
+   including `ProgressWin.cs` itself (4) and the legacy UnitTests project (9), which stage 0 deletes. The conclusion (every progress window
+   fails at its end) is the same.
+5. **QBFC, Schick, Topaz.** Two surveys: remove; one: removal optional for .NET 10. Resolved as remove (S0-2a): the office uses none of
+   them, QBFC's interop DLL is a CLR 1.1 binary that would stay in `Required dlls`, and `TopazWrapperTests` compiles code with CodeDom,
+   which throws on .NET.
+6. **SOAP clients: dotnet-svcutil or hand-written.** The Middle Tier survey recommends regenerating DWS/DEA/NewCrop with `dotnet-svcutil`
+   on the WCF client packages. The plan hand-writes one `HttpClient` + `XmlSerializer` caller over the existing data classes in 3a, for ITS
+   too, because on net48 the old proxies still exist, so a test can prove the new envelopes equal the old ones before the old code goes; it
+   also avoids four WCF packages and a tool download.
+7. **Where the Middle Tier host context lives.** Survey: business library, plus a settable path in DataConnectionBase. The plan puts one
+   host context in DataConnectionBase, which both ConnectionStoreBase and the business library can see.
+8. **Code-page provider registration on net48.** On .NET Framework all code pages are built in, and `CodePagesEncodingProvider` would need
+   a package there, so registration lands in 3b (one line in `ODInitialize` and each `Main`).
+9. **x86 runtime for the tests.** One survey proposes a per-user x86 install with `DOTNET_ROOT_X86`. The build PC has machine-wide x86
+   runtimes 8.0.33, 9.0.22 and 10.0.14 under `%ProgramFiles(x86)%\dotnet\shared` (10.0.14 came with Build Tools 2026), so no further
+   install is needed; the environment variable is needed only for a per-user install.
+10. **Toolchain.** The surveys planned SDK 10.0.1xx under the MSBuild 17.14 of Build Tools 2022 from stage 1, and Build Tools 2026 only
+    for 3b. Changed (decision 1): the lane and the test runners move to Build Tools 2026 in S1-0, because SDK 10 under MSBuild 17.14
+    downloads a compiler package for every SDK-style project, every later SDK band needs MSBuild 18, and vstest 17.14 lacks the x86 test
+    host fix. The SDK band is chosen in S1-0 (section 2.4).
+11. **Middle Tier SOAP compatibility.** Not needed: the server has never shipped to an office, and the version check already forces client,
+    server and database to the same build.
+12. **When to delete the orphaned resx entries.** Stage 0: it needs no project file change.
+13. **Where the legacy UnitTests coverage goes.** The draft said the new host round-trip tests (3b) replace the UnitTests mock tests, but
+    the project goes in stage 0. Resolved: S0-T ports the mock suite, the e-mail tests and the ODThread tests to `tests/` first, so the
+    coverage exists before the project goes and runs on both runtimes.
+14. **"WebReferenceUrl items are design-time only."** Wrong for Release builds (SGen). Resolved in S0-2a by dropping the serializer
+    assemblies.
+15. **Runtime identifier at the switch.** The draft said "no RuntimeIdentifier"; the tooling survey said "RID set". Resolved: RID set for
+    exes and tests (S3b-1), because of the `runtimes\win\...` assets.
+
+---
+
+## 9. Spot checks relied on, and what was checked and found clear
+
+### 9.1 Spot checks (blockers relied on)
+
+At the survey commit:
+
+- `FrmProgressAuto.xaml.cs` calls `_threadWorker.Abort()` at 125, 142 (success path), 242, 248.
+- `ODFileUtils.cs` starts processes at 172, 190, 196, 307, 309 with the default `UseShellExecute`; only line 207 sets it (false).
+- 112 `.csproj` files reference `Microsoft.VisualStudio.QualityTools.UnitTestFramework`.
+- 272 fully qualified `new System.Windows.Forms.ContextMenu/MenuItem/MainMenu/DataGrid(` in 50 files.
+- `HostingEnvironment`/`HttpContext.Current`: 12 occurrences in 5 files (ConnectionStoreBase, Plugins, DtoProcessor, PluginLoader, Userods).
+- `PrefL.cs:562` copies only `UpdateFileCopier.exe`.
+- `installer/OpenPmsDental.iss:731-734` refuses without .NET Framework 4.8.
+- `ForkReleases.GetPublishedManifest` returns null on a parse error (398-411); `Decide(null,…)` publishes unless the role is `OtherComputer`
+  (237-242).
+- `PasswordVaultWrapper.csproj:64` references `Required dlls\Windows.winmd`.
+- `Canadian.cs:1638,1683,1962` use code page 850; `OpenPmsDentalHL7` uses `ServiceBase` and `[RunInstaller]`.
+- The build lane script uses the Visual Studio 2022 Build Tools paths and never passes `/restore`.
+- `OpenPmsDentalBusiness.csproj:2667,2676` COM references ADODB and CDO; `OpenPmsDentalServer.csproj:112` imports
+  `Microsoft.WebApplication.targets`; `OpenPmsDental.csproj:186` and `OpenPmsDentalGraph.csproj:72` reference
+  `System.Windows.Forms.DataVisualization`.
+- `DpiAwareness=PerMonitorV2` appears only in `OpenPmsDental/app.config:116` (and in `UnitTests/app.config:65`, deleted in stage 0).
+
+Added for this version, at `8018a815f` and on the build PC on 2026-11-08:
+
+- The build PC: Visual Studio Build Tools 2026 18.11.3 (MSBuild 18.11.1, vstest 18.11) beside Build Tools 2022 17.14.44 (MSBuild 17.14,
+  vstest 17.14). The 2026 instance has the .NET desktop, C++, web, Universal and MSBuild build-tools workloads, the .NET Framework 4.8
+  SDK and the 4.8 and 4.7.2 targeting packs, Testing tools core, NuGet build tools, the Windows 10 SDK and the Windows 11 SDK 10.0.26100,
+  and the .NET 8, 9 and 10 runtime components. Its MSVC toolsets are 14.51 (v145, the default) and 14.44 (v143, component
+  `Microsoft.VisualStudio.Component.VC.14.44.17.14.x86.x64`, added by the owner on 2026-11-08; a Win32 v143 DLL built with MSBuild 18.11
+  links with 14.44); Build Tools 2022 have 14.44 (v143). Both instances have
+  `Microsoft.VisualStudio.QualityTools.UnitTestFramework.dll` under `Common7\IDE\Extensions\TestPlatform`. Machine-wide SDKs 9.0.320 and
+  10.0.403, whose packs include `Microsoft.NETCore.App.Host.win-x86` (8.0.33, 9.0.22, 10.0.14); machine-wide x64 and x86 runtimes 8.0.33,
+  9.0.22 and 10.0.14; per-user SDK 10.0.114, whose packs are `Microsoft.NETCore.App.Host.win-x64` and the NETCore, WindowsDesktop and
+  AspNetCore reference packs.
+- `tools/Build-Release.ps1`, `tools/New-InitSql.ps1`, `tools/New-DevDatabase.ps1`, `tools/AdoptionValidation/Invoke-AdoptionRehearsal.ps1`
+  and `tools/SyntheticData/Invoke-SyntheticData.ps1` find MSBuild with `vswhere -latest -products *` when given no lane or path, so they
+  now find MSBuild 18. `tools/run-tests.ps1` tries the Build Tools 2022 vstest path first, then `vswhere -latest -products *`. Plain
+  `vswhere -latest` (without `-products *`) finds no Build Tools instance. `Directory.Build.targets` finds
+  MSTest v1 through `$(VsInstallRoot)`. `README.md` (Building) names Visual Studio 2022 or its Build Tools. `Direct2dWrapper.vcxproj` sets
+  v143 in all four configurations; the setup's VC++ check accepts any major version 14 (`OpenPmsDental.iss:196-201`).
+- Health.Direct: 88 matching lines in `Data Interface/EmailMessages.cs` (4,185 lines); `DatabaseMaintenances.cs:11749-11757`;
+  `EmailPreviewControl.cs:13,29`; stray usings in 7 more files; references in `OpenPmsDental.csproj:103`,
+  `OpenPmsDentalBusiness.csproj:103-110`, `UnitTests.csproj:98`, `tests/LibraryUpdateTests/LibraryUpdateTests.csproj:53-57`; the three DLLs
+  were shipped in release 0.0.
+- Signed sending uses the Direct library (`SendEmailUnsecureWithSig`, `EmailMessages.cs:1123-1144`); the CDO path's custom headers have
+  one source, the Direct path (`EmailMessages.cs:616-634`); `FormEmailDigitalSignature`'s trust text names only encrypted e-mail and
+  Direct.
+- `FormEmailCertRegister` calls `CustomerUpdatesProxy.GetWebServiceInstance()`, which throws `HqNotAvailableException` in this build.
+- `Forms/FormImages.cs` hosts `ControlImagesOld` for EOBs and amendments (5 call sites in 4 files; they set only `ClaimPaymentNum`,
+  `ClaimNumPreAuth` or `EhrAmendmentCur` and call `ShowDialog`); the module choice `ImagesModuleUsesOld2020` is set to 0 by
+  `ConvertDatabases7.cs:2760,3113`. Every image read, import, export and delete of those three uses is an `ImageStore` method
+  (`OpenImagesEob`/`OpenImagesAmd`, `ImportEobAttach`/`ImportAmdAttach`, `ExportEobAttach`/`ExportAmdAttach`,
+  `DeleteEobAttach`/`DeleteAmdAttach`, `CleanAmdAttach`); the two export methods are called only by `ControlImagesOld`. Showing a PDF
+  (`ControlImagesOld.cs:2919-2957`) and opening a file in its Windows program (the double-click, 262-338) read the stored file in the
+  control itself: the stored path with an A-to-Z folder, a temp file from `FileAtoZ.Download` or `CloudStorage.Download` with the cloud,
+  and with images in the database the `RawBase64` of the shown document, which is empty for an EOB or an amendment (the double-click shows
+  the message to export instead). `ImageStore` has no EOB or amendment method for either. The new module's `ImageSelector` and
+  `ControlImageDisplay` work only on a patient's documents and mounts; its document scan uses the same `EZTwain` calls as the old
+  module's.
+- `UnitTests/Resources/dump.txt` (2.4 MB) is read by 22 test helpers, DevDbTool and three tool scripts; `UnitTests/packages.config` is the
+  only `packages.config` (Mono.Cecil 0.10.3; `packages/` is git-ignored). UnitTests holds 88 + 5 Middle Tier mock tests, 27 e-mail tests
+  and 9 ODThread tests (7 active).
+- `RdlDesigner.exe` is no longer in `Required dlls`; RdlDesign, DocumentationBuilder and PluginExample are not in the sln.
+- 22 live `new Process()` sites in 16 shipped files, one in xCrudGenerator, plus one commented out.
+- Setup: `PrivilegesRequired=admin` with `PrivilegesRequiredOverridesAllowed=commandline` (82-83); `Test-Installer.ps1:67` runs
+  `/CURRENTUSER /PREREQS=skip`; the vc_redist download is checked with `Get-AuthenticodeSignature` for a Microsoft Corporation signer
+  (243-290).
+- `WebReferenceUrl` items: `OpenPmsDental.csproj:9478` (1), `OpenPmsDentalBusiness.csproj:2501-2556` (6: Middle Tier, ITS, DEA, NewCrop,
+  DWS, DCI); release 0.0 shipped both `XmlSerializers` assemblies and `OpenPmsDental.exe.config`, `ServiceManager.exe.config`.
+- `Eclaims/EmdeonMedical.cs` uses two ITS operations (`PutFileExt` at 44, `GetFile` at 103).
+
+### 9.2 Checked and clear (no action needed; recorded so nobody re-checks)
+
+| Topic | Result |
+|---|---|
+| COM registration | No `RegisterForComInterop=true`, `ComRegisterFunction` or `EnableComHosting` (only `false` in the Rdl* project files). COM clients only (late-bound Word, DirectShow `[ComImport]`), covered by the UI and API work. |
+| Mixed-mode / CLR 1.1 assemblies | The 41 managed `Required dlls` are IL-only (CLI 2.5); `Interop.QBFC10.dll` has a CLI 2.0 header (CLR 1.x; removed in S0-2a); 2 are native x86 (`vcruntime140`, `WebView2Loader`). |
+| LARGEADDRESSAWARE | Today's `OpenPmsDental.exe` is not large-address-aware; the x86 apphost (the 8.0 and 9.0 packs, checked at the survey; the 10.0 pack is checked in S3b-0) and x86 `dotnet.exe` are not either. Same 2 GB limit, no regression. |
+| T4, licenses.licx, .testsettings/.runsettings, culture-specific .resx, embedded fonts (.ttf/.otf) | None in the tree. |
+| XSLT script blocks | `RdlEngine/Runtime/XmlUtil.cs:106` uses `XslCompiledTransform` with default settings (scripts already off on net48); the `.xsl` files were only in DocumentationBuilder (deleted). |
+| Delegate `BeginInvoke`/`EndInvoke` (PlatformNotSupported on .NET) | Only `Eclaims/ClaimConnect.cs:1246`, inside the commented `MyMath` block that S0-1 deletes. |
+| `Marshal.GetActiveObject`, `WindowsIdentity.Impersonate`, `MutexSecurity`/`PipeSecurity`, System.Messaging/Remoting/EnterpriseServices in code, `ApplicationDeployment` | None. |
+| `DllImportSearchPath`, `NativeLibrary`, `SetDllDirectory` (.NET 10 interop changes) | None; LoadLibrary by full path only (TWAIN, msftedit). |
+| Windows services and scheduled tasks | One service (`OpenPmsDentalHL7/ServiceHL7.cs`), handled in S3a-7; no schtasks/TaskScheduler. |
+| InternalsVisibleTo and strong names | IVT names test assemblies only; the PDFsharp wrappers are signed (`third-party/build/PDFsharp.props:28-29`), harmless on .NET; ODR's `AssemblyKeyFile("")` is empty. |
+| WinForms .NET 10 change list (StatusStrip renderer, WPF empty grid definitions, DynamicResource, MenuItem ambiguity) | 0 StatusStrip, 0 empty definitions, 3 valid DynamicResource. |
+| CodeDom in shipped code | Only RdlEngine `Code.cs` (decision 14) and a commented block in `FormReportComplex.cs:1149-1185`. |
+| `Application.ExecutablePath` | Returns the apphost `.exe` on .NET (`StartupPath` is `AppContext.BaseDirectory`, https://source.dot.net/System.Windows.Forms/System/Windows/Forms/Application.cs.html); shipped uses of `Assembly.GetEntryAssembly().Location` take the directory only. No change needed; the test rewrites for `.exe` loading are in S3a-8. |
+| Config file name on .NET | `OpenPmsDental.dll.config` (built from the entry assembly's module name, https://source.dot.net/System.Configuration.ConfigurationManager/System/Configuration/ClientConfigPaths.cs.html); a single-file UpdateFileCopier reads `UpdateFileCopier.dll.config`. |
+| resx resources serialized with BinaryFormatter | Load on .NET 9+ without BinaryFormatter (https://learn.microsoft.com/en-us/dotnet/standard/serialization/binaryformatter-migration-guide/winforms-applications); the 16 orphaned entries are clean-up, not a blocker. |
+
+---
+
+## 10. The update path for an office (from the .NET Framework build to the .NET 10 build)
+
+1. **Bridge release first (end of 3a).** The last .NET Framework release, published through the normal self-update and installed on
+   every workstation. It carries all 3a changes, the one-time PasswordVault to Credential Manager migration (S3a-5), and the two
+   release-channel guards (S3a-10): an unreadable manifest is refused instead of treated as "nothing published", and a release that names
+   a runtime this PC lacks is refused with "run the new setup". Its setup installs for all users only (S3a-11). Confirm every
+   workstation, and above all the update server, runs it (Help > About on each) before going on; a pre-bridge update server would read the
+   .NET 10 manifest as unreadable and offer to publish its old release over it.
+2. **Optional check of office data.** Nothing in the code writes BinaryFormatter data, but a database upgraded from old Open Dental could
+   hold some. The owner (agents never touch office data) may run a read-only scan of text and blob columns for the BinaryFormatter
+   header `AAEAAAD/////` and `PublicKeyToken=`; expected result zero rows.
+3. **Switch by setup on every workstation** (decision 5), as for the rename. The office's workstations run Windows 11, the baseline
+   (decision 8). The .NET 10 setup downloads the x86 .NET 10 Desktop Runtime, checks its Microsoft signature, installs it (administrator
+   rights; the self-update elevates for the file copy but never installs prerequisites), and then installs the program. Start with the
+   update server; its first start publishes the .NET 10 release. A workstation not yet set up stays on the bridge release, which refuses
+   to pull and says to run the setup.
+4. **Middle Tier, if the office runs one** (open point O-7). Client and server switch together: the Middle Tier has never shipped to
+   an office, and the version check refuses mixed versions. The host runs a Windows Server version on Microsoft's .NET 10 list; install the
+   ASP.NET Core Runtime 10 x86 and the Desktop Runtime 10 x86 (or the Hosting Bundle plus the Desktop Runtime), then the new server as a
+   Windows service (or an IIS application in a 32-bit pool) at the same URL path, with a certificate.
+5. **After the switch:** runtime patches arrive through Microsoft Update and roll forward within 10.0
+   (https://learn.microsoft.com/en-us/dotnet/core/install/windows); the program is re-released only for its own changes. Later releases
+   use the normal self-update with the single-file UpdateFileCopier.
+6. **Rollback:** re-run the bridge release's setup on the workstations; no database change is involved because stage 3b changes no
+   schema.
+
+**Release-notes items collected by this plan.**
+- Stage 0 release: removed Direct secure messaging (sending encrypted e-mail, delivery acknowledgements, signature trust), CallFire text
+  messages (the Text buttons and menu items go with it), Divvy postcards, the BCBS Georgia dial-up terminal, the QuickBooks Desktop link
+  (QuickBooks Online stays), the Schick CDR bridge, Topaz signature pads (a stored Topaz signature shows that Topaz is not supported), the
+  SQL Server, ODBC and OLE DB data sources of RDL reports, and the "Use old Imaging module interface, pre 2020" option with the old
+  Imaging module. The window behind Scan EOB / View EOB (insurance payments, preauthorizations) and Scan on EHR amendments is rebuilt
+  on the current Imaging module: it looks like the Images module and keeps the same commands and the same stored files. Received
+  S/MIME-encrypted e-mail is kept but shown as "encrypted, cannot be shown". Signed sending now also works over implicit SSL (port 465).
+- Bridge release: setup for all users only (administrator rights); passwords saved by the program move to the Windows Credential Manager
+  once, without re-entry. DentalXChange, NewCrop and Change Healthcare ITS calls use a new SOAP caller. ITS was checked against the
+  requests of the old code and a fake endpoint in the tests, not against the live service.
+- .NET 10 release: needs the x86 .NET 10 Desktop Runtime (the setup installs it); Windows 11 is the baseline; on older Windows the setup
+  warns. With Windows "Make text bigger" above 100%, 72 older windows show slightly larger text; plugins built for .NET Framework no
+  longer load and must be rebuilt for .NET 10 (the office uses none); RDL reports with VB `<Code>` blocks stop with a clear message;
+  Change Healthcare ITS claims work on .NET 10 (the bridge release's SOAP caller; still not tested against the live service).
+
+---
+
+## 11. Owner decisions (2026-11-08)
+
+The owner answered the plan's questions "as recommended", with the corrections below. Each decision is applied in the stage text above.
+
+1. **Toolchain.** Visual Studio Build Tools 2026 18.11.3 are installed on the build PC (2026-11-08) beside Build Tools 2022 17.14.44,
+   with the machine-wide .NET SDK 10.0.403 and the x86 and x64 .NET 10.0.14 runtimes; the .NET SDK 10.0.114 is installed per user. The
+   build lane and the test runners move to the Build Tools 2026 MSBuild and vstest in S1-0, before the first SDK-style project, not at 3b.
+   Build Tools 2022 stay installed until the stage 1 gate has passed on Build Tools 2026 (Visual Studio 2022 17.14 leaves mainstream
+   support on 2027-01-13). S1-0 pins the SDK in `global.json`, choosing between the per-user 10.0.1xx band and the machine-wide band that
+   Visual Studio installs, and records why (section 2.4, open point O-5). Build Tools 2026 are used under the Visual Studio Community
+   licence, which covers this GPL project, and are kept current (Modern Lifecycle). The owner added the MSVC v143 component to the Build
+   Tools 2026 instance on 2026-11-08 and verified it (O-4 resolved): `Direct2dWrapper.vcxproj` keeps v143, there is no v145 retarget, and
+   the setup's VC++ check does not change.
+2. **Stage order.** 0, 1, 2, MSTest (stage 4, before the switch), 3a ending in the bridge release, 3b, 5.
+3. **MSTest 4** (the current 4.5.x line, which supports net462) instead of MSTest 3, a deprecated line. Exact patch chosen at download.
+4. **Globalization.** NLS (`System.Globalization.UseNls=true`) for the first .NET 10 release; ICU later as its own release after the
+   CA1307/CA1309/CA1310 clean-up.
+5. **Office switch.** The new setup runs on every workstation, after the .NET Framework bridge release with its release-channel guards.
+6. **Runtime in the setup.** The setup downloads the x86 .NET 10 Desktop Runtime at install time with a signature check, as it does for
+   vc_redist; `/PREREQS=skip` stays for managed installs.
+7. **No per-user setup mode** (S3a-11). How the installer test then runs is open point O-3.
+8. **Windows versions.** Windows 11 is the baseline; the office's workstations run Windows 11. The setup warns (does not refuse) below
+   it. Microsoft's .NET 10 list (https://learn.microsoft.com/en-us/dotnet/core/install/windows) supports Windows 10 only in some editions.
+   A Middle Tier host runs a Windows Server version on that list.
+9. **Larger text accepted.** With Windows "Make text bigger" above 100%, the 72 older windows show slightly larger text on .NET 10;
+   noted for the release notes.
+10. **Charts.** The community port `WinForms.DataVisualization` 1.10.2 (MIT), checked by screenshots.
+11. **Cut.** CallFire SMS, Divvy postcards, the BCBS Georgia dial-up terminal, RdlEngine's SQL Server, ODBC and OLE DB data providers
+    (S0-2a).
+12. **Kept: Change Healthcare (Emdeon) ITS medical claims.** The office does not use it, but it must keep working on .NET 10: its
+    generated proxy is replaced by the hand-written SOAP caller, with tests of the requests it builds (S3a-6).
+13. **Kept: voice perio charting** (`System.Speech`, batch D).
+14. **RDL reports with VB `<Code>` blocks** fail with a clear message.
+15. **Direct secure messaging removed in stage 0** (HISP, the Health.Direct DLLs; the office does not use it). Received-mail parsing moves
+    to MimeKit (S0-3); the references and DLLs go in S0-2b.
+16. **Plugins.** Keep the plugin loader, rebuild PluginExample for .NET 10 (S3b-4); .NET Framework plugin DLLs become unsupported
+    (release notes). The office uses no plugins.
+17. **Unshipped projects and the old 2020 Imaging module.** Delete the legacy UnitTests project (after its Middle Tier mock and e-mail
+    tests are ported, S0-T, S0-5), RdlDesign (the prebuilt `RdlDesigner.exe` is already gone) and DocumentationBuilder; retire
+    CentralManager (S0-5). The old 2020 Imaging module is retired completely after its EOB and amendment window is rebuilt on the new
+    Imaging code (S0-6; open point O-2).
+
+Also recorded for the update path: the Middle Tier client and server switch together (it has never shipped to an office); saved
+passwords get a one-time migration from PasswordVault to the Credential Manager (S3a-5). Also answered on 2026-11-08: signed e-mail
+sending is kept and moves to MimeKit (open point O-1, S0-3 step 4), and the old module's EOB and amendment window is rebuilt (open
+point O-2, S0-6, decision 17).
+
+---
+
+## 12. Open points
+
+- **O-1. Signed e-mail sending. Answered 2026-11-08: kept (S0-3 step 4).** An S/MIME signature on ordinary e-mail. It is not Direct
+  messaging, but it is built on the Direct library and uses the `NHINDPrivate` certificate store that Direct created. It moves to MimeKit
+  in S0-3 step 4 and then also works over implicit SSL. Decrypting received S/MIME-encrypted mail is not planned (MimeKit could, with the
+  same certificate, if ever wanted).
+- **O-2. ControlImagesOld after the module choice is gone. Answered 2026-11-08: rebuilt (S0-6).** The window it draws for claim-payment
+  EOBs, preauthorization EOBs and EHR amendments (`FormImages`) is rebuilt on the current Imaging code in stage 0, with the same stored
+  files. The old module, its option and its code are then removed, so stage 3a has none of it to convert.
+- **O-3. How the installer test runs without per-user mode.** (a) The lead runs `tools/Test-Installer.ps1` from an elevated PowerShell at
+  each Release dry run on the build PC: a UAC prompt each time, and machine-wide side effects limited to a `%TEMP%` folder, an uninstall
+  entry and the Event Log source key, which the script removes or checks. (b) A disposable Windows VM or Windows Sandbox where the script
+  runs elevated; Windows Sandbox is an optional Windows feature, and turning it on changes the build PC's system settings, which only the
+  owner may do. Recommendation: (a) for the gates from 3a on; (b) later if wanted. Needed before S3a-11 merges.
+- **O-4. Resolved on 2026-11-08: MSVC v143 in the Build Tools 2026 instance.** The owner added
+  `Microsoft.VisualStudio.Component.VC.14.44.17.14.x86.x64`; a Win32 v143 DLL built with MSBuild 18.11 links with 14.44.
+  `Direct2dWrapper.vcxproj` stays on v143 (supported to 2032). No retarget to v145, no change to the setup's VC++ check.
+- **O-5. The SDK band in `global.json`** (decided by the lead in S1-0 from the offline check, recorded in section 2.4 and the commit; the
+  owner is told the result). (a) The per-user 10.0.1xx band with `disable`: it changes only through a bump and is supported to November
+  2028, but every build entry point needs the resolver variables, and the win-x86 apphost pack comes from NuGet. (b) The machine-wide band
+  Visual Studio installs, with `latestFeature` or `disable` plus a bump after each Visual Studio update: no per-user set-up and the apphost
+  pack is local, but Visual Studio updates move the SDK about every quarter. A band whose check shows a
+  `Microsoft.Net.Sdk.Compilers.Toolset` download is not chosen. Neither band needs a download now.
+- **O-6. The Practice-Web DentalXChange eligibility path** (owner; needed before S0-2a starts). The DCI rpc/encoded proxy and its region
+  `OpenPmsDental/Forms/FormInsPlan.cs:2011-2420` are reached only through the preference `CustomizedForPracticeWeb`
+  (`FormInsPlan.cs:1876-1880`), which no window sets (default 0, off). Without it, the eligibility button uses the default eligibility
+  clearinghouse. No owner decision covers this removal yet. Recommendation: cut it in S0-2a (no port of an rpc/encoded proxy).
+  Alternative: port it with the other SOAP calls in S3a-6. If it is cut, S0-2a also owns `docs/specs/vendor-direct/dentalxchange.md:11`
+  (drop "and the Practice-Web path in `FormInsPlan`"), the stage 0 release notes add "the DentalXChange eligibility path used only with
+  the Practice-Web setting (eligibility uses the normal clearinghouse request)", and section 11 records the answer with its date.
+- **O-7. Does the office run a Middle Tier server?** (B-SERVER 5 in `docs/owner-questions.md`; needed before stage 3b starts.) The
+  Middle Tier has never shipped to an office, so the expected answer is no. The answer decides batch C in the 3b entry conditions, the 3b
+  gate's hosting checks and section 10 step 4; with no, batch C and the hosting checks drop out.
+- **O-8. Database TLS test environment** (owner; needed before the stage 2 gate). The TLS test of S2-2 needs four things:
+  - a MariaDB or MySQL server reachable on a non-loopback address, with TLS from a test CA;
+  - a `REQUIRE X509` user;
+  - a CAPI and a CNG client PFX in `LocalMachine\My`, which needs administrator rights and changes a machine-wide store;
+  - an exception to the workflow rule that agents use only the loopback server, for this one test.
+
+  Options: (a) On the build PC, a second database server instance with its own port and data folder and that TLS set-up. The owner runs one
+  elevated step that imports the two PFX files before each gate and removes them after it. (b) A disposable VM or Windows Sandbox that
+  runs both the server and the test, as in O-3 (b). Recommendation: (a). Until then the test is skipped, and the stage 2 and 3b gates
+  cannot pass.
+- **O-9. The developer windows in the legacy UnitTests project** (owner; needed before S0-5 starts). Its `UI Testing` folder holds 23
+  developer windows. One of them, `FormWpfConverter`, is the only front end of the `WpfConverter` class
+  (`OpenPmsDental/UIManagement/WpfConverter.cs`, compiled into the program) and the only launcher of the WPF test windows
+  `FrmTestAllControls` and `FrmTestSplitters` (`WpfControlsOD/Frms`). Deleting UnitTests leaves those three unreachable, and the comments
+  that say "Run UnitTests FormWpfConverter" describe a procedure that no longer exists. Options: (a) Before S0-5, move `FormWpfConverter`
+  and its two Frm launch buttons into a small developer tool under `tools/` that is not shipped (new project, sln/slnf entry by the
+  lead), and update the comments to name it. (b) Delete `OpenPmsDental/UIManagement/WpfConverter.cs`,
+  `WpfControlsOD/Frms/FrmTestAllControls.xaml(.cs)` and `FrmTestSplitters.xaml(.cs)` with their project items; that is S0-2b's work,
+  because S0-2a and then S0-2b own the product project files. Either way, the comments that name `FormWpfConverter`,
+  `tools/Test-NoHqHosts.ps1:62-63` and `tests/LibWebTests/IeBrowserRemovedTests.cs:55` are updated. Recommendation: (b). Nothing outside
+  UnitTests opens these windows, they are developer code inside shipped assemblies, and (a) adds a project that stages 1 and 3b must
+  convert; the code stays in git history if conversion work ever needs the tool again. The answer goes into S0-5, the stage 0 risks and
+  decision 17.
+
+---
+
+## 13. Sources
+
+- SDK, MSBuild and Visual Studio versions: https://learn.microsoft.com/en-us/dotnet/core/porting/versioning-sdk-msbuild-vs ; NETSDK1233:
+  https://github.com/dotnet/sdk/issues/51678
+- Visual Studio lifecycle and servicing: https://learn.microsoft.com/en-us/visualstudio/productinfo/vs-servicing ; Community licence for
+  open-source projects: https://visualstudio.microsoft.com/vs/community/
+- .NET support policy and dates: https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core
+- SDK project overview and properties: https://learn.microsoft.com/en-us/dotnet/core/project-sdk/overview ;
+  https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props ;
+  https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props-desktop
+- SDK targets: https://github.com/dotnet/sdk/blob/main/src/Tasks/Microsoft.NET.Build.Tasks/targets/Microsoft.NET.Sdk.BeforeCommon.targets ;
+  https://github.com/dotnet/sdk/blob/main/src/Tasks/Microsoft.NET.Build.Tasks/targets/Microsoft.NET.RuntimeIdentifierInference.targets ;
+  https://github.com/dotnet/sdk/blob/main/src/Tasks/Microsoft.NET.Build.Tasks/targets/Microsoft.NET.Sdk.FrameworkReferenceResolution.targets
+  https://github.com/dotnet/sdk/blob/main/src/Tasks/Microsoft.NET.Build.Tasks/targets/Microsoft.NET.GenerateAssemblyInfo.targets ;
+  https://source.dot.net/Microsoft.NET.Build.Tasks/ResolveAppHosts.cs.html
+- MSBuild common targets (SGen): https://github.com/dotnet/msbuild/blob/main/src/Tasks/Microsoft.Common.CurrentVersion.targets ;
+  XmlSerializer generator for .NET: https://learn.microsoft.com/en-us/dotnet/core/additional-tools/xml-serializer-generator
+- Directory.Build.props: https://learn.microsoft.com/en-us/visualstudio/msbuild/customize-by-directory
+- Evaluated items: https://learn.microsoft.com/en-us/visualstudio/msbuild/evaluate-items-and-properties
+- NETSDK1004: https://learn.microsoft.com/en-us/dotnet/core/tools/sdk-errors/netsdk1004 ; NU1201:
+  https://learn.microsoft.com/en-us/nuget/reference/errors-and-warnings/nu1201
+- NuGet PackageReference, lock files, pruning:
+  https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files ;
+  Central Package Management: https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management ;
+  nuget.config: https://learn.microsoft.com/en-us/nuget/reference/nuget-config-file ; audit:
+  https://learn.microsoft.com/en-us/nuget/concepts/auditing-packages ;
+  RID-specific assets:
+  https://learn.microsoft.com/en-us/nuget/create-packages/supporting-multiple-target-frameworks#architecture-specific-folders ;
+  System.Management targets: https://github.com/dotnet/runtime/blob/main/src/libraries/System.Management/src/System.Management.csproj
+- Environment variables (SDK resolver, DOTNET_ROOT): https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-environment-variables
+- ResolveComReference (MSB4803): https://learn.microsoft.com/en-us/visualstudio/msbuild/resolvecomreference-task ; MSB4278:
+  https://learn.microsoft.com/en-us/visualstudio/msbuild/errors/msb4278
+- System.Web SDK (community): https://github.com/CZEMacLeod/MSBuild.SDK.SystemWeb
+- MSTest migration: https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-migration-from-v1-to-v3 ;
+  https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-mstest-migration-v3-v4 ; package:
+  https://www.nuget.org/packages/MSTest.TestFramework/
+- Technologies unavailable on .NET: https://learn.microsoft.com/en-us/dotnet/core/porting/net-framework-tech-unavailable ;
+  compatibility mode: https://learn.microsoft.com/en-us/dotnet/core/porting/third-party-deps#net-framework-compatibility-mode
+- Breaking changes in .NET 10 (incl. MailAddress): https://learn.microsoft.com/en-us/dotnet/core/compatibility/10 ;
+  XmlSerializer and obsolete members:
+  https://learn.microsoft.com/en-us/dotnet/core/compatibility/serialization/10/xmlserializer-obsolete-properties ;
+  https://source.dot.net/System.Private.Xml/System/Xml/Serialization/XmlAttributes.cs.html ;
+  https://source.dot.net/System.Private.Xml/System/Xml/Serialization/XmlReflectionImporter.cs.html
+- Thread.Abort: https://learn.microsoft.com/en-us/dotnet/fundamentals/syslib-diagnostics/syslib0006
+- UseShellExecute: https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.processstartinfo.useshellexecute ; UAC and CreateProcess:
+  https://learn.microsoft.com/windows/security/application-security/application-control/user-account-control/architecture
+- Encodings: https://learn.microsoft.com/en-us/dotnet/api/system.text.codepagesencodingprovider ;
+  https://learn.microsoft.com/en-us/dotnet/api/system.text.encoding.default
+- Floating-point formatting:
+  https://learn.microsoft.com/en-us/dotnet/core/compatibility/3.0#floating-point-formatting-and-parsing-behavior-changed
+- ICU and NLS: https://learn.microsoft.com/en-us/dotnet/core/extensions/globalization-icu
+- WinForms: WFDEV006 https://learn.microsoft.com/en-us/dotnet/desktop/winforms/wfdev-diagnostics/wfdev006 ; high DPI
+  https://learn.microsoft.com/en-us/dotnet/desktop/winforms/high-dpi-support-in-windows-forms ; SetDefaultFont
+  https://learn.microsoft.com/en-us/dotnet/api/system.windows.forms.application.setdefaultfont ; WFO1000
+  https://learn.microsoft.com/en-us/dotnet/desktop/winforms/compiler-messages/wfo1000 ; OutOfMemory to ExternalException
+  https://learn.microsoft.com/en-us/dotnet/core/compatibility/windows-forms/10.0/system-drawing-outofmemory-externalexception ; clipboard
+  https://learn.microsoft.com/en-us/dotnet/standard/serialization/binaryformatter-migration-guide/winforms-wpf-ole-guidance ; resx
+  https://learn.microsoft.com/en-us/dotnet/standard/serialization/binaryformatter-migration-guide/winforms-applications ; Application
+  https://source.dot.net/System.Windows.Forms/System/Windows/Forms/Application.cs.html
+- Configuration file paths: https://source.dot.net/System.Configuration.ConfigurationManager/System/Configuration/ClientConfigPaths.cs.html
+- WinRT on .NET 5+: https://learn.microsoft.com/en-us/dotnet/core/compatibility/interop/5.0/built-in-support-for-winrt-removed
+- File ACLs: https://learn.microsoft.com/en-us/dotnet/api/system.io.filesystemaclextensions
+- Single-file apps: https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview
+- Installing and detecting .NET on Windows (incl. supported Windows versions):
+  https://learn.microsoft.com/en-us/dotnet/core/install/windows ;
+  https://learn.microsoft.com/en-us/dotnet/core/install/how-to-detect-installed-versions?pivots=os-windows
+- ASP.NET Core hosting: https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/windows-service ;
+  https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/iis/ ; HttpRequestError
+  https://learn.microsoft.com/en-us/dotnet/api/system.net.http.httprequesterror
+- Language version: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/configure-language-version
+- MySqlConnector advisory and history: https://github.com/advisories/GHSA-473q-m89c-ghf8 ;
+  https://mysqlconnector.net/overview/version-history/ ;
+  https://www.nuget.org/packages/MySqlConnector/
+- WebView2 distribution: https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution
+- The survey and critique notes are not part of the repository; every claim this plan relies on is restated here with its file and line
+  or its source.
+
+---
+
+## Appendix. Where each finding of the critique is handled
+
+| Finding | In short | Handled in |
+|---|---|---|
+| W1 | Release builds run SGen for `WebReferenceUrl` items; removing one silently drops an `XmlSerializers.dll` that Build-Release requires | S0-2a (both dropped and retired; `GenerateSerializationAssemblies=Off`), S1-3, S3a-6 |
+| W2 | SDK-style .NET Framework exes get automatic binding redirects | S1-0, stage 1 gate (config contents) |
+| W3 | The `requireAdministrator` UpdateFileCopier started through CreateProcess fails on .NET; 21 more `new Process()` sites in shipped code | S3a-10 (iv), S3a-2, section 7, launch checks |
+| W4 | `SetDefaultFont` applies the text scale factor; the planned test was fragile | S3b-4, section 7, decision 9 |
+| W5 | The `Application.ExecutablePath` item was unnecessary | dropped from S3b-4; section 9.2 |
+| W6 | A build without a runtime identifier puts Windows assets under `runtimes\win\...` | S3b-1, S3b-0 (7), section 7 |
+| W7 | Wording: sgen, the ProgressWin count, "the self-update runs as the user" | S3b-4, section 8.4, section 10 |
+| G1 | `XmlSerializer` on .NET 10 throws for `[Obsolete(IsError=true)]` members (`PrefName`) | S0-T, S3a-9 (iv), S3b-0 (8), S3b-6 |
+| G2 | SDK 9.0.3xx leaves support on 2026-11-10 | decision 1, section 2.4, S1-0 (Build Tools 2026 lane and the SDK 10 pin), O-5 |
+| G3 | `MailAddress` rejects consecutive dots on .NET 10 | S0-3 (received mail), S3a-9 (v), S3b-5 |
+| G4 | Database TLS with client certificates never tested over a non-loopback address | S2-2, stage 2 and 3b gates, O-8 (test environment) |
+| G5 | The setup's per-user mode cannot install the runtime | decision 7, S3a-11, O-3 |
+| G6 | The CDO path also set headers, `Content-ID` and attachment dispositions | S0-3 (1) and (3) |
+| G7 | MSTest 3.x is deprecated | decision 3, stage 4 |
+| G8 | Four Microsoft packages on 8.0.x | S2-2 (three shipped ones upgraded; the unused Pkcs leaves), S2-4, batch A |
+| G9 | Apphost manifest and version resources | S3a-10 (v), S3b-7 |
+| G10 | Workflow scripts outside the repository embed old lane steps | S1-0, S4-2 |
+| G11 | UpdateFileCopier settings, `useLegacyV2RuntimeActivationPolicy`, `SetDefaultFont` placement | S3b-4 |
+| G12 | Checked and clear | section 9.2 |

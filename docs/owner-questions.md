@@ -19,11 +19,11 @@ These are in v0.0 as described. Each one is a default, not a final answer: **cha
 3. **The Benco branding toggle is removed** (REL-FILES D7). Enabling the Benco program link no longer switches the title and software name; the link itself is unchanged. Change it if you disagree.
 4. **Third-party plug-ins built for Open Dental no longer load** (RENAME, D5). The adoption tool lists the program rows that name a plug-in DLL. Change it if you disagree.
 5. **Suni direct capture is removed** (BIN-A 1, CAP design 2 (a)). Suni sensors work through Suni's own TWAIN driver. Change it if you disagree.
-6. **Four bridges say "not available"** (BIN-A 2 and question 1): Dr. Ceph, eClinicalWorks Rx, Patterson Imaging and Schick CDR 4. Their vendors publish no interface, and they needed Open Dental's closed `VBbridges.dll`. Schick CDR DICOM (version 5) still works. The alternatives: hide or remove the four, or get the vendor's interface so it can be implemented from its documentation. Change it if you disagree.
+6. **Four bridges say "not available"** (BIN-A 2 and question 1): Dr. Ceph, eClinicalWorks Rx, Patterson Imaging and Schick CDR 4. Their vendors publish no interface, and they needed Open Dental's closed `VBbridges.dll`. Schick CDR DICOM (version 5) still works. The alternatives: hide or remove the four, or get the vendor's interface so it can be implemented from its documentation. Change it if you disagree. **Superseded for Schick (2026-11-08):** Schick CDR is not used and is removed completely in the clean-up stage of the .NET 10 move.
 7. **Sparks3D is removed, with the OpenGL fallback** (BIN-A 3 and 4, question 4). The tooth chart is SparksToothChart: DirectX 9 where Microsoft's DirectX End-User Runtime (`d3dx9_43.dll`) is installed, otherwise OpenGL, otherwise Simple 2D. The setup does not install the DirectX runtime; the graphical perio chart needs it and says so. The alternatives: the setup chains Microsoft's DirectX installer, or new computers default to OpenGL. Change it if you disagree.
-8. **Topaz is loaded only when installed** (BIN-B 1). The program ships no `SigPlusNET.dll` and loads Topaz's from the program folder, a `Topaz Systems` folder or `%windir%\SigPlus`. Without it, a Topaz signature shows "Topaz signature pad software is not installed." Change it if you disagree (the open Topaz questions are under Vendor integrations).
+8. **Topaz is loaded only when installed** (BIN-B 1). The program ships no `SigPlusNET.dll` and loads Topaz's from the program folder, a `Topaz Systems` folder or `%windir%\SigPlus`. Without it, a Topaz signature shows "Topaz signature pad software is not installed." Change it if you disagree (the open Topaz questions are under Vendor integrations). **Superseded (2026-11-08):** not used; removed in the clean-up stage of the .NET 10 move.
 9. **The Word letter merge uses late binding** (BIN-B 2). No Office interop assembly and no `stdole.dll` ship; the merge needs Word installed, as before. Change it if you disagree.
-10. **RS232 and DotNetZip are replaced** (BIN-B 5 and 6): the BCBS Georgia dial-up path uses .NET's `SerialPort`, and every zip (the release channel too) uses `System.IO.Compression`. Change it if you disagree.
+10. **RS232 and DotNetZip are replaced** (BIN-B 5 and 6): the BCBS Georgia dial-up path uses .NET's `SerialPort`, and every zip (the release channel too) uses `System.IO.Compression`. Change it if you disagree. **Superseded for the dial-up path (2026-11-08):** the BCBS Georgia dial-up terminal is removed in the clean-up stage of the .NET 10 move; the DotNetZip replacement stands.
 11. **fo-dicom, NDde and the Google APIs client libraries ship in v0.0, pending the licence question** (REL-FILES 1 to 3; the questions are under "Release v0.0" below). Change it if you disagree. Since then fo-dicom was replaced (2026-11-02) and NDde removed (2026-11-07, REL-FILES 2).
 12. **README.md says "GNU GPL v2 or later"** (REL-FILES 6), as the source headers do ("either version 2 of the License, or (at your option) any later version"). Change it if you disagree.
 13. **The side programs are not shipped**: the HL7 service, the Middle Tier server, CentralManager, DatabaseIntegrityCheck, MySQLManager and the replication service. The setup installs the program, `ServiceManager.exe` and `UpdateFileCopier.exe` (the program uses both). The Middle Tier comes with a licence condition: the PDFsharp built here is a modified AGPL work (route B, your decision of 2026-11-02: PDFsharp/MigraDoc 6.5 kept under the AGPL and built from empira's GitHub source as a git submodule, with an open `PdfSharpLicense.cs` in place of empira's closed `PdfSharp.License.dll`; LIB-PDF under "Release v0.0" below), so a hosted Middle Tier, even one without local changes, falls under the AGPL's network clause (LIB-PDF, point 3). Before the Middle Tier is ever shipped or hosted, it must prominently offer its remote users the Corresponding Source, such as a link to the release's `OpenPmsDental-<version>-source.zip`; it has no such offer today. **Decided (2026-11-02):** the offer is built when the Middle Tier is first shipped, not before ("only when it's first shipped"). Change it if you disagree.
@@ -175,7 +175,7 @@ The program has no automatic runner for recurring card charges or repeating char
 - (CLAIM-DCM 3) Should the DentalXChange picker default the image type to X-Rays for a DICOM radiograph? **Today:** the user always picks the type.
 - (CLAIM-DCM 4) CDAnet allows DICOM (`DIC`) attachments, but a DICOM file is never sent, so CDAnet gets the JPEG copy. Confirm.
 - (CLAIM-DCM 6) Should Edit Claim's DICOM copy include the drawings? **Today:** no Edit Claim copy does.
-- (BIN-B 4) BCBS Georgia dial-up claims: does any office still use them? If not, the clearinghouse path and `TerminalConnector` can go. **Today:** kept, on `SerialPort`, not tested with a modem.
+- (BIN-B 4) BCBS Georgia dial-up claims: does any office still use them? If not, the clearinghouse path and `TerminalConnector` can go. **Today:** kept, on `SerialPort`, not tested with a modem. **Answered (2026-11-08):** cut in the clean-up stage of the .NET 10 move.
 
 **Clearinghouses**
 - (V-EDS 1) Can the office get EDS's documentation and a test login for the checks EDS added for 26.1? **Today:** those checks stay off.
@@ -347,8 +347,8 @@ The review that put the capture work on main added these:
 - (V-PEARL2 4) Error text that Pearl returns (with private details removed) goes into the local log, and it could echo request details. Or log only the error code?
 - (M2-02 3) PaySuite stays hidden. Should PaySuite be in scope at all for a US office?
 - (B-DBM 4) Database Maintenance shows the X-Charge "Tokens" tool even when X-Charge is not turned on, which goes against the rule of no vendor screens before the office turns them on. Hide it unless X-Charge is on? **Today:** always shown.
-- (BIN-B 1) Topaz: where does the clinic's Topaz software put `SigPlusNET.dll`? If it is not under a `Topaz Systems` folder or `%windir%\SigPlus`, the office copies it into the program folder (a release then carries it to the other workstations), or the search gets that folder added.
-- (BIN-B 7) Signatures on a workstation without Topaz: a signature of hex digits only that the program's own box does not accept says "Topaz signature pad software is not installed."; every other failed signature says "Invalid Signature". If the office database holds Topaz signatures, do they all consist of 0-9 and A-F only? And is the wording right, or should it say both ("Invalid Signature, or a Topaz signature: Topaz signature pad software is not installed.")?
+- (BIN-B 1) Topaz: where does the clinic's Topaz software put `SigPlusNET.dll`? If it is not under a `Topaz Systems` folder or `%windir%\SigPlus`, the office copies it into the program folder (a release then carries it to the other workstations), or the search gets that folder added. **Superseded (2026-11-08):** not used; removed in the clean-up stage of the .NET 10 move.
+- (BIN-B 7) Signatures on a workstation without Topaz: a signature of hex digits only that the program's own box does not accept says "Topaz signature pad software is not installed."; every other failed signature says "Invalid Signature". If the office database holds Topaz signatures, do they all consist of 0-9 and A-F only? And is the wording right, or should it say both ("Invalid Signature, or a Topaz signature: Topaz signature pad software is not installed.")? **Superseded (2026-11-08):** not used; removed in the clean-up stage of the .NET 10 move.
 - (REL-FILES 7) DemandForce's extract still names "Open Dental" as the management system (the name DemandForce's import expects). Keep it, or send the product name? **Today:** "Open Dental".
 
 ---
@@ -609,6 +609,51 @@ recommended". Built on the integration branch `next/int262-1`.
 - (P262-SCHEMA 2) **Paint type TextBelow** (`ToothPaintingType` 18): hidden from the procedure code paint type lists until the tooth chart
   work draws it; a procedure code that already has it keeps it. Tested.
 - **Every other 26.2, SWMAP and ODOPTS question: decided as built** (owner, 2026-11-07). Each port note says so with a dated line.
+
+---
+
+## The move to .NET 10 (answered on 2026-11-08)
+
+The questions of the .NET 10 stage plan, [specs/net10-plan.md](specs/net10-plan.md), made from a read-only survey of every project and an
+independent critique. Your answer of 2026-11-08: "As recommended", with these facts and one change: the office runs Windows 11, uses no
+plugins and does not use Direct secure messaging, and Change Healthcare (Emdeon) medical claims are kept and made to work ("no, but make it
+work").
+
+- **Build tools.** Visual Studio Build Tools 2026 are installed beside Build Tools 2022, with the MSVC v143 C++ toolset added
+  (2026-11-08), so the C++ project and the setup's Visual C++ check stay as they are. The build lane and the test runners move to them
+  first in the SDK-style project stage, before any project changes format. That step also pins the .NET 10 SDK in `global.json`,
+  because the SDK 9.0.3xx line leaves support on 2026-11-10.
+- **Not used, removed in the clean-up stage:** QuickBooks Desktop, Schick CDR and Topaz signature pads (owner, 2026-11-07).
+- **Order of the stages.** A clean-up stage first; then SDK-style project files, NuGet packages and the test framework, all still on .NET
+  Framework 4.8; then the code changes that also work on .NET Framework, ending with a last .NET Framework release (the "bridge release");
+  then the switch to .NET 10; 64-bit last.
+- **Test framework.** MSTest 4 instead of MSTest 3, because every MSTest 3 version is marked deprecated; MSTest 4 still runs on .NET
+  Framework.
+- **Text sorting and search.** The first .NET 10 release keeps Windows' own rules (NLS), as today. The move to .NET's default (ICU) comes
+  later as a release of its own.
+- **Switching the office.** The bridge release first, then the new setup once on every workstation. The bridge release also stops a
+  workstation that is not switched yet from publishing its old build over the new one.
+- **The .NET 10 runtime.** The setup downloads it during the install, as it does for the Visual C++ runtime.
+- **"Install for me only".** The setup drops this mode, because it cannot install the runtime.
+- **Windows versions.** Windows 11 is the baseline, and the office's workstations run it; the setup warns below it. Windows 10 is
+  supported by .NET 10 only in some editions.
+- **Text size.** With Windows "Make text bigger" above 100%, 72 older windows show slightly larger text. Accepted.
+- **Dashboard graphs.** The community port of Microsoft's chart control (`WinForms.DataVisualization`, MIT licence).
+- **Cut instead of ported.** The CallFire SMS link, the Divvy postcards link, the BCBS Georgia dial-up terminal, and the report engine's
+  SQL Server, ODBC and OLE DB data sources.
+- **Kept.** Voice perio charting. Change Healthcare (Emdeon) medical claims: the office does not use them, but they are kept and made to
+  work on .NET 10. The plugin loader stays, although the office uses no plugins; plugins must be rebuilt for .NET 10, and .NET Framework
+  plugins stop working.
+- **Reports with custom VB code.** They show a clear error instead of running the code. The reports that ship have none.
+- **Direct secure messaging (HISP).** The office does not use it, so it is removed in the clean-up stage. Received e-mail is then read
+  by MimeKit, which the program already ships, instead of the old Direct libraries.
+- **Signed e-mail.** Kept (owner, 2026-11-08: "Keep signed email"): sending signed e-mail moves to MimeKit with the rest of e-mail in the
+  clean-up stage.
+- **Projects that are not shipped.** The legacy UnitTests project, the report designer and DocumentationBuilder are deleted. Central
+  Manager is retired.
+- **The old 2020 Imaging module.** Retired completely. Its code also draws the window behind Scan EOB / View EOB on insurance payments and
+  preauthorizations and Scan on EHR amendments; that window is rebuilt on the new Imaging module first (owner, 2026-11-08: "Have them
+  rebuilt"), then the old module, its "Use old Imaging module interface, pre 2020" option and its code are removed.
 
 ---
 
