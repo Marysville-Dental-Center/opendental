@@ -219,6 +219,9 @@ project file.
   patch; then a Release build, a Core run and a Release dry run; then a release is published. Its runtime part is new, so every
   workstation pulls the runtime once (S3b-7). A release-flow check refuses to stage a release whose runtime is older than the newest
   10.0.x patch of the runtime packs in the offline folder (S3b-7). A month with a new runtime and no other change still gets a release.
+  The owner gave a standing approval for these monthly downloads on 2026-11-08 ("Approve monthly"): each month's .NET 10 SDK patch
+  of the pinned band and the runtime packs at its runtime version, from Microsoft (nuget.org and Microsoft's .NET download site), are
+  fetched without asking again; anything else still needs its own approval.
 
 ---
 
