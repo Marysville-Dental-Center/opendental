@@ -263,19 +263,28 @@ namespace OpenPmsDentalBusiness{
 			return 0;*/
 		}
 
+		///<summary>The deposit software the program works with for a stored AccountingSoftware preference value. QuickBooks Desktop (QBFC) was removed
+		///in stage 0 of the .NET 10 move: a database still set to it works as Open PMS - Dental, with no linked accounting software. The stored value
+		///stays until someone saves another deposit software.</summary>
+		public static AccountingSoftware GetAccountingSoftwareInUse(AccountingSoftware accountingSoftwareStored) {
+			Meth.NoCheckMiddleTierRole();
+			if(accountingSoftwareStored==AccountingSoftware.QuickBooks) {
+				return AccountingSoftware.OpenDental;
+			}
+			return accountingSoftwareStored;
+		}
+
+		///<summary>The deposit software the program works with for the AccountingSoftware preference (see the overload).</summary>
+		public static AccountingSoftware GetAccountingSoftwareInUse() {
+			Meth.NoCheckMiddleTierRole();
+			return GetAccountingSoftwareInUse(PrefC.GetEnum<AccountingSoftware>(PrefName.AccountingSoftware));
+		}
+
 		///<summary>Checks the loaded prefs to see if user has setup deposit linking.  Returns true if so.</summary>
 		public static bool DepositsLinked() {
 			Meth.NoCheckMiddleTierRole();
-			int prefAccountingSoftware=PrefC.GetInt(PrefName.AccountingSoftware);
-			if(prefAccountingSoftware==(int)AccountingSoftware.QuickBooks) {
-				if(PrefC.GetString(PrefName.QuickBooksDepositAccounts)=="") {
-					return false;
-				}
-				if(PrefC.GetString(PrefName.QuickBooksIncomeAccount)=="") {
-					return false;
-				}
-			}
-			else if(prefAccountingSoftware==(int)AccountingSoftware.QuickBooksOnline) {
+			AccountingSoftware accountingSoftware=GetAccountingSoftwareInUse();
+			if(accountingSoftware==AccountingSoftware.QuickBooksOnline) {
 				Program programQbo=Programs.GetCur(ProgramName.QuickBooksOnline);
 				ProgramProperty programPropertyQboDepositAccounts=ProgramProperties.GetPropForProgByDesc(programQbo.ProgramNum,"Deposit Accounts");
 				if(programPropertyQboDepositAccounts.PropertyValue=="") {

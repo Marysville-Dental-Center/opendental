@@ -15,6 +15,9 @@ namespace OpenPmsDental {
 	public partial class UserControlManageGeneral:UserControl {
 
 		#region Fields - Private
+		///<summary>The deposit software shown when the page was filled. A database still set to QuickBooks Desktop, which was removed, shows
+		///Open PMS - Dental; its stored value is only replaced when another deposit software is picked.</summary>
+		private AccountingSoftware _accountingSoftwareShown;
 		#endregion Fields - Private
 
 		#region Fields - Public
@@ -44,7 +47,7 @@ namespace OpenPmsDental {
 			if(comboDepositSoftware.GetSelected<AccountingSoftware>()==AccountingSoftware.QuickBooksOnline
 				&& !Programs.IsEnabled(ProgramName.QuickBooksOnline)) {
 				//If users attempts to select QuickBooks Online but the program is not enabled, set accounting software back and alert them.
-				comboDepositSoftware.SetSelected(PrefC.GetInt(PrefName.AccountingSoftware));
+				comboDepositSoftware.SetSelectedEnum(_accountingSoftwareShown);
 				MsgBox.Show(this,"QuickBooks Online must be enabled in Program Links before it can be selected as your Deposit Software.");
 			}
 		}
@@ -105,8 +108,10 @@ namespace OpenPmsDental {
 			checkShowAutoDeposit.Checked=PrefC.GetBool(PrefName.ShowAutoDeposit);
 			FillComboEraAutomation();
 			comboEraAutomation.SetSelectedEnum(PrefC.GetEnum<EraAutomationMode>(PrefName.EraAutomationBehavior));
-			comboDepositSoftware.Items.AddEnums<AccountingSoftware>();
-			comboDepositSoftware.SetSelectedEnum(PrefC.GetEnum<AccountingSoftware>(PrefName.AccountingSoftware));
+			//QuickBooks Desktop (QBFC) was removed in stage 0 of the .NET 10 move, so it is not offered. AccountingSoftware.QuickBooks keeps its number.
+			comboDepositSoftware.Items.AddListEnum(new List<AccountingSoftware>() { AccountingSoftware.OpenDental,AccountingSoftware.QuickBooksOnline });
+			_accountingSoftwareShown=Accounts.GetAccountingSoftwareInUse();
+			comboDepositSoftware.SetSelectedEnum(_accountingSoftwareShown);
 			checkRxHideProvsWithoutDEA.Checked=PrefC.GetBool(PrefName.RxHideProvsWithoutDEA);
 			checkAccountingInvoiceAttachmentsSaveInDatabase.Checked=PrefC.GetBool(PrefName.AccountingInvoiceAttachmentsSaveInDatabase);
 			FillComboEraWriteOff();
@@ -139,7 +144,10 @@ namespace OpenPmsDental {
 			Changed|=Prefs.UpdateBool(PrefName.EraIncludeWOPercCoPay,checkIncludeEraWOPercCoPay.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.ShowAutoDeposit,checkShowAutoDeposit.Checked);
 			Changed|=Prefs.UpdateInt(PrefName.EraAutomationBehavior,(int)comboEraAutomation.GetSelected<EraAutomationMode>());
-			Changed|=Prefs.UpdateInt(PrefName.AccountingSoftware,(int)comboDepositSoftware.GetSelected<AccountingSoftware>());
+			AccountingSoftware accountingSoftwareSelected=comboDepositSoftware.GetSelected<AccountingSoftware>();
+			if(accountingSoftwareSelected!=_accountingSoftwareShown) {//Unchanged: a stored QuickBooks Desktop value stays as it is.
+				Changed|=Prefs.UpdateInt(PrefName.AccountingSoftware,(int)accountingSoftwareSelected);
+			}
 			Changed|=Prefs.UpdateBool(PrefName.RxHideProvsWithoutDEA,checkRxHideProvsWithoutDEA.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.AccountingInvoiceAttachmentsSaveInDatabase,checkAccountingInvoiceAttachmentsSaveInDatabase.Checked);
 			Changed|=Prefs.UpdateLong(PrefName.EraChkPaymentType, comboEraCheckPaymentType.GetSelectedDefNum());

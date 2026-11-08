@@ -111,11 +111,6 @@
       <HintPath>..\Required dlls\Interop.CDRDicom.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
-    <Reference Include="Interop.QBFC10, Version=11.0.0.29, Culture=neutral, PublicKeyToken=31d8aec643e18259">
-      <SpecificVersion>False</SpecificVersion>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-      <HintPath>..\Required dlls\Interop.QBFC10.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Microsoft.Web.WebView2.Core, Version=1.0.2420.47, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
@@ -1539,12 +1534,6 @@
     </Compile>
     <Compile Include="Forms\FormQuickBooksOnlineSetup.designer.cs">
       <DependentUpon>FormQuickBooksOnlineSetup.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormQuickBooksSetup.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormQuickBooksSetup.designer.cs">
-      <DependentUpon>FormQuickBooksSetup.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormImagingDeviceEdit.cs">
       <SubType>Form</SubType>
@@ -6343,9 +6332,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormQuickBooksOnlineSetup.resx">
       <DependentUpon>FormQuickBooksOnlineSetup.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormQuickBooksSetup.resx">
-      <DependentUpon>FormQuickBooksSetup.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormImagingDeviceEdit.resx">
       <DependentUpon>FormImagingDeviceEdit.cs</DependentUpon>

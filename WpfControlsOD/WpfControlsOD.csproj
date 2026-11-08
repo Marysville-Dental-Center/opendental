@@ -50,10 +50,6 @@
       <HintPath>..\Required dlls\Interop.CDRDicom.dll</HintPath>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
-    <Reference Include="Interop.QBFC10">
-      <HintPath>..\Required dlls\Interop.QBFC10.dll</HintPath>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-    </Reference>
     <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Microsoft.Web.WebView2.Core, Version=1.0.2420.47, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -174,7 +170,6 @@
     <Compile Include="Bridges\PracticeByNumbers.cs" />
     <Compile Include="Bridges\PreXion.cs" />
     <Compile Include="Bridges\Progeny.cs" />
-    <Compile Include="Bridges\QuickBooks.cs" />
     <Compile Include="Bridges\RapidCall.cs" />
     <Compile Include="Bridges\RayBridge.cs" />
     <Compile Include="Bridges\RayMage.cs" />
