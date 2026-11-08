@@ -30,21 +30,19 @@ namespace OpenPmsDentalBusiness {
 	///sets the previous and due dates as usual. Each switch is written to the audit trail (RecallEdit).</para>
 	///<para>Not done by Synch All (Setup, Recall Types, Sync): it brings every patient's dates up to date without switching anyone, so turning the
 	///setting on never switches patients for procedures completed before.</para>
-	///Open Dental's preference name is not public, so the value lives in a preference row that is not in PrefName (the PayPlanGlobalLock pattern):
-	///the row is inserted the first time the office changes the setting, and a database without it reads as off. No migration step is needed.</summary>
+	///Open Dental's preference name is not public, so the value lives in the fork's own preference row PREF_NAME, which is not in PrefName and is
+	///read and written by name (PrefC.GetRawOrDefault and PrefC.UpsertRaw, as ModuleSwitchBlur does): the row is inserted the first time the office
+	///turns the setting on, and a database without it (every new or adopted database) reads as off. No migration step is needed.</summary>
 	public class RecallProphyPerioSwitch {
-		///<summary>This program's name for the preference row (INFERRED: Open Dental's name is not public).</summary>
-		public const string PREF_NAME="RecallSwitchProphyPerioAuto";
+		///<summary>The fork's own preference row. Boolean, default off. Global. INFERRED: Open Dental's name is not public.</summary>
+		public const string PREF_NAME="ForkRecallSwitchProphyPerio";
 
 		#region Setting
 		///<summary>True when the office turned the setting on. A missing row, or a cache that is not loaded yet, reads as off. Never throws.</summary>
 		public static bool IsOn() {
 			Meth.NoCheckMiddleTierRole();
 			try {
-				if(Prefs.DictIsNull() || !Prefs.GetContainsKey(PREF_NAME)) {
-					return false;
-				}
-				return PIn.Bool(Prefs.GetOne(PREF_NAME).ValueString);
+				return PIn.Bool(PrefC.GetRawOrDefault(PREF_NAME,"0"));
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
@@ -52,31 +50,14 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
-		///<summary>Stores the setting, inserting the row if needed, and updates this workstation's cache. Returns true if the value changed. The caller
-		///signals InvalidType.Prefs so other workstations reload, and writes the audit entry (GetChangeLogLine).</summary>
+		///<summary>Stores the setting, inserting the row the first time, and updates this workstation's cache. Returns true if the value changed. The
+		///caller signals InvalidType.Prefs so other workstations reload, and writes the audit entry (GetChangeLogLine).</summary>
 		public static bool Save(bool isOn) {
 			Meth.NoCheckMiddleTierRole();
 			if(IsOn()==isOn) {
 				return false;
 			}
-			string value=POut.Bool(isOn);
-			Upsert(value);
-			Prefs.UpdateValueForKey(new Pref { PrefName=PREF_NAME,ValueString=value });
-			return true;
-		}
-
-		///<summary>Writes the preference row straight to the table, inserting it when it is missing.</summary>
-		public static void Upsert(string value) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),value);
-				return;
-			}
-			string count=Db.GetScalar("SELECT COUNT(*) FROM preference WHERE PrefName='"+POut.String(PREF_NAME)+"'");
-			if(PIn.Long(count)==0) {
-				Db.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES ('"+POut.String(PREF_NAME)+"','"+POut.String(value)+"')");
-				return;
-			}
-			Db.NonQ("UPDATE preference SET ValueString='"+POut.String(value)+"' WHERE PrefName='"+POut.String(PREF_NAME)+"'");
+			return PrefC.UpsertRaw(PREF_NAME,POut.Bool(isOn));
 		}
 
 		///<summary>The audit line for the Recall Types window, or "" when unchanged.</summary>

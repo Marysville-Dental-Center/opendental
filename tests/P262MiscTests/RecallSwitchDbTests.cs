@@ -80,6 +80,7 @@ namespace P262MiscTests {
 			Assert.IsFalse(RecallProphyPerioSwitch.IsOn());
 			Assert.AreEqual("1",DataCore.GetScalar("SELECT COUNT(*) FROM preference WHERE PrefName='"+RecallProphyPerioSwitch.PREF_NAME+"'"));
 			Assert.IsFalse(Enum.GetNames(typeof(PrefName)).Contains(RecallProphyPerioSwitch.PREF_NAME),"Open Dental's name is not public: not in PrefName.");
+			StringAssert.StartsWith(RecallProphyPerioSwitch.PREF_NAME,"Fork","The fork's own row, like the other fork-owned preference rows.");
 		}
 
 		[TestMethod]
