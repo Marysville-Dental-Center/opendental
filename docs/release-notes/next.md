@@ -15,6 +15,8 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - eight settings Open Dental 24.4 to 25.3 added (payment plans and the global lock date, the perio Recession wording and others) now read
   under Open Dental's own names, so the office's values carry over at the switch-over; values saved in 0.0 move to those names
   (`docs/port-notes/SWMAP.md`);
+- the eight Open Dental 25.3 options this program had built without, now built under Open Dental's own setting names
+  (`docs/port-notes/ODOPTS.md`);
 - the storage library under its new name, and a Database Maintenance check that works again.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
@@ -252,6 +254,21 @@ Inventory, Setup), on every existing and every new database; while it is off not
   on, it is granted to every user group that has Supplier Edit.
 - **After the update** the stock ledger starts with one opening row for every supply whose on-hand quantity is not 0, so the ledger and the
   stock agree; supplies, orders, suppliers and categories are unchanged.
+
+## Eight more Open Dental 25.3 options
+
+Each is read and saved under Open Dental's own setting name, so the office's value carries over at the switch-over as it is; a database
+without the setting gets the default named here. Changing one makes an Audit Trail entry. What Open Dental means by most of them is not
+public: the owner questions "ODOPTS" list what to confirm (`docs/port-notes/ODOPTS.md`).
+
+- Perio Chart: auto Att Ging values at or below a threshold are red, counted and printed (`PerioRedAttGing`; "Numbers in red", Att Ging; none by default).
+- Global Security Settings: a switch for domain login in the Change User of signature boxes (`DomainLoginForSigBoxes`; on by default).
+- Preferences, Account, Claim Receive: a changed procedure fee updates the unsent secondary claims (`ClaimUpdateFeeForSecondary`; off by default).
+- eForm Setup: import a typed allergy that matches no list entry as Other, or skip it (`EFormImportAllergiesAsOther`; on by default).
+- eForm Setup: the same for typed problems (`EFormImportProblemsAsOther`; on by default).
+- Preferences, Treatment Plan, Frequency Limitations: the procedure code Insurance History uses for perio scaling (`InsHistPerioScalingCode`; blank by default).
+- Billing Defaults, Send Setup: e-mail new statements when billing creates them, never, after asking or always (`StatementAutoSendEmail`; never by default).
+- Send Setup: the same for texts, which are not sent until a texting provider is chosen (`StatementAutoSendSMS`; never by default).
 
 ## The storage library has a new name
 

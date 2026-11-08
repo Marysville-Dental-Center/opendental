@@ -143,7 +143,7 @@ Sort choice comes back after reopening the window as the same user.
    code. `PatientFormsList.IsImportLog` already counts an `EFormImport` entry that carries the EFormNum in `FKey` and says "imported" (not a
    pending-insurance entry), whoever wrote it; an Open Dental 25.3 entry written that way shows its form as Imported, and a form without such
    an entry shows its status. Open Dental 25.3.48 also has the settings `EFormImportAllergiesAsOther` and `EFormImportProblemsAsOther`,
-   which this program does not read: its import always files an unmatched allergy or problem under "Other", as 24.3 did
-   ([SWMAP.md](SWMAP.md)).
+   built since (ODOPTS, 2026-11-07, [ODOPTS.md](ODOPTS.md)): on (and when the row is missing) an unmatched allergy or problem is filed under
+   "Other" as 24.3 did; off, it is not imported (the manual import lists it unticked).
 5. Is "fork-only enum values from 100 up" the convention you want for tinyint enum columns like `userodpref.FkeyType`?
 6. Should renaming radio button items also update the children's trigger values (the Ins Pick editor already does this)?

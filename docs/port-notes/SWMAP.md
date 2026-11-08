@@ -45,6 +45,12 @@ stored value.
 | Perio "Recession" wording (B-PERIO 1) | `PerioUseRecessionTerm` | `PerioRecessionInsteadOfGM` | 1/0, as stored | https://www.opendental.com/site/version24_4.html (Chart Module), https://opendental.blog/version24_4/ |
 | Read delay after write, replication (B-SERVER 1) | `ForkReplicationReadDelayMs` (ms, 0 = off) | `ReplicationWriteReadDelayEnabled` (1/0) and `ReplicationWriteReadDelayMS` (ms) | The delay is the milliseconds when Enabled is 1, otherwise 0 (clamped to 0 to 60000). Saving a delay writes both; saving 0 writes Enabled 0 and keeps the milliseconds | https://www.opendental.com/site/version25_2.html (Miscellaneous) |
 | Blur when switching modules (B-SHELL 1) | `ForkModuleSwitchBlur` | `BlurModuleOnLoad` | 1/0, as stored | https://www.opendental.com/site/version25_2.html (Miscellaneous) |
+| Perio Chart: auto Att Ging red if at or below (ODOPTS) | none | `PerioRedAttGing` | mm; blank or missing = no threshold | None; **INFERRED** ([ODOPTS.md](ODOPTS.md)) |
+| Domain login in the Change User of signature boxes (ODOPTS) | none | `DomainLoginForSigBoxes` | 1/0, missing = on | https://www.opendental.com/site/version25_2.html (Miscellaneous, the 25.2 feature); the switch **INFERRED** |
+| Update the fee on unsent secondary claims when a procedure fee changes (ODOPTS) | none | `ClaimUpdateFeeForSecondary` | 1/0, missing = off | None; **INFERRED** |
+| eForm import: unmatched allergies and problems as Other (ODOPTS) | none | `EFormImportAllergiesAsOther`, `EFormImportProblemsAsOther` | 1/0, missing = on | None; **INFERRED** |
+| Insurance History perio scaling procedure code (ODOPTS) | none | `InsHistPerioScalingCode` | a procedure code (or its CodeNum); blank = each group's own | None; **INFERRED** |
+| Statement Send Setup: by e-mail and by text (ODOPTS) | none | `StatementAutoSendEmail`, `StatementAutoSendSMS` | 0 never, 1 ask, 2 always (**INFERRED**); missing = never; nothing is texted | https://www.opendental.com/site/version25_1.html (the Statement Send Setup window) |
 
 The pages above are the ones the feature specs cite for each setting ([features-24.4.md](../specs/features-24.4.md) to
 [features-25.3.md](../specs/features-25.3.md)); they were not opened again for this package. The meaning of each name was matched to the
@@ -69,9 +75,13 @@ runbook still has the office look for it in Open Dental before the day (step 0.1
 
 ## The 51 names, one by one
 
-**Read by this program (10):** `SalesTaxProcCode`, `ClaimCheckForMedicalEOB`, `ApptProvbarShowOnOps`, `ApptUseSecProvTimeIfEmpty`,
+**Read by this program (18):** `SalesTaxProcCode`, `ClaimCheckForMedicalEOB`, `ApptProvbarShowOnOps`, `ApptUseSecProvTimeIfEmpty`,
 `EraAutoProcessSplitByCarcCodes`, `PayPlansIncludeInGlobalLock`, `PerioRecessionInsteadOfGM`, `ReplicationWriteReadDelayEnabled`,
-`ReplicationWriteReadDelayMS`, `BlurModuleOnLoad` (the table above).
+`ReplicationWriteReadDelayMS`, `BlurModuleOnLoad` (the table above), and the eight options the owner asked to have built on 2026-11-07
+("why not just build it?"; [ODOPTS.md](ODOPTS.md), branch `next/odopts-1`): `PerioRedAttGing`, `DomainLoginForSigBoxes`,
+`ClaimUpdateFeeForSecondary`, `EFormImportAllergiesAsOther`, `EFormImportProblemsAsOther`, `InsHistPerioScalingCode`,
+`StatementAutoSendEmail`, `StatementAutoSendSMS`. Like the others they are read under Open Dental's names with no conversion; they never had
+a name of this program's own, so the step 2026110731 has nothing to move for them.
 
 **Rows older than 24.3, which a database from 24.3 carries too (8).** Left alone, as 24.3 left them:
 
@@ -84,7 +94,7 @@ runbook still has the office look for it in Open Dental before the day (step 0.1
 | `ToothChartLowerQuality` | Written by an old conversion; nothing reads it. |
 | `XRayExposureLevel` | A member of `PrefName` (its last one), so it carries over as it is. |
 
-**Features this program left out (26).** Left alone: nothing reads them, and the rows stay in the database as they were.
+**Features this program left out (24).** Left alone: nothing reads them, and the rows stay in the database as they were.
 
 | Name | Feature | Why it is out |
 |---|---|---|
@@ -101,20 +111,15 @@ runbook still has the office look for it in Open Dental before the day (step 0.1
 | `PaymentPortalReceiptEmailBodyTemplate`, `PaymentPortalReceiptEmailSubjectTemplate` | Payment Portal and Message-to-Pay receipts (25.2) | Hosted, excluded (`v25_2-eservices-msgtopay-receipt-template`). |
 | `PearlDateTimeLastUsed` | Open Dental's record of the last Pearl use | The Pearl integration of this program (V-PEARL1, V-PEARL2) keeps no such timestamp. |
 | `RamqMachineID`, `RamqMachinePassword`, `RamqMachinePasswordDate` | Quebec RAMQ machine credentials | Canadian RAMQ connection changes of 24.4 to 25.3 were not ported. |
-| `StatementAutoSendEmail`, `StatementAutoSendSMS` | Sending statements automatically by e-mail and text | Not in the public 24.4 to 25.3 feature lists this program ported, and sending through Open Dental's texting is hosted; this program has no automatic sender. |
 | `WSEPSubDomain` | A sub-domain of Open Dental's hosted web pages | Hosted service. |
 | `WebSchedRecallDoUseSecureEmail` | Secure Email for Web Sched Recall (25.2) | Hosted, excluded (`v25_2-eservices-websched-recall-secure-email-setup`). |
 
-**Settings of features this program built without that option (7).** Nothing reads them; each is a possible follow-up, not a carry-over:
+**Settings of features this program built without that option (1).** Nothing reads it; it is not a carry-over. The seven other options this
+list had (and the two statement settings of the list above) were built by ODOPTS and are read now (above).
 
 | Name | What this program does instead |
 |---|---|
-| `ClaimUpdateFeeForSecondary` | No such option; its meaning is not public (not in the 24.4 to 25.3 feature lists). |
-| `DomainLoginForSigBoxes` | The change-user prompts of signature boxes (25.2, `v25_2-security-domain-login-change-user`) offer domain login whenever domain login is on; there is no separate switch for signature boxes. |
-| `EFormImportAllergiesAsOther`, `EFormImportProblemsAsOther` | An eForm allergy or problem that matches no list entry is always filed under "Other", as in 24.3; staff convert it later (`v25_2-chart-eform-allergy-other-convert`). |
 | `EnableXConnect` | XConnect is switched per clearinghouse row (`clearinghouse.EnableXConnect`, Open Dental 25.2 schema, carried over as it is); the preference of the same name is not read. |
-| `InsHistPerioScalingCode` | Its meaning is not public. Insurance History moves into code groups at the switch-over (M2-HIST), taking each category's first code from the `InsHist*Codes` preferences. |
-| `PerioRedAttGing` | The auto Att Ging row of the perio chart (24.4) is never drawn red; there is no threshold for it. |
 
 ## Program links (V-BRIDGE1 1)
 

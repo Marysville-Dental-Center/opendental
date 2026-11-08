@@ -181,7 +181,8 @@ Not tested automatically (needs the GUI, which is not launched in this run): the
   switch-over as it is; a missing row still means off. No migration step adds the row.
 - The row release 0.0 wrote (`ForkModuleSwitchBlur`) moves to this name in the fork migration step 2026110731 (`OdSettingNamesStep`, which
   only moves an existing v0.0 row); runbook step 0.11 no longer lists the setting.
-- Open Dental 25.3.48 also has `DomainLoginForSigBoxes`: by its name a separate switch for domain login in signature boxes. This program's
-  change-user prompts offer domain login whenever domain login is on, so nothing reads it (a possible follow-up).
+- Open Dental 25.3.48 also has `DomainLoginForSigBoxes`: by its name a separate switch for domain login in signature boxes. **Built (ODOPTS,
+  2026-11-07, [ODOPTS.md](ODOPTS.md)):** Global Security Settings has the switch; with it off the Change User of signature boxes asks for the
+  program's own password only. A missing row reads as on, the 25.2 behaviour (INFERRED default).
 - Tests: `BSHELLTests.ModuleSwitchBlurTests.PrefName_IsOpenDentalsName_ReadByName` (in place of the fork-row test), `SWMAPTests`. See
   [SWMAP.md](SWMAP.md).

@@ -120,7 +120,8 @@ Run for this package: `BPERIOTests` and `RegistryTests` (its `PrefNameTests` kee
   name outside `PrefName`, so the office's choice carries over at the switch-over as it is; a missing row still reads as off.
 - The row release 0.0 wrote (`PerioUseRecessionTerm`) moves to this name in the fork migration step 2026110731 (`OdSettingNamesStep`); runbook
   step 0.11 no longer lists the option.
-- Open Dental 25.3.48 also has `PerioRedAttGing`, by its name a "red if" threshold for the attached gingiva row; this program's auto Att Ging
-  row has no threshold and is never drawn red, so nothing reads it (a possible follow-up).
+- Open Dental 25.3.48 also has `PerioRedAttGing`, by its name a "red if" threshold for the attached gingiva row. **Built (ODOPTS,
+  2026-11-07, [ODOPTS.md](ODOPTS.md)):** the Perio Chart's "Numbers in red" group has an "Att Ging (<=)" row; a site at or below the value is
+  drawn red (INFERRED direction, as for MGJ), counted and printed; a missing or blank row means no threshold, the 24.4 look.
 - Tests: `BPERIOTests.PerioRulesTests.RecessionPreferenceName_IsOpenDentalsName_ReadByName`, the `PerioDbTests` of the option (on the new
   name), `SWMAPTests` (the Recession wording on and off on adopted synthetic databases). See [SWMAP.md](SWMAP.md).

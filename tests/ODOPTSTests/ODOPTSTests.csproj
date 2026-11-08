@@ -76,6 +76,11 @@
       <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
       <Name>OpenPmsDentalBusiness</Name>
     </ProjectReference>
+    <!-- The made-up patients, plans and claims of the database tests. -->
+    <ProjectReference Include="..\..\UnitTestsCore\UnitTestsCore.csproj">
+      <Project>{7BBDDEDF-C015-43C0-A532-FED224993281}</Project>
+      <Name>UnitTestsCore</Name>
+    </ProjectReference>
     <!-- The Perio Chart grid (ContrPerio) lives in OpenPmsDental.exe; its cell positions (ColRow) in WpfControlsOD. -->
     <ProjectReference Include="..\..\OpenPmsDental\OpenPmsDental.csproj">
       <Project>{8136317D-C936-49B6-9E31-D90F02D2F207}</Project>

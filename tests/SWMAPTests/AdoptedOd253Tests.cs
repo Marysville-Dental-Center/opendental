@@ -44,6 +44,15 @@ namespace SWMAPTests {
 			("ReplicationWriteReadDelayEnabled","1"),
 			("ReplicationWriteReadDelayMS","1500"),
 			("SalesTaxProcCode",SALES_TAX_CODE),
+			//ODOPTS, made up.
+			("PerioRedAttGing","1"),
+			("DomainLoginForSigBoxes","0"),
+			("ClaimUpdateFeeForSecondary","1"),
+			("EFormImportAllergiesAsOther","1"),
+			("EFormImportProblemsAsOther","0"),
+			("InsHistPerioScalingCode",SALES_TAX_CODE),
+			("StatementAutoSendEmail","1"),
+			("StatementAutoSendSMS","0"),
 		};
 
 		///<summary>The opposite values. The read delay is switched off but keeps its milliseconds.</summary>
@@ -57,6 +66,14 @@ namespace SWMAPTests {
 			("BlurModuleOnLoad","0"),
 			("ReplicationWriteReadDelayEnabled","0"),
 			("ReplicationWriteReadDelayMS","1500"),
+			//ODOPTS, made up; no InsHistPerioScalingCode row.
+			("PerioRedAttGing","2"),
+			("DomainLoginForSigBoxes","1"),
+			("ClaimUpdateFeeForSecondary","0"),
+			("EFormImportAllergiesAsOther","0"),
+			("EFormImportProblemsAsOther","1"),
+			("StatementAutoSendEmail","0"),
+			("StatementAutoSendSMS","1"),
 		};
 
 		[ClassInitialize]
@@ -194,6 +211,15 @@ namespace SWMAPTests {
 			Assert.AreEqual(1500,ReplicationDelay.GetReadDelayMs());
 			Assert.AreEqual(SALES_TAX_CODE,SalesTaxProcs.GetProcCodeSetting());
 			Assert.AreEqual(0,ReplicationDelay.GetSignalLookbackMs(),"This program's own look-back has no Open Dental row: its default.");
+			//ODOPTS: the eight options read the adopted rows as they are.
+			Assert.AreEqual(1,PerioMeasures.GetRedAttGing());
+			Assert.IsFalse(DomainLogin.IsForSigBoxesSettingOn());
+			Assert.IsTrue(ClaimFeeForSecondary.IsEnabled());
+			Assert.IsTrue(EFormImport.IsAllergiesAsOther());
+			Assert.IsFalse(EFormImport.IsProblemsAsOther());
+			Assert.AreEqual(SALES_TAX_CODE,InsHistCategories.GetPerioScalingCodeSetting());
+			Assert.AreEqual(StatementAutoSendMode.Ask,StatementAutoSend.GetEmailMode());
+			Assert.AreEqual(StatementAutoSendMode.Never,StatementAutoSend.GetSmsMode());
 		}
 
 		[TestMethod]
@@ -216,6 +242,15 @@ namespace SWMAPTests {
 			Assert.IsFalse(ModuleSwitchBlur.IsEnabled());
 			Assert.AreEqual(0,ReplicationDelay.GetReadDelayMs(),"Enabled 0: no delay, although the milliseconds are kept.");
 			Assert.AreEqual("",SalesTaxProcs.GetProcCodeSetting(),"No row: not set.");
+			//ODOPTS
+			Assert.AreEqual(2,PerioMeasures.GetRedAttGing());
+			Assert.IsTrue(DomainLogin.IsForSigBoxesSettingOn());
+			Assert.IsFalse(ClaimFeeForSecondary.IsEnabled());
+			Assert.IsFalse(EFormImport.IsAllergiesAsOther());
+			Assert.IsTrue(EFormImport.IsProblemsAsOther());
+			Assert.AreEqual("",InsHistCategories.GetPerioScalingCodeSetting(),"No row: blank.");
+			Assert.AreEqual(StatementAutoSendMode.Never,StatementAutoSend.GetEmailMode());
+			Assert.AreEqual(StatementAutoSendMode.Ask,StatementAutoSend.GetSmsMode());
 		}
 
 		[TestMethod]

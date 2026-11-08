@@ -529,6 +529,40 @@ The questions of the library updates and of the in-house DICOM reader, with your
 
 ---
 
+## Open Dental 25.3 options built (ODOPTS, 2026-11-07)
+
+Your answer of 2026-11-07 ("why not just build it?") to the options this program had built without ([port-notes/SWMAP.md](port-notes/SWMAP.md)).
+All eight are built and read under Open Dental's own setting names, so the office's values carry over with no conversion
+([port-notes/ODOPTS.md](port-notes/ODOPTS.md)). Open Dental does not publish what most of them mean, so this program does what each name says;
+please confirm each by trying the setting in the office's Open Dental 25.3 (on a copy, or on a test patient) before the switch-over, and say
+where Open Dental behaves differently.
+
+- (ODOPTS 1) `PerioRedAttGing`: an auto Att Ging value **at or below** the number is red, like MGJ. A blank or missing row means no threshold
+  (never red). **Confirm:** the direction, and what Open Dental shows on a new database (its default). **Today:** as described.
+- (ODOPTS 2) `DomainLoginForSigBoxes`: on means the Change User of signature boxes (procedure notes, group notes, sheets, treatment plan
+  signing, the ortho chart) offers domain login while domain login is on; off, those prompts ask for the program's own password. A missing row
+  reads as on. **Confirm:** that this is what the switch does in Open Dental, and its default. **Today:** as described.
+- (ODOPTS 3) `ClaimUpdateFeeForSecondary`: on means that when a procedure's fee is changed and saved in the procedure window while the procedure
+  is on a primary claim, each of its secondary claims that is not sent or received is recalculated with the new fee (the primary claim is not
+  touched). Missing row: off. **Confirm:** when Open Dental updates the secondary claim's fee (only from the procedure window, or also when the
+  primary claim is received, or from the claim), and whether it updates estimates too. **Today:** as described.
+- (ODOPTS 4) `EFormImportAllergiesAsOther` and `EFormImportProblemsAsOther`: on means a typed allergy or problem that matches nothing in the
+  list is imported as "Other" with the patient's text (as before); off means it is not imported, and the manual import lists it unticked.
+  Missing rows: on. **Confirm:** what Open Dental does with such an entry when the setting is off (skip it, or add a new list entry with the
+  patient's text). **Today:** skipped.
+- (ODOPTS 5) `InsHistPerioScalingCode`: a procedure code that the perio scaling rows of Insurance History use to record dates (and count as
+  history); blank keeps each perio scaling code group's own History Proc Code. **Confirm:** that this is the code Open Dental uses when a perio
+  scaling date is entered, and whether it applies to the four quadrants alike. **Today:** as described.
+- (ODOPTS 6) `StatementAutoSendEmail`: the values are taken as 0 never, 1 ask, 2 always; any other value never sends. With 2, the new
+  statements whose mode is E-mail are e-mailed as soon as billing creates them (Billing Options, Create List), without the Send click.
+  **Confirm before the switch-over** which value the office's Open Dental shows for which choice in its Statement Send Setup window: if the
+  office's row means "always" in this reading, e-mail statements go out as soon as they are created. **Today:** as described.
+- (ODOPTS 7) `StatementAutoSendSMS`: the same values, but no text is sent: Open Dental's hosted texting was removed and this program has no
+  texting provider. The Billing List says the statements were not texted, and the setup window says texting needs a provider. **Decide:**
+  whether to choose a texting provider (the hook is `StatementAutoSend.TextSender`). **Today:** nothing is texted.
+
+---
+
 ## Not asked again (already settled)
 
 - How package migration levels are numbered (B-ACCT 2, B-PRINT 1, B-SHELL 6, M2-EST 1, M2-UDS 1, V-BRIDGE1 2, V-PEARL2 1, M2-SHELL's old question 4): decided on 2026-11-01 and done: the package steps now have dated levels 2026110101 to 2026110104, and new steps always go above the highest one.

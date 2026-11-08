@@ -33,18 +33,21 @@ namespace SWMAPTests {
 			List<string> listAll=OdNames.ArrayRead.Concat(OdNames.ArrayLegacy).Concat(OdNames.ArrayDropped).Concat(OdNames.ArrayNotBuilt).ToList();
 			Assert.AreEqual(listAll.Count,listAll.Distinct().Count(),"No name is in two lists.");
 			CollectionAssert.AreEquivalent(ArrayNamesFromTheOffice,listAll);
-			Assert.AreEqual(10,OdNames.ArrayRead.Length);
+			//ODOPTS (2026-11-07): the eight options of "built without" and "left out" are built and read now.
+			Assert.AreEqual(18,OdNames.ArrayRead.Length);
 			Assert.AreEqual(8,OdNames.ArrayLegacy.Length);
-			Assert.AreEqual(26,OdNames.ArrayDropped.Length);
-			Assert.AreEqual(7,OdNames.ArrayNotBuilt.Length);
+			Assert.AreEqual(24,OdNames.ArrayDropped.Length);
+			Assert.AreEqual(1,OdNames.ArrayNotBuilt.Length);
+			CollectionAssert.IsSubsetOf(OdOptions.ArrayPrefNames,OdNames.ArrayRead);
 		}
 
 		[TestMethod]
 		public void NamesReadByThisProgram_AreTheNamesOfListReads() {
 			CollectionAssert.AreEquivalent(OdNames.ArrayRead,OdSettingNames.ListReads.SelectMany(x => x.ArrayPrefNamesOd).ToList());
-			//Every rename's targets are read, and every read but the sales tax code (Open Dental's name from the start) has a rename.
+			//Every rename's targets are read, and every read but the sales tax code and the eight ODOPTS options (Open Dental's names from the start)
+			//has a rename.
 			List<string> listTargets=OdSettingNames.ListRenames.SelectMany(x => x.ListTargets).Select(x => x.PrefNameOd).ToList();
-			CollectionAssert.AreEquivalent(OdNames.ArrayRead.Where(x => x!="SalesTaxProcCode").ToList(),listTargets);
+			CollectionAssert.AreEquivalent(OdNames.ArrayRead.Where(x => x!="SalesTaxProcCode" && !OdOptions.ArrayPrefNames.Contains(x)).ToList(),listTargets);
 		}
 
 		[TestMethod]
@@ -59,6 +62,15 @@ namespace SWMAPTests {
 			Assert.AreEqual("ReplicationWriteReadDelayEnabled",ReplicationDelay.PREF_READ_DELAY_ENABLED);
 			Assert.AreEqual("ReplicationWriteReadDelayMS",ReplicationDelay.PREF_READ_DELAY_MS);
 			Assert.AreEqual("BlurModuleOnLoad",ModuleSwitchBlur.PREF_NAME);
+			//ODOPTS
+			Assert.AreEqual("PerioRedAttGing",PerioMeasures.PrefNameRedAttGing);
+			Assert.AreEqual("DomainLoginForSigBoxes",DomainLogin.PREF_FOR_SIG_BOXES);
+			Assert.AreEqual("ClaimUpdateFeeForSecondary",ClaimFeeForSecondary.PREF_NAME);
+			Assert.AreEqual("EFormImportAllergiesAsOther",EFormImport.PREF_ALLERGIES_AS_OTHER);
+			Assert.AreEqual("EFormImportProblemsAsOther",EFormImport.PREF_PROBLEMS_AS_OTHER);
+			Assert.AreEqual("InsHistPerioScalingCode",InsHistCategories.PREF_PERIO_SCALING_CODE);
+			Assert.AreEqual("StatementAutoSendEmail",StatementAutoSend.PREF_EMAIL);
+			Assert.AreEqual("StatementAutoSendSMS",StatementAutoSend.PREF_SMS);
 		}
 
 		[TestMethod]
@@ -236,10 +248,12 @@ namespace SWMAPTests {
 
 	///<summary>The names of SWMAP's port note (docs/port-notes/SWMAP.md), sorted the way it sorts them.</summary>
 	public static class OdNames {
-		///<summary>Read by this program, under Open Dental's names.</summary>
+		///<summary>Read by this program, under Open Dental's names: SWMAP's ten, and the eight options ODOPTS built (2026-11-07).</summary>
 		public static readonly string[] ArrayRead={ "SalesTaxProcCode","ClaimCheckForMedicalEOB","ApptProvbarShowOnOps","ApptUseSecProvTimeIfEmpty",
 			"EraAutoProcessSplitByCarcCodes","PayPlansIncludeInGlobalLock","PerioRecessionInsteadOfGM","ReplicationWriteReadDelayEnabled",
-			"ReplicationWriteReadDelayMS","BlurModuleOnLoad" };
+			"ReplicationWriteReadDelayMS","BlurModuleOnLoad",
+			"PerioRedAttGing","DomainLoginForSigBoxes","ClaimUpdateFeeForSecondary","EFormImportAllergiesAsOther","EFormImportProblemsAsOther",
+			"InsHistPerioScalingCode","StatementAutoSendEmail","StatementAutoSendSMS" };
 		///<summary>Rows older than 24.3, which a database from 24.3 carries too.</summary>
 		public static readonly string[] ArrayLegacy={ "B11013Status","ImageStore","LettersIncludeReturnAddress","StationaryDocument","StationaryImage",
 			"ShortCodeEConfirmationTemplate","ToothChartLowerQuality","XRayExposureLevel" };
@@ -249,10 +263,9 @@ namespace SWMAPTests {
 			"EClipboardWebTextMessageTemplate","MassEmailSignedUp","MiddleTierSerializeNew","MsgToPayMenuOptionShow","PayTypeMessageToPay",
 			"NewPatThankYouTypedSignatureDisable","PatientCommunicationTimeFormat","PaymentPortalReceiptEmailBodyTemplate",
 			"PaymentPortalReceiptEmailSubjectTemplate","PearlDateTimeLastUsed","RamqMachineID","RamqMachinePassword","RamqMachinePasswordDate",
-			"StatementAutoSendEmail","StatementAutoSendSMS","WSEPSubDomain","WebSchedRecallDoUseSecureEmail" };
+			"WSEPSubDomain","WebSchedRecallDoUseSecureEmail" };
 		///<summary>Settings of features this program built without that option.</summary>
-		public static readonly string[] ArrayNotBuilt={ "ClaimUpdateFeeForSecondary","DomainLoginForSigBoxes","EFormImportAllergiesAsOther",
-			"EFormImportProblemsAsOther","EnableXConnect","InsHistPerioScalingCode","PerioRedAttGing" };
+		public static readonly string[] ArrayNotBuilt={ "EnableXConnect" };
 		///<summary>Names in the office database that are this program's PrefName members.</summary>
 		public static readonly string[] ArrayInPrefNameAlready={ "InsBlueBookUcrFeePercent","PayPlansVersion","ReportsIncompleteProcsNoNotes",
 			"ReportsIncompleteProcsUnsigned","ReportsIncompleteProcsExcludeCodes" };
