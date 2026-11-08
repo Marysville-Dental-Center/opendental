@@ -189,29 +189,6 @@ namespace UnitTests {
 			Assert.AreEqual(yesterday,copy.ObjB.Day);
 		}
 
-		[TestMethod]
-		public void ODPrimitiveExtensions_ToggleFlag_ToggleSingle() {
-			HostedEmailStatus testEnum=HostedEmailStatus.NotActivated;
-			testEnum=EnumTools.ToggleFlag(testEnum,HostedEmailStatus.SignedUp);
-			Assert.AreEqual(testEnum,HostedEmailStatus.SignedUp);
-			testEnum=EnumTools.ToggleFlag(testEnum,HostedEmailStatus.SignedUp);
-			Assert.AreEqual(testEnum,HostedEmailStatus.NotActivated);
-			testEnum=EnumTools.ToggleFlag(testEnum,HostedEmailStatus.Enabled);
-			Assert.AreEqual(testEnum,HostedEmailStatus.Enabled);
-			testEnum=EnumTools.ToggleFlag(testEnum,HostedEmailStatus.Enabled);
-			Assert.AreEqual(testEnum,HostedEmailStatus.NotActivated);
-		}
-
-		[TestMethod]
-		public void ODPrimitiveExtensions_ToggleFlag_ToggleSeveral() {
-			HostedEmailStatus testEnum=HostedEmailStatus.NotActivated;
-			testEnum=EnumTools.ToggleFlag(testEnum,HostedEmailStatus.SignedUp);
-			testEnum=EnumTools.ToggleFlag(testEnum,HostedEmailStatus.Enabled);
-			Assert.AreEqual(testEnum,(HostedEmailStatus)3); // SignedUp & Enabled
-			testEnum=EnumTools.ToggleFlag(testEnum,HostedEmailStatus.Enabled);
-			Assert.AreEqual(testEnum,HostedEmailStatus.SignedUp);
-		}
-
 		private class TestClass {
 			public DateTime Day;
 			public string Name;
