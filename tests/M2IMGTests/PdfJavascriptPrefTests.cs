@@ -77,7 +77,8 @@ namespace M2IMGTests {
 		public void ImageDisplay_EveryPdfNavigationAppliesThePreference() {
 			string source=Read("OpenPmsDental","User Controls","ControlImageDisplay.cs");
 			AssertBefore(MethodBody(source,"private async void LoadPdf("),"_odWebView2."+HOOK,"_odWebView2.ODWebView2Navigate(_odWebView2FilePath);");
-			AssertBefore(MethodBody(source,"public async void PrintPDF("),"_odWebView2."+HOOK,"_odWebView2.ODWebView2Navigate(filePath);");
+			//S0-F: printing has a browser of its own (_odWebView2Print), which closes with the control.
+			AssertBefore(MethodBody(source,"public async void PrintPDF("),"_odWebView2Print."+HOOK,"_odWebView2Print.ODWebView2Navigate(filePath);");
 			Assert.AreEqual(Count(source,"ODWebView2Navigate("),Count(source,HOOK),"Every navigation of the PDF viewer reads the preference first.");
 			Assert.AreEqual(0,Count(source,"CoreWebView2.Navigate("),"No navigation that skips the preference.");
 		}

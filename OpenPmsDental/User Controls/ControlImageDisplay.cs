@@ -140,6 +140,8 @@ Here is the desired behavior:
 		private string _stringMeasure;
 		///<summary>Displays PDFs.</summary>
 		private ODWebView2 _odWebView2=null;
+		///<summary>The browser that prints PDFs (PrintPDF), in no window. Disposed with this control. Null until the first print.</summary>
+		private ODWebView2 _odWebView2Print=null;
 		///<summary>The location of the file that <see cref="_odWebView2" /> has navigated to.</summary>
 		private string _odWebView2FilePath=null;
 		///<summary>This is needed as we switch betwen windows, in order to set the zoomSlider.</summary>
@@ -900,21 +902,26 @@ Here is the desired behavior:
 			if(filePath.IsNullOrEmpty() || !filePath.ToLower().EndsWith(".pdf")) {
 				return;
 			}
-			if(_odWebView2.CoreWebView2==null) {
-				_odWebView2=new ODWebView2();
+			//S0-F: printing has a browser of its own, kept in _odWebView2Print and closed with this control. It used to replace _odWebView2, the PDF
+			//viewer this control shows, with a browser in no window that nothing ever closed: it ran until the program ended, and the viewer then
+			//showed nothing.
+			if(_odWebView2Print==null || _odWebView2Print.IsDisposed || _odWebView2Print.CoreWebView2==null) {
+				_odWebView2Print?.Dispose();
+				_odWebView2Print=new ODWebView2();
+				ODWebView2 odWebView2Print=_odWebView2Print;
 				//One message when the browser cannot start: Init's own for the WebView2 Runtime, this one for anything else.
-				bool isInitialized=await WebView2L.TryInit(_odWebView2,"Error printing PDFs.",() => {
-					_odWebView2.NavigationCompleted+=odWebView2_NavigationCompleted;
+				bool isInitialized=await WebView2L.TryInit(odWebView2Print,"Error printing PDFs.",() => {
+					odWebView2Print.NavigationCompleted+=odWebView2_NavigationCompleted;
 					return System.Threading.Tasks.Task.CompletedTask;
 				});
-				if(!isInitialized) {
+				if(!isInitialized || odWebView2Print.IsDisposed) {
 					return;
 				}
 			}
 			IsPrinting=true;
 			//Open the PDF in WebView2 so that we can print.
-			_odWebView2.SetScriptEnabled(ImageHelper.IsPdfJavascriptAllowed());//JavaScript in PDFs only when the preference allows it, read for every PDF.
-			_odWebView2.ODWebView2Navigate(filePath);
+			_odWebView2Print.SetScriptEnabled(ImageHelper.IsPdfJavascriptAllowed());//JavaScript in PDFs only when the preference allows it, read for every PDF.
+			_odWebView2Print.ODWebView2Navigate(filePath);
 		}
 
 		private async void odWebView2_NavigationCompleted(object sender,CoreWebView2NavigationCompletedEventArgs e) {
@@ -931,12 +938,12 @@ Here is the desired behavior:
 		private async Task<bool> odWebView2_Print() {
 			//Create default print settings, from the control's own environment: a new environment without a user data folder would put its
 			//profile next to the exe, in the installation folder, which users cannot write to.
-			CoreWebView2PrintSettings printerSettings=_odWebView2.CoreWebView2.Environment.CreatePrintSettings();
+			CoreWebView2PrintSettings printerSettings=_odWebView2Print.CoreWebView2.Environment.CreatePrintSettings();
 			//Print the current document
-			CoreWebView2PrintStatus printStatus=await _odWebView2.CoreWebView2.PrintAsync(printerSettings);
+			CoreWebView2PrintStatus printStatus=await _odWebView2Print.CoreWebView2.PrintAsync(printerSettings);
 			IsPrinting=false;
 			try {
-				File.Delete(_odWebView2.Source.AbsolutePath);//delete the temp file so printing doesn't cause their AtoZ folder to bloat.
+				File.Delete(_odWebView2Print.Source.AbsolutePath);//delete the temp file so printing doesn't cause their AtoZ folder to bloat.
 			}
 			catch(Exception ex) {
 				ex.DoNothing();

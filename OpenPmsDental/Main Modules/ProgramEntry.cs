@@ -132,6 +132,10 @@ namespace OpenPmsDental {
 			}
 			else {
 				Application.Run(formOpenDental);
+				//S0-F: the main window's FormClosed ends the process with Environment.Exit. Should the message loop end without it, the process still ends
+				//here, instead of staying alive for any foreground thread that is left.
+				ExitWatchdog.Program.Start("Main: Application.Run returned");
+				Environment.Exit(FormOpenDental.ExitCode);
 			}
 		}
 	}

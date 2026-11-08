@@ -122,12 +122,12 @@ namespace OpenPmsDental{
 			//Ground rules 6 and 7: Gmail and Microsoft 365 sign-in are offered only once their program link is enabled in Setup > Program Links. An
 			//address already set up for one of them still shows its state, so an office sees its own setting.
 			bool isGmailEnabled=GoogleOAuthSettings.IsEnabled;
-			_isRadioGmailShown=isGmailEnabled || _authenticationType==OAuthType.Google;
-			radioGmail.Visible=_isRadioGmailShown;
+			radioGmail.Visible=isGmailEnabled || _authenticationType==OAuthType.Google;
+			_isRadioGmailShown=isGmailEnabled || _authenticationType==OAuthType.Google;//Visible reads false until the window shows.
 			butAuthGoogle.Enabled=isGmailEnabled;
 			bool isMicrosoft365Enabled=Microsoft365Program.IsEnabled();
+			radioMicrosoft.Visible=isMicrosoft365Enabled || _authenticationType==OAuthType.Microsoft;
 			_isRadioMicrosoftShown=isMicrosoft365Enabled || _authenticationType==OAuthType.Microsoft;
-			radioMicrosoft.Visible=_isRadioMicrosoftShown;
 			butAuthMicrosoft.Enabled=isMicrosoft365Enabled;
 			RefreshEmailTextFields(enableEmailFields);
 		}
