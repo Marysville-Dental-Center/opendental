@@ -1,10 +1,11 @@
 // Vendor follow-up from public documentation (next/vendorpub-1): the Partner ID of the Medit Link program link. Medit's public article on its
 // Open Dental integration documents a PartnerID key in the program link's arguments that assigns a partner (a lab) to every case created through
-// the integration. Built from that article only.
+// the integration. Built from that article only. Review follow-up (next/vendorfix-1): the patient values are made safe for the quoted JSON.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
@@ -12,7 +13,10 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 	///its "Partner ID" property. Medit Link gets "--commandUuid" with Medit's command id and, for a patient, "--commandParam" with the program row's
 	///Command line (a JSON object whose quotes are written \") with the patient filled in. With a Partner ID, the key PartnerID is added as the last
 	///key of that object before the patient is filled in, exactly as Medit's article shows ("..., \"PartnerID\": \"xxxxx\"}"), so every case created
-	///from the Chart is assigned to that partner in Medit Link. A blank Partner ID sends exactly what the link sent before.</summary>
+	///from the Chart is assigned to that partner in Medit Link. A blank Partner ID sends exactly what the link sent before.
+	///<para>The patient values filled in lose their double quotes, backslashes and control characters (EncodeValue, FillPatient), so a name can
+	///neither end the quoted argument or its JSON string nor add a key; the Command line's own text is never changed. Ordinary names (letters,
+	///spaces, apostrophes, hyphens, accented letters) are sent exactly as before.</para></summary>
 	public static class MeditLinkPartner {
 		///<summary>Medit's command id for the Open Dental integration, sent with --commandUuid.</summary>
 		public const string CommandUuid="E02698AC-C1AE-4699-9307-F4A58DED47FE";
@@ -92,10 +96,54 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 			return before+separator+"\\\""+PartnerIdKey+"\\\": \\\""+id+"\\\"}";
 		}
 
+		///<summary>A bracketed tag such as [NameFL]. Every tag Patients.ReplacePatient fills in is one, and none holds a bracket.</summary>
+		private static readonly Regex _regexTag=new Regex(@"\[[^\[\]]*\]",RegexOptions.CultureInvariant);
+
+		///<summary>A patient value made safe for the Command line's quoted JSON: double quotes, backslashes and control characters (CR, LF, tab and
+		///the others) are removed, so the value can't end the quoted argument (a " or a \ before the closing \"), end its JSON string or add a key,
+		///and it never ends in a backslash. As BridgePatientTokens.Encode does for the other links' command lines, plus the backslash, which JSON
+		///reads as an escape. Nothing else is changed, white space included, so a value without those characters is sent as before.</summary>
+		public static string EncodeValue(string value) {
+			Meth.NoCheckMiddleTierRole();
+			string text=value??"";
+			StringBuilder stringBuilder=new StringBuilder(text.Length);
+			for(int i=0;i<text.Length;i++) {
+				char c=text[i];
+				if(c=='"' || c=='\\' || char.IsControl(c)) {
+					continue;
+				}
+				stringBuilder.Append(c);
+			}
+			return stringBuilder.ToString();
+		}
+
+		///<summary>The command parameter with the patient filled in: each bracketed tag is given alone to funcReplacePatient (Patients.ReplacePatient
+		///in the program, which ignores letter case), and a tag it replaces becomes the value made safe by EncodeValue. A tag it leaves alone, and
+		///all other text, the Command line's own \" quotes included, is kept as typed. For values without double quotes, backslashes, control
+		///characters or square brackets this gives exactly what funcReplacePatient gives for the whole text. Unchanged without a patient or a
+		///function.</summary>
+		public static string FillPatient(string commandParam,Patient patient,Func<string,Patient,string> funcReplacePatient) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrEmpty(commandParam) || patient==null || funcReplacePatient==null) {
+				return commandParam??"";
+			}
+			Dictionary<string,string> dictValues=new Dictionary<string,string>();//Each tag is filled in once, as the whole text would be.
+			return _regexTag.Replace(commandParam,match => {
+				string value;
+				if(!dictValues.TryGetValue(match.Value,out value)) {
+					string replaced=funcReplacePatient(match.Value,patient)??"";
+					value=(replaced==match.Value) ? match.Value : EncodeValue(replaced);
+					dictValues[match.Value]=value;
+				}
+				return value;
+			});
+		}
+
 		///<summary>The arguments for the button: "--commandUuid" and Medit's command id, and with a patient "--commandParam" and the Command line with
-		///the Partner ID added (AddPartnerId) and the patient filled in (funcReplacePatient, Patients.ReplacePatient in the program). Each part is
-		///in double quotes, as the link always sent them. Returns null, with problem set, when the Partner ID can't be added (GetPartnerIdProblem):
-		///nothing may be started then. Without a patient there is no command parameter, so the Partner ID is not used.</summary>
+		///the Partner ID added (AddPartnerId) and the patient filled in (FillPatient with funcReplacePatient, Patients.ReplacePatient in the program;
+		///the values made safe). Each part is in double quotes, as the link always sent them. Returns null, with problem set, when the Partner ID
+		///can't be added (GetPartnerIdProblem): nothing may be started then. Without a patient there is no command parameter, so the Partner ID is
+		///not used.</summary>
 		public static string GetArguments(string commandLine,string partnerId,Patient patient,Func<string,Patient,string> funcReplacePatient,
 			out string problem)
 		{
@@ -110,9 +158,7 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 				return null;
 			}
 			string commandParam=AddPartnerId(commandLine??"",partnerId);
-			if(funcReplacePatient!=null) {
-				commandParam=funcReplacePatient(commandParam,patient);
-			}
+			commandParam=FillPatient(commandParam,patient,funcReplacePatient);
 			return arguments+" \"--commandParam\" \""+commandParam+"\"";
 		}
 

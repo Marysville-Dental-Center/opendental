@@ -1,13 +1,17 @@
 // Vendor follow-up from public documentation (next/vendorpub-1): the Partner ID of the Medit Link program link. Medit's public article on its Open
 // Dental integration adds a PartnerID key as the last key of the JSON object in the link's arguments, which assigns that partner (a lab) to every
 // case created through the integration. The arguments with and without it, the refusals, the property row and the wiring. Nothing is launched.
+// Review follow-up (next/vendorfix-1): patient values that would break the quoted JSON, checked on the whole arguments as Windows splits them.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
 
@@ -31,6 +35,77 @@ namespace P262LinksTests {
 
 		private static string Arguments(string commandLine,string partnerId,Patient patient,out string problem) {
 			return MeditLinkPartner.GetArguments(commandLine,partnerId,patient,Replace,out problem);
+		}
+
+		///<summary>A stand-in for Patients.ReplacePatient on the four tags of the Command line with the patient's own values ([NameFL] from
+		///Patients.GetNameFL, as ReplacePatient fills it), nothing removed. No database.</summary>
+		private static string ReplaceNames(string text,Patient patient) {
+			return text.Replace("[NameFL]",Patients.GetNameFL(patient.LName,patient.FName,patient.Preferred,patient.MiddleI))
+				.Replace("[PatNum]",patient.PatNum.ToString()).Replace("[PatientGenderMF]","F").Replace("[Birthdate_yyyyMMdd]",patient.Birthdate.ToString("yyyyMMdd"));
+		}
+
+		private static Patient CreatePatient(string fName,string lName) {
+			Patient patient=new Patient();
+			patient.PatNum=1042;
+			patient.FName=fName;
+			patient.LName=lName;
+			patient.MiddleI="";
+			patient.Preferred="";
+			patient.Gender=PatientGender.Female;
+			patient.Birthdate=new DateTime(1980,3,9);
+			return patient;
+		}
+
+		///<summary>The whole arguments Medit Link must get for the Command line Open Dental's conversion wrote: the command id, then its JSON object
+		///with this NameFL and the patient's three other values, and PartnerID last when there is a Partner ID. Written out here, not built by the
+		///code under test.</summary>
+		private static string Expected(string nameFL,string partnerId) {
+			string json="{\\\"NameFL\\\": \\\""+nameFL+"\\\", \\\"PatNum\\\": \\\"1042\\\", \\\"PatientGenderMF\\\": \\\"F\\\", "
+				+"\\\"Birthdate_yyyyMMdd\\\": \\\"19800309\\\"";
+			if(partnerId!="") {
+				json+=", \\\"PartnerID\\\": \\\""+partnerId+"\\\"";
+			}
+			return UUID_PART+" \"--commandParam\" \""+json+"}\"";
+		}
+
+		///<summary>The keys and values ("key=value", in order) of the JSON object Medit Link reads, after Windows splits the arguments as for the
+		///program it starts. Fails unless there are exactly the four arguments (--commandUuid, the command id, --commandParam, one JSON object) and
+		///the object has no repeated key and only string values.</summary>
+		private static List<string> ReadCommandParam(string arguments) {
+			string[] arrayArgs=SplitAsWindows(arguments);
+			Assert.AreEqual(4,arrayArgs.Length,string.Join(" | ",arrayArgs));
+			Assert.AreEqual("--commandUuid",arrayArgs[0]);
+			Assert.AreEqual(MeditLinkPartner.CommandUuid,arrayArgs[1]);
+			Assert.AreEqual("--commandParam",arrayArgs[2]);
+			JObject jObject=JObject.Parse(arrayArgs[3],new JsonLoadSettings { DuplicatePropertyNameHandling=DuplicatePropertyNameHandling.Error });
+			List<string> listKeyValues=new List<string>();
+			foreach(JProperty jProperty in jObject.Properties()) {
+				Assert.AreEqual(JTokenType.String,jProperty.Value.Type,jProperty.Name);
+				listKeyValues.Add(jProperty.Name+"="+jProperty.Value.Value<string>());
+			}
+			return listKeyValues;
+		}
+
+		[DllImport("shell32.dll",CharSet=CharSet.Unicode,SetLastError=true)]
+		private static extern IntPtr CommandLineToArgvW(string lpCmdLine,out int pNumArgs);
+
+		[DllImport("kernel32.dll")]
+		private static extern IntPtr LocalFree(IntPtr hMem);
+
+		///<summary>The arguments as Windows splits a command line for the program it starts (CommandLineToArgvW), without the program name.</summary>
+		private static string[] SplitAsWindows(string arguments) {
+			IntPtr intPtrArgv=CommandLineToArgvW("MeditLink.exe "+arguments,out int count);
+			Assert.AreNotEqual(IntPtr.Zero,intPtrArgv);
+			try {
+				string[] arrayArgs=new string[count-1];
+				for(int i=1;i<count;i++) {
+					arrayArgs[i-1]=Marshal.PtrToStringUni(Marshal.ReadIntPtr(intPtrArgv,i*IntPtr.Size));
+				}
+				return arrayArgs;
+			}
+			finally {
+				LocalFree(intPtrArgv);
+			}
 		}
 
 		[TestMethod]
@@ -97,6 +172,76 @@ namespace P262LinksTests {
 			}
 		}
 
+		///<summary>Review follow-up (next/vendorfix-1): a double quote, a backslash or a control character in a name used to reach the quoted JSON
+		///as typed, so a name could end the argument or its JSON string, or add a key such as PartnerID. The values lose those characters; the
+		///whole arguments are checked, and so is the JSON object Medit Link reads from them.</summary>
+		[TestMethod]
+		public void PatientValues_QuotesBackslashesAndControlCharactersRemoved_TheWholeArgumentsChecked() {
+			string[][] arrayCases={
+				//FName, LName, the NameFL Medit Link must get
+				new[] { "Nico","Nu\"nez","Nico Nunez" },//A double quote.
+				new[] { "Nico","Nu\\nez","Nico Nunez" },//A backslash.
+				new[] { "Ni\r\nco","Nu\tnez","Nico Nunez" },//CR, LF and tab.
+				new[] { "Nico","Nunez\\","Nico Nunez" },//A trailing backslash: it would escape the closing \".
+				new[] { "Nico","Nunez\\\\","Nico Nunez" },
+				new[] { "Nico\", \"PartnerID\": \"1","Nunez","Nico, PartnerID: 1 Nunez" },//A key, with plain quotes.
+				new[] { "Nico\\\", \\\"PartnerID\\\": \\\"1","Nunez","Nico, PartnerID: 1 Nunez" },//A key, quoted as the Command line quotes.
+				new[] { "Nico","Nunez\\\"}\" \"--commandUuid\" \"x","Nico Nunez} --commandUuid x" },//Another argument.
+			};
+			foreach(string partnerId in new[] { "",GLIDEWELL }) {
+				foreach(string[] arrayCase in arrayCases) {
+					string label=arrayCase[0]+" | "+arrayCase[1]+" | "+partnerId;
+					string arguments=MeditLinkPartner.GetArguments(COMMAND_LINE,partnerId,CreatePatient(arrayCase[0],arrayCase[1]),ReplaceNames,
+						out string problem);
+					Assert.AreEqual("",problem,label);
+					Assert.AreEqual(Expected(arrayCase[2],partnerId),arguments,label);
+					List<string> listExpected=new List<string> { "NameFL="+arrayCase[2],"PatNum=1042","PatientGenderMF=F","Birthdate_yyyyMMdd=19800309" };
+					if(partnerId!="") {
+						listExpected.Add("PartnerID="+partnerId);
+					}
+					CollectionAssert.AreEqual(listExpected,ReadCommandParam(arguments),label);
+				}
+			}
+			Assert.AreEqual(" a b",MeditLinkPartner.EncodeValue(" a\"\\\r\n\t b"),"Only those characters; nothing is trimmed.");
+			Assert.AreEqual("",MeditLinkPartner.EncodeValue(null));
+		}
+
+		///<summary>Names with letters, spaces, apostrophes, hyphens and accented letters give byte for byte the arguments the link built before
+		///(the whole Command line given to the replacement, nothing removed), with and without a Partner ID.</summary>
+		[TestMethod]
+		public void PatientValues_OrdinaryNames_SentExactlyAsBefore() {
+			string[][] arrayNames={
+				//FName, LName, Preferred (GetNameFL puts it in apostrophes), the NameFL
+				new[] { "Zoé","Núñez","","Zoé Núñez" },
+				new[] { "Mary Ann","O'Brien","Mo","Mary Ann 'Mo' O'Brien" },
+				new[] { "Jean-Luc","Smith-Jones","","Jean-Luc Smith-Jones" },
+				new[] { "Ana","de la Cruz","","Ana de la Cruz" },
+				new[] { "Björn","Åström","Émile","Björn 'Émile' Åström" },
+				new[] { "Zoé","","","Zoé " },//No last name: GetNameFL's trailing space is kept.
+			};
+			foreach(string partnerId in new[] { "",GLIDEWELL }) {
+				foreach(string[] arrayName in arrayNames) {
+					Patient patient=CreatePatient(arrayName[0],arrayName[1]);
+					patient.Preferred=arrayName[2];
+					string label=arrayName[3]+" | "+partnerId;
+					string before=UUID_PART+" \"--commandParam\" \""+ReplaceNames(MeditLinkPartner.AddPartnerId(COMMAND_LINE,partnerId),patient)+"\"";
+					string arguments=MeditLinkPartner.GetArguments(COMMAND_LINE,partnerId,patient,ReplaceNames,out string problem);
+					Assert.AreEqual("",problem,label);
+					Assert.AreEqual(before,arguments,label);
+					Assert.AreEqual(Expected(arrayName[3],partnerId),arguments,label);
+					Assert.AreEqual("NameFL="+arrayName[3],ReadCommandParam(arguments)[0],label);
+				}
+			}
+			//A tag the replacement leaves alone, other bracketed text and the rest of an office's own Command line are kept as typed.
+			Patient patientOwn=CreatePatient("Nico","Nunez");
+			string commandLineOwn="{\\\"a\\\": \\\"[NameFL]\\\", \\\"b\\\": \\\"[Unknown]\\\", \\\"c\\\": [1, 2]}";
+			Assert.AreEqual(UUID_PART+" \"--commandParam\" \"{\\\"a\\\": \\\"Nico Nunez\\\", \\\"b\\\": \\\"[Unknown]\\\", \\\"c\\\": [1, 2]}\"",
+				MeditLinkPartner.GetArguments(commandLineOwn,"",patientOwn,ReplaceNames,out string problemOwn));
+			Assert.AreEqual("",problemOwn);
+			Assert.AreEqual("x [PatNum]",MeditLinkPartner.FillPatient("x [PatNum]",patientOwn,null),"No replacement: unchanged.");
+			Assert.AreEqual("x [PatNum]",MeditLinkPartner.FillPatient("x [PatNum]",null,ReplaceNames),"No patient: unchanged.");
+		}
+
 		[TestMethod]
 		public void Property_IsAddedBlankToTheExistingRowOnly_TheRowIsNotChanged() {
 			ScratchDb.RequireDb();
@@ -134,9 +279,16 @@ namespace P262LinksTests {
 			patient.Birthdate=new DateTime(1980,3,9);
 			string arguments=MeditLinkPartner.GetArguments(program,patient,out string problem);
 			Assert.AreEqual("",problem);
-			StringAssert.StartsWith(arguments,UUID_PART+" \"--commandParam\" \"{\\\"NameFL\\\": \\\"");
-			StringAssert.EndsWith(arguments,"\\\"PatNum\\\": \\\"1042\\\", \\\"PatientGenderMF\\\": \\\"F\\\", \\\"Birthdate_yyyyMMdd\\\": \\\"19800309\\\", "
-				+"\\\"PartnerID\\\": \\\"7307395\\\"}\"");
+			//The whole arguments: the synthetic last name holds double quotes, which are removed from the NameFL value (Zoe Q Nunez "Nico").
+			string nameFL="Zoé Q Núñez Nico";
+			Assert.AreEqual(Expected(nameFL,GLIDEWELL),arguments);
+			Assert.AreEqual(UUID_PART+" \"--commandParam\" \"{\\\"NameFL\\\": \\\"Zoé Q Núñez Nico\\\", \\\"PatNum\\\": \\\"1042\\\", "
+				+"\\\"PatientGenderMF\\\": \\\"F\\\", \\\"Birthdate_yyyyMMdd\\\": \\\"19800309\\\", \\\"PartnerID\\\": \\\"7307395\\\"}\"",arguments);
+			CollectionAssert.AreEqual(new[] { "NameFL="+nameFL,"PatNum=1042","PatientGenderMF=F","Birthdate_yyyyMMdd=19800309","PartnerID=7307395" },
+				ReadCommandParam(arguments));
+			//Patients.ReplacePatient ignores the letter case of a tag; each tag is still filled in and made safe.
+			Assert.AreEqual("\\\"1042\\\" \\\"Núñez Nico\\\" [Unknown]",
+				MeditLinkPartner.FillPatient("\\\"[patnum]\\\" \\\"[LNAME]\\\" [Unknown]",patient,(x,y) => Patients.ReplacePatient(x,y)));
 			Assert.AreEqual("",MeditLinkPartner.GetPartnerId(null));
 		}
 
