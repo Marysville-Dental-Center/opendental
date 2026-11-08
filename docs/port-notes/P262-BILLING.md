@@ -1,6 +1,7 @@
 # Port note: P262-BILLING, billing and statements overhaul (Open Dental 26.2 items 8, 9, 17 and 18)
 
-Branch `p262/billing-1`, cut from `p262/schema-1` (39be2b04b). One of the 26.2 feature packages the owner chose on 2026-11-07.
+Branch `p262/billing-1`, cut from `p262/schema-1` (39be2b04b), and its review fixes on `p262/billing-2`. One of the 26.2 feature packages the
+owner chose on 2026-11-07.
 
 ## Sources
 
@@ -79,6 +80,15 @@ Everything about the windows beyond the four lines above is this program's own d
   has a `clinicpref` row for each of the six under the same name; a clinic that uses the practice defaults has none. Saving writes only the
   clinics whose settings changed in the window. The General Message row is the one Billing Options already keeps with a clinic's filter
   defaults, so both windows show and change the same value (Billing Options re-reads the clinic rows after Billing Defaults closes).
+- Billing Options beside it (`BillingOptionsClinicDefaults`, from the review of `p262/billing-1`): Save Defaults with one clinic selected
+  writes that clinic's rows only, never another clinic's. A clinic whose only Billing Options row is the General Message (it has its own
+  messages in Billing Defaults) has no filter defaults there: Billing Options shows it the practice filters with its own General Message, and
+  a save for another clinic gives it no filter row, so later changes to the practice filter defaults still reach it. A clinic set back to the
+  practice defaults in Billing Defaults keeps its Billing Options filters without a General Message row, and a save for another clinic does not
+  write that row back. A clinic's saved rows are updated in place (the shared General Message row is never inserted twice); a clinic without
+  a General Message row gets one only when the message typed differs from the practice message, so saving its filters alone does not take it
+  off the practice defaults. The window also shows the selected clinic's own General Message when it opens and after Billing Defaults closes
+  (before, it showed the practice message there, which Save Defaults would then have written over the clinic's own).
 - Readers: statement e-mails (`Statements.GetEmailMessageForStatement`: billing, the Statement window, the sheet window, the Account
   module's Email) take the subject and body of the patient's clinic when the statement has none of its own, and the matching body type
   (`BillingEmailHtml.GetEmailTypeForStatement`); billing adds the autograph when the patient's clinic says so; a new invoice gets its
@@ -110,6 +120,10 @@ Each point is this program's own choice; the public sources state none of them.
   General Message row with Billing Options; which clinic applies (the clinic of the statement's patient, as the e-mail's sender address
   already used, and the invoice patient's clinic); that clinic rows are ignored while clinics are off; that the e-mail body type goes with
   the body; and that the picker starts at the user's current clinic.
+- Item 18, Billing Options beside the per-clinic messages: that a clinic whose only Billing Options row is the General Message has no filter
+  defaults there; that Save Defaults writes the selected clinic only (the window as it was before this package wrote every clinic in its list,
+  which then only completed the rows of clinics with saved filters); that a save with the practice message adds no General Message row for a clinic without one; and that
+  the window opens with the selected clinic's own General Message.
 
 ## Owner questions
 
@@ -125,6 +139,9 @@ Each point is this program's own choice; the public sources state none of them.
    password and addresses were already per clinic.
 5. A clinic that stops using the practice defaults gets a copy of them, and later changes to the practice defaults no longer reach it. Is
    that wanted, or should each message fall back to the practice default on its own (for example when left blank)?
+6. Billing Options' Save Defaults for a clinic on the practice defaults, with the practice General Message in its box, saves the clinic's
+   filters but no General Message of its own, so the clinic stays on the practice defaults in Billing Defaults. Before 26.2 that save also
+   stored a copy of the message for the clinic. Keep the new behaviour?
 
 ## Not built
 
@@ -141,21 +158,29 @@ Each point is this program's own choice; the public sources state none of them.
     the practice defaults removes only those rows; clinics off makes every reader take the practice defaults (rows kept); a General Message
     row saved by Billing Options is the clinic's own and the other messages fall back; Billing Options reads the General Message Billing
     Defaults saved (one shared row); statement e-mails take the subject, body and body type of the patient's clinic, and a statement's own
-    subject and body still win; the e-mail type per clinic (an unknown stored number is plain text).
+    subject and body still win; the e-mail type per clinic (an unknown stored number is plain text). Billing Options' Save Defaults beside
+    Billing Defaults (review fix): a save for clinic B gives clinic A, which has only its Billing Defaults messages, no row (and billing keeps
+    following the practice filters for A); a save for clinic B does not bring back the General Message row of clinic A, set back to the
+    practice defaults (A stays on them); only the selected clinic is written; the shared General Message row is updated in place; the practice
+    message adds no row; the practice is refused as a clinic.
+  - `BillingOptionsClinicDefaultsTests` (no database): the 14 preferences, which rows count as saved filter defaults, and the rows a save
+    writes (new rows, existing rows updated in place, another clinic's rows and other preferences left out, the practice message).
   - `EbillSettingsTests`, `StatementChoicesTests`, `BillingDefaultsSettingsTests` (no database): the credit card text and its reading for
     every combination, the method list against `BillingUseElectronicEnum`, the output path preferences, the choices and their descriptions,
     the settings object and its stored values.
   - `WiringSourceTests`: the Statement button and the toolbar event, the menu entries' choices, the Statement Options window, every
     control of the Statement window in exactly one container and the limited custom rule, every electronic billing setting saved by the
     new window and none by Billing Defaults, the Billing List's Defaults button, the practice-wide and per-clinic saves of Billing Defaults,
-    every reader of a per-clinic setting (no other code reads one directly), Billing Options re-reading the clinic rows, and no migration
-    step at 2026110721 to 2026110729.
+    every reader of a per-clinic setting (no other code reads one directly), Billing Options re-reading the clinic rows, Billing Options'
+    Save Defaults writing the selected clinic only and showing a clinic's own General Message, and no migration step at 2026110721 to
+    2026110729.
 - Changed: `M2DUNTests` (the e-mail type is kept per clinic and saved by `BillingDefaultsByClinic`), `M2SDVTests` (the Service Date View box
   is in the Contents box), `BPRINTTests` (the inserter barcode box is in the Statements box).
 
 ## Files touched
 
-- New: `OpenPmsDentalBusiness/Logic/{BillingDefaultsByClinic,EbillSettings,StatementChoices}.cs`, `OpenPmsDental/Forms/FormEbillSetup.*`,
+- New: `OpenPmsDentalBusiness/Logic/{BillingDefaultsByClinic,BillingOptionsClinicDefaults,EbillSettings,StatementChoices}.cs`,
+  `OpenPmsDental/Forms/FormEbillSetup.*`,
   `OpenPmsDental/Forms/FormStatementChoices.*`, `OpenPmsDental/Main Modules/ControlAccount.StatementOptions.cs`, `tests/P262BillingTests/*`,
   this note.
 - Changed: `OpenPmsDental/Forms/FormBillingDefaults.cs` and `.Designer.cs` (rewritten), `FormStatementOptions.cs` and `.designer.cs`,
