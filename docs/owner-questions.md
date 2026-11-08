@@ -648,6 +648,9 @@ answer; the standing rule below, with its correction; and "Don't need 'Install f
   a second one from running a job twice. It can be turned off ("Also have option for background test to be turned off"): one setting
   for the whole practice and one per job. It starts off, also after an upgrade, so jobs an office set up under Open Dental do not start
   running by surprise.
+- **Direct certificates.** The Register certificate button, which registered with Open Dental's servers, is replaced by a local import
+  ("Yes, load Direct provider's certificate from a file"): the certificate your Direct provider issued is loaded from a file, with its
+  password, into the Direct certificate store.
 - **QuickBooks Desktop, Schick CDR and Topaz signature pads.** The office does not use them. They were to be removed in the clean-up stage
   (owner, 2026-11-07); now kept and ported (owner correction, 2026-11-08).
 - **Order of the stages.** A clean-up stage first; then SDK-style project files, NuGet packages and the test framework, all still on .NET

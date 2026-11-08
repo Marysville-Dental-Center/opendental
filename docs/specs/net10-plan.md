@@ -1108,6 +1108,14 @@ no Middle Tier server while the Middle Tier is still ported (open point O-7, S3b
   then refuses unencrypted connections (`require_secure_transport`; other sessions are told first); and the old test database
   (`opendental_dev`) is dropped and rebuilt with `tools/New-DevDatabase.ps1` over the encrypted connection (confirmed with the owner
   right before the drop).
+- **O-13. Direct certificates without Open Dental. Answered 2026-11-08: a local certificate import.** The e-mail address window's
+  Register certificate button opens `FormEmailCertRegister`, which registered the address's Direct certificate with Open Dental's own
+  servers and fails since they were removed (S0-3D restored it as it was). The owner: "Yes, load Direct provider's certificate from a
+  file". A package after stage 0 replaces it: the button imports the certificate the office's Direct provider (HISP) issued, from a
+  `.pfx` or `.p12` file with its password, into the Direct private store (`NHINDPrivate`, the key kept non-exportable), and can also
+  import the provider's trust anchor into `NHINDAnchors`. It checks that the certificate names the address (or its domain) and has a
+  private key, shows the subject and dates, and replaces an older certificate for the same address only after asking. Tests use
+  generated certificates in current-user test stores, as S0-3D's do.
 
 ---
 
