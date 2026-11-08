@@ -60,7 +60,7 @@ namespace OpenPmsDental{
 			// butSearch
 			// 
 			this.butSearch.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.butSearch.Location = new System.Drawing.Point(196, 298);
+			this.butSearch.Location = new System.Drawing.Point(306, 298);
 			this.butSearch.Name = "butSearch";
 			this.butSearch.Size = new System.Drawing.Size(75, 24);
 			this.butSearch.TabIndex = 3;
@@ -74,7 +74,7 @@ namespace OpenPmsDental{
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.gridMain.Location = new System.Drawing.Point(12, 12);
 			this.gridMain.Name = "gridMain";
-			this.gridMain.Size = new System.Drawing.Size(259, 251);
+			this.gridMain.Size = new System.Drawing.Size(369, 251);
 			this.gridMain.TabIndex = 4;
 			this.gridMain.Title = "Search Results";
 			this.gridMain.TranslationName = "TableApptSearchResults";
@@ -84,8 +84,10 @@ namespace OpenPmsDental{
 			// 
 			this.comboBlockout.Location = new System.Drawing.Point(105, 152);
 			this.comboBlockout.Name = "comboBlockout";
+			this.comboBlockout.SelectionModeMulti = true;
 			this.comboBlockout.Size = new System.Drawing.Size(130, 21);
 			this.comboBlockout.TabIndex = 263;
+			this.comboBlockout.SelectionChangeCommitted += new System.EventHandler(this.comboBlockout_SelectionChangeCommitted);
 			// 
 			// butMore
 			// 
@@ -93,7 +95,7 @@ namespace OpenPmsDental{
 			this.butMore.Enabled = false;
 			this.butMore.Image = ((System.Drawing.Image)(resources.GetObject("butMore.Image")));
 			this.butMore.ImageAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.butMore.Location = new System.Drawing.Point(196, 268);
+			this.butMore.Location = new System.Drawing.Point(306, 268);
 			this.butMore.Name = "butMore";
 			this.butMore.Size = new System.Drawing.Size(75, 24);
 			this.butMore.TabIndex = 268;
@@ -122,7 +124,7 @@ namespace OpenPmsDental{
 			this.groupBox2.Controls.Add(this.labelBlockout);
 			this.groupBox2.Controls.Add(this.label10);
 			this.groupBox2.Controls.Add(this.label9);
-			this.groupBox2.Location = new System.Drawing.Point(287, 12);
+			this.groupBox2.Location = new System.Drawing.Point(397, 12);
 			this.groupBox2.Name = "groupBox2";
 			this.groupBox2.Size = new System.Drawing.Size(278, 251);
 			this.groupBox2.TabIndex = 269;
@@ -345,7 +347,7 @@ namespace OpenPmsDental{
 			// 
 			// FormApptSearchAdvanced
 			// 
-			this.ClientSize = new System.Drawing.Size(577, 334);
+			this.ClientSize = new System.Drawing.Size(687, 334);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.butMore);

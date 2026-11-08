@@ -1281,6 +1281,67 @@ namespace OpenPmsDentalBusiness{
 			return RefreshAndFill(command,skipSchedOps);
 		}
 
+		///<summary>The practice and clinic schedule notes and holidays (SchedType Practice, entered in the Edit Day window) among listSchedules that
+		///the Appointments module shows in the upper left corner of the operatory header (Open Dental 26.2, port P262-APPT): those for the whole
+		///practice (ClinicNum 0; Headquarters when clinics are on) and, when clinics are on, those of clinicNum, the clinic selected in the module. A
+		///note with no text is left out; a holiday always counts. Ordered by date, holidays first, practice before clinic, then as entered. No
+		///database call.</summary>
+		public static List<Schedule> GetPracticeNotesForApptModule(List<Schedule> listSchedules,long clinicNum) {
+			Meth.NoCheckMiddleTierRole();
+			if(listSchedules==null) {
+				return new List<Schedule>();
+			}
+			bool hasClinics=PrefC.HasClinicsEnabled;
+			return listSchedules.FindAll(x => x.SchedType==ScheduleType.Practice
+					&& (x.Status==SchedStatus.Holiday || !string.IsNullOrWhiteSpace(x.Note))
+					&& (x.ClinicNum==0 || (hasClinics && clinicNum!=0 && x.ClinicNum==clinicNum)))
+				.OrderBy(x => x.SchedDate.Date)
+				.ThenBy(x => x.Status==SchedStatus.Holiday ? 0 : 1)
+				.ThenBy(x => x.ClinicNum==0 ? 0 : 1)
+				.ThenBy(x => x.ScheduleNum)
+				.ToList();
+		}
+
+		///<summary>The text of the hover tip for the notes from GetPracticeNotesForApptModule: one line per note, "Holiday: text" or "Note: text",
+		///with the clinic's abbreviation (Headquarters for the whole practice) in parentheses when clinics are on, as the Edit Day window shows them.
+		///Set includeDate (the week view) to start each line with its day and date. Empty when there is no note.</summary>
+		public static string GetPracticeNotesText(List<Schedule> listNotes,bool includeDate) {
+			Meth.NoCheckMiddleTierRole();
+			if(listNotes.IsNullOrEmpty()) {
+				return "";
+			}
+			List<string> listLines=new List<string>();
+			for(int i=0;i<listNotes.Count;i++) {
+				Schedule schedule=listNotes[i];
+				string line="";
+				if(includeDate) {
+					line+=schedule.SchedDate.ToString("ddd")+" "+schedule.SchedDate.ToShortDateString()+" ";
+				}
+				if(schedule.Status==SchedStatus.Holiday) {
+					line+=Lans.g("Schedules","Holiday");
+				}
+				else {
+					line+=Lans.g("Schedules","Note");
+				}
+				if(PrefC.HasClinicsEnabled) {
+					string clinicAbbr="";
+					if(schedule.ClinicNum!=0) {
+						clinicAbbr=Clinics.GetAbbr(schedule.ClinicNum);
+					}
+					if(string.IsNullOrEmpty(clinicAbbr)) {
+						clinicAbbr=Lans.g("Schedules","Headquarters");
+					}
+					line+=" ("+clinicAbbr+")";
+				}
+				string note=(schedule.Note??"").Trim();
+				if(note!="") {
+					line+=": "+note;
+				}
+				listLines.Add(line);
+			}
+			return string.Join("\r\n",listLines);
+		}
+
 		///<summary>Gets all scheduled holidays for the given date range based on the ClinicNum.</summary>
 		public static List<Schedule> GetAllHolidaysForDateRange(DateTime dateSelectedStart,DateTime dateSelectedEnd,List<long> listClinicNums) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {

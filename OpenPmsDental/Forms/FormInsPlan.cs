@@ -3370,6 +3370,8 @@ namespace OpenPmsDental {
 			}
 			#endregion InsPlan Edit
 			#region InsSub and Benefit Sync
+			//The patients whose estimates were computed below, so the appointment estimates of the plan (end of this method) skip them.
+			List<long> listPatNumsEstimated=new List<long>();
 			try {
 				if(!PIn.Date(textDateLastVerifiedBenefits.Text).Date.Equals(_dateTimeInsPlanLastVerified.Date)) {
 					InsVerify insVerify=InsVerifies.GetOneByFKey(_insPlan.PlanNum,VerifyTypes.InsuranceBenefit);
@@ -3396,6 +3398,7 @@ namespace OpenPmsDental {
 					//Udate all claims, claimprocs, payplans, and etrans that are pointing at the inssub.InsSubNum since it may now be pointing at a new insplan.PlanNum.
 					InsSubs.SynchPlanNumsForNewPlan(_insSub);
 					InsPlans.ComputeEstimatesForSubscriber(_insSub.Subscriber);
+					listPatNumsEstimated=InsPlans.GetPatNumsForSubscriber(_insSub.Subscriber);
 					InsEditPatLogs.MakeLogEntry(_insSub,_insSubOld,InsEditPatLogType.Subscriber);
 				}
 			}
@@ -3457,6 +3460,26 @@ namespace OpenPmsDental {
 			else {
 				InsBlueBooks.UpdateByInsPlan(_insPlan);
 			}
+			#region Appointment Estimates
+			//Open Dental 26.2 (P262-APPT): appointment estimates are updated when the plan is saved, for every patient the plan covers who has a
+			//scheduled appointment from today on, not only the subscriber above. Only a user with InsPlanEdit can change the plan or its benefits,
+			//so for anyone else nothing that this window saved changes another patient's estimates.
+			if(Security.IsAuthorized(EnumPermType.InsPlanEdit,true)) {
+				try {
+					Cursor=Cursors.WaitCursor;
+					InsPlans.ComputeEstimatesForApptsOnPlan(_insPlan.PlanNum,DateTime.Today,listPatNumsEstimated);
+				}
+				catch(Exception ex) {
+					//The plan is saved; only the estimates of other patients' appointments are not brought up to date.
+					Cursor=Cursors.Default;
+					FriendlyException.Show(Lan.g(this,"The insurance plan was saved, but the estimates of the appointments of other patients on this plan "
+						+"could not be updated."),ex);
+				}
+				finally {
+					Cursor=Cursors.Default;
+				}
+			}
+			#endregion Appointment Estimates
 			DialogResult=DialogResult.OK;
 		}
 

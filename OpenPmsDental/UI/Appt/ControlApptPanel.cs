@@ -214,6 +214,12 @@ namespace OpenPmsDental.UI{
 		private long _opNumHeaderTipLast;
 		///<summary>This panel is a simulated 'tooltip' for the prov and op headers.</summary>
 		private Panel panelHeaderTip;
+		///<summary>The practice and clinic schedule notes and holidays of the period, shown in the upper left corner (Open Dental 26.2). Recomputed
+		///when ListSchedules or the selected clinic changes (GetPracticeNotes).</summary>
+		private List<Schedule> _listPracticeNotes=new List<Schedule>();
+		///<summary>The ListSchedules and clinic that _listPracticeNotes was computed from.</summary>
+		private List<Schedule> _listSchedulesForPracticeNotes;
+		private long _clinicNumForPracticeNotes=-1;
 		///<summary>The position of the pointer the last time the bubble was drawn or the timer was started.  Used to show after timer is up.  In coordinates of this control.</summary>
 		private Point _pointBubbleTimer;
 		///<summary>This rectangle is in control coordinates and can paint over the top of any other bitmaps all the way up to the edge of this control.</summary>
@@ -891,6 +897,11 @@ namespace OpenPmsDental.UI{
 			if((Control.MouseButtons & MouseButtons.Left)>0) {
 				_isLeftMouseDown=true;
 			}
+			if(e.Y<_heightProvOpHeaders && e.X<=_widthTime) {
+				//clicked in the upper left corner: shows the practice and clinic notes, as hovering does (Open Dental 26.2).
+				HeaderTipDraw(e.Location);
+				return;
+			}
 			if(e.Y<_heightProvOpHeaders
 				&& e.X>_widthTime 
 				&& e.X<_widthTime+_widthProv*_listProvsVisible.Count)
@@ -1382,6 +1393,11 @@ namespace OpenPmsDental.UI{
 				if(rectangleOnControl.IntersectsWith(e.ClipRectangle)){
 					graphics.DrawImage(_bitmapTimebarRight,this.Width-vScrollBar1.Width-_widthTime-1,_heightProvOpHeaders,rectangleSource,GraphicsUnit.Pixel);
 				}
+			}
+			//practice and clinic notes in the upper left corner (Open Dental 26.2)---------------------------------------------
+			rectangleOnControl=new Rectangle(0,0,Round(_widthTime),Round(_heightProvOpHeaders));
+			if(rectangleOnControl.IntersectsWith(e.ClipRectangle)){
+				DrawPracticeNotesCorner(graphics);
 			}
 			//Some extra lines to divide areas, especially when scrolling----------------------------------------------------
 			graphics.DrawLine(_penVertPrimary,Width-1,_heightProvOpHeaders,Width-1,Height);//to the right of vScroll
@@ -3141,6 +3157,38 @@ namespace OpenPmsDental.UI{
 			//outline
 			//g.DrawRectangle(_penVertPrimary,0,0,_width-1,_heightProvOpHeaders-1);
 			//g.DrawLine(_penVertPrimary,_widthMain-1,0,_widthMain-1,_heightProvOpHeaders);//on right//now handled in OnPaint
+		}
+
+		///<summary>Open Dental 26.2: when the period has practice or clinic schedule notes or holidays, the upper left corner of the operatory header
+		///(above the left time bar) says "Notes" on a note-colored background; hovering over it or clicking it shows them (HeaderTipDraw). Otherwise
+		///the corner stays empty, as before.</summary>
+		private void DrawPracticeNotesCorner(Graphics g){
+			if(GetPracticeNotes().Count==0){
+				return;
+			}
+			RectangleF rectangleF=new RectangleF(1,1,_widthTime-2,_heightProvOpHeaders-2);
+			using(SolidBrush solidBrush=new SolidBrush(Color.FromArgb(255,250,205))){//pale yellow, like a paper note
+				g.FillRectangle(solidBrush,rectangleF);
+			}
+			g.DrawRectangle(_penVertPrimary,rectangleF.X,rectangleF.Y,rectangleF.Width-1,rectangleF.Height-1);
+			string text=Lan.g(this,"Notes");
+			SizeF sizeText=g.MeasureString(text,_fontOpsHeaders);
+			float xText=Math.Max(rectangleF.X,rectangleF.X+(rectangleF.Width-sizeText.Width)/2f);
+			g.DrawString(text,_fontOpsHeaders,_brushTextBlack,new RectangleF(xText,1,rectangleF.Right-xText,_heightProvOpHeaders-1));
+		}
+
+		///<summary>The practice and clinic schedule notes and holidays of the period for the clinic selected in the module (Open Dental 26.2), from
+		///ListSchedules. Recomputed only when ListSchedules or the clinic changes.</summary>
+		private List<Schedule> GetPracticeNotes(){
+			if(_listSchedules==null){
+				return new List<Schedule>();
+			}
+			if(!ReferenceEquals(_listSchedulesForPracticeNotes,_listSchedules) || _clinicNumForPracticeNotes!=Clinics.ClinicNum){
+				_listPracticeNotes=Schedules.GetPracticeNotesForApptModule(_listSchedules,Clinics.ClinicNum);
+				_listSchedulesForPracticeNotes=_listSchedules;
+				_clinicNumForPracticeNotes=Clinics.ClinicNum;
+			}
+			return _listPracticeNotes;
 		}
 
 		private void DrawProvBarsHeader(Graphics g){
@@ -5406,6 +5454,30 @@ namespace OpenPmsDental.UI{
 			//Op header, hover shows some info
 			//Op header, right or left click shows other info
 			//Week: no prov headers, op header right click does nothing, left click changes to day view
+			//Upper left corner, hover or click shows the practice and clinic notes and holidays of the period (Open Dental 26.2)
+			if(point.X>=0 && point.Y>=0 && point.X<=_widthTime && point.Y<=_heightProvOpHeaders) {
+				_opNumHeaderTipLast=0;
+				string txtNotes=Schedules.GetPracticeNotesText(GetPracticeNotes(),includeDate:IsWeeklyView);
+				if(txtNotes=="") {
+					panelHeaderTip.Visible=false;
+					return;
+				}
+				//Wraps a long note at about half the width of the module.
+				int widthMax=Math.Max(200,(this.Width-vScrollBar1.Width)/2);
+				Size sizeNotes=TextRenderer.MeasureText(txtNotes,_font,new Size(widthMax,int.MaxValue),TextFormatFlags.WordBreak);
+				panelHeaderTip.Width=Math.Min(sizeNotes.Width,widthMax)+10;
+				panelHeaderTip.Height=sizeNotes.Height+3;
+				labelHeaderTip.Width=panelHeaderTip.Width;
+				labelHeaderTip.Height=panelHeaderTip.Height;
+				labelHeaderTip.Text=txtNotes;
+				int xNotes=point.X;
+				if(xNotes+panelHeaderTip.Width>this.Width-vScrollBar1.Width-3){
+					xNotes=Math.Max(0,this.Width-panelHeaderTip.Width-vScrollBar1.Width-3);
+				}
+				panelHeaderTip.Location=new Point(xNotes,point.Y+20);
+				panelHeaderTip.Visible=true;
+				return;
+			}
 			if(point.Y>_heightProvOpHeaders//down in main area
 				|| point.X<_widthTime//to the left of prov headers
 				|| point.X>this.Width-vScrollBar1.Width-_widthTime//to the right of op headers
@@ -5461,6 +5533,7 @@ namespace OpenPmsDental.UI{
 			}
 			panelHeaderTip.Width=TextRenderer.MeasureText(txt,_font).Width+10;//Add in extra pixels to help with zoom font changes
 			panelHeaderTip.Height=TextRenderer.MeasureText(txt,_font).Height+3;
+			labelHeaderTip.Width=panelHeaderTip.Width;//the notes tip of the upper left corner may have narrowed it
 			labelHeaderTip.Height=panelHeaderTip.Height;
 			labelHeaderTip.Text=txt;
 			int xval=point.X;

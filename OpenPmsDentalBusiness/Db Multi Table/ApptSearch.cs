@@ -50,6 +50,123 @@ namespace OpenPmsDentalBusiness {
 			return listOpenings;
 		}
 
+		///<summary>Advanced Appointment Search with one or more blockout types (Open Dental 26.2, port P262-APPT). For every date, the first opening
+		///in each selected blockout type that has one that date, so a date can have one row per blockout type (ScheduleOpening.BlockoutDefNum says
+		///which). Stops after dateCount dates that have a row. With providers (non-zero ProvNums in listProvNums) an opening must also be open for one
+		///of them in the same operatory at the same time, as GetSearchResultsForBlockoutAndProvider does for one type; without, it is an opening in
+		///the blockout alone, as GetSearchResults does for one type. For one blockout type it returns exactly what those two methods return. Rows
+		///are ordered by date, time and the blockout types' order in their definition list. The data is read once for all the types.</summary>
+		public static List<ScheduleOpening> GetSearchResultsForBlockouts(long aptNum,DateTime dateStart,DateTime dateEnd,List<long> listProvNums,
+			List<long> listOpNums,List<long> listClinicNums,TimeSpan beforeTime,TimeSpan afterTime,List<long> listBlockoutTypes,int dateCount=15)
+		{
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<ScheduleOpening>>(MethodBase.GetCurrentMethod(),aptNum,dateStart,dateEnd,listProvNums,listOpNums,listClinicNums,
+					beforeTime,afterTime,listBlockoutTypes,dateCount);
+			}
+			List<long> listProvs=(listProvNums??new List<long>()).FindAll(x => x!=0).Distinct().ToList();
+			List<long> listBlockoutDefNums=(listBlockoutTypes??new List<long>()).FindAll(x => x!=0).Distinct().ToList();
+			if(listBlockoutDefNums.Count==0) {//Not a blockout search.
+				return GetSearchResults(aptNum,dateStart,dateEnd,listProvs,listOpNums,listClinicNums,beforeTime,afterTime,resultCount:dateCount);
+			}
+			//Blockout types in the order of their definition list, for the order of the rows within a time.
+			List<long> listDefNumsOrdered=Defs.GetDefsForCategory(DefCat.BlockoutTypes).Select(x => x.DefNum).ToList();
+			listBlockoutDefNums=listBlockoutDefNums.OrderBy(x => listDefNumsOrdered.Contains(x) ? listDefNumsOrdered.IndexOf(x) : int.MaxValue)
+				.ThenBy(x => x).ToList();
+			//As GetSearchResults: no "starting before" time means any time of day.
+			TimeSpan beforeTimeSearch=beforeTime;
+			if(beforeTimeSearch==TimeSpan.FromSeconds(0)) {
+				beforeTimeSearch=TimeSpan.FromHours(25);
+			}
+			List<ScheduleOpening> listOpeningsForProvs=null;
+			if(listProvs.Count>0) {
+				//Every opening of the providers, as GetSearchResultsForBlockoutAndProvider gets them (independent of the blockout types).
+				listOpeningsForProvs=GetSearchResults(aptNum,dateStart,dateEnd,listProvs,listOpNums,listClinicNums,beforeTime,afterTime,
+					hasProvAndBlockout:true).OrderBy(x => x.DateTimeAvail).ToList();
+				listOpeningsForProvs.RemoveAll(x => x.ProvNum==0);
+			}
+			//One read for every selected type; each type is then searched on its own share of it (GetDataForBlockoutType), as if read alone.
+			List<long> listProvNumsBlockout=new List<long>() { 0 };//The provider of a blockout is 0.
+			ApptSearchData data=GetDataForSearch(aptNum,dateStart,dateEnd,listProvNumsBlockout,listOpNums,listClinicNums,
+				new List<long>(listBlockoutDefNums));
+			List<ScheduleOpening> listOpenings=new List<ScheduleOpening>();
+			if(data.AppointmentToAdd==null) {//The appointment was deleted after the search started.
+				return listOpenings;
+			}
+			SearchBehaviorCriteria searchType=(SearchBehaviorCriteria)PrefC.GetInt(PrefName.AppointmentSearchBehavior);
+			Dictionary<long,ApptSearchData> dictDataByType=listBlockoutDefNums.ToDictionary(x => x,x => GetDataForBlockoutType(data,x));
+			//The dates to look at: every date of the range, or with providers only the dates on which a provider has an opening.
+			List<DateTime> listDates=new List<DateTime>();
+			if(listOpeningsForProvs==null) {
+				for(DateTime date=data.DateEvaluating.Date;date<dateEnd;date=date.AddDays(1)) {
+					listDates.Add(date);
+				}
+			}
+			else {
+				listDates=listOpeningsForProvs.Select(x => x.DateTimeAvail.Date).Distinct().OrderBy(x => x).ToList();
+			}
+			int countDates=0;
+			for(int d=0;d<listDates.Count && countDates<dateCount;d++) {
+				DateTime date=listDates[d];
+				List<ScheduleOpening> listOpeningsForDate=new List<ScheduleOpening>();
+				for(int t=0;t<listBlockoutDefNums.Count;t++) {
+					long blockoutDefNum=listBlockoutDefNums[t];
+					List<long> listBlockoutTypesOne=new List<long>() { blockoutDefNum };
+					List<ScheduleOpening> listPotential=GetProvAndOpAvailabilityHelper(listProvNumsBlockout,date,dictDataByType[blockoutDefNum],searchType,
+						listOpNums,listBlockoutTypesOne);
+					ScheduleOpening scheduleOpening=null;
+					if(listOpeningsForProvs==null) {
+						//The first opening of the day in this blockout type (GetSearchResults).
+						scheduleOpening=AddTimeToSearchResultsHelper(listPotential,beforeTimeSearch,afterTime);
+					}
+					else {
+						//The first provider opening of the day at a time and operatory this blockout type has open (GetSearchResultsForBlockoutAndProvider).
+						HashSet<HItem> hashSetHItems=new HashSet<HItem>();
+						List<ScheduleOpening> listOpeningsBlockout=AddTimesToSearchResultsHelper(listPotential,beforeTimeSearch,afterTime);
+						for(int i=0;i<listOpeningsBlockout.Count;i++) {
+							hashSetHItems.Add(new HItem { DateTimeAvailable=listOpeningsBlockout[i].DateTimeAvail,OpNum=listOpeningsBlockout[i].OpNum,
+								ClinicNum=listOpeningsBlockout[i].ClinicNum });
+						}
+						ScheduleOpening scheduleOpeningProv=listOpeningsForProvs.FirstOrDefault(x => x.DateTimeAvail.Date==date
+							&& hashSetHItems.Contains(new HItem { DateTimeAvailable=x.DateTimeAvail,OpNum=x.OpNum,ClinicNum=x.ClinicNum }));
+						if(scheduleOpeningProv!=null) {
+							//A copy, so the same provider opening can be the row of two blockout types.
+							scheduleOpening=new ScheduleOpening { DateTimeAvail=scheduleOpeningProv.DateTimeAvail,ProvNum=scheduleOpeningProv.ProvNum,
+								ClinicNum=scheduleOpeningProv.ClinicNum,OpNum=scheduleOpeningProv.OpNum };
+						}
+					}
+					if(scheduleOpening==null) {
+						continue;
+					}
+					scheduleOpening.BlockoutDefNum=blockoutDefNum;
+					listOpeningsForDate.Add(scheduleOpening);
+				}
+				if(listOpeningsForDate.Count==0) {
+					continue;
+				}
+				//Stable sort: within one time, the rows keep the order of the blockout types.
+				listOpenings.AddRange(listOpeningsForDate.OrderBy(x => x.DateTimeAvail));
+				countDates++;
+			}
+			return listOpenings;
+		}
+
+		///<summary>The share of data that a search for one blockout type would have read: the same appointments and provider schedules, and of the
+		///blockouts only those of this type (the read for several types holds the blockouts of all of them, and a blockout of another selected type
+		///must neither count as an opening of this one nor block it).</summary>
+		private static ApptSearchData GetDataForBlockoutType(ApptSearchData data,long blockoutDefNum) {
+			Meth.NoCheckMiddleTierRole();
+			ApptSearchData dataForType=new ApptSearchData();
+			dataForType.DateEvaluating=data.DateEvaluating;
+			dataForType.AppointmentToAdd=data.AppointmentToAdd;
+			dataForType.ListAppointments=data.ListAppointments;
+			//A read for one type returns schedules of that blockout type and schedules without a blockout type (provider schedules).
+			dataForType.ListSchedules=data.ListSchedules.FindAll(x => x.BlockoutType==0 || x.BlockoutType==blockoutDefNum);
+			HashSet<long> hashSetScheduleNums=new HashSet<long>(dataForType.ListSchedules.Select(x => x.ScheduleNum));
+			//A copy: the search removes operatories from this list as it goes.
+			dataForType.ListSchedOps=data.ListSchedOps.FindAll(x => hashSetScheduleNums.Contains(x.ScheduleNum));
+			return dataForType;
+		}
+
 		[Serializable]
 		private class HItem {
 			public DateTime DateTimeAvailable=DateTime.MinValue;
@@ -621,6 +738,9 @@ namespace OpenPmsDentalBusiness {
 		public long ClinicNum=0;
 		/// <summary> The operatory this opening is for.  Can be 0 if this opening is a dynamic prov schedule.</summary>
 		public long OpNum=0;
+		///<summary>FK to definition.DefNum (DefCat.BlockoutTypes): the blockout type this opening was found in, when the search was for blockout types
+		///(ApptSearch.GetSearchResultsForBlockouts). 0 otherwise.</summary>
+		public long BlockoutDefNum=0;
 	}
 	
 }
