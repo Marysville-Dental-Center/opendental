@@ -1,6 +1,7 @@
 # Adoption runbook: moving the office from Open Dental 25.3.48 to Open PMS - Dental
 
-Status: 2026-10-25, third revision after review (M1-Z r3), plus steps 0.11 and 7.1 (combined review, 2026-11-01); milestone M1 switch
+Status: 2026-10-25, third revision after review (M1-Z r3), plus steps 0.11 and 7.1 (combined review, 2026-11-01), which since 2026-11-07
+list only the five settings Open Dental has no name for (the others carry over under Open Dental's names, SWMAP); milestone M1 switch
 gate (M1-Z in [specs/port-backlog.md](specs/port-backlog.md)).
 Rehearsed on synthetic data with [tools/AdoptionValidation](../tools/AdoptionValidation/README.md); results in
 [m1-validation-report.md](m1-validation-report.md). The tool commands of steps 0.2, 1.1, 3.2 to 6.1 (everything before the program's first
@@ -50,7 +51,8 @@ same code):
    to it, and a category without a code group of its kind gets a new group; the preferences themselves are kept. Then the routine
    maintenance steps create this program's own maintenance tables (empty) and give every user group that has Security Admin the two new
    routine maintenance permissions (Maintenance Setup and Maintenance Record Completion), and the SSH host keys step creates the empty table
-   in which the program remembers each SSH server's host key. Step 0.2 lists all these changes in advance
+   in which the program remembers each SSH server's host key. The settings step (2026110731) moves only rows that release 0.0 wrote under
+   names of its own, which an Open Dental database never has, so it changes nothing here. Step 0.2 lists all these changes in advance
    (`migration-preview`); step 4 checks that adoption made exactly them.
 7. records the finish and adds a security log entry
 
@@ -65,11 +67,14 @@ original since the backup. The same holds the other way after a rollback, which 
 adopted database (Rollback, steps 1 and 2). Going back to Open Dental means going back to the original, and anything entered in this program
 after the switch must then be re-entered by hand. Decide the rollback deadline before the day (step 0.9).
 
-**Adoption does not carry over two things**, and neither `migration-preview` nor `adopt` lists them: the stored passwords (step 7), and 14
-settings that Open Dental added in 24.4 to 25.3 whose preference names in Open Dental's database are not public. This program keeps each of
-those settings in a preference row of its own or under the name the specs propose, so after adoption it shows its default (off, blank or 0)
-unless Open Dental happens to use that name. The second person records them in Open Dental before the day (step 0.11), and they are set
-again in step 7.1.
+**The settings Open Dental added in 24.4 to 25.3 carry over** under Open Dental's own names, which the setting names of the office database
+gave (owner question Switch-over 1, answered 2026-11-07; [port-notes/SWMAP.md](port-notes/SWMAP.md)): this program reads the office's rows as
+they are, and adoption does not change them. `migration-preview` lists them with the value this program will show (step 0.2); step 7.1
+compares them. Five settings of this program have no Open Dental setting in the office database; they start at their defaults.
+
+**Adoption does not carry over two things**, and `adopt` does not list them: the stored passwords (step 7), and those five settings of this
+program (step 0.11), which Open Dental 25.3.48 has no preference for. The second person looks for them in Open Dental before the day (step
+0.11), most likely finds none, and anything found is set again in step 7.1.
 
 ### Why steps 3 to 6.1 run without the program
 
@@ -294,6 +299,13 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature
   Tracking stays off ...` (or `... no supply has stock (supply.LevelOnHand), so the stock ledger starts empty. ...`). The stock ledger is the
   one table of this program that adoption writes rows into; step 4 holds it to exactly these rows, and the others, the stock counts too, to
   empty.
+- `Settings read under Open Dental's names (adoption keeps these rows as they are; ...): Sales Tax procedure code (B-ACCT): <code or blank>
+  [SalesTaxProcCode=...]; Prompt for Medical EOB on primary claims (B-CLAIM): ticked [ClaimCheckForMedicalEOB='1']; ...` with one part per
+  setting of "Settings that carry over by Open Dental's name" (step 0.11): what this program will show (ticked, not ticked, a code or a
+  number of milliseconds) and the office's stored rows (`no row` for a setting the office never changed). Adoption changes none of these
+  rows. **Write the shown values on the checklist** (step 0.2): step 7.1 compares them with this program's windows.
+- `Step 2026110731 (settings under Open Dental's names) changes no preference row: the database has no setting row of release v0.0.` This
+  step only moves rows that a database release 0.0 used wrote under this program's own names; an Open Dental database has none.
 - `Plug-ins: N program row(s) name a plug-in DLL (PluginDllName); a plug-in built for Open Dental does not load in this program ...: <ProgName>
   (ProgramNum N, enabled, <dll>); ...` (or `Plug-ins: no program row names a plug-in DLL ...`). Adoption changes none of these rows, but a
   plug-in built against Open Dental's assemblies stops loading after the switch, without a message. Give the list to the developers before
@@ -420,33 +432,38 @@ after the switch). After the deadline the original database is archived (step 11
 
 0.10. **Open Dental installers.** Keep the Open Dental 25.3.48 installer and the office's registration details at hand; rollback needs them.
 
-0.11. **Settings that do not carry over** (see "What adoption does"). Open Dental 24.4 to 25.3 added the settings below; Open Dental's names
-for them in its database are not public, so this program reads each from the preference row in the third column, and after adoption each
-shows its default unless Open Dental happens to use that name. In the week before the day, in Open Dental 25.3.48, the second person opens
-each window below and writes in the fourth column what each box holds: ticked or not ticked, the procedure code, the number, or the folder.
-Change nothing in Open Dental. A box the second person cannot find in Open Dental is written "not found" and given to the developers; the
-switch does not wait for it. These are settings, no patient data; keep the filled table with the checklist. Step 7.1 sets each value again in
-this program.
+0.11. **Settings that do not carry over** (see "What adoption does"). These five settings of this program have no preference in the office's
+Open Dental 25.3.48 database (its setting names show none; [port-notes/SWMAP.md](port-notes/SWMAP.md)), so this program keeps each in the
+row of its own in the third column, and after adoption each shows its default. Open Dental may still offer a matching box somewhere (the
+inserter barcode, for example, may belong to its statement layout). In the week before the day, in Open Dental 25.3.48, the second person
+looks for each box below and writes in the fourth column what it holds: ticked or not ticked, the number, or the folder; most likely the
+box is not there, and is written "not found". Change nothing in Open Dental. The switch does not wait for this table. These are settings,
+no patient data; keep the filled table with the checklist. Step 7.1 sets each value found again in this program.
 
 | # | Window and box (as this program names them) | Read from (package) | In Open Dental 25.3.48 (0.11) | Set in this program (7.1) | Initials |
 |---|---|---|---|---|---|
-| 1 | Preferences, Account - General, Adjustments, Sales Tax: "Sales Tax procedure code" (a procedure code, or blank) | `SalesTaxProcCode` (B-ACCT) | | | |
-| 2 | Preferences, Account - General, Claim - Receive, Claims Medical: "Prompt for Medical EOB on primary claims" | `ForkClaimMedReceivedPromptForMedicalEob` (B-CLAIM) | | | |
-| 3 | Preferences, Appointment - General, Appearance: "Show provider time on the operatory background in the provider's color" | `ForkApptProvTimeBarsOnOpBackground` (B-APPT) | | | |
-| 4 | Preferences, Appointment - General, Appearance: "No provider time set: show the secondary provider color in the time bar" | `ForkApptTimeBarSecondaryColorNoProvTime` (B-APPT) | | | |
-| 5 | Preferences, Main Window - General, Miscellaneous: "Blur when switching between modules to prevent accidental clicking" | `ForkModuleSwitchBlur` (B-SHELL) | | | |
-| 6 | Preferences, Manage - General, ERA: "Auto split ERAs with CARC denial codes listed above" (it can only be ticked while the CARC codes box above it lists codes) | `ForkEraAutoSplitCarcDenials` (B-ERA) | | | |
-| 7 | Preferences, Server Connections - General, Replication: "Read delay after write (ms)" | `ForkReplicationReadDelayMs` (B-SERVER) | | | |
-| 8 | Preferences, Server Connections - General, Replication: "Write delay for signals (ms)" | `ForkReplicationSignalLookbackMs` (B-SERVER) | | | |
-| 9 | Report Setup, Misc Settings: "Include all procedures with no notes in the Incomplete Procedures Report" | `ForkReportsIncompleteProcsAllNoNotes` (B-SERVER) | | | |
-| 10 | Lock Date (the global lock date): "Payment plans are not affected by the global lock" | `SecurityLockExcludesPayPlans` (B-PAY) | | | |
-| 11 | Billing Defaults: "Print inserter barcode on statements" | `BillingStatementInserterBarcode` (B-PRINT) | | | |
-| 12 | Perio Setup (from the Perio Chart): "Use the term "Recession" (reverts to Gingival Margin when hyperplasia is charted)" | `PerioUseRecessionTerm` (B-PERIO) | | | |
-| 13 | Wiki Setup, Read-only copy of the wiki: on or off, and its folder | `ForkWikiReadOnlyExportPath` (B-WIKI) | | | |
-| 14 | Wiki Setup, Read-only copy of the wiki: "Update the copy after each save" | `ForkWikiReadOnlyAutoExport` (B-WIKI) | | | |
+| 1 | Preferences, Server Connections - General, Replication: "Write delay for signals (ms)" | `ForkReplicationSignalLookbackMs` (B-SERVER) | | | |
+| 2 | Report Setup, Misc Settings: "Include all procedures with no notes in the Incomplete Procedures Report" | `ForkReportsIncompleteProcsAllNoNotes` (B-SERVER) | | | |
+| 3 | Billing Defaults: "Print inserter barcode on statements" | `BillingStatementInserterBarcode` (B-PRINT) | | | |
+| 4 | Wiki Setup, Read-only copy of the wiki: on or off, and its folder | `ForkWikiReadOnlyExportPath` (B-WIKI) | | | |
+| 5 | Wiki Setup, Read-only copy of the wiki: "Update the copy after each save" | `ForkWikiReadOnlyAutoExport` (B-WIKI) | | | |
 
-The defaults after adoption: every box not ticked, rows 1 and 13 blank (13 blank means no read-only copy), rows 7 and 8 `0`, except row 14,
-which is ticked.
+The defaults after adoption: rows 2 and 3 not ticked, row 1 `0`, row 4 blank (no read-only copy), row 5 ticked.
+
+**Settings that carry over by Open Dental's name.** This program reads these from the office's own rows, under the names in the second
+column, so nothing is recorded here: `migration-preview` (step 0.2) lists what each will show, and step 7.1 compares them.
+
+| Window and box (as this program names them) | Package: Open Dental's row | Note |
+|---|---|---|
+| Preferences, Account - General, Adjustments, Sales Tax: "Sales Tax procedure code" | B-ACCT: `SalesTaxProcCode` | A procedure code, or the CodeNum of one |
+| Preferences, Account - General, Claim - Receive, Claims Medical: "Prompt for Medical EOB on primary claims" | B-CLAIM: `ClaimCheckForMedicalEOB` | |
+| Preferences, Appointment - General, Appearance: "Show provider time on the operatory background in the provider's color" | B-APPT: `ApptProvbarShowOnOps` | |
+| Preferences, Appointment - General, Appearance: "No provider time set: show the secondary provider color in the time bar" | B-APPT: `ApptUseSecProvTimeIfEmpty` | |
+| Preferences, Main Window - General, Miscellaneous: "Blur when switching between modules to prevent accidental clicking" | B-SHELL: `BlurModuleOnLoad` | |
+| Preferences, Manage - General, ERA: "Auto split ERAs with CARC denial codes listed above" | B-ERA: `EraAutoProcessSplitByCarcCodes` | |
+| Preferences, Server Connections - General, Replication: "Read delay after write (ms)" | B-SERVER: `ReplicationWriteReadDelayEnabled` and `ReplicationWriteReadDelayMS` | The milliseconds count only while Enabled is 1 |
+| Lock Date (the global lock date): "Payment plans are not affected by the global lock" | B-PAY: `PayPlansIncludeInGlobalLock` | **Inverted**: Open Dental's 1 (payment plans included in the global lock) shows as not ticked, 0 as ticked |
+| Perio Setup (from the Perio Chart): "Use the term "Recession" (reverts to Gingival Margin when hyperplasia is charted)" | B-PERIO: `PerioRecessionInsteadOfGM` | |
 
 ## 1. Start of the outage
 
@@ -744,12 +761,14 @@ re-enter each:
 Run `credentials` again afterwards: entries re-entered in this program are stored in its own format and disappear from the list.
 
 7.1. **[workstation] The settings of step 0.11.** In this program (the workstation of step 6.2), open each window of the table of step 0.11
-and set each box to the value written in its fourth column: tick or untick it, type the code, the number or the folder. A box that already
-shows that value needs nothing (Open Dental used the same name, or the value is the default). Save each window (OK or Save; Preferences saves
-all its pages at once). The second person then opens each window again, compares every box with the fourth column, writes "set" in the fifth
-column and initials the row. A row written "not found" in step 0.11 stays as it is. A value that this program refuses (for example a sales tax
-procedure code that is not in the procedure code list): write "refused" in the fifth column and give the row to the developers; that setting
-stays at its default until they answer, and the switch goes on.
+and set each box to the value written in its fourth column: tick or untick it, type the number or the folder. A box that already shows that
+value needs nothing (the value is the default). Save each window (OK or Save; Preferences saves all its pages at once). The second person
+then opens each window again, compares every box with the fourth column, writes "set" in the fifth column and initials the row. A row written
+"not found" in step 0.11 stays as it is. A value that this program refuses: write "refused" in the fifth column and give the row to the
+developers; that setting stays at its default until they answer, and the switch goes on. Then the second person opens each window of the
+table "Settings that carry over by Open Dental's name" and compares every box with the value the `migration-preview` line "Settings read
+under Open Dental's names" showed (step 0.2), without changing anything; a box that differs, or a sales tax procedure code this program does
+not find, is given to the developers, and the switch goes on.
 
 ## 8. Switch every workstation
 
@@ -884,7 +903,7 @@ Sign each line with time and initials.
 | 0.0.2 | `adoption_admin` created, history file removed | Password in the password manager | |
 | 0.0.3, 0.0.4 | Forward and tools checked from the admin PC | `connections` lists the workstations' connections, or none | |
 | 0.1 | Validation report signed, release build ready | Owner signature | |
-| 0.2 | Versions; FLOAT check filed; fork migration preview | 25.3.48.0 / 25.3.48.0, not corrupted, no update running; `float-check` exit 0 or 6, file kept; `migration-preview` exit 0, each report row rename written here (old name, new name, DisplayReportNum), or "none"; NULL notes ___, preferences ___, PhoneExtension grants moved ___, user groups BlockoutAdd ___ / BlockoutDelete ___; DXC Patient Credit Score row disabled ___ (ProgramNum or none), buttons deleted ___; UDS+ row after DisplayReportNum ___, rows moved ___, user groups granted ___; Insurance History code groups marked ___ (CodeGroupNum and History Proc Code), added ___ | |
+| 0.2 | Versions; FLOAT check filed; fork migration preview | 25.3.48.0 / 25.3.48.0, not corrupted, no update running; `float-check` exit 0 or 6, file kept; `migration-preview` exit 0, each report row rename written here (old name, new name, DisplayReportNum), or "none"; NULL notes ___, preferences ___, PhoneExtension grants moved ___, user groups BlockoutAdd ___ / BlockoutDelete ___; DXC Patient Credit Score row disabled ___ (ProgramNum or none), buttons deleted ___; UDS+ row after DisplayReportNum ___, rows moved ___, user groups granted ___; Insurance History code groups marked ___ (CodeGroupNum and History Proc Code), added ___; settings read under Open Dental's names, each shown value written here (or the line kept with the file); step 2026110731 changes no preference row | |
 | 0.3 | Services and tasks listed, per computer (both service queries) | List filed | |
 | 0.4 | Direct database users and jobs listed | List filed | |
 | 0.5 | Workstations listed, with folder, database and MariaDB user | List filed | |
@@ -894,7 +913,7 @@ Sign each line with time and initials.
 | 0.7 | If no: passwords collected, window planned from the rehearsal (+200%); tools and server check if done | Plan filed | |
 | 0.8 | Disk space | 1.5 × / 1.2 × the database folder free (2.7 × on one disk) | |
 | 0.9 | Rollback deadline agreed | Date and time | |
-| 0.11 | Settings that do not carry over, recorded in Open Dental 25.3.48 by the second person | Table of step 0.11, fourth column filled for all 14 rows (a value, or "not found") | |
+| 0.11 | Settings that do not carry over, recorded in Open Dental 25.3.48 by the second person | Table of step 0.11, fourth column filled for all 5 rows (a value, or "not found") | |
 | 1.1 | Everyone out | `connections`: only the services' connections left, or none | |
 | 1.2 | Other writers paused | Checked | |
 | 2 | Open Dental services stopped and removed, tasks disabled, A to Z Setup moved | Both service queries empty, tasks `Disabled`, on every computer of 0.3 | |
@@ -906,7 +925,7 @@ Sign each line with time and initials.
 | 6.1 | Validation before the first start | 0 unexpected differences, Allowed section read (`displayreport`, `grouppermission`, `codegroup` and `toolbutitem` as whole tables, `program.Enabled` as a whole column); startup check exit 0 | |
 | 6.2 | First start, smoke test, aging report | OK | |
 | 7 | Passwords re-entered | `credentials` list empty or explained | |
-| 7.1 | Recorded settings set again in this program | Table of step 0.11, fifth column "set" (or "refused", given to the developers) and initialled by the second person on every row not "not found" | |
+| 7.1 | Recorded settings set again in this program | Table of step 0.11, fifth column "set" (or "refused", given to the developers) and initialled by the second person on every row not "not found"; the settings that carry over by Open Dental's name show the values `migration-preview` listed (or the differences given to the developers) | |
 | 8 | Every workstation switched | Table of step 8 complete | |
 | 9 | Other programs repointed, backups on `opendental_pms` | Checked | |
 | 10.1 | No connection to `opendental` | `connections` exit 0 | |

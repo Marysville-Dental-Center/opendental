@@ -148,7 +148,7 @@ Not tested by running code:
 
 ## Owner questions
 
-1. What is Open Dental's preference name for "Prompt for Medical EOB on primary claims"? Or approve the proposed `ClaimMedReceivedPromptForMedicalEob`, so the registry owner can register it. Until then the setting works from the fork-owned row `ForkClaimMedReceivedPromptForMedicalEob`.
+1. What is Open Dental's preference name for "Prompt for Medical EOB on primary claims"? Or approve the proposed `ClaimMedReceivedPromptForMedicalEob`, so the registry owner can register it. Until then the setting works from the fork-owned row `ForkClaimMedReceivedPromptForMedicalEob`. **Answered (2026-11-07, owner question Switch-over 1):** `ClaimCheckForMedicalEOB`; the code reads it now (see "Open Dental's name" below).
 2. Medical EOB trigger: is the fork's reading right (ask when a medical claim is received, about the unsent primary dental claims)? The spec lists two other readings.
 3. Should attaching the medical EOB set the EoB paperwork flag automatically (as built), or leave the flags to the user?
 4. Override audit entries for received claimprocs are filed under Claim Procedure Received Edit, which is not in the audit trail's permission filter (24.3 behaviour, M1-02's file). Should it be added, or should all override entries go under Proc Edit?
@@ -172,3 +172,16 @@ Not tested by running code:
 - **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** "Prompt for Medical EOB on primary claims" is read from the fork-owned row `ForkClaimMedReceivedPromptForMedicalEob`. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (row 2 of its table), step 7.1 sets it again in this program, and both are checklist rows.
 - Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
 - The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.
+
+## Open Dental's name (SWMAP, 2026-11-07, branch `next/swmap-1`)
+
+- The setting names of the office's Open Dental 25.3.48 database (owner question Switch-over 1) give Open Dental's name of "Prompt for
+  Medical EOB on primary claims": `ClaimCheckForMedicalEOB` (1/0). `ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT` is now that name, and the
+  setting is read and written there, by name and outside `PrefName`, so the office's value carries over at the switch-over as it is. The
+  fork-owned row and the hand-over through `PrefName` (`PREF_NAME_MEDICAL_EOB_PROMPT_FORK`, `TryGetMedicalEobPrefName`,
+  `GetMedicalEobPrefNameInUse`) are gone; a missing row still reads as off and saving the default still writes nothing.
+- The row release 0.0 wrote (`ForkClaimMedReceivedPromptForMedicalEob`) moves to this name in the fork migration step 2026110731
+  (`OdSettingNamesStep`); runbook step 0.11 no longer lists the setting.
+- Tests: `BCLAIMTests.RuleTests.MedicalEob_PreferenceIsOpenDentalsRow`, `MedicalEobDbTests.Prompt_FollowsOpenDentalsPreferenceRow` and
+  `Prompt_ReadsTheOfficesRow_NotTheReleaseV0Row` (in place of the tests of the fork row and the proposed name), `SWMAPTests`. See
+  [SWMAP.md](SWMAP.md).

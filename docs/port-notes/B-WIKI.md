@@ -104,7 +104,7 @@ New `OpenDentBusiness/Misc/WikiStaticExport.cs`. Layout of the folder:
 2. Should `[[file:]]` targets outside the wiki folder also be copied into the read-only copy (with a size cap), or stay as links?
 3. Is "off" the right default for the search limit?
 4. Keep the search limit in `userodpref` type 25 / `Fkey` 1, or register a fork-only `UserOdFkeyType`?
-5. If the census finds an Open Dental 25.2 preference for the read-only wiki in the office database, should the fork read it instead of its own rows?
+5. If the census finds an Open Dental 25.2 preference for the read-only wiki in the office database, should the fork read it instead of its own rows? **Answered (2026-11-07, owner question Switch-over 1):** the setting names of the office's Open Dental 25.3.48 database have no setting for a read-only wiki copy, so there is nothing to read: the fork keeps `ForkWikiReadOnlyExportPath` and `ForkWikiReadOnlyAutoExport`, which start at their defaults (no copy), and runbook step 0.11 keeps them in case Open Dental shows such a box elsewhere ([SWMAP.md](SWMAP.md)). Nothing changed in the code.
 6. Is the Setup permission the right gate for the read-only copy settings? Should non-admin users see drafts of locked pages (as the spec says; they cannot edit them)?
 
 ## Not tested automatically

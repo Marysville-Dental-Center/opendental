@@ -102,7 +102,7 @@ Run for this package: `BPERIOTests` and `RegistryTests` (its `PrefNameTests` kee
 
 ## Questions for the owner
 
-1. Do you know Open Dental's preference name for the 24.4 "Recession" option (for example from Perio Setup in your 25.3 database)? Until then it is stored as `PerioUseRecessionTerm`.
+1. Do you know Open Dental's preference name for the 24.4 "Recession" option (for example from Perio Setup in your 25.3 database)? Until then it is stored as `PerioUseRecessionTerm`. **Answered (2026-11-07, owner question Switch-over 1):** `PerioRecessionInsteadOfGM`; the code reads it now (see "Open Dental's name" below).
 2. With the Recession term on, should the *Ging Marg +* check box read "Recession +" (as built), or keep "Ging Marg +" because it enters hyperplasia?
 3. Is "auto Att Ging" between Ging Marg and MGJ the place you expect, or should it sit on the other side of MGJ, next to the probing rows?
 
@@ -111,3 +111,16 @@ Run for this package: `BPERIOTests` and `RegistryTests` (its `PrefNameTests` kee
 - **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** The Perio Setup "Recession" option is read from `PerioUseRecessionTerm`, the spec's proposed name (owner question 1), which carries the office's value over only if Open Dental uses the same name. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (row 12 of its table), step 7.1 sets it again in this program, and both are checklist rows.
 - Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
 - The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.
+
+## Open Dental's name (SWMAP, 2026-11-07, branch `next/swmap-1`)
+
+- The setting names of the office's Open Dental 25.3.48 database (owner question Switch-over 1) give Open Dental's name of the 24.4 Perio
+  Setup option: `PerioRecessionInsteadOfGM` (the Recession wording instead of Gingival Margin, 1/0; Open Dental 24.4 release notes, Chart
+  Module, https://www.opendental.com/site/version24_4.html). `PerioMeasures.PrefNameUseRecessionTerm` is now that name, read and written by
+  name outside `PrefName`, so the office's choice carries over at the switch-over as it is; a missing row still reads as off.
+- The row release 0.0 wrote (`PerioUseRecessionTerm`) moves to this name in the fork migration step 2026110731 (`OdSettingNamesStep`); runbook
+  step 0.11 no longer lists the option.
+- Open Dental 25.3.48 also has `PerioRedAttGing`, by its name a "red if" threshold for the attached gingiva row; this program's auto Att Ging
+  row has no threshold and is never drawn red, so nothing reads it (a possible follow-up).
+- Tests: `BPERIOTests.PerioRulesTests.RecessionPreferenceName_IsOpenDentalsName_ReadByName`, the `PerioDbTests` of the option (on the new
+  name), `SWMAPTests` (the Recession wording on and off on adopted synthetic databases). See [SWMAP.md](SWMAP.md).

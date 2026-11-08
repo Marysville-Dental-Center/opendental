@@ -118,7 +118,7 @@ Checks on the final branch (`port/b-server-r1`): build 0 errors, 376 warnings (b
 
 ## Questions for the owner
 
-1. The three settings use fork names (`Fork...`). Keep them, or do you know Open Dental's real keys from your 25.3 office database (a read-only `SELECT PrefName FROM preference WHERE PrefName LIKE '%Replication%' OR PrefName LIKE '%IncompleteProcs%'` would show them)?
+1. The three settings use fork names (`Fork...`). Keep them, or do you know Open Dental's real keys from your 25.3 office database (a read-only `SELECT PrefName FROM preference WHERE PrefName LIKE '%Replication%' OR PrefName LIKE '%IncompleteProcs%'` would show them)? **Answered (2026-11-07, owner question Switch-over 1):** the office database has `ReplicationWriteReadDelayEnabled` and `ReplicationWriteReadDelayMS`, which now hold the read delay; it has no setting for the look-back for signals or the report default (only the 24.3 `ReportsIncompleteProcs*` names), so those two keep their fork rows (see "Open Dental's names" below).
 2. Is it right that a procedure in a group note with text counts as noted for "Include all procedures with no notes"?
 3. Should a note of spaces only count as "no note"?
 4. Should the read delay start on any write (current choice) or only on user saves?
@@ -130,3 +130,19 @@ Checks on the final branch (`port/b-server-r1`): build 0 errors, 376 warnings (b
 - **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** The two replication delays and the Report Setup default "Include all procedures with no notes" are read from the fork-owned rows `ForkReplicationReadDelayMs`, `ForkReplicationSignalLookbackMs` and `ForkReportsIncompleteProcsAllNoNotes`. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (rows 7, 8 and 9 of its table), step 7.1 sets it again in this program, and both are checklist rows.
 - Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
 - The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.
+
+## Open Dental's names (SWMAP, 2026-11-07, branch `next/swmap-1`)
+
+- The setting names of the office's Open Dental 25.3.48 database (owner question Switch-over 1) include two replication rows,
+  `ReplicationWriteReadDelayEnabled` (1/0) and `ReplicationWriteReadDelayMS` (milliseconds): Open Dental's one read/write delay of 25.2
+  (https://www.opendental.com/site/version25_2.html, Miscellaneous). **INFERRED:** it is taken as this program's read delay after a write
+  (the name says a delay of reads after writes). `ReplicationDelay` now reads the delay from them (`GetReadDelayMsFromValues`: the
+  milliseconds, clamped to 0 to 60000, while Enabled is 1; otherwise 0) and saves to them (a delay above 0 writes the milliseconds and Enabled
+  1; 0 writes Enabled 0 and keeps the milliseconds), by name outside `PrefName`, so the office's delay carries over at the switch-over. The row
+  release 0.0 wrote (`ForkReplicationReadDelayMs`) moves to them in the fork migration step 2026110731 (`OdSettingNamesStep`).
+- The office database has no setting for the look-back for signals or for the Report Setup default "Include all procedures with no notes"
+  (its Incomplete Procedure Notes names are the 24.3 `ReportsIncompleteProcsNoNotes`, `ReportsIncompleteProcsUnsigned` and
+  `ReportsIncompleteProcsExcludeCodes`, which carry over as before). `ForkReplicationSignalLookbackMs` and
+  `ForkReportsIncompleteProcsAllNoNotes` stay, and stay in runbook step 0.11 (most likely "not found" in Open Dental).
+- Tests: `BSERVERTests.ReplicationDelayTests.ReadDelay_IsOpenDentalsTwoRows_ReadByName`, `ReplicationDelayDbTests.Settings_...` (the two rows,
+  the Enabled row turned off by 0, the office's rows read as set), `SWMAPTests`. See [SWMAP.md](SWMAP.md).

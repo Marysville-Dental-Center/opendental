@@ -90,7 +90,7 @@ Sources used: the public release notes (version25_1.html, version25_2.html), the
 
 ## INFERRED behaviours (our choices; public sources are silent)
 
-1. **ProgName values** are `Overjet`, `DTXStudio` and `DTXStudioAcquire` (the specs' proposals). Open Dental's real names aren't in public sources. See the owner questions.
+1. **ProgName values** are `Overjet`, `DTXStudio` and `DTXStudioAcquire` (the specs' proposals). Open Dental's real names aren't in public sources. See the owner questions. *Confirmed on 2026-11-07: the office's Open Dental 25.3.48 database uses exactly these names (owner question 1).*
 2. **The rows are inserted at runtime, not by a fork migration step.** Two reasons:
    - The assigned level range (2027001701–2027001799) fails `ForkMigrationRunner.ValidateStep`, which requires `yyyyMMddNN`, and "20270017" has month 00. A step in that range would stop every migration.
    - The fork's vendor-direct convention already inserts program rows from Program Links (`Programs.InsertIfMissing`).
@@ -129,7 +129,7 @@ Sources used: the public release notes (version25_1.html, version25_2.html), the
 
 1. **ProgName values.** Please check the office database:
    `SELECT ProgramNum,ProgName,ProgDesc,Enabled,Path FROM program WHERE ProgName LIKE '%overjet%' OR ProgName LIKE '%dtx%' OR ProgName='IAP';`
-   If Open Dental's names differ from `Overjet`, `DTXStudio` and `DTXStudioAcquire`, the enum members must be renamed before release. Otherwise a second, disabled row is added, and the office's own row falls back to the generic launcher. The `programproperty` descriptions of those rows also tell us whether Open Dental had a PatNum/ChartNum or other property we should match.
+   If Open Dental's names differ from `Overjet`, `DTXStudio` and `DTXStudioAcquire`, the enum members must be renamed before release. Otherwise a second, disabled row is added, and the office's own row falls back to the generic launcher. The `programproperty` descriptions of those rows also tell us whether Open Dental had a PatNum/ChartNum or other property we should match. **Answered (2026-11-07, owner question Switch-over 1):** the office's program table has links named exactly `Overjet`, `DTXStudio`, `DTXStudioAcquire` and `IAP`, this program's names, so nothing is renamed and no second link is added (see "The office's link names" below). The property descriptions of those rows were not part of the answer; a property of Open Dental's that this program does not know stays as it is, unread.
 2. **Migration level range.** 2027001701–2027001799 is not a valid `yyyyMMddNN` level: `ForkMigrationRunner.ValidateStep` throws for month 00. This package needed no step. Other packages given ranges of the same shape will hit this.
 3. **Overjet.** To open a patient directly, we need the `bridge_redirect` parameter names from Overjet. Once known, should we ship a default "Patient URL parameters" template, or leave it to the office?
 4. **DTX Studio.** We need the `DTXsync.exe` command-line specification from DTX/Envista, including how Acquire differs. The same question applies: ship default "Patient arguments", or leave them to the office?
@@ -160,3 +160,15 @@ Sources used: the public release notes (version25_1.html, version25_2.html), the
 Related existing assemblies: `VendorDirectTests` (the `ProgramName` layout test and the vendor-direct registry) and `ForkMigrationTests` (a TableTypes file changed, enum only).
 
 Not tested: the windows themselves (the GUI isn't launched), starting a real browser or `DTXsync.exe`, and the vendors' real pages and programs.
+
+## The office's link names (SWMAP, 2026-11-07, branch `next/swmap-1`)
+
+- Owner question Switch-over 1 / V-BRIDGE1 1: the office's Open Dental 25.3.48 program table has links named exactly `Overjet`, `DTXStudio`,
+  `DTXStudioAcquire` and `IAP`. These are `ProgramName.Overjet`, `DTXStudio`, `DTXStudioAcquire` and `IAP`, so no name changes:
+  `Programs.InsertIfMissing` (SQL, as MariaDB compares names) and `Programs.GetCur` (exact) both find the office's row, `BridgeLinkRows.EnsureProgram`
+  inserts no second row and leaves the office's row, its settings and its toolbar buttons as they are, and adds only the ClinicNum 0
+  properties the row lacks. The IAP clean-up still applies only to a desktop path left over from 24.3; a web address is kept.
+- Test: `SWMAPTests.AdoptedOd253Tests.ProgramLinks_ReuseTheOfficeRows_NoSecondLink` (an adopted synthetic 25.3.48 database with the four rows,
+  made-up paths and buttons: after the four setups run, one row per name with its ProgramNum, Enabled, path, command line and note, the two
+  office buttons and no new one, the office's Birthdate Format kept and the missing Patient arguments property added). See
+  [SWMAP.md](SWMAP.md).

@@ -263,3 +263,10 @@ real printer, scanning a printed barcode with an inserter, and the middle-tier p
 - **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** "Print inserter barcode on statements" is read from `BillingStatementInserterBarcode`, the spec's proposed name, which carries the office's value over only if Open Dental uses the same name. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (row 11 of its table), step 7.1 sets it again in this program, and both are checklist rows.
 - Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
 - The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.
+
+## The office's setting names (SWMAP, 2026-11-07, branch `next/swmap-1`)
+
+- The setting names of the office's Open Dental 25.3.48 database (owner question Switch-over 1) include no preference for the inserter barcode,
+  so `BillingStatementInserterBarcode` stays this program's own row and starts off after the switch-over. Open Dental may keep the option with
+  the statement layout instead (the 25.3 spec allowed for that), so runbook step 0.11 keeps the row (now row 3) for the office to look for in
+  Open Dental. Nothing changed in the code. See [SWMAP.md](SWMAP.md).

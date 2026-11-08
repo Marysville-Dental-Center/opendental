@@ -138,6 +138,12 @@ Sort choice comes back after reopening the window as the same user.
 3. For an eForm with no status, show "None" (as built) or leave the cell blank?
 4. Imports made before this change, including those Open Dental 25.3 made in the office, are not shown as Imported, because the text and
    key of Open Dental's audit entries are not public. If the office copy shows its `EFormImport` entries carry the EFormNum in `FKey`, they
-   can be counted too.
+   can be counted too. **Answered (2026-11-07, with owner question Switch-over 1):** the look at the office database gave setting names
+   only, which do not show audit entries, so the switch-over converts none: the audit trail is copied as it is, and nothing changed in the
+   code. `PatientFormsList.IsImportLog` already counts an `EFormImport` entry that carries the EFormNum in `FKey` and says "imported" (not a
+   pending-insurance entry), whoever wrote it; an Open Dental 25.3 entry written that way shows its form as Imported, and a form without such
+   an entry shows its status. Open Dental 25.3.48 also has the settings `EFormImportAllergiesAsOther` and `EFormImportProblemsAsOther`,
+   which this program does not read: its import always files an unmatched allergy or problem under "Other", as 24.3 did
+   ([SWMAP.md](SWMAP.md)).
 5. Is "fork-only enum values from 100 up" the convention you want for tinyint enum columns like `userodpref.FkeyType`?
 6. Should renaming radio button items also update the children's trigger values (the Ins Pick editor already does this)?

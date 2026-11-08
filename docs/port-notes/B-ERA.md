@@ -93,7 +93,7 @@ Not changed: `Pref.cs`, `PrefInfos.xml`, `DisplayField.cs` (the enum value 23 wa
 
 ## Questions for the owner
 
-1. What is Open Dental's preference name for "Auto split ERAs with CARC denial codes listed above" in the office database (census M1-00)? Until it is known, the office must turn the option on again in this program (it is stored as `ForkEraAutoSplitCarcDenials`).
+1. What is Open Dental's preference name for "Auto split ERAs with CARC denial codes listed above" in the office database (census M1-00)? Until it is known, the office must turn the option on again in this program (it is stored as `ForkEraAutoSplitCarcDenials`). **Answered (2026-11-07, owner question Switch-over 1):** `EraAutoProcessSplitByCarcCodes`; the code reads it now (see "Open Dental's name" below).
 2. Should a line that carries a listed CARC but still has an insurance payment be split off too (today: never; the claim is held back)?
 3. Is Unsent the right status for the new claim, or should it keep the original's status like a manual split (the spec says Unsent)?
 4. Are the three extra ERA columns (Subscriber ID, Allowed, Matched Claim) useful, or should the ERA category offer only the 24.3 set?
@@ -127,3 +127,12 @@ Fix round r1 (branch `port/b-era-r1`, 2026-10-25): the auto split committed its 
 - **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** "Auto split ERAs with CARC denial codes listed above" is read from the fork-owned row `ForkEraAutoSplitCarcDenials` (owner question 1). After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (row 6 of its table), step 7.1 sets it again in this program, and both are checklist rows.
 - Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
 - The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.
+
+## Open Dental's name (SWMAP, 2026-11-07, branch `next/swmap-1`)
+
+- The setting names of the office's Open Dental 25.3.48 database (owner question Switch-over 1) give Open Dental's name of "Auto split ERAs
+  with CARC denial codes listed above": `EraAutoProcessSplitByCarcCodes` (1/0). `EraAutoSplit.PREF_NAME` is now that name, read and written
+  by name outside `PrefName`, so the office's value carries over at the switch-over as it is; a missing row still reads as off.
+- The row release 0.0 wrote (`ForkEraAutoSplitCarcDenials`) moves to this name in the fork migration step 2026110731 (`OdSettingNamesStep`);
+  runbook step 0.11 no longer lists the setting.
+- Tests: `BERATests.EraAutoProcessDbTests.AutoSplitPreference_OpenDentalsRowWrittenOnFirstChange`, `SWMAPTests`. See [SWMAP.md](SWMAP.md).

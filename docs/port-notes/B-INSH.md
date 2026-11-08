@@ -121,5 +121,5 @@ Untested (no test project drives the WinForms windows, and the GUI is not launch
 ## Owner questions
 
 1. Insurance History: when both dates of a category are completed procedures, should the window still allow a newer EO date (25.1's "a newer date creates a new EO"), for example through a third "Add date" action? The fork follows 25.2 (completed dates are read-only) and allows nothing in that case.
-2. Blue Book: does the office's 25.3.48 database still have the preference row `InsBlueBookUcrFeePercent`, or a renamed row? The fork reads `InsBlueBookUcrFeePercent`.
+2. Blue Book: does the office's 25.3.48 database still have the preference row `InsBlueBookUcrFeePercent`, or a renamed row? The fork reads `InsBlueBookUcrFeePercent`. **Answered (2026-11-07, owner question Switch-over 1):** the setting names of the office database include `InsBlueBookUcrFeePercent`, so Open Dental 25.3.48 did not rename it and the office's percentage carries over as it is. Nothing changed in the code ([SWMAP.md](SWMAP.md)).
 3. Edit Benefit: confirm the inputs per type in practice, especially quantity and qualifier on copayments (per visit), and amount on copayments. The fork allows both, because 24.3's checks did.

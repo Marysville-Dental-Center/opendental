@@ -12,6 +12,9 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - the maintenance updates: WebView2 in place of Internet Explorer, a managed spell checker and PDFsharp and MigraDoc 6.5 (these two built
   from their source), and the program's own DICOM reader in place of fo-dicom;
 - routine maintenance around the practice, and inventory tracking for materials;
+- eight settings Open Dental 24.4 to 25.3 added (payment plans and the global lock date, the perio Recession wording and others) now read
+  under Open Dental's own names, so the office's values carry over at the switch-over; values saved in 0.0 move to those names
+  (`docs/port-notes/SWMAP.md`);
 - the storage library under its new name, and a Database Maintenance check that works again.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
