@@ -49,6 +49,11 @@ namespace OpenPmsDental{
 		private List<long> _listClaimPaymentNumsAttached=new List<long>();
 		///<summary>Used in UpdateToDB to detach any payments that were attached to deposit but have been deselected before clicking OK.</summary>
 		private bool _isOnOKClick=false;
+		///<summary>True if the accounting software pref is set to QuickBooks.</summary>
+		private bool IsQuickBooks() {
+			return _accountingSoftware==AccountingSoftware.QuickBooks;
+		}
+
 		///<summary>True if the accounting software pref is set to QuickBooks Online.</summary>
 		private bool IsQuickBooksOnline() {
 			return _accountingSoftware==AccountingSoftware.QuickBooksOnline;
@@ -69,9 +74,11 @@ namespace OpenPmsDental{
 
 		private void FormDepositEdit_Load(object sender,System.EventArgs e) {
 			butSendQB.Visible=false;
-			//A database still set to QuickBooks Desktop, which was removed, works as Open PMS - Dental.
-			_accountingSoftware=Accounts.GetAccountingSoftwareInUse();
-			if(IsQuickBooksOnline()) {
+			_accountingSoftware=PrefC.GetEnum<AccountingSoftware>(PrefName.AccountingSoftware);
+			if(IsQuickBooks()) {
+				butSendQB.Text="&Send QB";
+			}
+			else if(IsQuickBooksOnline()) {
 				butSendQB.Text="&Send QBO";
 				//Missing rows read as blank, so this works before anyone has opened the QuickBooks Online setup window.
 				_qboSettings=QboSettings.Load();
@@ -132,7 +139,7 @@ namespace OpenPmsDental{
 					listInsPayType.SetSelected(listInsPayType.Items.Count-1,true);
 				}
 				textDepositAccount.Visible=false;//this is never visible for new. It's a description if already attached.
-				if(Accounts.DepositsLinked() && !IsQuickBooksOnline()) {
+				if(Accounts.DepositsLinked() && !IsQuickBooks() && !IsQuickBooksOnline()) {
 					_listDepositAccounts=Accounts.GetDepositAccounts();
 					for(int i=0;i<_listDepositAccounts.Count;i++) {
 						comboDepositAccount.Items.Add(Accounts.GetDescript(_listDepositAccounts[i]));
@@ -173,14 +180,14 @@ namespace OpenPmsDental{
 					}
 				}
 			}
-			//If in QuickBooks Online mode, hide dropdown because its handled in FormQBAccountSelect.cs.
-			if(IsQuickBooksOnline()) {
+			//If in QuickBooks or QuickBooks Online mode, hide dropdown because its handled in FormQBAccountSelect.cs.
+			if(IsQuickBooks() || IsQuickBooksOnline()) {
 				textDepositAccount.Visible=false;
 				labelDepositAccount.Visible=false;
 				comboDepositAccount.Visible=false;
 				comboDepositAccount.Enabled=false;
 				if(Accounts.DepositsLinked() && !IsNew) {
-					//Show SendQB button so that users can send old deposits into QBO.
+					//Show SendQB button so that users can send old deposits into QB.
 					butSendQB.Visible=true;
 				}
 			}
@@ -199,8 +206,9 @@ namespace OpenPmsDental{
 		}
 
 		private void FillClassRefs() {
+			bool isQBAndClassRefsEnabled=IsQuickBooks() && PrefC.GetBool(PrefName.QuickBooksClassRefsEnabled);
 			bool isQBOAndClassRefsEnabled=IsQuickBooksOnline() && _qboSettings.ClassRefs!="";
-			if(!isQBOAndClassRefsEnabled){//Not QBO, or its class refs feature is off, nothing to fill.
+			if(!isQBAndClassRefsEnabled && !isQBOAndClassRefsEnabled){//Neither QB nor QBO and their respective class refs feature is on, nothing to fill.
 				return;
 			}
 			if(!IsNew) {
@@ -218,13 +226,23 @@ namespace OpenPmsDental{
 			}
 			labelClassRef.Visible=true;
 			comboClassRefs.Visible=true;
-			//The class objects carry their Ids, so the deposit uses the Id of the class picked, never a lookup by name.
-			List<QuickBooksOnlineClassRef> listClassRefs=QuickBooksOnlineClassRef.StringClassRefsToList(_qboSettings.ClassRefs).OrderBy(x => x.Name).ToList();
-			for(int i=0;i<listClassRefs.Count;i++) {
-				if(listClassRefs[i].Name=="") {
+			if(IsQuickBooksOnline()) {
+				//The class objects carry their Ids, so the deposit uses the Id of the class picked, never a lookup by name.
+				List<QuickBooksOnlineClassRef> listClassRefs=QuickBooksOnlineClassRef.StringClassRefsToList(_qboSettings.ClassRefs).OrderBy(x => x.Name).ToList();
+				for(int i=0;i<listClassRefs.Count;i++) {
+					if(listClassRefs[i].Name=="") {
+						continue;
+					}
+					comboClassRefs.Items.Add(listClassRefs[i].Name,listClassRefs[i]);
+				}
+				return;
+			}
+			List<string> listClassNames=PrefC.GetString(PrefName.QuickBooksClassRefs).Split(',').ToList();
+			for(int i=0;i<listClassNames.Count;i++) {
+				if(listClassNames[i]=="") {
 					continue;
 				}
-				comboClassRefs.Items.Add(listClassRefs[i].Name,listClassRefs[i]);
+				comboClassRefs.Items.Add(listClassNames[i]);
 			}
 		}
 
@@ -394,7 +412,65 @@ namespace OpenPmsDental{
 			gridPat.Invalidate();
 		}
 
+		///<summary>Returns true if a deposit was created.</summary>
+		private bool CreateDepositQbOrQbo(bool allowContinue) {
+			if(IsQuickBooks()) {
+				return CreateDepositQB(allowContinue);
+			}
+			else if(IsQuickBooksOnline()) {
+				return CreateDepositQBO(allowContinue);
+			}
+			return false;
+		}
+
 		///<summary>Returns true if a deposit was created OR if the user clicked continue anyway on pop up.</summary>
+		private bool CreateDepositQB(bool allowContinue) {
+			using FormQBAccountSelect formQBAccountSelect=new FormQBAccountSelect(false);
+			formQBAccountSelect.ShowDialog();
+			if(formQBAccountSelect.DialogResult!=DialogResult.OK) {//Close/Cancel Send QB
+				return false;
+			}
+			Cursor.Current=Cursors.WaitCursor;
+			string classRef="";
+			if(PrefC.GetBool(PrefName.QuickBooksClassRefsEnabled) && comboClassRefs.SelectedItem!=null) {
+				classRef=comboClassRefs.SelectedItem.ToString();
+			}
+			try {
+				if(CompareDouble.IsLessThanOrEqualToZero(_depositCur.Amount)) {
+					throw new ODException(Lan.g(this,"Only deposits greater than zero can be sent to QuickBooks."));
+				}
+				QuickBooks.CreateDeposit(_depositCur.DateDeposit
+					,formQBAccountSelect.DepositAccountSelected
+					,formQBAccountSelect.IncomeAccountSelected
+					,_depositCur.Amount
+					,textMemo.Text
+					,classRef);//if classRef=="" then it will be safely ignored here
+			}
+			catch(Exception ex) {
+				Cursor.Current=Cursors.Default;
+				if(allowContinue) {
+					if(MessageBox.Show(ex.Message+"\r\n\r\n"
+						+Lan.g(this,"The deposit has not been created in QuickBooks. Would you like to create the deposit locally anyway?")
+						,Lan.g(this,"QuickBooks Deposit Create Failed")
+						,MessageBoxButtons.YesNo)==DialogResult.Yes) 
+					{
+						return true;
+					}
+				}
+				else {
+					MessageBox.Show(ex.Message,Lan.g(this,"QuickBooks Deposit Create Failed"));
+				}
+				return false;//Did not want to continue creating regular deposit or failed creating QuickBooks Deposit with no option to continue.
+			}
+			//Everything below only happens when QuickBooks deposit was successful.
+			SecurityLogs.MakeLogEntry(EnumPermType.DepositSlips,0,Lan.g(this,"Deposit slip sent to QuickBooks.")+"\r\n"
+				+Lan.g(this,"Deposit date")+": "+_depositCur.DateDeposit.ToShortDateString()+" "+Lan.g(this,"for")+" "+_depositCur.Amount.ToString("c"));
+			Cursor.Current=Cursors.Default;
+			MsgBox.Show(this,"Deposit successfully sent to QuickBooks.");
+			butSendQB.Enabled=false;//Don't let user send same deposit more than once.  
+			return true;
+		}
+
 		private bool CreateDepositQBO(bool allowContinue) {
 			_qboSettings=QboSettings.Load();
 			if(!_qboSettings.IsConnected) {
@@ -528,7 +604,7 @@ namespace OpenPmsDental{
 				_depositCur.DepositAccountNum=comboDepositAccountNum.GetSelectedDefNum();
 			}
 			if(IsNew){
-				if(gridPat.SelectedIndices.Length+gridIns.SelectedIndices.Length>18 && IsQuickBooksOnline()) {
+				if(gridPat.SelectedIndices.Length+gridIns.SelectedIndices.Length>18 && (IsQuickBooks() || IsQuickBooksOnline())) {
 					if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"No more than 18 items will fit on a QuickBooks deposit slip. Continue anyway?")) {
 						return false;
 					}
@@ -560,10 +636,11 @@ namespace OpenPmsDental{
 				}
 			}
 			if(IsNew && !_hasBeenSavedToDB){
-				//Create a deposit in QuickBooks Online
+				//Create a deposit in QuickBooks or QuickBooks Online
 				bool hasDepositInfo=Accounts.DepositsLinked();
-				//Short circuit so that CreateDepositQBO() is only called if hasDepositInfo and IsQuickBooksOnline() are both true.
-				if(hasDepositInfo && IsQuickBooksOnline() && !CreateDepositQBO(true)) {
+				bool isQbOrQbo=IsQuickBooks() || IsQuickBooksOnline();
+				//Short circuit so that CreateDepositQbOrQbo() is only called if hasDepositInfo and isQbOrQbo are both true.
+				if(hasDepositInfo && isQbOrQbo && !CreateDepositQbOrQbo(true)) {
 					return false;
 				}
 				Deposits.Insert(_depositCur);
@@ -672,7 +749,7 @@ namespace OpenPmsDental{
 					return;
 				}
 			}
-			CreateDepositQBO(false);
+			CreateDepositQbOrQbo(false);
 		}
 
 		///<summary>Return true if it's a new deposit and saved successfully to DB, or user has permission to edit existing deposit and saved successfully to DB.
@@ -841,12 +918,13 @@ namespace OpenPmsDental{
 				SecurityLogs.MakeLogEntry(EnumPermType.DepositSlips,0,_depositCur.DateDeposit.ToShortDateString()+" "+_depositCur.Amount.ToString("c"));
 				return;
 			}
-			//New deposit, but has faulty deposit criteria or is Quickbooks Online, can't make transaction, deposit and income entry.
+			//New deposit, but has faulty deposit criteria or is Quickbooks/Quickbooks Online, can't make transaction, deposit and income entry.
 			bool meetsDepositCriteria=Accounts.DepositsLinked() && _depositCur.Amount>0;
-			if(!meetsDepositCriteria || IsQuickBooksOnline()) {
+			bool isQbOrQbo=IsQuickBooks() || IsQuickBooksOnline();
+			if(!meetsDepositCriteria || isQbOrQbo) {
 				return;
 			}
-			//New deposit not through Quickbooks Online.
+			//New deposit not through Quickbooks/Quickbooks Online.
 			//create a transaction here
 			Transaction transaction=new Transaction();
 			transaction.DepositNum=_depositCur.DepositNum;

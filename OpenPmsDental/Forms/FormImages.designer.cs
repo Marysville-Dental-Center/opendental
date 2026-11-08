@@ -53,6 +53,8 @@ namespace OpenPmsDental{
 			this.listFiles.TabIndex = 1;
 			this.listFiles.SelectionChangeCommitted += new System.EventHandler(this.listFiles_SelectionChangeCommitted);
 			this.listFiles.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.listFiles_MouseDoubleClick);
+			this.listFiles.MouseUp += new System.Windows.Forms.MouseEventHandler(this.listFiles_MouseUp);
+			this.listFiles.MouseCaptureChanged += new System.EventHandler(this.listFiles_MouseCaptureChanged);
 			//
 			// contextMenuStripList
 			//
@@ -95,6 +97,7 @@ namespace OpenPmsDental{
 			this.Text = "Images";
 			this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.FormImages_FormClosed);
 			this.Load += new System.EventHandler(this.FormImages_Load);
+			this.Shown += new System.EventHandler(this.FormImages_Shown);
 			this.ResumeLayout(false);
 
 		}

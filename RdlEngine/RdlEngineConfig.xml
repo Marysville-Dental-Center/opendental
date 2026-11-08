@@ -1,7 +1,22 @@
 <?xml version='1.0' encoding='UTF-8' ?>
 <config>
 	<DataSources>
-		<!-- Changed by Open PMS - Dental contributors, 2026-11-08 (S0-2a): the SQL, ODBC and OLEDB data providers are removed. -->
+		<DataSource>
+			<DataProvider>SQL</DataProvider>
+			<TableSelect>SELECT TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES ORDER BY 2, 1</TableSelect>
+			<Interface>SQL</Interface>
+		</DataSource>
+		<DataSource>
+			<DataProvider>ODBC</DataProvider>
+			<TableSelect>SELECT TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES ORDER BY 2, 1</TableSelect>
+			<Interface>SQL</Interface>
+			<ReplaceParameters>true</ReplaceParameters>
+		</DataSource>
+		<DataSource>
+			<DataProvider>OLEDB</DataProvider>
+			<TableSelect>SELECT TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES ORDER BY 2, 1</TableSelect>
+			<Interface>SQL</Interface>
+		</DataSource>
 		<DataSource>
 			<DataProvider>Oracle</DataProvider>
 			<CodeModule>F:\oracle\product\10.2.0\db_2\BIN\Oracle.DataAccess.dll</CodeModule>

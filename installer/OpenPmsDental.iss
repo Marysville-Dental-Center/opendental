@@ -137,9 +137,6 @@ Type: files; Name: "{app}\MigraDoc.Rendering.dll"
 ; The spell checker: NHunspell and its native Hunspell (v0.0 shipped the x86 one only), replaced by the managed WeCantSpell.Hunspell.dll.
 Type: files; Name: "{app}\NHunspell.dll"
 Type: files; Name: "{app}\Hunspellx86.dll"
-; The pre-built XML serializers of v0.0, no longer generated (stage 0 of the .NET 10 move): XmlSerializer builds them at run time.
-Type: files; Name: "{app}\OpenPmsDental.XmlSerializers.dll"
-Type: files; Name: "{app}\OpenPmsDentalBusiness.XmlSerializers.dll"
 
 [Files]
 Source: "{#StagingDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

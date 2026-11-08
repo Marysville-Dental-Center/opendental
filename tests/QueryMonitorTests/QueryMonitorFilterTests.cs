@@ -2,7 +2,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
-using MySqlConnector;
+using System.Data.SqlClient;
 using CodeBase;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -64,8 +64,8 @@ namespace QueryMonitorTests {
 			int countEvents=0;
 			queryMonitor.Fired+=(ODEventArgs e) => countEvents++;
 			int countRuns=0;
-			using(MySqlConnection connection=new MySqlConnection("Server=synthetic-test-server.example.test"))
-			using(MySqlCommand command=new MySqlCommand("SELECT * FROM SignalOD WHERE SigDateTime > @Date",connection)) {
+			using(SqlConnection connection=new SqlConnection("Data Source=synthetic-test-server"))
+			using(SqlCommand command=new SqlCommand("SELECT * FROM SignalOD WHERE SigDateTime > @Date",connection)) {
 				command.Parameters.AddWithValue("@Date","2026-01-01");
 				queryMonitor.RunMonitoredQuery(() => countRuns++,command);
 			}
@@ -81,8 +81,8 @@ namespace QueryMonitorTests {
 			List<DbQueryObj> listReported=new List<DbQueryObj>();
 			queryMonitor.Fired+=(ODEventArgs e) => listReported.Add(e.Tag as DbQueryObj);
 			int countRuns=0;
-			using(MySqlConnection connection=new MySqlConnection("Server=synthetic-test-server.example.test"))
-			using(MySqlCommand command=new MySqlCommand("SELECT * FROM patient WHERE PatNum=@PatNum",connection)) {
+			using(SqlConnection connection=new SqlConnection("Data Source=synthetic-test-server"))
+			using(SqlCommand command=new SqlCommand("SELECT * FROM patient WHERE PatNum=@PatNum",connection)) {
 				command.Parameters.AddWithValue("@PatNum","5");
 				queryMonitor.RunMonitoredQuery(() => countRuns++,command);
 			}
@@ -99,8 +99,8 @@ namespace QueryMonitorTests {
 			queryMonitor.SetFilterTexts(new List<string> { "'heartbeat'" });
 			int countEvents=0;
 			queryMonitor.Fired+=(ODEventArgs e) => countEvents++;
-			using(MySqlConnection connection=new MySqlConnection("Server=synthetic-test-server.example.test"))
-			using(MySqlCommand command=new MySqlCommand("UPDATE computer SET Note=@Note",connection)) {
+			using(SqlConnection connection=new SqlConnection("Data Source=synthetic-test-server"))
+			using(SqlCommand command=new SqlCommand("UPDATE computer SET Note=@Note",connection)) {
 				command.Parameters.AddWithValue("@Note","heartbeat");
 				queryMonitor.RunMonitoredQuery(() => { },command);
 			}
@@ -115,8 +115,8 @@ namespace QueryMonitorTests {
 			int countEvents=0;
 			queryMonitor.Fired+=(ODEventArgs e) => countEvents++;
 			int countRuns=0;
-			using(MySqlConnection connection=new MySqlConnection("Server=synthetic-test-server.example.test"))
-			using(MySqlCommand command=new MySqlCommand("SELECT * FROM patient",connection)) {
+			using(SqlConnection connection=new SqlConnection("Data Source=synthetic-test-server"))
+			using(SqlCommand command=new SqlCommand("SELECT * FROM patient",connection)) {
 				queryMonitor.RunMonitoredQuery(() => countRuns++,command);
 			}
 			Assert.AreEqual(1,countRuns);

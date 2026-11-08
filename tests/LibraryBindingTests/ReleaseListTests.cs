@@ -39,7 +39,7 @@ namespace LibraryBindingTests {
 			foreach(KeyValuePair<string,string> pair in BuildRelease.ListFiles().Where(x => x.Key!="doc" && MetadataReader.IsBinary(x.Value))) {
 				string path=Path.Combine(ProgramFolder,pair.Value);
 				if(RequiredDlls.Files.ContainsKey(pair.Value) || !File.Exists(path)) {
-					continue;//Not in the Debug output: the allow-list is the Release one. (The XmlSerializers files, Release-only, were retired in S0-2a.)
+					continue;//OpenPmsDental.XmlSerializers.dll and OpenPmsDentalBusiness.XmlSerializers.dll come with Release builds only.
 				}
 				AssemblyFacts assemblyFacts=MetadataReader.Read(path);
 				if(assemblyFacts.IsManaged) {

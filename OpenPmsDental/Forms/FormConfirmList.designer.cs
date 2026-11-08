@@ -49,6 +49,7 @@ namespace OpenPmsDental {
 			this.toolStripMenuItemSendToPinboard = new System.Windows.Forms.ToolStripMenuItem();
 			this.butPrint = new OpenPmsDental.UI.Button();
 			this.butEmail = new OpenPmsDental.UI.Button();
+			this.butText = new OpenPmsDental.UI.Button();
 			this.comboEmailFrom = new OpenPmsDental.UI.ComboBox();
 			this.groupBox2 = new OpenPmsDental.UI.GroupBox();
 			this.butRefresh = new OpenPmsDental.UI.Button();
@@ -302,6 +303,18 @@ namespace OpenPmsDental {
 			this.butEmail.Text = "E-Mail";
 			this.butEmail.Click += new System.EventHandler(this.butEmail_Click);
 			// 
+			// butText
+			// 
+			this.butText.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butText.Icon = OpenPmsDental.UI.EnumIcons.Text;
+			this.butText.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.butText.Location = new System.Drawing.Point(333, 651);
+			this.butText.Name = "butText";
+			this.butText.Size = new System.Drawing.Size(79, 24);
+			this.butText.TabIndex = 61;
+			this.butText.Text = "Text";
+			this.butText.Click += new System.EventHandler(this.butText_Click);
+			// 
 			// comboEmailFrom
 			// 
 			this.comboEmailFrom.Location = new System.Drawing.Point(6, 22);
@@ -334,6 +347,7 @@ namespace OpenPmsDental {
 			this.ClientSize = new System.Drawing.Size(1099, 688);
 			this.Controls.Add(this.butRefresh);
 			this.Controls.Add(this.groupBox2);
+			this.Controls.Add(this.butText);
 			this.Controls.Add(this.butEmail);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.butPostcards);
@@ -372,6 +386,7 @@ namespace OpenPmsDental {
 		private OpenPmsDental.UI.Button butEmail;
 		private OpenPmsDental.UI.ComboBoxClinicPicker comboClinic;
 		private OpenPmsDental.UI.ComboBox comboShowRecall;
+		private UI.Button butText;
 		private ContextMenuStrip menuRightClick;
 		private OpenPmsDental.UI.ComboBox comboEmailFrom;
 		private OpenPmsDental.UI.GroupBox groupBox2;

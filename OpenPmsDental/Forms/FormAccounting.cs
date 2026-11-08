@@ -41,7 +41,7 @@ namespace OpenPmsDental{
 			MenuItemOD menuItemSetup=new MenuItemOD("Setup");
 			menuMain.Add(menuItemSetup);
 			menuItemSetup.Add("Open PMS - Dental", menuItemOpenDental_Click);
-			//QuickBooks Desktop (QBFC) was removed in stage 0 of the .NET 10 move; QuickBooks Online stays.
+			menuItemSetup.Add("QuickBooks", menuItemQuickBooks_Click);
 			menuItemSetup.Add("QuickBooks Online", menuItemQuickBooksOnline_Click);
 			//Lock-----------------------------------------------------------------------------------------------------------
 			menuMain.Add(new MenuItemOD("Lock",menuItemLock_Click));
@@ -57,6 +57,11 @@ namespace OpenPmsDental{
 		private void menuItemOpenDental_Click(Object sender, EventArgs e) {
 			using FormAccountingSetup formAccountingSetup=new FormAccountingSetup();
 			formAccountingSetup.ShowDialog();
+		}
+
+		private void menuItemQuickBooks_Click(Object sender, EventArgs e) {
+			using FormQuickBooksSetup formQuickBooksSetup=new FormQuickBooksSetup();
+			formQuickBooksSetup.ShowDialog();
 		}
 
 		private void menuItemQuickBooksOnline_Click(Object sender, EventArgs e) {

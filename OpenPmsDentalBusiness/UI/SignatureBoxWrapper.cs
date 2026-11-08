@@ -33,9 +33,6 @@ Topaz hardware vs our SignatureBox:
 	They also provide a SigPlusNET control that we can place on the screen to show a signature that was signed on their hardware.
 	We use their dll to perform the encryption and we don't get to see what format they use. Their .sig format is proprietary.
 	https://www.topazsystems.com/software/download/sigplusnet.pdf
-	Topaz signature pads are not supported since stage 0 of the .NET 10 move (Open PMS - Dental): the SigPlusNET control is never created, a
-	stored Topaz signature shows TOPAZ_NOT_SUPPORTED_MESSAGE and is not valid, and every signature is made in our own SignatureBox. The SigIsTopaz
-	columns stay, so the public members below that name Topaz stay too (GetSigIsTopaz always returns false).
 	We also have our own SignatureBox control built by us. Our strategy is the one discussed above.
 	KeyString and AutoKeyData are terms that originated with Topaz and which we have adopted for use in our SignatureBox.
 	KeyString: This is the hash of the key data. We use 16 bytes. Topaz likes to create their own, so we don't generally use this with Topaz.
@@ -46,9 +43,10 @@ Topaz hardware vs our SignatureBox:
 	The OD sigs are not compressed, and the Topaz sigs are.  But there is very little difference in their sizes.  It would be very rare for a signature to be larger than 1000 bytes.
 
 Control nesting
-	This control is SignatureBoxWrapper.cs. It is a wrapper around the SignatureBox control, our own internal control. It held Topaz's
-	SigPlusNET control too until Topaz was removed.
-	For WPF, this control is wrapped in with a WindowsFormsHost container because Topaz did not have a WPF version, and wrapping is what they recommended.
+	This control is SignatureBoxWrapper.cs. It is a wrapper with two controls inside of it:
+	1. Topaz SigPlusNET control
+	2. SignatureBox control, our own internal control.
+	For WPF, this control is wrapped in with a WindowsFormsHost container because Topaz does not have a WPF version, and wrapping is what they recommend.
 	This SignatureBoxWrapper also contains two buttons that we need. The buttons are ugly and need an overhaul.
 
 Size
@@ -88,26 +86,25 @@ In FormClosing:
 	///<summary>See the notes at the top of this file. Must always be exactly 362x79.</summary>
 	public partial class SignatureBoxWrapper:UserControl {
 		#region Fields
-		///<summary>Shown in place of a stored Topaz signature, which can be neither shown nor checked: Topaz signature pads were removed in stage 0 of
-		///the .NET 10 move.</summary>
-		public const string TOPAZ_NOT_SUPPORTED_MESSAGE="Topaz signature pads are not supported in this version of Open PMS - Dental.";
 		///<summary>Default 1. Typical value 1.5</summary>
 		private float _scaleMS = 1;
 		///<summary>Default 1. Typical value 1.2</summary>
 		private float _zoomLocal=1;
-		///<summary>This is set when someone has started drawing a signature. When true, this will be used to stop people from accidentally
+		///<summary>This is set when someone has started drawing a signature. When true, this will be used to stop people from accidentally 
 		///drawing on the screen and invalidating their signature on FormSheetFillEdit.</summary>
 		public bool IsSigStarted;
 		public bool SigChanged;
+		//private bool allowTopaz;
+		private Control sigBoxTopaz;
 		///<summary>Used for special cases where signature logic varies from our default.</summary>
 		private SigMode _signatureMode=SigMode.Default;
-		///<summary>The label's own text (LabelText) while the label says that Topaz signature pads are not supported, else null.</summary>
+		///<summary>The label's own text (LabelText) while the label says that Topaz's software is not installed, else null.</summary>
 		private string _labelTextBeforeTopazMessage;
-		///<summary>The Topaz-shaped signature (IsTopazShaped) that the last fill could not check because Topaz signature pads are not supported, else
-		///null. A signature from the program's own box is never kept here: as a Topaz one it fails with the label's own text, as before. Treatment plans
-		///keep two signatures under one SigIsTopaz column, so FormTPsign and SheetDrawingJob fill a signature that does not show once more as the other
-		///kind. When the program's own check then does not accept that same signature either, the not-supported message stays: Topaz could not check
-		///it, so "Invalid Signature" would be a tamper warning the program cannot back up.</summary>
+		///<summary>The Topaz-shaped signature (IsTopazShaped) that the last fill could not check because Topaz's software is not installed, else null.
+		///A signature from the program's own box is never kept here: without Topaz it fails with the label's own text, as before. Treatment plans keep two
+		///signatures under one SigIsTopaz column, so FormTPsign and SheetDrawingJob fill a signature that does not show once more as the other kind.
+		///When the program's own check then does not accept that same signature either, the not-installed message stays: Topaz could not check it,
+		///so "Invalid Signature" would be a tamper warning the program cannot back up.</summary>
 		private string _signatureTopazNotInstalled;
 		#endregion Fields
 
@@ -115,6 +112,13 @@ In FormClosing:
 		public SignatureBoxWrapper() {
 			InitializeComponent();
 			signatureBox.SetTabletState(1);
+			try {
+				InitializeTopaz();
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//Most offices don't use Topaz so we won't let the user know yet that it didn't initialize.
+			}
+			butTopazSign.BringToFront();
 			butClearSig.BringToFront();
 		}
 		#endregion Constructor
@@ -128,13 +132,10 @@ In FormClosing:
 		[Category("OD")]
 		[Description("Event raised when the X button is clicked.")]
 		public event EventHandler ClearSignatureClicked;
-		///<summary>Never raised: the Sign Topaz button was removed with Topaz signature pads. Kept so that its subscribers still compile.</summary>
+		///<summary>Event raised when the Sign Topaz button is clicked.</summary>
 		[Category("OD")]
-		[Description("Never raised: Topaz signature pads are not supported.")]
-		public event EventHandler SignTopazClicked {
-			add { }
-			remove { }
-		}
+		[Description("Event raised when the Sign Topaz button is clicked.")]
+		public event EventHandler SignTopazClicked;
 		#endregion Events
 
 		#region Enums
@@ -174,7 +175,10 @@ In FormClosing:
 		}
 
 		public bool SigIsBlank{
-			get{
+			get{ 
+				if(sigBoxTopaz!=null && sigBoxTopaz.Visible){
+					return(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0);
+				}
 				return(signatureBox.NumberOfTabletPoints()==0);
 			}
 		}
@@ -196,10 +200,19 @@ In FormClosing:
 		protected override void OnLayout(LayoutEventArgs e){
 			base.OnLayout(e);
 			butESign.Size=new Size(ScaleI(20),ScaleI(20));
+			butTopazSign.Size=new Size(ScaleI(20),ScaleI(20));
 			butClearSig.Size=new Size(ScaleI(20),ScaleI(20));
 			butClearSig.Location=new Point(Width-ScaleI(20),0);
+			butTopazSign.Location=new Point(Width-ScaleI(40),0);
 			signatureBox.Width=Width-2;
 			signatureBox.Height=Height-2;
+			if(sigBoxTopaz!=null){
+				//sigBoxTopaz just shows an image that user signed on the hardware. There is no pen input.
+				//In testing, the image just scales to fit the size of the control.
+				//Copy the size and location that were just set above for our sigbox.
+				sigBoxTopaz.Location=signatureBox.Location;
+				sigBoxTopaz.Size=signatureBox.Size;//sigBoxTopaz needs to be the same as or smaller than its container so the signature is not cut off.
+			}
 		}
 
 		///<summary>Converts from 96dpi to current total scale.</summary>
@@ -214,14 +227,28 @@ In FormClosing:
 			return (int)(Math.Round(val96*scaleTotal));
 		}
 
-		///<summary>Shows, in place of the signature, that Topaz signature pads are not supported, so a Topaz signature can be neither shown nor
-		///checked. The signature then counts as not valid (IsValid), as it did when Topaz's software was not installed.</summary>
+		private void InitializeTopaz() {
+			//Add signature box for Topaz signatures.
+			sigBoxTopaz=TopazWrapper.GetTopaz();
+			sigBoxTopaz.Location=signatureBox.Location;//this puts both boxes in the same spot.
+			sigBoxTopaz.Name="sigBoxTopaz";
+			sigBoxTopaz.Size=signatureBox.Size;//See comments in OnLayout() above.
+			signatureBox.Anchor=(AnchorStyles)(AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right);
+			sigBoxTopaz.TabIndex=92;
+			sigBoxTopaz.Text="sigPlusNET1";
+			sigBoxTopaz.Visible=false;
+			sigBoxTopaz.Leave+=new EventHandler(sigBoxTopaz_Leave);
+			Controls.Add(sigBoxTopaz);
+		}
+
+		///<summary>Shows, in place of the signature, that Topaz's software is not installed, so a Topaz signature can be neither shown nor checked.
+		///The signature then counts as not valid (IsValid), as before when the Topaz control could not be created.</summary>
 		private void ShowTopazNotInstalled(string signature) {
 			if(_labelTextBeforeTopazMessage==null) {
 				_labelTextBeforeTopazMessage=labelInvalidSig.Text;
 			}
 			_signatureTopazNotInstalled=signature;
-			labelInvalidSig.Text=Lans.g(this,TOPAZ_NOT_SUPPORTED_MESSAGE);
+			labelInvalidSig.Text=Lans.g(this,TopazWrapper.NOT_INSTALLED_MESSAGE);
 			labelInvalidSig.Visible=true;
 		}
 
@@ -255,10 +282,18 @@ In FormClosing:
 			_labelTextBeforeTopazMessage=null;
 		}
 
-		///<summary>Always false: Topaz signature pads are not supported (TOPAZ_NOT_SUPPORTED_MESSAGE). It returned true when Topaz's control was
-		///initialized.</summary>
+		///<summary>Returns true if Topaz is initialized. If it is not initialized, it will attempt to do so.</summary>
 		public bool CheckTopaz() {
-			return false;
+			if(sigBoxTopaz==null) {
+				try {
+					InitializeTopaz();
+				}
+				catch(Exception ex) {
+					//FriendlyException.Show(Lans.g(this,"Unable to initialize Topaz."),ex);
+					return false;
+				}
+			}
+			return true;
 		}
 
 		public void SetAllowDigitalSig(bool allowDigitalSig,bool doSkipProcSignaturePref=false) {
@@ -292,21 +327,10 @@ In FormClosing:
 			if(signature==null || signature=="") {
 				return;
 			}
-			//True when the fill just before this one could not check this same signature because Topaz signature pads are not supported.
+			//True when the fill just before this one could not check this same signature because Topaz's software is not installed.
 			bool isTopazNotInstalledForSignature=(_signatureTopazNotInstalled!=null && _signatureTopazNotInstalled==signature);
 			RestoreLabelText();
-			//A Topaz signature is never shown or checked: Topaz signature pads are not supported (TOPAZ_NOT_SUPPORTED_MESSAGE).
-			if(sigIsTopaz) {
-				if(IsTopazShaped(signature)) {
-					ShowTopazNotInstalled(signature);
-				}
-				else {
-					//Not a Topaz string (the program's own box stores base 64), so Topaz could not have checked it either: the label's own text, as before.
-					labelInvalidSig.Visible=true;
-				}
-				return;
-			}
-			//This does 3 checks for normal signatures.  These keyData replacements are due to MiddleTier & RichTextBox newline issues.
+			//This does 3 checks for both topaz and normal signatures.  These keyData replacements are due to MiddleTier & RichTextBox newline issues.
 			//Most cases will not get past check 1.  Some of the following checks are taken care of by things like POut.StringNote().
 			//Check 1:  keyData.Replace("\r\n","\n").  This reverts any changes middle tier made to the keydata.  
 			//					Middle tier converts "\r\n" -> "\n" -> "\r\n" so we change it back to "normal".
@@ -314,21 +338,162 @@ In FormClosing:
 			//Check 3:  keyData.Replace("\r\n","\n").Replace("\n","\r\n").  This is for cases where the original note was captured with a textbox, and then
 			//					was filled into an ODTextBox(richtextbox) and the "\r\n" was changed to "\n" then the user clicked ok changing the note.
 			//Note that if the keydata was hashed before this point, these replacements have to be dealt with outside of this function.
-			FillSignatureHelper(keyData.Replace("\r\n","\n"),signature);
-			if(signatureBox.NumberOfTabletPoints()==0) {
-				FillSignatureHelper(keyData,signature);
+			if(sigIsTopaz) {
+				if(!CheckTopaz()) {
+					if(IsTopazShaped(signature)) {
+						ShowTopazNotInstalled(signature);
+					}
+					else {
+						//Not a Topaz string (the program's own box stores base 64), so Topaz could not have checked it either: the label's own text, as before.
+						labelInvalidSig.Visible=true;
+					}
+					return;
+				}
+				FillSignatureHelperTopaz(keyData.Replace("\r\n","\n"),signature);
+				if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0) {
+					FillSignatureHelperTopaz(keyData,signature);
+				}
+				if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0) {
+					FillSignatureHelperTopaz(keyData.Replace("\r\n","\n").Replace("\n","\r\n"),signature);
+				}
 			}
-			if(signatureBox.NumberOfTabletPoints()==0) {
-				FillSignatureHelper(keyData.Replace("\r\n","\n").Replace("\n","\r\n"),signature);
+			else {
+				FillSignatureHelper(keyData.Replace("\r\n","\n"),signature);
+				if(signatureBox.NumberOfTabletPoints()==0) {
+					FillSignatureHelper(keyData,signature);
+				}
+				if(signatureBox.NumberOfTabletPoints()==0) {
+					FillSignatureHelper(keyData.Replace("\r\n","\n").Replace("\n","\r\n"),signature);
+				}
+				if(isTopazNotInstalledForSignature && !IsValid) {
+					//A Topaz-shaped signature the program's own check does not accept either, so it may be a Topaz one that cannot be checked here: keep saying so.
+					ShowTopazNotInstalled(signature);
+				}
 			}
-			if(isTopazNotInstalledForSignature && !IsValid) {
-				//A Topaz-shaped signature the program's own check does not accept either, so it may be a Topaz one that cannot be checked here: keep saying so.
-				ShowTopazNotInstalled(signature);
+		}
+
+		private void FillSignatureHelperTopaz(string keyData,string signature) {
+			if(!CheckTopaz()) {
+				return;
+			}
+			//According to Jeff Robertson from Topaz, the method SetKeyString() should be used to clear out the key string before loading a signature. 
+			//For that reason, it should only be called with 16 zeros as its arguments. The actual data that the signature will be bound to should be passed 
+			//to the method SetAutoKeyData().
+			signatureBox.Visible=false;
+			sigBoxTopaz.Visible=true;
+			labelInvalidSig.Visible=false;
+			TopazWrapper.ClearTopaz(sigBoxTopaz);
+			TopazWrapper.SetTopazCompressionMode(sigBoxTopaz,0);
+			TopazWrapper.SetTopazEncryptionMode(sigBoxTopaz,0);
+			TopazWrapper.SetTopazKeyString(sigBoxTopaz,"0000000000000000");//Clear out the key string
+			TopazWrapper.SetTopazEncryptionMode(sigBoxTopaz,2);//high encryption
+			TopazWrapper.SetTopazCompressionMode(sigBoxTopaz,2);//high compression
+			string hashedKeyData;
+			switch(_signatureMode) {
+				case SigMode.TreatPlan:
+					hashedKeyData=TreatPlans.GetHashStringForSignature(keyData);//Passed in key data has not been hashed yet.
+					TopazWrapper.SetTopazAutoKeyData(sigBoxTopaz,hashedKeyData);
+					break;
+				case SigMode.OrthoChart:
+					hashedKeyData=OrthoCharts.GetHashStringForSignature(keyData);//Passed in key data has not been hashed yet.
+					TopazWrapper.SetTopazAutoKeyData(sigBoxTopaz,hashedKeyData);
+					break;
+				case SigMode.Document:
+				case SigMode.Default:
+				default:
+					TopazWrapper.SetTopazAutoKeyData(sigBoxTopaz,keyData);
+					break;
+			}
+			TopazWrapper.SetTopazSigString(sigBoxTopaz,signature);
+			if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0) {
+				//Try reading in the signature using the old way that we used to handle signatures.
+				FillSignatureTopazOld(keyData,signature);
+			}
+			if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0) {
+				//Try reading in the signature using the ANSI paradigm.
+				TopazWrapper.FillSignatureANSI(sigBoxTopaz,keyData,signature,_signatureMode);
+			}
+			if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0) {
+				//Try reading in the signature using different encodings for keyData.
+				TopazWrapper.FillSignatureEncodings(sigBoxTopaz,keyData,signature,_signatureMode);
+			}
+			//If sig still not showing it must be invalid.
+			if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0) {
+				labelInvalidSig.Visible=true;
+			}
+			TopazWrapper.SetTopazState(sigBoxTopaz,0);
+		}
+
+		///<summary>Some places used different logic for keystring and autokeydata in the past.  This must be maintained to keep signatures valid.
+		///</summary>
+		private void FillSignatureTopazOld(string keyData,string signature) {
+			if(!CheckTopaz()) {
+				return;
+			}
+			string hashedKeyData;
+			switch(_signatureMode) {
+				case SigMode.Document:
+					TopazWrapper.SetTopazKeyString(sigBoxTopaz,keyData);
+					TopazWrapper.SetTopazEncryptionMode(sigBoxTopaz,2);//high encryption
+					TopazWrapper.SetTopazCompressionMode(sigBoxTopaz,2);//high compression
+					TopazWrapper.SetTopazSigString(sigBoxTopaz,signature);
+					break;
+				case SigMode.TreatPlan:
+					hashedKeyData=OpenPmsDentalBusiness.TreatPlans.GetHashStringForSignature(keyData);//Passed in KeyData still needs to be hashed.
+					TopazWrapper.SetTopazKeyString(sigBoxTopaz,hashedKeyData);
+					TopazWrapper.SetTopazEncryptionMode(sigBoxTopaz,2);//high encryption
+					TopazWrapper.SetTopazCompressionMode(sigBoxTopaz,2);//high encryption
+					TopazWrapper.SetTopazSigString(sigBoxTopaz,signature);
+					sigBoxTopaz.Refresh();
+					//If sig is not showing, then try encryption mode 3 for signatures signed with old SigPlusNet.dll.
+					if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0) {
+						TopazWrapper.SetTopazEncryptionMode(sigBoxTopaz,3);//Unknown mode (told to use via TopazSystems)
+						TopazWrapper.SetTopazSigString(sigBoxTopaz,signature);
+					}
+					break;
+				case SigMode.OrthoChart:
+					hashedKeyData=OpenPmsDentalBusiness.OrthoCharts.GetHashStringForSignature(keyData);//Passed in KeyData still needs to be hashed.
+					TopazWrapper.SetTopazKeyString(sigBoxTopaz,hashedKeyData);
+					TopazWrapper.SetTopazEncryptionMode(sigBoxTopaz,2);//high encryption
+					TopazWrapper.SetTopazCompressionMode(sigBoxTopaz,2);//high compression
+					TopazWrapper.SetTopazSigString(sigBoxTopaz,signature);
+					//older items may have been signed with zeros due to a bug.  We still want to show the sig in that case.
+					//but if a sig is not showing, then set the key string to try to get it to show.
+					if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0) {
+						TopazWrapper.SetTopazAutoKeyData(sigBoxTopaz,hashedKeyData);
+						TopazWrapper.SetTopazSigString(sigBoxTopaz,signature);
+					}
+					//If sig is not showing, then try encryption mode 3 for signatures signed with old SigPlusNet.dll.
+					if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0) {
+						TopazWrapper.SetTopazEncryptionMode(sigBoxTopaz,3);//Unknown mode (told to use via TopazSystems)
+						TopazWrapper.SetTopazSigString(sigBoxTopaz,signature);
+					}
+					break;
+				case SigMode.Default:
+					TopazWrapper.SetTopazKeyString(sigBoxTopaz,"0000000000000000");
+					TopazWrapper.SetTopazEncryptionMode(sigBoxTopaz,2);//high encryption
+					TopazWrapper.SetTopazCompressionMode(sigBoxTopaz,2);//high compression
+					TopazWrapper.SetTopazSigString(sigBoxTopaz,signature);
+					//older items may have been signed with zeros due to a bug.  We still want to show the sig in that case.
+					//but if a sig is not showing, then set the key string to try to get it to show.
+					if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0) {
+						TopazWrapper.SetTopazAutoKeyData(sigBoxTopaz,keyData);
+						TopazWrapper.SetTopazSigString(sigBoxTopaz,signature);
+					}
+					//If sig is not showing, then try encryption mode 3 for signatures signed with old SigPlusNet.dll.
+					if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0) {
+						TopazWrapper.SetTopazEncryptionMode(sigBoxTopaz,3);//Unknown mode (told to use via TopazSystems)
+						TopazWrapper.SetTopazSigString(sigBoxTopaz,signature);
+					}
+					break;
 			}
 		}
 
 		private void FillSignatureHelper(string keyData,string signature) {
 			signatureBox.Visible=true;
+			if(sigBoxTopaz!=null) {
+				sigBoxTopaz.Visible=false;
+			}
 			labelInvalidSig.Visible=false;
 			signatureBox.ClearTablet();
 			//sigBox.SetSigCompressionMode(0);
@@ -369,13 +534,16 @@ In FormClosing:
 		///<summary>Helper method to manipulate the visibility of all buttons on the signature wrapper.</summary>
 		public void SetButtonVisibility(bool isVisible) {
 			butClearSig.Visible=isVisible;
+			butTopazSign.Visible=isVisible;
 			butESign.Visible=isVisible;
 		}
 
-		///<summary>0 for a Topaz signature, which is never shown (Topaz signature pads are not supported).</summary>
 		public int GetNumberOfTabletPoints(bool sigIsTopaz) {
 			if(sigIsTopaz) {
-				return 0;
+				if(!CheckTopaz()) {
+					return 0;
+				}
+				return TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz);
 			}
 			return signatureBox.NumberOfTabletPoints();
 		}
@@ -385,9 +553,12 @@ In FormClosing:
 			return SigChanged;
 		}
 
-		///<summary>This should NOT be used unless GetSigChanged returns true. Always false: every signature is made in the program's own box, because
-		///Topaz signature pads are not supported. The SigIsTopaz columns it fills stay.</summary>
+		///<summary>This should NOT be used unless GetSigChanged returns true.</summary>
 		public bool GetSigIsTopaz(){
+			//if(allowTopaz && sigBoxTopaz.Visible){
+			if(sigBoxTopaz!=null && sigBoxTopaz.Visible){
+				return true;
+			}
 			return false;
 		}
 
@@ -407,8 +578,15 @@ In FormClosing:
 
 		///<summary>This should happen a lot before the box is signed.  Once it's signed, if this happens, then the signature will be invalidated.  The user would have to clear the invalidation manually.  This "invalidation" is just a visual cue; nothing actually happens to the data.</summary>
 		public void SetInvalid(){
-			if(signatureBox.NumberOfTabletPoints()==0) {
-				return;//no need to do anything because no signature
+			if(sigBoxTopaz!=null && sigBoxTopaz.Visible){
+				if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0){
+					return;//no need to do anything because no signature
+				}
+			}
+			else{
+				if(signatureBox.NumberOfTabletPoints()==0) {
+					return;//no need to do anything because no signature
+				}
 			}
 			labelInvalidSig.Visible=true;
 			labelInvalidSig.BringToFront();
@@ -416,27 +594,41 @@ In FormClosing:
 
 		///<summary>This should NOT be used unless GetSigChanged returns true. keyData should not be hashed.</summary>
 		public string GetSignature(string keyData){
-			if(signatureBox.NumberOfTabletPoints()==0) {
-				return "";
+			//Topaz boxes are written in Windows native code.
+			if(sigBoxTopaz!=null && sigBoxTopaz.Visible) {
+				if(TopazWrapper.GetTopazNumberOfTabletPoints(sigBoxTopaz)==0){
+					return "";
+				}
+				TopazWrapper.SetTopazKeyString(sigBoxTopaz,"0000000000000000");//Clear out key string
+				TopazWrapper.SetTopazAutoKeyData(sigBoxTopaz,keyData);
+				TopazWrapper.SetTopazEncryptionMode(sigBoxTopaz,2);
+				TopazWrapper.SetTopazCompressionMode(sigBoxTopaz,2);
+				return TopazWrapper.GetTopazString(sigBoxTopaz);
 			}
-			//sigBox.SetSigCompressionMode(0);
-			//sigBox.SetEncryptionMode(0);
-			//Some places used different logic for keystring and autokeydata in the past.  This must be maintained to keep signatures valid.
-			switch(_signatureMode) {
-				case SigMode.Document:
-				case SigMode.TreatPlan:
-				case SigMode.OrthoChart:
-					//No auto key data set, only key string.
-					signatureBox.SetKeyString(keyData);
-					break;
-				case SigMode.Default:
-					signatureBox.SetKeyString("0000000000000000");
-					signatureBox.SetAutoKeyData(keyData);
-					break;
+			else{
+				//ProcCur.SigIsTopaz=false;
+				if(signatureBox.NumberOfTabletPoints()==0) {
+					return "";
+				}
+				//sigBox.SetSigCompressionMode(0);
+				//sigBox.SetEncryptionMode(0);
+				//Some places used different logic for keystring and autokeydata in the past.  This must be maintained to keep signatures valid.
+				switch(_signatureMode) {
+					case SigMode.Document:
+					case SigMode.TreatPlan:
+					case SigMode.OrthoChart:
+						//No auto key data set, only key string.
+						signatureBox.SetKeyString(keyData);
+						break;
+					case SigMode.Default:
+						signatureBox.SetKeyString("0000000000000000");
+						signatureBox.SetAutoKeyData(keyData);
+						break;
+				}
+				//sigBox.SetEncryptionMode(2);
+				//sigBox.SetSigCompressionMode(2);
+				return signatureBox.GetSigString();
 			}
-			//sigBox.SetEncryptionMode(2);
-			//sigBox.SetSigCompressionMode(2);
-			return signatureBox.GetSigString();
 		}
 
 		private void butClearSig_Click(object sender,EventArgs e) {
@@ -444,6 +636,28 @@ In FormClosing:
 				ClearSignatureClicked(this,new EventArgs());
 			}
 			ClearSignature();
+			OnSignatureChanged();
+		}
+
+		private void butTopazSign_Click(object sender,EventArgs e) {
+			//this button is not even visible if Topaz is not allowed
+			if(!CheckTopaz()) {
+				MessageBox.Show(Lans.g(this,TopazWrapper.NOT_INSTALLED_MESSAGE)+TopazWrapper.GetLoadErrorLine());
+				return;
+			}
+			RestoreLabelText();
+			if(SignTopazClicked!=null) {
+				SignTopazClicked(this,new EventArgs());
+			}
+			signatureBox.Visible=false;
+			sigBoxTopaz.Visible=true;
+			//if(allowTopaz){
+				TopazWrapper.ClearTopaz(sigBoxTopaz);
+				TopazWrapper.SetTopazEncryptionMode(sigBoxTopaz,0);
+				TopazWrapper.SetTopazState(sigBoxTopaz,1);
+			//}
+			labelInvalidSig.Visible=false;
+			sigBoxTopaz.Focus();
 			OnSignatureChanged();
 		}
 
@@ -463,18 +677,39 @@ In FormClosing:
 			}
 		}
 
-		///<summary>Must set width and height of control and run FillSignature first.</summary>
-		public Bitmap GetSigImage(){
-			//no outline
-			return (Bitmap)signatureBox.GetSigImage(false);
+		private void sigBoxTopaz_Leave(object sender,EventArgs e) {
+			if(!CheckTopaz()) {
+				return;
+			}
+			if(TopazWrapper.GetTopazState(sigBoxTopaz)==1) {//if accepting input.
+				TopazWrapper.SetTopazState(sigBoxTopaz,0);
+			}
 		}
 
-		///<summary>If this is called externally, then the event SignatureChanged will also fire. clearTopazTablet is not used since Topaz signature
-		///pads are not supported.</summary>
+		///<summary>Must set width and height of control and run FillSignature first.</summary>
+		public Bitmap GetSigImage(){
+			Bitmap bitmap=new Bitmap(Width-2,Height-2);
+			//no outline
+			if(sigBoxTopaz!=null && sigBoxTopaz.Visible) {
+				sigBoxTopaz.DrawToBitmap(bitmap,new Rectangle(0,0,Width-2,Height-2));//GetBitmap would probably work.
+			}
+			else {
+				bitmap=(Bitmap)signatureBox.GetSigImage(false);
+			}
+			return bitmap;
+		}
+
+		///<summary>If this is called externally, then the event SignatureChanged will also fire.</summary>
 		public void ClearSignature(bool clearTopazTablet=true){
 			signatureBox.Enabled=true;
 			signatureBox.ClearTablet();
 			signatureBox.Visible=true;
+			if(sigBoxTopaz!=null) {
+				if(clearTopazTablet) {
+					TopazWrapper.ClearTopaz(sigBoxTopaz);
+				}
+				sigBoxTopaz.Visible=false;//until user explicitly starts it.
+			}
 			signatureBox.SetTabletState(1);//on-screen box is now accepting input.
 			SigChanged=true;
 			RestoreLabelText();
@@ -482,12 +717,15 @@ In FormClosing:
 			OnSignatureChanged();
 		}
 
-		///<summary>Does nothing: Topaz signature pads are not supported. Kept for its callers.</summary>
 		public void SetControlSigBoxTopaz(Control sigBoxTopaz) {
+			this.sigBoxTopaz=signatureBox;
 		}
 
 		///<summary>Set to 1 to activate it to start accepting signatures.  Set to 0 to no longer accept input.  Should be called with a state of '0' in FormClosing events.</summary>
 		public void SetTabletState(int state) {
+			if(sigBoxTopaz!=null) {
+				TopazWrapper.SetTopazState(sigBoxTopaz,state);
+			}
 			signatureBox?.SetTabletState(state);
 		}
 

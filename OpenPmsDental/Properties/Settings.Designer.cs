@@ -25,6 +25,16 @@ namespace OpenPmsDental.Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.SpecialSettingAttribute(global::System.Configuration.SpecialSetting.WebServiceUrl)]
+        [global::System.Configuration.DefaultSettingValueAttribute("https://www.callfire.com/service/SMSService")]
+        public string OpenDental_CallFireService_SMSService {
+            get {
+                return ((string)(this["OpenDental_CallFireService_SMSService"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("https://its.changehealthcare.com/ITS/ITSWS.asmx")]
         public string OpenDental_EmdeonITS_ITSWS {
             get {

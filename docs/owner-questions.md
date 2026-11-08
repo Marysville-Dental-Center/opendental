@@ -302,7 +302,7 @@ The program has no automatic runner for recurring card charges or repeating char
 
 ## Imaging
 
-- (B-IMG 1) Should "Copy without drawings" also be added to the old Images module, if any computer still uses it? **Today:** new module only.
+- (B-IMG 1) Should "Copy without drawings" also be added to the old Images module, if any computer still uses it? **Today:** new module only. **Settled (2026-11-08) by the removal:** the old Images module and its option ("Use old Imaging module interface, pre 2020") are removed in the clean-up stage of the .NET 10 move (S0-6), so every computer uses the current module, which has "Copy without drawings". A database with the option on gets the current module; the setting stays stored but is no longer read.
 - (B-IMG 2) Audit text: "... copied to clipboard without drawings". Fine, or should both copy commands log the same text?
 - (B-IMG 3) Please read the scanning setup Details message once and say whether the wording fits the office.
 - (M2-IMG 1) The "allow PDF JavaScript" setting covers PDFs in the Imaging module only. Should it, or a second setting, also cover PDFs shown in eForms, statements and sheets?

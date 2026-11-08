@@ -234,32 +234,5 @@ namespace ReportTests {
 			}
 			Assert.IsFalse(File.Exists(Path.Combine(folder,"MySql.Data.dll")),"MySql.Data.dll is not shipped.");
 		}
-
-		///<summary>Stage 0 of the .NET 10 move (S0-2a): the engine's SQL Server, ODBC and OLE DB data providers are removed. No compiled RdlEngine file
-		///names System.Data.SqlClient, System.Data.Odbc or System.Data.OleDb, the built-in configuration and RdlEngineConfig.xml no longer list the
-		///three providers, and every changed file carries its change notice (LGPL 2.1 section 2a).</summary>
-		[TestMethod]
-		public void RdlEngine_HasNoSqlServerOdbcOrOleDbProvider() {
-			Regex regexProviders=new Regex(@"System\.Data\.(SqlClient|Odbc|OleDb)\b|\b(SqlConnection|OdbcConnection|OleDbConnection)\b");
-			foreach(string relative in CompiledFiles(@"RdlEngine\RdlEngine.csproj")) {
-				//Code only: the change notices name the removed classes.
-				string code=string.Join("\n",Read(relative).Replace("\r\n","\n").Split('\n').Where(x => !x.TrimStart().StartsWith("//")));
-				StringAssert.DoesNotMatch(code,regexProviders,relative);
-			}
-			foreach(string relative in new[] { @"RdlEngine\Runtime\RdlEngineConfig.cs",@"RdlEngine\RdlEngineConfig.xml" }) {
-				StringAssert.DoesNotMatch(Read(relative),new Regex(@"<DataProvider>(SQL|ODBC|OLEDB)</DataProvider>"),relative);
-			}
-			foreach(string relative in new[] { @"RdlEngine\Runtime\RdlEngineConfig.cs",@"RdlEngine\Definition\DataSetDefn.cs",@"RdlEngine\Definition\DataSourceDefn.cs",
-				@"RdlEngine\Definition\Query.cs",@"RdlEngine\Definition\ReportDefn.cs",@"RdlEngine\Runtime\DataSet.cs",@"RdlEngine\Runtime\DataSource.cs",
-				@"RdlEngine\Runtime\Report.cs" })
-			{
-				StringAssert.Contains(Read(relative),"// Changed by Open PMS - Dental contributors, 2026-11-08 (stage 0 of the .NET 10 move, S0-2a",relative);
-			}
-			//The MySQL.NET provider reports use is still the built-in one.
-			Assert.AreEqual("show tables",fyiReporting.RDL.RdlEngineConfig.GetTableSelect("MySQL.NET"));
-			foreach(string provider in new[] { "SQL","ODBC","OLEDB" }) {
-				Assert.IsFalse((fyiReporting.RDL.RdlEngineConfig.GetProviders()??new string[0]).Contains(provider),provider+" is still offered.");
-			}
-		}
 	}
 }

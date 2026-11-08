@@ -20,14 +20,13 @@
     For additional information, email info@fyireporting.com or visit
     the website www.fyiReporting.com.
 */
-// Changed by Open PMS - Dental contributors, 2026-11-08 (stage 0 of the .NET 10 move, S0-2a, docs/specs/net10-plan.md): the unused
-// usings of the SQL Server, ODBC and OLE DB data providers are removed with those providers.
 
 using System;
 using System.Xml;
 using System.Collections;
 using System.IO;
 using System.Data;
+using System.Data.SqlClient;
 
 namespace fyiReporting.RDL
 {
