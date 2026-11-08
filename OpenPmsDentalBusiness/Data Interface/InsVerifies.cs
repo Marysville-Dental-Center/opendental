@@ -132,7 +132,9 @@ namespace OpenPmsDentalBusiness{
 				return Meth.GetObject<InsVerify>(MethodBase.GetCurrentMethod(),fkey,verifyType);
 			}
 			//In some cases, insverify can have more than one row per plan. Using ORDER BY and LIMIT to ensure we get latest DateLastVerified if there are multiple rows for one plan (JobNum:53236)
-			string command="SELECT * FROM insverify WHERE FKey="+POut.Long(fkey)+" AND VerifyType="+POut.Int((int)verifyType)+" ORDER BY DateLastVerified DESC LIMIT 1";
+			//On a tie the newest row, the same row Database Maintenance's InsVerifyRedundantEntries keeps (P262-TOOLS).
+			string command="SELECT * FROM insverify WHERE FKey="+POut.Long(fkey)+" AND VerifyType="+POut.Int((int)verifyType)
+				+" ORDER BY DateLastVerified DESC,InsVerifyNum DESC LIMIT 1";
 			return Crud.InsVerifyCrud.SelectOne(command);
 		}
 
