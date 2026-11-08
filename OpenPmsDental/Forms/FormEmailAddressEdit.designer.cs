@@ -508,7 +508,7 @@ namespace OpenPmsDental {
 			// 
 			this.panelPassword.Controls.Add(this.textPassword);
 			this.panelPassword.Controls.Add(this.labelPassword);
-			this.panelPassword.Location = new System.Drawing.Point(147, 22);
+			this.panelPassword.Location = new System.Drawing.Point(147, 10);
 			this.panelPassword.Name = "panelPassword";
 			this.panelPassword.Size = new System.Drawing.Size(279, 41);
 			this.panelPassword.TabIndex = 21;

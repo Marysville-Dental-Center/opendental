@@ -71,18 +71,21 @@ A new build reaches the office through the release channel described in [docs/re
 
 ### Prerequisites
 
-- Windows 10/11
-- **Visual Studio 2022** (any edition) or **Build Tools for Visual Studio 2022**, with:
+- Windows 11, 64-bit
+- **Visual Studio 2026** (any edition) or **Build Tools for Visual Studio 2026** (version 18; both install under `Microsoft Visual Studio\18\`), with:
   - .NET desktop build tools (`Microsoft.VisualStudio.Workload.ManagedDesktopBuildTools`)
-  - Desktop development with C++ (`Microsoft.VisualStudio.Workload.VCTools`), for `Direct2dWrapper` (native, toolset v143)
+  - Desktop development with C++ (`Microsoft.VisualStudio.Workload.VCTools`) and its MSVC v143 toolset (`Microsoft.VisualStudio.Component.VC.14.44.17.14.x86.x64`, MSVC 14.44), for `Direct2dWrapper` (native, toolset v143; the default toolset of 2026 is v145)
   - Web development build tools (`Microsoft.VisualStudio.Workload.WebBuildTools`), for `OpenPmsDentalServer`
-  - .NET Framework 4.8 and 4.7.2 targeting packs
+  - .NET Framework 4.8 SDK and the 4.8 and 4.7.2 targeting packs (`Microsoft.Net.Component.4.8.SDK`, `Microsoft.Net.Component.4.8.TargetingPack`, `Microsoft.Net.Component.4.7.2.TargetingPack`)
   - Testing tools core (`Microsoft.VisualStudio.Component.TestTools.BuildTools`), for the MSTest v1 test projects
+  - NuGet build tools (`Microsoft.VisualStudio.Component.NuGet.BuildTools`) and the Windows 11 SDK 10.0.26100 (`Microsoft.VisualStudio.Component.Windows11SDK.26100`)
+- **The .NET SDK 10.0.114** exactly: `global.json` pins it, for the projects that move to the SDK project format (stage 1 of the .NET 10 move, [docs/specs/net10-plan.md](docs/specs/net10-plan.md)). Install it machine-wide, or per user into `%LOCALAPPDATA%\Microsoft\dotnet` (`dotnet-install.ps1 -Version 10.0.114` does that). The SDK that Visual Studio installs itself is a later band and is not used.
+- **The offline package folder.** `nuget.config` restores from one local folder only, the one the environment variable `OPMS_NUGET_OFFLINE` names; nothing is downloaded during a build. The project's own build PC keeps it in the git folder (`.git\od-tools\nuget-packages`), which `tools\Initialize-BuildEnvironment.ps1` finds by itself. Elsewhere, put the packages the build restores into a folder of your own and set the variable. Today that is `Mono.Cecil` 0.10.3, for `UnitTests` and `MiddleTierMockTests`, unless `packages\Mono.Cecil.0.10.3` is already there.
 
-One command installs the Build Tools with everything above:
+One command installs the Build Tools with everything above, from the installer of the Visual Studio 2026 channel (`https://aka.ms/vs/18/stable/vs_buildtools.exe`):
 
 ```bash
-winget install --id Microsoft.VisualStudio.2022.BuildTools --exact --override "--passive --wait --norestart --add Microsoft.VisualStudio.Workload.ManagedDesktopBuildTools --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --add Microsoft.VisualStudio.Workload.WebBuildTools --add Microsoft.Net.Component.4.8.TargetingPack --add Microsoft.Net.Component.4.8.SDK --add Microsoft.Net.Component.4.7.2.TargetingPack --add Microsoft.VisualStudio.Component.NuGet.BuildTools --add Microsoft.VisualStudio.Component.TestTools.BuildTools"
+vs_buildtools.exe --passive --wait --norestart --add Microsoft.VisualStudio.Workload.ManagedDesktopBuildTools --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --add Microsoft.VisualStudio.Component.VC.14.44.17.14.x86.x64 --add Microsoft.VisualStudio.Workload.WebBuildTools --add Microsoft.Net.Component.4.8.TargetingPack --add Microsoft.Net.Component.4.8.SDK --add Microsoft.Net.Component.4.7.2.TargetingPack --add Microsoft.VisualStudio.Component.NuGet.BuildTools --add Microsoft.VisualStudio.Component.TestTools.BuildTools --add Microsoft.VisualStudio.Component.Windows11SDK.26100
 ```
 
 ### Get the source
@@ -98,18 +101,20 @@ Without them the build stops with "The upstream source is missing".
 
 ### Build
 
-Open **`OpenDental.Local.slnf`** in Visual Studio, not `OpenDental.sln`, and build `Debug | x86` (or `Release | x86` for an office). From the command line:
+Open **`OpenDental.Local.slnf`** in Visual Studio, not `OpenDental.sln`, and build `Debug | x86` (or `Release | x86` for an office). From the command line, in PowerShell at the repository root:
 
-```bash
-"C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/MSBuild.exe" OpenDental.Local.slnf -restore -p:RestorePackagesConfig=true -p:Configuration=Debug -p:Platform=x86 -m -nodeReuse:false
+```powershell
+. .\tools\Initialize-BuildEnvironment.ps1; Initialize-BuildEnvironment -RepoRoot (Get-Location).Path
+& "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\MSBuild\Current\Bin\MSBuild.exe" OpenDental.Local.slnf -restore -p:RestorePackagesConfig=true -p:RestoreLockedMode=true -p:Configuration=Debug -p:Platform=x86 -m -nodeReuse:false
 ```
 
-With Visual Studio installed instead of Build Tools, replace `BuildTools` in the path with your edition, e.g. `Community`. A clean build produces many compiler warnings and no errors. The main program is `OpenPmsDental\bin\Debug\OpenPmsDental.exe` (`OpenPmsDental\bin\Release\` for a Release build). The build also copies `UpdateFileCopier.exe` and the native file the program loads at run time, `WebView2Loader.dll`, next to it.
+`Initialize-BuildEnvironment` sets, for that PowerShell window only, what the build needs: with a per-user .NET SDK, `DOTNET_MSBUILD_SDK_RESOLVER_CLI_DIR` and `PATH`, so MSBuild finds that SDK; `OPMS_NUGET_OFFLINE` when it is not set; no .NET telemetry. The tool scripts under `tools/` call it themselves. With a per-user SDK, start Visual Studio from that window, so it finds the SDK too. With Visual Studio installed instead of Build Tools, replace `BuildTools` in the path with your edition, e.g. `Community`. A clean build produces many compiler warnings and no errors. The main program is `OpenPmsDental\bin\Debug\OpenPmsDental.exe` (`OpenPmsDental\bin\Release\` for a Release build). The build also copies `UpdateFileCopier.exe` and the native file the program loads at run time, `WebView2Loader.dll`, next to it.
 
 ### The solution and the solution filter
 
 - **`OpenDental.Local.slnf`** loads the program and its libraries, services and tools, the adoption and synthetic-data tools under `tools/`, and every test project under `tests/`. The older or standalone projects listed under [Repository layout](#repository-layout) are not in it. `OpenDental.sln` lists the same projects, so either one builds the same set. The build scripts read the filter, so add a new project to both.
-- **`Directory.Build.targets`** only adds the folder that holds MSTest v1 (`Microsoft.VisualStudio.QualityTools.UnitTestFramework`) to the assembly search path. Every project is built from source: a missing project fails the build, and nothing is swapped for a DLL in `Required dlls/`.
+- **`Directory.Build.targets`** adds the folder that holds MSTest v1 (`Microsoft.VisualStudio.QualityTools.UnitTestFramework`) to the assembly search path and gives the test projects their binding redirects. Every project is built from source: a missing project fails the build, and nothing is swapped for a DLL in `Required dlls/`.
+- **`Directory.Build.props`** and **`tests/Directory.Build.props`** hold the settings of the SDK-style projects only (flat `bin\Debug\` and `bin\Release\` output, x86, lock files, no generated assembly info); the classic projects ignore them. **`global.json`** pins the .NET SDK, **`nuget.config`** the offline package folder. `tools\Get-ProjectBaseline.ps1` records what each project compiles, embeds and outputs, and compares that with the record in `tools/project-baseline/` taken before the change of project format.
 - **Version numbers:** `SharedAssemblyInfo.cs` in the repository root gives every shipped assembly its product name, copyright and release version (`0.0`). Each project's `AssemblyVersion` stays on its own line; for `OpenPmsDental.exe` and `OpenPmsDentalBusiness.dll` that is the compatibility version `24.3.63.0`, which the database checks use ([docs/release-process.md](docs/release-process.md)).
 - **We don't merge from upstream.** Open Dental's public source stops at 24.3.63; later features are re-implemented from public documentation ([docs/decoupling-plan.md](docs/decoupling-plan.md)).
 - **`.gitignore`** ignores build output (`bin/`, `obj/`, `packages/`, `.vs/`). The `ConversionFiles` already tracked under `OpenPmsDental/bin/Debug` remain tracked.
@@ -187,7 +192,7 @@ Then build the solution (see [Build](#build)), start `OpenPmsDental\bin\Debug\Op
 | `OpenPmsDentalStorage/`, `OpenPmsDentalGraph/`, `SparksToothChart/`, `Direct2dWrapper/`, `PasswordVaultWrapper/` | SFTP A to Z storage, dashboards, tooth chart rendering, native Direct2D, and Windows credential vault libraries |
 | `tests/` | MSTest v1 test projects, one per package, in the solution filter. Tests that need a database create a scratch database with a unique name on `127.0.0.1:3306` and drop it afterwards |
 | `UnitTests/`, `UnitTestsCore/`, `NoHqTests/` | Open Dental's MSTest v1 tests and their helpers, and the checks that no Open Dental servers are contacted. `tools/run-tests.ps1` runs the legacy `UnitTests` project (`Unit Tests.exe`, named `UnitTests` in `-Include`) with the others. It builds its own database `unittest<version>_<time>_<process>` on `127.0.0.1:3306` from the seed dump and drops it at the end (set `OPENPMS_UNITTESTS_KEEPDB=1` to keep it). Its developer windows under `UI Testing/` are opened by hand, not run as tests |
-| `tools/` | `New-DevDatabase.ps1` and `DevDbTool/` (development database), `New-InitSql.ps1` (regenerates `db/init/new-database.sql`), `AdoptionValidation/` (adopting an Open Dental database), `SyntheticData/` (synthetic test data), `run-tests.ps1` (the test runner), `Test-NoHqHosts.ps1` (fails if code still references Open Dental's hosts), `Test-NoOldNames.ps1` (lists the program's old internal names, for the rename), `Build-Release.ps1` (the release: staging, checks, checksums and the setup) and `Test-Installer.ps1` (a per-user test install and uninstall of the setup) |
+| `tools/` | `New-DevDatabase.ps1` and `DevDbTool/` (development database), `New-InitSql.ps1` (regenerates `db/init/new-database.sql`), `AdoptionValidation/` (adopting an Open Dental database), `SyntheticData/` (synthetic test data), `run-tests.ps1` (the test runner), `Initialize-BuildEnvironment.ps1` (finds MSBuild and vstest of the Build Tools 2026 and sets the build's environment, for the other scripts), `Get-ProjectBaseline.ps1` (records and compares what each project compiles, embeds and outputs; the record is `project-baseline/`), `Test-NoHqHosts.ps1` (fails if code still references Open Dental's hosts), `Test-NoOldNames.ps1` (lists the program's old internal names, for the rename), `Build-Release.ps1` (the release: staging, checks, checksums and the setup) and `Test-Installer.ps1` (a per-user test install and uninstall of the setup) |
 | `installer/` | The Inno Setup 6 script of the workstation setup (`OpenPmsDental.iss`) and its information page |
 | `docs/` | Design notes, the release process, the adoption runbook, the binaries audit and one port note per package (`docs/port-notes/`) |
 | `Required dlls/` | Third-party assemblies the build references. What ships is listed in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt); the rest is reviewed in [docs/third-party-binaries-audit.md](docs/third-party-binaries-audit.md) |

@@ -2443,6 +2443,7 @@ namespace OpenPmsDental{
 					return;
 				}
 				Mounts.Delete(mount);
+				ImageStore.DeleteThumbnailOfDeletedMount(mount,patFolderOld);//S0-F
 				Def defDocCategory = Defs.GetDef(DefCat.ImageCats,mount.DocCategory);
 				string logText = "Mount Deleted: "+mount.Description+" with category "
 					+defDocCategory.ItemName;

@@ -44,6 +44,8 @@ namespace CodeBase.Controls {
 		private PagePending _pagePending=null;
 		///<summary>True once NavigateToHtml has started the initialization itself, so it starts only once.</summary>
 		private bool _isInitStarted=false;
+		///<summary>The initialization Init started (S0-F): later calls get it while it runs or once it succeeded. Null before the first Init.</summary>
+		private Task _taskInit=null;
 		///<summary>Backs AreBrowserKeysEnabled.</summary>
 		private bool _areBrowserKeysEnabled=false;
 		///<summary>The start failure this control last reported (Init and the initialization's event both see the same exception), so it is logged once.</summary>
@@ -146,8 +148,23 @@ namespace CodeBase.Controls {
 		///x => x.IsInPrivateModeEnabled=true gives an InPrivate profile, so no cookies, history or form data persist in the shared user data folder.
 		///Throws ODWebView2InitException (an ODException) when the runtime is missing, after telling the user, or when it would not start, after
 		///telling the user once per program session (ReportStartFailure); IsUserTold says whether this call told the user. A window that shows its
-		///own message when Init fails gives the exception to TryShowInitFailure first, so the user sees one message, never two.</summary>
-		public async Task Init(Action<CoreWebView2ControllerOptions> actionSetControllerOptions) {
+		///own message when Init fails gives the exception to TryShowInitFailure first, so the user sees one message, never two.
+		///S0-F: a control initializes once. A call while the initialization runs, or after it succeeded, gets the same task (the first call's
+		///controller options count): a second initialization would make a second environment, which WebView2 refuses with an ArgumentException that
+		///reached the user as "the runtime could not start" (the EOB window and the Imaging module show a second PDF while the viewer still starts).
+		///After a failure the next call tries again.</summary>
+		public Task Init(Action<CoreWebView2ControllerOptions> actionSetControllerOptions) {
+			if(_taskInit!=null && !_taskInit.IsFaulted && !_taskInit.IsCanceled) {
+				return _taskInit;
+			}
+			if(_taskInit==null && CoreWebView2!=null) {
+				return Task.CompletedTask;//Initialized without Init (EnsureCoreWebView2Async): nothing to do.
+			}
+			_taskInit=InitOnce(actionSetControllerOptions);
+			return _taskInit;
+		}
+
+		private async Task InitOnce(Action<CoreWebView2ControllerOptions> actionSetControllerOptions) {
 			if(!FuncIsRuntimeAvailable()) {
 				//The program never downloads or installs the runtime itself: an administrator installs it (Windows 11 includes it).
 				string warning=GetMissingRuntimeMessage();

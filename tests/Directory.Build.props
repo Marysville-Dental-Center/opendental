@@ -1,0 +1,30 @@
+<Project>
+  <!--
+    Shared settings of the test projects under tests\. MSBuild imports only the nearest Directory.Build.props, so this
+    file imports the repository's own first (its settings apply here too), then adds what every test project shares.
+
+    As in the repository's file, everything here is for SDK-style projects only: the classic test projects set all of it
+    in their own project files and build exactly as before. Stage 1 of the .NET 10 move converts the test projects last
+    (S1-6, docs/specs/net10-plan.md); stages 2, 4 and 3b then change this one file instead of every test project file.
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..\'))" />
+
+  <PropertyGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
+    <!-- Every test project targets .NET Framework 4.8 today (x86 comes from the repository's file). -->
+    <TargetFramework>net48</TargetFramework>
+    <!--
+      Every test project generates its binding redirects (into its .dll.config, from tests\BindingRedirects.config when it
+      has no app.config, Directory.Build.targets); the repository's file turns them off for a project that does not ask.
+    -->
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
+    <!--
+      Every test project uses MSTest v1, referenced by name; Directory.Build.targets (ODAddMSTestV1SearchPath) adds the
+      Visual Studio folder that holds it to the search path. The S1-0 offline check built an SDK-style net48 test project
+      this way with the Build Tools 2026 MSBuild 18.
+    -->
+    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework" />
+  </ItemGroup>
+</Project>

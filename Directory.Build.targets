@@ -1,6 +1,8 @@
 <Project>
   <!--
-    Local build support, imported by every project in this repository.
+    Local build support, imported by every project in this repository, classic and SDK-style alike, after the project's
+    own properties. The settings that SDK-style projects need before their own properties (output layout, assembly info,
+    platform, lock files, binding redirects) are in Directory.Build.props, for SDK-style projects only.
 
     Every project the solution builds now exists in this repository, so nothing is
     swapped for a prebuilt DLL any more. The target that replaced a missing
@@ -13,6 +15,9 @@
     UnitTests, UnitTestsCore and the test projects reference MSTest v1
     (Microsoft.VisualStudio.QualityTools.UnitTestFramework) by name only. Visual Studio
     and Build Tools install it under Common7\IDE, which MSBuild does not search by default.
+    VsInstallRoot is the instance whose MSBuild builds: Build Tools 2026 keep the file under
+    Common7\IDE\Extensions\TestPlatform, as Build Tools 2022 do. An SDK-style net48 project resolves
+    it the same way (the S1-0 offline check of docs/specs/net10-plan.md).
   -->
   <Target Name="ODAddMSTestV1SearchPath" BeforeTargets="ResolveAssemblyReferences" Condition="'$(VsInstallRoot)' != ''">
     <PropertyGroup>

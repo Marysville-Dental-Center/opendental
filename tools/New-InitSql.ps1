@@ -41,13 +41,14 @@ The file to write. Default: db\init\new-database.sql in this repository.
 
 .PARAMETER BuildLane
 Path of the shared build lane script (odbuild.ps1) of this PC. When given, DevDbTool is built through it, so that only one build runs at
-a time. Without it, MSBuild is found with vswhere, as tools\New-DevDatabase.ps1 does.
+a time. Without it, the Build Tools 2026 MSBuild 18 is found with vswhere, as tools\New-DevDatabase.ps1 finds it
+(tools\Initialize-BuildEnvironment.ps1), and builds in the environment that script sets, with a locked restore first.
 
 .PARAMETER SkipBuild
 Run the already-built tools\DevDbTool\bin\Debug\DevDbTool.exe without building.
 
 .PARAMETER MSBuildPath
-Full path to MSBuild.exe when not building through -BuildLane. Default: found with vswhere.
+Full path to MSBuild.exe when not building through -BuildLane. Default: the Build Tools 2026 MSBuild 18, found with vswhere.
 
 .PARAMETER KeepScratchDatabase
 Keep the scratch database (named initsql_<run id>) to look at it. Drop it yourself afterwards.
@@ -84,6 +85,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
+# Get-BuildToolPath and Initialize-BuildEnvironment, shared by the tool scripts that build.
+. (Join-Path $PSScriptRoot 'Initialize-BuildEnvironment.ps1')
 $toolProject = Join-Path $PSScriptRoot 'DevDbTool\DevDbTool.csproj'
 $toolExe = Join-Path $PSScriptRoot 'DevDbTool\bin\Debug\DevDbTool.exe'
 if (-not $OutFile) {
@@ -97,15 +100,12 @@ function Find-MSBuild {
 		}
 		return $MSBuildPath
 	}
-	$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-	if (Test-Path -LiteralPath $vswhere) {
-		$found = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' |
-			Select-Object -First 1
-		if ($found) {
-			return $found
-		}
+	# The Build Tools 2026 (Visual Studio 2026) MSBuild 18, found with a version range (tools\Initialize-BuildEnvironment.ps1).
+	$found = Get-BuildToolPath -Tool MSBuild
+	if ($found) {
+		return $found
 	}
-	throw 'MSBuild for Visual Studio 2022 was not found. Install the Build Tools as described in README.md, pass -MSBuildPath, or pass -BuildLane.'
+	throw 'MSBuild for Visual Studio 2026 was not found. Install the Build Tools 2026 as described in README.md, pass -MSBuildPath, or pass -BuildLane.'
 }
 
 if (-not $SkipBuild) {
@@ -125,8 +125,9 @@ if (-not $SkipBuild) {
 	}
 	else {
 		$msbuild = Find-MSBuild
+		$null = Initialize-BuildEnvironment -RepoRoot $repoRoot
 		Write-Host "Building DevDbTool (Debug|x86) with $msbuild"
-		& $msbuild $toolProject -nologo '-p:Configuration=Debug' '-p:Platform=x86' '-nodeReuse:false' '-v:minimal' '-clp:Summary;ErrorsOnly'
+		& $msbuild $toolProject -nologo '-restore' '-p:RestoreLockedMode=true' '-p:Configuration=Debug' '-p:Platform=x86' '-nodeReuse:false' '-v:minimal' '-clp:Summary;ErrorsOnly'
 		if ($LASTEXITCODE -ne 0) {
 			throw "Building DevDbTool failed (MSBuild exit code $LASTEXITCODE)."
 		}

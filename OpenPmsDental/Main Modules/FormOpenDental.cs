@@ -4258,12 +4258,14 @@ namespace OpenPmsDental{
 				inputBoxParam.Text=Lan.g(this,"Do not show me this message again."); 
 				inputBoxParam.PointPosition=new System.Windows.Point(0,10);
 				InputBox inputBox=new InputBox(inputBoxParam);
+				//Nobody answered within 15 seconds: the log off or close the user asked for goes ahead. Any input in the box stops that countdown
+				//(S0-F), so a user who is answering is never overtaken by it.
 				inputBox.HasTimeout=true;
 				inputBox.ShowDialog();
 				if(inputBox.HasTimedOut) {//Don't save the checkbox if inputBox times out
 					return true;
 				}
-				if(inputBox.IsDialogCancel) {
+				if(inputBox.IsDialogCancel) {//X or Esc: No.
 					return false;
 				}
 				if(inputBox.BoolResult) {
@@ -7145,10 +7147,24 @@ namespace OpenPmsDental{
 		}
 
 		private void FormOpenDental_FormClosed(object sender,FormClosedEventArgs e) {
+			//S0-F: nothing from here on can cancel the exit or waits for the user, so the process must end. The watchdog ends it if this closing is held
+			//up before Windows ends the process (not inside ExitProcess, see ExitWatchdog) and writes down the step it stood at, and an exception in the
+			//disposal no longer skips Environment.Exit below.
+			ExitWatchdog.Program.Start("FormClosed: closing the browsers of the main window");
+			//The browsers (WebView2: the Imaging module's PDF viewer, the eCW panel) close while their windows still exist, as the windows that have one
+			//close theirs; Dispose below destroys every window handle first and disposes the controls after.
+			ODException.SwallowAnyException(() => DisposeWebViews(this));
+			ExitWatchdog.Program.SetStep("FormClosed: disposing the main window");
 			//Cleanup all resources related to the program which have their Dispose methods properly defined.
 			//This helps ensure that the chart module and its tooth chart wrapper are properly disposed of in particular.
 			//This step is necessary so that graphics memory does not fill up.
-			Dispose();
+			try {
+				Dispose();
+			}
+			catch(Exception ex) {
+				ODException.SwallowAnyException(() => Logger.WriteException(ex,"Exit"));
+			}
+			ExitWatchdog.Program.SetStep("FormClosed: Environment.Exit");
 			//"=====================================================
 			//https://msdn.microsoft.com/en-us/library/system.environment.exit%28v=vs.110%29.aspx
 			//Environment.Exit Method:
@@ -7174,6 +7190,20 @@ namespace OpenPmsDental{
 			//See http://stackoverflow.com/questions/466799/how-can-i-enumerate-all-managed-threads-in-c.  To keep track of a managed thread, use ODThread.
 			//Environment.Exit requires permission for unmanaged code, which we have explicitly specified in the solution already.
 			Environment.Exit(0);//Guaranteed to kill any threads which are still running.
+		}
+
+		///<summary>S0-F: disposes every browser control (ODWebView2) inside control, so each closes its browser while the window it shows in still exists.
+		///Each is named as the exit watchdog's step, so a browser that holds the closing up is named in the log.</summary>
+		private static void DisposeWebViews(Control control) {
+			for(int i=control.Controls.Count-1;i>=0;i--) {
+				Control controlChild=control.Controls[i];
+				if(controlChild is CodeBase.Controls.ODWebView2 odWebView2) {
+					ExitWatchdog.Program.SetStep("FormClosed: closing the browser "+odWebView2.Name+" in "+control.Name);
+					odWebView2.Dispose();
+					continue;
+				}
+				DisposeWebViews(controlChild);
+			}
 		}
 
 		
