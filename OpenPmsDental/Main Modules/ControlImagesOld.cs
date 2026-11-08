@@ -114,8 +114,6 @@ namespace OpenPmsDental {
 		///<summary>The true offset of the document image or mount image.</summary>
 		private PointF _pointFTranslation;
 		private Rectangle _rectangleCrop=new Rectangle(0,0,-1,-1);
-		///<summary>Used to display Topaz signatures on Windows. Is added dynamically to avoid native code references crashing MONO.</summary>
-		private Control _sigBoxTopaz;
 		///<summary>Used to download images from Apterxy</summary>
 		private ODThread _threadImageRequest;
 		///<summary>Thread to handle updating the graphical image to the screen when the current document is an image.</summary>
@@ -145,31 +143,11 @@ namespace OpenPmsDental {
 			Font=LayoutManagerForms.FontInitial;
 			//The context menu causes strange bugs in MONO when performing selections on the tree.
 			//Perhaps when MONO is more developed we can remove this check.
-			//Also, the SigPlusNet() object cannot be instantiated on 64-bit machines, because
-			//the code for instantiation exists in a 32-bit native dll. Therefore, we have put
-			//the creation code for the topaz box in TopazWrapper.GetTopaz() so that
-			//the native code does not exist or get called anywhere in the program unless we are running on a 
-			//32-bit version of Windows.
-			//bool is64=CodeBase.ODEnvironment.Is64BitOperatingSystem();
 			bool platformUnix=Environment.OSVersion.Platform==PlatformID.Unix;
-			//allowTopaz=(!platformUnix && !is64);
 			if(platformUnix) {
 				treeMain.ContextMenu=null;
 			}
-			//if(allowTopaz){//Windows OS
-			try {
-				_sigBoxTopaz=TopazWrapper.GetTopaz();
-				panelNote.Controls.Add(_sigBoxTopaz);
-				_sigBoxTopaz.Location=sigBox.Location;//new System.Drawing.Point(437,15);
-				_sigBoxTopaz.Name="sigBoxTopaz";
-				_sigBoxTopaz.Size=new System.Drawing.Size(362,79);
-				_sigBoxTopaz.TabIndex=93;
-				_sigBoxTopaz.Text="sigPlusNET1";
-				_sigBoxTopaz.DoubleClick+=new System.EventHandler(this.sigBoxTopaz_DoubleClick);
-				TopazWrapper.SetTopazState(_sigBoxTopaz,0);
-			}
-			catch { }
-			//}
+			//Topaz signature pads are not supported since stage 0 of the .NET 10 move, so no Topaz control is created.
 			//Direct sensor capture through Open Dental's closed Suni driver (xImageDeviceManager.dll, SuniUSB.dll) was removed on 2026-11-01, and
 			//Open Dental 26.2 removed Suni support altogether (P262-LINKS). A sensor with a TWAIN driver is acquired in the Imaging module.
 			Logger.LogToPath("Ctor",LogPath.Startup,LogPhase.End);
@@ -868,10 +846,6 @@ namespace OpenPmsDental {
 		}		
 
 		private void sigBox_DoubleClick(object sender,EventArgs e) {
-			ToolBarSign_Click();
-		}
-
-		private void sigBoxTopaz_DoubleClick(object sender,EventArgs e) {
 			ToolBarSign_Click();
 		}
 
@@ -3114,7 +3088,7 @@ namespace OpenPmsDental {
 			return nodeIdTag;
 		}
 
-		///<summary>The invalid signature label's own text while it says that Topaz's software is not installed, else null.</summary>
+		///<summary>The invalid signature label's own text while it says that Topaz signature pads are not supported, else null.</summary>
 		private string _textInvalidSigBeforeTopaz;
 
 		///<summary>DO NOT CALL UNLESS THE CURRENTLY SELECTED NODE IS A DOCUMENT NODE. Fills the panelnote control with the current document signature when the panelnote is visible and when a valid document is currently selected.</summary>
@@ -3132,62 +3106,18 @@ namespace OpenPmsDental {
 			labelInvalidSig.Visible=false;
 			sigBox.Visible=true;
 			sigBox.SetTabletState(0);//never accepts input here
-			//Topaz box is not supported in Unix, since the required dll is Windows native.
 			if(_documentShowing.SigIsTopaz) {
 				if(_documentShowing.Signature!=null && _documentShowing.Signature!="") {
-					if(_sigBoxTopaz==null) {//Topaz's software is not installed, so the signature can be neither shown nor checked here.
-						sigBox.Visible=false;
-						_textInvalidSigBeforeTopaz=labelInvalidSig.Text;
-						labelInvalidSig.Text=Lan.g(this,TopazWrapper.NOT_INSTALLED_MESSAGE);
-						labelInvalidSig.Visible=true;
-						return;
-					}
-					//if(allowTopaz) {
+					//Topaz signature pads are not supported, so the signature can be neither shown nor checked here.
 					sigBox.Visible=false;
-					_sigBoxTopaz.Visible=true;
-					TopazWrapper.ClearTopaz(_sigBoxTopaz);
-					TopazWrapper.SetTopazCompressionMode(_sigBoxTopaz,0);
-					TopazWrapper.SetTopazEncryptionMode(_sigBoxTopaz,0);
-					TopazWrapper.SetTopazKeyString(_sigBoxTopaz,"0000000000000000");//Clear out the key string
-					string keystring=GetHashString(_documentShowing);
-					TopazWrapper.SetTopazAutoKeyData(_sigBoxTopaz,keystring);
-					TopazWrapper.SetTopazEncryptionMode(_sigBoxTopaz,2);//high encryption
-					TopazWrapper.SetTopazCompressionMode(_sigBoxTopaz,2);//high compression
-					TopazWrapper.SetTopazSigString(_sigBoxTopaz,_documentShowing.Signature);
-					_sigBoxTopaz.Refresh();
-					//If sig is not showing, then setting the Key String to the hashed data. This is the way we used to handle signatures.
-					if(TopazWrapper.GetTopazNumberOfTabletPoints(_sigBoxTopaz)==0) {
-						TopazWrapper.SetTopazKeyString(_sigBoxTopaz,"0000000000000000");//Clear out the key string
-						TopazWrapper.SetTopazKeyString(_sigBoxTopaz,keystring);
-						TopazWrapper.SetTopazSigString(_sigBoxTopaz,_documentShowing.Signature);
-					}
-					//If sig is not showing, then try encryption mode 3 for signatures signed with old SigPlusNet.dll.
-					if(TopazWrapper.GetTopazNumberOfTabletPoints(_sigBoxTopaz)==0) {
-						TopazWrapper.SetTopazEncryptionMode(_sigBoxTopaz,3);//Unknown mode (told to use via TopazSystems)
-						TopazWrapper.SetTopazSigString(_sigBoxTopaz,_documentShowing.Signature);
-					}
-					//If sig not showing, then try the ANSI paradigm.
-					if(TopazWrapper.GetTopazNumberOfTabletPoints(_sigBoxTopaz)==0) {
-						TopazWrapper.FillSignatureANSI(_sigBoxTopaz,keystring,_documentShowing.Signature,SignatureBoxWrapper.SigMode.Document);
-					}
-					//Try reading in the signature using different encodings for keyData.
-					if(TopazWrapper.GetTopazNumberOfTabletPoints(_sigBoxTopaz)==0) {
-						TopazWrapper.FillSignatureEncodings(_sigBoxTopaz,keystring,_documentShowing.Signature,SignatureBoxWrapper.SigMode.Document);
-					}
-					if(TopazWrapper.GetTopazNumberOfTabletPoints(_sigBoxTopaz)==0) {
-						labelInvalidSig.Visible=true;
-					}
-					//}
+					_textInvalidSigBeforeTopaz=labelInvalidSig.Text;
+					labelInvalidSig.Text=Lan.g(this,SignatureBoxWrapper.TOPAZ_NOT_SUPPORTED_MESSAGE);
+					labelInvalidSig.Visible=true;
 				}
 			}
 			else {//not topaz
 				if(_documentShowing.Signature!=null && _documentShowing.Signature!="") {
 					sigBox.Visible=true;
-					//if(allowTopaz) {
-					if(_sigBoxTopaz!=null) {
-						_sigBoxTopaz.Visible=false;
-					}
-					//}
 					sigBox.ClearTablet();
 					//sigBox.SetSigCompressionMode(0);
 					//sigBox.SetEncryptionMode(0);

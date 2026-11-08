@@ -230,7 +230,7 @@ $DenyList=@(
 	@('Microsoft.DirectX*.dll',"DirectX, redistributable only through Microsoft's installer"),
 	@('d3dx*.dll',"DirectX, redistributable only through Microsoft's installer"),
 	@('RS232.dll','unknown author and licence (replaced in BIN-B)'),
-	@('SigPlusNET.dll','Topaz: no published redistribution terms; loaded from the Topaz software when installed (BIN-B)'),
+	@('SigPlusNET.dll','Topaz: no published redistribution terms; Topaz signature pads were removed in stage 0 of the .NET 10 move (S0-2a)'),
 	@('zxing*','a dead reference (removed in BIN-B)'),
 	@('Avalara*','the AvaTax SDK, a dead reference (removed in BIN-B)'),
 	@('Ionic.*','DotNetZip: MS-PL, abandoned, CVE-2024-48510 (replaced in BIN-B)'),

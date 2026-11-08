@@ -750,7 +750,6 @@
     <Compile Include="UI\SignatureBoxWrapper.Designer.cs">
       <DependentUpon>SignatureBoxWrapper.cs</DependentUpon>
     </Compile>
-    <Compile Include="UI\TopazWrapper.cs" />
     <Compile Include="Web References\NewCropWebService\Reference.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
