@@ -73,7 +73,18 @@ namespace OpenPmsDental {
 			this.labelInvoiceNumber = new System.Windows.Forms.Label();
 			this.textInvoiceNumber = new System.Windows.Forms.TextBox();
 			this.textInstructions = new OpenPmsDental.ODtextBox();
+			this.groupGlidewell = new OpenPmsDental.UI.GroupBox();
+			this.labelGwAccount = new System.Windows.Forms.Label();
+			this.comboGwAccount = new OpenPmsDental.UI.ComboBox();
+			this.labelGwScanner = new System.Windows.Forms.Label();
+			this.comboGwScanner = new OpenPmsDental.UI.ComboBox();
+			this.gridGwProducts = new OpenPmsDental.UI.GridOD();
+			this.butGwProductAdd = new OpenPmsDental.UI.Button();
+			this.labelGwStatus = new System.Windows.Forms.Label();
+			this.butGwSend = new OpenPmsDental.UI.Button();
+			this.butGwDetails = new OpenPmsDental.UI.Button();
 			this.groupBox1.SuspendLayout();
+			this.groupGlidewell.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -432,10 +443,108 @@ namespace OpenPmsDental {
 			this.textInstructions.Size = new System.Drawing.Size(400, 127);
 			this.textInstructions.TabIndex = 1;
 			this.textInstructions.Text = "";
-			// 
+			//
+			// groupGlidewell
+			//
+			this.groupGlidewell.Controls.Add(this.butGwDetails);
+			this.groupGlidewell.Controls.Add(this.butGwSend);
+			this.groupGlidewell.Controls.Add(this.labelGwStatus);
+			this.groupGlidewell.Controls.Add(this.butGwProductAdd);
+			this.groupGlidewell.Controls.Add(this.gridGwProducts);
+			this.groupGlidewell.Controls.Add(this.comboGwScanner);
+			this.groupGlidewell.Controls.Add(this.labelGwScanner);
+			this.groupGlidewell.Controls.Add(this.comboGwAccount);
+			this.groupGlidewell.Controls.Add(this.labelGwAccount);
+			this.groupGlidewell.Location = new System.Drawing.Point(523, 140);
+			this.groupGlidewell.Name = "groupGlidewell";
+			this.groupGlidewell.Size = new System.Drawing.Size(329, 291);
+			this.groupGlidewell.TabIndex = 132;
+			this.groupGlidewell.TabStop = false;
+			this.groupGlidewell.Text = "Glidewell";
+			this.groupGlidewell.Visible = false;
+			//
+			// labelGwAccount
+			//
+			this.labelGwAccount.Location = new System.Drawing.Point(6, 19);
+			this.labelGwAccount.Name = "labelGwAccount";
+			this.labelGwAccount.Size = new System.Drawing.Size(70, 17);
+			this.labelGwAccount.TabIndex = 0;
+			this.labelGwAccount.Text = "Account";
+			this.labelGwAccount.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// comboGwAccount
+			//
+			this.comboGwAccount.Location = new System.Drawing.Point(78, 18);
+			this.comboGwAccount.Name = "comboGwAccount";
+			this.comboGwAccount.Size = new System.Drawing.Size(170, 21);
+			this.comboGwAccount.TabIndex = 1;
+			this.comboGwAccount.SelectionChangeCommitted += new System.EventHandler(this.comboGwAccount_SelectionChangeCommitted);
+			//
+			// labelGwScanner
+			//
+			this.labelGwScanner.Location = new System.Drawing.Point(6, 44);
+			this.labelGwScanner.Name = "labelGwScanner";
+			this.labelGwScanner.Size = new System.Drawing.Size(70, 17);
+			this.labelGwScanner.TabIndex = 2;
+			this.labelGwScanner.Text = "Scanner";
+			this.labelGwScanner.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// comboGwScanner
+			//
+			this.comboGwScanner.Location = new System.Drawing.Point(78, 43);
+			this.comboGwScanner.Name = "comboGwScanner";
+			this.comboGwScanner.Size = new System.Drawing.Size(100, 21);
+			this.comboGwScanner.TabIndex = 3;
+			//
+			// gridGwProducts
+			//
+			this.gridGwProducts.Location = new System.Drawing.Point(6, 70);
+			this.gridGwProducts.Name = "gridGwProducts";
+			this.gridGwProducts.Size = new System.Drawing.Size(317, 110);
+			this.gridGwProducts.TabIndex = 4;
+			this.gridGwProducts.Title = "Products";
+			this.gridGwProducts.TranslationName = "TableLabCaseProducts";
+			this.gridGwProducts.CellDoubleClick += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridGwProducts_CellDoubleClick);
+			//
+			// butGwProductAdd
+			//
+			this.butGwProductAdd.Icon = OpenPmsDental.UI.EnumIcons.Add;
+			this.butGwProductAdd.Location = new System.Drawing.Point(6, 183);
+			this.butGwProductAdd.Name = "butGwProductAdd";
+			this.butGwProductAdd.Size = new System.Drawing.Size(80, 24);
+			this.butGwProductAdd.TabIndex = 5;
+			this.butGwProductAdd.Text = "Add";
+			this.butGwProductAdd.Click += new System.EventHandler(this.butGwProductAdd_Click);
+			//
+			// labelGwStatus
+			//
+			this.labelGwStatus.Location = new System.Drawing.Point(6, 211);
+			this.labelGwStatus.Name = "labelGwStatus";
+			this.labelGwStatus.Size = new System.Drawing.Size(317, 45);
+			this.labelGwStatus.TabIndex = 6;
+			//
+			// butGwSend
+			//
+			this.butGwSend.Location = new System.Drawing.Point(6, 259);
+			this.butGwSend.Name = "butGwSend";
+			this.butGwSend.Size = new System.Drawing.Size(120, 24);
+			this.butGwSend.TabIndex = 7;
+			this.butGwSend.Text = "Send to Glidewell";
+			this.butGwSend.Click += new System.EventHandler(this.butGwSend_Click);
+			//
+			// butGwDetails
+			//
+			this.butGwDetails.Location = new System.Drawing.Point(130, 259);
+			this.butGwDetails.Name = "butGwDetails";
+			this.butGwDetails.Size = new System.Drawing.Size(75, 24);
+			this.butGwDetails.TabIndex = 8;
+			this.butGwDetails.Text = "Details";
+			this.butGwDetails.Click += new System.EventHandler(this.butGwDetails_Click);
+			//
 			// FormLabCaseEdit
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(864, 480);
+			this.Controls.Add(this.groupGlidewell);
 			this.Controls.Add(this.textInstructions);
 			this.Controls.Add(this.textInvoiceNumber);
 			this.Controls.Add(this.labelInvoiceNumber);
@@ -472,6 +581,7 @@ namespace OpenPmsDental {
 			this.Load += new System.EventHandler(this.FormLabCaseEdit_Load);
 			this.groupBox1.ResumeLayout(false);
 			this.groupBox1.PerformLayout();
+			this.groupGlidewell.ResumeLayout(false);
 			this.ResumeLayout(false);
 			this.PerformLayout();
 
@@ -516,5 +626,15 @@ namespace OpenPmsDental {
 		private Label labelInvoiceNumber;
 		private TextBox textInvoiceNumber;
 		private ODtextBox textInstructions;
+		private OpenPmsDental.UI.GroupBox groupGlidewell;
+		private Label labelGwAccount;
+		private OpenPmsDental.UI.ComboBox comboGwAccount;
+		private Label labelGwScanner;
+		private OpenPmsDental.UI.ComboBox comboGwScanner;
+		private OpenPmsDental.UI.GridOD gridGwProducts;
+		private OpenPmsDental.UI.Button butGwProductAdd;
+		private Label labelGwStatus;
+		private OpenPmsDental.UI.Button butGwSend;
+		private OpenPmsDental.UI.Button butGwDetails;
 	}
 }

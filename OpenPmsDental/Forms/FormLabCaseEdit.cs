@@ -105,6 +105,7 @@ namespace OpenPmsDental{
 				butSlip.Text=Lan.g(this,"Edit Slip");
 			}
 			textInvoiceNumber.Text=LabCaseCur.InvoiceNum;
+			LoadGlidewell(patient);
 			Plugins.HookAddCode(this,"FormLabCaseEdit.Load_end",LabCaseCur,IsNew);
 		}
 
@@ -353,6 +354,7 @@ namespace OpenPmsDental{
 				MessageBox.Show(ex.Message);
 				return false;
 			}
+			SaveGlidewellProducts();
 			return true;
 		}
 
@@ -368,6 +370,10 @@ namespace OpenPmsDental{
 				return;
 			}
 			if(!IsNew) {
+				return;
+			}
+			if(IsSentToGlidewell()) {
+				//Sending saved the lab case and Glidewell has it now, so it stays, like a lab case with a slip.
 				return;
 			}
 			if(_sheet==null) {

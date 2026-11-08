@@ -1072,6 +1072,10 @@
     <Compile Include="Forms\FormLabCaseEdit.designer.cs">
       <DependentUpon>FormLabCaseEdit.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormLabCaseEdit.Glidewell.cs">
+      <DependentUpon>FormLabCaseEdit.cs</DependentUpon>
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Forms\FormLabCases.designer.cs">
       <DependentUpon>FormLabCases.cs</DependentUpon>
     </Compile>
@@ -2763,6 +2767,24 @@
     </Compile>
     <Compile Include="Forms\FormUspsAddressSetup.Designer.cs">
       <DependentUpon>FormUspsAddressSetup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormGlidewellSetup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormGlidewellSetup.Designer.cs">
+      <DependentUpon>FormGlidewellSetup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormGlidewellAcctEdit.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormGlidewellAcctEdit.Designer.cs">
+      <DependentUpon>FormGlidewellAcctEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormLabCaseProductEdit.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormLabCaseProductEdit.Designer.cs">
+      <DependentUpon>FormLabCaseProductEdit.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormClerriSetup.cs">
       <SubType>Form</SubType>
@@ -6745,6 +6767,15 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormUspsAddressSetup.resx">
       <DependentUpon>FormUspsAddressSetup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormGlidewellSetup.resx">
+      <DependentUpon>FormGlidewellSetup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormGlidewellAcctEdit.resx">
+      <DependentUpon>FormGlidewellAcctEdit.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormLabCaseProductEdit.resx">
+      <DependentUpon>FormLabCaseProductEdit.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormClerriSetup.resx">
       <DependentUpon>FormClerriSetup.cs</DependentUpon>
