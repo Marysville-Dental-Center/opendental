@@ -68,7 +68,7 @@ No database writes, no network.
 
 ## 4. Questions for the owner
 
-1. **Existing bug, not changed:** in `FormImageSelectClaimAttach.SaveAttachment`, a non-DICOM image with crop, rotation, flip or windowing set, on a local A to Z folder, gets a `claimattach` row but no file. The branch `if(PrefC.AtoZfolderUsed!=DataStorageType.LocalAtoZ)` renders only for cloud storage, where `Bitmap.FromFile` on a cloud path would fail, and the local branch below it sets the row without copying. It looks inverted. DICOM does not go through it. Fix it in a follow-up?
+1. **Existing bug, not changed:** in `FormImageSelectClaimAttach.SaveAttachment`, a non-DICOM image with crop, rotation, flip or windowing set, on a local A to Z folder, gets a `claimattach` row but no file. The branch `if(PrefC.AtoZfolderUsed!=DataStorageType.LocalAtoZ)` renders only for cloud storage, where `Bitmap.FromFile` on a cloud path would fail, and the local branch below it sets the row without copying. It looks inverted. DICOM does not go through it. Fix it in a follow-up? **Answered on 2026-11-07: fixed** (section 6).
 2. JPEG (quality 100) or PNG for Edit Claim's copy of an X-ray? PNG is lossless and larger. CDAnet converts it to JPG anyway.
 3. Should the DentalXChange picker default the image type to X-Rays for a DICOM radiograph? Today the user always picks the type.
 4. CDAnet allows `DIC` (DICOM) attachments. The rule for this package is that a DICOM file is never sent, so CDAnet gets the JPEG copy. Confirm.
