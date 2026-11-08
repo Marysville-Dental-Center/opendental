@@ -18,7 +18,7 @@ namespace AttributionTests {
 		private static readonly string[] _arrayShippedComponents=new string[] {
 			"MySqlConnector",".NET libraries","Newtonsoft.Json","MimeKit","MailKit","MSAL.NET","SSH.NET","Bouncy Castle Cryptography","PDFsharp",
 			"MigraDoc","SharpDX","Tao Framework","Direct Project","WeCantSpell.Hunspell","Hunspell en_US dictionary",
-			"RDL Project","Google APIs Client Library for .NET","NDde","Microsoft Edge WebView2 SDK","TWAIN","Pearl API notice",
+			"RDL Project","Google APIs Client Library for .NET","Microsoft Edge WebView2 SDK","TWAIN","Pearl API notice",
 		};
 
 		///<summary>Files of every listed component that ships in the output folder.</summary>
@@ -33,7 +33,7 @@ namespace AttributionTests {
 			"MigraDoc.DocumentObjectModel.dll","MigraDoc.Rendering-gdi.dll","SharpDX.dll",
 			"SharpDX.Direct3D9.dll","SharpDX.Mathematics.dll","Tao.OpenGl.dll","Tao.Platform.Windows.dll","Health.Direct.Agent.dll",
 			"Health.Direct.Common.dll","Health.Direct.ResolverPlugins.dll","WeCantSpell.Hunspell.dll","RdlEngine.dll","RdlViewer.dll",
-			"Google.Apis.dll","Google.Apis.Auth.dll","Google.Apis.Core.dll","Google.Apis.Gmail.v1.dll","NDde.dll",
+			"Google.Apis.dll","Google.Apis.Auth.dll","Google.Apis.Core.dll","Google.Apis.Gmail.v1.dll",
 			"Microsoft.Web.WebView2.Core.dll","Microsoft.Web.WebView2.WinForms.dll","Microsoft.Web.WebView2.Wpf.dll","WebView2Loader.dll",
 		};
 
@@ -41,7 +41,7 @@ namespace AttributionTests {
 		///end-user licenses, Sparks3D, the stdole pre-release license, the wrong "Drifty" text for DotNetZip, and components that do not ship.</summary>
 		private static readonly string[] _arrayRemovedEntries=new string[] {
 			"OpenDental","OpenDental API End User","CDT","Sparks3D","Stdole","Drifty","Zxing","AForge","Angular","Bouncy Castle","BSD","Microsoft",
-			"Oracle","Tao_Freeglut","fo-dicom",
+			"Oracle","Tao_Freeglut","fo-dicom","NDde",
 		};
 
 		///<summary>What packages BIN-A and BIN-B delete, Open Dental's own closed binaries, the libraries the tier 1 library updates removed
@@ -51,7 +51,7 @@ namespace AttributionTests {
 		private static readonly string[] _arrayNotShipped=new string[] {
 			"Sparks3D","SigPlusNET","Interop.Word","Interop.Microsoft.Office","Interop.VBIDE","stdole","AcroPDF","Acrobat","zxing","Avalara","RS232","DotNetZip",
 			"Ionic","Drifty","VBbridges","xImageDeviceManager","EZTwain","Eztwain","SuniUSB","VideoCamLib","OpenPop","SharpSSH","Mentalis",
-			"DiffieHellman","BouncyCastle.Crypto.dll","PlatformServices","fo-dicom","Dicom.Core","Dicom.Native","NHunspell","Hunspellx86","Hunspellx64",
+			"DiffieHellman","BouncyCastle.Crypto.dll","PlatformServices","fo-dicom","Dicom.Core","Dicom.Native","NHunspell","Hunspellx86","Hunspellx64","NDde",
 		};
 
 		#region Helpers
@@ -149,7 +149,6 @@ namespace AttributionTests {
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="MySqlConnector").Text,"Permission is hereby granted, free of charge");
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="Google APIs Client Library for .NET").Text,"Version 2.0, January 2004");
 			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="Direct Project").Text,"Redistribution and use in source and binary forms");
-			StringAssert.Contains(listLicenseEntries.Single(x => x.Name=="NDde").Text,"Shared Source License for NDde");
 			//The spell checker's own licence file (license.txt of the package): Hunspell's tri-licence header with its contributors.
 			string textWeCantSpell=listLicenseEntries.Single(x => x.Name=="WeCantSpell.Hunspell").Text;
 			StringAssert.Contains(textWeCantSpell,"Version: MPL 1.1/GPL 2.0/LGPL 2.1");
@@ -225,11 +224,13 @@ namespace AttributionTests {
 		[TestMethod]
 		public void ThirdPartyNotices_MarksTheGplQuestions() {
 			List<NoticeSection> listNoticeSections=ParseNoticesFile();
-			foreach(string title in new[] { "NDde","Google APIs Client Library for .NET" }) {
+			foreach(string title in new[] { "Google APIs Client Library for .NET" }) {
 				StringAssert.Contains(listNoticeSections.Single(x => x.Title==title).GetField("Note"),"Owner question",title);
 			}
-			//fo-dicom (MS-PL) was the third; the in-house DICOM reader replaced it (docs/imaging/dicom-reader.md).
+			//fo-dicom (MS-PL) was the second; the in-house DICOM reader replaced it (docs/imaging/dicom-reader.md). NDde (its own shared source
+			//licence) was the third; it was removed with the DentX, Dexis Integrator and Vipersoft program links (owner decision of 2026-11-07).
 			Assert.IsFalse(listNoticeSections.Any(x => x.Title=="fo-dicom"));
+			Assert.IsFalse(listNoticeSections.Any(x => x.Title=="NDde"));
 		}
 
 		[TestMethod]

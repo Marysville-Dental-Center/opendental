@@ -52,7 +52,8 @@ namespace BSHELLTests {
 			int indexForceOff=save.IndexOf("ProgramCur.Enabled=false;");
 			Assert.IsTrue(indexEnabled>0 && indexForceOff>indexEnabled,"Saved as disabled whatever the box says.");
 			string list=TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormProgramLinks.cs");
-			StringAssert.Contains(list,"ProgramLinksDiscontinued.GetLabeledDesc(_listPrograms[i].ProgDesc)","Program Links labels it (discontinued).");
+			StringAssert.Contains(list,"ProgramLinksDiscontinued.GetLabeledDesc(_listPrograms[i].ProgDesc,ProgramLinksDiscontinued.GetLabel(_listPrograms[i]))",
+				"Program Links labels it (discontinued), and a link removed on 2026-11-07 (removed).");
 		}
 
 		[TestMethod]

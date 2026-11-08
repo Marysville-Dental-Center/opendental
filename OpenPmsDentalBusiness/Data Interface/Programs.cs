@@ -302,7 +302,7 @@ namespace OpenPmsDentalBusiness {
 			//DentalEye: Has no file paths containing outgoing patient data from Open Dental.
 			//DentalStudio: Has no file paths containing outgoing patient data from Open Dental.
 			//DentForms: Has no file paths containing outgoing patient data from Open Dental.
-			//DentX: Has no file paths containing outgoing patient data from Open Dental.
+			//DentX: removed on 2026-11-07 (ProgramLinksDiscontinued). Had no file paths containing outgoing patient data.
 			//Dexis:
 			ScrubFileForProperty(ProgramName.Dexis,"InfoFile path","",true);//InfoFile.txt
 			//Digora: Has no file paths containing outgoing patient data from Open Dental.
@@ -414,7 +414,7 @@ namespace OpenPmsDentalBusiness {
 			//TrophyEnhanced: Has no file paths containing outgoing patient data from Open Dental.
 			//Tscan: Has no file paths containing outgoing patient data from Open Dental.
 			//UAppoint: Has no file paths containing outgoing patient data from Open Dental.
-			//Vipersoft: Has no file paths containing outgoing patient data from Open Dental.
+			//Vipersoft: removed on 2026-11-07 (ProgramLinksDiscontinued). Had no file paths containing outgoing patient data.
 			//VixWin: Has no file paths containing outgoing patient data from Open Dental.
 			//VixWinBase41: Has no file paths containing outgoing patient data from Open Dental.
 			//VixWinOld: Has no file paths containing outgoing patient data from Open Dental.

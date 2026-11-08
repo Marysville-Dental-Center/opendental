@@ -33,7 +33,7 @@ namespace ReleaseFlowTests {
 			"Tamir.SharpSSH.dll","Org.Mentalis.Security.dll","DiffieHellman.dll","OpenPop.dll","BouncyCastle.Crypto.dll","Google.Apis.PlatformServices.dll",
 			"Google.Apis.Auth.PlatformServices.dll","FreeDentalConfig.xml","OpenPmsDental.pdb","unins000.exe","unins000.dat","OpenDental.exe","OpenDentBusiness.dll",
 			"Dicom.Core.dll","Dicom.Native.dll","fo-dicom.core.dll","NHunspell.dll","Hunspellx86.dll","Hunspellx64.dll",
-			"PdfSharp.License.dll",
+			"PdfSharp.License.dll","NDde.dll",
 		};
 
 		///<summary>The program folder's documents, staged from the repository.</summary>
@@ -281,11 +281,11 @@ namespace ReleaseFlowTests {
 			try {
 				string path=Path.Combine(folder,"THIRD-PARTY-NOTICES.txt");
 				string notices=File.ReadAllText(path);
-				StringAssert.Contains(notices,"Files:     NDde.dll");
-				File.WriteAllText(path,notices.Replace("Files:     NDde.dll","Files:     NDde (removed for the test)"));
+				StringAssert.Contains(notices,"Files:     Renci.SshNet.dll");
+				File.WriteAllText(path,notices.Replace("Files:     Renci.SshNet.dll","Files:     SSH.NET (removed for the test)"));
 				ScriptResult scriptResult=CheckFolder(folder);
 				Assert.AreEqual(1,scriptResult.ExitCode,scriptResult.Output);
-				CollectionAssert.Contains(scriptResult.Lines,"Not named in THIRD-PARTY-NOTICES.txt: NDde.dll");
+				CollectionAssert.Contains(scriptResult.Lines,"Not named in THIRD-PARTY-NOTICES.txt: Renci.SshNet.dll");
 				Assert.AreEqual(1,scriptResult.Lines.Count(x => x.StartsWith("Not named in")),"Only that file.\r\n"+scriptResult.Output);
 			}
 			finally {

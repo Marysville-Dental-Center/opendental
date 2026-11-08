@@ -211,14 +211,6 @@ License:   Apache License 2.0
 Source:    https://github.com/googleapis/google-api-dotnet-client
 Note:      Apache License 2.0 is compatible with GNU GPL version 3 but not with version 2. Owner question.
 
---- Component: NDde
-Files:     NDde.dll
-Version:   1.03
-Copyright: Brian Gideon
-License:   Shared Source License for NDde (the project's own text follows)
-Source:    https://www.nuget.org/packages/NDde
-Note:      A permissive license in the style of MS-PL; its compatibility with the GNU GPL is not settled. Owner question.
-
 --- Component: Microsoft Edge WebView2 SDK
 Files:     Microsoft.Web.WebView2.Core.dll, Microsoft.Web.WebView2.WinForms.dll, Microsoft.Web.WebView2.Wpf.dll,
            WebView2Loader.dll (x86)

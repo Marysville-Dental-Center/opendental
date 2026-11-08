@@ -129,10 +129,6 @@
     <Reference Include="MySqlConnector">
       <HintPath>..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
-    <Reference Include="NDde, Version=1.3.171.0, Culture=neutral, PublicKeyToken=6949dadb6e675e5a">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\NDde.dll</HintPath>
-    </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
@@ -8988,7 +8984,6 @@
     <None Include="Resources\WeCantSpellHunspell.txt" />
     <None Include="Resources\NewtonSoft_Json.txt" />
     <None Include="Resources\GPL.txt" />
-    <None Include="Resources\NDde.txt" />
     <None Include="Resources\MySql.txt" />
     <None Include="Resources\MigraDoc.txt" />
     <None Include="Resources\gtaicon3.png" />
