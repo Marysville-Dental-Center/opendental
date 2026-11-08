@@ -77,6 +77,45 @@ namespace P262BillingTests {
 			return PIn.Int(DataCore.GetScalar("SELECT COUNT(*) FROM clinicpref WHERE ClinicNum="+POut.Long(clinicNum)+" AND PrefName IN("+prefNames+")"));
 		}
 
+		private static int CountRows(long clinicNum,IEnumerable<PrefName> listPrefNames) {
+			string prefNames=string.Join(",",listPrefNames.Select(x => "'"+POut.String(x.ToString())+"'"));
+			return PIn.Int(DataCore.GetScalar("SELECT COUNT(*) FROM clinicpref WHERE ClinicNum="+POut.Long(clinicNum)+" AND PrefName IN("+prefNames+")"));
+		}
+
+		private static int CountAllRows(long clinicNum) {
+			return PIn.Int(DataCore.GetScalar("SELECT COUNT(*) FROM clinicpref WHERE ClinicNum="+POut.Long(clinicNum)));
+		}
+
+		///<summary>Billing Options' filter preferences other than the General Message.</summary>
+		private static List<PrefName> GetFilterPrefNames() {
+			return BillingOptionsClinicDefaults.ListPrefNames.FindAll(x => x!=PrefName.BillingDefaultsNote);
+		}
+
+		///<summary>What Billing Options' Save Defaults does with one clinic selected: it reads the clinic rows as the window does when it opens and
+		///after each save (RefreshClinicPrefs, which writes nothing) and saves the selected clinic's filter defaults with this General Message.</summary>
+		private static bool SaveBillingOptionsDefaults(long clinicNum,string generalMessage,string ageOfAccount="60") {
+			BillingOptionsClinicDefaults.GetFilledDefaults(BillingOptionsClinicDefaults.GetRowsByClinic());
+			List<KeyValuePair<PrefName,string>> listValues=new List<KeyValuePair<PrefName,string>>() {
+				new KeyValuePair<PrefName,string>(PrefName.BillingIncludeChanged,"1"),
+				new KeyValuePair<PrefName,string>(PrefName.BillingSelectBillingTypes,""),
+				new KeyValuePair<PrefName,string>(PrefName.BillingAgeOfAccount,ageOfAccount),
+				new KeyValuePair<PrefName,string>(PrefName.BillingDaysExcludeInsPending,"0"),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeBadAddresses,"1"),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeInactive,"1"),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeNegative,"1"),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeInsPending,"0"),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeIfUnsentProcs,"0"),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeLessThan,"5"),
+				new KeyValuePair<PrefName,string>(PrefName.BillingIgnoreInPerson,"0"),
+				new KeyValuePair<PrefName,string>(PrefName.BillingShowTransSinceBalZero,"0"),
+				new KeyValuePair<PrefName,string>(PrefName.BillingDefaultsNote,generalMessage),
+				new KeyValuePair<PrefName,string>(PrefName.BillingSelectInsFilingCodes,""),
+			};
+			bool isChanged=BillingOptionsClinicDefaults.SaveForClinic(clinicNum,listValues);
+			BillingOptionsClinicDefaults.GetFilledDefaults(BillingOptionsClinicDefaults.GetRowsByClinic());
+			return isChanged;
+		}
+
 		private static BillingDefaultsSettings SaveOwnSettings(long clinicNum,string tag,EmailType emailType=EmailType.Regular,bool includeAutograph=true) {
 			BillingDefaultsSettings settings=BillingDefaultsByClinic.GetSettings(clinicNum);
 			settings.UsePracticeDefaults=false;
@@ -292,6 +331,135 @@ namespace P262BillingTests {
 			}
 		}
 		#endregion Storage
+
+		#region Billing Options' Save Defaults beside Billing Defaults
+		[TestMethod]
+		public void BillingOptionsSave_ForAnotherClinic_GivesAClinicWithItsOwnMessagesNoFilterRows() {
+			//Clinic A has its own messages from Billing Defaults (six rows, the General Message among them) and never saved Billing Options filters.
+			SaveOwnSettings(_clinicNumA,"Clinic A");
+			Assert.AreEqual(6,CountAllRows(_clinicNumA));
+			Dictionary<long,List<ClinicPref>> dictionaryRows=BillingOptionsClinicDefaults.GetRowsByClinic();
+			Assert.IsTrue(dictionaryRows.ContainsKey(_clinicNumA),"Its General Message row is one of Billing Options' rows.");
+			Assert.IsFalse(BillingOptionsClinicDefaults.HasSavedFilterDefaults(dictionaryRows[_clinicNumA]));
+			Assert.IsFalse(BillingOptionsClinicDefaults.GetFilledDefaults(dictionaryRows).ContainsKey(_clinicNumA),
+				"Billing Options shows the practice filters for clinic A.");
+			//Billing Options saves defaults for clinic B.
+			Assert.IsTrue(SaveBillingOptionsDefaults(_clinicNumB,"Clinic B message"));
+			Assert.AreEqual(14,CountRows(_clinicNumB,BillingOptionsClinicDefaults.ListPrefNames));
+			//Clinic A gained no row, and its General Message is unchanged.
+			Assert.AreEqual(6,CountAllRows(_clinicNumA));
+			Assert.AreEqual(0,CountRows(_clinicNumA,GetFilterPrefNames()));
+			Assert.AreEqual("Clinic A general message",BillingDefaultsByClinic.GetString(PrefName.BillingDefaultsNote,_clinicNumA));
+			//So billing keeps following the practice filter defaults for clinic A, later changes included.
+			string ageOfAccountOld=PrefC.GetString(PrefName.BillingAgeOfAccount);
+			string ageOfAccountNew=(ageOfAccountOld=="90" ? "30" : "90");
+			try {
+				Prefs.UpdateString(PrefName.BillingAgeOfAccount,ageOfAccountNew);
+				Cache.Refresh(InvalidType.Prefs);
+				Assert.AreEqual(ageOfAccountNew,new ClinicBillingOptions(_clinicNumA).GetPrefValue(PrefName.BillingAgeOfAccount));
+				Assert.AreEqual("60",new ClinicBillingOptions(_clinicNumB).GetPrefValue(PrefName.BillingAgeOfAccount));
+				Assert.AreEqual("Clinic A general message",new ClinicBillingOptions(_clinicNumA).GetPrefValue(PrefName.BillingDefaultsNote));
+			}
+			finally {
+				Prefs.UpdateString(PrefName.BillingAgeOfAccount,ageOfAccountOld);
+				Cache.Refresh(InvalidType.Prefs);
+			}
+		}
+
+		[TestMethod]
+		public void BillingOptionsSave_ForAnotherClinic_DoesNotBringBackTheGeneralMessageOfAClinicOnThePracticeDefaults() {
+			//Clinic A saved Billing Options defaults (its 13 filters and its General Message)...
+			Assert.IsTrue(SaveBillingOptionsDefaults(_clinicNumA,"Clinic A filters message"));
+			Assert.AreEqual(14,CountRows(_clinicNumA,BillingOptionsClinicDefaults.ListPrefNames));
+			//...and is then set to 'Use the practice defaults for this clinic' in Billing Defaults, which removes its General Message row.
+			BillingDefaultsSettings settings=BillingDefaultsByClinic.GetSettings(_clinicNumA);
+			Assert.IsFalse(settings.UsePracticeDefaults);
+			settings.UsePracticeDefaults=true;
+			Assert.IsTrue(BillingDefaultsByClinic.SaveSettings(settings));
+			Assert.AreEqual(0,CountRows(_clinicNumA,new[] { PrefName.BillingDefaultsNote }));
+			Assert.AreEqual(13,CountAllRows(_clinicNumA));
+			Assert.IsFalse(BillingDefaultsByClinic.HasOwnSettings(_clinicNumA));
+			//Billing Options still shows clinic A's filters, with the practice General Message in place of the removed row (not written).
+			Dictionary<long,List<ClinicPref>> dictionaryFilled=BillingOptionsClinicDefaults.GetFilledDefaults(BillingOptionsClinicDefaults.GetRowsByClinic());
+			Assert.IsTrue(dictionaryFilled.ContainsKey(_clinicNumA));
+			ClinicPref clinicPrefNote=dictionaryFilled[_clinicNumA].Single(x => x.PrefName==PrefName.BillingDefaultsNote);
+			Assert.AreEqual(PRACTICE_NOTE,clinicPrefNote.ValueString);
+			Assert.AreEqual(0,clinicPrefNote.ClinicPrefNum);
+			//Billing Options saves defaults for clinic B: clinic A keeps the practice defaults.
+			Assert.IsTrue(SaveBillingOptionsDefaults(_clinicNumB,"Clinic B message"));
+			Assert.AreEqual(0,CountRows(_clinicNumA,new[] { PrefName.BillingDefaultsNote }));
+			Assert.AreEqual(13,CountAllRows(_clinicNumA));
+			Assert.IsFalse(BillingDefaultsByClinic.HasOwnSettings(_clinicNumA));
+			Assert.IsTrue(BillingDefaultsByClinic.GetSettings(_clinicNumA).UsePracticeDefaults);
+			//Its General Message follows the practice's.
+			Prefs.UpdateString(PrefName.BillingDefaultsNote,"Changed practice message");
+			Cache.Refresh(InvalidType.Prefs);
+			Assert.AreEqual("Changed practice message",new ClinicBillingOptions(_clinicNumA).GetPrefValue(PrefName.BillingDefaultsNote));
+			Assert.AreEqual("Clinic B message",new ClinicBillingOptions(_clinicNumB).GetPrefValue(PrefName.BillingDefaultsNote));
+		}
+
+		[TestMethod]
+		public void BillingOptionsSave_WritesTheSelectedClinicOnly() {
+			//Clinic A saved filter defaults before more preferences joined Billing Options' list: one row. Billing Options shows the others with the
+			//practice values, but a save for clinic B writes none of them.
+			ClinicPrefs.InsertPref(PrefName.BillingIncludeChanged,_clinicNumA,"1");
+			ClinicPrefs.RefreshCache();
+			Dictionary<long,List<ClinicPref>> dictionaryFilled=BillingOptionsClinicDefaults.GetFilledDefaults(BillingOptionsClinicDefaults.GetRowsByClinic());
+			Assert.AreEqual(14,dictionaryFilled[_clinicNumA].Count);
+			Assert.AreEqual(PrefC.GetString(PrefName.BillingExcludeLessThan),
+				dictionaryFilled[_clinicNumA].Single(x => x.PrefName==PrefName.BillingExcludeLessThan).ValueString);
+			Assert.IsTrue(SaveBillingOptionsDefaults(_clinicNumB,"Clinic B message"));
+			Assert.AreEqual(1,CountAllRows(_clinicNumA));
+			Assert.IsFalse(BillingDefaultsByClinic.HasOwnSettings(_clinicNumA));
+			Assert.IsFalse(SaveBillingOptionsDefaults(_clinicNumB,"Clinic B message"),"Nothing changes the second time.");
+		}
+
+		[TestMethod]
+		public void BillingOptionsSave_ForAClinicWithItsOwnMessages_UpdatesItsGeneralMessageRow() {
+			//Clinic A has its own messages from Billing Defaults; Billing Options then saves its filter defaults with an edited General Message.
+			SaveOwnSettings(_clinicNumA,"Clinic A");
+			long clinicPrefNumNote=ClinicPrefs.GetWhere(x => x.ClinicNum==_clinicNumA && x.PrefName==PrefName.BillingDefaultsNote).Single().ClinicPrefNum;
+			Assert.IsTrue(SaveBillingOptionsDefaults(_clinicNumA,"Edited in Billing Options"));
+			Assert.AreEqual(6+13,CountAllRows(_clinicNumA));
+			ClinicPref clinicPrefNote=ClinicPrefs.GetWhere(x => x.ClinicNum==_clinicNumA && x.PrefName==PrefName.BillingDefaultsNote).Single();
+			Assert.AreEqual(clinicPrefNumNote,clinicPrefNote.ClinicPrefNum,"The shared row, updated in place.");
+			BillingDefaultsSettings settings=BillingDefaultsByClinic.GetSettings(_clinicNumA);
+			Assert.IsFalse(settings.UsePracticeDefaults);
+			Assert.AreEqual("Edited in Billing Options",settings.GeneralMessage);
+			Assert.AreEqual("Clinic A subject [PatNum]",settings.EmailSubject,"The other messages are untouched.");
+			Assert.IsTrue(BillingOptionsClinicDefaults.GetFilledDefaults(BillingOptionsClinicDefaults.GetRowsByClinic()).ContainsKey(_clinicNumA));
+			Assert.AreEqual("60",new ClinicBillingOptions(_clinicNumA).GetPrefValue(PrefName.BillingAgeOfAccount));
+			Assert.AreEqual(0,CountAllRows(_clinicNumB));
+		}
+
+		[TestMethod]
+		public void BillingOptionsSave_WithThePracticeMessage_KeepsAClinicOnThePracticeDefaults() {
+			//Saving a clinic's filters with the practice General Message adds no General Message row: Billing Defaults still shows the clinic on the
+			//practice defaults. A message of its own adds the row.
+			Assert.IsTrue(SaveBillingOptionsDefaults(_clinicNumA,PRACTICE_NOTE));
+			Assert.AreEqual(13,CountAllRows(_clinicNumA));
+			Assert.IsFalse(BillingDefaultsByClinic.HasOwnSettings(_clinicNumA));
+			Assert.IsFalse(SaveBillingOptionsDefaults(_clinicNumA,PRACTICE_NOTE),"Nothing changes the second time.");
+			Assert.IsTrue(SaveBillingOptionsDefaults(_clinicNumA,"Clinic A own message"));
+			Assert.AreEqual(14,CountAllRows(_clinicNumA));
+			Assert.IsTrue(BillingDefaultsByClinic.HasOwnSettings(_clinicNumA));
+			Assert.AreEqual("Clinic A own message",BillingDefaultsByClinic.GetString(PrefName.BillingDefaultsNote,_clinicNumA));
+		}
+
+		[TestMethod]
+		public void BillingOptionsSave_RefusesThePracticeAsAClinic() {
+			foreach(long clinicNum in new long[] { 0,-1 }) {
+				try {
+					BillingOptionsClinicDefaults.SaveForClinic(clinicNum,new List<KeyValuePair<PrefName,string>>());
+					Assert.Fail("Saved clinic rows for "+clinicNum);
+				}
+				catch(ArgumentException) {
+					//Expected: the practice filter defaults are the preference rows.
+				}
+			}
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT COUNT(*) FROM clinicpref"));
+		}
+		#endregion Billing Options' Save Defaults beside Billing Defaults
 
 		#region Readers
 		[TestMethod]

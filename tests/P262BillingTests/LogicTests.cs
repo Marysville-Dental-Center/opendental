@@ -1,5 +1,6 @@
 // The parts of the 26.2 billing and statements overhaul (package P262-BILLING) that need no database: the stored form of the electronic billing
-// settings (the same text Billing Defaults wrote before 26.2), the choices of the Statement Options window, and the per-clinic settings object.
+// settings (the same text Billing Defaults wrote before 26.2), the choices of the Statement Options window, the per-clinic settings object, and
+// the rows Billing Options' Save Defaults writes for the selected clinic.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -153,6 +154,88 @@ namespace P262BillingTests {
 			{
 				Assert.IsFalse(BillingDefaultsByClinic.IsPerClinic(prefName),prefName.ToString());
 			}
+		}
+	}
+
+	///<summary>Billing Options' filter defaults per clinic beside Billing Defaults' General Message row (review fix of P262-BILLING): which clinic has
+	///saved filter defaults, and the rows its Save Defaults writes for the selected clinic.</summary>
+	[TestClass]
+	public class BillingOptionsClinicDefaultsTests {
+		private const long CLINIC_NUM=7;
+		private const string PRACTICE_NOTE="Practice general message";
+
+		private static List<KeyValuePair<PrefName,string>> GetValues(string generalMessage) {
+			return BillingOptionsClinicDefaults.ListPrefNames
+				.Select(x => new KeyValuePair<PrefName,string>(x,x==PrefName.BillingDefaultsNote ? generalMessage : "value of "+x))
+				.ToList();
+		}
+
+		[TestMethod]
+		public void ListPrefNames_TheFourteenBillingOptionsSavedBefore() {
+			CollectionAssert.AreEqual(new[] { PrefName.BillingIncludeChanged,PrefName.BillingSelectBillingTypes,PrefName.BillingAgeOfAccount,
+				PrefName.BillingDaysExcludeInsPending,PrefName.BillingExcludeBadAddresses,PrefName.BillingExcludeInactive,PrefName.BillingExcludeNegative,
+				PrefName.BillingExcludeInsPending,PrefName.BillingExcludeIfUnsentProcs,PrefName.BillingExcludeLessThan,PrefName.BillingIgnoreInPerson,
+				PrefName.BillingShowTransSinceBalZero,PrefName.BillingDefaultsNote,PrefName.BillingSelectInsFilingCodes },
+				BillingOptionsClinicDefaults.ListPrefNames.ToArray());
+			//The General Message is the only one Billing Defaults saves per clinic too.
+			CollectionAssert.AreEqual(new[] { PrefName.BillingDefaultsNote },
+				BillingOptionsClinicDefaults.ListPrefNames.Where(x => BillingDefaultsByClinic.IsPerClinic(x)).ToArray());
+		}
+
+		[TestMethod]
+		public void HasSavedFilterDefaults_NotForTheGeneralMessageAlone() {
+			Assert.IsFalse(BillingOptionsClinicDefaults.HasSavedFilterDefaults(null));
+			Assert.IsFalse(BillingOptionsClinicDefaults.HasSavedFilterDefaults(new List<ClinicPref>()));
+			List<ClinicPref> listClinicPrefs=new List<ClinicPref>() { new ClinicPref(CLINIC_NUM,PrefName.BillingDefaultsNote,"Clinic message") };
+			Assert.IsFalse(BillingOptionsClinicDefaults.HasSavedFilterDefaults(listClinicPrefs),"Only the General Message, saved by Billing Defaults.");
+			listClinicPrefs.Add(new ClinicPref(CLINIC_NUM,PrefName.BillingEmailSubject,"Clinic subject"));
+			Assert.IsFalse(BillingOptionsClinicDefaults.HasSavedFilterDefaults(listClinicPrefs),"Billing Defaults' other messages are no filter.");
+			listClinicPrefs.Add(new ClinicPref(CLINIC_NUM,PrefName.BillingSelectInsFilingCodes,""));
+			Assert.IsTrue(BillingOptionsClinicDefaults.HasSavedFilterDefaults(listClinicPrefs));
+			Assert.IsTrue(BillingOptionsClinicDefaults.HasSavedFilterDefaults(new List<ClinicPref>() {
+				new ClinicPref(CLINIC_NUM,PrefName.BillingIncludeChanged,true) }),"A filter row without the General Message.");
+		}
+
+		[TestMethod]
+		public void RowsToSave_NewClinic_EveryValueAsANewRow() {
+			List<ClinicPref> listClinicPrefs=BillingOptionsClinicDefaults.GetRowsToSave(CLINIC_NUM,new List<ClinicPref>(),GetValues("Own message"),PRACTICE_NOTE);
+			CollectionAssert.AreEquivalent(BillingOptionsClinicDefaults.ListPrefNames,listClinicPrefs.Select(x => x.PrefName).ToList());
+			Assert.IsTrue(listClinicPrefs.All(x => x.ClinicNum==CLINIC_NUM && x.ClinicPrefNum==0));
+			Assert.AreEqual("Own message",listClinicPrefs.First(x => x.PrefName==PrefName.BillingDefaultsNote).ValueString);
+			Assert.AreEqual("value of BillingAgeOfAccount",listClinicPrefs.First(x => x.PrefName==PrefName.BillingAgeOfAccount).ValueString);
+		}
+
+		[TestMethod]
+		public void RowsToSave_ThePracticeMessage_GetsNoRowOfItsOwn() {
+			List<ClinicPref> listClinicPrefs=BillingOptionsClinicDefaults.GetRowsToSave(CLINIC_NUM,null,GetValues(PRACTICE_NOTE),PRACTICE_NOTE);
+			Assert.AreEqual(13,listClinicPrefs.Count);
+			Assert.IsFalse(listClinicPrefs.Any(x => x.PrefName==PrefName.BillingDefaultsNote));
+		}
+
+		[TestMethod]
+		public void RowsToSave_ExistingRowsUpdatedInPlace_OthersOnlyAdded() {
+			List<ClinicPref> listClinicPrefsOld=new List<ClinicPref>() {
+				new ClinicPref(CLINIC_NUM,PrefName.BillingDefaultsNote,"Billing Defaults message") { ClinicPrefNum=31 },
+				new ClinicPref(CLINIC_NUM,PrefName.BillingIncludeChanged,false) { ClinicPrefNum=32 },
+				new ClinicPref(CLINIC_NUM+1,PrefName.BillingAgeOfAccount,"90") { ClinicPrefNum=33 },//Another clinic's row: left out.
+				new ClinicPref(CLINIC_NUM,PrefName.BillingEmailSubject,"Clinic subject") { ClinicPrefNum=34 },//Not Billing Options': left out.
+			};
+			List<KeyValuePair<PrefName,string>> listValues=GetValues(PRACTICE_NOTE);
+			listValues.Add(new KeyValuePair<PrefName,string>(PrefName.BillingEmailSubject,"Not saved here"));
+			List<ClinicPref> listClinicPrefs=BillingOptionsClinicDefaults.GetRowsToSave(CLINIC_NUM,listClinicPrefsOld,listValues,PRACTICE_NOTE);
+			Assert.AreEqual(14,listClinicPrefs.Count);
+			Assert.IsTrue(listClinicPrefs.All(x => x.ClinicNum==CLINIC_NUM));
+			Assert.IsFalse(listClinicPrefs.Any(x => x.PrefName==PrefName.BillingEmailSubject));
+			ClinicPref clinicPrefNote=listClinicPrefs.Single(x => x.PrefName==PrefName.BillingDefaultsNote);
+			Assert.AreEqual(31,clinicPrefNote.ClinicPrefNum,"The clinic's own row is updated, even to the practice text.");
+			Assert.AreEqual(PRACTICE_NOTE,clinicPrefNote.ValueString);
+			ClinicPref clinicPrefIncludeChanged=listClinicPrefs.Single(x => x.PrefName==PrefName.BillingIncludeChanged);
+			Assert.AreEqual(32,clinicPrefIncludeChanged.ClinicPrefNum);
+			Assert.AreEqual("value of BillingIncludeChanged",clinicPrefIncludeChanged.ValueString);
+			Assert.AreEqual(12,listClinicPrefs.Count(x => x.ClinicPrefNum==0));
+			//The rows passed in are copied, not changed.
+			Assert.AreEqual("Billing Defaults message",listClinicPrefsOld[0].ValueString);
+			Assert.AreEqual("0",listClinicPrefsOld[1].ValueString);
 		}
 	}
 }

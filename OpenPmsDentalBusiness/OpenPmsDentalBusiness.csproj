@@ -545,6 +545,7 @@
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatNote.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatSurvey.cs" />
     <Compile Include="Logic\BillingDefaultsByClinic.cs" />
+    <Compile Include="Logic\BillingOptionsClinicDefaults.cs" />
     <Compile Include="Logic\BillingEmailHtml.cs" />
     <Compile Include="Logic\EbillSettings.cs" />
     <Compile Include="Logic\BillingL.cs" />

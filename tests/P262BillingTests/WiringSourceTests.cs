@@ -248,6 +248,34 @@ namespace P262BillingTests {
 			int indexSetDefaults=defaults.IndexOf("SetDefaults();",StringComparison.Ordinal);
 			Assert.IsTrue(indexRefresh>0 && indexRefresh<indexSetDefaults);
 		}
+
+		[TestMethod]
+		public void BillingOptions_SaveDefaultsWritesTheSelectedClinicOnly() {
+			//Review fix: Save Defaults wrote the rows of every clinic in its list, so a clinic whose only row was the General Message from Billing
+			//Defaults got frozen copies of the practice filters, and a clinic back on the practice defaults got its General Message row again.
+			string source=Read("OpenPmsDental","Forms","FormBillingOptions.cs");
+			string save=GetMethodBody(source,"private void butSaveDefault_Click(");
+			StringAssert.Contains(save,"if(BillingOptionsClinicDefaults.SaveForClinic(clinicNum,listValues)) {");
+			StringAssert.Contains(save,"DataValid.SetInvalid(InvalidType.ClinicPrefs);");
+			Assert.IsFalse(source.Contains("ClinicPrefs.Sync("),"No sync of several clinics' rows.");
+			Assert.IsFalse(source.Contains("SelectMany("),"No list of every clinic's rows.");
+			foreach(PrefName prefName in BillingOptionsClinicDefaults.ListPrefNames) {
+				StringAssert.Contains(save,"new KeyValuePair<PrefName,string>(PrefName."+prefName+",",prefName.ToString());
+			}
+			string refresh=GetMethodBody(source,"private void RefreshClinicPrefs(");
+			StringAssert.Contains(refresh,"_dictionaryClinicPrefs=BillingOptionsClinicDefaults.GetFilledDefaults(BillingOptionsClinicDefaults.GetRowsByClinic());");
+			Assert.IsFalse(Regex.IsMatch(refresh,@"ClinicPrefs\.(GetWhere|Insert|Update|Upsert|Delete)"),"Reads only through the helper, writes nothing.");
+			//A clinic without filter defaults here still shows its own General Message, also when the window opens or Billing Defaults closes.
+			string filters=GetMethodBody(source,"private void SetFiltersForClinicNums(");
+			StringAssert.Contains(filters,"textNote.Text=GetGeneralMessage(listClinicNums);");
+			StringAssert.Contains(GetMethodBody(source,"private void SetDefaults("),"textNote.Text=GetGeneralMessage(comboClinic.ListClinicNumsSelected);");
+			StringAssert.Contains(GetMethodBody(source,"private string GetGeneralMessage("),
+				"return BillingDefaultsByClinic.GetString(PrefName.BillingDefaultsNote,listClinicNums[0]);");
+			//Automated billing reads the same filter preferences (the General Message included), with the practice value for a row a clinic lacks.
+			string billing=GetMethodBody(Read("OpenPmsDentalBusiness","Logic","BillingL.cs"),"public ClinicBillingOptions(long clinicNum) {");
+			StringAssert.Contains(billing,"listBillingPrefs.FindAll(x => !listExistingClinicPrefs.Contains(x))");
+			StringAssert.Contains(billing,"PrefName.BillingDefaultsNote");
+		}
 		#endregion Billing Defaults (item 18)
 
 		#region Migration
