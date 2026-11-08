@@ -237,6 +237,10 @@ already, because the 26.2 schema step (2026110701, not a feature step) is above 
 step is a feature step). `ForkMigrationTests` was not run (its init SQL test fails until the integration regenerates
 `db/init/new-database.sql`).
 
+Runs of `p262/links-2` on 2026-11-07, after one full build with 0 errors (Targeted, each with `NoHqTests` 58/58): `P262LinksTests` 44/44,
+`VendorDirectTests` 873/873, `VBRIDGE1Tests` 37/37, `VBRIDGE2Tests` 64/64, `AdoptionValidation.Tests` 69/69 (the rehearsal included, 32
+checks per run, M8 passing; the two new tests passing). No scratch database was left behind.
+
 Not tested: the windows themselves (the program is not launched), starting Connect or OrthoComposite, writing into a real Connect folder.
 
 ## Interplay with the other 26.2 packages
