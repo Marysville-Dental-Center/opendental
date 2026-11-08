@@ -99,9 +99,16 @@ namespace OpenPmsDentalBusiness {
 		///</summary>
 		public static string GetNewAttachFileName(string extension) {
 			Meth.NoCheckMiddleTierRole();
-			Random random=new Random();
-			return DateTime.Now.ToString("yyyyMMdd")+"_"+DateTime.Now.TimeOfDay.Ticks.ToString()+random.Next(1000).ToString()+(extension??"");
+			//One shared generator: a new Random per call is seeded from the clock, so two calls in the same tick gave the same name.
+			int randomNumber;
+			lock(_lockRandomAttachName) {
+				randomNumber=_randomAttachName.Next(1000);
+			}
+			return DateTime.Now.ToString("yyyyMMdd")+"_"+DateTime.Now.TimeOfDay.Ticks.ToString()+randomNumber.ToString()+(extension??"");
 		}
+
+		private static readonly Random _randomAttachName=new Random();
+		private static readonly object _lockRandomAttachName=new object();
 
 		///<summary>Copies a file into the claim attachment folder (EmailAttachments in the A to Z folder), adds it to the claim's attachments, sets the
 		///EoB paperwork flag, saves the claim and writes a ClaimEdit audit entry. Needs the A to Z folder on this computer. Throws ODException when
@@ -118,8 +125,12 @@ namespace OpenPmsDentalBusiness {
 			if(claim==null) {
 				throw new ODException(Lans.g("ClaimAttaches","The claim has been deleted by another user."));
 			}
+			string attachPath=EmailAttaches.GetAttachPath();
 			string actualFileName=GetNewAttachFileName(Path.GetExtension(sourceFilePath));
-			File.Copy(sourceFilePath,ODFileUtils.CombinePaths(EmailAttaches.GetAttachPath(),actualFileName));
+			while(File.Exists(ODFileUtils.CombinePaths(attachPath,actualFileName))) {//Two attachments in the same tick: pick another name.
+				actualFileName=GetNewAttachFileName(Path.GetExtension(sourceFilePath));
+			}
+			File.Copy(sourceFilePath,ODFileUtils.CombinePaths(attachPath,actualFileName));
 			ClaimAttach claimAttach=new ClaimAttach();
 			claimAttach.ClaimNum=claim.ClaimNum;
 			claimAttach.DisplayedFileName=string.IsNullOrWhiteSpace(displayedFileName) ? Path.GetFileName(sourceFilePath) : displayedFileName;
