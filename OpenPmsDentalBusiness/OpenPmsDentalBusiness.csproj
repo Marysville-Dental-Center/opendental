@@ -1655,6 +1655,8 @@
     <Compile Include="Db\DataCore.cs" />
     <Compile Include="Logic\PatientLogic.cs" />
     <Compile Include="Logic\ProcedureLogic.cs" />
+    <Compile Include="Logic\ReportPermissionEdit.cs" />
+    <Compile Include="Logic\ReportSetupLayout.cs" />
     <Compile Include="Data Interface\ProcNotes.cs" />
     <Compile Include="Logic\TelephoneNumbers.cs" />
     <Compile Include="Logic\Tooth.cs" />

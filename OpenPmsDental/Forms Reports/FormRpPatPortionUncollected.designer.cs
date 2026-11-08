@@ -34,21 +34,22 @@ namespace OpenPmsDental {
 			this.toolStripMenuItemSeeAccount = new System.Windows.Forms.ToolStripMenuItem();
 			this.odDateRangePicker = new OpenPmsDental.UI.ODDateRangePicker();
 			this.butPrint = new OpenPmsDental.UI.Button();
+			this.checkShowPrior = new OpenPmsDental.UI.CheckBox();
+			this.labelPrior = new System.Windows.Forms.Label();
 			this.contextMenuStrip1.SuspendLayout();
 			this.SuspendLayout();
-			// 
+			//
 			// butRefresh
-			// 
-			this.butRefresh.Anchor = System.Windows.Forms.AnchorStyles.None;
-			this.butRefresh.Location = new System.Drawing.Point(689, 10);
+			//
+			this.butRefresh.Location = new System.Drawing.Point(773, 10);
 			this.butRefresh.Name = "butRefresh";
 			this.butRefresh.Size = new System.Drawing.Size(75, 26);
 			this.butRefresh.TabIndex = 3;
 			this.butRefresh.Text = "&Refresh";
 			this.butRefresh.Click += new System.EventHandler(this.butRefresh_Click);
-			// 
+			//
 			// comboBoxClinicPicker
-			// 
+			//
 			this.comboBoxClinicPicker.IncludeAll = true;
 			this.comboBoxClinicPicker.IncludeHiddenInAll = true;
 			this.comboBoxClinicPicker.IncludeUnassigned = true;
@@ -57,57 +58,78 @@ namespace OpenPmsDental {
 			this.comboBoxClinicPicker.IsMultiSelect = true;
 			this.comboBoxClinicPicker.Size = new System.Drawing.Size(200, 21);
 			this.comboBoxClinicPicker.TabIndex = 56;
-			// 
+			//
 			// gridOD
-			// 
+			//
 			this.gridOD.AllowSortingByColumn = true;
-			this.gridOD.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+			this.gridOD.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.gridOD.ContextMenuStrip = this.contextMenuStrip1;
-			this.gridOD.Location = new System.Drawing.Point(12, 42);
+			this.gridOD.Location = new System.Drawing.Point(12, 64);
 			this.gridOD.Name = "gridOD";
-			this.gridOD.Size = new System.Drawing.Size(765, 390);
+			this.gridOD.Size = new System.Drawing.Size(836, 392);
 			this.gridOD.TabIndex = 57;
 			this.gridOD.Text = "gridOD";
 			this.gridOD.TitleVisible = false;
 			this.gridOD.TranslationName = "TableReport";
-			// 
+			//
 			// contextMenuStrip1
-			// 
+			//
 			this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolStripMenuItemSeeAccount});
 			this.contextMenuStrip1.Name = "contextMenuStrip1";
 			this.contextMenuStrip1.Size = new System.Drawing.Size(141, 26);
-			// 
+			//
 			// toolStripMenuItemSeeAccount
-			// 
+			//
 			this.toolStripMenuItemSeeAccount.Name = "toolStripMenuItemSeeAccount";
 			this.toolStripMenuItemSeeAccount.Size = new System.Drawing.Size(140, 22);
 			this.toolStripMenuItemSeeAccount.Text = "See Account";
 			this.toolStripMenuItemSeeAccount.Click += new System.EventHandler(this.menuItemAccount_Click);
-			// 
+			//
 			// odDateRangePicker
-			// 
+			//
 			this.odDateRangePicker.BackColor = System.Drawing.Color.Transparent;
 			this.odDateRangePicker.Location = new System.Drawing.Point(12, 12);
 			this.odDateRangePicker.Name = "odDateRangePicker";
 			this.odDateRangePicker.Size = new System.Drawing.Size(453, 24);
 			this.odDateRangePicker.TabIndex = 58;
-			// 
+			//
 			// butPrint
-			// 
+			//
 			this.butPrint.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.butPrint.Location = new System.Drawing.Point(12, 438);
+			this.butPrint.Location = new System.Drawing.Point(12, 462);
 			this.butPrint.Name = "butPrint";
 			this.butPrint.Size = new System.Drawing.Size(75, 26);
 			this.butPrint.TabIndex = 59;
 			this.butPrint.Text = "&Print";
 			this.butPrint.Click += new System.EventHandler(this.butPrint_Click);
-			// 
+			//
+			// checkShowPrior
+			//
+			this.checkShowPrior.Location = new System.Drawing.Point(14, 40);
+			this.checkShowPrior.Name = "checkShowPrior";
+			this.checkShowPrior.Size = new System.Drawing.Size(300, 20);
+			this.checkShowPrior.TabIndex = 60;
+			this.checkShowPrior.Text = "Show prior uncollected balances";
+			//
+			// labelPrior
+			//
+			this.labelPrior.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.labelPrior.Location = new System.Drawing.Point(97, 462);
+			this.labelPrior.Name = "labelPrior";
+			this.labelPrior.Size = new System.Drawing.Size(700, 26);
+			this.labelPrior.TabIndex = 61;
+			this.labelPrior.Text = "Shaded rows: procedures completed before the From date, of the patients with a procedure completed in the date range.";
+			this.labelPrior.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			this.labelPrior.Visible = false;
+			//
 			// FormRpPatPortionUncollected
-			// 
-			this.ClientSize = new System.Drawing.Size(787, 476);
+			//
+			this.ClientSize = new System.Drawing.Size(860, 500);
+			this.Controls.Add(this.labelPrior);
+			this.Controls.Add(this.checkShowPrior);
 			this.Controls.Add(this.butPrint);
 			this.Controls.Add(this.odDateRangePicker);
 			this.Controls.Add(this.gridOD);
@@ -129,5 +151,7 @@ namespace OpenPmsDental {
 		private ContextMenuStrip contextMenuStrip1;
 		private ToolStripMenuItem toolStripMenuItemSeeAccount;
 		private UI.Button butPrint;
+		private UI.CheckBox checkShowPrior;
+		private Label labelPrior;
 	}
 }

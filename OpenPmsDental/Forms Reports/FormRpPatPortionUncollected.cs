@@ -16,6 +16,10 @@ namespace OpenPmsDental{
 		private List<Clinic> _listClinics;
 		private List<long> _listClinicNums;
 		private bool _isAllSelected;
+		///<summary>The "Show prior uncollected balances" option as of the last refresh (Open Dental 26.2 item 33).</summary>
+		private bool _doShowPrior;
+		///<summary>The background of a prior procedure's row.</summary>
+		private static readonly Color _colorPrior=Color.FromArgb(235,235,235);
 
 		///<summary></summary>
 		public FormRpPatPortionUncollected(){
@@ -36,6 +40,7 @@ namespace OpenPmsDental{
 			_listClinicNums = comboBoxClinicPicker.ListClinicNumsSelected;
 			_listClinics = Clinics.GetClinics(comboBoxClinicPicker.ListClinicNumsSelected);
 			_isAllSelected = comboBoxClinicPicker.IsAllSelected;
+			_doShowPrior=checkShowPrior.Checked;
 			gridOD.BeginUpdate();
 			gridOD.ListGridRows.Clear();
 			gridOD.Columns.Clear();
@@ -48,23 +53,72 @@ namespace OpenPmsDental{
 			gridOD.Columns.Add(new UI.GridColumn(Lan.g(this,"Adjustment"),75,HorizontalAlignment.Right,UI.GridSortingStrategy.AmountParse));
 			gridOD.Columns.Add(new UI.GridColumn(Lan.g(this,"Patient Paid"),90,HorizontalAlignment.Right,UI.GridSortingStrategy.AmountParse));
 			gridOD.Columns.Add(new UI.GridColumn(Lan.g(this,"Uncollected"),80,HorizontalAlignment.Right,UI.GridSortingStrategy.AmountParse));
+			//26.2 item 34: what of the procedure is on a payment plan. It does not change the Uncollected column.
+			gridOD.Columns.Add(new UI.GridColumn(Lan.g(this,"Pay Plan"),75,HorizontalAlignment.Right,UI.GridSortingStrategy.AmountParse));
 			if(odDateRangePicker.IsValid()) {
-				_table = RpPatPortionUncollected.GetPatUncollected(_fromDate, _toDate, _listClinicNums);
+				_table = RpPatPortionUncollected.GetPatUncollected(_fromDate, _toDate, _listClinicNums, _doShowPrior);
 			}
 			UI.GridRow row;
-			foreach(DataRow rowCur in _table.Rows) {
-				row=new UI.GridRow() { Tag=rowCur };
-				row.Cells.Add(PIn.Date(rowCur["ProcDate"].ToString()).ToShortDateString());
-				row.Cells.Add(PIn.String(rowCur["Patient"].ToString()).ToString());
-				row.Cells.Add(PIn.String(rowCur["AbbrDesc"].ToString()).ToString());
-				row.Cells.Add(PIn.Double(rowCur["Fee"].ToString()).ToString("c"));
-				row.Cells.Add(PIn.Double(rowCur["PatPortion"].ToString()).ToString("c"));
-				row.Cells.Add(PIn.Double(rowCur["Adjustment"].ToString()).ToString("c"));
-				row.Cells.Add(PIn.Double(rowCur["Payment"].ToString()).ToString("c"));
-				row.Cells.Add(PIn.Double(rowCur["Uncollected"].ToString()).ToString("c"));
-				gridOD.ListGridRows.Add(row);
+			if(_table!=null) {
+				foreach(DataRow rowCur in _table.Rows) {
+					row=new UI.GridRow() { Tag=rowCur };
+					row.Cells.Add(PIn.Date(rowCur["ProcDate"].ToString()).ToShortDateString());
+					row.Cells.Add(PIn.String(rowCur["Patient"].ToString()).ToString());
+					row.Cells.Add(PIn.String(rowCur["AbbrDesc"].ToString()).ToString());
+					row.Cells.Add(PIn.Double(rowCur["Fee"].ToString()).ToString("c"));
+					row.Cells.Add(PIn.Double(rowCur["PatPortion"].ToString()).ToString("c"));
+					row.Cells.Add(PIn.Double(rowCur["Adjustment"].ToString()).ToString("c"));
+					row.Cells.Add(PIn.Double(rowCur["Payment"].ToString()).ToString("c"));
+					row.Cells.Add(PIn.Double(rowCur["Uncollected"].ToString()).ToString("c"));
+					row.Cells.Add(PIn.Double(rowCur[RpPatPortionUncollected.ColumnPayPlan].ToString()).ToString("c"));
+					if(IsPriorRow(rowCur)) {
+						row.ColorBackG=_colorPrior;
+					}
+					gridOD.ListGridRows.Add(row);
+				}
 			}
 			gridOD.EndUpdate();
+			labelPrior.Visible=_doShowPrior;
+		}
+
+		private static bool IsPriorRow(DataRow row) {
+			return PIn.Int(row[RpPatPortionUncollected.ColumnIsPrior].ToString())==1;
+		}
+
+		///<summary>The rows of the date range (isPrior false) or the prior rows, in the printed columns' order.</summary>
+		private DataTable GetPrintTable(bool isPrior) {
+			DataTable table=new DataTable();
+			foreach(string columnName in new[] { "PatNum","ProcDate","Patient","AbbrDesc","Fee","PatPortion","Adjustment","Payment","Uncollected",
+				RpPatPortionUncollected.ColumnPayPlan })
+			{
+				table.Columns.Add(columnName,_table.Columns[columnName].DataType);
+			}
+			foreach(DataRow rowCur in _table.Rows) {
+				if(IsPriorRow(rowCur)!=isPrior) {
+					continue;
+				}
+				DataRow row=table.NewRow();
+				foreach(DataColumn column in table.Columns) {
+					row[column.ColumnName]=rowCur[column.ColumnName];
+				}
+				table.Rows.Add(row);
+			}
+			return table;
+		}
+
+		private void AddPrintQuery(ReportComplex report,DataTable table,string title,Font font) {
+			QueryObject query=report.AddQuery(table,title);
+			query.AddColumn("PatNum",55,FieldValueType.Integer,font);
+			query.AddColumn("Date",75,FieldValueType.Date,font);
+			query.GetColumnDetail("Date").StringFormat="d";
+			query.AddColumn("Patient Name",140,FieldValueType.String,font);
+			query.AddColumn("Procedure",80,FieldValueType.String,font);
+			query.AddColumn("Fee",70,FieldValueType.Number,font);
+			query.AddColumn("Patient",70,FieldValueType.Number,font);
+			query.AddColumn("Adjustment",70,FieldValueType.Number,font);
+			query.AddColumn("Patient Paid",75,FieldValueType.Number,font);
+			query.AddColumn("Uncollected",75,FieldValueType.Number,font);
+			query.AddColumn("Pay Plan",70,FieldValueType.Number,font);
 		}
 
 		private void PrintReport() {
@@ -79,7 +133,7 @@ namespace OpenPmsDental{
 			ReportComplex report=new ReportComplex(true,false);
 			string subtitleClinics="";
 			if(PrefC.HasClinicsEnabled) {
-				if(_isAllSelected) {//all clinics selected. 
+				if(_isAllSelected) {//all clinics selected.
 					subtitleClinics=Lan.g(this,"All Clinics (includes hidden)");
 				}
 				else {
@@ -106,17 +160,18 @@ namespace OpenPmsDental{
 			if(PrefC.HasClinicsEnabled) {
 				report.AddSubTitle("Clinics",subtitleClinics,fontSubTitle);
 			}
-			QueryObject query=report.AddQuery(_table,"Patient Portion Uncollected");
-			query.AddColumn("PatNum",60,FieldValueType.Integer,font);
-			query.AddColumn("Date",90,FieldValueType.Date,font);
-			query.GetColumnDetail("Date").StringFormat="d";
-			query.AddColumn("Patient Name",150,FieldValueType.String,font);
-			query.AddColumn("Procedure",80,FieldValueType.String,font);
-			query.AddColumn("Fee",75,FieldValueType.Number,font);
-			query.AddColumn("Patient",75,FieldValueType.Number,font);
-			query.AddColumn("Adjustment",75,FieldValueType.Number,font);
-			query.AddColumn("Patient Paid",90,FieldValueType.Number,font);
-			query.AddColumn("Uncollected",80,FieldValueType.Number,font);
+			if(_doShowPrior) {
+				report.AddSubTitle("Prior Balances",Lan.g(this,"Includes prior uncollected balances"),fontSubTitle);
+			}
+			//The procedures of the date range, then (with the option) the prior ones, each with its own totals.
+			DataTable tableRange=GetPrintTable(isPrior:false);
+			DataTable tablePrior=GetPrintTable(isPrior:true);
+			if(tableRange.Rows.Count>0) {
+				AddPrintQuery(report,tableRange,Lan.g(this,"Patient Portion Uncollected"),font);
+			}
+			if(tablePrior.Rows.Count>0) {
+				AddPrintQuery(report,tablePrior,Lan.g(this,"Prior Uncollected Balances"),font);
+			}
 			report.AddPageNum(font);
 			report.AddGridLines();
 			if(!report.SubmitQueries()) {

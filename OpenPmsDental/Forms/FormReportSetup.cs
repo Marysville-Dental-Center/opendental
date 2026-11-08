@@ -316,6 +316,7 @@ namespace OpenPmsDental {
 				DataValid.SetInvalid(InvalidType.Prefs);
 				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Report settings have been changed.");
 			}
+			userControlReportSetup.CommitPendingEdit();//A display name still being typed when Save is clicked.
 			if(Security.IsAuthorized(EnumPermType.SecurityAdmin,true)) {
 				if(GroupPermissions.Sync(userControlReportSetup.ListGroupPermissionsForReports,userControlReportSetup.ListGroupPermissionsOld)) {
 					SecurityLogs.MakeLogEntry(EnumPermType.SecurityAdmin,0,"Report permissions have been changed.");
