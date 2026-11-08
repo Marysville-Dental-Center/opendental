@@ -70,13 +70,15 @@ namespace OpenPmsDental {
 		///</summary>
 		public static void OpenFile(string actualFilePath,string displayedFileName="") {
 			try {
-				string tempFile;
-				if(displayedFileName=="") {
-					tempFile=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),Path.GetFileName(actualFilePath));
+				string fileName=Path.GetFileName(actualFilePath);
+				if(displayedFileName!="") {
+					//A displayed name can come from a received e-mail. Keep only a plain file name, so the copy always stays in the temp folder.
+					string cleanName=ODFileUtils.CleanFileName(displayedFileName);
+					if(!string.IsNullOrWhiteSpace(cleanName) && cleanName.Trim('.')!="") {
+						fileName=cleanName;
+					}
 				}
-				else {
-					tempFile=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),displayedFileName);
-				}
+				string tempFile=ODFileUtils.CombinePaths(PrefC.GetTempFolderPath(),fileName);
 				if(CloudStorage.IsCloudStorage) {
 					UI.ProgressWin progressWin=new UI.ProgressWin();
 					progressWin.StartingMessage="Downloading...";
