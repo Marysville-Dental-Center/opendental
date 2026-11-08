@@ -297,22 +297,25 @@ namespace OpenPmsDentalBusiness.Email {
 				}
 			}
 			else if(address.AuthenticationType==BasicOAuthType.Microsoft) {
-				//A signed message is built (as MicrosoftApiConnector.SendEmail builds an unsigned one), signed and checked before any call.
-				MimeMessage mimeMessageSigned=null;
-				if(x509Certificate2Signing!=null) {
+				//A signed message, or one with an attached e-mail, is built here (as MicrosoftApiConnector.SendEmail builds any other one), signed
+				//if asked and checked before any call.
+				MimeMessage mimeMessageBuilt=null;
+				if(x509Certificate2Signing!=null || HasAttachedMessage(message)) {
 					BasicEmailAddress basicEmailAddressFrom=new BasicEmailAddress();
 					basicEmailAddressFrom.EmailUsername=address.EmailUsername;
-					mimeMessageSigned=CreateMIMEMsg(basicEmailAddressFrom,message);
-					SignMimeMessage(mimeMessageSigned,x509Certificate2Signing);
-					ThrowIfSignedTooLargeForMicrosoft(mimeMessageSigned);
+					mimeMessageBuilt=CreateMIMEMsg(basicEmailAddressFrom,message);
+					if(x509Certificate2Signing!=null) {
+						SignMimeMessage(mimeMessageBuilt,x509Certificate2Signing);
+					}
+					ThrowIfTooLargeForMicrosoft(mimeMessageBuilt,x509Certificate2Signing!=null);
 				}
 				//create and send microsoft email.
 				try {
-					if(mimeMessageSigned==null) {
+					if(mimeMessageBuilt==null) {
 						MicrosoftApiConnector.SendEmail(address.EmailUsername,address.AccessToken,message);
 					}
 					else {
-						MicrosoftApiConnector.SendMime(address.EmailUsername,address.AccessToken,mimeMessageSigned);//The MIME as signed: Graph sends it as it is.
+						MicrosoftApiConnector.SendMime(address.EmailUsername,address.AccessToken,mimeMessageBuilt);//The MIME as built: Graph sends it as it is.
 					}
 				}
 				catch(Microsoft365Exception) {
@@ -330,19 +333,35 @@ namespace OpenPmsDentalBusiness.Email {
 			}
 		}
 
-		///<summary>Throws ODException when a signed message is too large for Microsoft 365's one-request MIME send (/me/sendMail). Graph rebuilds a
-		///larger message as a draft with attachments, which would drop the signature.</summary>
-		private static void ThrowIfSignedTooLargeForMicrosoft(MimeMessage mimeMessage) {
+		///<summary>True when MimeKit attaches one of the files as the message it holds (message/rfc822 by its extension: .eml, .nws), a MessagePart
+		///rather than a MimePart; BodyBuilder decides by the same MimeTypes.GetMimeType.</summary>
+		internal static bool HasAttachedMessage(BasicEmailMessage emailMessage) {
+			if(emailMessage.ListAttachments.IsNullOrEmpty()) {
+				return false;
+			}
+			return emailMessage.ListAttachments.Any(x => string.Equals(MimeTypes.GetMimeType(x.FullPath),"message/rfc822",StringComparison.OrdinalIgnoreCase));
+		}
+
+		///<summary>Throws ODException when a signed message, or one with an attached e-mail, is too large for Microsoft 365's one-request MIME send
+		///(/me/sendMail). A larger message is rebuilt as a draft with attachments, which would drop the signature, and the draft path
+		///(Microsoft365GraphClient.GetAttachmentParts) uploads MimePart attachments only, which would drop an attached e-mail without a word.</summary>
+		private static void ThrowIfTooLargeForMicrosoft(MimeMessage mimeMessage,bool isSigned) {
 			long length;
 			using(MemoryStream memoryStream=new MemoryStream()) {
 				mimeMessage.WriteTo(memoryStream);
 				length=memoryStream.Length;
 			}
 			long lengthMax=new Microsoft365GraphOptions().MimeSendThresholdBytes;
-			if(length>lengthMax) {
-				throw new ODException(Lans.g("EmailMessages","A digitally signed message can be at most")+" "+(lengthMax/1000000.0).ToString("0.#")+" MB "
+			if(length<=lengthMax) {
+				return;
+			}
+			string megabytes=" "+(lengthMax/1000000.0).ToString("0.#")+" MB ";
+			if(isSigned) {
+				throw new ODException(Lans.g("EmailMessages","A digitally signed message can be at most")+megabytes
 					+Lans.g("EmailMessages","with Microsoft 365, which rebuilds larger messages without their signature. Send it unsigned or with smaller attachments."));
 			}
+			throw new ODException(Lans.g("EmailMessages","A message with an attached e-mail (.eml) can be at most")+megabytes
+				+Lans.g("EmailMessages","with Microsoft 365, which rebuilds larger messages without the attached e-mail. Send it with smaller attachments."));
 		}
 
 		///<summary>Helper method that creates a new MIME message based on the parameters (to, cc, bcc, from, and body)</summary>
