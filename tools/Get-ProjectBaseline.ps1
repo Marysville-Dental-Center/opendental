@@ -5,14 +5,19 @@ such records. Stage 1 of the .NET 10 move (docs/specs/net10-plan.md, S1-0 step 4
 projects; every package that converts projects to SDK-style compares against it.
 
 .DESCRIPTION
-Run it after a Debug|x86 build of OpenDental.Local.slnf. It writes five text files into -Out, one line per entry, sorted,
-with every path relative to the repository (no absolute path is written):
+Run it after a Debug|x86 build of OpenDental.Local.slnf. It writes five text files into -Out, one line per entry, sorted.
+No absolute path is written, so a record does not depend on the folder it was taken in: a path inside the repository is written
+relative to it, and a path inside the Program Files, Windows, local app data, temp or user profile folder starts with a placeholder
+such as <ProgramFiles(x86)>\. The script stops with an error, before writing the file, if a line would still hold the repository's
+path or any other drive path.
 
   items.txt      The evaluated Compile, EmbeddedResource, Page, None and Content items of each C# project
                  (MSBuild -getItem, with the configuration and platform the solution gives the project for Debug|x86):
-                 project|item type|include|metadata. The include is the item's path relative to the project folder; the
-                 metadata are the item's own (Link, LogicalName, DependentUpon, CopyToOutputDirectory, SubType, ...),
-                 not the well-known ones MSBuild adds to every item (FullPath, ModifiedTime, ...).
+                 project|item type|include|metadata. The include is the item's path as the project gives it: relative to
+                 the project folder, or relative to the repository for an item the project names by a full path (the linked
+                 sources of the third-party wrappers, through a folder property); the metadata are the item's own (Link,
+                 LogicalName, DependentUpon, CopyToOutputDirectory, SubType, ...), not the well-known ones MSBuild adds to
+                 every item (FullPath, ModifiedTime, ...).
   resources.txt  The manifest resource names of each project's built assembly: project|resource name.
   files.txt      Every file under OpenPmsDental\bin\Debug and under the output folder of every test project:
                  folder|file|size|SHA-256.
@@ -60,10 +65,16 @@ if(-not $Root){ $Root=Split-Path -Parent $PSScriptRoot }
 $Root=(Resolve-Path -LiteralPath $Root).Path.TrimEnd('\')
 $Projects=@($Projects | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 
-#Paths in the record are relative to the repository; anything else absolute gets a placeholder, so no computer's folders end up in it.
+#Paths in the record are relative to the repository; a path under one of the other folders below gets that folder's placeholder, so no
+#computer's folders end up in it. Each pair is (folder with its trailing separator, what replaces it).
 $script:replacements=New-Object 'System.Collections.Generic.List[object]'
 function Add-Replacement([string]$path,[string]$token){
-	if($path){ $script:replacements.Add(@($path.TrimEnd('\')+'\',$token)) }
+	if(-not $path){ return }
+	$folder=$path.TrimEnd('\','/')
+	#The concatenation needs its own parentheses: the comma binds tighter than +, and without them the pair is one string.
+	$script:replacements.Add(@(($folder+'\'),$token))
+	#The same folder written with forward slashes.
+	$script:replacements.Add(@((($folder -replace '\\','/')+'/'),($token -replace '\\','/')))
 }
 Add-Replacement $Root ''
 Add-Replacement ${env:ProgramFiles(x86)} '<ProgramFiles(x86)>\'
@@ -72,6 +83,12 @@ Add-Replacement $env:LOCALAPPDATA '<LocalAppData>\'
 Add-Replacement $env:USERPROFILE '<UserProfile>\'
 Add-Replacement $env:TEMP '<Temp>\'
 Add-Replacement $env:windir '<Windows>\'
+#The longest folder first: the temp folder lies inside the local app data folder, that one inside the user profile, and the repository
+#can lie inside any of them.
+$script:replacements.Sort([Comparison[object]]{ param($a,$b) $b[0].Length.CompareTo($a[0].Length) })
+foreach($pair in $script:replacements){
+	if($pair.Count -ne 2 -or -not $pair[0]){ throw "A path replacement is not a pair: [$($pair -join '][')]" }
+}
 function Get-Relative([string]$text){
 	if(-not $text){ return $text }
 	foreach($pair in $script:replacements){
@@ -87,6 +104,16 @@ function Get-Relative([string]$text){
 }
 
 function Write-Record([string]$name,[System.Collections.Generic.List[string]]$lines){
+	#No line may still hold a path of this computer: the repository's own (with either kind of slash, so also a UNC path) or any
+	#other drive path. A record with one would differ in every other folder it is compared from.
+	$rootForward=$Root -replace '\\','/'
+	foreach($line in $lines){
+		if($line.IndexOf($Root,[StringComparison]::OrdinalIgnoreCase) -ge 0 -or $line.IndexOf($rootForward,[StringComparison]::OrdinalIgnoreCase) -ge 0 -or
+			$line -match '(?<![A-Za-z0-9])[A-Za-z]:[\\/]')
+		{
+			throw "$name would hold an absolute path, so nothing more is written: $line"
+		}
+	}
 	$sorted=$lines.ToArray()
 	[Array]::Sort($sorted,[StringComparer]::Ordinal)
 	#A line that occurs more than once (a duplicate item, say) is numbered, so a comparison sees how often it occurs.
