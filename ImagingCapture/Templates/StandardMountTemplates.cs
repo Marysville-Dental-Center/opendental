@@ -164,7 +164,7 @@ namespace ImagingCapture.Templates {
 			}
 			else {
 				scaleNote="No scale: the slots are "+ToText(StandardMountTemplates.SlotWidth)+" x "+ToText(StandardMountTemplates.SlotHeight)+" pixels, "
-					+"Open Dental's generator's default, not a measured sensor image, so a mount scale would measure wrongly."+advice;
+					+"the mount generator's default, not a measured sensor image, so a mount scale would measure wrongly."+advice;
 			}
 			return "";
 		}

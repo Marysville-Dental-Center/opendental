@@ -102,6 +102,16 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
+		public void Texts_TheWindowShows_NameNoOtherProgram() {
+			List<string> listTexts=new List<string> { StandardTemplateTexts.Intro };
+			listTexts.AddRange(StandardMountTemplates.ListTemplates.Select(x => StandardTemplateTexts.GetTemplateText(x)));
+			foreach(string text in listTexts) {
+				StringAssert.DoesNotMatch(text,new System.Text.RegularExpressions.Regex("Open Dental",System.Text.RegularExpressions.RegexOptions.IgnoreCase),
+					"The Add standard templates window names the program's own mount generator, not another program.");
+			}
+		}
+
+		[TestMethod]
 		public void Layout_IsOpenDentalsGenerator_WithItsDefaultSlotSize() {
 			int w=1700;
 			int h=1300;
