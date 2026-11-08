@@ -33,7 +33,8 @@ What this version brings, each in its section below (the roadmap's "Done in the 
     the Patient Portion Uncollected report, whose adjustments now count once;
   - vital signs imported from eForms, types for referral commlogs, and an optional automatic switch between a patient's Prophy and Perio
     recall;
-  - program links: Allied Star Connect and OrthoComposite added (off), Trojan Express Collect and Suni retired;
+  - program links: Allied Star Connect and OrthoComposite added (off; OrthoComposite with its public arguments), Trojan Express Collect and
+    Suni retired, and a Partner ID for Medit Link that sends the cases created from the Chart to the office's lab;
   - Glidewell lab cases, ready but not yet able to send: hidden in Program Links until the program can connect to Glidewell, and no patient
     data is sent without a business associate agreement with Glidewell.
 
@@ -572,7 +573,8 @@ Three of Open Dental 26.2's smaller changes, re-implemented from Open Dental's p
 Built from Open Dental's public 26.2 release notes and setup pages only (`docs/port-notes/P262-LINKS.md`). New links appear in Setup >
 Program Links the first time it is opened, disabled; their buttons show only once the office enables them. Neither vendor publishes what its
 program reads, so Allied Star Connect and OrthoComposite stay off unless the office uses the program; an office that does asks that vendor
-for the file layout or the arguments (owner decision of 2026-11-07).
+for the file layout or the arguments (owner decision of 2026-11-07). OrthoComposite has since published its arguments, which now ship as the
+default.
 
 - **Allied Star Connect** (new): a Chart module button that writes the selected patient (id, name, birthdate, gender and the first email
   address) to the .json file in the link's Info file path, then starts Connect (default path `C:\Program Files\Alliedstar\Connect\Connect.exe`).
@@ -580,10 +582,14 @@ for the file layout or the arguments (owner decision of 2026-11-07).
   is removed first, so Connect can never open the previous patient. The file is removed when the program closes. The layout of the file is
   this program's own, because Alliedstar has not published one: if Connect does not open the patient, ask Alliedstar which layout it reads.
 - **OrthoComposite** (new): a Chart module button that starts OrthoComposite with the patient's first name, last name and birthdate
-  (MM/dd/yyyy). How OrthoComposite takes them is not published, so the office enters the arguments in the link's Patient arguments property
-  from OrthoComposite's own instructions, with the tokens [FName], [LName] and [Birthdate]; no other patient data can be sent. Enter where
-  OrthoComposite is in Path of file to open (a program installed from the Microsoft Store can be given by its name, for example
-  `OrthoComposite.exe`).
+  (MM/dd/yyyy). The link's Patient arguments property holds OrthoComposite's own public arguments, `--lastname "[LName]" --firstname
+  "[FName]" --dob "[Birthdate]"`, which open its patient list with the search filled in (an office may change them); only the tokens [FName],
+  [LName] and [Birthdate] are filled in, so no other patient data can be sent. Enter where OrthoComposite is in Path of file to open (a
+  program installed from the Microsoft Store can be given by its name, for example `OrthoComposite.exe`).
+- **OrthoComposite's public arguments** (fork migration step 2026110801): a link set up before this version with blank Patient arguments gets
+  OrthoComposite's arguments; arguments an office typed are never changed.
+- **Medit Link**: a new Partner ID property (blank, sent nowhere) assigns every case created with the Chart's Medit Link button to that
+  partner lab in Medit Link, as Medit documents (for example Glidewell, partner ID 7307395).
 - **Trojan Express Collect** (retired): the service is no longer offered. The link is listed as "(discontinued)", cannot be enabled or
   started, and the update disables it and removes its buttons (fork migration step 2026110781); its settings stay in the database. Nearly
   every database has one such button on the Account module toolbar (Open Dental's 2019 update added it for every office, hidden while the
@@ -616,3 +622,7 @@ around the connection is in place:
 - A lab case sent to Glidewell cannot be deleted; its products are deleted with an unsent lab case, and they follow the lab case when two
   patients are merged.
 - Lab cases an Open Dental database already sent to Glidewell keep their stored status and details, which the Details button shows.
+- **Teeth of a product**: filled from the procedures of the lab case's appointment (or planned appointment), formatted as the Chart shows a
+  tooth range; "From Procedures" fills them again, and what the user types is kept.
+- **Sending a case today**: the setup window lists Glidewell's own ways to send a case, which need no connection from this program (iTero or
+  Medit Link scanner partnerships, file upload in Glidewell's My Account, the GL-421 paper Rx).

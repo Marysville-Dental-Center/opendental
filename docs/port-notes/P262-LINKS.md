@@ -1,13 +1,13 @@
 # Port note: P262-LINKS, the Open Dental 26.2 program links (items 44 to 47)
 
 Branch `p262/links-1`, cut from `p262/schema-1` (39be2b04b); review fixes on `p262/links-2` (section "Review fixes" below). One of the 26.2 feature packages the owner chose on 2026-11-07 (release notes
-https://www.opendental.com/site/version26_2.html, "Program Links"). Fork migration level used: 2026110781 (range 2026110781 to 2026110789).
-Tests: `tests/P262LinksTests`.
+https://www.opendental.com/site/version26_2.html, "Program Links"). Fork migration level used: 2026110781 (range 2026110781 to 2026110789);
+the vendor follow-up (`next/vendorpub-1`, last section) uses 2026110801. Tests: `tests/P262LinksTests`.
 
 | Item | 26.2 release note | Here |
 |---|---|---|
 | 44 | New bridge for Alliedstar Connect | built (the info file layout INFERRED) |
-| 45 | New imaging bridge to OrthoComposite | built (the launch arguments partner-gated) |
+| 45 | New imaging bridge to OrthoComposite | built; the launch arguments are public (OrthoComposite's Microsoft Store listing) and ship as the default since `next/vendorpub-1` |
 | 46 | Deprecated Trojan Express Collect bridge | retired, as the DXC Patient Credit Score link was (B-SHELL) |
 | 47 | Removed support for Suni | done; the capture itself was removed in v0.0 (BIN-A) |
 | (not ported) | Removed the Ez3D-i Bridge | the Ez3D-i link stays (owner decision) |
@@ -30,7 +30,7 @@ this program's own.
 - OrthoComposite setup page (site/bridgeorthocomposite.html): an imaging program from the Microsoft Store; Enabled; Path of file to open (no
   default); Text on button, default "OrthoComposite"; Hide Button for Clinics; toolbars, default ChartModule; button image. Technical data:
   the patient is found by first name, last name and birthdate; the date format is MM/DD/YYYY; accented letters are allowed in names. It names
-  no property and no argument syntax.
+  no property and no argument syntax; OrthoComposite's own Microsoft Store listing gives the arguments (`next/vendorpub-1`, last section).
 - Trojan Express Collect pages (site/trojancollect.html, site/trojancollectbridge.html): the service is no longer offered. The 24.4 manual
   pages (manual/trojancollectbridge.html) describe the old setup only.
 - Suni (manual/suni.html, 24.4 manual): Suni discontinued operations; the link switched the Imaging module to the 19.4 interface.
@@ -69,7 +69,8 @@ this program's own.
 
 - `OpenPmsDentalBusiness/VendorDirect/ProgramLinks/OrthoCompositeLink.cs`: the row, the launch rules, `FillArguments`.
 - The row (runtime, `Enabled=0`, `OrthoCompositeProgramLinkSetup`): ProgDesc "OrthoComposite", no path (the public page gives none), a Chart
-  module button "OrthoComposite", and one property of ours, "Patient arguments" (blank).
+  module button "OrthoComposite", and one property of ours, "Patient arguments" (blank on `p262/links-1`; since `next/vendorpub-1` OrthoComposite's
+  public arguments `--lastname "[LName]" --firstname "[FName]" --dob "[Birthdate]"`, last section).
 - The button (`WpfControlsOD/Bridges/OrthoComposite.cs`): a blank path is refused; a drive or network path must name an existing file; a name
   without a folder (an app execution alias such as `OrthoComposite.exe`, which Microsoft Store programs install) or a `shell:` target is left
   to Windows to find. With a patient, blank Patient arguments are refused with "The patient arguments for this program link are not set up
@@ -162,9 +163,11 @@ Not ported (owner decision): the Ez3D-i link, its dispatch and its exit scrub ar
 4. **Allied Star Connect launch**: Connect is started with no arguments (the Command line as typed) and reads the file itself; without a
    patient the old file is removed and Connect starts without one; a failed write or removal stops the launch; the button text "Allied Star
    Connect" (the page calls it optional and gives none); the ProgDesc follows Open Dental's bridge list.
-5. **OrthoComposite launch syntax**: partner-gated. The "Patient arguments" property and its three tokens are ours; the public page gives the
-   data and the date format only. Without a patient OrthoComposite starts with the Command line only. A path without a folder or a `shell:`
-   target is not checked for existence.
+5. **OrthoComposite launch**: the syntax is public since `next/vendorpub-1` (OrthoComposite's Microsoft Store listing: `--lastname`,
+   `--firstname`, `--dob`; Open Dental's page: MM/DD/YYYY), no longer partner-gated, and ships as the default Patient arguments. Still ours:
+   the "Patient arguments" property and its three tokens (so an office can change the value), the quotes around each value, that a blank value
+   with a patient is refused, the Command line after the patient arguments, that without a patient OrthoComposite starts with the Command line
+   only, and that a path without a folder or a `shell:` target is not checked for existence.
 6. **Trojan Express Collect**: the step runs on every database and disables the row and deletes its buttons, because what Open Dental's own
    26.2 conversion does is not public (the DXC precedent). The stored properties (including the encrypted collection password) stay.
 7. **Suni**: the four columns and the old Images module stay; only the comments change.
@@ -180,7 +183,8 @@ not public. If the office uses either program, the office asks that vendor (ques
 2. **Allied Star Connect file layout.** Ask Alliedstar which file layout Connect reads (field names, date format, gender codes, encoding)
    and whether it takes any argument. Until then a patient may not open in Connect.
 3. **OrthoComposite arguments.** Ask OrthoComposite's maker how the program takes the name and birthdate. Once known, should a default
-   Patient arguments template ship, or stay with the office?
+   Patient arguments template ship, or stay with the office? **Answered by public sources** (owner, 2026-11-07, "yes" to the vendor
+   follow-up): OrthoComposite's Microsoft Store listing gives the arguments, and the default ships (`next/vendorpub-1`, last section).
 4. **Trojan Express Collect data.** The step keeps the row's properties, among them the encrypted Trojan Collection password and the export
    folder. Remove them in a later step, or keep them as the DXC step kept its row?
 
@@ -252,7 +256,7 @@ Not tested: the windows themselves (the program is not launched), starting Conne
 - `ProgramName`: two values appended after `MeetInTheCloud`; another package appending there keeps both blocks (names are stored, not
   numbers).
 - `BridgeLaunchProblem`: three values appended; not stored.
-- Fork levels: only 2026110781 is used; 2026110782 to 2026110789 stay free for this package.
+- Fork levels: only 2026110781 is used; 2026110782 to 2026110789 stay free for this package. The vendor follow-up's step uses 2026110801.
 - The adoption tools' row check now combines two discontinued-link plans; a package that retires another link should extend the same way
   (or turn the two plans into a list).
 
@@ -308,9 +312,51 @@ program was installed, no sign-in was used.
   the last key of its JSON object, exactly as Medit's article shows, then the patient is filled in. Without a patient there is no command
   parameter, so nothing is added.
 - Refused with a message, nothing started (patient selected and Partner ID set): a Partner ID with characters other than letters, digits,
-  hyphens and underscores (INFERRED; Medit's IDs are digits); a Command line that already has a PartnerID key (set by hand, as Medit's
-  article tells Open Dental users; remove one of the two); a Command line that does not end with `}` (not the JSON object Medit gives).
+  hyphens and underscores (INFERRED; Medit's IDs are digits); a Command line that already names PartnerID, in any letter case (set by
+  hand, as Medit's article tells Open Dental users; remove one of the two); a Command line that does not end with `}` (not the JSON object Medit gives).
 - How an office uses it: in Setup, Program Links, Medit Link, enter its lab's Medit partner ID in Partner ID (Glidewell's is 7307395 in
   Medit's table), and every case created from the Chart's Medit Link button is assigned to that lab in Medit Link. Clear it to stop. Medit's
   article does not say whether the lab must already be a partner in Medit Link; set up the partnership first (for Glidewell: Partner,
   CDOP@glidewelldental.com, `P262-GLIDEWELL.md`).
+
+### Files (vendor follow-up)
+
+- New: `OpenPmsDentalBusiness/Misc/ForkMigrations/OrthoCompositePatientArgumentsStep.cs`,
+  `OpenPmsDentalBusiness/VendorDirect/ProgramLinks/MeditLinkPartner.cs` (both compiled by the existing wildcards),
+  `OpenPmsDental/Logic/VendorDirect/MeditLinkProgramLinkSetup.cs` (added to `OpenPmsDental.csproj`),
+  `tests/P262LinksTests/OrthoCompositeArgumentsStepTests.cs`, `MeditLinkPartnerTests.cs`.
+- Changed: `OrthoCompositeLink.cs` (the default, the Note, no trailing backslash in a value), `WpfControlsOD/Bridges/MeditLink.cs` (the
+  arguments from `MeditLinkPartner`; the command id moved there), `OpenPmsDentalBusiness/Misc/ForkMigrations/README.md` (the step's row),
+  `tests/P262LinksTests/OrthoCompositeLinkTests.cs`, `ProgramRowsDbTests.cs`, `docs/release-notes/next.md`, this note.
+- No schema, CRUD, preference, permission or stored enum change; no `ProgramName` or `BridgeLaunchProblem` value. The step changes data
+  only. `db/init/new-database.sql` is not regenerated (the integration does it; the init database has no OrthoComposite row, so only its
+  fork level changes).
+
+### Tests (vendor follow-up)
+
+`tests/P262LinksTests`, now 57 tests (13 new):
+
+- `OrthoCompositeLinkTests`: the definition's default and Note; `DefaultArguments_AreTheStoreListingArguments` (the exact template, the
+  filled-in arguments with accented letters and quotes removed, MM/dd/yyyy under de-DE, an empty `--dob ""` without a birthdate, the
+  Command line after them); `Values_DoNotEndInABackslash`; the Note names the three arguments.
+- `OrthoCompositeArgumentsStepTests`: the step's level, name, namespace, order after the Trojan Express Collect step and README row; the old
+  note it knows and the ProgName rule; on the scratch database: no OrthoComposite row (another link's blank "Patient arguments" and the old
+  note untouched); blank and white-space values filled, the office's value, clinic rows and an office's note kept, the old note replaced, no
+  row added, a second run changes nothing, and a value the office clears afterwards stays blank (`EnsureProgram` never refills it); a row
+  without the property gets it with the default from `EnsureProgram`.
+- `MeditLinkPartnerTests`: without a Partner ID the arguments are exactly as before; with one, the Command line Open Dental's conversion
+  wrote becomes exactly the text of Medit's article with `xxxxx` replaced by the ID (trailing spaces dropped, an empty object gets the key
+  alone); without a patient only the command id, whatever the Partner ID; the refusals (characters, a PartnerID already in the Command line in
+  any case, no closing `}`, a blank Command line) return no arguments and leave the Command line unchanged; on the scratch database the
+  property row is added blank to the Medit Link row as `new-database.sql` has it, once, every column of the program row unchanged, no button,
+  no row without a Medit Link row, and the office's value is read by the button with the real patient token replacement; the wiring (the
+  bridge refuses before `Process.Start`, the command id only in `MeditLinkPartner`, the setup class and its project entry, ASCII and no web
+  address in the new files).
+- `ProgramRowsDbTests`: a new OrthoComposite row has the default and the new Note.
+
+Not tested: the windows themselves and starting OrthoComposite or Medit Link (no program is launched by tests).
+
+Runs of `next/vendorpub-1` on 2026-11-07, after one full build of `OpenDental.Local.slnf` with 0 errors (Targeted, one run):
+`P262LinksTests` 57/57, `P262GlidewellTests` 54/54, `VBRIDGE1Tests` 37/37, `VBRIDGE2Tests` 64/64, `VendorDirectTests` 881/881, `NoHqTests`
+58/58. The database tests ran on the assemblies' own scratch databases (`test_p262links_`, `test_p262glidewell_`, unique per run); none was
+left behind. `ForkMigrationTests` and `InitSqlTests` were not run (the integration regenerates `db/init/new-database.sql` for the new level).

@@ -40,6 +40,7 @@ Public sources only, as the owner decided. No Open Dental program was installed,
 - **Glidewell's public material** (searched 2026-11-07): its "submit a digital case" pages (how an office pairs an iTero or Medit scanner with
   the lab), its partner pages and a press release of 2026-10-15 about its first practice management integration (with another vendor). None
   documents an interface for practice management programs: no address, authentication, calls, field formats, status values or product list.
+  What they do give (the scanner connections, file upload, the paper Rx, who to contact) is used since `next/vendorpub-1` (last section).
 
 ## What was built
 
@@ -139,7 +140,8 @@ The sources give the tables, the field names and the eight statuses. Everything 
 9. A lab case sent to Glidewell cannot be deleted; its products are deleted with an unsent lab case.
 10. Products are edited in the Edit Lab Case window while the program link is on (the documents do not say where). `GlidewellProduct` is never
     chosen, because Glidewell's list is not published: a new product row stores 0 and a stored value is kept and shown as a number. 0 may be a
-    real product in Open Dental's list (owner question 3). The teeth are typed, not taken from the procedures.
+    real product in Open Dental's list (owner question 3). The teeth were typed on `p262/glidewell-1`; since `next/vendorpub-1` they are
+    filled from the procedures of the lab case's appointment (last section), and what the user types stays the manual override.
 11. `glidewellacct.DateTimeExpires` is shown, never written (nothing in this version signs in to a scanner).
 12. Sending does not set the lab case's Sent date (the scan is not taken yet when the case is registered).
 13. No audit trail entry for sending or checking status (the documents name no permission); account changes are logged under Setup and key
@@ -163,13 +165,13 @@ The transport (`IGlidewellClient` implementation) needs, from Glidewell's partne
 6. A test account (sandbox) to run the transport against, and then the office's own production account number and API key.
 
 With these, the transport is one class implementing `IGlidewellClient`, set as `GlidewellClients.Current`, plus its tests; nothing else
-changes.
+changes. Who to ask is under "Contacts for Glidewell's practice software API" (last section).
 
 ## Not built
 
 - The transport (above). No call reaches Glidewell in this version.
 - Item 3 (Open Dental Cloud).
-- Picking a product from Glidewell's list, and taking the teeth from the lab case's procedures.
+- Picking a product from Glidewell's list. (Taking the teeth from the lab case's procedures is built since `next/vendorpub-1`.)
 - No UI was run (OpenPmsDental.exe is not launched in this run); the windows are checked by build and source tests only.
 
 ## Files touched
@@ -274,8 +276,9 @@ no sign-in was used.
   procedure, `ToothNum` (INFERRED: the document names `procedure.ToothRange`, which Open Dental fills only for multi-tooth procedures, and a
   crown, the most common lab case, has its tooth in `ToothNum`); invalid entries left out, each tooth once, in tooth order, formatted for
   display as the Chart shows a tooth range (`Tooth.DisplayRange`: runs of three or more as a dash, the office's tooth numbering), for example
-  "8-10,12". Arches, quadrants and sextants are not teeth and are not shown (INFERRED). `Tooth.DisplayRange` gained an overload that takes
-  the nomenclature, so the rule needs no preference cache; the old one reads the preference as before.
+  "8-10,12". Arches, quadrants and sextants are not teeth and are not shown (INFERRED). The rule itself is `LabCaseProducts.FormatTeeth`, on
+  the stored entries (a procedure's constructor reads a preference, so the rule's tests need no database). `Tooth.DisplayRange` gained an
+  overload that takes the nomenclature, so the rule needs no preference cache; the old one reads the preference as before.
 - `LabCaseProducts.GetToothRangeFromProcs(aptNum,plannedAptNum)`: both, with the office's tooth numbering.
 - The product window (`FormLabCaseProductEdit`): a new product's Teeth box is filled from the procedures when it is blank; the button "From
   Procedures" fills it again at any time (or says that the appointment has no procedures with teeth). What the user types is the manual
@@ -299,3 +302,48 @@ no sign-in was used.
 Glidewell publishes no interface for practice management programs; its only practice software integration so far was announced on
 2026-10-15 (with another vendor). Who to ask (from Glidewell's public pages): Glidewell, 800-854-7256, mail@glidewelldental.com; scanner
 partnerships: CDOP@glidewelldental.com. The office itself asks (owner decision of 2026-11-07, question 1).
+
+### Files (vendor follow-up)
+
+- New: `tests/P262GlidewellTests/LabCaseProductTeethTests.cs`, `SendWithoutThisProgramTests.cs`.
+- Changed: `OpenPmsDentalBusiness/Data Interface/LabCaseProducts.cs` (`GetProcsForLabCase`, `FormatToothRange`, `FormatTeeth`,
+  `GetToothRangeFromProcs`, `FillToothRangeIfBlank`), `OpenPmsDentalBusiness/Logic/Tooth.cs` (the `DisplayRange` overload with the
+  nomenclature; the old one returns blank without reading the preference, as before, and otherwise reads it and calls the new one),
+  `OpenPmsDentalBusiness/VendorDirect/Glidewell/GlidewellProgram.cs` (`GetSendWithoutThisProgramText` and its four constants),
+  `OpenPmsDental/Forms/FormLabCaseProductEdit.cs` and `.Designer.cs` (the "From Procedures" button), `FormLabCaseEdit.Glidewell.cs` (passes
+  the teeth of the procedures), `FormGlidewellSetup.cs` and `.Designer.cs` (the read-only box "Sending a case to Glidewell today"; the window
+  is taller), `tests/P262GlidewellTests/GlidewellDb.cs` (empties `procedurelog` too), `docs/release-notes/next.md`, this note.
+- The Medit Link Partner ID is built under P262-LINKS (`MeditLinkPartner`, `docs/port-notes/P262-LINKS.md`, last section).
+- No schema, enum value, migration step or preference.
+
+### Tests (vendor follow-up)
+
+`tests/P262GlidewellTests`, now 54 tests (10 new):
+
+- `LabCaseProductTeethTests`: the formatting (a crown's tooth, tooth order and runs of three or more, a multi-tooth range, each tooth once,
+  two teeth not a run, primary teeth, spaces in a stored range, arch and quadrant codes and invalid entries left out, null lists and entries,
+  FDI the same as the Chart's own range display, the old `DisplayRange` overload's blank without the preference); the fill for blank teeth
+  only; on the scratch database: `FormatToothRange` reads each procedure's ToothNum and ToothRange, the procedures of the scheduled appointment
+  (deleted ones left out), else of the planned appointment, none when attached to neither or when the appointment has none, the teeth in the
+  office's numbering (Universal and FDI), and products saved with their teeth as typed; the wiring of the product window (a new product only,
+  the button, saved as typed) and of the Edit Lab Case window (adding and editing, the appointments as on screen).
+- `SendWithoutThisProgramTests`: the text line by line (Lab ID 318, CDOP@glidewelldental.com, the Rx, the Medit Link Partner ID 7307395,
+  STL or PLY in My Account, the GL-421 Rx form, the page title), no web address, no promotion, ASCII; the setup window shows it in a
+  read-only box inside the window.
+
+Not tested: the windows themselves (no program is launched by tests).
+
+Runs of `next/vendorpub-1` on 2026-11-07, after one full build of `OpenDental.Local.slnf` with 0 errors (Targeted, one run):
+`P262LinksTests` 57/57, `P262GlidewellTests` 54/54, `VBRIDGE1Tests` 37/37, `VBRIDGE2Tests` 64/64, `VendorDirectTests` 881/881, `NoHqTests`
+58/58. The database tests ran on the assemblies' own scratch databases (`test_p262links_`, `test_p262glidewell_`, unique per run); none was
+left behind. `ForkMigrationTests` and `InitSqlTests` were not run (the integration regenerates `db/init/new-database.sql` for the new level).
+
+### Questions for the owner (vendor follow-up)
+
+1. **The instructions are not reachable yet.** Program Links hides Glidewell lab cases while this build has no transport (owner decision of
+   2026-11-07, question 8), so the setup window, and with it the instructions, cannot be opened. Show them somewhere reachable until then (for
+   example a Help button in the Edit Lab Case window, or the Medit Link program link's Note), or keep them in the release notes and this note
+   only, as built?
+2. **Medit Link Partner ID for Glidewell.** Medit's article does not say whether Glidewell must already be a partner in Medit Link before
+   `PartnerID` 7307395 assigns cases to it. The instructions tell the office to set up the partnership first. Confirm with Medit or Glidewell
+   if an office reports cases that do not reach Glidewell.
