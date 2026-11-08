@@ -270,7 +270,8 @@ $exitCode=0
 function Read-Lines([string]$folder,[string]$name){
 	$path=Join-Path $folder $name
 	if(-not (Test-Path -LiteralPath $path)){ throw "No $name in $folder" }
-	return @([System.IO.File]::ReadAllLines($path) | Where-Object { $_ })
+	#The comma keeps an empty file (no resources among the -Projects, say) an empty array; without it the caller would get $null.
+	return ,[string[]]@([System.IO.File]::ReadAllLines($path) | Where-Object { $_ })
 }
 function Compare-Sets([string]$what,[string[]]$older,[string[]]$newer,[bool]$isGate){
 	$olderSet=[System.Collections.Generic.HashSet[string]]::new([string[]]$older,[StringComparer]::OrdinalIgnoreCase)
@@ -299,7 +300,9 @@ $namesBoth=[System.Collections.Generic.HashSet[string]]::new([string[]]$namesNew
 $namesBoth.IntersectWith([string[]]$namesOlder)
 $olderBoth=@($olderFiles | Where-Object { $namesBoth.Contains((($_ -split '\|')[0..1] -join '|')) })
 $newerBoth=@($newerFiles | Where-Object { $namesBoth.Contains((($_ -split '\|')[0..1] -join '|')) })
-$changed=@(Compare-Object -ReferenceObject $olderBoth -DifferenceObject $newerBoth | Where-Object { $_.SideIndicator -eq '=>' } | ForEach-Object { ($_.InputObject -split '\|')[0..1] -join '|' })
+#A set, not Compare-Object, which refuses an empty list.
+$olderBothSet=[System.Collections.Generic.HashSet[string]]::new([string[]]$olderBoth,[StringComparer]::OrdinalIgnoreCase)
+$changed=@($newerBoth | Where-Object { -not $olderBothSet.Contains($_) } | ForEach-Object { ($_ -split '\|')[0..1] -join '|' })
 if($changed.Count -eq 0){ Write-Host 'files.txt (sizes and SHA-256): no differences' }
 else{
 	Write-Host ("files.txt (sizes and SHA-256): {0} files differ (not a failure)" -f $changed.Count)
