@@ -31,7 +31,7 @@ These are four preference rows. The fork reads and writes them with plain SQL (`
 | Preference | Meaning |
 |---|---|
 | `ForkSchemaLevel` | The last fork migration step applied. `0` right after adoption. If this row exists, the database is adopted. |
-| `OdSchemaCompat` | The Open Dental schema the database matches exactly (`26.1.70` once every fork migration step has run; `25.3.48` or `24.3.63` right after adoption). The fork migration runner and schema verifier advance it. |
+| `OdSchemaCompat` | The Open Dental schema the database matches exactly (`26.2.0` once every fork migration step has run, `26.1.70` before package P262-SCHEMA; `25.3.48` or `24.3.63` right after adoption). The fork migration runner and schema verifier advance it. |
 | `ForkAdoptedFrom` | The adoption record: `source=25.3.48.0;started=…;adopted=…` (UTC). If it has no `adopted=` and there is no `ForkSchemaLevel`, the adoption didn't finish. If it has `adopted=` but `ForkSchemaLevel` or `OdSchemaCompat` is missing, the markers of an adopted database were removed: that database is refused, never adopted again. |
 | `ForkProgramVersion` | The release published from the update server: `release+buildId`, for example `0.0+3f2a…`. |
 

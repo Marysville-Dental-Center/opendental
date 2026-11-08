@@ -256,10 +256,10 @@ The line `Adoption's fork migration will rename N displayreport row(s), changing
 displayreport row.`) sums them up. **Write each rename (old name, new name, DisplayReportNum) on the checklist**, or "none": step 4 must show
 exactly these. No rename at all is just as normal.
 
-The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature steps after them:
+The last lines are the Open Dental 25.4, 26.1 and 26.2 steps of item 6 and the feature steps after them:
 
-- `Steps 2026102401 to 2026102403 (Open Dental 25.4 and 26.1 schema) bring the schema to Open Dental 26.1.70: 5 new table(s), empty (...);
-  28 new column(s) in 21 table(s) ...; ... claimpayment.Note (text NOT NULL: N NULL note(s) become empty) ...`;
+- `Steps 2026102401 to 2026102403 and 2026110701 (Open Dental 25.4, 26.1 and 26.2 schema) bring the schema to Open Dental 26.2.0: 8 new
+  table(s), empty (...); 35 new column(s) in 24 table(s) ...; ... claimpayment.Note (text NOT NULL: N NULL note(s) become empty) ...`;
 - `Step 2026102501 (Open Dental 25.4 and 26.1 seed rows) inserts N preference(s) with their defaults: ...` (10 on an Open Dental database:
   the names are this program's own);
 - `Step 2026102501 splits the blockout permission (...): it moves N Open Dental 25.3 PhoneExtension grant(s) from 272 to 274, then grants

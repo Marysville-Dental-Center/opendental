@@ -12,10 +12,12 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - the maintenance updates: WebView2 in place of Internet Explorer, a managed spell checker and PDFsharp and MigraDoc 6.5 (these two built
   from their source), and the program's own DICOM reader in place of fo-dicom;
 - routine maintenance around the practice, and inventory tracking for materials;
-- the storage library under its new name, and a Database Maintenance check that works again.
+- the storage library under its new name, and a Database Maintenance check that works again;
+- the database schema of Open Dental 26.2.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
-inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below).
+inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below). It also
+brings the Open Dental tables to the Open Dental 26.2 schema (three new tables, seven new columns; Open Dental 26.2 database schema, below).
 
 ## Before you install this version
 
@@ -262,3 +264,24 @@ deletes the old file from its `bin` folder.
 The check `ProcedurelogTpAttachedToClaim` failed on every database with an SQL syntax error, inherited from Open Dental 24.3.22, and
 Database Maintenance stops at the first error: running all checks (or fixes) never reached the checks after it in the list. The check
 works again, so a full run goes through every check.
+
+## Open Dental 26.2 database schema
+
+The update brings the database to the schema of Open Dental 26.2, re-implemented from Open Dental's published 26.2 database documents only
+(`docs/port-notes/P262-SCHEMA.md`). It is the base of this version's Open Dental 26.2 features; the features themselves are described in
+their own sections.
+
+- **New tables**, created empty: `glidewellacct`, `glidewellmsg` and `labcaseproduct` (lab cases sent to Glidewell).
+- **New columns**: the default claim form and the default Glidewell account of a provider (`provider.ClaimFormNum`, `GlidewellAcctNum`, 0
+  until set), the failure tracking of API subscriptions (`apisubscription`, four columns; this program has no API event sender, so nothing
+  writes them) and the time an insurance blue book row last changed (`insbluebook.DateTStamp`). Existing rows keep every value; the new
+  columns start empty, except `insbluebook.DateTStamp`, which holds the time of the update in every existing row.
+- **New values** with Open Dental's numbers, so that rows written by Open Dental 26.2 load: the definition category Commlog Referral Types,
+  the automation trigger Do Not Bill Insurance Check and the condition Carriers Match, the paint type TextBelow (the tooth chart draws nothing
+  for it), the Perio Chart preference of showing only the current exam's probing, a Transworld payment plan link, and values that belong to
+  Open Dental HQ or to services this program does not have (two MariaDB backup alerts, an eConnector alert, an HQ permission, an HQ
+  definition link), which stay hidden.
+- The schema verifier now checks the database against Open Dental 26.2.0, and `OdSchemaCompat` says 26.2.0 after the update. Open Dental
+  databases are still adopted only from 25.3.48 (or this program's 24.3.63 line).
+- Everything the documents do not publish (NULL or NOT NULL, defaults, keys, the MyISAM engine of the new tables, the numbers of the Glidewell
+  order statuses) follows the conventions of the existing schema and is marked INFERRED in the port note.
