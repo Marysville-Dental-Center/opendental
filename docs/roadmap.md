@@ -4,21 +4,21 @@ Planned work after v0.0, as agreed with the owner. Each item is discussed and sc
 
 ## Next
 
-Scheduled with the owner on 2026-11-07, in this order:
+Scheduled with the owner on 2026-11-07, in this order (the Open Dental 26.2 features, first on that list, are done; see below):
 
-1. **Open Dental 26.2 features** (in progress): 34 of its 67 changes, chosen with the owner item by item. Left out: its API, Open Dental
-   Cloud, hosted-service and chat items, and its two MariaDB backup tools, which belong on the server. See below.
-2. **.NET 10**, after the 26.2 work has landed, because the move changes every project file. See below.
-3. **The tooth chart's 3D drawing** on WPF 3D with Helix Toolkit 3.x, after .NET 10. See below.
-4. **32-bit to 64-bit**, after the tooth chart. See below.
-5. **Compressed DICOM decoders**, parked until such files turn up. See below.
+1. **.NET 10**, now that the 26.2 work has landed, because the move changes every project file. See below.
+2. **The tooth chart's 3D drawing** on WPF 3D with Helix Toolkit 3.x, after .NET 10, with Open Dental 26.2's extraction graphic and its
+   "text below the chart" paint type. See below.
+3. **32-bit to 64-bit**, after the tooth chart. See below.
+4. **Compressed DICOM decoders**, parked until such files turn up. See below.
 
 Not scheduled yet: the next release, the office switch-over, the server components on Linux, the GitHub repository move, and Open Dental
 26.3.
 
 The owner questions of the work done in the next version (the SSH host key defaults, the server-wide rights the backup needs, and the
 Backup window's backup to another server) were answered on 2026-11-07, and every other open question was accepted at today's behaviour
-("skip the rest"); `docs/owner-questions.md` records the answers.
+("skip the rest"). The questions of the Open Dental 26.2 work were answered the same day ("all as recommended"). `docs/owner-questions.md`
+records the answers.
 
 ## Done in the next version
 
@@ -35,18 +35,12 @@ Built for the version after 0.0; what each one changes is in its release notes, 
 6. **Fixes before the switch-over, from the owner's answers of 2026-11-07**: a declined PayConnect 2 charge is a decline, an edited X-ray
    attached to a claim is saved, the Insurance History step leaves the frequency code groups unchanged, the DentX, Dexis Integrator and
    Vipersoft links and NDde.dll are removed, the capture session is on for new installs, and the backup to another server works.
+7. **Open Dental 26.2 features**: the changes the owner chose on 2026-11-07, on Open Dental's 26.2.0 database schema (appointments, billing
+   and statements, claims and insurance, the perio chart, tools, reports, eForms and recalls, program links, and Glidewell lab cases without
+   a connection to Glidewell yet), with Open Dental 25.3's settings read under their own names and its eight options built. The extraction
+   graphic and the "text below the chart" paint type stay with the tooth chart.
 
 ## Plans
-
-### Open Dental 26.2 features
-
-Open Dental marked 26.2 stable on 2026-11-03. The owner went through its 67 changes on 2026-11-07 and chose 34: appointment search over
-several blockout types and schedule notes, the reworked billing defaults and statement options, claim and insurance changes (a default claim
-form per provider, the "do not bill insurance" automation trigger), perio chart multi-select and past exam values, the Fee Tool and new
-database maintenance checks, report changes, eForm vital signs, the automatic prophy/perio recall switch, the Alliedstar Connect and
-OrthoComposite bridges (Trojan Express Collect retired, Suni removed, Ez3D-i kept), and electronic Glidewell lab cases with the office's own
-Glidewell credentials. The extraction graphic and the "text below the chart" paint type come with the tooth chart work. Built from the public
-release notes and manual and Open Dental's published 26.2 database documents only, so a 26.2 office database could be adopted later.
 
 ### .NET Framework 4.8 to .NET 10
 

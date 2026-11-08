@@ -18,7 +18,7 @@ step. Every step says what to run, where, what to expect, and what to do when th
 
 ## What adoption does, and what it cannot undo
 
-Adoption converts a copy of the Open Dental 25.3.48 database into a database of this program, with the schema of Open Dental 26.1.70 (the
+Adoption converts a copy of the Open Dental 25.3.48 database into a database of this program, with the schema of Open Dental 26.2.0 (the
 version this program follows; the office's database stays at 25.3.48 until then). It is done once, by an administrator, on a
 **copy**; normal startup never adopts. `Adoption.Run` (run here by `AdoptionValidation adopt`; the program's Adopt Database window calls the
 same code):
@@ -33,8 +33,9 @@ same code):
    nothing to change. One step may rename report rows: Open Dental 24.4 and 25.2 added three reports (Production by Procedure, Procedures
    (individual), Insurance Pending Supplementals) whose `displayreport` rows Open Dental's own update wrote under internal names that are not
    published. A row of one of them under a name this program does not know, with a matching description, gets this program's name (its
-   `InternalName` only), so this program opens that report and the report permissions carry over. Then the Open Dental 25.4 and 26.1 steps
-   bring the schema to 26.1.70: five new tables (empty) and 28 new columns (each holding its default in every existing row), claim payment
+   `InternalName` only), so this program opens that report and the report permissions carry over. Then the Open Dental 25.4, 26.1 and 26.2 steps
+   bring the schema to 26.2.0: eight new tables (empty) and 35 new columns (each holding its default in every existing row; `insbluebook.DateTStamp`
+   holds the time of the update), claim payment
    notes as long text (a note that is NULL becomes empty; the payment's last-changed time is kept) and the insurance verification
    `DateLastAssigned` as a date and time (midnight of the same date). They add the 25.4 and 26.1 preferences with their defaults, and split
    the blockout permission as Open Dental 25.4 did: grants of PhoneExtension under its 25.3 number (272) move to 274, because 25.4 gave 272 to
@@ -650,9 +651,9 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
 - step 2026110206 ("Routine maintenance: grant Maintenance Setup and Maintenance Record Completion to the Security Admin groups") "changed the
   database:", followed by "Granted MaintenanceSetup to N Security Admin user group(s)" and "Granted MaintenanceRecord to N Security Admin user
   group(s)" with the step 0.2 numbers (or "found nothing to change" if step 0.2 said it changes nothing); then
-  "Fork migrations: 26 step(s) run, 0 already done. Fork schema level 2026110213.", "The schema matches Open Dental 26.1.70 (OdSchemaCompat)."
+  "Fork migrations: 30 step(s) run, 0 already done. Fork schema level 2026110781.", "The schema matches Open Dental 26.2.0 (OdSchemaCompat)."
   and "Adoption finished."
-- "Fork migration, every step again: 26 steps run, 0 changes." and "The schema matches Open Dental 26.1.70 exactly (427 of 427 tables), plus 12 table(s) of this program that match their declarations."
+- "Fork migration, every step again: 30 steps run, 0 changes." and "The schema matches Open Dental 26.2.0 exactly (430 of 430 tables), plus 12 table(s) of this program that match their declarations."
 - the rehash of step 5
 - "Row check against opendental ..." with fourteen lines and no line starting `FAIL`: `preference` (the markers added, "N of the N 25.4 and 26.1
   preference(s) migration-preview lists added with their defaults", `DataBaseVersion` and `ProgramVersion` set to 99.0.0.0, the preferences of
@@ -674,8 +675,8 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   with the Trojan Express Collect buttons the same way: normally "1 of the 1 Trojan Express Collect toolbar button(s) migration-preview
   lists deleted (ToolButItemNum N)", after the DXC part if there is one), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
   migration-preview counts now empty, every other note unchanged", and `insverify` and `insverifyhist.DateLastAssigned` "the original date at
-  midnight in all N row(s)"), "New tables and columns:" ("5 new table(s), all empty (...); 28 new column(s) in 21 table(s) hold their default
-  in every row."), "Fork tables:" ("12 new table(s) of this program, all empty (maintfield, maintitem, maintrecord, maintrecordvalue,
+  midnight in all N row(s)"), "New tables and columns:" ("8 new table(s), all empty (...); 35 new column(s) in 24 table(s) hold their default
+  in every row (insbluebook.DateTStamp: one time in every row, that of the ALTER TABLE)."), "Fork tables:" ("12 new table(s) of this program, all empty (maintfield, maintitem, maintrecord, maintrecordvalue,
   maintstep, sshhostkey, supplycount, supplycountline, supplylot, supplyproccode, supplyprocpending, supplysetting).": the routine maintenance
   tables, the SSH host keys table (no server's key is stored yet: the first connection to each server stores it) and the inventory tables
   but the stock ledger, so no stock count is open), "Stock ledger:" ("supplyledger added (inventory tracking), N of the N

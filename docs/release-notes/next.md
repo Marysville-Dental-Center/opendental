@@ -12,48 +12,35 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - the maintenance updates: WebView2 in place of Internet Explorer, a managed spell checker and PDFsharp and MigraDoc 6.5 (these two built
   from their source), and the program's own DICOM reader in place of fo-dicom;
 - routine maintenance around the practice, and inventory tracking for materials;
+- Open Dental 25.3's settings read under Open Dental's own names, so the office's values carry over at the switch-over, and the eight
+  Open Dental 25.3 options this program had been built without;
 - the storage library under its new name, and a Database Maintenance check that works again;
 - the fixes and changes of the owner's answers of 2026-11-07: a declined PayConnect card is never recorded as paid, an edited X-ray attached
   to a claim is saved, the Insurance History switch-over leaves the frequency code groups alone, three unused program links and NDde.dll are
-  gone, the X-ray capture session is on for new installs, and the archive backup to another server works.
-- the database schema of Open Dental 26.2.
-- the database schema of Open Dental 26.2;
-- Open Dental 26.2's Appointments module changes: several blockout types in the Advanced Appointment Search, the practice and clinic
-  schedule notes in the Appointments module, and appointment estimates brought up to date when an insurance plan is saved.
-- the database schema of Open Dental 26.2;
-- the billing and statements changes of Open Dental 26.2: a Statement Options window, a redesigned Statement window, an Electronic
-  Billing window and Billing Defaults per clinic.
-- the database schema of Open Dental 26.2;
-- from Open Dental 26.2, for claims and insurance: Status History and Misc next to General in Edit Claim, a default claim form per provider,
-  a detailed warning when combining insurance plans, and an automation trigger for Do Not Bill to Ins.
-- the database schema of Open Dental 26.2;
-- Open Dental 26.2's Perio Chart changes: flags for all selected teeth at once, several cells selected in any data row, and the settings
-  Show previous exams and Show previous probing values.
-- the database schema of Open Dental 26.2;
-- Open Dental 26.2's tools: two Database Maintenance checks (income transfer problems, redundant insurance verifications), a tool that
-  dates conversion clean-up income transfers on the conversion date, a Fee Tool that copies fees from one procedure code to another, and an
-  average in Test Latency.
-- the database schema of Open Dental 26.2;
-- the Reports changes of Open Dental 26.2: redesigned Display Settings and Security Permissions tabs in Report Setup, and prior uncollected
-  balances and a Pay Plan column in the Patient Portion Uncollected report.
-- the database schema of Open Dental 26.2;
-- three smaller Open Dental 26.2 changes: vital signs imported from eForms, types for referral commlogs, and an optional automatic switch
-  between a patient's Prophy and Perio recall.
-- the database schema of Open Dental 26.2;
-- the program links of Open Dental 26.2: Allied Star Connect and OrthoComposite added, Trojan Express Collect and Suni retired.
-- the database schema of Open Dental 26.2;
-- Glidewell lab cases in the Edit Lab Case window (Open Dental 26.2), off until the office sets it up; sending waits for Glidewell's
-  interface documentation.
-- eight settings Open Dental 24.4 to 25.3 added (payment plans and the global lock date, the perio Recession wording and others) now read
-  under Open Dental's own names, so the office's values carry over at the switch-over; values saved in 0.0 move to those names
-  (`docs/port-notes/SWMAP.md`);
-- the eight Open Dental 25.3 options this program had built without, now built under Open Dental's own setting names
-  (`docs/port-notes/ODOPTS.md`);
-- the storage library under its new name, and a Database Maintenance check that works again.
+  gone, the X-ray capture session is on for new installs, and the archive backup to another server works;
+- Open Dental 26.2: its database schema and the changes the owner chose on 2026-11-07:
+  - Appointments: several blockout types in the Advanced Appointment Search, the practice and clinic schedule notes in the Appointments
+    module, and appointment estimates brought up to date when an insurance plan is saved;
+  - billing and statements: a Statement Options window, a redesigned Statement window, an Electronic Billing window and Billing Defaults
+    per clinic;
+  - claims and insurance: Status History and Misc next to General in Edit Claim, a default claim form per provider (the billing provider's
+    first), a detailed warning when combining insurance plans, and an automation trigger for Do Not Bill to Ins;
+  - the Perio Chart: flags for all selected teeth at once, several cells selected in any data row, and the settings Show previous exams and
+    Show previous probing values;
+  - tools: two Database Maintenance checks, a tool that dates conversion clean-up income transfers on the conversion date, a Fee Tool that
+    copies fees from one procedure code to another, and an average in Test Latency;
+  - reports: redesigned Display Settings and Security Permissions in Report Setup, and prior uncollected balances and a Pay Plan column in
+    the Patient Portion Uncollected report, whose adjustments now count once;
+  - vital signs imported from eForms, types for referral commlogs, and an optional automatic switch between a patient's Prophy and Perio
+    recall;
+  - program links: Allied Star Connect and OrthoComposite added (off), Trojan Express Collect and Suni retired;
+  - Glidewell lab cases, ready but not yet able to send: hidden in Program Links until the program can connect to Glidewell, and no patient
+    data is sent without a business associate agreement with Glidewell.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
 inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below). It also
-brings the Open Dental tables to the Open Dental 26.2 schema (three new tables, seven new columns; Open Dental 26.2 database schema, below).
+brings the Open Dental tables to the Open Dental 26.2 schema (three new tables, seven new columns; "Open Dental 26.2: the database schema",
+below).
 
 ## Before you install this version
 
@@ -288,6 +275,15 @@ Inventory, Setup), on every existing and every new database; while it is off not
 - **After the update** the stock ledger starts with one opening row for every supply whose on-hand quantity is not 0, so the ledger and the
   stock agree; supplies, orders, suppliers and categories are unchanged.
 
+## Open Dental 25.3's settings under their own names
+
+Settings that Open Dental 24.4 to 25.3 added and that this program had kept under names of its own (payment plans and the global lock date,
+the perio "Recession" wording, provider time on the operatory background, the secondary provider's color in a time bar, the Medical EOB
+prompt, the automatic split of ERAs by denial codes, the read delay after a write, the blur when switching modules) are now read and saved
+under Open Dental's own names (`docs/port-notes/SWMAP.md`). The office's values carry over at the switch-over as they are; adoption changes
+no preference row, and `migration-preview` (runbook step 0.2) lists them with what this program shows. On a database that version 0.0 used,
+the update moves the values 0.0 saved under its own names to Open Dental's names (fork migration step 2026110731).
+
 ## Eight more Open Dental 25.3 options
 
 Each is read and saved under Open Dental's own setting name, so the office's value carries over at the switch-over as it is; a database
@@ -300,7 +296,7 @@ public: the owner questions "ODOPTS" list what to confirm (`docs/port-notes/ODOP
 - eForm Setup: import a typed allergy that matches no list entry as Other, or skip it; a skipped one is listed in the form's Audit Trail entry and shown to whoever saves the form (`EFormImportAllergiesAsOther`; on by default).
 - eForm Setup: the same for typed problems, skipped ones recorded and shown alike (`EFormImportProblemsAsOther`; on by default).
 - Preferences, Treatment Plan, Frequency Limitations: the procedure code Insurance History uses for perio scaling (`InsHistPerioScalingCode`; blank by default).
-- Billing Defaults, Send Setup: e-mail new statements when billing creates them, never, after asking or always (`StatementAutoSendEmail`; never by default). Open Dental's window of that name sends Message-to-Pay links instead, a service this program does not have, so an Always carried over from Open Dental asks before e-mailing until Send Setup is saved here.
+- Billing Defaults, Send Setup: e-mail new statements when billing creates them, never, after asking or always (`StatementAutoSendEmail`; never by default). Open Dental's window of that name sends Message-to-Pay links instead, a service this program does not have, so an Always carried over from Open Dental asks before e-mailing until Send Setup is saved here (kept so by the owner on 2026-11-07).
 - Send Setup: the same for texts (Message-to-Pay by text in Open Dental), which are not sent until a texting provider is chosen (`StatementAutoSendSMS`; never by default).
 
 ## The storage library has a new name
@@ -377,7 +373,8 @@ question DB-SEC 2). It now copies the rows with ordinary `INSERT` statements, in
 no connection allows local files, and no temporary file of the rows is written. The account typed for the other server needs `CREATE`,
 `INSERT` and `SELECT` on the backup database. The program's own database account keeps its three server-wide rights (owner question
 DB-SEC 1, answered on 2026-11-07).
-## Open Dental 26.2 database schema
+
+## Open Dental 26.2: the database schema
 
 The update brings the database to the schema of Open Dental 26.2, re-implemented from Open Dental's published 26.2 database documents only
 (`docs/port-notes/P262-SCHEMA.md`). It is the base of this version's Open Dental 26.2 features; the features themselves are described in
@@ -389,8 +386,8 @@ their own sections.
   writes them) and the time an insurance blue book row last changed (`insbluebook.DateTStamp`). Existing rows keep every value; the new
   columns start empty, except `insbluebook.DateTStamp`, which holds the time of the update in every existing row.
 - **New values** with Open Dental's numbers, so that rows written by Open Dental 26.2 load: the definition category Commlog Referral Types,
-  the automation trigger Do Not Bill Insurance Check and the condition Carriers Match, the paint type TextBelow (the tooth chart draws nothing
-  for it), the Perio Chart preference of showing only the current exam's probing, a Transworld payment plan link, and values that belong to
+  the automation trigger Do Not Bill Insurance Check and the condition Carriers Match, the paint type TextBelow (the tooth chart does not draw
+  it yet, so the procedure code windows do not offer it; a procedure code that already has it keeps it), the Perio Chart preference of showing only the current exam's probing, a Transworld payment plan link, and values that belong to
   Open Dental HQ or to services this program does not have (two MariaDB backup alerts, an eConnector alert, an HQ permission, an HQ
   definition link), which stay hidden.
 - The schema verifier now checks the database against Open Dental 26.2.0, and `OdSchemaCompat` says 26.2.0 after the update. Open Dental
@@ -398,7 +395,7 @@ their own sections.
 - Everything the documents do not publish (NULL or NOT NULL, defaults, keys, the MyISAM engine of the new tables, the numbers of the Glidewell
   order statuses) follows the conventions of the existing schema and is marked INFERRED in the port note.
 
-## Appointments module (Open Dental 26.2)
+## Open Dental 26.2: the Appointments module
 
 The Appointments module changes of Open Dental 26.2, re-implemented from Open Dental's public release notes, manual pages and database
 documents (`docs/port-notes/P262-APPT.md`). No database change.
@@ -417,7 +414,8 @@ documents (`docs/port-notes/P262-APPT.md`). No database change.
   Plans) now also brings the insurance estimates up to date for every patient the plan covers who has a scheduled appointment today or
   later, not only for the subscriber's own patients as before. It runs for users with the Insurance Plan Edit permission (the only users
   who can change the plan or its benefits); a plan with many such patients takes a moment longer to save.
-## Billing and statements (Open Dental 26.2)
+
+## Open Dental 26.2: billing and statements
 
 Four changes of Open Dental 26.2, re-implemented from its public release notes only (`docs/port-notes/P262-BILLING.md`). Every statement,
 billing and electronic billing setting keeps its value: nothing is converted, and no database row is added by the update.
@@ -445,6 +443,7 @@ billing and electronic billing setting keeps its value: nothing is converted, an
   clinic's defaults and nothing of any other clinic. A clinic with its own messages in Billing Defaults but no saved Billing Options filters
   keeps following the practice filter defaults, and a clinic set to use the practice defaults in Billing Defaults stays on them. Billing
   Options shows the selected clinic's own General Message, also when the window opens.
+
 ## Open Dental 26.2: claims and insurance
 
 Four changes of Open Dental 26.2 (its release notes, Account Module and Insurance), written from Open Dental's public release notes and
@@ -455,8 +454,9 @@ the provider column and the automation values.
 - **Edit Claim: Status History and Misc next to General.** The tabs are now General, Status History, Misc, Attachments, Medical (and
   Canadian), so claim tracking and the resend fields (Correction Type, Original Reference Num) are one click away. Nothing on the tabs
   changed. Open Dental moved them too; where they went in its window is not published.
-- **A default claim form per provider.** Edit Provider has a Default Claim Form. When it is set, new claims and preauthorizations take the
-  treating provider's claim form instead of the insurance plan's (which starts as the practice default). "None" keeps the plan's, as before.
+- **A default claim form per provider.** Edit Provider has a Default Claim Form. New claims and preauthorizations take the billing
+  provider's default claim form, or, when the billing provider has none, the treating provider's, instead of the insurance plan's (which
+  starts as the practice default). "None" on both keeps the plan's, as before.
   Existing claims keep their claim form, and the claim form can still be changed on each claim. A claim form that is a provider's default
   cannot be deleted; the message names the providers.
 - **Combining insurance plans: a detailed warning.** Combine Insurance Plans now lists every field of the other plans that does not match the
@@ -469,7 +469,8 @@ the provider column and the automation values.
   automation mean any one of the carriers. The condition is offered only for this trigger, and an automation that has it cannot be saved
   with another trigger. Combining carriers (Lists > Carriers > Combine) moves these conditions to the carrier that is kept, so the
   automation keeps firing.
-## Perio Chart (Open Dental 26.2)
+
+## Open Dental 26.2: the Perio Chart
 
 The Perio Chart changes of Open Dental 26.2, re-implemented from Open Dental's public release notes, Perio Chart pages and database
 documents (`docs/port-notes/P262-PERIO.md`). No database change.
@@ -488,7 +489,8 @@ documents (`docs/port-notes/P262-PERIO.md`). No database change.
   grayed earlier values (what Show current exam only did). Both are checked for a user who never changed them. A user who had Show current
   exam only checked finds Show previous exams unchecked, which now also hides the grayed earlier values; to see those again, check Show
   previous exams and uncheck Show previous probing values.
-## Tools (Open Dental 26.2)
+
+## Open Dental 26.2: tools
 
 Five tools of Open Dental 26.2, re-implemented from Open Dental's public release notes and database documents only
 (`docs/port-notes/P262-TOOLS.md`). Open Dental does not publish how its versions work, so the rules below are this program's own and marked
@@ -515,7 +517,8 @@ INFERRED in the port note. No database change.
   trail (Procedure Fee Edit and Fee Edit). Users restricted to clinics cannot use it.
 - **Test Latency: average latency.** Tools, Misc Tools, Test Latency has a third test that runs the small latency query several times (10
   unless you change it, up to 1000) and shows the average, the fastest and the slowest round trip in milliseconds.
-## Reports (Open Dental 26.2)
+
+## Open Dental 26.2: reports
 
 Four Reports changes of Open Dental 26.2, re-implemented from its public release notes only (`docs/port-notes/P262-REPORTS.md`). Every
 report setting and permission keeps its value: nothing is converted, and no database row is added by the update.
@@ -536,7 +539,11 @@ report setting and permission keeps its value: nothing is converted, and no data
   patient payment plan, or the amount of a dynamic payment plan (its override, or what remains of the procedure when it has none).
   Insurance payment plans do not count. The Uncollected column is unchanged: payments made through a payment plan count in Patient Paid, as
   before. The report window is a little wider for the new column.
-## Vital signs from eForms, referral commlog types, automatic Prophy and Perio recall (Open Dental 26.2)
+- **Patient Portion Uncollected: each adjustment counts once.** An adjustment with several payment splits attached to it counted its
+  amount once per split (since Open Dental 26.1). It now counts once, less those splits, in the rows of the date range and in the prior
+  rows, so the Adjustment and Uncollected amounts of such procedures are right and differ from before.
+
+## Open Dental 26.2: vital signs from eForms, referral commlog types, automatic Prophy and Perio recall
 
 Three of Open Dental 26.2's smaller changes, re-implemented from Open Dental's public release notes and database documents
 (`docs/port-notes/P262-MISC.md`). No database change; no preference or definition is added by the update.
@@ -559,10 +566,13 @@ Three of Open Dental 26.2's smaller changes, re-implemented from Open Dental's p
   next trigger procedure is completed, and turning the setting on switches nobody for procedures completed before. Nothing switches when the
   newest date has both kinds of procedure, when the recall is disabled, when the patient has both a Prophy and a Perio recall, or when the
   Prophy and Perio types do not both have triggers. Each switch is recorded in the Audit Trail.
-## Program links of Open Dental 26.2
+
+## Open Dental 26.2: program links
 
 Built from Open Dental's public 26.2 release notes and setup pages only (`docs/port-notes/P262-LINKS.md`). New links appear in Setup >
-Program Links the first time it is opened, disabled; their buttons show only once the office enables them.
+Program Links the first time it is opened, disabled; their buttons show only once the office enables them. Neither vendor publishes what its
+program reads, so Allied Star Connect and OrthoComposite stay off unless the office uses the program; an office that does asks that vendor
+for the file layout or the arguments (owner decision of 2026-11-07).
 
 - **Allied Star Connect** (new): a Chart module button that writes the selected patient (id, name, birthdate, gender and the first email
   address) to the .json file in the link's Info file path, then starts Connect (default path `C:\Program Files\Alliedstar\Connect\Connect.exe`).
@@ -581,16 +591,19 @@ Program Links the first time it is opened, disabled; their buttons show only onc
 - **Suni** (removed): Suni's direct capture was already removed in version 0.0; nothing is left that uses the Suni settings. The database
   columns stay, as in Open Dental 26.2.
 - **Ez3D-i** stays (owner decision), although Open Dental 26.2 removed it.
-## Glidewell lab cases (Open Dental 26.2)
 
-Lab cases can be sent to the Glidewell dental lab from the Edit Lab Case window, for a scan from an iTero or Medit scanner, with the office's
-own Glidewell account, directly to Glidewell (`docs/port-notes/P262-GLIDEWELL.md`). **It is off until the office turns it on** in Setup,
-Program Links, Glidewell lab cases, and it can be turned on only after a Glidewell account with its account number and API key is entered.
-While it is off the Edit Lab Case window is unchanged.
+## Open Dental 26.2: Glidewell lab cases
 
-**This version cannot send yet.** Glidewell has not published the interface practice management programs use, so the program contains no
-connection to Glidewell; Send to Glidewell says so and nothing leaves the practice. The connection will be added once Glidewell's
-documentation is available; everything around it is in place:
+Lab cases are to be sent to the Glidewell dental lab from the Edit Lab Case window, for a scan from an iTero or Medit scanner, with the
+office's own Glidewell account, directly to Glidewell (`docs/port-notes/P262-GLIDEWELL.md`).
+
+**This version cannot send yet, and the link is hidden.** Glidewell has not published the interface practice management programs use, so the
+program contains no connection to Glidewell and nothing leaves the practice. Until the connection exists, Setup, Program Links does not list
+Glidewell lab cases, so it cannot be set up or turned on, and the Edit Lab Case window is unchanged (owner decision of 2026-11-07). The office
+itself asks Glidewell for API access. Once the connection is added, it is off until the office turns it on in Setup, Program Links, Glidewell
+lab cases, which needs a Glidewell account with its account number and API key, and **no patient data is sent until the setup records that a
+signed business associate agreement with Glidewell is on file**, as for the postcard service; status checks wait for it too. Everything
+around the connection is in place:
 
 - **Accounts** (Setup, Program Links, Glidewell lab cases): the account number, the API key (stored encrypted, never shown again, changed only
   by a user with Manage High Security Program Properties) and the providers whose lab cases use the account by default. An API key that
