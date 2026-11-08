@@ -173,3 +173,30 @@ Tests: `ProcessorDeclineEmailTests` (new: EdgeExpress through `XWebs.Mock`, PayC
 - **V-GP** merged (with M2-NOTES and V-BRIDGE2). One conflict in `SendEdgeExpress`: V-GP renamed "Response from EdgeExpress:" to "Response from Global Payments V1:"; the renamed text is kept, with this package's `IsEdgeExpressCardDecline` filter line right after the `MarkDeclined` call. `RecurUnitTests.Source_EveryMarkDeclinedIsNarrowedByItsProcessorsFilter` and `ProcessorDeclineEmailTests`' three EdgeExpress tests now expect the renamed text (the rules they check are unchanged), and the count stays 7 (V2's call is in its own partial file).
 - V2's `MarkDeclined` is reached only for a card or issuer decline (`GpV2Outcome.Declined`); refused requests, setup problems, duplicates and unknown outcomes use `MarkFailed`. So it needs no filter line; the new `RecurUnitTests.Source_GlobalPaymentsV2_MarkDeclinedOnlyForACardDecline` keeps it that way. `SendFailEmailIfNeeded` runs after the V2 branch in `SendCharges`, as after every other processor.
 - On the merged head: one full build (0 errors), `run-tests -Mode Full` (79 assemblies, 4174 tests, none failed; 2 skipped in M201Tests) and the host check passed. `M2RECURTests` 49 of 49.
+
+## Question 6 fixed (owner answer of 2026-11-07)
+
+The owner answered question 6: a PayConnect 2 answer that is not an approval is a decline. Fixed where the charge is recorded, not only in
+the recurring run:
+
+- `PayConnect2.ApiResponseToPayConnectResponse` gave every create answer (`CreateTransaction`, `CreateSurchargeTransaction`,
+  `TerminalTransaction`) `StatusCode` "0". It now gives "0" only when `GetCreateStatusNotApproved` finds an approval, and
+  `PayConnect2.StatusCodeNotApproved` ("NotApproved") for any other status, Declined, Error, Voided or blank. Not blank, which the recurring
+  run reads as an error without an answer. `PayConnect2.ChargeResponseToPayConnectResponse` does the same for a charge's status lookup
+  (`GetStatus`, the hosted card-entry page); voids and refunds keep the plain conversion, whose "Voided" lookup is their success.
+- `SendPayConnectV2` uses the charge conversion, so such an answer reaches its existing `StatusCode!="0"` decline (`MarkDeclined`, "Transaction
+  Failed, error status Declined"), now followed by the PayConnect filter line like the error branch. `IsPayConnect2Decline` is true for a 2xx
+  create whose status says declined (the rule of a reconciled lost answer), so only a Declined status e-mails the patient. The charge gets the
+  $0 payment every decline gets (the record that it was tried, `IsCcCompleted` off, no merchant fee), never a payment of the amount, and
+  `Success` is not counted.
+- `FormPayConnect2` converts sales and authorizations with the charge conversion; a charge that was not approved sends no signature and builds
+  no receipt, and `FormPayment` records it as declined (its existing `StatusCode!="0"` branch).
+- The other processors' recurring paths were checked for the same mistake: EdgeExpress (Global Payments V1) and XWeb treat every code but
+  Approval as a decline with $0 (XWeb's gateway throws for a non-approval), the X-Charge client only `RESULT=SUCCESS`, PaySimple throws for
+  "not approved" or "declined", Global Payments V2 records `GpV2Outcome.Declined` as $0. None records a decline as paid. One related
+  observation, not changed: EdgeExpress answers a partial approval (007) as a decline with $0 although part of the amount was charged.
+- Tests: `ProcessorDeclineEmailTests` (fake PayConnect answers through `SendPayConnect`: 2xx Declined is a decline, e-mails the patient and
+  records only the $0 payment; a 2xx Error status is a decline without e-mail; an approval records the payment of the amount; the 402
+  decline's $0 payment), `RecurUnitTests` (the filter for 2xx answers; the source check now expects the filter after both PayConnect
+  `MarkDeclined` calls and the charge conversion), `VendorDirectTests.PayConnect2Tests` (the conversion of approved and not approved creates
+  and status lookups).
