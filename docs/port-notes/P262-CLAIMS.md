@@ -141,11 +141,15 @@ The sources give the four one-line release notes and the document texts quoted a
 ## Checks (2026-11-07)
 
 - Full build of `OpenDental.Local.slnf` (Debug, x86): 0 errors.
-- Targeted runs, all with `NoHqTests` (58/58): `P262ClaimsTests` (new, 39 tests: rules, the trigger through `Automations.Trigger` on the
+- Targeted runs, all with `NoHqTests` (58/58): `P262ClaimsTests` 39/39 (new: rules, the trigger through `Automations.Trigger` on the
   scratch database, claim forms of new claims end to end through the repeat charge claim, the merge mismatches with real names, and the window
-  wiring), `BCLAIMTests`, `InsuranceTests`, `M2CLAIMFORMTests`, and the assemblies that read the changed sources or run the changed code:
-  `M2MISCTests` (automation windows), `M2ESTTests` (the Do Not Bill to Ins box), `M2NOTESTests`, `M2CARRIERTests`, `BTPTests`,
-  `BSHELLTests`, `M2TERMTests`, `M2SDVTests`, `VEDSTests`, `VendorDirectTests`. Results are in the final report of the run.
+  wiring), `BCLAIMTests` 55/55, `InsuranceTests` 49/49, `M2CLAIMFORMTests` 16/16, and the assemblies that run the changed code or read the
+  changed sources: `M2MISCTests` 78/78 (automation windows), `M2ESTTests` 70/70 (the Do Not Bill to Ins box), `M2NOTESTests` 51/51,
+  `M2CARRIERTests` 55/55, `BTPTests` 36/36, `M2TERMTests` 21/21, `M2SDVTests` 47/47, `VEDSTests` 83/83, `VendorDirectTests` 873/873.
+- `BSHELLTests` 67 of 68: its source checks of `ControlTreat.cs` pass; `DxcCreditScoreRemovedTests.Step_HasItsDatedLevel_AndPassesValidation`
+  fails on the schema foundation already, not because of this package (it adds no step): it requires every fork step outside the
+  `FeatureSteps` namespace to come before the DXC step (2026110101), and P262-SCHEMA's `OdParity26_2Schema` (2026110701, namespace
+  `ForkMigrations`) comes after it. Left for the schema package or the integration.
 - Scratch database `test_p262claims_*`, dropped after the run. `ForkMigrationTests` was not run (no fork step here; its
   `InitSqlRegenerationTests` fails on every 26.2 branch until the integration regenerates `db/init/new-database.sql`).
 
