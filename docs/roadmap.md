@@ -6,11 +6,11 @@ Planned work after v0.0, as agreed with the owner. Each item is discussed and sc
 
 Scheduled with the owner on 2026-11-07, in this order (the Open Dental 26.2 features, first on that list, are done; see below):
 
-1. **.NET 10**, now that the 26.2 work has landed, because the move changes every project file. See below.
+1. **.NET 10** for everything, the Middle Tier included, now that the 26.2 work has landed, because the move changes every project file. Its
+   last stage is the switch to 64-bit, once the TWAIN driver project's 64-bit data sources are ready. See below.
 2. **The tooth chart's 3D drawing** on WPF 3D with Helix Toolkit 3.x, after .NET 10, with Open Dental 26.2's extraction graphic and its
    "text below the chart" paint type. See below.
-3. **32-bit to 64-bit**, after the tooth chart. See below.
-4. **Compressed DICOM decoders**, parked until such files turn up. See below.
+3. **Compressed DICOM decoders**, parked until such files turn up. See below.
 
 Not scheduled yet: the next release, the office switch-over, the server components on Linux, the GitHub repository move, and Open Dental
 26.3.
@@ -49,11 +49,23 @@ next long-term release, is expected in late 2027). Gains: faster start-up and me
 monthly security servicing, better high-DPI support in WinForms, and current libraries (Helix Toolkit 3.x for the tooth chart among them).
 Still Windows-only for WinForms and WPF, which fits: the desktop program stays a Windows program.
 
-What has to change: the Middle Tier stays on .NET Framework (owner decision: it shares the business code with the program), so the business
-library builds for both frameworks; the generated SOAP web-service clients ("Web References") are regenerated or replaced; the test projects
-move from MSTest v1 to MSTest 3; the old-style project files (about 9,600 lines for `OpenPmsDental.csproj`) become SDK-style; NuGet packages
-replace the DLL files in `Required dlls`, with a restore step the build lane can use offline; configuration files, Windows services and COM
-interop need small changes. The decisions are gone through with the owner one at a time before the work starts.
+Decided with the owner on 2026-11-07:
+
+- **Everything moves**, with no project left on .NET Framework and nothing built for both. That includes the Middle Tier: its classic
+  ASP.NET web service (one method that hands each request to the business code) becomes a small ASP.NET Core service over HTTPS on
+  Windows; the program reaches it with a plain HTTPS call instead of the generated SOAP proxy. The 4,458 business methods that can run
+  on the Middle Tier keep their messages unchanged. A Linux Middle Tier is deferred to the Linux server plan (the business library would
+  first need its Windows-only parts moved out: pictures, fonts and drawing, WinForms, WPF, the registry).
+- **Deployment**: framework-dependent; the installer installs the .NET 10 Desktop Runtime, so the updates stored in the database stay small.
+- **Libraries**: NuGet packages replace the DLL files in `Required dlls`, from a local package folder the build lane restores from offline,
+  with lock files; each batch of downloads is approved by the owner. The generated SOAP clients of services the fork removed are deleted and
+  the rest regenerated or replaced; any BinaryFormatter use is replaced; tests built on AppDomains are rewritten; COM interop stays.
+- **Stages**, each ending with a full test run: (1) SDK-style project files, still on .NET Framework 4.8; (2) NuGet packages; (3) the
+  program, the business library, the tests and the Middle Tier on .NET 10, still 32-bit; (4) MSTest v1 to MSTest 3; (5) 64-bit, once the
+  TWAIN driver project's 64-bit data sources are ready (see "32-bit to 64-bit").
+
+A read-only survey of every project, library, API and tool the move touches is under way; the detailed stage plan and any further owner
+questions follow from it.
 
 ### The tooth chart's 3D drawing
 
@@ -72,16 +84,18 @@ reaches main.
 
 ### 32-bit to 64-bit
 
-The program is built as 32-bit today. Decided: go to full 64-bit (no interim large-address-aware flag).
+The program is built as 32-bit today. Decided: go to full 64-bit (no interim large-address-aware flag), as the last stage of the .NET 10
+move (owner, 2026-11-07), once the TWAIN driver project's 64-bit data sources are ready.
 
 - **TWAIN**: a 64-bit program uses the 64-bit TWAIN data source manager (TWAINDSM 64-bit, free) and needs 64-bit TWAIN data sources. The
   clinic's sensor and camera drivers are a thin 32-bit data source (`.ds`) that starts a separate 32-bit helper program for the device work,
   which uses the sensor vendor's 32-bit libraries. The TWAIN driver project builds 64-bit `.ds` files that start the same 32-bit helpers;
   the helpers and the vendor libraries stay 32-bit, because processes of different bitness can talk to each other (the driver project
-  confirmed on 2026-11-07 that nothing in its design stops this). Installed side by side with the 32-bit ones. Still to decide with the
-  owner: who installs the 64-bit TWAINDSM (this program's installer or the driver package).
-- **Other 32-bit-only components** (QuickBooks Desktop's SDK, the Schick CDR interface, Topaz if needed) follow the same pattern: a small
-  32-bit helper program that the 64-bit program talks to.
+  confirmed on 2026-11-07 that nothing in its design stops this). Installed side by side with the 32-bit ones. Decided (owner,
+  2026-11-07): this program's installer installs the 64-bit TWAINDSM; the driver package only checks that it is there.
+- **Other 32-bit-only components** (QuickBooks Desktop's SDK, the Schick CDR interface, Topaz): the office uses none of them (owner,
+  2026-11-07), so they are switched off in the 64-bit build. If an office needs one later, it gets the same pattern: a small 32-bit helper
+  program that the 64-bit program talks to.
 - **Other TWAIN devices** (document scanners, a second sensor) need 64-bit drivers; most current devices ship both. For a device with only a
   32-bit driver, an optional 32-bit TWAIN bridge helper loads that driver and passes the images on.
 - **Native DLLs**: the library updates removed most of them (the spell checker is managed); `Direct2dWrapper` is built 64-bit from our
@@ -91,7 +105,8 @@ The program is built as 32-bit today. Decided: go to full 64-bit (no interim lar
 - **Installer and updates**: 64-bit install folder and prerequisites, and a defined way for an office to move from a 32-bit install to a
   64-bit one, including a mixed set of workstations during the switch.
 
-Prerequisites: the WPF tooth chart (SharpDX and Tao gone) and the 64-bit `.ds` files from the TWAIN driver project.
+Prerequisites: .NET 10 (stages 1 to 4) and the 64-bit `.ds` files from the TWAIN driver project. Until the WPF tooth chart replaces them,
+the old DirectX and OpenGL chart engines must work in 64-bit, or the chart falls back to its 2D drawing.
 
 ### Compressed DICOM decoders
 
@@ -103,6 +118,7 @@ format of any other compressed file. Background: docs/reviews/2026-11-02-dicom-c
 
 - The next release and the office switch-over (`docs/adoption-runbook.md`).
 - Server components on Linux, new ones in Rust: a plan first (image storage, backups on the server, publishing releases from the server,
-  scheduled jobs). The Middle Tier is the exception and stays on Windows for now.
+  scheduled jobs). The Middle Tier is the exception: it moves to .NET 10 on Windows now, and a Linux Middle Tier waits for this plan (owner,
+  2026-11-07: "Defer Linux middle tier").
 - The GitHub repository moves to a neutral name.
 - Open Dental 26.3, once Open Dental marks it stable.
