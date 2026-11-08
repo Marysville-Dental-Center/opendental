@@ -59,14 +59,24 @@ namespace M2DUNTests {
 			StringAssert.Contains(designer,"this.butEditHtml.Click += new System.EventHandler(this.butEditHtml_Click);");
 		}
 
+		///<summary>Since Open Dental 26.2 (P262-BILLING) the e-mail type is one of the Billing Defaults messages a clinic can have of its own: the window
+		///shows the type of the clinic shown, keeps it with the clinic's settings, and BillingDefaultsByClinic saves it (the BillingEmailType
+		///preference for the practice defaults, a clinicpref row for a clinic).</summary>
 		[TestMethod]
 		public void FormBillingDefaults_LoadsAndSavesTheEmailType() {
 			string source=ReadRepoFile(Path.Combine("OpenPmsDental","Forms","FormBillingDefaults.cs"));
 			StringAssert.Contains(source,"comboBillingEmailType.SetSelectedEnum(BillingEmailHtml.GetBillingDefaultsEmailType());");
-			StringAssert.Contains(source,"Prefs.UpdateInt(PrefName.BillingEmailType,(int)comboBillingEmailType.GetSelected<EmailType>())");
+			StringAssert.Contains(source,"comboBillingEmailType.SetSelectedEnum(settingsShown.EmailType);");
+			StringAssert.Contains(source,"settings.EmailType=comboBillingEmailType.GetSelected<EmailType>();");
+			StringAssert.Contains(source,"BillingEmailHtml.GetBodyError(settings.EmailBody,settings.EmailType)");
 			string save=GetMethodBody(source,"private void butSave_Click(");
+			StringAssert.Contains(save,"StoreSettings();");
 			StringAssert.Contains(save,"if(!IsBillingEmailBodyValid()) {");
-			StringAssert.Contains(save,"SaveBillingEmailType();");
+			StringAssert.Contains(save,"BillingDefaultsByClinic.SaveSettings(settings)");
+			Assert.IsTrue(save.IndexOf("StoreSettings();")<save.IndexOf("if(!IsBillingEmailBodyValid()) {"),"The boxes are kept before they are checked.");
+			string saveSettings=GetMethodBody(ReadRepoFile(Path.Combine("OpenPmsDentalBusiness","Logic","BillingDefaultsByClinic.cs")),
+				"public static List<KeyValuePair<PrefName,string>> GetValues(");
+			StringAssert.Contains(saveSettings,"new KeyValuePair<PrefName,string>(PrefName.BillingEmailType,POut.Int((int)settings.EmailType))");
 			string load=GetMethodBody(source,"private void FormBillingDefaults_Load(");
 			StringAssert.Contains(load,"FillBillingEmailType();");
 			string designer=ReadRepoFile(Path.Combine("OpenPmsDental","Forms","FormBillingDefaults.Designer.cs"));

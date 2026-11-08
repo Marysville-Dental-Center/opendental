@@ -46,7 +46,8 @@ namespace M2SDVTests {
 			StringAssert.Contains(source,"Statements.SetServiceDateView(StatementCur,checkServiceDateView.Checked);");
 			StringAssert.Contains(source,"Statements.SetServiceDateView(ListStatements[i],checkServiceDateView.Checked);");
 			string sourceDesigner=ReadSource(Path.Combine("OpenPmsDental","Forms","FormStatementOptions.Designer.cs"));
-			StringAssert.Contains(sourceDesigner,"this.Controls.Add(this.checkServiceDateView);");
+			//In the Contents box since the 26.2 redesign of the Statement window (P262-BILLING).
+			StringAssert.Contains(sourceDesigner,"this.groupContents.Controls.Add(this.checkServiceDateView);");
 		}
 
 		[TestMethod]
