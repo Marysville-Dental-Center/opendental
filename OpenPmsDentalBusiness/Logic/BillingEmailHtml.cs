@@ -23,6 +23,17 @@ namespace OpenPmsDentalBusiness {
 			return ToEmailType(PrefC.GetInt(PrefName.BillingEmailType));
 		}
 
+		///<summary>The e-mail type of the Billing Defaults body that a patient of this clinic gets: the clinic's own type while clinics are on and the
+		///clinic has its own Billing Defaults (Open Dental 26.2, P262-BILLING), otherwise GetBillingDefaultsEmailType().</summary>
+		public static EmailType GetBillingDefaultsEmailType(long clinicNum) {
+			Meth.NoCheckMiddleTierRole();
+			long clinicNumSettings=BillingDefaultsByClinic.GetSettingsClinicNum(clinicNum);
+			if(clinicNumSettings<=0) {
+				return GetBillingDefaultsEmailType();
+			}
+			return BillingDefaultsByClinic.GetEmailType(clinicNumSettings);
+		}
+
 		///<summary>Regular for any number that is not an EmailType, so an unexpected stored value falls back to the plain-text behavior.</summary>
 		public static EmailType ToEmailType(int value) {
 			Meth.NoCheckMiddleTierRole();
@@ -37,12 +48,12 @@ namespace OpenPmsDentalBusiness {
 		///message when it was created (Billing Options or automated billing), so it gets the type of that dunning message.</summary>
 		public static EmailType GetEmailTypeForStatement(Statement statement,Patient patient) {
 			Meth.NoCheckMiddleTierRole();
-			if(statement==null || string.IsNullOrEmpty(statement.EmailBody)) {
-				return GetBillingDefaultsEmailType();
-			}
 			long clinicNum=0;
 			if(patient!=null) {
 				clinicNum=patient.ClinicNum;
+			}
+			if(statement==null || string.IsNullOrEmpty(statement.EmailBody)) {
+				return GetBillingDefaultsEmailType(clinicNum);
 			}
 			return FindDunningEmailType(statement.EmailSubject,statement.EmailBody,clinicNum,Dunnings.Refresh(null));
 		}

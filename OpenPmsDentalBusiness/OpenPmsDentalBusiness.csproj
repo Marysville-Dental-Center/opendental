@@ -544,9 +544,12 @@
     <Compile Include="InternalTools\RemoteSupport\TableTypes\PeerInfo.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatNote.cs" />
     <Compile Include="InternalTools\WebChat\TableTypes\WebChatSurvey.cs" />
+    <Compile Include="Logic\BillingDefaultsByClinic.cs" />
     <Compile Include="Logic\BillingEmailHtml.cs" />
+    <Compile Include="Logic\EbillSettings.cs" />
     <Compile Include="Logic\BillingL.cs" />
     <Compile Include="Logic\CodeMapping.cs" />
+    <Compile Include="Logic\StatementChoices.cs" />
     <Compile Include="Logic\USlocales.cs" />
     <Compile Include="Misc\ConvertDatabases.cs" />
     <Compile Include="Misc\Authentication.cs" />

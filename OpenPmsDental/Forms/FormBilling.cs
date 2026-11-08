@@ -541,9 +541,10 @@ namespace OpenPmsDental {
 		}
 
 		private void butDefaults_Click(object sender,EventArgs e) {
-			using FormBillingDefaults formBillingDefaults = new FormBillingDefaults();
-			formBillingDefaults.IsUserPasswordOnly=true;
-			formBillingDefaults.ShowDialog();
+			//Before Open Dental 26.2 this opened Billing Defaults limited to its Electronic Billing box; those settings have their own window now
+			//(P262-BILLING).
+			using FormEbillSetup formEbillSetup=new FormEbillSetup();
+			formEbillSetup.ShowDialog();
 		}
 
 		///// <summary></summary>

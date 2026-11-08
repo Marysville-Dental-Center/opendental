@@ -519,6 +519,11 @@ namespace OpenPmsDental{
 			using FormBillingDefaults formBillingDefaults=new FormBillingDefaults();
 			formBillingDefaults.ShowDialog();
 			if(formBillingDefaults.DialogResult==DialogResult.OK){
+				if(PrefC.HasClinicsEnabled) {
+					//Billing Defaults may have saved or removed a clinic's General Message row (P262-BILLING), which this window keeps with the clinic's
+					//filter defaults: read the rows again so that Save Defaults here does not work from a stale copy.
+					RefreshClinicPrefs();
+				}
 				SetDefaults();
 			}
 		}

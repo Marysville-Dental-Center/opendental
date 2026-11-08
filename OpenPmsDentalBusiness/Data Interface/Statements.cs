@@ -272,15 +272,15 @@ namespace OpenPmsDentalBusiness {
 			if(statement.EmailSubject!=null && statement.EmailSubject!="") {
 				str=statement.EmailSubject;//Set str to the email subject if one was already set.
 			}
-			else {//Subject was not set.  Set str to the default billing email subject.
-				str=PrefC.GetString(PrefName.BillingEmailSubject);
+			else {//Subject was not set.  Set str to the default billing email subject (the patient's clinic's own one since 26.2, P262-BILLING).
+				str=BillingDefaultsByClinic.GetString(PrefName.BillingEmailSubject,patient.ClinicNum);
 			}
 			emailMessage.Subject=MessageTagReplacer.ReplaceTagsForStatement(str,patient,statement,isEmail:true);
 			if(statement.EmailBody!=null && statement.EmailBody!="") {
 				str=statement.EmailBody;//Set str to the email body if one was already set.
 			}
-			else {//Body was not set.  Set str to the default billing email body text.
-				str=PrefC.GetString(PrefName.BillingEmailBodyText);
+			else {//Body was not set.  Set str to the default billing email body text (per clinic since 26.2, P262-BILLING).
+				str=BillingDefaultsByClinic.GetString(PrefName.BillingEmailBodyText,patient.ClinicNum);
 			}
 			emailMessage.BodyText=MessageTagReplacer.ReplaceTagsForStatement(str,patient,statement,isEmail:true);
 			BillingEmailHtml.ApplyEmailType(emailMessage,BillingEmailHtml.GetEmailTypeForStatement(statement,patient));//26.1: HTML and raw HTML bodies

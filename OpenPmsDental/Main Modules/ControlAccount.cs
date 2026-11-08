@@ -88,6 +88,7 @@ namespace OpenPmsDental {
 			LayoutManager.Add(gridInsEstOpenClaims,this);
 			LayoutManager.Add(textQuickProcs,ToolBarMain);
 			ConstructServiceDateView();//M2-SDV, ControlAccount.ServiceDateView.cs
+			ConstructStatementOptions();//P262-BILLING, ControlAccount.StatementOptions.cs
 			Logger.LogToPath("Ctor",LogPath.Startup,LogPhase.End);
 		}
 		#endregion Constructor
@@ -1355,7 +1356,7 @@ namespace OpenPmsDental {
 			statement.ShowTransSinceBalZero=Statements.GetShowTransSinceBalZeroDefault();
 			statement.DateRangeFrom=DateTime.MinValue;
 			statement.DateRangeTo=DateTime.Today;
-			statement.Note=PrefC.GetString(PrefName.BillingDefaultsInvoiceNote);
+			statement.Note=BillingDefaultsByClinic.GetString(PrefName.BillingDefaultsInvoiceNote,_patient.ClinicNum);//Per clinic since 26.2 (P262-BILLING).
 			statement.NoteBold="";
 			statement.IsBalValid=true;
 			statement.BalTotal=guarantor.BalTotal;
@@ -2323,7 +2324,8 @@ namespace OpenPmsDental {
 			ToolBarMain.Buttons.Add(new ODToolBarButton(ODToolBarButtonStyle.Separator));
 			toolBarButton=new ODToolBarButton(Lan.g(this,"Statement"),4,"","Statement");
 			toolBarButton.Style=ODToolBarButtonStyle.DropDownButton;
-			toolBarButton.DropDownMenu=contextMenuStatement;
+			//No DropDownMenu since Open Dental 26.2: the arrow opens the Statement Options window, which lists the entries of contextMenuStatement
+			//(ToolBarMain_ButtonDropDownClick, ControlAccount.StatementOptions.cs, P262-BILLING).
 			ToolBarMain.Buttons.Add(toolBarButton);
 			ProgramL.LoadToolBar(ToolBarMain,EnumToolBar.AccountModule);
 			ToolBarMain.Invalidate();

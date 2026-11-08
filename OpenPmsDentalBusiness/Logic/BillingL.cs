@@ -395,7 +395,7 @@ namespace OpenPmsDentalBusiness {
 						emailMessage.Attachments.Add(emailAttach);
 						emailMessage.SentOrReceived=EmailSentOrReceived.Sent;
 						emailMessage.MsgDateTime=DateTime.Now;
-						if(PrefC.GetBool(PrefName.BillingEmailIncludeAutograph)) {
+						if(BillingDefaultsByClinic.GetBool(PrefName.BillingEmailIncludeAutograph,patient.ClinicNum)) {//Per clinic since 26.2 (P262-BILLING).
 							EmailAutograph emailAutograph=EmailAutographs.GetForOutgoing(listEmailAutographs,emailAddress);
 							if(BillingEmailHtml.TryInsertAutograph(emailMessage,emailAutograph)) {//26.1: an HTML or raw HTML body takes the autograph as HTML.
 								emailAutograph=null;
