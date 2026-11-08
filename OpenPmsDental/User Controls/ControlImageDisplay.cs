@@ -1531,6 +1531,7 @@ Here is the desired behavior:
 			}
 			_listImageDraws=ImageDraws.RefreshForMount(_mountShowing.MountNum);
 			Mounts.Delete(_mountShowing);
+			ImageStore.DeleteThumbnailOfDeletedMount(_mountShowing,PatFolder);//S0-F
 			Def defDocCategory = Defs.GetDef(DefCat.ImageCats,_mountShowing.DocCategory);
 			string logText = "Mount Deleted: "+_mountShowing.Description+" with category "
 				+defDocCategory.ItemName;
