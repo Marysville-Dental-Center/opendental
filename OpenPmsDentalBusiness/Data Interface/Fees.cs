@@ -11,8 +11,8 @@ using CodeBase;
 namespace OpenPmsDentalBusiness{
 	///<summary>Fees for procedure codes, by fee schedule, clinic and provider. Since Open Dental 24.4 a fee row also has a start date (fee.DateEffective):
 	///several rows can exist for one fee schedule, code, clinic and provider, and a lookup picks the row in effect on an as-of date. See the region
-	///"Effective dates" below for the rules.</summary>
-	public class Fees {
+	///"Effective dates" below for the rules. The Fee Tools' Copy Code tool is in Fees.CopyToCode.cs.</summary>
+	public partial class Fees {
 		#region Effective dates
 		///<summary>The DateEffective of a fee that has no start date: 0001-01-01, the column default. Such a fee is always in effect.</summary>
 		public static readonly DateTime DateEffectiveAlways=DateTime.MinValue;

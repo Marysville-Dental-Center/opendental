@@ -984,6 +984,88 @@ namespace OpenPmsDental {
 			}
 		}
 
+		#region Copy Code (Open Dental 26.2, P262-TOOLS)
+		///<summary>Picks the procedure code to copy from or to with the Procedure Codes window in selection mode.</summary>
+		private void butPickCode_Click(object sender,EventArgs e) {
+			using FormProcCodes formProcCodes=new FormProcCodes();
+			formProcCodes.IsSelectionMode=true;
+			formProcCodes.ShowDialog();
+			if(formProcCodes.DialogResult!=DialogResult.OK || formProcCodes.CodeNumSelected==0) {
+				return;
+			}
+			string procCode=ProcedureCodes.GetStringProcCode(formProcCodes.CodeNumSelected,doThrowIfMissing:false);
+			if(sender==butPickCodeFrom) {
+				textCodeFrom.Text=procCode;
+			}
+			else {
+				textCodeTo.Text=procCode;
+			}
+		}
+
+		///<summary>Copies the fees of one procedure code to another (Fees.CopyFeesToCode), in every fee schedule or only in the one under Select Fees,
+		///after a confirmation that says what is replaced. Opening this window already needs Fee Schedule Edit; the changes make the usual
+		///Procedure Fee Edit and Fee Edit audit trail entries.</summary>
+		private void butCopyCode_Click(object sender,EventArgs e) {
+			if(PrefC.HasClinicsEnabled && Security.CurUser.ClinicIsRestricted) {
+				MsgBox.Show(this,"Copy Code changes the fees of every clinic. It needs a user who is not restricted to clinics.");
+				return;
+			}
+			long codeNumFrom=ProcedureCodes.GetCodeNum(textCodeFrom.Text.Trim());
+			long codeNumTo=ProcedureCodes.GetCodeNum(textCodeTo.Text.Trim());
+			if(codeNumFrom==0 || codeNumTo==0) {
+				MsgBox.Show(this,"Enter or pick a valid procedure code to copy from and one to copy to.");
+				return;
+			}
+			if(codeNumFrom==codeNumTo) {
+				MsgBox.Show(this,"The procedure code to copy to must be another code.");
+				return;
+			}
+			long feeSchedNum=0;
+			string schedsText=Lan.g(this,"every fee schedule");
+			if(radioCopyCodeOneSched.Checked) {
+				if(_listFeeScheds.Count==0 || comboFeeSched.SelectedIndex<0 || comboFeeSched.SelectedIndex>=_listFeeScheds.Count) {
+					MsgBox.Show(this,"Select a fee schedule under Select Fees first.");
+					return;
+				}
+				feeSchedNum=_listFeeScheds[comboFeeSched.SelectedIndex].FeeSchedNum;
+				schedsText=Lan.g(this,"the fee schedule")+" "+FeeScheds.GetDescription(feeSchedNum);
+			}
+			string procCodeFrom=ProcedureCodes.GetStringProcCode(codeNumFrom);
+			string procCodeTo=ProcedureCodes.GetStringProcCode(codeNumTo);
+			string msg=Lan.g(this,"Copy the fees of")+" "+procCodeFrom+" "+Lan.g(this,"to")+" "+procCodeTo+" "+Lan.g(this,"in")+" "+schedsText+"?\r\n\r\n"
+				+Lan.g(this,"In each fee schedule where the first code has fees, the second code gets exactly the same fees for every clinic, provider "
+					+"and effective date, and its other fees in that fee schedule are deleted. Fee schedules where the first code has no fee are not "
+					+"changed. Every change is recorded in the audit trail.")+"\r\n\r\n"
+				+Lan.g(this,"Continue?");
+			if(MessageBox.Show(msg,Lan.g(this,"Copy Code"),MessageBoxButtons.OKCancel)!=DialogResult.OK) {
+				return;
+			}
+			FeeCodeCopyResult feeCodeCopyResult=null;
+			ProgressWin progressOD=new ProgressWin();
+			progressOD.ActionMain=() => feeCodeCopyResult=Fees.CopyFeesToCode(codeNumFrom,codeNumTo,feeSchedNum);
+			progressOD.StartingMessage=Lan.g(this,"Copying fees")+"...";
+			try {
+				progressOD.ShowDialog();
+			}
+			catch(Exception ex) {
+				FriendlyException.Show(Lan.g(this,"Error copying fees."),ex);
+				return;
+			}
+			if(progressOD.IsCancelled || feeCodeCopyResult==null) {
+				return;
+			}
+			if(feeCodeCopyResult.CountFeeScheds==0) {
+				MessageBox.Show(procCodeFrom+" "+Lan.g(this,"has no fees in")+" "+schedsText+". "+Lan.g(this,"Nothing was changed."));
+				return;
+			}
+			MessageBox.Show(Lan.g(this,"Fee schedules copied:")+" "+feeCodeCopyResult.CountFeeScheds+"\r\n"
+				+Lan.g(this,"Fees added:")+" "+feeCodeCopyResult.CountInserted+"\r\n"
+				+Lan.g(this,"Fees changed:")+" "+feeCodeCopyResult.CountUpdated+"\r\n"
+				+Lan.g(this,"Fees deleted:")+" "+feeCodeCopyResult.CountDeleted+"\r\n"
+				+Lan.g(this,"Fees already the same:")+" "+feeCodeCopyResult.CountUnchanged);
+		}
+		#endregion Copy Code
+
 		///<summary>If either of the FeeSched combos change, we fill the combos.</summary>
 //todo:  js Why?
 		private void comboFeeCombos_SelectionChangeCommitted(object sender,EventArgs e) {

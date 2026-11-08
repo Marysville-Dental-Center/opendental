@@ -477,6 +477,9 @@
     <Compile Include="Data Interface\DatabaseMaintenances.EmailText.cs" />
     <Compile Include="Data Interface\DatabaseMaintenances.EmployeeSupervisor.cs" />
     <Compile Include="Data Interface\DatabaseMaintenances.InvalidCharsGdi.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.ConversionPayments.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.IncomeTransfers.cs" />
+    <Compile Include="Data Interface\DatabaseMaintenances.InsVerifyRedundant.cs" />
     <Compile Include="Data Interface\DbmLogs.cs" />
     <Compile Include="Data Interface\DefLinks.cs" />
     <Compile Include="Data Interface\DiscountPlans.cs" />
@@ -1440,6 +1443,7 @@
     <Compile Include="Misc\EhrCCD.cs" />
     <Compile Include="Misc\FileAtoZ.cs" />
     <Compile Include="Misc\DbmTextCleaner.cs" />
+    <Compile Include="Misc\LatencyMeasure.cs" />
     <Compile Include="Misc\InnoDb.cs" />
     <Compile Include="Misc\ConvertDatabases2.cs" />
     <Compile Include="Misc\ConvertDatabases1.cs" />
@@ -1502,6 +1506,7 @@
     <Compile Include="Data Interface\Employers.cs" />
     <Compile Include="Data Interface\Etranss.cs" />
     <Compile Include="Data Interface\Fees.cs" />
+    <Compile Include="Data Interface\Fees.CopyToCode.cs" />
     <Compile Include="Data Interface\FormPats.cs" />
     <Compile Include="Data Interface\HL7Msgs.cs" />
     <Compile Include="Data Interface\FeeScheds.cs" />

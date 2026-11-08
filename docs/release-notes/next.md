@@ -29,6 +29,10 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - the database schema of Open Dental 26.2;
 - Open Dental 26.2's Perio Chart changes: flags for all selected teeth at once, several cells selected in any data row, and the settings
   Show previous exams and Show previous probing values.
+- the database schema of Open Dental 26.2;
+- Open Dental 26.2's tools: two Database Maintenance checks (income transfer problems, redundant insurance verifications), a tool that
+  dates conversion clean-up income transfers on the conversion date, a Fee Tool that copies fees from one procedure code to another, and an
+  average in Test Latency.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
 inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below). It also
@@ -452,3 +456,30 @@ documents (`docs/port-notes/P262-PERIO.md`). No database change.
   grayed earlier values (what Show current exam only did). Both are checked for a user who never changed them. A user who had Show current
   exam only checked finds Show previous exams unchecked, which now also hides the grayed earlier values; to see those again, check Show
   previous exams and uncheck Show previous probing values.
+## Tools (Open Dental 26.2)
+
+Five tools of Open Dental 26.2, re-implemented from Open Dental's public release notes and database documents only
+(`docs/port-notes/P262-TOOLS.md`). Open Dental does not publish how its versions work, so the rules below are this program's own and marked
+INFERRED in the port note. No database change.
+
+- **Database Maintenance: `PaymentIncomeTransferIssues`.** A new check for income transfers (payments without a payment type) that do not
+  balance. Fix gives no payment type to $0 payments that were saved with a payment type although their splits only move money (they total
+  $0), so that aging and the other income transfer tools treat them as the income transfers they are; no amount changes, and each change is
+  in the DBM log. Payments on a deposit, card and online payments, recurring charges and payments linked to the accounting module are left
+  alone. Income transfers with an amount, or whose splits do not total $0, are listed for a manual fix (double click the check; Explain says
+  how).
+- **Database Maintenance: `InsVerifyRedundantEntries`.** A new check for insurance verifications kept twice for the same insurance plan or
+  patient plan. Fix keeps the latest verification and moves the others into the verification history, with every field; nothing is lost.
+  When two have the same date, the program now always shows the newest, the one Fix keeps.
+- **Database Maintenance, Tools tab: Conversion Payment Dates.** After a data conversion, the income transfers that clean up the converted
+  history belong on the conversion date, so that they do not change the reports of later days. Enter the conversion date and click Find: the
+  window lists the income transfers dated after it (or without a date) and selects the ones that only move money of entries dated on or
+  before the conversion date. Change Dates dates the selected transfers and their splits on the conversion date, after a confirmation; it
+  needs Payment Edit for that date, and each change is in the audit trail and the DBM log. The moved splits keep valid integrity hashes, so
+  the account does not show them as changed outside the program. It runs only when you open it, never with Run All.
+- **Fee Tools: Copy Code.** A new tab copies the fees of one procedure code to another, in every fee schedule or only in the one under Select
+  Fees. In each fee schedule where the first code has fees, the second code gets the same fees for every clinic, provider and effective
+  date, and its other fees there are deleted; fee schedules where the first code has no fee are not changed. Every change is in the audit
+  trail (Procedure Fee Edit and Fee Edit). Users restricted to clinics cannot use it.
+- **Test Latency: average latency.** Tools, Misc Tools, Test Latency has a third test that runs the small latency query several times (10
+  unless you change it, up to 1000) and shows the average, the fastest and the slowest round trip in milliseconds.
