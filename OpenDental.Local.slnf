@@ -119,6 +119,7 @@
       "tests\\ReleaseFlowTests\\ReleaseFlowTests.csproj",
       "tests\\ReportTests\\ReportTests.csproj",
       "tests\\RowHashTests\\RowHashTests.csproj",
+      "tests\\S0FTests\\S0FTests.csproj",
       "tests\\SheetTests\\SheetTests.csproj",
       "tests\\SignatureTests\\SignatureTests.csproj",
       "tests\\SshHostKeyTests\\SshHostKeyTests.csproj",
