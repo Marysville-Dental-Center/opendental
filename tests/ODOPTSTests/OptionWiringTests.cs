@@ -259,7 +259,9 @@ namespace ODOPTSTests {
 			string runbook=ScratchDb.ReadRepoFile("docs","adoption-runbook.md");
 			string rowRunbook=Line(runbook,"| ODOPTS: `StatementAutoSendEmail` |");
 			StringAssert.Contains(rowRunbook,"Message-to-Pay");
-			StringAssert.Contains(rowRunbook,"does the office use the setting for Message-to-Pay");
+			StringAssert.Contains(rowRunbook,"Kept as built (owner, 2026-11-07, ODOPTS 6)");
+			StringAssert.Contains(rowRunbook,"asks before e-mailing until Statement Send Setup is saved");
+			Assert.IsFalse(rowRunbook.Contains("settle owner question ODOPTS 6"),"The runbook does not hold the switch-over for a question the owner answered.");
 			StringAssert.Contains(Line(ScratchDb.ReadRepoFile("docs","release-notes","next.md"),"`StatementAutoSendEmail`"),"Message-to-Pay");
 		}
 
@@ -274,7 +276,7 @@ namespace ODOPTSTests {
 			foreach(string name in new[] { EFormImport.PREF_ALLERGIES_AS_OTHER,EFormImport.PREF_PROBLEMS_AS_OTHER }) {
 				string row=Line(runbook,"| ODOPTS: `"+name+"` |");
 				StringAssert.Contains(row,"0: a typed allergy or problem that matches no list entry is not auto-imported",name);
-				StringAssert.Contains(row,"settle ODOPTS 4 before the day",name);
+				StringAssert.Contains(row,"kept as built (owner, 2026-11-07, ODOPTS 4)",name);
 			}
 			StringAssert.Contains(Line(odopts,"| `EFormImportAllergiesAsOther` |"),"Allergy not imported (matches no allergy in the list; EFormImportAllergiesAsOther off)");
 		}

@@ -66,8 +66,8 @@ marked **INFERRED** and listed as owner questions below, to confirm by testing t
   (`StatementAutoSend.GetEmailModeToUse`) until the Statement Send Setup window has been saved once in this program; the Billing List's
   question and the window say why, and `migration-preview` shows the row as "Always (asks until Statement Send Setup is saved in this
   program)". The first save writes this program's own row `ForkStatementSendSetupSaved` = 1 (missing = never saved here; no migration writes
-  it) with a Setup Audit Trail entry. Owner question ODOPTS 6 asks first whether the office uses the rows for Message-to-Pay and whether it
-  wants them to mean "e-mail the statement" here.
+  it) with a Setup Audit Trail entry. Owner question ODOPTS 6 asked first whether the office uses the rows for Message-to-Pay and whether it
+  wants them to mean "e-mail the statement" here; decided as built on 2026-11-07.
 - **eForm entries that are not imported** (`EFormImportAllergiesAsOther` or `EFormImportProblemsAsOther` off) are collected by
   `EFormImport.ImportAutoFields(eForm,out listNotImported)`: one line each in the form's `EFormImport` Audit Trail entry, after "N change(s).",
   which counts only the changes (the entry is made even when nothing was imported), and the eForm window shows them to the user who saved the
