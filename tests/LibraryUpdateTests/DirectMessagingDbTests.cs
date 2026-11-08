@@ -278,6 +278,33 @@ namespace LibraryUpdateTests {
 			Assert.AreEqual("Sent over implicit TLS.",emailMessageReceived.BodyText.TrimEnd('\r','\n'));
 		}
 
+		///<summary>The private store also holds a valid certificate without its private key for the sender's address (a .cer imported into the
+		///wrong store, the public half of an old certificate), and one for the receiver's: the agent is not given them (the store's criteria, as
+		///the Direct Project's SystemX509Store.OpenPrivate had it before S0-3), so it still signs with the sender's own certificate, encrypts, and
+		///the receiver decrypts with its own. Handed to the agent, the keyless certificate made the send fail ("Cannot recover from an encryption
+		///error"): the agent signs with every certificate it is given.</summary>
+		[TestMethod]
+		public void DirectSend_WithAKeylessCertificateInThePrivateStore_StillSignsAndEncrypts() {
+			SetUpCertificates(out X509Certificate2 x509Certificate2Sender,out X509Certificate2 x509Certificate2Receiver);
+			_directTestStores.AddPrivateWithoutKey(_directTestStores.CreateCertificate(SENDER));
+			_directTestStores.AddPrivateWithoutKey(_directTestStores.CreateCertificate(RECEIVER));
+			Assert.AreEqual(4,_directTestStores.GetThumbprints(_directTestStores.NamePrivate).Count);
+			EmailMessage emailMessage=MakeMessage("Direct with a keyless certificate","Signed with the key the office has.");
+			byte[] arrayReceived;
+			using(FakeSmtpServer fakeSmtpServer=new FakeSmtpServer(SENDER,PASSWORD,isStartTlsOffered:false)) {
+				EmailMessages.SendEmail(emailMessage,MakeAddress(SENDER,fakeSmtpServer.Port,false),useDirect:true);
+				Assert.IsNull(fakeSmtpServer.ServerError,fakeSmtpServer.ServerError?.ToString());
+				arrayReceived=fakeSmtpServer.ListReceived.Single().Data;
+			}
+			Assert.AreEqual(EmailSentOrReceived.SentDirect,emailMessage.SentOrReceived,emailMessage.FailReason);
+			AssertEncrypted(arrayReceived,"Signed with the key the office has.");
+			EmailMessage emailMessageReceived=EmailMessages.ProcessRawEmailMessageIn(ToRaw(arrayReceived),0,MakeAddress(RECEIVER,25,false),isAck:false);
+			Assert.AreEqual(EmailSentOrReceived.ReceivedDirect,emailMessageReceived.SentOrReceived,emailMessageReceived.BodyText);
+			Assert.AreEqual("Signed with the key the office has.",emailMessageReceived.BodyText.TrimEnd('\r','\n'));
+			EmailAttach emailAttachSignature=emailMessageReceived.Attachments.Single(x => x.DisplayedFileName=="smime.p7s");
+			CollectionAssert.AreEqual(x509Certificate2Sender.RawData,ReadAttachment(emailAttachSignature),"Signed by the sender's certificate with its key only.");
+		}
+
 		///<summary>No certificate can be found for the receiver: the Direct send fails with the reason, nothing goes out, and the message is not
 		///saved (as before S0-3).</summary>
 		[TestMethod]

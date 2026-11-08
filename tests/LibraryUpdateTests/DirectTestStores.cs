@@ -73,6 +73,11 @@ namespace LibraryUpdateTests {
 			Add(NamePrivate,x509Certificate2);
 		}
 
+		///<summary>Adds the public part only of the certificate to the private store, as a .cer imported into the wrong store would be there.</summary>
+		public void AddPrivateWithoutKey(X509Certificate2 x509Certificate2) {
+			Add(NamePrivate,Public(x509Certificate2));
+		}
+
 		///<summary>Adds the public certificate to the store of other addresses' certificates (NHINDExternal in production).</summary>
 		public void AddExternal(X509Certificate2 x509Certificate2) {
 			Add(NameExternal,Public(x509Certificate2));

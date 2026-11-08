@@ -52,6 +52,51 @@ namespace LibraryUpdateTests {
 			Assert.IsTrue(directTestStores.AreStoresDeleted(),"The test stores are deleted.");
 		}
 
+		///<summary>The private store gives only its certificates with their private keys, as the Direct Project's SystemX509Store.OpenPrivate gave
+		///them before S0-3 (its criteria: X509Certificate2.HasPrivateKey): a valid certificate without its key next to the sender's own (a .cer
+		///imported into the wrong store) is not handed to the agent to sign with, not counted by the trust check, and not the signing certificate.
+		///The other two stores give all of theirs.</summary>
+		[TestMethod]
+		public void PrivateStore_LeavesOutACertificateWithoutItsKey() {
+			using(DirectTestStores directTestStores=new DirectTestStores()) {
+				X509Certificate2 x509Certificate2Keyed=directTestStores.CreateCertificate(SENDER);
+				X509Certificate2 x509Certificate2NoKey=directTestStores.CreateCertificate(SENDER);
+				X509Certificate2 x509Certificate2NoKeyOnly=directTestStores.CreateCertificate(INBOX);
+				EmailMessages.CreateCertificateStoresIfNeeded();//As the program does when it starts.
+				directTestStores.AddPrivateWithoutKey(x509Certificate2NoKey);
+				directTestStores.AddPrivate(x509Certificate2Keyed);
+				directTestStores.AddPrivateWithoutKey(x509Certificate2NoKeyOnly);
+				Assert.AreEqual(3,directTestStores.GetThumbprints(directTestStores.NamePrivate).Count,"The store holds all three.");
+				X509Certificate2Collection x509Certificate2Collection=new EmailPrivateResolver().GetCertificates(new MailAddress(SENDER));
+				Assert.AreEqual(1,x509Certificate2Collection.Count,"The certificate without its key is left out.");
+				Assert.AreEqual(x509Certificate2Keyed.Thumbprint,x509Certificate2Collection[0].Thumbprint);
+				Assert.IsTrue(x509Certificate2Collection[0].HasPrivateKey);
+				Assert.AreEqual(1,new EmailPrivateResolver().GetCertificatesForAddress(SENDER).Count);
+				Assert.IsNull(new EmailPrivateResolver().GetCertificates(new MailAddress(INBOX)),"The address's only certificate has no key: none.");
+				EmailPrivateResolver emailPrivateResolverEdit=new EmailPrivateResolver(isReadOnly:false);
+				try {
+					Assert.AreEqual(1,emailPrivateResolverEdit.Store.GetAllCertificates().Count,"Opened for editing (OpenPrivateEdit), the same criteria.");
+				}
+				finally {
+					emailPrivateResolverEdit.Store.Dispose();
+					emailPrivateResolverEdit.Store=null;
+				}
+				Assert.AreEqual(x509Certificate2Keyed.Thumbprint,EmailMessages.GetCertFromPrivateStore(SENDER)?.Thumbprint,"The signing certificate has its key.");
+				Assert.IsNull(EmailMessages.GetCertFromPrivateStore(INBOX));
+				//The trust check counts only the certificates with keys: an anchor for the keyless one does not make the address trusted.
+				directTestStores.AddAnchor(x509Certificate2NoKey);
+				directTestStores.AddAnchor(x509Certificate2NoKeyOnly);
+				Assert.IsFalse(EmailMessages.IsSenderTrusted(SENDER),"Only the keyless certificate of the address is anchored.");
+				Assert.IsFalse(EmailMessages.IsSenderTrusted(INBOX));
+				directTestStores.AddAnchor(x509Certificate2Keyed);
+				Assert.IsTrue(EmailMessages.IsSenderTrusted(SENDER));
+				//The public store and the anchors hold public certificates and give them all.
+				directTestStores.AddExternal(x509Certificate2NoKey);
+				Assert.AreEqual(1,new EmailPublicResolver().GetCertificatesForAddress(SENDER).Count);
+				Assert.AreEqual(-1,EmailMessages.GetReceiverUntrustedCount(SENDER));
+			}
+		}
+
 		///<summary>The signature window's Trust button: the signer's certificate goes to the public store and the trust anchors.</summary>
 		[TestMethod]
 		public void TryAddTrustForSignature_StoresAndTrustsTheSigner() {
