@@ -112,6 +112,7 @@
     <Compile Include="DbConnectionConfig.cs" />
     <Compile Include="DbConnectionSecurity.cs" />
     <Compile Include="DbQueryObj.cs" />
+    <Compile Include="MiddleTierHost.cs" />
     <Compile Include="MySqlHelper.cs" />
     <Compile Include="QueryMonitor.cs" />
     <Compile Include="SIn.cs" />

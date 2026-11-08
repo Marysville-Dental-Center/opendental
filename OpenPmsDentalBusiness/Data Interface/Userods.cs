@@ -7,9 +7,6 @@ using System.Reflection;
 using System.Security;
 using System.Security.Cryptography;
 using System.Text;
-using System.Web;
-using System.Web.Hosting;
-using System.Web.Services;
 using System.Windows.Forms;
 using System.Xml;
 using System.Xml.XPath;
@@ -613,18 +610,19 @@ namespace OpenPmsDentalBusiness {
 					isValidPath=Path.IsPathRooted(pathLogDir); // Check for drive letter and for invalid path characters
 				}
 				catch { } // Do nothing, will default to server's virtual directory.
-				Logger.LoggerDirOverride=ODFileUtils.CombinePaths(HostingEnvironment.ApplicationPhysicalPath, "Logging");
+				Logger.LoggerDirOverride=ODFileUtils.CombinePaths(MiddleTierHost.ContentRoot, "Logging");
 				if( isValidPath ) {
 					Logger.LoggerDirOverride=pathLogDir;
 				}
 			}
 			#region Verify ApplicationName Config File Value
+			//The application name of this request, given by the Middle Tier's host (it was HostingEnvironment.ApplicationVirtualPath).
 			XPathNavigator xPathNavigatorConfigFileNode=xPathNavigatorConn.SelectSingleNode("ApplicationName");//usually /OpenDentalServer
 			if(xPathNavigatorConfigFileNode==null) {//when first updating, this node will not exist in the xml file, so just add it.
 				try {
 					//AppendChild does not affect the position of the XPathNavigator; adds <ApplicationName>/OpenDentalServer<ApplicationName/> to the xml
 					using(XmlWriter xmlWriter=xPathNavigatorConn.AppendChild()) {
-						xmlWriter.WriteElementString("ApplicationName",HostingEnvironment.ApplicationVirtualPath);
+						xmlWriter.WriteElementString("ApplicationName",MiddleTierHost.ApplicationName);
 					}
 					xmlDocument.Save(configFilePath);
 				}
@@ -632,18 +630,18 @@ namespace OpenPmsDentalBusiness {
 			}
 			else if(string.IsNullOrWhiteSpace(xPathNavigatorConfigFileNode.Value)) {//empty node, add the Application Virtual Path
 				try {
-					xPathNavigatorConfigFileNode.SetValue(HostingEnvironment.ApplicationVirtualPath);//sets value to /OpenDentalServer or whatever they named their app
+					xPathNavigatorConfigFileNode.SetValue(MiddleTierHost.ApplicationName);//sets value to /OpenDentalServer or whatever they named their app
 					xmlDocument.Save(configFilePath);
 				}
 				catch { }//do nothing, unable to write to the XML file, move on anyway
 			}
-			else if(xPathNavigatorConfigFileNode.Value.ToLower()!=HostingEnvironment.ApplicationVirtualPath.ToLower()) {
+			else if(xPathNavigatorConfigFileNode.Value.ToLower()!=MiddleTierHost.ApplicationName.ToLower()) {
 				//the xml node exists and this file already has an Application Virtual Path in it that does not match the name of the IIS attempting to access it
-				string filePath=ODFileUtils.CombinePaths(Path.GetDirectoryName(configFilePath),HostingEnvironment.ApplicationVirtualPath.Trim('/')+"Config.xml");
+				string filePath=ODFileUtils.CombinePaths(Path.GetDirectoryName(configFilePath),MiddleTierHost.ApplicationName.Trim('/')+"Config.xml");
 				throw new Exception("Multiple middle tier servers are potentially trying to connect to the same database.\r\n"
 					+"This middle tier server cannot connect to the database within the config file found.\r\n"
 					+"This middle tier server should be using the following config file:\r\n\t"+filePath+"\r\n"
-					+"The config file is expecting an ApplicationName of:\r\n\t"+HostingEnvironment.ApplicationVirtualPath);
+					+"The config file is expecting an ApplicationName of:\r\n\t"+MiddleTierHost.ApplicationName);
 			}
 			#endregion Verify ApplicationName Config File Value
 			string connString="",server="",database="",mysqlUser="",mysqlPassword="",mysqlUserLow="",mysqlPasswordLow="";

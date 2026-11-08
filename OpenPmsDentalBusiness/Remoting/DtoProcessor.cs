@@ -7,7 +7,6 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using System.Web.Hosting;
 using CodeBase;
 using DataConnectionBase;
 
@@ -23,9 +22,28 @@ namespace OpenPmsDentalBusiness {
 		///<summary>The raw ValueString of the ProgramVersion preference.</summary>
 		private static string _strProgramVersion=null;
 
+		///<summary>The host's form, called once for each request: by the ASMX code-behind (OpenPmsDentalServer/ServiceMain.asmx.cs) with the values
+		///it reads from System.Web. contentRoot is the application's folder (HostingEnvironment.ApplicationPhysicalPath), where the config file is;
+		///applicationName its virtual path, like /OpenDentalServer (HostingEnvironment.ApplicationVirtualPath); clientIp the client's address
+		///(Request.UserHostAddress). They are this thread's host context (MiddleTierHost) for the request, so the code that read them from System.Web
+		///before gets the same values. The context is cleared when the request ends, also when it fails, so a pooled thread never carries one
+		///request's application name or client address into the next.</summary>
+		public static string ProcessDto(string dtoString,string contentRoot,string applicationName,string clientIp) {
+			MiddleTierHost.BeginRequest(contentRoot,applicationName,clientIp);
+			try {
+				return ProcessDto(dtoString,contentRoot);
+			}
+			finally {
+				MiddleTierHost.EndRequest();
+			}
+		}
+
 		///<summary>Pass in a serialized dto.  It returns a dto which must be deserialized by the client.
-		///Set serverMapPath to the root directory of the OpenDentalServerConfig.xml.  Typically Server.MapPath(".") from a web service.
-		///Optional parameter because it is not necessary for Unit Tests (mock server).</summary>
+		///Set serverMapPath to the root directory of the OpenDentalServerConfig.xml.
+		///Optional parameter because it is not necessary for Unit Tests (mock server).
+		///This form sets no host context: the mock server (OpenDentalServerMockIIS) calls it on a thread of its own, and the code that read
+		///System.Web sees what it saw there before, outside a hosted request (MiddleTierHost: no request on the thread, no application name, no
+		///client address, and no content root, since no host sets one in that process). A host calls the form above.</summary>
 		public static string ProcessDto(string dtoString,string serverMapPath="") {
 			DateTime dateTimeReceived = DateTime.Now;
 			Stopwatch stopwatch = new Stopwatch();
@@ -63,11 +81,11 @@ namespace OpenPmsDentalBusiness {
 					RemotingClient.MiddleTierRole=MiddleTierRole.ServerMT;
 					//the application virtual path is usually /OpenDentalServer, but may be different if hosting multiple databases on one IIS server
 					string configFilePath="";
-					if(!string.IsNullOrWhiteSpace(HostingEnvironment.ApplicationVirtualPath) && HostingEnvironment.ApplicationVirtualPath.Length>1) {
+					if(!string.IsNullOrWhiteSpace(MiddleTierHost.ApplicationName) && MiddleTierHost.ApplicationName.Length>1) {
 						//There can be multiple config files within a physical path that is shared by multiple IIS ASP.NET applications.
 						//In order for the same physical path to host multiple applications, they each need a unique config file for db connection settings.
 						//Each application will have a unique ApplicationVirtualPath which we will use to identify the corresponding config.xml.
-						configFilePath=ODFileUtils.CombinePaths(serverMapPath,HostingEnvironment.ApplicationVirtualPath.Trim('/')+"Config.xml");
+						configFilePath=ODFileUtils.CombinePaths(serverMapPath,MiddleTierHost.ApplicationName.Trim('/')+"Config.xml");
 					}
 					if(string.IsNullOrWhiteSpace(configFilePath)
 						|| !File.Exists(configFilePath))//returns false if the file doesn't exist, user doesn't have permission for file, path is blank or null
@@ -278,11 +296,10 @@ namespace OpenPmsDentalBusiness {
 			catch(Exception e) {
 				e.DoNothing();
 			}
-			try {
-				clientIP=System.Web.HttpContext.Current.Request.UserHostAddress;
-			}
-			catch(Exception e) {
-				e.DoNothing();
+			//The client's address of this thread's request. With no hosted request (the mock server) the log keeps [INVALID], as when
+			//HttpContext.Current was null there.
+			if(MiddleTierHost.IsInRequest) {
+				clientIP=MiddleTierHost.ClientIp;
 			}
 			StringBuilder stringBuilder = new StringBuilder();
 			stringBuilder.AppendFormat("Time Received:{0,15:N0},", dateTimeReceived.ToLongTimeString());

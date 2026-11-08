@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
 using CodeBase;
+using DataConnectionBase;
 using OpenPmsDentalBusiness.FileIO;
 using System.Linq;
 using System.Threading;
@@ -76,7 +77,8 @@ namespace OpenPmsDentalBusiness {
 			for(int i=0;i<listPrograms.Count;i++) {
 				string dllPath=ODFileUtils.CombinePaths(Application.StartupPath,listPrograms[i].PluginDllName);
 				if(RemotingClient.MiddleTierRole==MiddleTierRole.ServerMT) {
-					dllPath=ODFileUtils.CombinePaths(System.Web.HttpContext.Current.Server.MapPath(null),listPrograms[i].PluginDllName);
+					//The folder of this thread's request (it was HttpContext.Current.Server.MapPath(null)); throws on a thread that handles no request.
+					dllPath=ODFileUtils.CombinePaths(MiddleTierHost.GetRequestContentRoot(),listPrograms[i].PluginDllName);
 				}
 				//Check for the versioning trigger.
 				//For example, the plug-in might be entered as MyPlugin[VersionMajMin].dll. The bracketed section will be removed when loading the dll.
