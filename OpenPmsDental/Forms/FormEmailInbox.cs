@@ -203,13 +203,19 @@ namespace OpenPmsDental {
 			return _emailAddress;
 		}
 
-		///<summary>Gets messages from the db and fills the grid.</summary>
+		///<summary>Gets messages from the db and fills the grid. Also, resends previously failed acknowledgements when the current email address is set up to receive email.S</summary>
 		private void GetMessages() {
 			//Gmail and Microsoft 365 addresses that download mail are checked here, on open and on Refresh, because nothing in this program polls
-			//them in the background.
+			//them in the background. This runs before the POP3 check below: these addresses have no real POP3 server.
 			ReceiveFromOAuthInbox(GetSelectedAddress());
 			_isRefreshInbox=true;
 			FillGridInbox();
+			if(GetSelectedAddress().EmailUsername=="" || GetSelectedAddress().Pop3ServerIncoming=="") {//Email address not setup.
+				return;
+			}
+			Text="Email Client for "+GetSelectedAddress().EmailUsername+" - Resending any acknowledgments which previously failed...";
+			EmailMessages.SendOldestUnsentAck(GetSelectedAddress());
+			Text="Email Client for "+GetSelectedAddress().EmailUsername;
 		}
 
 		///<summary>True for a Gmail or Microsoft 365 address with Download incoming emails ticked, while its program link is enabled. Those are
@@ -264,15 +270,6 @@ namespace OpenPmsDental {
 			_hashSetEmailAddressNumsWarned.Add(emailAddress.EmailAddressNum);
 			string message=(exception is ODException) ? exception.Message : Lan.g(this,"The email download failed.")+" "+exception.Message;
 			MessageBox.Show(this,Lan.g(this,"New email could not be downloaded for")+" "+emailAddress.EmailUsername+".\r\n\r\n"+message);
-		}
-
-		///<summary>The Sig column: X for a signed message (it has the signature attachment smime.p7s), blank otherwise. Before Direct messaging was
-		///removed, the column said whether the signer was trusted for Direct (Y or N).</summary>
-		private string GetSigText(EmailMessage emailMessage) {
-			if(emailMessage.Attachments.Exists(x => x.DisplayedFileName.ToLower()=="smime.p7s")) {
-				return "X";
-			}
-			return "";
 		}
 
 		///<summary>Gets new emails and also shows older emails from the database.</summary>
@@ -342,7 +339,20 @@ namespace OpenPmsDental {
 				row.Cells.Add(new UI.GridCell(emailMessage.Subject));//1 Subject
 				row.Cells.Add(new UI.GridCell(emailMessage.MsgDateTime.ToString()));//2 ReceivedDate
 				row.Cells.Add(new UI.GridCell(EmailMessages.GetEmailSentOrReceivedDescript(emailMessage.SentOrReceived)));//3 MessageType
-				row.Cells.Add(new UI.GridCell(GetSigText(emailMessage)));//4 Sig
+				string sigTrust="";//Blank for no signature, N for untrusted signature, Y for trusted signature.
+				for(int j=0;j<emailMessage.Attachments.Count;j++) {
+					if(emailMessage.Attachments[j].DisplayedFileName.ToLower()!="smime.p7s") {
+						continue;//Not a digital signature.
+					}
+					sigTrust="N";
+					//A more accurate way to test for trust would be to read the subject name from the certificate, then check the trust for the subject name instead of the from address.
+					//We use the more accurate way inside FormEmailDigitalSignature.  However, we cannot use the accurate way inside the inbox because it would cause the inbox to load very slowly.
+					if(EmailMessages.GetReceiverUntrustedCount(emailMessage.FromAddress)==-1) {
+						sigTrust="Y";
+					}
+					break;
+				}
+				row.Cells.Add(new UI.GridCell(sigTrust));//4 Sig
 				long patNumRegardingPatient=emailMessage.PatNum;
 				//Webmail messages should list the patient as the PatNumSubj, which means "the patient whom this message is regarding".
 				if(EmailMessages.IsSecureWebMail(emailMessage.SentOrReceived)) {
@@ -476,7 +486,20 @@ namespace OpenPmsDental {
 					strIsAutomated="X";
 				}
 				row.Cells.Add(strIsAutomated);
-				row.Cells.Add(GetSigText(listEmailsFiltered[i]));
+				string sigTrust="";
+				for(int j=0;j<listEmailsFiltered[i].Attachments.Count;j++) {
+					if(listEmailsFiltered[i].Attachments[j].DisplayedFileName.ToLower()!="smime.p7s") {
+						continue;//Not a digital signature.
+					}
+					sigTrust="N";
+					//A more accurate way to test for trust would be to read the subject name from the certificate, then check the trust for the subject name instead of the from address.
+					//We use the more accurate way inside FormEmailDigitalSignature.  However, we cannot use the accurate way inside the inbox because it would cause the inbox to load very slowly.
+					if(EmailMessages.IsSenderTrusted(listEmailsFiltered[i].FromAddress)) {
+						sigTrust="Y";
+					}
+					break;
+				}
+				row.Cells.Add(sigTrust);
 				long patNum=listEmailsFiltered[i].PatNum;
 				//Webmail messages should list the patient as the PatNumSubj, which means "the patient whom this message is regarding".
 				if(EmailMessages.IsSecureWebMail(listEmailsFiltered[i].SentOrReceived)) {
@@ -706,9 +729,24 @@ namespace OpenPmsDental {
 				string localFile=PrefC.GetRandomTempFile(".p7s");
 				FileAtoZ.Copy(smimeP7sFilePath,localFile,FileAtoZSourceDestination.AtoZToLocal);
 				X509Certificate2 x509Certificate2=EmailMessages.GetEmailSignatureFromSmimeP7sFile(localFile);
-				//Shows who signed and the certificate. There is no trust to add any more: that was for Direct messaging, which was removed.
 				using FormEmailDigitalSignature formEmailDigitalSignature=new FormEmailDigitalSignature(x509Certificate2);
-				formEmailDigitalSignature.ShowDialog();
+				if(formEmailDigitalSignature.ShowDialog()==DialogResult.OK) {
+					Cursor=Cursors.WaitCursor;
+					//If the user just added trust, then refresh to pull the newly added certificate into the memory cache.
+					EmailMessages.RefreshCertStoreExternal(GetSelectedAddress());
+					//Refresh the entire inbox, because there may be multiple email messages from the same address that the user just added trust for.
+					//The Sig column may need to be updated on multiple rows.
+					try {
+						GetMessages();
+					}
+					catch(ODException ex) {
+						if(ex.ErrorCodeAsEnum == ODException.ErrorCodes.FormClosed) {
+							return;
+						}
+						throw ex;
+					}
+					Cursor=Cursors.Default;
+				}
 				break;
 			}
 		}

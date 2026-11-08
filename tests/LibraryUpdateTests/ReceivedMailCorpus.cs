@@ -4,10 +4,14 @@
 // messages, a sender with consecutive dots, html with inline images, attachments and a forwarded message. ReceivedMailCorpusTests parses every
 // one and compares the result with what the Direct Project parser gave (Corpus/ReceivedMailCorpus.expected.txt, recorded before the parser was
 // replaced). The signed and the encrypted message were made once with a throw-away self-signed certificate (SignedCms and EnvelopedCms of the
-// .NET Framework, SHA-256); its private key was never saved. Synthetic addresses and text only, ASCII source (\u escapes). Licensed under the
+// .NET Framework, SHA-256); its private key was never saved, so MakeEncrypted makes the encrypted message again for certificates of a test run,
+// which the Direct agent decrypts (package S0-3D). Synthetic addresses and text only, ASCII source (\u escapes). Licensed under the
 // GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Security.Cryptography.Pkcs;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace LibraryUpdateTests {
@@ -209,11 +213,35 @@ namespace LibraryUpdateTests {
 				"Content-Type: application/pkcs7-signature; name=\"smime.p7s\"","Content-Transfer-Encoding: base64",
 				"Content-Disposition: attachment; filename=\"smime.p7s\"","Content-Description: S/MIME Cryptographic Signature","",SIGNATURE,"",
 				"--sig-boundary-1--","")));
-			listMessages.Add(M("encrypted",INBOX,L("From: Sender Example <sender@example.test>","To: inbox@example.test","Subject: Encrypted message",
-				"Date: Tue, 03 Nov 2026 11:00:00 -0800","Message-ID: <encrypted-1@example.test>","MIME-Version: 1.0",
-				"Content-Type: application/pkcs7-mime; smime-type=enveloped-data; name=\"smime.p7m\"","Content-Transfer-Encoding: base64",
-				"Content-Disposition: attachment; filename=\"smime.p7m\"","",ENVELOPED,"")));
+			listMessages.Add(M("encrypted",INBOX,L(_arrayHeadersEncrypted)+"\r\n\r\n"+ENVELOPED+"\r\n"));
 			return listMessages;
+		}
+
+		///<summary>The headers of the encrypted message of the corpus.</summary>
+		private static readonly string[] _arrayHeadersEncrypted=new[] { "From: Sender Example <sender@example.test>","To: inbox@example.test",
+			"Subject: Encrypted message","Date: Tue, 03 Nov 2026 11:00:00 -0800","Message-ID: <encrypted-1@example.test>","MIME-Version: 1.0",
+			"Content-Type: application/pkcs7-mime; smime-type=enveloped-data; name=\"smime.p7m\"","Content-Transfer-Encoding: base64",
+			"Content-Disposition: attachment; filename=\"smime.p7m\"" };
+
+		///<summary>The MIME part the encrypted message of the corpus holds.</summary>
+		public const string ENCRYPTED_PART="Content-Type: text/plain; charset=us-ascii\r\n\r\nOnly the holder of the private key can read this.\r\n";
+
+		///<summary>The encrypted message of the corpus (package S0-3D), made again for certificates of this run, because the private key of the
+		///recorded one was never saved: the same headers and the same part, signed by the sender (multipart/signed, detached, SHA-256: the Direct
+		///agent refuses a message without the sender's signature) and enveloped for the inbox, with the SignedCms and EnvelopedCms of the .NET
+		///Framework the recorded message was made with.</summary>
+		public static string MakeEncrypted(X509Certificate2 x509Certificate2Inbox,X509Certificate2 x509Certificate2Sender) {
+			SignedCms signedCms=new SignedCms(new ContentInfo(Encoding.ASCII.GetBytes(ENCRYPTED_PART)),true);
+			CmsSigner cmsSigner=new CmsSigner(x509Certificate2Sender);
+			cmsSigner.DigestAlgorithm=new Oid("2.16.840.1.101.3.4.2.1");//SHA-256
+			signedCms.ComputeSignature(cmsSigner,true);
+			string signed=L("Content-Type: multipart/signed; protocol=\"application/pkcs7-signature\"; micalg=sha-256; boundary=\"enc-sig-1\"","",
+				"--enc-sig-1")+"\r\n"+ENCRYPTED_PART+L("","--enc-sig-1","Content-Type: application/pkcs7-signature; name=\"smime.p7s\"",
+				"Content-Transfer-Encoding: base64","Content-Disposition: attachment; filename=\"smime.p7s\"","",Base64Lines(signedCms.Encode()),
+				"--enc-sig-1--","");
+			EnvelopedCms envelopedCms=new EnvelopedCms(new ContentInfo(Encoding.ASCII.GetBytes(signed)));
+			envelopedCms.Encrypt(new CmsRecipient(x509Certificate2Inbox));
+			return L(_arrayHeadersEncrypted)+"\r\n\r\n"+Base64Lines(envelopedCms.Encode())+"\r\n";
 		}
 	}
 }

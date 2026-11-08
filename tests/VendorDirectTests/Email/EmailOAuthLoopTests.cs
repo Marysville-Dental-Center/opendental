@@ -668,5 +668,66 @@ namespace VendorDirectTests.Email {
 			}
 		}
 		#endregion Signed send
+
+		#region Direct send
+		///<summary>A message as the Direct agent leaves it, as text: an application/pkcs7-mime body (the bytes are synthetic: these tests check
+		///that the message goes out as it was built, not the encryption) of about the given size.</summary>
+		private static string MakeDirectMime(int sizeBody) {
+			byte[] arrayBody=new byte[sizeBody*3/4];
+			new Random(5).NextBytes(arrayBody);
+			string base64=Convert.ToBase64String(arrayBody);
+			StringBuilder stringBuilder=new StringBuilder();
+			stringBuilder.Append("From: "+MAILBOX+"\r\nTo: patient@hisp.example.test\r\nSubject: Encrypted Message\r\nMessage-ID: <direct-1@example-dental.test>\r\n"
+				+"MIME-Version: 1.0\r\nContent-Type: application/pkcs7-mime; smime-type=enveloped-data; name=\"smime.p7m\"\r\n"
+				+"Content-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"smime.p7m\"\r\n\r\n");
+			for(int i=0;i<base64.Length;i+=76) {
+				stringBuilder.Append(base64.Substring(i,Math.Min(76,base64.Length-i))+"\r\n");
+			}
+			return stringBuilder.ToString();
+		}
+
+		private static MimeMessage LoadMime(string text) {
+			using(MemoryStream memoryStream=new MemoryStream(Encoding.ASCII.GetBytes(text))) {
+				return MimeMessage.Load(memoryStream);
+			}
+		}
+
+		///<summary>S0-3D: a Direct message from a Gmail address goes through the Gmail API as the raw message the agent built (before S0-3, the
+		///Gmail send dropped its headers and encrypted body). Over the upload threshold, so that the raw bytes reach the fake handler as they are
+		///(Google's library compresses the JSON body of a small one).</summary>
+		[TestMethod]
+		public void Gmail_SendDirect_SendsTheEncryptedMimeAsBuilt() {
+			string mime=MakeDirectMime(SendEmail.GMAIL_UPLOAD_THRESHOLD_BYTES+1000);
+			_handler.Enqueue(HttpStatusCode.OK,"",actionCustomize:response => response.Headers.Location=
+				new Uri("https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=resumable&upload_id=synthetic-upload"));
+			EnqueueGmailSent();
+			EmailMessages.SendMimeMessage(MakeAddress(OAuthType.Google),LoadMime(mime));
+			CollectionAssert.AreEqual(new List<bool> { false },_listTokenRequests,"The address's token, as for other mail.");
+			List<RecordedRequest> listRequests=_handler.Requests;
+			Assert.AreEqual(2,listRequests.Count,"Start the resumable upload, then send the bytes.");
+			Assert.AreEqual("message/rfc822",listRequests[0].GetHeader("X-Upload-Content-Type"));
+			Assert.AreEqual(mime,listRequests[1].Body,"The message as the agent built it, byte for byte.");
+		}
+
+		[TestMethod]
+		public void Microsoft_SendDirect_SendsTheEncryptedMimeToSendMail() {
+			UseMicrosoftFakeGraph();
+			_handler.Enqueue(HttpStatusCode.Accepted,"");
+			string mime=MakeDirectMime(20000);
+			EmailMessages.SendMimeMessage(MakeAddress(OAuthType.Microsoft),LoadMime(mime));
+			RecordedRequest recordedRequest=GetSendMailRequests().Single();
+			StringAssert.StartsWith(recordedRequest.ContentType,"text/plain","MIME, base64, as Graph takes it.");
+			Assert.AreEqual(mime,Encoding.ASCII.GetString(Convert.FromBase64String(recordedRequest.Body)),"The message as the agent built it.");
+		}
+
+		[TestMethod]
+		public void Microsoft_SendDirect_TooLargeForOneRequestIsRefusedBeforeAnyCall() {
+			UseMicrosoftFakeGraph();
+			string mime=MakeDirectMime(3200000);
+			Exception ex=AssertEx.Throws<Exception>(() => EmailMessages.SendMimeMessage(MakeAddress(OAuthType.Microsoft),LoadMime(mime)));
+			StringAssert.Contains(ex.ToString(),"encrypted (Direct)","Graph would rebuild a larger message without its encryption.");
+			Assert.AreEqual(0,_handler.Requests.Count);
+		}
+		#endregion Direct send
 	}
 }

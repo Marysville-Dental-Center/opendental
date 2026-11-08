@@ -392,6 +392,11 @@ namespace OpenPmsDental{
 			DialogResult=DialogResult.OK;//OK triggers a refresh for the grid.
 		}
 
+		private void butRegisterCertificate_Click(object sender,EventArgs e) {
+			using FormEmailCertRegister formEmailCertRegister=new FormEmailCertRegister(textUsername.Text);
+			formEmailCertRegister.ShowDialog();
+		}
+
 		private void butPickUserod_Click(object sender,EventArgs e) {
 			List<Clinic> listClinics=Clinics.GetDeepCopy();
  			if(listClinics.Any(x=>x.EmailAddressNum==_emailAddress.EmailAddressNum)) {

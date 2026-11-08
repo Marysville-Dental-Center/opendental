@@ -118,6 +118,7 @@ namespace OpenPmsDental {
 			checkIsDoctor.Checked=ReferralCur.IsDoctor;
 			checkNotPerson.Checked=ReferralCur.NotPerson;
 			checkHidden.Checked=ReferralCur.IsHidden;
+			checkEmailTrustDirect.Checked=ReferralCur.IsTrustedDirect;
 			textLName.Text=ReferralCur.LName;
 			textFName.Text=ReferralCur.FName;
 			textMName.Text=ReferralCur.MName;
@@ -371,9 +372,20 @@ namespace OpenPmsDental {
 				MsgBox.Show(this,"Please select a specialty.");
 				return;
 			}
+			Cursor=Cursors.Wait;
+			if(checkEmailTrustDirect.Checked==true && !EmailMessages.TryAddTrustDirect(textEmail.Text)) {
+				string trustEmailErrorMessage=Lang.g("Referral","You elected to trust this email address for Direct messaging.")
+					+"  "+Lang.g("Referral","Adding trust for the address failed, because we were unable to locate the public certificate for the address.")
+					+"  "+Lang.g("Referral","Check that the email address is correctly typed and is a valid Direct messaging address, then try again.")
+					+"  "+Lang.g("Referral","Otherwise, uncheck the E-mail Trust for Direct checkbox before clicking OK or press Cancel if no other changes were made.");
+				MessageBox.Show(trustEmailErrorMessage);
+				Cursor=Cursors.Arrow;
+				return;
+			}
+			Cursor=Cursors.Arrow;
 			ReferralCur.IsHidden=checkHidden.Checked==true;
 			ReferralCur.NotPerson=checkNotPerson.Checked==true;
-			//IsTrustedDirect keeps its stored value: Direct messaging was removed with its trust check box.
+			ReferralCur.IsTrustedDirect=checkEmailTrustDirect.Checked==true;
 			ReferralCur.LName=textLName.Text;
 			ReferralCur.FName=textFName.Text;
 			ReferralCur.MName=textMName.Text;

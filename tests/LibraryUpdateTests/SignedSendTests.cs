@@ -260,27 +260,37 @@ namespace LibraryUpdateTests {
 		private const uint CERT_SYSTEM_STORE_CURRENT_USER=0x00010000;
 		private const uint CERT_STORE_DELETE_FLAG=0x00000010;
 
-		///<summary>GetCertFromPrivateStore's search, on a store of the current user made for the test (public certificates only), then deleted:
-		///a valid certificate for the address before an expired one, a domain-level certificate when the address has none, nothing for another
-		///domain or a store that does not exist. Opening the real NHINDPrivate store (Local Computer) is not tested: the same code with that name.</summary>
+		///<summary>GetCertFromPrivateStore's search, on a store of the current user made for the test, then deleted: a valid certificate for the
+		///address before an expired one, a domain-level certificate when the address has none, nothing for another domain or a store that does not
+		///exist. A certificate of the store without its private key can't sign and is skipped, as the Direct Project's store of private certificates
+		///(SystemX509Store.OpenPrivate) skipped it before S0-3. Opening the real NHINDPrivate store (Local Computer) is not tested: the same code
+		///with that name.</summary>
 		[TestMethod]
 		public void PrivateStore_FindsTheValidCertificateForTheAddressOrItsDomain() {
 			string storeName="OpenPmsS03Test_"+Guid.NewGuid().ToString("N");
 			X509Certificate2 x509Certificate2Expired=TestCertificates.CreateEmail("pat.q@example.test",dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(-3));
 			X509Certificate2 x509Certificate2Valid=TestCertificates.CreateEmail("pat.q@example.test");
+			X509Certificate2 x509Certificate2NoKey=TestCertificates.CreateEmail("pat.q@example.test");
+			X509Certificate2 x509Certificate2NoKeyOnly=TestCertificates.CreateEmail("lee.r@example.test");
 			X509Certificate2 x509Certificate2Domain=TestCertificates.CreateEmail(null,dnsName:"clinic.example.test");
 			try {
 				Assert.IsNull(EmailMessages.GetCertFromStore("pat.q@example.test",storeName,StoreLocation.CurrentUser),"No such store yet.");
 				using(X509Store x509Store=new X509Store(storeName,StoreLocation.CurrentUser)) {
 					x509Store.Open(OpenFlags.ReadWrite);//Creates the store.
-					x509Store.Add(new X509Certificate2(x509Certificate2Expired.RawData));
-					x509Store.Add(new X509Certificate2(x509Certificate2Valid.RawData));
-					x509Store.Add(new X509Certificate2(x509Certificate2Domain.RawData));
+					x509Store.Add(x509Certificate2Expired);
+					x509Store.Add(new X509Certificate2(x509Certificate2NoKey.RawData));//Valid for the address, but without its private key.
+					x509Store.Add(x509Certificate2Valid);
+					x509Store.Add(new X509Certificate2(x509Certificate2NoKeyOnly.RawData));
+					x509Store.Add(x509Certificate2Domain);
 				}
-				Assert.AreEqual(x509Certificate2Valid.Thumbprint,EmailMessages.GetCertFromStore("Pat Q <PAT.Q@example.test>",storeName,StoreLocation.CurrentUser)?.Thumbprint,
-					"The valid certificate of the address, the expired one skipped; the display name and case do not matter.");
+				X509Certificate2 x509Certificate2Found=EmailMessages.GetCertFromStore("Pat Q <PAT.Q@example.test>",storeName,StoreLocation.CurrentUser);
+				Assert.AreEqual(x509Certificate2Valid.Thumbprint,x509Certificate2Found?.Thumbprint,
+					"The valid certificate of the address with its key, the expired one and the one without a key skipped; the display name and case do not matter.");
+				Assert.IsTrue(x509Certificate2Found.HasPrivateKey);
 				Assert.AreEqual(x509Certificate2Domain.Thumbprint,EmailMessages.GetCertFromStore("front@clinic.example.test",storeName,StoreLocation.CurrentUser)?.Thumbprint,
 					"No certificate for the address: the domain's.");
+				Assert.IsNull(EmailMessages.GetCertFromStore("lee.r@example.test",storeName,StoreLocation.CurrentUser),
+					"The address's only certificate has no private key: none to sign with.");
 				Assert.IsNull(EmailMessages.GetCertFromStore("someone@other.example.test",storeName,StoreLocation.CurrentUser));
 				Assert.IsNull(EmailMessages.GetCertFromStore("not an address",storeName,StoreLocation.CurrentUser));
 				Assert.AreEqual("pat.q@example.test",EmailCertificates.GetCertSubjectName(x509Certificate2Valid));
@@ -290,8 +300,10 @@ namespace LibraryUpdateTests {
 			}
 			finally {
 				CertUnregisterSystemStore(storeName,CERT_SYSTEM_STORE_CURRENT_USER|CERT_STORE_DELETE_FLAG);
-				x509Certificate2Expired.Reset();
+				x509Certificate2Expired.Reset();//Removes the key containers of the PFX round trips.
 				x509Certificate2Valid.Reset();
+				x509Certificate2NoKey.Reset();
+				x509Certificate2NoKeyOnly.Reset();
 				x509Certificate2Domain.Reset();
 			}
 			using(X509Store x509Store=new X509Store(storeName,StoreLocation.CurrentUser)) {
