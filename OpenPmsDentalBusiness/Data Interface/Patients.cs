@@ -47,6 +47,8 @@ namespace OpenPmsDentalBusiness {
 					"disease.PatNum",
 					//"document.PatNum",  //This is handled below when images are stored in the database and on the client side for images stored in the AtoZ folder due to the middle tier.
 					"eclipboardimagecapture.PatNum",
+					"eform.PatNum",//Fork (S0-5): a patient's eForms follow the merge, as sheets do. Open Dental 24.3 left eForms on the merged-away patient.
+					"eformfield.PatNum",//Fork (S0-5): each field row carries the PatNum of its eForm, so the fields move with the eForm.
 					"ehramendment.PatNum",
 					"ehrcareplan.PatNum",
 					"ehrlab.PatNum",

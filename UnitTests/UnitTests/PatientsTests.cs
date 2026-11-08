@@ -395,6 +395,36 @@ namespace UnitTests.Patients_Tests {
 			Patients.MergeTwoPatients(patTo.PatNum,patFrom.PatNum);
 			Assert.AreEqual(discountPlanNumFrom,DiscountPlanSubs.GetDiscountPlanNumForPat(patTo.PatNum));
 		}
+
+		///<summary>Merging moves the merged-away patient's eForm and every one of its field rows to the patient merged into, as it moves sheets, and
+		///leaves the kept patient's own eForm alone. Open Dental 24.3 left eform.PatNum and eformfield.PatNum out of the merge (fork, package S0-5 of
+		///the .NET 10 plan).</summary>
+		[TestMethod]
+		public void Patients_MergeTwoPatients_EFormAndItsFieldsMove() {
+			Patient patTo=PatientT.CreatePatient(lName: "Jonas",fName: "TO");
+			Patient patFrom=PatientT.CreatePatient(lName: "Jonas",fName: "FROM");
+			EForm eFormFrom=EFormT.CreateEForm(0,new List<EFormField>(),patFrom.PatNum,EnumEFormStatus.Filled,description: "Filled by FROM");
+			EForm eFormTo=EFormT.CreateEForm(0,new List<EFormField>(),patTo.PatNum,EnumEFormStatus.Filled,description: "Filled by TO");
+			for(int i=0;i<3;i++) {
+				EFormFields.Insert(new EFormField {
+					EFormNum=eFormFrom.EFormNum,PatNum=patFrom.PatNum,FieldType=EnumEFormFieldType.TextField,ValueLabel="Question "+i,ValueString="Answer "+i,
+					ItemOrder=i });
+			}
+			EFormFields.Insert(new EFormField {
+				EFormNum=eFormTo.EFormNum,PatNum=patTo.PatNum,FieldType=EnumEFormFieldType.TextField,ValueLabel="Question",ValueString="Kept",ItemOrder=0 });
+			Patients.MergeTwoPatients(patTo.PatNum,patFrom.PatNum);
+			Assert.AreEqual(0,EForms.GetForPatient(patFrom.PatNum).Count);
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT COUNT(*) FROM eformfield WHERE PatNum="+POut.Long(patFrom.PatNum)));
+			List<EForm> listEFormsTo=EForms.GetForPatient(patTo.PatNum);
+			CollectionAssert.AreEquivalent(new List<long> { eFormFrom.EFormNum,eFormTo.EFormNum },listEFormsTo.Select(x => x.EFormNum).ToList());
+			EForm eFormMoved=listEFormsTo.First(x => x.EFormNum==eFormFrom.EFormNum);
+			Assert.AreEqual("Filled by FROM",eFormMoved.Description);
+			CollectionAssert.AreEqual(new List<string> { "Answer 0","Answer 1","Answer 2" },eFormMoved.ListEFormFields.Select(x => x.ValueString).ToList());
+			Assert.IsTrue(eFormMoved.ListEFormFields.All(x => x.PatNum==patTo.PatNum));
+			EForm eFormKept=listEFormsTo.First(x => x.EFormNum==eFormTo.EFormNum);
+			Assert.AreEqual(1,eFormKept.ListEFormFields.Count);
+			Assert.AreEqual("Kept",eFormKept.ListEFormFields[0].ValueString);
+		}
 		#endregion
 
 		#region GetPatsToChangeStatus
