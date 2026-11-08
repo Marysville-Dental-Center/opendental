@@ -498,6 +498,13 @@ namespace SparksToothChart {
 			}
 		}
 
+		///<summary>True when ex is an error of the chart's graphics device: today SharpDX's exception (or a subclass), thrown by the DirectX chart when
+		///its device is lost or a picture cannot be read back. Lets callers catch it without naming SharpDX:
+		///catch(Exception ex) when(ToothChartWrapper.IsGraphicsDeviceException(ex)). False for null and for every other exception.</summary>
+		public static bool IsGraphicsDeviceException(Exception ex) {
+			return ex is SharpDX.SharpDXException;
+		}
+
 		private static bool CanLoadLibrary(string fileName) {
 			try {
 				IntPtr intPtrModule=LoadLibrary(fileName);

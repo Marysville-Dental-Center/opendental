@@ -64,6 +64,7 @@
     <Compile Include="Support\StaRunner.cs" />
     <Compile Include="Support\TestPaths.cs" />
     <Compile Include="SupportTests.cs" />
+    <Compile Include="WrapperTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj">
