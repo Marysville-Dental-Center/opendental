@@ -16,7 +16,9 @@ namespace AdoptionValidation {
 	///Insurance History step moves into code groups used only for Insurance History (one per category), with the debridement group made the office's
 	///own (no fixed type), which the step, like every existing group, leaves as it is;
 	///and the discontinued DXC Patient Credit Score program link, enabled and with two toolbar buttons, which the B-SHELL step disables and whose
-	///buttons it deletes (the XVWeb link's button is kept).
+	///buttons it deletes (the XVWeb link's button is kept); and the Trojan Express Collect program link as Open Dental's 19.2.29 conversion left
+	///it in every database whose office never used it (disabled, four properties, one Account module button), whose button the P262-LINKS step
+	///deletes.
 	///The rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see it done.
 	///Everything here is synthetic: the "update files" are a short placeholder text, never program files, the server addresses are built from
 	///the fork's blocked-host list (CodeBase.VendorDirect.HqHosts) so no host name is written in this file, the "ciphertexts" are random bytes
@@ -117,6 +119,20 @@ namespace AdoptionValidation {
 		public static int CountDxcButtons {
 			get { return ArrayDxcToolBars.Length; }
 		}
+		///<summary>The Trojan Express Collect link as Open Dental's 19.2.29 conversion (ConvertDatabases6.To19_2_29) left it in every database whose office
+		///never used it, and as db/init/new-database.sql holds it: the program row disabled, its four properties, and one button on the Account module
+		///toolbar (EnumToolBar.AccountModule, 0) with the text "TrojanCollect", written whether or not the link was enabled. Adoption's Trojan Express
+		///Collect step (TrojanExpressCollectRemovedStep, P262-LINKS) deletes that button and nothing else: the row is already disabled, and the row,
+		///its text and its properties stay. (property, value, IsMasked, IsHighSecurity), as new-database.sql has them.</summary>
+		public static readonly (string desc,string value,int isMasked,int isHighSecurity)[] ArrayTrojanProperties={
+			("FolderPath","",0,0),
+			("BillingType","0",0,0),
+			("Password","",1,1),
+			("PreviousFileNumber","0",0,0),
+		};
+		public const string TROJAN_PROG_DESC="Trojan Express Collect";
+		public const int TOOLBAR_TROJAN=0;
+		public const string TROJAN_BUTTON_TEXT="TrojanCollect";
 
 		public class Summary {
 			public int UpdateFileRows;
@@ -136,6 +152,10 @@ namespace AdoptionValidation {
 			public long DxcProgramNum;
 			public int DxcButtons;
 			public int OtherButtons;
+			///<summary>The Trojan Express Collect program row (disabled), its properties and its one Account module button.</summary>
+			public long TrojanProgramNum;
+			public int TrojanProperties;
+			public long TrojanButtonNum;
 
 			public override string ToString() {
 				return UpdateFileRows+" Open Dental update-file rows and "+OtherDocumentMiscRows+" other documentmisc row; "+ListHqPrefs.Count
@@ -151,7 +171,9 @@ namespace AdoptionValidation {
 					+"moves into code groups used only for Insurance History, and "+CodeGroupsUnfixed+" full mouth debridement code group made the office's own, which "
 					+"the step leaves as it is; "
 					+"the discontinued DXC Patient Credit Score program link (ProgramNum "+DxcProgramNum+") enabled with "+DxcButtons+" toolbar buttons, which the "
-					+"B-SHELL step disables and deletes, and "+OtherButtons+" XVWeb toolbar button it keeps.";
+					+"B-SHELL step disables and deletes, and "+OtherButtons+" XVWeb toolbar button it keeps; the Trojan Express Collect program link (ProgramNum "
+					+TrojanProgramNum+") disabled, with "+TrojanProperties+" properties and its Account module button (ToolButItemNum "+TrojanButtonNum+"), as Open "
+					+"Dental's 19.2.29 conversion left it, of which the P262-LINKS step deletes the button only.";
 			}
 		}
 
@@ -232,6 +254,19 @@ namespace AdoptionValidation {
 					["ButtonText"]="Credit Score" });
 				summary.DxcButtons++;
 			}
+			//The Trojan Express Collect link as Open Dental's 19.2.29 conversion left it for an office that never used it: disabled, four properties, one
+			//Account module button (P262-LINKS's step deletes the button only).
+			summary.TrojanProgramNum=sink.NextId("program");
+			sink.Insert("program",new Row { ["ProgramNum"]=summary.TrojanProgramNum,
+				["ProgName"]=OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.TrojanExpressCollectRemoved.PROG_NAME,["ProgDesc"]=TROJAN_PROG_DESC,["Enabled"]=0 });
+			foreach((string desc,string value,int isMasked,int isHighSecurity) property in ArrayTrojanProperties) {
+				sink.Insert("programproperty",new Row { ["ProgramPropertyNum"]=sink.NextId("programproperty"),["ProgramNum"]=summary.TrojanProgramNum,
+					["PropertyDesc"]=property.desc,["PropertyValue"]=property.value,["IsMasked"]=property.isMasked,["IsHighSecurity"]=property.isHighSecurity });
+				summary.TrojanProperties++;
+			}
+			summary.TrojanButtonNum=sink.NextId("toolbutitem");
+			sink.Insert("toolbutitem",new Row { ["ToolButItemNum"]=summary.TrojanButtonNum,["ProgramNum"]=summary.TrojanProgramNum,["ToolBar"]=TOOLBAR_TROJAN,
+				["ButtonText"]=TROJAN_BUTTON_TEXT });
 			//Report rows Open Dental's conversion may have written under names this program does not know, and two that must stay as they are.
 			int itemOrder=90;
 			foreach((string internalName,string description,int category,string nameFork) report in ArrayReportRowsRenamed) {

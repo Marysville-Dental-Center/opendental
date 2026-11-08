@@ -4090,7 +4090,7 @@ namespace OpenPmsDental{
 }
 
 
-//Need to document how XVWeb and Suni use the old Images module. (might be done)
+//Need to document how XVWeb uses the old Images module. (might be done) Suni support is removed (Open Dental 26.2).
 
 //This new Imaging module will never support the following features:
 //ClaimPayment/EOB mode.  Old Images module will continue to be used for that.

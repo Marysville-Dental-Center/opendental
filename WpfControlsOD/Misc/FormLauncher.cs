@@ -277,7 +277,6 @@ Events:
 		FormPatientEdit,
 		FormPrintTrojan,
 		FormSheetFillEdit,
-		FormTrojanCollect,
 		FormTrophyNamePick,
 		FormVideo,
 		FormWebView

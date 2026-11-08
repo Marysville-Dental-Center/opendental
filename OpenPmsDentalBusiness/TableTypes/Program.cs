@@ -226,7 +226,13 @@ namespace OpenPmsDentalBusiness{
 		///office's own Global Payments API app. "MeetInTheCloud" is the internal name the published 25.4 database documents give this integration
 		///(CreditCardSource.MeetInTheCloudTerminal, computerpref.CreditCardTerminalId); the program row's name itself is not published (INFERRED).
 		///The UI says "Global Payments V2".</summary>
-		MeetInTheCloud
+		MeetInTheCloud,
+		//Open Dental 26.2 program links (P262-LINKS), appended so existing values keep their numbers. Rows are inserted at runtime with Enabled=0
+		//(OpenPmsDentalBusiness/VendorDirect/ProgramLinks). The names are the fork's: Open Dental's program.ProgName values are not public (INFERRED).
+		///<summary>Allied Star Connect (26.2): writes the selected patient to a .json info file, then starts Alliedstar's Connect program.</summary>
+		AlliedstarConnect,
+		///<summary>OrthoComposite (26.2): an imaging program from the Microsoft Store, started with the patient's name and birthdate.</summary>
+		OrthoComposite
 	}
 
 	

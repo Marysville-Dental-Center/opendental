@@ -284,6 +284,11 @@ namespace OpenPmsDentalBusiness {
 			string path="";
 			//Adstra: Has no file paths containing outgoing pateint data from Open Dental.
 			//AiDental: Has no file paths containing outgoing patient data from Open Dental
+			//AlliedstarConnect (P262-LINKS, 26.2): the .json info file in the Info file path (blank means the default).
+			Program programAlliedstar=Programs.GetCur(ProgramName.AlliedstarConnect);
+			if(programAlliedstar!=null && programAlliedstar.Enabled) {
+				ScrubFile(VendorDirect.ProgramLinks.AlliedstarConnectLink.GetInfoFilePath(programAlliedstar),true);
+			}
 			//Apixia:
 			ScrubFileForProperty(ProgramName.Apixia,"System path to Apixia Digital Imaging ini file","",true);//C:\Program Files\Digirex\Switch.ini
 			//Apteryx: Has no file paths containing outgoing patient data from Open Dental.
@@ -449,7 +454,13 @@ namespace OpenPmsDentalBusiness {
 			if(!strFilePropertySuffix.IsNullOrEmpty()) {
 				strFileToScrub=ODFileUtils.CombinePaths(strFileToScrub,strFilePropertySuffix);
 			}
-			if(!File.Exists(strFileToScrub)) {
+			ScrubFile(strFileToScrub,isRemovable);
+		}
+
+		///<summary>Clears the file, then deletes it if isRemovable. Does nothing when there is no such file; failures are ignored (another instance
+		///may be closing at the same time).</summary>
+		private static void ScrubFile(string strFileToScrub,bool isRemovable) {
+			if(string.IsNullOrWhiteSpace(strFileToScrub) || !File.Exists(strFileToScrub)) {
 				return;
 			}
 			try {

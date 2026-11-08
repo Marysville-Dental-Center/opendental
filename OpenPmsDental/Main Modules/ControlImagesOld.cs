@@ -170,8 +170,8 @@ namespace OpenPmsDental {
 			}
 			catch { }
 			//}
-			//Direct sensor capture through Open Dental's closed Suni driver (xImageDeviceManager.dll, SuniUSB.dll) was removed on 2026-11-01.
-			//Suni sensors are acquired through Suni's own TWAIN driver in the Imaging module.
+			//Direct sensor capture through Open Dental's closed Suni driver (xImageDeviceManager.dll, SuniUSB.dll) was removed on 2026-11-01, and
+			//Open Dental 26.2 removed Suni support altogether (P262-LINKS). A sensor with a TWAIN driver is acquired in the Imaging module.
 			Logger.LogToPath("Ctor",LogPath.Startup,LogPhase.End);
 		}
 		#endregion Constructor

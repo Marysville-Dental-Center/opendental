@@ -127,11 +127,6 @@ namespace OpenPmsDental{
 						dialogResult=formXDRSetup.ShowDialog();
 					}
 					break;
-				case "TrojanExpressCollect":
-					using(FormTrojanCollectSetup formTrojanCollectSetup=new FormTrojanCollectSetup()) {
-						dialogResult=formTrojanCollectSetup.ShowDialog();
-					}
-					break;
 				case "BencoPracticeManagement":
 					FrmBencoSetup frmBencoSetup=new FrmBencoSetup();
 					frmBencoSetup.ShowDialog();

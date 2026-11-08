@@ -19,7 +19,8 @@ namespace AdoptionValidation {
 	///- the Open Dental 25.4 and 26.1 steps bring the schema to 26.1.70 (the schema verifier then confirms the exact match), insert their
 	///  preferences and split the blockout permission (Migration26_1Plan);
 	///- the DXC Patient Credit Score step (DxcCreditScoreRemovedStep, B-SHELL) disables that discontinued program link and deletes its toolbar
-	///  buttons, on every database (DxcCreditScorePlan);
+	///  buttons, on every database (DxcCreditScorePlan); the Trojan Express Collect step (TrojanExpressCollectRemovedStep, P262-LINKS) does the same
+	///  for that discontinued link (TrojanExpressCollectPlan);
 	///- the UDS+ report row step (ReportRowUdsPlusStep, M2-UDS) adds the row of the 25.4 UDS+ report after the FQHC Dental Sealant Measure, moves the
 	///  later Public Health rows down one place and copies the sealant measure's report permissions to it (UdsPlusRowPlan);
 	///- the Insurance History step (InsHistCodeGroupsStep, M2-HIST) marks the code groups of the InsHist*Codes preferences Show In History, adds
@@ -42,6 +43,8 @@ namespace AdoptionValidation {
 			public Migration26_1Plan.Plan Plan26_1=new Migration26_1Plan.Plan();
 			///<summary>What the DXC Patient Credit Score step changes.</summary>
 			public DxcCreditScorePlan.Plan PlanDxc=new DxcCreditScorePlan.Plan();
+			///<summary>What the Trojan Express Collect step changes.</summary>
+			public TrojanExpressCollectPlan.Plan PlanTrojan=new TrojanExpressCollectPlan.Plan();
 			///<summary>What the UDS+ report row step changes.</summary>
 			public UdsPlusRowPlan.Plan PlanUdsPlus=new UdsPlusRowPlan.Plan();
 			///<summary>What the Insurance History step changes.</summary>
@@ -90,6 +93,7 @@ namespace AdoptionValidation {
 				listLines.AddRange(PlanInsHist.Lines());
 				listLines.AddRange(PlanMaintGrants.Lines());
 				listLines.AddRange(PlanInventory.Lines());
+				listLines.AddRange(PlanTrojan.Lines());
 				listLines.Add(GetPluginLine(ListPluginRows));
 				return listLines;
 			}
@@ -158,6 +162,7 @@ namespace AdoptionValidation {
 			result.PlanInsHist=InsHistCodeGroupPlan.Make(db,database,result.Plan26_1.IsFromBefore25_4);
 			result.PlanMaintGrants=MaintenanceGrantPlan.Make(db,database);
 			result.PlanInventory=InventoryPlan.Make(db,database);
+			result.PlanTrojan=TrojanExpressCollectPlan.Make(db,database);
 			result.ListPluginRows=ReadPluginRows(db,database);
 			return result;
 		}

@@ -16,13 +16,16 @@ namespace OpenPmsDentalBusiness {
 		public bool GraphicsUseHardware;
 		///<summary>Enum:DrawingMode Set to 1 to use the low-quality 2D tooth chart in the chart module. Set to 0 to use a 3D DirectX based tooth chart in the chart module. This option helps the program run even when the local graphics hardware is buggy or unavailable.</summary>
 		public DrawingMode GraphicsSimple;
-		///<summary>Indicates the type of Suni sensor connected to the local computer (if any). This can be a value of A, B, C, or D.</summary>
+		///<summary>Indicates the type of Suni sensor connected to the local computer (if any). This can be a value of A, B, C, or D.
+		///Not used: Suni support is removed (Open Dental 26.2; P262-LINKS). The four Suni columns stay because Open Dental's 26.2 schema keeps them.
+		///</summary>
 		public string SensorType;
-		///<summary>Indicates wether or not the Suni sensor uses binned operation.</summary>
+		///<summary>Indicates wether or not the Suni sensor uses binned operation. Not used (Suni support is removed).</summary>
 		public bool SensorBinned;
-		///<summary>Indicates which Suni box port to connect with. There are 2 ports on a box (ports 0 and 1).</summary>
+		///<summary>Indicates which Suni box port to connect with. There are 2 ports on a box (ports 0 and 1). Not used (Suni support is removed).</summary>
 		public int SensorPort;
-		///<summary>Indicates the exposure level to use when capturing from a Suni sensor. Values can be 1 through 7.</summary>
+		///<summary>Indicates the exposure level to use when capturing from a Suni sensor. Values can be 1 through 7. Not used (Suni support is removed).
+		///</summary>
 		public int SensorExposure;
 		///<summary>Indicates if the user prefers double-buffered 3D tooth-chart (where applicable).</summary>
 		public bool GraphicsDoubleBuffering;

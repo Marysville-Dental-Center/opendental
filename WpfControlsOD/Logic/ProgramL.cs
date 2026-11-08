@@ -24,7 +24,7 @@ namespace WpfControls {
 				MsgBox.Show("Program","Error, program entry not found in database.");
 				return;
 			}
-			if(ProgramLinksDiscontinued.IsDiscontinued(program)) {//25.2: DXC Patient Credit Score. 2026-11-07: DentX, Dexis Integrator, Vipersoft.
+			if(ProgramLinksDiscontinued.IsDiscontinued(program)) {//25.2: DXC Patient Credit Score; 26.2: Trojan Express Collect. 2026-11-07: DentX, Dexis Integrator, Vipersoft.
 				MsgBox.Show(ProgramLinksDiscontinued.GetLaunchMessage(program));
 				return;
 			}
@@ -50,6 +50,10 @@ namespace WpfControls {
 			}
 			else if(program.ProgName==ProgramName.AiDental.ToString()) {
 				AiDental.SendData(program,patient);
+				return;
+			}
+			else if(program.ProgName==ProgramName.AlliedstarConnect.ToString()) {//26.2
+				AlliedstarConnect.SendData(program,patient);
 				return;
 			}
 			else if(program.ProgName==ProgramName.Apixia.ToString()) {
@@ -274,6 +278,10 @@ namespace WpfControls {
 				Oryx.SendData(program,patient);
 				return;
 			}
+			else if(program.ProgName==ProgramName.OrthoComposite.ToString()) {//26.2
+				OrthoComposite.SendData(program,patient);
+				return;
+			}
 			else if(program.ProgName==ProgramName.OrthoInsight3d.ToString()) {
 				OrthoInsight3d.SendData(program,patient);
 				return;
@@ -401,12 +409,6 @@ namespace WpfControls {
 			}
 			else if(program.ProgName==ProgramName.Triana.ToString()) {
 				Triana.SendData(program,patient);
-				return;
-			}
-			else if(program.ProgName==ProgramName.TrojanExpressCollect.ToString()) {
-				FormLauncher formLauncher=new FormLauncher(EnumFormName.FormTrojanCollect);
-				formLauncher.SetField("PatientCur",patient);
-				formLauncher.ShowDialog();
 				return;
 			}
 			else if(program.ProgName==ProgramName.Trophy.ToString()) {

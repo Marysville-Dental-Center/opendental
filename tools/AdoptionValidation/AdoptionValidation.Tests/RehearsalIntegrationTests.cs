@@ -29,7 +29,7 @@ namespace AdoptionValidation.Tests {
 		private static RehearsalResult _result;
 
 		///<summary>Every check a run must report, in order.</summary>
-		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","M3","M4","M5","M6","M7","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10",
+		public static readonly string[] ArrayCheckIds={ "G1","G2","A1","A2","A3","A4","M1","M2","M3","M4","M5","M6","M7","M8","H1","V1","V2","V3","V4","V5","V6","V7","V8","V9","V10",
 			"V11","R1","R2","I1","I2","I3","I4" };
 
 		[ClassInitialize]
@@ -196,6 +196,20 @@ namespace AdoptionValidation.Tests {
 			StringAssert.Contains(output,") stays, with its text; the step disables 1 program row(s) of it (ProgramNum ");
 			StringAssert.Contains(output,"deletes its "+OfficeFixture.CountDxcButtons+" toolbar button(s) (ToolButItemNum ");
 			StringAssert.Contains(output,"\"Deleted "+OfficeFixture.CountDxcButtons+" toolbar button(s) of the discontinued DXC Patient Credit Score program link (ToolButItemNum ");
+			//The Trojan Express Collect step (P262-LINKS): the fixture's row as Open Dental's 19.2.29 conversion left it (disabled, one Account module
+			//button) loses its button only.
+			long numTrojan;
+			long numButtonTrojan;
+			using(Db db=Db.Open(_server)) {
+				numTrojan=db.ScalarLong("SELECT ProgramNum FROM `"+Source(2)+"`.program WHERE ProgName='TrojanExpressCollect'");
+				numButtonTrojan=db.ScalarLong("SELECT ToolButItemNum FROM `"+Source(2)+"`.toolbutitem WHERE ProgramNum="+numTrojan);
+			}
+			Assert.IsTrue(numTrojan>0 && numButtonTrojan>0,"The fixture's Trojan Express Collect row and button.");
+			StringAssert.Contains(output,"Step 2026110781 (Trojan Express Collect program link): the discontinued Trojan Express Collect program link (ProgramNum "+numTrojan
+				+") stays, with its text and properties; the step deletes its 1 toolbar button(s) (ToolButItemNum "+numButtonTrojan+" on AccountModule) (on every database, "
+				+"an Open Dental 25.3.48 one included). The adoption log says \"Deleted 1 toolbar button(s) of the discontinued Trojan Express Collect program link "
+				+"(ToolButItemNum "+numButtonTrojan+")\"; adopt's row check (step 4) requires exactly this");
+			Assert.IsFalse(output.Contains("Disabled the discontinued Trojan Express Collect"),"The fixture's row is disabled already.\r\n"+output);
 			//The plug-in line: which program rows name a plug-in DLL, which stops loading after the switch.
 			StringAssert.Contains(output,"Plug-ins: ");
 			using(Db db=Db.Open(_server)) {
@@ -213,6 +227,9 @@ namespace AdoptionValidation.Tests {
 				Assert.AreEqual("it already ran on this database",resultAdopted.PlanInsHist.Migration.GetReasonUnchanged());
 				Assert.IsFalse(resultAdopted.PlanDxc.IsChanging,"After adoption the DXC link is disabled and has no button.");
 				StringAssert.Contains(string.Join("\r\n",resultAdopted.PlanDxc.Lines()),"is already disabled and has no toolbar button.");
+				Assert.IsFalse(resultAdopted.PlanTrojan.IsChanging,"After adoption the Trojan Express Collect link has no button.");
+				StringAssert.Contains(string.Join("\r\n",resultAdopted.PlanTrojan.Lines()),"Step 2026110781 (Trojan Express Collect program link) changes nothing: the "
+					+"discontinued Trojan Express Collect program link (ProgramNum "+numTrojan+") is already disabled and has no toolbar button.");
 			}
 		}
 
@@ -237,7 +254,11 @@ namespace AdoptionValidation.Tests {
 				Assert.AreEqual(0,db.ScalarLong("SELECT Enabled FROM `"+Adopted(1)+"`.program WHERE ProgramNum="+programNum));
 				Assert.AreEqual(OfficeFixture.DXC_PROG_DESC,Convert.ToString(db.Scalar("SELECT ProgDesc FROM `"+Adopted(1)+"`.program WHERE ProgramNum="+programNum)));
 				RowComparer.TableDiff diffButtons=RowComparer.Compare(db,Source(1),Adopted(1),"toolbutitem");
-				CollectionAssert.AreEqual(listButtons,diffButtons.ListOnlyFirst,diffButtons.Describe());
+				//The DXC buttons, and the Trojan Express Collect step's one button (Adoption_DeletesOnlyTheTrojanExpressCollectButton).
+				long numButtonTrojan=db.ScalarLong("SELECT t.ToolButItemNum FROM `"+Source(1)+"`.toolbutitem t INNER JOIN `"+Source(1)+"`.program p USING(ProgramNum) "
+					+"WHERE p.ProgName='TrojanExpressCollect'");
+				CollectionAssert.AreEqual(listButtons.Concat(new[] { numButtonTrojan }).OrderBy(x => x).ToList(),diffButtons.ListOnlyFirst.OrderBy(x => x).ToList(),
+					diffButtons.Describe());
 				Assert.AreEqual(0,diffButtons.CountOnlySecond+diffButtons.CountChanged,diffButtons.Describe());
 				Assert.AreEqual(1,db.ScalarLong("SELECT COUNT(*) FROM `"+Adopted(1)+"`.toolbutitem t INNER JOIN `"+Adopted(1)+"`.program p USING(ProgramNum) "
 					+"WHERE p.ProgName='"+OfficeFixture.PROGRAM_NAME+"' AND t.ToolBar="+OfficeFixture.TOOLBAR_XVWEB),"The XVWeb button is kept.");
@@ -252,10 +273,71 @@ namespace AdoptionValidation.Tests {
 				+"migration-preview lists deleted (ToolButItemNum ");
 		}
 
+		///<summary>The fixture holds the Trojan Express Collect link as Open Dental's 19.2.29 conversion left it in every database whose office never
+		///used it: disabled, four properties, one Account module button "TrojanCollect". On the adopted copy the Trojan Express Collect step (P262-LINKS)
+		///deleted that button and nothing else: the row (Enabled included), its text and its properties are as they were. migration-preview, the
+		///adoption log and the row check (check M8) all say the same.</summary>
+		[TestMethod]
+		public void Adoption_DeletesOnlyTheTrojanExpressCollectButton() {
+			SkipIfNeeded();
+			long programNum;
+			long numButton;
+			using(Db db=Db.Open(_server)) {
+				programNum=db.ScalarLong("SELECT ProgramNum FROM `"+Source(1)+"`.program WHERE ProgName='TrojanExpressCollect'");
+				Assert.IsTrue(programNum>0,"The fixture's Trojan Express Collect row.");
+				Assert.AreEqual(0,db.ScalarLong("SELECT Enabled FROM `"+Source(1)+"`.program WHERE ProgramNum="+programNum),"Disabled in the source, as Open Dental left it.");
+				Assert.AreEqual(OfficeFixture.ArrayTrojanProperties.Length,db.ScalarLong("SELECT COUNT(*) FROM `"+Source(1)+"`.programproperty WHERE ProgramNum="+programNum));
+				List<object[]> listButtons=db.Rows("SELECT ToolButItemNum,ToolBar,ButtonText FROM `"+Source(1)+"`.toolbutitem WHERE ProgramNum="+programNum);
+				Assert.AreEqual(1,listButtons.Count,"One button, as Open Dental's 19.2.29 conversion wrote it.");
+				numButton=Convert.ToInt64(listButtons[0][0]);
+				Assert.AreEqual(OfficeFixture.TOOLBAR_TROJAN,Convert.ToInt32(listButtons[0][1]),"The Account module toolbar.");
+				Assert.AreEqual(OfficeFixture.TROJAN_BUTTON_TEXT,Convert.ToString(listButtons[0][2]));
+				//The row is unchanged: the only changed program row is the DXC one.
+				RowComparer.TableDiff diffProgram=RowComparer.Compare(db,Source(1),Adopted(1),"program");
+				Assert.IsFalse(diffProgram.ListChanged.Any(x => x.Key==programNum),diffProgram.Describe());
+				Assert.AreEqual(0,db.ScalarLong("SELECT Enabled FROM `"+Adopted(1)+"`.program WHERE ProgramNum="+programNum));
+				Assert.AreEqual(OfficeFixture.TROJAN_PROG_DESC,Convert.ToString(db.Scalar("SELECT ProgDesc FROM `"+Adopted(1)+"`.program WHERE ProgramNum="+programNum)));
+				//Its properties are kept, as is every other programproperty row.
+				RowComparer.TableDiff diffProperties=RowComparer.Compare(db,Source(1),Adopted(1),"programproperty");
+				Assert.AreEqual(0,diffProperties.CountOnlyFirst+diffProperties.CountOnlySecond+diffProperties.CountChanged,diffProperties.Describe());
+				foreach((string desc,string value,int isMasked,int isHighSecurity) property in OfficeFixture.ArrayTrojanProperties) {
+					Assert.AreEqual(1,db.ScalarLong("SELECT COUNT(*) FROM `"+Adopted(1)+"`.programproperty WHERE ProgramNum="+programNum+" AND PropertyDesc='"+property.desc
+						+"' AND PropertyValue='"+property.value+"' AND IsMasked="+property.isMasked+" AND IsHighSecurity="+property.isHighSecurity),property.desc);
+				}
+				//Its button is gone; it was the only one.
+				RowComparer.TableDiff diffButtons=RowComparer.Compare(db,Source(1),Adopted(1),"toolbutitem");
+				CollectionAssert.Contains(diffButtons.ListOnlyFirst,numButton,diffButtons.Describe());
+				Assert.AreEqual(0,db.ScalarLong("SELECT COUNT(*) FROM `"+Adopted(1)+"`.toolbutitem WHERE ProgramNum="+programNum));
+			}
+			//Run 1, whose source the numbers come from (run 2's source is the same: X1).
+			RunResult run=_result.ListRuns[0];
+			//The adoption log: the step's one line, and no "Disabled" line.
+			string lineDeleted="Deleted 1 toolbar button(s) of the discontinued Trojan Express Collect program link (ToolButItemNum "+numButton+")";
+			Assert.IsTrue(run.ListAdoptionLog.Any(x => x.Contains("Fork migration step 2026110781 Disable the discontinued Trojan Express Collect program link changed "
+				+"the database:")),string.Join("\r\n",run.ListAdoptionLog));
+			Assert.AreEqual(1,run.ListAdoptionLog.Count(x => x.Trim()==lineDeleted),string.Join("\r\n",run.ListAdoptionLog));
+			Assert.IsFalse(run.ListAdoptionLog.Any(x => x.Contains("Disabled the discontinued Trojan Express Collect")),string.Join("\r\n",run.ListAdoptionLog));
+			//migration-preview of the source, the adoption log and the row check agree (M8).
+			CheckResult check=run.ListChecks.Single(x => x.Id=="M8");
+			Assert.IsTrue(check.Passed,check.Detail);
+			StringAssert.Contains(check.Detail,"migration-preview of the source: Step 2026110781 (Trojan Express Collect program link): the discontinued Trojan Express "
+				+"Collect program link (ProgramNum "+programNum+") stays, with its text and properties; the step deletes its 1 toolbar button(s) (ToolButItemNum "+numButton
+				+" on AccountModule)");
+			StringAssert.Contains(check.Detail,"The adoption log names 1 of the 1 change(s)");
+			StringAssert.Contains(check.Detail,"; 1 of the 1 Trojan Express Collect toolbar button(s) migration-preview lists deleted (ToolButItemNum "+numButton
+				+"); no other row changed, added or removed.");
+			Assert.IsFalse(check.Detail.Contains("Trojan Express Collect row(s) migration-preview lists disabled"),"No Trojan Express Collect row is disabled: "+check.Detail);
+			//The row check's toolbutitem line in the adoption log names both steps' buttons (adopt's "Adopt: PASS" line: the runbook dry run).
+			Assert.IsTrue(run.ListAdoptionLog.Any(x => x.Contains("toolbutitem: "+OfficeFixture.CountDxcButtons+" of the "+OfficeFixture.CountDxcButtons+" DXC Patient "
+				+"Credit Score toolbar button(s) migration-preview lists deleted (ToolButItemNum ") && x.Contains("; 1 of the 1 Trojan Express Collect toolbar button(s) "
+				+"migration-preview lists deleted (ToolButItemNum "+numButton+"); no other row changed, added or removed.")),string.Join("\r\n",run.ListAdoptionLog));
+		}
+
 		///<summary>Negative control for program and toolbutitem: the report comparison allows program.Enabled as a whole column and toolbutitem as a
-		///whole table (a deleted button changes every column checksum); adopt's row check lets through only what the DXC step's plan for the original
-		///says: another link disabled, another column of the DXC row changed, another button deleted, a DXC button not deleted and a button added are
-		///each caught.</summary>
+		///whole table (a deleted button changes every column checksum); adopt's row check lets through only what the DXC and Trojan Express Collect
+		///steps' plans for the original say: another link disabled, another column of the DXC row changed, another column of the Trojan Express Collect
+		///row changed, another button deleted, a DXC button not deleted, the Trojan Express Collect button not deleted and a button added are each
+		///caught.</summary>
 		[TestMethod]
 		public void RowCheck_CatchesProgramAndToolButItemChangesTheRulesAllow() {
 			SkipIfNeeded();
@@ -264,35 +346,52 @@ namespace AdoptionValidation.Tests {
 			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Adopted(1),"--database",tampered },listLog.Add),string.Join("\r\n",listLog));
 			string prog=OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME;
 			using(Db db=Db.Open(_server)) {
+				long numTrojan=db.ScalarLong("SELECT ProgramNum FROM `"+Source(1)+"`.program WHERE ProgName='TrojanExpressCollect'");
+				long numButtonTrojan=db.ScalarLong("SELECT ToolButItemNum FROM `"+Source(1)+"`.toolbutitem WHERE ProgramNum="+numTrojan);
 				AdoptionRowCheck.Result resultClean=AdoptionRowCheck.Run(db,Source(1),tampered);
 				Assert.IsTrue(resultClean.Passed,"An untouched adopted copy passes. "+string.Join("\r\n",resultClean.ListFailures));
 				Assert.AreEqual(1,resultClean.ListProgramNumsDisabled.Count);
 				Assert.AreEqual(OfficeFixture.CountDxcButtons,resultClean.ListToolButItemNumsDeleted.Count);
+				Assert.AreEqual(0,resultClean.ListProgramNumsDisabledTrojan.Count,"The fixture's Trojan Express Collect row is disabled already.");
+				CollectionAssert.AreEqual(new[] { numButtonTrojan },resultClean.ListToolButItemNumsDeletedTrojan);
 				ValidationReport before=Validator.Run(db,tampered,null,null);
 				long numDxc=db.ScalarLong("SELECT ProgramNum FROM `"+Source(1)+"`.program WHERE ProgName='"+prog+"'");
 				long numXvWeb=db.ScalarLong("SELECT ProgramNum FROM `"+Source(1)+"`.program WHERE ProgName='"+OfficeFixture.PROGRAM_NAME+"'");
 				long numButtonXvWeb=db.ScalarLong("SELECT ToolButItemNum FROM `"+Source(1)+"`.toolbutitem WHERE ProgramNum="+numXvWeb);
 				long numButtonDxc=db.ScalarLong("SELECT MIN(ToolButItemNum) FROM `"+Source(1)+"`.toolbutitem WHERE ProgramNum="+numDxc);
 				db.Use(tampered);
-				//Another link disabled; the DXC row's text changed; the XVWeb button deleted; one DXC button put back; a button added.
+				//Another link disabled; the DXC row's text changed; the Trojan Express Collect row's text changed; the XVWeb button deleted; one DXC button
+				//put back; the Trojan Express Collect button put back; a button added.
 				Assert.AreEqual(1,db.Execute("UPDATE program SET Enabled=0 WHERE ProgramNum="+numXvWeb));
 				Assert.AreEqual(1,db.Execute("UPDATE program SET ProgDesc='DXC (renamed)' WHERE ProgramNum="+numDxc));
+				Assert.AreEqual(1,db.Execute("UPDATE program SET ProgDesc='Trojan (renamed)' WHERE ProgramNum="+numTrojan));
 				Assert.AreEqual(1,db.Execute("DELETE FROM toolbutitem WHERE ToolButItemNum="+numButtonXvWeb));
 				Assert.AreEqual(1,db.Execute("INSERT INTO toolbutitem (ToolButItemNum,ProgramNum,ToolBar,ButtonText) SELECT ToolButItemNum,ProgramNum,ToolBar,ButtonText FROM `"
 					+Source(1)+"`.toolbutitem WHERE ToolButItemNum="+numButtonDxc));
+				Assert.AreEqual(1,db.Execute("INSERT INTO toolbutitem (ToolButItemNum,ProgramNum,ToolBar,ButtonText) SELECT ToolButItemNum,ProgramNum,ToolBar,ButtonText FROM `"
+					+Source(1)+"`.toolbutitem WHERE ToolButItemNum="+numButtonTrojan));
 				Assert.AreEqual(1,db.Execute("INSERT INTO toolbutitem (ProgramNum,ToolBar,ButtonText) VALUES ("+numXvWeb+",2,'Synthetic extra')"));
 				long numButtonAdded=db.ScalarLong("SELECT MAX(ToolButItemNum) FROM toolbutitem");
 				AdoptionRowCheck.Result result=AdoptionRowCheck.Run(db,Source(1),tampered);
 				string failures=string.Join("\r\n",result.ListFailures);
 				Assert.IsFalse(result.Passed);
 				StringAssert.Contains(failures,"program row "+numXvWeb+" changed (Enabled); the fork migration changes only the DXC Patient Credit Score row(s) migration-preview "
-					+"lists");
+					+"lists for "+Source(1)+" and the Trojan Express Collect row(s) it lists, Enabled only.");
 				StringAssert.Contains(failures,"program row "+numDxc+" (the DXC Patient Credit Score link): ");
 				StringAssert.Contains(failures,"ProgDesc");
-				StringAssert.Contains(failures,"toolbutitem row "+numButtonXvWeb+" was deleted; the fork migration deletes only the DXC Patient Credit Score buttons");
+				//The Trojan Express Collect row is not one the step disables here (it is disabled already), so any change to it is reported.
+				StringAssert.Contains(failures,"program row "+numTrojan+" changed (ProgDesc); the fork migration changes only the DXC Patient Credit Score row(s) "
+					+"migration-preview lists for "+Source(1)+" and the Trojan Express Collect row(s) it lists, Enabled only.");
+				StringAssert.Contains(failures,"toolbutitem row "+numButtonXvWeb+" was deleted; the fork migration deletes only the DXC Patient Credit Score buttons and the "
+					+"Trojan Express Collect buttons migration-preview lists for "+Source(1)+".");
 				StringAssert.Contains(failures,"toolbutitem row "+numButtonDxc+" (a DXC Patient Credit Score button, ProgramNum "+numDxc+") was not deleted");
+				StringAssert.Contains(failures,"toolbutitem row "+numButtonTrojan+" (a Trojan Express Collect button, ProgramNum "+numTrojan+") was not deleted, though the "
+					+"fork migration deletes it.");
 				StringAssert.Contains(failures,"toolbutitem row(s) were added (ToolButItemNum "+numButtonAdded+")");
 				Assert.AreEqual(OfficeFixture.CountDxcButtons-1,result.ListToolButItemNumsDeleted.Count,"The step's other deletion is still found.");
+				Assert.AreEqual(0,result.ListToolButItemNumsDeletedTrojan.Count,"The Trojan Express Collect button is back.");
+				Assert.IsTrue(result.ListLines.Any(x => x.StartsWith("toolbutitem: ") && x.Contains("0 of the 1 Trojan Express Collect toolbar button(s) migration-preview "
+					+"lists deleted") && x.EndsWith(" (see the failures).")),string.Join("\r\n",result.ListLines));
 				//The report comparison under allowed-differences.adoption.json lets the toolbutitem changes and the other link's Enabled through; the changed
 				//description of the DXC row is a column no rule allows.
 				AllowedDifferences allowed=AllowedDifferences.Load(Path.Combine(Path.GetDirectoryName(Validator.ReadTotalsSqlPath()),"..",
@@ -301,6 +400,66 @@ namespace AdoptionValidation.Tests {
 				Assert.IsTrue(listDiffs.Any(x => x.Table=="toolbutitem") && listDiffs.Where(x => x.Table=="toolbutitem").All(x => x.IsAllowed),ReportComparer.Format(listDiffs));
 				Assert.IsTrue(listDiffs.Any(x => x.Table=="program" && x.Column=="Enabled" && x.IsAllowed),ReportComparer.Format(listDiffs));
 				Assert.IsTrue(listDiffs.Any(x => x.Table=="program" && x.Column=="ProgDesc" && !x.IsAllowed),ReportComparer.Format(listDiffs));
+			}
+		}
+
+		///<summary>The other path of the Trojan Express Collect step, which the fixture (the link as an office that never used it has it) does not take:
+		///an office that used the link has its row enabled (Open Dental's 19.2.29 conversion enabled it where the old Trojan preferences had values).
+		///The original here is a copy of the rehearsal's source with that row enabled; the adopted copy is the rehearsal's, whose row is disabled and
+		///whose button is gone, which is what the step does to that original. migration-preview's plan disables the row and deletes the button, and the
+		///row check finds exactly that; an adopted copy whose row was left enabled, or whose row changed in another column too, fails.</summary>
+		[TestMethod]
+		public void RowCheck_HoldsAnEnabledTrojanExpressCollectRowToThePlan() {
+			SkipIfNeeded();
+			string original=Rehearsal.DbPrefix+Tag+"_srctrojan";
+			string adopted=Rehearsal.DbPrefix+Tag+"_adtrojan";
+			List<string> listLog=new List<string>();
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Source(1),"--database",original },listLog.Add),string.Join("\r\n",listLog));
+			Assert.AreEqual(Program.ExitPass,Program.Run(new[] { "copy","--original",Adopted(1),"--database",adopted },listLog.Add),string.Join("\r\n",listLog));
+			using(Db db=Db.Open(_server)) {
+				long numTrojan=db.ScalarLong("SELECT ProgramNum FROM `"+Source(1)+"`.program WHERE ProgName='TrojanExpressCollect'");
+				long numButtonTrojan=db.ScalarLong("SELECT ToolButItemNum FROM `"+Source(1)+"`.toolbutitem WHERE ProgramNum="+numTrojan);
+				long numDxc=db.ScalarLong("SELECT ProgramNum FROM `"+Source(1)+"`.program WHERE ProgName='"
+					+OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.DxcCreditScoreRemoved.PROG_NAME+"'");
+				db.Use(original);
+				Assert.AreEqual(1,db.Execute("UPDATE program SET Enabled=1 WHERE ProgramNum="+numTrojan),"An office that used the link.");
+				//migration-preview's plan for that original: the row disabled and its button deleted.
+				TrojanExpressCollectPlan.Plan plan=TrojanExpressCollectPlan.Make(db,original);
+				CollectionAssert.AreEqual(new[] { numTrojan },plan.Rows.ListProgramsDisabled.Select(x => x.ProgramNum).ToList());
+				CollectionAssert.AreEqual(new[] { numButtonTrojan },plan.Rows.ListButtonsDeleted.Select(x => x.ToolButItemNum).ToList());
+				string lines=string.Join("\r\n",plan.Lines());
+				StringAssert.Contains(lines,"the step disables 1 program row(s) of it (ProgramNum "+numTrojan+"), Enabled only and deletes its 1 toolbar button(s) "
+					+"(ToolButItemNum "+numButtonTrojan+" on AccountModule)");
+				StringAssert.Contains(lines,"\"Deleted 1 toolbar button(s) of the discontinued Trojan Express Collect program link (ToolButItemNum "+numButtonTrojan
+					+")\" and \"Disabled the discontinued Trojan Express Collect program link (ProgramNum "+numTrojan+")\"");
+				//The adopted copy holds exactly that.
+				AdoptionRowCheck.Result resultClean=AdoptionRowCheck.Run(db,original,adopted);
+				Assert.IsTrue(resultClean.Passed,string.Join("\r\n",resultClean.ListFailures));
+				CollectionAssert.AreEqual(new[] { numTrojan },resultClean.ListProgramNumsDisabledTrojan);
+				CollectionAssert.AreEqual(new[] { numButtonTrojan },resultClean.ListToolButItemNumsDeletedTrojan);
+				CollectionAssert.AreEqual(new[] { numDxc },resultClean.ListProgramNumsDisabled,"The DXC step's row as before.");
+				CollectionAssert.Contains(resultClean.ListLines,"program: 1 of the 1 DXC Patient Credit Score row(s) migration-preview lists disabled, Enabled only (ProgramNum "
+					+numDxc+"); 1 of the 1 Trojan Express Collect row(s) migration-preview lists disabled, Enabled only (ProgramNum "+numTrojan+"); no other row or column "
+					+"changed, none added or removed.",string.Join("\r\n",resultClean.ListLines));
+				//The row left enabled.
+				db.Use(adopted);
+				Assert.AreEqual(1,db.Execute("UPDATE program SET Enabled=1 WHERE ProgramNum="+numTrojan));
+				AdoptionRowCheck.Result resultEnabled=AdoptionRowCheck.Run(db,original,adopted);
+				Assert.IsFalse(resultEnabled.Passed);
+				StringAssert.Contains(string.Join("\r\n",resultEnabled.ListFailures),"program row "+numTrojan+" (the Trojan Express Collect link) was not disabled, though the "
+					+"fork migration disables it.");
+				Assert.AreEqual(0,resultEnabled.ListProgramNumsDisabledTrojan.Count);
+				CollectionAssert.Contains(resultEnabled.ListLines,"program: 1 of the 1 DXC Patient Credit Score row(s) migration-preview lists disabled, Enabled only "
+					+"(ProgramNum "+numDxc+"); 0 of the 1 Trojan Express Collect row(s) migration-preview lists disabled, Enabled only (see the failures).",
+					string.Join("\r\n",resultEnabled.ListLines));
+				//The row disabled, and another of its columns changed.
+				Assert.AreEqual(1,db.Execute("UPDATE program SET Enabled=0,Note='Synthetic note' WHERE ProgramNum="+numTrojan));
+				AdoptionRowCheck.Result resultNote=AdoptionRowCheck.Run(db,original,adopted);
+				string failuresNote=string.Join("\r\n",resultNote.ListFailures);
+				Assert.IsFalse(resultNote.Passed);
+				StringAssert.Contains(failuresNote,"program row "+numTrojan+" (the Trojan Express Collect link): Enabled, Note changed (Enabled now 0); the fork migration "
+					+"only sets Enabled to 0 there.");
+				Assert.AreEqual(0,resultNote.ListProgramNumsDisabledTrojan.Count);
 			}
 		}
 
@@ -617,7 +776,11 @@ namespace AdoptionValidation.Tests {
 			using(Db db=Db.Open(_server)) {
 				List<CredentialInventory.Item> listAfter=CredentialInventory.Run(db,Adopted(1));
 				Assert.AreEqual(listItems.Count,listAfter.Count,"Adoption does not touch stored passwords; they are re-entered by hand.");
-				string secret=Convert.ToString(db.Scalar("SELECT PropertyValue FROM `"+Adopted(1)+"`.programproperty WHERE PropertyDesc='Password'"));
+				//The XVWeb password (the fixture's Trojan Express Collect row has an empty one, which is not listed).
+				string secret=Convert.ToString(db.Scalar("SELECT pp.PropertyValue FROM `"+Adopted(1)+"`.programproperty pp INNER JOIN `"+Adopted(1)+"`.program p "
+					+"USING(ProgramNum) WHERE pp.PropertyDesc='Password' AND p.ProgName='"+OfficeFixture.PROGRAM_NAME+"'"));
+				Assert.IsFalse(string.IsNullOrEmpty(secret));
+				Assert.IsFalse(listAfter.Any(x => x.Location.Contains("TrojanExpressCollect")),"An empty password is not listed.");
 				Assert.IsFalse(listAfter.Any(x => x.ToString().Contains(secret)),"Values are never printed.");
 			}
 		}
@@ -786,6 +949,10 @@ namespace AdoptionValidation.Tests {
 			}
 		}
 
+		///<summary>adopt's "Adopt: PASS" part for the Trojan Express Collect step on the office fixture: its row is disabled already, its one button is
+		///deleted.</summary>
+		private const string LinePassTrojan="; it disabled 0 Trojan Express Collect program row(s) and deleted 1 of its toolbar button(s), as migration-preview lists";
+
 		///<summary>The dry run of runbook step 0.6 in the office's topology: Invoke-RunbookDryRun.ps1 runs the tool commands of steps 0.2, 1.1, 3.2 to
 		///6.1 and the go-live checks 10.1 and 10.2 exactly as the runbook gives them (AdoptionValidation float-check, connections, copy, adopt and
 		///startup-check, SyntheticData validate and compare), out of process, on a copy of the rehearsal's source, through a relay on another port
@@ -833,6 +1000,7 @@ namespace AdoptionValidation.Tests {
 				Assert.IsTrue(relay.CountAccepted>countBefore,"adopt connected through the relay");
 				Assert.IsTrue(listLog.Any(x => x.Contains("already has an adoption record")) && listLog.Any(x => x.Contains("Adoption is skipped")));
 				Assert.IsTrue(listLog.Any(x => x.Contains("securitylog: 3 entries added (1 adoption, 2 rehash)")),string.Join("\r\n",listLog));
+				Assert.IsTrue(listLog.Any(x => x.StartsWith("Adopt: PASS.") && x.Contains(LinePassTrojan)),string.Join("\r\n",listLog));
 				using(Db db=Db.Open(_server)) {
 					List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,copy,null,null),null);
 					Assert.IsTrue(listDiffs.All(x => x.Table=="securitylog" || x.Table=="securityloghash"),ReportComparer.Format(listDiffs));
@@ -852,6 +1020,11 @@ namespace AdoptionValidation.Tests {
 			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"compare-original.txt")),"Unexpected differences: 0");
 			string adoptionLog=File.ReadAllText(Path.Combine(folder,"adoption-log.txt"));
 			StringAssert.Contains(adoptionLog,"Adopt: PASS");
+			//The Trojan Express Collect step on the fixture's row (disabled, one Account module button): migration-preview, the log and adopt's PASS line.
+			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"migration-preview.txt")),"Step 2026110781 (Trojan Express Collect program link): the discontinued "
+				+"Trojan Express Collect program link (ProgramNum ");
+			StringAssert.Contains(adoptionLog,"Deleted 1 toolbar button(s) of the discontinued Trojan Express Collect program link (ToolButItemNum ");
+			StringAssert.Contains(adoptionLog,LinePassTrojan);
 			StringAssert.Contains(adoptionLog,"Row check against "+Source(1));
 			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"startup-check.txt")),"Every Open Dental release client refuses this database.");
 			StringAssert.Contains(File.ReadAllText(Path.Combine(folder,"connections-golive.txt")),"No connection uses "+Source(1)+".");

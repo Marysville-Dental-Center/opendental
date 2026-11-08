@@ -1,5 +1,6 @@
-// B-SHELL (v25_2-bridges-dxc-credit-score-removed): program links whose service was discontinued. Since 2026-11-07 also the program links
-// removed from this program (owner question REL-FILES 2: DentX, Dexis Integrator and Vipersoft, which needed NDde.dll).
+// B-SHELL (v25_2-bridges-dxc-credit-score-removed): program links whose service was discontinued. P262-LINKS (Open Dental 26.2 item 46) adds
+// Trojan Express Collect. Since 2026-11-07 also the program links removed from this program (owner question REL-FILES 2: DentX, Dexis Integrator
+// and Vipersoft, which needed NDde.dll).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -8,16 +9,20 @@ using System.Linq;
 namespace OpenPmsDentalBusiness {
 	///<summary>Program links whose service no longer exists (ListProgramNames), and program links this program no longer has
 	///(ListProgramNamesRemoved). Their program rows stay (migrated data refers to them by ProgName), but they cannot be launched or enabled, Program
-	///Links lists them with a label, and no toolbar shows their buttons (ToolButItems.GetForToolBar). The fork migration step DxcCreditScoreRemovedStep
-	///disables the rows of DXC Patient Credit Score that exist; a removed link's row is left as it is, and a click on it says it was removed.</summary>
+	///Links lists them with a label, and no toolbar shows their buttons (ToolButItems.GetForToolBar). The fork migration steps DxcCreditScoreRemovedStep
+	///and TrojanExpressCollectRemovedStep disable the rows of the discontinued links that exist; a removed link's row is left as it is, and a click
+	///on it says it was removed.</summary>
 	public static class ProgramLinksDiscontinued {
 		///<summary>Added to the description of a discontinued program link where Program Links lists it. The row itself is not changed.</summary>
 		public const string LABEL="(discontinued)";
 
 		///<summary>DXC Patient Credit Score: removed in Open Dental 25.2 because the service was discontinued. The bridge posted the ClaimConnect
-		///clearinghouse login and password to a DentalXChange registration page.</summary>
+		///clearinghouse login and password to a DentalXChange registration page.
+		///Trojan Express Collect: deprecated in Open Dental 26.2; its public page says the service is no longer offered. The bridge wrote collection
+		///requests (with the guarantor's Social Security number) to a folder that Trojan's own communicator program sent on.</summary>
 		public static readonly List<ProgramName> ListProgramNames=new List<ProgramName> {
 			ProgramName.DXCPatientCreditScore,
+			ProgramName.TrojanExpressCollect,
 		};
 
 		///<summary>Added to the description of a program link removed from this program where Program Links lists it. The row itself is not changed.

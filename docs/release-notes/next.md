@@ -39,6 +39,8 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - the database schema of Open Dental 26.2;
 - three smaller Open Dental 26.2 changes: vital signs imported from eForms, types for referral commlogs, and an optional automatic switch
   between a patient's Prophy and Perio recall.
+- the database schema of Open Dental 26.2;
+- the program links of Open Dental 26.2: Allied Star Connect and OrthoComposite added, Trojan Express Collect and Suni retired.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
 inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below). It also
@@ -533,3 +535,25 @@ Three of Open Dental 26.2's smaller changes, re-implemented from Open Dental's p
   next trigger procedure is completed, and turning the setting on switches nobody for procedures completed before. Nothing switches when the
   newest date has both kinds of procedure, when the recall is disabled, when the patient has both a Prophy and a Perio recall, or when the
   Prophy and Perio types do not both have triggers. Each switch is recorded in the Audit Trail.
+## Program links of Open Dental 26.2
+
+Built from Open Dental's public 26.2 release notes and setup pages only (`docs/port-notes/P262-LINKS.md`). New links appear in Setup >
+Program Links the first time it is opened, disabled; their buttons show only once the office enables them.
+
+- **Allied Star Connect** (new): a Chart module button that writes the selected patient (id, name, birthdate, gender and the first email
+  address) to the .json file in the link's Info file path, then starts Connect (default path `C:\Program Files\Alliedstar\Connect\Connect.exe`).
+  The folders of the Info file path must already exist; the program does not create them and says so. Without a patient, an old info file
+  is removed first, so Connect can never open the previous patient. The file is removed when the program closes. The layout of the file is
+  this program's own, because Alliedstar has not published one: if Connect does not open the patient, ask Alliedstar which layout it reads.
+- **OrthoComposite** (new): a Chart module button that starts OrthoComposite with the patient's first name, last name and birthdate
+  (MM/dd/yyyy). How OrthoComposite takes them is not published, so the office enters the arguments in the link's Patient arguments property
+  from OrthoComposite's own instructions, with the tokens [FName], [LName] and [Birthdate]; no other patient data can be sent. Enter where
+  OrthoComposite is in Path of file to open (a program installed from the Microsoft Store can be given by its name, for example
+  `OrthoComposite.exe`).
+- **Trojan Express Collect** (retired): the service is no longer offered. The link is listed as "(discontinued)", cannot be enabled or
+  started, and the update disables it and removes its buttons (fork migration step 2026110781); its settings stay in the database. Nearly
+  every database has one such button on the Account module toolbar (Open Dental's 2019 update added it for every office, hidden while the
+  link was off), so the update log normally shows one button removed. The Trojan benefit link is not affected.
+- **Suni** (removed): Suni's direct capture was already removed in version 0.0; nothing is left that uses the Suni settings. The database
+  columns stay, as in Open Dental 26.2.
+- **Ez3D-i** stays (owner decision), although Open Dental 26.2 removed it.
