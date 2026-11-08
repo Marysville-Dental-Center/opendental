@@ -427,8 +427,8 @@ writing), with the net462 closure their lock files list. Not `System.Security.Cr
 - MySqlConnector behaviour changes on connection errors: the Core run and the reconnect/"connection lost" paths are exercised by the
   existing database tests; add one test that a killed connection reports `Broken` and the program's reconnect path recovers.
 - The 10.0 polyfills on net48 change assembly versions: the manual binding redirects and `BindingRedirectTests` move with them.
-- The TLS path differs per key provider and TLS version: the new test covers both providers; it runs again at the 3b gate. Its test
-  environment needs the owner (open point O-8).
+- The TLS path differs per key provider and TLS version: the new test covers both providers; it runs again at the 3b gate. It runs
+  on a temporary local server on `127.0.0.1:3307` (open point O-8, answered).
 - The classic Middle Tier project may no longer get transitive package DLLs copied (NuGet has limited PackageReference support for ASP.NET
   Framework apps, https://learn.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files). It is not shipped and is
   replaced in 3b; it must still build. Do not deploy it from stages 2-3a.
@@ -1052,16 +1052,19 @@ no Middle Tier server while the Middle Tier is still ported (open point O-7, S3b
   new Middle Tier for real on the build PC: a Windows service on a loopback address with a test certificate, with the host round-trip
   tests and a client session run against it. The build PC already has the ASP.NET Core Runtime 10.0.14 (x86 and x64), so batch C is
   only for a future office server, and section 10 step 4 is not needed for this office today (decision 18).
-- **O-8. Database TLS test environment** (owner; needed before the stage 2 gate). The TLS test of S2-2 needs four things:
-  - a MariaDB or MySQL server reachable on a non-loopback address, with TLS from a test CA;
-  - a `REQUIRE X509` user;
-  - a CAPI and a CNG client PFX in `LocalMachine\My`, which needs administrator rights and changes a machine-wide store;
-  - an exception to the workflow rule that agents use only the loopback server, for this one test.
-
-  Options: (a) On the build PC, a second database server instance with its own port and data folder and that TLS set-up. The owner runs one
-  elevated step that imports the two PFX files before each gate and removes them after it. (b) A disposable VM or Windows Sandbox that
-  runs both the server and the test, as in O-3 (b). Recommendation: (a). Until then the test is skipped, and the stage 2 and 3b gates
-  cannot pass.
+- **O-8. Database TLS test environment. Answered 2026-11-08: local testing with encryption, on a temporary second server (option (a)).**
+  The owner: "database encryption: do local testing with encryption", then "A". The TLS test of S2-2 (again at the 3b gate) runs
+  entirely on the build PC:
+  - the test run starts a temporary MariaDB server from the installed MariaDB 10.11 binaries, on `127.0.0.1:3307` with its own data
+    folder under the test's temp folder and TLS from a test CA, and stops and deletes it afterwards; the server on `127.0.0.1:3306` is
+    not touched (the one exception to the rule that only `127.0.0.1:3306` is used, for this test only);
+  - the test creates the CA, a server certificate for `127.0.0.1` and `localhost`, and a CAPI and a CNG client PFX itself, imports the
+    client certificates into the current user's store (no administrator rights; `DbConnectionSecurity` gets a test-only store
+    location) and removes them afterwards;
+  - a test-only switch makes the loopback connection follow the network rule (TLS required, `VerifyFull`, the client certificate),
+    since the program exempts loopback connections from it;
+  - a `REQUIRE X509` account on the temporary server takes the certificate logins.
+  The stage 2 and 3b gates need this test to pass (it is skipped only when the MariaDB binaries are missing, and the gate then fails).
 - **O-9. The developer windows in the legacy UnitTests project. Answered 2026-11-08 by the standing rule: kept.** Its `UI Testing`
   folder holds 23 developer windows. One of them, `FormWpfConverter`, is the only front end of the `WpfConverter` class
   (`OpenPmsDental/UIManagement/WpfConverter.cs`, compiled into the program) and the only launcher of the WPF test windows

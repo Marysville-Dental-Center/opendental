@@ -637,6 +637,9 @@ answer; the standing rule below, with its correction; and "Don't need 'Install f
 - **Downloads.** Approved for every download batch of the plan (section 5: A, B, C and D, with the packages the standing rule adds)
   ("You get approval for download for all batches", 2026-11-08). Each package comes from nuget.org by its exact id, into the local
   package folder, at the stage that needs it. The TWAIN data source manager for the 64-bit stage is not a plan batch and is asked then.
+- **Testing database encryption.** Locally, with encryption ("database encryption: do local testing with encryption", then "A"): the
+  test starts a temporary second MariaDB server on `127.0.0.1:3307` with test certificates it makes itself, and removes it afterwards.
+  Your database server on port 3306 is not touched, and no administrator rights are needed.
 - **QuickBooks Desktop, Schick CDR and Topaz signature pads.** The office does not use them. They were to be removed in the clean-up stage
   (owner, 2026-11-07); now kept and ported (owner correction, 2026-11-08).
 - **Order of the stages.** A clean-up stage first; then SDK-style project files, NuGet packages and the test framework, all still on .NET
