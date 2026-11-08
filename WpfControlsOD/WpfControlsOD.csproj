@@ -66,7 +66,6 @@
       <HintPath>..\Required dlls\System.Memory.dll</HintPath>
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
-    <Reference Include="System.ServiceModel" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Services" />
@@ -115,7 +114,6 @@
     <Compile Include="Bridges\DentForms.cs" />
     <Compile Include="Bridges\Dexis.cs" />
     <Compile Include="Bridges\Digora.cs" />
-    <Compile Include="Bridges\DivvyPostcardService.cs" />
     <Compile Include="Bridges\Dolphin.cs" />
     <Compile Include="Bridges\DrCeph.cs" />
     <Compile Include="Bridges\DTXStudio.cs" />
