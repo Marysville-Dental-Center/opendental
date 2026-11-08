@@ -4258,12 +4258,14 @@ namespace OpenPmsDental{
 				inputBoxParam.Text=Lan.g(this,"Do not show me this message again."); 
 				inputBoxParam.PointPosition=new System.Windows.Point(0,10);
 				InputBox inputBox=new InputBox(inputBoxParam);
+				//Nobody answered within 15 seconds: the log off or close the user asked for goes ahead. Any input in the box stops that countdown
+				//(S0-F), so a user who is answering is never overtaken by it.
 				inputBox.HasTimeout=true;
 				inputBox.ShowDialog();
 				if(inputBox.HasTimedOut) {//Don't save the checkbox if inputBox times out
 					return true;
 				}
-				if(inputBox.IsDialogCancel) {
+				if(inputBox.IsDialogCancel) {//X or Esc: No.
 					return false;
 				}
 				if(inputBox.BoolResult) {
