@@ -84,11 +84,12 @@ namespace M201Tests {
 			SchemaSnapshot reference=SchemaVerifier.GetReference26_1_70();
 			Assert.AreEqual(427,reference.Tables.Count,"Open Dental 26.1 has 427 tables: the 422 of 25.3.48 and 5 new ones.");
 			Assert.IsTrue(reference.Tables.All(x => x.Engine=="MyISAM" && x.Charset=="utf8mb3" && x.Collation=="utf8mb3_general_ci"));
-			Assert.AreSame(reference,SchemaVerifier.GetReference());
-			Assert.AreEqual("26.1.70",SchemaVerifier.ReferenceVersion);
-			Assert.AreEqual(SchemaVerifier.ReferenceResourceName26_1_70,SchemaVerifier.ReferenceResourceName);
+			//Since package P262-SCHEMA the default reference is Open Dental 26.2.0 (tests/P262SchemaTests); 26.1.70 stays embedded under its own names.
+			Assert.AreEqual("26.1.70",SchemaVerifier.ReferenceVersion26_1_70);
+			Assert.AreEqual("26.2.0",SchemaVerifier.ReferenceVersion);
+			Assert.AreNotEqual(SchemaVerifier.ReferenceResourceName26_1_70,SchemaVerifier.ReferenceResourceName);
 			Assert.AreEqual(422,SchemaVerifier.GetReference25_3_48().Tables.Count,"The 25.3.48 reference is still there, unchanged.");
-			StringAssert.DoesNotMatch(SchemaVerifier.ReadReferenceDdl(),new Regex("AUTO_INCREMENT=[0-9]"));
+			StringAssert.DoesNotMatch(SchemaVerifier.ReadReferenceDdl(SchemaVerifier.ReferenceResourceName26_1_70),new Regex("AUTO_INCREMENT=[0-9]"));
 			Assert.IsNull(reference.GetTable("patient").GetColumn(SchemaVerifier.PortalActiveEmailColumn));
 			foreach(string table in SchemaVerifier.ArrayHqOnlyTables.Concat(SchemaVerifier.ArrayLegacyTables)) {
 				Assert.IsFalse(reference.HasTable(table),table+" is not in Open Dental 26.1.");
@@ -250,7 +251,8 @@ namespace M201Tests {
 		public void Enums_HaveThePublished26_1Numbers() {
 			Assert.AreEqual(56,(int)DefCat.EmployeeTitles);
 			Assert.AreEqual(55,(int)DefCat.OperatoryTypes,"The categories before it keep their numbers.");
-			Assert.AreEqual(57,Enum.GetValues(typeof(DefCat)).Length,"Contiguous 0 to 56: the definition cache indexes its arrays by category.");
+			//Contiguous from 0 (0 to 57 since Open Dental 26.2, package P262-SCHEMA): the definition cache indexes its arrays by category.
+			Assert.AreEqual(Enum.GetValues(typeof(DefCat)).Cast<int>().Max()+1,Enum.GetValues(typeof(DefCat)).Length,"DefCat is contiguous.");
 			CollectionAssert.AreEqual(new[] { "None","LogoImage","MaterialColorPalette","OfficeDescription" },Enum.GetNames(typeof(EnumBrandingType)));
 			CollectionAssert.AreEqual(new[] { 0,1,2,3 },Enum.GetValues(typeof(EnumBrandingType)).Cast<int>().ToArray());
 			CollectionAssert.AreEqual(new[] { "None","Schedules","LabCases","MedicationPats","PatFields","ToothInitials" },

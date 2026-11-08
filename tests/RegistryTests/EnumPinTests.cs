@@ -141,12 +141,15 @@ namespace RegistryTests {
 		///values, removed values). UI-only members that are never stored are listed as exceptions.</summary>
 		[TestMethod]
 		public void ChangedEnums_HaveNoMembersOutsideThePublishedList() {
-			//Members that Open Dental 25.4 and 26.1 added are not in the 25.3 document; M202Tests pins them against the 25.4 and 26.1 documents.
+			//Members that Open Dental 25.4, 26.1 and 26.2 added are not in the 25.3 document; M202Tests pins them against the 25.4 and 26.1 documents,
+			//P262SchemaTests against the 26.2 documents.
 			Dictionary<Type,string[]> dictExceptions=new Dictionary<Type,string[]> {
 				{ typeof(EnumPermType),new[] { "EditReadOnlyTasks",//227, HQ only. The published document skips members that have no summary comment.
-					"BlockoutAdd","BlockoutDelete","PatientSelected","LogScraperHQ" } },//25.4 and 26.1
+					"BlockoutAdd","BlockoutDelete","PatientSelected","LogScraperHQ",//25.4 and 26.1
+					"AdvancedTextingAccountEdit" } },//26.2
 				{ typeof(AlertType),new[] { "TreatmentPlanImagesFolderInaccesible","PaymentPlanImagesFolderInaccesible","CannotCreateOrAccessPatientFolder",
-					"DefaultEmailNotSet","PaySuite","EServiceListenerError" } },//25.4 and 26.1
+					"DefaultEmailNotSet","PaySuite","EServiceListenerError",//25.4 and 26.1
+					"MariaDbFullBackupError","MariaDbIncrementalBackupError","EConnectorCritical" } },//26.2
 				{ typeof(FormType),new[] { "FrmPaySuiteReconciliation" } },//25.4
 				{ typeof(CommItemSource),new string[0] },
 				{ typeof(EtransType),new string[0] },
@@ -157,6 +160,7 @@ namespace RegistryTests {
 				{ typeof(InsBlueBookRuleType),new string[0] },
 				{ typeof(SchedStatus),new string[0] },
 				{ typeof(UserOdFkeyType),new[] { "DefaultTestingTeamJM",//25.4
+					"PerioShowCurrentProbingOnly",//26.2
 					"PatientFormsView" } },//114, fork only (package B-EF): Patient Forms view per user.
 				{ typeof(EnumPearlStatus),new string[0] },
 				{ typeof(PerioSequenceType),new string[0] },

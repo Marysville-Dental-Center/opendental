@@ -42,8 +42,9 @@ namespace AdoptionValidation {
 	///  value is the original date at midnight;
 	///- supplyledger, the inventory stock ledger (a table of this program, InventoryTables), the one table of this program adoption writes rows into:
 	///  exactly the opening balance rows the inventory step plans (InventoryPlan, what migration-preview lists), and no other row;
-	///- the tables the 25.4 and 26.1 steps add stay empty, and the columns they add hold the column's default in every row (the codegroup rows the
-	///  Insurance History step writes aside); this program's own tables (ForkTables, for example routine maintenance) are created empty too;
+	///- the tables the 25.4, 26.1 and 26.2 steps add stay empty, and the columns they add hold the column's default in every row (the codegroup rows
+	///  the Insurance History step writes aside; insbluebook.DateTStamp, a timestamp, holds the one time of the ALTER TABLE that added it); this
+	///  program's own tables (ForkTables, for example routine maintenance) are created empty too;
 	///- updatehistory: nothing.
 	///Read-only; it names rows, preferences, permissions, columns and report names, never other values. The original must be the unchanged database the
 	///copy was made from (runbook step 3.3 showed they were equal, and step 10.2 shows the original did not change).</summary>
@@ -883,11 +884,12 @@ namespace AdoptionValidation {
 			result.ListLines.Add("Changed columns: "+string.Join("; ",listParts)+".");
 		}
 
-		///<summary>The tables the copy has and the original lacks must be empty (the Open Dental 25.4 and 26.1 tables and this program's own tables,
-		///ForkTables, listed apart), and every column the copy's tables have and the original's lack must hold
-		///the column's default in every row: the 25.4 and 26.1 schema steps add them and write nothing into them (evaluation.GradeOverride's default is
-		///-1, the "no override" back-fill). The one exception is the codegroup rows the Insurance History step writes (and any added row), which
-		///CheckCodeGroup holds to the plan.</summary>
+		///<summary>The tables the copy has and the original lacks must be empty (the Open Dental 25.4, 26.1 and 26.2 tables and this program's own
+		///tables, ForkTables, listed apart), and every column the copy's tables have and the original's lack must hold
+		///the column's default in every row: the 25.4, 26.1 and 26.2 schema steps add them and write nothing into them (evaluation.GradeOverride's
+		///default is -1, the "no override" back-fill). A new timestamp column whose default is the current time (insbluebook.DateTStamp, 26.2) holds
+		///the one time of the ALTER TABLE in every row instead. The one exception is the codegroup rows the Insurance History step writes (and any
+		///added row), which CheckCodeGroup holds to the plan.</summary>
 		private static void CheckNewTablesAndColumns(Db db,string original,string adopted,Result result) {
 			int countFailuresBefore=result.ListFailures.Count;
 			HashSet<string> setTablesOriginal=new HashSet<string>(TableNames(db,original),StringComparer.OrdinalIgnoreCase);
@@ -936,6 +938,19 @@ namespace AdoptionValidation {
 				LocalOnly.EnsureSafeIdentifier(table);
 				LocalOnly.EnsureSafeIdentifier(column);
 				string dataType=Convert.ToString(row[4]).ToLowerInvariant();
+				if(IsAlterTimeColumn(row[2]==null ? null : Convert.ToString(row[2],CultureInfo.InvariantCulture),dataType)) {
+					//A new timestamp column with DEFAULT current_timestamp() (insbluebook.DateTStamp, Open Dental 26.2): the ALTER TABLE that adds it
+					//fills every existing row with its own time, the same for all of them, and the fork migration writes nothing else into it.
+					long countTimes=db.ScalarLong("SELECT COUNT(DISTINCT `"+column+"`) FROM `"+adopted+"`.`"+table+"`");
+					long countBlank=db.ScalarLong("SELECT COUNT(*) FROM `"+adopted+"`.`"+table+"` WHERE `"+column+"` IS NULL OR `"+column+"`<'1970-01-02'");
+					if(countTimes>1 || countBlank>0) {
+						result.ListFailures.Add("The new column "+table+"."+column+" holds "+countTimes+" different time(s) and "+countBlank+" blank one(s); the "
+							+"ALTER TABLE that adds it gives every existing row its one time, and the fork migration writes nothing else into it.");
+						continue;
+					}
+					result.ListColumnsAddedChecked.Add(table+"."+column);
+					continue;
+				}
 				string expression=DefaultExpression(row[2]==null ? null : Convert.ToString(row[2],CultureInfo.InvariantCulture),
 					string.Equals(Convert.ToString(row[3]),"YES",StringComparison.OrdinalIgnoreCase),dataType);
 				if(expression==null) {
@@ -991,6 +1006,13 @@ namespace AdoptionValidation {
 				return text;
 			}
 			return null;
+		}
+
+		///<summary>True for a timestamp column whose default is the current time (COLUMN_DEFAULT current_timestamp(), as MariaDB 10.11 prints it):
+		///adding it fills every existing row with the time of the ALTER TABLE, not with a literal default.</summary>
+		public static bool IsAlterTimeColumn(string columnDefault,string dataType) {
+			return dataType=="timestamp" && columnDefault!=null
+				&& System.Text.RegularExpressions.Regex.IsMatch(columnDefault.Trim(),@"^current_timestamp(\(\))?$",System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 		}
 
 		private static bool IsTextType(string dataType) {

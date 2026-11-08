@@ -96,9 +96,10 @@ namespace ForkMigrationTests {
 			}
 		}
 
-		///<summary>Since M2-01 every step brings a database to Open Dental 26.1.70, so the database to compare with is od_261_schema, loaded from the
-		///26.1.70 reference by tools/New-OdReferenceDatabase.ps1. That reference has no office customization, so the only allowed differences are the
-		///extra legacy tables of the 21.1 seed.</summary>
+		///<summary>Since M2-01 the steps bring a database to Open Dental 26.1.70 and, since P262-SCHEMA, on to 26.2.0, so the database is compared with
+		///od_261_schema, loaded from the 26.1.70 reference by tools/New-OdReferenceDatabase.ps1: the only mismatches are exactly the 26.1.70 to 26.2.0
+		///differences of the references. That reference has no office customization, so the only allowed differences are the extra legacy tables of
+		///the 21.1 seed.</summary>
 		[TestMethod]
 		public void Migrated_MatchesOd261SchemaDatabase() {
 			if(!TestDb.DatabaseExists(TestDb.DbNameOd261Schema)) {
@@ -106,7 +107,9 @@ namespace ForkMigrationTests {
 			}
 			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaSnapshot.FromDatabase(TestDb.DbNameOd261Schema),SchemaSnapshot.FromDatabase(DB_NAME),
 				SchemaVerifier.DocumentedExceptions26_1_70);
-			Assert.IsTrue(result.IsMatch,result.GetReport());
+			SchemaVerifyResult result26_2=SchemaVerifier.Compare(SchemaVerifier.GetReference26_1_70(),SchemaVerifier.GetReference26_2_0());
+			CollectionAssert.AreEquivalent(result26_2.ListDifferences.Select(x => x.Kind+" "+x.Table+"."+x.Item).ToList(),
+				result.ListMismatches.Select(x => x.Kind+" "+x.Table+"."+x.Item).ToList(),result.GetReport());
 			foreach(SchemaDifference difference in result.ListAllowed) {
 				Assert.AreEqual(SchemaDifferenceKind.ExtraTable,difference.Kind,difference.ToString());
 			}

@@ -40,7 +40,7 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 		private static readonly object _lock=new object();
 
 		///<summary>Every ForkTableSet of this assembly, ordered by class name. Throws when two sets declare the same table, or a table name is
-		///also a table of the Open Dental 26.1.70 reference.</summary>
+		///also a table of the default Open Dental reference (26.2.0).</summary>
 		public static List<ForkTableSet> GetSets() {
 			lock(_lock) {
 				if(_listSets==null) {

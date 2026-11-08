@@ -81,13 +81,15 @@ namespace M202Tests {
 		}
 
 		[TestMethod]
-		public void EnumPermType_EndsAt276WithoutGaps() {
+		public void EnumPermType_EndsAt277WithoutGaps() {
 			//Open Dental's values; this program's own values start at 10000 (docs/port-notes/FORK-ENUMS.md).
 			int[] arrayValues=Enum.GetValues(typeof(EnumPermType)).Cast<int>().Where(x => x<ForkEnums.FIRST_VALUE).OrderBy(x => x).ToArray();
 			for(int i=0;i<arrayValues.Length;i++) {
 				Assert.AreEqual(i,arrayValues[i],"Open Dental's permission values have no gaps.");
 			}
-			Assert.AreEqual(276,arrayValues.Max());
+			//276 is the last value of 26.1; Open Dental 26.2 added 277 AdvancedTextingAccountEdit (package P262-SCHEMA).
+			Assert.AreEqual(277,arrayValues.Max());
+			Assert.AreEqual(276,(int)EnumPermType.LogScraperHQ);
 		}
 
 		///<summary>The 272 conflict: Open Dental's 25.3 documents print 272 PhoneExtension, the 25.4 and 26.1 documents print 272 BlockoutAdd and 274

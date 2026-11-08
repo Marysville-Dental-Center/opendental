@@ -10,11 +10,11 @@ date, and runs it to:
   2. load the seed dump UnitTests\Resources\dump.txt, a version 21.1.9 database;
   3. upgrade it to this build's version with the convert scripts in OpenPmsDentalBusiness (frozen at 24.3.63) and record ProgramVersion;
   4. adopt it (OpenPmsDentalBusiness\Misc\ForkMigrations\Adoption.cs, as the adoption tool does), which writes the fork version markers and runs
-     the fork migrations that bring the schema to Open Dental 25.3.48 and then 26.1.70, so the startup version guard opens it;
+     the fork migrations that bring the schema to Open Dental 25.3.48, then 26.1.70 and 26.2.0, so the startup version guard opens it;
   5. apply the default auto codes, procedure buttons and appointment quick-add procedures;
   6. create an A to Z images folder, and optionally add fictional sample data;
   7. verify the version preferences or fork markers, that every table and column the code expects exists, and that the schema matches
-     Open Dental 26.1.70 (OpenPmsDentalBusiness\Misc\ForkMigrations\Reference\OdSchema-26.1.70.sql) apart from the documented exceptions.
+     Open Dental 26.2.0 (OpenPmsDentalBusiness\Misc\ForkMigrations\Reference\OdSchema-26.2.0.sql) apart from the documented exceptions.
 
 The tool talks only to the database server. Outbound HTTP is blocked, and any attempt is reported with exit code 3.
 The default user Admin has a blank password.

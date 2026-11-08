@@ -17,7 +17,7 @@ namespace ForkMigrationTests {
 		///and the migrated columns agree, including the new and retyped columns.</summary>
 		[TestMethod]
 		public void Crud_RoundTripEveryChangedTable() {
-			SchemaSnapshot reference=SchemaVerifier.GetReference();//The migrated database is at the default reference (26.1.70 since M2-01).
+			SchemaSnapshot reference=SchemaVerifier.GetReference();//The migrated database is at the default reference (26.2.0 since P262-SCHEMA).
 			Dictionary<string,Type> dictTypes=ReferenceSnapshotTests.GetTableTypes()
 				.ToDictionary(x => CrudTableAttribute.GetTableName(x).ToLowerInvariant(),x => x);
 			List<string> listProblems=new List<string>();

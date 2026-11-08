@@ -170,8 +170,9 @@ namespace AdoptionValidation.Tests {
 			}
 			StringAssert.Contains(output,"Adoption's fork migration will rename 3 displayreport row(s), changing only their InternalName");
 			Assert.IsFalse(output.Contains("ODSyntheticFutureReport") || output.Contains("ODToday"),"Rows of other reports are not listed.\r\n"+output);
-			//The Open Dental 25.4 and 26.1 steps: the schema to 26.1.70, the fixture's NULL note, every 25.4 and 26.1 preference, the permission split.
-			StringAssert.Contains(output,"bring the schema to Open Dental "+SchemaVerifier.ReferenceVersion+": 5 new table(s), empty (");
+			//The Open Dental 25.4, 26.1 and 26.2 steps: the schema to 26.2.0 (five 25.4/26.1 tables and three 26.2 ones), the fixture's NULL note, every
+			//25.4 and 26.1 preference, the permission split.
+			StringAssert.Contains(output,"bring the schema to Open Dental "+SchemaVerifier.ReferenceVersion+": 8 new table(s), empty (");
 			StringAssert.Contains(output,"1 NULL note(s) become empty");
 			StringAssert.Contains(output,"inserts "+Seed26_1.ListPrefDefaults.Count+" preference(s) with their defaults: ");
 			StringAssert.Contains(output,"moves 1 Open Dental 25.3 PhoneExtension grant(s) from 272 to 274, then grants BlockoutAdd (272) to 2 user group(s) and "

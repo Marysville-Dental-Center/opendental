@@ -60,9 +60,10 @@ namespace ForkMigrationTests {
 			_dictChecksumsAfterAll=TestDb.ChecksumAllTables(DB_NAME,"preference");
 		}
 
-		///<summary>Tables the Open Dental 25.4 and 26.1 steps change or add: every table where the two references differ.</summary>
+		///<summary>Tables the Open Dental 25.4, 26.1 and 26.2 steps change or add: every table where the 25.3.48 reference and the default reference
+		///(26.2.0 since P262-SCHEMA) differ.</summary>
 		private static HashSet<string> GetTablesChangedBy26_1() {
-			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaVerifier.GetReference26_1_70(),SchemaVerifier.GetReference25_3_48());
+			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaVerifier.GetReference(),SchemaVerifier.GetReference25_3_48());
 			return new HashSet<string>(result.ListDifferences.Select(x => x.Table),StringComparer.OrdinalIgnoreCase);
 		}
 
