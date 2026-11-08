@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 
 namespace CodeBase {
 	public static class ODExceptionExtensions {
@@ -73,7 +72,6 @@ namespace CodeBase {
 		}
 
 		///<summary>Used for serialization.</summary>
-		[SecurityPermission(SecurityAction.Demand,SerializationFormatter=true)]
 		public override void GetObjectData(SerializationInfo info,StreamingContext context) {
 			if(info==null) {
 				throw new ArgumentNullException("info");

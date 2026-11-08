@@ -113,7 +113,6 @@ namespace OpenPmsDental.Bridges {
 
 		///<summary>Listen to when the handle changes to keep the variable in sync
 		///See https://msdn.microsoft.com/en-us/library/system.windows.forms.nativewindow.handle(v=vs.110).aspx </summary>
-    [System.Security.Permissions.PermissionSet(System.Security.Permissions.SecurityAction.Demand, Name = "FullTrust")]
     protected override void OnHandleChange()
     {
         _windowHandle = (int)this.Handle;
@@ -121,7 +120,6 @@ namespace OpenPmsDental.Bridges {
 
 		///<summary>Listen for messages being sent back to this handle by CADI. We need to include this to allow the CADI window to close properly.
 		///See https://msdn.microsoft.com/en-us/library/system.windows.forms.nativewindow.handle(v=vs.110).aspx </summary>
-		[System.Security.Permissions.PermissionSet(System.Security.Permissions.SecurityAction.Demand, Name = "FullTrust")]
     protected override void WndProc(ref Message m)
     {
 			switch ((uint)m.Msg)

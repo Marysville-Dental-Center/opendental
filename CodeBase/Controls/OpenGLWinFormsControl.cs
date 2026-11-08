@@ -54,7 +54,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
-using System.Security;
 using System.Collections;
 
 
@@ -147,7 +146,7 @@ namespace CodeBase {
 
 		#region int _DescribePixelFormat(System.IntPtr hdc,int iPixelFormat,uint nBytes,ref Gdi.PIXELFORMATDESCRIPTOR ppfd)
 		///<summary>Creates an unmanaged reference to DescribePixelFormat(), which is used to choose an appropriate device pixel format for the current OS and video card.</summary>
-		[DllImport("gdi32.dll",EntryPoint="DescribePixelFormat",SetLastError=true),SuppressUnmanagedCodeSecurity]
+		[DllImport("gdi32.dll",EntryPoint="DescribePixelFormat",SetLastError=true)]
 		public static extern int _DescribePixelFormat(System.IntPtr hdc,int iPixelFormat,uint nBytes,ref Gdi.PIXELFORMATDESCRIPTOR ppfd);
 		#endregion int _DescribePixelFormat(System.IntPtr hdc,int iPixelFormat,uint nBytes,ref Gdi.PIXELFORMATDESCRIPTOR ppfd)
 
