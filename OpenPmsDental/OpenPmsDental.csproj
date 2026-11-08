@@ -1446,9 +1446,6 @@
     <Compile Include="Forms\FormTerminal.designer.cs">
       <DependentUpon>FormTerminal.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormTerminalConnection.designer.cs">
-      <DependentUpon>FormTerminalConnection.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormTimeAdjustEdit.designer.cs">
       <DependentUpon>FormTimeAdjustEdit.cs</DependentUpon>
     </Compile>
@@ -2520,9 +2517,6 @@
     </Compile>
     <Compile Include="Forms\FormClaimCustomTrackingUpdate.designer.cs">
       <DependentUpon>FormClaimCustomTrackingUpdate.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormTerminalConnection.cs">
-      <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormTransworldSetup.cs">
       <SubType>Form</SubType>
@@ -6639,9 +6633,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormClaimCustomTrackingUpdate.resx">
       <DependentUpon>FormClaimCustomTrackingUpdate.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormTerminalConnection.resx">
-      <DependentUpon>FormTerminalConnection.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormTransworldSetup.resx">
       <DependentUpon>FormTransworldSetup.cs</DependentUpon>

@@ -837,7 +837,6 @@
     <Compile Include="Db\DataConnectionCancelable.cs" />
     <Compile Include="Db\SQLWhere.cs" />
     <Compile Include="Eclaims\AOS.cs" />
-    <Compile Include="Eclaims\BCBSGA.cs" />
     <Compile Include="Eclaims\Canadian.cs" />
     <Compile Include="Eclaims\CanadianOutput.cs" />
     <Compile Include="Eclaims\CCDerror.cs" />
@@ -852,14 +851,12 @@
     <Compile Include="Eclaims\EDS.cs" />
     <Compile Include="Eclaims\EmdeonMedical.cs" />
     <Compile Include="Eclaims\Inmediata.cs" />
-    <Compile Include="Eclaims\ITerminalConnector.cs" />
     <Compile Include="Eclaims\MercuryDE.cs" />
     <Compile Include="Eclaims\NHS.cs" />
     <Compile Include="Eclaims\Ramq.cs" />
     <Compile Include="Eclaims\RECS.cs" />
     <Compile Include="Eclaims\Renaissance.cs" />
     <Compile Include="Eclaims\Rs232.cs" />
-    <Compile Include="Eclaims\TerminalConnector.cs" />
     <Compile Include="Eclaims\Tesia.cs" />
     <Compile Include="Eclaims\WebMD.cs" />
     <Compile Include="Eclaims\x270Controller.cs" />

@@ -835,7 +835,7 @@ namespace OpenPmsDental {
 			//Validated that medtype matches clearinghouse e-format
 			using FormClaimFormItemEdit formClaimFormItemEdit=new FormClaimFormItemEdit();
 			Eclaims.SendBatch(clearinghouseClinic,listClaimSendQueueItemsRetVal,medType,formClaimFormItemEdit,
-				FormClaimPrint.FillRenaissance,new FormTerminalConnection());//this also calls SetClaimSentOrPrinted which creates the etrans entry.
+				FormClaimPrint.FillRenaissance);//this also calls SetClaimSentOrPrinted which creates the etrans entry.
 			return listClaimSendQueueItemsRetVal;
 		}
 
