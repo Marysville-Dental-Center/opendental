@@ -131,8 +131,11 @@ namespace P262GlidewellTests {
 				if(regexUrl.IsMatch(source)) {
 					listProblems.Add(file+": a web address (the office's own setup holds every address; none is compiled in).");
 				}
-				if(source.IndexOf("opendental.com",StringComparison.OrdinalIgnoreCase)>=0) {
-					listProblems.Add(file+": names Open Dental's servers.");
+				//The fork's blocked-host list, so no host name is written in this file (tools/Test-NoHqHosts.ps1).
+				foreach(string domain in CodeBase.VendorDirect.HqHosts.BlockedDomains) {
+					if(source.IndexOf(domain,StringComparison.OrdinalIgnoreCase)>=0) {
+						listProblems.Add(file+": names Open Dental's servers ("+domain+").");
+					}
 				}
 				if(regexNetwork.IsMatch(source)) {
 					listProblems.Add(file+": network code; Glidewell's interface is not publicly documented, so nothing may be sent yet.");
