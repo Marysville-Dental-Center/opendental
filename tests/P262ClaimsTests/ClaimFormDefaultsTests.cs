@@ -1,5 +1,6 @@
 // P262-CLAIMS item 20: the default claim form at the provider level (provider.ClaimFormNum). Rules without a database, then the scratch database:
-// new claims take the treating provider's claim form over the plan's, and a claim form a provider uses cannot be deleted.
+// new claims take the billing provider's claim form, else the treating provider's, over the plan's (owner decision of 2026-11-07), and a claim
+// form a provider uses cannot be deleted.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -11,14 +12,17 @@ using UnitTestsCore;
 namespace P262ClaimsTests {
 	[TestClass]
 	public class ClaimFormDefaultsTests {
+		///<summary>Owner decision of 2026-11-07: the billing provider's default claim form first, then the treating provider's, then the plan's.</summary>
 		[TestMethod]
-		public void Pick_ProviderFormFirst() {
-			Assert.AreEqual(7,ClaimFormDefaults.Pick(7,3,x => true),"The provider's claim form takes priority over the plan's.");
-			Assert.AreEqual(3,ClaimFormDefaults.Pick(0,3,x => true),"No provider claim form: the plan's.");
-			Assert.AreEqual(3,ClaimFormDefaults.Pick(7,3,x => false),"The provider's claim form no longer exists: the plan's.");
-			Assert.AreEqual(0,ClaimFormDefaults.Pick(0,0,x => true),"Neither: 0, as before (the plan's).");
-			Assert.AreEqual(7,ClaimFormDefaults.Pick(7,0,x => true));
-			Assert.AreEqual(7,ClaimFormDefaults.Pick(7,3,null),"No existence check given: the provider's.");
+		public void Pick_BillingProviderFirst_ThenTreating_ThenThePlans() {
+			Assert.AreEqual(5,ClaimFormDefaults.Pick(5,7,3,x => true),"The billing provider's claim form takes priority over the treating provider's.");
+			Assert.AreEqual(7,ClaimFormDefaults.Pick(0,7,3,x => true),"No billing provider claim form: the treating provider's.");
+			Assert.AreEqual(3,ClaimFormDefaults.Pick(0,0,3,x => true),"Neither provider has one: the plan's.");
+			Assert.AreEqual(7,ClaimFormDefaults.Pick(5,7,3,x => x!=5),"The billing provider's claim form no longer exists: the treating provider's.");
+			Assert.AreEqual(3,ClaimFormDefaults.Pick(5,7,3,x => false),"Neither exists any more: the plan's.");
+			Assert.AreEqual(0,ClaimFormDefaults.Pick(0,0,0,x => true),"None: 0, as before (the plan's).");
+			Assert.AreEqual(7,ClaimFormDefaults.Pick(0,7,0,x => true));
+			Assert.AreEqual(5,ClaimFormDefaults.Pick(5,7,3,null),"No existence check given: the billing provider's.");
 		}
 	}
 
@@ -30,16 +34,24 @@ namespace P262ClaimsTests {
 		}
 
 		[TestMethod]
-		public void GetClaimFormNumForNewClaim_TreatingProvidersFormOverridesThePlans() {
+		public void GetClaimFormNumForNewClaim_BillingThenTreatingProvidersFormOverridesThePlans() {
 			string suffix=ClaimsDb.NewSuffix();
 			long claimFormNumPlan=AddClaimForm("Plan form "+suffix);
 			long claimFormNumProv=AddClaimForm("Provider form "+suffix);
 			long provNumWith=AddProvider("PW"+suffix.Substring(0,4),claimFormNumProv);
 			long provNumWithout=AddProvider("PO"+suffix.Substring(0,4),0);
-			Assert.AreEqual(claimFormNumProv,ClaimFormDefaults.GetClaimFormNumForNewClaim(provNumWith,claimFormNumPlan));
-			Assert.AreEqual(claimFormNumPlan,ClaimFormDefaults.GetClaimFormNumForNewClaim(provNumWithout,claimFormNumPlan));
-			Assert.AreEqual(claimFormNumPlan,ClaimFormDefaults.GetClaimFormNumForNewClaim(0,claimFormNumPlan),"No treating provider: the plan's.");
-			Assert.AreEqual(claimFormNumPlan,ClaimFormDefaults.GetClaimFormNumForNewClaim(999999999,claimFormNumPlan),"Unknown provider: the plan's.");
+			long claimFormNumBill=AddClaimForm("Billing form "+suffix);
+			long provNumBill=AddProvider("PB"+suffix.Substring(0,4),claimFormNumBill);
+			//The treating provider alone (billing provider without a form, or none).
+			Assert.AreEqual(claimFormNumProv,ClaimFormDefaults.GetClaimFormNumForNewClaim(provNumWithout,provNumWith,claimFormNumPlan));
+			Assert.AreEqual(claimFormNumProv,ClaimFormDefaults.GetClaimFormNumForNewClaim(0,provNumWith,claimFormNumPlan));
+			Assert.AreEqual(claimFormNumPlan,ClaimFormDefaults.GetClaimFormNumForNewClaim(provNumWithout,provNumWithout,claimFormNumPlan));
+			Assert.AreEqual(claimFormNumPlan,ClaimFormDefaults.GetClaimFormNumForNewClaim(0,0,claimFormNumPlan),"No provider: the plan's.");
+			Assert.AreEqual(claimFormNumPlan,ClaimFormDefaults.GetClaimFormNumForNewClaim(999999999,999999999,claimFormNumPlan),"Unknown provider: the plan's.");
+			//The billing provider's form first (owner decision of 2026-11-07).
+			Assert.AreEqual(claimFormNumBill,ClaimFormDefaults.GetClaimFormNumForNewClaim(provNumBill,provNumWith,claimFormNumPlan));
+			Assert.AreEqual(claimFormNumBill,ClaimFormDefaults.GetClaimFormNumForNewClaim(provNumBill,provNumWithout,claimFormNumPlan));
+			Assert.AreEqual(claimFormNumBill,ClaimFormDefaults.GetClaimFormNumForNewClaim(provNumBill,0,claimFormNumPlan));
 		}
 
 		[TestMethod]
@@ -47,7 +59,8 @@ namespace P262ClaimsTests {
 			string suffix=ClaimsDb.NewSuffix();
 			long claimFormNumPlan=AddClaimForm("Plan form "+suffix);
 			long provNum=AddProvider("PD"+suffix.Substring(0,4),999999998);//a claim form that does not exist
-			Assert.AreEqual(claimFormNumPlan,ClaimFormDefaults.GetClaimFormNumForNewClaim(provNum,claimFormNumPlan));
+			Assert.AreEqual(claimFormNumPlan,ClaimFormDefaults.GetClaimFormNumForNewClaim(provNum,provNum,claimFormNumPlan));
+			Assert.AreEqual(claimFormNumPlan,ClaimFormDefaults.GetClaimFormNumForNewClaim(provNum,0,claimFormNumPlan));
 		}
 
 		[TestMethod]
@@ -63,6 +76,38 @@ namespace P262ClaimsTests {
 			Assert.AreEqual(claimFormNumProv,Claims.GetClaim(claimWith.ClaimNum).ClaimForm,"Saved with the provider's claim form.");
 			Claim claimWithout=CreateRepeatChargeClaim(suffix+"b",provNumWithout,claimFormNumPlan);
 			Assert.AreEqual(claimFormNumPlan,Claims.GetClaim(claimWithout.ClaimNum).ClaimForm,"As before 26.2: the plan's claim form.");
+		}
+
+		///<summary>Owner decision of 2026-11-07: a new claim takes its billing provider's default claim form before its treating provider's.</summary>
+		[TestMethod]
+		public void CreateClaimForRepeatCharge_UsesTheBillingProvidersFormFirst() {
+			string suffix=ClaimsDb.NewSuffix();
+			long claimFormNumPlan=AddClaimForm("Plan form "+suffix);
+			long claimFormNumTreat=AddClaimForm("Treating form "+suffix);
+			long claimFormNumBill=AddClaimForm("Billing form "+suffix);
+			long provNumTreat=AddProvider("BT"+suffix.Substring(0,4),claimFormNumTreat);
+			long provNumBill=AddProvider("BB"+suffix.Substring(0,4),claimFormNumBill);
+			long provNumBillWithout=AddProvider("BN"+suffix.Substring(0,4),0);
+			long insBillingProvOld=PrefC.GetLong(PrefName.InsBillingProv);
+			try {
+				//Claims are billed under provNumBill (Setup, Insurance billing provider: a specific provider).
+				Prefs.UpdateLong(PrefName.InsBillingProv,provNumBill);
+				Prefs.RefreshCache();
+				Claim claim=CreateRepeatChargeClaim(suffix+"c",provNumTreat,claimFormNumPlan);
+				Assert.AreEqual(provNumBill,claim.ProvBill);
+				Assert.AreEqual(provNumTreat,claim.ProvTreat);
+				Assert.AreEqual(claimFormNumBill,Claims.GetClaim(claim.ClaimNum).ClaimForm,"The billing provider's claim form first.");
+				//A billing provider without a default claim form: the treating provider's.
+				Prefs.UpdateLong(PrefName.InsBillingProv,provNumBillWithout);
+				Prefs.RefreshCache();
+				claim=CreateRepeatChargeClaim(suffix+"d",provNumTreat,claimFormNumPlan);
+				Assert.AreEqual(provNumBillWithout,claim.ProvBill);
+				Assert.AreEqual(claimFormNumTreat,Claims.GetClaim(claim.ClaimNum).ClaimForm,"Then the treating provider's.");
+			}
+			finally {
+				Prefs.UpdateLong(PrefName.InsBillingProv,insBillingProvOld);
+				Prefs.RefreshCache();
+			}
 		}
 
 		[TestMethod]

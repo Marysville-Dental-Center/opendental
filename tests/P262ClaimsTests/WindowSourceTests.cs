@@ -1,6 +1,7 @@
 // P262-CLAIMS: the window changes, checked in the source (no window is created or shown): the Edit Claim tab order (item 10), the Default Claim
 // Form of Edit Provider (item 20), the detailed warning of Combine Insurance Plans (item 21) and the trigger in Procedure Info (item 22).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -53,10 +54,17 @@ namespace P262ClaimsTests {
 				{ "OpenPmsDental/Logic/PreAuthL.cs",1 },
 				{ "OpenPmsDental/Main Modules/ControlTreat.cs",1 },
 			};
+			//The billing provider's default claim form first, then the treating provider's (owner decision of 2026-11-07): each call passes both, after
+			//the claim's billing provider was set.
 			foreach(KeyValuePair<string,int> pair in dictExpected) {
 				string source=ReadSource(pair.Key);
-				int count=Regex.Matches(source,@"\.ClaimForm=ClaimFormDefaults\.GetClaimFormNumForNewClaim\(claim\.ProvTreat,").Count;
-				Assert.AreEqual(pair.Value,count,pair.Key);
+				MatchCollection matches=Regex.Matches(source,@"\.ClaimForm=ClaimFormDefaults\.GetClaimFormNumForNewClaim\(claim\.ProvBill,claim\.ProvTreat,");
+				Assert.AreEqual(pair.Value,matches.Count,pair.Key);
+				foreach(Match match in matches) {
+					int indexBill=source.LastIndexOf("claim.ProvBill=",match.Index,StringComparison.Ordinal);
+					Assert.IsTrue(indexBill>0 && match.Index-indexBill<600,pair.Key+": the billing provider is set just before.");
+				}
+				Assert.AreEqual(0,Regex.Matches(source,@"GetClaimFormNumForNewClaim\(claim\.ProvTreat,").Count,pair.Key+": no call without the billing provider.");
 			}
 		}
 
