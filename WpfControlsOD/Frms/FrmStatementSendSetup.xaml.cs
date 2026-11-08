@@ -30,6 +30,9 @@ namespace OpenPmsDental {
 			comboEmail.SelectedIndex=_listModes.IndexOf(StatementAutoSend.GetEmailMode());
 			comboSms.SelectedIndex=_listModes.IndexOf(StatementAutoSend.GetSmsMode());
 			labelTextNeedsProvider.Visible=StatementAutoSend.TextSender==null;
+			//Always carried over from Open Dental is used as Ask until this window is saved here.
+			labelAlwaysNotSavedHere.Text=StatementAutoSend.GetAlwaysNotSavedHereNote();
+			labelAlwaysNotSavedHere.Visible=StatementAutoSend.IsEmailAlwaysNotSavedHere();
 		}
 
 		private void FrmStatementSendSetup_PreviewKeyDown(object sender,KeyEventArgs e) {
@@ -43,11 +46,20 @@ namespace OpenPmsDental {
 			StatementAutoSendMode modeSmsOld=StatementAutoSend.GetSmsMode();
 			StatementAutoSendMode modeEmail=_listModes[Math.Max(0,comboEmail.SelectedIndex)];
 			StatementAutoSendMode modeSms=_listModes[Math.Max(0,comboSms.SelectedIndex)];
+			bool isChanged=false;
 			if(StatementAutoSend.SetModes(modeEmail,modeSms)) {
 				OdOptions.LogChange(EnumPermType.Setup,"Statement Send Setup: by e-mail",StatementAutoSend.PREF_EMAIL,
 					StatementAutoSend.GetDescription(modeEmailOld),StatementAutoSend.GetDescription(modeEmail));
 				OdOptions.LogChange(EnumPermType.Setup,"Statement Send Setup: by text",StatementAutoSend.PREF_SMS,
 					StatementAutoSend.GetDescription(modeSmsOld),StatementAutoSend.GetDescription(modeSms));
+				isChanged=true;
+			}
+			//The first save here: from now on Always means Always (until then a stored Always is used as Ask).
+			if(StatementAutoSend.SetSetupSavedHere()) {
+				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,StatementAutoSend.GetSetupSavedHereLogText(modeEmail));
+				isChanged=true;
+			}
+			if(isChanged) {
 				DataValid.SetInvalid(InvalidType.Prefs);
 			}
 			IsDialogOK=true;

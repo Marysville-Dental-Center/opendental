@@ -435,6 +435,13 @@ namespace OpenPmsDental {
 				}
 			}
 			ClaimProcs.UpdateMany(listClaimProcsAll);//Does not contain new claimProcs.
+			//ODOPTS (ClaimUpdateFeeForSecondary): after UpdateMany, so the in-memory claimprocs cannot write the old fee billed back, as in FormProcEdit.
+			for(int i=0;i<ListProcedures.Count;i++) {
+				Procedure procedureOld=_listProceduresOld.Find(x => x.ProcNum==ListProcedures[i].ProcNum);
+				if(procedureOld!=null) {
+					ClaimFeeForSecondary.UpdateForProcFeeChange(ListProcedures[i],procedureOld.ProcFee);
+				}
+			}
 			Recalls.Synch(patNum);
 			#endregion
 			#region Security Log Entries

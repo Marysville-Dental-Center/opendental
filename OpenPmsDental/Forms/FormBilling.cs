@@ -71,8 +71,10 @@ namespace OpenPmsDental {
 		///through the Send path of this window (Always, or Ask and the user says yes). Texts need a texting provider (StatementAutoSend.TextSender);
 		///without one nothing is texted and the user is told why.</summary>
 		private void AutoSendCreatedStatements() {
-			List<long> listStatementNumsEmail=StatementAutoSend.GetEmailStatementNumsToSend(StatementAutoSend.GetEmailMode(),ListStatementNumsEmailCreated,
-				count => MsgBox.Show(this,MsgBoxButtons.YesNo,StatementAutoSend.GetEmailQuestion(count)));
+			//Always is used as Ask until Statement Send Setup is saved in this program: Open Dental's window most likely meant Message-to-Pay links.
+			bool isAlwaysNotSavedHere=StatementAutoSend.IsEmailAlwaysNotSavedHere();
+			List<long> listStatementNumsEmail=StatementAutoSend.GetEmailStatementNumsToSend(StatementAutoSend.GetEmailModeToUse(),
+				ListStatementNumsEmailCreated,count => MsgBox.Show(this,MsgBoxButtons.YesNo,StatementAutoSend.GetEmailQuestion(count,isAlwaysNotSavedHere)));
 			ListStatementNumsEmailCreated=new List<long>();
 			if(listStatementNumsEmail.Count>0) {
 				//Select them in the grid too, so the window shows what is being sent.

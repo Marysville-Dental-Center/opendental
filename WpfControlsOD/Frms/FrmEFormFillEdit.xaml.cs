@@ -368,7 +368,13 @@ namespace OpenPmsDental {
 			}
 			SecurityLogs.MakeLogEntry(EnumPermType.EFormEdit,EFormCur.PatNum,"EForm: "+EFormCur.Description+" from "+EFormCur.DateTimeShown.ToShortDateString());
 			if(doAutoImport){
-				EFormImport.ImportAutoFields(EFormCur);//logs its own changes
+				EFormImport.ImportAutoFields(EFormCur,out List<string> listNotImported);//logs its own changes
+				//ODOPTS: typed allergies or problems skipped because they match no list entry (EFormImportAllergiesAsOther or
+				//EFormImportProblemsAsOther off) are in the Audit Trail; the user who saved the form is told too.
+				string notImported=EFormImport.GetNotImportedMessage(listNotImported);
+				if(notImported!=""){
+					MsgBox.Show(notImported);
+				}
 			}
 		}
 
