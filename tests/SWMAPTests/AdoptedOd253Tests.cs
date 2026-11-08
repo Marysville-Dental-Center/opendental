@@ -1,6 +1,6 @@
 // SWMAP on adopted databases: two synthetic Open Dental 25.3.48 databases (the reference schema, made-up rows) adopted as the adoption tool adopts the
-// office copy. The first has the payment plan lock on (payment plans included in the global lock date) and the Recession wording on, as the
-// office uses them, with other made-up values and the four V-BRIDGE1 program links; the second has the opposite values. Every setting row comes
+// office copy. The first has the payment plan lock on (payment plans included in the global lock date) and the Recession wording on, with
+// other made-up values and the four V-BRIDGE1 program links; the second has the opposite values. Every setting row comes
 // through adoption unchanged, and this program reads each one with Open Dental's meaning. A third database holds only a preference table with
 // rows of release v0.0, which the settings step moves. No office value is used. Skipped (inconclusive) without the local MariaDB.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
@@ -31,8 +31,8 @@ namespace SWMAPTests {
 		private static readonly DateTime _dateLocked=new DateTime(2025,6,1);
 		public const string SALES_TAX_CODE="Z9901";
 
-		///<summary>The settings this program reads under Open Dental's names, made up, as the office uses the lock and the Recession wording: payment
-		///plans included in the global lock, Recession on.</summary>
+		///<summary>The settings this program reads under Open Dental's names, with made-up values: payment plans included in the global lock,
+		///Recession on.</summary>
 		public static readonly (string prefName,string value)[] ArrayPrefsLockOn={
 			("PayPlansIncludeInGlobalLock","1"),
 			("PerioRecessionInsteadOfGM","1"),
@@ -104,7 +104,7 @@ namespace SWMAPTests {
 			Thread.CurrentThread.CurrentUICulture=new CultureInfo("en-US");
 		}
 
-		///<summary>An Open Dental 25.3.48 database as the office's copy looks to adoption: the reference schema, the version preferences, a made-up
+		///<summary>An Open Dental 25.3.48 database as an office copy looks to adoption: the reference schema, the version preferences, a made-up
 		///global lock date that includes administrators, the given settings under Open Dental's names, every other name of the office database that is
 		///not in PrefName with a made-up value, and optionally the four V-BRIDGE1 program links as Open Dental may have them.</summary>
 		private static void CreateOd253(string database,(string prefName,string value)[] arrayPrefs,bool hasProgramLinks) {
@@ -172,7 +172,7 @@ namespace SWMAPTests {
 		}
 		#endregion Adoption keeps every setting row
 
-		#region The office's values, read with Open Dental's meaning
+		#region Adopted values, read with Open Dental's meaning
 		[TestMethod]
 		public void LockOn_PaymentPlansStayLocked_AndRecessionIsOn() {
 			ConnectAndRefresh(DB_LOCK_ON);
@@ -242,7 +242,7 @@ namespace SWMAPTests {
 				Prefs.RefreshCache();
 			}
 		}
-		#endregion The office's values, read with Open Dental's meaning
+		#endregion Adopted values, read with Open Dental's meaning
 
 		#region Program links (V-BRIDGE1)
 		[TestMethod]
