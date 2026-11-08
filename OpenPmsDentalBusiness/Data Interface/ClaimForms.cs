@@ -160,6 +160,10 @@ namespace OpenPmsDentalBusiness{
 			if(table.Rows.Count==1){
 				return false;
 			}
+			//26.2: a provider's default claim form (provider.ClaimFormNum) is in use too.
+			if(ClaimFormDefaults.GetProviderAbbrsUsing(claimForm.ClaimFormNum).Count>0) {
+				return false;
+			}
 			//Then, delete the claimform
 			command="DELETE FROM claimform "
 				+"WHERE ClaimFormNum = '"+POut.Long(claimForm.ClaimFormNum)+"'";

@@ -23,6 +23,9 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - the database schema of Open Dental 26.2;
 - the billing and statements changes of Open Dental 26.2: a Statement Options window, a redesigned Statement window, an Electronic
   Billing window and Billing Defaults per clinic.
+- the database schema of Open Dental 26.2;
+- from Open Dental 26.2, for claims and insurance: Status History and Misc next to General in Edit Claim, a default claim form per provider,
+  a detailed warning when combining insurance plans, and an automation trigger for Do Not Bill to Ins.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
 inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below). It also
@@ -403,3 +406,27 @@ billing and electronic billing setting keeps its value: nothing is converted, an
   clinic's defaults and nothing of any other clinic. A clinic with its own messages in Billing Defaults but no saved Billing Options filters
   keeps following the practice filter defaults, and a clinic set to use the practice defaults in Billing Defaults stays on them. Billing
   Options shows the selected clinic's own General Message, also when the window opens.
+## Open Dental 26.2: claims and insurance
+
+Four changes of Open Dental 26.2 (its release notes, Account Module and Insurance), written from Open Dental's public release notes and
+database documents only (`docs/port-notes/P262-CLAIMS.md`). Open Dental's 26.2 manual is not public, so where the documents say only what
+changed and not how, this program's own design is used and marked INFERRED in the port note. No database step: the 26.2 schema already has
+the provider column and the automation values.
+
+- **Edit Claim: Status History and Misc next to General.** The tabs are now General, Status History, Misc, Attachments, Medical (and
+  Canadian), so claim tracking and the resend fields (Correction Type, Original Reference Num) are one click away. Nothing on the tabs
+  changed. Open Dental moved them too; where they went in its window is not published.
+- **A default claim form per provider.** Edit Provider has a Default Claim Form. When it is set, new claims and preauthorizations take the
+  treating provider's claim form instead of the insurance plan's (which starts as the practice default). "None" keeps the plan's, as before.
+  Existing claims keep their claim form, and the claim form can still be changed on each claim. A claim form that is a provider's default
+  cannot be deleted; the message names the providers.
+- **Combining insurance plans: a detailed warning.** Combine Insurance Plans now lists every field of the other plans that does not match the
+  plan you selected (carrier, employer, group, fee schedules, claim form, filing code, plan type and every other plan setting), with the
+  value kept and the value lost, and whether a plan's benefits differ (they are replaced by the selected plan's). You can still cancel. When
+  every plan matches, the earlier short warning shows.
+- **A new automation trigger: Do Not Bill to Ins.** `DoNotBillInsuranceCheck` fires when Do Not Bill to Ins is checked in the procedure
+  edit window and the procedure changes to not bill insurance (unchecking does not fire it). Its own condition, Carriers Match, picks a
+  carrier from the list and holds when one of the patient's insurance plans is with that carrier; several Carriers Match conditions on one
+  automation mean any one of the carriers. The condition is offered only for this trigger, and an automation that has it cannot be saved
+  with another trigger. Combining carriers (Lists > Carriers > Combine) moves these conditions to the carrier that is kept, so the
+  automation keeps firing.

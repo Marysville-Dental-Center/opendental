@@ -2857,6 +2857,8 @@ namespace OpenPmsDental{
 			if(provider.ProvNumBillingOverride!=0) {
 				claim.ProvBill=provider.ProvNumBillingOverride;
 			}
+			//26.2: the treating provider's default claim form, when set, takes priority over the plan's.
+			claim.ClaimForm=ClaimFormDefaults.GetClaimFormNumForNewClaim(claim.ProvTreat,formInsPlanSelect.InsPlanSelected.ClaimFormNum);
 			claim.EmployRelated=YN.No;
 			claim.ClaimType="PreAuth";
 			claim.AttachedFlags="Mail";

@@ -18,6 +18,8 @@ namespace OpenPmsDental {
 		public EnumAutomationTrigger? AutomationTriggerCur;
 		///<summary>The fields in listCompareField, in order. Not every field is listed for every trigger, so the list index is not the enum value.</summary>
 		private List<AutoCondField> _listAutoCondFields=new List<AutoCondField>();
+		///<summary>26.2 Carriers Match: the carrier picked with the ... button (CompareString holds its CarrierNum). 0 when none is picked.</summary>
+		private long _carrierNumSelected;
 
 		public FormAutomationConditionEdit() {
 			InitializeComponent();
@@ -45,25 +47,36 @@ namespace OpenPmsDental {
 				return;
 			}
 			textCompareString.Text=AutomationConditionCur.CompareString;
+			if(AutomationConditionCur.CompareField==AutoCondField.CarriersMatch) {
+				_carrierNumSelected=AutomationDoNotBillIns.GetCarrierNum(AutomationConditionCur);
+				textCompareString.Text=AutomationDoNotBillIns.GetDisplayText(AutomationConditionCur);
+			}
 			listCompareField.SelectedIndex=_listAutoCondFields.IndexOf(AutomationConditionCur.CompareField);
 			if(!AutomationConditionCur.CompareField.In(AutoCondField.InsuranceNotEffective,AutoCondField.IsControlled,AutoCondField.IsProcRequired,
-				AutoCondField.IsPatientInstructionPresent,AutoCondField.PatientProcedureClinicMismatch))
+				AutoCondField.IsPatientInstructionPresent,AutoCondField.PatientProcedureClinicMismatch,AutoCondField.CarriersMatch))
 			{
 				listComparison.SelectedIndex=(int)AutomationConditionCur.Comparison;
 			}
 			ShowOrHideFields(GetFieldSelected());
 		}
 
-		///<summary>False only for the 26.1 clinic mismatch field when the parent automation's trigger is not ProcedureComplete, unless this
-		///condition already uses it (so it can be seen and changed).</summary>
+		///<summary>False only for the 26.1 clinic mismatch field when the parent automation's trigger is not ProcedureComplete, and for the 26.2
+		///Carriers Match field when it is not DoNotBillInsuranceCheck, unless this condition already uses the field (so it can be seen and changed).
+		///</summary>
 		private bool IsFieldListed(AutoCondField autoCondField) {
-			if(autoCondField!=AutoCondField.PatientProcedureClinicMismatch) {
+			if(autoCondField!=AutoCondField.PatientProcedureClinicMismatch && autoCondField!=AutoCondField.CarriersMatch) {
 				return true;
 			}
 			if(!IsNew && AutomationConditionCur!=null && AutomationConditionCur.CompareField==autoCondField) {
 				return true;
 			}
-			return AutomationTriggerCur!=null && AutomationClinicMismatches.IsTriggerAllowed(AutomationTriggerCur.Value);
+			if(AutomationTriggerCur==null) {
+				return false;
+			}
+			if(autoCondField==AutoCondField.CarriersMatch) {
+				return AutomationDoNotBillIns.IsTriggerAllowed(AutomationTriggerCur.Value);
+			}
+			return AutomationClinicMismatches.IsTriggerAllowed(AutomationTriggerCur.Value);
 		}
 
 		///<summary>The field selected in listCompareField. The first listed field when nothing is selected.</summary>
@@ -76,6 +89,23 @@ namespace OpenPmsDental {
 
 		///<summary>Show or hides the form fileds based of needs.</summary>
 		private void ShowOrHideFields(AutoCondField autoCondField) {
+			if(autoCondField==AutoCondField.CarriersMatch) {
+				//26.2: CompareString holds a CarrierNum, so the carrier is only picked from the list and its name is shown.
+				butSelect.Visible=true;
+				labelCompareString.Text=Lan.g(this,"Carrier (pick from list)");
+				textCompareString.ReadOnly=true;
+				textCompareString.Text=_carrierNumSelected==0 ? "" : Carriers.GetName(_carrierNumSelected);
+				labelWarning.Visible=true;
+				labelCompareString.Visible=true;
+				textCompareString.Visible=true;
+				labelComparison.Visible=false;
+				listComparison.Visible=false;
+				labelWarning.Text=Lan.g(this,"This automation field will only work when using the DoNotBillInsuranceCheck trigger.  It is true when one "
+					+"of the patient's insurance plans is with this carrier.  Several Carriers Match conditions on one automation are ORed: any one of "
+					+"the carriers is enough.");
+				return;
+			}
+			textCompareString.ReadOnly=false;
 			if(autoCondField==AutoCondField.BillingType || autoCondField==AutoCondField.ClaimContainsProcCode) {
 				butSelect.Visible=true;
 				labelCompareString.Text=Lan.g(this,"Text (Type or pick from list) ");
@@ -186,6 +216,15 @@ namespace OpenPmsDental {
 					textCompareString.Text=ProcedureCodes.GetStringProcCode(formProcCodes.CodeNumSelected);
 				}
 			}
+			else if(GetFieldSelected()==AutoCondField.CarriersMatch) {
+				using FormCarriers formCarriers=new FormCarriers();
+				formCarriers.IsSelectMode=true;
+				formCarriers.ShowDialog();
+				if(formCarriers.DialogResult==DialogResult.OK && formCarriers.CarrierSelected!=null) {
+					_carrierNumSelected=formCarriers.CarrierSelected.CarrierNum;
+					textCompareString.Text=formCarriers.CarrierSelected.CarrierName;
+				}
+			}
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
@@ -212,6 +251,14 @@ namespace OpenPmsDental {
 					return;
 				}
 				AutomationConditionCur.CompareString=textCompareString.Text;
+				AutomationConditionCur.Comparison=AutoCondComparison.None;
+			}
+			else if(GetFieldSelected()==AutoCondField.CarriersMatch) {//26.2: CompareString holds a CarrierNum, Comparison=None
+				if(_carrierNumSelected==0) {
+					MsgBox.Show(this,"Please pick a carrier first.");
+					return;
+				}
+				AutomationConditionCur.CompareString=POut.Long(_carrierNumSelected);
 				AutomationConditionCur.Comparison=AutoCondComparison.None;
 			}
 			else {

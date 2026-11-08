@@ -68,7 +68,8 @@ namespace OpenPmsDentalBusiness{
 		///<summary>10</summary>
 		ApptComplete,
 		///<summary>11 - Open Dental 26.2 (automation.Autotrigger, OpenDentalDiffDocumentation26-2.xml): fires when Do Not Bill to Ins is checked
-		///in the procedure edit window. Firing it belongs to the 26.2 claims package.</summary>
+		///in the procedure edit window. Fired by FormProcEdit when the procedure changes to not bill insurance (P262-CLAIMS, AutomationDoNotBillIns).
+		///</summary>
 		DoNotBillInsuranceCheck=11,
 	}
 

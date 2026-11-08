@@ -1873,6 +1873,10 @@ namespace OpenPmsDental {
 				);
 			FillIns();
 			Cursor=Cursors.Default;
+			//Open Dental 26.2: the Do Not Bill to Ins automation trigger, once the procedure has changed to not bill insurance.
+			if(AutomationDoNotBillIns.DoesFire(isNoBillInsOld,checkNoBillIns.CheckState==CheckState.Checked)) {
+				AutomationL.Trigger(EnumAutomationTrigger.DoNotBillInsuranceCheck,null,_procedure.PatNum,triggerObj:_procedure);
+			}
 		}
 
 		private void textNotes_TextChanged(object sender, System.EventArgs e) {

@@ -230,6 +230,7 @@ namespace OpenPmsDental{
 			comboProv.Items.AddProvNone();
 			comboProv.Items.AddProvsFull(Providers.GetDeepCopy(true));
 			comboProv.SetSelectedProvNum(ProviderCur.ProvNumBillingOverride);
+			FillComboClaimForm();
 			if(ProviderCur.ProvStatus==ProviderStatus.Deleted) {
 				this.DisableAllExcept();
 				//Make the cancel button the only thing the user can click on.
@@ -252,6 +253,28 @@ namespace OpenPmsDental{
 			butClinicOverrides.Visible=false;
 			groupClinicOverrides.Text="";
 			tabControlProvider.TabPages.Remove(tabClinics);
+		}
+
+		///<summary>Open Dental 26.2: the provider's default claim form (provider.ClaimFormNum). "None" (0) means new claims use the insurance plan's
+		///claim form as before. Hidden claim forms are listed only when they are this provider's.</summary>
+		private void FillComboClaimForm() {
+			comboClaimForm.Items.Clear();
+			comboClaimForm.Items.Add(Lan.g(this,"None (use the plan's claim form)"),0L);
+			List<ClaimForm> listClaimForms=ClaimForms.GetDeepCopy(false);
+			for(int i=0;i<listClaimForms.Count;i++) {
+				if(listClaimForms[i].IsHidden && listClaimForms[i].ClaimFormNum!=ProviderCur.ClaimFormNum) {
+					continue;
+				}
+				string descript=listClaimForms[i].Description;
+				if(listClaimForms[i].IsHidden) {
+					descript+=" "+Lan.g(this,"(hidden)");
+				}
+				comboClaimForm.Items.Add(descript,listClaimForms[i].ClaimFormNum);
+			}
+			comboClaimForm.SetSelectedKey<long>(ProviderCur.ClaimFormNum,x => x);
+			if(comboClaimForm.SelectedIndex==-1) {//The provider's claim form was deleted: show None, which is what new claims use.
+				comboClaimForm.SelectedIndex=0;
+			}
 		}
 
 		private void radioSSN_Click(object sender, System.EventArgs e) {
@@ -533,6 +556,9 @@ namespace OpenPmsDental{
 			}
 			ProviderCur.IsNotPerson=checkIsNotPerson.Checked;
 			ProviderCur.ProvNumBillingOverride=comboProv.GetSelectedProvNum();
+			if(comboClaimForm.SelectedIndex!=-1) {
+				ProviderCur.ClaimFormNum=comboClaimForm.GetSelected<long>();//26.2: overrides the plan's claim form on new claims
+			}
 			if(IsNew) {
 				long provNum=Providers.Insert(ProviderCur);
 				//Set the providerclinics to the new provider's ProvNum that was just retreived from the database.

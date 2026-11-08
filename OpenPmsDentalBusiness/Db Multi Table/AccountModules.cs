@@ -3534,7 +3534,8 @@ namespace OpenPmsDentalBusiness {
 				claim.ProvBill=prov.ProvNumBillingOverride;
 			}
 			claim.EmployRelated=YN.No;
-			claim.ClaimForm=PlanCur.ClaimFormNum;
+			//26.2: the treating provider's default claim form, when set, takes priority over the plan's.
+			claim.ClaimForm=ClaimFormDefaults.GetClaimFormNumForNewClaim(claim.ProvTreat,PlanCur.ClaimFormNum);
 			//attach procedures
 			//for(int i=0;i<tbAccount.SelectedIndices.Length;i++){
 			List<long> listCodeNums=new List<long>();//List of codeNums that have had their default note added to the claim.

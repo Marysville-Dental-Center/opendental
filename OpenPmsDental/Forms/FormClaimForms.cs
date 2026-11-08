@@ -152,6 +152,13 @@ namespace OpenPmsDental{
 				return;
 			}
 			if(!ClaimForms.Delete(claimForm)){
+				//26.2: it can also be a provider's default claim form; name those providers.
+				List<string> listProvAbbrs=ClaimFormDefaults.GetProviderAbbrsUsing(claimForm.ClaimFormNum);
+				if(listProvAbbrs.Count>0) {
+					MessageBox.Show(Lan.g(this,"Claim form is already in use. It is the default claim form of these providers")+": "
+						+string.Join(", ",listProvAbbrs));
+					return;
+				}
 				MsgBox.Show(this,"Claim form is already in use.");
 				return;
 			}
