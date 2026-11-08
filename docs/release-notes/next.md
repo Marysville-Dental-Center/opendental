@@ -13,7 +13,9 @@ What this version brings, each in its section below (the roadmap's "Done in the 
   from their source), and the program's own DICOM reader in place of fo-dicom;
 - routine maintenance around the practice, and inventory tracking for materials;
 - the storage library under its new name, and a Database Maintenance check that works again;
-- the database schema of Open Dental 26.2.
+- the database schema of Open Dental 26.2;
+- Open Dental 26.2's Perio Chart changes: flags for all selected teeth at once, several cells selected in any data row, and the settings
+  Show previous exams and Show previous probing values.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
 inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below). It also
@@ -285,3 +287,23 @@ their own sections.
   databases are still adopted only from 25.3.48 (or this program's 24.3.63 line).
 - Everything the documents do not publish (NULL or NOT NULL, defaults, keys, the MyISAM engine of the new tables, the numbers of the Glidewell
   order statuses) follows the conventions of the existing schema and is marked INFERRED in the port note.
+
+## Perio Chart (Open Dental 26.2)
+
+The Perio Chart changes of Open Dental 26.2, re-implemented from Open Dental's public release notes, Perio Chart pages and database
+documents (`docs/port-notes/P262-PERIO.md`). No database change.
+
+- **Flags for all selected teeth.** Select teeth by clicking their numbers (as for SkipTeeth), then click Bleeding, Suppuration, Plaque or
+  Calculus (or press B or the space bar, S, P, C): the flag goes on all six sites of every selected tooth of the selected exam. The teeth
+  stay selected, so several flags can be added in turn; a site keeps its other flags. Clicking a flag that every one of those sites already
+  has takes it off them again. Skipped teeth get no flags this way (click a skipped tooth's gray cell, as before). Clicking or dragging over
+  cells unselects the teeth.
+- **Several cells in any data row.** Dragging over cells now selects several cells in the Mobility, Furc, Ging Marg and MGJ rows too, not
+  only in the probing row; one number fills them all and Delete clears them all. A drag stays in the kind of row where it started; auto CAL,
+  auto Att Ging and earlier exams' rows are never selected, and skipped teeth are passed over.
+- **Show previous exams and Show previous probing values.** These two check boxes replace Show current exam only, per user. Show previous
+  exams unchecked shows the selected exam only, in every row: no rows for earlier exams and no grayed earlier values in the Mobility, Furc,
+  Ging Marg and MGJ rows. Show previous probing values unchecked hides only the earlier exams' probing rows; the other rows still show the
+  grayed earlier values (what Show current exam only did). Both are checked for a user who never changed them. A user who had Show current
+  exam only checked finds Show previous exams unchecked, which now also hides the grayed earlier values; to see those again, check Show
+  previous exams and uncheck Show previous probing values.
