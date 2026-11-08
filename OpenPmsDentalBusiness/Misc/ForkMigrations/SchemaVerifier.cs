@@ -6,10 +6,12 @@ using System.Reflection;
 using System.Text;
 
 namespace OpenPmsDentalBusiness.ForkMigrations {
-	///<summary>Compares a database schema with the Open Dental schema it must match exactly. Two references are embedded in this assembly:
-	///- Open Dental 26.1.70 (Reference/OdSchema-26.1.70.sql), the schema a migrated database must have now: the 25.3.48 reference plus the changes
-	///  of Open Dental's published 25.4 and 26.1 database documents, with the NULL/NOT NULL, defaults and keys the documents do not publish marked
-	///  INFERRED in the file. This is the default (ReferenceVersion, GetReference, VerifyDatabase).
+	///<summary>Compares a database schema with the Open Dental schema it must match exactly. Three references are embedded in this assembly:
+	///- Open Dental 26.2.0 (Reference/OdSchema-26.2.0.sql), the schema a migrated database must have now: the 26.1.70 reference plus the changes of
+	///  Open Dental's published 26.2 database documents, with the NULL/NOT NULL, defaults and keys the documents do not publish marked INFERRED in
+	///  the file. This is the default (ReferenceVersion, GetReference, VerifyDatabase).
+	///- Open Dental 26.1.70 (Reference/OdSchema-26.1.70.sql): the 25.3.48 reference plus the changes of Open Dental's published 25.4 and 26.1
+	///  database documents; what the 25.4 and 26.1 steps (OdParity26_1.cs) produce. The 26.2 step (OdParity26_2.cs) starts from it.
 	///- Open Dental 25.3.48 (Reference/OdSchema-25.3.48.sql), built from the schema-only dump of the office database: what the 25.3 steps
 	///  (OdParity25_3.cs) produce and what an office database must have before it is adopted.
 	///Tables, columns (type, NULL, default, extra, charset, position), keys, engine and charset must match, except for the documented exceptions,
@@ -18,10 +20,14 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 	public static class SchemaVerifier {
 		///<summary>The Open Dental version a migrated database must match: the version of the default reference. Written to OdSchemaCompat when a
 		///database matches it.</summary>
-		public const string ReferenceVersion=ReferenceVersion26_1_70;
+		public const string ReferenceVersion=ReferenceVersion26_2_0;
 		///<summary>Name of the default embedded reference snapshot (its LogicalName in OpenPmsDentalBusiness.csproj).</summary>
-		public const string ReferenceResourceName=ReferenceResourceName26_1_70;
-		///<summary>Open Dental 26.1.70: the target of the M2 migration.</summary>
+		public const string ReferenceResourceName=ReferenceResourceName26_2_0;
+		///<summary>Open Dental 26.2.0: the target of the 26.2 migration (the version of Open Dental's published 26.2 database documents).</summary>
+		public const string ReferenceVersion26_2_0="26.2.0";
+		///<summary>Name of the embedded 26.2.0 reference.</summary>
+		public const string ReferenceResourceName26_2_0="OdSchema-26.2.0.sql";
+		///<summary>Open Dental 26.1.70: the target of the M2 migration, and the schema the 26.2 step starts from.</summary>
 		public const string ReferenceVersion26_1_70="26.1.70";
 		///<summary>Name of the embedded 26.1.70 reference.</summary>
 		public const string ReferenceResourceName26_1_70="OdSchema-26.1.70.sql";
@@ -57,12 +63,21 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 
 		private static SchemaSnapshot _reference25_3_48;
 		private static SchemaSnapshot _reference26_1_70;
+		private static SchemaSnapshot _reference26_2_0;
 		private static readonly object _lockReference=new object();
 
-		///<summary>The documented differences that do not count as a mismatch against the default reference (Open Dental 26.1.70).</summary>
+		///<summary>The documented differences that do not count as a mismatch against the default reference (Open Dental 26.2.0).</summary>
 		public static List<SchemaException> DocumentedExceptions {
 			get {
-				return DocumentedExceptions26_1_70;
+				return DocumentedExceptions26_2_0;
+			}
+		}
+
+		///<summary>The documented differences that do not count as a mismatch against Open Dental 26.2.0. The same as for 25.3.48: 26.2 drops no
+		///table, so the HQ-only and legacy tables are still extra, and the office customization is still not Open Dental schema.</summary>
+		public static List<SchemaException> DocumentedExceptions26_2_0 {
+			get {
+				return DocumentedExceptions25_3_48;
 			}
 		}
 
@@ -96,9 +111,19 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 			}
 		}
 
-		///<summary>The default reference snapshot: Open Dental 26.1.70, the schema a migrated database must have. Cached.</summary>
+		///<summary>The default reference snapshot: Open Dental 26.2.0, the schema a migrated database must have. Cached.</summary>
 		public static SchemaSnapshot GetReference() {
-			return GetReference26_1_70();
+			return GetReference26_2_0();
+		}
+
+		///<summary>The Open Dental 26.2.0 reference snapshot embedded in this assembly. Cached.</summary>
+		public static SchemaSnapshot GetReference26_2_0() {
+			lock(_lockReference) {
+				if(_reference26_2_0==null) {
+					_reference26_2_0=SchemaSnapshot.Parse(ReadReferenceDdl(ReferenceResourceName26_2_0));
+				}
+				return _reference26_2_0;
+			}
 		}
 
 		///<summary>The Open Dental 26.1.70 reference snapshot embedded in this assembly. Cached.</summary>
@@ -121,13 +146,13 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 			}
 		}
 
-		///<summary>The text of the default embedded reference snapshot (Open Dental 26.1.70).</summary>
+		///<summary>The text of the default embedded reference snapshot (Open Dental 26.2.0).</summary>
 		public static string ReadReferenceDdl() {
 			return ReadReferenceDdl(ReferenceResourceName);
 		}
 
-		///<summary>The text of an embedded reference snapshot, by its resource name (ReferenceResourceName26_1_70 or ReferenceResourceName25_3_48).
-		///</summary>
+		///<summary>The text of an embedded reference snapshot, by its resource name (ReferenceResourceName26_2_0, ReferenceResourceName26_1_70 or
+		///ReferenceResourceName25_3_48).</summary>
 		public static string ReadReferenceDdl(string resourceName) {
 			Assembly assembly=typeof(SchemaVerifier).Assembly;
 			using(Stream stream=assembly.GetManifestResourceStream(resourceName)) {
@@ -161,10 +186,16 @@ namespace OpenPmsDentalBusiness.ForkMigrations {
 			return snapshot.ToDdl(header);
 		}
 
-		///<summary>Compares the database (default: the connected one) with the default reference, Open Dental 26.1.70, allowing the documented
+		///<summary>Compares the database (default: the connected one) with the default reference, Open Dental 26.2.0, allowing the documented
 		///exceptions.</summary>
 		public static SchemaVerifyResult VerifyDatabase(string databaseName=null) {
 			return Compare(GetReference(),SchemaSnapshot.FromDatabase(databaseName),DocumentedExceptions);
+		}
+
+		///<summary>Compares the database (default: the connected one) with the Open Dental 26.1.70 reference, allowing the documented exceptions. For
+		///the result of the 25.4 and 26.1 steps alone (a database before the 26.2 step).</summary>
+		public static SchemaVerifyResult VerifyDatabase26_1_70(string databaseName=null) {
+			return Compare(GetReference26_1_70(),SchemaSnapshot.FromDatabase(databaseName),DocumentedExceptions26_1_70);
 		}
 
 		///<summary>Compares the database (default: the connected one) with the Open Dental 25.3.48 reference, allowing the documented exceptions.

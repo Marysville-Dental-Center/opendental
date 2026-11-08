@@ -32,6 +32,24 @@ namespace OpenPmsDentalBusiness {
 		public DateTime DateTimeStop;
 		///<summary>.</summary>
 		public string Note;
+		//The four columns below were added by Open Dental 26.2 (OpenDentalDiffDocumentation26-2.xml). Schema only: this program has no API
+		//event sender, so nothing here writes them; they are mapped so that rows written by Open Dental keep their values.
+		///<summary>When the most recent attempt to reach the subscription's endpoint failed.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.DateT)]
+		public DateTime DateTimeLastFailure;
+		///<summary>Why the most recent attempt to reach the subscription's endpoint failed.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.IsText)]
+		public string FailureReason;
+		///<summary>The number of failures in a row to send event data. Back to 0 after a successful send.</summary>
+		public int SubsequentFailures;
+		///<summary>When the next attempt after a failure is due. MinVal (0001-01-01) while the subscription is healthy, and again after a successful
+		///send. Per Open Dental's documents the interval grows with each failure, up to 30 minutes.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.DateT)]
+		public DateTime DateTimeNextRetry;
+
+		public ApiSubscription(){
+			FailureReason="";
+		}
 
 		public ApiSubscription Copy(){
 			return (ApiSubscription)this.MemberwiseClone();

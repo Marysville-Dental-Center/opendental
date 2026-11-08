@@ -220,6 +220,10 @@ namespace OpenPmsDentalBusiness{
 		PaySplit,
 		///<summary>5 - procedurelog.ProcNum.  Positive (debit, increases the amount owed).  The resulting message TsiTransType is DB (Debit).</summary>
 		Procedure,
+		///<summary>6 - payplanlink.PayPlanLinkNum. Negative (credit, decreases the amount owed). The resulting message TsiTransType is CR (Credit).
+		///Added by Open Dental 26.2 (tsitranslog.FKeyType, OpenDentalDiffDocumentation26-2.xml). Defined so that log rows written by Open Dental load;
+		///this program's Transworld code does not write it yet (no 26.2 package ports it).</summary>
+		PayPlanLink=6,
 	}
 
 	///<summary>Not a database table.  Transworld account transaction object.  Used for the following objects: procedurelog, claimproc, paysplit,

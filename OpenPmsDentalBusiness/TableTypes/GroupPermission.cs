@@ -887,6 +887,10 @@ namespace OpenPmsDentalBusiness{
 		///<summary>276 - Reserved. Open Dental HQ only (26.1): changes to which services have their log folders collected.</summary>
 		[Description("Log Scraper HQ"),IsODHQ]
 		LogScraperHQ,
+		///<summary>277 - Reserved. Open Dental HQ only (26.2, OpenDentalDiffDocumentation26-2.xml): advanced changes to texting accounts, for example
+		///editing their JSON by hand; stricter than TextingAccountEdit (240).</summary>
+		[Description("Advanced Texting Account Edit"),IsODHQ]
+		AdvancedTextingAccountEdit=277,
 		//10000 and up: this program's own values, so that Open Dental's later values never collide with them (docs/port-notes/FORK-ENUMS.md).
 		//Code must not loop over 0..count-1 of this enum; use Enum.GetValues. 10000 to 10049: routine maintenance; 10050 to 10099: inventory
 		//tracking; 10100 to 10149: SSH host keys.

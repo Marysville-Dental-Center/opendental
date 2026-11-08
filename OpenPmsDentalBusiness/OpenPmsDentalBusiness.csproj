@@ -989,6 +989,8 @@
     <Compile Include="Crud\FHIRSubscriptionCrud.cs" />
     <Compile Include="Crud\FieldDefLinkCrud.cs" />
     <Compile Include="Crud\FormPatCrud.cs" />
+    <Compile Include="Crud\GlidewellAcctCrud.cs" />
+    <Compile Include="Crud\GlidewellMsgCrud.cs" />
     <Compile Include="Crud\GradingScaleCrud.cs" />
     <Compile Include="Crud\GradingScaleItemCrud.cs" />
     <Compile Include="Crud\GroupPermissionCrud.cs" />
@@ -1021,6 +1023,7 @@
     <Compile Include="Crud\JobReviewCrud.cs" />
     <Compile Include="Crud\JournalEntryCrud.cs" />
     <Compile Include="Crud\LabCaseCrud.cs" />
+    <Compile Include="Crud\LabCaseProductCrud.cs" />
     <Compile Include="Crud\LaboratoryCrud.cs" />
     <Compile Include="Crud\LabPanelCrud.cs" />
     <Compile Include="Crud\LabResultCrud.cs" />
@@ -2060,6 +2063,9 @@
     <Compile Include="TableTypes\ReqNeeded.cs" />
     <Compile Include="TableTypes\LabTurnaround.cs" />
     <Compile Include="TableTypes\LabCase.cs" />
+    <Compile Include="TableTypes\LabCaseProduct.cs" />
+    <Compile Include="TableTypes\GlidewellAcct.cs" />
+    <Compile Include="TableTypes\GlidewellMsg.cs" />
     <Compile Include="TableTypes\Laboratory.cs" />
     <Compile Include="TableTypes\Mount.cs" />
     <Compile Include="TableTypes\MountItem.cs" />
@@ -2185,6 +2191,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Misc\ForkMigrations\Reference\OdSchema-26.1.70.sql">
       <LogicalName>OdSchema-26.1.70.sql</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Misc\ForkMigrations\Reference\OdSchema-26.2.0.sql">
+      <LogicalName>OdSchema-26.2.0.sql</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <SubType>Designer</SubType>

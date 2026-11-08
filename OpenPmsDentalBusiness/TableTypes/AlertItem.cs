@@ -243,6 +243,17 @@ namespace OpenPmsDentalBusiness {
 		///<summary>51 - Reserved (Open Dental 26.1). eConnector listener firewall rules failed.</summary>
 		[Description("eService Listener Error"),ReservedEnumValue("Raised by the Open Dental eConnector.")]
 		EServiceListenerError,
+		//52 to 54 were added by Open Dental 26.2 (OpenDentalDiffDocumentation26-2.xml). They are raised by the Open Dental Service's MariaDB backups
+		//and by the Open Dental eConnector, which this program does not have. Defined so that rows written by Open Dental load.
+		///<summary>52 - Reserved (Open Dental 26.2). The Open Dental Service's full MariaDB backup encountered an error.</summary>
+		[Description("MariaDB Full Backup Error"),ReservedEnumValue("Raised by the Open Dental Service's MariaDB backup.")]
+		MariaDbFullBackupError=52,
+		///<summary>53 - Reserved (Open Dental 26.2). The Open Dental Service's incremental MariaDB backup encountered an error.</summary>
+		[Description("MariaDB Incremental Backup Error"),ReservedEnumValue("Raised by the Open Dental Service's MariaDB backup.")]
+		MariaDbIncrementalBackupError=53,
+		///<summary>54 - Reserved (Open Dental 26.2). The eConnector failed to connect.</summary>
+		[Description("eConnector Critical"),ReservedEnumValue("Raised by the Open Dental eConnector.")]
+		EConnectorCritical=54,
 		//This program's own values count down from 127: alertitem.Type, alertcategorylink.AlertType and alertsub.Type are tinyint(4), so 10000 and up
 		//do not fit, and Open Dental's own values count up from 0 (docs/port-notes/FORK-ENUMS.md, "tinyint enums"). 127 to 120: routine maintenance;
 		//119 to 112: inventory tracking.

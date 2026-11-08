@@ -239,6 +239,10 @@ namespace OpenPmsDentalBusiness {
 		///<summary>56 - Employee job titles (employee.Title). Added in Open Dental 26.1; number as published in its database documentation.</summary>
 		[Description("Employee Titles")]
 		EmployeeTitles=56,
+		///<summary>57 - Commlog types of referral commlogs, as CommLogTypes are for patient commlogs. Added in Open Dental 26.2; number as published in
+		///its database documentation. Its setup and use belong to the 26.2 miscellaneous package.</summary>
+		[Description("Commlog Referral Types")]
+		CommLogReferralTypes=57,
 	}
 
 	///<summary>For DefCat MiscColors(Category 21).</summary>

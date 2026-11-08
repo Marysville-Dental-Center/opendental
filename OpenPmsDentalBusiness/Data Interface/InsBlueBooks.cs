@@ -75,7 +75,8 @@ namespace OpenPmsDentalBusiness {
 					_result.GroupNum,_result.InsPayAmt,
 					CASE WHEN _result.AllowedOverride=-1 THEN -1
 						ELSE ROUND(_result.AllowedOverride/(_result.UnitQty+_result.BaseUnits),2) END 'AllowedOverride',
-					COALESCE(insbluebook.DateTEntry,NOW()) 'DateTEntry',_result.ProcNum,_result.ProcDate,_result.ClaimType,_result.ClaimNum
+					COALESCE(insbluebook.DateTEntry,NOW()) 'DateTEntry',_result.ProcNum,_result.ProcDate,_result.ClaimType,_result.ClaimNum,
+					insbluebook.DateTStamp
 				FROM (
 					SELECT procedurelog.CodeNum,insplan.CarrierNum,insplan.PlanNum,insplan.GroupNum,SUM(claimproc1.InsPayAmt) 'InsPayAmt',
 						MAX(claimproc2.AllowedOverride) 'AllowedOverride',procedurelog.ProcNum,MAX(claimproc2.ProcDate) 'ProcDate',

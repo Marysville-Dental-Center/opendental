@@ -1097,7 +1097,11 @@ namespace OpenPmsDentalBusiness{
 		///<summary>16</summary>
 		RetainedRoot,
 		///<summary>17</summary>
-		SpaceMaintainer
+		SpaceMaintainer,
+		///<summary>18 - Open Dental 26.2 (procedurecode.PaintType, OpenDentalDiffDocumentation26-2.xml). The documents give only the name. Defined so
+		///that procedure codes written by Open Dental load and Database Maintenance does not reset them to None; the tooth chart does not draw it yet
+		///(no 26.2 package ports it).</summary>
+		TextBelow=18,
 	}
 	
 	///<summary>Indicates at what point the patient is in the sequence. 0=standby, 1=PatientInfo, 2=Medical, 3=UpdateOnly.</summary>

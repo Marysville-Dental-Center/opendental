@@ -39,6 +39,10 @@ namespace OpenPmsDentalBusiness {
 		BlockoutType,
 		///<summary>5. The definition is linked to a recall type.  Used by WebSched for identifying available time slots for recalls.</summary>
 		RecallType,
+		///<summary>6. Reserved (Open Dental 26.2, OpenDentalDiffDocumentation26-2.xml): Open Dental HQ only. Links a task category definition
+		///(DefNum) to a user (FKey=userod.UserNum). Nothing in this program writes it; defined so that rows written by Open Dental load.</summary>
+		[ReservedEnumValue("Open Dental HQ only.")]
+		User=6,
 	}
 
 }
