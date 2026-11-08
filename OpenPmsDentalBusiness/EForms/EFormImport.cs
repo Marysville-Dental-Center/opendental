@@ -11,6 +11,37 @@ namespace OpenPmsDentalBusiness {
 	public class EFormImport {
 		//Any changes to the DbLinks handled here should also be duplicated in EFormFiller and EFormFieldsAvailable.
 
+		#region Unmatched allergies and problems (ODOPTS)
+		///<summary>Open Dental's preference row (ODOPTS; Open Dental 25.3.48 has it, its meaning is not public): 1 = an allergy the patient typed
+		///(allergiesOther) that matches no allergy in the list is imported as an "Other" allergy with the patient's text in Reaction; 0 = it is not
+		///imported (the form keeps it, and the manual import lists it unticked). Read and written by name outside PrefName, so the office's value
+		///carries over. A missing row reads as on, the behaviour of 24.3 (INFERRED; Open Dental's default is not public). docs/port-notes/ODOPTS.md.
+		///</summary>
+		public const string PREF_ALLERGIES_AS_OTHER="EFormImportAllergiesAsOther";
+		///<summary>The same for problems (problemsOther): an unmatched problem is imported as an "Other" problem with the patient's text in PatNote.
+		///</summary>
+		public const string PREF_PROBLEMS_AS_OTHER="EFormImportProblemsAsOther";
+
+		public static bool IsAllergiesAsOther() {
+			return OdOptions.GetBool(PREF_ALLERGIES_AS_OTHER,defaultValue:true);
+		}
+
+		public static bool IsProblemsAsOther() {
+			return OdOptions.GetBool(PREF_PROBLEMS_AS_OTHER,defaultValue:true);
+		}
+
+		///<summary>Saves the allergy setting and updates this workstation's cache. Returns true if the stored value changed; the caller signals
+		///InvalidType.Prefs and makes the security log entry.</summary>
+		public static bool SetAllergiesAsOther(bool isOn) {
+			return OdOptions.SetBool(PREF_ALLERGIES_AS_OTHER,isOn,defaultValue:true);
+		}
+
+		///<summary>Saves the problem setting. See SetAllergiesAsOther.</summary>
+		public static bool SetProblemsAsOther(bool isOn) {
+			return OdOptions.SetBool(PREF_PROBLEMS_AS_OTHER,isOn,defaultValue:true);
+		}
+		#endregion Unmatched allergies and problems (ODOPTS)
+
 		///<summary>Call before the save. Auto import runs once, on the save that first inserts the form, and only for a form tied to a patient. A form
 		///already in the database (saved earlier on the desktop, or filled and handled by Open Dental) is never imported again by opening and saving
 		///it, whatever its status: Open Dental leaves desktop-filled forms at None, so the status cannot tell whether a form was imported.</summary>
@@ -262,6 +293,9 @@ namespace OpenPmsDentalBusiness {
 							continue;//covered by a checkbox or radio button
 						}
 						AllergyDef allergyDef=listAllergyDefs.Find(x=>x.Description.ToLower()==listStrsInput[a].ToLower());
+						if(allergyDef==null && !IsAllergiesAsOther()) {
+							continue;//ODOPTS: EFormImportAllergiesAsOther off, an unmatched allergy is not imported.
+						}
 						if(allergyDef==null) {
 							//No matching definition: the catch-all "Other" definition, with the typed text in Reaction.
 							AllergyDef allergyDefOther=listAllergyDefs.Find(x=>x.Description=="Other");
@@ -391,6 +425,9 @@ namespace OpenPmsDentalBusiness {
 							continue;
 						}
 						DiseaseDef diseaseDef=DiseaseDefs.GetFirstOrDefault(x=>x.DiseaseName.ToLower()==listStrsInput[a].ToLower());
+						if(diseaseDef==null && !IsProblemsAsOther()) {
+							continue;//ODOPTS: EFormImportProblemsAsOther off, an unmatched problem is not imported.
+						}
 						if(diseaseDef==null) {
 							DiseaseDef diseaseDefOther=GetOrInsertDiseaseDef("Other");
 							if(listDiseasesPat.Exists(x=>x.DiseaseDefNum==diseaseDefOther.DiseaseDefNum && x.PatNote==listStrsInput[a])) {

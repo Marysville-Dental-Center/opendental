@@ -565,6 +565,7 @@
     <Compile Include="Misc\Result.cs" />
     <Compile Include="Misc\SecurityHash.cs" />
     <Compile Include="Misc\DomainLogin.cs" />
+    <Compile Include="Misc\OdOptions.cs" />
     <Compile Include="Misc\LocalWindowSizes.cs" />
     <!-- Main window and module rules (backlog B-SHELL): File Monitor, [SelectedProcNums], module switch blur, ortho chart window, discontinued links. -->
     <Compile Include="Misc\MainWindow\**\*.cs" />
@@ -1465,6 +1466,7 @@
     <Compile Include="Data Interface\ClaimProcs.AuditTrail25.cs" />
     <Compile Include="Data Interface\ClaimProcs.WriteOffPermission.cs" />
     <Compile Include="Data Interface\Claims.cs" />
+    <Compile Include="Data Interface\ClaimFeeForSecondary.cs" />
     <Compile Include="Data Interface\Claims.NextOrdinal.cs" />
     <Compile Include="Data Interface\ClaimValCodeLogs.cs" />
     <Compile Include="Data Interface\Clearinghouses.cs" />
@@ -1582,6 +1584,7 @@
     <Compile Include="Data Interface\SigButDefs.cs" />
     <Compile Include="Data Interface\SigElementDefs.cs" />
     <Compile Include="Data Interface\Statements.cs" />
+    <Compile Include="Data Interface\StatementAutoSend.cs" />
     <Compile Include="Data Interface\Statements.ServiceDateView.cs" />
     <Compile Include="Data Interface\Statements.EmailName.cs" />
     <Compile Include="Data Interface\ChartLetters.cs" />

@@ -107,8 +107,9 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 			RenameBool("ForkModuleSwitchBlur",ModuleSwitchBlur.PREF_NAME,"B-SHELL"),
 		};
 
-		///<summary>Every setting this program reads under Open Dental's own names, in the order of docs/port-notes/SWMAP.md: the renamed ones and the
-		///sales tax procedure code, whose name never changed.</summary>
+		///<summary>Every setting this program reads under Open Dental's own names, in the order of docs/port-notes/SWMAP.md: the renamed ones, the
+		///sales tax procedure code, whose name never changed, and the eight options of package ODOPTS (docs/port-notes/ODOPTS.md), which never had a
+		///name of this program's own.</summary>
 		public static readonly List<OdSettingRead> ListReads=new List<OdSettingRead>() {
 			new OdSettingRead { Label="Sales Tax procedure code",Package="B-ACCT",ArrayPrefNamesOd=new[] { SalesTaxProcs.PREF_PROC_CODE },
 				FuncShown=x => string.IsNullOrWhiteSpace(x[0]) ? "blank" : x[0].Trim() },
@@ -124,6 +125,25 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 				ArrayPrefNamesOd=new[] { ReplicationDelay.PREF_READ_DELAY_ENABLED,ReplicationDelay.PREF_READ_DELAY_MS },
 				FuncShown=x => POut.Int(ReplicationDelay.GetReadDelayMsFromValues(x[0],x[1])) },
 			ReadBool("Blur when switching between modules to prevent accidental clicking","B-SHELL",ModuleSwitchBlur.PREF_NAME),
+			//ODOPTS (2026-11-07): the eight options built after SWMAP, read under Open Dental's names from the start (no release v0.0 row to move).
+			new OdSettingRead { Label="Perio Chart: auto Att Ging red if at or below (mm)",Package="ODOPTS",
+				ArrayPrefNamesOd=new[] { PerioMeasures.PrefNameRedAttGing },
+				FuncShown=x => PerioMeasures.GetRedAttGingFromValue(x[0])?.ToString()??"none (never red)" },
+			ReadBool("Offer domain login in the Change User of signature boxes","ODOPTS",DomainLogin.PREF_FOR_SIG_BOXES,defaultValue:true),
+			ReadBool(ClaimFeeForSecondary.LABEL,"ODOPTS",ClaimFeeForSecondary.PREF_NAME,defaultValue:false),
+			ReadBool("eForm import: an allergy matching no list entry is imported as Other","ODOPTS",EFormImport.PREF_ALLERGIES_AS_OTHER,
+				defaultValue:true),
+			ReadBool("eForm import: a problem matching no list entry is imported as Other","ODOPTS",EFormImport.PREF_PROBLEMS_AS_OTHER,
+				defaultValue:true),
+			new OdSettingRead { Label="Insurance History perio scaling procedure code",Package="ODOPTS",
+				ArrayPrefNamesOd=new[] { InsHistCategories.PREF_PERIO_SCALING_CODE },
+				FuncShown=x => string.IsNullOrWhiteSpace(x[0]) ? "blank (each perio scaling code group's History Proc Code)" : x[0].Trim() },
+			new OdSettingRead { Label="Send statements by e-mail when billing creates them",Package="ODOPTS",
+				ArrayPrefNamesOd=new[] { StatementAutoSend.PREF_EMAIL },
+				FuncShown=x => StatementAutoSend.GetModeFromValue(x[0]).ToString() },
+			new OdSettingRead { Label="Send statements by text when billing creates them",Package="ODOPTS",
+				ArrayPrefNamesOd=new[] { StatementAutoSend.PREF_SMS },
+				FuncShown=x => StatementAutoSend.GetModeFromValue(x[0]).ToString()+" (no texting provider: nothing is texted)" },
 		};
 
 		private static OdSettingRename RenameBool(string prefNameV0,string prefNameOd,string package) {
@@ -139,6 +159,12 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 		private static OdSettingRead ReadBool(string label,string package,string prefNameOd) {
 			return new OdSettingRead { Label=label,Package=package,ArrayPrefNamesOd=new[] { prefNameOd },
 				FuncShown=x => GetTicked(x[0]!=null && PIn.Bool(x[0])) };
+		}
+
+		///<summary>A bool setting whose missing or blank row reads as defaultValue (OdOptions.GetBoolFromValue).</summary>
+		private static OdSettingRead ReadBool(string label,string package,string prefNameOd,bool defaultValue) {
+			return new OdSettingRead { Label=label,Package=package,ArrayPrefNamesOd=new[] { prefNameOd },
+				FuncShown=x => GetTicked(OdOptions.GetBoolFromValue(x[0],defaultValue)) };
 		}
 
 		private static string GetTicked(bool isTicked) {
