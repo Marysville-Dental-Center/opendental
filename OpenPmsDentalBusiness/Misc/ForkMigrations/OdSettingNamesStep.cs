@@ -140,7 +140,10 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 				FuncShown=x => string.IsNullOrWhiteSpace(x[0]) ? "blank (each perio scaling code group's History Proc Code)" : x[0].Trim() },
 			new OdSettingRead { Label="Send statements by e-mail when billing creates them",Package="ODOPTS",
 				ArrayPrefNamesOd=new[] { StatementAutoSend.PREF_EMAIL },
-				FuncShown=x => StatementAutoSend.GetModeFromValue(x[0]).ToString() },
+				//Always is used as Ask until Statement Send Setup is saved in this program (Open Dental's window most likely meant Message-to-Pay).
+				FuncShown=x => StatementAutoSend.GetModeFromValue(x[0])==StatementAutoSendMode.Always
+					? "Always (asks until Statement Send Setup is saved in this program)"
+					: StatementAutoSend.GetModeFromValue(x[0]).ToString() },
 			new OdSettingRead { Label="Send statements by text when billing creates them",Package="ODOPTS",
 				ArrayPrefNamesOd=new[] { StatementAutoSend.PREF_SMS },
 				FuncShown=x => StatementAutoSend.GetModeFromValue(x[0]).ToString()+" (no texting provider: nothing is texted)" },

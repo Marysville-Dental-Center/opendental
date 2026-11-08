@@ -1939,6 +1939,12 @@ namespace OpenPmsDentalBusiness {
 				}
 			}
 			Sync(listProcNew,listProcOrig);
+			if(isUpdatingFees) {
+				//ODOPTS (ClaimUpdateFeeForSecondary): a completed procedure on a primary claim can be re-priced here too. Nothing here saves claimprocs.
+				for(int i=0;i<listProcNew.Count;i++) {
+					ClaimFeeForSecondary.UpdateForProcFeeChange(listProcNew[i],listProcOrig[i].ProcFee);
+				}
+			}
 		}
 
 		public static void SetCanadianLabFeesCompleteForProc(Procedure proc) {
@@ -2089,6 +2095,10 @@ namespace OpenPmsDentalBusiness {
 							procCur,procFeeHelper.ListBenefitsPrimary,procFeeHelper.ListFees);
 					}
 					Update(procCur,procOld);//Update fields if needed.
+					if(doUpdateProcFees) {
+						//ODOPTS (ClaimUpdateFeeForSecondary): a re-priced completed procedure updates its unsent secondary claims, as in the procedure window.
+						ClaimFeeForSecondary.UpdateForProcFeeChange(procCur,procOld.ProcFee);
+					}
 					//If proc is linked as a TP'd banding to an OrthoCase, update the OrthoCase.
 					if(procCur.ProcStatus==ProcStat.TP && orthoProcLink!=null && orthoProcLink.ProcLinkType==OrthoProcType.Banding) {
 							OrthoCases.UpdateDatesByLinkedProc(orthoProcLink,procCur);

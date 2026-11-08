@@ -40,6 +40,26 @@ namespace OpenPmsDentalBusiness {
 		public static bool SetProblemsAsOther(bool isOn) {
 			return OdOptions.SetBool(PREF_PROBLEMS_AS_OTHER,isOn,defaultValue:true);
 		}
+
+		///<summary>The Audit Trail line of a typed allergy that auto import skipped because it matches no allergy in the list and
+		///EFormImportAllergiesAsOther is off.</summary>
+		public static string GetAllergyNotImportedText(string allergyTyped) {
+			return "Allergy not imported (matches no allergy in the list; "+PREF_ALLERGIES_AS_OTHER+" off): "+allergyTyped;
+		}
+
+		///<summary>The Audit Trail line of a typed problem that auto import skipped (EFormImportProblemsAsOther off).</summary>
+		public static string GetProblemNotImportedText(string problemTyped) {
+			return "Problem not imported (matches no problem in the list; "+PREF_PROBLEMS_AS_OTHER+" off): "+problemTyped;
+		}
+
+		///<summary>The text shown to the user who saved the form when auto import skipped typed entries. Blank when it skipped none.</summary>
+		public static string GetNotImportedMessage(List<string> listNotImported) {
+			if(listNotImported==null || listNotImported.Count==0) {
+				return "";
+			}
+			return Lans.g("EFormImport","Auto import did not add these entries to the chart:")+"\r\n"+string.Join("\r\n",listNotImported)+"\r\n\r\n"
+				+Lans.g("EFormImport","Use Import on the form to add them as Other, or add them by hand.");
+		}
 		#endregion Unmatched allergies and problems (ODOPTS)
 
 		///<summary>Call before the save. Auto import runs once, on the save that first inserts the form, and only for a form tied to a patient. A form
@@ -212,6 +232,14 @@ namespace OpenPmsDentalBusiness {
 		///Returns the changes made (empty if there was nothing to import). Status is not changed: since Open Dental 25.2 an eForm's status does not
 		///record imports, the audit trail does.</summary>
 		public static List<string> ImportAutoFields(EForm eForm) {
+			return ImportAutoFields(eForm,out List<string> _);
+		}
+
+		///<summary>ImportAutoFields, and listNotImported gets the typed allergies and problems that auto import skipped because they match no list
+		///entry while EFormImportAllergiesAsOther or EFormImportProblemsAsOther is off (ODOPTS). Those lines go in the form's EFormImport Audit Trail
+		///entry, apart from its count of changes, so a skipped entry is never dropped without a trace; the caller shows them to the user.</summary>
+		public static List<string> ImportAutoFields(EForm eForm,out List<string> listNotImported) {
+			listNotImported=new List<string>();
 			List<string> listChangesAll=new List<string>();
 			List<EFormField> listEFormFields=GetAutoImportFields(eForm);
 			if(listEFormFields.Count==0) {
@@ -231,12 +259,12 @@ namespace OpenPmsDentalBusiness {
 				SecurityLogs.MakeLogEntry(EnumPermType.PatientEdit,patient.PatNum,"Auto import from "+strSource+":\r\n"+string.Join("\r\n",listChangesPatient));
 				listChangesAll.AddRange(listChangesPatient);
 			}
-			List<string> listChangesAllergies=ImportAllergies(listEFormFields,eForm.ListEFormFields,patient.PatNum);
+			List<string> listChangesAllergies=ImportAllergies(listEFormFields,eForm.ListEFormFields,patient.PatNum,listNotImported);
 			if(listChangesAllergies.Count>0) {
 				SecurityLogs.MakeLogEntry(EnumPermType.PatAllergyListEdit,patient.PatNum,"Auto import from "+strSource+":\r\n"+string.Join("\r\n",listChangesAllergies));
 				listChangesAll.AddRange(listChangesAllergies);
 			}
-			List<string> listChangesProblems=ImportProblems(listEFormFields,eForm.ListEFormFields,patient.PatNum);
+			List<string> listChangesProblems=ImportProblems(listEFormFields,eForm.ListEFormFields,patient.PatNum,listNotImported);
 			if(listChangesProblems.Count>0) {
 				SecurityLogs.MakeLogEntry(EnumPermType.PatProblemListEdit,patient.PatNum,"Auto import from "+strSource+":\r\n"+string.Join("\r\n",listChangesProblems));
 				listChangesAll.AddRange(listChangesProblems);
@@ -256,15 +284,23 @@ namespace OpenPmsDentalBusiness {
 				List<InsPickImportResult> listInsPickImportResults=ImportInsPickFields(eForm,listEFormFieldsInsPick);
 				listChangesAll.AddRange(listInsPickImportResults.FindAll(x => x.IsCreated).Select(x => x.Description));
 			}
-			if(listChangesAll.Count>0) {
-				SecurityLogs.MakeLogEntry(EnumPermType.EFormImport,patient.PatNum,"Auto import from "+strSource+": "+listChangesAll.Count+" change(s).");
+			if(listChangesAll.Count>0 || listNotImported.Count>0) {
+				//ODOPTS: the entries skipped for EFormImportAllergiesAsOther or EFormImportProblemsAsOther off are listed after the count, not in it.
+				string logText="Auto import from "+strSource+": "+listChangesAll.Count+" change(s).";
+				if(listNotImported.Count>0) {
+					logText+="\r\n"+string.Join("\r\n",listNotImported);
+				}
+				SecurityLogs.MakeLogEntry(EnumPermType.EFormImport,patient.PatNum,logText);
 			}
 			return listChangesAll;
 		}
 
 		///<summary>allergiesNone, allergiesOther and allergy: fields. listEFormFieldsAll is every field of the form; typed-in allergies already covered
-		///by an allergy: field are skipped.</summary>
-		private static List<string> ImportAllergies(List<EFormField> listEFormFields,List<EFormField> listEFormFieldsAll,long patNum) {
+		///by an allergy: field are skipped. listNotImported gets a line (GetAllergyNotImportedText) for each typed allergy that matches no allergy in
+		///the list while EFormImportAllergiesAsOther is off.</summary>
+		private static List<string> ImportAllergies(List<EFormField> listEFormFields,List<EFormField> listEFormFieldsAll,long patNum,
+			List<string> listNotImported)
+		{
 			List<string> listChanges=new List<string>();
 			if(!listEFormFields.Exists(x => x.DbLink.In("allergiesNone","allergiesOther") || x.DbLink.StartsWith("allergy:"))) {
 				return listChanges;
@@ -294,7 +330,9 @@ namespace OpenPmsDentalBusiness {
 						}
 						AllergyDef allergyDef=listAllergyDefs.Find(x=>x.Description.ToLower()==listStrsInput[a].ToLower());
 						if(allergyDef==null && !IsAllergiesAsOther()) {
-							continue;//ODOPTS: EFormImportAllergiesAsOther off, an unmatched allergy is not imported.
+							//ODOPTS: EFormImportAllergiesAsOther off, an unmatched allergy is not imported, but it is recorded and shown.
+							listNotImported.Add(GetAllergyNotImportedText(listStrsInput[a]));
+							continue;
 						}
 						if(allergyDef==null) {
 							//No matching definition: the catch-all "Other" definition, with the typed text in Reaction.
@@ -395,8 +433,10 @@ namespace OpenPmsDentalBusiness {
 			return null;
 		}
 
-		///<summary>problemsNone, problemsOther and problem: fields. Same rules as allergies.</summary>
-		private static List<string> ImportProblems(List<EFormField> listEFormFields,List<EFormField> listEFormFieldsAll,long patNum) {
+		///<summary>problemsNone, problemsOther and problem: fields. Same rules as allergies (GetProblemNotImportedText for listNotImported).</summary>
+		private static List<string> ImportProblems(List<EFormField> listEFormFields,List<EFormField> listEFormFieldsAll,long patNum,
+			List<string> listNotImported)
+		{
 			List<string> listChanges=new List<string>();
 			if(!listEFormFields.Exists(x => x.DbLink.In("problemsNone","problemsOther") || x.DbLink.StartsWith("problem:"))) {
 				return listChanges;
@@ -426,7 +466,9 @@ namespace OpenPmsDentalBusiness {
 						}
 						DiseaseDef diseaseDef=DiseaseDefs.GetFirstOrDefault(x=>x.DiseaseName.ToLower()==listStrsInput[a].ToLower());
 						if(diseaseDef==null && !IsProblemsAsOther()) {
-							continue;//ODOPTS: EFormImportProblemsAsOther off, an unmatched problem is not imported.
+							//ODOPTS: EFormImportProblemsAsOther off, an unmatched problem is not imported, but it is recorded and shown.
+							listNotImported.Add(GetProblemNotImportedText(listStrsInput[a]));
+							continue;
 						}
 						if(diseaseDef==null) {
 							DiseaseDef diseaseDefOther=GetOrInsertDiseaseDef("Other");
