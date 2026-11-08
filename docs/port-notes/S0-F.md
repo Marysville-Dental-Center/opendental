@@ -1,6 +1,7 @@
 # Port note: S0-F (fixes for the stage 0 window checks)
 
-Package S0-F of stage 0 of the .NET 10 move, on branch `net10/s0f-1` from `main` (bb446f65a). The stage 0 window checks (computer-use run on
+Package S0-F of stage 0 of the .NET 10 move, on branch `net10/s0f-1` from `main` (bb446f65a), with the review fixes on `net10/s0f-2`. The
+stage 0 window checks (computer-use run on
 the Debug build, 2026-11-08) found four issues besides the owner decisions they raised: the process stayed alive after File > Exit, a
 deleted image left its thumbnail, the log-off prompt's X still logged off, and the Email Authentication box of Edit Email Address was mostly
 empty. Synthetic data only; no window of the program was launched. Tests: the new assembly `tests/S0FTests` (scratch database `s0f_*`,
@@ -29,19 +30,35 @@ network, and each probe killed after 40 to 60 seconds if it had not ended.
 - `FormOpenDental_FormClosed` calls `Dispose()` and then `Environment.Exit(0)`. `Control.Dispose` destroys every window handle first and
   disposes the child controls after, so the windows disappear before the disposal is done.
 
-So the hung process most likely never got to `Environment.Exit`: either the main thread was held up inside the main window's `Dispose`
-(after the windows were gone), or `Dispose` threw and `Main` returned with a foreground thread left (ODThreads are foreground by default;
-`QuitSyncAllOdThreads` only asks them to stop). The second is the less likely: the exception would have gone to `Application.ThreadException`,
-whose error window the check did not see. Which one, and in which control or thread, nothing recorded: **the root cause is not proven.** It was not reproduced with WebView2 alone, so it may not be
-WebView2's at all; the long session also used the Chart module (EHR amendments), e-mail windows and program link setup windows, which the
-fresh-start runs did not.
+File > Exit is `Application.Exit`, which raises `FormClosing` and then `FormClosed` on the open windows; the main window stays on the screen
+until the `Dispose` in its `FormClosed` destroys its handle. So the windows were gone means `FormClosed` had run at least up to that
+`Dispose`. From there, two places fit what was seen, and **the root cause is not proven**:
+
+- **Before `Environment.Exit` (a guess, not shown).** The main thread was held up inside the main window's `Dispose` (after the windows were
+  gone), or `Dispose` threw and `Main` returned with a foreground thread left (ODThreads are foreground by default; `QuitSyncAllOdThreads`
+  only asks them to stop; the exception would have gone to `Application.ThreadException`, whose error window the check did not see). Such a
+  process still has the runtime's own threads (the finalizer, the debugger helper), the WPF render thread once WPF content was shown, the
+  threads WebView2 starts in the program's process once it was used, and every ODThread that did not stop. 4 threads in all is low for
+  that, though not impossible.
+- **Inside `ExitProcess`, where `Environment.Exit` ends.** `ExitProcess` first ends every other thread of the process and then, under the
+  loader lock, sends `DLL_PROCESS_DETACH` to each loaded DLL. A detach that waits (for a thread, or a browser process, for example in
+  `EmbeddedBrowserWebView.dll`) hangs the process for good, with its main thread and any thread started after that point, which waits for
+  the loader lock: few threads, all waiting, no CPU. That fits the 4 waiting threads as well as the guess above, or better. The off-screen
+  probes above ended through the same `Environment.Exit` after WebView2 had been used (so with `EmbeddedBrowserWebView.dll` loaded) and did
+  not hang, so if the hang is there, it depends on what the long session did.
+
+The check recorded only the number of threads, not which they were, so the count cannot decide it. It was not reproduced with WebView2
+alone, so it may not be WebView2's at all; the long session also used the Chart module (EHR amendments), e-mail windows and program link
+setup windows, which the fresh-start runs did not. The launch check below is set up to tell the two places apart.
 
 **What changed.**
 
 - `ExitWatchdog` (at the end of `ProgramEntry.cs`, so no file is added to the classic project): started in `FormOpenDental_FormClosed`,
   from where nothing can cancel the exit or waits for the user. If the process still runs 15 seconds later, it writes the last step of the
   closing and the process's threads to the log (Logger, folder `Exit`), calls `Environment.Exit` itself, and 5 seconds after that ends the
-  process with `TerminateProcess` (exit code 1).
+  process with `TerminateProcess` (exit code 1). It covers a closing held up before `ExitProcess` (the first place above, and the runtime's
+  own shutdown inside `Environment.Exit`). It cannot end a hang inside `ExitProcess`: its threads, `ExitWatchdog` and `ExitWatchdogKill`,
+  are ended with the others before the detach starts, so it writes nothing and the process stays as before.
 - `FormOpenDental_FormClosed` names its steps for the watchdog, closes every `ODWebView2` of the main window (the Imaging module's PDF
   viewer, the eCW panel) before `Dispose`, while their windows still exist, and logs an exception of `Dispose` instead of skipping
   `Environment.Exit`.
@@ -63,10 +80,32 @@ and `Main`); `WebViewHostWiringTests` (FormImages, the print browser, `Init` onc
 the PDF shows, and once its window closed its browser process ends).
 
 **Launch check (the lead).** Repeat the long session (EOB windows with JPG and PDF imports, zoom, deletes; Chart > EHR > Amendments; the
-e-mail windows; program link setup windows), then File > Exit: the process must end within about 20 seconds at worst. Then look in the
-program's `Logger\Exit` folder: an entry there means the closing was held up, and its last step names where (a browser, the main window's
-disposal, or `Environment.Exit`), which finds the cause for good. If the process ends at once and there is no entry, try the same session
-without the EOB window to see whether it was WebView2 at all.
+e-mail windows; program link setup windows), then File > Exit, and watch the process (`OpenPmsDental.exe`) in Task Manager's Details tab
+with its Threads column on (right-click a column header, Select columns). The watchdog writes into the `Exit` folder of the program's log:
+`Logger\Exit` next to `OpenPmsDental.exe`, or `Documents\Logger\Exit` when verbose logging is on.
+
+- **It ends within a few seconds, no entry in `Logger\Exit`:** the hang did not come back. That does not show which change removed it (the
+  browsers now close with their windows) or that it cannot come back; repeat the session once more before calling it gone.
+- **It ends after about 15 to 20 seconds, with an entry:** the closing was held up before `ExitProcess`, while the watchdog's threads still
+  ran. The entry's last step names where (a browser of the main window, the main window's disposal, or `Environment.Exit`, which then means
+  the runtime's own shutdown) and lists the threads; that is where the cause is.
+- **It is still running 30 seconds after File > Exit:** before ending it, write down its thread count and capture a full dump (Task
+  Manager's Details tab, right-click the process, Create dump file; or `procdump -ma <pid>` where ProcDump is installed). The dump holds the
+  process's memory: synthetic data only, and it stays on the test PC. The dump of Task Manager is 64-bit for the 32-bit process; in WinDbg
+  `.load wow64exts` and `.effmach x86` before `~*k` show the stacks. Then end the process and look in `Logger\Exit`:
+  - **No entry:** the watchdog's threads (`ExitWatchdog`, `ExitWatchdogKill`) had been ended, and only `ExitProcess` does that, before it
+    sends `DLL_PROCESS_DETACH`. The hang is inside `ExitProcess`. The main thread's stack proves it: `ntdll!RtlExitUserProcess` and
+    `ntdll!LdrShutdownProcess` below the frames of the module whose detach waits, which names the module. Should the main thread be
+    anywhere else, the watchdog itself was held up before it wrote, and the stacks show where.
+  - **An entry with only its first message:** the closing was held up before `ExitProcess` (the entry names where), and then the
+    watchdog's own `Environment.Exit` hung inside `ExitProcess`, which ended `ExitWatchdogKill` as well; the stack of the thread left in
+    `ntdll!LdrShutdownProcess` (the `ExitWatchdog` thread) names the module as above.
+  - **An entry that also says "Environment.Exit did not end the process within 5 seconds either":** `TerminateProcess` did not end it (a
+    thread held in the kernel, for example by a driver); the dump's stacks show which.
+
+A hang inside `ExitProcess` would need a fix of another kind than the watchdog: by the module's owner, or by ending the process without the
+DLL detach (`TerminateProcess` once the closing is done, instead of `Environment.Exit`). That is a change of its own, for the owner to decide
+once the dump names the module.
 
 ## 2. A deleted image left its thumbnail
 

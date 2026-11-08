@@ -7148,7 +7148,8 @@ namespace OpenPmsDental{
 
 		private void FormOpenDental_FormClosed(object sender,FormClosedEventArgs e) {
 			//S0-F: nothing from here on can cancel the exit or waits for the user, so the process must end. The watchdog ends it if this closing is held
-			//up and writes down the step it stood at (ExitWatchdog), and an exception in the disposal no longer skips Environment.Exit below.
+			//up before Windows ends the process (not inside ExitProcess, see ExitWatchdog) and writes down the step it stood at, and an exception in the
+			//disposal no longer skips Environment.Exit below.
 			ExitWatchdog.Program.Start("FormClosed: closing the browsers of the main window");
 			//The browsers (WebView2: the Imaging module's PDF viewer, the eCW panel) close while their windows still exist, as the windows that have one
 			//close theirs; Dispose below destroys every window handle first and disposes the controls after.

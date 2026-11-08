@@ -1,6 +1,8 @@
-// S0-F (1): the program's exit always ends the process. ExitWatchdog, started where the closing can no longer be cancelled, gives it a fixed
-// time and then writes down the step it stood at, calls Environment.Exit itself and finally ends the process. Tested with its actions replaced
-// (nothing exits); the wiring of FormOpenDental's FormClosed and of ProgramEntry by their source. No window is shown.
+// S0-F (1): a program exit that is held up before Windows ends the process still ends it. ExitWatchdog, started where the closing can no
+// longer be cancelled, gives it a fixed time and then writes down the step it stood at, calls Environment.Exit itself and finally ends the
+// process. A hang inside ExitProcess (a DLL's detach) ends the watchdog's threads first, which no test here can show; the launch check of
+// docs/port-notes/S0-F.md tells it apart. Tested with its actions replaced (nothing exits); the wiring of FormOpenDental's FormClosed and of
+// ProgramEntry by their source. No window is shown.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

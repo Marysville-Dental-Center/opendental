@@ -141,18 +141,27 @@ namespace OpenPmsDental {
 		}
 	}
 
-	//S0-F: the program's exit always ends the process. In the stage 0 window check, File > Exit closed every window after a long session that
-	//had used the WebView2 PDF viewer, but the process stayed for more than 3 minutes (4 waiting threads, no CPU). FormOpenDental's FormClosed
-	//disposes the main window and then calls Environment.Exit, and .NET Framework ends Environment.Exit within seconds even when a finalizer
-	//hangs (checked off-screen in the investigation of S0-F), so that process most likely never got to Environment.Exit: the main thread was
-	//held up after its windows were gone (the disposal of the main window destroys the window handles first and disposes the controls after),
-	//or the disposal threw and Main returned with a foreground thread left. Nothing recorded which. From FormClosed on, nothing waits for the
-	//user any more, so the watchdog gives the closing a fixed time and then ends the process itself, after writing down where the closing stood.
+	//S0-F: a closing that is held up before Windows ends the process still ends it. In the stage 0 window check, File > Exit closed every
+	//window after a long session that had used the WebView2 PDF viewer, but the process stayed for more than 3 minutes (4 waiting threads, no
+	//CPU). The cause is not known. FormOpenDental's FormClosed disposes the main window (whose window stays on the screen until then) and then
+	//calls Environment.Exit, and .NET Framework ends Environment.Exit within seconds even when a finalizer hangs (checked off-screen in the
+	//investigation of S0-F). Two places fit what was seen:
+	//- Before Environment.Exit (a guess): the main thread held up after its windows were gone (the disposal of the main window destroys the
+	//  window handles first and disposes the controls after), or Main returned with a foreground thread left. Such a process would still have
+	//  the runtime's own threads, the WPF render thread, WebView2's threads and the ODThreads that did not stop, so 4 threads is low for it.
+	//- Inside ExitProcess, where Environment.Exit ends: Windows first ends every other thread of the process, then sends DLL_PROCESS_DETACH to
+	//  each DLL under the loader lock. A detach that waits (in EmbeddedBrowserWebView.dll, for example) hangs the process with its main thread
+	//  and any thread started after that point, all waiting for the lock: few threads, no CPU, which fits the 4 threads as well or better.
+	//The watchdog covers the first: from FormClosed on, nothing waits for the user any more, so it gives the closing a fixed time and then ends
+	//the process itself, after writing down where the closing stood. It cannot end a hang inside ExitProcess: its own threads are ended with
+	//the others before the detach starts, so it writes nothing and the process stays. The launch check in docs/port-notes/S0-F.md tells the
+	//two apart (a dump of the process when it is still running and the log has no entry).
 	//It is here, next to Main, so that no file is added to the classic project.
-	///<summary>Ends the process when the program's exit does not. Start it where the closing can no longer be cancelled (FormOpenDental's
-	///FormClosed), name each step of the closing with SetStep, and call Environment.Exit as before: when the process is still running GraceSeconds
-	///later, the watchdog writes the last step and the process's threads to the log (Logger, "Exit" folder), calls Environment.Exit itself (the
-	///closing was held up before it), and KillSeconds after that ends the process outright (Environment.Exit itself was held up). One watchdog per
+	///<summary>Ends the process when the program's exit is held up before Windows ends the process. Start it where the closing can no longer be
+	///cancelled (FormOpenDental's FormClosed), name each step of the closing with SetStep, and call Environment.Exit as before: when the process
+	///is still running GraceSeconds later, the watchdog writes the last step and the process's threads to the log (Logger, "Exit" folder), calls
+	///Environment.Exit itself (the closing was held up before it), and KillSeconds after that ends the process outright (Environment.Exit itself
+	///was held up). A hang inside ExitProcess (a DLL's detach) ends the watchdog's threads first, so it can do nothing there. One watchdog per
 	///process (Program); tests make their own and replace the actions.</summary>
 	public class ExitWatchdog {
 		///<summary>The program's watchdog.</summary>
