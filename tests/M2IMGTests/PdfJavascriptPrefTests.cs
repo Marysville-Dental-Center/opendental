@@ -83,11 +83,15 @@ namespace M2IMGTests {
 		}
 
 		[TestMethod]
-		public void OldImagingModule_EveryPdfNavigationAppliesThePreference() {
-			//Preferences > Imaging > General can still switch to the pre-2020 Imaging module, which shows PDFs in its own WebView2.
-			string source=Read("OpenPmsDental","Main Modules","ControlImagesOld.cs");
-			AssertBefore(MethodBody(source,"private async void LoadPdf("),"_odWebView2."+HOOK,"_odWebView2.CoreWebView2.Navigate(_odWebView2FilePath);");
-			Assert.AreEqual(Count(source,"_odWebView2.CoreWebView2.Navigate(")+Count(source,"_odWebView2.ODWebView2Navigate("),Count(source,HOOK));
+		public void EobAndAmendmentWindow_EveryPdfNavigationAppliesThePreference() {
+			//S0-6: the pre-2020 Imaging module, which showed PDFs in its own WebView2, is removed with its option. The window of claim payment and
+			//preauthorization EOBs and EHR amendments, which it used to draw, is rebuilt on the Imaging module's PDF viewer and reads the preference too.
+			Assert.IsFalse(File.Exists(Path.Combine(Path.GetDirectoryName(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","Main Modules","ControlImages.cs"))),
+				"ControlImagesOld.cs")),"The old module is gone.");
+			string source=Read("OpenPmsDental","Forms","FormImages.cs");
+			AssertBefore(MethodBody(source,"private async void LoadPdf("),"_odWebView2."+HOOK,"_odWebView2.ODWebView2Navigate(filePath);");
+			Assert.AreEqual(Count(source,"ODWebView2Navigate("),Count(source,HOOK),"Every navigation of the PDF viewer reads the preference first.");
+			Assert.AreEqual(0,Count(source,"CoreWebView2.Navigate("),"No navigation that skips the preference.");
 		}
 
 		[TestMethod]

@@ -1,12 +1,12 @@
 // S0-6 of the .NET 10 move: the EOB and amendment window (FormImages), rebuilt on the current Imaging code, and its logic without UI
 // (EobAmendmentFiles, at the end of OpenPmsDentalBusiness/Imaging/ImageStore.cs). The file handling runs against a scratch database of its own
-// (s06_ and this run's id, built like the A-IMG one, dropped afterwards), once with an A-to-Z folder and once with images in the database:
+// (TestDb.ScratchName("eobamd"), built like the A-IMG one, dropped afterwards, and dropped by a later run's TestDb.DropStaleScratchDatabases
+// if a run crashes), once with an A-to-Z folder and once with images in the database:
 // the same eobattach and ehramendment rows, files and log entries as the old window, except the differences S0-6 lists. The window cannot be
 // opened in a test run (the GUI is not launched), so its source is read. Synthetic data only.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -15,7 +15,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using MySqlConnector;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.ForkMigrations;
 using EnumCommand=OpenPmsDentalBusiness.EobAmendmentFiles.EnumCommand;
@@ -24,13 +23,12 @@ using EnumShowAs=OpenPmsDentalBusiness.EobAmendmentFiles.EnumShowAs;
 using FileEntry=OpenPmsDentalBusiness.EobAmendmentFiles.FileEntry;
 
 namespace ImagingTests {
-	///<summary>The scratch database of the S0-6 tests, apart from the A-IMG one: named s06_ and this run's id, built like TestDb.CreateFresh24_3
-	///(the seed dump and the frozen 24.3.63 convert chain), upgraded by the fork migration runner, and dropped when the tests are done. Only this
+	///<summary>The scratch database of the S0-6 tests, apart from the A-IMG one: named by TestDb.ScratchName("eobamd") (this run's id), built like
+	///TestDb.CreateFresh24_3 (the seed dump and the frozen 24.3.63 convert chain), upgraded by the fork migration runner, and dropped when the
+	///tests are done. A run that crashes leaves it behind for a later run's TestDb.DropStaleScratchDatabases, which ImagingDb runs first. Only this
 	///database is ever created or dropped here.</summary>
 	internal static class EobAmendmentDb {
-		private const string PREFIX="s06_";
-		public static readonly string DbName=PREFIX+DateTime.UtcNow.ToString("yyMMddHHmmss")+"_"+Process.GetCurrentProcess().Id+"_"
-			+new Random().Next(1000,10000)+"_eobamd";
+		public static readonly string DbName=TestDb.ScratchName("eobamd");
 		///<summary>Null when the database is ready; otherwise why the tests are skipped.</summary>
 		public static string SkipReason;
 
@@ -39,10 +37,7 @@ namespace ImagingTests {
 			if(SkipReason!=null) {
 				return;
 			}
-			using(MySqlConnection connection=TestDb.OpenServer()) {
-				TestDb.Exec(connection,"DROP DATABASE IF EXISTS `"+DbName+"`");
-				TestDb.Exec(connection,"CREATE DATABASE `"+DbName+"` CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
-			}
+			TestDb.Recreate(DbName);
 			TestDb.Connect(DbName);
 			DataCore.NonQ(File.ReadAllText(FindSeedDump(),new UTF8Encoding(false)));
 			Security.CurUser=Security.CurUser??new Userod();
@@ -55,12 +50,7 @@ namespace ImagingTests {
 		}
 
 		public static void Drop() {
-			if(!DbName.StartsWith(PREFIX)) {
-				throw new ArgumentException("These tests only drop their own s06_ database.");
-			}
-			using(MySqlConnection connection=TestDb.OpenServer()) {
-				TestDb.Exec(connection,"DROP DATABASE IF EXISTS `"+DbName+"`");
-			}
+			TestDb.Drop(DbName);//refuses any name that is not a scratch name
 		}
 
 		///<summary>Call from [TestInitialize]: skips the test when there is no database, otherwise connects to it and fills the caches from it.</summary>
@@ -117,7 +107,7 @@ namespace ImagingTests {
 				EobAmendmentDb.Drop();
 			}
 			catch(Exception) {
-				//Left for the developer to drop; its name starts with s06_.
+				//A later run drops it once it is stale (TestDb.DropStaleScratchDatabases).
 			}
 		}
 
@@ -445,6 +435,95 @@ namespace ImagingTests {
 			Assert.AreEqual("",ehrAmendmentDb.FileName);
 			Assert.AreEqual("",ehrAmendmentDb.RawBase64??"");
 		}
+
+		///<summary>S0-6 part 2, fix 2: a file imported onto an amendment sets ehramendment.DateTAppend with images in the database too, as it does with
+		///an A-to-Z folder and as a scanned or pasted page does in both modes.</summary>
+		[TestMethod]
+		public void Amendment_ReplaceFromAFile_SetsDateTAppend_InBothModes() {
+			Patient patient=ImagingDb.CreatePatient("s06bappend");
+			foreach(bool isAtoZ in new[] { false,true }) {
+				if(isAtoZ) {
+					UseAtoZ();
+				}
+				string mode=(isAtoZ ? "A-to-Z" : "in database");
+				EhrAmendment ehrAmendment=CreateAmendment(patient,"S06b append "+mode);
+				Assert.IsTrue(EhrAmendments.GetOne(ehrAmendment.EhrAmendmentNum).DateTAppend.Year<1880,"No file yet: "+mode);
+				DateTime dateTimeBefore=DateTime.Now.AddSeconds(-2);
+				ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(ehrAmendment,MakePdfFile());
+				EhrAmendment ehrAmendmentDb=EhrAmendments.GetOne(ehrAmendment.EhrAmendmentNum);
+				Assert.IsTrue(ehrAmendmentDb.DateTAppend>=dateTimeBefore && ehrAmendmentDb.DateTAppend<=DateTime.Now.AddSeconds(2),
+					"Appended now ("+mode+"): "+ehrAmendmentDb.DateTAppend);
+				Assert.IsTrue(ehrAmendmentDb.FileName.EndsWith(".pdf"),mode);
+				//The bitmap overload, which always set it:
+				EhrAmendment ehrAmendmentBitmap=CreateAmendment(patient,"S06b append bitmap "+mode);
+				using(Bitmap bitmap=MakeBitmap()) {
+					EobAmendmentFiles.ReplaceAmendmentFile(ehrAmendmentBitmap,bitmap);
+				}
+				Assert.IsTrue(EhrAmendments.GetOne(ehrAmendmentBitmap.EhrAmendmentNum).DateTAppend>=dateTimeBefore,mode);
+			}
+			//ImageStore itself, which the window calls through EobAmendmentFiles:
+			ImagingDb.SetStorage(DataStorageType.InDatabase);
+			EhrAmendment ehrAmendmentStore=CreateAmendment(patient,"S06b append store");
+			ImageStore.ImportAmdAttach(MakePdfFile(),ehrAmendmentStore);
+			Assert.IsTrue(EhrAmendments.GetOne(ehrAmendmentStore.EhrAmendmentNum).DateTAppend.Year>1880);
+		}
+
+		///<summary>S0-6 part 2, fix 4: a replacement that fails leaves the amendment on its old file. The object passed in keeps its name (the window's
+		///list, export and a later delete use it), the row keeps its name and append date (the bitmap path stores the new name before the file), and
+		///the old file is still there. A file that fails from disk (gone before it is copied) and a page that cannot be saved (a disposed bitmap).
+		///</summary>
+		[TestMethod]
+		public void Amendment_FailedReplace_KeepsTheOldFileAndName_AtoZ() {
+			UseAtoZ();
+			Patient patient=ImagingDb.CreatePatient("s06bfailatoz");
+			EhrAmendment ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(CreateAmendment(patient,"S06b fail"),MakeJpgFile());
+			string fileNameOld=ehrAmendment.FileName;
+			DateTime dateTAppendOld=EhrAmendments.GetOne(ehrAmendment.EhrAmendmentNum).DateTAppend;
+			ehrAmendment=EhrAmendments.GetOne(ehrAmendment.EhrAmendmentNum);
+			string pathMissing=Path.Combine(_atoZ,"s06b_missing_"+Guid.NewGuid().ToString("N")+".pdf");
+			AssertThrowsAny(() => EobAmendmentFiles.ReplaceAmendmentFile(ehrAmendment,pathMissing));
+			AssertStillOnTheOldFile(ehrAmendment,fileNameOld,dateTAppendOld);
+			Bitmap bitmapDisposed=MakeBitmap();
+			bitmapDisposed.Dispose();
+			System.Threading.Thread.Sleep(1100);//A new name, a second later than the old one, which the bitmap path stores before the file.
+			AssertThrowsAny(() => EobAmendmentFiles.ReplaceAmendmentFile(ehrAmendment,bitmapDisposed));
+			AssertStillOnTheOldFile(ehrAmendment,fileNameOld,dateTAppendOld);
+			CollectionAssert.AreEqual(new[] { fileNameOld },Directory.GetFiles(Path.Combine(_atoZ,"Amendments")).Select(x => Path.GetFileName(x)).ToArray(),
+				"Only the old file: nothing was left under the new name.");
+			Assert.IsTrue(IsJpeg(File.ReadAllBytes(AmdPath(fileNameOld))));
+			//And it can still be replaced and deleted under its real name.
+			ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(ehrAmendment,MakePdfFile());
+			Assert.IsFalse(File.Exists(AmdPath(fileNameOld)),"The old file goes once a replacement works.");
+			EobAmendmentFiles.DeleteAmendmentFile(ehrAmendment);
+			Assert.AreEqual(0,Directory.GetFiles(Path.Combine(_atoZ,"Amendments")).Length);
+		}
+
+		[TestMethod]
+		public void Amendment_FailedReplace_KeepsTheOldFileAndName_InDatabase() {
+			Patient patient=ImagingDb.CreatePatient("s06bfaildb");
+			EhrAmendment ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(CreateAmendment(patient,"S06b fail db"),MakePdfFile());
+			string fileNameOld=ehrAmendment.FileName;
+			ehrAmendment=EhrAmendments.GetOne(ehrAmendment.EhrAmendmentNum);
+			DateTime dateTAppendOld=ehrAmendment.DateTAppend;
+			string pathMissing=Path.Combine(Path.GetTempPath(),"s06b_missing_"+Guid.NewGuid().ToString("N")+".pdf");
+			AssertThrowsAny(() => EobAmendmentFiles.ReplaceAmendmentFile(ehrAmendment,pathMissing));
+			AssertStillOnTheOldFile(ehrAmendment,fileNameOld,dateTAppendOld);
+			Bitmap bitmapDisposed=MakeBitmap();
+			bitmapDisposed.Dispose();
+			System.Threading.Thread.Sleep(1100);
+			AssertThrowsAny(() => EobAmendmentFiles.ReplaceAmendmentFile(ehrAmendment,bitmapDisposed));
+			AssertStillOnTheOldFile(ehrAmendment,fileNameOld,dateTAppendOld);
+			CollectionAssert.AreEqual(_arrayBytesPdf,Convert.FromBase64String(EhrAmendments.GetOne(ehrAmendment.EhrAmendmentNum).RawBase64),
+				"The stored bytes are the old file's.");
+		}
+
+		private static void AssertStillOnTheOldFile(EhrAmendment ehrAmendment,string fileNameOld,DateTime dateTAppendOld) {
+			Assert.AreEqual(fileNameOld,ehrAmendment.FileName,"The object passed in is not changed.");
+			EhrAmendment ehrAmendmentDb=EhrAmendments.GetOne(ehrAmendment.EhrAmendmentNum);
+			Assert.AreEqual(fileNameOld,ehrAmendmentDb.FileName,"The row keeps its name.");
+			Assert.AreEqual(dateTAppendOld,ehrAmendmentDb.DateTAppend,"The row keeps its append date.");
+			Assert.AreEqual(fileNameOld,EobAmendmentFiles.GetFileEntries(EnumMode.Amendment,0,0,ehrAmendment).Single().FileName);
+		}
 		#endregion Amendments
 
 		#region Reading, the viewer's path and export
@@ -567,6 +646,34 @@ namespace ImagingTests {
 			AssertThrowsApplication(() => EobAmendmentFiles.Export(fileEntryEmpty,pathExportEmpty));
 			Assert.IsFalse(File.Exists(pathExportEmpty));
 		}
+
+		///<summary>S0-6 part 2, fix 1: export over an existing file replaces it in both storage modes, after the Save dialog has asked (with an A-to-Z
+		///folder ImageStore's copy failed with "file exists"; with images in the database it already replaced it).</summary>
+		[TestMethod]
+		public void Export_OverAnExistingFile_ReplacesIt_InBothModes() {
+			Patient patient=ImagingDb.CreatePatient("s06bexpover");
+			long claimNumPreAuth=ImagingDb.CreatePreAuth(patient,DateTime.Today);
+			foreach(bool isAtoZ in new[] { true,false }) {
+				if(isAtoZ) {
+					UseAtoZ();
+				}
+				else {
+					ImagingDb.SetStorage(DataStorageType.InDatabase);
+				}
+				string mode=(isAtoZ ? "A-to-Z" : "in database");
+				EobAttach eobAttach=EobAmendmentFiles.AddEob(MakePdfFile(),EnumMode.PreAuth,0,claimNumPreAuth);
+				string pathExport=MakeTempPath(".pdf");
+				File.WriteAllBytes(pathExport,new byte[] { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 });//longer than the EOB
+				EobAmendmentFiles.Export(EobAmendmentFiles.GetFileEntry(eobAttach),pathExport);
+				CollectionAssert.AreEqual(_arrayBytesPdf,File.ReadAllBytes(pathExport),"The EOB replaced the file that was there ("+mode+").");
+				string pathJpg=MakeJpgFile();
+				EhrAmendment ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(CreateAmendment(patient,"S06b export over "+mode),pathJpg);
+				string pathExportAmd=MakeTempPath(".jpg");
+				File.WriteAllBytes(pathExportAmd,new byte[] { 9,9,9 });
+				EobAmendmentFiles.Export(EobAmendmentFiles.GetFileEntry(ehrAmendment),pathExportAmd);
+				CollectionAssert.AreEqual(File.ReadAllBytes(pathJpg),File.ReadAllBytes(pathExportAmd),"The amendment's file replaced it ("+mode+").");
+			}
+		}
 		#endregion Reading, the viewer's path and export
 
 		#region Log entries
@@ -593,6 +700,16 @@ namespace ImagingTests {
 				return;
 			}
 			Assert.Fail("Expected ApplicationException.");
+		}
+
+		private static void AssertThrowsAny(Action action) {
+			try {
+				action();
+			}
+			catch(Exception) {
+				return;
+			}
+			Assert.Fail("Expected an exception.");
 		}
 	}
 
@@ -631,6 +748,30 @@ namespace ImagingTests {
 			Assert.IsTrue(EobAmendmentFiles.IsReplaceConfirmNeeded(EnumMode.Amendment,ehrAmendment));
 			Assert.IsFalse(EobAmendmentFiles.IsReplaceConfirmNeeded(EnumMode.PreAuth,ehrAmendment),"New EOBs replace nothing.");
 			Assert.IsFalse(EobAmendmentFiles.IsReplaceConfirmNeeded(EnumMode.Amendment,null));
+		}
+
+		///<summary>S0-6 part 2, fix 7: a multi-page scan that ended with an EZTwain error may be missing pages. It replaces an amendment's file only
+		///after a second yes; for EOBs, and for an amendment that has no file yet, it is added as before, because it replaces nothing.</summary>
+		[TestMethod]
+		public void PartialScan_AsksOnlyBeforeReplacingAnAmendmentsFile() {
+			EhrAmendment ehrAmendmentNoFile=new EhrAmendment { FileName="" };
+			EhrAmendment ehrAmendmentWithFile=new EhrAmendment { FileName="20261101_101010_4.jpg" };
+			Assert.IsTrue(EobAmendmentFiles.IsPartialScanConfirmNeeded(EnumMode.Amendment,ehrAmendmentWithFile));
+			Assert.IsFalse(EobAmendmentFiles.IsPartialScanConfirmNeeded(EnumMode.Amendment,ehrAmendmentNoFile));
+			Assert.IsFalse(EobAmendmentFiles.IsPartialScanConfirmNeeded(EnumMode.ClaimPayment,ehrAmendmentWithFile));
+			Assert.IsFalse(EobAmendmentFiles.IsPartialScanConfirmNeeded(EnumMode.PreAuth,ehrAmendmentWithFile));
+			Assert.IsFalse(EobAmendmentFiles.IsPartialScanConfirmNeeded(EnumMode.Amendment,null));
+		}
+
+		///<summary>S0-6 part 2, fix 8: the S0-6 scratch database has the TestDb scratch name, so a run that crashes before it drops it leaves nothing
+		///for good: a later run's TestDb.DropStaleScratchDatabases drops it once it is stale.</summary>
+		[TestMethod]
+		public void ScratchDatabase_HasTheTestDbScratchName() {
+			Assert.AreEqual(TestDb.ScratchName("eobamd"),EobAmendmentDb.DbName);
+			StringAssert.Matches(EobAmendmentDb.DbName,new Regex(@"^forkmig_\d{12}_\d+_\d+_[a-z0-9_]+$"),
+				"The pattern TestDb.DropStaleScratchDatabases drops.");
+			string source=File.ReadAllText(TestDb.FindRepoFile(Path.Combine("tests","ForkMigrationTests","TestDb.cs")));
+			StringAssert.Contains(source,"new Regex(\"^\"+PREFIX+@\"(\\d{12})_\\d+_\\d+_[a-z0-9_]+$\")");
 		}
 
 		[TestMethod]
@@ -738,6 +879,75 @@ namespace ImagingTests {
 			Assert.AreEqual(5,countOpens,"The five call sites, in four files.");
 		}
 
+		///<summary>S0-6 step 2: the old 2020 Images module is gone with its start-up choice and its Setup check box. Only the convert scripts, which
+		///add and reset the preference row, and Pref.cs, which keeps the PrefName because they name it, may still name it. The row stays in the
+		///database and nothing reads it, so a database with the option on simply gets the current Images module.</summary>
+		[TestMethod]
+		public void OldImagesModule_Removed_OnlyTheConvertScriptsAndPrefCsNameIt() {
+			string folderMainModules=Path.GetDirectoryName(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","Main Modules","ControlImages.cs")));
+			foreach(string fileName in new[] { "ControlImagesOld.cs","ControlImagesOld.designer.cs","ControlImagesOld.resx" }) {
+				Assert.IsFalse(File.Exists(Path.Combine(folderMainModules,fileName)),fileName+" is deleted.");
+			}
+			string root=Path.GetDirectoryName(Path.GetDirectoryName(folderMainModules));
+			Regex regexNames=new Regex(@"ControlImagesOld|ImagesModuleUsesOld2020");
+			HashSet<string> hashSetExtensions=new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
+				".cs",".csproj",".xml",".xaml",".resx",".config",".settings",".ps1",".iss" };
+			List<string> listOffenders=new List<string>();
+			int countFiles=0;
+			foreach(string path in EnumerateProgramFiles(root)) {
+				if(!hashSetExtensions.Contains(Path.GetExtension(path))) {
+					continue;
+				}
+				countFiles++;
+				string fileName=Path.GetFileName(path);
+				bool isConvertScript=Regex.IsMatch(fileName,@"^ConvertDatabases\d*\.cs$",RegexOptions.IgnoreCase);
+				bool isPrefCs=SamePath(path,Path.Combine(root,"OpenPmsDentalBusiness","TableTypes","Pref.cs"));
+				if(isConvertScript || isPrefCs) {
+					continue;
+				}
+				if(regexNames.IsMatch(File.ReadAllText(path))) {
+					listOffenders.Add(path.Substring(root.Length));
+				}
+			}
+			Assert.IsTrue(countFiles>1000,"The scan found the program's sources ("+countFiles+" files).");
+			Assert.AreEqual(0,listOffenders.Count,"Still names the old Images module or its option: "+string.Join(", ",listOffenders));
+			//The PrefName stays, for the convert scripts, and says that nothing reads it any more.
+			StringAssert.Contains(Read("OpenPmsDentalBusiness","TableTypes","Pref.cs"),"\t\tImagesModuleUsesOld2020,");
+			StringAssert.Contains(Read("OpenPmsDentalBusiness","Misc","ConvertDatabases6.cs"),"'ImagesModuleUsesOld2020'");
+			//Setup > Imaging has no check box for it, and the boxes below it moved up into its row.
+			string designer=Read("OpenPmsDental","User Controls","Preferences","UserControlImagingGeneral.Designer.cs");
+			StringAssert.Contains(designer,"this.checkImagingOrderDescending.Location = new System.Drawing.Point(5, 41);");
+			StringAssert.Contains(designer,"this.checkImagingAllowPdfJavascript.Location = new System.Drawing.Point(5, 72);");
+			StringAssert.Contains(designer,"this.groupBoxFunctionality.Size = new System.Drawing.Size(450, 98);");
+			Assert.AreEqual(0,Count(Read("OpenPmsDental","Forms","FormPreferences.cs"),"DoSwapImagingModule"),"No forced restart after a module swap.");
+			//FormOpenDental always creates the current module.
+			string formOpenDental=Read("OpenPmsDental","Main Modules","FormOpenDental.cs");
+			Assert.AreEqual(1,Count(formOpenDental,"controlImages=new ControlImages() { Visible=false };"));
+		}
+
+		///<summary>The program's own files under the repository root: not the tests, the documentation, the third-party sources, the build output or
+		///the package folder.</summary>
+		private static IEnumerable<string> EnumerateProgramFiles(string folder) {
+			HashSet<string> hashSetSkip=new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
+				"tests","docs","third-party","packages","bin","obj","NoHqTests","UnitTests","UnitTestsCore","node_modules","TestResults" };
+			foreach(string path in Directory.EnumerateFiles(folder)) {
+				yield return path;
+			}
+			foreach(string folderSub in Directory.EnumerateDirectories(folder)) {
+				string name=Path.GetFileName(folderSub);
+				if(name.StartsWith(".") || hashSetSkip.Contains(name)) {
+					continue;
+				}
+				foreach(string path in EnumerateProgramFiles(folderSub)) {
+					yield return path;
+				}
+			}
+		}
+
+		private static bool SamePath(string path1,string path2) {
+			return string.Equals(Path.GetFullPath(path1),Path.GetFullPath(path2),StringComparison.OrdinalIgnoreCase);
+		}
+
 		[TestMethod]
 		public void Window_NoWinFormsMenu_NoThreadAbort_NoProcessStart_NoPluginHooks_NoFileDrop() {
 			string source=ReadWindow();
@@ -808,6 +1018,100 @@ namespace ImagingTests {
 			//With images in the database a double-click asks for an export first.
 			StringAssert.Contains(MethodBody(source,"private void listFiles_MouseDoubleClick(object sender,MouseEventArgs e)"),
 				"\"Images stored directly in database. Export file in order to open with external program.\"");
+		}
+
+		///<summary>S0-6 part 2, fix 3: every write (a new EOB with its row, the amendment's new file) runs without a Cancel button. Cancel aborts the
+		///worker thread (FrmProgressAuto), which part-way through an upload could leave a row or an amendment without its file. Only reads (the
+		///viewer's downloads, the double-click open and export) can be cancelled.</summary>
+		[TestMethod]
+		public void Window_WritesCannotBeCancelledPartWay() {
+			string source=Read("OpenPmsDental","Forms","FormImages.cs");
+			Assert.AreEqual(4,Count(source,"RunWriteWithCloudProgress(() => eobAttach=EobAmendmentFiles.AddEob("),"Import, paste, scan, multi-page scan.");
+			Assert.AreEqual(4,Count(source,"RunWriteWithCloudProgress(() => _ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile("),
+				"Import, paste, scan, multi-page scan.");
+			Assert.AreEqual(4,Count(source,"EobAmendmentFiles.AddEob("),"No other write of an EOB.");
+			Assert.AreEqual(4,Count(source,"EobAmendmentFiles.ReplaceAmendmentFile("),"No other write of the amendment's file.");
+			Assert.AreEqual(0,Regex.Matches(source,@"RunWithCloudProgress\([^;]*(AddEob|ReplaceAmendmentFile)\(").Count,"No write in a cancellable progress window.");
+			string write=MethodBody(source,"private void RunWriteWithCloudProgress(Action action,string startingMessage)");
+			AssertBefore(write,"progressWin.ShowCancelButton=false;","progressWin.ShowDialog();");
+			StringAssert.Contains(write,"progressWin.StopNotAllowedMessage=");
+			//Without the Cancel button the progress window cannot be closed (its X shows the message instead) until the action is done.
+			string frmProgressAuto=Read("WpfControlsOD","UI","Progress","FrmProgressAuto.xaml.cs");
+			Assert.IsTrue(Regex.IsMatch(frmProgressAuto,@"if\(!ShowCancelButton\) \{//tried to close with X[^\n]*\n\s*MessageBox\.Show\(StopNotAllowedMessage\);[^\n]*\n\s*e\.Cancel=true;"),
+				"FrmProgressAuto refuses to close while the action runs when there is no Cancel button.");
+			//The reads stay cancellable.
+			StringAssert.Contains(MethodBody(source,"private bool RunWithCloudProgress(Action action,string startingMessage)"),"return !progressWin.IsCancelled;");
+		}
+
+		///<summary>S0-6 part 2, fixes 4 and 7: after a failed replacement the window's amendment is still on its old file (EobAmendmentFiles does not
+		///change the object it is given), which shows again; a multi-page scan that ended with an error asks before it replaces the amendment's file.
+		///</summary>
+		[TestMethod]
+		public void Window_AFailedOrPartialReplaceKeepsTheAmendmentsFile() {
+			string source=Read("OpenPmsDental","Forms","FormImages.cs");
+			string import=MethodBody(source,"private void ToolBarImport_Click(object sender,EventArgs e)");
+			Assert.IsTrue(Regex.IsMatch(import,@"catch\(Exception ex\) \{\s*MessageBox\.Show\(Lan\.g\(this,""Unable to copy file, May be in use: ""\)\+ex\.Message\+"": ""\+listFileNames\[0\]\);"
+				+@"\s*//[^\n]*\n\s*FillList\(\);\s*SelectAmendment\(\);\s*return;"),"A failed import shows the stored file, not the one that failed.");
+			string paste=MethodBody(source,"private void ToolBarPaste_Click(object sender,EventArgs e)");
+			Assert.IsTrue(Regex.IsMatch(paste,@"""Error saving amendment\.""\)\);\s*//[^\n]*\n\s*FillList\(\);\s*SelectAmendment\(\);\s*return;"));
+			foreach(string signature in new[] { "private void ToolBarScanDoc_Click(object sender,EventArgs e)","private void ToolBarScanMulti_Click(object sender,EventArgs e)" }) {
+				Assert.IsTrue(Regex.IsMatch(MethodBody(source,signature),@"if\(!isSaved\) \{\s*if\(_mode==EobAmendmentFiles\.EnumMode\.Amendment\) \{\s*SelectAmendment\(\);"),signature);
+			}
+			string scanMulti=MethodBody(source,"private void ToolBarScanMulti_Click(object sender,EventArgs e)");
+			AssertBefore(scanMulti,"\"Unable to scan. Please make sure you can scan using other software. Error: \"",
+				"EobAmendmentFiles.IsPartialScanConfirmNeeded(_mode,_ehrAmendment)");
+			AssertBefore(scanMulti,"EobAmendmentFiles.IsPartialScanConfirmNeeded(_mode,_ehrAmendment)","EobAmendmentFiles.ReplaceAmendmentFile(_ehrAmendment,tempFile)");
+			StringAssert.Contains(scanMulti,
+				"MsgBox.Show(this,MsgBoxButtons.YesNo,\"The scan ended with an error, so the document may be missing pages. Replace the amendment's file with it anyway?\")");
+			Assert.IsTrue(Regex.IsMatch(scanMulti,@"anyway\?""\)\)\s*\{\s*EobAmendmentFiles\.DeleteTempCopy\(tempFile\);\s*return;"),"No: the temp file goes and nothing is stored.");
+			//The other errors return before anything is stored, as before; only the generic one goes on.
+			Assert.AreEqual(1,Count(scanMulti,"IsPartialScanConfirmNeeded("));
+		}
+
+		///<summary>S0-6 part 2, fix 5: the files are listed and the first one shown when the window is shown, not while it loads, so a download's
+		///progress and any message appear over a visible window, as in the old window.</summary>
+		[TestMethod]
+		public void Window_ShowsTheFirstFileOnceItIsShown() {
+			string source=Read("OpenPmsDental","Forms","FormImages.cs");
+			string load=MethodBody(source,"private void FormImages_Load(object sender,EventArgs e)");
+			Assert.AreEqual(0,Count(load,"FillList()")+Count(load,"ShowSelected(")+Count(load,"SetSelected("),"Nothing is listed or shown while it loads.");
+			string shown=MethodBody(source,"private void FormImages_Shown(object sender,EventArgs e)");
+			AssertBefore(shown,"FillList();","listFiles.SetSelected(0);");
+			AssertBefore(shown,"listFiles.SetSelected(0);","ShowSelected();");
+			StringAssert.Contains(Read("OpenPmsDental","Forms","FormImages.designer.cs"),"this.Shown += new System.EventHandler(this.FormImages_Shown);");
+		}
+
+		///<summary>S0-6 part 2, fix 6: UI.ListBox raises SelectionChangeCommitted on MouseDown and on every MouseMove of a drag, so while a mouse button
+		///is down the window waits, and shows the selected file once, when the button comes up (or the list loses the mouse). Dragging over the list no
+		///longer opens every file it passes, which with cloud storage is a download each.</summary>
+		[TestMethod]
+		public void Window_DraggingOverTheListShowsOnlyTheFileWhereTheButtonComesUp() {
+			string listBox=Read("OpenPmsDental","UI","ListBox.cs");
+			StringAssert.Contains(MethodBody(listBox,"protected override void OnMouseMove(MouseEventArgs e)"),"SelectionChangeCommitted?.Invoke(this,new EventArgs());",
+				"The reason for the fix: the list box raises it while dragging.");
+			string source=Read("OpenPmsDental","Forms","FormImages.cs");
+			string changed=MethodBody(source,"private void listFiles_SelectionChangeCommitted(object sender,EventArgs e)");
+			Assert.IsTrue(Regex.IsMatch(changed,@"if\(Control\.MouseButtons!=MouseButtons\.None\) \{\s*_isListSelectionPending=true;\s*return;\s*\}"));
+			AssertBefore(changed,"return;","ShowSelected();");
+			Assert.IsTrue(Regex.IsMatch(MethodBody(source,"private void listFiles_MouseUp(object sender,MouseEventArgs e)"),
+				@"if\(!_isListSelectionPending\) \{\s*return;\s*\}\s*_isListSelectionPending=false;\s*ShowSelected\(\);"));
+			Assert.IsTrue(Regex.IsMatch(MethodBody(source,"private void listFiles_MouseCaptureChanged(object sender,EventArgs e)"),
+				@"if\(!_isListSelectionPending \|\| listFiles\.Capture\) \{\s*return;\s*\}\s*_isListSelectionPending=false;\s*ShowSelected\(\);"));
+			string designer=Read("OpenPmsDental","Forms","FormImages.designer.cs");
+			StringAssert.Contains(designer,"this.listFiles.MouseUp += new System.Windows.Forms.MouseEventHandler(this.listFiles_MouseUp);");
+			StringAssert.Contains(designer,"this.listFiles.MouseCaptureChanged += new System.EventHandler(this.listFiles_MouseCaptureChanged);");
+		}
+
+		///<summary>S0-6 part 2, fix 1: the Save dialog asks before it replaces a file, and ImageStore then replaces it with an A-to-Z folder too.</summary>
+		[TestMethod]
+		public void Export_TheSaveDialogAsks_ThenTheCopyReplaces() {
+			StringAssert.Contains(MethodBody(Read("OpenPmsDental","Forms","FormImages.cs"),"private void ToolBarExport_Click(object sender,EventArgs e)"),
+				"saveFileDialog.OverwritePrompt=true;");
+			string imageStore=Read("OpenPmsDentalBusiness","Imaging","ImageStore.cs");
+			StringAssert.Contains(MethodBody(imageStore,"public static void ExportEobAttach(string saveToPath,EobAttach eob)"),
+				"FileAtoZ.Copy(eobPath,saveToPath,FileAtoZSourceDestination.AtoZToLocal,doOverwrite:true);");
+			StringAssert.Contains(MethodBody(imageStore,"public static void ExportAmdAttach(string saveToPath,EhrAmendment amd)"),
+				"FileAtoZ.Copy(eobPath,saveToPath,FileAtoZSourceDestination.AtoZToLocal,doOverwrite:true);");
 		}
 	}
 }

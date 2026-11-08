@@ -66,7 +66,7 @@ namespace OpenPmsDental {
 
 		///<summary>The main module control that is showing, or null.</summary>
 		private Control GetVisibleModuleControl() {
-			Control[] arrayControls={ controlAppt,controlFamily,controlFamilyEcw,controlAccount,controlTreat,controlChart,controlImagesOld,controlImages,
+			Control[] arrayControls={ controlAppt,controlFamily,controlFamilyEcw,controlAccount,controlTreat,controlChart,controlImages,
 				controlManage };
 			return arrayControls.FirstOrDefault(x => x!=null && x.Visible);
 		}

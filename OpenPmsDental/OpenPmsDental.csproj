@@ -1878,9 +1878,6 @@
     <Compile Include="Main Modules\ControlFamily.designer.cs">
       <DependentUpon>ControlFamily.cs</DependentUpon>
     </Compile>
-    <Compile Include="Main Modules\ControlImagesOld.designer.cs">
-      <DependentUpon>ControlImagesOld.cs</DependentUpon>
-    </Compile>
     <Compile Include="Main Modules\ControlImages.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -5465,9 +5462,6 @@
       <DependentUpon>ControlChart.cs</DependentUpon>
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Main Modules\ControlImagesOld.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
     <Compile Include="Main Modules\ControlFamily.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -8493,10 +8487,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Main Modules\ControlChart.resx">
       <DependentUpon>ControlChart.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Main Modules\ControlImagesOld.resx">
-      <DependentUpon>ControlImagesOld.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Main Modules\ControlFamily.resx">

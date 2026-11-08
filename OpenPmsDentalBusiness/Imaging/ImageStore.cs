@@ -956,6 +956,11 @@ namespace OpenPmsDentalBusiness {
 			if(Path.GetExtension(pathImportFrom)=="") {//If the file has no extension
 				amd.FileName+=".jpg";
 			}
+			if(PrefC.AtoZfolderUsed==DataStorageType.InDatabase) {
+				//S0-6: with images in the database the file is appended too, as with an A to Z folder and in the bitmap overload. SaveAmdAttach stores
+				//the date in its one update of the row, with RawBase64.
+				amd.DateTAppend=DateTime.Now;
+			}
 			//EhrAmendments.Update(amd);
 			//amd=EhrAmendments.GetOne(amd.EhrAmendmentNum);
 			try {
@@ -1026,26 +1031,28 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary> Save an Eob to another location on the disk (outside of Open Dental). With images in the database, writes the stored bytes of
-		///eobattach.RawBase64 as they are, so a PDF exports too (S0-6: this read an empty stream and failed).</summary>
+		///eobattach.RawBase64 as they are, so a PDF exports too (S0-6: this read an empty stream and failed). An existing file at saveToPath is
+		///replaced in every storage mode, as Export does for a document (S0-6: with an A to Z folder this failed); the Save dialog asks first.</summary>
 		public static void ExportEobAttach(string saveToPath,EobAttach eob) {
 			if(PrefC.AtoZfolderUsed==DataStorageType.InDatabase) {
 				File.WriteAllBytes(saveToPath,GetRawBytes(eob.RawBase64,eob.FileName));
 			}
 			else {//Using an AtoZ folder
 				string eobPath=ODFileUtils.CombinePaths(GetEobFolder(),eob.FileName);
-				FileAtoZ.Copy(eobPath,saveToPath,FileAtoZSourceDestination.AtoZToLocal);
+				FileAtoZ.Copy(eobPath,saveToPath,FileAtoZSourceDestination.AtoZToLocal,doOverwrite:true);
 			}
 		}
 
 		///<summary> Save an EHR amendment to another location on the disk (outside of Open Dental). With images in the database, writes the stored
-		///bytes of ehramendment.RawBase64 as they are (S0-6: this read an empty stream and failed).</summary>
+		///bytes of ehramendment.RawBase64 as they are (S0-6: this read an empty stream and failed). An existing file at saveToPath is replaced in
+		///every storage mode, as for an EOB.</summary>
 		public static void ExportAmdAttach(string saveToPath,EhrAmendment amd) {
 			if(PrefC.AtoZfolderUsed==DataStorageType.InDatabase) {
 				File.WriteAllBytes(saveToPath,GetRawBytes(amd.RawBase64,amd.FileName));
 			}
 			else {//Using an AtoZ folder
 				string eobPath=ODFileUtils.CombinePaths(GetAmdFolder(),amd.FileName);
-				FileAtoZ.Copy(eobPath,saveToPath,FileAtoZSourceDestination.AtoZToLocal);
+				FileAtoZ.Copy(eobPath,saveToPath,FileAtoZSourceDestination.AtoZToLocal,doOverwrite:true);
 			}
 		}
 
@@ -1623,6 +1630,13 @@ namespace OpenPmsDentalBusiness {
 			return mode==EnumMode.Amendment && ehrAmendment!=null && !string.IsNullOrEmpty(ehrAmendment.FileName);
 		}
 
+		///<summary>True when a multi-page scan that ended with an EZTwain error, so that its PDF may be missing pages, needs a second yes before it is
+		///stored (S0-6): when it would replace an amendment's file. A partial scan of an EOB is added as before, because it replaces nothing; so is the
+		///first file of an amendment that has none.</summary>
+		public static bool IsPartialScanConfirmNeeded(EnumMode mode,EhrAmendment ehrAmendment) {
+			return IsReplaceConfirmNeeded(mode,ehrAmendment);
+		}
+
 		///<summary>An image shows fitted, a PDF in the PDF viewer, any other type not at all.</summary>
 		public static EnumShowAs GetShowAs(string fileName) {
 			if(ImageStore.HasImageExtension(fileName)) {
@@ -1711,21 +1725,61 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Replaces the amendment's file with a copy of this one under a new name (ImageStore.ImportAmdAttach), then removes the old file
-		///(ImageStore.CleanAmdAttach). Returns the amendment as stored. The window releases the old file before calling this.</summary>
+		///(ImageStore.CleanAmdAttach). Returns the amendment as stored. The window releases the old file before calling this. The object passed in is
+		///not changed, and when the replacement fails it throws with the amendment still on its old file (RestoreAfterFailedReplace).</summary>
 		public static EhrAmendment ReplaceAmendmentFile(EhrAmendment ehrAmendment,string pathImportFrom) {
-			string fileNameOld=ehrAmendment.FileName;
-			EhrAmendment ehrAmendmentNew=ImageStore.ImportAmdAttach(pathImportFrom,ehrAmendment);
-			RemoveOldAmendmentFile(fileNameOld,ehrAmendmentNew.FileName);
+			//ImportAmdAttach sets the new name on the object it is given before it stores the file, so it gets a copy.
+			EhrAmendment ehrAmendmentWork=ehrAmendment.Clone();
+			EhrAmendment ehrAmendmentNew;
+			try {
+				ehrAmendmentNew=ImageStore.ImportAmdAttach(pathImportFrom,ehrAmendmentWork);
+			}
+			catch {
+				RestoreAfterFailedReplace(ehrAmendment,ehrAmendmentWork.FileName);
+				throw;
+			}
+			RemoveOldAmendmentFile(ehrAmendment.FileName,ehrAmendmentNew.FileName);
 			return ehrAmendmentNew;
 		}
 
 		///<summary>Replaces the amendment's file with a scanned or pasted image, saved as JPG at this computer's scan quality under a new name
-		///(ImageStore.ImportAmdAttach), then removes the old file (ImageStore.CleanAmdAttach). Returns the amendment as stored.</summary>
+		///(ImageStore.ImportAmdAttach), then removes the old file (ImageStore.CleanAmdAttach). Returns the amendment as stored. The object passed in is
+		///not changed, and when the replacement fails it throws with the amendment still on its old file (RestoreAfterFailedReplace).</summary>
 		public static EhrAmendment ReplaceAmendmentFile(EhrAmendment ehrAmendment,Bitmap bitmap) {
-			string fileNameOld=ehrAmendment.FileName;
-			EhrAmendment ehrAmendmentNew=ImageStore.ImportAmdAttach(bitmap,ehrAmendment);
-			RemoveOldAmendmentFile(fileNameOld,ehrAmendmentNew.FileName);
+			//ImportAmdAttach sets the new name on the object it is given, and stores it on the row, before it stores the file.
+			EhrAmendment ehrAmendmentWork=ehrAmendment.Clone();
+			EhrAmendment ehrAmendmentNew;
+			try {
+				ehrAmendmentNew=ImageStore.ImportAmdAttach(bitmap,ehrAmendmentWork);
+			}
+			catch {
+				RestoreAfterFailedReplace(ehrAmendment,ehrAmendmentWork.FileName);
+				throw;
+			}
+			RemoveOldAmendmentFile(ehrAmendment.FileName,ehrAmendmentNew.FileName);
 			return ehrAmendmentNew;
+		}
+
+		///<summary>After a replacement of the amendment's file that failed (S0-6): the amendment stays on its old file, which is still there because it
+		///is removed only after the new one is stored. The bitmap overload of ImportAmdAttach stores the new name on the row before it writes the file,
+		///so the row gets its old name and append date back; a new file that was partly written under the new name is removed. Never throws, so the
+		///caller sees the replacement's own exception.</summary>
+		private static void RestoreAfterFailedReplace(EhrAmendment ehrAmendmentOld,string fileNameNew) {
+			ODException.SwallowAnyException(() => {
+				EhrAmendment ehrAmendmentDb=EhrAmendments.GetOne(ehrAmendmentOld.EhrAmendmentNum);
+				if(ehrAmendmentDb==null
+					|| (ehrAmendmentDb.FileName==ehrAmendmentOld.FileName && ehrAmendmentDb.DateTAppend==ehrAmendmentOld.DateTAppend))
+				{
+					return;//The row was not changed.
+				}
+				ehrAmendmentDb.FileName=ehrAmendmentOld.FileName;
+				ehrAmendmentDb.DateTAppend=ehrAmendmentOld.DateTAppend;
+				EhrAmendments.Update(ehrAmendmentDb);
+			});
+			if(string.IsNullOrEmpty(fileNameNew) || fileNameNew==ehrAmendmentOld.FileName) {
+				return;//The same name as the old file (a replacement within the same second): that file is the amendment's and stays.
+			}
+			ODException.SwallowAnyException(() => ImageStore.CleanAmdAttach(fileNameNew));
 		}
 
 		///<summary>The new name has the date and time to the second, so a second replacement within the same second may reuse the old name. The file

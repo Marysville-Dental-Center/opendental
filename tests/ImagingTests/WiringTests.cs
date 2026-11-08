@@ -38,7 +38,6 @@ namespace ImagingTests {
 		[TestMethod]
 		public void SignButtons_CheckTheSignPermission() {
 			StringAssert.Contains(Read("OpenPmsDental","Main Modules","ControlImages.cs"),"ImageSignaturePermissions.IsAuthorizedToSign(GetDocumentShowing(0))");
-			StringAssert.Contains(Read("OpenPmsDental","Main Modules","ControlImagesOld.cs"),"ImageSignaturePermissions.IsAuthorizedToSign(_documentShowing)");
 			string frmDocSign=Read("WpfControlsOD","Frms","FrmDocSign.xaml.cs");
 			StringAssert.Contains(frmDocSign,"ImageSignaturePermissions.IsAuthorizedToSign(_document)");
 			StringAssert.Contains(frmDocSign,"ImageSignaturePermissions.LogSignatureChange(_documentOld,_document)");
@@ -78,13 +77,7 @@ namespace ImagingTests {
 			AssertBefore(body,"if(!ImageSignaturePermissions.IsAuthorizedForSigned(documentArrayMountItems)) {","mountShowing.DocCategory=e.DefNumNew;");
 			AssertBefore(body,"Documents.UpdateDocCategoryForMountItems(","ImageSignaturePermissions.LogSignedImageEdited(documentArrayMountItems[i],");
 			Assert.AreEqual(2,Count(body,"FillImageSelector(true);//The drag snaps back."),"A refused drag refills the selector.");
-			//The old Images module (tree drag and drop) has the same rule for documents and for mounts.
-			string bodyOld=MethodBody(Read("OpenPmsDental","Main Modules","ControlImagesOld.cs"),
-				"private void TreeDocuments_MouseUp(object sender,System.Windows.Forms.MouseEventArgs e)");
-			AssertBefore(bodyOld,"if(!ImageSignaturePermissions.IsAuthorizedForSigned(doc)) {","doc.DocCategory=nodeOverCategoryDefNum;");
-			AssertBefore(bodyOld,"Documents.Update(doc);","ImageSignaturePermissions.LogSignedImageEdited(doc,\"moved to category \"+docDestCat);");
-			AssertBefore(bodyOld,"if(!ImageSignaturePermissions.IsAuthorizedForSigned(documentArrayMountItems)) {","mount.DocCategory=nodeOverCategoryDefNum;");
-			AssertBefore(bodyOld,"Mounts.Update(mount);","ImageSignaturePermissions.LogSignedImageEdited(documentArrayMountItems[i],");
+			//S0-6 removed the old Images module, whose tree drag and drop had the same rule; this module is the only one left.
 		}
 
 		[TestMethod]
@@ -95,18 +88,6 @@ namespace ImagingTests {
 			StringAssert.Contains(source,"ImageSignaturePermissions.LogSignedImageEdited(_documentOld,");
 			StringAssert.Contains(source,"listPermissions.Add(EnumPermType.ImageSignatureCreate);");
 			StringAssert.Contains(source,"listPermissions.Add(EnumPermType.SignedImageEdit);");
-		}
-
-		[TestMethod]
-		public void OldImagesModule_SignedChecksAndPreAuthMode() {
-			string source=Read("OpenPmsDental","Main Modules","ControlImagesOld.cs");
-			StringAssert.Contains(source,"ImageSignaturePermissions.IsAuthorizedToDelete(doc)");
-			Assert.AreEqual(4,Count(source,"ImageSignaturePermissions.IsAuthorizedForSigned(_documentShowing)"),"Flip, rotate left, rotate right, crop.");
-			StringAssert.Contains(source,"public void ModuleSelectedPreAuth(long claimNumPreAuth)");
-			StringAssert.Contains(source,"EobAttaches.RefreshForOwner(_claimPaymentNum,_claimNumPreAuth)");
-			Assert.AreEqual(4,Count(source,"ImageStore.ImportEobAttach("),"Import, paste, scan, multi-page scan.");
-			Assert.AreEqual(4,Count(source,",_claimPaymentNum,_claimNumPreAuth);"),"Every EOB import passes the preauth.");
-			Assert.AreEqual(0,Count(source,"_claimPaymentNum==0)"),"EOB mode is IsEobMode, not the payment alone.");
 		}
 
 		[TestMethod]

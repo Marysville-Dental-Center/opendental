@@ -27,7 +27,6 @@ namespace OpenPmsDental {
 			this.groupBoxFunctionality = new OpenPmsDental.UI.GroupBox();
 			this.checkImagingOrderDescending = new OpenPmsDental.UI.CheckBox();
 			this.checkPDFLaunchWindow = new OpenPmsDental.UI.CheckBox();
-			this.checkImagesModuleUsesOld2020 = new OpenPmsDental.UI.CheckBox();
 			this.checkImagingAllowPdfJavascript = new OpenPmsDental.UI.CheckBox();
 			this.groupImport = new OpenPmsDental.UI.GroupBox();
 			this.textAutoImportFolder = new System.Windows.Forms.TextBox();
@@ -58,18 +57,17 @@ namespace OpenPmsDental {
 			// 
 			this.groupBoxFunctionality.Controls.Add(this.checkImagingOrderDescending);
 			this.groupBoxFunctionality.Controls.Add(this.checkPDFLaunchWindow);
-			this.groupBoxFunctionality.Controls.Add(this.checkImagesModuleUsesOld2020);
 			this.groupBoxFunctionality.Controls.Add(this.checkImagingAllowPdfJavascript);
 			this.groupBoxFunctionality.Location = new System.Drawing.Point(20, 196);
 			this.groupBoxFunctionality.Name = "groupBoxFunctionality";
-			this.groupBoxFunctionality.Size = new System.Drawing.Size(450, 129);
+			this.groupBoxFunctionality.Size = new System.Drawing.Size(450, 98);
 			this.groupBoxFunctionality.TabIndex = 320;
 			this.groupBoxFunctionality.Text = "Functionality";
 			// 
 			// checkImagingOrderDescending
 			// 
 			this.checkImagingOrderDescending.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkImagingOrderDescending.Location = new System.Drawing.Point(5, 72);
+			this.checkImagingOrderDescending.Location = new System.Drawing.Point(5, 41);
 			this.checkImagingOrderDescending.Name = "checkImagingOrderDescending";
 			this.checkImagingOrderDescending.Size = new System.Drawing.Size(435, 17);
 			this.checkImagingOrderDescending.TabIndex = 317;
@@ -83,21 +81,11 @@ namespace OpenPmsDental {
 			this.checkPDFLaunchWindow.Size = new System.Drawing.Size(350, 17);
 			this.checkPDFLaunchWindow.TabIndex = 306;
 			this.checkPDFLaunchWindow.Text = "PDF files always launch in a separate window";
-			// 
-			// checkImagesModuleUsesOld2020
-			// 
-			this.checkImagesModuleUsesOld2020.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkImagesModuleUsesOld2020.Location = new System.Drawing.Point(5, 41);
-			this.checkImagesModuleUsesOld2020.Name = "checkImagesModuleUsesOld2020";
-			this.checkImagesModuleUsesOld2020.Size = new System.Drawing.Size(435, 17);
-			this.checkImagesModuleUsesOld2020.TabIndex = 316;
-			this.checkImagesModuleUsesOld2020.Text = "Use old Imaging module interface, pre 2020";
-			this.checkImagesModuleUsesOld2020.Click += new System.EventHandler(this.checkImagesModuleUsesOld2020_Click);
 			//
 			// checkImagingAllowPdfJavascript
 			//
 			this.checkImagingAllowPdfJavascript.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkImagingAllowPdfJavascript.Location = new System.Drawing.Point(5, 103);
+			this.checkImagingAllowPdfJavascript.Location = new System.Drawing.Point(5, 72);
 			this.checkImagingAllowPdfJavascript.Name = "checkImagingAllowPdfJavascript";
 			this.checkImagingAllowPdfJavascript.Size = new System.Drawing.Size(435, 17);
 			this.checkImagingAllowPdfJavascript.TabIndex = 318;
@@ -240,7 +228,7 @@ namespace OpenPmsDental {
 			this.groupBoxOD2.Controls.Add(this.label34);
 			this.groupBoxOD2.Controls.Add(this.label35);
 			this.groupBoxOD2.Controls.Add(this.label36);
-			this.groupBoxOD2.Location = new System.Drawing.Point(20, 341);
+			this.groupBoxOD2.Location = new System.Drawing.Point(20, 310);
 			this.groupBoxOD2.Name = "groupBoxOD2";
 			this.groupBoxOD2.Size = new System.Drawing.Size(450, 98);
 			this.groupBoxOD2.TabIndex = 307;
@@ -323,7 +311,6 @@ namespace OpenPmsDental {
 		}
 
 		#endregion
-		private OpenPmsDental.UI.CheckBox checkImagesModuleUsesOld2020;
 		private UI.Button butVideoImageCategoryDefault;
 		private System.Windows.Forms.Label label41;
 		private System.Windows.Forms.TextBox textVideoImageCategoryDefault;

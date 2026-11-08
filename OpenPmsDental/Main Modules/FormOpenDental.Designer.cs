@@ -222,7 +222,6 @@ namespace OpenPmsDental{
 		private ControlAccount controlAccount;
 		private ControlTreat controlTreat;
 		private ControlChart controlChart;
-		private ControlImagesOld controlImagesOld;
 		private ControlImages controlImages;
 		private ControlManage controlManage;
 		private ModuleBar moduleBar;
