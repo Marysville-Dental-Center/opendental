@@ -68,7 +68,7 @@ namespace OpenPmsDental{
 				checkEnabled.Enabled=false;
 				listToolBars.ClearSelected();
 				listToolBars.Enabled=false;
-				Text+=" "+Lan.g(this,ProgramLinksDiscontinued.GetLabel(ProgramCur));
+				Text+=" "+Lan.g(this,ProgramLinksDiscontinued.LABEL);
 			}
 			SetCommandLineHint();//V-BRIDGE2: Trophy (Enhanced) Command line tags (FormProgramLinkEdit.Bridges2.cs).
 		}

@@ -24,8 +24,8 @@ namespace WpfControls {
 				MsgBox.Show("Program","Error, program entry not found in database.");
 				return;
 			}
-			if(ProgramLinksDiscontinued.IsDiscontinued(program)) {//25.2: DXC Patient Credit Score; 26.2: Trojan Express Collect. 2026-11-07: DentX, Dexis Integrator, Vipersoft.
-				MsgBox.Show(ProgramLinksDiscontinued.GetLaunchMessage(program));
+			if(ProgramLinksDiscontinued.IsDiscontinued(program)) {//25.2: DXC Patient Credit Score; 26.2: Trojan Express Collect. The bridges were removed.
+				MsgBox.Show("Program","This program link was discontinued and can no longer be used.");
 				return;
 			}
 			if(patient!=null && PrefC.GetBool(PrefName.ShowFeaturePatientClone)) {
@@ -147,6 +147,10 @@ namespace WpfControls {
 				DentalStudio.SendData(program,patient);
 				return;
 			}
+			else if(program.ProgName==ProgramName.DentX.ToString()) {
+				DentX.SendData(program,patient);
+				return;
+			}
 			else if(program.ProgName==ProgramName.DrCeph.ToString()) {
 				DrCeph.SendData(program,patient);
 				return;
@@ -164,6 +168,12 @@ namespace WpfControls {
 				Dexis.SendData(program,patient);
 				return;
 			}
+#if !DISABLE_WINDOWS_BRIDGES
+			else if(program.ProgName==ProgramName.DexisIntegrator.ToString()) {
+				DexisIntegrator.SendData(program,patient);
+				return;
+			}
+#endif
 			else if(program.ProgName==ProgramName.Digora.ToString()) {
 				Digora.SendData(program,patient);
 				return;
@@ -424,6 +434,10 @@ namespace WpfControls {
 				return;
 			}
 #if !DISABLE_WINDOWS_BRIDGES
+			else if(program.ProgName==ProgramName.Vipersoft.ToString()) {
+				Vipersoft.SendData(program,patient);
+				return;
+			}
 #endif
 			else if(program.ProgName==ProgramName.visOra.ToString()) {
 				Visora.SendData(program,patient);

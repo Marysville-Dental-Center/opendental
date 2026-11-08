@@ -16,8 +16,8 @@ What this version brings, each in its section below (the roadmap's "Done in the 
   Open Dental 25.3 options this program had been built without;
 - the storage library under its new name, and a Database Maintenance check that works again;
 - the fixes and changes of the owner's answers of 2026-11-07: a declined PayConnect card is never recorded as paid, an edited X-ray attached
-  to a claim is saved, the Insurance History switch-over leaves the frequency code groups alone, three unused program links and NDde.dll are
-  gone, the X-ray capture session is on for new installs, and the archive backup to another server works;
+  to a claim is saved, the Insurance History switch-over leaves the frequency code groups alone, NDde.dll is gone (three program links
+  that used it work without it), the X-ray capture session is on for new installs, and the archive backup to another server works;
 - Open Dental 26.2: its database schema and the changes the owner chose on 2026-11-07:
   - Appointments: several blockout types in the Advanced Appointment Search, the practice and clinic schedule notes in the Appointments
     module, and appointment estimates brought up to date when an insurance plan is saved;
@@ -345,13 +345,13 @@ with the box's codes and its first code as History Proc Code. These groups are i
 insurance estimates, sheets and frequency checks are unchanged. The old settings are kept. An eligibility response (271) that names a
 category, such as bitewings, still finds the history row through the codes of that category's code group.
 
-## Removed: the DentX, Dexis Integrator and Vipersoft program links, and NDde.dll
+## DentX, Dexis Integrator and Vipersoft: the program links work without NDde.dll
 
-These three program links sent the patient to another program over Windows DDE through `NDde.dll`, whose own licence does not fit the GNU
-GPL (owner question REL-FILES 2). The office uses none of them, so they are removed with `NDde.dll`. A database that has their rows keeps
-them: Program Links lists them as "(removed)", they cannot be turned on, no toolbar shows their buttons, and an old button says the link was
-removed. Dexis itself is unchanged. **Upgrading:** setup deletes `NDde.dll` from the program folder; the release channel never publishes it
-again. `THIRD-PARTY-NOTICES.txt` and the license list no longer name NDde.
+These three program links send the patient to another program over Windows DDE. They did it through `NDde.dll`, whose own licence does not
+fit the GNU GPL (owner question REL-FILES 2). Now they do it through the program's own small DDE client, which sends the same commands, so
+they work as before: set them up, turn them on and use their buttons in Program Links as always. Dexis itself is unchanged. **Upgrading:**
+setup deletes `NDde.dll` from the program folder; the release channel never publishes it again. `THIRD-PARTY-NOTICES.txt` and the license
+list no longer name NDde.
 
 ## X-ray capture: on for every new install
 

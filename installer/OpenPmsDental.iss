@@ -127,8 +127,8 @@ Type: files; Name: "{app}\OpenPop.dll"
 ; fo-dicom 4 (MS-PL), replaced by the in-house DICOM reader (docs/imaging/dicom-reader.md).
 Type: files; Name: "{app}\Dicom.Core.dll"
 Type: files; Name: "{app}\Dicom.Native.dll"
-; NDde (its own shared source licence, which does not fit the GPL), removed with the DentX, Dexis Integrator and Vipersoft program links
-; (owner decision of 2026-11-07).
+; NDde (its own shared source licence, which does not fit the GPL), removed on 2026-11-07 (REL-FILES 2). The DentX, Dexis Integrator and
+; Vipersoft program links use the in-house DDE client instead (S0-R, 2026-11-08), so a copy an older installation left is not needed.
 Type: files; Name: "{app}\NDde.dll"
 ; PDFsharp and MigraDoc 1.2 (0.0), which PDFsharp and MigraDoc 6.5 replace under other file names (THIRD-PARTY-NOTICES.txt).
 Type: files; Name: "{app}\PdfSharp.dll"
