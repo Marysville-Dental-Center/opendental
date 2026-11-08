@@ -109,8 +109,9 @@ namespace ImagingCapture.Tests {
 
 		#region NotStarted: the legacy loop runs
 		[TestMethod]
-		public void SessionDisabled_ByDefault_NotStarted_NothingOpens() {
-			_config=Config("[Twain]","Allow16Bit=0");
+		public void SessionDisabledByHand_NotStarted_NothingOpens() {
+			//The rollback: [Session] Enabled=0 (the default was 0 until 2026-11-07).
+			_config=Config("[Session]","Enabled=0","[Twain]","Allow16Bit=0");
 			CaptureSessionLaunchResult result=Launcher().Run(Request());
 			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,result.Kind);
 			StringAssert.Contains(result.Reason,"[Session] Enabled");
@@ -120,9 +121,32 @@ namespace ImagingCapture.Tests {
 		}
 
 		[TestMethod]
-		public void MissingConfigFile_NotStarted() {
+		public void NoEnabledKey_TheSessionRunsByDefault_OnceTheSettingsAreSaved() {
+			//Owner decision of 2026-11-07: every new install starts with the capture session on. A file without [Session] Enabled, saved in Capture
+			//settings on this computer, runs the session.
+			_config=Config("[Twain]","Allow16Bit=0");
+			_windowRunner.ActionWhileShown=controller => {
+				controller.Begin();
+				controller.OnClosing();
+			};
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.Completed,result.Kind,result.Reason);
+			Assert.AreEqual(0,_listNotices.Count);
+			Assert.AreEqual(1,_windowRunner.CountShown);
+		}
+
+		[TestMethod]
+		public void MissingConfigFile_NeverSaved_NotStarted_TheOperatorIsTold() {
+			//A new install: no capture.ini and no Capture settings save on this computer. The session is on by default, but its settings are not
+			//verified, so the safe values apply (the session stays off): a notice, then the legacy loop.
+			_isSettingsSaved=false;
 			_config=LocalCaptureConfig.Load(Path.Combine(_tempDir,"none.ini"),Path.Combine(_tempDir,"none2.ini"));
-			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,Launcher().Run(Request()).Kind);
+			CaptureSessionLaunchResult result=Launcher().Run(Request());
+			Assert.AreEqual(CaptureSessionLaunchKind.NotStarted,result.Kind);
+			StringAssert.Contains(result.Reason,"NeverSaved");
+			StringAssert.StartsWith(_listNotices.Single(),CaptureSettingsCheck.TextNeverSaved);
+			Assert.AreEqual(0,_windowRunner.CountShown);
+			Assert.AreEqual(0,_listSessions.Count);
 		}
 
 		[TestMethod]

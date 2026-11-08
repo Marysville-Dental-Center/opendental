@@ -10,7 +10,7 @@ The capture track was built in a separate imaging session on branches cut from t
   - Deleted from `Required dlls`: `Eztwain4.dll`, `EZT4Jpeg.dll`, `EZT4Pdf.dll`, `VideoCamLib.dll`, `MediaFoundation.dll`, `MediaFoundation.Extension.dll` and `ImagingDeviceManager.dll`.
   - `tests/ImagingDeviceManagerTests` and `tests/ImagingCaptureTests`, on fakes of the DSM, the data source and the session window.
 - **The hook** (design 6.4 and 7.3): three lines in `ControlImages.ToolBarMountAcquire_Click` and the partial `OpenDental/Main Modules/ControlImages.Acquire.cs`, which the capture track owns from now on. It hands Mount/Acquire to `CaptureSessionLauncher` and deletes a mount made for the session that is still empty. Deleting it also deletes the mount's imagedraw rows.
-- **Off by default.** The session runs only when this computer's capture.ini has `[Session] Enabled=1`. With the default 0, the launcher returns NotStarted before any other check, and the legacy Mount/Acquire loop runs exactly as before. This is also the rollback.
+- **Off by default** (until 2026-11-07, see "Capture on by default" below). The session runs only when this computer's capture.ini has `[Session] Enabled=1`. With the default 0, the launcher returns NotStarted before any other check, and the legacy Mount/Acquire loop runs exactly as before. This is also the rollback.
 - **Database tests** (`tests/ImagingCaptureTests/Db`). They use one scratch MariaDB per run: a 24.3.63 seed through the fork migration runner, a unique name, dropped at the end. They cover the stores, capture settings, standard templates, unassigned captures, the hook's database path (`CaptureHookMirror`, pinned statement by statement to the partial) and full 4BW sessions.
 - **The design document, as a neutral edition.** Commit 8d9a9bf14 (the design as the imaging session wrote it) is not on `cap/main-3`. `cap/main-3` was rebuilt from `cap/main-2` without it: the two later commits (the scale-drawing fix and the database tests) were replayed unchanged onto the hook commit. The neutral edition replaces it (see C2).
 
@@ -78,3 +78,26 @@ The capture track was built in a separate imaging session on branches cut from t
 - **A patient change during a notice.** When the settings are not verified, the launcher shows a notice and returns NotStarted, and the legacy loop runs. A patient change while that message box is open makes the legacy loop run for the patient shown then, as with any message box on the legacy path. This was not changed.
 - **Owner decisions.** The capture track's open decisions, with the 16-bit filing route needed before 16-bit is turned on, are in the imaging session's owner-question list. It goes into `docs/owner-questions.md` after this merge.
 - **CAP-W1, CAP-W2 and CAP-DR** were built on 2026-11-01 as package TWAIN-W ([TWAIN-W.md](TWAIN-W.md), branch `pre/twain-w-1`). 16-bit capture stays off.
+
+## Capture on by default (owner decisions of 2026-11-07)
+
+After counsel's review of the capture's regulatory position (CAP design 18), with no changes, the owner decided:
+
+- **Every new install starts with the capture session on.** `[Session] Enabled` defaults to `1` (`CaptureSessionConfig.EnabledDefault`; the
+  Capture settings catalog shows `1` as the default). Setup writes no capture.ini, so the program's default is what a new install gets. The
+  session still runs only once the computer's capture settings were saved in Capture settings (design 9.3: unverified settings mean the safe
+  values, and the safe value of Enabled is off): until then Mount/Acquire with a Twain Radiograph device shows the "never saved" notice and runs
+  the legacy loop. `[Session] Enabled=0` is still the rollback, without a notice. A missing or empty `Enabled` is now hashed as `1`
+  (`GatedSettingsHash`, like `Bits` and `Allow16Bit` since 2026-11-01), so a capture settings save logged for a file without the key (when it
+  meant 0) no longer matches: the session stays off there until the file is saved again.
+- **16 bits stay the default** (`[Twain] Allow16Bit=1`, `[Device.N] Bits=16`), behind the Test capture gate, unchanged. The runbook no longer
+  tells patient computers to set `Allow16Bit=0` until counsel's review.
+- **Patient use waits for the phantom comparison** (CAP design 18): on the same line-pair and step-wedge phantom, at least the same line pairs
+  and steps visible as in the current imaging program's image of that phantom, and left and right matching the lead markers for every sensor
+  size; the dentist signs off against these criteria (runbook section 1, rule 2, and section 12).
+- **Twain Radiograph only** (CAP design 23): the sensor is set up only as a Twain Radiograph device, never Twain Multi for patients (runbook
+  section 1, rule 3, and section 6).
+
+Tests: `CaptureSessionLauncherTests` (a file without the key runs the session once saved; a new install without capture.ini or a save gets the
+notice and the legacy loop; `Enabled=0` is the rollback), `CaptureBitDepthDecisionTests.SessionConfig_Defaults`, `GatedSettingsHashTests`
+(a missing `Enabled` hashes as `1`, `Enabled=0` differs).

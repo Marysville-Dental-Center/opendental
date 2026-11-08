@@ -11,7 +11,8 @@ namespace OpenPmsDental{
 	public partial class ControlImages{
 		///<summary>The capture session (design 6.4, 7.3), called from ToolBarMountAcquire_Click after FrmMountAndAcquire. Returns false when the
 		///session did not run and the legacy Mount/Acquire loop must run unchanged:
-		///  - [Session] Enabled=0, the default and the rollback;
+		///  - [Session] Enabled=0, the rollback (the default is 1 since 2026-11-07; the session then still needs this computer's capture settings
+		///    saved in Capture settings, otherwise a notice and the legacy loop);
 		///  - a device type the session does not drive (TwainMulti keeps AcquireMulti);
 		///  - no session window.
 		///Returns true when the session ran or refused to start; the legacy loop then does not run.

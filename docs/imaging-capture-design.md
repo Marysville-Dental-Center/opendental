@@ -428,7 +428,7 @@ if(TryAcquireWithCaptureSession(imagingDevice,mountDef)) {
   - V-PEARL1 changes Pearl display and retry handling, which `PlaceAcquiredBitmapInUI` calls (ControlImages.cs:3753-3756). The hook sits earlier, in `ToolBarMountAcquire_Click`, and calls nothing in that code. The coordinator still checks this against V-PEARL1's planned diff.
   - Fallback: a separate CAP-HOOK package that owns ControlImages.cs after B3, in the first wave in which no other package owns it.
   - The backlog records that, after the hook lands, `ControlImages.Acquire.cs` is owned by CAP-4, not by the ControlImages chain.
-- `TryAcquireWithCaptureSession` returns false when `[Session] Enabled=0` (the default, Setup-gated) or when the session cannot start. The legacy loop and `AcquireMulti` then run unchanged; this is the rollback.
+- `TryAcquireWithCaptureSession` returns false when `[Session] Enabled=0` (Setup-gated; the default until 2026-11-07, when the owner made `1` the default of every new install) or when the session cannot start. The legacy loop and `AcquireMulti` then run unchanged; this is the rollback.
 - The hook deletes nothing. A later owner of ControlImages may remove the legacy loop after clinic acceptance.
 - The partial checks the patient: if `_patient.PatNum` differs from `FormOpenDental.PatNumCur`, it refuses to start. If `mountDef` is not null, the mount showing was created in this call; if it is still empty, the partial deletes it and logs the refusal under ImageCreate.
 - The partial may raise `GlobalFormOpenDental.LockODForMountAcquire`, which exists but has no callers, as extra locking.
@@ -862,7 +862,7 @@ Only one program can hold the camera. Other camera software must be closed while
 Version=1
 
 [Session]                 ; hook phase
-Enabled=0                 ; gated. 0 = legacy Mount/Acquire loop runs (rollback)
+Enabled=1                 ; gated. Default 1 since 2026-11-07 (owner decision). 0 = legacy Mount/Acquire loop runs (rollback)
 IdleDisableMinutes=10     ; gated. Used only with DisableIsSafe=1. Longer than the DS's own session timeout, shorter than auto-logoff
 
 [Twain]
@@ -1288,7 +1288,7 @@ The phantom carries radiopaque laterality and orientation markers (a lead letter
 | Feature | Gate before review and acceptance |
 |---|---|
 | Legacy Mount/Acquire with the sensor DS (phase 0) | Source gate (`RestrictSources=1`, each PC's existing scanners listed) on every PC, the device row bound to the test PC, and W4 and W13 delivered in a published contract version (done in twain-contract 1.1) and their acceptance tests passed on hardware (not yet run) before patient use |
-| Capture session (phase 3) | `[Session] Enabled=0` by default, Setup-gated |
+| Capture session (phase 3) | `[Session] Enabled=1` by default since 2026-11-07 (owner decision: every new install starts with it on; it was 0), Setup-gated: it runs only once the computer's capture settings were saved in Capture settings |
 | 16-bit DICOM (phase 4) | `Bits=16` and `Allow16Bit=1` by default since 2026-11-01 (owner decision), Setup-gated; more than 8 bits only under the capture settings check, a matching passed Test capture record and a DICOM target; the runbook keeps computers that capture for patients at `Allow16Bit=0` until counsel and the clinic run sign off |
 | Thread-modal device acquire | On by default for named-source acquisitions only. It is not a capture feature, and it can be turned off. |
 | Native UVC Video | Available in all builds, because the old Video window cannot run in fork builds. Triggers are off until configured. |

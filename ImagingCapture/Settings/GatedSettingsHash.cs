@@ -29,7 +29,10 @@ namespace ImagingCapture.Settings {
 	///- for Bits and Allow16Bit, whose defaults changed on 2026-11-01 (owner decision: 16 bits by default, more than 8 bits allowed), a
 	///  missing or empty value is written as that default ("16", "1"): a file without them hashes as the program now reads it, the same as
 	///  one that says Bits=16 and Allow16Bit=1. A hash logged before that change for a file without them (when they meant 8 and 0) no
-	///  longer matches, so such a file must be saved again in Capture settings; texts that mean the same in both rules hash the same.
+	///  longer matches, so such a file must be saved again in Capture settings; texts that mean the same in both rules hash the same;
+	///- likewise [Session] Enabled, whose default changed on 2026-11-07 (owner decision: every new install starts with the capture session on): a
+	///  missing or empty value is written as "1". A hash logged for a file without it (when it meant 0) no longer matches, so the session stays
+	///  off on that computer until the file is saved again in Capture settings.
 	///Comments and blank lines are not part of any value. The text starts with FormatName, so a later change of these rules gives different
 	///hashes instead of colliding with this format.</summary>
 	public static class GatedSettingsHash {
@@ -48,15 +51,19 @@ namespace ImagingCapture.Settings {
 			"NoActivateCap" });
 		///<summary>Keys whose value is a list separated by '|'.</summary>
 		private static readonly string[] _arrayListKeys={ "AllowedSources","DisableIsSafeSources","RefusedDisableCodes" };
-		///<summary>Keys whose missing or empty value is hashed as its default (see the class summary): [Device.N] Bits and [Twain] Allow16Bit.</summary>
+		///<summary>Keys whose missing or empty value is hashed as its default (see the class summary): [Device.N] Bits, [Twain] Allow16Bit and
+		///[Session] Enabled (no other gated key has these names).</summary>
 		private static readonly Dictionary<string,string> _dictEmptyAsDefault=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
 			{ "Bits","16" },
 			{ "Allow16Bit","1" },
+			{ "Enabled","1" },
 		};
-		///<summary>What a missing or empty Bits and Allow16Bit meant before 2026-11-01 (8 and 0), when they were hashed as "".</summary>
+		///<summary>What a missing or empty Bits, Allow16Bit and Enabled meant before 2026-11-01 (8, 0 and 0), when they were hashed as "". Enabled kept
+		///that meaning until 2026-11-07.</summary>
 		private static readonly Dictionary<string,string> _dictDefaultsBefore20261101=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
 			{ "Bits","8" },
 			{ "Allow16Bit","0" },
+			{ "Enabled","0" },
 		};
 
 		///<summary>True for a key this hash covers: a gated key of [Session], [Twain] or any [Device.N] section. Names are case-insensitive.</summary>

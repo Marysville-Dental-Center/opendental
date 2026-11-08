@@ -103,8 +103,8 @@ namespace ImagingCapture.Settings {
 			}
 			string session=GatedSettingsHash.SectionSession;
 			string twain=LocalCaptureConfig.SectionTwain;
-			Add(session,"Enabled",CaptureSettingKind.Switch,"0",true,"1: Mount/Acquire on this computer runs the capture session. 0: the legacy "
-				+"Mount/Acquire loop runs (the rollback).");
+			Add(session,"Enabled",CaptureSettingKind.Switch,"1",true,"1 (the default since 2026-11-07): Mount/Acquire on this computer runs the capture "
+				+"session once these settings are saved here. 0: the legacy Mount/Acquire loop runs (the rollback).");
 			Add(session,"IdleDisableMinutes",CaptureSettingKind.WholeNumber,"10",true,"Minutes without an exposure after which the session disables the "
 				+"source. Used only with DisableIsSafe=1. Longer than the source's own session timeout, shorter than the automatic logoff.");
 			Add(twain,"ThreadModal",CaptureSettingKind.Switch,"1",true,"1: Open PMS - Dental's windows are disabled while a named source acquires on the legacy "

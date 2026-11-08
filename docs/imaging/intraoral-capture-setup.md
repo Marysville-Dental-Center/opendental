@@ -1,6 +1,6 @@
 # Intraoral X-ray capture: clinic setup and runbook
 
-Status: 2026-10-25; bit depth defaults, the 16-bit filing route, "fall back to 8" and the rule for 16-bit X-rays on patient computers updated 2026-11-01 (section 14). Package CAP-0 of the native capture design. For the clinic administrator, and for the staff who take X-rays.
+Status: 2026-10-25; bit depth defaults, the 16-bit filing route, "fall back to 8" and the rule for 16-bit X-rays on patient computers updated 2026-11-01 (section 14); the owner's decisions of 2026-11-07 (the capture session on for every new install, 16 bits kept as the default after counsel's review, the written pass criteria of the phantom comparison, and Twain Radiograph only) added to sections 1, 6, 12 and 14. Package CAP-0 of the native capture design. For the clinic administrator, and for the staff who take X-rays.
 
 This runbook covers intraoral X-rays from a digital sensor through Open PMS - Dental's existing **Mount / Acquire**, with the protections built into Open PMS - Dental's TWAIN client:
 
@@ -9,7 +9,7 @@ This runbook covers intraoral X-rays from a digital sensor through Open PMS - De
 - the **capture journal**, a copy of every image the sensor delivers;
 - the **capture quarantine**, for images that arrive after a series stopped.
 
-A later version adds a capture session window with a patient banner. This runbook will change then.
+This version also has the capture session, a window with a patient banner (section 14). **Every new install starts with it on** (`[Session] Enabled=1` is the program's default; owner decision of 2026-11-07, after counsel's review). It runs on a computer only once an administrator has saved Capture settings there (Setup > Imaging > Devices, the device, Capture settings; Setup permission); until then Mount / Acquire with a Twain Radiograph device shows a notice that the capture settings were never saved, and then runs as this runbook describes. To keep a computer on the older Mount / Acquire, set `[Session] Enabled` to `0` in Capture settings (the rollback). Setup writes no capture settings.
 
 The runbook names no sensor, camera or software vendor. It uses these terms:
 
@@ -33,8 +33,8 @@ The runbook names no sensor, camera or software vendor. It uses these terms:
    1. the installed version of the source's contract publishes **distinct end reasons** (why a session ended without an image) and **safe disable** (a stop that never loses an image), and their tests in section 12 passed on that computer;
    2. the sensor supplier's own comparison of the source's images with the sensor manufacturer's imaging software has passed;
    3. the acceptance in section 12 passed on that computer;
-   4. the dentist has signed off image equivalence against written criteria agreed before the run.
-3. **No batch capture on patients.** Device type Twain Multi delivers all images of a batch at the end, in arrival order. One skipped or repeated exposure shifts every later image, together with its tooth numbers and rotation, and an image that cannot be read can stop the rest of the batch from arriving. Use Twain Multi only on the phantom.
+   4. the dentist has signed off image equivalence against the written criteria (owner decision of 2026-11-07, CAP design 18): on the same line-pair and step-wedge phantom, at least the same line pairs and the same steps visible as in the current imaging program's image of that phantom, and left and right matching the phantom's lead markers for every sensor size. This holds for every bit depth: 16-bit X-rays (section 14) wait for the same sign-off.
+3. **No batch capture on patients.** Set the sensor up only as a **Twain Radiograph** device (one exposure per slot), never as Twain Multi for patients (owner decision of 2026-11-07, CAP design 23). Device type Twain Multi delivers all images of a batch at the end, in arrival order. One skipped or repeated exposure shifts every later image, together with its tooth numbers and rotation, and an image that cannot be read can stop the rest of the batch from arriving. Use Twain Multi only on the phantom, on the test computer.
 4. **The capture folders hold patient images.** Treat them like the image folder: include them in the backup, never copy them to removable media, and remove files only as this runbook says.
 
 ## 2. Prerequisites (every capture computer)
@@ -113,7 +113,7 @@ Mount / Acquire reads only the `[Twain]` section. Other sections are for later v
 | `SafeDisableCap` | empty | the safe-disable capability number from the contract, in hex | Set together with `DisableIsSafeSources`. |
 | `RefusedDisableCodes` | empty | the contract's "disable refused" condition codes, in hex, separated by `\|` | Set together with `DisableIsSafeSources`. When the source refuses a stop with one of these codes, Open PMS - Dental waits up to 30 s for it to finish and keeps every image it then delivers. |
 | `AcquireTimeoutMinutes` | `0` (off) | `0` until the safe-disable test passed on this computer; then a value in the order of section 4.3 | Stops a slot in which no image arrived after this many minutes, which ends the series. It counts per slot, from the moment the sensor software opens. It is honoured only for Twain Radiograph slots of a source listed in `DisableIsSafeSources` that accepted safe disable and one image per slot for that slot; otherwise the capture log says why not. When it expires, the series ends without a notice, like a cancel. |
-| `Allow16Bit` | `1` (since 2026-11-01; it was `0`) | `0` on every computer that captures for patients, until counsel has reviewed the 16-bit labelling and the computed window and the clinic run has signed off (section 14, "Before 16-bit X-rays for patients"); otherwise leave it out | Not used by Mount / Acquire, which never asks the source for a bit depth and stays 8-bit. The later capture session reads it: `1` allows more than 8 bits (16 or 14) on this computer, `0` forces 8 bits for every device on it. The key keeps its old name. See section 14. |
+| `Allow16Bit` | `1` (since 2026-11-01; it was `0`) | leave it out (`1`): counsel reviewed the 16-bit labelling and the computed window on 2026-11-07 with no changes, and patient use waits for the phantom comparison anyway (section 1, rule 2); `0` only to keep a computer at 8 bits | Not used by Mount / Acquire, which never asks the source for a bit depth and stays 8-bit. The capture session reads it: `1` allows more than 8 bits (16 or 14) on this computer once a Test capture passed for the sensor, `0` forces 8 bits for every device on it. The key keeps its old name. See section 14. |
 
 Leave `DisableIsSafeSources`, `SafeDisableCap` and `RefusedDisableCodes` empty when the installed contract version has no safe disable. Then Cancel shows a warning first, `AcquireTimeoutMinutes` is not honoured, and any stop that Open PMS - Dental starts can lose an exposure that the sensor software still holds (section 10.3).
 
@@ -153,11 +153,11 @@ SafeDisableCap=<capability number from the contract, hex>
 RefusedDisableCodes=<first code from the contract, hex>|<second code, hex>
 ; 0 until the safe-disable test passed on this computer (section 4.3).
 AcquireTimeoutMinutes=0
-; 0 on a computer that captures for patients, until counsel has reviewed
-; the 16-bit labelling and the computed window and the clinic run has
-; signed off (section 14). Mount / Acquire stays 8-bit either way; the
-; later capture session reads it.
-Allow16Bit=0
+; 1, the default (owner decisions of 2026-11-01 and 2026-11-07): the
+; capture session takes more than 8 bits once a Test capture passed for the
+; sensor (section 14). 0 keeps this computer at 8 bits. Mount / Acquire
+; stays 8-bit either way.
+Allow16Bit=1
 ```
 
 Replace each `<...>` with the real value. A value that is still a placeholder reads as missing.
@@ -192,7 +192,7 @@ When the supplier releases a new version of the source:
 1. Open Setup > Imaging > Devices and click **Add**. The Edit Imaging Device window opens.
 2. **Description:** a plain name, for example "Intraoral sensor". Staff pick the device by this name.
 3. **Computer Name:** the test computer until it passed acceptance (on that computer, click **This**). After acceptance, either leave it blank (all computers; the source gate still blocks the sensor where it is not listed) or add one device row per accepted computer.
-4. **Device Type:** Twain Radiograph (one exposure per slot). Twain Multi only on the test computer, for the phantom batch test.
+4. **Device Type:** Twain Radiograph (one exposure per slot), the only device type for patients (section 1, rule 3; owner decision of 2026-11-07). The capture session runs only for Twain Radiograph devices. Twain Multi only on the test computer, for the phantom batch test, never in a device row used for patients.
 5. **Twain Name:** pick the sensor's source from the list. Do not type it. It is stored as data and must be the exact product name.
 6. **Show Twain UI:** checked. The sensor software's window is where the operator sees the sensor's state.
 7. Click **Save**.
@@ -405,7 +405,7 @@ Run this on the test computer first, with a phantom and a test patient record on
 **Prepare:**
 
 - A phantom with radiopaque laterality and orientation markers (a lead letter plus the sensor's orientation mark) for each slot. Orientation is judged against the markers.
-- A line-pair or step-wedge phantom, and written pass criteria agreed with the dentist before the run (for example the line pairs that must be visible and the steps that must be distinguishable). The reference is the original image from the sensor manufacturer's own imaging software.
+- A line-pair and step-wedge phantom, and the written pass criteria (owner decision of 2026-11-07): on the same line-pair and step-wedge phantom, at least the same line pairs and the same steps visible as in the current imaging program's image of that phantom, and left and right matching the phantom's lead markers for every sensor size. The reference is the image of the same phantom from the imaging program the office uses today.
 - capture.ini on the test computer as in section 4.2, with the sensor in `AllowedSources` and, when the installed contract version has safe disable, the three safe-disable keys. Keep `AcquireTimeoutMinutes=0` until step 5.6 passes.
 - The device row bound to the test computer (section 6), and the mounts (section 7).
 
@@ -472,7 +472,7 @@ Use the smallest step that solves the problem. Settings take effect from the nex
 
 ## 14. Bit depth on the capture session (owner decisions of 2026-11-01)
 
-This section applies to the capture session of a later phase (Mount / Acquire with `[Session] Enabled=1`), not to Mount / Acquire of this runbook, which stays 8-bit whatever these keys say.
+This section applies to the capture session (Mount / Acquire with `[Session] Enabled=1`, the default of every new install since 2026-11-07, once Capture settings were saved on the computer), not to the older Mount / Acquire of this runbook, which stays 8-bit whatever these keys say.
 
 **Owner decisions, 2026-11-01:**
 
@@ -500,7 +500,7 @@ When the capture settings are not verified (never saved in Capture settings on t
 
 A record written by an earlier version of the program (format `capture-verification/1`, which names no driver version or image settings) never matches, whatever its date; the session says to run Test capture again. Other capture.ini keys (the source list, the journal size, the session mode, the timeouts) do not change what a record covers.
 
-**Before 16-bit X-rays for patients.** 16-bit X-rays are not for patient use until counsel has reviewed the 16-bit labelling ("For Presentation") and the brightness window the program computes, and the clinic run has signed off. Until then, set `[Twain] Allow16Bit=0` in Capture settings on every computer that captures for patients. One passed Test capture record covers every computer with the same device row and driver version, so `Allow16Bit=0` is what keeps those computers at 8 bits. The display fixes (DICOM thumbnails, cropping and rotating, and 16-bit brightness), the in-house DICOM reader and claim attachment of DICOM X-rays (an 8-bit copy with the stored window) are part of the same release as the 16-bit capture, so they are not a clinic step (the coordinator's plan of 2026-11-01). Test capture can still verify 16 bits on a computer that is kept off patient use (it asks for that computer's `Bits`).
+**Before 16-bit X-rays for patients.** Counsel reviewed the 16-bit labelling ("For Presentation") and the brightness window the program computes on 2026-11-07, with no changes (owner decision of 2026-11-07), so 16 bits stay the default (`Allow16Bit=1`), behind the Test capture gate above, unchanged. Patient use, at any bit depth, still waits for the phantom comparison and the dentist's sign-off against the written criteria (section 1, rule 2; section 12, step 4), with the sensor set up only as a Twain Radiograph device. Set `[Twain] Allow16Bit=0` in Capture settings only to keep a computer at 8 bits; one passed Test capture record covers every computer with the same device row and driver version. The display fixes (DICOM thumbnails, cropping and rotating, and 16-bit brightness), the in-house DICOM reader and claim attachment of DICOM X-rays (an 8-bit copy with the stored window) are part of the same release as the 16-bit capture, so they are not a clinic step (the coordinator's plan of 2026-11-01). Test capture can still verify 16 bits on a computer that is kept off patient use (it asks for that computer's `Bits`).
 
 **Running Test capture.** On one computer with the sensor's source installed, open Setup > Imaging > Devices, the device, Test capture. It asks for the device's `Bits` (16 by default). Take an image of the phantom or the known ramp, check byte order and polarity, and write the record. Run it again after a new version of the sensor's source (section 5) and after changing `Bits`, `ByteOrder16` or `Polarity`. If the source gives 14 bits while `Bits=16`, the record passes at 14, and the session asks that driver for 14 bits (Test capture says so). Test capture also lets you choose 14 or 8 to measure; a record of a test image taken at a depth you chose other than the device's `Bits` (for example 14 while `Bits=16`) covers no session, and Test capture warns. `Bits` is one of the image settings the record covers, so after changing `Bits` in Capture settings, run Test capture again.
 
