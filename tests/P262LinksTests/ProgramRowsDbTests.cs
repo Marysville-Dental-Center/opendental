@@ -66,7 +66,9 @@ namespace P262LinksTests {
 			DataTable tableProps=GetProperties(programNum);
 			Assert.AreEqual(1,tableProps.Rows.Count);
 			Assert.AreEqual("Patient arguments",tableProps.Rows[0]["PropertyDesc"].ToString());
-			Assert.AreEqual("",tableProps.Rows[0]["PropertyValue"].ToString());
+			//next/vendorpub-1: OrthoComposite's public arguments (its Microsoft Store listing).
+			Assert.AreEqual("--lastname \"[LName]\" --firstname \"[FName]\" --dob \"[Birthdate]\"",tableProps.Rows[0]["PropertyValue"].ToString());
+			Assert.AreEqual(OrthoCompositeLink.Note,DataCore.GetScalar("SELECT Note FROM program WHERE ProgramNum="+programNum));
 			Assert.IsFalse(OrthoCompositeLink.EnsureProgram());
 		}
 

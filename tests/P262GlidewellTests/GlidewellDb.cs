@@ -77,7 +77,7 @@ namespace P262GlidewellTests {
 				Assert.Inconclusive(SkipReason);
 			}
 			Connect();
-			foreach(string table in new[] { "glidewellacct","glidewellmsg","labcaseproduct","labcase","patient","provider","program","programproperty","securitylog","securityloghash" }) {
+			foreach(string table in new[] { "glidewellacct","glidewellmsg","labcaseproduct","labcase","patient","provider","program","programproperty","securitylog","securityloghash","procedurelog" }) {
 				DataCore.NonQ("DELETE FROM "+table);
 			}
 			RefreshCaches();

@@ -108,14 +108,26 @@ namespace OpenPmsDentalBusiness {
 		///not teeth and are not listed. "" when no procedure has a tooth.</summary>
 		public static string FormatToothRange(List<Procedure> listProcedures,ToothNumberingNomenclature toothNumberingNomenclature) {
 			Meth.NoCheckMiddleTierRole();
-			List<string> listTeeth=new List<string>();
+			List<string> listEntries=new List<string>();
 			foreach(Procedure procedure in listProcedures??new List<Procedure>()) {
 				if(procedure==null) {
 					continue;
 				}
-				List<string> listProcTeeth=(procedure.ToothRange??"").Split(',').Select(x => x.Trim()).ToList();
-				listProcTeeth.Add((procedure.ToothNum??"").Trim());
-				foreach(string toothNum in listProcTeeth) {
+				listEntries.Add(procedure.ToothRange);
+				listEntries.Add(procedure.ToothNum);
+			}
+			return FormatTeeth(listEntries,toothNumberingNomenclature);
+		}
+
+		///<summary>The rule of FormatToothRange on the stored tooth entries themselves: each entry is a tooth number or a comma separated list of them
+		///(procedurelog.ToothNum or ToothRange, internal American numbers). Invalid entries are left out, each tooth is listed once, in tooth order,
+		///formatted with Tooth.DisplayRange in the given nomenclature. "" when there is no tooth.</summary>
+		public static string FormatTeeth(IEnumerable<string> listToothEntries,ToothNumberingNomenclature toothNumberingNomenclature) {
+			Meth.NoCheckMiddleTierRole();
+			List<string> listTeeth=new List<string>();
+			foreach(string entry in listToothEntries??new List<string>()) {
+				foreach(string part in (entry??"").Split(',')) {
+					string toothNum=part.Trim();
 					if(Tooth.IsValidDB(toothNum) && !listTeeth.Contains(toothNum)) {
 						listTeeth.Add(toothNum);
 					}

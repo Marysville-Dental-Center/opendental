@@ -1,5 +1,5 @@
-// OrthoComposite (Open Dental 26.2 item 45): the row definition from the public setup page, the order of the launch checks and the three tokens.
-// No database, nothing is launched.
+// OrthoComposite (Open Dental 26.2 item 45): the row definition from the public setup page, the public arguments from OrthoComposite's Microsoft
+// Store listing (next/vendorpub-1), the order of the launch checks and the three tokens. No database, nothing is launched.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Globalization;
@@ -28,7 +28,44 @@ namespace P262LinksTests {
 			Assert.AreEqual("OrthoComposite",definition.ButtonText,"The public page's Text on button default.");
 			Assert.AreEqual(1,definition.ListProperties.Count);
 			Assert.AreEqual("Patient arguments",definition.ListProperties[0].Key);
-			Assert.AreEqual("",definition.ListProperties[0].Value,"Partner-gated: the office enters it from OrthoComposite's instructions.");
+			Assert.AreEqual(OrthoCompositeLink.DefaultPatientArguments,definition.ListProperties[0].Value,"Public since next/vendorpub-1.");
+			Assert.AreEqual(OrthoCompositeLink.Note,definition.Note);
+		}
+
+		///<summary>OrthoComposite's Microsoft Store listing: the command arguments --lastname, --firstname and --dob open its patient list with the search
+		///filled in. Open Dental's page: the birthdate is MM/DD/YYYY.</summary>
+		[TestMethod]
+		public void DefaultArguments_AreTheStoreListingArguments() {
+			Assert.AreEqual("--lastname \"[LName]\" --firstname \"[FName]\" --dob \"[Birthdate]\"",OrthoCompositeLink.DefaultPatientArguments);
+			BridgeLaunch launch=Launch(PATH,OrthoCompositeLink.DefaultPatientArguments,"",SyntheticPatients.Create());
+			Assert.IsTrue(launch.IsReady);
+			Assert.IsTrue(launch.HasPatientData);
+			Assert.AreEqual("--lastname \"N\u00fa\u00f1ez Nico\" --firstname \"Zo\u00e9\" --dob \"03/09/1980\"",launch.Arguments,
+				"Each value quoted, double quotes removed from it, accented letters kept.");
+			CultureInfo cultureOld=Thread.CurrentThread.CurrentCulture;
+			try {
+				Thread.CurrentThread.CurrentCulture=new CultureInfo("de-DE");
+				StringAssert.EndsWith(Launch(PATH,OrthoCompositeLink.DefaultPatientArguments,"",SyntheticPatients.Create()).Arguments,"--dob \"03/09/1980\"",
+					"MM/dd/yyyy with \"/\" whatever the regional settings.");
+			}
+			finally {
+				Thread.CurrentThread.CurrentCulture=cultureOld;
+			}
+			Patient patient=SyntheticPatients.Create();
+			patient.Birthdate=DateTime.MinValue;
+			StringAssert.EndsWith(Launch(PATH,OrthoCompositeLink.DefaultPatientArguments,"--fullscreen",patient).Arguments,"--dob \"\" --fullscreen",
+				"No birthdate: an empty value; the Command line follows.");
+		}
+
+		///<summary>In a quoted token, a value ending in a backslash would escape the closing quote ("Smith\" reads as Smith" and the rest).</summary>
+		[TestMethod]
+		public void Values_DoNotEndInABackslash() {
+			Patient patient=SyntheticPatients.Create();
+			patient.LName="Smith\\";
+			patient.FName="Ann \\ \\";
+			Assert.AreEqual("--lastname \"Smith\" --firstname \"Ann\"",OrthoCompositeLink.FillArguments("--lastname \"[LName]\" --firstname \"[FName]\"",patient));
+			patient.LName="O\\Neil";
+			Assert.AreEqual("\"O\\Neil\"",OrthoCompositeLink.FillArguments("\"[LName]\"",patient),"A backslash inside a value is kept.");
 		}
 
 		[TestMethod]
@@ -122,6 +159,9 @@ namespace P262LinksTests {
 				StringAssert.Contains(note,token);
 			}
 			StringAssert.Contains(note,"No other patient data is sent.");
+			foreach(string argument in new[] { "--lastname","--firstname","--dob" }) {
+				StringAssert.Contains(note,argument);
+			}
 			foreach(string word in new[] { "http","www.","Microsoft Store","best","leading","partner","sign up","free trial","!" }) {
 				Assert.IsFalse(note.IndexOf(word,StringComparison.OrdinalIgnoreCase)>=0,"The note says "+word);
 			}
