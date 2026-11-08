@@ -4,6 +4,7 @@ using System;
 using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using OpenPmsDental;
 using OpenPmsDentalBusiness;
 using SparksToothChart;
 
@@ -32,6 +33,26 @@ namespace ToothChartImageTests {
 				"A missing DirectX runtime is the fallback's matter, not a device error.");
 			Assert.IsFalse(ToothChartWrapper.IsGraphicsDeviceException(new Exception("outer",exSharpDX)),
 				"Only the thrown type counts, as with catch(SharpDXException).");
+		}
+
+		[TestMethod]
+		public void Relay_IsPerioMode_SetsTheValueItIsGiven() {
+			StaRunner.Run(() => {
+				using ToothChartWrapper wrapper=new ToothChartWrapper();
+				Assert.AreEqual(DrawingMode.Simple2D,wrapper.DrawMode);
+				ToothChartRelay relay=new ToothChartRelay();
+				relay.SetToothChartWrapper(wrapper);
+				//Until TC-0 the setter always set true, so turning perio mode off threw "Only allowed in DirectX" outside DirectX.
+				relay.IsPerioMode=false;
+				Assert.IsFalse(wrapper.PerioMode);
+				wrapper.TcData.PerioMode=true;//as a DirectX chart in perio mode has it
+				relay.IsPerioMode=false;
+				Assert.IsFalse(wrapper.PerioMode,"false turns perio mode off.");
+				//Turning it on is still the wrapper's rule: DirectX only.
+				Exception ex=Expect.Throws<Exception>(() => relay.IsPerioMode=true);
+				StringAssert.Contains(ex.Message,"DirectX");
+				Assert.IsFalse(wrapper.PerioMode);
+			});
 		}
 	}
 }
