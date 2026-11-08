@@ -88,6 +88,10 @@ namespace M2RECURTests {
 				("private void SendPayConnectV2(",
 					"MarkDeclined(chargeData,errorMessage);",
 					"chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsPayConnect2Decline(response);"),
+				//Owner question M2-RECUR 6 (fixed on 2026-11-07): a 2xx answer that is not an approval reaches the StatusCode!="0" decline.
+				("private void SendPayConnectV2(",
+					"MarkDeclined(chargeData,Lans.g(_lanThis,\"Transaction Failed, error status\")+\" \"+payConnectResponse.Description,LogLevel.Information);",
+					"chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsPayConnect2Decline(response);"),
 			};
 			foreach((string Method,string MarkDeclined,string Filter) hook in arrayHooks) {
 				string body=GetMethodBody(source,hook.Method);
@@ -97,12 +101,30 @@ namespace M2RECURTests {
 				string after=body.Substring(indexMarkDeclined+hook.MarkDeclined.Length).TrimStart();
 				Assert.IsTrue(after.StartsWith(hook.Filter,StringComparison.Ordinal),hook.Method+" narrows the flag right after "+hook.MarkDeclined);
 			}
-			//Every MarkDeclined call in the file is one of the six this package narrows (five above, PaySimple's catch in the test before) or the
-			//StatusCode!="0" decline in SendPayConnectV2, which stays a decline (an Error response never reaches it: its StatusCode is blank).
+			//Every MarkDeclined call in the file is one of the seven narrowed: six above, PaySimple's catch in the test before. The StatusCode!="0"
+			//decline in SendPayConnectV2 is reached by a 2xx answer that is not an approval (an Error response never reaches it: its StatusCode is
+			//blank), and is narrowed like the error branch since 2026-11-07.
 			int countMarkDeclinedCalls=Regex.Matches(source,@"\tMarkDeclined\(chargeData,").Count;
 			Assert.AreEqual(7,countMarkDeclinedCalls,"A new MarkDeclined call needs its processor's filter.");
-			StringAssert.Contains(GetMethodBody(source,"private void SendPayConnectV2("),
-				"MarkDeclined(chargeData,Lans.g(_lanThis,\"Transaction Failed, error status\")+\" \"+payConnectResponse.Description,LogLevel.Information);");
+			string bodyPayConnect=GetMethodBody(source,"private void SendPayConnectV2(");
+			StringAssert.Contains(bodyPayConnect,"PayConnectResponse payConnectResponse=PayConnect2.ChargeResponseToPayConnectResponse(response);",
+				"A 2xx answer that is not an approval gets StatusCode NotApproved, never \"0\".");
+			Assert.AreEqual(2,Regex.Matches(bodyPayConnect,@"IsPayConnect2Decline\(response\)").Count);
+		}
+
+		[TestMethod]
+		public void IsPayConnect2Decline_A2xxCreateWhoseStatusSaysDeclined() {
+			//Owner question M2-RECUR 6 (fixed on 2026-11-07): the 2xx create answers that are not approvals.
+			PayConnect2.PayConnect2Response responseDeclined=PayConnect2.ParseHttpResponse(PayConnect2.ApiRoute.CreateTransaction,HttpStatusCode.OK,
+				"{\"referenceId\":\"R-1\",\"status\":\"Declined\",\"amount\":100,\"type\":\"Sale\",\"frequency\":\"Recurring\"}");
+			Assert.AreEqual(PayConnect2.ResponseType.CreateTransaction,responseDeclined.ResponseType);
+			Assert.IsTrue(RecurringChargerator.IsPayConnect2Decline(responseDeclined));
+			PayConnect2.PayConnect2Response responseError=PayConnect2.ParseHttpResponse(PayConnect2.ApiRoute.CreateTransaction,HttpStatusCode.OK,
+				"{\"referenceId\":\"R-2\",\"status\":\"Error\",\"amount\":100,\"type\":\"Sale\",\"frequency\":\"Recurring\"}");
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(responseError),"Not approved, but not a card decline: no e-mail.");
+			PayConnect2.PayConnect2Response responseApproved=PayConnect2.ParseHttpResponse(PayConnect2.ApiRoute.CreateTransaction,HttpStatusCode.OK,
+				"{\"referenceId\":\"R-3\",\"status\":\"Processed\",\"amount\":100,\"type\":\"Sale\",\"frequency\":\"Recurring\"}");
+			Assert.IsFalse(RecurringChargerator.IsPayConnect2Decline(responseApproved));
 		}
 
 		[TestMethod]

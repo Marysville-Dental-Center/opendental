@@ -1459,14 +1459,39 @@ namespace OpenPmsDentalBusiness {
 			return ((double)amount)/100;
 		}
 
-		///<summary>Converts an any response we may have gotten from the API to the old PayConnectResponse class.</summary>
+		///<summary>The StatusCode ApiResponseToPayConnectResponse gives a create (sale, authorization, terminal transaction) that PayConnect answered
+		///with 2xx but whose status is not an approval (GetCreateStatusNotApproved), for example Declined, and ChargeResponseToPayConnectResponse a
+		///charge's status lookup that is not an approval. Not "0", so every caller that records a charge only for "0" (the payment window, the
+		///recurring charges) treats it as a decline, and not blank, which the recurring charges read as an error without an answer. Owner question
+		///M2-RECUR 6, fixed on 2026-11-07: a declined card was recorded as paid.</summary>
+		public const string StatusCodeNotApproved="NotApproved";
+
+		///<summary>"0" (success) for a create that PayConnect approved, StatusCodeNotApproved for one it answered with any other status.</summary>
+		private static string GetStatusCodeForCreate(PayConnect2Response response) {
+			return GetCreateStatusNotApproved(response)==null ? "0" : StatusCodeNotApproved;
+		}
+
+		///<summary>ApiResponseToPayConnectResponse for the answer to a charge (a sale or an authorization, keyed, by token, on a terminal or on the
+		///hosted card-entry page): a create that was not approved, and also a transaction status lookup (GetStatus) whose status is not an approval
+		///(IsApprovedStatus, for example Declined), get StatusCodeNotApproved instead of "0", so the charge is never recorded as paid. Not for voids and
+		///refunds, whose status lookups ("Voided" and the like) are their success.</summary>
+		public static PayConnectResponse ChargeResponseToPayConnectResponse(PayConnect2Response response) {
+			PayConnectResponse payConnectResponse=ApiResponseToPayConnectResponse(response);
+			if(response?.ResponseType==ResponseType.GetStatus && response.GetStatusResponse!=null && !IsApprovedStatus(response.GetStatusResponse.Status)) {
+				payConnectResponse.StatusCode=StatusCodeNotApproved;
+			}
+			return payConnectResponse;
+		}
+
+		///<summary>Converts an any response we may have gotten from the API to the old PayConnectResponse class. A create (sale, authorization,
+		///terminal transaction) gets StatusCode "0" only when its status is an approval; any other status gets StatusCodeNotApproved.</summary>
 		public static PayConnectResponse ApiResponseToPayConnectResponse(PayConnect2Response response) {
 			PayConnectResponse payConnectResponse=new PayConnectResponse();
 			switch(response.ResponseType) {
 				case ResponseType.CreateTransaction:
 					CreateTransactionResponse transactionResponse=response.TransactionResponse;
 					payConnectResponse.Description=transactionResponse.Status;
-					payConnectResponse.StatusCode="0";//0 indicates success
+					payConnectResponse.StatusCode=GetStatusCodeForCreate(response);//"0" indicates success: only for an approval
 					payConnectResponse.RefNumber=transactionResponse.ReferenceId;
 					payConnectResponse.Amount=((decimal)transactionResponse.Amount)/100;//PayConnect sends amount as total cents, convert back to OD decimal amounts.
 					payConnectResponse.AuthCode=transactionResponse.AuthCode;
@@ -1480,7 +1505,7 @@ namespace OpenPmsDentalBusiness {
 				case ResponseType.CreateSurchargeTransaction:
 					CreateSurchargeTransactionResponse transactionSurchargeResponse=response.TransactionSurchargeResponse;
 					payConnectResponse.Description=transactionSurchargeResponse.Status;
-					payConnectResponse.StatusCode="0";//0 indicates success
+					payConnectResponse.StatusCode=GetStatusCodeForCreate(response);//"0" indicates success: only for an approval
 					payConnectResponse.RefNumber=transactionSurchargeResponse.ReferenceId;
 					payConnectResponse.Amount=((decimal)transactionSurchargeResponse.Amount)/100;//PayConnect sends amount as total cents, convert back to OD decimal amounts.
 					payConnectResponse.SurchargePercent=transactionSurchargeResponse.SurchargePercent;
@@ -1576,7 +1601,7 @@ namespace OpenPmsDentalBusiness {
 				case ResponseType.TerminalTransaction:
 					TerminalTransactionResponse terminalTransactionResponse=response.TerminalTransactionResponse;
 					payConnectResponse.Description=terminalTransactionResponse.Status;
-					payConnectResponse.StatusCode="0";//0 indicates success
+					payConnectResponse.StatusCode=GetStatusCodeForCreate(response);//"0" indicates success: only for an approval
 					payConnectResponse.RefNumber=terminalTransactionResponse.ReferenceId;
 					payConnectResponse.Amount=((decimal)terminalTransactionResponse.Amount)/100;//PayConnect sends amount as total cents, convert back to OD decimal amounts.
 					payConnectResponse.AuthCode=terminalTransactionResponse.AuthCode;

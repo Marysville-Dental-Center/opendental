@@ -189,6 +189,46 @@ namespace VendorDirectTests.PayConnectV2 {
 			Assert.AreEqual("R7",payConnectResponse.RefNumber);
 			Assert.AreEqual(5m,payConnectResponse.Amount);
 		}
+
+		[TestMethod]
+		public void ApiResponseToPayConnectResponse_ACreateIsASuccessOnlyWhenApproved() {
+			//Owner question M2-RECUR 6 (fixed on 2026-11-07): every 2xx create answer used to get StatusCode "0", a Declined one too, so the recurring
+			//charges and the payment window recorded a declined card as paid.
+			foreach(PayConnect2.ApiRoute apiRoute in new[] { PayConnect2.ApiRoute.CreateTransaction,PayConnect2.ApiRoute.CreateTerminalTransaction }) {
+				foreach(string status in new[] { "Processed","Approved","AUTHORIZED" }) {
+					PayConnect2.PayConnect2Response response=PayConnect2.ParseHttpResponse(apiRoute,HttpStatusCode.OK,
+						"{\"referenceId\":\"R8\",\"status\":\""+status+"\",\"type\":\"Sale\",\"amount\":500}");
+					Assert.IsNull(PayConnect2.GetCreateStatusNotApproved(response),apiRoute+" "+status);
+					Assert.AreEqual("0",PayConnect2.ApiResponseToPayConnectResponse(response).StatusCode,apiRoute+" "+status);
+					Assert.AreEqual("0",PayConnect2.ChargeResponseToPayConnectResponse(response).StatusCode,apiRoute+" "+status);
+				}
+				foreach(string status in new[] { "Declined","Error","Voided","" }) {
+					PayConnect2.PayConnect2Response response=PayConnect2.ParseHttpResponse(apiRoute,HttpStatusCode.OK,
+						"{\"referenceId\":\"R9\",\"status\":\""+status+"\",\"type\":\"Sale\",\"amount\":500}");
+					Assert.IsNotNull(PayConnect2.GetCreateStatusNotApproved(response),apiRoute+" "+status);
+					PayConnectResponse payConnectResponse=PayConnect2.ApiResponseToPayConnectResponse(response);
+					Assert.AreEqual(PayConnect2.StatusCodeNotApproved,payConnectResponse.StatusCode,apiRoute+" "+status);
+					Assert.AreNotEqual("",payConnectResponse.StatusCode,"Blank means an error without an answer.");
+					Assert.AreEqual(status,payConnectResponse.Description);
+					Assert.AreEqual(PayConnect2.StatusCodeNotApproved,PayConnect2.ChargeResponseToPayConnectResponse(response).StatusCode);
+				}
+			}
+		}
+
+		[TestMethod]
+		public void ChargeResponseToPayConnectResponse_AStatusLookupThatIsNotAnApproval() {
+			//The hosted card-entry page's sale is read back with the status route: Declined is not a charge.
+			PayConnect2.PayConnect2Response responseDeclined=PayConnect2.ParseHttpResponse(PayConnect2.ApiRoute.GetStatus,HttpStatusCode.OK,
+				"{\"referenceId\":\"R10\",\"status\":\"Declined\",\"type\":\"Sale\",\"amount\":500}");
+			Assert.AreEqual(PayConnect2.StatusCodeNotApproved,PayConnect2.ChargeResponseToPayConnectResponse(responseDeclined).StatusCode);
+			PayConnect2.PayConnect2Response responseProcessed=PayConnect2.ParseHttpResponse(PayConnect2.ApiRoute.GetStatus,HttpStatusCode.OK,
+				"{\"referenceId\":\"R11\",\"status\":\"Processed\",\"type\":\"Sale\",\"amount\":500}");
+			Assert.AreEqual("0",PayConnect2.ChargeResponseToPayConnectResponse(responseProcessed).StatusCode);
+			//A void's status lookup ("Voided") is its success: the plain conversion, which voids and refunds use, is unchanged.
+			PayConnect2.PayConnect2Response responseVoided=PayConnect2.ParseHttpResponse(PayConnect2.ApiRoute.GetStatus,HttpStatusCode.OK,
+				"{\"referenceId\":\"R12\",\"status\":\"Voided\",\"type\":\"Sale\",\"amount\":500}");
+			Assert.AreEqual("0",PayConnect2.ApiResponseToPayConnectResponse(responseVoided).StatusCode);
+		}
 		#endregion Error parsing
 
 		#region HTTP calls

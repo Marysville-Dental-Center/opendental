@@ -286,6 +286,77 @@ namespace M2RECURTests {
 			Assert.AreEqual(RecurringChargeFailEmailStatus.Sent,result.Status,result.Reason);
 			Assert.AreEqual("pc.decline@example.com",_listEmailMessagesSent.Single().ToAddress);
 			StringAssert.Contains(chargeData.RecurringCharge.ErrorMsg,RecurringChargeFailEmails.ERROR_MSG_SENT_PREFIX+"pc.decline@example.com.");
+			AssertOnlyAZeroPayment(chargeData);
+		}
+
+		///<summary>PayConnect's answer to a recurring sale with 2xx and the given status, amount in cents.</summary>
+		private static PayConnect2.PayConnect2Response PayConnectCreateAnswer(string status,int amountCents) {
+			return PayConnectAnswer(HttpStatusCode.OK,"{\"referenceId\":\"R-REC\",\"transactionId\":901,\"status\":\""+status+"\",\"amount\":"+amountCents
+				+",\"type\":\"Sale\",\"frequency\":\"Recurring\",\"authCode\":\"SYN001\"}");
+		}
+
+		///<summary>The payment rows of the charge's patient: (PayAmt, IsCcCompleted).</summary>
+		private static List<(double PayAmt,bool IsCcCompleted)> GetPayments(RecurringChargeData chargeData) {
+			System.Data.DataTable table=DataCore.GetTable("SELECT PayAmt,IsCcCompleted FROM payment WHERE PatNum="+POut.Long(chargeData.RecurringCharge.PatNum));
+			return table.Select().Select(x => (PIn.Double(x["PayAmt"].ToString()),PIn.Bool(x["IsCcCompleted"].ToString()))).ToList();
+		}
+
+		///<summary>A charge that was not made is recorded like every other decline: one $0 payment (the record that the charge was considered), never
+		///a payment of the amount, and no charge counted as made.</summary>
+		private void AssertOnlyAZeroPayment(RecurringChargeData chargeData) {
+			List<(double PayAmt,bool IsCcCompleted)> listPayments=GetPayments(chargeData);
+			Assert.AreEqual(1,listPayments.Count,"One payment row: the $0 record of the decline.");
+			Assert.AreEqual(0,listPayments[0].PayAmt,0.001,"Never a payment of the amount.");
+			Assert.IsFalse(listPayments[0].IsCcCompleted);
+			Assert.AreNotEqual(RecurringChargeStatus.ChargeSuccessful,chargeData.RecurringCharge.ChargeStatus);
+			Assert.AreEqual(0,_testChargerator.Success);
+		}
+
+		[TestMethod]
+		public void PayConnect_2xxDeclined_IsADecline_EmailsThePatient_AndIsNotRecordedAsPaid() {
+			//Owner question M2-RECUR 6 (fixed on 2026-11-07): PayConnect answered the recurring sale with 2xx and status Declined. It was recorded as
+			//paid, and nobody was told.
+			SetUpPayConnect(PayConnectCreateAnswer("Declined",4000));
+			Assert.AreEqual(PayConnect2.ResponseType.CreateTransaction,PayConnect2.Mock.Response.ResponseType);
+			RecurringChargeData chargeData=MakeCharge(RecurDb.CreatePatient("Pc2xxDecline",email:"pc.2xx.decline@example.com"),40,
+				CreditCardSource.PayConnect);
+			RecurringChargeFailEmailResult result=ChargePayConnect(chargeData);
+			StringAssert.Contains(chargeData.RecurringCharge.ErrorMsg,"Transaction Failed, error status Declined");
+			Assert.IsTrue(chargeData.IsDeclinedByProcessor);
+			AssertMarkedDeclined(chargeData);
+			Assert.AreEqual(RecurringChargeFailEmailStatus.Sent,result.Status,result.Reason);
+			Assert.AreEqual("pc.2xx.decline@example.com",_listEmailMessagesSent.Single().ToAddress);
+			StringAssert.Contains(chargeData.RecurringCharge.ErrorMsg,RecurringChargeFailEmails.ERROR_MSG_SENT_PREFIX+"pc.2xx.decline@example.com.");
+			AssertOnlyAZeroPayment(chargeData);
+			Assert.AreEqual(1,_listPayConnectLogLines.Count,"The answer is in the PayConnect error log (NotApproved).");
+		}
+
+		[TestMethod]
+		public void PayConnect_2xxOtherStatusNotApproved_IsADecline_WithoutEmail() {
+			//A 2xx status that is neither an approval nor a decline (here Error): not charged, so not a payment; not a card decline, so no e-mail.
+			SetUpPayConnect(PayConnectCreateAnswer("Error",2500));
+			RecurringChargeData chargeData=MakeCharge(RecurDb.CreatePatient("Pc2xxError",email:"pc.2xx.error@example.com"),25,CreditCardSource.PayConnect);
+			RecurringChargeFailEmailResult result=ChargePayConnect(chargeData);
+			StringAssert.Contains(chargeData.RecurringCharge.ErrorMsg,"Transaction Failed, error status Error");
+			AssertNobodyEmailed(new List<RecurringChargeData> { chargeData },new List<RecurringChargeFailEmailResult> { result });
+			AssertOnlyAZeroPayment(chargeData);
+		}
+
+		[TestMethod]
+		public void PayConnect_Approved_RecordsThePayment_NoEmail() {
+			SetUpPayConnect(PayConnectCreateAnswer("Processed",3500));
+			RecurringChargeData chargeData=MakeCharge(RecurDb.CreatePatient("PcApproved",email:"pc.approved@example.com"),35,CreditCardSource.PayConnect);
+			RecurringChargeFailEmailResult result=ChargePayConnect(chargeData);
+			Assert.AreEqual(RecurringChargeStatus.ChargeSuccessful,chargeData.RecurringCharge.ChargeStatus,chargeData.RecurringCharge.ErrorMsg);
+			Assert.IsFalse(chargeData.IsDeclinedByProcessor);
+			Assert.AreEqual(1,_testChargerator.Success);
+			Assert.AreEqual(RecurringChargeFailEmailStatus.NotNeeded,result.Status);
+			Assert.AreEqual(0,_listEmailMessagesSent.Count);
+			List<(double PayAmt,bool IsCcCompleted)> listPayments=GetPayments(chargeData);
+			Assert.AreEqual(1,listPayments.Count);
+			Assert.AreEqual(35,listPayments[0].PayAmt,0.001,"The approved amount.");
+			Assert.IsTrue(listPayments[0].IsCcCompleted);
+			Assert.AreEqual(0,_listPayConnectLogLines.Count,"An approval is not an error.");
 		}
 		#endregion PayConnect 2
 	}

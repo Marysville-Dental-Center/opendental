@@ -106,9 +106,15 @@ namespace OpenPmsDentalBusiness {
 		///<summary>For SendPayConnectV2, which marks every error answer PayConnect sent declined. True only when PayConnect turned the card down: its
 		///own error (PayConnectErrorKind.Vendor) with an HTTP 4xx status other than 408 (timeout), 409 (conflict, which may be a duplicate of a charge
 		///that went through) and 429 (too many requests); or a lost answer that PayConnect's transaction list shows as declined (Outcome Reconciled,
-		///a status that says declined). False for a rejected API key or Secret (401, 403), a validation error (400 VALIDATION), any 5xx, missing
-		///settings and no answer, so none of them e-mails the patient. INFERRED: which statuses PayConnect uses for a decline is not published.</summary>
+		///a status that says declined); or a 2xx create answer whose status is not an approval and says declined (PayConnect2.GetCreateStatusNotApproved,
+		///owner question M2-RECUR 6, fixed on 2026-11-07: such an answer was recorded as paid). False for a rejected API key or Secret (401, 403), a
+		///validation error (400 VALIDATION), any 5xx, a 2xx status that is neither an approval nor a decline (Error, blank), missing settings and no
+		///answer, so none of them e-mails the patient. INFERRED: which statuses PayConnect uses for a decline is not published.</summary>
 		public static bool IsPayConnect2Decline(PayConnect2.PayConnect2Response response) {
+			string statusNotApproved=PayConnect2.GetCreateStatusNotApproved(response);
+			if(statusNotApproved!=null) {//Null for every response but a 2xx create that was not approved.
+				return statusNotApproved.IndexOf("declin",StringComparison.OrdinalIgnoreCase)>=0;
+			}
 			PayConnect2.ErrorResponse errorResponse=response?.ErrorResponse;
 			if(response==null || response.ResponseType!=PayConnect2.ResponseType.Error || errorResponse==null
 				|| errorResponse.Kind!=PayConnect2.PayConnectErrorKind.Vendor)

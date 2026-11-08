@@ -966,7 +966,9 @@ namespace OpenPmsDentalBusiness {
 					chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsPayConnect2Decline(response);//A rejected key or Secret, a validation error or a 5xx e-mails nobody.
 				}
 			}
-			PayConnectResponse payConnectResponse=PayConnect2.ApiResponseToPayConnectResponse(response);
+			//A 2xx answer whose status is not an approval (for example Declined) gets StatusCode NotApproved, not "0": a decline below, never a payment
+			//of the amount (owner question M2-RECUR 6, fixed on 2026-11-07).
+			PayConnectResponse payConnectResponse=PayConnect2.ChargeResponseToPayConnectResponse(response);
 			StringBuilder strBuilderResultText=new StringBuilder();//this payment's result text, used in payment note and then appended to file string builder
 			strBuilderResultFile.AppendLine("PatNum: "+patNum+" Name: "+patCur.GetNameFLnoPref());
 			if(isSandbox) {
@@ -1000,8 +1002,9 @@ namespace OpenPmsDentalBusiness {
 				strBuilderResultText.AppendLine(Lans.g(_lanThis,"Status")+": "+payConnectResponse.Description);
 				strBuilderResultFile.AppendLine(strBuilderResultText.ToString());//add to the file string builder
 			}
-			else if(payConnectResponse.StatusCode!="0") {//error in transaction
+			else if(payConnectResponse.StatusCode!="0") {//error in transaction, or an answer that is not an approval (StatusCodeNotApproved)
 				MarkDeclined(chargeData,Lans.g(_lanThis,"Transaction Failed, error status")+" "+payConnectResponse.Description,LogLevel.Information);
+				chargeData.IsDeclinedByProcessor=chargeData.IsDeclinedByProcessor && IsPayConnect2Decline(response);//Only a Declined status e-mails the patient.
 				if(PrefC.HasClinicsEnabled && dictClinicNumDesc.ContainsKey(clinicNumCur)) {
 					strBuilderResultText.AppendLine("CLINIC="+dictClinicNumDesc[clinicNumCur]);
 				}
@@ -1048,8 +1051,13 @@ namespace OpenPmsDentalBusiness {
 			if(isSandbox) {
 				receipt=PaymentWindowRules.PayConnectSandboxMarker+Environment.NewLine+receipt;
 			}
-			//AmountSurcharged will be 0 for clinics that don't have surcharging turned on.
-			CreatePayment(patCur,chargeData,strBuilderResultText.ToString(),amount,receipt,CreditCardSource.PayConnect,merchantFee:(double)payConnectResponse.AmountSurcharged);
+			//AmountSurcharged will be 0 for clinics that don't have surcharging turned on. A charge that was not approved carries no fee: like every other
+			//decline, it is recorded as a $0 payment (the record that the charge was considered), never as paid.
+			double merchantFee=0;
+			if(chargeData.RecurringCharge.ChargeStatus==RecurringChargeStatus.ChargeSuccessful) {
+				merchantFee=(double)payConnectResponse.AmountSurcharged;
+			}
+			CreatePayment(patCur,chargeData,strBuilderResultText.ToString(),amount,receipt,CreditCardSource.PayConnect,merchantFee:merchantFee);
 			strBuilderResultFile.AppendLine(strBuilderResultText.ToString());
 		}
 
