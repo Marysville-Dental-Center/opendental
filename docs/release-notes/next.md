@@ -33,6 +33,9 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - Open Dental 26.2's tools: two Database Maintenance checks (income transfer problems, redundant insurance verifications), a tool that
   dates conversion clean-up income transfers on the conversion date, a Fee Tool that copies fees from one procedure code to another, and an
   average in Test Latency.
+- the database schema of Open Dental 26.2;
+- the Reports changes of Open Dental 26.2: redesigned Display Settings and Security Permissions tabs in Report Setup, and prior uncollected
+  balances and a Pay Plan column in the Patient Portion Uncollected report.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
 inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below). It also
@@ -483,3 +486,24 @@ INFERRED in the port note. No database change.
   trail (Procedure Fee Edit and Fee Edit). Users restricted to clinics cannot use it.
 - **Test Latency: average latency.** Tools, Misc Tools, Test Latency has a third test that runs the small latency query several times (10
   unless you change it, up to 1000) and shows the average, the fastest and the slowest round trip in milliseconds.
+## Reports (Open Dental 26.2)
+
+Four Reports changes of Open Dental 26.2, re-implemented from its public release notes only (`docs/port-notes/P262-REPORTS.md`). Every
+report setting and permission keeps its value: nothing is converted, and no database row is added by the update.
+
+- **Report Setup: Display Settings redesigned.** Setup, Reports (or Setup in the Reports window), Display Settings: one list of every report,
+  under a row per category (Production & Income, Daily, Monthly, Lists, Public Health) in the order of the Reports window, instead of a small
+  grid per category. Each report shows its display name (click to rename it), its internal name, and its Favorite and Hidden boxes; Up and
+  Down move the selected report within its category. Up and Down now also work when a category's stored order has gaps.
+- **Report Setup: Security Permissions redesigned.** The same list with the Allowed box per report for the selected user group, Set All and
+  Set None, and a count of the reports the group may run. Hidden reports are marked "(hidden)", as before. The report permissions window
+  of the Central Enterprise Management Tool has the same list. A group is given "every report" only when every listed report is allowed
+  (before, a leftover permission of a report no longer listed could count for a missing one).
+- **Patient Portion Uncollected: prior uncollected balances.** Check Show prior uncollected balances (then Refresh) to also list, for every
+  patient with a procedure completed in the date range, the procedures completed before the From date whose patient portion is still not
+  collected. They are shaded and listed first; the printout lists them in their own section, "Prior Uncollected Balances", with its own
+  totals. The box starts unchecked each time the report opens.
+- **Patient Portion Uncollected: Pay Plan column.** The amount of each procedure put on a payment plan: the treatment credits of a
+  patient payment plan, or the amount of a dynamic payment plan (its override, or what remains of the procedure when it has none).
+  Insurance payment plans do not count. The Uncollected column is unchanged: payments made through a payment plan count in Patient Paid, as
+  before. The report window is a little wider for the new column.

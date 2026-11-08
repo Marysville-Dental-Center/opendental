@@ -7,55 +7,53 @@ using OpenPmsDentalBusiness;
 using OpenPmsDental.UI;
 
 namespace OpenPmsDental.User_Controls {
+	///<summary>The Display Settings and Security Permissions tabs of Report Setup (and the report permissions of the Central Enterprise Management
+	///Tool). Redesigned with Open Dental 26.2 (items 31 and 32): one list of every report under a row per category, in the order of the Reports
+	///window, instead of a small grid per category, and the internal name of each report as a column instead of a label under the grids. Every
+	///setting of 26.1 is kept; the rules are in ReportSetupLayout and ReportPermissionEdit.</summary>
 	public partial class UserControlReportSetup:UserControl {
 		public List<DisplayReport> ListDisplayReportAll;
 		public List<GroupPermission> ListGroupPermissionsForReports;
 		public List<GroupPermission> ListGroupPermissionsOld;
 		private List<UserGroup> _listUserGroups;
-		private Point _selectedCell=new Point(-1,-1); //X:Col, Y:Row.
-		private GridOD _selectedGrid=null;
 		private bool _isPermissionMode=false;
 		private long _userGroupNum;
 		private bool _isCEMT;
+		///<summary>The report of the selected cell, kept while the list is filled again. Null when nothing or a category row is selected.</summary>
+		private DisplayReport _displayReportSelected=null;
+		///<summary>The column of the selected cell, -1 when none.</summary>
+		private int _colSelected=-1;
+		///<summary>Whether the office uses the Arizona Primary Care reports, read once per refresh of the data.</summary>
+		private bool _isArizonaPrimaryCareUsed;
+		private static readonly Color _colorCategoryRow=Color.FromArgb(224,230,238);
+		//Columns of the list. Display Settings: name, internal name, Favorite, Hidden. Security Permissions: name, internal name, Allowed.
+		private const int COL_NAME=0;
+		private const int COL_INTERNAL=1;
+		private const int COL_FAVORITE=2;
+		private const int COL_HIDDEN=3;
+		private const int COL_ALLOWED=2;
 
 		public UserControlReportSetup() {
 			InitializeComponent();
 			Font=LayoutManagerForms.FontInitial;
-			//set tags so that we know what grids are associated to what categories.
-			gridProdInc.Tag=DisplayReportCategory.ProdInc;
-			gridDaily.Tag=DisplayReportCategory.Daily;
-			gridMonthly.Tag=DisplayReportCategory.Monthly;
-			gridLists.Tag=DisplayReportCategory.Lists;
-			gridPublicHealth.Tag=DisplayReportCategory.PublicHealth;
-			gridProdInc.ColorSelectedRow=Color.FromArgb(30,55,55,55); //set a transparent colour so you see which cell is selected.
-			gridDaily.ColorSelectedRow=Color.FromArgb(30,55,55,55); //set a transparent colour so you see which cell is selected.
-			gridMonthly.ColorSelectedRow=Color.FromArgb(30,55,55,55); //set a transparent colour so you see which cell is selected.
-			gridLists.ColorSelectedRow=Color.FromArgb(30,55,55,55); //set a transparent colour so you see which cell is selected.
-			gridPublicHealth.ColorSelectedRow=Color.FromArgb(30,55,55,55); //set a transparent colour so you see which cell is selected.
+			gridReports.ColorSelectedRow=Color.FromArgb(30,55,55,55); //set a transparent colour so you see which cell is selected.
+			//Only the display name of a report can be typed into, and only on the Display Settings tab; never a category row.
+			gridReports.FuncCellIsEditable=(col,row) => !_isPermissionMode && col==COL_NAME && GetReportAt(row)!=null;
 		}
 
 		public void InitializeOnStartup(bool refreshData,long userGroupNum,bool isPermissionMode,bool isCEMT=false) {
+			CommitPendingEdit();//A name typed on the Display Settings tab before switching tabs.
 			_userGroupNum=userGroupNum;
 			_isPermissionMode=isPermissionMode;
 			_isCEMT=isCEMT;
-			if(_isPermissionMode) {
-				butUp.Visible=false;
-				butDown.Visible=false;
-				butSetAll.Visible=true;
-				butSetNone.Visible=true;
-				comboUserGroup.Visible=true;
-				labelUserGroup.Visible=true;
-				label1.Text=Lan.g(this,"The current selection's internal name is:");
-			}
-			else {
-				butUp.Visible=true;
-				butDown.Visible=true;
-				butSetAll.Visible=false;
-				butSetNone.Visible=false;
-				comboUserGroup.Visible=false;
-				labelUserGroup.Visible=false;
-				label1.Text=Lan.g(this,"Move the selected item within its list.")+"\r\n"+Lan.g(this,"The current selection's internal name is:");
-			}
+			butUp.Visible=!_isPermissionMode;
+			butDown.Visible=!_isPermissionMode;
+			labelInstructions.Visible=!_isPermissionMode;
+			butSetAll.Visible=_isPermissionMode;
+			butSetNone.Visible=_isPermissionMode;
+			comboUserGroup.Visible=_isPermissionMode;
+			labelUserGroup.Visible=_isPermissionMode;
+			labelAllowedCount.Visible=_isPermissionMode;
 			if(refreshData) {
 				ListDisplayReportAll=DisplayReports.GetAll(true);
 				if(_isCEMT) {//CEMT can only synchronize display reports with internal names.
@@ -72,259 +70,151 @@ namespace OpenPmsDental.User_Controls {
 				else {
 					_listUserGroups=UserGroups.GetList(true);
 				}
+				comboUserGroup.Items.Clear();
 				for(int i=0;i<_listUserGroups.Count;i++) {
 					comboUserGroup.Items.Add(_listUserGroups[i].Description);
 					if(_listUserGroups[i].UserGroupNum==_userGroupNum) {
 						comboUserGroup.SelectedIndex=i;
 					}
 				}
-				if(comboUserGroup.SelectedIndex==-1) {
+				if(comboUserGroup.SelectedIndex==-1 && comboUserGroup.Items.Count>0) {
 					comboUserGroup.SelectedIndex=0;
 				}
+				_isArizonaPrimaryCareUsed=FormReportsMore.UsingArizonaPrimaryCare();
 			}
-			FillGrids();
+			FillGrid();
 		}
 
-		///<summary>If any columns are reordered or added to this grid, they will need to be considered in the GridCell_Click event below.
-		///This refreshes every grid on the form.</summary>
-		private void FillGrids() {
+		///<summary>Saves the display name being typed into the list. The Save button of Report Setup calls it before it saves the reports.</summary>
+		public void CommitPendingEdit() {
+			if(_isPermissionMode || _displayReportSelected==null || ListDisplayReportAll==null) {
+				return;
+			}
+			int row=GetRowOfReport(_displayReportSelected);
+			if(row<0) {
+				return;
+			}
+			_displayReportSelected.Description=gridReports.ListGridRows[row].Cells[COL_NAME].Text;
+		}
+
+		///<summary>The user group the Security Permissions tab shows, 0 when there is none.</summary>
+		private long GetUserGroupNumSelected() {
+			if(_listUserGroups==null || comboUserGroup.SelectedIndex<0 || comboUserGroup.SelectedIndex>=_listUserGroups.Count) {
+				return 0;
+			}
+			return _listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum;
+		}
+
+		///<summary>The report of a row of the list; null for a category row or a row out of range.</summary>
+		private DisplayReport GetReportAt(int row) {
+			if(row<0 || row>=gridReports.ListGridRows.Count) {
+				return null;
+			}
+			return gridReports.ListGridRows[row].Tag as DisplayReport;
+		}
+
+		private int GetRowOfReport(DisplayReport displayReport) {
+			for(int i=0;i<gridReports.ListGridRows.Count;i++) {
+				if(gridReports.ListGridRows[i].Tag==displayReport) {
+					return i;
+				}
+			}
+			return -1;
+		}
+
+		///<summary>Fills the list: a row per category (ReportSetupLayout.ArrayCategories) and its reports under it in the order of the Reports window. If
+		///columns are reordered or added, the COL_ constants and gridReports_CellClick follow.</summary>
+		private void FillGrid() {
 			if(ListDisplayReportAll is null){
 				return;
 			}
-			ListDisplayReportAll=ListDisplayReportAll.OrderBy(x => x.ItemOrder).ToList();
-			//Begin Update
-			gridProdInc.BeginUpdate();
-			gridDaily.BeginUpdate();
-			gridMonthly.BeginUpdate();
-			gridLists.BeginUpdate();
-			gridPublicHealth.BeginUpdate();
-			//Add Columns
-			int widthDisplayNameCol=140;
-			gridProdInc.Columns.Clear();
-			string displayColumnTitle=Lans.g(this,"Display Name");
-			string allowedColumnTitle=Lans.g(this,"Allowed");
-			string subMenuColumnTitle=Lans.g(this,"Favorite");
-			string hiddenColumnTitle=Lans.g(this,"Hidden");
-			gridProdInc.Columns.Add(new GridColumn(displayColumnTitle,widthDisplayNameCol,!_isPermissionMode));
+			long userGroupNum=GetUserGroupNumSelected();
+			gridReports.BeginUpdate();
+			gridReports.Columns.Clear();
 			if(_isPermissionMode) {
-				gridProdInc.Columns.Add(new GridColumn(allowedColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
+				gridReports.Columns.Add(new GridColumn(Lan.g(this,"Report"),230));
+				gridReports.Columns.Add(new GridColumn(Lan.g(this,"Internal Name"),180));
+				gridReports.Columns.Add(new GridColumn(Lan.g(this,"Allowed"),60,HorizontalAlignment.Center){ IsWidthDynamic=true });
 			}
 			else {
-				gridProdInc.Columns.Add(new GridColumn(subMenuColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-				gridProdInc.Columns.Add(new GridColumn(hiddenColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
+				gridReports.Columns.Add(new GridColumn(Lan.g(this,"Display Name"),200,true));
+				gridReports.Columns.Add(new GridColumn(Lan.g(this,"Internal Name"),160));
+				gridReports.Columns.Add(new GridColumn(Lan.g(this,"Favorite"),60,HorizontalAlignment.Center){ IsWidthDynamic=true });
+				gridReports.Columns.Add(new GridColumn(Lan.g(this,"Hidden"),60,HorizontalAlignment.Center){ IsWidthDynamic=true });
 			}
-			gridDaily.Columns.Clear();
-			gridDaily.Columns.Add(new GridColumn(displayColumnTitle,widthDisplayNameCol,!_isPermissionMode));
-			if(_isPermissionMode) {
-				gridDaily.Columns.Add(new GridColumn(allowedColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-			}
-			else {
-				gridDaily.Columns.Add(new GridColumn(subMenuColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-				gridDaily.Columns.Add(new GridColumn(hiddenColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-			}
-			gridMonthly.Columns.Clear();
-			gridMonthly.Columns.Add(new GridColumn(displayColumnTitle,widthDisplayNameCol,!_isPermissionMode));
-			if(_isPermissionMode) {
-				gridMonthly.Columns.Add(new GridColumn(allowedColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-			}
-			else {
-				gridMonthly.Columns.Add(new GridColumn(subMenuColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-				gridMonthly.Columns.Add(new GridColumn(hiddenColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-			}
-			gridLists.Columns.Clear();
-			gridLists.Columns.Add(new GridColumn(displayColumnTitle,widthDisplayNameCol,!_isPermissionMode));
-			if(_isPermissionMode) {
-				gridLists.Columns.Add(new GridColumn(allowedColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-			}
-			else {
-				gridLists.Columns.Add(new GridColumn(subMenuColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-				gridLists.Columns.Add(new GridColumn(hiddenColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-			}
-			gridPublicHealth.Columns.Clear();
-			gridPublicHealth.Columns.Add(new GridColumn(displayColumnTitle,widthDisplayNameCol,!_isPermissionMode));
-			if(_isPermissionMode) {
-				gridPublicHealth.Columns.Add(new GridColumn(allowedColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-			}
-			else {
-				gridPublicHealth.Columns.Add(new GridColumn(subMenuColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-				gridPublicHealth.Columns.Add(new GridColumn(hiddenColumnTitle,10,HorizontalAlignment.Center){ IsWidthDynamic=true });
-			}
-			//Add Rows
-			gridProdInc.ListGridRows.Clear();
-			gridDaily.ListGridRows.Clear();
-			gridMonthly.ListGridRows.Clear();
-			gridLists.ListGridRows.Clear();
-			gridPublicHealth.ListGridRows.Clear();
-			foreach(DisplayReport reportCur in ListDisplayReportAll) {
-				GridRow row= new GridRow();
-				if(_isPermissionMode) {
-					row.Cells.Add(reportCur.Description+(reportCur.IsHidden ? " (hidden)" : ""));
-					if(GroupPermissions.HasPermission(_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum,
-						EnumPermType.Reports,
-						reportCur.DisplayReportNum,
-						listGroupPermissions:ListGroupPermissionsForReports))
-					{
-						row.Cells.Add("X");
-					}
-					else {
+			gridReports.ListGridRows.Clear();
+			int rowSelected=-1;
+			foreach(ReportSetupLayout.Entry entry in ReportSetupLayout.GetEntries(ListDisplayReportAll)) {
+				GridRow row=new GridRow();
+				if(entry.IsCategory) {
+					row.Cells.Add(Lan.g(this,ReportSetupLayout.GetCategoryTitle(entry.Category)));
+					for(int i=1;i<gridReports.Columns.Count;i++) {
 						row.Cells.Add("");
 					}
+					row.Bold=true;
+					row.ColorBackG=_colorCategoryRow;
+					gridReports.ListGridRows.Add(row);
+					continue;
+				}
+				DisplayReport displayReport=entry.DisplayReport;
+				if(_isPermissionMode) {
+					row.Cells.Add(displayReport.Description+(displayReport.IsHidden ? " "+Lan.g(this,"(hidden)") : ""));
+					row.Cells.Add(GetInternalName(displayReport));
+					row.Cells.Add(ReportPermissionEdit.IsAllowed(ListGroupPermissionsForReports,userGroupNum,displayReport.DisplayReportNum) ? "X" : "");
 				}
 				else {
-					row.Cells.Add(reportCur.Description);
-					row.Cells.Add(reportCur.IsVisibleInSubMenu ? "X" : "");
-					row.Cells.Add(reportCur.IsHidden ? "X" : "");
+					row.Cells.Add(displayReport.Description);
+					row.Cells.Add(GetInternalName(displayReport));
+					row.Cells.Add(displayReport.IsVisibleInSubMenu ? "X" : "");
+					row.Cells.Add(displayReport.IsHidden ? "X" : "");
 				}
-				row.Tag=reportCur;
-				switch(reportCur.Category) {
-					case DisplayReportCategory.ProdInc:
-						gridProdInc.ListGridRows.Add(row);
-						break;
-					case DisplayReportCategory.Daily:
-						gridDaily.ListGridRows.Add(row);
-						break;
-					case DisplayReportCategory.Monthly:
-						gridMonthly.ListGridRows.Add(row);
-						break;
-					case DisplayReportCategory.Lists:
-						gridLists.ListGridRows.Add(row);
-						break;
-					case DisplayReportCategory.PublicHealth:
-						gridPublicHealth.ListGridRows.Add(row);
-						break;
-					case DisplayReportCategory.ArizonaPrimaryCare:
-					default:
-						break;
+				row.Tag=displayReport;
+				if(displayReport==_displayReportSelected) {
+					rowSelected=gridReports.ListGridRows.Count;
+					row.ColorBackG=Color.LightCyan;
 				}
+				gridReports.ListGridRows.Add(row);
 			}
-			//End Update
-			gridProdInc.EndUpdate();
-			gridDaily.EndUpdate();
-			gridMonthly.EndUpdate();
-			gridLists.EndUpdate();
-			gridPublicHealth.EndUpdate();
-			if(_selectedGrid != null && _selectedCell.Y != -1) {
-				_selectedGrid.ListGridRows[_selectedCell.Y].ColorBackG=Color.LightCyan;
-				if(_selectedCell.X < _selectedGrid.Columns.Count) {
-					_selectedGrid.SetSelected(_selectedCell);
+			gridReports.EndUpdate();
+			if(rowSelected>=0) {
+				if(_colSelected>=0 && _colSelected<gridReports.Columns.Count) {
+					gridReports.SetSelected(new Point(_colSelected,rowSelected));
 				}
 				else {
-					_selectedGrid.SetSelected(_selectedCell.Y,true);
+					gridReports.SetSelected(rowSelected,true);
 				}
 			}
-		}
-
-		private bool HasReportPermissionsAllForGroup() {
-			return ListGroupPermissionsForReports
-				.Where(x => x.UserGroupNum==_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum)
-				.Any(x => x.FKey==0);
-		}
-
-		///<summary>Remove all permissions tied to reports for the selected group and add one permission with FKey of 0 to access everything.</summary>
-		private void ReportPermissionsSetAllForGroup() {
-			ListGroupPermissionsForReports.RemoveAll(x => x.UserGroupNum==_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum && x.FKey!=0);
-			if(!ListGroupPermissionsForReports.Exists(x => x.UserGroupNum==_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum && x.FKey==0)) {
-				GroupPermission groupPerm=new GroupPermission();
-				groupPerm.NewerDate=DateTime.MinValue;
-				groupPerm.NewerDays=0;
-				groupPerm.PermType=EnumPermType.Reports;
-				groupPerm.UserGroupNum=_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum;
-				groupPerm.FKey=0;
-				ListGroupPermissionsForReports.Add(groupPerm);
-			}
-		}
-
-		///<summary>Remove all permissions tied to reports for the selected group.</summary>
-		private void ReportPermissionsSetNoneForGroup() {
-			ListGroupPermissionsForReports.RemoveAll(x => x.UserGroupNum==_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum);
-		}
-		
-		///<summary>This method is used by all grids in this form. If any new grids are added, they will need to be added to this method.</summary>
-		private void grid_CellClick(object sender,ODGridClickEventArgs e) {
-			if(_selectedCell.Y != -1 && _selectedGrid != null) {
-				//commit change before the new cell is selected to save the old cell's changes.
-				CommitChange();
-			}
-			_selectedCell.X=e.Col;
-			_selectedCell.Y=e.Row;
-			_selectedGrid=(GridOD)sender;
-			//this label makes sure the user always has some idea of what the selected report is, even if the DisplayName might be incomprehensible.
-			labelODInternal.Text=GetInternalName((DisplayReport)_selectedGrid.ListGridRows[_selectedCell.Y].Tag);
-			DisplayReportCategory selectedCat=(DisplayReportCategory)_selectedGrid.Tag;
-			//de-select all but the currently selected grid
-			if(selectedCat!=DisplayReportCategory.ProdInc) { gridProdInc.SetSelected(-1,true); }
-			if(selectedCat!=DisplayReportCategory.Daily) { gridDaily.SetSelected(-1,true); }
-			if(selectedCat!=DisplayReportCategory.Monthly) { gridMonthly.SetSelected(-1,true); }
-			if(selectedCat!=DisplayReportCategory.Lists) { gridLists.SetSelected(-1,true); }
-			if(selectedCat!=DisplayReportCategory.PublicHealth) { gridPublicHealth.SetSelected(-1,true); }
-			DisplayReport clicked=ListDisplayReportAll.Find(x => x.Category == selectedCat && x.ItemOrder == _selectedCell.Y);
 			if(_isPermissionMode) {
-				if(_selectedCell.X==1) {
-					if(GroupPermissions.HasPermission(_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum,
-						EnumPermType.Reports,
-						clicked.DisplayReportNum,
-						listGroupPermissions:ListGroupPermissionsForReports))
-					{
-						//Remove all report specific permissions.
-						ListGroupPermissionsForReports.RemoveAll(x => x.UserGroupNum==_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum
-							&& x.FKey==clicked.DisplayReportNum);
-						if(HasReportPermissionsAllForGroup()) {
-							//User has permission for everything, but now we need to add every non-hidden permission separately and then remove the selected one and FKey of 0.
-							ListGroupPermissionsForReports.RemoveAll(x => x.UserGroupNum==_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum);
-							for(int i=0;i < ListDisplayReportAll.Count;i++) {
-								if(ListDisplayReportAll[i].DisplayReportNum==clicked.DisplayReportNum) {
-									continue;
-								}
-								//Arizona Primary Care requirements not met, do not add permission.
-								if(ListDisplayReportAll[i].Category==DisplayReportCategory.ArizonaPrimaryCare && !FormReportsMore.UsingArizonaPrimaryCare()) {
-									continue;
-								}
-								GroupPermission groupPerm=new GroupPermission();
-								groupPerm.NewerDate=DateTime.MinValue;
-								groupPerm.NewerDays=0;
-								groupPerm.PermType=EnumPermType.Reports;
-								groupPerm.UserGroupNum=_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum;
-								groupPerm.FKey=ListDisplayReportAll[i].DisplayReportNum;
-								ListGroupPermissionsForReports.Add(groupPerm);
-							}
-						}
-					}
-					else {//They don't have all perms for the clicked perm
-						GroupPermission groupPerm=new GroupPermission();
-						groupPerm.NewerDate=DateTime.MinValue;
-						groupPerm.NewerDays=0;
-						groupPerm.PermType=EnumPermType.Reports;
-						groupPerm.UserGroupNum=_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum;
-						groupPerm.FKey=clicked.DisplayReportNum;
-						ListGroupPermissionsForReports.Add(groupPerm);
-						//Check to see if we have all the permissions for this group checked. If so, remove and add a permission with FKey of 0, as that denotes access to everything.
-						List<DisplayReport>listDisplayReports=ListDisplayReportAll;
-						//Arizona Primary Care requirements not met, exclude from comparison.
-						if(!FormReportsMore.UsingArizonaPrimaryCare()) {
-							listDisplayReports=ListDisplayReportAll.FindAll(x => x.Category!=DisplayReportCategory.ArizonaPrimaryCare);
-						}
-						List<GroupPermission> listGroupPerms=ListGroupPermissionsForReports.FindAll(x => x.UserGroupNum==_listUserGroups[comboUserGroup.SelectedIndex].UserGroupNum && x.FKey!=0);
-						if(listGroupPerms.Count==listDisplayReports.Count) {
-							ReportPermissionsSetAllForGroup();
-						}
-					}
+				List<DisplayReport> listShown=ReportSetupLayout.GetEntries(ListDisplayReportAll).Where(x => !x.IsCategory).Select(x => x.DisplayReport).ToList();
+				labelAllowedCount.Text=Lan.g(this,"Reports allowed:")+" "
+					+ReportPermissionEdit.CountAllowed(ListGroupPermissionsForReports,userGroupNum,listShown)+" / "+listShown.Count;
+			}
+		}
+
+		private void gridReports_CellClick(object sender,ODGridClickEventArgs e) {
+			//Save the name typed into the cell that was selected before this one.
+			CommitPendingEdit();
+			_displayReportSelected=GetReportAt(e.Row);
+			_colSelected=e.Col;
+			if(_displayReportSelected==null) {//A category row: nothing to change.
+				FillGrid();
+				return;
+			}
+			if(_isPermissionMode) {
+				long userGroupNum=GetUserGroupNumSelected();
+				if(e.Col==COL_ALLOWED && userGroupNum!=0) {
+					ReportPermissionEdit.Toggle(ListGroupPermissionsForReports,userGroupNum,_displayReportSelected,ListDisplayReportAll,_isArizonaPrimaryCareUsed);
 				}
 			}
 			else {
-				if(_selectedCell.X==1) {
-					clicked.IsVisibleInSubMenu = !clicked.IsVisibleInSubMenu;
-					if(clicked.IsVisibleInSubMenu) {
-						clicked.IsHidden=false;
-					}
+				if(e.Col==COL_FAVORITE) {
+					ReportSetupLayout.ToggleFavorite(_displayReportSelected);
 				}
-				else if(_selectedCell.X==2) {
-					clicked.IsHidden = !clicked.IsHidden;
-					if(clicked.IsHidden) {
-						clicked.IsVisibleInSubMenu=false;
-					}
+				else if(e.Col==COL_HIDDEN) {
+					ReportSetupLayout.ToggleHidden(_displayReportSelected);
 				}
 			}
-			FillGrids();
+			FillGrid();
 		}
 
 		///<summary>Returns the appropriate user-friendly internal name.</summary>
@@ -459,63 +349,50 @@ namespace OpenPmsDental.User_Controls {
 			}
 		}
 
-		///<summary>Commit changes that the user might have made to the display name.</summary>
-		private void CommitChange() {
-			DisplayReportCategory selectedCat=(DisplayReportCategory)_selectedGrid.Tag;
-			DisplayReport clicked=ListDisplayReportAll.Find(x => x.Category == selectedCat && x.ItemOrder == _selectedCell.Y);
-			clicked.Description=_selectedGrid.ListGridRows[_selectedCell.Y].Cells[0].Text.Replace(" (hidden)","");//Remove (hidden) text
-		}
-	
-		private void grid_CellLeave(object sender,ODGridClickEventArgs e) {
-			CommitChange();
+		private void gridReports_CellLeave(object sender,ODGridClickEventArgs e) {
+			CommitPendingEdit();
 		}
 
 		private void butUp_Click(object sender,EventArgs e) {
-			if(_selectedCell.Y == -1 || _selectedGrid == null) {
-				MsgBox.Show(this,"Please select a report first.");
-				return;
-			}
-			DisplayReportCategory selectedCat = (DisplayReportCategory)_selectedGrid.Tag;
-			DisplayReport selectedReport=ListDisplayReportAll.Find(x => x.Category == selectedCat && x.ItemOrder == _selectedCell.Y);
-			if(selectedReport.ItemOrder==0) {
-				return; //the item is already the first in the list and cannot go up anymore.
-			}
-			DisplayReport switchReport=ListDisplayReportAll.Find(x => x.Category == selectedCat && x.ItemOrder == _selectedCell.Y-1);
-			selectedReport.ItemOrder--;
-			_selectedCell.Y--;
-			switchReport.ItemOrder++;
-			FillGrids();
+			MoveSelected(isUp:true);
 		}
 
 		private void butDown_Click(object sender,EventArgs e) {
-			if(_selectedCell.Y == -1 || _selectedGrid == null) {
+			MoveSelected(isUp:false);
+		}
+
+		private void MoveSelected(bool isUp) {
+			CommitPendingEdit();
+			if(_displayReportSelected==null) {
 				MsgBox.Show(this,"Please select a report first.");
 				return;
 			}
-			DisplayReportCategory selectedCat = (DisplayReportCategory)_selectedGrid.Tag;
-			DisplayReport selectedReport=ListDisplayReportAll.Find(x => x.Category == selectedCat && x.ItemOrder == _selectedCell.Y);
-			if(selectedReport.ItemOrder==_selectedGrid.ListGridRows.Count-1) {
-				return; //the item is already the last in the list and cannot go down anymore.
+			if(!ReportSetupLayout.Move(ListDisplayReportAll,_displayReportSelected,isUp)) {
+				return;//Already the first or the last of its category.
 			}
-			DisplayReport switchReport=ListDisplayReportAll.Find(x => x.Category == selectedCat && x.ItemOrder == _selectedCell.Y+1);
-			selectedReport.ItemOrder++;
-			_selectedCell.Y++;
-			switchReport.ItemOrder--;
-			FillGrids();
+			FillGrid();
 		}
 
 		private void butSetAll_Click(object sender,EventArgs e) {
-			ReportPermissionsSetAllForGroup();
-			FillGrids();
+			long userGroupNum=GetUserGroupNumSelected();
+			if(userGroupNum==0) {
+				return;
+			}
+			ReportPermissionEdit.SetAll(ListGroupPermissionsForReports,userGroupNum);
+			FillGrid();
 		}
 
 		private void butSetNone_Click(object sender,EventArgs e) {
-			ReportPermissionsSetNoneForGroup();
-			FillGrids();
+			long userGroupNum=GetUserGroupNumSelected();
+			if(userGroupNum==0) {
+				return;
+			}
+			ReportPermissionEdit.SetNone(ListGroupPermissionsForReports,userGroupNum);
+			FillGrid();
 		}
 
 		private void comboUserGroup_SelectionChangeCommitted(object sender,EventArgs e) {
-			FillGrids();
+			FillGrid();
 		}
 	}
 }
