@@ -388,6 +388,7 @@ The review that put the capture work on main added these:
 - (B-DBM 3) The Base64 Documents tool deletes placeholder rows without an image-delete log entry, as the Images module does. Should it log one?
 - (B-SERVER 4) Replication read delay: should it start after any write by the program (including background writes), or only after a user saves? **Today:** any write.
 - (B-SERVER 5) Does the office run a Middle Tier server? If so, is starting the read delay when a signal is sent acceptable?
+  **Answered (2026-11-08):** no Middle Tier server in the office; the Middle Tier is still moved to .NET 10.
 - (B-SHELL 2) Should the File Monitor keep requiring the Setup permission? Open Dental leaves it open to everyone. **Today:** Setup required.
 - (M2-MISC 3) Referral phone: a plain 10-digit number is stored as 10 digits (anything else as typed). Or store exactly what was typed? **Today:** 10 digits.
 - (REN-PROOF 3) The HL7 service (not shipped in v0.0) has two default names, as in Open Dental: `OpenPmsDentalHL7` (`HL7ServiceName`) and the run-time fallback `OpenDentalHL7` (`HL7ServiceFallbackName`), which adopted HL7 setups saved. Unify them later? That needs a migration of the saved `HL7Def.HL7ServiceName` and eCW `HL7ServiceName` values, or both names accepted at start. **Today:** two names.
@@ -615,15 +616,26 @@ recommended". Built on the integration branch `next/int262-1`.
 ## The move to .NET 10 (answered on 2026-11-08)
 
 The questions of the .NET 10 stage plan, [specs/net10-plan.md](specs/net10-plan.md), made from a read-only survey of every project and an
-independent critique. Your answer of 2026-11-08: "As recommended", with these facts and one change: the office runs Windows 11, uses no
-plugins and does not use Direct secure messaging, and Change Healthcare (Emdeon) medical claims are kept and made to work ("no, but make it
-work").
+independent critique. You answered on 2026-11-08 in several messages: "As recommended"; then the facts (the office runs Windows 11, uses
+no plugins and does not use Direct secure messaging) and one change (Change Healthcare (Emdeon) medical claims are kept and made to work:
+"no, but make it work"); "Keep signed email"; "Have them rebuilt"; "don't cut" (the DentalXChange eligibility path); the Middle Tier
+answer; the standing rule below, with its correction; and "Don't need 'Install for me only'".
 
+- **Standing rule (2026-11-08).** "Overall decisions wrt .net 10: don't cut anything including test. Cut test only if it's testing
+  something that we deliberately deleted." You confirmed the reading ("Yes"): what you deliberately removed stays removed, and everything
+  else is kept and moved to .NET 10. Your correction the same day: "Don't make the assumption that if the office doesn't use, we'd cut it.
+  1-8 we want to keep it and have them ported. DentX, Dexis Integrator and Vipersoft links, and NDde.dll we should keep if we can." So
+  these are kept and ported, each port still to be planned: QuickBooks Desktop, Schick CDR, Topaz signature pads, the CallFire SMS link,
+  the Divvy postcards link, the BCBS Georgia dial-up terminal, the report engine's SQL Server, ODBC and OLE DB data sources, and Direct
+  secure messaging. The DentX, Dexis Integrator and Vipersoft links and NDde come back if that can be done. What stays removed: the old
+  2020 Imaging module (after its window is rebuilt), the earlier removals tied to Open Dental's own services and eServices and to closed
+  parts with no published interface (Sparks3D, Suni, the "not available" bridges), and dead code. Tests go only with these.
 - **Build tools.** Visual Studio Build Tools 2026 are installed beside Build Tools 2022, with the MSVC v143 C++ toolset added
   (2026-11-08), so the C++ project and the setup's Visual C++ check stay as they are. The build lane and the test runners move to them
   first in the SDK-style project stage, before any project changes format. That step also pins the .NET 10 SDK in `global.json`,
   because the SDK 9.0.3xx line leaves support on 2026-11-10.
-- **Not used, removed in the clean-up stage:** QuickBooks Desktop, Schick CDR and Topaz signature pads (owner, 2026-11-07).
+- **QuickBooks Desktop, Schick CDR and Topaz signature pads.** The office does not use them. They were to be removed in the clean-up stage
+  (owner, 2026-11-07); now kept and ported (owner correction, 2026-11-08).
 - **Order of the stages.** A clean-up stage first; then SDK-style project files, NuGet packages and the test framework, all still on .NET
   Framework 4.8; then the code changes that also work on .NET Framework, ending with a last .NET Framework release (the "bridge release");
   then the switch to .NET 10; 64-bit last.
@@ -634,23 +646,33 @@ work").
 - **Switching the office.** The bridge release first, then the new setup once on every workstation. The bridge release also stops a
   workstation that is not switched yet from publishing its old build over the new one.
 - **The .NET 10 runtime.** The setup downloads it during the install, as it does for the Visual C++ runtime.
-- **"Install for me only".** The setup drops this mode, because it cannot install the runtime.
+- **"Install for me only".** The setup drops this mode, because it cannot install the runtime. Confirmed after the standing rule
+  ("Don't need 'Install for me only'").
 - **Windows versions.** Windows 11 is the baseline, and the office's workstations run it; the setup warns below it. Windows 10 is
   supported by .NET 10 only in some editions.
 - **Text size.** With Windows "Make text bigger" above 100%, 72 older windows show slightly larger text. Accepted.
 - **Dashboard graphs.** The community port of Microsoft's chart control (`WinForms.DataVisualization`, MIT licence).
-- **Cut instead of ported.** The CallFire SMS link, the Divvy postcards link, the BCBS Georgia dial-up terminal, and the report engine's
-  SQL Server, ODBC and OLE DB data sources.
+- **The CallFire SMS link, the Divvy postcards link, the BCBS Georgia dial-up terminal, and the report engine's SQL Server, ODBC and OLE DB
+  data sources.** First cut instead of ported; now kept and ported (owner correction, 2026-11-08).
 - **Kept.** Voice perio charting. Change Healthcare (Emdeon) medical claims: the office does not use them, but they are kept and made to
   work on .NET 10. The plugin loader stays, although the office uses no plugins; plugins must be rebuilt for .NET 10, and .NET Framework
   plugins stop working.
-- **Reports with custom VB code.** They show a clear error instead of running the code. The reports that ship have none.
-- **Direct secure messaging (HISP).** The office does not use it, so it is removed in the clean-up stage. Received e-mail is then read
-  by MimeKit, which the program already ships, instead of the old Direct libraries.
+- **DentalXChange eligibility, Practice-Web path.** Kept ("don't cut") and made to work on .NET 10 with the other web-service calls.
+- **Middle Tier.** The office runs no Middle Tier server, but the Middle Tier is still moved to .NET 10
+  ("no, but port middle tier to .net 10").
+- **Reports with custom VB code.** They keep working: on .NET 10 the program compiles their code with Microsoft's current compiler
+  (Roslyn). Changed by the standing rule; before, they were to show a clear error instead of running the code. The reports that ship
+  have none.
+- **Direct secure messaging (HISP).** The office does not use it. It was to be removed in the clean-up stage; now kept and ported (owner
+  correction, 2026-11-08). It comes back on top of the new e-mail code: received e-mail stays read by MimeKit, which the program already
+  ships, instead of the old Direct libraries.
 - **Signed e-mail.** Kept (owner, 2026-11-08: "Keep signed email"): sending signed e-mail moves to MimeKit with the rest of e-mail in the
   clean-up stage.
-- **Projects that are not shipped.** The legacy UnitTests project, the report designer and DocumentationBuilder are deleted. Central
-  Manager is retired.
+- **Projects that are not shipped.** The legacy UnitTests project, the report designer (RdlDesign), DocumentationBuilder and Central
+  Manager are kept and moved to .NET 10. Changed by the standing rule; before, the first three were to be deleted and Central Manager
+  retired. The legacy UnitTests project becomes a running test suite, and its developer windows stay.
+- **The XmlSerializers files** (`OpenPmsDental.XmlSerializers.dll`, `OpenPmsDentalBusiness.XmlSerializers.dll`). Kept (standing rule):
+  they ship again, and on .NET 10 they are built with Microsoft's serializer generator for .NET.
 - **The old 2020 Imaging module.** Retired completely. Its code also draws the window behind Scan EOB / View EOB on insurance payments and
   preauthorizations and Scan on EHR amendments; that window is rebuilt on the new Imaging module first (owner, 2026-11-08: "Have them
   rebuilt"), then the old module, its "Use old Imaging module interface, pre 2020" option and its code are removed.
