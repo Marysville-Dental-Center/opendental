@@ -129,6 +129,18 @@ namespace OpenPmsDental.Misc {
  						WhyItHappens="Past issue that could causes payment entries with no split attached."
 					},
 				new DbmInfo() {
+						//Open Dental 26.2 (P262-TOOLS): this program's own wording.
+						MethodName=nameof(DatabaseMaintenances.PaymentIncomeTransferIssues),
+						Explanation="Income transfers (payments with no payment type) that do not balance: transfers with an amount other than zero, or "
+							+"whose splits do not total zero. Also $0 payments with a payment type whose splits move money and total zero, which are "
+							+"income transfers in all but the payment type; Fix gives those no payment type.",
+						ManualFix="Double click the method to see the patients and dates. Open each income transfer from the patient's account. An "
+							+"income transfer must have an amount of zero and splits that total zero: correct the split amounts, or delete the transfer "
+							+"and make it again with the Income Transfer Manager or a manual income transfer.",
+						WhyItHappens="The payment was written outside the payment window (an import, a conversion or a query), or a split was changed "
+							+"after the transfer was saved."
+					},
+				new DbmInfo() {
 						MethodName=nameof(DatabaseMaintenances.PayPlanChargeProvNum),
 						Explanation="Payment plan charges do not have a provider set.",
 						ManualFix="Open the payment plan and double-click on the charge. Set the provider on the charge.",

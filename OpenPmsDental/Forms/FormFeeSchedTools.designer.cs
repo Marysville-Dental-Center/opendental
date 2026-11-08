@@ -97,12 +97,26 @@ namespace OpenPmsDental {
 			this.tabPageClear = new OpenPmsDental.UI.TabPage();
 			this.tabPageExportImport = new OpenPmsDental.UI.TabPage();
 			this.tabPageGlobalUpdates = new OpenPmsDental.UI.TabPage();
+			this.tabPageCopyCode = new OpenPmsDental.UI.TabPage();
+			this.groupBoxCopyCode = new OpenPmsDental.UI.GroupBox();
+			this.labelCopyCodeExplain = new System.Windows.Forms.Label();
+			this.labelCodeFrom = new System.Windows.Forms.Label();
+			this.textCodeFrom = new System.Windows.Forms.TextBox();
+			this.butPickCodeFrom = new OpenPmsDental.UI.Button();
+			this.labelCodeTo = new System.Windows.Forms.Label();
+			this.textCodeTo = new System.Windows.Forms.TextBox();
+			this.butPickCodeTo = new OpenPmsDental.UI.Button();
+			this.radioCopyCodeAllScheds = new System.Windows.Forms.RadioButton();
+			this.radioCopyCodeOneSched = new System.Windows.Forms.RadioButton();
+			this.butCopyCode = new OpenPmsDental.UI.Button();
 			this.tabControlTools.SuspendLayout();
 			this.tabPageCopy.SuspendLayout();
 			this.tabPageIncrease.SuspendLayout();
 			this.tabPageClear.SuspendLayout();
 			this.tabPageExportImport.SuspendLayout();
 			this.tabPageGlobalUpdates.SuspendLayout();
+			this.tabPageCopyCode.SuspendLayout();
+			this.groupBoxCopyCode.SuspendLayout();
 			this.groupBox7.SuspendLayout();
 			this.groupGlobalUpdateFees.SuspendLayout();
 			this.groupBox5.SuspendLayout();
@@ -670,6 +684,7 @@ namespace OpenPmsDental {
 			this.tabControlTools.Controls.Add(this.tabPageClear);
 			this.tabControlTools.Controls.Add(this.tabPageExportImport);
 			this.tabControlTools.Controls.Add(this.tabPageGlobalUpdates);
+			this.tabControlTools.Controls.Add(this.tabPageCopyCode);
 			this.tabControlTools.Location = new System.Drawing.Point(12, 144);
 			this.tabControlTools.Name = "tabControlTools";
 			this.tabControlTools.Size = new System.Drawing.Size(405, 266);
@@ -726,6 +741,120 @@ namespace OpenPmsDental {
 			this.tabPageGlobalUpdates.TabIndex = 4;
 			this.tabPageGlobalUpdates.Text = "Global Updates";
 			//
+			// tabPageCopyCode
+			//
+			this.tabPageCopyCode.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(252)))), ((int)(((byte)(253)))), ((int)(((byte)(254)))));
+			this.tabPageCopyCode.Controls.Add(this.groupBoxCopyCode);
+			this.tabPageCopyCode.Location = new System.Drawing.Point(2, 21);
+			this.tabPageCopyCode.Name = "tabPageCopyCode";
+			this.tabPageCopyCode.Size = new System.Drawing.Size(401, 243);
+			this.tabPageCopyCode.TabIndex = 5;
+			this.tabPageCopyCode.Text = "Copy Code";
+			//
+			// groupBoxCopyCode
+			//
+			this.groupBoxCopyCode.Controls.Add(this.labelCopyCodeExplain);
+			this.groupBoxCopyCode.Controls.Add(this.labelCodeFrom);
+			this.groupBoxCopyCode.Controls.Add(this.textCodeFrom);
+			this.groupBoxCopyCode.Controls.Add(this.butPickCodeFrom);
+			this.groupBoxCopyCode.Controls.Add(this.labelCodeTo);
+			this.groupBoxCopyCode.Controls.Add(this.textCodeTo);
+			this.groupBoxCopyCode.Controls.Add(this.butPickCodeTo);
+			this.groupBoxCopyCode.Controls.Add(this.radioCopyCodeAllScheds);
+			this.groupBoxCopyCode.Controls.Add(this.radioCopyCodeOneSched);
+			this.groupBoxCopyCode.Controls.Add(this.butCopyCode);
+			this.groupBoxCopyCode.Location = new System.Drawing.Point(5, 6);
+			this.groupBoxCopyCode.Name = "groupBoxCopyCode";
+			this.groupBoxCopyCode.Size = new System.Drawing.Size(391, 222);
+			this.groupBoxCopyCode.TabIndex = 0;
+			this.groupBoxCopyCode.TabStop = false;
+			this.groupBoxCopyCode.Text = "Copy fees from one procedure code to another";
+			//
+			// labelCopyCodeExplain
+			//
+			this.labelCopyCodeExplain.Location = new System.Drawing.Point(8, 18);
+			this.labelCopyCodeExplain.Name = "labelCopyCodeExplain";
+			this.labelCopyCodeExplain.Size = new System.Drawing.Size(375, 58);
+			this.labelCopyCodeExplain.TabIndex = 0;
+			this.labelCopyCodeExplain.Text = "In each fee schedule where the From code has fees, the To code gets the same fees for every clinic, provider and effective date, and its other fees in that fee schedule are deleted. Fee schedules where the From code has no fee are not changed.";
+			//
+			// labelCodeFrom
+			//
+			this.labelCodeFrom.Location = new System.Drawing.Point(8, 84);
+			this.labelCodeFrom.Name = "labelCodeFrom";
+			this.labelCodeFrom.Size = new System.Drawing.Size(90, 18);
+			this.labelCodeFrom.TabIndex = 1;
+			this.labelCodeFrom.Text = "From code";
+			this.labelCodeFrom.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textCodeFrom
+			//
+			this.textCodeFrom.Location = new System.Drawing.Point(100, 83);
+			this.textCodeFrom.Name = "textCodeFrom";
+			this.textCodeFrom.Size = new System.Drawing.Size(100, 20);
+			this.textCodeFrom.TabIndex = 2;
+			//
+			// butPickCodeFrom
+			//
+			this.butPickCodeFrom.Location = new System.Drawing.Point(203, 82);
+			this.butPickCodeFrom.Name = "butPickCodeFrom";
+			this.butPickCodeFrom.Size = new System.Drawing.Size(23, 21);
+			this.butPickCodeFrom.TabIndex = 3;
+			this.butPickCodeFrom.Text = "...";
+			this.butPickCodeFrom.Click += new System.EventHandler(this.butPickCode_Click);
+			//
+			// labelCodeTo
+			//
+			this.labelCodeTo.Location = new System.Drawing.Point(8, 110);
+			this.labelCodeTo.Name = "labelCodeTo";
+			this.labelCodeTo.Size = new System.Drawing.Size(90, 18);
+			this.labelCodeTo.TabIndex = 4;
+			this.labelCodeTo.Text = "To code";
+			this.labelCodeTo.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textCodeTo
+			//
+			this.textCodeTo.Location = new System.Drawing.Point(100, 109);
+			this.textCodeTo.Name = "textCodeTo";
+			this.textCodeTo.Size = new System.Drawing.Size(100, 20);
+			this.textCodeTo.TabIndex = 5;
+			//
+			// butPickCodeTo
+			//
+			this.butPickCodeTo.Location = new System.Drawing.Point(203, 108);
+			this.butPickCodeTo.Name = "butPickCodeTo";
+			this.butPickCodeTo.Size = new System.Drawing.Size(23, 21);
+			this.butPickCodeTo.TabIndex = 6;
+			this.butPickCodeTo.Text = "...";
+			this.butPickCodeTo.Click += new System.EventHandler(this.butPickCode_Click);
+			//
+			// radioCopyCodeAllScheds
+			//
+			this.radioCopyCodeAllScheds.Checked = true;
+			this.radioCopyCodeAllScheds.Location = new System.Drawing.Point(100, 138);
+			this.radioCopyCodeAllScheds.Name = "radioCopyCodeAllScheds";
+			this.radioCopyCodeAllScheds.Size = new System.Drawing.Size(280, 18);
+			this.radioCopyCodeAllScheds.TabIndex = 7;
+			this.radioCopyCodeAllScheds.TabStop = true;
+			this.radioCopyCodeAllScheds.Text = "Every fee schedule";
+			//
+			// radioCopyCodeOneSched
+			//
+			this.radioCopyCodeOneSched.Location = new System.Drawing.Point(100, 158);
+			this.radioCopyCodeOneSched.Name = "radioCopyCodeOneSched";
+			this.radioCopyCodeOneSched.Size = new System.Drawing.Size(280, 18);
+			this.radioCopyCodeOneSched.TabIndex = 8;
+			this.radioCopyCodeOneSched.Text = "Only the fee schedule under Select Fees";
+			//
+			// butCopyCode
+			//
+			this.butCopyCode.Location = new System.Drawing.Point(100, 186);
+			this.butCopyCode.Name = "butCopyCode";
+			this.butCopyCode.Size = new System.Drawing.Size(75, 24);
+			this.butCopyCode.TabIndex = 9;
+			this.butCopyCode.Text = "Copy";
+			this.butCopyCode.Click += new System.EventHandler(this.butCopyCode_Click);
+			//
 			// FormFeeSchedTools
 			//
 			this.ClientSize = new System.Drawing.Size(429, 422);
@@ -744,6 +873,9 @@ namespace OpenPmsDental {
 			this.tabPageClear.ResumeLayout(false);
 			this.tabPageExportImport.ResumeLayout(false);
 			this.tabPageGlobalUpdates.ResumeLayout(false);
+			this.tabPageCopyCode.ResumeLayout(false);
+			this.groupBoxCopyCode.ResumeLayout(false);
+			this.groupBoxCopyCode.PerformLayout();
 			this.groupBox7.ResumeLayout(false);
 			this.groupGlobalUpdateFees.ResumeLayout(false);
 			this.groupBox5.ResumeLayout(false);
@@ -820,5 +952,17 @@ namespace OpenPmsDental {
 		private OpenPmsDental.UI.TabPage tabPageClear;
 		private OpenPmsDental.UI.TabPage tabPageExportImport;
 		private OpenPmsDental.UI.TabPage tabPageGlobalUpdates;
+		private OpenPmsDental.UI.TabPage tabPageCopyCode;
+		private OpenPmsDental.UI.GroupBox groupBoxCopyCode;
+		private System.Windows.Forms.Label labelCopyCodeExplain;
+		private System.Windows.Forms.Label labelCodeFrom;
+		private System.Windows.Forms.TextBox textCodeFrom;
+		private OpenPmsDental.UI.Button butPickCodeFrom;
+		private System.Windows.Forms.Label labelCodeTo;
+		private System.Windows.Forms.TextBox textCodeTo;
+		private OpenPmsDental.UI.Button butPickCodeTo;
+		private System.Windows.Forms.RadioButton radioCopyCodeAllScheds;
+		private System.Windows.Forms.RadioButton radioCopyCodeOneSched;
+		private OpenPmsDental.UI.Button butCopyCode;
 	}
 }

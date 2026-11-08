@@ -33,8 +33,23 @@ namespace OpenPmsDental{
 			this.butSpeed = new OpenPmsDental.UI.Button();
 			this.label4 = new System.Windows.Forms.Label();
 			this.textSpeed = new System.Windows.Forms.TextBox();
+			this.groupBoxAverage = new OpenPmsDental.UI.GroupBox();
+			this.labelAverageExplain = new System.Windows.Forms.Label();
+			this.labelAverageCount = new System.Windows.Forms.Label();
+			this.textAverageCount = new OpenPmsDental.ValidNum();
+			this.labelAverage = new System.Windows.Forms.Label();
+			this.textAverage = new System.Windows.Forms.TextBox();
+			this.labelAverageMs = new System.Windows.Forms.Label();
+			this.labelAverageMin = new System.Windows.Forms.Label();
+			this.textAverageMin = new System.Windows.Forms.TextBox();
+			this.labelAverageMinMs = new System.Windows.Forms.Label();
+			this.labelAverageMax = new System.Windows.Forms.Label();
+			this.textAverageMax = new System.Windows.Forms.TextBox();
+			this.labelAverageMaxMs = new System.Windows.Forms.Label();
+			this.butAverage = new OpenPmsDental.UI.Button();
 			this.groupBox1.SuspendLayout();
 			this.groupBox2.SuspendLayout();
+			this.groupBoxAverage.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -137,10 +152,151 @@ namespace OpenPmsDental{
 			this.textSpeed.TabIndex = 6;
 			this.textSpeed.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
 			// 
+			// labelAverageExplain
+			// 
+			this.labelAverageExplain.Location = new System.Drawing.Point(6, 16);
+			this.labelAverageExplain.Name = "labelAverageExplain";
+			this.labelAverageExplain.Size = new System.Drawing.Size(194, 30);
+			this.labelAverageExplain.TabIndex = 0;
+			this.labelAverageExplain.Text = "Average of several round trips of the same small query.";
+			// 
+			// labelAverageCount
+			// 
+			this.labelAverageCount.Location = new System.Drawing.Point(6, 50);
+			this.labelAverageCount.Name = "labelAverageCount";
+			this.labelAverageCount.Size = new System.Drawing.Size(96, 17);
+			this.labelAverageCount.TabIndex = 1;
+			this.labelAverageCount.Text = "Round trips";
+			this.labelAverageCount.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// labelAverage
+			// 
+			this.labelAverage.Location = new System.Drawing.Point(6, 74);
+			this.labelAverage.Name = "labelAverage";
+			this.labelAverage.Size = new System.Drawing.Size(96, 17);
+			this.labelAverage.TabIndex = 2;
+			this.labelAverage.Text = "Average";
+			this.labelAverage.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// labelAverageMs
+			// 
+			this.labelAverageMs.Location = new System.Drawing.Point(163, 74);
+			this.labelAverageMs.Name = "labelAverageMs";
+			this.labelAverageMs.Size = new System.Drawing.Size(30, 17);
+			this.labelAverageMs.TabIndex = 3;
+			this.labelAverageMs.Text = "ms.";
+			this.labelAverageMs.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			// 
+			// labelAverageMin
+			// 
+			this.labelAverageMin.Location = new System.Drawing.Point(6, 98);
+			this.labelAverageMin.Name = "labelAverageMin";
+			this.labelAverageMin.Size = new System.Drawing.Size(96, 17);
+			this.labelAverageMin.TabIndex = 4;
+			this.labelAverageMin.Text = "Fastest";
+			this.labelAverageMin.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// labelAverageMinMs
+			// 
+			this.labelAverageMinMs.Location = new System.Drawing.Point(163, 98);
+			this.labelAverageMinMs.Name = "labelAverageMinMs";
+			this.labelAverageMinMs.Size = new System.Drawing.Size(30, 17);
+			this.labelAverageMinMs.TabIndex = 5;
+			this.labelAverageMinMs.Text = "ms.";
+			this.labelAverageMinMs.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			// 
+			// labelAverageMax
+			// 
+			this.labelAverageMax.Location = new System.Drawing.Point(6, 122);
+			this.labelAverageMax.Name = "labelAverageMax";
+			this.labelAverageMax.Size = new System.Drawing.Size(96, 17);
+			this.labelAverageMax.TabIndex = 6;
+			this.labelAverageMax.Text = "Slowest";
+			this.labelAverageMax.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// labelAverageMaxMs
+			// 
+			this.labelAverageMaxMs.Location = new System.Drawing.Point(163, 122);
+			this.labelAverageMaxMs.Name = "labelAverageMaxMs";
+			this.labelAverageMaxMs.Size = new System.Drawing.Size(30, 17);
+			this.labelAverageMaxMs.TabIndex = 7;
+			this.labelAverageMaxMs.Text = "ms.";
+			this.labelAverageMaxMs.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			// 
+			// textAverageCount
+			// 
+			this.textAverageCount.Location = new System.Drawing.Point(106, 48);
+			this.textAverageCount.MaxVal = 1000;
+			this.textAverageCount.MinVal = 1;
+			this.textAverageCount.Name = "textAverageCount";
+			this.textAverageCount.Size = new System.Drawing.Size(45, 20);
+			this.textAverageCount.TabIndex = 20;
+			this.textAverageCount.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+			// 
+			// textAverage
+			// 
+			this.textAverage.Location = new System.Drawing.Point(106, 72);
+			this.textAverage.Name = "textAverage";
+			this.textAverage.ReadOnly = true;
+			this.textAverage.Size = new System.Drawing.Size(55, 20);
+			this.textAverage.TabIndex = 8;
+			this.textAverage.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+			// 
+			// textAverageMin
+			// 
+			this.textAverageMin.Location = new System.Drawing.Point(106, 96);
+			this.textAverageMin.Name = "textAverageMin";
+			this.textAverageMin.ReadOnly = true;
+			this.textAverageMin.Size = new System.Drawing.Size(55, 20);
+			this.textAverageMin.TabIndex = 9;
+			this.textAverageMin.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+			// 
+			// textAverageMax
+			// 
+			this.textAverageMax.Location = new System.Drawing.Point(106, 120);
+			this.textAverageMax.Name = "textAverageMax";
+			this.textAverageMax.ReadOnly = true;
+			this.textAverageMax.Size = new System.Drawing.Size(55, 20);
+			this.textAverageMax.TabIndex = 10;
+			this.textAverageMax.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
+			// 
+			// butAverage
+			// 
+			this.butAverage.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butAverage.Location = new System.Drawing.Point(8, 140);
+			this.butAverage.Name = "butAverage";
+			this.butAverage.Size = new System.Drawing.Size(70, 24);
+			this.butAverage.TabIndex = 21;
+			this.butAverage.Text = "Test";
+			this.butAverage.Click += new System.EventHandler(this.butAverage_Click);
+			// 
+			// groupBoxAverage
+			// 
+			this.groupBoxAverage.Controls.Add(this.labelAverageExplain);
+			this.groupBoxAverage.Controls.Add(this.labelAverageCount);
+			this.groupBoxAverage.Controls.Add(this.textAverageCount);
+			this.groupBoxAverage.Controls.Add(this.labelAverage);
+			this.groupBoxAverage.Controls.Add(this.textAverage);
+			this.groupBoxAverage.Controls.Add(this.labelAverageMs);
+			this.groupBoxAverage.Controls.Add(this.labelAverageMin);
+			this.groupBoxAverage.Controls.Add(this.textAverageMin);
+			this.groupBoxAverage.Controls.Add(this.labelAverageMinMs);
+			this.groupBoxAverage.Controls.Add(this.labelAverageMax);
+			this.groupBoxAverage.Controls.Add(this.textAverageMax);
+			this.groupBoxAverage.Controls.Add(this.labelAverageMaxMs);
+			this.groupBoxAverage.Controls.Add(this.butAverage);
+			this.groupBoxAverage.Location = new System.Drawing.Point(374, 12);
+			this.groupBoxAverage.Name = "groupBoxAverage";
+			this.groupBoxAverage.Size = new System.Drawing.Size(206, 172);
+			this.groupBoxAverage.TabIndex = 10;
+			this.groupBoxAverage.TabStop = false;
+			this.groupBoxAverage.Text = "Average latency";
+			// 
 			// FormTestLatency
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-			this.ClientSize = new System.Drawing.Size(360, 150);
+			this.ClientSize = new System.Drawing.Size(592, 196);
+			this.Controls.Add(this.groupBoxAverage);
 			this.Controls.Add(this.groupBox2);
 			this.Controls.Add(this.groupBox1);
 			this.Name = "FormTestLatency";
@@ -150,6 +306,8 @@ namespace OpenPmsDental{
 			this.groupBox1.PerformLayout();
 			this.groupBox2.ResumeLayout(false);
 			this.groupBox2.PerformLayout();
+			this.groupBoxAverage.ResumeLayout(false);
+			this.groupBoxAverage.PerformLayout();
 			this.ResumeLayout(false);
 
 		}
@@ -165,5 +323,19 @@ namespace OpenPmsDental{
 		private UI.Button butSpeed;
 		private System.Windows.Forms.Label label4;
 		private System.Windows.Forms.TextBox textSpeed;
+		private OpenPmsDental.UI.GroupBox groupBoxAverage;
+		private System.Windows.Forms.Label labelAverageExplain;
+		private System.Windows.Forms.Label labelAverageCount;
+		private OpenPmsDental.ValidNum textAverageCount;
+		private System.Windows.Forms.Label labelAverage;
+		private System.Windows.Forms.TextBox textAverage;
+		private System.Windows.Forms.Label labelAverageMs;
+		private System.Windows.Forms.Label labelAverageMin;
+		private System.Windows.Forms.TextBox textAverageMin;
+		private System.Windows.Forms.Label labelAverageMinMs;
+		private System.Windows.Forms.Label labelAverageMax;
+		private System.Windows.Forms.TextBox textAverageMax;
+		private System.Windows.Forms.Label labelAverageMaxMs;
+		private UI.Button butAverage;
 	}
 }

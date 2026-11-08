@@ -194,6 +194,10 @@ namespace OpenPmsDental {
 			row=new GridRow(Lan.g(this,"Clean Attachments"),Lan.g(this,"Deletes all attachments not linked to an email message."));
 			row.Tag=new Action(CleanEmailAttachesFix);
 			gridTools.ListGridRows.Add(row);
+			row=new GridRow(Lan.g(this,"Conversion Payment Dates"),Lan.g(this,"Dates the income transfers that clean up converted history on the "
+				+"conversion date."));
+			row.Tag=new Action(ConversionPaymentDatesFix);
+			gridTools.ListGridRows.Add(row);
 			row=new GridRow(Lan.g(this,"Email Attaches"),Lan.g(this,"Moves email attachment files into the correct In or Out folders."));
 			row.Tag=new Action(EmailAttachesFix);
 			gridTools.ListGridRows.Add(row);
