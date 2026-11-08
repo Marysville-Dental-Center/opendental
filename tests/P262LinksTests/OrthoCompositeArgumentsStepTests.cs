@@ -103,6 +103,61 @@ namespace P262LinksTests {
 			Assert.AreEqual("",DataCore.GetScalar("SELECT PropertyValue FROM programproperty WHERE ProgramPropertyNum=501"));
 		}
 
+		///<summary>Review follow-up (next/vendorfix-1): the new Note describes the default arguments, so it replaces the old built-in note only on a
+		///row whose ClinicNum 0 Patient arguments the step filled in or that already are the default; a row with the office's own arguments, or
+		///without the property, keeps the old note. A NULL ClinicNum 0 value is blank and is filled in.</summary>
+		[TestMethod]
+		public void Step_ReplacesTheOldNoteOnlyWhereTheDefaultIsSent_FillsANullValue() {
+			ScratchDb.RequireDb();
+			string defaultArguments="--lastname \"[LName]\" --firstname \"[FName]\" --dob \"[Birthdate]\"";
+			Assert.IsTrue(OrthoCompositePatientArguments.IsDefaultArguments(defaultArguments));
+			Assert.IsTrue(OrthoCompositePatientArguments.IsDefaultArguments(" "+defaultArguments+"\t"),"White space at the ends, as the button trims it.");
+			Assert.IsFalse(OrthoCompositePatientArguments.IsDefaultArguments("--lastname \"[LName]\""));
+			Assert.IsFalse(OrthoCompositePatientArguments.IsDefaultArguments(null));
+			//Every row has the old note. Row 71: the office's own arguments. Row 72: a NULL value. Row 73: the default already, with spaces at the
+			//ends. Row 74: no property. Row 75: a blank value and, in a second ClinicNum 0 row, the office's own value.
+			string note=POut.String(OrthoCompositePatientArguments.NoteBefore);
+			DataCore.NonQ("INSERT INTO program ("+PROGRAM_COLUMNS+") VALUES "
+				+"(71,'OrthoComposite','OrthoComposite',1,'','','"+note+"','','','','',0,''),"
+				+"(72,'OrthoComposite','OrthoComposite',0,'','','"+note+"','','','','',0,''),"
+				+"(73,'OrthoComposite','OrthoComposite',0,'','','"+note+"','','','','',0,''),"
+				+"(74,'OrthoComposite','OrthoComposite',0,'','','"+note+"','','','','',0,''),"
+				+"(75,'OrthoComposite','OrthoComposite',0,'','','"+note+"','','','','',0,'')");
+			DataCore.NonQ("INSERT INTO programproperty ("+PROPERTY_COLUMNS+") VALUES "
+				+"(711,71,'Patient arguments','"+POut.String("--lastname \"[LName]\" --firstname \"[FName]\"")+"','',0,0,0),"
+				+"(721,72,'Patient arguments','','',0,0,0),"
+				+"(731,73,'Patient arguments','"+POut.String(" "+defaultArguments+" ")+"','',0,0,0),"
+				+"(751,75,'Patient arguments','','',0,0,0),(752,75,'Patient arguments','/last [LName]','',0,0,0)");
+			DataCore.NonQ("UPDATE programproperty SET PropertyValue=NULL WHERE ProgramPropertyNum=721");
+			Assert.AreEqual("1",DataCore.GetScalar("SELECT COUNT(*) FROM programproperty WHERE ProgramPropertyNum=721 AND PropertyValue IS NULL"));
+			ForkMigrationContext context=new ForkMigrationContext(ScratchDb.DbName);
+			new OrthoCompositePatientArgumentsStep().Apply(context);
+			CollectionAssert.AreEqual(new[] {
+				"Set the blank Patient arguments of the OrthoComposite program link (ProgramNum 72, ProgramPropertyNum 721) to OrthoComposite's public arguments",
+				"Replaced the built-in note of the OrthoComposite program link (ProgramNum 72)",
+				"Replaced the built-in note of the OrthoComposite program link (ProgramNum 73)",
+				"Set the blank Patient arguments of the OrthoComposite program link (ProgramNum 75, ProgramPropertyNum 751) to OrthoComposite's public arguments",
+			},context.ListChanges,string.Join("\r\n",context.ListChanges));
+			Assert.AreEqual("--lastname \"[LName]\" --firstname \"[FName]\"",DataCore.GetScalar("SELECT PropertyValue FROM programproperty WHERE ProgramPropertyNum=711"));
+			Assert.AreEqual(defaultArguments,DataCore.GetScalar("SELECT PropertyValue FROM programproperty WHERE ProgramPropertyNum=721"),"NULL is blank: filled.");
+			Assert.AreEqual(" "+defaultArguments+" ",DataCore.GetScalar("SELECT PropertyValue FROM programproperty WHERE ProgramPropertyNum=731"),
+				"Not blank: kept as stored.");
+			Assert.AreEqual(defaultArguments,DataCore.GetScalar("SELECT PropertyValue FROM programproperty WHERE ProgramPropertyNum=751"));
+			Assert.AreEqual("/last [LName]",DataCore.GetScalar("SELECT PropertyValue FROM programproperty WHERE ProgramPropertyNum=752"));
+			Assert.AreEqual(OrthoCompositePatientArguments.NoteBefore,DataCore.GetScalar("SELECT Note FROM program WHERE ProgramNum=71"),
+				"The office's own arguments: the new note would describe arguments it does not send.");
+			Assert.AreEqual(OrthoCompositeLink.Note,DataCore.GetScalar("SELECT Note FROM program WHERE ProgramNum=72"),"Filled in by this run.");
+			Assert.AreEqual(OrthoCompositeLink.Note,DataCore.GetScalar("SELECT Note FROM program WHERE ProgramNum=73"),"The default already.");
+			Assert.AreEqual(OrthoCompositePatientArguments.NoteBefore,DataCore.GetScalar("SELECT Note FROM program WHERE ProgramNum=74"),"No property.");
+			Assert.AreEqual(OrthoCompositePatientArguments.NoteBefore,DataCore.GetScalar("SELECT Note FROM program WHERE ProgramNum=75"),
+				"One ClinicNum 0 row holds the office's own arguments.");
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT COUNT(*) FROM programproperty WHERE ProgramNum=74"),"No row is added.");
+			ForkMigrationContext contextAgain=new ForkMigrationContext(ScratchDb.DbName);
+			new OrthoCompositePatientArgumentsStep().Apply(contextAgain);
+			Assert.AreEqual(0,contextAgain.ListChanges.Count,"A second run changes nothing: "+string.Join("\r\n",contextAgain.ListChanges));
+			Assert.AreEqual(OrthoCompositePatientArguments.NoteBefore,DataCore.GetScalar("SELECT Note FROM program WHERE ProgramNum=71"));
+		}
+
 		///<summary>A row without the property (removed by hand) gets it with the default from EnsureProgram, not from the step.</summary>
 		[TestMethod]
 		public void RowWithoutTheProperty_GetsItWithTheDefaultFromProgramLinks() {

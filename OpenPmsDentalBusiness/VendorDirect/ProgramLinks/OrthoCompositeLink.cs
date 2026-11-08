@@ -43,7 +43,7 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 		public static readonly string[] ArrayTokens={ TokenFName,TokenLName,TokenBirthdate };
 
 		///<summary>The Notes text in Program Links. Describes, never promotes. Fork migration step 2026110801 writes it over the text of p262/links-1
-		///(OrthoCompositePatientArguments.NoteBefore) only.</summary>
+		///(OrthoCompositePatientArguments.NoteBefore) only, and only on a row that sends DefaultPatientArguments, since it describes them.</summary>
 		public const string Note="Starts OrthoComposite for the selected patient with its patient search filled in: the Patient arguments property gives "
 			+"OrthoComposite the patient's last name, first name and birthdate with its own arguments --lastname, --firstname and --dob, using the "
 			+"tokens [LName], [FName] and [Birthdate] (MM/dd/yyyy). No other patient data is sent. Enter where OrthoComposite is in Path of file to "

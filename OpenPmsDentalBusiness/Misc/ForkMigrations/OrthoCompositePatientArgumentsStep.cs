@@ -12,11 +12,13 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 	///program row gets OrthoCompositeLink.DefaultPatientArguments as its "Patient arguments" value. Rows inserted before that (by Setup > Program
 	///Links in a build of the 26.2 integration, p262/links-1) hold a blank value, which the button refuses for a patient. This step gives those
 	///rows the default once: a ClinicNum 0 "Patient arguments" row of an OrthoComposite program row that is blank (empty or white space only, what
-	///the button treats as not set) gets the default; a value the office typed is never changed. The row's Note is replaced by
-	///OrthoCompositeLink.Note only where it is still exactly the text p262/links-1 wrote (OrthoCompositePatientArguments.NoteBefore). A row without
-	///the property gets it with the default from OrthoCompositeLink.EnsureProgram the next time Program Links opens. Without an OrthoComposite row
-	///(every adopted Open Dental 25.3.48 database: this program inserts the row at runtime) nothing changes. Once the step ran, a blank value is the
-	///office's own choice. A second run finds nothing to change.</summary>
+	///the button treats as not set, NULL included) gets the default; a value the office typed is never changed. The row's Note is replaced by
+	///OrthoCompositeLink.Note only where it is still exactly the text p262/links-1 wrote (OrthoCompositePatientArguments.NoteBefore) and the row
+	///sends the default: it has ClinicNum 0 Patient arguments and each of them was filled in by this run or already is the default. A row with the
+	///office's own arguments keeps its note, since the new note describes arguments that office does not send; so does a row without the
+	///property, which gets it with the default from OrthoCompositeLink.EnsureProgram the next time Program Links opens. Without an OrthoComposite
+	///row (every adopted Open Dental 25.3.48 database: this program inserts the row at runtime) nothing changes. Once the step ran, a blank value
+	///is the office's own choice. A second run finds nothing to change.</summary>
 	[ForkMigration(2026110801,"Fill the blank OrthoComposite patient arguments with its public arguments")]
 	public class OrthoCompositePatientArgumentsStep:ForkMigrationStep {
 		public override void Apply(ForkMigrationContext context) {
@@ -31,7 +33,7 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 
 	///<summary>The rule of OrthoCompositePatientArgumentsStep: reads the OrthoComposite program rows (ProgName compared as MariaDB compares it: case and
 	///trailing spaces ignored) and their ClinicNum 0 "Patient arguments" rows, and writes only the blank ones and a Note that is still the old
-	///built-in text.</summary>
+	///built-in text on a row that sends the default arguments.</summary>
 	public static class OrthoCompositePatientArguments {
 		public const string PROG_NAME="OrthoComposite";
 		///<summary>The Note p262/links-1 wrote into a new OrthoComposite row, when the office had to enter the arguments itself.</summary>
@@ -47,8 +49,14 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 			return string.Equals((progName??"").TrimEnd(' '),PROG_NAME,StringComparison.OrdinalIgnoreCase);
 		}
 
-		///<summary>Fills the blank Patient arguments and replaces the old built-in Note, with plain UPDATE statements on those rows only. Returns the
-		///lines for the fork migration log, in ProgramNum and then ProgramPropertyNum order; empty when nothing changed.</summary>
+		///<summary>True when a stored Patient arguments value is the default, white space at either end ignored as the button ignores it.</summary>
+		public static bool IsDefaultArguments(string propertyValue) {
+			return (propertyValue??"").Trim()==OrthoCompositeLink.DefaultPatientArguments;
+		}
+
+		///<summary>Fills the blank Patient arguments and replaces the old built-in Note of a row that then sends the default arguments, with plain
+		///UPDATE statements on those rows only. Returns the lines for the fork migration log, in ProgramNum and then ProgramPropertyNum order; empty
+		///when nothing changed.</summary>
 		public static List<string> Run() {
 			List<string> listChanges=new List<string>();
 			DataTable tablePrograms=Db.GetTable("SELECT ProgramNum,ProgName,Note FROM program ORDER BY ProgramNum");
@@ -61,9 +69,16 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 					+"WHERE ProgramNum="+POut.Long(programNum)+" AND ClinicNum=0 "
 					+"AND PropertyDesc='"+POut.String(OrthoCompositeLink.PropertyDescs.PatientArguments)+"' "
 					+"ORDER BY ProgramPropertyNum");
+				//The new Note describes the default arguments, so it replaces the old one only where every ClinicNum 0 value is the default after this
+				//run. A row without the property sends nothing for a patient yet and keeps its note.
+				bool isDefaultSent=tableProperties.Rows.Count>0;
 				for(int j=0;j<tableProperties.Rows.Count;j++) {
-					if(!string.IsNullOrWhiteSpace(tableProperties.Rows[j]["PropertyValue"].ToString())) {
-						continue;//The office's own value.
+					string propertyValue=tableProperties.Rows[j]["PropertyValue"].ToString();//NULL reads as "": blank.
+					if(!string.IsNullOrWhiteSpace(propertyValue)) {
+						if(!IsDefaultArguments(propertyValue)) {
+							isDefaultSent=false;//The office's own value: kept, and so is the note.
+						}
+						continue;
 					}
 					long programPropertyNum=PIn.Long(tableProperties.Rows[j]["ProgramPropertyNum"].ToString());
 					Db.NonQ("UPDATE programproperty SET PropertyValue='"+POut.String(OrthoCompositeLink.DefaultPatientArguments)+"' "
@@ -71,7 +86,7 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 					listChanges.Add("Set the blank Patient arguments of the OrthoComposite program link (ProgramNum "+programNum+", ProgramPropertyNum "
 						+programPropertyNum+") to OrthoComposite's public arguments");
 				}
-				if(tablePrograms.Rows[i]["Note"].ToString()==NoteBefore) {
+				if(isDefaultSent && tablePrograms.Rows[i]["Note"].ToString()==NoteBefore) {
 					Db.NonQ("UPDATE program SET Note='"+POut.String(OrthoCompositeLink.Note)+"' WHERE ProgramNum="+POut.Long(programNum));
 					listChanges.Add("Replaced the built-in note of the OrthoComposite program link (ProgramNum "+programNum+")");
 				}
