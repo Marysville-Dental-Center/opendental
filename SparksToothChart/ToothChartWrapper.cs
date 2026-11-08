@@ -72,11 +72,7 @@ namespace SparksToothChart {
 					toothChart2D.TcData=value;
 				}
 				else if(drawMode==DrawingMode.DirectX) {
-					if(tcData!=null){
-						tcData.CleanupDirectX();//Clean up old tc data DirectX objects to free video memory.
-					}
-					toothChartDirectX.TcData=value;
-					toothChartDirectX.TcData.PrepareForDirectX(toothChartDirectX.device);
+					toothChartDirectX.SetTcData(value);//Frees the old models' buffers in video memory and makes the new ones'.
 				}
 				else if(drawMode==DrawingMode.OpenGL) {
 					toothChartOpenGL.TcData=value;
