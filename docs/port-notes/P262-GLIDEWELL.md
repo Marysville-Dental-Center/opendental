@@ -179,6 +179,7 @@ changes.
 - Full build of `OpenDental.Local.slnf` (Debug, x86): 0 errors.
 - Targeted run (`P262GlidewellTests`, `NoHqTests`): `P262GlidewellTests` 40/40, `NoHqTests` 58/58. Scratch databases `test_p262glidewell_*`
   are dropped after the run. `ForkMigrationTests` was left out as instructed.
+- After the key length fix (`p262/glidewell-2`): full build 0 errors; Targeted run `P262GlidewellTests` 42/42, `NoHqTests` 58/58.
 
 ## Questions for the owner
 
