@@ -198,9 +198,9 @@ namespace AdoptionValidation.Tests {
 			Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(text,@"Renamed displayreport \S+ to \S+ \(same description\)"));
 		}
 
-		///<summary>What migration-preview prints for the Insurance History step (M2-HIST): the code groups it marks, with their History Proc Code and the
-		///codes it adds, and the group it creates, in the words of the adoption log; nothing on an adopted database, on one from 25.4 on, or without
-		///history preferences. The dry run reads the report rows step's renames by "Renamed displayreport X to Y (same description)", which these lines
+		///<summary>What migration-preview prints for the Insurance History step (M2-HIST): the code groups used only for Insurance History it adds, with
+		///their History Proc Code and codes, and that it changes no existing code group (owner decision of 2026-11-07), in the words of the adoption log;
+		///nothing on an adopted database, on one from 25.4 on, or without history preferences. The dry run reads the report rows step's renames by "Renamed displayreport X to Y (same description)", which these lines
 		///never contain.</summary>
 		[TestMethod]
 		public void InsHistPlanLines_SayWhatTheStepChanges() {
@@ -218,15 +218,21 @@ namespace AdoptionValidation.Tests {
 				Migration=InsHistCodeGroupsMigration.CreatePlan(true,false,dictPrefs,listCodeGroups,listProcCodes) };
 			Assert.IsTrue(plan.IsChanging);
 			string text=string.Join("\r\n",plan.Lines());
-			StringAssert.Contains(text,"Step 2026110104 (Insurance History rows from code groups) marks 3 code group(s) Show In History and adds 1 (this database "
-				+"comes from before Open Dental 25.4; the ten InsHist*Codes preferences are kept): ");
-			StringAssert.Contains(text,"Code group 'BWs' (CodeGroupNum 3) shown in Insurance History, History Proc Code Z0272; ");
-			StringAssert.Contains(text,"Code group 'Perio Maint' (CodeGroupNum 7) shown in Insurance History, History Proc Code Z4910, codes added: Z4920; ");
-			StringAssert.Contains(text,"Code group 'SRP' (CodeGroupNum 8) shown in Insurance History with four quadrant rows, History Proc Code Z4341; ");
-			StringAssert.Contains(text,"Added code group 'Exam' (Exam, ItemOrder 3), shown in Insurance History, History Proc Code Z0120, codes Z0120");
-			StringAssert.Contains(text,"adopt's row check (step 4) requires exactly this");
+			StringAssert.Contains(text,"Step 2026110104 (Insurance History rows from code groups) adds 4 code group(s) used only for Insurance History and changes "
+				+"no existing code group (this database comes from before Open Dental 25.4; the ten InsHist*Codes preferences are kept): ");
+			StringAssert.Contains(text,"Added code group 'Bitewing History' (ItemOrder 3), used only for Insurance History (not in frequency or age limits), "
+				+"History Proc Code Z0272, codes Z0272; ");
+			StringAssert.Contains(text,"Added code group 'Exam History' (ItemOrder 4), used only for Insurance History (not in frequency or age limits), "
+				+"History Proc Code Z0120, codes Z0120; ");
+			StringAssert.Contains(text,"Added code group 'Perio Scaling History' (ItemOrder 5), used only for Insurance History with four quadrant rows (not in "
+				+"frequency or age limits), History Proc Code Z4341, codes Z4341; ");
+			StringAssert.Contains(text,"Added code group 'Perio Maintenance History' (ItemOrder 6), used only for Insurance History (not in frequency or age "
+				+"limits), History Proc Code Z4910, codes Z4910,Z4920; ");
+			StringAssert.Contains(text,InsHistCodeGroupsMigration.NOTE_EXISTING_UNCHANGED);
+			StringAssert.Contains(text,"adopt's row check (step 4) requires exactly this: the added group(s) hold these values, and no existing codegroup row or "
+				+"column changes.");
 			Assert.IsFalse(System.Text.RegularExpressions.Regex.IsMatch(text,@"Renamed displayreport \S+ to \S+ \(same description\)"));
-			CollectionAssert.AreEqual(new long[] { 3,8,7 },plan.Migration.ListUpdated.Select(x => x.CodeGroupNum).ToArray(),"In the order of the 24.3 rows.");
+			Assert.AreEqual(0,plan.Migration.ListUpdated.Count,"No existing group is changed.");
 			//An adopted database: the level is applied.
 			InsHistCodeGroupPlan.Plan planAdopted=new InsHistCodeGroupPlan.Plan { HasCodeGroupTable=true,
 				Migration=InsHistCodeGroupsMigration.CreatePlan(true,true,dictPrefs,listCodeGroups,listProcCodes) };

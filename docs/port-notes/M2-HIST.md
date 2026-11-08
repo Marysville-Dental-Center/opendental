@@ -31,6 +31,9 @@ The rules are in the new `OpenDentBusiness/Data Interface/InsHistCategories.cs`,
 
 ### Data migration (`OpenDentBusiness/Misc/ForkMigrations/InsHistCodeGroupsStep.cs`, level 2026110104, renumbered from 2027004701 on 2026-11-01)
 
+**Changed on 2026-11-07** (owner decision, switch-over question 4): the step now changes no existing code group and adds a group used only
+for Insurance History for each category; see "Owner decision of 2026-11-07" at the end. The rule below is the one before that change.
+
 Open Dental's own conversion is not public; this is the spec's rule, all **INFERRED**. The rule is in `InsHistCodeGroupsMigration.Plan` (pure, tested without a database); the step reads the rows with plain SQL and writes plain `UPDATE`/`INSERT` statements.
 
 1. For each history category whose preference has a value (for the perio quadrants, any of the four): the code group whose `CodeGroupFixed` matches (Bitewing BW, Pano/FMX PanoFMX, Exam, Prophy, the perio quadrants SRP, Perio Maintenance Perio, Full Mouth Debridement FMDebride), a group in use before a retired one, lowest ItemOrder first. With none, a new group named after the 24.3 row ("Bitewing", "Pano/FMX", "Exam", "Prophy", "Perio Scaling", "Perio Maintenance", "Full Mouth Debridement"), with that `CodeGroupFixed`, after every other group, in no benefit grid (not hidden).
@@ -178,3 +181,54 @@ On `port/m2-hist-t1` after the `port/int-8` merge and the fixes (2026-10-31):
 ## Combined review 1 (branch `port/review-1`, 2026-11-01)
 
 - **Level.** Owner decision of 2026-11-01: levels are dated `yyyyMMddNN` only, every new step above every existing one, and the package ranges are retired. `InsHistCodeGroupsStep` is now 2026110104 (renumbered from 2027004701), still the last step, after B-SHELL (2026110101, from 2027002301), M2-EST (2026110102, from 2027002701, not active) and M2-UDS (2026110103, from 2027003501). `ForkMigrationRunner.IsReservedPackageLevel` is removed. The step, `InsHistCodeGroupPlan` and the rehearsal read the level from the step, so only the expected texts of the tests, the runbook and the READMEs changed ("Fork schema level 2026110104").
+
+## Owner decision of 2026-11-07: the existing code groups stay unchanged (switch-over question 4)
+
+The combined review asked whether the codes of the old Insurance History boxes should be added to the matching frequency code group (which
+widens its frequency limitation in insurance estimates) or go into a group that only feeds Insurance History. The owner chose the second: the
+step must leave the existing frequency-limit code groups unchanged and put the codes into a code group used only for Insurance History. No
+office database ran the step's earlier rule (it was released in v0.0, which was never adopted, and the owner reinstalls rather than upgrades
+v0.0), so the step itself changed, at the same level 2026110104.
+
+**The rule now** (`InsHistCodeGroupsMigration.Plan`, `OpenPmsDentalBusiness/Misc/ForkMigrations/InsHistCodeGroupsStep.cs`), for each history
+category whose preference has a value (the four perio quadrants count as one):
+
+1. A **new** code group named after the 24.3 row with " History" ("Bitewing History", "Pano/FMX History", "Exam History", "Prophy History",
+   "Perio Scaling History", "Perio Maintenance History", "Full Mouth Debridement History"; " 2", " 3" and so on when a group of that name
+   exists), after every other group, in the order of the 24.3 window.
+2. It is used only for Insurance History: `ShowInHistory=1`, `ShowInFrequency`, `ShowInAgeLimit` and `ShowInOther` 0, not hidden, and
+   `CodeGroupFixed` None, so no frequency limitation (`Benefits.Is...Frequency`, `CodeGroups.GetOneForCodeGroupFixed`), age limit, sheet field
+   ("date of last exam" and the like), `ProcedureCodes.GetCodeNumsForAllLimitations` or Reset Code Groups takes it for a category's group. That
+   also answers M2-HIST question 3 (the created groups carry no fixed category now).
+3. `ProcCodes` holds the preference's codes and ranges in the order written; `HistProcCode` and the perio rules (UR first, one group with
+   `IsPerioFourQuads=1`, a note when the quadrants had different codes) are as before.
+4. **No existing code group changes**, the frequency and age limit groups among them: the plan has no updates (`MigrationPlan.ListUpdated` is
+   empty), and `Run` writes only `INSERT`s.
+5. The gates are unchanged (a database from before 25.4, the step's first run, no group marked Show In History yet), and the preferences are
+   kept.
+
+**Log text.** One line per added group, "Added code group 'Exam History' (ItemOrder 13), used only for Insurance History (not in frequency or
+age limits), History Proc Code D0120, codes D0120,D0150" (`DescribeAdd`), then the perio note if any, then "Insurance History: the existing
+code groups, the frequency and age limit groups among them, were not changed; the codes of the old Insurance History settings are only in
+the added groups." (`NOTE_EXISTING_UNCHANGED`).
+
+**Eligibility (271).** A history group without `CodeGroupFixed` can no longer be found by the category a response's MSG text names (bitewings,
+exams, full mouth/panorex, prophylaxis). `InsHistCategories.GetForEligibility` gained a last rule: when no history row has that category, the
+line goes to the history row whose History Proc Code is one of the codes of that category's code group (the office's bitewing group, say).
+The response's own procedure code (EB13) still comes first. Quadrant rows are still never picked.
+
+**Insurance History rows.** The rows read as the group names: "Exam History" and so on; the perio scaling rows "Perio Scaling History UL" and
+so on (a four-quadrant group other than the fixed SRP group shows its name and the quadrant, M2-HIST question 1).
+
+**The adoption tools follow the plan.** `migration-preview` (runbook step 0.2) now says "adds N code group(s) used only for Insurance History
+and changes no existing code group", `adopt`'s row check (`AdoptionRowCheck.CheckCodeGroup`, unchanged logic) holds every existing row to its
+original and each added row to the plan and prints "N of the N planned code group(s) used only for Insurance History added with the planned
+values; no existing row or column changed", and the rehearsal's check M6 expects seven added groups on the office fixture and no changed one
+(`OfficeFixture.ArrayInsHistGroupsAdded`). The runbook, the AdoptionValidation and SyntheticData READMEs say the same.
+
+**Tests.** `InsHistMigrationPlanTests` (rewritten: new groups only, the existing ones untouched, names and numbering, order, perio, retired
+groups left alone, the log lines), `FreshDatabaseMigrationTests` (the 24.3.63 seed: seven history-only groups added, every column of every
+seed group unchanged, the ten rows with their new labels), `InsHistMigrationDbTests` (from 25.3: the office's groups unchanged, three groups
+added; `Plan_IsWhatRunDoes` with an existing "Exam History"), `InsHistCategoriesTests.GetForEligibility_AHistoryOnlyGroup_...` (the 271 rule),
+and in `AdoptionValidation.Tests` `Migration26_1Tests.InsHistPlanLines_SayWhatTheStepChanges` and the rehearsal's expectations
+(`RehearsalIntegrationTests`: the preview, M6, the row check's negative control, the adoption log).

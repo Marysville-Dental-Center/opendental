@@ -29,6 +29,8 @@ namespace M2HISTTests {
 		public static List<CodeGroup> ListCodeGroupsAfter;
 		///<summary>CodeGroupNum and ProcCodes of every code group before the migration.</summary>
 		public static Dictionary<long,string> DictProcCodesBefore;
+		///<summary>Every codegroup row before the fork migration, every column of the 24.3 table as text, by CodeGroupNum.</summary>
+		public static Dictionary<long,Dictionary<string,string>> DictRowsBefore;
 		///<summary>The Insurance History rows right after the migration.</summary>
 		public static List<InsHistCategory> ListCategoriesAfter;
 		///<summary>What the runner logged for the M2-HIST step.</summary>
@@ -47,6 +49,9 @@ namespace M2HISTTests {
 				DictPrefsBefore=ReadInsHistPrefs();
 				DictProcCodesBefore=DataCore.GetTable("SELECT CodeGroupNum,ProcCodes FROM codegroup").Select()
 					.ToDictionary(x => PIn.Long(x["CodeGroupNum"].ToString()),x => x["ProcCodes"].ToString());
+				System.Data.DataTable tableCodeGroupsBefore=DataCore.GetTable("SELECT * FROM codegroup");
+				DictRowsBefore=tableCodeGroupsBefore.Select().ToDictionary(x => PIn.Long(x["CodeGroupNum"].ToString()),
+					x => tableCodeGroupsBefore.Columns.Cast<System.Data.DataColumn>().ToDictionary(y => y.ColumnName,y => x[y].ToString()));
 				ForkMigrationResult result=ForkMigrationRunner.Run();
 				string prefix=new OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.InsHistCodeGroupsStep().Level+": ";
 				ListChangesStep=result.ListChanges.Where(x => x.StartsWith(prefix)).ToList();

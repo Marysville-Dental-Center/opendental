@@ -238,8 +238,8 @@ verifier, the rehash and further checks, twice, and times every step. The steps 
 1. `generate` into `synth_253` and keep the report (`--out before.json`). Optionally `--config-from` a fresh 24.3.63 dev database
    (from `tools\New-DevDatabase.ps1`) first, which copies its preference, definition, user, permission, program, report and claim
    form rows (shared columns only), so the fork can open the database. Its ten `InsHist*Codes` preferences then come along with the
-   seed's codes, which the generated code groups do not hold: adoption's Insurance History step (M2-HIST) marks those groups for
-   Insurance History and adds the codes to them, as it would for an office whose preferences name codes outside its groups. That is
+   seed's codes, which the generated code groups do not hold: adoption's Insurance History step (M2-HIST) adds a code group used only
+   for Insurance History with those codes for each category, and leaves the generated groups as they are. That is
    expected; `migration-preview` lists it and `adopt`'s row check holds `codegroup` to that list.
 2. Copy the database (for example to `synth_253_adopted`) and run the adoption tool on the copy.
 3. `validate --database synth_253_adopted --out after.json`.
