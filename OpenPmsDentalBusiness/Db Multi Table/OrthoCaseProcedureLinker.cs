@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using CodeBase;
-using Health.Direct.Common.Extensions;
 
 namespace OpenPmsDentalBusiness {
 	///<summary>Use this to link Procedures to OrthoCases when setting Procedures complete or updating OrthoCase data to match changes in a linked Procedure.

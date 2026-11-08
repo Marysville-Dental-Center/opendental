@@ -8,7 +8,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Windows.Forms.Integration;
-using Microsoft.VisualBasic.Devices;
 using Microsoft.Win32;
 using OpenPmsDental.UI;
 using CodeBase;

@@ -1,5 +1,4 @@
 ﻿using CodeBase;
-using Health.Direct.Common.Extensions;
 using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;

@@ -1,4 +1,3 @@
-using Health.Direct.Common.Mail.Notifications;
 using System;
 using System.Collections.Generic;
 using System.Data;

@@ -1,5 +1,4 @@
-﻿using Health.Direct.Common.Extensions;
-using OpenPmsDentalBusiness;
+﻿using OpenPmsDentalBusiness;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;

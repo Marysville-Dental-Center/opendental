@@ -1,6 +1,5 @@
 using CodeBase;
 using DataConnectionBase;
-using Microsoft.VisualBasic.ApplicationServices;
 using OpenPmsDental.UI;
 using OpenPmsDentalBusiness;
 using System;
@@ -8,7 +7,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Web.UI.WebControls;
 using System.Windows.Forms;
 
 namespace OpenPmsDental {

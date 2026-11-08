@@ -12,7 +12,6 @@ using OpenPmsDental.UI;
 using OpenPmsDental;
 using OpenPmsDentalBusiness;
 using System.IO;
-using Microsoft.VisualBasic.FileIO;
 
 
 namespace OpenPmsDental.User_Controls.SetupWizard {

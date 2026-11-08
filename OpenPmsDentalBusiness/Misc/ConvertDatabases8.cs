@@ -12,7 +12,6 @@ using System.Threading;
 using System.IO;
 using System.Windows.Controls.Primitives;
 using static OpenPmsDentalBusiness.LargeTableHelper;
-using ADODB;
 
 namespace OpenPmsDentalBusiness {
 	public partial class ConvertDatabases {
