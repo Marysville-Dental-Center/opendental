@@ -1025,16 +1025,11 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
-		///<summary> Save an Eob to another location on the disk (outside of Open Dental). </summary>
+		///<summary> Save an Eob to another location on the disk (outside of Open Dental). With images in the database, writes the stored bytes of
+		///eobattach.RawBase64 as they are, so a PDF exports too (S0-6: this read an empty stream and failed).</summary>
 		public static void ExportEobAttach(string saveToPath,EobAttach eob) {
 			if(PrefC.AtoZfolderUsed==DataStorageType.InDatabase) {
-				byte[] rawData=Convert.FromBase64String(eob.RawBase64);
-				Image image=null;
-				using(MemoryStream stream=new MemoryStream()) {
-					stream.Read(rawData,0,rawData.Length);
-					image=Image.FromStream(stream);
-				}
-				image.Save(saveToPath);
+				File.WriteAllBytes(saveToPath,GetRawBytes(eob.RawBase64,eob.FileName));
 			}
 			else {//Using an AtoZ folder
 				string eobPath=ODFileUtils.CombinePaths(GetEobFolder(),eob.FileName);
@@ -1042,21 +1037,25 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
-		///<summary> Save an EHR amendment to another location on the disk (outside of Open Dental). </summary>
+		///<summary> Save an EHR amendment to another location on the disk (outside of Open Dental). With images in the database, writes the stored
+		///bytes of ehramendment.RawBase64 as they are (S0-6: this read an empty stream and failed).</summary>
 		public static void ExportAmdAttach(string saveToPath,EhrAmendment amd) {
 			if(PrefC.AtoZfolderUsed==DataStorageType.InDatabase) {
-				byte[] rawData=Convert.FromBase64String(amd.RawBase64);
-				Image image=null;
-				using(MemoryStream stream=new MemoryStream()) {
-					stream.Read(rawData,0,rawData.Length);
-					image=Image.FromStream(stream);
-				}
-				image.Save(saveToPath);
+				File.WriteAllBytes(saveToPath,GetRawBytes(amd.RawBase64,amd.FileName));
 			}
 			else {//Using an AtoZ folder
 				string eobPath=ODFileUtils.CombinePaths(GetAmdFolder(),amd.FileName);
 				FileAtoZ.Copy(eobPath,saveToPath,FileAtoZSourceDestination.AtoZToLocal);
 			}
+		}
+
+		///<summary>The bytes of a file stored in the database (an EOB's or an amendment's RawBase64). Throws an ApplicationException when there are
+		///none, so nothing writes an empty file in its place.</summary>
+		internal static byte[] GetRawBytes(string rawBase64,string fileName) {
+			if(string.IsNullOrEmpty(rawBase64)) {
+				throw new ApplicationException(Lans.g("ImageStore","File not found:")+" "+fileName);
+			}
+			return Convert.FromBase64String(rawBase64);
 		}
 
 		///<summary>Saves the image to the given fileName. Quality is 0 to 100.  0 is most compression, lowest quality.</summary>
@@ -1492,5 +1491,407 @@ namespace OpenPmsDentalBusiness {
 			SecurityLogs.MakeLogEntry(perm,doc.PatNum,logMsg,doc.DocNum,LogSources.None,secDatePrevious,userNum);
 		}
 
+	}
+
+	///<summary>The logic of the EOB and amendment window (FormImages), without its UI (S0-6, rebuilt on the current Imaging module). The window
+	///shows the EOBs of one claim payment (Insurance Payment, Edit Claim) or of one preauthorization (Edit Claim, Enter Estimates for PreAuth;
+	///eobattach.ClaimNumPreAuth, Open Dental 25.2), oldest first, or the one file of an EHR amendment (Edit Amendment; ehramendment.FileName).
+	///Every file stays where ImageStore keeps it: the EOBs and Amendments folders of the A to Z folder or of cloud storage, or the row's RawBase64
+	///with images in the database, under the same file names. The ImageCreate and ImageDelete log entries are ImageStore's (a preauthorization
+	///EOB has them; a claim payment EOB and an amendment's file have none); the Printing and Copy entries are worded here. Client side only, like
+	///ImageStore: every database call goes through the S classes.</summary>
+	public static class EobAmendmentFiles {
+		#region Enums
+		///<summary>What the window shows.</summary>
+		public enum EnumMode {
+			///<summary>No owner was given. The window shows nothing.</summary>
+			None,
+			///<summary>The EOBs of one claim payment (eobattach.ClaimPaymentNum).</summary>
+			ClaimPayment,
+			///<summary>The EOBs of one preauthorization (eobattach.ClaimNumPreAuth).</summary>
+			PreAuth,
+			///<summary>The one file of an EHR amendment (ehramendment.FileName); none while FileName is empty.</summary>
+			Amendment,
+		}
+
+		///<summary>The window's commands, in toolbar order.</summary>
+		public enum EnumCommand {
+			Print,
+			Delete,
+			///<summary>Scan Document: one page, saved as JPG at this computer's scan quality and also put on the clipboard.</summary>
+			ScanDoc,
+			///<summary>Scan Multi-Page Document: saved as PDF from a temp file, which is then deleted.</summary>
+			ScanMultiDoc,
+			Import,
+			Export,
+			Copy,
+			Paste,
+			Close,
+		}
+
+		///<summary>How the window shows a file.</summary>
+		public enum EnumShowAs {
+			///<summary>Neither an image nor a PDF: nothing shows.</summary>
+			Nothing,
+			///<summary>Fitted, with the zoom slider and drag to pan.</summary>
+			Image,
+			///<summary>In the PDF viewer, which pages through it.</summary>
+			Pdf,
+		}
+		#endregion Enums
+
+		#region Nested class
+		///<summary>One file in the window's list: an EOB, or the amendment's file.</summary>
+		public class FileEntry {
+			///<summary>The EOB's key. 0 for an amendment's file.</summary>
+			public long EobAttachNum;
+			///<summary>The amendment's key. 0 for an EOB.</summary>
+			public long EhrAmendmentNum;
+			///<summary>The stored file name, which the list shows.</summary>
+			public string FileName="";
+			///<summary>The amendment's description, which its print log entry names. Empty for an EOB.</summary>
+			public string Description="";
+			///<summary>The amendment's patient. 0 for an EOB.</summary>
+			public long PatNum;
+
+			///<summary>True for an EOB, false for an amendment's file.</summary>
+			public bool IsEob {
+				get {
+					return EobAttachNum!=0;
+				}
+			}
+		}
+		#endregion Nested class
+
+		#region Methods - Modes and commands
+		///<summary>The mode for the window's three public fields, chosen as the old window chose: a preauthorization first, then a claim payment,
+		///then an amendment.</summary>
+		public static EnumMode GetMode(long claimPaymentNum,long claimNumPreAuth,EhrAmendment ehrAmendment) {
+			if(claimNumPreAuth!=0) {
+				return EnumMode.PreAuth;
+			}
+			if(claimPaymentNum!=0) {
+				return EnumMode.ClaimPayment;
+			}
+			if(ehrAmendment!=null) {
+				return EnumMode.Amendment;
+			}
+			return EnumMode.None;
+		}
+
+		///<summary>True for the two EOB modes.</summary>
+		public static bool IsEobMode(EnumMode mode) {
+			return mode==EnumMode.ClaimPayment || mode==EnumMode.PreAuth;
+		}
+
+		///<summary>The toolbar commands of the mode, in order: the same nine for EOBs and for an amendment, as in the old window, and only Close when
+		///there is nothing to show. There is no Info, Sign, radiograph or photo scan, crop, rotate, flip or windowing: those work on a patient's
+		///documents only.</summary>
+		public static List<EnumCommand> GetCommands(EnumMode mode) {
+			if(mode==EnumMode.None) {
+				return new List<EnumCommand> { EnumCommand.Close };
+			}
+			return new List<EnumCommand> {
+				EnumCommand.Print,
+				EnumCommand.Delete,
+				EnumCommand.ScanDoc,
+				EnumCommand.ScanMultiDoc,
+				EnumCommand.Import,
+				EnumCommand.Export,
+				EnumCommand.Copy,
+				EnumCommand.Paste,
+				EnumCommand.Close,
+			};
+		}
+
+		///<summary>The commands of the list's right-click menu: Print and Delete, in both modes, as in the old window.</summary>
+		public static List<EnumCommand> GetListMenuCommands(EnumMode mode) {
+			if(mode==EnumMode.None) {
+				return new List<EnumCommand>();
+			}
+			return new List<EnumCommand> { EnumCommand.Print,EnumCommand.Delete };
+		}
+
+		///<summary>Import takes several files for EOBs and one for an amendment, which has only one file.</summary>
+		public static bool IsImportMultiSelect(EnumMode mode) {
+			return IsEobMode(mode);
+		}
+
+		///<summary>True when scan, import or paste would replace the amendment's file, so the window asks "This will delete your old file.
+		///Proceed?" first.</summary>
+		public static bool IsReplaceConfirmNeeded(EnumMode mode,EhrAmendment ehrAmendment) {
+			return mode==EnumMode.Amendment && ehrAmendment!=null && !string.IsNullOrEmpty(ehrAmendment.FileName);
+		}
+
+		///<summary>An image shows fitted, a PDF in the PDF viewer, any other type not at all.</summary>
+		public static EnumShowAs GetShowAs(string fileName) {
+			if(ImageStore.HasImageExtension(fileName)) {
+				return EnumShowAs.Image;
+			}
+			if(Path.GetExtension(fileName).ToLower()==".pdf") {
+				return EnumShowAs.Pdf;
+			}
+			return EnumShowAs.Nothing;
+		}
+
+		///<summary>True when a double-click opens the file in its Windows program: an EOB other than JPG, JPEG or GIF, as in the old window. An
+		///amendment's file never opens this way. With images in the database the window asks for an export instead.</summary>
+		public static bool CanOpenInWindowsProgram(FileEntry fileEntry) {
+			if(fileEntry==null || !fileEntry.IsEob) {
+				return false;
+			}
+			string extension=Path.GetExtension(fileEntry.FileName).ToLower();
+			return extension!=".jpg" && extension!=".jpeg" && extension!=".gif";
+		}
+		#endregion Methods - Modes and commands
+
+		#region Methods - The list
+		///<summary>The window's list: the EOBs of the claim payment or of the preauthorization, oldest first (EobAttaches.RefreshForOwner), or the
+		///amendment's one file, none while its FileName is empty.</summary>
+		public static List<FileEntry> GetFileEntries(EnumMode mode,long claimPaymentNum,long claimNumPreAuth,EhrAmendment ehrAmendment) {
+			List<FileEntry> listFileEntries=new List<FileEntry>();
+			if(IsEobMode(mode)) {
+				GetOwnerKeys(mode,claimPaymentNum,claimNumPreAuth,out long claimPaymentNumOwner,out long claimNumPreAuthOwner);
+				List<EobAttach> listEobAttaches=EobAttaches.RefreshForOwner(claimPaymentNumOwner,claimNumPreAuthOwner);
+				for(int i=0;i<listEobAttaches.Count;i++) {
+					listFileEntries.Add(GetFileEntry(listEobAttaches[i]));
+				}
+				return listFileEntries;
+			}
+			if(mode==EnumMode.Amendment && ehrAmendment!=null && !string.IsNullOrEmpty(ehrAmendment.FileName)) {
+				listFileEntries.Add(GetFileEntry(ehrAmendment));
+			}
+			return listFileEntries;
+		}
+
+		public static FileEntry GetFileEntry(EobAttach eobAttach) {
+			FileEntry fileEntry=new FileEntry();
+			fileEntry.EobAttachNum=eobAttach.EobAttachNum;
+			fileEntry.FileName=eobAttach.FileName??"";
+			return fileEntry;
+		}
+
+		public static FileEntry GetFileEntry(EhrAmendment ehrAmendment) {
+			FileEntry fileEntry=new FileEntry();
+			fileEntry.EhrAmendmentNum=ehrAmendment.EhrAmendmentNum;
+			fileEntry.FileName=ehrAmendment.FileName??"";
+			fileEntry.Description=ehrAmendment.Description??"";
+			fileEntry.PatNum=ehrAmendment.PatNum;
+			return fileEntry;
+		}
+
+		///<summary>The one owner of the mode's EOBs: the claim payment, or the preauthorization. Both 0 for any other mode.</summary>
+		private static void GetOwnerKeys(EnumMode mode,long claimPaymentNum,long claimNumPreAuth,out long claimPaymentNumOwner,
+			out long claimNumPreAuthOwner)
+		{
+			claimPaymentNumOwner=0;
+			claimNumPreAuthOwner=0;
+			if(mode==EnumMode.PreAuth) {
+				claimNumPreAuthOwner=claimNumPreAuth;
+			}
+			else if(mode==EnumMode.ClaimPayment) {
+				claimPaymentNumOwner=claimPaymentNum;
+			}
+		}
+		#endregion Methods - The list
+
+		#region Methods - Adding, replacing and deleting
+		///<summary>A new eobattach row of the claim payment or of the preauthorization, with a copy of the file (ImageStore.ImportEobAttach with both
+		///owner keys). A preauthorization EOB logs ImageCreate. Throws, and adds no row, when the file cannot be stored.</summary>
+		public static EobAttach AddEob(string pathImportFrom,EnumMode mode,long claimPaymentNum,long claimNumPreAuth) {
+			GetOwnerKeys(mode,claimPaymentNum,claimNumPreAuth,out long claimPaymentNumOwner,out long claimNumPreAuthOwner);
+			return ImageStore.ImportEobAttach(pathImportFrom,claimPaymentNumOwner,claimNumPreAuthOwner);
+		}
+
+		///<summary>A new eobattach row of the claim payment or of the preauthorization from a scanned or pasted image, saved as JPG at this
+		///computer's scan quality (ImageStore.ImportEobAttach). A preauthorization EOB logs ImageCreate.</summary>
+		public static EobAttach AddEob(Bitmap bitmap,EnumMode mode,long claimPaymentNum,long claimNumPreAuth) {
+			GetOwnerKeys(mode,claimPaymentNum,claimNumPreAuth,out long claimPaymentNumOwner,out long claimNumPreAuthOwner);
+			return ImageStore.ImportEobAttach(bitmap,claimPaymentNumOwner,claimNumPreAuthOwner);
+		}
+
+		///<summary>Replaces the amendment's file with a copy of this one under a new name (ImageStore.ImportAmdAttach), then removes the old file
+		///(ImageStore.CleanAmdAttach). Returns the amendment as stored. The window releases the old file before calling this.</summary>
+		public static EhrAmendment ReplaceAmendmentFile(EhrAmendment ehrAmendment,string pathImportFrom) {
+			string fileNameOld=ehrAmendment.FileName;
+			EhrAmendment ehrAmendmentNew=ImageStore.ImportAmdAttach(pathImportFrom,ehrAmendment);
+			RemoveOldAmendmentFile(fileNameOld,ehrAmendmentNew.FileName);
+			return ehrAmendmentNew;
+		}
+
+		///<summary>Replaces the amendment's file with a scanned or pasted image, saved as JPG at this computer's scan quality under a new name
+		///(ImageStore.ImportAmdAttach), then removes the old file (ImageStore.CleanAmdAttach). Returns the amendment as stored.</summary>
+		public static EhrAmendment ReplaceAmendmentFile(EhrAmendment ehrAmendment,Bitmap bitmap) {
+			string fileNameOld=ehrAmendment.FileName;
+			EhrAmendment ehrAmendmentNew=ImageStore.ImportAmdAttach(bitmap,ehrAmendment);
+			RemoveOldAmendmentFile(fileNameOld,ehrAmendmentNew.FileName);
+			return ehrAmendmentNew;
+		}
+
+		///<summary>The new name has the date and time to the second, so a second replacement within the same second may reuse the old name. The file
+		///under that name is then the new one and stays.</summary>
+		private static void RemoveOldAmendmentFile(string fileNameOld,string fileNameNew) {
+			if(string.IsNullOrEmpty(fileNameOld) || fileNameOld==fileNameNew) {
+				return;
+			}
+			ImageStore.CleanAmdAttach(fileNameOld);
+		}
+
+		///<summary>Deletes the EOB's file and its row (ImageStore.DeleteEobAttach). A preauthorization EOB logs ImageDelete. Does nothing when another
+		///workstation already deleted it.</summary>
+		public static void DeleteEob(FileEntry fileEntry) {
+			EobAttach eobAttach=EobAttaches.GetOne(fileEntry.EobAttachNum);
+			if(eobAttach==null) {
+				return;
+			}
+			ImageStore.DeleteEobAttach(eobAttach);
+		}
+
+		///<summary>Deletes the amendment's file; the row stays, with an empty file name (ImageStore.DeleteAmdAttach).</summary>
+		public static void DeleteAmendmentFile(EhrAmendment ehrAmendment) {
+			ImageStore.DeleteAmdAttach(ehrAmendment);
+		}
+		#endregion Methods - Adding, replacing and deleting
+
+		#region Methods - Reading and exporting
+		///<summary>The image of the entry (ImageStore.OpenImagesEob or OpenImagesAmd), or null when it is not an image. The bitmap is a copy, so the
+		///stored file is not held open while it shows and can be deleted or replaced. localPathCloud is the file just imported, with cloud storage,
+		///so it is not downloaded again. Throws an ApplicationException when the file is missing or cannot be read.</summary>
+		public static Bitmap OpenImage(FileEntry fileEntry,string localPathCloud="") {
+			Bitmap bitmap;
+			if(fileEntry.IsEob) {
+				bitmap=ImageStore.OpenImagesEob(GetEobAttach(fileEntry),localPathCloud??"")[0];
+			}
+			else {
+				bitmap=ImageStore.OpenImagesAmd(GetEhrAmendment(fileEntry))[0];
+			}
+			if(bitmap==null) {
+				return null;
+			}
+			Bitmap bitmapCopy=new Bitmap(bitmap);
+			bitmap.Dispose();
+			return bitmapCopy;
+		}
+
+		///<summary>A file on this computer with the entry's bytes, for the PDF viewer and for the double-click open: with an A to Z folder the stored
+		///file itself; with cloud storage localPathCloud when that is the file just imported, otherwise a temp copy downloaded now; with images in
+		///the database a temp copy written from RawBase64. isTempCopy is true for a copy the caller deletes when done (DeleteTempCopy). Throws an
+		///ApplicationException when there is no file.</summary>
+		public static string GetLocalPath(FileEntry fileEntry,out bool isTempCopy,string localPathCloud="") {
+			isTempCopy=false;
+			string folder;
+			string fileName;
+			string rawBase64;
+			if(fileEntry.IsEob) {
+				EobAttach eobAttach=GetEobAttach(fileEntry);
+				fileName=eobAttach.FileName;
+				rawBase64=eobAttach.RawBase64;
+				folder=ImageStore.GetEobFolder();
+			}
+			else {
+				EhrAmendment ehrAmendment=GetEhrAmendment(fileEntry);
+				fileName=ehrAmendment.FileName;
+				rawBase64=ehrAmendment.RawBase64;
+				folder=ImageStore.GetAmdFolder();
+			}
+			if(PrefC.AtoZfolderUsed==DataStorageType.LocalAtoZ) {
+				string path=ODFileUtils.CombinePaths(folder,fileName);
+				if(!File.Exists(path)) {
+					throw new ApplicationException(Lans.g("ImageStore","File not found:")+" "+path);
+				}
+				return path;
+			}
+			byte[] arrayBytes;
+			if(CloudStorage.IsCloudStorage) {
+				if(!string.IsNullOrEmpty(localPathCloud) && File.Exists(localPathCloud)) {
+					return localPathCloud;
+				}
+				arrayBytes=CloudStorage.Download(folder.Replace("\\","/"),fileName);
+				if(arrayBytes==null || arrayBytes.Length==0) {
+					throw new ApplicationException(Lans.g("ImageStore","File could not be opened:")+" "+fileName);
+				}
+			}
+			else {//Images in the database
+				arrayBytes=ImageStore.GetRawBytes(rawBase64,fileName);
+			}
+			string pathTemp=PrefC.GetRandomTempFile(Path.GetExtension(fileName));
+			File.WriteAllBytes(pathTemp,arrayBytes);
+			isTempCopy=true;
+			return pathTemp;
+		}
+
+		///<summary>Deletes a temp copy from GetLocalPath. Never throws: a copy that is still open stays in the temp folder.</summary>
+		public static void DeleteTempCopy(string path) {
+			if(string.IsNullOrEmpty(path)) {
+				return;
+			}
+			ODException.SwallowAnyException(() => {
+				if(File.Exists(path)) {
+					File.Delete(path);
+				}
+			});
+		}
+
+		///<summary>Saves a copy of the entry's file at saveToPath (ImageStore.ExportEobAttach or ExportAmdAttach): the stored file with an A to Z folder
+		///or cloud storage, the stored bytes with images in the database.</summary>
+		public static void Export(FileEntry fileEntry,string saveToPath) {
+			if(fileEntry.IsEob) {
+				ImageStore.ExportEobAttach(saveToPath,GetEobAttach(fileEntry));
+				return;
+			}
+			ImageStore.ExportAmdAttach(saveToPath,GetEhrAmendment(fileEntry));
+		}
+
+		///<summary>The EOB's row as it is now. Throws an ApplicationException when another workstation deleted it.</summary>
+		private static EobAttach GetEobAttach(FileEntry fileEntry) {
+			EobAttach eobAttach=EobAttaches.GetOne(fileEntry.EobAttachNum);
+			if(eobAttach==null) {
+				throw new ApplicationException(Lans.g("ImageStore","File not found:")+" "+fileEntry.FileName);
+			}
+			return eobAttach;
+		}
+
+		///<summary>The amendment's row as it is now. Throws an ApplicationException when it has no file.</summary>
+		private static EhrAmendment GetEhrAmendment(FileEntry fileEntry) {
+			EhrAmendment ehrAmendment=EhrAmendments.GetOne(fileEntry.EhrAmendmentNum);
+			if(ehrAmendment==null || string.IsNullOrEmpty(ehrAmendment.FileName)) {
+				throw new ApplicationException(Lans.g("ImageStore","File not found:")+" "+fileEntry.FileName);
+			}
+			return ehrAmendment;
+		}
+		#endregion Methods - Reading and exporting
+
+		#region Methods - Log entries
+		///<summary>The text of the Printing log entry of a print (PrinterL makes it, once per print): "EOB printed" for an EOB, as the old window
+		///logged it; "Patient image", the amendment's description (its file name when it has none) and "printed" for an amendment's file.</summary>
+		public static string GetPrintAuditDescription(FileEntry fileEntry) {
+			if(fileEntry.IsEob) {
+				return "EOB printed";
+			}
+			if(string.IsNullOrEmpty(fileEntry.Description)) {
+				return "Patient image "+fileEntry.FileName+" printed";
+			}
+			return "Patient image "+fileEntry.Description+" printed";
+		}
+
+		///<summary>The patient of the Printing log entry: none for an EOB, as the old window logged it; the amendment's patient for an amendment's
+		///file (the old window had no patient and showed an error after printing).</summary>
+		public static long GetPrintAuditPatNum(FileEntry fileEntry) {
+			if(fileEntry.IsEob) {
+				return 0;
+			}
+			return fileEntry.PatNum;
+		}
+
+		///<summary>The text of the Copy log entry: the file's own name (the old window read a document row with the EOB's key instead).</summary>
+		public static string GetCopyLogText(FileEntry fileEntry) {
+			return "Patient image "+fileEntry.FileName+" copied to clipboard";
+		}
+
+		///<summary>The Copy log entry of a copy to the clipboard, with no patient, as the old window made it.</summary>
+		public static void LogCopied(FileEntry fileEntry) {
+			SecurityLogs.MakeLogEntry(EnumPermType.Copy,0,GetCopyLogText(fileEntry));
+		}
+		#endregion Methods - Log entries
 	}
 }
