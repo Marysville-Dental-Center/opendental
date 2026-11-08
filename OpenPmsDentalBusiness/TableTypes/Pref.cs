@@ -2917,8 +2917,6 @@ namespace OpenPmsDentalBusiness {
 	public enum AccountingSoftware {
 		[Description("Open PMS - Dental")]
 		OpenDental,
-		///<summary>QuickBooks Desktop (QBFC), removed in stage 0 of the .NET 10 move. Kept so the numbers stay: the preference stores the number, and a
-		///database still set to it works as OpenDental (Accounts.GetAccountingSoftwareInUse).</summary>
 		[Description("QuickBooks")]
 		QuickBooks,
 		[Description("QuickBooks Online")]

@@ -23,9 +23,6 @@
     </UpgradeBackupLocation>
     <IsWebBootstrapper>true</IsWebBootstrapper>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <!-- No XmlSerializers assembly in any configuration (stage 0 of the .NET 10 move, S0-2a, docs/specs/net10-plan.md): SGen only pre-built
-         serializers for the SOAP proxies, XmlSerializer builds them at run time, and the release retires the files. -->
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <ResGenToolArchitecture>Managed32Bit</ResGenToolArchitecture>
     <TargetFrameworkProfile />
     <PublishUrl>http://localhost/OpenPmsDental/</PublishUrl>
@@ -54,6 +51,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
     <Prefer32Bit>false</Prefer32Bit>
     <CodeAnalysisRuleSet>OpenPmsDental.ruleset</CodeAnalysisRuleSet>
     <LangVersion>8.0</LangVersion>
@@ -72,6 +70,7 @@
     <LangVersion>8.0</LangVersion>
     <DocumentationFile>
     </DocumentationFile>
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <PropertyGroup />
   <PropertyGroup>
@@ -103,6 +102,19 @@
   <ItemGroup>
     <Reference Include="Health.Direct.Common">
       <HintPath>..\Required dlls\Health.Direct.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Interop.CDRDATALib">
+      <HintPath>..\Required dlls\Interop.CDRDATALib.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Interop.CDRDicom">
+      <HintPath>..\Required dlls\Interop.CDRDicom.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Interop.QBFC10, Version=11.0.0.29, Culture=neutral, PublicKeyToken=31d8aec643e18259">
+      <SpecificVersion>False</SpecificVersion>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+      <HintPath>..\Required dlls\Interop.QBFC10.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualBasic" />
@@ -1447,6 +1459,9 @@
     <Compile Include="Forms\FormTerminal.designer.cs">
       <DependentUpon>FormTerminal.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormTerminalConnection.designer.cs">
+      <DependentUpon>FormTerminalConnection.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormTimeAdjustEdit.designer.cs">
       <DependentUpon>FormTimeAdjustEdit.cs</DependentUpon>
     </Compile>
@@ -1524,6 +1539,12 @@
     </Compile>
     <Compile Include="Forms\FormQuickBooksOnlineSetup.designer.cs">
       <DependentUpon>FormQuickBooksOnlineSetup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormQuickBooksSetup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormQuickBooksSetup.designer.cs">
+      <DependentUpon>FormQuickBooksSetup.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormImagingDeviceEdit.cs">
       <SubType>Form</SubType>
@@ -2515,6 +2536,9 @@
     </Compile>
     <Compile Include="Forms\FormClaimCustomTrackingUpdate.designer.cs">
       <DependentUpon>FormClaimCustomTrackingUpdate.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormTerminalConnection.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormTransworldSetup.cs">
       <SubType>Form</SubType>
@@ -3910,6 +3934,12 @@
     </Compile>
     <Compile Include="Forms\FormInstallmentPlanEdit.designer.cs">
       <DependentUpon>FormInstallmentPlanEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormTxtMsgEdit.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormTxtMsgEdit.designer.cs">
+      <DependentUpon>FormTxtMsgEdit.cs</DependentUpon>
     </Compile>
     <Compile Include="Forms\FormEtrans277Edit.cs">
       <SubType>Form</SubType>
@@ -6039,6 +6069,11 @@
     <Compile Include="User Controls\ValidTime.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Web References\CallFireService\Reference.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Reference.map</DependentUpon>
+    </Compile>
     <EmbeddedResource Include="Bridges\FormDrCeph.resx">
       <DependentUpon>FormDrCeph.cs</DependentUpon>
     </EmbeddedResource>
@@ -6302,6 +6337,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormQuickBooksOnlineSetup.resx">
       <DependentUpon>FormQuickBooksOnlineSetup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormQuickBooksSetup.resx">
+      <DependentUpon>FormQuickBooksSetup.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormImagingDeviceEdit.resx">
       <DependentUpon>FormImagingDeviceEdit.cs</DependentUpon>
@@ -6628,6 +6666,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormClaimCustomTrackingUpdate.resx">
       <DependentUpon>FormClaimCustomTrackingUpdate.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormTerminalConnection.resx">
+      <DependentUpon>FormTerminalConnection.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormTransworldSetup.resx">
       <DependentUpon>FormTransworldSetup.cs</DependentUpon>
@@ -7338,6 +7379,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormInstallmentPlanEdit.resx">
       <DependentUpon>FormInstallmentPlanEdit.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormTxtMsgEdit.resx">
+      <DependentUpon>FormTxtMsgEdit.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormEtrans277Edit.resx">
       <DependentUpon>FormEtrans277Edit.cs</DependentUpon>
@@ -8928,6 +8972,11 @@
     <Compile Include="User Controls\ValidNum.cs">
       <SubType>Component</SubType>
     </Compile>
+    <None Include="Web References\CallFireService\Reference.map">
+      <Generator>MSDiscoCodeGenerator</Generator>
+      <LastGenOutput>Reference.cs</LastGenOutput>
+    </None>
+    <None Include="Web References\CallFireService\SMSService.wsdl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Pearl.txt" />
@@ -9411,6 +9460,22 @@
     <None Include="Resources\Unsched Treat Plans.rdl" />
     <None Include="Resources\up.gif" />
     <None Include="Resources\DeleteX.gif" />
+  </ItemGroup>
+  <ItemGroup>
+    <WebReferences Include="Web References\" />
+  </ItemGroup>
+  <ItemGroup>
+    <WebReferenceUrl Include="https://www.callfire.com/service/SMSService%3fwsdl">
+      <UrlBehavior>Dynamic</UrlBehavior>
+      <RelPath>Web References\CallFireService\</RelPath>
+      <UpdateFromURL>https://www.callfire.com/service/SMSService%3fwsdl</UpdateFromURL>
+      <ServiceLocationURL>
+      </ServiceLocationURL>
+      <CachedDynamicPropName>
+      </CachedDynamicPropName>
+      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
+      <CachedSettingsPropName>OpenDental_CallFireService_SMSService</CachedSettingsPropName>
+    </WebReferenceUrl>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

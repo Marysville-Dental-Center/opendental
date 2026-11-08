@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  <!-- Package BIN-B (docs/port-notes/BIN-B.md): binaries we may not redistribute stay out, the zip replacement for DotNetZip, and the
-       Windows.winmd and installutil reference flags. Since stage 0 of the .NET 10 move (S0-2a) also the integrations it removed: QuickBooks
-       Desktop, Topaz signature pads (which BIN-B had loaded at run time), CallFire texting, Divvy postcards and the BCBS Georgia dial-up terminal
-       (which BIN-B had moved off RS232.dll). No database, device or network is needed. Every .cs file under this folder is compiled. -->
+  <!-- Package BIN-B (docs/port-notes/BIN-B.md): binaries we may not redistribute stay out, the zip replacement for DotNetZip, the Topaz pad
+       loaded at run time, the serial terminal without RS232.dll, and the Windows.winmd and installutil reference flags. No database, device or
+       network is needed. Every .cs file under this folder is compiled. -->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>

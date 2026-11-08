@@ -28,12 +28,23 @@ namespace OpenPmsDental.UI {
 		private void InitializeComponent() {
 			this.components = new System.ComponentModel.Container();
 			this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
+			this.butTopazSign = new System.Windows.Forms.Button();
 			this.butClearSig = new System.Windows.Forms.Button();
 			this.butESign = new System.Windows.Forms.Button();
 			this.labelInvalidSig = new System.Windows.Forms.Label();
 			this.signatureBox = new OpenPmsDental.UI.SignatureBox();
 			this.SuspendLayout();
 			// 
+			// butTopazSign
+			// 
+			this.butTopazSign.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			this.butTopazSign.Image = global::OpenPmsDentalBusiness.Properties.Resources.topazPen10;
+			this.butTopazSign.Location = new System.Drawing.Point(326, 0);
+			this.butTopazSign.Name = "butTopazSign";
+			this.butTopazSign.Size = new System.Drawing.Size(20, 20);
+			this.butTopazSign.TabIndex = 82;
+			this.toolTip1.SetToolTip(this.butTopazSign, "Sign Topaz");
+			this.butTopazSign.Click += new System.EventHandler(this.butTopazSign_Click);
 			// 
 			// butClearSig
 			// 
@@ -91,6 +102,7 @@ namespace OpenPmsDental.UI {
 			this.BackColor = System.Drawing.SystemColors.ControlDark;
 			this.Controls.Add(this.butESign);
 			this.Controls.Add(this.labelInvalidSig);
+			this.Controls.Add(this.butTopazSign);
 			this.Controls.Add(this.butClearSig);
 			this.Controls.Add(this.signatureBox);
 			this.Name = "SignatureBoxWrapper";
@@ -103,6 +115,7 @@ namespace OpenPmsDental.UI {
 
 		private Button butClearSig;
 		private System.Windows.Forms.ToolTip toolTip1;
+		private Button butTopazSign;
 		private SignatureBox signatureBox;
 		private System.Windows.Forms.Label labelInvalidSig;
 		private Button butESign;

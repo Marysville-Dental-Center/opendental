@@ -73,10 +73,13 @@ namespace OpenPmsDental{
 			if(!Security.IsAuthorized(EnumPermType.ApptConfirmStatusEdit,suppressMessage:true)) {//Suppress message because it would be very annoying to users.
 				comboStatus.Enabled=false;
 			}
+			if(!Programs.IsEnabled(ProgramName.CallFire)) {
+				butText.Enabled=false;
+			}
 			FillComboEmail();
 			checkGroupFamilies.Checked=PrefC.GetBool(PrefName.ConfirmGroupByFamily);
 			Cursor=Cursors.Default;
-			Plugins.HookAddCode(this,"FormConfirmList.Load_End");//It passed the Text button, removed with CallFire.
+			Plugins.HookAddCode(this,"FormConfirmList.Load_End",butText);
 		}
 
 		///<summary>There is a bug in ODProgress.cs that forces windows that use a progress bar on load to go behind other applications. 
@@ -844,6 +847,144 @@ namespace OpenPmsDental{
 					gridMain.SetSelected(i,true);
 				}
 			}
+		}
+
+		private void butText_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.TextMessageSend)) {
+				return;
+			}
+			long patNum;
+			string wirelessPhone;
+			YN YNtxtMsgOk;
+			if(gridMain.ListGridRows.Count==0) {
+				MsgBox.Show(this,"There are no Patients in the table.  Must have at least one.");
+				return;
+			}
+			if(PrefC.GetLong(PrefName.ConfirmStatusTextMessaged)==0) {
+				MsgBox.Show(this,"You need to set a status for text message confirmations in the Confirmation Setup window.");
+				return;
+			}
+			if(gridMain.SelectedIndices.Length==0) {//None selected. Select all of type text that are not yet confirmed by text message.
+				ContactMethod contactMethod;
+				for(int i=0;i<_tableAppointments.Rows.Count;i++) {
+					contactMethod=(ContactMethod)PIn.Int(_tableAppointments.Rows[i][checkGroupFamilies.Checked?"guarPreferConfirmMethod":"PreferConfirmMethod"].ToString());
+					if(contactMethod!=ContactMethod.TextMessage) {
+						continue;
+					}
+					if(_tableAppointments.Rows[i]["confirmed"].ToString()==Defs.GetName(DefCat.ApptConfirmed,PrefC.GetLong(PrefName.ConfirmStatusTextMessaged))) {//Already confirmed by text
+						continue;
+					}
+					if(!_tableAppointments.Rows[i]["contactMethod"].ToString().StartsWith("Text:")) {//Check contact method
+						continue;
+					}
+					gridMain.SetSelected(i,true);
+				}
+				if(gridMain.SelectedIndices.Length==0) {
+					MsgBox.Show(this,"All patients of text message type have been sent confirmations.");
+					return;
+				}
+			}
+			//deselect the ones that do not have text messages specified or are not OK to send texts to or have already been texted
+			int skipped=0;
+			for(int i=gridMain.SelectedIndices.Length-1;i>=0;i--) {
+				wirelessPhone=_tableAppointments.Rows[gridMain.SelectedIndices[i]][checkGroupFamilies.Checked?"guarWirelessPhone":"WirelessPhone"].ToString();
+				if(wirelessPhone=="") {//Check for wireless number
+					skipped++;
+					gridMain.SetSelected(gridMain.SelectedIndices[i],false);
+					continue;
+				}
+				YNtxtMsgOk=(YN)PIn.Int(_tableAppointments.Rows[gridMain.SelectedIndices[i]][checkGroupFamilies.Checked?"guarTxtMsgOK":"TxtMsgOk"].ToString());
+				if(YNtxtMsgOk==YN.Unknown	&& PrefC.GetBool(PrefName.TextMsgOkStatusTreatAsNo)) {//Check if OK to text
+					skipped++;
+					gridMain.SetSelected(gridMain.SelectedIndices[i],false);
+					continue;
+				}
+				if(YNtxtMsgOk==YN.No){//Check if OK to text
+					skipped++;
+					gridMain.SetSelected(gridMain.SelectedIndices[i],false);
+					continue;
+				}
+			}
+			if(gridMain.SelectedIndices.Length==0) {
+				MsgBox.Show(this,"None of the selected patients have wireless phone numbers and are OK to text.");
+				return;
+			}
+			if(skipped>0) {
+				MessageBox.Show(Lan.g(this,"Selected patients skipped: ")+skipped.ToString());
+			}
+			if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"Send text message to all of the selected patients?")) {
+				return;
+			}
+			Cursor=Cursors.WaitCursor;
+			FormTxtMsgEdit formTxtMsgEdit=new FormTxtMsgEdit();
+			string confirmationMessage="";
+			string familyApptList="";
+			List<long> listAptNums=new List<long>();
+			//Appointment apt;
+			List<long> listAptNumsTable=_tableAppointments.Select().Select(x => PIn.Long(x["AptNum"].ToString())).ToList();
+			List<Appointment> listAppointments=Appointments.GetMultApts(listAptNumsTable);//Get all appointments with one query rather than looping.
+			for(int i=0;i<gridMain.SelectedIndices.Length;i++){
+				Patient patient=new Patient();
+				patient.FName=PIn.String(_tableAppointments.Rows[gridMain.SelectedIndices[i]]["FName"].ToString());
+				patient.Preferred=PIn.String(_tableAppointments.Rows[gridMain.SelectedIndices[i]]["Preferred"].ToString());
+				patient.ClinicNum=PIn.Long(_tableAppointments.Rows[gridMain.SelectedIndices[i]]["ClinicNum"].ToString());
+				patient.PriProv=PIn.Long(_tableAppointments.Rows[gridMain.SelectedIndices[i]]["PriProv"].ToString());
+				long aptNum=PIn.Long(_tableAppointments.Rows[gridMain.SelectedIndices[i]]["AptNum"].ToString());
+				Appointment appt=listAppointments.Find(x => x.AptNum==aptNum);
+				if(appt==null) {
+					continue;//Skipping this confirmation if appointment was deleted, very unlikely to happen.
+				}
+				if(checkGroupFamilies.Checked) {//build the list of appointments a family has scheduled
+					if(i==gridMain.SelectedIndices.Length-1 
+						|| _tableAppointments.Rows[gridMain.SelectedIndices[i]]["Guarantor"].ToString()!=_tableAppointments.Rows[gridMain.SelectedIndices[i+1]]["Guarantor"].ToString()) 
+					{
+						if(familyApptList!=""){
+							familyApptList+="\r\n"+PatComm.BuildAppointmentMessage(patient,appt);
+							//continue with sending an email, because there are no more family members
+						}
+					}
+					else if(_tableAppointments.Rows[gridMain.SelectedIndices[i]]["Guarantor"].ToString()==_tableAppointments.Rows[gridMain.SelectedIndices[i+1]]["Guarantor"].ToString()) {
+						listAptNums.Add(PIn.Long(_tableAppointments.Rows[gridMain.SelectedIndices[i]]["AptNum"].ToString()));
+						familyApptList+=(familyApptList!=""?"\r\n":"")+PatComm.BuildAppointmentMessage(patient,appt);
+						continue;//skip sending emails to anyone that isn't the guarantor or isn't a single patient
+					}
+				}
+				listAptNums.Add(PIn.Long(_tableAppointments.Rows[gridMain.SelectedIndices[i]]["AptNum"].ToString()));
+				patNum=PIn.Long(_tableAppointments.Rows[gridMain.SelectedIndices[i]][checkGroupFamilies.Checked?"Guarantor":"PatNum"].ToString());
+				wirelessPhone=PIn.String(_tableAppointments.Rows[gridMain.SelectedIndices[i]][checkGroupFamilies.Checked?"guarWirelessPhone":"WirelessPhone"].ToString());
+				YNtxtMsgOk=((YN)PIn.Int(_tableAppointments.Rows[gridMain.SelectedIndices[i]][checkGroupFamilies.Checked?"guarTxtMsgOK":"TxtMsgOk"].ToString()));
+				if(checkGroupFamilies.Checked && familyApptList!="") {
+					confirmationMessage=PrefC.GetString(PrefName.ConfirmTextFamMessage);
+					confirmationMessage=confirmationMessage.Replace("[FamilyApptList]",familyApptList);
+					familyApptList="";
+				}
+				else {
+					confirmationMessage=PatComm.BuildConfirmMessage(ContactMethod.TextMessage,patient,appt);
+				}
+				if(formTxtMsgEdit.SendText(patNum,wirelessPhone,confirmationMessage,YNtxtMsgOk)) {
+					for(int j=0; j<listAptNums.Count; j++) {
+						long aptNumOld=listAptNums[j];
+						long confirmStatusNew=PrefC.GetLong(PrefName.ConfirmStatusTextMessaged);
+						Appointment appointmentOld = Appointments.GetOneApt(aptNumOld);
+						long confirmStatusOld=appointmentOld.Confirmed;
+						Appointments.SetConfirmed(appointmentOld,confirmStatusNew);
+						if(confirmStatusNew!=confirmStatusOld) {
+							//Log confirmation status changes.
+							SecurityLogs.MakeLogEntry(EnumPermType.ApptConfirmStatusEdit,patNum,
+								Lans.g(this,"Appointment confirmation status automatically changed from")+" "
+								+Defs.GetName(DefCat.ApptConfirmed,confirmStatusOld)+" "+Lans.g(this,"to")+" "+Defs.GetName(DefCat.ApptConfirmed,confirmStatusNew)
+								+" "+Lans.g(this,"from the confirmation list")+".",aptNumOld,appointmentOld.DateTStamp);
+						}
+					}
+				}
+				else {//There was an exception thrown in FormTME.SendText() meaning something went wrong.  Give the user an option to stop sending messages.
+					if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"There was an error sending, do you want to continue sending messages?")) {
+						break;
+					}
+				}
+			}
+			FillMain();
+			Cursor=Cursors.Default;
 		}
 
 		private void CheckGroupFamilies_Click(object sender,EventArgs e) {

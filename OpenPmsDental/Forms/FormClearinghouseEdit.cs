@@ -575,10 +575,6 @@ namespace OpenPmsDental{
 		}
 		
 		private void comboCommBridge_SelectionChangeCommitted(object sender,EventArgs e) {
-			if(comboCommBridge.GetSelected<EclaimsCommBridge>()==EclaimsCommBridge.BCBSGA) {
-				//Still listed, so that the list keeps the stored numbers, but the dial-up terminal was removed in stage 0 of the .NET 10 move.
-				MessageBox.Show(Lan.g("Eclaims",OpenPmsDentalBusiness.Eclaims.Eclaims.BCBSGA_NOT_AVAILABLE_MESSAGE));
-			}
 			FillListBoxEraBehavior();//Update ERA/EOB list box, specifically for if we print ERA vs EOB.
 			bool hasEclaimsEnabled= comboCommBridge.GetSelected<EclaimsCommBridge>().In(
 				EclaimsCommBridge.ClaimConnect,EclaimsCommBridge.EDS,EclaimsCommBridge.Claimstream,

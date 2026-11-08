@@ -25,10 +25,6 @@
 // MySql.Data.dll, which it no longer ships. Report definitions keep naming the provider MySQL.NET.
 // Changed by Open PMS - Dental contributors, 2026-11-02 (docs/specs/db-connection-security.md): GetConnection calls the host's
 // CheckConnection hook, when one is set, before it creates any connection.
-// Changed by Open PMS - Dental contributors, 2026-11-08 (stage 0 of the .NET 10 move, S0-2a, docs/specs/net10-plan.md): the SQL Server,
-// ODBC and OLE DB data providers are removed. GetConnection refuses the sql, odbc and oledb providers with a clear error before it calls
-// the connection hook (it used to create SqlConnection, OdbcConnection and OleDbConnection), the built-in configuration no longer lists them,
-// and GetTableSelect no longer looks for an ODBC MySQL driver.
 using System;
 using System.Xml;
 using System.Collections;
@@ -36,6 +32,9 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Reflection;
 using System.Data;
+using System.Data.SqlClient;
+using System.Data.OleDb;
+using System.Data.Odbc;
 using System.IO;
 using fyiReporting.RDL;
 
@@ -48,8 +47,8 @@ namespace fyiReporting.RDL
 	{
 		static internal IDictionary SqlEntries=new ListDictionary();	// list of entries
 		///<summary>Set by the host program: called with the data provider name, the name of the connection class the engine would create
-		///(the configured class of the provider) and the connection string, before any connection is created. It throws to refuse the
-		///connection. Null: no check. The removed sql, odbc and oledb providers are refused before it is called.</summary>
+		///(SqlConnection, OdbcConnection, OleDbConnection, or the configured class of the provider) and the connection string, before any
+		///connection is created. It throws to refuse the connection. Null: no check.</summary>
 		public static Action<string,string,string> CheckConnection;
         static internal IDictionary<string, CustomReportItemEntry> CustomReportItemEntries = new System.Collections.Generic.Dictionary<string, CustomReportItemEntry>(5);	// list of entries
 
@@ -100,6 +99,22 @@ namespace fyiReporting.RDL
 			<TableSelect>show tables</TableSelect>
 			<Interface>SQL</Interface>
 			<ReplaceParameters>true</ReplaceParameters>
+		</DataSource>
+		<DataSource>
+			<DataProvider>SQL</DataProvider>
+			<TableSelect>SELECT TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES ORDER BY 2, 1</TableSelect>
+			<Interface>SQL</Interface>
+		</DataSource>
+		<DataSource>
+			<DataProvider>ODBC</DataProvider>
+			<TableSelect>SELECT TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES ORDER BY 2, 1</TableSelect>
+			<Interface>SQL</Interface>
+			<ReplaceParameters>true</ReplaceParameters>
+		</DataSource>
+		<DataSource>
+			<DataProvider>OLEDB</DataProvider>
+			<TableSelect>SELECT TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES ORDER BY 2, 1</TableSelect>
+			<Interface>SQL</Interface>
 		</DataSource>
 		<DataSource>
 			<DataProvider>XML</DataProvider>
@@ -300,11 +315,23 @@ namespace fyiReporting.RDL
 			switch (provider.ToLower())
 			{
 				case "sql":
+					// can't connect unless information provided;
+					//   when user wants to set the connection programmatically this they should do this
+					if (checkConnection != null)
+						checkConnection(provider, typeof(SqlConnection).FullName, cstring);
+					if (cstring.Length > 0)
+						cn = new SqlConnection(cstring);
+					break;
 				case "odbc":
+					if (checkConnection != null)
+						checkConnection(provider, typeof(OdbcConnection).FullName, cstring);
+					cn = new OdbcConnection(cstring);
+					break;
 				case "oledb":
-					// The SQL Server, ODBC and OLE DB providers were removed. Refused here, before the hook: without these cases the provider
-					// would fall to the default branch, which returns null without calling the hook when a configuration file still lists it.
-					throw new NotSupportedException(GetProviderRemovedMessage(provider));
+					if (checkConnection != null)
+						checkConnection(provider, typeof(OleDbConnection).FullName, cstring);
+					cn = new OleDbConnection(cstring);
+					break;
 				default:
 					SqlConfigEntry sce = SqlEntries[provider] as SqlConfigEntry;
 					if (sce == null || sce.CodeModule == null)
@@ -328,13 +355,6 @@ namespace fyiReporting.RDL
 			return cn;
 		}
 		
-		///<summary>The error GetConnection gives for the removed sql, odbc and oledb providers.</summary>
-		public static string GetProviderRemovedMessage(string provider)
-		{
-			return string.Format("The data provider '{0}' is not available in this version: the SQL Server, ODBC and OLE DB data providers "
-				+"were removed. Reports use the MySQL.NET data provider.", provider);
-		}
-
 		static public string GetTableSelect(string provider)
 		{
 			return GetTableSelect(provider, null);
@@ -350,7 +370,21 @@ namespace fyiReporting.RDL
 		{
 			SqlConfigEntry sce = SqlEntries[provider] as SqlConfigEntry;
 			if (sce == null)
+			{
+				if (cn != null)
+				{
+					OdbcConnection oc = cn as OdbcConnection;
+					if (oc != null && oc.Driver.ToLower().IndexOf("my") >= 0)	// not a good way but ...
+						return "SHOW TABLES";					// mysql syntax is non-standard 
+				}
 				return "SELECT TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES ORDER BY 2, 1";
+			}
+			if (cn != null)
+			{
+				OdbcConnection oc = cn as OdbcConnection;
+				if (oc != null && oc.Driver.ToLower().IndexOf("my") >= 0)	// not a good way but ...
+					return "SHOW TABLES";					// mysql syntax is non-standard 
+			}
 			return sce.TableSelect;
 		}
 

@@ -72,6 +72,9 @@ namespace OpenPmsDental {
 		}
 
 		private void FormRecallList_Load(object sender, System.EventArgs e) {
+			if(ODBuild.IsDebug()) {
+				butECards.Visible=true;
+			}
 			checkGroupFamiliesRecalls.Checked=PrefC.GetBool(PrefName.RecallGroupByFamily);
 			checkGroupFamiliesReact.Checked=PrefC.GetBool(PrefName.ReactivationGroupByFamily);
 			#region Fill Sort Types
@@ -696,6 +699,160 @@ namespace OpenPmsDental {
 			if(formRecallListUndo.DialogResult==DialogResult.OK) {
 				FillRecalls();
 			}
+		}
+
+		private void butECards_Click(object sender,EventArgs e) {
+			if(!Programs.IsEnabled(ProgramName.Divvy)) {
+				if(MsgBox.Show(this,MsgBoxButtons.OKCancel,"The Divvy Program Link is not enabled. Would you like to enable it now?")) {
+					using FormProgramLinkEdit formProgramLinkEdit=new FormProgramLinkEdit();
+					formProgramLinkEdit.ProgramCur=Programs.GetCur(ProgramName.Divvy);
+					formProgramLinkEdit.ShowDialog();
+					DataValid.SetInvalid(InvalidType.Programs);
+				}
+				if(!Programs.IsEnabled(ProgramName.Divvy)) {
+					return;
+				}
+			}
+			if(gridRecalls.ListGridRows.Count < 1) {
+				MessageBox.Show(Lan.g(this,"There are no Patients in the Recall table.  Must have at least one to send."));
+				return;
+			}
+			if(PrefC.GetLong(PrefName.RecallStatusMailed)==0) {
+				MsgBox.Show(this,"You need to set a status first in the Recall Setup window.");
+				return;
+			}
+			if(gridRecalls.SelectedIndices.Length==0) {
+				for(int i=0;i<gridRecalls.ListGridRows.Count;i++){
+					ContactMethod contactMethod=((PatRowTag)gridRecalls.ListGridRows[i].Tag).ContactMethodRecallPref;
+					if(contactMethod.In(ContactMethod.Mail,ContactMethod.None)){
+						gridRecalls.SetSelected(i);
+					}
+				}
+			}
+			if(gridRecalls.SelectedIndices.Length==0) {
+				MsgBox.Show(this,"No patients of mail type.");
+				return;
+			}
+			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Send postcards for all of the selected patients?")) {
+				return;
+			}
+			List<long> listRecallNums=gridRecalls.SelectedTags<PatRowTag>().Select(x => x.PriKeyNum).ToList();
+			_tableAddress=Recalls.GetAddrTable(listRecallNums,checkGroupFamiliesRecalls.Checked,comboSortRecalls.GetSelected<RecallListSort>());
+			DivvyConnect.Postcard postcard;
+			DivvyConnect.Recipient recipient;
+			DivvyConnect.Postcard[] listPostcards=new DivvyConnect.Postcard[gridRecalls.SelectedIndices.Length];
+			string message;
+			long clinicNum;
+			Clinic clinic;
+			string phone;
+			for(int i=0;i<_tableAddress.Rows.Count;i++) {
+				postcard=new DivvyConnect.Postcard();
+				recipient=new DivvyConnect.Recipient();
+				recipient.Name=_tableAddress.Rows[i]["patientNameFL"].ToString();
+				recipient.ExternalRecipientID=_tableAddress.Rows[i]["patNums"].ToString();
+				recipient.Address1=_tableAddress.Rows[i]["Address"].ToString();//Includes Address2
+				recipient.City=_tableAddress.Rows[i]["City"].ToString();
+				recipient.State=_tableAddress.Rows[i]["State"].ToString();
+				recipient.Zip=_tableAddress.Rows[i]["Zip"].ToString();
+				postcard.AppointmentDateTime=PIn.Date(_tableAddress.Rows[i]["dateDue"].ToString());//js I don't know why they would ask for this.  We put this in our message.
+				//Body text, family card ------------------------------------------------------------------
+				if(checkGroupFamiliesRecalls.Checked	&& _tableAddress.Rows[i]["famList"].ToString()!=""){
+					if(_tableAddress.Rows[i]["numberOfReminders"].ToString()=="0") {
+						message=PrefC.GetString(PrefName.RecallPostcardFamMsg);
+					}
+					else if(_tableAddress.Rows[i]["numberOfReminders"].ToString()=="1") {
+						message=PrefC.GetString(PrefName.RecallPostcardFamMsg2);
+					}
+					else {
+						message=PrefC.GetString(PrefName.RecallPostcardFamMsg3);
+					}
+					message=message.Replace("[FamilyList]",_tableAddress.Rows[i]["famList"].ToString());
+				}
+				//Body text, single card-------------------------------------------------------------------
+				else{
+					if(_tableAddress.Rows[i]["numberOfReminders"].ToString()=="0") {
+						message=PrefC.GetString(PrefName.RecallPostcardMessage);
+					}
+					else if(_tableAddress.Rows[i]["numberOfReminders"].ToString()=="1") {
+						message=PrefC.GetString(PrefName.RecallPostcardMessage2);
+					}
+					else {
+						message=PrefC.GetString(PrefName.RecallPostcardMessage3);
+					}
+					message=message.Replace("[DueDate]",_tableAddress.Rows[i]["dateDue"].ToString());
+					message=message.Replace("[NameF]",_tableAddress.Rows[i]["patientNameF"].ToString());
+					message=message.Replace("[NameFL]", _tableAddress.Rows[i]["patientNameFL"].ToString());
+				}
+				Clinic clinicCur=Clinics.GetClinicForRecall(PIn.Long(_tableAddress.Rows[i]["recallNums"].ToString().Split(',').FirstOrDefault()));
+				message=message.Replace("[ClinicName]",clinicCur.Abbr);
+				message=message.Replace("[ClinicPhone]",clinicCur.Phone);
+				message=message.Replace("[PracticeName]",PrefC.GetString(PrefName.PracticeTitle));
+				message=message.Replace("[PracticePhone]",PrefC.GetString(PrefName.PracticePhone));
+				string officePhone=clinicCur.Phone;
+				if(string.IsNullOrEmpty(officePhone)) {
+					officePhone=PrefC.GetString(PrefName.PracticePhone);
+				}
+				message=message.Replace("[OfficePhone]",clinicCur.Phone);
+				postcard.Message=message;
+				postcard.Recipient=recipient;
+				postcard.DesignID=PIn.Int(ProgramProperties.GetPropVal(ProgramName.Divvy,"DesignID for Recall Cards"));
+				listPostcards[i]=postcard;
+			}
+			DivvyConnect.Practice practice=new DivvyConnect.Practice();
+			clinicNum=PIn.Long(_tableAddress.Rows[patientsPrinted]["ClinicNum"].ToString());
+			Clinic clinicAssigned=Clinics.GetClinic(clinicNum); // this patient assigned to a clinic
+			bool isUsingClinics=PrefC.HasClinicsEnabled && Clinics.GetCount() > 0; //if using clinics
+			if(isUsingClinics && clinicAssigned !=null) { 
+				clinic=Clinics.GetClinic(clinicNum);
+				practice.Company=clinic.Description;
+				practice.Address1=clinic.Address;
+				practice.Address2=clinic.Address2;
+				practice.City=clinic.City;
+				practice.State=clinic.State;
+				practice.Zip=clinic.Zip;
+				phone=clinic.Phone;
+			}
+			else {
+				practice.Company=PrefC.GetString(PrefName.PracticeTitle);
+				practice.Address1=PrefC.GetString(PrefName.PracticeAddress);
+				practice.Address2=PrefC.GetString(PrefName.PracticeAddress2);
+				practice.City=PrefC.GetString(PrefName.PracticeCity);
+				practice.State=PrefC.GetString(PrefName.PracticeST);
+				practice.Zip=PrefC.GetString(PrefName.PracticeZip);
+				phone=PrefC.GetString(PrefName.PracticePhone);
+			}
+			practice.Phone=TelephoneNumbers.ReFormat(phone);
+			DivvyConnect.PostcardServiceClient postcardServiceClient=new DivvyConnect.PostcardServiceClient();
+			DivvyConnect.PostcardReturnMessage postcardReturnMessage=new DivvyConnect.PostcardReturnMessage();
+			string messages="";
+			Cursor=Cursors.WaitCursor;
+			string password=Secrets.TryDecrypt(ProgramProperties.GetPropVal(ProgramName.Divvy,"Password"));
+			Guid guid=Guid.Parse(ProgramProperties.GetPropVal(ProgramName.Divvy,"API Key"));
+			string username=ProgramProperties.GetPropVal(ProgramName.Divvy,"Username");
+			try {
+				postcardReturnMessage=postcardServiceClient.SendPostcards(guid,username,password,listPostcards,practice);
+			}
+			catch (Exception ex) {
+				messages+="Exception: "+ex.Message+"\r\nData: "+ex.Data+"\r\n";
+			}
+			messages+="MessageCode: "+postcardReturnMessage.MessageCode.ToString();//MessageCode enum. 0=CompletedSuccessfully, 1=CompletedWithErrors, 2=Failure
+			MsgBox.Show(this,"Return Messages: "+postcardReturnMessage.Message+"\r\n"+messages);
+			if(postcardReturnMessage.MessageCode==DivvyConnect.MessageCode.CompletedSucessfully) {
+				Cursor=Cursors.WaitCursor;
+				if(IsRecallGridSelected()) {
+					ProcessComms(CommItemTypeAuto.RECALL,IsRecallGridSelected(),CommItemMode.Mail);
+				}
+				else {
+					ProcessComms(CommItemTypeAuto.REACT,IsRecallGridSelected(),CommItemMode.Mail);
+				}
+			}
+			else if(postcardReturnMessage.MessageCode==DivvyConnect.MessageCode.CompletedWithErrors) {
+				for(int i=0;i<postcardReturnMessage.PostcardMessages.Length;i++) {
+					//todo: process return messages. Update commlog and change recall statuses for postcards that were sent.
+				}
+			}
+			FillRecalls();
+			Cursor=Cursors.Default;
 		}
 
 		///<summary>Shared functionality with Recalls and Reactivations, be careful when making changes.</summary>

@@ -548,7 +548,7 @@ namespace OpenPmsDentalBusiness {
 				RetrieveAndImport(clearinghouseClin,true,isTimeToRetrieve: isTimeToRetrieve);
 			}
 			else if(clearinghouseHq.CommBridge==EclaimsCommBridge.BCBSGA) {
-				//The BCBS Georgia dial-up terminal was removed in stage 0 of the .NET 10 move, so nothing is retrieved (this branch only dialed).
+				BCBSGA.Retrieve(clearinghouseClin,true,new TerminalConnector());
 			}
 			else if(clearinghouseHq.Eformat==ElectronicClaimFormat.Canadian && CultureInfo.CurrentCulture.Name.EndsWith("CA")) {
 				//Or the Eformat is Canadian and the region is Canadian.  In Canada, the "Outstanding Reports" are received upon request.
@@ -614,11 +614,9 @@ namespace OpenPmsDentalBusiness {
 				}
 			}
 			else if(clearinghouseClin.CommBridge==EclaimsCommBridge.BCBSGA) {
-				//The BCBS Georgia dial-up terminal was removed in stage 0 of the .NET 10 move. Get Reports says so; the automatic retrieval stays quiet.
-				if(isAutomaticMode) {
-					return "";
+				if(!BCBSGA.Retrieve(clearinghouseClin,true,new TerminalConnector(),odProgressExtended)) {
+					return Lans.g("FormClaimReports","Error retrieving.")+"\r\n"+BCBSGA.ErrorMessage;
 				}
-				return Lans.g("FormClaimReports","Error retrieving.")+"\r\n"+Lans.g("Eclaims",Eclaims.Eclaims.BCBSGA_NOT_AVAILABLE_MESSAGE);
 			}
 			else if(clearinghouseClin.CommBridge==EclaimsCommBridge.ClaimConnect) {
 				if(!Directory.Exists(clearinghouseClin.ResponsePath)) {

@@ -42,6 +42,18 @@
     </Win32Resource>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Interop.CDRDATALib">
+      <HintPath>..\Required dlls\Interop.CDRDATALib.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Interop.CDRDicom">
+      <HintPath>..\Required dlls\Interop.CDRDicom.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Interop.QBFC10">
+      <HintPath>..\Required dlls\Interop.QBFC10.dll</HintPath>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </Reference>
     <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Microsoft.Web.WebView2.Core, Version=1.0.2420.47, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -66,6 +78,7 @@
       <HintPath>..\Required dlls\System.Memory.dll</HintPath>
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Web" />
     <Reference Include="System.Web.Services" />
@@ -114,6 +127,7 @@
     <Compile Include="Bridges\DentForms.cs" />
     <Compile Include="Bridges\Dexis.cs" />
     <Compile Include="Bridges\Digora.cs" />
+    <Compile Include="Bridges\DivvyPostcardService.cs" />
     <Compile Include="Bridges\Dolphin.cs" />
     <Compile Include="Bridges\DrCeph.cs" />
     <Compile Include="Bridges\DTXStudio.cs" />
@@ -160,11 +174,13 @@
     <Compile Include="Bridges\PracticeByNumbers.cs" />
     <Compile Include="Bridges\PreXion.cs" />
     <Compile Include="Bridges\Progeny.cs" />
+    <Compile Include="Bridges\QuickBooks.cs" />
     <Compile Include="Bridges\RapidCall.cs" />
     <Compile Include="Bridges\RayBridge.cs" />
     <Compile Include="Bridges\RayMage.cs" />
     <Compile Include="Bridges\Romexis.cs" />
     <Compile Include="Bridges\Scanora.cs" />
+    <Compile Include="Bridges\Schick.cs" />
     <Compile Include="Bridges\Shining3D.cs" />
     <Compile Include="Bridges\Sirona.cs" />
     <Compile Include="Bridges\SmartDent.cs" />
