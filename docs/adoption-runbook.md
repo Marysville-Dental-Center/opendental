@@ -464,6 +464,14 @@ column, so nothing is recorded here: `migration-preview` (step 0.2) lists what e
 | Preferences, Server Connections - General, Replication: "Read delay after write (ms)" | B-SERVER: `ReplicationWriteReadDelayEnabled` and `ReplicationWriteReadDelayMS` | The milliseconds count only while Enabled is 1 |
 | Lock Date (the global lock date): "Payment plans are not affected by the global lock" | B-PAY: `PayPlansIncludeInGlobalLock` | **Inverted**: Open Dental's 1 (payment plans included in the global lock) shows as not ticked, 0 as ticked |
 | Perio Setup (from the Perio Chart): "Use the term "Recession" (reverts to Gingival Margin when hyperplasia is charted)" | B-PERIO: `PerioRecessionInsteadOfGM` | |
+| Perio Chart, Numbers in red: "Att Ging (<=)" | ODOPTS: `PerioRedAttGing` | Blank or no row: no threshold |
+| Global Security Settings, Domain Login: "Offer domain login in signature boxes' Change User" | ODOPTS: `DomainLoginForSigBoxes` | No row: ticked |
+| Preferences, Account - General, Claim - Receive, Secondary Claims: "Update the fee on unsent secondary claims when a procedure fee changes" | ODOPTS: `ClaimUpdateFeeForSecondary` | No row: not ticked |
+| eForm Setup: "Import a typed allergy that matches no allergy in the list as Other" | ODOPTS: `EFormImportAllergiesAsOther` | No row: ticked |
+| eForm Setup: "Import a typed problem that matches no problem in the list as Other" | ODOPTS: `EFormImportProblemsAsOther` | No row: ticked |
+| Preferences, Treat Plan - General, Frequency Limitations, Insurance History: "Perio scaling procedure code" | ODOPTS: `InsHistPerioScalingCode` | Blank: each perio scaling code group's own History Proc Code |
+| Billing Defaults, Send Setup: "By e-mail" | ODOPTS: `StatementAutoSendEmail` | 0 Never, 1 Ask, 2 Always (the meaning of the values is not public; owner question ODOPTS 6). With Always, e-mail statements go out as soon as billing creates them: settle it before the day |
+| Billing Defaults, Send Setup: "By text" | ODOPTS: `StatementAutoSendSMS` | Nothing is texted: this program has no texting provider |
 
 ## 1. Start of the outage
 

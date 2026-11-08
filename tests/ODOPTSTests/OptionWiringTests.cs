@@ -123,7 +123,7 @@ namespace ODOPTSTests {
 		public void FrequencyPreferences_HaveTheCode_ValidatedAndLogged() {
 			string code=ScratchDb.ReadRepoFile("OpenPmsDental","User Controls","Preferences","UserControlTreatPlanFreqLimit.cs");
 			StringAssert.Contains(code,"textInsHistPerioScalingCode.Text=InsHistCategories.GetPerioScalingCodeSetting();");
-			StringAssert.Contains(code,"if(!ProcedureCodes.IsValidCode(procCode)) {");
+			StringAssert.Contains(code,"string procCodeListed=InsHistCategories.FindProcCode(procCode);");
 			StringAssert.Contains(code,"InsHistCategories.SetPerioScalingCodeSetting(procCode)");
 			StringAssert.Contains(code,"OdOptions.LogChange(EnumPermType.Setup,\"Insurance History perio scaling procedure code\",");
 			StringAssert.Contains(code,"Changed|=UpdateInsHistPerioScalingCode(ref errorMessage);");

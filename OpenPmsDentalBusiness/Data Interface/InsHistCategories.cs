@@ -112,13 +112,26 @@ namespace OpenPmsDentalBusiness {
 		public static string GetPerioScalingProcCode() {
 			Meth.NoCheckMiddleTierRole();
 			try {
-				return GetPerioScalingProcCode(GetPerioScalingCodeSetting(),x => ProcedureCodes.IsValidCode(x) ? ProcedureCodes.GetProcCode(x).ProcCode : "",
-					x => ProcedureCodes.GetFirstOrDefault(y => y.CodeNum==x)?.ProcCode??"");
+				return GetPerioScalingProcCode(GetPerioScalingCodeSetting(),FindProcCode,x => ProcedureCodes.GetFirstOrDefault(y => y.CodeNum==x)?.ProcCode??"");
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
 				return "";//no procedure code cache (a tool or a test without a database): the behaviour without the setting
 			}
+		}
+
+		///<summary>The procedure code as the procedure code list spells it, for a code typed in any case, or blank when the list has no such code.
+		///Uses the procedure code cache.</summary>
+		public static string FindProcCode(string procCode) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrWhiteSpace(procCode)) {
+				return "";
+			}
+			string value=procCode.Trim();
+			if(ProcedureCodes.IsValidCode(value)) {
+				return ProcedureCodes.GetProcCode(value).ProcCode;
+			}
+			return ProcedureCodes.GetFirstOrDefault(x => string.Equals(x.ProcCode,value,StringComparison.OrdinalIgnoreCase))?.ProcCode??"";
 		}
 
 		///<summary>Resolves a setting: first as a procedure code (funcGetProcCode returns the code as the list spells it, or blank), then, when it is a

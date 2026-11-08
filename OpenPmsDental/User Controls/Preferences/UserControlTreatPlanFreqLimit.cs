@@ -44,11 +44,12 @@ namespace OpenPmsDental {
 		private bool UpdateInsHistPerioScalingCode(ref string errorMessage) {
 			string procCode=textInsHistPerioScalingCode.Text.Trim();
 			if(procCode!="") {
-				if(!ProcedureCodes.IsValidCode(procCode)) {
+				string procCodeListed=InsHistCategories.FindProcCode(procCode);
+				if(procCodeListed=="") {
 					errorMessage+="\r\n  - "+labelInsHistPerioScalingCode.Text+": '"+procCode+"'";
 					return false;
 				}
-				procCode=ProcedureCodes.GetProcCode(procCode).ProcCode;
+				procCode=procCodeListed;
 			}
 			string procCodeOld=InsHistCategories.GetPerioScalingCodeSetting();
 			if(!InsHistCategories.SetPerioScalingCodeSetting(procCode)) {
