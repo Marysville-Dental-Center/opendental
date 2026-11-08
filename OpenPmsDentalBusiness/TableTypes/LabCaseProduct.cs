@@ -1,4 +1,5 @@
 using System;
+using System.Xml.Serialization;
 
 namespace OpenPmsDentalBusiness {
 	///<summary>One product of a lab case (for example a crown or a night guard) with its material, shade and teeth. Table added in Open Dental 26.2
@@ -13,7 +14,9 @@ namespace OpenPmsDentalBusiness {
 		public long LabCaseNum;
 		///<summary>FK to patient.PatNum.</summary>
 		public long PatNum;
-		///<summary>Enum:EnumGlidewellProductName The product, from a list Glidewell supplies (for example crown, flipper, night guard).</summary>
+		///<summary>Enum:EnumGlidewellProductName The product, from a list Glidewell supplies (for example crown, flipper, night guard). Serialized as
+		///its number (GlidewellProductXml): XmlSerializer cannot write an enum without members.</summary>
+		[XmlIgnore]
 		public EnumGlidewellProductName GlidewellProduct;
 		///<summary>The material the product is made of, for example "BruxZir".</summary>
 		public string Material;
@@ -36,11 +39,24 @@ namespace OpenPmsDentalBusiness {
 		public LabCaseProduct Copy() {
 			return (LabCaseProduct)MemberwiseClone();
 		}
+
+		///<summary>Used only for serialization purposes (the Middle Tier). XmlSerializer refuses EnumGlidewellProductName, which has no members, so
+		///GlidewellProduct travels as its stored number, whatever that number is.</summary>
+		[XmlElement("GlidewellProduct",typeof(int))]
+		public int GlidewellProductXml {
+			get {
+				return (int)GlidewellProduct;
+			}
+			set {
+				GlidewellProduct=(EnumGlidewellProductName)value;
+			}
+		}
 	}
 
 	///<summary>Stored in labcaseproduct.GlidewellProduct (tinyint). Open Dental's 26.2 database documentation names this enumeration ("From a list
 	///supplied by Glidewell") but publishes none of its values, so none are defined here: a stored number loads as it is and is written back
-	///unchanged. Values may only be added with Open Dental's published numbers.</summary>
+	///unchanged, and the Middle Tier carries it as a number (LabCaseProduct.GlidewellProductXml). Values may only be added with Open Dental's
+	///published numbers.</summary>
 	public enum EnumGlidewellProductName {
 	}
 }

@@ -109,6 +109,10 @@ marked in the reference file.
 - `EnumGlidewellOrderStatus`: the documents list the eight members in order without numbers; the numbers are their order from 0.
 - `EnumGlidewellProductName`: the documents name it ("From a list supplied by Glidewell") but list no value, so the enum has no members; a stored
   number loads and is written back as it is (tested). The `labcaseproduct.GlidewellProduct` column is `tinyint(4)` as published.
+  XmlSerializer refuses an enum without members ("The object does not have serializable members"), so every Middle Tier call that carried a
+  `LabCaseProduct` failed; the field is `[XmlIgnore]` and travels as its number through `LabCaseProduct.GlidewellProductXml`, the pattern of
+  `Color` and `TimeSpan` fields (package S0-T of the .NET 10 plan; a round trip in `tests/MiddleTierMockTests`). No zero member was added:
+  0 may be one of Glidewell's products (P262-GLIDEWELL, owner question 3).
 - The display texts (descriptions) of the new enum members are this program's own wording.
 - The reference is labelled 26.2.0, the version of the documents. Changes in later 26.2.x patches have no published document and are not
   covered; neither are 26.1.x patch changes after the 26.1 document (M2-01).
