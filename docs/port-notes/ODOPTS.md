@@ -1,8 +1,10 @@
 # ODOPTS: the eight Open Dental 25.3 options this program had built without
 
 The owner's answer of 2026-11-07 to the list of options this program built without ([SWMAP.md](SWMAP.md), "Settings of features this
-program built without that option"): "why not just build it?". Branch `next/odopts-1`, cut from `next/swmap-2`. Tests: `tests/ODOPTSTests`,
-plus the package test assemblies named under Checks.
+program built without that option"): "why not just build it?". Branch `next/odopts-1`, cut from `next/swmap-2`; review fixes on
+`next/odopts-2` (Statement Send Setup is Message-to-Pay in Open Dental, so a carried-over Always asks; every path that re-prices a procedure
+updates the secondary claim; eForm entries that are not imported are recorded and shown). Tests: `tests/ODOPTSTests`, plus the package test
+assemblies named under Checks.
 
 ## The rule
 
@@ -103,11 +105,13 @@ marked **INFERRED** and listed as owner questions below, to confirm by testing t
 ## Checks
 
 - Build of `OpenDental.Local.slnf` (Debug x86) through the build lane: 0 errors.
-- Targeted tests, all passed: ODOPTSTests 46/46, SWMAPTests 24/24, RegistryTests 39/39, BPERIOTests 55/55, BCLAIMTests 55/55,
-  InsuranceTests 49/49, BINSHTests 36/36, EFormTests 60/60, M2EFTests 46/46, StatementTests 8/8, BACCTTests 41/41, M2NOTESTests 51/51,
-  SignatureTests 55/55, GroupNoteTests 54/54, BSHELLTests 68/68, M2HISTTests 43/43, BPRINTTests 71/71, M2DUNTests 35/35, M2SDVTests 47/47,
-  M2MISCTests 78/78, M2SHELLTests 39/39, M2AUDITTests 28/28, M2CLAIMRCVTests 54/54, M2SHEETSTests 53/53, M2ESTTests 70/70, BTIMETests 28/28,
-  M2EMPTests 35/35, MaintenanceTests 111/111, SshHostKeyTests 46/46, BEFTests 29/29, AdoptionValidation.Tests 66/66, NoHqTests 58/58.
+- Targeted tests, all passed (after the review fixes, `next/odopts-2`): ODOPTSTests 56/56, SWMAPTests 24/24, RegistryTests 39/39,
+  BPERIOTests 55/55, BCLAIMTests 55/55, InsuranceTests 49/49, BINSHTests 36/36, EFormTests 60/60, M2EFTests 46/46, StatementTests 8/8,
+  BACCTTests 41/41, M2NOTESTests 51/51, SignatureTests 55/55, GroupNoteTests 54/54, BSHELLTests 68/68, M2HISTTests 43/43, BPRINTTests 71/71,
+  M2DUNTests 35/35, M2SDVTests 47/47, M2MISCTests 78/78, M2SHELLTests 39/39, M2AUDITTests 28/28, M2CLAIMRCVTests 54/54, M2SHEETSTests 53/53,
+  M2ESTTests 70/70, BTIMETests 28/28, M2EMPTests 35/35, MaintenanceTests 111/111, SshHostKeyTests 46/46, BEFTests 29/29,
+  AdoptionValidation.Tests 66/66, NoHqTests 58/58; for the fee paths and the appointment code also FeeTests 48/48, InventoryTests 93/93,
+  ApptTests 76/76, BAPPTTests 61/61, M2APPTTests 37/37, BPROCTests 43/43.
 - Not run here: ForkMigrationTests and InitSqlTests (no schema change and no fork migration step in this package; `db/init/new-database.sql`
   is not regenerated).
 - Not checked in the running program: the windows (Perio Chart, Global Security Settings, Preferences, eForm Setup, Statement Send Setup,
