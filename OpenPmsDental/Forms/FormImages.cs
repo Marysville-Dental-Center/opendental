@@ -104,6 +104,12 @@ namespace OpenPmsDental {
 
 		private void FormImages_FormClosed(object sender,FormClosedEventArgs e) {
 			ClearShowing();
+			//S0-F: the PDF viewer closes its browser with the window, while the window still exists, as FormCareCreditWeb's does, instead of later in
+			//the caller's using block, which disposes the window after its handle is gone. A viewer that is still starting stops (LoadPdf).
+			if(_odWebView2!=null) {
+				_odWebView2.Dispose();
+				_odWebView2=null;
+			}
 			for(int i=0;i<_listPathsTemp.Count;i++) {
 				EobAmendmentFiles.DeleteTempCopy(_listPathsTemp[i]);
 			}
@@ -863,6 +869,9 @@ namespace OpenPmsDental {
 		///<summary>Shows the PDF in the viewer, as ControlImageDisplay.LoadPdf does: the PDF JavaScript preference is applied before each navigation.
 		///The file is the stored one with an A to Z folder, or a temp copy (cloud storage, images in the database).</summary>
 		private async void LoadPdf(EobAmendmentFiles.FileEntry fileEntry,string localPathCloud) {
+			if(_odWebView2==null || _odWebView2.IsDisposed) {
+				return;//The window closed.
+			}
 			string filePath="";
 			bool isTempCopy=false;
 			try {
@@ -878,15 +887,20 @@ namespace OpenPmsDental {
 			if(isTempCopy) {
 				_listPathsTemp.Add(filePath);
 			}
+			if(_odWebView2==null || _odWebView2.IsDisposed) {
+				return;//The window closed while the file was downloaded.
+			}
 			_odWebView2FilePath=filePath;
 			panelImage.Visible=false;
 			_odWebView2.Visible=true;
 			try {
 				if(_odWebView2.CoreWebView2==null) {
-					await _odWebView2.Init();//Throws exception if Microsoft WebView2 Runtime is not installed so need to have in try-catch.
+					//Throws exception if Microsoft WebView2 Runtime is not installed so need to have in try-catch. A second PDF shown while the viewer
+					//starts awaits the same start (ODWebView2.Init).
+					await _odWebView2.Init();
 				}
-				if(_odWebView2FilePath!=filePath) {
-					return;//Another file was selected while the viewer started.
+				if(_odWebView2==null || _odWebView2FilePath!=filePath) {
+					return;//Another file was selected, or the window closed, while the viewer started.
 				}
 				_odWebView2.SetScriptEnabled(ImageHelper.IsPdfJavascriptAllowed());//JavaScript in PDFs only when the preference allows it, read for every PDF.
 				_odWebView2.ODWebView2Navigate(filePath);

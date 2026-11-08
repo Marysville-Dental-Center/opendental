@@ -47,12 +47,17 @@ Someday, I will eliminate all the ctor overloads.
 		public List<System.Windows.Controls.UserControl> ListControls;
 		///<summary>This is a separate list from ListControls because users won't need to later query this list. It is not 1:1 with ListControls because some controls lack a label and some controls have an extra label to their right.</summary>
 		private List<Label> _listLabels;
-		///<summary>Only used in one spot. If true, this window will close in 15 seconds if no user input.</summary>
+		///<summary>Only used in one spot (the log-off and close prompt). If true, this window closes by itself after 15 seconds without any user
+		///input: no key, no mouse button and no mouse move over it. The first input stops the countdown for good (S0-F), so the window then waits
+		///for OK or X like any other. X and Esc always mean Cancel.</summary>
 		public bool HasTimeout=false;
-		///<summary>If true, this window has had 15 seconds without user clicking OK or X, so close the window.</summary>
+		///<summary>True if the window closed by itself: 15 seconds went by without any user input. Never true once the user closed it (OK, X or
+		///Esc) or did anything in it.</summary>
 		public bool HasTimedOut=false;
 		public Func<string,bool> FuncOkClick;
 		private DispatcherTimer _dispatcherTimer;
+		///<summary>The countdown of HasTimeout.</summary>
+		private InputBoxTimeout _inputBoxTimeout=new InputBoxTimeout();
 		///<summary>These are the margins for the entire window, not counting the OK and Delete buttons.</summary>
 		private Thickness _thicknessMargins=new Thickness(left:32,top:20,right:40,bottom:60);
 		///<summary>This is the standard width of textboxes, comboBoxes, etc. It's also the max width for labels, which are sized according to their content, but will wrap instead of getting wider than this.</summary>
@@ -73,6 +78,9 @@ Someday, I will eliminate all the ctor overloads.
 			Load+=InputBox_Load;
 			Shown+=InputBox_Shown;
 			PreviewKeyDown+=InputBox_PreviewKeyDown;
+			PreviewMouseDown+=InputBox_PreviewMouseDown;
+			PreviewMouseMove+=InputBox_PreviewMouseMove;
+			FormClosed+=InputBox_FormClosed;
 			butDelete.Visible=false;
 			labelPrompt.Visible=false;
 		}
@@ -220,6 +228,7 @@ Someday, I will eliminate all the ctor overloads.
 
 		#region Methods - Event Handlers
 		private void InputBox_PreviewKeyDown(object sender,KeyEventArgs e) {
+			StopTimeout();//Any key is user input.
 			if(butOK.IsAltKey(Key.O,e)) {
 				butOK_Click(this,new EventArgs());
 			}
@@ -307,14 +316,62 @@ Someday, I will eliminate all the ctor overloads.
 
 		private void InputBox_Shown(object sender,EventArgs e) {
 			if(_dispatcherTimer!=null && HasTimeout) {
+				_inputBoxTimeout.Start();
 				_dispatcherTimer.IsEnabled=true;
+				//The title bar and borders are the frame's (WinForms), not this WPF content: moving or clicking there is user input too.
+				if(_formFrame!=null) {
+					_formFrame.MouseMove+=FormFrame_MouseMove;
+					_formFrame.MouseDown+=FormFrame_MouseDown;
+				}
+			}
+		}
+
+		private void InputBox_PreviewMouseDown(object sender,MouseButtonEventArgs e) {
+			StopTimeout();
+		}
+
+		private void InputBox_PreviewMouseMove(object sender,MouseEventArgs e) {
+			if(!_inputBoxTimeout.IsRunning) {
+				return;
+			}
+			//The cursor's screen position, the same measure as the frame's handler below.
+			if(_inputBoxTimeout.NoteMousePosition(System.Windows.Forms.Control.MousePosition)) {
+				StopTimeout();
+			}
+		}
+
+		private void FormFrame_MouseMove(object sender,System.Windows.Forms.MouseEventArgs e) {
+			if(!_inputBoxTimeout.IsRunning) {
+				return;
+			}
+			if(_inputBoxTimeout.NoteMousePosition(System.Windows.Forms.Control.MousePosition)) {
+				StopTimeout();
+			}
+		}
+
+		private void FormFrame_MouseDown(object sender,System.Windows.Forms.MouseEventArgs e) {
+			StopTimeout();
+		}
+
+		///<summary>A countdown that already ended (closed, timed out or stopped by input) never closes the window afterwards.</summary>
+		private void InputBox_FormClosed(object sender,EventArgs e) {
+			StopTimeout();
+		}
+
+		private void StopTimeout() {
+			_inputBoxTimeout.Stop();
+			if(_dispatcherTimer!=null) {
+				_dispatcherTimer.IsEnabled=false;
 			}
 		}
 
 		private void Timer_Tick(object sender,EventArgs e) {
 			_dispatcherTimer.IsEnabled=false;
-			IsDialogCancel=true;
+			if(!_inputBoxTimeout.TryTimeOut()) {
+				return;//The user did something, or the window closed, first.
+			}
 			HasTimedOut=true;
+			IsDialogCancel=true;
 		}
 		#endregion Methods - Event Handlers
 
@@ -610,7 +667,78 @@ Someday, I will eliminate all the ctor overloads.
 		RadioButton,
 		ListBox
 	}
-	
+
+	///<summary>S0-F: the countdown of InputBox.HasTimeout, apart from the window so it can be tested. It runs from Start until the first user input
+	///(a key, a mouse button, or the mouse moved over the window), until the window closes (OK, X or Esc), or until it times out, whichever comes
+	///first; only the first counts. So a user who is using the window is never overtaken by it, and X means Cancel. A mouse move counts only once
+	///the cursor moved MouseMoveTolerance pixels from where it first was over the window: a window that opens under a resting cursor gets a mouse
+	///move message without anyone touching the mouse.</summary>
+	public class InputBoxTimeout {
+		///<summary>In screen pixels.</summary>
+		public const int MouseMoveTolerance=4;
+		private bool _isRunning;
+		///<summary>True once the countdown ended in any way (input, close or time-out), even before it started: it never runs again.</summary>
+		private bool _isEnded;
+		private bool _isTimedOut;
+		private bool _hasMousePosition;
+		private System.Drawing.Point _pointMouseFirst;
+
+		///<summary>True from Start until input, close or time-out.</summary>
+		public bool IsRunning {
+			get {
+				return _isRunning;
+			}
+		}
+
+		///<summary>True once TryTimeOut ended the countdown.</summary>
+		public bool IsTimedOut {
+			get {
+				return _isTimedOut;
+			}
+		}
+
+		///<summary>Starts the countdown once. A countdown that ended (or input that came before it started) keeps it from ever running.</summary>
+		public void Start() {
+			if(_isRunning || _isEnded) {
+				return;
+			}
+			_isRunning=true;
+			_hasMousePosition=false;
+		}
+
+		///<summary>Ends the countdown for good without timing out: user input, or the window closed.</summary>
+		public void Stop() {
+			_isRunning=false;
+			_isEnded=true;
+		}
+
+		///<summary>The cursor is over the window at this screen position. True if that is user input (the cursor moved), so the caller stops the
+		///countdown. False while the countdown is not running.</summary>
+		public bool NoteMousePosition(System.Drawing.Point pointScreen) {
+			if(!_isRunning) {
+				return false;
+			}
+			if(!_hasMousePosition) {
+				_pointMouseFirst=pointScreen;
+				_hasMousePosition=true;
+				return false;
+			}
+			return Math.Abs(pointScreen.X-_pointMouseFirst.X)>MouseMoveTolerance || Math.Abs(pointScreen.Y-_pointMouseFirst.Y)>MouseMoveTolerance;
+		}
+
+		///<summary>The time is up. True if the countdown was still running, so the window closes by itself; false if input or a close came first.
+		///</summary>
+		public bool TryTimeOut() {
+			if(!_isRunning) {
+				return false;
+			}
+			_isRunning=false;
+			_isEnded=true;
+			_isTimedOut=true;
+			return true;
+		}
+	}
+
 }
 
 

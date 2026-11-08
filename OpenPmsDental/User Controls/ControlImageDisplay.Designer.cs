@@ -12,6 +12,7 @@
 		protected override void Dispose(bool disposing) {
 			if(disposing) {
 				components?.Dispose();
+				_odWebView2Print?.Dispose();//S0-F: in no window, so not among the controls this disposes.
 				_bitmapRaw?.Dispose();
 				if(_bitmapArrayShowing!=null && _bitmapArrayShowing.Length>0){
 					for(int i=0;i<_bitmapArrayShowing.Length;i++){

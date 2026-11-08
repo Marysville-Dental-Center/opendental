@@ -1308,6 +1308,8 @@ namespace OpenPmsDentalBusiness {
 				else if(CloudStorage.IsCloudStorage) {
 					CloudStorage.Delete(ODFileUtils.CombinePaths(patFolder,documents[i].FileName,'/'));
 				}
+				//S0-F: the thumbnail too (a small copy of the image), which the Imaging module saved and nothing removed before.
+				DeleteThumbnailOfDeletedDocument(documents[i],patFolder);
 				//Row from db.  This deletes the "image file" also if it's stored in db.
 				Documents.Delete(documents[i]);
 				ImageDraws.DeleteByDocNum(documents[i].DocNum);
@@ -1444,6 +1446,64 @@ namespace OpenPmsDentalBusiness {
 			}
 			else if(CloudStorage.IsCloudStorage) {
 				CloudStorage.Delete(ODFileUtils.CombinePaths(patFolder,"Thumbnails",doc.FileName,'/'));
+			}
+		}
+
+		///<summary>S0-F: deletes the thumbnail of a document that is being deleted, Thumbnails\[its file name] in the patient's folder (DeleteDocuments
+		///calls it for every document it deletes). Open Dental left it behind, so a deleted image stayed on disk as its thumbnail. See
+		///DeleteThumbnailFile for the storage modes. Never throws.</summary>
+		public static void DeleteThumbnailOfDeletedDocument(Document document,string patFolder) {
+			if(document==null) {
+				return;
+			}
+			DeleteThumbnailFile(patFolder,document.FileName,GetStorageTypeNoThrow());
+		}
+
+		///<summary>S0-F: deletes the thumbnail of a mount that is being deleted, Thumbnails\Mount[MountNum].jpg in the patient's folder (the name
+		///Mounts.GetThumbnail and the Imaging module use). Call it where the mount is deleted, with the patient's folder. Never throws.</summary>
+		public static void DeleteThumbnailOfDeletedMount(Mount mount,string patFolder) {
+			if(mount==null) {
+				return;
+			}
+			DeleteThumbnailFile(patFolder,"Mount"+mount.MountNum.ToString()+".jpg",GetStorageTypeNoThrow());
+		}
+
+		///<summary>S0-F: deletes patFolder\Thumbnails\fileName. Thumbnails are files only with an A to Z folder (LocalAtoZ): Documents.GetThumbnail,
+		///Mounts.GetThumbnail and the Imaging module save them nowhere else, so with cloud storage or images in the database there is nothing to delete
+		///and nothing is sent anywhere. Only a plain file name in an existing patient folder is used, so a blank folder or name never points at another
+		///file. Never throws: a thumbnail that is locked stays behind, as every thumbnail did before, and nothing shows it once its document or mount
+		///is gone. True when no such thumbnail is left.</summary>
+		public static bool DeleteThumbnailFile(string patFolder,string fileName,DataStorageType dataStorageType) {
+			if(dataStorageType!=DataStorageType.LocalAtoZ) {
+				return true;//No thumbnail files with this storage.
+			}
+			if(string.IsNullOrWhiteSpace(patFolder) || string.IsNullOrWhiteSpace(fileName)) {
+				return true;//No patient folder or no file name: no thumbnail of its own.
+			}
+			try {
+				if(fileName!=Path.GetFileName(fileName) || !Directory.Exists(patFolder)) {
+					return true;
+				}
+				string pathThumbnail=ODFileUtils.CombinePaths(patFolder,"Thumbnails",fileName);
+				if(File.Exists(pathThumbnail)) {
+					File.Delete(pathThumbnail);
+				}
+				return !File.Exists(pathThumbnail);
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//Locked, read-only or no permission: the thumbnail stays, as before.
+				return false;
+			}
+		}
+
+		///<summary>PrefC.AtoZfolderUsed, or InDatabase (no thumbnail files) when the preference cannot be read.</summary>
+		private static DataStorageType GetStorageTypeNoThrow() {
+			try {
+				return PrefC.AtoZfolderUsed;
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return DataStorageType.InDatabase;
 			}
 		}
 

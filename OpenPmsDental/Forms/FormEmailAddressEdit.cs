@@ -41,6 +41,9 @@ namespace OpenPmsDental{
 		private bool _isMicrosoftSignedInWithMailRead;
 		///<summary>True if the stored sign-in changed in this window (signed in or out), so the address's session starts over after Save.</summary>
 		private bool _hasMicrosoftSignInChanged;
+		///<summary>Whether the Gmail and Microsoft 365 choices show, as Load decides (Control.Visible reads false until the window shows).</summary>
+		private bool _isRadioGmailShown;
+		private bool _isRadioMicrosoftShown;
 
 		///<summary></summary>
 		public FormEmailAddressEdit(EmailAddress emailAddress,bool isOpenedFromEmailSetup=false) {
@@ -120,11 +123,101 @@ namespace OpenPmsDental{
 			//address already set up for one of them still shows its state, so an office sees its own setting.
 			bool isGmailEnabled=GoogleOAuthSettings.IsEnabled;
 			radioGmail.Visible=isGmailEnabled || _authenticationType==OAuthType.Google;
+			_isRadioGmailShown=isGmailEnabled || _authenticationType==OAuthType.Google;//Visible reads false until the window shows.
 			butAuthGoogle.Enabled=isGmailEnabled;
 			bool isMicrosoft365Enabled=Microsoft365Program.IsEnabled();
 			radioMicrosoft.Visible=isMicrosoft365Enabled || _authenticationType==OAuthType.Microsoft;
+			_isRadioMicrosoftShown=isMicrosoft365Enabled || _authenticationType==OAuthType.Microsoft;
 			butAuthMicrosoft.Enabled=isMicrosoft365Enabled;
 			RefreshEmailTextFields(enableEmailFields);
+		}
+
+		///<summary>S0-F: sizes the Email Authentication box to what it shows, so no empty area is left (with the Gmail and Microsoft 365 program links
+		///off, it held only Password in a box made for both sign-in boxes). The shown choices stack from the top; the password, or the chosen
+		///sign-in's box, goes to their right, all three at one place since only one shows at a time; the box ends below the taller of the two. The
+		///incoming and outgoing settings and the user below follow, and so does the window's height (the buttons are anchored to its bottom).
+		///Called from RefreshEmailTextFields, so it runs on Load and whenever the choice changes. The designer keeps every box in its own place for
+		///editing.</summary>
+		private void LayoutAuthentication() {
+			Control controlDetails=panelPassword;
+			if(radioGmail.Checked) {
+				controlDetails=groupGmail;
+			}
+			else if(radioMicrosoft.Checked) {
+				controlDetails=groupMicrosoft;
+			}
+			Size sizeDetails96=new Size(LayoutManager.Unscale(controlDetails.Width),LayoutManager.Unscale(controlDetails.Height));
+			EmailAuthenticationLayout emailAuthenticationLayout=CalculateAuthenticationLayout(_isRadioGmailShown,_isRadioMicrosoftShown,
+				isPasswordDetails:controlDetails==panelPassword,LayoutManager.Unscale(radioPassword.Height),sizeDetails96);
+			List<RadioButton> listRadioButtons=new List<RadioButton>() { radioPassword };
+			if(_isRadioGmailShown) {
+				listRadioButtons.Add(radioGmail);
+			}
+			if(_isRadioMicrosoftShown) {
+				listRadioButtons.Add(radioMicrosoft);
+			}
+			for(int i=0;i<listRadioButtons.Count;i++) {
+				LayoutManager.MoveLocation(listRadioButtons[i],new Point(listRadioButtons[i].Left,LayoutManager.Scale(emailAuthenticationLayout.ListYRadios[i])));
+			}
+			LayoutManager.MoveLocation(controlDetails,new Point(LayoutManager.Scale(emailAuthenticationLayout.PointDetails.X),
+				LayoutManager.Scale(emailAuthenticationLayout.PointDetails.Y)));
+			LayoutManager.MoveHeight(groupAuthentication,LayoutManager.Scale(emailAuthenticationLayout.HeightGroup));
+			int shift=groupAuthentication.Bottom+LayoutManager.Scale(EmailAuthenticationLayout.GapBelow)-groupIncoming.Top;
+			if(shift==0) {
+				return;
+			}
+			LayoutManager.MoveLocation(groupIncoming,new Point(groupIncoming.Left,groupIncoming.Top+shift));
+			LayoutManager.MoveLocation(groupOutgoing,new Point(groupOutgoing.Left,groupOutgoing.Top+shift));
+			LayoutManager.MoveLocation(panelUserod,new Point(panelUserod.Left,panelUserod.Top+shift));
+			if(HasShown) {
+				Height+=shift;//The window grows or shrinks at its bottom, under the user's eyes.
+				return;
+			}
+			//On Load: the window stays centered where FormODBase put it.
+			Bounds=new Rectangle(Left,Top-shift/2,Width,Height+shift);
+		}
+
+		///<summary>S0-F: the layout of the Email Authentication box in 96 dpi pixels (LayoutAuthentication scales it). isGmailShown and
+		///isMicrosoftShown: those choices show under Password. isPasswordDetails: the password shows beside the choices (Password is chosen),
+		///otherwise the chosen sign-in's box of sizeDetails96. heightRadio96: the height of one choice.</summary>
+		public static EmailAuthenticationLayout CalculateAuthenticationLayout(bool isGmailShown,bool isMicrosoftShown,bool isPasswordDetails,int heightRadio96,
+			Size sizeDetails96)
+		{
+			EmailAuthenticationLayout emailAuthenticationLayout=new EmailAuthenticationLayout();
+			int countRadios=1+(isGmailShown ? 1 : 0)+(isMicrosoftShown ? 1 : 0);
+			for(int i=0;i<countRadios;i++) {
+				emailAuthenticationLayout.ListYRadios.Add(EmailAuthenticationLayout.TopRadios+i*EmailAuthenticationLayout.StepRadios);
+			}
+			int bottomRadios=emailAuthenticationLayout.ListYRadios[countRadios-1]+heightRadio96;
+			//The password's label lines up with the Password choice; a sign-in box starts just below the box's title.
+			int topDetails=(isPasswordDetails ? EmailAuthenticationLayout.TopPassword : EmailAuthenticationLayout.TopSignInBox);
+			emailAuthenticationLayout.PointDetails=new Point(EmailAuthenticationLayout.LeftDetails,topDetails);
+			int bottomDetails=topDetails+sizeDetails96.Height;
+			emailAuthenticationLayout.HeightGroup=Math.Max(bottomRadios,bottomDetails)+EmailAuthenticationLayout.MarginBottom;
+			return emailAuthenticationLayout;
+		}
+
+		///<summary>Where the controls of the Email Authentication box go, in 96 dpi pixels inside the box.</summary>
+		public class EmailAuthenticationLayout {
+			///<summary>The top of the first choice (Password), as in the designer.</summary>
+			public const int TopRadios=22;
+			///<summary>From one choice to the next, as in the designer.</summary>
+			public const int StepRadios=23;
+			///<summary>Right of the choices (the widest, Gmail (OAuth) and Microsoft 365, end at 142).</summary>
+			public const int LeftDetails=147;
+			///<summary>The password panel's top: its label (12 down in the panel) then lines up with the Password choice.</summary>
+			public const int TopPassword=10;
+			///<summary>A sign-in box's top, just below the box's own title, as the Gmail box was in the designer.</summary>
+			public const int TopSignInBox=13;
+			///<summary>Below the lowest control, as the box had below the Gmail box in the designer.</summary>
+			public const int MarginBottom=9;
+			///<summary>From the box to the incoming and outgoing settings below it, as in the designer.</summary>
+			public const int GapBelow=20;
+			///<summary>The top of each shown choice: Password, then Gmail (OAuth) and Microsoft 365 when they show.</summary>
+			public List<int> ListYRadios=new List<int>();
+			///<summary>The top left of the password panel or of the chosen sign-in's box.</summary>
+			public Point PointDetails;
+			public int HeightGroup;
 		}
 
 		private void RefreshEmailTextFields(bool isEnablingEmailFields=false) {
@@ -192,6 +285,7 @@ namespace OpenPmsDental{
 				}
 			}
 			RefreshStatusLabels();
+			LayoutAuthentication();
 		}
 
 		///<summary>Shows whether each address is authorized or signed in. Tokens and caches are never shown.</summary>

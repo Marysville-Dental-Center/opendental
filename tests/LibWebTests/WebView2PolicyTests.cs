@@ -86,9 +86,9 @@ namespace LibWebTests {
 			Assert.AreEqual(0,listViolations.Count,"Only ODWebView2.CreateEnvironmentAsync and WpfControls.UI.WebView2 create an environment:\r\n"
 				+string.Join("\r\n",listViolations));
 			Assert.AreEqual(2,countAllowed,"Both wrappers were found.");
-			//The Images module prints with the environment of its own control.
+			//The Images module prints with the environment of its own control (S0-F: its print browser, _odWebView2Print).
 			string source=TestPaths.ReadSource("OpenPmsDental","User Controls","ControlImageDisplay.cs");
-			StringAssert.Contains(source,"_odWebView2.CoreWebView2.Environment.CreatePrintSettings()");
+			StringAssert.Contains(source,"_odWebView2Print.CoreWebView2.Environment.CreatePrintSettings()");
 		}
 
 		[TestMethod]
