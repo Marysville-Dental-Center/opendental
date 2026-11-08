@@ -185,6 +185,8 @@ changes.
 
 ## For the integrator
 
+**Done on `next/int262-1` (2026-11-07):** the agreed `ProgramName` order and the `Take(2)` relaxation of `P262LinksTests/WiringTests.cs`.
+
 - **`ProgramName` append order.** `p262/links-2` also appends to `ProgramName` right after `MeetInTheCloud` (`AlliedstarConnect`,
   `OrthoComposite`), so `TableTypes/Program.cs` gets a textual conflict there. The agreed order is the Links names first, then Glidewell:
   `MeetInTheCloud, AlliedstarConnect, OrthoComposite, Glidewell`. The numbers do not matter at runtime (`program.ProgName` stores the name),
