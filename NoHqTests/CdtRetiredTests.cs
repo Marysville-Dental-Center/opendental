@@ -113,6 +113,23 @@ namespace NoHqTests {
 				"Database Maintenance should have the Security Hashes tool.");
 		}
 
+		[TestMethod]
+		public void OpenDental_RegistrationKeyBoxesAreRemoved() {
+			//Open Dental's registration keys were removed (docs/decoupling-plan.md), so no window shows or changes one: the Setup Wizard's
+			//Registration Key page and its Pre-Setup category are gone, and so are the key boxes of FormRegistrationKey and FormUpdateSetup.
+			//The RegistrationKey preference itself stays in the database.
+			Assembly assembly=LoadBuiltAssembly("OpenPmsDental.exe");
+			Assert.IsNull(assembly.GetType("OpenPmsDental.User_Controls.SetupWizard.UserControlSetupWizRegKey"),
+				"The Setup Wizard's Registration Key page should be removed.");
+			Assert.IsNull(assembly.GetType("OpenPmsDental.SetupWizard+RegKeySetup"),"The Setup Wizard's Registration Key step should be removed.");
+			CollectionAssert.DoesNotContain(Enum.GetNames(FindType(assembly,"OpenPmsDental.ODSetupCategory")),"PreSetup",
+				"The Pre-Setup category held only the Registration Key step.");
+			AssertNoMembers(FindType(assembly,"OpenPmsDental.FormRegistrationKey"),"labelRegKey","textKey1","textKey1_KeyUp","textKey1_TextChanged",
+				"checkAgree","checkAgree_CheckedChanged","SetOKEnabled","_key");
+			AssertNoMembers(FindType(assembly,"OpenPmsDental.FormUpdateSetup"),"label2","textRegKey","label4","butChangeRegKey","textRegKey_KeyUp",
+				"textRegKey_TextChanged","butChangeRegKey_Click");
+		}
+
 		#region Helpers
 		///<summary>Build output and other git worktrees aren't part of this checkout.</summary>
 		private static bool IsUnderIgnoredFolder(string pathRoot,string path) {

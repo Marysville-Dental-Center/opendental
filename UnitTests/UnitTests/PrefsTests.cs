@@ -38,22 +38,26 @@ namespace UnitTests.Prefs_Tests {
 			//This unit test is for making sure bitwise enums stored in preferences can be stored and retrieved correctly.
 			//The preference that is used is irrelevant since all preferences are technically stored as strings in the database.
 			//However, we'll go ahead and use a bitwise enum preference to make the scenario as realistic as possible.
-			//Get the current value of the EmailSecureStatus preference so that it can be reset after our testing.
-			HostedEmailStatus hostedEmailStatusOrig=PrefC.GetEnum<HostedEmailStatus>(PrefName.EmailSecureStatus);
+			//The ITRANS carrier import options (FormCarriers) are such a preference, saved with Prefs.UpdateInt. Until package S0-5 of the .NET 10
+			//plan this test used the hosted e-mail status preference, which the fork removed with Open Dental's hosted e-mail service.
+			//Get the current value of the ItransImportFields preference so that it can be reset after our testing.
+			ItransImportFields itransImportFieldsOrig=PrefC.GetEnum<ItransImportFields>(PrefName.ItransImportFields);
 			try {
-				HostedEmailStatus hostedEmailStatusExpected=HostedEmailStatus.Enabled | HostedEmailStatus.SignedUp;
-				Assert.IsTrue(hostedEmailStatusExpected.HasFlag(HostedEmailStatus.Enabled));
-				Assert.IsTrue(hostedEmailStatusExpected.HasFlag(HostedEmailStatus.SignedUp));
+				ItransImportFields itransImportFieldsExpected=ItransImportFields.Phone | ItransImportFields.AddMissing;
+				Assert.IsTrue(itransImportFieldsExpected.HasFlag(ItransImportFields.Phone));
+				Assert.IsTrue(itransImportFieldsExpected.HasFlag(ItransImportFields.AddMissing));
 				//Update the enum in the database to a bitwise value.
-				Prefs.UpdateInt(PrefName.EmailSecureStatus,(int)hostedEmailStatusExpected);
+				Prefs.UpdateInt(PrefName.ItransImportFields,(int)itransImportFieldsExpected);
 				//Pull the preference value back out of the database and assert that the bitwise value was preserved.
-				HostedEmailStatus hostedEmailStatusActual=PrefC.GetEnum<HostedEmailStatus>(PrefName.EmailSecureStatus);
-				Assert.IsTrue(hostedEmailStatusActual.HasFlag(HostedEmailStatus.Enabled));
-				Assert.IsTrue(hostedEmailStatusActual.HasFlag(HostedEmailStatus.SignedUp));
+				ItransImportFields itransImportFieldsActual=PrefC.GetEnum<ItransImportFields>(PrefName.ItransImportFields);
+				Assert.IsTrue(itransImportFieldsActual.HasFlag(ItransImportFields.Phone));
+				Assert.IsTrue(itransImportFieldsActual.HasFlag(ItransImportFields.AddMissing));
+				Assert.IsFalse(itransImportFieldsActual.HasFlag(ItransImportFields.Address));
+				Assert.AreEqual(itransImportFieldsExpected,itransImportFieldsActual);
 			}
 			finally {
 				//Put the preference back to the way it was at the beginning of the test.
-				Prefs.UpdateInt(PrefName.EmailSecureStatus,(int)hostedEmailStatusOrig);
+				Prefs.UpdateInt(PrefName.ItransImportFields,(int)itransImportFieldsOrig);
 			}
 		}
 

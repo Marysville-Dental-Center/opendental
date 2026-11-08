@@ -33,20 +33,6 @@ namespace UnitTests.SetupWizardTests {
 		public static void TearDownClass() {
 		}
 
-		[TestMethod]
-		public void SetupWizard_RegKeySetupStatus_Complete() {
-			SetupWizard.RegKeySetup regKeySetup=new SetupWizard.RegKeySetup();
-			string regKey="12567-248287932-83748389";
-			Assert.AreEqual(ODSetupStatus.Complete,regKeySetup.GetSetupStatus(regKey));
-		}
-
-		[TestMethod]
-		public void SetupWizard_RegKeySetupStatus_NeedsAttenton() {
-			SetupWizard.RegKeySetup regKeySetup=new SetupWizard.RegKeySetup();
-			string regKey="";
-			Assert.AreEqual(ODSetupStatus.NotStarted,regKeySetup.GetSetupStatus(regKey));
-		}
-
 		[TestMethod] 
 		public void Setupwizard_ProvSetupStatus_Complete() {
 			SetupWizard.ProvSetup provSetup=new SetupWizard.ProvSetup();

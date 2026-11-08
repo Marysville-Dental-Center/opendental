@@ -273,7 +273,9 @@ namespace UnitTests.IntegrationTests {
 			Procedure procedureExam=Procedures.GetMostRecentInsHistProc(listProceduresEoAndC,listCodeNumsExam,PrefName.InsHistExamCodes);
 			Procedure procedureProphy=Procedures.GetMostRecentInsHistProc(listProceduresEoAndC,listCodeNumsProphy,PrefName.InsHistProphyCodes);
 			Assert.IsTrue(procedureBW!=null && procedureBW.ProcDate==new DateTime(2020,1,9));
-			Assert.IsTrue(procedurePano!=null && procedurePano.ProcDate==new DateTime(2019,1,29));
+			//The 271 gives the pano DTP*304*D8*20190729. Open Dental 24.3 read the date with "yyyymmdd", where mm is minutes, so every month came out
+			//as January and this test expected 2019-01-29. The fork reads "yyyyMMdd" (EB271.GetInsHistDate; tests/M2HISTTests pin the month).
+			Assert.IsTrue(procedurePano!=null && procedurePano.ProcDate==new DateTime(2019,7,29));
 			Assert.IsTrue(procedureExam!=null && procedureExam.ProcDate==new DateTime(2020,1,9));
 			Assert.IsTrue(procedureProphy!=null && procedureProphy.ProcDate==new DateTime(2020,1,9));
 		}

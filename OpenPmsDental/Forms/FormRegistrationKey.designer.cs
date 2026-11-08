@@ -34,34 +34,12 @@ namespace OpenPmsDental {
 		/// </summary>
 		private void InitializeComponent()
 		{
-			this.labelRegKey = new System.Windows.Forms.Label();
-			this.textKey1 = new System.Windows.Forms.TextBox();
 			this.labelLicenseAgree = new System.Windows.Forms.Label();
-			this.checkAgree = new OpenPmsDental.UI.CheckBox();
 			this.richTextAgreement = new System.Windows.Forms.RichTextBox();
 			this.butOK = new OpenPmsDental.UI.Button();
 			this.listBoxRegistration = new OpenPmsDental.UI.ListBox();
 			this.SuspendLayout();
-			// 
-			// labelRegKey
-			// 
-			this.labelRegKey.Location = new System.Drawing.Point(168, 9);
-			this.labelRegKey.Name = "labelRegKey";
-			this.labelRegKey.Size = new System.Drawing.Size(177, 19);
-			this.labelRegKey.TabIndex = 2;
-			this.labelRegKey.Text = "Registration Key";
-			this.labelRegKey.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textKey1
-			// 
-			this.textKey1.Location = new System.Drawing.Point(349, 8);
-			this.textKey1.Name = "textKey1";
-			this.textKey1.Size = new System.Drawing.Size(243, 20);
-			this.textKey1.TabIndex = 0;
-			this.textKey1.WordWrap = false;
-			this.textKey1.TextChanged += new System.EventHandler(this.textKey1_TextChanged);
-			this.textKey1.KeyUp += new System.Windows.Forms.KeyEventHandler(this.textKey1_KeyUp);
-			// 
+			//
 			// labelLicenseAgree
 			// 
 			this.labelLicenseAgree.Location = new System.Drawing.Point(12, 26);
@@ -70,17 +48,7 @@ namespace OpenPmsDental {
 			this.labelLicenseAgree.TabIndex = 6;
 			this.labelLicenseAgree.Text = "License Agreement";
 			this.labelLicenseAgree.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			// 
-			// checkAgree
-			// 
-			this.checkAgree.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.checkAgree.Location = new System.Drawing.Point(12, 416);
-			this.checkAgree.Name = "checkAgree";
-			this.checkAgree.Size = new System.Drawing.Size(489, 17);
-			this.checkAgree.TabIndex = 7;
-			this.checkAgree.Text = "I agree to the terms of all of the above license agreements in their entirety.";
-			this.checkAgree.CheckedChanged += new System.EventHandler(this.checkAgree_CheckedChanged);
-			// 
+			//
 			// richTextAgreement
 			// 
 			this.richTextAgreement.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -95,7 +63,6 @@ namespace OpenPmsDental {
 			// butOK
 			// 
 			this.butOK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butOK.Enabled = false;
 			this.butOK.Location = new System.Drawing.Point(676, 410);
 			this.butOK.Name = "butOK";
 			this.butOK.Size = new System.Drawing.Size(75, 26);
@@ -120,10 +87,7 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.listBoxRegistration);
 			this.Controls.Add(this.butOK);
 			this.Controls.Add(this.richTextAgreement);
-			this.Controls.Add(this.checkAgree);
 			this.Controls.Add(this.labelLicenseAgree);
-			this.Controls.Add(this.textKey1);
-			this.Controls.Add(this.labelRegKey);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
 			this.MaximizeBox = false;
 			this.MinimizeBox = false;
@@ -137,10 +101,7 @@ namespace OpenPmsDental {
 		}
 		#endregion
 		private OpenPmsDental.UI.Button butOK;
-		private Label labelRegKey;
-		private TextBox textKey1;
 		private Label labelLicenseAgree;
-		private OpenPmsDental.UI.CheckBox checkAgree;
 		private OpenPmsDental.UI.ListBox listBoxRegistration;
 		private RichTextBox richTextAgreement;
 	}

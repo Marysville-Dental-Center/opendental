@@ -690,7 +690,8 @@ namespace UnitTests.ClaimProcs_Tests {
 			long feeSchedNum=FeeSchedT.CreateFeeSched(FeeScheduleType.Normal,"PPO "+suffix);
 			long feeSchedNumMedicaid=FeeSchedT.CreateFeeSched(FeeScheduleType.Normal,"PPO "+suffix);
 			//Create fees for each fee schedule
-			FeeT.CreateFee(feeSchedNum,procedure.CodeNum,500);
+			//One fee per schedule. Open Dental 24.3 inserted this fee twice; the fork refuses a second identical fee (Fees.Insert), and one row gives
+			//the same amounts.
 			FeeT.CreateFee(feeSchedNum,procedure.CodeNum,500);
 			FeeT.CreateFee(feeSchedNumMedicaid,procedure.CodeNum);
 			//Create primary, secondary, and tertiary insurance plans

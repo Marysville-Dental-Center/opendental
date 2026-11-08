@@ -47,9 +47,9 @@ namespace UnitTests {
 				pearl.Bitmap_=new Bitmap(40,40);
 				pearl.Document_=document;
 				pearl.Patient_=pat;
-				bool threwException=false;
+				Exception exceptionThread=null;
 				ODThread oDThread=new ODThread(pearl.SendOnThreadWorker);
-				oDThread.AddExceptionHandler((e) => threwException=true);
+				oDThread.AddExceptionHandler((e) => exceptionThread=e);
 				oDThread.Start();
 				if(!oDThread.Join(timeoutMS: 1_000)) {
 					Assert.Fail("Pearl.SendOnThread failed to complete in time");
@@ -57,8 +57,16 @@ namespace UnitTests {
 				PearlRequest pearlRequest=PearlRequests.GetOneByDocNum(docNum);
 				//Request will be not null if we succeed, null if we fail.
 				Assert.IsTrue(doSucceed ? pearlRequest!=null : pearlRequest==null);
-				//Pearl should handle all exceptions, no matter if a good or bad pearlRequest. No exceptions should bubble up to thread.
-				Assert.IsFalse(threwException);
+				//A failed send is reported to the thread, which raises the Pearl alert in the program: Pearl.SendOnThreadWorker rethrows the upload
+				//error ("There was an error uploading an image", as Open Dental 24.3 does; V-PEARL1 also marks a row that was already inserted
+				//ErrorUploading). This test still expected every error to be swallowed. A send that works throws nothing.
+				if(doSucceed) {
+					Assert.IsNull(exceptionThread,exceptionThread?.ToString());
+				}
+				else {
+					Assert.IsNotNull(exceptionThread);
+					StringAssert.Contains(exceptionThread.Message,"There was an error uploading an image");
+				}
 			}
 			//Mock each error type. They should all respond the same.
 			assert(new PearlApiClientMock() { SucceedGetAuthToken=false },false);

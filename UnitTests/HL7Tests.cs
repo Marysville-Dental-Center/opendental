@@ -30,6 +30,13 @@ namespace UnitTests.HL7_Tests {
 
 		[TestMethod]
 		public void HL7_TestAll() {
+			//The eCW and HL7Def message processing (EcwADT, EcwSIU, MessageParser, FieldParser) writes to the Windows event log under the HL7
+			//service's own source. Writing under a source that does not exist means creating it, which needs administrator rights; a test never
+			//asks for them, so without the source the scenarios cannot run and the test is Inconclusive.
+			string eventLogProblem=GetEventLogSourceProblem(ProgramNames.EventLogSourceHL7);
+			if(eventLogProblem!=null) {
+				Assert.Inconclusive(eventLogProblem);
+			}
 			//Loop through every possible HL7 mode and execute every test scenario on each one.
 			foreach(HL7TestInterfaceEnum hl7TestInterfaceEnum in Enum.GetValues(typeof(HL7TestInterfaceEnum))) {
 				//Clear the DB between each and every iteration (preserves old behavior).
@@ -67,6 +74,24 @@ namespace UnitTests.HL7_Tests {
 		}
 
 		#region HL7_TestAll Helper Methods
+
+		///<summary>Null when the Windows event log source exists on this computer, otherwise why HL7_TestAll cannot run and how to register the
+		///source once. Only looks: it never creates the source, because that needs administrator rights.</summary>
+		private static string GetEventLogSourceProblem(string source) {
+			string howToRegister="To run the HL7 scenarios, register the source once from an administrator PowerShell: New-EventLog -LogName Application"
+				+" -Source "+source+" (on an office computer the HL7 service, which runs as a Windows service, creates it with its first entry).";
+			try {
+				if(System.Diagnostics.EventLog.SourceExists(source)) {
+					return null;
+				}
+			}
+			catch(System.Security.SecurityException ex) {
+				//Not found in the event logs this user may read; the rest (Security among them) need administrator rights to search.
+				return "The Windows event log source "+source+" that HL7 message processing writes to is not registered on this computer, and"
+					+" creating it needs administrator rights ("+ex.Message+"). "+howToRegister;
+			}
+			return "The Windows event log source "+source+" that HL7 message processing writes to is not registered on this computer. "+howToRegister;
+		}
 
 		///<summary>Test 1: Fail to locate the patient by PatNum in PID.2, so insert a new patient into the database.  Fail to locate the guarantor by PatNum in GT1.2, so insert a new patient into the database.  Set patient.Guarantor=guarantor.PatNum and guarantor.Guarantor=guarantor.PatNum.  Set patient.PriProv=preference.PracticeDefaultProv and guarantor.PriProv=preference.PracticeDefaultProv.  Set patient.BillingType=preference.PracticeDefaultBillType and guarantor.BillingType=preference.PracticeDefaultBillType.  Other patient fields: LName,FName,MiddleI,Birthdate,Gender,Race,Address,Address2,City,State,Zip,HmPhone,WkPhone,Position,SSN,FeeSched.  Other guarantor fields: LName,FName,MiddleI,Birthdate,Gender,Address,Address2,City,State,Zip,HmPhone,WkPhone,SSN.  EcwOldTight,EcwOldFull,EcwTight,HL7DefEcwFull: Set patient.PatNum=10, patient.ChartNumber=A10, guarantor.PatNum=11, guarantor.ChartNumber="".  EcwOldStandalone,HL7DefEcwStandalone: Set patient.ChartNumber="10", guarantor.ChartNumber="11". (PatNums will be next auto-incremented value.)</summary>
 		private void Test1(HL7TestInterfaceEnum hl7TestInterfaceEnum) {

@@ -32,6 +32,16 @@ namespace UnitTests.SignatureBoxWrapper_Tests {
 		public static void TearDownClass() {
 		}
 
+		///<summary>The Topaz tests need Topaz's own SigPlusNET.dll, which the program does not ship: TopazWrapper loads it from the program folder or
+		///Topaz's install folders when the office has installed the Topaz software. Without it a Topaz signature cannot be read, so these tests are
+		///Inconclusive rather than failed; on a computer with the Topaz software they run in full.</summary>
+		private static void AssertTopazInstalled() {
+			if(!OpenPmsDental.UI.TopazWrapper.IsInstalled()) {
+				Assert.Inconclusive(OpenPmsDental.UI.TopazWrapper.GetNotInstalledMessage()+" Install the Topaz signature pad software (it provides "
+					+OpenPmsDental.UI.TopazWrapper.ASSEMBLY_FILE_NAME+") to run the Topaz signature tests.");
+			}
+		}
+
 		[TestMethod]
 		[Documentation.Numbering(Documentation.EnumTestNum.SignatureBoxWrapper_FillSignature_GetNumberOfTabletPoints)]
 		public void SignatureBoxWrapper_FillSignature_GetNumberOfTabletPoints() {
@@ -70,6 +80,7 @@ namespace UnitTests.SignatureBoxWrapper_Tests {
 
 		[TestMethod]
 		public void SignatureBoxWrapper_FillSignature_GetNumberOfTabletPointsTopaz() {
+			AssertTopazInstalled();
 			//Old unit tests designed for Topaz signature boxes.
 			string suffix = "52";
 			Patient pat = PatientT.CreatePatient(suffix);
@@ -100,6 +111,7 @@ namespace UnitTests.SignatureBoxWrapper_Tests {
 
 		[TestMethod]
 		public void SignatureBoxWrapper_FillSignature_RightSingleQuotationMarkTopaz() {
+			AssertTopazInstalled();
 			//The 32-bit version of the SigPlusNET.dll could handle encrypting U+2019 : RIGHT SINGLE QUOTATION MARK {single comma quotation mark}
 			//Updating to the 64-bit version of the SigPlusNET.dll was incorrectly invalidating signatures with the aforementioned character.
 			//This unit test asserts that a valid signature signed against KeyData that includes the right single quotation mark can be extracted.
@@ -110,6 +122,7 @@ namespace UnitTests.SignatureBoxWrapper_Tests {
 
 		[TestMethod]
 		public void SignatureBoxWrapper_FillSignature_EncodingsTopaz() {
+			AssertTopazInstalled();
 			//The 32-bit version of the SigPlusNET.dll handled text encoding differently than the 64-bit version.
 			//Updating to the 64-bit version of the SigPlusNET.dll was incorrectly invalidating signatures depending on the KeyData encoding.
 			//This unit test asserts that valid signatures signed against KeyData in a plethora of different encodings can be extracted.

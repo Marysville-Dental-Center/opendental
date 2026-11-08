@@ -27,14 +27,25 @@ namespace UnitTests.ODInstaller_Tests {
 
 		[TestMethod]
 		public void ODInstallerTests_DbAdminMysql_CreateAndDestroyAdminUsers() {
+			//Two full-permission users on the local server, with names unique to this run (they were the fixed fakeuser1 and fakeuser2) and random
+			//passwords; whatever happens, neither is left behind.
+			string userName1=GetRunMySqlUserName("utadm1");
+			string userName2=GetRunMySqlUserName("utadm2");
 			DataConnection conAdmin=new DataConnection();//A brand new admin connection to the unittest### database.
-			Assert.AreEqual(null,DbAdminMysql.ModifyUser(conAdmin,"fakeuser1","od123","fakeuser1"));//Grants, verifies new user.
-			Assert.AreEqual(null,DbAdminMysql.ModifyUser(conAdmin,"fakeuser2","abcde","fakeuser1"));//Drops fakeuser1 and verifies.
 			try {
-				DbAdminMysql.DropUser(conAdmin,"fakeuser2");//Drops fakeuser2 and verifies.
+				Assert.AreEqual(null,DbAdminMysql.ModifyUser(conAdmin,userName1,GetRandomMySqlPassword(),userName1));//Grants, verifies new user.
+				Assert.AreEqual(null,DbAdminMysql.ModifyUser(conAdmin,userName2,GetRandomMySqlPassword(),userName1));//Drops user 1 and verifies.
+				CollectionAssert.DoesNotContain(DbAdminMysql.GetUsers(conAdmin),userName1);
+				try {
+					DbAdminMysql.DropUser(conAdmin,userName2);//Drops user 2 and verifies.
+				}
+				catch(Exception ex) {
+					Assert.Fail(ex.Message);
+				}
 			}
-			catch(Exception ex) {
-				Assert.Fail(ex.Message);
+			finally {
+				CodeBase.ODException.SwallowAnyException(() => DbAdminMysql.DropUser(conAdmin,userName1));
+				CodeBase.ODException.SwallowAnyException(() => DbAdminMysql.DropUser(conAdmin,userName2));
 			}
 		}
 

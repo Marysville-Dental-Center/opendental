@@ -643,8 +643,10 @@ namespace UnitTests.Appointments_Tests {
 				,new DateTime(DateTime.Now.Year,DateTime.Now.Month,DateTime.Now.Day,8,0,0).TimeOfDay
 				,new DateTime(DateTime.Now.Year,DateTime.Now.Month,DateTime.Now.Day,12,0,0).TimeOfDay
 				,ScheduleType.Blockout,blockoutType:defNumNoSchedBlockout,listOpNums:new List<long>{operatory1.OperatoryNum}); //NS blockout on Op 1 from 8a-12p
-			//Create appointment that the search will be to find a spot for.
-			Appointment patApt=AppointmentT.CreateAppointment(patNum,DateTime.Now,operatory1.OperatoryNum,provNum);
+			//Create appointment that the search will be to find a spot for. It sits next week, outside the searched days: the search counts the
+			//appointment's own time as the provider's, so at DateTime.Now (as it was) it took away an opening asserted below whenever the test ran
+			//within about 20 minutes of it.
+			Appointment patApt=AppointmentT.CreateAppointment(patNum,DateTime.Today.AddDays(7).AddHours(12),operatory1.OperatoryNum,provNum);
 			TimeSpan beforeTime=TestT.SetDateTime(hour:18);
 			TimeSpan afterTime=TestT.SetDateTime();//8 AM
 			List<long> listOpsInView=new List<long>() {operatory1.OperatoryNum,operatory2.OperatoryNum };
@@ -677,8 +679,10 @@ namespace UnitTests.Appointments_Tests {
 				,new DateTime(DateTime.Now.Year,DateTime.Now.Month,DateTime.Now.Day,8,0,0).TimeOfDay
 				,new DateTime(DateTime.Now.Year,DateTime.Now.Month,DateTime.Now.Day,12,0,0).TimeOfDay
 				,ScheduleType.Blockout,blockoutType:defNumNoSchedBlockout,listOpNums:new List<long>{operatory1.OperatoryNum}); //NS blockout on Op 1 from 8a-12p
-			//Create appointment that the search will be to find a spot for.
-			Appointment patApt=AppointmentT.CreateAppointment(patNum,DateTime.Now,operatory1.OperatoryNum,provNum);
+			//Create appointment that the search will be to find a spot for. It sits next week, outside the searched days: the search counts the
+			//appointment's own time as the provider's, so at DateTime.Now (as it was) it took away an opening asserted below whenever the test ran
+			//within about 20 minutes of it.
+			Appointment patApt=AppointmentT.CreateAppointment(patNum,DateTime.Today.AddDays(7).AddHours(12),operatory1.OperatoryNum,provNum);
 			TimeSpan beforeTime=TestT.SetDateTime(hour:18);
 			TimeSpan afterTime=TestT.SetDateTime();//8 AM
 			List<long> listOpsInView=new List<long>() {operatory1.OperatoryNum,operatory2.OperatoryNum };

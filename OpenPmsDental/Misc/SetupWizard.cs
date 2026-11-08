@@ -120,57 +120,6 @@ namespace OpenPmsDental {
 		}
 		#endregion
 
-		#region PreSetup
-		public class RegKeySetup:SetupWizClass {
-			private SetupWizControl _ctrl = new UserControlSetupWizRegKey();
-			public override ODSetupCategory GetCategory {
-				get {
-					return ODSetupCategory.PreSetup;
-				}
-			}
-
-			public override string GetDescript {
-				get {
-					string retVal = "Some items need to be set up before the program can be used effectively. "
-						+"\r\nThis wizard's purpose is to help you quickly set those items up so that you can get started using the program.";
-					if(GetStatus != ODSetupStatus.Complete) {
-						retVal+="\r\n\r\nIt looks like you have yet to enter your Registration Key. ";
-					}
-					retVal+="\r\nEntering your Registration Key is a necessary first step in order for the program to function.";
-					return retVal;
-				}
-			}
-
-			public override ODSetupStatus GetStatus {
-				get {
-					return GetSetupStatus();
-				}
-			}
-
-			public ODSetupStatus GetSetupStatus(string regKey=null) {
-				if(regKey==null) {
-					regKey=PrefC.GetString(PrefName.RegistrationKey);
-				}
-				if(string.IsNullOrEmpty(regKey)) {
-					return ODSetupStatus.NotStarted;
-				}
-				return ODSetupStatus.Complete;
-			}
-
-			public override string Name {
-				get {
-					return "Registration Key";
-				}
-			}
-
-			public override SetupWizControl SetupControl {
-				get {
-					return _ctrl;
-				}
-			}
-		}
-		#endregion
-
 		#region Basic Setup
 		public class FeatureSetup:SetupWizClass {
 			private SetupWizControl _ctrl = new UserControlSetupWizFeatures();
@@ -776,9 +725,6 @@ namespace OpenPmsDental {
 		Misc,
 		///<summary>1</summary>
 		None,
-		///<summary>2</summary>
-		[Description("Pre-Setup")]
-		PreSetup,
 		///<summary>2</summary>
 		[Description("Basic Setup")]
 		Basic,
