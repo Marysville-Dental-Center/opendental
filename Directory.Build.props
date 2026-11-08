@@ -1,0 +1,39 @@
+<Project>
+  <!--
+    Shared settings, imported by every project in this repository: Microsoft.Common.props imports this file for the
+    classic C# projects, the SDK-style ones and Direct2dWrapper.vcxproj alike.
+
+    Everything in it is for SDK-style projects only. Microsoft.NET.Sdk sets UsingMicrosoftNETSdk before it imports
+    this file; the classic projects, the classic Middle Tier project (OpenPmsDentalServer) and Direct2dWrapper.vcxproj
+    never set it, so they build exactly as before. Stage 1 of the .NET 10 move (docs/specs/net10-plan.md, section 2.3)
+    converts the C# projects to SDK-style one by one; with these settings they keep today's output folders and files.
+  -->
+  <PropertyGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
+    <!--
+      One flat output folder per configuration, as today: bin\Debug\ and bin\Release\, without a net48\ or win-x86\
+      sub folder, and without the platform folder the SDK adds for any platform other than AnyCPU (bin\x86\Debug\).
+      The SDK then computes OutputPath as bin\$(Configuration)\ after the project's own properties, when
+      $(Configuration) is known (Microsoft.NET.DefaultOutputPaths.targets), so the path is right even for a project
+      built on its own without a configuration.
+    -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>
+    <!-- AssemblyInfo.cs and SharedAssemblyInfo.cs stay the only source of the assembly attributes and versions. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <PlatformTarget>x86</PlatformTarget>
+    <!-- Only the English resources of packages; no language folders in the output. -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- Every restore writes packages.lock.json; the build lane restores in locked mode, so a change is an error. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <Deterministic>true</Deterministic>
+    <!--
+      The SDK turns on AutoGenerateBindingRedirects for every .NET Framework exe and test project that leaves it empty
+      (Microsoft.NET.Sdk.BeforeCommon.targets); the classic projects that leave it empty (the program, ServiceManager,
+      the database settings tool, UpdateFileCopier, the HL7 service, DatabaseIntegrityCheck, UnitTests and
+      UnitTestsCore) generate none today. A project that sets it in its own file keeps its own value.
+    -->
+    <AutoGenerateBindingRedirects Condition="'$(AutoGenerateBindingRedirects)' == ''">false</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+</Project>

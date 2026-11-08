@@ -66,7 +66,8 @@ Only check an existing database. Nothing is changed.
 Run the already-built tools\DevDbTool\bin\<Configuration>\DevDbTool.exe without building.
 
 .PARAMETER MSBuildPath
-Full path to MSBuild.exe. Default: found with vswhere.
+Full path to MSBuild.exe. Default: the Build Tools 2026 (Visual Studio 2026) MSBuild 18, found with vswhere and a version
+range (tools\Initialize-BuildEnvironment.ps1).
 
 .PARAMETER Configuration
 Build configuration for the tool and for -WriteConfig. Default: Debug.
@@ -115,6 +116,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
+# Get-BuildToolPath and Initialize-BuildEnvironment, shared by the tool scripts that build.
+. (Join-Path $PSScriptRoot 'Initialize-BuildEnvironment.ps1')
 $toolProject = Join-Path $PSScriptRoot 'DevDbTool\DevDbTool.csproj'
 $toolExe = Join-Path $PSScriptRoot "DevDbTool\bin\$Configuration\DevDbTool.exe"
 $configTemplate = Join-Path $PSScriptRoot 'FreeDentalConfig.dev.xml'
@@ -126,15 +129,12 @@ function Find-MSBuild {
 		}
 		return $MSBuildPath
 	}
-	$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-	if (Test-Path -LiteralPath $vswhere) {
-		$found = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' |
-			Select-Object -First 1
-		if ($found) {
-			return $found
-		}
+	# The Build Tools 2026 (Visual Studio 2026) MSBuild 18, found with a version range (tools\Initialize-BuildEnvironment.ps1).
+	$found = Get-BuildToolPath -Tool MSBuild
+	if ($found) {
+		return $found
 	}
-	throw 'MSBuild for Visual Studio 2022 was not found. Install the Build Tools as described in README.md, or pass -MSBuildPath.'
+	throw 'MSBuild for Visual Studio 2026 was not found. Install the Build Tools 2026 as described in README.md, or pass -MSBuildPath.'
 }
 
 function Write-DevConfig {
@@ -167,8 +167,10 @@ function Write-DevConfig {
 
 if (-not $SkipBuild) {
 	$msbuild = Find-MSBuild
+	# The pinned .NET SDK and the offline NuGet folder for this process (tools\Initialize-BuildEnvironment.ps1).
+	$null = Initialize-BuildEnvironment -RepoRoot $repoRoot
 	Write-Host "Building DevDbTool ($Configuration|x86) with $msbuild"
-	& $msbuild $toolProject -nologo "-p:Configuration=$Configuration" '-p:Platform=x86' '-nodeReuse:false' '-v:minimal' '-clp:Summary;ErrorsOnly'
+	& $msbuild $toolProject -nologo '-restore' '-p:RestoreLockedMode=true' "-p:Configuration=$Configuration" '-p:Platform=x86' '-nodeReuse:false' '-v:minimal' '-clp:Summary;ErrorsOnly'
 	if ($LASTEXITCODE -ne 0) {
 		throw "Building DevDbTool failed (MSBuild exit code $LASTEXITCODE)."
 	}

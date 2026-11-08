@@ -37,17 +37,19 @@ param(
 )
 $ErrorActionPreference='Stop'
 $projectDir=$PSScriptRoot
+#Get-BuildToolPath and Initialize-BuildEnvironment, shared by the tool scripts that build.
+. (Join-Path $PSScriptRoot '..\Initialize-BuildEnvironment.ps1')
 $exe=Join-Path $projectDir 'bin\Debug\AdoptionValidation.exe'
 if(-not $SkipBuild) {
 	if(-not $MSBuildPath) {
-		$vswhere=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-		if(Test-Path $vswhere) {
-			$MSBuildPath=& $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
-		}
+		#The Build Tools 2026 (Visual Studio 2026) MSBuild 18, found with a version range.
+		$MSBuildPath=Get-BuildToolPath -Tool MSBuild
 	}
 	if(-not $MSBuildPath -or -not (Test-Path $MSBuildPath)) {
-		throw 'MSBuild.exe was not found. Pass -MSBuildPath or build tools\AdoptionValidation\AdoptionValidation.csproj first and use -SkipBuild.'
+		throw 'MSBuild.exe of Visual Studio 2026 or its Build Tools was not found. Pass -MSBuildPath or build tools\AdoptionValidation\AdoptionValidation.csproj first and use -SkipBuild.'
 	}
+	#The pinned .NET SDK and the offline NuGet folder for this process.
+	$null=Initialize-BuildEnvironment -RepoRoot (Split-Path -Parent (Split-Path -Parent $projectDir))
 	& $MSBuildPath (Join-Path $projectDir 'AdoptionValidation.csproj') -restore -p:RestorePackagesConfig=true -p:Configuration=Debug -p:Platform=x86 -v:minimal -nologo
 	if($LASTEXITCODE -ne 0) {
 		throw "Build failed with exit code $LASTEXITCODE."

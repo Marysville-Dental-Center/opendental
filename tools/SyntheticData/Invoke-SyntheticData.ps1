@@ -53,18 +53,20 @@ param(
 )
 $ErrorActionPreference='Stop'
 $projectDir=$PSScriptRoot
+#Get-BuildToolPath and Initialize-BuildEnvironment, shared by the tool scripts that build.
+. (Join-Path $PSScriptRoot '..\Initialize-BuildEnvironment.ps1')
 $exe=Join-Path $projectDir "bin\$Configuration\SyntheticData.exe"
 if(-not $SkipBuild) {
 	if(-not $MSBuildPath) {
-		$vswhere=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-		if(Test-Path $vswhere) {
-			$MSBuildPath=& $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
-		}
+		#The Build Tools 2026 (Visual Studio 2026) MSBuild 18, found with a version range.
+		$MSBuildPath=Get-BuildToolPath -Tool MSBuild
 	}
 	if(-not $MSBuildPath -or -not (Test-Path $MSBuildPath)) {
-		throw 'MSBuild.exe was not found. Pass -MSBuildPath or -SkipBuild.'
+		throw 'MSBuild.exe of Visual Studio 2026 or its Build Tools was not found. Pass -MSBuildPath or -SkipBuild.'
 	}
-	& $MSBuildPath (Join-Path $projectDir 'SyntheticData.csproj') "-p:Configuration=$Configuration" '-p:Platform=x86' '-nodeReuse:false' '-v:minimal'
+	#The pinned .NET SDK and the offline NuGet folder for this process.
+	$null=Initialize-BuildEnvironment -RepoRoot (Split-Path -Parent (Split-Path -Parent $projectDir))
+	& $MSBuildPath (Join-Path $projectDir 'SyntheticData.csproj') '-restore' '-p:RestoreLockedMode=true' "-p:Configuration=$Configuration" '-p:Platform=x86' '-nodeReuse:false' '-v:minimal'
 	if($LASTEXITCODE -ne 0) {
 		throw "Build failed (exit code $LASTEXITCODE)."
 	}
