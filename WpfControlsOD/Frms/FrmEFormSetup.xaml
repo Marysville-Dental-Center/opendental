@@ -6,7 +6,7 @@
              xmlns:local="clr-namespace:OpenPmsDental"
              xmlns:ui="clr-namespace:WpfControls.UI"
              mc:Ignorable="d"
-             Width="435" Height="140" 
+             Width="435" Height="200" 
              Text="eForm Setup" MinMaxBoxes="False">
 	<Grid Background="#FFFCFDFE" >
 		<ui:TextVInt x:Name="textVIntSpaceBelowEachField" Width="49" Height="20" Margin="202,21,0,0" MaxVal="100"/>
@@ -16,5 +16,7 @@
 		<ui:TextVInt x:Name="textVIntSpaceToRightEachField" Width="49" Height="20" Margin="202,49,0,0" MaxVal="100"/>
 		<ui:Label Width="192" Height="18" Margin="5,51,0,0" Text="Default space to right of each field" HAlign="Right" VAlign="Center" />
 		<ui:Label Width="144" Height="18" Margin="255,51,0,0" Text="10 is a typical setting" VAlign="Center" />
+		<ui:CheckBox x:Name="checkImportAllergiesAsOther" Width="400" Height="18" Margin="14,82,0,0" Text="Import a typed allergy that matches no allergy in the list as Other" CheckAlign="MiddleLeft" />
+		<ui:CheckBox x:Name="checkImportProblemsAsOther" Width="400" Height="18" Margin="14,104,0,0" Text="Import a typed problem that matches no problem in the list as Other" CheckAlign="MiddleLeft" />
 	</Grid>
 </local:FrmODBase>

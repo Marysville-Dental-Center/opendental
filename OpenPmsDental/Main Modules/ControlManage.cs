@@ -926,7 +926,9 @@ namespace OpenPmsDental{
 
 		///<summary>Shows FormBilling and displays warning message if needed.  Pass 0 to show all clinics.  Make sure to check for unsent bills before calling this method.  IsAllSelected is based upon
 		///the comboClinic selection from formBillingOptions</summary>
-		private void ShowBilling(List<long> listClinicNums,bool isHistStartMinDate=false,bool showBillTransSinceZero=false,bool isAllSelected=false) {
+		private void ShowBilling(List<long> listClinicNums,bool isHistStartMinDate=false,bool showBillTransSinceZero=false,bool isAllSelected=false,
+			List<long> listStatementNumsCreated=null,List<long> listStatementNumsEmailCreated=null)
+		{
 			//Check to see if there is an instance of the billing list window already open that needs to be closed.
 			//This can happen if multiple people are trying to send bills at the same time.
 			if(_formBilling!=null && !_formBilling.IsDisposed) {
@@ -940,6 +942,8 @@ namespace OpenPmsDental{
 			_formBilling.IsAllSelected=isAllSelected;
 			_formBilling.IsHistoryStartMinDate=isHistStartMinDate;
 			_formBilling.ShowBillTransSinceZero=showBillTransSinceZero;
+			_formBilling.ListStatementNumsCreated=listStatementNumsCreated??new List<long>();//ODOPTS: Statement Send Setup
+			_formBilling.ListStatementNumsEmailCreated=listStatementNumsEmailCreated??new List<long>();
 			_formBilling.Show();//FormBilling has a Go To option and is shown as a non-modal window so the user can view the patient account and the billing list at the same time.
 			_formBilling.BringToFront();
 		}
@@ -950,7 +954,8 @@ namespace OpenPmsDental{
 			formBillingOptions.ListClinicNumsSelected=new List<long>() { clinicNum };
 			formBillingOptions.ShowDialog();
 			if(formBillingOptions.DialogResult==DialogResult.OK) {
-				ShowBilling(formBillingOptions.ListClinicNumsSelected,formBillingOptions.IsHistoryStartMinDate,formBillingOptions.ShowBillTransSinceZero,formBillingOptions.IsAllSelected);
+				ShowBilling(formBillingOptions.ListClinicNumsSelected,formBillingOptions.IsHistoryStartMinDate,formBillingOptions.ShowBillTransSinceZero,formBillingOptions.IsAllSelected,
+					formBillingOptions.ListStatementNumsCreated,formBillingOptions.ListStatementNumsEmailCreated);
 			}
 		}
 

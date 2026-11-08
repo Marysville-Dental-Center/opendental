@@ -1044,7 +1044,7 @@ namespace OpenPmsDental {
 				MsgBox.Show(this,"You need either Ortho Chart Edit (full) or Ortho Chart Edit (same user, signed) to edit this ortho chart.");
 				return;
 			}
-			using FormLogOn formLogOnChangeUser=new FormLogOn(isSimpleSwitch:true);
+			using FormLogOn formLogOnChangeUser=new FormLogOn(isSimpleSwitch:true,isSigBox:true);
 			formLogOnChangeUser.ShowDialog();
 			if(formLogOnChangeUser.DialogResult!=DialogResult.OK) {
 				return;

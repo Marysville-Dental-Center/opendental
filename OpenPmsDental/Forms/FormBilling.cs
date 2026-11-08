@@ -26,6 +26,10 @@ namespace OpenPmsDental {
 		public bool IsHistoryStartMinDate;
 		///<summary>Used to hold this preference's state when it is different from the default.</summary>
 		public bool ShowBillTransSinceZero=false;
+		///<summary>ODOPTS (Statement Send Setup): the statements Billing Options just created, and those of them whose mode is E-mail. Set by the
+		///caller; this window sends them as it opens when StatementAutoSendEmail or StatementAutoSendSMS says so (AutoSendCreatedStatements).</summary>
+		public List<long> ListStatementNumsCreated=new List<long>();
+		public List<long> ListStatementNumsEmailCreated=new List<long>();
 		///<summary>There is a pref for this, but if user changed their selection for this batch, we want to use that. This then gets passed into FormStatmentOptions.</summary>
 		
 		///<summary></summary>
@@ -58,6 +62,34 @@ namespace OpenPmsDental {
 			}
 			FillComboEmail();
 			FillGrid();
+			if(ListStatementNumsCreated.Count>0 || ListStatementNumsEmailCreated.Count>0) {
+				BeginInvoke((Action)AutoSendCreatedStatements);//once the window shows
+			}
+		}
+
+		///<summary>ODOPTS: Statement Send Setup (Open Dental's StatementAutoSendEmail and StatementAutoSendSMS). The new e-mail statements are sent
+		///through the Send path of this window (Always, or Ask and the user says yes). Texts need a texting provider (StatementAutoSend.TextSender);
+		///without one nothing is texted and the user is told why.</summary>
+		private void AutoSendCreatedStatements() {
+			List<long> listStatementNumsEmail=StatementAutoSend.GetEmailStatementNumsToSend(StatementAutoSend.GetEmailMode(),ListStatementNumsEmailCreated,
+				count => MsgBox.Show(this,MsgBoxButtons.YesNo,StatementAutoSend.GetEmailQuestion(count)));
+			ListStatementNumsEmailCreated=new List<long>();
+			if(listStatementNumsEmail.Count>0) {
+				//Select them in the grid too, so the window shows what is being sent.
+				gridBill.SetAll(false);
+				for(int i=0;i<gridBill.ListGridRows.Count;i++) {
+					if(listStatementNumsEmail.Contains(PIn.Long(((DataRow)gridBill.ListGridRows[i].Tag)["StatementNum"].ToString()))) {
+						gridBill.SetSelected(i,true);
+					}
+				}
+				SendStatements(listStatementNumsEmail);
+			}
+			StatementTextResult statementTextResult=StatementAutoSend.SendTexts(StatementAutoSend.GetSmsMode(),ListStatementNumsCreated,
+				count => MsgBox.Show(this,MsgBoxButtons.YesNo,Lan.g(this,"Text the new statements now?")+" ("+count+")"),StatementAutoSend.TextSender);
+			ListStatementNumsCreated=new List<long>();
+			if(statementTextResult.Message!="") {
+				MsgBox.Show(this,statementTextResult.Message);
+			}
 		}
 
 		public override void ProcessSignalODs(List<Signalod> listSignalods) {
@@ -304,7 +336,6 @@ namespace OpenPmsDental {
 		}
 
 		private void butSend_Click(object sender,System.EventArgs e) {
-			BillingUseElectronicEnum electronicBillingType=PrefC.GetEnum<BillingUseElectronicEnum>(PrefName.BillingUseElectronic);
 			if(gridBill.SelectedIndices.Length==0){
 				MsgBox.Show(this,"Please select items first.");
 				return;
@@ -315,18 +346,27 @@ namespace OpenPmsDental {
 			if(!MsgBox.Show(this,MsgBoxButtons.YesNo,"Please be prepared to wait up to ten minutes while all the bills get processed.\r\nOnce complete, the pdf print preview will be launched in Adobe Reader.  You will print from that program.  Continue?")){
 				return;
 			}
+			SendStatements(gridBill.SelectedTags<DataRow>().Select(x => PIn.Long(x["StatementNum"].ToString())).ToList());
+		}
+
+		///<summary>Sends the statements: the Send button's path, also used for the statements Statement Send Setup sends when billing creates them
+		///(ODOPTS).</summary>
+		private void SendStatements(List<long> listStatementNums) {
+			labelPrinted.Text=Lan.g(this,"Printed=")+"0";
+			labelEmailed.Text=Lan.g(this,"E-mailed=")+"0";
+			labelSentElect.Text=Lan.g(this,"SentElect=")+"0";
 			_progExtended=new ODProgressExtended(this,tag: new ProgressBarHelper(Lan.g(this,"Billing Progress"),progressBarEventType: ProgBarEventType.Header));
 			_progExtended?.Fire(new ODEventArgs(ODEventType.Billing,new ProgressBarHelper("",progressBarEventType: ProgBarEventType.BringToFront)));
 			Cursor=Cursors.WaitCursor;
 			//FormProgressExtended will insert new bars on top. Statment is on bottom, batch middle, and overall on top. 
 			_progExtended?.Fire(new ODEventArgs(ODEventType.Billing,new ProgressBarHelper(Lan.g(this,"Statement")+"\r\n0 / 0","0%",0,100,ProgBarStyle.Blocks,"3",isTopHidden: true)));
 			_progExtended?.Fire(new ODEventArgs(ODEventType.Billing,new ProgressBarHelper(Lan.g(this,"Batch")+"\r\n0 / 0","0%",0,1,ProgBarStyle.Blocks,"2",isTopHidden: true)));
-			_progExtended?.Fire(new ODEventArgs(ODEventType.Billing,new ProgressBarHelper(Lan.g(this,"Overall"),"1%",0,gridBill.SelectedIndices.Length,ProgBarStyle.Blocks,"1",isTopHidden: true)));
+			_progExtended?.Fire(new ODEventArgs(ODEventType.Billing,new ProgressBarHelper(Lan.g(this,"Overall"),"1%",0,listStatementNums.Count,ProgBarStyle.Blocks,"1",isTopHidden: true)));
 			_progExtended?.Fire(new ODEventArgs(ODEventType.Billing,new ProgressBarHelper(Lan.g(this,"Progress Log"),progressBarEventType: ProgBarEventType.ProgressLog)));
 			_progExtended?.Fire(new ODEventArgs(ODEventType.Billing,new ProgressBarHelper(Lan.g(this,"Preparing First Batch")+"...",progressBarEventType: ProgBarEventType.TextMsg)));
 			SendStatementsIO sendStatementsIO=new SendStatementsIO();
 			sendStatementsIO.Source="FormBilling";
-			sendStatementsIO.ListStatementNumsToSend=gridBill.SelectedTags<DataRow>().Select(x => PIn.Long(x["StatementNum"].ToString())).ToList();
+			sendStatementsIO.ListStatementNumsToSend=listStatementNums;
 			sendStatementsIO.FuncGetIsHistoryStartMinDate=() => { return IsHistoryStartMinDate; };
 			sendStatementsIO.FuncAskQuestion=(question) => {
 				//use a MessageBox for now until MsgBox hiding behind things is fixed

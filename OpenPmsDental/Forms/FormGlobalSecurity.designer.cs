@@ -27,6 +27,7 @@ namespace OpenPmsDental{
 			this.labelDomainPath = new System.Windows.Forms.Label();
 			this.textDomainLoginPath = new System.Windows.Forms.TextBox();
 			this.checkDomainLoginEnabled = new OpenPmsDental.UI.CheckBox();
+			this.checkDomainLoginForSigBoxes = new OpenPmsDental.UI.CheckBox();
 			this.checkPasswordForceWeakToStrong = new OpenPmsDental.UI.CheckBox();
 			this.checkPasswordsStrongIncludeSpecial = new OpenPmsDental.UI.CheckBox();
 			this.checkDisableBackupReminder = new OpenPmsDental.UI.CheckBox();
@@ -59,7 +60,7 @@ namespace OpenPmsDental{
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(279, 541);
+			this.butSave.Location = new System.Drawing.Point(279, 561);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 3;
@@ -92,6 +93,15 @@ namespace OpenPmsDental{
 			this.checkDomainLoginEnabled.TabIndex = 270;
 			this.checkDomainLoginEnabled.Text = "Domain Login Enabled";
 			this.checkDomainLoginEnabled.MouseUp += new System.Windows.Forms.MouseEventHandler(this.checkDomainLoginEnabled_MouseUp);
+			// 
+			// checkDomainLoginForSigBoxes
+			// 
+			this.checkDomainLoginForSigBoxes.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkDomainLoginForSigBoxes.Location = new System.Drawing.Point(4, 62);
+			this.checkDomainLoginForSigBoxes.Name = "checkDomainLoginForSigBoxes";
+			this.checkDomainLoginForSigBoxes.Size = new System.Drawing.Size(254, 16);
+			this.checkDomainLoginForSigBoxes.TabIndex = 273;
+			this.checkDomainLoginForSigBoxes.Text = "Offer domain login in signature boxes' Change User";
 			// 
 			// checkPasswordForceWeakToStrong
 			// 
@@ -244,9 +254,10 @@ namespace OpenPmsDental{
 			this.groupBox1.Controls.Add(this.checkDomainLoginEnabled);
 			this.groupBox1.Controls.Add(this.textDomainLoginPath);
 			this.groupBox1.Controls.Add(this.labelDomainPath);
+			this.groupBox1.Controls.Add(this.checkDomainLoginForSigBoxes);
 			this.groupBox1.Location = new System.Drawing.Point(90, 332);
 			this.groupBox1.Name = "groupBox1";
-			this.groupBox1.Size = new System.Drawing.Size(264, 71);
+			this.groupBox1.Size = new System.Drawing.Size(264, 91);
 			this.groupBox1.TabIndex = 273;
 			this.groupBox1.Text = "Domain Login";
 			// 
@@ -258,7 +269,7 @@ namespace OpenPmsDental{
 			this.groupBox2.Controls.Add(this.label2);
 			this.groupBox2.Controls.Add(this.textDaysLock);
 			this.groupBox2.Controls.Add(this.labelGlobalDateLockDisabled);
-			this.groupBox2.Location = new System.Drawing.Point(90, 411);
+			this.groupBox2.Location = new System.Drawing.Point(90, 431);
 			this.groupBox2.Name = "groupBox2";
 			this.groupBox2.Size = new System.Drawing.Size(264, 93);
 			this.groupBox2.TabIndex = 274;
@@ -322,7 +333,7 @@ namespace OpenPmsDental{
 			// checkAuditPatientSelected
 			//
 			this.checkAuditPatientSelected.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkAuditPatientSelected.Location = new System.Drawing.Point(1, 511);
+			this.checkAuditPatientSelected.Location = new System.Drawing.Point(1, 531);
 			this.checkAuditPatientSelected.Name = "checkAuditPatientSelected";
 			this.checkAuditPatientSelected.Size = new System.Drawing.Size(348, 18);
 			this.checkAuditPatientSelected.TabIndex = 281;
@@ -330,7 +341,7 @@ namespace OpenPmsDental{
 			//
 			// FormGlobalSecurity
 			//
-			this.ClientSize = new System.Drawing.Size(370, 577);
+			this.ClientSize = new System.Drawing.Size(370, 597);
 			this.Controls.Add(this.checkAuditPatientSelected);
 			this.Controls.Add(this.checkBadgeLogIn);
 			this.Controls.Add(this.checkMaintainPatient);
@@ -369,6 +380,7 @@ namespace OpenPmsDental{
 		private System.Windows.Forms.Label labelDomainPath;
 		private System.Windows.Forms.TextBox textDomainLoginPath;
 		private OpenPmsDental.UI.CheckBox checkDomainLoginEnabled;
+		private OpenPmsDental.UI.CheckBox checkDomainLoginForSigBoxes;
 		private OpenPmsDental.UI.CheckBox checkPasswordForceWeakToStrong;
 		private OpenPmsDental.UI.CheckBox checkPasswordsStrongIncludeSpecial;
 		private OpenPmsDental.UI.CheckBox checkDisableBackupReminder;

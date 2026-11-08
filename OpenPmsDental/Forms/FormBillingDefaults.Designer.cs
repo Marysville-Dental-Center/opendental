@@ -74,6 +74,7 @@ namespace OpenPmsDental{
 			this.textNote = new OpenPmsDental.ODtextBox();
 			this.label4 = new System.Windows.Forms.Label();
 			this.checkInserterBarcode = new OpenPmsDental.UI.CheckBox();
+			this.butSendSetup = new OpenPmsDental.UI.Button();
 			this.groupBox3.SuspendLayout();
 			this.groupBoxBilling.SuspendLayout();
 			this.groupBox2.SuspendLayout();
@@ -585,9 +586,20 @@ namespace OpenPmsDental{
 			this.checkInserterBarcode.TabIndex = 254;
 			this.checkInserterBarcode.Text = "Print inserter barcode on statements";
 			//
+			// butSendSetup
+			//
+			this.butSendSetup.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+			this.butSendSetup.Location = new System.Drawing.Point(692, 560);
+			this.butSendSetup.Name = "butSendSetup";
+			this.butSendSetup.Size = new System.Drawing.Size(98, 24);
+			this.butSendSetup.TabIndex = 255;
+			this.butSendSetup.Text = "Send Setup...";
+			this.butSendSetup.Click += new System.EventHandler(this.butSendSetup_Click);
+			//
 			// FormBillingDefaults
 			//
 			this.ClientSize = new System.Drawing.Size(877, 588);
+			this.Controls.Add(this.butSendSetup);
 			this.Controls.Add(this.checkInserterBarcode);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.checkBoxBillShowTransSinceZero);
@@ -664,6 +676,7 @@ namespace OpenPmsDental{
 		private OpenPmsDental.UI.CheckBox checkIncludeClinicNum;
 		private UI.CheckBox checkBillingEmailIncludeAutograph;
 		private OpenPmsDental.UI.CheckBox checkInserterBarcode;
+		private OpenPmsDental.UI.Button butSendSetup;
 		private System.Windows.Forms.Label labelBillingEmailType;
 		private UI.ComboBox comboBillingEmailType;
 		private UI.Button butBillingEmailEditHtml;

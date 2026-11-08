@@ -1702,6 +1702,11 @@ namespace OpenPmsDental {
 						importRow.TypeObj=typeof(Allergy);
 						importRow.DoImport=true;
 						importRow.DoAdd=true;//although this will be ignored if not importing.
+						if(allergyDef==null && !EFormImport.IsAllergiesAsOther()) {
+							//ODOPTS: EFormImportAllergiesAsOther off. Listed unticked; staff may still tick it to add it as Other.
+							importRow.ImpValDisplay=Lan.g(this,"(no match: tick to add as Other)");
+							importRow.DoImport=false;
+						}
 						_listImportRows.Add(importRow);
 					}//for
 					//Second loop here could consider which ones to remove, but this doesn't seem very useful.
@@ -2024,6 +2029,11 @@ namespace OpenPmsDental {
 						importRow.TypeObj=typeof(Disease);
 						importRow.DoImport=true;
 						importRow.DoAdd=true;//although this will be ignored if not importing.
+						if(diseaseDef==null && !EFormImport.IsProblemsAsOther()) {
+							//ODOPTS: EFormImportProblemsAsOther off. Listed unticked; staff may still tick it to add it as Other.
+							importRow.ImpValDisplay=Lan.g(this,"(no match: tick to add as Other)");
+							importRow.DoImport=false;
+						}
 						_listImportRows.Add(importRow);
 					}//for
 					//Second loop to consider which ones to remove (this was not done for allergies)

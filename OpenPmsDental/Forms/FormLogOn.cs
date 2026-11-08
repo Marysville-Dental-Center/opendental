@@ -12,6 +12,8 @@ namespace OpenPmsDental {
 		///<summary>Used when temporarily switching users. Currently only used when overriding signed notes.
 		///The user will not be logged on (Security.CurUser is untouched) but CurUserSimpleSwitch will be set to the desired user.</summary>
 		private bool _isSimpleSwitch;
+		///<summary>The Change User of a signature box (procedure notes, group notes, sheets, treatment plan signing, the ortho chart).</summary>
+		private bool _isSigBox;
 		///<summary>Gets set to the user that just successfully logged in when in Simple Switch mode.</summary>
 		public Userod UserodSimpleSwitch;
 		///<summary>True when UserodSimpleSwitch was chosen through domain (Active Directory) credentials instead of an Open Dental password.
@@ -32,8 +34,9 @@ namespace OpenPmsDental {
 		///<summary>Keeps track of keyboard inputs. Will be cleared if any input entered is not a number as it is looking for an employee badge Id. Will also be cleared if the key inputs come in too slow to prevent users from typing out an Id manually. The correct way to fill this string is by using a badge scanner.</summary>
 		private string _keyboardInput="";
 
-		///<summary>Set userNumSelected to automatically select the corresponding user in the list (if available).  Set isSimpleSwitch true if temporarily switching users for some reason.  This will leave Security.CurUser alone and will instead indicate which user was chosen / successfully logged in via CurUserSimpleSwitch.</summary>
-		public FormLogOn(long userNumSelected=0,bool isSimpleSwitch=false,bool doRefreshSecurityCache=true,bool doClearCaches=false) {
+		///<summary>Set userNumSelected to automatically select the corresponding user in the list (if available).  Set isSimpleSwitch true if temporarily switching users for some reason.  This will leave Security.CurUser alone and will instead indicate which user was chosen / successfully logged in via CurUserSimpleSwitch.
+		///Set isSigBox true for the Change User of a signature box: its domain login option also follows Open Dental's DomainLoginForSigBoxes (ODOPTS).</summary>
+		public FormLogOn(long userNumSelected=0,bool isSimpleSwitch=false,bool doRefreshSecurityCache=true,bool doClearCaches=false,bool isSigBox=false) {
 			InitializeComponent();
 			InitializeLayoutManager();
 			Plugins.HookAddCode(this,"FormLogOn.InitializeComponent_end");
@@ -45,6 +48,7 @@ namespace OpenPmsDental {
 				_userNameAutoSelect=Security.CurUser.UserName;
 			}
 			_isSimpleSwitch=isSimpleSwitch;
+			_isSigBox=isSigBox;
 			_doRefreshSecurityCache=doRefreshSecurityCache;
 			_doClearCaches=doClearCaches;
 			_dispatcherTimer=new DispatcherTimer();
@@ -72,7 +76,8 @@ namespace OpenPmsDental {
 			}
 			FillListBox();
 			//Changing user (signatures, notes) may use domain credentials when domain login is set up. Program start has its own domain flow.
-			checkUseDomainLogin.Visible=_isSimpleSwitch && DomainLogin.IsEnabled();
+			//A signature box's Change User also needs DomainLoginForSigBoxes (ODOPTS, on when Open Dental's row is missing).
+			checkUseDomainLogin.Visible=_isSimpleSwitch && DomainLogin.IsOfferedInChangeUser(_isSigBox);
 			this.Focus();//Attempted fix, customers had issue with UI not defaulting focus to this form on startup.
 			textSelectOnLoad.Select();//Give focus to appropriate text box.
 			Plugins.HookAddCode(this,"FormLogOn.Load_end",_isSimpleSwitch);

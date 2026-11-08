@@ -61,6 +61,10 @@ namespace OpenPmsDental {
 			this.colorDialog1 = new System.Windows.Forms.ColorDialog();
 			this.groupBox2 = new OpenPmsDental.UI.GroupBox();
 			this.textCountMob = new System.Windows.Forms.TextBox();
+			this.textCountAttGing = new System.Windows.Forms.TextBox();
+			this.updownAttGing = new System.Windows.Forms.DomainUpDown();
+			this.textRedAttGing = new System.Windows.Forms.TextBox();
+			this.labelAttGing = new System.Windows.Forms.Label();
 			this.updownMob = new System.Windows.Forms.DomainUpDown();
 			this.textRedMob = new System.Windows.Forms.TextBox();
 			this.textCountFurc = new System.Windows.Forms.TextBox();
@@ -326,7 +330,7 @@ namespace OpenPmsDental {
 			// 
 			// butSkip
 			// 
-			this.butSkip.Location = new System.Drawing.Point(1005, 599);
+			this.butSkip.Location = new System.Drawing.Point(1005, 619);
 			this.butSkip.Name = "butSkip";
 			this.butSkip.Size = new System.Drawing.Size(88, 24);
 			this.butSkip.TabIndex = 19;
@@ -386,6 +390,10 @@ namespace OpenPmsDental {
 			// 
 			// groupBox2
 			// 
+			this.groupBox2.Controls.Add(this.textCountAttGing);
+			this.groupBox2.Controls.Add(this.updownAttGing);
+			this.groupBox2.Controls.Add(this.textRedAttGing);
+			this.groupBox2.Controls.Add(this.labelAttGing);
 			this.groupBox2.Controls.Add(this.textCountMob);
 			this.groupBox2.Controls.Add(this.updownMob);
 			this.groupBox2.Controls.Add(this.textRedMob);
@@ -415,9 +423,43 @@ namespace OpenPmsDental {
 			this.groupBox2.Controls.Add(this.butCount);
 			this.groupBox2.Location = new System.Drawing.Point(1003, 409);
 			this.groupBox2.Name = "groupBox2";
-			this.groupBox2.Size = new System.Drawing.Size(221, 184);
+			this.groupBox2.Size = new System.Drawing.Size(221, 204);
 			this.groupBox2.TabIndex = 49;
 			this.groupBox2.Text = "Numbers in red";
+			// 
+			// textCountAttGing
+			// 
+			this.textCountAttGing.Location = new System.Drawing.Point(148, 178);
+			this.textCountAttGing.Name = "textCountAttGing";
+			this.textCountAttGing.ReadOnly = true;
+			this.textCountAttGing.Size = new System.Drawing.Size(34, 20);
+			this.textCountAttGing.TabIndex = 30;
+			// 
+			// updownAttGing
+			// 
+			this.updownAttGing.InterceptArrowKeys = false;
+			this.updownAttGing.Location = new System.Drawing.Point(104, 178);
+			this.updownAttGing.Name = "updownAttGing";
+			this.updownAttGing.Size = new System.Drawing.Size(19, 20);
+			this.updownAttGing.TabIndex = 29;
+			this.updownAttGing.MouseDown += new System.Windows.Forms.MouseEventHandler(this.updownRedAttGing_MouseDown);
+			// 
+			// textRedAttGing
+			// 
+			this.textRedAttGing.Location = new System.Drawing.Point(77, 178);
+			this.textRedAttGing.Name = "textRedAttGing";
+			this.textRedAttGing.ReadOnly = true;
+			this.textRedAttGing.Size = new System.Drawing.Size(27, 20);
+			this.textRedAttGing.TabIndex = 28;
+			// 
+			// labelAttGing
+			// 
+			this.labelAttGing.Location = new System.Drawing.Point(3, 180);
+			this.labelAttGing.Name = "labelAttGing";
+			this.labelAttGing.Size = new System.Drawing.Size(74, 16);
+			this.labelAttGing.TabIndex = 27;
+			this.labelAttGing.Text = "Att Ging (<=)";
+			this.labelAttGing.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 			// 
 			// textCountMob
 			// 
@@ -643,9 +685,9 @@ namespace OpenPmsDental {
 			// 
 			// label6
 			// 
-			this.label6.Location = new System.Drawing.Point(998, 645);
+			this.label6.Location = new System.Drawing.Point(998, 673);
 			this.label6.Name = "label6";
-			this.label6.Size = new System.Drawing.Size(123, 42);
+			this.label6.Size = new System.Drawing.Size(226, 20);
 			this.label6.TabIndex = 54;
 			this.label6.Text = "(All exams are saved automatically)";
 			this.label6.TextAlign = System.Drawing.ContentAlignment.BottomRight;
@@ -752,7 +794,7 @@ namespace OpenPmsDental {
 			// 
 			// butSaveImage
 			// 
-			this.butSaveImage.Location = new System.Drawing.Point(1005, 627);
+			this.butSaveImage.Location = new System.Drawing.Point(1005, 647);
 			this.butSaveImage.Name = "butSave";
 			this.butSaveImage.Size = new System.Drawing.Size(88, 24);
 			this.butSaveImage.TabIndex = 21;
@@ -762,7 +804,7 @@ namespace OpenPmsDental {
 			// butGraphical
 			// 
 			this.butGraphical.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butGraphical.Location = new System.Drawing.Point(1126, 599);
+			this.butGraphical.Location = new System.Drawing.Point(1126, 619);
 			this.butGraphical.Name = "butGraphical";
 			this.butGraphical.Size = new System.Drawing.Size(75, 24);
 			this.butGraphical.TabIndex = 20;
@@ -773,7 +815,7 @@ namespace OpenPmsDental {
 			// 
 			this.butPrint.Image = global::OpenPmsDental.Properties.Resources.butPrintSmall;
 			this.butPrint.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butPrint.Location = new System.Drawing.Point(1126, 627);
+			this.butPrint.Location = new System.Drawing.Point(1126, 647);
 			this.butPrint.Name = "butPrint";
 			this.butPrint.Size = new System.Drawing.Size(75, 24);
 			this.butPrint.TabIndex = 22;
@@ -1151,6 +1193,10 @@ namespace OpenPmsDental {
 		private System.Windows.Forms.DomainUpDown updownFurc;
 		private System.Windows.Forms.TextBox textRedFurc;
 		private System.Windows.Forms.TextBox textCountMob;
+		private System.Windows.Forms.TextBox textCountAttGing;
+		private System.Windows.Forms.DomainUpDown updownAttGing;
+		private System.Windows.Forms.TextBox textRedAttGing;
+		private System.Windows.Forms.Label labelAttGing;
 		private System.Windows.Forms.DomainUpDown updownMob;
 		private System.Windows.Forms.TextBox textRedMob;
 		private RadioButton radioFacialsFirst;

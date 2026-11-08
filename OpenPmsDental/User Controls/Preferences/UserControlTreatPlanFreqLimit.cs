@@ -27,7 +27,38 @@ namespace OpenPmsDental {
 		}
 		#endregion Constructors
 
+		#region Methods - Event Handlers
+		private void butInsHistPerioScalingCode_Click(object sender,EventArgs e) {
+			using FormProcCodes formProcCodes=new FormProcCodes();
+			formProcCodes.IsSelectionMode=true;
+			if(formProcCodes.ShowDialog()!=DialogResult.OK) {
+				return;
+			}
+			textInsHistPerioScalingCode.Text=ProcedureCodes.GetStringProcCode(formProcCodes.CodeNumSelected,doThrowIfMissing:false);
+		}
+		#endregion Methods - Event Handlers
+
 		#region Methods - Private
+		///<summary>ODOPTS: saves Open Dental's InsHistPerioScalingCode (blank, or one procedure code; a code typed in another case is saved as the
+		///procedure code list has it). An invalid code is added to errorMessage and not saved. Returns true if the stored value changed.</summary>
+		private bool UpdateInsHistPerioScalingCode(ref string errorMessage) {
+			string procCode=textInsHistPerioScalingCode.Text.Trim();
+			if(procCode!="") {
+				if(!ProcedureCodes.IsValidCode(procCode)) {
+					errorMessage+="\r\n  - "+labelInsHistPerioScalingCode.Text+": '"+procCode+"'";
+					return false;
+				}
+				procCode=ProcedureCodes.GetProcCode(procCode).ProcCode;
+			}
+			string procCodeOld=InsHistCategories.GetPerioScalingCodeSetting();
+			if(!InsHistCategories.SetPerioScalingCodeSetting(procCode)) {
+				return false;
+			}
+			OdOptions.LogChange(EnumPermType.Setup,"Insurance History perio scaling procedure code",InsHistCategories.PREF_PERIO_SCALING_CODE,procCodeOld,
+				procCode);
+			return true;
+		}
+
 		///<summary>The preference passed is assumed to be comma-delimited list of procedure codes.
 		///Updates and returns true if all proc codes in textProcCodes are valid. Otherwise, we add these codes to errorMessage and returns false.</summary>
 		private bool UpdateProcCodesPref(PrefName prefName,string textProcCodes,string labelText,ref string errorMessage) {
@@ -52,6 +83,8 @@ namespace OpenPmsDental {
 		#region Methods - Public
 		public void FillTreatPlanFreqLimit() {
 			checkFrequency.Checked=PrefC.GetBool(PrefName.InsChecksFrequency);
+			//ODOPTS: Open Dental's InsHistPerioScalingCode, read by name (blank when the row is missing).
+			textInsHistPerioScalingCode.Text=InsHistCategories.GetPerioScalingCodeSetting();
 			#region Discount Plan Frequency Codes
 			textDiscountExamCodes.Text=PrefC.GetString(PrefName.DiscountPlanExamCodes);
 			textDiscountFluorideCodes.Text=PrefC.GetString(PrefName.DiscountPlanFluorideCodes);
@@ -67,6 +100,7 @@ namespace OpenPmsDental {
 			string errorMessage="";
 			//Should we somehow be returning false once all are updated and there were code errors so the window doesn't close and they can edit the errors? Or do we not care enough?
 			Changed|=Prefs.UpdateBool(PrefName.InsChecksFrequency,checkFrequency.Checked);
+			Changed|=UpdateInsHistPerioScalingCode(ref errorMessage);
 			Changed|=UpdateProcCodesPref(PrefName.DiscountPlanExamCodes,textDiscountExamCodes.Text,labelDiscountExamFreq.Text,ref errorMessage);
 			Changed|=UpdateProcCodesPref(PrefName.DiscountPlanProphyCodes,textDiscountProphyCodes.Text,labelDiscountProphyFreq.Text,ref errorMessage);
 			Changed|=UpdateProcCodesPref(PrefName.DiscountPlanFluorideCodes,textDiscountFluorideCodes.Text,labelDiscountFluorideFreq.Text,ref errorMessage);
