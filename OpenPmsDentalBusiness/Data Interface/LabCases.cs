@@ -260,7 +260,13 @@ namespace OpenPmsDentalBusiness{
 			if(PIn.Int(Db.GetCount(command))!=0) {
 				throw new Exception(Lans.g("LabCases","Cannot delete LabCase because lab slip is still attached."));
 			}
+			//Open Dental 26.2 (P262-GLIDEWELL): a lab case sent to Glidewell keeps its row there, so it stays (INFERRED; the documents do not say).
+			command="SELECT COUNT(*) FROM glidewellmsg WHERE LabCaseNum="+POut.Long(labCaseNum);
+			if(PIn.Int(Db.GetCount(command))!=0) {
+				throw new Exception(Lans.g("LabCases","Cannot delete LabCase because it was sent to Glidewell."));
+			}
 			//delete
+			LabCaseProducts.DeleteForLabCase(labCaseNum);
 			command= "DELETE FROM labcase WHERE LabCaseNum = "+POut.Long(labCaseNum);
  			Db.NonQ(command);
 		}

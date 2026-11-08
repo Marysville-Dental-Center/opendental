@@ -223,7 +223,11 @@ namespace OpenPmsDentalBusiness{
 		///office's own Global Payments API app. "MeetInTheCloud" is the internal name the published 25.4 database documents give this integration
 		///(CreditCardSource.MeetInTheCloudTerminal, computerpref.CreditCardTerminalId); the program row's name itself is not published (INFERRED).
 		///The UI says "Global Payments V2".</summary>
-		MeetInTheCloud
+		MeetInTheCloud,
+		//Open Dental 26.2 (P262-GLIDEWELL), appended so existing values keep their numbers. program.ProgName stores the name, not the number.
+		///<summary>Glidewell lab cases (Open Dental 26.2): sends lab cases from the Edit Lab Case window to Glidewell with the office's own Glidewell
+		///account, directly. The accounts live in glidewellacct. Open Dental's own program.ProgName for it is not published (INFERRED).</summary>
+		Glidewell
 	}
 
 	

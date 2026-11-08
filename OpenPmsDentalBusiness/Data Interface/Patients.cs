@@ -68,6 +68,7 @@ namespace OpenPmsDentalBusiness {
 					"erouting.PatNum",
 					//formpat.FormPatNum IS NOT a PatNum so it is should not be merged.  It is the primary key.
 					"formpat.PatNum",
+					"glidewellmsg.PatNum",//Open Dental 26.2 (P262-GLIDEWELL): a lab case sent to Glidewell follows the lab case.
 					"guardian.PatNumChild",  //This may create duplicate entries for a single patient and guardian
 					"guardian.PatNumGuardian",  //This may create duplicate entries for a single patient and guardian
 					"hiequeue.PatNum",
@@ -79,6 +80,7 @@ namespace OpenPmsDentalBusiness {
 					"installmentplan.PatNum",
 					"intervention.PatNum",
 					"labcase.PatNum",
+					"labcaseproduct.PatNum",//Open Dental 26.2 (P262-GLIDEWELL): a lab case's products follow the lab case.
 					"labpanel.PatNum",
 					"medicalorder.PatNum",
 					//medicationpat.MedicationPatNum IS NOT a PatNum so it is should not be merged.  It is the primary key.
