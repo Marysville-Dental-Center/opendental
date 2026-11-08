@@ -23,6 +23,9 @@
     </UpgradeBackupLocation>
     <IsWebBootstrapper>true</IsWebBootstrapper>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <!-- No XmlSerializers assembly in any configuration (stage 0 of the .NET 10 move, S0-2a, docs/specs/net10-plan.md): SGen only pre-built
+         serializers for the SOAP proxies, XmlSerializer builds them at run time, and the release retires the files. -->
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <ResGenToolArchitecture>Managed32Bit</ResGenToolArchitecture>
     <TargetFrameworkProfile />
     <PublishUrl>http://localhost/OpenPmsDental/</PublishUrl>
@@ -51,7 +54,6 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
     <Prefer32Bit>false</Prefer32Bit>
     <CodeAnalysisRuleSet>OpenPmsDental.ruleset</CodeAnalysisRuleSet>
     <LangVersion>8.0</LangVersion>
@@ -70,7 +72,6 @@
     <LangVersion>8.0</LangVersion>
     <DocumentationFile>
     </DocumentationFile>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <PropertyGroup />
   <PropertyGroup>
