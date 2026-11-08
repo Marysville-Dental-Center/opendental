@@ -201,6 +201,36 @@ project file.
     about every quarter and remove the old one, so the choice must also say what happens when an update brings a later band or the next
     major version's SDK.
   - Every option sets `DOTNET_NOLOGO=1` and `DOTNET_CLI_TELEMETRY_OPTOUT=1` in the lane's own process.
+  - **Decided in S1-0 (2026-11-08): band (a), `"version": "10.0.114"`, `"rollForward": "disable"`** (O-5). The offline check (S1-0
+    step 1) ran in a scratch folder whose `nuget.config` had one empty local source, with an empty `NUGET_PACKAGES`:
+    - Both bands pass. Under the Build Tools 2026 MSBuild 18.11.1, an SDK-style net48 class library, an x86 exe that references it, an
+      SDK-style net48 test project that references MSTest v1 by name (resolved by `ODAddMSTestV1SearchPath` from
+      `18\BuildTools\Common7\IDE\Extensions\TestPlatform`) and a net10.0 class library build with `/restore`: no package is restored or
+      requested (no `Microsoft.Net.Sdk.Compilers.Toolset`, no `downloadDependencies` in `project.assets.json`, `NUGET_PACKAGES` stays
+      empty), no NETSDK1233, no warning; a locked restore passes; vstest 18.11 runs the probe's tests with `/Platform:x86`. The SDK
+      resolver sets `DOTNET_HOST_PATH` to the dotnet that holds the pinned SDK, so `RoslynCompilerType` is `Core` and the SDK-style
+      projects compile with the SDK's own compiler (`sdk\<version>\Roslyn\bincore\csc.exe`: Roslyn 5.0.0 in 10.0.114, 5.9.0 in
+      10.0.403), while the classic projects keep MSBuild's (Roslyn 5.11.0 in MSBuild 18.11, 4.14.0 in 17.14).
+      `_IsDisjointMSBuildVersion` is false for both (10.0.403 counts MSBuild below 18.9 as disjoint, 10.0.114 below 18.0).
+    - Without the resolver variables, 10.0.114 fails at once: "A compatible .NET SDK was not found. Requested SDK version: 10.0.114"
+      (MSB4236), after the `errorMessage` of `global.json`, which the .NET 10 host prints through MSBuild's resolver too.
+    - Under the Build Tools 2022 MSBuild 17.14 (a lane build of the probe), 10.0.114 with the resolver variables builds the same net48
+      projects with the SDK's compiler and no compiler package: the resolver sets `DOTNET_HOST_PATH` there as well, so the download
+      named under "Why S1-0" does not occur through MSBuild.exe with this band. 10.0.403 cannot be loaded by it at all ("Version
+      10.0.403 of the .NET SDK requires at least version 18.0.0 of MSBuild").
+    - **Why (a).** (1) It is the only band with which the lane's Build Tools 2022 fallback can still build SDK-style projects until the
+      stage 1 gate. (2) Visual Studio updates do not touch it. 10.0.403 is the Build Tools' own component
+      (`Microsoft.NetCore.Component.SDK`, package `Microsoft.NetCore.Toolset.10.0.403`), which an update replaces; 4xx is the last 10.0
+      band, so the update that brings the .NET 11 SDK would leave no 10.0 SDK for the pin, and every update before it would change the
+      SDK-style projects' compiler in the middle of a stage. (3) The SDK, and with it that compiler and the bundled runtime of the monthly
+      runtime release, changes only by a bump, in its own commit, with its lock-file check; the monthly 10.0.1xx patch is covered by the
+      owner's standing approval. (4) Supported to November 2028. The costs: every build entry point sets the resolver variables (the
+      repository's `tools/Initialize-BuildEnvironment.ps1` does it for the tool scripts and, called from it, for the lane; a builder
+      without the per-user SDK installs 10.0.114, per user or machine-wide, README); and the win-x86 apphost of the helper comes from
+      batch D (O-15).
+    - With `RestoreLockedMode=true`, a project that has no `packages.lock.json` yet restores and writes one: NuGet checks locked mode
+      only against an existing lock file. A package that converts a project commits the lock file its first lane build writes; `git
+      status` after the lane build shows any that was missed.
 - **Bump procedure** (band (a): each monthly 10.0.1xx patch, or when a security fix needs it; band (b): after each Visual Studio update
   that changes the machine-wide SDK):
   1. Band (a): the owner approves the download (a non-NuGet download) and the new 10.0.1NN SDK is installed per user next to the current
@@ -1280,8 +1310,9 @@ self-contained (open point O-15, decision 20).
 - **O-4. Resolved on 2026-11-08: MSVC v143 in the Build Tools 2026 instance.** The owner added
   `Microsoft.VisualStudio.Component.VC.14.44.17.14.x86.x64`; a Win32 v143 DLL built with MSBuild 18.11 links with 14.44.
   `Direct2dWrapper.vcxproj` stays on v143 (supported to 2032). No retarget to v145, no change to the setup's VC++ check.
-- **O-5. The SDK band in `global.json`** (decided by the lead in S1-0 from the offline check, recorded in section 2.4 and the commit; the
-  owner is told the result). (a) The per-user 10.0.1xx band with `disable`: it changes only through a bump and is supported to November
+- **O-5. The SDK band in `global.json`. Decided in S1-0 (2026-11-08): (a), 10.0.114 per user with `rollForward` `disable`; the
+  evidence and the reasons are in section 2.4.** (Decided by the lead in S1-0 from the offline check, recorded in section 2.4 and the
+  commit; the owner is told the result.) (a) The per-user 10.0.1xx band with `disable`: it changes only through a bump and is supported to November
   2028, but every build entry point needs the resolver variables; its win-x64 apphost pack, the one 3b needs (decision 19), is local,
   and the win-x86 one of the self-contained helper (O-15) comes from batch D.
   (b) The machine-wide band Visual Studio installs, with `latestFeature` or `disable` plus a bump after each Visual Studio update: no
