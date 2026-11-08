@@ -177,6 +177,8 @@ Not ported (owner decision): the Ez3D-i link, its dispatch and its exit scrub ar
 **Answered on 2026-11-07** (owner, "all as recommended"): the file layout of Allied Star Connect and the arguments of OrthoComposite are
 not public. If the office uses either program, the office asks that vendor (questions 2 and 3); until then both links stay switched off
 (they are inserted with `Enabled=0` and nothing turns them on). Questions 1 and 4: decided as built (owner, 2026-11-07). No code change.
+Update: OrthoComposite's arguments were later found public (its Microsoft Store listing) and ship as the default; see question 3's answer
+below and the vendor follow-up section. Only Allied Star Connect's file layout is still unpublished.
 
 1. **ProgName values.** If an Open Dental 26.2 database is ever adopted, its rows for these links may use other names; ours would then be
    added beside them. Rename the members if Open Dental's names become known.
@@ -290,7 +292,7 @@ program was installed, no sign-in was used.
   on each OrthoComposite program row (ProgName compared as MariaDB compares it), a ClinicNum 0 "Patient arguments" row that is blank
   (empty or white space only, which the button treats as not set) gets the default; a value the office typed is never changed. The row's
   Note is replaced only where it is still exactly the text `p262/links-1` wrote (`OrthoCompositePatientArguments.NoteBefore`), so an
-  office's own note stays. A row without the property gets it from `EnsureProgram` the next time Program Links opens. A database without an
+  office's own note stays, and since `next/vendorfix-1` only where the row then sends the default arguments (last section). A row without the property gets it from `EnsureProgram` the next time Program Links opens. A database without an
   OrthoComposite row (every adopted Open Dental 25.3.48 database: the row is inserted at runtime by this program) changes nothing, so the
   adoption tools need no rule. Idempotent; the step is needed only because rows inserted by the unreleased 26.2 integration hold the old
   blank default, and after it ran a blank value is the office's own choice (the button then says the arguments are not set up).
@@ -300,7 +302,9 @@ program was installed, no sign-in was used.
 - Still INFERRED: the ProgName value; that a blank value with a patient is refused; the Command line after the patient arguments; without a
   patient the program starts with the Command line only; a path without a folder or a `shell:` target is not checked. Not known: the name
   of OrthoComposite's executable and whether its Store package declares an app execution alias (and under what name); neither source names
-  either, so the Note and these notes give no example name (`next/vendorpub-2`, last section).
+  either, so the Note and these notes give no example name (`next/vendorpub-2`, last section). Not known either: how OrthoComposite treats
+  an empty `--dob ""`, which the default sends for a patient without a birthdate (`[Birthdate]` is blank then); neither source says whether
+  it searches by the names alone, ignores the argument or refuses it (`next/vendorfix-1`, last section).
 
 ### Medit Link: the Partner ID (existing program link)
 
@@ -311,8 +315,8 @@ program was installed, no sign-in was used.
 - The button (`WpfControlsOD/Bridges/MeditLink.cs`, rules in `OpenPmsDentalBusiness/VendorDirect/ProgramLinks/MeditLinkPartner.cs`):
   blank Partner ID: exactly the arguments as before (`"--commandUuid" "<uuid>"`, and with a patient `"--commandParam" "<Command line with the
   patient filled in>"`). With a Partner ID and a patient, `, \"PartnerID\": \"<id>\"` is added before the closing `}` of the Command line, as
-  the last key of its JSON object, exactly as Medit's article shows, then the patient is filled in. Without a patient there is no command
-  parameter, so nothing is added.
+  the last key of its JSON object, exactly as Medit's article shows, then the patient is filled in (since `next/vendorfix-1` with the
+  values made safe for the quoted JSON, last section). Without a patient there is no command parameter, so nothing is added.
 - Refused with a message, nothing started (patient selected and Partner ID set): a Partner ID with characters other than letters, digits,
   hyphens and underscores (INFERRED; Medit's IDs are digits); a Command line that already names PartnerID, in any letter case (set by
   hand, as Medit's article tells Open Dental users; remove one of the two); a Command line that does not end with `}` (not the JSON object Medit gives).
@@ -382,3 +386,92 @@ Runs of `next/vendorpub-2` on 2026-11-07, after one full build of `OpenDental.Lo
 `P262LinksTests` 58/58 (it holds the Medit Link Partner ID tests), `P262GlidewellTests` 54/54, `VBRIDGE1Tests` 37/37, `VBRIDGE2Tests`
 64/64, `VendorDirectTests` 881/881, `NoHqTests` 58/58. No scratch database was left behind. `ForkMigrationTests` and `InitSqlTests` were
 not run (the integration regenerates `db/init/new-database.sql`).
+
+## Review follow-ups (`next/vendorfix-1`, 2026-11-07)
+
+The read-only reviews of `next/vendorpub-2` (head 0be1dbafb) left smaller findings; this branch, cut from that head, fixes them. No new
+fork migration level: step 2026110801 has not shipped, so its rule is corrected in place.
+
+### Medit Link: the patient values are made safe (pre-existing Open Dental behaviour)
+
+- Finding: `MeditLinkPartner.GetArguments` gave the whole Command line to `Patients.ReplacePatient` and wrapped the result in
+  `"--commandParam" "..."`, as Open Dental's own bridge does, without removing anything from the patient values. A name with a double quote
+  could end the quoted argument early; a name with a backslash before a quote (`Nico\", \"PartnerID\": \"1`) reached Medit Link as a JSON
+  key of its own, a PartnerID even when the office has none; a trailing backslash escaped the closing `\"`; a backslash elsewhere or a
+  control character made the JSON invalid.
+- Fix: `MeditLinkPartner.FillPatient` gives each bracketed tag of the Command line alone to the replacement (`Patients.ReplacePatient`,
+  which ignores letter case) and makes only the value it returns safe with `MeditLinkPartner.EncodeValue`: double quotes, backslashes and
+  control characters (CR, LF, tab and the others) are removed, as `BridgePatientTokens.Encode` and OrthoComposite's `EncodeValue` do for the
+  other links, here with the backslash too, which JSON reads as an escape, so no value ends in one. Nothing else is changed and nothing is
+  trimmed (a patient without a last name gives `NameFL` a trailing space, as before). The Command line's own text, its `\"` quotes
+  included, a tag the replacement leaves alone and other bracketed text (a JSON array) are kept as typed; the Partner ID is added first, as
+  before, and is checked by its own rule.
+- Ordinary names (letters, spaces, apostrophes, hyphens, accented letters, a preferred name in apostrophes) give byte for byte the
+  arguments the link sent before, with and without a Partner ID. Each tag is now filled in on its own, so a value with square brackets is
+  no longer filled in again by a later tag of the whole text; an ordinary name has no brackets.
+- INFERRED: removing the characters rather than escaping them. Medit's article does not say how Medit Link reads escapes inside the JSON,
+  and a removed quote or backslash costs nothing in a name. Unicode look-alikes of the quote (for example the fullwidth one) are sent as
+  typed: `Process.Start` passes the command line to Windows as Unicode.
+
+### Step 2026110801: the new note only where the default is sent
+
+- Finding: the step replaced the old built-in Note wherever it was still the text `p262/links-1` wrote, also on a row with the office's
+  own Patient arguments, where the new Note (which describes `--lastname`, `--firstname` and `--dob`) would describe arguments that office
+  does not send.
+- Fix: `OrthoCompositePatientArguments.Run` replaces the old Note only when the row has ClinicNum 0 "Patient arguments" and each of them
+  was filled in by this run or already is `OrthoCompositeLink.DefaultPatientArguments` (`IsDefaultArguments`: white space at either end
+  ignored, as the button ignores it). A row with the office's own arguments (in any ClinicNum 0 row) keeps its note; so does a row without
+  the property (it sends nothing for a patient until Program Links adds the property with the default). A NULL ClinicNum 0 value reads as
+  blank and is filled in, as before. Still idempotent: a second run finds no blank value and no old note on a row that sends the default.
+- `OpenPmsDentalBusiness/Misc/ForkMigrations/README.md`: the row for 2026110801 says so, and that 2026110802 to 2026110809 are kept for
+  the vendor follow-ups, like the neighbouring rows.
+
+### Smaller fixes
+
+- `WpfControlsOD/Bridges/OrthoComposite.cs`: the summary no longer says the office fills in the Patient arguments from OrthoComposite's
+  instructions; the property holds `OrthoCompositeLink.DefaultPatientArguments` by default, which the office may change. Comment only.
+  `OrthoCompositeLink.Note`'s summary says the step writes it only on a row that sends the default.
+- `docs/release-notes/next.md`: the summary says the Medit Link Partner ID assigns the cases created from the Chart to the office's lab,
+  which the office still sends from Medit Link, as the Medit Link bullet says; the program links introduction no longer contradicts itself
+  (only Allied Star Connect's input is unpublished; OrthoComposite's `--lastname`, `--firstname` and `--dob` are cited from its Microsoft
+  Store listing, https://apps.microsoft.com/detail/9p2mp6p71zk9); the Medit Link bullet says the values are made safe; the step bullet
+  says when the note changes.
+- This note: the answered owner-question block points to question 3's update; the Still INFERRED list of the vendor follow-up names how
+  OrthoComposite treats an empty `--dob ""`; the step and Medit Link sections of the vendor follow-up point here.
+
+### Files
+
+- Changed: `OpenPmsDentalBusiness/VendorDirect/ProgramLinks/MeditLinkPartner.cs` (`EncodeValue`, `FillPatient`, `GetArguments`),
+  `OpenPmsDentalBusiness/Misc/ForkMigrations/OrthoCompositePatientArgumentsStep.cs` (`IsDefaultArguments`, `Run`),
+  `OpenPmsDentalBusiness/Misc/ForkMigrations/README.md`, `OpenPmsDentalBusiness/VendorDirect/ProgramLinks/OrthoCompositeLink.cs` (a
+  summary), `WpfControlsOD/Bridges/OrthoComposite.cs` (a summary), `tests/P262LinksTests/MeditLinkPartnerTests.cs`,
+  `OrthoCompositeArgumentsStepTests.cs`, `docs/release-notes/next.md`, this note.
+- No schema, CRUD, preference, permission or stored enum change; no new fork level. `db/init/new-database.sql` is not regenerated (the
+  coordinator does it after this package; the init database has no OrthoComposite row).
+
+### Tests
+
+`tests/P262LinksTests`, now 61 tests (3 new):
+
+- `MeditLinkPartnerTests.PatientValues_QuotesBackslashesAndControlCharactersRemoved_TheWholeArgumentsChecked`: names with a double quote, a
+  backslash, CR/LF/tab, a trailing backslash, two trailing backslashes, a key injected with plain quotes (`Nico", "PartnerID": "1`), a key
+  injected as the Command line writes its quotes, and a name that tries to add another argument, each with and without a Partner ID: the
+  whole arguments string exactly, and the arguments split as Windows splits them for the program it starts (`CommandLineToArgvW`) into
+  exactly `--commandUuid`, the command id, `--commandParam` and one JSON object with exactly the expected keys and values (repeated keys
+  refused); `EncodeValue` removes only those characters and trims nothing.
+- `MeditLinkPartnerTests.PatientValues_OrdinaryNames_SentExactlyAsBefore`: accented letters, spaces, apostrophes, hyphens, a preferred
+  name and a blank last name give byte for byte what the whole-text replacement gave, with and without a Partner ID; a tag the replacement
+  leaves alone and a JSON array in an office's own Command line are kept; no patient or no replacement leaves the text unchanged.
+- `MeditLinkPartnerTests.Property_IsAddedBlankToTheExistingRowOnly_TheRowIsNotChanged` now checks the whole string with the real
+  `Patients.ReplacePatient` (the synthetic last name's quotes removed) and its JSON keys, not only its start and end, and that a tag in
+  another letter case is filled in and made safe.
+- `OrthoCompositeArgumentsStepTests.Step_ReplacesTheOldNoteOnlyWhereTheDefaultIsSent_FillsANullValue`: with the old note on every row, the
+  office's own arguments keep it; a NULL ClinicNum 0 value is filled in and the row gets the new note; a value that already is the default
+  (spaces at the ends, kept as stored) gets it; a row without the property and a row whose second ClinicNum 0 row holds the office's value
+  keep it; no row is added; a second run changes nothing.
+
+Runs of `next/vendorfix-1` on 2026-11-07, after one full build of `OpenDental.Local.slnf` with 0 errors (Targeted, one run):
+`P262LinksTests` 61/61, `P262GlidewellTests` 54/54, `VBRIDGE1Tests` 37/37, `VBRIDGE2Tests` 64/64, `VendorDirectTests` 881/881, `NoHqTests`
+58/58. The database tests ran on the assemblies' own scratch databases (`test_p262links_`, `test_p262glidewell_`, unique per run); none was
+left behind. `ForkMigrationTests` and `InitSqlTests` were not run (the coordinator regenerates `db/init/new-database.sql` after this
+package).

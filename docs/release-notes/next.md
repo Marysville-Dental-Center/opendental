@@ -34,7 +34,8 @@ What this version brings, each in its section below (the roadmap's "Done in the 
   - vital signs imported from eForms, types for referral commlogs, and an optional automatic switch between a patient's Prophy and Perio
     recall;
   - program links: Allied Star Connect and OrthoComposite added (off; OrthoComposite with its public arguments), Trojan Express Collect and
-    Suni retired, and a Partner ID for Medit Link that sends the cases created from the Chart to the office's lab;
+    Suni retired, and a Partner ID for Medit Link that assigns the cases created from the Chart to the office's lab (the office still sends
+    them from Medit Link);
   - Glidewell lab cases, ready but not yet able to send: hidden in Program Links until the program can connect to Glidewell, and no patient
     data is sent without a business associate agreement with Glidewell.
 
@@ -571,10 +572,11 @@ Three of Open Dental 26.2's smaller changes, re-implemented from Open Dental's p
 ## Open Dental 26.2: program links
 
 Built from Open Dental's public 26.2 release notes and setup pages only (`docs/port-notes/P262-LINKS.md`). New links appear in Setup >
-Program Links the first time it is opened, disabled; their buttons show only once the office enables them. Neither vendor publishes what its
-program reads, so Allied Star Connect and OrthoComposite stay off unless the office uses the program; an office that does asks that vendor
-for the file layout or the arguments (owner decision of 2026-11-07). OrthoComposite has since published its arguments, which now ship as the
-default.
+Program Links the first time it is opened, disabled; their buttons show only once the office enables them, and both stay off unless the
+office uses the program (owner decision of 2026-11-07). Only Allied Star Connect's input is unpublished: Alliedstar does not publish the
+file layout or any arguments Connect reads, so an office that uses it asks Alliedstar. OrthoComposite's arguments `--lastname`,
+`--firstname` and `--dob` are public, in its Microsoft Store listing (https://apps.microsoft.com/detail/9p2mp6p71zk9), and ship as the
+link's default.
 
 - **Allied Star Connect** (new): a Chart module button that writes the selected patient (id, name, birthdate, gender and the first email
   address) to the .json file in the link's Info file path, then starts Connect (default path `C:\Program Files\Alliedstar\Connect\Connect.exe`).
@@ -587,9 +589,12 @@ default.
   [LName] and [Birthdate] are filled in, so no other patient data can be sent. Enter where OrthoComposite is in Path of file to open (a
   name without a folder, or a `shell:` target, is passed to Windows unchecked).
 - **OrthoComposite's public arguments** (fork migration step 2026110801): a link set up before this version with blank Patient arguments gets
-  OrthoComposite's arguments; arguments an office typed are never changed.
+  OrthoComposite's arguments; arguments an office typed are never changed. The link's built-in note is updated only where the link then
+  sends those arguments; a link with the office's own arguments keeps its note.
 - **Medit Link**: a new Partner ID property (blank, sent nowhere) assigns every case created with the Chart's Medit Link button to that
-  partner lab in Medit Link, as Medit documents (for example Glidewell, partner ID 7307395).
+  partner lab in Medit Link, as Medit documents (for example Glidewell, partner ID 7307395). The patient's values filled into the link's
+  arguments lose any double quotes, backslashes and control characters, so a name can no longer break the arguments or add a key such as
+  PartnerID; ordinary names are sent exactly as before.
 - **Trojan Express Collect** (retired): the service is no longer offered. The link is listed as "(discontinued)", cannot be enabled or
   started, and the update disables it and removes its buttons (fork migration step 2026110781); its settings stay in the database. Nearly
   every database has one such button on the Account module toolbar (Open Dental's 2019 update added it for every office, hidden while the
@@ -624,5 +629,7 @@ around the connection is in place:
 - Lab cases an Open Dental database already sent to Glidewell keep their stored status and details, which the Details button shows.
 - **Teeth of a product**: filled from the procedures of the lab case's appointment (or planned appointment), formatted as the Chart shows a
   tooth range; "From Procedures" fills them again, and what the user types is kept.
-- **Sending a case today**: the setup window lists Glidewell's own ways to send a case, which need no connection from this program (iTero or
-  Medit Link scanner partnerships, file upload in Glidewell's My Account, the GL-421 paper Rx).
+- **Sending a case today**: the setup window lists Glidewell's own ways to send a case, in Glidewell's words, which need no connection from
+  this program: the 3Shape TRIOS, iTero and Medit Link scanner connections; for Alliedstar, CEREC, DEXIS, Heron IOS and Planmeca, a pointer
+  to the steps on Glidewell's Submit a Digital Case page; STL files from any other scanner uploaded through Glidewell's My Account portal
+  (an office not registered for it calls Glidewell at 800-854-7256); and the GL-421 paper Rx.

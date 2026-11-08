@@ -141,7 +141,8 @@ The sources give the tables, the field names and the eight statuses. Everything 
 10. Products are edited in the Edit Lab Case window while the program link is on (the documents do not say where). `GlidewellProduct` is never
     chosen, because Glidewell's list is not published: a new product row stores 0 and a stored value is kept and shown as a number. 0 may be a
     real product in Open Dental's list (owner question 3). The teeth were typed on `p262/glidewell-1`; since `next/vendorpub-1` they are
-    filled from the procedures of the lab case's appointment (last section), and what the user types stays the manual override.
+    filled from the procedures of the lab case's appointment (item 16 and the vendor follow-up), and what the user types stays the manual
+    override.
 11. `glidewellacct.DateTimeExpires` is shown, never written (nothing in this version signs in to a scanner).
 12. Sending does not set the lab case's Sent date (the scan is not taken yet when the case is registered).
 13. No audit trail entry for sending or checking status (the documents name no permission); account changes are logged under Setup and key
@@ -149,6 +150,12 @@ The sources give the tables, the field names and the eight statuses. Everything 
 14. The confirmation before sending lists every item sent, and the setup window says the same.
 15. The API key limit of 127 UTF-8 bytes follows from the documented column width and this program's storage format, not from Glidewell:
     Glidewell's key format is not published. A longer key is refused, never shortened.
+16. The teeth of a lab case product (`next/vendorpub-1`, last sections) come from every procedure of the lab case's appointment that is not
+    deleted, whatever its code, not only the lab-related ones (crowns, bridges, dentures): Open Dental's document says only "Retrieved from
+    procedure.ToothRange" and names no procedure filter. A procedure without a tooth (an exam) adds nothing; a procedure on another tooth on
+    the same appointment adds that tooth, which the user corrects by typing (the manual override). When the lab case is linked to a scheduled
+    appointment, that appointment's procedures are used, and when it has none the planned appointment is not used instead (no fallback); the
+    planned appointment's procedures are used only when no scheduled appointment is linked.
 
 ## Blocked: what is needed
 
@@ -261,7 +268,8 @@ no sign-in was used.
   (https://glidewelldental.com/send-case/submit-digital-case): an iTero office asks Align to add Glidewell (Lab ID 318), then requests a
   partnership with CDOP@glidewelldental.com, then picks Glidewell in the iTero Rx; a Medit Link office searches for CDOP@glidewelldental.com
   under Partner, requests a partnership, then picks Glidewell in the Rx; otherwise STL or PLY files are uploaded through Glidewell's My
-  Account, or a physical case is sent with the GL-421 Rx form. These connections are Glidewell's own and need no Glidewell API.
+  Account, or a physical case is sent with the GL-421 Rx form. These connections are Glidewell's own and need no Glidewell API. (Since
+  `next/vendorfix-1` the setup window uses Glidewell's own words from the Submit a Digital Case page, with 3Shape TRIOS; last section.)
 - **Medit's article on its Open Dental integration** (https://support.medit.com/hc/en-us/articles/4418103622925; `P262-LINKS.md` has the
   details): a `PartnerID` key in the Medit Link program link's arguments pre-assigns a partner to the cases created through it; Glidewell
   Dental's PartnerID is 7307395.
@@ -293,6 +301,7 @@ no sign-in was used.
   Medit Link: Partner, CDOP@glidewelldental.com, request a partnership, then Glidewell in the Rx, and the Medit Link program link's Partner ID
   7307395 to assign the cases created from the Chart to Glidewell; otherwise STL or PLY files through Glidewell's My Account, or a physical
   case with the GL-421 Rx form). No web address in the code (the wiring test's rule): the text names Glidewell's website pages by their titles.
+  The text as it is now, in Glidewell's own words: last section (`next/vendorfix-1`).
 - While the program link is hidden in Program Links (owner decision of 2026-11-07, no transport), the window cannot be opened, so the
   instructions show there only once a transport exists; until then this note and the release notes carry them (owner question below).
 - Sending from this program stays blocked as built (the business associate agreement and the transport).
@@ -347,3 +356,68 @@ left behind. `ForkMigrationTests` and `InitSqlTests` were not run (the integrati
 2. **Medit Link Partner ID for Glidewell.** Medit's article does not say whether Glidewell must already be a partner in Medit Link before
    `PartnerID` 7307395 assigns cases to it. The instructions tell the office to set up the partnership first. Confirm with Medit or Glidewell
    if an office reports cases that do not reach Glidewell.
+
+## Review follow-ups (`next/vendorfix-1`, 2026-11-07)
+
+The read-only reviews of `next/vendorpub-2` (head 0be1dbafb) left smaller findings; this branch, cut from that head, fixes them. No schema
+change, migration step or preference. The Medit Link and OrthoComposite fixes are in `P262-LINKS.md` (last section).
+
+### The setup window's instructions in Glidewell's own words
+
+- Source: Glidewell's **Submit a Digital Case** page (https://glidewelldental.com/send-case/submit-digital-case), read by the coordinator
+  on 2026-11-07; nothing was read online for this branch.
+- `GlidewellProgram.GetSendWithoutThisProgramText()` now gives, after the opening line:
+  - **3Shape TRIOS** (added): "Log in to your 3Shape account", under More select Settings, then Connections, Labs and Add, search for
+    Glidewell and click Connect to send a request; "Once the connection request has been approved", Glidewell appears under the Scan & Send
+    menu.
+  - **iTero**: "Contact Align Technology directly to add Glidewell to your list of 'Favorite Labs'. Provide Glidewell Lab ID as 318", then
+    under Partner search for CDOP@glidewelldental.com and request partnership; "Once partnership is approved, you can select Glidewell when
+    completing the digital Rx".
+  - **Medit Link**: log in at meditlink.com, under Partner search for CDOP@glidewelldental.com and request partnership, then the same
+    "Once partnership is approved" line; the Medit Link program link's Partner ID 7307395 sentence is kept.
+  - **Alliedstar, CEREC, DEXIS, Heron IOS and Planmeca**: Glidewell's Submit a Digital Case page gives the steps for each (the text names
+    them, it does not copy the steps).
+  - **Any other scanner**: Glidewell accepts scans from almost any scanner; export the STL files and upload them through the My Account
+    portal; an office not registered for My Account calls Glidewell at 800-854-7256 to set it up (new constant `MyAccountSetupPhone`).
+  - The GL-421 paper Rx line is kept, and the closing line names both pages (Send a Case and Submit a Digital Case).
+- Neutral: the scanners with steps (3Shape TRIOS, iTero, Medit Link) and the scanners named together are each in alphabetical order, and
+  none is put forward. "meditlink.com" is where Glidewell's page tells a Medit office to log in, not an address this program uses; the text
+  still has no `http` address or `www.` and names no host of the fork's blocked list. Sending from this program stays blocked as built.
+- `docs/release-notes/next.md`: the "Sending a case today" bullet lists the new text. The earlier sections of this note (`next/vendorpub-1`)
+  point here.
+
+### Test hygiene: the tooth numbering tests put DxIcdVersion back
+
+- Finding: `LabCaseProductTeethTests.SetToothNumbering` writes `UseInternationalToothNumbers` and `DxIcdVersion` into the assembly's shared
+  scratch database; the finally block put back only the tooth numbering (by setting it again), and
+  `FormatToothRange_ReadsToothNumAndToothRangeOfEachProcedure` put back nothing.
+- Fix: both tests read the two preference rows first (`GetPrefs`) and put them back in their finally block (`RestorePrefs`: the same rows
+  and values; a row that was missing is missing again, the cache refreshed); the procedures test checks that the rows are as before.
+
+### INFERRED, recorded
+
+- Item 16 of the INFERRED behaviours: the teeth of a lab case product come from every procedure of the lab case's appointment that is not
+  deleted, not only lab-related procedures; when a scheduled appointment is linked its procedures are used, with no fallback to the planned
+  appointment when it has none. Behaviour unchanged (`LabCaseProductTeethTests` already covers both).
+
+### Files
+
+- Changed: `OpenPmsDentalBusiness/VendorDirect/Glidewell/GlidewellProgram.cs` (`GetSendWithoutThisProgramText`, `MyAccountSetupPhone`,
+  summaries), `tests/P262GlidewellTests/SendWithoutThisProgramTests.cs`, `LabCaseProductTeethTests.cs`, `docs/release-notes/next.md`, this
+  note.
+
+### Tests
+
+`tests/P262GlidewellTests`, still 54 tests (two changed):
+
+- `SendWithoutThisProgramTests.Text_HasGlidewellsPublicSteps`: the eight lines exactly (the opening line; 3Shape TRIOS, iTero and Medit
+  Link in Glidewell's words, with Lab ID 318, CDOP@glidewelldental.com and the Medit partner ID 7307395; the five scanners named; any
+  other scanner with STL, My Account and 800-854-7256; the GL-421 Rx form; both page titles), the alphabetical order of both lists, no web
+  address to open, no promotion (also "recommend...", "best", "preferred"), ASCII. `GlidewellWiringTests` still finds no promotion, web
+  address, blocked host or network code in the package files.
+- `LabCaseProductTeethTests`: the two database tests restore both preference rows (above).
+
+Runs of `next/vendorfix-1` on 2026-11-07, after one full build of `OpenDental.Local.slnf` with 0 errors (Targeted, one run):
+`P262GlidewellTests` 54/54, `P262LinksTests` 61/61, `VBRIDGE1Tests` 37/37, `VBRIDGE2Tests` 64/64, `VendorDirectTests` 881/881,
+`NoHqTests` 58/58. No scratch database was left behind. `ForkMigrationTests` and `InitSqlTests` were not run (the coordinator regenerates
+`db/init/new-database.sql` after this package).
