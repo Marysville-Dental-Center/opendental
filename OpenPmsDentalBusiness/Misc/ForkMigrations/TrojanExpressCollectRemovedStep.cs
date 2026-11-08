@@ -11,9 +11,13 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 	///Credit Score link: it keeps the program row (migrated data refers to it by ProgName, and its properties stay) but disables it and deletes its
 	///toolbar buttons, so no button shows anywhere. Program Links shows the row as "(discontinued)" (ProgramLinksDiscontinued); the description in
 	///the row is not changed. Runs on every database, an adopted Open Dental 25.3.48 one included, because what Open Dental's own 26.2 conversion
-	///does to the row is not public (INFERRED). Where the row is already disabled and has no buttons (a new database, or an office that never used
-	///the link) nothing changes. The rule is TrojanExpressCollectRemoved.Plan, which AdoptionValidation's migration-preview prints and adopt's row
-	///check holds the adopted copy to; a second run finds nothing to change.</summary>
+	///does to the row is not public (INFERRED). Open Dental's 19.2.29 conversion (ConvertDatabases6.To19_2_29) created the row for every database
+	///with its four properties and one Account module button (ToolBar 0, "TrojanCollect"), enabled only where the office had used the old Trojan
+	///preferences; db/init/new-database.sql holds the same button (ToolButItemNum 82). So on a new database and on an office that never used the
+	///link the row is disabled with that one button, and the step deletes the button only; where the office used the link it also disables the
+	///row. It changes nothing only where there is no row, or the row is disabled and someone removed its button. The rule is
+	///TrojanExpressCollectRemoved.Plan, which AdoptionValidation's migration-preview prints and adopt's row check holds the adopted copy to; a
+	///second run finds nothing to change.</summary>
 	[ForkMigration(2026110781,"Disable the discontinued Trojan Express Collect program link")]
 	public class TrojanExpressCollectRemovedStep:ForkMigrationStep {
 		public const string PROG_NAME=TrojanExpressCollectRemoved.PROG_NAME;

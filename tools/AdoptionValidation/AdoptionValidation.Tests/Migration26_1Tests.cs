@@ -125,8 +125,10 @@ namespace AdoptionValidation.Tests {
 		}
 
 		///<summary>The Trojan Express Collect step (P262-LINKS, 2026110781) changes the same column and table as the DXC step, through the same two rules,
-		///whose reasons name both steps; migration-preview prints what it disables and deletes in the adoption log's words, and nothing where the link
-		///is already disabled without buttons (a new database, or an office that never used it), missing, or there is no program table.</summary>
+		///whose reasons name both steps; migration-preview prints what it disables and deletes in the adoption log's words: on a row an office used,
+		///the row and its button; on the row as Open Dental's 19.2.29 conversion left it where the office never used the link, and as a new database has
+		///it (disabled, one Account module button), the button only; and nothing where the row is disabled without buttons, missing, or there is no
+		///program table.</summary>
 		[TestMethod]
 		public void TrojanExpressCollectPlan_SharesTheDxcRulesAndSaysWhatTheStepChanges() {
 			AllowedDifferences allowed=LoadAllowed();
@@ -158,6 +160,16 @@ namespace AdoptionValidation.Tests {
 				+"discontinued Trojan Express Collect program link (ProgramNum 112)\"");
 			StringAssert.Contains(text,"adopt's row check (step 4) requires exactly this");
 			listPrograms[0].IsEnabled=false;
+			//The row as Open Dental's 19.2.29 conversion left it for an office that never used the link: disabled, its one Account module button.
+			TrojanExpressCollectPlan.Plan planButton=new TrojanExpressCollectPlan.Plan { HasProgramTable=true,HasToolButItemTable=true,
+				Rows=TrojanExpressCollectRemoved.Plan(listPrograms,listButtons) };
+			Assert.IsTrue(planButton.IsChanging);
+			Assert.AreEqual(0,planButton.Rows.ListProgramsDisabled.Count);
+			string textButton=string.Join("\r\n",planButton.Lines());
+			StringAssert.Contains(textButton,"Step 2026110781 (Trojan Express Collect program link): the discontinued Trojan Express Collect program link (ProgramNum 112) "
+				+"stays, with its text and properties; the step deletes its 1 toolbar button(s) (ToolButItemNum 9 on AccountModule) (on every database");
+			StringAssert.Contains(textButton,"The adoption log says \"Deleted 1 toolbar button(s) of the discontinued Trojan Express Collect program link (ToolButItemNum 9)\";");
+			Assert.IsFalse(textButton.Contains("disables") || textButton.Contains("Disabled the discontinued"),textButton);
 			TrojanExpressCollectPlan.Plan planClean=new TrojanExpressCollectPlan.Plan { HasProgramTable=true,HasToolButItemTable=true,
 				Rows=TrojanExpressCollectRemoved.Plan(listPrograms,listButtons.Where(x => x.ProgramNum!=112).ToList()) };
 			Assert.IsFalse(planClean.IsChanging);

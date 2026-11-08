@@ -123,18 +123,42 @@ namespace P262LinksTests {
 			Assert.AreEqual(0,contextAgain.ListChanges.Count,"A second run changes nothing.");
 		}
 
+		///<summary>Open Dental's 19.2.29 conversion gave every database the row with four properties and one Account module button, enabled only where
+		///the office had used the old Trojan preferences; db/init/new-database.sql holds that shape (program 112 disabled, programproperty 223 to 226,
+		///toolbutitem (82,112,0,'TrojanCollect')). So on a new database, and on an office that never used the link, the step deletes that one button
+		///and nothing else. Without a row it changes nothing.</summary>
 		[TestMethod]
-		public void Step_RowAsANewDatabaseHasIt_OrNoRow_ChangesNothing() {
+		public void Step_NoRow_ChangesNothing_RowAsANewDatabaseHasIt_LosesOnlyItsButton() {
 			ScratchDb.RequireDb();
 			ForkMigrationContext context=new ForkMigrationContext(ScratchDb.DbName);
 			new TrojanExpressCollectRemovedStep().Apply(context);
 			Assert.AreEqual(0,context.ListChanges.Count,"No row.");
-			//db/init/new-database.sql has the row disabled, without buttons.
+			//The rows as db/init/new-database.sql has them (and Open Dental's 19.2.29 conversion wrote them for an office that never used the link).
 			DataCore.NonQ("INSERT INTO program (ProgramNum,ProgName,ProgDesc,Enabled,Path,CommandLine,Note,PluginDllName,ButtonImage,FileTemplate,FilePath,IsDisabledByHq,CustErr) "
 				+"VALUES (112,'TrojanExpressCollect','Trojan Express Collect',0,'','','','','','','',0,'')");
+			DataCore.NonQ("INSERT INTO programproperty (ProgramPropertyNum,ProgramNum,PropertyDesc,PropertyValue,ComputerName,ClinicNum,IsMasked,IsHighSecurity) VALUES "
+				+"(223,112,'FolderPath','','',0,0,0),(224,112,'BillingType','0','',0,0,0),(225,112,'Password','','',0,1,1),(226,112,'PreviousFileNumber','0','',0,0,0)");
+			DataCore.NonQ("INSERT INTO toolbutitem (ToolButItemNum,ProgramNum,ToolBar,ButtonText) VALUES (82,112,0,'TrojanCollect')");
+			string programBefore=ReadRow("SELECT * FROM program WHERE ProgramNum=112");
+			string propertiesBefore=ReadRow("SELECT * FROM programproperty WHERE ProgramNum=112 ORDER BY ProgramPropertyNum");
 			ForkMigrationContext contextNew=new ForkMigrationContext(ScratchDb.DbName);
 			new TrojanExpressCollectRemovedStep().Apply(contextNew);
-			Assert.AreEqual(0,contextNew.ListChanges.Count);
+			CollectionAssert.AreEqual(new[] { "Deleted 1 toolbar button(s) of the discontinued Trojan Express Collect program link (ToolButItemNum 82)" },
+				contextNew.ListChanges,string.Join("\r\n",contextNew.ListChanges));
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT COUNT(*) FROM toolbutitem"));
+			Assert.AreEqual(programBefore,ReadRow("SELECT * FROM program WHERE ProgramNum=112"),"The row stays as it was: disabled, with its text.");
+			Assert.AreEqual(propertiesBefore,ReadRow("SELECT * FROM programproperty WHERE ProgramNum=112 ORDER BY ProgramPropertyNum"),"Its four properties stay.");
+			Assert.AreEqual("4",DataCore.GetScalar("SELECT COUNT(*) FROM programproperty WHERE ProgramNum=112"));
+			ForkMigrationContext contextAgain=new ForkMigrationContext(ScratchDb.DbName);
+			new TrojanExpressCollectRemovedStep().Apply(contextAgain);
+			Assert.AreEqual(0,contextAgain.ListChanges.Count,"A second run changes nothing.");
+		}
+
+		///<summary>Every cell of the rows the query returns, in order, as one string.</summary>
+		private static string ReadRow(string command) {
+			System.Data.DataTable table=DataCore.GetTable(command);
+			return string.Join("\r\n",table.Rows.Cast<System.Data.DataRow>().Select(x => string.Join("|",x.ItemArray.Select(y => Convert.ToString(y,
+				System.Globalization.CultureInfo.InvariantCulture)))));
 		}
 
 		[TestMethod]

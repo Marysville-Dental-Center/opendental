@@ -251,6 +251,7 @@ namespace AdoptionValidation {
 				CheckUdsPlusRow(preview,adoption,adoptionResult);
 				CheckInsHistCodeGroups(preview,adoption,adoptionResult);
 				CheckDxcCreditScore(preview,adoption,adoptionResult,fixture);
+				CheckTrojanExpressCollect(preview,adoption,adoptionResult,fixture);
 				//7. Rehash (Database Maintenance, Tools, Security Hashes), done by HeadlessAdoption above.
 				_run.ListHashesBefore=adoption.ListHashesStart;
 				_run.ListHashesAfter=adoption.ListHashesAfter;
@@ -573,6 +574,66 @@ namespace AdoptionValidation {
 			string lineButtons=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("toolbutitem:"))??"";
 			Check("M7","Adoption's DXC Patient Credit Score step changes exactly what migration-preview lists: the discontinued program link disabled (Enabled only) "
 				+"and its toolbar buttons deleted, nothing else in program and toolbutitem",listProblems.Count==0,
+				"migration-preview of the source: "+string.Join(" ",plan.Lines())+" The adoption log names "+(listLogExpected.Count-listLogMissing.Count)+" of the "
+				+listLogExpected.Count+" change(s); row check: "+lineProgram+" "+lineButtons+(listProblems.Count==0 ? "" : " Problems: "+string.Join("; ",listProblems)));
+		}
+
+		///<summary>M8: the Trojan Express Collect step (P262-LINKS) changes exactly what migration-preview lists for the source (TrojanExpressCollectPlan):
+		///on the office fixture, which holds the link as Open Dental's 19.2.29 conversion left it for an office that never used it (disabled, four
+		///properties, one Account module button), it deletes that one button and disables nothing; the row, its text and its properties stay; the row
+		///check found exactly that (its Trojan Express Collect lists), and the adoption log names the deleted button.</summary>
+		private void CheckTrojanExpressCollect(MigrationPreview.Result preview,HeadlessAdoption.Result adoption,AdoptionResult adoptionResult,OfficeFixture.Summary fixture) {
+			TrojanExpressCollectPlan.Plan plan=preview.PlanTrojan;
+			OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.TrojanExpressCollectRemoved.RowPlan rows=plan.Rows;
+			AdoptionRowCheck.Result rowCheck=adoption.RowCheck;
+			List<string> listProblems=new List<string>();
+			if(!plan.IsChanging || rows.ListPrograms.Count!=1 || rows.ListPrograms[0].ProgramNum!=fixture.TrojanProgramNum || rows.ListProgramsDisabled.Count!=0
+				|| rows.ListButtonsDeleted.Count!=1 || rows.ListButtonsDeleted[0].ToolButItemNum!=fixture.TrojanButtonNum
+				|| rows.ListButtonsDeleted[0].ToolBar!=OfficeFixture.TOOLBAR_TROJAN)
+			{
+				listProblems.Add("migration-preview's Trojan Express Collect plan differs from the fixture (ProgramNum "+fixture.TrojanProgramNum+" already disabled, its "
+					+"one Account module button, ToolButItemNum "+fixture.TrojanButtonNum+", deleted)");
+			}
+			if(rowCheck==null) {
+				listProblems.Add("no row check");
+			}
+			else {
+				if(!rowCheck.ListProgramNumsDisabledTrojan.SequenceEqual(rows.ListProgramsDisabled.Select(x => x.ProgramNum))
+					|| !rowCheck.ListToolButItemNumsDeletedTrojan.OrderBy(x => x).SequenceEqual(rows.ListButtonsDeleted.Select(x => x.ToolButItemNum)))
+				{
+					listProblems.Add("the row check found "+rowCheck.ListProgramNumsDisabledTrojan.Count+" of the "+rows.ListProgramsDisabled.Count+" Trojan Express Collect "
+						+"program row(s) disabled and "+rowCheck.ListToolButItemNumsDeletedTrojan.Count+" of the "+rows.ListButtonsDeleted.Count+" button(s) deleted as planned");
+				}
+				listProblems.AddRange(rowCheck.ListFailures.Where(x => x.StartsWith("program") || x.Contains("toolbutitem")));
+			}
+			List<string> listLogExpected=rows.GetLogLines();
+			List<string> listLogMissing=listLogExpected.Where(x => !adoptionResult.ListLog.Any(y => y.Trim()==x)).ToList();
+			if(listLogMissing.Count>0) {
+				listProblems.Add("the adoption log lacks: "+string.Join("; ",listLogMissing));
+			}
+			string nameTrojan=OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.TrojanExpressCollectRemoved.LINK_NAME;
+			if(adoptionResult.ListLog.Any(x => x.Trim().StartsWith("Disabled the discontinued "+nameTrojan))) {
+				listProblems.Add("the adoption log says the step disabled the "+nameTrojan+" row, which the fixture holds disabled already");
+			}
+			string programNum=fixture.TrojanProgramNum.ToString(CultureInfo.InvariantCulture);
+			int countPropertiesKept=OfficeFixture.ArrayTrojanProperties.Count(x => BusinessLayer.Count("SELECT COUNT(*) FROM programproperty WHERE ProgramNum="+programNum
+				+" AND PropertyDesc="+SqlLiteral.Quote(x.desc)+" AND PropertyValue="+SqlLiteral.Quote(x.value)+" AND IsMasked="+x.isMasked+" AND IsHighSecurity="
+				+x.isHighSecurity)==1);
+			if(BusinessLayer.Count("SELECT COUNT(*) FROM program WHERE ProgramNum="+programNum+" AND ProgName="
+					+SqlLiteral.Quote(OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.TrojanExpressCollectRemoved.PROG_NAME)+" AND Enabled=0 AND ProgDesc="
+					+SqlLiteral.Quote(OfficeFixture.TROJAN_PROG_DESC))!=1
+				|| BusinessLayer.Count("SELECT COUNT(*) FROM toolbutitem WHERE ProgramNum="+programNum)!=0
+				|| countPropertiesKept!=fixture.TrojanProperties
+				|| BusinessLayer.Count("SELECT COUNT(*) FROM programproperty WHERE ProgramNum="+programNum)!=fixture.TrojanProperties)
+			{
+				listProblems.Add("the adopted copy does not hold the "+nameTrojan+" row disabled with its text and its "+fixture.TrojanProperties+" properties ("
+					+countPropertiesKept+" kept as they were) and without buttons");
+			}
+			string lineProgram=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("program:"))??"";
+			string lineButtons=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("toolbutitem:"))??"";
+			Check("M8","Adoption's "+nameTrojan+" step changes exactly what migration-preview lists: on the link as Open Dental's 19.2.29 conversion left it "
+				+"(disabled, one Account module button) the button deleted, the row, its text and its properties kept, nothing else in program and toolbutitem",
+				listProblems.Count==0,
 				"migration-preview of the source: "+string.Join(" ",plan.Lines())+" The adoption log names "+(listLogExpected.Count-listLogMissing.Count)+" of the "
 				+listLogExpected.Count+" change(s); row check: "+lineProgram+" "+lineButtons+(listProblems.Count==0 ? "" : " Problems: "+string.Join("; ",listProblems)));
 		}
