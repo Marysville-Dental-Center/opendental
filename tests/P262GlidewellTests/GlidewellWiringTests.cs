@@ -47,11 +47,13 @@ namespace P262GlidewellTests {
 			return File.ReadAllText(Path.Combine(GetRepositoryRoot(),relativePath));
 		}
 
+		///<summary>Glidewell is appended after MeetInTheCloud, not necessarily right after it or last: other 26.2 packages append program names at
+		///the same spot (the agreed order is the Links package's names first, then Glidewell), and program.ProgName stores the name, so the number
+		///does not matter at runtime. Only earlier values must keep their numbers.</summary>
 		[TestMethod]
 		public void ProgramName_GlidewellIsAppended_ExistingNumbersKept() {
-			string[] arrayNames=Enum.GetNames(typeof(ProgramName));
-			Assert.AreEqual("Glidewell",arrayNames.Last());
-			Assert.AreEqual((int)ProgramName.MeetInTheCloud+1,(int)ProgramName.Glidewell);
+			Assert.IsTrue(Enum.IsDefined(typeof(ProgramName),"Glidewell"));
+			Assert.IsTrue((int)ProgramName.Glidewell>(int)ProgramName.MeetInTheCloud,"Appended after the names that were there before 26.2.");
 			Assert.AreEqual((int)ProgramName.ZImage+1,(int)ProgramName.Microsoft365Email,"Earlier values keep their numbers.");
 		}
 

@@ -41,7 +41,8 @@ Public sources only, as the owner decided. No Open Dental program was installed,
 
 ### Program link and accounts
 
-- `ProgramName.Glidewell` (appended after `MeetInTheCloud`; `program.ProgName` stores the name). The row "Glidewell lab cases" is inserted at
+- `ProgramName.Glidewell` (appended after `MeetInTheCloud`; `program.ProgName` stores the name, so its number does not matter at runtime;
+  see "For the integrator" for the agreed append order). The row "Glidewell lab cases" is inserted at
   runtime with `Enabled=0` (`GlidewellProgram.EnsureProgram`, through `Programs.InsertIfMissing`), like every vendor-direct program link, the
   first time Setup, Program Links opens. **No migration step:** levels 2026110791 to 2026110799 stay unused.
 - **Setup, Program Links, Glidewell lab cases** (`FormGlidewellSetup`, registered by `GlidewellProgramLinkSetup`): Enabled, the office's
@@ -173,6 +174,19 @@ changes.
   list), `OpenPmsDental/Forms/FormLabCaseEdit.cs` and `.designer.cs`, `OpenPmsDentalBusiness.csproj`, `OpenPmsDental.csproj`, `OpenDental.sln`,
   `OpenDental.Local.slnf`, `docs/release-notes/next.md`.
 - No schema, enum value, migration step or preference.
+
+## For the integrator
+
+- **`ProgramName` append order.** `p262/links-2` also appends to `ProgramName` right after `MeetInTheCloud` (`AlliedstarConnect`,
+  `OrthoComposite`), so `TableTypes/Program.cs` gets a textual conflict there. The agreed order is the Links names first, then Glidewell:
+  `MeetInTheCloud, AlliedstarConnect, OrthoComposite, Glidewell`. The numbers do not matter at runtime (`program.ProgName` stores the name),
+  and no released database holds them.
+- **Tests at that spot.** Since `p262/glidewell-3`, `GlidewellWiringTests.ProgramName_GlidewellIsAppended_ExistingNumbersKept` no longer
+  needs Glidewell to be last or directly after `MeetInTheCloud`: it checks that `ProgramName.Glidewell` is defined, that its number is above
+  `MeetInTheCloud`'s, and that earlier values keep theirs (`ZImage+1==Microsoft365Email`). `P262LinksTests/WiringTests.cs` (lines 20-21 on
+  `p262/links-2`) still asserts that exactly `{AlliedstarConnect, OrthoComposite}` follow `MeetInTheCloud`; when the two branches are
+  integrated, relax it the same way: compare only the first two names after `MeetInTheCloud` (`Take(2)` instead of the whole tail) and keep
+  `AlliedstarConnect==MeetInTheCloud+1`, which holds in the agreed order.
 
 ## Checks (2026-11-07)
 
