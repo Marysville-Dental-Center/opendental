@@ -1,7 +1,8 @@
 // S0-R (2026-11-08): what the DentX (ProImage), Dexis Integrator and Vipersoft program links send over DDE, now through the in-house client
 // CodeBase.ODDdeClient instead of NDde.dll: each bridge's command, and the service, topic, calls and timeouts of its conversation, on a fake
-// conversation put in through ODDdeClient.FuncCreate. The client's own rules are tested without opening a DDE conversation (no DDE server is
-// needed or reached). Synthetic patients only; no database.
+// conversation put in through ODDdeClient.FuncCreate. The client's own rules are tested without opening a DDE conversation, its DDEML
+// constants against ddeml.h, and the client itself against Windows' DDEML through DdeLoopbackServer, a DDE server inside the test process under
+// a service name no program uses (no vendor program is needed or reached). Synthetic patients only; no database.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -191,7 +192,9 @@ namespace VendorDirectTests.DdeBridges {
 		[TestMethod]
 		public void DexisIntegrator_ExecuteDDE_ReconnectsTheSameConversation_AfterTheServerEndedIt() {
 			DexisIntegrator.ExecuteDDE("SET 1");
-			_listConversations.Single().IsConnected=false;//the Integrator ended the conversation (XTYP_DISCONNECT)
+			//The Integrator ended the conversation (XTYP_DISCONNECT). That the real client turns IsConnected false then is tested on Windows' DDEML
+			//(DexisIntegrator_ExecuteDDE_OnWindowsDdeml_ConnectsAgain_AfterTheIntegratorEndedTheConversation).
+			_listConversations.Single().IsConnected=false;
 			DexisIntegrator.ExecuteDDE("SET 2");
 			CollectionAssert.AreEqual(new[] { "Create Dexis|Patient","Connect","Execute 30000 SET 1","Connect","Execute 30000 SET 2" },_listCalls,
 				string.Join("\r\n",_listCalls));
@@ -235,6 +238,33 @@ namespace VendorDirectTests.DdeBridges {
 			DexisIntegrator.ExecuteDDE("SET 2");
 			CollectionAssert.AreEqual(new[] { "Create Dexis|Patient","Connect","Execute 30000 SET 1","Disconnect","Dispose",
 				"Create Dexis|Patient","Connect","Execute 30000 SET 2" },_listCalls,string.Join("\r\n",_listCalls));
+		}
+
+		[TestMethod]
+		public void DexisIntegrator_ExecuteDDE_OnWindowsDdeml_ConnectsAgain_AfterTheIntegratorEndedTheConversation() {
+			using(DdeLoopbackServer server=DdeLoopbackServer.Start("Patient")) {
+				IDdeConversation ddeConversation=null;
+				ODDdeClient.FuncCreate=(service,topic,synchronizingObject) => {
+					_listCalls.Add("Create "+service+"|"+topic);
+					ddeConversation=new ODDdeClient(server.Service,topic,synchronizingObject);//the real client; the loopback server stands in for "Dexis"
+					return ddeConversation;
+				};
+				try {
+					DexisIntegrator.ExecuteDDE("SET 1 LN=\"A\"");//the button
+					Assert.IsTrue(ddeConversation.IsConnected);
+					server.EndConversation();//the Integrator was closed
+					Assert.IsTrue(DdeLoopbackServer.PumpMessagesUntil(() => !ddeConversation.IsConnected,5000),
+						"The client saw the server end the conversation (XTYP_DISCONNECT): the next patient change closes it, the button opens a new one.");
+					DexisIntegrator.ExecuteDDE("SET 2 LN=\"B\"");//the button again, before any patient change: the same conversation connects again
+					CollectionAssert.AreEqual(new[] { "Create Dexis|Patient" },_listCalls,string.Join("\r\n",_listCalls));
+					Assert.AreEqual(2,server.CountConnects);
+					List<string> listCommands=server.GetExecutes().Select(x => Encoding.ASCII.GetString(x)).ToList();
+					CollectionAssert.AreEqual(new[] { "SET 1 LN=\"A\"\0","SET 2 LN=\"B\"\0" },listCommands,string.Join("\r\n",listCommands));
+				}
+				finally {
+					DexisIntegrator.CloseConversation();//on this thread, the conversation's, and before the server ends
+				}
+			}
 		}
 		#endregion Dexis Integrator
 
@@ -328,6 +358,119 @@ namespace VendorDirectTests.DdeBridges {
 			CollectionAssert.AreEqual(new[] { typeof(uint),typeof(uint),typeof(IntPtr),typeof(IntPtr),typeof(IntPtr),typeof(IntPtr),typeof(UIntPtr),typeof(UIntPtr) },
 				typeCallback.GetMethod("Invoke").GetParameters().Select(x => x.ParameterType).ToArray());
 			Assert.AreEqual(typeof(IntPtr),typeCallback.GetMethod("Invoke").ReturnType);
+		}
+
+		[TestMethod]
+		public void Client_DdemlConstants_AreThoseOfDdemlH() {
+			//ddeml.h (Windows SDK 10.0.26100) and winuser.h; NDde 1.03 used the same values. Every private constant of the client is listed, so a new
+			//one is checked too.
+			Dictionary<string,object> dictExpected=new Dictionary<string,object> {
+				{ "APPCMD_CLIENTONLY",(uint)0x00000010 },
+				{ "CBF_SKIP_REGISTRATIONS",(uint)0x00080000 },
+				{ "CBF_SKIP_UNREGISTRATIONS",(uint)0x00100000 },
+				{ "CP_WINANSI",1004 },
+				{ "CF_TEXT",(uint)1 },
+				{ "XCLASS_FLAGS",(uint)0x4000 },
+				{ "XCLASS_NOTIFICATION",(uint)0x8000 },
+				{ "XTYPF_NOBLOCK",(uint)0x0002 },
+				{ "XTYP_EXECUTE",(uint)0x4050 },//(0x0050 | XCLASS_FLAGS)
+				{ "XTYP_DISCONNECT",(uint)0x80C2 },//(0x00C0 | XCLASS_NOTIFICATION | XTYPF_NOBLOCK)
+				{ "DMLERR_NO_ERROR",(uint)0 },
+			};
+			List<FieldInfo> listConstants=typeof(ODDdeClient).GetFields(BindingFlags.NonPublic|BindingFlags.Static).Where(x => x.IsLiteral).ToList();
+			CollectionAssert.AreEquivalent(dictExpected.Keys.ToList(),listConstants.Select(x => x.Name).ToList(),
+				string.Join(", ",listConstants.Select(x => x.Name)));
+			foreach(FieldInfo fieldInfo in listConstants) {
+				object value=fieldInfo.GetRawConstantValue();
+				Assert.AreEqual(dictExpected[fieldInfo.Name],value,fieldInfo.Name+" is 0x"+Convert.ToInt64(value).ToString("X")+", of type "+value.GetType().Name+".");
+			}
+		}
+
+		[TestMethod]
+		public void Client_XtypDisconnectForItsConversation_EndsIt_AndNothingElseDoes() {
+			FieldInfo fieldHConv=typeof(ODDdeClient).GetField("_hConv",BindingFlags.NonPublic|BindingFlags.Instance);
+			MethodInfo methodCallback=typeof(ODDdeClient).GetMethod("OnDdeCallback",BindingFlags.NonPublic|BindingFlags.Instance);
+			using(ODDdeClient client=new ODDdeClient("Dexis","Patient")) {
+				//The conversation handle as DdeConnect gives it. No DDEML instance is opened, so nothing here (Dispose neither) makes a DDE call.
+				IntPtr hConv=new IntPtr(0x1234);
+				fieldHConv.SetValue(client,hConv);
+				Assert.IsTrue(client.IsConnected);
+				Func<uint,IntPtr,object> funcCallback=(uType,hconv) => methodCallback.Invoke(client,
+					new object[] { uType,(uint)0,hconv,IntPtr.Zero,IntPtr.Zero,IntPtr.Zero,UIntPtr.Zero,UIntPtr.Zero });
+				Assert.AreEqual(IntPtr.Zero,funcCallback(0x8002,hConv));//XTYP_ERROR
+				Assert.IsTrue(client.IsConnected,"XTYP_ERROR does not end the conversation.");
+				funcCallback(0x80C2,new IntPtr(0x5678));
+				Assert.IsTrue(client.IsConnected,"XTYP_DISCONNECT for another conversation.");
+				funcCallback(0x00C2,hConv);
+				Assert.IsTrue(client.IsConnected,"0x00C2 (XTYP_DISCONNECT without XCLASS_NOTIFICATION) is not what DDEML passes.");
+				Assert.AreEqual(IntPtr.Zero,funcCallback(0x80C2,hConv));//XTYP_DISCONNECT
+				Assert.IsFalse(client.IsConnected,"The server ended this conversation.");
+				ThrowsExactly<InvalidOperationException>(() => client.Execute("SET 1",30000),"Not connected any more: Connect opens a new one.");
+			}
+		}
+
+		[TestMethod]
+		public void Client_OnWindowsDdeml_SendsAsciiWithTheNull_AndSeesTheServerEndTheConversation() {
+			using(DdeLoopbackServer server=DdeLoopbackServer.Start()) {
+				using(ODDdeClient client=new ODDdeClient(server.Service,server.Topic)) {
+					client.Connect();
+					Assert.IsTrue(client.IsConnected);
+					Assert.AreEqual(1,server.CountConnects);
+					string command="SET 1234 LN=\"J"+(char)0xE9+"r"+(char)0xF4+"me\" FN=\"Pat\"";//e acute, o circumflex
+					client.Execute(command,5000);
+					List<byte[]> listExecutes=server.GetExecutes();
+					Assert.AreEqual(1,listExecutes.Count);
+					//An ANSI server gets the client's bytes as they are: ASCII ('?' for the rest) and the terminating null.
+					byte[] arrayExpected=Encoding.ASCII.GetBytes("SET 1234 LN=\"J?r?me\" FN=\"Pat\"\0");
+					CollectionAssert.AreEqual(arrayExpected,listExecutes[0],BitConverter.ToString(listExecutes[0]));
+					//The server ends the conversation, as the Dexis Integrator does when it is closed.
+					server.EndConversation();
+					Assert.IsTrue(DdeLoopbackServer.PumpMessagesUntil(() => !client.IsConnected && server.CountServerDisconnects==1,5000),
+						"XTYP_DISCONNECT reached the client: IsConnected is false.");
+					ThrowsExactly<InvalidOperationException>(() => client.Execute("SET 2",5000),"Not connected.");
+					//The same client connects again, as the Dexis Integrator link does on the next button press.
+					client.Connect();
+					client.Execute("SET 2",5000);
+					Assert.AreEqual(2,server.CountConnects);
+					listExecutes=server.GetExecutes();
+					Assert.AreEqual(2,listExecutes.Count);
+					CollectionAssert.AreEqual(new byte[] { (byte)'S',(byte)'E',(byte)'T',(byte)' ',(byte)'2',0 },listExecutes[1],BitConverter.ToString(listExecutes[1]));
+				}
+			}
+		}
+
+		[TestMethod]
+		public void Client_OnWindowsDdeml_UnicodeServerGetsTheCommandToo() {
+			//A Unicode DDE server (DdeInitializeW). Windows translates an execute command between an ANSI and a Unicode partner, so such a server
+			//gets the same text, as it did from NDde's ANSI instance.
+			using(DdeLoopbackServer server=DdeLoopbackServer.Start(isUnicode:true)) {
+				using(ODDdeClient client=new ODDdeClient(server.Service,server.Topic)) {
+					client.Connect();
+					client.Execute("Xray,1234,Pat",5000);
+					byte[] arrayBytes=server.GetExecutes().Single();
+					CollectionAssert.AreEqual(Encoding.Unicode.GetBytes("Xray,1234,Pat\0"),arrayBytes,BitConverter.ToString(arrayBytes));
+				}
+			}
+		}
+
+		[TestMethod]
+		public void Client_OnWindowsDdeml_DisconnectAndDispose_EndTheConversationForTheServer() {
+			using(DdeLoopbackServer server=DdeLoopbackServer.Start()) {
+				ODDdeClient client=new ODDdeClient(server.Service,server.Topic);
+				try {
+					client.Connect();
+					client.Disconnect();
+					Assert.IsFalse(client.IsConnected);
+					Assert.IsTrue(DdeLoopbackServer.PumpMessagesUntil(() => server.CountClientDisconnects==1,5000),"The server saw Disconnect end it.");
+					client.Connect();
+					Assert.AreEqual(2,server.CountConnects,"Connect again after Disconnect, on the same DDEML instance.");
+				}
+				finally {
+					client.Dispose();
+				}
+				Assert.IsTrue(DdeLoopbackServer.PumpMessagesUntil(() => server.CountClientDisconnects==2,5000),"The server saw Dispose end it.");
+				Assert.IsTrue(client.IsDisposed);
+			}
 		}
 
 		[TestMethod]
