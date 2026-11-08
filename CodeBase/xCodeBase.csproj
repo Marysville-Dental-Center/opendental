@@ -195,6 +195,7 @@
     <Compile Include="Utilities\HtmlPage.cs" />
     <Compile Include="Utilities\ODBuild.cs" />
     <Compile Include="Utilities\ODClassExtensions.cs" />
+    <Compile Include="Utilities\ODDdeClient.cs" />
     <Compile Include="Utilities\ODInitialize.cs" />
     <Compile Include="Utilities\ODInvokeExtensions.cs" />
     <Compile Include="Utilities\ODNonNullable.cs" />
