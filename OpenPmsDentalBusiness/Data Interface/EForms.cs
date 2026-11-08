@@ -104,7 +104,7 @@ namespace OpenPmsDentalBusiness{
 		///<summary></summary>
 		public static void Delete(long eFormNum,long patNum) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				Meth.GetVoid(MethodBase.GetCurrentMethod(),eFormNum);
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),eFormNum,patNum);
 				return;
 			}
 //todo: mark deleted instead, just like sheets
