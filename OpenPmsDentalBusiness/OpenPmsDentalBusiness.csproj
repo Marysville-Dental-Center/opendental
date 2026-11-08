@@ -454,6 +454,7 @@
     <Compile Include="Db Multi Table\InsPlanSubstitution.cs" />
     <Compile Include="Imaging\BitmapDicom.cs" />
     <Compile Include="Imaging\ClaimAttachDicom.cs" />
+    <Compile Include="Imaging\ClaimAttachImage.cs" />
     <Compile Include="Imaging\DicomFrameDecoders.cs" />
     <Compile Include="Imaging\DicomImageReader.cs" />
     <Compile Include="Imaging\DicomSubsetReader.cs" />
