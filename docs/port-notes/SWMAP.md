@@ -50,7 +50,7 @@ stored value.
 | Update the fee on unsent secondary claims when a procedure fee changes (ODOPTS) | none | `ClaimUpdateFeeForSecondary` | 1/0, missing = off | None; **INFERRED** |
 | eForm import: unmatched allergies and problems as Other (ODOPTS) | none | `EFormImportAllergiesAsOther`, `EFormImportProblemsAsOther` | 1/0, missing = on | None; **INFERRED** |
 | Insurance History perio scaling procedure code (ODOPTS) | none | `InsHistPerioScalingCode` | a procedure code (or its CodeNum); blank = each group's own | None; **INFERRED** |
-| Statement Send Setup: by e-mail and by text (ODOPTS) | none | `StatementAutoSendEmail`, `StatementAutoSendSMS` | 0 never, 1 ask, 2 always (**INFERRED**); missing = never; nothing is texted | https://www.opendental.com/site/version25_1.html (the Statement Send Setup window) |
+| Statement Send Setup: by e-mail and by text (ODOPTS) | none | `StatementAutoSendEmail`, `StatementAutoSendSMS` | 0 never, 1 ask, 2 always (**INFERRED**); missing = never; Always asks until the window is saved in this program; nothing is texted | https://www.opendental.com/site/version25_1.html, as summarized in [features-25.1.md](../specs/features-25.1.md) (`v25_1-eservices-msgtopay-on-statement-creation`): Open Dental's window sends **Message-to-Pay** links when statements are created. This program's meaning, e-mailing the statement itself, is **INFERRED** (a substitute for the excluded hosted feature; [ODOPTS.md](ODOPTS.md)) |
 
 The pages above are the ones the feature specs cite for each setting ([features-24.4.md](../specs/features-24.4.md) to
 [features-25.3.md](../specs/features-25.3.md)); they were not opened again for this package. The meaning of each name was matched to the

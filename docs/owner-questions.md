@@ -542,24 +542,37 @@ where Open Dental behaves differently.
 - (ODOPTS 2) `DomainLoginForSigBoxes`: on means the Change User of signature boxes (procedure notes, group notes, sheets, treatment plan
   signing, the ortho chart) offers domain login while domain login is on; off, those prompts ask for the program's own password. A missing row
   reads as on. **Confirm:** that this is what the switch does in Open Dental, and its default. **Today:** as described.
-- (ODOPTS 3) `ClaimUpdateFeeForSecondary`: on means that when a procedure's fee is changed and saved in the procedure window while the procedure
-  is on a primary claim, each of its secondary claims that is not sent or received is recalculated with the new fee (the primary claim is not
-  touched). Missing row: off. **Confirm:** when Open Dental updates the secondary claim's fee (only from the procedure window, or also when the
-  primary claim is received, or from the claim), and whether it updates estimates too. **Today:** as described.
+- (ODOPTS 3) `ClaimUpdateFeeForSecondary`: on means that when a procedure's fee changes while the procedure is on a primary claim, each of its
+  secondary claims that is not sent or received is recalculated with the new fee (the primary claim is not touched). This program does it
+  wherever an existing procedure's fee changes: the procedure window, Edit All (a new provider re-prices the selected procedures), and a provider
+  change on an appointment that is not complete (moving it, or saving the appointment window), which can re-price a completed procedure on
+  it. Missing row: off. **Confirm:** when Open Dental updates the secondary claim's fee (from the procedure window, from Edit All, from an
+  appointment's provider change, also when the primary claim is received, or from the claim), and whether it updates estimates too.
+  **Today:** as described.
 - (ODOPTS 4) `EFormImportAllergiesAsOther` and `EFormImportProblemsAsOther`: on means a typed allergy or problem that matches nothing in the
-  list is imported as "Other" with the patient's text (as before); off means it is not imported, and the manual import lists it unticked.
-  Missing rows: on. **Confirm:** what Open Dental does with such an entry when the setting is off (skip it, or add a new list entry with the
-  patient's text). **Today:** skipped.
+  list is imported as "Other" with the patient's text (as before); off means it is not imported: auto import records each such entry in the
+  form's Audit Trail entry ("Allergy not imported ...", "Problem not imported ...") and tells the user who saved the form, and the manual import
+  lists it unticked. Missing rows: on. **Confirm:** what Open Dental does with such an entry when the setting is off (skip it, or add a new list
+  entry with the patient's text). **Settle before the switch-over** if the office's rows are 0: from that day a typed allergy or problem that
+  matches no list entry is not auto-imported (it stays on the form and in the Audit Trail). **Today:** skipped and recorded.
 - (ODOPTS 5) `InsHistPerioScalingCode`: a procedure code that the perio scaling rows of Insurance History use to record dates (and count as
   history); blank keeps each perio scaling code group's own History Proc Code. **Confirm:** that this is the code Open Dental uses when a perio
   scaling date is entered, and whether it applies to the four quadrants alike. **Today:** as described.
-- (ODOPTS 6) `StatementAutoSendEmail`: the values are taken as 0 never, 1 ask, 2 always; any other value never sends. With 2, the new
-  statements whose mode is E-mail are e-mailed as soon as billing creates them (Billing Options, Create List), without the Send click.
-  **Confirm before the switch-over** which value the office's Open Dental shows for which choice in its Statement Send Setup window: if the
-  office's row means "always" in this reading, e-mail statements go out as soon as they are created. **Today:** as described.
-- (ODOPTS 7) `StatementAutoSendSMS`: the same values, but no text is sent: Open Dental's hosted texting was removed and this program has no
-  texting provider. The Billing List says the statements were not texted, and the setup window says texting needs a provider. **Decide:**
-  whether to choose a texting provider (the hook is `StatementAutoSend.TextSender`). **Today:** nothing is texted.
+- (ODOPTS 6) `StatementAutoSendEmail`: **the meaning itself was changed, not only the values.** The only public source (the 25.1 release
+  notes, `v25_1-eservices-msgtopay-on-statement-creation` in `docs/specs/features-25.1.md`) says Open Dental's Statement Send Setup window sends
+  **Message-to-Pay** links automatically when statements are created, a hosted Open Dental service this program does not have. So in Open
+  Dental this row most likely turns on automatic Message-to-Pay messages; it probably never e-mailed the statement PDF itself. This program
+  uses the row for something else (**INFERRED**): the new statements whose mode is E-mail are e-mailed as soon as billing creates them
+  (Billing Options, Create List), without the Send click. **Decide first, before the switch-over:** (a) does the office use this setting in
+  Open Dental for Message-to-Pay, and (b) do you want it to mean "e-mail the statement when billing creates it" in this program? Only then:
+  (c) which value the office's Open Dental shows for which choice in its Statement Send Setup window (read here as 0 never, 1 ask, 2 always;
+  any other value never sends). **Until you decide:** a stored "always" asks before e-mailing, and says why, until someone saves Statement
+  Send Setup in this program (Billing Defaults, Send Setup), so nothing is e-mailed on the strength of Open Dental's Message-to-Pay setting
+  alone. **Today:** as described.
+- (ODOPTS 7) `StatementAutoSendSMS`: in Open Dental most likely Message-to-Pay by text (the same public source). The same values, but no text
+  is sent: Open Dental's hosted texting was removed and this program has no texting provider. The Billing List says the statements were not
+  texted, and the setup window says texting needs a provider. **Decide:** whether to choose a texting provider (the hook is
+  `StatementAutoSend.TextSender`). **Today:** nothing is texted.
 
 ---
 

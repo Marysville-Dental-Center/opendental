@@ -263,12 +263,12 @@ public: the owner questions "ODOPTS" list what to confirm (`docs/port-notes/ODOP
 
 - Perio Chart: auto Att Ging values at or below a threshold are red, counted and printed (`PerioRedAttGing`; "Numbers in red", Att Ging; none by default).
 - Global Security Settings: a switch for domain login in the Change User of signature boxes (`DomainLoginForSigBoxes`; on by default).
-- Preferences, Account, Claim Receive: a changed procedure fee updates the unsent secondary claims (`ClaimUpdateFeeForSecondary`; off by default).
-- eForm Setup: import a typed allergy that matches no list entry as Other, or skip it (`EFormImportAllergiesAsOther`; on by default).
-- eForm Setup: the same for typed problems (`EFormImportProblemsAsOther`; on by default).
+- Preferences, Account, Claim Receive: a procedure fee changed in the procedure window, in Edit All or by an appointment's provider change updates the unsent secondary claims (`ClaimUpdateFeeForSecondary`; off by default).
+- eForm Setup: import a typed allergy that matches no list entry as Other, or skip it; a skipped one is listed in the form's Audit Trail entry and shown to whoever saves the form (`EFormImportAllergiesAsOther`; on by default).
+- eForm Setup: the same for typed problems, skipped ones recorded and shown alike (`EFormImportProblemsAsOther`; on by default).
 - Preferences, Treatment Plan, Frequency Limitations: the procedure code Insurance History uses for perio scaling (`InsHistPerioScalingCode`; blank by default).
-- Billing Defaults, Send Setup: e-mail new statements when billing creates them, never, after asking or always (`StatementAutoSendEmail`; never by default).
-- Send Setup: the same for texts, which are not sent until a texting provider is chosen (`StatementAutoSendSMS`; never by default).
+- Billing Defaults, Send Setup: e-mail new statements when billing creates them, never, after asking or always (`StatementAutoSendEmail`; never by default). Open Dental's window of that name sends Message-to-Pay links instead, a service this program does not have, so an Always carried over from Open Dental asks before e-mailing until Send Setup is saved here.
+- Send Setup: the same for texts (Message-to-Pay by text in Open Dental), which are not sent until a texting provider is chosen (`StatementAutoSendSMS`; never by default).
 
 ## The storage library has a new name
 
