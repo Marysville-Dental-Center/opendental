@@ -1180,9 +1180,49 @@ namespace OpenPmsDentalBusiness {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),subscriber);
 				return;
 			}
+			ComputeEstimatesForPatNums(GetPatNumsForSubscriber(subscriber));
+		}
+
+		///<summary>The patients with a patplan on any inssub of this subscriber: those ComputeEstimatesForSubscriber computes estimates for.</summary>
+		public static List<long> GetPatNumsForSubscriber(long subscriber) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<long>>(MethodBase.GetCurrentMethod(),subscriber);
+			}
 			string command="SELECT DISTINCT PatNum FROM patplan,inssub WHERE Subscriber="+POut.Long(subscriber)+" AND patplan.InsSubNum=inssub.InsSubNum";
-			List<long> listPatNums=Db.GetListLong(command);
+			return Db.GetListLong(command);
+		}
+
+		///<summary>The patients covered by the plan (a patplan on an inssub of the plan) who have a scheduled appointment (status Scheduled) on or
+		///after dateFrom, ordered by PatNum.</summary>
+		public static List<long> GetPatNumsWithScheduledApptsForPlan(long planNum,DateTime dateFrom) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetObject<List<long>>(MethodBase.GetCurrentMethod(),planNum,dateFrom);
+			}
+			string command="SELECT DISTINCT patplan.PatNum FROM patplan "
+				+"INNER JOIN inssub ON inssub.InsSubNum=patplan.InsSubNum "
+				+"INNER JOIN appointment ON appointment.PatNum=patplan.PatNum "
+				+"WHERE inssub.PlanNum="+POut.Long(planNum)+" "
+				+"AND appointment.AptStatus="+POut.Int((int)ApptStatus.Scheduled)+" "
+				+"AND appointment.AptDateTime>="+POut.Date(dateFrom)+" "
+				+"ORDER BY patplan.PatNum";
+			return Db.GetListLong(command);
+		}
+
+		///<summary>Open Dental 26.2 (port P262-APPT): when an insurance plan is saved, the estimates of the appointments of every patient the plan
+		///covers are brought up to date, not only those of the subscriber whose plan window was open. Computes the estimates (as
+		///ComputeEstimatesForSubscriber does: every procedure that is not complete or deleted) of each patient the plan covers who has a scheduled
+		///appointment on or after dateFrom, except the patients in listPatNumsDone (already computed by the caller). Returns those patients.</summary>
+		public static List<long> ComputeEstimatesForApptsOnPlan(long planNum,DateTime dateFrom,List<long> listPatNumsDone=null) {
+			Meth.NoCheckMiddleTierRole();
+			if(planNum==0) {
+				return new List<long>();
+			}
+			List<long> listPatNums=GetPatNumsWithScheduledApptsForPlan(planNum,dateFrom);
+			if(listPatNumsDone!=null) {
+				listPatNums.RemoveAll(x => listPatNumsDone.Contains(x));
+			}
 			ComputeEstimatesForPatNums(listPatNums);
+			return listPatNums;
 		}
 
 		///<summary>Computes estimates for all patients passed. Optionally set hasCompletedProcs true to compute estimates for completed procedures that are not associated with a claim. Only set doSkipCanadaLabFees if the plan has been deleted, otherwise duplicate lab estimates will be created.</summary>

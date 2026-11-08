@@ -23,6 +23,8 @@ namespace OpenPmsDental {
 		/// <summary>The after date that was possibly set before entering this window. </summary>
 		private DateTime _dateAfter;
 		private List<ScheduleOpening> _listScheduleOpenings=new List<ScheduleOpening>();
+		///<summary>The blockout indices selected before the user's last change, so the change handler knows whether 'None' was just picked.</summary>
+		private List<int> _listBlockoutIndicesSelected=new List<int>();
 		#endregion
 
 		///<summary>Pass in the currently selected apptNum along with all ApptNums that are associated to the current pinboard.</summary>
@@ -126,6 +128,7 @@ namespace OpenPmsDental {
 			}
 		}
 
+		///<summary>Fills the blockout types. Several can be selected (Open Dental 26.2); 'None' alone means a search for the providers only.</summary>
 		private void FillBlockouts() {
 			comboBlockout.Items.Clear();
 			comboBlockout.Items.AddDefNone();//if they select 'None' then only search for the provider(s).
@@ -137,17 +140,33 @@ namespace OpenPmsDental {
 				comboBlockout.Items.Add(listDefsBlockout[i].ItemName,listDefsBlockout[i]);
 			}
 			comboBlockout.SelectedIndex=0;//default to none
+			_listBlockoutIndicesSelected=new List<int>(comboBlockout.SelectedIndices);
+		}
+
+		///<summary>The DefNums of the selected blockout types, in the order of the list. Empty when 'None' is selected.</summary>
+		private List<long> GetSelectedBlockoutDefNums() {
+			return comboBlockout.GetListSelected<Def>().Where(x => x!=null && x.DefNum!=0).Select(x => x.DefNum).ToList();
 		}
 
 		private void FillGrid() {
+			//A Blockout column when the results came from a search for blockout types: a date can then have one row per blockout type.
+			bool hasBlockoutColumn=_listScheduleOpenings.Any(x => x.BlockoutDefNum!=0);
 			gridMain.BeginUpdate();
 			gridMain.Columns.Clear();
-			GridColumn col=new GridColumn(Lan.g(gridMain.TranslationName,"Day"),85);
+			int widthCol=85;
+			if(hasBlockoutColumn) {
+				widthCol=75;//leaves room for the Blockout column
+			}
+			GridColumn col=new GridColumn(Lan.g(gridMain.TranslationName,"Day"),widthCol);
 			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g(gridMain.TranslationName,"Date"),85,HorizontalAlignment.Center);
+			col=new GridColumn(Lan.g(gridMain.TranslationName,"Date"),widthCol,HorizontalAlignment.Center);
 			gridMain.Columns.Add(col);
-			col=new GridColumn(Lan.g(gridMain.TranslationName,"Time"),85,HorizontalAlignment.Center);
+			col=new GridColumn(Lan.g(gridMain.TranslationName,"Time"),widthCol,HorizontalAlignment.Center);
 			gridMain.Columns.Add(col);
+			if(hasBlockoutColumn) {
+				col=new GridColumn(Lan.g(gridMain.TranslationName,"Blockout"),90){ IsWidthDynamic=true };
+				gridMain.Columns.Add(col);
+			}
 			gridMain.ListGridRows.Clear();
 			GridRow row;
 			for(int i=0;i<_listScheduleOpenings.Count;i++) {
@@ -155,6 +174,9 @@ namespace OpenPmsDental {
 				row.Cells.Add(_listScheduleOpenings[i].DateTimeAvail.DayOfWeek.ToString());
 				row.Cells.Add(_listScheduleOpenings[i].DateTimeAvail.Date.ToShortDateString());
 				row.Cells.Add(_listScheduleOpenings[i].DateTimeAvail.ToShortTimeString());
+				if(hasBlockoutColumn) {
+					row.Cells.Add(Defs.GetName(DefCat.BlockoutTypes,_listScheduleOpenings[i].BlockoutDefNum));
+				}
 				row.Tag=_listScheduleOpenings[i];
 				gridMain.ListGridRows.Add(row);
 			}
@@ -200,8 +222,9 @@ namespace OpenPmsDental {
 				MsgBox.Show(this,"Please pick a provider.");
 				return;
 			}
+			List<long> listBlockoutDefNums=GetSelectedBlockoutDefNums();
 			//This message will only show for 'Provider Time Operatory' searching
-			if(comboBoxMultiProv.GetSelectedProvNums().Contains(0) && comboBlockout.GetSelectedDefNum()==0) {
+			if(comboBoxMultiProv.GetSelectedProvNums().Contains(0) && listBlockoutDefNums.Count==0) {
 				Cursor=Cursors.Default;
 				MsgBox.Show(this,"Please pick a provider and/or a blockout type.");
 				return;
@@ -211,9 +234,7 @@ namespace OpenPmsDental {
 			List<long> listOpNums=new List<long>();
 			List<long> listClinicNums=new List<long>();
 			List<long> listProvNums=new List<long>();
-			long blockoutType=0;
-			if(comboBlockout.GetSelectedDefNum()!=0) {
-				blockoutType=comboBlockout.GetSelectedDefNum();
+			if(listBlockoutDefNums.Count>0) {
 				listProvNums.Add(0);//providers don't matter for blockouts
 			}
 			if(!comboBoxMultiProv.GetSelectedProvNums().Contains(0)) {
@@ -239,13 +260,15 @@ namespace OpenPmsDental {
 			else {//no clinics
 				listOpNums=Operatories.GetDeepCopy(isShort: true).Select(x => x.OperatoryNum).ToList();
 			}
-			if(blockoutType!=0 && listProvNums.Max()>0) {
-				_listScheduleOpenings.AddRange(ApptSearch.GetSearchResultsForBlockoutAndProvider(listProvNums,_appointment.AptNum,startDate,endDate,listOpNums,listClinicNums
-					,beforeTime,afterTime,new List<long>(){blockoutType},15));
+			if(listBlockoutDefNums.Count>0) {
+				//Open Dental 26.2: one or more blockout types, with or without providers. Up to 15 dates, each with the first time slot of every
+				//selected blockout type that has one that date.
+				_listScheduleOpenings=ApptSearch.GetSearchResultsForBlockouts(_appointment.AptNum,startDate,endDate,listProvNums,listOpNums,
+					listClinicNums,beforeTime,afterTime,listBlockoutDefNums,dateCount:15);
 			}
 			else {
 				_listScheduleOpenings=ApptSearch.GetSearchResults(_appointment.AptNum,startDate,endDate,listProvNums,listOpNums,listClinicNums
-					,beforeTime,afterTime,new List<long>(){blockoutType},resultCount:15);
+					,beforeTime,afterTime,new List<long>(){0},resultCount:15);
 			}
 			Cursor=Cursors.Default;
 			FillGrid();
@@ -293,6 +316,20 @@ namespace OpenPmsDental {
 			}
 		}
 
+		///<summary>Keeps 'None' (index 0) exclusive: picking None clears the blockout types, picking a blockout type clears None, and clearing every
+		///selection selects None.</summary>
+		private void comboBlockout_SelectionChangeCommitted(object sender,EventArgs e) {
+			List<int> listIndices=new List<int>(comboBlockout.SelectedIndices);
+			bool isNoneNew=listIndices.Contains(0) && !_listBlockoutIndicesSelected.Contains(0);
+			if(listIndices.Count==0 || isNoneNew) {
+				comboBlockout.SelectedIndices=new List<int>() { 0 };
+			}
+			else if(listIndices.Contains(0) && listIndices.Count>1) {
+				comboBlockout.SelectedIndices=listIndices.FindAll(x => x!=0);
+			}
+			_listBlockoutIndicesSelected=new List<int>(comboBlockout.SelectedIndices);
+		}
+
 		private void comboBoxClinic_SelectionChangeCommitted(object sender,EventArgs e) {
 			if(comboBoxClinic.ClinicNumSelected==0) {
 				comboApptView.Visible=true;
@@ -321,7 +358,8 @@ namespace OpenPmsDental {
 				return;
 			}
 			//use the same appointment we were using from before, even if there is a new appointment on the pinboard
-			dateSearchFrom.Text=_listScheduleOpenings[_listScheduleOpenings.Count-1].DateTimeAvail.ToShortDateString();
+			//The next dates start the day after the last date listed (that date can have several rows, one per blockout type, all listed already).
+			dateSearchFrom.Text=_listScheduleOpenings.Max(x => x.DateTimeAvail).Date.AddDays(1).ToShortDateString();
 			DoSearch();//should we prevent them (disable the button if they have changed any of their settings? 
 		}
 

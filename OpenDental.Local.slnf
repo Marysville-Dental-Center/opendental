@@ -100,6 +100,7 @@
       "tests\\M2UDSTests\\M2UDSTests.csproj",
       "tests\\MaintenanceTests\\MaintenanceTests.csproj",
       "tests\\MedicationTests\\MedicationTests.csproj",
+      "tests\\P262ApptTests\\P262ApptTests.csproj",
       "tests\\P262SchemaTests\\P262SchemaTests.csproj",
       "tests\\PayPlanTests\\PayPlanTests.csproj",
       "tests\\PdfLibraryTests\\PdfLibraryTests.csproj",

@@ -17,6 +17,9 @@ What this version brings, each in its section below (the roadmap's "Done in the 
   to a claim is saved, the Insurance History switch-over leaves the frequency code groups alone, three unused program links and NDde.dll are
   gone, the X-ray capture session is on for new installs, and the archive backup to another server works.
 - the database schema of Open Dental 26.2.
+- the database schema of Open Dental 26.2;
+- Open Dental 26.2's Appointments module changes: several blockout types in the Advanced Appointment Search, the practice and clinic
+  schedule notes in the Appointments module, and appointment estimates brought up to date when an insurance plan is saved.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
 inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below). It also
@@ -349,3 +352,23 @@ their own sections.
   databases are still adopted only from 25.3.48 (or this program's 24.3.63 line).
 - Everything the documents do not publish (NULL or NOT NULL, defaults, keys, the MyISAM engine of the new tables, the numbers of the Glidewell
   order statuses) follows the conventions of the existing schema and is marked INFERRED in the port note.
+
+## Appointments module (Open Dental 26.2)
+
+The Appointments module changes of Open Dental 26.2, re-implemented from Open Dental's public release notes, manual pages and database
+documents (`docs/port-notes/P262-APPT.md`). No database change.
+
+- **Advanced Appointment Search: several blockout types at once.** The Blockout list of the Advanced Appointment Search window (Pinboard,
+  Advanced) now takes several blockout types; None alone still searches the providers only. For each date the results list the first time
+  slot of every selected blockout type that has one that date, so a date can have several rows; a new Blockout column names the type. The
+  window shows up to 15 dates (not rows), and More now starts the day after the last date listed (it used to list that date again). With
+  providers selected, every slot is also open for one of them in the same operatory, as before. With one blockout type the results are the
+  same as before. The window is a little wider for the new column.
+- **Practice and clinic schedule notes in the Appointments module.** When the day (or week) shown has a practice note or holiday, or one
+  of the selected clinic, entered in the Edit Day window, the upper left corner of the operatory header shows "Notes". Hovering over it, or
+  clicking it, lists them ("Holiday: ..." and "Note: ...", with the clinic, or Headquarters, when clinics are on; with the date in the week
+  view). Before, these notes showed only in Schedule Setup.
+- **Appointment estimates when an insurance plan is saved.** Saving the insurance plan window (from a patient or from Lists, Insurance
+  Plans) now also brings the insurance estimates up to date for every patient the plan covers who has a scheduled appointment today or
+  later, not only for the subscriber's own patients as before. It runs for users with the Insurance Plan Edit permission (the only users
+  who can change the plan or its benefits); a plan with many such patients takes a moment longer to save.
