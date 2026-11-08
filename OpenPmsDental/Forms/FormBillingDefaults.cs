@@ -13,12 +13,16 @@ using CodeBase;
 namespace OpenPmsDental {
 	///<summary>Billing Defaults. Since Open Dental 26.2 (P262-BILLING, docs/port-notes/P262-BILLING.md) the electronic billing settings have their own
 	///window (FormEbillSetup, the Electronic Billing button), and the messages (General Message, Email Statements, Invoice Note) can be set per clinic
-	///while clinics are on (BillingDefaultsByClinic). The Statements box stays practice-wide.</summary>
+	///while clinics are on (BillingDefaultsByClinic). The Statements box stays practice-wide. Saving a clinic writes only what changed for it
+	///(BillingDefaultsByClinic.SaveSettings with the settings as read), so a message it has no row for keeps following the practice defaults.</summary>
 	public partial class FormBillingDefaults:FormODBase {
 		///<summary>Key: ClinicNum (0 = the practice defaults). The settings as they were read, for the clinics shown so far.</summary>
 		private Dictionary<long,BillingDefaultsSettings> _dictionarySettingsOld=new Dictionary<long,BillingDefaultsSettings>();
 		///<summary>Key: ClinicNum (0 = the practice defaults). The settings as edited, for the clinics shown so far.</summary>
 		private Dictionary<long,BillingDefaultsSettings> _dictionarySettings=new Dictionary<long,BillingDefaultsSettings>();
+		///<summary>Key: ClinicNum. The messages the clinic had a row of its own for when the window read its settings. Every other message of a
+		///clinic with settings of its own follows the practice defaults (BillingDefaultsByClinic.FollowPracticeDefaults).</summary>
+		private Dictionary<long,List<PrefName>> _dictionaryPrefNamesWithRows=new Dictionary<long,List<PrefName>>();
 		///<summary>The clinic whose messages the window shows. 0 = the practice defaults (always 0 while clinics are off).</summary>
 		private long _clinicNumCur;
 		///<summary>True while the window fills the message boxes, so their events do nothing.</summary>
@@ -68,14 +72,20 @@ namespace OpenPmsDental {
 				BillingDefaultsSettings settings=BillingDefaultsByClinic.GetSettings(clinicNum);
 				_dictionarySettingsOld[clinicNum]=settings.Copy();
 				_dictionarySettings[clinicNum]=settings;
+				_dictionaryPrefNamesWithRows[clinicNum]=BillingDefaultsByClinic.GetPrefNamesWithRows(clinicNum);
 			}
 			return _dictionarySettings[clinicNum];
 		}
 
-		///<summary>Fills the Messages box with the clinic's settings. A clinic that uses the practice defaults shows them, read-only.</summary>
+		///<summary>Fills the Messages box with the clinic's settings. A clinic that uses the practice defaults shows them, read-only. A clinic with
+		///settings of its own shows, for each message it has no row for and that was not changed here, the practice value as it is now in this
+		///window, since that is the value it uses (and saving it does not write it).</summary>
 		private void ShowSettings(long clinicNum) {
 			_isLoadingSettings=true;
 			BillingDefaultsSettings settings=GetSettings(clinicNum);
+			if(clinicNum>0 && !settings.UsePracticeDefaults) {
+				BillingDefaultsByClinic.FollowPracticeDefaults(settings,_dictionarySettingsOld[clinicNum],GetSettings(0),_dictionaryPrefNamesWithRows[clinicNum]);
+			}
 			BillingDefaultsSettings settingsShown=settings;
 			if(clinicNum>0 && settings.UsePracticeDefaults) {
 				settingsShown=GetSettings(0);
@@ -258,7 +268,7 @@ namespace OpenPmsDental {
 				if(settings.IsSameAs(_dictionarySettingsOld[clinicNum])) {
 					continue;
 				}
-				if(!BillingDefaultsByClinic.SaveSettings(settings)) {
+				if(!BillingDefaultsByClinic.SaveSettings(settings,_dictionarySettingsOld[clinicNum])) {
 					continue;
 				}
 				if(clinicNum==0) {

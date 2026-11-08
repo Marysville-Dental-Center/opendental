@@ -117,7 +117,8 @@ namespace P262BillingTests {
 		}
 
 		private static BillingDefaultsSettings SaveOwnSettings(long clinicNum,string tag,EmailType emailType=EmailType.Regular,bool includeAutograph=true) {
-			BillingDefaultsSettings settings=BillingDefaultsByClinic.GetSettings(clinicNum);
+			BillingDefaultsSettings settingsOld=BillingDefaultsByClinic.GetSettings(clinicNum);
+			BillingDefaultsSettings settings=settingsOld.Copy();
 			settings.UsePracticeDefaults=false;
 			settings.GeneralMessage=tag+" general message";
 			settings.EmailSubject=tag+" subject [PatNum]";
@@ -125,8 +126,27 @@ namespace P262BillingTests {
 			settings.EmailType=emailType;
 			settings.IncludeAutograph=includeAutograph;
 			settings.InvoiceNote=tag+" invoice note";
-			Assert.IsTrue(BillingDefaultsByClinic.SaveSettings(settings));
+			Assert.IsTrue(BillingDefaultsByClinic.SaveSettings(settings,settingsOld));
 			return settings;
+		}
+
+		///<summary>What Billing Defaults saves for a clinic whose settings it read (settingsOld) and the user edited (edit), as butSave_Click does.</summary>
+		private static bool SaveEdited(BillingDefaultsSettings settingsOld,Action<BillingDefaultsSettings> edit) {
+			BillingDefaultsSettings settings=settingsOld.Copy();
+			edit(settings);
+			return BillingDefaultsByClinic.SaveSettings(settings,settingsOld);
+		}
+
+		///<summary>The pre-26.2 state of a clinic that ever saved Billing Options defaults: its 13 filter rows and its General Message row, which that
+		///Save Defaults always wrote. Of the six Billing Defaults messages it has only the General Message.</summary>
+		private static void InsertPre262BillingOptionsRows(long clinicNum,string generalMessage) {
+			foreach(PrefName prefName in GetFilterPrefNames()) {
+				ClinicPrefs.InsertPref(prefName,clinicNum,PrefC.ContainsKey(prefName.ToString()) ? PrefC.GetString(prefName) : "");
+			}
+			ClinicPrefs.InsertPref(PrefName.BillingDefaultsNote,clinicNum,generalMessage);
+			ClinicPrefs.RefreshCache();
+			Assert.AreEqual(14,CountAllRows(clinicNum));
+			Assert.AreEqual(1,CountClinicRows(clinicNum));
 		}
 
 		private static Patient CreatePatient(string fName,long clinicNum) {
@@ -203,19 +223,20 @@ namespace P262BillingTests {
 
 		[TestMethod]
 		public void PracticeSettings_NeverUsePracticeDefaults_AndSaveToThePreferenceRows() {
-			BillingDefaultsSettings settings=BillingDefaultsByClinic.GetSettings(0);
+			BillingDefaultsSettings settingsOld=BillingDefaultsByClinic.GetSettings(0);
+			BillingDefaultsSettings settings=settingsOld.Copy();
 			Assert.AreEqual(0,settings.ClinicNum);
 			Assert.IsFalse(settings.UsePracticeDefaults);
 			settings.EmailSubject="New practice subject";
 			settings.EmailType=EmailType.Html;
 			settings.IncludeAutograph=true;
-			Assert.IsTrue(BillingDefaultsByClinic.SaveSettings(settings));
+			Assert.IsTrue(BillingDefaultsByClinic.SaveSettings(settings,settingsOld));
 			Assert.AreEqual("New practice subject",PrefC.GetString(PrefName.BillingEmailSubject));
 			Assert.AreEqual((int)EmailType.Html,PrefC.GetInt(PrefName.BillingEmailType));
 			Assert.IsTrue(PrefC.GetBool(PrefName.BillingEmailIncludeAutograph));
 			Assert.AreEqual(PRACTICE_NOTE,PrefC.GetString(PrefName.BillingDefaultsNote),"Unchanged.");
 			Assert.AreEqual("0",DataCore.GetScalar("SELECT COUNT(*) FROM clinicpref"),"No clinic row for the practice defaults.");
-			Assert.IsFalse(BillingDefaultsByClinic.SaveSettings(settings),"Nothing changes the second time.");
+			Assert.IsFalse(BillingDefaultsByClinic.SaveSettings(settings,settingsOld),"Nothing changes the second time.");
 		}
 
 		[TestMethod]
@@ -244,7 +265,8 @@ namespace P262BillingTests {
 			Assert.AreEqual("2",DataCore.GetScalar("SELECT ValueString FROM clinicpref WHERE ClinicNum="+POut.Long(_clinicNumA)+" AND PrefName='BillingEmailType'"));
 			Assert.AreEqual("1",DataCore.GetScalar("SELECT ValueString FROM clinicpref WHERE ClinicNum="+POut.Long(_clinicNumA)
 				+" AND PrefName='BillingEmailIncludeAutograph'"));
-			Assert.IsFalse(BillingDefaultsByClinic.SaveSettings(BillingDefaultsByClinic.GetSettings(_clinicNumA)),"Nothing changes the second time.");
+			Assert.IsFalse(BillingDefaultsByClinic.SaveSettings(BillingDefaultsByClinic.GetSettings(_clinicNumA),BillingDefaultsByClinic.GetSettings(_clinicNumA)),
+				"Nothing changes the second time.");
 		}
 
 		[TestMethod]
@@ -254,16 +276,17 @@ namespace P262BillingTests {
 			//A Billing Options filter default of clinic A (not a Billing Defaults setting) stays.
 			ClinicPrefs.InsertPref(PrefName.BillingIncludeChanged,_clinicNumA,"1");
 			ClinicPrefs.RefreshCache();
-			BillingDefaultsSettings settings=BillingDefaultsByClinic.GetSettings(_clinicNumA);
+			BillingDefaultsSettings settingsOld=BillingDefaultsByClinic.GetSettings(_clinicNumA);
+			BillingDefaultsSettings settings=settingsOld.Copy();
 			settings.UsePracticeDefaults=true;
-			Assert.IsTrue(BillingDefaultsByClinic.SaveSettings(settings));
+			Assert.IsTrue(BillingDefaultsByClinic.SaveSettings(settings,settingsOld));
 			Assert.AreEqual(0,CountClinicRows(_clinicNumA));
 			Assert.AreEqual(6,CountClinicRows(_clinicNumB));
 			Assert.AreEqual("1",DataCore.GetScalar("SELECT COUNT(*) FROM clinicpref WHERE ClinicNum="+POut.Long(_clinicNumA)+" AND PrefName='BillingIncludeChanged'"));
 			Assert.IsFalse(BillingDefaultsByClinic.HasOwnSettings(_clinicNumA));
 			Assert.AreEqual(PRACTICE_SUBJECT,BillingDefaultsByClinic.GetString(PrefName.BillingEmailSubject,_clinicNumA));
 			Assert.AreEqual("Clinic B subject [PatNum]",BillingDefaultsByClinic.GetString(PrefName.BillingEmailSubject,_clinicNumB));
-			Assert.IsFalse(BillingDefaultsByClinic.SaveSettings(settings),"Nothing left to remove.");
+			Assert.IsFalse(BillingDefaultsByClinic.SaveSettings(settings,settingsOld),"Nothing left to remove.");
 		}
 
 		[TestMethod]
@@ -332,6 +355,146 @@ namespace P262BillingTests {
 		}
 		#endregion Storage
 
+		#region Saving a clinic with some rows (review fix of p262/billing-2)
+		[TestMethod]
+		public void Pre262GeneralMessageRow_EditingIt_KeepsTheOtherFiveOnThePracticeDefaults() {
+			//Clinic A saved Billing Options defaults before 26.2, so its only Billing Defaults row is the General Message. A user edits only that
+			//message in Billing Defaults and saves.
+			InsertPre262BillingOptionsRows(_clinicNumA,"Saved in Billing Options before 26.2");
+			BillingDefaultsSettings settingsOld=BillingDefaultsByClinic.GetSettings(_clinicNumA);
+			Assert.IsFalse(settingsOld.UsePracticeDefaults,"Shown as the clinic's own settings.");
+			Assert.IsTrue(SaveEdited(settingsOld,x => x.GeneralMessage="Edited in Billing Defaults"));
+			//Still one of the six rows: the General Message, edited in place. The filter rows are untouched.
+			Assert.AreEqual(1,CountClinicRows(_clinicNumA));
+			Assert.AreEqual(14,CountAllRows(_clinicNumA));
+			Assert.AreEqual("Edited in Billing Defaults",BillingDefaultsByClinic.GetString(PrefName.BillingDefaultsNote,_clinicNumA));
+			CollectionAssert.AreEqual(new[] { PrefName.BillingDefaultsNote },BillingDefaultsByClinic.GetPrefNamesWithRows(_clinicNumA).ToArray());
+			//The practice defaults change: clinic A's statement e-mails and invoices follow them.
+			BillingDefaultsSettings settingsPracticeOld=BillingDefaultsByClinic.GetSettings(0);
+			Assert.IsTrue(SaveEdited(settingsPracticeOld,x => {
+				x.EmailSubject="Newer practice subject [PatNum]";
+				x.EmailBody="Newer practice body for [nameF]";
+				x.InvoiceNote="Newer practice invoice note";
+			}));
+			Assert.AreEqual(1,CountClinicRows(_clinicNumA));
+			Patient patientA=CreatePatient("Legacya",_clinicNumA);
+			EmailMessage emailMessage=BuildEmail(InsertStatement(patientA),patientA);
+			Assert.AreEqual("Newer practice subject "+patientA.PatNum,emailMessage.Subject);
+			StringAssert.Contains(emailMessage.BodyText,"Newer practice body for Legacya");
+			Assert.AreEqual("Newer practice invoice note",BillingDefaultsByClinic.GetString(PrefName.BillingDefaultsInvoiceNote,_clinicNumA));
+			Assert.AreEqual("Edited in Billing Defaults",new ClinicBillingOptions(_clinicNumA).GetPrefValue(PrefName.BillingDefaultsNote));
+		}
+
+		[TestMethod]
+		public void Pre262GeneralMessageRow_PracticeEditedInTheSameSession_TheOlderPracticeBodyIsNotSaved() {
+			//Billing Defaults read clinic A (only its General Message row) with the practice body of that moment. In the same window the practice body
+			//is edited; Save writes the practice defaults first, then clinic A, whose General Message was edited.
+			InsertPre262BillingOptionsRows(_clinicNumA,"Saved in Billing Options before 26.2");
+			BillingDefaultsSettings settingsOldA=BillingDefaultsByClinic.GetSettings(_clinicNumA);
+			Assert.AreEqual(PRACTICE_BODY,settingsOldA.EmailBody);
+			BillingDefaultsSettings settingsPracticeOld=BillingDefaultsByClinic.GetSettings(0);
+			Assert.IsTrue(SaveEdited(settingsPracticeOld,x => x.EmailBody="Edited practice body for [nameF]"));
+			Assert.IsTrue(SaveEdited(settingsOldA,x => x.GeneralMessage="Clinic A message"));
+			Assert.AreEqual(1,CountClinicRows(_clinicNumA),"No copy of the practice body as it was when the window read clinic A.");
+			Patient patientA=CreatePatient("Samesession",_clinicNumA);
+			StringAssert.Contains(BuildEmail(InsertStatement(patientA),patientA).BodyText,"Edited practice body for Samesession");
+		}
+
+		[TestMethod]
+		public void Pre262GeneralMessageRow_ShownWithThePracticeValuesAsEdited_SavesOnlyWhatChanged() {
+			//Billing Defaults shows clinic A after the practice body was edited in the window: the messages A has no row for show the edited practice
+			//values (FollowPracticeDefaults, as ShowSettings calls it), which is not a change. The subject is then edited for A.
+			InsertPre262BillingOptionsRows(_clinicNumA,"Saved in Billing Options before 26.2");
+			BillingDefaultsSettings settingsPracticeOld=BillingDefaultsByClinic.GetSettings(0);
+			BillingDefaultsSettings settingsPractice=settingsPracticeOld.Copy();
+			settingsPractice.EmailBody="Edited practice body for [nameF]";
+			BillingDefaultsSettings settingsOldA=BillingDefaultsByClinic.GetSettings(_clinicNumA);
+			BillingDefaultsSettings settingsA=settingsOldA.Copy();
+			BillingDefaultsByClinic.FollowPracticeDefaults(settingsA,settingsOldA,settingsPractice,BillingDefaultsByClinic.GetPrefNamesWithRows(_clinicNumA));
+			Assert.AreEqual("Edited practice body for [nameF]",settingsA.EmailBody,"Shows the practice body as edited.");
+			Assert.AreEqual("Saved in Billing Options before 26.2",settingsA.GeneralMessage,"Its own row.");
+			Assert.IsTrue(settingsA.IsSameAs(settingsOldA),"Following the practice is not a change.");
+			settingsA.EmailSubject="Clinic A subject [PatNum]";
+			Assert.IsTrue(BillingDefaultsByClinic.SaveSettings(settingsPractice,settingsPracticeOld));
+			Assert.IsTrue(BillingDefaultsByClinic.SaveSettings(settingsA,settingsOldA));
+			Assert.AreEqual(2,CountClinicRows(_clinicNumA));
+			CollectionAssert.AreEqual(new[] { PrefName.BillingDefaultsNote,PrefName.BillingEmailSubject },
+				BillingDefaultsByClinic.GetPrefNamesWithRows(_clinicNumA).ToArray());
+			Patient patientA=CreatePatient("Shown",_clinicNumA);
+			EmailMessage emailMessage=BuildEmail(InsertStatement(patientA),patientA);
+			Assert.AreEqual("Clinic A subject "+patientA.PatNum,emailMessage.Subject);
+			StringAssert.Contains(emailMessage.BodyText,"Edited practice body for Shown");
+		}
+
+		[TestMethod]
+		public void ClinicWithSomeRows_EditingTheBodyOrItsType_WritesBoth() {
+			//The body and its type are saved together, so a later change of the practice type does not change how the clinic's body is read.
+			InsertPre262BillingOptionsRows(_clinicNumA,"Clinic A message");
+			Assert.IsTrue(SaveEdited(BillingDefaultsByClinic.GetSettings(_clinicNumA),x => x.EmailBody="Clinic A plain body for [nameF]"));
+			CollectionAssert.AreEqual(new[] { PrefName.BillingDefaultsNote,PrefName.BillingEmailBodyText,PrefName.BillingEmailType },
+				BillingDefaultsByClinic.GetPrefNamesWithRows(_clinicNumA).ToArray());
+			Assert.IsTrue(SaveEdited(BillingDefaultsByClinic.GetSettings(0),x => x.EmailType=EmailType.Html));
+			Assert.AreEqual(EmailType.Regular,BillingEmailHtml.GetBillingDefaultsEmailType(_clinicNumA));
+			Assert.AreEqual(EmailType.Html,BillingEmailHtml.GetBillingDefaultsEmailType(_clinicNumB));
+			//Clinic B, with only its General Message row, changes only the type: its body (the practice body as read) goes with it.
+			InsertPre262BillingOptionsRows(_clinicNumB,"Clinic B message");
+			Assert.IsTrue(SaveEdited(BillingDefaultsByClinic.GetSettings(_clinicNumB),x => x.EmailType=EmailType.RawHtml));
+			Assert.AreEqual(3,CountClinicRows(_clinicNumB));
+			Assert.AreEqual(PRACTICE_BODY,BillingDefaultsByClinic.GetString(PrefName.BillingEmailBodyText,_clinicNumB));
+			Assert.AreEqual(EmailType.RawHtml,BillingEmailHtml.GetBillingDefaultsEmailType(_clinicNumB));
+		}
+
+		[TestMethod]
+		public void ClinicLeavingThePracticeDefaults_GetsAllSixRows_EvenWithOneMessageChanged() {
+			//Owner question 5: a clinic that stops using the practice defaults starts from a copy of them.
+			BillingDefaultsSettings settingsOld=BillingDefaultsByClinic.GetSettings(_clinicNumA);
+			Assert.IsTrue(settingsOld.UsePracticeDefaults);
+			Assert.IsTrue(SaveEdited(settingsOld,x => {
+				x.UsePracticeDefaults=false;
+				x.GeneralMessage="Clinic A message";
+			}));
+			Assert.AreEqual(6,CountClinicRows(_clinicNumA));
+			Assert.AreEqual(PRACTICE_BODY,BillingDefaultsByClinic.GetString(PrefName.BillingEmailBodyText,_clinicNumA));
+			//Saved unchanged once it has its own settings: nothing is written.
+			Assert.IsFalse(SaveEdited(BillingDefaultsByClinic.GetSettings(_clinicNumA),x => { }));
+		}
+
+		[TestMethod]
+		public void ClinicWithAllSixRows_EditingOne_UpdatesThatRowOnly() {
+			SaveOwnSettings(_clinicNumA,"Clinic A");
+			//Another workstation changes the invoice note after this one read clinic A.
+			BillingDefaultsSettings settingsOld=BillingDefaultsByClinic.GetSettings(_clinicNumA);
+			DataCore.NonQ("UPDATE clinicpref SET ValueString='Invoice note from another workstation' WHERE ClinicNum="+POut.Long(_clinicNumA)
+				+" AND PrefName='BillingDefaultsInvoiceNote'");
+			ClinicPrefs.RefreshCache();
+			Assert.IsTrue(SaveEdited(settingsOld,x => x.EmailSubject="Edited subject [PatNum]"));
+			Assert.AreEqual(6,CountClinicRows(_clinicNumA));
+			Assert.AreEqual("Edited subject [PatNum]",BillingDefaultsByClinic.GetString(PrefName.BillingEmailSubject,_clinicNumA));
+			Assert.AreEqual("Invoice note from another workstation",BillingDefaultsByClinic.GetString(PrefName.BillingDefaultsInvoiceNote,_clinicNumA),
+				"An unchanged message is not written back.");
+		}
+
+		[TestMethod]
+		public void SaveSettings_RefusesOldSettingsOfAnotherClinic() {
+			BillingDefaultsSettings settingsA=BillingDefaultsByClinic.GetSettings(_clinicNumA);
+			try {
+				BillingDefaultsByClinic.SaveSettings(settingsA,BillingDefaultsByClinic.GetSettings(_clinicNumB));
+				Assert.Fail("Saved clinic A against clinic B's settings.");
+			}
+			catch(ArgumentException) {
+				//Expected.
+			}
+			try {
+				BillingDefaultsByClinic.SaveSettings(settingsA,null);
+				Assert.Fail("Saved without the old settings.");
+			}
+			catch(ArgumentNullException) {
+				//Expected.
+			}
+			Assert.AreEqual(0,CountAllRows(_clinicNumA));
+		}
+		#endregion Saving a clinic with some rows (review fix of p262/billing-2)
+
 		#region Billing Options' Save Defaults beside Billing Defaults
 		[TestMethod]
 		public void BillingOptionsSave_ForAnotherClinic_GivesAClinicWithItsOwnMessagesNoFilterRows() {
@@ -372,10 +535,9 @@ namespace P262BillingTests {
 			Assert.IsTrue(SaveBillingOptionsDefaults(_clinicNumA,"Clinic A filters message"));
 			Assert.AreEqual(14,CountRows(_clinicNumA,BillingOptionsClinicDefaults.ListPrefNames));
 			//...and is then set to 'Use the practice defaults for this clinic' in Billing Defaults, which removes its General Message row.
-			BillingDefaultsSettings settings=BillingDefaultsByClinic.GetSettings(_clinicNumA);
-			Assert.IsFalse(settings.UsePracticeDefaults);
-			settings.UsePracticeDefaults=true;
-			Assert.IsTrue(BillingDefaultsByClinic.SaveSettings(settings));
+			BillingDefaultsSettings settingsOld=BillingDefaultsByClinic.GetSettings(_clinicNumA);
+			Assert.IsFalse(settingsOld.UsePracticeDefaults);
+			Assert.IsTrue(SaveEdited(settingsOld,x => x.UsePracticeDefaults=true));
 			Assert.AreEqual(0,CountRows(_clinicNumA,new[] { PrefName.BillingDefaultsNote }));
 			Assert.AreEqual(13,CountAllRows(_clinicNumA));
 			Assert.IsFalse(BillingDefaultsByClinic.HasOwnSettings(_clinicNumA));

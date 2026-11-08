@@ -72,7 +72,7 @@ namespace M2DUNTests {
 			string save=GetMethodBody(source,"private void butSave_Click(");
 			StringAssert.Contains(save,"StoreSettings();");
 			StringAssert.Contains(save,"if(!IsBillingEmailBodyValid()) {");
-			StringAssert.Contains(save,"BillingDefaultsByClinic.SaveSettings(settings)");
+			StringAssert.Contains(save,"BillingDefaultsByClinic.SaveSettings(settings,_dictionarySettingsOld[clinicNum])");
 			Assert.IsTrue(save.IndexOf("StoreSettings();")<save.IndexOf("if(!IsBillingEmailBodyValid()) {"),"The boxes are kept before they are checked.");
 			string saveSettings=GetMethodBody(ReadRepoFile(Path.Combine("OpenPmsDentalBusiness","Logic","BillingDefaultsByClinic.cs")),
 				"public static List<KeyValuePair<PrefName,string>> GetValues(");

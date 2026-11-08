@@ -184,7 +184,7 @@ namespace P262BillingTests {
 				StringAssert.Contains(save,"(PrefName."+prefName+",",prefName.ToString());
 			}
 			StringAssert.Contains(save,"| StatementInserterBarcode.SetEnabled(checkInserterBarcode.Checked))");
-			StringAssert.Contains(save,"BillingDefaultsByClinic.SaveSettings(settings)");
+			StringAssert.Contains(save,"BillingDefaultsByClinic.SaveSettings(settings,_dictionarySettingsOld[clinicNum])");
 			StringAssert.Contains(save,"DataValid.SetInvalid(InvalidType.ClinicPrefs);");
 			//The messages are only written through BillingDefaultsByClinic.
 			foreach(PrefName prefName in BillingDefaultsByClinic.ListPrefNames) {
@@ -195,6 +195,14 @@ namespace P262BillingTests {
 			string show=GetMethodBody(source,"private void ShowSettings(");
 			StringAssert.Contains(show,"checkUsePracticeDefaults.Visible=(clinicNum>0);");
 			StringAssert.Contains(show,"settingsShown=GetSettings(0);");
+			//A clinic with settings of its own shows the practice values, as edited in the window, for the messages it has no row for (review fix of
+			//p262/billing-2), before the boxes are filled.
+			string follow="BillingDefaultsByClinic.FollowPracticeDefaults(settings,_dictionarySettingsOld[clinicNum],GetSettings(0),"
+				+"_dictionaryPrefNamesWithRows[clinicNum]);";
+			StringAssert.Contains(show,follow);
+			Assert.IsTrue(show.IndexOf(follow)<show.IndexOf("textNote.Text=settingsShown.GeneralMessage;"));
+			StringAssert.Contains(GetMethodBody(source,"private BillingDefaultsSettings GetSettings("),
+				"_dictionaryPrefNamesWithRows[clinicNum]=BillingDefaultsByClinic.GetPrefNamesWithRows(clinicNum);");
 			string designer=Read("OpenPmsDental","Forms","FormBillingDefaults.Designer.cs");
 			StringAssert.Contains(designer,"this.comboClinic.IncludeUnassigned = true;");
 			StringAssert.Contains(designer,"this.checkUsePracticeDefaults.Visible = false;");

@@ -143,6 +143,93 @@ namespace P262BillingTests {
 			Assert.AreEqual("0",listValues.First(x => x.Key==PrefName.BillingEmailIncludeAutograph).Value);
 		}
 
+		private static BillingDefaultsSettings CreateClinicSettings(bool usePracticeDefaults) {
+			return new BillingDefaultsSettings { ClinicNum=5,UsePracticeDefaults=usePracticeDefaults,GeneralMessage="note",EmailSubject="subject",
+				EmailBody="body",EmailType=EmailType.Regular,IncludeAutograph=false,InvoiceNote="invoice" };
+		}
+
+		[TestMethod]
+		public void PrefNamesToWrite_AllSixWhenLeavingThePracticeDefaults_OtherwiseWhatChanged() {
+			//Leaving the practice defaults: all six, even with one message changed (owner question 5).
+			BillingDefaultsSettings settingsOld=CreateClinicSettings(usePracticeDefaults:true);
+			BillingDefaultsSettings settings=settingsOld.Copy();
+			settings.UsePracticeDefaults=false;
+			settings.GeneralMessage="edited";
+			CollectionAssert.AreEqual(BillingDefaultsByClinic.ListPrefNames,BillingDefaultsByClinic.GetPrefNamesToWrite(settings,settingsOld));
+			//A clinic that already had settings of its own: only what changed.
+			settingsOld=CreateClinicSettings(usePracticeDefaults:false);
+			settings=settingsOld.Copy();
+			Assert.AreEqual(0,BillingDefaultsByClinic.GetPrefNamesToWrite(settings,settingsOld).Count,"Nothing changed.");
+			settings.GeneralMessage="edited";
+			CollectionAssert.AreEqual(new[] { PrefName.BillingDefaultsNote },BillingDefaultsByClinic.GetPrefNamesToWrite(settings,settingsOld));
+			settings=settingsOld.Copy();
+			settings.IncludeAutograph=true;
+			settings.InvoiceNote="edited";
+			CollectionAssert.AreEqual(new[] { PrefName.BillingEmailIncludeAutograph,PrefName.BillingDefaultsInvoiceNote },
+				BillingDefaultsByClinic.GetPrefNamesToWrite(settings,settingsOld));
+			//The e-mail body and its type go together.
+			settings=settingsOld.Copy();
+			settings.EmailBody="edited";
+			CollectionAssert.AreEqual(new[] { PrefName.BillingEmailBodyText,PrefName.BillingEmailType },
+				BillingDefaultsByClinic.GetPrefNamesToWrite(settings,settingsOld));
+			settings=settingsOld.Copy();
+			settings.EmailType=EmailType.Html;
+			CollectionAssert.AreEqual(new[] { PrefName.BillingEmailBodyText,PrefName.BillingEmailType },
+				BillingDefaultsByClinic.GetPrefNamesToWrite(settings,settingsOld));
+			//Null and empty text are the same message.
+			settings=settingsOld.Copy();
+			settings.InvoiceNote="";
+			settingsOld.InvoiceNote=null;
+			Assert.AreEqual(0,BillingDefaultsByClinic.GetPrefNamesToWrite(settings,settingsOld).Count);
+		}
+
+		[TestMethod]
+		public void FollowPracticeDefaults_TheMessagesWithoutARowAndUnchanged() {
+			BillingDefaultsSettings settingsPractice=new BillingDefaultsSettings { ClinicNum=0,GeneralMessage="practice note",EmailSubject="practice subject",
+				EmailBody="<b>practice body</b>",EmailType=EmailType.Html,IncludeAutograph=true,InvoiceNote="practice invoice" };
+			//A clinic whose only row is the General Message: everything else follows the practice, in the old settings too.
+			BillingDefaultsSettings settingsOld=CreateClinicSettings(usePracticeDefaults:false);
+			BillingDefaultsSettings settings=settingsOld.Copy();
+			BillingDefaultsByClinic.FollowPracticeDefaults(settings,settingsOld,settingsPractice,new List<PrefName>() { PrefName.BillingDefaultsNote });
+			Assert.AreEqual("note",settings.GeneralMessage);
+			Assert.AreEqual("practice subject",settings.EmailSubject);
+			Assert.AreEqual("<b>practice body</b>",settings.EmailBody);
+			Assert.AreEqual(EmailType.Html,settings.EmailType);
+			Assert.IsTrue(settings.IncludeAutograph);
+			Assert.AreEqual("practice invoice",settings.InvoiceNote);
+			Assert.IsTrue(settings.IsSameAs(settingsOld),"Following the practice is not a change.");
+			//A message changed for the clinic stays as typed; a changed type keeps its body with it.
+			settingsOld=CreateClinicSettings(usePracticeDefaults:false);
+			settings=settingsOld.Copy();
+			settings.EmailSubject="typed subject";
+			settings.EmailType=EmailType.RawHtml;
+			BillingDefaultsByClinic.FollowPracticeDefaults(settings,settingsOld,settingsPractice,new List<PrefName>() { PrefName.BillingDefaultsNote });
+			Assert.AreEqual("typed subject",settings.EmailSubject);
+			Assert.AreEqual("body",settings.EmailBody);
+			Assert.AreEqual(EmailType.RawHtml,settings.EmailType);
+			Assert.AreEqual("practice invoice",settings.InvoiceNote);
+			CollectionAssert.AreEqual(new[] { PrefName.BillingEmailSubject,PrefName.BillingEmailBodyText,PrefName.BillingEmailType },
+				BillingDefaultsByClinic.GetPrefNamesToWrite(settings,settingsOld));
+			//Nothing for a clinic with all six rows, one that used the practice defaults when read or is set to them, or the practice itself.
+			foreach(Action<BillingDefaultsSettings,BillingDefaultsSettings> setUp in new Action<BillingDefaultsSettings,BillingDefaultsSettings>[] {
+				(x,y) => { },
+				(x,y) => { x.UsePracticeDefaults=true; y.UsePracticeDefaults=true; },
+				(x,y) => { x.UsePracticeDefaults=true; },
+				(x,y) => { x.ClinicNum=0; y.ClinicNum=0; },
+			})
+			{
+				settingsOld=CreateClinicSettings(usePracticeDefaults:false);
+				settings=settingsOld.Copy();
+				setUp(settings,settingsOld);
+				List<PrefName> listPrefNamesWithRows=(settings.ClinicNum>0 && !settings.UsePracticeDefaults && !settingsOld.UsePracticeDefaults)
+					? new List<PrefName>(BillingDefaultsByClinic.ListPrefNames) : new List<PrefName>();
+				BillingDefaultsByClinic.FollowPracticeDefaults(settings,settingsOld,settingsPractice,listPrefNamesWithRows);
+				Assert.AreEqual("subject",settings.EmailSubject);
+				Assert.AreEqual("subject",settingsOld.EmailSubject);
+				Assert.AreEqual("body",settings.EmailBody);
+			}
+		}
+
 		[TestMethod]
 		public void PerClinicPreferences_AreTheSixMessages() {
 			CollectionAssert.AreEqual(new[] { PrefName.BillingDefaultsNote,PrefName.BillingEmailSubject,PrefName.BillingEmailBodyText,
