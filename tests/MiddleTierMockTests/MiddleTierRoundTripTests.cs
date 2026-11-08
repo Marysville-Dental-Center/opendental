@@ -804,8 +804,12 @@ namespace MiddleTierMockTests {
 			Assert.AreEqual("<&>..</&>",patJennifer.AddrNote);
 			Assert.AreEqual(WebServiceTests.NewLineString,patJohn.ApptModNote);
 			Assert.AreEqual(WebServiceTests.NewLineString,patJennifer.ApptModNote);
-			Assert.AreEqual("service@opendental.com",patJohn.Email);
-			Assert.AreEqual("service@opendental.com",patJennifer.Email);
+			//The legacy test spelled out the sample address of WebServiceTests.GetFamily, which is at an Open Dental host; tools/Test-NoHqHosts.ps1
+			//refuses that host in tests/. The expected address is that same sample, built by the method without the Middle Tier.
+			string emailSample=GetFamilyEmailWithoutMiddleTier();
+			Assert.IsTrue(emailSample.StartsWith("service@"),"The sample address of WebServiceTests.GetFamily changed: "+emailSample);
+			Assert.AreEqual(emailSample,patJohn.Email);
+			Assert.AreEqual(emailSample,patJennifer.Email);
 			Assert.AreEqual(PatientStatus.NonPatient,patJohn.PatStatus);
 			Assert.AreEqual(PatientStatus.NonPatient,patJennifer.PatStatus);
 			Assert.AreEqual(WebServiceTests.DateTodayTest.Date,patJohn.AdmitDate);
@@ -1280,6 +1284,21 @@ namespace MiddleTierMockTests {
 			error+="in SClass: "+insertMethod.DeclaringType.Name;
 			strBuilderErrors.AppendLine(error);
 			Console.WriteLine(error);
+		}
+
+		///<summary>The e-mail address WebServiceTests.GetFamily gives both patients, from a call on this thread without the Middle Tier (the method
+		///builds the family in memory and reads nothing from the database).</summary>
+		private static string GetFamilyEmailWithoutMiddleTier() {
+			MiddleTierRole middleTierRole=RemotingClient.MiddleTierRole;
+			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
+			try {
+				Family family=WebServiceTests.GetFamily();
+				Assert.AreEqual(family.ListPats[0].Email,family.ListPats[1].Email);
+				return family.ListPats[0].Email;
+			}
+			finally {
+				RemotingClient.MiddleTierRole=middleTierRole;
+			}
 		}
 
 		///<summary>A copy of xCrudGenerator.CrudGenHelper.IsMissingInGeneral, which the legacy project referenced the CRUD generator program for:

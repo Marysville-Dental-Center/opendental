@@ -3,8 +3,9 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!-- The library updates (tier 1: Newtonsoft.Json 13, MailKit and MimeKit 4, Google APIs 1.78, MSAL 4.92, SSH.NET 2026): the JSON the database
        stores stays byte-identical, MIME messages build and parse, POP3 receive and SMTP send work against in-process fake servers on 127.0.0.1
-       (plain and TLS), SFTP paths and host keys are checked, and the removed libraries stay out. The database tests use scratch databases named
-       test_libt1_* on the local MariaDB and are inconclusive without it. No test reaches the internet. Every .cs file under this folder is
+       (plain and TLS), SFTP paths and host keys are checked, and the removed libraries stay out. EmailMessagesTests holds the e-mail tests
+       moved out of the legacy UnitTests project (package S0-T of the .NET 10 plan). The database tests use scratch databases named test_libt1_*
+       and s0t_* on the local MariaDB and are inconclusive without it. No test reaches the internet. Every .cs file under this folder is
        compiled. -->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -99,6 +100,11 @@
     <ProjectReference Include="..\..\OpenPmsDentalStorage\OpenPmsDentalStorage.csproj">
       <Project>{F90D0481-3D97-4C72-AF6E-DD81177E3DE1}</Project>
       <Name>OpenPmsDentalStorage</Name>
+    </ProjectReference>
+    <!-- The table helpers (PrefT, PatientT, EmailMessageT and the others) of the e-mail tests moved out of the legacy UnitTests project. -->
+    <ProjectReference Include="..\..\UnitTestsCore\UnitTestsCore.csproj">
+      <Project>{7BBDDEDF-C015-43C0-A532-FED224993281}</Project>
+      <Name>UnitTestsCore</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
