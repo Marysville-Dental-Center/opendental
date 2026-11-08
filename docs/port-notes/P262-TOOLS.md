@@ -79,7 +79,9 @@ split total of every payment of the three groups. A transfer without splits is l
 - In each fee schedule where the From code has at least one fee, the To code gets exactly the From code's fee rows: the same amounts for the
   same clinics, providers and effective dates, blank overrides (-1) included. A To row with the same clinic, provider and date is updated
   (keeping its number), a missing one is inserted, and a To row the From code does not have in that fee schedule is deleted. Fee schedules
-  where the From code has no fee are not changed. Fee schedule groups stay in sync because every clinic's rows are copied.
+  where the From code has no fee are not changed. Fee schedule groups stay in sync because every clinic's rows are copied. Of two rows with
+  the same clinic, provider and date (left from before such duplicates were refused) only the first From row is copied, and a second To row
+  is deleted.
 - Permissions: the window already needs Fee Schedule Edit. A user restricted to clinics cannot use Copy Code (it changes every clinic's fees).
 - Audit: each insert, update and delete makes a Procedure Fee Edit entry (FKey the To code; old and new amount, fee schedule, effective date,
   clinic, provider, the From code) and a Fee Edit entry (FKey the fee), like the other fee tools.
@@ -145,7 +147,7 @@ Nothing below is stated by the public sources; it is this program's own design.
 
 ## Tests
 
-`tests/P262ToolsTests` (new, 38 tests): one scratch database `test_p262tools_*` built from `db/init/new-database.sql` and the fork migrations,
+`tests/P262ToolsTests` (new, 39 tests): one scratch database `test_p262tools_*` built from `db/init/new-database.sql` and the fork migrations,
 dropped after the run; synthetic rows only.
 
 - `IncomeTransferDbTests`: group 1 found and fixed with its DBM log, amounts unchanged; deposits, card, recurring and accounting-linked
@@ -154,8 +156,8 @@ dropped after the run; synthetic rows only.
   tie keeps the newest row, the one `GetOneByFKey` reads; three rows; single rows, other verify types and None untouched; the ordering.
 - `ConversionPaymentDatesDbTests` and `ConversionSplitKindTests`: which transfers are listed and suggested; Fix dates the payment and every
   split and writes both logs; stale rows are skipped; the split rule.
-- `FeeCopyCodeDbTests`: exact copy per fee schedule the From code has, other schedules untouched, one schedule only, audit entries, a second
-  copy changes nothing, invalid codes.
+- `FeeCopyCodeDbTests`: exact copy per fee schedule the From code has, other schedules untouched, one schedule only, audit entries, legacy
+  duplicate rows, a second copy changes nothing, invalid codes.
 - `LatencyMeasureTests`: the arithmetic, the limits, one run against the database.
 - `WiringTests`: the windows call the business methods behind their checks; the two checks carry `DbmMethodAttr`, Conversion Payment Dates
   does not; no fork step at 2026110751 to 2026110759; the project entries.
@@ -163,7 +165,7 @@ dropped after the run; synthetic rows only.
 ## Checks (2026-11-07)
 
 - Full build of `OpenDental.Local.slnf` (Debug, x86): 0 errors.
-- Targeted runs, with `NoHqTests` (58/58): `P262ToolsTests` 38/38, `FeeTests` 48/48, `BDBMTests` 30/30, `BPROCTests` 43/43,
+- Targeted runs, with `NoHqTests` (58/58): `P262ToolsTests` 39/39, `FeeTests` 48/48, `BDBMTests` 30/30, `BPROCTests` 43/43,
   `M2INSVTests` 17/17. `ForkMigrationTests`, `ReleaseFlowTests` and `InitSqlTests` were not run (the integration runs them).
 - Scratch databases `test_p262tools_*` are dropped after each run.
 

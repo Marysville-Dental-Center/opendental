@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using Crud=OpenPmsDentalBusiness.Crud;
 
 namespace P262ToolsTests {
 	[TestClass]
@@ -178,6 +179,29 @@ namespace P262ToolsTests {
 			FeeCodeCopyResult resultAgain=Fees.CopyFeesToCode(codeFrom.CodeNum,codeTo.CodeNum);
 			Assert.IsTrue(resultAgain.IsNoChange);
 			Assert.AreEqual(1,resultAgain.CountUnchanged);
+		}
+
+		[TestMethod]
+		public void Copy_LegacyDuplicates_FirstSourceRowWins_ExtraDestinationRowDeleted() {
+			FeeSched feeSched=NewFeeSched();
+			ProcedureCode codeFrom=NewCode();
+			ProcedureCode codeTo=NewCode();
+			//Two rows with the same key and date are refused today; older databases can still have them, so they are written with the CRUD.
+			foreach(Fee fee in new[] {
+				new Fee { FeeSched=feeSched.FeeSchedNum,CodeNum=codeFrom.CodeNum,Amount=70 },
+				new Fee { FeeSched=feeSched.FeeSchedNum,CodeNum=codeFrom.CodeNum,Amount=71 },
+				new Fee { FeeSched=feeSched.FeeSchedNum,CodeNum=codeTo.CodeNum,Amount=60 },
+				new Fee { FeeSched=feeSched.FeeSchedNum,CodeNum=codeTo.CodeNum,Amount=61 },
+			}) {
+				Crud.FeeCrud.Insert(fee);
+			}
+			FeeCodeCopyResult result=Fees.CopyFeesToCode(codeFrom.CodeNum,codeTo.CodeNum,feeSched.FeeSchedNum);
+			CollectionAssert.AreEqual(new List<string> { "0|0|always|70.00" },Describe(codeTo,feeSched));
+			Assert.AreEqual(1,result.CountUpdated);
+			Assert.AreEqual(1,result.CountDeleted);
+			Assert.AreEqual(0,result.CountInserted);
+			Assert.IsTrue(ToolsDb.GetSecurityLogs(EnumPermType.ProcFeeEdit,codeTo.CodeNum)
+				.Any(x => x.LogText.Contains("a second fee with the same clinic, provider and effective date")));
 		}
 
 		[TestMethod]

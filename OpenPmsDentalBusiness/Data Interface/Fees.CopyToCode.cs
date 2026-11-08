@@ -27,7 +27,9 @@ namespace OpenPmsDentalBusiness {
 		///source code has at least one fee (only feeSchedNum, unless it is 0), the destination code gets exactly the source code's fee rows: the same
 		///amounts for the same clinics, providers and effective dates, including blank overrides (-1). A destination row with the same clinic,
 		///provider and effective date is updated, a missing one is inserted, and a destination row the source code does not have in that fee
-		///schedule is deleted. Fee schedules where the source code has no fee are not changed. Fee schedule groups stay in sync because every
+		///schedule is deleted (so is a second destination row with the same clinic, provider and date, left from before such duplicates were
+		///refused; of two such source rows only the first is copied). Fee schedules where the source code has no fee are not changed. Fee schedule
+		///groups stay in sync because every
 		///clinic's rows of a fee schedule are copied. Each change makes a Procedure Fee Edit audit entry (FKey: the destination code) and a Fee Edit
 		///entry (FKey: the fee), like the other fee tools. Throws an ApplicationException for an invalid pair of codes.</summary>
 		public static FeeCodeCopyResult CopyFeesToCode(long codeNumFrom,long codeNumTo,long feeSchedNum=0) {
@@ -45,23 +47,40 @@ namespace OpenPmsDentalBusiness {
 			FeeCodeCopyResult feeCodeCopyResult=new FeeCodeCopyResult();
 			List<long> listFeeSchedNums=listFeesFrom.Select(x => x.FeeSched).Distinct().ToList();
 			for(int i=0;i<listFeeSchedNums.Count;i++) {
-				List<Fee> listFromInSched=listFeesFrom.FindAll(x => x.FeeSched==listFeeSchedNums[i]);
+				//Rows with the same key and date are not allowed, but older databases can have some. Like every lookup, the first row wins (the rows
+				//are ordered by FeeNum within a key and date): a source duplicate is not copied, and a destination duplicate is deleted.
+				List<Fee> listFromInSched=listFeesFrom.FindAll(x => x.FeeSched==listFeeSchedNums[i])
+					.GroupBy(x => GetKeyAndDateText(x))
+					.Select(x => x.First())
+					.ToList();
+				HashSet<string> hashSetFromKeys=new HashSet<string>(listFromInSched.Select(x => GetKeyAndDateText(x)));
+				Dictionary<string,Fee> dictToByKey=new Dictionary<string,Fee>();
+				List<Fee> listToDelete=new List<Fee>();
 				List<Fee> listToInSched=listFeesTo.FindAll(x => x.FeeSched==listFeeSchedNums[i]);
-				//Destination rows the source does not have go first, so no insert below can meet a row with the same key and date.
-				List<Fee> listToDelete=listToInSched.FindAll(x => GetSameKeyAndDate(listFromInSched,x)==null);
+				for(int j=0;j<listToInSched.Count;j++) {
+					string key=GetKeyAndDateText(listToInSched[j]);
+					if(hashSetFromKeys.Contains(key) && !dictToByKey.ContainsKey(key)) {
+						dictToByKey[key]=listToInSched[j];
+						continue;
+					}
+					listToDelete.Add(listToInSched[j]);
+				}
+				//Destination rows go first, so no insert below can meet a row with the same key and date.
 				for(int j=0;j<listToDelete.Count;j++) {
 					Fee fee=listToDelete[j];
+					string reason=(hashSetFromKeys.Contains(GetKeyAndDateText(fee)) ? "a second fee with the same clinic, provider and effective date"
+						: procCodeFrom+" has no such fee");
 					DateTime datePrevious=fee.SecDateTEdit;
 					Delete(fee,doCheckFeeSchedGroups:false);
 					feeCodeCopyResult.CountDeleted++;
 					SecurityLogs.MakeLogEntry(EnumPermType.ProcFeeEdit,0,"Procedure: "+procCodeTo+", Old Fee: "+fee.Amount.ToString("c")+", "
-						+GetCopyCodeKeyText(fee)+". Fee deleted using the Copy Code tool in the Fee Tools window: "+procCodeFrom+" has no such fee.",
+						+GetCopyCodeKeyText(fee)+". Fee deleted using the Copy Code tool in the Fee Tools window: "+reason+".",
 						codeNumTo,DateTime.MinValue);
 					SecurityLogs.MakeLogEntry(EnumPermType.LogFeeEdit,0,"Fee deleted",fee.FeeNum,datePrevious);
 				}
 				for(int j=0;j<listFromInSched.Count;j++) {
 					Fee feeFrom=listFromInSched[j];
-					Fee feeTo=GetSameKeyAndDate(listToInSched,feeFrom);
+					dictToByKey.TryGetValue(GetKeyAndDateText(feeFrom),out Fee feeTo);
 					if(feeTo==null) {
 						feeTo=new Fee();
 						feeTo.Amount=feeFrom.Amount;
@@ -96,10 +115,10 @@ namespace OpenPmsDentalBusiness {
 			return feeCodeCopyResult;
 		}
 
-		///<summary>The row of the list with the fee's schedule, clinic, provider and effective date, or null.</summary>
-		private static Fee GetSameKeyAndDate(List<Fee> listFees,Fee fee) {
-			return listFees.FirstOrDefault(x => x.FeeSched==fee.FeeSched && x.ClinicNum==fee.ClinicNum && x.ProvNum==fee.ProvNum
-				&& x.DateEffective.Date==fee.DateEffective.Date);
+		///<summary>The fee's schedule, clinic, provider and effective date as one text, without the code: the same text for the source row and the
+		///destination row it is copied to.</summary>
+		private static string GetKeyAndDateText(Fee fee) {
+			return fee.FeeSched+","+fee.ClinicNum+","+fee.ProvNum+","+fee.DateEffective.ToString("yyyy-MM-dd");
 		}
 
 		///<summary>"Fee Schedule: Standard, effective 2027-01-01, at clinic: East, for provider: DOC1" for the audit trail.</summary>
