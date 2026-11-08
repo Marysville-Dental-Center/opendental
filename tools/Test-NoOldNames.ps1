@@ -116,6 +116,7 @@ $AllowList=@(
 
 	#--- Values sent to vendors and other systems (vendor-direct decisions keep them).
 	@{ Path='WpfControlsOD\Bridges\Sirona.cs'; Match='line\.Append\("OpenDental"\)'; Reason='The sender name Sirona expects.' }
+	@{ Path='WpfControlsOD\Bridges\Vipersoft.cs'; Match='"OpenDental\|"'; Reason='The program name Vipersoft expects.' }
 	@{ Path='*\Bridges\EHG_statements.cs'; Match='UploaderName=OpenDental'; Reason='The uploader name EHG expects.' }
 	@{ Path='db\init\new-database.sql'; Match='--source \\"OpenDental\\"'; Reason='The --source value Shining3D expects (program.CommandLine).' }
 	@{ Path='*\X12\X837_4010.cs'; Match='Sometimes OpenDental\.'; Reason='The X12 GS02 sender code, a value sent to clearinghouses.' }
