@@ -15,6 +15,10 @@ to wait (up to 9 minutes per call) and print the summary.
 
 -Root defaults to the repository that holds this script (the parent of tools\), so it can be run from any folder.
 
+vstest.console.exe is the one of Visual Studio 2026 or its Build Tools (vstest 18), found with vswhere and a version range
+(tools\Initialize-BuildEnvironment.ps1). -Toolset 2022 takes that of Visual Studio 2022 instead, the fallback until the
+stage 1 gate of the .NET 10 move (docs/specs/net10-plan.md, section 2.4); -VsTestPath names one directly.
+
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\run-tests.ps1 -Mode Targeted -Include BPAYTests,PayPlanTests
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\run-tests.ps1 -Mode Core
@@ -32,7 +36,9 @@ param(
 	[int]$MaxParallel = 3,
 	[int]$TimeoutMinutesPerAssembly = 20,
 	[switch]$WaitOnly,
-	[switch]$List
+	[switch]$List,
+	[ValidateSet('2026', '2022')][string]$Toolset = '2026',
+	[string]$VsTestPath = ''
 )
 $ErrorActionPreference = 'Stop'
 # Below-normal priority: vstest and its testhost processes inherit it, so test runs never starve the desktop.
@@ -43,16 +49,17 @@ if (-not $Root) { $Root = Split-Path -Parent $PSScriptRoot }
 $Root = (Resolve-Path $Root).Path
 if (-not (Test-Path (Join-Path $Root 'OpenDental.Local.slnf'))) { throw "OpenDental.Local.slnf not found in $Root. Pass the repository root with -Root." }
 
+# Get-BuildToolPath: the vswhere look-up the tool scripts share.
+. (Join-Path $PSScriptRoot 'Initialize-BuildEnvironment.ps1')
 function Find-VsTest {
-	$buildTools = 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\IDE\Extensions\TestPlatform\vstest.console.exe'
-	if (Test-Path $buildTools) { return $buildTools }
-	# Any other Visual Studio 2022 edition: ask vswhere.
-	$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-	if (Test-Path $vswhere) {
-		$found = & $vswhere -latest -products * -find 'Common7\IDE\Extensions\TestPlatform\vstest.console.exe' | Select-Object -First 1
-		if ($found -and (Test-Path $found)) { return $found }
+	if ($VsTestPath) {
+		if (-not (Test-Path -LiteralPath $VsTestPath -PathType Leaf)) { throw "vstest.console.exe not found at '$VsTestPath'." }
+		return $VsTestPath
 	}
-	throw 'vstest.console.exe was not found. Install the Build Tools with the testing tools as described in README.md.'
+	# Visual Studio 2026 or its Build Tools (version 18; -Toolset 2022 for version 17), any edition, never an unranged -latest.
+	$found = Get-BuildToolPath -Tool VsTest -Toolset $Toolset
+	if ($found) { return $found }
+	throw "vstest.console.exe of Visual Studio $Toolset was not found. Install the Build Tools $Toolset with the testing tools as described in README.md, or pass -VsTestPath."
 }
 
 if (-not $Out) {

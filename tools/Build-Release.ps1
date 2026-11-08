@@ -32,7 +32,9 @@ Exit codes: 0 done; 1 a check failed; 2 the build failed; 3 the installer did no
 
 .PARAMETER BuildLane
 Path of the shared build lane script (odbuild.ps1) of this PC. The build then runs through it, so only one build runs at a time.
-Without it, MSBuild is found with vswhere.
+Without it, the script builds with the Build Tools 2026 MSBuild 18 itself, found with vswhere as
+tools\Initialize-BuildEnvironment.ps1 finds it, in the environment that script sets (the pinned .NET SDK, the offline NuGet
+folder), with a locked restore first.
 
 .PARAMETER LaneWaitMinutes
 How long the build lane waits for another build to finish. Default 15.
@@ -41,7 +43,8 @@ How long the build lane waits for another build to finish. Default 15.
 Use the Release output that is already there. It must come from a Release build of the current source.
 
 .PARAMETER MSBuildPath
-Full path of MSBuild.exe when not building through -BuildLane. Default: found with vswhere.
+Full path of MSBuild.exe when not building through -BuildLane. Default: the Build Tools 2026 (Visual Studio 2026) MSBuild 18,
+found with vswhere and the version range [18.0,19.0) (tools\Initialize-BuildEnvironment.ps1).
 
 .PARAMETER OutDir
 Where the staging folder, SHA256SUMS.txt and the setup go. Default: installer\bin in this repository (ignored by git).
@@ -91,6 +94,8 @@ param(
 Set-StrictMode -Version 2
 $ErrorActionPreference='Stop'
 $RepoRoot=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+#Get-BuildToolPath and Initialize-BuildEnvironment: the MSBuild look-up and the build environment every tool script shares.
+. (Join-Path $PSScriptRoot 'Initialize-BuildEnvironment.ps1')
 
 #region The lists
 #The database compatibility version. Every AssemblyVersion and OpenPmsDental.exe's file version stay on it (ForkVersions.CompatVersion).
@@ -468,11 +473,9 @@ function Write-Sums([string]$sumsPath,[string[]]$lines){
 	[System.IO.File]::WriteAllText($sumsPath,(($lines -join "`n")+"`n"),$utf8)
 }
 
+#The Build Tools 2026 (Visual Studio 2026) MSBuild 18, never the newest instance whatever its version; $null when there is none.
 function Find-MSBuild {
-	$vswhere=Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-	if(-not (Test-Path $vswhere)){ return $null }
-	$found=& $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
-	return $found
+	return Get-BuildToolPath -Tool MSBuild
 }
 
 #git from the PATH, or $null.
@@ -691,10 +694,13 @@ if(-not $SkipBuild){
 	else{
 		if(-not $MSBuildPath){ $MSBuildPath=Find-MSBuild }
 		if(-not $MSBuildPath -or -not (Test-Path -LiteralPath $MSBuildPath -PathType Leaf)){
-			Write-Host 'MSBuild.exe not found. Pass -MSBuildPath or -BuildLane.'
+			Write-Host 'MSBuild.exe of Visual Studio 2026 or its Build Tools not found. Install them as README.md describes, or pass -MSBuildPath or -BuildLane.'
 			exit 4
 		}
-		& $MSBuildPath (Join-Path $RepoRoot 'OpenDental.Local.slnf') /p:Configuration=Release /p:Platform=x86 /m /nodeReuse:false /v:minimal /nologo
+		#The pinned .NET SDK and the offline NuGet folder for this process; the restore is locked to the committed lock files.
+		$buildEnvironment=Initialize-BuildEnvironment -RepoRoot $RepoRoot
+		Write-Host "MSBuild $MSBuildPath, .NET SDK $($buildEnvironment.SdkVersion) from '$($buildEnvironment.SdkFolder)'"
+		& $MSBuildPath (Join-Path $RepoRoot 'OpenDental.Local.slnf') /restore /p:RestoreLockedMode=true /p:Configuration=Release /p:Platform=x86 /m /nodeReuse:false /v:minimal /nologo
 		$exitBuild=$LASTEXITCODE
 	}
 	if($exitBuild -ne 0){
