@@ -22,6 +22,8 @@ namespace OpenPmsDental {
 			this.labelTransport = new System.Windows.Forms.Label();
 			this.checkBaaOnFile = new OpenPmsDental.UI.CheckBox();
 			this.labelBaaConfirmed = new System.Windows.Forms.Label();
+			this.labelSendWithout = new System.Windows.Forms.Label();
+			this.textSendWithout = new System.Windows.Forms.TextBox();
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
 			//
@@ -84,10 +86,28 @@ namespace OpenPmsDental {
 			this.labelBaaConfirmed.Size = new System.Drawing.Size(552, 18);
 			this.labelBaaConfirmed.TabIndex = 7;
 			//
+			// labelSendWithout
+			//
+			this.labelSendWithout.Location = new System.Drawing.Point(12, 422);
+			this.labelSendWithout.Name = "labelSendWithout";
+			this.labelSendWithout.Size = new System.Drawing.Size(570, 18);
+			this.labelSendWithout.TabIndex = 8;
+			this.labelSendWithout.Text = "Sending a case to Glidewell today";
+			//
+			// textSendWithout
+			//
+			this.textSendWithout.Location = new System.Drawing.Point(12, 442);
+			this.textSendWithout.Multiline = true;
+			this.textSendWithout.Name = "textSendWithout";
+			this.textSendWithout.ReadOnly = true;
+			this.textSendWithout.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+			this.textSendWithout.Size = new System.Drawing.Size(570, 130);
+			this.textSendWithout.TabIndex = 9;
+			//
 			// butSave
 			//
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(507, 427);
+			this.butSave.Location = new System.Drawing.Point(507, 584);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 5;
@@ -96,8 +116,10 @@ namespace OpenPmsDental {
 			//
 			// FormGlidewellSetup
 			//
-			this.ClientSize = new System.Drawing.Size(594, 463);
+			this.ClientSize = new System.Drawing.Size(594, 620);
 			this.Controls.Add(this.butSave);
+			this.Controls.Add(this.textSendWithout);
+			this.Controls.Add(this.labelSendWithout);
 			this.Controls.Add(this.labelBaaConfirmed);
 			this.Controls.Add(this.checkBaaOnFile);
 			this.Controls.Add(this.labelTransport);
@@ -121,6 +143,8 @@ namespace OpenPmsDental {
 		private System.Windows.Forms.Label labelTransport;
 		private OpenPmsDental.UI.CheckBox checkBaaOnFile;
 		private System.Windows.Forms.Label labelBaaConfirmed;
+		private System.Windows.Forms.Label labelSendWithout;
+		private System.Windows.Forms.TextBox textSendWithout;
 		private OpenPmsDental.UI.Button butSave;
 	}
 }

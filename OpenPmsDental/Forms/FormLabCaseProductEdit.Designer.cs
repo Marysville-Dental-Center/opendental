@@ -21,6 +21,7 @@ namespace OpenPmsDental {
 			this.textShade = new System.Windows.Forms.TextBox();
 			this.labelToothRange = new System.Windows.Forms.Label();
 			this.textToothRange = new System.Windows.Forms.TextBox();
+			this.butToothRangeFromProcs = new OpenPmsDental.UI.Button();
 			this.labelNotes = new System.Windows.Forms.Label();
 			this.textNotes = new System.Windows.Forms.TextBox();
 			this.labelProductListValue = new System.Windows.Forms.Label();
@@ -79,6 +80,15 @@ namespace OpenPmsDental {
 			this.textToothRange.Size = new System.Drawing.Size(150, 20);
 			this.textToothRange.TabIndex = 5;
 			//
+			// butToothRangeFromProcs
+			//
+			this.butToothRangeFromProcs.Location = new System.Drawing.Point(260, 64);
+			this.butToothRangeFromProcs.Name = "butToothRangeFromProcs";
+			this.butToothRangeFromProcs.Size = new System.Drawing.Size(110, 24);
+			this.butToothRangeFromProcs.TabIndex = 11;
+			this.butToothRangeFromProcs.Text = "From Procedures";
+			this.butToothRangeFromProcs.Click += new System.EventHandler(this.butToothRangeFromProcs_Click);
+			//
 			// labelNotes
 			//
 			this.labelNotes.Location = new System.Drawing.Point(12, 93);
@@ -134,6 +144,7 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelProductListValue);
 			this.Controls.Add(this.textNotes);
 			this.Controls.Add(this.labelNotes);
+			this.Controls.Add(this.butToothRangeFromProcs);
 			this.Controls.Add(this.textToothRange);
 			this.Controls.Add(this.labelToothRange);
 			this.Controls.Add(this.textShade);
@@ -156,6 +167,7 @@ namespace OpenPmsDental {
 		private System.Windows.Forms.TextBox textShade;
 		private System.Windows.Forms.Label labelToothRange;
 		private System.Windows.Forms.TextBox textToothRange;
+		private OpenPmsDental.UI.Button butToothRangeFromProcs;
 		private System.Windows.Forms.Label labelNotes;
 		private System.Windows.Forms.TextBox textNotes;
 		private System.Windows.Forms.Label labelProductListValue;

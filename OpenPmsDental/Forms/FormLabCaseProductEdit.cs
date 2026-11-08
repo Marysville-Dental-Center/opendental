@@ -1,5 +1,5 @@
 // Open Dental 26.2 (P262-GLIDEWELL): one product of a lab case (labcaseproduct): material, shade, teeth and notes. Edits the object in memory; the
-// Edit Lab Case window saves the products with the lab case.
+// Edit Lab Case window saves the products with the lab case. The teeth are filled from the lab case's procedures (next/vendorpub-1).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Windows.Forms;
@@ -10,6 +10,9 @@ namespace OpenPmsDental {
 	public partial class FormLabCaseProductEdit:FormODBase {
 		public LabCaseProduct LabCaseProductCur;
 		public bool IsNew;
+		///<summary>The teeth of the procedures of the lab case's appointment, formatted for display (LabCaseProducts.GetToothRangeFromProcs), or "".
+		///A new product's blank teeth are filled with them; "From Procedures" fills them again. What the user types is kept as typed.</summary>
+		public string ToothRangeFromProcs="";
 		///<summary>True after Delete was clicked (DialogResult is OK).</summary>
 		public bool IsDeleted;
 
@@ -20,6 +23,9 @@ namespace OpenPmsDental {
 		}
 
 		private void FormLabCaseProductEdit_Load(object sender,EventArgs e) {
+			if(IsNew) {
+				LabCaseProducts.FillToothRangeIfBlank(LabCaseProductCur,ToothRangeFromProcs);
+			}
 			textMaterial.Text=LabCaseProductCur.Material;
 			textShade.Text=LabCaseProductCur.Shade;
 			textToothRange.Text=LabCaseProductCur.ToothRange;
@@ -33,6 +39,14 @@ namespace OpenPmsDental {
 					+" ("+Lan.g(this,"kept as stored")+")";
 			}
 			butDelete.Visible=!IsNew;
+		}
+
+		private void butToothRangeFromProcs_Click(object sender,EventArgs e) {
+			if(string.IsNullOrWhiteSpace(ToothRangeFromProcs)) {
+				MsgBox.Show(this,"The lab case's appointment has no procedures with teeth.");
+				return;
+			}
+			textToothRange.Text=ToothRangeFromProcs.Trim();
 		}
 
 		private void butDelete_Click(object sender,EventArgs e) {

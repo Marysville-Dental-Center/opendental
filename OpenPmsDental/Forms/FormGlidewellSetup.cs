@@ -39,6 +39,8 @@ namespace OpenPmsDental {
 			checkEnabled.Checked=_program.Enabled;
 			checkBaaOnFile.Checked=GlidewellProgram.IsBaaOnFile();
 			labelBaaConfirmed.Text=checkBaaOnFile.Checked ? GetBaaConfirmedText() : "";
+			//Glidewell's own scanner connections, file upload and paper Rx (next/vendorpub-1), which work without this program sending anything.
+			textSendWithout.Text=GlidewellProgram.GetSendWithoutThisProgramText();
 			IGlidewellClient glidewellClient=GlidewellClients.Current;
 			if(glidewellClient.IsAvailable) {
 				labelTransport.Text="";

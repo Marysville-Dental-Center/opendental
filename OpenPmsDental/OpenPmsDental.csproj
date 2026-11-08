@@ -2802,6 +2802,7 @@
     <Compile Include="Logic\VendorDirect\DropboxStartupCheck.cs" />
     <Compile Include="Logic\VendorDirect\BridgeProgramLinkSetups.cs" />
     <Compile Include="Logic\VendorDirect\IProgramLinkSetup.cs" />
+    <Compile Include="Logic\VendorDirect\MeditLinkProgramLinkSetup.cs" />
     <Compile Include="Logic\VendorDirect\P262ProgramLinkSetups.cs" />
     <Compile Include="Logic\VendorDirect\PostcardsMenu.cs" />
     <Compile Include="Logic\VendorDirect\ProgramLinkSetupRegistry.cs" />

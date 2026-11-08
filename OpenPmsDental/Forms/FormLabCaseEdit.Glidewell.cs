@@ -147,6 +147,7 @@ namespace OpenPmsDental {
 			using FormLabCaseProductEdit formLabCaseProductEdit=new FormLabCaseProductEdit();
 			formLabCaseProductEdit.LabCaseProductCur=labCaseProduct;
 			formLabCaseProductEdit.IsNew=true;
+			formLabCaseProductEdit.ToothRangeFromProcs=GetGwToothRangeFromProcs();
 			if(formLabCaseProductEdit.ShowDialog(this)!=DialogResult.OK || formLabCaseProductEdit.IsDeleted) {
 				return;
 			}
@@ -162,6 +163,7 @@ namespace OpenPmsDental {
 			LabCaseProduct labCaseProductEdit=labCaseProduct.Copy();
 			using FormLabCaseProductEdit formLabCaseProductEdit=new FormLabCaseProductEdit();
 			formLabCaseProductEdit.LabCaseProductCur=labCaseProductEdit;
+			formLabCaseProductEdit.ToothRangeFromProcs=GetGwToothRangeFromProcs();
 			if(formLabCaseProductEdit.ShowDialog(this)!=DialogResult.OK) {
 				return;
 			}
@@ -173,6 +175,12 @@ namespace OpenPmsDental {
 				_listLabCaseProducts[index]=labCaseProductEdit;
 			}
 			FillGwProducts();
+		}
+
+		///<summary>The teeth of the procedures of the appointment the lab case is attached to as it is on screen (Detach clears it), formatted for
+		///display (Open Dental 26.2: labcaseproduct.ToothRange is retrieved from the procedures).</summary>
+		private string GetGwToothRangeFromProcs() {
+			return LabCaseProducts.GetToothRangeFromProcs(LabCaseCur.AptNum,LabCaseCur.PlannedAptNum);
 		}
 
 		private void butGwSend_Click(object sender,EventArgs e) {
