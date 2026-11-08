@@ -1095,7 +1095,10 @@ no Middle Tier server while the Middle Tier is still ported (open point O-7, S3b
   a way that these workflow only run on a single workstation in the practice, so no race conditions." A package after stage 0 adds a
   runner inside the program: setup names the one workstation that runs these jobs; only that workstation's program runs them, and a
   database lock (one row or `GET_LOCK`) makes a second runner wait instead of running a job twice, also if two computers are set up by
-  mistake. The 55 legacy tests of these jobs stay (S0-5) and become the runner's tests.
+  mistake. The owner also asked for "option for background test to be turned off": a setting turns the runner off for the whole
+  practice (no workstation runs these jobs), and each job can be switched off on its own. The runner is off by default, also after an
+  upgrade: a database adopted from Open Dental may hold scheduled processes that Open Dental's service ran, so the office turns the
+  runner on itself after looking at them. The 55 legacy tests of these jobs stay (S0-5) and become the runner's tests.
 - **O-12. The local test database runs encrypted. Answered 2026-11-08: yes.** The owner: "Once db switches you can get rid of the old
   encrypted db" (the current test database on `127.0.0.1:3306`), and "yes" to the plan. A package before the stage 2 gate: the owner
   runs a script once as administrator that turns on TLS (a test CA and a server certificate for `127.0.0.1` and `localhost`) in the

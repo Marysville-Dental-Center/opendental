@@ -645,7 +645,9 @@ answer; the standing rule below, with its correction; and "Don't need 'Install f
   database is rebuilt. This replaces the temporary second server above.
 - **Scheduled Processes and HIE export.** A runner is built ("Yes build it in a way that these workflow only run on a single
   workstation in the practice, so no race conditions"): only the workstation named in setup runs these jobs, and a database lock stops
-  a second one from running a job twice.
+  a second one from running a job twice. It can be turned off ("Also have option for background test to be turned off"): one setting
+  for the whole practice and one per job. It starts off, also after an upgrade, so jobs an office set up under Open Dental do not start
+  running by surprise.
 - **QuickBooks Desktop, Schick CDR and Topaz signature pads.** The office does not use them. They were to be removed in the clean-up stage
   (owner, 2026-11-07); now kept and ported (owner correction, 2026-11-08).
 - **Order of the stages.** A clean-up stage first; then SDK-style project files, NuGet packages and the test framework, all still on .NET
