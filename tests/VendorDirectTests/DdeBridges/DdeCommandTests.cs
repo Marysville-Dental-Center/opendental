@@ -68,7 +68,7 @@ namespace VendorDirectTests.DdeBridges {
 				Birthdate=new DateTime(1980,2,5),
 				Gender=PatientGender.Female,
 				Address="1 Main St",
-				City="Springfield",
+				City="Anytown",
 				State="ST",
 				Zip="00000",
 				SSN="000-00-0000",
@@ -79,7 +79,7 @@ namespace VendorDirectTests.DdeBridges {
 		[TestMethod]
 		public void DentX_Command_WithPatNum() {
 			Patient pat=GetPatient();
-			string expected="Xray,1234,Pat,Example,"+pat.Birthdate.ToShortDateString()+",F,1 Main St,Springfield,ST,00000";
+			string expected="Xray,1234,Pat,Example,"+pat.Birthdate.ToShortDateString()+",F,1 Main St,Anytown,ST,00000";
 			Assert.AreEqual(expected,DentX.GetCommand(pat,isChartNum:false));
 		}
 
@@ -90,11 +90,11 @@ namespace VendorDirectTests.DdeBridges {
 			pat.FName="Mary,Ann";
 			pat.LName="Example, Jr";
 			pat.Address="1 Main St, Apt 2";
-			pat.City="Spring,field";
+			pat.City="Any,town";
 			pat.State="S,T";
 			pat.Zip="00,000";
 			pat.Gender=PatientGender.Male;
-			string expected="Xray,AB12,MaryAnn,Example Jr,"+pat.Birthdate.ToShortDateString()+",M,1 Main St Apt 2,Springfield,ST,00000";
+			string expected="Xray,AB12,MaryAnn,Example Jr,"+pat.Birthdate.ToShortDateString()+",M,1 Main St Apt 2,Anytown,ST,00000";
 			Assert.AreEqual(expected,DentX.GetCommand(pat,isChartNum:true));
 			Assert.AreEqual(10,DentX.GetCommand(pat,isChartNum:true).Split(',').Length,"Ten fields, no comma inside one.");
 			pat.Gender=PatientGender.Unknown;

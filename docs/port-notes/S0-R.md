@@ -77,7 +77,7 @@ the Dexis Integrator's shown with the same message, and the Dexis Integrator fol
 
 **Program Links.** `ProgramLinksDiscontinued.ListProgramNamesRemoved` and its "(removed)" label, launch message and helpers are gone again:
 the three rows are ordinary program links that the office can enable, give toolbar buttons and launch. `ProgramL.Execute` dispatches them
-(`DentX` and `DexisIntegrator`, `Vipersoft` under `#if !DISABLE_WINDOWS_BRIDGES`, as before). What 0d2ab2722 added for every discontinued
+(all three under `#if !DISABLE_WINDOWS_BRIDGES`, as before). What 0d2ab2722 added for every discontinued
 link stays: `ToolButItems.GetForToolBar` shows no button of a discontinued link (DXC Patient Credit Score, Trojan Express Collect) even when
 its row is enabled.
 
@@ -89,8 +89,8 @@ files folder path") and toolbar rows, all as Open Dental's conversions made them
 ## Moving to .NET 10 and to 64-bit
 
 - **The DDE client** uses only `DllImport` to `user32.dll`, `ISynchronizeInvoke` and `Encoding.ASCII`, all in .NET 10 on Windows
-  (`net10.0-windows`). `DllImport` can stay, or become `LibraryImport` (source-generated; it needs `StringMarshalling` for the ANSI names,
-  or the names marshalled by hand). Nothing of NDde is needed; whether NDde ran on .NET 10 is moot.
+  (`net10.0-windows`). `DllImport` still works there. `LibraryImport` (source-generated) has no ANSI string marshalling, so with it the
+  service and topic would be passed as ANSI bytes. Nothing of NDde is needed; whether NDde ran on .NET 10 is moot.
 - **64-bit.** The handles (`HCONV`, `HSZ`, `HDDEDATA`) are `IntPtr`, the callback's `dwData1`/`dwData2` are `UIntPtr` (`ULONG_PTR`), the
   instance id, sizes, flags and the result are `uint` (`DWORD`), so the declarations are right for x64 as they are; the stdcall convention
   is ignored there. DDE works between 64-bit and 32-bit programs, so a 64-bit build can still reach a 32-bit ProImage, Dexis Integrator or
@@ -108,6 +108,18 @@ files folder path") and toolbar rows, all as Open Dental's conversions made them
 - `tests/VendorDirectTests/DdeBridges/DdeCommandTests.cs`: each bridge's command (PatNum and ChartNumber, commas, birthdates, the
   255-character rule), the service, topic, calls and timeouts each bridge makes on a fake conversation, the Dexis Integrator's reuse,
   reconnect and single retry; the client's own rules (ASCII bytes with the null, the length and timeout checks, use before `Connect`, after
-  `Dispose`) and that each DDEML function it declares exists in `user32.dll`. VendorDirectTests now references WpfControlsOD.
+  `Dispose`, marshalling to a synchronizing object), that each DDEML function it declares exists in `user32.dll` and that the declarations
+  fit x64. VendorDirectTests now references WpfControlsOD.
+- `tools/Test-NoOldNames.ps1` allows Vipersoft's "OpenDental|" in the bridge and in the two test files that check it.
 - `BSHELLTests` (Program Links labels discontinued links again with the one-argument call), `ReleaseFlowTests` (`ProgramNamesTests`
   checks the Dexis Integrator's main-window lookup again), `AttributionTests` (the comment on NDde).
+
+## Verification
+
+- Full build of `OpenDental.Local.slnf` (Debug x86, through the build lane): 0 errors.
+- `run-tests.ps1 -Mode Targeted` with NoHqTests, BINATests, BINBTests, VendorDirectTests, ReleaseFlowTests, LibraryBindingTests,
+  RegistryTests, ForkMigrationTests, BSHELLTests, AttributionTests and P262LinksTests: every assembly passes except LibraryBindingTests, whose
+  two failures (`AllowList_NamesExactlyTheRequiredDllsTheProgramsNeed`, `ShippedAssemblies_FindEveryAssemblyTheyReference`: the Direct
+  Project files left on the release's allow list after S0-3 removed Direct) are the same on `net10/int0` before this package and are not
+  about NDde or DDE. InitSqlTests was not run (no schema change here; the coordinator regenerates the init file).
+- `tools/Test-NoOldNames.ps1 -Strict` and `tools/Test-NoHqHosts.ps1`: passed.

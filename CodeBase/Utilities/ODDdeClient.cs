@@ -156,7 +156,7 @@ namespace CodeBase {
 		}
 
 		///<summary>Ends the conversation and closes the DDEML instance. Never throws. If the synchronizing window is already gone, or this is the wrong
-		///thread, the instance cannot be closed here; Windows closes it with its thread.</summary>
+		///thread, the instance cannot be closed here and is left to Windows, which ends it with the program.</summary>
 		public void Dispose() {
 			if(_isDisposed) {
 				return;
