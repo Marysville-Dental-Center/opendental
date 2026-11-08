@@ -73,6 +73,10 @@ namespace P262GlidewellTests {
 				+POut.Int((int)procStat)+")");
 		}
 
+		///<summary>The preferences SetToothNumbering writes. The scratch database is shared by the whole assembly, so a test that writes them puts
+		///back what GetPrefs read before, in its finally block (RestorePrefs).</summary>
+		private static readonly string[] _arrayPrefNames={ "UseInternationalToothNumbers","DxIcdVersion" };
+
 		///<summary>The office's tooth numbering, and the ICD version a new Procedure reads in its constructor.</summary>
 		private static void SetToothNumbering(ToothNumberingNomenclature toothNumberingNomenclature) {
 			DataCore.NonQ("DELETE FROM preference WHERE PrefName IN ('UseInternationalToothNumbers','DxIcdVersion')");
@@ -81,19 +85,45 @@ namespace P262GlidewellTests {
 			Prefs.RefreshCache();
 		}
 
+		///<summary>The rows of the preferences SetToothNumbering writes, as they are now: name and value, no entry for a missing row.</summary>
+		private static Dictionary<string,string> GetPrefs() {
+			Dictionary<string,string> dictPrefs=new Dictionary<string,string>();
+			System.Data.DataTable table=DataCore.GetTable("SELECT PrefName,ValueString FROM preference "
+				+"WHERE PrefName IN ('"+string.Join("','",_arrayPrefNames)+"') ORDER BY PrefNum");
+			for(int i=0;i<table.Rows.Count;i++) {
+				dictPrefs[table.Rows[i]["PrefName"].ToString()]=table.Rows[i]["ValueString"].ToString();
+			}
+			return dictPrefs;
+		}
+
+		///<summary>Puts back the rows GetPrefs read: a row that was missing is deleted again.</summary>
+		private static void RestorePrefs(Dictionary<string,string> dictPrefs) {
+			DataCore.NonQ("DELETE FROM preference WHERE PrefName IN ('"+string.Join("','",_arrayPrefNames)+"')");
+			foreach(KeyValuePair<string,string> pair in dictPrefs) {
+				DataCore.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES ('"+POut.String(pair.Key)+"','"+POut.String(pair.Value)+"')");
+			}
+			Prefs.RefreshCache();
+		}
+
 		[TestMethod]
 		public void FormatToothRange_ReadsToothNumAndToothRangeOfEachProcedure() {
 			GlidewellDb.Begin();
-			SetToothNumbering(ToothNumberingNomenclature.Universal);
-			List<Procedure> listProcedures=new List<Procedure> {
-				new Procedure { ToothNum="12" },
-				null,
-				new Procedure { ToothRange="6,7,8" },
-				new Procedure { Surf="U" },//An arch procedure.
-				new Procedure { ToothNum="8",ToothRange="8,9" },
-			};
-			Assert.AreEqual("6-9,12",LabCaseProducts.FormatToothRange(listProcedures,ToothNumberingNomenclature.Universal));
-			Assert.AreEqual("",LabCaseProducts.FormatToothRange(new List<Procedure> { new Procedure { Surf="UR" } },ToothNumberingNomenclature.Universal));
+			Dictionary<string,string> dictPrefs=GetPrefs();
+			try {
+				SetToothNumbering(ToothNumberingNomenclature.Universal);
+				List<Procedure> listProcedures=new List<Procedure> {
+					new Procedure { ToothNum="12" },
+					null,
+					new Procedure { ToothRange="6,7,8" },
+					new Procedure { Surf="U" },//An arch procedure.
+					new Procedure { ToothNum="8",ToothRange="8,9" },
+				};
+				Assert.AreEqual("6-9,12",LabCaseProducts.FormatToothRange(listProcedures,ToothNumberingNomenclature.Universal));
+				Assert.AreEqual("",LabCaseProducts.FormatToothRange(new List<Procedure> { new Procedure { Surf="UR" } },ToothNumberingNomenclature.Universal));
+			}
+			finally {
+				RestorePrefs(dictPrefs);
+			}
 		}
 
 		[TestMethod]
@@ -107,14 +137,15 @@ namespace P262GlidewellTests {
 			InsertProc(5,0,901,"3","",ProcStat.TP);
 			InsertProc(6,0,901,"","",ProcStat.TP);//No tooth (an exam on the planned appointment).
 			InsertProc(7,950,0,"","5,6,7",ProcStat.TP);//Another lab case's appointment.
-			SetToothNumbering(ToothNumberingNomenclature.Universal);
-			CollectionAssert.AreEqual(new long[] { 1,2,4 },LabCaseProducts.GetProcsForLabCase(900,901).Select(x => x.ProcNum).ToList(),
-				"The scheduled appointment's procedures; the deleted one left out.");
-			CollectionAssert.AreEqual(new long[] { 4,5,6 },LabCaseProducts.GetProcsForLabCase(0,901).Select(x => x.ProcNum).ToList(),
-				"Without a scheduled appointment, the planned one's.");
-			Assert.AreEqual(0,LabCaseProducts.GetProcsForLabCase(0,0).Count,"Attached to neither.");
-			Assert.AreEqual(0,LabCaseProducts.GetProcsForLabCase(902,901).Count,"An appointment without procedures: the planned one is not used.");
+			Dictionary<string,string> dictPrefs=GetPrefs();
 			try {
+				SetToothNumbering(ToothNumberingNomenclature.Universal);
+				CollectionAssert.AreEqual(new long[] { 1,2,4 },LabCaseProducts.GetProcsForLabCase(900,901).Select(x => x.ProcNum).ToList(),
+					"The scheduled appointment's procedures; the deleted one left out.");
+				CollectionAssert.AreEqual(new long[] { 4,5,6 },LabCaseProducts.GetProcsForLabCase(0,901).Select(x => x.ProcNum).ToList(),
+					"Without a scheduled appointment, the planned one's.");
+				Assert.AreEqual(0,LabCaseProducts.GetProcsForLabCase(0,0).Count,"Attached to neither.");
+				Assert.AreEqual(0,LabCaseProducts.GetProcsForLabCase(902,901).Count,"An appointment without procedures: the planned one is not used.");
 				Assert.AreEqual("8,9,30",LabCaseProducts.GetToothRangeFromProcs(900,901));
 				Assert.AreEqual("3,30",LabCaseProducts.GetToothRangeFromProcs(0,901));
 				Assert.AreEqual("5-7",LabCaseProducts.GetToothRangeFromProcs(950,0));
@@ -123,8 +154,9 @@ namespace P262GlidewellTests {
 				Assert.AreEqual("11,21,46",LabCaseProducts.GetToothRangeFromProcs(900,901),"The office's tooth numbering: FDI (30=46).");
 			}
 			finally {
-				SetToothNumbering(ToothNumberingNomenclature.Universal);
+				RestorePrefs(dictPrefs);//Both preferences, DxIcdVersion included, as they were before the test.
 			}
+			CollectionAssert.AreEquivalent(dictPrefs.ToList(),GetPrefs().ToList(),"Restored: the same rows and values; a row that was missing is missing again.");
 		}
 
 		///<summary>The teeth are not written into an existing product by any save: the products are synced as the user left them.</summary>
