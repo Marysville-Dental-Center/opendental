@@ -22,6 +22,17 @@ namespace BINBTests {
 			return (Label)signatureBoxWrapper.Controls.Find("labelInvalidSig",true).Single();
 		}
 
+		///<summary>The Images module's source, which must exist, and the old 2020 module's only while it exists: S0-6 (docs/specs/net10-plan.md)
+		///deletes ControlImagesOld.cs after S0-2a merges, and from then on only ControlImages.cs is checked.</summary>
+		private static List<string> GetImagesModuleSources() {
+			List<string> listRelative=new List<string> { @"OpenPmsDental\Main Modules\ControlImages.cs" };
+			string relativeOld=@"OpenPmsDental\Main Modules\ControlImagesOld.cs";
+			if(File.Exists(Path.Combine(TestPaths.RepoRoot,relativeOld))) {
+				listRelative.Add(relativeOld);
+			}
+			return listRelative;
+		}
+
 		///<summary>A signature made in the program's own box for a treatment plan (digitally signed, synthetic signer), as FormTPsign saves one.</summary>
 		private static string GetOwnTreatPlanSignature(string keyData) {
 			using(SignatureBox signatureBox=new SignatureBox()) {
@@ -49,8 +60,8 @@ namespace BINBTests {
 			Assert.IsFalse(File.Exists(Path.Combine(TestPaths.RepoRoot,"OpenPmsDentalBusiness","UI","TopazWrapper.cs")));
 			Assert.IsNull(typeof(SignatureBoxWrapper).Assembly.GetType("OpenPmsDental.UI.TopazWrapper"),"TopazWrapper is no longer compiled.");
 			Assert.IsFalse(TestPaths.ReadSource("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj").Contains("TopazWrapper"));
-			foreach(string relative in new[] { @"OpenPmsDental\Main Modules\ControlImages.cs",@"OpenPmsDental\Main Modules\ControlImagesOld.cs",
-				@"OpenPmsDentalBusiness\UI\SignatureBoxWrapper.cs",@"OpenPmsDentalBusiness\UI\SignatureBoxWrapper.Designer.cs" })
+			foreach(string relative in GetImagesModuleSources()
+				.Concat(new[] { @"OpenPmsDentalBusiness\UI\SignatureBoxWrapper.cs",@"OpenPmsDentalBusiness\UI\SignatureBoxWrapper.Designer.cs" }))
 			{
 				string source=TestPaths.ReadSource(relative);
 				Assert.IsFalse(source.Contains("TopazWrapper") || source.Contains("_sigBoxTopaz") || source.Contains("butTopazSign"),relative);
@@ -227,8 +238,9 @@ namespace BINBTests {
 
 		[TestMethod]
 		public void ImagesModules_ShowTheMessageForADocumentWithATopazSignature() {
-			//The Images module and the old 2020 module (until S0-6 removes it) show the same text in place of a stored Topaz signature.
-			foreach(string relative in new[] { @"OpenPmsDental\Main Modules\ControlImages.cs",@"OpenPmsDental\Main Modules\ControlImagesOld.cs" }) {
+			//The Images module and the old 2020 module (until S0-6 deletes it; GetImagesModuleSources) show the same text in place of a stored
+			//Topaz signature.
+			foreach(string relative in GetImagesModuleSources()) {
 				string source=TestPaths.ReadSource(relative);
 				int indexFill=source.IndexOf("private void FillSignature() {");
 				int indexTopaz=source.IndexOf("SigIsTopaz) {",indexFill);
