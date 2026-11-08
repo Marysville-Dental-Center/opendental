@@ -3,6 +3,8 @@
 // program (EmailPreviewControl) and the WPF controls (FrmMessageReplacements). The other 26 tests of that class are in
 // tests/LibraryUpdateTests/EmailMessagesTests.cs. The test keeps its name and its arrange, act and assert; only the harness changed: the scratch
 // database of ScratchDb.cs (s0t_, built from the seed dump) instead of the legacy unittest database and TestBase. No window is shown.
+// One correction to the legacy test's field selection: it leaves out MessageReplaceType.ProgramLink, the fork's type for fields only program
+// links replace, which the e-mail windows never offer (see the comment in the test). Two tests of S0-T follow it.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -88,6 +90,10 @@ namespace LibWebTests {
 			string subject="";
 			List<MessageReplaceType> listMessageReplaceTypes=Enum.GetValues(typeof(MessageReplaceType)).Cast<MessageReplaceType>().ToList();
 			listMessageReplaceTypes.Remove(MessageReplaceType.PaymentPlan);
+			//S0-T: ProgramLink (the fork's B-SHELL type, added after this legacy test was written) lists [SelectedProcNums], which only program
+			//links replace. The e-mail windows never pass this type to the picker, so the picker never offers that field for e-mail; leave it out,
+			//as PaymentPlan above.
+			listMessageReplaceTypes.Remove(MessageReplaceType.ProgramLink);
 			List<FrmMessageReplacements.ReplacementField> listReplacementFields=FrmMessageReplacements.GetReplacementFieldList(true,listMessageReplaceTypes);
 			for(int i=0;i<listReplacementFields.Count;i++){
 				if(listReplacementFields[i].IsSupported){
@@ -96,6 +102,41 @@ namespace LibWebTests {
 			}
 			subject=EmailPreviewControl.ReplaceTemplateFields(subject,pat,null,Clinics.GetClinic(pat.ClinicNum));
 			Assert.IsFalse(subject.Any(x => x==']' || x=='['));
+		}
+
+		///<summary>S0-T: every field the e-mail windows offer (FormEmailTemplateEdit's subject and body pickers and FormEmailEdit's body picker pass
+		///these five types) is replaced, one field at a time so a failure names the field. [ClinicNumCur] is among them; [SelectedProcNums] is
+		///not.</summary>
+		[TestMethod]
+		public void EmailPreviewControl_ReplaceTemplateFields_EveryFieldTheEmailWindowsOffer() {
+			Patient pat=PatientT.CreatePatient(MethodBase.GetCurrentMethod().Name);
+			List<MessageReplaceType> listMessageReplaceTypes=new List<MessageReplaceType> {
+				MessageReplaceType.Appointment,MessageReplaceType.Office,MessageReplaceType.Patient,MessageReplaceType.User,MessageReplaceType.Misc };
+			List<FrmMessageReplacements.ReplacementField> listReplacementFields=FrmMessageReplacements.GetReplacementFieldList(true,listMessageReplaceTypes)
+				.FindAll(x => x.IsSupported);
+			Assert.IsTrue(listReplacementFields.Any(x => x.FieldName=="[ClinicNumCur]"));
+			Assert.IsFalse(listReplacementFields.Any(x => x.FieldName==ProgramLinkSelectedProcs.FIELD));
+			for(int i=0;i<listReplacementFields.Count;i++) {
+				string text=EmailPreviewControl.ReplaceTemplateFields("x"+listReplacementFields[i].FieldName+"x",pat,null,Clinics.GetClinic(pat.ClinicNum));
+				Assert.IsFalse(text.Contains("[") || text.Contains("]"),listReplacementFields[i].FieldName+" is offered for e-mail but not replaced: "+text);
+			}
+		}
+
+		///<summary>S0-T: [ClinicNumCur] in an e-mail is the currently selected clinic, as in a program link (ProgramL), and 0 when none is
+		///selected (clinics off).</summary>
+		[TestMethod]
+		public void EmailPreviewControl_ReplaceTemplateFields_ClinicNumCurIsTheSelectedClinic() {
+			Patient pat=PatientT.CreatePatient(MethodBase.GetCurrentMethod().Name);
+			Clinic clinic=ClinicT.CreateClinic("S0T e-mail clinic");
+			Clinics.SetClinicNumT(clinic.ClinicNum);
+			try {
+				Assert.AreEqual("Clinic "+clinic.ClinicNum+".",EmailPreviewControl.ReplaceTemplateFields("Clinic [ClinicNumCur].",pat,null,clinic));
+			}
+			finally {
+				Clinics.SetClinicNumT(0);
+			}
+			Assert.AreEqual(0L,Clinics.ClinicNum,"No clinic is selected in this test process.");
+			Assert.AreEqual("Clinic 0.",EmailPreviewControl.ReplaceTemplateFields("Clinic [ClinicNumCur].",pat,null,null));
 		}
 	}
 }
