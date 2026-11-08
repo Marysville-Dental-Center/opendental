@@ -48,8 +48,9 @@
   <ItemGroup>
     <!-- MSTest v1, found through the search path added in Directory.Build.targets. -->
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
-    <!-- Reads the business layer's IL for the Middle Tier source rules (ParamCheckTests). The NuGet package UnitTests restores
-         (UnitTests\packages.config); the build lane copies it into a new worktree. -->
+    <!-- Reads the business layer's IL for the Middle Tier source rules (ParamCheckTests). The NuGet package this project's packages.config
+         names, as UnitTests\packages.config does, so a restore fills packages\Mono.Cecil.0.10.3 for this project on its own; the build lane
+         copies the folder into a new worktree. -->
     <Reference Include="Mono.Cecil, Version=0.10.3.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e, processorArchitecture=MSIL">
       <HintPath>..\..\packages\Mono.Cecil.0.10.3\lib\net40\Mono.Cecil.dll</HintPath>
     </Reference>
@@ -67,6 +68,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj">
