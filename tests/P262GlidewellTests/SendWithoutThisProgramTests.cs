@@ -39,7 +39,7 @@ namespace P262GlidewellTests {
 			Assert.AreEqual("- 3Shape TRIOS: Log in to your 3Shape account. Under More, select Settings, then Connections, Labs and Add; search for "
 				+"Glidewell and click Connect to send a request. Once the connection request has been approved, Glidewell appears under the Scan & Send "
 				+"menu.",arrayLines[1]);
-			//iTero: Align adds Glidewell (Lab ID 318), then the partnership, then Glidewell in the digital Rx.
+			//iTero: the office contacts Align Technology to add Glidewell (Lab ID 318), then the partnership, then Glidewell in the digital Rx.
 			Assert.AreEqual("- iTero: Contact Align Technology directly to add Glidewell to your list of 'Favorite Labs'. Provide Glidewell Lab ID as 318. "
 				+"Then, under Partner, search for CDOP@glidewelldental.com and request partnership. Once partnership is approved, you can select "
 				+"Glidewell when completing the digital Rx.",arrayLines[2]);

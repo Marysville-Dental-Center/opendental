@@ -408,7 +408,7 @@ change, migration step or preference. The Medit Link and OrthoComposite fixes ar
 
 ### Tests
 
-`tests/P262GlidewellTests`, still 54 tests (two changed):
+`tests/P262GlidewellTests`, still 54 tests (three changed):
 
 - `SendWithoutThisProgramTests.Text_HasGlidewellsPublicSteps`: the eight lines exactly (the opening line; 3Shape TRIOS, iTero and Medit
   Link in Glidewell's words, with Lab ID 318, CDOP@glidewelldental.com and the Medit partner ID 7307395; the five scanners named; any

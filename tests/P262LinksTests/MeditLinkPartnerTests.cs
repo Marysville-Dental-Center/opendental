@@ -279,7 +279,7 @@ namespace P262LinksTests {
 			patient.Birthdate=new DateTime(1980,3,9);
 			string arguments=MeditLinkPartner.GetArguments(program,patient,out string problem);
 			Assert.AreEqual("",problem);
-			//The whole arguments: the synthetic last name holds double quotes, which are removed from the NameFL value (Zoe Q Nunez "Nico").
+			//The whole arguments: the synthetic last name holds double quotes, which are removed from the NameFL value (Zoé Q Núñez "Nico").
 			string nameFL="Zoé Q Núñez Nico";
 			Assert.AreEqual(Expected(nameFL,GLIDEWELL),arguments);
 			Assert.AreEqual(UUID_PART+" \"--commandParam\" \"{\\\"NameFL\\\": \\\"Zoé Q Núñez Nico\\\", \\\"PatNum\\\": \\\"1042\\\", "
@@ -289,6 +289,26 @@ namespace P262LinksTests {
 			//Patients.ReplacePatient ignores the letter case of a tag; each tag is still filled in and made safe.
 			Assert.AreEqual("\\\"1042\\\" \\\"Núñez Nico\\\" [Unknown]",
 				MeditLinkPartner.FillPatient("\\\"[patnum]\\\" \\\"[LNAME]\\\" [Unknown]",patient,(x,y) => Patients.ReplacePatient(x,y)));
+			//The real Patients.ReplacePatient fills tags with Regex.Replace, which reads a value as a replacement pattern ($_ is the whole input, $& the
+			//match, $` and $' the text around it). Each tag is filled in on its own, so such a name can only bring back the tag itself: the JSON keeps
+			//exactly its keys and every other value is unchanged.
+			foreach(string lName in new[] { "Nu$_nez","Nu$&nez","Nu$`nez","Nu$'nez" }) {
+				Patient patientPattern=SyntheticPatients.Create();
+				patientPattern.LName=lName;
+				string argumentsPattern=MeditLinkPartner.GetArguments(program,patientPattern,out string problemPattern);
+				Assert.AreEqual("",problemPattern,lName);
+				List<string> listKeyValues=ReadCommandParam(argumentsPattern);
+				CollectionAssert.AreEqual(new List<string> { "NameFL","PatNum","PatientGenderMF","Birthdate_yyyyMMdd","PartnerID" },
+					listKeyValues.Select(x => x.Substring(0,x.IndexOf('='))).ToList(),lName);
+				CollectionAssert.AreEqual(new List<string> { "PatNum=1042","PatientGenderMF=F","Birthdate_yyyyMMdd=19800309","PartnerID="+GLIDEWELL },
+					listKeyValues.Skip(1).ToList(),lName);
+			}
+			//An ordinary name gives byte for byte what the link sent before: the real Patients.ReplacePatient on the whole Command line.
+			Patient patientPlain=SyntheticPatients.Create();
+			patientPlain.LName="Núñez-O'Brien";
+			Assert.AreEqual(UUID_PART+" \"--commandParam\" \""+Patients.ReplacePatient(MeditLinkPartner.AddPartnerId(program.CommandLine,GLIDEWELL),patientPlain)+"\"",
+				MeditLinkPartner.GetArguments(program,patientPlain,out string problemPlain));
+			Assert.AreEqual("",problemPlain);
 			Assert.AreEqual("",MeditLinkPartner.GetPartnerId(null));
 		}
 

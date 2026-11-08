@@ -292,8 +292,9 @@ program was installed, no sign-in was used.
   on each OrthoComposite program row (ProgName compared as MariaDB compares it), a ClinicNum 0 "Patient arguments" row that is blank
   (empty or white space only, which the button treats as not set) gets the default; a value the office typed is never changed. The row's
   Note is replaced only where it is still exactly the text `p262/links-1` wrote (`OrthoCompositePatientArguments.NoteBefore`), so an
-  office's own note stays, and since `next/vendorfix-1` only where the row then sends the default arguments (last section). A row without the property gets it from `EnsureProgram` the next time Program Links opens. A database without an
-  OrthoComposite row (every adopted Open Dental 25.3.48 database: the row is inserted at runtime by this program) changes nothing, so the
+  office's own note stays, and since `next/vendorfix-1` only where the row then sends the default arguments (last section). A row without
+  the property gets it from `EnsureProgram` the next time Program Links opens, and keeps the old note (rare: the property removed by hand;
+  the old note is not harmful). A database without an OrthoComposite row (every adopted Open Dental 25.3.48 database: the row is inserted at runtime by this program) changes nothing, so the
   adoption tools need no rule. Idempotent; the step is needed only because rows inserted by the unreleased 26.2 integration hold the old
   blank default, and after it ran a blank value is the office's own choice (the button then says the arguments are not set up).
 - The quoting and control-character stripping stay as built: double quotes and control characters are removed from the values, accented
@@ -432,7 +433,7 @@ fork migration level: step 2026110801 has not shipped, so its rule is corrected 
   instructions; the property holds `OrthoCompositeLink.DefaultPatientArguments` by default, which the office may change. Comment only.
   `OrthoCompositeLink.Note`'s summary says the step writes it only on a row that sends the default.
 - `docs/release-notes/next.md`: the summary says the Medit Link Partner ID assigns the cases created from the Chart to the office's lab,
-  which the office still sends from Medit Link, as the Medit Link bullet says; the program links introduction no longer contradicts itself
+  which the office still sends from Medit Link (the Medit Link bullet says the same about the assignment); the program links introduction no longer contradicts itself
   (only Allied Star Connect's input is unpublished; OrthoComposite's `--lastname`, `--firstname` and `--dob` are cited from its Microsoft
   Store listing, https://apps.microsoft.com/detail/9p2mp6p71zk9); the Medit Link bullet says the values are made safe; the step bullet
   says when the note changes.

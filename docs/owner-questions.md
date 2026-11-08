@@ -597,7 +597,9 @@ recommended". Built on the integration branch `next/int262-1`.
   for it too. The Glidewell lab cases program link is **hidden in Program Links until a transport exists** (this version has none). See
   [port-notes/P262-GLIDEWELL.md](port-notes/P262-GLIDEWELL.md), "Owner decisions".
 - (P262-LINKS 2 and 3) **Allied Star Connect and OrthoComposite.** Their file layouts and arguments are not public. If the office uses either
-  program, the office asks that vendor; otherwise both links stay switched off. No code change.
+  program, the office asks that vendor; otherwise both links stay switched off. No code change. **Update (vendor follow-up, 2026-11-07):**
+  OrthoComposite's arguments were then found public in its Microsoft Store listing and ship as the link's default; only Allied Star Connect's
+  file layout is still unpublished.
 - (P262-REPORTS 5) **Patient Portion Uncollected.** The adjustment subquery inherited from 26.1 counted an adjustment once per payment split
   attached to it. **Fixed:** each adjustment counts once, less its splits; the totals of such rows change from 26.1. Tested.
 - (P262-CLAIMS 2) **Default claim form per provider.** A new claim takes the **billing** provider's default claim form first, then the
