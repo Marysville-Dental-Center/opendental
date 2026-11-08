@@ -461,6 +461,7 @@ LibWebTests|Compile|WebView2InitMessageTests.cs|
 LibWebTests|Compile|WebView2PageStoreTests.cs|
 LibWebTests|Compile|WebView2PolicyTests.cs|
 LibWebTests|Compile|WebView2SmokeTests.InMemory.cs|
+LibWebTests|Compile|WebView2SmokeTests.PdfViewer.cs|
 LibWebTests|Compile|WebView2SmokeTests.cs|
 LibWebTests|Compile|WebView2StartFailureTests.cs|
 LibWebTests|None|..\..\Required dlls\WebView2Loader.dll|CopyToOutputDirectory=PreserveNewest;Link=WebView2Loader.dll
@@ -7442,6 +7443,13 @@ RowHashTests|Compile|..\ForkMigrationTests\TestDb.cs|Link=TestDb.cs
 RowHashTests|Compile|HashFieldsTests.cs|
 RowHashTests|Compile|Properties\AssemblyInfo.cs|
 RowHashTests|Compile|RowHashDatabaseTests.cs|
+S0FTests|Compile|EmailAddressLayoutTests.cs|
+S0FTests|Compile|ExitWatchdogTests.cs|
+S0FTests|Compile|LogOffPromptTests.cs|
+S0FTests|Compile|Properties\AssemblyInfo.cs|
+S0FTests|Compile|S0FDb.cs|
+S0FTests|Compile|ThumbnailDeleteTests.cs|
+S0FTests|Compile|WebViewHostWiringTests.cs|
 SWMAPTests|Compile|AdoptedOd253Tests.cs|
 SWMAPTests|Compile|OdSettingNamesTests.cs|
 SWMAPTests|Compile|Properties\AssemblyInfo.cs|
