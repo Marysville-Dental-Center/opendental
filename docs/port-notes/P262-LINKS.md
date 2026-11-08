@@ -72,12 +72,12 @@ this program's own.
   module button "OrthoComposite", and one property of ours, "Patient arguments" (blank on `p262/links-1`; since `next/vendorpub-1` OrthoComposite's
   public arguments `--lastname "[LName]" --firstname "[FName]" --dob "[Birthdate]"`, last section).
 - The button (`WpfControlsOD/Bridges/OrthoComposite.cs`): a blank path is refused; a drive or network path must name an existing file; a name
-  without a folder (an app execution alias such as `OrthoComposite.exe`, which Microsoft Store programs install) or a `shell:` target is left
-  to Windows to find. With a patient, blank Patient arguments are refused with "The patient arguments for this program link are not set up
-  ..." (V-BRIDGE1's message); otherwise `[FName]`, `[LName]` and `[Birthdate]` (`MM/dd/yyyy` whatever the regional settings) are filled in, in
-  one pass, double quotes and control characters removed from the values, accented letters kept. Only these three tokens are filled in, so no
-  other patient data can reach the program. The Command line follows the patient arguments. Without a patient the program starts with the
-  Command line only.
+  without a folder or a `shell:` target is passed to Windows unchecked (neither public source names OrthoComposite's executable or an app
+  execution alias, so no name is suggested; `next/vendorpub-2`, last section). With a patient, blank Patient arguments are refused with
+  "The patient arguments for this program link are not set up ..." (V-BRIDGE1's message); otherwise `[FName]`, `[LName]` and
+  `[Birthdate]` (`MM/dd/yyyy` whatever the regional settings) are filled in, in one pass, double quotes and control characters removed from
+  the values, accented letters kept. Only these three tokens are filled in, so no other patient data can reach the program. The Command line
+  follows the patient arguments. Without a patient the program starts with the Command line only.
 
 ### Trojan Express Collect retired (item 46)
 
@@ -214,8 +214,8 @@ never reached the Trojan branches of the row check, which every real adoption wi
 - `AlliedstarConnectLinkTests`: the definition, the order of the checks, the default info path, the launch without a patient, the command
   line as typed, the info file (fields, order, values, ChartNumber, blanks, no other data, regional settings), the first email, the full path
   rules, the note, a message for every `BridgeLaunchProblem`.
-- `OrthoCompositeLinkTests`: the definition, the order of the checks, no patient, the Command line, aliases and `shell:` targets, only the
-  three tokens filled in, one pass, the birthdate format, control characters, the note.
+- `OrthoCompositeLinkTests`: the definition, the order of the checks, no patient, the Command line, names without a folder and `shell:`
+  targets, only the three tokens filled in, one pass, the birthdate format, control characters, the note.
 - `TrojanExpressCollectRetiredTests`: the windows, dispatch and queries are gone and the benefit link's stay, the link is discontinued, the
   step's level, name, namespace and README row, the plan, and the step on the scratch database (disables, deletes the buttons, keeps the
   row, its text and properties, leaves the Trojan and DXC links alone, a second run changes nothing; no row; the rows as
@@ -298,7 +298,9 @@ program was installed, no sign-in was used.
   letters kept. New: a value no longer ends in a backslash (trailing backslashes are removed), because `"value\"` would escape the closing
   quote of a quoted token on a Windows command line.
 - Still INFERRED: the ProgName value; that a blank value with a patient is refused; the Command line after the patient arguments; without a
-  patient the program starts with the Command line only; a path without a folder or a `shell:` target is not checked.
+  patient the program starts with the Command line only; a path without a folder or a `shell:` target is not checked. Not known: the name
+  of OrthoComposite's executable and whether its Store package declares an app execution alias (and under what name); neither source names
+  either, so the Note and these notes give no example name (`next/vendorpub-2`, last section).
 
 ### Medit Link: the Partner ID (existing program link)
 
@@ -360,3 +362,23 @@ Runs of `next/vendorpub-1` on 2026-11-07, after one full build of `OpenDental.Lo
 `P262LinksTests` 57/57, `P262GlidewellTests` 54/54, `VBRIDGE1Tests` 37/37, `VBRIDGE2Tests` 64/64, `VendorDirectTests` 881/881, `NoHqTests`
 58/58. The database tests ran on the assemblies' own scratch databases (`test_p262links_`, `test_p262glidewell_`, unique per run); none was
 left behind. `ForkMigrationTests` and `InitSqlTests` were not run (the integration regenerates `db/init/new-database.sql` for the new level).
+
+### Review fix: the OrthoComposite Note suggests no program name (`next/vendorpub-2`, 2026-11-07)
+
+- Finding: the Note of `next/vendorpub-1` told offices that a program installed as an app can be entered by its name, giving
+  `OrthoComposite.exe` as the example. Neither source names OrthoComposite's executable or an app execution alias: the Store listing gives
+  the description, the three arguments and the publisher, and Open Dental's page names only "Path of file to open". A Store package has an
+  alias only if its manifest declares one, so both the name and the general claim were invented. The Note is written into new rows
+  (`GetDefinition`) and over the old built-in Note by step 2026110801, so it is corrected before the step ships; no later data step is needed.
+- `OrthoCompositeLink.Note` now says "Enter where OrthoComposite is in Path of file to open; a name without a folder, or a shell: target, is
+  passed to Windows unchecked." with no example name. The summary of `IsFileSystemPath`, the button section above and
+  `docs/release-notes/next.md` say the same; the name and the alias question are in the Still INFERRED list of the vendor follow-up. The
+  launch rules are unchanged.
+- Tests (`tests/P262LinksTests`, now 58): `OrthoCompositeLinkTests.Note_SuggestsNoProgramName` (the neutral sentence; no `.exe`, alias,
+  "installed as an app" or "for example" in the Note); the path tests (`Launch_NameWithoutAFolderOrShellTargetIsPassedToWindowsUnchecked`,
+  `ProgramRowsDbTests.Launches_ReadTheSavedProperties`) use a made-up name, `ExampleImaging.exe`.
+
+Runs of `next/vendorpub-2` on 2026-11-07, after one full build of `OpenDental.Local.slnf` with 0 errors (Targeted, one run):
+`P262LinksTests` 58/58 (it holds the Medit Link Partner ID tests), `P262GlidewellTests` 54/54, `VBRIDGE1Tests` 37/37, `VBRIDGE2Tests`
+64/64, `VendorDirectTests` 881/881, `NoHqTests` 58/58. No scratch database was left behind. `ForkMigrationTests` and `InitSqlTests` were
+not run (the integration regenerates `db/init/new-database.sql`).

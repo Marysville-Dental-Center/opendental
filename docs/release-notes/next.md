@@ -585,7 +585,7 @@ default.
   (MM/dd/yyyy). The link's Patient arguments property holds OrthoComposite's own public arguments, `--lastname "[LName]" --firstname
   "[FName]" --dob "[Birthdate]"`, which open its patient list with the search filled in (an office may change them); only the tokens [FName],
   [LName] and [Birthdate] are filled in, so no other patient data can be sent. Enter where OrthoComposite is in Path of file to open (a
-  program installed from the Microsoft Store can be given by its name, for example `OrthoComposite.exe`).
+  name without a folder, or a `shell:` target, is passed to Windows unchecked).
 - **OrthoComposite's public arguments** (fork migration step 2026110801): a link set up before this version with blank Patient arguments gets
   OrthoComposite's arguments; arguments an office typed are never changed.
 - **Medit Link**: a new Partner ID property (blank, sent nowhere) assigns every case created with the Chart's Medit Link button to that
