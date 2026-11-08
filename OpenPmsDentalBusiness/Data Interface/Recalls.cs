@@ -1142,8 +1142,10 @@ namespace OpenPmsDentalBusiness {
 			List<RecallType> typeList=new List<RecallType>(typeListActive);
 			string command="SELECT * FROM recall WHERE PatNum="+POut.Long(patNum);
 			List<Recall> recallList=Crud.RecallCrud.SelectMany(command);
+			//Open Dental 26.2: when the office turned it on, a newly completed procedure may switch the Prophy or Perio recall (in place in recallList).
+			RecallSwitchDecision recallSwitchDecision=RecallProphyPerioSwitch.SwitchIfNeeded(patNum,recallList);
 			//determine if this patient is a perio patient.
-			bool isPerio=false;
+			bool isPerio=recallSwitchDecision.Outcome==EnumRecallSwitchOutcome.PerioCreated;//no Prophy or Perio recall yet, and perio procedures decide
 			for(int i=0;i<recallList.Count;i++){
 				if(PrefC.GetLong(PrefName.RecallTypeSpecialPerio)==recallList[i].RecallTypeNum){
 					isPerio=true;
@@ -1265,6 +1267,9 @@ namespace OpenPmsDentalBusiness {
 						recallNew.DateDue=recallNew.DateDueCalc;
 						Recalls.Insert(recallNew);
 						SecurityLogs.MakeLogEntry(EnumPermType.RecallEdit,recallNew.PatNum,"Recall added by Recall Sync.");
+						if(recallSwitchDecision.Outcome==EnumRecallSwitchOutcome.PerioCreated && recallNew.RecallTypeNum==recallSwitchDecision.RecallTypeNumTarget) {
+							SecurityLogs.MakeLogEntry(EnumPermType.RecallEdit,recallNew.PatNum,RecallProphyPerioSwitch.GetLogText(recallSwitchDecision));
+						}
 					}
 				}
 				else{//alter the existing recall

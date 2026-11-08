@@ -567,6 +567,9 @@ namespace OpenPmsDentalBusiness {
 				case DefCat.CommLogTypes:
 					listStrCommands.Add("SELECT COUNT(*) FROM commlog WHERE CommType="+POut.Long(def.DefNum));
 					break;
+				case DefCat.CommLogReferralTypes://Open Dental 26.2: the CommType of referral commlogs (ReferralNum set).
+					listStrCommands.Add("SELECT COUNT(*) FROM commlog WHERE ReferralNum!=0 AND CommType="+POut.Long(def.DefNum));
+					break;
 				case DefCats26_1.EmployeeTitles://Open Dental 26.1: employee.Title (column added by package M2-01).
 					listStrCommands.Add("SELECT COUNT(*) FROM employee WHERE Title="+POut.Long(def.DefNum));
 					break;

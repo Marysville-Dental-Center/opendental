@@ -4299,6 +4299,9 @@
     <Compile Include="Forms\FormSheetImport.PatFields.cs">
       <DependentUpon>FormSheetImport.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormSheetImport.VitalSigns.cs">
+      <DependentUpon>FormSheetImport.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormTerminal.cs">
       <SubType>Form</SubType>
     </Compile>

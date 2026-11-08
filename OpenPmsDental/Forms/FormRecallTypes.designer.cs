@@ -38,6 +38,7 @@ namespace OpenPmsDental {
 			this.butSynch = new OpenPmsDental.UI.Button();
 			this.gridMain = new OpenPmsDental.UI.GridOD();
 			this.butAdd = new OpenPmsDental.UI.Button();
+			this.checkAutoSwitchProphyPerio = new OpenPmsDental.UI.CheckBox();
 			this.SuspendLayout();
 			// 
 			// label1
@@ -83,10 +84,21 @@ namespace OpenPmsDental {
 			this.butAdd.TabIndex = 10;
 			this.butAdd.Text = "&Add";
 			this.butAdd.Click += new System.EventHandler(this.butAdd_Click);
-			// 
+			//
+			// checkAutoSwitchProphyPerio
+			//
+			this.checkAutoSwitchProphyPerio.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.checkAutoSwitchProphyPerio.Location = new System.Drawing.Point(17, 328);
+			this.checkAutoSwitchProphyPerio.Name = "checkAutoSwitchProphyPerio";
+			this.checkAutoSwitchProphyPerio.Size = new System.Drawing.Size(610, 18);
+			this.checkAutoSwitchProphyPerio.TabIndex = 18;
+			this.checkAutoSwitchProphyPerio.Text = "Automatically switch between the Prophy and Perio recall based on completed procedures";
+			this.checkAutoSwitchProphyPerio.Click += new System.EventHandler(this.checkAutoSwitchProphyPerio_Click);
+			//
 			// FormRecallTypes
-			// 
-			this.ClientSize = new System.Drawing.Size(887, 332);
+			//
+			this.ClientSize = new System.Drawing.Size(887, 358);
+			this.Controls.Add(this.checkAutoSwitchProphyPerio);
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.butSynch);
 			this.Controls.Add(this.gridMain);
@@ -107,5 +119,6 @@ namespace OpenPmsDental {
 		private OpenPmsDental.UI.GridOD gridMain;
 		private OpenPmsDental.UI.Button butSynch;
 		private Label label1;
+		private OpenPmsDental.UI.CheckBox checkAutoSwitchProphyPerio;
 	}
 }

@@ -221,9 +221,12 @@ namespace OpenPmsDental {
 			//Handle unique grid sorting:
 			List<Commlog> listCommlogsAnchored=listCommlogs.FindAll(x => x.CommReferralBehavior==EnumCommReferralBehavior.TopAnchored);
 			listCommlogs.RemoveAll(x => x.CommReferralBehavior==EnumCommReferralBehavior.TopAnchored);
+			List<Def> listDefsTypes=CommlogReferralTypes.GetDefsAll();//Open Dental 26.2: Commlog Referral Types
 			gridComm.BeginUpdate();
 			gridComm.Columns.Clear();
 			GridColumn col=new GridColumn(Lang.g("TableCommLog","Date"),65);
+			gridComm.Columns.Add(col);
+			col=new GridColumn(Lang.g("TableCommLog","Type"),100);
 			gridComm.Columns.Add(col);
 			col=new GridColumn(Lang.g("TableCommLog","Hidden"),50,HorizontalAlignment.Center);
 			gridComm.Columns.Add(col);
@@ -239,6 +242,7 @@ namespace OpenPmsDental {
 				row.Tag=listCommlogsAnchored[i];
 				//Sort by created, oldest on bottom.
 				row.Cells.Add(listCommlogsAnchored[i].CommDateTime.ToShortDateString());
+				row.Cells.Add(GetTypeCell(listCommlogsAnchored[i].CommType,listDefsTypes));
 				if(listCommlogsAnchored[i].CommReferralBehavior==EnumCommReferralBehavior.Hidden) {
 					row.Cells.Add("X");
 				}
@@ -258,6 +262,7 @@ namespace OpenPmsDental {
 				row.Tag=listCommlogs[i];
 				//Sort by created, oldest on bottom.
 				row.Cells.Add(listCommlogs[i].CommDateTime.ToShortDateString());
+				row.Cells.Add(GetTypeCell(listCommlogs[i].CommType,listDefsTypes));
 				if(listCommlogs[i].CommReferralBehavior==EnumCommReferralBehavior.Hidden) {
 					row.Cells.Add("X");
 				}
@@ -268,6 +273,17 @@ namespace OpenPmsDental {
 				gridComm.ListGridRows.Add(row);
 			}
 			gridComm.EndUpdate();
+		}
+
+		///<summary>Open Dental 26.2: the Type cell of a referral commlog, shaded with the type's color when the type has one (Setup, Definitions, Commlog
+		///Referral Types). Blank for no type.</summary>
+		private GridCell GetTypeCell(long commType,List<Def> listDefsTypes) {
+			GridCell gridCell=new GridCell(CommlogReferralTypes.GetTypeName(commType,listDefsTypes));
+			Def def=listDefsTypes.Find(x => x.DefNum==commType);
+			if(def!=null && def.ItemColor.A>0 && def.ItemColor.ToArgb()!=0) {
+				gridCell.ColorBackG=Color.FromArgb(def.ItemColor.A,def.ItemColor.R,def.ItemColor.G,def.ItemColor.B);
+			}
+			return gridCell;
 		}
 
 		private void checkHiddenComms_Click(object sender,EventArgs e) {
@@ -288,7 +304,7 @@ namespace OpenPmsDental {
 			Commlog commlog=new Commlog();
 			commlog.IsNew=true;
 			commlog.CommDateTime=DateTime.Now;
-			commlog.CommType=0;//Referrals are 0.
+			commlog.CommType=CommlogReferralTypes.GetDefaultCommType();//Open Dental 26.2: the first Commlog Referral Type, or 0 (none) when there is none
 			commlog.UserNum=Security.CurUser.UserNum;
 			commlog.ReferralNum=ReferralCur.ReferralNum;
 			FrmCommReferral frmCommReferral=new FrmCommReferral();

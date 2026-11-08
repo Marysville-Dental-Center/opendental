@@ -205,6 +205,9 @@ namespace WpfControls {
 
 		///<summary>The label a field gets when the user picks a database link and the label is still empty.</summary>
 		public static string GetDefaultLabelForDbLink(string dbLink){
+			if(EFormVitalSigns.IsVitalLink(dbLink)){
+				return EFormVitalSigns.GetDefaultLabel(dbLink);//Open Dental 26.2: names the unit
+			}
 			return EFormPatFields.GetDefaultLabel(dbLink);
 		}
 

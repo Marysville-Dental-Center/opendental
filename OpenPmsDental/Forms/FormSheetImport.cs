@@ -1324,6 +1324,7 @@ namespace OpenPmsDental {
 				#endregion ins2
 				FillRowsInsPick();
 				FillRowsPatFields();//Open Dental 25.4: eForm fields linked to patient fields
+				FillRowsVitalSigns();//Open Dental 26.2: eForm fields linked to vital signs
 			}
 			#endregion Patient Form
 			#region Medical History (Sheets)
@@ -3235,6 +3236,7 @@ namespace OpenPmsDental {
 				}
 				ImportInsPickRows();
 				ImportPatFieldRows();//Open Dental 25.4: eForm fields linked to patient fields
+				ImportVitalSignRows();//Open Dental 26.2: eForm fields linked to vital signs
 				//Every USPS lookup is billed and counts against the office's quota, so an address the import didn't change is not checked again.
 				bool isAddressChanged=_patient.Address!=_patientOld.Address
 					|| _patient.Address2!=_patientOld.Address2
