@@ -119,15 +119,21 @@ namespace OpenPmsDentalBusiness {
 				INNER JOIN patient ON patient.PatNum=proc.PatNum
 				INNER JOIN procedurecode ON procedurecode.CodeNum=proc.CodeNum
 				LEFT JOIN (
-					SELECT adjustment.ProcNum,SUM(adjustment.AdjAmt) - COALESCE(SUM(paysplit.SplitAmt),0) adjAmt
+					SELECT adjustment.ProcNum,SUM(adjustment.AdjAmt) - COALESCE(SUM(adjsplit.splitAmt),0) adjAmt
 					FROM adjustment
-					LEFT JOIN paysplit
-						ON paysplit.AdjNum = adjustment.AdjNum
-						AND paysplit.AdjNum != 0 ";
+					LEFT JOIN (
+						SELECT paysplit.AdjNum,SUM(paysplit.SplitAmt) splitAmt
+						FROM paysplit
+						WHERE paysplit.AdjNum != 0 ";
 			if(listHiddenUnearnedDefNums.Count>0) {
 				query+=$"AND paysplit.UnearnedType NOT IN ({string.Join(",",listHiddenUnearnedDefNums)}) ";
 			}
-			query+=$@"WHERE adjustment.ProcNum!=0";
+			//The payment splits attached to an adjustment are summed per adjustment first, so an adjustment with several splits counts its amount
+			//once (owner decision of 2026-11-07; the 26.1 query joined paysplit directly and counted it once per split).
+			query+=$@"GROUP BY paysplit.AdjNum
+						ORDER BY NULL
+					) adjsplit ON adjsplit.AdjNum=adjustment.AdjNum
+					WHERE adjustment.ProcNum!=0";
 			if(isPrior) {
 				query+=$@"
 					AND adjustment.ProcDate <= {SOut.Date(dateTo)}";

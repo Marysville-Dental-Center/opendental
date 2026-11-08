@@ -44,6 +44,12 @@ namespace P262ReportsTests {
 				+$"VALUES ({splitNum},{patNum},{procNum},{amount},{payPlanNum},{payPlanChargeNum},'2031-12-31')";
 		}
 
+		///<summary>A payment split attached to an adjustment (paysplit.AdjNum), not to a procedure.</summary>
+		private static string AdjSplit(long splitNum,long patNum,long adjNum,double amount) {
+			return $"INSERT INTO paysplit (SplitNum,PatNum,ProcNum,AdjNum,SplitAmt,PayPlanNum,PayPlanChargeNum,DatePay) "
+				+$"VALUES ({splitNum},{patNum},0,{adjNum},{amount},0,0,'2031-12-31')";
+		}
+
 		private static string PayPlan(long payPlanNum,long patNum,long planNum,bool isDynamic) {
 			return $"INSERT INTO payplan (PayPlanNum,PatNum,Guarantor,PlanNum,IsDynamic) VALUES ({payPlanNum},{patNum},{patNum},{planNum},{(isDynamic ? 1 : 0)})";
 		}
@@ -122,6 +128,43 @@ namespace P262ReportsTests {
 			foreach(string column in new[] { "ProcDate","Patient","AbbrDesc","Fee","PatPortion","Adjustment","Payment","Uncollected",RpPatPortionUncollected.ColumnPayPlan }) {
 				Assert.AreEqual(row[column].ToString(),listRowsPrior[1][column].ToString(),column);
 			}
+		}
+
+		///<summary>Owner decision of 2026-11-07: an adjustment with several payment splits attached counts its amount once, less those splits. The 26.1
+		///query counted it once per split (here the first adjustment twice, so an Adjustment of 60 instead of 10 and 120-30=90 instead of 10 on the
+		///prior row). The prior rows use the same subquery.</summary>
+		[TestMethod]
+		public void Adjustment_WithSeveralPaymentSplits_CountsOnce() {
+			ReportsDb.Seed(
+				Patient(911501,"Adjsplits"),
+				//Fee 200, no insurance. Adjustment +50 with two splits of 10 and 15 on it: 25. Adjustment +10 with one split of 5: 5. Adjustment -20
+				//with no split: -20. Adjustment column 25+5-20=10; uncollected 200+10-30 (paid on the procedure)=180.
+				Proc(911511,911501,"2031-07-15",200),
+				Adjustment(911521,911501,911511,50,"2031-07-15"),
+				AdjSplit(911531,911501,911521,10),
+				AdjSplit(911532,911501,911521,15),
+				Adjustment(911522,911501,911511,10,"2031-07-16"),
+				AdjSplit(911533,911501,911522,5),
+				Adjustment(911523,911501,911511,-20,"2031-07-17"),
+				Split(911541,911501,911511,30),
+				//The same pattern on a procedure before the range, for the prior rows: +40 with splits 10, 10 and 10, so 10; uncollected 100+10=110.
+				Proc(911512,911501,"2031-05-01",100),
+				Adjustment(911524,911501,911512,40,"2031-05-01"),
+				AdjSplit(911534,911501,911524,10),
+				AdjSplit(911535,911501,911524,10),
+				AdjSplit(911536,911501,911524,10)
+			);
+			List<DataRow> listRows=Run("2031-07-10","2031-07-20",false,911501);
+			Assert.AreEqual(1,listRows.Count);
+			Assert.AreEqual(10,Value(listRows[0],"Adjustment"),0.001,"Each adjustment once, less the splits attached to it.");
+			Assert.AreEqual(30,Value(listRows[0],"Payment"),0.001);
+			Assert.AreEqual(180,Value(listRows[0],"Uncollected"),0.001);
+			List<DataRow> listRowsPrior=Run("2031-07-10","2031-07-20",true,911501);
+			Assert.AreEqual(2,listRowsPrior.Count);
+			Assert.IsTrue(IsPrior(listRowsPrior[0]));
+			Assert.AreEqual(10,Value(listRowsPrior[0],"Adjustment"),0.001,"The prior rows count each adjustment once too.");
+			Assert.AreEqual(110,Value(listRowsPrior[0],"Uncollected"),0.001);
+			Assert.AreEqual(180,Value(listRowsPrior[1],"Uncollected"),0.001);
 		}
 
 		[TestMethod]
