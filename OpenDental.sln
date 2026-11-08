@@ -283,6 +283,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SshHostKeyTests", "tests\Ss
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "P262SchemaTests", "tests\P262SchemaTests\P262SchemaTests.csproj", "{01EEACA6-FA48-4F93-B37C-F4C576BCFCCC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "P262PerioTests", "tests\P262PerioTests\P262PerioTests.csproj", "{BF14E7AF-603C-4FB1-A262-0B9AEC0BD5CB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1380,6 +1382,14 @@ Global
 		{01EEACA6-FA48-4F93-B37C-F4C576BCFCCC}.Release|Any CPU.Build.0 = Release|x86
 		{01EEACA6-FA48-4F93-B37C-F4C576BCFCCC}.Release|x86.ActiveCfg = Release|x86
 		{01EEACA6-FA48-4F93-B37C-F4C576BCFCCC}.Release|x86.Build.0 = Release|x86
+		{BF14E7AF-603C-4FB1-A262-0B9AEC0BD5CB}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{BF14E7AF-603C-4FB1-A262-0B9AEC0BD5CB}.Debug|Any CPU.Build.0 = Debug|x86
+		{BF14E7AF-603C-4FB1-A262-0B9AEC0BD5CB}.Debug|x86.ActiveCfg = Debug|x86
+		{BF14E7AF-603C-4FB1-A262-0B9AEC0BD5CB}.Debug|x86.Build.0 = Debug|x86
+		{BF14E7AF-603C-4FB1-A262-0B9AEC0BD5CB}.Release|Any CPU.ActiveCfg = Release|x86
+		{BF14E7AF-603C-4FB1-A262-0B9AEC0BD5CB}.Release|Any CPU.Build.0 = Release|x86
+		{BF14E7AF-603C-4FB1-A262-0B9AEC0BD5CB}.Release|x86.ActiveCfg = Release|x86
+		{BF14E7AF-603C-4FB1-A262-0B9AEC0BD5CB}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
