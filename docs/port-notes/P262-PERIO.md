@@ -166,3 +166,10 @@ input and focus, printing, and Middle Tier.
   every project.
 - The tooth chart package (item 12 and TextBelow) does not touch the Perio Chart files; this package does not touch the tooth chart.
 - `FormClaimEdit.butAttachPerioHelper` (the claim's perio image) is unchanged and shows what it showed before.
+
+## Checks (2026-11-07)
+
+- Full Debug x86 build: 0 errors.
+- Targeted run, with `NoHqTests` (58/58): `P262PerioTests` 36/36, `BPERIOTests` 55/55 and `M2MISCTests` 78/78 (both drive or read
+  `ContrPerio` and `FormPerio`).
+- Scratch databases `test_p262perio_*` (and `BPERIOTests`' own `bperio_*`) are dropped after each run.
