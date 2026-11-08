@@ -238,7 +238,9 @@ namespace OpenPmsDentalBusiness{
 
 		///<summary>If it already matches cache, then it does nothing. If different, it saves to db. Returns true if a change was made to db. foreignText can be empty string and that will sync by deleting an existing entry.</summary>
 		public static bool SaveTranslationEFormField(long eFormFieldDefNum,string langDisplay,string foreignText){
-			Meth.NoCheckMiddleTierRole();
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetBool(MethodBase.GetCurrentMethod(),eFormFieldDefNum,langDisplay,foreignText);
+			}
 			string threeLetterISO=GetLang3LetterFromDisplay(langDisplay);
 			if(threeLetterISO.IsNullOrEmpty()){
 				return false;

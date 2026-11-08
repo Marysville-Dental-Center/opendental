@@ -76,12 +76,13 @@ namespace OpenPmsDentalBusiness{
 		}
 
 		///<summary>Replaces the published fork release: deletes the old manifest and segments, inserts the new segments, then the manifest last, so a
-		///reader that finds a manifest finds its segments too (the manifest's archive hash catches a half-written release). Direct connection only.
+		///reader that finds a manifest finds its segments too (the manifest's archive hash catches a half-written release). A Middle Tier client sends
+		///the call to the server, as every other method here does; the program itself publishes over a direct connection only (PrefL.PublishRelease).
 		///</summary>
 		public static void ReplaceForkRelease(string manifestBase64,List<string> listSegmentsBase64) {
-			Meth.NoCheckMiddleTierRole();
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				throw new ApplicationException("Releases can only be published over a direct database connection.");
+				Meth.GetVoid(MethodBase.GetCurrentMethod(),manifestBase64,listSegmentsBase64);
+				return;
 			}
 			DeleteAllForType(DocumentMiscType.ForkReleaseManifest);
 			DeleteAllForType(DocumentMiscType.ForkReleaseSegment);
@@ -104,7 +105,9 @@ namespace OpenPmsDentalBusiness{
 		///<summary>Deletes Open Dental's update file rows (DocumentMiscType.UpdateFiles and UpdateFilesSegment) without reading them. Used only by
 		///database adoption. Returns the number of rows deleted.</summary>
 		public static long DeleteOpenDentalUpdateFiles() {
-			Meth.NoCheckMiddleTierRole();
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetLong(MethodBase.GetCurrentMethod());
+			}
 			string command="DELETE FROM documentmisc WHERE DocMiscType IN ("+POut.Int((int)DocumentMiscType.UpdateFiles)+","
 				+POut.Int((int)DocumentMiscType.UpdateFilesSegment)+")";
 			return Db.NonQ(command);
