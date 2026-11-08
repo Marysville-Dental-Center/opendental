@@ -20,7 +20,8 @@ path or any other drive path.
                  every item (FullPath, ModifiedTime, ...).
   resources.txt  The manifest resource names of each project's built assembly: project|resource name.
   files.txt      Every file under OpenPmsDental\bin\Debug and under the output folder of every test project:
-                 folder|file|size|SHA-256.
+                 folder|file|size|SHA-256. The Logger folder in them is left out: the programs and the tests write it at
+                 run time (NoHqTests writes two files whose names hold the date), the build does not.
   configs.txt    Every *.exe.config and *.dll.config in those folders: folder|file|SHA-256 of its text.
   config-texts.txt  The text of each of those configs, once per distinct text (most test folders hold the same few):
                  SHA-256|line number|line.
@@ -89,8 +90,12 @@ $script:replacements.Sort([Comparison[object]]{ param($a,$b) $b[0].Length.Compar
 foreach($pair in $script:replacements){
 	if($pair.Count -ne 2 -or -not $pair[0]){ throw "A path replacement is not a pair: [$($pair -join '][')]" }
 }
+$script:rootForward=$Root -replace '\\','/'
 function Get-Relative([string]$text){
 	if(-not $text){ return $text }
+	#The repository's folder itself, without its trailing separator (a folder property, say). Checked first: when the repository
+	#lies inside the temp folder, say, the temp folder's pair would otherwise turn it into <Temp>\...
+	if($text -ieq $Root -or $text -ieq $script:rootForward){ return '.' }
 	foreach($pair in $script:replacements){
 		$index=$text.IndexOf($pair[0],[StringComparison]::OrdinalIgnoreCase)
 		while($index -ge 0){
@@ -98,19 +103,24 @@ function Get-Relative([string]$text){
 			$index=$text.IndexOf($pair[0],$index+$pair[1].Length,[StringComparison]::OrdinalIgnoreCase)
 		}
 	}
-	#The same path without its trailing backslash (a folder property, say).
-	if($text -ieq $Root){ return '.' }
 	return $text
+}
+#The forms the repository's folder can still have in a line when it is not followed by a separator (inside a list, say): as it is,
+#with forward slashes, and with a placeholder when it lies inside one of the other folders.
+$script:rootForms=New-Object 'System.Collections.Generic.List[string]'
+foreach($form in @($Root,$script:rootForward,(Get-Relative ($Root+'|')).TrimEnd('|'),(Get-Relative ($script:rootForward+'|')).TrimEnd('|'))){
+	if(-not $script:rootForms.Contains($form)){ $script:rootForms.Add($form) }
 }
 
 function Write-Record([string]$name,[System.Collections.Generic.List[string]]$lines){
-	#No line may still hold a path of this computer: the repository's own (with either kind of slash, so also a UNC path) or any
-	#other drive path. A record with one would differ in every other folder it is compared from.
-	$rootForward=$Root -replace '\\','/'
+	#No line may still hold a path of this computer: the repository's own (in any of its forms, so also a UNC path) or any other drive
+	#path. A record with one would differ in every other folder it is compared from.
 	foreach($line in $lines){
-		if($line.IndexOf($Root,[StringComparison]::OrdinalIgnoreCase) -ge 0 -or $line.IndexOf($rootForward,[StringComparison]::OrdinalIgnoreCase) -ge 0 -or
-			$line -match '(?<![A-Za-z0-9])[A-Za-z]:[\\/]')
-		{
+		$hasRoot=$false
+		foreach($form in $script:rootForms){
+			if($line.IndexOf($form,[StringComparison]::OrdinalIgnoreCase) -ge 0){ $hasRoot=$true }
+		}
+		if($hasRoot -or $line -match '(?<![A-Za-z0-9])[A-Za-z]:[\\/]'){
 			throw "$name would hold an absolute path, so nothing more is written: $line"
 		}
 	}
@@ -230,6 +240,8 @@ if(-not $CompareOnly){
 		$folderRelative=Get-Relative $folder
 		foreach($file in Get-ChildItem -LiteralPath $folder -Recurse -File -Force){
 			$name=$file.FullName.Substring($folder.Length).TrimStart('\')
+			#The log files a program or a test writes at run time (CodeBase's Logger: <its folder>\Logger\<log>\<date>\), not the build.
+			if($name -like 'Logger\*'){ continue }
 			$stream=[System.IO.File]::OpenRead($file.FullName)
 			try{ $hash=-join ($sha.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') }) }finally{ $stream.Dispose() }
 			$files.Add(('{0}|{1}|{2}|{3}' -f $folderRelative,$name,$file.Length,$hash))
