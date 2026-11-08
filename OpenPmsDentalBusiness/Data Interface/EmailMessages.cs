@@ -1478,19 +1478,36 @@ namespace OpenPmsDentalBusiness {
 			return listListMimePartsRet;
 		}
 
-		///<summary>The file name of a MIME part: the name of its Content-Type, else the file name of its Content-Disposition (Gmail sometimes puts it
-		///there). Null when it has neither.</summary>
+		///<summary>The file name of a MIME part, as CleanReceivedFileName leaves it: the name of its Content-Type, else the file name of its
+		///Content-Disposition (Gmail sometimes puts it there). It is the DisplayedFileName that the part's attachment was saved with, so the preview
+		///finds the saved attachment by it. Null when it has neither, or no name is left.</summary>
 		public static string GetMimeImageFileName(EmailMimePart emailMimePart) {
 			Meth.NoCheckMiddleTierRole();
 			return GetMimeFileName(emailMimePart.MimePart);
 		}
 
-		private static string GetMimeFileName(MimeKit.MimePart mimePartForImage) {
-			string fileName=mimePartForImage.ContentType.Name;
+		///<summary>The file name of a received MIME part (or attached message), cleaned: see GetMimeImageFileName.</summary>
+		private static string GetMimeFileName(MimeKit.MimeEntity mimeEntity) {
+			string fileName=mimeEntity.ContentType.Name;
 			if(string.IsNullOrEmpty(fileName)) {
-				fileName=mimePartForImage.ContentDisposition?.FileName;
+				fileName=mimeEntity.ContentDisposition?.FileName;
 			}
-			if(string.IsNullOrEmpty(fileName)) {
+			return CleanReceivedFileName(fileName);
+		}
+
+		///<summary>A file name that came with a received email, as it is shown and saved: the text after its last '/' or '\', with every character
+		///a file name can't hold replaced by '_' (ODFileUtils.CleanFileName). A received name is only a suggestion and its path information must be
+		///stripped (RFC 2183 2.3): the displayed name of an attachment is joined onto a folder when the user opens it (FileAtoZ.OpenFile), and
+		///MimeKit decodes names such as name*=us-ascii''..%5C..%5Cx.bat and an unquoted name=..\x.bat. Null when there is no name, or when only dots,
+		///underscores and spaces are left (such as "." and ".."): the attachment is then named "attach" (EmailAttaches.CreateAttach).</summary>
+		public static string CleanReceivedFileName(string fileName) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrWhiteSpace(fileName)) {
+				return null;
+			}
+			//Not Path.GetFileName: on .NET Framework it throws for '"', '<', '>' and '|'.
+			fileName=ODFileUtils.CleanFileName(fileName.Substring(fileName.LastIndexOfAny(new char[] { '/','\\' })+1));
+			if(fileName.Trim('.','_',' ')=="") {
 				return null;
 			}
 			return fileName;
@@ -1748,16 +1765,13 @@ namespace OpenPmsDentalBusiness {
 			try {
 				for(int i=0;i<listMimeEntitiesAttachParts.Count;i++) {
 					byte[] byteArrayData=GetMimeEntityBytes(listMimeEntitiesAttachParts[i]);
-					string displayFileName=listMimeEntitiesAttachParts[i].ContentType.Name;
-					//If the name directive was not set, check for the filename directive.
+					//The name directive of the Content-Type, else the filename directive of the Content-Disposition
+					//(e.g. Content-Disposition: attachment; filename="cool.html" should suggest saving under the "cool.html" filename by default).
 					//The filename is always optional and must not be used blindly by the application: path information should be stripped, and conversion to
 					//the server file system rules should be done. This parameter provides mostly indicative information. When used in combination with
 					//Content-Disposition: attachment, it is used as the default filename for an eventual "Save As" dialog presented to the user.
-					string fileNameDisposition=listMimeEntitiesAttachParts[i].ContentDisposition.FileName;
-					if(string.IsNullOrEmpty(displayFileName) && !string.IsNullOrWhiteSpace(fileNameDisposition)) {
-						//E.g. Content-Disposition: attachment; filename="cool.html" should suggest saving under the "cool.html" filename (by default).
-						displayFileName=ODFileUtils.CleanFileName(fileNameDisposition);
-					}
+					//Whatever its source, the name is cleaned the same way, and is the name the preview finds this attachment by (GetMimeImageFileName).
+					string displayFileName=GetMimeFileName(listMimeEntitiesAttachParts[i]);
 					EmailAttach emailAttach=EmailAttaches.CreateAttach(displayFileName,"",byteArrayData,false);
 					emailMessage.Attachments.Add(emailAttach);//The attachment EmailMessageNum is set when the emailMessage is inserted/updated below.
 				}
@@ -2479,7 +2493,7 @@ namespace OpenPmsDentalBusiness {
 				bodyText=bodyTextHeader+bodyText;
 				for(int i=0;i<listMimeEntriesPartImages.Count;i++) {//Similar logic to EmailPreviewControl.ParseAndSaveAttachments()
 					string fileName=GetMimeImageFileName(listMimeEntriesPartImages[i]);
-					if(!ImageStore.HasImageExtension(fileName)) {//Check file format against known image format extensions.
+					if(fileName==null || !ImageStore.HasImageExtension(fileName)) {//No name, or not a known image format extension.
 						continue;//Don't show any that are not a known image format
 					}
 					bodyText=bodyText.Replace($"[cid:{fileName}]",$"[[img:{fileName}]]");//Change inline image to image link.

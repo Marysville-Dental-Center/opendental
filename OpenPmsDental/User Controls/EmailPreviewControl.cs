@@ -559,7 +559,10 @@ namespace OpenPmsDental {
 						return;
 					}
 				}
-				FileAtoZ.OpenFile(FileAtoZ.CombinePaths(EmailAttaches.GetAttachPath(),emailAttach.ActualFileName),emailAttach.DisplayedFileName);
+				//OpenFile copies the attachment to the temp folder under its displayed name: cleaned again here (no folders, no '..'), because an email
+				//received before names were cleaned can have a path in it. With no name left, the copy takes the saved file's (cleaned) name.
+				FileAtoZ.OpenFile(FileAtoZ.CombinePaths(EmailAttaches.GetAttachPath(),emailAttach.ActualFileName),
+					EmailMessages.CleanReceivedFileName(emailAttach.DisplayedFileName)??"");
 			}
 			catch(Exception ex) {
 				MessageBox.Show(ex.Message);
@@ -685,9 +688,10 @@ namespace OpenPmsDental {
 				bool hasDangerousAttachment=false;
 				foreach(EmailMimePart entity in listParts) {
 					string contentId=EmailMessages.GetMimeImageContentId(entity);
+					//Cleaned as the attachment's DisplayedFileName was when the email was received (no folders, no '..'), so the match below finds it.
 					string fileName=EmailMessages.GetMimeImageFileName(entity);
 					//Only show image types.  Otherwise, prompt user that potentially dangerous code is attached to the email and will not be shown.
-					if(!ImageStore.HasImageExtension(fileName)) {//Check file format against known image format extensions.
+					if(fileName==null || !ImageStore.HasImageExtension(fileName)) {//No name, or not a known image format extension.
 						hasDangerousAttachment=true;
 						continue;
 					}
@@ -695,7 +699,9 @@ namespace OpenPmsDental {
 					if(contentId!="" && entity.IsInline) {
 						html=html.Replace("cid:"+contentId,fileName);
 					}
-					EmailAttach attachment=_listEmailAttachDisplayed.FirstOrDefault(x => x.DisplayedFileName.ToLower().Trim()==fileName.ToLower().Trim());
+					//The stored name is cleaned too, so an email received before names were cleaned still finds its attachment.
+					EmailAttach attachment=_listEmailAttachDisplayed.FirstOrDefault(
+						x => EmailMessages.CleanReceivedFileName(x.DisplayedFileName)?.ToLower().Trim()==fileName.ToLower().Trim());
 					//The path and filename must be directly accessed from the EmailAttach object in question, otherwise subsequent code would have accessed
 					//an empty bodied message and never shown an image.
 					byte[] byteArrayImage=EmailMessages.GetMimeImageBytes(entity,attachment?.ActualFileName);
