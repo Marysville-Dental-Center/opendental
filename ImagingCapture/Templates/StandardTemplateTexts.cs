@@ -8,8 +8,9 @@ using System.Linq;
 namespace ImagingCapture.Templates {
 	///<summary>The texts of the "Add standard templates" window: what will be added or left alone, and what was done.</summary>
 	public static class StandardTemplateTexts {
-		public const string Intro="Adds Open Dental's standard X-ray mount templates: FMX with horizontal or with vertical bitewings, and 4 bitewings "
-			+"horizontal or vertical, with the slots of Open Dental's own template generator. The slots are in exposure order, grouped by sensor size, "
+		public const string Intro="Adds the standard X-ray mount templates: FMX with horizontal or with vertical bitewings, and 4 bitewings "
+			+"horizontal or vertical, with the slots of the program's own mount generator (the Generate button in the mount editor). The slots are in "
+			+"exposure order, grouped by sensor size, "
 			+"so the sensor is changed at most once. A template whose name a mount already has is left alone. The rotations are starting values: "
 			+"confirm them for each sensor size on the phantom.";
 
