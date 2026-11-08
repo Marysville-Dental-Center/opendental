@@ -133,3 +133,8 @@ files folder path") and toolbar rows, all as Open Dental's conversions made them
   Project files left on the release's allow list after S0-3 removed Direct) are the same on `net10/int0` before this package and are not
   about NDde or DDE. InitSqlTests was not run (no schema change here; the coordinator regenerates the init file).
 - `tools/Test-NoOldNames.ps1 -Strict` and `tools/Test-NoHqHosts.ps1`: passed.
+- After the `XTYP_DISCONNECT` fix (`net10/s0r-2`): full build of `OpenDental.Local.slnf` 0 errors; `run-tests.ps1 -Mode Targeted` with
+  NoHqTests (58), BINATests (23), BINBTests (40), VendorDirectTests (919, the 6 new DDE tests among them), ReleaseFlowTests (119 passed, 1
+  skipped), RegistryTests (39), BSHELLTests (68), AttributionTests (50) and P262LinksTests (61): every test passes. LibraryBindingTests was
+  left out (the two Direct failures above), ForkMigrationTests and InitSqlTests too (no schema change; the coordinator runs them after
+  merging). `tools/Test-NoOldNames.ps1 -Strict` and `tools/Test-NoHqHosts.ps1`: passed.
