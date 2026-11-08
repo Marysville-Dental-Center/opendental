@@ -1,0 +1,17 @@
+Scene: select-range
+Group: interaction
+Description: Teeth 6-11 selected, as a drag across them gives.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 5975
+Pixels SHA-256: c436ecf1a65c3795d07f7ce237946a6d66022835a86723272f3c0edba71e1867
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

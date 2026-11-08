@@ -1,0 +1,17 @@
+Scene: ortho-mode
+Group: ortho
+Description: Ortho mode on: the Chart module switches Universal numbering to Palmer (ControlChart.FillToothChart); brackets on 3-14.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 5945
+Pixels SHA-256: 536d62363cf674779b3bfb190ec2f8632bd0278a74450c56a2c9aac486680ea6
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

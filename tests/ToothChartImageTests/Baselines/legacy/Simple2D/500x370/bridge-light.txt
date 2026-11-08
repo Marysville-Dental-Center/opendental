@@ -1,0 +1,17 @@
+Scene: bridge-light
+Group: paint
+Description: Light bridges: 3-4-5 TP and 12-13-14 C with 4 and 13 missing, 19-20-21 EC and 28-29-30 Cn with 20 and 29 missing.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 15228
+Pixels SHA-256: 6fa6f0742a13e8ad0c2bf2b4740bd47feaedfe53669f14710a95e4f13a6a345c
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

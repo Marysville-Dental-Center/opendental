@@ -1,0 +1,18 @@
+Scene: filling-primary
+Group: paint
+Description: Primary dentition with dark TP fillings on the primary molars and canines: A MO, B DO, C F, H M, I MOD, J O, K MO, L DO, M I, R F, S MOD, T O.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: DirectX
+Started mode: DirectX
+Device or pixel format: DirectX device format 0;Hardware;64;D16;X8R8G8B8;None
+DirectX standard search: 0;Hardware;64;D16;X8R8G8B8;FourSamples (multisampling turned off: with it a draw is not repeatable on every driver)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 1838
+Pixels SHA-256: e94e0825902c5fc175ca06bb57ddc7a9a797632e1abe0626646872cd599db524
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

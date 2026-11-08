@@ -1,0 +1,18 @@
+Scene: treatment-plan
+Group: paint
+Description: A treatment plan, all TP: X on 1, 16, 17 and 32; fillings MO 3, DO 4, MOD 13, O 14, MO 19, OL 30; RCT, build-up and crown on 18; implant and crown on missing 29; bridge 6-7-8 with 7 missing; sealants 2 and 15.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: DirectX
+Started mode: DirectX
+Device or pixel format: DirectX device format 0;Hardware;64;D16;X8R8G8B8;None
+DirectX standard search: 0;Hardware;64;D16;X8R8G8B8;FourSamples (multisampling turned off: with it a draw is not repeatable on every driver)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 2359
+Pixels SHA-256: d664275c793a71c1290db27b55465774a86db7ccd40b5a89c0d2266bf5770428
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

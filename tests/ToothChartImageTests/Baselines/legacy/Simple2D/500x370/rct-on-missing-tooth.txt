@@ -1,0 +1,17 @@
+Scene: rct-on-missing-tooth
+Group: paint
+Description: A TP root canal on missing tooth 3 (not drawn) and on present tooth 14.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14544
+Pixels SHA-256: 1181e4bf3fe40bb1ebf80311dd96984635d96f5725f8961bb4e57f39471d76bc
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

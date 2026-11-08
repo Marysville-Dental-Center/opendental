@@ -1,0 +1,18 @@
+Scene: text-watch-on-missing-tooth
+Group: paint
+Description: Watch marks on missing teeth 3 and 30 (the mark still shows) and on present tooth 19.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: DirectX
+Started mode: DirectX
+Device or pixel format: DirectX device format 0;Hardware;64;D16;X8R8G8B8;None
+DirectX standard search: 0;Hardware;64;D16;X8R8G8B8;FourSamples (multisampling turned off: with it a draw is not repeatable on every driver)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 876
+Pixels SHA-256: 05124b2841bc648b25ac74ec17a8ef2279760ac7fc5713487db768f3ea48b615
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

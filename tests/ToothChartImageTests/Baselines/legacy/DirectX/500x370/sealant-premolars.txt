@@ -1,0 +1,18 @@
+Scene: sealant-premolars
+Group: paint
+Description: TP sealants on the premolars 4, 5, 12, 13, 20, 21, 28 and 29.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: DirectX
+Started mode: DirectX
+Device or pixel format: DirectX device format 0;Hardware;64;D16;X8R8G8B8;None
+DirectX standard search: 0;Hardware;64;D16;X8R8G8B8;FourSamples (multisampling turned off: with it a draw is not repeatable on every driver)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 1152
+Pixels SHA-256: 478d60480c2eb83510eb512066f2e08c7d54465c9b1818832cd683bf900f4764
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

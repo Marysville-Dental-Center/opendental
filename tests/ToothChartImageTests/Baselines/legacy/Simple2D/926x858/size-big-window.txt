@@ -1,0 +1,17 @@
+Scene: size-big-window
+Group: sizes
+Description: The restored-adult work with teeth 3 and 19 selected, also drawn at 926x858 with the module colours (the big chart window, FormToothChartBig).
+Size: 926x858
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 926x858 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 20579
+Pixels SHA-256: 5c00c7aa68e244dd9490669b44e1978a568f7fb11ae0829a683d32ef00a1969b
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

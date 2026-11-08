@@ -1,0 +1,17 @@
+Scene: filling-mirror-pairs
+Group: paint
+Description: The same surfaces on mirrored teeth: M on 3 and 14, D on 19 and 30, F on 8 and 9, I on 24 and 25, MO on 4 and 13, DO on 20 and 29 (TP dark).
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14785
+Pixels SHA-256: ef431135b74a44b0f3b0006688d812d29e5cfcd7a5825b4b6a57774b798122f9
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

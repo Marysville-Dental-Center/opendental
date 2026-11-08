@@ -1,0 +1,18 @@
+Scene: filling-light-posterior
+Group: paint
+Description: Light EC fillings: 2 MO, 3 MOD, 4 DO, 5 O, 12 MODB, 13 OL, 14 MODBL, 15 B, 18 MO, 19 DOB, 20 V, 21 MOD, 28 O, 29 MODBL, 30 OL, 31 MO.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: DirectX
+Started mode: DirectX
+Device or pixel format: DirectX device format 0;Hardware;64;D16;X8R8G8B8;None
+DirectX standard search: 0;Hardware;64;D16;X8R8G8B8;FourSamples (multisampling turned off: with it a draw is not repeatable on every driver)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 1713
+Pixels SHA-256: 964cdb24f61d35d679ffd1c34e8c6139fada7c7882f7c25a37bebe0b7591ead0
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

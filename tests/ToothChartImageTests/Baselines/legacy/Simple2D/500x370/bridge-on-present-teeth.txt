@@ -1,0 +1,17 @@
+Scene: bridge-on-present-teeth
+Group: paint
+Description: Dark TP bridge 3-4-5 with no tooth missing: every tooth gets a crown, as the Chart module paints it.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14756
+Pixels SHA-256: dfebc018bc1b853d0ac76faf95f4c3d788da2d99ffb129d22d2007364c1c9bd1
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

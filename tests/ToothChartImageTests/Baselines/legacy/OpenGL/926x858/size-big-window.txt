@@ -1,0 +1,18 @@
+Scene: size-big-window
+Group: sizes
+Description: The restored-adult work with teeth 3 and 19 selected, also drawn at 926x858 with the module colours (the big chart window, FormToothChartBig).
+Size: 926x858
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 926x858 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 4263
+Pixels SHA-256: 1d9b64a140c6e44d674393dbfc0fbcb7f1518f65581b15b059fb5145525b6860
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96
