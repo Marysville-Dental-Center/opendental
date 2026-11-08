@@ -79,6 +79,78 @@ namespace OpenPmsDentalBusiness {
 			Db.NonQ(command);
 		}
 
+		#region Teeth from the procedures
+		//Open Dental's 26.2 database document: labcaseproduct.ToothRange is "Retrieved from procedure.ToothRange, formatted for display". The teeth
+		//are filled in from the procedures of the appointment the lab case is attached to; what the user types in the product window is kept as
+		//typed (the manual override), and an existing product's teeth are only replaced when the user asks (FormLabCaseProductEdit).
+
+		///<summary>The procedures attached to a lab case through the appointment the program links it to: those of its scheduled appointment
+		///(procedurelog.AptNum) when it has one, otherwise those of its planned appointment (procedurelog.PlannedAptNum). Deleted procedures are left
+		///out. Empty when the lab case is attached to neither. Pass the lab case's AptNum and PlannedAptNum as they are on screen.</summary>
+		public static List<Procedure> GetProcsForLabCase(long aptNum,long plannedAptNum) {
+			Meth.NoCheckMiddleTierRole();
+			List<Procedure> listProcedures;
+			if(aptNum!=0) {
+				listProcedures=Procedures.GetProcsForSingle(aptNum,false);
+			}
+			else if(plannedAptNum!=0) {
+				listProcedures=Procedures.GetProcsForSingle(plannedAptNum,true);
+			}
+			else {
+				return new List<Procedure>();
+			}
+			return listProcedures.Where(x => x.ProcStatus!=ProcStat.D).OrderBy(x => x.ProcNum).ToList();
+		}
+
+		///<summary>Every tooth of the procedures, formatted for display as the Chart shows a tooth range (Tooth.DisplayRange: runs of three or more
+		///teeth with a dash, in the given nomenclature), for example "8-10,12". The teeth come from each procedure's ToothRange and, for a one-tooth
+		///procedure, its ToothNum. Invalid entries are left out, and each tooth is listed once, in tooth order. Arches, quadrants and sextants are
+		///not teeth and are not listed. "" when no procedure has a tooth.</summary>
+		public static string FormatToothRange(List<Procedure> listProcedures,ToothNumberingNomenclature toothNumberingNomenclature) {
+			Meth.NoCheckMiddleTierRole();
+			List<string> listTeeth=new List<string>();
+			foreach(Procedure procedure in listProcedures??new List<Procedure>()) {
+				if(procedure==null) {
+					continue;
+				}
+				List<string> listProcTeeth=(procedure.ToothRange??"").Split(',').Select(x => x.Trim()).ToList();
+				listProcTeeth.Add((procedure.ToothNum??"").Trim());
+				foreach(string toothNum in listProcTeeth) {
+					if(Tooth.IsValidDB(toothNum) && !listTeeth.Contains(toothNum)) {
+						listTeeth.Add(toothNum);
+					}
+				}
+			}
+			if(listTeeth.Count==0) {
+				return "";
+			}
+			listTeeth.Sort(new ToothComparer());
+			return Tooth.DisplayRange(string.Join(",",listTeeth),toothNumberingNomenclature);
+		}
+
+		///<summary>The teeth of the lab case's procedures (GetProcsForLabCase), formatted for display in the office's tooth numbering
+		///(FormatToothRange). "" when there are none.</summary>
+		public static string GetToothRangeFromProcs(long aptNum,long plannedAptNum) {
+			Meth.NoCheckMiddleTierRole();
+			List<Procedure> listProcedures=GetProcsForLabCase(aptNum,plannedAptNum);
+			if(listProcedures.Count==0) {
+				return "";
+			}
+			return FormatToothRange(listProcedures,(ToothNumberingNomenclature)PrefC.GetInt(PrefName.UseInternationalToothNumbers));
+		}
+
+		///<summary>Fills a product's blank teeth with toothRangeFromProcs and returns true; a product whose teeth are not blank keeps them (the user's
+		///own entry) and false is returned.</summary>
+		public static bool FillToothRangeIfBlank(LabCaseProduct labCaseProduct,string toothRangeFromProcs) {
+			Meth.NoCheckMiddleTierRole();
+			if(labCaseProduct==null || !string.IsNullOrWhiteSpace(labCaseProduct.ToothRange) || string.IsNullOrWhiteSpace(toothRangeFromProcs)) {
+				return false;
+			}
+			labCaseProduct.ToothRange=toothRangeFromProcs.Trim();
+			return true;
+		}
+		#endregion Teeth from the procedures
+
 		///<summary>One line for lists and for the notes sent to the lab, for example "BruxZir, shade A1, teeth 8-9: Full contour". Parts that are
 		///blank are left out. The product list value (GlidewellProduct) is not shown: Glidewell's list is not published.</summary>
 		public static string GetSummary(LabCaseProduct labCaseProduct) {

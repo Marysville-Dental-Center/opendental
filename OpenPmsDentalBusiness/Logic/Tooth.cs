@@ -435,6 +435,15 @@ namespace OpenPmsDentalBusiness{
 		#region Methods - Ranges
 		///<summary>The supplied toothNumbers will be a series of tooth numbers separated by commas.  They will be in American format.  For display purposes, ranges will use dashes, and international numbers will be used.</summary>
 		public static string DisplayRange(string toothNumbers) {
+			if(toothNumbers==null || toothNumbers.Replace(" ","")=="") {
+				return "";//Without reading the preference, as before.
+			}
+			return DisplayRange(toothNumbers,(ToothNumberingNomenclature)PrefC.GetInt(PrefName.UseInternationalToothNumbers));
+		}
+
+		///<summary>DisplayRange in the given nomenclature, so that it does not need the preference cache (next/vendorpub-1, the teeth of a lab case
+		///product).</summary>
+		public static string DisplayRange(string toothNumbers,ToothNumberingNomenclature toothNumberingNomenclature) {
 			if(toothNumbers==null) {
 				return "";
 			}
@@ -444,10 +453,10 @@ namespace OpenPmsDentalBusiness{
 			}
 			List<string> listTeeth=toothNumbers.Split(',').ToList();
 			if(listTeeth.Count==1) {
-				return Tooth.Display(listTeeth[0]);
+				return Tooth.Display(listTeeth[0],toothNumberingNomenclature);
 			}
 			else if(listTeeth.Count==2) {
-				return Tooth.Display(listTeeth[0])+","+Tooth.Display(listTeeth[1]);//just two numbers separated by comma
+				return Tooth.Display(listTeeth[0],toothNumberingNomenclature)+","+Tooth.Display(listTeeth[1],toothNumberingNomenclature);//just two numbers separated by comma
 			}
 			listTeeth.Sort(new ToothComparer());
 			StringBuilder stringBuilder=new StringBuilder();
@@ -470,7 +479,7 @@ namespace OpenPmsDentalBusiness{
 					if(stringBuilder.Length>0 && stringBuilder[stringBuilder.Length-1]!='-') {
 						stringBuilder.Append(",");
 					}
-					stringBuilder.Append(Tooth.Display(listTeeth[i]));
+					stringBuilder.Append(Tooth.Display(listTeeth[i],toothNumberingNomenclature));
 				}
 				else if(numberInaRow==3) {//this way, the dash only gets added exactly once
 					stringBuilder.Append("-");
@@ -480,7 +489,7 @@ namespace OpenPmsDentalBusiness{
 			if(stringBuilder.Length>0 && stringBuilder[stringBuilder.Length-1]!='-') {
 				stringBuilder.Append(",");
 			}
-			stringBuilder.Append(Tooth.Display(listTeeth[listTeeth.Count-1]));//always show the last number
+			stringBuilder.Append(Tooth.Display(listTeeth[listTeeth.Count-1],toothNumberingNomenclature));//always show the last number
 			return stringBuilder.ToString();
 		}
 

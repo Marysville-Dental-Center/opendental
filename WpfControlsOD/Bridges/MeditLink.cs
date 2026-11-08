@@ -6,28 +6,28 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using OpenPmsDentalBusiness;
+using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
 
 namespace OpenPmsDental.Bridges {
 	///<summary></summary>
 	public class MeditLink {
 
-		private const string UUID="E02698AC-C1AE-4699-9307-F4A58DED47FE";
-
 		///<summary></summary>
 		public MeditLink(){
-			
+
 		}
 
-		///<summary></summary>
+		///<summary>Starts Medit Link with Medit's command id and, for a patient, the Command line with the patient filled in. The arguments and the
+		///Partner ID (next/vendorpub-1: Medit's public article, a PartnerID key that assigns the office's lab to every case created from the Chart)
+		///are built by MeditLinkPartner; a Partner ID that can't be added is refused with a message and nothing is started.</summary>
 		public static void SendData(Program program,Patient patient) {
 			//Purposefully surround all command... argument identifiers sent to MeditLink in double quotes.
-			string commandArgs="\"--commandUuid\" \""+UUID+"\"";
-			string path=Programs.GetProgramPath(program);
-			if(patient!=null) {
-				string optionalParameters=program.CommandLine;
-				optionalParameters=Patients.ReplacePatient(optionalParameters, patient);
-				commandArgs+=" \"--commandParam\" \""+optionalParameters+"\"";
+			string commandArgs=MeditLinkPartner.GetArguments(program,patient,out string problem);
+			if(commandArgs==null) {
+				MessageBox.Show(problem);
+				return;
 			}
+			string path=Programs.GetProgramPath(program);
 			try {
 				Process.Start(path,commandArgs);
 			}
@@ -38,11 +38,3 @@ namespace OpenPmsDental.Bridges {
 		}
 	}
 }
-
-
-
-
-
-
-
-
