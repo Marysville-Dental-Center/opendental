@@ -640,6 +640,12 @@ answer; the standing rule below, with its correction; and "Don't need 'Install f
 - **Testing database encryption.** Locally, with encryption ("database encryption: do local testing with encryption", then "A"): the
   test starts a temporary second MariaDB server on `127.0.0.1:3307` with test certificates it makes itself, and removes it afterwards.
   Your database server on port 3306 is not touched, and no administrator rights are needed.
+- **Encrypted local test database.** Yes: the local MariaDB on port 3306 is switched to encryption (one script you run as
+  administrator), everything on this PC then connects encrypted, the server refuses unencrypted connections, and the old test
+  database is rebuilt. This replaces the temporary second server above.
+- **Scheduled Processes and HIE export.** A runner is built ("Yes build it in a way that these workflow only run on a single
+  workstation in the practice, so no race conditions"): only the workstation named in setup runs these jobs, and a database lock stops
+  a second one from running a job twice.
 - **QuickBooks Desktop, Schick CDR and Topaz signature pads.** The office does not use them. They were to be removed in the clean-up stage
   (owner, 2026-11-07); now kept and ported (owner correction, 2026-11-08).
 - **Order of the stages.** A clean-up stage first; then SDK-style project files, NuGet packages and the test framework, all still on .NET

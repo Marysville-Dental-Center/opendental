@@ -1089,6 +1089,22 @@ no Middle Tier server while the Middle Tier is still ported (open point O-7, S3b
   - If feasible: the DentX, Dexis Integrator and Vipersoft program links and `NDde.dll`, removed earlier (REL-FILES, 2026-11-07,
     `docs/port-notes/REL-FILES.md`). Their feasibility includes NDde's licence question (REL-FILES 2 in `docs/owner-questions.md`).
 
+- **O-11. A runner for the scheduled jobs and the HIE export. Answered 2026-11-08: build it, on one workstation only.** Setup >
+  Scheduled Processes (recall sync, batch insurance verification, statements) and the HIE export (`HieQueues.ProcessQueues`) are set
+  up in the program, but only Open Dental's closed background service ran them, so nothing runs them today. The owner: "Yes build it in
+  a way that these workflow only run on a single workstation in the practice, so no race conditions." A package after stage 0 adds a
+  runner inside the program: setup names the one workstation that runs these jobs; only that workstation's program runs them, and a
+  database lock (one row or `GET_LOCK`) makes a second runner wait instead of running a job twice, also if two computers are set up by
+  mistake. The 55 legacy tests of these jobs stay (S0-5) and become the runner's tests.
+- **O-12. The local test database runs encrypted. Answered 2026-11-08: yes.** The owner: "Once db switches you can get rid of the old
+  encrypted db" (the current test database on `127.0.0.1:3306`), and "yes" to the plan. A package before the stage 2 gate: the owner
+  runs a script once as administrator that turns on TLS (a test CA and a server certificate for `127.0.0.1` and `localhost`) in the
+  local MariaDB service and restarts it; the program's development set-up, the test helpers and the scripts then connect encrypted;
+  the TLS and certificate-login test of S2-2 runs against this server, so the temporary server of O-8 is no longer needed; the server
+  then refuses unencrypted connections (`require_secure_transport`; other sessions are told first); and the old test database
+  (`opendental_dev`) is dropped and rebuilt with `tools/New-DevDatabase.ps1` over the encrypted connection (confirmed with the owner
+  right before the drop).
+
 ---
 
 ## 13. Sources
