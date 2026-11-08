@@ -130,7 +130,8 @@ namespace LibWebTests {
 			Clinic clinic=ClinicT.CreateClinic("S0T e-mail clinic");
 			Clinics.SetClinicNumT(clinic.ClinicNum);
 			try {
-				Assert.AreEqual("Clinic "+clinic.ClinicNum+".",EmailPreviewControl.ReplaceTemplateFields("Clinic [ClinicNumCur].",pat,null,clinic));
+				//The template's clinic (the last argument, for the office fields) is not the selected clinic; null gives the practice's office fields.
+				Assert.AreEqual("Clinic "+clinic.ClinicNum+".",EmailPreviewControl.ReplaceTemplateFields("Clinic [ClinicNumCur].",pat,null,null));
 			}
 			finally {
 				Clinics.SetClinicNumT(0);
