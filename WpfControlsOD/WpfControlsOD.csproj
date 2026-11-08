@@ -80,8 +80,6 @@
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.ServiceProcess" />
-    <Reference Include="System.Web" />
-    <Reference Include="System.Web.Services" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
@@ -125,7 +123,9 @@
     <Compile Include="Bridges\DentalStudio.cs" />
     <Compile Include="Bridges\DentalTek.cs" />
     <Compile Include="Bridges\DentForms.cs" />
+    <Compile Include="Bridges\DentX.cs" />
     <Compile Include="Bridges\Dexis.cs" />
+    <Compile Include="Bridges\DexisIntegrator.cs" />
     <Compile Include="Bridges\Digora.cs" />
     <Compile Include="Bridges\DivvyPostcardService.cs" />
     <Compile Include="Bridges\Dolphin.cs" />
@@ -195,6 +195,7 @@
     <Compile Include="Bridges\Trophy.cs" />
     <Compile Include="Bridges\TrophyEnhanced.cs" />
     <Compile Include="Bridges\Tscan.cs" />
+    <Compile Include="Bridges\Vipersoft.cs" />
     <Compile Include="Bridges\VisionX.cs" />
     <Compile Include="Bridges\Visora.cs" />
     <Compile Include="Bridges\VistaDent.cs" />

@@ -92,8 +92,12 @@ namespace VendorDirectTests.Email {
 			int indexReceive=textInbox.IndexOf("ReceiveFromOAuthInbox(GetSelectedAddress());",indexGetMessages,StringComparison.Ordinal);
 			int indexFill=textInbox.IndexOf("FillGridInbox();",indexGetMessages,StringComparison.Ordinal);
 			Assert.IsTrue(indexReceive>0 && indexReceive<indexFill,"The manual download runs before the grid fills (google.md 3.8).");
-			//S0-3: no Direct acknowledgement is resent any more (Direct messaging was removed), so nothing follows for POP3 addresses.
-			Assert.IsFalse(textInbox.Contains("SendOldestUnsentAck"));
+			//S0-3D: Direct is kept, so the acknowledgements that failed are resent again, after the blank-POP3 return (google.md 3.8: the manual
+			//download runs before it).
+			int indexPop3=textInbox.IndexOf("Pop3ServerIncoming==\"\"",indexGetMessages,StringComparison.Ordinal);
+			int indexAck=textInbox.IndexOf("EmailMessages.SendOldestUnsentAck(GetSelectedAddress());",indexGetMessages,StringComparison.Ordinal);
+			Assert.IsTrue(indexReceive>0 && indexReceive<indexPop3,"The manual download runs before the blank-POP3 return (google.md 3.8).");
+			Assert.IsTrue(indexPop3>0 && indexPop3<indexAck,"The acknowledgement resend follows the blank-POP3 return.");
 			string textMessage=ReadRepoFile(@"OpenPmsDental\Forms\FormEmailMessageEdit.cs");
 			StringAssert.Contains(textMessage,"EmailMessages.FindException<Microsoft365Exception>(ex)");
 			StringAssert.Contains(textMessage,"microsoft365Exception.IsAuthError","A refused sign-in offers Sign in again instead of clearing the tokens.");

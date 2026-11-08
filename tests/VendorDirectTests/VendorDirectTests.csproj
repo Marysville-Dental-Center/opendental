@@ -77,6 +77,11 @@
       <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
       <Name>OpenPmsDentalBusiness</Name>
     </ProjectReference>
+    <!-- The DDE program links (DentX, Dexis Integrator, Vipersoft): their commands and DDE calls, on a fake conversation (DdeBridges). -->
+    <ProjectReference Include="..\..\WpfControlsOD\WpfControlsOD.csproj">
+      <Project>{118540CC-3536-4E8B-94D4-402CA48A4CB0}</Project>
+      <Name>WpfControlsOD</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

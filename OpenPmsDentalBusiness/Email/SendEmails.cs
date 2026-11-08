@@ -87,6 +87,38 @@ namespace OpenPmsDentalBusiness.Email {
 			}
 		}
 
+		///<summary>Throws exceptions. Sends a MIME message exactly as it was built: a Direct message, which the Direct agent encrypted (and signed inside
+		///the encryption). A password address sends it through MailKit on every port (TLS from the first byte on 465, STARTTLS when the address uses
+		///SSL, plain text otherwise), a Gmail address through the Gmail API as the raw message, a Microsoft 365 address through Graph's MIME send, which
+		///refuses a message larger than one request before any call (Graph rebuilds larger messages, and the encryption would be lost).
+		///address.AccessToken must be a fresh bearer token for a Gmail or Microsoft 365 address (EmailMessages.GetOAuthAccessToken).</summary>
+		public static void WireMimeMessage(BasicEmailAddress address,MimeMessage mimeMessage) {
+			try {
+				WireMimeMessage(address,mimeMessage,EMAIL_SEND_TIMEOUT_MS);
+			}
+			catch(Exception ex) {
+				MailKit.Net.Smtp.SmtpCommandException smtpCommandException=ex as MailKit.Net.Smtp.SmtpCommandException;
+				if(smtpCommandException!=null && (int)smtpCommandException.StatusCode==451) {
+					throw new ODException("Email provider is having temporary send issues. This could be due to high email demand. Please try again later.");
+				}
+				throw new ODException("Error sending email",ex);
+			}
+		}
+
+		///<summary>WireMimeMessage with the timeout of an SMTP send.</summary>
+		public static void WireMimeMessage(BasicEmailAddress address,MimeMessage mimeMessage,int emailSendTimeoutMs) {
+			if(address.AuthenticationType==BasicOAuthType.Google) {
+				SendGmailMime(address,() => mimeMessage);
+			}
+			else if(address.AuthenticationType==BasicOAuthType.Microsoft) {
+				ThrowIfTooLargeForMicrosoft(mimeMessage,isSigned:false,isEncrypted:true);
+				SendMicrosoft(() => MicrosoftApiConnector.SendMime(address.EmailUsername,address.AccessToken,mimeMessage));//The MIME as built: Graph sends it as it is.
+			}
+			else {
+				SendSmtpMailKit(address,mimeMessage,GetSecureSocketOptions(address),emailSendTimeoutMs);
+			}
+		}
+
 		///<summary>Tests only (tests/LibraryUpdateTests): checks the certificate of the fake SMTP server, which no authority signed. Null in
 		///production, where MailKit checks the server's certificate itself.</summary>
 		internal static System.Net.Security.RemoteCertificateValidationCallback SmtpCertificateValidationForTests;
@@ -262,39 +294,13 @@ namespace OpenPmsDentalBusiness.Email {
 		///status, refresh the token after a 401 and show a neutral message.</summary>
 		private static void SendEmailOAuth(BasicEmailAddress address,BasicEmailMessage message,X509Certificate2 x509Certificate2Signing) {
 			if(address.AuthenticationType==BasicOAuthType.Google) {
-				using GmailApi.GmailService gService=GoogleApiConnector.CreateGmailService(address);
-				try {
+				SendGmailMime(address,() => {
 					MimeMessage mimeMessage=CreateMIMEMsg(address,message);
 					if(x509Certificate2Signing!=null) {
 						SignMimeMessage(mimeMessage,x509Certificate2Signing);//Gmail sends the raw message as it is, the signature with it.
 					}
-					byte[] arrayMime=GetMimeBytes(mimeMessage);
-					if(arrayMime.Length<=GMAIL_UPLOAD_THRESHOLD_BYTES) {
-						GmailApi.Data.Message gmailMessage=CreateGmailMsg(arrayMime);
-						gService.Users.Messages.Send(gmailMessage,address.EmailUsername).Execute();
-					}
-					else {
-						//Large message: send the raw RFC 2822 bytes through the upload URI.
-						using MemoryStream memoryStream=new MemoryStream(arrayMime);
-						GmailApi.UsersResource.MessagesResource.SendMediaUpload sendMediaUpload=gService.Users.Messages.Send(new GmailApi.Data.Message(),
-							address.EmailUsername,memoryStream,"message/rfc822");
-						IUploadProgress uploadProgress=sendMediaUpload.Upload();
-						if(uploadProgress.Status!=UploadStatus.Completed) {
-							if(uploadProgress.Exception!=null) {
-								System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(uploadProgress.Exception).Throw();
-							}
-							throw new ODException("Gmail did not accept the message upload.");
-						}
-					}
-				}
-				catch(GoogleApiException) {
-					//Rethrown unchanged: EmailMessages reads the HTTP status and Google's reason (google.md 3.5) and refreshes the token after a 401.
-					throw;
-				}
-				catch(Exception ex) {
-					//This will bubble up to the UI level and be caught in a copypaste box.
-					throw new Exception($"Error sending email with OAuth authorization: {ex.Message}");
-				}
+					return mimeMessage;
+				});
 			}
 			else if(address.AuthenticationType==BasicOAuthType.Microsoft) {
 				//A signed message, or one with an attached e-mail, is built here (as MicrosoftApiConnector.SendEmail builds any other one), signed
@@ -310,26 +316,70 @@ namespace OpenPmsDentalBusiness.Email {
 					ThrowIfTooLargeForMicrosoft(mimeMessageBuilt,x509Certificate2Signing!=null);
 				}
 				//create and send microsoft email.
-				try {
+				SendMicrosoft(() => {
 					if(mimeMessageBuilt==null) {
 						MicrosoftApiConnector.SendEmail(address.EmailUsername,address.AccessToken,message);
 					}
 					else {
 						MicrosoftApiConnector.SendMime(address.EmailUsername,address.AccessToken,mimeMessageBuilt);//The MIME as built: Graph sends it as it is.
 					}
+				});
+			}
+		}
+
+		///<summary>Throws exceptions. Sends the message funcMimeMessage builds (it is built inside, so that its errors read as the send's) through the
+		///Gmail API as the raw message: in the JSON body, or through the media upload URI when it is larger than GMAIL_UPLOAD_THRESHOLD_BYTES. A
+		///GoogleApiException is rethrown as it is.</summary>
+		private static void SendGmailMime(BasicEmailAddress address,Func<MimeMessage> funcMimeMessage) {
+			using GmailApi.GmailService gService=GoogleApiConnector.CreateGmailService(address);
+			try {
+				MimeMessage mimeMessage=funcMimeMessage();
+				byte[] arrayMime=GetMimeBytes(mimeMessage);
+				if(arrayMime.Length<=GMAIL_UPLOAD_THRESHOLD_BYTES) {
+					GmailApi.Data.Message gmailMessage=CreateGmailMsg(arrayMime);
+					gService.Users.Messages.Send(gmailMessage,address.EmailUsername).Execute();
 				}
-				catch(Microsoft365Exception) {
-					//Rethrown unchanged: EmailMessages refreshes the token after a 401 and maps the kind to a neutral message (microsoft-365.md 3.5).
-					throw;
-				}
-				catch(Exception ex) {
-					//This will bubble up to the UI level and be caught in a copypaste box.
-					string errorMessage=ex.Message;
-					if(ex.InnerException!=null) {
-						errorMessage=ex.InnerException.Message;
+				else {
+					//Large message: send the raw RFC 2822 bytes through the upload URI.
+					using MemoryStream memoryStream=new MemoryStream(arrayMime);
+					GmailApi.UsersResource.MessagesResource.SendMediaUpload sendMediaUpload=gService.Users.Messages.Send(new GmailApi.Data.Message(),
+						address.EmailUsername,memoryStream,"message/rfc822");
+					IUploadProgress uploadProgress=sendMediaUpload.Upload();
+					if(uploadProgress.Status!=UploadStatus.Completed) {
+						if(uploadProgress.Exception!=null) {
+							System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(uploadProgress.Exception).Throw();
+						}
+						throw new ODException("Gmail did not accept the message upload.");
 					}
-					throw new Exception($"Error sending email with OAuth authorization: {errorMessage}");
 				}
+			}
+			catch(GoogleApiException) {
+				//Rethrown unchanged: EmailMessages reads the HTTP status and Google's reason (google.md 3.5) and refreshes the token after a 401.
+				throw;
+			}
+			catch(Exception ex) {
+				//This will bubble up to the UI level and be caught in a copypaste box.
+				throw new Exception($"Error sending email with OAuth authorization: {ex.Message}");
+			}
+		}
+
+		///<summary>Throws exceptions. Runs one Microsoft Graph send. A Microsoft365Exception is rethrown as it is; any other error becomes an Exception
+		///with its message (or its inner exception's).</summary>
+		private static void SendMicrosoft(Action actionSend) {
+			try {
+				actionSend();
+			}
+			catch(Microsoft365Exception) {
+				//Rethrown unchanged: EmailMessages refreshes the token after a 401 and maps the kind to a neutral message (microsoft-365.md 3.5).
+				throw;
+			}
+			catch(Exception ex) {
+				//This will bubble up to the UI level and be caught in a copypaste box.
+				string errorMessage=ex.Message;
+				if(ex.InnerException!=null) {
+					errorMessage=ex.InnerException.Message;
+				}
+				throw new Exception($"Error sending email with OAuth authorization: {errorMessage}");
 			}
 		}
 
@@ -342,10 +392,11 @@ namespace OpenPmsDentalBusiness.Email {
 			return emailMessage.ListAttachments.Any(x => string.Equals(MimeTypes.GetMimeType(x.FullPath),"message/rfc822",StringComparison.OrdinalIgnoreCase));
 		}
 
-		///<summary>Throws ODException when a signed message, or one with an attached e-mail, is too large for Microsoft 365's one-request MIME send
-		///(/me/sendMail). A larger message is rebuilt as a draft with attachments, which would drop the signature, and the draft path
-		///(Microsoft365GraphClient.GetAttachmentParts) uploads MimePart attachments only, which would drop an attached e-mail without a word.</summary>
-		private static void ThrowIfTooLargeForMicrosoft(MimeMessage mimeMessage,bool isSigned) {
+		///<summary>Throws ODException when a signed message, an encrypted (Direct) one, or one with an attached e-mail, is too large for Microsoft
+		///365's one-request MIME send (/me/sendMail). A larger message is rebuilt as a draft with attachments, which would drop the signature or the
+		///encryption, and the draft path (Microsoft365GraphClient.GetAttachmentParts) uploads MimePart attachments only, which would drop an attached
+		///e-mail without a word.</summary>
+		private static void ThrowIfTooLargeForMicrosoft(MimeMessage mimeMessage,bool isSigned,bool isEncrypted=false) {
 			long length;
 			using(MemoryStream memoryStream=new MemoryStream()) {
 				mimeMessage.WriteTo(memoryStream);
@@ -356,6 +407,10 @@ namespace OpenPmsDentalBusiness.Email {
 				return;
 			}
 			string megabytes=" "+(lengthMax/1000000.0).ToString("0.#")+" MB ";
+			if(isEncrypted) {
+				throw new ODException(Lans.g("EmailMessages","An encrypted (Direct) message can be at most")+megabytes
+					+Lans.g("EmailMessages","with Microsoft 365, which rebuilds larger messages without their encryption. Send it with smaller attachments."));
+			}
 			if(isSigned) {
 				throw new ODException(Lans.g("EmailMessages","A digitally signed message can be at most")+megabytes
 					+Lans.g("EmailMessages","with Microsoft 365, which rebuilds larger messages without their signature. Send it unsigned or with smaller attachments."));

@@ -111,7 +111,7 @@ namespace OpenPmsDentalBusiness{
 		}
 
 		///<summary>Returns a list of toolbutitems for the specified toolbar. Used when laying out toolbars. Only includes buttons for enabled program links,
-		///and never those of a discontinued or removed program link (ProgramLinksDiscontinued), even when its row is still enabled.</summary>
+		///and never those of a discontinued program link (ProgramLinksDiscontinued), even when its row is still enabled.</summary>
 		public static List<ToolButItem> GetForToolBar(EnumToolBar toolBarsAvail) {
 			Meth.NoCheckMiddleTierRole();
 			return GetWhere(x => x.ToolBar==toolBarsAvail && Programs.IsEnabled(x.ProgramNum)

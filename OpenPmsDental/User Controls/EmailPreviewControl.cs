@@ -616,7 +616,10 @@ namespace OpenPmsDental {
 
 		private void butSig_Click(object sender,EventArgs e) {
 			using FormEmailDigitalSignature form=new FormEmailDigitalSignature(_certSig);
-			form.ShowDialog();
+			if(form.ShowDialog()==DialogResult.OK) {
+				//If the user just added trust, then refresh to pull the newly added certificate into the memory cache.
+				EmailMessages.RefreshCertStoreExternal(EmailAddressPreview);
+			}
 		}
 
 		private void SetSig(X509Certificate2 certSig) {

@@ -52,9 +52,7 @@ namespace OpenPmsDental{
 				}
 				GridCell cell=new GridCell(_listPrograms[i].Enabled ? "X" : "");
 				row.Cells.Add(cell);
-				row.Cells.Add(ProgramLinksDiscontinued.IsDiscontinued(_listPrograms[i])
-					? ProgramLinksDiscontinued.GetLabeledDesc(_listPrograms[i].ProgDesc,ProgramLinksDiscontinued.GetLabel(_listPrograms[i]))
-					: _listPrograms[i].ProgDesc);//25.2; removed links (2026-11-07) say "(removed)"
+				row.Cells.Add(ProgramLinksDiscontinued.IsDiscontinued(_listPrograms[i]) ? ProgramLinksDiscontinued.GetLabeledDesc(_listPrograms[i].ProgDesc) : _listPrograms[i].ProgDesc);//25.2
 				gridProgram.ListGridRows.Add(row);
 			}
 			gridProgram.EndUpdate();

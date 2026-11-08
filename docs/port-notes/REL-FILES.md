@@ -155,7 +155,8 @@ assembly version and Update only the release version.
 
 1. fo-dicom (`Dicom.Core.dll`, `Dicom.Native.dll`) is MS-PL, which is not compatible with the GNU GPL. Keep it, replace it, or drop DICOM?
 2. NDde (`NDde.dll`) uses its own Shared Source License in the style of MS-PL. Is it acceptable next to the GPL? **Answered on 2026-11-07:
-   no; NDde is removed, with the three program links that used it** (see "NDde removed" below).
+   no; NDde is removed, with the three program links that used it** (see "NDde removed" below). **Revisited on 2026-11-08: the links are
+   kept, on an in-house DDE client; NDde stays out** (see "The three links restored" below).
 3. The Google APIs client libraries are Apache 2.0, compatible with GPL v3 but not v2. The program is "v2 or later", so it can be distributed
    under v3; is that the intended reading, or should Gmail go?
 4. `AssemblyCompany`: "Open PMS - Dental contributors" (INFERRED), or the practice's name?
@@ -216,3 +217,14 @@ Bridges.dll removal, DXC Patient Credit Score in B-SHELL):
   `AttributionTests` (NDde is neither a shipped component nor in the license list), `ReleaseFlowTests` (the deny list; the notices check now
   uses SSH.NET as its example; `ProgramNamesTests` no longer checks the deleted Dexis Integrator file), `BSHELLTests` (the Program Links label
   call), and `tools/Test-NoOldNames.ps1` (the Vipersoft exception is gone with its file).
+
+## The three links restored (owner decision of 2026-11-08, S0-R)
+
+The owner, 2026-11-08: "Don't make the assumption that if the office doesn't use, we'd cut it. ... DentX, Dexis Integrator and Vipersoft
+links, and NDde.dll we should keep if we can." Package S0-R of the .NET 10 move restored the three links. NDde's licence was read again (its
+text is in this repository's history, `OpenPmsDental/Resources/NDde.txt` before 0d2ab2722): clauses 2 (source only under its own licence),
+5 (a patent termination) and 7 (export rules) are restrictions GPL v2 section 6 and GPL v3 sections 7 and 10 do not allow, so `NDde.dll` still
+does not ship. The links send their commands through `CodeBase/Utilities/ODDdeClient.cs`, a small client on Windows' DDEML that sends what
+NDde sent. The release still denies `NDde.dll`, `ForkReleases.ListRetiredFiles` and setup's `[InstallDelete]` still retire it, and
+`THIRD-PARTY-NOTICES.txt` and the license list still do not name it. The "(removed)" handling of `ProgramLinksDiscontinued` is gone again.
+Details: `docs/port-notes/S0-R.md`.
