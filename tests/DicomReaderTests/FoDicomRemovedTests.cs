@@ -31,7 +31,7 @@ namespace DicomReaderTests {
 		private static IEnumerable<string> GetFiles(string root,params string[] arrayExtensions) {
 			return Directory.EnumerateFiles(root,"*",SearchOption.AllDirectories)
 				.Where(x => arrayExtensions.Any(y => x.EndsWith(y,StringComparison.OrdinalIgnoreCase)))
-				.Where(x => !Regex.IsMatch(x,@"\\(bin|obj|packages|\.git|\.vs)\\",RegexOptions.IgnoreCase));
+				.Where(x => !Regex.IsMatch(x,@"\\(bin|obj|packages|\.git|\.vs|\.claude)\\",RegexOptions.IgnoreCase));//.claude holds other worktrees
 		}
 
 		[TestMethod]
