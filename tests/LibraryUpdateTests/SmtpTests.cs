@@ -254,6 +254,8 @@ namespace LibraryUpdateTests {
 			WriteForwardedEml(pathEml);
 			BasicEmailMessage basicEmailMessage=MakeMessage(pathAttachment);
 			basicEmailMessage.ListAttachments.Insert(0,new BasicEmailAttachment(pathEml,"Lab results.eml"));
+			Assert.IsTrue(SendEmail.HasAttachedMessage(basicEmailMessage));
+			Assert.IsFalse(SendEmail.HasAttachedMessage(MakeMessage(pathAttachment)),"A pdf is a MimePart.");
 			SendEmail.SmtpCertificateValidationForTests=TestCertificates.IsTestCertificate;
 			try {
 				using(FakeSmtpServer fakeSmtpServer=new FakeSmtpServer(USER,PASSWORD,isStartTlsOffered:false,isImplicitTls:true)) {

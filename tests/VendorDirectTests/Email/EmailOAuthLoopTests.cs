@@ -499,6 +499,72 @@ namespace VendorDirectTests.Email {
 			CollectionAssert.Contains(listDelays,TimeSpan.FromSeconds(2));
 			CollectionAssert.AreEqual(new List<bool> { false },_listTokenRequests,"Throttling doesn't refresh the token.");
 		}
+
+		///<summary>A saved e-mail to attach, synthetic: MimeKit attaches a message/rfc822 file (.eml) as the message it holds, a MessagePart.</summary>
+		private static string WriteForwardedEml(string folder) {
+			string path=Path.Combine(folder,"forward.eml");
+			File.WriteAllText(path,"From: Lab Desk <lab@example.test>\r\nTo: "+MAILBOX+"\r\nSubject: Lab results\r\nMessage-ID: <lab-results-2@example.test>\r\n"
+				+"MIME-Version: 1.0\r\nContent-Type: text/plain; charset=us-ascii\r\n\r\nThe crown is ready.\r\n",Encoding.ASCII);
+			return path;
+		}
+
+		private static BasicEmailMessage MakeMessageWithEml(string folder,string bodyText="Your appointment is on Tuesday at 9:00.") {
+			BasicEmailMessage basicEmailMessage=MakeMessage(bodyText);
+			basicEmailMessage.ListAttachments=new List<BasicEmailAttachment> { new BasicEmailAttachment(WriteForwardedEml(folder),"Lab results.eml") };
+			return basicEmailMessage;
+		}
+
+		///<summary>S0-3: an attached e-mail (.eml) no longer stops the MIME builder (it cast every attachment to MimePart); Microsoft 365 gets it
+		///in the one-request MIME send, as the message it holds, with its displayed name.</summary>
+		[TestMethod]
+		public void Microsoft_Send_AttachedEmlGoesToSendMailAsTheMessage() {
+			string folder=Path.Combine(Path.GetTempPath(),"vendordirecttests_eml_"+Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(folder);
+			try {
+				UseMicrosoftFakeGraph();
+				_handler.Enqueue(HttpStatusCode.Accepted,"");
+				EmailAddress emailAddress=MakeAddress(OAuthType.Microsoft);
+				EmailMessages.SendEmailMicrosoft(emailAddress,EmailMessages.ODEmailAddressToBasic(emailAddress),MakeMessageWithEml(folder));
+				RecordedRequest recordedRequest=GetSendMailRequests().Single();
+				StringAssert.StartsWith(recordedRequest.ContentType,"text/plain","MIME, base64, as Graph takes it.");
+				MimeMessage mimeMessage;
+				using(MemoryStream memoryStream=new MemoryStream(Convert.FromBase64String(recordedRequest.Body))) {
+					mimeMessage=MimeMessage.Load(memoryStream);
+				}
+				MessagePart messagePart=mimeMessage.Attachments.OfType<MessagePart>().Single();
+				Assert.AreEqual("Lab results.eml",messagePart.ContentDisposition.FileName);
+				Assert.AreEqual("Lab results.eml",messagePart.ContentType.Name);
+				Assert.AreEqual("Lab results",messagePart.Message.Subject);
+				Assert.AreEqual("Appointment reminder",mimeMessage.Subject);
+			}
+			finally {
+				Directory.Delete(folder,true);
+			}
+		}
+
+		///<summary>Over the one-request limit Graph's draft path would upload the MimePart attachments only (Microsoft365GraphClient.GetAttachmentParts)
+		///and drop the attached e-mail without a word: refused with a clear message before any call.</summary>
+		[TestMethod]
+		public void Microsoft_Send_AttachedEmlTooLargeForOneRequestIsRefusedBeforeAnyCall() {
+			string folder=Path.Combine(Path.GetTempPath(),"vendordirecttests_eml_"+Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(folder);
+			try {
+				UseMicrosoftFakeGraph();
+				StringBuilder stringBuilder=new StringBuilder();
+				string line=new string('x',70)+"\r\n";
+				while(stringBuilder.Length<=3000000) {
+					stringBuilder.Append(line);
+				}
+				EmailAddress emailAddress=MakeAddress(OAuthType.Microsoft);
+				Exception ex=AssertEx.Throws<Exception>(() => EmailMessages.SendEmailMicrosoft(emailAddress,EmailMessages.ODEmailAddressToBasic(emailAddress),
+					MakeMessageWithEml(folder,stringBuilder.ToString())));
+				StringAssert.Contains(ex.ToString(),"attached e-mail","The draft path would drop the attached e-mail.");
+				Assert.AreEqual(0,_handler.Requests.Count);
+			}
+			finally {
+				Directory.Delete(folder,true);
+			}
+		}
 		#endregion Microsoft 365 send
 
 		#region Signed send
