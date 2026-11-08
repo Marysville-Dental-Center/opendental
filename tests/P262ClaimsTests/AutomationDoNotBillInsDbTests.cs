@@ -121,9 +121,9 @@ namespace P262ClaimsTests {
 			Automation automationAge=AddAutomation("Age popup",EnumAutomationTrigger.ClaimCreate,new List<AutomationCondition>() {
 				new AutomationCondition() { CompareField=AutoCondField.Age,Comparison=AutoCondComparison.GreaterThan,CompareString=POut.Long(carrierA.CarrierNum) }
 			});
-			Carriers.Combine(new List<long>() { carrierA.CarrierNum,carrierB.CarrierNum },carrierB.CarrierNum);
-			Carriers.RefreshCache();
-			Assert.IsNull(Carriers.GetCarrierDB(carrierA.CarrierNum),"Carrier A was combined into B and deleted.");
+			OpenPmsDentalBusiness.Carriers.Combine(new List<long>() { carrierA.CarrierNum,carrierB.CarrierNum },carrierB.CarrierNum);
+			OpenPmsDentalBusiness.Carriers.RefreshCache();
+			Assert.IsNull(OpenPmsDentalBusiness.Carriers.GetCarrierDB(carrierA.CarrierNum),"Carrier A was combined into B and deleted.");
 			List<AutomationCondition> listConditionsA=AutomationConditions.GetListByAutomationNum(automationA.AutomationNum);
 			Assert.AreEqual(1,listConditionsA.Count);
 			Assert.AreEqual(POut.Long(carrierB.CarrierNum),listConditionsA[0].CompareString,"The condition now holds the kept carrier.");
