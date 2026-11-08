@@ -1,9 +1,9 @@
-// The two tests of the legacy XmlConverterTests (UnitTests/UnitTests/XmlConverterTests.cs), copied here by package S0-T2 of the .NET 10 plan;
+﻿// The two tests of the legacy XmlConverterTests (UnitTests/UnitTests/XmlConverterTests.cs), copied here by package S0-T2 of the .NET 10 plan;
 // the originals stay in UnitTests. XmlConverter.XmlEscapeRecursion runs on every Middle Tier DTO (Remoting/DataTransferObject.cs): an object
 // inside another (a Patient in Family.ListPats) is escaped once only, and line breaks in string fields get the wire spelling that survives
 // XmlSerializer. The round trips of MiddleTierRoundTripTests.cs check the same escaping end to end; these pin the escaped form itself. Both
 // tests are pure (no database), so they run when ScratchDb skips. Each keeps its name and its arrange, act and assert; the expected string
-// spells the section sign as § so that this file stays ASCII.
+// holds the section sign (U+00A7) as the legacy file does, so this file is UTF-8 with a byte order mark.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
