@@ -352,5 +352,42 @@ namespace LibraryUpdateTests {
 			}
 			Assert.AreEqual(0,listProblems.Count,"Differences from the recording (all results are in "+pathActual+"):\r\n"+string.Join("\r\n",listProblems));
 		}
+
+		///<summary>Not part of the recording (the Direct-based parser can't run any more): the attachments of a received message whose names carry
+		///paths are saved and shown with the name alone, so opening one (FileAtoZ.OpenFile, which copies it to the temp folder under its displayed
+		///name) can't write outside that folder, and the preview still finds an inline image's saved attachment by its name.</summary>
+		[TestMethod]
+		public void AttachmentNamesWithPaths_AreSavedAndShownWithoutThem() {
+			EmailAddress emailAddressInbox=new EmailAddress() { EmailUsername=ReceivedMailCorpus.INBOX };
+			EmailMessage emailMessage=EmailMessages.ProcessRawEmailMessageIn(ReceivedMailMimeKitTests.RAW_PATH_NAMES,0,emailAddressInbox,false);
+			Assert.AreEqual("Attachments whose names carry paths.\r\n",emailMessage.BodyText);
+			CollectionAssert.AreEqual(ReceivedMailMimeKitTests.ArrayPathNamesCleaned,emailMessage.Attachments.Select(x => x.DisplayedFileName).ToArray());
+			string folderAttach=Path.GetFullPath(EmailAttaches.GetAttachPath());
+			//A folder like the one FileAtoZ.OpenFile copies an attachment to before it opens it. Nothing is written there.
+			string folderOpen=Path.GetFullPath(Path.Combine(Path.GetTempPath(),"s03_open"));
+			for(int i=0;i<emailMessage.Attachments.Count;i++) {
+				EmailAttach emailAttach=emailMessage.Attachments[i];
+				Assert.IsFalse(ReceivedMailMimeKitTests.HasPath(emailAttach.DisplayedFileName),emailAttach.DisplayedFileName);
+				string pathOpen=Path.GetFullPath(ODFileUtils.CombinePaths(folderOpen,emailAttach.DisplayedFileName));
+				Assert.AreEqual(folderOpen,Path.GetDirectoryName(pathOpen),"Opening "+emailAttach.DisplayedFileName+" stays in the temp folder.");
+				string pathSaved=Path.GetFullPath(Path.Combine(folderAttach,emailAttach.ActualFileName));
+				Assert.AreEqual(Path.Combine(folderAttach,"In"),Path.GetDirectoryName(pathSaved),"Saved in the In folder: "+emailAttach.ActualFileName);
+				Assert.IsTrue(File.Exists(pathSaved),pathSaved);
+			}
+			//The image of the preview (EmailPreviewControl.ParseAttachedImages): its name finds its saved attachment the way the preview looks for it,
+			//and its bytes come from that file, because the stored raw message no longer holds them.
+			Assert.AreNotEqual(ReceivedMailMimeKitTests.RAW_PATH_NAMES,emailMessage.RawEmailIn,"The attachments' content was cleared from the raw message.");
+			EmailMimePart emailMimePartImage=EmailMessages.GetMimePartsForMimeTypes(emailMessage.RawEmailIn,emailAddressInbox,"image/")[0].Single();
+			string fileName=EmailMessages.GetMimeImageFileName(emailMimePartImage);
+			Assert.AreEqual("logo.png",fileName);
+			EmailAttach emailAttachImage=emailMessage.Attachments.FirstOrDefault(
+				x => EmailMessages.CleanReceivedFileName(x.DisplayedFileName)?.ToLower().Trim()==fileName.ToLower().Trim());
+			Assert.IsNotNull(emailAttachImage,"The preview finds the image's saved attachment.");
+			Assert.IsNotNull(EmailMessages.GetMimeImageBytes(emailMimePartImage,emailAttachImage.ActualFileName),"Read from the saved attachment.");
+			Assert.IsNull(EmailMessages.GetMimeImageBytes(emailMimePartImage,null),"The part itself is empty now.");
+			//An email received before names were cleaned: its stored name with a path still finds the image, and is opened under the name alone.
+			EmailAttach emailAttachOld=new EmailAttach() { DisplayedFileName="../../img/logo.png",ActualFileName=emailAttachImage.ActualFileName };
+			Assert.AreEqual(fileName,EmailMessages.CleanReceivedFileName(emailAttachOld.DisplayedFileName));
+		}
 	}
 }
