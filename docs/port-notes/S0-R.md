@@ -47,8 +47,11 @@ Written from the Win32 documentation of the DDE Management Library (DDEML), thro
 It sends what NDde 1.03 sent (its metadata and IL were read, nothing of it was copied): an ANSI DDEML instance, service and topic names in
 the ANSI code page, the command as ASCII text (other characters become `?`) with its terminating null in `CF_TEXT`, and it refuses a
 command, service or topic over 255 characters and a timeout that is not positive (NDde threw `ArgumentException`; the bridges caught it as
-before). A server that ends the conversation is seen through the `XTYP_DISCONNECT` callback, so `IsConnected` turns false as NDde's did,
-and the Dexis Integrator link reconnects on its next patient.
+before). A server that ends the conversation (closed, restarted or crashed) is seen through the `XTYP_DISCONNECT` callback, so
+`IsConnected` turns false as NDde's did. `XTYP_DISCONNECT` is a notification, `(0x00C0 | XCLASS_NOTIFICATION | XTYPF_NOBLOCK)` = 0x80C2 in
+`ddeml.h`, the value NDde used too; the first version of the client left out `XCLASS_NOTIFICATION` (0x00C2), so the callback never matched
+and a conversation the Dexis Integrator ended looked open until the user logged off (fixed in `net10/s0r-2`). With `IsConnected` false the
+Dexis Integrator link behaves as before: the next patient change closes the conversation, and the next button press connects again.
 
 **Threads.** A DDEML instance belongs to the thread that opened it. NDde ran DentX's and Vipersoft's conversations on a thread of its own
 (`new DdeContext()`) and the Dexis Integrator's on the main window's thread (`new DdeContext(form)`). The client runs on the calling thread,
@@ -58,7 +61,8 @@ call on another thread without one throws `InvalidOperationException`. Synchrono
 window stays painted while a command waits (DentX and Vipersoft wait at most 2 seconds, the Dexis Integrator 30).
 
 **Tests replace the sender.** `ODDdeClient.FuncCreate` makes every conversation (`ODDdeClient.Create(service,topic,synchronizingObject)`).
-Tests set a fake that records the calls and set the default back.
+Tests set a fake that records the calls and set the default back. The real client is tested against Windows' DDEML through a DDE server
+inside the test process (`tests/VendorDirectTests/DdeBridges/DdeLoopbackServer.cs`), under a service name no program uses.
 
 ## The three links
 
@@ -110,6 +114,12 @@ files folder path") and toolbar rows, all as Open Dental's conversions made them
   reconnect and single retry; the client's own rules (ASCII bytes with the null, the length and timeout checks, use before `Connect`, after
   `Dispose`, marshalling to a synchronizing object), that each DDEML function it declares exists in `user32.dll` and that the declarations
   fit x64. VendorDirectTests now references WpfControlsOD.
+- The same file, after review: every private DDEML constant of the client against `ddeml.h` (`XTYP_EXECUTE` 0x4050, `XTYP_DISCONNECT`
+  0x80C2, `APPCMD_CLIENTONLY`, the two `CBF_SKIP_` flags, `CP_WINANSI`, `CF_TEXT`); `XTYP_DISCONNECT` for its own conversation, and nothing
+  else, turns `IsConnected` false; and, on Windows' DDEML with `DdeLoopbackServer`: an ANSI server gets the command as ASCII with its null,
+  a Unicode server gets the same text (Windows translates it), the server ending the conversation turns `IsConnected` false and the same
+  client connects again, `Disconnect` and `Dispose` end it for the server, and the Dexis Integrator link on the real client connects again
+  after the Integrator ended the conversation. With the old value 0x00C2 the constant, callback and both server-ended tests fail.
 - `tools/Test-NoOldNames.ps1` allows Vipersoft's "OpenDental|" in the bridge and in the two test files that check it.
 - `BSHELLTests` (Program Links labels discontinued links again with the one-argument call), `ReleaseFlowTests` (`ProgramNamesTests`
   checks the Dexis Integrator's main-window lookup again), `AttributionTests` (the comment on NDde).
