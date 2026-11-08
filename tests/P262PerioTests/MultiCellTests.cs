@@ -174,8 +174,10 @@ namespace P262PerioTests {
 			AssertSelected(contrPerio,new[] { new ColRow(7,rowGingMargLingual) },"One cell");
 			Assert.AreEqual(1,countRight,"A click on a lingual cell sets the direction, also when the mouse moved a little.");
 			int rowMobility=Chart.Row(contrPerio,0,PerioSequenceType.Mobility);
-			contrPerio.Drag(new ColRow(10,rowMobility));//the left cell of tooth 4
+			contrPerio.Drag(new ColRow(11,rowMobility));//the middle cell of tooth 4
 			AssertSelected(contrPerio,new[] { new ColRow(11,rowMobility) },"Mobility: the middle cell of the tooth");
+			contrPerio.Drag(new ColRow(10,rowMobility));//the left cell of tooth 4, which never takes data
+			Assert.AreEqual(0,contrPerio.ListColRowsSelected.Count,"Mobility: a click on a side cell selects nothing, as before.");
 		}
 
 		[TestMethod]

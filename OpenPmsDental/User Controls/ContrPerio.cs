@@ -1972,12 +1972,10 @@ namespace OpenPmsDental
 				//User clicked on a tooth row, not a section row.
 				return;
 			}
-			if(_perioSequenceTypeArray[section][sectRowIdx]==PerioSequenceType.Mobility) {
-				//Mobility has one cell per tooth, the middle one: dragging over any part of the tooth selects it.
-				colRowCellMovedOver=new ColRow((colRowCellMovedOver.Col+2)/3*3-1,colRowCellMovedOver.Row);
-			}
 			if(!IsEditableCell(colRowCellMovedOver)) {
-				return;//auto CAL, auto Att Ging and the probing rows of earlier exams take no data
+				//auto CAL, auto Att Ging and the probing rows of earlier exams take no data. Mobility has one cell per tooth, the middle one, which a
+				//drag along the row passes over; the other two are skipped, as a click on them has always been.
+				return;
 			}
 			if(ListColRowsSelected.Count>0 && GetSequenceForColRow(ListColRowsSelected[0])!=GetSequenceForColRow(colRowCellMovedOver)) {
 				return;//another kind of row than where the drag started
