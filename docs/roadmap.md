@@ -6,8 +6,10 @@ Planned work after v0.0, as agreed with the owner. Each item is discussed and sc
 
 Scheduled with the owner on 2026-11-07, in this order (the Open Dental 26.2 features, first on that list, are done; see below):
 
-1. **.NET 10** for everything, the Middle Tier included, now that the 26.2 work has landed, because the move changes every project file. Its
-   last stage is the switch to 64-bit, once the TWAIN driver project's 64-bit data sources are ready. See below.
+1. **.NET 10** for everything, the Middle Tier included, now that the 26.2 work has landed, because the move changes every project file. It
+   goes straight to 64-bit (owner, 2026-11-08: "no go directly to 64."): the office installs the last .NET Framework release, then the
+   64-bit .NET 10 setup once on every workstation, after the TWAIN driver project's 64-bit data sources are tested on the clinic's
+   sensor. See below.
 2. **The tooth chart's 3D drawing** on WPF 3D with Helix Toolkit 3.x, after .NET 10, with Open Dental 26.2's extraction graphic and its
    "text below the chart" paint type. See below.
 3. **Compressed DICOM decoders**, parked until such files turn up. See below.
@@ -61,18 +63,20 @@ Decided with the owner on 2026-11-07:
 - **Libraries**: NuGet packages replace the DLL files in `Required dlls`, from a local package folder the build lane restores from offline,
   with lock files; each batch of downloads is approved by the owner. The generated SOAP clients of services the fork removed are deleted and
   the rest regenerated or replaced; any BinaryFormatter use is replaced; tests built on AppDomains are rewritten; COM interop stays.
-- **Stages**, in this order (owner, 2026-11-08), each ending with a full test run: a clean-up of dead code and of the integrations that
-  are cut; SDK-style project files, still on .NET Framework 4.8; NuGet packages; MSTest v1 to MSTest 4; the code changes that also work on
-  .NET Framework, ending with the last .NET Framework release (the "bridge release"); the program, the business library, the tests and the
-  Middle Tier on .NET 10, still 32-bit; then 64-bit, once the TWAIN driver project's 64-bit data sources are ready (see "32-bit to
-  64-bit").
-- **Switching the office**: the bridge release first, then the new setup once on every workstation; the setup downloads the .NET 10
-  runtime, as it does for the Visual C++ runtime, and drops its "install for me only" mode. Windows 11 is the baseline.
+- **Stages**, in this order (owner, 2026-11-08), each ending with a full test run: a clean-up of dead code and unused references; SDK-style
+  project files, still on .NET Framework 4.8; NuGet packages; MSTest v1 to MSTest 4; the code changes that also work on
+  .NET Framework, the 64-bit preparation among them, ending with the last .NET Framework release (the "bridge release"); then the
+  program, the business library, the tests and the Middle Tier on .NET 10 and 64-bit in one step (owner, 2026-11-08: "no go directly to
+  64."), with no 32-bit .NET 10 version (see "32-bit to 64-bit").
+- **Switching the office**: the bridge release first, then the new 64-bit setup once on every workstation; it moves the program from
+  `Program Files (x86)` to `Program Files`, downloads the 64-bit .NET 10 runtime, as it does for the Visual C++ runtime, and drops its
+  "install for me only" mode. Windows 11 is the baseline.
 
 The stage plan, made from a read-only survey of every project, library, API and tool the move touches and an independent critique, is
-`docs/specs/net10-plan.md`. Its owner questions were answered on 2026-11-08 (`docs/owner-questions.md`, "The move to .NET 10"): among them
-the CallFire, Divvy and BCBS Georgia dial-up links, the report engine's SQL Server, ODBC and OLE DB data sources, and Direct secure
-messaging are removed; Change Healthcare (Emdeon) medical claims, voice perio charting and the plugin loader are kept.
+`docs/specs/net10-plan.md`. Its owner questions were answered on 2026-11-08 (`docs/owner-questions.md`, "The move to .NET 10"). The
+owner's standing rule: nothing is cut, tests included, except what the owner deliberately deleted. So every integration moves to .NET 10,
+QuickBooks Desktop, Schick, Topaz, the CallFire, Divvy and BCBS Georgia dial-up links, the report engine's SQL Server, ODBC and OLE DB
+data sources, Direct secure messaging, Change Healthcare (Emdeon) medical claims, voice perio charting and the plugin loader among them.
 
 ### The tooth chart's 3D drawing
 
@@ -91,29 +95,38 @@ reaches main.
 
 ### 32-bit to 64-bit
 
-The program is built as 32-bit today. Decided: go to full 64-bit (no interim large-address-aware flag), as the last stage of the .NET 10
-move (owner, 2026-11-07), once the TWAIN driver project's 64-bit data sources are ready.
+The program is built as 32-bit today. Decided: go to full 64-bit, with no interim large-address-aware flag (owner, 2026-11-07), and
+directly, as part of the switch to .NET 10 (owner, 2026-11-08: "no go directly to 64."). 64-bit is no longer a later stage: there is no
+32-bit .NET 10 version. The office installs the last .NET Framework release, then the 64-bit .NET 10 setup once on every workstation.
+The 64-bit preparation that also works on .NET Framework is done before the switch, while the program is still 32-bit.
 
 - **TWAIN**: a 64-bit program uses the 64-bit TWAIN data source manager (TWAINDSM 64-bit, free) and needs 64-bit TWAIN data sources. The
   clinic's sensor and camera drivers are a thin 32-bit data source (`.ds`) that starts a separate 32-bit helper program for the device work,
   which uses the sensor vendor's 32-bit libraries. The TWAIN driver project builds 64-bit `.ds` files that start the same 32-bit helpers;
   the helpers and the vendor libraries stay 32-bit, because processes of different bitness can talk to each other (the driver project
   confirmed on 2026-11-07 that nothing in its design stops this). Installed side by side with the 32-bit ones. Decided (owner,
-  2026-11-07): this program's installer installs the 64-bit TWAINDSM; the driver package only checks that it is there.
-- **Other 32-bit-only components** (QuickBooks Desktop's SDK, the Schick CDR interface, Topaz): the office uses none of them (owner,
-  2026-11-07), so they are switched off in the 64-bit build. If an office needs one later, it gets the same pattern: a small 32-bit helper
-  program that the 64-bit program talks to.
+  2026-11-07): this program's installer installs the 64-bit TWAINDSM; the driver package only checks that it is there. The 64-bit data
+  sources (version 1.2) are built; they are packaged and tested on the clinic's sensor before the office gets the 64-bit release.
+- **Other 32-bit-only components** (QuickBooks Desktop's SDK, the Schick CDR interface, Topaz, and Guru's interface DLL): kept (owner
+  correction, 2026-11-08), although the office uses none of them. Each gets a small 32-bit helper program that the 64-bit program talks
+  to, or a 64-bit replacement where the vendor has one (checked per vendor). The helper is built and tested before the switch, while the
+  program is still 32-bit.
 - **Other TWAIN devices** (document scanners, a second sensor) need 64-bit drivers; most current devices ship both. For a device with only a
   32-bit driver, an optional 32-bit TWAIN bridge helper loads that driver and passes the images on.
 - **Native DLLs**: the library updates removed most of them (the spell checker is managed); `Direct2dWrapper` is built 64-bit from our
   source; WebView2 has 64-bit versions. fo-dicom and its native codecs are gone: the DICOM reader is managed code of our own.
 - **Code**: P/Invoke signatures and structures (the TWAIN structures above all) are made pointer-size-safe, with tests that run in both
-  bitnesses.
+  bitnesses, before the switch and still on .NET Framework; registry reads of 32-bit vendor keys name the 32-bit view instead of relying
+  on `WOW6432Node` redirection.
 - **Installer and updates**: 64-bit install folder and prerequisites, and a defined way for an office to move from a 32-bit install to a
-  64-bit one, including a mixed set of workstations during the switch.
+  64-bit one, including a mixed set of workstations during the switch: the new setup carries the settings file over and removes the old
+  32-bit install, and a workstation not switched yet stays on the last .NET Framework release, which refuses the 64-bit release and says
+  to run the new setup.
 
-Prerequisites: the .NET 10 stages before this one and the 64-bit `.ds` files from the TWAIN driver project. Until the WPF tooth chart
-replaces them, the old DirectX and OpenGL chart engines must work in 64-bit, or the chart falls back to its 2D drawing.
+Prerequisites of the switch: the 64-bit preparation before it; the 64-bit `.ds` files from the TWAIN driver project, tested on the
+clinic's sensor; and the owner's approval of the TWAINDSM download, asked when the switch starts. The old DirectX and OpenGL chart engines
+are managed code for any processor and stay in 64-bit until the WPF tooth chart replaces them; a mode that cannot start falls back, down
+to the 2D drawing, as today.
 
 ### Compressed DICOM decoders
 

@@ -619,7 +619,7 @@ The questions of the .NET 10 stage plan, [specs/net10-plan.md](specs/net10-plan.
 independent critique. You answered on 2026-11-08 in several messages: "As recommended"; then the facts (the office runs Windows 11, uses
 no plugins and does not use Direct secure messaging) and one change (Change Healthcare (Emdeon) medical claims are kept and made to work:
 "no, but make it work"); "Keep signed email"; "Have them rebuilt"; "don't cut" (the DentalXChange eligibility path); the Middle Tier
-answer; the standing rule below, with its correction; and "Don't need 'Install for me only'".
+answer; the standing rule below, with its correction; "Don't need 'Install for me only'"; and "no go directly to 64.".
 
 - **Standing rule (2026-11-08).** "Overall decisions wrt .net 10: don't cut anything including test. Cut test only if it's testing
   something that we deliberately deleted." You confirmed the reading ("Yes"): what you deliberately removed stays removed, and everything
@@ -636,7 +636,8 @@ answer; the standing rule below, with its correction; and "Don't need 'Install f
   because the SDK 9.0.3xx line leaves support on 2026-11-10.
 - **Downloads.** Approved for every download batch of the plan (section 5: A, B, C and D, with the packages the standing rule adds)
   ("You get approval for download for all batches", 2026-11-08). Each package comes from nuget.org by its exact id, into the local
-  package folder, at the stage that needs it. The TWAIN data source manager for the 64-bit stage is not a plan batch and is asked then.
+  package folder, at the stage that needs it. The 64-bit TWAIN data source manager is not a plan batch; it is asked when the switch
+  to .NET 10 starts.
 - **Testing database encryption.** Locally, with encryption ("database encryption: do local testing with encryption", then "A"): the
   test starts a temporary second MariaDB server on `127.0.0.1:3307` with test certificates it makes itself, and removes it afterwards.
   Your database server on port 3306 is not touched, and no administrator rights are needed.
@@ -655,7 +656,9 @@ answer; the standing rule below, with its correction; and "Don't need 'Install f
   (owner, 2026-11-07); now kept and ported (owner correction, 2026-11-08).
 - **Order of the stages.** A clean-up stage first; then SDK-style project files, NuGet packages and the test framework, all still on .NET
   Framework 4.8; then the code changes that also work on .NET Framework, ending with a last .NET Framework release (the "bridge release");
-  then the switch to .NET 10; 64-bit last.
+  then the switch to .NET 10, straight to 64-bit.
+- **64-bit.** The move goes straight to 64-bit ("no go directly to 64."): no 32-bit .NET 10 version; the office installs the .NET
+  Framework bridge release, then the 64-bit .NET 10 setup once on every workstation.
 - **Test framework.** MSTest 4 instead of MSTest 3, because every MSTest 3 version is marked deprecated; MSTest 4 still runs on .NET
   Framework.
 - **Text sorting and search.** The first .NET 10 release keeps Windows' own rules (NLS), as today. The move to .NET's default (ICU) comes
