@@ -34,6 +34,7 @@ namespace OpenPmsDental {
 			checkDomainLoginEnabled.Checked=PrefC.GetBool(PrefName.DomainLoginEnabled);
 			textDomainLoginPath.ReadOnly=!checkDomainLoginEnabled.Checked;
 			textDomainLoginPath.Text=PrefC.GetString(PrefName.DomainLoginPath);
+			checkDomainLoginForSigBoxes.Checked=DomainLogin.IsForSigBoxesSettingOn();//ODOPTS: Open Dental's DomainLoginForSigBoxes, on when missing
 			checkLogOffWindows.Checked=PrefC.GetBool(PrefName.SecurityLogOffWithWindows);
 			checkUserNameManualEntry.Checked=PrefC.GetBool(PrefName.UserNameManualEntry);
 			checkBadgeLogIn.Checked=PrefC.GetBool(PrefName.SecurityBadgesRequirePassword);
@@ -204,6 +205,12 @@ namespace OpenPmsDental {
 			doInvalidatePrefs |=Prefs.UpdateString(PrefName.DomainLoginPath,textDomainLoginPath.Text);
 			doInvalidatePrefs |=Prefs.UpdateBool(PrefName.DomainLoginEnabled,checkDomainLoginEnabled.Checked);
 			doInvalidatePrefs |=(_domainObjectGuid!=null && Prefs.UpdateString(PrefName.DomainObjectGuid,_domainObjectGuid));
+			bool isForSigBoxesOld=DomainLogin.IsForSigBoxesSettingOn();
+			if(DomainLogin.SetForSigBoxesSetting(checkDomainLoginForSigBoxes.Checked)) {//ODOPTS
+				doInvalidatePrefs=true;
+				OdOptions.LogChange(EnumPermType.SecurityAdmin,"Offer domain login in signature boxes' Change User",DomainLogin.PREF_FOR_SIG_BOXES,
+					OdOptions.GetOnOff(isForSigBoxesOld),OdOptions.GetOnOff(checkDomainLoginForSigBoxes.Checked));
+			}
 			if(comboGroups.SelectedIndex==-1) {
 				doInvalidatePrefs |=Prefs.UpdateLong(PrefName.DefaultUserGroup,newValue:0);
 			}

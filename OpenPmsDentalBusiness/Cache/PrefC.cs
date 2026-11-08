@@ -398,9 +398,10 @@ namespace OpenPmsDentalBusiness {
 			return Prefs.DictIsNull();
 		}
 
-		///<summary>Fork-owned preference rows that are not in the PrefName enum (package B-SERVER: ForkReportsIncompleteProcsAllNoNotes,
-		///ForkReplicationReadDelayMs, ForkReplicationSignalLookbackMs). Returns the cached value, or defaultValue when the preference cache is not
-		///filled yet or has no row with that name. Never fills the cache and never throws, so it is safe on any thread and in any code path.</summary>
+		///<summary>Preference rows that are not in the PrefName enum: fork-owned rows (package B-SERVER: ForkReportsIncompleteProcsAllNoNotes,
+		///ForkReplicationSignalLookbackMs) and Open Dental rows this program reads by name (docs/port-notes/SWMAP.md, for example
+		///ReplicationWriteReadDelayMS). Returns the cached value, or defaultValue when the preference cache is not filled yet or has no row with that
+		///name. Never fills the cache and never throws, so it is safe on any thread and in any code path.</summary>
 		public static string GetRawOrDefault(string prefName,string defaultValue) {
 			try {
 				if(Prefs.DictIsNull() || !Prefs.GetContainsKey(prefName)) {
@@ -414,9 +415,9 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
-		///<summary>Stores a fork-owned preference that is not in the PrefName enum: inserts the row the first time, otherwise updates it, then
-		///updates this workstation's cache. Returns true if the value changed. The caller signals InvalidType.Prefs so other workstations reload.
-		///An Open Dental database has no such rows, so nothing needs a migration: a missing row reads as the caller's default.</summary>
+		///<summary>Stores a preference that is not in the PrefName enum (see GetRawOrDefault): inserts the row the first time, otherwise updates it,
+		///then updates this workstation's cache. Returns true if the value changed. The caller signals InvalidType.Prefs so other workstations reload.
+		///Nothing needs a migration: a missing row reads as the caller's default.</summary>
 		public static bool UpsertRaw(string prefName,string newValue) {
 			Meth.NoCheckMiddleTierRole();
 			newValue=newValue??"";

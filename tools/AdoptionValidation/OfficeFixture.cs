@@ -18,7 +18,7 @@ namespace AdoptionValidation {
 	///and the discontinued DXC Patient Credit Score program link, enabled and with two toolbar buttons, which the B-SHELL step disables and whose
 	///buttons it deletes (the XVWeb link's button is kept); and the Trojan Express Collect program link as Open Dental's 19.2.29 conversion left
 	///it in every database whose office never used it (disabled, four properties, one Account module button), whose button the P262-LINKS step
-	///deletes.
+	///deletes; and settings under Open Dental's own names that this program reads as they are (ArrayOdSettingPrefs).
 	///The rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see it done.
 	///Everything here is synthetic: the "update files" are a short placeholder text, never program files, the server addresses are built from
 	///the fork's blocked-host list (CodeBase.VendorDirect.HqHosts) so no host name is written in this file, the "ciphertexts" are random bytes
@@ -133,6 +133,17 @@ namespace AdoptionValidation {
 		public const string TROJAN_PROG_DESC="Trojan Express Collect";
 		public const int TOOLBAR_TROJAN=0;
 		public const string TROJAN_BUTTON_TEXT="TrojanCollect";
+		///<summary>Settings Open Dental 24.4 to 25.3 added that this program reads under Open Dental's own names (docs/port-notes/SWMAP.md), with
+		///made-up values: payment plans included in the global lock (so this program's "not affected" box is not ticked), the Recession wording on,
+		///provider time on the operatory background on, and a read delay that is switched off. Adoption keeps these rows as they are; migration-preview
+		///lists them with what this program shows. (preference name, value.)</summary>
+		public static readonly (string prefName,string value)[] ArrayOdSettingPrefs={
+			("PayPlansIncludeInGlobalLock","1"),
+			("PerioRecessionInsteadOfGM","1"),
+			("ApptProvbarShowOnOps","1"),
+			("ReplicationWriteReadDelayEnabled","0"),
+			("ReplicationWriteReadDelayMS","250"),
+		};
 
 		public class Summary {
 			public int UpdateFileRows;
@@ -218,6 +229,9 @@ namespace AdoptionValidation {
 				//A password Open Dental stored with its own key: the fork cannot read it, so it is re-entered after adoption.
 				["ReportingServerMySqlPassHash"]=FakeCiphertext(rng),
 			};
+			foreach((string prefName,string value) pref in ArrayOdSettingPrefs) {
+				dictPrefs[pref.prefName]=pref.value;
+			}
 			foreach(KeyValuePair<string,string> pair in dictPrefs) {
 				if(db.ScalarLong("SELECT COUNT(*) FROM preference WHERE PrefName="+SqlLiteral.Quote(pair.Key))>0) {
 					db.Execute("UPDATE preference SET ValueString="+SqlLiteral.Quote(pair.Value)+" WHERE PrefName="+SqlLiteral.Quote(pair.Key));

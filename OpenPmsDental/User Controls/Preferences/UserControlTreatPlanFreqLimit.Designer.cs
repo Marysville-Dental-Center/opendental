@@ -41,7 +41,13 @@ namespace OpenPmsDental {
 			this.textDiscountProphyCodes = new System.Windows.Forms.TextBox();
 			this.labelDiscountExamFreq = new System.Windows.Forms.Label();
 			this.checkFrequency = new OpenPmsDental.UI.CheckBox();
+			this.groupBoxInsHist = new OpenPmsDental.UI.GroupBox();
+			this.labelInsHistPerioScalingCode = new System.Windows.Forms.Label();
+			this.textInsHistPerioScalingCode = new System.Windows.Forms.TextBox();
+			this.butInsHistPerioScalingCode = new OpenPmsDental.UI.Button();
+			this.labelInsHistPerioScalingBlank = new System.Windows.Forms.Label();
 			this.groupBoxDiscountPlanFreqLimit.SuspendLayout();
+			this.groupBoxInsHist.SuspendLayout();
 			this.SuspendLayout();
 			// 
 			// groupBoxDiscountPlanFreqLimit
@@ -213,16 +219,67 @@ namespace OpenPmsDental {
 			this.checkFrequency.TabIndex = 244;
 			this.checkFrequency.Text = "Enable Insurance Frequency Checking";
 			// 
+			// groupBoxInsHist
+			// 
+			this.groupBoxInsHist.BackColor = System.Drawing.Color.White;
+			this.groupBoxInsHist.Controls.Add(this.labelInsHistPerioScalingCode);
+			this.groupBoxInsHist.Controls.Add(this.textInsHistPerioScalingCode);
+			this.groupBoxInsHist.Controls.Add(this.butInsHistPerioScalingCode);
+			this.groupBoxInsHist.Controls.Add(this.labelInsHistPerioScalingBlank);
+			this.groupBoxInsHist.Location = new System.Drawing.Point(20, 40);
+			this.groupBoxInsHist.Name = "groupBoxInsHist";
+			this.groupBoxInsHist.Size = new System.Drawing.Size(450, 62);
+			this.groupBoxInsHist.TabIndex = 245;
+			this.groupBoxInsHist.Text = "Insurance History";
+			// 
+			// labelInsHistPerioScalingCode
+			// 
+			this.labelInsHistPerioScalingCode.Location = new System.Drawing.Point(41, 15);
+			this.labelInsHistPerioScalingCode.Name = "labelInsHistPerioScalingCode";
+			this.labelInsHistPerioScalingCode.Size = new System.Drawing.Size(225, 17);
+			this.labelInsHistPerioScalingCode.TabIndex = 0;
+			this.labelInsHistPerioScalingCode.Text = "Perio scaling procedure code";
+			this.labelInsHistPerioScalingCode.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
+			// textInsHistPerioScalingCode
+			// 
+			this.textInsHistPerioScalingCode.Location = new System.Drawing.Point(267, 13);
+			this.textInsHistPerioScalingCode.MaxLength = 15;
+			this.textInsHistPerioScalingCode.Name = "textInsHistPerioScalingCode";
+			this.textInsHistPerioScalingCode.Size = new System.Drawing.Size(146, 20);
+			this.textInsHistPerioScalingCode.TabIndex = 1;
+			// 
+			// butInsHistPerioScalingCode
+			// 
+			this.butInsHistPerioScalingCode.Location = new System.Drawing.Point(416, 12);
+			this.butInsHistPerioScalingCode.Name = "butInsHistPerioScalingCode";
+			this.butInsHistPerioScalingCode.Size = new System.Drawing.Size(24, 22);
+			this.butInsHistPerioScalingCode.TabIndex = 2;
+			this.butInsHistPerioScalingCode.Text = "...";
+			this.butInsHistPerioScalingCode.Click += new System.EventHandler(this.butInsHistPerioScalingCode_Click);
+			// 
+			// labelInsHistPerioScalingBlank
+			// 
+			this.labelInsHistPerioScalingBlank.Location = new System.Drawing.Point(41, 37);
+			this.labelInsHistPerioScalingBlank.Name = "labelInsHistPerioScalingBlank";
+			this.labelInsHistPerioScalingBlank.Size = new System.Drawing.Size(399, 17);
+			this.labelInsHistPerioScalingBlank.TabIndex = 3;
+			this.labelInsHistPerioScalingBlank.Text = "(blank: each perio scaling code group uses its own History Proc Code)";
+			this.labelInsHistPerioScalingBlank.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			// 
 			// UserControlTreatPlanFreqLimit
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.BackColor = System.Drawing.Color.White;
 			this.Controls.Add(this.groupBoxDiscountPlanFreqLimit);
 			this.Controls.Add(this.checkFrequency);
+			this.Controls.Add(this.groupBoxInsHist);
 			this.Name = "UserControlTreatPlanFreqLimit";
 			this.Size = new System.Drawing.Size(494, 660);
 			this.groupBoxDiscountPlanFreqLimit.ResumeLayout(false);
 			this.groupBoxDiscountPlanFreqLimit.PerformLayout();
+			this.groupBoxInsHist.ResumeLayout(false);
+			this.groupBoxInsHist.PerformLayout();
 			this.ResumeLayout(false);
 
 		}
@@ -246,5 +303,10 @@ namespace OpenPmsDental {
 		private System.Windows.Forms.TextBox textDiscountProphyCodes;
 		private System.Windows.Forms.Label labelDiscountExamFreq;
 		private OpenPmsDental.UI.CheckBox checkFrequency;
+		private UI.GroupBox groupBoxInsHist;
+		private System.Windows.Forms.Label labelInsHistPerioScalingCode;
+		private System.Windows.Forms.TextBox textInsHistPerioScalingCode;
+		private OpenPmsDental.UI.Button butInsHistPerioScalingCode;
+		private System.Windows.Forms.Label labelInsHistPerioScalingBlank;
 	}
 }

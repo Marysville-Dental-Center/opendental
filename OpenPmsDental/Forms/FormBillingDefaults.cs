@@ -239,6 +239,15 @@ namespace OpenPmsDental {
 		}
 		#endregion Email type (Open Dental 26.1)
 
+		///<summary>ODOPTS: Open Dental 25.1's Statement Send Setup (StatementAutoSendEmail, StatementAutoSendSMS). Saved by its own window.</summary>
+		private void butSendSetup_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.Setup)) {
+				return;
+			}
+			FrmStatementSendSetup frmStatementSendSetup=new FrmStatementSendSetup();
+			frmStatementSendSetup.ShowDialog();
+		}
+
 		private void butSave_Click(object sender,EventArgs e) {
 			if(!textDays.IsValid()) {
 				MsgBox.Show(this,"Please fix data entry errors first.");

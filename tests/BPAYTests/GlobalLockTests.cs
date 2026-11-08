@@ -52,9 +52,23 @@ namespace BPAYTests {
 		}
 
 		[TestMethod]
-		public void ProposedName_IsNotInPrefName() {
-			Assert.AreEqual("SecurityLockExcludesPayPlans",PayPlanGlobalLock.PREF_NAME);
-			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),PayPlanGlobalLock.PREF_NAME),"An unconfirmed name stays out of PrefName (RegistryTests).");
+		public void OpenDentalsName_ReadByName_NotInPrefName() {
+			//Open Dental's name, from the setting names of the office's Open Dental 25.3.48 database (docs/port-notes/SWMAP.md). Its 1 means payment plans
+			//are included in the global lock date, the opposite of this setting.
+			Assert.AreEqual("PayPlansIncludeInGlobalLock",PayPlanGlobalLock.PREF_NAME);
+			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),PayPlanGlobalLock.PREF_NAME),"Read by name, so a database without the row reads as off.");
+		}
+
+		[TestMethod]
+		public void OpenDentalsRow_IsReadInverted() {
+			DataCore.NonQ("DELETE FROM preference WHERE PrefName='"+PayPlanGlobalLock.PREF_NAME+"'");
+			DataCore.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES ('"+PayPlanGlobalLock.PREF_NAME+"','1')");
+			Cache.Refresh(InvalidType.Prefs);
+			Assert.IsFalse(PayPlanGlobalLock.IsOn(),"1: payment plans are included in the global lock, so they are affected.");
+			DataCore.NonQ("UPDATE preference SET ValueString='0' WHERE PrefName='"+PayPlanGlobalLock.PREF_NAME+"'");
+			Cache.Refresh(InvalidType.Prefs);
+			Assert.IsTrue(PayPlanGlobalLock.IsOn(),"0: not included, so not affected.");
+			Assert.IsTrue(PayPlanGlobalLock.IsExcludedFromGlobalLock(EnumPermType.PayPlanEdit));
 		}
 
 		[TestMethod]
@@ -73,11 +87,14 @@ namespace BPAYTests {
 			Cache.Refresh(InvalidType.Prefs);
 			Assert.IsTrue(PayPlanGlobalLock.Save(true));
 			Assert.AreEqual(1,CountRows());
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='"+PayPlanGlobalLock.PREF_NAME+"'"),
+				"On: Open Dental's row says payment plans are not included in the global lock.");
 			Assert.IsTrue(PayPlanGlobalLock.IsOn());
 			Assert.IsFalse(PayPlanGlobalLock.Save(true),"Unchanged.");
 			Assert.IsTrue(PayPlanGlobalLock.Save(false));
 			Assert.AreEqual(1,CountRows());
-			Assert.AreEqual("0",DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='"+PayPlanGlobalLock.PREF_NAME+"'"));
+			Assert.AreEqual("1",DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='"+PayPlanGlobalLock.PREF_NAME+"'"),
+				"Off: included in the global lock.");
 			Cache.Refresh(InvalidType.Prefs);//another workstation reloads
 			Assert.IsFalse(PayPlanGlobalLock.IsOn());
 		}

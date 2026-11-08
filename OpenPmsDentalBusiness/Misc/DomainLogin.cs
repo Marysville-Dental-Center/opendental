@@ -86,6 +86,38 @@ namespace OpenPmsDentalBusiness {
 			return DomainLoginSettings.FromPrefs().IsUsable;
 		}
 
+		///<summary>Open Dental's preference row of the switch for domain login in the change-user prompts of signature boxes (ODOPTS; Open Dental
+		///25.3.48 has it): 1 = those prompts offer domain login while domain login is on, 0 = they ask for the program's own password only. Read and
+		///written by name outside PrefName, so the office's value carries over. A missing row reads as on, the behaviour of 25.2, which added domain
+		///login to these prompts (INFERRED; Open Dental's default is not public). docs/port-notes/ODOPTS.md.</summary>
+		public const string PREF_FOR_SIG_BOXES="DomainLoginForSigBoxes";
+
+		///<summary>The switch for signature boxes as stored (on when the row is missing), whether or not domain login itself is on.</summary>
+		public static bool IsForSigBoxesSettingOn() {
+			return OdOptions.GetBool(PREF_FOR_SIG_BOXES,defaultValue:true);
+		}
+
+		///<summary>Saves the switch for signature boxes and updates this workstation's cache. Returns true if the stored value changed; the caller
+		///signals InvalidType.Prefs and makes the security log entry.</summary>
+		public static bool SetForSigBoxesSetting(bool isOn) {
+			return OdOptions.SetBool(PREF_FOR_SIG_BOXES,isOn,defaultValue:true);
+		}
+
+		///<summary>Whether a change-user prompt offers domain login. Every prompt needs domain login on with a path; the prompt of a signature box
+		///(procedure notes, group notes, sheets, treatment plan signing, the ortho chart) also needs the switch for signature boxes. The other
+		///change-user prompts (a task's From User) are not signature boxes and keep offering it whenever domain login is on.</summary>
+		public static bool IsOfferedInChangeUser(bool isSigBox,bool isDomainLoginUsable,bool isForSigBoxesOn) {
+			if(!isDomainLoginUsable) {
+				return false;
+			}
+			return !isSigBox || isForSigBoxesOn;
+		}
+
+		///<summary>IsOfferedInChangeUser from the preferences.</summary>
+		public static bool IsOfferedInChangeUser(bool isSigBox) {
+			return IsOfferedInChangeUser(isSigBox,IsEnabled(),IsForSigBoxesSettingOn());
+		}
+
 		///<summary>Reduces what the user typed to the bare account name: "EXAMPLE\jsmith" and "jsmith@example.local" both become "jsmith".</summary>
 		public static string NormalizeAccountName(string typed) {
 			string account=(typed??"").Trim();

@@ -181,11 +181,12 @@ namespace OpenPmsDentalBusiness{
 		}
 
 		#region Perio Chart rules (Open Dental 24.4 and 25.2)
-		///<summary>The preference row that holds the Perio Setup option "Use the term Recession" (Open Dental 24.4). Open Dental's name for it is not
-		///in any public document, so this is the name the feature spec proposes. It is read and written by name and deliberately not registered in
-		///PrefName until the name is confirmed (see tests/RegistryTests/PrefNameTests.cs). A database without the row reads as off, the 24.3
-		///behavior, and the row is only written once someone turns the option on.</summary>
-		public const string PrefNameUseRecessionTerm="PerioUseRecessionTerm";
+		///<summary>The preference row that holds the Perio Setup option "Use the term Recession" (Open Dental 24.4): Open Dental's own name, confirmed
+		///by the setting names of the office's Open Dental 25.3.48 database (owner question Switch-over 1, 2026-11-07; docs/port-notes/SWMAP.md), so
+		///the office's value carries over as it is. It is read and written by name, outside PrefName. A database without the row reads as off, the 24.3
+		///behavior, and the row is only written once someone turns the option on. Release v0.0 kept the option in the row PerioUseRecessionTerm; the
+		///fork migration step OdSettingNamesStep moves it here.</summary>
+		public const string PrefNameUseRecessionTerm="PerioRecessionInsteadOfGM";
 		///<summary>Label of the gingival margin row, as in 24.3. Translated by the caller.</summary>
 		public const string TermGingMarg="Ging Marg";
 		///<summary>Label of the gingival margin row when the Recession option is on and the exam has no hyperplasia. Translated by the caller.</summary>
@@ -298,6 +299,71 @@ namespace OpenPmsDentalBusiness{
 			command="UPDATE preference SET ValueString='"+POut.String(valueString)+"' WHERE PrefName='"+POut.String(PrefNameUseRecessionTerm)+"'";
 			Db.NonQ(command);
 			return true;
+		}
+
+		///<summary>Open Dental's preference row of the red threshold of the auto Att Ging row (ODOPTS; Open Dental 25.3.48 has it, its meaning is not
+		///public): a site whose attached gingiva is at or below the value, in mm, is drawn red, like the MGJ row (INFERRED: narrow attached gingiva is
+		///the finding, as with MGJ). Read and written by name outside PrefName, so the office's value carries over. A missing, blank or unreadable row
+		///means no threshold: the row is never red, as in 24.4 (INFERRED; Open Dental's default is not public). docs/port-notes/ODOPTS.md.</summary>
+		public const string PrefNameRedAttGing="PerioRedAttGing";
+		///<summary>The highest threshold the Perio Chart's up button reaches.</summary>
+		public const int RED_ATT_GING_MAX=20;
+
+		///<summary>The red threshold of the auto Att Ging row, from the preference cache. Null when there is none (see PrefNameRedAttGing).</summary>
+		public static int? GetRedAttGing() {
+			Meth.NoCheckMiddleTierRole();
+			return GetRedAttGingFromValue(PrefC.GetRawOrDefault(PrefNameRedAttGing,null));
+		}
+
+		///<summary>The threshold a stored value stands for: a whole number of mm, or null for a missing, blank or unreadable value.</summary>
+		public static int? GetRedAttGingFromValue(string valueString) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrWhiteSpace(valueString)) {
+				return null;
+			}
+			if(!int.TryParse(valueString.Trim(),System.Globalization.NumberStyles.Integer,System.Globalization.CultureInfo.InvariantCulture,out int value)) {
+				return null;
+			}
+			return value;
+		}
+
+		///<summary>The value stored for a threshold: the number, or blank for none.</summary>
+		public static string GetRedAttGingValue(int? redAttGing) {
+			Meth.NoCheckMiddleTierRole();
+			if(redAttGing==null) {
+				return "";
+			}
+			return redAttGing.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+		}
+
+		///<summary>True when an auto Att Ging value is drawn red: there is a threshold and the value is at or below it.</summary>
+		public static bool IsRedAttGing(int? attachedGingiva,int? redAttGing) {
+			Meth.NoCheckMiddleTierRole();
+			return attachedGingiva!=null && redAttGing!=null && attachedGingiva.Value<=redAttGing.Value;
+		}
+
+		///<summary>The threshold after a click on the Perio Chart's up or down button: up from none starts at 0 and stops at RED_ATT_GING_MAX; down
+		///goes to 0 and then to none (no threshold), which turns the red off.</summary>
+		public static int? GetRedAttGingNext(int? redAttGing,bool isUp) {
+			Meth.NoCheckMiddleTierRole();
+			if(isUp) {
+				if(redAttGing==null) {
+					return 0;
+				}
+				return Math.Min(RED_ATT_GING_MAX,Math.Max(0,redAttGing.Value+1));
+			}
+			if(redAttGing==null || redAttGing.Value<=0) {
+				return null;
+			}
+			return Math.Min(RED_ATT_GING_MAX,redAttGing.Value-1);
+		}
+
+		///<summary>Saves the red threshold of the auto Att Ging row and updates this workstation's cache. No threshold is stored as blank; a missing row
+		///already means none, so turning it off writes nothing then. Returns true if the stored value changed; the caller signals InvalidType.Prefs and
+		///makes the security log entry.</summary>
+		public static bool SetRedAttGing(int? redAttGing) {
+			Meth.NoCheckMiddleTierRole();
+			return OdOptions.SetString(PrefNameRedAttGing,GetRedAttGingValue(redAttGing));
 		}
 
 		///<summary>True if the tooth has an implant that has not been removed (Open Dental 24.4): a completed, existing-current or existing-other

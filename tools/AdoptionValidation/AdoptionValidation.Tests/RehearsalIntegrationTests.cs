@@ -210,12 +210,23 @@ namespace AdoptionValidation.Tests {
 				+"an Open Dental 25.3.48 one included). The adoption log says \"Deleted 1 toolbar button(s) of the discontinued Trojan Express Collect program link "
 				+"(ToolButItemNum "+numButtonTrojan+")\"; adopt's row check (step 4) requires exactly this");
 			Assert.IsFalse(output.Contains("Disabled the discontinued Trojan Express Collect"),"The fixture's row is disabled already.\r\n"+output);
+			//The settings read under Open Dental's names (SWMAP): the fixture's made-up values, as this program shows them; nothing to move.
+			StringAssert.Contains(output,"Settings read under Open Dental's names (adoption keeps these rows as they are;");
+			StringAssert.Contains(output,"Payment plans are not affected by the global lock (B-PAY): not ticked [PayPlansIncludeInGlobalLock='1']");
+			StringAssert.Contains(output,"Use the term \"Recession\" (B-PERIO): ticked [PerioRecessionInsteadOfGM='1']");
+			StringAssert.Contains(output,"Show provider time on the operatory background in the provider's color (B-APPT): ticked [ApptProvbarShowOnOps='1']");
+			StringAssert.Contains(output,"Read delay after write (ms) (B-SERVER): 0 [ReplicationWriteReadDelayEnabled='0', ReplicationWriteReadDelayMS='250']");
+			StringAssert.Contains(output,"Sales Tax procedure code (B-ACCT): blank [SalesTaxProcCode no row]");
+			StringAssert.Contains(output,"Step 2026110731 (settings under Open Dental's names) changes no preference row");
 			//The plug-in line: which program rows name a plug-in DLL, which stops loading after the switch.
 			StringAssert.Contains(output,"Plug-ins: ");
 			using(Db db=Db.Open(_server)) {
 				List<Difference> listDiffs=ReportComparer.Compare(before,Validator.Run(db,Source(2),null,null),null);
 				Assert.AreEqual(0,listDiffs.Count,"migration-preview only reads.\r\n"+ReportComparer.Format(listDiffs));
 				MigrationPreview.Result resultAdopted=MigrationPreview.Run(db,Adopted(2));
+				MigrationPreview.Result resultSource=MigrationPreview.Run(db,Source(2));
+				CollectionAssert.AreEqual(resultSource.ListSettingReads,resultAdopted.ListSettingReads,"Adoption keeps the settings read under Open Dental's names.");
+				Assert.AreEqual(0,resultAdopted.ListSettingMoves.Count,"No release v0.0 setting row on the adopted copy.");
 				Assert.AreEqual(0,resultAdopted.ListRenames.Count,string.Join("\r\n",resultAdopted.Lines()));
 				Assert.IsTrue(resultAdopted.ListPlans.All(x => x.RowExisting!=null),"After adoption every report has this program's name.");
 				Assert.AreEqual(0,resultAdopted.Plan26_1.ListPrefsInserted.Count,"After adoption every 25.4 and 26.1 preference is there.");

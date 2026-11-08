@@ -32,6 +32,11 @@ namespace OpenPmsDental{
 		public bool ShowBillTransSinceZero=false;
 		///<summary>Tracks if textDateStart is blank so we can display a warning in FormBilling.cs when sending electronic bills.</summary>
 		public bool IsHistoryStartMinDate { get; private set; }
+		///<summary>ODOPTS (Statement Send Setup): the statements this window created, and those of them whose mode is E-mail. Filled only while
+		///StatementAutoSendEmail or StatementAutoSendSMS can send something (StatementAutoSend.IsAnyOn); the Billing List sends them as it opens.
+		///</summary>
+		public List<long> ListStatementNumsCreated=new List<long>();
+		public List<long> ListStatementNumsEmailCreated=new List<long>();
 		///<summary>This is used to pass the selected mode(s) for texting to FormBilling and then through to FormStatementOptions for determining whether to send a text when editing a statement's mode.</summary>
 
 		///<summary></summary>
@@ -604,6 +609,14 @@ namespace OpenPmsDental{
 			if(!BillingL.RunAgingEnterprise(sendStatementsIO)) {
 				return;
 			}
+			//ODOPTS: the unsent statements before this run, so the ones it creates are known afterwards (Statement Send Setup).
+			bool isAutoSendOn=StatementAutoSend.IsAnyOn();
+			List<long> listStatementNumsUnsentBefore=new List<long>();
+			List<long> listStatementNumsEmailUnsentBefore=new List<long>();
+			if(isAutoSendOn) {
+				listStatementNumsUnsentBefore=Statements.GetUnsentStatements();
+				listStatementNumsEmailUnsentBefore=Statements.GetUnsentStatements(StatementMode.Email);
+			}
 			int countCreated;
 			if(comboClinic.ListClinicNumsSelected.Count > 1) { 
 				countCreated=CreateManyHelper(comboClinic.ListClinicNumsSelected);
@@ -615,6 +628,11 @@ namespace OpenPmsDental{
 				countCreated=CreateHelper(-2);
 			}
 			if(countCreated>0){
+				if(isAutoSendOn) {
+					ListStatementNumsCreated=StatementAutoSend.GetCreatedStatementNums(listStatementNumsUnsentBefore,Statements.GetUnsentStatements());
+					ListStatementNumsEmailCreated=StatementAutoSend.GetCreatedStatementNums(listStatementNumsEmailUnsentBefore,
+						Statements.GetUnsentStatements(StatementMode.Email));
+				}
 				ListClinicNumsSelected=comboClinic.ListClinicNumsSelected;
 				IsAllSelected=comboClinic.IsAllSelected;
 				DialogResult=DialogResult.OK;

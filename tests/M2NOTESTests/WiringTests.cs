@@ -73,7 +73,7 @@ namespace M2NOTESTests {
 			StringAssert.Contains(Between(source,"private void ClearLoadedSignature()","private DateTime GetProcDateEntered()"),"signatureBoxWrapper2.ClearSignature();");
 			//Change User with the domain login option, like the first box.
 			string changeUser2=Between(source,"private void butChangeUser2_Click(","#endregion");
-			StringAssert.Contains(changeUser2,"new FormLogOn(isSimpleSwitch:true)");
+			StringAssert.Contains(changeUser2,"new FormLogOn(isSimpleSwitch:true,isSigBox:true)");
 			StringAssert.Contains(changeUser2,"formLogOn.IsDomainAuthenticated");
 			StringAssert.Contains(changeUser2,"DomainLogin.GetSwitchLogText(");
 			StringAssert.Contains(changeUser2,"Userods.CanUserSignNote(_userod2)");

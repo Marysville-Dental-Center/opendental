@@ -57,9 +57,11 @@ namespace OpenPmsDentalBusiness {
 	///ERA claim carry a listed CARC, those procedures move to a new, unsent claim with the same steps as the manual Split Claim button
 	///(Claims.InsertSplitClaimForEra), and the rest of the claim is processed if it passes every other automatic processing check on its own.</summary>
 	public static class EraAutoSplit {
-		///<summary>Fork-owned preference row, not in the PrefName enum: Open Dental's own name for this 25.1 preference is not published (see
-		///docs/port-notes/B-ERA.md). The row is written the first time the office saves the setting; a missing row reads as off.</summary>
-		public const string PREF_NAME="ForkEraAutoSplitCarcDenials";
+		///<summary>Open Dental's own preference row for this 25.1 setting, read and written by name outside the PrefName enum. Its name is confirmed
+		///by the setting names of the office's Open Dental 25.3.48 database (owner question Switch-over 1, 2026-11-07; docs/port-notes/SWMAP.md), so the
+		///office's value carries over as it is. The row is written the first time the office saves the setting; a missing row reads as off. Release
+		///v0.0 kept the setting in the row ForkEraAutoSplitCarcDenials; the fork migration step OdSettingNamesStep moves it here.</summary>
+		public const string PREF_NAME="EraAutoProcessSplitByCarcCodes";
 
 		///<summary>True when the office turned on "Auto split ERAs with CARC denial codes listed above". Reads the preference cache. Never throws.</summary>
 		public static bool IsEnabled() {

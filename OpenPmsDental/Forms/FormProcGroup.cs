@@ -516,7 +516,7 @@ namespace OpenPmsDental{
 		}
 
 		private void butChangeUser_Click(object sender,EventArgs e) {
-			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true);
+			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true,isSigBox:true);
 			formLogOn.ShowDialog();
 			if(formLogOn.DialogResult!=DialogResult.OK) {
 				return;
@@ -587,7 +587,7 @@ namespace OpenPmsDental{
 
 		///<summary>26.1: switches the user who signs the second box, like Change User for the first box (with the domain login option).</summary>
 		private void butChangeUser2_Click(object sender,EventArgs e) {
-			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true);
+			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true,isSigBox:true);
 			formLogOn.ShowDialog();
 			if(formLogOn.DialogResult!=DialogResult.OK) {
 				return;

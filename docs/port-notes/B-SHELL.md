@@ -143,7 +143,7 @@ Not tested automatically (needs the GUI, which is not launched in this run): the
 
 ## Owner questions
 
-1. Blur preference name: keep the fork's own `ForkModuleSwitchBlur` row until Open Dental's name is confirmed? If the office uses the setting in 25.3, its value doesn't carry over.
+1. Blur preference name: keep the fork's own `ForkModuleSwitchBlur` row until Open Dental's name is confirmed? If the office uses the setting in 25.3, its value doesn't carry over. **Answered (2026-11-07, owner question Switch-over 1):** Open Dental's name is `BlurModuleOnLoad`; the code reads it now, so the value carries over (see "Open Dental's name" below).
 2. File Monitor: keep requiring the Setup permission (Open Dental leaves it open to all)?
 3. Ortho chart: release the edit lock after a period of inactivity? Open Dental's 25.3.48 behaviour is not public.
 4. Ortho chart: a forced or automatic log off saves open ortho charts without asking, as 24.3 did on automatic shutdown. Is that wanted, or should unsaved edits be discarded?
@@ -172,3 +172,17 @@ Not tested automatically (needs the GUI, which is not launched in this run): the
 - **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** "Blur when switching between modules" is read from the fork-owned row `ForkModuleSwitchBlur`. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (row 5 of its table), step 7.1 sets it again in this program, and both are checklist rows.
 - Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
 - The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.
+
+## Open Dental's name (SWMAP, 2026-11-07, branch `next/swmap-1`)
+
+- The setting names of the office's Open Dental 25.3.48 database (owner question Switch-over 1) give Open Dental's name of the 25.2 blur
+  setting: `BlurModuleOnLoad` (1/0; 25.2 release notes, Miscellaneous, https://www.opendental.com/site/version25_2.html).
+  `ModuleSwitchBlur.PREF_NAME` is now that name, read and written by name outside `PrefName`, so the office's value carries over at the
+  switch-over as it is; a missing row still means off. No migration step adds the row.
+- The row release 0.0 wrote (`ForkModuleSwitchBlur`) moves to this name in the fork migration step 2026110731 (`OdSettingNamesStep`, which
+  only moves an existing v0.0 row); runbook step 0.11 no longer lists the setting.
+- Open Dental 25.3.48 also has `DomainLoginForSigBoxes`: by its name a separate switch for domain login in signature boxes. **Built (ODOPTS,
+  2026-11-07, [ODOPTS.md](ODOPTS.md)):** Global Security Settings has the switch; with it off the Change User of signature boxes asks for the
+  program's own password only. A missing row reads as on, the 25.2 behaviour (INFERRED default).
+- Tests: `BSHELLTests.ModuleSwitchBlurTests.PrefName_IsOpenDentalsName_ReadByName` (in place of the fork-row test), `SWMAPTests`. See
+  [SWMAP.md](SWMAP.md).

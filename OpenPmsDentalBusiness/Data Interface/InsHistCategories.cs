@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using CodeBase;
 
 namespace OpenPmsDentalBusiness {
 	///<summary>One row of the Insurance History window and of the insurance history rows in the Family module (Open Dental 26.1): a code group marked
@@ -93,6 +94,72 @@ namespace OpenPmsDentalBusiness {
 		///<summary>The four rows of a Perio Four Quadrants group, in the order they are shown.</summary>
 		public static readonly ReadOnlyCollection<string> ListQuadrants=new ReadOnlyCollection<string>(new[] { "UL","UR","LL","LR" });
 
+		#region Perio scaling procedure code (ODOPTS)
+		///<summary>Open Dental's preference row (ODOPTS; Open Dental 25.3.48 has it, its meaning is not public): the procedure code Insurance History
+		///uses for perio scaling, here the History Proc Code of the rows of every perio scaling code group (CodeGroupFixed SRP). Blank, missing, or a
+		///value that names no procedure code: each group's own History Proc Code, the behaviour without the setting (INFERRED). Read and written by
+		///name outside PrefName, so the office's value carries over. Like SalesTaxProcCode, a value that is no procedure code but is the CodeNum of one
+		///is read too, in case Open Dental stores a CodeNum. docs/port-notes/ODOPTS.md.</summary>
+		public const string PREF_PERIO_SCALING_CODE="InsHistPerioScalingCode";
+
+		///<summary>The stored setting, trimmed. Blank when the row is missing or the cache is not loaded.</summary>
+		public static string GetPerioScalingCodeSetting() {
+			Meth.NoCheckMiddleTierRole();
+			return (PrefC.GetRawOrDefault(PREF_PERIO_SCALING_CODE,"")??"").Trim();
+		}
+
+		///<summary>The procedure code (as the procedure code list spells it) the setting names, or blank when it is blank or names none.</summary>
+		public static string GetPerioScalingProcCode() {
+			Meth.NoCheckMiddleTierRole();
+			try {
+				return GetPerioScalingProcCode(GetPerioScalingCodeSetting(),FindProcCode,x => ProcedureCodes.GetFirstOrDefault(y => y.CodeNum==x)?.ProcCode??"");
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+				return "";//no procedure code cache (a tool or a test without a database): the behaviour without the setting
+			}
+		}
+
+		///<summary>The procedure code as the procedure code list spells it, for a code typed in any case, or blank when the list has no such code.
+		///Uses the procedure code cache.</summary>
+		public static string FindProcCode(string procCode) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrWhiteSpace(procCode)) {
+				return "";
+			}
+			string value=procCode.Trim();
+			if(ProcedureCodes.IsValidCode(value)) {
+				return ProcedureCodes.GetProcCode(value).ProcCode;
+			}
+			return ProcedureCodes.GetFirstOrDefault(x => string.Equals(x.ProcCode,value,StringComparison.OrdinalIgnoreCase))?.ProcCode??"";
+		}
+
+		///<summary>Resolves a setting: first as a procedure code (funcGetProcCode returns the code as the list spells it, or blank), then, when it is a
+		///number, as the CodeNum of one (funcGetProcCodeByCodeNum). Blank when nothing matches.</summary>
+		public static string GetPerioScalingProcCode(string setting,Func<string,string> funcGetProcCode,Func<long,string> funcGetProcCodeByCodeNum) {
+			Meth.NoCheckMiddleTierRole();
+			if(string.IsNullOrWhiteSpace(setting)) {
+				return "";
+			}
+			string value=setting.Trim();
+			string procCode=funcGetProcCode(value)??"";
+			if(procCode!="") {
+				return procCode;
+			}
+			if(long.TryParse(value,out long codeNum) && codeNum>0) {
+				return funcGetProcCodeByCodeNum(codeNum)??"";
+			}
+			return "";
+		}
+
+		///<summary>Saves the setting as typed (trimmed; blank clears it) and updates this workstation's cache. The caller validates it first
+		///(blank, or a procedure code). Returns true if the stored value changed; the caller signals InvalidType.Prefs and makes the log entry.</summary>
+		public static bool SetPerioScalingCodeSetting(string procCode) {
+			Meth.NoCheckMiddleTierRole();
+			return OdOptions.SetString(PREF_PERIO_SCALING_CODE,procCode);
+		}
+		#endregion Perio scaling procedure code (ODOPTS)
+
 		#region Rows
 		///<summary>The rows, from the code group cache: every group marked Show In History, retired (hidden) groups included, in code group order. A Perio
 		///Four Quadrants group gives four rows, UL, UR, LL and LR.</summary>
@@ -101,8 +168,17 @@ namespace OpenPmsDentalBusiness {
 			return GetAll(CodeGroups.GetDeepCopy());
 		}
 
-		///<summary>The rows for the code groups passed in. See GetAll().</summary>
+		///<summary>The rows for the code groups passed in. See GetAll(). The perio scaling rows use InsHistPerioScalingCode when it names a procedure
+		///code (GetPerioScalingProcCode).</summary>
 		public static List<InsHistCategory> GetAll(List<CodeGroup> listCodeGroups) {
+			Meth.NoCheckMiddleTierRole();
+			return GetAll(listCodeGroups,GetPerioScalingProcCode());
+		}
+
+		///<summary>The rows for the code groups passed in, with perioScalingProcCode as the History Proc Code of every row of a perio scaling group
+		///(CodeGroupFixed SRP, ODOPTS): a date entered for such a row creates a procedure with that code, and its procedures count as the row's history.
+		///Blank: each group's own History Proc Code, the behaviour without the setting.</summary>
+		public static List<InsHistCategory> GetAll(List<CodeGroup> listCodeGroups,string perioScalingProcCode) {
 			Meth.NoCheckMiddleTierRole();
 			List<InsHistCategory> listInsHistCategories=new List<InsHistCategory>();
 			if(listCodeGroups==null) {
@@ -111,22 +187,25 @@ namespace OpenPmsDentalBusiness {
 			List<CodeGroup> listCodeGroupsHist=listCodeGroups.FindAll(x => x.ShowInHistory).OrderBy(x => x.ItemOrder).ThenBy(x => x.CodeGroupNum).ToList();
 			for(int i=0;i<listCodeGroupsHist.Count;i++) {
 				if(!listCodeGroupsHist[i].IsPerioFourQuads) {
-					listInsHistCategories.Add(CreateCategory(listCodeGroupsHist[i],""));
+					listInsHistCategories.Add(CreateCategory(listCodeGroupsHist[i],"",perioScalingProcCode));
 					continue;
 				}
 				for(int q=0;q<ListQuadrants.Count;q++) {
-					listInsHistCategories.Add(CreateCategory(listCodeGroupsHist[i],ListQuadrants[q]));
+					listInsHistCategories.Add(CreateCategory(listCodeGroupsHist[i],ListQuadrants[q],perioScalingProcCode));
 				}
 			}
 			return listInsHistCategories;
 		}
 
-		private static InsHistCategory CreateCategory(CodeGroup codeGroup,string quadrant) {
+		private static InsHistCategory CreateCategory(CodeGroup codeGroup,string quadrant,string perioScalingProcCode) {
 			InsHistCategory insHistCategory=new InsHistCategory();
 			insHistCategory.CodeGroupNum=codeGroup.CodeGroupNum;
 			insHistCategory.Quadrant=quadrant;
 			insHistCategory.Description=GetDescription(codeGroup,quadrant);
 			insHistCategory.HistProcCode=(codeGroup.HistProcCode??"").Trim();
+			if(codeGroup.CodeGroupFixed==EnumCodeGroupFixed.SRP && !string.IsNullOrWhiteSpace(perioScalingProcCode)) {
+				insHistCategory.HistProcCode=perioScalingProcCode.Trim();//ODOPTS: InsHistPerioScalingCode
+			}
 			insHistCategory.ProcCodes=codeGroup.ProcCodes??"";
 			insHistCategory.CodeGroupFixed=codeGroup.CodeGroupFixed;
 			insHistCategory.IsHidden=codeGroup.IsHidden;

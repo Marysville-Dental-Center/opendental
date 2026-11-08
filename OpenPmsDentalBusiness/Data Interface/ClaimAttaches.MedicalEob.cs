@@ -1,7 +1,7 @@
 // B-CLAIM, v25_2-account-medical-eob-prompt: attach a received medical claim's EOB to the patient's primary dental claims.
 // Open Dental 25.2 added a preference that prompts for a Medical EOB on primary claims; only the release-note line is public, so the flow here is
-// the fork's design (docs/specs/features-25.2.md). The preference name is not public either, so until the owner confirms it the setting is kept in
-// a fork-owned preference row (PREF_NAME_MEDICAL_EOB_PROMPT_FORK), the pattern of ApptTimeBars and ModuleSwitchBlur.
+// the fork's design (docs/specs/features-25.2.md). The setting is Open Dental's own preference row (PREF_NAME_MEDICAL_EOB_PROMPT), read by name
+// like ApptTimeBars and ModuleSwitchBlur; its name comes from the office's Open Dental 25.3.48 database (docs/port-notes/SWMAP.md).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -11,45 +11,21 @@ using CodeBase;
 
 namespace OpenPmsDentalBusiness {
 	public partial class ClaimAttaches {
-		///<summary>The preference name the fork's spec proposes for Open Dental's "Prompt for Medical EOB on primary claims" (bool, default off).
-		///Open Dental's real name is not public, and the registry rule (RegistryTests.PrefNameTests) keeps unconfirmed names out of PrefName. Once
-		///the registry owner registers the confirmed name (and this constant is corrected if it differs), the setting is read from and saved to that
-		///preference instead of the fork-owned row, with no other change.</summary>
-		public const string PREF_NAME_MEDICAL_EOB_PROMPT="ClaimMedReceivedPromptForMedicalEob";
-		///<summary>The fork-owned preference row that holds the setting while Open Dental's name is unconfirmed. Not in PrefName. A missing row reads
-		///as off, so neither a 24.3 database nor an adopted Open Dental 25.3.48 database needs a migration step; the row is written the first time the
-		///setting is turned on in Preferences.</summary>
-		public const string PREF_NAME_MEDICAL_EOB_PROMPT_FORK="ForkClaimMedReceivedPromptForMedicalEob";
+		///<summary>Open Dental's preference row for "Prompt for Medical EOB on primary claims" (bool, off when missing). Its name is confirmed by the
+		///setting names of the office's Open Dental 25.3.48 database (owner question Switch-over 1, 2026-11-07), so the office's value carries over as
+		///it is. Read and written by name, outside PrefName: a database from 24.3 or a new database has no such row, and the row is written the first
+		///time the setting is turned on in Preferences. Release v0.0 kept the setting in the row ForkClaimMedReceivedPromptForMedicalEob; the fork
+		///migration step OdSettingNamesStep moves it here.</summary>
+		public const string PREF_NAME_MEDICAL_EOB_PROMPT="ClaimCheckForMedicalEOB";
 		///<summary>Prefix of the displayed name of an EOB file attached by the Medical EOB prompt.</summary>
 		public const string MEDICAL_EOB_DISPLAY_PREFIX="MedicalEOB_";
-
-		///<summary>True when PrefName has the Medical EOB preference, which happens once its name is confirmed and registered. False today.</summary>
-		public static bool TryGetMedicalEobPrefName(out PrefName prefName) {
-			Meth.NoCheckMiddleTierRole();
-			prefName=PrefName.NotApplicable;
-			if(!Enum.IsDefined(typeof(PrefName),PREF_NAME_MEDICAL_EOB_PROMPT)) {
-				return false;
-			}
-			prefName=(PrefName)Enum.Parse(typeof(PrefName),PREF_NAME_MEDICAL_EOB_PROMPT);
-			return true;
-		}
-
-		///<summary>The preference row that holds the setting: Open Dental's name once it is registered in PrefName, otherwise the fork-owned row.
-		///</summary>
-		public static string GetMedicalEobPrefNameInUse() {
-			Meth.NoCheckMiddleTierRole();
-			if(TryGetMedicalEobPrefName(out PrefName prefName)) {
-				return prefName.ToString();
-			}
-			return PREF_NAME_MEDICAL_EOB_PROMPT_FORK;
-		}
 
 		///<summary>True when "Prompt for Medical EOB on primary claims" is turned on. A missing row, an empty cache or an unreadable value reads as
 		///off.</summary>
 		public static bool IsMedicalEobPromptEnabled() {
 			Meth.NoCheckMiddleTierRole();
 			try {
-				string valueString=PrefC.GetRawOrDefault(GetMedicalEobPrefNameInUse(),null);//B-SERVER's shared helper for fork-owned preference rows.
+				string valueString=PrefC.GetRawOrDefault(PREF_NAME_MEDICAL_EOB_PROMPT,null);//B-SERVER's shared helper for preference rows outside PrefName.
 				return valueString!=null && PIn.Bool(valueString);
 			}
 			catch(Exception ex) {
@@ -63,7 +39,7 @@ namespace OpenPmsDentalBusiness {
 		///caller sends the Prefs signal.</summary>
 		public static bool SetMedicalEobPromptEnabled(bool isEnabled) {
 			Meth.NoCheckMiddleTierRole();
-			string prefName=GetMedicalEobPrefNameInUse();
+			string prefName=PREF_NAME_MEDICAL_EOB_PROMPT;
 			if(PrefC.GetRawOrDefault(prefName,null)==null && !isEnabled) {
 				return false;
 			}

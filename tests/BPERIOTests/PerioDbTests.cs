@@ -9,7 +9,7 @@ using OpenPmsDentalBusiness;
 namespace BPERIOTests {
 	[TestClass]
 	public class PerioDbTests {
-		private const string PREF_ROW_COUNT="SELECT COUNT(*) FROM preference WHERE PrefName='PerioUseRecessionTerm'";
+		private const string PREF_ROW_COUNT="SELECT COUNT(*) FROM preference WHERE PrefName='PerioRecessionInsteadOfGM'";
 
 		[TestInitialize]
 		public void TestInitialize() {
@@ -97,7 +97,7 @@ namespace BPERIOTests {
 		public void RecessionOption_TurningOn_InsertsTheRowAndUpdatesTheCache() {
 			Assert.IsTrue(PerioMeasures.SetUseRecessionTerm(true));
 			Assert.AreEqual(1,TestDb.GetLong(PREF_ROW_COUNT));
-			Assert.AreEqual("1",DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='PerioUseRecessionTerm'"));
+			Assert.AreEqual("1",DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='PerioRecessionInsteadOfGM'"));
 			Assert.IsTrue(PerioMeasures.GetUseRecessionTerm(),"The local cache follows at once.");
 			Assert.IsFalse(PerioMeasures.SetUseRecessionTerm(true),"Saving the same value again is no change.");
 			Assert.AreEqual(1,TestDb.GetLong(PREF_ROW_COUNT),"Never a second row.");
@@ -108,14 +108,14 @@ namespace BPERIOTests {
 			PerioMeasures.SetUseRecessionTerm(true);
 			Assert.IsTrue(PerioMeasures.SetUseRecessionTerm(false));
 			Assert.AreEqual(1,TestDb.GetLong(PREF_ROW_COUNT));
-			Assert.AreEqual("0",DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='PerioUseRecessionTerm'"));
+			Assert.AreEqual("0",DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='PerioRecessionInsteadOfGM'"));
 			Assert.IsFalse(PerioMeasures.GetUseRecessionTerm());
 		}
 
 		[TestMethod]
 		public void RecessionOption_ReadsARowWrittenElsewhere() {
-			//For example another workstation, or an adopted database whose office uses this name.
-			DataCore.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES('PerioUseRecessionTerm','1')");
+			//For example another workstation, or an adopted Open Dental 25.3.48 database, whose office set it in Open Dental (docs/port-notes/SWMAP.md).
+			DataCore.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES('PerioRecessionInsteadOfGM','1')");
 			Prefs.RefreshCache();
 			Assert.IsTrue(PerioMeasures.GetUseRecessionTerm());
 		}

@@ -29,6 +29,9 @@ namespace OpenPmsDental {
 			Lang.F(this);
 			textVIntSpaceBelowEachField.Value=PrefC.GetInt(PrefName.EformsSpaceBelowEachField);
 			textVIntSpaceToRightEachField.Value=PrefC.GetInt(PrefName.EformsSpaceToRightEachField);
+			//ODOPTS: Open Dental's EFormImportAllergiesAsOther and EFormImportProblemsAsOther, read by name (on when the row is missing).
+			checkImportAllergiesAsOther.Checked=EFormImport.IsAllergiesAsOther();
+			checkImportProblemsAsOther.Checked=EFormImport.IsProblemsAsOther();
 		}
 
 		private void butSave_Click(object sender,EventArgs e) {
@@ -41,6 +44,20 @@ namespace OpenPmsDental {
 			bool changed=false;
 			changed|=Prefs.UpdateInt(PrefName.EformsSpaceBelowEachField,textVIntSpaceBelowEachField.Value);
 			changed|=Prefs.UpdateInt(PrefName.EformsSpaceToRightEachField,textVIntSpaceToRightEachField.Value);
+			bool isAllergiesAsOtherOld=EFormImport.IsAllergiesAsOther();
+			bool isAllergiesAsOther=checkImportAllergiesAsOther.Checked==true;
+			if(EFormImport.SetAllergiesAsOther(isAllergiesAsOther)) {
+				changed=true;
+				OdOptions.LogChange(EnumPermType.Setup,"eForm import: unmatched allergies as Other",EFormImport.PREF_ALLERGIES_AS_OTHER,
+					OdOptions.GetOnOff(isAllergiesAsOtherOld),OdOptions.GetOnOff(isAllergiesAsOther));
+			}
+			bool isProblemsAsOtherOld=EFormImport.IsProblemsAsOther();
+			bool isProblemsAsOther=checkImportProblemsAsOther.Checked==true;
+			if(EFormImport.SetProblemsAsOther(isProblemsAsOther)) {
+				changed=true;
+				OdOptions.LogChange(EnumPermType.Setup,"eForm import: unmatched problems as Other",EFormImport.PREF_PROBLEMS_AS_OTHER,
+					OdOptions.GetOnOff(isProblemsAsOtherOld),OdOptions.GetOnOff(isProblemsAsOther));
+			}
 			if(changed){
 				DataValid.SetInvalid(InvalidType.Prefs);
 			}

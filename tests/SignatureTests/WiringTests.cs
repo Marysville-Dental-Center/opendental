@@ -14,7 +14,8 @@ namespace SignatureTests {
 		[TestMethod]
 		public void LogOn_SimpleSwitchOffersDomainLogin() {
 			string source=Form("FormLogOn");
-			StringAssert.Contains(source,"checkUseDomainLogin.Visible=_isSimpleSwitch && DomainLogin.IsEnabled()");
+			//ODOPTS: a signature box's Change User also follows DomainLoginForSigBoxes (DomainLogin.IsOfferedInChangeUser).
+			StringAssert.Contains(source,"checkUseDomainLogin.Visible=_isSimpleSwitch && DomainLogin.IsOfferedInChangeUser(_isSigBox)");
 			StringAssert.Contains(source,"DomainLogin.AuthenticateForSwitch(");
 			StringAssert.Contains(source,"IsDomainAuthenticated=true");
 			StringAssert.Contains(TestPaths.ReadRepoFile("OpenPmsDental","Forms","FormLogOn.designer.cs"),"Use Windows (domain) login");
@@ -33,7 +34,7 @@ namespace SignatureTests {
 		public void FillSheet_ChangeUserButtonAndUserSigned() {
 			string source=Form("FormSheetFillEdit");
 			StringAssert.Contains(source,"SheetSignatureSigners.CanChangeUser(sheetField,SheetCur.SheetType,IsInTerminal)");
-			StringAssert.Contains(source,"new FormLogOn(isSimpleSwitch:true)");
+			StringAssert.Contains(source,"new FormLogOn(isSimpleSwitch:true,isSigBox:true)");
 			StringAssert.Contains(source,"sheetField.UserSigned=SheetSignatureSigners.GetUserSignedToSave(");
 			StringAssert.Contains(source,"SheetSignatureSigners.GetSignedLogText(");
 			Assert.AreEqual(2,Regex.Matches(source,@"LogSignedAfterSwitch\(listSignedAfterSwitch\);").Count,"Logged after both sig box syncs.");

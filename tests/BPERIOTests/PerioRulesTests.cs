@@ -93,9 +93,10 @@ namespace BPERIOTests {
 		}
 
 		[TestMethod]
-		public void RecessionPreferenceName_IsNotRegisteredInPrefName() {
-			//The name is only the spec's proposal; RegistryTests keeps it out of PrefName until it is confirmed, so the option is stored by name.
-			Assert.AreEqual("PerioUseRecessionTerm",PerioMeasures.PrefNameUseRecessionTerm);
+		public void RecessionPreferenceName_IsOpenDentalsName_ReadByName() {
+			//Open Dental's name, from the setting names of the office's Open Dental 25.3.48 database (docs/port-notes/SWMAP.md); the option is stored by
+			//name, outside PrefName, so a database without the row reads as off.
+			Assert.AreEqual("PerioRecessionInsteadOfGM",PerioMeasures.PrefNameUseRecessionTerm);
 			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),PerioMeasures.PrefNameUseRecessionTerm));
 		}
 		#endregion Recession term (v24_4-chart-perio-recession-term)

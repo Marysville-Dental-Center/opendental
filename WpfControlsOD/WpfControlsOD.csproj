@@ -610,6 +610,9 @@
     <Compile Include="Frms\FrmSheetSetup.xaml.cs">
       <DependentUpon>FrmSheetSetup.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Frms\FrmStatementSendSetup.xaml.cs">
+      <DependentUpon>FrmStatementSendSetup.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Frms\FrmSiteEdit.xaml.cs">
       <DependentUpon>FrmSiteEdit.xaml</DependentUpon>
     </Compile>
@@ -1328,6 +1331,10 @@
       <SubType>Designer</SubType>
     </Page>
     <Page Include="Frms\FrmSheetSetup.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Frms\FrmStatementSendSetup.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

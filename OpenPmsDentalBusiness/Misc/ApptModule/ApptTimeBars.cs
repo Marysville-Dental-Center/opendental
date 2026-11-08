@@ -11,23 +11,18 @@ using CodeBase;
 
 namespace OpenPmsDentalBusiness {
 	///<summary>Rules and settings for the two preferences. The drawing is in ControlApptPanel.TimeBars.cs.
-	///<para>Open Dental's own preference names for these two settings are not in any public source, so they are not registered in PrefName (see
-	///tests/RegistryTests/PrefNameTests.cs: a guessed name would keep the office's real setting from carrying over). Until the owner confirms
-	///the real names, each setting is kept in a fork-owned preference row whose name starts with "Fork". The row is created the first time the
-	///setting is turned on; a missing row reads as off, so no migration step adds rows to an Open Dental database. Once the registry owner adds
-	///the confirmed name to PrefName (and PREF_NAME_PROPOSED_* is corrected if it differs), the setting is read from and saved to that
-	///preference instead, with no other change.</para></summary>
+	///<para>Each setting is Open Dental's own preference row (names confirmed by the setting names of the office's Open Dental 25.3.48 database,
+	///owner question Switch-over 1, 2026-11-07; docs/port-notes/SWMAP.md), read and written by name outside PrefName, so the office's value carries
+	///over as it is. The row is created the first time the setting is turned on; a missing row (a database from 24.3, a new database) reads as off.
+	///Release v0.0 kept them in the rows ForkApptProvTimeBarsOnOpBackground and ForkApptTimeBarSecondaryColorNoProvTime; the fork migration step
+	///OdSettingNamesStep moves those.</para></summary>
 	public static class ApptTimeBars {
 		///<summary>Bool, off when missing. When on, each operatory column paints its scheduled provider time in a light tint of the provider's
-		///color instead of the generic open color.</summary>
-		public const string PREF_PROV_TIME_ON_OP_BACKGROUND="ForkApptProvTimeBarsOnOpBackground";
+		///color instead of the generic open color. Open Dental 25.2's name.</summary>
+		public const string PREF_PROV_TIME_ON_OP_BACKGROUND="ApptProvbarShowOnOps";
 		///<summary>Bool, off when missing. When on, an appointment whose two time patterns hold no provider time shows the secondary provider's
-		///color over its whole time bar.</summary>
-		public const string PREF_SECONDARY_COLOR_NO_PROV_TIME="ForkApptTimeBarSecondaryColorNoProvTime";
-		///<summary>The name docs/specs/features-25.2.md proposes for Open Dental's 25.2 preference. Not confirmed, so not in PrefName.</summary>
-		public const string PREF_NAME_PROPOSED_OP_BACKGROUND="ApptProvTimeBarsOnOpBackground";
-		///<summary>The name docs/specs/features-25.3.md proposes for Open Dental's 25.3 preference. Not confirmed, so not in PrefName.</summary>
-		public const string PREF_NAME_PROPOSED_SECONDARY_COLOR="ApptTimeBarSecondaryColorNoProvTime";
+		///color over its whole time bar. Open Dental 25.3's name.</summary>
+		public const string PREF_SECONDARY_COLOR_NO_PROV_TIME="ApptUseSecProvTimeIfEmpty";
 		///<summary>How far a provider color is lightened toward white for the operatory background, so appointment text stays readable.</summary>
 		public const double TINT_FRACTION=0.7;
 
@@ -42,28 +37,10 @@ namespace OpenPmsDentalBusiness {
 			return GetBoolPref(PREF_SECONDARY_COLOR_NO_PROV_TIME);
 		}
 
-		///<summary>The preference row that holds a setting: the Open Dental name once it is registered in PrefName, otherwise the fork-owned
-		///name. Any other name is returned unchanged.</summary>
-		public static string GetPrefNameInUse(string prefNameFork) {
+		///<summary>Reads one of the two settings (PREF_PROV_TIME_ON_OP_BACKGROUND or PREF_SECONDARY_COLOR_NO_PROV_TIME) from the cache. A missing
+		///row, an empty cache or an unreadable value reads as false.</summary>
+		public static bool GetBoolPref(string prefName) {
 			Meth.NoCheckMiddleTierRole();
-			string prefNameProposed=null;
-			if(prefNameFork==PREF_PROV_TIME_ON_OP_BACKGROUND) {
-				prefNameProposed=PREF_NAME_PROPOSED_OP_BACKGROUND;
-			}
-			else if(prefNameFork==PREF_SECONDARY_COLOR_NO_PROV_TIME) {
-				prefNameProposed=PREF_NAME_PROPOSED_SECONDARY_COLOR;
-			}
-			if(prefNameProposed!=null && Enum.IsDefined(typeof(PrefName),prefNameProposed)) {
-				return prefNameProposed;
-			}
-			return prefNameFork;
-		}
-
-		///<summary>Reads one of the two settings (pass the fork-owned name) from the cache. A missing row, an empty cache or an unreadable value
-		///reads as false.</summary>
-		public static bool GetBoolPref(string prefNameFork) {
-			Meth.NoCheckMiddleTierRole();
-			string prefName=GetPrefNameInUse(prefNameFork);
 			try {
 				//B-SERVER's shared helper for fork-owned preference rows: null when the cache is empty or has no such row.
 				string valueString=PrefC.GetRawOrDefault(prefName,null);
@@ -78,13 +55,12 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
-		///<summary>Saves one of the two settings (pass the fork-owned name) and updates the local cache. Inserts the row the first time it is
-		///turned on; a missing row already reads as off, so turning off a setting that was never saved writes nothing. Returns true if the
-		///stored value changed, so the caller sends the Prefs signal.</summary>
-		public static bool UpdateBoolPref(string prefNameFork,bool value) {
+		///<summary>Saves one of the two settings and updates the local cache. Inserts the row the first time it is turned on; a missing row already
+		///reads as off, so turning off a setting that was never saved writes nothing. Returns true if the stored value changed, so the caller sends
+		///the Prefs signal.</summary>
+		public static bool UpdateBoolPref(string prefName,bool value) {
 			Meth.NoCheckMiddleTierRole();
-			string prefName=GetPrefNameInUse(prefNameFork);
-			if(GetBoolPref(prefNameFork)==value && (PrefC.ContainsKey(prefName) || !value)) {
+			if(GetBoolPref(prefName)==value && (PrefC.ContainsKey(prefName) || !value)) {
 				return false;
 			}
 			UpsertPrefRaw(prefName,POut.Bool(value));
@@ -101,7 +77,7 @@ namespace OpenPmsDentalBusiness {
 				Meth.GetVoid(MethodBase.GetCurrentMethod(),prefName,valueString);
 				return;
 			}
-			if(!prefName.In(PREF_PROV_TIME_ON_OP_BACKGROUND,PREF_SECONDARY_COLOR_NO_PROV_TIME,PREF_NAME_PROPOSED_OP_BACKGROUND,PREF_NAME_PROPOSED_SECONDARY_COLOR)) {
+			if(!prefName.In(PREF_PROV_TIME_ON_OP_BACKGROUND,PREF_SECONDARY_COLOR_NO_PROV_TIME)) {
 				throw new ArgumentException("Not a time bar preference: "+prefName);
 			}
 			PrefC.UpsertRawNoCache(prefName,valueString);//B-SERVER's shared helper for fork-owned preference rows.

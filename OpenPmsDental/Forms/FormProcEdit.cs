@@ -2558,7 +2558,7 @@ namespace OpenPmsDental {
 		}
 
 		private void butChangeUser_Click(object sender,EventArgs e) {
-			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true);
+			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true,isSigBox:true);
 			formLogOn.ShowDialog();
 			if(formLogOn.DialogResult==DialogResult.OK) { //if successful
 				if(formLogOn.IsDomainAuthenticated) {
@@ -2687,6 +2687,8 @@ namespace OpenPmsDental {
 					_patient.Age,_listInsSubs,
 					null,false,false,_listSubstitutionLinks,false,
 					null,_lookupFees,_orthoProcLink);
+				//ODOPTS (ClaimUpdateFeeForSecondary): after the claimprocs above are saved, so their in-memory copies cannot undo the new fee billed.
+				ClaimFeeForSecondary.UpdateForProcFeeChange(_procedure,_procedureOld.ProcFee);
 				if(_isEstimateRecompute
 					&& _procedure.ProcNumLab!=0//By definition of procedure.ProcNumLab, this will only happen in Canada and if ProcCur is a lab fee.
 					&& !Procedures.IsAttachedToClaim(_procedure.ProcNumLab))//If attached to a claim, then user should recreate claim because estimates will be inaccurate not matter what.

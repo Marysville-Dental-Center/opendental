@@ -151,7 +151,9 @@ Not changed: foundation registries (`PrefName`, `PrefInfos.xml`, permissions, se
 ## Questions for the owner
 
 1. What is Open Dental's preference key (and value format) for the 24.4 sales-tax procedure code? The census would show it; until then the fork
-   uses `SalesTaxProcCode` holding a ProcCode.
+   uses `SalesTaxProcCode` holding a ProcCode. **Answered (2026-11-07, owner question Switch-over 1):** the office's Open Dental 25.3.48
+   database has `SalesTaxProcCode`, so the key is the one this program uses and the office's code carries over as it is (see "Open Dental's
+   name" below). The value format is still not public; a CodeNum is read too.
 2. The level range given to this package (2027000201-2027000299) is rejected by the migration runner's level check (month 00). Should ranges use a
    valid date, or should the runner's check change?
 3. Ortho Case window: is removing the two long instruction texts (and compacting the window) what you expect? Please check it on screen.
@@ -174,3 +176,14 @@ Not changed: foundation registries (`PrefName`, `PrefInfos.xml`, permissions, se
 - **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** The Sales Tax procedure code is read from `SalesTaxProcCode`, the spec's proposed name, which carries the office's value over only if Open Dental uses the same name. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (row 1 of its table), step 7.1 sets it again in this program, and both are checklist rows.
 - Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
 - The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.
+
+## Open Dental's name (SWMAP, 2026-11-07, branch `next/swmap-1`)
+
+- The setting names of the office's Open Dental 25.3.48 database (owner question Switch-over 1) include `SalesTaxProcCode`: Open Dental's key
+  is the name this program already read and wrote, so the office's sales-tax procedure code carries over at the switch-over without any
+  change, and runbook step 0.11 no longer lists it; `migration-preview` shows the code (runbook step 0.2) and step 7.1 compares it.
+  Its value format is still not public, so `SalesTaxProcs.GetCodeNumFromSetting` keeps reading a CodeNum as well as a ProcCode. The row stays
+  outside `PrefName` (a database from 24.3 has none).
+- Tests: `SWMAPTests` (the name, an adopted synthetic 25.3.48 database with a made-up code read as it is),
+  `RegistryTests.PrefNameTests.ProposedNames_EachIsReadUnderOpenDentalsName_OrRecordedAndSetAgainByTheAdoptionRunbook` (renamed from
+  `UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook`). See [SWMAP.md](SWMAP.md).

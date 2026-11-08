@@ -6,6 +6,7 @@ using System.Linq;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.ForkMigrations;
 using OpenPmsDentalBusiness.ForkMigrations.Features;
+using OpenPmsDentalBusiness.ForkMigrations.FeatureSteps;
 using SyntheticData.Infrastructure;
 using Db=SyntheticData.Infrastructure.Db;
 
@@ -27,9 +28,12 @@ namespace AdoptionValidation {
 	///  their codes and creates a group for a category without one (InsHistCodeGroupPlan);
 	///- the routine maintenance grant step (MaintPermissionGrantStep) gives every user group with Security Admin Maintenance Setup and Maintenance
 	///  Record Completion, the rows it lacks (MaintenanceGrantPlan). The routine maintenance tables are created empty.
-	///adopt's row check (AdoptionRowCheck) holds the adopted copy to the same plans, made from the original. The last line lists the program rows
-	///that name a plug-in DLL, which adoption does not change but which stop loading in this program (GetPluginLine). Reads the displayreport
-	///table, the preferences, grouppermission, whether claimpayment notes are NULL, program, toolbutitem, codegroup and the procedure codes.</summary>
+	///adopt's row check (AdoptionRowCheck) holds the adopted copy to the same plans, made from the original. Two lines are about settings
+	///(docs/port-notes/SWMAP.md): the settings this program reads under Open Dental's own names, with what it will show (adoption keeps those rows
+	///as they are; runbook step 7.1 checks them), and the rows of release v0.0 the settings step (OdSettingNamesStep) would move, which an Open
+	///Dental 25.3.48 database never has. The last line lists the program rows that name a plug-in DLL, which adoption does not change but which stop
+	///loading in this program (GetPluginLine). Reads the displayreport table, the preferences, grouppermission, whether claimpayment notes are NULL,
+	///program, toolbutitem, codegroup and the procedure codes.</summary>
 	public static class MigrationPreview {
 		public class Result {
 			public string Database;
@@ -56,6 +60,10 @@ namespace AdoptionValidation {
 			///<summary>The program rows that name a plug-in DLL (PluginDllName), in ProgramNum order. Adoption changes none of them; it is listed so
 			///that an office sees, before it switches, which plug-ins will stop loading.</summary>
 			public List<PluginRow> ListPluginRows=new List<PluginRow>();
+			///<summary>The settings this program reads under Open Dental's own names, one line each (OdSettingNames.DescribeReads).</summary>
+			public List<string> ListSettingReads=new List<string>();
+			///<summary>The release v0.0 setting rows the settings step moves (OdSettingNames.Plan). Empty on an Open Dental 25.3.48 database.</summary>
+			public List<OdSettingRowChange> ListSettingMoves=new List<OdSettingRowChange>();
 
 			///<summary>The plans that rename a row.</summary>
 			public List<ReportRows25_3.ReportTargetPlan> ListRenames {
@@ -93,10 +101,51 @@ namespace AdoptionValidation {
 				listLines.AddRange(PlanInsHist.Lines());
 				listLines.AddRange(PlanMaintGrants.Lines());
 				listLines.AddRange(PlanInventory.Lines());
+				listLines.Add(GetSettingsReadLine(ListSettingReads));
+				listLines.Add(GetSettingsMoveLine(ListSettingMoves));
 				listLines.AddRange(PlanTrojan.Lines());
 				listLines.Add(GetPluginLine(ListPluginRows));
 				return listLines;
 			}
+		}
+
+		///<summary>The preview's line about the settings Open Dental 24.4 to 25.3 added that this program reads under Open Dental's own names
+		///(docs/port-notes/SWMAP.md): each with what this program will show and the stored rows. Adoption changes none of these rows.</summary>
+		public static string GetSettingsReadLine(List<string> listSettingReads) {
+			return "Settings read under Open Dental's names (adoption keeps these rows as they are; write the values on the checklist, runbook step 0.2, "
+				+"and compare them in step 7.1): "+string.Join("; ",listSettingReads)+".";
+		}
+
+		///<summary>The preview's line about the release v0.0 setting rows the settings step moves to Open Dental's names. An Open Dental 25.3.48
+		///database has none.</summary>
+		public static string GetSettingsMoveLine(List<OdSettingRowChange> listSettingMoves) {
+			if(listSettingMoves.Count==0) {
+				return "Step "+StepSettings+" (settings under Open Dental's names) changes no preference row: the database has no setting row of release v0.0.";
+			}
+			return "Step "+StepSettings+" (settings under Open Dental's names) moves release v0.0 setting rows, "+listSettingMoves.Count+" change(s): "
+				+string.Join("; ",listSettingMoves.Select(x => x.Describe()))+". The office runbook adopts only an Open Dental 25.3.48 database, which has none.";
+		}
+
+		///<summary>The level of the settings step, for messages.</summary>
+		public static long StepSettings {
+			get { return new OdSettingNamesStep().Level; }
+		}
+
+		///<summary>Every preference value of the database by name (the first row by PrefNum when a name is there twice, as MariaDB compares names:
+		///case ignored), read with plain SQL. Empty when there is no preference table.</summary>
+		public static Dictionary<string,string> ReadPrefValues(Db db,string database) {
+			LocalOnly.EnsureSafeIdentifier(database);
+			Dictionary<string,string> dictValues=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+			if(db.ScalarLong("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA="+SqlLiteral.Quote(database)+" AND TABLE_NAME='preference'")==0) {
+				return dictValues;
+			}
+			foreach(object[] row in db.Rows("SELECT PrefName,ValueString FROM `"+database+"`.preference ORDER BY PrefNum")) {
+				string prefName=Convert.ToString(row[0],CultureInfo.InvariantCulture)??"";
+				if(!dictValues.ContainsKey(prefName)) {
+					dictValues[prefName]=Convert.ToString(row[1],CultureInfo.InvariantCulture)??"";
+				}
+			}
+			return dictValues;
 		}
 
 		///<summary>A program row that names a plug-in DLL.</summary>
@@ -162,6 +211,10 @@ namespace AdoptionValidation {
 			result.PlanInsHist=InsHistCodeGroupPlan.Make(db,database,result.Plan26_1.IsFromBefore25_4);
 			result.PlanMaintGrants=MaintenanceGrantPlan.Make(db,database);
 			result.PlanInventory=InventoryPlan.Make(db,database);
+			Dictionary<string,string> dictPrefValues=ReadPrefValues(db,database);
+			Func<string,string> funcGetRaw=x => dictPrefValues.TryGetValue(x,out string value) ? value : null;
+			result.ListSettingReads=OdSettingNames.DescribeReads(funcGetRaw);
+			result.ListSettingMoves=OdSettingNames.Plan(funcGetRaw);
 			result.PlanTrojan=TrojanExpressCollectPlan.Make(db,database);
 			result.ListPluginRows=ReadPluginRows(db,database);
 			return result;

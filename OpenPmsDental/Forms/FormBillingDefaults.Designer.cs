@@ -26,6 +26,7 @@ namespace OpenPmsDental{
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormBillingDefaults));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.butEbill = new OpenPmsDental.UI.Button();
+			this.butSendSetup = new OpenPmsDental.UI.Button();
 			this.comboClinic = new OpenPmsDental.UI.ComboBoxClinicPicker();
 			this.checkUsePracticeDefaults = new OpenPmsDental.UI.CheckBox();
 			this.groupStatements = new OpenPmsDental.UI.GroupBox();
@@ -75,6 +76,16 @@ namespace OpenPmsDental{
 			this.butEbill.TabIndex = 4;
 			this.butEbill.Text = "Electronic Billing...";
 			this.butEbill.Click += new System.EventHandler(this.butEbill_Click);
+			//
+			// butSendSetup
+			//
+			this.butSendSetup.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butSendSetup.Location = new System.Drawing.Point(148, 568);
+			this.butSendSetup.Name = "butSendSetup";
+			this.butSendSetup.Size = new System.Drawing.Size(98, 24);
+			this.butSendSetup.TabIndex = 9;
+			this.butSendSetup.Text = "Send Setup...";
+			this.butSendSetup.Click += new System.EventHandler(this.butSendSetup_Click);
 			//
 			// comboClinic
 			//
@@ -352,6 +363,7 @@ namespace OpenPmsDental{
 			this.ClientSize = new System.Drawing.Size(877, 602);
 			this.Controls.Add(this.butSave);
 			this.Controls.Add(this.butEbill);
+			this.Controls.Add(this.butSendSetup);
 			this.Controls.Add(this.groupMessages);
 			this.Controls.Add(this.groupStatements);
 			this.Controls.Add(this.checkUsePracticeDefaults);
@@ -372,6 +384,7 @@ namespace OpenPmsDental{
 
 		private OpenPmsDental.UI.Button butSave;
 		private OpenPmsDental.UI.Button butEbill;
+		private OpenPmsDental.UI.Button butSendSetup;
 		private OpenPmsDental.UI.ComboBoxClinicPicker comboClinic;
 		private OpenPmsDental.UI.CheckBox checkUsePracticeDefaults;
 		private OpenPmsDental.UI.GroupBox groupStatements;

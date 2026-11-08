@@ -329,6 +329,9 @@ namespace OpenPmsDental
 				case PerioSequenceType.Mobility:
 					prefVal=PrefC.GetInt(PrefName.PerioRedMob);
 					break;
+				case PerioSequenceType.AttGing:
+					prefVal=PerioMeasures.GetRedAttGing()??int.MinValue;//ODOPTS: PerioRedAttGing, at or below is red; no threshold counts no tooth
+					break;
 			}
 			List<string> listStrings=new List<string>();
 			string cellText="";
@@ -343,8 +346,9 @@ namespace OpenPmsDental
 					if(cellText==null || cellText==""){
 						continue;
 					}
-					if((perioSequenceType==PerioSequenceType.MGJ && PIn.Long(cellText)<=prefVal)
-						|| (perioSequenceType!=PerioSequenceType.MGJ && PIn.Long(cellText)>=prefVal)){
+					bool isAtOrBelow=perioSequenceType.In(PerioSequenceType.MGJ,PerioSequenceType.AttGing);
+					if((isAtOrBelow && PIn.Long(cellText)<=prefVal)
+						|| (!isAtOrBelow && PIn.Long(cellText)>=prefVal)){
 						intTooth=(int)Math.Ceiling((double)x/3);
 						if(section==2 || section==3){//if mand
 							intTooth=33-intTooth;
@@ -2306,13 +2310,13 @@ namespace OpenPmsDental
 						redThresh=PrefC.GetInt(PrefName.PerioRedMob);
 						break;
 					case PerioSequenceType.AttGing:
-						redThresh=int.MaxValue;//auto Att Ging has no "red if" threshold (24.4), so its values are never red
+						//ODOPTS: PerioRedAttGing, red at or below the threshold like MGJ; without a threshold never red, as in 24.4
+						redThresh=PerioMeasures.GetRedAttGing()??int.MinValue;
 						break;
 				}
-				if((_perioSequenceTypeArray[GetSection(rowIndex)][GetSectionRow(rowIndex)]
-					==PerioSequenceType.MGJ && cellValue<=redThresh)
-					||(_perioSequenceTypeArray[GetSection(rowIndex)][GetSectionRow(rowIndex)]
-					!=PerioSequenceType.MGJ && cellValue>=redThresh))
+				bool isRedAtOrBelow=_perioSequenceTypeArray[GetSection(rowIndex)][GetSectionRow(rowIndex)].In(PerioSequenceType.MGJ,PerioSequenceType.AttGing);
+				if((isRedAtOrBelow && cellValue<=redThresh)
+					||(!isRedAtOrBelow && cellValue>=redThresh))
 				{
 					if(drawOld) {
 						colorText=_colorOldTextRed;

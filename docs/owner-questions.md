@@ -55,31 +55,25 @@ These are in v0.0 as described. Each one is a default, not a final answer: **cha
 
 ## Switch-over and data conversions
 
-**1. [SWITCH-OVER] Settings that will not carry over from Open Dental** (B-ACCT 1, B-APPT 1, B-CLAIM 1, B-ERA 1, B-INSH 2, B-PAY 1, B-PERIO 1, B-SERVER 1, B-SHELL 1, B-WIKI 5, V-BRIDGE1 1)
+**1. [SWITCH-OVER] Settings that will not carry over from Open Dental** (B-ACCT 1, B-APPT 1, B-CLAIM 1, B-ERA 1, B-INSH 2, B-PAY 1, B-PERIO 1, B-SERVER 1, B-SHELL 1, B-WIKI 5, V-BRIDGE1 1). **Answered (2026-11-07):** you gave the setting names (names only) of the office's Open Dental 25.3.48 database and the names of its four program links. Built as [port-notes/SWMAP.md](port-notes/SWMAP.md) says; no office value was read or used.
 
-Open Dental does not publish the internal names of these settings, so the program stores each one under a name of its own. **Today:** after the switch-over each of them is at its default (off or blank), even if the office had it on in Open Dental 25.3, and staff have to set it again. If you allow a read-only look at the setting names in the office's current database (names and values only, no patient data), the developer can match the real names so the settings carry over. Otherwise, please say which of these the office uses today:
+Open Dental does not publish the internal names of these settings, so release 0.0 stored each one under a name of its own, and after the switch-over each was at its default. **Now:** this program reads each setting the office database has under Open Dental's own name, so the switch-over carries the office's value over as it is, without changing the row; `migration-preview` lists them, with what this program will show, before the day (runbook step 0.2):
 
-| Setting in Open Dental | Package | After the switch-over today |
+| Setting in Open Dental | Package | After the switch-over now |
 |---|---|---|
-| Sales-tax procedure code (24.4) | B-ACCT 1 | Not set, so no sales tax until someone sets it |
-| Provider time bars on the operatory background (25.2), and the secondary time-bar color when no provider time is set (25.3) | B-APPT 1 | Off |
-| "Prompt for Medical EOB on primary claims" (25.2) | B-CLAIM 1 | Off. You can also approve the proposed name `ClaimMedReceivedPromptForMedicalEob` |
-| "Auto split ERAs with CARC denial codes listed above" | B-ERA 1 | Off |
-| Blue Book percentage of the provider fee | B-INSH 2 | Read under its 24.3 name. If Open Dental 25.3 renamed it, the office's percentage may not be read |
-| "Payment plans are not affected by the global lock date" | B-PAY 1 | Off |
-| Perio "Recession" wording (24.4) | B-PERIO 1 | Off |
-| Incomplete Procedure Notes report "include all procedures with no notes" default, and the two replication delay settings | B-SERVER 1 | Off / 0 |
-| Blur the screen when switching modules | B-SHELL 1 | Off |
-| Read-only wiki copy (if Open Dental 25.2 had a setting for it) | B-WIKI 5 | The program's own setting, off |
-| Program links for Overjet, DTX Studio, DTX Studio Acquire and IAP | V-BRIDGE1 1 | If Open Dental's names differ, the office's own link opens as a plain link and a second, turned-off link is added beside it |
+| Sales-tax procedure code (24.4) | B-ACCT 1 | Carried over: Open Dental's name is `SalesTaxProcCode`, the name this program already used |
+| Provider time bars on the operatory background (25.2), and the secondary time-bar color when no provider time is set (25.3) | B-APPT 1 | Carried over: `ApptProvbarShowOnOps`, `ApptUseSecProvTimeIfEmpty` |
+| "Prompt for Medical EOB on primary claims" (25.2) | B-CLAIM 1 | Carried over: `ClaimCheckForMedicalEOB` |
+| "Auto split ERAs with CARC denial codes listed above" | B-ERA 1 | Carried over: `EraAutoProcessSplitByCarcCodes` |
+| Blue Book percentage of the provider fee | B-INSH 2 | Carried over: the office database still has `InsBlueBookUcrFeePercent`, the 24.3 name this program reads |
+| "Payment plans are not affected by the global lock date" | B-PAY 1 | Carried over, **converted**: Open Dental's `PayPlansIncludeInGlobalLock` says the opposite (1 = payment plans are included in the global lock date), so this program's box is ticked only when it is 0 |
+| Perio "Recession" wording (24.4) | B-PERIO 1 | Carried over: `PerioRecessionInsteadOfGM` |
+| Incomplete Procedure Notes report "include all procedures with no notes" default, and the two replication delay settings | B-SERVER 1 | The read delay after a write carries over from `ReplicationWriteReadDelayEnabled` and `ReplicationWriteReadDelayMS`. The office database has no setting for the report default or for this program's look-back for signals (only `ReportsIncompleteProcsNoNotes`, `...Unsigned` and `...ExcludeCodes`, which carry over as before), so those two start at their defaults, as before |
+| Blur the screen when switching modules | B-SHELL 1 | Carried over: `BlurModuleOnLoad` |
+| Read-only wiki copy (if Open Dental 25.2 had a setting for it) | B-WIKI 5 | Open Dental 25.3.48 has no setting for it; the program's own setting starts off |
+| Program links for Overjet, DTX Studio, DTX Studio Acquire and IAP | V-BRIDGE1 1 | The office's rows are named `Overjet`, `DTXStudio`, `DTXStudioAcquire` and `IAP`, the names this program uses, so it reuses them with their settings and adds no second link |
 
-The notes give these read-only checks for the developer:
-```sql
-SELECT PrefName,ValueString FROM preference WHERE PrefName LIKE '%Lock%' OR PrefName LIKE '%PayPlan%';
-SELECT PrefName FROM preference WHERE PrefName LIKE '%Replication%' OR PrefName LIKE '%IncompleteProcs%';
-SELECT ProgramNum,ProgName,ProgDesc,Enabled,Path FROM program WHERE ProgName LIKE '%overjet%' OR ProgName LIKE '%dtx%' OR ProgName='IAP';
-```
-A list of all setting names (names only) covers the rest. The same look also answers item 9 below and B-EF 4 (under Forms).
+The settings saved in release 0.0 under its own names move to Open Dental's names in the update (fork migration step 2026110731); an Open Dental database has none of them. Names of the office database for features this program left out (chat, Canadian RAMQ, Open Dental's hosted services, cloud, mass e-mail, Message-to-Pay, the Pearl timestamp and the like) are left alone; SWMAP lists each with the reason. The five settings of this program that Open Dental has no name for stay in runbook step 0.11.
 
 **Answered (2026-11-07):** the owner exports the settings list from the office database himself: the setting names, plus the values of a few of them. The file stays out of the repository.
 
@@ -112,7 +106,7 @@ This vendor service was discontinued. **Today:** the switch-over turns the link 
 **Today:** the form is not added automatically. Staff can add it from Setup, Claim Forms (internal list, Copy). Should the switch-over add it to the office's claim forms? This only matters if the office bills Medi-Cal.
 
 **9. [SWITCH-OVER] Payment plan version** (B-PAY 2)
-Which payment plan version does the office database hold? If Open Dental's 25.1 update forced the newer "Age Credits and Debits" mode, should the program do the same for databases that never had that update? **Today:** nothing converts it.
+Which payment plan version does the office database hold? If Open Dental's 25.1 update forced the newer "Age Credits and Debits" mode, should the program do the same for databases that never had that update? **Answered (2026-11-07, with item 1):** the office database has `PayPlansVersion`, the name this program reads, so the office's payment plan version carries over unchanged. Nothing converts it, on the office database or on a database from 24.3.
 
 **10. [SWITCH-OVER] Automatic recurring and repeating charges** (M2-RECUR 5)
 The program has no automatic runner for recurring card charges or repeating charges, because the Open Dental background service was removed. The "automated" settings are still shown, but nothing runs them. **Today:** staff must run the charges by hand. With backdating off, the Repeating Charges tool must be run on each billing date (with backdating on, the default, a late run posts the missed dates). Does the office rely on automatic charges today, and do you want a scheduled runner on an office computer? **Answered (2026-11-07):** the office runs no automatic recurring charges today: nothing to build.
@@ -290,7 +284,7 @@ The program has no automatic runner for recurring card charges or repeating char
 - (B-EF 1) Forms that eClipboard and Web Forms left in the office data show as "Waiting for patient" and "Submitted online" (not the spec's "In eClipboard" and "Web form", since those services are gone). Acceptable?
 - (B-EF 2) Should scanned form documents show under the Sheets filter, or only under Both? **Today:** Sheets.
 - (B-EF 3) An eForm with no status: show "None", or a blank cell? **Today:** "None".
-- (B-EF 4) Forms imported before the switch-over (including by Open Dental 25.3) don't show as Imported. If the office database shows that Open Dental's import audit entries carry the form's number, they can be counted too (the same database look as Switch-over item 1).
+- (B-EF 4) Forms imported before the switch-over (including by Open Dental 25.3) don't show as Imported. If the office database shows that Open Dental's import audit entries carry the form's number, they can be counted too (the same database look as Switch-over item 1). **Answered (2026-11-07, with Switch-over item 1):** setting names do not show audit entries, so the switch-over converts none: the audit trail is copied as it is. Patient Forms shows an eForm as Imported when an `EFormImport` audit entry carries its number and says "imported", the test it applies to its own entries; an Open Dental entry written that way counts, and an eForm without such an entry shows its status.
 - (B-EF 6) When radio button items are renamed, should the conditional fields that depend on them be updated too (the Ins Pick editor already does this)? **Today:** no.
 - (M2-EF 2) In the import window, should a blank answer clear a stored patient field by default? **Today:** unchecked (not cleared).
 - (M2-EF 3) Should patient fields be allowed as Auto Import fields? **Today:** no.
@@ -538,6 +532,53 @@ The questions of the library updates and of the in-house DICOM reader, with your
 - (LIB-WEB 7) Two error dialogs when the WebView2 Runtime is missing or fails. **Decided:** one dialog. Built.
 
 **PDFsharp and the spell checker**: route B (decision 13 above, and the LIB-PDF items under "Release v0.0") and the spell checker built from its GitHub source as a git submodule, with no MPL text shipped (item 18 and "The source of the spell checker").
+
+---
+
+## Open Dental 25.3 options built (ODOPTS, 2026-11-07)
+
+Your answer of 2026-11-07 ("why not just build it?") to the options this program had built without ([port-notes/SWMAP.md](port-notes/SWMAP.md)).
+All eight are built and read under Open Dental's own setting names, so the office's values carry over with no conversion
+([port-notes/ODOPTS.md](port-notes/ODOPTS.md)). Open Dental does not publish what most of them mean, so this program does what each name says;
+please confirm each by trying the setting in the office's Open Dental 25.3 (on a copy, or on a test patient) before the switch-over, and say
+where Open Dental behaves differently.
+
+- (ODOPTS 1) `PerioRedAttGing`: an auto Att Ging value **at or below** the number is red, like MGJ. A blank or missing row means no threshold
+  (never red). **Confirm:** the direction, and what Open Dental shows on a new database (its default). **Today:** as described.
+- (ODOPTS 2) `DomainLoginForSigBoxes`: on means the Change User of signature boxes (procedure notes, group notes, sheets, treatment plan
+  signing, the ortho chart) offers domain login while domain login is on; off, those prompts ask for the program's own password. A missing row
+  reads as on. **Confirm:** that this is what the switch does in Open Dental, and its default. **Today:** as described.
+- (ODOPTS 3) `ClaimUpdateFeeForSecondary`: on means that when a procedure's fee changes while the procedure is on a primary claim, each of its
+  secondary claims that is not sent or received is recalculated with the new fee (the primary claim is not touched). This program does it
+  wherever an existing procedure's fee changes: the procedure window, Edit All (a new provider re-prices the selected procedures), and a provider
+  change on an appointment that is not complete (moving it, or saving the appointment window), which can re-price a completed procedure on
+  it. Missing row: off. **Confirm:** when Open Dental updates the secondary claim's fee (from the procedure window, from Edit All, from an
+  appointment's provider change, also when the primary claim is received, or from the claim), and whether it updates estimates too.
+  **Today:** as described.
+- (ODOPTS 4) `EFormImportAllergiesAsOther` and `EFormImportProblemsAsOther`: on means a typed allergy or problem that matches nothing in the
+  list is imported as "Other" with the patient's text (as before); off means it is not imported: auto import records each such entry in the
+  form's Audit Trail entry ("Allergy not imported ...", "Problem not imported ...") and tells the user who saved the form, and the manual import
+  lists it unticked. Missing rows: on. **Confirm:** what Open Dental does with such an entry when the setting is off (skip it, or add a new list
+  entry with the patient's text). **Settle before the switch-over** if the office's rows are 0: from that day a typed allergy or problem that
+  matches no list entry is not auto-imported (it stays on the form and in the Audit Trail). **Today:** skipped and recorded.
+- (ODOPTS 5) `InsHistPerioScalingCode`: a procedure code that the perio scaling rows of Insurance History use to record dates (and count as
+  history); blank keeps each perio scaling code group's own History Proc Code. **Confirm:** that this is the code Open Dental uses when a perio
+  scaling date is entered, and whether it applies to the four quadrants alike. **Today:** as described.
+- (ODOPTS 6) `StatementAutoSendEmail`: **the meaning itself was changed, not only the values.** The only public source (the 25.1 release
+  notes, `v25_1-eservices-msgtopay-on-statement-creation` in `docs/specs/features-25.1.md`) says Open Dental's Statement Send Setup window sends
+  **Message-to-Pay** links automatically when statements are created, a hosted Open Dental service this program does not have. So in Open
+  Dental this row most likely turns on automatic Message-to-Pay messages; it probably never e-mailed the statement PDF itself. This program
+  uses the row for something else (**INFERRED**): the new statements whose mode is E-mail are e-mailed as soon as billing creates them
+  (Billing Options, Create List), without the Send click. **Decide first, before the switch-over:** (a) does the office use this setting in
+  Open Dental for Message-to-Pay, and (b) do you want it to mean "e-mail the statement when billing creates it" in this program? Only then:
+  (c) which value the office's Open Dental shows for which choice in its Statement Send Setup window (read here as 0 never, 1 ask, 2 always;
+  any other value never sends). **Until you decide:** a stored "always" asks before e-mailing, and says why, until someone saves Statement
+  Send Setup in this program (Billing Defaults, Send Setup), so nothing is e-mailed on the strength of Open Dental's Message-to-Pay setting
+  alone. **Today:** as described.
+- (ODOPTS 7) `StatementAutoSendSMS`: in Open Dental most likely Message-to-Pay by text (the same public source). The same values, but no text
+  is sent: Open Dental's hosted texting was removed and this program has no texting provider. The Billing List says the statements were not
+  texted, and the setup window says texting needs a provider. **Decide:** whether to choose a texting provider (the hook is
+  `StatementAutoSend.TextSender`). **Today:** nothing is texted.
 
 ---
 

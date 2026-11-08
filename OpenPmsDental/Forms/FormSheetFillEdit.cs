@@ -1854,7 +1854,7 @@ namespace OpenPmsDental {
 
 		///<summary>Switches the signer of one signature box. Security.CurUser does not change. Clears the box's signature.</summary>
 		private void ChangeSigBoxUser(SignatureBoxWrapper signatureBoxWrapper,SheetField sheetField,Label labelSigner) {
-			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true);
+			using FormLogOn formLogOn=new FormLogOn(isSimpleSwitch:true,isSigBox:true);
 			formLogOn.ShowDialog();
 			if(formLogOn.DialogResult!=DialogResult.OK || formLogOn.UserodSimpleSwitch==null) {
 				return;

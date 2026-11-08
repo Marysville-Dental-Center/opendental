@@ -117,7 +117,7 @@ Checks run on the branch (2026-10-25): `OpenDental.Local.slnf` Debug x86 full re
 
 ## Owner questions
 
-1. What are Open Dental's real preference names for "provider time bars on operatory background" (25.2) and "secondary color in the time bar when no provider time is set" (25.3)? Once confirmed, the registry owner registers them and the code switches to them (see "Preference names").
+1. What are Open Dental's real preference names for "provider time bars on operatory background" (25.2) and "secondary color in the time bar when no provider time is set" (25.3)? Once confirmed, the registry owner registers them and the code switches to them (see "Preference names"). **Answered (2026-11-07, owner question Switch-over 1):** `ApptProvbarShowOnOps` and `ApptUseSecProvTimeIfEmpty`; the code reads them now (see "Open Dental's names" below).
 2. Is the chosen reading of the 25.2 item right (scheduled provider time tinted on the operatory column), or should the far-left provider bar time be drawn on the operatory background instead?
 3. Reopening a completed task while the appointment already has an open task: keep it silent (current), or add a warning in Task Edit (M2-MISC's file)?
 4. Should the far-left provider columns (`ProvBarShading`) also follow the secondary color preference?
@@ -132,3 +132,16 @@ Checks run on the branch (2026-10-25): `OpenDental.Local.slnf` Debug x86 full re
 - **Finding schema-adoption-2, fixed in the runbook (no behaviour change).** The two time bar settings are read from the fork-owned rows `ForkApptProvTimeBarsOnOpBackground` and `ForkApptTimeBarSecondaryColorNoProvTime`. After adoption an office that had changed it in Open Dental 25.3.48 finds the default, and nothing in the runbook, `migration-preview` or `adopt` told the office. `docs/adoption-runbook.md` step 0.11 now has the second person record the value in Open Dental before the day (rows 3 and 4 of its table), step 7.1 sets it again in this program, and both are checklist rows.
 - Test: `RegistryTests.PrefNameTests.UnconfirmedNames_EachBuiltSettingIsRecordedAndSetAgainByTheAdoptionRunbook` (each unconfirmed name is either built, with the row it is read from, or listed as not built; step 0.11 has one table row for each row read; steps 0.11 and 7.1 are on the checklist). It fails on the runbook before this fix.
 - The naming rule itself (register Open Dental's real names once they are known, or keep these rows) is left to the owner; it is a question of the combined review.
+
+## Open Dental's names (SWMAP, 2026-11-07, branch `next/swmap-1`)
+
+- The setting names of the office's Open Dental 25.3.48 database (owner question Switch-over 1) give Open Dental's names of the two time bar
+  settings: `ApptProvbarShowOnOps` (provider time on the operatory background, 25.2) and `ApptUseSecProvTimeIfEmpty` (the secondary provider
+  color when no provider time is set, 25.3), both 1/0. `ApptTimeBars.PREF_PROV_TIME_ON_OP_BACKGROUND` and `PREF_SECONDARY_COLOR_NO_PROV_TIME`
+  are now these names, so the office's values carry over at the switch-over as they are. The hand-over through `PrefName`
+  (`GetPrefNameInUse`, `PREF_NAME_PROPOSED_*`) is gone: the rows are read and written by name, outside `PrefName`, as before, and a missing
+  row still reads as off. `UpsertPrefRaw` accepts only the two names.
+- The rows release 0.0 wrote (`ForkApptProvTimeBarsOnOpBackground`, `ForkApptTimeBarSecondaryColorNoProvTime`) move to these names in the
+  fork migration step 2026110731 (`OdSettingNamesStep`); runbook step 0.11 no longer lists the two settings.
+- Tests: `BAPPTTests.TimeBarRuleTests.PrefNames_AreOpenDentalsNames_ReadByName` and `UpsertPrefRaw_WritesOnlyTheTwoTimeBarRows` (in place of the
+  two tests of the proposed names), `SWMAPTests`. See [SWMAP.md](SWMAP.md).

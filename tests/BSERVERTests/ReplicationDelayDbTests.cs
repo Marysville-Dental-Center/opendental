@@ -88,10 +88,12 @@ namespace BSERVERTests {
 			Assert.AreEqual(0,ReplicationDelay.GetReadDelayMs());
 			Assert.AreEqual(0,ReplicationDelay.GetSignalLookbackMs());
 			Assert.IsFalse(ReplicationDelay.SaveSettings(0,0),"Saving the defaults changes nothing.");
-			Assert.AreEqual("0",ServerTestDb.Scalar(_dbPrimary,"SELECT COUNT(*) FROM preference WHERE PrefName LIKE 'ForkReplication%'"),
-				"An office that never sets the delays gets no rows.");
+			Assert.AreEqual("0",ServerTestDb.Scalar(_dbPrimary,"SELECT COUNT(*) FROM preference WHERE PrefName LIKE 'ForkReplication%' "
+				+"OR PrefName LIKE 'ReplicationWriteReadDelay%'"),"An office that never sets the delays gets no rows.");
 			Assert.IsTrue(ReplicationDelay.SaveSettings(1500,3000));
 			Assert.AreEqual("1500",ServerTestDb.Scalar(_dbPrimary,"SELECT ValueString FROM preference WHERE PrefName='"+ReplicationDelay.PREF_READ_DELAY_MS+"'"));
+			Assert.AreEqual("1",ServerTestDb.Scalar(_dbPrimary,"SELECT ValueString FROM preference WHERE PrefName='"+ReplicationDelay.PREF_READ_DELAY_ENABLED+"'"),
+				"Open Dental's Enabled row is turned on with the delay.");
 			Assert.AreEqual("3000",ServerTestDb.Scalar(_dbPrimary,"SELECT ValueString FROM preference WHERE PrefName='"+ReplicationDelay.PREF_SIGNAL_LOOKBACK_MS+"'"));
 			Assert.IsFalse(ReplicationDelay.SaveSettings(1500,3000),"Saving the same values changes nothing.");
 			Assert.IsTrue(ReplicationDelay.SaveSettings(70000,-1));
@@ -99,6 +101,25 @@ namespace BSERVERTests {
 			Assert.AreEqual(ReplicationDelay.MAX_DELAY_MS,ReplicationDelay.GetReadDelayMs());
 			Assert.AreEqual(0,ReplicationDelay.GetSignalLookbackMs());
 			Assert.AreEqual("1",ServerTestDb.Scalar(_dbPrimary,"SELECT COUNT(*) FROM preference WHERE PrefName='"+ReplicationDelay.PREF_READ_DELAY_MS+"'"));
+			//A delay of 0 turns Open Dental's Enabled row off and keeps the milliseconds.
+			Assert.IsTrue(ReplicationDelay.SaveSettings(0,0));
+			Assert.AreEqual("0",ServerTestDb.Scalar(_dbPrimary,"SELECT ValueString FROM preference WHERE PrefName='"+ReplicationDelay.PREF_READ_DELAY_ENABLED+"'"));
+			Assert.AreEqual(ReplicationDelay.MAX_DELAY_MS.ToString(),
+				ServerTestDb.Scalar(_dbPrimary,"SELECT ValueString FROM preference WHERE PrefName='"+ReplicationDelay.PREF_READ_DELAY_MS+"'"));
+			Prefs.RefreshCache();
+			Assert.AreEqual(0,ReplicationDelay.GetReadDelayMs());
+		}
+
+		[TestMethod]
+		public void Settings_OpenDentalsRows_ReadAsTheOfficeSetThem() {
+			//An adopted Open Dental 25.3.48 database: the office's own two rows (made-up values).
+			ServerTestDb.Seed(_dbPrimary,"INSERT INTO preference (PrefName,ValueString) VALUES ('"+ReplicationDelay.PREF_READ_DELAY_ENABLED+"','1'),('"
+				+ReplicationDelay.PREF_READ_DELAY_MS+"','1200')");
+			Prefs.RefreshCache();
+			Assert.AreEqual(1200,ReplicationDelay.GetReadDelayMs());
+			ServerTestDb.Seed(_dbPrimary,"UPDATE preference SET ValueString='0' WHERE PrefName='"+ReplicationDelay.PREF_READ_DELAY_ENABLED+"'");
+			Prefs.RefreshCache();
+			Assert.AreEqual(0,ReplicationDelay.GetReadDelayMs(),"Enabled 0: no delay.");
 		}
 
 		[TestMethod]

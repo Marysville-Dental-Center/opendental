@@ -10,27 +10,45 @@ namespace OpenPmsDentalBusiness {
 	///editing, deleting, closing and signing payment plans dated inside the global lock work again. User-group lock dates (date and days limits on the
 	///permission), the plan's own Locked box and Pay Plan Unlock still apply, and payments, adjustments and procedures stay locked.
 	///
-	///Open Dental's preference name is not public. The spec proposes SecurityLockExcludesPayPlans and the registry tests keep that guess out of the
-	///PrefName enum until it is confirmed, so the value lives in a preference row that is not in PrefName, the pattern DxcPartnerIdentity uses. The
-	///row is inserted the first time an office turns the setting on, so a database without it reads as off (the default) and needs no migration. When
-	///the real name is confirmed, only PREF_NAME changes (and the registry adds it to PrefName).</summary>
+	///The value is Open Dental's own preference row PREF_NAME, PayPlansIncludeInGlobalLock (its name confirmed by the setting names of the office's
+	///Open Dental 25.3.48 database, owner question Switch-over 1, 2026-11-07; docs/port-notes/SWMAP.md). It says the opposite of this setting: 1
+	///means payment plans are included in (blocked by) the global lock date. So this setting is on when the row holds 0, and off when it holds 1 or
+	///is missing (a database from 24.3 or a new database, where payment plans have always been locked). The row is read and written by name, outside
+	///PrefName; it is inserted the first time an office turns the setting on. Release v0.0 kept the setting, not inverted, in the row
+	///SecurityLockExcludesPayPlans; the fork migration step OdSettingNamesStep moves it here.</summary>
 	public class PayPlanGlobalLock {
-		///<summary>Proposed name (docs/specs/features-25.3.md). Unconfirmed: see the class summary.</summary>
-		public const string PREF_NAME="SecurityLockExcludesPayPlans";
+		///<summary>Open Dental's preference row: 1 = payment plans are included in the global lock date, 0 = they are not. Inverted: see the class
+		///summary.</summary>
+		public const string PREF_NAME="PayPlansIncludeInGlobalLock";
 
-		///<summary>True when the office turned the setting on. A missing row, or a cache that is not loaded yet, reads as off. Never throws.</summary>
+		///<summary>True when the office turned the setting on: the row holds 0. A missing row, or a cache that is not loaded yet, reads as off. Never
+		///throws.</summary>
 		public static bool IsOn() {
 			Meth.NoCheckMiddleTierRole();
 			try {
 				if(Prefs.DictIsNull() || !Prefs.GetContainsKey(PREF_NAME)) {
 					return false;
 				}
-				return PIn.Bool(Prefs.GetOne(PREF_NAME).ValueString);
+				return IsOnFromValue(Prefs.GetOne(PREF_NAME).ValueString);
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
 				return false;
 			}
+		}
+
+		///<summary>The setting for a stored value of PayPlansIncludeInGlobalLock, or for a missing row (null): on only when the row says payment plans
+		///are not included in the global lock (0, or blank, as PIn.Bool reads it).</summary>
+		public static bool IsOnFromValue(string valueString) {
+			if(valueString==null) {
+				return false;
+			}
+			return !PIn.Bool(valueString);
+		}
+
+		///<summary>The value of PayPlansIncludeInGlobalLock that stores the setting: "0" when it is on, "1" when it is off.</summary>
+		public static string GetValueForSetting(bool isOn) {
+			return POut.Bool(!isOn);
 		}
 
 		///<summary>True when the global lock must not block this permission: the setting is on and the permission is PayPlanEdit, the only payment
@@ -40,14 +58,14 @@ namespace OpenPmsDentalBusiness {
 			return permType==EnumPermType.PayPlanEdit && IsOn();
 		}
 
-		///<summary>Stores the setting, inserting the row if needed, and updates this workstation's cache. Returns true if the value changed. The caller
-		///signals InvalidType.Prefs so other workstations reload.</summary>
+		///<summary>Stores the setting (inverted, see the class summary), inserting the row if needed, and updates this workstation's cache. Returns true
+		///if the value changed. The caller signals InvalidType.Prefs so other workstations reload.</summary>
 		public static bool Save(bool isOn) {
 			Meth.NoCheckMiddleTierRole();
 			if(IsOn()==isOn) {
 				return false;
 			}
-			string value=POut.Bool(isOn);
+			string value=GetValueForSetting(isOn);
 			Upsert(value);
 			Prefs.UpdateValueForKey(new Pref { PrefName=PREF_NAME,ValueString=value });
 			return true;

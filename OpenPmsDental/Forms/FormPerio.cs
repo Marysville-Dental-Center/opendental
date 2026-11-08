@@ -90,6 +90,18 @@ namespace OpenPmsDental{
 			textCountCAL.Text=contrPerio.CountTeeth(PerioSequenceType.CAL).Count.ToString();
 			textCountFurc.Text=contrPerio.CountTeeth(PerioSequenceType.Furcation).Count.ToString();
 			textCountMob.Text=contrPerio.CountTeeth(PerioSequenceType.Mobility).Count.ToString();
+			FillCountAttGing();
+		}
+
+		///<summary>ODOPTS: the threshold of the auto Att Ging row (PerioRedAttGing) and its tooth count. Both blank when there is no threshold.</summary>
+		private void FillCountAttGing() {
+			int? redAttGing=PerioMeasures.GetRedAttGing();
+			textRedAttGing.Text=PerioMeasures.GetRedAttGingValue(redAttGing);
+			if(redAttGing==null) {
+				textCountAttGing.Text="";
+				return;
+			}
+			textCountAttGing.Text=contrPerio.CountTeeth(PerioSequenceType.AttGing).Count.ToString();
 		}
 
 		///<summary>Usually set the selected index first</summary>
@@ -590,6 +602,7 @@ namespace OpenPmsDental{
 			textRedCAL.Text =PrefC.GetString(PrefName.PerioRedCAL);
 			textRedFurc.Text=PrefC.GetString(PrefName.PerioRedFurc);
 			textRedMob.Text =PrefC.GetString(PrefName.PerioRedMob);
+			textRedAttGing.Text=PerioMeasures.GetRedAttGingValue(PerioMeasures.GetRedAttGing());//ODOPTS
 			Program program=Programs.GetCur(ProgramName.BolaAI);
 			ProgramProperty programProperty=ProgramProperties.GetPropForProgByDesc(program.ProgramNum,ProgramProperties.PropertyDescs.ClinicHideButton,Clinics.ClinicNum);
 			if(program.Enabled) {
@@ -772,6 +785,13 @@ namespace OpenPmsDental{
 			g.DrawString(Lan.g(this,"Teeth with Mobility greater than or equal to")+" "+textRedMob.Text+": "
 				+ConvertListToString(contrPerio.CountTeeth(PerioSequenceType.Mobility))
 				,font,Brushes.Black,xPos,yPos);
+			int? redAttGing=PerioMeasures.GetRedAttGing();
+			if(redAttGing!=null) {//ODOPTS: PerioRedAttGing. Only with a threshold, so the page without one prints as before.
+				yPos+=20;
+				g.DrawString(Lan.g(this,"Teeth with Att Ging less than or equal to")+" "+PerioMeasures.GetRedAttGingValue(redAttGing)+" mm: "
+					+ConvertListToString(contrPerio.CountTeeth(PerioSequenceType.AttGing))
+					,font,Brushes.Black,xPos,yPos);
+			}
 			//pagesPrinted++;
 			printPageEventArgs.HasMorePages=false;
 		}
@@ -841,6 +861,27 @@ namespace OpenPmsDental{
 				textRedMob.Text=val.ToString();
 				textCountMob.Text=contrPerio.CountTeeth(PerioSequenceType.Mobility).Count.ToString();
 			}
+			contrPerio.Invalidate();
+			Cursor=Cursors.Default;
+			contrPerio.Focus();
+		}
+
+		///<summary>ODOPTS: the up and down buttons of the auto Att Ging threshold (PerioRedAttGing, Open Dental's row). Down from 0 removes the
+		///threshold; up from none starts at 0.</summary>
+		private void updownRedAttGing_MouseDown(object sender,System.Windows.Forms.MouseEventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.Setup)) {
+				return;
+			}
+			Cursor=Cursors.WaitCursor;
+			int? redAttGingOld=PerioMeasures.GetRedAttGing();
+			int? redAttGing=PerioMeasures.GetRedAttGingNext(redAttGingOld,isUp:e.Y<8);
+			if(PerioMeasures.SetRedAttGing(redAttGing)) {
+				OdOptions.LogChange(EnumPermType.Setup,"Perio Chart: auto Att Ging red if at or below",PerioMeasures.PrefNameRedAttGing,
+					PerioMeasures.GetRedAttGingValue(redAttGingOld),PerioMeasures.GetRedAttGingValue(redAttGing));
+				_isLocalDefsChanged=true;
+				Cache.Refresh(InvalidType.Prefs);
+			}
+			FillCountAttGing();
 			contrPerio.Invalidate();
 			Cursor=Cursors.Default;
 			contrPerio.Focus();

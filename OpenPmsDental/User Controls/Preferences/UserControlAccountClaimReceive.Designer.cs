@@ -24,6 +24,8 @@ namespace OpenPmsDental {
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
+			this.groupBoxClaimsSecondary = new OpenPmsDental.UI.GroupBox();
+			this.checkClaimUpdateFeeForSecondary = new OpenPmsDental.UI.CheckBox();
 			this.groupBoxClaimsMedical = new OpenPmsDental.UI.GroupBox();
 			this.checkClaimMedReceivedPromptForPrimaryClaim = new OpenPmsDental.UI.CheckBox();
 			this.checkClaimMedReceivedForcePrimaryStatus = new OpenPmsDental.UI.CheckBox();
@@ -46,10 +48,29 @@ namespace OpenPmsDental {
 			this.checkShowClaimPayTracking = new OpenPmsDental.UI.CheckBox();
 			this.checkInsEstRecalcReceived = new OpenPmsDental.UI.CheckBox();
 			this.checkClaimTrackingExcludeNone = new OpenPmsDental.UI.CheckBox();
+			this.groupBoxClaimsSecondary.SuspendLayout();
 			this.groupBoxClaimsMedical.SuspendLayout();
 			this.groupBoxClaimsPayments.SuspendLayout();
 			this.groupBoxOD2.SuspendLayout();
 			this.SuspendLayout();
+			// 
+			// groupBoxClaimsSecondary
+			// 
+			this.groupBoxClaimsSecondary.Controls.Add(this.checkClaimUpdateFeeForSecondary);
+			this.groupBoxClaimsSecondary.Location = new System.Drawing.Point(20, 416);
+			this.groupBoxClaimsSecondary.Name = "groupBoxClaimsSecondary";
+			this.groupBoxClaimsSecondary.Size = new System.Drawing.Size(450, 35);
+			this.groupBoxClaimsSecondary.TabIndex = 5;
+			this.groupBoxClaimsSecondary.Text = "Secondary Claims";
+			// 
+			// checkClaimUpdateFeeForSecondary
+			// 
+			this.checkClaimUpdateFeeForSecondary.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this.checkClaimUpdateFeeForSecondary.Location = new System.Drawing.Point(15, 12);
+			this.checkClaimUpdateFeeForSecondary.Name = "checkClaimUpdateFeeForSecondary";
+			this.checkClaimUpdateFeeForSecondary.Size = new System.Drawing.Size(425, 17);
+			this.checkClaimUpdateFeeForSecondary.TabIndex = 0;
+			this.checkClaimUpdateFeeForSecondary.Text = "Update the fee on unsent secondary claims when a procedure fee changes";
 			// 
 			// groupBoxClaimsMedical
 			// 
@@ -270,11 +291,13 @@ namespace OpenPmsDental {
 			// 
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
 			this.BackColor = System.Drawing.Color.White;
+			this.Controls.Add(this.groupBoxClaimsSecondary);
 			this.Controls.Add(this.groupBoxClaimsMedical);
 			this.Controls.Add(this.groupBoxClaimsPayments);
 			this.Controls.Add(this.groupBoxOD2);
 			this.Name = "UserControlAccountClaimReceive";
 			this.Size = new System.Drawing.Size(494, 660);
+			this.groupBoxClaimsSecondary.ResumeLayout(false);
 			this.groupBoxClaimsMedical.ResumeLayout(false);
 			this.groupBoxClaimsPayments.ResumeLayout(false);
 			this.groupBoxOD2.ResumeLayout(false);
@@ -305,6 +328,8 @@ namespace OpenPmsDental {
 		private UI.CheckBox checkClaimMedReceivedPromptForPrimaryClaim;
 		private UI.CheckBox checkClaimMedReceivedForcePrimaryStatus;
 		private UI.CheckBox checkClaimMedReceivedPromptForMedicalEob;
+		private UI.GroupBox groupBoxClaimsSecondary;
+		private UI.CheckBox checkClaimUpdateFeeForSecondary;
 	}
 
 }
