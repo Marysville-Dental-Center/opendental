@@ -16,7 +16,9 @@ namespace OpenPmsDentalBusiness{
 		///<summary>Date and time of entry</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.DateT)]
 		public DateTime CommDateTime;
-		///<summary>FK to definition.DefNum. This will be 0 if Referral.</summary>
+		///<summary>FK to definition.DefNum. If ReferralNum is 0, this is a normal commlog and the definition is in category CommLogTypes. If ReferralNum is
+		///set, this is a referral commlog and the definition is in category CommLogReferralTypes (Open Dental 26.2), or 0 for no type (every referral
+		///commlog made before 26.2).</summary>
 		public long CommType;
 		///<summary>Note for this commlog entry.</summary>
 		[CrudColumn(SpecialType=CrudSpecialColType.IsText | CrudSpecialColType.CleanText)]

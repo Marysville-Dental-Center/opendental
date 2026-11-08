@@ -67,6 +67,7 @@ namespace OpenPmsDentalBusiness {
 			listStrings.Add("WirelessPhone");
 			listStrings.Add("WkPhone");
 			listStrings.Add("Zip");
+			listStrings.AddRange(EFormVitalSigns.ArrayDbLinks);//Open Dental 26.2: vital signs (EFormVitalSigns), never Auto Import
 			return listStrings;
 		}
 

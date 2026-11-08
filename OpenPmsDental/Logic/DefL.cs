@@ -146,6 +146,13 @@ namespace OpenPmsDental {
 						defCatOptions.HelpText=Lans.g("FormDefinitions","Changes affect all current commlog entries.  Optionally set Usage to one of the following: "
 							+commItemTypes+". Only one of each. This helps automate new entries.");
 						break;
+					case DefCat.CommLogReferralTypes://Open Dental 26.2: the types of referral commlogs (Edit Referral, Add Comm)
+						defCatOptions.EnableColor=true;
+						defCatOptions.DoShowNoColor=true;
+						defCatOptions.HelpText=Lans.g("FormDefinitions","Types of the commlog entries made for a referral source in the Edit Referral window, like Commlog Types "
+							+"for patient commlogs. A new entry starts with the first type in the list that is not hidden. Changes affect all current referral commlog "
+							+"entries. Types can be hidden but not deleted.");
+						break;
 					case DefCat.ContactCategories:
 						defCatOptions.HelpText=Lans.g("FormDefinitions","You can add as many categories as you want.  Changes affect all current contact records.");
 						break;

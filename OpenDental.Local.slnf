@@ -103,6 +103,7 @@
       "tests\\P262ApptTests\\P262ApptTests.csproj",
       "tests\\P262BillingTests\\P262BillingTests.csproj",
       "tests\\P262ClaimsTests\\P262ClaimsTests.csproj",
+      "tests\\P262MiscTests\\P262MiscTests.csproj",
       "tests\\P262PerioTests\\P262PerioTests.csproj",
       "tests\\P262ReportsTests\\P262ReportsTests.csproj",
       "tests\\P262SchemaTests\\P262SchemaTests.csproj",

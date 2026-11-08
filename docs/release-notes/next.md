@@ -36,6 +36,9 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - the database schema of Open Dental 26.2;
 - the Reports changes of Open Dental 26.2: redesigned Display Settings and Security Permissions tabs in Report Setup, and prior uncollected
   balances and a Pay Plan column in the Patient Portion Uncollected report.
+- the database schema of Open Dental 26.2;
+- three smaller Open Dental 26.2 changes: vital signs imported from eForms, types for referral commlogs, and an optional automatic switch
+  between a patient's Prophy and Perio recall.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
 inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below). It also
@@ -507,3 +510,26 @@ report setting and permission keeps its value: nothing is converted, and no data
   patient payment plan, or the amount of a dynamic payment plan (its override, or what remains of the procedure when it has none).
   Insurance payment plans do not count. The Uncollected column is unchanged: payments made through a payment plan count in Patient Paid, as
   before. The report window is a little wider for the new column.
+## Vital signs from eForms, referral commlog types, automatic Prophy and Perio recall (Open Dental 26.2)
+
+Three of Open Dental 26.2's smaller changes, re-implemented from Open Dental's public release notes and database documents
+(`docs/port-notes/P262-MISC.md`). No database change; no preference or definition is added by the update.
+
+- **Vital signs can be imported from eForms.** A text field of an eForm can now be linked (Database Link) to the patient's height (inches),
+  weight (pounds), blood pressure (systolic and diastolic, mmHg) or pulse (beats per minute). The fields start empty. Saving a form checks that
+  each answer is a number in a plausible range; height may also be written in feet and inches (5'10"), and a unit after the number (lbs, in,
+  mmHg, bpm) is accepted. The eForm Import window shows a "Vital Signs" section with the patient's latest values and the answers; importing
+  adds one vital sign entry (Medical window, Vital Signs tab) dated the day the form was submitted, and the Audit Trail records it. Vital signs
+  are never imported automatically (Auto Import), and importing the same form again does not add the same entry twice.
+- **Commlog Referral Types.** The new definition category (Setup, Definitions, Commlog Referral Types) holds the types of the commlog entries
+  made for a referral source (Edit Referral, Add Comm), as Commlog Types do for patient commlogs. The Communication Item for Referral window
+  has a Type list; a new entry starts with the first type that is not hidden, or none when the office has added no type (no type ships with
+  the program). The referral's commlog list shows the type, in the type's color. Entries made before this version keep no type.
+- **Automatic switch between the Prophy and Perio recall.** A new setting in Setup, Recall Types, off by default: "Automatically switch
+  between the Prophy and Perio recall based on completed procedures". When it is on, completing a procedure that triggers the Perio recall
+  type changes a patient's Prophy recall to Perio, and completing a procedure that triggers the Prophy type changes a Perio recall to Prophy,
+  as the Set Perio and Set Prophy buttons do (the interval becomes the new type's default); a patient's first recall is Perio when the first
+  trigger procedure is a perio one. Only a procedure newer than the recall's previous date switches it, so a type set by hand stays until the
+  next trigger procedure is completed, and turning the setting on switches nobody for procedures completed before. Nothing switches when the
+  newest date has both kinds of procedure, when the recall is disabled, when the patient has both a Prophy and a Perio recall, or when the
+  Prophy and Perio types do not both have triggers. Each switch is recorded in the Audit Trail.

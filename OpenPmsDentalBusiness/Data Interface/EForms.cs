@@ -238,6 +238,13 @@ namespace OpenPmsDentalBusiness{
 					eFormValidation.PageNum=pageNum;
 					return eFormValidation;
 				}
+				//Validating vital sign links (Open Dental 26.2): a number in the vital sign's unit and plausible range, or nothing.
+				string errorVitalSign=EFormVitalSigns.Validate(listEFormFields[i]);
+				if(errorVitalSign!="") {
+					eFormValidation.ErrorMsg=errorVitalSign;
+					eFormValidation.PageNum=pageNum;
+					return eFormValidation;
+				}
 //todo
 //Validate email field always
 			}

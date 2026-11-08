@@ -441,6 +441,7 @@
     <Compile Include="EForms\EFormPatFields.cs" />
     <Compile Include="EForms\EFormRichPaste.cs" />
     <Compile Include="EForms\FormSubmittedDates.cs" />
+    <Compile Include="EForms\EFormVitalSigns.cs" />
     <Compile Include="Email\BasicEmailAttachment.cs" />
     <Compile Include="Imaging\MountHelper.cs" />
     <Compile Include="Data Interface\DiscountPlanSubs.cs" />
@@ -1674,6 +1675,8 @@
     <Compile Include="Logic\TelephoneNumbers.cs" />
     <Compile Include="Logic\Tooth.cs" />
     <Compile Include="Logic\ToothComparer.cs" />
+    <Compile Include="Logic\CommlogReferralTypes.cs" />
+    <Compile Include="Logic\RecallProphyPerioSwitch.cs" />
     <Compile Include="Data Interface\Userods.cs" />
     <Compile Include="Remoting\Meth.cs" />
     <Compile Include="Db\DbHelper.cs" />

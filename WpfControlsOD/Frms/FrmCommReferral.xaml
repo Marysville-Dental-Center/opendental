@@ -15,6 +15,8 @@
         <ui:Label x:Name="labelSentorReceived" Width="142" Height="18" Margin="258,87,0,0" Text="Sent or Received" VAlign="Bottom" RenderTransformOrigin="0.373,-0.056" />
         <ui:ListBox x:Name="listMode" Width="125" Height="108" Margin="116,107,0,0" RenderTransformOrigin="-0.184,0.815" />
         <ui:Label x:Name="labelMode" Width="82" Height="18" Margin="115,84,0,0" Text="Mode" VAlign="Bottom" />
+        <ui:ListBox x:Name="listType" Width="170" Height="108" Margin="377,107,0,0" />
+        <ui:Label x:Name="labelType" Width="82" Height="18" Margin="376,84,0,0" Text="Type" VAlign="Bottom" />
         <ui:Label x:Name="labelNote" Margin="115,223,0,0" Text="Note" VAlign="Bottom" Height="18" Width="82" />
         <ui:TextRich x:Name="textNote" Margin="116,246,0,80" HasAutoNotes="True" QuickPasteType="CommLog" TabIndexOD="0" Width="451" VerticalAlignment="Stretch" />
         <ui:TextBox x:Name="textUser" HorizontalAlignment="Right" Width="119" Height="20" Margin="0,12,12,0" ColorBack="#FFF0F0F0" ReadOnly="True" TabIndexOD="2" />

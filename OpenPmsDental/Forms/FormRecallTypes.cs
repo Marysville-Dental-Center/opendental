@@ -40,6 +40,7 @@ namespace OpenPmsDental{
 				butNone.Visible=false;
 			}*/
 			FillGrid();
+			checkAutoSwitchProphyPerio.Checked=RecallProphyPerioSwitch.IsOn();//Open Dental 26.2, off by default
 			/*if(SelectedPharmacyNum!=0){
 				for(int i=0;i<PharmacyC.Listt.Count;i++){
 					if(PharmacyC.Listt[i].PharmacyNum==SelectedPharmacyNum){
@@ -120,6 +121,21 @@ namespace OpenPmsDental{
 			FillGrid();
 			_hasChanged=true;
 			//}*/
+		}
+
+		///<summary>Open Dental 26.2: saved at once, like the recall types themselves. The rules are in RecallProphyPerioSwitch. Turning it on switches
+		///nobody for procedures completed before; each patient's recall switches when the next trigger procedure is completed.</summary>
+		private void checkAutoSwitchProphyPerio_Click(object sender,EventArgs e) {
+			bool isOnOld=RecallProphyPerioSwitch.IsOn();
+			bool isOnNew=checkAutoSwitchProphyPerio.Checked;
+			if(isOnNew && !RecallTypes.PerioAndProphyBothHaveTriggers()) {
+				MsgBox.Show(this,"The Prophy and Perio special recall types must both exist and both have a trigger before recalls can switch automatically.");
+			}
+			if(!RecallProphyPerioSwitch.Save(isOnNew)) {
+				return;
+			}
+			DataValid.SetInvalid(InvalidType.Prefs);
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,RecallProphyPerioSwitch.GetChangeLogLine(isOnOld,isOnNew));
 		}
 
 		private void butSynch_Click(object sender,EventArgs e) {
