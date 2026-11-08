@@ -2755,7 +2755,8 @@ namespace OpenPmsDentalBusiness {
 			X509Certificate2Collection x509Certificate2CollectionPriv=new EmailPrivateResolver().GetCertificates(mailAddress);
 			X509Certificate2Collection x509Certificate2CollectionAnchor=systemX509StoreAnchor.GetAllCertificates();
 			bool isTrusted=false;
-			for(int i=0;i<x509Certificate2CollectionPriv.Count;i++) {
+			//The resolver gives null when the store has no certificate for the address (before S0-3 this threw a NullReferenceException).
+			for(int i=0;x509Certificate2CollectionPriv!=null && i<x509Certificate2CollectionPriv.Count;i++) {
 				if(_directAgent.TrustModel.CertChainValidator.IsTrustedCertificate(x509Certificate2CollectionPriv[i],x509Certificate2CollectionAnchor)) {
 					isTrusted=true;
 					break;

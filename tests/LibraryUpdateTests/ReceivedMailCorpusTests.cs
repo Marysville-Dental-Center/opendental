@@ -46,7 +46,7 @@ namespace LibraryUpdateTests {
 		private const string R_QP_ATTACHMENT="A quoted-printable attachment is saved decoded (the 22 bytes of the text); the Direct-based parser saved the encoded text (28 bytes).";
 		private const string R_RFC2231="An RFC 2231 file name (filename*=utf-8''...) is read; the Direct-based parser only read a quoted filename=, so the attachment was named \"attach\" and the preview part had no name.";
 		private const string R_7BIT_EQUALS="7bit text is not quoted-printable: \"=41\" and a line that ends with \"=\" stay as typed; the Direct-based parser decoded them anyway.";
-		private const string R_ENCRYPTED="An S/MIME-encrypted message is stored with a body that says it cannot be shown: only the Direct agent could decrypt it, with the office's Direct certificate, and Direct is removed. The body was the whole raw message before; RawEmailIn still holds it unchanged.";
+		private const string R_ENCRYPTED="An S/MIME-encrypted message the Direct agent can't decrypt (the private key of this recorded one was never saved) is stored with a body that says it could not be decrypted. The body was the whole raw message before; RawEmailIn still holds it unchanged, and Decrypt reads it from there. With its certificate the agent decrypts it (DirectMessagingDbTests, S0-3D).";
 
 		///<summary>The fields that differ from the Direct-based parser on purpose (step 2 of S0-3, received mail on MimeKit): "case|field" gives the
 		///new value, as the actual file writes it, and why.</summary>
@@ -88,7 +88,7 @@ namespace LibraryUpdateTests {
 			{ "equals signs in 7bit text|BodyText",Tuple.Create(@"a=41 stays as typed\r\nthis line ends with =\r\nnext line\r\n\r\n",R_7BIT_EQUALS) },
 			{ "equals signs in 7bit text|Preview body",Tuple.Create(@"text a=41 stays as typed\r\nthis line ends with =\r\nnext line\r\n\r\n",R_7BIT_EQUALS) },
 			{ "signed|RawEmailIn",Tuple.Create(@"(changed) From: Signer Example <signer@example.test>\r\nTo: inbox@example.test\r\nSubject: Signed message\r\nDate: Tue, 03 Nov 2026 10:00:00 -0800\r\nMessage-ID: <signed-1@example.test>\r\nMIME-Version: 1.0\r\nContent-Type: multipart/signed; protocol=""application/pkcs7-signature""; micalg=sha-256; boundary=""sig-boundary-1""\r\n\r\nThis is a cryptographically signed message in MIME format.\r\n\r\n--sig-boundary-1\r\nContent-Type: text/plain; charset=us-ascii\r\nContent-Transfer-Encoding: 7bit\r\n\r\nThis message is signed.\r\nSecond line of the signed text.\r\n\r\n--sig-boundary-1\r\nContent-Type: application/pkcs7-signature; name=""smime.p7s""\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=""smime.p7s""\r\nContent-Description: S/MIME Cryptographic Signature\r\n\r\n\r\n--sig-boundary-1--\r\n",R_TRAILING_CRLF) },
-			{ "encrypted|BodyText",Tuple.Create(@"This message is protected with S/MIME (application/pkcs7-mime) and cannot be shown in this program. The original message is kept unchanged: click Raw Message to see it.",R_ENCRYPTED) },
+			{ "encrypted|BodyText",Tuple.Create(@"This message is encrypted (S/MIME, application/pkcs7-mime) and could not be decrypted. Decryption needs the private certificate of the receiving address and trust for the sender (Direct messaging). The original message is kept unchanged: click Decrypt to try again, or Raw Message to see it.",R_ENCRYPTED) },
 		};
 		#endregion
 
@@ -303,12 +303,15 @@ namespace LibraryUpdateTests {
 			List<CorpusMessage> listMessages=ReceivedMailCorpus.GetAll();
 			StringBuilder stringBuilderActual=new StringBuilder();
 			Dictionary<string,List<KeyValuePair<string,string>>> dictActual=new Dictionary<string,List<KeyValuePair<string,string>>>();
-			foreach(CorpusMessage corpusMessage in listMessages) {
-				List<KeyValuePair<string,string>> listFields=Describe(corpusMessage);
-				dictActual[corpusMessage.Name]=listFields;
-				stringBuilderActual.Append("=== "+corpusMessage.Name+"\r\n");
-				foreach(KeyValuePair<string,string> pair in listFields) {
-					stringBuilderActual.Append(pair.Key+": "+pair.Value+"\r\n");
+			//The Direct agent tries to decrypt the encrypted message: with empty stores of the current user, never the stores of the Local Computer.
+			using(new DirectTestStores()) {
+				foreach(CorpusMessage corpusMessage in listMessages) {
+					List<KeyValuePair<string,string>> listFields=Describe(corpusMessage);
+					dictActual[corpusMessage.Name]=listFields;
+					stringBuilderActual.Append("=== "+corpusMessage.Name+"\r\n");
+					foreach(KeyValuePair<string,string> pair in listFields) {
+						stringBuilderActual.Append(pair.Key+": "+pair.Value+"\r\n");
+					}
 				}
 			}
 			string pathActual=Path.Combine(Path.GetTempPath(),"s03_corpus_actual.txt");

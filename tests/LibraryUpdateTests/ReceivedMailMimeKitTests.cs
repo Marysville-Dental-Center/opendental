@@ -66,13 +66,17 @@ namespace LibraryUpdateTests {
 			Assert.AreEqual("smime.p7s",EmailMessages.GetMimeImageFileName(listListParts[1][0]),"The signature stays an attachment named smime.p7s.");
 		}
 
+		///<summary>The recorded encrypted message, whose private key was never saved: the Direct agent can't decrypt it (empty stores of the current
+		///user here), so the preview has no parts. DirectCertificateTests shows the parts of one it can decrypt.</summary>
 		[TestMethod]
 		public void EncryptedMessage_HasNoPartsToShow() {
 			MimeMessage mimeMessage=EmailMessages.RawEmailToMimeMessage(Raw("encrypted"));
 			Assert.IsInstanceOfType(mimeMessage.Body,typeof(ApplicationPkcs7Mime));
-			List<List<EmailMimePart>> listListParts=EmailMessages.GetMimePartsForMimeTypes(Raw("encrypted"),null,"text/html","text/plain","image/",
-				"application/octet-stream");
-			Assert.IsTrue(listListParts.All(x => x.Count==0));
+			using(new DirectTestStores()) {
+				List<List<EmailMimePart>> listListParts=EmailMessages.GetMimePartsForMimeTypes(Raw("encrypted"),null,"text/html","text/plain","image/",
+					"application/octet-stream");
+				Assert.IsTrue(listListParts.All(x => x.Count==0));
+			}
 		}
 
 		[TestMethod]
