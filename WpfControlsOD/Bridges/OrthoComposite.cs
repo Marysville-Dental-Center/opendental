@@ -7,8 +7,9 @@ using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
 
 namespace OpenPmsDental.Bridges {
-	///<summary>OrthoComposite. The arguments come from the Patient arguments property, which the office fills in from OrthoComposite's instructions;
-	///only [FName], [LName] and [Birthdate] are filled in.</summary>
+	///<summary>OrthoComposite. The arguments come from the Patient arguments property, which holds OrthoComposite's public arguments by default
+	///(OrthoCompositeLink.DefaultPatientArguments: --lastname, --firstname and --dob) and which the office may change; only [FName], [LName] and
+	///[Birthdate] are filled in.</summary>
 	public class OrthoComposite {
 		public static void SendData(Program program,Patient patient) {
 			BridgeLaunch bridgeLaunch=OrthoCompositeLink.GetLaunch(program,patient);
