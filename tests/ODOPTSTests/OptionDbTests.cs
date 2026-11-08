@@ -409,22 +409,29 @@ namespace ODOPTSTests {
 		#endregion EFormImportAllergiesAsOther and EFormImportProblemsAsOther
 
 		#region InsHistPerioScalingCode
+		///<summary>A row of a perio scaling code group (InsHistCategories.IsPerioScalingGroup): since the owner's decision of 2026-11-07 the seed's perio
+		///quadrant preferences become a "Perio Scaling History" group with no fixed type and four quadrant rows (M2-HIST).</summary>
+		private static bool IsPerioScalingRow(InsHistCategory insHistCategory) {
+			return InsHistCategories.IsPerioScalingGroup(CodeGroups.GetFirstOrDefault(x => x.CodeGroupNum==insHistCategory.CodeGroupNum));
+		}
+
 		[TestMethod]
 		public void InsHistPerioScalingCode_ThePerioScalingRowsCreateProceduresWithIt() {
-			List<InsHistCategory> listRowsSrp=InsHistCategories.GetAll().FindAll(x => x.CodeGroupFixed==EnumCodeGroupFixed.SRP);
+			List<InsHistCategory> listRowsSrp=InsHistCategories.GetAll().FindAll(x => IsPerioScalingRow(x));
 			Assert.IsTrue(listRowsSrp.Count>0,"The seed's perio quadrant preferences became a perio scaling code group (M2-HIST).");
+			Assert.IsTrue(listRowsSrp.All(x => x.IsQuadrant),"Its four quadrant rows.");
 			string histProcCodeOwn=listRowsSrp[0].HistProcCode;
 			ProcedureCode procedureCode=ProcedureCodeT.CreateProcCode("Z4396",treatmentArea:TreatmentArea.Quad);
 			ProcedureCodes.RefreshCache();
 			InsHistCategories.SetPerioScalingCodeSetting("z4396");
-			Assert.IsTrue(InsHistCategories.GetAll().FindAll(x => x.CodeGroupFixed==EnumCodeGroupFixed.SRP).All(x => x.HistProcCode=="Z4396"),
+			Assert.IsTrue(InsHistCategories.GetAll().FindAll(x => IsPerioScalingRow(x)).All(x => x.HistProcCode=="Z4396"),
 				"As the procedure code list spells it.");
-			Assert.IsTrue(InsHistCategories.GetAll().FindAll(x => x.CodeGroupFixed!=EnumCodeGroupFixed.SRP).All(x => x.HistProcCode!="Z4396"));
+			Assert.IsTrue(InsHistCategories.GetAll().FindAll(x => !IsPerioScalingRow(x)).All(x => x.HistProcCode!="Z4396"));
 			//A date entered for a quadrant row makes an Existing Other procedure with that code.
 			Patient patient=PatientT.CreatePatient(NewSuffix(),lName:"Odopts",fName:"History");
 			InsPlan insPlan=InsPlanT.CreateInsPlan(CarrierT.CreateCarrier("Synthetic History Carrier "+NewSuffix()).CarrierNum);
 			long insSubNum=InsSubT.CreateInsSub(patient.PatNum,insPlan.PlanNum).InsSubNum;
-			InsHistCategory rowQuadrant=InsHistCategories.GetAll().First(x => x.CodeGroupFixed==EnumCodeGroupFixed.SRP);
+			InsHistCategory rowQuadrant=InsHistCategories.GetAll().First(x => IsPerioScalingRow(x));
 			Assert.AreEqual(InsHistSaveResult.Inserted,InsHistCategories.InsertOrUpdateProcedure(patient,rowQuadrant,DateTime.Today.AddMonths(-2),
 				insPlan.PlanNum,insSubNum,null,null,doSynchRecalls:false));
 			Procedure procedure=Procedures.Refresh(patient.PatNum).Single();
@@ -433,9 +440,9 @@ namespace ODOPTSTests {
 			Assert.IsNotNull(InsHistCategories.GetMostRecentProc(Procedures.Refresh(patient.PatNum),rowQuadrant),"Read back as the row's history.");
 			//The CodeNum of a code is read too; a value that names no code falls back to each group's own code.
 			InsHistCategories.SetPerioScalingCodeSetting(POut.Long(procedureCode.CodeNum));
-			Assert.AreEqual("Z4396",InsHistCategories.GetAll().First(x => x.CodeGroupFixed==EnumCodeGroupFixed.SRP).HistProcCode);
+			Assert.AreEqual("Z4396",InsHistCategories.GetAll().First(x => IsPerioScalingRow(x)).HistProcCode);
 			InsHistCategories.SetPerioScalingCodeSetting("Z0000");
-			Assert.AreEqual(histProcCodeOwn,InsHistCategories.GetAll().First(x => x.CodeGroupFixed==EnumCodeGroupFixed.SRP).HistProcCode);
+			Assert.AreEqual(histProcCodeOwn,InsHistCategories.GetAll().First(x => IsPerioScalingRow(x)).HistProcCode);
 		}
 		#endregion InsHistPerioScalingCode
 
