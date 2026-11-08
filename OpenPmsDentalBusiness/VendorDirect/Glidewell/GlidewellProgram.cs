@@ -105,34 +105,49 @@ namespace OpenPmsDentalBusiness.VendorDirect.Glidewell {
 
 		#region Sending without this program
 		//next/vendorpub-1: Glidewell's own public pages ("Send a Case", "Submit a Digital Case") describe how an office sends a case without any
-		//practice software interface; Medit's public article on its Open Dental integration gives Glidewell's Medit partner ID.
+		//practice software interface; Medit's public article on its Open Dental integration gives Glidewell's Medit partner ID. Review follow-up
+		//(next/vendorfix-1): the steps in Glidewell's own words from its Submit a Digital Case page (read on 2026-11-07), 3Shape TRIOS added, the
+		//scanners Glidewell gives its own steps for named, and the scanners in alphabetical order within each list.
 
-		///<summary>Glidewell's Lab ID in iTero, which Align adds to the office's scanner.</summary>
+		///<summary>Glidewell's Lab ID in iTero, which the office gives Align Technology.</summary>
 		public const string ITeroLabId="318";
-		///<summary>The address with which iTero and Medit Link offices request a partnership with Glidewell.</summary>
+		///<summary>The address iTero and Medit Link offices search for under Partner to request a partnership with Glidewell.</summary>
 		public const string ScannerPartnershipAddress="CDOP@glidewelldental.com";
 		///<summary>Glidewell Dental's PartnerID in Medit's table of supported partners, for the Partner ID of the Medit Link program link.</summary>
 		public const string MeditPartnerId="7307395";
 		///<summary>Glidewell's paper Rx form for a physical case.</summary>
 		public const string PaperRxForm="GL-421";
+		///<summary>The number an office not registered for Glidewell's My Account portal calls to set it up (Glidewell's page).</summary>
+		public const string MyAccountSetupPhone="800-854-7256";
 
 		///<summary>Plain instructions for Glidewell's own ways to send a case, which work today without a Glidewell interface and without this
-		///program's sending: the iTero and Medit Link scanner connections, file upload, and a physical case. Shown in the setup window.</summary>
+		///program's sending: the 3Shape TRIOS, iTero and Medit Link scanner connections in Glidewell's words, the scanners Glidewell's page has its own
+		///steps for, STL upload through My Account, and a physical case. Vendors in alphabetical order within each list, none put forward. Shown in
+		///the setup window.</summary>
 		public static string GetSendWithoutThisProgramText() {
 			Meth.NoCheckMiddleTierRole();
 			List<string> listLines=new List<string>();
 			listLines.Add(Lans.g("Glidewell","Glidewell's own ways to send a case work today, without this program sending anything:"));
-			listLines.Add("- "+Lans.g("Glidewell","iTero scanner: ask Align to add Glidewell to the scanner (Glidewell's Lab ID is")+" "+ITeroLabId+"), "
-				+Lans.g("Glidewell","then request a partnership with")+" "+ScannerPartnershipAddress+", "
-				+Lans.g("Glidewell","then pick Glidewell as the lab in the iTero Rx."));
-			listLines.Add("- "+Lans.g("Glidewell","Medit scanner: in Medit Link, open Partner, search for")+" "+ScannerPartnershipAddress+" "
-				+Lans.g("Glidewell","and request a partnership, then pick Glidewell in the Rx. To have every case created with the Chart's Medit Link "
-				+"button assigned to Glidewell, enter Glidewell's Medit partner ID")+" "+MeditPartnerId+" "
+			listLines.Add("- "+Lans.g("Glidewell","3Shape TRIOS: Log in to your 3Shape account. Under More, select Settings, then Connections, Labs and Add; "
+				+"search for Glidewell and click Connect to send a request. Once the connection request has been approved, Glidewell appears under "
+				+"the Scan & Send menu."));
+			listLines.Add("- "+Lans.g("Glidewell","iTero: Contact Align Technology directly to add Glidewell to your list of 'Favorite Labs'. Provide "
+				+"Glidewell Lab ID as")+" "+ITeroLabId+". "
+				+Lans.g("Glidewell","Then, under Partner, search for")+" "+ScannerPartnershipAddress+" "
+				+Lans.g("Glidewell","and request partnership. Once partnership is approved, you can select Glidewell when completing the digital Rx."));
+			listLines.Add("- "+Lans.g("Glidewell","Medit Link: Log in at meditlink.com. Under Partner, search for")+" "+ScannerPartnershipAddress+" "
+				+Lans.g("Glidewell","and request partnership. Once partnership is approved, you can select Glidewell when completing the digital Rx. "
+				+"To have every case created with the Chart's Medit Link button assigned to Glidewell, enter Glidewell's Medit partner ID")+" "
+				+MeditPartnerId+" "
 				+Lans.g("Glidewell","in the Partner ID property of the Medit Link program link (Setup, Program Links)."));
-			listLines.Add("- "+Lans.g("Glidewell","Other scanners: upload the STL or PLY files in Glidewell's My Account."));
+			listLines.Add("- "+Lans.g("Glidewell","Alliedstar, CEREC, DEXIS, Heron IOS and Planmeca: Glidewell's Submit a Digital Case page gives the steps "
+				+"for each."));
+			listLines.Add("- "+Lans.g("Glidewell","Any other scanner: Glidewell accepts scans from almost any scanner. Export the STL files and upload "
+				+"them through the My Account portal. An office not registered for My Account calls Glidewell at")+" "+MyAccountSetupPhone+" "
+				+Lans.g("Glidewell","to set it up."));
 			listLines.Add("- "+Lans.g("Glidewell","Impressions or models: send a physical case with Glidewell's")+" "+PaperRxForm+" "
 				+Lans.g("Glidewell","Rx form."));
-			listLines.Add(Lans.g("Glidewell","Glidewell's website describes these under Send a Case."));
+			listLines.Add(Lans.g("Glidewell","Glidewell's website describes these under Send a Case and Submit a Digital Case."));
 			return string.Join("\r\n",listLines);
 		}
 		#endregion Sending without this program
