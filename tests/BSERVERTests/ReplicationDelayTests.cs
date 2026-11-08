@@ -11,10 +11,22 @@ namespace BSERVERTests {
 	public class ReplicationDelayTests {
 		[TestMethod]
 		public void PrefNames_AreForkOwnedAndNotInPrefName() {
-			foreach(string name in new[] { ReplicationDelay.PREF_READ_DELAY_MS,ReplicationDelay.PREF_SIGNAL_LOOKBACK_MS,RpProcNote.PREF_ALL_NO_NOTES }) {
+			//Open Dental 25.3.48 has no setting for these two (docs/port-notes/SWMAP.md), so they keep this program's own rows.
+			foreach(string name in new[] { ReplicationDelay.PREF_SIGNAL_LOOKBACK_MS,RpProcNote.PREF_ALL_NO_NOTES }) {
 				StringAssert.StartsWith(name,"Fork");
 				Assert.IsFalse(Enum.IsDefined(typeof(PrefName),name),name+" must not be an Open Dental preference name.");
 			}
+		}
+
+		[TestMethod]
+		public void ReadDelay_IsOpenDentalsTwoRows_ReadByName() {
+			//Open Dental's names, from the setting names of the office's Open Dental 25.3.48 database (docs/port-notes/SWMAP.md).
+			Assert.AreEqual("ReplicationWriteReadDelayEnabled",ReplicationDelay.PREF_READ_DELAY_ENABLED);
+			Assert.AreEqual("ReplicationWriteReadDelayMS",ReplicationDelay.PREF_READ_DELAY_MS);
+			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),ReplicationDelay.PREF_READ_DELAY_ENABLED));
+			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),ReplicationDelay.PREF_READ_DELAY_MS));
+			Assert.AreEqual(0,ReplicationDelay.GetReadDelayMsFromValues("0","5000"),"Enabled off: no delay.");
+			Assert.AreEqual(5000,ReplicationDelay.GetReadDelayMsFromValues("1","5000"));
 		}
 
 		[TestMethod]

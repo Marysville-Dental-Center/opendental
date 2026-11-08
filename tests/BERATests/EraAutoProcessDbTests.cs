@@ -387,7 +387,8 @@ namespace BERATests {
 		}
 
 		[TestMethod]
-		public void AutoSplitPreference_ForkRowWrittenOnFirstChange() {
+		public void AutoSplitPreference_OpenDentalsRowWrittenOnFirstChange() {
+			Assert.AreEqual("EraAutoProcessSplitByCarcCodes",EraAutoSplit.PREF_NAME,"Open Dental's name (docs/port-notes/SWMAP.md).");
 			DataCore.NonQ("DELETE FROM preference WHERE PrefName='"+EraAutoSplit.PREF_NAME+"'");
 			Prefs.RefreshCache();
 			Assert.IsFalse(EraAutoSplit.IsEnabled(),"A missing row reads as off.");
@@ -402,7 +403,7 @@ namespace BERATests {
 			Prefs.RefreshCache();
 			Assert.IsFalse(EraAutoSplit.IsEnabled());
 			Assert.AreEqual("1",DataCore.GetScalar("SELECT COUNT(*) FROM preference WHERE PrefName='"+EraAutoSplit.PREF_NAME+"'"));
-			Assert.IsFalse(Enum.GetNames(typeof(PrefName)).Contains(EraAutoSplit.PREF_NAME),"The fork row is not a PrefName (registries stay foundation-owned).");
+			Assert.IsFalse(Enum.GetNames(typeof(PrefName)).Contains(EraAutoSplit.PREF_NAME),"Read by name, not a PrefName (registries stay foundation-owned).");
 		}
 
 		[TestMethod]

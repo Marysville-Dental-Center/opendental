@@ -267,17 +267,20 @@ namespace BCLAIMTests {
 			return PIn.Long(DataCore.GetScalar("SELECT COUNT(*) FROM preference WHERE PrefName='"+POut.String(prefName)+"'"));
 		}
 
+		///<summary>The row release v0.0 wrote under a name of its own; the settings step moves it to Open Dental's name.</summary>
+		private const string PREF_NAME_V0="ForkClaimMedReceivedPromptForMedicalEob";
+
 		private static void DeletePrefRows() {
-			DataCore.NonQ("DELETE FROM preference WHERE PrefName IN ('"+POut.String(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT_FORK)+"','"
+			DataCore.NonQ("DELETE FROM preference WHERE PrefName IN ('"+POut.String(PREF_NAME_V0)+"','"
 				+POut.String(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT)+"')");
 			Cache.Refresh(InvalidType.Prefs);
 		}
 
-		///<summary>The setting is a fork-owned preference row: off while it is missing (a 24.3 or adopted Open Dental 25.3.48 database), saving the
-		///default writes no row, turning it on inserts the row, and the value survives a cache reload (another workstation).</summary>
+		///<summary>The setting is Open Dental's preference row: off while it is missing (a database from 24.3), saving the default writes no row,
+		///turning it on inserts the row, and the value survives a cache reload (another workstation).</summary>
 		[TestMethod]
-		public void Prompt_FollowsTheForkOwnedPreferenceRow() {
-			string prefName=ClaimAttaches.GetMedicalEobPrefNameInUse();
+		public void Prompt_FollowsOpenDentalsPreferenceRow() {
+			string prefName=ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT;
 			DeletePrefRows();
 			try {
 				Assert.IsFalse(ClaimAttaches.IsMedicalEobPromptEnabled(),"A missing row reads as off.");
@@ -300,25 +303,23 @@ namespace BCLAIMTests {
 			}
 		}
 
-		///<summary>While Open Dental's name is unconfirmed, the setting is the fork-owned row only: a row with the proposed (guessed) name, which an
-		///Open Dental database could hold with another meaning, neither turns the prompt on nor is written.</summary>
+		///<summary>The office's own row turns the prompt on as it is (an adopted Open Dental 25.3.48 database), and a row left under release v0.0's
+		///name is no longer read or written.</summary>
 		[TestMethod]
-		public void Prompt_IgnoresTheUnconfirmedOpenDentalName() {
-			if(ClaimAttaches.TryGetMedicalEobPrefName(out _)) {
-				Assert.AreEqual(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT,ClaimAttaches.GetMedicalEobPrefNameInUse(),"Registered: that row is used.");
-				return;
-			}
-			Assert.AreEqual(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT_FORK,ClaimAttaches.GetMedicalEobPrefNameInUse());
+		public void Prompt_ReadsTheOfficesRow_NotTheReleaseV0Row() {
 			DeletePrefRows();
 			try {
 				DataCore.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES ('"+POut.String(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT)+"','1')");
 				Cache.Refresh(InvalidType.Prefs);
+				Assert.IsTrue(ClaimAttaches.IsMedicalEobPromptEnabled(),"The office's value carries over.");
+				DeletePrefRows();
+				DataCore.NonQ("INSERT INTO preference (PrefName,ValueString) VALUES ('"+POut.String(PREF_NAME_V0)+"','1')");
+				Cache.Refresh(InvalidType.Prefs);
 				Assert.IsFalse(ClaimAttaches.IsMedicalEobPromptEnabled());
 				Assert.IsTrue(ClaimAttaches.SetMedicalEobPromptEnabled(true));
-				Assert.AreEqual("1",GetPrefRowValue(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT_FORK));
-				Assert.AreEqual("1",GetPrefRowValue(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT),"The guessed row is not touched.");
+				Assert.AreEqual("1",GetPrefRowValue(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT));
 				ClaimAttaches.SetMedicalEobPromptEnabled(false);
-				Assert.AreEqual("1",GetPrefRowValue(ClaimAttaches.PREF_NAME_MEDICAL_EOB_PROMPT),"The guessed row is not touched.");
+				Assert.AreEqual("1",GetPrefRowValue(PREF_NAME_V0),"The release v0.0 row is not touched here; the settings step moves it.");
 			}
 			finally {
 				DeletePrefRows();

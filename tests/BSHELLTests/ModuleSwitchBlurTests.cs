@@ -81,11 +81,12 @@ namespace BSHELLTests {
 		}
 
 		[TestMethod]
-		public void PrefName_StaysUnregistered_TheForkRowIsUsed() {
-			//RegistryTests keeps the proposed Open Dental name out of PrefName until a public source confirms it.
+		public void PrefName_IsOpenDentalsName_ReadByName() {
+			//Open Dental's name, from the setting names of the office's Open Dental 25.3.48 database (docs/port-notes/SWMAP.md), read by name outside
+			//PrefName; the spec's proposed name was never registered.
 			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),"ModuleSwitchBlur"));
+			Assert.AreEqual("BlurModuleOnLoad",ModuleSwitchBlur.PREF_NAME);
 			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),ModuleSwitchBlur.PREF_NAME));
-			StringAssert.StartsWith(ModuleSwitchBlur.PREF_NAME,"Fork");
 		}
 
 		[TestMethod]

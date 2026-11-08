@@ -118,24 +118,26 @@ namespace BAPPTTests {
 
 		#region Preference names
 		[TestMethod]
-		public void PrefNames_AreForkOwnedAndNotGuessedOpenDentalNames() {
-			//Open Dental's own names are not public, so nothing is registered in PrefName (tests/RegistryTests/PrefNameTests.cs).
+		public void PrefNames_AreOpenDentalsNames_ReadByName() {
+			//Open Dental's names, from the setting names of the office's Open Dental 25.3.48 database (docs/port-notes/SWMAP.md). They are read by name,
+			//outside PrefName, so a database without the row reads as off.
+			Assert.AreEqual("ApptProvbarShowOnOps",ApptTimeBars.PREF_PROV_TIME_ON_OP_BACKGROUND);
+			Assert.AreEqual("ApptUseSecProvTimeIfEmpty",ApptTimeBars.PREF_SECONDARY_COLOR_NO_PROV_TIME);
 			foreach(string prefName in new[] { ApptTimeBars.PREF_PROV_TIME_ON_OP_BACKGROUND,ApptTimeBars.PREF_SECONDARY_COLOR_NO_PROV_TIME }) {
-				StringAssert.StartsWith(prefName,"Fork");
 				Assert.IsFalse(Enum.IsDefined(typeof(PrefName),prefName),prefName);
 			}
-			Assert.AreEqual("ApptProvTimeBarsOnOpBackground",ApptTimeBars.PREF_NAME_PROPOSED_OP_BACKGROUND);
-			Assert.AreEqual("ApptTimeBarSecondaryColorNoProvTime",ApptTimeBars.PREF_NAME_PROPOSED_SECONDARY_COLOR);
-			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),ApptTimeBars.PREF_NAME_PROPOSED_OP_BACKGROUND));
-			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),ApptTimeBars.PREF_NAME_PROPOSED_SECONDARY_COLOR));
 		}
 
 		[TestMethod]
-		public void PrefNameInUse_IsTheForkNameUntilTheOpenDentalNameIsRegistered() {
-			//When the registry owner adds the confirmed name to PrefName, GetPrefNameInUse switches to it; until then the fork row is used.
-			Assert.AreEqual(ApptTimeBars.PREF_PROV_TIME_ON_OP_BACKGROUND,ApptTimeBars.GetPrefNameInUse(ApptTimeBars.PREF_PROV_TIME_ON_OP_BACKGROUND));
-			Assert.AreEqual(ApptTimeBars.PREF_SECONDARY_COLOR_NO_PROV_TIME,ApptTimeBars.GetPrefNameInUse(ApptTimeBars.PREF_SECONDARY_COLOR_NO_PROV_TIME));
-			Assert.AreEqual("SomethingElse",ApptTimeBars.GetPrefNameInUse("SomethingElse"));
+		public void UpsertPrefRaw_WritesOnlyTheTwoTimeBarRows() {
+			//The release v0.0 row is never written again; the settings step (OdSettingNamesStep) moves it.
+			try {
+				ApptTimeBars.UpsertPrefRaw("ForkApptProvTimeBarsOnOpBackground","1");
+				Assert.Fail("The release v0.0 row was accepted.");
+			}
+			catch(ArgumentException ex) {
+				StringAssert.Contains(ex.Message,"Not a time bar preference");
+			}
 		}
 		#endregion Preference names
 	}
