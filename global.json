@@ -1,0 +1,8 @@
+{
+  "sdk": {
+    "version": "10.0.114",
+    "rollForward": "disable",
+    "allowPrerelease": false,
+    "errorMessage": "This repository builds with the .NET SDK 10.0.114 exactly (global.json). Install it per user or machine-wide; for a per-user install, run the build from a PowerShell that has called Initialize-BuildEnvironment from tools\\Initialize-BuildEnvironment.ps1, or set DOTNET_MSBUILD_SDK_RESOLVER_CLI_DIR to the folder that holds that dotnet.exe and put the folder first in PATH. See README.md, Building."
+  }
+}
