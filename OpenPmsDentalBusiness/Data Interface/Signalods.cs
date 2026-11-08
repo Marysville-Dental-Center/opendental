@@ -62,16 +62,19 @@ namespace OpenPmsDentalBusiness {
 				lookbackMs=ReplicationDelay.GetEffectiveSignalLookbackMs();
 			}
 			string streamKey=SignalLookbackFilter.GetStreamKey(listInvalidTypes,listInvalidTypesExclude);
-			DateTime dateTSinceQuery=ReplicationDelay.SignalLookback.GetQuerySince(streamKey,dateTSince,lookbackMs);
+			DateTime dateTSinceCaller=dateTSince;
+			//From here on dateTSince is the time the query checks after (the caller's time less the look-back). A Middle Tier client sends it to the
+			//server as the first parameter, so the Meth call passes the parameters in their order.
+			dateTSince=ReplicationDelay.SignalLookback.GetQuerySince(streamKey,dateTSinceCaller,lookbackMs);
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				List<Signalod> listSignalodsMT=Meth.GetObject<List<Signalod>>(MethodBase.GetCurrentMethod(),dateTSinceQuery,listInvalidTypes,listInvalidTypesExclude);
-				return ReplicationDelay.SignalLookback.Filter(streamKey,listSignalodsMT,dateTSince,dateTSinceQuery,lookbackMs);
+				List<Signalod> listSignalodsMT=Meth.GetObject<List<Signalod>>(MethodBase.GetCurrentMethod(),dateTSince,listInvalidTypes,listInvalidTypesExclude);
+				return ReplicationDelay.SignalLookback.Filter(streamKey,listSignalodsMT,dateTSinceCaller,dateTSince,lookbackMs);
 			}
 			//This command was written to take into account the fact that MySQL truncates seconds to the the whole second on DateTime columns. (newer versions support fractional seconds)
 			//By selecting signals less than Now() we avoid missing signals the next time this function is called. Without the addition of Now() it was possible
 			//to miss up to ((N-1)/N)% of the signals generated in the worst case scenario.
 			string command="SELECT * FROM signalod "
-				+"WHERE (SigDateTime>"+POut.DateT(dateTSinceQuery)+" AND SigDateTime< "+DbHelper.Now()+") ";
+				+"WHERE (SigDateTime>"+POut.DateT(dateTSince)+" AND SigDateTime< "+DbHelper.Now()+") ";
 			if(!listInvalidTypes.IsNullOrEmpty()) {
 				command+="AND IType IN("+String.Join(",",listInvalidTypes.Select(x => (int)x))+") ";
 			}
@@ -90,7 +93,7 @@ namespace OpenPmsDentalBusiness {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ServerMT) {
 				ProcessSignalsForServerMT(listSignalods);
 			}
-			return ReplicationDelay.SignalLookback.Filter(streamKey,listSignalods,dateTSince,dateTSinceQuery,lookbackMs);
+			return ReplicationDelay.SignalLookback.Filter(streamKey,listSignalods,dateTSinceCaller,dateTSince,lookbackMs);
 		}
 
 		///<summary>ServerMT instances keep track of every SignalNum they have processed and will only process new signals that are passed in.</summary>
