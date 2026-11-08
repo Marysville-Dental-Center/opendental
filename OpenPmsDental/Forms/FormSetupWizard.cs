@@ -27,7 +27,7 @@ namespace OpenPmsDental {
 
 		private void FillListSetupItems() {
 			_listSetupWizClassesItems= new List<SetupWizard.SetupWizClass>();
-			_listSetupWizClassesItems.Add(new SetupWizard.RegKeySetup());
+			//No Registration Key step: the fork removed Open Dental's registration keys (docs/decoupling-plan.md).
 			_listSetupWizClassesItems.Add(new SetupWizard.FeatureSetup());
 			_listSetupWizClassesItems.Add(new SetupWizard.ProvSetup());
 			_listSetupWizClassesItems.Add(new SetupWizard.EmployeeSetup());
