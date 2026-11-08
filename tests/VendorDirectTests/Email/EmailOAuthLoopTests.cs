@@ -93,12 +93,11 @@ namespace VendorDirectTests.Email {
 		}
 
 		private static void SendGmail(EmailAddress emailAddress,BasicEmailMessage basicEmailMessage=null) {
-			EmailMessages.SendEmailGmail(emailAddress,EmailMessages.ODEmailAddressToBasic(emailAddress),basicEmailMessage??MakeMessage(),null,
-				new AlternateView[0]);
+			EmailMessages.SendEmailGmail(emailAddress,EmailMessages.ODEmailAddressToBasic(emailAddress),basicEmailMessage??MakeMessage());
 		}
 
 		private static void SendMicrosoft(EmailAddress emailAddress) {
-			EmailMessages.SendEmailMicrosoft(emailAddress,EmailMessages.ODEmailAddressToBasic(emailAddress),MakeMessage(),null,new AlternateView[0]);
+			EmailMessages.SendEmailMicrosoft(emailAddress,EmailMessages.ODEmailAddressToBasic(emailAddress),MakeMessage());
 		}
 
 		///<summary>A Google API error body, as Gmail sends it.</summary>

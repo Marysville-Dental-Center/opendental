@@ -613,10 +613,7 @@ namespace OpenPmsDental {
 
 		private void butSig_Click(object sender,EventArgs e) {
 			using FormEmailDigitalSignature form=new FormEmailDigitalSignature(_certSig);
-			if(form.ShowDialog()==DialogResult.OK) {
-				//If the user just added trust, then refresh to pull the newly added certificate into the memory cache.
-				EmailMessages.RefreshCertStoreExternal(EmailAddressPreview);
-			}
+			form.ShowDialog();
 		}
 
 		private void SetSig(X509Certificate2 certSig) {
@@ -631,7 +628,7 @@ namespace OpenPmsDental {
 			if(certSig!=null) {
 				labelSignedBy.Visible=true;
 				textSignedBy.Visible=true;
-				textSignedBy.Text=EmailNameResolver.GetCertSubjectName(certSig);
+				textSignedBy.Text=EmailCertificates.GetCertSubjectName(certSig);
 				//Show the user that, if the message is signed, then the sender will always look like the address on the certificate,
 				//even if they have a Sender Address setup.  Otherwise we would be misrepresenting how the Sender Address feature works.
 				textFromAddress.Text=textSignedBy.Text;

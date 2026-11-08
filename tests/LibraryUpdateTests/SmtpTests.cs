@@ -95,7 +95,7 @@ namespace LibraryUpdateTests {
 			string path=Path.Combine(_folder,"1_plain.pdf");
 			File.WriteAllBytes(path,arrayAttachment);
 			using(FakeSmtpServer fakeSmtpServer=new FakeSmtpServer(USER,PASSWORD,isStartTlsOffered:false)) {
-				SendEmail.WireEmailUnsecure(MakeAddress(fakeSmtpServer.Port,false),MakeMessage(path),null);
+				SendEmail.WireEmailUnsecure(MakeAddress(fakeSmtpServer.Port,false),MakeMessage(path));
 				AssertReceived(fakeSmtpServer,arrayAttachment,false);
 			}
 		}
@@ -110,7 +110,7 @@ namespace LibraryUpdateTests {
 			ServicePointManager.ServerCertificateValidationCallback=TestCertificates.IsTestCertificate;
 			try {
 				using(FakeSmtpServer fakeSmtpServer=new FakeSmtpServer(USER,PASSWORD,isStartTlsOffered:true)) {
-					SendEmail.WireEmailUnsecure(MakeAddress(fakeSmtpServer.Port,true),MakeMessage(path),null);
+					SendEmail.WireEmailUnsecure(MakeAddress(fakeSmtpServer.Port,true),MakeMessage(path));
 					AssertReceived(fakeSmtpServer,arrayAttachment,true);
 					List<string> listCommands=fakeSmtpServer.GetCommands();
 					Assert.IsTrue(listCommands.IndexOf("STARTTLS")>=0 && listCommands.IndexOf("STARTTLS")<listCommands.FindIndex(x => x.StartsWith("(AUTH")),
@@ -249,7 +249,7 @@ namespace LibraryUpdateTests {
 			SendEmail.SmtpCertificateValidationForTests=TestCertificates.IsTestCertificate;
 			try {
 				using(fakeSmtpServer) {
-					SendEmail.WireEmailUnsecure(MakeAddress(465,true),MakeMessage(path),null);
+					SendEmail.WireEmailUnsecure(MakeAddress(465,true),MakeMessage(path));
 					AssertReceived(fakeSmtpServer,arrayAttachment,true);
 				}
 			}
@@ -264,7 +264,7 @@ namespace LibraryUpdateTests {
 			File.WriteAllBytes(path,GetAttachmentBytes());
 			using(FakeSmtpServer fakeSmtpServer=new FakeSmtpServer(USER,"another-password",isStartTlsOffered:false)) {
 				try {
-					SendEmail.WireEmailUnsecure(MakeAddress(fakeSmtpServer.Port,false),MakeMessage(path),null);
+					SendEmail.WireEmailUnsecure(MakeAddress(fakeSmtpServer.Port,false),MakeMessage(path));
 					Assert.Fail("The send should fail.");
 				}
 				catch(CodeBase.ODException ex) {

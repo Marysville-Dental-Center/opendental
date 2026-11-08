@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
@@ -22,13 +21,10 @@ namespace OpenPmsDentalBusiness.Email {
 		public const int EMAIL_SEND_TIMEOUT_MS=180000;//3 minutes
 
 		///<summary>Throws exceptions. Attempts to physically send the message over the network wire. This is used from wherever email needs to be 
-		///sent throughout the program. If a message must be encrypted, then encrypt it before calling this function. nameValueCollectionHeaders can 
-		///be null.</summary>
-		public static void WireEmailUnsecure(BasicEmailAddress address,BasicEmailMessage emailMessage,NameValueCollection nameValueCollectionHeaders
-			,params AlternateView[] arrayAlternateViews) 
-		{
+		///sent throughout the program.</summary>
+		public static void WireEmailUnsecure(BasicEmailAddress address,BasicEmailMessage emailMessage) {
 			try {
-				WireEmailUnsecure(address,emailMessage,nameValueCollectionHeaders,EMAIL_SEND_TIMEOUT_MS,arrayAlternateViews);
+				WireEmailUnsecure(address,emailMessage,EMAIL_SEND_TIMEOUT_MS);
 			}
 			catch(Exception ex){
 				//System.Net.Mail puts the server's reply code in the message; MailKit (implicit SSL) gives it as StatusCode.
@@ -43,17 +39,13 @@ namespace OpenPmsDentalBusiness.Email {
 		}
 
 		///<summary>Throws exceptions. Attempts to physically send the message over the network wire. This is used from wherever email needs to be 
-		///sent throughout the program. If a message must be encrypted, then encrypt it before calling this function. nameValueCollectionHeaders can 
-		///be null.</summary>
-		public static void WireEmailUnsecure(BasicEmailAddress address,BasicEmailMessage emailMessage,NameValueCollection nameValueCollectionHeaders,
-			int emailSendTimeoutMs=EMAIL_SEND_TIMEOUT_MS,params AlternateView[] arrayAlternateViews) {
+		///sent throughout the program.</summary>
+		public static void WireEmailUnsecure(BasicEmailAddress address,BasicEmailMessage emailMessage,int emailSendTimeoutMs) {
 			if(address.AuthenticationType.In(BasicOAuthType.Google,BasicOAuthType.Microsoft)) {
 				SendEmailOAuth(address,emailMessage);
 			}
 			else {
 				if(IsImplicitSsl(address)) {//System.Net.Mail.SmtpClient only supports explicit SSL (STARTTLS); MailKit does TLS from the first byte.
-					//nameValueCollectionHeaders is not used here: Direct messages, the only ones with headers of their own, were never sent over implicit
-					//SSL (SendEmailDirect refuses port 465).
 					SendSmtpMailKit(address,CreateMimeMessageForSmtp(address,emailMessage),SecureSocketOptions.SslOnConnect,emailSendTimeoutMs);
 				}
 				else {//No SSL or explicit SSL on port 587  
@@ -67,7 +59,7 @@ namespace OpenPmsDentalBusiness.Email {
 						client.DeliveryMethod=SmtpDeliveryMethod.Network;
 						client.EnableSsl=address.UseSSL;
 						client.Timeout=emailSendTimeoutMs;
-						message=BasicEmailMessageToMailMessage(emailMessage,nameValueCollectionHeaders,arrayAlternateViews);
+						message=BasicEmailMessageToMailMessage(emailMessage);
 						client.Send(message);
 					}
 					finally {
@@ -130,8 +122,7 @@ namespace OpenPmsDentalBusiness.Email {
 			}
 		}
 
-		public static MailMessage BasicEmailMessageToMailMessage(BasicEmailMessage basicMessage,NameValueCollection nameValueCollectionHeaders,
-			params AlternateView[] arrayAlternateViews) {
+		public static MailMessage BasicEmailMessageToMailMessage(BasicEmailMessage basicMessage) {
 			MailMessage message=new MailMessage();
 			message.From=new MailAddress(basicMessage.FromAddress.Trim());
 			if(!string.IsNullOrWhiteSpace(basicMessage.ToAddress)) {
@@ -162,12 +153,6 @@ namespace OpenPmsDentalBusiness.Email {
 			else {
 				message.IsBodyHtml=false;
 				message.Body=basicMessage.BodyText;
-			}
-			if(nameValueCollectionHeaders!=null) {
-				message.Headers.Add(nameValueCollectionHeaders);//Needed for Direct Acks to work.
-			}
-			for(int i=0;i<arrayAlternateViews.Length;i++) {//Needed for Direct messages to be interpreted encrypted on the receiver's end.
-				message.AlternateViews.Add(arrayAlternateViews[i]);
 			}
 			if(!basicMessage.ListAttachments.IsNullOrEmpty()) {
 				foreach(BasicEmailAttachment attachment in basicMessage.ListAttachments) {

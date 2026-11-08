@@ -96,9 +96,9 @@ namespace OpenPmsDental {
 				MessageBox.Show(Lan.g(this,"Invalid certificate file.")+"  "+ex.Message);
 				return;
 			}
-			if(EmailNameResolver.GetCertSubjectName(x509Certificate2).ToLower()!=textEmailAddress.Text.ToLower()) {
+			if(EmailCertificates.GetCertSubjectName(x509Certificate2).ToLower()!=textEmailAddress.Text.ToLower()) {
 				MessageBox.Show(Lan.g(this,"Email certificates are tied to specific addresses or domains.")+"  "
-					+Lan.g(this,"The email address on the certificate is")+" "+EmailNameResolver.GetCertSubjectName(x509Certificate2)+", "
+					+Lan.g(this,"The email address on the certificate is")+" "+EmailCertificates.GetCertSubjectName(x509Certificate2)+", "
 					+Lan.g(this,"but the email address you specified is")+" "+textEmailAddress.Text);
 				return;
 			}
