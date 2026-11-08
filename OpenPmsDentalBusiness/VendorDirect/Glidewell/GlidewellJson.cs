@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -84,8 +85,12 @@ namespace OpenPmsDentalBusiness.VendorDirect.Glidewell {
 			}
 			JObject jObject;
 			try {
-				JToken jToken=JToken.Parse(json);
-				jObject=jToken as JObject;
+				//Dates stay text as Glidewell sent them.
+				using(JsonTextReader jsonTextReader=new JsonTextReader(new StringReader(json))) {
+					jsonTextReader.DateParseHandling=DateParseHandling.None;
+					JToken jToken=JToken.ReadFrom(jsonTextReader);
+					jObject=jToken as JObject;
+				}
 			}
 			catch(Exception) {
 				return response;
@@ -129,8 +134,8 @@ namespace OpenPmsDentalBusiness.VendorDirect.Glidewell {
 			if(jToken.Type==JTokenType.Object) {
 				return jToken.ToString(Formatting.None);
 			}
-			if(jToken.Type==JTokenType.Date) {
-				return ((DateTime)jToken).ToString("yyyy-MM-dd HH:mm:ss",CultureInfo.InvariantCulture);
+			if(jToken.Type==JTokenType.Boolean) {
+				return (bool)jToken ? "true" : "false";
 			}
 			return Convert.ToString(((JValue)jToken).Value,CultureInfo.InvariantCulture)??"";
 		}

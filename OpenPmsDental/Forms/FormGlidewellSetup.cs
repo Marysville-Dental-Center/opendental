@@ -1,5 +1,5 @@
 // Open Dental 26.2 (P262-GLIDEWELL): Setup > Program Links > Glidewell lab cases. Turns the program link on or off and lists the office's
-// Glidewell accounts (glidewellacct). Vendor-neutral: it says what is sent and where, with no links, logos or sign-up.
+// Glidewell accounts (glidewellacct). Vendor-neutral: it says what is sent and where, and nothing more.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
