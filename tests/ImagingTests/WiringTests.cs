@@ -111,8 +111,18 @@ namespace ImagingTests {
 
 		[TestMethod]
 		public void PreAuthWindows_ScanAndViewEob() {
+			//S0-6: the EOB and amendment window, rebuilt on the current Imaging code, opens the preauthorization's EOBs from ClaimNumPreAuth (the
+			//preauth wins over a claim payment, as before) and adds every new EOB with both owner keys.
 			string formImages=Read("OpenPmsDental","Forms","FormImages.cs");
-			StringAssert.Contains(formImages,"contrImagesMain.ModuleSelectedPreAuth(ClaimNumPreAuth)");
+			StringAssert.Contains(formImages,"_mode=EobAmendmentFiles.GetMode(ClaimPaymentNum,ClaimNumPreAuth,EhrAmendmentCur);");
+			StringAssert.Contains(formImages,"EobAmendmentFiles.GetFileEntries(_mode,ClaimPaymentNum,ClaimNumPreAuth,_ehrAmendment)");
+			Assert.AreEqual(4,Count(formImages,"EobAmendmentFiles.AddEob("),"Import, paste, scan, multi-page scan.");
+			Assert.AreEqual(4,Count(formImages,",_mode,ClaimPaymentNum,ClaimNumPreAuth)"),"Every EOB import passes the preauth.");
+			Assert.AreEqual(0,Count(formImages+Read("OpenPmsDental","Forms","FormImages.designer.cs"),"ControlImagesOld"),"Not the old module.");
+			string imageStore=Read("OpenPmsDentalBusiness","Imaging","ImageStore.cs");
+			Assert.IsTrue(Regex.IsMatch(MethodBody(imageStore,"public static EnumMode GetMode("),@"^[^}]*if\(claimNumPreAuth!=0\) \{\s*return EnumMode\.PreAuth;"),
+				"The preauth is checked first.");
+			StringAssert.Contains(imageStore,"EobAttaches.RefreshForOwner(claimPaymentNumOwner,claimNumPreAuthOwner)");
 			string estimates=Read("OpenPmsDental","Forms","FormClaimPayPreAuth.cs");
 			StringAssert.Contains(estimates,"formImages.ClaimNumPreAuth=_claimNumPreAuth");
 			StringAssert.Contains(estimates,"EobAttaches.ExistsForPreAuth(_claimNumPreAuth)");
