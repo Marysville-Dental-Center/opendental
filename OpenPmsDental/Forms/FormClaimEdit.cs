@@ -2995,7 +2995,7 @@ namespace OpenPmsDental{
 				EnumClaimMedType enumClaimMedType=claimSendQueueItemsArrayCA[0].MedType;
 				using FormClaimFormItemEdit formClaimFormItemEdit=new FormClaimFormItemEdit();
 				Eclaims.SendBatch(clearinghouseClin,listClaimSendQueueItems,enumClaimMedType,formClaimFormItemEdit,
-					FormClaimPrint.FillRenaissance,new FormTerminalConnection());//this also calls SetClaimSentOrPrinted which creates the etrans entry.
+					FormClaimPrint.FillRenaissance);//this also calls SetClaimSentOrPrinted which creates the etrans entry.
 			}
 			Cursor=Cursors.Default;
 			SecurityLogs.MakeLogEntry(EnumPermType.ClaimSend,_patient.PatNum,Lan.g(this,"Claim sent from Claim Edit Window."),_claim.ClaimNum,dateTimeClaimCurSectEdit);

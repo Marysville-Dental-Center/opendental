@@ -14,10 +14,15 @@ namespace OpenPmsDentalBusiness.Eclaims
 	/// Summary description for Eclaims.
 	/// </summary>
 	public class Eclaims{
+		///<summary>Shown for a clearinghouse whose Comm Bridge is still BCBSGA: the BCBS Georgia dial-up terminal was removed in stage 0 of the .NET 10
+		///move. EclaimsCommBridge.BCBSGA keeps its number, because clearinghouse.CommBridge stores it.</summary>
+		public const string BCBSGA_NOT_AVAILABLE_MESSAGE="The BCBS Georgia dial-up connection is not available in this version of Open PMS - Dental. "
+			+"Choose another Comm Bridge for this clearinghouse.";
+
 		/// <summary></summary>
 		public Eclaims()
 		{
-			
+
 		}
 
 		///<summary>Return error message string for missing procedures when validating claims.</summary>
@@ -28,11 +33,16 @@ namespace OpenPmsDentalBusiness.Eclaims
 		///<summary>Supply a list of ClaimSendQueueItems.  Called from FormClaimSend.  Can only send to one clearinghouse at a time.
 		///The queueItems must contain at least one item.  Each item in queueItems must have the same ClinicNum.  Cannot include Canadian.</summary>
 		public static void SendBatch(Clearinghouse clearinghouseClin,List<ClaimSendQueueItem> queueItems,EnumClaimMedType medType,
-			IFormClaimFormItemEdit formClaimFormItemEdit,Renaissance.FillRenaissanceDelegate fillRenaissance,ITerminalConnector terminalConnector)
+			IFormClaimFormItemEdit formClaimFormItemEdit,Renaissance.FillRenaissanceDelegate fillRenaissance)
 		{
 			string messageText="";
 			if(clearinghouseClin.Eformat==ElectronicClaimFormat.Canadian){
 				MessageBox.Show(Lans.g("Eclaims","Cannot send Canadian claims as part of Eclaims.SendBatch."));
+				return;
+			}
+			if(clearinghouseClin.CommBridge==EclaimsCommBridge.BCBSGA) {
+				//The dial-up terminal was removed: no claim file is written and the claims stay unsent, as when the dial-up failed.
+				MessageBox.Show(Lans.g("Eclaims","The claims were not sent.")+"\r\n"+Lans.g("Eclaims",BCBSGA_NOT_AVAILABLE_MESSAGE));
 				return;
 			}
 			//get next batch number for this clearinghouse
@@ -68,12 +78,6 @@ namespace OpenPmsDentalBusiness.Eclaims
 			else if(clearinghouseClin.CommBridge==EclaimsCommBridge.WebMD){
 				if(!WebMD.Launch(clearinghouseClin,batchNum)){
 					MessageBox.Show(Lans.g("Eclaims","Error sending.")+"\r\n"+WebMD.ErrorMessage);
-					return;
-				}
-			}
-			else if(clearinghouseClin.CommBridge==EclaimsCommBridge.BCBSGA){
-				if(!BCBSGA.Launch(clearinghouseClin,batchNum,terminalConnector)){
-					MessageBox.Show(Lans.g("Eclaims","Error sending.")+"\r\n"+BCBSGA.ErrorMessage);
 					return;
 				}
 			}

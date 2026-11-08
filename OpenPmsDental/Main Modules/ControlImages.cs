@@ -63,9 +63,7 @@ namespace OpenPmsDental{
 		private bool _showDrawingsPearl=true;
 		///<summary>List of Pearl types that are toggled to display. Set by FrmPearlLayers. Maintains same state for the entire session, even as user changes to different images.</summary>
 		private List<OpenPmsDentalBusiness.Pearl.EnumCategoryOD> _listPearlCategoriesShown=null;
-		///<summary>Used to display Topaz signatures on Windows. Null when Topaz's software is not installed on this computer.</summary>
-		private Control _sigBoxTopaz;
-		///<summary>The invalid signature label's own text while it says that Topaz's software is not installed, else null.</summary>
+		///<summary>The invalid signature label's own text while it says that Topaz signature pads are not supported, else null.</summary>
 		private string _textInvalidSigBeforeTopaz;
 		///<summary>User can control width of tree.  This is stored as the 96dpi equivalent as float for conversion accuracy.  When tree is minimized, this doesn't change, allowing restoration to previous width.  It does not remember width between sessions.  Minimum 0, max 500.</summary>
 		private float _widthTree96=228;
@@ -92,20 +90,6 @@ namespace OpenPmsDental{
 			imageSelector.ItemDoubleClick+=imageSelector_ItemDoubleClick;
 			imageSelector.ItemReselected+=imageSelector_ItemReselected;
 			imageSelector.SelectionChangeCommitted+=imageSelector_SelectionChangeCommitted;
-			try {
-				_sigBoxTopaz=TopazWrapper.GetTopaz();
-				LayoutManager.Add(_sigBoxTopaz,panelNote);
-				_sigBoxTopaz.Location=sigBox.Location;//new System.Drawing.Point(437,15);
-				_sigBoxTopaz.Name="sigBoxTopaz";
-				_sigBoxTopaz.Size=new System.Drawing.Size(362,79);
-				_sigBoxTopaz.TabIndex=93;
-				_sigBoxTopaz.Text="sigPlusNET1";
-				_sigBoxTopaz.DoubleClick+=new System.EventHandler(this.sigBoxTopaz_DoubleClick);
-				TopazWrapper.SetTopazState(_sigBoxTopaz,0);
-			}
-			catch (Exception ex){
-				Logger.LogToPath("ControlImagesJ Ctor failed: "+ex.Message,LogPath.Startup,LogPhase.Unspecified);
-			}
 			unmountedBar=new WpfControls.UI.UnmountedBar();
 			elementHostUnmountedBar.Child=unmountedBar;
 			unmountedBar.HorizontalAlignment=System.Windows.HorizontalAlignment.Stretch;
@@ -1982,10 +1966,6 @@ namespace OpenPmsDental{
 			ToolBarSign_Click(this,new EventArgs());
 		}
 
-		private void sigBoxTopaz_DoubleClick(object sender,EventArgs e) {
-			ToolBarSign_Click(this,new EventArgs());
-		}
-
 		private void textNote_DoubleClick(object sender, EventArgs e){
 			ToolBarSign_Click(this,new EventArgs());
 		}
@@ -3025,7 +3005,6 @@ namespace OpenPmsDental{
 			}
 			textNote.Text="";
 			sigBox.ClearTablet();
-			TopazWrapper.ClearTopaz(_sigBoxTopaz);
 			if(!panelNote.Visible) {
 				return;
 			}
@@ -3037,41 +3016,18 @@ namespace OpenPmsDental{
 			labelInvalidSig.Visible=false;
 			sigBox.Visible=true;
 			sigBox.SetTabletState(0);//never accepts input here
-			//Topaz box is not supported in Unix, since the required dll is Windows native.
 			if(GetDocumentShowing(0).SigIsTopaz) {
 				if(GetDocumentShowing(0).Signature!=null && GetDocumentShowing(0).Signature!="") {
-					if(_sigBoxTopaz==null) {//Topaz's software is not installed, so the signature can be neither shown nor checked here.
-						sigBox.Visible=false;
-						_textInvalidSigBeforeTopaz=labelInvalidSig.Text;
-						labelInvalidSig.Text=Lan.g(this,TopazWrapper.NOT_INSTALLED_MESSAGE);
-						labelInvalidSig.Visible=true;
-						return;
-					}
-					//if(allowTopaz) {
+					//Topaz signature pads are not supported, so the signature can be neither shown nor checked here.
 					sigBox.Visible=false;
-					_sigBoxTopaz.Visible=true;
-					TopazWrapper.ClearTopaz(_sigBoxTopaz);
-					TopazWrapper.SetTopazCompressionMode(_sigBoxTopaz,0);
-					TopazWrapper.SetTopazEncryptionMode(_sigBoxTopaz,0);
-					TopazWrapper.SetTopazKeyString(_sigBoxTopaz,"0000000000000000");//Clear out the key string
-					string keystring=ImageStore.GetHashString(GetDocumentShowing(0),_patFolder);
-					TryDecryptionForTopaz(keystring);
-					if(TopazWrapper.GetTopazNumberOfTabletPoints(_sigBoxTopaz)==0) {
-						keystring=ImageStore.GetHashString(GetDocumentShowing(0),_patFolder,includeFileInHash:false);
-						TryDecryptionForTopaz(keystring);
-					}
-					if(TopazWrapper.GetTopazNumberOfTabletPoints(_sigBoxTopaz)==0) {
-						labelInvalidSig.Visible=true;
-					}
-					//}
+					_textInvalidSigBeforeTopaz=labelInvalidSig.Text;
+					labelInvalidSig.Text=Lan.g(this,SignatureBoxWrapper.TOPAZ_NOT_SUPPORTED_MESSAGE);
+					labelInvalidSig.Visible=true;
 				}
 			}
 			else {//not topaz
 				if(GetDocumentShowing(0).Signature!=null && GetDocumentShowing(0).Signature!="") {
 					sigBox.Visible=true;
-					if(_sigBoxTopaz!=null) {
-						_sigBoxTopaz.Visible=false;
-					}
 					sigBox.ClearTablet();
 					sigBox.SetKeyString(ImageStore.GetHashString(GetDocumentShowing(0),_patFolder));
 					sigBox.SetSigString(GetDocumentShowing(0).Signature);
@@ -3085,34 +3041,6 @@ namespace OpenPmsDental{
 					}
 					sigBox.SetTabletState(0);//not accepting input.
 				}
-			}
-		}
-
-		///<summary>Only called by FillSignature.</summary>
-		private void TryDecryptionForTopaz(string keystring) {
-			TopazWrapper.SetTopazAutoKeyData(_sigBoxTopaz,keystring);
-			TopazWrapper.SetTopazEncryptionMode(_sigBoxTopaz,2);//high encryption
-			TopazWrapper.SetTopazCompressionMode(_sigBoxTopaz,2);//high compression
-			TopazWrapper.SetTopazSigString(_sigBoxTopaz,GetDocumentShowing(0).Signature);
-			_sigBoxTopaz.Refresh();
-			//If sig is not showing, then setting the Key String to the hashed data. This is the way we used to handle signatures.
-			if(TopazWrapper.GetTopazNumberOfTabletPoints(_sigBoxTopaz)==0) {
-				TopazWrapper.SetTopazKeyString(_sigBoxTopaz,"0000000000000000");//Clear out the key string
-				TopazWrapper.SetTopazKeyString(_sigBoxTopaz,keystring);
-				TopazWrapper.SetTopazSigString(_sigBoxTopaz,GetDocumentShowing(0).Signature);
-			}
-			//If sig is not showing, then try encryption mode 3 for signatures signed with old SigPlusNet.dll.
-			if(TopazWrapper.GetTopazNumberOfTabletPoints(_sigBoxTopaz)==0) {
-				TopazWrapper.SetTopazEncryptionMode(_sigBoxTopaz,3);//Unknown mode (told to use via TopazSystems)
-				TopazWrapper.SetTopazSigString(_sigBoxTopaz,GetDocumentShowing(0).Signature);
-			}
-			//If sig not showing, then try the ANSI paradigm.
-			if(TopazWrapper.GetTopazNumberOfTabletPoints(_sigBoxTopaz)==0) {
-				TopazWrapper.FillSignatureANSI(_sigBoxTopaz,keystring,GetDocumentShowing(0).Signature,SignatureBoxWrapper.SigMode.Document);
-			}
-			//Try reading in the signature using different encodings for keyData.
-			if(TopazWrapper.GetTopazNumberOfTabletPoints(_sigBoxTopaz)==0) {
-				TopazWrapper.FillSignatureEncodings(_sigBoxTopaz,keystring,GetDocumentShowing(0).Signature,SignatureBoxWrapper.SigMode.Document);
 			}
 		}
 

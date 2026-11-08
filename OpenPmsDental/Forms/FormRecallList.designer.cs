@@ -33,7 +33,6 @@
 			this.butLabelOne = new OpenPmsDental.UI.Button();
 			this.butSchedPat = new OpenPmsDental.UI.Button();
 			this.labelPatientCount = new System.Windows.Forms.Label();
-			this.butECards = new OpenPmsDental.UI.Button();
 			this.butEmail = new OpenPmsDental.UI.Button();
 			this.butPostcards = new OpenPmsDental.UI.Button();
 			this.butPrint = new OpenPmsDental.UI.Button();
@@ -156,7 +155,6 @@
 			this.tabPageRecalls.Controls.Add(this.butLabelOne);
 			this.tabPageRecalls.Controls.Add(this.butSchedPat);
 			this.tabPageRecalls.Controls.Add(this.labelPatientCount);
-			this.tabPageRecalls.Controls.Add(this.butECards);
 			this.tabPageRecalls.Controls.Add(this.butEmail);
 			this.tabPageRecalls.Controls.Add(this.butPostcards);
 			this.tabPageRecalls.Controls.Add(this.butPrint);
@@ -280,18 +278,6 @@
 			this.labelPatientCount.TabIndex = 132;
 			this.labelPatientCount.Text = "Patient Count:";
 			this.labelPatientCount.TextAlign = System.Drawing.ContentAlignment.TopRight;
-			// 
-			// butECards
-			// 
-			this.butECards.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.butECards.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butECards.Location = new System.Drawing.Point(253, 613);
-			this.butECards.Name = "butECards";
-			this.butECards.Size = new System.Drawing.Size(91, 24);
-			this.butECards.TabIndex = 130;
-			this.butECards.Text = "eCards";
-			this.butECards.Visible = false;
-			this.butECards.Click += new System.EventHandler(this.butECards_Click);
 			// 
 			// butEmail
 			// 
@@ -1043,7 +1029,6 @@
 		private OpenPmsDental.UI.Button butSchedPat;
 		private System.Windows.Forms.Label labelPatientCount;
 		private OpenPmsDental.UI.Button butPrint;
-		private OpenPmsDental.UI.Button butECards;
 		private OpenPmsDental.UI.Button butEmail;
 		private OpenPmsDental.UI.Button butPostcards;
 		private OpenPmsDental.UI.GridOD gridRecalls;

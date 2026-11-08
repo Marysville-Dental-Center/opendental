@@ -369,12 +369,11 @@ namespace WpfControls {
 				Scanora.SendData(program,patient);
 				return;
 			}
-#if !DISABLE_WINDOWS_BRIDGES
 			else if(program.ProgName==ProgramName.Schick.ToString()) {
-				Schick.SendData(program,patient);
+				//The Schick CDR bridge was removed in stage 0 of the .NET 10 move, with Schick's COM interop files. Its program link row stays.
+				MsgBox.Show("Schick",BridgeNotAvailable.Schick);
 				return;
 			}
-#endif
 			else if(program.ProgName==ProgramName.Shining3D.ToString()) {
 				Shining3D.SendData(program,patient);
 				return;

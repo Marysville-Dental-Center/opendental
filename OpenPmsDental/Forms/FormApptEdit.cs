@@ -414,13 +414,6 @@ namespace OpenPmsDental{
 				butComplete.Visible=false;
 				butPDF.Visible=false;
 			}
-			//Hide text message button sometimes
-			if(_patient.WirelessPhone=="" || !Programs.IsEnabled(ProgramName.CallFire)) {
-				butText.Enabled=false;
-			}
-			else {//Pat has a wireless phone number and CallFire is enabled
-				butText.Enabled=true;//TxtMsgOk checking performed on button click.
-			}
 			//AppointmentType
 			List<AppointmentType> listAppointmentTypes=AppointmentTypes.GetWhere(x => !x.IsHidden || x.AppointmentTypeNum==_appointment.AppointmentTypeNum);
 			comboApptType.Items.AddNone<AppointmentType>();
@@ -452,7 +445,7 @@ namespace OpenPmsDental{
 			textNote.Focus();
 			textNote.SelectionStart = 0;
 			_isOnLoad=false;
-			Plugins.HookAddCode(this,"FormApptEdit.Load_End",_patient,butText);
+			Plugins.HookAddCode(this,"FormApptEdit.Load_End",_patient);//It passed the Text button too, removed with CallFire.
 			Plugins.HookAddCode(this,"FormApptEdit.Load_end2",_appointment);//Lower casing the code area (_end) is the newer pattern for this.
 			Plugins.HookAddCode(this,"FormApptEdit.Load_end3",_appointment,_patient);
 		}
@@ -1188,25 +1181,6 @@ namespace OpenPmsDental{
 			frmCommItem.ShowDialog();
 			_tableComms=Appointments.GetCommTable(_appointment.PatNum.ToString(),_appointment.AptNum);
 			FillComm();
-		}
-
-		private void butText_Click(object sender,EventArgs e) {
-			if(Plugins.HookMethod(this,"FormApptEdit.butText_Click_start",_patient,_appointment,this)) {
-				return;
-			}
-			if(!Security.IsAuthorized(EnumPermType.TextMessageSend)) {
-				return;
-			}
-			if(!PatientL.CheckPatientTextingAllowed(_patient,this)) {
-				return;
-			}
-			string message=PatComm.BuildConfirmMessage(ContactMethod.TextMessage,_patient,_appointment);
-			using FormTxtMsgEdit formTxtMsgEdit=new FormTxtMsgEdit();
-			formTxtMsgEdit.PatNum=_patient.PatNum;
-			formTxtMsgEdit.WirelessPhone=_patient.WirelessPhone;
-			formTxtMsgEdit.Message=message;
-			formTxtMsgEdit.YNTxtMsgOk=_patient.TxtMsgOk;
-			formTxtMsgEdit.ShowDialog();
 		}
 
 		private void butPDF_Click(object sender,EventArgs e) {

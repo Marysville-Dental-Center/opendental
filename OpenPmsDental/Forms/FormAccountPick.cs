@@ -4,7 +4,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Windows.Forms;
-using OpenPmsDental.Bridges;
 using OpenPmsDental.UI;
 using OpenPmsDentalBusiness;
 
@@ -13,8 +12,6 @@ namespace OpenPmsDental{
 	public partial class FormAccountPick:FormODBase {
 		///<summary>Upon closing with OK, this will be the selected account.</summary>
 		public Account SelectedAccount;
-		public bool IsQuickBooks;
-		public List<string> ListSelectedAccountsQB;
 
 		///<summary></summary>
 		public FormAccountPick()
@@ -25,15 +22,7 @@ namespace OpenPmsDental{
 		}
 
 		private void FormAccountPick_Load(object sender,EventArgs e) {
-			if(IsQuickBooks) {
-				ListSelectedAccountsQB=new List<string>();
-				checkInactive.Visible=false;
-				FillGridQB();
-				gridMain.SelectionMode=GridSelectionMode.MultiExtended;
-			}
-			else {
-				FillGrid();
-			}
+			FillGrid();
 		}
 
 		private void FillGrid(){
@@ -83,39 +72,8 @@ namespace OpenPmsDental{
 			gridMain.EndUpdate();
 		}
 
-		private void FillGridQB(){
-			gridMain.BeginUpdate();
-			gridMain.Columns.Clear();
-			GridColumn col=new GridColumn(Lan.g("TableChartOfAccountsQB","Description"),200);
-			gridMain.Columns.Add(col);
-			gridMain.ListGridRows.Clear();
-			GridRow row;
-			//Get the list of accounts from QuickBooks.
-			Cursor.Current=Cursors.WaitCursor;
-			List<string> listAccounts=new List<string>();
-			try {
-				listAccounts=QuickBooks.GetListOfAccounts();
-			}
-			catch(Exception e) {
-				MessageBox.Show(e.Message);
-			}
-			Cursor.Current=Cursors.Default;
-			for(int i=0;i<listAccounts.Count;i++){
-				row=new GridRow();
-				row.Cells.Add(listAccounts[i]);
-				row.Tag=listAccounts[i];
-				gridMain.ListGridRows.Add(row);
-			}
-			gridMain.EndUpdate();
-		}
-
 		private void gridMain_CellDoubleClick(object sender,ODGridClickEventArgs e) {
-			if(IsQuickBooks) {
-				ListSelectedAccountsQB.Add((string)gridMain.ListGridRows[e.Row].Tag);
-			}
-			else {
-				SelectedAccount=((Account)gridMain.ListGridRows[e.Row].Tag).Clone();
-			}
+			SelectedAccount=((Account)gridMain.ListGridRows[e.Row].Tag).Clone();
 			DialogResult=DialogResult.OK;
 		}
 
@@ -128,14 +86,7 @@ namespace OpenPmsDental{
 				MsgBox.Show(this,"Please select an account first.");
 				return;
 			}
-			if(IsQuickBooks) {
-				for(int i=0;i<gridMain.SelectedIndices.Length;i++) {
-					ListSelectedAccountsQB.Add((string)(gridMain.ListGridRows[gridMain.SelectedIndices[i]].Tag));
-				}
-			}
-			else {
-				SelectedAccount=((Account)gridMain.ListGridRows[gridMain.GetSelectedIndex()].Tag).Clone();
-			}
+			SelectedAccount=((Account)gridMain.ListGridRows[gridMain.GetSelectedIndex()].Tag).Clone();
 			DialogResult=DialogResult.OK;
 		}
 

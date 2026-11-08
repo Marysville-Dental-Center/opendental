@@ -115,6 +115,10 @@ namespace OpenPmsDentalBusiness {
 			//NHunspell and its native Hunspell, replaced by the managed WeCantSpell.Hunspell (2026-11-02).
 			"NHunspell.dll",
 			"Hunspellx86.dll",
+			//The pre-built XML serializers of the SOAP proxies, no longer generated (stage 0 of the .NET 10 move, 2026-11-08). XmlSerializer builds
+			//them at run time, and it never uses a pre-built one made for another build of its assembly.
+			"OpenPmsDental.XmlSerializers.dll",
+			"OpenPmsDentalBusiness.XmlSerializers.dll",
 		};
 		///<summary>Key of the AssemblyMetadata attribute that holds the build time of OpenPmsDental.exe (written by OpenPmsDental.csproj).</summary>
 		public const string BUILD_UTC_METADATA_KEY="ForkBuildUtc";

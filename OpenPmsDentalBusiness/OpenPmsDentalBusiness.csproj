@@ -16,6 +16,9 @@
     <UpgradeBackupLocation>
     </UpgradeBackupLocation>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <!-- No XmlSerializers assembly in any configuration (stage 0 of the .NET 10 move, S0-2a, docs/specs/net10-plan.md): SGen only pre-built
+         serializers for the SOAP proxies, XmlSerializer builds them at run time, and the release retires the files. -->
+    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
     <ResGenToolArchitecture>Managed32Bit</ResGenToolArchitecture>
     <TargetFrameworkProfile />
     <NuGetPackageImportStamp>
@@ -56,7 +59,6 @@
     <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>
     <Prefer32Bit>false</Prefer32Bit>
     <LangVersion>8.0</LangVersion>
-    <GenerateSerializationAssemblies>Off</GenerateSerializationAssemblies>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
     <DebugSymbols>true</DebugSymbols>
@@ -750,7 +752,6 @@
     <Compile Include="UI\SignatureBoxWrapper.Designer.cs">
       <DependentUpon>SignatureBoxWrapper.cs</DependentUpon>
     </Compile>
-    <Compile Include="UI\TopazWrapper.cs" />
     <Compile Include="Web References\NewCropWebService\Reference.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -838,7 +839,6 @@
     <Compile Include="Db\DataConnectionCancelable.cs" />
     <Compile Include="Db\SQLWhere.cs" />
     <Compile Include="Eclaims\AOS.cs" />
-    <Compile Include="Eclaims\BCBSGA.cs" />
     <Compile Include="Eclaims\Canadian.cs" />
     <Compile Include="Eclaims\CanadianOutput.cs" />
     <Compile Include="Eclaims\CCDerror.cs" />
@@ -853,14 +853,12 @@
     <Compile Include="Eclaims\EDS.cs" />
     <Compile Include="Eclaims\EmdeonMedical.cs" />
     <Compile Include="Eclaims\Inmediata.cs" />
-    <Compile Include="Eclaims\ITerminalConnector.cs" />
     <Compile Include="Eclaims\MercuryDE.cs" />
     <Compile Include="Eclaims\NHS.cs" />
     <Compile Include="Eclaims\Ramq.cs" />
     <Compile Include="Eclaims\RECS.cs" />
     <Compile Include="Eclaims\Renaissance.cs" />
     <Compile Include="Eclaims\Rs232.cs" />
-    <Compile Include="Eclaims\TerminalConnector.cs" />
     <Compile Include="Eclaims\Tesia.cs" />
     <Compile Include="Eclaims\WebMD.cs" />
     <Compile Include="Eclaims\x270Controller.cs" />

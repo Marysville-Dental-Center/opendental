@@ -93,7 +93,6 @@
 			this.butDeleteProc = new OpenPmsDental.UI.Button();
 			this.butAdd = new OpenPmsDental.UI.Button();
 			this.textNote = new OpenPmsDental.ODtextBox();
-			this.butText = new OpenPmsDental.UI.Button();
 			this.butAddComm = new OpenPmsDental.UI.Button();
 			this.butAudit = new OpenPmsDental.UI.Button();
 			this.butTask = new OpenPmsDental.UI.Button();
@@ -765,18 +764,6 @@
 			this.textNote.TabIndex = 142;
 			this.textNote.Text = "";
 			// 
-			// butText
-			// 
-			this.butText.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.butText.Icon = OpenPmsDental.UI.EnumIcons.Text;
-			this.butText.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.butText.Location = new System.Drawing.Point(1137, 452);
-			this.butText.Name = "butText";
-			this.butText.Size = new System.Drawing.Size(92, 24);
-			this.butText.TabIndex = 143;
-			this.butText.Text = "Text";
-			this.butText.Click += new System.EventHandler(this.butText_Click);
-			// 
 			// butAddComm
 			// 
 			this.butAddComm.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -908,7 +895,6 @@
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.textNote);
 			this.Controls.Add(this.labelApptNote);
-			this.Controls.Add(this.butText);
 			this.Controls.Add(this.butAddComm);
 			this.Controls.Add(this.gridPatient);
 			this.Controls.Add(this.gridComm);
@@ -997,7 +983,6 @@
 		private System.Windows.Forms.Label label9;
 		private UI.Button butColorClear;
 		private System.Windows.Forms.Button butColor;
-		private UI.Button butText;
 		private System.Windows.Forms.Label labelQuickAdd;
 		private UI.Button butSyndromicObservations;
 		private System.Windows.Forms.Label labelSyndromicObservations;

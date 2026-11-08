@@ -103,10 +103,8 @@ $CompatVersion='24.3.63.0'
 $OwnFiles=[ordered]@{
 	'OpenPmsDental.exe'=''
 	'OpenPmsDental.exe.config'=''
-	'OpenPmsDental.XmlSerializers.dll'=''
 	'OpenPmsDentalBusiness.dll'='OpenPmsDentalBusiness\bin\Release'
 	'OpenPmsDentalBusiness.dll.config'=''
-	'OpenPmsDentalBusiness.XmlSerializers.dll'='OpenPmsDentalBusiness\bin\Release'
 	'CodeBase.dll'='CodeBase\bin\Release'
 	'DataConnectionBase.dll'='DataConnectionBase\bin\Release'
 	'WpfControlsOD.dll'='WpfControlsOD\bin\Release'
@@ -230,7 +228,7 @@ $DenyList=@(
 	@('Microsoft.DirectX*.dll',"DirectX, redistributable only through Microsoft's installer"),
 	@('d3dx*.dll',"DirectX, redistributable only through Microsoft's installer"),
 	@('RS232.dll','unknown author and licence (replaced in BIN-B)'),
-	@('SigPlusNET.dll','Topaz: no published redistribution terms; loaded from the Topaz software when installed (BIN-B)'),
+	@('SigPlusNET.dll','Topaz: no published redistribution terms; Topaz signature pads were removed in stage 0 of the .NET 10 move (S0-2a)'),
 	@('zxing*','a dead reference (removed in BIN-B)'),
 	@('Avalara*','the AvaTax SDK, a dead reference (removed in BIN-B)'),
 	@('Ionic.*','DotNetZip: MS-PL, abandoned, CVE-2024-48510 (replaced in BIN-B)'),
@@ -261,7 +259,9 @@ $DenyList=@(
 	@('OpenPmsDentalCloud.dll','the storage library of v0.0, renamed OpenPmsDentalStorage.dll on 2026-11-02; a leftover of an older build'),
 	@('PdfSharp.dll','PDFsharp 1.2 of v0.0; PDFsharp 6.5 ships as PdfSharp-gdi.dll'),
 	@('PdfSharp.Charting.dll','PDFsharp 1.2 of v0.0; PDFsharp 6.5 ships as PdfSharp.Charting-gdi.dll'),
-	@('MigraDoc.Rendering.dll','MigraDoc 1.2 of v0.0; MigraDoc 6.5 ships as MigraDoc.Rendering-gdi.dll')
+	@('MigraDoc.Rendering.dll','MigraDoc 1.2 of v0.0; MigraDoc 6.5 ships as MigraDoc.Rendering-gdi.dll'),
+	@('OpenPmsDental.XmlSerializers.dll','pre-built XML serializers of v0.0, retired in stage 0 of the .NET 10 move (GenerateSerializationAssemblies is Off)'),
+	@('OpenPmsDentalBusiness.XmlSerializers.dll','pre-built XML serializers of v0.0, retired in stage 0 of the .NET 10 move (GenerateSerializationAssemblies is Off)')
 )
 #endregion The lists
 
