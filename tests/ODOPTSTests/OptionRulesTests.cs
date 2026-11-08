@@ -297,6 +297,44 @@ namespace ODOPTSTests {
 			Assert.AreEqual(0,StatementAutoSend.SendTexts(StatementAutoSendMode.Never,listCreated,x => true,fakeTextSender).CountSent);
 			CollectionAssert.AreEqual(new long[] { 31,32,31,32 },fakeTextSender.ListStatementNumsSent);
 		}
+
+		[TestMethod]
+		public void StatementAutoSendEmail_AlwaysAsksUntilTheWindowIsSavedHere() {
+			//Open Dental's window most likely meant Message-to-Pay links (features-25.1.md), so its Always is not taken as "e-mail the statement".
+			Assert.AreEqual(StatementAutoSendMode.Ask,StatementAutoSend.GetModeToUse(StatementAutoSendMode.Always,isSetupSavedHere:false));
+			Assert.AreEqual(StatementAutoSendMode.Always,StatementAutoSend.GetModeToUse(StatementAutoSendMode.Always,isSetupSavedHere:true));
+			foreach(bool isSavedHere in new[] { false,true }) {
+				Assert.AreEqual(StatementAutoSendMode.Never,StatementAutoSend.GetModeToUse(StatementAutoSendMode.Never,isSavedHere));
+				Assert.AreEqual(StatementAutoSendMode.Ask,StatementAutoSend.GetModeToUse(StatementAutoSendMode.Ask,isSavedHere));
+			}
+			Assert.AreEqual("Send the new e-mail statements now? (3)",StatementAutoSend.GetEmailQuestion(3));
+			string question=StatementAutoSend.GetEmailQuestion(3,isAlwaysNotSavedHere:true);
+			StringAssert.StartsWith(question,"Send the new e-mail statements now? (3)");
+			StringAssert.Contains(question,StatementAutoSend.GetAlwaysNotSavedHereNote(),"The question says why it is asked.");
+			StringAssert.Contains(StatementAutoSend.GetAlwaysNotSavedHereNote(),"Message-to-Pay");
+			StringAssert.Contains(StatementAutoSend.GetSetupSavedHereLogText(StatementAutoSendMode.Always),"(ForkStatementSendSetupSaved): by e-mail 'Always'");
+			Assert.IsFalse(Enum.IsDefined(typeof(PrefName),StatementAutoSend.PREF_SETUP_SAVED),"This program's own row, read by name.");
+			CollectionAssert.DoesNotContain(OdOptions.ArrayPrefNames,StatementAutoSend.PREF_SETUP_SAVED,"Not one of Open Dental's rows.");
+			//migration-preview says so for an office row that reads as Always.
+			List<string> listLines=OdSettingNames.DescribeReads(x => x==StatementAutoSend.PREF_EMAIL ? "2" : null);
+			CollectionAssert.Contains(listLines,"Send statements by e-mail when billing creates them (ODOPTS): Always (asks until Statement Send Setup is saved "
+				+"in this program) [StatementAutoSendEmail='2']");
+		}
 		#endregion StatementAutoSendEmail and StatementAutoSendSMS
+
+		#region eForm import: entries not imported
+		[TestMethod]
+		public void EFormImport_NotImportedTexts() {
+			Assert.AreEqual("Allergy not imported (matches no allergy in the list; EFormImportAllergiesAsOther off): Synthetic pollen",
+				EFormImport.GetAllergyNotImportedText("Synthetic pollen"));
+			Assert.AreEqual("Problem not imported (matches no problem in the list; EFormImportProblemsAsOther off): Synthetic condition",
+				EFormImport.GetProblemNotImportedText("Synthetic condition"));
+			Assert.AreEqual("",EFormImport.GetNotImportedMessage(new List<string>()));
+			Assert.AreEqual("",EFormImport.GetNotImportedMessage(null));
+			string message=EFormImport.GetNotImportedMessage(new List<string> { EFormImport.GetAllergyNotImportedText("Synthetic pollen") });
+			StringAssert.Contains(message,"Auto import did not add these entries to the chart:");
+			StringAssert.Contains(message,EFormImport.GetAllergyNotImportedText("Synthetic pollen"));
+		}
+		#endregion eForm import: entries not imported
 	}
 }

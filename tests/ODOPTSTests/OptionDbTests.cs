@@ -38,6 +38,9 @@ namespace ODOPTSTests {
 			Assert.AreEqual(StatementAutoSendMode.Never,StatementAutoSend.GetEmailMode());
 			Assert.AreEqual(StatementAutoSendMode.Never,StatementAutoSend.GetSmsMode());
 			Assert.IsFalse(StatementAutoSend.IsAnyOn());
+			Assert.IsNull(ScratchDb.GetPrefRaw(StatementAutoSend.PREF_SETUP_SAVED));
+			Assert.IsFalse(StatementAutoSend.IsSetupSavedHere());
+			Assert.AreEqual(StatementAutoSendMode.Never,StatementAutoSend.GetEmailModeToUse());
 		}
 
 		[TestMethod]
@@ -103,6 +106,29 @@ namespace ODOPTSTests {
 			//Saving what the row already means leaves it as Open Dental wrote it.
 			Assert.IsFalse(StatementAutoSend.SetModes(StatementAutoSendMode.Never,StatementAutoSendMode.Never));
 			Assert.AreEqual("7",ScratchDb.GetPrefRaw("StatementAutoSendEmail"));
+		}
+
+		[TestMethod]
+		public void StatementAutoSendEmail_AlwaysFromOpenDental_AsksUntilSavedHere() {
+			//A made-up row as Open Dental's window may have left it: there it most likely meant Message-to-Pay links, not e-mailing the statement.
+			ScratchDb.SetPrefRaw("StatementAutoSendEmail","2");
+			Assert.AreEqual(StatementAutoSendMode.Always,StatementAutoSend.GetEmailMode(),"The window shows what is stored.");
+			Assert.AreEqual(StatementAutoSendMode.Ask,StatementAutoSend.GetEmailModeToUse(),"Billing asks.");
+			Assert.IsTrue(StatementAutoSend.IsEmailAlwaysNotSavedHere());
+			Assert.IsTrue(StatementAutoSend.IsAnyOn(),"Billing Options still notes the statements it creates.");
+			//Saving the modes alone does not count: only the window's save records it (SetSetupSavedHere).
+			Assert.IsFalse(StatementAutoSend.SetModes(StatementAutoSendMode.Always,StatementAutoSendMode.Never));
+			Assert.AreEqual(StatementAutoSendMode.Ask,StatementAutoSend.GetEmailModeToUse());
+			Assert.IsTrue(StatementAutoSend.SetSetupSavedHere());
+			Assert.AreEqual("1",ScratchDb.GetPrefRaw(StatementAutoSend.PREF_SETUP_SAVED));
+			Assert.AreEqual("2",ScratchDb.GetPrefRaw("StatementAutoSendEmail"),"Open Dental's row is left as it was.");
+			Assert.IsFalse(StatementAutoSend.SetSetupSavedHere(),"Recorded once.");
+			Prefs.RefreshCache();//as another workstation reads it
+			Assert.AreEqual(StatementAutoSendMode.Always,StatementAutoSend.GetEmailModeToUse());
+			Assert.IsFalse(StatementAutoSend.IsEmailAlwaysNotSavedHere());
+			//Saved here, Ask and Never are used as stored.
+			StatementAutoSend.SetModes(StatementAutoSendMode.Ask,StatementAutoSendMode.Never);
+			Assert.AreEqual(StatementAutoSendMode.Ask,StatementAutoSend.GetEmailModeToUse());
 		}
 		#endregion Each option under Open Dental's row
 
@@ -288,6 +314,10 @@ namespace ODOPTSTests {
 
 		///<summary>Auto imports an eForm whose typed allergy and problem match no list entry (made-up names), and returns the patient.</summary>
 		private static Patient ImportUnmatched(out string allergyTyped,out string problemTyped) {
+			return ImportUnmatched(out allergyTyped,out problemTyped,out _);
+		}
+
+		private static Patient ImportUnmatched(out string allergyTyped,out string problemTyped,out List<string> listNotImported) {
 			string suffix=NewSuffix();
 			Patient patient=PatientT.CreatePatient(suffix,lName:"Odopts",fName:"EForm");
 			allergyTyped="Synthetic allergen "+suffix;
@@ -300,8 +330,47 @@ namespace ODOPTSTests {
 				eForm.ListEFormFields[i].PatNum=patient.PatNum;
 				eForm.ListEFormFields[i].ItemOrder=i;
 			}
-			EFormImport.ImportAutoFields(eForm);
+			EFormImport.ImportAutoFields(eForm,out listNotImported);
 			return patient;
+		}
+
+		///<summary>The LogText of the patient's Audit Trail entries of one permission, oldest first.</summary>
+		private static List<string> GetLogTexts(long patNum,EnumPermType permType) {
+			return DataCore.GetTable("SELECT LogText FROM securitylog WHERE PatNum="+POut.Long(patNum)+" AND PermType="+POut.Int((int)permType)
+				+" ORDER BY SecurityLogNum").Select().Select(x => x["LogText"].ToString()).ToList();
+		}
+
+		[TestMethod]
+		public void EFormImport_Off_EachSkippedEntryIsInTheAuditTrail_ApartFromTheCount() {
+			EFormImport.SetAllergiesAsOther(false);
+			EFormImport.SetProblemsAsOther(false);
+			Patient patient=ImportUnmatched(out string allergyTyped,out string problemTyped,out List<string> listNotImported);
+			CollectionAssert.AreEqual(new[] { EFormImport.GetAllergyNotImportedText(allergyTyped),EFormImport.GetProblemNotImportedText(problemTyped) },
+				listNotImported,"Returned for the user who saved the form.");
+			Assert.AreEqual("Allergy not imported (matches no allergy in the list; EFormImportAllergiesAsOther off): "+allergyTyped,listNotImported[0]);
+			Assert.AreEqual("Problem not imported (matches no problem in the list; EFormImportProblemsAsOther off): "+problemTyped,listNotImported[1]);
+			List<string> listLogTexts=GetLogTexts(patient.PatNum,EnumPermType.EFormImport);
+			Assert.AreEqual(1,listLogTexts.Count,"The auto import's entry is made although nothing was imported.");
+			string logText=listLogTexts[0].Replace("\r\n","\n");
+			StringAssert.StartsWith(logText,"Auto import from eForm #0 (Synthetic history): 0 change(s).\n","Not counted as changes.");
+			StringAssert.Contains(logText,"\nAllergy not imported (matches no allergy in the list; EFormImportAllergiesAsOther off): "+allergyTyped);
+			StringAssert.Contains(logText,"\nProblem not imported (matches no problem in the list; EFormImportProblemsAsOther off): "+problemTyped);
+			Assert.AreEqual(0,GetLogTexts(patient.PatNum,EnumPermType.PatAllergyListEdit).Count,"Nothing was added to the allergy list.");
+			Assert.AreEqual(0,GetLogTexts(patient.PatNum,EnumPermType.PatProblemListEdit).Count);
+			//With changes, the skipped entry follows the count, which counts only the changes.
+			EFormImport.SetProblemsAsOther(true);
+			patient=ImportUnmatched(out allergyTyped,out problemTyped,out listNotImported);
+			Assert.AreEqual(1,listNotImported.Count);
+			logText=GetLogTexts(patient.PatNum,EnumPermType.EFormImport).Single().Replace("\r\n","\n");
+			Assert.AreEqual("Auto import from eForm #0 (Synthetic history): 1 change(s).\n"+EFormImport.GetAllergyNotImportedText(allergyTyped),logText);
+		}
+
+		[TestMethod]
+		public void EFormImport_On_NothingIsListedAsNotImported() {
+			Patient patient=ImportUnmatched(out _,out _,out List<string> listNotImported);
+			Assert.AreEqual(0,listNotImported.Count);
+			string logText=GetLogTexts(patient.PatNum,EnumPermType.EFormImport).Single();
+			Assert.AreEqual("Auto import from eForm #0 (Synthetic history): 2 change(s).",logText);
 		}
 
 		[TestMethod]

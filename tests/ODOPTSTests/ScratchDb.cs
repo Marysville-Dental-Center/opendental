@@ -80,8 +80,8 @@ namespace ODOPTSTests {
 		}
 
 		///<summary>Call from [TestInitialize] of a database test: marks the test inconclusive when there is no scratch database, otherwise connects to
-		///it, sets the culture to en-US (labels are compared in English) and removes the eight ODOPTS rows, so each test starts from a database without
-		///them, as a database from 24.3 is.</summary>
+		///it, sets the culture to en-US (labels are compared in English) and removes the eight ODOPTS rows and this program's ForkStatementSendSetupSaved
+		///row, so each test starts from a database without them, as a database from 24.3 is.</summary>
 		public static void Begin() {
 			if(SkipReason!=null) {
 				Assert.Inconclusive(SkipReason);
@@ -90,6 +90,8 @@ namespace ODOPTSTests {
 			Connect();
 			Security.CurUser=Userods.GetUser(1)??new Userod { UserNum=1,UserName="Synthetic" };
 			DataCore.NonQ("DELETE FROM preference WHERE PrefName IN ("+string.Join(",",OdOptions.ArrayPrefNames.Select(x => "'"+POut.String(x)+"'"))+")");
+			//This program's own row of the Statement Send Setup window (saved here or not) starts missing too.
+			DataCore.NonQ("DELETE FROM preference WHERE PrefName='"+POut.String(StatementAutoSend.PREF_SETUP_SAVED)+"'");
 			Prefs.RefreshCache();
 		}
 
