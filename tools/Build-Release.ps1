@@ -235,7 +235,7 @@ $DenyList=@(
 	@('Avalara*','the AvaTax SDK, a dead reference (removed in BIN-B)'),
 	@('Ionic.*','DotNetZip: MS-PL, abandoned, CVE-2024-48510 (replaced in BIN-B)'),
 	@('Dicom.*.dll','fo-dicom 4 (MS-PL): replaced by the in-house DICOM reader (docs/imaging/dicom-reader.md)'),
-	@('NDde.dll','NDde, under its own shared source licence, which does not fit the GPL: removed with the DentX, Dexis Integrator and Vipersoft program links (owner decision of 2026-11-07, REL-FILES 2)'),
+	@('NDde.dll','NDde, under its own shared source licence, which does not fit the GPL (REL-FILES 2): the DentX, Dexis Integrator and Vipersoft program links use the in-house DDE client (CodeBase ODDdeClient) instead (S0-R)'),
 	@('fo-dicom*','fo-dicom (MS-PL): replaced by the in-house DICOM reader (docs/imaging/dicom-reader.md)'),
 	@('DotNetZip*','DotNetZip: MS-PL, abandoned, CVE-2024-48510 (replaced in BIN-B)'),
 	@('Tamir.SharpSSH.dll','SharpSSH, unmaintained since 2013 (replaced by SSH.NET in the tier 1 library updates)'),

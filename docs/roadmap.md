@@ -33,8 +33,9 @@ Built for the version after 0.0; what each one changes is in its release notes, 
 4. **Inventory tracking**.
 5. **Storage rename**: `OpenPmsDentalCloud` becomes `OpenPmsDentalStorage`, since it holds only the SFTP storage option.
 6. **Fixes before the switch-over, from the owner's answers of 2026-11-07**: a declined PayConnect 2 charge is a decline, an edited X-ray
-   attached to a claim is saved, the Insurance History step leaves the frequency code groups unchanged, the DentX, Dexis Integrator and
-   Vipersoft links and NDde.dll are removed, the capture session is on for new installs, and the backup to another server works.
+   attached to a claim is saved, the Insurance History step leaves the frequency code groups unchanged, NDde.dll is removed (the DentX,
+   Dexis Integrator and Vipersoft links use an in-house DDE client since 2026-11-08), the capture session is on for new installs, and the
+   backup to another server works.
 7. **Open Dental 26.2 features**: the changes the owner chose on 2026-11-07, on Open Dental's 26.2.0 database schema (appointments, billing
    and statements, claims and insurance, the perio chart, tools, reports, eForms and recalls, program links, and Glidewell lab cases without
    a connection to Glidewell yet), with Open Dental 25.3's settings read under their own names and its eight options built. The extraction
