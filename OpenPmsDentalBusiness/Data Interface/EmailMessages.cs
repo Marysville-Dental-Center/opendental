@@ -2495,11 +2495,25 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>Opens one of the three certificate stores (CertStoreNamePrivate, CertStoreNameExternal, CertStoreNameAnchor), as the Direct
 		///Project's SystemX509Store.OpenPrivate, OpenExternal and OpenAnchor (and their Edit versions) open them on the Local Computer: read only, for a
-		///store that exists, or read and write, which creates the store. Throws if the store can't be opened.</summary>
+		///store that exists, or read and write, which creates the store. The store of private certificates gets the criteria OpenPrivate and
+		///OpenPrivateEdit give it (IsPrivateCertWithKey): its certificates without a private key are left out of everything the store gives, and
+		///adding one to it throws. The other two stores give all of their certificates. Throws if the store can't be opened.</summary>
 		internal static SystemX509Store OpenCertStore(string storeName,bool isEdit) {
 			X509Store x509Store=new X509Store(storeName,CertStoreLocation);
 			x509Store.Open(isEdit ? OpenFlags.ReadWrite : OpenFlags.ReadOnly|OpenFlags.OpenExistingOnly);
-			return new SystemX509Store(x509Store,null);
+			Predicate<X509Certificate2> predicateCriteria=null;//OpenExternal and OpenAnchor: every certificate of the store.
+			if(storeName==CertStoreNamePrivate) {
+				predicateCriteria=IsPrivateCertWithKey;
+			}
+			return new SystemX509Store(x509Store,predicateCriteria);
+		}
+
+		///<summary>The criteria of the store of private certificates, as the Direct Project's SystemX509Store.OpenPrivate and OpenPrivateEdit give it:
+		///true for a certificate with its private key. One in that store without its key (a .cer imported into the wrong store, the public half of
+		///an old certificate) can neither sign nor decrypt, so the Direct agent's resolver (EmailPrivateResolver), the trust check (IsSenderTrusted)
+		///and the signing certificate's search (GetCertFromPrivateStore) skip it, as they did before S0-3.</summary>
+		internal static bool IsPrivateCertWithKey(X509Certificate2 x509Certificate2) {
+			return x509Certificate2.HasPrivateKey;
 		}
 
 		///<summary>Throws an exception if there is a permission issue.  Creates all of the necessary certificate stores for email encryption (Direct and Standard) if they do not already exist.
@@ -2643,7 +2657,7 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Returns the encryption/decryption certificate for the specified emailAddress from the store of private certificates (NHINDPrivate,
-		///Local Computer), or returns null if none found: a valid certificate for the address, else a valid one for its domain.
+		///Local Computer), or returns null if none found: a valid certificate with its private key for the address, else a valid one for its domain.
 		///Used for creating a signing signature in email encryption, which requires the private key (the public key alone is not enough, we tried it and an exception is thrown by Dot NET).
 		///IMPORTANT: Be careful what you do with the private certificate.  It must never be shared with another party.</summary>
 		public static X509Certificate2 GetCertFromPrivateStore(string emailAddress) {
@@ -2652,17 +2666,23 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>GetCertFromPrivateStore for any store; the tests use a store of the current user. Null when the address is not an email address,
-		///the store does not exist or can't be read, or it holds no valid certificate for the address or its domain.</summary>
+		///the store does not exist or can't be read, or it holds no valid certificate with its private key for the address or its domain. A
+		///certificate of the store without its private key is skipped (IsPrivateCertWithKey), as EmailPrivateResolver skipped it before S0-3.</summary>
 		internal static X509Certificate2 GetCertFromStore(string emailAddress,string storeName,StoreLocation storeLocation) {
 			string address=GetAddressSimple(emailAddress);
 			if(!address.Contains("@")) {//Not formatted as an email address.
 				return null;
 			}
-			X509Certificate2Collection x509Certificate2Collection;
+			X509Certificate2Collection x509Certificate2Collection=new X509Certificate2Collection();
 			try {
 				using(X509Store x509Store=new X509Store(storeName,storeLocation)) {
 					x509Store.Open(OpenFlags.ReadOnly|OpenFlags.OpenExistingOnly);
-					x509Certificate2Collection=x509Store.Certificates;
+					X509Certificate2Collection x509Certificate2CollectionStore=x509Store.Certificates;
+					for(int i=0;i<x509Certificate2CollectionStore.Count;i++) {
+						if(IsPrivateCertWithKey(x509Certificate2CollectionStore[i])) {//Signing needs the private key.
+							x509Certificate2Collection.Add(x509Certificate2CollectionStore[i]);
+						}
+					}
 				}
 			}
 			catch(Exception ex) {
