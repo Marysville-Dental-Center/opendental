@@ -639,6 +639,8 @@ for 64bit as well".
   ("You get approval for download for all batches", 2026-11-08). Each package comes from nuget.org by its exact id, into the local
   package folder, at the stage that needs it. The 64-bit TWAIN data source manager is not a plan batch; it is asked when the switch
   to .NET 10 starts.
+  Also approved, standing ("Approve monthly", 2026-11-08): each month's .NET 10 SDK patch and runtime packages for the monthly
+  runtime release.
 - **Testing database encryption.** Locally, with encryption ("database encryption: do local testing with encryption", then "A"): the
   test starts a temporary second MariaDB server on `127.0.0.1:3307` with test certificates it makes itself, and removes it afterwards.
   Your database server on port 3306 is not touched, and no administrator rights are needed.
