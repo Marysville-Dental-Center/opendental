@@ -38,10 +38,11 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Replaces all miscellaneous fields in the given message.  Returns the resulting string.
-		///Replaces: [CurrentMonth]</summary>
+		///Replaces: [CurrentMonth], [ClinicNumCur] (the currently selected clinic, as program links replace it; 0 when clinics are off).</summary>
 		public static string ReplaceMisc(string message) {
 			string retVal=message;
 			retVal=retVal.Replace("[CurrentMonth]", DateTime.Today.ToString("MMMM"));
+			retVal=retVal.Replace("[ClinicNumCur]",Clinics.ClinicNum.ToString());
 			return retVal;
 		}
 	}
