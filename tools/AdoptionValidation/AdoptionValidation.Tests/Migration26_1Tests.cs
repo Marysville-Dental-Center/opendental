@@ -12,8 +12,9 @@ using OpenPmsDentalBusiness.ForkMigrations.Seeds26_1;
 using SyntheticData.Validation;
 
 namespace AdoptionValidation.Tests {
-	///<summary>The adoption tools against the 26.1 target, without a database: an Open Dental 25.3.48 database adopts and migrates to Open Dental 26.1.70,
-	///so the allowed differences must list exactly the reference's 25.4 and 26.1 changes, each of them held to its values by adopt's row check.</summary>
+	///<summary>The adoption tools against the current target, without a database: an Open Dental 25.3.48 database adopts and migrates to Open Dental
+	///26.2.0 (26.1.70 before package P262-SCHEMA), so the allowed differences must list exactly the reference's 25.4, 26.1 and 26.2 changes, each of
+	///them held to its values by adopt's row check.</summary>
 	[TestClass]
 	public class Migration26_1Tests {
 		private static AllowedDifferences LoadAllowed() {
@@ -25,23 +26,26 @@ namespace AdoptionValidation.Tests {
 		}
 
 		[TestMethod]
-		public void Target_IsThe26_1_70Reference_SourceStays25_3_48() {
-			Assert.AreEqual("26.1.70",SchemaVerifier.ReferenceVersion);
+		public void Target_IsThe26_2_0Reference_SourceStays25_3_48() {
+			Assert.AreEqual("26.2.0",SchemaVerifier.ReferenceVersion);
 			Assert.AreEqual(OdStartupCheck.VersionSchemaTarget.ToString(3),SchemaVerifier.ReferenceVersion,"The startup model tries the release whose schema the "
 				+"adopted database has.");
 			Assert.IsTrue(ForkVersions.IsAdoptable(new Version(25,3,48,0)),"The office's 25.3.48 database is still adoptable.");
 			Assert.IsFalse(ForkVersions.IsAdoptable(new Version(26,1,70,0)),"An Open Dental 26.1 database is not on the allowlist.");
+			Assert.IsFalse(ForkVersions.IsAdoptable(new Version(26,2,0,0)),"An Open Dental 26.2 database is not on the allowlist.");
 		}
 
-		///<summary>The allowed list's 25.4 and 26.1 rules are exactly the difference between the two embedded references: every new table, every new
-		///column, and the changed columns whose values change; no rule allows anything else.</summary>
+		///<summary>The allowed list's 25.4, 26.1 and 26.2 rules are exactly the difference between the two embedded references: every new table, every
+		///new column, and the changed columns whose values change; no rule allows anything else.</summary>
 		[TestMethod]
 		public void AllowedDifferences_ListExactlyTheReferenceChanges() {
 			AllowedDifferences allowed=LoadAllowed();
 			Migration26_1Plan.SchemaChanges changes=Migration26_1Plan.GetSchemaChanges();
-			Assert.AreEqual(5,changes.ListTablesAdded.Count,string.Join(", ",changes.ListTablesAdded));
-			Assert.AreEqual(28,changes.ListColumnsAdded.Count,string.Join(", ",changes.ListColumnsAdded));
-			Assert.AreEqual(21,changes.ListColumnsAdded.Select(x => x.Split('.')[0]).Distinct().Count());
+			//25.4 and 26.1: 5 tables, 28 columns in 21 tables; 26.2: 3 tables (glidewellacct, glidewellmsg, labcaseproduct), 7 columns in 3 tables
+			//(apisubscription, insbluebook, provider).
+			Assert.AreEqual(5+3,changes.ListTablesAdded.Count,string.Join(", ",changes.ListTablesAdded));
+			Assert.AreEqual(28+7,changes.ListColumnsAdded.Count,string.Join(", ",changes.ListColumnsAdded));
+			Assert.AreEqual(21+3,changes.ListColumnsAdded.Select(x => x.Split('.')[0]).Distinct().Count());
 			CollectionAssert.AreEqual(Sorted(changes.ListTablesAdded),Sorted(allowed.Rules.Where(x => x.Kind=="TableAdded" && !ForkTables.IsForkTable(x.Table))
 				.Select(x => x.Table)));
 			//This program's own tables (ForkTableSet) have a TableAdded rule each, and no rule allows anything else in them.
@@ -135,6 +139,12 @@ namespace AdoptionValidation.Tests {
 			Assert.IsNull(AdoptionRowCheck.DefaultExpression(null,false,"date"),"No implicit default is assumed for dates.");
 			Assert.IsNull(AdoptionRowCheck.DefaultExpression("1; DROP TABLE x",false,"int"),"Only plain literals are used in SQL.");
 			Assert.IsNull(AdoptionRowCheck.DefaultExpression("'a\\'b'",false,"varchar"));
+			//insbluebook.DateTStamp (Open Dental 26.2): the row check holds it to the one time of the ALTER TABLE instead.
+			Assert.IsTrue(AdoptionRowCheck.IsAlterTimeColumn("current_timestamp()","timestamp"));
+			Assert.IsTrue(AdoptionRowCheck.IsAlterTimeColumn("CURRENT_TIMESTAMP","timestamp"));
+			Assert.IsFalse(AdoptionRowCheck.IsAlterTimeColumn("current_timestamp()","datetime"));
+			Assert.IsFalse(AdoptionRowCheck.IsAlterTimeColumn("'0001-01-01 00:00:00'","timestamp"));
+			Assert.IsFalse(AdoptionRowCheck.IsAlterTimeColumn(null,"timestamp"));
 		}
 
 		///<summary>What migration-preview prints for the 25.4 and 26.1 steps (runbook step 0.2), for a 25.3.48 database with the office fixture's
@@ -151,7 +161,9 @@ namespace AdoptionValidation.Tests {
 				plan.ListGrants.Add(grantPlan);
 			}
 			string text=string.Join("\r\n",plan.Lines());
-			StringAssert.Contains(text,"bring the schema to Open Dental 26.1.70: 5 new table(s), empty (");
+			StringAssert.Contains(text,"Steps 2026102401 to 2026102403 and 2026110701 (Open Dental 25.4, 26.1 and 26.2 schema) bring the schema to Open Dental "
+				+"26.2.0: 8 new table(s), empty (");
+			StringAssert.Contains(text,"insbluebook.DateTStamp, a timestamp, the time of step 2026110701 in every row");
 			StringAssert.Contains(text,"1 NULL note(s) become empty");
 			StringAssert.Contains(text,"inserts "+Seed26_1.ListPrefDefaults.Count+" preference(s) with their defaults: IncomeTransfersLimitToPatPayments,");
 			StringAssert.Contains(text,"moves 1 Open Dental 25.3 PhoneExtension grant(s) from 272 to 274, then grants BlockoutAdd (272) to 2 user group(s) and "

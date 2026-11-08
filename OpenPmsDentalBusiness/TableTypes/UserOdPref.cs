@@ -95,6 +95,10 @@ namespace OpenPmsDentalBusiness {
 		///<summary>29 - Reserved (Open Dental 25.4). Open Dental HQ only: a user's default testing team in the Job Manager. This program never writes it.</summary>
 		[CodeBase.IsODHQ]
 		DefaultTestingTeamJM,
+		//Open Dental's published documents have no 30 (26.2 goes from 29 to 31).
+		///<summary>31 - Open Dental 26.2 (userodpref.FkeyType, OpenDentalDiffDocumentation26-2.xml): whether the Perio Chart shows the probing values
+		///of the selected exam only. When true, only the current exam's probing values show. Its use belongs to the 26.2 perio package.</summary>
+		PerioShowCurrentProbingOnly=31,
 		///<summary>114 - Fork only, not an Open Dental value. Open Dental's numbers end at 29 (25.4), so fork values sit at 100 and up, inside the
 		///tinyint column (at most 127). 114 follows the "14" of backlog package B-EF's reserved migration range (2027001401-2027001499), to keep it
 		///apart from other packages' fork values. The Patient Forms window's Show filter and sort order for this user, in ValueString like

@@ -1,14 +1,15 @@
 <#
 .SYNOPSIS
-Loads an Open Dental reference schema into a local, empty database: od_261_schema (Open Dental 26.1.70) by default.
+Loads an Open Dental reference schema into a local, empty database: od_262_schema (Open Dental 26.2.0) by default.
 
 .DESCRIPTION
 Creates the database on the local MariaDB/MySQL server and runs the reference DDL that the schema verifier embeds:
 
+  26.2.0   OpenPmsDentalBusiness\Misc\ForkMigrations\Reference\OdSchema-26.2.0.sql   ->  od_262_schema  (430 tables)
   26.1.70  OpenPmsDentalBusiness\Misc\ForkMigrations\Reference\OdSchema-26.1.70.sql  ->  od_261_schema  (427 tables)
   25.3.48  OpenPmsDentalBusiness\Misc\ForkMigrations\Reference\OdSchema-25.3.48.sql  ->  od_253_schema  (422 tables)
 
-The 26.1.70 reference is built from Open Dental's published database documents only; the NULL/NOT NULL, defaults and keys that the documents
+The 26.2.0 and 26.1.70 references are built from Open Dental's published database documents only; the NULL/NOT NULL, defaults and keys that the documents
 do not publish are marked INFERRED in the file. The database has tables and no rows. Tests and tools that compare a database with the
 reference use it when it is there (for example ForkMigrationTests and M201Tests).
 
@@ -16,10 +17,10 @@ Safety: only 127.0.0.1 or localhost, only a database named od_<digits>_schema, a
 when none of its tables holds a row.
 
 .PARAMETER Version
-Which reference to load: 26.1.70 (default) or 25.3.48.
+Which reference to load: 26.2.0 (default), 26.1.70 or 25.3.48.
 
 .PARAMETER Name
-Database name. Default: od_261_schema for 26.1.70, od_253_schema for 25.3.48. Must look like od_<digits>_schema.
+Database name. Default: od_262_schema for 26.2.0, od_261_schema for 26.1.70, od_253_schema for 25.3.48. Must look like od_<digits>_schema.
 
 .PARAMETER Server
 127.0.0.1 (default) or localhost. No other server is accepted.
@@ -39,7 +40,7 @@ Drop and recreate the database if it exists (only when it holds no rows).
 
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\New-OdReferenceDatabase.ps1 -Force
-Recreates od_261_schema from the 26.1.70 reference.
+Recreates od_262_schema from the 26.2.0 reference.
 
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\New-OdReferenceDatabase.ps1 -Version 25.3.48
@@ -47,8 +48,8 @@ Creates od_253_schema from the 25.3.48 reference if it does not exist yet.
 #>
 [CmdletBinding(PositionalBinding = $false)]
 param(
-	[ValidateSet('26.1.70', '25.3.48')]
-	[string]$Version = '26.1.70',
+	[ValidateSet('26.2.0', '26.1.70', '25.3.48')]
+	[string]$Version = '26.2.0',
 	[string]$Name = '',
 	[ValidateSet('127.0.0.1', 'localhost')]
 	[string]$Server = '127.0.0.1',
@@ -66,6 +67,7 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $referenceDir = Join-Path $repoRoot 'OpenPmsDentalBusiness\Misc\ForkMigrations\Reference'
 $references = @{
+	'26.2.0' = @{ File = 'OdSchema-26.2.0.sql'; Name = 'od_262_schema'; Tables = 430 }
 	'26.1.70' = @{ File = 'OdSchema-26.1.70.sql'; Name = 'od_261_schema'; Tables = 427 }
 	'25.3.48' = @{ File = 'OdSchema-25.3.48.sql'; Name = 'od_253_schema'; Tables = 422 }
 }

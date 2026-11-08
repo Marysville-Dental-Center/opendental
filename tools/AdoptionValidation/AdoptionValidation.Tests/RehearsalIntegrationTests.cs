@@ -171,8 +171,9 @@ namespace AdoptionValidation.Tests {
 			}
 			StringAssert.Contains(output,"Adoption's fork migration will rename 3 displayreport row(s), changing only their InternalName");
 			Assert.IsFalse(output.Contains("ODSyntheticFutureReport") || output.Contains("ODToday"),"Rows of other reports are not listed.\r\n"+output);
-			//The Open Dental 25.4 and 26.1 steps: the schema to 26.1.70, the fixture's NULL note, every 25.4 and 26.1 preference, the permission split.
-			StringAssert.Contains(output,"bring the schema to Open Dental "+SchemaVerifier.ReferenceVersion+": 5 new table(s), empty (");
+			//The Open Dental 25.4, 26.1 and 26.2 steps: the schema to 26.2.0 (five 25.4/26.1 tables and three 26.2 ones), the fixture's NULL note, every
+			//25.4 and 26.1 preference, the permission split.
+			StringAssert.Contains(output,"bring the schema to Open Dental "+SchemaVerifier.ReferenceVersion+": 8 new table(s), empty (");
 			StringAssert.Contains(output,"1 NULL note(s) become empty");
 			StringAssert.Contains(output,"inserts "+Seed26_1.ListPrefDefaults.Count+" preference(s) with their defaults: ");
 			StringAssert.Contains(output,"moves 1 Open Dental 25.3 PhoneExtension grant(s) from 272 to 274, then grants BlockoutAdd (272) to 2 user group(s) and "
@@ -561,7 +562,12 @@ namespace AdoptionValidation.Tests {
 		public void AdoptionAndRehash_KeepEveryAuditTimestamp() {
 			SkipIfNeeded();
 			RunResult run=_result.ListRuns[0];
-			Assert.IsFalse(run.ListAllowedDifferences.Concat(run.ListUnexpectedDifferences).Any(x => x.Contains(".DateTStamp") || x.Contains(".SecDateTEdit")),
+			//A timestamp column the fork migration adds (insbluebook.DateTStamp, Open Dental 26.2) is new, not moved: adopt's row check holds it to the
+			//one time of its ALTER TABLE.
+			List<string> listAlterTimeColumns=Migration26_1Plan.GetAlterTimeColumns();
+			Assert.IsFalse(run.ListAllowedDifferences.Concat(run.ListUnexpectedDifferences)
+				.Where(x => !listAlterTimeColumns.Any(y => x.StartsWith("ColumnAdded "+y+" ")))
+				.Any(x => x.Contains(".DateTStamp") || x.Contains(".SecDateTEdit")),
 				string.Join("\r\n",run.ListAllowedDifferences));
 			using(Db db=Db.Open(_server)) {
 				//The hashed tables with an ON UPDATE timestamp in 25.3.48 (payplan has none).
@@ -691,7 +697,8 @@ namespace AdoptionValidation.Tests {
 					+"BlockoutDelete granted to 2 of 2 user group(s), as migration-preview lists",
 				"Changed columns: claimpayment.Note: 1 of the 1 NULL note(s) migration-preview counts now empty, every other note unchanged; "
 					+"insverify.DateLastAssigned: the original date at midnight in all ",
-				"New tables and columns: 5 new table(s), all empty (deletedobj, ","new column(s) in 21 table(s) hold their default in every row." })
+				"New tables and columns: 8 new table(s), all empty (deletedobj, glidewellacct, glidewellmsg, labcaseproduct, ",
+				"new column(s) in 24 table(s) hold their default in every row (insbluebook.DateTStamp: one time in every row, that of the ALTER TABLE)." })
 			{
 				Assert.IsTrue(run.ListAdoptionLog.Any(x => x.Contains(expected)),expected+"\r\n"+string.Join("\r\n",run.ListAdoptionLog));
 			}
@@ -1076,9 +1083,9 @@ namespace AdoptionValidation.Tests {
 			Assert.IsTrue(resumed.Passed,string.Join("\r\n",resumed.ListFailures));
 			Assert.IsTrue(resumed.Preflight.IsResume,"The rerun finishes the adoption that was started.");
 			using(Db db=Db.Open(_server)) {
-				//Equal to run 1's adopted copy right after adoption, apart from the time of adoption.
-				AllowedDifferences allowedTimes=new AllowedDifferences { Rules=Rehearsal.ArraySnapshotTables.Select(x => new AllowedRule { Kind="*",Table=x,
-					Reason="time of adoption" }).ToList() };
+				//Equal to run 1's adopted copy right after adoption, apart from the time of adoption (the tables that hold it, and the new timestamp
+				//columns the 26.2 step's ALTER TABLE fills with its own time).
+				AllowedDifferences allowedTimes=new AllowedDifferences { Rules=Rehearsal.GetTimeOfAdoptionRules("time of adoption") };
 				List<Difference> listDiffs=ReportComparer.Compare(ValidationReport.Load(_result.ListRuns[0].ReportAdoptedPath),Validator.Run(db,early,null,null),allowedTimes);
 				Assert.IsTrue(listDiffs.All(x => x.IsAllowed),ReportComparer.Format(listDiffs));
 			}

@@ -30,15 +30,17 @@ namespace ForkMigrationTests {
 			List<ForkMigrationStep> listSteps=ForkMigrationRunner.GetSteps();
 			ForkMigrationStep stepSeed=listSteps.Single(x => x is Seed25_3Step);
 			//The 25.3.48 schema steps: the steps of this namespace that are not the seed and not the Open Dental 25.4/26.1 steps (OdParity26_1.cs,
-			//M2-01), which come after the seed on purpose.
+			//M2-01) or the 26.2 step (OdParity26_2.cs, P262-SCHEMA), which come after the seed on purpose.
 			List<ForkMigrationStep> listSchemaSteps=listSteps.Where(x => x.GetType().Namespace==typeof(Seed25_3Step).Namespace
-				&& x.GetType().Assembly==typeof(Seed25_3Step).Assembly && !(x is Seed25_3Step) && !IsOdParity26_1Step(x)).ToList();
+				&& x.GetType().Assembly==typeof(Seed25_3Step).Assembly && !(x is Seed25_3Step) && !IsOdParity26_1Step(x) && !(x is OdParity26_2Schema)).ToList();
 			Assert.IsTrue(listSchemaSteps.Count>0);
 			Assert.IsTrue(listSchemaSteps.All(x => x.Level<stepSeed.Level),"Seed25_3Step must run after every 25.3.48 schema step.");
 			//The 25.4 and 26.1 steps add their columns after 25.3 columns, so they must run after every 25.3.48 schema step.
 			List<ForkMigrationStep> listSteps26_1=listSteps.Where(x => IsOdParity26_1Step(x)).ToList();
 			Assert.AreEqual(3,listSteps26_1.Count);
 			Assert.IsTrue(listSteps26_1.All(x => x.Level>listSchemaSteps.Max(y => y.Level)),"The 26.1 steps run after the 25.3.48 schema steps.");
+			//The 26.2 step adds its columns after 26.1 columns, so it runs after the 26.1 steps.
+			Assert.IsTrue(listSteps.Single(x => x is OdParity26_2Schema).Level>listSteps26_1.Max(x => x.Level),"The 26.2 step runs after the 26.1 steps.");
 		}
 
 		private static bool IsOdParity26_1Step(ForkMigrationStep step) {

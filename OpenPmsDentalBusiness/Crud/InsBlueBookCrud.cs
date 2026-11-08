@@ -59,6 +59,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				insBlueBook.ProcDate       = PIn.Date  (row["ProcDate"].ToString());
 				insBlueBook.ClaimType      = PIn.String(row["ClaimType"].ToString());
 				insBlueBook.ClaimNum       = PIn.Long  (row["ClaimNum"].ToString());
+				insBlueBook.DateTStamp     = PIn.DateT (row["DateTStamp"].ToString());
 				retVal.Add(insBlueBook);
 			}
 			return retVal;
@@ -82,6 +83,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			table.Columns.Add("ProcDate");
 			table.Columns.Add("ClaimType");
 			table.Columns.Add("ClaimNum");
+			table.Columns.Add("DateTStamp");
 			foreach(InsBlueBook insBlueBook in listInsBlueBooks) {
 				table.Rows.Add(new object[] {
 					POut.Long  (insBlueBook.InsBlueBookNum),
@@ -96,6 +98,7 @@ namespace OpenPmsDentalBusiness.Crud{
 					POut.DateT (insBlueBook.ProcDate,false),
 					            insBlueBook.ClaimType,
 					POut.Long  (insBlueBook.ClaimNum),
+					POut.DateT (insBlueBook.DateTStamp,false),
 				});
 			}
 			return table;
@@ -131,6 +134,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				+    POut.Date  (insBlueBook.ProcDate)+","
 				+"'"+POut.String(insBlueBook.ClaimType)+"',"
 				+    POut.Long  (insBlueBook.ClaimNum)+")";
+				//DateTStamp can only be set by MySQL
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -171,6 +175,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				+    POut.Date  (insBlueBook.ProcDate)+","
 				+"'"+POut.String(insBlueBook.ClaimType)+"',"
 				+    POut.Long  (insBlueBook.ClaimNum)+")";
+				//DateTStamp can only be set by MySQL
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -194,6 +199,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				+"ProcDate       =  "+POut.Date  (insBlueBook.ProcDate)+", "
 				+"ClaimType      = '"+POut.String(insBlueBook.ClaimType)+"', "
 				+"ClaimNum       =  "+POut.Long  (insBlueBook.ClaimNum)+" "
+				//DateTStamp can only be set by MySQL
 				+"WHERE InsBlueBookNum = "+POut.Long(insBlueBook.InsBlueBookNum);
 			Db.NonQ(command);
 		}
@@ -242,6 +248,7 @@ namespace OpenPmsDentalBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="ClaimNum = "+POut.Long(insBlueBook.ClaimNum)+"";
 			}
+			//DateTStamp can only be set by MySQL
 			if(command=="") {
 				return false;
 			}
@@ -285,6 +292,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(insBlueBook.ClaimNum != oldInsBlueBook.ClaimNum) {
 				return true;
 			}
+			//DateTStamp can only be set by MySQL
 			return false;
 		}
 

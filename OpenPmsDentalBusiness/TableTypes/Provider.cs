@@ -106,6 +106,12 @@ namespace OpenPmsDentalBusiness{
 		public DateTime DateTerm;
 		///<summary>The preferred name of the provider, shows what will be displayed to patients in eClipboard.</summary>
 		public string PreferredName;
+		///<summary>FK to claimform.ClaimFormNum. The provider's default claim form; when set it comes before pref.DefaultClaimForm and
+		///insplan.ClaimFormNum. 0 when not set. Added by Open Dental 26.2.</summary>
+		public long ClaimFormNum;
+		///<summary>FK to glidewellacct.GlidewellAcctNum. The Glidewell account this provider's lab cases go to by default; several providers can share
+		///one. 0 when not set. Added by Open Dental 26.2.</summary>
+		public long GlidewellAcctNum;
 
 		///<summary>Used only for serialization purposes</summary>
 		[XmlElement("ProvColor",typeof(int))]

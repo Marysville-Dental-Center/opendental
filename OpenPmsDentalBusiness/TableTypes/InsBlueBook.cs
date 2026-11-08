@@ -31,6 +31,9 @@ namespace OpenPmsDentalBusiness {
 		public string ClaimType;
 		///<summary>FK to claim.ClaimNum.</summary>
 		public long ClaimNum;
+		///<summary>When the row was last changed. Set by the database (ON UPDATE). Added by Open Dental 26.2.</summary>
+		[CrudColumn(SpecialType=CrudSpecialColType.TimeStamp)]
+		public DateTime DateTStamp;
 
 		///<summary>Returns a copy of this InsBlueBook.</summary>
 		public InsBlueBook Copy() {

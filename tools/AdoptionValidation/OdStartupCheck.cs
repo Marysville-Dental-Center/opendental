@@ -228,16 +228,16 @@ namespace AdoptionValidation {
 			return new Version(version.Major,version.Minor,Math.Max(version.Build,0),Math.Max(version.Revision,0));
 		}
 
-		///<summary>Open Dental 26.1.70: the release whose schema an adopted database has (SchemaVerifier.ReferenceVersion), so the one whose client
-		///would find every table and column it expects. The version checks still lock it out.</summary>
-		public static readonly Version VersionSchemaTarget=new Version(26,1,70,0);
+		///<summary>Open Dental 26.2.0: the release whose schema an adopted database has (SchemaVerifier.ReferenceVersion, 26.1.70 before package
+		///P262-SCHEMA), so the one whose client would find every table and column it expects. The version checks still lock it out.</summary>
+		public static readonly Version VersionSchemaTarget=new Version(26,2,0,0);
 
 		///<summary>The clients the rehearsal tries against each database: the office's own 25.3.48, the frozen 24.3.63 line, and later Open Dental
-		///releases an office might install by mistake, among them 26.1.70, whose schema an adopted database has; each as an ordinary workstation and
-		///as the update server; 25.3.48 and 26.1.70 also with the classic update view, and 25.3.48 as a Debug build.</summary>
+		///releases an office might install by mistake, among them 26.1.70 and 26.2.0, whose schema an adopted database has; each as an ordinary
+		///workstation and as the update server; 25.3.48 and 26.2.0 also with the classic update view, and 25.3.48 as a Debug build.</summary>
 		public static List<(string name,OdClient client,bool isClassicView)> StandardScenarios() {
 			List<(string,OdClient,bool)> list=new List<(string,OdClient,bool)>();
-			foreach(Version version in new[] { new Version(25,3,48,0),new Version(24,3,63,0),new Version(25,4,30,0),VersionSchemaTarget }) {
+			foreach(Version version in new[] { new Version(25,3,48,0),new Version(24,3,63,0),new Version(25,4,30,0),new Version(26,1,70,0),VersionSchemaTarget }) {
 				list.Add(("Open Dental "+version.ToString(3)+", update server",new OdClient { Version=version,IsUpdateServer=true },false));
 				list.Add(("Open Dental "+version.ToString(3)+", workstation",new OdClient { Version=version,IsUpdateServer=false },false));
 			}

@@ -93,6 +93,8 @@ namespace OpenPmsDentalBusiness.Crud{
 				provider.HourlyProdGoalAmt     = PIn.Double(row["HourlyProdGoalAmt"].ToString());
 				provider.DateTerm              = PIn.Date  (row["DateTerm"].ToString());
 				provider.PreferredName         = PIn.String(row["PreferredName"].ToString());
+				provider.ClaimFormNum          = PIn.Long  (row["ClaimFormNum"].ToString());
+				provider.GlidewellAcctNum      = PIn.Long  (row["GlidewellAcctNum"].ToString());
 				retVal.Add(provider);
 			}
 			return retVal;
@@ -150,6 +152,8 @@ namespace OpenPmsDentalBusiness.Crud{
 			table.Columns.Add("HourlyProdGoalAmt");
 			table.Columns.Add("DateTerm");
 			table.Columns.Add("PreferredName");
+			table.Columns.Add("ClaimFormNum");
+			table.Columns.Add("GlidewellAcctNum");
 			foreach(Provider provider in listProviders) {
 				table.Rows.Add(new object[] {
 					POut.Long  (provider.ProvNum),
@@ -198,6 +202,8 @@ namespace OpenPmsDentalBusiness.Crud{
 					POut.Double(provider.HourlyProdGoalAmt),
 					POut.DateT (provider.DateTerm,false),
 					            provider.PreferredName,
+					POut.Long  (provider.ClaimFormNum),
+					POut.Long  (provider.GlidewellAcctNum),
 				});
 			}
 			return table;
@@ -217,7 +223,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="ProvNum,";
 			}
-			command+="Abbr,ItemOrder,LName,FName,MI,Suffix,FeeSched,Specialty,SSN,StateLicense,DEANum,IsSecondary,ProvColor,IsHidden,UsingTIN,BlueCrossID,SigOnFile,MedicaidID,OutlineColor,SchoolClassNum,NationalProvID,CanadianOfficeNum,AnesthProvType,TaxonomyCodeOverride,IsCDAnet,EcwID,StateRxID,IsNotPerson,StateWhereLicensed,EmailAddressNum,IsInstructor,EhrMuStage,ProvNumBillingOverride,CustomID,ProvStatus,IsHiddenReport,IsErxEnabled,SchedNote,Birthdate,WebSchedDescript,WebSchedImageLocation,HourlyProdGoalAmt,DateTerm,PreferredName) VALUES(";
+			command+="Abbr,ItemOrder,LName,FName,MI,Suffix,FeeSched,Specialty,SSN,StateLicense,DEANum,IsSecondary,ProvColor,IsHidden,UsingTIN,BlueCrossID,SigOnFile,MedicaidID,OutlineColor,SchoolClassNum,NationalProvID,CanadianOfficeNum,AnesthProvType,TaxonomyCodeOverride,IsCDAnet,EcwID,StateRxID,IsNotPerson,StateWhereLicensed,EmailAddressNum,IsInstructor,EhrMuStage,ProvNumBillingOverride,CustomID,ProvStatus,IsHiddenReport,IsErxEnabled,SchedNote,Birthdate,WebSchedDescript,WebSchedImageLocation,HourlyProdGoalAmt,DateTerm,PreferredName,ClaimFormNum,GlidewellAcctNum) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(provider.ProvNum)+",";
 			}
@@ -266,7 +272,9 @@ namespace OpenPmsDentalBusiness.Crud{
 				+"'"+POut.String(provider.WebSchedImageLocation)+"',"
 				+		 POut.Double(provider.HourlyProdGoalAmt)+","
 				+    POut.Date  (provider.DateTerm)+","
-				+"'"+POut.String(provider.PreferredName)+"')";
+				+"'"+POut.String(provider.PreferredName)+"',"
+				+    POut.Long  (provider.ClaimFormNum)+","
+				+    POut.Long  (provider.GlidewellAcctNum)+")";
 			if(useExistingPK || PrefC.RandomKeys) {
 				Db.NonQ(command);
 			}
@@ -291,7 +299,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="ProvNum,";
 			}
-			command+="Abbr,ItemOrder,LName,FName,MI,Suffix,FeeSched,Specialty,SSN,StateLicense,DEANum,IsSecondary,ProvColor,IsHidden,UsingTIN,BlueCrossID,SigOnFile,MedicaidID,OutlineColor,SchoolClassNum,NationalProvID,CanadianOfficeNum,AnesthProvType,TaxonomyCodeOverride,IsCDAnet,EcwID,StateRxID,IsNotPerson,StateWhereLicensed,EmailAddressNum,IsInstructor,EhrMuStage,ProvNumBillingOverride,CustomID,ProvStatus,IsHiddenReport,IsErxEnabled,SchedNote,Birthdate,WebSchedDescript,WebSchedImageLocation,HourlyProdGoalAmt,DateTerm,PreferredName) VALUES(";
+			command+="Abbr,ItemOrder,LName,FName,MI,Suffix,FeeSched,Specialty,SSN,StateLicense,DEANum,IsSecondary,ProvColor,IsHidden,UsingTIN,BlueCrossID,SigOnFile,MedicaidID,OutlineColor,SchoolClassNum,NationalProvID,CanadianOfficeNum,AnesthProvType,TaxonomyCodeOverride,IsCDAnet,EcwID,StateRxID,IsNotPerson,StateWhereLicensed,EmailAddressNum,IsInstructor,EhrMuStage,ProvNumBillingOverride,CustomID,ProvStatus,IsHiddenReport,IsErxEnabled,SchedNote,Birthdate,WebSchedDescript,WebSchedImageLocation,HourlyProdGoalAmt,DateTerm,PreferredName,ClaimFormNum,GlidewellAcctNum) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(provider.ProvNum)+",";
 			}
@@ -340,7 +348,9 @@ namespace OpenPmsDentalBusiness.Crud{
 				+"'"+POut.String(provider.WebSchedImageLocation)+"',"
 				+	   POut.Double(provider.HourlyProdGoalAmt)+","
 				+    POut.Date  (provider.DateTerm)+","
-				+"'"+POut.String(provider.PreferredName)+"')";
+				+"'"+POut.String(provider.PreferredName)+"',"
+				+    POut.Long  (provider.ClaimFormNum)+","
+				+    POut.Long  (provider.GlidewellAcctNum)+")";
 			if(useExistingPK || isRandomKeys) {
 				Db.NonQ(command);
 			}
@@ -397,7 +407,9 @@ namespace OpenPmsDentalBusiness.Crud{
 				+"WebSchedImageLocation = '"+POut.String(provider.WebSchedImageLocation)+"', "
 				+"HourlyProdGoalAmt     =  "+POut.Double(provider.HourlyProdGoalAmt)+", "
 				+"DateTerm              =  "+POut.Date  (provider.DateTerm)+", "
-				+"PreferredName         = '"+POut.String(provider.PreferredName)+"' "
+				+"PreferredName         = '"+POut.String(provider.PreferredName)+"', "
+				+"ClaimFormNum          =  "+POut.Long  (provider.ClaimFormNum)+", "
+				+"GlidewellAcctNum      =  "+POut.Long  (provider.GlidewellAcctNum)+" "
 				+"WHERE ProvNum = "+POut.Long(provider.ProvNum);
 			Db.NonQ(command);
 		}
@@ -582,6 +594,14 @@ namespace OpenPmsDentalBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="PreferredName = '"+POut.String(provider.PreferredName)+"'";
 			}
+			if(provider.ClaimFormNum != oldProvider.ClaimFormNum) {
+				if(command!="") { command+=",";}
+				command+="ClaimFormNum = "+POut.Long(provider.ClaimFormNum)+"";
+			}
+			if(provider.GlidewellAcctNum != oldProvider.GlidewellAcctNum) {
+				if(command!="") { command+=",";}
+				command+="GlidewellAcctNum = "+POut.Long(provider.GlidewellAcctNum)+"";
+			}
 			if(command=="") {
 				return false;
 			}
@@ -725,6 +745,12 @@ namespace OpenPmsDentalBusiness.Crud{
 				return true;
 			}
 			if(provider.PreferredName != oldProvider.PreferredName) {
+				return true;
+			}
+			if(provider.ClaimFormNum != oldProvider.ClaimFormNum) {
+				return true;
+			}
+			if(provider.GlidewellAcctNum != oldProvider.GlidewellAcctNum) {
 				return true;
 			}
 			return false;

@@ -10,12 +10,13 @@ using SyntheticData.Infrastructure;
 using Db=SyntheticData.Infrastructure.Db;
 
 namespace AdoptionValidation {
-	///<summary>What the fork migration's Open Dental 25.4 and 26.1 steps (backlog packages M2-01 and M2-02) change when adoption brings an Open Dental
-	///25.3.48 database to 26.1.70, worked out before adoption and read-only. migration-preview prints it (runbook step 0.2), and adopt's row check
-	///(AdoptionRowCheck) holds the adopted copy to the plan made from the original.
-	///- The schema steps (2026102401 to 2026102403) add the tables and columns that the 26.1.70 reference has and the 25.3.48 reference lacks, and
-	///  change the definitions of a few columns (GetSchemaChanges, from the two embedded references). New tables stay empty and new columns hold their
-	///  default in every existing row (evaluation.GradeOverride: -1, its default). Of the changed definitions only two change stored values:
+	///<summary>What the fork migration's Open Dental 25.4, 26.1 and 26.2 steps (backlog packages M2-01 and M2-02, and P262-SCHEMA) change when adoption
+	///brings an Open Dental 25.3.48 database to 26.2.0, worked out before adoption and read-only. migration-preview prints it (runbook step 0.2), and
+	///adopt's row check (AdoptionRowCheck) holds the adopted copy to the plan made from the original.
+	///- The schema steps (2026102401 to 2026102403, and 2026110701 for 26.2) add the tables and columns that the default reference (26.2.0) has and
+	///  the 25.3.48 reference lacks, and change the definitions of a few columns (GetSchemaChanges, from the two embedded references). New tables stay
+	///  empty and new columns hold their default in every existing row (evaluation.GradeOverride: -1, its default; insbluebook.DateTStamp, a
+	///  timestamp: the time of the step). Of the changed definitions only two change stored values:
 	///  claimpayment.Note becomes text NOT NULL, so a NULL note becomes an empty string, and insverify and insverifyhist.DateLastAssigned become
 	///  datetime, so each date reads back at midnight.
 	///- The seed step (Seed26_1Step, 2026102501) inserts the 25.4 and 26.1 preferences that are missing, with their defaults (Seed26_1.ListPrefDefaults),
@@ -86,13 +87,16 @@ namespace AdoptionValidation {
 				get { return IsFromBefore25_4 && !IsSeedStepApplied; }
 			}
 
-			///<summary>What migration-preview prints for the 25.4 and 26.1 steps.</summary>
+			///<summary>What migration-preview prints for the 25.4, 26.1 and 26.2 steps.</summary>
 			public List<string> Lines() {
 				List<string> listLines=new List<string>();
-				listLines.Add("Steps 2026102401 to 2026102403 (Open Dental 25.4 and 26.1 schema) bring the schema to Open Dental "+SchemaVerifier.ReferenceVersion+": "
+				long levelStep26_2=new OdParity26_2Schema().Level;
+				listLines.Add("Steps 2026102401 to 2026102403 and "+levelStep26_2+" (Open Dental 25.4, 26.1 and 26.2 schema) bring the schema to Open Dental "
+					+SchemaVerifier.ReferenceVersion+": "
 					+Schema.ListTablesAdded.Count+" new table(s), empty ("+string.Join(", ",Schema.ListTablesAdded)+"); "+Schema.ListColumnsAdded.Count
 					+" new column(s) in "+Schema.ListColumnsAdded.Select(x => x.Split('.')[0]).Distinct().Count()+" table(s), each holding its default in every "
-					+"existing row (evaluation.GradeOverride -1); "+Schema.ListColumnsChanged.Count+" column definition(s) changed ("
+					+"existing row (evaluation.GradeOverride -1; insbluebook.DateTStamp, a timestamp, the time of step "+levelStep26_2+" in every row); "
+					+Schema.ListColumnsChanged.Count+" column definition(s) changed ("
 					+string.Join(", ",Schema.ListColumnsChanged)+"), of which only claimpayment.Note (text NOT NULL: "+CountClaimPaymentNotesNull
 					+" NULL note(s) become empty) and insverify and insverifyhist.DateLastAssigned (datetime: the same dates at midnight) change stored values.");
 				listLines.Add("Step "+StepSeed+" (Open Dental 25.4 and 26.1 seed rows) inserts "+ListPrefsInserted.Count+" preference(s) with their defaults"
@@ -114,7 +118,7 @@ namespace AdoptionValidation {
 			}
 		}
 
-		///<summary>The difference between the 25.3.48 and the current (26.1.70) reference: what the 25.4 and 26.1 schema steps change.</summary>
+		///<summary>The difference between the 25.3.48 and the current (26.2.0) reference: what the 25.4, 26.1 and 26.2 schema steps change.</summary>
 		public class SchemaChanges {
 			public List<string> ListTablesAdded=new List<string>();
 			///<summary>New columns of tables both references have, as table.column.</summary>
@@ -128,6 +132,17 @@ namespace AdoptionValidation {
 		///<summary>The schema changes, from the two references embedded in OpenPmsDentalBusiness (no database). Read once.</summary>
 		public static SchemaChanges GetSchemaChanges() {
 			return _lazySchemaChanges.Value;
+		}
+
+		///<summary>The new columns (table.column) that are timestamps with DEFAULT current_timestamp(): the ALTER TABLE that adds one fills every
+		///existing row with its own time, so they hold the time of adoption, not a fixed default (insbluebook.DateTStamp, Open Dental 26.2).</summary>
+		public static List<string> GetAlterTimeColumns() {
+			SchemaSnapshot snapshotTo=SchemaVerifier.GetReference();
+			return GetSchemaChanges().ListColumnsAdded.Where(x => {
+				string[] arrayParts=x.Split('.');
+				string definition=snapshotTo.GetTable(arrayParts[0]).GetColumn(arrayParts[1]).Definition;
+				return definition.StartsWith("timestamp ") && definition.Contains("DEFAULT current_timestamp()");
+			}).ToList();
 		}
 
 		private static SchemaChanges ReadSchemaChanges() {

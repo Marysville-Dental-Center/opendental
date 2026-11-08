@@ -4,7 +4,7 @@
 
 Open PMS - Dental is a fork of Open Dental (c) Open Dental Software, Inc. and contributors, licensed under the GNU GPL v2. It is not affiliated with or endorsed by Open Dental Software, Inc.
 
-This is a fork of the [Open Dental](https://www.opendental.com) source code, written for one dental practice and published for anyone to use. `main` started from Open Dental **v24.3**, at **24.3.63.0**. Features of later Open Dental versions, up to 26.1, are re-implemented from Open Dental's public documentation, and the database schema follows Open Dental 26.1.70. See [NOTICE](NOTICE) for attribution, [LICENSE](LICENSE) for the GNU General Public License and [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) for the third-party components the program ships. Every copyright line and GPL notice from Open Dental is kept.
+This is a fork of the [Open Dental](https://www.opendental.com) source code, written for one dental practice and published for anyone to use. `main` started from Open Dental **v24.3**, at **24.3.63.0**. Features of later Open Dental versions, up to 26.1, are re-implemented from Open Dental's public documentation, and the database schema follows Open Dental 26.2 (26.2.0, from its published database documents). See [NOTICE](NOTICE) for attribution, [LICENSE](LICENSE) for the GNU General Public License and [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) for the third-party components the program ships. Every copyright line and GPL notice from Open Dental is kept.
 
 The source files say "either version 2 of the License, or (at your option) any later version", so the program is licensed under the **GNU GPL v2 or later**. LICENSE holds the version 2 text.
 

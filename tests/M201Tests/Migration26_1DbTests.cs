@@ -1,8 +1,9 @@
 // The Open Dental 25.4 and 26.1 steps on scratch databases with synthetic rows:
 // - an office-shaped Open Dental 25.3.48 database (the 25.3.48 reference plus the office customization) is adopted with the real runner: every M1
-//   and M2 step runs, the schema ends exactly at the 26.1.70 reference, OdSchemaCompat says 26.1.70, the data migrations of the new columns run
-//   once and every other table is byte-identical;
-// - a database already at 26.1.70 (as Open Dental would leave it) is not changed at all.
+//   and M2 step runs, the schema ends exactly at the default reference (26.2.0 since package P262-SCHEMA, whose step runs after these),
+//   OdSchemaCompat says so, the data migrations of the new columns run once and every other table is byte-identical;
+// - a database already at 26.1.70 (as Open Dental would leave it) is not changed by any step up to 26.1; the 26.2 step then adds exactly the 26.2
+//   changes (tests/P262SchemaTests).
 // Skipped (inconclusive) when the local MariaDB does not answer. No office data is used.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
@@ -178,11 +179,24 @@ namespace M201Tests {
 			return new HashSet<string>(result.ListDifferences.Select(x => x.Table),StringComparer.OrdinalIgnoreCase);
 		}
 
+		///<summary>The 26.1.70 to 26.2.0 differences (package P262-SCHEMA's step 2026110701, which runs after these steps), as "kind table.item".
+		///</summary>
+		public static HashSet<string> GetDifferences26_2() {
+			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaVerifier.GetReference26_1_70(),SchemaVerifier.GetReference26_2_0());
+			return new HashSet<string>(result.ListDifferences.Select(x => x.Kind+" "+x.Table+"."+x.Item),StringComparer.OrdinalIgnoreCase);
+		}
+
+		///<summary>True for a log line of the 26.2 step (P262-SCHEMA), which a database at 26.1.70 runs.</summary>
+		private static bool IsStep26_2Change(string change) {
+			return change.StartsWith(new OdParity26_2Schema().Level+": ");
+		}
+
 		[TestMethod]
 		public void Od253_AdoptionRunsEveryM1AndM2StepAndMarks26_1_70() {
 			Assert.AreEqual(new Version(25,3,48,0),_adoptionResult.VersionSource);
 			Assert.IsTrue(_adoptionResult.WasPortalEmailColumnDropped);
-			Assert.AreEqual("26.1.70",_forkDbStateAfter.OdSchemaCompat);
+			//The chain goes on to Open Dental 26.2.0 since package P262-SCHEMA (tests/P262SchemaTests); the default reference moved with it.
+			Assert.AreEqual(SchemaVerifier.ReferenceVersion,_forkDbStateAfter.OdSchemaCompat);
 			Assert.AreEqual(ForkMigrationRunner.GetSteps().Max(x => x.Level).ToString(),_forkDbStateAfter.ForkSchemaLevel);
 			Assert.AreEqual(0,ForkMigrationRunner.GetPendingSteps().Count);
 			HashSet<long> setApplied=ForkMigrationRunner.GetAppliedLevels();
@@ -196,7 +210,7 @@ namespace M201Tests {
 			ForkGuardResult forkGuardResult=ForkVersionGuard.Evaluate(_forkDbStateAfter);
 			Assert.AreEqual(ForkGuardAction.ProceedFork,forkGuardResult.Action,forkGuardResult.Message);
 			Assert.IsFalse(forkGuardResult.HasPendingMigrations);
-			Assert.IsTrue(_adoptionResult.ListLog.Any(x => x.Contains("26.1.70")),string.Join("\r\n",_adoptionResult.ListLog));
+			Assert.IsTrue(_adoptionResult.ListLog.Any(x => x.Contains(SchemaVerifier.ReferenceVersion)),string.Join("\r\n",_adoptionResult.ListLog));
 		}
 
 		///<summary>True for a step's log line that creates one of this program's own tables ("level: CREATE TABLE `name` ...").</summary>
@@ -223,7 +237,9 @@ namespace M201Tests {
 			}
 			SchemaVerifyResult result=SchemaVerifier.Compare(SchemaSnapshot.FromDatabase(ScratchDb.DbNameOd261Schema),SchemaSnapshot.FromDatabase(DB_OD253),
 				ForkTables.GetSchemaExceptions());
-			Assert.AreEqual(0,result.ListMismatches.Count,result.GetReport());
+			//The adopted database went on to 26.2.0 (P262-SCHEMA): the mismatches are exactly the 26.1.70 to 26.2.0 differences of the references.
+			CollectionAssert.AreEquivalent(GetDifferences26_2().ToList(),result.ListMismatches.Select(x => x.Kind+" "+x.Table+"."+x.Item).ToList(),
+				result.GetReport());
 			Assert.IsTrue(result.ListAllowed.All(x => ForkTables.IsForkTable(x.Table)),"Only this program's own tables are extra: "+result.GetReport());
 		}
 
@@ -337,14 +353,19 @@ namespace M201Tests {
 			//Seed26_1 (package M2-02) inserts the fork's own 25.4 and 26.1 preference rows on every database that lacks them: Open Dental publishes
 			//no preference names, so an Open Dental 26.1 database has none of them. They live in the preference table, which is left out below.
 			string prefixSeed26_1=new OpenPmsDentalBusiness.ForkMigrations.Seeds26_1.Seed26_1Step().Level+": Inserted preference ";
-			//The feature steps also create this program's own tables (ForkTables, empty), which Open Dental does not have.
-			List<string> listChanges=_resultOd261.ListChanges.Where(x => !x.StartsWith(prefixSeed26_1) && !IsForkTableCreate(x)).ToList();
+			//The feature steps also create this program's own tables (ForkTables, empty), which Open Dental does not have. The 26.2 step (package
+			//P262-SCHEMA) brings the database on to Open Dental 26.2.0; tests/P262SchemaTests checks what it does.
+			List<string> listChanges=_resultOd261.ListChanges.Where(x => !x.StartsWith(prefixSeed26_1) && !IsForkTableCreate(x) && !IsStep26_2Change(x))
+				.ToList();
 			Assert.AreEqual(0,listChanges.Count,string.Join("\r\n",listChanges));
-			Assert.AreEqual(0,_resultSchemaOd261.ListDifferences.Count(x => !(ForkTables.IsForkTable(x.Table) && x.Kind==SchemaDifferenceKind.ExtraTable)),
-				_resultSchemaOd261.GetReport());
+			HashSet<string> setDifferences26_2=GetDifferences26_2();
+			Assert.AreEqual(0,_resultSchemaOd261.ListDifferences.Count(x => !(ForkTables.IsForkTable(x.Table) && x.Kind==SchemaDifferenceKind.ExtraTable)
+				&& !setDifferences26_2.Contains(x.Kind+" "+x.Table+"."+x.Item)),_resultSchemaOd261.GetReport());
+			HashSet<string> setTablesNew26_2=new HashSet<string>(SchemaVerifier.GetReference26_2_0().Tables.Select(x => x.Name)
+				.Where(x => !SchemaVerifier.GetReference26_1_70().HasTable(x)),StringComparer.OrdinalIgnoreCase);
 			Dictionary<string,string> dictBefore=_dictChecksumsOd261Before.Where(x => x.Key!="preference").ToDictionary(x => x.Key,x => x.Value);
-			Dictionary<string,string> dictAfter=_dictChecksumsOd261After.Where(x => x.Key!="preference" && !ForkTables.IsForkTable(x.Key))
-				.ToDictionary(x => x.Key,x => x.Value);
+			Dictionary<string,string> dictAfter=_dictChecksumsOd261After.Where(x => x.Key!="preference" && !ForkTables.IsForkTable(x.Key)
+				&& !setTablesNew26_2.Contains(x.Key)).ToDictionary(x => x.Key,x => x.Value);
 			CollectionAssert.AreEquivalent(dictBefore.ToList(),dictAfter.ToList());
 			Assert.AreEqual("4.5",ScratchDb.Scalar(DB_OD261,"SELECT GradeOverride FROM evaluation"));
 			Assert.AreEqual("600",ScratchDb.Scalar(DB_OD261,"SELECT CHAR_LENGTH(Note) FROM claimpayment"));

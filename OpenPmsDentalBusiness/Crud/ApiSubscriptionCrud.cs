@@ -47,16 +47,20 @@ namespace OpenPmsDentalBusiness.Crud{
 			ApiSubscription apiSubscription;
 			foreach(DataRow row in table.Rows) {
 				apiSubscription=new ApiSubscription();
-				apiSubscription.ApiSubscriptionNum= PIn.Long  (row["ApiSubscriptionNum"].ToString());
-				apiSubscription.EndPointUrl       = PIn.String(row["EndPointUrl"].ToString());
-				apiSubscription.Workstation       = PIn.String(row["Workstation"].ToString());
-				apiSubscription.CustomerKey       = PIn.String(row["CustomerKey"].ToString());
-				apiSubscription.WatchTable        = PIn.String(row["WatchTable"].ToString());
-				apiSubscription.PollingSeconds    = PIn.Int   (row["PollingSeconds"].ToString());
-				apiSubscription.UiEventType       = PIn.String(row["UiEventType"].ToString());
-				apiSubscription.DateTimeStart     = PIn.DateT (row["DateTimeStart"].ToString());
-				apiSubscription.DateTimeStop      = PIn.DateT (row["DateTimeStop"].ToString());
-				apiSubscription.Note              = PIn.String(row["Note"].ToString());
+				apiSubscription.ApiSubscriptionNum = PIn.Long  (row["ApiSubscriptionNum"].ToString());
+				apiSubscription.EndPointUrl        = PIn.String(row["EndPointUrl"].ToString());
+				apiSubscription.Workstation        = PIn.String(row["Workstation"].ToString());
+				apiSubscription.CustomerKey        = PIn.String(row["CustomerKey"].ToString());
+				apiSubscription.WatchTable         = PIn.String(row["WatchTable"].ToString());
+				apiSubscription.PollingSeconds     = PIn.Int   (row["PollingSeconds"].ToString());
+				apiSubscription.UiEventType        = PIn.String(row["UiEventType"].ToString());
+				apiSubscription.DateTimeStart      = PIn.DateT (row["DateTimeStart"].ToString());
+				apiSubscription.DateTimeStop       = PIn.DateT (row["DateTimeStop"].ToString());
+				apiSubscription.Note               = PIn.String(row["Note"].ToString());
+				apiSubscription.DateTimeLastFailure= PIn.DateT (row["DateTimeLastFailure"].ToString());
+				apiSubscription.FailureReason      = PIn.String(row["FailureReason"].ToString());
+				apiSubscription.SubsequentFailures = PIn.Int   (row["SubsequentFailures"].ToString());
+				apiSubscription.DateTimeNextRetry  = PIn.DateT (row["DateTimeNextRetry"].ToString());
 				retVal.Add(apiSubscription);
 			}
 			return retVal;
@@ -78,6 +82,10 @@ namespace OpenPmsDentalBusiness.Crud{
 			table.Columns.Add("DateTimeStart");
 			table.Columns.Add("DateTimeStop");
 			table.Columns.Add("Note");
+			table.Columns.Add("DateTimeLastFailure");
+			table.Columns.Add("FailureReason");
+			table.Columns.Add("SubsequentFailures");
+			table.Columns.Add("DateTimeNextRetry");
 			foreach(ApiSubscription apiSubscription in listApiSubscriptions) {
 				table.Rows.Add(new object[] {
 					POut.Long  (apiSubscription.ApiSubscriptionNum),
@@ -90,6 +98,10 @@ namespace OpenPmsDentalBusiness.Crud{
 					POut.DateT (apiSubscription.DateTimeStart,false),
 					POut.DateT (apiSubscription.DateTimeStop,false),
 					            apiSubscription.Note,
+					POut.DateT (apiSubscription.DateTimeLastFailure,false),
+					            apiSubscription.FailureReason,
+					POut.Int   (apiSubscription.SubsequentFailures),
+					POut.DateT (apiSubscription.DateTimeNextRetry,false),
 				});
 			}
 			return table;
@@ -109,7 +121,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+="ApiSubscriptionNum,";
 			}
-			command+="EndPointUrl,Workstation,CustomerKey,WatchTable,PollingSeconds,UiEventType,DateTimeStart,DateTimeStop,Note) VALUES(";
+			command+="EndPointUrl,Workstation,CustomerKey,WatchTable,PollingSeconds,UiEventType,DateTimeStart,DateTimeStop,Note,DateTimeLastFailure,FailureReason,SubsequentFailures,DateTimeNextRetry) VALUES(";
 			if(useExistingPK || PrefC.RandomKeys) {
 				command+=POut.Long(apiSubscription.ApiSubscriptionNum)+",";
 			}
@@ -122,12 +134,20 @@ namespace OpenPmsDentalBusiness.Crud{
 				+"'"+POut.String(apiSubscription.UiEventType)+"',"
 				+    POut.DateT (apiSubscription.DateTimeStart)+","
 				+    POut.DateT (apiSubscription.DateTimeStop)+","
-				+"'"+POut.String(apiSubscription.Note)+"')";
+				+"'"+POut.String(apiSubscription.Note)+"',"
+				+    POut.DateT (apiSubscription.DateTimeLastFailure)+","
+				+    DbHelper.ParamChar+"paramFailureReason,"
+				+    POut.Int   (apiSubscription.SubsequentFailures)+","
+				+    POut.DateT (apiSubscription.DateTimeNextRetry)+")";
+			if(apiSubscription.FailureReason==null) {
+				apiSubscription.FailureReason="";
+			}
+			OdSqlParameter paramFailureReason=new OdSqlParameter("paramFailureReason",OdDbType.Text,POut.StringParam(apiSubscription.FailureReason));
 			if(useExistingPK || PrefC.RandomKeys) {
-				Db.NonQ(command);
+				Db.NonQ(command,paramFailureReason);
 			}
 			else {
-				apiSubscription.ApiSubscriptionNum=Db.NonQ(command,true,"ApiSubscriptionNum","apiSubscription");
+				apiSubscription.ApiSubscriptionNum=Db.NonQ(command,true,"ApiSubscriptionNum","apiSubscription",paramFailureReason);
 			}
 			return apiSubscription.ApiSubscriptionNum;
 		}
@@ -147,7 +167,7 @@ namespace OpenPmsDentalBusiness.Crud{
 			if(isRandomKeys || useExistingPK) {
 				command+="ApiSubscriptionNum,";
 			}
-			command+="EndPointUrl,Workstation,CustomerKey,WatchTable,PollingSeconds,UiEventType,DateTimeStart,DateTimeStop,Note) VALUES(";
+			command+="EndPointUrl,Workstation,CustomerKey,WatchTable,PollingSeconds,UiEventType,DateTimeStart,DateTimeStop,Note,DateTimeLastFailure,FailureReason,SubsequentFailures,DateTimeNextRetry) VALUES(";
 			if(isRandomKeys || useExistingPK) {
 				command+=POut.Long(apiSubscription.ApiSubscriptionNum)+",";
 			}
@@ -160,12 +180,20 @@ namespace OpenPmsDentalBusiness.Crud{
 				+"'"+POut.String(apiSubscription.UiEventType)+"',"
 				+    POut.DateT (apiSubscription.DateTimeStart)+","
 				+    POut.DateT (apiSubscription.DateTimeStop)+","
-				+"'"+POut.String(apiSubscription.Note)+"')";
+				+"'"+POut.String(apiSubscription.Note)+"',"
+				+    POut.DateT (apiSubscription.DateTimeLastFailure)+","
+				+    DbHelper.ParamChar+"paramFailureReason,"
+				+    POut.Int   (apiSubscription.SubsequentFailures)+","
+				+    POut.DateT (apiSubscription.DateTimeNextRetry)+")";
+			if(apiSubscription.FailureReason==null) {
+				apiSubscription.FailureReason="";
+			}
+			OdSqlParameter paramFailureReason=new OdSqlParameter("paramFailureReason",OdDbType.Text,POut.StringParam(apiSubscription.FailureReason));
 			if(useExistingPK || isRandomKeys) {
-				Db.NonQ(command);
+				Db.NonQ(command,paramFailureReason);
 			}
 			else {
-				apiSubscription.ApiSubscriptionNum=Db.NonQ(command,true,"ApiSubscriptionNum","apiSubscription");
+				apiSubscription.ApiSubscriptionNum=Db.NonQ(command,true,"ApiSubscriptionNum","apiSubscription",paramFailureReason);
 			}
 			return apiSubscription.ApiSubscriptionNum;
 		}
@@ -173,17 +201,25 @@ namespace OpenPmsDentalBusiness.Crud{
 		///<summary>Updates one ApiSubscription in the database.</summary>
 		public static void Update(ApiSubscription apiSubscription) {
 			string command="UPDATE apisubscription SET "
-				+"EndPointUrl       = '"+POut.String(apiSubscription.EndPointUrl)+"', "
-				+"Workstation       = '"+POut.String(apiSubscription.Workstation)+"', "
-				+"CustomerKey       = '"+POut.String(apiSubscription.CustomerKey)+"', "
-				+"WatchTable        = '"+POut.String(apiSubscription.WatchTable)+"', "
-				+"PollingSeconds    =  "+POut.Int   (apiSubscription.PollingSeconds)+", "
-				+"UiEventType       = '"+POut.String(apiSubscription.UiEventType)+"', "
-				+"DateTimeStart     =  "+POut.DateT (apiSubscription.DateTimeStart)+", "
-				+"DateTimeStop      =  "+POut.DateT (apiSubscription.DateTimeStop)+", "
-				+"Note              = '"+POut.String(apiSubscription.Note)+"' "
+				+"EndPointUrl        = '"+POut.String(apiSubscription.EndPointUrl)+"', "
+				+"Workstation        = '"+POut.String(apiSubscription.Workstation)+"', "
+				+"CustomerKey        = '"+POut.String(apiSubscription.CustomerKey)+"', "
+				+"WatchTable         = '"+POut.String(apiSubscription.WatchTable)+"', "
+				+"PollingSeconds     =  "+POut.Int   (apiSubscription.PollingSeconds)+", "
+				+"UiEventType        = '"+POut.String(apiSubscription.UiEventType)+"', "
+				+"DateTimeStart      =  "+POut.DateT (apiSubscription.DateTimeStart)+", "
+				+"DateTimeStop       =  "+POut.DateT (apiSubscription.DateTimeStop)+", "
+				+"Note               = '"+POut.String(apiSubscription.Note)+"', "
+				+"DateTimeLastFailure=  "+POut.DateT (apiSubscription.DateTimeLastFailure)+", "
+				+"FailureReason      =  "+DbHelper.ParamChar+"paramFailureReason, "
+				+"SubsequentFailures =  "+POut.Int   (apiSubscription.SubsequentFailures)+", "
+				+"DateTimeNextRetry  =  "+POut.DateT (apiSubscription.DateTimeNextRetry)+" "
 				+"WHERE ApiSubscriptionNum = "+POut.Long(apiSubscription.ApiSubscriptionNum);
-			Db.NonQ(command);
+			if(apiSubscription.FailureReason==null) {
+				apiSubscription.FailureReason="";
+			}
+			OdSqlParameter paramFailureReason=new OdSqlParameter("paramFailureReason",OdDbType.Text,POut.StringParam(apiSubscription.FailureReason));
+			Db.NonQ(command,paramFailureReason);
 		}
 
 		///<summary>Updates one ApiSubscription in the database.  Uses an old object to compare to, and only alters changed fields.  This prevents collisions and concurrency problems in heavily used tables.  Returns true if an update occurred.</summary>
@@ -225,12 +261,32 @@ namespace OpenPmsDentalBusiness.Crud{
 				if(command!="") { command+=",";}
 				command+="Note = '"+POut.String(apiSubscription.Note)+"'";
 			}
+			if(apiSubscription.DateTimeLastFailure != oldApiSubscription.DateTimeLastFailure) {
+				if(command!="") { command+=",";}
+				command+="DateTimeLastFailure = "+POut.DateT(apiSubscription.DateTimeLastFailure)+"";
+			}
+			if(apiSubscription.FailureReason != oldApiSubscription.FailureReason) {
+				if(command!="") { command+=",";}
+				command+="FailureReason = "+DbHelper.ParamChar+"paramFailureReason";
+			}
+			if(apiSubscription.SubsequentFailures != oldApiSubscription.SubsequentFailures) {
+				if(command!="") { command+=",";}
+				command+="SubsequentFailures = "+POut.Int(apiSubscription.SubsequentFailures)+"";
+			}
+			if(apiSubscription.DateTimeNextRetry != oldApiSubscription.DateTimeNextRetry) {
+				if(command!="") { command+=",";}
+				command+="DateTimeNextRetry = "+POut.DateT(apiSubscription.DateTimeNextRetry)+"";
+			}
 			if(command=="") {
 				return false;
 			}
+			if(apiSubscription.FailureReason==null) {
+				apiSubscription.FailureReason="";
+			}
+			OdSqlParameter paramFailureReason=new OdSqlParameter("paramFailureReason",OdDbType.Text,POut.StringParam(apiSubscription.FailureReason));
 			command="UPDATE apisubscription SET "+command
 				+" WHERE ApiSubscriptionNum = "+POut.Long(apiSubscription.ApiSubscriptionNum);
-			Db.NonQ(command);
+			Db.NonQ(command,paramFailureReason);
 			return true;
 		}
 
@@ -262,6 +318,18 @@ namespace OpenPmsDentalBusiness.Crud{
 				return true;
 			}
 			if(apiSubscription.Note != oldApiSubscription.Note) {
+				return true;
+			}
+			if(apiSubscription.DateTimeLastFailure != oldApiSubscription.DateTimeLastFailure) {
+				return true;
+			}
+			if(apiSubscription.FailureReason != oldApiSubscription.FailureReason) {
+				return true;
+			}
+			if(apiSubscription.SubsequentFailures != oldApiSubscription.SubsequentFailures) {
+				return true;
+			}
+			if(apiSubscription.DateTimeNextRetry != oldApiSubscription.DateTimeNextRetry) {
 				return true;
 			}
 			return false;

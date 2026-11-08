@@ -39,8 +39,8 @@ tinyint column).
 `AlertType` is stored in `tinyint(4)` columns (`alertitem.Type`, `alertcategorylink.AlertType`, `alertsub.Type`), and so are `FormType`
 (`alertitem.FormToOpen`), `DocumentMiscType` (`documentmisc.DocMiscType`) and `UserOdFkeyType` (`userodpref.FkeyType`). A `tinyint(4)`
 holds -128 to 127, so 10000 does not fit, and widening Open Dental's columns would make the schema differ from Open Dental's (the schema
-verifier). Their fork-only values therefore count **down from 127**, while Open Dental's count up from 0 (51 for `AlertType`, 21 for
-`FormType`, 2 for `DocumentMiscType` and 29 for `UserOdFkeyType` in 26.1); 100 to 127 is the fork-only region
+verifier). Their fork-only values therefore count **down from 127**, while Open Dental's count up from 0 (54 for `AlertType`, 21 for
+`FormType`, 2 for `DocumentMiscType` and 31 for `UserOdFkeyType` in 26.2, port note P262-SCHEMA); 100 to 127 is the fork-only region
 (`ForkEnums.FIRST_VALUE_TINYINT`).
 
 | Range (tinyint enums) | Feature                         |

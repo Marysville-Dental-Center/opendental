@@ -50,6 +50,19 @@ namespace AdoptionValidation {
 		///<summary>The tables that hold the time of adoption. The report comparisons can only allow them whole, so the runs and the second pass are
 		///compared on them row by row (RowComparer), from a snapshot taken right after adoption (the run's _snap database).</summary>
 		public static readonly string[] ArraySnapshotTables={ "preference","securitylog","securityloghash" };
+
+		///<summary>The rules that let two adoptions of the same database differ in the time of adoption: the tables that hold it (ArraySnapshotTables,
+		///whole, with the given reason; they are compared row by row elsewhere), and each new timestamp column the ALTER TABLE fills with its own time
+		///(Migration26_1Plan.GetAlterTimeColumns, as a column change).</summary>
+		public static List<AllowedRule> GetTimeOfAdoptionRules(string reasonTables) {
+			List<AllowedRule> listRules=ArraySnapshotTables.Select(x => new AllowedRule { Kind="*",Table=x,Reason=reasonTables }).ToList();
+			foreach(string item in Migration26_1Plan.GetAlterTimeColumns()) {
+				string[] arrayParts=item.Split('.');
+				listRules.Add(new AllowedRule { Kind="ColumnChanged",Table=arrayParts[0],Column=arrayParts[1],
+					Reason="the time of the ALTER TABLE that added the column (time of adoption; adopt's row check holds it to one time in every row)" });
+			}
+			return listRules;
+		}
 		private readonly RehearsalOptions _options;
 		private readonly Action<string> _log;
 		private RunResult _run;
@@ -735,9 +748,10 @@ namespace AdoptionValidation {
 			}
 			List<string> listBaselineDiffs=new List<string>();
 			List<string> listAdoptedDiffs=new List<string>();
-			//The reports compare every table but the three that hold the time of adoption; those are compared row by row below.
-			AllowedDifferences allowedTimes=new AllowedDifferences { Rules=ArraySnapshotTables.Select(x => new AllowedRule { Kind="*",Table=x,
-				Reason="compared row by row instead" }).ToList() };
+			//The reports compare every table but the three that hold the time of adoption; those are compared row by row below. The new timestamp
+			//columns that hold the time of the ALTER TABLE (insbluebook.DateTStamp) are allowed to differ too; adopt's row check holds each run's to
+			//one time in every row.
+			AllowedDifferences allowedTimes=new AllowedDifferences { Rules=GetTimeOfAdoptionRules("compared row by row instead") };
 			for(int i=1;i<listBaselines.Count;i++) {
 				listBaselineDiffs.AddRange(ReportComparer.Compare(listBaselines[0],listBaselines[i],null).Select(x => "run "+(i+1)+": "+x));
 				listAdoptedDiffs.AddRange(ReportComparer.Compare(listAdopted[0],listAdopted[i],allowedTimes).Where(x => !x.IsAllowed).Select(x => "run "+(i+1)+": "+x));
@@ -758,7 +772,8 @@ namespace AdoptionValidation {
 				Detail=listAdoptedDiffs.Count==0 ? listAdopted.Count+" adopted databases identical: every table except preference, securitylog and securityloghash "
 					+"by its report (row counts, CHECKSUM TABLE, every column checksum, every total); those three row by row, where they differ only in the time "
 					+"of adoption: the value of ForkAdoptedFrom, securitylog.LogDateTime ("+countLogTimes+" rows) and the securityloghash.LogHash computed from "
-					+"it ("+countLogHashes+" rows)"
+					+"it ("+countLogHashes+" rows)"+(Migration26_1Plan.GetAlterTimeColumns().Count==0 ? ""
+						: "; and "+string.Join(", ",Migration26_1Plan.GetAlterTimeColumns())+", which the ALTER TABLE that adds it fills with its own time")
 					: string.Join("; ",listAdoptedDiffs.Take(20)) });
 			List<string> listOutcomes=rehearsalResult.ListRuns.Select(x => string.Join(",",x.ListChecks.Select(y => y.Id+"="+y.Passed))).Distinct().ToList();
 			rehearsalResult.ListCrossRunChecks.Add(new CheckResult { Id="X3",Name="Every run gives the same check results",Passed=listOutcomes.Count==1,

@@ -124,7 +124,7 @@ namespace DevDbTool {
 		}
 
 		///<summary>Runs the fork migrations that take over from the frozen 24.3.63 convert chain (OpenPmsDentalBusiness/Misc/ForkMigrations), which bring
-		///the schema to Open Dental 25.3.48 and then 26.1.70. They run through the adoption tool's code (Adoption.Run), the only way the fork version markers are
+		///the schema to Open Dental 25.3.48, then 26.1.70 and 26.2.0. They run through the adoption tool's code (Adoption.Run), the only way the fork version markers are
 		///written: the startup version guard (ForkVersionGuard) asks for adoption on a 24.3.63 database while this build has fork migration steps, and
 		///refuses a database that has ForkSchemaLevel without the adoption markers. Needs ProgramVersion stamped first (StampProgramVersion), because
 		///adoption accepts only a database whose DataBaseVersion and ProgramVersion agree.</summary>
