@@ -110,6 +110,7 @@
       "tests\\SheetTests\\SheetTests.csproj",
       "tests\\SignatureTests\\SignatureTests.csproj",
       "tests\\SshHostKeyTests\\SshHostKeyTests.csproj",
+      "tests\\ODOPTSTests\\ODOPTSTests.csproj",
       "tests\\SWMAPTests\\SWMAPTests.csproj",
       "tests\\StatementTests\\StatementTests.csproj",
       "tests\\TaskCategoryTests\\TaskCategoryTests.csproj",
