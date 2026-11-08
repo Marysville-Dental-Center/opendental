@@ -150,6 +150,16 @@ it is self-contained for win-x86 and is copied with its own runtime into the one
 framework, platform, test framework references, MySqlConnector. Stages 2, 4 and 3b then change one shared file instead of every test
 project file.
 
+As built in S1-0: every setting of both files sits in a group with `Condition="'$(UsingMicrosoftNETSdk)' == 'true'"` (Microsoft.NET.Sdk sets
+it before it imports `Directory.Build.props`), and MSBuild 18 `-getProperty` gives the same values before and after for the classic
+projects, the classic Middle Tier project and `Direct2dWrapper.vcxproj`. The flat output folder is set as `AppendPlatformToOutputPath=false`
+(with the framework and runtime ones), not as a literal `OutputPath`: the SDK then computes `OutputPath=bin\$(Configuration)\` after the
+project's own properties, when `$(Configuration)` is known, also for a project built on its own without a configuration (a literal
+`OutputPath` in `Directory.Build.props` is evaluated before the SDK's default configuration and gives only `bin\` there).
+`AutoGenerateBindingRedirects` is `false` unless the project sets it. `tests/Directory.Build.props` sets `net48`,
+`AutoGenerateBindingRedirects=true` and the MSTest v1 reference by name, which all 108 test projects have; MySqlConnector stays in the
+projects (100 of the 108 reference it) until stage 2 moves it to a package.
+
 ### 2.4 The toolchain, the SDK pin and how to bump it
 
 - **Build Tools 2026 from S1-0.** From S1-0 the build lane, both test runners and every tool script that builds use the MSBuild.exe
