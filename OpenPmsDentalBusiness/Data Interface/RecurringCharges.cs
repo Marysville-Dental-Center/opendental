@@ -1044,17 +1044,20 @@ namespace OpenPmsDentalBusiness {
 				strBuilderResultText.AppendLine("AMOUNT="+payConnectResponse.Amount.ToString("F2"));
 				amount=(double)payConnectResponse.Amount;
 			}
-			string receipt=PayConnect.BuildReceiptString(transType.SALE,payConnectResponse.RefNumber,patCur.GetNameFLnoPref(),
-				payConnectResponse.CardNumber,null,payConnectResponse.AuthCode,payConnectResponse.Description,null,
-				payConnectResponse.Amount,false,clinicNumCur,surchargeAmount:payConnectResponse.AmountSurcharged,
-				cardHolder:PayConnect2.GetCardHolderForReceipt(payConnectResponse.CardHolder,creditCardCharged));
-			if(isSandbox) {
-				receipt=PaymentWindowRules.PayConnectSandboxMarker+Environment.NewLine+receipt;
-			}
-			//AmountSurcharged will be 0 for clinics that don't have surcharging turned on. A charge that was not approved carries no fee: like every other
-			//decline, it is recorded as a $0 payment (the record that the charge was considered), never as paid.
+			//A charge that was not approved carries no receipt and no fee: like every other decline (EdgeExpress, PaySimple, Global Payments V2), it is
+			//recorded as a $0 payment with an empty receipt (the record that the charge was considered), never as paid. A receipt built from a 2xx decline
+			//would show PayConnect's full amount as agreed and signed, and the payment window would offer to print or e-mail it.
+			//AmountSurcharged will be 0 for clinics that don't have surcharging turned on.
+			string receipt="";
 			double merchantFee=0;
 			if(chargeData.RecurringCharge.ChargeStatus==RecurringChargeStatus.ChargeSuccessful) {
+				receipt=PayConnect.BuildReceiptString(transType.SALE,payConnectResponse.RefNumber,patCur.GetNameFLnoPref(),
+					payConnectResponse.CardNumber,null,payConnectResponse.AuthCode,payConnectResponse.Description,null,
+					payConnectResponse.Amount,false,clinicNumCur,surchargeAmount:payConnectResponse.AmountSurcharged,
+					cardHolder:PayConnect2.GetCardHolderForReceipt(payConnectResponse.CardHolder,creditCardCharged));
+				if(isSandbox) {
+					receipt=PaymentWindowRules.PayConnectSandboxMarker+Environment.NewLine+receipt;
+				}
 				merchantFee=(double)payConnectResponse.AmountSurcharged;
 			}
 			CreatePayment(patCur,chargeData,strBuilderResultText.ToString(),amount,receipt,CreditCardSource.PayConnect,merchantFee:merchantFee);

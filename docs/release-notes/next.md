@@ -273,8 +273,8 @@ amount, and sent no failure e-mail (owner question M2-RECUR 6). Now any PayConne
 whose status is not an approval is a decline everywhere a charge is recorded:
 
 - **Recurring charges:** the charge is marked declined (and the card inactivated when "Automatically inactivate declined cards" is on), it
-  gets the $0 payment every declined charge gets as the record that it was tried, never a payment of the amount, and with the failure
-  e-mail turned on the patient is e-mailed for a Declined status, as for other declines.
+  gets the $0 payment every declined charge gets as the record that it was tried, with no receipt, never a payment of the amount, and with
+  the failure e-mail turned on the patient is e-mailed for a Declined status, as for other declines.
 - **The payment window:** the charge shows as declined; no receipt is printed and no card is saved from it.
 
 The other card processors' recurring charges were checked and record a decline correctly.

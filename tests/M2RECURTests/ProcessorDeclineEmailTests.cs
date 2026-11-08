@@ -295,19 +295,23 @@ namespace M2RECURTests {
 				+",\"type\":\"Sale\",\"frequency\":\"Recurring\",\"authCode\":\"SYN001\"}");
 		}
 
-		///<summary>The payment rows of the charge's patient: (PayAmt, IsCcCompleted).</summary>
-		private static List<(double PayAmt,bool IsCcCompleted)> GetPayments(RecurringChargeData chargeData) {
-			System.Data.DataTable table=DataCore.GetTable("SELECT PayAmt,IsCcCompleted FROM payment WHERE PatNum="+POut.Long(chargeData.RecurringCharge.PatNum));
-			return table.Select().Select(x => (PIn.Double(x["PayAmt"].ToString()),PIn.Bool(x["IsCcCompleted"].ToString()))).ToList();
+		///<summary>The payment rows of the charge's patient: (PayAmt, IsCcCompleted, Receipt).</summary>
+		private static List<(double PayAmt,bool IsCcCompleted,string Receipt)> GetPayments(RecurringChargeData chargeData) {
+			System.Data.DataTable table=DataCore.GetTable("SELECT PayAmt,IsCcCompleted,Receipt FROM payment WHERE PatNum="
+				+POut.Long(chargeData.RecurringCharge.PatNum));
+			return table.Select().Select(x => (PIn.Double(x["PayAmt"].ToString()),PIn.Bool(x["IsCcCompleted"].ToString()),PIn.String(x["Receipt"].ToString())))
+				.ToList();
 		}
 
-		///<summary>A charge that was not made is recorded like every other decline: one $0 payment (the record that the charge was considered), never
-		///a payment of the amount, and no charge counted as made.</summary>
+		///<summary>A charge that was not made is recorded like every other decline: one $0 payment (the record that the charge was considered) with an
+		///empty receipt, never a payment of the amount, and no charge counted as made. A receipt would show PayConnect's amount as agreed and signed, and
+		///the payment window would offer to print or e-mail it to the patient.</summary>
 		private void AssertOnlyAZeroPayment(RecurringChargeData chargeData) {
-			List<(double PayAmt,bool IsCcCompleted)> listPayments=GetPayments(chargeData);
+			List<(double PayAmt,bool IsCcCompleted,string Receipt)> listPayments=GetPayments(chargeData);
 			Assert.AreEqual(1,listPayments.Count,"One payment row: the $0 record of the decline.");
 			Assert.AreEqual(0,listPayments[0].PayAmt,0.001,"Never a payment of the amount.");
 			Assert.IsFalse(listPayments[0].IsCcCompleted);
+			Assert.AreEqual("",listPayments[0].Receipt,"No receipt for a charge that was not made.");
 			Assert.AreNotEqual(RecurringChargeStatus.ChargeSuccessful,chargeData.RecurringCharge.ChargeStatus);
 			Assert.AreEqual(0,_testChargerator.Success);
 		}
@@ -352,10 +356,12 @@ namespace M2RECURTests {
 			Assert.AreEqual(1,_testChargerator.Success);
 			Assert.AreEqual(RecurringChargeFailEmailStatus.NotNeeded,result.Status);
 			Assert.AreEqual(0,_listEmailMessagesSent.Count);
-			List<(double PayAmt,bool IsCcCompleted)> listPayments=GetPayments(chargeData);
+			List<(double PayAmt,bool IsCcCompleted,string Receipt)> listPayments=GetPayments(chargeData);
 			Assert.AreEqual(1,listPayments.Count);
 			Assert.AreEqual(35,listPayments[0].PayAmt,0.001,"The approved amount.");
 			Assert.IsTrue(listPayments[0].IsCcCompleted);
+			Assert.IsFalse(string.IsNullOrEmpty(listPayments[0].Receipt),"An approved charge keeps its receipt.");
+			StringAssert.Contains(listPayments[0].Receipt,35m.ToString("c"),"The receipt shows the approved amount.");
 			Assert.AreEqual(0,_listPayConnectLogLines.Count,"An approval is not an error.");
 		}
 		#endregion PayConnect 2
