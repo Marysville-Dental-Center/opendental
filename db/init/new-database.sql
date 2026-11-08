@@ -3156,19 +3156,26 @@ CREATE TABLE `codegroup` (
 /*Data for the table `codegroup` */
 
 INSERT INTO `codegroup` (`CodeGroupNum`,`GroupName`,`ProcCodes`,`ItemOrder`,`CodeGroupFixed`,`IsHidden`,`ShowInAgeLimit`,`ShowInFrequency`,`ShowInOther`,`ShowInHistory`,`HistProcCode`,`IsPerioFourQuads`) VALUES
-(1,'BW','D0272,D0274',0,1,0,0,1,0,1,'D0272',0),
-(2,'Exam','D0120,D0150',1,3,0,0,1,0,1,'D0120',0),
-(3,'Pano/FMX','D0210,D0330',2,2,0,0,1,0,1,'D0210',0),
+(1,'BW','D0272,D0274',0,1,0,0,1,0,0,'',0),
+(2,'Exam','D0120,D0150',1,3,0,0,1,0,0,'',0),
+(3,'Pano/FMX','D0210,D0330',2,2,0,0,1,0,0,'',0),
 (4,'Cancer Screening','D0431',3,0,0,0,1,0,0,'',0),
-(5,'Prophy','D1110,D1120',4,5,0,0,1,0,1,'D1110',0),
+(5,'Prophy','D1110,D1120',4,5,0,0,1,0,0,'',0),
 (6,'Fluoride','D1206,D1208',5,8,0,1,1,0,0,'',0),
 (7,'Sealant','D1351',6,9,0,1,1,0,0,'',0),
 (8,'Crown','D2740,D2750,D2751,D2752,D2780,D2781,D2782,D2783,D2790,D2791,D2792,D2794',7,0,0,0,1,0,0,'',0),
-(9,'SRP','D4341,D4342',8,6,0,0,1,0,1,'D4341',1),
-(10,'Full Debridement','D4355',9,7,0,0,1,0,1,'D4355',0),
-(11,'Perio Maint','D4910',10,4,0,0,1,0,1,'D4910',0),
+(9,'SRP','D4341,D4342',8,6,0,0,1,0,0,'',0),
+(10,'Full Debridement','D4355',9,7,0,0,1,0,0,'',0),
+(11,'Perio Maint','D4910',10,4,0,0,1,0,0,'',0),
 (12,'Dentures','D5110,D5120,D5130,D5140,D5211,D5212,D5213,D5214,D5221,D5222,D5223,D5224,D5225,D5226',11,0,0,0,1,0,0,'',0),
-(13,'Implants','D6010',12,0,0,0,1,0,0,'',0);
+(13,'Implants','D6010',12,0,0,0,1,0,0,'',0),
+(14,'Bitewing History','D0272',13,0,0,0,0,0,1,'D0272',0),
+(15,'Pano/FMX History','D0210',14,0,0,0,0,0,1,'D0210',0),
+(16,'Exam History','D0120',15,0,0,0,0,0,1,'D0120',0),
+(17,'Prophy History','D1110',16,0,0,0,0,0,1,'D1110',0),
+(18,'Perio Scaling History','D4341',17,0,0,0,0,0,1,'D4341',1),
+(19,'Perio Maintenance History','D4910',18,0,0,0,0,0,1,'D4910',0),
+(20,'Full Mouth Debridement History','D4355',19,0,0,0,0,0,1,'D4355',0);
 
 /*Table structure for table `codesystem` */
 
