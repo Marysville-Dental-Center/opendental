@@ -320,9 +320,20 @@ namespace DbConnectionSecurityTests {
 					listCalls.Add(className);
 					DbConnectionSecurity.CheckReportConnection(provider,className,connectionString);
 				};
-				AssertRefused(() => fyiReporting.RDL.RdlEngineConfig.GetConnection("odbc","Driver=x"));
+				//The SQL Server, ODBC and OLE DB providers were removed (S0-2a): each is refused with a clear error before the hook, never a null
+				//connection, whatever the case of its name.
+				foreach(string provider in new[] { "sql","SQL","odbc","ODBC","oledb","OLEDB" }) {
+					try {
+						fyiReporting.RDL.RdlEngineConfig.GetConnection(provider,"Driver=x");
+						Assert.Fail("Not refused: "+provider);
+					}
+					catch(NotSupportedException ex) {
+						Assert.AreEqual(fyiReporting.RDL.RdlEngineConfig.GetProviderRemovedMessage(provider),ex.Message);
+						StringAssert.Contains(ex.Message,"'"+provider+"' is not available in this version");
+					}
+				}
 				AssertRefused(() => fyiReporting.RDL.RdlEngineConfig.GetConnection("MySQL.NET","Server="+TestHelpers.NETWORK_HOST+";SslMode=None"));
-				CollectionAssert.AreEqual(new[] { "System.Data.Odbc.OdbcConnection","MySqlConnector.MySqlConnection" },listCalls);
+				CollectionAssert.AreEqual(new[] { "MySqlConnector.MySqlConnection" },listCalls,"The hook still sees the one provider reports use.");
 			}
 			finally {
 				fyiReporting.RDL.RdlEngineConfig.CheckConnection=actionOld;
