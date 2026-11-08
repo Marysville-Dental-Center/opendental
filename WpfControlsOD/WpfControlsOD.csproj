@@ -105,6 +105,7 @@
     <Compile Include="Bridges\ActeonImagingSuite.cs" />
     <Compile Include="Bridges\Adstra.cs" />
     <Compile Include="Bridges\AiDental.cs" />
+    <Compile Include="Bridges\AlliedstarConnect.cs" />
     <Compile Include="Bridges\Apixia.cs" />
     <Compile Include="Bridges\Apteryx.cs" />
     <Compile Include="Bridges\ApteryxImage.cs" />
@@ -160,6 +161,7 @@
     <Compile Include="Bridges\One2.cs" />
     <Compile Include="Bridges\Orion.cs" />
     <Compile Include="Bridges\OrthoCad.cs" />
+    <Compile Include="Bridges\OrthoComposite.cs" />
     <Compile Include="Bridges\OrthoInsight3d.cs" />
     <Compile Include="Bridges\Oryx.cs" />
     <Compile Include="Bridges\Overjet.cs" />

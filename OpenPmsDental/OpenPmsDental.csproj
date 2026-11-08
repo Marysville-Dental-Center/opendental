@@ -1480,15 +1480,6 @@
     <Compile Include="Forms\FormTreatPlanEdit.designer.cs">
       <DependentUpon>FormTreatPlanEdit.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormTrojanCollect.designer.cs">
-      <DependentUpon>FormTrojanCollect.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormTrojanCollectSetup.designer.cs">
-      <DependentUpon>FormTrojanCollectSetup.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Forms\FormTrojanHelp.designer.cs">
-      <DependentUpon>FormTrojanHelp.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormUnsched.designer.cs">
       <DependentUpon>FormUnsched.cs</DependentUpon>
     </Compile>
@@ -2778,6 +2769,7 @@
     <Compile Include="Logic\VendorDirect\DropboxStartupCheck.cs" />
     <Compile Include="Logic\VendorDirect\BridgeProgramLinkSetups.cs" />
     <Compile Include="Logic\VendorDirect\IProgramLinkSetup.cs" />
+    <Compile Include="Logic\VendorDirect\P262ProgramLinkSetups.cs" />
     <Compile Include="Logic\VendorDirect\PostcardsMenu.cs" />
     <Compile Include="Logic\VendorDirect\ProgramLinkSetupRegistry.cs" />
     <Compile Include="Logic\VendorDirect\VendorJobHost.cs" />
@@ -4781,15 +4773,6 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormProcCodeNoteEdit.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormTrojanCollectSetup.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormTrojanHelp.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormTrojanCollect.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\FormReqAppt.cs">
@@ -7697,18 +7680,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormProcCodeNoteEdit.resx">
       <DependentUpon>FormProcCodeNoteEdit.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormTrojanCollectSetup.resx">
-      <DependentUpon>FormTrojanCollectSetup.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormTrojanHelp.resx">
-      <DependentUpon>FormTrojanHelp.cs</DependentUpon>
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormTrojanCollect.resx">
-      <DependentUpon>FormTrojanCollect.cs</DependentUpon>
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormReqAppt.resx">

@@ -7,41 +7,9 @@ using System.Reflection;
 using System.Text;
 
 namespace OpenPmsDentalBusiness {
+	///<summary>The Trojan benefit service's queries. The Trojan Express Collect queries (last procedure and payment dates, the export file number)
+	///went with that bridge, which Open Dental 26.2 deprecated because the service is no longer offered (P262-LINKS).</summary>
 	public class TrojanQueries {
-
-		public static DateTime GetMaxProcedureDate(long PatNum) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<DateTime>(MethodBase.GetCurrentMethod(),PatNum);
-			}
-			string command=$@"SELECT MAX(ProcDate) FROM procedurelog,patient
-				WHERE patient.PatNum=procedurelog.PatNum
-				AND procedurelog.ProcStatus={POut.Int((int)ProcStat.C)}
-				AND patient.Guarantor={POut.Long(PatNum)}";
-			return PIn.Date(Db.GetScalar(command));
-		}
-
-		public static DateTime GetMaxPaymentDate(long PatNum) {
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetObject<DateTime>(MethodBase.GetCurrentMethod(),PatNum);
-			}
-			string command=$@"SELECT MAX(DatePay) FROM paysplit,patient
-				WHERE patient.PatNum=paysplit.PatNum
-				AND patient.Guarantor={POut.Long(PatNum)}";
-			return PIn.Date(Db.GetScalar(command));
-		}
-
-		///<summary>Increments the PreviousFileNumber program property to the next available int and returns that new file number.</summary>
-		public static int GetUniqueFileNum(){
-			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
-				return Meth.GetInt(MethodBase.GetCurrentMethod());
-			}
-			long progNum=Programs.GetProgramNum(ProgramName.TrojanExpressCollect);
-			int fileNum=PIn.Int(ProgramProperties.GetValFromDb(progNum,"PreviousFileNumber"),false)+1;
-			while(ProgramProperties.SetProperty(progNum,"PreviousFileNumber",fileNum.ToString())<1) {
-				fileNum++;
-			}
-			return fileNum;
-		}
 
 		///<summary>Get the list of records for the pending plan deletion report for plans that need to be brought to the patient's attention.</summary>
 		public static DataTable GetPendingDeletionTable(Collection<string[]> deletePatientRecords) {

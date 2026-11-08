@@ -53,9 +53,6 @@ namespace OpenPmsDental {
 				case EnumFormName.FormSheetFillEdit:
 					type=Type.GetType((typeof(FormSheetFillEdit)).FullName);
 					break;
-				case EnumFormName.FormTrojanCollect:
-					type=Type.GetType((typeof(FormTrojanCollect)).FullName);
-					break;
 				case EnumFormName.FormTrophyNamePick:
 					type=Type.GetType((typeof(FormTrophyNamePick)).FullName);
 					break;

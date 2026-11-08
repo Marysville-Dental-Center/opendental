@@ -27,6 +27,13 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 		PatientArgumentsNotSet,
 		///<summary>The Birthdate Format property is not a usable date format.</summary>
 		BirthdateFormatInvalid,
+		//P262-LINKS (Open Dental 26.2 items 44 and 45), appended.
+		///<summary>"Path of file to open" is blank for a link that starts a program (not a web address).</summary>
+		ProgramPathBlank,
+		///<summary>The Info file path property is not the full path of a file.</summary>
+		InfoFilePathInvalid,
+		///<summary>The folder of the Info file path does not exist. The link never creates it (Allied Star Connect's public page).</summary>
+		InfoFolderMissing,
 	}
 
 	///<summary>What a program link button starts: FileName (a URL or a program path) with Arguments, or the Problem that stopped it.</summary>
@@ -69,6 +76,12 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 						+"integration guide.";
 				case BridgeLaunchProblem.BirthdateFormatInvalid:
 					return "The Birthdate Format in Program Links is not a valid date format, for example MM/dd/yyyy.";
+				case BridgeLaunchProblem.ProgramPathBlank:
+					return "Enter the location of the program in Setup, Program Links, Path of file to open.";
+				case BridgeLaunchProblem.InfoFilePathInvalid:
+					return "The Info file path in Program Links must be the full path of a file, including its folder.";
+				case BridgeLaunchProblem.InfoFolderMissing:
+					return "The folder of the Info file path does not exist. Create the folder, or change the Info file path in Program Links:";
 				default:
 					return problem.ToString();
 			}
