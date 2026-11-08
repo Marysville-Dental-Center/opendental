@@ -14,8 +14,6 @@ namespace OpenPmsDentalBusiness {
 		public static event EventHandler<PatientSelectedEventArgs> EventPatientSelected;
 		public static event EventHandler<bool> EventRefreshCurrentModule;
 		public static event EventHandler<bool> EventLockODForMountAcquire;
-		public delegate bool SendTextDelegate(long patNum, string startingText="");
-		public static SendTextDelegate SendTextMessage;
 		///<summary>Subscribe to this even from any WPF Frm in order to be notified of any incoming signal. See example in FrmODBase discussion at top.</summary>
 		public static event EventHandler<List<Signalod>> EventProcessSignalODs;
 

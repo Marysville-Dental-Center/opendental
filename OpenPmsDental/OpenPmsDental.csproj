@@ -3919,12 +3919,6 @@
     <Compile Include="Forms\FormInstallmentPlanEdit.designer.cs">
       <DependentUpon>FormInstallmentPlanEdit.cs</DependentUpon>
     </Compile>
-    <Compile Include="Forms\FormTxtMsgEdit.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Forms\FormTxtMsgEdit.designer.cs">
-      <DependentUpon>FormTxtMsgEdit.cs</DependentUpon>
-    </Compile>
     <Compile Include="Forms\FormEtrans277Edit.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -6056,11 +6050,6 @@
     <Compile Include="User Controls\ValidTime.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Web References\CallFireService\Reference.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTime>True</DesignTime>
-      <DependentUpon>Reference.map</DependentUpon>
-    </Compile>
     <EmbeddedResource Include="Bridges\FormDrCeph.resx">
       <DependentUpon>FormDrCeph.cs</DependentUpon>
     </EmbeddedResource>
@@ -7363,9 +7352,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormInstallmentPlanEdit.resx">
       <DependentUpon>FormInstallmentPlanEdit.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Forms\FormTxtMsgEdit.resx">
-      <DependentUpon>FormTxtMsgEdit.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormEtrans277Edit.resx">
       <DependentUpon>FormEtrans277Edit.cs</DependentUpon>
@@ -8960,11 +8946,6 @@
     <Compile Include="User Controls\ValidNum.cs">
       <SubType>Component</SubType>
     </Compile>
-    <None Include="Web References\CallFireService\Reference.map">
-      <Generator>MSDiscoCodeGenerator</Generator>
-      <LastGenOutput>Reference.cs</LastGenOutput>
-    </None>
-    <None Include="Web References\CallFireService\SMSService.wsdl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Pearl.txt" />
@@ -9448,22 +9429,6 @@
     <None Include="Resources\Unsched Treat Plans.rdl" />
     <None Include="Resources\up.gif" />
     <None Include="Resources\DeleteX.gif" />
-  </ItemGroup>
-  <ItemGroup>
-    <WebReferences Include="Web References\" />
-  </ItemGroup>
-  <ItemGroup>
-    <WebReferenceUrl Include="https://www.callfire.com/service/SMSService%3fwsdl">
-      <UrlBehavior>Dynamic</UrlBehavior>
-      <RelPath>Web References\CallFireService\</RelPath>
-      <UpdateFromURL>https://www.callfire.com/service/SMSService%3fwsdl</UpdateFromURL>
-      <ServiceLocationURL>
-      </ServiceLocationURL>
-      <CachedDynamicPropName>
-      </CachedDynamicPropName>
-      <CachedAppSettingsObjectName>Settings</CachedAppSettingsObjectName>
-      <CachedSettingsPropName>OpenDental_CallFireService_SMSService</CachedSettingsPropName>
-    </WebReferenceUrl>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

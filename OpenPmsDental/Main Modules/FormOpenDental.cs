@@ -234,7 +234,6 @@ namespace OpenPmsDental{
 			GlobalFormOpenDental.EventRefreshCurrentModule+=(sender,isClinicRefresh)=>RefreshCurrentModule(isClinicRefresh:isClinicRefresh);
 			GlobalFormOpenDental.EventModuleSelected+=(sender,e)=>GotoModule_ModuleSelected(e);
 			GlobalFormOpenDental.EventPatientSelected+=(sender,e)=>Contr_PatientSelected(e);
-			GlobalFormOpenDental.SendTextMessage=toolButTxtMsg_Click;
 			GlobalFormOpenDental.GoToModule=GotoModule_ModuleSelected;
 			FormLauncher.EventLaunch+=FormLauncherHelper.Launch;
 			//Hook up the signal processing event to the timerSignal.
@@ -1863,11 +1862,7 @@ namespace OpenPmsDental{
 				toolBarButton.Style=ODToolBarButtonStyle.DropDownButton;
 				toolBarButton.DropDownMenu=menuEmail;
 				ToolBarMain.Buttons.Add(toolBarButton);
-				//The Text button only appears when a texting integration is enabled (CallFire).
-				if(IsTextingAvailable()) {
-					toolBarButton=new ODToolBarButton(Lan.g(this,"Text"),EnumIcons.Text,Lan.g(this,"Send Text Message"),"Text");
-					ToolBarMain.Buttons.Add(toolBarButton);
-				}
+				//No Text button: CallFire, the last texting integration, was removed in stage 0 of the .NET 10 move.
 				toolBarButton=new ODToolBarButton(Lan.g(this,"Letter"),-1,Lan.g(this,"Quick Letter"),"Letter");
 				toolBarButton.Style=ODToolBarButtonStyle.DropDownButton;
 				toolBarButton.DropDownMenu=menuLetter;
@@ -2128,12 +2123,6 @@ namespace OpenPmsDental{
 						break;
 					case "Email":
 						toolButEmail_Click();
-						break;
-					case "Text":
-						if(!Security.IsAuthorized(EnumPermType.TextMessageSend)) {
-							return;
-						}
-						toolButTxtMsg_Click(PatNumCur);
 						break;
 					case "Letter":
 						toolButLetter_Click();
@@ -2759,66 +2748,6 @@ namespace OpenPmsDental{
 		//	}
 		//}
 		#endregion ToolBar
-
-		#region SMS Text Messaging
-		///<summary>Called from the text message button and the right click context menu for an appointment. Returns true if the message was sent successfully.</summary>
-		private bool toolButTxtMsg_Click(long patNum,string startingText="") {
-			if(patNum==0) {
-				using FormTxtMsgEdit formTxtMsgEdit=new FormTxtMsgEdit();
-				formTxtMsgEdit.Message=startingText;
-				formTxtMsgEdit.PatNum=0;
-				formTxtMsgEdit.ShowDialog();
-				if(formTxtMsgEdit.DialogResult==DialogResult.OK) {
-					RefreshCurrentModule();
-					return true;
-				}
-				return false;
-			}
-			Patient patient=Patients.GetPat(patNum);
-			bool updateTextYN=false;
-			if(patient.TxtMsgOk==YN.No){
-				if(MsgBox.Show(this,MsgBoxButtons.YesNo,"This patient is marked to not receive text messages. "
-					+"Would you like to mark this patient as okay to receive text messages?")) 
-				{
-					updateTextYN=true;
-				}
-				else {
-					return false;
-				}
-			}
-			if(patient.TxtMsgOk==YN.Unknown && PrefC.GetBool(PrefName.TextMsgOkStatusTreatAsNo)){
-				if(MsgBox.Show(this,MsgBoxButtons.YesNo,"This patient might not want to receive text messages. "
-					+"Would you like to mark this patient as okay to receive text messages?")) 
-				{
-					updateTextYN=true;
-				}
-				else {
-					return false;
-				}
-			}
-			if(updateTextYN) {
-				Patient patientOld=patient.Copy();
-				patient.TxtMsgOk=YN.Yes;
-				Patients.Update(patient,patientOld);
-				Patients.InsertAddressChangeSecurityLogEntry(patientOld,patient);// track change in securitylog for TxtOK Field
-			}
-			if(!Security.IsAuthorized(EnumPermType.TextMessageSend)) {
-				return false;
-			}
-			using FormTxtMsgEdit formTxtMsgEdit2=new FormTxtMsgEdit();
-			formTxtMsgEdit2.Message=startingText;
-			formTxtMsgEdit2.PatNum=patNum;
-			formTxtMsgEdit2.WirelessPhone=patient.WirelessPhone;
-			formTxtMsgEdit2.YNTxtMsgOk=patient.TxtMsgOk;
-			formTxtMsgEdit2.ShowDialog();
-			if(formTxtMsgEdit2.DialogResult==DialogResult.OK) {
-				RefreshCurrentModule();
-				return true;
-			}
-			return false;
-		}
-
-		#endregion SMS Text Messaging
 
 		#region Clinics
 		private void RefreshMenuClinics() {
@@ -6323,12 +6252,6 @@ namespace OpenPmsDental{
 						"Supplemental backup has been Disabled, because it uploaded the database to Open Dental HQ, which this build does not use.");
 				}
 			});
-		}
-
-		///<summary>True if a texting integration is enabled. CallFire talks to the vendor directly. Open Dental's hosted Integrated Texting was
-		///removed.</summary>
-		private bool IsTextingAvailable() {
-			return Programs.IsEnabled(ProgramName.CallFire);
 		}
 
 		#endregion Menu - eServices

@@ -439,9 +439,6 @@ namespace OpenPmsDental {
 			menuApt.Items.RemoveByKey(MenuItemNames.HomePhone);
 			menuApt.Items.RemoveByKey(MenuItemNames.WorkPhone);
 			menuApt.Items.RemoveByKey(MenuItemNames.WirelessPhone);
-			menuApt.Items.RemoveByKey(MenuItemNames.TextDiv);
-			menuApt.Items.RemoveByKey(MenuItemNames.SendText);
-			menuApt.Items.RemoveByKey(MenuItemNames.SendConfirmationText);
 			menuApt.Items.RemoveByKey(MenuItemNames.OrthoChart);
 			menuApt.Items.RemoveByKey(MenuItemNames.CareCreditAcceptDeclineOffer);
 			menuApt.Items.RemoveByKey(MenuItemNames.CareCreditApplicationNeeded);
@@ -466,12 +463,7 @@ namespace OpenPmsDental {
 					menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Call Wireless Phone ")+_patient.WirelessPhone,null,menuApt_Click,MenuItemNames.WirelessPhone));
 				}
 			}
-			//Texting. The menu items only appear when a texting integration (CallFire) is enabled.
-			if(Programs.IsEnabled(ProgramName.CallFire)) {
-				menuApt.Items.Add(new ToolStripSeparator() { Name=MenuItemNames.TextDiv });
-				menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Send Text"),null,menuApt_Click,MenuItemNames.SendText));
-				menuApt.Items.Add(new ToolStripMenuItem(Lan.g(this,"Send Confirmation Text"),null,menuApt_Click,MenuItemNames.SendConfirmationText));
-			}
+			//No texting items: CallFire, the last texting integration, was removed in stage 0 of the .NET 10 move.
 			//CareCredit
 			if(Programs.IsEnabled(ProgramName.CareCredit)) {
 				DataRow dataRow=contrApptPanel.GetDataRowForSelected();
@@ -2117,33 +2109,6 @@ namespace OpenPmsDental {
 				case MenuItemNames.WirelessPhone: //Call Wireless Phone
 					if(Programs.IsEnabled(ProgramName.DentalTekSmartOfficePhone)) {
 						Bridges.DentalTek.PlaceCall(_patient.WirelessPhone);
-					}
-					break;
-				case MenuItemNames.SendText:
-					appointment=Appointments.GetOneApt(contrApptPanel.SelectedAptNum);
-					if(ApptIsNull(appointment)) { return; }
-					if(!Security.IsAuthorized(EnumPermType.TextMessageSend)) {
-						return;
-					}
-					GlobalFormOpenDental.SendTextMessage(appointment.PatNum,"");
-					break;
-				case MenuItemNames.SendConfirmationText:
-					appointment=Appointments.GetOneApt(contrApptPanel.SelectedAptNum);
-					if(ApptIsNull(appointment)) { return; }
-					Appointment aptOld=appointment.Copy();
-					Patient patient=Patients.GetPat(appointment.PatNum);
-					string message=PatComm.BuildConfirmMessage(ContactMethod.TextMessage,patient,appointment);
-					bool wasTextSent=GlobalFormOpenDental.SendTextMessage(patient.PatNum,message);
-					if(wasTextSent) {
-						long newStatus=PrefC.GetLong(PrefName.ConfirmStatusTextMessaged);
-						Appointments.SetConfirmed(appointment,newStatus);
-						appointment.Confirmed=newStatus; //SetConfirmed doesn't set the appt status in memory
-						if(appointment.Confirmed!=aptOld.Confirmed) { 
-							SecurityLogs.MakeLogEntry(EnumPermType.ApptConfirmStatusEdit,appointment.PatNum,Lans.g(this,"Appointment confirmation status changed from")+" "
-								+Defs.GetName(DefCat.ApptConfirmed,aptOld.Confirmed)+" "+Lans.g(this,"to")+" "+Defs.GetName(DefCat.ApptConfirmed,appointment.Confirmed)
-								+" "+Lans.g(this,"from the appointment module")+".",appointment.AptNum,aptOld.DateTStamp);
-						}
-						ModuleSelected(patient.PatNum);//Refresh the module so that the current appt status is updated
 					}
 					break;
 				case MenuItemNames.CareCreditAcceptDeclineOffer:
@@ -4767,9 +4732,6 @@ namespace OpenPmsDental {
 		public const string HomePhone="Home Phone";
 		public const string WorkPhone="Work Phone";
 		public const string WirelessPhone="Wireless Phone";
-		public const string TextDiv="Text Div";
-		public const string SendText="Send Text";
-		public const string SendConfirmationText="Send Confirmation Text";
 		public const string OrthoChart="Ortho Chart";
 		public const string Jobs="Jobs";
 		public const string JobsSpacer="Jobs Spacer";

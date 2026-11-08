@@ -26,7 +26,6 @@
 			this.components = new System.ComponentModel.Container();
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEtrans835s));
 			this.imageListCalendar = new System.Windows.Forms.ImageList(this.components);
-			this.smsService1 = new OpenPmsDental.CallFireService.SMSService();
 			this.listStatus = new OpenPmsDental.UI.ListBox();
 			this.butRefresh = new OpenPmsDental.UI.Button();
 			this.groupBox2 = new OpenPmsDental.UI.GroupBox();
@@ -56,12 +55,6 @@
 			this.imageListCalendar.TransparentColor = System.Drawing.Color.Transparent;
 			this.imageListCalendar.Images.SetKeyName(0, "arrowDownTriangle.gif");
 			this.imageListCalendar.Images.SetKeyName(1, "arrowUpTriangle.gif");
-			// 
-			// smsService1
-			// 
-			this.smsService1.Credentials = null;
-			this.smsService1.Url = "https://www.callfire.com/service/SMSService";
-			this.smsService1.UseDefaultCredentials = false;
 			// 
 			// listStatus
 			// 
@@ -317,7 +310,6 @@
 		private System.Windows.Forms.Label labelDaysOldMax;
 		private System.Windows.Forms.Label labelDaysOldMin;
 		private ODtextBox textCarrier;
-		private CallFireService.SMSService smsService1;
 		private OpenPmsDental.UI.ListBox listStatus;
 		private UI.GridOD gridMain;
 		private UI.ODDateRangePicker dateRangePicker;
