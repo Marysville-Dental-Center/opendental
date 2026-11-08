@@ -48,7 +48,38 @@ namespace P262GlidewellTests {
 			Assert.AreEqual("0",DataCore.GetScalar("SELECT Enabled FROM program WHERE ProgName='Glidewell'"),"Off until the office turns it on.");
 			Assert.AreEqual(GlidewellProgram.ProgDesc,DataCore.GetScalar("SELECT ProgDesc FROM program WHERE ProgName='Glidewell'"));
 			Assert.IsFalse(GlidewellProgram.IsEnabled());
-			Assert.AreEqual(0,GlidewellDb.CountRows("programproperty"),"The accounts are not program properties.");
+			//The accounts are not program properties; the only rows are the business associate agreement's (owner decision of 2026-11-07).
+			Assert.AreEqual(2,GlidewellDb.CountRows("programproperty"));
+			Assert.AreEqual(1,GlidewellDb.CountRows("programproperty","PropertyDesc='BAA On File' AND PropertyValue='0' AND ClinicNum=0"));
+			Assert.AreEqual(1,GlidewellDb.CountRows("programproperty","PropertyDesc='BAA Confirmed' AND PropertyValue='' AND ClinicNum=0"));
+			Assert.IsFalse(GlidewellProgram.IsBaaOnFile(),"Not on file until Setup records it.");
+		}
+
+		///<summary>Owner decision of 2026-11-07: nothing is sent to Glidewell, and no status is asked for, until Setup records a signed business
+		///associate agreement with Glidewell, as for the postcard service.</summary>
+		[TestMethod]
+		public void Send_AndStatus_BlockedUntilTheBaaIsOnFile() {
+			var arranged=Arrange();
+			FakeGlidewellClient fake=new FakeGlidewellClient();
+			GlidewellDb.SetBaaOnFile(false);
+			GlidewellLabCaseResult result=GlidewellLabCases.Send(arranged.labCase.LabCaseNum,arranged.glidewellAcct.GlidewellAcctNum,GlidewellScanner.ITero,fake);
+			Assert.IsFalse(result.IsSuccess);
+			Assert.AreEqual(GlidewellProgram.GetBaaMissingText(),result.Message);
+			Assert.AreEqual(0,fake.ListCalls.Count,"No patient data leaves without the agreement.");
+			Assert.AreEqual(0,GlidewellDb.CountRows("glidewellmsg"));
+			//Recorded: the case is sent.
+			GlidewellDb.SetBaaOnFile(true);
+			Assert.IsTrue(GlidewellProgram.IsBaaOnFile());
+			Assert.IsTrue(GlidewellLabCases.Send(arranged.labCase.LabCaseNum,arranged.glidewellAcct.GlidewellAcctNum,GlidewellScanner.ITero,fake).IsSuccess);
+			Assert.AreEqual(1,fake.ListCalls.Count);
+			//No longer recorded: no status check either, and the stored row is unchanged.
+			GlidewellDb.SetBaaOnFile(false);
+			string responseBefore=GlidewellMsgs.GetForLabCase(arranged.labCase.LabCaseNum).RawJsonResponse;
+			result=GlidewellLabCases.CheckStatus(arranged.labCase.LabCaseNum,fake);
+			Assert.IsFalse(result.IsSuccess);
+			Assert.AreEqual(GlidewellProgram.GetBaaMissingText(),result.Message);
+			Assert.AreEqual(1,fake.ListCalls.Count);
+			Assert.AreEqual(responseBefore,GlidewellMsgs.GetForLabCase(arranged.labCase.LabCaseNum).RawJsonResponse);
 		}
 		#endregion Program link
 
@@ -249,9 +280,11 @@ namespace P262GlidewellTests {
 		#endregion Lab case products
 
 		#region Sending
-		///<summary>A lab case ready to send: program on, one account with a key, a patient, a provider with a license and two products.</summary>
+		///<summary>A lab case ready to send: program on, the business associate agreement recorded, one account with a key, a patient, a provider
+		///with a license and two products.</summary>
 		private static (LabCase labCase,GlidewellAcct glidewellAcct,Patient patient,Provider provider) Arrange() {
 			GlidewellDb.SetProgramEnabled(true);
+			GlidewellDb.SetBaaOnFile(true);
 			Patient patient=GlidewellDb.CreatePatient();
 			Provider provider=GlidewellDb.CreateProvider("G1","LIC-77");
 			LabCase labCase=GlidewellDb.CreateLabCase(patient,provider,"Crown on 8");

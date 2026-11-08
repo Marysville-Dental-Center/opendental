@@ -84,6 +84,29 @@ namespace P262GlidewellTests {
 			StringAssert.Contains(source,"return GlidewellProgram.EnsureProgram();");
 		}
 
+		///<summary>Owner decision of 2026-11-07: Program Links does not list the link while this build has no transport, and the setup window records
+		///the business associate agreement with Glidewell as the postcard setup does.</summary>
+		[TestMethod]
+		public void ProgramLinks_HiddenUntilATransportExists_SetupRecordsTheBaa() {
+			string programLinks=Read(@"OpenPmsDental\Forms\FormProgramLinks.cs").Replace("\r\n","\n");
+			StringAssert.Contains(programLinks,"if(!OpenPmsDentalBusiness.VendorDirect.Glidewell.GlidewellProgram.IsShownInProgramLinks()) {\n"
+				+"\t\t\t\t_listPrograms.RemoveAll(x => x.ProgName==ProgramName.Glidewell.ToString());");
+			string setup=Read(@"OpenPmsDental\Forms\FormGlidewellSetup.cs");
+			StringAssert.Contains(setup,"GlidewellProgram.SaveSetting(GlidewellProgram.PropertyDescs.BaaOnFile,checkBaaOnFile.Checked ? \"1\" : \"0\");");
+			StringAssert.Contains(setup,"GlidewellProgram.SaveSetting(GlidewellProgram.PropertyDescs.BaaConfirmed,confirmed);");
+			StringAssert.Contains(setup,"checkBaaOnFile.Checked=GlidewellProgram.IsBaaOnFile();");
+			StringAssert.Contains(Read(@"OpenPmsDental\Forms\FormGlidewellSetup.Designer.cs"),"this.Controls.Add(this.checkBaaOnFile);");
+			try {
+				OpenPmsDentalBusiness.VendorDirect.Glidewell.GlidewellClients.Current=null;
+				Assert.IsFalse(OpenPmsDentalBusiness.VendorDirect.Glidewell.GlidewellProgram.IsShownInProgramLinks(),"This build's blocked client.");
+				OpenPmsDentalBusiness.VendorDirect.Glidewell.GlidewellClients.Current=new FakeGlidewellClient();
+				Assert.IsTrue(OpenPmsDentalBusiness.VendorDirect.Glidewell.GlidewellProgram.IsShownInProgramLinks(),"With a transport.");
+			}
+			finally {
+				OpenPmsDentalBusiness.VendorDirect.Glidewell.GlidewellClients.Current=null;
+			}
+		}
+
 		[TestMethod]
 		public void LabCaseWindow_ShowsGlidewellOnlyWhenTurnedOn() {
 			string designer=Read(@"OpenPmsDental\Forms\FormLabCaseEdit.designer.cs");

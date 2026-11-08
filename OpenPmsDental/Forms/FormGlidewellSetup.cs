@@ -37,6 +37,8 @@ namespace OpenPmsDental {
 				return;
 			}
 			checkEnabled.Checked=_program.Enabled;
+			checkBaaOnFile.Checked=GlidewellProgram.IsBaaOnFile();
+			labelBaaConfirmed.Text=checkBaaOnFile.Checked ? GetBaaConfirmedText() : "";
 			IGlidewellClient glidewellClient=GlidewellClients.Current;
 			if(glidewellClient.IsAvailable) {
 				labelTransport.Text="";
@@ -100,8 +102,24 @@ namespace OpenPmsDental {
 				Programs.Update(_program,programOld);
 				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,_program.ProgDesc+" "+(_program.Enabled ? "enabled." : "disabled."));
 			}
+			//Owner decision of 2026-11-07: no patient data goes to Glidewell until this is recorded (the postcard service's rule).
+			if(checkBaaOnFile.Checked!=GlidewellProgram.IsBaaOnFile()) {
+				GlidewellProgram.SaveSetting(GlidewellProgram.PropertyDescs.BaaOnFile,checkBaaOnFile.Checked ? "1" : "0");
+				string confirmed=checkBaaOnFile.Checked ? (Security.CurUser.UserName+", "+DateTime.Now.ToString()) : "";
+				GlidewellProgram.SaveSetting(GlidewellProgram.PropertyDescs.BaaConfirmed,confirmed);
+				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Glidewell lab cases: business associate agreement "
+					+(checkBaaOnFile.Checked ? "recorded as on file." : "no longer recorded as on file."));
+			}
 			DataValid.SetInvalid(InvalidType.Programs);
 			DialogResult=DialogResult.OK;
+		}
+
+		private string GetBaaConfirmedText() {
+			string confirmed=GlidewellProgram.GetSetting(GlidewellProgram.PropertyDescs.BaaConfirmed);
+			if(confirmed=="") {
+				return "";
+			}
+			return Lan.g(this,"Recorded by")+" "+confirmed;
 		}
 	}
 

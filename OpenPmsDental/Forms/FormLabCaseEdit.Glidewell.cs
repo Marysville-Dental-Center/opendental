@@ -182,8 +182,12 @@ namespace OpenPmsDental {
 			}
 			GlidewellAcct glidewellAcct=comboGwAccount.GetSelected<GlidewellAcct>();
 			GlidewellScanner glidewellScanner=comboGwScanner.GetSelected<GlidewellScanner>();
-			//What can be told before anything is saved: the account and whether this version can send at all.
-			List<string> listProblems=GlidewellLabCases.GetAccountProblems(glidewellAcct);
+			//What can be told before anything is saved: the business associate agreement, the account and whether this version can send at all.
+			List<string> listProblems=new List<string>();
+			if(!GlidewellProgram.IsBaaOnFile()) {
+				listProblems.Add(GlidewellProgram.GetBaaMissingText());
+			}
+			listProblems.AddRange(GlidewellLabCases.GetAccountProblems(glidewellAcct));
 			if(!GlidewellClients.Current.IsAvailable) {
 				listProblems.Add(GlidewellClients.Current.UnavailableReason);
 			}

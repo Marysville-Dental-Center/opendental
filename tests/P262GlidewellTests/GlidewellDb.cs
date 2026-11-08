@@ -103,6 +103,15 @@ namespace P262GlidewellTests {
 			Programs.RefreshCache();
 		}
 
+		///<summary>Inserts the program row and records the business associate agreement with Glidewell as on file, or not.</summary>
+		public static void SetBaaOnFile(bool isOnFile) {
+			GlidewellProgram.EnsureProgram();
+			ProgramProperties.RefreshCache();
+			GlidewellProgram.SaveSetting(GlidewellProgram.PropertyDescs.BaaOnFile,isOnFile ? "1" : "0");
+			GlidewellProgram.SaveSetting(GlidewellProgram.PropertyDescs.BaaConfirmed,isOnFile ? "synthetic user, 2026-11-07" : "");
+			RefreshCaches();
+		}
+
 		public static Provider CreateProvider(string abbr,string stateLicense="LIC123") {
 			Provider provider=new Provider();
 			provider.Abbr=abbr;

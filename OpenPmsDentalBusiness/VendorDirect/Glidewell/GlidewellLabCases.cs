@@ -55,8 +55,9 @@ namespace OpenPmsDentalBusiness.VendorDirect.Glidewell {
 		}
 
 		#region Checks
-		///<summary>Why the lab case cannot be sent now, one line each; empty when it can. Covers the program link, the one-row-per-lab-case rule, the
-		///account and its key (the office's own credentials), the required patient names and the client. Reads nothing from the database.</summary>
+		///<summary>Why the lab case cannot be sent now, one line each; empty when it can. Covers the program link, the business associate agreement
+		///(GlidewellProgram.IsBaaOnFile), the one-row-per-lab-case rule, the account and its key (the office's own credentials), the required patient
+		///names and the client. Reads nothing from the database but the caches.</summary>
 		public static List<string> GetSendProblems(LabCase labCase,Patient patient,GlidewellAcct glidewellAcct,GlidewellMsg glidewellMsgExisting,
 			IGlidewellClient glidewellClient)
 		{
@@ -64,6 +65,9 @@ namespace OpenPmsDentalBusiness.VendorDirect.Glidewell {
 			List<string> listProblems=new List<string>();
 			if(!GlidewellProgram.IsEnabled()) {
 				listProblems.Add(Lans.g("Glidewell","The Glidewell program link is turned off (Setup, Program Links)."));
+			}
+			if(!GlidewellProgram.IsBaaOnFile()) {//Owner decision of 2026-11-07: the postcard service's rule.
+				listProblems.Add(GlidewellProgram.GetBaaMissingText());
 			}
 			if(labCase==null || labCase.LabCaseNum==0) {
 				listProblems.Add(Lans.g("Glidewell","Save the lab case first."));
@@ -224,7 +228,8 @@ namespace OpenPmsDentalBusiness.VendorDirect.Glidewell {
 		}
 
 		///<summary>Asks Glidewell for the lab case's current status with the account it was sent with, and updates its row: the most recent response
-		///always, the status when Glidewell names one this program knows. Writes nothing when the call fails.</summary>
+		///always, the status when Glidewell names one this program knows. Writes nothing when the call fails. Refused, without a call, while the
+		///business associate agreement with Glidewell is not on file.</summary>
 		public static GlidewellLabCaseResult CheckStatus(long labCaseNum,IGlidewellClient glidewellClient=null) {
 			Meth.NoCheckMiddleTierRole();
 			glidewellClient=glidewellClient??GlidewellClients.Current;
@@ -234,6 +239,9 @@ namespace OpenPmsDentalBusiness.VendorDirect.Glidewell {
 			}
 			if(!GlidewellProgram.IsEnabled()) {
 				return GlidewellLabCaseResult.Refused(Lans.g("Glidewell","The Glidewell program link is turned off (Setup, Program Links)."),glidewellMsg);
+			}
+			if(!GlidewellProgram.IsBaaOnFile()) {//Owner decision of 2026-11-07: no call about a patient's lab case without the agreement.
+				return GlidewellLabCaseResult.Refused(GlidewellProgram.GetBaaMissingText(),glidewellMsg);
 			}
 			if(glidewellClient==null || !glidewellClient.IsAvailable) {
 				return new GlidewellLabCaseResult(false,true,glidewellClient?.UnavailableReason??new GlidewellClientBlocked().UnavailableReason,glidewellMsg);

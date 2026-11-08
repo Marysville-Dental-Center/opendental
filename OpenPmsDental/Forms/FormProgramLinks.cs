@@ -33,6 +33,10 @@ namespace OpenPmsDental{
 			_listPrograms.RemoveAll(x => x.ProgName==ProgramName.AvaTax.ToString());
 			//The FHIR program row held the setup of Open Dental's API keys, which were issued by Open Dental HQ. The API was removed.
 			_listPrograms.RemoveAll(x => x.ProgName==ProgramName.FHIR.ToString());
+			//Glidewell lab cases (26.2): hidden until this build has a transport to Glidewell (owner decision of 2026-11-07).
+			if(!OpenPmsDentalBusiness.VendorDirect.Glidewell.GlidewellProgram.IsShownInProgramLinks()) {
+				_listPrograms.RemoveAll(x => x.ProgName==ProgramName.Glidewell.ToString());
+			}
 			gridProgram.BeginUpdate();
 			gridProgram.Columns.Clear();
 			gridProgram.Columns.Add(new GridColumn("Enabled",55,HorizontalAlignment.Center));

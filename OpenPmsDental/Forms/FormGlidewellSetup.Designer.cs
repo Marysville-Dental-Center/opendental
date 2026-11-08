@@ -20,6 +20,8 @@ namespace OpenPmsDental {
 			this.gridAccounts = new OpenPmsDental.UI.GridOD();
 			this.butAdd = new OpenPmsDental.UI.Button();
 			this.labelTransport = new System.Windows.Forms.Label();
+			this.checkBaaOnFile = new OpenPmsDental.UI.CheckBox();
+			this.labelBaaConfirmed = new System.Windows.Forms.Label();
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.SuspendLayout();
 			//
@@ -62,15 +64,30 @@ namespace OpenPmsDental {
 			// labelTransport
 			//
 			this.labelTransport.ForeColor = System.Drawing.Color.Firebrick;
-			this.labelTransport.Location = new System.Drawing.Point(12, 310);
+			this.labelTransport.Location = new System.Drawing.Point(12, 356);
 			this.labelTransport.Name = "labelTransport";
 			this.labelTransport.Size = new System.Drawing.Size(570, 60);
 			this.labelTransport.TabIndex = 4;
 			//
+			// checkBaaOnFile
+			//
+			this.checkBaaOnFile.Location = new System.Drawing.Point(12, 310);
+			this.checkBaaOnFile.Name = "checkBaaOnFile";
+			this.checkBaaOnFile.Size = new System.Drawing.Size(570, 18);
+			this.checkBaaOnFile.TabIndex = 6;
+			this.checkBaaOnFile.Text = "A signed business associate agreement with Glidewell is on file (required before any patient data is sent)";
+			//
+			// labelBaaConfirmed
+			//
+			this.labelBaaConfirmed.Location = new System.Drawing.Point(30, 330);
+			this.labelBaaConfirmed.Name = "labelBaaConfirmed";
+			this.labelBaaConfirmed.Size = new System.Drawing.Size(552, 18);
+			this.labelBaaConfirmed.TabIndex = 7;
+			//
 			// butSave
 			//
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(507, 381);
+			this.butSave.Location = new System.Drawing.Point(507, 427);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
 			this.butSave.TabIndex = 5;
@@ -79,8 +96,10 @@ namespace OpenPmsDental {
 			//
 			// FormGlidewellSetup
 			//
-			this.ClientSize = new System.Drawing.Size(594, 417);
+			this.ClientSize = new System.Drawing.Size(594, 463);
 			this.Controls.Add(this.butSave);
+			this.Controls.Add(this.labelBaaConfirmed);
+			this.Controls.Add(this.checkBaaOnFile);
 			this.Controls.Add(this.labelTransport);
 			this.Controls.Add(this.butAdd);
 			this.Controls.Add(this.gridAccounts);
@@ -100,6 +119,8 @@ namespace OpenPmsDental {
 		private OpenPmsDental.UI.GridOD gridAccounts;
 		private OpenPmsDental.UI.Button butAdd;
 		private System.Windows.Forms.Label labelTransport;
+		private OpenPmsDental.UI.CheckBox checkBaaOnFile;
+		private System.Windows.Forms.Label labelBaaConfirmed;
 		private OpenPmsDental.UI.Button butSave;
 	}
 }
