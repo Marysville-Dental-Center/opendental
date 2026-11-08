@@ -61,7 +61,10 @@ namespace BSHELLTests {
 			ForkMigrationStep step=ForkMigrationRunner.GetSteps().Single(x => x is DxcCreditScoreRemovedStep);
 			Assert.AreEqual(2026110101,step.Level,"Renumbered on 2026-11-01 from the retired package range level 2027002301.");
 			ForkMigrationRunner.ValidateStep(step);
+			//The Open Dental 26.2 schema step (P262-SCHEMA, 2026110701) is dated after it and runs later; it touches no program or toolbutitem row,
+			//so the order does not matter there.
 			Assert.IsTrue(ForkMigrationRunner.GetSteps().Where(x => !x.GetType().Namespace.EndsWith(".FeatureSteps") && !x.GetType().Namespace.EndsWith(".Features"))
+				.Where(x => !(x is OdParity26_2Schema))
 				.All(x => x.Level<step.Level),"Runs after every M1 and M2-01/M2-02 step, as before the renumbering.");
 		}
 
