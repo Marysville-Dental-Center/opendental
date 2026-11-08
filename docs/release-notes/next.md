@@ -18,6 +18,8 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - the fixes and changes of the owner's answers of 2026-11-07: a declined PayConnect card is never recorded as paid, an edited X-ray attached
   to a claim is saved, the Insurance History switch-over leaves the frequency code groups alone, NDde.dll is gone (three program links
   that used it work without it), the X-ray capture session is on for new installs, and the archive backup to another server works;
+- fixes from the window checks: the program always ends when it is closed, a deleted image no longer leaves its thumbnail, the log-off
+  prompt never logs off while the user is answering it, and a tidier Edit Email Address window;
 - Open Dental 26.2: its database schema and the changes the owner chose on 2026-11-07:
   - Appointments: several blockout types in the Advanced Appointment Search, the practice and clinic schedule notes in the Appointments
     module, and appointment estimates brought up to date when an insurance plan is saved;
@@ -375,6 +377,21 @@ question DB-SEC 2). It now copies the rows with ordinary `INSERT` statements, in
 no connection allows local files, and no temporary file of the rows is written. The account typed for the other server needs `CREATE`,
 `INSERT` and `SELECT` on the backup database. The program's own database account keeps its three server-wide rights (owner question
 DB-SEC 1, answered on 2026-11-07).
+
+## Fixes from the window checks
+
+- **Closing the program.** After File > Exit (or closing the main window) the program's process always ends. Should its closing be held up,
+  the program ends itself after about 20 seconds and writes where it stood into the `Logger\Exit` folder next to the program, which helps to
+  find the cause. The EOB and amendment window and the Imaging module now close their PDF viewers with their windows, a second PDF
+  shown while the viewer starts no longer reports that the WebView2 Runtime could not start, and the Imaging module's Print category no longer
+  leaves a browser running until the program ends.
+- **Deleted images.** Deleting an image or a mount in the Imaging module (or anywhere else) also deletes its thumbnail in the patient's
+  `Thumbnails` folder; before, a deleted image stayed on disk as its small copy. Thumbnails left by earlier deletes stay until removed by
+  hand.
+- **Log off and close prompt.** "Are you sure you would like to log off?" (and "...close?") still goes ahead by itself after 15 seconds when
+  nobody touches it, but once you move the mouse onto it or press a key it waits for you; X and Esc mean No.
+- **Edit Email Address.** The Email Authentication box is as large as what it shows: one line with only Password, and the chosen sign-in's
+  box beside the choices when Gmail or Microsoft 365 is used. Every option is still there.
 
 ## Open Dental 26.2: the database schema
 
