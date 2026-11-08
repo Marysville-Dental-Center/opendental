@@ -212,6 +212,40 @@ namespace LibraryUpdateTests {
 			}
 		}
 
+		///<summary>Every signed send builds the message as port 465 does: an attached .eml (a MimeKit MessagePart, not a MimePart) before the pdf is
+		///signed with it and arrives, over STARTTLS through WireEmailUnsecure, with its Content-ID, disposition and displayed file name; the pdf
+		///keeps its own Content-ID; the signature still verifies.</summary>
+		[TestMethod]
+		public void SignedSend_WithAnAttachedEml_ArrivesSignedAndVerifies() {
+			X509Certificate2 x509Certificate2=TestCertificates.CreateEmail(USER);
+			string pathEml=Path.Combine(_folder,Guid.NewGuid().ToString("N")+".eml");
+			SmtpTests.WriteForwardedEml(pathEml);
+			BasicEmailMessage basicEmailMessage=MakeMessage();
+			string pathPdf=basicEmailMessage.ListAttachments[0].FullPath;
+			basicEmailMessage.ListAttachments.Insert(0,new BasicEmailAttachment(pathEml,"Lab results.eml"));
+			SendEmail.SmtpCertificateValidationForTests=TestCertificates.IsTestCertificate;
+			try {
+				using(FakeSmtpServer fakeSmtpServer=new FakeSmtpServer(USER,PASSWORD,isStartTlsOffered:true)) {
+					SendEmail.WireEmailUnsecure(MakeAddress(fakeSmtpServer.Port,true),basicEmailMessage,x509Certificate2);
+					Assert.IsNull(fakeSmtpServer.ServerError,fakeSmtpServer.ServerError?.ToString());
+					FakeSmtpServer.Received received=fakeSmtpServer.ListReceived.Single();
+					Assert.IsTrue(received.WasTls);
+					AssertSignedAndVerifies(received.Data,x509Certificate2);
+					MimeMessage mimeMessage;
+					using(MemoryStream memoryStream=new MemoryStream(received.Data)) {
+						mimeMessage=MimeMessage.Load(memoryStream);
+					}
+					SmtpTests.AssertForwardedEml(mimeMessage,pathEml);
+					MimePart mimePartAttachment=mimeMessage.Attachments.OfType<MimePart>().Single(x => x.FileName!="smime.p7s");
+					Assert.AreEqual(Path.GetFileName(pathPdf),mimePartAttachment.ContentId,"The pdf's own A to Z file name, not the .eml's.");
+				}
+			}
+			finally {
+				SendEmail.SmtpCertificateValidationForTests=null;
+				x509Certificate2.Reset();
+			}
+		}
+
 		[TestMethod]
 		public void SecureSocketOptions_AreAsBefore() {
 			Assert.AreEqual(MailKit.Security.SecureSocketOptions.SslOnConnect,SendEmail.GetSecureSocketOptions(MakeAddress(465,true)));

@@ -2,7 +2,8 @@
 // plain and with STARTTLS; MailKit with TLS from the first byte on port 465 (implicit SSL, which Windows' CDO sent before package S0-3 of the
 // .NET 10 plan). The sign-in, the envelope (Bcc only there), and the message MimeKit 4.18 reads back field for field and attachment byte for
 // byte; on port 465 also what CDO set: the inline image's Content-ID, each attachment's Content-ID and its Content-Disposition with the displayed
-// file name. Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
+// file name, for an attached saved e-mail (.eml, a MimeKit MessagePart) as for a file. Licensed under the GNU General Public License, version 2 or
+// later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -206,6 +207,77 @@ namespace LibraryUpdateTests {
 					AssertLikeCdo(mimeMessage,pathImage,pathAttachment,arrayAttachment);
 					Assert.IsTrue(fakeSmtpServer.GetCommands().Contains("(AUTH LOGIN "+USER+")") || fakeSmtpServer.GetCommands().Any(x => x.StartsWith("AUTH PLAIN")),
 						"Signed in with the trimmed user name: "+string.Join(" | ",fakeSmtpServer.GetCommands()));
+				}
+			}
+			finally {
+				SendEmail.SmtpCertificateValidationForTests=null;
+			}
+		}
+
+		///<summary>A saved e-mail (message/rfc822), as the inbox stores a forwarded-as-attachment message under its displayed name: MimeKit attaches
+		///it as a MessagePart, not a MimePart. Synthetic, CRLF line ends.</summary>
+		internal static void WriteForwardedEml(string path) {
+			string eml="From: Lab Desk <lab@example.test>\r\n"
+				+"To: front@example.test\r\n"
+				+"Subject: Lab results\r\n"
+				+"Date: Mon, 02 Nov 2026 09:30:00 +0000\r\n"
+				+"Message-ID: <lab-results-1@example.test>\r\n"
+				+"MIME-Version: 1.0\r\n"
+				+"Content-Type: text/plain; charset=us-ascii\r\n"
+				+"\r\n"
+				+"The crown for Pat Smith is ready.\r\n";
+			File.WriteAllText(path,eml,Encoding.ASCII);
+		}
+
+		///<summary>The attached e-mail as it arrived: message/rfc822 holding the saved message, the A to Z file name as Content-ID (as CDO set it) and
+		///"Content-Disposition: attachment" with the displayed file name, which is also the Content-Type name.</summary>
+		internal static void AssertForwardedEml(MimeMessage mimeMessage,string pathEml) {
+			MessagePart messagePart=mimeMessage.Attachments.OfType<MessagePart>().Single();
+			Assert.AreEqual("message/rfc822",messagePart.ContentType.MimeType);
+			Assert.AreEqual(Path.GetFileName(pathEml),messagePart.ContentId,"The A to Z file name, as CDO set it.");
+			Assert.IsTrue(string.Equals(ContentDisposition.Attachment,messagePart.ContentDisposition.Disposition,StringComparison.OrdinalIgnoreCase));
+			Assert.AreEqual("Lab results.eml",messagePart.ContentDisposition.FileName,"The displayed file name.");
+			Assert.AreEqual("Lab results.eml",messagePart.ContentType.Name);
+			Assert.AreEqual("Lab results",messagePart.Message.Subject);
+			Assert.AreEqual("lab@example.test",messagePart.Message.From.Mailboxes.Single().Address);
+			Assert.AreEqual("The crown for Pat Smith is ready.",messagePart.Message.TextBody.TrimEnd('\r','\n'));
+		}
+
+		///<summary>Port 465 with an attached .eml (a MessagePart) before a pdf: the message builds (no cast to MimePart) and goes out with TLS from the
+		///first byte; the .eml and the pdf each keep their own Content-ID, disposition and displayed file name, and the pdf its bytes.</summary>
+		[TestMethod]
+		public void ImplicitTls_SendsAnAttachedEmlMessage() {
+			byte[] arrayAttachment=GetAttachmentBytes();
+			string pathAttachment=Path.Combine(_folder,"8_after_eml.pdf");
+			File.WriteAllBytes(pathAttachment,arrayAttachment);
+			string pathEml=Path.Combine(_folder,"8_forward.eml");
+			WriteForwardedEml(pathEml);
+			BasicEmailMessage basicEmailMessage=MakeMessage(pathAttachment);
+			basicEmailMessage.ListAttachments.Insert(0,new BasicEmailAttachment(pathEml,"Lab results.eml"));
+			SendEmail.SmtpCertificateValidationForTests=TestCertificates.IsTestCertificate;
+			try {
+				using(FakeSmtpServer fakeSmtpServer=new FakeSmtpServer(USER,PASSWORD,isStartTlsOffered:false,isImplicitTls:true)) {
+					BasicEmailAddress basicEmailAddress=MakeAddress(fakeSmtpServer.Port,true);
+					SendEmail.SendSmtpMailKit(basicEmailAddress,SendEmail.CreateMimeMessageForSmtp(basicEmailAddress,basicEmailMessage),
+						MailKit.Security.SecureSocketOptions.SslOnConnect,SendEmail.EMAIL_SEND_TIMEOUT_MS);
+					Assert.IsNull(fakeSmtpServer.ServerError,fakeSmtpServer.ServerError?.ToString());
+					FakeSmtpServer.Received received=fakeSmtpServer.ListReceived.Single();
+					Assert.IsTrue(received.WasTls,"TLS from the first byte.");
+					MimeMessage mimeMessage;
+					using(MemoryStream memoryStream=new MemoryStream(received.Data)) {
+						mimeMessage=MimeMessage.Load(memoryStream);
+					}
+					Assert.AreEqual(2,mimeMessage.Attachments.Count());
+					AssertForwardedEml(mimeMessage,pathEml);
+					MimePart mimePartAttachment=mimeMessage.Attachments.OfType<MimePart>().Single();
+					Assert.AreEqual(Path.GetFileName(pathAttachment),mimePartAttachment.ContentId,"The pdf's own A to Z file name, not the .eml's.");
+					Assert.IsTrue(string.Equals(ContentDisposition.Attachment,mimePartAttachment.ContentDisposition.Disposition,StringComparison.OrdinalIgnoreCase));
+					Assert.AreEqual("Statement 2026.pdf",mimePartAttachment.ContentDisposition.FileName);
+					using(MemoryStream memoryStream=new MemoryStream()) {
+						mimePartAttachment.Content.DecodeTo(memoryStream);
+						CollectionAssert.AreEqual(arrayAttachment,memoryStream.ToArray());
+					}
+					Assert.AreEqual("Café statement",mimeMessage.Subject);
 				}
 			}
 			finally {
