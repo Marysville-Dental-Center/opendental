@@ -301,7 +301,8 @@ documentation is available; everything around it is in place:
 
 - **Accounts** (Setup, Program Links, Glidewell lab cases): the account number, the API key (stored encrypted, never shown again, changed only
   by a user with Manage High Security Program Properties) and the providers whose lab cases use the account by default. An API key that
-  Open Dental stored cannot be read and has to be entered again.
+  Open Dental stored cannot be read and has to be entered again. An API key longer than 127 characters is refused with a message, since it
+  would not fit in the database once encrypted; nothing is saved.
 - **Edit Lab Case window**: a Glidewell group with the account, the scanner, the lab case's products (material, shade, teeth, notes; saved with
   the lab case), Send to Glidewell, and for a sent case Check Status and Details (status, tracking number and carrier).
 - **What would be sent**, listed before sending: the patient's name, patient number, gender and birthdate, the provider's number and license

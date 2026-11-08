@@ -57,7 +57,7 @@ namespace OpenPmsDental {
 			// textApiKey
 			//
 			this.textApiKey.Location = new System.Drawing.Point(144, 40);
-			this.textApiKey.MaxLength = 200;
+			this.textApiKey.MaxLength = 255;
 			this.textApiKey.Name = "textApiKey";
 			this.textApiKey.Size = new System.Drawing.Size(200, 20);
 			this.textApiKey.TabIndex = 3;

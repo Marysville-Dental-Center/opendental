@@ -77,7 +77,7 @@ namespace P262GlidewellTests {
 				Assert.Inconclusive(SkipReason);
 			}
 			Connect();
-			foreach(string table in new[] { "glidewellacct","glidewellmsg","labcaseproduct","labcase","patient","provider","program","programproperty" }) {
+			foreach(string table in new[] { "glidewellacct","glidewellmsg","labcaseproduct","labcase","patient","provider","program","programproperty","securitylog","securityloghash" }) {
 				DataCore.NonQ("DELETE FROM "+table);
 			}
 			RefreshCaches();
@@ -141,7 +141,7 @@ namespace P262GlidewellTests {
 			GlidewellAcct glidewellAcct=new GlidewellAcct();
 			glidewellAcct.AccountNumber=accountNumber;
 			if(apiKey!=null) {
-				Assert.IsTrue(GlidewellAccts.SetApiKey(glidewellAcct,apiKey));
+				Assert.AreEqual(GlidewellApiKeyResult.Ok,GlidewellAccts.SetApiKey(glidewellAcct,apiKey));
 			}
 			GlidewellAccts.Insert(glidewellAcct);
 			return glidewellAcct;

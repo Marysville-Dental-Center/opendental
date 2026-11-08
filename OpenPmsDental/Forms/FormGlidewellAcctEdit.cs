@@ -92,30 +92,20 @@ namespace OpenPmsDental {
 				return;
 			}
 			string apiKeyEntered=textApiKey.Text.Trim();
-			bool isApiKeyChanged=false;
-			if(apiKeyEntered!="") {
-				if(!_canEditApiKey) {
-					MsgBox.Show(this,"You need the permission to manage high security program properties to change the API key.");
-					return;
-				}
-				if(!GlidewellAccts.SetApiKey(_glidewellAcct,apiKeyEntered)) {
-					MsgBox.Show(this,"The API key could not be encrypted, so nothing was saved.");
-					return;
-				}
-				isApiKeyChanged=true;
+			if(apiKeyEntered!="" && !_canEditApiKey) {
+				MsgBox.Show(this,"You need the permission to manage high security program properties to change the API key.");
+				return;
 			}
-			bool isNew=(_glidewellAcct.GlidewellAcctNum==0);
-			_glidewellAcct.AccountNumber=accountNumber;
-			if(isNew) {
-				GlidewellAccts.Insert(_glidewellAcct);
-				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Glidewell account "+accountNumber+" added.");
+			//The key box takes more than API_KEY_MAX_LENGTH characters on purpose: a text box cuts a pasted text at its MaxLength without a word, so a
+			//longer key has to reach SaveAccount and be refused here rather than be shortened and saved.
+			GlidewellApiKeyResult glidewellApiKeyResult=GlidewellAccts.SaveAccount(_glidewellAcct,accountNumber,apiKeyEntered);
+			if(glidewellApiKeyResult==GlidewellApiKeyResult.TooLong) {
+				MsgBox.Show(this,"The API key is too long to store (at most 127 characters).");
+				return;
 			}
-			else {
-				GlidewellAccts.Update(_glidewellAcct);
-			}
-			if(isApiKeyChanged) {
-				SecurityLogs.MakeLogEntry(EnumPermType.ManageHighSecurityProgProperties,0,"The API key of Glidewell account "+accountNumber+" was altered.",
-					_glidewellAcct.GlidewellAcctNum,DateTime.MinValue);
+			if(glidewellApiKeyResult!=GlidewellApiKeyResult.Ok) {
+				MsgBox.Show(this,"The API key could not be encrypted, so nothing was saved.");
+				return;
 			}
 			List<long> listProvNums=listProviders.GetListSelected<Provider>().Select(x => x.ProvNum).ToList();
 			GlidewellAccts.SetProvidersForAcct(_glidewellAcct.GlidewellAcctNum,listProvNums);

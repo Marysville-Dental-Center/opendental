@@ -53,6 +53,16 @@ Public sources only, as the owner decided. No Open Dental program was installed,
   lab case was sent with the account.
 - The API key is stored with this program's own format (`osd1$`, `SecretValue`); a key stored by another program (Open Dental's ciphertext, or
   plain text) is never used and reads as "Enter again" (`LegacyPolicy.RejectPlaintext`).
+- **Key length** (fix of `p262/glidewell-2`): `glidewellacct.ApiKey` is `varchar(255)` in the 26.2 documents, and the stored value is `osd1$`
+  plus base64 of IV (16 bytes), ciphertext (whole 16-byte blocks) and HMAC (32 bytes): 241 characters for a 127-byte key, 261 for a 128-byte
+  key. The program runs MySQL with a blank `sql_mode`, so the database would cut a longer value short without an error, and the shortened value
+  would never decrypt ("Enter again" for good, and a security log entry for a change that did not happen). `GlidewellAccts.SetApiKey` now
+  refuses a stored value longer than 255 characters (`GlidewellApiKeyResult.TooLong`, nothing changed), and `GlidewellAccts.SaveAccount`
+  (the account window's save: key, row and security log entries) saves and logs nothing then. The window says "The API key is too long to
+  store (at most 127 characters)." The limit is 127 UTF-8 bytes, so a key of non-ASCII characters is refused earlier; Glidewell's keys are
+  not published ("need example") and are expected to be ASCII. The key box takes 255 characters, not 127, on purpose: a text box cuts a
+  pasted text at its MaxLength without a word, so a box of 127 would save a longer pasted key shortened; with 255 the longer key reaches the
+  check and is refused with the message.
 - Data classes: `GlidewellAccts`, `GlidewellMsgs`, `LabCaseProducts` (Middle Tier safe).
 
 ### Edit Lab Case window
@@ -88,13 +98,15 @@ is read or written.
 
 ### Tests
 
-`tests/P262GlidewellTests` (new; in `OpenDental.sln` and `OpenDental.Local.slnf`), 40 tests: the request's documented fields in order and
+`tests/P262GlidewellTests` (new; in `OpenDental.sln` and `OpenDental.Local.slnf`), 42 tests: the request's documented fields in order and
 the INFERRED formats, escaping, the notes with products, reading answers (case-insensitive names, lists, not-JSON), the status names, the
 blocked client; on a `test_p262glidewell_` scratch database at the 26.2.0 reference schema (dropped afterwards): the program row, encrypted
-keys and keys of other programs, provider defaults, account delete, product sync (including a key of another lab case's product and a stored
+keys and keys of other programs, the key length (127 characters saved and read back, 128 refused with nothing saved or logged), provider
+defaults, account delete, product sync (including a key of another lab case's product and a stored
 product list value), lab case delete, the merge list, and sending and status checks with `FakeGlidewellClient` (success, the one-send rule,
 failures and exceptions write nothing, the blocked client, off until the office's credentials are entered, required names, the account the
-case was sent with, unknown or missing status, lost key or account); source checks of the wiring, the vendor-direct rule and neutrality.
+case was sent with, unknown or missing status, lost key or account); source checks of the wiring, the vendor-direct rule, neutrality and the
+too-long key message.
 
 ## INFERRED behaviours
 
@@ -124,6 +136,8 @@ The sources give the tables, the field names and the eight statuses. Everything 
 13. No audit trail entry for sending or checking status (the documents name no permission); account changes are logged under Setup and key
     changes under Manage High Security Program Properties.
 14. The confirmation before sending lists every item sent, and the setup window says the same.
+15. The API key limit of 127 UTF-8 bytes follows from the documented column width and this program's storage format, not from Glidewell:
+    Glidewell's key format is not published. A longer key is refused, never shortened.
 
 ## Blocked: what is needed
 
@@ -180,3 +194,5 @@ changes.
 7. Products are added to the request's Notes, since the request has no product field. Keep, or send only the instructions?
 8. The Glidewell lab cases program link shows in Program Links although this version cannot send: keep (products and stored statuses are
    usable), or hide it until a transport exists?
+9. If Glidewell's API keys turn out to be longer than 127 characters, widen `glidewellacct.ApiKey` (a fork schema change against Open Dental's
+   documented `varchar(255)`, which an Open Dental database would not have) or store the key elsewhere?

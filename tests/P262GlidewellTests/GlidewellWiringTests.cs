@@ -135,8 +135,22 @@ namespace P262GlidewellTests {
 		public void ApiKey_NeedsHighSecurityPermission() {
 			string source=Read(@"OpenPmsDental\Forms\FormGlidewellAcctEdit.cs");
 			StringAssert.Contains(source,"Security.IsAuthorized(EnumPermType.ManageHighSecurityProgProperties,true)");
-			StringAssert.Contains(source,"GlidewellAccts.SetApiKey(");
+			StringAssert.Contains(source,"GlidewellAccts.SaveAccount(");
 			StringAssert.Contains(Read(@"OpenPmsDental\Forms\FormGlidewellAcctEdit.Designer.cs"),"this.textApiKey.UseSystemPasswordChar = true;");
+		}
+
+		///<summary>A key too long to store is refused with a message. The key box takes more than 127 characters, so a longer pasted key is not cut
+		///at the box's MaxLength and saved shortened, but reaches the check.</summary>
+		[TestMethod]
+		public void ApiKey_TooLongIsRefusedWithAMessage() {
+			string source=Read(@"OpenPmsDental\Forms\FormGlidewellAcctEdit.cs");
+			StringAssert.Contains(source,"GlidewellApiKeyResult.TooLong");
+			StringAssert.Contains(source,"\"The API key is too long to store (at most "+GlidewellAccts.API_KEY_MAX_LENGTH+" characters).\"");
+			Match match=Regex.Match(Read(@"OpenPmsDental\Forms\FormGlidewellAcctEdit.Designer.cs"),@"this\.textApiKey\.MaxLength = (\d+);");
+			Assert.IsTrue(match.Success);
+			int maxLength=int.Parse(match.Groups[1].Value);
+			Assert.IsTrue(maxLength>GlidewellAccts.API_KEY_MAX_LENGTH,maxLength.ToString());
+			Assert.IsTrue(maxLength<=GlidewellAccts.API_KEY_STORED_MAX_LENGTH,maxLength.ToString());
 		}
 	}
 }

@@ -65,6 +65,59 @@ namespace P262GlidewellTests {
 			Assert.AreEqual("Entered",GlidewellAccts.GetApiKeyStatusText(glidewellAcctLoaded));
 		}
 
+		///<summary>glidewellacct.ApiKey is varchar(255) and the database cuts a longer value short without an error (blank sql_mode). A 127-byte key
+		///gives a 241-character stored value, a 128-byte key 261 characters: the 128-character key is refused with nothing changed, saved or
+		///logged.</summary>
+		[TestMethod]
+		public void Account_ApiKeyLength_127Fits_128IsRefusedWithNothingWritten() {
+			string apiKey127="synthetic-"+new string('k',117);
+			string apiKey128=apiKey127+"x";
+			Assert.AreEqual(127,apiKey127.Length);
+			Assert.AreEqual(127,GlidewellAccts.API_KEY_MAX_LENGTH);
+			//127 characters: saved, stored whole, read back.
+			GlidewellAcct glidewellAcct=new GlidewellAcct();
+			Assert.AreEqual(GlidewellApiKeyResult.Ok,GlidewellAccts.SaveAccount(glidewellAcct,"10-3000001",apiKey127));
+			Assert.AreNotEqual(0L,glidewellAcct.GlidewellAcctNum);
+			string stored=DataCore.GetScalar("SELECT ApiKey FROM glidewellacct WHERE GlidewellAcctNum="+glidewellAcct.GlidewellAcctNum);
+			Assert.AreEqual(241,stored.Length);
+			Assert.AreEqual(glidewellAcct.ApiKey,stored,"Stored whole.");
+			GlidewellAcct glidewellAcctLoaded=GlidewellAccts.GetOne(glidewellAcct.GlidewellAcctNum);
+			Assert.AreEqual(apiKey127,GlidewellAccts.ReadApiKey(glidewellAcctLoaded).PlainText);
+			Assert.IsTrue(GlidewellAccts.IsComplete(glidewellAcctLoaded));
+			Assert.AreEqual("Entered",GlidewellAccts.GetApiKeyStatusText(glidewellAcctLoaded));
+			Assert.AreEqual(1,GlidewellDb.CountRows("securitylog","PermType="+(int)EnumPermType.Setup));
+			Assert.AreEqual(1,GlidewellDb.CountRows("securitylog","PermType="+(int)EnumPermType.ManageHighSecurityProgProperties
+				+" AND FKey="+glidewellAcct.GlidewellAcctNum));
+			long countLogs=GlidewellDb.CountRows("securitylog");
+			//128 characters on the saved account: refused; the account, its row and the security log are unchanged.
+			GlidewellAcct glidewellAcctEdit=glidewellAcctLoaded.Copy();
+			Assert.AreEqual(GlidewellApiKeyResult.TooLong,GlidewellAccts.SaveAccount(glidewellAcctEdit,"10-3000009",apiKey128));
+			Assert.AreEqual(stored,glidewellAcctEdit.ApiKey,"The account in memory keeps its key.");
+			Assert.AreEqual("10-3000001",glidewellAcctEdit.AccountNumber,"Nothing about the account changes.");
+			Assert.AreEqual(stored,DataCore.GetScalar("SELECT ApiKey FROM glidewellacct WHERE GlidewellAcctNum="+glidewellAcct.GlidewellAcctNum));
+			Assert.AreEqual("10-3000001",DataCore.GetScalar("SELECT AccountNumber FROM glidewellacct WHERE GlidewellAcctNum="+glidewellAcct.GlidewellAcctNum));
+			Assert.AreEqual(countLogs,GlidewellDb.CountRows("securitylog"),"No security log entry says the key was altered.");
+			//128 characters on a new account: refused, no row.
+			GlidewellAcct glidewellAcctNew=new GlidewellAcct();
+			Assert.AreEqual(GlidewellApiKeyResult.TooLong,GlidewellAccts.SaveAccount(glidewellAcctNew,"10-3000002",apiKey128));
+			Assert.AreEqual(0L,glidewellAcctNew.GlidewellAcctNum);
+			Assert.AreEqual("",glidewellAcctNew.ApiKey);
+			Assert.AreEqual(1,GlidewellDb.CountRows("glidewellacct"));
+			Assert.AreEqual(countLogs,GlidewellDb.CountRows("securitylog"));
+			//SetApiKey alone: the limit is the stored length, so 127 characters of two UTF-8 bytes each are too long; spaces around a key are trimmed.
+			GlidewellAcct glidewellAcctMemory=new GlidewellAcct { ApiKey="unchanged" };
+			Assert.AreEqual(GlidewellApiKeyResult.TooLong,GlidewellAccts.SetApiKey(glidewellAcctMemory,apiKey128));
+			Assert.AreEqual(GlidewellApiKeyResult.TooLong,GlidewellAccts.SetApiKey(glidewellAcctMemory,new string('é',127)));
+			Assert.AreEqual("unchanged",glidewellAcctMemory.ApiKey);
+			Assert.AreEqual(GlidewellApiKeyResult.Ok,GlidewellAccts.SetApiKey(glidewellAcctMemory,"  "+apiKey127+"  "));
+			Assert.AreEqual(stored,glidewellAcctMemory.ApiKey);
+			//A blank key keeps the stored one and logs no key change.
+			Assert.AreEqual(GlidewellApiKeyResult.Ok,GlidewellAccts.SaveAccount(glidewellAcctEdit,"10-3000003",""));
+			Assert.AreEqual(stored,DataCore.GetScalar("SELECT ApiKey FROM glidewellacct WHERE GlidewellAcctNum="+glidewellAcct.GlidewellAcctNum));
+			Assert.AreEqual("10-3000003",DataCore.GetScalar("SELECT AccountNumber FROM glidewellacct WHERE GlidewellAcctNum="+glidewellAcct.GlidewellAcctNum));
+			Assert.AreEqual(countLogs,GlidewellDb.CountRows("securitylog"));
+		}
+
 		[TestMethod]
 		public void Account_KeysOfOtherProgramsAreNeverUsed() {
 			foreach(string stored in new[] { "odv2e$c3ludGhldGlj","c3ludGhldGljLWNpcGhlcnRleHQ=","plain-text-key" }) {

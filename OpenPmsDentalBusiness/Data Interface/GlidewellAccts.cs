@@ -122,19 +122,62 @@ namespace OpenPmsDentalBusiness {
 				+"AND GlidewellAcctNum!="+POut.Long(glidewellAcctNum);
 			Db.NonQ(command);
 		}
+
+		///<summary>Saves the account from its setup window. A key that is not blank is encrypted into the account (blank keeps the stored key); then
+		///the account number is set, the row inserted or updated, and the security log written: Setup when the account is added,
+		///ManageHighSecurityProgProperties when a key was entered. When the key is refused (too long to store, or encryption failed) nothing is changed,
+		///saved or logged, and the result says why. The caller checks the permission to change the key, the account number and its uniqueness, then
+		///sets the providers and signals InvalidType.Providers.</summary>
+		public static GlidewellApiKeyResult SaveAccount(GlidewellAcct glidewellAcct,string accountNumber,string apiKeyEntered) {
+			Meth.NoCheckMiddleTierRole();
+			string apiKey=(apiKeyEntered??"").Trim();
+			bool isApiKeyChanged=false;
+			if(apiKey!="") {
+				GlidewellApiKeyResult glidewellApiKeyResult=SetApiKey(glidewellAcct,apiKey);
+				if(glidewellApiKeyResult!=GlidewellApiKeyResult.Ok) {
+					return glidewellApiKeyResult;
+				}
+				isApiKeyChanged=true;
+			}
+			glidewellAcct.AccountNumber=accountNumber;
+			if(glidewellAcct.GlidewellAcctNum==0) {
+				Insert(glidewellAcct);
+				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Glidewell account "+accountNumber+" added.");
+			}
+			else {
+				Update(glidewellAcct);
+			}
+			if(isApiKeyChanged) {
+				SecurityLogs.MakeLogEntry(EnumPermType.ManageHighSecurityProgProperties,0,"The API key of Glidewell account "+accountNumber+" was altered.",
+					glidewellAcct.GlidewellAcctNum,DateTime.MinValue);
+			}
+			return GlidewellApiKeyResult.Ok;
+		}
 		#endregion Modification Methods
 
 		#region API key
-		///<summary>Encrypts the key into glidewellAcct.ApiKey (not saved; the caller saves the account). Blank clears it. Returns false, changing nothing,
-		///if encryption failed: the caller must refuse to save.</summary>
-		public static bool SetApiKey(GlidewellAcct glidewellAcct,string apiKeyPlainText) {
+		///<summary>The width of glidewellacct.ApiKey, varchar(255) in Open Dental's 26.2 database documents. The program runs MySQL with a blank
+		///sql_mode, so the database would cut a longer value short without an error; SetApiKey refuses it instead.</summary>
+		public const int API_KEY_STORED_MAX_LENGTH=255;
+		///<summary>The longest key whose stored value fits, in UTF-8 bytes (characters, for a key of ASCII characters). The stored value is "osd1$"
+		///and base64 of IV (16) + AES-CBC ciphertext (whole 16-byte blocks, always one more than the key fills) + HMAC (32): 241 characters for a
+		///127-byte key, 261 for a 128-byte key.</summary>
+		public const int API_KEY_MAX_LENGTH=127;
+
+		///<summary>Encrypts the key into glidewellAcct.ApiKey (not saved; the caller saves the account). Blank clears it. Anything but Ok changes
+		///nothing and the caller must refuse to save: TooLong when the stored value would be longer than glidewellacct.ApiKey holds (a key longer than
+		///API_KEY_MAX_LENGTH bytes), EncryptionFailed when encryption failed.</summary>
+		public static GlidewellApiKeyResult SetApiKey(GlidewellAcct glidewellAcct,string apiKeyPlainText) {
 			Meth.NoCheckMiddleTierRole();
 			string stored;
 			if(!SecretValue.Protect((apiKeyPlainText??"").Trim(),out stored)) {
-				return false;
+				return GlidewellApiKeyResult.EncryptionFailed;
+			}
+			if(stored.Length>API_KEY_STORED_MAX_LENGTH) {
+				return GlidewellApiKeyResult.TooLong;
 			}
 			glidewellAcct.ApiKey=stored;
-			return true;
+			return GlidewellApiKeyResult.Ok;
 		}
 
 		///<summary>Reads the stored key. A value without this program's prefix (Open Dental's ciphertext, or plain text) is never used: it reads as
@@ -166,5 +209,17 @@ namespace OpenPmsDentalBusiness {
 			return Lans.g("GlidewellAccts","Enter again");
 		}
 		#endregion API key
+	}
+
+	///<summary>The outcome of GlidewellAccts.SetApiKey and GlidewellAccts.SaveAccount. Anything but Ok changed nothing. This program's own type, not
+	///stored.</summary>
+	public enum GlidewellApiKeyResult {
+		///<summary>The key was encrypted into the account (and, for SaveAccount, the account was saved).</summary>
+		Ok,
+		///<summary>The encrypted key would be longer than glidewellacct.ApiKey holds: the key is longer than GlidewellAccts.API_KEY_MAX_LENGTH
+		///bytes.</summary>
+		TooLong,
+		///<summary>Encryption failed.</summary>
+		EncryptionFailed,
 	}
 }
