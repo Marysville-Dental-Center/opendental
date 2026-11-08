@@ -118,6 +118,8 @@ No public source states any of these; they are this program's choices.
 
 ## Questions for the owner
 
+**Decided as built (owner, 2026-11-07):** every question below is settled as the package built it ("all as recommended").
+
 1. Commlog Referral Types: ship a few default types (for example Phone Call, Letter, Email, Visit) in a migration step, or leave the
    category empty for each office to fill (chosen)?
 2. Vital signs: are the ranges right (height 10 to 108 in, weight 1 to 1500 lb, systolic 50 to 300, diastolic 20 to 200, pulse 20 to 300)?

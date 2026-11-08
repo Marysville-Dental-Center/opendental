@@ -120,4 +120,8 @@ marked **INFERRED** and listed as owner questions below, to confirm by testing t
 
 ## Owner questions (to confirm by testing in Open Dental)
 
+**Decided as built (owner, 2026-11-07):** every ODOPTS question is settled as built ("all as recommended"). For `StatementAutoSendEmail`
+and `StatementAutoSendSMS` (Message-to-Pay in Open Dental) the safeguard stays as built: a stored Always acts as Ask until Statement Send
+Setup is saved in this program.
+
 These are in [../owner-questions.md](../owner-questions.md), section "Open Dental 25.3 options built (ODOPTS, 2026-11-07)".

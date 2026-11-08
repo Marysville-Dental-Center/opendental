@@ -177,6 +177,8 @@ dropped after the run; synthetic rows only.
 
 ## Questions for the owner
 
+**Decided as built (owner, 2026-11-07):** every question below is settled as the package built it ("all as recommended").
+
 1. Item 23: may Fix give a $0 payment with a payment type and balanced splits no payment type (chosen, logged), or should the check only
    report it? Should groups 2 and 3 get an automatic fix (for example an income transfer whose splits total $0 but whose amount is not $0
    could get the amount $0), or stay manual (chosen)?

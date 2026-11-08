@@ -113,6 +113,8 @@ reading.
 
 ## Questions for the owner
 
+**Decided as built (owner, 2026-11-07):** every question below is settled as the package built it ("all as recommended").
+
 1. Item 14: should a flag button with teeth selected also remove the flag when every site has it (built), or only ever add?
 2. Item 14: should the selected teeth's flags skip the skipped teeth (built), or flag every selected tooth?
 3. Item 16: a user who had Show current exam only checked now sees Show previous exams unchecked, which also hides the grayed values of

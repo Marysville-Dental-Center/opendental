@@ -108,7 +108,7 @@ Done the way B-SHELL retired the DXC Patient Credit Score link (25.2):
   `db/init/new-database.sql`, the init SQL still holds the button and the step deletes it on the first start of a new database.
 - Adoption tools (the step runs on an adopted Open Dental 25.3.48 copy, as the DXC step does):
   - `tools/AdoptionValidation/TrojanExpressCollectPlan.cs`: the step's plan on the rows `DxcCreditScorePlan` reads; migration-preview prints
-    it (after the inventory lines, before the plug-in line).
+    it (after the inventory lines and, since the integration, after SWMAP's two settings lines, before the plug-in line).
   - `AdoptionRowCheck`: `program` and `toolbutitem` are held to the DXC and the Trojan Express Collect plans together (the planned rows of
     either may change, `Enabled` only, to 0; the planned buttons of either are deleted; nothing else). The DXC messages keep their wording;
     a Trojan Express Collect part follows when its plan lists rows. `Result.ListProgramNumsDisabledTrojan` and
@@ -170,6 +170,10 @@ Not ported (owner decision): the Ez3D-i link, its dispatch and its exit scrub ar
 7. **Suni**: the four columns and the old Images module stay; only the comments change.
 
 ## Owner questions
+
+**Answered on 2026-11-07** (owner, "all as recommended"): the file layout of Allied Star Connect and the arguments of OrthoComposite are
+not public. If the office uses either program, the office asks that vendor (questions 2 and 3); until then both links stay switched off
+(they are inserted with `Enabled=0` and nothing turns them on). Questions 1 and 4: decided as built (owner, 2026-11-07). No code change.
 
 1. **ProgName values.** If an Open Dental 26.2 database is ever adopted, its rows for these links may use other names; ours would then be
    added beside them. Rename the members if Open Dental's names become known.

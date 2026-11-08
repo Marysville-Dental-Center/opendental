@@ -102,13 +102,18 @@ Each point is this program's own choice; the public sources state none of them.
   dynamic payment plan link without an override, that insurance payment plans are left out and closed plans are not, and the rounding to
   cents. The print column's width.
 
-## Observation (26.1 behaviour, not changed)
+## The adjustment subquery (26.1 behaviour, fixed on 2026-11-07)
 
-- The report's adjustment subquery joins `paysplit` on `AdjNum` before it sums `adjustment.AdjAmt`, so an adjustment with two or more
-  payment splits attached counts its amount once per split. The rows of the date range keep this 26.1 behaviour for parity; the prior rows
-  use the same subquery (owner question 5).
+- The 26.1 report's adjustment subquery joined `paysplit` on `AdjNum` before it summed `adjustment.AdjAmt`, so an adjustment with two or
+  more payment splits attached counted its amount once per split. **Fixed** (owner answer of 2026-11-07 to question 5, integration
+  `next/int262-1`): the splits attached to an adjustment are summed per adjustment first (`adjsplit`), so each adjustment counts once, less
+  its splits. The rows of the date range and the prior rows share the subquery, so both are right; the totals of such rows change from 26.1.
+  Test: `PatPortionUncollectedDbTests.Adjustment_WithSeveralPaymentSplits_CountsOnce`.
 
 ## Owner questions
+
+**Answered on 2026-11-07** (owner, "all as recommended"): question 5, fix the adjustment subquery (done, above). Questions 1 to 4: decided
+as built (owner, 2026-11-07).
 
 1. Report Setup: is one list with category rows, the internal name as a column and the count of allowed reports the redesign wanted? Should
    the list also have a search box, or a way to allow or deny a whole category at once?
@@ -147,6 +152,7 @@ pass unchanged: `GetInternalName` stays in the control.
   `ReleaseFlowTests` and `InitSqlTests` were not run (the integration runs them; this package adds no step).
 - Scratch databases `test_p262reports_*` (and the `rpttest_`/`forkmig_` ones of `ReportTests`) are dropped after the runs.
 - No window was opened: the layouts were checked from their source only (no screen in this run). The new layouts need a look in the program.
+- Integration `next/int262-1` (the adjustment fix): `P262ReportsTests` 23/23.
 
 ## Files touched
 

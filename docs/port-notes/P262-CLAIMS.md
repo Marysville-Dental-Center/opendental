@@ -57,10 +57,12 @@ Public sources only, as the owner decided. No Open Dental program was installed,
 
 ### Item 20: the default claim form at the provider level
 
-- `ClaimFormDefaults` (new, `OpenPmsDentalBusiness/Data Interface/ClaimFormDefaults.cs`): `GetClaimFormNumForNewClaim(provNumTreat,
-  claimFormNumPlan)` returns the treating provider's `ClaimFormNum` when it is set and the claim form exists, otherwise the plan's;
-  `Pick` is the rule; `GetProviderAbbrsUsing(claimFormNum)` lists the providers whose default it is.
-- Every place that creates a claim or a preauthorization sets `claim.ClaimForm` through it once the treating provider is known:
+- `ClaimFormDefaults` (new, `OpenPmsDentalBusiness/Data Interface/ClaimFormDefaults.cs`): `GetClaimFormNumForNewClaim(provNumBill,
+  provNumTreat,claimFormNumPlan)` returns the billing provider's `ClaimFormNum` when it is set and the claim form exists, else the treating
+  provider's on the same terms, otherwise the plan's (owner decision of 2026-11-07, integration `next/int262-1`; the branch used the
+  treating provider only); `Pick` is the rule; `GetProviderAbbrsUsing(claimFormNum)` lists the providers whose default it is.
+- Every place that creates a claim or a preauthorization sets `claim.ClaimForm` through it once the billing and treating providers are known
+  (each sets `claim.ProvBill` just before):
   `AccountModules.CreateClaim` (Create Claim in the Account Module, batch and secondary claims), `Claims.CreateClaimForRepeatCharge`,
   `Claims.CreateClaimForOrthoProc`, `PreAuthL` and the treatment plan preauthorization (`ControlTreat`). Printing already uses
   `claim.ClaimForm` first, so the provider's form is printed.
@@ -100,12 +102,13 @@ The sources give the four one-line release notes and the document texts quoted a
 1. **Item 10, the whole layout.** The release note says only that Status History and the Misc settings moved within the window; where they
    went is in the 26.2 manual, which is not public. Moving the two tabs to right after General is a guess at the intent (bring claim tracking
    and the resend fields forward), not a copy of Open Dental's window. It is the part of this package least likely to match Open Dental.
-2. **Item 20, which provider.** The document says "the default claim form created for the provider"; this program uses the claim's
-   treating provider (the provider of the procedures, as `claim.ProvTreat` is set at creation), the provider whose other claim settings
-   (the e-claim billing provider override) are read the same way. The billing provider is the other candidate.
+2. **Item 20, which provider.** The document says "the default claim form created for the provider". **Owner decision of 2026-11-07**
+   (question 2): the claim's billing provider's default claim form first (`claim.ProvBill` as set at creation, with the provider's billing
+   override where the creating code applies it), then the treating provider's (`claim.ProvTreat`), then the plan's. The branch had used the
+   treating provider only.
 3. **Item 20, when.** At creation only, for claims and preauthorizations: the provider's form is written into `claim.ClaimForm`, so it shows in
    Edit Claim and can be changed there; changing the claim's provider later does not change its form; existing claims are not changed. A
-   provider whose form was deleted falls back to the plan's (deleting it is refused now anyway). "Takes priority over pref.DefaultClaimForm and
+   provider whose form was deleted is passed over (the next provider's, else the plan's) (deleting it is refused now anyway). "Takes priority over pref.DefaultClaimForm and
    insplan.ClaimFormNum" is read as: over the plan's form, which itself starts as the practice default.
 4. **Item 20, deleting a claim form** a provider uses is refused (Open Dental's documents say nothing about it).
 5. **Item 21, the fields.** "Mismatched fields" is read as every user-visible `insplan` column (the key and the security columns are left
@@ -157,7 +160,8 @@ The sources give the four one-line release notes and the document texts quoted a
 - `BSHELLTests` 67 of 68: its source checks of `ControlTreat.cs` pass; `DxcCreditScoreRemovedTests.Step_HasItsDatedLevel_AndPassesValidation`
   fails on the schema foundation already, not because of this package (it adds no step): it requires every fork step outside the
   `FeatureSteps` namespace to come before the DXC step (2026110101), and P262-SCHEMA's `OdParity26_2Schema` (2026110701, namespace
-  `ForkMigrations`) comes after it. Left for the schema package or the integration.
+  `ForkMigrations`) comes after it. Left for the schema package or the integration. **Done on `next/int262-1`:** the check leaves out the
+  26.2 schema step, which touches no program or toolbutitem row.
 - Scratch database `test_p262claims_*`, dropped after the run. `ForkMigrationTests` was not run (no fork step here; its
   `InitSqlRegenerationTests` fails on every 26.2 branch until the integration regenerates `db/init/new-database.sql`).
 
@@ -167,7 +171,14 @@ The sources give the four one-line release notes and the document texts quoted a
   `BCLAIMTests` 55/55, `InsuranceTests` 49/49, `M2CLAIMFORMTests` 16/16, `M2CARRIERTests` 55/55 (Carrier Combine), `M2INSVTests` 17/17
   (Carrier Combine), `M2MISCTests` 78/78 (automation windows). Scratch database dropped after the run.
 
+- Integration `next/int262-1` (the billing provider first): full build 0 errors; `P262ClaimsTests` 42/42 (one new: a repeat charge claim
+  with a billing provider's form), `BSHELLTests` with the 26.2 schema step left out of the order check.
+
 ## Questions for the owner
+
+**Answered on 2026-11-07** (owner, "all as recommended"): question 2, the billing provider's default claim form first, then the treating
+provider's, then the existing default (built on `next/int262-1`, above). Every other question (1 and 3 to 6): decided as built (owner,
+2026-11-07).
 
 1. Item 10: the Edit Claim layout is a guess (Status History and Misc moved to right after General). Can a 26.2 manual page or screenshot of
    the Edit Claim window be supplied, so the layout can be matched, or is this order acceptable?

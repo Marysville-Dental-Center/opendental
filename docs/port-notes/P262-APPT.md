@@ -111,6 +111,8 @@ The sources name the four changes in one line each. Everything below is this pac
 
 ## Questions for the owner
 
+**Decided as built (owner, 2026-11-07):** every question below is settled as the package built it ("all as recommended").
+
 1. Item 6: one row per selected blockout type per date (built), or one row per blockout on the schedule (every block of a selected type, in
    each operatory)?
 2. Item 7: recompute only for patients with a scheduled appointment from today on (built), or for every patient the plan covers (slower on

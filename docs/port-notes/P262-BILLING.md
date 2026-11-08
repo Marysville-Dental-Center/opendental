@@ -141,6 +141,8 @@ Each point is this program's own choice; the public sources state none of them.
 
 ## Owner questions
 
+**Decided as built (owner, 2026-11-07):** every question below is settled as the package built it ("all as recommended").
+
 1. Items 8 and 9 are read as two windows: a new Statement Options window behind the Statement button's arrow, and a new layout of the
    existing Statement window. Is that the intended reading, or should the choices live in the Statement window itself? Should the
    Statement button's click keep printing at once?

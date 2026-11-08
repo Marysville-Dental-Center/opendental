@@ -543,6 +543,9 @@ All eight are built and read under Open Dental's own setting names, so the offic
 please confirm each by trying the setting in the office's Open Dental 25.3 (on a copy, or on a test patient) before the switch-over, and say
 where Open Dental behaves differently.
 
+**Decided as built (owner, 2026-11-07, "all as recommended"):** every ODOPTS question below is settled as built. ODOPTS 6 and 7
+(Message-to-Pay): the safeguard stays as built, a stored "always" acts as "ask" until Statement Send Setup is saved in this program.
+
 - (ODOPTS 1) `PerioRedAttGing`: an auto Att Ging value **at or below** the number is red, like MGJ. A blank or missing row means no threshold
   (never red). **Confirm:** the direction, and what Open Dental shows on a new database (its default). **Today:** as described.
 - (ODOPTS 2) `DomainLoginForSigBoxes`: on means the Change User of signature boxes (procedure notes, group notes, sheets, treatment plan
@@ -579,6 +582,31 @@ where Open Dental behaves differently.
   is sent: Open Dental's hosted texting was removed and this program has no texting provider. The Billing List says the statements were not
   texted, and the setup window says texting needs a provider. **Decide:** whether to choose a texting provider (the hook is
   `StatementAutoSend.TextSender`). **Today:** nothing is texted.
+
+---
+
+## Open Dental 26.2 port (P262, answered on 2026-11-07)
+
+The questions of the 26.2 packages (port notes `P262-SCHEMA`, `P262-APPT`, `P262-BILLING`, `P262-CLAIMS`, `P262-PERIO`, `P262-TOOLS`,
+`P262-REPORTS`, `P262-MISC`, `P262-LINKS` and `P262-GLIDEWELL`), with SWMAP's and ODOPTS's. Your answer of 2026-11-07: "all as
+recommended". Built on the integration branch `next/int262-1`.
+
+- (P262-GLIDEWELL 1, 2 and 8) **Glidewell lab cases.** The office itself asks Glidewell for API access (its account number and API key, and a
+  test account); revisit if Glidewell deals only with software vendors. Sending patient data to Glidewell stays **blocked until a business
+  associate (data) agreement with Glidewell is recorded** in the Glidewell setup, the same rule as the postcard service; status checks wait
+  for it too. The Glidewell lab cases program link is **hidden in Program Links until a transport exists** (this version has none). See
+  [port-notes/P262-GLIDEWELL.md](port-notes/P262-GLIDEWELL.md), "Owner decisions".
+- (P262-LINKS 2 and 3) **Allied Star Connect and OrthoComposite.** Their file layouts and arguments are not public. If the office uses either
+  program, the office asks that vendor; otherwise both links stay switched off. No code change.
+- (P262-REPORTS 5) **Patient Portion Uncollected.** The adjustment subquery inherited from 26.1 counted an adjustment once per payment split
+  attached to it. **Fixed:** each adjustment counts once, less its splits; the totals of such rows change from 26.1. Tested.
+- (P262-CLAIMS 2) **Default claim form per provider.** A new claim takes the **billing** provider's default claim form first, then the
+  treating provider's, then the existing default (the plan's). Tested.
+- (ODOPTS 6 and 7) **Message-to-Pay** (`StatementAutoSendEmail`, `StatementAutoSendSMS`): the safeguard stays as built; "always" acts as
+  "ask" until Statement Send Setup is saved in this program.
+- (P262-SCHEMA 2) **Paint type TextBelow** (`ToothPaintingType` 18): hidden from the procedure code paint type lists until the tooth chart
+  work draws it; a procedure code that already has it keeps it. Tested.
+- **Every other 26.2, SWMAP and ODOPTS question: decided as built** (owner, 2026-11-07). Each port note says so with a dated line.
 
 ---
 

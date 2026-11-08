@@ -9,6 +9,10 @@ isolated client interface with a fake for the tests. **The transport is blocked:
 programs (no address, sign-in scheme, call paths or field formats), so this version's client sends nothing and says why. What is still needed
 is listed under "Blocked: what is needed".
 
+**Owner decisions of 2026-11-07** (integration `next/int262-1`; "Owner decisions" below): the office itself asks Glidewell for API access;
+no patient data goes to Glidewell until Setup records a signed business associate agreement with Glidewell (the postcard service's rule);
+the program link is hidden in Program Links until a transport exists. Every other question: decided as built.
+
 ## Sources
 
 Public sources only, as the owner decided. No Open Dental program was installed, observed or decompiled; no office data was used.
@@ -44,9 +48,12 @@ Public sources only, as the owner decided. No Open Dental program was installed,
 - `ProgramName.Glidewell` (appended after `MeetInTheCloud`; `program.ProgName` stores the name, so its number does not matter at runtime;
   see "For the integrator" for the agreed append order). The row "Glidewell lab cases" is inserted at
   runtime with `Enabled=0` (`GlidewellProgram.EnsureProgram`, through `Programs.InsertIfMissing`), like every vendor-direct program link, the
-  first time Setup, Program Links opens. **No migration step:** levels 2026110791 to 2026110799 stay unused.
+  first time Setup, Program Links opens, with the business associate agreement's two property rows. **No migration step:** levels 2026110791 to 2026110799 stay unused.
 - **Setup, Program Links, Glidewell lab cases** (`FormGlidewellSetup`, registered by `GlidewellProgramLinkSetup`): Enabled, the office's
-  accounts (account number, API key status, default for which providers), and the reason this version cannot send. Turning it on needs at
+  accounts (account number, API key status, default for which providers), the business associate agreement box (since 2026-11-07), and the
+  reason this version cannot send. **Hidden** in Program Links while this build has no transport (`GlidewellProgram.IsShownInProgramLinks`,
+  owner decision of 2026-11-07): the row is inserted (Enabled=0) but not listed, so the window cannot be opened and the link cannot be turned
+  on. Turning it on needs at
   least one account with an account number and an API key.
 - **Glidewell account** (`FormGlidewellAcctEdit`): account number (unique), API key (masked; blank keeps the stored one; changed only by a user
   with Manage High Security Program Properties, logged under that permission), the last scanner sign-in (read-only), and the providers whose
@@ -99,7 +106,8 @@ is read or written.
 
 ### Tests
 
-`tests/P262GlidewellTests` (new; in `OpenDental.sln` and `OpenDental.Local.slnf`), 42 tests: the request's documented fields in order and
+`tests/P262GlidewellTests` (new; in `OpenDental.sln` and `OpenDental.Local.slnf`), 44 tests (two added for the owner decisions of
+2026-11-07: the business associate agreement and the hidden link): the request's documented fields in order and
 the INFERRED formats, escaping, the notes with products, reading answers (case-insensitive names, lists, not-JSON), the status names, the
 blocked client; on a `test_p262glidewell_` scratch database at the 26.2.0 reference schema (dropped afterwards): the program row, encrypted
 keys and keys of other programs, the key length (127 characters saved and read back, 128 refused with nothing saved or logged), provider
@@ -170,7 +178,7 @@ changes.
   `OpenPmsDentalBusiness/Data Interface/{GlidewellAccts,GlidewellMsgs,LabCaseProducts}.cs`,
   `OpenPmsDental/Forms/{FormGlidewellSetup,FormGlidewellAcctEdit,FormLabCaseProductEdit}.{cs,Designer.cs,resx}`,
   `OpenPmsDental/Forms/FormLabCaseEdit.Glidewell.cs`, `tests/P262GlidewellTests/*`, this note.
-- Changed: `TableTypes/Program.cs` (`ProgramName.Glidewell`), `Data Interface/LabCases.cs` (`Delete`), `Data Interface/Patients.cs` (merge
+- Changed: `OpenPmsDental/Forms/FormProgramLinks.cs` (hidden until a transport exists, 2026-11-07), `TableTypes/Program.cs` (`ProgramName.Glidewell`), `Data Interface/LabCases.cs` (`Delete`), `Data Interface/Patients.cs` (merge
   list), `OpenPmsDental/Forms/FormLabCaseEdit.cs` and `.designer.cs`, `OpenPmsDentalBusiness.csproj`, `OpenPmsDental.csproj`, `OpenDental.sln`,
   `OpenDental.Local.slnf`, `docs/release-notes/next.md`.
 - No schema, enum value, migration step or preference.
@@ -196,8 +204,29 @@ changes.
 - After the key length fix (`p262/glidewell-2`): full build 0 errors; Targeted run `P262GlidewellTests` 42/42, `NoHqTests` 58/58.
 - After the `ProgramName` test relaxation (`p262/glidewell-3`): full build 0 errors; Targeted run `P262GlidewellTests` 42/42, `NoHqTests`
   58/58; no `test_p262glidewell_` database left.
+- Integration `next/int262-1` (the owner decisions): `P262GlidewellTests` 44/44 (two new tests: sending and status blocked without the
+  agreement; the hidden link and the setup wiring), `P262LinksTests` with the `Take(2)` relaxation above.
 
-## Questions for the owner
+## Owner decisions (2026-11-07)
+
+Answered by the owner on 2026-11-07 ("all as recommended"); built on `next/int262-1`.
+
+- **Question 1, API access:** the office itself asks Glidewell for API access (its account number and API key, and a test account). Revisit
+  if Glidewell deals only with software vendors under a partner agreement.
+- **Question 2, business associate agreement:** sending patient data to Glidewell stays blocked until Setup records that a signed business
+  associate (data) agreement with Glidewell is on file, the rule the postcard service follows (`PostcardManiaProgram.IsBaaOnFile`,
+  `AdvertisingPostcards.RequireBaaOnFile`). Built: the program row's ClinicNum 0 properties "BAA On File" ("0" or "1") and "BAA Confirmed"
+  (who recorded it and when), inserted by `GlidewellProgram.EnsureProgram`; the setup window's box "A signed business associate agreement
+  with Glidewell is on file", logged under Setup; `GlidewellProgram.IsBaaOnFile`. `GlidewellLabCases.GetSendProblems` (sending) and
+  `CheckStatus` (a status check names the patient's lab case) refuse without calling the client while it is not recorded, and the Edit Lab
+  Case window says so before it saves anything.
+- **Question 8, Program Links:** the Glidewell lab cases program link is hidden in Program Links until a transport exists
+  (`FormProgramLinks` leaves the row out while `GlidewellProgram.IsShownInProgramLinks` is false, which it is while
+  `GlidewellClients.Current` is the blocked client). A row an Open Dental 26.2 database turned on keeps working as before (the Edit Lab Case
+  group and the stored details), with sending blocked.
+- **Every other question (3 to 7 and 9): decided as built** (owner, 2026-11-07).
+
+## Questions for the owner (answered on 2026-11-07, above)
 
 1. Who asks Glidewell for its partner documentation and a test account: the project (as the program's vendor) or each office? If Glidewell
    gives keys only to practice management vendors under a partner agreement, does the project sign one?

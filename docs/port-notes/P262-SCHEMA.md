@@ -124,8 +124,9 @@ marked in the reference file.
 ## Interplay with the 26.2 feature packages
 
 - The new members show in their lists at once: `DoNotBillInsuranceCheck` in the automation trigger list, `CarriersMatch` in the condition
-  list, "Commlog Referral Types" in the Definitions window (default options) and `TextBelow` in the procedure code paint type lists. The claims,
-  misc and perio packages give the first three their behaviour; `TextBelow` keeps drawing nothing (owner question 2).
+  list and "Commlog Referral Types" in the Definitions window (default options). The claims, misc and perio packages give them their
+  behaviour. `TextBelow` is hidden from the procedure code paint type lists until the tooth chart draws it (owner answer of 2026-11-07 to
+  question 2, integration `next/int262-1`: `ProcedureCodes.GetPaintTypesForList`; a code that already has it keeps it).
 - Claims: `provider.ClaimFormNum`, trigger 11, condition 15. Misc: `DefCat` 57. Perio: `UserOdFkeyType` 31. Glidewell: the three tables,
   `provider.GlidewellAcctNum` and the two enums (`EnumGlidewellProductName` needs values from a public source, with Open Dental's numbers).
 - A feature step with a level below 2026110701 that writes `provider`, `apisubscription` or `insbluebook` through the CRUD would fail on a
@@ -162,6 +163,11 @@ marked in the reference file.
 - Scratch databases `test_p262schema_*` are dropped after each run.
 
 ## Questions for the owner
+
+**Answered on 2026-11-07** (owner, "all as recommended"): question 2, hide `TextBelow` from the procedure code paint type lists until the
+tooth chart work draws it (built on `next/int262-1`: Edit Procedure Code and New Procedure Code use `ProcedureCodes.GetPaintTypesForList`,
+which leaves it out except for a code that already has it; tests in `tests/P262SchemaTests/PaintTypeListTests.cs`). Every other question
+(1, 3, 4 and 5): decided as built (owner, 2026-11-07).
 
 1. `insbluebook.DateTStamp` of existing rows: the time of the update (chosen; what MariaDB does, and the safe answer for anything that asks
    "changed since") or the row's `DateTEntry`?
