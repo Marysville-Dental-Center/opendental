@@ -36,9 +36,6 @@ namespace OpenPmsDental {
 		{
 			this.textWebsitePath = new System.Windows.Forms.TextBox();
 			this.label3 = new System.Windows.Forms.Label();
-			this.textRegKey = new System.Windows.Forms.TextBox();
-			this.label2 = new System.Windows.Forms.Label();
-			this.label4 = new System.Windows.Forms.Label();
 			this.textUpdateServerAddress = new System.Windows.Forms.TextBox();
 			this.label1 = new System.Windows.Forms.Label();
 			this.textMultiple = new System.Windows.Forms.TextBox();
@@ -55,7 +52,6 @@ namespace OpenPmsDental {
 			this.label10 = new System.Windows.Forms.Label();
 			this.labelRecopy = new System.Windows.Forms.Label();
 			this.butRecopy = new OpenPmsDental.UI.Button();
-			this.butChangeRegKey = new OpenPmsDental.UI.Button();
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.butChangeTime = new OpenPmsDental.UI.Button();
 			this.textUpdateTime = new System.Windows.Forms.TextBox();
@@ -78,35 +74,7 @@ namespace OpenPmsDental {
 			this.label3.TabIndex = 37;
 			this.label3.Text = "Website Path for Updates";
 			this.label3.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textRegKey
-			// 
-			this.textRegKey.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.textRegKey.Location = new System.Drawing.Point(249, 188);
-			this.textRegKey.Name = "textRegKey";
-			this.textRegKey.ReadOnly = true;
-			this.textRegKey.Size = new System.Drawing.Size(193, 20);
-			this.textRegKey.TabIndex = 40;
-			this.textRegKey.TextChanged += new System.EventHandler(this.textRegKey_TextChanged);
-			this.textRegKey.KeyUp += new System.Windows.Forms.KeyEventHandler(this.textRegKey_KeyUp);
-			// 
-			// label2
-			// 
-			this.label2.Location = new System.Drawing.Point(69, 189);
-			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(180, 19);
-			this.label2.TabIndex = 41;
-			this.label2.Text = "Registration Key";
-			this.label2.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// label4
-			// 
-			this.label4.Location = new System.Drawing.Point(521, 185);
-			this.label4.Name = "label4";
-			this.label4.Size = new System.Drawing.Size(204, 33);
-			this.label4.TabIndex = 42;
-			this.label4.Text = "Valid for one office ONLY.  This is tracked.";
-			// 
+			//
 			// textUpdateServerAddress
 			// 
 			this.textUpdateServerAddress.Location = new System.Drawing.Point(249, 18);
@@ -252,16 +220,7 @@ namespace OpenPmsDental {
 			this.butRecopy.TabIndex = 54;
 			this.butRecopy.Text = "Recopy";
 			this.butRecopy.Click += new System.EventHandler(this.butRecopy_Click);
-			// 
-			// butChangeRegKey
-			// 
-			this.butChangeRegKey.Location = new System.Drawing.Point(448, 186);
-			this.butChangeRegKey.Name = "butChangeRegKey";
-			this.butChangeRegKey.Size = new System.Drawing.Size(67, 23);
-			this.butChangeRegKey.TabIndex = 50;
-			this.butChangeRegKey.Text = "Change";
-			this.butChangeRegKey.Click += new System.EventHandler(this.butChangeRegKey_Click);
-			// 
+			//
 			// butSave
 			// 
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
@@ -309,16 +268,12 @@ namespace OpenPmsDental {
 			this.Controls.Add(this.labelRecopy);
 			this.Controls.Add(this.label10);
 			this.Controls.Add(this.checkShowMsi);
-			this.Controls.Add(this.butChangeRegKey);
 			this.Controls.Add(this.groupBox1);
 			this.Controls.Add(this.label6);
 			this.Controls.Add(this.textMultiple);
 			this.Controls.Add(this.label5);
 			this.Controls.Add(this.textUpdateServerAddress);
 			this.Controls.Add(this.label1);
-			this.Controls.Add(this.label4);
-			this.Controls.Add(this.textRegKey);
-			this.Controls.Add(this.label2);
 			this.Controls.Add(this.textWebsitePath);
 			this.Controls.Add(this.label3);
 			this.Controls.Add(this.butSave);
@@ -339,9 +294,6 @@ namespace OpenPmsDental {
 		private OpenPmsDental.UI.Button butSave;
 		private TextBox textWebsitePath;
 		private Label label3;
-		private TextBox textRegKey;
-		private Label label2;
-		private Label label4;
 		private TextBox textUpdateServerAddress;
 		private Label label1;
 		private TextBox textMultiple;
@@ -354,7 +306,6 @@ namespace OpenPmsDental {
 		private Label label8;
 		private TextBox textWebProxyAddress;
 		private Label label7;
-		private OpenPmsDental.UI.Button butChangeRegKey;
 		private OpenPmsDental.UI.CheckBox checkShowMsi;
 		private Label label10;
 		private Label labelRecopy;

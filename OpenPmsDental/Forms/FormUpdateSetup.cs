@@ -3,7 +3,6 @@ using System.Drawing;
 using System.Collections;
 using System.ComponentModel;
 using System.IO;
-using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using OpenPmsDentalBusiness;
 using CodeBase;
@@ -11,7 +10,8 @@ using System.Xml;
 using System.Text;
 
 namespace OpenPmsDental{
-	/// <summary></summary>
+	///<summary>The update settings. There is no registration key here: Open Dental's registration keys were removed (docs/decoupling-plan.md), and the
+	///RegistrationKey preference is left as it is.</summary>
 	public partial class FormUpdateSetup : FormODBase {
 		private DateTime _dateTimeUpdate;
 
@@ -28,7 +28,6 @@ namespace OpenPmsDental{
 
 		private void FormUpdateSetup_Load(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.SecurityAdmin,true)) {
-				butChangeRegKey.Enabled=false;
 				butSave.Enabled=false;
 			}
 			textUpdateServerAddress.Text=PrefC.GetString(PrefName.UpdateServerAddress);
@@ -36,13 +35,6 @@ namespace OpenPmsDental{
 			textWebProxyAddress.Text=PrefC.GetString(PrefName.UpdateWebProxyAddress);
 			textWebProxyUserName.Text=PrefC.GetString(PrefName.UpdateWebProxyUserName);
 			textWebProxyPassword.Text=PrefC.GetString(PrefName.UpdateWebProxyPassword);
-			string regkey=PrefC.GetString(PrefName.RegistrationKey);
-			if(regkey.Length==16){
-				textRegKey.Text=regkey.Substring(0,4)+"-"+regkey.Substring(4,4)+"-"+regkey.Substring(8,4)+"-"+regkey.Substring(12,4);
-			}
-			else{
-				textRegKey.Text=regkey;
-			}
 			textMultiple.Text=PrefC.GetString(PrefName.UpdateMultipleDatabases);
 			checkShowMsi.Checked=PrefC.GetBool(PrefName.UpdateShowMsiButtons);
 			_dateTimeUpdate=PrefC.GetDateT(PrefName.UpdateDateTime);
@@ -58,43 +50,6 @@ namespace OpenPmsDental{
 			groupBox1.Visible=false;
 			checkShowMsi.Visible=false;
 			label10.Visible=false;
-			label4.Visible=false;
-		}
-
-		private void textRegKey_KeyUp(object sender,KeyEventArgs e) {
-			int cursor=textRegKey.SelectionStart;
-			//textRegKey.Text=textRegKey.Text.ToUpper();
-			int length=textRegKey.Text.Length;
-			if(Regex.IsMatch(textRegKey.Text,@"^[A-Z0-9]{5}$")) {
-				textRegKey.Text=textRegKey.Text.Substring(0,4)+"-"+textRegKey.Text.Substring(4);
-			}
-			else if(Regex.IsMatch(textRegKey.Text,@"^[A-Z0-9]{4}-[A-Z0-9]{5}$")) {
-				textRegKey.Text=textRegKey.Text.Substring(0,9)+"-"+textRegKey.Text.Substring(9);
-			}
-			else if(Regex.IsMatch(textRegKey.Text,@"^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{5}$")) {
-				textRegKey.Text=textRegKey.Text.Substring(0,14)+"-"+textRegKey.Text.Substring(14);
-			}
-			if(textRegKey.Text.Length>length) {
-				cursor++;
-			}
-			textRegKey.SelectionStart=cursor;
-		}
-
-		private void textRegKey_TextChanged(object sender,EventArgs e) {
-			int cursor=textRegKey.SelectionStart;
-			textRegKey.Text=textRegKey.Text.ToUpper();
-			textRegKey.SelectionStart=cursor;
-		}
-
-		private void butChangeRegKey_Click(object sender,EventArgs e) {
-			using FormRegistrationKey formRegistrationKey=new FormRegistrationKey();
-			formRegistrationKey.ShowDialog();
-			DataValid.SetInvalid(InvalidType.Prefs);
-			string regkey=PrefC.GetString(PrefName.RegistrationKey);
-			if(regkey.Length==16){
-				regkey=regkey.Substring(0,4)+"-"+regkey.Substring(4,4)+"-"+regkey.Substring(8,4)+"-"+regkey.Substring(12,4);
-			}
-			textRegKey.Text=regkey;
 		}
 
 		private void butRecopy_Click(object sender,EventArgs e) {
@@ -140,24 +95,9 @@ namespace OpenPmsDental{
 		}
 
 		private void butSave_Click(object sender, System.EventArgs e) {
-			if(textRegKey.Text!="" 
-				&& !Regex.IsMatch(textRegKey.Text,@"^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$")
-				&& !Regex.IsMatch(textRegKey.Text,@"^[A-Z0-9]{16}$"))
-			{
-				MsgBox.Show(this,"Invalid registration key format.");
-				return;
-			}
 			if(textMultiple.Text.Contains(" ")) {
 				MsgBox.Show(this,"No spaces allowed in the database list.");
 				return;
-			}
-			string regkey="";
-			if(Regex.IsMatch(textRegKey.Text,@"^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$")){
-				regkey=textRegKey.Text.Substring(0,4)+textRegKey.Text.Substring(5,4)
-					+textRegKey.Text.Substring(10,4)+textRegKey.Text.Substring(15,4);
-			}
-			else if(Regex.IsMatch(textRegKey.Text,@"^[A-Z0-9]{16}$")){
-				regkey=textRegKey.Text;
 			}
 			bool isChanged=false;
 			isChanged |= Prefs.UpdateString(PrefName.UpdateServerAddress,textUpdateServerAddress.Text);
@@ -167,7 +107,6 @@ namespace OpenPmsDental{
 			isChanged |= Prefs.UpdateString(PrefName.UpdateWebProxyUserName,textWebProxyUserName.Text);
 			isChanged |= Prefs.UpdateString(PrefName.UpdateWebProxyPassword,textWebProxyPassword.Text);
 			isChanged |= Prefs.UpdateString(PrefName.UpdateMultipleDatabases,textMultiple.Text);
-			isChanged |= Prefs.UpdateString(PrefName.RegistrationKey,regkey);
 			if(isChanged) {
 				Cursor=Cursors.WaitCursor;
 				DataValid.SetInvalid(InvalidType.Prefs);

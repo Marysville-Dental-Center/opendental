@@ -726,9 +726,6 @@ namespace OpenPmsDental {
 		///<summary>1</summary>
 		None,
 		///<summary>2</summary>
-		[Description("Pre-Setup")]
-		PreSetup,
-		///<summary>2</summary>
 		[Description("Basic Setup")]
 		Basic,
 		///<summary>3</summary>

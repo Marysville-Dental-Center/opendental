@@ -5943,12 +5943,6 @@
     <Compile Include="User Controls\SetupWizControls\UserControlSetupWizPrinter.Designer.cs">
       <DependentUpon>UserControlSetupWizPrinter.cs</DependentUpon>
     </Compile>
-    <Compile Include="User Controls\SetupWizControls\UserControlSetupWizRegKey.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="User Controls\SetupWizControls\UserControlSetupWizRegKey.Designer.cs">
-      <DependentUpon>UserControlSetupWizRegKey.cs</DependentUpon>
-    </Compile>
     <Compile Include="User Controls\SetupWizControls\UserControlSetupWizClinic.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -8791,9 +8785,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="User Controls\SetupWizControls\UserControlSetupWizPrinter.resx">
       <DependentUpon>UserControlSetupWizPrinter.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="User Controls\SetupWizControls\UserControlSetupWizRegKey.resx">
-      <DependentUpon>UserControlSetupWizRegKey.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="User Controls\SetupWizControls\UserControlSetupWizClinic.resx">
       <DependentUpon>UserControlSetupWizClinic.cs</DependentUpon>
