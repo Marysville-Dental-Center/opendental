@@ -307,6 +307,11 @@ billing and electronic billing setting keeps its value: nothing is converted, an
   be set per clinic: pick the clinic and clear "Use the practice defaults for this clinic". Statements e-mailed to a patient and invoices
   then use the patient's clinic's messages; a clinic that keeps the practice defaults, and every clinic while clinics are off, uses the
   practice's. A clinic's General Message is the same one Billing Options saves with the clinic's filter defaults.
+- **A clinic keeps following the practice for the messages it has not changed.** Every clinic that saved Billing Options defaults before
+  this update has its own General Message and uses the practice's other messages. Changing that clinic's General Message (or any one
+  message) in Billing Defaults saves only what you changed: the clinic keeps the practice's e-mail subject, body, body type, autograph and
+  invoice note, and later changes to them still reach it. A clinic that you take off the practice defaults by clearing "Use the practice
+  defaults for this clinic" starts from a copy of all of them.
 - **Billing Options saves only the clinic you selected.** Save Defaults in Billing Options, with one clinic selected, now writes that
   clinic's defaults and nothing of any other clinic. A clinic with its own messages in Billing Defaults but no saved Billing Options filters
   keeps following the practice filter defaults, and a clinic set to use the practice defaults in Billing Defaults stays on them. Billing
