@@ -63,10 +63,14 @@ namespace CodeBase {
 		private const uint CBF_SKIP_UNREGISTRATIONS=0x00100000;
 		private const int CP_WINANSI=1004;
 		private const uint CF_TEXT=1;
+		//The transaction types are built as ddeml.h builds them: a number, its class and its flags.
 		private const uint XCLASS_FLAGS=0x4000;
+		private const uint XCLASS_NOTIFICATION=0x8000;
 		private const uint XTYPF_NOBLOCK=0x0002;
+		///<summary>0x4050.</summary>
 		private const uint XTYP_EXECUTE=0x0050|XCLASS_FLAGS;
-		private const uint XTYP_DISCONNECT=0x00C0|XTYPF_NOBLOCK;
+		///<summary>0x80C2, a notification: what DDEML passes the callback when the server ended the conversation.</summary>
+		private const uint XTYP_DISCONNECT=0x00C0|XCLASS_NOTIFICATION|XTYPF_NOBLOCK;
 		private const uint DMLERR_NO_ERROR=0;
 
 		///<summary>DDEML calls the instance back with this (stdcall, the WINAPI convention on x86; x64 has one convention).</summary>
