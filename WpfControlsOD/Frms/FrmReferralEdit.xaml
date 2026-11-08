@@ -19,6 +19,7 @@
         <ui:TextBox x:Name="textBusinessName" Width="297" Height="20" Margin="149,311,0,0" TabIndexOD="14" />
         <ui:Label x:Name="labelBusinessName" Width="104" Height="18" Margin="44,313,0,0" Text="Business Name" HAlign="Right" />
         <ui:CheckBox x:Name="checkIsPreferred" Width="150" Height="18" Margin="12,467,0,0" Text="Preferred Referral" CheckAlign="MiddleRight" />
+        <ui:CheckBox x:Name="checkEmailTrustDirect" Width="156" Height="18" Margin="6,334,0,0" Text="E-mail Trust for Direct" CheckAlign="MiddleRight" />
         <ui:CheckBox x:Name="checkIsDoctor" Width="86" Height="18" Margin="76,485,0,0" Text="Is Doctor" CheckAlign="MiddleRight" />
         <ui:Button x:Name="butDelete" Width="80" VerticalAlignment="Bottom" Height="24" Margin="16,0,0,17" Text="Delete" Icon="DeleteX" Click="butDelete_Click" />
         <ui:ComboBox x:Name="comboSlip" Width="275" Height="21" Margin="149,539,0,0" />

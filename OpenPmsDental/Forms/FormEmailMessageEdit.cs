@@ -26,6 +26,7 @@ namespace OpenPmsDental {
 		private List<EmailMessage> _listEmailMessages=null;
 		private List<EmailTemplate> _listEmailTemplates;
 		private bool _isRawHtml;
+		private long _clinicNum;
 		private Patient _patient;
 		///<summary>List of any "short URLs" that were originally found in the email body. When saving, we will allow these through, but the user will not be able to add other short URLs.</summary>
 		private List<string> _listShortURLsAllowed;
@@ -65,6 +66,7 @@ namespace OpenPmsDental {
 			if(listListsEmailMessagesHistory.Count>0) {
 				_listEmailMessages=listListsEmailMessagesHistory.SelectMany(x => x).Where(x => x!=null).ToList(); //Use SelectMany to get every non-null email message from those lists
 			}
+			_clinicNum=Clinics.ClinicNum;
 			_emailMessageReplyingTo=emailMessageReplyingTo;
 		}
 
@@ -119,15 +121,42 @@ namespace OpenPmsDental {
 			toolBarSend.Paint-=ToolBarSend_Paint;//Dimensions are set.  No need to keep doing this.
 		}
 
-		///<summary>Configures the dropdown/contextmenu for the 'Send Email' button. Send is the only way left: Open Dental's hosted Secure Email and
-		///Direct Messaging were removed, so a default send platform preference of either sends regular email.</summary>
+		///<summary>Configures the dropdown/contextmenu for the 'Send Email' button.</summary>
 		private ContextMenu GetSendMenu() {
+			if(!Enum.TryParse(ClinicPrefs.GetPrefValue(PrefName.EmailDefaultSendPlatform,_clinicNum),out EmailPlatform emailPlatform)
+				|| emailPlatform==EmailPlatform.Secure//Open Dental's hosted Secure Email was removed.
+				|| (emailPlatform==EmailPlatform.Direct && !IsDirectMessagingEnabled()))
+			{
+				//If pref is invalid, or set to a platform that is not available, default to Insecure email.
+				emailPlatform=EmailPlatform.Unsecure;
+			}
 			ContextMenu contextMenu=new ContextMenu();
 			MenuItem menuItemSend=new MenuItem();
 			menuItemSend.Text=Lan.g(this,"Send");
 			menuItemSend.Click+=new EventHandler(this.butSend_Click);
-			menuItemSend.Index=0;
-			contextMenu.MenuItems.Add(menuItemSend);
+			MenuItem menuItemSendDirect=new MenuItem();
+			menuItemSendDirect.Text=Lan.g(this,"Direct Messaging");//For EHR and very rare
+			menuItemSendDirect.Click+=new EventHandler(this.butDirectMessage_Click);
+			MenuItem getDefaultMenuItem() {
+				return emailPlatform switch {
+					EmailPlatform.Direct => menuItemSendDirect,
+					EmailPlatform.Unsecure => menuItemSend,
+					_ => menuItemSend,//If the preference is invalid, just use Insecure as the default.
+				};
+			}
+			List<MenuItem> listMenuItems=new List<MenuItem>() {
+				menuItemSend,//always an option
+			};
+			if(IsDirectMessagingEnabled()) {
+				//Only include Direct Messaging if enabled.
+				listMenuItems.Add(menuItemSendDirect);
+			}
+			//Default first, then SendInsecure
+			listMenuItems=listMenuItems.OrderByDescending(x => x==getDefaultMenuItem()).ThenByDescending(x => x==menuItemSend).ToList();
+			for(int i=0;i<listMenuItems.Count;i++) {
+				listMenuItems[i].Index=i;
+			}
+			contextMenu.MenuItems.AddRange(listMenuItems.ToArray());
 			return contextMenu;
 		}
 
@@ -135,6 +164,10 @@ namespace OpenPmsDental {
 			if(e.Button.Tag is MenuItem menuItemSend) {
 				menuItemSend.PerformClick();
 			}
+		}
+
+		private bool IsDirectMessagingEnabled() {			
+			return PrefC.GetBool(PrefName.ShowFeatureEhr);
 		}
 
 		private void FormEmailMessageEdit_Load(object sender, System.EventArgs e) {
@@ -183,11 +216,11 @@ namespace OpenPmsDental {
 				butRawMessage.Visible=true;
 			}
 			ConfigureSendButtons();
-			//An encrypted message can't be decrypted (only Direct messaging could, and it was removed), so there is no Decrypt button. Its body says it
-			//cannot be shown, and Raw Message shows it as it came.
 			labelDecrypt.Visible=false;
 			butDecrypt.Visible=false;
 			if(_emailMessage.SentOrReceived==EmailSentOrReceived.ReceivedEncrypted) {
+				labelDecrypt.Visible=true;
+				butDecrypt.Visible=true;
 				butRefresh.Visible=false;
 			}
 		}
@@ -418,9 +451,45 @@ namespace OpenPmsDental {
 
 		#endregion
 
-		///<summary>The button is never shown (RefreshAll): decryption went with Direct messaging.</summary>
 		private void butDecrypt_Click(object sender,EventArgs e) {
-			MsgBox.Show(this,"Encrypted messages cannot be shown.");
+			if(EmailMessages.GetReceiverUntrustedCount(_emailMessage.FromAddress) >= 0) {//Not trusted yet.
+				string msgTrust=Lan.g(this,"The sender address must be added to your trusted addresses before you can decrypt the email")
+					+". "+Lan.g(this,"Add")+" "+_emailMessage.FromAddress+" "+Lan.g(this,"to trusted addresses")+"?";
+				if(MessageBox.Show(msgTrust,"",MessageBoxButtons.OKCancel)==DialogResult.OK) {
+					Cursor=Cursors.WaitCursor;
+					EmailMessages.TryAddTrustDirect(_emailMessage.FromAddress);
+					Cursor=Cursors.Default;
+					if(EmailMessages.GetReceiverUntrustedCount(_emailMessage.FromAddress) >= 0) {
+						MsgBox.Show(this,"Failed to trust sender because a valid certificate could not be located.");
+						return;
+					}
+				}
+				else {
+					MsgBox.Show(this,"Cannot decrypt message from untrusted sender.");
+					return;
+				}
+			}
+			Cursor=Cursors.WaitCursor;
+			EmailAddress emailAddress=emailPreview.EmailAddressPreview;
+			//The raw encrypted message is in RawEmailIn. The body held it too until received mail moved to MimeKit; it now says the message could not be
+			//decrypted. A row older than RawEmailIn has the raw message in its body only.
+			string strRawEmail=_emailMessage.RawEmailIn;
+			if(string.IsNullOrWhiteSpace(strRawEmail)) {
+				strRawEmail=_emailMessage.BodyText;
+			}
+			try {
+				_emailMessage=EmailMessages.ProcessRawEmailMessageIn(strRawEmail,_emailMessage.EmailMessageNum,emailAddress,isAck:true,_emailMessage.SentOrReceived);//Does not change read status of email regardless of success.
+			}
+			catch(Exception ex) {
+				MessageBox.Show(Lan.g(this,"Decryption failed.")+"\r\n"+ex.Message);
+				//Error=InvalidEncryption: means that someone used the wrong certificate when sending the email to this inbox, and we tried to decrypt with a different certificate.
+				//Error=NoTrustedRecipients: means the sender is not added to the trust anchors in mmc.
+				Cursor=Cursors.Default;
+				return;
+			}
+			RefreshAll();
+			DidEmailChange=true;	
+			Cursor=Cursors.Default;
 		}
 
 		private void butDelete_Click(object sender,EventArgs e) {
@@ -572,6 +641,53 @@ namespace OpenPmsDental {
 			return emailAddress;
 		}
 
+		private void butDirectMessage_Click(object sender,EventArgs e) {
+			//this will not be available if already sent.
+			if(emailPreview.FromAddress=="" || emailPreview.ToAddress=="") {
+				MessageBox.Show("Addresses not allowed to be blank.");
+				return;
+			}
+			EmailAddress emailAddressFrom=GetOutgoingEmailForSending();
+			if(emailAddressFrom==null) {
+				return;
+			}
+			if(emailPreview.FromAddress!=emailAddressFrom.EmailUsername) {
+				//Without this block, encryption would fail with an obscure error message, because the from address would not match the digital signature of the sender.
+				MessageBox.Show(Lan.g(this,"From address must match email address username in email setup.")+"\r\n"+Lan.g(this,"From address must be exactly")+" "+emailAddressFrom.EmailUsername);
+				return;
+			}
+			if(emailAddressFrom.SMTPserver=="") {
+				MsgBox.Show(this,"The email address in email setup must have an SMTP server.");
+				return;
+			}
+			if(emailPreview.ToAddress.Contains(",")) {
+				MsgBox.Show(this,"Multiple recipient addresses not allowed for direct messaging.");
+				return;
+			}
+			Cursor=Cursors.WaitCursor;
+			if(EmailMessages.GetReceiverUntrustedCount(emailPreview.ToAddress) >= 0) {//Not trusted yet.
+				EmailMessages.TryAddTrustDirect(emailPreview.ToAddress);
+			}
+			SaveMsg();
+			EmailSentOrReceived emailMessageOld=_emailMessage.SentOrReceived;
+			_emailMessage.SentOrReceived=EmailSentOrReceived.SentDirect;
+			try {
+				EmailMessages.SendEmail(_emailMessage,emailAddressFrom,useDirect:true);
+			}
+			catch(Exception ex) {
+				//Revert this emailmessage because it didn't get saved to the database.
+				_emailMessage.SentOrReceived=emailMessageOld;
+				Cursor=Cursors.Default;
+				string errMsg=Lan.g(this,"Failed to send email.")+"\r\n"+Lan.g(this, "Click Details to see the error message from the Email Client.");
+				FriendlyException.Show(errMsg, ex);
+				return;
+			}
+			MsgBox.Show(this,"Sent");
+			Cursor=Cursors.Default;
+			DialogResult=DialogResult.OK;
+			Close();//this form can be opened modelessly.
+		}
+
 		///<summary>Returns true if all of the inline images exist. Returns false otherwise. If the body text isRawHtml then will just return true and not check.</summary>
 		private bool HasValidInlineAttachments(string bodyText,bool isRawHtml) {
 			if(isRawHtml) {
@@ -660,7 +776,7 @@ namespace OpenPmsDental {
 				return;
 			}
 			if(EhrCCD.HasCcdEmailAttachment(_emailMessage)) {
-				MsgBox.Show(this,"The email has a summary of care attachment which may contain sensitive patient data, and cannot be sent by regular email.");
+				MsgBox.Show(this,"The email has a summary of care attachment which may contain sensitive patient data.  Use the Direct Message button instead.");
 				toolBarSend.Enabled=true;
 				return;
 			}
