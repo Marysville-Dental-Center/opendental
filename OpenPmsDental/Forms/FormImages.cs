@@ -35,6 +35,8 @@ namespace OpenPmsDental {
 		private Cursor _cursorPan;
 		///<summary>The amendment as stored. Starts as EhrAmendmentCur and follows each change of its file.</summary>
 		private EhrAmendment _ehrAmendment;
+		///<summary>The list's selection changed while a mouse button was down. The selected file shows when the button comes up.</summary>
+		private bool _isListSelectionPending;
 		private bool _isMouseDown;
 		///<summary>The entries of listFiles, in the same order.</summary>
 		private List<EobAmendmentFiles.FileEntry> _listFileEntries=new List<EobAmendmentFiles.FileEntry>();
@@ -86,6 +88,12 @@ namespace OpenPmsDental {
 			_odWebView2.Bounds=panelImage.Bounds;
 			_odWebView2.Anchor=panelImage.Anchor;
 			LayoutManager.Add(_odWebView2,this);
+			SetToolBarEnabled();//nothing is selected until the window shows
+		}
+
+		///<summary>The files are listed and the first one shown once the window is visible, so a download's progress and any message show over it,
+		///as in the old window.</summary>
+		private void FormImages_Shown(object sender,EventArgs e) {
 			FillList();
 			//The first file is selected when the window opens.
 			if(_listFileEntries.Count>0) {
@@ -101,7 +109,32 @@ namespace OpenPmsDental {
 			}
 		}
 
+		///<summary>UI.ListBox raises this on MouseDown and again on each MouseMove while the button is down, so dragging over the list would open every
+		///file it passes (with cloud storage, each one a download). While a button is down the file waits, and shows when the button comes up.</summary>
 		private void listFiles_SelectionChangeCommitted(object sender,EventArgs e) {
+			if(Control.MouseButtons!=MouseButtons.None) {
+				_isListSelectionPending=true;
+				return;
+			}
+			_isListSelectionPending=false;
+			ShowSelected();
+		}
+
+		private void listFiles_MouseUp(object sender,MouseEventArgs e) {
+			if(!_isListSelectionPending) {
+				return;
+			}
+			_isListSelectionPending=false;
+			ShowSelected();
+		}
+
+		///<summary>A drag over the list can also end without a MouseUp here, when another window takes the mouse. The selected file shows then too, so
+		///the file showing is always the one selected, which Print, Delete and Export act on.</summary>
+		private void listFiles_MouseCaptureChanged(object sender,EventArgs e) {
+			if(!_isListSelectionPending || listFiles.Capture) {
+				return;
+			}
+			_isListSelectionPending=false;
 			ShowSelected();
 		}
 
@@ -298,6 +331,7 @@ namespace OpenPmsDental {
 			saveFileDialog.Title=Lan.g(this,"Export a Document");
 			saveFileDialog.FileName=fileEntry.FileName;
 			saveFileDialog.DefaultExt=Path.GetExtension(fileEntry.FileName);
+			saveFileDialog.OverwritePrompt=true;//An existing file is replaced only after the dialog asks, in every storage mode (ImageStore.ExportEobAttach).
 			if(saveFileDialog.ShowDialog()!=DialogResult.OK) {
 				return;
 			}
@@ -344,11 +378,8 @@ namespace OpenPmsDental {
 					string fileNameImport=listFileNames[i];
 					EobAttach eobAttach=null;
 					try {
-						if(!RunWithCloudProgress(() => eobAttach=EobAmendmentFiles.AddEob(fileNameImport,_mode,ClaimPaymentNum,ClaimNumPreAuth),
-							Lan.g(this,"Uploading...")))
-						{
-							break;
-						}
+						RunWriteWithCloudProgress(() => eobAttach=EobAmendmentFiles.AddEob(fileNameImport,_mode,ClaimPaymentNum,ClaimNumPreAuth),
+							Lan.g(this,"Uploading..."));
 					}
 					catch(Exception ex) {
 						MessageBox.Show(Lan.g(this,"Unable to copy file, May be in use: ")+ex.Message+": "+fileNameImport);
@@ -368,16 +399,15 @@ namespace OpenPmsDental {
 			if(_mode==EobAmendmentFiles.EnumMode.Amendment) {
 				ClearShowing();//release the old file
 				try {
-					if(!RunWithCloudProgress(() => _ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(_ehrAmendment,listFileNames[0]),
-						Lan.g(this,"Uploading...")))
-					{
-						FillList();
-						ShowSelected();
-						return;
-					}
+					RunWriteWithCloudProgress(() => _ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(_ehrAmendment,listFileNames[0]),
+						Lan.g(this,"Uploading..."));
 				}
 				catch(Exception ex) {
 					MessageBox.Show(Lan.g(this,"Unable to copy file, May be in use: ")+ex.Message+": "+listFileNames[0]);
+					//_ehrAmendment is unchanged: the amendment is still on its old file, which shows again (not the file that failed).
+					FillList();
+					SelectAmendment();
+					return;
 				}
 				FillList();
 				SelectAmendment(listFileNames[0]);
@@ -438,11 +468,7 @@ namespace OpenPmsDental {
 			if(EobAmendmentFiles.IsEobMode(_mode)) {
 				EobAttach eobAttach=null;
 				try {
-					if(!RunWithCloudProgress(() => eobAttach=EobAmendmentFiles.AddEob(bitmapPaste,_mode,ClaimPaymentNum,ClaimNumPreAuth),Lan.g(this,"Uploading..."))) {
-						Cursor=Cursors.Default;
-						bitmapPaste.Dispose();
-						return;
-					}
+					RunWriteWithCloudProgress(() => eobAttach=EobAmendmentFiles.AddEob(bitmapPaste,_mode,ClaimPaymentNum,ClaimNumPreAuth),Lan.g(this,"Uploading..."));
 				}
 				catch {
 					Cursor=Cursors.Default;
@@ -458,20 +484,15 @@ namespace OpenPmsDental {
 			}
 			ClearShowing();//release the old file
 			try {
-				if(!RunWithCloudProgress(() => _ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(_ehrAmendment,bitmapPaste),Lan.g(this,"Uploading..."))) {
-					Cursor=Cursors.Default;
-					bitmapPaste.Dispose();
-					FillList();
-					ShowSelected();
-					return;
-				}
+				RunWriteWithCloudProgress(() => _ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(_ehrAmendment,bitmapPaste),Lan.g(this,"Uploading..."));
 			}
 			catch {
 				Cursor=Cursors.Default;
 				bitmapPaste.Dispose();
 				MessageBox.Show(Lan.g(this,"Error saving amendment."));
+				//_ehrAmendment is unchanged: the amendment is still on its old file.
 				FillList();
-				ShowSelected();
+				SelectAmendment();
 				return;
 			}
 			bitmapPaste.Dispose();
@@ -593,7 +614,7 @@ namespace OpenPmsDental {
 			EobAttach eobAttach=null;
 			if(EobAmendmentFiles.IsEobMode(_mode)) {
 				try {
-					isSaved=RunWithCloudProgress(() => eobAttach=EobAmendmentFiles.AddEob(bitmapScanned,_mode,ClaimPaymentNum,ClaimNumPreAuth),Lan.g(this,"Uploading..."));
+					RunWriteWithCloudProgress(() => eobAttach=EobAmendmentFiles.AddEob(bitmapScanned,_mode,ClaimPaymentNum,ClaimNumPreAuth),Lan.g(this,"Uploading..."));
 				}
 				catch(Exception ex) {
 					isSaved=false;
@@ -603,7 +624,7 @@ namespace OpenPmsDental {
 			else {
 				ClearShowing();//release the old file
 				try {
-					isSaved=RunWithCloudProgress(() => _ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(_ehrAmendment,bitmapScanned),Lan.g(this,"Uploading..."));
+					RunWriteWithCloudProgress(() => _ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(_ehrAmendment,bitmapScanned),Lan.g(this,"Uploading..."));
 				}
 				catch(Exception ex) {
 					isSaved=false;
@@ -616,6 +637,10 @@ namespace OpenPmsDental {
 			}
 			FillList();
 			if(!isSaved) {
+				if(_mode==EobAmendmentFiles.EnumMode.Amendment) {
+					SelectAmendment();//still its old file, if it had one
+					return;
+				}
 				ShowSelected();
 				return;
 			}
@@ -686,13 +711,20 @@ namespace OpenPmsDental {
 					return;
 				}
 				MessageBox.Show(Lan.g(this,"Unable to scan. Please make sure you can scan using other software. Error: "+errorCode+" "+EZTwain.LastErrorText()));
-				//Error messages do not block continuation, as in the Imaging module.
+				//Error messages do not block continuation, as in the Imaging module: the pages scanned so far are kept. S0-6: but such a PDF may be
+				//missing pages, so it replaces an amendment's file only after a second yes. EOBs are added as before; they replace nothing.
+				if(EobAmendmentFiles.IsPartialScanConfirmNeeded(_mode,_ehrAmendment)
+					&& !MsgBox.Show(this,MsgBoxButtons.YesNo,"The scan ended with an error, so the document may be missing pages. Replace the amendment's file with it anyway?"))
+				{
+					EobAmendmentFiles.DeleteTempCopy(tempFile);
+					return;//The amendment keeps its old file, which still shows.
+				}
 			}
 			bool isSaved=true;
 			EobAttach eobAttach=null;
 			if(EobAmendmentFiles.IsEobMode(_mode)) {
 				try {
-					isSaved=RunWithCloudProgress(() => eobAttach=EobAmendmentFiles.AddEob(tempFile,_mode,ClaimPaymentNum,ClaimNumPreAuth),Lan.g(this,"Uploading..."));
+					RunWriteWithCloudProgress(() => eobAttach=EobAmendmentFiles.AddEob(tempFile,_mode,ClaimPaymentNum,ClaimNumPreAuth),Lan.g(this,"Uploading..."));
 				}
 				catch(Exception ex) {
 					isSaved=false;
@@ -702,7 +734,7 @@ namespace OpenPmsDental {
 			else {
 				ClearShowing();//release the old file
 				try {
-					isSaved=RunWithCloudProgress(() => _ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(_ehrAmendment,tempFile),Lan.g(this,"Uploading..."));
+					RunWriteWithCloudProgress(() => _ehrAmendment=EobAmendmentFiles.ReplaceAmendmentFile(_ehrAmendment,tempFile),Lan.g(this,"Uploading..."));
 				}
 				catch(Exception ex) {
 					isSaved=false;
@@ -714,6 +746,10 @@ namespace OpenPmsDental {
 			);
 			FillList();
 			if(!isSaved) {
+				if(_mode==EobAmendmentFiles.EnumMode.Amendment) {
+					SelectAmendment();//still its old file, if it had one
+					return;
+				}
 				ShowSelected();
 				return;
 			}
@@ -861,8 +897,9 @@ namespace OpenPmsDental {
 			}
 		}
 
-		///<summary>Runs the action, inside a progress window with cloud storage, so uploads and downloads show progress, as in the Imaging module.
-		///False if the user cancelled. Exceptions from the action are thrown here.</summary>
+		///<summary>Runs a read (a download for the viewer, the double-click open or an export), inside a progress window with cloud storage, so it
+		///shows progress, as in the Imaging module. The user may cancel it: nothing stored changes. False if the user cancelled. Exceptions from the
+		///action are thrown here. Writes use RunWriteWithCloudProgress.</summary>
 		private bool RunWithCloudProgress(Action action,string startingMessage) {
 			if(!CloudStorage.IsCloudStorage) {
 				action();
@@ -873,6 +910,23 @@ namespace OpenPmsDental {
 			progressWin.ActionMain=action;
 			progressWin.ShowDialog();
 			return !progressWin.IsCancelled;
+		}
+
+		///<summary>Runs a write (a new EOB with its row, or the amendment's new file), inside a progress window with cloud storage, without a Cancel
+		///button (S0-6): Cancel aborts the worker thread (FrmProgressAuto), which part-way through an upload could leave a row without its file or an
+		///amendment without its file. The progress window then cannot be closed until the write is done. Exceptions from the action are thrown here.
+		///</summary>
+		private void RunWriteWithCloudProgress(Action action,string startingMessage) {
+			if(!CloudStorage.IsCloudStorage) {
+				action();
+				return;
+			}
+			ProgressWin progressWin=new ProgressWin();
+			progressWin.StartingMessage=startingMessage;
+			progressWin.ShowCancelButton=false;
+			progressWin.StopNotAllowedMessage=Lan.g(this,"The file is being saved. Please wait until it is done.");
+			progressWin.ActionMain=action;
+			progressWin.ShowDialog();
 		}
 
 		///<summary>Selects the amendment's file, if it has one, and shows it. localPathCloud is the file just imported.</summary>
