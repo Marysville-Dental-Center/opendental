@@ -383,8 +383,8 @@ namespace DbGrantsTests {
 					//A temporary file still in use: %TEMP% keeps it.
 				}
 			}
-			//DataConnection.BulkCopy (the backup to another server) writes temp_<table><ticks>.txt into the working folder and leaves it when the
-			//load is refused.
+			//DataConnection.BulkCopy (the backup to another server before 2026-11-07) wrote temp_<table><ticks>.txt into the working folder and left it
+			//when the load was refused. Kept for runs of an older build.
 			foreach(string path in Directory.GetFiles(Directory.GetCurrentDirectory(),"temp_*.txt")) {
 				if(File.GetCreationTime(path)>=_dateTimeStart.AddMinutes(-1)) {
 					try {

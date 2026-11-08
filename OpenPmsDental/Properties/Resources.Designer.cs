@@ -723,23 +723,6 @@ namespace OpenPmsDental.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Shared Source License for NDde
-        ///
-        ///This license governs use of the accompanying software (&apos;Software&apos;), and your use of the Software constitutes acceptance of this license.
-        ///
-        ///You may use the Software for any commercial or noncommercial purpose, including distributing derivative works.
-        ///
-        ///In return, we simply require that you agree:
-        ///1. Not to remove any copyright or other notices from the Software. 
-        ///2. That if you distribute the Software in source code form you do so only under this license (i.e. you must i [rest of string was truncated]&quot;;.
-        /// </summary>
-        public static string NDde {
-            get {
-                return ResourceManager.GetString("NDde", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to The MIT License (MIT)
         ///
         ///Copyright (c) 2007 James Newton-King

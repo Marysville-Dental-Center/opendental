@@ -308,10 +308,14 @@ namespace OpenPmsDentalBusiness {
 
 		#region Eligibility (271)
 		///<summary>The row an insurance history date from an eligibility response (271) goes to. First the row of a code group whose CodeGroupFixed is
-		///the category the response names (codeGroupFixed); otherwise the row whose HistProcCode is the procedure code the response names (procCode).
-		///Quadrant rows are never picked, because a response does not name a quadrant. Null when no row matches, with the reason.</summary>
+		///the category the response names (codeGroupFixed); otherwise the row whose HistProcCode is the procedure code the response names (procCode);
+		///otherwise, for a category no row has, the row whose HistProcCode is one of the codes of that category's code group (funcGetProcCodesFixed,
+		///null: the cache's group of that CodeGroupFixed). The last rule finds the groups used only for Insurance History, which have no CodeGroupFixed
+		///(InsHistCodeGroupsStep, owner decision of 2026-11-07): a response that says "bitewings" goes to the history group whose History Proc Code
+		///is one of the bitewing group's codes. Quadrant rows are never picked, because a response does not name a quadrant. Null when no row
+		///matches, with the reason.</summary>
 		public static InsHistCategory GetForEligibility(List<InsHistCategory> listInsHistCategories,EnumCodeGroupFixed codeGroupFixed,string procCode,
-			out string reason)
+			out string reason,Func<EnumCodeGroupFixed,string> funcGetProcCodesFixed=null)
 		{
 			Meth.NoCheckMiddleTierRole();
 			reason="";
@@ -328,6 +332,16 @@ namespace OpenPmsDentalBusiness {
 			procCode=(procCode??"").Trim();
 			if(procCode!="") {
 				List<InsHistCategory> listMatches=listInsHistCategories.FindAll(x => string.Equals(x.HistProcCode.Trim(),procCode,StringComparison.OrdinalIgnoreCase));
+				InsHistCategory insHistCategory=listMatches.FirstOrDefault(x => !x.IsQuadrant);
+				if(insHistCategory!=null) {
+					return insHistCategory;
+				}
+				isQuadrantOnly|=listMatches.Count>0;
+			}
+			if(codeGroupFixed!=EnumCodeGroupFixed.None && !isQuadrantOnly) {
+				funcGetProcCodesFixed=funcGetProcCodesFixed??(x => CodeGroups.GetOneForCodeGroupFixed(x)?.ProcCodes??"");
+				ProcCodeRanges procCodeRangesFixed=ProcCodeRanges.Parse(funcGetProcCodesFixed(codeGroupFixed)??"");
+				List<InsHistCategory> listMatches=listInsHistCategories.FindAll(x => x.HistProcCode.Trim()!="" && procCodeRangesFixed.Contains(x.HistProcCode.Trim()));
 				InsHistCategory insHistCategory=listMatches.FirstOrDefault(x => !x.IsQuadrant);
 				if(insHistCategory!=null) {
 					return insHistCategory;

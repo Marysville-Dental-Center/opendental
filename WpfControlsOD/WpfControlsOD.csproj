@@ -63,9 +63,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Microsoft.Web.WebView2.Wpf.dll</HintPath>
     </Reference>
-    <Reference Include="NDde">
-      <HintPath>..\Required dlls\NDde.dll</HintPath>
-    </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
@@ -127,9 +124,7 @@
     <Compile Include="Bridges\DentalStudio.cs" />
     <Compile Include="Bridges\DentalTek.cs" />
     <Compile Include="Bridges\DentForms.cs" />
-    <Compile Include="Bridges\DentX.cs" />
     <Compile Include="Bridges\Dexis.cs" />
-    <Compile Include="Bridges\DexisIntegrator.cs" />
     <Compile Include="Bridges\Digora.cs" />
     <Compile Include="Bridges\DivvyPostcardService.cs" />
     <Compile Include="Bridges\Dolphin.cs" />
@@ -198,7 +193,6 @@
     <Compile Include="Bridges\Trophy.cs" />
     <Compile Include="Bridges\TrophyEnhanced.cs" />
     <Compile Include="Bridges\Tscan.cs" />
-    <Compile Include="Bridges\Vipersoft.cs" />
     <Compile Include="Bridges\VisionX.cs" />
     <Compile Include="Bridges\Visora.cs" />
     <Compile Include="Bridges\VistaDent.cs" />

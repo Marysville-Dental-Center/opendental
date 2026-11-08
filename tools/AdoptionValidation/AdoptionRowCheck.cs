@@ -32,9 +32,9 @@ namespace AdoptionValidation {
 	///  and the UDS+ step's report permissions: one Reports grant for the added row (FKey its DisplayReportNum, no date limit) per planned user group;
 	///  and the routine maintenance grant step's rows (MaintenanceGrantPlan): Maintenance Setup and Maintenance Record Completion (FKey 0, no date
 	///  limit) for each planned user group with Security Admin; no other row may change, be added or go;
-	///- codegroup: what the Insurance History step plans (InsHistCodeGroupPlan): the planned groups change only ProcCodes (to the planned codes) and
-	///  the three 26.1 history columns (to the planned values), and each planned new group is one added row with the planned values; no other row or
-	///  column may change, no other row may be added, and no row may go;
+	///- codegroup: what the Insurance History step plans (InsHistCodeGroupPlan): each planned new group (since 2026-11-07 the step only adds groups used
+	///  for Insurance History) is one added row with the planned values; a planned update (none since then) may change only ProcCodes and the three
+	///  26.1 history columns; no other row or column may change, no other row may be added, and no row may go;
 	///- program and toolbutitem: what the DXC Patient Credit Score step plans (DxcCreditScorePlan): each planned row of that discontinued link changes
 	///  only Enabled, to 0, and each of its planned toolbar buttons is deleted; no other program row or column may change, no other toolbutitem row
 	///  may go, and no row may be added to either;
@@ -684,6 +684,13 @@ namespace AdoptionValidation {
 			bool isClean=result.ListFailures.Count==countFailuresBefore;
 			if(isClean && listUpdated.Count==0 && listAddedPlanned.Count==0) {
 				result.ListLines.Add("codegroup: identical row by row apart from the 26.1 columns (migration-preview lists no change).");
+				return;
+			}
+			if(listUpdated.Count==0) {
+				result.ListLines.Add("codegroup: "+result.ListCodeGroupNumsAdded.Count+" of the "+listAddedPlanned.Count+" planned code group(s) used only for Insurance "
+					+"History added with the planned values"
+					+(result.ListCodeGroupNumsAdded.Count==0 ? "" : " (CodeGroupNum "+string.Join(", ",result.ListCodeGroupNumsAdded)+")")
+					+(isClean ? "; no existing row or column changed, none removed." : " (see the failures)."));
 				return;
 			}
 			result.ListLines.Add("codegroup: "+result.ListCodeGroupsMarked.Count+" of the "+listUpdated.Count+" code group(s) migration-preview lists marked Show In "

@@ -81,8 +81,10 @@ namespace OpenPmsDentalBusiness{
 		DentalStudio,
 		DentalTekSmartOfficePhone,
 		DentForms,
+		///<summary>Removed on 2026-11-07 (ProgramLinksDiscontinued.ListProgramNamesRemoved). Kept: program rows name it.</summary>
 		DentX,
 		Dexis,
+		///<summary>Removed on 2026-11-07 (ProgramLinksDiscontinued.ListProgramNamesRemoved). Kept: program rows name it.</summary>
 		DexisIntegrator,
 		Digora,
 		Dimaxis,
@@ -180,6 +182,7 @@ namespace OpenPmsDentalBusiness{
 		TrophyEnhanced,
 		Tscan,
 		UAppoint,
+		///<summary>Removed on 2026-11-07 (ProgramLinksDiscontinued.ListProgramNamesRemoved). Kept: program rows name it.</summary>
 		Vipersoft,
 		visOra,
 		VisionX,

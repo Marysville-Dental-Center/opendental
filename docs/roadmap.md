@@ -4,9 +4,10 @@ Planned work after v0.0, as agreed with the owner. Each item is discussed and sc
 
 ## Next
 
-Nothing is scheduled yet: the next items are chosen with the owner, from Later below. The owner questions still open from the work done in
-the next version (the SSH host key defaults, the server-wide rights the backup needs, and the Backup window's backup to another server)
-are in `docs/owner-questions.md`.
+Nothing is scheduled yet: the next items are chosen with the owner, from Later below. The owner questions of the work done in the next
+version (the SSH host key defaults, the server-wide rights the backup needs, and the Backup window's backup to another server) were answered
+on 2026-11-07, and every other open question was accepted at today's behaviour ("skip the rest"); `docs/owner-questions.md` records the
+answers.
 
 ## Done in the next version
 
@@ -20,6 +21,9 @@ Built for the version after 0.0; what each one changes is in its release notes, 
 3. **Routine maintenance around the practice**.
 4. **Inventory tracking**.
 5. **Storage rename**: `OpenPmsDentalCloud` becomes `OpenPmsDentalStorage`, since it holds only the SFTP storage option.
+6. **Fixes before the switch-over, from the owner's answers of 2026-11-07**: a declined PayConnect 2 charge is a decline, an edited X-ray
+   attached to a claim is saved, the Insurance History step leaves the frequency code groups unchanged, the DentX, Dexis Integrator and
+   Vipersoft links and NDde.dll are removed, the capture session is on for new installs, and the backup to another server works.
 
 ## Later
 

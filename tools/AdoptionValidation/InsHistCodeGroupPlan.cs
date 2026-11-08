@@ -13,9 +13,9 @@ namespace AdoptionValidation {
 	///<summary>What the fork migration's Insurance History step (InsHistCodeGroupsStep, backlog package M2-HIST: from Open Dental 26.1 the Insurance
 	///History rows come from code groups) changes when adoption brings an Open Dental 25.3.48 database to 26.1.70, worked out before adoption and
 	///read-only. On a database from before 25.4 (judged as the 25.4 and 26.1 seed step judges it, Migration26_1Plan) whose code groups are not marked
-	///Show In History yet, the step marks the code group of each history category whose InsHist*Codes preference has a value (ShowInHistory, its
-	///History Proc Code and, for the four perio quadrants, Perio Four Quadrants) and appends to its ProcCodes the preference's codes it lacks; a
-	///category without a code group of its fixed type gets a new group. The preferences are kept. The plan is the step's own
+	///Show In History yet, the step adds, for each history category whose InsHist*Codes preference has a value, a code group used only for Insurance
+	///History (ShowInHistory, its History Proc Code, the preference's codes and, for the four perio quadrants, Perio Four Quadrants; no fixed type,
+	///in no benefit grid), and changes no existing code group (owner decision of 2026-11-07, switch-over question 4). The preferences are kept. The plan is the step's own
 	///(InsHistCodeGroupsMigration.CreatePlan) on the rows read here with plain SQL. migration-preview prints it (runbook step 0.2), and adopt's row
 	///check (AdoptionRowCheck) holds the adopted copy's codegroup rows to the plan made from the original. Reads preference, codegroup and
 	///procedurecode.</summary>
@@ -54,6 +54,13 @@ namespace AdoptionValidation {
 				}
 				List<CodeGroup> listUpdated=Migration.ListUpdated;
 				List<CodeGroup> listAdded=Migration.ListAdded;
+				if(listUpdated.Count==0) {
+					listLines.Add(step+" adds "+listAdded.Count+" code group(s) used only for Insurance History and changes no existing code group (this database "
+						+"comes from before Open Dental 25.4; the ten InsHist*Codes preferences are kept): "+string.Join("; ",Migration.GetLogLines())+". The adoption "
+						+"log says each of these; adopt's row check (step 4) requires exactly this: the added group(s) hold these values, and no existing codegroup row "
+						+"or column changes.");
+					return listLines;
+				}
 				listLines.Add(step+" marks "+listUpdated.Count+" code group(s) Show In History and adds "+listAdded.Count+" (this database comes from before "
 					+"Open Dental 25.4; the ten InsHist*Codes preferences are kept): "+string.Join("; ",Migration.GetLogLines())+". The adoption log says each of these; "
 					+"adopt's row check (step 4) requires exactly this: the marked groups change only ProcCodes (codes added) and the three history columns, the added "

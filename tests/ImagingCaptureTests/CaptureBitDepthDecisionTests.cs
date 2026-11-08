@@ -424,7 +424,8 @@ namespace ImagingCapture.Tests {
 		[TestMethod]
 		public void SessionConfig_Defaults() {
 			CaptureSessionConfig config=CaptureSessionConfig.Read(null);
-			Assert.IsFalse(config.IsEnabled,"Design 9.3: Enabled=0, the legacy loop.");
+			Assert.IsTrue(config.IsEnabled,"Owner decision of 2026-11-07: every new install starts with the capture session on (it was Enabled=0).");
+			Assert.IsTrue(CaptureSessionConfig.EnabledDefault);
 			Assert.AreEqual(10,config.IdleDisableMinutes);
 			Assert.AreEqual("",config.GetKeyText(CaptureSessionKey.Confirm),"Empty: the on-screen button only.");
 			Assert.AreEqual("SystemAsterisk",config.GetSoundName(CaptureSound.Saved));

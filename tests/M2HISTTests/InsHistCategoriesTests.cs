@@ -129,13 +129,41 @@ namespace M2HISTTests {
 			Assert.AreEqual("",reason);
 			Assert.AreEqual("2",InsHistCategories.GetForEligibility(listCategories,EnumCodeGroupFixed.Exam,"z1206",out reason).Key,
 				"No Exam row: matched on the History Proc Code.");
-			Assert.IsNull(InsHistCategories.GetForEligibility(listCategories,EnumCodeGroupFixed.Exam,"Z0120",out reason));
+			Assert.IsNull(InsHistCategories.GetForEligibility(listCategories,EnumCodeGroupFixed.Exam,"Z0120",out reason,x => "Z0120,Z0150"));
 			StringAssert.Contains(reason,"no code group");
 			Assert.IsNull(InsHistCategories.GetForEligibility(listCategories,EnumCodeGroupFixed.SRP,"",out reason));
 			StringAssert.Contains(reason,"quadrant");
 			Assert.IsNull(InsHistCategories.GetForEligibility(listCategories,EnumCodeGroupFixed.None,"Z4341",out reason));
 			StringAssert.Contains(reason,"quadrant");
-			Assert.IsNull(InsHistCategories.GetForEligibility(new List<InsHistCategory>(),EnumCodeGroupFixed.BW,"Z0272",out reason));
+			Assert.IsNull(InsHistCategories.GetForEligibility(new List<InsHistCategory>(),EnumCodeGroupFixed.BW,"Z0272",out reason,x => "Z0272,Z0274"));
+		}
+
+		[TestMethod]
+		public void GetForEligibility_AHistoryOnlyGroup_ByTheCodesOfTheCategorysGroup() {
+			//The Insurance History step's groups (owner decision of 2026-11-07) have no CodeGroupFixed: a response that names a category goes to the
+			//history row whose History Proc Code is one of the codes of that category's code group.
+			List<InsHistCategory> listCategories=InsHistCategories.GetAll(new List<CodeGroup> {
+				Group(10,"Exam History",20,"Z0120,Z0150",showInHistory:true,histProcCode:"Z0120"),
+				Group(11,"Bitewing History",21,"Z0272-Z0274",showInHistory:true,histProcCode:"Z0274"),
+				Group(12,"Perio Scaling History",22,"Z4341,Z4342",showInHistory:true,histProcCode:"Z4341",isPerioFourQuads:true),
+			});
+			Func<EnumCodeGroupFixed,string> funcGetProcCodesFixed=x => {
+				switch(x) {
+					case EnumCodeGroupFixed.Exam: return "Z0120,Z0140,Z0150";
+					case EnumCodeGroupFixed.BW: return "Z0270-Z0279";
+					case EnumCodeGroupFixed.SRP: return "Z4341,Z4342";
+					default: return "";
+				}
+			};
+			Assert.AreEqual("10",InsHistCategories.GetForEligibility(listCategories,EnumCodeGroupFixed.Exam,"",out string reason,funcGetProcCodesFixed).Key);
+			Assert.AreEqual("11",InsHistCategories.GetForEligibility(listCategories,EnumCodeGroupFixed.BW,"",out reason,funcGetProcCodesFixed).Key,
+				"A range of the category's group counts.");
+			Assert.AreEqual("10",InsHistCategories.GetForEligibility(listCategories,EnumCodeGroupFixed.BW,"Z0120",out reason,funcGetProcCodesFixed).Key,
+				"The procedure code the response names comes first.");
+			Assert.IsNull(InsHistCategories.GetForEligibility(listCategories,EnumCodeGroupFixed.SRP,"",out reason,funcGetProcCodesFixed));
+			StringAssert.Contains(reason,"quadrant");
+			Assert.IsNull(InsHistCategories.GetForEligibility(listCategories,EnumCodeGroupFixed.Prophy,"",out reason,funcGetProcCodesFixed));
+			StringAssert.Contains(reason,"no code group");
 		}
 
 		[TestMethod]

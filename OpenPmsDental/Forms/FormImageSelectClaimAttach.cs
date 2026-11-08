@@ -181,95 +181,74 @@ namespace OpenPmsDental{
 					return;
 				}
 			}
+			//CLAIM-DCM 1 (owner question, fixed on 2026-11-07): the file is read, an image with a crop, rotation, flip or brightness and contrast
+			//window gets them applied (ClaimAttachImage), and the result is always written where the attachment points, in the local images folder or
+			//in cloud storage alike. Before, an edited image in a local folder got an attachment row but no file, and cloud storage got the file unedited.
 			string oldPath=ODFileUtils.CombinePaths(patientfolder,document.FileName);
-			if(!File.Exists(oldPath)) {
+			byte[] arrayBytesFile=null;
+			if(CloudStorage.IsCloudStorage) {
+				oldPath=oldPath.Replace("\\","/");
+				UI.ProgressWin progressWinDownload=new UI.ProgressWin();
+				progressWinDownload.StartingMessage="Downloading...";
+				progressWinDownload.ActionMain=() => arrayBytesFile=CloudStorage.Download(patientfolder,document.FileName);
+				progressWinDownload.ShowDialog();
+				if(progressWinDownload.IsCancelled) {
+					return;
+				}
+			}
+			else {
+				if(!File.Exists(oldPath)) {
+					MsgBox.Show(this,"File not found: "+oldPath);
+					return;
+				}
+				try {
+					arrayBytesFile=File.ReadAllBytes(oldPath);
+				}
+				catch(Exception ex) {
+					MessageBox.Show(ex.Message);
+					return;
+				}
+			}
+			if(arrayBytesFile==null || arrayBytesFile.Length==0) {
 				MsgBox.Show(this,"File not found: "+oldPath);
+				return;
+			}
+			byte[] arrayBytesAttach;
+			try {
+				arrayBytesAttach=ClaimAttachImage.BuildFileBytes(document,arrayBytesFile);
+			}
+			catch(Exception ex) {
+				MessageBox.Show(this,Lan.g(this,"The image could not be prepared for the claim, so it was not attached.")+"\r\n"+ex.Message);
 				return;
 			}
 			Random random=new Random();
 			string newName=DateTime.Now.ToString("yyyyMMdd")+"_"+DateTime.Now.TimeOfDay.Ticks.ToString()+random.Next(1000).ToString()
-				+Path.GetExtension(oldPath);
+				+ClaimAttachImage.GetAttachExtension(document);
 			string attachPath=EmailAttaches.GetAttachPath();
-			string newPath=ODFileUtils.CombinePaths(attachPath,newName);
 			if(CloudStorage.IsCloudStorage) {
-				oldPath=oldPath.Replace("\\","/");
-				newPath=newPath.Replace("\\","/");
-			}
-			if(!ImageHelper.HasImageExtension(oldPath)) {
+				UI.ProgressWin progressWinUpload=new UI.ProgressWin();
+				progressWinUpload.StartingMessage="Uploading Image for Claim Attach...";
+				progressWinUpload.ActionMain=() => CloudStorage.Upload(attachPath,newName,arrayBytesAttach);
 				try {
-					File.Copy(oldPath,newPath); 
+					progressWinUpload.ShowDialog();
+				}
+				catch(Exception ex) {
+					MessageBox.Show(this,ex.Message);
+					return;
+				}
+				if(progressWinUpload.IsCancelled) {
+					return;
+				}
+			}
+			else {
+				try {
+					File.WriteAllBytes(ODFileUtils.CombinePaths(attachPath,newName),arrayBytesAttach);
 				}
 				catch(Exception ex) {
 					MessageBox.Show(ex.Message);
 					return;
 				}
-				ClaimAttachNew=new ClaimAttach();
-				ClaimAttachNew.DisplayedFileName=document.FileName;
-				ClaimAttachNew.ActualFileName=newName;
-				DialogResult=DialogResult.OK;
-				return;
 			}
-			if(document.CropH==0
-				&& document.CropW==0
-				&& document.CropX==0
-				&& document.CropY==0
-				&& document.DegreesRotated==0
-				&& !document.IsFlipped
-				&& document.WindowingMax==0
-				&& document.WindowingMin==0
-				&& !CloudStorage.IsCloudStorage) 
-			{
-				try {
-					File.Copy(oldPath,newPath); 
-				}
-				catch(Exception ex) {
-					MessageBox.Show(ex.Message);
-					return;
-				}
-				ClaimAttachNew=new ClaimAttach();
-				ClaimAttachNew.DisplayedFileName=document.FileName;
-				ClaimAttachNew.ActualFileName=newName;
-				DialogResult=DialogResult.OK;
-				return;
-			}
-			//this does result in a significantly larger images size if jpg.  A later optimization would recompress it.
-			Bitmap bitmapold=null;
-			if(PrefC.AtoZfolderUsed!=DataStorageType.LocalAtoZ) {
-				bitmapold=(Bitmap)Bitmap.FromFile(oldPath);  
-				Bitmap bitmapnew=ImageHelper.ApplyDocumentSettingsToImage(document,bitmapold,ImageSettingFlags.ALL);
-				bitmapnew.Save(newPath); 
-				ClaimAttachNew=new ClaimAttach();
-				ClaimAttachNew.DisplayedFileName=document.FileName;
-				ClaimAttachNew.ActualFileName=newName;
-				DialogResult=DialogResult.OK;
-				return;
-			}
-			if(!CloudStorage.IsCloudStorage) {
-				ClaimAttachNew=new ClaimAttach();
-				ClaimAttachNew.DisplayedFileName=document.FileName;
-				ClaimAttachNew.ActualFileName=newName;
-				DialogResult=DialogResult.OK;
-				return;
-			}
-			//IsCloudStorage from here down--------------------------------------------------------------------
-			//First, download the file. 
-			UI.ProgressWin progressWin=new UI.ProgressWin();
-			progressWin.StartingMessage="Downloading...";
-			byte[] byteArray=null;
-			progressWin.ActionMain=() => byteArray=CloudStorage.Download(patientfolder,document.FileName);
-			progressWin.ShowDialog();
-			if(byteArray==null || byteArray.Length==0){
-				return;
-			}
-			//Successfully downloaded, now do stuff with byteArray
-			progressWin=new UI.ProgressWin();
-			progressWin.StartingMessage="Uploading Image for Claim Attach...";
-			progressWin.ActionMain=() => CloudStorage.Upload(attachPath,newName,byteArray);
-			progressWin.ShowDialog();
-			if(progressWin.IsCancelled){
-				return;
-			}
-			//Upload was successful
 			ClaimAttachNew=new ClaimAttach();
 			ClaimAttachNew.DisplayedFileName=document.FileName;
 			ClaimAttachNew.ActualFileName=newName;

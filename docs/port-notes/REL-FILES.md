@@ -154,7 +154,8 @@ assembly version and Update only the release version.
 ## Owner questions
 
 1. fo-dicom (`Dicom.Core.dll`, `Dicom.Native.dll`) is MS-PL, which is not compatible with the GNU GPL. Keep it, replace it, or drop DICOM?
-2. NDde (`NDde.dll`) uses its own Shared Source License in the style of MS-PL. Is it acceptable next to the GPL?
+2. NDde (`NDde.dll`) uses its own Shared Source License in the style of MS-PL. Is it acceptable next to the GPL? **Answered on 2026-11-07:
+   no; NDde is removed, with the three program links that used it** (see "NDde removed" below).
 3. The Google APIs client libraries are Apache 2.0, compatible with GPL v3 but not v2. The program is "v2 or later", so it can be distributed
    under v3; is that the intended reading, or should Gmail go?
 4. `AssemblyCompany`: "Open PMS - Dental contributors" (INFERRED), or the practice's name?
@@ -190,3 +191,28 @@ assembly version and Update only the release version.
 - `run-tests.ps1 -Mode Core -Include ReleaseFlowTests`: 79 assemblies, 5,356 tests, all passed (AttributionTests 32, ReleaseFlowTests 76,
   NoHqTests 49).
 - `tools/Test-NoHqHosts.ps1`: passed (6,868 files in 106 projects).
+
+## NDde removed (owner answer of 2026-11-07, question 2)
+
+The owner answered question 2: NDde's licence does not fit the GPL, and the office uses none of the program links that needed it, so they go.
+Three program links sent the patient to another program over DDE through `NDde.dll`: DentX (ProImage, `ProgramName.DentX`), Dexis
+Integrator (`ProgramName.DexisIntegrator`) and Vipersoft (`ProgramName.Vipersoft`). Done the way the earlier removals were (BIN-A, the
+Bridges.dll removal, DXC Patient Credit Score in B-SHELL):
+
+- **Code.** `WpfControlsOD/Bridges/DentX.cs`, `DexisIntegrator.cs` and `Vipersoft.cs` are deleted, with their `ProgramL.Execute` branches and
+  their `Compile` lines. No other code used them (Dexis itself, `Dexis.cs`, is a file bridge and stays).
+- **The program rows.** The `ProgramName` values stay, because office and new databases have the rows (24.3's conversions made them, disabled).
+  `ProgramLinksDiscontinued` now also holds `ListProgramNamesRemoved`: such a link is listed in Program Links as "(removed)" (DXC Patient
+  Credit Score stays "(discontinued)"), its edit window cannot enable it or give it toolbar buttons, a click on an old button says "This
+  program link was removed from this version of Open PMS - Dental and can no longer be used." instead of launching anything, and
+  `ToolButItems.GetForToolBar` shows no button of a discontinued or removed link even when its row is still enabled. No migration step
+  changes the rows: a disabled row stays as it is, and an enabled one shows no button.
+- **NDde.** `Required dlls/NDde.dll` is deleted, with its references (`OpenPmsDental.csproj`, `WpfControlsOD.csproj`, `UnitTests.csproj`),
+  its licence text (`OpenPmsDental/Resources/NDde.txt`, the `NDde` resource, its entry in Help > About > View Licenses) and its
+  `THIRD-PARTY-NOTICES.txt` component. `tools/Build-Release.ps1` takes it off the allow list and puts it on the deny list; it is in
+  `ForkReleases.ListRetiredFiles` (never published again) and in setup's `[InstallDelete]` (deleted on an upgrade).
+- **Tests.** `tests/VendorDirectTests/BridgesRemoval/DdeBridgesRemovedTests.cs` (the files, references, licence texts and notices; no built
+  assembly references NDde; the rows are removed links with their label, message and no toolbar button; the release and setup lists).
+  `AttributionTests` (NDde is neither a shipped component nor in the license list), `ReleaseFlowTests` (the deny list; the notices check now
+  uses SSH.NET as its example; `ProgramNamesTests` no longer checks the deleted Dexis Integrator file), `BSHELLTests` (the Program Links label
+  call), and `tools/Test-NoOldNames.ps1` (the Vipersoft exception is gone with its file).

@@ -362,9 +362,19 @@ namespace OpenPmsDental {
 					TransType=PayConnectService.transType.VOID;
 				}	
 			}
-			_response=PayConnect2.ApiResponseToPayConnectResponse(_payConnect2Response);
+			if(TransType==transType.SALE || TransType==transType.AUTH) {
+				//A charge whose status is not an approval (for example Declined, also on the hosted page's status lookup) gets a StatusCode other than
+				//"0", so the payment window records it as declined, never as paid (owner question M2-RECUR 6, fixed on 2026-11-07).
+				_response=PayConnect2.ChargeResponseToPayConnectResponse(_payConnect2Response);
+			}
+			else {
+				_response=PayConnect2.ApiResponseToPayConnectResponse(_payConnect2Response);
+			}
 			if(_response.TransType==PayConnectResponse.TransactionType.Unknown) {
 				return true;
+			}
+			if(_response.StatusCode==PayConnect2.StatusCodeNotApproved) {
+				return true;//Not charged: no signature to send, no receipt. The payment window says it was declined.
 			}
 			bool doShowSignatureLine=true;
 			if(TransType==transType.SALE || TransType==transType.AUTH || TransType==transType.RETURN) {

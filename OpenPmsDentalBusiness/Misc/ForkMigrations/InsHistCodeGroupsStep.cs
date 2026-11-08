@@ -1,5 +1,6 @@
 // M2-HIST: moves the ten InsHist*Codes preferences (the fixed Insurance History rows of 24.3 and 25.3) into code groups marked Show In History
-// (Open Dental 26.1). The preference rows are kept.
+// (Open Dental 26.1), each a new code group used only for Insurance History; the existing code groups are never changed (owner decision of
+// 2026-11-07, switch-over question 4). The preference rows are kept.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -17,7 +18,9 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 	///history rows are already set up is never changed. The preferences are read, never changed or deleted. Adoption runs it on an Open Dental
 	///25.3.48 database: AdoptionValidation's migration-preview prints the same plan (InsHistCodeGroupsMigration.CreatePlan) and adopt's row check holds
 	///the adopted copy's codegroup rows to it.</para>
-	///Level 2026110104 (package M2-HIST; renumbered on 2026-11-01 from the retired package range level 2027004701).</summary>
+	///Level 2026110104 (package M2-HIST; renumbered on 2026-11-01 from the retired package range level 2027004701). Its rule changed on 2026-11-07
+	///(owner decision, switch-over question 4): it now only adds code groups used for Insurance History and changes no existing one. No office
+	///database ran the earlier rule (v0.0 was never adopted; the owner reinstalls rather than upgrades it), so the level stays.</summary>
 	[ForkMigration(2026110104,"Insurance History rows from the InsHist preferences to code groups (26.1)")]
 	public class InsHistCodeGroupsStep:ForkMigrationStep {
 		public override void Apply(ForkMigrationContext context) {
@@ -40,24 +43,28 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 	}
 
 	///<summary>The fork's rule for moving the ten InsHist*Codes preferences into code groups (Open Dental 26.1; INFERRED, Open Dental's own
-	///conversion is not public). For each history category whose preference (or, for the perio quadrants, any of the four) has a value:
-	///1. The code group whose CodeGroupFixed matches the category (Exam, Prophy, BW, PanoFMX, Perio for perio maintenance, FMDebride for full mouth
-	///debridement, SRP for the four perio quadrants), a group in use before a retired one, lowest ItemOrder first. If there is none, a new group named
-	///after the 24.3 row, with that CodeGroupFixed, after every other group, in no benefit grid.
-	///2. ShowInHistory=1, and HistProcCode is the first code of the preference that is in the procedure code list (a range gives its first code
-	///in the list); when none is, the first code as written, so the setting is not lost and Code Group Edit asks for a valid one.
-	///3. ProcCodes gets every code and range of the preference it does not hold yet, appended in the order written.
+	///conversion is not public), as the owner decided on 2026-11-07 (switch-over question 4): the existing code groups, the frequency and age limit
+	///groups among them, stay exactly as they are, and the codes of the old Insurance History settings go into code groups used only for Insurance
+	///History. For each history category whose preference (or, for the perio quadrants, any of the four) has a value:
+	///1. A new code group named after the 24.3 row with " History" ("Bitewing History", "Exam History", ...; a number is added when a group of that
+	///name exists), after every other group, ShowInHistory=1 and nothing else: not in the frequency, age limit or other benefit grids, no
+	///CodeGroupFixed (None), so no frequency limitation, age limit, sheet field or code group reset takes it for a category's group.
+	///2. HistProcCode is the first code of the preference that is in the procedure code list (a range gives its first code in the list); when none
+	///is, the first code as written, so the setting is not lost and Code Group Edit asks for a valid one.
+	///3. ProcCodes holds every code and range of the preference, in the order written.
 	///4. The four perio quadrant preferences share one group with IsPerioFourQuads=1. Its HistProcCode comes from the UR preference, or else from
 	///the first of UL, LR and LL that has a value; when the quadrants had different codes, every code goes into ProcCodes and a note is logged.
-	///The preferences are not changed. Plan and CreatePlan are pure; the step reads the rows (ReadPrefs, ReadCodeGroups, ReadProcCodes) and writes
-	///what CreatePlan returns (Run).</summary>
+	///An eligibility response that names a category goes to such a group through its History Proc Code (InsHistCategories.GetForEligibility).
+	///The preferences and the existing code groups are not changed. Plan and CreatePlan are pure; the step reads the rows (ReadPrefs,
+	///ReadCodeGroups, ReadProcCodes) and writes what CreatePlan returns (Run).</summary>
 	public static class InsHistCodeGroupsMigration {
 		///<summary>The ten preferences, in the order of the 24.3 Insurance History window.</summary>
 		public static readonly List<PrefName> ListPrefNames=new List<PrefName> { PrefName.InsHistBWCodes,PrefName.InsHistPanoCodes,
 			PrefName.InsHistExamCodes,PrefName.InsHistProphyCodes,PrefName.InsHistPerioURCodes,PrefName.InsHistPerioULCodes,PrefName.InsHistPerioLRCodes,
 			PrefName.InsHistPerioLLCodes,PrefName.InsHistPerioMaintCodes,PrefName.InsHistDebridementCodes };
 
-		///<summary>One history category of 24.3: its preferences, the code group category it moves to and the name of a group created for it.</summary>
+		///<summary>One history category of 24.3: its preferences, its code group category (for reference only: the group created for it has
+		///CodeGroupFixed None) and its 24.3 row label, which names the group created for it.</summary>
 		private class Category {
 			public List<PrefName> ListPrefNames;
 			public EnumCodeGroupFixed CodeGroupFixed;
@@ -97,7 +104,8 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 			public int CountShownInHistory;
 			///<summary>The code groups as the step read them, in ItemOrder and CodeGroupNum order.</summary>
 			public List<CodeGroup> ListCodeGroupsBefore=new List<CodeGroup>();
-			///<summary>The code groups the step updates (IsNew false) or inserts (IsNew true), with their new values; empty when it does not run.</summary>
+			///<summary>The code groups the step inserts (IsNew true), with their values; empty when it does not run. Since 2026-11-07 it never updates an
+			///existing group (IsNew false), so ListUpdated is always empty.</summary>
 			public List<CodeGroup> ListCodeGroupsChanged=new List<CodeGroup>();
 			///<summary>The decisions worth logging, after the changes.</summary>
 			public List<string> ListNotes=new List<string>();
@@ -213,9 +221,10 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 			return Db.GetTable("SELECT ProcCode FROM procedurecode").Select().Select(x => x["ProcCode"].ToString()).ToList();
 		}
 
-		///<summary>Writes the plan with plain UPDATE and INSERT statements and returns the lines for the fork migration log (MigrationPlan.GetLogLines).
-		///An updated group gets its new ProcCodes and the three history columns; every other column is kept. An added group is in no benefit grid
-		///and not hidden.</summary>
+		///<summary>Writes the plan with plain INSERT statements and returns the lines for the fork migration log (MigrationPlan.GetLogLines). An added
+		///group is in no benefit grid (ShowInAgeLimit, ShowInFrequency and ShowInOther 0) and not hidden. A plan made before 2026-11-07 could also
+		///update an existing group (its ProcCodes and the three history columns); Plan no longer makes one, and the UPDATE is kept only for such
+		///a plan.</summary>
 		public static List<string> Run(MigrationPlan plan) {
 			if(plan==null || !plan.IsRun) {
 				return new List<string>();
@@ -257,12 +266,20 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 			return line;
 		}
 
-		///<summary>The log line for a group the step adds, for example "Added code group 'Full Mouth Debridement' (FMDebride, ItemOrder 13), shown in
-		///Insurance History, History Proc Code Z4355, codes Z4355".</summary>
+		///<summary>The log line for a group the step adds, for example "Added code group 'Exam History' (ItemOrder 13), used only for Insurance History
+		///(not in frequency or age limits), History Proc Code Z0120, codes Z0120,Z0150".</summary>
 		public static string DescribeAdd(CodeGroup codeGroup) {
-			return "Added code group '"+codeGroup.GroupName+"' ("+codeGroup.CodeGroupFixed+", ItemOrder "+codeGroup.ItemOrder+"), shown in Insurance History"
-				+(codeGroup.IsPerioFourQuads ? " with four quadrant rows" : "")+", History Proc Code "+codeGroup.HistProcCode+", codes "+codeGroup.ProcCodes;
+			return "Added code group '"+codeGroup.GroupName+"' (ItemOrder "+codeGroup.ItemOrder+"), used only for Insurance History"
+				+(codeGroup.IsPerioFourQuads ? " with four quadrant rows" : "")+" (not in frequency or age limits), History Proc Code "+codeGroup.HistProcCode
+				+", codes "+codeGroup.ProcCodes;
 		}
+
+		///<summary>The note that closes the step's log when it added groups: the existing code groups were not changed.</summary>
+		public const string NOTE_EXISTING_UNCHANGED="Insurance History: the existing code groups, the frequency and age limit groups among them, were not "
+			+"changed; the codes of the old Insurance History settings are only in the added groups.";
+
+		///<summary>The suffix of the name of a group the step adds, after the 24.3 row label.</summary>
+		public const string GROUP_NAME_SUFFIX=" History";
 
 		///<summary>The entries (codes and ranges) of procCodesAfter that procCodesBefore does not have, in order.</summary>
 		public static List<string> GetEntriesAdded(string procCodesBefore,string procCodesAfter) {
@@ -270,44 +287,39 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 			return ProcCodeRanges.Parse(procCodesAfter??"").ListEntries.Where(x => !listBefore.Contains(x,StringComparer.OrdinalIgnoreCase)).ToList();
 		}
 
-		///<summary>The code groups to update (IsNew false) or insert (IsNew true), with their new values. dictPrefs holds the preference values by name,
-		///listCodeGroups the code groups as they are, listProcCodes every ProcCode in the procedure code table. listNotes gets one line per decision
-		///worth logging.</summary>
+		///<summary>The code groups to insert (IsNew true), with their values: one for each history category whose preference has a value (see the
+		///class summary). The existing code groups are never changed, so none is returned with IsNew false. dictPrefs holds the preference values by
+		///name, listCodeGroups the code groups as they are (only their names and ItemOrder are read), listProcCodes every ProcCode in the procedure
+		///code table. listNotes gets one line per decision worth logging.</summary>
 		public static List<CodeGroup> Plan(Dictionary<string,string> dictPrefs,List<CodeGroup> listCodeGroups,List<string> listProcCodes,
 			out List<string> listNotes)
 		{
 			listNotes=new List<string>();
-			List<CodeGroup> listCodeGroupsChanged=new List<CodeGroup>();
+			List<CodeGroup> listCodeGroupsAdded=new List<CodeGroup>();
 			List<string> listProcCodesSorted=(listProcCodes??new List<string>()).Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => x.Trim())
 				.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x,StringComparer.OrdinalIgnoreCase).ToList();
 			Dictionary<string,string> dictProcCodes=listProcCodesSorted.ToDictionary(x => x,x => x,StringComparer.OrdinalIgnoreCase);
-			List<CodeGroup> listCodeGroupsAll=(listCodeGroups??new List<CodeGroup>()).Select(x => x.Copy()).ToList();
-			int itemOrderNext=listCodeGroupsAll.Count==0 ? 0 : listCodeGroupsAll.Max(x => x.ItemOrder)+1;
+			List<CodeGroup> listCodeGroupsExisting=listCodeGroups??new List<CodeGroup>();
+			HashSet<string> setGroupNames=new HashSet<string>(listCodeGroupsExisting.Select(x => (x.GroupName??"").Trim()),StringComparer.OrdinalIgnoreCase);
+			int itemOrderNext=listCodeGroupsExisting.Count==0 ? 0 : listCodeGroupsExisting.Max(x => x.ItemOrder)+1;
 			for(int c=0;c<_listCategories.Count;c++) {
 				Category category=_listCategories[c];
 				List<string> listValues=category.ListPrefNames.Select(x => GetPref(dictPrefs,x)).ToList();
 				if(listValues.All(x => x=="")) {
 					continue;//Not set up in 24.3: the row showed "Not Set". No history row from 26.1 on.
 				}
-				CodeGroup codeGroup=listCodeGroupsAll.Where(x => x.CodeGroupFixed==category.CodeGroupFixed)
-					.OrderBy(x => x.IsHidden).ThenBy(x => x.ItemOrder).ThenBy(x => x.CodeGroupNum).FirstOrDefault();
-				if(codeGroup!=null && listCodeGroupsChanged.Contains(codeGroup)) {
-					codeGroup=null;//Two categories never share a group.
-				}
-				if(codeGroup==null) {
-					codeGroup=new CodeGroup();
-					codeGroup.IsNew=true;
-					codeGroup.GroupName=category.GroupName;
-					codeGroup.ProcCodes="";
-					codeGroup.ItemOrder=itemOrderNext++;
-					codeGroup.CodeGroupFixed=category.CodeGroupFixed;
-					codeGroup.HistProcCode="";
-					listCodeGroupsAll.Add(codeGroup);
-					listNotes.Add("Insurance History: created code group '"+category.GroupName+"' for "+string.Join(", ",category.ListPrefNames));
-				}
-				codeGroup.ProcCodes=MergeProcCodes(codeGroup.ProcCodes,listValues);
+				CodeGroup codeGroup=new CodeGroup();
+				codeGroup.IsNew=true;
+				codeGroup.GroupName=GetUniqueGroupName(category.GroupName+GROUP_NAME_SUFFIX,setGroupNames);
+				setGroupNames.Add(codeGroup.GroupName);
+				codeGroup.ProcCodes=MergeProcCodes("",listValues);
+				codeGroup.ItemOrder=itemOrderNext++;
+				codeGroup.CodeGroupFixed=EnumCodeGroupFixed.None;//Used only for Insurance History: never a category's group.
 				codeGroup.HistProcCode=listValues.Where(x => x!="").Select(x => GetFirstCode(x,listProcCodesSorted,dictProcCodes)).FirstOrDefault(x => x!="")??"";
 				codeGroup.ShowInHistory=true;
+				codeGroup.ShowInAgeLimit=false;
+				codeGroup.ShowInFrequency=false;
+				codeGroup.ShowInOther=false;
 				codeGroup.IsPerioFourQuads=category.IsPerioFourQuads;
 				if(category.IsPerioFourQuads) {
 					List<string> listHistCodes=listValues.Where(x => x!="").Select(x => GetFirstCode(x,listProcCodesSorted,dictProcCodes)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -316,9 +328,25 @@ namespace OpenPmsDentalBusiness.ForkMigrations.FeatureSteps {
 							+codeGroup.GroupName+"' uses "+codeGroup.HistProcCode+" for all four quadrants and counts every code as history.");
 					}
 				}
-				listCodeGroupsChanged.Add(codeGroup);
+				listCodeGroupsAdded.Add(codeGroup);
 			}
-			return listCodeGroupsChanged;
+			if(listCodeGroupsAdded.Count>0) {
+				listNotes.Add(NOTE_EXISTING_UNCHANGED);
+			}
+			return listCodeGroupsAdded;
+		}
+
+		///<summary>name, or name with " 2", " 3" and so on when a code group of that name exists (ignoring case).</summary>
+		public static string GetUniqueGroupName(string name,HashSet<string> setGroupNames) {
+			if(setGroupNames==null || !setGroupNames.Contains(name)) {
+				return name;
+			}
+			for(int i=2;;i++) {
+				string nameNumbered=name+" "+i;
+				if(!setGroupNames.Contains(nameNumbered)) {
+					return nameNumbered;
+				}
+			}
 		}
 
 		private static string GetPref(Dictionary<string,string> dictPrefs,PrefName prefName) {

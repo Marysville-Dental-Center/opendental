@@ -474,9 +474,9 @@ namespace AdoptionValidation {
 		}
 
 		///<summary>M6: the Insurance History step (M2-HIST) changes exactly what migration-preview lists for the source (InsHistCodeGroupPlan): on the
-		///office fixture it marks six code groups Show In History (the SRP group with four quadrant rows), adds the perio maintenance code the group
-		///lacked, and adds a full mouth debridement group, because the fixture made the generated one the office's own; the row check found exactly
-		///that, and the adoption log names each group.</summary>
+		///office fixture it adds seven code groups used only for Insurance History (the perio scaling one with four quadrant rows, the perio
+		///maintenance one with the code no generated group has) and changes no existing code group (owner decision of 2026-11-07); the row check found
+		///exactly that, and the adoption log names each group.</summary>
 		private void CheckInsHistCodeGroups(MigrationPreview.Result preview,HeadlessAdoption.Result adoption,AdoptionResult adoptionResult) {
 			InsHistCodeGroupPlan.Plan plan=preview.PlanInsHist;
 			OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.InsHistCodeGroupsMigration.MigrationPlan migration=plan.Migration;
@@ -485,11 +485,13 @@ namespace AdoptionValidation {
 			List<OpenPmsDentalBusiness.CodeGroup> listUpdated=migration.ListUpdated;
 			List<OpenPmsDentalBusiness.CodeGroup> listAdded=migration.ListAdded;
 			if(!plan.IsChanging || listUpdated.Count!=OfficeFixture.CountInsHistGroupsMarked || listAdded.Count!=OfficeFixture.CountInsHistGroupsAdded
-				|| listAdded.Any(x => x.GroupName!=OfficeFixture.INSHIST_GROUP_ADDED) || listUpdated.Count(x => x.IsPerioFourQuads)!=1
-				|| !listUpdated.Any(x => x.ProcCodes.EndsWith(","+OfficeFixture.INSHIST_CODE_ADDED)))
+				|| !listAdded.Select(x => x.GroupName).SequenceEqual(OfficeFixture.ArrayInsHistGroupsAdded) || listAdded.Count(x => x.IsPerioFourQuads)!=1
+				|| !listAdded.Any(x => x.ProcCodes.EndsWith(","+OfficeFixture.INSHIST_CODE_ADDED))
+				|| listAdded.Any(x => x.CodeGroupFixed!=OpenPmsDentalBusiness.EnumCodeGroupFixed.None || x.ShowInFrequency || x.ShowInAgeLimit || x.ShowInOther))
 			{
-				listProblems.Add("migration-preview's Insurance History plan differs from the fixture ("+OfficeFixture.CountInsHistGroupsMarked+" groups marked, one with four "
-					+"quadrant rows, "+OfficeFixture.INSHIST_CODE_ADDED+" added to one, '"+OfficeFixture.INSHIST_GROUP_ADDED+"' added)");
+				listProblems.Add("migration-preview's Insurance History plan differs from the fixture (no existing group changed; "+OfficeFixture.CountInsHistGroupsAdded
+					+" history-only groups added: "+string.Join(", ",OfficeFixture.ArrayInsHistGroupsAdded)+", one with four quadrant rows, one holding "
+					+OfficeFixture.INSHIST_CODE_ADDED+")");
 			}
 			if(rowCheck==null) {
 				listProblems.Add("no row check");
@@ -510,8 +512,8 @@ namespace AdoptionValidation {
 				listProblems.Add("the adopted copy does not keep the "+OfficeFixture.ArrayInsHistPrefs.Length+" InsHist*Codes preferences");
 			}
 			string lineCodeGroup=rowCheck?.ListLines.FirstOrDefault(x => x.StartsWith("codegroup:"))??"";
-			Check("M6","Adoption's Insurance History step changes exactly what migration-preview lists: the code groups of the InsHist*Codes preferences marked Show "
-				+"In History, their missing codes added, a group added for a category without one",listProblems.Count==0,
+			Check("M6","Adoption's Insurance History step changes exactly what migration-preview lists: a code group used only for Insurance History added for "
+				+"each InsHist*Codes preference with a value, and no existing code group changed",listProblems.Count==0,
 				"migration-preview of the source: "+string.Join(" ",plan.Lines())+" The adoption log names "+(listLogExpected.Count-listLogMissing.Count)+" of the "
 				+listLogExpected.Count+" change(s); row check: "+lineCodeGroup+(listProblems.Count==0 ? "" : " Problems: "+string.Join("; ",listProblems)));
 		}

@@ -68,7 +68,7 @@ No database writes, no network.
 
 ## 4. Questions for the owner
 
-1. **Existing bug, not changed:** in `FormImageSelectClaimAttach.SaveAttachment`, a non-DICOM image with crop, rotation, flip or windowing set, on a local A to Z folder, gets a `claimattach` row but no file. The branch `if(PrefC.AtoZfolderUsed!=DataStorageType.LocalAtoZ)` renders only for cloud storage, where `Bitmap.FromFile` on a cloud path would fail, and the local branch below it sets the row without copying. It looks inverted. DICOM does not go through it. Fix it in a follow-up?
+1. **Existing bug, not changed:** in `FormImageSelectClaimAttach.SaveAttachment`, a non-DICOM image with crop, rotation, flip or windowing set, on a local A to Z folder, gets a `claimattach` row but no file. The branch `if(PrefC.AtoZfolderUsed!=DataStorageType.LocalAtoZ)` renders only for cloud storage, where `Bitmap.FromFile` on a cloud path would fail, and the local branch below it sets the row without copying. It looks inverted. DICOM does not go through it. Fix it in a follow-up? **Answered on 2026-11-07: fixed** (section 6).
 2. JPEG (quality 100) or PNG for Edit Claim's copy of an X-ray? PNG is lossless and larger. CDAnet converts it to JPG anyway.
 3. Should the DentalXChange picker default the image type to X-Rays for a DICOM radiograph? Today the user always picks the type.
 4. CDAnet allows `DIC` (DICOM) attachments. The rule for this package is that a DICOM file is never sent, so CDAnet gets the JPEG copy. Confirm.
@@ -119,3 +119,24 @@ New project `tests/CLAIMDCMTests` (added to `OpenDental.sln` and `OpenDental.Loc
 
 - `tools/Test-NoHqHosts.ps1`: passed.
 - Not verified: the windows were not opened (the OpenDental GUI is not launched in this work). No send reached DentalXChange or EDS (no test accounts). Cloud storage and images stored in the database are covered by the shared read path, not by a test of their own. No real sensor's DICOM was used. The full suite runs once everything is merged.
+
+## 6. Question 1 fixed (owner, 2026-11-07)
+
+The owner answered question 1: fix it. `FormImageSelectClaimAttach.SaveAttachment` no longer branches on the storage type to decide whether
+an edit is applied. For every file that is not DICOM it now reads the document's file as bytes (the patient's folder, or a download from cloud
+storage), builds the bytes to attach with the new `OpenPmsDentalBusiness/Imaging/ClaimAttachImage.cs` (`BuildFileBytes`), and writes them under the
+new name where the attachment points: `File.WriteAllBytes` in the local EmailAttachments folder, or `CloudStorage.Upload`. The attachment row
+is made only after the file was written.
+
+- **Unedited files** (no crop, rotation, flip or window, the same test the window always made: `ClaimAttachImage.HasImageSettings`), and
+  files that are not images (TXT, DOC, PDF), are attached byte for byte, as `File.Copy` did. With cloud storage they now work too: the old
+  code stopped at `File.Exists` on the cloud path ("File not found").
+- **Edited images** are attached as the Imaging module shows them, without drawings (as before): `ImageHelper.ApplyDocumentSettingsToImage`
+  on a copy of the document, a crop saved before 21.4 converted in memory only, so the document never changes. They are written in the format
+  of their extension (JPEG at quality 100, as the DICOM copy; PNG, BMP, GIF, TIFF as they are), so the extension says what the file holds; an
+  image whose format GDI+ cannot write (for example `.tga`) is attached as `.png` (`GetAttachExtension`). Before, the cloud branch wrote
+  GDI+'s default PNG under the original extension.
+- Tests: `tests/CLAIMDCMTests/ClaimAttachImageTests.cs` (each setting counts; unedited and non-image files are the file itself; rotated,
+  flipped, cropped and windowed images as shown, in their own format; the document is never changed; the `.png` fallback; source checks that
+  the one attachment row is made only after the local write or the upload; a local-folder run of the same steps). `WiringTests` now expects
+  the DICOM branch before `ClaimAttachImage.BuildFileBytes` instead of before `File.Copy`.

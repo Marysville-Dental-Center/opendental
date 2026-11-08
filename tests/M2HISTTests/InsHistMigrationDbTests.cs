@@ -105,23 +105,26 @@ namespace M2HISTTests {
 		public void From25_3_MigratesOnce_PreferencesKept() {
 			FillSyntheticOffice("25.3.48.0");
 			string prefsBefore=SnapshotInsHistPrefs();
+			string snapshotExisting=SnapshotCodeGroups();
 			ForkMigrationResult result=RunStep();
 			Assert.AreEqual(1,result.ListStepsRun.Count);
+			//Owner decision of 2026-11-07: the existing code groups, the frequency groups among them, are exactly as they were.
+			StringAssert.StartsWith(SnapshotCodeGroups(),snapshotExisting,"The three groups of the office are unchanged (they come first by CodeGroupNum).");
 			List<CodeGroup> listCodeGroups=OpenPmsDentalBusiness.Crud.CodeGroupCrud.SelectMany("SELECT * FROM codegroup ORDER BY ItemOrder");
-			CodeGroup codeGroupBW=listCodeGroups.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.BW);
-			Assert.IsTrue(codeGroupBW.ShowInHistory);
-			Assert.AreEqual("Z0272",codeGroupBW.HistProcCode);
-			Assert.IsFalse(listCodeGroups.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.Prophy).ShowInHistory,"The Prophy preference is blank.");
-			CodeGroup codeGroupSRP=listCodeGroups.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.SRP);
-			Assert.IsTrue(codeGroupSRP.ShowInHistory && codeGroupSRP.IsPerioFourQuads);
-			Assert.AreEqual("Z4341",codeGroupSRP.HistProcCode);
-			CodeGroup codeGroupExam=listCodeGroups.Single(x => x.CodeGroupFixed==EnumCodeGroupFixed.Exam);
-			Assert.AreEqual("Exam",codeGroupExam.GroupName,"Created for the Exam preference.");
-			Assert.AreEqual(3,codeGroupExam.ItemOrder);
-			Assert.IsTrue(codeGroupExam.ShowInHistory);
-			Assert.AreEqual("Z0120",codeGroupExam.ProcCodes);
-			Assert.AreEqual("Z0120",codeGroupExam.HistProcCode);
-			Assert.IsFalse(codeGroupExam.IsHidden || codeGroupExam.ShowInFrequency || codeGroupExam.ShowInAgeLimit || codeGroupExam.ShowInOther);
+			Assert.AreEqual(3,listCodeGroups.Count(x => !x.ShowInHistory),"BW, Prophy and SRP: not marked.");
+			List<CodeGroup> listAdded=listCodeGroups.FindAll(x => x.ShowInHistory);
+			CollectionAssert.AreEqual(new[] { "Bitewing History","Exam History","Perio Scaling History" },listAdded.Select(x => x.GroupName).ToArray(),
+				"The Prophy preference is blank: no group for it.");
+			Assert.IsTrue(listAdded.All(x => x.CodeGroupFixed==EnumCodeGroupFixed.None && !x.IsHidden && !x.ShowInFrequency && !x.ShowInAgeLimit
+				&& !x.ShowInOther),"Used only for Insurance History.");
+			CollectionAssert.AreEqual(new[] { 3,4,5 },listAdded.Select(x => x.ItemOrder).ToArray());
+			Assert.AreEqual("Z0272",listAdded[0].HistProcCode);
+			Assert.AreEqual("Z0272",listAdded[0].ProcCodes);
+			Assert.AreEqual("Z0120",listAdded[1].ProcCodes);
+			Assert.AreEqual("Z0120",listAdded[1].HistProcCode);
+			Assert.IsTrue(listAdded[2].IsPerioFourQuads);
+			Assert.AreEqual("Z4341",listAdded[2].HistProcCode);
+			Assert.AreEqual("Z4341",listAdded[2].ProcCodes,"UR and UL had the same code.");
 			Assert.AreEqual(prefsBefore,SnapshotInsHistPrefs(),"The preferences are kept as they were.");
 			Assert.IsTrue(result.ListChanges.Count>0);
 			//Again: the runner skips the applied level, and a RunAll rerun finds nothing to do.
@@ -141,20 +144,23 @@ namespace M2HISTTests {
 			FillSyntheticOffice("25.3.48.0");
 			AddPref(nameof(PrefName.InsHistPanoCodes),"Z0330");//Neither a group nor a procedure code: a group is created with the code as written.
 			AddPref(nameof(PrefName.InsHistDebridementCodes),"Z4355");
-			AddGroup("Debridement (office)","Z4355",3,EnumCodeGroupFixed.None);//Not the fixed group: the category gets its own.
-			DataCore.NonQ("UPDATE preference SET ValueString='Z0272,Z0279' WHERE PrefName='"+nameof(PrefName.InsHistBWCodes)+"'");//Z0279 is added to BW.
+			AddGroup("Debridement (office)","Z4355",3,EnumCodeGroupFixed.None);//An office group: never changed, the category gets its own.
+			AddGroup("Exam History","Z0150",4,EnumCodeGroupFixed.None);//An office group of that name: the added one is "Exam History 2".
+			DataCore.NonQ("UPDATE preference SET ValueString='Z0272,Z0279' WHERE PrefName='"+nameof(PrefName.InsHistBWCodes)+"'");//BW's group stays as it is.
 			List<CodeGroup> listBefore=OpenPmsDentalBusiness.Crud.CodeGroupCrud.SelectMany("SELECT * FROM codegroup ORDER BY CodeGroupNum");
 			InsHistCodeGroupsMigration.MigrationPlan plan=InsHistCodeGroupsMigration.CreatePlan(true,false,InsHistCodeGroupsMigration.ReadPrefs(),
 				InsHistCodeGroupsMigration.ReadCodeGroups(),InsHistCodeGroupsMigration.ReadProcCodes());
 			Assert.IsTrue(plan.IsRun);
-			Assert.AreEqual(2,plan.ListUpdated.Count,"BW and SRP.");
-			CollectionAssert.AreEqual(new[] { "Pano/FMX","Exam","Full Mouth Debridement" },plan.ListAdded.Select(x => x.GroupName).ToArray());
+			Assert.AreEqual(0,plan.ListUpdated.Count,"No existing group is changed.");
+			CollectionAssert.AreEqual(new[] { "Bitewing History","Pano/FMX History","Exam History 2","Perio Scaling History","Full Mouth Debridement History" },
+				plan.ListAdded.Select(x => x.GroupName).ToArray());
 			ForkMigrationResult result=RunStep();
 			string prefix=new InsHistCodeGroupsStep().Level+": ";
 			CollectionAssert.AreEqual(plan.GetLogLines(),result.ListChanges.Where(x => x.StartsWith(prefix)).Select(x => x.Substring(prefix.Length)).ToList(),
 				string.Join("\r\n",result.ListChanges));
-			StringAssert.Contains(plan.GetLogLines()[0],"Code group 'BW' (CodeGroupNum ");
-			StringAssert.Contains(plan.GetLogLines()[0],") shown in Insurance History, History Proc Code Z0272, codes added: Z0279");
+			Assert.AreEqual("Added code group 'Bitewing History' (ItemOrder 5), used only for Insurance History (not in frequency or age limits), "
+				+"History Proc Code Z0272, codes Z0272,Z0279",plan.GetLogLines()[0]);
+			Assert.AreEqual(InsHistCodeGroupsMigration.NOTE_EXISTING_UNCHANGED,plan.GetLogLines().Last());
 			List<CodeGroup> listAfter=OpenPmsDentalBusiness.Crud.CodeGroupCrud.SelectMany("SELECT * FROM codegroup ORDER BY CodeGroupNum");
 			foreach(CodeGroup codeGroupBefore in listBefore) {
 				CodeGroup codeGroupAfter=listAfter.Single(x => x.CodeGroupNum==codeGroupBefore.CodeGroupNum);
@@ -180,7 +186,7 @@ namespace M2HISTTests {
 				Assert.AreEqual(codeGroupPlanned.HistProcCode,listAdded[i].HistProcCode);
 				Assert.IsTrue(listAdded[i].ShowInHistory && !listAdded[i].IsHidden && !listAdded[i].ShowInFrequency && !listAdded[i].ShowInAgeLimit && !listAdded[i].ShowInOther);
 			}
-			Assert.AreEqual("Z0330",plan.ListAdded[0].HistProcCode,"Not in the procedure code list: the code as written, so Code Group Edit asks for a valid one.");
+			Assert.AreEqual("Z0330",plan.ListAdded[1].HistProcCode,"Not in the procedure code list: the code as written, so Code Group Edit asks for a valid one.");
 			//After the step the plan says why it changes nothing.
 			InsHistCodeGroupsMigration.MigrationPlan planAfter=InsHistCodeGroupsMigration.CreatePlan(true,true,InsHistCodeGroupsMigration.ReadPrefs(),
 				InsHistCodeGroupsMigration.ReadCodeGroups(),InsHistCodeGroupsMigration.ReadProcCodes());

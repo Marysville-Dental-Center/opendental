@@ -34,8 +34,9 @@ namespace ImagingCapture.Session {
 
 	///<summary>What the partial does after CaptureSessionLauncher.Launch.</summary>
 	public enum CaptureSessionLaunchKind {
-		///<summary>The capture session did not run, and the legacy Mount/Acquire loop runs unchanged: the rollback ([Session] Enabled=0, the
-		///default), a device type the session does not drive (TwainMulti keeps its batch path), or no session window in this build.</summary>
+		///<summary>The capture session did not run, and the legacy Mount/Acquire loop runs unchanged: the rollback ([Session] Enabled=0; the default
+		///is 1 since 2026-11-07), capture settings not saved in Capture settings on this computer (after a notice), a device type the session does
+		///not drive (TwainMulti keeps its batch path), or no session window in this build.</summary>
 		NotStarted,
 		///<summary>The session refused to start (Reason): the partial shows Reason and returns; the legacy loop does not run.</summary>
 		Refused,

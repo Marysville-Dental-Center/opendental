@@ -31,8 +31,8 @@ namespace CLAIMDCMTests {
 			string save=MethodBody(source,"private void SaveAttachment(Document document){");
 			AssertBefore(save,"ClaimAttachDicom.IsDicomFileName(document.FileName)","ImageHelper.HasImageExtension(document.FileName)",
 				"A DICOM document goes to SaveAttachmentDicom before the image-extension check refuses it.");
-			AssertBefore(save,"SaveAttachmentDicom(document,patientfolder);","File.Copy(",
-				"The DICOM branch returns before any copy of the original file.");
+			AssertBefore(save,"SaveAttachmentDicom(document,patientfolder);","ClaimAttachImage.BuildFileBytes(",
+				"The DICOM branch returns before the original file is read and attached (CLAIM-DCM 1: every other file is read as bytes).");
 			string saveDicom=MethodBody(source,"private void SaveAttachmentDicom(Document document,string patientFolder) {");
 			StringAssert.Contains(saveDicom,"ClaimAttachDicom.BuildClaimAttachFile(document,patientFolder)");
 			StringAssert.Contains(saveDicom,"+ClaimAttachDicom.JpegExtension;");

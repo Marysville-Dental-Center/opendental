@@ -37,6 +37,11 @@ namespace ImagingCapture.Session {
 	public sealed class CaptureSessionConfig {
 		public const string SectionKeys="Keys";
 		public const string SectionSounds="Sounds";
+		///<summary>[Session] Enabled default: on (owner decision of 2026-11-07, after counsel's review: every new install starts with the capture
+		///session on; it was off). The session still runs only once this computer's capture settings were saved in Capture settings (design 9.3:
+		///unverified settings mean the safe values, and the safe value of Enabled is off), and takes more than 8 bits only after a passed Test
+		///capture. Enabled=0 in capture.ini is still the rollback.</summary>
+		public const bool EnabledDefault=true;
 		///<summary>[Session] IdleDisableMinutes default: 10 (design 9.3; used only with DisableIsSafe).</summary>
 		public const int IdleDisableMinutesDefault=10;
 		///<summary>The Windows system sounds design 9.3 names as defaults.</summary>
@@ -47,8 +52,8 @@ namespace ImagingCapture.Session {
 		private readonly Dictionary<CaptureSessionKey,string> _dictKeys=new Dictionary<CaptureSessionKey,string>();
 		private readonly Dictionary<CaptureSound,string> _dictSounds=new Dictionary<CaptureSound,string>();
 
-		///<summary>[Session] Enabled, default 0 (gated): 0 means the legacy Mount/Acquire loop runs, the rollback (design 7.3).</summary>
-		public bool IsEnabled { get; private set; }
+		///<summary>[Session] Enabled, default 1 (EnabledDefault; gated): 0 means the legacy Mount/Acquire loop runs, the rollback (design 7.3).</summary>
+		public bool IsEnabled { get; private set; }=EnabledDefault;
 		///<summary>[Session] IdleDisableMinutes, default 10 (gated). 0 or less turns idle disable off.</summary>
 		public int IdleDisableMinutes { get; private set; }=IdleDisableMinutesDefault;
 
@@ -76,7 +81,7 @@ namespace ImagingCapture.Session {
 				return sessionConfig;
 			}
 			try {
-				sessionConfig.IsEnabled=config.GetBool(GatedSettingsHash.SectionSession,"Enabled",false);
+				sessionConfig.IsEnabled=config.GetBool(GatedSettingsHash.SectionSession,"Enabled",EnabledDefault);
 				int idleDisableMinutes=config.GetInt(GatedSettingsHash.SectionSession,"IdleDisableMinutes",IdleDisableMinutesDefault);
 				sessionConfig.IdleDisableMinutes=Math.Max(0,idleDisableMinutes);
 				foreach(CaptureSessionKey key in Enum.GetValues(typeof(CaptureSessionKey))) {

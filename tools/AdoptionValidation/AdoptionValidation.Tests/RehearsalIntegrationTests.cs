@@ -12,6 +12,7 @@ using SyntheticData.Infrastructure;
 using SyntheticData.Validation;
 using DisplayReportNames=OpenPmsDentalBusiness.DisplayReports.ReportNames;
 using SchemaVerifier=OpenPmsDentalBusiness.ForkMigrations.SchemaVerifier;
+using InsHistCodeGroupsMigration=OpenPmsDentalBusiness.ForkMigrations.FeatureSteps.InsHistCodeGroupsMigration;
 using Seed26_1=OpenPmsDentalBusiness.ForkMigrations.Seeds26_1.Seed26_1;
 
 namespace AdoptionValidation.Tests {
@@ -181,13 +182,14 @@ namespace AdoptionValidation.Tests {
 				+"Public Health, ItemOrder ");
 			StringAssert.Contains(output,") right after the FQHC Dental Sealant Measure (DisplayReportNum ");
 			StringAssert.Contains(output,"it gives the 1 user group(s) that may run the sealant measure (user group ");
-			//The Insurance History step (M2-HIST): the fixture's ten InsHist*Codes preferences into six generated code groups and one new group.
-			StringAssert.Contains(output,"Step 2026110104 (Insurance History rows from code groups) marks "+OfficeFixture.CountInsHistGroupsMarked+" code group(s) Show In "
-				+"History and adds "+OfficeFixture.CountInsHistGroupsAdded+" (this database comes from before Open Dental 25.4;");
-			StringAssert.Contains(output,"Code group 'BWs' (CodeGroupNum ");
-			StringAssert.Contains(output,") shown in Insurance History with four quadrant rows, History Proc Code Z4341");
-			StringAssert.Contains(output,"History Proc Code Z4910, codes added: "+OfficeFixture.INSHIST_CODE_ADDED);
-			StringAssert.Contains(output,"Added code group '"+OfficeFixture.INSHIST_GROUP_ADDED+"' (FMDebride, ItemOrder ");
+			//The Insurance History step (M2-HIST): the fixture's ten InsHist*Codes preferences into seven new code groups used only for Insurance History;
+			//no existing code group changes (owner decision of 2026-11-07).
+			StringAssert.Contains(output,"Step 2026110104 (Insurance History rows from code groups) adds "+OfficeFixture.CountInsHistGroupsAdded+" code group(s) used "
+				+"only for Insurance History and changes no existing code group (this database comes from before Open Dental 25.4;");
+			StringAssert.Contains(output,"Added code group 'Bitewing History' (ItemOrder ");
+			StringAssert.Contains(output,"used only for Insurance History with four quadrant rows (not in frequency or age limits), History Proc Code Z4341");
+			StringAssert.Contains(output,"History Proc Code Z4910, codes Z4910,"+OfficeFixture.INSHIST_CODE_ADDED);
+			StringAssert.Contains(output,"Added code group 'Full Mouth Debridement History' (ItemOrder ");
 			//The DXC Patient Credit Score step (B-SHELL): the fixture's enabled link disabled, its two buttons deleted.
 			StringAssert.Contains(output,"Step 2026110101 (DXC Patient Credit Score program link): the discontinued DXC Patient Credit Score program link (ProgramNum ");
 			StringAssert.Contains(output,") stays, with its text; the step disables 1 program row(s) of it (ProgramNum ");
@@ -301,11 +303,10 @@ namespace AdoptionValidation.Tests {
 			}
 		}
 
-		///<summary>On the adopted copy the Insurance History step (M2-HIST) marked the generated code group of each of the fixture's history categories
-		///Show In History, with the first code of its preference as History Proc Code (Z4341, from UR, for the SRP group, with four quadrant rows),
-		///appended the perio maintenance code its group lacked, and added a Full Mouth Debridement group after every other group, because the fixture
-		///made the generated debridement group the office's own. Every other codegroup row and column is unchanged, and the ten preferences are kept.
-		///</summary>
+		///<summary>On the adopted copy the Insurance History step (M2-HIST) added a code group used only for Insurance History for each of the fixture's
+		///history categories, after every other group, with the first code of its preference as History Proc Code (Z4341, from UR, for the perio
+		///scaling group, with four quadrant rows) and the preference's codes (the perio maintenance one with the code no generated group has). Every
+		///existing codegroup row and column is unchanged (owner decision of 2026-11-07), and the ten preferences are kept.</summary>
 		[TestMethod]
 		public void Adoption_MovesTheInsHistPreferencesIntoCodeGroups() {
 			SkipIfNeeded();
@@ -314,21 +315,22 @@ namespace AdoptionValidation.Tests {
 				Assert.AreEqual(0,diff.CountOnlyFirst,diff.Describe());
 				Assert.AreEqual(OfficeFixture.CountInsHistGroupsAdded,diff.CountOnlySecond,diff.Describe());
 				CollectionAssert.AreEquivalent(new[] { "ShowInHistory","HistProcCode","IsPerioFourQuads" },diff.ListColumnsInOneOnly,"The 26.1 columns.");
-				//Only the perio maintenance group's codes changed among the shared columns.
-				Assert.AreEqual(1,diff.CountChanged,diff.Describe());
-				Assert.IsTrue(diff.ListChanged[0].ListColumns.SequenceEqual(new[] { "ProcCodes" }),diff.Describe());
-				Assert.AreEqual("Z4910,"+OfficeFixture.INSHIST_CODE_ADDED,Convert.ToString(db.Scalar("SELECT ProcCodes FROM `"+Adopted(1)+"`.codegroup WHERE CodeGroupNum="
-					+diff.ListChanged[0].Key)));
+				Assert.AreEqual(0,diff.CountChanged,"No existing code group changed. "+diff.Describe());
 				string marked=Convert.ToString(db.Scalar("SELECT GROUP_CONCAT(CONCAT(GroupName,'=',HistProcCode,IF(IsPerioFourQuads=1,'/4','')) ORDER BY ItemOrder SEPARATOR '; ') "
 					+"FROM `"+Adopted(1)+"`.codegroup WHERE ShowInHistory=1"));
-				Assert.AreEqual("BWs=Z0272; Pano/FMX=Z0330; Exams=Z0120; Perio Maint=Z4910; Prophy=Z1110; SRP=Z4341/4; "+OfficeFixture.INSHIST_GROUP_ADDED+"=Z4355",marked);
-				object[] rowAdded=db.Rows("SELECT GroupName,ProcCodes,ItemOrder,CodeGroupFixed,IsHidden,ShowInFrequency,ShowInAgeLimit,ShowInOther FROM `"+Adopted(1)
-					+"`.codegroup WHERE CodeGroupNum="+diff.ListOnlySecond[0]).Single();
-				Assert.AreEqual(OfficeFixture.INSHIST_GROUP_ADDED,Convert.ToString(rowAdded[0]));
-				Assert.AreEqual("Z4355",Convert.ToString(rowAdded[1]));
-				Assert.AreEqual(db.ScalarLong("SELECT MAX(ItemOrder) FROM `"+Source(1)+"`.codegroup")+1,Convert.ToInt64(rowAdded[2]),"After every other group.");
-				Assert.AreEqual((int)OpenPmsDentalBusiness.EnumCodeGroupFixed.FMDebride,Convert.ToInt32(rowAdded[3]));
-				Assert.IsTrue(rowAdded.Skip(4).All(x => Convert.ToInt32(x)==0),"In no benefit grid, not hidden.");
+				Assert.AreEqual("Bitewing History=Z0272; Pano/FMX History=Z0330; Exam History=Z0120; Prophy History=Z1110; Perio Scaling History=Z4341/4; "
+					+"Perio Maintenance History=Z4910; Full Mouth Debridement History=Z4355",marked);
+				long itemOrderMaxSource=db.ScalarLong("SELECT MAX(ItemOrder) FROM `"+Source(1)+"`.codegroup");
+				for(int i=0;i<diff.ListOnlySecond.Count;i++) {
+					object[] rowAdded=db.Rows("SELECT GroupName,ProcCodes,ItemOrder,CodeGroupFixed,IsHidden,ShowInFrequency,ShowInAgeLimit,ShowInOther FROM `"+Adopted(1)
+						+"`.codegroup WHERE CodeGroupNum="+diff.ListOnlySecond[i]).Single();
+					CollectionAssert.Contains(OfficeFixture.ArrayInsHistGroupsAdded,Convert.ToString(rowAdded[0]));
+					Assert.IsTrue(Convert.ToInt64(rowAdded[2])>itemOrderMaxSource,"After every other group.");
+					Assert.AreEqual((int)OpenPmsDentalBusiness.EnumCodeGroupFixed.None,Convert.ToInt32(rowAdded[3]),"Never a category's group.");
+					Assert.IsTrue(rowAdded.Skip(4).All(x => Convert.ToInt32(x)==0),"In no benefit grid, not hidden.");
+				}
+				Assert.AreEqual("Z4910,"+OfficeFixture.INSHIST_CODE_ADDED,Convert.ToString(db.Scalar("SELECT ProcCodes FROM `"+Adopted(1)
+					+"`.codegroup WHERE GroupName='Perio Maintenance History'")));
 				Assert.AreEqual(0,db.ScalarLong("SELECT COUNT(*) FROM `"+Adopted(1)+"`.codegroup WHERE ShowInHistory=0 AND (HistProcCode<>'' OR IsPerioFourQuads<>0)"));
 				foreach((string prefName,string value) pref in OfficeFixture.ArrayInsHistPrefs) {
 					Assert.AreEqual(pref.value,Convert.ToString(db.Scalar("SELECT ValueString FROM `"+Adopted(1)+"`.preference WHERE PrefName='"+pref.prefName+"'")),
@@ -337,10 +339,9 @@ namespace AdoptionValidation.Tests {
 			}
 			RunResult run=_result.ListRuns[0];
 			Assert.IsTrue(run.ListAllowedDifferences.Any(x => x.StartsWith("RowsChanged codegroup")),string.Join("\r\n",run.ListAllowedDifferences));
-			Assert.IsTrue(run.ListAllowedDifferences.Any(x => x.StartsWith("ColumnChanged codegroup.ProcCodes")),string.Join("\r\n",run.ListAllowedDifferences));
 			Assert.IsFalse(run.ListUnexpectedDifferences.Any(x => x.Contains("codegroup")),string.Join("\r\n",run.ListUnexpectedDifferences));
-			StringAssert.Contains(run.ListChecks.Single(x => x.Id=="M6").Detail,"codegroup: "+OfficeFixture.CountInsHistGroupsMarked+" of the "
-				+OfficeFixture.CountInsHistGroupsMarked+" code group(s) migration-preview lists marked Show In History as planned");
+			StringAssert.Contains(run.ListChecks.Single(x => x.Id=="M6").Detail,"codegroup: "+OfficeFixture.CountInsHistGroupsAdded+" of the "
+				+OfficeFixture.CountInsHistGroupsAdded+" planned code group(s) used only for Insurance History added with the planned values");
 		}
 
 		///<summary>Negative control for codegroup: the report comparison allows it as a whole table (the group the Insurance History step adds changes
@@ -355,11 +356,11 @@ namespace AdoptionValidation.Tests {
 				Assert.IsTrue(AdoptionRowCheck.Run(db,Source(1),tampered).Passed,"An untouched adopted copy passes.");
 				ValidationReport before=Validator.Run(db,tampered,null,null);
 				db.Use(tampered);
-				long numBW=db.ScalarLong("SELECT CodeGroupNum FROM codegroup WHERE GroupName='BWs'");
+				long numBW=db.ScalarLong("SELECT CodeGroupNum FROM codegroup WHERE GroupName='Bitewing History'");
 				long numCrowns=db.ScalarLong("SELECT CodeGroupNum FROM codegroup WHERE GroupName='Crowns'");
 				long numDentures=db.ScalarLong("SELECT CodeGroupNum FROM codegroup WHERE GroupName='Dentures'");
 				long numProphy=db.ScalarLong("SELECT CodeGroupNum FROM codegroup WHERE GroupName='Prophy'");
-				//A planned group with another History Proc Code, a planned group renamed, a group the step does not touch marked Show In History, another
+				//An added group with another History Proc Code, an existing group renamed, a group the step does not touch marked Show In History, another
 				//one with other codes, and a group the step does not add.
 				Assert.AreEqual(1,db.Execute("UPDATE codegroup SET HistProcCode='Z0274' WHERE CodeGroupNum="+numBW));
 				Assert.AreEqual(1,db.Execute("UPDATE codegroup SET GroupName='Prophy renamed' WHERE CodeGroupNum="+numProphy));
@@ -370,13 +371,15 @@ namespace AdoptionValidation.Tests {
 				AdoptionRowCheck.Result result=AdoptionRowCheck.Run(db,Source(1),tampered);
 				string failures=string.Join("\r\n",result.ListFailures);
 				Assert.IsFalse(result.Passed);
-				StringAssert.Contains(failures,"codegroup row "+numBW+" ('BWs') holds HistProcCode 'Z0274' (planned: 'Z0272')");
-				StringAssert.Contains(failures,"codegroup row "+numProphy+" ('Prophy'): GroupName changed");
+				StringAssert.Contains(failures,"codegroup row "+numBW+" ('Bitewing History') was added; the Insurance History step adds only the code group(s) "
+					+"migration-preview lists, with the values it lists");
+				StringAssert.Contains(failures,"No codegroup row was added for the planned code group 'Bitewing History'");
+				StringAssert.Contains(failures,"codegroup row "+numProphy+" changed (GroupName); the Insurance History step changes only the code groups migration-preview lists");
 				StringAssert.Contains(failures,"codegroup row "+numCrowns+" changed (ProcCodes); the Insurance History step changes only the code groups migration-preview lists");
 				StringAssert.Contains(failures,"1 row(s) of codegroup hold a value other than the default (0) in the new column ShowInHistory.");
 				StringAssert.Contains(failures,"1 row(s) of codegroup hold a value other than the default ('') in the new column HistProcCode.");
 				StringAssert.Contains(failures,"('Sealants (synthetic)') was added; the Insurance History step adds only the code group(s) migration-preview lists");
-				Assert.AreEqual(OfficeFixture.CountInsHistGroupsAdded,result.ListCodeGroupNumsAdded.Count,"The step's own group is still found.");
+				Assert.AreEqual(OfficeFixture.CountInsHistGroupsAdded-1,result.ListCodeGroupNumsAdded.Count,"The step's other groups are still found.");
 				//The report comparison under allowed-differences.adoption.json lets every one of these through.
 				AllowedDifferences allowed=AllowedDifferences.Load(Path.Combine(Path.GetDirectoryName(Validator.ReadTotalsSqlPath()),"..",
 					"allowed-differences.adoption.json"));
@@ -675,11 +678,10 @@ namespace AdoptionValidation.Tests {
 				"Reports for the UDS+ report row granted to 1 of the 1 user group(s) that may run the FQHC Dental Sealant Measure, as migration-preview lists",
 				//The Insurance History step (M2-HIST) on the fixture's ten InsHist*Codes preferences.
 				"Fork migration step 2026110104 Insurance History rows from the InsHist preferences to code groups (26.1) changed the database:",
-				"  Code group 'BWs' (CodeGroupNum ","History Proc Code Z4910, codes added: "+OfficeFixture.INSHIST_CODE_ADDED,
-				"  Added code group '"+OfficeFixture.INSHIST_GROUP_ADDED+"' (FMDebride, ItemOrder ",
-				"codegroup: "+OfficeFixture.CountInsHistGroupsMarked+" of the "+OfficeFixture.CountInsHistGroupsMarked+" code group(s) migration-preview lists marked Show "
-					+"In History as planned, ProcCodes and the history columns only (",
-				"; "+OfficeFixture.CountInsHistGroupsAdded+" of the "+OfficeFixture.CountInsHistGroupsAdded+" planned code group(s) added with the planned values (CodeGroupNum ",
+				"  Added code group 'Bitewing History' (ItemOrder ","History Proc Code Z4910, codes Z4910,"+OfficeFixture.INSHIST_CODE_ADDED,
+				"  Added code group 'Full Mouth Debridement History' (ItemOrder ","  "+InsHistCodeGroupsMigration.NOTE_EXISTING_UNCHANGED,
+				"codegroup: "+OfficeFixture.CountInsHistGroupsAdded+" of the "+OfficeFixture.CountInsHistGroupsAdded+" planned code group(s) used only for Insurance "
+					+"History added with the planned values (CodeGroupNum ",
 				//The Open Dental 25.4 and 26.1 steps (M2-01, M2-02) on the 25.3.48 source.
 				"Fork migration step 2026102401 Open Dental 25.4 schema changed the database:","Fork migration step 2026102402 Open Dental 26.1 schema changed the database:",
 				"  Inserted preference RepeatingChargesAllowBackdating","  Moved 1 Open Dental 25.3 PhoneExtension grant(s) from 272 to 274",

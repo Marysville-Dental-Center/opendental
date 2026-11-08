@@ -45,9 +45,10 @@ same code):
    Dental Services", Public Health) right after the FQHC Dental Sealant Measure, moves the later Public Health rows down one place, and lets the
    user groups that may run the sealant measure run it too (hidden when the sealant measure is hidden). Then the Insurance History step moves
    the ten Insurance History code preferences of Open Dental 25.3 (Preferences, Treatment Plan) into code groups, as Open Dental 26.1 shows
-   Insurance History from code groups: the code group of each category whose preference has codes is marked Show In History, with the
-   preference's first code as its History Proc Code (the SRP group with four quadrant rows), the preference's codes the group lacks are added
-   to it, and a category without a code group of its kind gets a new group; the preferences themselves are kept. Then the routine
+   Insurance History from code groups: each category whose preference has codes gets a new code group used only for Insurance History
+   ("Bitewing History", "Exam History", ...; Show In History, the preference's codes, its first code as History Proc Code, four quadrant
+   rows for perio scaling; in no frequency or age limit), after every other group. The existing code groups, the frequency and age limit
+   groups among them, are not changed (owner decision of 2026-11-07); the preferences themselves are kept. Then the routine
    maintenance steps create this program's own maintenance tables (empty) and give every user group that has Security Admin the two new
    routine maintenance permissions (Maintenance Setup and Maintenance Record Completion), and the SSH host keys step creates the empty table
    in which the program remembers each SSH server's host key. Step 0.2 lists all these changes in advance
@@ -277,10 +278,10 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature
   gives the N user group(s) that may run the sealant measure (user group ...) the Reports permission for it ...` (on an Open Dental 25.3.48
   database; `... at the end of Public Health` when there is no sealant measure row, and `... copies no report permission` when no group has a
   grant for it alone). It quotes the lines the adoption log will show ("Added displayreport ODUdsPlus", "Copied N report permission(s) ...").
-- `Step 2026110104 (Insurance History rows from code groups) marks N code group(s) Show In History and adds N (...): Code group 'BW'
-  (CodeGroupNum N) shown in Insurance History, History Proc Code ...; ...` with one part per code group: the History Proc Code, "with four
-  quadrant rows" for the SRP group, "codes added: ..." when the preference held codes the group lacks, and "Added code group '<name>' (<kind>,
-  ItemOrder N), ..." for a category without a group of its kind. These parts are the lines the adoption log will show. On a database whose
+- `Step 2026110104 (Insurance History rows from code groups) adds N code group(s) used only for Insurance History and changes no existing
+  code group (...): Added code group 'Bitewing History' (ItemOrder N), used only for Insurance History (not in frequency or age limits),
+  History Proc Code ..., codes ...; ...` with one part per added group ("with four quadrant rows" for perio scaling), then "Insurance
+  History: the existing code groups, ... were not changed; ...". These parts are the lines the adoption log will show. On a database whose
   ten Insurance History preferences are all empty it says `changes nothing: none of the ten InsHist*Codes preferences has a value`.
 - `Step 2026110206 (routine maintenance permissions) adds N grouppermission row(s) (FKey 0, no date limit) for the N user group(s) with
   Security Admin: MaintenanceSetup to N (user group ...); MaintenanceRecord to N (user group ...).` It quotes the lines the adoption log will
@@ -302,8 +303,8 @@ The last lines are the Open Dental 25.4 and 26.1 steps of item 6 and the feature
 **Write the numbers on the checklist**: NULL notes, preferences, PhoneExtension grants moved, user groups for BlockoutAdd and for
 BlockoutDelete, the DXC Patient Credit Score row disabled (ProgramNum, or "none") and its buttons deleted (ToolButItemNum, or "none"), the
 UDS+ row's DisplayReportNum of the sealant measure, the Public Health rows moved, the user groups granted the UDS+
-report, the user groups granted the two routine maintenance permissions, the code groups marked for Insurance History (CodeGroupNum and History
-Proc Code) and added (name), and the opening balance rows of the stock ledger. Step 4 must show exactly these. Zero PhoneExtension grants is
+report, the user groups granted the two routine maintenance permissions, the code groups added for Insurance History (name and History Proc
+Code), and the opening balance rows of the stock ledger. Step 4 must show exactly these. Zero PhoneExtension grants is
 normal (Open Dental's Set All grants it, so it is there only where
 someone used Set All).
 
@@ -603,8 +604,9 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   the sealant measure is)" if it is hidden) and, if step 0.2 listed user groups, "Copied N report permission(s) from ODDentalSealantMeasure to
   ODUdsPlus" with the step 0.2 number
 - step 2026110104 ("Insurance History rows from the InsHist preferences to code groups (26.1)") "changed the database:", followed by the
-  lines of step 0.2's Insurance History list ("Code group '<name>' (CodeGroupNum N) shown in Insurance History, ..." and "Added code group
-  ..."), each once, and "Insurance History: ..." notes for an added group and for perio quadrant preferences that held different codes
+  lines of step 0.2's Insurance History list ("Added code group '<name>' (ItemOrder N), used only for Insurance History ..."), each once,
+  and "Insurance History: ..." notes: that the existing code groups were not changed, and for perio quadrant preferences that held
+  different codes
 - step 2026110206 ("Routine maintenance: grant Maintenance Setup and Maintenance Record Completion to the Security Admin groups") "changed the
   database:", followed by "Granted MaintenanceSetup to N Security Admin user group(s)" and "Granted MaintenanceRecord to N Security Admin user
   group(s)" with the step 0.2 numbers (or "found nothing to change" if step 0.2 said it changes nothing); then
@@ -681,8 +683,9 @@ person reads them all):
   `toolbutitem`. A report can only allow these eight tables as a whole; step 4's row check compared them with `opendental` row by row and
   printed exactly what changed in them. For `displayreport` that is the renames of step 0.2 and the UDS+ report row with the moved Public Health rows (`RowsChanged
   displayreport` one row up, and `ColumnChanged displayreport.<column>` for its columns, because an added row changes every column's
-  checksum). For `codegroup` it is the Insurance History groups of step 0.2: `ColumnChanged codegroup.ProcCodes` when codes were added, and
-  with an added group `RowsChanged codegroup` and `ColumnChanged codegroup.<column>` for its columns. For `toolbutitem` it is the DXC Patient
+  checksum). For `codegroup` it is the Insurance History groups step 0.2 listed as added: `RowsChanged codegroup` and
+  `ColumnChanged codegroup.<column>` for its columns (an added row changes every column's checksum); step 4's row check printed that no
+  existing row changed. For `toolbutitem` it is the DXC Patient
   Credit Score buttons of step 0.2, if it listed any (`RowsChanged toolbutitem` and `ColumnChanged toolbutitem.<column>`);
 - `ColumnChanged program.Enabled`, only if step 0.2 listed the DXC Patient Credit Score row as disabled: a report can only allow it as a
   whole column, and step 4's row check printed that only that row changed, `Enabled` only;

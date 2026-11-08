@@ -13,7 +13,8 @@ namespace AdoptionValidation {
 	///(one of them twice, one with a date limit), from which they grant BlockoutAdd and BlockoutDelete, and a claim payment note that is NULL, which
 	///they make empty; and the FQHC Dental Sealant Measure with a report grant and a Public Health report after it, among which the UDS+ step adds the
 	///25.4 UDS+ report's row and to which it copies the grant; and the ten InsHist*Codes preferences of Insurance History's fixed rows, which the
-	///Insurance History step moves into code groups, with the debridement group made the office's own (no fixed type) so that the step also adds one;
+	///Insurance History step moves into code groups used only for Insurance History (one per category), with the debridement group made the office's
+	///own (no fixed type), which the step, like every existing group, leaves as it is;
 	///and the discontinued DXC Patient Credit Score program link, enabled and with two toolbar buttons, which the B-SHELL step disables and whose
 	///buttons it deletes (the XVWeb link's button is kept).
 	///The rehearsal adds them to the generated database before the baseline, so adoption has real work to do and the checks can see it done.
@@ -75,9 +76,10 @@ namespace AdoptionValidation {
 		public const int CountPhoneExtensionGrants=1;
 		public const int CountBlockoutGroups=2;
 		///<summary>The ten InsHist*Codes preferences as an office's Open Dental 25.3.48 database holds them (the codes of Insurance History's fixed
-		///rows), with SyntheticData's codes. Adoption's Insurance History step (InsHistCodeGroupsStep, M2-HIST) marks the generated code group of each
-		///category Show In History; the groups already hold every code but INSHIST_CODE_ADDED, and the four perio quadrants (two codes) share the SRP
-		///group. (preference name, value.)</summary>
+		///rows), with SyntheticData's codes. Adoption's Insurance History step (InsHistCodeGroupsStep, M2-HIST) adds a code group used only for Insurance
+		///History for each category, holding the preference's codes (the perio maintenance one INSHIST_CODE_ADDED too, which no generated group has),
+		///and the four perio quadrants (two codes) share one; the generated groups are not changed (owner decision of 2026-11-07). (preference name,
+		///value.)</summary>
 		public static readonly (string prefName,string value)[] ArrayInsHistPrefs={
 			("InsHistBWCodes","Z0272,Z0274"),
 			("InsHistPanoCodes","Z0330,Z0210"),
@@ -90,16 +92,20 @@ namespace AdoptionValidation {
 			("InsHistPerioMaintCodes","Z4910,"+INSHIST_CODE_ADDED),
 			("InsHistDebridementCodes","Z4355"),
 		};
-		///<summary>A perio maintenance code the preference names and neither the code group nor the procedure code list has: the step appends it to the
-		///group's codes.</summary>
+		///<summary>A perio maintenance code the preference names and neither the generated code group nor the procedure code list has: the history
+		///group the step adds for perio maintenance holds it; the generated group stays without it.</summary>
 		public const string INSHIST_CODE_ADDED="Z4920";
-		///<summary>The fixture makes SyntheticData's full mouth debridement group the office's own (CodeGroupFixed None), so the step adds a group for
-		///that category, after every other group.</summary>
-		public const string INSHIST_GROUP_ADDED="Full Mouth Debridement";
-		///<summary>What the Insurance History step must do with the fixture: mark six code groups (bitewings, pano, exams, prophy, SRP with four
-		///quadrant rows, perio maintenance) and add one.</summary>
-		public const int CountInsHistGroupsMarked=6;
-		public const int CountInsHistGroupsAdded=1;
+		///<summary>The groups the Insurance History step adds for the fixture, in order, after every other group: one per category, used only for
+		///Insurance History. The fixture also makes SyntheticData's full mouth debridement group the office's own (CodeGroupFixed None); the step leaves
+		///it as it is, like every other existing group.</summary>
+		public static readonly string[] ArrayInsHistGroupsAdded={ "Bitewing History","Pano/FMX History","Exam History","Prophy History",
+			"Perio Scaling History","Perio Maintenance History","Full Mouth Debridement History" };
+		///<summary>What the Insurance History step must do with the fixture: change no existing code group and add seven (owner decision of
+		///2026-11-07).</summary>
+		public const int CountInsHistGroupsMarked=0;
+		public static int CountInsHistGroupsAdded {
+			get { return ArrayInsHistGroupsAdded.Length; }
+		}
 		///<summary>The DXC Patient Credit Score link as an office's Open Dental 25.3.48 database may still hold it (what Open Dental's own 25.2
 		///conversion did to the row is not public, INFERRED): enabled, with a button on these toolbars (EnumToolBar: Account module, main toolbar).
 		///Adoption's DXC step (DxcCreditScoreRemovedStep, B-SHELL) sets its Enabled to 0 and deletes both buttons; the XVWeb link and its button on the
@@ -142,7 +148,8 @@ namespace AdoptionValidation {
 					+" Reports grant for the sealant measure it copies; "+GroupPermRows+" grouppermission rows the 25.4 permission split converts ("
 					+CountPhoneExtensionGrants+" PhoneExtension under its 25.3 number "+PermPhoneExtension25_3+", Blockouts for "+CountBlockoutGroups+" user groups, one "
 					+"of them twice); "+ClaimPaymentNotesNull+" claim payment note set to NULL, which the 26.1 step makes empty; "+InsHistPrefs+" InsHist*Codes preferences, which the Insurance History step "
-					+"moves into code groups, and "+CodeGroupsUnfixed+" full mouth debridement code group made the office's own, so that the step adds a group for it; "
+					+"moves into code groups used only for Insurance History, and "+CodeGroupsUnfixed+" full mouth debridement code group made the office's own, which "
+					+"the step leaves as it is; "
 					+"the discontinued DXC Patient Credit Score program link (ProgramNum "+DxcProgramNum+") enabled with "+DxcButtons+" toolbar buttons, which the "
 					+"B-SHELL step disables and deletes, and "+OtherButtons+" XVWeb toolbar button it keeps.";
 			}
@@ -267,7 +274,7 @@ namespace AdoptionValidation {
 			//the same database (X1).
 			summary.ClaimPaymentNotesNull=db.Execute("UPDATE claimpayment SET Note=NULL,SecDateTEdit=SecDateTEdit WHERE Note='' ORDER BY ClaimPaymentNum LIMIT 1");
 			//Insurance History's fixed rows (24.3 to 25.3): the ten preferences an office has set, which the Insurance History step moves into code
-			//groups (M2-HIST). The debridement group becomes the office's own, so the step creates the category's group.
+			//groups used only for Insurance History (M2-HIST). The debridement group becomes the office's own; the step leaves it, like every existing group.
 			foreach((string prefName,string value) pref in ArrayInsHistPrefs) {
 				if(db.ScalarLong("SELECT COUNT(*) FROM preference WHERE PrefName="+SqlLiteral.Quote(pref.prefName))>0) {
 					db.Execute("UPDATE preference SET ValueString="+SqlLiteral.Quote(pref.value)+" WHERE PrefName="+SqlLiteral.Quote(pref.prefName));

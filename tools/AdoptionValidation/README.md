@@ -101,7 +101,8 @@ or `Program Files\MariaDB*`), `--keep`, `--skip-roundtrip`, `--prefix` (default 
    NULL (its `SecDateTEdit` kept). For the UDS+ report row step (M2-UDS): two Public Health rows under Open Dental's own names, the FQHC Dental
    Sealant Measure (which one user group may run) and a report after it. For the Insurance History step (M2-HIST): the ten `InsHist*Codes`
    preferences with SyntheticData's codes (the perio maintenance one with a code its group lacks), and the generated full mouth debridement
-   group made the office's own (no fixed type), so that the step marks six groups and adds one. For the DXC Patient Credit Score step (B-SHELL):
+   group made the office's own (no fixed type); the step adds seven groups used only for Insurance History and changes none of these (owner
+   decision of 2026-11-07). For the DXC Patient Credit Score step (B-SHELL):
    that discontinued program link enabled, with buttons on two toolbars, as an office database may still hold it (INFERRED: what Open Dental's
    own 25.2 conversion did to the row is not public), and a toolbar button of the XVWeb link that must stay.
 3. **Baseline**: row counts, `CHECKSUM TABLE`, a checksum per column (FLOAT values read exactly, as DOUBLE) and the business totals of
@@ -126,9 +127,10 @@ or `Program Files\MariaDB*`), `--keep`, `--skip-roundtrip`, `--prefix` (default 
    26.1 steps changed exactly what the preview listed (the preferences with their defaults, the permission split, the NULL note made empty, the
    new tables empty and the new columns at their defaults), and the adoption log names each preference and permission change. Check M5: the
    UDS+ report row step added the row the preview listed after the sealant measure, moved the later Public Health rows and copied the grant,
-   the row check found exactly that, and the adoption log names the row and the grant. Check M6: the Insurance History step marked the code
-   groups the preview listed (Show In History, History Proc Code, the SRP group's four quadrant rows), added the perio maintenance code and the
-   Full Mouth Debridement group, the row check found exactly that, the adoption log names each group, and the preferences are kept. Check M7:
+   the row check found exactly that, and the adoption log names the row and the grant. Check M6: the Insurance History step added the code
+   groups the preview listed, used only for Insurance History (Show In History, History Proc Code, the perio scaling group's four quadrant rows,
+   the perio maintenance group with the code no generated group has), changed no existing group, the row check found exactly that, the
+   adoption log names each group, and the preferences are kept. Check M7:
    the DXC Patient Credit Score step disabled the row the preview listed (`Enabled` only; the row and its text stay) and deleted its two buttons,
    the XVWeb button is kept, the row check found exactly that, and the adoption log names the deleted buttons and the disabled row.
 11. **Validate**, before anything else touches the copy (runbook step 6.1): the adopted copy against the copy's report with SyntheticData's
@@ -217,7 +219,7 @@ client programs.
 | `AdoptionRowCheck.cs` | What adoption may change in `preference`, `documentmisc`, `securitylog`, `securityloghash`, `displayreport`, `grouppermission`, `codegroup`, `program`, `toolbutitem` and `updatehistory`, in the columns the 25.4 and 26.1 steps change, and in the tables and columns they add, row by row |
 | `DxcCreditScorePlan.cs` | What the DXC Patient Credit Score step (B-SHELL) changes: the program rows of that discontinued link it disables and the toolbar buttons it deletes, read-only |
 | `UdsPlusRowPlan.cs` | What the UDS+ report row step (M2-UDS) changes: the row it adds after the sealant measure, the rows it moves and the grants it copies, read-only |
-| `InsHistCodeGroupPlan.cs` | What the Insurance History step (M2-HIST) changes: the code groups it marks Show In History, the codes it adds and the groups it adds, read-only |
+| `InsHistCodeGroupPlan.cs` | What the Insurance History step (M2-HIST) changes: the code groups used only for Insurance History it adds (no existing group changes), read-only |
 | `MigrationPreview.cs` | What adoption's fork migration will change in a 25.3.48 database's rows (the report rows it renames, and the 25.4 and 26.1 changes), read-only |
 | `Migration26_1Plan.cs` | What the Open Dental 25.4 and 26.1 steps change: the reference difference, the preferences, the permission split, the NULL notes |
 | `RowComparer.cs` | Row-by-row comparison of one table in two databases, done by the server |

@@ -237,7 +237,10 @@ Headless=0
 			StringAssert.Contains(GatedSettingsHash.GetCanonicalText(null,12),"\nDevice.Bits=16\n");
 			StringAssert.Contains(GatedSettingsHash.GetCanonicalText(null,12),"\nDevice.Polarity=\n","Other keys are still empty when missing.");
 			string canonical=GatedSettingsHash.GetCanonicalText(null,12);
-			Assert.IsTrue(canonical.StartsWith("capture-gated-settings/1\nDevice=12\nSession.Enabled=\n"));
+			//[Session] Enabled: a missing value hashes as its default since 2026-11-07, on (owner decision: capture on for every new install).
+			Assert.IsTrue(canonical.StartsWith("capture-gated-settings/1\nDevice=12\nSession.Enabled=1\n"));
+			Assert.AreEqual(hashMissingFile,Hash("[Session]\nEnabled=1\n"),"A missing Enabled reads as 1.");
+			Assert.AreNotEqual(hashMissingFile,Hash("[Session]\nEnabled=0\n"),"The rollback is not the default.");
 			Assert.AreEqual(2+2+9+12,canonical.Count(x => x=='\n'));
 			Assert.IsFalse(File.Exists(pathMissing),"Reading never creates the file.");
 		}
