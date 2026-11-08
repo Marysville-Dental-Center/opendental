@@ -84,6 +84,18 @@ namespace OpenPmsDentalBusiness{
 			return _procedureCodeCache.GetContainsKey(procCode);
 		}
 
+		///<summary>The paint types the procedure code windows offer, in enum order. TextBelow (18, Open Dental 26.2) is left out until the tooth
+		///chart draws it (owner decision of 2026-11-07), except when paintTypeCur is TextBelow: a procedure code that already has it (written by
+		///Open Dental 26.2) keeps it, so saving the window never changes it unasked. The numbers of the others equal their place in the list.</summary>
+		public static List<ToothPaintingType> GetPaintTypesForList(ToothPaintingType paintTypeCur=ToothPaintingType.None) {
+			Meth.NoCheckMiddleTierRole();
+			List<ToothPaintingType> listPaintTypes=Enum.GetValues(typeof(ToothPaintingType)).Cast<ToothPaintingType>()
+				.Where(x => x!=ToothPaintingType.TextBelow || paintTypeCur==ToothPaintingType.TextBelow)
+				.OrderBy(x => (int)x)
+				.ToList();
+			return listPaintTypes;
+		}
+
 		#region InsHist Preference Procedures
 		///<summary>Returns the first procedure code for the InsHist preference passed in.</summary>
 		public static ProcedureCode GetByInsHistPref(PrefName prefName) {

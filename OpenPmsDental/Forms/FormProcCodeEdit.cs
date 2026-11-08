@@ -75,7 +75,8 @@ namespace OpenPmsDental{
 			listTreatArea.Items.AddEnums<TreatmentArea>();
 			listTreatArea.SetSelectedEnum(_procedureCode.TreatArea);	
 			checkToothRange.Checked=_procedureCode.AreaAlsoToothRange;
-			listPaintType.Items.AddEnums<ToothPaintingType>();
+			//TextBelow (26.2) is offered only to a code that has it, until the tooth chart draws it (owner decision of 2026-11-07).
+			listPaintType.Items.AddList(ProcedureCodes.GetPaintTypesForList(_procedureCode.PaintType),x => Lan.g("enumToothPaintingType",x.ToString()));
 			listPaintType.SetSelectedEnum(_procedureCode.PaintType);
 			textPaintText.Text=_procedureCode.PaintText;
 			_listDefsProcCodeCat=Defs.GetDefsForCategory(DefCat.ProcCodeCats,!ShowHiddenCategories);

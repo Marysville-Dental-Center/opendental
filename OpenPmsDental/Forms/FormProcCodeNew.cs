@@ -58,8 +58,11 @@ namespace OpenPmsDental{
 				comboTreatArea.Visible=false;
 			}
 			listType.SelectedIndex=0;
-			for(int i=0;i<Enum.GetNames(typeof(ToothPaintingType)).Length;i++) {
-				comboPaintType.Items.Add(Enum.GetNames(typeof(ToothPaintingType))[i]);
+			//Every paint type but TextBelow (26.2), which the tooth chart does not draw yet (owner decision of 2026-11-07). The list's index is the
+			//paint type's number (SelectedIndex is cast to ToothPaintingType below); TextBelow is the last value, so leaving it out keeps that true.
+			List<ToothPaintingType> listPaintTypes=ProcedureCodes.GetPaintTypesForList();
+			for(int i=0;i<listPaintTypes.Count;i++) {
+				comboPaintType.Items.Add(listPaintTypes[i].ToString());
 			}
 			comboPaintType.SelectedIndex=(int)ToothPaintingType.None;
 			for(int i=0;i<Enum.GetNames(typeof(TreatmentArea)).Length;i++) {
