@@ -13,7 +13,9 @@ What this version brings, each in its section below (the roadmap's "Done in the 
   from their source), and the program's own DICOM reader in place of fo-dicom;
 - routine maintenance around the practice, and inventory tracking for materials;
 - the storage library under its new name, and a Database Maintenance check that works again;
-- the database schema of Open Dental 26.2.
+- the database schema of Open Dental 26.2;
+- Glidewell lab cases in the Edit Lab Case window (Open Dental 26.2), off until the office sets it up; sending waits for Glidewell's
+  interface documentation.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
 inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below). It also
@@ -285,3 +287,25 @@ their own sections.
   databases are still adopted only from 25.3.48 (or this program's 24.3.63 line).
 - Everything the documents do not publish (NULL or NOT NULL, defaults, keys, the MyISAM engine of the new tables, the numbers of the Glidewell
   order statuses) follows the conventions of the existing schema and is marked INFERRED in the port note.
+
+## Glidewell lab cases (Open Dental 26.2)
+
+Lab cases can be sent to the Glidewell dental lab from the Edit Lab Case window, for a scan from an iTero or Medit scanner, with the office's
+own Glidewell account, directly to Glidewell (`docs/port-notes/P262-GLIDEWELL.md`). **It is off until the office turns it on** in Setup,
+Program Links, Glidewell lab cases, and it can be turned on only after a Glidewell account with its account number and API key is entered.
+While it is off the Edit Lab Case window is unchanged.
+
+**This version cannot send yet.** Glidewell has not published the interface practice management programs use, so the program contains no
+connection to Glidewell; Send to Glidewell says so and nothing leaves the practice. The connection will be added once Glidewell's
+documentation is available; everything around it is in place:
+
+- **Accounts** (Setup, Program Links, Glidewell lab cases): the account number, the API key (stored encrypted, never shown again, changed only
+  by a user with Manage High Security Program Properties) and the providers whose lab cases use the account by default. An API key that
+  Open Dental stored cannot be read and has to be entered again.
+- **Edit Lab Case window**: a Glidewell group with the account, the scanner, the lab case's products (material, shade, teeth, notes; saved with
+  the lab case), Send to Glidewell, and for a sent case Check Status and Details (status, tracking number and carrier).
+- **What would be sent**, listed before sending: the patient's name, patient number, gender and birthdate, the provider's number and license
+  number, and the lab case's number, instructions and products.
+- A lab case sent to Glidewell cannot be deleted; its products are deleted with an unsent lab case, and they follow the lab case when two
+  patients are merged.
+- Lab cases an Open Dental database already sent to Glidewell keep their stored status and details, which the Details button shows.

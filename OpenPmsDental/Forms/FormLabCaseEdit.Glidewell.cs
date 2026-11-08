@@ -50,6 +50,15 @@ namespace OpenPmsDental {
 			comboProv.SelectionChangeCommitted+=comboProv_SelectionChangeCommittedGlidewell;
 			FillGwProducts();
 			FillGwStatus();
+			if(patient==null) {
+				//The lab case can only be viewed or deleted (Load); a sent case's details stay readable.
+				comboGwAccount.Enabled=false;
+				comboGwScanner.Enabled=false;
+				butGwProductAdd.Enabled=false;
+				butGwSend.Enabled=false;
+				butGwDetails.Enabled=true;
+				groupGlidewell.Enabled=true;
+			}
 		}
 
 		private void SelectGwAccount(long glidewellAcctNum) {
@@ -146,7 +155,7 @@ namespace OpenPmsDental {
 		}
 
 		private void gridGwProducts_CellDoubleClick(object sender,ODGridClickEventArgs e) {
-			if(e.Row<0 || e.Row>=gridGwProducts.ListGridRows.Count) {
+			if(e.Row<0 || e.Row>=gridGwProducts.ListGridRows.Count || !butGwProductAdd.Enabled) {
 				return;
 			}
 			LabCaseProduct labCaseProduct=(LabCaseProduct)gridGwProducts.ListGridRows[e.Row].Tag;
