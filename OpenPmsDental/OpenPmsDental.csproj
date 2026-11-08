@@ -737,6 +737,18 @@
     <Compile Include="Forms\FormErx.designer.cs">
       <DependentUpon>FormErx.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\FormEbillSetup.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormEbillSetup.Designer.cs">
+      <DependentUpon>FormEbillSetup.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\FormStatementChoices.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\FormStatementChoices.Designer.cs">
+      <DependentUpon>FormStatementChoices.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\FormBillingTypeMerge.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -5439,6 +5451,10 @@
       <DependentUpon>ControlAccount.cs</DependentUpon>
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Main Modules\ControlAccount.StatementOptions.cs">
+      <DependentUpon>ControlAccount.cs</DependentUpon>
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Main Modules\ControlAccount.ServiceDateView.cs">
       <DependentUpon>ControlAccount.cs</DependentUpon>
       <SubType>UserControl</SubType>
@@ -6245,6 +6261,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormErx.resx">
       <DependentUpon>FormErx.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormEbillSetup.resx">
+      <DependentUpon>FormEbillSetup.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\FormStatementChoices.resx">
+      <DependentUpon>FormStatementChoices.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\FormBillingTypeMerge.resx">
       <DependentUpon>FormBillingTypeMerge.cs</DependentUpon>

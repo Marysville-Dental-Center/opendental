@@ -20,6 +20,9 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - the database schema of Open Dental 26.2;
 - Open Dental 26.2's Appointments module changes: several blockout types in the Advanced Appointment Search, the practice and clinic
   schedule notes in the Appointments module, and appointment estimates brought up to date when an insurance plan is saved.
+- the database schema of Open Dental 26.2;
+- the billing and statements changes of Open Dental 26.2: a Statement Options window, a redesigned Statement window, an Electronic
+  Billing window and Billing Defaults per clinic.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
 inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below). It also
@@ -372,3 +375,31 @@ documents (`docs/port-notes/P262-APPT.md`). No database change.
   Plans) now also brings the insurance estimates up to date for every patient the plan covers who has a scheduled appointment today or
   later, not only for the subscriber's own patients as before. It runs for users with the Insurance Plan Edit permission (the only users
   who can change the plan or its benefits); a plan with many such patients takes a moment longer to save.
+## Billing and statements (Open Dental 26.2)
+
+Four changes of Open Dental 26.2, re-implemented from its public release notes only (`docs/port-notes/P262-BILLING.md`). Every statement,
+billing and electronic billing setting keeps its value: nothing is converted, and no database row is added by the update.
+
+- **Statement Options window.** The Account module's Statement button still prints the default statement when clicked. Its dropdown
+  arrow, which showed a menu, now opens the Statement Options window: the default statement and every entry of the former menu (Walkout,
+  Email, Receipt, Invoice, Limited, Limited (Custom), More Options, the Service Date View window), each with a short description.
+  Double-click one to run it.
+- **The Statement window is redesigned.** The window opened by More Options, by a statement in the Billing List or by a saved statement is
+  laid out in boxes (Statement, Invoice, Date Range, Contents, then the notes). It has the same options and works as before.
+- **Electronic Billing window.** The electronic billing settings (method, credit cards, vendor codes, the account, user name, password and
+  addresses per clinic, PDF and output path) moved from Billing Defaults to their own window. Open it from Billing Defaults (Electronic
+  Billing...) or from the Billing List (Defaults).
+- **Billing Defaults per clinic.** Billing Defaults is reorganized into Statements (for the whole practice) and Messages. When clinics are
+  turned on, the Messages (the General Message, the subject, body, body type and autograph of e-mailed statements, and the invoice note) can
+  be set per clinic: pick the clinic and clear "Use the practice defaults for this clinic". Statements e-mailed to a patient and invoices
+  then use the patient's clinic's messages; a clinic that keeps the practice defaults, and every clinic while clinics are off, uses the
+  practice's. A clinic's General Message is the same one Billing Options saves with the clinic's filter defaults.
+- **A clinic keeps following the practice for the messages it has not changed.** Every clinic that saved Billing Options defaults before
+  this update has its own General Message and uses the practice's other messages. Changing that clinic's General Message (or any one
+  message) in Billing Defaults saves only what you changed: the clinic keeps the practice's e-mail subject, body, body type, autograph and
+  invoice note, and later changes to them still reach it. A clinic that you take off the practice defaults by clearing "Use the practice
+  defaults for this clinic" starts from a copy of all of them.
+- **Billing Options saves only the clinic you selected.** Save Defaults in Billing Options, with one clinic selected, now writes that
+  clinic's defaults and nothing of any other clinic. A clinic with its own messages in Billing Defaults but no saved Billing Options filters
+  keeps following the practice filter defaults, and a clinic set to use the practice defaults in Billing Defaults stays on them. Billing
+  Options shows the selected clinic's own General Message, also when the window opens.

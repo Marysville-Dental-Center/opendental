@@ -167,6 +167,20 @@ Boilerplate for the new WpfControls.UI.ToolBar is over in ToolBar.xaml.cs
 		[Description("Occurs when a button is clicked.")]
 		public event ODToolBarButtonClickEventHandler ButtonClick=null;
 
+		///<summary>Raised when the dropdown arrow of a DropDownButton is clicked and the button has no dropdown menu: the arrow then opens a window
+		///instead of a menu (the Account module's Statement button since Open Dental 26.2, P262-BILLING). A button with a menu still shows its menu
+		///and never raises this.</summary>
+		protected void OnButtonDropDownClicked(ODToolBarButton toolBarButton){
+			if(toolBarButton.DateTimeLastClicked.AddMilliseconds(SystemInformation.DoubleClickTime)>DateTime.Now) {
+				return;//ignore a second click that happens too quickly
+			}
+			toolBarButton.DateTimeLastClicked=DateTime.Now;
+			ButtonDropDownClick?.Invoke(this,new ODToolBarButtonClickEventArgs(toolBarButton));
+		}
+		[Category("OD")]
+		[Description("Occurs when the dropdown arrow of a dropdown button without a dropdown menu is clicked.")]
+		public event ODToolBarButtonClickEventHandler ButtonDropDownClick=null;
+
 		///<summary></summary>
 		private void OnPageNav(int pageNum){
 			PageNav?.Invoke(this,new ODToolBarButtonPageNavEventArgs(pageNum));
@@ -325,6 +339,12 @@ Boilerplate for the new WpfControls.UI.ToolBar is over in ToolBar.xaml.cs
 							toolBarButton.State=ToolBarButtonState.Normal;
 							Invalidate();
 							toolBarButton.ContextMenuStripDropDown.Show(this,new Point(toolBarButton.Bounds.X,toolBarButton.Bounds.Y+toolBarButton.Bounds.Height));
+						}
+						if(toolBarButton.DropDownMenu==null && toolBarButton.ContextMenuStripDropDown==null){//the arrow opens a window (P262-BILLING)
+							_toolBarButtonHot=null;
+							toolBarButton.State=ToolBarButtonState.Normal;
+							Invalidate();
+							OnButtonDropDownClicked(toolBarButton);
 						}
 					}
 					else if(toolBarButton.Style==ODToolBarButtonStyle.ToggleButton){//if current button is a toggle button

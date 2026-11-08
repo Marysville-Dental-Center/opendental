@@ -25,171 +25,258 @@ namespace OpenPmsDental{
 		private void InitializeComponent() {
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormBillingDefaults));
 			this.butSave = new OpenPmsDental.UI.Button();
-			this.checkBoxBillShowTransSinceZero = new OpenPmsDental.UI.CheckBox();
+			this.butEbill = new OpenPmsDental.UI.Button();
+			this.comboClinic = new OpenPmsDental.UI.ComboBoxClinicPicker();
+			this.checkUsePracticeDefaults = new OpenPmsDental.UI.CheckBox();
+			this.groupStatements = new OpenPmsDental.UI.GroupBox();
+			this.checkIntermingled = new OpenPmsDental.UI.CheckBox();
 			this.checkSinglePatient = new OpenPmsDental.UI.CheckBox();
-			this.textInvoiceNote = new OpenPmsDental.ODtextBox();
-			this.label11 = new System.Windows.Forms.Label();
+			this.labelStartDate = new System.Windows.Forms.Label();
+			this.textDays = new OpenPmsDental.ValidNum();
+			this.label1 = new System.Windows.Forms.Label();
+			this.checkBoxBillShowTransSinceZero = new OpenPmsDental.UI.CheckBox();
+			this.checkInserterBarcode = new OpenPmsDental.UI.CheckBox();
+			this.groupMessages = new OpenPmsDental.UI.GroupBox();
+			this.label4 = new System.Windows.Forms.Label();
+			this.textNote = new OpenPmsDental.ODtextBox();
 			this.groupBox3 = new OpenPmsDental.UI.GroupBox();
+			this.label10 = new System.Windows.Forms.Label();
+			this.label9 = new System.Windows.Forms.Label();
+			this.textBillingEmailSubject = new System.Windows.Forms.TextBox();
+			this.label8 = new System.Windows.Forms.Label();
+			this.textBillingEmailBody = new OpenPmsDental.ODtextBox();
 			this.checkBillingEmailIncludeAutograph = new OpenPmsDental.UI.CheckBox();
 			this.labelBillingEmailType = new System.Windows.Forms.Label();
 			this.comboBillingEmailType = new OpenPmsDental.UI.ComboBox();
 			this.butBillingEmailEditHtml = new OpenPmsDental.UI.Button();
-			this.textBillingEmailBody = new OpenPmsDental.ODtextBox();
-			this.label8 = new System.Windows.Forms.Label();
-			this.label9 = new System.Windows.Forms.Label();
-			this.textBillingEmailSubject = new System.Windows.Forms.TextBox();
-			this.label10 = new System.Windows.Forms.Label();
-			this.groupBoxBilling = new OpenPmsDental.UI.GroupBox();
-			this.checkIncludeClinicNum = new OpenPmsDental.UI.CheckBox();
-			this.checkIncludeAdjust = new OpenPmsDental.UI.CheckBox();
-			this.checkCreatePDF = new OpenPmsDental.UI.CheckBox();
-			this.labelBlankForDefault = new System.Windows.Forms.Label();
-			this.textStatementURL = new System.Windows.Forms.TextBox();
-			this.labelStatementURL = new System.Windows.Forms.Label();
-			this.comboPracticeAddr = new OpenPmsDental.UI.ComboBox();
-			this.comboRemitAddr = new OpenPmsDental.UI.ComboBox();
-			this.labelPracticeAddr = new System.Windows.Forms.Label();
-			this.labelRemitAddr = new System.Windows.Forms.Label();
-			this.comboClinic = new OpenPmsDental.UI.ComboBoxClinicPicker();
-			this.listElectBilling = new OpenPmsDental.UI.ListBox();
-			this.textPassword = new System.Windows.Forms.TextBox();
-			this.labelPassword = new System.Windows.Forms.Label();
-			this.textUserName = new System.Windows.Forms.TextBox();
-			this.labelUserName = new System.Windows.Forms.Label();
-			this.groupBox2 = new OpenPmsDental.UI.GroupBox();
-			this.checkAmEx = new OpenPmsDental.UI.CheckBox();
-			this.checkD = new OpenPmsDental.UI.CheckBox();
-			this.checkV = new OpenPmsDental.UI.CheckBox();
-			this.checkMC = new OpenPmsDental.UI.CheckBox();
-			this.textClientAcctNumber = new System.Windows.Forms.TextBox();
-			this.labelAcctNum = new System.Windows.Forms.Label();
-			this.textVendorPMScode = new System.Windows.Forms.TextBox();
-			this.label3 = new System.Windows.Forms.Label();
-			this.textVendorId = new System.Windows.Forms.TextBox();
-			this.label2 = new System.Windows.Forms.Label();
-			this.label1 = new System.Windows.Forms.Label();
-			this.textDays = new OpenPmsDental.ValidNum();
-			this.checkIntermingled = new OpenPmsDental.UI.CheckBox();
-			this.labelStartDate = new System.Windows.Forms.Label();
-			this.textNote = new OpenPmsDental.ODtextBox();
-			this.label4 = new System.Windows.Forms.Label();
-			this.checkInserterBarcode = new OpenPmsDental.UI.CheckBox();
+			this.label11 = new System.Windows.Forms.Label();
+			this.textInvoiceNote = new OpenPmsDental.ODtextBox();
+			this.groupStatements.SuspendLayout();
+			this.groupMessages.SuspendLayout();
 			this.groupBox3.SuspendLayout();
-			this.groupBoxBilling.SuspendLayout();
-			this.groupBox2.SuspendLayout();
 			this.SuspendLayout();
-			// 
+			//
 			// butSave
-			// 
+			//
 			this.butSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butSave.Location = new System.Drawing.Point(798, 560);
+			this.butSave.Location = new System.Drawing.Point(790, 568);
 			this.butSave.Name = "butSave";
 			this.butSave.Size = new System.Drawing.Size(75, 24);
-			this.butSave.TabIndex = 3;
+			this.butSave.TabIndex = 5;
 			this.butSave.Text = "&Save";
 			this.butSave.Click += new System.EventHandler(this.butSave_Click);
-			// 
-			// checkBoxBillShowTransSinceZero
-			// 
-			this.checkBoxBillShowTransSinceZero.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.checkBoxBillShowTransSinceZero.Location = new System.Drawing.Point(579, 32);
-			this.checkBoxBillShowTransSinceZero.Name = "checkBoxBillShowTransSinceZero";
-			this.checkBoxBillShowTransSinceZero.Size = new System.Drawing.Size(284, 18);
-			this.checkBoxBillShowTransSinceZero.TabIndex = 253;
-			this.checkBoxBillShowTransSinceZero.Text = "Show all transactions since zero or negative balance";
-			// 
+			//
+			// butEbill
+			//
+			this.butEbill.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.butEbill.Location = new System.Drawing.Point(12, 568);
+			this.butEbill.Name = "butEbill";
+			this.butEbill.Size = new System.Drawing.Size(130, 24);
+			this.butEbill.TabIndex = 4;
+			this.butEbill.Text = "Electronic Billing...";
+			this.butEbill.Click += new System.EventHandler(this.butEbill_Click);
+			//
+			// comboClinic
+			//
+			this.comboClinic.HqDescription = "Practice Defaults";
+			this.comboClinic.IncludeUnassigned = true;
+			this.comboClinic.Location = new System.Drawing.Point(12, 10);
+			this.comboClinic.Name = "comboClinic";
+			this.comboClinic.Size = new System.Drawing.Size(250, 21);
+			this.comboClinic.TabIndex = 0;
+			this.comboClinic.SelectionChangeCommitted += new System.EventHandler(this.comboClinic_SelectionChangeCommitted);
+			//
+			// checkUsePracticeDefaults
+			//
+			this.checkUsePracticeDefaults.Location = new System.Drawing.Point(280, 11);
+			this.checkUsePracticeDefaults.Name = "checkUsePracticeDefaults";
+			this.checkUsePracticeDefaults.Size = new System.Drawing.Size(420, 18);
+			this.checkUsePracticeDefaults.TabIndex = 1;
+			this.checkUsePracticeDefaults.Text = "Use the practice defaults for this clinic";
+			this.checkUsePracticeDefaults.Visible = false;
+			this.checkUsePracticeDefaults.Click += new System.EventHandler(this.checkUsePracticeDefaults_Click);
+			//
+			// groupStatements
+			//
+			this.groupStatements.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.groupStatements.Controls.Add(this.checkIntermingled);
+			this.groupStatements.Controls.Add(this.checkSinglePatient);
+			this.groupStatements.Controls.Add(this.labelStartDate);
+			this.groupStatements.Controls.Add(this.textDays);
+			this.groupStatements.Controls.Add(this.label1);
+			this.groupStatements.Controls.Add(this.checkBoxBillShowTransSinceZero);
+			this.groupStatements.Controls.Add(this.checkInserterBarcode);
+			this.groupStatements.Location = new System.Drawing.Point(12, 38);
+			this.groupStatements.Name = "groupStatements";
+			this.groupStatements.Size = new System.Drawing.Size(853, 70);
+			this.groupStatements.TabIndex = 2;
+			this.groupStatements.Text = "Statements";
+			//
+			// checkIntermingled
+			//
+			this.checkIntermingled.Location = new System.Drawing.Point(12, 18);
+			this.checkIntermingled.Name = "checkIntermingled";
+			this.checkIntermingled.Size = new System.Drawing.Size(216, 20);
+			this.checkIntermingled.TabIndex = 0;
+			this.checkIntermingled.Text = "Intermingle family members";
+			//
 			// checkSinglePatient
-			// 
+			//
 			this.checkSinglePatient.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkSinglePatient.Location = new System.Drawing.Point(256, 9);
+			this.checkSinglePatient.Location = new System.Drawing.Point(240, 19);
 			this.checkSinglePatient.Name = "checkSinglePatient";
 			this.checkSinglePatient.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
 			this.checkSinglePatient.Size = new System.Drawing.Size(158, 17);
-			this.checkSinglePatient.TabIndex = 252;
+			this.checkSinglePatient.TabIndex = 1;
 			this.checkSinglePatient.Text = "Single patient only";
 			this.checkSinglePatient.Visible = false;
-			// 
-			// textInvoiceNote
-			// 
-			this.textInvoiceNote.AcceptsTab = true;
-			this.textInvoiceNote.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+			//
+			// labelStartDate
+			//
+			this.labelStartDate.Location = new System.Drawing.Point(480, 20);
+			this.labelStartDate.Name = "labelStartDate";
+			this.labelStartDate.Size = new System.Drawing.Size(147, 14);
+			this.labelStartDate.TabIndex = 2;
+			this.labelStartDate.Text = "Start Date Last";
+			this.labelStartDate.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// textDays
+			//
+			this.textDays.Location = new System.Drawing.Point(629, 18);
+			this.textDays.Name = "textDays";
+			this.textDays.Size = new System.Drawing.Size(44, 20);
+			this.textDays.TabIndex = 3;
+			//
+			// label1
+			//
+			this.label1.Location = new System.Drawing.Point(675, 20);
+			this.label1.Name = "label1";
+			this.label1.Size = new System.Drawing.Size(65, 14);
+			this.label1.TabIndex = 4;
+			this.label1.Text = "Days";
+			this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
+			// checkBoxBillShowTransSinceZero
+			//
+			this.checkBoxBillShowTransSinceZero.Location = new System.Drawing.Point(12, 43);
+			this.checkBoxBillShowTransSinceZero.Name = "checkBoxBillShowTransSinceZero";
+			this.checkBoxBillShowTransSinceZero.Size = new System.Drawing.Size(330, 18);
+			this.checkBoxBillShowTransSinceZero.TabIndex = 5;
+			this.checkBoxBillShowTransSinceZero.Text = "Show all transactions since zero or negative balance";
+			//
+			// checkInserterBarcode
+			//
+			this.checkInserterBarcode.Location = new System.Drawing.Point(420, 43);
+			this.checkInserterBarcode.Name = "checkInserterBarcode";
+			this.checkInserterBarcode.Size = new System.Drawing.Size(320, 18);
+			this.checkInserterBarcode.TabIndex = 6;
+			this.checkInserterBarcode.Text = "Print inserter barcode on statements";
+			//
+			// groupMessages
+			//
+			this.groupMessages.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInvoiceNote.BackColor = System.Drawing.SystemColors.Window;
-			this.textInvoiceNote.DetectLinksEnabled = false;
-			this.textInvoiceNote.DetectUrls = false;
-			this.textInvoiceNote.Location = new System.Drawing.Point(24, 490);
-			this.textInvoiceNote.Name = "textInvoiceNote";
-			this.textInvoiceNote.QuickPasteType = OpenPmsDentalBusiness.EnumQuickPasteType.Statement;
-			this.textInvoiceNote.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-			this.textInvoiceNote.Size = new System.Drawing.Size(831, 66);
-			this.textInvoiceNote.TabIndex = 251;
-			this.textInvoiceNote.Text = "";
-			// 
-			// label11
-			// 
-			this.label11.Location = new System.Drawing.Point(23, 473);
-			this.label11.Name = "label11";
-			this.label11.Size = new System.Drawing.Size(152, 16);
-			this.label11.TabIndex = 250;
-			this.label11.Text = "Invoice Note";
-			this.label11.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			// 
+			this.groupMessages.Controls.Add(this.label4);
+			this.groupMessages.Controls.Add(this.textNote);
+			this.groupMessages.Controls.Add(this.groupBox3);
+			this.groupMessages.Controls.Add(this.label11);
+			this.groupMessages.Controls.Add(this.textInvoiceNote);
+			this.groupMessages.Location = new System.Drawing.Point(12, 114);
+			this.groupMessages.Name = "groupMessages";
+			this.groupMessages.Size = new System.Drawing.Size(853, 446);
+			this.groupMessages.TabIndex = 3;
+			this.groupMessages.Text = "Messages";
+			//
+			// label4
+			//
+			this.label4.Location = new System.Drawing.Point(11, 16);
+			this.label4.Name = "label4";
+			this.label4.Size = new System.Drawing.Size(575, 32);
+			this.label4.TabIndex = 0;
+			this.label4.Text = "General Message (in addition to any dunning messages and appointment messages).\r\n" +
+    "You may use the variable [InstallmentPlanTerms] below to show the terms of the i" +
+    "nstallment plan.";
+			this.label4.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
+			//
+			// textNote
+			//
+			this.textNote.AcceptsTab = true;
+			this.textNote.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.textNote.BackColor = System.Drawing.SystemColors.Window;
+			this.textNote.DetectLinksEnabled = false;
+			this.textNote.DetectUrls = false;
+			this.textNote.Location = new System.Drawing.Point(12, 49);
+			this.textNote.Name = "textNote";
+			this.textNote.QuickPasteType = OpenPmsDentalBusiness.EnumQuickPasteType.Statement;
+			this.textNote.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
+			this.textNote.Size = new System.Drawing.Size(829, 66);
+			this.textNote.TabIndex = 1;
+			this.textNote.Text = "";
+			//
 			// groupBox3
-			// 
-			this.groupBox3.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+			//
+			this.groupBox3.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.groupBox3.Controls.Add(this.butBillingEmailEditHtml);
-			this.groupBox3.Controls.Add(this.comboBillingEmailType);
-			this.groupBox3.Controls.Add(this.labelBillingEmailType);
-			this.groupBox3.Controls.Add(this.checkBillingEmailIncludeAutograph);
-			this.groupBox3.Controls.Add(this.textBillingEmailBody);
-			this.groupBox3.Controls.Add(this.label8);
+			this.groupBox3.Controls.Add(this.label10);
 			this.groupBox3.Controls.Add(this.label9);
 			this.groupBox3.Controls.Add(this.textBillingEmailSubject);
-			this.groupBox3.Controls.Add(this.label10);
-			this.groupBox3.Location = new System.Drawing.Point(12, 273);
+			this.groupBox3.Controls.Add(this.label8);
+			this.groupBox3.Controls.Add(this.textBillingEmailBody);
+			this.groupBox3.Controls.Add(this.checkBillingEmailIncludeAutograph);
+			this.groupBox3.Controls.Add(this.labelBillingEmailType);
+			this.groupBox3.Controls.Add(this.comboBillingEmailType);
+			this.groupBox3.Controls.Add(this.butBillingEmailEditHtml);
+			this.groupBox3.Location = new System.Drawing.Point(6, 122);
 			this.groupBox3.Name = "groupBox3";
-			this.groupBox3.Size = new System.Drawing.Size(850, 200);
-			this.groupBox3.TabIndex = 248;
+			this.groupBox3.Size = new System.Drawing.Size(841, 210);
+			this.groupBox3.TabIndex = 2;
 			this.groupBox3.Text = "Email Statements";
-			// 
-			// labelBillingEmailType
-			// 
-			this.labelBillingEmailType.Location = new System.Drawing.Point(296, 177);
-			this.labelBillingEmailType.Name = "labelBillingEmailType";
-			this.labelBillingEmailType.Size = new System.Drawing.Size(94, 18);
-			this.labelBillingEmailType.TabIndex = 266;
-			this.labelBillingEmailType.Text = "Email type";
-			this.labelBillingEmailType.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// comboBillingEmailType
-			// 
-			this.comboBillingEmailType.Location = new System.Drawing.Point(392, 176);
-			this.comboBillingEmailType.Name = "comboBillingEmailType";
-			this.comboBillingEmailType.Size = new System.Drawing.Size(140, 21);
-			this.comboBillingEmailType.TabIndex = 267;
-			// 
-			// butBillingEmailEditHtml
-			// 
-			this.butBillingEmailEditHtml.Location = new System.Drawing.Point(540, 174);
-			this.butBillingEmailEditHtml.Name = "butBillingEmailEditHtml";
-			this.butBillingEmailEditHtml.Size = new System.Drawing.Size(100, 24);
-			this.butBillingEmailEditHtml.TabIndex = 268;
-			this.butBillingEmailEditHtml.Text = "Edit HTML...";
-			this.butBillingEmailEditHtml.Click += new System.EventHandler(this.butBillingEmailEditHtml_Click);
-			// 
-			// checkBillingEmailIncludeAutograph
-			// 
-			this.checkBillingEmailIncludeAutograph.Location = new System.Drawing.Point(12, 179);
-			this.checkBillingEmailIncludeAutograph.Name = "checkBillingEmailIncludeAutograph";
-			this.checkBillingEmailIncludeAutograph.Size = new System.Drawing.Size(270, 18);
-			this.checkBillingEmailIncludeAutograph.TabIndex = 265;
-			this.checkBillingEmailIncludeAutograph.Text = "Include Email Autograph of sender address";
-			// 
+			//
+			// label10
+			//
+			this.label10.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.label10.Location = new System.Drawing.Point(11, 15);
+			this.label10.Name = "label10";
+			this.label10.Size = new System.Drawing.Size(814, 29);
+			this.label10.TabIndex = 0;
+			this.label10.Text = resources.GetString("label10.Text");
+			//
+			// label9
+			//
+			this.label9.Location = new System.Drawing.Point(11, 45);
+			this.label9.Name = "label9";
+			this.label9.Size = new System.Drawing.Size(218, 16);
+			this.label9.TabIndex = 1;
+			this.label9.Text = "Subject";
+			this.label9.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
+			//
+			// textBillingEmailSubject
+			//
+			this.textBillingEmailSubject.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.textBillingEmailSubject.Location = new System.Drawing.Point(12, 62);
+			this.textBillingEmailSubject.MaxLength = 200;
+			this.textBillingEmailSubject.Name = "textBillingEmailSubject";
+			this.textBillingEmailSubject.Size = new System.Drawing.Size(816, 20);
+			this.textBillingEmailSubject.TabIndex = 2;
+			//
+			// label8
+			//
+			this.label8.Location = new System.Drawing.Point(11, 83);
+			this.label8.Name = "label8";
+			this.label8.Size = new System.Drawing.Size(87, 16);
+			this.label8.TabIndex = 3;
+			this.label8.Text = "Body";
+			this.label8.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
+			//
 			// textBillingEmailBody
-			// 
+			//
 			this.textBillingEmailBody.AcceptsTab = true;
-			this.textBillingEmailBody.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+			this.textBillingEmailBody.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
 			this.textBillingEmailBody.BackColor = System.Drawing.SystemColors.Window;
 			this.textBillingEmailBody.DetectLinksEnabled = false;
@@ -198,474 +285,117 @@ namespace OpenPmsDental{
 			this.textBillingEmailBody.Name = "textBillingEmailBody";
 			this.textBillingEmailBody.QuickPasteType = OpenPmsDentalBusiness.EnumQuickPasteType.Statement;
 			this.textBillingEmailBody.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-			this.textBillingEmailBody.Size = new System.Drawing.Size(827, 72);
-			this.textBillingEmailBody.TabIndex = 1;
+			this.textBillingEmailBody.Size = new System.Drawing.Size(818, 72);
+			this.textBillingEmailBody.TabIndex = 4;
 			this.textBillingEmailBody.Text = "";
-			// 
-			// label8
-			// 
-			this.label8.Location = new System.Drawing.Point(11, 83);
-			this.label8.Name = "label8";
-			this.label8.Size = new System.Drawing.Size(87, 16);
-			this.label8.TabIndex = 240;
-			this.label8.Text = "Body";
-			this.label8.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			// 
-			// label9
-			// 
-			this.label9.Location = new System.Drawing.Point(11, 45);
-			this.label9.Name = "label9";
-			this.label9.Size = new System.Drawing.Size(218, 16);
-			this.label9.TabIndex = 240;
-			this.label9.Text = "Subject";
-			this.label9.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
-			// 
-			// textBillingEmailSubject
-			// 
-			this.textBillingEmailSubject.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.textBillingEmailSubject.Location = new System.Drawing.Point(12, 62);
-			this.textBillingEmailSubject.MaxLength = 200;
-			this.textBillingEmailSubject.Name = "textBillingEmailSubject";
-			this.textBillingEmailSubject.Size = new System.Drawing.Size(825, 20);
-			this.textBillingEmailSubject.TabIndex = 0;
-			// 
-			// label10
-			// 
-			this.label10.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.label10.Location = new System.Drawing.Point(11, 15);
-			this.label10.Name = "label10";
-			this.label10.Size = new System.Drawing.Size(823, 29);
-			this.label10.TabIndex = 249;
-			this.label10.Text = resources.GetString("label10.Text");
-			// 
-			// groupBoxBilling
-			// 
-			this.groupBoxBilling.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.groupBoxBilling.Controls.Add(this.checkIncludeClinicNum);
-			this.groupBoxBilling.Controls.Add(this.checkIncludeAdjust);
-			this.groupBoxBilling.Controls.Add(this.checkCreatePDF);
-			this.groupBoxBilling.Controls.Add(this.labelBlankForDefault);
-			this.groupBoxBilling.Controls.Add(this.textStatementURL);
-			this.groupBoxBilling.Controls.Add(this.labelStatementURL);
-			this.groupBoxBilling.Controls.Add(this.comboPracticeAddr);
-			this.groupBoxBilling.Controls.Add(this.comboRemitAddr);
-			this.groupBoxBilling.Controls.Add(this.labelPracticeAddr);
-			this.groupBoxBilling.Controls.Add(this.labelRemitAddr);
-			this.groupBoxBilling.Controls.Add(this.comboClinic);
-			this.groupBoxBilling.Controls.Add(this.listElectBilling);
-			this.groupBoxBilling.Controls.Add(this.textPassword);
-			this.groupBoxBilling.Controls.Add(this.labelPassword);
-			this.groupBoxBilling.Controls.Add(this.textUserName);
-			this.groupBoxBilling.Controls.Add(this.labelUserName);
-			this.groupBoxBilling.Controls.Add(this.groupBox2);
-			this.groupBoxBilling.Controls.Add(this.textClientAcctNumber);
-			this.groupBoxBilling.Controls.Add(this.labelAcctNum);
-			this.groupBoxBilling.Controls.Add(this.textVendorPMScode);
-			this.groupBoxBilling.Controls.Add(this.label3);
-			this.groupBoxBilling.Controls.Add(this.textVendorId);
-			this.groupBoxBilling.Controls.Add(this.label2);
-			this.groupBoxBilling.Location = new System.Drawing.Point(12, 131);
-			this.groupBoxBilling.Name = "groupBoxBilling";
-			this.groupBoxBilling.Size = new System.Drawing.Size(850, 140);
-			this.groupBoxBilling.TabIndex = 247;
-			this.groupBoxBilling.Text = "Electronic Billing";
-			// 
-			// checkIncludeClinicNum
-			// 
-			this.checkIncludeClinicNum.Location = new System.Drawing.Point(12, 113);
-			this.checkIncludeClinicNum.Name = "checkIncludeClinicNum";
-			this.checkIncludeClinicNum.Size = new System.Drawing.Size(270, 18);
-			this.checkIncludeClinicNum.TabIndex = 265;
-			this.checkIncludeClinicNum.Text = "Include Clinic Number";
-			this.checkIncludeClinicNum.Visible = false;
-			// 
-			// checkIncludeAdjust
-			// 
-			this.checkIncludeAdjust.Location = new System.Drawing.Point(12, 94);
-			this.checkIncludeAdjust.Name = "checkIncludeAdjust";
-			this.checkIncludeAdjust.Size = new System.Drawing.Size(270, 18);
-			this.checkIncludeAdjust.TabIndex = 264;
-			this.checkIncludeAdjust.Text = "Include \'Adjust\' in the description for adjustments";
-			// 
-			// checkCreatePDF
-			// 
-			this.checkCreatePDF.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
-			this.checkCreatePDF.Enabled = false;
-			this.checkCreatePDF.Location = new System.Drawing.Point(576, 97);
-			this.checkCreatePDF.Name = "checkCreatePDF";
-			this.checkCreatePDF.Size = new System.Drawing.Size(112, 16);
-			this.checkCreatePDF.TabIndex = 4;
-			this.checkCreatePDF.Text = "Generate PDF";
-			// 
-			// labelBlankForDefault
-			// 
-			this.labelBlankForDefault.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelBlankForDefault.Location = new System.Drawing.Point(694, 117);
-			this.labelBlankForDefault.Name = "labelBlankForDefault";
-			this.labelBlankForDefault.Size = new System.Drawing.Size(99, 16);
-			this.labelBlankForDefault.TabIndex = 263;
-			this.labelBlankForDefault.Text = "(blank for default)";
-			this.labelBlankForDefault.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			this.labelBlankForDefault.Visible = false;
-			// 
-			// textStatementURL
-			// 
-			this.textStatementURL.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.textStatementURL.Location = new System.Drawing.Point(417, 113);
-			this.textStatementURL.Name = "textStatementURL";
-			this.textStatementURL.Size = new System.Drawing.Size(271, 20);
-			this.textStatementURL.TabIndex = 261;
-			this.textStatementURL.Text = "https://prelive.dentalxchange.com/dci/upload.svl";
-			this.textStatementURL.KeyUp += new System.Windows.Forms.KeyEventHandler(this.textStatementURL_KeyUp);
-			// 
-			// labelStatementURL
-			// 
-			this.labelStatementURL.Location = new System.Drawing.Point(315, 114);
-			this.labelStatementURL.Name = "labelStatementURL";
-			this.labelStatementURL.Size = new System.Drawing.Size(101, 16);
-			this.labelStatementURL.TabIndex = 262;
-			this.labelStatementURL.Text = "URL Override";
-			this.labelStatementURL.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// comboPracticeAddr
-			// 
-			this.comboPracticeAddr.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.comboPracticeAddr.Location = new System.Drawing.Point(689, 14);
-			this.comboPracticeAddr.Name = "comboPracticeAddr";
-			this.comboPracticeAddr.Size = new System.Drawing.Size(150, 21);
-			this.comboPracticeAddr.TabIndex = 260;
-			// 
-			// comboRemitAddr
-			// 
-			this.comboRemitAddr.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.comboRemitAddr.Enabled = false;
-			this.comboRemitAddr.Location = new System.Drawing.Point(689, 36);
-			this.comboRemitAddr.Name = "comboRemitAddr";
-			this.comboRemitAddr.Size = new System.Drawing.Size(150, 21);
-			this.comboRemitAddr.TabIndex = 259;
-			// 
-			// labelPracticeAddr
-			// 
-			this.labelPracticeAddr.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelPracticeAddr.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.labelPracticeAddr.Location = new System.Drawing.Point(582, 16);
-			this.labelPracticeAddr.Name = "labelPracticeAddr";
-			this.labelPracticeAddr.Size = new System.Drawing.Size(106, 16);
-			this.labelPracticeAddr.TabIndex = 258;
-			this.labelPracticeAddr.Text = "Practice Address";
-			this.labelPracticeAddr.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// labelRemitAddr
-			// 
-			this.labelRemitAddr.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelRemitAddr.Location = new System.Drawing.Point(582, 38);
-			this.labelRemitAddr.Name = "labelRemitAddr";
-			this.labelRemitAddr.Size = new System.Drawing.Size(106, 16);
-			this.labelRemitAddr.TabIndex = 257;
-			this.labelRemitAddr.Text = "Remit Address";
-			this.labelRemitAddr.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// comboClinic
-			// 
-			this.comboClinic.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.comboClinic.HqDescription = "Unassigned/Default";
-			this.comboClinic.IncludeUnassigned = true;
-			this.comboClinic.Location = new System.Drawing.Point(652, 58);
-			this.comboClinic.Name = "comboClinic";
-			this.comboClinic.Size = new System.Drawing.Size(187, 21);
-			this.comboClinic.TabIndex = 255;
-			this.comboClinic.SelectionChangeCommitted += new System.EventHandler(this.comboClinic_SelectionChangeCommitted);
-			// 
-			// listElectBilling
-			// 
-			this.listElectBilling.Location = new System.Drawing.Point(12, 19);
-			this.listElectBilling.Name = "listElectBilling";
-			this.listElectBilling.Size = new System.Drawing.Size(120, 69);
-			this.listElectBilling.TabIndex = 0;
-			this.listElectBilling.SelectedIndexChanged += new System.EventHandler(this.listElectBilling_SelectedIndexChanged);
-			// 
-			// textPassword
-			// 
-			this.textPassword.Location = new System.Drawing.Point(417, 93);
-			this.textPassword.Name = "textPassword";
-			this.textPassword.PasswordChar = '*';
-			this.textPassword.Size = new System.Drawing.Size(100, 20);
-			this.textPassword.TabIndex = 5;
-			// 
-			// labelPassword
-			// 
-			this.labelPassword.Location = new System.Drawing.Point(285, 95);
-			this.labelPassword.Name = "labelPassword";
-			this.labelPassword.Size = new System.Drawing.Size(130, 16);
-			this.labelPassword.TabIndex = 254;
-			this.labelPassword.Text = "Password";
-			this.labelPassword.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textUserName
-			// 
-			this.textUserName.Location = new System.Drawing.Point(417, 73);
-			this.textUserName.Name = "textUserName";
-			this.textUserName.Size = new System.Drawing.Size(100, 20);
-			this.textUserName.TabIndex = 4;
-			// 
-			// labelUserName
-			// 
-			this.labelUserName.Location = new System.Drawing.Point(285, 75);
-			this.labelUserName.Name = "labelUserName";
-			this.labelUserName.Size = new System.Drawing.Size(130, 16);
-			this.labelUserName.TabIndex = 252;
-			this.labelUserName.Text = "User Name";
-			this.labelUserName.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// groupBox2
-			// 
-			this.groupBox2.Controls.Add(this.checkAmEx);
-			this.groupBox2.Controls.Add(this.checkD);
-			this.groupBox2.Controls.Add(this.checkV);
-			this.groupBox2.Controls.Add(this.checkMC);
-			this.groupBox2.Location = new System.Drawing.Point(138, 14);
-			this.groupBox2.Name = "groupBox2";
-			this.groupBox2.Size = new System.Drawing.Size(144, 76);
-			this.groupBox2.TabIndex = 251;
-			this.groupBox2.Text = "Credit Card Choices";
-			// 
-			// checkAmEx
-			// 
-			this.checkAmEx.Location = new System.Drawing.Point(9, 58);
-			this.checkAmEx.Name = "checkAmEx";
-			this.checkAmEx.Size = new System.Drawing.Size(132, 16);
-			this.checkAmEx.TabIndex = 3;
-			this.checkAmEx.Text = "American Express";
-			// 
-			// checkD
-			// 
-			this.checkD.Location = new System.Drawing.Point(9, 43);
-			this.checkD.Name = "checkD";
-			this.checkD.Size = new System.Drawing.Size(132, 16);
-			this.checkD.TabIndex = 2;
-			this.checkD.Text = "Discover";
-			// 
-			// checkV
-			// 
-			this.checkV.Location = new System.Drawing.Point(9, 28);
-			this.checkV.Name = "checkV";
-			this.checkV.Size = new System.Drawing.Size(132, 16);
-			this.checkV.TabIndex = 1;
-			this.checkV.Text = "Visa";
-			// 
-			// checkMC
-			// 
-			this.checkMC.Location = new System.Drawing.Point(9, 13);
-			this.checkMC.Name = "checkMC";
-			this.checkMC.Size = new System.Drawing.Size(132, 16);
-			this.checkMC.TabIndex = 0;
-			this.checkMC.Text = "Master Card";
-			// 
-			// textClientAcctNumber
-			// 
-			this.textClientAcctNumber.Location = new System.Drawing.Point(417, 53);
-			this.textClientAcctNumber.Name = "textClientAcctNumber";
-			this.textClientAcctNumber.Size = new System.Drawing.Size(100, 20);
-			this.textClientAcctNumber.TabIndex = 3;
-			// 
-			// labelAcctNum
-			// 
-			this.labelAcctNum.Location = new System.Drawing.Point(285, 55);
-			this.labelAcctNum.Name = "labelAcctNum";
-			this.labelAcctNum.Size = new System.Drawing.Size(130, 16);
-			this.labelAcctNum.TabIndex = 249;
-			this.labelAcctNum.Text = "Account Number";
-			this.labelAcctNum.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textVendorPMScode
-			// 
-			this.textVendorPMScode.Location = new System.Drawing.Point(417, 33);
-			this.textVendorPMScode.Name = "textVendorPMScode";
-			this.textVendorPMScode.Size = new System.Drawing.Size(100, 20);
-			this.textVendorPMScode.TabIndex = 2;
-			// 
-			// label3
-			// 
-			this.label3.Location = new System.Drawing.Point(285, 35);
-			this.label3.Name = "label3";
-			this.label3.Size = new System.Drawing.Size(130, 16);
-			this.label3.TabIndex = 247;
-			this.label3.Text = "Vendor PMS Code";
-			this.label3.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textVendorId
-			// 
-			this.textVendorId.Location = new System.Drawing.Point(417, 13);
-			this.textVendorId.Name = "textVendorId";
-			this.textVendorId.Size = new System.Drawing.Size(100, 20);
-			this.textVendorId.TabIndex = 1;
-			// 
-			// label2
-			// 
-			this.label2.Location = new System.Drawing.Point(285, 15);
-			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(130, 16);
-			this.label2.TabIndex = 245;
-			this.label2.Text = "Vendor ID";
-			this.label2.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// label1
-			// 
-			this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.label1.Location = new System.Drawing.Point(702, 9);
-			this.label1.Name = "label1";
-			this.label1.Size = new System.Drawing.Size(65, 14);
-			this.label1.TabIndex = 245;
-			this.label1.Text = "Days";
-			this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			// 
-			// textDays
-			// 
-			this.textDays.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.textDays.Location = new System.Drawing.Point(656, 7);
-			this.textDays.Name = "textDays";
-			this.textDays.Size = new System.Drawing.Size(44, 20);
-			this.textDays.TabIndex = 0;
-			// 
-			// checkIntermingled
-			// 
-			this.checkIntermingled.Location = new System.Drawing.Point(25, 9);
-			this.checkIntermingled.Name = "checkIntermingled";
-			this.checkIntermingled.Size = new System.Drawing.Size(216, 20);
-			this.checkIntermingled.TabIndex = 1;
-			this.checkIntermingled.Text = "Intermingle family members";
-			// 
-			// labelStartDate
-			// 
-			this.labelStartDate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-			this.labelStartDate.Location = new System.Drawing.Point(507, 9);
-			this.labelStartDate.Name = "labelStartDate";
-			this.labelStartDate.Size = new System.Drawing.Size(147, 14);
-			this.labelStartDate.TabIndex = 221;
-			this.labelStartDate.Text = "Start Date Last";
-			this.labelStartDate.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-			// 
-			// textNote
-			// 
-			this.textNote.AcceptsTab = true;
-			this.textNote.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-			this.textNote.BackColor = System.Drawing.SystemColors.Window;
-			this.textNote.DetectLinksEnabled = false;
-			this.textNote.DetectUrls = false;
-			this.textNote.Location = new System.Drawing.Point(24, 64);
-			this.textNote.Name = "textNote";
-			this.textNote.QuickPasteType = OpenPmsDentalBusiness.EnumQuickPasteType.Statement;
-			this.textNote.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-			this.textNote.Size = new System.Drawing.Size(831, 66);
-			this.textNote.TabIndex = 2;
-			this.textNote.Text = "";
-			// 
-			// label4
-			// 
-			this.label4.Location = new System.Drawing.Point(23, 31);
-			this.label4.Name = "label4";
-			this.label4.Size = new System.Drawing.Size(575, 32);
-			this.label4.TabIndex = 240;
-			this.label4.Text = "General Message (in addition to any dunning messages and appointment messages).\r\n" +
-    "You may use the variable [InstallmentPlanTerms] below to show the terms of the i" +
-    "nstallment plan.";
-			this.label4.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
 			//
-			// checkInserterBarcode
+			// checkBillingEmailIncludeAutograph
 			//
-			this.checkInserterBarcode.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.checkInserterBarcode.Location = new System.Drawing.Point(24, 562);
-			this.checkInserterBarcode.Name = "checkInserterBarcode";
-			this.checkInserterBarcode.Size = new System.Drawing.Size(320, 20);
-			this.checkInserterBarcode.TabIndex = 254;
-			this.checkInserterBarcode.Text = "Print inserter barcode on statements";
+			this.checkBillingEmailIncludeAutograph.Location = new System.Drawing.Point(12, 181);
+			this.checkBillingEmailIncludeAutograph.Name = "checkBillingEmailIncludeAutograph";
+			this.checkBillingEmailIncludeAutograph.Size = new System.Drawing.Size(270, 18);
+			this.checkBillingEmailIncludeAutograph.TabIndex = 5;
+			this.checkBillingEmailIncludeAutograph.Text = "Include Email Autograph of sender address";
+			//
+			// labelBillingEmailType
+			//
+			this.labelBillingEmailType.Location = new System.Drawing.Point(296, 181);
+			this.labelBillingEmailType.Name = "labelBillingEmailType";
+			this.labelBillingEmailType.Size = new System.Drawing.Size(94, 18);
+			this.labelBillingEmailType.TabIndex = 6;
+			this.labelBillingEmailType.Text = "Email type";
+			this.labelBillingEmailType.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+			//
+			// comboBillingEmailType
+			//
+			this.comboBillingEmailType.Location = new System.Drawing.Point(392, 180);
+			this.comboBillingEmailType.Name = "comboBillingEmailType";
+			this.comboBillingEmailType.Size = new System.Drawing.Size(140, 21);
+			this.comboBillingEmailType.TabIndex = 7;
+			//
+			// butBillingEmailEditHtml
+			//
+			this.butBillingEmailEditHtml.Location = new System.Drawing.Point(540, 178);
+			this.butBillingEmailEditHtml.Name = "butBillingEmailEditHtml";
+			this.butBillingEmailEditHtml.Size = new System.Drawing.Size(100, 24);
+			this.butBillingEmailEditHtml.TabIndex = 8;
+			this.butBillingEmailEditHtml.Text = "Edit HTML...";
+			this.butBillingEmailEditHtml.Click += new System.EventHandler(this.butBillingEmailEditHtml_Click);
+			//
+			// label11
+			//
+			this.label11.Location = new System.Drawing.Point(11, 338);
+			this.label11.Name = "label11";
+			this.label11.Size = new System.Drawing.Size(152, 16);
+			this.label11.TabIndex = 3;
+			this.label11.Text = "Invoice Note";
+			this.label11.TextAlign = System.Drawing.ContentAlignment.BottomLeft;
+			//
+			// textInvoiceNote
+			//
+			this.textInvoiceNote.AcceptsTab = true;
+			this.textInvoiceNote.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.textInvoiceNote.BackColor = System.Drawing.SystemColors.Window;
+			this.textInvoiceNote.DetectLinksEnabled = false;
+			this.textInvoiceNote.DetectUrls = false;
+			this.textInvoiceNote.Location = new System.Drawing.Point(12, 355);
+			this.textInvoiceNote.Name = "textInvoiceNote";
+			this.textInvoiceNote.QuickPasteType = OpenPmsDentalBusiness.EnumQuickPasteType.Statement;
+			this.textInvoiceNote.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
+			this.textInvoiceNote.Size = new System.Drawing.Size(829, 66);
+			this.textInvoiceNote.TabIndex = 4;
+			this.textInvoiceNote.Text = "";
 			//
 			// FormBillingDefaults
 			//
-			this.ClientSize = new System.Drawing.Size(877, 588);
-			this.Controls.Add(this.checkInserterBarcode);
+			this.ClientSize = new System.Drawing.Size(877, 602);
 			this.Controls.Add(this.butSave);
-			this.Controls.Add(this.checkBoxBillShowTransSinceZero);
-			this.Controls.Add(this.checkSinglePatient);
-			this.Controls.Add(this.textInvoiceNote);
-			this.Controls.Add(this.label11);
-			this.Controls.Add(this.groupBox3);
-			this.Controls.Add(this.groupBoxBilling);
-			this.Controls.Add(this.label1);
-			this.Controls.Add(this.textDays);
-			this.Controls.Add(this.checkIntermingled);
-			this.Controls.Add(this.labelStartDate);
-			this.Controls.Add(this.textNote);
-			this.Controls.Add(this.label4);
+			this.Controls.Add(this.butEbill);
+			this.Controls.Add(this.groupMessages);
+			this.Controls.Add(this.groupStatements);
+			this.Controls.Add(this.checkUsePracticeDefaults);
+			this.Controls.Add(this.comboClinic);
 			this.Name = "FormBillingDefaults";
 			this.Text = "Billing Defaults";
 			this.Load += new System.EventHandler(this.FormBillingDefaults_Load);
+			this.groupStatements.ResumeLayout(false);
+			this.groupStatements.PerformLayout();
+			this.groupMessages.ResumeLayout(false);
 			this.groupBox3.ResumeLayout(false);
 			this.groupBox3.PerformLayout();
-			this.groupBoxBilling.ResumeLayout(false);
-			this.groupBoxBilling.PerformLayout();
-			this.groupBox2.ResumeLayout(false);
 			this.ResumeLayout(false);
-			this.PerformLayout();
 
 		}
 
 		#endregion
 
 		private OpenPmsDental.UI.Button butSave;
+		private OpenPmsDental.UI.Button butEbill;
+		private OpenPmsDental.UI.ComboBoxClinicPicker comboClinic;
+		private OpenPmsDental.UI.CheckBox checkUsePracticeDefaults;
+		private OpenPmsDental.UI.GroupBox groupStatements;
 		private OpenPmsDental.UI.CheckBox checkIntermingled;
+		private OpenPmsDental.UI.CheckBox checkSinglePatient;
 		private System.Windows.Forms.Label labelStartDate;
-		private ODtextBox textNote;
-		private System.Windows.Forms.Label label4;
 		private ValidNum textDays;
 		private System.Windows.Forms.Label label1;
-		private OpenPmsDental.UI.GroupBox groupBoxBilling;
-		private System.Windows.Forms.TextBox textPassword;
-		private System.Windows.Forms.Label labelPassword;
-		private System.Windows.Forms.TextBox textBillingEmailSubject;
-		private System.Windows.Forms.TextBox textUserName;
-		private System.Windows.Forms.Label labelUserName;
-		private OpenPmsDental.UI.GroupBox groupBox2;
-		private OpenPmsDental.UI.CheckBox checkAmEx;
-		private OpenPmsDental.UI.CheckBox checkD;
-		private OpenPmsDental.UI.CheckBox checkV;
-		private OpenPmsDental.UI.CheckBox checkMC;
-		private ODtextBox textBillingEmailBody;
-		private System.Windows.Forms.Label label9;
-		private System.Windows.Forms.Label label8;
-		private System.Windows.Forms.TextBox textClientAcctNumber;
-		private System.Windows.Forms.Label labelAcctNum;
-		private System.Windows.Forms.TextBox textVendorPMScode;
-		private System.Windows.Forms.Label label3;
-		private System.Windows.Forms.TextBox textVendorId;
-		private System.Windows.Forms.Label label2;
+		private OpenPmsDental.UI.CheckBox checkBoxBillShowTransSinceZero;
+		private OpenPmsDental.UI.CheckBox checkInserterBarcode;
+		private OpenPmsDental.UI.GroupBox groupMessages;
+		private System.Windows.Forms.Label label4;
+		private ODtextBox textNote;
 		private OpenPmsDental.UI.GroupBox groupBox3;
 		private System.Windows.Forms.Label label10;
-		private OpenPmsDental.UI.ListBox listElectBilling;
-		private System.Windows.Forms.Label label11;
-		private ODtextBox textInvoiceNote;
-		private OpenPmsDental.UI.ComboBoxClinicPicker comboClinic;
-		private System.Windows.Forms.Label labelPracticeAddr;
-		private System.Windows.Forms.Label labelRemitAddr;
-		private OpenPmsDental.UI.ComboBox comboPracticeAddr;
-		private OpenPmsDental.UI.ComboBox comboRemitAddr;
-		private System.Windows.Forms.TextBox textStatementURL;
-		private System.Windows.Forms.Label labelStatementURL;
-		private System.Windows.Forms.Label labelBlankForDefault;
-		private OpenPmsDental.UI.CheckBox checkCreatePDF;
-		private OpenPmsDental.UI.CheckBox checkSinglePatient;
-		private OpenPmsDental.UI.CheckBox checkBoxBillShowTransSinceZero;
-		private OpenPmsDental.UI.CheckBox checkIncludeAdjust;
-		private OpenPmsDental.UI.CheckBox checkIncludeClinicNum;
+		private System.Windows.Forms.Label label9;
+		private System.Windows.Forms.TextBox textBillingEmailSubject;
+		private System.Windows.Forms.Label label8;
+		private ODtextBox textBillingEmailBody;
 		private UI.CheckBox checkBillingEmailIncludeAutograph;
-		private OpenPmsDental.UI.CheckBox checkInserterBarcode;
 		private System.Windows.Forms.Label labelBillingEmailType;
 		private UI.ComboBox comboBillingEmailType;
 		private UI.Button butBillingEmailEditHtml;
+		private System.Windows.Forms.Label label11;
+		private ODtextBox textInvoiceNote;
 	}
 }

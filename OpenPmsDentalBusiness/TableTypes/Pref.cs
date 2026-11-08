@@ -2979,7 +2979,7 @@ namespace OpenPmsDentalBusiness {
 		ClaimPayDate
 	}
 
-	///<summary>Different options for electronic statements.  Descriptions taken from the FormBillingDefaults.
+	///<summary>Different options for electronic statements.  Descriptions taken from the Electronic Billing window (FormEbillSetup, in Billing Defaults before 26.2).
 	///Stored in practice pref: BillingUseElectronic. Determines which vendor use use for electronic billing.</summary>
 	public enum BillingUseElectronicEnum {
 		///<summary>0 - Not using electronic statements.</summary>

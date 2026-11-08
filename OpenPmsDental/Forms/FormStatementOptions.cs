@@ -870,11 +870,37 @@ namespace OpenPmsDental{
 		}
 
 		private void LimitedCustomStatementLayoutHelper() {
-			this.DisableAllExcept(butDelete,butPreview,butSave,checkIsSent,checkIntermingled,checkExportCSV,checkShowLName,checkExcludeTxfr, checkHidePayment,butPrint,butEmail,textNote,textNoteBold,listMode,label1,label2,label3,label4,textDate);
+			DisableAllExceptInBoxes(butDelete,butPreview,butSave,checkIsSent,checkIntermingled,checkExportCSV,checkShowLName,checkExcludeTxfr, checkHidePayment,butPrint,butEmail,textNote,textNoteBold,listMode,label1,label2,label3,label4,textDate);
 			if(StatementCur.LimitedCustomFamily==EnumLimitedCustomFamily.SuperFamily) {
 				//We always want these to be unchecked if its or a SuperFamily statement, otherwise we continue using what was already generated on the statement.
 				checkSuperStatement.Checked=false;
 				checkSinglePatient.Checked=false;
+			}
+		}
+
+		///<summary>DisableAllExcept for the boxes of this window (Open Dental 26.2 redesign, P262-BILLING): DisableAllExcept only looks at the
+		///window's own controls, and would disable a whole box. Here a box that holds a control to keep stays enabled, and its other controls are
+		///disabled one by one, so the same controls stay usable as before the redesign.</summary>
+		private void DisableAllExceptInBoxes(params Control[] arrayControlsEnabled) {
+			List<Control> listControlsKept=arrayControlsEnabled.ToList();
+			List<Control> listBoxes=new List<Control>();
+			for(int i=0;i<arrayControlsEnabled.Length;i++) {
+				Control controlParent=arrayControlsEnabled[i].Parent;
+				while(controlParent!=null && controlParent!=PanelClient && controlParent!=this) {
+					if(!listBoxes.Contains(controlParent)) {
+						listBoxes.Add(controlParent);
+					}
+					controlParent=controlParent.Parent;
+				}
+			}
+			DisableAllExcept(listControlsKept.Concat(listBoxes).ToArray());
+			for(int i=0;i<listBoxes.Count;i++) {
+				foreach(Control control in listBoxes[i].Controls) {
+					if(listControlsKept.Contains(control) || listBoxes.Contains(control)) {
+						continue;
+					}
+					control.Enabled=false;
+				}
 			}
 		}
 

@@ -84,7 +84,7 @@ namespace BPRINTTests {
 		public void BillingDefaults_HasTheBarcodeOption() {
 			string designer=Read(@"OpenPmsDental\Forms\FormBillingDefaults.Designer.cs");
 			StringAssert.Contains(designer,"this.checkInserterBarcode.Text = \"Print inserter barcode on statements\";");
-			StringAssert.Contains(designer,"this.Controls.Add(this.checkInserterBarcode);");
+			StringAssert.Contains(designer,"this.groupStatements.Controls.Add(this.checkInserterBarcode);");//The practice-wide Statements box since 26.2 (P262-BILLING).
 			string source=Read(@"OpenPmsDental\Forms\FormBillingDefaults.cs");
 			StringAssert.Contains(source,"checkInserterBarcode.Checked=StatementInserterBarcode.IsEnabled();");
 			StringAssert.Contains(source,"| StatementInserterBarcode.SetEnabled(checkInserterBarcode.Checked))");

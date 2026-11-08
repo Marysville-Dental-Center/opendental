@@ -74,7 +74,8 @@ namespace OpenPmsDental {
 			contextMenuAcctGrid.Popup-=contextMenuAcctGrid_Popup;
 			contextMenuAcctGrid.Popup+=contextMenuAcctGridServiceDateView_Popup;
 			contextMenuAcctGrid.Popup+=contextMenuAcctGrid_Popup;
-			contextMenuStatement.MenuItems.Add(new MenuItem(Lan.g(this,"Service Date View Window"),menuItemServiceDateViewWindow_Click));
+			//Listed in the Statement Options window since 26.2 (P262-BILLING); the Tag gives it its description there.
+			contextMenuStatement.MenuItems.Add(new MenuItem(Lan.g(this,"Service Date View Window"),menuItemServiceDateViewWindow_Click) { Tag=StatementChoice.ServiceDateView });
 		}
 
 		#region Methods - Service Date View

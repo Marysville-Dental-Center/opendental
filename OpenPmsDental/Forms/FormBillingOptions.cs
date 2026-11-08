@@ -17,12 +17,11 @@ namespace OpenPmsDental{
 		public List<long> ListClinicNumsSelected=new List<long>();
 		/// <summary>This is used to pass information from comboClinic to formBilling</summary>
 		public bool IsAllSelected=false;
-		///<summary>Key: ClinicNum, Value: List of ClinicPrefs for clinic.
-		///List contains all existing ClinicPrefs.</summary>
-		private Dictionary<long,List<ClinicPref>> _dictionaryClinicPrefsOld;
-		///<summary>Key: ClinicNum, Value: List of ClinicPrefs for clinic.
-		///Starts off as a copy of _ListClinicPrefsOld, then is modified.</summary>
-		private Dictionary<long,List<ClinicPref>> _dictionaryClinicPrefsNew;
+		///<summary>Key: ClinicNum, Value: the clinic's saved filter defaults (BillingOptionsClinicDefaults.GetFilledDefaults), for display only.
+		///Only clinics that saved filter defaults here are keys; a clinic whose only row is the General Message that Billing Defaults saved is not
+		///(P262-BILLING). Each list holds every preference of BillingOptionsClinicDefaults.ListPrefNames, with the practice value for a row the clinic
+		///lacks. Save Defaults writes the selected clinic's rows only, through BillingOptionsClinicDefaults.SaveForClinic.</summary>
+		private Dictionary<long,List<ClinicPref>> _dictionaryClinicPrefs;
 		///<summary>When creating list for all clinics, this stores text we show after completed.</summary>
 		private string _popUpMessage;
 		///<summary>List of Defs for Billing Types.</summary>
@@ -75,63 +74,31 @@ namespace OpenPmsDental{
 			SetDefaults();
 		}
 
-		///<summary>Call when you want to populate/update _dicClinicPrefsOld and _dicClinicPrefsNew.</summary>
+		///<summary>Call when you want to populate/update _dictionaryClinicPrefs. Reads the clinicpref cache; writes nothing.</summary>
 		private void RefreshClinicPrefs() {
-			List<PrefName> listPrefNames=new List<PrefName>() {
-				PrefName.BillingIncludeChanged,
-				PrefName.BillingSelectBillingTypes,
-				PrefName.BillingAgeOfAccount,
-				PrefName.BillingDaysExcludeInsPending,
-				PrefName.BillingExcludeBadAddresses,
-				PrefName.BillingExcludeInactive,
-				PrefName.BillingExcludeNegative,
-				PrefName.BillingExcludeInsPending,
-				PrefName.BillingExcludeIfUnsentProcs,
-				PrefName.BillingExcludeLessThan,
-				PrefName.BillingIgnoreInPerson,
-				PrefName.BillingShowTransSinceBalZero,
-				PrefName.BillingDefaultsNote,
-				PrefName.BillingSelectInsFilingCodes
-			};
-			_dictionaryClinicPrefsOld=ClinicPrefs.GetWhere(x => listPrefNames.Contains(x.PrefName))
-				.GroupBy(x => x.ClinicNum)
-				.ToDictionary(x => x.Key,x => x.ToList());
-			_dictionaryClinicPrefsNew=_dictionaryClinicPrefsOld.ToDictionary(x => x.Key,x => x.Value.Select(y => y.Clone()).ToList());
-			//Originally all ClinicPrefs were inserted together, so you either had none or all.
-			//We have since added new ClincPrefs to this list so we need to identify missing clinicPrefs
-			//Missing ClincPrefs will default to the standard preference table value.
-			foreach(long clinicNum in _dictionaryClinicPrefsNew.Keys) {
-				List<PrefName> listExistingClinicPrefs=_dictionaryClinicPrefsNew[clinicNum].Select(x => x.PrefName).ToList();
-				List<PrefName> listMissingClincPrefs=listPrefNames.FindAll(x => !listExistingClinicPrefs.Contains(x));
-				foreach(PrefName prefName in listMissingClincPrefs) {
-					switch(EnumTools.GetAttributeOrDefault<PrefNameAttribute>(prefName).ValueType) {
-						case PrefValueType.BOOL:
-							bool defaultBool=PrefC.GetBool(prefName);
-							_dictionaryClinicPrefsNew[clinicNum].Add(new ClinicPref(clinicNum,prefName,defaultBool));
-						break;
-						case PrefValueType.ENUM:
-							//Currently not used.
-						break;
-						case PrefValueType.STRING:
-							string defaultStr=PrefC.GetString(prefName);
-							_dictionaryClinicPrefsNew[clinicNum].Add(new ClinicPref(clinicNum,prefName,defaultStr));
-						break;
-						case PrefValueType.INT:
-							int defaultInt=PrefC.GetInt(prefName);
-							_dictionaryClinicPrefsNew[clinicNum].Add(new ClinicPref(clinicNum,prefName,POut.Int(defaultInt)));
-						break;
-					}
-				}
-			}
+			//A clinic that saved filter defaults before a preference joined the list lacks that row, and a clinic that Billing Defaults set back to the
+			//practice defaults lacks its General Message row: the list shows the practice value of such a row. A clinic whose only row is the General
+			//Message (saved by Billing Defaults) has no filter defaults of its own and is left out, so it shows the practice filters (P262-BILLING).
+			_dictionaryClinicPrefs=BillingOptionsClinicDefaults.GetFilledDefaults(BillingOptionsClinicDefaults.GetRowsByClinic());
 		}
-		
+
+		///<summary>The General Message of the selection: the clinic's own (its Billing Defaults message, or the one saved here with its filter
+		///defaults) when one clinic is selected, otherwise the practice's.</summary>
+		private string GetGeneralMessage(List<long> listClinicNums) {
+			if(PrefC.HasClinicsEnabled && listClinicNums.Count==1 && listClinicNums[0]>0) {
+				return BillingDefaultsByClinic.GetString(PrefName.BillingDefaultsNote,listClinicNums[0]);
+			}
+			return PrefC.GetString(PrefName.BillingDefaultsNote);
+		}
+
 		///<summary>Called when we need to update the filter options.
-		///If All, the unassigned clinic, or more than one clinic is selected, or _dicClinicPrefsNew does not 
-		///contain a key for the current selected clinic, the standard preference based defaults will load.</summary>
+		///If All, the unassigned clinic, or more than one clinic is selected, or _dictionaryClinicPrefs does not
+		///contain a key for the current selected clinic, the standard preference based defaults will load (with the clinic's own General Message when
+		///one clinic is selected).</summary>
 		private void SetFiltersForClinicNums(List<long> listClinicNums,bool isTextNoteExcluded=false) {
 			FillDunning();
-			if(listClinicNums.Count != 1 || listClinicNums.Contains(-1) || listClinicNums.Contains(0) 
-				|| !_dictionaryClinicPrefsNew.ContainsKey(listClinicNums[0]))//They have not saved their default filter options for the selected clinic. Use default prefs.
+			if(listClinicNums.Count != 1 || listClinicNums.Contains(-1) || listClinicNums.Contains(0)
+				|| !_dictionaryClinicPrefs.ContainsKey(listClinicNums[0]))//They have not saved their default filter options for the selected clinic. Use default prefs.
 			{
 				checkIncludeChanged.Checked=PrefC.GetBool(PrefName.BillingIncludeChanged);
 				#region BillTypes
@@ -202,7 +169,8 @@ namespace OpenPmsDental{
 				checkIgnoreInPerson.Checked=PrefC.GetBool(PrefName.BillingIgnoreInPerson);
 				checkBoxBillShowTransSinceZero.Checked=PrefC.GetBool(PrefName.BillingShowTransSinceBalZero);
 				if(!isTextNoteExcluded) {
-					textNote.Text=PrefC.GetString(PrefName.BillingDefaultsNote);
+					//A clinic without filter defaults here may still have a General Message of its own from Billing Defaults (P262-BILLING).
+					textNote.Text=GetGeneralMessage(listClinicNums);
 				}
 				if(checkExcludeInsPending.Checked) {
 					textDaysInsPendingExclude.Value=PrefC.GetInt(PrefName.BillingDaysExcludeInsPending);
@@ -215,7 +183,7 @@ namespace OpenPmsDental{
 				return;
 			}
 			else {//Update filter UI to reflect ClinicPrefs. //there has to be ONE item in ClinicNums. It MUST be in the dictionary and it MUST NOT be -1 or 0.
-				List<ClinicPref> listClinicPrefs=_dictionaryClinicPrefsNew[listClinicNums[0]];//By definition of how ClinicPrefs are created, First will always return a result.
+				List<ClinicPref> listClinicPrefs=_dictionaryClinicPrefs[listClinicNums[0]];//By definition of how ClinicPrefs are created, First will always return a result.
 				checkIncludeChanged.Checked=PIn.Bool(listClinicPrefs.First(x => x.PrefName==PrefName.BillingIncludeChanged).ValueString);
 				#region BillTypes
 				listBillType.ClearSelected();
@@ -342,7 +310,7 @@ namespace OpenPmsDental{
 				ageOfAccount=(30*comboAge.SelectedIndex).ToString();//ageOfAccount is 30, 60, or 90
 			}
 			List<long> listClinicNums = comboClinic.ListClinicNumsSelected;
-			if(listClinicNums.Count != 1 || listClinicNums.Contains(0))//Clinics not enabled (count 0) or multiple selected(>1) or 'Unassigned' selected.
+			if(listClinicNums.Count != 1 || listClinicNums[0]<=0)//Clinics not enabled (count 0) or multiple selected(>1) or 'Unassigned' selected.
 			{
 				if(Prefs.UpdateBool(PrefName.BillingIncludeChanged,checkIncludeChanged.Checked)
 					|Prefs.UpdateString(PrefName.BillingSelectBillingTypes,selectedBillingTypes)
@@ -364,41 +332,27 @@ namespace OpenPmsDental{
 				MsgBox.Show(this,"Settings saved.");
 				return;
 			}
-			else if(_dictionaryClinicPrefsNew.Keys.Contains(listClinicNums[0])) {//ClincPrefs exist, update them.
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingIncludeChanged).ValueString=POut.Bool(checkIncludeChanged.Checked);
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingSelectBillingTypes).ValueString=selectedBillingTypes;
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingAgeOfAccount).ValueString=ageOfAccount;
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingExcludeBadAddresses).ValueString=POut.Bool(checkBadAddress.Checked);
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingExcludeInactive).ValueString=POut.Bool(checkExcludeInactive.Checked);
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingExcludeNegative).ValueString=POut.Bool(!checkShowNegative.Checked);
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingExcludeInsPending).ValueString=POut.Bool(checkExcludeInsPending.Checked);
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingDaysExcludeInsPending).ValueString=POut.Int(textDaysInsPendingExclude.Value);
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingExcludeIfUnsentProcs).ValueString=POut.Bool(checkExcludeIfProcs.Checked);
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingExcludeLessThan).ValueString=textExcludeLessThan.Text;
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingIgnoreInPerson).ValueString=POut.Bool(checkIgnoreInPerson.Checked);
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingShowTransSinceBalZero).ValueString=POut.Bool(checkBoxBillShowTransSinceZero.Checked);
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingDefaultsNote).ValueString=textNote.Text;
-				_dictionaryClinicPrefsNew[listClinicNums[0]].First(x => x.PrefName==PrefName.BillingSelectInsFilingCodes).ValueString=selectedInsFilingCodes;
-			}
-			else {//No existing ClinicPrefs for the currently selected clinic in comboClinics.
-				_dictionaryClinicPrefsNew.Add(listClinicNums[0],new List<ClinicPref>());
-				//Inserts new ClinicPrefs for each of the Filter options for the currently selected clinic.
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingIncludeChanged,checkIncludeChanged.Checked));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingSelectBillingTypes,selectedBillingTypes));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingAgeOfAccount,ageOfAccount));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingExcludeBadAddresses,checkBadAddress.Checked));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingExcludeInactive,checkExcludeInactive.Checked));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingExcludeNegative,!checkShowNegative.Checked));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingExcludeInsPending,checkExcludeInsPending.Checked));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingDaysExcludeInsPending,POut.Int(textDaysInsPendingExclude.Value)));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingExcludeIfUnsentProcs,checkExcludeIfProcs.Checked));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingExcludeLessThan,textExcludeLessThan.Text));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingIgnoreInPerson,checkIgnoreInPerson.Checked));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingShowTransSinceBalZero,checkBoxBillShowTransSinceZero.Checked));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingDefaultsNote,textNote.Text));
-				_dictionaryClinicPrefsNew[listClinicNums[0]].Add(new ClinicPref(listClinicNums[0],PrefName.BillingSelectInsFilingCodes,selectedInsFilingCodes));
-			}
-			if(ClinicPrefs.Sync(_dictionaryClinicPrefsNew.SelectMany(x => x.Value).ToList(),_dictionaryClinicPrefsOld.SelectMany(x => x.Value).ToList())) {
+			//One clinic selected: its filter defaults, written for that clinic only (P262-BILLING). Another clinic's rows are never written here, so a
+			//clinic whose only row is the General Message from Billing Defaults gets no filter rows, and a clinic that Billing Defaults set back to the
+			//practice defaults gets no General Message row back.
+			long clinicNum=listClinicNums[0];
+			List<KeyValuePair<PrefName,string>> listValues=new List<KeyValuePair<PrefName,string>>() {
+				new KeyValuePair<PrefName,string>(PrefName.BillingIncludeChanged,POut.Bool(checkIncludeChanged.Checked)),
+				new KeyValuePair<PrefName,string>(PrefName.BillingSelectBillingTypes,selectedBillingTypes),
+				new KeyValuePair<PrefName,string>(PrefName.BillingAgeOfAccount,ageOfAccount),
+				new KeyValuePair<PrefName,string>(PrefName.BillingDaysExcludeInsPending,POut.Int(textDaysInsPendingExclude.Value)),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeBadAddresses,POut.Bool(checkBadAddress.Checked)),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeInactive,POut.Bool(checkExcludeInactive.Checked)),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeNegative,POut.Bool(!checkShowNegative.Checked)),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeInsPending,POut.Bool(checkExcludeInsPending.Checked)),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeIfUnsentProcs,POut.Bool(checkExcludeIfProcs.Checked)),
+				new KeyValuePair<PrefName,string>(PrefName.BillingExcludeLessThan,textExcludeLessThan.Text),
+				new KeyValuePair<PrefName,string>(PrefName.BillingIgnoreInPerson,POut.Bool(checkIgnoreInPerson.Checked)),
+				new KeyValuePair<PrefName,string>(PrefName.BillingShowTransSinceBalZero,POut.Bool(checkBoxBillShowTransSinceZero.Checked)),
+				new KeyValuePair<PrefName,string>(PrefName.BillingDefaultsNote,textNote.Text),
+				new KeyValuePair<PrefName,string>(PrefName.BillingSelectInsFilingCodes,selectedInsFilingCodes),
+			};
+			if(BillingOptionsClinicDefaults.SaveForClinic(clinicNum,listValues)) {
 				DataValid.SetInvalid(InvalidType.ClinicPrefs);
 				RefreshClinicPrefs();
 			}
@@ -519,18 +473,26 @@ namespace OpenPmsDental{
 			using FormBillingDefaults formBillingDefaults=new FormBillingDefaults();
 			formBillingDefaults.ShowDialog();
 			if(formBillingDefaults.DialogResult==DialogResult.OK){
+				if(PrefC.HasClinicsEnabled) {
+					//Billing Defaults may have saved or removed a clinic's General Message row (P262-BILLING), which this window keeps with the clinic's
+					//filter defaults: read the rows again so that Save Defaults here does not work from a stale copy.
+					RefreshClinicPrefs();
+				}
 				SetDefaults();
 			}
 		}
 
-		///<summary>Sets UI controls to the practice defaults preference values. The BillingL.CreateStatementHelper() uses this logic to set default practice preference values. Changes to this method will also need to be made there, if they apply.</summary>
+		///<summary>Sets UI controls to the practice defaults preference values, except the General Message, which is the selected clinic's when one
+		///clinic is selected. The BillingL.CreateStatementHelper() uses this logic to set default practice preference values. Changes to this method will also need to be made there, if they apply.</summary>
 		private void SetDefaults(){
 			textDateStart.Text=DateTime.Today.AddDays(-PrefC.GetLong(PrefName.BillingDefaultsLastDays)).ToShortDateString();
 			textDateEnd.Text=DateTime.Today.ToShortDateString();
 			checkIntermingled.Checked=PrefC.GetBool(PrefName.BillingDefaultsIntermingle);
 			checkSinglePatient.Checked=PrefC.GetBool(PrefName.BillingDefaultsSinglePatient);
 			checkBoxBillShowTransSinceZero.Checked=PrefC.GetBool(PrefName.BillingShowTransSinceBalZero);
-			textNote.Text=PrefC.GetString(PrefName.BillingDefaultsNote);
+			//The selected clinic's own General Message (P262-BILLING: Billing Defaults saves it per clinic), so that Save Defaults for that clinic does not
+			//write the practice message over it.
+			textNote.Text=GetGeneralMessage(comboClinic.ListClinicNumsSelected);
 			checkServiceDateView.Checked=Statements.GetBillingDefaultServiceDateView();//Open Dental 26.1 (M2-SDV)
 		}
 
