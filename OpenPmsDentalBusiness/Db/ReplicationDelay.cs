@@ -1,6 +1,7 @@
 // B-SERVER (v25_2-server-replication-delay): read and write delays for offices that use a read-only server or replication.
-// Open Dental 25.2's release notes say only that new preferences set a read/write delay when replication is used. Names, units and behavior are
-// not public, so everything below is our own design (docs/specs/features-25.2.md, docs/port-notes/B-SERVER.md).
+// Open Dental 25.2's release notes say only that new preferences set a read/write delay when replication is used. The behavior is not public, so
+// everything below is our own design (docs/specs/features-25.2.md, docs/port-notes/B-SERVER.md); the names of Open Dental's two rows for the
+// delay come from the office's Open Dental 25.3.48 database (docs/port-notes/SWMAP.md).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -10,20 +11,26 @@ using System.Threading;
 using CodeBase;
 
 namespace OpenPmsDentalBusiness {
-	///<summary>Two global settings, kept in fork-owned preference rows that are not in the PrefName enum (a missing row reads as 0, so an adopted
-	///Open Dental database needs no migration):
-	///<para>Read delay after write (ForkReplicationReadDelayMs). With replication, data written on the main server reaches a replica after a lag.
-	///For this many milliseconds after this workstation wrote to the database, reads that would go to the read-only server
-	///(ReportsComplex.RunFuncOnReadOnlyServer, which also fills the caches) run on the main server instead, so users do not see stale data right
-	///after saving.</para>
-	///<para>Write delay for signals (ForkReplicationSignalLookbackMs). When a workstation checks for cache-refresh signals (signalod), it looks back
+	///<summary>Two global settings, kept in preference rows that are not in the PrefName enum (a missing row reads as 0):
+	///<para>Read delay after write. Open Dental's own two rows hold it (names confirmed by the setting names of the office's Open Dental 25.3.48
+	///database, owner question Switch-over 1, 2026-11-07; docs/port-notes/SWMAP.md): ReplicationWriteReadDelayEnabled (1/0) and
+	///ReplicationWriteReadDelayMS (milliseconds). The delay is the milliseconds while Enabled is 1, otherwise 0. Release v0.0 kept it in the row
+	///ForkReplicationReadDelayMs; the fork migration step OdSettingNamesStep moves it. INFERRED: Open Dental names one write/read delay, taken here as
+	///this delay. With replication, data written on the main server reaches a replica after a lag. For this many milliseconds after this workstation
+	///wrote to the database, reads that would go to the read-only server (ReportsComplex.RunFuncOnReadOnlyServer, which also fills the caches) run on
+	///the main server instead, so users do not see stale data right after saving.</para>
+	///<para>Write delay for signals (ForkReplicationSignalLookbackMs, a fork-owned row: Open Dental 25.3.48 has no such setting). When a workstation
+	///checks for cache-refresh signals (signalod), it looks back
 	///this many milliseconds before its last check, so a signal that reaches its replica late (daisy-chain replication) is not missed. Signals it
 	///already processed are filtered out, so nothing is processed twice (unless the server clock goes back, as in 24.3), and its own signals are
 	///never returned by the look-back (see SignalLookbackFilter).</para>
 	///<para>Both range from 0 to 60000 ms. 0 (the default) keeps the 24.3 behavior. Both are ignored when no read-only server is configured and no
 	///replication servers are defined.</para></summary>
 	public static class ReplicationDelay {
-		public const string PREF_READ_DELAY_MS="ForkReplicationReadDelayMs";
+		///<summary>Open Dental's row: 1 while the read delay is in use.</summary>
+		public const string PREF_READ_DELAY_ENABLED="ReplicationWriteReadDelayEnabled";
+		///<summary>Open Dental's row: the read delay in milliseconds, used only while PREF_READ_DELAY_ENABLED is 1.</summary>
+		public const string PREF_READ_DELAY_MS="ReplicationWriteReadDelayMS";
 		public const string PREF_SIGNAL_LOOKBACK_MS="ForkReplicationSignalLookbackMs";
 		///<summary>Largest value either setting accepts, in milliseconds.</summary>
 		public const int MAX_DELAY_MS=60000;
@@ -63,9 +70,19 @@ namespace OpenPmsDentalBusiness {
 			return ClampMs(ms);
 		}
 
-		///<summary>The stored read delay, as set, whether or not it is in effect. Never throws.</summary>
+		///<summary>The stored read delay, as set, whether or not it is in effect (a read-only server may be missing): 0 unless Open Dental's Enabled
+		///row is on. Never throws.</summary>
 		public static int GetReadDelayMs() {
-			return ParseMs(PrefC.GetRawOrDefault(PREF_READ_DELAY_MS,"0"));
+			return GetReadDelayMsFromValues(PrefC.GetRawOrDefault(PREF_READ_DELAY_ENABLED,null),PrefC.GetRawOrDefault(PREF_READ_DELAY_MS,null));
+		}
+
+		///<summary>The read delay for stored values of the two rows (null for a missing row): the milliseconds, clamped, while Enabled is on;
+		///otherwise 0.</summary>
+		public static int GetReadDelayMsFromValues(string valueEnabled,string valueMs) {
+			if(valueEnabled==null || !PIn.Bool(valueEnabled)) {
+				return 0;
+			}
+			return ParseMs(valueMs);
 		}
 
 		///<summary>The stored write delay for signals, as set, whether or not it is in effect. Never throws.</summary>
@@ -74,13 +91,21 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Stores both settings (clamped), inserting a row the first time its value differs from the current one (a missing row is 0, so
-		///saving 0 on a database without the rows writes nothing). Returns true if either changed. The caller signals InvalidType.Prefs so other
-		///workstations reload.</summary>
+		///saving 0 on a database without the rows writes nothing). A read delay above 0 writes Open Dental's milliseconds row and turns its Enabled row
+		///on; a read delay of 0 turns the Enabled row off and keeps the milliseconds. Returns true if either changed. The caller signals
+		///InvalidType.Prefs so other workstations reload.</summary>
 		public static bool SaveSettings(int readDelayMs,int signalLookbackMs) {
 			Meth.NoCheckMiddleTierRole();
 			bool isChanged=false;
-			if(ClampMs(readDelayMs)!=GetReadDelayMs()) {
-				isChanged|=PrefC.UpsertRaw(PREF_READ_DELAY_MS,POut.Int(ClampMs(readDelayMs)));
+			int readDelayMsNew=ClampMs(readDelayMs);
+			if(readDelayMsNew!=GetReadDelayMs()) {
+				if(readDelayMsNew>0) {
+					isChanged|=PrefC.UpsertRaw(PREF_READ_DELAY_MS,POut.Int(readDelayMsNew));
+					isChanged|=PrefC.UpsertRaw(PREF_READ_DELAY_ENABLED,POut.Bool(true));
+				}
+				else {
+					isChanged|=PrefC.UpsertRaw(PREF_READ_DELAY_ENABLED,POut.Bool(false));
+				}
 			}
 			if(ClampMs(signalLookbackMs)!=GetSignalLookbackMs()) {
 				isChanged|=PrefC.UpsertRaw(PREF_SIGNAL_LOOKBACK_MS,POut.Int(ClampMs(signalLookbackMs)));
