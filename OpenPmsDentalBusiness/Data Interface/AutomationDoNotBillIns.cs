@@ -75,6 +75,28 @@ namespace OpenPmsDentalBusiness {
 			return IsAnyCarrierMatch(GetCarrierNumsForPat(patNum),listAutomationConditionsCarriers);
 		}
 
+		///<summary>Carrier Combine (Carriers.Combine): every Carriers Match condition that holds one of the combined carriers is changed to hold the
+		///carrier that is kept, so the automation still fires once the plans carry the kept carrier and the windows still show a carrier name. Two
+		///conditions of one automation that now hold the same carrier are harmless: they are ORed. Called before the combined carriers are deleted.
+		///Returns the number of conditions changed. INFERRED: the documents do not say what combining carriers does to these conditions.</summary>
+		public static long CombineCarriers(long carrierNumKept,List<long> listCarrierNumsCombined) {
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				return Meth.GetLong(MethodBase.GetCurrentMethod(),carrierNumKept,listCarrierNumsCombined);
+			}
+			if(carrierNumKept<=0 || listCarrierNumsCombined.IsNullOrEmpty()) {
+				return 0;
+			}
+			List<long> listCarrierNums=listCarrierNumsCombined.FindAll(x => x>0 && x!=carrierNumKept).Distinct().ToList();
+			if(listCarrierNums.Count==0) {
+				return 0;
+			}
+			//CompareString holds the CarrierNum as text (FormAutomationConditionEdit writes POut.Long); TRIM matches what GetCarrierNum reads.
+			string command="UPDATE automationcondition SET CompareString='"+POut.String(POut.Long(carrierNumKept))+"' "
+				+"WHERE CompareField="+POut.Int((int)AutoCondField.CarriersMatch)+" "
+				+"AND TRIM(CompareString) IN("+string.Join(",",listCarrierNums.Select(x => "'"+POut.String(POut.Long(x))+"'"))+")";
+			return Db.NonQ(command);
+		}
+
 		///<summary>The carriers of the patient's insurance plans (every patplan, any ordinal), without duplicates. INFERRED: the documents say "a
 		///patient's insurance carriers"; plans the patient is no longer on (no patplan) do not count.</summary>
 		public static List<long> GetCarrierNumsForPat(long patNum) {

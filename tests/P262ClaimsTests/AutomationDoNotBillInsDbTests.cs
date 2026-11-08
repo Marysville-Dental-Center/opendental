@@ -106,6 +106,50 @@ namespace P262ClaimsTests {
 			Assert.AreEqual("abc",AutomationDoNotBillIns.GetDisplayText(automationConditionText),"Not a CarrierNum: shown as stored.");
 		}
 
+		[TestMethod]
+		public void CarrierCombine_ConditionFollowsTheKeptCarrierAndStillFires() {
+			string suffix=ClaimsDb.NewSuffix();
+			Carrier carrierA=CarrierT.CreateCarrier("Carrier Dup A "+suffix);
+			Carrier carrierB=CarrierT.CreateCarrier("Carrier Dup B "+suffix);
+			Carrier carrierOther=CarrierT.CreateCarrier("Carrier Other "+suffix);
+			Patient patientOnA=PatientT.CreatePatient(suffix+"a",lName:"Synthetic");
+			AddPlan(patientOnA,carrierA,1);//moved to carrier B by the combine
+			Automation automationA=AddAutomation("Carrier A popup",EnumAutomationTrigger.DoNotBillInsuranceCheck,Carriers(carrierA));
+			Automation automationAOrB=AddAutomation("Carrier A or B popup",EnumAutomationTrigger.DoNotBillInsuranceCheck,Carriers(carrierA,carrierB));
+			Automation automationOther=AddAutomation("Other carrier popup",EnumAutomationTrigger.DoNotBillInsuranceCheck,Carriers(carrierOther));
+			//Another field whose text happens to be carrier A's number: not a carrier reference, left alone.
+			Automation automationAge=AddAutomation("Age popup",EnumAutomationTrigger.ClaimCreate,new List<AutomationCondition>() {
+				new AutomationCondition() { CompareField=AutoCondField.Age,Comparison=AutoCondComparison.GreaterThan,CompareString=POut.Long(carrierA.CarrierNum) }
+			});
+			Carriers.Combine(new List<long>() { carrierA.CarrierNum,carrierB.CarrierNum },carrierB.CarrierNum);
+			Carriers.RefreshCache();
+			Assert.IsNull(Carriers.GetCarrierDB(carrierA.CarrierNum),"Carrier A was combined into B and deleted.");
+			List<AutomationCondition> listConditionsA=AutomationConditions.GetListByAutomationNum(automationA.AutomationNum);
+			Assert.AreEqual(1,listConditionsA.Count);
+			Assert.AreEqual(POut.Long(carrierB.CarrierNum),listConditionsA[0].CompareString,"The condition now holds the kept carrier.");
+			Assert.AreEqual(carrierB.CarrierName,AutomationDoNotBillIns.GetDisplayText(listConditionsA[0]),"The windows show a carrier name.");
+			CollectionAssert.AreEqual(new List<string>() { POut.Long(carrierB.CarrierNum),POut.Long(carrierB.CarrierNum) },
+				AutomationConditions.GetListByAutomationNum(automationAOrB.AutomationNum).Select(x => x.CompareString).ToList(),
+				"Both conditions hold B now; ORed, so the duplicate is harmless.");
+			Assert.AreEqual(POut.Long(carrierOther.CarrierNum),
+				AutomationConditions.GetListByAutomationNum(automationOther.AutomationNum)[0].CompareString,"Another carrier's condition is unchanged.");
+			Assert.AreEqual(POut.Long(carrierA.CarrierNum),
+				AutomationConditions.GetListByAutomationNum(automationAge.AutomationNum)[0].CompareString,"Only Carriers Match conditions change.");
+			Patient patientOnB=PatientT.CreatePatient(suffix+"b",lName:"Synthetic");
+			AddPlan(patientOnB,carrierB,1);
+			List<string> listExpected=new List<string>() { "Carrier A popup","Carrier A or B popup" };
+			CollectionAssert.AreEquivalent(listExpected,Fire(EnumAutomationTrigger.DoNotBillInsuranceCheck,patientOnB),"Each fires once (cache order).");
+			CollectionAssert.AreEquivalent(listExpected,Fire(EnumAutomationTrigger.DoNotBillInsuranceCheck,patientOnA),
+				"The plan that was on carrier A is on B now, and the automation still fires for it.");
+		}
+
+		[TestMethod]
+		public void CombineCarriers_NothingToChange() {
+			Assert.AreEqual(0,AutomationDoNotBillIns.CombineCarriers(0,new List<long>() { 5 }));
+			Assert.AreEqual(0,AutomationDoNotBillIns.CombineCarriers(5,new List<long>()));
+			Assert.AreEqual(0,AutomationDoNotBillIns.CombineCarriers(5,new List<long>() { 5,0 }));
+		}
+
 		#region Helpers
 		private static void Setup(out Patient patient,out Carrier carrierA,out Carrier carrierB) {
 			string suffix=ClaimsDb.NewSuffix();
@@ -126,7 +170,7 @@ namespace P262ClaimsTests {
 			return arrayCarriers.Select(x => AutomationDoNotBillInsTests.Carrier(x.CarrierNum)).ToList();
 		}
 
-		private static void AddAutomation(string message,EnumAutomationTrigger trigger,List<AutomationCondition> listConditions) {
+		private static Automation AddAutomation(string message,EnumAutomationTrigger trigger,List<AutomationCondition> listConditions) {
 			Automation automation=new Automation() {
 				Description=message,
 				Autotrigger=trigger,
@@ -141,6 +185,7 @@ namespace P262ClaimsTests {
 			}
 			Automations.RefreshCache();
 			AutomationConditions.RefreshCache();
+			return automation;
 		}
 
 		///<summary>Fires the trigger for the patient and returns the pop-up messages it would show, in order.</summary>

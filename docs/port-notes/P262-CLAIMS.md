@@ -48,6 +48,12 @@ Public sources only, as the owner decided. No Open Dental program was installed,
 - `FormAutomationEdit`: the conditions grid shows the carrier's name for Carriers Match, and saving an automation that has Carriers Match with
   another trigger is refused with a message (as for the 26.1 clinic mismatch condition).
 - The trigger offers every action except the appointment and Rx ones (the existing rules of the window); it takes no procedure codes.
+- Carrier Combine (`Carriers.Combine`, Lists > Carriers > Combine): `AutomationDoNotBillIns.CombineCarriers` changes every Carriers
+  Match condition that holds a combined carrier to hold the kept carrier, next to the 26.1 preauthorization merge and before the combined
+  carriers are deleted. Without it the plans would carry the kept carrier while the condition still named a deleted one, so the automation
+  would silently stop firing and the windows would show a bare number. Two conditions of one automation that end up on the same carrier are
+  harmless (ORed). Conditions of other fields are not touched. `FormCarriers` signals `InvalidType.Automation` with the carriers; the
+  trigger and the automation windows read the conditions from the database, so nothing cached goes stale.
 
 ### Item 20: the default claim form at the provider level
 
@@ -119,7 +125,9 @@ The sources give the four one-line release notes and the document texts quoted a
     takes no procedure codes.
 11. **Item 22, ORed.** Several Carriers Match conditions are ORed with each other and the rest of the automation's conditions are ANDed with
     that result, as the table summary says; an automation with Carriers Match under another trigger (written elsewhere) never fires.
-12. The display texts (labels, messages, the warning window) are this program's own wording.
+12. **Item 22, Carrier Combine.** The documents do not say what combining carriers does to a Carriers Match condition; it follows the kept
+    carrier, as the plans, the electronic transactions and (26.1) the preauthorization lists do.
+13. The display texts (labels, messages, the warning window) are this program's own wording.
 
 ## Not built
 
@@ -132,7 +140,7 @@ The sources give the four one-line release notes and the document texts quoted a
 
 - New: `OpenPmsDentalBusiness/Data Interface/{AutomationDoNotBillIns,ClaimFormDefaults,InsPlanMergeMismatches}.cs`,
   `OpenPmsDental/Forms/FormInsPlansMergeWarning.{cs,designer.cs,resx}`, `tests/P262ClaimsTests/*`, this note.
-- Changed: `Automations.cs` (Carriers Match), `ClaimForms.cs` (delete check), `Claims.cs` and `AccountModules.cs` (claim form of new claims),
+- Changed: `Automations.cs` (Carriers Match), `Carriers.cs` and `FormCarriers.cs` (Carrier Combine), `ClaimForms.cs` (delete check), `Claims.cs` and `AccountModules.cs` (claim form of new claims),
   `TableTypes/Automation.cs` and `TableTypes/AutomationCondition.cs` (comments only), `FormProcEdit.cs`, `FormAutomationEdit.cs`,
   `FormAutomationConditionEdit.cs`, `FormProvEdit.cs` and its designer, `FormClaimEdit.designer.cs` (tab order), `FormInsPlansMerge.cs`,
   `FormClaimForms.cs`, `PreAuthL.cs`, `ControlTreat.cs`, both project files, `OpenDental.sln`, `OpenDental.Local.slnf`,

@@ -377,7 +377,9 @@ namespace OpenPmsDental{
 				MessageBox.Show(ex.Message);
 				return;
 			}
-			DataValid.SetInvalid(InvalidType.Carriers);
+			//Carriers Match automation conditions now hold the kept carrier (Carriers.Combine). The trigger and the automation windows read the
+			//conditions from the database; the Automation signal keeps the other workstations' automation cache in step.
+			DataValid.SetInvalid(InvalidType.Carriers,InvalidType.Automation);
 			string logText=Lan.g(this,"The following carriers were combined into")+$" '{carrierName}': {carrierNames}";
 			SecurityLogs.MakeLogEntry(EnumPermType.InsCarrierCombine,0,logText);
 			FillGrid();

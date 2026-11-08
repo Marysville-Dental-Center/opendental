@@ -310,4 +310,5 @@ the provider column and the automation values.
   edit window and the procedure changes to not bill insurance (unchecking does not fire it). Its own condition, Carriers Match, picks a
   carrier from the list and holds when one of the patient's insurance plans is with that carrier; several Carriers Match conditions on one
   automation mean any one of the carriers. The condition is offered only for this trigger, and an automation that has it cannot be saved
-  with another trigger.
+  with another trigger. Combining carriers (Lists > Carriers > Combine) moves these conditions to the carrier that is kept, so the
+  automation keeps firing.
