@@ -236,6 +236,7 @@ namespace ReleaseFlowTests {
 				[@"OpenPmsDentalBusiness\Remoting\DtoProcessor.cs"]=new[] { "\"OpenDentBusiness.\"","\"OpenPmsDentalBusiness.\"" },
 				[@"OpenPmsDentalBusiness\Remoting\DataTransferObject.cs"]=new[] { "\"OpenDentBusiness.\"","\"OpenPmsDentalBusiness.\"" },
 				[@"OpenPmsDentalBusiness\Db Multi Table\Security.cs"]=new[] { "\"OpenDentBusiness.Security.LogInWeb\"","\"OpenPmsDentalBusiness.Security.LogInWeb\"" },
+				[@"WpfControlsOD\Bridges\DexisIntegrator.cs"]=new[] { "\"OpenDental.FormOpenDental\"","\"OpenPmsDental.FormOpenDental\"" },
 			};
 			List<string> listProblems=new List<string>();
 			foreach(KeyValuePair<string,string[]> pair in dictForbidden) {

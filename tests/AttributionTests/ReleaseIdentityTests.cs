@@ -228,7 +228,8 @@ namespace AttributionTests {
 				StringAssert.Contains(listNoticeSections.Single(x => x.Title==title).GetField("Note"),"Owner question",title);
 			}
 			//fo-dicom (MS-PL) was the second; the in-house DICOM reader replaced it (docs/imaging/dicom-reader.md). NDde (its own shared source
-			//licence) was the third; it was removed with the DentX, Dexis Integrator and Vipersoft program links (owner decision of 2026-11-07).
+			//licence) was the third; it was removed on 2026-11-07, and the DentX, Dexis Integrator and Vipersoft program links that used it send
+			//their DDE commands through the in-house CodeBase.ODDdeClient since 2026-11-08 (docs/port-notes/S0-R.md).
 			Assert.IsFalse(listNoticeSections.Any(x => x.Title=="fo-dicom"));
 			Assert.IsFalse(listNoticeSections.Any(x => x.Title=="NDde"));
 		}
