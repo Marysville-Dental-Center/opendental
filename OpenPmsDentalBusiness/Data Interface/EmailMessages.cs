@@ -4026,8 +4026,13 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 		}
 
 		///<summary>Gets all address-level certificates for the specified email address into the two specified lists, separated by validity.
-		///If no valid one is found, then gets domain-level certificates for the specified email address into the two specified lists, separated by validity.</summary>
+		///If no valid one is found, then gets domain-level certificates for the specified email address into the two specified lists, separated by validity.
+		///An address with a display name ("Pat <pat@example.test>", as the inbox passes a From address) is looked up by the address in it (the version
+		///before S0-3 found the domain through System.Net.Mail.MailAddress).</summary>
 		public void GetCertificates(string addressOrDomain,List <X509Certificate2> listX509Certificate2sValid,List <X509Certificate2> listX509Certificate2sInvalid) {
+			if(addressOrDomain.Contains("@")) {
+				addressOrDomain=EmailMessages.GetAddressSimple(addressOrDomain);
+			}
 			EmailCertificates.GetCertificates(Store.GetAllCertificates(),addressOrDomain,listX509Certificate2sValid,listX509Certificate2sInvalid);
 		}
 

@@ -43,6 +43,7 @@ namespace LibraryUpdateTests {
 				Assert.AreEqual(1,EmailMessages.GetReceiverUntrustedCount("pat.q@hisp.example.test"));
 				directTestStores.AddExternal(x509Certificate2Valid);
 				Assert.AreEqual(-1,EmailMessages.GetReceiverUntrustedCount("pat.q@hisp.example.test"));
+				Assert.AreEqual(-1,EmailMessages.GetReceiverUntrustedCount("Pat Q <pat.q@hisp.example.test>"),"A From address with a display name, as the inbox has it.");
 				Assert.AreEqual(1,new EmailPublicResolver().GetCertificatesForAddress("pat.q@hisp.example.test").Count);
 			}
 			finally {
