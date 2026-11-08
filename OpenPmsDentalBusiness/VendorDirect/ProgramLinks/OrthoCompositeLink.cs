@@ -1,6 +1,6 @@
 // P262-LINKS (Open Dental 26.2, item 45 "New imaging bridge to OrthoComposite"): the OrthoComposite program link, a local launch of the
 // OrthoComposite imaging program (from the Microsoft Store) with the selected patient's name and birthdate. Built from the public setup page
-// (bridgeorthocomposite.html) only.
+// (bridgeorthocomposite.html) and, since next/vendorpub-1, OrthoComposite's public Microsoft Store listing, which gives its command arguments.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -10,11 +10,13 @@ using System.Text.RegularExpressions;
 namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 	///<summary>The OrthoComposite program link (ProgName OrthoComposite, INFERRED: Open Dental's name is not public). The row is inserted at runtime
 	///with Enabled=0 the first time Setup > Program Links opens, with the setup the public page lists: no default path (OrthoComposite comes from
-	///the Microsoft Store, so the office enters where it is), a Chart module button "OrthoComposite", and no other property.
+	///the Microsoft Store, so the office enters where it is), a Chart module button "OrthoComposite", and the "Patient arguments" property.
 	///<para>Public: OrthoComposite finds the patient by first name, last name and birthdate; the birthdate is MM/DD/YYYY; names may hold accented
-	///letters. Not public (partner-gated): how OrthoComposite takes them. So the office enters the arguments in the "Patient arguments" property
-	///from OrthoComposite's own instructions, with the tokens [FName], [LName] and [Birthdate]; only those three are filled in, so no other patient
-	///data can reach the program. Until then the button says what is missing and starts nothing for a patient.</para></summary>
+	///letters (Open Dental's page). OrthoComposite takes them as the command arguments --lastname, --firstname and --dob and opens its patient list
+	///with the search filled in (its Microsoft Store listing). So the "Patient arguments" property holds DefaultPatientArguments, with the tokens
+	///[LName], [FName] and [Birthdate]; only those three are filled in, so no other patient data can reach the program. The office may change the
+	///value; a value it cleared makes the button say what is missing and start nothing for a patient. Rows inserted before the default shipped got
+	///it from fork migration step 2026110801 (OrthoCompositePatientArgumentsStep) where they were still blank.</para></summary>
 	public static class OrthoCompositeLink {
 		///<summary>The row's description and the default text on the button (the public page's "Text on button" default).</summary>
 		public const string ProgDesc="OrthoComposite";
@@ -26,9 +28,13 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 
 		///<summary>programproperty.PropertyDesc values.</summary>
 		public static class PropertyDescs {
-			///<summary>Our addition: the arguments OrthoComposite gets for the selected patient, with tokens. Blank by default.</summary>
+			///<summary>Our addition: the arguments OrthoComposite gets for the selected patient, with tokens. DefaultPatientArguments by default.</summary>
 			public const string PatientArguments="Patient arguments";
 		}
+
+		///<summary>The Patient arguments value a new row gets: OrthoComposite's public command arguments (its Microsoft Store listing), each value
+		///quoted because names may hold spaces. The birthdate is MM/dd/yyyy (Open Dental's page).</summary>
+		public const string DefaultPatientArguments="--lastname \"[LName]\" --firstname \"[FName]\" --dob \"[Birthdate]\"";
 
 		///<summary>The three tokens a Patient arguments template may use. Any other text, other bridges' tokens included, is sent as typed.</summary>
 		public const string TokenFName="[FName]";
@@ -36,14 +42,16 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 		public const string TokenBirthdate="[Birthdate]";
 		public static readonly string[] ArrayTokens={ TokenFName,TokenLName,TokenBirthdate };
 
-		///<summary>The Notes text in Program Links. Describes, never promotes.</summary>
-		public const string Note="Starts OrthoComposite for the selected patient. OrthoComposite finds the patient by first name, last name and birthdate. "
-			+"Enter where OrthoComposite is in Path of file to open. Before the first use with a patient, enter the arguments from OrthoComposite's "
-			+"instructions in the Patient arguments property, using the tokens [FName], [LName] and [Birthdate] (MM/dd/yyyy). Put quotes around a token "
-			+"whose value can contain spaces, for example \"[LName]\". No other patient data is sent. The Command line field is added after the patient "
-			+"arguments. Without a patient, OrthoComposite starts with the Command line only.";
+		///<summary>The Notes text in Program Links. Describes, never promotes. Fork migration step 2026110801 writes it over the text of p262/links-1
+		///(OrthoCompositePatientArguments.NoteBefore) only.</summary>
+		public const string Note="Starts OrthoComposite for the selected patient with its patient search filled in: the Patient arguments property gives "
+			+"OrthoComposite the patient's last name, first name and birthdate with its own arguments --lastname, --firstname and --dob, using the "
+			+"tokens [LName], [FName] and [Birthdate] (MM/dd/yyyy). No other patient data is sent. Enter where OrthoComposite is in Path of file to "
+			+"open; a program installed as an app can be entered by its name, for example OrthoComposite.exe. The Command line field is added after "
+			+"the patient arguments. Without a patient, OrthoComposite starts with the Command line only.";
 
-		///<summary>The row this program inserts: the public page's defaults (no path, Chart module button "OrthoComposite").</summary>
+		///<summary>The row this program inserts: the public page's defaults (no path, Chart module button "OrthoComposite") and the public arguments.
+		///</summary>
 		public static BridgeLinkDefinition GetDefinition() {
 			Meth.NoCheckMiddleTierRole();
 			BridgeLinkDefinition definition=new BridgeLinkDefinition();
@@ -54,7 +62,7 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 			definition.ButtonText=DefaultButtonText;
 			definition.ListToolBars=new List<EnumToolBar> { DefaultToolBar };
 			definition.ListProperties=new List<KeyValuePair<string,string>> {
-				new KeyValuePair<string,string>(PropertyDescs.PatientArguments,""),
+				new KeyValuePair<string,string>(PropertyDescs.PatientArguments,DefaultPatientArguments),
 			};
 			return definition;
 		}
@@ -79,16 +87,27 @@ namespace OpenPmsDentalBusiness.VendorDirect.ProgramLinks {
 		}
 
 		///<summary>Replaces [FName], [LName] and [Birthdate] (MM/dd/yyyy, blank without a birthdate) in one pass, for a command line: double quotes and
-		///control characters are removed from the values, accented letters are kept. Nothing else in the template is replaced.</summary>
+		///control characters are removed from the values, accented letters are kept, and a value does not end in a backslash (in a quoted token,
+		///"value\" would escape the closing quote on a Windows command line). Nothing else in the template is replaced.</summary>
 		public static string FillArguments(string template,Patient patient) {
 			Meth.NoCheckMiddleTierRole();
 			if(string.IsNullOrEmpty(template) || patient==null) {
 				return template??"";
 			}
-			return _regexToken.Replace(template,match => BridgePatientTokens.Encode(GetValue(match.Value,patient),BridgeTokenEncoding.CommandLine));
+			return _regexToken.Replace(template,match => EncodeValue(GetValue(match.Value,patient)));
 		}
 
 		private static readonly Regex _regexToken=new Regex(@"\[(FName|LName|Birthdate)\]",RegexOptions.CultureInvariant);
+
+		///<summary>The value as BridgePatientTokens encodes it for a command line, without backslashes or white space at its end.</summary>
+		private static string EncodeValue(string value) {
+			string text=BridgePatientTokens.Encode(value,BridgeTokenEncoding.CommandLine);
+			int length=text.Length;
+			while(length>0 && (text[length-1]=='\\' || char.IsWhiteSpace(text[length-1]))) {
+				length--;
+			}
+			return text.Substring(0,length);
+		}
 
 		private static string GetValue(string token,Patient patient) {
 			switch(token) {
