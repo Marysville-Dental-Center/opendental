@@ -203,6 +203,27 @@ namespace ODOPTSTests {
 			Assert.AreEqual("Z4910",listCategories.Single(x => x.CodeGroupNum==3).HistProcCode);
 		}
 
+		///<summary>The Insurance History step (owner decision of 2026-11-07) adds a "Perio Scaling History" group with no fixed type and four quadrant
+		///rows; the setting applies to it as to the fixed SRP group. A group with no fixed type and no quadrant rows keeps its own code.</summary>
+		[TestMethod]
+		public void InsHistPerioScalingCode_UsedByTheHistoryOnlyPerioScalingGroup() {
+			List<CodeGroup> listCodeGroups=new List<CodeGroup> {
+				new CodeGroup { CodeGroupNum=4,GroupName="Bitewing History",ProcCodes="Z0272",ItemOrder=0,CodeGroupFixed=EnumCodeGroupFixed.None,
+					ShowInHistory=true,HistProcCode="Z0272" },
+				new CodeGroup { CodeGroupNum=5,GroupName="Perio Scaling History",ProcCodes="Z4341,Z4342",ItemOrder=1,CodeGroupFixed=EnumCodeGroupFixed.None,
+					ShowInHistory=true,HistProcCode="Z4341",IsPerioFourQuads=true },
+			};
+			List<InsHistCategory> listCategories=InsHistCategories.GetAll(listCodeGroups,"Z4399");
+			Assert.AreEqual(5,listCategories.Count);
+			Assert.AreEqual(4,listCategories.Count(x => x.CodeGroupNum==5));
+			Assert.IsTrue(listCategories.FindAll(x => x.CodeGroupNum==5).All(x => x.HistProcCode=="Z4399"));
+			Assert.AreEqual("Z0272",listCategories.Single(x => x.CodeGroupNum==4).HistProcCode);
+			Assert.IsTrue(InsHistCategories.IsPerioScalingGroup(listCodeGroups[1]));
+			Assert.IsFalse(InsHistCategories.IsPerioScalingGroup(listCodeGroups[0]));
+			Assert.IsTrue(InsHistCategories.IsPerioScalingGroup(new CodeGroup { CodeGroupFixed=EnumCodeGroupFixed.SRP }));
+			Assert.IsFalse(InsHistCategories.IsPerioScalingGroup(null));
+		}
+
 		[TestMethod]
 		public void InsHistPerioScalingCode_BlankKeepsEachGroupsOwnCode() {
 			foreach(string blank in new[] { "",null,"  " }) {

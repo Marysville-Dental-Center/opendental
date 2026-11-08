@@ -176,7 +176,7 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>The rows for the code groups passed in, with perioScalingProcCode as the History Proc Code of every row of a perio scaling group
-		///(CodeGroupFixed SRP, ODOPTS): a date entered for such a row creates a procedure with that code, and its procedures count as the row's history.
+		///(IsPerioScalingGroup, ODOPTS): a date entered for such a row creates a procedure with that code, and its procedures count as the row's history.
 		///Blank: each group's own History Proc Code, the behaviour without the setting.</summary>
 		public static List<InsHistCategory> GetAll(List<CodeGroup> listCodeGroups,string perioScalingProcCode) {
 			Meth.NoCheckMiddleTierRole();
@@ -203,13 +203,21 @@ namespace OpenPmsDentalBusiness {
 			insHistCategory.Quadrant=quadrant;
 			insHistCategory.Description=GetDescription(codeGroup,quadrant);
 			insHistCategory.HistProcCode=(codeGroup.HistProcCode??"").Trim();
-			if(codeGroup.CodeGroupFixed==EnumCodeGroupFixed.SRP && !string.IsNullOrWhiteSpace(perioScalingProcCode)) {
+			if(IsPerioScalingGroup(codeGroup) && !string.IsNullOrWhiteSpace(perioScalingProcCode)) {
 				insHistCategory.HistProcCode=perioScalingProcCode.Trim();//ODOPTS: InsHistPerioScalingCode
 			}
 			insHistCategory.ProcCodes=codeGroup.ProcCodes??"";
 			insHistCategory.CodeGroupFixed=codeGroup.CodeGroupFixed;
 			insHistCategory.IsHidden=codeGroup.IsHidden;
 			return insHistCategory;
+		}
+
+		///<summary>True for a perio scaling code group, whose rows take InsHistPerioScalingCode (ODOPTS): the fixed SRP group, or a Perio Four Quadrants
+		///group. The Insurance History step adds its "Perio Scaling History" group with no fixed type and four quadrant rows (owner decision of
+		///2026-11-07, InsHistCodeGroupsStep), so on an adopted database that group is the perio scaling group the setting applies to.</summary>
+		public static bool IsPerioScalingGroup(CodeGroup codeGroup) {
+			Meth.NoCheckMiddleTierRole();
+			return codeGroup!=null && (codeGroup.CodeGroupFixed==EnumCodeGroupFixed.SRP || codeGroup.IsPerioFourQuads);
 		}
 
 		///<summary>The row label. A whole-mouth row shows the group name. A quadrant row of the fixed SRP group shows "Perio Scaling" and the quadrant,
