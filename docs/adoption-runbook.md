@@ -42,7 +42,9 @@ same code):
    DentalXChange discontinued the service (its `program` row's `Enabled` only; the row and its text stay), and deletes its toolbar buttons, if
    the office database still has it enabled or on a toolbar (what Open Dental's own 25.2 update did to the row is not published; most likely
    nothing is left to change). The Trojan Express Collect step (2026110781) does the same for that link, which Open Dental 26.2 deprecated
-   because the service is no longer offered. Then the UDS+ report step adds the Standard Reports row of the Open Dental 25.4 UDS+ report ("FQHC UDS+
+   because the service is no longer offered. Open Dental's 2019 update (19.2.29) gave every database that link's row with one Account module
+   button ("TrojanCollect"), whether or not the office used it, so on nearly every office database this step deletes that one button (the
+   row, disabled unless the office used the link, stays with its settings). The button showed nowhere while the link was off. Then the UDS+ report step adds the Standard Reports row of the Open Dental 25.4 UDS+ report ("FQHC UDS+
    Dental Services", Public Health) right after the FQHC Dental Sealant Measure, moves the later Public Health rows down one place, and lets the
    user groups that may run the sealant measure run it too (hidden when the sealant measure is hidden). Then the Insurance History step moves
    the ten Insurance History code preferences of Open Dental 25.3 (Preferences, Treatment Plan) into code groups, as Open Dental 26.1 shows
@@ -273,12 +275,14 @@ The last lines are the Open Dental 25.4, 26.1 and 26.2 steps of item 6 and the f
   deletes its N toolbar button(s) (ToolButItemNum N on <toolbar>, ...) ...`. It quotes the lines the adoption log will show ("Deleted N toolbar
   button(s) of the discontinued DXC Patient Credit Score program link (...)", "Disabled the discontinued DXC Patient Credit Score program link
   (ProgramNum N)"). Its buttons pointed at a service that no longer exists, so the office loses nothing;
-- `Step 2026110781 (Trojan Express Collect program link) changes nothing: ...`, in the same words as the DXC step (an office that never used
-  Trojan Express Collect has its row disabled without buttons), or `Step 2026110781 (Trojan Express Collect program link): the discontinued
-  Trojan Express Collect program link (ProgramNum N) stays, with its text and properties; the step disables ... and deletes ...`, quoting the
-  adoption log lines "Deleted N toolbar button(s) of the discontinued Trojan Express Collect program link (...)" and "Disabled the
-  discontinued Trojan Express Collect program link (ProgramNum N)". Open Dental 26.2 deprecated the link because the service is no longer
-  offered (package P262-LINKS);
+- `Step 2026110781 (Trojan Express Collect program link): the discontinued Trojan Express Collect program link (ProgramNum N) stays, with
+  its text and properties; the step deletes its 1 toolbar button(s) (ToolButItemNum N on AccountModule) ...`, quoting the adoption log line
+  "Deleted 1 toolbar button(s) of the discontinued Trojan Express Collect program link (ToolButItemNum N)". This is the normal line: Open
+  Dental's 19.2.29 update gave every database the row, disabled unless the office used the link, with that one Account module button
+  ("TrojanCollect"). If the office used Trojan Express Collect, the line also says `the step disables 1 program row(s) of it (ProgramNum N),
+  Enabled only` and quotes "Disabled the discontinued Trojan Express Collect program link (ProgramNum N)". `... changes nothing: ...` (in the
+  DXC step's words) appears only where the row is disabled and someone removed its button, or there is no row. Open Dental 26.2 deprecated
+  the link because the service is no longer offered (package P262-LINKS);
 - `Step 2026110103 (UDS+ report row) adds the displayreport row ODUdsPlus ("FQHC UDS+ Dental Services", Public Health, ItemOrder N) right
   after the FQHC Dental Sealant Measure (DisplayReportNum N), moving N later Public Health row(s) down one place, ItemOrder only (...); it
   gives the N user group(s) that may run the sealant measure (user group ...) the Reports permission for it ...` (on an Open Dental 25.3.48
@@ -607,7 +611,9 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   nothing; otherwise "changed the database:", followed by the lines step 0.2 quoted: "Deleted N toolbar button(s) of the discontinued DXC
   Patient Credit Score program link (ToolButItemNum ...)" if it listed buttons, and "Disabled the discontinued DXC Patient Credit Score program
   link (ProgramNum N)" if it listed an enabled row
-- step 2026110781 ("Disable the discontinued Trojan Express Collect program link"): the same, with the Trojan Express Collect lines of step 0.2
+- step 2026110781 ("Disable the discontinued Trojan Express Collect program link"): the same, with the Trojan Express Collect lines of step 0.2;
+  normally "changed the database:" followed by the one line "Deleted 1 toolbar button(s) of the discontinued Trojan Express Collect program
+  link (ToolButItemNum N)" (the Account module button Open Dental's 19.2.29 update gave every database)
 - step 2026110103 ("Report row for the UDS+ report") "changed the database:", followed by "Added displayreport ODUdsPlus" (with "(hidden, as
   the sealant measure is)" if it is hidden) and, if step 0.2 listed user groups, "Copied N report permission(s) from ODDentalSealantMeasure to
   ODUdsPlus" with the step 0.2 number
@@ -635,10 +641,11 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   planned, ProcCodes and the history columns only (...); N of the N planned code group(s) added with the planned values (CodeGroupNum ...); no
   other row or column changed, none removed"), `program` ("N of the N DXC Patient Credit Score row(s) migration-preview lists disabled,
   Enabled only (ProgramNum N); no other row or column changed, none added or removed", or "identical row by row (migration-preview lists no
-  change)"; when step 0.2 listed a Trojan Express Collect row, "N of the N Trojan Express Collect row(s) ..." follows the DXC part, or
-  replaces it if no DXC row was listed), `toolbutitem` ("N of the N DXC Patient Credit Score toolbar button(s) migration-preview lists
-  deleted (ToolButItemNum ...); no other row changed, added or removed", or "identical row by row ...", with the Trojan Express Collect
-  buttons the same way), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
+  change)"; when step 0.2 listed a Trojan Express Collect row to disable (an office that used the link), "N of the N Trojan Express Collect
+  row(s) ..." follows the DXC part, or replaces it if no DXC row was listed), `toolbutitem` ("N of the N DXC Patient Credit Score toolbar
+  button(s) migration-preview lists deleted (ToolButItemNum ...); no other row changed, added or removed", or "identical row by row ...",
+  with the Trojan Express Collect buttons the same way: normally "1 of the 1 Trojan Express Collect toolbar button(s) migration-preview
+  lists deleted (ToolButItemNum N)", after the DXC part if there is one), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
   migration-preview counts now empty, every other note unchanged", and `insverify` and `insverifyhist.DateLastAssigned` "the original date at
   midnight in all N row(s)"), "New tables and columns:" ("5 new table(s), all empty (...); 28 new column(s) in 21 table(s) hold their default
   in every row."), "Fork tables:" ("12 new table(s) of this program, all empty (maintfield, maintitem, maintrecord, maintrecordvalue,
@@ -650,7 +657,7 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   listed them, the DXC Patient Credit Score and Trojan Express Collect rows disabled and their buttons deleted, and exit code 0
 
 The second person compares the renames, the inserted preferences, the moved and granted permissions, the NULL notes, the DXC Patient Credit
-Score row and buttons and the Insurance History code groups in the log with the step 0.2 list on the checklist. `adopt`'s row check has already held them to `opendental` as it is now; if they differ from the step 0.2
+Score row and buttons, the Trojan Express Collect button (and row, if the office used it) and the Insurance History code groups in the log with the step 0.2 list on the checklist. `adopt`'s row check has already held them to `opendental` as it is now; if they differ from the step 0.2
 list, someone changed Report Setup, the security settings, a claim payment, the program links, the code groups or the Insurance History
 preferences in Open Dental since then: run `migration-preview` on
 `opendental` again (it only reads), and if its list now equals the log, note that on the checklist and go on; otherwise stop and go to

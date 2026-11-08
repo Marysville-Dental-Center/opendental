@@ -303,8 +303,9 @@ Program Links the first time it is opened, disabled; their buttons show only onc
   OrthoComposite is in Path of file to open (a program installed from the Microsoft Store can be given by its name, for example
   `OrthoComposite.exe`).
 - **Trojan Express Collect** (retired): the service is no longer offered. The link is listed as "(discontinued)", cannot be enabled or
-  started, and the update disables it and removes its buttons (fork migration step 2026110781); its settings stay in the database. The
-  Trojan benefit link is not affected.
+  started, and the update disables it and removes its buttons (fork migration step 2026110781); its settings stay in the database. Nearly
+  every database has one such button on the Account module toolbar (Open Dental's 2019 update added it for every office, hidden while the
+  link was off), so the update log normally shows one button removed. The Trojan benefit link is not affected.
 - **Suni** (removed): Suni's direct capture was already removed in version 0.0; nothing is left that uses the Suni settings. The database
   columns stay, as in Open Dental 26.2.
 - **Ez3D-i** stays (owner decision), although Open Dental 26.2 removed it.

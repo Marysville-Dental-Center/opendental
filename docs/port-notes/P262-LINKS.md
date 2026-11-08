@@ -1,6 +1,6 @@
 # Port note: P262-LINKS, the Open Dental 26.2 program links (items 44 to 47)
 
-Branch `p262/links-1`, cut from `p262/schema-1` (39be2b04b). One of the 26.2 feature packages the owner chose on 2026-11-07 (release notes
+Branch `p262/links-1`, cut from `p262/schema-1` (39be2b04b); review fixes on `p262/links-2` (section "Review fixes" below). One of the 26.2 feature packages the owner chose on 2026-11-07 (release notes
 https://www.opendental.com/site/version26_2.html, "Program Links"). Fork migration level used: 2026110781 (range 2026110781 to 2026110789).
 Tests: `tests/P262LinksTests`.
 
@@ -95,8 +95,17 @@ Done the way B-SHELL retired the DXC Patient Credit Score link (25.2):
   (`OpenPmsDentalBusiness/Misc/ForkMigrations/TrojanExpressCollectRemovedStep.cs`, namespace `FeatureSteps`): on every database it sets
   `Enabled=0` on each enabled `program` row of the link and deletes every `toolbutitem` row of such a row; the row, its text and its
   properties stay. `TrojanExpressCollectRemoved.Plan` works the rule out without writing (rows read with the DXC rule's readers, ProgName
-  compared as MariaDB compares it) and `Run` writes exactly the planned rows. Idempotent; a database where the row is disabled without buttons
-  (a new database: `db/init/new-database.sql` has it that way) is not changed.
+  compared as MariaDB compares it) and `Run` writes exactly the planned rows. Idempotent.
+- What the step finds: Open Dental's 19.2.29 conversion (`ConvertDatabases6.To19_2_29`, in this repository) created the row in every
+  database, with its four properties (`FolderPath`, `BillingType`, `Password`, `PreviousFileNumber`) and one Account module button
+  (`toolbutitem` ToolBar 0, "TrojanCollect"), whether or not the office used the link; it enabled the row only where the old Trojan
+  preferences held values. `db/init/new-database.sql` has the same shape (program 112 disabled, toolbutitem `(82,112,0,'TrojanCollect')`). So
+  on a new database and on an office that never used the link, the row is disabled with that one button, and the step deletes the button
+  only ("Deleted 1 toolbar button(s) ... (ToolButItemNum 82)" on a new database); where the office used the link it also disables the row.
+  It changes nothing only where there is no row, or the row is disabled and someone removed its button. Nearly every adopted Open Dental
+  25.3.48 database therefore loses one button, which migration-preview lists as "deletes its 1 toolbar button(s) (ToolButItemNum N on
+  AccountModule)". The button showed nowhere while the row was disabled, so nothing visible changes. Until the integration regenerates
+  `db/init/new-database.sql`, the init SQL still holds the button and the step deletes it on the first start of a new database.
 - Adoption tools (the step runs on an adopted Open Dental 25.3.48 copy, as the DXC step does):
   - `tools/AdoptionValidation/TrojanExpressCollectPlan.cs`: the step's plan on the rows `DxcCreditScorePlan` reads; migration-preview prints
     it (after the inventory lines, before the plug-in line).
@@ -107,7 +116,12 @@ Done the way B-SHELL retired the DXC Patient Credit Score link (25.2):
   - `allowed-differences.adoption.json`: the existing `program.Enabled` and `toolbutitem` rules now name both steps; no rule was added.
   - Docs: `docs/adoption-runbook.md` (the step's explanation, step 0.2's preview line and checklist, step 4's log and row check lines, step
     6.1's allowed lines), `tools/AdoptionValidation/README.md`, the usage text of `AdoptionValidation`.
-  - The rehearsal's office fixture has no Trojan Express Collect row, so the rehearsal's checks are unchanged (its plan changes nothing).
+  - Rehearsal (`p262/links-2`): the office fixture (`OfficeFixture`) holds the Trojan Express Collect row as 19.2.29 left it for an office
+    that never used the link (disabled, the four properties as `new-database.sql` has them, one Account module "TrojanCollect" button). New
+    check M8 (`Rehearsal.CheckTrojanExpressCollect`, after the DXC check M7): migration-preview's Trojan plan names that row and deletes that
+    button and disables nothing; the row check's `ListProgramNumsDisabledTrojan` (empty) and `ListToolButItemNumsDeletedTrojan` (the button)
+    match the plan; the adoption log has the "Deleted 1 toolbar button(s)" line and no "Disabled" line; the adopted copy keeps the row
+    disabled with its text and its four properties, without a button. The rehearsal now runs 32 checks per run (31 before).
 
 ### Suni removed (item 47)
 
@@ -166,6 +180,25 @@ Not ported (owner decision): the Ez3D-i link, its dispatch and its exit scrub ar
 4. **Trojan Express Collect data.** The step keeps the row's properties, among them the encrypted Trojan Collection password and the export
    folder. Remove them in a later step, or keep them as the DXC step kept its row?
 
+## Review fixes (p262/links-2)
+
+The review found that `p262/links-1` rested the Trojan Express Collect retirement on a wrong fact: it said a new database, and an office
+that never used the link, has the row disabled without buttons, so the step changes nothing there. Open Dental's 19.2.29 conversion
+(`OpenPmsDentalBusiness/Misc/ConvertDatabases6.cs`, `To19_2_29`) writes the Account module button for every database, and
+`db/init/new-database.sql` and `UnitTests/Resources/dump.txt` both hold `(82,112,0,'TrojanCollect')`. The step itself was right (it deletes
+every button of the link); its description, the test of the new-database case, this note and the runbook were wrong, and the rehearsal
+never reached the Trojan branches of the row check, which every real adoption will run.
+
+- Corrected: the summary of `TrojanExpressCollectRemovedStep`, the "What the step finds" paragraph above, `docs/adoption-runbook.md`
+  (the step's explanation, step 0.2's preview line, step 4's log and the second person's comparison), `tools/AdoptionValidation/README.md`
+  (the fixture, the preview, check M8, `adopt`'s row check and its PASS line), the summary of `Migration26_1Tests`'s Trojan test.
+- Tests: the new-database case of `TrojanExpressCollectRetiredTests` inserts the rows as `new-database.sql` has them; the office fixture,
+  check M8 and the `RehearsalIntegrationTests` above.
+- Changed files: `TrojanExpressCollectRemovedStep.cs` (comment only), `tests/P262LinksTests/TrojanExpressCollectRetiredTests.cs`,
+  `tools/AdoptionValidation/OfficeFixture.cs`, `Rehearsal.cs`, `AdoptionValidation.Tests/RehearsalIntegrationTests.cs`,
+  `Migration26_1Tests.cs`, `tools/AdoptionValidation/README.md`, `docs/adoption-runbook.md`, `docs/release-notes/next.md`, this note. No
+  change to the step's behaviour, the row check's rules or `allowed-differences.adoption.json`.
+
 ## Tests
 
 `tests/P262LinksTests` (MSTest v1, x86, .NET 4.8; in `OpenDental.sln` and `OpenDental.Local.slnf`), 44 tests:
@@ -177,15 +210,25 @@ Not ported (owner decision): the Ez3D-i link, its dispatch and its exit scrub ar
   three tokens filled in, one pass, the birthdate format, control characters, the note.
 - `TrojanExpressCollectRetiredTests`: the windows, dispatch and queries are gone and the benefit link's stay, the link is discontinued, the
   step's level, name, namespace and README row, the plan, and the step on the scratch database (disables, deletes the buttons, keeps the
-  row, its text and properties, leaves the Trojan and DXC links alone, a second run changes nothing; no row, a new database's row, a
-  disabled row with a button).
+  row, its text and properties, leaves the Trojan and DXC links alone, a second run changes nothing; no row; the rows as
+  `new-database.sql` has them, of which only the button goes, with one log line and nothing on a second run; a disabled row with a button).
 - `ProgramRowsDbTests`: the rows inserted once with the public defaults, buttons only once enabled, an existing row's settings kept, the
   launches reading the saved properties.
 - `WiringTests`: `ProgramName` appended after `MeetInTheCloud`, the dispatch after the discontinued check, the bridges' file handling, the
   setups and project files, the exit scrub, no web address and ASCII-only in the new files, Suni removed with the columns kept, Ez3D-i kept.
 - The database tests use one scratch database `test_p262links_<time>_<pid>_<random>` with every table of the 26.2.0 reference, dropped
   afterwards (inconclusive when the server does not answer or `P262LINKS_TEST_DB=skip`).
-- `AdoptionValidation.Tests`: `Migration26_1Tests.TrojanExpressCollectPlan_SharesTheDxcRulesAndSaysWhatTheStepChanges`.
+- `AdoptionValidation.Tests`: `Migration26_1Tests.TrojanExpressCollectPlan_SharesTheDxcRulesAndSaysWhatTheStepChanges` (also the
+  plan line for the disabled row with one button). `RehearsalIntegrationTests` (`p262/links-2`): M8 in the check list;
+  `Adoption_DeletesOnlyTheTrojanExpressCollectButton` (the fixture's row, Enabled included, and its properties unchanged, its button gone; the
+  preview line in M8's detail, the adoption log line and the row check's toolbutitem line agree); `RowCheck_CatchesProgramAndToolButItemChangesTheRulesAllow`
+  now also catches a changed column of the Trojan row and its button left in place, with the full wording of the combined messages;
+  `RowCheck_HoldsAnEnabledTrojanExpressCollectRowToThePlan` runs `TrojanExpressCollectPlan.Make` and the row check on an original whose
+  Trojan row is enabled (an office that used the link: the row disabled and its button deleted pass, the row left enabled or changed in
+  another column fail); the runbook dry run checks the preview line, the log line and adopt's `Adopt: PASS` fragment for the link
+  (`; it disabled 0 Trojan Express Collect program row(s) and deleted 1 of its toolbar button(s), ...`), out of process and in process;
+  `Adoption_DisablesTheDxcLinkAndDeletesItsButtons` expects the Trojan button among the deleted ones; the credential test reads the XVWeb
+  password by its link (the Trojan row's empty password is not listed).
 
 Runs on 2026-11-07 (Targeted, each with `NoHqTests` 58/58): `P262LinksTests` 44/44, `VendorDirectTests` 873/873, `VBRIDGE1Tests` 37/37,
 `VBRIDGE2Tests` 64/64, `BINATests` 23/23, `AdoptionValidation.Tests` 67/67 (the rehearsal included), `SyntheticData.Tests` 53 passed, 1
