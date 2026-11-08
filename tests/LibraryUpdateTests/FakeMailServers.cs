@@ -29,6 +29,36 @@ namespace LibraryUpdateTests {
 			return certificate!=null && certificate.GetCertHashString()==Server.GetCertHashString();
 		}
 
+		///<summary>A self-signed email certificate (S/MIME) for the address, made in memory: "E=" in the subject and the address as the
+		///subject alternative name (rfc822 name), digital signature key usage, email protection. With a private key in a key container of this
+		///process only (a PFX round trip; not exportable when isExportable is false). Call Reset() when done, which removes the key container.
+		///dnsName instead of an address gives a domain-level certificate (no "E=", the domain as DNS name).</summary>
+		public static X509Certificate2 CreateEmail(string emailAddress,bool isExportable=true,DateTimeOffset? dateTimeOffsetNotAfter=null,
+			string dnsName=null)
+		{
+			using(RSA rsa=RSA.Create(2048)) {
+				string subject=(dnsName==null) ? "CN=S03 Test Signer, E="+emailAddress : "CN="+dnsName;
+				CertificateRequest certificateRequest=new CertificateRequest(subject,rsa,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
+				SubjectAlternativeNameBuilder subjectAlternativeNameBuilder=new SubjectAlternativeNameBuilder();
+				if(dnsName==null) {
+					subjectAlternativeNameBuilder.AddEmailAddress(emailAddress);
+				}
+				else {
+					subjectAlternativeNameBuilder.AddDnsName(dnsName);
+				}
+				certificateRequest.CertificateExtensions.Add(subjectAlternativeNameBuilder.Build());
+				certificateRequest.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature|X509KeyUsageFlags.KeyEncipherment,false));
+				certificateRequest.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(
+					new OidCollection { new Oid("1.3.6.1.5.5.7.3.4") },false));//email protection
+				DateTimeOffset dateTimeOffsetNotAfter2=dateTimeOffsetNotAfter??DateTimeOffset.UtcNow.AddDays(2);
+				DateTimeOffset dateTimeOffsetNotBefore=(dateTimeOffsetNotAfter2<DateTimeOffset.UtcNow) ? dateTimeOffsetNotAfter2.AddDays(-30) : DateTimeOffset.UtcNow.AddDays(-1);
+				using(X509Certificate2 x509Certificate2=certificateRequest.CreateSelfSigned(dateTimeOffsetNotBefore,dateTimeOffsetNotAfter2)) {
+					return new X509Certificate2(x509Certificate2.Export(X509ContentType.Pfx,""),"",
+						isExportable ? X509KeyStorageFlags.Exportable : X509KeyStorageFlags.DefaultKeySet);
+				}
+			}
+		}
+
 		private static X509Certificate2 Create() {
 			using(RSA rsa=RSA.Create(2048)) {
 				CertificateRequest certificateRequest=new CertificateRequest("CN=localhost",rsa,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);

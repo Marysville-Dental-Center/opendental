@@ -6,15 +6,19 @@
 // See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Net.Mail;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using MimeKit;
+using MimeKit.Cryptography;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.Email;
 using OpenPmsDentalBusiness.Microsoft365;
@@ -496,5 +500,107 @@ namespace VendorDirectTests.Email {
 			CollectionAssert.AreEqual(new List<bool> { false },_listTokenRequests,"Throttling doesn't refresh the token.");
 		}
 		#endregion Microsoft 365 send
+
+		#region Signed send
+		//S0-3 of the .NET 10 plan: a signed (S/MIME) message from a Gmail or Microsoft 365 address goes through the address's API, as its unsigned
+		//mail does; before, signed mail always went through System.Net.Mail with the stored password, which these addresses don't have.
+
+		///<summary>A self-signed email certificate for the mailbox, made in memory, with its private key in a key container of this process only
+		///(a PFX round trip). Reset() removes it.</summary>
+		private static X509Certificate2 CreateSigningCertificate() {
+			using(RSA rsa=RSA.Create(2048)) {
+				CertificateRequest certificateRequest=new CertificateRequest("CN=Front Desk, E="+MAILBOX,rsa,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
+				SubjectAlternativeNameBuilder subjectAlternativeNameBuilder=new SubjectAlternativeNameBuilder();
+				subjectAlternativeNameBuilder.AddEmailAddress(MAILBOX);
+				certificateRequest.CertificateExtensions.Add(subjectAlternativeNameBuilder.Build());
+				certificateRequest.CertificateExtensions.Add(new X509KeyUsageExtension(System.Security.Cryptography.X509Certificates.X509KeyUsageFlags.DigitalSignature,false));
+				using(X509Certificate2 x509Certificate2=certificateRequest.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1),DateTimeOffset.UtcNow.AddDays(2))) {
+					return new X509Certificate2(x509Certificate2.Export(X509ContentType.Pfx,""),"",X509KeyStorageFlags.Exportable);
+				}
+			}
+		}
+
+		///<summary>The MIME as sent is multipart/signed and the signature verifies (Windows' S/MIME through MimeKit; only the signature is checked,
+		///since the test certificate is not trusted).</summary>
+		private static void AssertSignedMime(byte[] arrayMime,X509Certificate2 x509Certificate2) {
+			MimeMessage mimeMessage;
+			using(MemoryStream memoryStream=new MemoryStream(arrayMime)) {
+				mimeMessage=MimeMessage.Load(memoryStream);
+			}
+			MultipartSigned multipartSigned=mimeMessage.Body as MultipartSigned;
+			Assert.IsNotNull(multipartSigned,"multipart/signed");
+			using(WindowsSecureMimeContext windowsSecureMimeContext=new WindowsSecureMimeContext()) {
+				IDigitalSignature digitalSignature=multipartSigned.Verify(windowsSecureMimeContext).Single();
+				Assert.IsTrue(digitalSignature.Verify(true));
+				Assert.AreEqual(x509Certificate2.Thumbprint,digitalSignature.SignerCertificate.Fingerprint.ToUpperInvariant());
+			}
+			Assert.AreEqual("Appointment reminder",mimeMessage.Subject);
+			Assert.AreEqual(MAILBOX,mimeMessage.From.Mailboxes.Single().Address);
+		}
+
+		///<summary>A message over the upload threshold, so that the raw MIME bytes reach the fake handler as they are (Google's library compresses
+		///the JSON body of a small one).</summary>
+		[TestMethod]
+		public void Gmail_SendSigned_SendsTheSignedMimeThroughTheApi() {
+			X509Certificate2 x509Certificate2=CreateSigningCertificate();
+			try {
+				StringBuilder stringBuilder=new StringBuilder();
+				string line=new string('x',70)+"\r\n";
+				while(stringBuilder.Length<=SendEmail.GMAIL_UPLOAD_THRESHOLD_BYTES) {
+					stringBuilder.Append(line);
+				}
+				_handler.Enqueue(HttpStatusCode.OK,"",actionCustomize:response => response.Headers.Location=
+					new Uri("https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=resumable&upload_id=synthetic-upload"));
+				EnqueueGmailSent();
+				EmailAddress emailAddress=MakeAddress(OAuthType.Google);
+				EmailMessages.SendEmailGmail(emailAddress,EmailMessages.ODEmailAddressToBasic(emailAddress),MakeMessage(stringBuilder.ToString()),x509Certificate2);
+				List<RecordedRequest> listRequests=_handler.Requests;
+				Assert.AreEqual(2,listRequests.Count,"Start the resumable upload, then send the bytes.");
+				Assert.AreEqual("message/rfc822",listRequests[0].GetHeader("X-Upload-Content-Type"));
+				AssertSignedMime(Encoding.ASCII.GetBytes(listRequests[1].Body),x509Certificate2);
+			}
+			finally {
+				x509Certificate2.Reset();
+			}
+		}
+
+		[TestMethod]
+		public void Microsoft_SendSigned_SendsTheSignedMimeToSendMail() {
+			X509Certificate2 x509Certificate2=CreateSigningCertificate();
+			try {
+				UseMicrosoftFakeGraph();
+				_handler.Enqueue(HttpStatusCode.Accepted,"");
+				EmailAddress emailAddress=MakeAddress(OAuthType.Microsoft);
+				EmailMessages.SendEmailMicrosoft(emailAddress,EmailMessages.ODEmailAddressToBasic(emailAddress),MakeMessage(),x509Certificate2);
+				RecordedRequest recordedRequest=GetSendMailRequests().Single();
+				StringAssert.StartsWith(recordedRequest.ContentType,"text/plain","MIME, base64, as Graph takes it.");
+				AssertSignedMime(Convert.FromBase64String(recordedRequest.Body),x509Certificate2);
+			}
+			finally {
+				x509Certificate2.Reset();
+			}
+		}
+
+		[TestMethod]
+		public void Microsoft_SendSigned_TooLargeForOneRequestIsRefusedBeforeAnyCall() {
+			X509Certificate2 x509Certificate2=CreateSigningCertificate();
+			try {
+				UseMicrosoftFakeGraph();
+				StringBuilder stringBuilder=new StringBuilder();
+				string line=new string('x',70)+"\r\n";
+				while(stringBuilder.Length<=3000000) {
+					stringBuilder.Append(line);
+				}
+				EmailAddress emailAddress=MakeAddress(OAuthType.Microsoft);
+				Exception ex=AssertEx.Throws<Exception>(() => EmailMessages.SendEmailMicrosoft(emailAddress,EmailMessages.ODEmailAddressToBasic(emailAddress),
+					MakeMessage(stringBuilder.ToString()),x509Certificate2));
+				StringAssert.Contains(ex.ToString(),"digitally signed","Graph would rebuild a larger message without its signature.");
+				Assert.AreEqual(0,_handler.Requests.Count);
+			}
+			finally {
+				x509Certificate2.Reset();
+			}
+		}
+		#endregion Signed send
 	}
 }

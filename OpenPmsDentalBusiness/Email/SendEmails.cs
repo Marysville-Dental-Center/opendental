@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
+using System.Security.Cryptography.X509Certificates;
 using System.Web;
 using CodeBase;
 using MimeKit;
@@ -20,14 +21,15 @@ namespace OpenPmsDentalBusiness.Email {
 
 		public const int EMAIL_SEND_TIMEOUT_MS=180000;//3 minutes
 
-		///<summary>Throws exceptions. Attempts to physically send the message over the network wire. This is used from wherever email needs to be 
-		///sent throughout the program.</summary>
-		public static void WireEmailUnsecure(BasicEmailAddress address,BasicEmailMessage emailMessage) {
+		///<summary>Throws exceptions. Attempts to physically send the message over the network wire. This is used from wherever email needs to be
+		///sent throughout the program. With x509Certificate2Signing (which must hold its private key) the message is signed (S/MIME, not
+		///encrypted).</summary>
+		public static void WireEmailUnsecure(BasicEmailAddress address,BasicEmailMessage emailMessage,X509Certificate2 x509Certificate2Signing=null) {
 			try {
-				WireEmailUnsecure(address,emailMessage,EMAIL_SEND_TIMEOUT_MS);
+				WireEmailUnsecure(address,emailMessage,EMAIL_SEND_TIMEOUT_MS,x509Certificate2Signing);
 			}
 			catch(Exception ex){
-				//System.Net.Mail puts the server's reply code in the message; MailKit (implicit SSL) gives it as StatusCode.
+				//System.Net.Mail puts the server's reply code in the message; MailKit (implicit SSL, signed messages) gives it as StatusCode.
 				MailKit.Net.Smtp.SmtpCommandException smtpCommandException=ex as MailKit.Net.Smtp.SmtpCommandException;
 				if(ex.Message.Split(' ').Contains("451") || (smtpCommandException!=null && (int)smtpCommandException.StatusCode==451)) {
 					throw new ODException("Email provider is having temporary send issues. This could be due to high email demand. Please try again later.");
@@ -38,14 +40,22 @@ namespace OpenPmsDentalBusiness.Email {
 			}
 		}
 
-		///<summary>Throws exceptions. Attempts to physically send the message over the network wire. This is used from wherever email needs to be 
-		///sent throughout the program.</summary>
-		public static void WireEmailUnsecure(BasicEmailAddress address,BasicEmailMessage emailMessage,int emailSendTimeoutMs) {
+		///<summary>Throws exceptions. Attempts to physically send the message over the network wire. This is used from wherever email needs to be
+		///sent throughout the program. With x509Certificate2Signing (which must hold its private key) the message is signed (S/MIME, not encrypted)
+		///and goes through MailKit on every port, or through the Gmail or Microsoft 365 API for those addresses, as unsigned mail does.</summary>
+		public static void WireEmailUnsecure(BasicEmailAddress address,BasicEmailMessage emailMessage,int emailSendTimeoutMs,
+			X509Certificate2 x509Certificate2Signing=null)
+		{
 			if(address.AuthenticationType.In(BasicOAuthType.Google,BasicOAuthType.Microsoft)) {
-				SendEmailOAuth(address,emailMessage);
+				SendEmailOAuth(address,emailMessage,x509Certificate2Signing);
 			}
 			else {
-				if(IsImplicitSsl(address)) {//System.Net.Mail.SmtpClient only supports explicit SSL (STARTTLS); MailKit does TLS from the first byte.
+				if(x509Certificate2Signing!=null) {//System.Net.Mail can't send a multipart/signed message as it is; MailKit sends the MIME as built.
+					MimeMessage mimeMessage=CreateMimeMessageForSmtp(address,emailMessage);
+					SignMimeMessage(mimeMessage,x509Certificate2Signing);
+					SendSmtpMailKit(address,mimeMessage,GetSecureSocketOptions(address),emailSendTimeoutMs);
+				}
+				else if(IsImplicitSsl(address)) {//System.Net.Mail.SmtpClient only supports explicit SSL (STARTTLS); MailKit does TLS from the first byte.
 					SendSmtpMailKit(address,CreateMimeMessageForSmtp(address,emailMessage),SecureSocketOptions.SslOnConnect,emailSendTimeoutMs);
 				}
 				else {//No SSL or explicit SSL on port 587  
@@ -84,6 +94,82 @@ namespace OpenPmsDentalBusiness.Email {
 		///<summary>Port 465 means TLS from the first byte (implicit SSL, SMTPS); every other port is plain text or STARTTLS.</summary>
 		internal static bool IsImplicitSsl(BasicEmailAddress address) {
 			return address.ServerPort==465;
+		}
+
+		///<summary>How MailKit connects for the address, as System.Net.Mail and CDO did: TLS from the first byte on port 465, STARTTLS (required)
+		///when the address uses SSL on another port, plain text otherwise.</summary>
+		internal static SecureSocketOptions GetSecureSocketOptions(BasicEmailAddress address) {
+			if(IsImplicitSsl(address)) {
+				return SecureSocketOptions.SslOnConnect;
+			}
+			if(address.UseSSL) {
+				return SecureSocketOptions.StartTls;
+			}
+			return SecureSocketOptions.None;
+		}
+
+		///<summary>Throws exceptions. Signs the body of the message (S/MIME, multipart/signed with a detached signature, SHA-256) with the certificate,
+		///which must hold its private key. The signature also carries the certificate, so the receiver can see who signed. Signed with MimeKit's
+		///Windows S/MIME context, which signs with the certificate's own key (a key that can't be exported works too).</summary>
+		internal static void SignMimeMessage(MimeMessage mimeMessage,X509Certificate2 x509Certificate2) {
+			if(!x509Certificate2.HasPrivateKey) {
+				throw new ApplicationException(Lans.g("EmailMessages","The certificate for signing has no private key."));
+			}
+			MailboxAddress mailboxAddressSigner=mimeMessage.From.Mailboxes.FirstOrDefault()??new MailboxAddress("",x509Certificate2.GetNameInfo(X509NameType.EmailName,false));
+			try {
+				using(SigningSecureMimeContext signingSecureMimeContext=new SigningSecureMimeContext(x509Certificate2)) {
+					mimeMessage.Body=CreateMultipartSigned(signingSecureMimeContext,mailboxAddressSigner,MimeKit.Cryptography.DigestAlgorithm.Sha256,mimeMessage.Body);
+				}
+			}
+			catch(System.Security.Cryptography.CryptographicException ex) {
+				throw new ApplicationException(Lans.g("EmailMessages","Failed to sign outgoing email message, probably due to permissions: ")+ex.Message,ex);
+			}
+		}
+
+		///<summary>The multipart/signed entity MimeKit's MultipartSigned.Create builds, step for step: the entity is prepared for 7-bit transport,
+		///written through the filters RFC 3156 and RFC 2015 ask for (an armored From, no trailing white space, CRLF line ends) and read back, so
+		///that the part sent is byte for byte the part signed; then the detached signature (application/pkcs7-signature) follows it. Built here
+		///because that overload of MultipartSigned.Create has an OpenPGP twin with a BouncyCastle parameter, which would need a BouncyCastle
+		///reference in this project only to compile.</summary>
+		private static MimeKit.Cryptography.MultipartSigned CreateMultipartSigned(MimeKit.Cryptography.SecureMimeContext secureMimeContext,
+			MailboxAddress mailboxAddressSigner,MimeKit.Cryptography.DigestAlgorithm digestAlgorithm,MimeEntity mimeEntity)
+		{
+			mimeEntity.Prepare(EncodingConstraint.SevenBit,78);
+			using(MimeKit.IO.MemoryBlockStream memoryBlockStream=new MimeKit.IO.MemoryBlockStream()) {
+				using(MimeKit.IO.FilteredStream filteredStream=new MimeKit.IO.FilteredStream(memoryBlockStream)) {
+					filteredStream.Add(new MimeKit.IO.Filters.ArmoredFromFilter());//RFC 3156, section 3.
+					filteredStream.Add(new MimeKit.IO.Filters.TrailingWhitespaceFilter());//RFC 3156, section 5.4.
+					filteredStream.Add(new MimeKit.IO.Filters.Unix2DosFilter(false));//RFC 2015 and RFC 3156, section 5.1.
+					mimeEntity.WriteTo(filteredStream);
+					filteredStream.Flush();
+				}
+				memoryBlockStream.Position=0;
+				//The entity as it was written (and is signed), parsed again so that it is sent the same way.
+				MimeParser mimeParser=new MimeParser(memoryBlockStream,MimeFormat.Entity,false);
+				MimeEntity mimeEntityParsed=mimeParser.ParseEntity();
+				memoryBlockStream.Position=0;
+				MimePart mimePartSignature=secureMimeContext.Sign(mailboxAddressSigner,digestAlgorithm,memoryBlockStream);
+				MimeKit.Cryptography.MultipartSigned multipartSigned=new MimeKit.Cryptography.MultipartSigned();
+				multipartSigned.ContentType.Parameters["protocol"]=secureMimeContext.SignatureProtocol;
+				multipartSigned.ContentType.Parameters["micalg"]=secureMimeContext.GetDigestAlgorithmName(digestAlgorithm);
+				multipartSigned.Add(mimeEntityParsed);
+				multipartSigned.Add(mimePartSignature);
+				return multipartSigned;
+			}
+		}
+
+		///<summary>MimeKit's Windows S/MIME context, signing with one certificate given to it (the one GetCertFromPrivateStore found in the NHINDPrivate
+		///store) instead of looking for the sender's certificate in the user's personal store.</summary>
+		private class SigningSecureMimeContext:MimeKit.Cryptography.WindowsSecureMimeContext {
+			private readonly X509Certificate2 _x509Certificate2;
+
+			public SigningSecureMimeContext(X509Certificate2 x509Certificate2) : base(StoreLocation.CurrentUser) {
+				_x509Certificate2=x509Certificate2;
+			}
+
+			protected override X509Certificate2 GetSignerCertificate(MailboxAddress mailbox) {
+				return _x509Certificate2;
+			}
 		}
 
 		///<summary>The MIME message an SMTP server gets through MailKit: the same message the Gmail and Microsoft 365 sends build (CreateMIMEMsg),
@@ -173,11 +259,15 @@ namespace OpenPmsDentalBusiness.Email {
 		///<summary>Throws exceptions if failing to send emails or authenticate with Google/Microsoft. address.AccessToken must be a fresh bearer token
 		///(EmailMessages.GetOAuthAccessToken). A GoogleApiException or Microsoft365Exception is rethrown as it is, so the caller can see the HTTP
 		///status, refresh the token after a 401 and show a neutral message.</summary>
-		private static void SendEmailOAuth(BasicEmailAddress address,BasicEmailMessage message) {
+		private static void SendEmailOAuth(BasicEmailAddress address,BasicEmailMessage message,X509Certificate2 x509Certificate2Signing) {
 			if(address.AuthenticationType==BasicOAuthType.Google) {
 				using GmailApi.GmailService gService=GoogleApiConnector.CreateGmailService(address);
 				try {
-					byte[] arrayMime=GetMimeBytes(CreateMIMEMsg(address,message));
+					MimeMessage mimeMessage=CreateMIMEMsg(address,message);
+					if(x509Certificate2Signing!=null) {
+						SignMimeMessage(mimeMessage,x509Certificate2Signing);//Gmail sends the raw message as it is, the signature with it.
+					}
+					byte[] arrayMime=GetMimeBytes(mimeMessage);
 					if(arrayMime.Length<=GMAIL_UPLOAD_THRESHOLD_BYTES) {
 						GmailApi.Data.Message gmailMessage=CreateGmailMsg(arrayMime);
 						gService.Users.Messages.Send(gmailMessage,address.EmailUsername).Execute();
@@ -206,9 +296,23 @@ namespace OpenPmsDentalBusiness.Email {
 				}
 			}
 			else if(address.AuthenticationType==BasicOAuthType.Microsoft) {
+				//A signed message is built (as MicrosoftApiConnector.SendEmail builds an unsigned one), signed and checked before any call.
+				MimeMessage mimeMessageSigned=null;
+				if(x509Certificate2Signing!=null) {
+					BasicEmailAddress basicEmailAddressFrom=new BasicEmailAddress();
+					basicEmailAddressFrom.EmailUsername=address.EmailUsername;
+					mimeMessageSigned=CreateMIMEMsg(basicEmailAddressFrom,message);
+					SignMimeMessage(mimeMessageSigned,x509Certificate2Signing);
+					ThrowIfSignedTooLargeForMicrosoft(mimeMessageSigned);
+				}
 				//create and send microsoft email.
 				try {
-					MicrosoftApiConnector.SendEmail(address.EmailUsername,address.AccessToken,message);
+					if(mimeMessageSigned==null) {
+						MicrosoftApiConnector.SendEmail(address.EmailUsername,address.AccessToken,message);
+					}
+					else {
+						MicrosoftApiConnector.SendMime(address.EmailUsername,address.AccessToken,mimeMessageSigned);//The MIME as signed: Graph sends it as it is.
+					}
 				}
 				catch(Microsoft365Exception) {
 					//Rethrown unchanged: EmailMessages refreshes the token after a 401 and maps the kind to a neutral message (microsoft-365.md 3.5).
@@ -222,6 +326,21 @@ namespace OpenPmsDentalBusiness.Email {
 					}
 					throw new Exception($"Error sending email with OAuth authorization: {errorMessage}");
 				}
+			}
+		}
+
+		///<summary>Throws ODException when a signed message is too large for Microsoft 365's one-request MIME send (/me/sendMail). Graph rebuilds a
+		///larger message as a draft with attachments, which would drop the signature.</summary>
+		private static void ThrowIfSignedTooLargeForMicrosoft(MimeMessage mimeMessage) {
+			long length;
+			using(MemoryStream memoryStream=new MemoryStream()) {
+				mimeMessage.WriteTo(memoryStream);
+				length=memoryStream.Length;
+			}
+			long lengthMax=new Microsoft365GraphOptions().MimeSendThresholdBytes;
+			if(length>lengthMax) {
+				throw new ODException(Lans.g("EmailMessages","A digitally signed message can be at most")+" "+(lengthMax/1000000.0).ToString("0.#")+" MB "
+					+Lans.g("EmailMessages","with Microsoft 365, which rebuilds larger messages without their signature. Send it unsigned or with smaller attachments."));
 			}
 		}
 
