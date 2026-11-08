@@ -18,7 +18,6 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Web;
 using System.Xml;
-using CDO;
 using CodeBase;
 using Health.Direct.Common.Certificates;
 using OpenPmsDentalBusiness.Email;
@@ -2895,8 +2894,8 @@ namespace OpenPmsDentalBusiness {
 		public static string ProcessInlineEncodedText(string text) {
 			//str must be in "=?bodycharset?[B,Q,iso-8859-1,etc]?input?=" format for Attachment to properly decode non-ascii chars.  This is the case for 
 			//the email subject line, and to/from/cc/bcc addresses but not for the body, which is why we decode the body differently.  
-			//Ex. =?UTF-8?B?RndkOiDCoiDDhiAxMjM0NSDDpiDDvyBzb21lIGFzY2lpIGNoYXJzIMOCIMOD?= decodes to "Fwd: ¢ Æ 12345 æ ÿ some ascii chars Â Ã"
-			//=?UTF-8?Q?nu=C2=A4=20=C3=82=20=C3=80=20=C2=A2?= decodes to "nu¤ Â À ¢"
+			//Ex. =?UTF-8?B?RndkOiDCoiDDhiAxMjM0NSDDpiDDvyBzb21lIGFzY2lpIGNoYXJzIMOCIMOD?= decodes to "Fwd: Â¢ Ã† 12345 Ã¦ Ã¿ some ascii chars Ã‚ Ãƒ"
+			//=?UTF-8?Q?nu=C2=A4=20=C3=82=20=C3=80=20=C2=A2?= decodes to "nuÂ¤ Ã‚ Ã€ Â¢"
 			MatchEvaluator matchEvaluator=(match) => {
 				string charsetStr=match.Result("$1");
 				string encodingStr=match.Result("$2");

@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
 using System.Web;
-using CDO;
 using CodeBase;
 using MimeKit;
 using MailKit.Security;
@@ -31,7 +31,9 @@ namespace OpenPmsDentalBusiness.Email {
 				WireEmailUnsecure(address,emailMessage,nameValueCollectionHeaders,EMAIL_SEND_TIMEOUT_MS,arrayAlternateViews);
 			}
 			catch(Exception ex){
-				if(ex.Message.Split(' ').Contains("451")) {
+				//System.Net.Mail puts the server's reply code in the message; MailKit (implicit SSL) gives it as StatusCode.
+				MailKit.Net.Smtp.SmtpCommandException smtpCommandException=ex as MailKit.Net.Smtp.SmtpCommandException;
+				if(ex.Message.Split(' ').Contains("451") || (smtpCommandException!=null && (int)smtpCommandException.StatusCode==451)) {
 					throw new ODException("Email provider is having temporary send issues. This could be due to high email demand. Please try again later.");
 				}
 				else {
@@ -49,63 +51,10 @@ namespace OpenPmsDentalBusiness.Email {
 				SendEmailOAuth(address,emailMessage);
 			}
 			else {
-				bool isImplicitSsl=(address.ServerPort==465);
-				if(isImplicitSsl) {//Microsoft CDO supports implicit SSL, System.Net.Mail.SmtpClient only supports explicit SSL.
-					var cdo=new Message();
-					var cfg=cdo.Configuration;
-					cfg.Fields["http://schemas.microsoft.com/cdo/configuration/smtpserver"].Value=address.SMTPserver;
-					cfg.Fields["http://schemas.microsoft.com/cdo/configuration/smtpserverport"].Value=address.ServerPort;
-					cfg.Fields["http://schemas.microsoft.com/cdo/configuration/sendusing"].Value="2";//sendusing: 1=pickup, 2=port, 3=using microsoft exchange
-					cfg.Fields["http://schemas.microsoft.com/cdo/configuration/smtpauthenticate"].Value="1";//0=anonymous,1=clear text auth,2=context (NTLM)				
-					cfg.Fields["http://schemas.microsoft.com/cdo/configuration/sendusername"].Value=address.EmailUsername.Trim();
-					cfg.Fields["http://schemas.microsoft.com/cdo/configuration/sendpassword"].Value=address.EmailPassword;
-					cfg.Fields["http://schemas.microsoft.com/cdo/configuration/smtpusessl"].Value=true;//false was also tested and does not work
-					if(nameValueCollectionHeaders!=null) {
-						//How to add headers which do not have formal fields - https://msdn.microsoft.com/en-us/library/ms526317(v=exchg.10).aspx
-						string[] arrayHeaderKeys=nameValueCollectionHeaders.AllKeys;
-						for(int i = 0;i<arrayHeaderKeys.Length;i++) {//Needed for Direct Acks to work.
-							string headerName=arrayHeaderKeys[i];
-							string headerValue=nameValueCollectionHeaders[headerName];
-							cfg.Fields["urn:schemas:mailheader:"+headerName].Value=headerValue;
-						}
-					}
-					cfg.Fields.Update();
-					cdo.From=emailMessage.FromAddress.Trim();
-					if(!string.IsNullOrWhiteSpace(emailMessage.ToAddress)) {
-						cdo.To=emailMessage.ToAddress.Trim();
-					}
-					if(!string.IsNullOrWhiteSpace(emailMessage.CcAddress)) {
-						cdo.CC=emailMessage.CcAddress.Trim();
-					}
-					if(!string.IsNullOrWhiteSpace(emailMessage.BccAddress)) {
-						cdo.BCC=emailMessage.BccAddress.Trim();
-					}
-					cdo.Subject=emailMessage.Subject;
-					if(emailMessage.IsHtml) {
-						cdo.HTMLBody=emailMessage.HtmlBody;
-						if(!emailMessage.ListHtmlImages.IsNullOrEmpty()) {
-							foreach(string imagePath in emailMessage.ListHtmlImages) {
-								var imgAttach=cdo.AddAttachment(imagePath);
-								imgAttach.Fields["urn:schemas:mailheader:content-id"].Value=HttpUtility.UrlEncode(Path.GetFileName(imagePath));
-								imgAttach.Fields.Update();
-							}
-						}
-					}
-					else {
-						cdo.TextBody=emailMessage.BodyText;
-					}
-					if(!emailMessage.ListAttachments.IsNullOrEmpty()) {
-						foreach(BasicEmailAttachment attachmentPath in emailMessage.ListAttachments) {
-							var cdoatt=cdo.AddAttachment(attachmentPath.FullPath);
-							//Use actual file name for this field.
-							cdoatt.Fields["urn:schemas:mailheader:content-id"].Value=Path.GetFileName(attachmentPath.FullPath);
-							//Sets the 'friendly' filename for the attachment; failure to set this optional field will result in OD using the AtoZ filename for the attachment
-							//See https://www.rfc-editor.org/rfc/rfc2183 for more details
-							cdoatt.Fields["urn:schemas:mailheader:content-disposition"].Value="attachment;filename="+attachmentPath.DisplayedFilename;
-							cdoatt.Fields.Update();
-						}
-					}
-					cdo.Send();
+				if(IsImplicitSsl(address)) {//System.Net.Mail.SmtpClient only supports explicit SSL (STARTTLS); MailKit does TLS from the first byte.
+					//nameValueCollectionHeaders is not used here: Direct messages, the only ones with headers of their own, were never sent over implicit
+					//SSL (SendEmailDirect refuses port 465).
+					SendSmtpMailKit(address,CreateMimeMessageForSmtp(address,emailMessage),SecureSocketOptions.SslOnConnect,emailSendTimeoutMs);
 				}
 				else {//No SSL or explicit SSL on port 587  
 					SmtpClient client=null;
@@ -133,6 +82,51 @@ namespace OpenPmsDentalBusiness.Email {
 						}
 					}
 				}
+			}
+		}
+
+		///<summary>Tests only (tests/LibraryUpdateTests): checks the certificate of the fake SMTP server, which no authority signed. Null in
+		///production, where MailKit checks the server's certificate itself.</summary>
+		internal static System.Net.Security.RemoteCertificateValidationCallback SmtpCertificateValidationForTests;
+
+		///<summary>Port 465 means TLS from the first byte (implicit SSL, SMTPS); every other port is plain text or STARTTLS.</summary>
+		internal static bool IsImplicitSsl(BasicEmailAddress address) {
+			return address.ServerPort==465;
+		}
+
+		///<summary>The MIME message an SMTP server gets through MailKit: the same message the Gmail and Microsoft 365 sends build (CreateMIMEMsg),
+		///plus what the CDO send of earlier versions set on each attachment: a Content-ID of the attachment's file name. Inline images keep the
+		///Content-ID the html refers to (HttpUtility.UrlEncode of the file name), and every attachment has "Content-Disposition: attachment" with
+		///the displayed file name.</summary>
+		internal static MimeMessage CreateMimeMessageForSmtp(BasicEmailAddress address,BasicEmailMessage emailMessage) {
+			MimeMessage mimeMessage=CreateMIMEMsg(address,emailMessage);
+			List<MimePart> listMimePartsAttachment=mimeMessage.Attachments.OfType<MimePart>().ToList();
+			for(int i=0;i<listMimePartsAttachment.Count && i<emailMessage.ListAttachments.Count;i++) {
+				//Set as a header, as CDO set it: the A to Z file name can hold characters (a space) that the ContentId property would not take.
+				listMimePartsAttachment[i].Headers.Replace(HeaderId.ContentId,"<"+Path.GetFileName(emailMessage.ListAttachments[i].FullPath)+">");
+			}
+			return mimeMessage;
+		}
+
+		///<summary>Throws exceptions. Sends the message with MailKit: secureSocketOptions SslOnConnect for implicit SSL (port 465), StartTls when the
+		///address uses SSL on another port, None otherwise. Signs in with the user name and password when the user name is not blank and the
+		///server offers authentication; never with a token (Gmail and Microsoft 365 addresses send through their APIs).</summary>
+		internal static void SendSmtpMailKit(BasicEmailAddress address,MimeMessage mimeMessage,SecureSocketOptions secureSocketOptions,int emailSendTimeoutMs) {
+			using(MailKit.Net.Smtp.SmtpClient smtpClient=new MailKit.Net.Smtp.SmtpClient()) {//Disposing the client closes the connection.
+				smtpClient.Timeout=emailSendTimeoutMs;
+				if(SmtpCertificateValidationForTests!=null) {
+					smtpClient.ServerCertificateValidationCallback=SmtpCertificateValidationForTests;
+				}
+				smtpClient.Connect(address.SMTPserver,address.ServerPort,secureSocketOptions);
+				//A password address never signs in with a token.
+				smtpClient.AuthenticationMechanisms.Remove("XOAUTH2");
+				smtpClient.AuthenticationMechanisms.Remove("OAUTHBEARER");
+				string userName=(address.EmailUsername??"").Trim();
+				if(userName!="" && smtpClient.Capabilities.HasFlag(MailKit.Net.Smtp.SmtpCapabilities.Authentication)) {
+					smtpClient.Authenticate(userName,address.EmailPassword??"");
+				}
+				smtpClient.Send(mimeMessage);
+				smtpClient.Disconnect(true);
 			}
 		}
 
@@ -258,8 +252,10 @@ namespace OpenPmsDentalBusiness.Email {
 			MailMessage msg=new MailMessage();
 			msg.From=new MailAddress(emailMessage.FromAddress);
 			mimeMsg.From.Add(new MailboxAddress(msg.From.DisplayName,msg.From.Address));
-			msg.To.Add(emailMessage.ToAddress.Trim());
-			mimeMsg.To.AddRange(msg.To.Select(x => new MailboxAddress(x.DisplayName,x.Address)));
+			if(!string.IsNullOrWhiteSpace(emailMessage.ToAddress)) {//A message can go to Cc or Bcc addresses only.
+				msg.To.Add(emailMessage.ToAddress.Trim());
+				mimeMsg.To.AddRange(msg.To.Select(x => new MailboxAddress(x.DisplayName,x.Address)));
+			}
 			if(!emailMessage.CcAddress.IsNullOrEmpty()) {
 				msg.CC.Add(emailMessage.CcAddress.Trim());
 				mimeMsg.Cc.AddRange(msg.CC.Select(x => new MailboxAddress(x.DisplayName,x.Address)));
