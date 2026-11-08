@@ -77,7 +77,7 @@ namespace OpenPmsDentalBusiness{
 
 		///<summary>Replaces the published fork release: deletes the old manifest and segments, inserts the new segments, then the manifest last, so a
 		///reader that finds a manifest finds its segments too (the manifest's archive hash catches a half-written release). A Middle Tier client sends
-		///the call to the server, as every other method here does; the program itself publishes over a direct connection only (PrefL.PublishRelease).
+		///the call to the server, as every other method here does; the program itself publishes over a direct connection only (ForkReleases.Publish refuses a Middle Tier client).
 		///</summary>
 		public static void ReplaceForkRelease(string manifestBase64,List<string> listSegmentsBase64) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {

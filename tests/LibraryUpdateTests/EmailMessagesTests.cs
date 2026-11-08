@@ -72,6 +72,8 @@ namespace LibraryUpdateTests {
 
 		[ClassCleanup]
 		public static void ClassCleanup() {
+			//The DentalOffice override points at the scratch database dropped below: clear it so no later class in this process uses it.
+			ConnectionStoreBase.ClearConnectionDictionary();
 			if(_isBuilt && Environment.GetEnvironmentVariable("S0T_KEEP_DB")!="1") {
 				try {
 					DropDatabase(DB_NAME);

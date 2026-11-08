@@ -379,6 +379,10 @@ namespace OpenPmsDentalBusiness {
 		///ForkProgramVersion marker. Direct connection only. Callers set UpdateInProgressOnComputerName around it so other workstations wait.</summary>
 		public static ReleaseManifest Publish(string folder,ReleaseIdentity releaseIdentity,string publishedBy,DateTime? dateTimeUtc=null) {
 			Meth.NoCheckMiddleTierRole();
+			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
+				//The whole archive would travel as one Middle Tier payload. Publishing stays a direct-connection operation, as before S0-T.
+				throw new ApplicationException("Releases can only be published over a direct database connection.");
+			}
 			byte[] arrayArchive;
 			ReleaseManifest releaseManifest=BuildRelease(folder,releaseIdentity,publishedBy,dateTimeUtc??DateTime.UtcNow,out arrayArchive);
 			List<string> listSegments=new List<string>();

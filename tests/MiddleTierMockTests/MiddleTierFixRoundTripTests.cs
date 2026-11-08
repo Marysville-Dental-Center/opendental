@@ -2,7 +2,7 @@
 // tests failed: MiddleTier_ParametersTest (the Middle Tier source rules) and MiddleTier_GetPrimaryKeysFromInsert (LabCaseProducts). Each call
 // below goes through the mock Middle Tier, so its arguments and its result pass through DtoObject's XmlSerializer and DtoProcessor as on a real
 // Middle Tier, and each test checks the rows the server wrote. Before the fixes: a LabCaseProduct could not be serialized at all (its
-// GlidewellProduct enum has no members); EForms.Delete sent one of its two parameters and the server found no such method;
+// GlidewellProduct enum has no members); EForms.Delete sent one of its two parameters, so the client refused the call (DtoObject's parameter count check);
 // LanguagePats.SaveTranslationEFormField and DocumentMiscs.DeleteOpenDentalUpdateFiles ran their SQL on the client, which refuses it; and
 // DocumentMiscs.ReplaceForkRelease threw on a Middle Tier client. Signalods.RefreshTimed only had its parameter order fixed: its round trip shows
 // it still returns a signal through the Middle Tier. Synthetic rows only.
@@ -118,7 +118,7 @@ namespace MiddleTierMockTests {
 			Assert.AreEqual(0,listEmpty.Count);
 		}
 
-		///<summary>EForms.Delete sends both of its parameters: the server finds the method and deletes the row.</summary>
+		///<summary>EForms.Delete sends both of its parameters: the client's parameter count check passes and the server deletes the row.</summary>
 		[TestMethod]
 		public void MiddleTier_EFormsDelete_DeletesTheRow() {
 			Patient patient=PatientT.CreatePatient("S0TEForm");

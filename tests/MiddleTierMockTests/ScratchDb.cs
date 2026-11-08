@@ -52,8 +52,8 @@ namespace MiddleTierMockTests {
 			}
 			try {
 				DropStale();
+				_isBuilt=true;//Set before Create, so AssemblyCleanup drops a half-built database too (Drop uses IF EXISTS).
 				Create(DbName);
-				_isBuilt=true;
 			}
 			catch(Exception ex) {
 				SkipReason="Could not build the scratch database: "+ex.GetBaseException().Message;
