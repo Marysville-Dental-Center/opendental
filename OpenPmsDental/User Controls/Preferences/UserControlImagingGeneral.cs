@@ -21,7 +21,6 @@ namespace OpenPmsDental {
 
 		#region Fields - Public
 		public bool Changed;
-		public bool DoSwapImagingModule;
 		#endregion Fields - Public
 
 		#region Constructors
@@ -83,13 +82,6 @@ namespace OpenPmsDental {
 			_videoImageCategoryDefault=defSelected.DefNum;
 			textVideoImageCategoryDefault.Text=defSelected.ItemName;
 		}
-
-		private void checkImagesModuleUsesOld2020_Click(object sender,EventArgs e) {
-			bool isImageModuleSettingChanged=(PrefC.GetBool(PrefName.ImagesModuleUsesOld2020)!=checkImagesModuleUsesOld2020.Checked);
-			if(isImageModuleSettingChanged) {
-				MsgBox.Show(this,"The entire program will need to close to reset imaging. All other instances connected to this database should be manually closed before changing this setting.");
-			}
-		}
 		#endregion Methods - Event Handlers
 
 		#region Methods - Private
@@ -100,7 +92,6 @@ namespace OpenPmsDental {
 			textDefaultImageImportFolder.Text=PrefC.GetString(PrefName.DefaultImageImportFolder);
 			textAutoImportFolder.Text=PrefC.GetString(PrefName.AutoImportFolder);
 			checkPDFLaunchWindow.Checked=PrefC.GetBool(PrefName.PdfLaunchWindow);
-			checkImagesModuleUsesOld2020.Checked=PrefC.GetBool(PrefName.ImagesModuleUsesOld2020);
 			_imageCategoryDefault=PrefC.GetLong(PrefName.ImageCategoryDefault);
 			textImageCategoryDefault.Text=Defs.GetName(DefCat.ImageCats,_imageCategoryDefault);
 			_videoImageCategoryDefault=PrefC.GetLong(PrefName.VideoImageCategoryDefault);
@@ -126,10 +117,6 @@ namespace OpenPmsDental {
 			Changed|=Prefs.UpdateString(PrefName.ImagingDefaultScaleValue,scaleValue);
 			Changed|=Prefs.UpdateBool(PrefName.ImagingOrderDescending,checkImagingOrderDescending.Checked);
 			Changed|=Prefs.UpdateBool(PrefName.ImagingAllowPdfJavascript,checkImagingAllowPdfJavascript.Checked);
-			if(Prefs.UpdateBool(PrefName.ImagesModuleUsesOld2020,checkImagesModuleUsesOld2020.Checked)) {
-				Changed=true;
-				DoSwapImagingModule=true;
-			}
 			return true;
 		}
 		#endregion Methods - Public

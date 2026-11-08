@@ -1221,7 +1221,7 @@ namespace OpenPmsDentalBusiness {
 		///1 = Document tree collapses when patient changes.
 		///2 = Document tree folders persistent expand/collapse per user.</summary>
 		ImagesModuleTreeIsCollapsed,
-		///<summary>Use the old Images module, prior to the 2020 overhaul. False by default. Set in Imaging preferences ("Use old Imaging module interface, pre 2020"). It used to be required for Suni capture; Suni support is removed (direct capture in v0.0, the rest with Open Dental 26.2, P262-LINKS), so nothing turns it on any more.  This might be used for certain troubleshooting, but only in a test environment, never for fixing customer issues.</summary>
+		///<summary>Not used. It chose the old Images module, prior to the 2020 overhaul ("Use old Imaging module interface, pre 2020" in Imaging preferences). The old module and the option were removed in stage 0 of the .NET 10 move (S0-6); the row stays in the database, the program no longer reads it, and a database with it on gets the current Images module. The convert scripts that add and reset the row still name it.</summary>
 		[PrefName(ValueType=PrefValueType.BOOL)]
 		ImagesModuleUsesOld2020,
 		ImageWindowingMax,

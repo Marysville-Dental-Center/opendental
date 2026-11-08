@@ -738,6 +738,75 @@ namespace ImagingTests {
 			Assert.AreEqual(5,countOpens,"The five call sites, in four files.");
 		}
 
+		///<summary>S0-6 step 2: the old 2020 Images module is gone with its start-up choice and its Setup check box. Only the convert scripts, which
+		///add and reset the preference row, and Pref.cs, which keeps the PrefName because they name it, may still name it. The row stays in the
+		///database and nothing reads it, so a database with the option on simply gets the current Images module.</summary>
+		[TestMethod]
+		public void OldImagesModule_Removed_OnlyTheConvertScriptsAndPrefCsNameIt() {
+			string folderMainModules=Path.GetDirectoryName(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","Main Modules","ControlImages.cs")));
+			foreach(string fileName in new[] { "ControlImagesOld.cs","ControlImagesOld.designer.cs","ControlImagesOld.resx" }) {
+				Assert.IsFalse(File.Exists(Path.Combine(folderMainModules,fileName)),fileName+" is deleted.");
+			}
+			string root=Path.GetDirectoryName(Path.GetDirectoryName(folderMainModules));
+			Regex regexNames=new Regex(@"ControlImagesOld|ImagesModuleUsesOld2020");
+			HashSet<string> hashSetExtensions=new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
+				".cs",".csproj",".xml",".xaml",".resx",".config",".settings",".ps1",".iss" };
+			List<string> listOffenders=new List<string>();
+			int countFiles=0;
+			foreach(string path in EnumerateProgramFiles(root)) {
+				if(!hashSetExtensions.Contains(Path.GetExtension(path))) {
+					continue;
+				}
+				countFiles++;
+				string fileName=Path.GetFileName(path);
+				bool isConvertScript=Regex.IsMatch(fileName,@"^ConvertDatabases\d*\.cs$",RegexOptions.IgnoreCase);
+				bool isPrefCs=SamePath(path,Path.Combine(root,"OpenPmsDentalBusiness","TableTypes","Pref.cs"));
+				if(isConvertScript || isPrefCs) {
+					continue;
+				}
+				if(regexNames.IsMatch(File.ReadAllText(path))) {
+					listOffenders.Add(path.Substring(root.Length));
+				}
+			}
+			Assert.IsTrue(countFiles>1000,"The scan found the program's sources ("+countFiles+" files).");
+			Assert.AreEqual(0,listOffenders.Count,"Still names the old Images module or its option: "+string.Join(", ",listOffenders));
+			//The PrefName stays, for the convert scripts, and says that nothing reads it any more.
+			StringAssert.Contains(Read("OpenPmsDentalBusiness","TableTypes","Pref.cs"),"\t\tImagesModuleUsesOld2020,");
+			StringAssert.Contains(Read("OpenPmsDentalBusiness","Misc","ConvertDatabases6.cs"),"'ImagesModuleUsesOld2020'");
+			//Setup > Imaging has no check box for it, and the boxes below it moved up into its row.
+			string designer=Read("OpenPmsDental","User Controls","Preferences","UserControlImagingGeneral.Designer.cs");
+			StringAssert.Contains(designer,"this.checkImagingOrderDescending.Location = new System.Drawing.Point(5, 41);");
+			StringAssert.Contains(designer,"this.checkImagingAllowPdfJavascript.Location = new System.Drawing.Point(5, 72);");
+			StringAssert.Contains(designer,"this.groupBoxFunctionality.Size = new System.Drawing.Size(450, 98);");
+			Assert.AreEqual(0,Count(Read("OpenPmsDental","Forms","FormPreferences.cs"),"DoSwapImagingModule"),"No forced restart after a module swap.");
+			//FormOpenDental always creates the current module.
+			string formOpenDental=Read("OpenPmsDental","Main Modules","FormOpenDental.cs");
+			Assert.AreEqual(1,Count(formOpenDental,"controlImages=new ControlImages() { Visible=false };"));
+		}
+
+		///<summary>The program's own files under the repository root: not the tests, the documentation, the third-party sources, the build output or
+		///the package folder.</summary>
+		private static IEnumerable<string> EnumerateProgramFiles(string folder) {
+			HashSet<string> hashSetSkip=new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
+				"tests","docs","third-party","packages","bin","obj","NoHqTests","UnitTests","UnitTestsCore","node_modules","TestResults" };
+			foreach(string path in Directory.EnumerateFiles(folder)) {
+				yield return path;
+			}
+			foreach(string folderSub in Directory.EnumerateDirectories(folder)) {
+				string name=Path.GetFileName(folderSub);
+				if(name.StartsWith(".") || hashSetSkip.Contains(name)) {
+					continue;
+				}
+				foreach(string path in EnumerateProgramFiles(folderSub)) {
+					yield return path;
+				}
+			}
+		}
+
+		private static bool SamePath(string path1,string path2) {
+			return string.Equals(Path.GetFullPath(path1),Path.GetFullPath(path2),StringComparison.OrdinalIgnoreCase);
+		}
+
 		[TestMethod]
 		public void Window_NoWinFormsMenu_NoThreadAbort_NoProcessStart_NoPluginHooks_NoFileDrop() {
 			string source=ReadWindow();

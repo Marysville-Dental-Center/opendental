@@ -99,10 +99,10 @@ namespace BINATests {
 		}
 
 		[TestMethod]
-		public void SuniCapture_IsGoneFromTheOldImagesModuleAndScanningSetup() {
-			string controlImagesOld=RepoFiles.Read(@"OpenPmsDental\Main Modules\ControlImagesOld.cs");
-			StringAssert.DoesNotMatch(controlImagesOld,new Regex(@"""Capture Image From Device""|ToolBarCapture_Click|KillXRayThread|CaptureXRay"));
-			StringAssert.DoesNotMatch(RepoFiles.Read(@"OpenPmsDental\Main Modules\ControlImagesOld.designer.cs"),new Regex("KillXRayThread"));
+		public void SuniCapture_IsGoneFromScanningSetup_AndTheOldImagesModuleIsRemoved() {
+			//The old Images module, which had the Suni capture button, was removed in stage 0 of the .NET 10 move (S0-6).
+			Assert.IsFalse(File.Exists(Path.Combine(RepoFiles.Root(),@"OpenPmsDental\Main Modules\ControlImagesOld.cs")));
+			Assert.IsFalse(File.Exists(Path.Combine(RepoFiles.Root(),@"OpenPmsDental\Main Modules\ControlImagesOld.designer.cs")));
 			string imagingSetup=RepoFiles.Read(@"OpenPmsDental\Forms\FormImagingSetup.cs")+RepoFiles.Read(@"OpenPmsDental\Forms\FormImagingSetup.designer.cs");
 			StringAssert.DoesNotMatch(imagingSetup,new Regex(@"groupBoxSuni|upDownExposure|checkBinned|ProgDesc==""Suni"""),
 				"The Suni sensor settings were only read by the removed Suni driver.");

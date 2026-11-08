@@ -1219,10 +1219,6 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 				controlImageDock.LayoutManager=this;
 				return;
 			}
-			if(control is ControlImagesOld controlImagesOld){
-				controlImagesOld.LayoutManager=this;
-				return;
-			}
 			if(control is ControlImages controlImages){
 				controlImages.LayoutManager=this;
 				return;

@@ -2129,15 +2129,6 @@ Exclusions are defined using an Other Benefits Exclusions type, or by setting an
     <HeightWindow>0</HeightWindow>
   </PrefInf>
   <PrefInf>
-    <PrefName>ImagesModuleUsesOld2020</PrefName>
-    <Category>ImagingGeneral</Category>
-    <ControlName>checkImagesModuleUsesOld2020</ControlName>
-    <ControlText>Use old Imaging module interface, pre 2020</ControlText>
-    <Details>not recommended</Details>
-    <WidthWindow>0</WidthWindow>
-    <HeightWindow>0</HeightWindow>
-  </PrefInf>
-  <PrefInf>
     <PrefName>ImagingAllowPdfJavascript</PrefName>
     <Category>ImagingGeneral</Category>
     <ControlName>checkImagingAllowPdfJavascript</ControlName>

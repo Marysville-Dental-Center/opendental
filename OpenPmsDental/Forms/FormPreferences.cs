@@ -501,11 +501,6 @@ namespace OpenPmsDental {
 				DataValid.SetInvalid(InvalidType.ConnectionStoreClear);
 				SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,"Read-Only Server settings have been changed.");
 			}
-			//Special case. If image module needs to be swapped, force close the program.
-			if(userControlImagingGeneral.DoSwapImagingModule) {
-				Cursor=Cursors.WaitCursor;
-				FormOpenDental.S_ProcessKillCommand();
-			}
 			DialogResult=DialogResult.OK;
 		}
 

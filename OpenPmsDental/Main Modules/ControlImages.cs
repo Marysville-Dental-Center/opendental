@@ -4018,11 +4018,8 @@ namespace OpenPmsDental{
 }
 
 
-//Need to document how XVWeb uses the old Images module. (might be done) Suni support is removed (Open Dental 26.2).
-
-//This new Imaging module will never support the following features:
-//ClaimPayment/EOB mode.  Old Images module will continue to be used for that.
-//EhrAmendment mode.  Can use old images module if it's still required.
+//Claim payment and preauthorization EOBs and EHR amendments are not shown in this module: their window, FormImages, is built on this module's
+//parts (S0-6 of the .NET 10 move, which also removed the old pre-2020 Images module).
 
 //Features that we might add soon:
 //Drag mount item, check mouse position to allow longer drags within single position.

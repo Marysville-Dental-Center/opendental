@@ -591,25 +591,16 @@ namespace OpenPmsDental{
 			Logger.LogToPath("FillSignalButtons",LogPath.Startup,LogPhase.Unspecified);
 			FillSignalButtons();
 			controlManage.InitializeOnStartup();//so that when a signal is received, it can handle it.
-			//Images module.  The other modules are in constructor because they don't need the pref.
-			if(PrefC.GetBoolSilent(PrefName.ImagesModuleUsesOld2020,false)) {
-				Logger.LogToPath("ControlImages Old Init",LogPath.Startup,LogPhase.Start);
-				controlImagesOld=new ControlImagesOld() { Visible=false };
-				controlImagesOld.Dock=DockStyle.Fill;
-				LayoutManager.Add(controlImagesOld,splitContainer.Panel1);
-				Logger.LogToPath("ControlImages Old Init",LogPath.Startup,LogPhase.End);
-			}
-			else {
-				Logger.LogToPath("ControlImagesJ Init",LogPath.Startup,LogPhase.Start);
-				controlImages=new ControlImages() { Visible=false };
-				controlImages.Dock=DockStyle.Fill;
-				controlImages.EventKeyDown+=(sender,e)=>FormOpenDental_KeyDown(sender,e);
-				//controlImagesJ.Font=LayoutManager.ScaleFontODZoom(Font);//no
-				//controlImagesJ and all children are still at 96 dpi, so we need to add them unscaled.
-				//Finally, toward the end of this method, LayoutFormBoundsAndFonts gets run to actually make the fonts bigger.
-				LayoutManager.AddUnscaled(controlImages,splitContainer.Panel1);
-				Logger.LogToPath("ControlImagesJ Init",LogPath.Startup,LogPhase.End);
-			}
+			//Images module.  It is created here, after the preferences have loaded, rather than in the constructor with the other modules.
+			Logger.LogToPath("ControlImagesJ Init",LogPath.Startup,LogPhase.Start);
+			controlImages=new ControlImages() { Visible=false };
+			controlImages.Dock=DockStyle.Fill;
+			controlImages.EventKeyDown+=(sender,e)=>FormOpenDental_KeyDown(sender,e);
+			//controlImagesJ.Font=LayoutManager.ScaleFontODZoom(Font);//no
+			//controlImagesJ and all children are still at 96 dpi, so we need to add them unscaled.
+			//Finally, toward the end of this method, LayoutFormBoundsAndFonts gets run to actually make the fonts bigger.
+			LayoutManager.AddUnscaled(controlImages,splitContainer.Panel1);
+			Logger.LogToPath("ControlImagesJ Init",LogPath.Startup,LogPhase.End);
 			//Lan.Refresh();//automatically skips if current culture is en-US
 			//LanguageForeigns.Refresh(CultureInfo.CurrentCulture);//automatically skips if current culture is en-US			
 			moduleBar.RefreshButtons();
@@ -903,9 +894,6 @@ namespace OpenPmsDental{
 			}
 			if(controlChart.Visible){
 				controlChart.LayoutControls();
-			}
-			if(controlImagesOld!=null && controlImagesOld.Visible){
-				controlImagesOld.Update();
 			}
 			if(controlImages!=null && controlImages.Visible){
 				controlImages.LayoutControls();
@@ -1217,18 +1205,6 @@ namespace OpenPmsDental{
 			else {
 				FillPatientButton(null);
 			}
-		}
-
-		///<summary>Returns true if the old Images module control should be used, false otherwise. Use this method instead of the ImagesModuleUsesOld2020 preference.</summary>
-		private bool ImagesModuleUsesOld2020() {
-			//This form only looks at the value of the ImagesModuleUsesOld2020 preference during startup for instantiating either the old Images module control or the new Imaging module control.
-			//Other workstations have the ability to manipulate ImagesModuleUsesOld2020 at any time which is a problem if the corresponding module control hasn't been instantiated yet.
-			//This instance of the program will always use the module that was instantiated during startup instead of what the preference is set to.
-			//The user will have to manually restart the program in order to use the other module control.
-			if(controlImagesOld!=null) {
-				return true;
-			}
-			return false;
 		}
 
 		private bool PrefsStartup() {
@@ -1726,15 +1702,8 @@ namespace OpenPmsDental{
 				else {
 					controlChart.LayoutToolBar();
 				}
-				if(ImagesModuleUsesOld2020()) {
-					if(controlImagesOld!=null){//can be null on startup
-						controlImagesOld.LayoutToolBar();
-					}
-				}
-				else{
-					if(controlImages!=null){
-						controlImages.LayoutToolBars();
-					}
+				if(controlImages!=null){
+					controlImages.LayoutToolBars();
 				}
 				controlFamily.LayoutToolBar();
 				LayoutToolBar();//Ensures the main toolbar refreshes with the rest.
@@ -2185,9 +2154,7 @@ namespace OpenPmsDental{
 			if(controlChart.Visible) {
 				TryNonPatientPopup();
 			}
-			if(!ImagesModuleUsesOld2020()){
-				controlImages.CloseFloaters();
-			}
+			controlImages.CloseFloaters();
 			//New patient selected.  Everything below here is for popups.
 			//First, remove all expired popups from the event list.
 			for(int i=_listPopupEvents.Count-1;i>=0;i--){//go backwards
@@ -3746,21 +3713,12 @@ namespace OpenPmsDental{
 				controlAppt.ModuleSelectedGoToAppt(e.SelectedAptNum,e.DateSelected);
 			}
 			else if(e.DocNum>0) {
-				if(ImagesModuleUsesOld2020()){
-					moduleBar.SelectedModule=e.ModuleType;
-					controlImagesOld.InitializeOnStartup();
-					controlImagesOld.Visible=true;
-					this.ActiveControl=this.controlImagesOld;
-					controlImagesOld.ModuleSelected(PatNumCur,e.DocNum);
-				}
-				else{
-					moduleBar.SelectedModule=e.ModuleType;
-					//controlImagesJ.Font=LayoutManagerForms.FontInitial;
-					controlImages.InitializeOnStartup();
-					controlImages.Visible=true;
-					this.ActiveControl=this.controlImages;
-					controlImages.ModuleSelected(PatNumCur,e.DocNum);
-				}
+				moduleBar.SelectedModule=e.ModuleType;
+				//controlImagesJ.Font=LayoutManagerForms.FontInitial;
+				controlImages.InitializeOnStartup();
+				controlImages.Visible=true;
+				this.ActiveControl=this.controlImages;
+				controlImages.ModuleSelected(PatNumCur,e.DocNum);
 			}
 			else if(e.ModuleType!=EnumModuleType.None){
 				moduleBar.SelectedModule=e.ModuleType;
@@ -3911,18 +3869,10 @@ namespace OpenPmsDental{
 					TryNonPatientPopup();
 					break;
 				case EnumModuleType.Imaging:
-					if(ImagesModuleUsesOld2020()){
-						controlImagesOld.InitializeOnStartup();
-						controlImagesOld.Visible=true;
-						this.ActiveControl=this.controlImagesOld;
-						controlImagesOld.ModuleSelected(PatNumCur);
-					}
-					else{
-						controlImages.InitializeOnStartup();
-						controlImages.Visible=true;
-						this.ActiveControl=this.controlImages;
-						controlImages.ModuleSelected(PatNumCur);
-					}
+					controlImages.InitializeOnStartup();
+					controlImages.Visible=true;
+					this.ActiveControl=this.controlImages;
+					controlImages.ModuleSelected(PatNumCur);
 					break;
 				case EnumModuleType.Manage:
 					//ContrManage2.InitializeOnStartup();//This gets done earlier.
@@ -3940,13 +3890,8 @@ namespace OpenPmsDental{
 			controlAccount.Visible=false;
 			controlTreat.Visible=false;
 			controlChart.Visible=false;
-			if(ImagesModuleUsesOld2020()){
-				controlImagesOld.Visible=false;
-			}
-			else{
-				if(controlImages!=null){//can be null on startup
-					controlImages.Visible=false;
-				}
+			if(controlImages!=null){//can be null on startup
+				controlImages.Visible=false;
 			}
 			controlManage.Visible=false;
 		}
@@ -3970,15 +3915,8 @@ namespace OpenPmsDental{
 			if(controlChart.Visible){
 				controlChart.ModuleUnselected(isLoggingOff);
 			}
-			if(ImagesModuleUsesOld2020()){
-				if(controlImagesOld.Visible){
-					controlImagesOld.ModuleUnselected();
-				}
-			}
-			else{
-				if(controlImages.Visible){
-					controlImages.ModuleUnselected();
-				}
+			if(controlImages.Visible){
+				controlImages.ModuleUnselected();
 			}
 		}
 
@@ -4010,15 +3948,8 @@ namespace OpenPmsDental{
 			if(controlChart.Visible){
 				controlChart.ModuleSelected(PatNumCur,isClinicRefresh);
 			}
-			if(ImagesModuleUsesOld2020()){
-				if(controlImagesOld.Visible){
-					controlImagesOld.ModuleSelected(PatNumCur,docNum);
-				}
-			}
-			else{
-				if(controlImages.Visible){
-					controlImages.ModuleSelected(PatNumCur,docNum);
-				}
+			if(controlImages.Visible){
+				controlImages.ModuleSelected(PatNumCur,docNum);
 			}
 			if(controlManage.Visible){
 				controlManage.ModuleSelected(PatNumCur);
@@ -6701,7 +6632,7 @@ namespace OpenPmsDental{
 			}
 			List<Form> listFormsToClose=GetOpenForms();
 			#region Close forms and quit threads.  Some form closing events rely on the closing events of parent forms.
-			if(controlImages!=null) {//controlImagesJ never initialized when using the old imaging module 
+			if(controlImages!=null) {//null if the program closes before start-up has created the Images module
 				controlImages.InvokeIfRequired(() => controlImages.CloseFloaters());
 			}
 			while(listFormsToClose.Count > 0) {
