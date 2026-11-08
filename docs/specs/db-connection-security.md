@@ -432,22 +432,23 @@ Answered on 2026-11-02:
   Dental 24.3.22 (a column line without a comma), so it failed in Check and Fix on every database, and the maintenance window, which stops
   at the first error, never ran the methods after it.
 
-Still open (both are in `docs/owner-questions.md`, "The program's database account", as DB-SEC 1 and DB-SEC 2):
+Both answered by the owner on 2026-11-07 (`docs/owner-questions.md`, "The program's database account", DB-SEC 1 and DB-SEC 2):
 
 1. (DB-SEC 1) Two of the three server-wide rights exist only because of two old checks: every backup asks whether the server
    replicates (`SHOW MASTER STATUS`, `SHOW SLAVE STATUS`: `BINLOG MONITOR`, `REPLICA MONITOR`), and flushes each copied table
-   (`FLUSH TABLE`: `RELOAD`). Should the backup treat "access denied" on the replication question as "no replication" when the
-   program's replication table is empty, and skip the flush, so that the account needs no server-wide right at all? Today they are
-   granted, and both tests showed that without any one of them every backup fails (section 9.5).
+   (`FLUSH TABLE`: `RELOAD`). Treat "access denied" on the replication question as "no replication" and skip the flush, so that the
+   account needs no server-wide right? **Answered: keep the three server-wide rights** (section 5 of the guide); the backup is unchanged.
 2. (DB-SEC 2) The Backup window's archive tab can back up to another server first
-   (`MiscData.MakeABackup(serverName,user,pass,doVerify:true)`), with an account of that server typed in the window. That path copies
-   rows with `DataConnection.BulkCopy` (`MySqlBulkLoader`, a `LOAD DATA LOCAL INFILE`), and MySqlConnector refuses it without
-   `AllowLoadLocalInfile=true` in the connection string, which no connection of the program sets: the backup stops at the first table
-   with rows, before any right is checked (second test, section 9.5), so archiving with "back up first" to another server fails as
-   built. Not a question of the guide's grants: with the option, the load needs `INSERT` on the target table and `local_infile=ON` on
-   that server, no `FILE`. Should the program set `AllowLoadLocalInfile=true` for that connection only (MySqlConnector keeps it off by
-   default because a server may then ask the client for local files), copy the rows with `INSERT` statements instead, or drop the
-   option of a backup to another server? Today nothing was changed.
+   (`MiscData.MakeABackup(serverName,user,pass,doVerify:true)`), with an account of that server typed in the window. That path copied
+   rows with `DataConnection.BulkCopy` (`MySqlBulkLoader`, a `LOAD DATA LOCAL INFILE`), which MySqlConnector refuses without
+   `AllowLoadLocalInfile=true`, so the backup stopped at the first table with rows (second test, section 9.5). **Answered (the
+   recommendation): copy the rows with `INSERT` statements.** Built: `MakeABackup` still reads each table in batches of 10,000 rows
+   (`documentmisc` one row at a time) and still reports "Backing up table: <table>" and, with `doVerify`, the row counts; each batch
+   is written with ordinary `INSERT` statements (`MiscData.GetBackupInsertStatements`: at most 1,000 rows and about 4 MB of data per
+   statement, a larger row alone, every value a parameter, so NULLs, bytes, dates and numbers arrive as they were read). No connection
+   sets `AllowLoadLocalInfile`, and `DataConnection.BulkCopy` is removed, so nothing writes a temporary file of the rows any more. The
+   target account needs `CREATE`, `INSERT` and `SELECT` on the backup database, as for a backup on the same server. Tested on two
+   scratch databases of the local MariaDB (`tests/DbConnectionSecurityTests/BackupToAnotherServerTests.cs`).
 
 ## 9. The rights of the program's database account (S2)
 
@@ -526,7 +527,7 @@ Each of the three was shown to be needed in both tests (section 9.5): without an
 | `BINLOG ADMIN` | `SET SESSION sql_log_bin=0` around the backup's statements, only on a replicating MariaDB server (`MiscData.cs:114`, used at `:204`, `:222`, `:231`, `:242`). Refused without it (1227). | Only a replicating office; the guide says to add it there. |
 | `REPLICATION SLAVE ADMIN` | `STOP SLAVE; START SLAVE` of the replication set-up window (`OpenPmsDental/Forms/FormReplicationSetup.cs:186`). | An administrator's task, with the administrator's own account. The replication check of the frozen update chain (`ConvertDatabases7.cs:28`, `:30`, used at `:1562`) needs the two monitor rights above. |
 | `PROCESS`, `CONNECTION ADMIN` | No `SHOW PROCESSLIST` or `information_schema.PROCESSLIST` in a shipped binary. Cancelling a user query is `KILL QUERY` of the account's own connection (`OpenPmsDentalBusiness/Db/DataConnectionCancelable.cs:147`): it works, and `KILL QUERY` of another account's connection is refused (1095). | Not needed. |
-| `FILE` | No `SELECT ... INTO OUTFILE` or `LOAD DATA` for the program's account (refused, 1227 and 1045; `LOAD_FILE` returns NULL). `MySqlBulkLoader` (`DataConnection.cs:1062`) is used only by a backup to another server (`MiscData.cs:247`), with that server's account typed into the Backup window; it loads with `LOAD DATA LOCAL INFILE`, which needs `INSERT`, not `FILE`, and stops before the load as built (section 8, open point 2). | Not needed. |
+| `FILE` | No `SELECT ... INTO OUTFILE` or `LOAD DATA` for the program's account (refused, 1227 and 1045; `LOAD_FILE` returns NULL). Nothing uses `MySqlBulkLoader` or `LOAD DATA LOCAL INFILE` since 2026-11-07: a backup to another server copies its rows with `INSERT` statements (section 8, DB-SEC 2). | Not needed. |
 | `SHOW DATABASES` | Choose Database's list (`OpenPmsDentalBusiness/Data Interface/CentralConnections.cs:197`) is Debug only and lists what the account may use. | Not needed. |
 | `CREATE USER`, `GRANT OPTION` | `DbAdminMysql` (`DataConnectionBase/DbAdminMysql.cs:164`, `:241`) is used only by MySQLManager, which is not shipped. | Not needed. |
 | `CREATE`, `DROP` of other databases | `<database>_archive` (`MiscData.cs:281`, `:335`) has no caller. `LargeTableHelper.RenameDatabase` (`LargeTableHelper.cs:175`, `:197`) runs only in an Open Dental 18.x step of the frozen chain (`ConvertDatabases5.cs:8804`). | Not needed for a 24.3 or later database. |

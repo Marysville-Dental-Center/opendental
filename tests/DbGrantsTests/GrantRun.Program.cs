@@ -517,18 +517,12 @@ namespace DbGrantsTests {
 			Report.Allowed("MiscData.MakeABackup(serverName,user,pass,doVerify:true) on this server: the archive tab's backup with the row counts",
 				() => MiscData.MakeABackup(serverName:GrantServer.SERVER,user:Account,pass:_password,doVerify:true));
 			//The archive tab's backup to another server (here this server under another name, so that the program takes that path) creates the
-			//backup database and its tables there, then copies each table's rows with DataConnection.BulkCopy (MySqlBulkLoader, LOAD DATA LOCAL
-			//INFILE). MySqlConnector refuses that without AllowLoadLocalInfile=true in the connection string, which the program never sets, so
-			//the copy stops at the first table with rows before any right is checked. Recorded, not failed: it is not a question of rights.
-			bool isOtherServerBackupMade=Report.Allowed("MiscData.MakeABackup to another server (the archive tab; here "+GrantServer.SERVER
-				+":3306): CREATE DATABASE and the tables there, then DataConnection.BulkCopy",
-				() => MiscData.MakeABackup(serverName:GrantServer.SERVER+":3306",user:Account,pass:_password,doVerify:true),
-				isOtherErrorTolerated:true);
-			if(!isOtherServerBackupMade) {
-				Report.Note("The archive tab's backup to another server stops at the first table with rows: MySqlConnector refuses MySqlBulkLoader "
-					+"(LOAD DATA LOCAL INFILE) without AllowLoadLocalInfile=true, which the program's connection strings do not set. Not a "
-					+"question of rights (LOAD DATA LOCAL needs INSERT only); the program's own backups never take this path.");
-			}
+			//backup database and its tables there, then copies each table's rows with INSERT statements (owner question DB-SEC 2, 2026-11-07: before,
+			//MySqlBulkLoader's LOAD DATA LOCAL INFILE, which MySqlConnector refuses without AllowLoadLocalInfile=true, stopped it at the first table
+			//with rows). It needs the rights of a backup on this server: CREATE, INSERT and SELECT on the backup database.
+			Report.Allowed("MiscData.MakeABackup to another server (the archive tab; here "+GrantServer.SERVER
+				+":3306): CREATE DATABASE and the tables there, then INSERT statements with the rows",
+				() => MiscData.MakeABackup(serverName:GrantServer.SERVER+":3306",user:Account,pass:_password,doVerify:true));
 			Report.Allowed("Backup, repair and optimize after a MariaDB version change (Shared.BackupRepairAndOptimize: MakeABackup, "
 				+"RepairAndOptimize)",() => {
 					MiscData.MakeABackup();

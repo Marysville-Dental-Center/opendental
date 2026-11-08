@@ -124,7 +124,7 @@ New project `tests/CLAIMDCMTests` (added to `OpenDental.sln` and `OpenDental.Loc
 
 The owner answered question 1: fix it. `FormImageSelectClaimAttach.SaveAttachment` no longer branches on the storage type to decide whether
 an edit is applied. For every file that is not DICOM it now reads the document's file as bytes (the patient's folder, or a download from cloud
-storage), builds the bytes to attach with the new `OpenDentBusiness/Imaging/ClaimAttachImage.cs` (`BuildFileBytes`), and writes them under the
+storage), builds the bytes to attach with the new `OpenPmsDentalBusiness/Imaging/ClaimAttachImage.cs` (`BuildFileBytes`), and writes them under the
 new name where the attachment points: `File.WriteAllBytes` in the local EmailAttachments folder, or `CloudStorage.Upload`. The attachment row
 is made only after the file was written.
 

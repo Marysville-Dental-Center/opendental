@@ -243,8 +243,15 @@ namespace OpenPmsDentalBusiness {
 								command=DisableBinaryLoggingForCommand(command);
 							}
 							DataTable dtOld=dcon.GetTable(command);
+							if(dtOld.Rows.Count==0) {
+								break;//Rows were deleted since the count: nothing more to copy (the row check of doVerify says so).
+							}
 							offset+=dtOld.Rows.Count;
-							dconBackupServerNoTimout.BulkCopy(dtOld,tableName);
+							//Owner question DB-SEC 2 (2026-11-07): ordinary INSERT statements, never LOAD DATA LOCAL INFILE, which MySqlConnector refuses
+							//unless the connection allows local infile (the program never allows it). Each value is a parameter, so it arrives as it was read.
+							foreach(BackupInsertStatement backupInsertStatement in GetBackupInsertStatements(dtOld,tableName)) {
+								dconBackupServerNoTimout.NonQ(backupInsertStatement.Command,false,"","",false,backupInsertStatement.ListParameters.ToArray());
+							}
 						}
 					}
 				}
@@ -270,6 +277,88 @@ namespace OpenPmsDentalBusiness {
 				DataConnection.CommandTimeout=3600;//Set back to default of 1 hour.
 			}
 			return newDb;
+		}
+
+		///<summary>The most rows one INSERT statement of a backup to another server holds (GetBackupInsertStatements).</summary>
+		public const int BackupInsertRowsMax=1000;
+		///<summary>The most data, estimated in bytes, that one INSERT statement of a backup to another server holds, well below MariaDB's default
+		///max_allowed_packet of 16 MB. A single row larger than this (a big documentmisc row, say) gets a statement of its own.</summary>
+		public const long BackupInsertBytesMax=4L*1024*1024;
+
+		///<summary>One INSERT statement of a backup to another server: the command with a parameter for each value, and the rows it holds.</summary>
+		public class BackupInsertStatement {
+			public string Command="";
+			public List<MySqlConnector.MySqlParameter> ListParameters=new List<MySqlConnector.MySqlParameter>();
+			public int CountRows;
+		}
+
+		///<summary>The INSERT statements that copy the rows of table (as the source server returned them, SELECT * of the table) into the table of
+		///that name on the backup server, in order: "INSERT INTO `table` (`Col1`,...) VALUES (@r0c0,...),(@r1c0,...)", each value a parameter (DBNull
+		///stays NULL, bytes stay bytes, dates and numbers keep their type), at most rowsMax rows and about bytesMax bytes of data per statement, and
+		///always at least one row. Used by MakeABackup in place of LOAD DATA LOCAL INFILE (owner question DB-SEC 2, 2026-11-07). No rows: none.</summary>
+		public static List<BackupInsertStatement> GetBackupInsertStatements(DataTable table,string tableName,int rowsMax=BackupInsertRowsMax,
+			long bytesMax=BackupInsertBytesMax)
+		{
+			Meth.NoCheckMiddleTierRole();
+			List<BackupInsertStatement> listStatements=new List<BackupInsertStatement>();
+			if(table==null || table.Rows.Count==0) {
+				return listStatements;
+			}
+			rowsMax=Math.Max(1,rowsMax);
+			string insertStart="INSERT INTO "+QuoteIdentifier(tableName)+" ("
+				+string.Join(",",table.Columns.Cast<DataColumn>().Select(x => QuoteIdentifier(x.ColumnName)))+") VALUES ";
+			System.Text.StringBuilder stringBuilder=null;
+			BackupInsertStatement backupInsertStatement=null;
+			long bytesStatement=0;
+			for(int r=0;r<table.Rows.Count;r++) {
+				long bytesRow=0;
+				for(int c=0;c<table.Columns.Count;c++) {
+					bytesRow+=EstimateBytes(table.Rows[r][c]);
+				}
+				if(backupInsertStatement!=null && (backupInsertStatement.CountRows>=rowsMax || bytesStatement+bytesRow>bytesMax)) {
+					backupInsertStatement.Command=stringBuilder.ToString();
+					listStatements.Add(backupInsertStatement);
+					backupInsertStatement=null;
+				}
+				if(backupInsertStatement==null) {
+					backupInsertStatement=new BackupInsertStatement();
+					stringBuilder=new System.Text.StringBuilder(insertStart);
+					bytesStatement=0;
+				}
+				int rowInStatement=backupInsertStatement.CountRows;
+				stringBuilder.Append(rowInStatement==0 ? "(" : ",(");
+				for(int c=0;c<table.Columns.Count;c++) {
+					string parameterName="@r"+rowInStatement+"c"+c;
+					stringBuilder.Append(c==0 ? "" : ",").Append(parameterName);
+					backupInsertStatement.ListParameters.Add(new MySqlConnector.MySqlParameter(parameterName,table.Rows[r][c]??DBNull.Value));
+				}
+				stringBuilder.Append(")");
+				backupInsertStatement.CountRows++;
+				bytesStatement+=bytesRow;
+			}
+			backupInsertStatement.Command=stringBuilder.ToString();
+			listStatements.Add(backupInsertStatement);
+			return listStatements;
+		}
+
+		///<summary>A table or column name in backticks, a backtick in it doubled.</summary>
+		private static string QuoteIdentifier(string name) {
+			return "`"+(name??"").Replace("`","``")+"`";
+		}
+
+		///<summary>About how many bytes a value takes in the statement MySqlConnector sends: text up to 3 bytes a character plus escapes, bytes up to
+		///twice their length, anything else a few dozen.</summary>
+		private static long EstimateBytes(object value) {
+			if(value==null || value is DBNull) {
+				return 4;
+			}
+			if(value is byte[] arrayBytes) {
+				return 2L*arrayBytes.Length+8;
+			}
+			if(value is string text) {
+				return 3L*text.Length+8;
+			}
+			return 32;
 		}
 		
 		///<summary></summary>
