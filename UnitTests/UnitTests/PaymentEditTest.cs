@@ -17,6 +17,9 @@ namespace UnitTests.PaymentEdit_Tests {
 		[ClassInitialize]
 		public static void SetupClass(TestContext context) {
 			CovCats.SetSpansToDefaultUsa();
+			//SetSpansToDefaultUsa rewrites the covspan rows only. Refresh the cache, as BenefitsTest and CovCatsTests do after it: when an earlier class
+			//had loaded the old rows, the estimates here read spans under the wrong categories (D0001 matched Adjunctive at 0% and got no estimate).
+			CovSpans.RefreshCache();
 		}
 
 		///<summary>This method will execute just before each test in this class.</summary>

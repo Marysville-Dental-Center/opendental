@@ -12,8 +12,10 @@ namespace UnitTests.Reports_Tests {
 	[TestClass]
 	public class ReportsTests:TestBase {
 		private static OpenDentalServerMockIIS _middleTierMockOld=null;
-		private const string USER_LOW_NAME="unittestuserlow";
-		private const string USER_LOW_PASS="Password1";
+		///<summary>The low-privilege MySQL user of this run, created in SetupClass and dropped in TearDownClass. Its name is unique to the run (it was
+		///the fixed unittestuserlow) and its password random, so two runs at the same time never share or drop each other's user.</summary>
+		private static readonly string USER_LOW_NAME=GetRunMySqlUserName("utlow");
+		private static readonly string USER_LOW_PASS=GetRandomMySqlPassword();
 
 		[ClassInitialize]
 		public static void SetupClass(TestContext testContext) {
@@ -30,7 +32,7 @@ namespace UnitTests.Reports_Tests {
 			//Preserve the old Middle Tier Mock service and replace it with a new one that knows about our new user low.
 			_middleTierMockOld=OpenDentalServerProxy.MockOpenDentalServerCur;
 			//Pass in new connection settings so that this plebeian is set as our "UserLow" when invoking Reports.GetTable().
-			OpenDentalServerProxy.MockOpenDentalServerCur=new OpenDentalServerMockIIS("localhost"
+			OpenDentalServerProxy.MockOpenDentalServerCur=new OpenDentalServerMockIIS(TestServer
 				,UnitTestDbName
 				,"root"
 				,""

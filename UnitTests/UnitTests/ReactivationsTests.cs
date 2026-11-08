@@ -13,6 +13,10 @@ namespace UnitTests.Reactivations_Tests {
 	[TestClass]
 	public class ReactivationsTests:TestBase {
 
+		///<summary>Synthetic contact details of the test patients (an example.test address and a 555-01xx number). Until package S0-5 of the .NET 10
+		///plan these were the e-mail address and phone number of Open Dental's own test accounts.</summary>
+		private const string PatientEmail="reactivation.patient@example.test";
+		private const string PatientPhone="1(503)555-0142";
 		private static long _reactivationCommLogType=0;
 
 		[ClassInitialize]
@@ -61,7 +65,7 @@ namespace UnitTests.Reactivations_Tests {
 			string name=MethodBase.GetCurrentMethod().Name;
 			Clinic clinic=ClinicT.CreateClinic(name);
 			long provNum=ProviderT.CreateProvider(name);
-			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,TestEmaiAddress,TestPatPhone,ContactMethod.Mail);
+			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,PatientEmail,PatientPhone,ContactMethod.Mail);
 			//Patient has not been seen since further in the past than the ReactivationDaysPast preference.
 			Procedure proc=ProcedureT.CreateProcedure(pat,"D0120",ProcStat.C,"",50,procDate:DateTime.Now.AddYears(-3),provNum:provNum); //3 year old proc
 			//Patient has been contacted, and the ReactivationContactInterval has elapsed.
@@ -96,7 +100,7 @@ namespace UnitTests.Reactivations_Tests {
 			Clinic clinic=ClinicT.CreateClinic(name);
 			long provNum=ProviderT.CreateProvider(name);
 			Operatory op=OperatoryT.CreateOperatory(name,provDentist:provNum,clinicNum:clinic.ClinicNum);
-			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,TestEmaiAddress,TestPatPhone,ContactMethod.Mail);
+			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,PatientEmail,PatientPhone,ContactMethod.Mail);
 			//Patient has not been seen since further in the past than the ReactivationDaysPast preference.
 			Procedure proc=ProcedureT.CreateProcedure(pat,"D0120",ProcStat.C,"",50,procDate:DateTime.Now.AddYears(-3),provNum:provNum); //3 year old proc
 			//Patient has been contacted, and the ReactivationContactInterval has elapsed.
@@ -131,7 +135,7 @@ namespace UnitTests.Reactivations_Tests {
 			string name=MethodBase.GetCurrentMethod().Name;
 			Clinic clinic=ClinicT.CreateClinic(name);
 			long provNum=ProviderT.CreateProvider(name);
-			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,TestEmaiAddress,TestPatPhone,ContactMethod.Mail);
+			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,PatientEmail,PatientPhone,ContactMethod.Mail);
 			//Patient has not been seen since further in the past than the ReactivationDaysPast preference.
 			Procedure proc=ProcedureT.CreateProcedure(pat,"D0120",ProcStat.C,"",50,procDate:DateTime.Now.AddYears(-3),provNum:provNum); //3 year old proc
 			//Patient has been contacted, but the ReactivationContactInterval has not elapsed.
@@ -164,7 +168,7 @@ namespace UnitTests.Reactivations_Tests {
 			string name=MethodBase.GetCurrentMethod().Name;
 			Clinic clinic=ClinicT.CreateClinic(name);
 			long provNum=ProviderT.CreateProvider(name);
-			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,TestEmaiAddress,TestPatPhone,ContactMethod.Mail);
+			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,PatientEmail,PatientPhone,ContactMethod.Mail);
 			//Patient has not been seen since further in the past than the ReactivationDaysPast preference.
 			Procedure proc=ProcedureT.CreateProcedure(pat,"D0120",ProcStat.C,"",50,procDate:DateTime.Now.AddYears(-3),provNum:provNum); //3 year old proc
 			//Patient has been contacted the max amount of times
@@ -200,7 +204,7 @@ namespace UnitTests.Reactivations_Tests {
 			string name=MethodBase.GetCurrentMethod().Name;
 			Clinic clinic=ClinicT.CreateClinic(name);
 			long provNum=ProviderT.CreateProvider(name);
-			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,TestEmaiAddress,TestPatPhone,ContactMethod.Mail);
+			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,PatientEmail,PatientPhone,ContactMethod.Mail);
 			//Patient has not been seen since further in the past than the ReactivationDaysPast preference.
 			Procedure proc=ProcedureT.CreateProcedure(pat,"D0120",ProcStat.C,"",50,procDate:DateTime.Now.AddYears(-3),provNum:provNum); //3 year old proc
 			//Patient has been contacted, and the ReactivationContactInterval has elapsed.
@@ -235,7 +239,7 @@ namespace UnitTests.Reactivations_Tests {
 			string name=MethodBase.GetCurrentMethod().Name;
 			Clinic clinic=ClinicT.CreateClinic(name);
 			long provNum=ProviderT.CreateProvider(name);
-			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,TestEmaiAddress,TestPatPhone,ContactMethod.Mail);
+			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,PatientEmail,PatientPhone,ContactMethod.Mail);
 			DateTime dateSince=new DateTime(2019,9,3);
 			DateTime dateStop=dateSince.AddDays(-1);
 			DateTime dateProc=dateStop.AddDays(-1);
@@ -273,7 +277,7 @@ namespace UnitTests.Reactivations_Tests {
 			string name=MethodBase.GetCurrentMethod().Name;
 			Clinic clinic=ClinicT.CreateClinic(name);
 			long provNum=ProviderT.CreateProvider(name);
-			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,TestEmaiAddress,TestPatPhone,ContactMethod.Mail
+			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,PatientEmail,PatientPhone,ContactMethod.Mail
 				,patStatus:PatientStatus.Inactive);
 			//Patient has not been seen since further in the past than the ReactivationDaysPast preference.
 			Procedure proc=ProcedureT.CreateProcedure(pat,"D0120",ProcStat.C,"",50,procDate:DateTime.Now.AddYears(-3),provNum:provNum); //3 year old proc
@@ -309,7 +313,7 @@ namespace UnitTests.Reactivations_Tests {
 			string name=MethodBase.GetCurrentMethod().Name;
 			Clinic clinic=ClinicT.CreateClinic(name);
 			long provNum=ProviderT.CreateProvider(name);
-			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,TestEmaiAddress,TestPatPhone,ContactMethod.Mail
+			Patient pat=PatientT.CreatePatient(name,provNum,clinic.ClinicNum,PatientEmail,PatientPhone,ContactMethod.Mail
 				,patStatus:PatientStatus.Inactive);
 			//Patient has not been seen since further in the past than the ReactivationDaysPast preference.
 			ProcedureT.CreateProcedure(pat,"D0120",ProcStat.C,"",50,procDate:DateTime.Now.AddYears(-3),provNum:provNum); //3 year old proc
