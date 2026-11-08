@@ -136,6 +136,22 @@ buttons, and only missing ClinicNum 0 properties are added. `SWMAPTests` checks 
 - New: `OpenPmsDentalBusiness/Misc/ForkMigrations/OdSettingNamesStep.cs` (`OdSettingNames`, the renames and their plan; `OdSettingNamesStep`).
 - Changed (names and conversion): `ApptTimeBars.cs`, `ClaimAttaches.MedicalEob.cs`, `EraAutoSplit.cs`, `ModuleSwitchBlur.cs`,
   `PerioMeasures.cs`, `PayPlanGlobalLock.cs`, `ReplicationDelay.cs`; comments only: `SalesTaxProcs.cs`, `PrefC.cs`.
-- `tools/AdoptionValidation/MigrationPreview.cs`: the settings line.
+- `tools/AdoptionValidation/MigrationPreview.cs`: the two settings lines (the settings read under Open Dental's names with what this program
+  shows; the v0.0 rows the step would move). `OfficeFixture.cs`: five made-up rows under Open Dental's names, which the rehearsal's adoption
+  keeps (`RehearsalIntegrationTests.MigrationPreview_...` checks the lines).
 - New test project `tests/SWMAPTests`; changed tests in RegistryTests, BAPPTTests, BCLAIMTests, BERATests, BPAYTests, BPERIOTests,
   BSERVERTests and BSHELLTests (the names).
+- Docs: owner questions Switch-over 1 and 9 and B-EF 4, the adoption runbook (what adoption does, step 0.2's preview lines, step 0.11 down to
+  the five settings Open Dental has no name for, step 7.1 and the checklist), the port notes of the packages above, the fork migration README
+  and one line in `docs/release-notes/next.md`.
+
+## Checks
+
+- Build of `OpenDental.Local.slnf` (Debug x86) through the build lane: 0 errors.
+- Targeted tests: SWMAPTests 24/24, RegistryTests 39/39, AdoptionValidation.Tests 66/66, M201Tests 24 passed of 26 (2 skipped: they need Open Dental's
+  published XML documents, `M201_OD_DOCS_DIR`), VBRIDGE1Tests 37/37, BACCTTests 41/41, BAPPTTests 61/61, BCLAIMTests 55/55, BERATests 75/75, BINSHTests 36/36,
+  BPAYTests 73/73, BPERIOTests 55/55, BSERVERTests 57/57, BSHELLTests 68/68, BWIKITests 38/38, BEFTests 29/29, BPRINTTests 71/71,
+  PayPlanTests 29/29, NoHqTests 58/58.
+- Not run here: ForkMigrationTests and InitSqlTests. The new step makes `db/init/new-database.sql` one level behind until it is regenerated
+  (`ForkMigrationTests.InitSqlRegenerationTests` and the InitSqlTests check that); the file is regenerated once after the schema packages are
+  merged.
