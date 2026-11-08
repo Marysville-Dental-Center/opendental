@@ -134,6 +134,17 @@ namespace AdoptionValidation {
 			return _lazySchemaChanges.Value;
 		}
 
+		///<summary>The new columns (table.column) that are timestamps with DEFAULT current_timestamp(): the ALTER TABLE that adds one fills every
+		///existing row with its own time, so they hold the time of adoption, not a fixed default (insbluebook.DateTStamp, Open Dental 26.2).</summary>
+		public static List<string> GetAlterTimeColumns() {
+			SchemaSnapshot snapshotTo=SchemaVerifier.GetReference();
+			return GetSchemaChanges().ListColumnsAdded.Where(x => {
+				string[] arrayParts=x.Split('.');
+				string definition=snapshotTo.GetTable(arrayParts[0]).GetColumn(arrayParts[1]).Definition;
+				return definition.StartsWith("timestamp ") && definition.Contains("DEFAULT current_timestamp()");
+			}).ToList();
+		}
+
 		private static SchemaChanges ReadSchemaChanges() {
 			SchemaSnapshot snapshotFrom=SchemaVerifier.GetReference25_3_48();
 			SchemaSnapshot snapshotTo=SchemaVerifier.GetReference();

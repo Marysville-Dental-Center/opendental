@@ -111,9 +111,13 @@ namespace AdoptionValidation {
 			public int CountMaintGrantsAdded;
 			///<summary>claimpayment notes that were NULL and are now empty.</summary>
 			public long CountNotesBlanked;
-			///<summary>The new columns checked (table.column), each holding its default in every row.</summary>
+			///<summary>The new columns checked (table.column), each holding its default in every row, or for the ones in ListColumnsAlterTime the one
+			///time of the ALTER TABLE that added it.</summary>
 			public List<string> ListColumnsAddedChecked=new List<string>();
-			///<summary>The new tables of the Open Dental 25.4 and 26.1 schema steps, each empty.</summary>
+			///<summary>The new timestamp columns with DEFAULT current_timestamp() checked (table.column), each holding one time in every row
+			///(insbluebook.DateTStamp, Open Dental 26.2).</summary>
+			public List<string> ListColumnsAlterTime=new List<string>();
+			///<summary>The new tables of the Open Dental 25.4, 26.1 and 26.2 schema steps, each empty.</summary>
 			public List<string> ListTablesAdded=new List<string>();
 			///<summary>The new tables that are this program's own (ForkTables, for example routine maintenance), each empty.</summary>
 			public List<string> ListForkTablesAdded=new List<string>();
@@ -949,6 +953,7 @@ namespace AdoptionValidation {
 						continue;
 					}
 					result.ListColumnsAddedChecked.Add(table+"."+column);
+					result.ListColumnsAlterTime.Add(table+"."+column);
 					continue;
 				}
 				string expression=DefaultExpression(row[2]==null ? null : Convert.ToString(row[2],CultureInfo.InvariantCulture),
@@ -976,7 +981,9 @@ namespace AdoptionValidation {
 				+(countTablesWithRows==0 ? "all empty" : countTablesWithRows+" not empty")
 				+(result.ListTablesAdded.Count==0 ? "" : " ("+string.Join(", ",result.ListTablesAdded)+")")+"; "+result.ListColumnsAddedChecked.Count
 				+" new column(s) in "+result.ListColumnsAddedChecked.Select(x => x.Split('.')[0]).Distinct(StringComparer.OrdinalIgnoreCase).Count()
-				+" table(s) hold their default in every row"+(isClean ? "." : " (see the failures)."));
+				+" table(s) hold their default in every row"
+				+(result.ListColumnsAlterTime.Count==0 ? "" : " ("+string.Join(", ",result.ListColumnsAlterTime)+": one time in every row, that of the ALTER TABLE)")
+				+(isClean ? "." : " (see the failures)."));
 			result.ListLines.Add("Fork tables: "+result.ListForkTablesAdded.Count+" new table(s) of this program, "
 				+(countForkTablesWithRows==0 ? "all empty" : countForkTablesWithRows+" not empty")
 				+(result.ListForkTablesAdded.Count==0 ? "." : " ("+string.Join(", ",result.ListForkTablesAdded)+")."));
