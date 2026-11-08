@@ -634,6 +634,9 @@ answer; the standing rule below, with its correction; and "Don't need 'Install f
   (2026-11-08), so the C++ project and the setup's Visual C++ check stay as they are. The build lane and the test runners move to them
   first in the SDK-style project stage, before any project changes format. That step also pins the .NET 10 SDK in `global.json`,
   because the SDK 9.0.3xx line leaves support on 2026-11-10.
+- **Downloads.** Approved for every download batch of the plan (section 5: A, B, C and D, with the packages the standing rule adds)
+  ("You get approval for download for all batches", 2026-11-08). Each package comes from nuget.org by its exact id, into the local
+  package folder, at the stage that needs it. The TWAIN data source manager for the 64-bit stage is not a plan batch and is asked then.
 - **QuickBooks Desktop, Schick CDR and Topaz signature pads.** The office does not use them. They were to be removed in the clean-up stage
   (owner, 2026-11-07); now kept and ported (owner correction, 2026-11-08).
 - **Order of the stages.** A clean-up stage first; then SDK-style project files, NuGet packages and the test framework, all still on .NET
