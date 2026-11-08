@@ -178,10 +178,11 @@ namespace OpenPmsDentalBusiness.Email {
 		///the displayed file name.</summary>
 		internal static MimeMessage CreateMimeMessageForSmtp(BasicEmailAddress address,BasicEmailMessage emailMessage) {
 			MimeMessage mimeMessage=CreateMIMEMsg(address,emailMessage);
-			List<MimePart> listMimePartsAttachment=mimeMessage.Attachments.OfType<MimePart>().ToList();
-			for(int i=0;i<listMimePartsAttachment.Count && i<emailMessage.ListAttachments.Count;i++) {
+			//Every attachment, a MessagePart (an attached .eml) too, so that the index matches emailMessage.ListAttachments.
+			List<MimeEntity> listMimeEntitiesAttachment=mimeMessage.Attachments.ToList();
+			for(int i=0;i<listMimeEntitiesAttachment.Count && i<emailMessage.ListAttachments.Count;i++) {
 				//Set as a header, as CDO set it: the A to Z file name can hold characters (a space) that the ContentId property would not take.
-				listMimePartsAttachment[i].Headers.Replace(HeaderId.ContentId,"<"+Path.GetFileName(emailMessage.ListAttachments[i].FullPath)+">");
+				listMimeEntitiesAttachment[i].Headers.Replace(HeaderId.ContentId,"<"+Path.GetFileName(emailMessage.ListAttachments[i].FullPath)+">");
 			}
 			return mimeMessage;
 		}
@@ -388,13 +389,19 @@ namespace OpenPmsDentalBusiness.Email {
 				body.TextBody=emailMessage.BodyText;
 			}
 			for(int i=0;i<body.Attachments.Count();i++) {
-				MimePart attachment=(MimePart)body.Attachments[i];
+				//A MimePart, or a MessagePart for a message/rfc822 file (.eml, .nws): MimeKit attaches a saved e-mail as the message it holds.
+				MimeEntity attachment=body.Attachments[i];
+				MimePart mimePart=attachment as MimePart;
 				//Can break PDFs otherwise, since the file's 0A (/r) bytes are treated as line endings when getting encoded
-				if(attachment.ContentTransferEncoding==ContentEncoding.QuotedPrintable) {
-					attachment.ContentTransferEncoding=ContentEncoding.Base64;
+				if(mimePart!=null && mimePart.ContentTransferEncoding==ContentEncoding.QuotedPrintable) {
+					mimePart.ContentTransferEncoding=ContentEncoding.Base64;
 				}
-				//Set the email attachments FileName to be the DisplayedFilename
-				attachment.FileName=emailMessage.ListAttachments[i].DisplayedFilename;
+				//Set the email attachments FileName to be the DisplayedFilename, on any entity (MimePart.FileName sets both, but only on a MimePart).
+				if(attachment.ContentDisposition==null) {
+					attachment.ContentDisposition=new ContentDisposition(ContentDisposition.Attachment);
+				}
+				attachment.ContentDisposition.FileName=emailMessage.ListAttachments[i].DisplayedFilename;
+				attachment.ContentType.Name=emailMessage.ListAttachments[i].DisplayedFilename;
 			}
 			mimeMsg.Body=body.ToMessageBody();
 			return mimeMsg;
