@@ -12,7 +12,10 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - the maintenance updates: WebView2 in place of Internet Explorer, a managed spell checker and PDFsharp and MigraDoc 6.5 (these two built
   from their source), and the program's own DICOM reader in place of fo-dicom;
 - routine maintenance around the practice, and inventory tracking for materials;
-- the storage library under its new name, and a Database Maintenance check that works again.
+- the storage library under its new name, and a Database Maintenance check that works again;
+- the fixes and changes of the owner's answers of 2026-11-07: a declined PayConnect card is never recorded as paid, an edited X-ray attached
+  to a claim is saved, the Insurance History switch-over leaves the frequency code groups alone, three unused program links and NDde.dll are
+  gone, the X-ray capture session is on for new installs, and the archive backup to another server works.
 
 The update adds this program's own tables to the database (13 tables, none of Open Dental's schema: five for routine maintenance, seven for
 inventory tracking, one for SSH host keys); they start empty, except the stock ledger's opening rows (Inventory tracking, below).
@@ -262,3 +265,65 @@ deletes the old file from its `bin` folder.
 The check `ProcedurelogTpAttachedToClaim` failed on every database with an SQL syntax error, inherited from Open Dental 24.3.22, and
 Database Maintenance stops at the first error: running all checks (or fixes) never reached the checks after it in the list. The check
 works again, so a full run goes through every check.
+
+## PayConnect: a declined card is a decline, never a payment
+
+PayConnect 2 can answer a charge with success and a status of Declined. The recurring charges recorded such a card as paid, with the full
+amount, and sent no failure e-mail (owner question M2-RECUR 6). Now any PayConnect answer to a sale, an authorization or a terminal charge
+whose status is not an approval is a decline everywhere a charge is recorded:
+
+- **Recurring charges:** the charge is marked declined (and the card inactivated when "Automatically inactivate declined cards" is on), it
+  gets the $0 payment every declined charge gets as the record that it was tried, never a payment of the amount, and with the failure
+  e-mail turned on the patient is e-mailed for a Declined status, as for other declines.
+- **The payment window:** the charge shows as declined; no receipt is printed and no card is saved from it.
+
+The other card processors' recurring charges were checked and record a decline correctly.
+
+## Claim attachments: an edited X-ray is saved
+
+Attaching an X-ray or other image that was cropped, rotated, flipped or brightness-adjusted in the Imaging module to a claim (Edit Claim's
+attachments) listed the attachment but saved no picture file when the images folder is local (owner question CLAIM-DCM 1); with SFTP image
+storage it saved the image unedited. The image is now attached as the Imaging module shows it (without drawings), in its own format, and
+always saved where the attachment points, locally and in SFTP storage alike. Unedited images, text, Word and PDF files are attached as
+they are, also from SFTP storage.
+
+## Switch-over: Insurance History leaves the frequency code groups alone
+
+At the switch-over the ten Insurance History code boxes of Open Dental 25.3 (Preferences, Treatment Plan) become Insurance History rows from
+code groups, as in Open Dental 26.1. The owner decided on 2026-11-07 (switch-over question 4) that the existing code groups, which also hold
+the frequency and age limitations, stay exactly as they are: each category whose box had codes gets a new code group used only for
+Insurance History, "Bitewing History", "Exam History", "Perio Scaling History" (with four quadrant rows) and so on, after every other group,
+with the box's codes and its first code as History Proc Code. These groups are in no frequency or age limit and have no fixed category, so
+insurance estimates, sheets and frequency checks are unchanged. The old settings are kept. An eligibility response (271) that names a
+category, such as bitewings, still finds the history row through the codes of that category's code group.
+
+## Removed: the DentX, Dexis Integrator and Vipersoft program links, and NDde.dll
+
+These three program links sent the patient to another program over Windows DDE through `NDde.dll`, whose own licence does not fit the GNU
+GPL (owner question REL-FILES 2). The office uses none of them, so they are removed with `NDde.dll`. A database that has their rows keeps
+them: Program Links lists them as "(removed)", they cannot be turned on, no toolbar shows their buttons, and an old button says the link was
+removed. Dexis itself is unchanged. **Upgrading:** setup deletes `NDde.dll` from the program folder; the release channel never publishes it
+again. `THIRD-PARTY-NOTICES.txt` and the license list no longer name NDde.
+
+## X-ray capture: on for every new install
+
+After counsel's review of the capture's regulatory position, with no changes, the owner decided on 2026-11-07 that every new install starts
+with the program's own X-ray capture session on (`[Session] Enabled=1` is now the default of each computer's capture settings; setup writes
+none). It runs on a computer once an administrator has saved Capture settings there (Setup > Imaging > Devices, the device); until then
+Mount / Acquire says the capture settings were never saved and works the older way. `[Session] Enabled=0` is still the rollback.
+
+- **16 bits stay the default** (`Allow16Bit=1`): a computer takes 16-bit X-rays once a Test capture passed for its sensor, as before.
+- **No patient X-rays before the phantom comparison:** on the same line-pair and step-wedge phantom, at least the same line pairs and the
+  same steps must be visible as in the current imaging program's image of that phantom, and left and right must match the phantom's lead
+  markers for every sensor size; the dentist signs off against these criteria (`docs/imaging/intraoral-capture-setup.md`, sections 1 and
+  12).
+- **Twain Radiograph only:** the sensor is set up only as a "Twain Radiograph" device, never as a batch ("Twain Multi") device for patients.
+
+## Backup: the archive backup to another server works
+
+The Backup window's archive tab can back up the database to another server first. That backup stopped at the first table with rows, because
+it loaded the rows with `LOAD DATA LOCAL INFILE`, which the database connector refuses unless the connection allows local files (owner
+question DB-SEC 2). It now copies the rows with ordinary `INSERT` statements, in the same batches and with the same progress and row checks;
+no connection allows local files, and no temporary file of the rows is written. The account typed for the other server needs `CREATE`,
+`INSERT` and `SELECT` on the backup database. The program's own database account keeps its three server-wide rights (owner question
+DB-SEC 1, answered on 2026-11-07).
