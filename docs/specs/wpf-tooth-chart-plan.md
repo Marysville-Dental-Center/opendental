@@ -5,7 +5,7 @@ owner said "pull ahead WPF work", so the chart runs alongside the .NET 10 stages
 is built on net48 and moves to net10.0-windows x64 with everything else at 3b. Package briefs are cut from this document the same way as
 from the stage plan.
 
-**Date.** 2026-11-08. **Status.** Decided; the owner answered O-17 to O-31 on 2026-11-08 (section 10). The numbers continue the open points of
+**Date.** 2026-11-08. **Status.** Decided; the owner answered O-17 to O-33 on 2026-11-08 (section 10). The numbers continue the open points of
 `docs/specs/net10-plan.md` (section 12, O-1 to O-16).
 
 **Basis.**
@@ -409,8 +409,11 @@ either way.
 - Baselines change only in a commit that explains why.
 - The gallery shows old against new for each changed scene. The owner's approval is needed when the change is visible.
 - Expect re-baselining after a Windows font update, for x64 (TC-10) and for .NET 10 (S3b-5).
-- About 600 PNGs (20-30 MB) enter the repository over the track. The repository has no `.gitattributes` today; git detects the tracked
-  PNGs as binary by their content. The lead adds a `.gitattributes` with `*.png binary` before the first baseline commit.
+- TC-0's recording of today's chart alone is 715 PNGs, about 81 MB, against this section's first estimate of about 600 PNGs (20-30 MB)
+  for the whole track; the owner keeps all of it (O-32). The WPF baselines add to it. The lead adds a `.gitattributes` with
+  `*.png binary` before the first baseline commit (TC-0 did).
+- PNG file bytes also depend on the framework's deflate code, which changes with .NET 10 (zlib-ng). Comparisons across the switch
+  (S3b-5, TC-10) compare the pixel SHA-256 that each picture's `.txt` holds, not the file bytes.
 
 **Host tests:**
 - **Source checks** (TC-2, then TC-8): no program file outside the relay compares or switches on a `DrawingMode` value; no program `.cs`
@@ -593,6 +596,16 @@ are recorded here. For O-19 the choice between (a) and (b) still follows TC-1's 
   - Alternative: keep refusing on 2D computers, with a message that names Setup > Graphics.
 
 **Answered by this track:** BIN-A 3 (`owner-questions.md:255`). Free text and orthodontic hardware are drawn, so their controls stay.
+
+**Asked with TC-0's results and answered on 2026-11-08** (the owner chose the recommended answer of each):
+
+- **O-32. The size of the legacy recording.** 715 PNGs, about 81 MB (the repository was 550 MB). Once SharpDX and Tao are removed,
+  today's DirectX and OpenGL pictures cannot be recorded again, and the Simple 2D chart that stays is guarded by its own pictures.
+  **Answer:** keep all of it.
+- **O-33. DirectX edge smoothing.** On the build PC every four-sample draw gave slightly different edge pixels, so the byte-checked
+  DirectX pictures are drawn without multisampling; offices on the default format see smoother edges. **Answer:** keep the
+  unsmoothed pictures as the baseline, and add about 10 smoothed pictures in `Baselines/legacy-smoothed/` for the gallery only,
+  never byte-checked.
 
 ---
 

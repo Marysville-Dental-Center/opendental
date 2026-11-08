@@ -723,6 +723,9 @@ of 2026-11-08: "1. As recommended 2. Ship dlls we need. Use Helix. It's decided.
   layout; each place keeps its colours; SharpDX and Tao go after the switch package passes an office check; each package merges hidden
   after you approve its gallery; today's DirectX pictures are recorded on the build PC, which has the DirectX runtime; the business
   layer's chart placeholder stays; computers set to Simple 2D stay 2D; graphical perio opens on every computer.
+- **The recording of today's chart (O-32 and O-33, asked with TC-0's results).** Keep all of it in the repository (715 pictures,
+  about 81 MB), since the old engines cannot record again once they are gone. DirectX stays recorded without edge smoothing for the
+  tests, and about 10 smoothed pictures go in the gallery to show the look offices see.
 
 ---
 
