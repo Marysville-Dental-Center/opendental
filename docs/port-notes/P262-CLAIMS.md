@@ -161,6 +161,12 @@ The sources give the four one-line release notes and the document texts quoted a
 - Scratch database `test_p262claims_*`, dropped after the run. `ForkMigrationTests` was not run (no fork step here; its
   `InitSqlRegenerationTests` fails on every 26.2 branch until the integration regenerates `db/init/new-database.sql`).
 
+- Review fix (Carrier Combine and Carriers Match, branch `p262/claims-2`): full build of `OpenDental.Local.slnf` 0 errors; Targeted runs
+  with `NoHqTests` 58/58: `P262ClaimsTests` 41/41 (new: a Carriers Match condition for carrier A is moved to B by Combine, conditions of
+  other carriers and other fields are left alone, and `Automations.Trigger` fires for a patient on B and for the plan that was on A),
+  `BCLAIMTests` 55/55, `InsuranceTests` 49/49, `M2CLAIMFORMTests` 16/16, `M2CARRIERTests` 55/55 (Carrier Combine), `M2INSVTests` 17/17
+  (Carrier Combine), `M2MISCTests` 78/78 (automation windows). Scratch database dropped after the run.
+
 ## Questions for the owner
 
 1. Item 10: the Edit Claim layout is a guess (Status History and Misc moved to right after General). Can a 26.2 manual page or screenshot of
