@@ -35,9 +35,9 @@ namespace AdoptionValidation {
 	///- codegroup: what the Insurance History step plans (InsHistCodeGroupPlan): the planned groups change only ProcCodes (to the planned codes) and
 	///  the three 26.1 history columns (to the planned values), and each planned new group is one added row with the planned values; no other row or
 	///  column may change, no other row may be added, and no row may go;
-	///- program and toolbutitem: what the DXC Patient Credit Score step plans (DxcCreditScorePlan): each planned row of that discontinued link changes
-	///  only Enabled, to 0, and each of its planned toolbar buttons is deleted; no other program row or column may change, no other toolbutitem row
-	///  may go, and no row may be added to either;
+	///- program and toolbutitem: what the DXC Patient Credit Score step plans (DxcCreditScorePlan) and what the Trojan Express Collect step plans
+	///  (TrojanExpressCollectPlan): each planned row of those discontinued links changes only Enabled, to 0, and each of their planned toolbar
+	///  buttons is deleted; no other program row or column may change, no other toolbutitem row may go, and no row may be added to either;
 	///- claimpayment.Note: only NULL notes become empty strings, as many as migration-preview counts; insverify and insverifyhist.DateLastAssigned: every
 	///  value is the original date at midnight;
 	///- supplyledger, the inventory stock ledger (a table of this program, InventoryTables), the one table of this program adoption writes rows into:
@@ -95,6 +95,12 @@ namespace AdoptionValidation {
 			public List<long> ListProgramNumsDisabled=new List<long>();
 			///<summary>The toolbutitem rows of the DXC link the step deleted as planned.</summary>
 			public List<long> ListToolButItemNumsDeleted=new List<long>();
+			///<summary>The Trojan Express Collect step's plan made from the original (what migration-preview lists for it).</summary>
+			public TrojanExpressCollectPlan.Plan PlanTrojan;
+			///<summary>The program rows of the Trojan Express Collect link the step disabled as planned (Enabled only, now 0).</summary>
+			public List<long> ListProgramNumsDisabledTrojan=new List<long>();
+			///<summary>The toolbutitem rows of the Trojan Express Collect link the step deleted as planned.</summary>
+			public List<long> ListToolButItemNumsDeletedTrojan=new List<long>();
 			///<summary>The inventory tracking steps' plan made from the original (what migration-preview lists for it).</summary>
 			public InventoryPlan.Plan PlanInventory;
 			///<summary>True when adoption added the stock ledger (supplyledger).</summary>
@@ -136,6 +142,7 @@ namespace AdoptionValidation {
 			result.PlanUdsPlus=UdsPlusRowPlan.Make(db,original,listRowsOriginal,ReportRows25_3.PlanRenames(listRowsOriginal),result.Plan26_1.IsFromBefore25_4);
 			result.PlanInsHist=InsHistCodeGroupPlan.Make(db,original,result.Plan26_1.IsFromBefore25_4);
 			result.PlanDxc=DxcCreditScorePlan.Make(db,original);
+			result.PlanTrojan=TrojanExpressCollectPlan.Make(db,original);
 			result.PlanMaintGrants=MaintenanceGrantPlan.Make(db,original);
 			result.PlanInventory=InventoryPlan.Make(db,original);
 			CheckPreferences(db,original,adopted,result);
@@ -725,10 +732,11 @@ namespace AdoptionValidation {
 			return listWrong;
 		}
 
-		///<summary>The DXC Patient Credit Score step (DxcCreditScoreRemovedStep, B-SHELL), as migration-preview plans it from the original
-		///(DxcCreditScorePlan): each planned program row of the discontinued link changes only Enabled, to 0. No other program row or column may change,
-		///and no program row may be added or go (the step keeps the row). allowed-differences.adoption.json allows program.Enabled as a whole column.
-		///</summary>
+		///<summary>The DXC Patient Credit Score step (DxcCreditScoreRemovedStep, B-SHELL) and the Trojan Express Collect step
+		///(TrojanExpressCollectRemovedStep, P262-LINKS), as migration-preview plans them from the original (DxcCreditScorePlan,
+		///TrojanExpressCollectPlan): each planned program row of those discontinued links changes only Enabled, to 0. No other program row or column
+		///may change, and no program row may be added or go (the steps keep the rows). allowed-differences.adoption.json allows program.Enabled as a
+		///whole column.</summary>
 		private static void CheckProgram(Db db,string original,string adopted,Result result) {
 			string table=DxcCreditScorePlan.TABLE_PROGRAM;
 			bool hasOriginal=Migration26_1Plan.HasTable(db,original,table);
@@ -741,6 +749,9 @@ namespace AdoptionValidation {
 				return;
 			}
 			List<DxcCreditScoreRemoved.ProgramRow> listPlanned=result.PlanDxc.Rows.ListProgramsDisabled;
+			List<DxcCreditScoreRemoved.ProgramRow> listPlannedTrojan=result.PlanTrojan==null ? new List<DxcCreditScoreRemoved.ProgramRow>()
+				: result.PlanTrojan.Rows.ListProgramsDisabled;
+			string nameTrojan=TrojanExpressCollectRemoved.LINK_NAME;
 			int countFailuresBefore=result.ListFailures.Count;
 			RowComparer.TableDiff diff=RowComparer.Compare(db,original,adopted,table);
 			if(diff.ListColumnsInOneOnly.Count>0) {
@@ -748,49 +759,72 @@ namespace AdoptionValidation {
 			}
 			if(diff.CountOnlyFirst>0) {
 				result.ListFailures.Add("program row(s) of "+original+" are missing (ProgramNum "+string.Join(", ",diff.ListOnlyFirst.Take(20))+"); the DXC Patient Credit Score "
-					+"step keeps the program row, and no other step removes one.");
+					+"and "+nameTrojan+" steps keep their program rows, and no other step removes one.");
 			}
 			if(diff.CountOnlySecond>0) {
 				result.ListFailures.Add("program row(s) were added (ProgramNum "+string.Join(", ",diff.ListOnlySecond.Take(20))+"); the fork migration adds no program row to an "
 					+"Open Dental 25.3.48 database.");
 			}
 			if(diff.CountChanged>diff.ListChanged.Count) {
-				result.ListFailures.Add(diff.CountChanged+" program rows changed; the DXC Patient Credit Score step disables "+listPlanned.Count+".");
+				result.ListFailures.Add(diff.CountChanged+" program rows changed; the DXC Patient Credit Score and "+nameTrojan+" steps disable "
+					+(listPlanned.Count+listPlannedTrojan.Count)+".");
 			}
 			Dictionary<long,DxcCreditScoreRemoved.ProgramRow> dictPlanned=listPlanned.ToDictionary(x => x.ProgramNum);
+			Dictionary<long,DxcCreditScoreRemoved.ProgramRow> dictPlannedTrojan=listPlannedTrojan.ToDictionary(x => x.ProgramNum);
 			foreach(RowComparer.ChangedRow changed in diff.ListChanged) {
-				if(!dictPlanned.ContainsKey(changed.Key)) {
+				bool isDxc=dictPlanned.ContainsKey(changed.Key);
+				if(!isDxc && !dictPlannedTrojan.ContainsKey(changed.Key)) {
 					result.ListFailures.Add("program row "+changed.Key+" changed ("+string.Join(", ",changed.ListColumns)+"); the fork migration changes only the DXC Patient "
-						+"Credit Score row(s) migration-preview lists for "+original+", Enabled only.");
+						+"Credit Score row(s) migration-preview lists for "+original+" and the "+nameTrojan+" row(s) it lists, Enabled only.");
 					continue;
 				}
+				string nameLink=isDxc ? "DXC Patient Credit Score" : nameTrojan;
 				long enabledNew=Convert.ToInt64(db.Scalar("SELECT Enabled FROM `"+adopted+"`.program WHERE ProgramNum="+changed.Key.ToString(CultureInfo.InvariantCulture)),
 					CultureInfo.InvariantCulture);
 				if(changed.ListColumns.Count!=1 || !string.Equals(changed.ListColumns[0],DxcCreditScorePlan.COLUMN_ENABLED,StringComparison.OrdinalIgnoreCase)
 					|| enabledNew!=0)
 				{
-					result.ListFailures.Add("program row "+changed.Key+" (the DXC Patient Credit Score link): "+string.Join(", ",changed.ListColumns)+" changed (Enabled now "
+					result.ListFailures.Add("program row "+changed.Key+" (the "+nameLink+" link): "+string.Join(", ",changed.ListColumns)+" changed (Enabled now "
 						+enabledNew+"); the fork migration only sets Enabled to 0 there.");
 					continue;
 				}
-				result.ListProgramNumsDisabled.Add(changed.Key);
+				if(isDxc) {
+					result.ListProgramNumsDisabled.Add(changed.Key);
+				}
+				else {
+					result.ListProgramNumsDisabledTrojan.Add(changed.Key);
+				}
 			}
 			foreach(DxcCreditScoreRemoved.ProgramRow row in listPlanned.Where(x => !diff.ListChanged.Any(y => y.Key==x.ProgramNum))) {
 				result.ListFailures.Add("program row "+row.ProgramNum+" (the DXC Patient Credit Score link) was not disabled, though the fork migration disables it.");
 			}
+			foreach(DxcCreditScoreRemoved.ProgramRow row in listPlannedTrojan.Where(x => !diff.ListChanged.Any(y => y.Key==x.ProgramNum))) {
+				result.ListFailures.Add("program row "+row.ProgramNum+" (the "+nameTrojan+" link) was not disabled, though the fork migration disables it.");
+			}
 			bool isClean=result.ListFailures.Count==countFailuresBefore;
-			if(isClean && listPlanned.Count==0) {
+			if(isClean && listPlanned.Count==0 && listPlannedTrojan.Count==0) {
 				result.ListLines.Add("program: identical row by row (migration-preview lists no change).");
 				return;
 			}
-			result.ListLines.Add("program: "+result.ListProgramNumsDisabled.Count+" of the "+listPlanned.Count+" DXC Patient Credit Score row(s) migration-preview lists "
-				+"disabled, Enabled only"+(result.ListProgramNumsDisabled.Count==0 ? "" : " (ProgramNum "+string.Join(", ",result.ListProgramNumsDisabled)+")")
-				+(isClean ? "; no other row or column changed, none added or removed." : " (see the failures)."));
+			List<string> listParts=new List<string>();
+			if(listPlanned.Count>0 || listPlannedTrojan.Count==0) {
+				listParts.Add(DescribeLinkRows(result.ListProgramNumsDisabled,listPlanned.Count,"DXC Patient Credit Score row(s)","disabled, Enabled only","ProgramNum"));
+			}
+			if(listPlannedTrojan.Count>0) {
+				listParts.Add(DescribeLinkRows(result.ListProgramNumsDisabledTrojan,listPlannedTrojan.Count,nameTrojan+" row(s)","disabled, Enabled only","ProgramNum"));
+			}
+			result.ListLines.Add("program: "+string.Join("; ",listParts)+(isClean ? "; no other row or column changed, none added or removed." : " (see the failures)."));
 		}
 
-		///<summary>The DXC Patient Credit Score step's toolbar buttons, as migration-preview plans them from the original (DxcCreditScorePlan): each
-		///planned toolbutitem row is deleted. No other toolbutitem row may go, change or be added. allowed-differences.adoption.json allows toolbutitem
-		///as a whole table (a deleted row changes every column checksum).</summary>
+		///<summary>"n of the m {what} migration-preview lists {done} ({key} a, b)", the summary of one discontinued link's planned rows.</summary>
+		private static string DescribeLinkRows(List<long> listFound,int countPlanned,string what,string done,string key) {
+			return listFound.Count+" of the "+countPlanned+" "+what+" migration-preview lists "+done
+				+(listFound.Count==0 ? "" : " ("+key+" "+string.Join(", ",listFound)+")");
+		}
+
+		///<summary>The toolbar buttons of the DXC Patient Credit Score and Trojan Express Collect steps, as migration-preview plans them from the original
+		///(DxcCreditScorePlan, TrojanExpressCollectPlan): each planned toolbutitem row is deleted. No other toolbutitem row may go, change or be added.
+		///allowed-differences.adoption.json allows toolbutitem as a whole table (a deleted row changes every column checksum).</summary>
 		private static void CheckToolButItem(Db db,string original,string adopted,Result result) {
 			string table=DxcCreditScorePlan.TABLE_TOOLBUTITEM;
 			bool hasOriginal=Migration26_1Plan.HasTable(db,original,table);
@@ -803,6 +837,9 @@ namespace AdoptionValidation {
 				return;
 			}
 			List<DxcCreditScoreRemoved.ToolButItemRow> listPlanned=result.PlanDxc.Rows.ListButtonsDeleted;
+			List<DxcCreditScoreRemoved.ToolButItemRow> listPlannedTrojan=result.PlanTrojan==null ? new List<DxcCreditScoreRemoved.ToolButItemRow>()
+				: result.PlanTrojan.Rows.ListButtonsDeleted;
+			string nameTrojan=TrojanExpressCollectRemoved.LINK_NAME;
 			int countFailuresBefore=result.ListFailures.Count;
 			RowComparer.TableDiff diff=RowComparer.Compare(db,original,adopted,table);
 			if(diff.ListColumnsInOneOnly.Count>0) {
@@ -810,36 +847,51 @@ namespace AdoptionValidation {
 			}
 			if(diff.CountChanged>0) {
 				result.ListFailures.Add(diff.CountChanged+" toolbutitem row(s) changed (ToolButItemNum "+string.Join("; ",diff.ListChanged.Take(20))+"); the fork migration "
-					+"only deletes the DXC Patient Credit Score buttons migration-preview lists.");
+					+"only deletes the DXC Patient Credit Score and "+nameTrojan+" buttons migration-preview lists.");
 			}
 			if(diff.CountOnlySecond>0) {
 				result.ListFailures.Add("toolbutitem row(s) were added (ToolButItemNum "+string.Join(", ",diff.ListOnlySecond.Take(20))+"); the fork migration adds no toolbar "
 					+"button.");
 			}
 			if(diff.CountOnlyFirst>diff.ListOnlyFirst.Count) {
-				result.ListFailures.Add(diff.CountOnlyFirst+" toolbutitem rows were deleted; the DXC Patient Credit Score step deletes "+listPlanned.Count+".");
+				result.ListFailures.Add(diff.CountOnlyFirst+" toolbutitem rows were deleted; the DXC Patient Credit Score and "+nameTrojan+" steps delete "
+					+(listPlanned.Count+listPlannedTrojan.Count)+".");
 			}
 			HashSet<long> setPlanned=new HashSet<long>(listPlanned.Select(x => x.ToolButItemNum));
+			HashSet<long> setPlannedTrojan=new HashSet<long>(listPlannedTrojan.Select(x => x.ToolButItemNum));
 			foreach(long toolButItemNum in diff.ListOnlyFirst) {
-				if(!setPlanned.Contains(toolButItemNum)) {
-					result.ListFailures.Add("toolbutitem row "+toolButItemNum+" was deleted; the fork migration deletes only the DXC Patient Credit Score buttons "
-						+"migration-preview lists for "+original+".");
+				if(setPlanned.Contains(toolButItemNum)) {
+					result.ListToolButItemNumsDeleted.Add(toolButItemNum);
 					continue;
 				}
-				result.ListToolButItemNumsDeleted.Add(toolButItemNum);
+				if(setPlannedTrojan.Contains(toolButItemNum)) {
+					result.ListToolButItemNumsDeletedTrojan.Add(toolButItemNum);
+					continue;
+				}
+				result.ListFailures.Add("toolbutitem row "+toolButItemNum+" was deleted; the fork migration deletes only the DXC Patient Credit Score buttons "
+					+"and the "+nameTrojan+" buttons migration-preview lists for "+original+".");
 			}
 			foreach(DxcCreditScoreRemoved.ToolButItemRow row in listPlanned.Where(x => !diff.ListOnlyFirst.Contains(x.ToolButItemNum))) {
 				result.ListFailures.Add("toolbutitem row "+row.ToolButItemNum+" (a DXC Patient Credit Score button, ProgramNum "+row.ProgramNum+") was not deleted, though the "
 					+"fork migration deletes it.");
 			}
+			foreach(DxcCreditScoreRemoved.ToolButItemRow row in listPlannedTrojan.Where(x => !diff.ListOnlyFirst.Contains(x.ToolButItemNum))) {
+				result.ListFailures.Add("toolbutitem row "+row.ToolButItemNum+" (a "+nameTrojan+" button, ProgramNum "+row.ProgramNum+") was not deleted, though the "
+					+"fork migration deletes it.");
+			}
 			bool isClean=result.ListFailures.Count==countFailuresBefore;
-			if(isClean && listPlanned.Count==0) {
+			if(isClean && listPlanned.Count==0 && listPlannedTrojan.Count==0) {
 				result.ListLines.Add("toolbutitem: identical row by row (migration-preview lists no change).");
 				return;
 			}
-			result.ListLines.Add("toolbutitem: "+result.ListToolButItemNumsDeleted.Count+" of the "+listPlanned.Count+" DXC Patient Credit Score toolbar button(s) "
-				+"migration-preview lists deleted"+(result.ListToolButItemNumsDeleted.Count==0 ? "" : " (ToolButItemNum "+string.Join(", ",result.ListToolButItemNumsDeleted)+")")
-				+(isClean ? "; no other row changed, added or removed." : " (see the failures)."));
+			List<string> listParts=new List<string>();
+			if(listPlanned.Count>0 || listPlannedTrojan.Count==0) {
+				listParts.Add(DescribeLinkRows(result.ListToolButItemNumsDeleted,listPlanned.Count,"DXC Patient Credit Score toolbar button(s)","deleted","ToolButItemNum"));
+			}
+			if(listPlannedTrojan.Count>0) {
+				listParts.Add(DescribeLinkRows(result.ListToolButItemNumsDeletedTrojan,listPlannedTrojan.Count,nameTrojan+" toolbar button(s)","deleted","ToolButItemNum"));
+			}
+			result.ListLines.Add("toolbutitem: "+string.Join("; ",listParts)+(isClean ? "; no other row changed, added or removed." : " (see the failures)."));
 		}
 
 		private static void CheckValueChangingColumns(Db db,string original,string adopted,Result result) {

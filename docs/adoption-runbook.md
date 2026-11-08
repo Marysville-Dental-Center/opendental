@@ -41,7 +41,8 @@ same code):
    so nobody loses an ability. Then the DXC Patient Credit Score step disables that program link, which Open Dental 25.2 removed because
    DentalXChange discontinued the service (its `program` row's `Enabled` only; the row and its text stay), and deletes its toolbar buttons, if
    the office database still has it enabled or on a toolbar (what Open Dental's own 25.2 update did to the row is not published; most likely
-   nothing is left to change). Then the UDS+ report step adds the Standard Reports row of the Open Dental 25.4 UDS+ report ("FQHC UDS+
+   nothing is left to change). The Trojan Express Collect step (2026110781) does the same for that link, which Open Dental 26.2 deprecated
+   because the service is no longer offered. Then the UDS+ report step adds the Standard Reports row of the Open Dental 25.4 UDS+ report ("FQHC UDS+
    Dental Services", Public Health) right after the FQHC Dental Sealant Measure, moves the later Public Health rows down one place, and lets the
    user groups that may run the sealant measure run it too (hidden when the sealant measure is hidden). Then the Insurance History step moves
    the ten Insurance History code preferences of Open Dental 25.3 (Preferences, Treatment Plan) into code groups, as Open Dental 26.1 shows
@@ -272,6 +273,12 @@ The last lines are the Open Dental 25.4, 26.1 and 26.2 steps of item 6 and the f
   deletes its N toolbar button(s) (ToolButItemNum N on <toolbar>, ...) ...`. It quotes the lines the adoption log will show ("Deleted N toolbar
   button(s) of the discontinued DXC Patient Credit Score program link (...)", "Disabled the discontinued DXC Patient Credit Score program link
   (ProgramNum N)"). Its buttons pointed at a service that no longer exists, so the office loses nothing;
+- `Step 2026110781 (Trojan Express Collect program link) changes nothing: ...`, in the same words as the DXC step (an office that never used
+  Trojan Express Collect has its row disabled without buttons), or `Step 2026110781 (Trojan Express Collect program link): the discontinued
+  Trojan Express Collect program link (ProgramNum N) stays, with its text and properties; the step disables ... and deletes ...`, quoting the
+  adoption log lines "Deleted N toolbar button(s) of the discontinued Trojan Express Collect program link (...)" and "Disabled the
+  discontinued Trojan Express Collect program link (ProgramNum N)". Open Dental 26.2 deprecated the link because the service is no longer
+  offered (package P262-LINKS);
 - `Step 2026110103 (UDS+ report row) adds the displayreport row ODUdsPlus ("FQHC UDS+ Dental Services", Public Health, ItemOrder N) right
   after the FQHC Dental Sealant Measure (DisplayReportNum N), moving N later Public Health row(s) down one place, ItemOrder only (...); it
   gives the N user group(s) that may run the sealant measure (user group ...) the Reports permission for it ...` (on an Open Dental 25.3.48
@@ -301,6 +308,7 @@ The last lines are the Open Dental 25.4, 26.1 and 26.2 steps of item 6 and the f
 
 **Write the numbers on the checklist**: NULL notes, preferences, PhoneExtension grants moved, user groups for BlockoutAdd and for
 BlockoutDelete, the DXC Patient Credit Score row disabled (ProgramNum, or "none") and its buttons deleted (ToolButItemNum, or "none"), the
+same two for the Trojan Express Collect row, the
 UDS+ row's DisplayReportNum of the sealant measure, the Public Health rows moved, the user groups granted the UDS+
 report, the user groups granted the two routine maintenance permissions, the code groups marked for Insurance History (CodeGroupNum and History
 Proc Code) and added (name), and the opening balance rows of the stock ledger. Step 4 must show exactly these. Zero PhoneExtension grants is
@@ -599,6 +607,7 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   nothing; otherwise "changed the database:", followed by the lines step 0.2 quoted: "Deleted N toolbar button(s) of the discontinued DXC
   Patient Credit Score program link (ToolButItemNum ...)" if it listed buttons, and "Disabled the discontinued DXC Patient Credit Score program
   link (ProgramNum N)" if it listed an enabled row
+- step 2026110781 ("Disable the discontinued Trojan Express Collect program link"): the same, with the Trojan Express Collect lines of step 0.2
 - step 2026110103 ("Report row for the UDS+ report") "changed the database:", followed by "Added displayreport ODUdsPlus" (with "(hidden, as
   the sealant measure is)" if it is hidden) and, if step 0.2 listed user groups, "Copied N report permission(s) from ODDentalSealantMeasure to
   ODUdsPlus" with the step 0.2 number
@@ -626,8 +635,10 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   planned, ProcCodes and the history columns only (...); N of the N planned code group(s) added with the planned values (CodeGroupNum ...); no
   other row or column changed, none removed"), `program` ("N of the N DXC Patient Credit Score row(s) migration-preview lists disabled,
   Enabled only (ProgramNum N); no other row or column changed, none added or removed", or "identical row by row (migration-preview lists no
-  change)"), `toolbutitem` ("N of the N DXC Patient Credit Score toolbar button(s) migration-preview lists deleted (ToolButItemNum ...); no
-  other row changed, added or removed", or "identical row by row ..."), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
+  change)"; when step 0.2 listed a Trojan Express Collect row, "N of the N Trojan Express Collect row(s) ..." follows the DXC part, or
+  replaces it if no DXC row was listed), `toolbutitem` ("N of the N DXC Patient Credit Score toolbar button(s) migration-preview lists
+  deleted (ToolButItemNum ...); no other row changed, added or removed", or "identical row by row ...", with the Trojan Express Collect
+  buttons the same way), "Changed columns:" ("claimpayment.Note: N of the N NULL note(s)
   migration-preview counts now empty, every other note unchanged", and `insverify` and `insverifyhist.DateLastAssigned` "the original date at
   midnight in all N row(s)"), "New tables and columns:" ("5 new table(s), all empty (...); 28 new column(s) in 21 table(s) hold their default
   in every row."), "Fork tables:" ("12 new table(s) of this program, all empty (maintfield, maintitem, maintrecord, maintrecordvalue,
@@ -636,7 +647,7 @@ prints each step with its time; `adoption-log.txt` keeps everything. Expect, in 
   but the stock ledger, so no stock count is open), "Stock ledger:" ("supplyledger added (inventory tracking), N of the N
   opening balance row(s) migration-preview lists and no other row.") and `updatehistory` ("identical row by row")
 - "Adopt: PASS." with the report rows renamed (or "the fork migration renamed no report row"), the UDS+ report row added and, if step 0.2
-  listed them, the DXC Patient Credit Score row disabled and its buttons deleted, and exit code 0
+  listed them, the DXC Patient Credit Score and Trojan Express Collect rows disabled and their buttons deleted, and exit code 0
 
 The second person compares the renames, the inserted preferences, the moved and granted permissions, the NULL notes, the DXC Patient Credit
 Score row and buttons and the Insurance History code groups in the log with the step 0.2 list on the checklist. `adopt`'s row check has already held them to `opendental` as it is now; if they differ from the step 0.2
@@ -683,9 +694,10 @@ person reads them all):
   displayreport` one row up, and `ColumnChanged displayreport.<column>` for its columns, because an added row changes every column's
   checksum). For `codegroup` it is the Insurance History groups of step 0.2: `ColumnChanged codegroup.ProcCodes` when codes were added, and
   with an added group `RowsChanged codegroup` and `ColumnChanged codegroup.<column>` for its columns. For `toolbutitem` it is the DXC Patient
-  Credit Score buttons of step 0.2, if it listed any (`RowsChanged toolbutitem` and `ColumnChanged toolbutitem.<column>`);
-- `ColumnChanged program.Enabled`, only if step 0.2 listed the DXC Patient Credit Score row as disabled: a report can only allow it as a
-  whole column, and step 4's row check printed that only that row changed, `Enabled` only;
+  Credit Score and Trojan Express Collect buttons of step 0.2, if it listed any (`RowsChanged toolbutitem` and `ColumnChanged
+  toolbutitem.<column>`);
+- `ColumnChanged program.Enabled`, only if step 0.2 listed the DXC Patient Credit Score or the Trojan Express Collect row as disabled: a
+  report can only allow it as a whole column, and step 4's row check printed that only those rows changed, `Enabled` only;
 - this program's own tables of inventory tracking (steps 2026110211 to 2026110213): `TableAdded` for `supplylot`, `supplyproccode`,
   `supplysetting`, `supplyprocpending`, `supplycount` and `supplycountline` (0 rows; step 4's row check printed them under "Fork tables:",
   all empty) and for `supplyledger`, the
@@ -884,7 +896,7 @@ Sign each line with time and initials.
 | 0.0.2 | `adoption_admin` created, history file removed | Password in the password manager | |
 | 0.0.3, 0.0.4 | Forward and tools checked from the admin PC | `connections` lists the workstations' connections, or none | |
 | 0.1 | Validation report signed, release build ready | Owner signature | |
-| 0.2 | Versions; FLOAT check filed; fork migration preview | 25.3.48.0 / 25.3.48.0, not corrupted, no update running; `float-check` exit 0 or 6, file kept; `migration-preview` exit 0, each report row rename written here (old name, new name, DisplayReportNum), or "none"; NULL notes ___, preferences ___, PhoneExtension grants moved ___, user groups BlockoutAdd ___ / BlockoutDelete ___; DXC Patient Credit Score row disabled ___ (ProgramNum or none), buttons deleted ___; UDS+ row after DisplayReportNum ___, rows moved ___, user groups granted ___; Insurance History code groups marked ___ (CodeGroupNum and History Proc Code), added ___ | |
+| 0.2 | Versions; FLOAT check filed; fork migration preview | 25.3.48.0 / 25.3.48.0, not corrupted, no update running; `float-check` exit 0 or 6, file kept; `migration-preview` exit 0, each report row rename written here (old name, new name, DisplayReportNum), or "none"; NULL notes ___, preferences ___, PhoneExtension grants moved ___, user groups BlockoutAdd ___ / BlockoutDelete ___; DXC Patient Credit Score row disabled ___ (ProgramNum or none), buttons deleted ___; Trojan Express Collect row disabled ___ (ProgramNum or none), buttons deleted ___; UDS+ row after DisplayReportNum ___, rows moved ___, user groups granted ___; Insurance History code groups marked ___ (CodeGroupNum and History Proc Code), added ___ | |
 | 0.3 | Services and tasks listed, per computer (both service queries) | List filed | |
 | 0.4 | Direct database users and jobs listed | List filed | |
 | 0.5 | Workstations listed, with folder, database and MariaDB user | List filed | |
@@ -902,7 +914,7 @@ Sign each line with time and initials.
 | 3.1 | Nobody connected; folder copy, start time noted | `connections` exit 0; `IDENTICAL`, `active`; off-server copy if the owner agreed | |
 | 3.2 | `copy` into `opendental_pms` | `Copy: PASS` | |
 | 3.3 | Reports compared | 0 unexpected differences | |
-| 4, 5 | `adopt` (adoption, migration check, verifier, rehash, row check) | `Adopt: PASS`, exit 0, log saved; "Blanked" list initialled; report row renames, the DXC Patient Credit Score row and buttons, the UDS+ row and its grants, and the Insurance History code groups equal the 0.2 list | |
+| 4, 5 | `adopt` (adoption, migration check, verifier, rehash, row check) | `Adopt: PASS`, exit 0, log saved; "Blanked" list initialled; report row renames, the DXC Patient Credit Score and Trojan Express Collect rows and buttons, the UDS+ row and its grants, and the Insurance History code groups equal the 0.2 list | |
 | 6.1 | Validation before the first start | 0 unexpected differences, Allowed section read (`displayreport`, `grouppermission`, `codegroup` and `toolbutitem` as whole tables, `program.Enabled` as a whole column); startup check exit 0 | |
 | 6.2 | First start, smoke test, aging report | OK | |
 | 7 | Passwords re-entered | `credentials` list empty or explained | |

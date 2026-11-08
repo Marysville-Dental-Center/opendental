@@ -91,6 +91,7 @@ namespace OpenPmsDentalBusiness {
 		private static ComputerPref GetDefaultComputerPref(string computerName) {
 			Meth.NoCheckMiddleTierRole();
 			ComputerPref computerPref=new ComputerPref();
+			//The four Suni columns are not used (Suni support is removed, Open Dental 26.2); new rows keep the values they always had.
 			computerPref.SensorType="D";
 			computerPref.SensorPort=0;
 			computerPref.SensorExposure=1;

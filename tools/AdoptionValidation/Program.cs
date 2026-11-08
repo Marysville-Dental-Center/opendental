@@ -58,7 +58,9 @@ Commands:
                  deletes; the row of the 25.4 UDS+ report that step 2026110103 adds after the FQHC Dental Sealant Measure (later
                  Public Health rows moved down one place, the sealant measure's report grants copied); the code groups step
                  2026110104 marks for Insurance History; and the Maintenance Setup and Maintenance Record Completion grants step
-                 2026110206 gives the user groups with Security Admin. adopt's row check later requires exactly these changes.
+                 2026110206 gives the user groups with Security Admin; and the discontinued Trojan Express Collect program link
+                 that step 2026110781 disables (Enabled only) and whose toolbar buttons it deletes. adopt's row check later
+                 requires exactly these changes.
                  Read-only. Exit code 0.
   copy           Copies ORIGINAL into the NEW database on the same server (runbook step 3.2): CREATE TABLE ... LIKE, the
                  AUTO_INCREMENT counters and INSERT ... SELECT, so the copy is exact (FLOAT values included) and no row leaves the
@@ -71,7 +73,8 @@ Commands:
                  migration-preview lists), grouppermission (only the permission split, the UDS+ report grants and the routine
                  maintenance grants to the Security Admin groups it lists),
                  codegroup (only the Insurance History groups it lists), program and toolbutitem (only the DXC Patient Credit
-                 Score row disabled and its buttons deleted, as it lists), claimpayment.Note and DateLastAssigned, the new tables
+                 Score and Trojan Express Collect rows disabled and their buttons deleted, as it lists), claimpayment.Note and
+                 DateLastAssigned, the new tables
                  and columns (empty, at their defaults) and updatehistory. Before it changes
                  anything it checks that --confirm repeats --database, that --original is a different, unadopted Open Dental
                  database, that nobody else is connected to either, and that a copy not adopted yet has the original's tables and
@@ -382,6 +385,9 @@ database server (runbook step 0.0). Exit codes: 0 pass, 1 error, 2 usage or refu
 					+(result.RowCheck==null || result.RowCheck.ListProgramNumsDisabled.Count+result.RowCheck.ListToolButItemNumsDeleted.Count==0 ? ""
 						: "; it disabled "+result.RowCheck.ListProgramNumsDisabled.Count+" DXC Patient Credit Score program row(s) and deleted "
 						+result.RowCheck.ListToolButItemNumsDeleted.Count+" of its toolbar button(s), as migration-preview lists")
+					+(result.RowCheck==null || result.RowCheck.ListProgramNumsDisabledTrojan.Count+result.RowCheck.ListToolButItemNumsDeletedTrojan.Count==0 ? ""
+						: "; it disabled "+result.RowCheck.ListProgramNumsDisabledTrojan.Count+" Trojan Express Collect program row(s) and deleted "
+						+result.RowCheck.ListToolButItemNumsDeletedTrojan.Count+" of its toolbar button(s), as migration-preview lists")
 					+"). Validate it now (runbook step 6.1), before anyone starts the program.");
 				return ExitPass;
 			}

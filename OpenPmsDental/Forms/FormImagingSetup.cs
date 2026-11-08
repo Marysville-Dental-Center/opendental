@@ -62,7 +62,7 @@ namespace OpenPmsDental{
 			slider.MinVal=PrefC.GetInt(PrefName.ImageWindowingMin);
 			slider.MaxVal=PrefC.GetInt(PrefName.ImageWindowingMax);
 			//The Suni sensor settings (exposure, port, type, binned) were for Open Dental's closed Suni capture driver, removed on 2026-11-01.
-			//Suni sensors now use Suni's own TWAIN driver, which keeps its own settings. The computerpref columns stay in the database.
+			//Open Dental 26.2 removed Suni support altogether (P262-LINKS). The computerpref columns stay in the database.
 			//checkScanDocShowOptions.Checked=PrefC.GetBool(PrefName.ScannerSuppressDialog);
 			//textScanDocResolution.Text=PrefC.GetString(PrefName.ScannerResolution);
 			if(Clinics.IsMedicalPracticeOrClinic(Clinics.ClinicNum)) {
