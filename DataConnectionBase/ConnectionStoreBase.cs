@@ -129,14 +129,10 @@ namespace DataConnectionBase {
 			return ret;
 		}
 
-		///<summary>Gets the path to the root web path for the application.</summary>
+		///<summary>Gets the path to the root web path for the application: the Middle Tier's content root (MiddleTierHost.ContentRoot, which was
+		///HostingEnvironment.ApplicationPhysicalPath). Null outside the Middle Tier, as before.</summary>
 		public static string GetWebAppPath()  {
-#if DOT_NET_STANDARD
-			//If we ever have .NET Core web apps that use connection store, we will have to implement this.
-			throw new NotImplementedException(); 
-#else
-			return System.Web.Hosting.HostingEnvironment.ApplicationPhysicalPath;
-#endif
+			return MiddleTierHost.ContentRoot;
 		}
 
 		///<summary>Initializes central connection store from a given ConnectionStore formatted file. Throws exceptions if file not found or init fails for any other reason.</summary>
