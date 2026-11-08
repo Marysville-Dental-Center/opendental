@@ -69,6 +69,11 @@ split total of every payment of the three groups. A transfer without splits is l
   that asks for a backup) dates each selected transfer and every one of its splits on the conversion date. Each payment is checked again
   first; one that changed since the list was filled is skipped. Each change writes a DBM log entry (old and new date, number of splits) and a
   Payment Edit audit trail entry for the patient; the log text goes to the DBM log file.
+- The splits are saved one by one with `PaySplits.Update(split,splitOld)`, never with a raw UPDATE: `paysplit.DatePay` is part of the split's
+  `SecurityHash`, which is checked for splits dated inside the hashing window (`SecurityHash.GetHashingDate`, the last month). The tool is
+  usually run soon after go-live, so the conversion date is usually inside that window. The program's rule for every split edit applies: a
+  split whose hash was valid (or that was dated before the window) is rehashed with the new date, so the account shows no false tampering
+  warning; a split whose hash was already wrong keeps its warning. The payment row has no hash and is updated directly.
 
 ### Item 25: Fee Tools, Copy Code
 
@@ -147,7 +152,7 @@ Nothing below is stated by the public sources; it is this program's own design.
 
 ## Tests
 
-`tests/P262ToolsTests` (new, 39 tests): one scratch database `test_p262tools_*` built from `db/init/new-database.sql` and the fork migrations,
+`tests/P262ToolsTests` (new, 40 tests): one scratch database `test_p262tools_*` built from `db/init/new-database.sql` and the fork migrations,
 dropped after the run; synthetic rows only.
 
 - `IncomeTransferDbTests`: group 1 found and fixed with its DBM log, amounts unchanged; deposits, card, recurring and accounting-linked
@@ -155,7 +160,8 @@ dropped after the run; synthetic rows only.
 - `InsVerifyRedundantDbTests`: the latest verification kept, the other moved with every field and the hash, pointing to the kept row; a date
   tie keeps the newest row, the one `GetOneByFKey` reads; three rows; single rows, other verify types and None untouched; the ordering.
 - `ConversionPaymentDatesDbTests` and `ConversionSplitKindTests`: which transfers are listed and suggested; Fix dates the payment and every
-  split and writes both logs; stale rows are skipped; the split rule.
+  split and writes both logs; inside the hashing window, hashed splits stay valid, a split with a wrong hash keeps its warning and a split
+  moved in from before the window is hashed; stale rows are skipped; the split rule.
 - `FeeCopyCodeDbTests`: exact copy per fee schedule the From code has, other schedules untouched, one schedule only, audit entries, legacy
   duplicate rows, a second copy changes nothing, invalid codes.
 - `LatencyMeasureTests`: the arithmetic, the limits, one run against the database.

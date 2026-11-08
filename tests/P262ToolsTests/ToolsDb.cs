@@ -126,9 +126,10 @@ namespace P262ToolsTests {
 			return payment;
 		}
 
-		///<summary>A paysplit row exactly as given (DatePay is the payment's date unless given), written with the CRUD.</summary>
+		///<summary>A paysplit row exactly as given (DatePay is the payment's date unless given), written with the CRUD (blank SecurityHash), or
+		///with PaySplits.Insert when isHashed, which stores the split's SecurityHash like the program does.</summary>
 		public static PaySplit InsertSplit(Payment payment,double amount,long procNum=0,long adjNum=0,long fSplitNum=0,long payPlanNum=0,
-			long unearnedType=0,DateTime datePay=default(DateTime))
+			long unearnedType=0,DateTime datePay=default(DateTime),bool isHashed=false)
 		{
 			PaySplit paySplit=new PaySplit();
 			paySplit.PayNum=payment.PayNum;
@@ -141,7 +142,12 @@ namespace P262ToolsTests {
 			paySplit.PayPlanNum=payPlanNum;
 			paySplit.UnearnedType=unearnedType;
 			paySplit.ProvNum=1;
-			Crud.PaySplitCrud.Insert(paySplit);
+			if(isHashed) {
+				PaySplits.Insert(paySplit);
+			}
+			else {
+				Crud.PaySplitCrud.Insert(paySplit);
+			}
 			return paySplit;
 		}
 

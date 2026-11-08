@@ -308,7 +308,8 @@ INFERRED in the port note. No database change.
   history belong on the conversion date, so that they do not change the reports of later days. Enter the conversion date and click Find: the
   window lists the income transfers dated after it (or without a date) and selects the ones that only move money of entries dated on or
   before the conversion date. Change Dates dates the selected transfers and their splits on the conversion date, after a confirmation; it
-  needs Payment Edit for that date, and each change is in the audit trail and the DBM log. It runs only when you open it, never with Run All.
+  needs Payment Edit for that date, and each change is in the audit trail and the DBM log. The moved splits keep valid integrity hashes, so
+  the account does not show them as changed outside the program. It runs only when you open it, never with Run All.
 - **Fee Tools: Copy Code.** A new tab copies the fees of one procedure code to another, in every fee schedule or only in the one under Select
   Fees. In each fee schedule where the first code has fees, the second code gets the same fees for every clinic, provider and effective
   date, and its other fees there are deleted; fee schedules where the first code has no fee are not changed. Every change is in the audit

@@ -113,8 +113,10 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Dates the income transfers (and every split of each) on the conversion date. Each one is checked again first: only a payment that
-		///is still one the tool lists for this date is changed. Each change gets a DBM log entry and a Payment Edit audit trail entry with the old
-		///date. Returns the log text.</summary>
+		///is still one the tool lists for this date is changed. Each split is saved with PaySplits.Update, because DatePay is part of the paysplit
+		///SecurityHash: a split whose hash was valid is rehashed with the new date, and one whose hash was already invalid keeps its integrity warning
+		///(the program's rule for every split edit). Each change gets a DBM log entry and a Payment Edit audit trail entry with the old date. Returns
+		///the log text.</summary>
 		public static string FixConversionPaymentDates(List<long> listPayNums,DateTime dateConversion) {
 			if(RemotingClient.MiddleTierRole==MiddleTierRole.ClientMT) {
 				return Meth.GetString(MethodBase.GetCurrentMethod(),listPayNums,dateConversion);
@@ -133,7 +135,15 @@ namespace OpenPmsDentalBusiness {
 					continue;
 				}
 				Db.NonQ("UPDATE payment SET PayDate="+POut.Date(dateConversion)+" WHERE PayNum="+POut.Long(payNum));
-				long countSplits=Db.NonQ("UPDATE paysplit SET DatePay="+POut.Date(dateConversion)+" WHERE PayNum="+POut.Long(payNum));
+				//Not a raw UPDATE: the split hash covers DatePay, and a conversion date inside the hashing window (the usual case, soon after go-live)
+				//would otherwise leave every moved split looking tampered with.
+				List<PaySplit> listPaySplits=PaySplits.GetForPayment(payNum);
+				for(int i=0;i<listPaySplits.Count;i++) {
+					PaySplit paySplitOld=listPaySplits[i].Copy();
+					listPaySplits[i].DatePay=dateConversion;
+					PaySplits.Update(listPaySplits[i],paySplitOld);
+				}
+				int countSplits=listPaySplits.Count;
 				countChanged++;
 				string oldDate=(row.PayDate.Year<1880 ? "no date" : row.PayDate.ToString("yyyy-MM-dd"));
 				listDbmLogs.Add(new DbmLog(Security.CurUser.UserNum,payNum,DbmLogFKeyType.Payment,DbmLogActionType.Update,"ConversionPaymentDates",
