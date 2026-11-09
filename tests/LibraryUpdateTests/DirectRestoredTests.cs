@@ -73,7 +73,8 @@ namespace LibraryUpdateTests {
 			}
 			StringAssert.Contains(Read(@"OpenPmsDental\Forms\FormEmailDigitalSignature.cs"),"EmailMessages.TryAddTrustForSignature(_x509Certificate2);");
 			StringAssert.Contains(Read(@"OpenPmsDental\Forms\FormEmailAddressEdit.designer.cs"),"butRegisterCertificate");
-			StringAssert.Contains(Read(@"OpenPmsDental\Forms\FormEmailAddressEdit.cs"),"new FormEmailCertRegister(textUsername.Text)");
+			StringAssert.Contains(Read(@"OpenPmsDental\Forms\FormEmailAddressEdit.cs"),"new FormEmailCertRegister(textUsername.Text.Trim(),_emailAddress.EmailAddressNum)",
+				"The certificate import of O-13 (DirectCertificateImportTests).");
 			StringAssert.Contains(Read(@"WpfControlsOD\Frms\FrmReferralEdit.xaml"),"x:Name=\"checkEmailTrustDirect\"");
 			string textReferral=Read(@"WpfControlsOD\Frms\FrmReferralEdit.xaml.cs");
 			StringAssert.Contains(textReferral,"ReferralCur.IsTrustedDirect=checkEmailTrustDirect.Checked==true;");
@@ -83,14 +84,17 @@ namespace LibraryUpdateTests {
 			StringAssert.Contains(textInbox,"EmailMessages.IsSenderTrusted(listEmailsFiltered[i].FromAddress)");
 			StringAssert.Contains(textInbox,"EmailMessages.RefreshCertStoreExternal(GetSelectedAddress());");
 			StringAssert.Contains(Read(@"OpenPmsDental\User Controls\EmailPreviewControl.cs"),"EmailMessages.RefreshCertStoreExternal(EmailAddressPreview);");
-			//No window keeps a second copy of the certificate-name helper.
-			foreach(string file in new[] { @"OpenPmsDental\Forms\FormEmailDigitalSignature.cs",@"OpenPmsDental\Forms\FormEmailCertRegister.cs",
-				@"OpenPmsDental\User Controls\EmailPreviewControl.cs" })
-			{
+			//No window keeps a second copy of the certificate-name helper. The certificate window (O-13) leaves the name check to
+			//DirectCertificateImport, which goes through EmailCertificates.IsForAddress and IsForDomain.
+			foreach(string file in new[] { @"OpenPmsDental\Forms\FormEmailDigitalSignature.cs",@"OpenPmsDental\User Controls\EmailPreviewControl.cs" }) {
 				string text=Read(file);
 				Assert.IsFalse(text.Contains("EmailNameResolver.GetCertSubjectName"),file);
 				StringAssert.Contains(text,"EmailCertificates.GetCertSubjectName(",file);
 			}
+			Assert.IsFalse(Read(@"OpenPmsDental\Forms\FormEmailCertRegister.cs").Contains("GetCertSubjectName"),"FormEmailCertRegister");
+			string textImport=Read(@"OpenPmsDentalBusiness\Email\DirectCertificateImport.cs");
+			StringAssert.Contains(textImport,"EmailCertificates.IsForAddress(");
+			StringAssert.Contains(textImport,"EmailCertificates.IsForDomain(");
 		}
 	}
 }

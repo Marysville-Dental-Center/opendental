@@ -117,12 +117,14 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="label2.Text" xml:space="preserve">
-    <value>Use this window to register an email certificate for receiving EHR Direct messages.  When your certificate expires, you will need to create a new certificate and register again.  Certificates usually expire every 18 months.
-</value>
+  <data name="labelExplanation.Text" xml:space="preserve">
+    <value>Import the certificate your Direct provider (HISP) issued for this address: its .pfx or .p12 file and password. It goes into this computer's Direct certificate store (NHINDPrivate) with its private key, which cannot be exported again. It signs email and Direct messages sent from this address and decrypts the Direct messages it receives, on each computer it is imported on. Importing needs a Windows administrator (Run as administrator).</value>
   </data>
   <metadata name="openFileDialogCert.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>17, 17</value>
+  </metadata>
+  <metadata name="openFileDialogAnchor.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+    <value>170, 17</value>
   </metadata>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
 </root>

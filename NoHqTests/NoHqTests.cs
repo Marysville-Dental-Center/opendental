@@ -116,10 +116,11 @@ namespace NoHqTests {
 		[TestMethod]
 		public void CustomerUpdates_VendorMembersAreRemoved() {
 			//The Canadian network certificates come from the office's own files now, eRx access is decided locally, and the OID root is generated
-			//locally (OIDInternals.CustomerPatNum, the last RequestCustomerID caller, is gone).
+			//locally (OIDInternals.CustomerPatNum, the last RequestCustomerID caller, is gone). The Direct certificate is imported from the Direct
+			//provider's file (O-13): nothing registers an e-mail certificate with Open Dental any more.
 			AssertMembersRemoved(new List<Type> { typeof(ICustomerUpdates),typeof(CustomerUpdatesNoHq) },
 				new string[] { "RequestCertCanadaABC","RequestCertCanadaTelusAandB","RequestCertCanadaTelusAandBtest","GetErxAccess","GetClinicErxAccess",
-					"RequestCustomerID" });
+					"RequestCustomerID","RequestEmailVerificationCode","PostEmailCertificate" });
 		}
 
 		#endregion CustomerUpdates
