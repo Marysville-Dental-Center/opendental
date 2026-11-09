@@ -235,8 +235,9 @@ Without the owner's script (no CA yet), so the server tests were inconclusive by
 Tests (Targeted runs, all passed): `DbConnectionSecurityTests` 140 (130 passed, 10 inconclusive: the nine `DevDbTlsServerTests` and
 `DataConnection_Loopback_WithTheLocalTestServersCa_VerifyCa`, until the CA exists), `SyntheticData.Tests` 58 (57 passed, the pre-existing
 `RealDump_Has422Tables` inconclusive), `MiddleTierMockTests` 125, `ReleaseFlowTests` 120 (119 passed), `LibraryBindingTests` 12, `NoHqTests`
-58, and for the hand-edited helpers `BSERVERTests` 57, `LibraryUpdateTests` 100, `AdoptionValidation.Tests` 69 and `DbGrantsTests` 3 (2
-passed, the grants run inconclusive without its variables). `ForkMigrationTests` is named in the package's list but left out under the
+58, `EhrTests` 88 (its helper came from `main`), and for the hand-edited helpers `BSERVERTests` 57, `LibraryUpdateTests` 100,
+`AdoptionValidation.Tests` 69 and `DbGrantsTests` 3 (2 passed, the grants run inconclusive without its variables). The full build has no
+error. `ForkMigrationTests` is named in the package's list but left out under the
 rule for every package (the coordinator runs it with the init file); its helper change is the same mechanical one as the others.
 
 New tests:
