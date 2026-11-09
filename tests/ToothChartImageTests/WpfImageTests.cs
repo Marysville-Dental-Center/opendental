@@ -81,7 +81,7 @@ namespace ToothChartImageTests {
 			int countCompared=listCompared.Count;
 			//Section 7: identical bytes before any tolerance is trusted. Every run counts the pictures whose pixels are exactly their .txt's.
 			List<string> listNotIdentical=listCompared.Except(listIdentical).ToList();
-			Console.WriteLine(countCompared+" WPF pictures compared with "+folderBaseline+"; "+listIdentical.Count+" of them have exactly the pixels of their "
+			WpfCharts.WriteEvidence("wpf-gate.txt",countCompared+" WPF pictures compared with "+folderBaseline+"; "+listIdentical.Count+" of them have exactly the pixels of their "
 				+".txt's Pixels SHA-256"+(listNotIdentical.Count==0?".":", these not: "+string.Join(", ",listNotIdentical.Take(40))+(listNotIdentical.Count>40?", ...":"")+"."));
 			Assert.AreEqual(0,listFailures.Count,listFailures.Count+" scenes differ from the WPF baselines:\r\n"+string.Join("\r\n",listFailures));
 			Assert.IsTrue(countCompared>=250,"Compared "+countCompared);

@@ -94,7 +94,7 @@ namespace ToothChartImageTests {
 				long bytesManagedEnd=GetMemoryAfterCollect(out bytesPrivateEnd);
 				double mbPrivateGrowth=(bytesPrivateEnd-bytesPrivateWarm)/1048576.0;
 				double mbManagedGrowth=(bytesManagedEnd-bytesManagedWarm)/1048576.0;
-				Console.WriteLine("Memory after image 50 and after image 500: private bytes "+(bytesPrivateWarm/1048576.0).ToString("0.0")+" MB and "
+				WpfCharts.WriteEvidence("render-loop-memory.txt","Memory after image 50 and after image 500: private bytes "+(bytesPrivateWarm/1048576.0).ToString("0.0")+" MB and "
 					+(bytesPrivateEnd/1048576.0).ToString("0.0")+" MB ("+mbPrivateGrowth.ToString("+0.0;-0.0")+" MB), managed heap "
 					+(bytesManagedWarm/1048576.0).ToString("0.0")+" MB and "+(bytesManagedEnd/1048576.0).ToString("0.0")+" MB ("+mbManagedGrowth.ToString("+0.0;-0.0")+" MB).");
 				Assert.IsTrue(mbPrivateGrowth<48,"Private bytes grew by "+mbPrivateGrowth.ToString("0.0")+" MB over 450 warm images.");
@@ -315,8 +315,9 @@ namespace ToothChartImageTests {
 			string pathBaselineText=Path.ChangeExtension(WpfCharts.GetPicturePath(WpfCharts.BaselinesWpf,ChartScenes.SizeModule,ChartScenes.Get("restored-adult")),".txt");
 			string hashBaseline=LegacyComparison.ReadPixelsSha256(pathBaselineText);
 			int dpiScreen=GetScreenDpi();
-			Console.WriteLine("restored-adult at "+ChartScenes.SizeModule.FolderName+", module colours: pixels SHA-256 "+hashFirst+" in this process and in a second "
-				+"one; the committed baseline's is "+hashBaseline+"; the screen DPI seen by the test host is "+dpiScreen+" ("+(dpiScreen*100/96)+"%).");
+			WpfCharts.WriteEvidence("determinism.txt","restored-adult at "+ChartScenes.SizeModule.FolderName+", module colours: pixels SHA-256 "+hashFirst
+				+" in this process and in a second one; the committed baseline's is "+hashBaseline+"; the screen DPI seen by the test host is "+dpiScreen+" ("
+				+(dpiScreen*100/96)+"%).");
 			Assert.IsNotNull(hashBaseline,"No Pixels SHA-256 in "+pathBaselineText);
 			Assert.AreEqual(hashBaseline,hashFirst,"The same bytes as the committed baseline, here at "+dpiScreen+" dpi.");
 		}

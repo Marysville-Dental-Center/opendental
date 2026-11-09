@@ -97,6 +97,20 @@ namespace ToothChartImageTests {
 			});
 		}
 
+		///<summary>Prints a test's evidence line and keeps it in %TEMP%\ToothChartImageTests\&lt;fileName&gt; (as render-times-in-process.txt), because a
+		///test runner shows a passing test's output only at a detailed verbosity. L-2's 150% run compares its determinism.txt with the 100% run's.</summary>
+		public static void WriteEvidence(string fileName,string text) {
+			Console.WriteLine(text);
+			try {
+				string folder=Path.Combine(Path.GetTempPath(),"ToothChartImageTests");
+				Directory.CreateDirectory(folder);
+				File.WriteAllText(Path.Combine(folder,fileName),text+"\r\n",new System.Text.UTF8Encoding(false));
+			}
+			catch(Exception ex) {
+				Console.WriteLine("Not kept in a file: "+ex.Message);
+			}
+		}
+
 		///<summary>A borderless form off every screen but shown, for the tests that need a wrapper on screen (an interactive desktop session).</summary>
 		public static System.Windows.Forms.Form CreateOffscreenForm(Size sizeClient) {
 			System.Windows.Forms.Form form=new System.Windows.Forms.Form();
