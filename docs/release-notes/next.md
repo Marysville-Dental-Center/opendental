@@ -388,25 +388,30 @@ longer reaches, so it always failed. It now imports the certificate your Direct 
 (owner decision of 2026-11-08, `docs/port-notes/DIRECT-CERT.md`). Nothing is sent anywhere.
 
 - **The address's certificate.** Pick the provider's `.pfx` or `.p12` file and type its password; Check shows the certificate's subject,
-  issuer, serial number, validity dates and whether it is for the address or for its whole domain, and Import puts it with its private key
-  into this computer's Direct certificate store (`NHINDPrivate`). The private key cannot be exported from there again. The certificate signs
-  e-mail and Direct messages sent from the address and decrypts the Direct messages it receives.
+  issuer, serial number, validity dates, purpose (signing, encryption or both) and whether it is for the address or for its whole domain,
+  and Import puts it with its private key into this computer's Direct certificate store (`NHINDPrivate`). The private key cannot be
+  exported from there again. The certificate signs e-mail and Direct messages sent from the address and decrypts the Direct messages it
+  receives. It is stored for the user name as typed in Edit Email Address, and sending uses it once the address is saved. A certificate
+  already there is not imported again, unless its private key can no longer be used on this computer.
 - **What is refused**, each with a message: a wrong password or another kind of file, a file with no certificate for the address or its
   domain, a certificate without its private key, an expired certificate or one not valid yet, and one Windows finds a problem in (revoked, a
   bad signature).
 - **The address.** The program finds the certificate by the user name of Edit Email Address (Username or email address), the address
   Direct sends from, so that must be the Direct address (name@domain). Certificate says so, and does not open the window, when it is not.
-- **Replacing a certificate.** When the store already has a certificate for the address (or for its domain, for a domain certificate),
-  the window asks first, showing the certificate in the file and the one on this computer with their last days; No imports nothing. The
-  one on this computer may be the newer one (an old file picked by mistake): when it is valid longer, the question says so, and you should
-  answer No unless your Direct provider told you to replace it. The private key of a replaced certificate is deleted too when this window
-  imported it, so messages encrypted to it can then be read only after importing its file again; one put there another way keeps its key.
+- **Replacing a certificate.** A certificate on this computer for the address (or for its domain, for a domain certificate) is replaced
+  only when it is for the same purpose as one in the file and expires before it. The window asks first, showing both sides with their
+  purposes and dates; No imports nothing. Every other certificate for the address stays and is listed as kept, with why: a provider's
+  separate signing and encryption certificates for one address both stay, and a renewed certificate already on this computer stays when an
+  older file is imported by mistake. The private key of a replaced certificate is deleted too when this window imported it, so messages
+  encrypted to it can then be read only after importing its file again; one put there another way keeps its key. An import that fails
+  partway removes what it stored.
 - **The provider's trust anchor** (a `.cer`, `.crt`, `.der` or `.pem` file) is imported into the Direct trust anchors (`NHINDAnchors`)
   after the window shows it and you answer Yes. Messages from addresses whose certificates it issued are then trusted.
 - **Administrator rights and every computer.** The import needs a Windows administrator: start the program with Run as administrator to
   import. Do it on each computer that sends or reads Direct messages, or signs e-mail, for the address. The computer's users get read access
   to the imported private key, so the program can use it when they are signed in.
-- **Security log.** Each import is logged (Setup) with the certificate's thumbprint and last day; no password and no address.
+- **Security log.** Each import is logged (Setup) with the certificate's thumbprint and last day and how many certificates were replaced
+  and kept; no password and no address.
 
 ## Fixes from the window checks
 

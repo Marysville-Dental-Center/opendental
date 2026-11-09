@@ -1071,7 +1071,8 @@ headers (EHR-2's first step; nothing from it enters the repository).
 - **SHA-1 in `FormEhrHash.cs:40`.** Today's 170.210(c) asks for SHA-2.
 - **RxNav's discontinued interaction API.**
 - **Engine fixes** from EHR-4b's deviation list.
-- **Direct certificates:** the certificate-import package of O-13 (net10-plan section 12), already planned.
+- **Direct certificates:** the certificate-import package of O-13 (net10-plan section 12), done by DIRECT-CERT
+  (`docs/port-notes/DIRECT-CERT.md`).
 
 ---
 
