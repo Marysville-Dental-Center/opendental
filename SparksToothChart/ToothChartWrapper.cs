@@ -35,6 +35,8 @@ namespace SparksToothChart {
 		///<summary>Wpf3D: set when the first mark of a burst posts the on-screen rebuild; only that rebuild clears it.</summary>
 		private bool _isWpfRebuildPosted;
 		private static List<string> _listFallbackMessages=new List<string>();
+		///<summary>Every fallback message of this process, counted on past the 1000 that _listFallbackMessages keeps.</summary>
+		private static int _countFallbackMessages;
 		private static readonly object _lockFallback=new object();
 
 		///<summary></summary>
@@ -587,6 +589,7 @@ namespace SparksToothChart {
 					_listFallbackMessages.RemoveAt(0);//a computer without DirectX adds one for every chart; the list stays small
 				}
 				_listFallbackMessages.Add(message);
+				_countFallbackMessages++;
 				if(_isFallbackLogged) {
 					return;
 				}
@@ -600,11 +603,33 @@ namespace SparksToothChart {
 			}
 		}
 
-		///<summary>Every fallback message of this process so far, in order, including those LogFallbackOnce did not write because one was written
-		///already: for tests that check a chart started or drew without falling back.</summary>
+		///<summary>The fallback messages of this process so far, in order, including those LogFallbackOnce did not write because one was written
+		///already: the last 1000. For tests that check a chart started or drew without falling back, GetCountFallbackMessages and
+		///GetFallbackMessagesSince, because once 1000 are kept the count of this list no longer grows.</summary>
 		public static List<string> GetFallbackMessages() {
 			lock(_lockFallback) {
 				return new List<string>(_listFallbackMessages);
+			}
+		}
+
+		///<summary>How many fallback messages this process has had so far, counting those GetFallbackMessages no longer keeps. Taken before a call
+		///and passed to GetFallbackMessagesSince afterwards, it tells whether that call fell back: a WPF render that fails leaves Engine at Wpf3D and
+		///returns the 2D chart's image, so only a new message tells.</summary>
+		public static int GetCountFallbackMessages() {
+			lock(_lockFallback) {
+				return _countFallbackMessages;
+			}
+		}
+
+		///<summary>The fallback messages added since GetCountFallbackMessages returned countBefore, in order, or an empty list. When more were added
+		///than GetFallbackMessages keeps, the kept ones.</summary>
+		public static List<string> GetFallbackMessagesSince(int countBefore) {
+			lock(_lockFallback) {
+				int countNew=Math.Min(_countFallbackMessages-countBefore,_listFallbackMessages.Count);
+				if(countNew<=0) {
+					return new List<string>();
+				}
+				return _listFallbackMessages.GetRange(_listFallbackMessages.Count-countNew,countNew);
 			}
 		}
 
