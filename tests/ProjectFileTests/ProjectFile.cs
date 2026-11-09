@@ -73,7 +73,8 @@ namespace ProjectFileTests {
 		///<summary>The characters MSBuild's EscapingUtilities.Escape writes as %XX.</summary>
 		private static readonly char[] _arrayEscapedChars=new[] { '%','*','?','@','$','(',')',';','\'' };
 		///<summary>Properties that MSBuild, its toolset (MSBuild.exe.config) or the solution build give every project and this reader does not
-		///compute: machine paths and versions, and the solution's global properties. One of them in a Condition, an Include or an Import throws
+		///compute: machine paths and versions, and the solution build's global properties other than the ones _dictGlobalProperties holds. One of
+		///them in a Condition, an Include or an Import throws
 		///(except the imports of MSBuild's and Visual Studio's own files, which are not read), as does GetProperty for it, unless a file this reader
 		///read set it.</summary>
 		private static readonly string[] _arrayNotModelledProperties=new[] { "MSBuildExtensionsPath","MSBuildExtensionsPath32","MSBuildExtensionsPath64",
@@ -84,8 +85,8 @@ namespace ProjectFileTests {
 			"RoslynTargetsPath","FrameworkSDKRoot","SDK35ToolsPath","SDK40ToolsPath","WindowsSDK80Path","WindowsKitsRoot","VCTargetsPath",
 			"TargetFrameworkRootPath","FrameworkPathOverride","TargetFrameworkDirectory","TargetPlatformSdkPath","TargetPlatformDisplayName",
 			"TargetPlatformSdkMetadataLocation",
-			"NETCoreSdkVersion","NETCoreSdkRuntimeIdentifier","NETCoreRoot","DOTNET_HOST_PATH","SolutionDir","SolutionPath","SolutionName","SolutionExt",
-			"SolutionFileName","CurrentSolutionConfigurationContents","BuildingSolutionFile","BuildingInsideVisualStudio",
+			"NETCoreSdkVersion","NETCoreSdkRuntimeIdentifier","NETCoreRoot","DOTNET_HOST_PATH",
+			"CurrentSolutionConfigurationContents","BuildingSolutionFile","BuildingInsideVisualStudio",
 			//Microsoft.Common.CurrentVersion.targets (from $(ReferencePath), the registry and $(OutDir)) and Microsoft.NET.Sdk.props compute these.
 			"AssemblySearchPaths","DesignTimeAssemblySearchPaths" };
 		///<summary>Properties that files MSBuild's common targets import for every project, classic and SDK-style alike, set and this reader does
@@ -118,6 +119,10 @@ namespace ProjectFileTests {
 		private readonly HashSet<string> _hashSetNotModelled=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		///<summary>OpenDental.sln by path: its last write time and its project mappings, read once per test run.</summary>
 		private static readonly Dictionary<string,SolutionFile> _dictSolutions=new Dictionary<string,SolutionFile>(StringComparer.OrdinalIgnoreCase);
+		///<summary>The global properties of the evaluation, which no file can change (MSBuild ignores an assignment to one): Configuration and
+		///Platform, and for a project OpenDental.sln lists the ones the solution build gives every project it builds (SolutionProjectGenerator):
+		///SolutionDir (the solution's folder with a trailing back slash), SolutionPath, SolutionName, SolutionExt and SolutionFileName.</summary>
+		private readonly Dictionary<string,string> _dictGlobalProperties=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
 
 		private ProjectFile() {
 		}
@@ -177,6 +182,17 @@ namespace ProjectFileTests {
 			projectFile.Folder=Path.GetDirectoryName(fullPath);
 			projectFile.Configuration=configuration;
 			projectFile.Platform=platform;
+			projectFile._dictGlobalProperties["Configuration"]=configuration;
+			projectFile._dictGlobalProperties["Platform"]=platform;
+			//As the solution build evaluates the projects OpenDental.sln lists; a project it does not list is built on its own, without them.
+			string pathSln=FindFileAbove("OpenDental.sln",projectFile.Folder);
+			if(pathSln!=null && GetSolutionFile(pathSln).Lists(fullPath)) {
+				projectFile._dictGlobalProperties["SolutionDir"]=Path.GetDirectoryName(pathSln)+@"\";
+				projectFile._dictGlobalProperties["SolutionPath"]=pathSln;
+				projectFile._dictGlobalProperties["SolutionName"]=Path.GetFileNameWithoutExtension(pathSln);
+				projectFile._dictGlobalProperties["SolutionExt"]=Path.GetExtension(pathSln);
+				projectFile._dictGlobalProperties["SolutionFileName"]=Path.GetFileName(pathSln);
+			}
 			XDocument xDocument=XDocument.Load(fullPath);
 			projectFile.IsSdkStyle=IsSdkStyleDocument(xDocument);
 			projectFile.Evaluate(xDocument);
@@ -204,9 +220,11 @@ namespace ProjectFileTests {
 		}
 
 		private void Evaluate(XDocument xDocument) {
-			//Every value is kept as MSBuild keeps it, escaped (Escape, Unescape): the reserved properties hold the escaped path.
-			_dictProperties["Configuration"]=Escape(Configuration);
-			_dictProperties["Platform"]=Escape(Platform);
+			//Every value is kept as MSBuild keeps it, escaped (Escape, Unescape): the global properties and the reserved ones hold the escaped
+			//value.
+			foreach(KeyValuePair<string,string> pair in _dictGlobalProperties) {
+				_dictProperties[pair.Key]=Escape(pair.Value);
+			}
 			_dictProperties["MSBuildProjectFullPath"]=Escape(FullPath);
 			_dictProperties["MSBuildProjectDirectory"]=Escape(Folder);
 			_dictProperties["MSBuildProjectFile"]=Escape(Path.GetFileName(FullPath));
@@ -267,8 +285,8 @@ namespace ProjectFileTests {
 							break;
 						}
 						foreach(XElement xElementProperty in xElement.Elements()) {
-							//Configuration and Platform are global properties (the solution gives them), which a project file cannot change.
-							if(new[] { "Configuration","Platform" }.Contains(xElementProperty.Name.LocalName,StringComparer.OrdinalIgnoreCase)) {
+							//A global property (Configuration, Platform and the solution's, which the solution build gives) a file cannot change.
+							if(_dictGlobalProperties.ContainsKey(xElementProperty.Name.LocalName)) {
 								continue;
 							}
 							if(IsConditionTrue(xElementProperty,fileContext)) {
@@ -600,6 +618,10 @@ namespace ProjectFileTests {
 			}
 			SetIfEmpty("TargetPath",GetValue("TargetDir")+GetValue("TargetFileName"));
 			SetIfEmpty("ProjectDir",Escape(EnsureTrailingSlash(Folder)));
+			//A project built on its own, without the solution's global properties (or one that set none of them), has these.
+			foreach(string name in new[] { "DevEnvDir","SolutionName","SolutionFileName","SolutionPath","SolutionDir","SolutionExt" }) {
+				SetIfEmpty(name,"*Undefined*");
+			}
 			if(IsValue("OutputType","exe") || IsValue("OutputType","winexe")) {
 				_dictProperties["GenerateBindingRedirectsOutputType"]="true";
 			}
@@ -1066,10 +1088,13 @@ namespace ProjectFileTests {
 			}
 		}
 
+		///<summary>MSBuild's &lt;X Condition="'$(X)' == ''"&gt;value&lt;/X&gt;. An environment variable of that name that no file set is MSBuild's
+		///value there instead, which this reader does not model: the name is then not known.</summary>
 		private void SetIfEmpty(string name,string value) {
-			if(GetValue(name)=="") {
-				_dictProperties[name]=value;
+			if(GetValue(name)!="") {
+				return;
 			}
+			_dictProperties[name]=IsEnvironmentVariable(name) ? Unresolved(name) : value;
 		}
 
 		///<summary>The property's value equals the text, as an MSBuild condition compares them: unescaped and ignoring case.</summary>
@@ -1265,7 +1290,10 @@ namespace ProjectFileTests {
 				Match matchItemList=Regex.Match(spec,@"^@\(\s*([A-Za-z_][\w.-]*)\s*\)$");
 				if(matchItemList.Success) {
 					foreach(ProjectItem projectItemSource in _listItems.Where(x => x.ItemType.Equals(matchItemList.Groups[1].Value,StringComparison.OrdinalIgnoreCase)).ToList()) {
-						ProjectItem projectItem=new ProjectItem(itemType,projectItemSource.Include,projectItemSource.FullPath,false,fileContext?.Path);
+						//A copy keeps what the wildcard gave the item: MSBuild keeps its RecursiveDir, so the SDK's automatic Link is the same.
+						ProjectItem projectItem=new ProjectItem(itemType,projectItemSource.Include,projectItemSource.FullPath,projectItemSource.IsFromWildcard,
+							fileContext?.Path);
+						projectItem.RecursiveDir=projectItemSource.RecursiveDir;
 						foreach(KeyValuePair<string,string> pair in projectItemSource.Metadata) {
 							projectItem.SetMetadata(pair.Key,pair.Value);
 						}
@@ -2234,6 +2262,11 @@ namespace ProjectFileTests {
 				foreach(Match match in Regex.Matches(text,@"^\s*(\{[^}]+\})\.([^\r\n=]+?)\.ActiveCfg\s*=\s*([^|\r\n]+)\|([^\r\n]+?)\s*$",RegexOptions.Multiline)) {
 					_dictMappings[match.Groups[1].Value+"."+match.Groups[2].Value.Trim()]=new[] { match.Groups[3].Value.Trim(),match.Groups[4].Value.Trim() };
 				}
+			}
+
+			///<summary>True when the solution lists the project (by its full path).</summary>
+			public bool Lists(string pathProject) {
+				return _dictGuids.ContainsKey(pathProject);
 			}
 
 			///<summary>{configuration, platform} for the project and the solution's "Configuration|Platform", or null when the solution has no

@@ -82,6 +82,43 @@ namespace ProjectFileTests {
 		}
 
 		[TestMethod]
+		public void Sdk_AnItemOfASiblingFolderWhoseNameStartsWithTheProjectsFolderName_GetsALink() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//tests\SdkLinksOther\Other.cs starts with the text of the folder tests\SdkLinks. The SDK compares the full path with the project
+				//folder and its trailing back slash (EnsureTrailingSlash), so the file is outside the folder and gets a Link, as MSBuild 18 gives it.
+				fixtureFolder.WriteFile(@"tests\SdkLinksOther\Other.cs","");
+				fixtureFolder.EditProject("SdkLinks","<EmbeddedResource Include=\"..\\..\\Shared\\Strings.resx\" Link=\"Resources\\Strings.resx\" />",
+					"<EmbeddedResource Include=\"..\\..\\Shared\\Strings.resx\" Link=\"Resources\\Strings.resx\" /><Compile Include=\"..\\SdkLinksOther\\Other.cs\" />");
+				ProjectItem projectItem=fixtureFolder.Load("SdkLinks").AssertItem("Compile",@"..\SdkLinksOther\Other.cs");
+				Assert.AreEqual("Other.cs",projectItem.GetMetadata("Link"));
+				StringAssert.StartsWith(projectItem.FullPath,fixtureFolder.Combine(@"tests\SdkLinks"),"The text the comparison without the slash would take for inside.");
+			}
+		}
+
+		[TestMethod]
+		public void AnItemCopiedFromAnotherList_KeepsItsRecursiveDirAndWildcard() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//MSBuild 18: None Include="@(Compile)" keeps the RecursiveDir the wildcard gave the Compile item, so its automatic Link is the same.
+				fixtureFolder.EditProject("SdkLinks","<EmbeddedResource Include=\"..\\..\\Shared\\Strings.resx\" Link=\"Resources\\Strings.resx\" />",
+					"<EmbeddedResource Include=\"..\\..\\Shared\\Strings.resx\" Link=\"Resources\\Strings.resx\" /><None Include=\"@(Compile)\" />");
+				ProjectFile projectFile=fixtureFolder.Load("SdkLinks");
+				ProjectItem projectItemDeep=projectFile.AssertItem("None",@"..\..\Shared\Linked\Sub\Deep.cs");
+				Assert.AreEqual(@"Sub\",projectItemDeep.RecursiveDir);
+				Assert.AreEqual(@"Sub\Deep.cs",projectItemDeep.GetMetadata("Link"));
+				Assert.IsTrue(projectItemDeep.IsFromWildcard);
+				Assert.AreEqual("Top.cs",projectFile.AssertItem("None",@"..\..\Shared\Linked\Top.cs").GetMetadata("Link"));
+				Assert.IsFalse(projectFile.AssertItem("None","Program.cs").HasMetadata("Link"));
+				//A classic folder compiled through a copy of a wildcard's items is compiled by that wildcard (GetFilesNotCompiledByWildcard).
+				fixtureFolder.EditProject("Classic","<Compile Include=\"VendorDirect\\**\\*.cs\" />",
+					"</ItemGroup><ItemGroup><FixtureSources Include=\"VendorDirect\\**\\*.cs\" /></ItemGroup><ItemGroup><Compile Include=\"@(FixtureSources)\" />");
+				ProjectFile projectFileClassic=fixtureFolder.Load("Classic");
+				projectFileClassic.AssertCompiles(@"VendorDirect\Lab\LabClient.cs",@"VendorDirect\Lab\Sub\LabHelper.cs");
+				Assert.AreEqual(0,projectFileClassic.GetFilesNotCompiledByWildcard("VendorDirect").Count);
+				Assert.AreEqual(@"Lab\Sub\",projectFileClassic.AssertItem("Compile",@"VendorDirect\Lab\Sub\LabHelper.cs").RecursiveDir);
+			}
+		}
+
+		[TestMethod]
 		public void Classic_GetsNoAutomaticLink() {
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
 				//Only the SDK's targets add the Link: a classic project copies such a file under its relative path unless it names a Link.
@@ -401,9 +438,10 @@ namespace ProjectFileTests {
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
 				const string anchor="<Import Project=\"$(MSBuildToolsPath)\\Microsoft.CSharp.targets\" />";
 				string textClassic=System.IO.File.ReadAllText(fixtureFolder.ProjectPath("Classic"));
-				//In a condition: the solution build's $(SolutionDir).
-				fixtureFolder.EditProject("Classic",anchor,"<PropertyGroup Condition=\"'$(SolutionDir)' != ''\"><FixtureX>1</FixtureX></PropertyGroup>"+anchor);
-				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("Classic"),"$(SolutionDir)");
+				//In a condition: the solution build's $(CurrentSolutionConfigurationContents).
+				fixtureFolder.EditProject("Classic",anchor,"<PropertyGroup Condition=\"'$(CurrentSolutionConfigurationContents)' != ''\"><FixtureX>1</FixtureX>"
+					+"</PropertyGroup>"+anchor);
+				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("Classic"),"$(CurrentSolutionConfigurationContents)");
 				//In an Include, through another property: a machine path.
 				fixtureFolder.WriteFile(@"tests\Classic\Classic.csproj",textClassic.Replace(anchor,"<PropertyGroup><FixtureTools>$(MSBuildExtensionsPath)\\Tools"
 					+"</FixtureTools></PropertyGroup><ItemGroup><None Include=\"$(FixtureTools)\\*.dll\" /></ItemGroup>"+anchor));
@@ -421,15 +459,16 @@ namespace ProjectFileTests {
 					+"</FixtureTools></PropertyGroup>"+anchor));
 				ProjectFile projectFile=fixtureFolder.Load("Classic");
 				AssertThrows<NotSupportedException>(() => projectFile.GetProperty("FixtureTools"),"$(MSBuildExtensionsPath)");
-				AssertThrows<NotSupportedException>(() => projectFile.GetProperty("SolutionDir"),"$(SolutionDir)");
+				AssertThrows<NotSupportedException>(() => projectFile.GetProperty("CurrentSolutionConfigurationContents"),"$(CurrentSolutionConfigurationContents)");
 				Assert.IsFalse(projectFile.IsPropertyKnown("FixtureTools"));
-				Assert.IsFalse(projectFile.IsPropertyKnown("SolutionDir"));
+				Assert.IsFalse(projectFile.IsPropertyKnown("CurrentSolutionConfigurationContents"));
 				Assert.IsTrue(projectFile.IsPropertyKnown("OutputPath"));
 				Assert.IsTrue(projectFile.IsPropertyKnown("FixtureNothingSetsThis"),"A name nothing computes is ''.");
-				//Set by the project itself: known.
-				fixtureFolder.WriteFile(@"tests\Classic\Classic.csproj",textClassic.Replace(anchor,"<PropertyGroup><SolutionDir>..\\..\\</SolutionDir></PropertyGroup>"
-					+"<PropertyGroup Condition=\"'$(SolutionDir)' != ''\"><FixtureX>1</FixtureX></PropertyGroup>"+anchor));
+				//Set by the project itself: known. (A global property of the solution build, which a project cannot set, is in SolutionPlatformTests.)
+				fixtureFolder.WriteFile(@"tests\Classic\Classic.csproj",textClassic.Replace(anchor,"<PropertyGroup><AssemblySearchPaths>{HintPathFromItem}</AssemblySearchPaths>"
+					+"</PropertyGroup><PropertyGroup Condition=\"'$(AssemblySearchPaths)' != ''\"><FixtureX>1</FixtureX></PropertyGroup>"+anchor));
 				Assert.AreEqual("1",fixtureFolder.Load("Classic").GetProperty("FixtureX"));
+				Assert.AreEqual("{HintPathFromItem}",fixtureFolder.Load("Classic").GetProperty("AssemblySearchPaths"));
 				//The SDK's own: '' in a classic project, not computed in an SDK-style one.
 				Assert.AreEqual("",fixtureFolder.Load("Classic").GetProperty("RuntimeIdentifier"));
 				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle").GetProperty("RuntimeIdentifier"),"$(RuntimeIdentifier)");
