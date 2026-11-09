@@ -414,8 +414,8 @@ namespace ProjectFileTests {
 				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("Classic"),"$(VsInstallRoot)");
 				//In metadata.
 				fixtureFolder.WriteFile(@"tests\Classic\Classic.csproj",textClassic.Replace(anchor,"<ItemGroup><Reference Include=\"Fixture\">"
-					+"<HintPath>$(NuGetPackageRoot)fixture\\Fixture.dll</HintPath></Reference></ItemGroup>"+anchor));
-				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("Classic"),"$(NuGetPackageRoot)");
+					+"<HintPath>$(MSBuildToolsPath32)\\fixture\\Fixture.dll</HintPath></Reference></ItemGroup>"+anchor));
+				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("Classic"),"$(MSBuildToolsPath32)");
 				//In a property only: the project loads, and asking for the property throws.
 				fixtureFolder.WriteFile(@"tests\Classic\Classic.csproj",textClassic.Replace(anchor,"<PropertyGroup><FixtureTools>$(MSBuildExtensionsPath)\\Tools"
 					+"</FixtureTools></PropertyGroup>"+anchor));

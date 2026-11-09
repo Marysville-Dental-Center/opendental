@@ -19,25 +19,32 @@ namespace ProjectFileTests {
 	///OpenDental.sln builds the project with for the build lane's Debug|x86 (Debug|x86, or Debug|AnyCPU for WpfControlsOD and CryptoTests).
 	///What it models: the properties of the project file and of the files it imports from the repository (Directory.Build.props above the
 	///project, through Microsoft.Common.props, which the project imports itself or the common targets import for it; Directory.Build.targets;
-	///relative imports such as third-party\build\SourceBuild.props), with their conditions; the properties that MSBuild's and the SDK's own
-	///files compute and that the repository's project files or tests use, each at the point of the evaluation where MSBuild computes it (the
-	///output and intermediate paths, the target framework, AssemblyName, OutputType, TargetPath and the like, and for an SDK-style C# project the
-	///compiler defaults of Microsoft.NET.Sdk.props, Microsoft.NET.Sdk.CSharp.props and .targets and Microsoft.NET.Sdk.Analyzers.targets:
-	///DefineConstants with TRACE and the configuration's define, NoWarn 1701;1702, DebugType, Optimize, WarningLevel and the like: region
-	///"MSBuild's and the SDK's own files"), as MSBuild -getProperty gives them; the items of those files in MSBuild's order, with Include (a
+	///relative imports such as third-party\build\SourceBuild.props; the project's .user file; the project extension files of NuGet's restore,
+	///obj\Project.csproj.*.props and .*.targets), with their conditions; the properties that MSBuild's and the SDK's own files compute for the
+	///projects of the repository, each at the point of the evaluation where MSBuild computes it (the output and intermediate paths, the target
+	///framework, AssemblyName, OutputType, TargetPath, Prefer32Bit, PublishDir, the import switches and paths and the like, and for an SDK-style C#
+	///project the SDK's defaults and the compiler defaults of Microsoft.NET.Sdk.props, Microsoft.NET.Sdk.CSharp.props and .targets and
+	///Microsoft.NET.Sdk.Analyzers.targets: DefineConstants with TRACE and the configuration's define, NoWarn 1701;1702, DebugType, Optimize,
+	///WarningLevel and the like: region "MSBuild's and the SDK's own files"), as MSBuild -getProperty gives them, MSBuild's %XX escapes
+	///unescaped where MSBuild unescapes them; the items of those files in MSBuild's order, with Include (a
 	///file, a list, a wildcard, an item list), Exclude, Remove and Update, and their metadata from child elements and attributes alike; for an
 	///SDK-style project the .NET SDK's default items before the project's own (Compile **\*.cs, EmbeddedResource **\*.resx and None **\*
 	///without bin, obj, hidden folders and the DefaultItemExcludes; with UseWPF, Page **\*.xaml and App.xaml as ApplicationDefinition, with the
 	///WindowsDesktop SDK's Page metadata), switched off by EnableDefaultItems, EnableDefaultCompileItems and the other switches, and the Link
 	///metadata the SDK gives an item outside the project folder (SetLinkMetadataAutomatically), exactly as
 	///Microsoft.NET.Sdk.DefaultItems.props/.targets and Microsoft.NET.Sdk.WindowsDesktop.props/.targets of the pinned SDK 10.0.114 define them.
-	///What it does not model: the rest of the files of MSBuild and the SDK, targets (items created while building), ItemDefinitionGroup
-	///defaults other than the WindowsDesktop SDK's, and Choose. Anything it cannot evaluate throws, so a check never passes on a guess: Choose, a
-	///missing import, an unknown property function in an Include or a condition, and a property that MSBuild, its toolset, the solution build
-	///or the SDK compute and this reader does not (the machine paths such as $(MSBuildExtensionsPath), $(SolutionDir), the SDK's
-	///$(RuntimeIdentifier): _arrayNotModelledProperties, _arrayNotModelledSdkProperties and, for an SDK-style project in another language than
-	///C#, _arraySdkLanguageProperties) used in a Condition, an Include or an Import, directly or through another property, or asked of
-	///GetProperty.</summary>
+	///What it does not model: the rest of the files of MSBuild, Visual Studio's components, the .NET Framework and the SDK (those the common
+	///targets import from MSBuild's ImportBefore and ImportAfter folders, Microsoft.WinFx.targets, the web application targets), targets (items
+	///created while building), ItemDefinitionGroup defaults other than the WindowsDesktop SDK's, Choose, and environment variables, which MSBuild
+	///reads as properties. Anything it cannot evaluate throws, so a check never passes on a guess: Choose, a missing import, an import of another
+	///file of MSBuild, Visual Studio or the SDK, an unknown property function in an Include or a condition, an environment variable no file set,
+	///and a property that MSBuild, its toolset, Visual Studio's components or the SDK compute and this reader does not (the machine paths such
+	///as $(MSBuildExtensionsPath), NuGet's $(NuGetTargetMoniker), the SDK's $(RuntimeIdentifier), a web application's $(AppConfig): the
+	///not-modelled lists _arrayNotModelledProperties, _arrayNotModelledToolsetProperties, _arrayNotModelledSdkProperties,
+	///_arrayWebApplicationProperties and, for an SDK-style project in another language than C#, _arraySdkLanguageProperties, each from the point
+	///of the evaluation where MSBuild's files set them) used in a Condition, an Include or an Import, directly or through another property, or
+	///asked of GetProperty. tools\Test-ProjectFileEvaluator.ps1 compares GetProperty with MSBuild -getProperty on every project of the solution
+	///filter for a long list of names, and every stage gate runs it.</summary>
 	internal sealed class ProjectFile {
 		///<summary>The project file, full path.</summary>
 		public string FullPath { get; private set; }
@@ -76,17 +83,27 @@ namespace ProjectFileTests {
 			"MSBuildNodeCount","MSBuildStartupDirectory","MSBuildInteractive","MSBuildIsRestoring","MSBuildOverrideTasksPath","VsInstallRoot",
 			"RoslynTargetsPath","FrameworkSDKRoot","SDK35ToolsPath","SDK40ToolsPath","WindowsSDK80Path","WindowsKitsRoot","VCTargetsPath",
 			"TargetFrameworkRootPath","FrameworkPathOverride","TargetFrameworkDirectory","TargetPlatformSdkPath","TargetPlatformDisplayName",
-			"TargetPlatformSdkMetadataLocation","NuGetPackageRoot","NuGetPackageFolders",
+			"TargetPlatformSdkMetadataLocation",
 			"NETCoreSdkVersion","NETCoreSdkRuntimeIdentifier","NETCoreRoot","DOTNET_HOST_PATH","SolutionDir","SolutionPath","SolutionName","SolutionExt",
 			"SolutionFileName","CurrentSolutionConfigurationContents","BuildingSolutionFile","BuildingInsideVisualStudio",
 			//Microsoft.Common.CurrentVersion.targets (from $(ReferencePath), the registry and $(OutDir)) and Microsoft.NET.Sdk.props compute these.
 			"AssemblySearchPaths","DesignTimeAssemblySearchPaths" };
-		///<summary>Properties the .NET SDK computes for an SDK-style project and this reader does not (a classic project has none of them, so they
-		///are '' there, as MSBuild has them): the inferred runtime identifier, the generated documentation file, the package and assembly info
-		///defaults, the restore's output, the publish and package folders, the analysis level of Microsoft.NET.Sdk.Analyzers.targets.</summary>
-		private static readonly string[] _arrayNotModelledSdkProperties=new[] { "RuntimeIdentifier","RuntimeIdentifiers","DocumentationFile",
-			"VersionPrefix","Version","Authors","Company","AssemblyTitle","Product","ProjectAssetsFile","ProjectDepsFilePath","ProjectRuntimeConfigFilePath",
-			"PublishDir","PackageOutputPath","NuGetTargetMoniker","AnalysisLevel","EffectiveAnalysisLevel" };
+		///<summary>Properties that files MSBuild's common targets import for every project, classic and SDK-style alike, set and this reader does
+		///not read: the files of Visual Studio's components in MSBuild's ImportAfter folder (Microsoft.NuGet.targets: NuGetTargetMoniker and
+		///RuntimeIdentifiers), the .NET Framework's Microsoft.WinFx.targets (Version 1.0.0.0), and for an SDK-style project the SDK's own
+		///(Microsoft.NET.DefaultAssemblyInfo.targets and Microsoft.PackageDependencyResolution.targets). MSBuild 18 gives every C# project of the
+		///repository a value for each (S1-T2's check).</summary>
+		private static readonly string[] _arrayNotModelledToolsetProperties=new[] { "Version","RuntimeIdentifiers","NuGetTargetMoniker" };
+		///<summary>Properties the .NET SDK computes for an SDK-style project and this reader does not (for a classic project MSBuild leaves them
+		///'', as this reader does): the inferred runtime identifier, the package and assembly info defaults, the restore's output, the publish and
+		///package folders, the analysis level and the analyzers' switch of Microsoft.NET.Sdk.Analyzers.targets.</summary>
+		private static readonly string[] _arrayNotModelledSdkProperties=new[] { "RuntimeIdentifier","VersionPrefix","Authors","Company","AssemblyTitle",
+			"Product","ProjectDepsFilePath","ProjectRuntimeConfigFilePath","PublishDir","PackageOutputPath","AnalysisLevel",
+			"EffectiveAnalysisLevel","EnableNETAnalyzers" };
+		///<summary>Properties Microsoft.WebApplication.targets and the Microsoft.Web.Publishing.targets it imports set for a web application
+		///project (the Middle Tier's OpenPmsDentalServer.csproj imports them through $(VSToolsPath)), which this reader does not read: AppConfig is
+		///Web.config when the project has one. Not modelled for a project that imports them.</summary>
+		private static readonly string[] _arrayWebApplicationProperties=new[] { "AppConfig","ProjectConfigFileName" };
 		///<summary>The compiler defaults that Microsoft.NET.Sdk.CSharp.props and .targets and Microsoft.NET.Sdk.Analyzers.targets compute for an
 		///SDK-style C# project (ImportSdkProps, ApplySdkLanguageProperties). The SDK's Visual Basic and F# files compute them otherwise, which this
 		///reader does not model, so for an SDK-style project in another language they are not modelled.</summary>
@@ -94,8 +111,10 @@ namespace ProjectFileTests {
 			"WarningLevel","AppDesignerFolder" };
 		///<summary>The item types whose items Microsoft.NET.Sdk.DefaultItems.targets gives Link metadata (SetLinkMetadataAutomatically).</summary>
 		private static readonly string[] _arrayLinkItemTypes=new[] { "Compile","AdditionalFiles","None","Content","EmbeddedResource","Page","Resource" };
-		///<summary>The names of _arrayNotModelledProperties, and for an SDK-style project those of _arrayNotModelledSdkProperties and any the
-		///evaluation could not compute (TargetPlatformVersion of a .NET 5+ target without a platform version, say).</summary>
+		///<summary>The names that are not modelled at this point of the evaluation: those of _arrayNotModelledProperties from the start, those of
+		///_arrayNotModelledToolsetProperties from the common targets on, for an SDK-style project those of _arrayNotModelledSdkProperties from
+		///Sdk.targets on, those of _arrayWebApplicationProperties after an import of the web application targets, and any the evaluation could not
+		///compute (TargetPlatformVersion of a .NET 5+ target without a platform version, say).</summary>
 		private readonly HashSet<string> _hashSetNotModelled=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		///<summary>OpenDental.sln by path: its last write time and its project mappings, read once per test run.</summary>
 		private static readonly Dictionary<string,SolutionFile> _dictSolutions=new Dictionary<string,SolutionFile>(StringComparer.OrdinalIgnoreCase);
@@ -202,10 +221,11 @@ namespace ProjectFileTests {
 			//MSBuild 18's toolset: "Current" for every MSBuild since 16, and the sub-toolset version.
 			_dictProperties["MSBuildToolsVersion"]="Current";
 			_dictProperties["VisualStudioVersion"]=VISUAL_STUDIO_VERSION;
+			//The machine's own: from the start. The toolset's and the SDK's are added where MSBuild's files set them (ApplyCommonTargetsProperties,
+			//ApplySdkBeforeCommonProperties): before that point a name nothing set is '', as MSBuild has it there.
 			_hashSetNotModelled.UnionWith(_arrayNotModelledProperties);
 			if(IsSdkStyle) {
 				_dictProperties["UsingMicrosoftNETSdk"]="true";
-				_hashSetNotModelled.UnionWith(_arrayNotModelledSdkProperties);
 				if(!IsCSharpProject()) {
 					_hashSetNotModelled.UnionWith(_arraySdkLanguageProperties);
 				}
@@ -302,11 +322,27 @@ namespace ProjectFileTests {
 				ImportMicrosoftCommonTargets(fileName);
 				return;
 			}
-			//Any other file of MSBuild, Visual Studio or the SDK (the web application targets of the Middle Tier project): not modelled.
+			//Any other file of MSBuild, Visual Studio or the SDK is not read. Unless its condition is false, what it sets is not known: the web
+			//application targets of the Middle Tier project make their names not modelled, any other such file throws.
 			if(Regex.IsMatch(project,@"^\$\((MSBuildExtensionsPath|MSBuildExtensionsPath32|MSBuildExtensionsPath64|MSBuildToolsPath|MSBuildBinPath|VSToolsPath|MSBuildSDKsPath|NuGetPackageRoot)\)",
 				RegexOptions.IgnoreCase))
 			{
-				return;
+				bool? isImported=null;
+				try {
+					isImported=IsConditionTrueInFile(xElementImport,fileContext);
+				}
+				catch(NotSupportedException) {
+					//A condition on the machine's own paths ('$(VSToolsPath)' != ''): whether MSBuild imports the file is not known here.
+				}
+				if(isImported==false) {
+					return;
+				}
+				if(fileName.Equals("Microsoft.WebApplication.targets",StringComparison.OrdinalIgnoreCase)) {
+					_hashSetNotModelled.UnionWith(_arrayWebApplicationProperties);
+					return;
+				}
+				throw new NotSupportedException(fileContext.Path+" imports "+project+", a file of MSBuild, Visual Studio or the .NET SDK that ProjectFile does "
+					+"not read, so the properties and items it sets are not known.");
 			}
 			if(!IsConditionTrueInFile(xElementImport,fileContext)) {
 				return;
@@ -332,15 +368,60 @@ namespace ProjectFileTests {
 			ReadProjectElement(XDocument.Load(path).Root,new FileContext(path));
 		}
 
-		///<summary>Directory.Build.props or Directory.Build.targets: the first one in the project's folder or a folder above it, as
-		///Microsoft.Common.props and Microsoft.Common.targets find it.</summary>
-		private void ImportDirectoryBuildFile(string fileName) {
-			string switchName=fileName.EndsWith(".props",StringComparison.OrdinalIgnoreCase) ? "ImportDirectoryBuildProps" : "ImportDirectoryBuildTargets";
-			if(IsPropertyFalse(switchName)) {
+		///<summary>Directory.Build.props (Microsoft.Common.props) or Directory.Build.targets (Microsoft.Common.targets), as those files find it: the
+		///switch ImportDirectoryBuildProps or ImportDirectoryBuildTargets true unless set, then, unless the project names the file itself
+		///(DirectoryBuildPropsPath, DirectoryBuildTargetsPath), the first one in the project's folder or a folder above it
+		///(_DirectoryBuildPropsFile, the folder _DirectoryBuildPropsBasePath, the full path), imported when the switch is true and the file is
+		///there. The Custom{Before,After}DirectoryBuild{Props,Targets} imports around it are not modelled: one of them set throws.</summary>
+		private void ImportDirectoryBuildFile(string kind) {
+			string switchName="ImportDirectoryBuild"+kind;
+			string pathName="DirectoryBuild"+kind+"Path";
+			string fileName="Directory.Build."+kind.ToLowerInvariant();
+			SetIfEmpty(switchName,"true");
+			if(IsPropertyTrue(switchName) && GetValue(pathName)=="") {
+				SetIfEmpty("_DirectoryBuild"+kind+"File",fileName);
+				string pathFound=FindFileAbove(GetUnescaped("_DirectoryBuild"+kind+"File"),Folder);
+				SetIfEmpty("_DirectoryBuild"+kind+"BasePath",pathFound==null ? "" : Escape(Path.GetDirectoryName(pathFound)));
+				if(GetValue("_DirectoryBuild"+kind+"BasePath")!="" && GetValue("_DirectoryBuild"+kind+"File")!="") {
+					_dictProperties[pathName]=Escape(Path.Combine(GetUnescaped("_DirectoryBuild"+kind+"BasePath"),GetUnescaped("_DirectoryBuild"+kind+"File")));
+				}
+			}
+			foreach(string name in new[] { "CustomBeforeDirectoryBuild"+kind,"CustomAfterDirectoryBuild"+kind }) {
+				if(GetValue(name)!="") {
+					throw new NotSupportedException(Describe()+": $("+name+"), an import of Microsoft.Common."+(kind=="Props" ? "props" : "targets")
+						+", is not modelled by ProjectFile.");
+				}
+			}
+			string path=GetValue(pathName);
+			ThrowIfUnresolved(path,Describe()+": $("+pathName+")");
+			if(!IsPropertyTrue(switchName) || path=="") {
 				return;
 			}
-			string path=FindFileAbove(fileName,Folder);
-			if(path!=null) {
+			path=Unescape(path);
+			if(!Path.IsPathRooted(path)) {
+				//MSBuild resolves it from the folder of Microsoft.Common.props or .targets, which this reader does not read.
+				throw new NotSupportedException(Describe()+": a relative $("+pathName+") is not modelled by ProjectFile: "+path);
+			}
+			if(File.Exists(path)) {
+				ReadImportedFile(Path.GetFullPath(path));
+			}
+		}
+
+		///<summary>The project extension imports of Microsoft.Common.props and Microsoft.Common.targets, which NuGet's restore writes
+		///($(MSBuildProjectExtensionsPath)$(MSBuildProjectFile).*.props and .*.targets, as obj\Project.csproj.nuget.g.props): when the switch is true
+		///and the folder is there, every such file in it, in the order of their names (MSBuild sorts the list), as files of the project.</summary>
+		private void ImportProjectExtensions(string extension) {
+			string folder=GetValue("MSBuildProjectExtensionsPath");
+			ThrowIfUnresolved(folder,Describe()+": $(MSBuildProjectExtensionsPath)");
+			folder=Unescape(folder);
+			if(folder=="" || !Directory.Exists(folder)) {
+				return;
+			}
+			string prefix=GetUnescaped("MSBuildProjectFile")+".";
+			foreach(string path in Directory.GetFiles(folder,prefix+"*"+extension)
+				.Where(x => Path.GetFileName(x).StartsWith(prefix,StringComparison.OrdinalIgnoreCase) && x.EndsWith(extension,StringComparison.OrdinalIgnoreCase))
+				.OrderBy(x => x,StringComparer.OrdinalIgnoreCase))
+			{
 				ReadImportedFile(path);
 			}
 		}
@@ -349,15 +430,16 @@ namespace ProjectFileTests {
 		#region MSBuild's and the SDK's own files
 		//What the files of MSBuild 18 (Build Tools 2026) and of the pinned .NET SDK 10.0.114 do for the properties a project's conditions, items
 		//and the tests read, at the point of the evaluation where those files do it, in their order. Each method names the file it follows; the
-		//properties it does not compute are in _arrayNotModelledProperties, _arrayNotModelledSdkProperties and _arraySdkLanguageProperties, and
-		//throw when used.
+		//properties it does not compute are in the not-modelled lists (_arrayNotModelledProperties, _arrayNotModelledToolsetProperties,
+		//_arrayNotModelledSdkProperties, _arraySdkLanguageProperties, _arrayWebApplicationProperties), and throw when used.
 
 		///<summary>Microsoft.Common.props, which a classic project imports first, Sdk.props imports for an SDK-style project, and
-		///Microsoft.Common.CurrentVersion.targets imports for a project that did neither: Directory.Build.props, then BaseIntermediateOutputPath
-		///(obj\ unless set, with a trailing back slash) and MSBuildProjectExtensionsPath, the folder of the restore's files
-		///(BaseIntermediateOutputPath unless set, made a full path from the project folder), then MicrosoftCommonPropsHasBeenImported.</summary>
+		///Microsoft.Common.CurrentVersion.targets imports for a project that did neither: Directory.Build.props (ImportDirectoryBuildFile), then
+		///BaseIntermediateOutputPath (obj\ unless set, with a trailing back slash) and MSBuildProjectExtensionsPath, the folder of the restore's files
+		///(BaseIntermediateOutputPath unless set, made a full path from the project folder), the project extension props of that folder
+		///(ImportProjectExtensionProps true unless set: an evaluation, not a restore), then MicrosoftCommonPropsHasBeenImported.</summary>
 		private void ImportMicrosoftCommonProps() {
-			ImportDirectoryBuildFile("Directory.Build.props");
+			ImportDirectoryBuildFile("Props");
 			SetIfEmpty("BaseIntermediateOutputPath",@"obj\");
 			AppendTrailingSlash("BaseIntermediateOutputPath");
 			_dictProperties["_InitialBaseIntermediateOutputPath"]=GetValue("BaseIntermediateOutputPath");
@@ -367,48 +449,87 @@ namespace ProjectFileTests {
 				_dictProperties["MSBuildProjectExtensionsPath"]=Escape(Path.Combine(Folder,Unescape(extensionsPath)));
 			}
 			AppendTrailingSlash("MSBuildProjectExtensionsPath");
+			SetIfEmpty("ImportProjectExtensionProps","true");
+			if(IsPropertyTrue("ImportProjectExtensionProps")) {
+				_dictProperties["_InitialMSBuildProjectExtensionsPath"]=GetValue("MSBuildProjectExtensionsPath");
+				ImportProjectExtensions(".props");
+			}
 			//Microsoft.Common.CurrentVersion.targets imports Microsoft.Common.props unless this is true.
 			_dictProperties["MicrosoftCommonPropsHasBeenImported"]="true";
 		}
 
 		///<summary>Microsoft.CSharp.targets (or the Visual Basic or common one) of a classic project, and the language targets that Sdk.targets
-		///imports: the language (Microsoft.CSharp.CurrentVersion.targets, with AppDesignerFolder for C#); Microsoft.Common.props, which
-		///Microsoft.Common.CurrentVersion.targets imports first when MicrosoftCommonPropsHasBeenImported is not true (a classic project without its
-		///own import, as OpenPmsDental.csproj: its Directory.Build.props is read here, after the project's own properties); the properties of
-		///Microsoft.Common.CurrentVersion.targets; then Directory.Build.targets, which Microsoft.Common.targets imports after them.</summary>
+		///imports, in their order: the language (Microsoft.CSharp.CurrentVersion.targets, with AppDesignerFolder for C#); Microsoft.Common.props,
+		///which Microsoft.Common.CurrentVersion.targets imports first when MicrosoftCommonPropsHasBeenImported is not true (a classic project without
+		///its own import, as OpenPmsDental.csproj: its Directory.Build.props is read here, after the project's own properties); the project's .user
+		///file when there is one; the properties of Microsoft.Common.CurrentVersion.targets (ApplyCommonTargetsProperties); from the files its
+		///ImportAfter folder imports for every project, the _TargetFrameworkVersionWithoutV of Microsoft.NET.Build.Extensions.targets (the others,
+		///of Visual Studio's components and the .NET Framework, are in _arrayNotModelledToolsetProperties); then, from Microsoft.Common.targets,
+		///the project extension targets of the restore and Directory.Build.targets; and for C# and Visual Basic, Utf8Output, which the language's
+		///CurrentVersion.targets sets after Microsoft.Common.targets.</summary>
 		private void ImportMicrosoftCommonTargets(string fileName) {
+			bool isLanguage=false;
 			if(fileName.Equals("Microsoft.VisualBasic.targets",StringComparison.OrdinalIgnoreCase)) {
 				_dictProperties["Language"]="VB";
 				_dictProperties["DefaultLanguageSourceExtension"]=".vb";
 				_dictProperties["TargetRuntime"]="Managed";
+				isLanguage=true;
 			}
 			else if(fileName.Equals("Microsoft.CSharp.targets",StringComparison.OrdinalIgnoreCase)) {
 				_dictProperties["Language"]="C#";
 				_dictProperties["DefaultLanguageSourceExtension"]=".cs";
 				_dictProperties["TargetRuntime"]="Managed";
 				SetIfEmpty("AppDesignerFolder","Properties");
+				isLanguage=true;
 			}
 			if(!IsPropertyTrue("MicrosoftCommonPropsHasBeenImported")) {
 				ImportMicrosoftCommonProps();
 			}
+			foreach(string name in new[] { "ImportByWildcardBeforeMicrosoftCommonTargets","ImportByWildcardAfterMicrosoftCommonTargets",
+				"ImportUserLocationsByWildcardBeforeMicrosoftCommonTargets","ImportUserLocationsByWildcardAfterMicrosoftCommonTargets" })
+			{
+				SetIfEmpty(name,"true");
+			}
+			//Microsoft.Common.CurrentVersion.targets imports $(MSBuildProjectFullPath).user before its own properties. An empty one fails MSBuild's
+			//evaluation, and this reader's (XDocument.Load throws).
+			if(File.Exists(FullPath+".user")) {
+				ReadImportedFile(FullPath+".user");
+			}
 			ApplyCommonTargetsProperties();
-			ImportDirectoryBuildFile("Directory.Build.targets");
+			if(IsPropertyTrue("ImportByWildcardAfterMicrosoftCommonTargets")) {
+				//Microsoft.NET.Build.Extensions.targets, which MSBuild installs in that folder, for every project.
+				_dictProperties["_TargetFrameworkVersionWithoutV"]=Escape(GetUnescaped("TargetFrameworkVersion").TrimStart('v','V'));
+			}
+			//Microsoft.Common.targets, after Microsoft.Common.CurrentVersion.targets.
+			SetIfEmpty("ImportProjectExtensionTargets","true");
+			if(IsPropertyTrue("ImportProjectExtensionTargets")) {
+				ImportProjectExtensions(".targets");
+			}
+			ImportDirectoryBuildFile("Targets");
+			if(isLanguage) {
+				SetIfEmpty("Utf8Output","true");
+			}
 		}
 
 		///<summary>The properties of Microsoft.Common.CurrentVersion.targets (MSBuild 18) that the repository's files and tests read, in its
-		///order: the target framework defaults (.NETFramework, v4.0) and moniker; the Windows platform defaults (Windows, 7.0) unless a .NET 5+
-		///target turned them off; the platform and configuration names; BaseOutputPath (bin\), OutputPath (bin\configuration\ for AnyCPU, else
-		///bin\platform\configuration\, when the project sets none), BaseIntermediateOutputPath and IntermediateOutputPath the same way, each with a
-		///trailing back slash; OutputType (exe); DebugSymbols (true for the Debug configuration when neither it nor DebugType is set); the output
-		///file's extension, folder (OutDir, TargetDir as a full path), name and path;
-		///GenerateBindingRedirectsOutputType for an exe; and AutoGenerateBindingRedirects for a .NET Framework 4.7.2 or later project that leaves
-		///it empty.</summary>
+		///order: the target framework defaults (.NETFramework, v4.0); Microsoft.NETFramework.props for a .NET Framework target or Microsoft.NET.props
+		///for .NET and .NET Standard (ApplyFrameworkProps: Prefer32Bit, SubsystemVersion, HighEntropyVA); the target framework moniker; the Windows
+		///platform defaults (Windows, 7.0) unless a .NET 5+ target turned them off; the platform and configuration names; BaseOutputPath (bin\),
+		///OutputPath (bin\configuration\ for AnyCPU, else bin\platform\configuration\, when the project sets none), BaseIntermediateOutputPath and
+		///IntermediateOutputPath the same way, each with a trailing back slash; OutputType (exe); DebugSymbols (true for the Debug configuration
+		///when neither it nor DebugType is set); ProduceReferenceAssembly (false unless set); the output file's extension, folder (OutDir, TargetDir
+		///as a full path), name and path; ProjectExt; GenerateBindingRedirectsOutputType for an exe; AutoGenerateBindingRedirects for a .NET
+		///Framework 4.7.2 or later project that leaves it empty; PublishDir (with a trailing back slash, or the output path's app.publish\ for a
+		///classic project: the SDK's own is not modelled); PlatformTargetAsMSBuildArchitecture (MSBuild.exe runs on the .NET Framework); and
+		///DelaySign, false for an unsigned assembly and '' unless 'true'.</summary>
 		private void ApplyCommonTargetsProperties() {
+			_hashSetNotModelled.UnionWith(_arrayNotModelledToolsetProperties);
 			SetIfEmpty("TargetRuntime","Managed");
 			if(IsValue("TargetRuntime","Managed")) {
 				SetIfEmpty("TargetFrameworkIdentifier",".NETFramework");
 				SetIfEmpty("TargetFrameworkVersion","v4.0");
 			}
+			ApplyFrameworkProps();
 			string frameworkIdentifier=GetValue("TargetFrameworkIdentifier");
 			string frameworkVersion=GetValue("TargetFrameworkVersion");
 			if(frameworkIdentifier!="" && frameworkVersion!="" && GetValue("TargetFrameworkMoniker")=="") {
@@ -441,6 +562,7 @@ namespace ProjectFileTests {
 			if(IsValue("ConfigurationName","Debug") && GetValue("DebugSymbols")=="" && GetValue("DebugType")=="") {
 				_dictProperties["DebugSymbols"]="true";
 			}
+			SetIfEmpty("ProduceReferenceAssembly","false");
 			if(GetValue("TargetExt")=="") {
 				foreach(string[] arrayExtension in new[] { new[] { "exe",".exe" },new[] { "winexe",".exe" },new[] { "appcontainerexe",".exe" },
 					new[] { "library",".dll" },new[] { "module",".netmodule" },new[] { "winmdobj",".winmdobj" } })
@@ -466,6 +588,7 @@ namespace ProjectFileTests {
 				_dictProperties["TargetName"]=GetValue("RootNamespace");
 			}
 			SetIfEmpty("TargetName",GetValue("AssemblyName"));
+			SetIfEmpty("ProjectExt",GetValue("MSBuildProjectExtension"));
 			if(IsValue("OutputType","winmdobj")) {
 				SetIfEmpty("WinMDExpOutputWindowsMetadataFilename",GetValue("TargetName")+".winmd");
 				SetIfEmpty("TargetFileName",GetValue("WinMDExpOutputWindowsMetadataFilename"));
@@ -486,6 +609,43 @@ namespace ProjectFileTests {
 			{
 				_dictProperties["AutoGenerateBindingRedirects"]="true";
 			}
+			if(GetValue("PublishDir")!="") {
+				AppendTrailingSlash("PublishDir");
+			}
+			else if(!IsSdkStyle) {
+				//An SDK-style project's comes from Microsoft.NET.Sdk.BeforeCommon.targets and its runtime identifier: not modelled.
+				_dictProperties["PublishDir"]=IsUnresolved(GetValue("OutputPath")) ? GetValue("OutputPath")
+					: Escape(EnsureTrailingSlash(GetUnescaped("OutputPath")))+@"app.publish\";
+			}
+			//MSBuild.exe runs on the .NET Framework (MSBuildRuntimeType Full); MSBuildExtensionsPath64 is set on a 64-bit Windows.
+			if(GetValue("DisableOutOfProcTaskHost")=="") {
+				if(new[] { "v2.0","v3.0","v3.5" }.Any(x => IsValue("TargetFrameworkVersion",x))) {
+					_dictProperties["TargetFrameworkAsMSBuildRuntime"]="CLR2";
+				}
+				if(new[] { "v4.0","v4.5" }.Any(x => IsValue("TargetFrameworkVersion",x))) {
+					_dictProperties["TargetFrameworkAsMSBuildRuntime"]="CLR4";
+				}
+				if(IsUnresolved(GetValue("TargetFrameworkVersion"))) {
+					_dictProperties["TargetFrameworkAsMSBuildRuntime"]=GetValue("TargetFrameworkVersion");
+				}
+				SetIfEmpty("TargetFrameworkAsMSBuildRuntime","CurrentRuntime");
+				_dictProperties["PlatformTargetAsMSBuildArchitectureExplicitlySet"]=GetValue("PlatformTargetAsMSBuildArchitecture")=="" ? "false" : "true";
+				if(!IsPropertyKnown("PlatformTarget")) {
+					_hashSetNotModelled.Add("PlatformTargetAsMSBuildArchitecture");
+				}
+				else {
+					if(IsValue("PlatformTarget","x86") || (IsValue("PlatformTarget","x64") && Environment.Is64BitOperatingSystem)) {
+						_dictProperties["PlatformTargetAsMSBuildArchitecture"]=GetValue("PlatformTarget");
+					}
+					if(IsValue("PlatformTarget","arm")) {
+						_dictProperties["PlatformTargetAsMSBuildArchitecture"]="x86";
+					}
+					if(IsValue("PlatformTarget","ia64") && Environment.Is64BitOperatingSystem) {
+						_dictProperties["PlatformTargetAsMSBuildArchitecture"]="x64";
+					}
+					SetIfEmpty("PlatformTargetAsMSBuildArchitecture","CurrentArchitecture");
+				}
+			}
 			//Delay signing only for a signed assembly, and only when it is 'true': anything else is '' (the SDK's DelaySign false included).
 			if(!IsPropertyTrue("SignAssembly")) {
 				_dictProperties["DelaySign"]="false";
@@ -495,20 +655,68 @@ namespace ProjectFileTests {
 			}
 		}
 
+		///<summary>Microsoft.NETFramework.props (Microsoft.NETFramework.CurrentVersion.props), which Microsoft.Common.CurrentVersion.targets imports
+		///for a .NET Framework target right after its defaults, and Microsoft.NET.props, which that file imports at its end and the common targets
+		///import for .NET and .NET Standard: TargetingClr2Framework for 2.0, 3.0 and 3.5; Prefer32Bit true for an exe (or a project without an
+		///OutputType yet) on 4.5 and later unless PreferNativeArm64, else false; SubsystemVersion 6.02 for ARM, an app container exe or a WinMD,
+		///6.00 for .NET Framework 4.5 and later; HighEntropyVA true for those and for .NET and .NET Standard, else false. Each only when the
+		///project leaves it empty.</summary>
+		private void ApplyFrameworkProps() {
+			bool isFramework=IsValue("TargetFrameworkIdentifier",".NETFramework") || IsValue("TargetFrameworkIdentifier","Silverlight");
+			bool isNet=IsValue("TargetFrameworkIdentifier",".NETStandard") || IsValue("TargetFrameworkIdentifier",".NETCoreApp");
+			if(IsUnresolved(GetValue("TargetFrameworkIdentifier")) || IsUnresolved(GetValue("TargetFrameworkVersion"))) {
+				foreach(string name in new[] { "Prefer32Bit","SubsystemVersion","HighEntropyVA" }) {
+					if(GetValue(name)=="") {
+						_dictProperties[name]=Unresolved("the "+name+" of TargetFramework "+GetValue("TargetFramework"));
+					}
+				}
+				return;
+			}
+			if(!isFramework && !isNet) {
+				return;
+			}
+			bool isFramework45=false;
+			if(isFramework) {
+				if(new[] { "v2.0","v3.0","v3.5" }.Any(x => IsValue("TargetFrameworkVersion",x))) {
+					_dictProperties["TargetingClr2Framework"]="true";
+				}
+				isFramework45=IsValue("TargetFrameworkIdentifier",".NETFramework") && !IsPropertyTrue("TargetingClr2Framework") && !IsValue("TargetFrameworkVersion","v4.0");
+				bool isExeOrNone=new[] { "exe","winexe","appcontainerexe","" }.Any(x => IsValue("OutputType",x));
+				if(isFramework45 && isExeOrNone && !IsPropertyTrue("PreferNativeArm64")) {
+					SetIfEmpty("Prefer32Bit","true");
+				}
+				SetIfEmpty("Prefer32Bit","false");
+				if(GetValue("SubsystemVersion")=="" && (IsValue("PlatformTarget","ARM") || IsValue("OutputType","appcontainerexe") || IsValue("OutputType","winmdobj"))) {
+					_dictProperties["SubsystemVersion"]="6.02";
+				}
+				if(isFramework45) {
+					SetIfEmpty("SubsystemVersion","6.00");
+				}
+			}
+			//Microsoft.NET.props
+			if(isFramework45 || isNet) {
+				SetIfEmpty("HighEntropyVA","true");
+			}
+			SetIfEmpty("HighEntropyVA","false");
+		}
+
 		///<summary>Sdk.props of Microsoft.NET.Sdk: UsingMicrosoftNETSdk, Microsoft.Common.props (Directory.Build.props), the defaults of
-		///Microsoft.NET.Sdk.props that the project's own properties may read or override (Configurations and Platforms; OutputType Library,
-		///FileAlignment, ErrorReport, AssemblyName and RootNamespace from the project's name, Deterministic; DebugSymbols and Optimize for Debug,
-		///Optimize for Release; PlatformTarget from an x86, x64, ARM or arm64 platform; DebugType; the switches that default to false),
-		///Microsoft.NET.Sdk.DefaultItems.props and Microsoft.NET.Sdk.WindowsDesktop.props, whose default items come before the project's own, and
-		///for a C# project Microsoft.NET.Sdk.CSharp.props: NoWarn 1701;1702 unless set, NU1605 added to WarningsAsErrors, and TRACE added to
-		///DefineConstants (after a ';' when it is not empty). All before the project's own properties, which may change them.</summary>
+		///Microsoft.NET.Sdk.props that the project's own properties may read or override (DisableHandlePackageFileConflicts; Configurations and
+		///Platforms; PackRelease; OutputType Library, FileAlignment, ErrorReport, AssemblyName and RootNamespace from the project's name,
+		///Deterministic; DebugSymbols and Optimize for Debug, Optimize for Release; PlatformTarget from an x86, x64, ARM or arm64 platform;
+		///DebugType; RestoreProjectStyle PackageReference; the switches that default to false), Microsoft.NET.Sdk.DefaultItems.props and
+		///Microsoft.NET.Sdk.WindowsDesktop.props, whose default items come before the project's own, and for a C# project
+		///Microsoft.NET.Sdk.CSharp.props: NoWarn 1701;1702 unless set, NU1605 added to WarningsAsErrors, and TRACE added to DefineConstants (after
+		///a ';' when it is not empty). All before the project's own properties, which may change them.</summary>
 		private void ImportSdkProps() {
 			_dictProperties["UsingMicrosoftNETSdk"]="true";
 			_dictProperties["UsingNETSdkDefaults"]="true";
 			ImportMicrosoftCommonProps();
 			//Microsoft.NET.Sdk.props, in its order.
+			_dictProperties["DisableHandlePackageFileConflicts"]="true";
 			SetIfEmpty("Configurations","Debug;Release");
 			SetIfEmpty("Platforms","AnyCPU");
+			SetIfEmpty("PackRelease","true");
 			SetIfEmpty("OutputType","Library");
 			SetIfEmpty("FileAlignment","512");
 			SetIfEmpty("ErrorReport","prompt");
@@ -532,6 +740,7 @@ namespace ProjectFileTests {
 				_dictProperties["DebugType"]="None";
 			}
 			SetIfEmpty("DebugType","portable");
+			_dictProperties["RestoreProjectStyle"]="PackageReference";
 			foreach(string name in new[] { "AllowUnsafeBlocks","TreatWarningsAsErrors","Prefer32Bit","PreferNativeArm64","SignAssembly","DelaySign",
 				"GeneratePackageOnBuild","PackageRequireLicenseAcceptance","DebugSymbols","CheckForOverflowUnderflow" })
 			{
@@ -554,15 +763,39 @@ namespace ProjectFileTests {
 		}
 
 		///<summary>Sdk.targets of Microsoft.NET.Sdk, in its order: Microsoft.NET.Sdk.BeforeCommon.targets (ApplySdkBeforeCommonProperties); the
-		///language targets with Microsoft.Common.targets and Directory.Build.targets; Microsoft.NET.Sdk.targets with the default item switches and
-		///excludes of Microsoft.NET.Sdk.DefaultItems.targets and its automatic Link metadata (an item step, after every item before this point),
-		///for a C# project the compiler defaults of Microsoft.NET.Sdk.targets, Microsoft.NET.Sdk.CSharp.targets and
-		///Microsoft.NET.Sdk.Analyzers.targets (ApplySdkLanguageProperties); then, for a WPF or Windows Forms project,
-		///Microsoft.NET.Sdk.WindowsDesktop.targets with its defaults and Page removals.</summary>
+		///language targets with Microsoft.Common.targets and Directory.Build.targets; Microsoft.NET.Sdk.targets with
+		///CopyLocalLockFileAssemblies (Microsoft.PackageDependencyResolution.targets: false for .NET Standard and for .NET before 3.0 or without
+		///runtime output, else true), the default item switches and excludes of Microsoft.NET.Sdk.DefaultItems.targets and its automatic Link
+		///metadata (an item step, after every item before this point), IsPublishable (Microsoft.NET.Publish.targets), for a C# project the compiler
+		///defaults of Microsoft.NET.Sdk.targets, Microsoft.NET.Sdk.CSharp.targets and Microsoft.NET.Sdk.Analyzers.targets
+		///(ApplySdkLanguageProperties); then, for a WPF or Windows Forms project, Microsoft.NET.Sdk.WindowsDesktop.targets with its defaults and
+		///Page removals.</summary>
 		private void ImportSdkTargets() {
 			ApplySdkBeforeCommonProperties();
 			ImportMicrosoftCommonTargets(Path.GetExtension(FullPath).Equals(".vbproj",StringComparison.OrdinalIgnoreCase) ? "Microsoft.VisualBasic.targets"
 				: "Microsoft.CSharp.targets");
+			//Microsoft.PackageDependencyResolution.targets: the restore's assets file (obj\project.assets.json unless the restore's props named
+			//it), as a full path.
+			SetIfEmpty("ProjectAssetsFile",GetValue("MSBuildProjectExtensionsPath")+"/project.assets.json");
+			if(!IsUnresolved(GetValue("ProjectAssetsFile"))) {
+				_dictProperties["ProjectAssetsFile"]=Escape(Path.GetFullPath(Path.Combine(Folder,Unescape(GetValue("ProjectAssetsFile")))));
+			}
+			if(GetValue("CopyLocalLockFileAssemblies")=="") {
+				Version versionNet;
+				bool hasNetVersion=Version.TryParse(GetUnescaped("_TargetFrameworkVersionWithoutV"),out versionNet);
+				if(IsUnresolved(GetValue("TargetFrameworkIdentifier"))) {
+					_dictProperties["CopyLocalLockFileAssemblies"]=GetValue("TargetFrameworkIdentifier");
+				}
+				else if(IsValue("TargetFrameworkIdentifier",".NETStandard")
+					|| (IsValue("TargetFrameworkIdentifier",".NETCoreApp") && ((hasNetVersion && versionNet<new Version(3,0))
+					|| (!IsPropertyTrue("HasRuntimeOutput") && !IsPropertyTrue("EnableDynamicLoading")))))
+				{
+					_dictProperties["CopyLocalLockFileAssemblies"]="false";
+				}
+				else {
+					_dictProperties["CopyLocalLockFileAssemblies"]="true";
+				}
+			}
 			SetIfEmpty("EnableDefaultItems","true");
 			SetIfEmpty("EnableDefaultCompileItems","true");
 			SetIfEmpty("EnableDefaultEmbeddedResourceItems","true");
@@ -572,6 +805,7 @@ namespace ProjectFileTests {
 			_dictProperties["DefaultExcludesInProjectFolder"]=GetValue("DefaultExcludesInProjectFolder")+";"
 				+GetValue("DefaultItemExcludesInProjectFolder")+";**/.*/**";
 			_listItemSteps.Add(new ItemStep { Builtin=STEP_SDK_LINK_METADATA });
+			SetIfEmpty("IsPublishable","true");
 			if(IsCSharpProject()) {
 				ApplySdkLanguageProperties();
 			}
@@ -591,11 +825,16 @@ namespace ProjectFileTests {
 		}
 
 		///<summary>The part of Microsoft.NET.Sdk.BeforeCommon.targets (SDK 10.0.114) that comes before the common targets: whether the project is
-		///an exe; the platform name; the target framework's identifier, version and platform (Microsoft.NET.TargetFrameworkInference.targets); the
-		///output and intermediate paths (Microsoft.NET.DefaultOutputPaths.targets: bin\ and obj\, then the platform folder unless the platform is
-		///AnyCPU or AppendPlatformToOutputPath is false, the configuration, both added to DefaultItemExcludes, then the target framework unless
-		///AppendTargetFrameworkToOutputPath is false); and the SDK's AutoGenerateBindingRedirects for a .NET Framework exe.</summary>
+		///an exe; the platform name; the target framework's identifier, version and platform (Microsoft.NET.TargetFrameworkInference.targets, with
+		///ProduceReferenceAssembly true for .NET 5 and later, .NET 7 and later for F#); the output and intermediate paths
+		///(Microsoft.NET.DefaultOutputPaths.targets: bin\ and obj\, then the platform folder unless the platform is AnyCPU or
+		///AppendPlatformToOutputPath is false, the configuration, both added to DefaultItemExcludes, then the target framework unless
+		///AppendTargetFrameworkToOutputPath is false; a runtime identifier folder is not modelled); the SDK's AutoGenerateBindingRedirects for a .NET
+		///Framework exe; GenerateDocumentationFile (true when the project names a DocumentationFile) and the DocumentationFile it gives
+		///($(IntermediateOutputPath)$(AssemblyName).xml, $(AssemblyName).xml for Visual Basic, '' when no documentation is generated).</summary>
 		private void ApplySdkBeforeCommonProperties() {
+			_hashSetNotModelled.UnionWith(_arrayNotModelledToolsetProperties);
+			_hashSetNotModelled.UnionWith(_arrayNotModelledSdkProperties);
 			bool isExecutable=IsValue("OutputType","Exe") || IsValue("OutputType","WinExe");
 			if(isExecutable) {
 				_dictProperties["_IsExecutable"]="true";
@@ -638,14 +877,25 @@ namespace ProjectFileTests {
 			}
 			_dictProperties["_TargetFrameworkVersionWithoutV"]=Escape(GetUnescaped("TargetFrameworkVersion").TrimStart('v','V'));
 			Version versionFramework;
-			if(IsValue("TargetFrameworkIdentifier",".NETCoreApp") && Version.TryParse(GetUnescaped("_TargetFrameworkVersionWithoutV"),out versionFramework)
-				&& versionFramework>=new Version(5,0))
-			{
+			bool hasFrameworkVersion=Version.TryParse(GetUnescaped("_TargetFrameworkVersionWithoutV"),out versionFramework);
+			if(IsValue("TargetFrameworkIdentifier",".NETCoreApp") && hasFrameworkVersion && versionFramework>=new Version(5,0)) {
 				_dictProperties["_EnableDefaultWindowsPlatform"]="false";
 				if(GetValue("TargetPlatformIdentifier")!="" && GetValue("TargetPlatformVersion")=="") {
 					//The SDK's platform files give it a default later on; not modelled.
 					_hashSetNotModelled.Add("TargetPlatformVersion");
 					_hashSetNotModelled.Add("TargetPlatformMoniker");
+				}
+			}
+			//The end of Microsoft.NET.TargetFrameworkInference.targets.
+			if(GetValue("ProduceReferenceAssembly")=="") {
+				bool isFSharp=Path.GetExtension(FullPath).Equals(".fsproj",StringComparison.OrdinalIgnoreCase);
+				if(IsUnresolved(GetValue("TargetFrameworkIdentifier"))) {
+					_dictProperties["ProduceReferenceAssembly"]=GetValue("TargetFrameworkIdentifier");
+				}
+				else if(IsValue("TargetFrameworkIdentifier",".NETCoreApp") && hasFrameworkVersion && versionFramework>=new Version(isFSharp ? 7 : 5,0)
+					&& !IsPropertyTrue("ProduceOnlyReferenceAssembly"))
+				{
+					_dictProperties["ProduceReferenceAssembly"]="true";
 				}
 			}
 			//Microsoft.NET.DefaultOutputPaths.targets
@@ -674,12 +924,29 @@ namespace ProjectFileTests {
 				}
 			}
 			//Microsoft.NET.RuntimeIdentifierInference.targets sets the platform target from the runtime identifier it infers when the project has
-			//none (Directory.Build.props gives every SDK-style project x86); not modelled.
+			//none (Directory.Build.props gives every SDK-style project x86); not modelled. It also adds a runtime identifier the project names
+			//itself to the output paths unless AppendRuntimeIdentifierToOutputPath is false (Directory.Build.props): not modelled either.
 			if(GetValue("PlatformTarget")=="") {
 				_hashSetNotModelled.Add("PlatformTarget");
 			}
+			if(GetValue("RuntimeIdentifier")!="" && !IsPropertyFalse("AppendRuntimeIdentifierToOutputPath")) {
+				foreach(string name in new[] { "OutputPath","IntermediateOutputPath" }) {
+					_dictProperties[name]=Unresolved("the "+name+" of RuntimeIdentifier "+GetUnescaped("RuntimeIdentifier"));
+				}
+			}
 			if(IsValue("TargetFrameworkIdentifier",".NETFramework") && IsPropertyTrue("HasRuntimeOutput")) {
 				SetIfEmpty("AutoGenerateBindingRedirects","true");
+			}
+			//The XML documentation file.
+			if(GetValue("GenerateDocumentationFile")=="") {
+				_dictProperties["GenerateDocumentationFile"]=GetValue("DocumentationFile")=="" ? "false" : "true";
+			}
+			if(IsPropertyTrue("GenerateDocumentationFile") && GetValue("DocumentationFile")=="") {
+				_dictProperties["DocumentationFile"]=(Path.GetExtension(FullPath).Equals(".vbproj",StringComparison.OrdinalIgnoreCase) ? "" : GetValue("IntermediateOutputPath"))
+					+GetValue("AssemblyName")+".xml";
+			}
+			if(!IsPropertyTrue("GenerateDocumentationFile")) {
+				_dictProperties["DocumentationFile"]="";
 			}
 		}
 
@@ -1237,13 +1504,19 @@ namespace ProjectFileTests {
 		///<summary>The evaluated value of a property, as MSBuild has it at the end of the evaluation (as MSBuild -getProperty gives it, so
 		///without what targets add while building): set by the project file or a file it imports from the repository, or computed by this reader
 		///where MSBuild's or the SDK's own files compute it (region "MSBuild's and the SDK's own files": for an SDK-style C# project also
-		///DefineConstants, NoWarn and the other compiler defaults), or "" when nothing sets it. Throws for a property that MSBuild, the solution
-		///build or the SDK compute and this reader does not (_arrayNotModelledProperties, _arrayNotModelledSdkProperties, and
-		///_arraySdkLanguageProperties for an SDK-style project in another language) and for a value that holds an expression this reader cannot
-		///evaluate.</summary>
+		///DefineConstants, NoWarn and the other compiler defaults), or "" when nothing sets it. Throws for a property that MSBuild, its toolset,
+		///Visual Studio's components or the SDK compute and this reader does not (the not-modelled lists: _arrayNotModelledProperties,
+		///_arrayNotModelledToolsetProperties, _arrayNotModelledSdkProperties, _arrayWebApplicationProperties, and _arraySdkLanguageProperties for
+		///an SDK-style project in another language), for an environment variable of this process that no file set (MSBuild reads environment
+		///variables as properties; this reader does not model them), and for a value that holds an expression this reader cannot evaluate.
+		///</summary>
 		public string GetProperty(string name) {
 			if(!_dictProperties.ContainsKey(name) && _hashSetNotModelled.Contains(name)) {
 				throw new NotSupportedException(Describe()+": $("+name+") is computed by MSBuild, the solution build or the .NET SDK and not modelled by ProjectFile.");
+			}
+			if(IsEnvironmentVariable(name)) {
+				throw new NotSupportedException(Describe()+": $("+name+") is an environment variable of this process, which MSBuild reads as a property; "
+					+"ProjectFile does not model environment variables.");
 			}
 			string value=GetValue(name);
 			ThrowIfUnresolved(value,Describe()+": $("+name+")");
@@ -1254,9 +1527,16 @@ namespace ProjectFileTests {
 		///<summary>True when the reader knows the property's value (GetProperty does not throw for it).</summary>
 		public bool IsPropertyKnown(string name) {
 			if(!_dictProperties.ContainsKey(name)) {
-				return !_hashSetNotModelled.Contains(name);
+				return !_hashSetNotModelled.Contains(name) && !IsEnvironmentVariable(name);
 			}
 			return !IsUnresolved(GetValue(name));
+		}
+
+		///<summary>True when no file this reader read set the name and it is an environment variable of this process: MSBuild gives every
+		///environment variable whose name is a valid property name to the evaluation as a property ($(TEMP), $(UserProfile), which NuGet's
+		///obj\*.nuget.g.props use), and a file may set it over; this reader does not model environment variables.</summary>
+		private bool IsEnvironmentVariable(string name) {
+			return !_dictProperties.ContainsKey(name) && Regex.IsMatch(name,@"^[A-Za-z_][\w-]*$") && Environment.GetEnvironmentVariable(name)!=null;
 		}
 
 		///<summary>The value as it stands at this point of the evaluation, or "" when nothing set it; no check.</summary>
@@ -1266,10 +1546,10 @@ namespace ProjectFileTests {
 		}
 
 		///<summary>The value of $(Name) in an expression: as GetValue, but a property MSBuild, the solution build or the SDK compute and this reader
-		///does not becomes a marker, which makes the condition, include or import that uses it, directly or through another property, throw.
-		///</summary>
+		///does not, or an environment variable no file set, becomes a marker, which makes the condition, include or import that uses it, directly
+		///or through another property, throw.</summary>
 		private string GetValueForExpression(string name) {
-			if(!_dictProperties.ContainsKey(name) && _hashSetNotModelled.Contains(name)) {
+			if(!_dictProperties.ContainsKey(name) && (_hashSetNotModelled.Contains(name) || IsEnvironmentVariable(name))) {
 				return Unresolved(name);
 			}
 			return GetValue(name);
