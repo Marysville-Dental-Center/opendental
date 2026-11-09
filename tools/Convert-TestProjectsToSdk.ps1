@@ -389,8 +389,9 @@ function Convert-Project([string]$path){
 			$text.Add('    <'+$pair[0]+'>'+(Get-Escaped $pair[1])+'</'+$pair[0]+'>')
 		}
 		if($disableConfigurationDefines){
-			$text.Add('    <!-- As in the classic project, no DEBUG symbol in the Debug configuration (and no RELEASE in Release): only TRACE and the SDK''s')
-			$text.Add('         framework symbols. -->')
+			$text.Add('    <!-- As in the classic project, TRACE in both configurations and no DEBUG symbol in Debug (and no RELEASE in Release): the SDK adds')
+			$text.Add('         only its framework symbols. -->')
+			$text.Add('    <DefineConstants>TRACE</DefineConstants>')
 			$text.Add('    <DisableImplicitConfigurationDefines>true</DisableImplicitConfigurationDefines>')
 		}
 		$text.Add('  </PropertyGroup>')

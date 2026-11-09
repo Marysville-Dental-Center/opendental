@@ -5,8 +5,9 @@
        synthetic data only. They are skipped (inconclusive) when the server does not answer, or when FORKMIGRATION_TEST_DB=skip.
        Every .cs file under this folder is compiled. -->
   <PropertyGroup>
-    <!-- As in the classic project, no DEBUG symbol in the Debug configuration (and no RELEASE in Release): only TRACE and the SDK's
-         framework symbols. -->
+    <!-- As in the classic project, TRACE in both configurations and no DEBUG symbol in Debug (and no RELEASE in Release): the SDK adds
+         only its framework symbols. -->
+    <DefineConstants>TRACE</DefineConstants>
     <DisableImplicitConfigurationDefines>true</DisableImplicitConfigurationDefines>
   </PropertyGroup>
   <ItemGroup>
