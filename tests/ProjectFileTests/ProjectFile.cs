@@ -754,6 +754,8 @@ namespace ProjectFileTests {
 					: Unresolved("the _TargetFrameworkVersionWithoutV of the file $(MicrosoftNETBuildExtensionsTargets) names");
 				return;
 			}
+			//That file's line 15. TargetFrameworkVersion is stored before this point unless TargetRuntime is not Managed (the common targets' lines 61-71 then
+			//set no default): an environment variable no file set is then MSBuild's value here, which GetValue gives as not known.
 			_dictProperties["_TargetFrameworkVersionWithoutV"]=Escape(GetUnescaped("TargetFrameworkVersion").TrimStart('v','V'));
 		}
 
@@ -854,7 +856,8 @@ namespace ProjectFileTests {
 					}
 				}
 			}
-			//Line 240: OutDirWasSpecified, when OutDir was set before this point and it is ''.
+			//Line 240: OutDirWasSpecified, when OutDir was set before this point and it is '' (GetValue: an environment variable of OutDir that
+			//no file set is set there, as MSBuild reads it; the SetIfEmpty below cannot tell).
 			if(GetValue("OutDir")!="" && GetValue("OutDirWasSpecified")=="") {
 				_dictProperties["OutDirWasSpecified"]="true";
 			}
@@ -1218,6 +1221,7 @@ namespace ProjectFileTests {
 			}
 			//Microsoft.NET.Sdk.DefaultItems.targets lines 18-27: no default items when DisableDefaultItemsInProjectFolder is 'true' and the
 			//project's folder holds a solution or a C# project (the project itself, for a .csproj); a switch not known makes them not known.
+			//EnableDefaultItems is read before the SetIfEmpty below stores it: an environment variable no file set is not '' there (GetValue).
 			bool? isDisabledInFolder=GetValue("EnableDefaultItems")=="" ? IsValueIfKnown("DisableDefaultItemsInProjectFolder","true") : false;
 			if(isDisabledInFolder!=false) {
 				isDisabledInFolder&=new[] { "*.sln","*.slnx","*.csproj" }.Any(x => Directory.GetFiles(Folder,x).Length!=0);
@@ -1795,9 +1799,11 @@ namespace ProjectFileTests {
 		}
 
 		///<summary>The item part of Microsoft.NET.Sdk.WindowsDesktop.targets (SDK 10.0.114, lines 73-101), when Microsoft.NET.Sdk.targets imported
-		///it: a Page that is also a Resource, Content, the ApplicationDefinition or an explicit None item is not a Page.</summary>
+		///it: a Page that is also a Resource, Content, the ApplicationDefinition or an explicit None item is not a Page. Its ItemGroup has line 56's
+		///condition of its own (IsWindowsDesktopTargetsGlobbing), not _EnableWindowsDesktopGlobbing: a file or an environment variable that sets
+		///the name for a project without UseWPF gets the Page items of the props, and none of these removals.</summary>
 		private void ApplySdkTargetsItems() {
-			if(!_isWindowsDesktopTargetsImported || !IsWindowsDesktopGlobbing()) {
+			if(!_isWindowsDesktopTargetsImported || !IsWindowsDesktopTargetsGlobbing()) {
 				return;
 			}
 			if(!IsKnownFalse("EnableDefaultPageItems")) {
@@ -1809,15 +1815,22 @@ namespace ProjectFileTests {
 			}
 		}
 
-		///<summary>_EnableWindowsDesktopGlobbing of Microsoft.NET.Sdk.WindowsDesktop.targets (line 56): default items on, UseWPF, and a target
-		///framework of 3.0 or later (every .NET Framework 4.x and .NET target this repository has). Only that file sets it, which
-		///Microsoft.NET.Sdk.targets imports for a WPF or Windows Forms project (ImportWindowsDesktopTargets); otherwise
-		///Microsoft.NET.Sdk.WindowsDesktop.props, which every SDK-style project imports, reads what a file or an environment variable of the name
-		///gives: one not known throws.</summary>
+		///<summary>_EnableWindowsDesktopGlobbing as Microsoft.NET.Sdk.WindowsDesktop.props, which every SDK-style project imports, reads it (lines 3
+		///and 17, in the passes after the properties: the name's last value). Only Microsoft.NET.Sdk.WindowsDesktop.targets sets it, which
+		///Microsoft.NET.Sdk.targets imports for a WPF or Windows Forms project (ImportWindowsDesktopTargets), and only when its line 56's
+		///condition holds (IsWindowsDesktopTargetsGlobbing); otherwise, the targets imported or not, the name keeps what a file or an environment
+		///variable of the name gives: one not known throws.</summary>
 		private bool IsWindowsDesktopGlobbing() {
-			if(!_isWindowsDesktopTargetsImported) {
-				return IsKnownTrue("_EnableWindowsDesktopGlobbing");
+			if(_isWindowsDesktopTargetsImported && IsWindowsDesktopTargetsGlobbing()) {
+				return true;
 			}
+			return IsKnownTrue("_EnableWindowsDesktopGlobbing");
+		}
+
+		///<summary>The condition of Microsoft.NET.Sdk.WindowsDesktop.targets line 56 (which sets _EnableWindowsDesktopGlobbing true) and of its
+		///ItemGroup at line 73: default items on, UseWPF, and a target framework of 3.0 or later (every .NET Framework 4.x and .NET target this
+		///repository has). For a project that imports those targets only.</summary>
+		private bool IsWindowsDesktopTargetsGlobbing() {
 			Version versionFramework;
 			return IsKnownTrue("EnableDefaultItems") && IsKnownTrue("UseWPF")
 				&& Version.TryParse(GetKnownValue("_TargetFrameworkVersionWithoutV"),out versionFramework) && versionFramework>=new Version(3,0);

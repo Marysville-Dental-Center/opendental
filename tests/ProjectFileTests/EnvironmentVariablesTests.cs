@@ -225,6 +225,8 @@ namespace ProjectFileTests {
 						ANCHOR_CLASSIC_TARGETS,COMMON_ONLY,"<TargetFrameworkVersion>v4.8</TargetFrameworkVersion>","");
 					AssertNotKnown(projectFile,"TargetFrameworkMoniker","$(TargetFrameworkVersion)","C2 TargetFrameworkVersion");
 					AssertNotKnown(projectFile,"SubsystemVersion","TargetFrameworkVersion","C3 TargetFrameworkVersion");
+					//Microsoft.NET.Build.Extensions.targets line 15 (ImportAfter, line 7142), where no default stored the version before (old: '').
+					AssertNotKnown(projectFile,"_TargetFrameworkVersionWithoutV","$(TargetFrameworkVersion)","B3");
 				});
 				//Lines 91-92 (old: .NETFramework,Version=v4.8 for both).
 				With("TargetFrameworkMoniker",".NETFramework,Version=v4.7",() => AssertNotKnown(LoadClassic(fixtureFolder,""),"TargetFrameworkMoniker","$(TargetFrameworkMoniker)","C4"));
@@ -267,7 +269,13 @@ namespace ProjectFileTests {
 					"<OutputType>WinExe</OutputType>","<OutputType>winmdobj</OutputType>"),"TargetName","$(RootNamespace)","C18"));
 				With("TargetName","EnvTarget",() => AssertNotKnown(LoadClassic(fixtureFolder,"","<OutputType>WinExe</OutputType>","<OutputType>winmdobj</OutputType>"),
 					"TargetName","$(TargetName)","C19"));
-				//Lines 240 and 250 (old: bin\Debug\, out\Classic\, out\, out\, out\).
+				//Lines 240 and 250 (old: '' for OutDirWasSpecified from an OutDir no file set; bin\Debug\, out\Classic\, out\, out\, out\).
+				With("OutDir",@"out\",() => {
+					ProjectFile projectFile=LoadClassic(fixtureFolder,"");
+					Assert.AreEqual("true",projectFile.GetProperty("OutDirWasSpecified"),"C20b OutDir");
+					AssertNotKnown(projectFile,"OutDir","$(OutDir)","C20b OutDir");
+				});
+				Assert.AreEqual("",LoadClassic(fixtureFolder,"").GetProperty("OutDirWasSpecified"),"Without a variable.");
 				With("OutDirWasSpecified","true",() => AssertNotKnown(LoadClassic(fixtureFolder,"<GenerateProjectSpecificOutputFolder>true</GenerateProjectSpecificOutputFolder>"),
 					"OutDir","OutDirWasSpecified","C20 OutDirWasSpecified"));
 				With("OutDirWasSpecified","false",() => AssertNotKnown(LoadClassic(fixtureFolder,"<OutDir>out\\</OutDir>"
@@ -542,6 +550,23 @@ namespace ProjectFileTests {
 					+"<UseWPF>true</UseWPF>"),"$(TargetPlatformIdentifier)","W4"));
 				With("ImportWindowsDesktopTargets","false",() => AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"$(ImportWindowsDesktopTargets)","W5"));
 				With("_EnableWindowsDesktopGlobbing","true",() => AssertThrows<NotSupportedException>(() => LoadSdkLinks(fixtureFolder,""),"$(_EnableWindowsDesktopGlobbing)","W6"));
+				//With the WindowsDesktop targets imported (Windows Forms) and line 56's condition false (no UseWPF), the name keeps the variable's
+				//value, which the props read (old: no WPF items, no error).
+				const string WINDOWS_FORMS="<UseWindowsForms>true</UseWindowsForms><UseWPF>false</UseWPF>";
+				With("_EnableWindowsDesktopGlobbing","true",() => AssertThrows<NotSupportedException>(() => LoadTestsSdk(fixtureFolder,WINDOWS_FORMS),
+					"$(_EnableWindowsDesktopGlobbing)","W6b"));
+				//The same with a file's value, as MSBuild 18 evaluates it: the props' Page items with their definitions, and none of the targets'
+				//removals (line 73 has line 56's condition of its own), so a Page that is also a Resource stays a Page.
+				fixtureFolder.WriteFile(@"tests\EnvSdk\View.xaml","<Page />");
+				fixtureFolder.WriteFile(@"tests\EnvSdk\Other.xaml","<Page />");
+				ProjectFile projectFileWindowsForms=LoadTestsSdk(fixtureFolder,WINDOWS_FORMS+"<_EnableWindowsDesktopGlobbing>true</_EnableWindowsDesktopGlobbing>",
+					"<Resource Include=\"View.xaml\" />");
+				ProjectItem projectItemPage=projectFileWindowsForms.GetItem("Page","Other.xaml");
+				Assert.IsNotNull(projectItemPage,"W6c: the props' Page items.");
+				Assert.AreEqual("MSBuild:Compile",projectItemPage.GetMetadata("Generator"),"W6c: the props' item definitions.");
+				Assert.IsTrue(projectFileWindowsForms.HasItem("Page","View.xaml"),"W6c: no removal of the targets without UseWPF.");
+				Assert.IsTrue(projectFileWindowsForms.HasItem("Resource","View.xaml"));
+				Assert.AreEqual(0,LoadTestsSdk(fixtureFolder,WINDOWS_FORMS).GetItems("Page").Count,"W6c: no Page items without the name.");
 				With("UseWPF","true",() => AssertThrows<NotSupportedException>(() => LoadSdkLinks(fixtureFolder,"<ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>"),
 					"$(UseWPF)","W7"));
 				With("EnableDefaultPageItems","false",() => AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"$(EnableDefaultPageItems)","W8"));
@@ -572,6 +597,10 @@ namespace ProjectFileTests {
 					With(arrayCase[0],arrayCase[1],() => AssertThrows<NotSupportedException>(() => LoadTestsSdk(fixtureFolder,""),arrayCase[2],arrayCase[3]));
 				}
 				With("SetLinkMetadataAutomatically","false",() => AssertThrows<NotSupportedException>(() => LoadSdkLinks(fixtureFolder,""),"$(SetLinkMetadataAutomatically)","X9"));
+				//Microsoft.NET.Sdk.DefaultItems.targets line 18 reads EnableDefaultItems before its default: the variable is not '', so a file's
+				//DisableDefaultItemsInProjectFolder decides nothing and MSBuild globs with the variable's value (old: false, no default items).
+				With("EnableDefaultItems","true",() => AssertThrows<NotSupportedException>(() => LoadTestsSdk(fixtureFolder,
+					"<DisableDefaultItemsInProjectFolder>true</DisableDefaultItemsInProjectFolder>"),"$(EnableDefaultItems)","X5b"));
 				//A file that sets the switch decides it; without a variable, the default items.
 				With("DisableDefaultItemsInProjectFolder","true",() => Assert.AreEqual(1,LoadTestsSdk(fixtureFolder,"<EnableDefaultItems>true</EnableDefaultItems>")
 					.GetItems("Compile").Count,"X5"));
