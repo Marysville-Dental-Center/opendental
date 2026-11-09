@@ -1,7 +1,8 @@
 // The keys the connection settings tool's import stores (DCFU2, the follow-up round of DIRECT-CERT-FOLLOWUP): ImportPfx reads the .pfx with
 // PersistKeySet, which stores the key of every certificate of the file that has one; it deletes again the ones it does not use (the file's
-// other certificates', and all of them when the store refuses the client certificate), as DirectCertificateImport does, and never a key a
-// certificate of the store uses. Throwaway keys of the current user only, in a store of the current user with a name of its own
+// other certificates', and all of them when the store refuses the client certificate, or already holds it with a usable key, which then
+// stays as it is: the DCFU2 fix round), as DirectCertificateImport does, and never a key a certificate of the store uses. Throwaway keys
+// of the current user only, in a store of the current user with a name of its own
 // (ClientCertificateTestStore, through ImportPfx's internal overload); never LocalMachine\My, CurrentUser\My or a real certificate.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;

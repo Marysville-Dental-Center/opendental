@@ -765,7 +765,10 @@ approved all three parts of the follow-up package, DIRECT-CERT-FOLLOWUP
 - **The connection settings tool's private keys.** The tool now deletes the private key of a client certificate it replaces also when
   Windows keeps that key the older way (a CAPI key container, as it stores a `.pfx` that names no key provider), and gives the computer's
   users read access to such a key. Before, the certificate was removed but that kind of key stayed on the computer. The same fix as the
-  Direct certificate import's. Done.
+  Direct certificate import's. Done. Also, as the Direct certificate import does: the tool deletes the keys a `.pfx` brings that it does
+  not use (a CA certificate's in the same file), and a `.pfx` whose certificate the computer already has with a working key (setup run
+  again with the same file) leaves that certificate and its key as they are. Before, each such re-run left one more copy of the private
+  key on the computer, readable by its users, that no tool ever removed, against your decision of 2026-11-02. Done.
 - **Open Dental's "Customer Updates" web service.** Its empty stand-in (`ICustomerUpdates`, `CustomerUpdatesNoHq` and
   `CustomerUpdatesProxy`) is deleted, as you decided; the tests that checked it was still there now check that it is gone. Done.
 - **The computer's users keep read access to the Direct private key**, as built: the program runs as the signed-in Windows user, who signs

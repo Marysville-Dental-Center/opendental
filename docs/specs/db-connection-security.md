@@ -228,6 +228,13 @@ store refuses the certificate or anything else stops the import. It deletes only
 client certificate or a certificate of the store uses (compared by key container, each container once). A key it cannot delete is named,
 with its file, in the result.
 
+A `.pfx` whose certificate the store already holds with a usable private key (it opens and signs, or decrypts, a test value), as when
+setup runs again with the same file, is not added again, as the Direct certificate import leaves such a certificate (DCFU2 fix round):
+the store's entry stays as it is, with its key; every key the import stored is deleted, the client certificate's own too; and the users
+get read access to the entry's key. The store's add would give the entry the new key and leave the old one on the computer, readable by
+the users and named by no certificate. An entry whose key cannot be used (deleted, or it does not open) is added again and takes the
+import's key.
+
 The certificate it replaces (owner decision of 2026-11-02): the tool removes a client certificate from the store, with its private key
 (CNG `Delete`, or the CAPI key container), only when it imported that certificate itself and a save stops using it (another certificate,
 or the password). A CAPI key (a `.pfx` that names no CNG provider, as OpenSSL writes it, or one that names a CAPI provider) is deleted

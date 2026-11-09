@@ -212,7 +212,12 @@ afterwards.
 
    List the files of `%ProgramData%\Microsoft\Crypto\Keys`, import `client-with-ca.pfx` with the tool, and list them again: one new file
    only, the client certificate's (its "Unique container name"); LocalMachine\My holds the client certificate and not the CA's.
-5. Put the connection settings back, remove what is left with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`, delete the
+5. **The same `.pfx` again** (DCFU2 fix round). While LocalMachine\My holds a certificate the tool imported (`client-capi.pfx`, then
+   `client-cng.pfx`), note its "Unique container name" (`certutil -store My <thumbprint>`) and list the files of
+   `%ProgramData%\Microsoft\Crypto\Keys` and `RSA\MachineKeys`; import the same file again with the tool (or run setup again with the same
+   `/DBPFX=`), and list them again: no new file, the same "Unique container name", no warning, and Manage Private Keys still shows Users
+   with Read.
+6. Put the connection settings back, remove what is left with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`, delete the
    `.pfx` files and forget the passwords.
 
 The refused import and a key that cannot be deleted (DCFU2) are checked by the tests only: Windows gives no simple way to make
@@ -286,6 +291,8 @@ has it):
   its store during an import).
 - The users' read access to the key (`GrantUsersReadToPrivateKey`) is given for LocalMachine only, as DirectCertificateImport gives it;
   the tests' store of the current user imports into the user's key set (`UserKeySet`) and gives none (the key is the user's own).
+- **A certificate the store already holds with a usable key** is not added again, and every key the import stored is deleted: added in
+  the fix round below (this round still added it, which left the entry's earlier key behind).
 
 The certificate the tool takes is still the file's first with a private key (`GetClientCertificate`, unchanged); see Noticed below.
 
@@ -386,11 +393,127 @@ Not tested here, as before: the machine key set and LocalMachine\My, which need 
   tests' files list the client certificate first (and .NET Framework's read keeps that order: the tool took the client certificate).
   Preferring a certificate with the client authentication purpose, or one that is not a CA, would change which certificate the tool
   takes: not part of this round.
-- A `.pfx` whose certificate LocalMachine\My already has (`isPfxCertInStoreBefore`, which the tool then never records or removes): the
-  import stores a new key for it and the store's add gives the store's entry that key (as DIRECT-CERT's third round found for the add:
-  the entry takes the added certificate's properties). The key the entry had before stays on the computer, named by no certificate; the
-  import never deletes a key that was there before, by the rule of this round. Not changed; not measured for the tool (it needs
-  LocalMachine\My).
+- **Corrected, and fixed in the fix round below.** This item said: a `.pfx` whose certificate LocalMachine\My already has
+  (`isPfxCertInStoreBefore`, "which the tool then never records or removes"): the import stores a new key for it and the store's add
+  gives the store's entry that key, the key the entry had before stays on the computer, named by no certificate, and "the import never
+  deletes a key that was there before, by the rule of this round"; "not measured for the tool (it needs LocalMachine\My)". The leak was
+  real (measured in the fix round). The rest was wrong: the tool's own `.pfx` imported again keeps its record
+  (`PlanImportedCertificate`), so the tool does record such a certificate and later removes it, with only its latest key; the rule of
+  this round did not force the leak, since DirectCertificateImport does not add a certificate its store already holds with a usable key
+  and deletes the key its read stored, which deletes no key that was there before; and `ImportPfx`'s internal overload shows the case in
+  the test store, without LocalMachine\My.
 - Building this branch through the lane needs `ImportDirectoryPackagesProps=false` in the environment: the worktree sits inside the main
   checkout, whose `Directory.Packages.props` (S2-1, central package versions, merged on `main` after this branch was cut) NuGet otherwise
   finds above the worktree. Merged with `main`, the branch has its own copy and needs nothing.
+
+## Fix round (branch `fix/dcfu2-2`, 2026-11-09)
+
+Cut from `fix/dcfu2-1` (363ed6c69). The review found that the follow-up round's last "Noticed" item (corrected above) was a key left
+behind that the round's rule did not force; the lead decided to port DirectCertificateImport's rule into `AddClientCertificate`. The code
+is 2d3b48fbc, the tests 82a6b009a, this note the commit after them. No schema change, no new enumeration value stored anywhere, no new
+third-party file, no download.
+
+### What was wrong
+
+`AddClientCertificate` always called the store's `Add`. For a `.pfx` whose certificate LocalMachine\My already holds with a usable key,
+the add gives the store's entry the key the import has just stored (the entry takes the added certificate's properties, as DIRECT-CERT's
+third round found for the add), and the key the entry used before stays on the computer, named by no certificate. The realistic case:
+setup run again on an existing install with the same `/DBPFX=` (`installer/OpenPmsDental.iss`, `DbSettingsParams`, passes it on as
+`/pfx=`). `isPfxCertInStoreBefore` is true, and `PlanImportedCertificate` keeps the record, since it is the tool's own certificate
+imported again; the new key gets Users Read, and the old one had it from the first import. Every re-run left one more copy, and when the
+office later replaced the certificate, `RemoveImported` deleted only the entry's latest key: the earlier copies of the old, unexpired
+private key stayed in `%ProgramData%\Microsoft\Crypto\Keys` or `RSA\MachineKeys`, readable by every user, which the owner decision of
+2026-11-02 (no key the users may read is left behind) rules out.
+
+Measured in the test store before the fix (the first new test below, against the follow-up round's import): after the import of the same
+`.pfx`, the entry's key file was the import's (`...\Crypto\RSA\<SID>\1d756b95...`), not the one it had (`aefd1367...`), which still
+existed.
+
+### The fix: DirectCertificateImport's rule
+
+DirectCertificateImport does not import a certificate its store already holds with a usable key (`CheckPrivateAgainstStore`: the entry
+"stays as it is"), and deletes again the key its read stored for it (DIRECT-CERT.md, "The keys of the certificates it does not import
+(another address's, one already in the store) are deleted again at once"). `ClientCertificateStore` now does the same:
+
+- After the file's check (`GetClientCertificate`), `AddClientCertificate` looks for the client certificate's thumbprint in the store,
+  read anew (`FindInStoreNow`, through a handle of its own, as `DeleteKeysNotInStore` reads it).
+- An entry whose key opens and signs, or decrypts (`IsKeyUsable`, a copy of DirectCertificateImport's, which never throws) is not added
+  again (`KeepCertificateInStore`). Every key this import stored, the client certificate's own too, is deleted with
+  `GetKeysNotDeletedText(listKeysStored, x509Store, new List<X509Certificate2>(), ...)`; `DeleteKeysNotInStore` keeps the entry's key,
+  which a certificate of the store uses, so no key that was there before is deleted. For LocalMachine the users get read access to the
+  entry's key (`GrantUsersReadToPrivateKey` on the store's certificate), as to an imported one. The thumbprint is returned.
+- Only when there is no entry, or its key cannot be used (deleted, or it does not open), is the certificate added, as before; the entry
+  then takes the import's key.
+- The kept case's warnings: "The client certificate was already in the computer's certificate store with a usable private key and stays
+  as it is, but a private key of the file, which the tool stored and does not use, could not be deleted (subject, thumbprint): why. The key
+  is left on this computer in <file>: delete that file as an administrator." and "..., but the users of this computer may not be able to
+  use its private key: why. In certlm.msc, Personal > Certificates, right-click it, All Tasks > Manage Private Keys, and give Users Read."
+- `DbSettingsRunner` is unchanged: the record follows the thumbprint as before (the tool's own certificate imported again keeps its
+  record; a certificate put there another way is never recorded), and the entry the record names keeps the one key `RemoveImported`
+  deletes when the certificate is replaced.
+
+### Measured: where Windows stores the key of a `.pfx` imported again
+
+Two diagnostics with throwaway keys of the current user (no certificate store), on this Windows 11, every key deleted again afterwards:
+a `.pfx` written from a CAPI key records the name of its container, and the import (`UserKeySet`, `PersistKeySet`) names the container
+it stores the key in after it when no container has that name; when one has (an earlier import's key still there), the import takes a
+new name (a GUID). So the key of a CAPI `.pfx` imported again after the first import's key was deleted lands in the very container the
+store's entry names: the entry's key is usable again, nothing is added, and the import's key is the entry's, which
+`DeleteKeysNotInStore` keeps. A `.pfx` written from an ephemeral CNG key records no name, and each import gets a new one. The second test
+below covers both ways.
+
+### Tests
+
+`tests/DbConnectionSecurityTests/ClientCertificateImportTests.cs`, each for a CAPI key, a CNG RSA key and a CNG ECDSA key, in the test
+store with throwaway keys of the current user (`ImportPfx`'s internal overload):
+
+- `ImportPfx_OfACertificateTheStoreHasWithAUsableKey_KeepsItsEntryAndKey_AndDeletesTheKeyItStored`: the test writes a `.pfx` and keeps it
+  on disk (`WritePfx`), adds its certificate to the store from it (`AddCertificate(string)`), then imports the same file. The first key
+  still exists, with its file, and is still the entry's key (`GetPrivateKeyFilePath` of the store's certificate against the test's own
+  finding of the key); the key the import stored (tracked through `ActionAfterKeysStoredForTests`) is another one, and is deleted (it no
+  longer opens, its file is gone); the certificate signs; no warning; the store's add was not called (`ActionBeforeStoreAddForTests`);
+  one entry. (2) The same import again, with the seam that makes the key delete fail: the warning above, naming the import's key and its
+  file, which is still there (the store's clean-up deletes it), and the entry still has its first key and signs. Before the fix the test
+  failed (the measurement above).
+- `ImportPfx_OfACertificateTheStoreHasWithoutAUsableKey_GivesItTheKeyTheImportStored`: (1) the test adds the certificate from one file,
+  deletes the entry's key (the entry still says it has one; `IsKeyUsable` says it cannot be used), and imports another file of the same
+  certificate and key (`WritePfxTwice`: for a CAPI key the second file records another scratch container, so the import's key gets a
+  container of its own): the certificate is added, and the entry uses the import's key, which stays and signs; no warning. (2) The
+  entry's key deleted again and the same file imported again: added exactly when the import's key is not in the container the entry
+  names (CAPI: the same container, not added; CNG: a new key, added), and either way the entry uses the import's key, which stays, and
+  signs.
+
+`ClientCertificateTestStore`: `WritePfx`, `WritePfxTwice` and `AddCertificate(string)` (a `.pfx` file, imported as `AddCertificate`
+imports one).
+
+After each run, no key file of the tests was left under `%APPDATA%\Microsoft\Crypto\Keys` or `RSA\<SID>` and no `OpenPmsDbSecTest_` store
+under `HKCU\Software\Microsoft\SystemCertificates` (listed before the first run and after each run, and compared: no new name), and the
+test classes' own check (`AssertCleanedUp`) found nothing.
+
+Targeted runs (`run-tests.ps1 -Mode Targeted`), after the full lane build (0 errors):
+
+| Assembly | Total | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| NoHqTests | 57 | 57 | 0 | 0 |
+| LibraryUpdateTests | 126 | 126 | 0 | 0 |
+| VendorDirectTests | 922 | 922 | 0 | 0 |
+| DbConnectionSecurityTests | 160 | 150 | 0 | 10 |
+
+The ten skipped DbConnectionSecurityTests are the DevDbTls server tests, inconclusive until the local MariaDB runs with TLS, as before.
+DbConnectionSecurityTests has two tests more than after the follow-up round (158).
+
+Not tested here, as before: the machine key set and LocalMachine\My, and so the users' read access to the kept entry's key (launch check
+5).
+
+### Noticed, not changed (for the lead)
+
+- **An entry of LocalMachine\My whose key is in a user's key set.** `IsKeyUsable` runs as the administrator who runs the tool. A
+  certificate put into LocalMachine\My another way, with its key in that administrator's own key set (a script that adds a certificate
+  read without `MachineKeySet`, say), passes it, so the entry now stays, and the users' Read goes on a key file in that administrator's
+  profile, which they cannot reach: the program cannot use the certificate for them. Before this round the add gave the entry the import's
+  machine key. DirectCertificateImport has the same rule for its LocalMachine store. Counting an entry as usable only when its key is in
+  the key set the import uses (the machine's, for the tool) would add it again in that case (and leave the administrator's own key, which
+  the users cannot read). Not done: the lead's rule is DirectCertificateImport's; not testable here (it needs LocalMachine\My).
+- **An entry without a usable key that the tool did not import** takes the import's key, as before this round, and the tool does not
+  record that certificate (`isPfxCertInStoreBefore`, and no record of its own), so it does not remove that key when the certificate is
+  replaced. Unchanged.

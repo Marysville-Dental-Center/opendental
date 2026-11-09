@@ -127,7 +127,9 @@ server computer must then connect with `<db-server>` (the name the workstations 
   thumbprint or put there another way stays. This holds for every kind of private key, also the older kind Windows uses for a `.pfx` that
   names no key provider (as OpenSSL writes one), whose key file also gets the computer's users' read access at the import. The import
   leaves no other key of the `.pfx` on the computer (a CA certificate's in the same file, for example), nor the client certificate's own
-  when the store refuses it; a key that cannot be deleted, and a replaced certificate's key that is left, are named with their file.
+  when the store refuses it; a key that cannot be deleted, and a replaced certificate's key that is left, are named with their file. A
+  `.pfx` whose certificate the computer already has with a working key (setup run again with the same file) leaves that certificate and
+  its key as they are and adds no second copy of the key.
 - **Setup exit code 10.** A silent setup that installed the files but could not finish the connection settings (the tool failed, or an
   existing install's settings fail the connection rule) ends with exit code 10, so deployment scripts see it; the setup log says why.
 
