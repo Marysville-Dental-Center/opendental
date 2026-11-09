@@ -20,8 +20,9 @@ namespace ProjectFileTests {
 				ProjectFile projectFile=fixtureFolder.Load("Classic");
 				Assert.IsFalse(projectFile.IsSdkStyle);
 				CollectionAssert.AreEqual(new[] { fixtureFolder.ProjectPath("Classic"),fixtureFolder.Combine(@"tests\Directory.Build.props"),
-					fixtureFolder.Combine("Directory.Build.props"),fixtureFolder.Combine("Directory.Build.targets") },projectFile.FilesRead,
-					"The props through Microsoft.Common.props, then the one it imports, then the targets through Microsoft.CSharp.targets.");
+					fixtureFolder.Combine("Directory.Build.props"),fixtureFolder.Combine("Directory.Packages.props"),fixtureFolder.Combine("Directory.Build.targets") },
+					projectFile.FilesRead,"The props through Microsoft.Common.props, then the one it imports, then NuGet.props' Directory.Packages.props at the end "
+					+"of Microsoft.Common.props, then the targets through Microsoft.CSharp.targets.");
 				Assert.AreEqual("",projectFile.GetProperty("AppConfig"),"Directory.Build.targets: the name does not end with Style.");
 				Assert.AreEqual("root",projectFile.GetProperty("FixtureEveryProject"));
 				Assert.AreEqual("",projectFile.GetProperty("FixtureSdkOnly"),"The SDK-only group is not for a classic project.");
@@ -55,13 +56,14 @@ namespace ProjectFileTests {
 				Assert.AreEqual("true",projectFile.GetProperty("MicrosoftCommonPropsHasBeenImported"));
 				Assert.AreEqual(@"obj\x86\Debug\",projectFile.GetProperty("IntermediateOutputPath"));
 				CollectionAssert.AreEqual(new[] { fixtureFolder.ProjectPath("Classic"),fixtureFolder.Combine(@"tests\Directory.Build.props"),
-					fixtureFolder.Combine("Directory.Build.props"),fixtureFolder.Combine("Directory.Build.targets") },projectFile.FilesRead);
+					fixtureFolder.Combine("Directory.Build.props"),fixtureFolder.Combine("Directory.Packages.props"),fixtureFolder.Combine("Directory.Build.targets") },
+					projectFile.FilesRead);
 				//With its own import at the top, the project's own value comes after Directory.Build.props; the props are read once.
 				fixtureFolder.WriteFile(@"tests\Classic\Classic.csproj",textOwnValue);
 				projectFile=fixtureFolder.Load("Classic");
 				Assert.AreEqual("project",projectFile.GetProperty("FixtureEveryProject"));
 				Assert.AreEqual(fixtureFolder.Combine(@"tests\Classic\obj\"),projectFile.GetProperty("MSBuildProjectExtensionsPath"));
-				Assert.AreEqual(4,projectFile.FilesRead.Count);
+				Assert.AreEqual(5,projectFile.FilesRead.Count);
 				//A project that says it has imported them, without the import: MSBuild reads no Directory.Build.props, and nothing sets the path.
 				fixtureFolder.WriteFile(@"tests\Classic\Classic.csproj",textOwnValue.Replace(importCommonProps,"")
 					.Replace(anchor,anchor+"<MicrosoftCommonPropsHasBeenImported>true</MicrosoftCommonPropsHasBeenImported>"));

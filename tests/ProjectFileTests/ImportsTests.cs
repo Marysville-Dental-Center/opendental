@@ -128,6 +128,40 @@ namespace ProjectFileTests {
 		}
 
 		[TestMethod]
+		public void TheRestoresPackageImports_InAnotherFormOrWithoutAPackageFolder_Throw() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//ReadPackageImport reads only the form the restore writes, from the first folder of $(NuGetPackageFolders) as a full path; anything
+				//else throws instead of importing nothing.
+				const string IMPORT="$(NuGetPackageRoot)fixture.package\\1.2.3\\buildTransitive\\net462\\Fixture.Package.targets";
+				fixtureFolder.WriteFile(@"Packages\fixture.package\1.2.3\buildTransitive\net462\Fixture.Package.targets","<Project><PropertyGroup>"
+					+"<FixtureFromPackage>package</FixtureFromPackage></PropertyGroup></Project>");
+				Action<string> writeFolders=folders => fixtureFolder.WriteFile(@"tests\SdkStyle\obj\SdkStyle.csproj.nuget.g.props","<Project>"
+					+"<PropertyGroup Condition=\" '$(ExcludeRestorePackageImports)' != 'true' \">"
+					+(folders==null ? "" : "<NuGetPackageFolders Condition=\" '$(NuGetPackageFolders)' == '' \">"+folders+"</NuGetPackageFolders>")
+					+"</PropertyGroup></Project>");
+				Action<string> writeImport=project => fixtureFolder.WriteFile(@"tests\SdkStyle\obj\SdkStyle.csproj.nuget.g.targets","<Project>"
+					+"<ImportGroup Condition=\" '$(ExcludeRestorePackageImports)' != 'true' \"><Import Project=\""+project+"\" Condition=\"Exists('"+project+"')\" />"
+					+"</ImportGroup></Project>");
+				writeFolders(fixtureFolder.Combine("Packages")+@"\");
+				writeImport(IMPORT);
+				Assert.AreEqual("package",fixtureFolder.Load("SdkStyle").GetProperty("FixtureFromPackage"),"The form the restore writes.");
+				//A property, an item list or metadata in the path after $(NuGetPackageRoot).
+				foreach(string project in new[] { "$(NuGetPackageRoot)fixture.package\\$(FixtureVersion)\\buildTransitive\\net462\\Fixture.Package.targets",
+					"$(NuGetPackageRoot)@(FixtureItems)\\Fixture.Package.targets","$(NuGetPackageRoot)%(FixtureItems.Identity)\\Fixture.Package.targets" })
+				{
+					writeImport(project);
+					AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"another form");
+				}
+				//No package folder: none, a relative one, or one this reader cannot evaluate.
+				writeImport(IMPORT);
+				foreach(string folders in new[] { null,"","Packages\\","$(MSBuildExtensionsPath)\\packages\\" }) {
+					writeFolders(folders);
+					AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"names no package folder");
+				}
+			}
+		}
+
+		[TestMethod]
 		public void RepositoryProjects_ReadTheirRestoresProps() {
 			//Every SDK-style project of the solution filter that the build restored reads its obj\*.nuget.g.props, as MSBuild does.
 			string root=FixtureFolder.RepoRoot();
@@ -211,6 +245,187 @@ namespace ProjectFileTests {
 				fixtureFolder.EditFile("Directory.Packages.props","<PackageVersion Include=\"Fixture.Package\"","<GlobalPackageReference Include=\"Fixture.Global\" Version=\"1.0.0\" />"
 					+"<PackageVersion Include=\"Fixture.Package\"");
 				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"GlobalPackageReference");
+				//Unless RestoreEnableGlobalPackageReference is false: NuGet.targets then leaves them as they are, and so does the reader.
+				fixtureFolder.EditFile("Directory.Packages.props","<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>",
+					"<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally><RestoreEnableGlobalPackageReference>false</RestoreEnableGlobalPackageReference>");
+				Assert.AreEqual(1,fixtureFolder.Load("SdkStyle").GetItems("GlobalPackageReference").Count);
+			}
+		}
+
+		[TestMethod]
+		public void TwoPackageVersionsOfOnePackage_Throw_StricterThanNuGetsWarning() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//NuGet reports them as NU1506, a warning, keeps one and restores; the reader refuses, as it does not model which one NuGet keeps.
+				fixtureFolder.WriteFile("Directory.Packages.props",PACKAGES_PROPS.Replace("<PackageVersion Include=\"Fixture.Other\"",
+					"<PackageVersion Include=\"fixture.package\" Version=\"1.2.4\" /><PackageVersion Include=\"Fixture.Other\""));
+				fixtureFolder.EditProject("SdkStyle",ANCHOR_SDK_ITEMS,ANCHOR_SDK_ITEMS+"<PackageReference Include=\"Fixture.Package\" />"
+					+"<PackageReference Include=\"Fixture.Other\" />");
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				Assert.AreEqual(3,projectFile.GetItems("PackageVersion").Count,"Both are read, as MSBuild evaluates them.");
+				AssertThrows<InvalidOperationException>(() => projectFile.GetPackageVersion("Fixture.Package"),"NU1506");
+				Assert.AreEqual("4.5.6",projectFile.GetPackageVersion("Fixture.Other"),"Another package's one version still answers.");
+			}
+		}
+
+		[TestMethod]
+		public void DirectoryPackagesPropsPath_IsResolved_OnlyWhenTheSwitchIsOn() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//NuGet.props tests ImportDirectoryPackagesProps first in each condition, so with the switch off MSBuild never expands the path: a
+				//path this reader cannot evaluate (or a relative one) does not matter then. With the switch on, it throws.
+				fixtureFolder.WriteFile("Directory.Packages.props",PACKAGES_PROPS);
+				const string ANCHOR_TESTS_PROPS="<Import Project=";
+				foreach(string[] arrayCase in new[] { new[] { "$(MSBuildExtensionsPath)\\Directory.Packages.props","$(DirectoryPackagesPropsPath)" },
+					new[] { @"Shared\Other.Packages.props","a relative $(DirectoryPackagesPropsPath)" } })
+				{
+					string textTestsProps=File.ReadAllText(fixtureFolder.Combine(@"tests\Directory.Build.props"));
+					fixtureFolder.EditFile(@"tests\Directory.Build.props",ANCHOR_TESTS_PROPS,"<PropertyGroup><ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>"
+						+"<DirectoryPackagesPropsPath>"+arrayCase[0]+"</DirectoryPackagesPropsPath></PropertyGroup>"+ANCHOR_TESTS_PROPS);
+					ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+					Assert.AreEqual("false",projectFile.GetProperty("ImportDirectoryPackagesProps"),arrayCase[0]);
+					Assert.AreEqual("",projectFile.GetProperty("CentralPackageVersionsFileImported"),arrayCase[0]);
+					Assert.AreEqual("",projectFile.GetProperty("ManagePackageVersionsCentrally"),arrayCase[0]+": the Directory.Packages.props above is not read either.");
+					Assert.AreEqual("",projectFile.GetProperty("_DirectoryPackagesPropsBasePath"),arrayCase[0]+": not looked for.");
+					fixtureFolder.EditFile(@"tests\Directory.Build.props","<ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>","");
+					AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),arrayCase[1]);
+					fixtureFolder.WriteFile(@"tests\Directory.Build.props",textTestsProps);
+				}
+				//The switch itself must be known: MSBuild always tests it.
+				fixtureFolder.EditFile(@"tests\Directory.Build.props",ANCHOR_TESTS_PROPS,"<PropertyGroup>"
+					+"<ImportDirectoryPackagesProps>$(MSBuildExtensionsPath)</ImportDirectoryPackagesProps></PropertyGroup>"+ANCHOR_TESTS_PROPS);
+				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"$(ImportDirectoryPackagesProps)");
+				//So must the parts of the path NuGet.props finds, when it looks for one.
+				foreach(string name in new[] { "_DirectoryPackagesPropsFile","_DirectoryPackagesPropsBasePath" }) {
+					fixtureFolder.EditFile(@"tests\Directory.Build.props","<ImportDirectoryPackagesProps>$(MSBuildExtensionsPath)</ImportDirectoryPackagesProps>",
+						"<"+name+">$(MSBuildExtensionsPath)</"+name+">");
+					AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"$("+name+")");
+					fixtureFolder.EditFile(@"tests\Directory.Build.props","<"+name+">$(MSBuildExtensionsPath)</"+name+">",
+						"<ImportDirectoryPackagesProps>$(MSBuildExtensionsPath)</ImportDirectoryPackagesProps>");
+				}
+			}
+		}
+
+		[TestMethod]
+		public void ADirectoryPackagesPropsAboveTheScratchFolder_IsNotRead() {
+			//The fixture's empty Directory.Packages.props at the scratch folder stops NuGet.props' search there, as its Directory.Build.targets stops
+			//that search: one in a folder above (the temp folder, say) reaches no fixture project.
+			string folderOuter=Path.Combine(Path.GetTempPath(),"ProjectFileTests_Outer_"+Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(folderOuter);
+			try {
+				string pathOuter=Path.Combine(folderOuter,"Directory.Packages.props");
+				File.WriteAllText(pathOuter,"<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>"
+					+"<FixtureOuterPackages>outer</FixtureOuterPackages></PropertyGroup><ItemGroup><PackageVersion Include=\"Fixture.Outer\" Version=\"9.9.9\" />"
+					+"</ItemGroup></Project>");
+				using(FixtureFolder fixtureFolder=FixtureFolder.Create(folderOuter)) {
+					foreach(string name in new[] { "Classic","SdkStyle","SdkExplicitImports","SdkLinks" }) {
+						ProjectFile projectFile=fixtureFolder.Load(name);
+						Assert.IsFalse(projectFile.FilesRead.Contains(pathOuter,StringComparer.OrdinalIgnoreCase),name);
+						Assert.AreEqual(fixtureFolder.Combine("Directory.Packages.props"),projectFile.GetProperty("DirectoryPackagesPropsPath"),name);
+						Assert.AreEqual("",projectFile.GetProperty("FixtureOuterPackages"),name);
+						Assert.AreEqual("",projectFile.GetProperty("ManagePackageVersionsCentrally"),name);
+						Assert.AreEqual("",projectFile.GetProperty("_CentralPackageVersionsEnabled"),name);
+						Assert.AreEqual(0,projectFile.GetItems("PackageVersion").Count,name);
+					}
+					//A fixture's own Directory.Packages.props still works: over the empty one, or in a project folder, found first.
+					fixtureFolder.WriteFile("Directory.Packages.props",PACKAGES_PROPS);
+					Assert.AreEqual(2,fixtureFolder.Load("SdkStyle").GetItems("PackageVersion").Count);
+					fixtureFolder.WriteFile(@"tests\SdkStyle\Directory.Packages.props","<Project><ItemGroup><PackageVersion Include=\"Fixture.Near\" Version=\"1.0.0\" />"
+						+"</ItemGroup></Project>");
+					CollectionAssert.AreEqual(new[] { "Fixture.Near" },fixtureFolder.Load("SdkStyle").GetItems("PackageVersion").Select(x => x.Include).ToArray());
+					//Without the empty one, the search would go on to the folder above: what the fixture's file keeps out.
+					fixtureFolder.DeleteFile(@"tests\SdkStyle\Directory.Packages.props");
+					fixtureFolder.DeleteFile("Directory.Packages.props");
+					ProjectFile projectFileLeaked=fixtureFolder.Load("SdkStyle");
+					CollectionAssert.Contains(projectFileLeaked.FilesRead,pathOuter);
+					Assert.AreEqual("outer",projectFileLeaked.GetProperty("FixtureOuterPackages"));
+				}
+			}
+			finally {
+				try {
+					Directory.Delete(folderOuter,true);
+				}
+				catch(IOException) {
+				}
+				catch(UnauthorizedAccessException) {
+				}
+			}
+		}
+
+		[TestMethod]
+		public void ThePackageReferencesTheSdkGivesItself_ThrowFromEveryItemQuery() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//Microsoft.NET.Sdk.DefaultItems.props and Microsoft.NET.Sdk.DefaultItems.Shared.targets (SDK 10.0.114) add PackageReference items or
+				//metadata this reader does not: each query that can return PackageReference items throws, so none of them is left out silently.
+				foreach(string[] arrayCase in new[] {
+					//The implicit NETStandard.Library and Microsoft.NETCore.App.
+					new[] { "<TargetFramework>netstandard2.0</TargetFramework>","","implicit PackageReference of netstandard2.0" },
+					new[] { "<TargetFramework>netstandard1.6</TargetFramework>","","implicit PackageReference of netstandard1.6" },
+					new[] { "<TargetFramework>netcoreapp2.1</TargetFramework>","","implicit PackageReference of netcoreapp2.1" },
+					//AllowExplicitVersion on every PackageReference.
+					new[] { "<DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>","","DisableImplicitFrameworkReferences" },
+					//PrivateAssets all and Publish true for ASP.NET Core without a Version (always so with central package management).
+					new[] { "","<PackageReference Include=\"Microsoft.AspNetCore.App\" />","Microsoft.AspNetCore.App without a Version" },
+					new[] { "","<PackageReference Include=\"microsoft.aspnetcore.all\" />","microsoft.aspnetcore.all without a Version" },
+					//Version and AllowExplicitVersion for Microsoft.NETCore.App with RuntimeFrameworkVersion.
+					new[] { "<RuntimeFrameworkVersion>2.1.30</RuntimeFrameworkVersion>","<PackageReference Include=\"Microsoft.NETCore.App\" />","RuntimeFrameworkVersion set" } })
+				{
+					ProjectFile projectFile=LoadSdkPackages(fixtureFolder,arrayCase[0],arrayCase[1]);
+					string where=arrayCase[0]+arrayCase[1];
+					AssertThrows<NotSupportedException>(() => projectFile.GetItems("PackageReference"),arrayCase[2]);
+					AssertThrows<NotSupportedException>(() => projectFile.GetItems("packagereference"),arrayCase[2]);
+					AssertThrows<NotSupportedException>(() => projectFile.GetItem("PackageReference","Fixture.Package"),arrayCase[2]);
+					AssertThrows<NotSupportedException>(() => projectFile.HasItem("PackageReference","Fixture.Package"),arrayCase[2]);
+					AssertThrows<NotSupportedException>(() => projectFile.GetPackageReference("Fixture.Package"),arrayCase[2]);
+					AssertThrows<NotSupportedException>(() => projectFile.GetPackageVersion("Fixture.Package"),arrayCase[2]);
+					AssertThrows<NotSupportedException>(() => projectFile.GetAllItems(),arrayCase[2]);
+					AssertThrows<NotSupportedException>(() => projectFile.GetItemsMentioning("Fixture"),arrayCase[2]);
+					AssertThrows<NotSupportedException>(() => projectFile.GetItemsMentioning("Fixture","Compile","PackageReference"),arrayCase[2]);
+					//The other item types still answer.
+					Assert.IsTrue(projectFile.Compiles("Program.cs"),where);
+					Assert.AreEqual(1,projectFile.GetItems("Compile").Count,where);
+					Assert.AreEqual(0,projectFile.GetItemsMentioning("Fixture","Compile").Count,where);
+				}
+				//Not refused: the frameworks whose SDK adds no PackageReference, ASP.NET Core with a Version of its own (no central package
+				//management), Microsoft.NETCore.App without RuntimeFrameworkVersion, and a classic project, which does not import the SDK's files.
+				foreach(string[] arrayCase in new[] { new[] { "","" },new[] { "<TargetFramework>netstandard2.1</TargetFramework>","" },
+					new[] { "<TargetFramework>net10.0</TargetFramework>","" },
+					new[] { "","<PackageReference Include=\"Microsoft.AspNetCore.App\" Version=\"2.1.1\" />" },
+					new[] { "","<PackageReference Include=\"Microsoft.NETCore.App\" />" } })
+				{
+					ProjectFile projectFile=LoadSdkPackages(fixtureFolder,arrayCase[0],arrayCase[1]);
+					Assert.AreEqual("1.2.3",projectFile.GetPackageVersion("Fixture.Package"),arrayCase[0]+arrayCase[1]);
+					Assert.AreEqual(arrayCase[1]=="" ? 1 : 2,projectFile.GetItems("PackageReference").Count,arrayCase[0]+arrayCase[1]);
+					Assert.AreEqual(projectFile.GetItems("PackageReference").Count+projectFile.GetItems("Compile").Count,
+						projectFile.GetAllItems().Count(x => x.ItemType=="PackageReference" || x.ItemType=="Compile"),arrayCase[0]+arrayCase[1]);
+				}
+				fixtureFolder.EditProject("Classic",ANCHOR_CLASSIC,"<ItemGroup><PackageReference Include=\"Microsoft.AspNetCore.App\" /></ItemGroup>"+ANCHOR_CLASSIC);
+				ProjectFile projectFileClassic=fixtureFolder.Load("Classic");
+				Assert.AreEqual("",projectFileClassic.GetPackageReference("Microsoft.AspNetCore.App").GetMetadata("PrivateAssets"));
+				Assert.AreEqual(1,projectFileClassic.GetItemsMentioning("AspNetCore").Count);
+			}
+		}
+
+		///<summary>An SDK-style project of its own (tests\SdkPackages\SdkPackages.csproj, which the fixture's solution does not list) with the
+		///properties and items given after a PackageReference of Fixture.Package 1.2.3; the fixture's Directory.Packages.props leaves central package
+		///management off.</summary>
+		private static ProjectFile LoadSdkPackages(FixtureFolder fixtureFolder,string properties,string items) {
+			fixtureFolder.WriteFile(@"tests\SdkPackages\Program.cs","");
+			fixtureFolder.WriteFile(@"tests\SdkPackages\SdkPackages.csproj","<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>"+properties+"</PropertyGroup>"
+				+"<ItemGroup><PackageReference Include=\"Fixture.Package\" Version=\"1.2.3\" />"+items+"</ItemGroup></Project>");
+			return ProjectFile.Load(fixtureFolder.Combine(@"tests\SdkPackages\SdkPackages.csproj"));
+		}
+
+		[TestMethod]
+		public void NuGetsOwnFiles_AreNotModelled() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//Where NuGet.props and NuGet.targets are (Visual Studio's folder for the Build Tools MSBuild): MSBuild 18 gives every project a value;
+				//ImportNuGetProps and _CentralPackageVersionsEnabled read what the files do, not where they are, so the names throw.
+				foreach(string name in new[] { "Classic","SdkStyle" }) {
+					ProjectFile projectFile=fixtureFolder.Load(name);
+					foreach(string property in new[] { "NuGetPropsFile","MSBuildUseVisualStudioDirectoryLayout","NuGetRestoreTargets" }) {
+						AssertThrows<NotSupportedException>(() => projectFile.GetProperty(property),"$("+property+")");
+						Assert.IsFalse(projectFile.IsPropertyKnown(property),name+": "+property);
+					}
+				}
 			}
 		}
 

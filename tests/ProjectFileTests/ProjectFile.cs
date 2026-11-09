@@ -51,8 +51,9 @@ namespace ProjectFileTests {
 	///Directory.Packages.props that NuGet.props imports at the end of Microsoft.Common.props (ImportNuGetProps), with its PackageVersion items
 	///and ManagePackageVersionsCentrally, and NuGet.targets' _CentralPackageVersionsEnabled; GetPackageVersion gives the version a
 	///PackageReference restores with, as NuGet decides it. Not modelled: the restore itself (which packages a project gets through its
-	///references and dependencies, transitive pinning: the lock files say that), GlobalPackageReference items and the SDK's implicit
-	///PackageReference of a .NET Standard 1.x/2.0 or .NET Core 1.x/2.x project, which throw.</summary>
+	///references and dependencies, transitive pinning: the lock files say that), GlobalPackageReference items, and the PackageReference items and
+	///metadata the SDK gives itself (the implicit PackageReference of a .NET Standard 1.x/2.0 or .NET Core 1.x/2.x project, the metadata of
+	///Microsoft.NET.Sdk.DefaultItems.Shared.targets: ThrowIfImplicitPackageReferences), which throw.</summary>
 	internal sealed class ProjectFile {
 		///<summary>The project file, full path.</summary>
 		public string FullPath { get; private set; }
@@ -567,13 +568,21 @@ namespace ProjectFileTests {
 		///_DirectoryPackagesPropsBasePath, the full path NormalizePath gives); the import when the switch is true and the file is there, and then
 		///CentralPackageVersionsFileImported true. The file's properties (ManagePackageVersionsCentrally and the others) and items (PackageVersion)
 		///are read as those of any imported file. So it comes after Directory.Build.props and the restore's project extension props, and before the
-		///project's own properties; a classic project imports it too.</summary>
+		///project's own properties; a classic project imports it too. Every condition of NuGet.props tests the switch first, and MSBuild stops at
+		///the first false operand of an 'and', so with the switch off $(DirectoryPackagesPropsPath) is never expanded: only the switch must be
+		///known then (it throws when it is not), and the path only when the switch is on.</summary>
 		private void ImportNuGetProps() {
 			SetIfEmpty("ImportDirectoryPackagesProps","true");
-			if(IsPropertyTrue("ImportDirectoryPackagesProps") && GetValue("DirectoryPackagesPropsPath")=="") {
+			ThrowIfUnresolved(GetValue("ImportDirectoryPackagesProps"),Describe()+": $(ImportDirectoryPackagesProps)");
+			if(!IsPropertyTrue("ImportDirectoryPackagesProps")) {
+				return;
+			}
+			if(GetValue("DirectoryPackagesPropsPath")=="") {
 				SetIfEmpty("_DirectoryPackagesPropsFile","Directory.Packages.props");
+				ThrowIfUnresolved(GetValue("_DirectoryPackagesPropsFile"),Describe()+": $(_DirectoryPackagesPropsFile)");
 				string pathFound=FindFileAbove(GetUnescaped("_DirectoryPackagesPropsFile"),Folder);
 				SetIfEmpty("_DirectoryPackagesPropsBasePath",pathFound==null ? "" : Escape(Path.GetDirectoryName(pathFound)));
+				ThrowIfUnresolved(GetValue("_DirectoryPackagesPropsBasePath"),Describe()+": $(_DirectoryPackagesPropsBasePath)");
 				if(GetValue("_DirectoryPackagesPropsBasePath")!="" && GetValue("_DirectoryPackagesPropsFile")!="") {
 					_dictProperties["DirectoryPackagesPropsPath"]=Escape(Path.GetFullPath(Path.Combine(GetUnescaped("_DirectoryPackagesPropsBasePath"),
 						GetUnescaped("_DirectoryPackagesPropsFile"))));
@@ -581,7 +590,7 @@ namespace ProjectFileTests {
 			}
 			string path=GetValue("DirectoryPackagesPropsPath");
 			ThrowIfUnresolved(path,Describe()+": $(DirectoryPackagesPropsPath)");
-			if(!IsPropertyTrue("ImportDirectoryPackagesProps") || path=="") {
+			if(path=="") {
 				return;
 			}
 			path=Unescape(path);
@@ -2225,13 +2234,20 @@ namespace ProjectFileTests {
 			return _listItems.Where(x => x.ItemType.Equals(itemType,StringComparison.OrdinalIgnoreCase)).ToList();
 		}
 
-		///<summary>Microsoft.NET.Sdk.DefaultItems.props gives a .NET Standard project before 2.1 the PackageReference NETStandard.Library and a .NET
-		///Core project before 3.0 Microsoft.NETCore.App, unless DisableImplicitFrameworkReferences is true; this reader does not add them (the
-		///repository has no such project), so asking for the PackageReference items of one throws instead of leaving them out. So does a project
-		///that sets DisableImplicitFrameworkReferences, for which Microsoft.NET.Sdk.DefaultItems.Shared.targets gives every PackageReference
-		///AllowExplicitVersion metadata.</summary>
+		///<summary>The PackageReference items and metadata that the SDK's own files give an SDK-style project and this reader does not; no project of
+		///the repository has any of them, so every query that can return PackageReference items (GetItems and GetItem for the type, the queries
+		///built on them such as GetPackageReference and GetPackageVersion, GetAllItems, GetItemsMentioning) throws for them instead of leaving
+		///them out or returning items without their metadata. itemType null: a query of every item type.
+		///- Microsoft.NET.Sdk.DefaultItems.props gives a .NET Standard project before 2.1 the PackageReference NETStandard.Library and a .NET Core
+		///  project before 3.0 Microsoft.NETCore.App, unless DisableImplicitFrameworkReferences is true.
+		///- Microsoft.NET.Sdk.DefaultItems.Shared.targets (imported by Microsoft.NET.Sdk.DefaultItems.targets, so for SDK-style projects only) gives
+		///  every PackageReference AllowExplicitVersion true when DisableImplicitFrameworkReferences is true; a PackageReference of
+		///  Microsoft.AspNetCore.App or Microsoft.AspNetCore.All without a Version PrivateAssets all and Publish true (with central package
+		///  management a PackageReference never has a Version, NU1008, so it always gets them); and one of Microsoft.NETCore.App the Version
+		///  $(RuntimeFrameworkVersion) and AllowExplicitVersion true when RuntimeFrameworkVersion is set. Its Update items match the Include ignoring
+		///  case, as MSBuild matches item specs.</summary>
 		private void ThrowIfImplicitPackageReferences(string itemType) {
-			if(!IsSdkStyle || !itemType.Equals("PackageReference",StringComparison.OrdinalIgnoreCase)) {
+			if(!IsSdkStyle || (itemType!=null && !itemType.Equals("PackageReference",StringComparison.OrdinalIgnoreCase))) {
 				return;
 			}
 			if(IsPropertyTrue("DisableImplicitFrameworkReferences")) {
@@ -2245,10 +2261,25 @@ namespace ProjectFileTests {
 			{
 				throw new NotSupportedException(Describe()+": the SDK's implicit PackageReference of "+GetUnescaped("TargetFramework")+" is not modelled by ProjectFile.");
 			}
+			foreach(ProjectItem projectItem in _listItems.Where(x => x.ItemType.Equals("PackageReference",StringComparison.OrdinalIgnoreCase))) {
+				if((projectItem.Include.Equals("Microsoft.AspNetCore.App",StringComparison.OrdinalIgnoreCase)
+					|| projectItem.Include.Equals("Microsoft.AspNetCore.All",StringComparison.OrdinalIgnoreCase))
+					&& projectItem.GetMetadata("Version")=="")
+				{
+					throw new NotSupportedException(Describe()+": the PrivateAssets and Publish metadata the SDK gives the PackageReference of "+projectItem.Include
+						+" without a Version (Microsoft.NET.Sdk.DefaultItems.Shared.targets) are not modelled by ProjectFile.");
+				}
+				if(projectItem.Include.Equals("Microsoft.NETCore.App",StringComparison.OrdinalIgnoreCase) && GetValue("RuntimeFrameworkVersion")!="") {
+					throw new NotSupportedException(Describe()+": the Version and AllowExplicitVersion metadata the SDK gives the PackageReference of "+projectItem.Include
+						+" with RuntimeFrameworkVersion set (Microsoft.NET.Sdk.DefaultItems.Shared.targets) are not modelled by ProjectFile.");
+				}
+			}
 		}
 
-		///<summary>Every item, of every type.</summary>
+		///<summary>Every item, of every type. Throws as GetItems("PackageReference") does for the PackageReference items the SDK gives itself
+		///(ThrowIfImplicitPackageReferences).</summary>
 		public List<ProjectItem> GetAllItems() {
+			ThrowIfImplicitPackageReferences(null);
 			return _listItems.ToList();
 		}
 
@@ -2291,8 +2322,12 @@ namespace ProjectFileTests {
 		///(https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management), or null when the project has no PackageReference of
 		///it. With central package management (_CentralPackageVersionsEnabled: ManagePackageVersionsCentrally true and Directory.Packages.props
 		///imported), the PackageReference's VersionOverride, else the Version of the package's PackageVersion item; a Version on the
-		///PackageReference itself (NU1008), a VersionOverride with CentralPackageVersionOverrideEnabled false (NU1013), no PackageVersion (NU1010)
-		///and two PackageVersion items of one package fail the restore, so they throw. Without it, the PackageReference's own Version.</summary>
+		///PackageReference itself (NU1008), a VersionOverride with CentralPackageVersionOverrideEnabled false (NU1013) and no PackageVersion (NU1010)
+		///fail the restore, so they throw. Two or more PackageVersion items of one package throw too, which is stricter than NuGet: NuGet.targets'
+		///CollectCentralPackageVersions reports them as NU1506, a warning (an error only through TreatWarningsAsErrors or WarningsAsErrors, which the
+		///repository does not set for it), keeps one of them and the restore goes on. Which one it keeps is that task's choice, which this reader
+		///does not model, and Directory.Packages.props names each package once, so a second item is a mistake for a test to report, not a version
+		///for the reader to guess. Without central package management, the PackageReference's own Version.</summary>
 		public string GetPackageVersion(string packageId) {
 			ProjectItem projectItemReference=GetPackageReference(packageId);
 			if(projectItemReference==null) {
@@ -2316,7 +2351,8 @@ namespace ProjectFileTests {
 				throw new InvalidOperationException(Describe()+": no PackageVersion item for "+packageId+" (NU1010).");
 			}
 			if(listVersions.Count>1) {
-				throw new InvalidOperationException(Describe()+": "+listVersions.Count+" PackageVersion items for "+packageId+".");
+				throw new InvalidOperationException(Describe()+": "+listVersions.Count+" PackageVersion items for "+packageId+" (NuGet's warning NU1506; "
+					+"ProjectFile refuses them, as it does not model which one NuGet keeps).");
 			}
 			return listVersions[0].GetMetadata("Version");
 		}
@@ -2359,8 +2395,15 @@ namespace ProjectFileTests {
 		}
 
 		///<summary>The items of any of the types whose Include mentions the text (case-insensitive), for checks that a removed file or library is
-		///gone from the project in either format.</summary>
+		///gone from the project in either format. No item types means every type. Throws as GetItems("PackageReference") does when the types
+		///include PackageReference (ThrowIfImplicitPackageReferences).</summary>
 		public List<ProjectItem> GetItemsMentioning(string text,params string[] arrayItemTypes) {
+			if(arrayItemTypes.Length==0) {
+				ThrowIfImplicitPackageReferences(null);
+			}
+			foreach(string itemType in arrayItemTypes) {
+				ThrowIfImplicitPackageReferences(itemType);
+			}
 			return _listItems.Where(x => arrayItemTypes.Length==0 || arrayItemTypes.Contains(x.ItemType,StringComparer.OrdinalIgnoreCase))
 				.Where(x => x.Include.IndexOf(text,StringComparison.OrdinalIgnoreCase)>=0)
 				.ToList();
