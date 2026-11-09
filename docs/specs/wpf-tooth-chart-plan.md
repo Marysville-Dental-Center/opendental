@@ -513,7 +513,11 @@ packages. The S3b-0 spike confirms this from the lock file.
 question below is decided as recommended, with one change to O-18: Helix Toolkit is used, and nothing waits for counsel. The setup ships
 only the DLLs the staged list needs, each with its notice in `THIRD-PARTY-NOTICES.txt`; the fallback to the chart's own geometry code
 is not needed. For O-28: the build PC has the DirectX runtime (`d3dx9_43.dll` in `System32` and `SysWOW64`), so today's DirectX pictures
-are recorded here. For O-19 the choice between (a) and (b) still follows TC-1's measured times.
+are recorded here. For O-19 the choice between (a) and (b) follows TC-1's measured times, so it is **(b)**: on the build PC
+(i7-10700T, x86 .NET Framework 4.8, software rendering) a warm refill takes 384 ms at 410x307 and 648 ms at 615x461 (217 ms even at
+1x without smoothing), against (a)'s limit of 100 ms; a selection-only change takes 13-16 ms, within its 20 ms. TC-3 therefore adds a
+live hardware WPF view on screen with a per-computer "Draw in software" switch, and the software render stays for `GetBitmap`, prints,
+sheets and the dashboard (TC-1's gallery G0, `timings.txt`).
 
 - **O-17. Batch H download.** The exact list is in section 9. **Recommended:** approve it. TC-0 to TC-3 do not need it. If TC-4's
   offline check resolves a package that the list lacks, TC-4 stops and the lead asks for a batch H2 the same way.
