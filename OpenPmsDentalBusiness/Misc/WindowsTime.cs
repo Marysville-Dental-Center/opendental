@@ -10,8 +10,8 @@ using CodeBase;
 using OpenPmsDentalBusiness;
 
 ///<summary>Sets this computer's clock, only through TrySetUtc. The program never sets the clock by itself: Windows Time keeps it (recommended), and
-///the manual time window calls TrySetUtc on a button, after the checks of TimeSyncCheck.GetManualSetOffer and a confirmation
-///(docs/specs/ehr-rebuild-plan.md, sections 4.4 and 4.5).</summary>
+///the manual time window's button reaches TrySetUtc only through TimeSyncCheck.TrySetManual, from a measurement taken on that click, after the
+///checks of TimeSyncCheck.GetManualSetOffer and a confirmation (docs/specs/ehr-rebuild-plan.md, sections 4.4 and 4.5).</summary>
 public class WindowsTime {
 	///<summary>ERROR_PRIVILEGE_NOT_HELD: the account does not hold "Change the system time" (SE_SYSTEMTIME_NAME), or holds it only elevated.</summary>
 	public const int ERROR_PRIVILEGE_NOT_HELD=1314;
@@ -136,6 +136,9 @@ namespace OpenPmsDentalBusiness {
 		public const double MANUAL_SET_MIN_SECONDS=1;
 		///<summary>...and at most this many (one hour). A larger error is fixed by hand in Windows.</summary>
 		public const double MANUAL_SET_MAX_SECONDS=3600;
+		///<summary>The set button's confirmation must be answered within this time of the button's own measurement, or nothing is set: an offset is
+		///applied only while it still describes the clock.</summary>
+		public static readonly TimeSpan ManualSetMaxAge=TimeSpan.FromMinutes(2);
 		///<summary>The service name of Windows Time.</summary>
 		public const string WINDOWS_TIME_SERVICE_NAME="W32Time";
 		///<summary>The start of the offset alert's description. An open alert that starts with it is not repeated.</summary>
@@ -298,6 +301,10 @@ namespace OpenPmsDentalBusiness {
 				timeSetOffer.Message="The time server's last reply is not valid, so the clock cannot be set: "+ntpResult.Reason;
 				return timeSetOffer;
 			}
+			if(double.IsNaN(ntpResult.OffsetSeconds) || double.IsInfinity(ntpResult.OffsetSeconds)) {
+				timeSetOffer.Message="The time server's last reply gave no offset, so the clock cannot be set.";
+				return timeSetOffer;
+			}
 			double offsetAbs=Math.Abs(ntpResult.OffsetSeconds);
 			if(offsetAbs<MANUAL_SET_MIN_SECONDS) {
 				timeSetOffer.Message="This computer's clock is within 1 second of "+ntpResult.Server+". There is nothing to set.";
@@ -347,11 +354,23 @@ namespace OpenPmsDentalBusiness {
 			return EnumWindowsTimeState.Stopped;
 		}
 
-		///<summary>The question before the manual window sets the clock: the server and the offset.</summary>
+		///<summary>The question before the manual window sets the clock: the server and the offset of the set button's own measurement, taken just
+		///before (PrepareManualSet).</summary>
 		public static string GetManualSetQuestion(NtpResult ntpResult) {
 			string direction=ntpResult.OffsetSeconds>0 ? "behind" : "ahead of";
-			return "This computer's clock is "+FormatSeconds(Math.Abs(ntpResult.OffsetSeconds))+" seconds "+direction+" "+ntpResult.Server+".\r\n"
+			return "Measured again just now: this computer's clock is "+FormatSeconds(Math.Abs(ntpResult.OffsetSeconds))+" seconds "+direction+" "
+				+ntpResult.Server+".\r\n"
 				+"Set this computer's clock to the time of "+ntpResult.Server+"?";
+		}
+
+		///<summary>Why the set button set nothing after its own measurement: the offer no longer holds (an invalid reply or no reply, an offset outside
+		///1 second to 1 hour, no Setup permission, Windows Time not disabled), with the offer's reason.</summary>
+		public static string GetManualSetRefusal(TimeSyncManualSet timeSyncManualSet) {
+			string reason="Measure first.";
+			if(timeSyncManualSet!=null && timeSyncManualSet.TimeSetOffer!=null && !string.IsNullOrEmpty(timeSyncManualSet.TimeSetOffer.Message)) {
+				reason=timeSyncManualSet.TimeSetOffer.Message;
+			}
+			return "Measured again just now; the clock was not set. "+reason;
 		}
 
 		///<summary>The Setup audit entry after the manual window set the clock, with the old and the new time.</summary>
@@ -372,8 +391,9 @@ namespace OpenPmsDentalBusiness {
 			double serverOffsetMs=(funcServerNow()-funcLocalNow()).TotalMilliseconds;
 			timeSyncMeasurement.DateTimeLocal=funcLocalNow();
 			timeSyncMeasurement.DateTimeServer=timeSyncMeasurement.DateTimeLocal.AddMilliseconds(serverOffsetMs);
-			if(timeSyncMeasurement.NtpResult.IsValid) {
-				timeSyncMeasurement.DateTimeNtp=timeSyncMeasurement.DateTimeLocal.AddSeconds(timeSyncMeasurement.NtpResult.OffsetSeconds);
+			double offsetSeconds=timeSyncMeasurement.NtpResult.OffsetSeconds;
+			if(timeSyncMeasurement.NtpResult.IsValid && !double.IsNaN(offsetSeconds) && !double.IsInfinity(offsetSeconds)) {
+				timeSyncMeasurement.DateTimeNtp=timeSyncMeasurement.DateTimeLocal.AddSeconds(offsetSeconds);
 			}
 			return timeSyncMeasurement;
 		}
@@ -399,6 +419,61 @@ namespace OpenPmsDentalBusiness {
 			return string.Join("\r\n",listLines);
 		}
 		#endregion Measuring
+
+		#region The set button
+		///<summary>The set button's own measurement (section 4.5). The button never applies the window's last measurement, which may be hours old and
+		///may describe a clock that has changed since: it measures again here, through the same functions as Measure, and checks GetManualSetOffer on
+		///this fresh reply. Question shows this measurement's server and offset when the offer holds, and is "" otherwise (GetManualSetRefusal says
+		///why). Only measures: nothing here sets the clock.</summary>
+		public static TimeSyncManualSet PrepareManualSet(Func<NtpResult> funcQueryNtp,Func<DateTime> funcServerNow,Func<DateTime> funcLocalNow,
+			bool hasSetupPermission,EnumWindowsTimeState windowsTimeState)
+		{
+			TimeSyncManualSet timeSyncManualSet=new TimeSyncManualSet();
+			timeSyncManualSet.TimeSyncMeasurement=Measure(funcQueryNtp,funcServerNow,funcLocalNow);
+			timeSyncManualSet.TimeSetOffer=GetManualSetOffer(timeSyncManualSet.TimeSyncMeasurement.NtpResult,hasSetupPermission,windowsTimeState);
+			if(timeSyncManualSet.TimeSetOffer.CanSet) {
+				timeSyncManualSet.Question=GetManualSetQuestion(timeSyncManualSet.TimeSyncMeasurement.NtpResult);
+			}
+			return timeSyncManualSet;
+		}
+
+		///<summary>Sets this computer's clock from the set button's own measurement (PrepareManualSet) and from nothing else: only when its offer held,
+		///and only while it is at most ManualSetMaxAge old. timeSinceMeasured comes from a stopwatch started after that measurement (a change of the
+		///clock does not move it), so a confirmation left open cannot apply an offset that no longer describes the clock. The new time is
+		///funcUtcNow() plus the measured offset, set by WindowsTime.TrySetUtc, which checks Windows' result. Returns false with the reason in error,
+		///having set nothing, otherwise. The old and the new time are for the Setup audit entry (GetManualSetLogText).</summary>
+		public static bool TrySetManual(TimeSyncManualSet timeSyncManualSet,TimeSpan timeSinceMeasured,Func<DateTime> funcUtcNow,
+			out DateTime dateTimeOldUtc,out DateTime dateTimeNewUtc,out string error)
+		{
+			dateTimeOldUtc=DateTime.MinValue;
+			dateTimeNewUtc=DateTime.MinValue;
+			if(timeSyncManualSet==null || timeSyncManualSet.TimeSyncMeasurement==null || timeSyncManualSet.TimeSetOffer==null
+				|| !timeSyncManualSet.TimeSetOffer.CanSet)
+			{
+				error=GetManualSetRefusal(timeSyncManualSet);
+				return false;
+			}
+			NtpResult ntpResult=timeSyncManualSet.TimeSyncMeasurement.NtpResult;
+			//The offer was made from this reply; its rules are checked once more, so no other reply can reach the clock through a changed offer.
+			double offsetAbs=ntpResult==null ? double.NaN : Math.Abs(ntpResult.OffsetSeconds);
+			if(ntpResult==null || !ntpResult.IsValid || double.IsNaN(offsetAbs) || offsetAbs<MANUAL_SET_MIN_SECONDS || offsetAbs>MANUAL_SET_MAX_SECONDS) {
+				error="The clock was not set: the measurement does not allow it. Measure again.";
+				return false;
+			}
+			if(timeSinceMeasured<TimeSpan.Zero || timeSinceMeasured>ManualSetMaxAge) {
+				error="The clock was not set: the measurement is more than "+ManualSetMaxAge.TotalMinutes.ToString(CultureInfo.InvariantCulture)
+					+" minutes old, so it may no longer describe the clock. Click the button again to measure again.";
+				return false;
+			}
+			dateTimeOldUtc=funcUtcNow();
+			if(dateTimeOldUtc.Kind==DateTimeKind.Local) {
+				dateTimeOldUtc=dateTimeOldUtc.ToUniversalTime();
+			}
+			dateTimeOldUtc=DateTime.SpecifyKind(dateTimeOldUtc,DateTimeKind.Utc);
+			dateTimeNewUtc=dateTimeOldUtc.AddSeconds(ntpResult.OffsetSeconds);
+			return WindowsTime.TrySetUtc(dateTimeNewUtc,out error);
+		}
+		#endregion The set button
 
 		#region Thread and Windows
 		///<summary>Carries out a step of the thread: writes its log line and raises its alert, unless one of the same kind is open. Never throws.</summary>
@@ -549,5 +624,16 @@ namespace OpenPmsDentalBusiness {
 		public DateTime DateTimeServer;
 		///<summary>MinValue when the time server gave no valid reply.</summary>
 		public DateTime DateTimeNtp=DateTime.MinValue;
+	}
+
+	///<summary>The set button's own measurement and what it may do with it (TimeSyncCheck.PrepareManualSet). The clock is set from this measurement
+	///only (TimeSyncCheck.TrySetManual), never from the window's last one.</summary>
+	public class TimeSyncManualSet {
+		///<summary>The measurement taken when the button was clicked.</summary>
+		public TimeSyncMeasurement TimeSyncMeasurement;
+		///<summary>GetManualSetOffer on this measurement's reply.</summary>
+		public TimeSetOffer TimeSetOffer;
+		///<summary>The confirmation, with this measurement's server and offset. "" when the offer does not hold.</summary>
+		public string Question="";
 	}
 }

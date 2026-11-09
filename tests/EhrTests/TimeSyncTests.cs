@@ -1,7 +1,7 @@
 // The time check (docs/specs/ehr-rebuild-plan.md, section 4): the setting ForkTimeSyncMode, TimeSyncCheck.ShouldStart and Decide for every
-// combination, the rules for failed and kiss-o'-death replies, the manual window's set button, WindowsTime.TrySetUtc through its seam (a failure
-// gives its reason), and source checks that the thread and the window never set the clock by themselves. The clock is never set: the seam is a
-// fake in every test (AssemblySetup), and no request goes out.
+// combination, the rules for failed and kiss-o'-death replies, the manual window's set button (it measures again and applies only that fresh
+// measurement), WindowsTime.TrySetUtc through its seam (a failure gives its reason), and source checks that the thread and the window never set
+// the clock by themselves. The clock is never set: the seam is a fake in every test (AssemblySetup), and no request goes out.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -16,11 +16,13 @@ namespace EhrTests {
 	[TestClass]
 	public class TimeSyncTests {
 		private const string SERVER="time.example.test";
+		///<summary>The server of a stale measurement, which the set button never applies.</summary>
+		private const string SERVER_OLD="time-old.example.test";
 
-		private static NtpResult Valid(double offsetSeconds) {
+		private static NtpResult Valid(double offsetSeconds,string server=SERVER) {
 			NtpResult ntpResult=new NtpResult();
 			ntpResult.Status=EnumNtpResult.Valid;
-			ntpResult.Server=SERVER;
+			ntpResult.Server=server;
 			ntpResult.OffsetSeconds=offsetSeconds;
 			ntpResult.DelaySeconds=0.03;
 			ntpResult.Stratum=1;
@@ -322,27 +324,149 @@ namespace EhrTests {
 			string measureClick=CSharpSource.GetBlock(source,"private void butRefreshTime_Click(");
 			StringAssert.Contains(load,"MeasureTimes();");
 			StringAssert.Contains(measure,"TimeSyncCheck.Measure(() => new NTPv4().Query(server),MiscData.GetNowDateTimeWithMilli,() => DateTime.Now)");
-			foreach(string block in new[] { load,measure,refresh,measureClick,CSharpSource.GetBlock(source,"private void RefreshSetButton()") }) {
-				Assert.IsFalse(Regex.IsMatch(block,@"\bWindowsTime\."),"Measuring never sets the clock: "+block.Substring(0,40));
+			string show=CSharpSource.GetBlock(source,"private void ShowMeasurement(");
+			StringAssert.Contains(measure,"ShowMeasurement(timeSyncMeasurement);");
+			foreach(string block in new[] { load,measure,show,refresh,measureClick,CSharpSource.GetBlock(source,"private void RefreshSetButton()") }) {
+				Assert.IsFalse(Regex.IsMatch(block,@"\bWindowsTime\.|\bTrySetManual\("),"Measuring never sets the clock: "+block.Substring(0,40));
 			}
-			//The one call that sets the clock: on the button, after the offer's checks and the confirmation, with the audit entry after it.
+			//The one call that sets the clock: on the button, from its own fresh measurement, after the offer's checks on that measurement and the
+			//confirmation, with the audit entry after it.
 			string code=CSharpSource.Read(source).CodeWithoutComments;
-			Assert.AreEqual(1,Regex.Matches(code,@"WindowsTime\.TrySetUtc\(").Count);
+			Assert.AreEqual(0,Regex.Matches(code,@"WindowsTime\.").Count,"The window reaches the clock only through TimeSyncCheck.TrySetManual.");
+			Assert.AreEqual(1,Regex.Matches(code,@"TimeSyncCheck\.TrySetManual\(").Count);
 			string button=CSharpSource.GetBlock(source,"private void butSetClock_Click(");
 			int indexAuthorized=button.IndexOf("Security.IsAuthorized(EnumPermType.Setup)",StringComparison.Ordinal);
-			int indexOffer=button.IndexOf("TimeSyncCheck.GetManualSetOffer(",StringComparison.Ordinal);
-			int indexConfirm=button.IndexOf("MsgBox.Show(MsgBoxButtons.OKCancel,TimeSyncCheck.GetManualSetQuestion(_ntpResultLast))",StringComparison.Ordinal);
-			int indexSet=button.IndexOf("WindowsTime.TrySetUtc(dateTimeNewUtc,out string error)",StringComparison.Ordinal);
-			int indexLog=button.IndexOf("SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,TimeSyncCheck.GetManualSetLogText(",StringComparison.Ordinal);
-			Assert.IsTrue(indexAuthorized>=0 && indexAuthorized<indexOffer && indexOffer<indexConfirm && indexConfirm<indexSet && indexSet<indexLog,
-				"Setup, the offer, the confirmation, the set, the audit entry: "+indexAuthorized+" "+indexOffer+" "+indexConfirm+" "+indexSet+" "+indexLog);
+			int indexLimit=button.IndexOf("if(timerSendingLimit.Enabled) {",StringComparison.Ordinal);
+			int indexMeasure=button.IndexOf("TimeSyncCheck.PrepareManualSet(() => new NTPv4().Query(server),MiscData.GetNowDateTimeWithMilli,",StringComparison.Ordinal);
+			int indexStopwatch=button.IndexOf("Stopwatch stopwatchSinceMeasured=Stopwatch.StartNew();",StringComparison.Ordinal);
+			int indexOffer=button.IndexOf("if(!timeSyncManualSet.TimeSetOffer.CanSet) {",StringComparison.Ordinal);
+			int indexRefusal=button.IndexOf("MsgBox.Show(TimeSyncCheck.GetManualSetRefusal(timeSyncManualSet));",StringComparison.Ordinal);
+			int indexConfirm=button.IndexOf("MsgBox.Show(MsgBoxButtons.OKCancel,timeSyncManualSet.Question)",StringComparison.Ordinal);
+			int indexSet=button.IndexOf("TimeSyncCheck.TrySetManual(timeSyncManualSet,stopwatchSinceMeasured.Elapsed,() => DateTime.UtcNow,",StringComparison.Ordinal);
+			int indexLog=button.IndexOf("SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,",StringComparison.Ordinal);
+			Assert.IsTrue(indexAuthorized>=0 && indexAuthorized<indexLimit && indexLimit<indexMeasure && indexMeasure<indexStopwatch && indexStopwatch<indexOffer
+				&& indexOffer<indexRefusal && indexRefusal<indexConfirm && indexConfirm<indexSet && indexSet<indexLog,
+				"Setup, the 4-second limit, the fresh measurement, its stopwatch, the offer on it, the refusal, the confirmation, the set, the audit entry: "
+				+indexAuthorized+" "+indexLimit+" "+indexMeasure+" "+indexStopwatch+" "+indexOffer+" "+indexRefusal+" "+indexConfirm+" "+indexSet+" "+indexLog);
+			StringAssert.Contains(button,"() => DateTime.Now,true,TimeSyncCheck.GetWindowsTimeState());");
+			StringAssert.Contains(button,"TimeSyncCheck.GetManualSetLogText(timeSyncManualSet.TimeSyncMeasurement.NtpResult.Server,dateTimeOldUtc,dateTimeNewUtc)");
 			StringAssert.Contains(button,"MsgBox.Show(error);");
+			//The window's last reply is never read by the button: it is only cleared after the clock was set.
+			Assert.AreEqual(0,Regex.Matches(button,@"_ntpResultLast(?!=null;)").Count,"The button never applies the last measurement.");
+			StringAssert.Contains(button,"_ntpResultLast=null;");
 			StringAssert.Contains(CSharpSource.GetBlock(source,"private void RefreshSetButton()"),"butSetClock.Enabled=timeSetOffer.CanSet;");
 			//The paths that set the clock without these checks are gone.
 			foreach(string removed in new[] { "IsAutoLaunch","TimesInSynchFast","ServerInSynchFast","SynchTimes","SetTime(" }) {
 				Assert.IsFalse(code.Contains(removed),removed);
 			}
 			StringAssert.Contains(TestPaths.ReadSource(@"OpenPmsDental\Forms\FormEhrTimeSynch.designer.cs"),"this.butSetClock.Enabled = false;");
+		}
+
+		[TestMethod]
+		public void SetButton_MeasuresAgain_AndAppliesOnlyTheFreshMeasurement() {
+			List<DateTime> listCalls=new List<DateTime>();
+			WindowsTime.FuncSetSystemTimeUtc=(dateTimeUtc) => { listCalls.Add(dateTimeUtc); return 0; };
+			try {
+				DateTime dateTimeLocal=new DateTime(2026,11,8,9,30,0,DateTimeKind.Local);
+				DateTime dateTimeUtcNow=new DateTime(2026,11,8,17,30,0,DateTimeKind.Utc);
+				//The window's last measurement, taken long ago against another server: 600 seconds off. It would be offered, but it is never applied.
+				TimeSyncMeasurement timeSyncMeasurementStale=TimeSyncCheck.Measure(() => Valid(600,SERVER_OLD),() => dateTimeLocal,() => dateTimeLocal);
+				Assert.IsTrue(TimeSyncCheck.GetManualSetOffer(timeSyncMeasurementStale.NtpResult,true,EnumWindowsTimeState.Disabled).CanSet);
+				//The button's own measurement, through the same seams: the clock is now 30 seconds behind.
+				int countQueries=0;
+				TimeSyncManualSet timeSyncManualSet=TimeSyncCheck.PrepareManualSet(() => { countQueries++; return Valid(30); },() => dateTimeLocal,
+					() => dateTimeLocal,true,EnumWindowsTimeState.Disabled);
+				Assert.AreEqual(1,countQueries,"The button measures again.");
+				Assert.AreEqual(0,listCalls.Count,"Measuring sets nothing.");
+				Assert.IsTrue(timeSyncManualSet.TimeSetOffer.CanSet);
+				Assert.AreEqual(30,(timeSyncManualSet.TimeSyncMeasurement.DateTimeNtp-timeSyncManualSet.TimeSyncMeasurement.DateTimeLocal).TotalSeconds,0.0001,
+					"The window shows the fresh measurement.");
+				StringAssert.Contains(timeSyncManualSet.Question,"Measured again just now: this computer's clock is 30 seconds behind "+SERVER+".");
+				StringAssert.Contains(timeSyncManualSet.Question,"to the time of "+SERVER+"?");
+				Assert.IsFalse(timeSyncManualSet.Question.Contains("600") || timeSyncManualSet.Question.Contains(SERVER_OLD),"The confirmation shows the fresh server and offset.");
+				Assert.IsTrue(TimeSyncCheck.TrySetManual(timeSyncManualSet,TimeSpan.FromSeconds(8),() => dateTimeUtcNow,out DateTime dateTimeOldUtc,
+					out DateTime dateTimeNewUtc,out string error),error);
+				Assert.AreEqual("",error);
+				Assert.AreEqual(1,listCalls.Count);
+				Assert.AreEqual(dateTimeUtcNow.AddSeconds(30),listCalls[0],"The fresh offset, never the stale 600 seconds.");
+				Assert.AreEqual(dateTimeUtcNow,dateTimeOldUtc);
+				Assert.AreEqual(dateTimeUtcNow.AddSeconds(30),dateTimeNewUtc);
+				Assert.AreEqual(DateTimeKind.Utc,dateTimeOldUtc.Kind);
+				//A clock that is ahead is set back by the fresh offset; a local "now" is converted to UTC first.
+				TimeSyncManualSet timeSyncManualSetAhead=TimeSyncCheck.PrepareManualSet(() => Valid(-12.5),() => dateTimeLocal,() => dateTimeLocal,true,
+					EnumWindowsTimeState.NotInstalled);
+				Assert.IsTrue(TimeSyncCheck.TrySetManual(timeSyncManualSetAhead,TimeSpan.Zero,() => dateTimeUtcNow.ToLocalTime(),out dateTimeOldUtc,
+					out dateTimeNewUtc,out error),error);
+				Assert.AreEqual(2,listCalls.Count);
+				Assert.AreEqual(dateTimeUtcNow.AddSeconds(-12.5),listCalls[1]);
+				Assert.AreEqual(dateTimeUtcNow,dateTimeOldUtc);
+			}
+			finally {
+				ClockGuard.Install();
+			}
+		}
+
+		[TestMethod]
+		public void SetButton_FreshReplyInvalidOrOfferGone_SetsNothingAndSaysWhy() {
+			int countSetCalls=0;
+			WindowsTime.FuncSetSystemTimeUtc=(dateTimeUtc) => { countSetCalls++; return 0; };
+			try {
+				DateTime dateTimeLocal=new DateTime(2026,11,8,9,30,0,DateTimeKind.Local);
+				DateTime dateTimeUtcNow=new DateTime(2026,11,8,17,30,0,DateTimeKind.Utc);
+				//The last measurement allowed setting the clock (30 seconds off, Windows Time disabled); each fresh one below does not.
+				Assert.IsTrue(TimeSyncCheck.GetManualSetOffer(Valid(30),true,EnumWindowsTimeState.Disabled).CanSet);
+				List<Tuple<NtpResult,bool,EnumWindowsTimeState,string>> listCases=new List<Tuple<NtpResult,bool,EnumWindowsTimeState,string>> {
+					Tuple.Create(WithServer(NtpResult.Invalid("stratum 16")),true,EnumWindowsTimeState.Disabled,"is not valid, so the clock cannot be set: stratum 16"),
+					Tuple.Create(WithServer(NtpResult.NoReply("timeout")),true,EnumWindowsTimeState.Disabled,"timeout"),
+					Tuple.Create(KissOfDeath(),true,EnumWindowsTimeState.Disabled,"kiss-o'-death RATE"),
+					Tuple.Create(Valid(double.NaN),true,EnumWindowsTimeState.Disabled,"gave no offset"),
+					Tuple.Create(Valid(0.3),true,EnumWindowsTimeState.Disabled,"There is nothing to set."),
+					Tuple.Create(Valid(7200),true,EnumWindowsTimeState.Disabled,"by hand in Windows"),
+					Tuple.Create(Valid(30),false,EnumWindowsTimeState.Disabled,"Setup permission"),
+					Tuple.Create(Valid(30),true,EnumWindowsTimeState.Running,"w32tm /resync"),
+					Tuple.Create(Valid(30),true,EnumWindowsTimeState.Stopped,"net start w32time"),
+					Tuple.Create(Valid(30),true,EnumWindowsTimeState.Unknown,"could not be read"),
+				};
+				foreach(Tuple<NtpResult,bool,EnumWindowsTimeState,string> tuple in listCases) {
+					string what=tuple.Item1.Status+" "+tuple.Item1.OffsetSeconds+", Setup "+tuple.Item2+", "+tuple.Item3;
+					TimeSyncManualSet timeSyncManualSet=TimeSyncCheck.PrepareManualSet(() => tuple.Item1,() => dateTimeLocal,() => dateTimeLocal,tuple.Item2,tuple.Item3);
+					Assert.IsFalse(timeSyncManualSet.TimeSetOffer.CanSet,what);
+					Assert.AreEqual("",timeSyncManualSet.Question,what+": no confirmation.");
+					string refusal=TimeSyncCheck.GetManualSetRefusal(timeSyncManualSet);
+					StringAssert.StartsWith(refusal,"Measured again just now; the clock was not set.",what);
+					StringAssert.Contains(refusal,tuple.Item4,what);
+					Assert.IsFalse(TimeSyncCheck.TrySetManual(timeSyncManualSet,TimeSpan.Zero,() => dateTimeUtcNow,out DateTime dateTimeOldUtc,
+						out DateTime dateTimeNewUtc,out string error),what);
+					StringAssert.Contains(error,tuple.Item4,what);
+					Assert.AreEqual(DateTime.MinValue,dateTimeNewUtc,what);
+				}
+				//No measurement at all.
+				Assert.IsFalse(TimeSyncCheck.TrySetManual(null,TimeSpan.Zero,() => dateTimeUtcNow,out _,out _,out string errorNull));
+				StringAssert.Contains(errorNull,"the clock was not set");
+				//An offer changed after the measurement (not by the window) still cannot reach the clock with a reply that breaks the rules.
+				TimeSyncManualSet timeSyncManualSetForged=TimeSyncCheck.PrepareManualSet(() => Valid(7200),() => dateTimeLocal,() => dateTimeLocal,true,
+					EnumWindowsTimeState.Disabled);
+				timeSyncManualSetForged.TimeSetOffer.CanSet=true;
+				Assert.IsFalse(TimeSyncCheck.TrySetManual(timeSyncManualSetForged,TimeSpan.Zero,() => dateTimeUtcNow,out _,out _,out string errorForged));
+				StringAssert.Contains(errorForged,"The clock was not set");
+				//A confirmation answered too late: the measurement may no longer describe the clock, so nothing is set.
+				TimeSyncManualSet timeSyncManualSetOld=TimeSyncCheck.PrepareManualSet(() => Valid(30),() => dateTimeLocal,() => dateTimeLocal,true,
+					EnumWindowsTimeState.Disabled);
+				Assert.IsTrue(timeSyncManualSetOld.TimeSetOffer.CanSet);
+				Assert.AreEqual(TimeSpan.FromMinutes(2),TimeSyncCheck.ManualSetMaxAge);
+				Assert.IsFalse(TimeSyncCheck.TrySetManual(timeSyncManualSetOld,TimeSyncCheck.ManualSetMaxAge.Add(TimeSpan.FromSeconds(1)),() => dateTimeUtcNow,
+					out _,out _,out string errorOld));
+				StringAssert.Contains(errorOld,"more than 2 minutes old");
+				Assert.IsFalse(TimeSyncCheck.TrySetManual(timeSyncManualSetOld,TimeSpan.FromSeconds(-1),() => dateTimeUtcNow,out _,out _,out errorOld),
+					"A stopwatch never runs backwards.");
+				Assert.AreEqual(0,countSetCalls,"Nothing above reached the clock.");
+				Assert.IsTrue(TimeSyncCheck.TrySetManual(timeSyncManualSetOld,TimeSyncCheck.ManualSetMaxAge,() => dateTimeUtcNow,out _,out _,out errorOld),
+					"Answered within the limit.");
+				Assert.AreEqual(1,countSetCalls);
+			}
+			finally {
+				ClockGuard.Install();
+			}
 		}
 
 		[TestMethod]
@@ -432,7 +556,11 @@ namespace EhrTests {
 			Assert.AreEqual(1,Regex.Matches(code,@"FuncSetSystemTimeUtc\(").Count,"One call of the seam, in TrySetUtc.");
 			StringAssert.Contains(CSharpSource.GetBlock(source,"public static bool TrySetUtc("),"win32Error=FuncSetSystemTimeUtc(dateTimeUtc);");
 			StringAssert.Contains(CSharpSource.GetBlock(source,"private static int SetSystemTimeUtcNative("),"Marshal.GetLastWin32Error()");
-			//Nowhere else in the program: no SetLocalTime, no other SetSystemTime, no other caller of TrySetUtc than the manual window's button.
+			//TrySetUtc has one caller, TimeSyncCheck.TrySetManual, which sets the clock from the set button's own measurement.
+			Assert.AreEqual(2,Regex.Matches(code,@"\bTrySetUtc\(").Count,"The method and its one call.");
+			StringAssert.Contains(CSharpSource.GetBlock(source,"public static bool TrySetManual("),"return WindowsTime.TrySetUtc(dateTimeNewUtc,out error);");
+			//Nowhere else in the program: no SetLocalTime, no other SetSystemTime, no other caller of TrySetUtc, and no caller of TrySetManual but the
+			//manual window's button.
 			List<string> listProblems=new List<string>();
 			foreach(string path in TestPaths.ProgramSourceFiles()) {
 				string relative=TestPaths.Relative(path);
@@ -445,8 +573,14 @@ namespace EhrTests {
 				{
 					listProblems.Add(relative+": SetSystemTime");
 				}
-				if(!relative.Equals(@"OpenPmsDental\Forms\FormEhrTimeSynch.cs",StringComparison.OrdinalIgnoreCase) && codeFile.Contains("WindowsTime.TrySetUtc(")) {
+				if(!relative.Equals(@"OpenPmsDentalBusiness\Misc\WindowsTime.cs",StringComparison.OrdinalIgnoreCase) && Regex.IsMatch(codeFile,@"\bTrySetUtc\(")) {
 					listProblems.Add(relative+": WindowsTime.TrySetUtc");
+				}
+				if(!relative.Equals(@"OpenPmsDental\Forms\FormEhrTimeSynch.cs",StringComparison.OrdinalIgnoreCase)
+					&& !relative.Equals(@"OpenPmsDentalBusiness\Misc\WindowsTime.cs",StringComparison.OrdinalIgnoreCase)
+					&& Regex.IsMatch(codeFile,@"\bTrySetManual\("))
+				{
+					listProblems.Add(relative+": TimeSyncCheck.TrySetManual");
 				}
 			}
 			Assert.AreEqual(0,listProblems.Count,string.Join("; ",listProblems));

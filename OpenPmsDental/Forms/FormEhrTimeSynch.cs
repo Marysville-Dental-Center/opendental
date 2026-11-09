@@ -11,14 +11,16 @@ using OpenPmsDentalBusiness;
 namespace OpenPmsDental {
 	///<summary>Setup > Chart > EHR > Time Synchronization (hidden without the Setup permission). Measures this computer's clock against an NTP time
 	///server and against the database server's clock (docs/specs/ehr-rebuild-plan.md, section 4.5). Opening the window and Measure only measure:
-	///they never set the clock. Only "Set this computer's clock" does, when TimeSyncCheck.GetManualSetOffer allows it (a valid reply, an offset from
-	///1 second to 1 hour, the Setup permission, Windows Time disabled) and after a confirmation. The check box is the time check's setting
+	///they never set the clock. Only "Set this computer's clock" does: it measures again on the click, and sets the clock from that measurement only,
+	///when TimeSyncCheck.GetManualSetOffer allows it on that fresh reply (a valid reply, an offset from 1 second to 1 hour, the Setup permission,
+	///Windows Time disabled) and after a confirmation that shows its server and offset. The check box is the time check's setting
 	///(ForkTimeSyncMode, section 4.2).</summary>
 	public partial class FormEhrTimeSynch:FormODBase {
 		private DateTime _timeNist;
 		private DateTime _timeServer;
 		private DateTime _timeLocal;
-		///<summary>The time server's last reply, checked by NtpReply. Null before the first measurement and after the clock was set.</summary>
+		///<summary>The time server's last reply, checked by NtpReply. Null before the first measurement and after the clock was set. It only enables
+		///the set button: the button measures again and never applies this reply.</summary>
 		private NtpResult _ntpResultLast;
 
 		public FormEhrTimeSynch() {
@@ -38,13 +40,18 @@ namespace OpenPmsDental {
 			this.Cursor=Cursors.WaitCursor;
 			string server=textNistUrl.Text;
 			TimeSyncMeasurement timeSyncMeasurement=TimeSyncCheck.Measure(() => new NTPv4().Query(server),MiscData.GetNowDateTimeWithMilli,() => DateTime.Now);
+			this.Cursor=Cursors.Default;
+			ShowMeasurement(timeSyncMeasurement);
+		}
+
+		///<summary>Shows a measurement (Measure's or the set button's own) and starts the 4-second limit on requests. Never sets the clock.</summary>
+		private void ShowMeasurement(TimeSyncMeasurement timeSyncMeasurement) {
 			timerSendingLimit.Enabled=true;
 			_ntpResultLast=timeSyncMeasurement.NtpResult;
 			_timeLocal=timeSyncMeasurement.DateTimeLocal;
 			_timeServer=timeSyncMeasurement.DateTimeServer;
 			_timeNist=timeSyncMeasurement.DateTimeNtp;
 			textMessage.Text=TimeSyncCheck.GetMeasureMessage(timeSyncMeasurement);
-			this.Cursor=Cursors.Default;
 			refreshDisplays();
 		}
 
@@ -77,29 +84,42 @@ namespace OpenPmsDental {
 			labelSetClock.Text=timeSetOffer.Message;
 		}
 
-		///<summary>Sets this computer's clock to the time server's, after the checks of GetManualSetOffer and a confirmation that shows the server and
-		///the offset. WindowsTime.TrySetUtc checks Windows' result: on success it writes the Event Log entry and this writes the Setup audit entry with
-		///the old and the new time; a failure shows its reason.</summary>
+		///<summary>Sets this computer's clock to the time server's. The window's last measurement may be hours old, so the button never applies it: it
+		///measures again (TimeSyncCheck.PrepareManualSet, through the same functions as Measure), checks GetManualSetOffer on that fresh reply, shows
+		///the fresh server and offset in the confirmation, and sets the clock from that measurement only (TimeSyncCheck.TrySetManual), if the
+		///confirmation is answered within TimeSyncCheck.ManualSetMaxAge. A fresh reply that is not valid, or an offer that no longer holds, is
+		///shown with its reason and sets nothing. WindowsTime.TrySetUtc checks Windows' result: on success it writes the Event Log entry and this
+		///writes the Setup audit entry with the old and the new time; a failure shows its reason.</summary>
 		private void butSetClock_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.Setup)) {
 				return;
 			}
-			TimeSetOffer timeSetOffer=TimeSyncCheck.GetManualSetOffer(_ntpResultLast,true,TimeSyncCheck.GetWindowsTimeState());
-			if(!timeSetOffer.CanSet) {
-				MsgBox.Show(timeSetOffer.Message);
-				RefreshSetButton();
+			if(timerSendingLimit.Enabled) {
+				MsgBox.Show(this,"Cannot send a time request more than once every four seconds");
 				return;
 			}
-			if(!MsgBox.Show(MsgBoxButtons.OKCancel,TimeSyncCheck.GetManualSetQuestion(_ntpResultLast))) {
+			this.Cursor=Cursors.WaitCursor;
+			string server=textNistUrl.Text;
+			TimeSyncManualSet timeSyncManualSet=TimeSyncCheck.PrepareManualSet(() => new NTPv4().Query(server),MiscData.GetNowDateTimeWithMilli,
+				() => DateTime.Now,true,TimeSyncCheck.GetWindowsTimeState());
+			Stopwatch stopwatchSinceMeasured=Stopwatch.StartNew();
+			this.Cursor=Cursors.Default;
+			ShowMeasurement(timeSyncManualSet.TimeSyncMeasurement);
+			if(!timeSyncManualSet.TimeSetOffer.CanSet) {
+				MsgBox.Show(TimeSyncCheck.GetManualSetRefusal(timeSyncManualSet));
 				return;
 			}
-			DateTime dateTimeOldUtc=DateTime.UtcNow;
-			DateTime dateTimeNewUtc=dateTimeOldUtc.AddSeconds(_ntpResultLast.OffsetSeconds);
-			if(!WindowsTime.TrySetUtc(dateTimeNewUtc,out string error)) {
+			if(!MsgBox.Show(MsgBoxButtons.OKCancel,timeSyncManualSet.Question)) {
+				return;
+			}
+			if(!TimeSyncCheck.TrySetManual(timeSyncManualSet,stopwatchSinceMeasured.Elapsed,() => DateTime.UtcNow,out DateTime dateTimeOldUtc,
+				out DateTime dateTimeNewUtc,out string error))
+			{
 				MsgBox.Show(error);
 				return;
 			}
-			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,TimeSyncCheck.GetManualSetLogText(_ntpResultLast.Server,dateTimeOldUtc,dateTimeNewUtc));
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,
+				TimeSyncCheck.GetManualSetLogText(timeSyncManualSet.TimeSyncMeasurement.NtpResult.Server,dateTimeOldUtc,dateTimeNewUtc));
 			_ntpResultLast=null;//The measurement no longer describes the clock.
 			_timeLocal=DateTime.Now;
 			_timeNist=DateTime.MinValue;
