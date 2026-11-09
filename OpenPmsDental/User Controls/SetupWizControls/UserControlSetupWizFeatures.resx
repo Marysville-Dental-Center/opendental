@@ -177,8 +177,9 @@
 Open PMS - Dental has good support for medical insurance making it useful in oral surgery and hospital settings. Checking this is the first step to turn on these medical features. Consult the manual to see how to set up the rest of the features.</value>
   </data>
   <data name="labelInfoEHR.Tag" xml:space="preserve">
-    <value>Turn on EHR features. 
-If using EHR for the EHR Incentive Program, contact Open Dental to sign an EHR Contract.Open Dental EHR is a complete 2014 edition certified software used by eligible providers in the EHR Incentive Program.  It meets all mandatory requirements for a 'qualified' EHR and has been tested and certified by a federally approved certification body. For more details, please consult the manual.</value>
+    <value>Turns on the EHR features.
+Shows the EHR tools: the EHR button in the Chart, the EHR fields of the patient, medical and prescription windows, and the EHR setup and measure windows. It changes how prescriptions, patient race, required fields and the Chart work. Turning it on asks for one confirmation, and a restart is needed.
+This program is not certified EHR technology. Its measures are for internal review only and cannot be used to attest or submit to any program.</value>
   </data>
   <data name="labelInfoClinical.Tag" xml:space="preserve">
     <value>Turns on the Clinical feature. 
