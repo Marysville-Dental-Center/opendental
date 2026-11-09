@@ -1,7 +1,8 @@
-// A source check of the Insurance Verification List's query (INSVERIFY and INSV2, docs/port-notes/INSVERIFY.md): InsVerifies.GetVerifyGridListQuery
-// gives one row per patient plan, verify type and key (the verify type keeps a patient plan's eligibility and benefits rows apart), with the latest
-// verification of the key and the earliest appointment, so a later port of Open Dental's file cannot undo it without this test saying so. The
-// database tests (VerifyGridKeyTests) show what it does; this check needs no database.
+// A source check of the Insurance Verification List's query (INSVERIFY, INSV2 and INSV3, docs/port-notes/INSVERIFY.md): InsVerifies.GetVerifyGridListQuery
+// keeps a patient plan's eligibility and benefits rows apart by the verify type and joins only the latest verification of each key, with no window
+// function (the program still starts on MySQL 5.0), in an order that puts the earliest appointment of each key first; GetVerifyGridList keeps that
+// first row of each key in C# after each query. So a later port of Open Dental's file cannot undo it without this test saying so. The database
+// tests (VerifyGridKeyTests) show what it does; this check needs no database.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -15,21 +16,38 @@ namespace INSVERIFYTests {
 		private const string METHOD_SIGNATURE="private static string GetVerifyGridListQuery(";
 
 		[TestMethod]
-		public void GetVerifyGridListQuery_OneRowPerPatientPlanVerifyTypeAndKey() {
-			//INSVERIFY grouped by PatPlanNum,VerifyType,FKey; INSV2 numbers the rows of each patient plan, verify type and key from the earliest
-			//appointment (ties by AptNum) and keeps the first. The zero-date filter of Open Dental's HAVING MAX(DateLastVerified) stays, on that one row;
-			//Open Dental's ORDER BY AptDateTime (24.3.15) is completed so the order never varies.
+		public void GetVerifyGridListQuery_NoWindowFunctionAndTheEarliestAppointmentOfEachKeyFirst() {
+			//INSVERIFY grouped by PatPlanNum,VerifyType,FKey; INSV2 numbered the rows of each patient plan, verify type and key with ROW_NUMBER() OVER
+			//and kept the first. INSV3: no window function (it needs MariaDB 10.2 or MySQL 8.0, and the program still starts on MySQL 5.0), no GROUP BY;
+			//the query returns a row for each appointment and orders them so the earliest appointment of each key (ties by AptNum) comes first, which
+			//GetVerifyGridList keeps. The zero-date filter of Open Dental's HAVING MAX(DateLastVerified) stays, as DateLastVerified; Open Dental's
+			//ORDER BY AptDateTime (24.3.15) is completed so the order never varies.
 			List<string> listLines=GetMethodLines(Path.Combine("OpenPmsDentalBusiness","Data Interface","InsVerifies.cs"),METHOD_SIGNATURE);
-			List<string> listGroupBy=listLines.FindAll(x => x.Contains("GROUP BY"));
-			Assert.AreEqual(0,listGroupBy.Count,"no GROUP BY in the query: "+string.Join(" | ",listGroupBy));
-			List<string> listPartitionBy=listLines.FindAll(x => x.Contains("PARTITION BY"));
-			CollectionAssert.AreEqual(new List<string> {
-					"ROW_NUMBER() OVER(PARTITION BY patplan.PatPlanNum,insverify.VerifyType,insverify.FKey ORDER BY appointment.AptDateTime,appointment.AptNum) AS AptOrder"
-				},listPartitionBy,"the numbering in mainQuery");
+			foreach(string sql in new[] { "GROUP BY"," OVER(","OVER (","ROW_NUMBER","RANK(","PARTITION BY","AptOrder" }) {
+				List<string> listFound=listLines.FindAll(x => x.ToUpperInvariant().Contains(sql.ToUpperInvariant()));
+				Assert.AreEqual(0,listFound.Count,"no "+sql.Trim()+" in the query: "+string.Join(" | ",listFound));
+			}
 			List<string> listReturn=listLines.FindAll(x => x.StartsWith("return "));
 			CollectionAssert.AreEqual(new List<string> {
-					"return \"SELECT * FROM (\"+command+\") AS iv WHERE AptOrder=1 AND DateLastVerified ORDER BY AptDateTime,AptNum,PatPlanNum,VerifyType\";"
+					"return \"SELECT * FROM (\"+command+\") AS iv WHERE DateLastVerified ORDER BY AptDateTime,AptNum,PatPlanNum,VerifyType\";"
 				},listReturn);
+		}
+
+		[TestMethod]
+		public void GetVerifyGridList_KeepsTheEarliestAppointmentOfEachKeyAfterEachQuery() {
+			//INSV3: the choice of INSV2's AptOrder=1 is made in C#, on the server side of a Middle Tier call: GetVerifyGridList passes the table of each
+			//query (the standard and the Medicaid list) to RemoveLaterAppointmentRows before it becomes grid rows.
+			List<string> listLines=GetMethodLines(Path.Combine("OpenPmsDentalBusiness","Data Interface","InsVerifies.cs"),
+				"public static List<InsVerifyGridObject> GetVerifyGridList(");
+			int indexMiddleTier=listLines.FindIndex(x => x.StartsWith("return Meth.GetObject<List<InsVerifyGridObject>>("));
+			Assert.IsTrue(indexMiddleTier>=0,"the Middle Tier call comes first");
+			List<int> listIndexesQuery=Enumerable.Range(0,listLines.Count).Where(i => listLines[i]=="DataTable table=Db.GetTable(command);").ToList();
+			Assert.AreEqual(2,listIndexesQuery.Count,"the standard and the Medicaid query");
+			foreach(int index in listIndexesQuery) {
+				Assert.IsTrue(index>indexMiddleTier,"on the server side of the call");
+				Assert.AreEqual("RemoveLaterAppointmentRows(table);",listLines[index+1],"the choice right after the query");
+				StringAssert.StartsWith(listLines[index+2],"List<InsVerifyGridObject> listInsVerifyGridObjects","then the grid rows");
+			}
 		}
 
 		[TestMethod]
@@ -52,7 +70,8 @@ namespace INSVERIFYTests {
 
 		[TestMethod]
 		public void GetVerifyGridListQuery_BothUnionPartsExposeTheVerifyType() {
-			//The outer GROUP BY names VerifyType: both parts of the union select insverify.* (mainQuery), and each joins insverify on one verify type.
+			//The outer ORDER BY and RemoveLaterAppointmentRows name VerifyType: both parts of the union select insverify.* (mainQuery), and each joins
+			//insverify on one verify type.
 			List<string> listLines=GetMethodLines(Path.Combine("OpenPmsDentalBusiness","Data Interface","InsVerifies.cs"),METHOD_SIGNATURE);
 			Assert.AreEqual(1,listLines.Count(x => x=="SELECT insverify.*,"),"the select list of mainQuery");
 			Assert.AreEqual(2,listLines.Count(x => x=="mainQuery+"),"mainQuery starts both parts of the union");

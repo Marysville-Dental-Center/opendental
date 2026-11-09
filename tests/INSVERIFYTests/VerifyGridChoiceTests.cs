@@ -205,8 +205,8 @@ namespace INSVERIFYTests {
 		#region The query
 		[TestMethod]
 		public void Query_TwoRowsForOneKeyAndSeveralAppointments_OneRowWithTheLatestVerificationAndTheEarliestAppointment() {
-			//The query itself (before the rows become grid rows): one row per patient plan, verify type and key, with the latest verification and the
-			//earliest appointment, in the order AptDateTime, AptNum, PatPlanNum, VerifyType.
+			//The query's rows after the C# choice of the earliest appointment, before they become grid rows (RunGridQuery): one row per patient plan,
+			//verify type and key, with the latest verification and the earliest appointment, in the order AptDateTime, AptNum, PatPlanNum, VerifyType.
 			Coverage coverage=InsertCoveredPatient(KeysEqual());
 			long insVerifyNumPat=InsertTwoVerifications(VerifyTypes.PatientEnrollment,coverage.PatPlan.PatPlanNum,DateTime.Today.AddDays(-100),
 				DateTime.Today.AddDays(-40),isLatestInsertedFirst:true);

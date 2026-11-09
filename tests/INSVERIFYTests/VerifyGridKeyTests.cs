@@ -88,9 +88,9 @@ namespace INSVERIFYTests {
 
 		[TestMethod]
 		public void Query_PlanNumEqualsPatPlanNum_OneRowPerPatientPlanVerifyTypeAndKey() {
-			//The query still collapses what belongs together: two appointments in the range and a second benefits row of the plan (an entry the
-			//Database Maintenance check InsVerifyRedundantEntries would move to the history) still give one row per patient plan, verify type and
-			//key. Only the eligibility row and the benefits row no longer collapse into each other.
+			//The query (with the C# choice of the earliest appointment, RunGridQuery) still collapses what belongs together: two appointments in the
+			//range and a second benefits row of the plan (an entry the Database Maintenance check InsVerifyRedundantEntries would move to the history)
+			//still give one row per patient plan, verify type and key. Only the eligibility row and the benefits row no longer collapse into each other.
 			Coverage coverage=InsertCoveredPatient(KeysEqual());
 			Assert.AreEqual(coverage.InsPlan.PlanNum,coverage.PatPlan.PatPlanNum);
 			AppointmentT.CreateAppointment(coverage.Patient.PatNum,DateTime.Today.AddDays(3).AddHours(14),coverage.OperatoryNum,coverage.ProvNum);
@@ -257,15 +257,21 @@ namespace INSVERIFYTests {
 			return listInsVerifyGridObjects.FindAll(x => x.GetPatNum()==patNum);
 		}
 
-		///<summary>The rows the list's query returns for the carrier, before they are turned into grid rows (InsVerifies.GetVerifyGridListQuery, a
-		///private method): appointments from today through 7 days, verifications older than 30 days, plans without a filing code.</summary>
+		///<summary>The rows of the carrier that GetVerifyGridList turns into grid rows: the list's query (InsVerifies.GetVerifyGridListQuery, a
+		///private method) with appointments from today through 7 days, verifications older than 30 days, plans without a filing code; then the
+		///earliest appointment of each patient plan, verify type and key, chosen in C# (InsVerifies.RemoveLaterAppointmentRows, private, INSV3).
+		///</summary>
 		private static DataTable RunGridQuery(long carrierNum) {
 			MethodInfo methodInfo=typeof(InsVerifies).GetMethod("GetVerifyGridListQuery",BindingFlags.NonPublic|BindingFlags.Static);
 			Assert.IsNotNull(methodInfo,"InsVerifies.GetVerifyGridListQuery");
+			MethodInfo methodInfoChoice=typeof(InsVerifies).GetMethod("RemoveLaterAppointmentRows",BindingFlags.NonPublic|BindingFlags.Static);
+			Assert.IsNotNull(methodInfoChoice,"InsVerifies.RemoveLaterAppointmentRows");
 			DateTime dateLastVerified=DateTime.Today.AddDays(-30);
 			string command=(string)methodInfo.Invoke(null,new object[] { DateTime.Today,DateTime.Today.AddDays(7),dateLastVerified,dateLastVerified,
 				new List<long> { -1 },new List<long> { 0 },0L,-1L,new List<long> { carrierNum },false,false,new List<long> { 0 } });
-			return DataCore.GetTable(command);
+			DataTable table=DataCore.GetTable(command);
+			methodInfoChoice.Invoke(null,new object[] { table });
+			return table;
 		}
 
 		private static void AssertEligibilityRow(InsVerify insVerify,Coverage coverage) {
