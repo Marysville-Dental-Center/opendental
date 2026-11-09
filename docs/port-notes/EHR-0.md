@@ -137,7 +137,7 @@ test runs; a test that needs the seam puts its own fake in and restores the guar
   originate time one bit, one era or wholly off, a request without a transmit time, zero receive or transmit times, delays above 1 second
   or negative, root distances from 1 second); kiss-o'-death with its code, and a forged one with another originate time; the all-zero
   reply; RFC 5905's known timestamps; the era placement; replies on both sides of the 2036 rollover and a rollover during the round trip;
-  a later era; the version 4 request; the random low bits; the first IPv4 address (documentation addresses only); no request without a
+  a later era; the version 4 request; the random low bits; the first IPv4 address (192.0.2.x and the IPv6 loopback only); no request without a
   server name.
 - `NoEhrDllTests` (6): the scan reads the program (more than 3000 files, more than 100 EHR files) and not the tests; the small C# reader
   separates comments from strings; no string names `EHR.dll`; no EHR file loads an assembly; `#if EHRTEST` only in `ControlChart.cs` and

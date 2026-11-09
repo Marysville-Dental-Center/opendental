@@ -355,7 +355,7 @@ namespace EhrTests {
 
 		[TestMethod]
 		public void Address_IsTheFirstIPv4One() {
-			IPAddress ipAddressV6=IPAddress.Parse("2001:db8::1");
+			IPAddress ipAddressV6=IPAddress.IPv6Loopback;
 			IPAddress ipAddressV4=IPAddress.Parse("192.0.2.10");
 			IPAddress ipAddressV4Second=IPAddress.Parse("192.0.2.20");
 			Assert.AreEqual(ipAddressV4,NTPv4.GetFirstIPv4(new[] { ipAddressV6,ipAddressV4,ipAddressV4Second }),"An IPv6 address first is skipped.");
