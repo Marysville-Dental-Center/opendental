@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The stage 1 gate's launch checks (the window checklist) run headless: the real program and its tools are started, driven without the
+       visible desktop (the PC's screen may be locked; no SendInput, no person), captured with PrintWindow or RenderTargetBitmap, and closed.
+       OPT-IN: without OPMS_WINDOW_CHECKS=1 every test is inconclusive, so Core and Full runs are unaffected. With it, the tests copy a dump of
+       the synthetic test database (OPMS_WINDOW_CHECKS_DUMP) into a scratch database on the local MariaDB (127.0.0.1:3306, root, blank
+       password) whose name starts with winchk_, run every check against that copy and drop it afterwards; results and screenshots go to
+       OPMS_WINDOW_CHECKS_OUT. The program's own output folder (OpenPmsDental\bin\Debug) is the one started or loaded: the in-process checks load
+       it in an AppDomain whose base is that folder and whose configuration file is the exe's own. Every .cs file under this folder is compiled. -->
+  <ItemGroup>
+    <Reference Include="MySqlConnector">
+      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="UIAutomationClient" />
+    <Reference Include="UIAutomationTypes" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />
+    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj" />
+    <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />
+    <!-- The in-process checks create the program's windows in an AppDomain based on OpenPmsDental\bin\Debug; the copies in this project's
+         own output folder are never loaded there (the AppDomain probes its own base first). -->
+    <ProjectReference Include="..\..\OpenPmsDental\OpenPmsDental.csproj" />
+    <ProjectReference Include="..\..\WpfControlsOD\WpfControlsOD.csproj" />
+  </ItemGroup>
+</Project>
