@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project>
   <!-- Imported last by every project of third-party\build, after the SDK's Sdk.targets (docs\third-party-source-builds.md): SourceBuild.props
        sets $(IntermediateOutputPath) (obj\x86\<configuration>\) and the SDK's targets normalise it, so its final value, and with it the two
        files below, is only known from there on.

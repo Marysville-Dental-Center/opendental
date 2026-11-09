@@ -10,7 +10,6 @@ using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using CodeBase;
 using DataConnectionBase;
-using Microsoft.Build.Evaluation;
 using OpenPmsDentalBusiness;
 
 namespace xCrudGenerator {
@@ -684,20 +683,6 @@ namespace xCrudGenerator {
 			process.StartInfo=startInfo;
 			process.Start();
 			process.WaitForExit();
-		}
-
-		///<summary>Adds these files to the OpenPmsDentalBusiness project.  If the file is already a part of OpenPmsDentalBusiness, no harm, no foul.</summary>
-		public static void AddToOpenDentBusiness(List<string> listFileNames) {
-			if(listFileNames.Count==0) {
-				return;
-			}
-			Project proj=new Project(Path.Combine(Form1.crudDir,"..","OpenPmsDentalBusiness.csproj"));
-			foreach(string file in listFileNames) {
-				if(proj.Items.FirstOrDefault(x => x.EvaluatedInclude==file)==null) {//Check to make sure the file doesn't already exist.
-					proj.AddItem("Compile",file);
-				}
-			}
-			proj.Save();
 		}
 
 	}

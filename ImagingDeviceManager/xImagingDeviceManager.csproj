@@ -1,42 +1,24 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
   <!--
     Open source TWAIN scanning library. Replaces the proprietary ImagingDeviceManager.dll,
     which wrapped the commercial EZTwain library (Eztwain4.dll). Talks directly to the standard
     TWAIN Data Source Manager (TWAINDSM.dll, or the legacy twain_32.dll) through P/Invoke.
-    TWAIN on Windows is 32-bit here, so the assembly is always built for x86.
+    TWAIN on Windows is 32-bit here, so the assembly is always built for x86 (Directory.Build.props).
+    Every .cs file under this folder is compiled, so packages that add files never conflict over this project file.
   -->
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{783079E6-A13F-4F43-A28D-9D7731F945D1}</ProjectGuid>
+    <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ImagingDeviceManager</RootNamespace>
     <AssemblyName>ImagingDeviceManager</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
-    <PlatformTarget>x86</PlatformTarget>
-    <Prefer32Bit>false</Prefer32Bit>
     <LangVersion>7.3</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <Platforms>AnyCPU;x86</Platforms>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' != 'Debug' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -46,17 +28,11 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Every .cs file under this folder is compiled, so packages that add files never conflict over this project file. -->
-    <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
     <Compile Include="..\SharedAssemblyInfo.cs">
       <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\third-party\build\PdfSharp-gdi\PdfSharp-gdi.csproj">
-      <Project>{60E6C1F3-233C-48E6-8E3F-ADB3AD3FF44A}</Project>
-      <Name>PdfSharp-gdi</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\third-party\build\PdfSharp-gdi\PdfSharp-gdi.csproj" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

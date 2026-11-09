@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project>
   <!-- WeCantSpell.Hunspell 7.0.1 from its source in the git submodule third-party\WeCantSpell.Hunspell
        (https://github.com/aarondandy/WeCantSpell.Hunspell.git, tag 7.0.1), the library project only (WeCantSpell.Hunspell\), as upstream's
        WeCantSpell.Hunspell.csproj builds it for netstandard2.0: the same symbols (NO_... for what netstandard2.0 lacks) and its own polyfills

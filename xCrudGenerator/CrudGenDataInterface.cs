@@ -139,8 +139,9 @@ namespace xCrudGenerator {
 			string snippet=GetSnippet(typeClass,SnippetType.EntireSclass,isMobile);
 			File.WriteAllText(fileName,snippet);
 			CrudGenHelper.AddToSubversion(Path.Combine(Application.StartupPath,fileName));
-			Form1.ListFilesToAddToODBiz.Add(Path.Combine("Data Interface",Path.GetFileName(fileName)));
-			MessageBox.Show(fileName+" has been created.  It has been added to SVN and it will be added to the project on close.");
+			//No project file is edited: an SDK-style OpenPmsDentalBusiness.csproj compiles every .cs file under its folder (stage 1 of the .NET 10 move,
+			//docs/specs/net10-plan.md, package S1-3). While it is still a classic project, add a Compile item for the new file by hand.
+			MessageBox.Show(fileName+" has been created.  It has been added to SVN.");
 		}
 
 		private static string GetCacheRegion(string typeClassName,string tablename,string obj,string SName) {
