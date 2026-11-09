@@ -52,17 +52,22 @@ namespace OpenPmsDentalDbSettings {
 			return x509Certificate2.Thumbprint;
 		}
 
-		///<summary>Removes the certificate with this thumbprint from the store (LocalMachine\My; the tests use CurrentUser\My) and deletes its
-		///private key, so that no key that BUILTIN\Users may read is left behind. Only for the client certificate this tool imported itself and
-		///the saved settings no longer use (DbSettingsRunner.PlanImportedCertificate, owner decision of 2026-11-02): a certificate the tool did not
-		///import is never removed. Returns "" when it is gone (or was not there), else a warning that says to remove it by hand. Never throws.
-		///</summary>
-		public static string RemoveImported(string thumbprint,StoreLocation storeLocation=StoreLocation.LocalMachine) {
+		///<summary>Removes the certificate with this thumbprint from LocalMachine\My and deletes its private key, so that no key that BUILTIN\Users
+		///may read is left behind. Only for the client certificate this tool imported itself and the saved settings no longer use
+		///(DbSettingsRunner.PlanImportedCertificate, owner decision of 2026-11-02): a certificate the tool did not import is never removed. Returns
+		///"" when it is gone (or was not there), else a warning that says to remove it by hand. Never throws.</summary>
+		public static string RemoveImported(string thumbprint) {
+			return RemoveImported(thumbprint,StoreLocation.LocalMachine,StoreName.My.ToString());
+		}
+
+		///<summary>RemoveImported for the store with this location and name: the tool's is LocalMachine\My; the tests use a store of the current
+		///user with a name of its own, which they make and delete, never the computer's or the user's real stores.</summary>
+		internal static string RemoveImported(string thumbprint,StoreLocation storeLocation,string storeName) {
 			if(string.IsNullOrEmpty(thumbprint)) {
 				return "";
 			}
 			try {
-				using(X509Store x509Store=new X509Store(StoreName.My,storeLocation)) {
+				using(X509Store x509Store=new X509Store(storeName,storeLocation)) {
 					x509Store.Open(OpenFlags.ReadWrite|OpenFlags.OpenExistingOnly);
 					foreach(X509Certificate2 x509Certificate2 in x509Store.Certificates.Find(X509FindType.FindByThumbprint,thumbprint,false)) {
 						x509Store.Remove(x509Certificate2);
@@ -79,26 +84,55 @@ namespace OpenPmsDentalDbSettings {
 			}
 		}
 
-		///<summary>Deletes the private key of the certificate from its key store: a CNG key (RSA or ECDSA) or a CAPI key container. Throws
+		///<summary>Deletes the private key of the certificate from the key set it lives in: a CAPI key container (RSA) or a CNG key (RSA or ECDSA),
+		///as DirectCertificateImport.TryDeletePrivateKey does. A CAPI key is deleted through CAPI (GetCapiRsaPrivateKey): .NET Framework's
+		///GetRSAPrivateKey opens it through CNG, as an RSACng whose Key.Delete returns without deleting the CAPI container. Throws
 		///CryptographicException.</summary>
 		private static void DeletePrivateKey(X509Certificate2 x509Certificate2) {
 			if(!x509Certificate2.HasPrivateKey) {
 				return;
 			}
-			RSA rsa=x509Certificate2.GetRSAPrivateKey();
-			if(rsa is RSACng) {
-				((RSACng)rsa).Key.Delete();
+			RSACryptoServiceProvider rsaCryptoServiceProviderCapi=GetCapiRsaPrivateKey(x509Certificate2);
+			if(rsaCryptoServiceProviderCapi!=null) {
+				//Clear then deletes the key container, in the key set the certificate names for its key (user or machine).
+				rsaCryptoServiceProviderCapi.PersistKeyInCsp=false;
+				rsaCryptoServiceProviderCapi.Clear();
 				return;
 			}
-			if(rsa is RSACryptoServiceProvider) {
-				RSACryptoServiceProvider rsaCryptoServiceProvider=(RSACryptoServiceProvider)rsa;
-				rsaCryptoServiceProvider.PersistKeyInCsp=false;//Clear then deletes the key container.
-				rsaCryptoServiceProvider.Clear();
-				return;
+			using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
+				if(rsa is RSACng) {
+					((RSACng)rsa).Key.Delete();
+					return;
+				}
+				if(rsa is RSACryptoServiceProvider) {//How .NET (not .NET Framework) gives a CAPI key.
+					RSACryptoServiceProvider rsaCryptoServiceProvider=(RSACryptoServiceProvider)rsa;
+					rsaCryptoServiceProvider.PersistKeyInCsp=false;//Clear then deletes the key container.
+					rsaCryptoServiceProvider.Clear();
+					return;
+				}
+				if(rsa!=null) {
+					return;
+				}
 			}
-			ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey();
-			if(ecdsa is ECDsaCng) {
-				((ECDsaCng)ecdsa).Key.Delete();
+			using(ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey()) {
+				if(ecdsa is ECDsaCng) {
+					((ECDsaCng)ecdsa).Key.Delete();
+				}
+			}
+		}
+
+		///<summary>The certificate's RSA private key when Windows keeps it in a CAPI key container, else null (a CNG key, an ECDSA key, no key, or
+		///one that does not open: the CNG path then says why). A .pfx that names no CNG provider (OpenSSL writes none) or a CAPI provider is
+		///imported into a CAPI container, and .NET Framework's GetRSAPrivateKey opens that through CNG: an RSACng whose Key.Delete leaves the CAPI
+		///container, and whose Key.UniqueName is no file of the CNG folder (DIRECT-CERT, docs/port-notes/DIRECT-CERT.md). The key object comes
+		///with the certificate's own key provider information, so it opens the container in the key set the key lives in. The certificate keeps
+		///the object (X509Certificate2.PrivateKey), so it is not disposed here.</summary>
+		private static RSACryptoServiceProvider GetCapiRsaPrivateKey(X509Certificate2 x509Certificate2) {
+			try {
+				return x509Certificate2.PrivateKey as RSACryptoServiceProvider;
+			}
+			catch(Exception ex) when(ex is CryptographicException || ex is NotSupportedException) {
+				return null;//.NET Framework: "Invalid provider type specified" for a CNG key, NotSupportedException for an ECDSA one.
 			}
 		}
 
@@ -169,9 +203,9 @@ namespace OpenPmsDentalDbSettings {
 			return x509Certificate2;
 		}
 
-		///<summary>Gives BUILTIN\Users read access to the private key file of the certificate: a CNG key under %ProgramData%\Microsoft\Crypto\Keys
-		///or a CAPI key under %ProgramData%\Microsoft\Crypto\RSA\MachineKeys. Throws when the file is not found or its rights cannot be changed.
-		///</summary>
+		///<summary>Gives BUILTIN\Users read access to the private key file of the certificate (GetPrivateKeyFilePath): the import's MachineKeySet
+		///puts a CNG key under %ProgramData%\Microsoft\Crypto\Keys and a CAPI key under %ProgramData%\Microsoft\Crypto\RSA\MachineKeys. Throws
+		///when the file is not found or its rights cannot be changed.</summary>
 		private static void GrantUsersReadToPrivateKey(X509Certificate2 x509Certificate2) {
 			string pathKey=GetPrivateKeyFilePath(x509Certificate2);
 			if(pathKey==null || !File.Exists(pathKey)) {
@@ -183,26 +217,71 @@ namespace OpenPmsDentalDbSettings {
 			File.SetAccessControl(pathKey,fileSecurity);
 		}
 
-		private static string GetPrivateKeyFilePath(X509Certificate2 x509Certificate2) {
-			string folderCrypto=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Microsoft","Crypto");
-			string uniqueNameCng=null;
-			RSA rsa=x509Certificate2.GetRSAPrivateKey();
-			if(rsa is RSACng) {
-				uniqueNameCng=((RSACng)rsa).Key.UniqueName;
-			}
-			else if(rsa is RSACryptoServiceProvider) {
-				return Path.Combine(folderCrypto,"RSA","MachineKeys",((RSACryptoServiceProvider)rsa).CspKeyContainerInfo.UniqueKeyContainerName);
-			}
-			else {
-				ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey();
-				if(ecdsa is ECDsaCng) {
-					uniqueNameCng=((ECDsaCng)ecdsa).Key.UniqueName;
-				}
-			}
-			if(uniqueNameCng==null) {
+		///<summary>The file of the certificate's private key, in the key set it lives in (GetCapiKeyFilePath, GetCngKeyFilePath). A CAPI key is
+		///named through CAPI (GetCapiRsaPrivateKey), as DirectCertificateImport does: the RSACng that .NET Framework's GetRSAPrivateKey gives for it
+		///has a UniqueName that is no file of the CNG folder. Null without a key or for another kind of key. Throws CryptographicException for a
+		///key that does not open.</summary>
+		internal static string GetPrivateKeyFilePath(X509Certificate2 x509Certificate2) {
+			if(!x509Certificate2.HasPrivateKey) {
 				return null;
 			}
-			return Path.Combine(folderCrypto,"Keys",uniqueNameCng);
+			RSACryptoServiceProvider rsaCryptoServiceProviderCapi=GetCapiRsaPrivateKey(x509Certificate2);
+			if(rsaCryptoServiceProviderCapi!=null) {
+				CspKeyContainerInfo cspKeyContainerInfoCapi=rsaCryptoServiceProviderCapi.CspKeyContainerInfo;
+				return GetCapiKeyFilePath(cspKeyContainerInfoCapi.MachineKeyStore,cspKeyContainerInfoCapi.UniqueKeyContainerName);
+			}
+			//The CngKey objects are disposed too: .NET gives a new one for each Key (.NET Framework its own, which the using of rsa or ecdsa then
+			//finds disposed).
+			using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
+				if(rsa is RSACng) {
+					using(CngKey cngKey=((RSACng)rsa).Key) {
+						return GetCngKeyFilePath(cngKey.IsMachineKey,cngKey.UniqueName);
+					}
+				}
+				if(rsa is RSACryptoServiceProvider) {//How .NET (not .NET Framework) gives a CAPI key.
+					CspKeyContainerInfo cspKeyContainerInfo=((RSACryptoServiceProvider)rsa).CspKeyContainerInfo;
+					return GetCapiKeyFilePath(cspKeyContainerInfo.MachineKeyStore,cspKeyContainerInfo.UniqueKeyContainerName);
+				}
+				if(rsa!=null) {
+					return null;
+				}
+			}
+			using(ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey()) {
+				if(ecdsa is ECDsaCng) {
+					using(CngKey cngKey=((ECDsaCng)ecdsa).Key) {
+						return GetCngKeyFilePath(cngKey.IsMachineKey,cngKey.UniqueName);
+					}
+				}
+			}
+			return null;
+		}
+
+		///<summary>The file of a CAPI RSA key container: %ProgramData%\Microsoft\Crypto\RSA\MachineKeys for the machine key set (the tool's import),
+		///%APPDATA%\Microsoft\Crypto\RSA\(the current user's SID) for the user's.</summary>
+		internal static string GetCapiKeyFilePath(bool isMachineKey,string uniqueKeyContainerName) {
+			if(string.IsNullOrEmpty(uniqueKeyContainerName)) {
+				return null;
+			}
+			if(isMachineKey) {
+				return Path.Combine(GetCryptoFolder(true),"RSA","MachineKeys",uniqueKeyContainerName);
+			}
+			using(WindowsIdentity windowsIdentity=WindowsIdentity.GetCurrent()) {
+				return Path.Combine(GetCryptoFolder(false),"RSA",windowsIdentity.User.Value,uniqueKeyContainerName);
+			}
+		}
+
+		///<summary>The file of a CNG key: %ProgramData%\Microsoft\Crypto\Keys for the machine key set (the tool's import), %APPDATA%\Microsoft\Crypto\Keys
+		///for the user's. Null for an ephemeral key, which has no file.</summary>
+		internal static string GetCngKeyFilePath(bool isMachineKey,string uniqueName) {
+			if(string.IsNullOrEmpty(uniqueName)) {
+				return null;
+			}
+			return Path.Combine(GetCryptoFolder(isMachineKey),"Keys",uniqueName);
+		}
+
+		private static string GetCryptoFolder(bool isMachineKey) {
+			Environment.SpecialFolder specialFolder=isMachineKey ? Environment.SpecialFolder.CommonApplicationData : Environment.SpecialFolder.ApplicationData;
+			return Path.Combine(Environment.GetFolderPath(specialFolder),"Microsoft","Crypto");
 		}
 	}
 }
