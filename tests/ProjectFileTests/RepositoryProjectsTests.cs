@@ -1,7 +1,8 @@
 // ProjectFile on the repository's own project files, in whatever format they are in: every C# project of OpenDental.Local.slnf evaluates (its
-// conditions, imports and property functions are all understood), every source, resource and page it names is on disk, and for the
-// third-party source builds the evaluated items are exactly the ones the last build handed the compiler (SourceBuildItems.txt, which MSBuild
-// writes from the real evaluation), so the reader agrees with MSBuild on projects whose items come through imported props and wildcards.
+// conditions, imports and property functions are all understood), every source, resource and page it names is on disk, each reads its
+// nearest Directory.Build.props, the SDK-style ones get the DefineConstants and NoWarn MSBuild 18 gives them, and for the third-party source
+// builds the evaluated items are exactly the ones the last build handed the compiler (SourceBuildItems.txt, which MSBuild writes from the real
+// evaluation), so the reader agrees with MSBuild on projects whose items come through imported props and wildcards.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

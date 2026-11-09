@@ -345,7 +345,8 @@ namespace ProjectFileTests {
 		#region MSBuild's and the SDK's own files
 		//What the files of MSBuild 18 (Build Tools 2026) and of the pinned .NET SDK 10.0.114 do for the properties a project's conditions, items
 		//and the tests read, at the point of the evaluation where those files do it, in their order. Each method names the file it follows; the
-		//properties it does not compute are in _arrayNotModelledProperties and _arrayNotModelledSdkProperties, and throw when used.
+		//properties it does not compute are in _arrayNotModelledProperties, _arrayNotModelledSdkProperties and _arraySdkLanguageProperties, and
+		//throw when used.
 
 		///<summary>Microsoft.Common.props, which a classic project imports first, Sdk.props imports for an SDK-style project, and
 		///Microsoft.Common.CurrentVersion.targets imports for a project that did neither: Directory.Build.props, then BaseIntermediateOutputPath
