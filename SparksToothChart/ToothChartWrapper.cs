@@ -119,8 +119,8 @@ namespace SparksToothChart {
 				}
 				catch(Exception ex) {
 					DisposeWpf3D();
-					LogFallbackOnce("The "+ToothChartEngine.Wpf3D+" tooth chart could not start ("+ex.GetType().Name+": "+ex.Message+"). Using "
-						+ToothChartEngine.Simple2D+".");
+					LogFallbackOnce(ToothChartFallbackKind.Wpf3DStart,"The "+ToothChartEngine.Wpf3D+" tooth chart could not start ("+ex.GetType().Name+": "
+						+ex.Message+"). Using "+ToothChartEngine.Simple2D+".");
 					_engine=ToothChartEngine.Simple2D;
 					drawMode=DrawingMode.Simple2D;
 					ResetControls();
@@ -499,7 +499,8 @@ namespace SparksToothChart {
 		///optimisation (SharpDX.Direct3D9.Font, D3DX.OptimizeFaces). Windows itself ships d3d9.dll but not this file.</summary>
 		public const string D3DX_DLL="d3dx9_43.dll";
 		private static bool? _isDirectXRuntimeAvailable;
-		private static bool _isFallbackLogged;
+		///<summary>The fallback kinds whose first message has been written to the log in this process.</summary>
+		private static readonly HashSet<ToothChartFallbackKind> _hashSetKindsLogged=new HashSet<ToothChartFallbackKind>();
 
 		///<summary>The mode the chart tries next when drawingMode cannot start: DirectX falls back to OpenGL, OpenGL to Simple 2D. Simple 2D has no
 		///fallback and returns itself.</summary>
@@ -582,20 +583,25 @@ namespace SparksToothChart {
 			toothChartDirectX=null;
 		}
 
-		///<summary>Writes the first fallback of this process to the ToothChart log and ignores the rest, so a computer without DirectX does not fill
-		///the log every time a chart is drawn. Every message, written or not, is kept for GetFallbackMessages. The WPF chart's renderer and image
-		///host log through here too.</summary>
+		///<summary>A fallback of a DrawingMode engine (ToothChartFallbackKind.DrawMode), as StartFirstWorkingMode reports it.</summary>
 		internal static void LogFallbackOnce(string message) {
+			LogFallbackOnce(ToothChartFallbackKind.DrawMode,message);
+		}
+
+		///<summary>Writes the first fallback of each kind in this process to the ToothChart log and ignores the rest of that kind, so a computer
+		///without DirectX does not fill the log every time a chart is drawn, and a computer that has written one kind still writes the first of
+		///another (a DirectX fallback line does not hide the WPF chart's first failure). Every message, written or not, is kept for
+		///GetFallbackMessages. The WPF chart's renderer and image host log through here too.</summary>
+		internal static void LogFallbackOnce(ToothChartFallbackKind kind,string message) {
 			lock(_lockFallback) {
 				if(_listFallbackMessages.Count>=1000) {
 					_listFallbackMessages.RemoveAt(0);//a computer without DirectX adds one for every chart; the list stays small
 				}
 				_listFallbackMessages.Add(message);
 				_countFallbackMessages++;
-				if(_isFallbackLogged) {
+				if(!_hashSetKindsLogged.Add(kind)) {
 					return;
 				}
-				_isFallbackLogged=true;
 				_countFallbackLinesWritten++;
 			}
 			try {
@@ -757,8 +763,8 @@ namespace SparksToothChart {
 				return ToothChartRenderer.Instance.Render(toothScene,_layerCacheWpf).ToBitmap();
 			}
 			catch(Exception ex) {
-				LogFallbackOnce("The "+ToothChartEngine.Wpf3D+" tooth chart could not draw its image ("+ex.GetType().Name+": "+ex.Message+"). Using "
-					+ToothChartEngine.Simple2D+" for this image.");
+				LogFallbackOnce(ToothChartFallbackKind.Wpf3DRender,"The "+ToothChartEngine.Wpf3D+" tooth chart could not draw its image ("+ex.GetType().Name
+					+": "+ex.Message+"). Using "+ToothChartEngine.Simple2D+" for this image.");
 				return GetSimple2DBitmap();
 			}
 		}

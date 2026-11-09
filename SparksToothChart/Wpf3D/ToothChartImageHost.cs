@@ -186,8 +186,8 @@ namespace SparksToothChart.Wpf3D {
 				bitmapNew=result.ToBitmap();
 			}
 			else {
-				ToothChartWrapper.LogFallbackOnce("The Wpf3D tooth chart could not draw its image on screen ("+result.Exception?.GetType().Name+": "
-					+result.Exception?.Message+"). Using Simple2D for this image.");
+				ToothChartWrapper.LogFallbackOnce(ToothChartFallbackKind.Wpf3DRender,"The Wpf3D tooth chart could not draw its image on screen ("
+					+result.Exception?.GetType().Name+": "+result.Exception?.Message+"). Using Simple2D for this image.");
 				try {
 					bitmapNew=FuncGetFallbackBitmap?.Invoke();
 				}

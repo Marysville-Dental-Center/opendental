@@ -16,4 +16,20 @@ namespace SparksToothChart {
 		///on screen by a plain WinForms control.</summary>
 		Wpf3D,
 	}
+
+	///<summary>The kinds of fallback message of the tooth chart. ToothChartWrapper.LogFallbackOnce writes the first message of each kind in a process
+	///to the ToothChart log and keeps the rest in memory only, so a computer that has written one kind still writes the first of another: a
+	///computer that once logged a DirectX fallback (the computers the WPF chart replaces DirectX on) still logs the WPF chart's first failure. In
+	///memory only.</summary>
+	public enum ToothChartFallbackKind {
+		///<summary>A DrawingMode engine could not start: DirectX, then OpenGL, fall back to the next mode.</summary>
+		DrawMode,
+		///<summary>The WPF chart could not start and the chart uses Simple 2D.</summary>
+		Wpf3DStart,
+		///<summary>A WPF image could not be drawn (GetBitmap or the screen) and the Simple 2D image of the same data took its place.</summary>
+		Wpf3DRender,
+		///<summary>The WPF chart's render thread: its last guard caught an error, a result could not be handed on, or failed images in a row
+		///replaced the thread.</summary>
+		Wpf3DRenderThread,
+	}
 }

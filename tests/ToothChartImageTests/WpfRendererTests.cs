@@ -577,19 +577,27 @@ namespace ToothChartImageTests {
 			ToothChartRenderer toothChartRenderer=ToothChartRenderer.Instance;
 			ToothChartRenderResult resultBefore=toothChartRenderer.Render(toothScene,null);
 			int countUnhandled=ToothChartRenderer.CountUnhandledExceptions;
+			int countResets=toothChartRenderer.CountResetsAfterFailures;
+			int countRestarts=toothChartRenderer.CountRestartsAfterFailures;
+			Assert.IsTrue(countRestarts<ToothChartRenderer.MaxRestartsAfterFailures,"This process may still restart its render thread.");
 			ToothChartRenderer.ActionJobStartForTests=kind => {
 				if(kind==ToothChartRenderer.JobRender) {
 					throw new InvalidOperationException("A forced render failure.");
 				}
 			};
 			try {
-				for(int i=0;i<6;i++) {
+				for(int i=1;i<=ToothChartRenderer.FailuresInRowBeforeRestart;i++) {
 					Expect.Throws<InvalidOperationException>(() => toothChartRenderer.Render(toothScene,null));
+					if(i==ToothChartRenderer.FailuresInRowBeforeReset) {
+						Assert.AreEqual(countResets+1,toothChartRenderer.CountResetsAfterFailures,"After three failures in a row, the visual tree is made again.");
+						Assert.AreEqual(resultBefore.ThreadIdRender,toothChartRenderer.ThreadId,"The same thread so far.");
+					}
 				}
 			}
 			finally {
 				ToothChartRenderer.ActionJobStartForTests=null;
 			}
+			Assert.AreEqual(countRestarts+1,toothChartRenderer.CountRestartsAfterFailures);
 			ToothChartRenderResult resultAfter=toothChartRenderer.Render(toothScene,null);
 			Assert.AreNotEqual(resultBefore.ThreadIdRender,resultAfter.ThreadIdRender,"After six failed renders in a row, a new render thread draws.");
 			Assert.IsTrue(resultAfter.PixelsBgra.SequenceEqual(resultBefore.PixelsBgra),"And it draws the same image.");
