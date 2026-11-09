@@ -369,7 +369,7 @@ namespace ToothChartImageTests {
 		[TestMethod]
 		public void Wrapper_WhosePostedRebuildWentWithItsHandle_RebuildsWhenTheHandleComesBack() {
 			//DestroyHandle (not RecreateHandle) drops the BeginInvoke of a posted rebuild; the wrapper must not then believe a rebuild is still
-			//posted, or it never posts one again.
+			//posted, or it never posts one again when it is shown again (a reused window: destroyed, not disposed, then shown).
 			if(!Environment.UserInteractive) {
 				Assert.Inconclusive("Needs an interactive desktop session: the wrapper must be shown.");
 			}
@@ -389,10 +389,17 @@ namespace ToothChartImageTests {
 					Assert.IsFalse(wrapper.IsHandleCreated);
 					wrapper.CreateHandleForTests();
 					Assert.IsTrue(wrapper.IsHandleCreated && toothChartImageHost.IsHandleCreated);
+					//DestroyWindow hid the wrapper, so WinForms reads it as not visible: a window destroyed and not disposed is shown again.
+					wrapper.Visible=true;
+					toothChartImageHost.Visible=true;
 					int countImages=toothChartImageHost.CountImagesReceived;
+					int countRenders=toothChartImageHost.CountRendersStarted;
 					relay.SetSelected("9",true);
 					Assert.IsTrue(PumpUntil(() => toothChartImageHost.CountImagesReceived>countImages && !toothChartImageHost.IsRenderInFlight,20000),
-						"With its handle back, the wrapper rebuilds its screen image again.");
+						"With its handle back, the wrapper rebuilds its screen image again. Renders started "+countRenders+" then "
+						+toothChartImageHost.CountRendersStarted+", results received "+toothChartImageHost.CountReceiveCalls+", images "+countImages+" then "
+						+toothChartImageHost.CountImagesReceived+", in flight "+toothChartImageHost.IsRenderInFlight+", scene dirty "+wrapper.IsWpfSceneDirty
+						+", wrapper visible "+wrapper.Visible+", handles "+wrapper.IsHandleCreated+" and "+toothChartImageHost.IsHandleCreated+".");
 					using(Bitmap bitmap=relay.GetBitmap())
 					using(Bitmap bitmapShown=toothChartImageHost.GetBitmapShown()) {
 						Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmap).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapShown)),"The screen shows both selections.");
