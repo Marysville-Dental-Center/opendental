@@ -320,7 +320,7 @@ namespace ToothChartImageTests {
 				sb.Append("<tr><td rowspan=\"2\"><div class=\"name\">"+capture.Scene.Name+"</div><div class=\"cap\">"+chartSize.FolderName+"</div><div>"
 					+WebUtility.HtmlEncode(capture.Scene.Description)+"</div><div class=\"cap\">Live view against the renderer's picture: "
 					+(capture.CountProbes-capture.CountProbesFailed)+" of "+capture.CountProbes+" parity probes agree; "
-					+WebUtility.HtmlEncode(capture.Comparison==null?"":capture.Comparison.ToString())+".</div></td>");
+					+WebUtility.HtmlEncode(capture.Comparison==null?"":capture.Comparison.ToString().TrimEnd('.'))+".</div></td>");
 				foreach(string path in arrayPaths) {
 					AppendImageCell(sb,folder,path,chartSize,"not recorded");
 				}
