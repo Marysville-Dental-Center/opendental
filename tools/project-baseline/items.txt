@@ -7607,6 +7607,17 @@ TaskCategoryTests|Compile|Properties\AssemblyInfo.cs|
 TaskCategoryTests|Compile|TaskCategoryDbTests.cs|
 TaskCategoryTests|Compile|TaskCategoryLogicTests.cs|
 TaskCategoryTests|Compile|TaskCategoryUiSourceTests.cs|
+ToothChartImageTests|Compile|LegacyRecorder.cs|
+ToothChartImageTests|Compile|ModelTests.cs|
+ToothChartImageTests|Compile|Properties\AssemblyInfo.cs|
+ToothChartImageTests|Compile|SceneTests.cs|
+ToothChartImageTests|Compile|Scenes\ChartScenes.cs|
+ToothChartImageTests|Compile|SupportTests.cs|
+ToothChartImageTests|Compile|Support\ChartImageCompare.cs|
+ToothChartImageTests|Compile|Support\PngWriter.cs|
+ToothChartImageTests|Compile|Support\StaRunner.cs|
+ToothChartImageTests|Compile|Support\TestPaths.cs|
+ToothChartImageTests|Compile|WrapperTests.cs|
 UnitTestsCore|Compile|Misc\DatabaseTools.cs|
 UnitTestsCore|Compile|Misc\MiscTestUtils.cs|
 UnitTestsCore|Compile|MultiTypes\InsuranceT.cs|
