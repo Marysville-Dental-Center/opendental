@@ -198,6 +198,7 @@
 			this.checkEhr.Size = new System.Drawing.Size(285, 20);
 			this.checkEhr.TabIndex = 32;
 			this.checkEhr.Text = "EHR";
+			this.checkEhr.Click += new System.EventHandler(this.checkEhr_Click);
 			// 
 			// checkMedicalIns
 			// 

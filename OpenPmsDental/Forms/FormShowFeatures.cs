@@ -81,14 +81,40 @@ namespace OpenPmsDental{
 		}
 
 		private void checkEhr_Click(object sender,EventArgs e) {
-			//The EHR (Meaningful Use) feature depended on Open Dental's proprietary EHR.dll, which this build does not load.
-			//Turning the feature off is still allowed so that databases which had it on can turn it off.
-			if(checkEhr.Checked) {
-				checkEhr.Checked=false;
-				MsgBox.Show(this,"The EHR feature is not available in this build.");
-				return;
+			checkEhr.Checked=HandleEhrClick(checkEhr.Checked);
+		}
+
+		///<summary>What a click on the EHR box does, in this window and in the Setup Wizard alike (docs/specs/ehr-rebuild-plan.md, section 3.1; E-2).
+		///Checking it shows the one confirmation, ConfirmEhrOn: Cancel unchecks it, OK is followed by the restart message. Unchecking it shows the
+		///restart message. No password. Returns the box's new state; the window saves it with the others, as before. funcConfirm and actionShowMessage
+		///replace the message boxes in tests.</summary>
+		public static bool HandleEhrClick(bool isChecked,Func<string,bool> funcConfirm=null,Action<string> actionShowMessage=null) {
+			if(funcConfirm==null) {
+				funcConfirm=(text) => MsgBox.Show(MsgBoxButtons.OKCancel,text);
 			}
-			MsgBox.Show(this,"You will need to restart the program for the change to take effect.");
+			if(actionShowMessage==null) {
+				actionShowMessage=(text) => MsgBox.Show(text);
+			}
+			if(isChecked && !ConfirmEhrOn(funcConfirm)) {
+				return false;
+			}
+			actionShowMessage(Lans.g("FormShowFeatures","You will need to restart the program for the change to take effect."));
+			return isChecked;
+		}
+
+		///<summary>The confirmation for turning EHR on, shared by this window and the Setup Wizard. True for OK.</summary>
+		public static bool ConfirmEhrOn(Func<string,bool> funcConfirm) {
+			return funcConfirm(GetEhrOnConfirmationText());
+		}
+
+		///<summary>The text of the confirmation for turning EHR on.</summary>
+		public static string GetEhrOnConfirmationText() {
+			return Lans.g("FormShowFeatures","Turning EHR on changes how prescriptions, patient race, required fields and the Chart work, and it shows the "
+				+"EHR tools.")+"\r\n\r\n"
+				+Lans.g("FormShowFeatures","This program is not certified EHR technology. Its measures cannot be used to attest or submit to any program.")
+				+"\r\n\r\n"
+				+Lans.g("FormShowFeatures","A restart is needed for the change to take effect.")+"\r\n\r\n"
+				+Lans.g("FormShowFeatures","Turn EHR on?");
 		}
 
 		private void checkPublicHealth_Click(object sender,EventArgs e) {

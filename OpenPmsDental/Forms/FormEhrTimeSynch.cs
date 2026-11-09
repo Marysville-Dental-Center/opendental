@@ -9,13 +9,19 @@ using System.Windows.Forms;
 using OpenPmsDentalBusiness;
 
 namespace OpenPmsDental {
-	///<summary>Only shows for EHR users.  Synchronizes local time to specified NIST server.</summary>
+	///<summary>Setup > Chart > EHR > Time Synchronization (hidden without the Setup permission). Measures this computer's clock against an NTP time
+	///server and against the database server's clock (docs/specs/ehr-rebuild-plan.md, section 4.5). Opening the window and Measure only measure:
+	///they never set the clock. Only "Set this computer's clock" does: it measures again on the click, and sets the clock from that measurement only,
+	///when TimeSyncCheck.GetManualSetOffer allows it on that fresh reply (a valid reply, an offset from 1 second to 1 hour, the Setup permission,
+	///Windows Time disabled) and after a confirmation that shows its server and offset. The check box is the time check's setting
+	///(ForkTimeSyncMode, section 4.2).</summary>
 	public partial class FormEhrTimeSynch:FormODBase {
 		private DateTime _timeNist;
 		private DateTime _timeServer;
 		private DateTime _timeLocal;
-		///<summary>Set true when launched while OpenPmsDental starts.  Will automatically check times and close form silently if server time is in synch with local time.</summary>
-		public bool IsAutoLaunch;
+		///<summary>The time server's last reply, checked by NtpReply. Null before the first measurement and after the clock was set. It only enables
+		///the set button: the button measures again and never applies this reply.</summary>
+		private NtpResult _ntpResultLast;
 
 		public FormEhrTimeSynch() {
 			InitializeComponent();
@@ -24,162 +30,117 @@ namespace OpenPmsDental {
 		}
 
 		private void FormEhrTime_Load(object sender,EventArgs e) {
-			if(IsAutoLaunch) { //Already updated time fields. Dont need to check again, just open.
-				refreshDisplays();
-				return;
-			}
 			textNistUrl.Text=PrefC.GetString(PrefName.NistTimeServerUrl);
-			SynchTimes();			
+			checkTimeSyncWarn.Checked=TimeSyncCheck.GetMode()==EnumTimeSyncMode.Warn;
+			MeasureTimes();
 		}
 
-		///<summary>Called from FormOpenDental.Load.  Updates local time and checks to see if server time is in synch, with a fast db call (only acurate to seconds, not miliseconds).</summary>
-		public bool TimesInSynchFast() {
+		///<summary>Measures the three clocks and refreshes the window. Never sets the clock.</summary>
+		private void MeasureTimes() {
 			this.Cursor=Cursors.WaitCursor;
-			textNistUrl.Text=PrefC.GetString(PrefName.NistTimeServerUrl);
-			double nistOffset=GetNistOffset();
-			if(nistOffset==double.MaxValue) { //Timed out
-				MsgBox.Show(this,"No response received from NIST time server.  Click sync time after four seconds.");
-				this.Cursor=Cursors.Default;
-				return false;
-			}
-			if(nistOffset==double.MinValue) { //Invalid Nist Server Address
-				this.Cursor=Cursors.Default;
-				return false;
-			}
-			//Get current times from offsets
-			_timeLocal=DateTime.Now;
-			Stopwatch stopwatch = new Stopwatch(); //Used to keep NIST time in time even when system fails to set local machine time (Can't pull it later)
-			stopwatch.Start();
-			_timeNist=_timeLocal.AddMilliseconds(nistOffset);
-			try {
-				WindowsTime.SetTime(_timeNist); //Sets local machine time
-			}
-			catch {
-				MsgBox.Show(this,"Error setting local machine time.");
-			}
-			_timeLocal=DateTime.Now;//Update time since it has now been set
-			double serverOffset=(MiscData.GetNowDateTime()-DateTime.Now).TotalSeconds; //Cannot get milliseconds from Now() in Mysql Pre-5.6.4, Only gets whole seconds.
-			_timeServer=_timeLocal.AddSeconds(serverOffset);
-			if(ServerInSynchFast() && LocalInSynch()) { //All times in synch
-				return true;
-			}
-			//Some times out of synch, so form will open, but we don't want to make another call to NIST server.
-			serverOffset=(MiscData.GetNowDateTimeWithMilli()-DateTime.Now).TotalSeconds; //_timeServer needs to be more accurate before displaying
-			_timeLocal=DateTime.Now;
-			stopwatch.Stop();
-			_timeServer=_timeLocal.AddSeconds(serverOffset);
-			_timeNist=_timeNist.AddMilliseconds(stopwatch.ElapsedMilliseconds);
+			string server=textNistUrl.Text;
+			TimeSyncMeasurement timeSyncMeasurement=TimeSyncCheck.Measure(() => new NTPv4().Query(server),MiscData.GetNowDateTimeWithMilli,() => DateTime.Now);
 			this.Cursor=Cursors.Default;
-			return false;
+			ShowMeasurement(timeSyncMeasurement);
 		}
 
-		///<summary>Updates local time and Refreshes all time variables.  Saves NIST server URL as preference.</summary>
-		private void SynchTimes() {
-			this.Cursor=Cursors.WaitCursor;
-			//Get NistTime Offset
-			double nistOffset=GetNistOffset();
-			if(nistOffset==double.MaxValue) { //Timed out
-				MsgBox.Show(this,"No response received from NIST time server.  Click sync time after four seconds.");
-				this.Cursor=Cursors.Default;
-				return;
-			}
-			if(nistOffset==double.MinValue) { //Invalid Nist Server Address
-				this.Cursor=Cursors.Default;
-				return;
-			}
-			double serverOffset=(MiscData.GetNowDateTimeWithMilli()-DateTime.Now).TotalMilliseconds;
-			//Get current times from offsets
-			_timeLocal=DateTime.Now;
-			_timeServer=_timeLocal.AddMilliseconds(serverOffset);
-			_timeNist=_timeLocal.AddMilliseconds(nistOffset);
-			try {
-				WindowsTime.SetTime(_timeNist); //Sets local machine time
-			}
-			catch {
-				MsgBox.Show(this,"Error setting local machine time.");
-			}
-			_timeLocal=DateTime.Now; //Update time since it has now been set
-			this.Cursor=Cursors.Default;
+		///<summary>Shows a measurement (Measure's or the set button's own) and starts the 4-second limit on requests. Never sets the clock.</summary>
+		private void ShowMeasurement(TimeSyncMeasurement timeSyncMeasurement) {
+			timerSendingLimit.Enabled=true;
+			_ntpResultLast=timeSyncMeasurement.NtpResult;
+			_timeLocal=timeSyncMeasurement.DateTimeLocal;
+			_timeServer=timeSyncMeasurement.DateTimeServer;
+			_timeNist=timeSyncMeasurement.DateTimeNtp;
+			textMessage.Text=TimeSyncCheck.GetMeasureMessage(timeSyncMeasurement);
 			refreshDisplays();
 		}
 
-		///<summary>Get the offset from the nist server and DateTime.Now().  Returns double.MinValue if invalid NIST Server URL.  Returns double.MaxValue if request timed out.</summary>
-		private double GetNistOffset() {
-			//NistTime
-			NTPv4 ntp=new NTPv4();
-			double nistOffset;
-			try {
-				nistOffset=ntp.getTime(textNistUrl.Text);
-			}
-			catch {
-				MsgBox.Show(this,"Invalid NIST Server URL");
-				return double.MinValue;
-			}
-			timerSendingLimit.Enabled=true;
-			return nistOffset;
-		}
-
-		///<summary>Returns true if server time is out of synch with local machine.</summary>
-		private bool ServerInSynch() {
-			//Would be better to check against NIST time, but doing it this way to match 2014 EHR Proctor Sheet conditions.
-			double difference=Math.Abs(_timeServer.Subtract(_timeLocal).TotalSeconds);
-			if(difference>.99) {
-				return false;
-			}
-			return true;
-		}
-
-		///<summary>Used when launching check automatically on startup.  Rounds to whole seconds.  Returns true if server time is out of synch with local machine.</summary>
-		private bool ServerInSynchFast() {
-			double difference=Math.Abs(_timeServer.Subtract(_timeLocal).TotalSeconds);
-			if(Math.Floor(difference)>1) {
-				return false;
-			}
-			return true;
-		}
-
-		///<summary>Returns true if local time is out of synch with NIST server.  Should always be true since we just updated time.</summary>
-		private bool LocalInSynch() {
-			double difference=Math.Abs(_timeLocal.Subtract(_timeNist).TotalSeconds);
-			if(difference>.99) {
-				return false;
-			}
-			return true;
-		}
-
-		///<summary>Refresh the time textboxes.  Stops users from sending requests to NIST server more than once every 4 seconds.</summary>
+		///<summary>Measure: stops users from sending requests to the time server more than once every 4 seconds.</summary>
 		private void butRefreshTime_Click(object sender,EventArgs e) {
 			if(timerSendingLimit.Enabled) {
 				MsgBox.Show(this,"Cannot send a time request more than once every four seconds");
 				return;
 			}
-			SynchTimes();
+			MeasureTimes();
 		}
 
-		///<summary>Refresh all time displays and labels.</summary>
+		///<summary>Refresh the time textboxes and the set button. Saves the server's address when it gave a valid reply.</summary>
 		private void refreshDisplays() {
-			if(_timeNist==DateTime.MinValue || _timeServer==DateTime.MinValue || _timeLocal==DateTime.MinValue) {
-				textLocalTime.Text="";
-				textNistTime.Text="";
-				textServerTime.Text="";
-				textMessage.Text="";
+			textLocalTime.Text=_timeLocal==DateTime.MinValue ? "" : _timeLocal.ToString("hh:mm:ss.fff tt");
+			textServerTime.Text=_timeServer==DateTime.MinValue ? "" : _timeServer.ToString("hh:mm:ss.fff tt");
+			textNistTime.Text=_timeNist==DateTime.MinValue ? "" : _timeNist.ToString("hh:mm:ss.fff tt");
+			if(_ntpResultLast!=null && _ntpResultLast.IsValid && Prefs.UpdateString(PrefName.NistTimeServerUrl,textNistUrl.Text)) {
+				DataValid.SetInvalid(InvalidType.Prefs);
+			}
+			RefreshSetButton();
+		}
+
+		///<summary>The set button follows TimeSyncCheck.GetManualSetOffer: enabled only when it allows setting the clock here, otherwise its advice
+		///(resync with Windows Time, start Windows Time first, set it by hand) is shown in its place.</summary>
+		private void RefreshSetButton() {
+			TimeSetOffer timeSetOffer=TimeSyncCheck.GetManualSetOffer(_ntpResultLast,Security.IsAuthorized(EnumPermType.Setup,true),
+				TimeSyncCheck.GetWindowsTimeState());
+			butSetClock.Enabled=timeSetOffer.CanSet;
+			labelSetClock.Text=timeSetOffer.Message;
+		}
+
+		///<summary>Sets this computer's clock to the time server's. The window's last measurement may be hours old, so the button never applies it: it
+		///measures again (TimeSyncCheck.PrepareManualSet, through the same functions as Measure), checks GetManualSetOffer on that fresh reply, shows
+		///the fresh server and offset in the confirmation, and sets the clock from that measurement only (TimeSyncCheck.TrySetManual), if the
+		///confirmation is answered within TimeSyncCheck.ManualSetMaxAge. A fresh reply that is not valid, or an offer that no longer holds, is
+		///shown with its reason and sets nothing. WindowsTime.TrySetUtc checks Windows' result: on success it writes the Event Log entry and this
+		///writes the Setup audit entry with the old and the new time; a failure shows its reason.</summary>
+		private void butSetClock_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.Setup)) {
 				return;
 			}
-			textNistTime.Text=_timeNist.ToString("hh:mm:ss.fff tt");
-			textServerTime.Text=_timeServer.ToString("hh:mm:ss.fff tt");
-			textLocalTime.Text=_timeLocal.ToString("hh:mm:ss.fff tt");
-			//Update NistURL preference
-			Prefs.UpdateString(PrefName.NistTimeServerUrl,textNistUrl.Text);
-			//Update message textbox
-			if(!LocalInSynch()) { //This should not happen, time is updated automatically. If you get to this point, you should have already had a message box pop up saying there was an error updating your local time.
-				textMessage.Text="Your local machine time is out of sync.  Please ensure Open PMS - Dental is running with Administrator Windows privileges.  If you have done this and you still see this message, please contact your support provider.";
+			if(timerSendingLimit.Enabled) {
+				MsgBox.Show(this,"Cannot send a time request more than once every four seconds");
+				return;
 			}
-			else if(!ServerInSynch()) {
-				textMessage.Text="Your database time is out of sync with your local machine.  Please start the Open PMS - Dental application on your database server and leave it running to keep times synchronized as required for EHR compliance.  If you have done this and you still see this message, please contact your support provider.";
+			this.Cursor=Cursors.WaitCursor;
+			string server=textNistUrl.Text;
+			TimeSyncManualSet timeSyncManualSet=TimeSyncCheck.PrepareManualSet(() => new NTPv4().Query(server),MiscData.GetNowDateTimeWithMilli,
+				() => DateTime.Now,true,TimeSyncCheck.GetWindowsTimeState());
+			Stopwatch stopwatchSinceMeasured=Stopwatch.StartNew();
+			this.Cursor=Cursors.Default;
+			ShowMeasurement(timeSyncManualSet.TimeSyncMeasurement);
+			if(!timeSyncManualSet.TimeSetOffer.CanSet) {
+				MsgBox.Show(TimeSyncCheck.GetManualSetRefusal(timeSyncManualSet));
+				return;
 			}
-			else {//All times in synch
-				textMessage.Text="All times synchronized within one second.  You may close this window.";
+			if(!MsgBox.Show(MsgBoxButtons.OKCancel,timeSyncManualSet.Question)) {
+				return;
 			}
+			if(!TimeSyncCheck.TrySetManual(timeSyncManualSet,stopwatchSinceMeasured.Elapsed,() => DateTime.UtcNow,out DateTime dateTimeOldUtc,
+				out DateTime dateTimeNewUtc,out string error))
+			{
+				MsgBox.Show(error);
+				return;
+			}
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,
+				TimeSyncCheck.GetManualSetLogText(timeSyncManualSet.TimeSyncMeasurement.NtpResult.Server,dateTimeOldUtc,dateTimeNewUtc));
+			_ntpResultLast=null;//The measurement no longer describes the clock.
+			_timeLocal=DateTime.Now;
+			_timeNist=DateTime.MinValue;
+			textMessage.Text=Lan.g(this,"The clock was set. Measure again to check it.");
+			refreshDisplays();
+		}
+
+		///<summary>The time check's setting: saved at once, with the preference signal and a Setup audit entry, as the Recall Types window saves its
+		///switch. The database server's computer reads it at the next start.</summary>
+		private void checkTimeSyncWarn_Click(object sender,EventArgs e) {
+			EnumTimeSyncMode timeSyncModeOld=TimeSyncCheck.GetMode();
+			if(!Security.IsAuthorized(EnumPermType.Setup)) {
+				checkTimeSyncWarn.Checked=timeSyncModeOld==EnumTimeSyncMode.Warn;
+				return;
+			}
+			EnumTimeSyncMode timeSyncModeNew=checkTimeSyncWarn.Checked ? EnumTimeSyncMode.Warn : EnumTimeSyncMode.Off;
+			if(!TimeSyncCheck.SaveMode(timeSyncModeNew)) {
+				return;
+			}
+			DataValid.SetInvalid(InvalidType.Prefs);
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,TimeSyncCheck.GetChangeLogLine(timeSyncModeOld,timeSyncModeNew));
 		}
 
 		///<summary>Do not allow user to send another request until timer has ticked.</summary>

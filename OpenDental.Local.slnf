@@ -59,6 +59,7 @@
       "tests\\DbGrantsTests\\DbGrantsTests.csproj",
       "tests\\DicomReaderTests\\DicomReaderTests.csproj",
       "tests\\EFormTests\\EFormTests.csproj",
+      "tests\\EhrTests\\EhrTests.csproj",
       "tests\\FeeTests\\FeeTests.csproj",
       "tests\\ForkMigrationTests\\ForkMigrationTests.csproj",
       "tests\\GroupNoteTests\\GroupNoteTests.csproj",
