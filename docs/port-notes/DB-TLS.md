@@ -317,6 +317,12 @@ Tests (Targeted runs, all passed): `DbConnectionSecurityTests` 140 (130 passed, 
 error. `ForkMigrationTests` is named in the package's list but left out under the
 rule for every package (the coordinator runs it with the init file); its helper change is the same mechanical one as the others.
 
+After the review's fixes (`dev/dbtls-2`, full build without error), Targeted runs, all passed: `DbConnectionSecurityTests` 144 (134
+passed, the same 10 inconclusive), `MiddleTierMockTests` 125, `EhrTests` 88, `DbGrantsTests` 3 (2 passed, as before), `SyntheticData.Tests`
+58 (57 passed), `ReleaseFlowTests` 120 (119 passed), `LibraryBindingTests` 12, `NoHqTests` 58, and the legacy `UnitTests` 1731 (1728
+passed, the 3 skipped as before) for `TestBase` and `ReportsTests`. `ForkMigrationTests` again left out under the same rule (its helper is
+not touched by the fixes).
+
 New tests:
 
 - `tests/DbConnectionSecurityTests/DevDbTlsTests.cs` (no server): the connection-string choices of section 3, the program's loopback string
