@@ -12,8 +12,9 @@ namespace SparksToothChart {
 		Simple2D,
 		///<summary>2. OpenGL through Tao.</summary>
 		OpenGL,
-		///<summary>3. The WPF 3D chart (namespace SparksToothChart.Wpf3D): a software render of the scene on the chart's own render thread, shown
-		///on screen by a plain WinForms control.</summary>
+		///<summary>3. The WPF 3D chart (namespace SparksToothChart.Wpf3D): on screen a live WPF view drawn by the graphics card (O-19 (b), TC-3),
+		///or with ToothChartWrapper.WpfDrawInSoftware the software render of the scene on the chart's own render thread shown by a plain WinForms
+		///control; every image (GetBitmap, prints, sheets, the dashboard) is that software render.</summary>
 		Wpf3D,
 	}
 
@@ -31,5 +32,7 @@ namespace SparksToothChart {
 		///<summary>The WPF chart's render thread: its last guard caught an error, a result could not be handed on, or failed images in a row
 		///replaced the thread.</summary>
 		Wpf3DRenderThread,
+		///<summary>The WPF chart's live view could not start on a shown wrapper, and the wrapper shows the software render on screen instead.</summary>
+		Wpf3DLiveView,
 	}
 }

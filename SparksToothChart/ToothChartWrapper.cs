@@ -26,8 +26,17 @@ namespace SparksToothChart {
 		private ToothChartData tcData;
 		///<summary>The engine that draws: the three DrawingMode engines, or Wpf3D. drawMode is its stored view (Wpf3D reads as DirectX).</summary>
 		private ToothChartEngine _engine;
-		///<summary>Wpf3D: the engine control, which shows the renderer's image.</summary>
+		///<summary>Wpf3D: the engine control that shows the renderer's image: the on-screen chart until the live view is made, when the wrapper is drawn
+		///in software, and when the live view could not start.</summary>
 		private ToothChartImageHost toothChartImageHost;
+		///<summary>Wpf3D: the live view on screen (O-19 (b), TC-3), made when the wrapper is shown on an STA thread and not drawn in software; null
+		///until then, and on every hidden, MTA or software wrapper.</summary>
+		private ToothChartWpfView toothChartWpfView;
+		///<summary>Wpf3D: the per-computer "Draw in software" switch (WpfDrawInSoftware).</summary>
+		private bool _isWpfDrawnInSoftware;
+		///<summary>Wpf3D: set when the live view failed to start on this wrapper, which then shows the software render; cleared when the engine is
+		///released.</summary>
+		private bool _isWpfLiveViewFailed;
 		///<summary>Wpf3D: this wrapper's last 3D layer image, released on Dispose and when the engine changes.</summary>
 		private ToothChartLayerCache _layerCacheWpf;
 		///<summary>Wpf3D: set by every Invalidate (OnInvalidated), cleared when a scene is built (section 5.5), GetBitmap's included.</summary>
@@ -97,8 +106,9 @@ namespace SparksToothChart {
 
 		///<summary>The engine that draws the chart. Setting DirectX, Simple2D or OpenGL is the same as setting DrawMode. Setting Wpf3D starts the WPF
 		///chart (docs/specs/wpf-tooth-chart-plan.md, section 5): its render thread and a check image the first time in the process, then its engine
-		///control. When it cannot start, the chart falls back to Simple2D with one log line (LogFallbackOnce). Read Engine afterwards to learn which
-		///engine started. In memory only: no caller chooses Wpf3D yet (TC-8 maps the stored values to it).</summary>
+		///control, the image host; the live view follows when the wrapper is shown on an STA thread (WpfDrawInSoftware, TC-3). When it cannot start,
+		///the chart falls back to Simple2D with one log line (LogFallbackOnce). Read Engine afterwards to learn which engine started. In memory only:
+		///no caller chooses Wpf3D yet (TC-8 maps the stored values to it).</summary>
 		[Browsable(false)]
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public ToothChartEngine Engine {
@@ -155,6 +165,9 @@ namespace SparksToothChart {
 				}
 				else if(_engine==ToothChartEngine.Wpf3D) {
 					toothChartImageHost.TcData=value;
+					if(toothChartWpfView!=null) {
+						toothChartWpfView.TcData=value;
+					}
 				}
 				tcData=value;//Must set last so old tcdata can be cleaned up first.
 				if(_engine==ToothChartEngine.Wpf3D) {
@@ -264,17 +277,16 @@ namespace SparksToothChart {
 			}
 			set{
 				tcData.CursorTool=value;
+				//The embedded .cur files (Pen.cur, EraseCircle.cur, ColorChanger.cur), the arrow for the pointer; MoveText keeps the cursor it had, as
+				//before. Loaded from this assembly whatever the runtime type, so a subclass of the wrapper gets them too.
 				if(tcData.CursorTool==CursorTool.Pointer) {
 					this.Cursor=Cursors.Default;
 				}
-				if(tcData.CursorTool==CursorTool.Pen) {
-					this.Cursor=new Cursor(GetType(),"Pen.cur");
+				else if(tcData.CursorTool!=CursorTool.MoveText) {
+					this.Cursor=ToothChartMouse.GetCursor(tcData.CursorTool);
 				}
-				if(tcData.CursorTool==CursorTool.Eraser) {
-					this.Cursor=new Cursor(GetType(),"EraseCircle.cur");
-				}
-				if(tcData.CursorTool==CursorTool.ColorChanger) {
-					this.Cursor=new Cursor(GetType(),"ColorChanger.cur");
+				if(toothChartWpfView!=null) {
+					toothChartWpfView.SetCursorTool(tcData.CursorTool);//the live view's WPF content has a cursor of its own
 				}
 				//if(drawMode!=DrawingMode.Simple2D) {
 				//	toothChartOpenGL.CursorTool=value;
@@ -416,7 +428,10 @@ namespace SparksToothChart {
 			this.Controls.Clear();
 			if(_engine==ToothChartEngine.Wpf3D) {
 				//The image host is a plain WinForms control, and no WPF object is made here: a wrapper made on any thread (the dashboard's MTA worker
-				//included) gets the WPF chart. The renderer makes the images on its own thread.
+				//included) gets the WPF chart. The renderer makes the images on its own thread. The live view comes when the wrapper is shown on an STA
+				//thread (StartWpfLiveViewIfShown).
+				//The font DirectX's PrepareForDirectX sets, which callers may read to measure text as the DirectX chart did.
+				tcData.Font=new System.Drawing.Font("Arial",9f);
 				_layerCacheWpf=new ToothChartLayerCache();
 				toothChartImageHost=new ToothChartImageHost();
 				toothChartImageHost.Dock=System.Windows.Forms.DockStyle.Fill;
@@ -760,21 +775,141 @@ namespace SparksToothChart {
 			}
 		}
 
-		///<summary>Wpf3D: a wrapper that comes on screen with a stale screen image (data set while it was hidden, even when a GetBitmap has built its
-		///scene since) posts its rebuild now, so it does not wait for the next Invalidate to show the chart.</summary>
+		///<summary>Wpf3D: a wrapper that comes on screen makes its live view (on an STA thread, unless drawn in software), and one with a stale screen
+		///image (data set while it was hidden, even when a GetBitmap has built its scene since) posts its rebuild now, so it does not wait for the next
+		///Invalidate to show the chart.</summary>
 		protected override void OnVisibleChanged(EventArgs e) {
 			base.OnVisibleChanged(e);
-			if(_engine==ToothChartEngine.Wpf3D && _isWpfScreenStale) {
-				PostWpfRebuildIfShown();
+			if(_engine==ToothChartEngine.Wpf3D) {
+				StartWpfLiveViewIfShown();
+				if(_isWpfScreenStale) {
+					PostWpfRebuildIfShown();
+				}
 			}
 		}
 
 		protected override void OnHandleCreated(EventArgs e) {
 			base.OnHandleCreated(e);
-			if(_engine==ToothChartEngine.Wpf3D && _isWpfScreenStale) {
+			if(_engine==ToothChartEngine.Wpf3D) {
+				StartWpfLiveViewIfShown();
+				if(_isWpfScreenStale) {
+					PostWpfRebuildIfShown();
+				}
+			}
+		}
+
+		#region Wpf3D live view and the software switch
+		///<summary>The value of computerpref.DirectXFormat that turns the WPF chart's on-screen view to software on a computer (O-19 (b)): empty, or a
+		///DirectX device format, means the live hardware view. TC-8 stores and reads it; an older build finds no ';' in it and keeps its default DirectX
+		///format (ToothChartDirectX.DirectXDeviceFormat).</summary>
+		public const string DirectXFormatWpfSoftware="WpfSoftware";
+
+		///<summary>True when a stored computerpref.DirectXFormat value is DirectXFormatWpfSoftware: the computer draws the WPF chart in software.</summary>
+		public static bool IsWpfSoftwareFormat(string directXFormat) {
+			return directXFormat!=null && directXFormat.Trim()==DirectXFormatWpfSoftware;
+		}
+
+		///<summary>The per-computer "Draw in software" switch of the WPF chart (O-19 (b); TC-8 sets it from computerpref.DirectXFormat and shows it in
+		///Setup > Graphics). Off (the default): a shown wrapper on an STA thread shows the live view, drawn by the graphics card. On: it shows the
+		///software render of the scene, the same image as GetBitmap's, which no graphics driver can change (for a PC whose driver draws no WPF 3D,
+		///dotnet/wpf#7076). Images (GetBitmap, prints, sheets, the dashboard) are the software render either way. Changing it on a shown wrapper
+		///switches the view at once.</summary>
+		[Browsable(false)]
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		public bool WpfDrawInSoftware {
+			get {
+				return _isWpfDrawnInSoftware;
+			}
+			set {
+				if(_isWpfDrawnInSoftware==value) {
+					return;
+				}
+				_isWpfDrawnInSoftware=value;
+				if(_engine!=ToothChartEngine.Wpf3D) {
+					return;
+				}
+				if(value) {
+					DisposeWpfLiveView();
+					if(toothChartImageHost!=null) {
+						toothChartImageHost.Visible=true;
+					}
+				}
+				else {
+					StartWpfLiveViewIfShown();
+				}
+				_isWpfScreenStale=true;
 				PostWpfRebuildIfShown();
 			}
 		}
+
+		///<summary>The WPF chart's live view, or null (not shown yet, hidden, on an MTA thread, drawn in software, or in another engine), for tests.</summary>
+		[Browsable(false)]
+		public ToothChartWpfView LiveViewWpf {
+			get {
+				return toothChartWpfView;
+			}
+		}
+
+		///<summary>Makes the live view when the wrapper is shown, on an STA thread, in Wpf3D and not drawn in software, and has none yet. It takes the
+		///image host's place on screen (the image host stays, hidden, for the software switch), and the screen is rebuilt. When it cannot start, the
+		///wrapper keeps the image host and logs once (Wpf3DLiveView); it does not try again until the engine is started again.</summary>
+		private void StartWpfLiveViewIfShown() {
+			if(_engine!=ToothChartEngine.Wpf3D || _isWpfDrawnInSoftware || _isWpfLiveViewFailed || toothChartWpfView!=null || toothChartImageHost==null
+				|| !IsShownForWpf() || System.Threading.Thread.CurrentThread.GetApartmentState()!=System.Threading.ApartmentState.STA)
+			{
+				return;
+			}
+			ToothChartWpfView toothChartWpfViewNew=null;
+			try {
+				toothChartWpfViewNew=new ToothChartWpfView();
+				toothChartWpfViewNew.Dock=System.Windows.Forms.DockStyle.Fill;
+				toothChartWpfViewNew.Location=new System.Drawing.Point(0,0);
+				toothChartWpfViewNew.Name="toothChartWpfView";
+				toothChartWpfViewNew.TcData=tcData;
+				toothChartWpfViewNew.ActionChartChanged=Invalidate;
+				toothChartWpfViewNew.SegmentDrawn+=new ToothChartDrawEventHandler(toothChart_SegmentDrawn);
+				toothChartWpfViewNew.ToothSelectionsChanged+=new ToothChartSelectionEventHandler(toothChart_ToothSelectionsChanged);
+				toothChartWpfViewNew.SetCursorTool(tcData.CursorTool);
+				this.Controls.Add(toothChartWpfViewNew);
+				toothChartWpfViewNew.BringToFront();
+				toothChartWpfView=toothChartWpfViewNew;
+				toothChartImageHost.Visible=false;
+			}
+			catch(Exception ex) {
+				_isWpfLiveViewFailed=true;
+				if(toothChartWpfViewNew!=null) {
+					try {
+						Controls.Remove(toothChartWpfViewNew);
+						toothChartWpfViewNew.Dispose();
+					}
+					catch(Exception exDispose) {
+						exDispose.DoNothing();
+					}
+				}
+				toothChartWpfView=null;
+				toothChartImageHost.Visible=true;
+				LogFallbackOnce(ToothChartFallbackKind.Wpf3DLiveView,"The "+ToothChartEngine.Wpf3D+" tooth chart's live view could not start ("+ex.GetType().Name+": "
+					+ex.Message+"). Showing its software render on screen.");
+			}
+			_isWpfScreenStale=true;
+			PostWpfRebuildIfShown();
+		}
+
+		///<summary>Releases the live view, if there is one.</summary>
+		private void DisposeWpfLiveView() {
+			if(toothChartWpfView==null) {
+				return;
+			}
+			try {
+				Controls.Remove(toothChartWpfView);
+				toothChartWpfView.Dispose();
+			}
+			catch(Exception ex) {
+				ex.DoNothing();
+			}
+			toothChartWpfView=null;
+		}
+		#endregion Wpf3D live view and the software switch
 
 		///<summary>Wpf3D: DestroyHandle drops what BeginInvoke posted (RecreateHandle keeps it), so a posted rebuild may never run. The posted mark is
 		///cleared, and the screen stays stale until a rebuild runs: the next mark, or the new handle, posts again. A kept rebuild that still runs
@@ -799,6 +934,10 @@ namespace SparksToothChart {
 			}
 			_isWpfScreenStale=false;
 			ToothScene toothScene=BuildWpfScene();
+			if(toothChartWpfView!=null) {
+				toothChartWpfView.ShowScene(toothScene);//the live view, drawn by the graphics card (O-19 (b))
+				return;
+			}
 			toothChartImageHost.ShowScene(toothScene);
 		}
 
@@ -856,12 +995,14 @@ namespace SparksToothChart {
 			}
 		}
 
-		///<summary>Releases the WPF chart's engine control and its 3D layer image.</summary>
+		///<summary>Releases the WPF chart's engine controls (the image host and the live view) and its 3D layer image.</summary>
 		private void DisposeWpf3D() {
 			if(_layerCacheWpf!=null) {
 				_layerCacheWpf.Dispose();
 				_layerCacheWpf=null;
 			}
+			DisposeWpfLiveView();
+			_isWpfLiveViewFailed=false;
 			if(toothChartImageHost!=null) {
 				try {
 					Controls.Remove(toothChartImageHost);
