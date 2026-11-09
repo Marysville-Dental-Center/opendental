@@ -27,6 +27,7 @@ namespace OpenPmsDental{
 			this.labelExplanation = new System.Windows.Forms.Label();
 			this.labelEmailAddress = new System.Windows.Forms.Label();
 			this.textEmailAddress = new System.Windows.Forms.TextBox();
+			this.labelAddressNote = new System.Windows.Forms.Label();
 			this.groupCertificate = new OpenPmsDental.UI.GroupBox();
 			this.labelCertFilePath = new System.Windows.Forms.Label();
 			this.textCertFilePath = new System.Windows.Forms.TextBox();
@@ -79,6 +80,16 @@ namespace OpenPmsDental{
 			this.textEmailAddress.Size = new System.Drawing.Size(320, 20);
 			this.textEmailAddress.TabIndex = 2;
 			//
+			// labelAddressNote
+			//
+			this.labelAddressNote.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+			this.labelAddressNote.Location = new System.Drawing.Point(143, 109);
+			this.labelAddressNote.Name = "labelAddressNote";
+			this.labelAddressNote.Size = new System.Drawing.Size(465, 28);
+			this.labelAddressNote.TabIndex = 8;
+			this.labelAddressNote.Text = "The certificate is stored for this user name as typed in Edit Email Address. Sending from the address uses it once Edit Email Address is saved with this user name.";
+			//
 			// groupCertificate
 			//
 			this.groupCertificate.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
@@ -92,7 +103,7 @@ namespace OpenPmsDental{
 			this.groupCertificate.Controls.Add(this.labelDetails);
 			this.groupCertificate.Controls.Add(this.textDetails);
 			this.groupCertificate.Controls.Add(this.butImport);
-			this.groupCertificate.Location = new System.Drawing.Point(12, 116);
+			this.groupCertificate.Location = new System.Drawing.Point(12, 144);
 			this.groupCertificate.Name = "groupCertificate";
 			this.groupCertificate.Size = new System.Drawing.Size(596, 236);
 			this.groupCertificate.TabIndex = 3;
@@ -189,7 +200,7 @@ namespace OpenPmsDental{
 			//
 			// labelInStore
 			//
-			this.labelInStore.Location = new System.Drawing.Point(12, 360);
+			this.labelInStore.Location = new System.Drawing.Point(12, 388);
 			this.labelInStore.Name = "labelInStore";
 			this.labelInStore.Size = new System.Drawing.Size(128, 32);
 			this.labelInStore.TabIndex = 4;
@@ -200,7 +211,7 @@ namespace OpenPmsDental{
 			//
 			this.textInStore.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.textInStore.Location = new System.Drawing.Point(143, 360);
+			this.textInStore.Location = new System.Drawing.Point(143, 388);
 			this.textInStore.Multiline = true;
 			this.textInStore.Name = "textInStore";
 			this.textInStore.ReadOnly = true;
@@ -217,7 +228,7 @@ namespace OpenPmsDental{
 			this.groupAnchor.Controls.Add(this.textAnchorFilePath);
 			this.groupAnchor.Controls.Add(this.butBrowseAnchor);
 			this.groupAnchor.Controls.Add(this.butImportAnchor);
-			this.groupAnchor.Location = new System.Drawing.Point(12, 430);
+			this.groupAnchor.Location = new System.Drawing.Point(12, 458);
 			this.groupAnchor.Name = "groupAnchor";
 			this.groupAnchor.Size = new System.Drawing.Size(596, 108);
 			this.groupAnchor.TabIndex = 6;
@@ -275,7 +286,7 @@ namespace OpenPmsDental{
 			// butClose
 			//
 			this.butClose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-			this.butClose.Location = new System.Drawing.Point(533, 548);
+			this.butClose.Location = new System.Drawing.Point(533, 576);
 			this.butClose.Name = "butClose";
 			this.butClose.Size = new System.Drawing.Size(75, 24);
 			this.butClose.TabIndex = 7;
@@ -285,20 +296,19 @@ namespace OpenPmsDental{
 			// openFileDialogCert
 			//
 			this.openFileDialogCert.DefaultExt = "pfx";
-			this.openFileDialogCert.Filter = "Certificate with private key (*.pfx;*.p12)|*.pfx;*.p12";
 			//
 			// openFileDialogAnchor
 			//
 			this.openFileDialogAnchor.DefaultExt = "cer";
-			this.openFileDialogAnchor.Filter = "Trust anchor certificate (*.cer;*.crt;*.der;*.pem)|*.cer;*.crt;*.der;*.pem";
 			//
 			// FormEmailCertRegister
 			//
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-			this.ClientSize = new System.Drawing.Size(620, 584);
+			this.ClientSize = new System.Drawing.Size(620, 612);
 			this.Controls.Add(this.labelExplanation);
 			this.Controls.Add(this.labelEmailAddress);
 			this.Controls.Add(this.textEmailAddress);
+			this.Controls.Add(this.labelAddressNote);
 			this.Controls.Add(this.groupCertificate);
 			this.Controls.Add(this.labelInStore);
 			this.Controls.Add(this.textInStore);
@@ -322,6 +332,7 @@ namespace OpenPmsDental{
 		private System.Windows.Forms.Label labelExplanation;
 		private System.Windows.Forms.Label labelEmailAddress;
 		private System.Windows.Forms.TextBox textEmailAddress;
+		private System.Windows.Forms.Label labelAddressNote;
 		private OpenPmsDental.UI.GroupBox groupCertificate;
 		private System.Windows.Forms.Label labelCertFilePath;
 		private System.Windows.Forms.TextBox textCertFilePath;

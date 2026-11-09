@@ -25,6 +25,8 @@ namespace OpenPmsDental {
 			_emailAddress=EmailMessages.GetAddressSimple(emailAddress);
 			_emailAddressNum=emailAddressNum;
 			textEmailAddress.Text=_emailAddress;
+			openFileDialogCert.Filter=Lan.g(this,"Certificate with private key")+" (*.pfx;*.p12)|*.pfx;*.p12";
+			openFileDialogAnchor.Filter=Lan.g(this,"Trust anchor certificate")+" (*.cer;*.crt;*.der;*.pem)|*.cer;*.crt;*.der;*.pem";
 		}
 
 		private void FormEmailCertRegister_Load(object sender,EventArgs e) {
@@ -32,19 +34,28 @@ namespace OpenPmsDental {
 		}
 
 		///<summary>What this computer has for the address now: its certificates in the Direct store and whether a trust anchor of this computer
-		///trusts them.</summary>
+		///trusts them. Reading the store opens each certificate's key (DirectCertificateImport.IsKeyUsable), and the trust check builds the
+		///certificates' chains, so the cursor waits.</summary>
 		private void FillInStore() {
+			Cursor=Cursors.WaitCursor;
+			try {
+				textInStore.Text=GetInStoreText();
+			}
+			finally {
+				Cursor=Cursors.Default;
+			}
+		}
+
+		private string GetInStoreText() {
 			List<DirectCertificateDetails> listDetails;
 			try {
 				listDetails=DirectCertificateImport.GetPrivateCertificates(_emailAddress);
 			}
 			catch(Exception ex) {
-				textInStore.Text=Lan.g(this,"This computer's Direct certificate store could not be read")+": "+ex.Message;
-				return;
+				return Lan.g(this,"This computer's Direct certificate store could not be read")+": "+ex.Message;
 			}
 			if(listDetails.Count==0) {
-				textInStore.Text=Lan.g(this,"No certificate for this address or its domain.");
-				return;
+				return Lan.g(this,"No certificate for this address or its domain.");
 			}
 			string trusted;
 			try {
@@ -54,7 +65,7 @@ namespace OpenPmsDental {
 				ex.DoNothing();//The anchor store does not exist yet, or the address can't be parsed: not known.
 				trusted=Lan.g(this,"unknown");
 			}
-			textInStore.Text=string.Join("\r\n",listDetails.Select(x => x.DescribeShort()))+"\r\n"
+			return string.Join("\r\n",listDetails.Select(x => x.DescribeShort()))+"\r\n"
 				+Lan.g(this,"Trusted by a trust anchor of this computer")+": "+trusted;
 		}
 
@@ -85,14 +96,24 @@ namespace OpenPmsDental {
 			butImport.Enabled=true;
 		}
 
+		///<summary>The details box after a check: the file's certificates the import adds, those of the file already in the store with their key,
+		///the store's it replaces after asking (with the warning of a purpose the file lacks), and the store's it keeps, with why.</summary>
 		private string DescribeCheck(DirectCertificateResult directCertificateResult) {
 			string text=string.Join("\r\n\r\n",directCertificateResult.ListDetails.Select(x => x.Describe()));
+			if(directCertificateResult.ListDetailsInStore.Count>0) {
+				text+="\r\n\r\n"+Lan.g(this,"Already on this computer with its private key, not imported again")+":\r\n"
+					+string.Join("\r\n",directCertificateResult.ListDetailsInStore.Select(x => x.DescribeShort()));
+			}
 			if(directCertificateResult.ListDetailsReplaced.Count>0) {
 				text+="\r\n\r\n"+Lan.g(this,"Replaces, after asking")+":\r\n"+string.Join("\r\n",directCertificateResult.ListDetailsReplaced.Select(x => x.DescribeShort()));
 				string warning=DirectCertificateImport.GetReplaceWarning(directCertificateResult);
 				if(warning!="") {
 					text+="\r\n\r\n"+warning;
 				}
+			}
+			string kept=DirectCertificateImport.GetKeptText(directCertificateResult);
+			if(kept!="") {
+				text+="\r\n\r\n"+kept;
 			}
 			return text;
 		}
@@ -103,6 +124,7 @@ namespace OpenPmsDental {
 				DateTime.UtcNow);
 			Cursor=Cursors.Default;
 			if(directCertificateResultCheck.Error!="") {
+				textDetails.Text="";
 				butImport.Enabled=false;
 				MessageBox.Show(this,directCertificateResultCheck.Error,Text);
 				return;
@@ -110,8 +132,8 @@ namespace OpenPmsDental {
 			textDetails.Text=DescribeCheck(directCertificateResultCheck);
 			List<string> listThumbprintsReplaceAllowed=new List<string>();
 			if(directCertificateResultCheck.ListDetailsReplaced.Count>0) {
-				//Only after asking: No imports nothing, so the store never holds two current certificates for the address. The store's are not
-				//compared by date and may be valid longer than the file's: the question shows both sides and says so (GetReplaceQuestion).
+				//Only after asking: No imports nothing. The store's certificates offered are those of a purpose of the file's that expire before it;
+				//the question shows both sides and the ones kept (GetReplaceQuestion).
 				string question=DirectCertificateImport.GetReplaceQuestion(directCertificateResultCheck);
 				if(MessageBox.Show(this,question,Text,MessageBoxButtons.YesNo)!=DialogResult.Yes) {
 					return;
@@ -130,7 +152,12 @@ namespace OpenPmsDental {
 			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,DirectCertificateImport.GetLogText(directCertificateResult,_emailAddressNum,isAnchor:false));
 			textPassword.Text="";//Also clears the details and turns Import off (textCertFile_TextChanged).
 			FillInStore();
-			string message=Lan.g(this,"The certificate was imported into this computer's Direct certificate store.");
+			string message=Lan.g(this,"The certificate was imported into this computer's Direct certificate store.")+" "
+				+Lan.g(this,"It is stored for the user name as typed in Edit Email Address; sending uses it once that address is saved.");
+			string kept=DirectCertificateImport.GetKeptText(directCertificateResult);
+			if(kept!="") {
+				message+="\r\n\r\n"+kept;
+			}
 			if(directCertificateResult.Warning!="") {
 				message+="\r\n\r\n"+directCertificateResult.Warning;
 			}
