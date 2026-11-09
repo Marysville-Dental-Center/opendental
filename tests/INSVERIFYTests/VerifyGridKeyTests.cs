@@ -16,7 +16,7 @@ using UnitTestsCore;
 
 namespace INSVERIFYTests {
 	[TestClass]
-	public class VerifyGridKeyTests {
+	public partial class VerifyGridKeyTests {
 		///<summary>A 271 that reports active family coverage and the group number XYZ123 (the shape of the legacy unit tests' simple response, with
 		///synthetic names). Nothing is sent: x270Controller uses it instead of a clearinghouse's answer.</summary>
 		private const string FAKE_271="ISA*00*          *00*          *30*330989922      *29*AA0989922      *030606*0936*U*00401*000013966*0*T*:~"
@@ -108,34 +108,49 @@ namespace INSVERIFYTests {
 		[TestMethod]
 		public void BatchVerify_PlanNumEqualsPatPlanNum_VerifiesTheEligibilityRow() {
 			//The batch verification (InsVerifies.TryBatchPatInsVerify, which the scheduled processes run) asks the clearinghouse about the patient
-			//rows of the list. With the eligibility row lost it skipped the patient as a benefits-only row.
-			long provNum=ProviderT.CreateProvider("SYN"+NextNum(),"Synthetic","Provider",ssn:"123456789",isUsingTIN:true,nationalProvID:"0123456789");
-			Prefs.UpdateLong(PrefName.PracticeDefaultProv,provNum);
-			Prefs.UpdateString(PrefName.PracticePhone,"5035550100");
-			Prefs.UpdateString(PrefName.PracticeAddress,"100 Example Street");
-			Prefs.UpdateString(PrefName.PracticeCity,"Sample City");
-			Prefs.UpdateString(PrefName.PracticeST,"ZZ");
-			Prefs.UpdateString(PrefName.PracticeZip,"99999");
-			foreach(PrefName prefName in new[] { PrefName.InsBatchVerifyCreateAdjustments,PrefName.InsBatchVerifyCheckAnnualMax,
-				PrefName.InsBatchVerifyCheckDeductible,PrefName.InsBatchVerifyChangeInsHist,PrefName.InsBatchVerifyChangeEffectiveDates })
-			{
-				Prefs.UpdateBool(prefName,false);
+			//rows of the list. With the eligibility row lost it skipped the patient as a benefits-only row. The preferences it changes in the shared
+			//scratch database are put back afterwards, so no later test sees them (INSV2).
+			Dictionary<PrefName,string> dictPrefsBefore=GetPrefValues(PrefName.PracticeDefaultProv,PrefName.PracticePhone,PrefName.PracticeAddress,
+				PrefName.PracticeCity,PrefName.PracticeST,PrefName.PracticeZip,PrefName.ClearinghouseDefaultEligibility,
+				PrefName.InsBatchVerifyCreateAdjustments,PrefName.InsBatchVerifyCheckAnnualMax,PrefName.InsBatchVerifyCheckDeductible,
+				PrefName.InsBatchVerifyChangeInsHist,PrefName.InsBatchVerifyChangeEffectiveDates);
+			try {
+				long provNum=ProviderT.CreateProvider("SYN"+NextNum(),"Synthetic","Provider",ssn:"123456789",isUsingTIN:true,nationalProvID:"0123456789");
+				Prefs.UpdateLong(PrefName.PracticeDefaultProv,provNum);
+				Prefs.UpdateString(PrefName.PracticePhone,"5035550100");
+				Prefs.UpdateString(PrefName.PracticeAddress,"100 Example Street");
+				Prefs.UpdateString(PrefName.PracticeCity,"Sample City");
+				Prefs.UpdateString(PrefName.PracticeST,"ZZ");
+				Prefs.UpdateString(PrefName.PracticeZip,"99999");
+				foreach(PrefName prefName in new[] { PrefName.InsBatchVerifyCreateAdjustments,PrefName.InsBatchVerifyCheckAnnualMax,
+					PrefName.InsBatchVerifyCheckDeductible,PrefName.InsBatchVerifyChangeInsHist,PrefName.InsBatchVerifyChangeEffectiveDates })
+				{
+					Prefs.UpdateBool(prefName,false);
+				}
+				Clearinghouse clearinghouse=ClearinghouseT.CreateClearinghouse("Synthetic eligibility "+NextNum(),commBridge:EclaimsCommBridge.ClaimConnect,
+					eFormat:ElectronicClaimFormat.x837D_5010_dental,isa05:"ZZ",isa07:"30",isa08:"SYNTHETIC",isa15:"T");
+				Prefs.UpdateLong(PrefName.ClearinghouseDefaultEligibility,clearinghouse.ClearinghouseNum);
+				Cache.Refresh(InvalidType.Prefs);
+				Coverage coverage=InsertCoveredPatient(KeysEqual(),provNum,isTrustedForEligibility:true);
+				Assert.AreEqual(coverage.InsPlan.PlanNum,coverage.PatPlan.PatPlanNum);
+				x270Controller.FakeResponseOverride271=FAKE_271;
+				List<InsVerify> listInsVerifies=InsVerifies.TryBatchPatInsVerify().FindAll(x => x.PatNum==coverage.Patient.PatNum);
+				Assert.AreEqual(1,listInsVerifies.Count,"the patient's eligibility row is verified");
+				Assert.AreEqual(VerifyTypes.PatientEnrollment,listInsVerifies[0].VerifyType);
+				Assert.AreEqual(coverage.PatPlan.PatPlanNum,listInsVerifies[0].FKey);
+				Assert.AreEqual(BatchInsVerifyState.Success,listInsVerifies[0].BatchVerifyState,"note: "+listInsVerifies[0].Note);
+				Assert.AreEqual(DateTime.Today,InsVerifies.GetOneByFKey(coverage.PatPlan.PatPlanNum,VerifyTypes.PatientEnrollment).DateLastVerified);
+				Assert.AreEqual(DateTime.MinValue,InsVerifies.GetOneByFKey(coverage.InsPlan.PlanNum,VerifyTypes.InsuranceBenefit).DateLastVerified,
+					"the batch verifies eligibility only; the plan's benefits row is untouched");
 			}
-			Clearinghouse clearinghouse=ClearinghouseT.CreateClearinghouse("Synthetic eligibility "+NextNum(),commBridge:EclaimsCommBridge.ClaimConnect,
-				eFormat:ElectronicClaimFormat.x837D_5010_dental,isa05:"ZZ",isa07:"30",isa08:"SYNTHETIC",isa15:"T");
-			Prefs.UpdateLong(PrefName.ClearinghouseDefaultEligibility,clearinghouse.ClearinghouseNum);
-			Cache.Refresh(InvalidType.Prefs);
-			Coverage coverage=InsertCoveredPatient(KeysEqual(),provNum,isTrustedForEligibility:true);
-			Assert.AreEqual(coverage.InsPlan.PlanNum,coverage.PatPlan.PatPlanNum);
-			x270Controller.FakeResponseOverride271=FAKE_271;
-			List<InsVerify> listInsVerifies=InsVerifies.TryBatchPatInsVerify().FindAll(x => x.PatNum==coverage.Patient.PatNum);
-			Assert.AreEqual(1,listInsVerifies.Count,"the patient's eligibility row is verified");
-			Assert.AreEqual(VerifyTypes.PatientEnrollment,listInsVerifies[0].VerifyType);
-			Assert.AreEqual(coverage.PatPlan.PatPlanNum,listInsVerifies[0].FKey);
-			Assert.AreEqual(BatchInsVerifyState.Success,listInsVerifies[0].BatchVerifyState,"note: "+listInsVerifies[0].Note);
-			Assert.AreEqual(DateTime.Today,InsVerifies.GetOneByFKey(coverage.PatPlan.PatPlanNum,VerifyTypes.PatientEnrollment).DateLastVerified);
-			Assert.AreEqual(DateTime.MinValue,InsVerifies.GetOneByFKey(coverage.InsPlan.PlanNum,VerifyTypes.InsuranceBenefit).DateLastVerified,
-				"the batch verifies eligibility only; the plan's benefits row is untouched");
+			finally {
+				RestorePrefValues(dictPrefsBefore);
+			}
+			Dictionary<PrefName,string> dictPrefsAfter=GetPrefValues(dictPrefsBefore.Keys.ToArray());
+			foreach(PrefName prefName in dictPrefsBefore.Keys) {
+				Assert.AreEqual(dictPrefsBefore[prefName],dictPrefsAfter[prefName],prefName+" is back as it was, in the database");
+				Assert.AreEqual(dictPrefsBefore[prefName],PrefC.GetString(prefName),prefName+" is back as it was, in the cache");
+			}
 		}
 		#endregion Batch verification
 
@@ -152,6 +167,23 @@ namespace INSVERIFYTests {
 
 		private static int NextNum() {
 			return ++_numNext;
+		}
+
+		///<summary>The preferences' values as the database holds them.</summary>
+		private static Dictionary<PrefName,string> GetPrefValues(params PrefName[] arrayPrefNames) {
+			Dictionary<PrefName,string> dictPrefValues=new Dictionary<PrefName,string>();
+			foreach(PrefName prefName in arrayPrefNames) {
+				dictPrefValues[prefName]=DataCore.GetScalar("SELECT ValueString FROM preference WHERE PrefName='"+POut.String(prefName.ToString())+"'");
+			}
+			return dictPrefValues;
+		}
+
+		///<summary>Writes the values back as they were (the raw ValueString of each preference) and refreshes the cache.</summary>
+		private static void RestorePrefValues(Dictionary<PrefName,string> dictPrefValues) {
+			foreach(KeyValuePair<PrefName,string> pair in dictPrefValues) {
+				DataCore.NonQ("UPDATE preference SET ValueString='"+POut.String(pair.Value)+"' WHERE PrefName='"+POut.String(pair.Key.ToString())+"'");
+			}
+			Cache.Refresh(InvalidType.Prefs);
 		}
 
 		///<summary>A key above every key insplan and patplan hold or have handed out, so a test that uses it never meets an earlier test's rows.

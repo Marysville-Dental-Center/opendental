@@ -1,4 +1,4 @@
-// The scratch database of the INSVERIFY tests on the local MariaDB (127.0.0.1:3306, root, blank password). Every name starts with "insv_" plus
+// The scratch database of the INSVERIFY tests on the local MariaDB (127.0.0.1:3306, root, blank password). Every name starts with "insv2_" plus
 // this run's id, so a test can never drop anything else and runs from other worktrees never collide. The database is the committed
 // db/init/new-database.sql with every fork migration of this build run on it. Synthetic rows only. Skipped (inconclusive) when the server does
 // not answer, or when INSVERIFY_TEST_DB=skip; INSVERIFY_KEEP_DB=1 keeps the database after the run for a look at what a failed test left.
@@ -22,7 +22,8 @@ namespace INSVERIFYTests {
 		public const string Server="127.0.0.1";
 		public const string User="root";
 		public const string Password="";
-		private const string PREFIX="insv_";
+		///<summary>insv2_ since the follow-up round INSV2 (insv_ before).</summary>
+		private const string PREFIX="insv2_";
 		private static readonly TimeSpan _timeSpanStale=TimeSpan.FromHours(12);
 		///<summary>Start time (UTC, yyMMddHHmmss), process id and a random number.</summary>
 		private static readonly string _runId=DateTime.UtcNow.ToString("yyMMddHHmmss")+"_"+System.Diagnostics.Process.GetCurrentProcess().Id+"_"
@@ -78,7 +79,7 @@ namespace INSVERIFYTests {
 			Security.CurUser=Userods.GetUser(1)??new Userod { UserNum=1,UserName="Admin" };
 		}
 
-		///<summary>This run's scratch database for the given purpose, like insv_261109101500_1234_5678_main. At most 64 characters.</summary>
+		///<summary>This run's scratch database for the given purpose, like insv2_261109101500_1234_5678_main. At most 64 characters.</summary>
 		public static string Name(string purpose) {
 			string name=PREFIX+_runId+"_"+purpose;
 			if(name.Length>64) {
@@ -115,12 +116,12 @@ namespace INSVERIFYTests {
 		}
 
 		///<summary>Drops this fixture's leftovers of earlier runs (a crash, or INSVERIFY_KEEP_DB=1) once they are older than 12 hours. Only names of
-		///this fixture's own scheme (insv_, a 12-digit start time, the process id, a number, the purpose) are ever dropped.</summary>
+		///this fixture's own scheme (insv2_, a 12-digit start time, the process id, a number, the purpose) are ever dropped.</summary>
 		public static void DropStale() {
 			Regex regex=new Regex("^"+PREFIX+@"(\d{12})_\d+_\d+_[a-z0-9_]+$");
 			List<string> listNames=new List<string>();
 			using(MySqlConnection connection=OpenServer())
-			using(MySqlCommand command=new MySqlCommand("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'insv\\_%'",connection))
+			using(MySqlCommand command=new MySqlCommand("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'insv2\\_%'",connection))
 			using(MySqlDataReader reader=command.ExecuteReader())
 			{
 				while(reader.Read()) {
