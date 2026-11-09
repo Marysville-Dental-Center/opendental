@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!-- PdfSharp-gdi 6.5.0 (the GDI+ build of PDFsharp) from empira's source in the submodule third-party\PDFsharp, as upstream's
        src\foundation\src\PDFsharp\src\PdfSharp-gdi\PdfSharp-gdi.csproj builds it for net462: the shared PdfSharp source folder without the
        files that project leaves out, and the -gdi folder's own forms.
        One upstream file is replaced: root\PdfSharpLicense.cs, empira's wrapper around the closed PdfSharp.License.dll, by this folder's
        PdfSharpLicense.cs, a modified version that holds the AGPL licence path itself. No PdfSharp.License.dll is referenced or shipped.
        docs\third-party-source-builds.md. -->
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>{60E6C1F3-233C-48E6-8E3F-ADB3AD3FF44A}</ProjectGuid>
     <RootNamespace>PdfSharp</RootNamespace>
     <AssemblyName>PdfSharp-gdi</AssemblyName>
   </PropertyGroup>
@@ -73,15 +70,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PdfSharp.Shared\PdfSharp.Shared.csproj">
-      <Project>{E7DBF664-0058-4F44-96A8-A58F064271DC}</Project>
-      <Name>PdfSharp.Shared</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\PdfSharp.System\PdfSharp.System.csproj">
-      <Project>{780459C6-739E-4C8D-9462-58D6E23B1DAC}</Project>
-      <Name>PdfSharp.System</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\PdfSharp.Shared\PdfSharp.Shared.csproj" />
+    <ProjectReference Include="..\PdfSharp.System\PdfSharp.System.csproj" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <Import Project="..\SourceBuild.targets" />
 </Project>
