@@ -181,27 +181,53 @@ Export-PfxCertificate -Cert $cert -FilePath .\client-capi.pfx -Password $passwor
 Remove-Item ("Cert:\CurrentUser\My\" + $cert.Thumbprint) -DeleteKey
 ```
 
-Without `-Provider` and `-KeySpec` the same command makes a CNG key (the second check). These are self-signed, so the database server does
-not accept them; the checks are about the key only, and the connection settings are put back afterwards.
+Without `-Provider` and `-KeySpec` the same command makes a CNG key: export that one as `client-cng.pfx` (the second check). These are
+self-signed, so the database server does not accept them; the checks are about the key only, and the connection settings are put back
+afterwards.
 
-1. With the connection settings tool, import `client-capi.pfx` (window, or `/pfx=` with `PfxPassword` in a `/secretsfile`): no warning about
-   the users' access. In certlm.msc, Personal > Certificates holds it; All Tasks > Manage Private Keys shows Users with Read; its key file
-   is in `%ProgramData%\Microsoft\Crypto\RSA\MachineKeys` (the file named by `certutil -store My <thumbprint>`'s "Unique container name").
-2. Save the settings with another certificate (a second generated `.pfx`, a CNG one) or with the password: the tool removes the first
-   certificate, and its key file is gone from `RSA\MachineKeys`. The same with the CNG one replaced in turn: its file is gone from
+1. **A CAPI import.** With the connection settings tool, import `client-capi.pfx` (window, or `/pfx=` with `PfxPassword` in a
+   `/secretsfile`): no warning about the users' access. In certlm.msc, Personal > Certificates holds it; All Tasks > Manage Private Keys
+   shows Users with Read; its key file is in `%ProgramData%\Microsoft\Crypto\RSA\MachineKeys` (the file named by
+   `certutil -store My <thumbprint>`'s "Unique container name").
+2. **A CNG import** (DCFU2). Import `client-cng.pfx` the same way: the result has no warning that "the users of this computer may not be
+   able to use its private key". In certlm.msc, All Tasks > Manage Private Keys on it shows Users with Read, and so does the Security tab
+   of its key file in `%ProgramData%\Microsoft\Crypto\Keys` (the file named by `certutil -store My <thumbprint>`'s "Unique container
+   name"; `certutil` shows the provider as "Microsoft Software Key Storage Provider").
+3. Save the settings with another certificate (the other generated `.pfx`) or with the password: the tool removes the first certificate,
+   and its key file is gone from `RSA\MachineKeys`. The same with the CNG one replaced in turn: its file is gone from
    `%ProgramData%\Microsoft\Crypto\Keys`.
-3. Put the connection settings back, remove what is left with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`, delete the
-   `.pfx` files and forget the password.
+4. **A `.pfx` with its CA certificate's key** (DCFU2). Make one, as above, in `Cert:\CurrentUser\My` only to export it (CNG keys):
+
+   ```powershell
+   $ca = New-SelfSignedCertificate -Type Custom -Subject "CN=synthetic-office-ca" -KeyUsage CertSign,CRLSign `
+     -TextExtension @("2.5.29.19={text}CA=true") -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(60)
+   $client = New-SelfSignedCertificate -Type Custom -Subject "CN=synthetic-workstations" -Signer $ca -KeyUsage DigitalSignature,KeyEncipherment `
+     -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.2") -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(30)
+   $both = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2Collection
+   [void]$both.Add($client); [void]$both.Add($ca)
+   $plain = Read-Host -Prompt "A throwaway password"   # Export takes the password as plain text
+   [IO.File]::WriteAllBytes("$PWD\client-with-ca.pfx", $both.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Pfx, $plain))
+   Remove-Item ("Cert:\CurrentUser\My\" + $client.Thumbprint) -DeleteKey; Remove-Item ("Cert:\CurrentUser\My\" + $ca.Thumbprint) -DeleteKey
+   ```
+
+   List the files of `%ProgramData%\Microsoft\Crypto\Keys`, import `client-with-ca.pfx` with the tool, and list them again: one new file
+   only, the client certificate's (its "Unique container name"); LocalMachine\My holds the client certificate and not the CA's.
+5. Put the connection settings back, remove what is left with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`, delete the
+   `.pfx` files and forget the passwords.
+
+The refused import and a key that cannot be deleted (DCFU2) are checked by the tests only: Windows gives no simple way to make
+LocalMachine\My refuse a certificate or a key refuse its deletion.
 
 ## For the .NET 10 switch package
 
 `OpenPmsDentalDbSettings` is a .NET Framework 4.8 project today; when it moves:
 
 - **The CAPI key.** `GetCapiRsaPrivateKey` reads `X509Certificate2.PrivateKey`, obsolete on .NET (SYSLIB0028). .NET's `GetRSAPrivateKey`
-  is said to give an `RSACryptoServiceProvider` for a CAPI key, which the existing branches of `DeletePrivateKey` and
-  `GetPrivateKeyFilePath` handle; verify it with `ClientCertificateKeyTests` (the CAPI case), then drop `GetCapiRsaPrivateKey`, as
-  DIRECT-CERT's note says for its own copy. `CapiKey_IsNamedAndDeletedThroughCapi_NotThroughTheCngViewOfIt` shows the CNG view only when
-  `GetRSAPrivateKey` gives an `RSACng`, so on .NET it checks the CAPI deletion alone.
+  is said to give an `RSACryptoServiceProvider` for a CAPI key, which the existing branches of `TryDeletePrivateKey` (`DeletePrivateKey`
+  before DCFU2), `GetKeyContainerName` and `GetPrivateKeyFilePath` handle; verify it with `ClientCertificateKeyTests` and
+  `ClientCertificateImportTests` (the CAPI cases), then drop `GetCapiRsaPrivateKey`, as DIRECT-CERT's note says for its own copy.
+  `CapiKey_IsNamedAndDeletedThroughCapi_NotThroughTheCngViewOfIt` shows the CNG view only when `GetRSAPrivateKey` gives an `RSACng`, so
+  on .NET it checks the CAPI deletion alone.
 - **CNG keys.** On .NET, `RSACng.Key` and `ECDsaCng.Key` return a new `CngKey` on each call; `GetPrivateKeyFilePath` disposes it and
   `Key.Delete()` disposes the one it deletes.
 - **Loading.** `X509Certificate2Collection.Import(path,password,flags)` (`ImportCollection`) is obsolete from .NET 9 (SYSLIB0057):
@@ -225,17 +251,141 @@ not accept them; the checks are about the key only, and the connection settings 
 ## Follow-up round (branch `fix/dcfu2-1`, 2026-11-09)
 
 Cut from `fix/directcert-followup-1` (b1f47d940). The lead decided the two questions above (the same behaviour as DIRECT-CERT's import,
-`OpenPmsDentalBusiness/Email/DirectCertificateImport.cs`) and passed on the reviewer's smaller points. The plan:
+`OpenPmsDentalBusiness/Email/DirectCertificateImport.cs`) and passed on the reviewer's smaller points. The plan is edbc07c2a, the code
+fbfcc27f7, the tests 5c895b8ea (with one more change of the code, item 1), these documents the commit after them. No schema change, no
+new enumeration value stored anywhere, no new third-party file, no download.
 
-1. `ImportPfx` deletes the keys its `PersistKeySet` read stored and does not use: those of the file's other certificates after the add,
-   and every one (the client certificate's too) when the store refuses the certificate or anything else stops the import. Only keys this
-   import stored, and never one that a certificate of the store or the client certificate uses (DirectCertificateImport's
-   `DeleteKeysNotInStore`, `DeleteKeysNotInUse`, `GetKeyContainerName`). Tests in the test store with throwaway keys: a `.pfx` with a
-   client certificate and a CA certificate with a key; a refused import.
-2. `RemoveImported`'s warning when only the key delete fails: the certificate was removed, its private key was left, and where (its file).
-   The order is decided from DirectCertificateImport's; a seam makes the key delete fail in the test.
-3. The test store: `CertUnregisterSystemStore`'s result is checked; a throwaway key is recorded before it is inspected.
-4. The failure message of the test that pins Windows' own behaviour (`CapiKey_IsNamedAndDeletedThroughCapi_NotThroughTheCngViewOfIt`).
-5. `GetCapiRsaPrivateKey` catches what DirectCertificateImport's copy catches.
-6. The launch checks get an explicit CNG import step.
-7. Two over-long lines re-wrapped.
+### 1. `ImportPfx` deletes the keys it stored and does not use
+
+`X509Certificate2Collection.Import(..., MachineKeySet | PersistKeySet)` stores the key of every certificate of the `.pfx` that has one,
+each in a key container of its own (one container for a key that two certificates of the file share). DirectCertificateImport's way
+("What an import stores and takes back", `PrivateImportRun`, `DeleteKeysNotInStore`, `DeleteKeysNotInUse`, `GetKeyContainerName`), now
+the tool's too (`ClientCertificateStore`, a copy: `OpenPmsDentalDbSettings` references neither `OpenPmsDentalBusiness` nor anything that
+has it):
+
+- The keys this import stored are the file's certificates with a key, right after the read; only those are ever deleted, never a key
+  that was on the computer before.
+- The store is opened before the keys are stored, so a store that cannot be opened (no administrator rights) leaves nothing behind.
+- **After the client certificate is in the store**, the keys of the file's other certificates (its CA's, for example) are deleted, but
+  none that the client certificate or a certificate of the store uses (compared by key container: kind, provider, user or machine, unique
+  name; each container once). A key that cannot be deleted gives the warning "The client certificate was imported, but a private key of
+  another certificate of the file, which the tool stored and does not use, could not be deleted (subject, thumbprint): why. The key is
+  left on this computer in <file>: delete that file as an administrator."
+- **When anything stops the import before the certificate is in the store** (the store refuses it, the file's check refuses it, anything
+  else), every key it stored is deleted, the client certificate's too, with the same exception for a key a certificate of the store uses.
+  The error keeps its text and exit code; a key that cannot be deleted adds "A private key the tool stored could not be deleted again
+  (subject, thumbprint): why. The key is left on this computer in <file>: delete that file as an administrator."
+- **A `PersistKeySet` read that fails** gives no certificate, so no key is known; as DirectCertificateImport says, the error adds "Nothing
+  was imported. Windows may have left a private key of the file behind on this computer, which the tool cannot find to delete." (Not
+  for the check's `EphemeralKeySet` read, which stores nothing.)
+- The store is read anew for the comparison (a new read-only handle), not through the import's open handle, which may keep the
+  certificates it read when it was opened (Windows caches a system store per handle and resynchronises it on request,
+  `CertControlStore`): a certificate another program put into the store meanwhile counts too. Added while writing the test that gives a
+  certificate of the store the key the import just stored; the test was not run without it, so whether the open handle would have
+  missed that certificate is not measured. DirectCertificateImport reads its open handle; nothing there needs it (nothing else adds to
+  its store during an import).
+- The users' read access to the key (`GrantUsersReadToPrivateKey`) is given for LocalMachine only, as DirectCertificateImport gives it;
+  the tests' store of the current user imports into the user's key set (`UserKeySet`) and gives none (the key is the user's own).
+
+The certificate the tool takes is still the file's first with a private key (`GetClientCertificate`, unchanged); see Noticed below.
+
+### 2. `RemoveImported` when only the key cannot be deleted
+
+**Order kept: the certificate first, then its key**, as DirectCertificateImport removes a replaced certificate (`RemoveReplaced`: the
+store's `Remove`, then `DeleteKeysNotInStore` once they are all out) and takes an import back (`Undo`: a certificate the store does not
+let go of keeps its key, "so that the store's entry still works"). The reasons hold for the tool: deleting the key first and then
+failing to remove the certificate would leave in LocalMachine\My a certificate that says it has a private key (`HasPrivateKey`, which
+`CheckClientCertificate` checks for `/thumbprint=`) whose key is gone; and the key is deleted only when no certificate left in the store
+uses the same key container, which can be seen only once the certificate is out (the same `DeleteKeysNotInStore`; new for
+`RemoveImported`, which before deleted the key whatever else used it).
+
+**The warning says what happened.** When only the key delete fails: "The client certificate that this tool imported before was removed
+from the computer's certificate store (LocalMachine\My), but its private key could not be deleted (subject, thumbprint): why. The key is
+left on this computer in <file>: delete that file as an administrator." The file is named before the delete is tried
+(`GetPrivateKeyFilePath`); one that cannot be named says so. When the certificate itself cannot be removed, both are still there and the
+warning says so, as before, but no longer sends the user to certlm.msc, whose Delete leaves the private key: "Remove it with its private
+key as an administrator, in PowerShell: Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey (certlm.msc's Delete leaves the key)."
+
+`TryDeletePrivateKey` (was `DeletePrivateKey`, which threw) gives why a key was not deleted and never throws, as DirectCertificateImport's.
+A test seam (`ActionBeforeKeyDeleteForTests`) makes the delete fail.
+
+### 3 to 7. The reviewer's smaller points
+
+3. `ClientCertificateTestStore`: `CertUnregisterSystemStore`'s result is checked (a store never made gives ERROR_FILE_NOT_FOUND, measured,
+   and is no problem), and the store's absence is verified afterwards. A throwaway key is recorded before it is inspected:
+   `TestKey.Track` adds the entry to the store's list, keeps a copy of the certificate (the same certificate context, so the same key
+   provider information), and only then finds the key; a key it never found is deleted through that copy at the clean-up. `Dispose`
+   never throws, so it never hides a test's own failure: what it could not delete (a key, the store) is written to the test's output and
+   kept for `ClientCertificateTestStore.AssertCleanedUp`, which `ClientCertificateKeyTests`, `ClientCertificateImportTests` and
+   `OwnerAnswersTests` call after every test (`TestCleanup`).
+4. `CapiKey_IsNamedAndDeletedThroughCapi_NotThroughTheCngViewOfIt`: the three checks of Windows' own behaviour (the CNG view's file name,
+   and that `RSACng.Key.Delete` leaves the CAPI container and its file) say in their failure messages that they pin Windows 11 and .NET
+   Framework 4.8, that a later Windows deleting or naming a CAPI key through its CNG view (the key storage provider) makes them fail while
+   the tool is still right, and that then they, not the tool, change.
+5. `GetCapiRsaPrivateKey` catches every exception but the critical ones (`IsCriticalException`: `OutOfMemoryException`,
+   `StackOverflowException`, `ThreadAbortException`), as DirectCertificateImport's copy; so do the new `TryDeletePrivateKey`,
+   `GetKeyContainerName` and `TryGetPrivateKeyFilePath`.
+6. The launch checks have an explicit CNG import (check 2) and a `.pfx` with its CA's key (check 4), above.
+7. `docs/specs/db-connection-security.md` section 4.3 (one line of 238 characters) and `ClientCertificateStore.GetCryptoFolder` (and the
+   summary above it) are wrapped to the files' width.
+
+Also changed: `docs/specs/db-connection-security.md` section 4.3 says what the import deletes and what `RemoveImported` reports, and
+`docs/release-notes/next.md` ("A replaced client certificate is removed") that no other key of the `.pfx` is left and that a key left is
+named with its file.
+
+### Tests
+
+`tests/DbConnectionSecurityTests` (every `.cs` file of its folder compiled; no project file change), each for a CAPI key, a CNG RSA key
+and a CNG ECDSA key, in the test store with throwaway keys of the current user:
+
+- `ClientCertificateImportTests` (new), through `ImportPfx`'s internal overload (the test store, the user's key set) and two seams
+  (`ActionAfterKeysStoredForTests`, where the test records every key the import stored so that its clean-up deletes it whatever the code
+  does, and `ActionBeforeStoreAddForTests`):
+  - `ImportPfx_DeletesTheKeyOfTheFilesCaCertificate_AndKeepsTheClientCertificates`: a `.pfx` with a client certificate and the CA
+    certificate that issued it, each with its key (`WritePfxWithCa`): the import stores both, takes the client certificate (its
+    thumbprint), adds only it, gives no warning; the CA's key no longer opens and its file is gone; the client's stays and signs.
+  - `ImportPfx_ARefusedImportDeletesEveryKeyItStored`: (1) the store refuses: the error, exit code 3, both keys and files gone, the store
+    empty; (2) anything else stops it after the keys were stored: "The client certificate could not be imported: ..."; (3) the file's
+    check refuses it after the keys were stored: its text and exit code 2 stay; (4) the store refuses and the CA's key cannot be deleted
+    (a seam): the error names it, its subject and thumbprint and its file, which is still there, and the client's key is gone; (5) a wrong
+    password: "Windows may have left a private key...", while the check's read (`LoadPfxForCheck`) does not say so.
+  - `ImportPfx_NeverDeletesAKeyThatACertificateOfTheStoreUses`: the test gives a certificate of the store the key the import stored for
+    the CA certificate (`AddCertificateUsingKeyOf`, checked by the key's file): after an import, and after a refused one (the client's key
+    deleted), that key stays and the certificate signs.
+- `ClientCertificateKeyTests`:
+  - `RemoveImported_WhenOnlyTheKeyIsNotDeleted_SaysTheCertificateWasRemovedAndWhereItsKeyIs`: the seam makes the key delete fail; the
+    warning is the text above with the test's own finding of the key's file, has no "could not be removed", the store is empty, and the key
+    and its file are still there (the store's clean-up deletes them).
+  - `RemoveImported_KeepsAKeyThatAnotherCertificateOfTheStoreUses`: a second certificate of the store with the same key container: the
+    key stays and that certificate signs; when it is removed too, the key and its file go.
+  - The three checks of Windows' behaviour in `CapiKey_IsNamedAndDeletedThroughCapi_NotThroughTheCngViewOfIt` (item 4).
+
+After each run, no key file of the tests was left under `%APPDATA%\Microsoft\Crypto\Keys` or `RSA\<SID>` and no `OpenPmsDbSecTest_` store
+under `HKCU\Software\Microsoft\SystemCertificates` (the file names of the two folders and the stores listed before the first run and after
+each run, and compared; no new name). The test classes' own check (`AssertCleanedUp`) found nothing either.
+
+Targeted runs (`run-tests.ps1 -Mode Targeted`), after the full lane build (0 errors):
+
+| Assembly | Total | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| NoHqTests | 57 | 57 | 0 | 0 |
+| LibraryUpdateTests | 126 | 126 | 0 | 0 |
+| DbConnectionSecurityTests | 158 | 148 | 0 | 10 |
+
+The ten skipped DbConnectionSecurityTests are the DevDbTls server tests, inconclusive until the local MariaDB runs with TLS, as before.
+DbConnectionSecurityTests has five tests more than after the first round (153): the three of `ClientCertificateImportTests` and the two
+new ones of `ClientCertificateKeyTests`.
+
+Not tested here, as before: the machine key set and LocalMachine\My, which need administrator rights (the launch checks above).
+
+### Noticed, not changed (for the lead)
+
+- `GetClientCertificate` (the check's and the import's) takes the file's first certificate with a private key. A `.pfx` that lists a CA
+  certificate with its key first, and has a client certificate after it, gives the CA certificate, which passes `CheckClientCertificate`
+  when it has no Extended Key Usage (most CA certificates have none); the window then shows the CA's subject before the import. The
+  tests' files list the client certificate first (and .NET Framework's read keeps that order: the tool took the client certificate).
+  Preferring a certificate with the client authentication purpose, or one that is not a CA, would change which certificate the tool
+  takes: not part of this round.
+- Building this branch through the lane needs `ImportDirectoryPackagesProps=false` in the environment: the worktree sits inside the main
+  checkout, whose `Directory.Packages.props` (S2-1, central package versions, merged on `main` after this branch was cut) NuGet otherwise
+  finds above the worktree. Merged with `main`, the branch has its own copy and needs nothing.

@@ -221,16 +221,27 @@ are unless `/server=`, `/database=`, `/user=` are given).
 added to LocalMachine\My and BUILTIN\Users get read access to its private key file (CAPI `MachineKeys` or CNG `Keys`), because the
 program runs as the signed-in user. Other certificates in the `.pfx` are not imported.
 
+`PersistKeySet` stores the key of every certificate of the file that has one. As the Direct certificate import does (DCFU2,
+`docs/port-notes/DIRECT-CERT-FOLLOWUP.md`), the tool deletes again the keys it stored and does not use: those of the file's other
+certificates (its CA's, for example) once the client certificate is in the store, and every one, the client certificate's too, when the
+store refuses the certificate or anything else stops the import. It deletes only keys of the file's certificates, and never one that the
+client certificate or a certificate of the store uses (compared by key container, each container once). A key it cannot delete is named,
+with its file, in the result.
+
 The certificate it replaces (owner decision of 2026-11-02): the tool removes a client certificate from the store, with its private key
 (CNG `Delete`, or the CAPI key container), only when it imported that certificate itself and a save stops using it (another certificate,
 or the password). A CAPI key (a `.pfx` that names no CNG provider, as OpenSSL writes it, or one that names a CAPI provider) is deleted
 and its file named through CAPI (`X509Certificate2.PrivateKey`, in the key set the key lives in), since .NET Framework's
-`GetRSAPrivateKey` opens it through CNG, as an `RSACng` whose `Key.Delete` leaves the container (DIRECT-CERT-FOLLOWUP). It records the thumbprint of what it imported in `<program folder>\ConnectionSettings\imported-client-certificate.txt`
-(`ImportedCertificateRecord`), written with the protection of the office CA copy (section 4.4), not in `FreeDentalConfig.xml`, whose
-content must never decide what the tool deletes. Only a certificate the store did not have before its `.pfx` was imported is recorded; one
-named with `/thumbprint=`, or put into the store some other way, is never recorded and never removed (remove it with certlm.msc). A
-missing or untrusted record (a link, or a file an administrator does not own) means none. The certificate goes only after the new
-settings are saved (`DbSettingsRunner.PlanImportedCertificate`); when it cannot be removed, the result says so and the save stands.
+`GetRSAPrivateKey` opens it through CNG, as an `RSACng` whose `Key.Delete` leaves the container (DIRECT-CERT-FOLLOWUP). The certificate
+goes first, then its key, which stays when another certificate of the store uses it; when only the key cannot be deleted, the result
+says that the certificate was removed and names the key's file, which certlm.msc no longer shows. It records the thumbprint of what it
+imported in `<program folder>\ConnectionSettings\imported-client-certificate.txt` (`ImportedCertificateRecord`), written with the
+protection of the office CA copy (section 4.4), not in `FreeDentalConfig.xml`, whose content must never decide what the tool deletes.
+Only a certificate the store did not have before its `.pfx` was imported is recorded; one named with `/thumbprint=`, or put into the
+store some other way, is never recorded and never removed (remove it with certlm.msc). A missing or untrusted record (a link, or a file
+an administrator does not own) means none. The certificate goes only after the new settings are saved
+(`DbSettingsRunner.PlanImportedCertificate`); when it cannot be removed, the result says so, with the command that removes it with its
+key (certlm.msc's Delete leaves the key), and the save stands.
 
 ### 4.4 The office CA copy
 
