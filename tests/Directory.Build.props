@@ -4,7 +4,9 @@
     repository's own first (its settings apply here too), then adds what every test project shares. The projects under tests\ get
     this file from MSBuild; UnitTests and the tests of tools\SyntheticData and tools\AdoptionValidation, which are outside tests\,
     name it as their Directory.Build.props (DirectoryBuildPropsPath), so they get it, and the repository's file, once each.
-    NoHqTests, converted before this file had all of it (S1-5), sets the same in its own project file.
+    NoHqTests, converted in S1-5 before this file had all of it, keeps its own settings in its project file; S1-5 proved its
+    output folder unchanged. A test project that adds an app.config lists it as a None item (EnableDefaultNoneItems is off below):
+    otherwise Directory.Build.targets still sees the file and skips its tests\BindingRedirects.config fallback.
 
     As in the repository's file, everything here is for SDK-style projects only. Every test project is one since S1-6 of the .NET 10
     move (docs/specs/net10-plan.md): stages 2, 4 and 3b change this one file instead of every test project file.

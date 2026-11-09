@@ -501,6 +501,15 @@ write `<Compile Update=...><SubType>Form</SubType>` entries back into a converte
 churn, not an edit to keep. `DocumentationBuilder/xDocumentationBuilder.sln` still names the dropped LinuxRelease
 configurations; nothing uses it, and it stays.
 
+Also accepted (S1-6, the lead, 2026-11-09): for the test projects, `tests/Directory.Build.props` turns two SDK defaults off, so
+every test output folder holds exactly the files it held: `DisableTransitiveProjectReferences=true` (with the SDK's transitive
+references the 27 test projects that reference the program would also get ODR and OpenPmsDentalDbSettings, 135 files in all) and
+`EnableDefaultNoneItems=false` (only the listed None items; a test project that adds an `app.config` lists it, or
+Directory.Build.targets skips its `tests\BindingRedirects.config` fallback). Mono.Cecil 0.10.3 as a package brings its Mdb, Pdb
+and Rocks assemblies into the output folders of LibraryBindingTests, LibWebTests and MiddleTierMockTests (9 files, tests only).
+The offline folder is not versioned: a fresh clone or another build PC puts Mono.Cecil 0.10.3 (SHA-256 in
+`docs/port-notes/S1-6.md`) into its own `OPMS_NUGET_OFFLINE` folder, as README says.
+
 **Tooling changes (switch at S1-0).** Lane: the Build Tools 2026 MSBuild and vstest (found with a version range, overridable by
 parameter), `/restore` and locked mode, the SDK pin (and the resolver variables for the per-user band), `OPMS_REQUIRE_BUILD_OUTPUT`. Test
 runners: vstest 18 from Build Tools 2026; paths otherwise unchanged (flat output). Build-Release, New-InitSql, New-DevDatabase and the two
