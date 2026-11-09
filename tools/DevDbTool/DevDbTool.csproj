@@ -16,9 +16,6 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <Platforms>x86</Platforms>
-    <!-- The .config is app.config as it is, as in the classic project: the SDK would rewrite it to add the supportedRuntime element app.config
-         already has. -->
-    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugType>full</DebugType>

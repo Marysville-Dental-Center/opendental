@@ -14,9 +14,6 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <Platforms>x86</Platforms>
-    <!-- The .config is app.config as it is, as in the classic project: the SDK would rewrite it to add the supportedRuntime element app.config
-         already has. -->
-    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
     <!-- Every source file under this folder except the test project (its own project, in the sub folder) and build output. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);SyntheticData.Tests\**</DefaultItemExcludes>
   </PropertyGroup>

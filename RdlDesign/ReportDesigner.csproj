@@ -13,9 +13,6 @@
     <ApplicationIcon>App.ico</ApplicationIcon>
     <LangVersion>7.3</LangVersion>
     <Platforms>AnyCPU;x86</Platforms>
-    <!-- The .config is app.config as it is, as in the classic project: the SDK would rewrite it to add the supportedRuntime element app.config
-         already has. -->
-    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
     <BaseAddress>285212672</BaseAddress>
     <FileAlignment>4096</FileAlignment>
   </PropertyGroup>
