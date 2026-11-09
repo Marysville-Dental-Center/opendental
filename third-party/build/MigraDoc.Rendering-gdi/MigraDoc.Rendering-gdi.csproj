@@ -19,9 +19,7 @@
     <MigraDocRenderingGdiFolder>$(PdfSharpSourceRoot)MigraDoc\src\MigraDoc.Rendering-gdi\</MigraDocRenderingGdiFolder>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Extensions.Logging.Abstractions">
-      <HintPath>..\..\..\Required dlls\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
-    </Reference>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />

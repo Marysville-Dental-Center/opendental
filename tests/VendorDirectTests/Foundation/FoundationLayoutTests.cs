@@ -60,7 +60,8 @@ namespace VendorDirectTests.Foundation {
 				System.Collections.Generic.List<string> listNotByWildcard=projectFile.GetFilesNotCompiledByWildcard(folder);
 				Assert.AreEqual(0,listNotByWildcard.Count,folder+": not compiled by a wildcard: "+string.Join(", ",listNotByWildcard));
 			}
-			Assert.AreEqual(@"..\Required dlls\Microsoft.Identity.Client.dll",projectFile.GetReference("Microsoft.Identity.Client")?.GetMetadata("HintPath"));
+			//MSAL: the package of Directory.Packages.props, whose file is the one Required dlls held (S2-1 of the .NET 10 move).
+			Assert.AreEqual("4.92.0",projectFile.GetPackageVersion("Microsoft.Identity.Client"));
 		}
 
 		[TestMethod]

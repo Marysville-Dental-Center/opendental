@@ -1,5 +1,6 @@
 // A scratch folder in the temp folder with the fixture project files of tests\ProjectFileTests\Fixtures laid out as the repository lays out its
-// own (Directory.Build.props and OpenDental.sln at the root, tests\Directory.Build.props importing the props, one folder per project), the
+// own (Directory.Build.props, Directory.Build.targets, an empty Directory.Packages.props and OpenDental.sln at the root, tests\Directory.Build.props
+// importing the props, one folder per project), the
 // source files each project folder holds and the shared files outside them that the fixtures link. The files are empty: ProjectFile reads
 // which files exist, never their text. Deleted when the test ends.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
@@ -34,13 +35,21 @@ namespace ProjectFileTests {
 		}
 
 		public static FixtureFolder Create() {
+			return Create(Path.GetTempPath());
+		}
+
+		///<summary>The scratch folder in the folder given (the temp folder for Create()), for the tests of what a file above the scratch folder
+		///does.</summary>
+		public static FixtureFolder Create(string folderParent) {
 			FixtureFolder fixtureFolder=new FixtureFolder();
-			fixtureFolder.Root=Path.Combine(Path.GetTempPath(),"ProjectFileTests_"+Guid.NewGuid().ToString("N"));
+			fixtureFolder.Root=Path.Combine(folderParent,"ProjectFileTests_"+Guid.NewGuid().ToString("N"));
 			Directory.CreateDirectory(fixtureFolder.Root);
 			string folderFixtures=Path.Combine(RepoRoot(),"tests","ProjectFileTests","Fixtures");
 			File.Copy(Path.Combine(folderFixtures,"Directory.Build.props.fixture"),fixtureFolder.Combine("Directory.Build.props"));
 			//Also stops the search for a Directory.Build.targets at the scratch folder, so nothing above the temp folder is read.
 			File.Copy(Path.Combine(folderFixtures,"Directory.Build.targets.fixture"),fixtureFolder.Combine("Directory.Build.targets"));
+			//Stops NuGet.props' search for a Directory.Packages.props the same way (an empty one; a test writes its own over it).
+			File.Copy(Path.Combine(folderFixtures,"Directory.Packages.props.fixture"),fixtureFolder.Combine("Directory.Packages.props"));
 			fixtureFolder.WriteFile(@"tests\Directory.Build.props",File.ReadAllText(Path.Combine(folderFixtures,"tests.Directory.Build.props.fixture")));
 			//The solution that maps each fixture project to Debug|x86, as OpenDental.sln maps nearly every project.
 			fixtureFolder.WriteFile("OpenDental.sln",File.ReadAllText(Path.Combine(folderFixtures,"OpenDental.sln.fixture")));

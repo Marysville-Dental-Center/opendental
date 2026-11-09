@@ -28,6 +28,11 @@ holds no `Resource` line: a new record differs from it by exactly those lines, a
 (without `OPMS_PROJECT_BASELINE_DIR`) reports each `Resource` item as only evaluated, until the lead takes the record again after
 the merges. The gates and the packages check against a record of their own, which holds them.
 
+Since S2-1 of stage 2 (central package versions) the script also records each project's `PackageReference` items and the
+`PackageVersion` items it reads from `Directory.Packages.props`, and ProjectFileTests' check compares them too. This record holds
+none (it was taken before), so a new record differs from it by those lines, and the check run against this folder reports each of them
+as only evaluated, until the lead takes the record again.
+
 ## This record: after the first wave of stage 1 (2026-11-08)
 
 Taken after S1-T, S1-2 and S1-1 had merged and the lead's sweep after them (the 2003 MSBuild namespace removed from the SDK-style

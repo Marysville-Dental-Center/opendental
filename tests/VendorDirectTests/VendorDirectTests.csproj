@@ -2,16 +2,10 @@
   <!-- Tests for the vendor-direct integrations (docs/specs/vendor-direct/README.md). Each package puts its tests in its own folder
        (Foundation, Qbo, Usps, ...). Every .cs file under this folder is compiled, so no package edits this project file. -->
   <ItemGroup>
-    <!-- MimeKit: the Microsoft 365 and Gmail tests build and read MIME messages. -->
-    <Reference Include="MimeKit">
-      <HintPath>..\..\Required dlls\MimeKit.dll</HintPath>
-    </Reference>
+    <!-- MimeKit (the Microsoft 365 and Gmail tests build and read MIME messages) and Newtonsoft.Json come as packages through the projects
+         below. -->
     <Reference Include="MySqlConnector">
       <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Required dlls\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System.Net.Http" />
   </ItemGroup>
