@@ -43,7 +43,8 @@ every project classic) every difference falls into one of these groups:
 
 Only sizes and SHA-256 values differ otherwise (3,106 files: `.dll`, `.exe`, `.pdb`): 2,223 are copies of the 25 SDK-style
 assemblies and their PDBs, which the conversions changed and whose Mono.Cecil fingerprints the packages compared, and 883 are
-assemblies of classic projects, which do not compile deterministically.
+files of classic projects: 817 do not compile deterministically, and 66 are the copies of WpfControlsOD.dll and .pdb,
+which is deterministic but changed because the assemblies it references (CodeBase, PdfSharp-gdi, WeCantSpell.Hunspell) did.
 
 ## How the first record was taken and checked
 
