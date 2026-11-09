@@ -1,0 +1,17 @@
+Scene: extraction-statuses
+Group: paint
+Description: The big X: TP on 1, 16, 17 and 32, R on 4, Cn on 29. Completed extractions draw no X (the tooth is missing instead).
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 7101
+Pixels SHA-256: 2b4e9db356ba4ef7c0a0e535d817734d6301c01a3385de098ffb6d8bbc265f25
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

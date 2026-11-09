@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mono.Cecil;
+using ProjectFileTests;
 
 namespace LibWebTests {
 	[TestClass]
@@ -87,18 +88,36 @@ namespace LibWebTests {
 			List<string> listProjects=TestPaths.GetShippedFiles(".csproj");
 			Assert.IsTrue(listProjects.Any(x => x.EndsWith(@"OpenPmsDental\OpenPmsDental.csproj",StringComparison.OrdinalIgnoreCase)));
 			List<string> listViolations=new List<string>();
+			List<string> listSubmodules=Regex.Matches(File.ReadAllText(Path.Combine(TestPaths.RepoRoot,".gitmodules")),@"(?m)^\s*path\s*=\s*(.+?)\s*$").Cast<Match>()
+				.Select(x => Path.GetFullPath(Path.Combine(TestPaths.RepoRoot,x.Groups[1].Value.Replace('/','\\')))).ToList();
+			Assert.IsTrue(listSubmodules.Count>0,"No submodules in .gitmodules?");
 			foreach(string path in listProjects) {
 				string text=File.ReadAllText(path);
 				if(Regex.IsMatch(text,@"<COMReference\s+Include=""(SHDocVw|MSHTML)""",RegexOptions.IgnoreCase)) {
 					listViolations.Add(TestPaths.Relative(path)+": a COM reference to the IE browser");
 				}
+				//An item or a HintPath (the element of a classic project file, or the attribute an SDK-style one may use) naming the assembly.
 				foreach(string name in _arrayIeAssemblies) {
-					if(Regex.IsMatch(text,@"Include=""(..\\)*(Required dlls\\)?"+Regex.Escape(name)+@"(\.dll)?[,""]",RegexOptions.IgnoreCase)) {
+					if(Regex.IsMatch(text,@"(Include|Update|HintPath)=""(..\\)*(Required dlls\\)?"+Regex.Escape(name)+@"(\.dll)?[,""]",RegexOptions.IgnoreCase)
+						|| Regex.IsMatch(text,@"<HintPath>(..\\)*(Required dlls\\)?"+Regex.Escape(name)+@"\.dll\s*</HintPath>",RegexOptions.IgnoreCase))
+					{
 						listViolations.Add(TestPaths.Relative(path)+": "+name);
 					}
 				}
 				if(Regex.IsMatch(text,@"Include=""UI\\Controls\\WebBrowser\.xaml",RegexOptions.IgnoreCase)) {
 					listViolations.Add(TestPaths.Relative(path)+": the WPF WebBrowser control");
+				}
+				//The evaluated items too: an SDK-style project builds a XAML file on disk as a page without naming it. Not for the upstream
+				//projects inside the git submodules, which are not built (their text is checked above).
+				if(listSubmodules.Any(x => path.StartsWith(x+@"\",StringComparison.OrdinalIgnoreCase))) {
+					continue;
+				}
+				ProjectFile projectFile=ProjectFile.Load(path);
+				if(projectFile.GetItemsMentioning(@"UI\Controls\WebBrowser.xaml").Count>0) {
+					listViolations.Add(TestPaths.Relative(path)+": the WPF WebBrowser control (evaluated)");
+				}
+				foreach(string name in _arrayIeAssemblies.Where(x => projectFile.GetReference(x)!=null)) {
+					listViolations.Add(TestPaths.Relative(path)+": "+name+" (evaluated)");
 				}
 			}
 			Assert.AreEqual(0,listViolations.Count,string.Join("\r\n",listViolations));
@@ -125,7 +144,7 @@ namespace LibWebTests {
 		public void BuiltAssemblies_ReferenceNoIeBrowserType() {
 			string folder=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug");
 			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
-				Assert.Inconclusive("The program is not built.");
+				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			List<string> listViolations=new List<string>();
 			int countChecked=0;

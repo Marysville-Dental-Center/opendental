@@ -2,10 +2,13 @@
 // project files and the neutrality rules. Source checks for the parts in OpenPmsDental.exe and WpfControlsOD.dll, which this test project does not load.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace VBRIDGE2Tests {
 	[TestClass]
@@ -44,17 +47,17 @@ namespace VBRIDGE2Tests {
 
 		[TestMethod]
 		public void Bridges_AreCompiled() {
-			string csproj=TestPaths.ReadRepoFile("WpfControlsOD","WpfControlsOD.csproj");
-			StringAssert.Contains(csproj,"<Compile Include=\"Bridges\\Clerri.cs\" />");
-			StringAssert.Contains(csproj,"<Compile Include=\"Bridges\\CleverOne.cs\" />");
-			string csprojProgram=TestPaths.ReadRepoFile("OpenPmsDental","OpenPmsDental.csproj");
-			StringAssert.Contains(csprojProgram,"<Compile Include=\"Forms\\FormClerriSetup.cs\">");
-			StringAssert.Contains(csprojProgram,"<Compile Include=\"Forms\\FormClerriSetup.Designer.cs\">");
-			StringAssert.Contains(csprojProgram,"<EmbeddedResource Include=\"Forms\\FormClerriSetup.resx\">");
-			StringAssert.Contains(csprojProgram,"<Compile Include=\"Forms\\FormProgramLinkEdit.Bridges2.cs\">");
-			StringAssert.Contains(csprojProgram,"<Compile Include=\"Logic\\VendorDirect\\CleverOneProgramLinkSetup.cs\" />");
-			//The business classes are picked up by the VendorDirect wildcard, so OpenPmsDentalBusiness.csproj needs no line of its own.
-			StringAssert.Contains(TestPaths.ReadRepoFile("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj"),"<Compile Include=\"VendorDirect\\**\\*.cs\" />");
+			//The evaluated items, so the checks hold for the classic project files and the SDK-style ones of the .NET 10 move alike.
+			string root=TestPaths.GetRepositoryRoot();
+			ProjectFile.Load(Path.Combine(root,"WpfControlsOD","WpfControlsOD.csproj")).AssertCompiles(@"Bridges\Clerri.cs",@"Bridges\CleverOne.cs");
+			ProjectFile projectFileProgram=ProjectFile.Load(Path.Combine(root,"OpenPmsDental","OpenPmsDental.csproj"));
+			projectFileProgram.AssertCompiles(@"Forms\FormClerriSetup.cs",@"Forms\FormClerriSetup.Designer.cs",@"Forms\FormProgramLinkEdit.Bridges2.cs",
+				@"Logic\VendorDirect\CleverOneProgramLinkSetup.cs");
+			projectFileProgram.AssertEmbeds(@"Forms\FormClerriSetup.resx");
+			//The business classes are picked up with the whole VendorDirect folder (its wildcard in the classic project file, the default glob in an
+			//SDK-style one), so OpenPmsDentalBusiness.csproj needs no line of its own.
+			List<string> listNotCompiled=ProjectFile.Load(Path.Combine(root,"OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj")).GetFilesNotCompiled("VendorDirect");
+			Assert.AreEqual(0,listNotCompiled.Count,"Not compiled: "+string.Join(", ",listNotCompiled));
 		}
 
 		[TestMethod]

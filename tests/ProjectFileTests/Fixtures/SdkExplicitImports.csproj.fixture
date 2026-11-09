@@ -1,0 +1,17 @@
+<Project>
+  <!-- Fixture for tests\ProjectFileTests: an SDK-style project with explicit Sdk.props and Sdk.targets imports, as S1-5 converts the program
+       (so its own targets after the SDK's see $(IntermediateOutputPath)), and with the default EmbeddedResource glob switched off. Copied to
+       tests\SdkExplicitImports\SdkExplicitImports.csproj of a scratch folder. -->
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  <PropertyGroup>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Forms\FormMain.resx" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+  <PropertyGroup>
+    <FixtureAfterSdkTargets>$(EnableDefaultCompileItems)</FixtureAfterSdkTargets>
+  </PropertyGroup>
+</Project>

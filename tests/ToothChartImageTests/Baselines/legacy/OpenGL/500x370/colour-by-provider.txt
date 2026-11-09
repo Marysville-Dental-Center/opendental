@@ -1,0 +1,18 @@
+Scene: colour-by-provider
+Group: colours
+Description: Colour by provider: another provider's completed work drawn in the EO colours (the user preference ToothChartUsesDiffColorByProv): C crowns on 3 and 19 and C fillings MO on 4 and 20 next to the same work shown as EO on 14, 30, 13 and 29.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 3290
+Pixels SHA-256: 03eadc80d4b258ccdf9c72778b1ebe8eabf2fb5f1139d7d9686570652cb1bcb4
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

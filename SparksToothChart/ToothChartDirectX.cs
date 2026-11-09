@@ -36,6 +36,9 @@ namespace SparksToothChart {
 		private bool _isMouseDown=false;
 		private List<string> _listSelectedTeethOld=new List<string>();
 		private float specularSharpness;
+		///<summary>The DirectX buffers of the tooth models in TcData, made on device by PrepareBuffers and freed by CleanupBuffers. Keyed by tooth ID:
+		///the models hold no device objects, and copies of a ToothGraphic share its model and so its buffers.</summary>
+		private Dictionary<string,ToothBuffers> _dictToothBuffers=new Dictionary<string,ToothBuffers>();
 		#endregion Fields - Private
 
 		#region Constructor
@@ -78,7 +81,14 @@ namespace SparksToothChart {
 				fontX.Dispose();
 				fontX=null;
 			}
-			TcData.CleanupDirectX();
+			CleanupBuffers();
+		}
+
+		///<summary>Replaces TcData: frees the old models' buffers in video memory and makes the new models' buffers on the device.</summary>
+		public void SetTcData(ToothChartData toothChartData) {
+			CleanupBuffers();
+			TcData=toothChartData;
+			PrepareBuffers();
 		}
 
 		///<summary>Returns the number of bits corresponding to the given format. Returns 0 if the format has not yet been accounted for.</summary>
@@ -297,7 +307,118 @@ namespace SparksToothChart {
 				(int)Math.Round(7.4*TcData.PixelScaleRatio),
 				FontWeight.UltraBold,1,false,FontCharacterSet.Ansi,FontPrecision.Device,
 				FontQuality.ClearType,FontPitchAndFamily.Default,"Times New Roman");
-			TcData.PrepareForDirectX(device);
+			PrepareBuffers();
+		}
+
+		///<summary>Makes the vertex and index buffers of every tooth model in TcData on the device.</summary>
+		private void PrepareBuffers() {
+			for(int i=0;i<TcData.ListToothGraphics.Count;i++) {
+				PrepareBuffers(TcData.ListToothGraphics[i]);
+			}
+		}
+
+		///<summary>Converts the tooth's VertexNormals list into a vertex buffer and each group's faces into an index buffer, so the tooth can be drawn
+		///as DirectX triangles.</summary>
+		private void PrepareBuffers(ToothGraphic toothGraphic) {
+			CleanupBuffers(toothGraphic.ToothID);
+			ToothBuffers toothBuffers=new ToothBuffers();
+			ToothChartVertexPosNormX[] arrayVerts=new ToothChartVertexPosNormX[toothGraphic.VertexNormals.Count];
+			for(int i=0;i<toothGraphic.VertexNormals.Count;i++) {
+				VertexNormal v=toothGraphic.VertexNormals[i];
+				arrayVerts[i]=new ToothChartVertexPosNormX(v.Vertex.X,v.Vertex.Y,v.Vertex.Z,v.Normal.X,v.Normal.Y,v.Normal.Z);
+			}
+			toothBuffers.VertexBuffer=new VertexBuffer(device,arrayVerts.Length*ToothChartVertexPosNormX.StrideSize,Usage.WriteOnly,
+				ToothChartVertexPosNormX.Format,Pool.Managed);
+			_dictToothBuffers[toothGraphic.ToothID]=toothBuffers;
+			SharpDX.DataStream ds=toothBuffers.VertexBuffer.Lock(0,0,LockFlags.None);
+			ds.WriteRange(arrayVerts);
+			toothBuffers.VertexBuffer.Unlock();
+			toothBuffers.ArrayIndexBuffers=new IndexBuffer[toothGraphic.Groups.Count];
+			toothBuffers.ArrayCountIndices=new int[toothGraphic.Groups.Count];
+			for(int g=0;g<toothGraphic.Groups.Count;g++) {
+				PrepareBuffer(toothBuffers,g,toothGraphic.Groups[g]);
+			}
+		}
+
+		///<summary>Makes the index buffer of one tooth group. When drawing with a single index buffer inside of DirectX, all primitives must be the
+		///same type, and there are no polygons inside of DirectX, only triangles. So the group's faces are broken down into a triangle list
+		///(ToothGroup.GetTriangleIndices), and the triangle order is optimized for increased rendering efficiency.</summary>
+		private void PrepareBuffer(ToothBuffers toothBuffers,int indexGroup,ToothGroup toothGroup) {
+			List<int> listTriangles=toothGroup.GetTriangleIndices();
+			//Calculate the number of unique indicies so we know exactly now many verticies are referenced
+			//and then we can properly optimize our face order with OptimizeFaces() below.
+			List <int> uniqueIndicies=new List<int> ();
+			for(int i=0;i<listTriangles.Count;i++){
+				if(uniqueIndicies.IndexOf(listTriangles[i])<0){
+					uniqueIndicies.Add(listTriangles[i]);
+				}
+			}
+			//Optimize the triangle order for excellent vertex caching.
+			//OptimizeFaces() returns a list of triangle indices which must be converted back into a list vertex indices (3 per triangle).
+			int[] arrayOptimizedIndices=SharpDX.Direct3D9.D3DX.OptimizeFaces(listTriangles.ToArray(),listTriangles.Count/3,uniqueIndicies.Count);
+			List <int> listOptimalTriangles=new List<int>();
+			for(int f=0;f<arrayOptimizedIndices.Length;f++) {//Each value in arrayOptimizedIndicies represents one triangle.  Enumerating triangles.
+				int firstVertexIndex=3*arrayOptimizedIndices[f];//Index of first vertex for current triangle.
+				listOptimalTriangles.Add(listTriangles[firstVertexIndex]);
+				listOptimalTriangles.Add(listTriangles[firstVertexIndex+1]);
+				listOptimalTriangles.Add(listTriangles[firstVertexIndex+2]);
+			}
+			int[] arrayTriangles=listOptimalTriangles.ToArray();
+			IndexBuffer indexBuffer=new IndexBuffer(device,sizeof(int)*arrayTriangles.Length,Usage.None,Pool.Managed,false);
+			toothBuffers.ArrayIndexBuffers[indexGroup]=indexBuffer;
+			SharpDX.DataStream ds=indexBuffer.Lock(0,0,LockFlags.None);
+			ds.WriteRange(arrayTriangles);
+			indexBuffer.Unlock();
+			toothBuffers.ArrayCountIndices[indexGroup]=arrayTriangles.Length;
+		}
+
+		///<summary>Frees every tooth model's buffers.</summary>
+		private void CleanupBuffers() {
+			foreach(string toothID in new List<string>(_dictToothBuffers.Keys)) {
+				CleanupBuffers(toothID);
+			}
+		}
+
+		private void CleanupBuffers(string toothID) {
+			if(!_dictToothBuffers.TryGetValue(toothID,out ToothBuffers toothBuffers)) {
+				return;
+			}
+			_dictToothBuffers.Remove(toothID);
+			if(toothBuffers.VertexBuffer!=null) {
+				toothBuffers.VertexBuffer.Dispose();
+			}
+			if(toothBuffers.ArrayIndexBuffers==null) {
+				return;
+			}
+			for(int g=0;g<toothBuffers.ArrayIndexBuffers.Length;g++) {
+				if(toothBuffers.ArrayIndexBuffers[g]!=null) {
+					toothBuffers.ArrayIndexBuffers[g].Dispose();
+				}
+			}
+		}
+
+		///<summary>The buffers of the tooth's model, or null when none were made.</summary>
+		private ToothBuffers GetToothBuffers(ToothGraphic toothGraphic) {
+			_dictToothBuffers.TryGetValue(toothGraphic.ToothID,out ToothBuffers toothBuffers);
+			return toothBuffers;
+		}
+
+		///<summary>True when the group's index buffer exists.</summary>
+		private static bool HasIndexBuffer(ToothBuffers toothBuffers,int indexGroup) {
+			return toothBuffers!=null && toothBuffers.ArrayIndexBuffers!=null && indexGroup>=0 && indexGroup<toothBuffers.ArrayIndexBuffers.Length
+				&& toothBuffers.ArrayIndexBuffers[indexGroup]!=null;
+		}
+
+		///<summary>Draws one group of a tooth whose vertex buffer is the stream source. countVertices is the number of the tooth's VertexNormals.</summary>
+		private void DrawGroup(ToothBuffers toothBuffers,int indexGroup,int countVertices) {
+			IndexBuffer indexBuffer=null;
+			int countIndices=0;
+			if(HasIndexBuffer(toothBuffers,indexGroup)) {
+				indexBuffer=toothBuffers.ArrayIndexBuffers[indexGroup];
+				countIndices=toothBuffers.ArrayCountIndices[indexGroup];
+			}
+			device.Indices=indexBuffer;
+			device.DrawIndexedPrimitive(PrimitiveType.TriangleList,0,0,countVertices,0,countIndices/3);
 		}
 
 		private void ReinitailizeIfNeeded() {
@@ -628,7 +749,7 @@ namespace SparksToothChart {
 
 		private void DrawDroplet(float x,float y,Color dropletColor) {
 			List <SharpDX.Vector3> listPositions=new List<SharpDX.Vector3>();
-			foreach(SharpDX.Vector3 p in TcData.GetDropletVertices()) {
+			foreach(Vertex3f p in TcData.GetDropletVertices()) {
 				listPositions.Add(new SharpDX.Vector3(x+p.X,y+p.Y,p.Z));
 			}
 			DrawColoredPolygon(device,dropletColor,listPositions.ToArray());
@@ -799,8 +920,9 @@ namespace SparksToothChart {
 				Material materialBu=new Material();
 				materialBu.Emissive=ColorToRaw4(groupBU.PaintColor);
 				device.Material=materialBu;
-				device.SetStreamSource(0,toothGraphic.vb,0,ToothChartVertexPosNormX.StrideSize);
-				groupBU.DrawDirectX(device,toothGraphic);
+				ToothBuffers toothBuffers=GetToothBuffers(toothGraphic);
+				device.SetStreamSource(0,toothBuffers?.VertexBuffer,0,ToothChartVertexPosNormX.StrideSize);
+				DrawGroup(toothBuffers,toothGraphic.Groups.IndexOf(groupBU),toothGraphic.VertexNormals.Count);
 			}
 			if(toothGraphic.IsImplant) {
 				DrawImplant(toothGraphic);
@@ -821,13 +943,14 @@ namespace SparksToothChart {
 			material.Power=specularSharpness;
 			device.Material=material;
 			ToothGraphic implantGraphic=TcData.ListToothGraphics["implant"];
-			device.SetStreamSource(0,implantGraphic.vb,0,ToothChartVertexPosNormX.StrideSize);
+			ToothBuffers toothBuffersImplant=GetToothBuffers(implantGraphic);
+			device.SetStreamSource(0,toothBuffersImplant?.VertexBuffer,0,ToothChartVertexPosNormX.StrideSize);
 			for(int g=0;g<implantGraphic.Groups.Count;g++) {
 				ToothGroup group=(ToothGroup)implantGraphic.Groups[g];
 				if(!group.Visible||group.GroupType==ToothGroupType.Buildup) {
 					continue;
 				}
-				group.DrawDirectX(device,implantGraphic);
+				DrawGroup(toothBuffersImplant,g,implantGraphic.VertexNormals.Count);
 			}
 		}
 
@@ -899,15 +1022,16 @@ namespace SparksToothChart {
 
 		private void DrawTooth(ToothGraphic toothGraphic) {
 			ToothGroup group;
-			device.SetStreamSource(0,toothGraphic.vb,0,ToothChartVertexPosNormX.StrideSize);
+			ToothBuffers toothBuffers=GetToothBuffers(toothGraphic);
+			device.SetStreamSource(0,toothBuffers?.VertexBuffer,0,ToothChartVertexPosNormX.StrideSize);
 			for(int g=0;g<toothGraphic.Groups.Count;g++) {
 				group=toothGraphic.Groups[g];
-				if(!group.Visible || group.facesDirectX==null || 
+				if(!group.Visible || !HasIndexBuffer(toothBuffers,g) ||
 					group.GroupType==ToothGroupType.Buildup || group.GroupType==ToothGroupType.None) {
 					continue;
 				}
 				device.Material=GetGroupMaterial(toothGraphic,group);
-				group.DrawDirectX(device,toothGraphic);
+				DrawGroup(toothBuffers,g,toothGraphic.VertexNormals.Count);
 			}
 		}
 
@@ -1421,6 +1545,14 @@ namespace SparksToothChart {
 		}
 
 		#region Class Nested
+		///<summary>The DirectX buffers of one tooth model: a vertex buffer of its VertexNormals, and for each group, in the order of
+		///ToothGraphic.Groups, an index buffer of its triangles with the number of indices.</summary>
+		private class ToothBuffers {
+			public VertexBuffer VertexBuffer;
+			public IndexBuffer[] ArrayIndexBuffers;
+			public int[] ArrayCountIndices;
+		}
+
 		public class DirectXDeviceFormat{
 			public int adapterIndex=0;
 			public bool IsHardware=false;

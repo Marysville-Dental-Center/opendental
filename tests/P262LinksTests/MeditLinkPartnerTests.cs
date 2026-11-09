@@ -14,6 +14,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
+using ProjectFileTests;
 
 namespace P262LinksTests {
 	[TestClass]
@@ -326,7 +327,8 @@ namespace P262LinksTests {
 			StringAssert.Contains(setup,"public class MeditLinkProgramLinkSetup:StandardProgramLinkSetup");
 			StringAssert.Contains(setup,"return ProgramName.MeditLink;");
 			StringAssert.Contains(setup,"return MeditLinkPartner.EnsureProperty();");
-			StringAssert.Contains(TestPaths.ReadRepoFile("OpenPmsDental","OpenPmsDental.csproj"),"<Compile Include=\"Logic\\VendorDirect\\MeditLinkProgramLinkSetup.cs\" />");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile.Load(TestPaths.GetRepoFile("OpenPmsDental","OpenPmsDental.csproj")).AssertCompiles(@"Logic\VendorDirect\MeditLinkProgramLinkSetup.cs");
 			Regex regexUrl=new Regex(@"https?://|www\.",RegexOptions.IgnoreCase);
 			foreach(string[] arrayPath in new[] {
 				new[] { "OpenPmsDentalBusiness","VendorDirect","ProgramLinks","MeditLinkPartner.cs" },

@@ -1,0 +1,2 @@
+# PNG baselines and pictures are binary: no line-ending conversion, no text diff or merge (docs/specs/wpf-tooth-chart-plan.md, section 7).
+*.png binary

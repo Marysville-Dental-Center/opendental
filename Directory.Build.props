@@ -29,6 +29,13 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <Deterministic>true</Deterministic>
     <!--
+      The SDK writes a supportedRuntime element into a .NET Framework exe's app.config and saves the file again (other
+      XML declaration and indentation) unless this is off; with it off, every exe's .config stays byte for byte as today.
+    -->
+    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
+    <!-- No Source Link: the PDBs record no repository URL or commit, and the build does not read the .git folder. -->
+    <EnableSourceLink>false</EnableSourceLink>
+    <!--
       The SDK turns on AutoGenerateBindingRedirects for every .NET Framework exe and test project that leaves it empty
       (Microsoft.NET.Sdk.BeforeCommon.targets); the classic projects that leave it empty (the program, ServiceManager,
       the database settings tool, UpdateFileCopier, the HL7 service, DatabaseIntegrityCheck, UnitTests and

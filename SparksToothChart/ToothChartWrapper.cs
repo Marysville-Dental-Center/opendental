@@ -72,11 +72,7 @@ namespace SparksToothChart {
 					toothChart2D.TcData=value;
 				}
 				else if(drawMode==DrawingMode.DirectX) {
-					if(tcData!=null){
-						tcData.CleanupDirectX();//Clean up old tc data DirectX objects to free video memory.
-					}
-					toothChartDirectX.TcData=value;
-					toothChartDirectX.TcData.PrepareForDirectX(toothChartDirectX.device);
+					toothChartDirectX.SetTcData(value);//Frees the old models' buffers in video memory and makes the new ones'.
 				}
 				else if(drawMode==DrawingMode.OpenGL) {
 					toothChartOpenGL.TcData=value;
@@ -500,6 +496,13 @@ namespace SparksToothChart {
 			catch(Exception ex) {
 				ex.DoNothing();
 			}
+		}
+
+		///<summary>True when ex is an error of the chart's graphics device: today SharpDX's exception (or a subclass), thrown by the DirectX chart when
+		///its device is lost or a picture cannot be read back. Lets callers catch it without naming SharpDX:
+		///catch(Exception ex) when(ToothChartWrapper.IsGraphicsDeviceException(ex)). False for null and for every other exception.</summary>
+		public static bool IsGraphicsDeviceException(Exception ex) {
+			return ex is SharpDX.SharpDXException;
 		}
 
 		private static bool CanLoadLibrary(string fileName) {

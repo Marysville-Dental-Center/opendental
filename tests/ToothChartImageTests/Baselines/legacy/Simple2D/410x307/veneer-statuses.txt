@@ -1,0 +1,17 @@
+Scene: veneer-statuses
+Group: paint
+Description: Veneers (light colours) on 6-11 in TP, C, EC, EO, R, Cn.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 6063
+Pixels SHA-256: 47b7989ab8276a49a18ea1b3bcc6aacf8d10a93bde91a107dfb6d462ae9e7a04
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

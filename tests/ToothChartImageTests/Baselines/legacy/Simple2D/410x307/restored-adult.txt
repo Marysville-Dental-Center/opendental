@@ -1,0 +1,17 @@
+Scene: restored-adult
+Group: paint
+Description: A heavily restored adult: 1, 16, 17, 32 missing; bridge 12-13-14 (13 missing, EO); implant with crown on 30 (missing, C); RCT, post and crown on 3 (C); crowns on 8 and 9 (EC); fillings MOD 4, DO 5, O 15, MO 18, OB 19, MOD 20, DO 29, MO 31 (EC and EO); sealants 2 and 31 (EO); veneers 23-26 (EO); TP: MOD 21, crown 28, X on 2, RCT and build-up on 14, watch on 19.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 6860
+Pixels SHA-256: fce3b9ba0c5bcaa4442d50ac5c904ef2264692ff721d741a80df941a3d3ec56c
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

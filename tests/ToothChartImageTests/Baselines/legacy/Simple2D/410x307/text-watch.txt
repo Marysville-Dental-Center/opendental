@@ -1,0 +1,17 @@
+Scene: text-watch
+Group: paint
+Description: Paint type Text with "W": the watch mark on 3 (TP), 8 (C), 14 (EC), 19 (EO), 24 (R) and 30 (Cn).
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 6145
+Pixels SHA-256: 9eed40bd2cd96e642d0b3f1c7ed167f8300d378dc32605ea15e8c2b873f01e1a
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

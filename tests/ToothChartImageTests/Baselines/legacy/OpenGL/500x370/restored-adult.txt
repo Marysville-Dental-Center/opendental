@@ -1,0 +1,18 @@
+Scene: restored-adult
+Group: paint
+Description: A heavily restored adult: 1, 16, 17, 32 missing; bridge 12-13-14 (13 missing, EO); implant with crown on 30 (missing, C); RCT, post and crown on 3 (C); crowns on 8 and 9 (EC); fillings MOD 4, DO 5, O 15, MO 18, OB 19, MOD 20, DO 29, MO 31 (EC and EO); sealants 2 and 31 (EO); veneers 23-26 (EO); TP: MOD 21, crown 28, X on 2, RCT and build-up on 14, watch on 19.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 4862
+Pixels SHA-256: 78ff61f466858a69cb25bcecfc52c596f5676eac1abee0ef86b0fcfe8fed3e71
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

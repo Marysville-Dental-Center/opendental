@@ -1,0 +1,13 @@
+<Project>
+  <!-- Fixture for tests\ProjectFileTests: copied to tests\Directory.Build.props of a scratch folder. It imports the file above it the way the
+       repository's tests\Directory.Build.props does, then adds what an SDK-style test project gets from it: a property and the MSTest v1
+       reference by name. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..\'))" />
+  <PropertyGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
+    <TargetFramework>net48</TargetFramework>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
+    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework" />
+  </ItemGroup>
+</Project>

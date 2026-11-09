@@ -1,0 +1,17 @@
+Scene: drawing-edges
+Group: interaction
+Description: Pen strokes along the edges and through the corners of the 410x307 drawing space, and one that runs past them.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 15402
+Pixels SHA-256: 0a8788ea149809cb50e089f390bbf66b711929125d734e105936c78adc4eb876
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

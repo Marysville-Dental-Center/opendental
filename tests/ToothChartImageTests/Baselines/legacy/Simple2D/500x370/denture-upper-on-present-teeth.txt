@@ -1,0 +1,17 @@
+Scene: denture-upper-on-present-teeth
+Group: paint
+Description: Upper denture, dark EC, with no tooth missing: every tooth 2-15 gets a crown, as the Chart module paints it.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 15149
+Pixels SHA-256: 3045d91ff9fb65985775d3929cd7b4175b15c8b15a00f1e7fe5404a1f2096dc5
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

@@ -1,0 +1,18 @@
+Scene: sealant-statuses
+Group: paint
+Description: Sealants (the occlusal "S") on 2, 3, 14, 15 (TP, C, EC, EO) and 18, 19, 30, 31 (R, Cn, TP, C).
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 2200
+Pixels SHA-256: f4f9ed6507b97312a123496fe3cf38eff0f4313be069c4c8d9013d31f32c8388
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

@@ -1,0 +1,17 @@
+Scene: rct-with-post-and-crown
+Group: paint
+Description: Completed root canal, post and build-up and crown (C) on 3, 14, 19 and 30, the usual endodontic sequence.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 6160
+Pixels SHA-256: 862311fb6ba03d33f3afe37715857b50bdfe2826f0895dc4041ced7d5ad6341f
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

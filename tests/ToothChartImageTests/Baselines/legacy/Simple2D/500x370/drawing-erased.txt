@@ -1,0 +1,17 @@
+Scene: drawing-erased
+Group: interaction
+Description: The drawing-segments scene after the eraser took the red zig-zag away: only the black and blue strokes remain.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14815
+Pixels SHA-256: 2101f2f733c6692f95a44b2ad74310ecae60f5f5b337ba3781edb8579ad80acf
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

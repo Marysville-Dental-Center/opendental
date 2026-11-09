@@ -1,0 +1,17 @@
+Scene: x-under-moved-neighbour
+Group: known-difference
+Description: TP X on 4 and on 20, with 5 and 21 shifted 3 mm distally over them: DirectX draws the moved neighbour after the X, so it can cover it (plan 5.1).
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14984
+Pixels SHA-256: 15ff7ccf0ee1b2756a88352a7cd8d51d3b52c0e0f8ba260aa1f2669056d2b704
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

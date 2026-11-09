@@ -1,0 +1,17 @@
+Scene: text-other
+Group: paint
+Description: Paint type Text with text other than "W" ("Fx" on 3, "?" on 14, "ABC" on 19, "1" on 30). Today's chart draws nothing for it (O-22).
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 5950
+Pixels SHA-256: cc86bcd0d482655344fe0f79f6a9c4f73b934294d0ad6b5036f89804b969ab1b
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

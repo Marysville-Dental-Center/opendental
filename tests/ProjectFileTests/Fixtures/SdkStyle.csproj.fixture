@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Fixture for tests\ProjectFileTests: the SDK-style form of Classic.csproj.fixture, as stage 1 converts the projects (the default globs
+       compile the folder; explicit items only where they carry metadata, in the short attribute form and the element form), copied to
+       tests\SdkStyle\SdkStyle.csproj of a scratch folder, next to files the default globs must leave out (bin, obj, hidden folders, a nested
+       project's folder, a removed folder). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>SdkStyleFixture</AssemblyName>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Nested.Tests\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <DefineConstants>TRACE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Removed\**" />
+    <Compile Include="..\..\Shared\SharedAssemblyInfo.cs" Link="Properties\SharedAssemblyInfo.cs" />
+    <Compile Update="Forms\FormMain.cs" SubType="Form" />
+    <EmbeddedResource Update="Forms\FormMain.resx">
+      <DependentUpon>FormMain.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Branding\logo.png" LogicalName="Fixture.Branding.logo.png" />
+    <Resource Include="Resources\Icon.png" />
+    <Resource Include="Frms\Dictionary.xaml" />
+    <None Include="Frms\NotAPage.xaml" />
+    <None Update="Data\Seed.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="MySqlConnector" HintPath="..\..\Required dlls\MySqlConnector.dll" />
+    <Reference Include="Windows">
+      <HintPath>..\..\winmd\Windows.winmd</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <ProjectReference Include="..\Classic\Classic.csproj" />
+  </ItemGroup>
+</Project>

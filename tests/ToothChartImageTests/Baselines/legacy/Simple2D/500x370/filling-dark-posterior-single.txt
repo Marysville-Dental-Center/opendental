@@ -1,0 +1,17 @@
+Scene: filling-dark-posterior-single
+Group: paint
+Description: Dark TP fillings, one surface per tooth: 2 M, 3 O, 4 D, 5 B, 12 L, 13 V, 14 M, 15 D, 18 O, 19 B, 20 L, 21 V, 28 M, 29 D, 30 O, 31 L.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14797
+Pixels SHA-256: db1a6eef48df20bc52fc943929a532fa5ae94d2ee7a30902a32ebb8a03564695
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

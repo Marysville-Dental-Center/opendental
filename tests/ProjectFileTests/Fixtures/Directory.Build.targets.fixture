@@ -1,0 +1,12 @@
+<Project>
+  <!-- Fixture for tests\ProjectFileTests: copied to the root of a scratch folder as Directory.Build.targets. Like the repository's own file, a
+       target (whose items exist only while building) and a property group whose condition calls a string method on a property and Exists. -->
+  <Target Name="FixtureTarget" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Compile Include="FromATarget.cs" />
+    </ItemGroup>
+  </Target>
+  <PropertyGroup Condition="'$(AppConfig)' == '' and $(MSBuildProjectName.EndsWith('Style')) and !Exists('$(MSBuildProjectDirectory)\app.config')">
+    <AppConfig>$(MSBuildThisFileDirectory)tests\BindingRedirects.config</AppConfig>
+  </PropertyGroup>
+</Project>

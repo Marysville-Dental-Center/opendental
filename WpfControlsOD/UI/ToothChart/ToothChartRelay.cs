@@ -78,9 +78,10 @@ namespace OpenPmsDental{
 			}
 		}
 
+		///<summary>Sets the wrapper's perio mode to the value given. Turning it on is only allowed in DirectX (the wrapper throws otherwise).</summary>
 		public bool IsPerioMode{
 			set{
-				_toothChartWrapper.PerioMode=true;
+				_toothChartWrapper.PerioMode=value;
 			}
 		}
 

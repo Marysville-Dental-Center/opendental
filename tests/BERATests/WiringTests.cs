@@ -6,6 +6,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace BERATests {
 	[TestClass]
@@ -97,11 +98,9 @@ namespace BERATests {
 
 		[TestMethod]
 		public void NewFiles_AreCompiled() {
-			string csproj=Read("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj");
-			StringAssert.Contains(csproj,@"<Compile Include=""Data Interface\DisplayFields.Era.cs"" />");
-			StringAssert.Contains(csproj,@"<Compile Include=""X12\EraAutoSplit.cs"" />");
-			StringAssert.Contains(csproj,@"<Compile Include=""X12\EraCarcRules.cs"" />");
-			StringAssert.Contains(csproj,@"<Compile Include=""X12\EraClaimMismatch.cs"" />");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile.Load(TestDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj")))
+				.AssertCompiles(@"Data Interface\DisplayFields.Era.cs",@"X12\EraAutoSplit.cs",@"X12\EraCarcRules.cs",@"X12\EraClaimMismatch.cs");
 		}
 	}
 }

@@ -1,0 +1,18 @@
+Scene: x-on-implant-tooth
+Group: known-difference
+Description: TP X and TP implant on present tooth 19, and on missing tooth 14: DirectX draws the implant after the X with depth testing on (plan 5.1).
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 1894
+Pixels SHA-256: 1b7a368a03857394f4904873ee4e9a6a64fc7a950c27e53794d3d916b8824cc6
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

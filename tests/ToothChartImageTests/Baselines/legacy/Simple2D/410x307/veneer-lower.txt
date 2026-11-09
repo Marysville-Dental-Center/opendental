@@ -1,0 +1,17 @@
+Scene: veneer-lower
+Group: paint
+Description: Veneers on the lower anteriors 22-27, TP.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 6035
+Pixels SHA-256: e2b4e82458ba8c1546fb747b31282ee66af2ef1746b86fb24ecd53891ef0a1f9
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

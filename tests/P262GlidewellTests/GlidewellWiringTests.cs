@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace P262GlidewellTests {
 	[TestClass]
@@ -59,18 +60,20 @@ namespace P262GlidewellTests {
 
 		[TestMethod]
 		public void PackageFiles_AreInTheProjects() {
-			string csprojBusiness=Read(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj");
-			StringAssert.Contains(csprojBusiness,@"<Compile Include=""VendorDirect\**\*.cs"" />","The Glidewell folder is compiled through the wildcard.");
+			//The evaluated items, so the checks hold for the classic project files and the SDK-style ones of the .NET 10 move alike.
+			ProjectFile projectFileBusiness=ProjectFile.Load(Path.Combine(GetRepositoryRoot(),@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj"));
+			//The Glidewell folder is compiled whole (through the VendorDirect wildcard of the classic file, the default glob of an SDK-style one).
+			List<string> listNotCompiled=projectFileBusiness.GetFilesNotCompiled(@"VendorDirect\Glidewell");
+			Assert.AreEqual(0,listNotCompiled.Count,"Not compiled: "+string.Join(", ",listNotCompiled));
 			foreach(string name in new[] { "GlidewellAccts","GlidewellMsgs","LabCaseProducts" }) {
-				StringAssert.Contains(csprojBusiness,@"<Compile Include=""Data Interface\"+name+@".cs"" />");
+				projectFileBusiness.AssertCompiles(@"Data Interface\"+name+".cs");
 			}
-			string csproj=Read(@"OpenPmsDental\OpenPmsDental.csproj");
+			ProjectFile projectFile=ProjectFile.Load(Path.Combine(GetRepositoryRoot(),@"OpenPmsDental\OpenPmsDental.csproj"));
 			foreach(string form in new[] { "FormGlidewellSetup","FormGlidewellAcctEdit","FormLabCaseProductEdit" }) {
-				StringAssert.Contains(csproj,@"<Compile Include=""Forms\"+form+@".cs"">");
-				StringAssert.Contains(csproj,@"<Compile Include=""Forms\"+form+@".Designer.cs"">");
-				StringAssert.Contains(csproj,@"<EmbeddedResource Include=""Forms\"+form+@".resx"">");
+				projectFile.AssertCompiles(@"Forms\"+form+".cs",@"Forms\"+form+".Designer.cs");
+				projectFile.AssertEmbeds(@"Forms\"+form+".resx");
 			}
-			StringAssert.Contains(csproj,@"<Compile Include=""Forms\FormLabCaseEdit.Glidewell.cs"">");
+			projectFile.AssertCompiles(@"Forms\FormLabCaseEdit.Glidewell.cs");
 			foreach(string file in _arrayPackageFiles) {
 				Assert.IsTrue(File.Exists(Path.Combine(GetRepositoryRoot(),file)),file);
 			}

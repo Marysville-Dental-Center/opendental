@@ -1,0 +1,17 @@
+Scene: sealant-primary
+Group: paint
+Description: Primary dentition with C sealants on the primary molars A, B, I, J, K, L, S and T.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 6033
+Pixels SHA-256: 9e265bacbd3d1b9906990b4bdb163c9c632e9da0ec339af745d6d0e30f05aae3
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

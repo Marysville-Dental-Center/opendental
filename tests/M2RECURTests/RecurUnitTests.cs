@@ -11,6 +11,7 @@ using System.Xml.Linq;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace M2RECURTests {
 	[TestClass]
@@ -332,9 +333,9 @@ namespace M2RECURTests {
 			StringAssert.Contains(formUpdate,"RepeatChargeBackdating.IsAllowed()");
 			string formTemplate=ReadRepoFile(Path.Combine("OpenPmsDental","Forms","FormRecurringChargeFailEmailTemplate.cs"));
 			StringAssert.Contains(formTemplate,"RecurringChargeFailEmails.ListTags");
-			string csproj=ReadRepoFile(Path.Combine("OpenPmsDental","OpenPmsDental.csproj"));
-			StringAssert.Contains(csproj,"Forms\\FormRecurringChargeFailEmailTemplate.cs");
-			StringAssert.Contains(csproj,"Forms\\FormRecurringChargeFailEmailTemplate.Designer.cs");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile.Load(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","OpenPmsDental.csproj")))
+				.AssertCompiles(@"Forms\FormRecurringChargeFailEmailTemplate.cs",@"Forms\FormRecurringChargeFailEmailTemplate.Designer.cs");
 		}
 
 		[TestMethod]
