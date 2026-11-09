@@ -85,7 +85,11 @@ namespace ProjectFileTests {
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
 				Assert.AreEqual(@"bin\Debug\",fixtureFolder.Load("Classic").GetProperty("OutputPath"));
 				Assert.AreEqual(@"bin\Release\",ProjectFile.Load(fixtureFolder.ProjectPath("Classic"),"Release","x86").GetProperty("OutputPath"));
-				Assert.AreEqual("",ProjectFile.Load(fixtureFolder.ProjectPath("Classic"),"Debug","x64").GetProperty("OutputPath"),"No Debug|x64 group.");
+				ProjectFile projectFileX64=ProjectFile.Load(fixtureFolder.ProjectPath("Classic"),"Debug","x64");
+				Assert.AreEqual("",projectFileX64.GetProperty("DefineConstants"),"No Debug|x64 group.");
+				//Microsoft.Common.CurrentVersion.targets' default for a configuration without an OutputPath, as MSBuild evaluates it (a build then
+				//stops in _CheckForInvalidConfigurationAndPlatform).
+				Assert.AreEqual(@"bin\x64\Debug\",projectFileX64.GetProperty("OutputPath"));
 				Assert.AreEqual("Debug",fixtureFolder.Load("Classic").GetProperty("Configuration"));
 			}
 		}
