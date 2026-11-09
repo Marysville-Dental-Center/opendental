@@ -657,6 +657,22 @@ namespace SparksToothChart {
 			}
 		}
 
+		///<summary>Wpf3D: a wrapper that comes on screen with data set while it was hidden posts its rebuild now, so it does not wait for the next
+		///Invalidate to show the chart.</summary>
+		protected override void OnVisibleChanged(EventArgs e) {
+			base.OnVisibleChanged(e);
+			if(_engine==ToothChartEngine.Wpf3D && _isWpfSceneDirty) {
+				MarkWpfSceneDirty();
+			}
+		}
+
+		protected override void OnHandleCreated(EventArgs e) {
+			base.OnHandleCreated(e);
+			if(_engine==ToothChartEngine.Wpf3D && _isWpfSceneDirty) {
+				MarkWpfSceneDirty();
+			}
+		}
+
 		///<summary>True when the wrapper is on screen: it has a handle and it and its parents are visible.</summary>
 		private bool IsShownForWpf() {
 			return !IsDisposed && !Disposing && IsHandleCreated && Visible;

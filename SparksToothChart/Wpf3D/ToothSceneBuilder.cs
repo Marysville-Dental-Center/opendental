@@ -95,12 +95,12 @@ namespace SparksToothChart.Wpf3D {
 				AddSilhouette(building,toothGraphic,toothGraphic.Groups.IndexOf(groupBU),world,groupBU.PaintColor,"build-up of "+toothId);
 			}
 			if(toothGraphic.IsImplant) {
-				AddImplant(building,toothGraphic,world);
+				AddImplant(building,toothGraphic,world,"implant of "+toothId);
 			}
 		}
 
 		///<summary>DirectX's DrawImplant: the implant model in the implant colour with the normal specular value, upside down for a maxillary tooth.</summary>
-		private static void AddImplant(SceneBuilding building,ToothGraphic toothGraphic,ChartMatrix world) {
+		private static void AddImplant(SceneBuilding building,ToothGraphic toothGraphic,ChartMatrix world,string source) {
 			ToothChartData tcData=building.TcData;
 			if(ToothGraphic.IsMaxillary(toothGraphic.ToothID)) {
 				//flip the implant upside down
@@ -115,8 +115,7 @@ namespace SparksToothChart.Wpf3D {
 				if(!group.Visible || group.GroupType==ToothGroupType.Buildup || group.Faces.Count==0) {
 					continue;
 				}
-				building.ListItems3D.Add(new ToothSceneItem3D("implant",g,group.GroupType,toothGraphic.colorImplant,SpecularNormal,world,
-					"implant of "+toothGraphic.ToothID));
+				building.ListItems3D.Add(new ToothSceneItem3D("implant",g,group.GroupType,toothGraphic.colorImplant,SpecularNormal,world,source));
 			}
 		}
 
@@ -331,7 +330,7 @@ namespace SparksToothChart.Wpf3D {
 					AddTooth(building,toothGraphic,world,toothGraphic.ToothID+" "+rowName);
 				}
 				if(toothGraphic.IsImplant) {
-					AddImplant(building,toothGraphic,world);
+					AddImplant(building,toothGraphic,world,"implant of "+toothGraphic.ToothID+" "+rowName);
 				}
 			}
 		}

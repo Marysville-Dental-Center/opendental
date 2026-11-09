@@ -88,6 +88,12 @@ namespace SparksToothChart.Wpf3D {
 		///<summary>Milliseconds on the render thread: the whole job, and the 3D layer's part (0 when reused).</summary>
 		public double MillisecondsRender;
 		public double Milliseconds3D;
+		///<summary>The parts of the 3D layer's time: building the frozen models, rasterizing at the supersampling factor, and the Fant reduction with
+		///its copy. And the composite's time: drawing the 2D layer over the 3D layer image, rasterizing it and copying the pixels out.</summary>
+		public double Milliseconds3DModel;
+		public double Milliseconds3DRasterize;
+		public double Milliseconds3DReduce;
+		public double MillisecondsComposite;
 		///<summary>The managed thread ID of the render thread, for the thread tests.</summary>
 		public int ThreadIdRender;
 
@@ -136,6 +142,9 @@ namespace SparksToothChart.Wpf3D {
 		///<summary>The 3D layer's supersampling factor and pixel cap.</summary>
 		public const int Supersampling=3;
 		public const int MaxPixels3D=8000000;
+		///<summary>0: the chart's factor (Supersampling). Set only by the render-time measurement (TC-1, O-19), which also times the factors 2 and 1
+		///so the owner's choice can weigh them; never set by the program.</summary>
+		public static int SupersamplingForMeasurement=0;
 		///<summary>How many chart sizes keep their render targets.</summary>
 		public const int MaxSizesKept=3;
 		private static readonly object _lockInstance=new object();
@@ -220,7 +229,7 @@ namespace SparksToothChart.Wpf3D {
 					RunAndWait(() => {
 						ToothScene sceneCheck=new ToothScene(new System.Drawing.Size(1,1),System.Drawing.Color.Black,false,1,1,new List<ToothSceneItem3D>(),
 							new List<ToothSceneItem2D>());
-						Render3DLayer(sceneCheck);
+						Render3DLayer(sceneCheck,null);
 						_listRenderTargets.Clear();//the check's 1x1 targets take no place of a chart size
 						return true;
 					});
@@ -430,17 +439,13 @@ namespace SparksToothChart.Wpf3D {
 			}
 			else {
 				Stopwatch stopwatch3D=Stopwatch.StartNew();
-				int factor;
-				DpiScale dpiScale3D;
-				image3D=Render3DLayer(scene,out factor,out dpiScale3D);
-				result.Factor3D=factor;
-				result.RootDpiScaleX3D=dpiScale3D.DpiScaleX;
-				result.RootDpiScaleY3D=dpiScale3D.DpiScaleY;
+				image3D=Render3DLayer(scene,result);
 				result.Milliseconds3D=stopwatch3D.Elapsed.TotalMilliseconds;
 				if(layerCache!=null) {
 					layerCache.Store(scene,image3D);
 				}
 			}
+			Stopwatch stopwatchComposite=Stopwatch.StartNew();
 			RenderTargetBitmap renderTargetBitmap=GetRenderTargets(scene.Size).GetComposite();
 			renderTargetBitmap.Clear();
 			ChartDrawingVisual chartDrawingVisual=new ChartDrawingVisual();
@@ -459,22 +464,18 @@ namespace SparksToothChart.Wpf3D {
 				arrayPixels[i]=255;//The background is opaque, so this changes nothing but makes "every alpha 255" a guarantee.
 			}
 			result.PixelsBgra=arrayPixels;
+			result.MillisecondsComposite=stopwatchComposite.Elapsed.TotalMilliseconds;
 			result.MillisecondsRender=stopwatch.Elapsed.TotalMilliseconds;
 			return result;
 		}
 
-		private BitmapSource Render3DLayer(ToothScene scene) {
-			int factor;
-			DpiScale dpiScale;
-			return Render3DLayer(scene,out factor,out dpiScale);
-		}
-
 		///<summary>The 3D layer at the exact pixel size: the background and the lit teeth, rendered at the supersampling factor and reduced with
-		///WIC's Fant scaler, frozen.</summary>
-		private BitmapSource Render3DLayer(ToothScene scene,out int factor,out DpiScale dpiScale) {
+		///WIC's Fant scaler, frozen. result, when given, gets the factor, the root's DPI scale and the times of the parts.</summary>
+		private BitmapSource Render3DLayer(ToothScene scene,ToothChartRenderResult result) {
 			int width=scene.Size.Width;
 			int height=scene.Size.Height;
-			factor=GetSupersamplingFactor(scene.Size);
+			int factor=GetSupersamplingFactor(scene.Size);
+			Stopwatch stopwatch=Stopwatch.StartNew();
 			EnsureVisualTree3D();
 			using(DrawingContext drawingContext=_drawingVisualBackground.RenderOpen()) {
 				SolidColorBrush brushBackground=new SolidColorBrush(Color.FromRgb(scene.ColorBackground.R,scene.ColorBackground.G,scene.ColorBackground.B));
@@ -485,11 +486,15 @@ namespace SparksToothChart.Wpf3D {
 			_viewport3DVisual.Camera=CreateCamera(scene);
 			_modelVisual3D.Content=BuildModel(scene);
 			VisualTreeHelper.SetRootDpi(_containerVisual3D,new DpiScale(1,1));
+			double millisecondsModel=stopwatch.Elapsed.TotalMilliseconds;
+			stopwatch.Restart();
 			RenderTargetBitmap renderTargetBitmap=GetRenderTargets(scene.Size).GetLayer3D(factor);
 			renderTargetBitmap.Clear();
 			renderTargetBitmap.Render(_containerVisual3D);
-			dpiScale=VisualTreeHelper.GetDpi(_containerVisual3D);
+			DpiScale dpiScale=VisualTreeHelper.GetDpi(_containerVisual3D);
 			_modelVisual3D.Content=null;//the frozen models are not kept past the render
+			double millisecondsRasterize=stopwatch.Elapsed.TotalMilliseconds;
+			stopwatch.Restart();
 			BitmapSource bitmapSource=renderTargetBitmap;
 			if(factor>1) {
 				bitmapSource=new TransformedBitmap(renderTargetBitmap,new ScaleTransform(1.0/factor,1.0/factor));
@@ -501,6 +506,14 @@ namespace SparksToothChart.Wpf3D {
 			bitmapSource.CopyPixels(new Int32Rect(0,0,width,height),arrayPixels,width*4,0);
 			BitmapSource image3D=BitmapSource.Create(width,height,96,96,PixelFormats.Pbgra32,null,arrayPixels,width*4);
 			image3D.Freeze();
+			if(result!=null) {
+				result.Factor3D=factor;
+				result.RootDpiScaleX3D=dpiScale.DpiScaleX;
+				result.RootDpiScaleY3D=dpiScale.DpiScaleY;
+				result.Milliseconds3DModel=millisecondsModel;
+				result.Milliseconds3DRasterize=millisecondsRasterize;
+				result.Milliseconds3DReduce=stopwatch.Elapsed.TotalMilliseconds;
+			}
 			return image3D;
 		}
 
@@ -508,6 +521,9 @@ namespace SparksToothChart.Wpf3D {
 		public static int GetSupersamplingFactor(System.Drawing.Size size) {
 			long pixels=(long)size.Width*size.Height;
 			int factor=Supersampling;
+			if(SupersamplingForMeasurement>0) {
+				factor=SupersamplingForMeasurement;
+			}
 			while(factor>1 && pixels*factor*factor>MaxPixels3D) {
 				factor--;
 			}
