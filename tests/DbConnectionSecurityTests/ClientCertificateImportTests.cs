@@ -212,6 +212,170 @@ namespace DbConnectionSecurityTests {
 			}
 		}
 
+		///<summary>A .pfx whose certificate the store already holds with a usable key, as when setup runs again with the same file: the import
+		///does not add it again (DirectCertificateImport leaves such a certificate "as it is"), since the store's add would give the entry the
+		///key the import just stored and leave the key it had with no certificate naming it. The test adds the certificate from the .pfx it keeps
+		///on disk (AddCertificate), then imports the same file: the first key still exists and is still the entry's key, the key the import
+		///stored is deleted again (it no longer opens, its file is gone), the certificate signs, and there is no warning. (2) The same import
+		///when the key it stored cannot be deleted again (a seam makes its delete fail): the warning names that key and its file, which is still
+		///there, and the entry still keeps its own key. For each kind of key.</summary>
+		[TestMethod]
+		public void ImportPfx_OfACertificateTheStoreHasWithAUsableKey_KeepsItsEntryAndKey_AndDeletesTheKeyItStored() {
+			foreach(TestKeyKind testKeyKind in _arrayKinds) {
+				string label=testKeyKind.ToString();
+				using(ClientCertificateTestStore clientCertificateTestStore=new ClientCertificateTestStore()) {
+					string pathPfx=clientCertificateTestStore.WritePfx(_folder,testKeyKind,out string thumbprintClient);
+					TestKey testKeyFirst=clientCertificateTestStore.AddCertificate(pathPfx);
+					Assert.AreEqual(thumbprintClient,testKeyFirst.Thumbprint,label+": the test's premise, the store has the file's certificate.");
+					Assert.IsTrue(clientCertificateTestStore.CanSign(thumbprintClient),label+": the test's premise, with a usable key.");
+					Dictionary<string,TestKey> dictKeys=null;
+					ClientCertificateStore.ActionAfterKeysStoredForTests=x509Certificate2Collection => {
+						dictKeys=clientCertificateTestStore.TrackKeys(x509Certificate2Collection);
+					};
+					bool isAdded=false;
+					ClientCertificateStore.ActionBeforeStoreAddForTests=x509Certificate2 => {
+						isAdded=true;
+					};
+					string thumbprint=ClientCertificateStore.ImportPfx(pathPfx,clientCertificateTestStore.Password,StoreLocation.CurrentUser,
+						clientCertificateTestStore.Name,out string warning);
+					Assert.AreEqual(thumbprintClient,thumbprint,label+": the client certificate is the one the settings use.");
+					Assert.AreEqual("",warning,label);
+					Assert.IsNotNull(dictKeys,label);
+					CollectionAssert.AreEqual(new List<string> { thumbprintClient },new List<string>(dictKeys.Keys),label+": the import stored one key.");
+					TestKey testKeyImport=dictKeys[thumbprintClient];
+					Assert.AreEqual(testKeyKind==TestKeyKind.CapiRsa,testKeyImport.IsCapi,label+": the key is of the kind the test made.");
+					Assert.IsFalse(testKeyImport.IsMachine,label+": a key of the current user, never the machine's.");
+					Assert.AreNotEqual(testKeyFirst.FilePath,testKeyImport.FilePath,label+": the import stored a key of its own.");
+					AssertEntryKeepsItsKey(clientCertificateTestStore,thumbprintClient,testKeyFirst,label);
+					Assert.IsFalse(testKeyImport.Exists(),label+": the key the import stored is deleted again.");
+					Assert.IsFalse(File.Exists(testKeyImport.FilePath),label+": its file is gone: "+testKeyImport.FilePath);
+					Assert.IsFalse(isAdded,label+": the certificate the store holds is not added again.");
+					//(2) The key the import stored cannot be deleted again: the warning names it, and the entry is still as it was.
+					dictKeys=null;
+					ClientCertificateStore.ActionBeforeKeyDeleteForTests=x509Certificate2 => {
+						throw new CryptographicException(KEY_STORE_REFUSES);
+					};
+					thumbprint=ClientCertificateStore.ImportPfx(pathPfx,clientCertificateTestStore.Password,StoreLocation.CurrentUser,
+						clientCertificateTestStore.Name,out warning);
+					ClientCertificateStore.ActionBeforeKeyDeleteForTests=null;
+					ClientCertificateStore.ActionAfterKeysStoredForTests=null;
+					ClientCertificateStore.ActionBeforeStoreAddForTests=null;
+					Assert.AreEqual(thumbprintClient,thumbprint,label+" (2)");
+					Assert.IsFalse(isAdded,label+" (2): not added again.");
+					Assert.IsNotNull(dictKeys,label+" (2)");
+					testKeyImport=dictKeys[thumbprintClient];
+					Assert.AreEqual("The client certificate was already in the computer's certificate store with a usable private key and stays as it "
+						+"is, but a private key of the file, which the tool stored and does not use, could not be deleted ("+testKeyImport.Subject+", "
+						+thumbprintClient+"): "+KEY_STORE_REFUSES+" The key is left on this computer in "+testKeyImport.FilePath+": delete that file as "
+						+"an administrator.",warning,label+" (2)");
+					Assert.IsTrue(testKeyImport.Exists(),label+" (2): the key the import stored is left, as the warning says (the store's clean-up "
+						+"deletes it).");
+					Assert.IsTrue(File.Exists(testKeyImport.FilePath),label+" (2): in the file the warning names.");
+					AssertEntryKeepsItsKey(clientCertificateTestStore,thumbprintClient,testKeyFirst,label+" (2)");
+				}
+			}
+		}
+
+		///<summary>A .pfx whose certificate the store holds without a usable key (the test deletes the entry's key, as a key that was deleted, or
+		///one that does not open, would be): (1) the import adds the certificate, as DirectCertificateImport imports such a certificate again,
+		///and the entry takes the key the import stored, which stays and signs; no warning. The test adds the certificate from one file and
+		///imports another file of the same certificate and key (WritePfxTwice), so that the import's key gets a container of its own for every
+		///kind of key. (2) The entry's key deleted again and the same file imported again: whichever way Windows names the key the import stores
+		///(a CAPI key lands in the container the file records, the very one the entry names, which makes the entry usable as it is, so it is
+		///not added; a CNG key gets a new name, and the entry takes it), the entry uses that key, which is never deleted as unused, and signs.
+		///For each kind of key.</summary>
+		[TestMethod]
+		public void ImportPfx_OfACertificateTheStoreHasWithoutAUsableKey_GivesItTheKeyTheImportStored() {
+			foreach(TestKeyKind testKeyKind in _arrayKinds) {
+				string label=testKeyKind.ToString();
+				using(ClientCertificateTestStore clientCertificateTestStore=new ClientCertificateTestStore()) {
+					string pathPfxEntry=clientCertificateTestStore.WritePfxTwice(_folder,testKeyKind,out string thumbprintClient,out string pathPfx);
+					TestKey testKeyFirst=clientCertificateTestStore.AddCertificate(pathPfxEntry);
+					Assert.AreEqual(thumbprintClient,testKeyFirst.Thumbprint,label+": the test's premise, the store has the file's certificate.");
+					DeleteEntryKey(clientCertificateTestStore,thumbprintClient,testKeyFirst,label);
+					Dictionary<string,TestKey> dictKeys=null;
+					ClientCertificateStore.ActionAfterKeysStoredForTests=x509Certificate2Collection => {
+						dictKeys=clientCertificateTestStore.TrackKeys(x509Certificate2Collection);
+					};
+					bool isAdded=false;
+					ClientCertificateStore.ActionBeforeStoreAddForTests=x509Certificate2 => {
+						isAdded=true;
+					};
+					string thumbprint=ClientCertificateStore.ImportPfx(pathPfx,clientCertificateTestStore.Password,StoreLocation.CurrentUser,
+						clientCertificateTestStore.Name,out string warning);
+					Assert.AreEqual(thumbprintClient,thumbprint,label);
+					Assert.AreEqual("",warning,label);
+					Assert.IsNotNull(dictKeys,label);
+					TestKey testKeyImport=dictKeys[thumbprintClient];
+					Assert.AreNotEqual(testKeyFirst.FilePath,testKeyImport.FilePath,label+": the test's premise, the import's key has a container of "
+						+"its own.");
+					Assert.IsTrue(isAdded,label+": the certificate is added again.");
+					AssertEntryUsesKey(clientCertificateTestStore,thumbprintClient,testKeyImport,label);
+					//(2) The entry's key deleted again, and the same file imported again.
+					DeleteEntryKey(clientCertificateTestStore,thumbprintClient,testKeyImport,label+" (2)");
+					dictKeys=null;
+					isAdded=false;
+					thumbprint=ClientCertificateStore.ImportPfx(pathPfx,clientCertificateTestStore.Password,StoreLocation.CurrentUser,
+						clientCertificateTestStore.Name,out warning);
+					ClientCertificateStore.ActionAfterKeysStoredForTests=null;
+					ClientCertificateStore.ActionBeforeStoreAddForTests=null;
+					Assert.AreEqual(thumbprintClient,thumbprint,label+" (2)");
+					Assert.AreEqual("",warning,label+" (2)");
+					Assert.IsNotNull(dictKeys,label+" (2)");
+					TestKey testKeyImportAgain=dictKeys[thumbprintClient];
+					bool isSameContainer=testKeyImportAgain.FilePath==testKeyImport.FilePath;
+					Assert.AreEqual(!isSameContainer,isAdded,label+" (2): added only when the import's key is not in the container the entry names "
+						+"(same container: "+isSameContainer+").");
+					AssertEntryUsesKey(clientCertificateTestStore,thumbprintClient,testKeyImportAgain,label+" (2)");
+				}
+			}
+		}
+
+		///<summary>Deletes the key of the store's entry for the certificate (the test's premise of an entry without a usable key): the key is
+		///gone, the entry still names it (HasPrivateKey), and ClientCertificateStore.IsKeyUsable says it cannot be used.</summary>
+		private static void DeleteEntryKey(ClientCertificateTestStore clientCertificateTestStore,string thumbprintClient,TestKey testKey,string label) {
+			using(X509Certificate2 x509Certificate2Entry=clientCertificateTestStore.Find(thumbprintClient)) {
+				Assert.AreEqual(testKey.FilePath,ClientCertificateStore.GetPrivateKeyFilePath(x509Certificate2Entry),label+": the test's premise, "
+					+"the entry names that key.");
+			}
+			testKey.DeleteIfExists();
+			Assert.IsFalse(testKey.Exists(),label+": the test's premise, the entry's key is gone.");
+			using(X509Certificate2 x509Certificate2Entry=clientCertificateTestStore.Find(thumbprintClient)) {
+				Assert.IsTrue(x509Certificate2Entry.HasPrivateKey,label+": the test's premise, the entry still says it has a key.");
+				Assert.IsFalse(ClientCertificateStore.IsKeyUsable(x509Certificate2Entry),label+": the test's premise, which cannot be used.");
+			}
+		}
+
+		///<summary>The store's entry for the certificate is the only one and uses the key the import stored, which exists, with its file, and the
+		///certificate signs with it.</summary>
+		private static void AssertEntryUsesKey(ClientCertificateTestStore clientCertificateTestStore,string thumbprintClient,TestKey testKeyImport,
+			string label)
+		{
+			CollectionAssert.AreEqual(new List<string> { thumbprintClient },clientCertificateTestStore.GetThumbprints(),label+": one entry.");
+			Assert.IsTrue(testKeyImport.Exists(),label+": the key the import stored stays.");
+			Assert.IsTrue(File.Exists(testKeyImport.FilePath),label+": and its file: "+testKeyImport.FilePath);
+			using(X509Certificate2 x509Certificate2Entry=clientCertificateTestStore.Find(thumbprintClient)) {
+				Assert.AreEqual(testKeyImport.FilePath,ClientCertificateStore.GetPrivateKeyFilePath(x509Certificate2Entry),
+					label+": the entry uses the key the import stored.");
+			}
+			Assert.IsTrue(clientCertificateTestStore.CanSign(thumbprintClient),label+": and signs with it.");
+		}
+
+		///<summary>The store's entry for the certificate is the only one and still uses the key the test stored first (by the key's file, as the
+		///code under test and the test each name it), which still exists, and the certificate signs with it.</summary>
+		private static void AssertEntryKeepsItsKey(ClientCertificateTestStore clientCertificateTestStore,string thumbprintClient,TestKey testKeyFirst,
+			string label)
+		{
+			CollectionAssert.AreEqual(new List<string> { thumbprintClient },clientCertificateTestStore.GetThumbprints(),label+": one entry.");
+			Assert.IsTrue(testKeyFirst.Exists(),label+": the key the entry had stays.");
+			Assert.IsTrue(File.Exists(testKeyFirst.FilePath),label+": and its file: "+testKeyFirst.FilePath);
+			using(X509Certificate2 x509Certificate2Entry=clientCertificateTestStore.Find(thumbprintClient)) {
+				Assert.AreEqual(testKeyFirst.FilePath,ClientCertificateStore.GetPrivateKeyFilePath(x509Certificate2Entry),
+					label+": the entry still uses the key it had.");
+			}
+			Assert.IsTrue(clientCertificateTestStore.CanSign(thumbprintClient),label+": the certificate signs with it.");
+		}
+
 		///<summary>ImportPfx into the test store, which must throw DbSettingsException.</summary>
 		private static DbSettingsException AssertImportThrows(string pathPfx,string password,ClientCertificateTestStore clientCertificateTestStore) {
 			return TestHelpers.AssertThrows<DbSettingsException>(() => ClientCertificateStore.ImportPfx(pathPfx,password,StoreLocation.CurrentUser,

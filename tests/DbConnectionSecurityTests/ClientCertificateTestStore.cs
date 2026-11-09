@@ -55,7 +55,13 @@ namespace DbConnectionSecurityTests {
 		///connection settings tool does (PersistKeySet, never Exportable), but into the current user's key set (UserKeySet) and this store.
 		///Returns where its key is.</summary>
 		public TestKey AddCertificate(TestKeyKind testKeyKind) {
-			return AddPfx(MakePfx(testKeyKind));
+			return AddPfx(MakePfx(testKeyKind,out string thumbprint));
+		}
+
+		///<summary>AddCertificate for a .pfx file this store wrote (WritePfx), imported the same way: the store's certificate gets a key of its
+		///own, apart from any key that an import of the same file under test stores.</summary>
+		public TestKey AddCertificate(string pathPfx) {
+			return AddPfx(File.ReadAllBytes(pathPfx));
 		}
 
 		///<summary>AddCertificate for a certificate the test made in memory with its key (TestHelpers.NewCertificate): written as a .pfx in memory
@@ -102,6 +108,51 @@ namespace DbConnectionSecurityTests {
 				}
 				return x509Certificate2.Thumbprint;
 			}
+		}
+
+		///<summary>Writes into the folder a .pfx with a self-signed client certificate and a throwaway key of this kind, made as AddCertificate
+		///makes one; nothing is stored until the file is imported (AddCertificate(string), or the import under test), each import into a key
+		///container of its own. Returns the path.</summary>
+		public string WritePfx(string folder,TestKeyKind testKeyKind,out string thumbprint) {
+			string path=Path.Combine(folder,"client-"+testKeyKind+".pfx");
+			File.WriteAllBytes(path,MakePfx(testKeyKind,out thumbprint));
+			return path;
+		}
+
+		///<summary>WritePfx twice for one certificate and one key: the files differ in the key container name they record for a CAPI key. A .pfx
+		///written from a CAPI key records the name of its container, and Windows' import names the container it stores the key in after it
+		///when no container has that name (measured on Windows 11: an import after the first one's key was deleted lands in the same container
+		///again), so the second file's key comes from a scratch container of its own, which holds the same key. A CNG key is ephemeral and
+		///records no name: both files are written from it. Returns the first file's path.</summary>
+		public string WritePfxTwice(string folder,TestKeyKind testKeyKind,out string thumbprint,out string pathSecond) {
+			string subject="CN=synthetic-dbsec-key-"+Guid.NewGuid().ToString("N");
+			string pathFirst=Path.Combine(folder,"client-"+testKeyKind+"-1.pfx");
+			pathSecond=Path.Combine(folder,"client-"+testKeyKind+"-2.pfx");
+			AsymmetricAlgorithm asymmetricAlgorithm=NewScratchKey(testKeyKind);
+			RSACryptoServiceProvider rsaCryptoServiceProviderSecond=null;
+			try {
+				using(X509Certificate2 x509Certificate2=CreateSelfSigned(NewRequest(subject,asymmetricAlgorithm,isCa:false),DateTimeOffset.Now.AddDays(30))) {
+					thumbprint=x509Certificate2.Thumbprint;
+					File.WriteAllBytes(pathFirst,x509Certificate2.Export(X509ContentType.Pfx,_password));
+					if(!(asymmetricAlgorithm is RSACryptoServiceProvider)) {
+						File.WriteAllBytes(pathSecond,x509Certificate2.Export(X509ContentType.Pfx,_password));
+						return pathFirst;
+					}
+					CspParameters cspParameters=new CspParameters(PROV_RSA_AES,PROVIDER_CAPI,"OpenPmsDbSecTest_"+Guid.NewGuid().ToString("N"));
+					rsaCryptoServiceProviderSecond=new RSACryptoServiceProvider(cspParameters);
+					rsaCryptoServiceProviderSecond.ImportCspBlob(((RSACryptoServiceProvider)asymmetricAlgorithm).ExportCspBlob(true));
+					using(X509Certificate2 x509Certificate2Public=new X509Certificate2(x509Certificate2.RawData))
+					using(X509Certificate2 x509Certificate2Second=x509Certificate2Public.CopyWithPrivateKey(rsaCryptoServiceProviderSecond))
+					{
+						File.WriteAllBytes(pathSecond,x509Certificate2Second.Export(X509ContentType.Pfx,_password));
+					}
+				}
+			}
+			finally {
+				DeleteScratchKey(asymmetricAlgorithm);
+				DeleteScratchKey(rsaCryptoServiceProviderSecond);
+			}
+			return pathFirst;
 		}
 
 		///<summary>Writes into the folder a .pfx with a client certificate and the CA certificate that issued it, each with a throwaway key of this
@@ -251,11 +302,12 @@ namespace DbConnectionSecurityTests {
 			}
 		}
 
-		private byte[] MakePfx(TestKeyKind testKeyKind) {
+		private byte[] MakePfx(TestKeyKind testKeyKind,out string thumbprint) {
 			string subject="CN=synthetic-dbsec-key-"+Guid.NewGuid().ToString("N");
 			AsymmetricAlgorithm asymmetricAlgorithm=NewScratchKey(testKeyKind);
 			try {
 				using(X509Certificate2 x509Certificate2=CreateSelfSigned(NewRequest(subject,asymmetricAlgorithm,isCa:false),DateTimeOffset.Now.AddDays(30))) {
+					thumbprint=x509Certificate2.Thumbprint;
 					return x509Certificate2.Export(X509ContentType.Pfx,_password);
 				}
 			}
