@@ -370,7 +370,11 @@ namespace OpenPmsDentalBusiness{
 				mainQuery+
 				insVerifyJoin2+
 				whereClause;
-			return "SELECT * FROM ("+command+") AS iv GROUP BY PatPlanNum,FKey HAVING MAX(DateLastVerified) ORDER BY AptDateTime";
+			//One row per patient plan, verify type and key: a patient plan's eligibility row (FKey=PatPlanNum) and its plan's benefits row (FKey=PlanNum)
+			//share PatPlanNum, and their FKeys are equal whenever the plan's PlanNum equals the PatPlanNum, so without VerifyType the two fell into one group
+			//and one of them was not listed (INSVERIFY). Within a group the row kept is still the first one read: the HAVING only drops a group whose
+			//latest DateLastVerified is a zero date, it does not pick that row.
+			return "SELECT * FROM ("+command+") AS iv GROUP BY PatPlanNum,VerifyType,FKey HAVING MAX(DateLastVerified) ORDER BY AptDateTime";
 		}
 
 		///<summary>Converts a table of insverify objects into a list of InsVerifyGridObject.</summary>
