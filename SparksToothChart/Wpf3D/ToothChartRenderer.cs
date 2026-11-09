@@ -154,6 +154,7 @@ namespace SparksToothChart.Wpf3D {
 		private Dispatcher _dispatcher;
 		private Exception _exceptionStart;
 		private bool _isChecked;
+		private bool _isExitHooked;
 		//Render thread only:
 		private ToothMeshCache _toothMeshCache;
 		private readonly List<RenderTargets> _listRenderTargets=new List<RenderTargets>();
@@ -249,7 +250,14 @@ namespace SparksToothChart.Wpf3D {
 				try {
 					_dispatcher=Dispatcher.CurrentDispatcher;
 					_dispatcher.UnhandledException+=Dispatcher_UnhandledException;
+					//A thread started after a Shutdown makes its own render targets and visual tree: those of the old thread belong to it.
 					_toothMeshCache=new ToothMeshCache();
+					_listRenderTargets.Clear();
+					_dictMaterials.Clear();
+					_containerVisual3D=null;
+					_drawingVisualBackground=null;
+					_viewport3DVisual=null;
+					_modelVisual3D=null;
 				}
 				catch(Exception ex) {
 					exceptionThread=ex;
@@ -270,8 +278,11 @@ namespace SparksToothChart.Wpf3D {
 				throw new InvalidOperationException("The WPF tooth chart's render thread could not start: "+exceptionThread.Message,exceptionThread);
 			}
 			_thread=thread;
-			AppDomain.CurrentDomain.ProcessExit+=AppDomain_Exit;
-			AppDomain.CurrentDomain.DomainUnload+=AppDomain_Exit;
+			if(!_isExitHooked) {
+				_isExitHooked=true;
+				AppDomain.CurrentDomain.ProcessExit+=AppDomain_Exit;
+				AppDomain.CurrentDomain.DomainUnload+=AppDomain_Exit;
+			}
 		}
 
 		///<summary>At process exit or when the test AppDomain unloads: the Dispatcher shuts down on its own thread (posted, so this never blocks on a
