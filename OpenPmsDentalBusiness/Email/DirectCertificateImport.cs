@@ -4,6 +4,7 @@
 // are in docs/port-notes/DIRECT-CERT.md. Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security;
@@ -25,6 +26,31 @@ namespace OpenPmsDentalBusiness {
 		Domain,
 	}
 
+	///<summary>What a certificate's key is for (DirectCertificateImport.GetPurpose). Some Direct providers issue one certificate for both, others
+	///one for signing and one for encryption for the same address. Not stored anywhere.</summary>
+	[Flags]
+	public enum DirectCertificatePurpose {
+		///<summary>Neither: its Extended Key Usage leaves out e-mail protection, or its Key Usage names neither.</summary>
+		None=0,
+		///<summary>Signing: Key Usage digitalSignature or nonRepudiation.</summary>
+		Signing=1,
+		///<summary>Encryption: Key Usage keyEncipherment, or keyAgreement (how an elliptic curve key encrypts).</summary>
+		Encryption=2,
+	}
+
+	///<summary>Why a certificate of the store for the address or its domain stays when the file is imported (DirectCertificateResult.ListDetailsKept).
+	///</summary>
+	public enum DirectCertificateKeptReason {
+		///<summary>Not a kept certificate: one of the file's, or one the import replaces.</summary>
+		None,
+		///<summary>The other kind: a domain certificate when the file's are for the address, or an address certificate when they are for the domain.</summary>
+		OtherKind,
+		///<summary>No certificate of the file of its kind has its purpose: a signing certificate next to the file's encryption certificate.</summary>
+		OtherPurpose,
+		///<summary>A certificate of the file has its purpose, but this one is valid as long as or longer than every such certificate of the file.</summary>
+		ValidAsLongOrLonger,
+	}
+
 	///<summary>What the certificate window shows of one certificate. Holds no key and no password.</summary>
 	public class DirectCertificateDetails {
 		public string Subject="";
@@ -35,10 +61,16 @@ namespace OpenPmsDentalBusiness {
 		public DateTime DateTimeNotBefore;
 		///<summary>Local time, as Windows shows it.</summary>
 		public DateTime DateTimeNotAfter;
+		///<summary>The certificate says it has a private key. Whether the key can be used is IsKeyUsable.</summary>
 		public bool HasPrivateKey;
+		///<summary>The private key opens on this computer and signs or decrypts a test value (DirectCertificateImport.IsKeyUsable); false without a key.</summary>
+		public bool IsKeyUsable;
+		public DirectCertificatePurpose Purpose;
 		public DirectCertificateBinding Binding;
 		///<summary>The address or domain the certificate names; "" for None.</summary>
 		public string BoundName="";
+		///<summary>For a certificate of the store that the import keeps: why. None for every other.</summary>
+		public DirectCertificateKeptReason KeptReason;
 
 		public static DirectCertificateDetails Create(X509Certificate2 x509Certificate2,DirectCertificateBinding binding,string boundName) {
 			DirectCertificateDetails directCertificateDetails=new DirectCertificateDetails();
@@ -49,12 +81,14 @@ namespace OpenPmsDentalBusiness {
 			directCertificateDetails.DateTimeNotBefore=x509Certificate2.NotBefore;
 			directCertificateDetails.DateTimeNotAfter=x509Certificate2.NotAfter;
 			directCertificateDetails.HasPrivateKey=x509Certificate2.HasPrivateKey;
+			directCertificateDetails.IsKeyUsable=DirectCertificateImport.IsKeyUsable(x509Certificate2);
+			directCertificateDetails.Purpose=DirectCertificateImport.GetPurpose(x509Certificate2);
 			directCertificateDetails.Binding=binding;
 			directCertificateDetails.BoundName=(binding==DirectCertificateBinding.None) ? "" : boundName;
 			return directCertificateDetails;
 		}
 
-		///<summary>The certificate in a few lines: subject, issuer, serial number, validity dates, what it names, its private key, thumbprint.</summary>
+		///<summary>The certificate in a few lines: subject, issuer, serial number, validity dates, purpose, what it names, its private key, thumbprint.</summary>
 		public string Describe() {
 			StringBuilder stringBuilder=new StringBuilder();
 			stringBuilder.AppendLine(Lans.g("DirectCertificateImport","Subject")+": "+Subject);
@@ -62,22 +96,34 @@ namespace OpenPmsDentalBusiness {
 			stringBuilder.AppendLine(Lans.g("DirectCertificateImport","Serial number")+": "+SerialNumber);
 			stringBuilder.AppendLine(Lans.g("DirectCertificateImport","Valid from")+" "+DirectCertificateImport.FormatDate(DateTimeNotBefore)+" "
 				+Lans.g("DirectCertificateImport","to")+" "+DirectCertificateImport.FormatDate(DateTimeNotAfter));
+			stringBuilder.AppendLine(Lans.g("DirectCertificateImport","Purpose")+": "+DirectCertificateImport.GetPurposeText(Purpose));
 			if(Binding==DirectCertificateBinding.Address) {
 				stringBuilder.AppendLine(Lans.g("DirectCertificateImport","For the address")+" "+BoundName);
 			}
 			else if(Binding==DirectCertificateBinding.Domain) {
 				stringBuilder.AppendLine(Lans.g("DirectCertificateImport","For every address of the domain")+" "+BoundName);
 			}
-			stringBuilder.AppendLine(Lans.g("DirectCertificateImport","Private key")+": "
-				+(HasPrivateKey ? Lans.g("DirectCertificateImport","yes") : Lans.g("DirectCertificateImport","no")));
+			string key=Lans.g("DirectCertificateImport","no");
+			if(HasPrivateKey) {
+				key=IsKeyUsable ? Lans.g("DirectCertificateImport","yes") : Lans.g("DirectCertificateImport","yes, but it cannot be used on this computer");
+			}
+			stringBuilder.AppendLine(Lans.g("DirectCertificateImport","Private key")+": "+key);
 			stringBuilder.Append(Lans.g("DirectCertificateImport","Thumbprint")+": "+Thumbprint);
 			return stringBuilder.ToString();
 		}
 
-		///<summary>One line: subject, the last day it is valid and the thumbprint.</summary>
+		///<summary>One line: subject, purpose, valid from and to, a missing or unusable key, and the thumbprint.</summary>
 		public string DescribeShort() {
-			return Subject+"; "+Lans.g("DirectCertificateImport","valid to")+" "+DirectCertificateImport.FormatDate(DateTimeNotAfter)
-				+(HasPrivateKey ? "" : "; "+Lans.g("DirectCertificateImport","no private key"))+"; "+Thumbprint;
+			string key="";
+			if(!HasPrivateKey) {
+				key="; "+Lans.g("DirectCertificateImport","no private key");
+			}
+			else if(!IsKeyUsable) {
+				key="; "+Lans.g("DirectCertificateImport","private key not usable on this computer");
+			}
+			return Subject+"; "+DirectCertificateImport.GetPurposeText(Purpose)+"; "+Lans.g("DirectCertificateImport","valid from")+" "
+				+DirectCertificateImport.FormatDate(DateTimeNotBefore)+" "+Lans.g("DirectCertificateImport","to")+" "+DirectCertificateImport.FormatDate(DateTimeNotAfter)
+				+key+"; "+Thumbprint;
 		}
 	}
 
@@ -89,23 +135,16 @@ namespace OpenPmsDentalBusiness {
 		public string Warning="";
 		///<summary>The certificates the file adds (a check) or added (an import) to the store.</summary>
 		public List<DirectCertificateDetails> ListDetails=new List<DirectCertificateDetails>();
-		///<summary>The certificates of the file that the store already holds (with their private keys, for the private store): not added again.</summary>
+		///<summary>The certificates of the file that the store already holds (with a private key that can be used, for the private store): not
+		///added again.</summary>
 		public List<DirectCertificateDetails> ListDetailsInStore=new List<DirectCertificateDetails>();
-		///<summary>The certificates of the private store of the same kind (address or domain) and name that the import replaces (a check) or
-		///replaced (an import), whatever their dates: one may be valid longer than the file's (IsReplacedValidLonger).</summary>
+		///<summary>The certificates of the private store that the import replaces (a check) or replaced (an import): of the same kind (address or
+		///domain) and name as a certificate the file adds, with a purpose of it (signing or encryption), and expiring before it.</summary>
 		public List<DirectCertificateDetails> ListDetailsReplaced=new List<DirectCertificateDetails>();
+		///<summary>The other certificates of the private store for the address or its domain: they stay, each with its KeptReason.</summary>
+		public List<DirectCertificateDetails> ListDetailsKept=new List<DirectCertificateDetails>();
 		///<summary>True once an import has added the certificates to the store.</summary>
 		public bool IsImported;
-
-		///<summary>True when a certificate of the store that the import replaces is valid longer than every certificate of the file: last year's
-		///file picked by mistake, while the store holds the renewed certificate.</summary>
-		public bool IsReplacedValidLonger() {
-			if(ListDetails.Count==0) {
-				return false;
-			}
-			DateTime dateTimeNotAfterFile=ListDetails.Max(x => x.DateTimeNotAfter);
-			return ListDetailsReplaced.Any(x => x.DateTimeNotAfter>dateTimeNotAfterFile);
-		}
 	}
 
 	///<summary>The import of the certificate window (FormEmailCertRegister, the Certificate button of Edit Email Address). The office's Direct
@@ -125,11 +164,26 @@ namespace OpenPmsDentalBusiness {
 		public static readonly string[] ArrayExtensionsAnchor=new string[] { ".cer",".crt",".der",".pem" };
 		private const string PEM_BEGIN="-----BEGIN CERTIFICATE-----";
 		private const string PEM_END="-----END CERTIFICATE-----";
+		///<summary>The Key Usage extension (RFC 5280, 4.2.1.3).</summary>
+		private const string OID_KEY_USAGE="2.5.29.15";
+		///<summary>The Extended Key Usage extension (RFC 5280, 4.2.1.12).</summary>
+		private const string OID_EXTENDED_KEY_USAGE="2.5.29.37";
+		///<summary>The e-mail protection purpose of the Extended Key Usage, which S/MIME and Direct certificates carry.</summary>
+		private const string OID_EMAIL_PROTECTION="1.3.6.1.5.5.7.3.4";
+		///<summary>anyExtendedKeyUsage: every purpose.</summary>
+		private const string OID_ANY_EXTENDED_KEY_USAGE="2.5.29.37.0";
+		///<summary>The tests only: called with the file's certificates right after the import stored their keys (PersistKeySet), before anything
+		///else of the import. Null in the program.</summary>
+		internal static Action<X509Certificate2Collection> ActionAfterKeysStoredForTests;
+		///<summary>The tests only: called with each certificate right before it is added to the store; throwing stops the import there, as a store
+		///that refuses would. Null in the program.</summary>
+		internal static Action<X509Certificate2> ActionBeforeStoreAddForTests;
 
 		#region The address's certificate
 		///<summary>Reads the .pfx or .p12 file with its password, without storing any key (EphemeralKeySet), and checks it for the address
 		///(docs/port-notes/DIRECT-CERT.md): ListDetails are the certificates an import adds, ListDetailsReplaced the ones of the store it replaces
-		///(of the same kind and name, whatever their dates). Error says why the file can't be imported. Never throws.</summary>
+		///(the same kind, name and purpose, expiring before the file's), ListDetailsKept the others of the store for the address or its domain.
+		///Error says why the file can't be imported. Never throws.</summary>
 		public static DirectCertificateResult CheckPrivateFile(string emailAddress,string filePath,string password,DateTime dateTimeUtcNow) {
 			Meth.NoCheckMiddleTierRole();
 			DirectCertificateResult directCertificateResult=new DirectCertificateResult();
@@ -143,10 +197,11 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Checks the file again (CheckPrivateFile) and imports its certificates for the address into the store of private certificates,
-		///their private keys never exportable, then removes the certificates of the store it replaces (ListDetailsReplaced: the address's or the
-		///domain's, whatever their dates). listThumbprintsReplaceAllowed: the certificates the user agreed to replace (the window asks first,
-		///GetReplaceQuestion); when the store holds one to replace that is not in it, nothing is imported and Error says so. In production (the Local Computer store) the computer's users get read access to the new private keys; Warning says so
-		///if that failed. Never throws.</summary>
+		///their private keys never exportable, then removes the certificates of the store it replaces (ListDetailsReplaced). The others of the
+		///store stay (ListDetailsKept, GetKeptText). listThumbprintsReplaceAllowed: the certificates the user agreed to replace (the window asks
+		///first, GetReplaceQuestion); when the store holds one to replace that is not in it, nothing is imported and Error says so. A failure
+		///partway takes back what the import wrote, and Error says what could not be. In production (the Local Computer store) the computer's
+		///users get read access to the new private keys; Warning says so if that failed. Never throws.</summary>
 		public static DirectCertificateResult ImportPrivateFile(string emailAddress,string filePath,string password,List<string> listThumbprintsReplaceAllowed,
 			DateTime dateTimeUtcNow)
 		{
@@ -191,11 +246,17 @@ namespace OpenPmsDentalBusiness {
 			if(GetAddressError(address)!="") {
 				return listDetails;
 			}
-			foreach(X509Certificate2 x509Certificate2 in ReadStore(EmailMessages.CertStoreNamePrivate)) {
-				DirectCertificateBinding binding=GetBinding(x509Certificate2,address);
-				if(binding!=DirectCertificateBinding.None) {
-					listDetails.Add(DirectCertificateDetails.Create(x509Certificate2,binding,GetBoundName(address,binding)));
+			List<X509Certificate2> listStore=ReadStore(EmailMessages.CertStoreNamePrivate);
+			try {
+				foreach(X509Certificate2 x509Certificate2 in listStore) {
+					DirectCertificateBinding binding=GetBinding(x509Certificate2,address);
+					if(binding!=DirectCertificateBinding.None) {
+						listDetails.Add(DirectCertificateDetails.Create(x509Certificate2,binding,GetBoundName(address,binding)));
+					}
 				}
+			}
+			finally {
+				DisposeAll(listStore);
 			}
 			return listDetails;
 		}
@@ -214,9 +275,125 @@ namespace OpenPmsDentalBusiness {
 			return DirectCertificateBinding.None;
 		}
 
+		///<summary>What the certificate's key is for, by its extensions, found by OID: the Key Usage decides signing (digitalSignature,
+		///nonRepudiation) and encryption (keyEncipherment, or keyAgreement for an elliptic curve key); without a Key Usage the key may do both. An
+		///Extended Key Usage that names neither e-mail protection nor every purpose leaves it neither. A certificate for both counts as both, and
+		///an extension that can't be read counts as neither.</summary>
+		public static DirectCertificatePurpose GetPurpose(X509Certificate2 x509Certificate2) {
+			Meth.NoCheckMiddleTierRole();
+			DirectCertificatePurpose purpose=DirectCertificatePurpose.Signing|DirectCertificatePurpose.Encryption;
+			for(int i=0;i<x509Certificate2.Extensions.Count;i++) {
+				X509Extension x509Extension=x509Certificate2.Extensions[i];
+				try {
+					if(x509Extension.Oid.Value==OID_KEY_USAGE) {
+						X509KeyUsageFlags x509KeyUsageFlags=new X509KeyUsageExtension(x509Extension,x509Extension.Critical).KeyUsages;
+						DirectCertificatePurpose purposeKeyUsage=DirectCertificatePurpose.None;
+						if((x509KeyUsageFlags&(X509KeyUsageFlags.DigitalSignature|X509KeyUsageFlags.NonRepudiation))!=0) {
+							purposeKeyUsage|=DirectCertificatePurpose.Signing;
+						}
+						if((x509KeyUsageFlags&(X509KeyUsageFlags.KeyEncipherment|X509KeyUsageFlags.KeyAgreement))!=0) {
+							purposeKeyUsage|=DirectCertificatePurpose.Encryption;
+						}
+						purpose&=purposeKeyUsage;
+					}
+					else if(x509Extension.Oid.Value==OID_EXTENDED_KEY_USAGE) {
+						OidCollection oidCollection=new X509EnhancedKeyUsageExtension(x509Extension,x509Extension.Critical).EnhancedKeyUsages;
+						if(!oidCollection.Cast<Oid>().Any(x => x.Value==OID_EMAIL_PROTECTION || x.Value==OID_ANY_EXTENDED_KEY_USAGE)) {
+							purpose=DirectCertificatePurpose.None;
+						}
+					}
+				}
+				catch(CryptographicException) {
+					purpose=DirectCertificatePurpose.None;//A damaged extension: for nothing.
+				}
+			}
+			return purpose;
+		}
+
+		///<summary>The purpose in a few words, for the window.</summary>
+		public static string GetPurposeText(DirectCertificatePurpose purpose) {
+			Meth.NoCheckMiddleTierRole();
+			if(purpose==(DirectCertificatePurpose.Signing|DirectCertificatePurpose.Encryption)) {
+				return Lans.g("DirectCertificateImport","signing and encryption");
+			}
+			if(purpose==DirectCertificatePurpose.Signing) {
+				return Lans.g("DirectCertificateImport","signing");
+			}
+			if(purpose==DirectCertificatePurpose.Encryption) {
+				return Lans.g("DirectCertificateImport","encryption");
+			}
+			return Lans.g("DirectCertificateImport","neither signing nor encryption of e-mail");
+		}
+
+		///<summary>True when the certificate's private key can be used on this computer: it opens (an RSA or ECDSA key) and signs a test digest, or,
+		///for an RSA key that does not sign, decrypts what its public key encrypted. False without a key, or with one that does not open (deleted,
+		///no read access, another user's). HasPrivateKey alone only says that the certificate names a key. Never throws.</summary>
+		public static bool IsKeyUsable(X509Certificate2 x509Certificate2) {
+			Meth.NoCheckMiddleTierRole();
+			try {
+				if(!x509Certificate2.HasPrivateKey) {
+					return false;
+				}
+				byte[] byteArrayValue=Encoding.ASCII.GetBytes("Open PMS - Dental Direct key check");
+				byte[] byteArrayDigest;
+				using(SHA256 sha256=SHA256.Create()) {
+					byteArrayDigest=sha256.ComputeHash(byteArrayValue);
+				}
+				using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
+					if(rsa!=null) {
+						return CanSign(rsa,byteArrayValue,byteArrayDigest) || CanDecrypt(rsa,x509Certificate2,byteArrayValue);
+					}
+				}
+				using(ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey()) {
+					if(ecdsa!=null) {
+						ecdsa.SignHash(byteArrayDigest);
+						return true;
+					}
+				}
+				return false;
+			}
+			catch(Exception ex) when(ex is CryptographicException || ex is UnauthorizedAccessException || ex is NotSupportedException) {
+				return false;
+			}
+		}
+
+		private static bool CanSign(RSA rsa,byte[] byteArrayValue,byte[] byteArrayDigest) {
+			try {
+				rsa.SignHash(byteArrayDigest,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
+				return true;
+			}
+			catch(CryptographicException) {
+				//An old CAPI provider without SHA-256, or a key that only decrypts (the decryption is tried next).
+			}
+			try {
+				byte[] byteArrayDigestSha1;
+				using(SHA1 sha1=SHA1.Create()) {
+					byteArrayDigestSha1=sha1.ComputeHash(byteArrayValue);
+				}
+				rsa.SignHash(byteArrayDigestSha1,HashAlgorithmName.SHA1,RSASignaturePadding.Pkcs1);
+				return true;
+			}
+			catch(CryptographicException) {
+				return false;
+			}
+		}
+
+		private static bool CanDecrypt(RSA rsa,X509Certificate2 x509Certificate2,byte[] byteArrayValue) {
+			try {
+				using(RSA rsaPublic=x509Certificate2.GetRSAPublicKey()) {
+					byte[] byteArrayEncrypted=rsaPublic.Encrypt(byteArrayValue,RSAEncryptionPadding.Pkcs1);
+					return rsa.Decrypt(byteArrayEncrypted,RSAEncryptionPadding.Pkcs1).SequenceEqual(byteArrayValue);
+				}
+			}
+			catch(CryptographicException) {
+				return false;
+			}
+		}
+
 		///<summary>The window's question before an import replaces certificates of the store (a check's ListDetailsReplaced), "" when it replaces
-		///none. It names no age: it lists both sides, the file's certificates and the store's (subject, last day, thumbprint), and warns before
-		///the Yes or No when the store's is valid longer (GetReplaceWarning).</summary>
+		///none. It lists both sides, the file's certificates and the store's it replaces (subject, purpose, valid from and to, thumbprint), warns
+		///when a replaced one has a purpose none of the file's has (GetReplaceWarning), lists the ones kept (GetKeptText), and ends with "Choose No
+		///to import nothing."</summary>
 		public static string GetReplaceQuestion(DirectCertificateResult directCertificateResult) {
 			Meth.NoCheckMiddleTierRole();
 			if(directCertificateResult.ListDetailsReplaced.Count==0) {
@@ -224,39 +401,78 @@ namespace OpenPmsDentalBusiness {
 			}
 			bool isOne=(directCertificateResult.ListDetailsReplaced.Count==1);
 			StringBuilder stringBuilder=new StringBuilder();
-			stringBuilder.Append(Lans.g("DirectCertificateImport","This computer's Direct certificate store already has a certificate for this address or its "
-				+"domain."));
+			stringBuilder.Append(Lans.g("DirectCertificateImport","This computer's Direct certificate store has a certificate for this address or its "
+				+"domain, for a purpose of a certificate in the file, that expires before it."));
 			stringBuilder.Append("\r\n\r\n"+Lans.g("DirectCertificateImport","In the file")+":\r\n"
 				+string.Join("\r\n",directCertificateResult.ListDetails.Select(x => x.DescribeShort())));
-			stringBuilder.Append("\r\n\r\n"+Lans.g("DirectCertificateImport","On this computer now")+":\r\n"
+			stringBuilder.Append("\r\n\r\n"+Lans.g("DirectCertificateImport","Replaced on this computer")+":\r\n"
 				+string.Join("\r\n",directCertificateResult.ListDetailsReplaced.Select(x => x.DescribeShort())));
 			string warning=GetReplaceWarning(directCertificateResult);
 			if(warning!="") {
 				stringBuilder.Append("\r\n\r\n"+warning);
 			}
+			string kept=GetKeptText(directCertificateResult);
+			if(kept!="") {
+				stringBuilder.Append("\r\n\r\n"+kept);
+			}
 			stringBuilder.Append("\r\n\r\n");
 			if(isOne) {
-				stringBuilder.Append(Lans.g("DirectCertificateImport","Replace the certificate on this computer with the one in the file? It is removed from the "
-					+"store, and so is its private key if this window imported it. Messages encrypted to it can then be read here only after importing its .pfx "
-					+"or .p12 file again. No imports nothing."));
+				stringBuilder.Append(Lans.g("DirectCertificateImport","Import the file and replace the certificate under Replaced on this computer? It is "
+					+"removed from the store, and so is its private key if this window imported it. Messages encrypted to it can then be read here only after "
+					+"importing its .pfx or .p12 file again. Choose No to import nothing."));
 			}
 			else {
-				stringBuilder.Append(Lans.g("DirectCertificateImport","Replace the certificates on this computer with the one in the file? They are removed from "
-					+"the store, and so are their private keys if this window imported them. Messages encrypted to them can then be read here only after "
-					+"importing their .pfx or .p12 files again. No imports nothing."));
+				stringBuilder.Append(Lans.g("DirectCertificateImport","Import the file and replace the certificates under Replaced on this computer? They are "
+					+"removed from the store, and so are their private keys if this window imported them. Messages encrypted to them can then be read here "
+					+"only after importing their .pfx or .p12 files again. Choose No to import nothing."));
 			}
 			return stringBuilder.ToString();
 		}
 
-		///<summary>The warning of the question and of the window's details when a certificate of the store that the import replaces is valid longer
-		///than the file's (DirectCertificateResult.IsReplacedValidLonger), else "".</summary>
+		///<summary>The warning of the question and of the window's details when a certificate the import replaces is also for a purpose that no
+		///certificate of the file has (the store's signs and encrypts, the file's only signs), else "".</summary>
 		public static string GetReplaceWarning(DirectCertificateResult directCertificateResult) {
 			Meth.NoCheckMiddleTierRole();
-			if(!directCertificateResult.IsReplacedValidLonger()) {
+			DirectCertificatePurpose purposeFile=DirectCertificatePurpose.None;
+			for(int i=0;i<directCertificateResult.ListDetails.Count;i++) {
+				purposeFile|=directCertificateResult.ListDetails[i].Purpose;
+			}
+			DirectCertificatePurpose purposeLost=DirectCertificatePurpose.None;
+			for(int i=0;i<directCertificateResult.ListDetailsReplaced.Count;i++) {
+				purposeLost|=(directCertificateResult.ListDetailsReplaced[i].Purpose & ~purposeFile);
+			}
+			if(purposeLost==DirectCertificatePurpose.None) {
 				return "";
 			}
-			return Lans.g("DirectCertificateImport","The certificate on this computer is valid longer than the one in the file. Replace it only if your "
-				+"Direct provider told you to.");
+			return Lans.g("DirectCertificateImport","No certificate in the file is for")+" "+GetPurposeText(purposeLost)+", "
+				+Lans.g("DirectCertificateImport","which a replaced certificate is also for. Replace it only if your Direct provider told you to.");
+		}
+
+		///<summary>The certificates of the store for the address or its domain that the import keeps (ListDetailsKept), each with why, or "" when
+		///there are none. The window shows it at Check, in the question and after the import.</summary>
+		public static string GetKeptText(DirectCertificateResult directCertificateResult) {
+			Meth.NoCheckMiddleTierRole();
+			if(directCertificateResult.ListDetailsKept.Count==0) {
+				return "";
+			}
+			return Lans.g("DirectCertificateImport","Kept on this computer")+":\r\n"
+				+string.Join("\r\n",directCertificateResult.ListDetailsKept.Select(x => x.DescribeShort()+" ("+GetKeptReasonText(x)+")"));
+		}
+
+		private static string GetKeptReasonText(DirectCertificateDetails directCertificateDetails) {
+			switch(directCertificateDetails.KeptReason) {
+				case DirectCertificateKeptReason.OtherKind:
+					if(directCertificateDetails.Binding==DirectCertificateBinding.Domain) {
+						return Lans.g("DirectCertificateImport","for every address of the domain, which a certificate for one address does not replace");
+					}
+					return Lans.g("DirectCertificateImport","for this address only, which a domain certificate does not replace");
+				case DirectCertificateKeptReason.OtherPurpose:
+					return Lans.g("DirectCertificateImport","for another purpose than the certificates in the file");
+				case DirectCertificateKeptReason.ValidAsLongOrLonger:
+					return Lans.g("DirectCertificateImport","for the same purpose and valid as long as or longer than the one in the file, which is added next "
+						+"to it");
+			}
+			return "";
 		}
 
 		///<summary>The checks of the file's bytes, which fill the result. The certificates of the file are disposed afterwards.</summary>
@@ -327,11 +543,25 @@ namespace OpenPmsDentalBusiness {
 				directCertificateResult.Error=Lans.g("DirectCertificateImport","This computer's Direct certificate store could not be read")+": "+ex.Message;
 				return;
 			}
+			try {
+				CheckPrivateAgainstStore(address,listKeyed,listStore,directCertificateResult);
+			}
+			finally {
+				DisposeAll(listStore);
+			}
+		}
+
+		///<summary>Sorts the file's certificates (ListDetails, ListDetailsInStore) and the store's for the address or its domain (ListDetailsReplaced,
+		///ListDetailsKept) by the replace rule of docs/port-notes/DIRECT-CERT.md.</summary>
+		private static void CheckPrivateAgainstStore(string address,List<X509Certificate2> listKeyed,List<X509Certificate2> listStore,
+			DirectCertificateResult directCertificateResult)
+		{
 			List<string> listThumbprintsFile=listKeyed.Select(x => x.Thumbprint).ToList();
 			for(int i=0;i<listKeyed.Count;i++) {
 				DirectCertificateBinding binding=GetBinding(listKeyed[i],address);
 				DirectCertificateDetails directCertificateDetails=DirectCertificateDetails.Create(listKeyed[i],binding,GetBoundName(address,binding));
-				if(listStore.Any(x => x.Thumbprint==listKeyed[i].Thumbprint && x.HasPrivateKey)) {
+				//Already there only when its key can be used: a key that was deleted, or that this user can't open, is imported again.
+				if(listStore.Any(x => x.Thumbprint==listKeyed[i].Thumbprint && IsKeyUsable(x))) {
 					directCertificateResult.ListDetailsInStore.Add(directCertificateDetails);
 					continue;
 				}
@@ -342,23 +572,39 @@ namespace OpenPmsDentalBusiness {
 					+"its private key. Nothing to import.");
 				return;
 			}
-			//The certificates it replaces: the same kind (address or domain) and name as a certificate the import adds, not one of the file's, whatever
-			//their dates (the store's may be the newer one: the question says so, GetReplaceQuestion).
 			for(int i=0;i<listStore.Count;i++) {
-				if(listThumbprintsFile.Contains(listStore[i].Thumbprint) && listStore[i].HasPrivateKey) {
-					continue;//Already imported, the same certificate: stays.
-				}
-				DirectCertificateBinding binding=GetBinding(listStore[i],address);
-				if(binding==DirectCertificateBinding.None || !directCertificateResult.ListDetails.Any(x => x.Binding==binding)) {
+				if(listThumbprintsFile.Contains(listStore[i].Thumbprint)) {
+					//The same certificate as one of the file's: in the store with a usable key (stays as it is), or without one (the import's copy, with
+					//its key, takes its place in the store).
 					continue;
 				}
-				directCertificateResult.ListDetailsReplaced.Add(DirectCertificateDetails.Create(listStore[i],binding,GetBoundName(address,binding)));
+				DirectCertificateBinding binding=GetBinding(listStore[i],address);
+				if(binding==DirectCertificateBinding.None) {
+					continue;//Another address's: not shown, never touched.
+				}
+				DirectCertificateDetails directCertificateDetailsStore=DirectCertificateDetails.Create(listStore[i],binding,GetBoundName(address,binding));
+				List<DirectCertificateDetails> listSameKind=directCertificateResult.ListDetails.FindAll(x => x.Binding==binding);
+				List<DirectCertificateDetails> listSamePurpose=listSameKind.FindAll(x => (x.Purpose & directCertificateDetailsStore.Purpose)!=0);
+				if(listSamePurpose.Any(x => directCertificateDetailsStore.DateTimeNotAfter<x.DateTimeNotAfter)) {
+					directCertificateResult.ListDetailsReplaced.Add(directCertificateDetailsStore);
+					continue;
+				}
+				if(listSameKind.Count==0) {
+					directCertificateDetailsStore.KeptReason=DirectCertificateKeptReason.OtherKind;
+				}
+				else if(listSamePurpose.Count==0) {
+					directCertificateDetailsStore.KeptReason=DirectCertificateKeptReason.OtherPurpose;
+				}
+				else {
+					directCertificateDetailsStore.KeptReason=DirectCertificateKeptReason.ValidAsLongOrLonger;
+				}
+				directCertificateResult.ListDetailsKept.Add(directCertificateDetailsStore);
 			}
 		}
 
 		///<summary>Imports the checked file into the open store: the keys are written to the key store now (never exportable), the certificates
-		///added with FRIENDLY_NAME_IMPORTED, then the replaced ones removed. A key of the file the import does not use is deleted again, and so are
-		///the new keys when adding fails.</summary>
+		///added with FRIENDLY_NAME_IMPORTED, then the replaced ones removed. A key of the file the import does not use is deleted again. A failure
+		///before the certificates are all added takes back what the import wrote (PrivateImportRun.Undo), and Error says what could not be.</summary>
 		private static void AddPrivate(X509Store x509Store,byte[] byteArrayFile,string password,DirectCertificateResult directCertificateResult) {
 			X509KeyStorageFlags x509KeyStorageFlags=X509KeyStorageFlags.PersistKeySet;
 			if(EmailMessages.CertStoreLocation==StoreLocation.LocalMachine) {
@@ -373,79 +619,67 @@ namespace OpenPmsDentalBusiness {
 				x509Certificate2Collection.Import(byteArrayFile,password??"",x509KeyStorageFlags);
 			}
 			catch(CryptographicException ex) {
+				//.NET gives no certificate when the import throws, so this import knows of no key to delete (docs/port-notes/DIRECT-CERT.md).
 				directCertificateResult.Error=Lans.g("DirectCertificateImport","The certificate's private key could not be stored on this computer")+": "+ex.Message;
 				return;
 			}
+			PrivateImportRun privateImportRun=new PrivateImportRun(x509Store,x509Certificate2Collection);
 			try {
-				AddPrivateCertificates(x509Store,x509Certificate2Collection,directCertificateResult);
+				ActionAfterKeysStoredForTests?.Invoke(x509Certificate2Collection);
+				AddPrivateCertificates(x509Store,x509Certificate2Collection,privateImportRun,directCertificateResult);
+			}
+			catch(Exception ex) {
+				if(directCertificateResult.IsImported) {
+					//The new certificates are in the store with their keys; what stopped came after them.
+					directCertificateResult.Warning=JoinLines(directCertificateResult.Warning,Lans.g("DirectCertificateImport","The import stopped after the "
+						+"certificate was added")+": "+ex.Message);
+				}
+				else {
+					string errorStart=IsStoreException(ex) ? Lans.g("DirectCertificateImport","The certificate could not be added to this computer's Direct "
+						+"certificate store") : Lans.g("DirectCertificateImport","The import failed");
+					directCertificateResult.Error=errorStart+": "+ex.Message+" "+Lans.g("DirectCertificateImport","Nothing was imported.")
+						+GetNotUndoneText(privateImportRun.Undo());
+				}
 			}
 			finally {
-				ResetAll(x509Certificate2Collection);//The keys stay in the key store (PersistKeySet); only these objects are released.
+				privateImportRun.Dispose();
+				ResetAll(x509Certificate2Collection);//The keys in use stay in the key store (PersistKeySet); only these objects are released.
 			}
 		}
 
-		private static void AddPrivateCertificates(X509Store x509Store,X509Certificate2Collection x509Certificate2Collection,
+		private static void AddPrivateCertificates(X509Store x509Store,X509Certificate2Collection x509Certificate2Collection,PrivateImportRun privateImportRun,
 			DirectCertificateResult directCertificateResult)
 		{
 			List<string> listThumbprintsAdding=directCertificateResult.ListDetails.Select(x => x.Thumbprint).ToList();
 			List<X509Certificate2> listAdding=new List<X509Certificate2>();
+			List<X509Certificate2> listUnused=new List<X509Certificate2>();
 			foreach(X509Certificate2 x509Certificate2 in x509Certificate2Collection) {
 				if(x509Certificate2.HasPrivateKey && listThumbprintsAdding.Contains(x509Certificate2.Thumbprint)) {
 					listAdding.Add(x509Certificate2);
 					continue;
 				}
-				TryDeletePrivateKey(x509Certificate2);//Another certificate of the file: its key was just stored and is not used.
+				listUnused.Add(x509Certificate2);
 			}
 			if(listAdding.Count!=listThumbprintsAdding.Count) {//The file read differently the second time: never half an import.
-				for(int i=0;i<listAdding.Count;i++) {
-					TryDeletePrivateKey(listAdding[i]);
-				}
-				directCertificateResult.Error=Lans.g("DirectCertificateImport","The file could not be read the same way twice. Nothing was imported.");
+				directCertificateResult.Error=Lans.g("DirectCertificateImport","The file could not be read the same way twice. Nothing was imported.")
+					+GetNotUndoneText(privateImportRun.Undo());
 				return;
 			}
-			List<X509Certificate2> listAdded=new List<X509Certificate2>();
-			try {
-				for(int i=0;i<listAdding.Count;i++) {
-					listAdding[i].FriendlyName=FRIENDLY_NAME_IMPORTED;
-					x509Store.Add(listAdding[i]);
-					listAdded.Add(listAdding[i]);
+			List<string> listWarnings=new List<string>();
+			for(int i=0;i<listUnused.Count;i++) {
+				//Another certificate of the file (its CA, one for another address, one already in the store with its key): its key was just stored and
+				//is not used.
+				string problem=privateImportRun.DeleteKey(listUnused[i]);
+				if(problem!="") {
+					listWarnings.Add(problem);
 				}
 			}
-			catch(Exception ex) when(IsStoreException(ex)) {
-				for(int i=0;i<listAdded.Count;i++) {
-					ODException.SwallowAnyException(() => x509Store.Remove(listAdded[i]));
-				}
-				for(int i=0;i<listAdding.Count;i++) {
-					TryDeletePrivateKey(listAdding[i]);
-				}
-				directCertificateResult.Error=Lans.g("DirectCertificateImport","The certificate could not be added to this computer's Direct certificate "
-					+"store")+": "+ex.Message;
-				return;
+			for(int i=0;i<listAdding.Count;i++) {
+				listAdding[i].FriendlyName=FRIENDLY_NAME_IMPORTED;
+				privateImportRun.Add(listAdding[i]);//Throws when the store refuses: AddPrivate takes back what was written.
 			}
 			directCertificateResult.IsImported=true;
-			List<string> listWarnings=new List<string>();
-			List<string> listThumbprintsReplaced=directCertificateResult.ListDetailsReplaced.Select(x => x.Thumbprint).ToList();
-			foreach(X509Certificate2 x509Certificate2Replaced in x509Store.Certificates) {
-				if(!listThumbprintsReplaced.Contains(x509Certificate2Replaced.Thumbprint) || listThumbprintsAdding.Contains(x509Certificate2Replaced.Thumbprint)) {
-					continue;
-				}
-				try {
-					x509Store.Remove(x509Certificate2Replaced);
-				}
-				catch(Exception ex) when(IsStoreException(ex)) {
-					listWarnings.Add(Lans.g("DirectCertificateImport","The replaced certificate could not be removed from the store")+" ("
-						+x509Certificate2Replaced.Subject+", "+x509Certificate2Replaced.Thumbprint+"): "+ex.Message);
-					continue;
-				}
-				if(x509Certificate2Replaced.FriendlyName!=FRIENDLY_NAME_IMPORTED) {
-					continue;//Put there another way: its key is not this import's to delete.
-				}
-				string errorKey=TryDeletePrivateKey(x509Certificate2Replaced);
-				if(errorKey!="") {
-					listWarnings.Add(Lans.g("DirectCertificateImport","The private key of the replaced certificate could not be deleted")+" ("
-						+x509Certificate2Replaced.Thumbprint+"): "+errorKey);
-				}
-			}
+			listWarnings.AddRange(RemoveReplaced(x509Store,directCertificateResult,listThumbprintsAdding));
 			if(EmailMessages.CertStoreLocation==StoreLocation.LocalMachine) {
 				for(int i=0;i<listAdding.Count;i++) {
 					try {
@@ -459,6 +693,162 @@ namespace OpenPmsDentalBusiness {
 				}
 			}
 			directCertificateResult.Warning=string.Join("\r\n",listWarnings);
+		}
+
+		///<summary>Removes the replaced certificates (ListDetailsReplaced) from the store, with the private key of each one this window imported.
+		///What could not be removed, for the user; none when all was.</summary>
+		private static List<string> RemoveReplaced(X509Store x509Store,DirectCertificateResult directCertificateResult,List<string> listThumbprintsAdding) {
+			List<string> listWarnings=new List<string>();
+			List<string> listThumbprintsReplaced=directCertificateResult.ListDetailsReplaced.Select(x => x.Thumbprint).ToList();
+			if(listThumbprintsReplaced.Count==0) {
+				return listWarnings;
+			}
+			X509Certificate2Collection x509Certificate2CollectionStore;
+			try {
+				x509Certificate2CollectionStore=x509Store.Certificates;
+			}
+			catch(Exception ex) when(IsStoreException(ex)) {
+				listWarnings.Add(Lans.g("DirectCertificateImport","The replaced certificates could not be removed from the store")+": "+ex.Message);
+				return listWarnings;
+			}
+			try {
+				foreach(X509Certificate2 x509Certificate2Replaced in x509Certificate2CollectionStore) {
+					if(!listThumbprintsReplaced.Contains(x509Certificate2Replaced.Thumbprint) || listThumbprintsAdding.Contains(x509Certificate2Replaced.Thumbprint)) {
+						continue;
+					}
+					try {
+						x509Store.Remove(x509Certificate2Replaced);
+					}
+					catch(Exception ex) when(IsStoreException(ex)) {
+						listWarnings.Add(Lans.g("DirectCertificateImport","The replaced certificate could not be removed from the store")+" ("
+							+x509Certificate2Replaced.Subject+", "+x509Certificate2Replaced.Thumbprint+"): "+ex.Message);
+						continue;
+					}
+					if(x509Certificate2Replaced.FriendlyName!=FRIENDLY_NAME_IMPORTED) {
+						continue;//Put there another way: its key is not this import's to delete.
+					}
+					string errorKey=TryDeletePrivateKey(x509Certificate2Replaced);
+					if(errorKey!="") {
+						listWarnings.Add(Lans.g("DirectCertificateImport","The private key of the replaced certificate could not be deleted")+" ("
+							+x509Certificate2Replaced.Thumbprint+"): "+errorKey);
+					}
+				}
+			}
+			finally {
+				ResetAll(x509Certificate2CollectionStore);
+			}
+			return listWarnings;
+		}
+
+		///<summary>"" when everything was taken back, else the lines of what could not be, after a blank line.</summary>
+		private static string GetNotUndoneText(List<string> listNotUndone) {
+			if(listNotUndone.Count==0) {
+				return "";
+			}
+			return "\r\n\r\n"+Lans.g("DirectCertificateImport","Not removed from this computer again")+":\r\n"+string.Join("\r\n",listNotUndone);
+		}
+
+		private static string JoinLines(string text,string line) {
+			if(text=="") {
+				return line;
+			}
+			return text+"\r\n"+line;
+		}
+
+		///<summary>What one import into the store of private certificates wrote, so that a failure partway can take it back: the private keys it
+		///stored (the file's certificates with a key, imported with PersistKeySet) that are not deleted yet, the certificates it added to the store,
+		///and the copy without a usable key of the same certificate that an added one took the place of.</summary>
+		private sealed class PrivateImportRun:IDisposable {
+			private readonly X509Store _x509Store;
+			private readonly List<X509Certificate2> _listKeysStored;
+			private readonly List<X509Certificate2> _listAdded=new List<X509Certificate2>();
+			///<summary>The store's own entry of the same certificate (without a usable key) that an added certificate took the place of, by the added one.</summary>
+			private readonly Dictionary<X509Certificate2,X509Certificate2> _dictOverwritten=new Dictionary<X509Certificate2,X509Certificate2>();
+
+			public PrivateImportRun(X509Store x509Store,X509Certificate2Collection x509Certificate2Collection) {
+				_x509Store=x509Store;
+				_listKeysStored=x509Certificate2Collection.Cast<X509Certificate2>().Where(x => x.HasPrivateKey).ToList();
+			}
+
+			///<summary>Deletes the key this import stored for the certificate: "" when deleted (or it stored none), else what could not be, for the user.</summary>
+			public string DeleteKey(X509Certificate2 x509Certificate2) {
+				if(!_listKeysStored.Contains(x509Certificate2)) {
+					return "";
+				}
+				string error=TryDeletePrivateKey(x509Certificate2);
+				if(error!="") {
+					return Lans.g("DirectCertificateImport","A private key this import stored could not be deleted")+" ("+x509Certificate2.Subject+", "
+						+x509Certificate2.Thumbprint+"): "+error;
+				}
+				_listKeysStored.Remove(x509Certificate2);
+				return "";
+			}
+
+			///<summary>Adds the certificate to the store. Throws when the store refuses.</summary>
+			public void Add(X509Certificate2 x509Certificate2) {
+				ActionBeforeStoreAddForTests?.Invoke(x509Certificate2);
+				X509Certificate2 x509Certificate2Overwritten=null;
+				foreach(X509Certificate2 x509Certificate2Store in _x509Store.Certificates) {
+					if(x509Certificate2Overwritten==null && x509Certificate2Store.Thumbprint==x509Certificate2.Thumbprint) {
+						x509Certificate2Overwritten=x509Certificate2Store;//The same certificate without a usable key, which the added one takes the place of.
+						continue;
+					}
+					x509Certificate2Store.Reset();
+				}
+				try {
+					_x509Store.Add(x509Certificate2);
+				}
+				catch {
+					x509Certificate2Overwritten?.Reset();
+					throw;
+				}
+				_listAdded.Add(x509Certificate2);
+				if(x509Certificate2Overwritten!=null) {
+					_dictOverwritten[x509Certificate2]=x509Certificate2Overwritten;
+				}
+			}
+
+			///<summary>Takes back what this import wrote, after a failure: removes the certificates it added (and puts back the store's copy an added
+			///one took the place of) and deletes the keys it stored. A certificate that can't be removed keeps its key, so that the store's entry
+			///still works. What could not be taken back, for the user; none when all was.</summary>
+			public List<string> Undo() {
+				List<string> listNotUndone=new List<string>();
+				for(int i=_listAdded.Count-1;i>=0;i--) {
+					X509Certificate2 x509Certificate2=_listAdded[i];
+					try {
+						_x509Store.Remove(x509Certificate2);
+					}
+					catch(Exception ex) when(IsStoreException(ex)) {
+						listNotUndone.Add(Lans.g("DirectCertificateImport","The certificate could not be removed from the store again; it stays there with its "
+							+"private key")+" ("+x509Certificate2.Subject+", "+x509Certificate2.Thumbprint+"): "+ex.Message);
+						_listKeysStored.Remove(x509Certificate2);
+						continue;
+					}
+					if(_dictOverwritten.TryGetValue(x509Certificate2,out X509Certificate2 x509Certificate2Overwritten)) {
+						try {
+							_x509Store.Add(x509Certificate2Overwritten);
+						}
+						catch(Exception ex) when(IsStoreException(ex)) {
+							listNotUndone.Add(Lans.g("DirectCertificateImport","The store's copy of the certificate without a usable key could not be put back")
+								+" ("+x509Certificate2.Thumbprint+"): "+ex.Message);
+						}
+					}
+				}
+				_listAdded.Clear();
+				foreach(X509Certificate2 x509Certificate2 in _listKeysStored.ToList()) {
+					string problem=DeleteKey(x509Certificate2);
+					if(problem!="") {
+						listNotUndone.Add(problem);
+					}
+				}
+				return listNotUndone;
+			}
+
+			public void Dispose() {
+				foreach(X509Certificate2 x509Certificate2 in _dictOverwritten.Values) {
+					x509Certificate2.Reset();
+				}
+			}
 		}
 		#endregion The address's certificate
 
@@ -514,16 +904,18 @@ namespace OpenPmsDentalBusiness {
 			}
 			X509Certificate2Collection x509Certificate2Collection=new X509Certificate2Collection();
 			try {
+				//EphemeralKeySet in both: a key in the file (a .pfx under another name, or one in a PEM block) is never written anywhere.
 				List<byte[]> listPem=GetPemCertificates(byteArrayFile);
 				if(listPem.Count==0) {
-					//DER, or Base64 without the PEM lines. EphemeralKeySet: a key in the file (a .pfx under another name) is never written anywhere.
+					//DER, or Base64 without the PEM lines.
 					x509Certificate2Collection.Import(byteArrayFile,"",X509KeyStorageFlags.EphemeralKeySet);
 				}
 				for(int i=0;i<listPem.Count;i++) {
-					x509Certificate2Collection.Import(listPem[i]);
+					x509Certificate2Collection.Import(listPem[i],"",X509KeyStorageFlags.EphemeralKeySet);
 				}
 			}
 			catch(Exception ex) when(ex is CryptographicException || ex is FormatException) {
+				ResetAll(x509Certificate2Collection);
 				directCertificateResult.Error=Lans.g("DirectCertificateImport","The file is not a certificate file (.cer, .crt, .der or .pem).");
 				return null;
 			}
@@ -557,7 +949,14 @@ namespace OpenPmsDentalBusiness {
 					directCertificateResult.Error=Lans.g("DirectCertificateImport","This computer's Direct trust anchors could not be read")+": "+ex.Message;
 					return null;
 				}
-				if(listStore.Any(x => x.Thumbprint==x509Certificate2File.Thumbprint)) {
+				bool isInStore;
+				try {
+					isInStore=listStore.Any(x => x.Thumbprint==x509Certificate2File.Thumbprint);
+				}
+				finally {
+					DisposeAll(listStore);
+				}
+				if(isInStore) {
 					directCertificateResult.ListDetailsInStore.Add(directCertificateDetails);
 					directCertificateResult.Error=Lans.g("DirectCertificateImport","This certificate is already a trust anchor on this computer. Nothing to import.");
 					return null;
@@ -590,17 +989,19 @@ namespace OpenPmsDentalBusiness {
 		#endregion The trust anchor
 
 		#region Shared
-		///<summary>The Setup security log entry of an import: the e-mail address's number (0 for one not saved yet), the thumbprints and last days of
-		///the certificates added, and how many of the store's were replaced. No address, password or key.</summary>
+		///<summary>The Setup security log entry of an import, in plain English with invariant dates (the log is not translated): the e-mail address's
+		///number (0 for one not saved yet), the thumbprints and last days of the certificates added, and how many of the store's were replaced and
+		///kept. No address, password or key.</summary>
 		public static string GetLogText(DirectCertificateResult directCertificateResult,long emailAddressNum,bool isAnchor) {
 			Meth.NoCheckMiddleTierRole();
-			string certificates=string.Join(", ",directCertificateResult.ListDetails.Select(x => x.Thumbprint+" ("+Lans.g("DirectCertificateImport","valid to")+" "
-				+x.DateTimeNotAfter.ToString("yyyy-MM-dd")+")"));
+			string certificates=string.Join(", ",directCertificateResult.ListDetails.Select(x => x.Thumbprint+" (valid to "
+				+x.DateTimeNotAfter.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)+")"));
 			if(isAnchor) {
 				return "Direct trust anchor imported from a file: "+certificates+".";
 			}
-			return "Direct certificate imported from the provider's file for EmailAddressNum "+POut.Long(emailAddressNum)+": "+certificates
-				+"; certificates of the store replaced: "+directCertificateResult.ListDetailsReplaced.Count+".";
+			return "Direct certificate imported from the provider's file for EmailAddressNum "+emailAddressNum.ToString(CultureInfo.InvariantCulture)+": "
+				+certificates+"; certificates of the store replaced: "+directCertificateResult.ListDetailsReplaced.Count.ToString(CultureInfo.InvariantCulture)
+				+", kept: "+directCertificateResult.ListDetailsKept.Count.ToString(CultureInfo.InvariantCulture)+".";
 		}
 
 		///<summary>"" for an e-mail address (a local part, "@" and a domain, no blank), else what to do. The address is Edit Email Address's user
@@ -695,7 +1096,7 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Every certificate of one of EmailMessages' stores, with or without a key (no criteria). None when the store does not exist yet.
-		///Throws CryptographicException if it can't be read.</summary>
+		///The caller disposes them (DisposeAll). Throws CryptographicException if it can't be read.</summary>
 		private static List<X509Certificate2> ReadStore(string storeName) {
 			List<X509Certificate2> listCertificates=new List<X509Certificate2>();
 			using(X509Store x509Store=new X509Store(storeName,EmailMessages.CertStoreLocation)) {
@@ -738,6 +1139,13 @@ namespace OpenPmsDentalBusiness {
 			}
 		}
 
+		///<summary>Releases the certificates read from a store (ReadStore). Their keys stay where they are.</summary>
+		private static void DisposeAll(List<X509Certificate2> listCertificates) {
+			for(int i=0;i<listCertificates.Count;i++) {
+				listCertificates[i].Dispose();
+			}
+		}
+
 		///<summary>Deletes the private key of the certificate from its key store, as the connection settings tool (ClientCertificateStore) does for
 		///the client certificate it replaces: a CNG key (RSA or ECDSA) or a CAPI key container. "" when deleted (or there was none), else why not.
 		///</summary>
@@ -746,20 +1154,22 @@ namespace OpenPmsDentalBusiness {
 				if(!x509Certificate2.HasPrivateKey) {
 					return "";
 				}
-				RSA rsa=x509Certificate2.GetRSAPrivateKey();
-				if(rsa is RSACng) {
-					((RSACng)rsa).Key.Delete();
-					return "";
+				using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
+					if(rsa is RSACng) {
+						((RSACng)rsa).Key.Delete();
+						return "";
+					}
+					if(rsa is RSACryptoServiceProvider) {
+						RSACryptoServiceProvider rsaCryptoServiceProvider=(RSACryptoServiceProvider)rsa;
+						rsaCryptoServiceProvider.PersistKeyInCsp=false;//Clear then deletes the key container.
+						rsaCryptoServiceProvider.Clear();
+						return "";
+					}
 				}
-				if(rsa is RSACryptoServiceProvider) {
-					RSACryptoServiceProvider rsaCryptoServiceProvider=(RSACryptoServiceProvider)rsa;
-					rsaCryptoServiceProvider.PersistKeyInCsp=false;//Clear then deletes the key container.
-					rsaCryptoServiceProvider.Clear();
-					return "";
-				}
-				ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey();
-				if(ecdsa is ECDsaCng) {
-					((ECDsaCng)ecdsa).Key.Delete();
+				using(ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey()) {
+					if(ecdsa is ECDsaCng) {
+						((ECDsaCng)ecdsa).Key.Delete();
+					}
 				}
 				return "";
 			}
@@ -785,24 +1195,29 @@ namespace OpenPmsDentalBusiness {
 
 		private static string GetMachinePrivateKeyFilePath(X509Certificate2 x509Certificate2) {
 			string folderCrypto=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Microsoft","Crypto");
-			string uniqueNameCng=null;
-			RSA rsa=x509Certificate2.GetRSAPrivateKey();
-			if(rsa is RSACng) {
-				uniqueNameCng=((RSACng)rsa).Key.UniqueName;
-			}
-			else if(rsa is RSACryptoServiceProvider) {
-				return Path.Combine(folderCrypto,"RSA","MachineKeys",((RSACryptoServiceProvider)rsa).CspKeyContainerInfo.UniqueKeyContainerName);
-			}
-			else {
-				ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey();
-				if(ecdsa is ECDsaCng) {
-					uniqueNameCng=((ECDsaCng)ecdsa).Key.UniqueName;
+			//The CngKey objects are disposed too: .NET gives a new one for each Key (.NET Framework its own, which the using of rsa or ecdsa then
+			//finds disposed).
+			using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
+				if(rsa is RSACng) {
+					using(CngKey cngKey=((RSACng)rsa).Key) {
+						return Path.Combine(folderCrypto,"Keys",cngKey.UniqueName);
+					}
+				}
+				if(rsa is RSACryptoServiceProvider) {
+					return Path.Combine(folderCrypto,"RSA","MachineKeys",((RSACryptoServiceProvider)rsa).CspKeyContainerInfo.UniqueKeyContainerName);
+				}
+				if(rsa!=null) {
+					return null;
 				}
 			}
-			if(uniqueNameCng==null) {
-				return null;
+			using(ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey()) {
+				if(ecdsa is ECDsaCng) {
+					using(CngKey cngKey=((ECDsaCng)ecdsa).Key) {
+						return Path.Combine(folderCrypto,"Keys",cngKey.UniqueName);
+					}
+				}
 			}
-			return Path.Combine(folderCrypto,"Keys",uniqueNameCng);
+			return null;
 		}
 		#endregion Shared
 	}
