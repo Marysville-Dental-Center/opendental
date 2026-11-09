@@ -4,7 +4,8 @@
 Open PMS - Dental. Package briefs are cut from it the same way as from `docs/specs/net10-plan.md`. Each package names its goal, the files
 it owns, its public basis and licence, its work, its tests and its window.
 
-**Date.** 2026-11-08. **Status.** Proposed; owner and counsel questions open (E-1 to E-19, section 13).
+**Date.** 2026-11-08. **Status.** Decided: the owner answered E-1 to E-19 as recommended on 2026-11-08 (section 13). EHR-5 merges
+after counsel's answer to E-10; the other counsel items (E-6, E-8, E-9, E-11) are applied when counsel answers.
 
 **Owner decision (2026-11-08).** "Allow EHR again. build what EHR.dll would provide". The standing rule applies: keep and port everything.
 That an office does not use a feature is no reason to cut it. Nothing is decompiled; only public sources are used.
@@ -1011,6 +1012,13 @@ The key was a licence check, but it was also the only thing that kept these acti
 ## 13. Owner and counsel questions
 
 Questions marked "counsel" need counsel's answer; the others are the owner's. Each has a recommendation.
+
+**Answered 2026-11-08.** The owner: "E-1 to E-19 as recommended". So every owner question is decided as its recommendation
+says, download batch E (section 14) is approved, and the counsel items follow their recommendations: the work goes ahead, the
+code lists already in the engine's SQL stay until counsel answers E-8 and E-9, nothing licensed is shipped, EHR-5 merges after
+counsel answers E-10, and the answers to E-6, E-8, E-9 and E-11 are applied when they come, as each recommendation says.
+E-7 needs one step from the office: someone with a UMLS licence opens VSAC's June 2013 EP release once and records its files and
+headers (EHR-2's first step; nothing from it enters the repository).
 
 | # | Question | Recommendation |
 |---|---|---|

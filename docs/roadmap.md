@@ -16,7 +16,8 @@ Scheduled with the owner on 2026-11-07, in this order (the Open Dental 26.2 feat
 
 Added on 2026-11-08, alongside the .NET 10 stages and the tooth chart: **EHR again** (owner: "Allow EHR again. build what EHR.dll would
 provide"). What Open Dental's closed `EHR.dll` gave the program is rebuilt as open code, in seven packages; the plan is
-`docs/specs/ehr-rebuild-plan.md`, and its owner and counsel questions E-1 to E-19 are open.
+`docs/specs/ehr-rebuild-plan.md`. Its questions E-1 to E-19 were answered as recommended on 2026-11-08; the CQM reports wait
+for counsel's answer to E-10.
 
 Not scheduled yet: the next release, the office switch-over, the server components on Linux, the GitHub repository move, and Open Dental
 26.3.

@@ -729,6 +729,33 @@ of 2026-11-08: "1. As recommended 2. Ship dlls we need. Use Helix. It's decided.
 
 ---
 
+## The EHR rebuild (answered on 2026-11-08)
+
+The questions of the EHR plan, [specs/ehr-rebuild-plan.md](specs/ehr-rebuild-plan.md), section 13 (E-1 to E-19). Your answer of
+2026-11-08: "E-1 to E-19 as recommended".
+
+- **Turning EHR on:** one confirmation, the same in Show Features and the Setup Wizard, no password (E-2). The measures window and
+  the CQM reports say "internal review only; this program is not certified" (E-1).
+- **The time check:** Off (the default) or Warn; the program never sets the clock by itself, Windows Time does, and the manual
+  window sets it only on a button, with checks (E-3).
+- **Providers and permissions:** a provider reports EHR when a key row with their name exists (the key text is optional and never
+  checked); key rows, the imports and the SNOMED tools need the Setup permission; the quarterly-key stub with no caller goes and its
+  table stays (E-4, E-5, E-6).
+- **Value sets:** each office imports its own download of VSAC's June 2013 EP release (Excel workbook or SVS XML); no automatic
+  fetch for now (E-7). **One step for the office:** someone with a UMLS licence opens that release once and records its files and
+  headers, so the importer reads the real layout; nothing from it enters the repository.
+- **CCD and CCR display:** the free HL7 and AAFP stylesheets ship with their notices (the CCR one as a copy marked as modified),
+  run only in a short-lived child process of the program's own exe, and a stylesheet that comes with an e-mail still never runs;
+  file exports also write a rendered HTML (E-11 to E-14). Download batch E is approved.
+- **Identity:** QRDA files carry this program's name and the office's identity instead of Open Dental's; HL7 follows later (E-15).
+- **Left out:** current measure versions, Stage 3 / MIPS and the newer C-CDA guide, which only count with certification (E-16);
+  other EHR gaps, the radiology-orders alert and the unused measure columns become follow-ups or stay as they are (E-17 to E-19).
+- **Counsel (E-6, E-8 to E-11):** the work goes ahead and nothing licensed is shipped; the CQM reports (EHR-5) merge after
+  counsel answers E-10, and the other counsel answers are applied when they come (the code lists already in the engine stay until
+  counsel answers E-8 and E-9).
+
+---
+
 ## Not asked again (already settled)
 
 - How package migration levels are numbered (B-ACCT 2, B-PRINT 1, B-SHELL 6, M2-EST 1, M2-UDS 1, V-BRIDGE1 2, V-PEARL2 1, M2-SHELL's old question 4): decided on 2026-11-01 and done: the package steps now have dated levels 2026110101 to 2026110104, and new steps always go above the highest one.
