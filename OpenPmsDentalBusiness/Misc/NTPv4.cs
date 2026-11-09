@@ -23,6 +23,8 @@ namespace OpenPmsDentalBusiness {
 		///<summary>The low bits of the transmit time's fraction that are random (2^20 of 2^32 parts of a second, about 0.24 ms): they lie below the
 		///resolution of the computer's clock, and an off-path sender has to guess them as well as the time to forge a reply.</summary>
 		private const int RANDOM_FRACTION_BITS=20;
+		///<summary>The seam to the Event Log, which tests replace.</summary>
+		public static Action<string> ActionWriteEventLog=WriteEventLogNative;
 
 		public NTPv4() {
 		}
@@ -136,6 +138,11 @@ namespace OpenPmsDentalBusiness {
 			else {
 				messageText+="\n"+ntpResult.Reason;
 			}
+			ActionWriteEventLog(messageText);
+		}
+
+		///<summary>Writes through ProgramNames.EventLogSource. Reached only through ActionWriteEventLog.</summary>
+		private static void WriteEventLogNative(string messageText) {
 			try {
 				EventLog.WriteEntry(CodeBase.ProgramNames.EventLogSource,messageText,EventLogEntryType.Information);
 			}
