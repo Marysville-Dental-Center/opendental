@@ -295,16 +295,30 @@ namespace OpenPmsDentalBusiness{
 			return ehrRenderResult.Html;
 		}
 
-		///<summary>The pages of a list of documents of one kind, in its order, made by one child, so the stylesheet is compiled once (Patient Export).
-		///A document that fails (over the limits, refused by the stylesheet, a crash, a timeout) gets a null page and its reason; after a crash or a
-		///timeout a new child takes the rest. Never throws.</summary>
+		///<summary>The pages of a list of documents of one kind, in its order, made by one child, so the stylesheet is compiled once. A document
+		///that fails (over the limits, refused by the stylesheet, a crash, a timeout) gets a null page and its reason; after a crash or a timeout a
+		///new child takes the rest. Every page is kept until the list is done: Patient Export, which may render thousands, uses the overload that
+		///streams. Never throws.</summary>
 		public static List<EhrRenderResult> RenderBatch(EhrRenderKind ehrRenderKind,IList<string> listXmls) {
 			List<EhrRenderResult> listEhrRenderResults=new List<EhrRenderResult>();
+			RenderBatch(ehrRenderKind,listXmls,(index,ehrRenderResult) => listEhrRenderResults.Add(ehrRenderResult));
+			return listEhrRenderResults;
+		}
+
+		///<summary>Renders the documents of one kind as they are read, all made by one child, so the stylesheet is compiled once (Patient Export).
+		///enumerableXmls is read lazily, one document at a time: actionResult gets each document's index and result as soon as its reply arrives,
+		///before the next document is read, so only one document and one page need to be in memory at a time however many there are. A document
+		///that fails (over the limits, refused by the stylesheet, a crash, a timeout, no memory for its bytes or its page) gets a null page and its
+		///reason; after a crash or a timeout a new child takes the rest. Throws only what enumerableXmls or actionResult throw, after the child
+		///has been ended.</summary>
+		public static void RenderBatch(EhrRenderKind ehrRenderKind,IEnumerable<string> enumerableXmls,Action<int,EhrRenderResult> actionResult) {
 			IEhrRenderChild ehrRenderChild=null;
 			string reasonStart=null;//Once a child cannot be started, the rest get the same reason.
 			try {
-				for(int i=0;i<listXmls.Count;i++) {
-					string reason=GetLimitError(listXmls[i]);
+				int index=0;
+				foreach(string xml in enumerableXmls) {
+					EhrRenderResult ehrRenderResult;
+					string reason=GetLimitError(xml);
 					if(reason==null && reasonStart!=null) {
 						reason=reasonStart;
 					}
@@ -318,15 +332,26 @@ namespace OpenPmsDentalBusiness{
 						}
 					}
 					if(reason!=null) {
-						listEhrRenderResults.Add(new EhrRenderResult(null,reason));
-						continue;
+						ehrRenderResult=new EhrRenderResult(null,reason);
 					}
-					EhrRenderResult ehrRenderResult=Exchange(ehrRenderChild,ehrRenderKind,listXmls[i],out bool isChildUsable);
-					listEhrRenderResults.Add(ehrRenderResult);
-					if(!isChildUsable) {
-						EndChild(ehrRenderChild);
-						ehrRenderChild=null;
+					else {
+						bool isChildUsable;
+						try {
+							ehrRenderResult=Exchange(ehrRenderChild,ehrRenderKind,xml,out isChildUsable);
+						}
+						catch(Exception ex) {
+							//Outside the exchange's own thread: no memory for the document's bytes or the page's text, for example. The child's state is
+							//not known, so it is ended and the next document gets a new one.
+							isChildUsable=false;
+							ehrRenderResult=new EhrRenderResult(null,"The document could not be rendered: "+ex.Message);
+						}
+						if(!isChildUsable) {
+							EndChild(ehrRenderChild);
+							ehrRenderChild=null;
+						}
 					}
+					actionResult(index,ehrRenderResult);
+					index++;
 				}
 			}
 			finally {
@@ -334,7 +359,6 @@ namespace OpenPmsDentalBusiness{
 					EndChild(ehrRenderChild);
 				}
 			}
-			return listEhrRenderResults;
 		}
 
 		///<summary>The reason shown for a child that ended while it had a document: its exit code, named when it is one of the two stack-overflow

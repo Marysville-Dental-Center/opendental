@@ -232,21 +232,32 @@ namespace OpenPmsDental {
 		}
 
 		///<summary>Bulk Patient Export (E-13): writes <name>.html beside each <name>.xml already in folder, one per document, all made by one stylesheet
-		///child, so CDA.xsl is compiled once, and one set of stylesheet files and the licence text. listFileNames are the names without the
-		///extension, listCcds the documents, in the same order. Returns the reasons of the pages that were not written, one line each with the name,
-		///or "" when all were. Throws when a file cannot be written.</summary>
-		public static string WriteCcdPages(string folder,List<string> listFileNames,List<string> listCcds) {
+		///child, so CDA.xsl is compiled once, and one set of stylesheet files and the licence text. enumerableFileNames are the names without the
+		///extension. It streams, so an export of thousands of patients needs no more memory than one of a single patient: each <name>.xml is read
+		///back from folder just before it goes to the child, and its <name>.html is written as soon as the page arrives, before the next document
+		///is read. Returns the reasons of the pages that were not written, one line each with the name, or "" when all were. Throws when a file
+		///cannot be read or written.</summary>
+		public static string WriteCcdPages(string folder,IEnumerable<string> enumerableFileNames) {
 			WriteStylesheetFiles(folder);
-			List<EhrRenderResult> listEhrRenderResults=EhrStylesheetStarter.RenderBatch(EhrRenderKind.Ccd,listCcds);
 			StringBuilder stringBuilderReasons=new StringBuilder();
-			for(int i=0;i<listFileNames.Count;i++) {
-				if(listEhrRenderResults[i].Html==null) {
-					stringBuilderReasons.AppendLine(listFileNames[i]+".html: "+listEhrRenderResults[i].Reason);
-					continue;
+			List<string> listFileNamesRead=new List<string>();//Only the names: the page of index i is that of the i-th name read.
+			EhrStylesheetStarter.RenderBatch(EhrRenderKind.Ccd,ReadCcdFiles(folder,enumerableFileNames,listFileNamesRead),(index,ehrRenderResult) => {
+				if(ehrRenderResult.Html==null) {
+					stringBuilderReasons.AppendLine(listFileNamesRead[index]+".html: "+ehrRenderResult.Reason);
+					return;
 				}
-				File.WriteAllText(Path.Combine(folder,listFileNames[i]+".html"),listEhrRenderResults[i].Html);
-			}
+				File.WriteAllText(Path.Combine(folder,listFileNamesRead[index]+".html"),ehrRenderResult.Html);
+			});
 			return stringBuilderReasons.ToString();
+		}
+
+		///<summary>The text of each <name>.xml of folder, read only when the batch asks for the next document, so no more than one is held at a time.
+		///Adds each name to listFileNamesRead as its file is read.</summary>
+		private static IEnumerable<string> ReadCcdFiles(string folder,IEnumerable<string> enumerableFileNames,List<string> listFileNamesRead) {
+			foreach(string fileName in enumerableFileNames) {
+				listFileNamesRead.Add(fileName);
+				yield return File.ReadAllText(Path.Combine(folder,fileName+".xml"));
+			}
 		}
 
 		///<summary>The message for an export whose page could not be made (reason from WriteCcdFiles), or "" when it was.</summary>

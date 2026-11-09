@@ -5,6 +5,7 @@
 // again (the test is then inconclusive); a new golden page is reviewed before it is committed.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -93,6 +94,31 @@ namespace EhrTests {
 
 		public void Dispose() {
 			EhrStylesheetStarter.FuncStartChild=null;
+		}
+	}
+
+	///<summary>Items read one at a time, for the order of a streamed batch: actionOnRead gets each item's index just before the item is handed
+	///out, and CountEnumerated counts how often the items were enumerated.</summary>
+	public class CountingEnumerable:IEnumerable<string> {
+		private readonly IList<string> _listItems;
+		private readonly Action<int> _actionOnRead;
+		public int CountEnumerated;
+
+		public CountingEnumerable(IList<string> listItems,Action<int> actionOnRead) {
+			_listItems=listItems;
+			_actionOnRead=actionOnRead;
+		}
+
+		public IEnumerator<string> GetEnumerator() {
+			CountEnumerated++;
+			for(int i=0;i<_listItems.Count;i++) {
+				_actionOnRead(i);
+				yield return _listItems[i];
+			}
+		}
+
+		IEnumerator IEnumerable.GetEnumerator() {
+			return GetEnumerator();
 		}
 	}
 
@@ -207,6 +233,31 @@ namespace EhrTests {
 				Assert.IsNull(ehrRenderResult.Reason);
 				Assert.AreEqual(htmlSingle,ehrRenderResult.Html);
 			}
+		}
+
+		///<summary>The streamed batch (Patient Export) reads its documents lazily and hands each page on as its reply arrives: page i before
+		///document i+1 is read, so one document and one page are in memory at a time. One child still makes every page.</summary>
+		[TestMethod]
+		public void Batch_Streamed_HandsEachPageOn_BeforeReadingTheNextDocument() {
+			string xml=CdaGolden.ReadFixture("CCD-full.modified.xml");
+			string htmlSingle=CdaGolden.Render(EhrRenderKind.Ccd,xml);
+			List<string> listLog=new List<string>();
+			List<EhrRenderResult> listEhrRenderResults=new List<EhrRenderResult>();
+			CountingEnumerable countingEnumerable=new CountingEnumerable(new List<string> { xml,"<!DOCTYPE a [<!ENTITY a \"a\">]><a>&a;</a>",xml },
+				index => listLog.Add("read "+index));
+			using(CountingStarter countingStarter=new CountingStarter()) {
+				EhrStylesheetStarter.RenderBatch(EhrRenderKind.Ccd,countingEnumerable,(index,ehrRenderResult) => {
+					listLog.Add("page "+index);
+					listEhrRenderResults.Add(ehrRenderResult);
+				});
+				Assert.AreEqual(1,countingStarter.CountStarted,"One child for the batch.");
+			}
+			CollectionAssert.AreEqual(new[] { "read 0","page 0","read 1","page 1","read 2","page 2" },listLog,string.Join(", ",listLog));
+			Assert.AreEqual(1,countingEnumerable.CountEnumerated,"The documents are enumerated once.");
+			Assert.AreEqual(htmlSingle,listEhrRenderResults[0].Html);
+			Assert.IsNull(listEhrRenderResults[1].Html);
+			Assert.AreEqual("The document has a document type declaration (DTD), which is not allowed.",listEhrRenderResults[1].Reason);
+			Assert.AreEqual(htmlSingle,listEhrRenderResults[2].Html);
 		}
 
 		///<summary>A batch whose second document the stylesheet refuses (CDA.xsl ends a document with a javascript: link) keeps going with the same

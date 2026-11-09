@@ -568,6 +568,51 @@ namespace EhrTests {
 			}
 		}
 
+		///<summary>An exception outside the exchange's own thread (no memory for a page's text, for example; here the crashed child's WaitForExit
+		///throws an OutOfMemoryException) gives that document a reason instead of leaving RenderBatch: the child, whose state is not known, is
+		///ended and the next document gets a new one. An exception of the caller's own reader or callback leaves the streamed RenderBatch, after
+		///its child has been ended.</summary>
+		[TestMethod]
+		public void Seam_ExceptionOutsideTheExchange_GivesTheReason_AndTheBatchGoesOn() {
+			List<FakeChild> listFakeChildren=new List<FakeChild>();
+			EhrStylesheetStarter.FuncStartChild=() => {
+				FakeChild fakeChild;
+				if(listFakeChildren.Count==0) {
+					fakeChild=FakeChild.Crashing(5,"");
+					fakeChild.ExceptionWaitForExit=new OutOfMemoryException("Insufficient memory (synthetic).");
+				}
+				else {
+					fakeChild=FakeChild.Answering("<html>page</html>");
+				}
+				listFakeChildren.Add(fakeChild);
+				return fakeChild;
+			};
+			List<EhrRenderResult> listEhrRenderResults=EhrStylesheetStarter.RenderBatch(EhrRenderKind.Ccd,new List<string> { "<a/>","<b/>" });
+			Assert.AreEqual(2,listFakeChildren.Count,"A new child for the next document.");
+			Assert.IsNull(listEhrRenderResults[0].Html);
+			Assert.AreEqual("The document could not be rendered: Insufficient memory (synthetic).",listEhrRenderResults[0].Reason);
+			Assert.IsTrue(listFakeChildren[0].IsKilled && listFakeChildren[0].IsDisposed,"The child whose state is not known was ended.");
+			Assert.AreEqual("<html>page</html>",listEhrRenderResults[1].Html);
+			Assert.IsTrue(listFakeChildren[1].IsInputClosed && listFakeChildren[1].IsDisposed);
+			//The caller's own exceptions: a page that cannot be written, a document that cannot be read.
+			FakeChild fakeChildLast=null;
+			EhrStylesheetStarter.FuncStartChild=() => fakeChildLast=FakeChild.Answering("<html>page</html>");
+			Expect.Throws<IOException>(() => EhrStylesheetStarter.RenderBatch(EhrRenderKind.Ccd,new List<string> { "<a/>","<b/>" },
+				(index,ehrRenderResult) => throw new IOException("The disk is full (synthetic).")));
+			Assert.IsTrue(fakeChildLast.IsInputClosed && fakeChildLast.IsDisposed,"Ended when the callback threw.");
+			fakeChildLast=null;
+			int countResults=0;
+			Expect.Throws<IOException>(() => EhrStylesheetStarter.RenderBatch(EhrRenderKind.Ccd,ReadOneThenFail(),(index,ehrRenderResult) => countResults++));
+			Assert.AreEqual(1,countResults,"The first document's page was handed on before the reader failed.");
+			Assert.IsTrue(fakeChildLast.IsInputClosed && fakeChildLast.IsDisposed,"Ended when the reader threw.");
+		}
+
+		///<summary>One document, then a reader that fails, as a file of Patient Export that cannot be read back would.</summary>
+		private static IEnumerable<string> ReadOneThenFail() {
+			yield return "<a/>";
+			throw new IOException("The file cannot be read (synthetic).");
+		}
+
 		///<summary>The frames: a kind or status byte and a little-endian length; a frame cut short or with a length out of range throws.</summary>
 		[TestMethod]
 		public void Frames_RoundTrip_AndBrokenFramesThrow() {
@@ -599,6 +644,8 @@ namespace EhrTests {
 		public bool IsKilled;
 		public bool IsDisposed;
 		public bool IsInputClosed;
+		///<summary>When set, WaitForExit throws it: an exception outside the exchange's own thread.</summary>
+		public Exception ExceptionWaitForExit;
 
 		public static FakeChild Answering(string html) {
 			FakeChild fakeChild=new FakeChild();
@@ -652,6 +699,9 @@ namespace EhrTests {
 		}
 
 		public bool WaitForExit(int milliseconds) {
+			if(ExceptionWaitForExit!=null) {
+				throw ExceptionWaitForExit;
+			}
 			return true;
 		}
 
