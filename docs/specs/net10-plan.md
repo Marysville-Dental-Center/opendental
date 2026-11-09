@@ -438,8 +438,9 @@ gate builds them. Neither ships.
   today's project-file readers (`tests/LibraryBindingTests/TestSupport.cs`, `tests/ReleaseFlowTests/ReleaseFilesTests.cs`) select elements
   by it. S1-1 and S1-2 keep it even though they merge after S1-T. Once S1-T, S1-1 and S1-2 have merged, one sweep removes it from every
   converted project: the lead, or S1-3 if it comes first. Done by the lead after the first wave (2026-11-08): the 25 SDK-style projects
-  and `third-party/build/SourceBuild.props`, `SourceBuild.targets` and `PDFsharp.props` have a `<Project>` element without the namespace, with the same
-  evaluated items, compiler command lines and assemblies as before; projects converted from now on are written without it.
+  and `third-party/build/SourceBuild.props`, `SourceBuild.targets` and `PDFsharp.props` have a `<Project>` element without the
+  namespace, with the same evaluated items, compiler command lines and assemblies as before; projects converted from now on are
+  written without it.
 - **Lock files.** A converted project's `packages.lock.json` records its ProjectReference graph. When the references of a project it
   references change (S1-2's PdfSharp wrappers, S1-3's business library), the lane's locked restore fails with NU1004 until the lock files of
   the referencing projects are re-created: delete them and build through the lane, whose locked restore writes a missing lock file
