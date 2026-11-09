@@ -123,6 +123,16 @@ namespace ToothChartImageTests {
 			return report;
 		}
 
+		///<summary>TC-3's on-screen times alone (WpfOnScreenTimings), with the machine they were measured on: for a fresh process (SecondProcess
+		///"onscreen-times").</summary>
+		public static WpfTimingReport MeasureOnScreen(int countRepeats=CountRepeats) {
+			WpfTimingReport report=new WpfTimingReport();
+			ReadMachine(report);
+			report.ListMachine.Add("Warm values: median and slowest of "+countRepeats+" runs");
+			WpfOnScreenTimings.Measure(report,countRepeats);
+			return report;
+		}
+
 		private static void MeasureSize(WpfTimingReport report,string sizeName,ToothChartWrapper wrapper,ChartScene sceneA,ChartScene sceneB,int countRepeats,
 			bool isFull)
 		{

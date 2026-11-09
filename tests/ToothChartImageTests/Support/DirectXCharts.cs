@@ -29,6 +29,18 @@ namespace ToothChartImageTests {
 			return null;
 		}
 
+		///<summary>The DirectX device format the program itself picks on a computer with none saved (ToothChartRelay.ChooseStartupDirectXFormat calls
+		///ToothChartWrapper.GetPreferredDirectXFormat: the first standard format that works on a chart on the form, multisampled where the driver allows),
+		///which is what offices draw with unless Setup > Graphics chose another; null when none starts or the DirectX runtime is missing. For the render
+		///times (TC-3 fix round 3); the recordings and the mouse tests keep FindFormat's unsmoothed format.</summary>
+		public static string FindProgramFormat(Form form) {
+			if(!ToothChartWrapper.IsDirectXRuntimeAvailable()) {
+				return null;
+			}
+			string directXFormat=ToothChartWrapper.GetPreferredDirectXFormat(form);
+			return directXFormat=="invalid"?null:directXFormat;
+		}
+
 		///<summary>A DirectX wrapper of the size on the shown form, made as TC-0's recorder makes one: the size, the device format, the form, then the
 		///mode. Read Engine to learn whether DirectX started.</summary>
 		public static ToothChartWrapper CreateWrapper(Form form,Size size,string directXFormat) {

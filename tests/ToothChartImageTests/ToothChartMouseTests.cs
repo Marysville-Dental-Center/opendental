@@ -275,76 +275,111 @@ namespace ToothChartImageTests {
 				Assert.Inconclusive(ToothChartWrapper.D3DX_DLL+" is not installed: no DirectX chart to compare with.");
 			}
 			StaRunner.Run(() => {
-				using Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size);
-				form.Show();
-				string directXFormat=DirectXCharts.FindFormat(form);
-				if(directXFormat==null) {
-					Assert.Inconclusive("No standard DirectX format starts on this computer.");
-				}
-				using ToothChartWrapper wrapperDirectX=DirectXCharts.CreateWrapper(form,ChartScenes.SizeModule.Size,directXFormat);
-				Assert.AreEqual(ToothChartEngine.DirectX,wrapperDirectX.Engine,"DirectX started.");
-				Control controlDirectX=wrapperDirectX.Controls.Cast<Control>().Single();
-				using ToothChartWrapper wrapperShared=CreatePrepared("drawing-segments",ChartScenes.SizeModule);
-				ToothChartRelay relayDirectX=WpfCharts.CreateRelay(wrapperDirectX);
-				ChartScenes.Prepare(relayDirectX,ChartScenes.Get("drawing-segments"),ChartColorSet.Module);
-				List<string> listSegmentsDirectX=new List<string>();
-				int countSelectionsDirectX=0;
-				wrapperDirectX.SegmentDrawn+=(sender,e) => listSegmentsDirectX.Add(e.DrawingSegement);
-				wrapperDirectX.ToothSelectionsChanged+=sender => countSelectionsDirectX++;
-				MouseLog mouseLog=new MouseLog();
-				ToothChartMouse toothChartMouse=CreateMouse(mouseLog);
-				ToothChartData tcDataShared=wrapperShared.TcData;
-				Size size=ChartScenes.SizeModule.Size;
-				//The same input to both: hovers, clicks, a drag, a pen stroke, the colour changer and the eraser.
-				List<Tuple<CursorTool,string,Point>> listInput=new List<Tuple<CursorTool,string,Point>>();
-				Point point3=GetNumberCentre(tcDataShared,"3");
-				Point point12=GetNumberCentre(tcDataShared,"12");
-				Point point30=GetNumberCentre(tcDataShared,"30");
-				listInput.Add(Tuple.Create(CursorTool.Pointer,"move",point30));
-				listInput.Add(Tuple.Create(CursorTool.Pointer,"down",point30));
-				listInput.Add(Tuple.Create(CursorTool.Pointer,"up",point30));
-				listInput.Add(Tuple.Create(CursorTool.Pointer,"move",point3));
-				listInput.Add(Tuple.Create(CursorTool.Pointer,"down",point3));
-				foreach(Point point in GetDragPoints(point3,point12,5).Skip(1)) {
-					listInput.Add(Tuple.Create(CursorTool.Pointer,"move",point));
-				}
-				listInput.Add(Tuple.Create(CursorTool.Pointer,"up",point12));
-				listInput.Add(Tuple.Create(CursorTool.Pen,"down",new Point(30,280)));
-				listInput.Add(Tuple.Create(CursorTool.Pen,"move",new Point(45,284)));
-				listInput.Add(Tuple.Create(CursorTool.Pen,"move",new Point(63,290)));
-				listInput.Add(Tuple.Create(CursorTool.Pen,"up",new Point(63,290)));
-				listInput.Add(Tuple.Create(CursorTool.ColorChanger,"down",new Point(205,161)));
-				listInput.Add(Tuple.Create(CursorTool.ColorChanger,"up",new Point(205,161)));
-				listInput.Add(Tuple.Create(CursorTool.Eraser,"down",new Point(82,212)));
-				listInput.Add(Tuple.Create(CursorTool.Eraser,"move",new Point(82,212)));
-				listInput.Add(Tuple.Create(CursorTool.Eraser,"up",new Point(82,212)));
-				foreach(Tuple<CursorTool,string,Point> input in listInput) {
-					wrapperDirectX.CursorTool=input.Item1;
-					tcDataShared.CursorTool=input.Item1;
-					tcDataShared.ColorDrawing=Color.Orange;
-					wrapperDirectX.ColorDrawing=Color.Orange;
-					string method=input.Item2=="down"?"OnMouseDown":input.Item2=="up"?"OnMouseUp":"OnMouseMove";
-					RaiseMouse(controlDirectX,method,input.Item3);
-					Application.DoEvents();
-					if(input.Item2=="down") {
-						toothChartMouse.MouseDown(tcDataShared,input.Item3,size);
+				CultureInfo cultureOld=Thread.CurrentThread.CurrentCulture;
+				try {
+					Thread.CurrentThread.CurrentCulture=new CultureInfo("en-US");
+					using Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size);
+					form.Show();
+					string directXFormat=DirectXCharts.FindFormat(form);
+					if(directXFormat==null) {
+						Assert.Inconclusive("No standard DirectX format starts on this computer.");
 					}
-					else if(input.Item2=="up") {
-						toothChartMouse.MouseUp(tcDataShared,input.Item3,size);
+					//The module size, where GetPointMouseScaled changes nothing; the printout size and 150% of the module, where the SegmentDrawn strings are
+					//scaled into 410x307 and rounded to tenths; and the big chart window.
+					foreach(ChartSize chartSize in new[] { ChartScenes.SizeModule,ChartScenes.SizePrintout,new ChartSize(615,461,ChartColorSet.Module),
+						ChartScenes.SizeBigWindow })
+					{
+						CompareWithDirectX(form,directXFormat,chartSize);
 					}
-					else {
-						toothChartMouse.MouseMove(tcDataShared,input.Item3,size);
-					}
-					CollectionAssert.AreEquivalent(wrapperDirectX.TcData.SelectedTeeth,tcDataShared.SelectedTeeth,input.Item1+" "+input.Item2+" at "+input.Item3);
+					form.Close();
 				}
-				CollectionAssert.AreEqual(listSegmentsDirectX,mouseLog.ListSegments,"The same SegmentDrawn strings, in order.");
-				Assert.AreEqual(countSelectionsDirectX,mouseLog.CountSelectionsChanged,"The same commits of the selection.");
-				CollectionAssert.AreEqual(wrapperDirectX.TcData.DrawingSegmentList.Select(x => x.DrawingSegment+"|"+x.ColorDraw.ToArgb()).ToList(),
-					tcDataShared.DrawingSegmentList.Select(x => x.DrawingSegment+"|"+x.ColorDraw.ToArgb()).ToList(),"The same drawings, recoloured and erased alike.");
-				Assert.IsTrue(listSegmentsDirectX.Count==3,"The pen stroke, the recoloured drawing and the erased one: "+string.Join(" / ",listSegmentsDirectX));
-				Assert.IsTrue(countSelectionsDirectX==2 && tcDataShared.SelectedTeeth.Count==11,"30, then 3 to 12: "+string.Join(",",tcDataShared.SelectedTeeth));
-				form.Close();
+				finally {
+					Thread.CurrentThread.CurrentCulture=cultureOld;
+				}
 			});
+		}
+
+		///<summary>The same input to a DirectX chart of the size on the form and to the shared class on a copy of its data: hovers, clicks, a drag, a pen
+		///stroke, the colour changer and the eraser, at points scaled from the module's (the drawings of "drawing-segments" are in the 410x307 space).</summary>
+		private static void CompareWithDirectX(Form form,string directXFormat,ChartSize chartSize) {
+			Size size=chartSize.Size;
+			string sizeName=size.Width+"x"+size.Height;
+			using ToothChartWrapper wrapperDirectX=DirectXCharts.CreateWrapper(form,size,directXFormat);
+			Assert.AreEqual(ToothChartEngine.DirectX,wrapperDirectX.Engine,"DirectX started at "+sizeName+".");
+			Control controlDirectX=wrapperDirectX.Controls.Cast<Control>().Single();
+			using ToothChartWrapper wrapperShared=CreatePrepared("drawing-segments",chartSize);
+			ToothChartRelay relayDirectX=WpfCharts.CreateRelay(wrapperDirectX);
+			ChartScenes.Prepare(relayDirectX,ChartScenes.Get("drawing-segments"),chartSize.ColorSet);
+			List<string> listSegmentsDirectX=new List<string>();
+			int countSelectionsDirectX=0;
+			wrapperDirectX.SegmentDrawn+=(sender,e) => listSegmentsDirectX.Add(e.DrawingSegement);
+			wrapperDirectX.ToothSelectionsChanged+=sender => countSelectionsDirectX++;
+			MouseLog mouseLog=new MouseLog();
+			ToothChartMouse toothChartMouse=CreateMouse(mouseLog);
+			ToothChartData tcDataShared=wrapperShared.TcData;
+			List<Tuple<CursorTool,string,Point>> listInput=new List<Tuple<CursorTool,string,Point>>();
+			Point point3=GetNumberCentre(tcDataShared,"3");
+			Point point12=GetNumberCentre(tcDataShared,"12");
+			Point point30=GetNumberCentre(tcDataShared,"30");
+			listInput.Add(Tuple.Create(CursorTool.Pointer,"move",point30));
+			listInput.Add(Tuple.Create(CursorTool.Pointer,"down",point30));
+			listInput.Add(Tuple.Create(CursorTool.Pointer,"up",point30));
+			listInput.Add(Tuple.Create(CursorTool.Pointer,"move",point3));
+			listInput.Add(Tuple.Create(CursorTool.Pointer,"down",point3));
+			foreach(Point point in GetDragPoints(point3,point12,5).Skip(1)) {
+				listInput.Add(Tuple.Create(CursorTool.Pointer,"move",point));
+			}
+			listInput.Add(Tuple.Create(CursorTool.Pointer,"up",point12));
+			listInput.Add(Tuple.Create(CursorTool.Pen,"down",ScaleFromModule(new PointF(30,280),size)));
+			listInput.Add(Tuple.Create(CursorTool.Pen,"move",ScaleFromModule(new PointF(45,284),size)));
+			listInput.Add(Tuple.Create(CursorTool.Pen,"move",ScaleFromModule(new PointF(63,290),size)));
+			listInput.Add(Tuple.Create(CursorTool.Pen,"up",ScaleFromModule(new PointF(63,290),size)));
+			//Within 2 of the blue drawing's point 205,160 once scaled back (GetPointMouseScaled).
+			listInput.Add(Tuple.Create(CursorTool.ColorChanger,"down",ScaleFromModule(new PointF(205,161),size)));
+			listInput.Add(Tuple.Create(CursorTool.ColorChanger,"up",ScaleFromModule(new PointF(205,161),size)));
+			//The eraser's centre is the cursor plus 8.49 screen pixels, scaled: the cursor goes where that centre lands near the red zig-zag's 90,220.
+			Point pointEraser=new Point((int)Math.Round(90f*size.Width/410f-ToothChartMouse.EraserOffset),
+				(int)Math.Round(220f*size.Height/307f-ToothChartMouse.EraserOffset));
+			listInput.Add(Tuple.Create(CursorTool.Eraser,"down",pointEraser));
+			listInput.Add(Tuple.Create(CursorTool.Eraser,"move",pointEraser));
+			listInput.Add(Tuple.Create(CursorTool.Eraser,"up",pointEraser));
+			foreach(Tuple<CursorTool,string,Point> input in listInput) {
+				wrapperDirectX.CursorTool=input.Item1;
+				tcDataShared.CursorTool=input.Item1;
+				tcDataShared.ColorDrawing=Color.Orange;
+				wrapperDirectX.ColorDrawing=Color.Orange;
+				string method=input.Item2=="down"?"OnMouseDown":input.Item2=="up"?"OnMouseUp":"OnMouseMove";
+				RaiseMouse(controlDirectX,method,input.Item3);
+				Application.DoEvents();
+				if(input.Item2=="down") {
+					toothChartMouse.MouseDown(tcDataShared,input.Item3,size);
+				}
+				else if(input.Item2=="up") {
+					toothChartMouse.MouseUp(tcDataShared,input.Item3,size);
+				}
+				else {
+					toothChartMouse.MouseMove(tcDataShared,input.Item3,size);
+				}
+				CollectionAssert.AreEquivalent(wrapperDirectX.TcData.SelectedTeeth,tcDataShared.SelectedTeeth,sizeName+": "+input.Item1+" "+input.Item2+" at "
+					+input.Item3);
+			}
+			CollectionAssert.AreEqual(listSegmentsDirectX,mouseLog.ListSegments,sizeName+": the same SegmentDrawn strings, in order.");
+			Assert.AreEqual(countSelectionsDirectX,mouseLog.CountSelectionsChanged,sizeName+": the same commits of the selection.");
+			CollectionAssert.AreEqual(wrapperDirectX.TcData.DrawingSegmentList.Select(x => x.DrawingSegment+"|"+x.ColorDraw.ToArgb()).ToList(),
+				tcDataShared.DrawingSegmentList.Select(x => x.DrawingSegment+"|"+x.ColorDraw.ToArgb()).ToList(),sizeName+": the same drawings, recoloured and "
+				+"erased alike.");
+			Assert.IsTrue(listSegmentsDirectX.Count==3,sizeName+": the pen stroke, the recoloured drawing and the erased one: "
+				+string.Join(" / ",listSegmentsDirectX));
+			Assert.IsTrue(countSelectionsDirectX==2 && tcDataShared.SelectedTeeth.Count==11,sizeName+": 30, then 3 to 12: "+string.Join(",",tcDataShared.SelectedTeeth));
+			if(size!=ChartScenes.SizeModule.Size) {
+				Assert.IsTrue(listSegmentsDirectX[0].Contains("."),sizeName+": the stroke's points are scaled into 410x307 and rounded to tenths: "+listSegmentsDirectX[0]);
+			}
+			form.Controls.Remove(wrapperDirectX);
+		}
+
+		///<summary>A point of the module's 410x307 chart at the same place of a chart of the size, rounded to whole pixels.</summary>
+		private static Point ScaleFromModule(PointF pointModule,Size size) {
+			return new Point((int)Math.Round(pointModule.X*size.Width/410f),(int)Math.Round(pointModule.Y*size.Height/307f));
 		}
 
 		#region Helpers

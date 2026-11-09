@@ -1,6 +1,8 @@
-// Tests of the WPF chart's live view (package TC-3, O-19 (b), docs/specs/wpf-tooth-chart-plan.md sections 5.4 and 7): made only when the wrapper is
-// shown on an STA thread; a hidden or MTA wrapper uses the renderer; the "Draw in software" switch; the view draws the renderer's scene; a selection
-// keeps its 3D layer; its mouse.
+// Tests of the WPF chart's live view (package TC-3, O-19 (b), docs/specs/wpf-tooth-chart-plan.md sections 5.4 and 7): made only by the first rebuild
+// on screen of a wrapper shown on an STA thread; a hidden or MTA wrapper uses the renderer; the "Draw in software" switch; the view draws the
+// renderer's scene; a selection keeps its 3D layer; its mouse; and fix round 3's: no view for a print wrapper disposed before the message loop runs,
+// the fallbacks when the view cannot start or show a scene, cursors that cannot be made, a DPI change without a new scene, the bitmap cache at 150%,
+// the background before the first scene, the switch's cleared image, and the 5.5 refresh cases of TC-1 on the live view.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -17,10 +19,36 @@ namespace ToothChartImageTests {
 	///(TestAssemblySetup), and no test waits for a frame on screen: the view's content is read back with its own software render.</summary>
 	[TestClass]
 	public class WpfLiveViewTests {
-		private static void RequireDesktop() {
+		public static void RequireDesktop() {
 			if(!Environment.UserInteractive) {
 				Assert.Inconclusive("Needs an interactive desktop session: the wrapper must be shown.");
 			}
+		}
+
+		///<summary>The live view of a shown wrapper, once its first rebuild on screen has made it and shown the current data; fails when none comes.</summary>
+		public static ToothChartWpfView WaitForLiveView(ToothChartWrapper wrapper) {
+			ToothChartWpfView toothChartWpfView=WpfCharts.WaitForLiveView(wrapper);
+			Assert.IsNotNull(toothChartWpfView,"The shown wrapper's rebuild made no live view: "+string.Join("; ",ToothChartWrapper.GetFallbackMessages().Skip(
+				Math.Max(0,ToothChartWrapper.GetFallbackMessages().Count-3))));
+			return toothChartWpfView;
+		}
+
+		///<summary>The window's root visual of a live view's content (the HwndSource's root, the host's adapter): VisualTreeHelper.SetRootDpi works on it.</summary>
+		public static System.Windows.Media.Visual GetRootVisual(ToothChartWpfView toothChartWpfView) {
+			System.Windows.PresentationSource presentationSource=System.Windows.PresentationSource.FromVisual(toothChartWpfView.Child);
+			Assert.IsNotNull(presentationSource,"The view's content is in a window.");
+			return presentationSource.RootVisual;
+		}
+
+		///<summary>The content's size in device pixels: its bounds in the window's DIPs times the window's DPI scale.</summary>
+		public static SizeF GetContentDeviceSize(ToothChartWpfView toothChartWpfView) {
+			System.Windows.FrameworkElement frameworkElement=(System.Windows.FrameworkElement)toothChartWpfView.Child;
+			System.Windows.Media.Visual visualRoot=GetRootVisual(toothChartWpfView);
+			((System.Windows.UIElement)visualRoot).UpdateLayout();
+			System.Windows.Rect rect=frameworkElement.TransformToAncestor(visualRoot).TransformBounds(new System.Windows.Rect(0,0,frameworkElement.ActualWidth,
+				frameworkElement.ActualHeight));
+			double dpiScale=System.Windows.Media.VisualTreeHelper.GetDpi(visualRoot).DpiScaleX;
+			return new SizeF((float)(rect.Width*dpiScale),(float)(rect.Height*dpiScale));
 		}
 
 		[TestMethod]
@@ -96,14 +124,19 @@ namespace ToothChartImageTests {
 				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
 				Assert.IsNull(wrapper.LiveViewWpf,"Not before it is shown.");
 				form.Show();
-				ToothChartWpfView toothChartWpfView=wrapper.LiveViewWpf;
-				Assert.IsNotNull(toothChartWpfView,"Shown on an STA thread: the live view.");
+				Assert.IsNull(wrapper.LiveViewWpf,"Not before the message loop runs its rebuild (fix round 3).");
+				ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
 				Assert.IsFalse(wrapper.ImageHostWpf.Visible,"The image host is hidden under it.");
-				Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartWpfView.SceneShown!=null,20000),"The posted rebuild showed the scene.");
 				ToothScene toothScene=WpfCharts.BuildScene(wrapper);
 				Assert.AreEqual(toothScene.Items3D.Count,toothChartWpfView.CountModelsShown,"Every 3D item is a model of the view.");
 				Assert.AreEqual(0,wrapper.ImageHostWpf.CountRendersStarted,"The hidden image host rendered nothing.");
-				Assert.AreEqual(1.0,toothChartWpfView.DpiScaleShown,"The test host's window at 96 dpi.");
+				//The content is laid out at 1/DPI of its window, whatever the desktop's scale (100% on the build PC, 1.5 on a desktop at 150%), so the
+				//scene's pixels are the window's device pixels.
+				Assert.AreEqual(System.Windows.Media.VisualTreeHelper.GetDpi(GetRootVisual(toothChartWpfView)).DpiScaleX,toothChartWpfView.DpiScaleShown,1e-9,
+					"The DPI scale of the view's window.");
+				SizeF sizeDevice=GetContentDeviceSize(toothChartWpfView);
+				Assert.AreEqual(toothScene.Size.Width,sizeDevice.Width,0.01,"The content's width in device pixels is the scene's.");
+				Assert.AreEqual(toothScene.Size.Height,sizeDevice.Height,0.01,"The content's height in device pixels is the scene's.");
 				int countBefore=ToothChartWrapper.GetCountFallbackMessages();
 				using(Bitmap bitmap=relay.GetBitmap())
 				using(Bitmap bitmapRenderer=ToothChartRenderer.Instance.Render(toothScene,null).ToBitmap()) {
@@ -111,8 +144,11 @@ namespace ToothChartImageTests {
 						"GetBitmap of a wrapper with a live view is the renderer's image.");
 				}
 				Assert.AreEqual(0,ToothChartWrapper.GetFallbackMessagesSince(countBefore).Count,"Nothing was logged.");
+				System.Windows.UIElement content=toothChartWpfView.Child;
 				wrapper.Dispose();
 				Assert.IsTrue(toothChartWpfView.IsDisposed,"The wrapper's Dispose releases the live view.");
+				Assert.IsNull(toothChartWpfView.Child,"Its content was detached before its Dispose (ElementHost.Dispose leaves it attached).");
+				Assert.IsNull(System.Windows.Media.VisualTreeHelper.GetParent(content),"The content left the host's adapter.");
 				form.Close();
 			});
 		}
@@ -127,11 +163,11 @@ namespace ToothChartImageTests {
 				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
 				form.Show();
-				Assert.IsNull(wrapper.LiveViewWpf,"An MTA thread cannot host WPF: no live view.");
 				ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;
-				Assert.IsTrue(toothChartImageHost.Visible);
 				Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartImageHost.CountImagesReceived>=1 && !toothChartImageHost.IsRenderInFlight,20000),
 					"The image host shows the renderer's image.");
+				Assert.IsNull(wrapper.LiveViewWpf,"An MTA thread cannot host WPF: its rebuild made no live view.");
+				Assert.IsTrue(toothChartImageHost.Visible);
 				using(Bitmap bitmapShown=toothChartImageHost.GetBitmapShown())
 				using(Bitmap bitmap=relay.GetBitmap()) {
 					Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmap).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapShown)));
@@ -153,14 +189,13 @@ namespace ToothChartImageTests {
 				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
 				form.Show();
 				ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;
-				Assert.IsNull(wrapper.LiveViewWpf,"Drawn in software: no live view.");
 				Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartImageHost.CountImagesReceived>=1 && !toothChartImageHost.IsRenderInFlight,20000));
-				//Off: the live view at once.
+				Assert.IsNull(wrapper.LiveViewWpf,"Drawn in software: its rebuild made no live view.");
+				//Off: the posted rebuild makes the live view, over the image host.
 				wrapper.WpfDrawInSoftware=false;
-				ToothChartWpfView toothChartWpfView=wrapper.LiveViewWpf;
-				Assert.IsNotNull(toothChartWpfView);
+				ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
 				Assert.IsFalse(toothChartImageHost.Visible);
-				Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartWpfView.SceneShown!=null,20000),"The live view shows the chart.");
+				Assert.IsNotNull(toothChartImageHost.GetBitmapShown(),"Hidden under the live view, the image host still holds its image from before it.");
 				//On again, after a change made while the live view was on: the image host shows the current chart.
 				relay.SetSelected("8",true);
 				Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartWpfView.SceneShown.Items2D.Any(x => x.Source=="highlight of 8"),20000));
@@ -168,10 +203,19 @@ namespace ToothChartImageTests {
 				wrapper.WpfDrawInSoftware=true;
 				Assert.IsNull(wrapper.LiveViewWpf);
 				Assert.IsTrue(toothChartWpfView.IsDisposed,"The live view is released.");
+				Assert.IsNull(toothChartWpfView.Child,"Its content was detached before its Dispose.");
 				Assert.IsTrue(toothChartImageHost.Visible);
+				//Until the software render arrives (about 0.3 s), the image host shows the chart's background, not its image from before the live view,
+				//which lacks the selection (and in the Chart module could be another patient's chart).
+				Assert.IsNull(toothChartImageHost.GetBitmapShown(),"The image host's old image was dropped when it came back on screen.");
+				Assert.IsNull(toothChartImageHost.SceneShown);
 				Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartImageHost.CountImagesReceived>countImages && !toothChartImageHost.IsRenderInFlight,20000),
 					"The image host renders the chart again.");
 				Assert.IsTrue(toothChartImageHost.SceneShown.Items2D.Any(x => x.Source=="highlight of 8"),"With the selection made meanwhile.");
+				using(Bitmap bitmap=relay.GetBitmap())
+				using(Bitmap bitmapShown=toothChartImageHost.GetBitmapShown()) {
+					Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmap).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapShown)),"The current chart.");
+				}
 				wrapper.Dispose();
 				form.Close();
 			});
@@ -188,8 +232,7 @@ namespace ToothChartImageTests {
 					form.Controls.Add(wrapper);
 					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 					form.Show();
-					ToothChartWpfView toothChartWpfView=wrapper.LiveViewWpf;
-					Assert.IsNotNull(toothChartWpfView);
+					ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
 					foreach(string sceneName in new[] { "restored-adult","treatment-plan","select-several","drawing-segments","text-watch","primary-dentition",
 						"movements-combined","sealant-statuses" })
 					{
@@ -225,8 +268,7 @@ namespace ToothChartImageTests {
 				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
 				form.Show();
-				ToothChartWpfView toothChartWpfView=wrapper.LiveViewWpf;
-				Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartWpfView.SceneShown!=null && !wrapper.IsWpfSceneDirty,20000));
+				ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
 				int countBuilt=toothChartWpfView.Count3DLayersBuilt;
 				int countShown=toothChartWpfView.CountScenesShown;
 				relay.SetSelected("8",true);
@@ -255,8 +297,7 @@ namespace ToothChartImageTests {
 				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
 				form.Show();
-				ToothChartWpfView toothChartWpfView=wrapper.LiveViewWpf;
-				Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartWpfView.SceneShown!=null && !wrapper.IsWpfSceneDirty,20000));
+				ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
 				//The 3D layer (the Viewport3D over the background, the size of the chart) is kept in a bitmap cache at 1x, snapped to the pixels, so a
 				//frame that changes only the 2D layer composites it.
 				Assert.IsTrue(toothChartWpfView.Is3DLayerCached,"The default.");
@@ -333,8 +374,7 @@ namespace ToothChartImageTests {
 				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 				ChartScenes.Prepare(relay,ChartScenes.Get("empty-universal"),ChartColorSet.Module);
 				form.Show();
-				ToothChartWpfView toothChartWpfView=wrapper.LiveViewWpf;
-				Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartWpfView.SceneShown!=null && !wrapper.IsWpfSceneDirty,20000));
+				ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
 				int countSelections=0;
 				List<string> listSegments=new List<string>();
 				wrapper.ToothSelectionsChanged+=sender => countSelections++;
@@ -378,16 +418,414 @@ namespace ToothChartImageTests {
 				ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
 				form.Controls.Add(wrapper);
 				form.Show();
-				ToothChartWpfView toothChartWpfView=wrapper.LiveViewWpf;
-				Assert.IsNotNull(toothChartWpfView);
+				ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
 				wrapper.Engine=ToothChartEngine.Simple2D;
 				Assert.IsNull(wrapper.LiveViewWpf);
 				Assert.IsTrue(toothChartWpfView.IsDisposed,"Leaving Wpf3D releases the live view.");
 				wrapper.Engine=ToothChartEngine.Wpf3D;
-				Assert.IsNotNull(wrapper.LiveViewWpf,"A shown wrapper set to Wpf3D gets its live view again.");
+				Assert.IsNotNull(WpfCharts.WaitForLiveView(wrapper),"A shown wrapper set to Wpf3D gets its live view again, from its posted rebuild.");
 				wrapper.Dispose();
 				form.Close();
 			});
 		}
+
+		#region Fix round 3
+		[TestMethod]
+		public void PrintWrapper_ShownAndDisposedBeforeTheMessageLoopRuns_MakesNoLiveView() {
+			//ControlTreat.PrepImageForPrinting adds its print wrapper to the shown Treatment Plan module, takes GetBitmap and disposes it, with no message
+			//loop in between. The live view is made by the wrapper's first rebuild on screen, which the message loop runs, so the print makes none.
+			RequireDesktop();
+			StaRunner.Run(() => {
+				int countMade=0;
+				ToothChartWpfView.ActionStepForTests=(toothChartWpfView,step) => {
+					if(step==ToothChartWpfView.StepCreate) {
+						countMade++;
+					}
+				};
+				try {
+					using Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizePrintout.Size);
+					form.Show();
+					Application.DoEvents();
+					ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizePrintout.Size);
+					form.Controls.Add(wrapper);
+					wrapper.BringToFront();
+					Assert.IsTrue(wrapper.IsHandleCreated && wrapper.Visible,"The print wrapper is on a shown control, as on the Treatment Plan module.");
+					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+					using(Bitmap bitmap=WpfCharts.Draw(relay,ChartScenes.Get("treatment-plan"),ChartColorSet.Printout)) {
+						Assert.AreEqual(ChartScenes.SizePrintout.Size,bitmap.Size);
+					}
+					Assert.IsNull(wrapper.LiveViewWpf,"No live view before the message loop runs.");
+					form.Controls.Remove(wrapper);
+					wrapper.Dispose();
+					WpfRendererTests.PumpUntil(() => false,300);//the message loop runs; the posted rebuild went with the wrapper
+					Assert.AreEqual(0,countMade,"The print made no live view.");
+					//A wrapper that stays shown makes its live view when the loop runs its rebuild.
+					ToothChartWrapper wrapperShown=WpfCharts.CreateWrapper(ChartScenes.SizePrintout.Size);
+					form.Controls.Add(wrapperShown);
+					WaitForLiveView(wrapperShown);
+					Assert.AreEqual(1,countMade);
+					wrapperShown.Dispose();
+					form.Close();
+				}
+				finally {
+					ToothChartWpfView.ActionStepForTests=null;
+				}
+			});
+		}
+
+		[TestMethod]
+		public void LiveView_ThatCannotStart_LeavesTheImageHostOnScreen_AndIsNotTriedAgain() {
+			RequireDesktop();
+			StaRunner.Run(() => {
+				int countMade=0;
+				ToothChartWpfView.ActionStepForTests=(toothChartWpfView,step) => {
+					if(step==ToothChartWpfView.StepCreate) {
+						countMade++;
+						throw new InvalidOperationException("A test: the live view cannot start.");
+					}
+				};
+				try {
+					using Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size);
+					ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+					form.Controls.Add(wrapper);
+					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+					ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+					int countBefore=ToothChartWrapper.GetCountFallbackMessages();
+					form.Show();
+					ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;
+					Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartImageHost.CountImagesReceived>=1 && !toothChartImageHost.IsRenderInFlight,20000),
+						"The image host shows the software render instead.");
+					Assert.AreEqual(1,countMade,"The rebuild tried to make the live view.");
+					Assert.IsNull(wrapper.LiveViewWpf);
+					Assert.IsTrue(toothChartImageHost.Visible);
+					Assert.AreSame(toothChartImageHost,wrapper.Controls.Cast<Control>().Single(),"Nothing of the failed view is left on the wrapper.");
+					List<string> listMessages=ToothChartWrapper.GetFallbackMessagesSince(countBefore);
+					Assert.AreEqual(1,listMessages.Count,string.Join("; ",listMessages));
+					StringAssert.Contains(listMessages[0],"live view could not start");
+					//It is not tried again: the next change goes to the image host.
+					int countImages=toothChartImageHost.CountImagesReceived;
+					relay.SetSelected("8",true);
+					Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartImageHost.CountImagesReceived>countImages && !toothChartImageHost.IsRenderInFlight,20000));
+					Assert.AreEqual(1,countMade,"No second try.");
+					using(Bitmap bitmap=relay.GetBitmap())
+					using(Bitmap bitmapShown=toothChartImageHost.GetBitmapShown()) {
+						Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmap).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapShown)),"The current chart.");
+					}
+					wrapper.Dispose();
+					form.Close();
+				}
+				finally {
+					ToothChartWpfView.ActionStepForTests=null;
+				}
+			});
+		}
+
+		[TestMethod]
+		public void LiveView_WhoseShowSceneThrows_IsReleased_AndTheImageHostShowsTheScene() {
+			//RebuildWpfOnScreen called the view's ShowScene with no guard: an exception there (a WPF failure on the UI thread) went up the message loop.
+			RequireDesktop();
+			StaRunner.Run(() => {
+				List<ToothChartWpfView> listViewsFailed=new List<ToothChartWpfView>();
+				ToothChartWpfView.ActionStepForTests=(toothChartWpfView,step) => {
+					if(step==ToothChartWpfView.StepShowScene) {
+						listViewsFailed.Add(toothChartWpfView);
+						throw new InvalidOperationException("A test: the live view cannot show the scene.");
+					}
+				};
+				try {
+					using Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size);
+					ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+					form.Controls.Add(wrapper);
+					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+					ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+					int countBefore=ToothChartWrapper.GetCountFallbackMessages();
+					form.Show();
+					ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;
+					Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartImageHost.CountImagesReceived>=1 && !toothChartImageHost.IsRenderInFlight,20000),
+						"The image host shows the scene the live view could not.");
+					Assert.AreEqual(1,listViewsFailed.Count,"The live view was made and asked to show the scene once.");
+					ToothChartWpfView toothChartWpfViewFailed=listViewsFailed[0];
+					Assert.IsTrue(toothChartWpfViewFailed.IsDisposed,"The failed view is released.");
+					Assert.IsNull(toothChartWpfViewFailed.Child,"Its content was detached first.");
+					Assert.IsNull(wrapper.LiveViewWpf);
+					Assert.IsTrue(toothChartImageHost.Visible);
+					Assert.AreSame(toothChartImageHost,wrapper.Controls.Cast<Control>().Single());
+					List<string> listMessages=ToothChartWrapper.GetFallbackMessagesSince(countBefore);
+					Assert.AreEqual(1,listMessages.Count,string.Join("; ",listMessages));
+					StringAssert.Contains(listMessages[0],"live view could not show the chart");
+					using(Bitmap bitmap=relay.GetBitmap())
+					using(Bitmap bitmapShown=toothChartImageHost.GetBitmapShown()) {
+						Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmap).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapShown)),"The scene of the failed rebuild.");
+					}
+					//The wrapper stays on the image host.
+					int countImages=toothChartImageHost.CountImagesReceived;
+					relay.SetSelected("8",true);
+					Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartImageHost.CountImagesReceived>countImages && !toothChartImageHost.IsRenderInFlight,20000));
+					Assert.AreEqual(1,listViewsFailed.Count,"No new live view.");
+					Assert.IsNull(wrapper.LiveViewWpf);
+					wrapper.Dispose();
+					form.Close();
+				}
+				finally {
+					ToothChartWpfView.ActionStepForTests=null;
+				}
+			});
+		}
+
+		[TestMethod]
+		public void Cursors_ThatCannotBeMade_AreTheArrow_AndChoosingAToolNeverThrows() {
+			//WPF's Cursor(Stream) writes a temporary file for each cursor it makes, and Path.GetTempFileName fails once the temp folder holds 65,535 .tmp
+			//files. The cursors are made once per thread, and one that cannot be made is the arrow, logged once.
+			RequireDesktop();
+			StaRunner.Run(() => {
+				int countOpened=0;
+				ToothChartMouse.ActionOpenCursorForTests=cursorTool => {
+					countOpened++;
+					throw new System.IO.IOException("A test: the temporary folder is full.");
+				};
+				try {
+					using Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size);
+					ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+					form.Controls.Add(wrapper);
+					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+					form.Show();
+					ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
+					int countBefore=ToothChartWrapper.GetCountFallbackMessages();
+					foreach(CursorTool cursorTool in new[] { CursorTool.Pen,CursorTool.Eraser,CursorTool.ColorChanger,CursorTool.Pen,CursorTool.Pointer,CursorTool.Eraser }) {
+						relay.CursorTool=cursorTool;//never throws
+						Assert.AreEqual(cursorTool,wrapper.CursorTool);
+						Assert.IsNull(toothChartWpfView.CursorWpf,"The live view's arrow for "+cursorTool+".");
+						Assert.AreSame(Cursors.Default,wrapper.Cursor,"The wrapper's arrow for "+cursorTool+".");
+					}
+					List<string> listMessages=ToothChartWrapper.GetFallbackMessagesSince(countBefore);
+					Assert.AreEqual(2,listMessages.Count,"Logged once for the wrapper's cursors and once for the live view's: "+string.Join("; ",listMessages));
+					Assert.IsTrue(listMessages.All(x => x.Contains("could not make the cursor of Pen") && x.Contains("ColorChanger")),string.Join("; ",listMessages));
+					Assert.AreEqual(6,countOpened,"Each cursor file was tried once on this thread (three for the wrapper, three for the live view), not on every "
+						+"tool change.");
+					//The drawing tools still work with the arrow.
+					List<string> listSegments=new List<string>();
+					wrapper.SegmentDrawn+=(sender,e) => listSegments.Add(e.DrawingSegement);
+					relay.CursorTool=CursorTool.Pen;
+					toothChartWpfView.MouseDownForTests(new Point(30,280));
+					toothChartWpfView.MouseMoveForTests(new Point(45,284));
+					toothChartWpfView.MouseUpForTests(new Point(45,284));
+					Assert.AreEqual(1,listSegments.Count);
+					wrapper.Dispose();
+					form.Close();
+				}
+				finally {
+					ToothChartMouse.ActionOpenCursorForTests=null;
+				}
+			});
+			//On a thread whose cursor files open, the cursors are made once and kept: the same objects on every tool change.
+			StaRunner.Run(() => {
+				int countOpened=0;
+				ToothChartMouse.ActionOpenCursorForTests=cursorTool => countOpened++;
+				try {
+					System.Windows.Input.Cursor cursorPen=ToothChartWpfView.GetCursorWpf(CursorTool.Pen);
+					Assert.IsNotNull(cursorPen);
+					Assert.IsNotNull(ToothChartWpfView.GetCursorWpf(CursorTool.Eraser));
+					Assert.AreSame(cursorPen,ToothChartWpfView.GetCursorWpf(CursorTool.Pen));
+					Assert.IsNull(ToothChartWpfView.GetCursorWpf(CursorTool.Pointer),"The arrow.");
+					Cursor cursorEraser=ToothChartMouse.GetCursor(CursorTool.Eraser);
+					Assert.AreNotSame(Cursors.Default,cursorEraser);
+					Assert.AreSame(cursorEraser,ToothChartMouse.GetCursor(CursorTool.Eraser));
+					Assert.AreEqual(6,countOpened,"Three WPF cursors and three WinForms cursors, once each.");
+				}
+				finally {
+					ToothChartMouse.ActionOpenCursorForTests=null;
+				}
+			});
+		}
+
+		[TestMethod]
+		public void LiveView_DpiChangeWithoutANewScene_SetsItsTransformAgain() {
+			//A window moved to a monitor of another scale under the program's PerMonitorV2 brings WPF a new DPI and the view no new scene. The test changes
+			//the DPI of the view's window root (VisualTreeHelper.SetRootDpi), as WPF does on such a move, and puts it back.
+			RequireDesktop();
+			StaRunner.Run(() => {
+				using Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size);
+				ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+				form.Controls.Add(wrapper);
+				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+				form.Show();
+				ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
+				System.Windows.Media.Visual visualRoot=GetRootVisual(toothChartWpfView);
+				System.Windows.DpiScale dpiScaleOld=System.Windows.Media.VisualTreeHelper.GetDpi(visualRoot);
+				Assert.AreEqual(dpiScaleOld.DpiScaleX,toothChartWpfView.DpiScaleShown,1e-9);
+				int countShown=toothChartWpfView.CountScenesShown;
+				double dpiScaleNew=dpiScaleOld.DpiScaleX==1.5?2.0:1.5;
+				try {
+					System.Windows.Media.VisualTreeHelper.SetRootDpi(visualRoot,new System.Windows.DpiScale(dpiScaleNew,dpiScaleNew));
+					Assert.AreEqual(dpiScaleNew,toothChartWpfView.DpiScaleShown,1e-9,"The transform follows the new DPI at once.");
+					Assert.AreEqual(countShown,toothChartWpfView.CountScenesShown,"Without a new scene.");
+					SizeF sizeDevice=GetContentDeviceSize(toothChartWpfView);
+					Assert.AreEqual(ChartScenes.SizeModule.Size.Width,sizeDevice.Width,0.01,"Still one scene unit on one device pixel.");
+					Assert.AreEqual(ChartScenes.SizeModule.Size.Height,sizeDevice.Height,0.01);
+				}
+				finally {
+					System.Windows.Media.VisualTreeHelper.SetRootDpi(visualRoot,dpiScaleOld);
+				}
+				Assert.AreEqual(dpiScaleOld.DpiScaleX,toothChartWpfView.DpiScaleShown,1e-9,"And back.");
+				wrapper.Dispose();
+				form.Close();
+			});
+		}
+
+		[TestMethod]
+		public void LiveView_At150Percent_ItsCachedLayerIsRasterizedAtTheDevicePixels() {
+			//The 3D layer's BitmapCache (RenderAtScale 1.0) sits under the 1/DPI layout transform. WPF rasterizes a cache in the element's own units and
+			//composites it through the transforms above it, so at 150% the cache of a 615-pixel chart has 615 pixels and lands 1:1 on the device
+			//pixels, not 410 resampled or 922 reduced. Drawn at 144 dpi (RenderTargetBitmap, WPF's software rasterizer, as the program draws the view)
+			//with the view's own 1/1.5 transform, the cached view equals the uncached one exactly, and a cache rasterized at 1.5x does not.
+			RequireDesktop();
+			StaRunner.Run(() => {
+				Size size=WpfTimings.Size150;
+				using Form form=WpfCharts.CreateOffscreenForm(size);
+				ToothChartWrapper wrapper=WpfCharts.CreateWrapper(size);
+				form.Controls.Add(wrapper);
+				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+				form.Show();
+				ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
+				System.Windows.Controls.Grid grid=(System.Windows.Controls.Grid)toothChartWpfView.Child;
+				System.Windows.Controls.Border border3D=grid.Children.OfType<System.Windows.Controls.Border>().Single();
+				System.Windows.Media.Visual visualRoot=GetRootVisual(toothChartWpfView);
+				System.Windows.DpiScale dpiScaleOld=System.Windows.Media.VisualTreeHelper.GetDpi(visualRoot);
+				try {
+					System.Windows.Media.VisualTreeHelper.SetRootDpi(visualRoot,new System.Windows.DpiScale(1.5,1.5));
+					Assert.AreEqual(1.5,toothChartWpfView.DpiScaleShown,1e-9);
+					((System.Windows.UIElement)visualRoot).UpdateLayout();
+					System.Windows.Media.BitmapCache bitmapCache=(System.Windows.Media.BitmapCache)border3D.CacheMode;
+					Assert.AreEqual(1.0,bitmapCache.RenderAtScale);
+					byte[] arrayCached=RenderAt(grid,size,144);
+					toothChartWpfView.Is3DLayerCached=false;
+					byte[] arrayUncached=RenderAt(grid,size,144);
+					if(!arrayCached.SequenceEqual(arrayUncached)) {
+						Assert.Fail("At 150% the cache changes "+CountPixelsDiffering(arrayCached,arrayUncached)+" pixels of the view: it is resampled.");
+					}
+					System.Windows.Media.BitmapCache bitmapCacheAt15=new System.Windows.Media.BitmapCache(1.5);
+					bitmapCacheAt15.SnapsToDevicePixels=true;
+					border3D.CacheMode=bitmapCacheAt15;
+					byte[] arrayCachedAt15=RenderAt(grid,size,144);
+					Assert.IsTrue(CountPixelsDiffering(arrayCachedAt15,arrayUncached)>100,"A cache rasterized at 1.5x, which a DPI fix might set, would be resampled "
+						+"(the test sees it): "+CountPixelsDiffering(arrayCachedAt15,arrayUncached)+" pixels.");
+					//The content drawn at 144 dpi covers the scene's pixels exactly: its last row and column are the chart's, and nothing lies beyond.
+					SizeF sizeDevice=GetContentDeviceSize(toothChartWpfView);
+					Assert.AreEqual(size.Width,sizeDevice.Width,0.01);
+					Assert.AreEqual(size.Height,sizeDevice.Height,0.01);
+				}
+				finally {
+					toothChartWpfView.Is3DLayerCached=true;
+					System.Windows.Media.VisualTreeHelper.SetRootDpi(visualRoot,dpiScaleOld);
+				}
+				wrapper.Dispose();
+				form.Close();
+			});
+		}
+
+		///<summary>The visual drawn into a bitmap of the size at the dpi by WPF's software rasterizer (RenderTargetBitmap), with its own transform.</summary>
+		private static byte[] RenderAt(System.Windows.Media.Visual visual,Size size,double dpi) {
+			System.Windows.Media.Imaging.RenderTargetBitmap renderTargetBitmap=new System.Windows.Media.Imaging.RenderTargetBitmap(size.Width,size.Height,dpi,dpi,
+				System.Windows.Media.PixelFormats.Pbgra32);
+			renderTargetBitmap.Render(visual);
+			byte[] arrayPixels=new byte[size.Width*size.Height*4];
+			renderTargetBitmap.CopyPixels(arrayPixels,size.Width*4,0);
+			return arrayPixels;
+		}
+
+		///<summary>The pixels whose channels differ by more than 8 of 255 (section 7).</summary>
+		private static int CountPixelsDiffering(byte[] arrayA,byte[] arrayB) {
+			int count=0;
+			for(int i=0;i<arrayA.Length;i+=4) {
+				if(Math.Abs(arrayA[i]-arrayB[i])>8 || Math.Abs(arrayA[i+1]-arrayB[i+1])>8 || Math.Abs(arrayA[i+2]-arrayB[i+2])>8) {
+					count++;
+				}
+			}
+			return count;
+		}
+
+		[TestMethod]
+		public void LiveView_TakesTheChartsBackground_BeforeItsFirstScene() {
+			//The content's background was gray until the first ShowScene, so a gray frame could flash when the Chart module first showed.
+			StaRunner.Run(() => {
+				ToothChartData tcData=new ToothChartData();
+				tcData.ColorBackground=Color.FromArgb(255,12,34,56);
+				using ToothChartWpfView toothChartWpfView=new ToothChartWpfView();
+				toothChartWpfView.TcData=tcData;
+				Assert.IsNull(toothChartWpfView.SceneShown,"No scene yet.");
+				System.Windows.Media.SolidColorBrush brush=((System.Windows.Controls.Grid)toothChartWpfView.Child).Background as System.Windows.Media.SolidColorBrush;
+				Assert.IsNotNull(brush);
+				Assert.AreEqual(System.Windows.Media.Color.FromRgb(12,34,56),brush.Color,"The chart's background from the start.");
+				Assert.AreEqual(tcData.ColorBackground.ToArgb(),toothChartWpfView.BackColor.ToArgb(),"The host's own back colour too.");
+			});
+		}
+
+		[TestMethod]
+		public void LiveView_RefillThenGetBitmap_StillShowsTheRefill() {
+			//TC-1's 5.5 case on the live view: a refill that ends in the dashboard's GetBitmap (which builds the scene and clears the dirty mark first)
+			//still updates the screen.
+			RequireDesktop();
+			StaRunner.Run(() => {
+				using Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size);
+				ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+				form.Controls.Add(wrapper);
+				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+				form.Show();
+				ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
+				int countShown=toothChartWpfView.CountScenesShown;
+				ChartScenes.Prepare(relay,ChartScenes.Get("treatment-plan"),ChartColorSet.Module);
+				Assert.IsTrue(wrapper.IsWpfSceneDirty);
+				using(Bitmap bitmap=relay.GetBitmap()) {
+					Assert.IsFalse(wrapper.IsWpfSceneDirty,"GetBitmap built the scene.");
+					Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartWpfView.CountScenesShown>countShown,20000),"The posted rebuild still ran.");
+					using(Bitmap bitmapScene=ToothChartRenderer.Instance.Render(toothChartWpfView.SceneShown,null).ToBitmap()) {
+						Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmap).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapScene)),
+							"The view shows the refilled data: the scene GetBitmap drew.");
+					}
+				}
+				WpfRendererTests.PumpUntil(() => false,100);
+				Assert.AreEqual(countShown+1,toothChartWpfView.CountScenesShown,"One rebuild for the whole refill.");
+				wrapper.Dispose();
+				form.Close();
+			});
+		}
+
+		[TestMethod]
+		public void LiveView_HiddenRefillThenGetBitmap_ShowsTheRefillWhenShownAgain() {
+			//TC-1's 5.5 case on the live view: a wrapper refilled while hidden and then asked for its bitmap (as the dashboard does) shows the refill
+			//when it is shown again, in the same live view.
+			RequireDesktop();
+			StaRunner.Run(() => {
+				using Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size);
+				ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+				form.Controls.Add(wrapper);
+				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+				form.Show();
+				ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
+				form.Hide();
+				Assert.IsFalse(wrapper.Visible);
+				int countShown=toothChartWpfView.CountScenesShown;
+				ChartScenes.Prepare(relay,ChartScenes.Get("treatment-plan"),ChartColorSet.Module);
+				WpfRendererTests.PumpUntil(() => false,200);
+				Assert.AreEqual(countShown,toothChartWpfView.CountScenesShown,"A hidden wrapper posts no rebuild.");
+				using(Bitmap bitmap=relay.GetBitmap()) {
+					Assert.IsFalse(wrapper.IsWpfSceneDirty,"GetBitmap built the scene.");
+					form.Show();
+					Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartWpfView.CountScenesShown>countShown,20000),"Shown again, the wrapper rebuilt its screen.");
+					Assert.AreSame(toothChartWpfView,wrapper.LiveViewWpf,"The same live view.");
+					using(Bitmap bitmapScene=ToothChartRenderer.Instance.Render(toothChartWpfView.SceneShown,null).ToBitmap()) {
+						Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmap).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapScene)),
+							"The view shows the refill made while hidden.");
+					}
+				}
+				wrapper.Dispose();
+				form.Close();
+			});
+		}
+		#endregion Fix round 3
 	}
 }

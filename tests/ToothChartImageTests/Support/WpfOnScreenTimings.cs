@@ -20,7 +20,10 @@ namespace ToothChartImageTests {
 	///(as ControlChart.FillToothChart), then the screen's update: DirectX paints at once (Refresh, which renders and presents); the WPF chart runs
 	///its posted rebuild (the scene, then the live view's frozen models and layout, or the software render of the image host until its image
 	///arrives). "Dashboard" adds the refill's GetBitmap for the Patient Dashboard (ControlChart makes it only while a dashboard is shown). Warm values
-	///are medians of runs alternating two scenes, so the 3D layer changes every time. Those live-view times are the UI thread's work only.
+	///are medians of runs alternating two scenes, so the 3D layer changes every time, after CountWarmUp unmeasured runs of each kind for each engine
+	///and size (TC-3's first DirectX medians were warm-up noise: 47 ms at 410x307, measured first, against 32 ms at 615x461). DirectX draws with the
+	///device format the program picks on a computer with none saved (ToothChartWrapper.GetPreferredDirectXFormat: the first standard format that
+	///works, multisampled where the driver allows), not TC-0's unsmoothed recording format. Those live-view times are the UI thread's work only.
 	///The live view's frame is drawn afterwards by WPF's own render thread: in the program in software at 1x, because OpenPmsDental.exe sets
 	///RenderOptions.ProcessRenderMode to SoftwareOnly for the whole process (O-34), and the gallery's times process sets it the same way.
 	///MeasureLiveViewFrames measures it on a window that is on a display, as the Chart module's is: the time until WPF has drawn and presented the
@@ -31,6 +34,8 @@ namespace ToothChartImageTests {
 	public static class WpfOnScreenTimings {
 		///<summary>The pen stroke of the pen-move times, in 410x307 pixels: along the bottom edge, below the mandibular teeth.</summary>
 		private static readonly Point _pointPenStart=new Point(30,284);
+		///<summary>Unmeasured runs of each kind (refill, refill with the dashboard's image, selection) before an engine's measured runs at a size.</summary>
+		public const int CountWarmUp=5;
 
 		///<summary>Adds the on-screen times at 410x307 and 615x461 to the report, on an STA thread of its own. A note says why when there is no
 		///desktop or DirectX does not start.</summary>
@@ -40,12 +45,24 @@ namespace ToothChartImageTests {
 				return;
 			}
 			StaRunner.Run(() => {
+				string directXFormat=null;
+				using(Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size)) {
+					form.Show();
+					Application.DoEvents();
+					directXFormat=DirectXCharts.FindProgramFormat(form);
+					form.Close();
+				}
+				report.ListNotes.Add(directXFormat==null?"No DirectX times: no standard DirectX format starts here."
+					:"DirectX device format: "+directXFormat+" (the program's own pick on a computer with none saved, ToothChartWrapper.GetPreferredDirectXFormat).");
+				report.ListNotes.Add("Each engine and size had "+CountWarmUp+" unmeasured runs of each kind before its measured runs.");
 				foreach(Size size in new[] { ChartScenes.SizeModule.Size,WpfTimings.Size150 }) {
 					string sizeName=size.Width+"x"+size.Height;
 					using(Form form=WpfCharts.CreateOffscreenForm(size)) {
 						form.Show();
 						Application.DoEvents();
-						MeasureDirectX(report,form,size,sizeName,countRepeats);
+						if(directXFormat!=null) {
+							MeasureDirectX(report,form,size,sizeName,countRepeats,directXFormat);
+						}
 						MeasureWpf(report,form,size,sizeName,countRepeats,false);
 						MeasureWpf(report,form,size,sizeName,countRepeats,true);
 						form.Close();
@@ -60,12 +77,7 @@ namespace ToothChartImageTests {
 			return System.Windows.Media.RenderOptions.ProcessRenderMode==System.Windows.Interop.RenderMode.SoftwareOnly;
 		}
 
-		private static void MeasureDirectX(WpfTimingReport report,Form form,Size size,string sizeName,int countRepeats) {
-			string directXFormat=DirectXCharts.FindFormat(form);
-			if(directXFormat==null) {
-				report.ListNotes.Add("No DirectX times at "+sizeName+": no standard DirectX format starts here.");
-				return;
-			}
+		private static void MeasureDirectX(WpfTimingReport report,Form form,Size size,string sizeName,int countRepeats,string directXFormat) {
 			ToothChartWrapper wrapper=DirectXCharts.CreateWrapper(form,size,directXFormat);
 			try {
 				if(wrapper.Engine!=ToothChartEngine.DirectX) {
@@ -94,13 +106,18 @@ namespace ToothChartImageTests {
 				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 				string key=sizeName+(isSoftware?".software":".live");
 				string name=isSoftware?"WPF drawn in software (the image host)":"WPF live view, the UI thread's work";
-				if(!isSoftware && wrapper.LiveViewWpf==null) {
+				Action actionShow=isSoftware?GetWaitForImage(wrapper):GetWaitForLiveView(wrapper);
+				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+				if(isSoftware) {
+					actionShow();
+				}
+				else if(WpfCharts.WaitForLiveView(wrapper,30000)==null) {//the first rebuild makes the live view and shows the refill in it
 					report.ListNotes.Add("No live view times at "+sizeName+": the live view did not start.");
 					return;
 				}
-				Action actionShow=isSoftware?GetWaitForImage(wrapper):GetWaitForLiveView(wrapper);
-				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
-				actionShow();
+				else {
+					wrapper.LiveViewWpf.Child.UpdateLayout();
+				}
 				report.Add(key+".first","Cold for this size: "+name+" made on a shown wrapper and its first refill shown",stopwatch.Elapsed.TotalMilliseconds);
 				MeasureEngine(report,key,name,relay,actionShow,countRepeats);
 			}
@@ -136,10 +153,23 @@ namespace ToothChartImageTests {
 			};
 		}
 
-		///<summary>Refill plus the screen's update (actionShow), with the dashboard hidden and visible, and a selection-only change, warm.</summary>
+		///<summary>Refill plus the screen's update (actionShow), with the dashboard hidden and visible, and a selection-only change, warm: CountWarmUp
+		///unmeasured runs of each kind first.</summary>
 		private static void MeasureEngine(WpfTimingReport report,string key,string name,ToothChartRelay relay,Action actionShow,int countRepeats) {
 			ChartScene sceneA=ChartScenes.Get("restored-adult");
 			ChartScene sceneB=ChartScenes.Get("treatment-plan");
+			ChartScenes.Prepare(relay,sceneA,ChartColorSet.Module);
+			actionShow();
+			for(int i=0;i<CountWarmUp;i++) {
+				ChartScenes.Prepare(relay,i%2==0?sceneB:sceneA,ChartColorSet.Module);
+				actionShow();
+				ChartScenes.Prepare(relay,i%2==0?sceneA:sceneB,ChartColorSet.Module);
+				using(Bitmap bitmap=relay.GetBitmap()) {
+				}
+				actionShow();
+				relay.SetSelected("8",i%2==0);
+				actionShow();
+			}
 			ChartScenes.Prepare(relay,sceneA,ChartColorSet.Module);
 			actionShow();
 			List<double> listHidden=new List<double>();
@@ -194,7 +224,7 @@ namespace ToothChartImageTests {
 				ToothChartWrapper wrapper=WpfCharts.CreateWrapper(size);
 				form.Controls.Add(wrapper);
 				try {
-					ToothChartWpfView toothChartWpfView=wrapper.LiveViewWpf;
+					ToothChartWpfView toothChartWpfView=WpfCharts.WaitForLiveView(wrapper,30000);//made by the wrapper's first rebuild on screen
 					if(toothChartWpfView==null) {
 						report.ListNotes.Add("No live-view frame times at "+sizeName+": the live view did not start.");
 						return;
@@ -314,7 +344,7 @@ namespace ToothChartImageTests {
 				ToothChartWrapper wrapper=WpfCharts.CreateWrapper(size);
 				form.Controls.Add(wrapper);
 				try {
-					if(wrapper.LiveViewWpf==null) {
+					if(WpfCharts.WaitForLiveView(wrapper,30000)==null) {
 						return;
 					}
 					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);

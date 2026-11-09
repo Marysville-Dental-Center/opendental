@@ -133,6 +133,7 @@ namespace ToothChartImageTests {
 		///"exit": renders one image and returns at once, leaving the render thread alive; the process must still end.
 		///"times &lt;out file&gt;": measures the render times for O-19 and G1 (WpfTimings) in a process that draws WPF in software, as the program
 		///does (O-34), and writes the report.
+		///"onscreen-times &lt;out file&gt;": the on-screen times alone (DirectX, the live view and its frames, the image host), the same way.
 		///"start-fails", "start-interrupted" and "log-kinds": a start failure, an interrupted cold start and the logged-once lines, each in a fresh
 		///process because a start failure and a logged line are kept for the whole process (see their methods).
 		///"abort-race" and "shutdown-throws": an aborted job's late Aborted handler and an error in the render Dispatcher's own shutdown, each in a
@@ -157,6 +158,13 @@ namespace ToothChartImageTests {
 						string report=WpfTimings.Measure(true).GetReport();
 						File.WriteAllText(args[1],report,new UTF8Encoding(false));
 						Console.WriteLine(report);
+						return 0;
+					case "onscreen-times":
+						//TC-3's on-screen times alone (WpfOnScreenTimings), drawn in software as the program draws (O-34), set before WPF's first window.
+						System.Windows.Media.RenderOptions.ProcessRenderMode=System.Windows.Interop.RenderMode.SoftwareOnly;
+						string reportOnScreen=WpfTimings.MeasureOnScreen().GetReport();
+						File.WriteAllText(args[1],reportOnScreen,new UTF8Encoding(false));
+						Console.WriteLine(reportOnScreen);
 						return 0;
 					case "start-fails":
 						RunStartFails();

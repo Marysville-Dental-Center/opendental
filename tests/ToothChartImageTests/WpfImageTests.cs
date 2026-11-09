@@ -371,7 +371,7 @@ namespace ToothChartImageTests {
 				form.Controls.Add(wrapper);
 				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 				form.Show();
-				ToothChartWpfView toothChartWpfView=wrapper.LiveViewWpf;
+				ToothChartWpfView toothChartWpfView=WpfCharts.WaitForLiveView(wrapper);
 				Assert.IsNotNull(toothChartWpfView,"The live view did not start on a shown wrapper.");
 				foreach(string sceneName in ArrayLiveCaptureScenes) {
 					ChartScene scene=ChartScenes.Get(sceneName);
@@ -397,6 +397,24 @@ namespace ToothChartImageTests {
 				form.Close();
 			});
 			return listCaptures;
+		}
+
+		///<summary>Opt-in: the on-screen times of TC-3's G1 table (DirectX with the program's own device format, the live view and its frames, the image
+		///host), measured again in a fresh process that draws WPF in software as the program does, written to the file this names.</summary>
+		public const string EnvOnScreenTimes="OPMS_CHART_ONSCREEN_TIMES";
+
+		[TestMethod]
+		public void OnScreenTimes_AreMeasuredInAFreshProcess() {
+			string pathOut=Environment.GetEnvironmentVariable(EnvOnScreenTimes);
+			if(string.IsNullOrWhiteSpace(pathOut)) {
+				Assert.Inconclusive("Set "+EnvOnScreenTimes+" to a file to measure the on-screen times (DirectX, the live view, the image host) in a fresh process.");
+			}
+			if(!Environment.UserInteractive) {
+				Assert.Inconclusive("Needs an interactive desktop session: the charts are shown.");
+			}
+			SecondProcessResult result=SecondProcess.Run(1800000,"onscreen-times",pathOut);
+			Assert.AreEqual(0,result.ExitCode,result.Output);
+			Console.WriteLine(File.ReadAllText(pathOut));
 		}
 
 		[TestMethod]

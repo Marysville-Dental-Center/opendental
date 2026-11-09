@@ -152,12 +152,17 @@ namespace ToothChartImageTests {
 			}
 		}
 
-		///<summary>The reviewed exceptions of the text boxes. Each was looked at pixel by pixel in both pictures.</summary>
+		///<summary>The reviewed exceptions of the text boxes. Each was looked at pixel by pixel in both pictures. Each names the item it covers (the lead
+		///accepted the tall sheet's allowance for exactly these three numbers in TC-3's fix round 3), so a fourth number off on that sheet fails.</summary>
 		public static readonly List<TextAllowance> TextAllowances=new List<TextAllowance> {
-			new TextAllowance("size-sheet-tall","360x480","number","*","The tall sheet's numbers use the D3DX font 13/5, which GDI condenses; the WPF chart "
-				+"scales Arial across to GDI's width of each number (about 0.86), which puts the 1-pixel stems of these small digits between two pixels, so "
-				+"their ink is lighter and the ink box shrinks. The glyphs sit in the same cells (checked pixel by pixel; the gallery G1 shows the scene)."),
+			new TextAllowance("size-sheet-tall","360x480","number","number 1",ReasonSheetTallNumbers),
+			new TextAllowance("size-sheet-tall","360x480","number","number 20",ReasonSheetTallNumbers),
+			new TextAllowance("size-sheet-tall","360x480","number","number 29",ReasonSheetTallNumbers),
 		};
+
+		private const string ReasonSheetTallNumbers="The tall sheet's numbers use the D3DX font 13/5, which GDI condenses; the WPF chart scales Arial across to "
+			+"GDI's width of each number (about 0.86), which puts the 1-pixel stems of these small digits between two pixels, so their ink is lighter and the "
+			+"ink box shrinks (its bottom edge 3 to 5 pixels in). The glyphs sit in the same cells (checked pixel by pixel; the gallery G1 shows the scene).";
 
 		[TestMethod]
 		public void CentreLineAndHighlightBoxes_FillThePixelsDirectXFills() {
