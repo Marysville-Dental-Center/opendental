@@ -63,13 +63,27 @@ namespace WindowChecksTests.InProc {
 
 		///<summary>Starts the main window with the command line, as ProgramEntry.Main does, and waits until it is shown and the user is logged on.
 		///Returns "" or the problem.</summary>
+		///<summary>Message boxes the start-up showed and the harness answered with Cancel (cancelTexts), as "text".</summary>
+		public List<string> ListStartPrompts=new List<string>();
+
 		public string Start(string[] args,int timeoutSeconds) {
+			return Start(args,timeoutSeconds,new string[0]);
+		}
+
+		///<summary>As Start; a start-up message box that contains one of cancelTexts is answered with Cancel (BM_CLICK) and recorded in
+		///ListStartPrompts. Any other window the start-up opens is a problem.</summary>
+		public string Start(string[] args,int timeoutSeconds,string[] cancelTexts) {
 			AppDomain.CurrentDomain.UnhandledException+=(sender,e) => AddException("AppDomain.UnhandledException",e.ExceptionObject as Exception);
 			_threadUi=new Thread(() => RunUi(args)) { Name="winchk UI",IsBackground=true };
 			_threadUi.SetApartmentState(ApartmentState.STA);
 			_threadUi.Start();
-			if(!_manualResetEventShown.WaitOne(TimeSpan.FromSeconds(timeoutSeconds))) {
-				return "The main window was not shown within "+timeoutSeconds+" s."+(_startError=="" ? "" : " "+_startError);
+			Stopwatch stopwatchShown=Stopwatch.StartNew();
+			//A prompt can come before the window shows (the release check runs in Shown, before the log-on).
+			while(!_manualResetEventShown.WaitOne(200)) {
+				if(stopwatchShown.Elapsed.TotalSeconds>timeoutSeconds) {
+					return "The main window was not shown within "+timeoutSeconds+" s."+(_startError=="" ? "" : " "+_startError);
+				}
+				AnswerStartPrompts(cancelTexts);
 			}
 			if(_startError!="") {
 				return _startError;
@@ -82,8 +96,10 @@ namespace WindowChecksTests.InProc {
 				if(isReady) {
 					return "";
 				}
+				AnswerStartPrompts(cancelTexts);
 				//A window the start-up opened (a message, Choose Database) is a problem: name it.
-				foreach(IntPtr hwnd in Native.GetThreadWindows(_threadIdUi).Where(x => x!=_formMain.Handle)) {
+				IntPtr hwndMain=UiCur.Invoke(() => _formMain.Handle);
+				foreach(IntPtr hwnd in Native.GetThreadWindows(_threadIdUi).Where(x => x!=hwndMain)) {
 					string text=UiCur.DescribeWindow(hwnd);
 					if(text!="") {
 						return "The start-up opened a window: "+text;
@@ -92,6 +108,20 @@ namespace WindowChecksTests.InProc {
 				Thread.Sleep(300);
 			}
 			return "Not logged on with patient #1 within "+timeoutSeconds+" s.";
+		}
+
+		private void AnswerStartPrompts(string[] cancelTexts) {
+			if(_threadIdUi==0) {
+				return;
+			}
+			foreach(IntPtr hwnd in Native.GetThreadWindows(_threadIdUi).Where(x => Native.IsDialogClass(x))) {
+				string text=Native.GetDialogMessage(hwnd);
+				if(cancelTexts.Any(x => text.Contains(x))) {
+					ListStartPrompts.Add(text);
+					Native.ClickDialogButton(hwnd,"Cancel");
+					Thread.Sleep(500);
+				}
+			}
 		}
 
 		private void RunUi(string[] args) {

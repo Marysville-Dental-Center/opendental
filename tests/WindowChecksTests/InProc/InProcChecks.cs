@@ -26,6 +26,11 @@ namespace WindowChecksTests.InProc {
 			ODInitialize.Initialize();
 			PdfSharpSetup.Init();
 			Security.CurComputerName=ODEnvironment.MachineName;
+			//As ProgramEntry: the program's own borders off when the flag file is beside the exe (A6).
+			if(System.IO.File.Exists(System.IO.Path.Combine(Application.StartupPath,"NoCustomBorders.txt"))) {
+				FormODBase.AreBordersMS=true;
+				FormFrame.AreBordersMS=true;
+			}
 		}
 
 		public static Form CreateMainWindow(string[] args,Action<Exception,string> actionUnhandled) {

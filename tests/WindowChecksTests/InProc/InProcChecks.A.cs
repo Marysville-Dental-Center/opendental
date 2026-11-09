@@ -22,6 +22,37 @@ namespace WindowChecksTests.InProc {
 			ui.Invoke(() => ((Form)Control.FromHandle(hwnd)).Close());
 		}
 
+		///<summary>A6's dialog: Help > About while NoCustomBorders.txt is beside the exe has the standard Windows title bar.</summary>
+		public static void CheckA6ABOUT(Ui ui,CheckResult checkResult) {
+			Ui.Opened opened=OpenMenu(ui,"Help","About");
+			if(!opened.IsOpen) {
+				return;
+			}
+			int style=Native.GetWindowLong(opened.Hwnd,Native.GWL_STYLE);
+			checkResult.Expect((style&Native.WS_CAPTION)==Native.WS_CAPTION,"Help > About (in process, with the flag file) has the standard Windows title bar",
+				"style 0x"+style.ToString("X8"));
+			checkResult.AddShot(ui.Shot(opened.Hwnd,"A6-nocustomborders-about.png"),"About with standard borders");
+			checkResult.Expect(ui.Close(opened.Hwnd),"About closes");
+		}
+
+		///<summary>A7's in-process part, in the Release build: the File menu has no Choose Database, Chart and Imaging open, Help > About.</summary>
+		public static void CheckA7RELEASE(Ui ui,CheckResult checkResult) {
+			string items=ui.Invoke(() => string.Join(", ",GetMenuItem("File").DropDownItems.OfType<ToolStripItem>().Where(x => x.Available && !(x is ToolStripSeparator))
+				.Select(x => x.Text.Replace("&",""))));
+			checkResult.Expect(!items.Contains("Choose Database"),"The Release build's File menu has no Choose Database (items: "+items+")");
+			GoToModule(ui,OpenPmsDentalBusiness.EnumModuleType.Chart);
+			checkResult.Expect(GetModule(ui)==OpenPmsDentalBusiness.EnumModuleType.Chart,"Chart opens (Release)");
+			GoToModule(ui,OpenPmsDentalBusiness.EnumModuleType.Imaging);
+			checkResult.Expect(GetModule(ui)==OpenPmsDentalBusiness.EnumModuleType.Imaging,"Imaging opens (Release)");
+			Ui.Opened opened=OpenMenu(ui,"Help","About");
+			if(opened.IsOpen) {
+				checkResult.AddShot(ui.Shot(opened.Hwnd,"A7-release-about.png"),"About in the Release build");
+				string version=ui.Invoke(() => FindControl(ui,opened.Hwnd,"labelVersion",true).Text);
+				checkResult.Note("Release About: "+version);
+				checkResult.Expect(ui.Close(opened.Hwnd),"About closes");
+			}
+		}
+
 		public static void CheckA2(Ui ui,CheckResult checkResult) {
 			Ui.Opened opened=OpenMenu(ui,"Help","About");
 			if(!opened.IsOpen) {

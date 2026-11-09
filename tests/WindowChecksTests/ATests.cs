@@ -188,33 +188,17 @@ namespace WindowChecksTests {
 				checkResult.AddShot(Shot.Window(hwndMain,"A6-nocustomborders.png"),"The Chart with standard borders");
 				checkResult.Expect(ClickModule(hwndMain,0),"The Appts module button is clicked (window messages)");
 				checkResult.Expect(!programProcess.HasExited && programProcess.GetWindows().All(x => !Native.IsDialogClass(x)),"Appointments opens without a message");
-				//One dialog: Help > About through UI Automation.
-				string error;
-				IntPtr hwndAbout=Uia.Try(() => {
-					List<string> listItems=Uia.GetMenuItems(hwndMain,programProcess.Process.Id,"Help",out AutomationElement automationElementHelp);
-					if(listItems==null || !Uia.InvokeMenuItem(hwndMain,programProcess.Process.Id,automationElementHelp,"About")) {
-						Uia.Collapse(automationElementHelp);
-						return IntPtr.Zero;
-					}
-					return programProcess.WaitForWindow((hwnd,className,title) => hwnd!=hwndMain && title=="About",TimeSpan.FromSeconds(20));
-				},60000,out error);
-				if(hwndAbout!=IntPtr.Zero) {
-					int styleAbout=Native.GetWindowLong(hwndAbout,Native.GWL_STYLE);
-					checkResult.Expect((styleAbout&Native.WS_CAPTION)==Native.WS_CAPTION,"Help > About (by UI Automation) has the standard title bar",
-						"style 0x"+styleAbout.ToString("X8"));
-					checkResult.AddShot(Shot.Window(hwndAbout,"A6-nocustomborders-about.png"),"About with standard borders");
-					Native.PostMessage(hwndAbout,Native.WM_CLOSE,IntPtr.Zero,IntPtr.Zero);
-					System.Threading.Thread.Sleep(1500);
-				}
-				else {
-					checkResult.ForPerson("Help > About with standard borders: UI Automation did not reach the menu item ("+(error==""? "not found" : error)+")");
-				}
+			},() => {
+				//One dialog: Help > About, in process (the program's menus open no drop-down by UI Automation while the screen is locked), with the
+				//flag file still beside the exe so the in-process start sets the same borders flag ProgramEntry sets.
+				using InProcHost inProcHost=InProcHost.Start("chart");
+				Merge(checkResult,inProcHost.Run("A6ABOUT","Help > About with NoCustomBorders.txt"));
 			});
 			WinChkFixture.Finish(checkResult);
 		}
 
 		///<summary>Creates the empty flag file beside the Debug exe, starts the program, runs the action, exits, and deletes the file again.</summary>
-		private static void StartWithFlagFile(string fileName,CheckResult checkResult,Action<ProgramProcess,IntPtr> action) {
+		private static void StartWithFlagFile(string fileName,CheckResult checkResult,Action<ProgramProcess,IntPtr> action,Action actionInProcess=null) {
 			string path=Path.Combine(WinChkEnv.DebugFolder,fileName);
 			bool existed=File.Exists(path);
 			Assert.IsFalse(existed,fileName+" is already there; it is never left behind by these checks.");
@@ -227,6 +211,7 @@ namespace WindowChecksTests {
 						Exits.CloseProgram(programProcess,hwndMain,checkResult.Id,checkResult);
 					}
 				}
+				actionInProcess?.Invoke();
 			}
 			finally {
 				File.Delete(path);
@@ -250,7 +235,9 @@ namespace WindowChecksTests {
 			DateTime dateWriteUtc=File.GetLastWriteTimeUtc(exeRelease);
 			string promptText="";
 			IntPtr hwndMain=StartProgram(exeRelease,"chart",checkResult,out ProgramProcess programProcess,(hwnd,text) => {
-				if(!text.Contains("No release is published yet")) {
+				//The publish offer: "No release is published yet." on a database without a release, "This build is newer than the published one" on
+				//one where an older build is published. Either way Cancel runs it on this workstation only.
+				if(!text.Contains("Publish this build")) {
 					return false;
 				}
 				promptText=Native.GetText(hwnd)+": "+text;
@@ -261,10 +248,16 @@ namespace WindowChecksTests {
 			});
 			using(programProcess) {
 				checkResult.Note("Prompt: "+promptText.Replace("\r"," ").Replace("\n"," "));
-				if(checkResult.Expect(promptText!="","The prompt 'No release is published yet. ... Publish this build ...' showed")) {
+				if(checkResult.Expect(promptText!="","The publish prompt showed")) {
 					checkResult.Expect(promptText.Contains("Publish this build") && promptText.Contains("Click Cancel to run it on this workstation only."),
 						"It names 'Publish this build' and 'Click Cancel to run it on this workstation only.'");
-					Match match=Regex.Match(promptText,"build ([0-9a-f]{12}), built (\\d{4}-\\d\\d-\\d\\d \\d\\d:\\d\\d) UTC");
+					if(!promptText.Contains("No release is published yet.")) {
+						string published=ScratchDb.Rows("SELECT DocMiscNum,DateCreated,FileName,DocMiscType,LENGTH(RawBase64) FROM documentmisc");
+						checkResult.ForPerson("the prompt is not the checklist's 'No release is published yet.': the copy of the test database already holds a "
+							+"published release (documentmisc rows: "+(published.Length>400 ? published.Substring(0,400)+"..." : published)+"), an older build of "
+							+"this fork; the lead decides whether opendental_dev should keep it");
+					}
+					Match match=Regex.Match(promptText,"Publish this build \\(release [^(]*\\(build ([0-9a-f]{12}), built (\\d{4}-\\d\\d-\\d\\d \\d\\d:\\d\\d) UTC");
 					if(checkResult.Expect(match.Success,"It names the build (12 hex) and the built time (yyyy-MM-dd HH:mm UTC)")) {
 						DateTime dateBuilt=DateTime.ParseExact(match.Groups[2].Value,"yyyy-MM-dd HH:mm",CultureInfo.InvariantCulture);
 						double minutes=Math.Abs((dateWriteUtc-dateBuilt).TotalMinutes);
@@ -274,27 +267,16 @@ namespace WindowChecksTests {
 				}
 				if(hwndMain!=IntPtr.Zero) {
 					checkResult.AddShot(Shot.Window(hwndMain,"A7-release-main.png"),"The Release build's main window (Chart)");
-					string error;
-					List<string> listFileItems=Uia.Try(() => {
-						List<string> listItems=Uia.GetMenuItems(hwndMain,programProcess.Process.Id,"File",out AutomationElement automationElementFile);
-						if(automationElementFile!=null) {
-							Uia.Collapse(automationElementFile);
-						}
-						return listItems;
-					},60000,out error);
-					if(listFileItems!=null && listFileItems.Count>0) {
-						checkResult.Expect(!listFileItems.Any(x => x.Replace("&","").StartsWith("Choose Database")),"The File menu has no Choose Database (items by UI "
-							+"Automation: "+string.Join(", ",listFileItems)+")");
-					}
-					else {
-						checkResult.ForPerson("File menu without Choose Database: UI Automation did not list the File menu ("+(error==""? "no items" : error)+")");
-					}
 					checkResult.Expect(ClickModule(hwndMain,5),"The Imaging module button is clicked (window messages)");
 					checkResult.Expect(!programProcess.HasExited && programProcess.GetWindows().All(x => !Native.IsDialogClass(x)),"Imaging opens without a message");
 					checkResult.AddShot(Shot.Window(hwndMain,"A7-release-images.png"),"The Release build's Imaging module");
-					checkResult.ForPerson("Help > About in the Release build (A2 checks About in the Debug build)");
 					Exits.CloseProgram(programProcess,hwndMain,"A7",checkResult);
 				}
+			}
+			//The File menu and Help > About of the Release build, in process (an AppDomain on the Release folder); its publish prompt is cancelled.
+			using(InProcHost inProcHost=InProcHost.Start("chart",folderRelease,new[] { "Publish this build" })) {
+				checkResult.Note("In-process Release start: prompt cancelled: "+(inProcHost.StartPrompts=="" ? "none" : "yes"));
+				Merge(checkResult,inProcHost.Run("A7RELEASE","Release: File menu, Chart, Imaging, About"));
 			}
 			List<string> listAfter=Directory.GetFiles(folderRelease,"*",SearchOption.AllDirectories).Select(x => x.Substring(folderRelease.Length+1)).OrderBy(x => x).ToList();
 			List<string> listNew=listAfter.Except(listBefore).ToList();
@@ -331,7 +313,8 @@ namespace WindowChecksTests {
 			foreach(string[] arrayFolder in new[] { new[] { WinChkEnv.DebugFolder,"Debug","A9-debug-folder.png" },new[] { WinChkEnv.ReleaseFolder,"Release","A9-release-folder.png" } }) {
 				string folder=arrayFolder[0];
 				foreach(string exe in new[] { "UpdateFileCopier.exe","OpenPmsDentalDbSettings.exe","ServiceManager.exe","OpenPmsDental.exe" }) {
-					string manifest=Native.ReadManifest(Path.Combine(folder,exe));
+					//The manifests keep Visual Studio's commented-out examples of every level: only the element outside comments counts.
+					string manifest=Regex.Replace(Native.ReadManifest(Path.Combine(folder,exe)),"<!--.*?-->","",RegexOptions.Singleline);
 					Match match=Regex.Match(manifest,"requestedExecutionLevel[^>]*level=\"(\\w+)\"");
 					string level=match.Success ? match.Groups[1].Value : "(none)";
 					bool isShield=level=="requireAdministrator" || level=="highestAvailable";

@@ -16,9 +16,17 @@ namespace WindowChecksTests {
 		public double SecondsToStart;
 		private static int _countSessions;
 
+		///<summary>Prompts the start-up showed and the harness cancelled.</summary>
+		public string StartPrompts="";
+
 		public static InProcHost Start(string module,int timeoutSeconds=180) {
+			return Start(module,WinChkEnv.DebugFolder,new string[0],timeoutSeconds);
+		}
+
+		///<summary>Starts the program of the folder (Debug or Release output) in process; start-up message boxes containing one of cancelTexts are
+		///answered with Cancel.</summary>
+		public static InProcHost Start(string module,string folder,string[] cancelTexts,int timeoutSeconds=180) {
 			InProcHost inProcHost=new InProcHost();
-			string folder=WinChkEnv.DebugFolder;
 			string exePath=Path.Combine(folder,"OpenPmsDental.exe");
 			AppDomainSetup appDomainSetup=new AppDomainSetup {
 				ApplicationBase=folder,
@@ -33,7 +41,8 @@ namespace WindowChecksTests {
 			inProcHost.Patched=inProcHost.Driver.PatchProcessIdentity(exePath);
 			string[] arrayArgs=ProgramProcess.ProgramArgs(module).Split(' ');
 			Results.Log("In-process session "+_countSessions+" starting ("+inProcHost.Patched+")");
-			inProcHost.StartError=inProcHost.Driver.Start(arrayArgs,timeoutSeconds);
+			inProcHost.StartError=inProcHost.Driver.Start(arrayArgs,timeoutSeconds,cancelTexts);
+			inProcHost.StartPrompts=string.Join(" || ",inProcHost.Driver.ListStartPrompts);
 			inProcHost.SecondsToStart=stopwatch.Elapsed.TotalSeconds;
 			Results.Log("In-process session "+_countSessions+" start: "+(inProcHost.StartError=="" ? "ready" : inProcHost.StartError)+" after "
 				+inProcHost.SecondsToStart.ToString("0.0")+" s");
