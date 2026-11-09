@@ -242,9 +242,8 @@ namespace ToothChartImageTests {
 		}
 
 		///<summary>TC-3's table: refill plus the screen's update with the dashboard hidden and visible, a selection-only change and one pen move, for
-		///DirectX, the live view (as the program draws it, in software: the UI thread's work and WPF's frame; without the 3D layer cache; and with
-		///hardware rendering, which the program does not use, O-34) and the renderer's picture (the "Draw in software" switch), at 410x307 and
-		///615x461.</summary>
+		///DirectX, the live view (as the program draws it, in software, O-34: the UI thread's work and WPF's frame; and without the 3D layer cache)
+		///and the renderer's picture (the "Draw in software" switch), at 410x307 and 615x461.</summary>
 		private static void AppendOnScreenTimings(StringBuilder sb,WpfTimingReport timingReport) {
 			sb.Append("<h2>On-screen times against DirectX (TC-3)</h2>\r\n<p>Measured in a fresh process that draws every WPF window in software, as "
 				+"OpenPmsDental.exe does (it sets RenderOptions.ProcessRenderMode to SoftwareOnly for the whole process: owner question O-34), on shown "
@@ -253,8 +252,7 @@ namespace ToothChartImageTests {
 				+"Median of "+WpfTimings.CountRepeats+" runs. The live view's screen update is the UI thread's work and then WPF's frame, which WPF's "
 				+"render thread draws in software at 1x; the frame is timed until WPF has presented it, on a window on the display that the user cannot "
 				+"see. The live view keeps its 3D layer in a bitmap cache, so a frame that changes only the 2D layer or the pen stroke does not draw "
-				+"the 3D layer again; the row without the cache is the live view as TC-3 first built it. The hardware row comes from a second process "
-				+"that leaves WPF's hardware rendering on: what the live view would cost if the program's software line went (O-34's choice (a)).</p>\r\n");
+				+"the 3D layer again; the row without the cache is the live view as TC-3 first built it.</p>\r\n");
 			sb.Append("<table class=\"times\"><thead><tr><th>Size</th><th>Engine</th><th>Refill, dashboard hidden</th><th>Refill, dashboard visible</th>"
 				+"<th>Selection only</th><th>One pen move</th></tr></thead><tbody>\r\n");
 			foreach(string size in new[] { "410x307","615x461" }) {
@@ -270,8 +268,6 @@ namespace ToothChartImageTests {
 					Get(".live.frame.pen"));
 				AppendTimesRow(sb,size,"WPF live view without the 3D layer cache (TC-3 as first built), software",Get(".live.nocache.shown.refill"),
 					Get(".live.refill.dashboard")+Get(".live.nocache.frame.refill"),Get(".live.nocache.shown.selection"),Get(".live.nocache.shown.pen"));
-				AppendTimesRow(sb,size,"WPF live view with hardware rendering (not the program today: O-34 (a))",Get(".live.hardware.shown.refill"),
-					Get(".live.refill.dashboard")+Get(".live.hardware.frame.refill"),Get(".live.hardware.shown.selection"),Get(".live.hardware.shown.pen"));
 				AppendTimesRow(sb,size,"WPF drawn in software: the renderer's smoothed picture (the \"Draw in software\" switch)",Get(".software.refill"),
 					Get(".software.refill.dashboard"),Get(".software.selection"),double.NaN);
 			}

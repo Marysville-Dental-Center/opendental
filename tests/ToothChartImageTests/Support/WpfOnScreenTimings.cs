@@ -23,10 +23,11 @@ namespace ToothChartImageTests {
 	///are medians of runs alternating two scenes, so the 3D layer changes every time. Those live-view times are the UI thread's work only.
 	///The live view's frame is drawn afterwards by WPF's own render thread: in the program in software at 1x, because OpenPmsDental.exe sets
 	///RenderOptions.ProcessRenderMode to SoftwareOnly for the whole process (O-34), and the gallery's times process sets it the same way.
-	///MeasureLiveViewFrames measures it on a window that is on a display (WPF may not draw a window that is off every display): the time until WPF
-	///has drawn and presented the frame (MediaContext.CompleteRender, as WPF itself waits for a frame when a window is resized), with the 3D layer
-	///cached and without the cache, and one full software frame of the view at 1x (ToothChartWpfView.MeasureSoftwareFrameForTests). No test waits for
-	///a frame (section 7): only the gallery's times process does.</summary>
+	///MeasureLiveViewFrames measures it on a window that is on a display, as the Chart module's is: the time until WPF has drawn and presented the
+	///frame (MediaContext.CompleteRender, as WPF itself waits for a frame when a window is resized), with the 3D layer cached and without the cache,
+	///and one full software frame of the view at 1x (ToothChartWpfView.MeasureSoftwareFrameForTests); the same wait on the off-screen window shows
+	///that WPF draws that one too, so the UI-thread times above leave the frame out rather than skip it. No test waits for a frame (section 7):
+	///only the gallery's times process does.</summary>
 	public static class WpfOnScreenTimings {
 		///<summary>The pen stroke of the pen-move times, in 410x307 pixels: along the bottom edge, below the mandibular teeth.</summary>
 		private static readonly Point _pointPenStart=new Point(30,284);
@@ -50,20 +51,6 @@ namespace ToothChartImageTests {
 						form.Close();
 					}
 					MeasureLiveViewFrames(report,size,sizeName,countRepeats);
-				}
-			});
-		}
-
-		///<summary>Only the live view's frames at 410x307 and 615x461 (the times process for a process that leaves WPF's hardware rendering on, which
-		///the program does not: O-34's choice (a)). The keys are those of MeasureLiveViewFrames with ".hardware" after "live".</summary>
-		public static void MeasureLiveViewFramesOnly(WpfTimingReport report,int countRepeats) {
-			if(!Environment.UserInteractive) {
-				report.ListNotes.Add("No live-view frame times with hardware rendering: no interactive desktop session.");
-				return;
-			}
-			StaRunner.Run(() => {
-				foreach(Size size in new[] { ChartScenes.SizeModule.Size,WpfTimings.Size150 }) {
-					MeasureLiveViewFrames(report,size,size.Width+"x"+size.Height,countRepeats);
 				}
 			});
 		}

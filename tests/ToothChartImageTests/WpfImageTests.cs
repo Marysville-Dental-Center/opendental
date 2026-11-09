@@ -262,16 +262,6 @@ namespace ToothChartImageTests {
 			Assert.AreEqual(0,resultTimes.ExitCode,resultTimes.Output);
 			WpfTimingReport timingReport=ParseTimings(File.ReadAllText(pathTimes));
 			File.Delete(pathTimes);
-			if(galleryName!="G0") {
-				//From G1 on: the live view's frames once more in a process that leaves WPF's hardware rendering on, for O-34's choice (a).
-				string pathTimesHardware=Path.Combine(folder,"timings-hardware-process.txt");
-				SecondProcessResult resultTimesHardware=SecondProcess.Run(600000,"times-hardware",pathTimesHardware);
-				Assert.AreEqual(0,resultTimesHardware.ExitCode,resultTimesHardware.Output);
-				WpfTimingReport timingReportHardware=ParseTimings(File.ReadAllText(pathTimesHardware));
-				File.Delete(pathTimesHardware);
-				timingReport.ListTimings.AddRange(timingReportHardware.ListTimings);
-				timingReport.ListNotes.AddRange(timingReportHardware.ListNotes);
-			}
 			List<WpfGalleryPicture> listPictures=new List<WpfGalleryPicture>();
 			StaRunner.Run(() => {
 				foreach(ChartSize chartSize in WpfCharts.GetChartSizes()) {
