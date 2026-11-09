@@ -849,7 +849,7 @@ namespace ProjectFileTests {
 				foreach(string[] arrayExtension in new[] { new[] { "exe",".exe" },new[] { "winexe",".exe" },new[] { "appcontainerexe",".exe" },
 					new[] { "library",".dll" },new[] { "module",".netmodule" },new[] { "winmdobj",".winmdobj" } })
 				{
-					if(IsValueIfKnown("OutputType",arrayExtension[0])==true) {
+					if(IsValue("OutputType",arrayExtension[0])) {
 						_dictProperties["TargetExt"]=arrayExtension[1];
 					}
 				}
@@ -974,7 +974,7 @@ namespace ProjectFileTests {
 			if(isSigned==false) {
 				_dictProperties["DelaySign"]="false";
 			}
-			else if(isSigned==null && IsValueIfKnown("DelaySign","true")!=false) {
+			else if(isSigned==null && IsPropertyTrue("DelaySign")) {
 				_dictProperties["DelaySign"]=NotKnown("DelaySign",FILE,"SignAssembly");
 			}
 			if(IsValueIfKnown("DelaySign","true")==false) {
@@ -1328,14 +1328,11 @@ namespace ProjectFileTests {
 						_dictProperties["TargetFrameworkVersion"]="v"+frameworkVersion;
 					}
 					if(GetValue("TargetPlatformIdentifier")=="" || GetValue("TargetPlatformVersion")=="") {
+						//An identifier not known (an environment variable no file set: SetIfEmpty) is not 'Windows' here; the version is then the
+						//common targets' 7.0 (a framework without a platform, as MSBuild's lines 67-81 leave it '') or not modelled (.NET 5 and
+						//later, below), so nothing is given a value that depends on it.
 						SetIfEmpty("TargetPlatformIdentifier",platformIdentifier);
-						//Line 67: the version of a Windows platform, set over the project's own (and line 80 reads both): not known when the
-						//identifier is not.
-						bool? isWindows=IsValueIfKnown("TargetPlatformIdentifier","Windows");
-						if(isWindows==null) {
-							_dictProperties["TargetPlatformVersion"]=NotKnown("TargetPlatformVersion",FILE_INFERENCE,"TargetPlatformIdentifier");
-						}
-						else if(isWindows.Value) {
+						if(IsValue("TargetPlatformIdentifier","Windows")) {
 							_dictProperties["TargetPlatformIdentifier"]="Windows";
 							if(platformVersion!="") {
 								SetIfEmpty("TargetPlatformVersion",platformVersion);
@@ -1443,21 +1440,21 @@ namespace ProjectFileTests {
 			}
 			//Microsoft.NET.RuntimeIdentifierInference.targets sets the platform target from the runtime identifier it infers when the project has
 			//none (Directory.Build.props gives every SDK-style project x86); not modelled. It also adds a runtime identifier the project names
-			//itself to the output paths unless AppendRuntimeIdentifierToOutputPath is false (Directory.Build.props): not modelled either, and not
-			//known when AppendRuntimeIdentifierToOutputPath is not (lines 358, 368).
+			//itself to the output paths unless AppendRuntimeIdentifierToOutputPath is false (Directory.Build.props): not modelled either (lines 358,
+			//368; a switch not known is not 'false' here, so the paths are not known either way).
 			if(GetValue("PlatformTarget")=="") {
 				_hashSetNotModelled.Add("PlatformTarget");
 			}
-			if(GetValue("RuntimeIdentifier")!="" && IsValueIfKnown("AppendRuntimeIdentifierToOutputPath","false")!=true) {
+			if(GetValue("RuntimeIdentifier")!="" && !IsPropertyFalse("AppendRuntimeIdentifierToOutputPath")) {
 				foreach(string name in new[] { "OutputPath","IntermediateOutputPath" }) {
 					_dictProperties[name]=Unresolved("the "+name+" of RuntimeIdentifier "+TextOf(GetUnescaped("RuntimeIdentifier")));
 				}
 			}
-			//Microsoft.NET.Sdk.BeforeCommon.targets lines 102-104.
-			bool? isBindingRedirected=IsValueIfKnown("TargetFrameworkIdentifier",".NETFramework") & IsValueIfKnown("HasRuntimeOutput","true");
+			//Microsoft.NET.Sdk.BeforeCommon.targets lines 102-104 (a TargetFrameworkIdentifier not known is not .NETFramework here, and the common
+			//targets' line 379 then makes AutoGenerateBindingRedirects not known; a HasRuntimeOutput not known does it here).
+			bool? isBindingRedirected=IsValue("TargetFrameworkIdentifier",".NETFramework") & IsValueIfKnown("HasRuntimeOutput","true");
 			if(isBindingRedirected==null) {
-				SetIfEmpty("AutoGenerateBindingRedirects",NotKnown("AutoGenerateBindingRedirects","Microsoft.NET.Sdk.BeforeCommon.targets",
-					FirstNotKnown("TargetFrameworkIdentifier","HasRuntimeOutput")));
+				SetIfEmpty("AutoGenerateBindingRedirects",NotKnown("AutoGenerateBindingRedirects","Microsoft.NET.Sdk.BeforeCommon.targets","HasRuntimeOutput"));
 			}
 			else if(isBindingRedirected.Value) {
 				SetIfEmpty("AutoGenerateBindingRedirects","true");
@@ -1729,10 +1726,11 @@ namespace ProjectFileTests {
 		///environment variable of the name gives, which this reader does not read.</summary>
 		private void ThrowIfImportHook(string name,string where) {
 			string value=GetValueIfKnown(name);
-			if(value==null) {
-				ThrowIfEnvironmentVariable(name);
-				ThrowIfUnresolved(GetValue(name),Describe()+": $("+name+")");
+			if(value==null && IsEnvironmentVariable(name)) {
+				throw new NotSupportedException(Describe()+": $("+name+") ("+where+") is an environment variable of this process, which MSBuild reads as a "
+					+"property; ProjectFile does not model environment variables.");
 			}
+			ThrowIfUnresolved(GetValue(name),Describe()+": $("+name+") ("+where+")");
 			if(value!="") {
 				throw new NotSupportedException(Describe()+": $("+name+") ("+where+") names a file or a switch of an import that ProjectFile does not model.");
 			}
