@@ -4,6 +4,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace CLAIMDCMTests {
 	[TestClass]
@@ -142,8 +143,10 @@ namespace CLAIMDCMTests {
 			StringAssert.Contains(source,"ClaimAttachDicom.ReadDocument(document,patFolder)");
 			StringAssert.Contains(source,"ClaimAttachDicom.ReadFile(path)");
 			StringAssert.Contains(source,"ShowMessage(owner,ex.Message);");
-			StringAssert.Contains(TestSupport.ReadSource("OpenPmsDental","OpenPmsDental.csproj"),@"<Compile Include=""Logic\ClaimAttachDicomL.cs"" />");
-			StringAssert.Contains(TestSupport.ReadSource("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj"),@"<Compile Include=""Imaging\ClaimAttachDicom.cs"" />");
+			//The evaluated items, so the check holds for the classic project files and the SDK-style ones of the .NET 10 move alike.
+			ProjectFile.Load(System.IO.Path.Combine(TestSupport.RepoRoot(),"OpenPmsDental","OpenPmsDental.csproj")).AssertCompiles(@"Logic\ClaimAttachDicomL.cs");
+			ProjectFile.Load(System.IO.Path.Combine(TestSupport.RepoRoot(),"OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj"))
+				.AssertCompiles(@"Imaging\ClaimAttachDicom.cs");
 		}
 	}
 }

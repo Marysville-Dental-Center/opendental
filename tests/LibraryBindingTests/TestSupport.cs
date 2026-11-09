@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mono.Cecil;
+using ProjectFileTests;
 
 namespace LibraryBindingTests {
 	internal static class RepoPaths {
@@ -309,7 +310,6 @@ namespace LibraryBindingTests {
 	}
 
 	internal static class SolutionProjects {
-		private static readonly XNamespace _xNamespaceMsBuild="http://schemas.microsoft.com/developer/msbuild/2003";
 		private static List<ProjectInfo> _listProjects;
 
 		///<summary>The C# projects of OpenDental.Local.slnf.</summary>
@@ -326,42 +326,44 @@ namespace LibraryBindingTests {
 			}
 		}
 
+		///<summary>The project's facts from its evaluated properties and items (Debug|x86, with Directory.Build.props and the other files it imports),
+		///so they hold for the classic project files and the SDK-style ones of the .NET 10 move alike: no 2003 MSBuild namespace, metadata as
+		///child elements or attributes, AutoGenerateBindingRedirects from tests\Directory.Build.props.</summary>
 		private static ProjectInfo Read(string path) {
-			XDocument xDocument=XDocument.Load(path);
+			ProjectFile projectFile=ProjectFile.Load(path);
 			ProjectInfo projectInfo=new ProjectInfo();
-			projectInfo.Path=System.IO.Path.GetFullPath(path);
-			projectInfo.Folder=System.IO.Path.GetDirectoryName(projectInfo.Path);
-			projectInfo.AssemblyName=xDocument.Descendants(_xNamespaceMsBuild+"AssemblyName").Select(x => x.Value.Trim()).FirstOrDefault()
-				??System.IO.Path.GetFileNameWithoutExtension(path);
-			string outputType=xDocument.Descendants(_xNamespaceMsBuild+"OutputType").Select(x => x.Value.Trim()).FirstOrDefault()??"";
+			projectInfo.Path=projectFile.FullPath;
+			projectInfo.Folder=projectFile.Folder;
+			projectInfo.AssemblyName=projectFile.GetProperty("AssemblyName").Trim();
+			if(projectInfo.AssemblyName=="") {
+				projectInfo.AssemblyName=System.IO.Path.GetFileNameWithoutExtension(path);//MSBuild's default, the project's name
+			}
+			string outputType=projectFile.GetProperty("OutputType").Trim();
 			projectInfo.IsExe=outputType.Equals("Exe",StringComparison.OrdinalIgnoreCase) || outputType.Equals("WinExe",StringComparison.OrdinalIgnoreCase);
-			string projectTypes=xDocument.Descendants(_xNamespaceMsBuild+"ProjectTypeGuids").Select(x => x.Value).FirstOrDefault()??"";
-			projectInfo.IsWeb=projectTypes.IndexOf("349c5851-65df-11da-9384-00065b846f21",StringComparison.OrdinalIgnoreCase)>=0;
+			projectInfo.IsWeb=projectFile.GetProperty("ProjectTypeGuids").IndexOf("349c5851-65df-11da-9384-00065b846f21",StringComparison.OrdinalIgnoreCase)>=0;
 			projectInfo.IsTest=System.IO.Path.GetFileNameWithoutExtension(path).EndsWith("Tests");
-			projectInfo.AutoGeneratesRedirects=xDocument.Descendants(_xNamespaceMsBuild+"AutoGenerateBindingRedirects").Any(x => x.Value.Trim()=="true")
-				&& xDocument.Descendants(_xNamespaceMsBuild+"GenerateBindingRedirectsOutputType").Any(x => x.Value.Trim()=="true");
-			foreach(XElement xElementReference in xDocument.Descendants(_xNamespaceMsBuild+"Reference")) {
-				string hintPath=(string)xElementReference.Element(_xNamespaceMsBuild+"HintPath");
-				string fileName=GetRequiredDllsFileName(hintPath);
-				if(fileName==null || ((string)xElementReference.Element(_xNamespaceMsBuild+"EmbedInteropTypes")??"").Trim().Equals("true",StringComparison.OrdinalIgnoreCase)) {
+			projectInfo.AutoGeneratesRedirects=projectFile.GetProperty("AutoGenerateBindingRedirects").Trim().Equals("true",StringComparison.OrdinalIgnoreCase)
+				&& projectFile.GetProperty("GenerateBindingRedirectsOutputType").Trim().Equals("true",StringComparison.OrdinalIgnoreCase);
+			foreach(ProjectItem projectItemReference in projectFile.GetItems("Reference")) {
+				string fileName=GetRequiredDllsFileName(projectItemReference.GetMetadata("HintPath"));
+				if(fileName==null || projectItemReference.GetMetadata("EmbedInteropTypes").Trim().Equals("true",StringComparison.OrdinalIgnoreCase)) {
 					continue;
 				}
 				projectInfo.ListRequiredDlls.Add(fileName);
-				if(!((string)xElementReference.Element(_xNamespaceMsBuild+"Private")??"").Trim().Equals("false",StringComparison.OrdinalIgnoreCase)) {
+				if(!projectItemReference.GetMetadata("Private").Trim().Equals("false",StringComparison.OrdinalIgnoreCase)) {
 					projectInfo.ListPrimaryReferencesCopied.Add(fileName);
 				}
 			}
-			foreach(XElement xElementItem in xDocument.Descendants(_xNamespaceMsBuild+"None").Concat(xDocument.Descendants(_xNamespaceMsBuild+"Content"))) {
-				string fileName=GetRequiredDllsFileName((string)xElementItem.Attribute("Include"));
-				if(fileName!=null && xElementItem.Element(_xNamespaceMsBuild+"CopyToOutputDirectory")!=null) {
+			foreach(ProjectItem projectItem in projectFile.GetItems("None").Concat(projectFile.GetItems("Content"))) {
+				string fileName=GetRequiredDllsFileName(projectItem.Include);
+				if(fileName!=null && projectItem.HasMetadata("CopyToOutputDirectory")) {
 					projectInfo.ListRequiredDlls.Add(fileName);
 					projectInfo.ListCopyItems.Add(fileName);
 				}
 			}
-			foreach(XElement xElementProjectReference in xDocument.Descendants(_xNamespaceMsBuild+"ProjectReference")) {
-				string include=(string)xElementProjectReference.Attribute("Include");
-				if(include!=null && include.EndsWith(".csproj",StringComparison.OrdinalIgnoreCase)) {
-					projectInfo.ListProjectReferences.Add(System.IO.Path.GetFullPath(System.IO.Path.Combine(projectInfo.Folder,include)));
+			foreach(ProjectItem projectItemReference in projectFile.GetItems("ProjectReference")) {
+				if(projectItemReference.Include.EndsWith(".csproj",StringComparison.OrdinalIgnoreCase)) {
+					projectInfo.ListProjectReferences.Add(projectItemReference.FullPath);
 				}
 			}
 			projectInfo.ConfigPath=Directory.GetFiles(projectInfo.Folder,"*.config")

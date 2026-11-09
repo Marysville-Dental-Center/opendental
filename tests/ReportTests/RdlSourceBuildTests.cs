@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace ReportTests {
 	[TestClass]
@@ -69,12 +70,13 @@ namespace ReportTests {
 			return assembly.GetReferencedAssemblies().Select(x => x.Name).ToList();
 		}
 
-		///<summary>The .cs files a project compiles (its Compile items; RdlEngine\Definition also holds a few old files it does not compile).</summary>
+		///<summary>The .cs files a project compiles (its evaluated Compile items, listed in a classic project file or globbed in an SDK-style one;
+		///RdlEngine\Definition also holds a few old files it does not compile), relative to the root.</summary>
 		private static List<string> CompiledFiles(string projectPath) {
 			string folder=Path.GetDirectoryName(projectPath);
-			List<string> list=Regex.Matches(Read(projectPath),@"<Compile\s+Include=""([^""]+\.cs)""").Cast<Match>()
-				.Select(x => x.Groups[1].Value)
-				.Where(x => !x.StartsWith(@"..\"))//the linked SharedAssemblyInfo.cs
+			List<string> list=ProjectFile.Load(Path.Combine(Root(),projectPath)).GetItems("Compile")
+				.Select(x => x.Include)
+				.Where(x => x.EndsWith(".cs",StringComparison.OrdinalIgnoreCase) && !x.StartsWith(@"..\"))//not the linked SharedAssemblyInfo.cs
 				.Select(x => Path.Combine(folder,x))
 				.ToList();
 			Assert.IsTrue(list.Count>0,projectPath+" compiles no files?");
@@ -91,9 +93,11 @@ namespace ReportTests {
 
 		[TestMethod]
 		public void Projects_ReferenceNoPrebuiltOdrRdlEngineOrRdlViewer() {
-			//A HintPath to a prebuilt copy anywhere, or a file Reference (not a ProjectReference) by assembly name.
-			Regex regex=new Regex(@"<HintPath>[^<]*\b(ODR|RdlEngine|RdlViewer)\.dll\s*</HintPath>|<Reference\s+Include=""(ODR|RdlEngine|RdlViewer)\b"
-				+@"|<(None|Content|EmbeddedResource)\s+Include=""[^""]*\b(ODR|RdlEngine|RdlViewer)\.dll""",RegexOptions.IgnoreCase);
+			//A HintPath to a prebuilt copy anywhere (an element in a classic project file, an element or an attribute in an SDK-style one), or a file
+			//Reference (not a ProjectReference) by assembly name.
+			Regex regex=new Regex(@"<HintPath>[^<]*\b(ODR|RdlEngine|RdlViewer)\.dll\s*</HintPath>|\bHintPath\s*=\s*""[^""]*\b(ODR|RdlEngine|RdlViewer)\.dll\s*"""
+				+@"|<Reference\s+Include=""(ODR|RdlEngine|RdlViewer)\b"
+				+@"|<(None|Content|EmbeddedResource)\s+(Include|Update)=""[^""]*\b(ODR|RdlEngine|RdlViewer)\.dll""",RegexOptions.IgnoreCase);
 			List<string> listOffenders=new List<string>();
 			foreach(string relative in RepoFiles("*.csproj","*.vcxproj","*.vbproj","*.props","*.targets")) {
 				Match match=regex.Match(Read(relative));
@@ -106,13 +110,23 @@ namespace ReportTests {
 
 		[TestMethod]
 		public void OpenDental_ReferencesTheThreeProjects() {
-			string csproj=Read(@"OpenPmsDental\OpenPmsDental.csproj");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile projectFile=ProjectFile.Load(Path.Combine(Root(),@"OpenPmsDental\OpenPmsDental.csproj"));
 			foreach(string[] project in _arrayProjects) {
-				Match match=Regex.Match(csproj,@"<ProjectReference Include=""\.\.\\"+Regex.Escape(project[1])+@""">\s*<Project>([^<]*)</Project>");
-				Assert.IsTrue(match.Success,"OpenPmsDental.csproj does not reference "+project[1]);
-				Assert.AreEqual(project[2],match.Groups[1].Value,true,project[1]);
-				Assert.IsFalse(Regex.IsMatch(csproj,@"<ProjectReference Include=""\.\.\\"+Regex.Escape(project[1])+@""">(?:(?!</ProjectReference>).)*"
-					+"<ReferenceOutputAssembly>false",RegexOptions.Singleline),project[1]+" must be copied next to OpenPmsDental.exe.");
+				ProjectItem projectItem=projectFile.GetProjectReference(@"..\"+project[1]);
+				Assert.IsNotNull(projectItem,"OpenPmsDental.csproj does not reference "+project[1]);
+				//The project GUID, where the reference names one (a classic project file always does; an SDK-style one may leave it to the path),
+				//is the one the solution builds; the referenced project carries the same.
+				if(projectItem.HasMetadata("Project")) {
+					Assert.AreEqual(project[2],projectItem.GetMetadata("Project"),true,project[1]);
+				}
+				else {
+					Assert.IsTrue(projectFile.IsSdkStyle,"A classic project file names the GUID of each project it references: "+project[1]);
+				}
+				string projectGuid=ProjectFile.Load(Path.Combine(Root(),project[1])).GetProperty("ProjectGuid");
+				Assert.IsTrue(projectGuid=="" || projectGuid.Equals(project[2],StringComparison.OrdinalIgnoreCase),project[1]+" has the project GUID "+projectGuid);
+				Assert.AreNotEqual("false",projectItem.GetMetadata("ReferenceOutputAssembly").ToLowerInvariant(),project[1]+" must be copied next to OpenPmsDental.exe.");
+				Assert.AreNotEqual("false",projectItem.GetMetadata("Private").ToLowerInvariant(),project[1]+" must be copied next to OpenPmsDental.exe.");
 			}
 		}
 
@@ -134,8 +148,10 @@ namespace ReportTests {
 			foreach(string[] project in _arrayProjects) {
 				string folder=Path.GetDirectoryName(project[1]);
 				string csproj=Read(project[1]);
-				StringAssert.DoesNotMatch(csproj,new Regex(@"<Reference\s+Include=""MySql\.Data|<HintPath>[^<]*MySql\.Data|Include=""[^""]*packages\.config",
-					RegexOptions.IgnoreCase),project[1]);
+				//A reference or a HintPath in the element form of a classic project file or the attribute form an SDK-style one may use.
+				StringAssert.DoesNotMatch(csproj,new Regex(@"<(Package)?Reference\s+Include=""MySql\.Data|<HintPath>[^<]*MySql\.Data|\bHintPath\s*=\s*""[^""]*MySql\.Data"
+					+@"|Include=""[^""]*packages\.config",RegexOptions.IgnoreCase),project[1]);
+				Assert.IsNull(ProjectFile.Load(Path.Combine(Root(),project[1])).GetReference("MySql.Data"),project[1]);
 				Assert.IsFalse(File.Exists(Path.Combine(Root(),folder,"packages.config")),folder+@"\packages.config");
 				foreach(string relative in CompiledFiles(project[1])) {
 					StringAssert.DoesNotMatch(Read(relative),new Regex(@"^\s*using\s+MySql\.Data",RegexOptions.Multiline),relative);
@@ -150,6 +166,8 @@ namespace ReportTests {
 			Assert.AreEqual("MySqlConnector.MySqlConnection",match.Groups[2].Value);
 			Assert.IsNotNull(typeof(MySqlConnector.MySqlConnection).GetConstructor(new[] { typeof(string) }),"RdlEngine creates it with the connection string.");
 			Assert.IsFalse(Regex.IsMatch(Read(@"OpenPmsDental\OpenPmsDental.csproj"),@"RdlEngineConfig\.xml"),"No RdlEngineConfig.xml is shipped.");
+			Assert.AreEqual(0,ProjectFile.Load(Path.Combine(Root(),@"OpenPmsDental\OpenPmsDental.csproj")).GetItemsMentioning("RdlEngineConfig.xml").Count,
+				"No RdlEngineConfig.xml is shipped (nor globbed into an SDK-style project).");
 		}
 
 		[TestMethod]
@@ -221,7 +239,7 @@ namespace ReportTests {
 		public void ProgramOutput_HoldsTheBinariesBuiltFromSource() {
 			string folder=Path.Combine(Root(),"OpenPmsDental","bin","Debug");
 			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
-				Assert.Inconclusive(@"OpenPmsDental\bin\Debug is not built.");
+				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			foreach(string[] pair in new[] { new[] { "ODR.dll",@"ODR\bin\Debug" },new[] { "RdlEngine.dll",@"RdlEngine\bin\Debug" },
 				new[] { "RdlViewer.dll",@"RdlViewer\bin\Debug" } })

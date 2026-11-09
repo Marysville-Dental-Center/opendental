@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace M2CARRIERTests {
 	[TestClass]
@@ -117,16 +118,12 @@ namespace M2CARRIERTests {
 
 		[TestMethod]
 		public void Project_CompilesTheNewFiles() {
-			string csprojOd=Source("OpenPmsDental","OpenPmsDental.csproj");
-			foreach(string file in new[] { @"Main Modules\ControlChart.PreAuth.cs",@"Main Modules\ControlTreat.PreAuth.cs",@"UI\Appt\ControlApptPanel.PreAuth.cs",
-				@"Forms\FormCarrierEdit.PreAuth.cs",@"Forms\FormPreAuthReminder.cs",@"Forms\FormPreAuthReminder.Designer.cs",@"Logic\PreAuthL.cs" })
-			{
-				StringAssert.Contains(csprojOd,"<Compile Include=\""+file+"\"",file);
-			}
-			string csprojOdb=Source("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj");
-			foreach(string file in new[] { @"Data Interface\CarrierPreAuths.cs",@"Data Interface\InsEditLogBigValues.cs",@"Data Interface\Appointments.PreAuth.cs" }) {
-				StringAssert.Contains(csprojOdb,"<Compile Include=\""+file+"\"",file);
-			}
+			//The evaluated items, so the check holds for the classic project files and the SDK-style ones of the .NET 10 move alike.
+			ProjectFile.Load(ScratchDb.FindRepoFile(Path.Combine("OpenPmsDental","OpenPmsDental.csproj"))).AssertCompiles(@"Main Modules\ControlChart.PreAuth.cs",
+				@"Main Modules\ControlTreat.PreAuth.cs",@"UI\Appt\ControlApptPanel.PreAuth.cs",@"Forms\FormCarrierEdit.PreAuth.cs",@"Forms\FormPreAuthReminder.cs",
+				@"Forms\FormPreAuthReminder.Designer.cs",@"Logic\PreAuthL.cs");
+			ProjectFile.Load(ScratchDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj"))).AssertCompiles(
+				@"Data Interface\CarrierPreAuths.cs",@"Data Interface\InsEditLogBigValues.cs",@"Data Interface\Appointments.PreAuth.cs");
 		}
 		#endregion Hooks in shared files
 	}

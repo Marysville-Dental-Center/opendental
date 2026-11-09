@@ -6,12 +6,18 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace BPRINTTests {
 	[TestClass]
 	public class WiringTests {
 		private static string Read(string relativePath) {
 			return File.ReadAllText(TestDb.FindRepoFile(relativePath));
+		}
+
+		///<summary>A project file's evaluated items, so a check holds for the classic project files and the SDK-style ones alike.</summary>
+		private static ProjectFile Project(string relativePath) {
+			return ProjectFile.Load(TestDb.FindRepoFile(relativePath));
 		}
 
 		private static int Count(string text,string value) {
@@ -110,7 +116,7 @@ namespace BPRINTTests {
 			StringAssert.Contains(source,"if(!ConfirmInserterBarcodeClearZone()) {");
 			string partial=Read(@"OpenPmsDental\Forms\FormSheetDefEdit.InserterBarcode.cs");
 			StringAssert.Contains(partial,"StatementInserterBarcode.GetOverlappingFields(SheetDef_)");
-			StringAssert.Contains(Read(@"OpenPmsDental\OpenPmsDental.csproj"),"<Compile Include=\"Forms\\FormSheetDefEdit.InserterBarcode.cs\">");
+			Project(@"OpenPmsDental\OpenPmsDental.csproj").AssertCompiles(@"Forms\FormSheetDefEdit.InserterBarcode.cs");
 		}
 		#endregion
 
@@ -133,7 +139,7 @@ namespace BPRINTTests {
 			int idxCopy=partial.IndexOf("SaveAsDocument('U',\"PatientForm\");",idxTerminal);
 			int idxCatch=partial.IndexOf("catch(Exception ex) {",idxTerminal);
 			Assert.IsTrue(idxTerminal>0 && idxTry>idxTerminal && idxCopy>idxTry && idxCatch>idxCopy);
-			StringAssert.Contains(Read(@"OpenPmsDental\OpenPmsDental.csproj"),"<Compile Include=\"Forms\\FormSheetFillEdit.AutoSaveImages.cs\">");
+			Project(@"OpenPmsDental\OpenPmsDental.csproj").AssertCompiles(@"Forms\FormSheetFillEdit.AutoSaveImages.cs");
 		}
 
 		[TestMethod]
@@ -160,7 +166,7 @@ namespace BPRINTTests {
 			{
 				StringAssert.Contains(partial,tip);
 			}
-			StringAssert.Contains(Read(@"OpenPmsDental\OpenPmsDental.csproj"),"<Compile Include=\"Forms\\FormSheetFieldCheckBox.Instructions.cs\">");
+			Project(@"OpenPmsDental\OpenPmsDental.csproj").AssertCompiles(@"Forms\FormSheetFieldCheckBox.Instructions.cs");
 			Assert.IsFalse(Read(@"WpfControlsOD\Frms\FrmEFormCheckBoxEdit.xaml.cs").Contains("B-PRINT"),"The eForm checkbox window is left alone.");
 		}
 		#endregion
@@ -219,9 +225,9 @@ namespace BPRINTTests {
 			foreach(string name in new[] { "comboPrinter","textCopies","checkCollate","radioAll","radioRange","textFromPage","textToPage","butPrint","butCancel" }) {
 				StringAssert.Contains(xaml,"x:Name=\""+name+"\"");
 			}
-			string csproj=Read(@"WpfControlsOD\WpfControlsOD.csproj");
-			StringAssert.Contains(csproj,"<Page Include=\"Frms\\FrmPrintOptions.xaml\">");
-			StringAssert.Contains(csproj,"<Compile Include=\"Logic\\PrintOptionsWpf.cs\" />");
+			ProjectFile projectFile=Project(@"WpfControlsOD\WpfControlsOD.csproj");
+			projectFile.AssertPages(@"Frms\FrmPrintOptions.xaml");
+			projectFile.AssertCompiles(@"Frms\FrmPrintOptions.xaml.cs",@"Logic\PrintOptionsWpf.cs");
 		}
 		#endregion
 	}

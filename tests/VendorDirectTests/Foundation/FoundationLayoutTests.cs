@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace VendorDirectTests.Foundation {
 	[TestClass]
@@ -47,25 +48,28 @@ namespace VendorDirectTests.Foundation {
 
 		[TestMethod]
 		public void BusinessProject_HasTheVendorFolderWildcards() {
-			string csproj=ReadRepoFile(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj");
+			//Each vendor folder is compiled whole: by its wildcard in the classic project file, by the default glob in an SDK-style one. The
+			//evaluated items, so the check holds for both.
+			ProjectFile projectFile=ProjectFile.Load(Path.Combine(GetRepositoryRoot(),@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj"));
 			foreach(string folder in new[] { @"Bridges\QuickBooksOnline",@"Bridges\CareCredit",@"Bridges\PostcardMania",@"WebBridges\Microsoft365",
 				@"WebBridges\Usps",@"WebBridges\Erx\DoseSpot","VendorDirect" })
 			{
-				StringAssert.Contains(csproj,"<Compile Include=\""+folder+@"\**\*.cs"" />",folder);
+				System.Collections.Generic.List<string> listNotCompiled=projectFile.GetFilesNotCompiled(folder);
+				Assert.AreEqual(0,listNotCompiled.Count,folder+": not compiled: "+string.Join(", ",listNotCompiled));
 			}
-			StringAssert.Contains(csproj,@"..\Required dlls\Microsoft.Identity.Client.dll");
+			Assert.AreEqual(@"..\Required dlls\Microsoft.Identity.Client.dll",projectFile.GetReference("Microsoft.Identity.Client")?.GetMetadata("HintPath"));
 		}
 
 		[TestMethod]
 		public void Stubs_ExistAndAreCompiled() {
 			string root=GetRepositoryRoot();
-			string csprojBusiness=ReadRepoFile(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj");
+			ProjectFile projectFileBusiness=ProjectFile.Load(Path.Combine(root,@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj"));
 			foreach(string stub in new[] { @"WebBridges\Google\GoogleTokenCache.cs",@"WebBridges\Google\GoogleOAuthSettings.cs",
 				@"WebBridges\Erx\NewCrop\NewCropConfig.cs",@"WebBridges\PDMP\PdmpHttp.cs",@"WebBridges\PDMP\PdmpCertificate.cs",
 				@"WebBridges\PaySimpleAchStatusSync.cs" })
 			{
 				Assert.IsTrue(File.Exists(Path.Combine(root,"OpenPmsDentalBusiness",stub)),stub);
-				StringAssert.Contains(csprojBusiness,"<Compile Include=\""+stub+"\" />",stub);
+				projectFileBusiness.AssertCompiles(stub);
 			}
 		}
 
@@ -73,12 +77,12 @@ namespace VendorDirectTests.Foundation {
 		public void ProgramProject_HasTheRegistryAndJobHost() {
 			//Only the foundation's own files. The forms and helpers that later packages fill in, rename or delete are theirs to test.
 			string root=GetRepositoryRoot();
-			string csprojProgram=ReadRepoFile(@"OpenPmsDental\OpenPmsDental.csproj");
+			ProjectFile projectFileProgram=ProjectFile.Load(Path.Combine(root,@"OpenPmsDental\OpenPmsDental.csproj"));
 			foreach(string file in new[] { @"Logic\VendorDirect\IProgramLinkSetup.cs",@"Logic\VendorDirect\ProgramLinkSetupRegistry.cs",
 				@"Logic\VendorDirect\VendorJobHost.cs" })
 			{
 				Assert.IsTrue(File.Exists(Path.Combine(root,"OpenPmsDental",file)),file);
-				StringAssert.Contains(csprojProgram,"<Compile Include=\""+file+"\" />",file);
+				projectFileProgram.AssertCompiles(file);
 			}
 		}
 

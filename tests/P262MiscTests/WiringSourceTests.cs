@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.ForkMigrations;
+using ProjectFileTests;
 
 namespace P262MiscTests {
 	///<summary>The windows need a screen, so their wiring is checked from the source: where the business logic of the three items is called.</summary>
@@ -77,7 +78,8 @@ namespace P262MiscTests {
 			string partial=Read("OpenPmsDental","Forms","FormSheetImport.VitalSigns.cs");
 			StringAssert.Contains(partial,"EFormVitalSigns.GetImports(EFormCur,Vitalsigns.GetMostRecent(_patient.PatNum))");
 			StringAssert.Contains(partial,"EFormVitalSigns.Import(_patient.PatNum,_dateVitalsTaken,listImports,");
-			StringAssert.Contains(Read("OpenPmsDental","OpenPmsDental.csproj"),"<Compile Include=\"Forms\\FormSheetImport.VitalSigns.cs\">");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile.Load(MiscDb.FindRepoFile(System.IO.Path.Combine("OpenPmsDental","OpenPmsDental.csproj"))).AssertCompiles(@"Forms\FormSheetImport.VitalSigns.cs");
 		}
 
 		[TestMethod]

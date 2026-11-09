@@ -1,11 +1,13 @@
 // V-EDS: the windows call the EDS validation where rule 1 says (Send and Save of a new claim in Edit Claim, Send for every claim, batch sends
 // from the Send Claims window), and the new files stay vendor-neutral and talk only to EDS. Reads the repository's source files; no database.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace VEDSTests {
 	[TestClass]
@@ -112,12 +114,13 @@ namespace VEDSTests {
 
 		[TestMethod]
 		public void NewFiles_AreInTheProjects() {
-			string csproj=Read(@"OpenPmsDental\OpenPmsDental.csproj");
-			StringAssert.Contains(csproj,@"<Compile Include=""Forms\FormEdsValidation.cs"">");
-			StringAssert.Contains(csproj,@"<Compile Include=""Forms\FormEdsValidation.Designer.cs"">");
-			StringAssert.Contains(csproj,@"<Compile Include=""Forms\FormClaimsSend.Eds.cs"">");
-			StringAssert.Contains(csproj,@"<Compile Include=""Logic\EdsValidationL.cs"" />");
-			StringAssert.Contains(Read(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj"),@"<Compile Include=""VendorDirect\**\*.cs"" />");
+			//The evaluated items, so the checks hold for the classic project files and the SDK-style ones of the .NET 10 move alike.
+			ProjectFile.Load(TestDb.FindRepoFile(@"OpenPmsDental\OpenPmsDental.csproj")).AssertCompiles(@"Forms\FormEdsValidation.cs",
+				@"Forms\FormEdsValidation.Designer.cs",@"Forms\FormClaimsSend.Eds.cs",@"Logic\EdsValidationL.cs");
+			//The EDS business classes are compiled with the whole VendorDirect folder (its wildcard in the classic project file, the default glob in
+			//an SDK-style one).
+			List<string> listNotCompiled=ProjectFile.Load(TestDb.FindRepoFile(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj")).GetFilesNotCompiled(@"VendorDirect\Eds");
+			Assert.AreEqual(0,listNotCompiled.Count,"Not compiled: "+string.Join(", ",listNotCompiled));
 		}
 
 		[TestMethod]

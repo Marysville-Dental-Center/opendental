@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace LibraryBindingTests {
 	[TestClass]
@@ -128,7 +129,7 @@ namespace LibraryBindingTests {
 				}
 			}
 			if(countFolders==0) {
-				Assert.Inconclusive("Nothing is built. Build OpenDental.Local.slnf (Debug|x86) first.");
+				BuildOutput.NotBuilt("Nothing is built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			Assert.AreEqual(0,listProblems.Count,listProblems.Count+" problem(s); a rebuild of the project may be needed:\r\n"
 				+string.Join("\r\n",listProblems.Distinct()));

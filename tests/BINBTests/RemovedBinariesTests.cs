@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace BINBTests {
 	[TestClass]
@@ -80,6 +81,10 @@ namespace BINBTests {
 					if(local=="HintPath") {
 						listValues.Add(xElement.Value);
 					}
+					//The attribute form of the metadata, which an SDK-style project file may use.
+					if(xElement.Attribute("HintPath")!=null) {
+						listValues.Add((string)xElement.Attribute("HintPath"));
+					}
 					if(local=="Content" || local=="None" || local=="Reference") {
 						listValues.Add((string)xElement.Attribute("Include")??"");
 					}
@@ -128,10 +133,13 @@ namespace BINBTests {
 
 		[TestMethod]
 		public void WindowsWinmd_IsReferencedToCompileOnly() {
-			XDocument xDocument=XDocument.Load(Path.Combine(TestPaths.RepoRoot,"PasswordVaultWrapper","PasswordVaultWrapper.csproj"));
-			XElement xElementReference=xDocument.Descendants().Single(x => x.Name.LocalName=="Reference" && (string)x.Attribute("Include")=="Windows");
-			StringAssert.EndsWith(xElementReference.Elements().Single(x => x.Name.LocalName=="HintPath").Value,"Windows.winmd");
-			Assert.AreEqual("False",xElementReference.Elements().Single(x => x.Name.LocalName=="Private").Value,
+			//The evaluated reference (metadata as child elements or attributes), so the check holds for the classic project file and the SDK-style
+			//one of the .NET 10 move alike.
+			ProjectFile projectFile=ProjectFile.Load(Path.Combine(TestPaths.RepoRoot,"PasswordVaultWrapper","PasswordVaultWrapper.csproj"));
+			Assert.AreEqual(1,projectFile.GetItems("Reference").Count(x => x.Include.Split(',')[0].Trim()=="Windows"));
+			ProjectItem projectItemReference=projectFile.GetReference("Windows");
+			StringAssert.EndsWith(projectItemReference.GetMetadata("HintPath"),"Windows.winmd");
+			Assert.AreEqual("false",projectItemReference.GetMetadata("Private").ToLowerInvariant(),
 				"Windows.winmd is a Windows SDK file: compile against it, never copy it.");
 		}
 

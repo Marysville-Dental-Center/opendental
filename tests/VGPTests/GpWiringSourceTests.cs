@@ -9,6 +9,7 @@ using CodeBase.VendorDirect;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.VendorDirect.GlobalPayments;
+using ProjectFileTests;
 
 namespace VGPTests {
 	[TestClass]
@@ -50,14 +51,19 @@ namespace VGPTests {
 
 		[TestMethod]
 		public void FormPayment_ProjectListsTheNewFiles() {
-			string csproj=RepoFiles.Read(@"OpenPmsDental\OpenPmsDental.csproj");
+			//The evaluated items, so the checks hold for the classic project files and the SDK-style ones of the .NET 10 move alike.
+			string root=RepoFiles.GetRepositoryRoot();
+			ProjectFile projectFile=ProjectFile.Load(Path.Combine(root,@"OpenPmsDental\OpenPmsDental.csproj"));
 			foreach(string file in new[] { "FormGlobalPaymentsV2.cs","FormGlobalPaymentsV2.Designer.cs","FormGlobalPaymentsV2Setup.cs",
 				"FormGlobalPaymentsV2Setup.Designer.cs","FormPayment.GlobalPaymentsV2.cs" })
 			{
-				StringAssert.Contains(csproj,"<Compile Include=\"Forms\\"+file+"\"",file);
+				projectFile.AssertCompiles(@"Forms\"+file);
 			}
-			StringAssert.Contains(RepoFiles.Read(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj"),"<Compile Include=\"VendorDirect\\**\\*.cs\" />",
-				"The business files are under VendorDirect, which the project compiles by wildcard.");
+			//The business files are under VendorDirect, which the project compiles whole (by wildcard in the classic project file, by the default glob
+			//in an SDK-style one).
+			System.Collections.Generic.List<string> listNotCompiled=ProjectFile.Load(Path.Combine(root,@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj"))
+				.GetFilesNotCompiled(@"VendorDirect\GlobalPayments");
+			Assert.AreEqual(0,listNotCompiled.Count,"Not compiled: "+string.Join(", ",listNotCompiled));
 		}
 
 		[TestMethod]

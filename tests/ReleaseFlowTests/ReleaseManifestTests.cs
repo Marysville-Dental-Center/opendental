@@ -8,6 +8,7 @@ using System.Text;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace ReleaseFlowTests {
 	[TestClass]
@@ -218,7 +219,7 @@ namespace ReleaseFlowTests {
 		public void BuiltOpenDentalExe_CarriesItsBuildTime() {
 			string path=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug","OpenPmsDental.exe");
 			if(!File.Exists(path)) {
-				Assert.Inconclusive("OpenPmsDental is not built.");
+				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			//Loaded only to read its attributes; nothing in it runs.
 			DateTime dateTimeBuildUtc=ForkReleases.GetBuildUtc(System.Reflection.Assembly.LoadFrom(path));
@@ -379,12 +380,17 @@ namespace ReleaseFlowTests {
 			Assert.AreEqual("OpenPmsDentalBusiness.dll",ProgramNames.BusinessDllFileName);
 		}
 
-		///<summary>Asserts that every ListBuildIdFiles file is in OpenPmsDental\bin\(configuration) and returns that folder. Inconclusive when the
-		///exe is not built in that configuration.</summary>
+		///<summary>Asserts that every ListBuildIdFiles file is in OpenPmsDental\bin\(configuration) and returns that folder. When the exe is not
+		///built in that configuration: for the configuration these tests are built in, the rule of BuildOutput (a failure with
+		///OPMS_REQUIRE_BUILD_OUTPUT=1); for another one (Release, which the build lane does not build), inconclusive.</summary>
 		private static string AssertBuildIdFilesInOutput(string configuration) {
 			string folder=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin",configuration);
 			if(!File.Exists(Path.Combine(folder,ProgramNames.ExeFileName))) {
-				Assert.Inconclusive(Path.Combine(folder,ProgramNames.ExeFileName)+" is not built.");
+				string message=Path.Combine(folder,ProgramNames.ExeFileName)+" is not built.";
+				if(configuration.Equals(Path.GetFileName(Path.GetDirectoryName(typeof(ReleaseManifestTests).Assembly.Location)),StringComparison.OrdinalIgnoreCase)) {
+					BuildOutput.NotBuilt(message+" Build OpenDental.Local.slnf ("+configuration+"|x86) first.");
+				}
+				Assert.Inconclusive(message);
 			}
 			List<string> listMissing=ForkReleases.ListBuildIdFiles.Where(x => !File.Exists(Path.Combine(folder,x))).ToList();
 			Assert.AreEqual(0,listMissing.Count,"Missing from the build output "+folder+": "+string.Join(", ",listMissing));
