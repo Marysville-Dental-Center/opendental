@@ -184,7 +184,7 @@ namespace EhrTests {
 		public static void UseMockMiddleTier() {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientMT;
 			OpenDentalServerProxy.MockOpenDentalServerCur=new OpenDentalServerMockIIS(server:Server,db:DbName,user:User,password:Password,userLow:User,
-				passLow:Password,dbType:DatabaseType.MySql);
+				passLow:Password,dbType:DatabaseType.MySql,sslCa:DevDbTls.GetSslCa(Server));
 		}
 
 		public static void UseDirectConnection() {

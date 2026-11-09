@@ -117,7 +117,8 @@ namespace MiddleTierMockTests {
 		///<summary>A mock server that connects to the scratch database with its own settings, the low user included, as the legacy MiddleTierTests
 		///set it up.</summary>
 		public static OpenDentalServerMockIIS NewMockServer() {
-			return new OpenDentalServerMockIIS(server:Server,db:DbName,user:User,password:Password,userLow:User,passLow:Password,dbType:DatabaseType.MySql);
+			return new OpenDentalServerMockIIS(server:Server,db:DbName,user:User,password:Password,userLow:User,passLow:Password,dbType:DatabaseType.MySql,
+				sslCa:DevDbTls.GetSslCa(Server));
 		}
 
 		///<summary>As UnitTests/Misc/TestBase.cs RunTestsAgainstDirectConnection.</summary>

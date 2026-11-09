@@ -338,50 +338,132 @@ namespace DbConnectionSecurityTests {
 			//A server over the network: refused by the rule before any connection.
 			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerTests.cs","PREFERENCE_HOST,\"opendental\",\"ro\"" },
 			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerTests.cs","TestHelpers.NETWORK_HOST,\"opendental\",\"opmsd\"" },
+			//CentralConnectionBase entries for a server over the network: refused by the rule before any connection, or only serialized.
+			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerTests.cs","ServerName=PREFERENCE_HOST" },
+			//The program's loopback connection without a CA, on purpose (the test returns before it when the server requires TLS), and the next
+			//test's connection with the CA, which it reads into sslCa from DevDbTls.GetSslCa(SERVER) first.
+			new[] { @"tests\DbConnectionSecurityTests\LoopbackDatabaseTests.cs","SERVER,_dbName,\"root\",\"\",DatabaseType.MySql" },
 		};
+
+		///<summary>The calls the scan reads, each match ending at the call's opening parenthesis or the initializer's opening brace.</summary>
+		private static readonly Regex _regexConnectionCall=new Regex(@"new\s+MySqlConnection\s*\(|\.SetDbT?\s*\(|new\s+DataConnection\s*\("
+			+@"|new\s+CentralConnection(?:Base)?\s*(?:\(\s*\))?\s*\{|\bMakeABackup\s*\(|new\s+(?:[A-Za-z_][\w.]*\.)?OpenDentalServerMockIIS\s*\(");
+
+		///<summary>The kind of call the scan checks: a connection to a server named in the call, which needs the local test server's CA through
+		///DevDbTls. Null for a call of that name that names no server (it takes the thread's own connection), so the scan skips it.</summary>
+		private static string GetConnectionKind(string matchValue,List<string> listArguments) {
+			if(Regex.IsMatch(matchValue,@"^new\s+MySqlConnection")) {
+				//new MySqlConnection(connectionString); new MySqlConnection() sets its string later.
+				return listArguments.Count==1 && listArguments[0].Trim()!="" ? "MySqlConnection" : null;
+			}
+			if(matchValue.StartsWith(".SetDb")) {
+				//SetDb(server,database,user,password,userLow,passLow,dbtype[,skipValidation][,sslCa]): the form with a server.
+				return listArguments.Count>=7 && Regex.IsMatch(listArguments[6].Trim(),@"(DatabaseType\.MySql|DBtype)$") ? "SetDb" : null;
+			}
+			if(Regex.IsMatch(matchValue,@"^new\s+DataConnection")) {
+				//DataConnection(server,database,user,password,dbtype[,sslCa]), (connectStr,server,database,user,password,dbtype) and the ten-argument
+				//form; the forms with fewer arguments take the static or the thread's connection.
+				return listArguments.Count>=5 ? "DataConnection" : null;
+			}
+			if(Regex.IsMatch(matchValue,@"^new\s+CentralConnection")) {
+				//new CentralConnectionBase { ServerName=...,... } and new CentralConnection { ServerName=... }: ConnectionStoreBase.SetDb/SetDbT
+				//connect with its SslCa.
+				return listArguments.Any(x => Regex.IsMatch(x,@"^\s*ServerName\s*=")) ? "CentralConnection" : null;
+			}
+			if(matchValue.Contains("MakeABackup")) {
+				//MakeABackup(serverName:...) or a server as the first argument: the archive tab's backup, to another server too.
+				bool hasServer=listArguments.Any(x => Regex.IsMatch(x,@"^\s*serverName\s*:"))
+					|| (listArguments.Count>0 && listArguments[0].Trim()!="" && !Regex.IsMatch(listArguments[0],@"^\s*[A-Za-z_]\w*\s*:(?!:)"));
+				return hasServer ? "MakeABackup" : null;
+			}
+			if(matchValue.Contains("OpenDentalServerMockIIS")) {
+				//The Middle Tier mock server with a server of its own (server: or the first argument) connects its thread with SetDbT and sslCa.
+				bool hasServer=listArguments.Any(x => Regex.IsMatch(x,@"^\s*server\s*:"))
+					|| (listArguments.Count>0 && listArguments[0].Trim()!="" && !Regex.IsMatch(listArguments[0],@"^\s*[A-Za-z_]\w*\s*:(?!:)"));
+				return hasServer ? "OpenDentalServerMockIIS" : null;
+			}
+			return null;
+		}
 
 		[TestMethod]
 		public void EveryTestAndToolConnectionToTheLocalServer_GoesThroughDevDbTls() {
 			string root=GetRepoRoot();
-			Regex regexNew=new Regex(@"new\s+MySqlConnection\s*\(");
-			Regex regexSetDb=new Regex(@"\.SetDbT?\s*\(");
 			List<string> listMissing=new List<string>();
-			int countChecked=0;
+			Dictionary<string,int> dictCounts=new Dictionary<string,int>();
 			foreach(string top in new[] { "tests","tools","UnitTests","UnitTestsCore","NoHqTests" }) {
 				foreach(string path in GetSourceFiles(Path.Combine(root,top))) {
 					string relative=path.Substring(root.Length+1);
 					string text=File.ReadAllText(path);
 					bool[] arrayIsCode=GetCodeMask(text);
-					foreach(Match match in regexNew.Matches(text).Cast<Match>().Concat(regexSetDb.Matches(text).Cast<Match>())) {
+					foreach(Match match in _regexConnectionCall.Matches(text)) {
 						if(!arrayIsCode[match.Index]) {
 							continue;
 						}
 						List<string> listArguments=GetArguments(text,arrayIsCode,match.Index+match.Length-1);
-						string call=string.Join(",",listArguments);
-						bool isNew=match.Value.StartsWith("new");
-						if(isNew) {
-							if(listArguments.Count!=1 || listArguments[0].Trim()=="") {
-								continue;
-							}
-						}
-						//SetDb(server,database,user,password,userLow,passLow,dbtype[,skipValidation][,sslCa]): the form with a server.
-						else if(listArguments.Count<7 || !Regex.IsMatch(listArguments[6].Trim(),@"(DatabaseType\.MySql|DBtype)$")) {
+						string kind=GetConnectionKind(match.Value,listArguments);
+						if(kind==null) {
 							continue;
 						}
-						countChecked++;
-						bool isThrough=isNew ? listArguments[0].Trim().StartsWith("DevDbTls.Apply(") : call.Contains("DevDbTls.GetSslCa(");
+						string call=string.Join(",",listArguments);
+						dictCounts[kind]=(dictCounts.TryGetValue(kind,out int count) ? count : 0)+1;
+						bool isThrough=kind=="MySqlConnection" ? listArguments[0].Trim().StartsWith("DevDbTls.Apply(") : call.Contains("DevDbTls.GetSslCa(");
 						if(isThrough || _arrayAllowed.Any(x => x[0]==relative && call.Contains(x[1]))) {
 							continue;
 						}
 						int line=text.Substring(0,match.Index).Count(x => x=='\n')+1;
-						string callShown=call.Trim().Replace("\r","").Replace("\n"," ");
+						string callShown=Regex.Replace(call.Trim(),@"\s+"," ");
 						listMissing.Add(relative+":"+line+" "+match.Value+callShown.Substring(0,Math.Min(80,callShown.Length)));
 					}
 				}
 			}
-			Assert.IsTrue(countChecked>150,"The scan found the helpers' connections ("+countChecked+").");
+			string counts=string.Join(", ",dictCounts.OrderBy(x => x.Key).Select(x => x.Key+" "+x.Value));
+			Assert.IsTrue(dictCounts.Values.Sum()>150,"The scan found the helpers' connections ("+counts+").");
+			foreach(string kind in new[] { "MySqlConnection","SetDb","DataConnection","CentralConnection","MakeABackup","OpenDentalServerMockIIS" }) {
+				Assert.IsTrue(dictCounts.ContainsKey(kind),"The scan found calls of the kind "+kind+" ("+counts+").");
+			}
 			Assert.AreEqual("",string.Join("\r\n",listMissing),"Connect through DevDbTls (docs/port-notes/DB-TLS.md): "
-				+"new MySqlConnection(DevDbTls.Apply(...)), SetDb(...,DevDbTls.GetSslCa(server)).");
+				+"new MySqlConnection(DevDbTls.Apply(...)); SetDb/SetDbT(...,DevDbTls.GetSslCa(server)); new DataConnection(server,...,"
+				+"DevDbTls.GetSslCa(server)); new CentralConnectionBase { ServerName=server,...,SslCa=DevDbTls.GetSslCa(server) }; "
+				+"MiscData.MakeABackup(serverName:server,...,sslCa:DevDbTls.GetSslCa(server)); new OpenDentalServerMockIIS(server:server,...,"
+				+"sslCa:DevDbTls.GetSslCa(server)).");
+		}
+
+		[TestMethod]
+		public void TheConnectionScan_FindsEachCallShape_WithAndWithoutTheCa() {
+			//The scan's own reading of synthetic calls (no file): which calls name a server, so that a new helper of any of these shapes is checked.
+			string source=string.Join("\n",new[] {
+				"var a=new MySqlConnection(\"Server=127.0.0.1\");",
+				"var b=new MySqlConnection();",
+				"new DataConnection().SetDb(Server,db,User,Password,\"\",\"\",DatabaseType.MySql,true);",
+				"new DataConnection().SetDb(connectStr,\"\",DatabaseType.MySql);",
+				"var c=new DataConnection(SERVER,db,\"root\",\"\",DatabaseType.MySql);",
+				"var d=new DataConnection(DatabaseType.MySql);",
+				"var e=new DataConnection(\"dbname\");",
+				"ConnectionStoreBase.OverrideConnection(ConnectionNames.DentalOffice,new CentralConnectionBase {\n ServerName=TestServer,DatabaseName=x });",
+				"var f=new CentralConnectionBase() { DatabaseName=x };",
+				"var g=new CentralConnection { ServerName=s };",
+				"MiscData.MakeABackup(serverName:Server+\":3306\",user:u,pass:p,doVerify:true);",
+				"MiscData.MakeABackup(Server,u,p);",
+				"MiscData.MakeABackup(isAutoBackup:false);",
+				"MiscData.MakeABackup();",
+				"var h=new OpenDentalServerMockIIS(server:Server,db:DbName,user:User);",
+				"var i=new OpenPmsDentalBusiness.WebServices.OpenDentalServerMockIIS(TestServer,db,\"root\",\"\",low,pass,DatabaseType.MySql);",
+				"var j=new OpenPmsDentalBusiness.WebServices.OpenDentalServerMockIIS(user:u,password:p);",
+				"var k=new OpenDentalServerMockIIS();",
+			});
+			bool[] arrayIsCode=GetCodeMask(source);
+			List<string> listKinds=_regexConnectionCall.Matches(source).Cast<Match>()
+				.Select(x => GetConnectionKind(x.Value,GetArguments(source,arrayIsCode,x.Index+x.Length-1))??"-")
+				.ToList();
+			CollectionAssert.AreEqual(new[] {
+				"MySqlConnection","-",//new MySqlConnection(string), new MySqlConnection()
+				"-","SetDb",//new DataConnection(), .SetDb with a server
+				"-","-",//new DataConnection(), .SetDb with a connection string
+				"DataConnection","-","-",//new DataConnection(server,...), (DatabaseType), (database)
+				"CentralConnection","-","CentralConnection",//with ServerName=, without, CentralConnection with ServerName=
+				"MakeABackup","MakeABackup","-","-",//serverName:, a server first, neither, none
+				"OpenDentalServerMockIIS","OpenDentalServerMockIIS","-","-",//server:, a server first (full name), user and password only, none
+				},listKinds,string.Join(", ",listKinds));
 		}
 
 		#endregion Source checks
