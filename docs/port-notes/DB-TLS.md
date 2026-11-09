@@ -1,8 +1,9 @@
 # Port note: DB-TLS (O-12, the local test database runs encrypted)
 
 Package O-12 of the .NET 10 plan (`docs/specs/net10-plan.md` section 12, O-12, answered by the owner on 2026-11-08: yes), built on branch
-`dev/dbtls-1` from `main` (99bb32282, with `main` merged in at e1262eab8); the review's fixes on `dev/dbtls-2` (section 8). The owner runs
-one script once as administrator,
+`dev/dbtls-1` from `main` (99bb32282, with `main` merged in at e1262eab8); the review's fixes on `dev/dbtls-2` (section 8), and there the
+fix round after the two final reviews (section 9, with `main` merged in at 447b09374: S1-6's SDK-style test projects and TC-2). The owner
+runs one script once as administrator,
 `tools/Enable-LocalDbTls.ps1`, which turns on TLS in the local MariaDB service on `127.0.0.1:3306`. From then on the program's development
 set-up, the test helpers and the dev tools connect encrypted and verify the server against the script's test CA. S2-2's TLS and
 certificate-login test runs against this server, so O-8's temporary second server is not needed.
@@ -32,41 +33,60 @@ Read through SQL on `127.0.0.1:3306` (the dev connection, `root`) and from files
 ASCII, Windows PowerShell 5.1. It changes nothing before it has printed its plan and you have typed `YES`.
 
 **Checks (every mode).** The session is elevated (else it refuses; `-DryRun` and `-TestCertificatesFolder` need no elevation). The service
-(`-ServiceName`, default `MariaDB`) exists and runs `mysqld.exe` or `mariadbd.exe` with `--defaults-file=`; that `my.ini` says `port=3306`
-(or no port) and `bind-address=127.0.0.1`; the server that answers on `127.0.0.1:3306` reports port 3306, bind address `127.0.0.1` and that
-`my.ini`'s data folder, so it is this service. Every connection of the script goes to `127.0.0.1:3306` over TCP with the service's own
-`mariadb.exe`, as `-User` (default `root`), the password from `MYSQL_PWD` when set.
+(`-ServiceName`, default `MariaDB`) exists and runs `mysqld.exe` or `mariadbd.exe` with `--defaults-file=`. That `my.ini` is UTF-8 (or
+ASCII) text whose bytes come back unchanged from the decoding (else it refuses with the offset of the first other byte: writing such a file
+back would change bytes the script does not mean to touch), reads no other option file (a line starting `!include` or `!includedir` is
+refused: options there are out of its sight), and says `port=3306` (or no port) and `bind-address=127.0.0.1`. The process that listens on
+`127.0.0.1:3306` (`Get-NetTCPConnection -LocalPort 3306 -State Listen`, no elevation needed) is the service's own (`Win32_Service`
+`ProcessId`), and no other process listens on `0.0.0.0` or `::` port 3306, which would take the connections to `127.0.0.1:3306` while the
+service's socket is closed; this is checked before the client sends anything there and again after every restart (the restart waits until
+it holds). The server that answers on `127.0.0.1:3306` reports port 3306, bind address `127.0.0.1` and that `my.ini`'s data folder. Every
+connection of the script goes to `127.0.0.1:3306` over TCP with the service's own `mariadb.exe`, as `-User` (default `root`), the password
+from `MYSQL_PWD` when set.
 
 **Enable (no mode switch).** Refuses when `my.ini` already has a TLS line (`ssl`, `ssl_ca`, `ssl_cert`, `ssl_key`, `ssl_capath`,
-`ssl_cipher`, `tls_version`, `require_secure_transport`), when the server already has TLS, or when a backup or certificate folder of an
-earlier run exists. Then:
+`ssl_cipher`, `tls_version`, `require_secure_transport`), when the server already has TLS, or when a backup, a certificate folder or a
+temporary `my.ini.opms-new` of an earlier run exists. It refuses a dev folder or a client folder (steps 3 and 4) that
+
+- is not `<a user profile's %LOCALAPPDATA%>\OpenPmsDental\DevDbTls` (`DevDbTlsClient` for the client folder) of a profile of this computer
+  (the registry's profile list, readable without elevation, and the running account's own), in an `AppData\Local` that exists; these are
+  the only folders `-Revert` and `-RequireSecureTransport` accept from the record (below), so an enable run never records one they would
+  refuse;
+- is a drive root, is or holds a user profile, or is or overlaps the MariaDB folder, the server's data folder or the `opms-dev-tls` folder;
+- exists and holds anything but the files the script writes there (`ca.pem`; `client-cert.pem` and `client-key.pem`), a subfolder
+  included, so the run replaces only its own files and its ACL hides nothing of anyone else's;
+- is inside the repository, or (the client folder) is the dev folder, inside it or around it.
+
+Then:
 
 1. Makes in memory a test CA (RSA 3072, SHA-256, 10 years, `CA:true, pathlen 0`, keyCertSign and cRLSign) and a server certificate
    (RSA 2048, 5 years, `CN=localhost`, SAN `DNS:localhost` and `IP:127.0.0.1`, serverAuth). The CA's private key is never written
    anywhere: nothing else can ever be signed with it. **No client certificate by default**: the owner approved a test CA and a server
    certificate; S2-2's client certificate (RSA 2048, 5 years, `CN=opms-dbtls-test-client`, clientAuth) is made only with
-   `-WithClientCertificate`, once the owner has said yes to it (section 9). Because the CA's key is gone after the run, a client
+   `-WithClientCertificate`, once the owner has said yes to it (section 10). Because the CA's key is gone after the run, a client
    certificate can only be made in the same run as the CA: a later yes means `-Revert` and the script again with the switch (a new CA,
    which the dev tools pick up from the same path).
 2. Writes `ca.pem`, `server-cert.pem` and `server-key.pem` (PKCS#8) to `<MariaDB folder>\opms-dev-tls`, next to `bin` and `data`. Not inside
    `data`: MariaDB takes every folder there for a database. The folder and files get a protected ACL: owner Administrators, SYSTEM and
    Administrators full control, the service account (`NT SERVICE\MariaDB`) read, nobody else. These are the only keys the server reads.
 3. Writes the CA certificate (the public part only) as `ca.pem` to `-DevFolder`, default `%LOCALAPPDATA%\OpenPmsDental\DevDbTls` of the
-   account that runs the script, with a protected ACL: `-DevUser` (default that account), SYSTEM and Administrators. Every worktree of that
-   account finds it there. **That folder never holds a private key** (`DevDbTlsTests.TheCaFolder_NeverHoldsAPrivateKey_...` checks it
-   where the script ran).
+   account that runs the script. The folder is created when missing (and `OpenPmsDental` with it when that is missing too) and gets a
+   protected ACL (nothing inherited): `-DevUser` (default that account), SYSTEM and Administrators full control, nobody else; an existing
+   folder has its ACL replaced so. Every worktree of that account finds the CA there. **That folder never holds a private key**
+   (`DevDbTlsTests.TheCaFolder_NeverHoldsAPrivateKey_...` checks it where the script ran).
 4. Only with `-WithClientCertificate`: writes `client-cert.pem` and `client-key.pem` to `-ClientFolder`, default `DevDbTlsClient` beside
-   the dev folder (`%LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient`, `DevDbTls.GetDefaultClientFolder()`), a folder of its own with a
-   protected ACL: `-DevUser` read only, SYSTEM and Administrators full control. It refuses a client folder that is the dev folder, inside
-   it or around it. Both folders are refused inside the repository; nothing is ever written to the repository.
+   the dev folder (`%LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient`, `DevDbTls.GetDefaultClientFolder()`), a folder of its own, created when
+   missing, with a protected ACL: `-DevUser` read only, SYSTEM and Administrators full control. Nothing is ever written to the repository.
 5. Copies `my.ini` to `my.ini.before-opms-dev-tls` and adds at the end of its `[mysqld]` section (every other byte of the file stays as it
-   was, line ends and a BOM included). The two comment lines record where steps 3 and 4 wrote (the `client-folder` line only with
-   `-WithClientCertificate`); `-Revert` and `-RequireSecureTransport` read them back:
+   was, line ends and a BOM included). The comment lines record where steps 3 and 4 wrote (the `client-folder` line only with
+   `-WithClientCertificate`) and the parent folder the run creates for them (the `created-parent` line only when `OpenPmsDental` did not
+   exist); `-Revert` and `-RequireSecureTransport` read them back:
 
    ```ini
    # BEGIN Open PMS - Dental local test TLS (tools/Enable-LocalDbTls.ps1; undo with -Revert)
    # dev-folder=<dev user's %LOCALAPPDATA%>/OpenPmsDental/DevDbTls
    # client-folder=<dev user's %LOCALAPPDATA%>/OpenPmsDental/DevDbTlsClient
+   # created-parent=<dev user's %LOCALAPPDATA%>/OpenPmsDental
    ssl_ca=<MariaDB folder>/opms-dev-tls/ca.pem
    ssl_cert=<MariaDB folder>/opms-dev-tls/server-cert.pem
    ssl_key=<MariaDB folder>/opms-dev-tls/server-key.pem
@@ -74,28 +94,37 @@ earlier run exists. Then:
    # END Open PMS - Dental local test TLS
    ```
 
-6. Restarts the service (connections drop for a few seconds), waits for `127.0.0.1:3306`, and checks a TLS session (`have_ssl=YES`,
-   `Ssl_cipher` not empty), then the server certificate against the CA copy (`--ssl-ca` with `--ssl-verify-server-cert`). When the server
-   does not come back with TLS, it restores the backup, restarts again and removes the new files (exit code 3).
+6. Restarts the service (connections drop for a few seconds), waits until `127.0.0.1:3306` answers and its listener is the service's new
+   process, and checks a TLS session (`have_ssl=YES`, `Ssl_cipher` not empty), then the server certificate against the CA copy (`--ssl-ca`
+   with `--ssl-verify-server-cert`). When anything fails after the first change (exit code 3), it restores `my.ini` from the backup and
+   restarts, removes the backup (the run refused to start with one there, so it is the run's own), and undoes the files: a `ca.pem`,
+   `client-cert.pem` or `client-key.pem` that existed before the run gets its bytes and access rules back, one the run added is removed, a
+   dev or client folder that existed gets its access rules back, one the run created is removed when it is empty and so is the
+   `OpenPmsDental` parent it created, the `opms-dev-tls` folder is removed, and so is `my.ini.opms-new` when a write left it. When the undo
+   fails too (exit code 4), the message names what to restore and remove by hand, and the files that held something before the run.
 
 It does not set `require_secure_transport`: unencrypted connections keep working until the lead's `-RequireSecureTransport` step.
 
 **The record in `my.ini`.** `-RequireSecureTransport` and `-Revert` never recompute the dev folder or the client folder from the account
 that runs them: they take them from the block's `# dev-folder=` and `# client-folder=` lines, so an enable run with `-DevUser`/`-DevFolder`
 for another account is undone in that account's folders. A `-DevFolder` or `-ClientFolder` that names another folder than the recorded
-one is refused (the same folder written another way is accepted). Only when `my.ini` has no block of this script (someone removed it) do
-they fall back to `-DevFolder`, else the running account's default, and the `-Revert` plan then says that a copy in another account's
-folder is not touched.
+one is refused (the same folder written another way is accepted). They refuse a recorded folder that no enable run can have written: a
+dev folder that is not `<a user profile's %LOCALAPPDATA%>\OpenPmsDental\DevDbTls` of this computer, a client folder that is not
+`...\OpenPmsDental\DevDbTlsClient` (each judged in its full form, so `..` segments and relative paths are refused), and a
+`# created-parent=` line that is not the parent folder of one of them; the message says that something else wrote that line and that
+`my.ini` is restored and the files removed by hand. Only when `my.ini` has no block of this script (someone removed it) do they fall back
+to `-DevFolder`, else the running account's default (the same rule applies to it), and the `-Revert` plan then says that a copy in another
+account's folder is not touched.
 
-**`-RequireSecureTransport`** (the lead's later step). Needs the script's block in `my.ini`, the CA copy in the recorded dev folder and a
-working verified TLS connection against it. Rewrites the block (the record kept) with `require_secure_transport=ON`, restarts, and checks
-that a verified TLS connection works and an unencrypted one is refused; otherwise it puts the block back as it was and restarts (exit
-code 3).
+**`-RequireSecureTransport`** (the lead's later step). Needs the script's block in `my.ini`, the CA copy in the recorded dev folder, a
+working verified TLS connection against it, and no `my.ini.opms-new`. Rewrites the block (the record kept) with
+`require_secure_transport=ON`, restarts, and checks that a verified TLS connection works and an unencrypted one is refused; otherwise it
+puts the block back as it was and restarts (exit code 3).
 
 **`-Revert`.** Restores `my.ini` from `my.ini.before-opms-dev-tls` (when `my.ini` was changed since, the plan lists the lines that the restore
 drops), restarts, checks an unencrypted connection, then removes the `opms-dev-tls` folder, `ca.pem` in the recorded dev folder,
-`client-cert.pem` and `client-key.pem` in the recorded client folder (each folder too when it is then empty) and the backup. The plan
-lists each path.
+`client-cert.pem` and `client-key.pem` in the recorded client folder (each folder too when it is then empty), the recorded created
+parent (`OpenPmsDental`) when it is then empty, and the backup. The plan lists each path.
 
 **`-DryRun`** with any mode: the checks and the plan, no change, no elevation. **`-TestCertificatesFolder <folder>`**: writes only a
 certificate set (the CA certificate, the server certificate and key, and with `-WithClientCertificate` the client certificate and key) to
@@ -108,8 +137,9 @@ failed and could not be undone (the message says what to do by hand).
 ## 3. The client side: `DataConnectionBase.DevDbTls`
 
 For the development set-up, the test helpers and the dev tools only. The program never calls it; `DevDbTlsTests.TheProgramNeverCallsDevDbTls`
-checks every C# file outside `tests`, `tools`, `UnitTests`, `UnitTestsCore` and `NoHqTests`. The class is in `DataConnectionBase.dll`
-because every test project and dev tool already references that assembly, so no project file had to change.
+checks every C# file outside `tests`, `tools`, `UnitTests`, `UnitTestsCore`, `NoHqTests` and the two developer tools `DocumentationBuilder`
+and `xCrudGenerator` (below; `TheDevToolsThatCallDevDbTls_AreNotProductProjects` checks that they are no product project). The class is in
+`DataConnectionBase.dll` because every test project and dev tool already references that assembly, so no project file had to change.
 
 - **The CA.** `OPMS_DB_TLS_CA` (a file that must exist), else `%LOCALAPPDATA%\OpenPmsDental\DevDbTls\ca.pem` when it exists, else none.
 - **The local test server.** `localhost` or a loopback address on port 3306, or on a port named in `OPMS_DB_TLS_RELAY_PORTS` (a test's TCP
@@ -149,23 +179,64 @@ name the same variables, file and port.
 | `tools/New-OdReferenceDatabase.ps1` | `mariadb.exe` gets the TLS arguments. |
 | `tools/AdoptionValidation` | `BusinessLayer.Connect` passes `GetSslCa`; `DatabaseCopier` gives `mariadb-dump.exe` and `mariadb.exe` the TLS arguments (quoted); the tests' `mariadb.exe` call too; `TcpRelay` registers its port. On the office's admin PC (no test CA, or the forward's port) nothing changes. |
 | `tools/SyntheticData/Infrastructure/Db.cs` | `LocalTls.Apply` instead of the fixed `SslMode=None`. |
+| `tests/ToothChartImageTests/Support/ChartTestDb.cs` (TC-2, from `main` in the fix round) | `DevDbTls.Apply` and `SetDb(...,DevDbTls.GetSslCa(Server))`, as every other helper. |
+| `DocumentationBuilder/DataConnection.cs` | Both strings it builds (`SslMode=none`) go through `DevDbTls.Apply`; it creates its `MySqlConnection` directly, so the local test server gets `SslMode=VerifyCA` with the CA, every other server as before. |
+| `xCrudGenerator/CrudGenHelper.cs` | `ConnectToDatabase`'s `SetDb` gets `DevDbTls.GetSslCa(server)` (the program's loopback branch with a CA). `ConnectToDatabaseM` (upstream's server over the network, which the rule refuses without an office CA) is unchanged. |
+
+**The dev-only programs outside `tools`** (item 7 of section 9), decided by one rule: a developer tool that is never released and is no
+product project (it does not link `SharedAssemblyInfo.cs`, which every shipped project and every side program does) gets the CA from
+`DevDbTls`, because its connections are no rule of the program's; a product project keeps its connections as they are, because `DevDbTls`
+in it would put the developer's CA path and the `OPMS_DB_*` switches into a program of the product (`TheProgramNeverCallsDevDbTls` keeps
+checking it).
+
+| Program | Covered | Why |
+|---|---|---|
+| `DocumentationBuilder` | yes | Developer tool, not shipped (README), no product project. |
+| `xCrudGenerator` | yes | Generates `OpenPmsDentalBusiness/Crud`; never released, no product project. |
+| `DatabaseIntegrityCheck` (`FormDatabaseCheck.OpenConnection`, its `SslMode=none` string) | **no** | A side program of the product (in the source, not in the setup; it links `SharedAssemblyInfo.cs`). |
+| `CentralManager` (`CentralConnectionHelper.SetCentralConnection`'s `SetDbT`, `FormCentralManager`'s `SetDb`, both with no CA) | **no** | A side program of the product, as above. Its connections come from its central database's connection list; giving them a CA is the program's connection work, not O-12's. |
+
+Both stop reaching the local test server once it requires TLS (section 5 step 4): their loopback strings have `SslMode=none`. Nothing runs
+them in a test or a gate.
+
+**Program paths that pass `sslCa=""` for a server they name** (not covered: they are the program's own code, which O-12 does not change).
+Each builds `SslMode=none` for the local test server, so a test that reaches one connects without TLS today and fails once the server
+requires it; no test in the repository reaches one with the local server, as far as the scan's shapes and a search show:
+
+- `ConnectionStoreBase.SetDb(ConnectionNames,...)` (`DataConnectionBase/ConnectionStoreBase.cs` about line 255; `SetDbT` passes the
+  entry's `SslCa`, `SetDb` does not);
+- `DataAction.GetT(fn,server,db,user,...)` and `DataAction.Run(action,server,...)` (`OpenPmsDentalBusiness/Db/DataAction.cs` about 108);
+- `LargeTableHelper`'s copy to another server (`OpenPmsDentalBusiness/Db/LargeTableHelper.cs` about 426, `SetDbT(_serverTo,...)`);
+- the archive database (`OpenPmsDentalBusiness/Db Multi Table/MiscData.cs` about 449, `SetDb(archiveServerName,...)`);
+- the Middle Tier's `OpenDentalServerConfig.xml` reader, `Userods.LoadDatabaseInfoFromFile` (`OpenPmsDentalBusiness/Data
+  Interface/Userods.cs` about 685): its `ComputerName`/`User`/`Password` elements give `SetDb(server,...)` with no CA (the file has no
+  `SslCa` element); only its `ConnectionString` element can carry TLS options (section 5 step 2).
 
 `DevDbTlsTests.EveryTestAndToolConnectionToTheLocalServer_GoesThroughDevDbTls` reads every C# file under `tests`, `tools`, `UnitTests`,
-`UnitTestsCore` and `NoHqTests` and fails for a call that connects to a server it names without the test CA:
+`UnitTestsCore`, `NoHqTests`, `DocumentationBuilder` and `xCrudGenerator` and fails for a call that connects to a server it names without
+the test CA:
 
 - `new MySqlConnection(...)` whose argument is not `DevDbTls.Apply(...)`;
+- `DbConnectionSecurity.NewMySqlConnection(...)` or `NewMySqlConnectionWithoutPooling(...)` whose argument is neither
+  `DevDbTls.Apply(...)` nor a `DataConnection.BuildSimpleConnectionString(...)` call whose `sslCa` argument (`sslCa:` or the sixth) is
+  `DevDbTls.GetSslCa(...)`;
 - `SetDb`/`SetDbT` with a server (seven or more arguments, the seventh the database type) without `DevDbTls.GetSslCa(...)`;
 - `new DataConnection(...)` with a server (five or more arguments) without it;
-- a `new CentralConnectionBase { ... }` or `new CentralConnection { ... }` initializer with `ServerName=` and no `SslCa=DevDbTls.GetSslCa(...)`;
+- a `new CentralConnectionBase { ... }` initializer with `ServerName=` and no `SslCa=DevDbTls.GetSslCa(...)`;
+- every `new CentralConnection { ... }` initializer with `ServerName=`, whatever it sets: its conversion to `CentralConnectionBase` drops
+  `SslCA`, so the message points to `new CentralConnectionBase { ServerName=...,SslCa=DevDbTls.GetSslCa(...) }`;
 - `MiscData.MakeABackup(...)` with `serverName:` (or a server as its first argument) without `sslCa:DevDbTls.GetSslCa(...)`;
 - `new OpenDentalServerMockIIS(...)` (any namespace prefix) with `server:` (or a server as its first argument) without it;
 
-apart from a short list of deliberate exceptions, each with its reason (the TLS tests' own strings, servers over the network that the rule
-refuses before connecting, and `LoopbackDatabaseTests`' connection without a CA on purpose). Calls of these names that name no server (they
-take the thread's own connection, as `new OpenDentalServerMockIIS()` or `MakeABackup()`) are not checked. It also asserts that it found
-calls of every kind; `TheConnectionScan_FindsEachCallShape_WithAndWithoutTheCa` checks its reading of each shape on synthetic source. A
-package that adds a helper after this one is merged gets the fix in the failure message. Connections the scan cannot see by name (a
-connection string built in program code from the thread's context) follow from the helpers' own `SetDb` with the CA.
+apart from a short list of deliberate exceptions, each with its file, its kind of call and its reason (the TLS tests' own strings and their
+CA-less refusal check, servers over the network that the rule refuses before connecting, strings that are only created and never opened,
+`LoopbackDatabaseTests`' connection without a CA on purpose, the read-only server's own thread string, the grants run's helper that passes
+the CA itself, and `DocumentationBuilder`'s `ConnStr`, set from `DevDbTls.Apply` just before). Calls of these names that name no server
+(they take the thread's own connection, as `new OpenDentalServerMockIIS()`, `MakeABackup()` or `NewMySqlConnection("")`) are not checked.
+It also asserts that it found calls of every kind; `TheConnectionScan_FindsEachCallShape_WithAndWithoutTheCa` checks its reading of each
+shape, with and without the CA, on synthetic source. A package that adds a helper after this one is merged gets the fix in the failure
+message. Connections the scan cannot see by name (a connection string built in program code from the thread's context) follow from the
+helpers' own `SetDb` with the CA.
 
 ## 4. The owner's steps (run once)
 
@@ -200,14 +271,15 @@ When the elevated window runs as another account than the one that runs the test
 `-DevUser <DOMAIN>\<user> -DevFolder <that user's %LOCALAPPDATA%>\OpenPmsDental\DevDbTls` (the plan says so when it notices). The script
 records that folder in `my.ini`, so the undo below finds it without repeating the switches.
 
-Only if the owner has said yes to S2-2's client certificate (section 9), add `-WithClientCertificate` to step 4 (it is made with the CA,
+Only if the owner has said yes to S2-2's client certificate (section 10), add `-WithClientCertificate` to step 4 (it is made with the CA,
 so not later without a new CA). Its key goes to `%LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient` (with `-DevFolder`: `DevDbTlsClient` beside
 it), never to the CA's folder.
 
 **To undo it** (also as administrator): `powershell -NoProfile -ExecutionPolicy Bypass -File tools\Enable-LocalDbTls.ps1 -Revert`, then
 `YES`. It removes the files in the folders the enable run recorded in `my.ini` (the plan lists them), also another account's after
-`-DevUser`/`-DevFolder`; a `-DevFolder` that names another folder is refused. The dev tools and tests then connect as before (they find
-no CA).
+`-DevUser`/`-DevFolder`, and the `OpenPmsDental` folder when the enable run created it and it is then empty; a `-DevFolder` that names
+another folder is refused, and so is a record that no enable run can have written (section 2). The dev tools and tests then connect as
+before (they find no CA).
 
 ## 5. The lead's steps afterwards
 
@@ -215,12 +287,20 @@ no CA).
    `SyntheticData.Tests` and `NoHqTests`. Every `DevDbTlsServerTests` test passes, except
    `WhenTheServerRequiresTls_AConnectionWithoutTlsIsRefused` (inconclusive until step 4).
 2. The coordinator's next Full run with `OPMS_DB_REQUIRE_TLS=1`. Every connection the scan of section 3 checks (the helpers' strings,
-   `SetDb`/`SetDbT`, `DataConnection` with a server, the `CentralConnectionBase` overrides, `MakeABackup` to a server, and the Middle Tier
-   mock server's own thread) then connects with TLS and the test CA, and so does every thread that takes its context from them. What the
-   run cannot show before step 4 is a connection outside those shapes that still has no CA: the server accepts it. Step 4's run is the
-   check for that (a connection without TLS is then refused and its test fails), so run the Full run again after step 4.
+   `NewMySqlConnection` with the program's string, `SetDb`/`SetDbT`, `DataConnection` with a server, the `CentralConnectionBase` overrides,
+   `MakeABackup` to a server, and the Middle Tier mock server's own thread) then connects with TLS and the test CA, and so does every thread
+   that takes its context from them. What the run cannot show before step 4 is a connection outside those shapes that still has no CA (the
+   program paths of section 3 that pass `sslCa=""` for a server, `DatabaseIntegrityCheck`, `CentralManager`): the server accepts it. Step
+   4's run is the check for that (a connection without TLS is then refused and its test fails), so run the Full run again after step 4.
+   **The Middle Tier gate** (the 3b gate's real Middle Tier on the build PC, S3b-6): its `OpenDentalServerConfig.xml` must name the database
+   with a `<ConnectionString>` element that carries the TLS options, for example
+   `<ConnectionString>Server=127.0.0.1;Port=3306;Database=<db>;User ID=<user>;Password=<password>;SslMode=VerifyCA;SslCa=<the CA path of
+   DevDbTls.GetCaPath()></ConnectionString>`, not the `ComputerName`/`User`/`Password` elements, which `Userods.LoadDatabaseInfoFromFile`
+   turns into `SslMode=none` for this server (the file has no `SslCa` element); or S3b-6 adds an `SslCa` element to that file and passes
+   it to `SetDb`. Once step 4 has run, the elements' form is refused by the server.
 3. Tell the other sessions first: once the server requires TLS, a worktree without this package fails its database tests (its `SetDb`
-   helpers write `SslMode=none`). Every worktree that still runs database tests merges or rebases onto `main` with this package.
+   helpers write `SslMode=none`). Every worktree that still runs database tests merges or rebases onto `main` with this package. The
+   uncovered programs of section 3 (`DatabaseIntegrityCheck`, `CentralManager`) no longer reach the local server from then on.
 4. As administrator: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\Enable-LocalDbTls.ps1 -RequireSecureTransport`, then `YES`.
    It checks that a verified TLS connection works and an unencrypted one is refused (and undoes the line otherwise). Run step 1 again: now
    `WhenTheServerRequiresTls_AConnectionWithoutTlsIsRefused` and `DataConnection_Loopback_ConnectsWithoutTls_AsBefore` show the refusal.
@@ -235,7 +315,7 @@ no CA).
 6. S2-2's TLS test needs nothing more: the server's `ssl_ca` is the test CA and its certificate names `127.0.0.1` and `localhost`, so it
    connects with `VerifyFull` (the server listens on `127.0.0.1` only, so there is no other address of the build PC to use). Its
    certificate-login part needs a client certificate signed by that CA, which the script makes only with `-WithClientCertificate` and only
-   in the same run as the CA. So it waits for the owner's answer (section 9). With a yes: `-Revert`, then the enable run again with
+   in the same run as the CA. So it waits for the owner's answer (section 10). With a yes: `-Revert`, then the enable run again with
    `-WithClientCertificate` (a new CA; the dev tools find it at the same path), as administrator, with the other sessions told first as
    for any restart. Then `client-cert.pem` and `client-key.pem` in `DevDbTls.GetDefaultClientFolder()` (`%LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient`)
    are a client certificate the server's CA signed, so a `REQUIRE X509` account accepts it; the test imports that pair through a CAPI and
@@ -254,13 +334,15 @@ Without the owner's script (no CA yet), so the server tests were inconclusive by
   goes with the enable run (or -TestCertificatesFolder) only: the client certificate is made with the CA.`; `-ClientFolder` without
   `-WithClientCertificate` prints `REFUSED: -ClientFolder needs -WithClientCertificate (the enable run), or names the recorded client
   folder for -Revert or -RequireSecureTransport.`; each exits 1 before the elevation check.
-- `-DryRun` on this PC (exit 0; the user profile shortened here):
+- `-DryRun` on this PC after the fix round (exit 0; the user profile, the account and the process id shortened here; `OpenPmsDental`
+  does not exist yet in that profile, so the run would create it and records it):
 
   ```text
   Not elevated: a dry run only. The real run must be started as administrator.
   Service:        MariaDB (Running), account NT SERVICE\MariaDB
   Server program: C:\Program Files\MariaDB 10.11\bin\mysqld.exe
   Option file:    C:\Program Files\MariaDB 10.11\data\my.ini
+  Listener:       127.0.0.1:3306, process <pid> (mysqld), the service's own
   Server:         10.11.19-MariaDB on 127.0.0.1:3306, data folder C:\Program Files\MariaDB 10.11\data\
   TLS now:        have_ssl=DISABLED, require_secure_transport=0, tls_version=TLSv1.2,TLSv1.3, this session's cipher ''
 
@@ -270,19 +352,23 @@ Without the owner's script (no CA yet), so the server tests were inconclusive by
        made in the same run as the CA, so it then means -Revert and this script again with -WithClientCertificate.
     2. Create C:\Program Files\MariaDB 10.11\opms-dev-tls (owner Administrators; SYSTEM and Administrators full control, NT SERVICE\MariaDB read) with
        ca.pem, server-cert.pem and server-key.pem.
-    3. Write the CA certificate (public part only) to %LOCALAPPDATA%\OpenPmsDental\DevDbTls\ca.pem,
-       the folder readable by <DOMAIN>\<user>, SYSTEM and Administrators only. No private key goes to this folder.
+    3. Write the CA certificate (public part only) to C:\Users\<user>\AppData\Local\OpenPmsDental\DevDbTls\ca.pem.
+       The folder is created with a protected ACL (nothing inherited): <DOMAIN>\<user>, SYSTEM and
+       Administrators full control, nobody else. No private key goes to this folder.
+       C:\Users\<user>\AppData\Local\OpenPmsDental does not exist and is created for it (-Revert removes it again when it is then empty).
     4. Copy C:\Program Files\MariaDB 10.11\data\my.ini to C:\Program Files\MariaDB 10.11\data\my.ini.before-opms-dev-tls, then add at the end of its [mysqld] section (the comment lines
        record the folders above; -Revert and -RequireSecureTransport read them from there):
          # BEGIN Open PMS - Dental local test TLS (tools/Enable-LocalDbTls.ps1; undo with -Revert)
          # dev-folder=C:/Users/<user>/AppData/Local/OpenPmsDental/DevDbTls
+         # created-parent=C:/Users/<user>/AppData/Local/OpenPmsDental
          ssl_ca=C:/Program Files/MariaDB 10.11/opms-dev-tls/ca.pem
          ssl_cert=C:/Program Files/MariaDB 10.11/opms-dev-tls/server-cert.pem
          ssl_key=C:/Program Files/MariaDB 10.11/opms-dev-tls/server-key.pem
          tls_version=TLSv1.2,TLSv1.3
          # END Open PMS - Dental local test TLS
     5. Restart the service MariaDB (connections drop for a few seconds) and check a TLS session and the server
-       certificate against the CA. If the server does not come back with TLS, the backup is restored and the files removed.
+       certificate against the CA. If the server does not come back with TLS, the backup is restored, the files this run
+       replaced are put back as they were and the files and folders it added are removed.
     require_secure_transport is not set: unencrypted connections keep working until -RequireSecureTransport.
 
   Dry run: nothing was changed.
@@ -294,18 +380,31 @@ Without the owner's script (no CA yet), so the server tests were inconclusive by
     1. Make a test CA (its private key stays in memory and is discarded) and a server certificate for localhost and 127.0.0.1.
        With -WithClientCertificate also a client certificate (clientAuth) for the certificate-login test of S2-2.
     ...
-    4. Write the client certificate and key to %LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient\client-cert.pem and %LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient\client-key.pem:
-       a folder of its own, not the CA's, <DOMAIN>\<user> read only, SYSTEM and Administrators full control.
+    4. Write the client certificate and key to C:\Users\<user>\AppData\Local\OpenPmsDental\DevDbTlsClient\client-cert.pem and C:\Users\<user>\AppData\Local\OpenPmsDental\DevDbTlsClient\client-key.pem:
+       a folder of its own, not the CA's. The folder is created with a protected ACL (nothing
+       inherited): <DOMAIN>\<user> read only, SYSTEM and Administrators full control.
+       C:\Users\<user>\AppData\Local\OpenPmsDental does not exist and is created for it (-Revert removes it again when it is then empty).
     5. Copy ... then add at the end of its [mysqld] section (...):
          # BEGIN Open PMS - Dental local test TLS (tools/Enable-LocalDbTls.ps1; undo with -Revert)
          # dev-folder=C:/Users/<user>/AppData/Local/OpenPmsDental/DevDbTls
          # client-folder=C:/Users/<user>/AppData/Local/OpenPmsDental/DevDbTlsClient
+         # created-parent=C:/Users/<user>/AppData/Local/OpenPmsDental
          ...
   ```
 
-  `-DryRun -WithClientCertificate -ClientFolder %LOCALAPPDATA%\OpenPmsDental\DevDbTls\client` is refused (`... overlap. The client key
-  goes to a folder of its own, never where the dev tools read the CA.`). `-DryRun -RequireSecureTransport` refuses (no block yet);
-  `-DryRun -Revert` says there is nothing to revert.
+  Each of these unelevated dry runs exits 1 with its `REFUSED:` line before any plan, and writes nothing (the fix round, items 1 and 6):
+
+  | Switches | Refusal |
+  |---|---|
+  | `-DevFolder "C:\Program Files\MariaDB 10.11"`, and `...\MariaDB 10.11\data\DevDbTls` | `... is or overlaps the MariaDB folder C:\Program Files\MariaDB 10.11.` |
+  | `-DevFolder C:\` | `-DevFolder C:\ is a drive root.` |
+  | `-DevFolder C:\Users\<user>` | `... is or holds the user profile C:\Users\<user>.` |
+  | `-DevFolder <a temporary folder>\OpenPmsDental\DevDbTls`, `-DevFolder %LOCALAPPDATA%\OpenPmsDental\Other` | `... is not <a user profile>\AppData\Local\OpenPmsDental\DevDbTls of this computer. Only such a folder is accepted: -Revert and -RequireSecureTransport take no other from the record in my.ini.` |
+  | `-WithClientCertificate -ClientFolder %LOCALAPPDATA%\OpenPmsDental\DevDbTls\client` | `... and -DevFolder ... overlap. The client key goes to a folder of its own, never where the dev tools read the CA.` |
+  | `-WithClientCertificate -ClientFolder %LOCALAPPDATA%\OpenPmsDental\ClientElsewhere` | `... is not <a user profile>\AppData\Local\OpenPmsDental\DevDbTlsClient of this computer. ...` |
+  | `-Revert -DevFolder <a temporary folder>\x` | `The dev folder ..., from -DevFolder (or this account's default), is not <a user profile>\AppData\Local\OpenPmsDental\DevDbTls of this computer, the only dev folder this script writes to. ...` |
+
+  `-DryRun -RequireSecureTransport` refuses (no block yet); `-DryRun -Revert` says there is nothing to revert.
 - `New-DevDatabase.ps1`'s config writing, run on a temporary folder with `OPMS_DB_TLS_CA`: one `SslCa` element after `MySQLPassHash` with the
   CA, none without a CA or for another port; with `OPMS_DB_REQUIRE_TLS=1` and no CA the CA look-up stops with the message.
 
@@ -336,7 +435,16 @@ New tests:
   block, read back for `-Revert` and `-RequireSecureTransport` (another account's folders, a `-DevFolder` or `-ClientFolder` that disagrees
   refused, the same folder written another way accepted, the fallback without a block); the refusals without elevation and of the client
   switches outside the enable run; a dry run that leaves `my.ini` byte for byte as it was, writes no client key by default, records the
-  dev folder, and with `-WithClientCertificate` puts the key in the client folder.
+  dev folder, and with `-WithClientCertificate` puts the key in the client folder. From the fix round (section 9), all without elevation
+  on the script's own functions with scratch folders and synthetic files: the enable run's folder checks (each refusal of item 1 and the
+  accepted cases, this account's defaults among them); the record checks of item 6 (each refusal, and `Get-Paths` taking a record in this
+  account's own `%LOCALAPPDATA%` and refusing one elsewhere); the listener check on synthetic listeners and on this computer's real one
+  (the MariaDB service's own process); ANSI and UTF-16 files and `!include` lines refused, UTF-8 with and without a BOM read; the undo of
+  a failed run and `-Revert`'s removal of the created parent on scratch folders (bytes and access rules back, the added files gone); and
+  the dry-run test also checks the listener line, the dev user's full control, the created-parent record and the seven refusals above.
+- `tests/DbConnectionSecurityTests/DevDbTlsTests.cs`, from the fix round: the scan's new kinds (`NewMySqlConnection` with the builder's
+  `sslCa`, `CentralConnection` always flagged) with and without the CA on synthetic source, the scan over the two developer tools, and
+  `TheDevToolsThatCallDevDbTls_AreNotProductProjects`.
 - `tests/DbConnectionSecurityTests/DevDbTlsServerTests.cs` (once the CA exists; a failure with `OPMS_DB_REQUIRE_TLS=1` and no CA): a
   helper's connection is encrypted (`Ssl_cipher`, TLS 1.2 or 1.3) and the server offers TLS 1.2 and 1.3 only; the program's
   `DataConnection` with the helpers' CA is encrypted; a `dbtls_` scratch database is created, filled, read and dropped over TLS; `VerifyFull`
@@ -351,8 +459,10 @@ New tests:
 - New: `tools/Enable-LocalDbTls.ps1`, `tools/DevDbTls.ps1`, `DataConnectionBase/DevDbTls.cs`, `tools/SyntheticData/Infrastructure/LocalTls.cs`,
   the four test files above, this note.
 - Changed: the helpers and files of section 3, `tools/FreeDentalConfig.dev.xml` (its comment), `docs/specs/db-connection-security.md`
-  (section 7: the dev tools' row and a row for `DevDbTls`). In the program's assemblies only `OpenPmsDentalBusiness/WebServices/OpenDentalServerMockIIS.cs`
-  (the test-only mock server: an optional `sslCa`, default `""`, which no shipped code path passes).
+  (section 7: the dev tools' rows, the side programs' rows and a row for `DevDbTls`). In the program's assemblies only `OpenPmsDentalBusiness/WebServices/OpenDentalServerMockIIS.cs`
+  (the test-only mock server: an optional `sslCa`, default `""`, which no shipped code path passes). In the fix round also
+  `tests/ToothChartImageTests/Support/ChartTestDb.cs` (from `main`), and the two developer tools `DocumentationBuilder/DataConnection.cs`
+  and `xCrudGenerator/CrudGenHelper.cs` (no product project).
 - Not changed: the program's connection rule and every shipped code path, `run-tests.ps1` and the build lane (they do not connect),
   `docs/specs/net10-plan.md` (the lead's; O-12's row can point here).
 
@@ -379,7 +489,58 @@ New tests:
    initializers with `ServerName=` and `MakeABackup` with a server (section 3); run against the old caller code it flags exactly the eight
    call sites of findings 3 and 4. Section 3 and section 5 step 2 say what the Full run with the switch does and does not prove.
 
-## 9. Owner question
+## 9. The fix round after the final reviews (`dev/dbtls-2`, 2026-11-09)
+
+Two independent final reviews called the documented default command safe to run; the lead had their minor findings fixed before the owner
+runs the script. First `main` was merged in (35cf85ecf, no conflict: this branch changed no project file, and S1-6's SDK-style test projects
+compile every `.cs` file under their folders); the scan then found main's new `ChartTestDb` (TC-2), which now connects through `DevDbTls`
+(b50a30111; EhrTests' `ScratchDb` already did).
+
+The script (f8bf7f03f; its tests c45deb823, section 6):
+
+1. **Folders.** `-DevFolder` and `-ClientFolder` are refused when the folder exists and holds anything but the script's own files, or is
+   or overlaps the MariaDB folder, the server's data folder or the `opms-dev-tls` folder, or is a drive root or is or holds a user profile
+   (`Get-FolderProblem`, with `Test-FolderOverlap`); and, so that an enable run never records a folder that item 6 refuses, each must be a
+   profile's `%LOCALAPPDATA%\OpenPmsDental\DevDbTls` (`DevDbTlsClient`) in an `AppData\Local` that exists. The plan says that the folder is
+   created (or its ACL replaced) with a protected ACL and that the dev user gets full control (it said "readable by").
+2. **The listener.** The process behind `127.0.0.1:3306` (`Get-NetTCPConnection`) must be the service's own (`Win32_Service.ProcessId`),
+   and no other process may listen on `0.0.0.0` or `::` port 3306; before the client sends anything there, and after every restart.
+3. **`!include`.** A `my.ini` with a line starting `!include` (also `!includedir`) is refused.
+4. **Encoding.** A `my.ini` whose bytes do not come back unchanged from the decoding is refused, with the offset of the first such byte.
+5. **The undo.** A failed enable run puts back the files it replaced (bytes and access rules) and the access rules of the folders that
+   were there, removes what it added, the `OpenPmsDental` parent it created when that is empty, and `my.ini.opms-new`; a run refuses to
+   start when `my.ini.opms-new` exists. The enable run records the parent it creates (`# created-parent=`), and `-Revert` removes it when
+   it is empty.
+6. **The record.** `-Revert` and `-RequireSecureTransport` refuse a recorded dev or client folder that is not a profile's
+   `%LOCALAPPDATA%\OpenPmsDental\DevDbTls` or `\DevDbTlsClient` (judged in its full form), and a recorded created parent that is not the
+   parent of one of them (`Get-RecordProblem`); the fallback's `-DevFolder` the same.
+
+The connections (370e2ac28):
+
+7. **The dev-only programs outside `tools`**, decided per program by one rule (section 3): `DocumentationBuilder` and `xCrudGenerator`
+   are developer tools and no product project, so they get the CA from `DevDbTls` (no rule of the program's changes);
+   `DatabaseIntegrityCheck` and `CentralManager` are side programs of the product (they link `SharedAssemblyInfo.cs`), so they are named
+   as not covered and stop reaching the local server once it requires TLS. `docs/specs/db-connection-security.md` section 7's rows say
+   so. `TheDevToolsThatCallDevDbTls_AreNotProductProjects` checks the rule.
+8. **The scan reads `NewMySqlConnection`.** `DbConnectionSecurity.NewMySqlConnection(...)` and `...WithoutPooling(...)` must go through
+   `DevDbTls.Apply`, or take a `BuildSimpleConnectionString(...)` whose `sslCa` argument is `DevDbTls.GetSslCa(...)`; the deliberate
+   network and CA-less strings (RuleTests, PreferenceServerTests, LoopbackDatabaseTests, PreferenceServerDatabaseTests' thread string,
+   DevDbTlsServerTests' refusal check, the grants run's helper) are on the allow-list, which names the kind of call too.
+9. **`new CentralConnection { ServerName=... }`** is always flagged, whatever it sets, and the message points to
+   `new CentralConnectionBase { ServerName=...,SslCa=DevDbTls.GetSslCa(...) }`. A negative run (main's `ChartTestDb` and a temporary,
+   unbuilt file with both new shapes) flagged exactly its four calls.
+
+The notes (this note's sections 3 and 5):
+
+10. Section 3 lists the program paths that pass `sslCa=""` for a server (`ConnectionStoreBase.SetDb`, `DataAction.GetT`/`Run` with a
+    server, `LargeTableHelper` about 426, `MiscData` about 449, `Userods.LoadDatabaseInfoFromFile` about 685, the Middle Tier's
+    `OpenDentalServerConfig.xml` reader) as not covered; section 5 step 2 says that the Middle Tier gate's `OpenDentalServerConfig.xml`
+    names its database with a `<ConnectionString>` carrying `SslMode=VerifyCA;SslCa=<ca>` (or S3b-6 adds `SslCa` to that file).
+
+Nothing here changed the MariaDB service, `my.ini` or a certificate store; the script ran only unelevated (dry runs and its functions on
+scratch folders), and every database connection went to `127.0.0.1:3306`.
+
+## 10. Owner question
 
 - **S2-2's client certificate.** Should the script make a client certificate signed by the test CA, for S2-2's certificate-login test (a
   `REQUIRE X509` test account on the local server; the key in `%LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient`, readable by the dev account)?
