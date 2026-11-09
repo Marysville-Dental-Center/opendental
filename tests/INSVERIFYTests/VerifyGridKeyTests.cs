@@ -52,11 +52,13 @@ namespace INSVERIFYTests {
 		public void GridList_PlanNumEqualsPatPlanNum_SeparateRowsWhenOnlyOneYearCheckIsOn() {
 			Coverage coverage=InsertCoveredPatient(KeysEqual());
 			Assert.AreEqual(coverage.InsPlan.PlanNum,coverage.PatPlan.PatPlanNum);
-			//One of the two year checks on: the list shows the patient's eligibility and the plan's benefits as two rows.
-			Prefs.UpdateBool(PrefName.InsVerifyFutureDateBenefitYear,true);
-			Prefs.UpdateBool(PrefName.InsVerifyFutureDatePatEnrollmentYear,false);
-			Cache.Refresh(InvalidType.Prefs);
+			//One of the two year checks on: the list shows the patient's eligibility and the plan's benefits as two rows. The two preferences are put
+			//back as they were afterwards.
+			Dictionary<PrefName,string> dictPrefsBefore=GetPrefValues(PrefName.InsVerifyFutureDateBenefitYear,PrefName.InsVerifyFutureDatePatEnrollmentYear);
 			try {
+				Prefs.UpdateBool(PrefName.InsVerifyFutureDateBenefitYear,true);
+				Prefs.UpdateBool(PrefName.InsVerifyFutureDatePatEnrollmentYear,false);
+				Cache.Refresh(InvalidType.Prefs);
 				List<InsVerifyGridObject> listInsVerifyGridObjects=GetGridObjectsForPatient(coverage.Patient.PatNum);
 				Assert.AreEqual(2,listInsVerifyGridObjects.Count,"an eligibility row and a benefits row");
 				InsVerifyGridObject insVerifyGridObjectPat=listInsVerifyGridObjects.SingleOrDefault(x => x.IsOnlyPatRow());
@@ -67,9 +69,9 @@ namespace INSVERIFYTests {
 				AssertBenefitsRow(insVerifyGridObjectPlan.InsVerifyPlan,coverage);
 			}
 			finally {
-				Prefs.UpdateBool(PrefName.InsVerifyFutureDateBenefitYear,false);
-				Cache.Refresh(InvalidType.Prefs);
+				RestorePrefValues(dictPrefsBefore);
 			}
+			AssertPrefValuesRestored(dictPrefsBefore);
 		}
 
 		[TestMethod]
@@ -146,11 +148,7 @@ namespace INSVERIFYTests {
 			finally {
 				RestorePrefValues(dictPrefsBefore);
 			}
-			Dictionary<PrefName,string> dictPrefsAfter=GetPrefValues(dictPrefsBefore.Keys.ToArray());
-			foreach(PrefName prefName in dictPrefsBefore.Keys) {
-				Assert.AreEqual(dictPrefsBefore[prefName],dictPrefsAfter[prefName],prefName+" is back as it was, in the database");
-				Assert.AreEqual(dictPrefsBefore[prefName],PrefC.GetString(prefName),prefName+" is back as it was, in the cache");
-			}
+			AssertPrefValuesRestored(dictPrefsBefore);
 		}
 		#endregion Batch verification
 
@@ -186,6 +184,15 @@ namespace INSVERIFYTests {
 			Cache.Refresh(InvalidType.Prefs);
 		}
 
+		///<summary>Fails unless every preference has its value of before, in the database and in the cache.</summary>
+		private static void AssertPrefValuesRestored(Dictionary<PrefName,string> dictPrefsBefore) {
+			Dictionary<PrefName,string> dictPrefsAfter=GetPrefValues(dictPrefsBefore.Keys.ToArray());
+			foreach(PrefName prefName in dictPrefsBefore.Keys) {
+				Assert.AreEqual(dictPrefsBefore[prefName],dictPrefsAfter[prefName],prefName+" is back as it was, in the database");
+				Assert.AreEqual(dictPrefsBefore[prefName],PrefC.GetString(prefName),prefName+" is back as it was, in the cache");
+			}
+		}
+
 		///<summary>A key above every key insplan and patplan hold or have handed out, so a test that uses it never meets an earlier test's rows.
 		///</summary>
 		private static long GetKeyAboveBoth() {
@@ -208,8 +215,9 @@ namespace INSVERIFYTests {
 		}
 
 		///<summary>A patient with an appointment in two days, the subscriber of a plan of a carrier of its own, with nothing verified yet. The plan
-		///gets arrayKeys[0] and the patient plan arrayKeys[1]: the two tables' next keys are set first, as a database's counters would stand.</summary>
-		private static Coverage InsertCoveredPatient(long[] arrayKeys,long provNum=0,bool isTrustedForEligibility=false) {
+		///gets arrayKeys[0] and the patient plan arrayKeys[1]: the two tables' next keys are set first, as a database's counters would stand. The
+		///plan renews in monthRenew (0, the default, is none).</summary>
+		private static Coverage InsertCoveredPatient(long[] arrayKeys,long provNum=0,bool isTrustedForEligibility=false,byte monthRenew=0) {
 			Coverage coverage=new Coverage();
 			int num=NextNum();
 			coverage.ProvNum=(provNum!=0 ? provNum : ProviderT.CreateProvider("SYN"+num,"Synthetic","Provider"));
@@ -223,7 +231,7 @@ namespace INSVERIFYTests {
 			}
 			DataCore.NonQ("ALTER TABLE insplan AUTO_INCREMENT="+POut.Long(arrayKeys[0]));
 			DataCore.NonQ("ALTER TABLE patplan AUTO_INCREMENT="+POut.Long(arrayKeys[1]));
-			coverage.InsPlan=InsPlanT.CreateInsPlan(coverage.Carrier.CarrierNum,groupNum:"XYZ123");
+			coverage.InsPlan=InsPlanT.CreateInsPlan(coverage.Carrier.CarrierNum,groupNum:"XYZ123",monthRenew:monthRenew);
 			coverage.InsSub=InsSubT.CreateInsSub(coverage.Patient.PatNum,coverage.InsPlan.PlanNum,"SYN"+num.ToString("000000"));
 			coverage.PatPlan=PatPlanT.CreatePatPlan(1,coverage.Patient.PatNum,coverage.InsSub.InsSubNum);
 			Assert.AreEqual(arrayKeys[0],coverage.InsPlan.PlanNum,"the plan got the key the test set");
@@ -236,10 +244,16 @@ namespace INSVERIFYTests {
 		///<summary>The list's rows of the patient, as the window asks for them with every filter on "All": appointments from today through 7 days,
 		///verifications older than 30 days, the standard and the Medicaid list.</summary>
 		private static List<InsVerifyGridObject> GetGridObjectsForPatient(long patNum) {
+			return GetGridObjectsForPatient(patNum,DateTime.Today,DateTime.Today.AddDays(7));
+		}
+
+		///<summary>The list's rows of the patient for appointments from dateStart through dateEnd, otherwise as the window asks for them with every
+		///filter on "All": verifications older than 30 days, the standard and the Medicaid list.</summary>
+		private static List<InsVerifyGridObject> GetGridObjectsForPatient(long patNum,DateTime dateStart,DateTime dateEnd) {
 			DateTime dateLastVerified=DateTime.Today.AddDays(-30);
-			List<InsVerifyGridObject> listInsVerifyGridObjects=InsVerifies.GetVerifyGridList(DateTime.Today,DateTime.Today.AddDays(7),dateLastVerified,
+			List<InsVerifyGridObject> listInsVerifyGridObjects=InsVerifies.GetVerifyGridList(dateStart,dateEnd,dateLastVerified,
 				dateLastVerified,new List<long> { -1 },new List<long> { 0 },0,-1,new List<long>(),false,false,
-				DateTime.Today,DateTime.Today.AddDays(7),dateLastVerified,dateLastVerified,InsVerifyListType.Both);
+				dateStart,dateEnd,dateLastVerified,dateLastVerified,InsVerifyListType.Both);
 			return listInsVerifyGridObjects.FindAll(x => x.GetPatNum()==patNum);
 		}
 

@@ -2,7 +2,8 @@
 // latest verification of its key and the earliest appointment in the range, as Open Dental 23.3.54 to 24.2.1 did (JobNum 53236). Before, the row
 // was whichever MariaDB read first of the group. The second part of VerifyGridKeyTests: the same scratch database and helpers. Every key gets its
 // rows here in the order the test names (the rows the plan and the patient plan got when they were inserted are deleted first). The list asks for
-// verifications older than 30 days, so the dates here are 100 and 40 days ago (both due) or 5 days ago (not due). Synthetic rows only.
+// verifications older than 30 days, so the dates here are 100 and 40 days ago (both due) or 5 days ago (not due, except with a year check for an
+// appointment after the plan's renewal). Synthetic rows only.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -130,6 +131,77 @@ namespace INSVERIFYTests {
 		}
 		#endregion Earliest appointment
 
+		#region Year check
+		[TestMethod]
+		public void GridList_YearCheck_ShowsTheEarliestAppointmentTheVerificationIsDueFor() {
+			//The plan renews on the first of the month after next (GetDateRenew). Both verifications were done 5 days ago, so neither is due by its age
+			//(the list asks for older than 30 days). With a year check on, a verification is also due for an appointment on or after the plan's renewal
+			//date in that appointment's year when it was done before that date. In the range: an appointment two days before the renewal, which it is
+			//not due for, and two after it, created in the opposite order. The row shows the earliest appointment it is due for, the day after the
+			//renewal, as Open Dental 24.2.1 listed it (the first row of each key in AptDateTime order).
+			DateTime dateRenew=GetDateRenew();
+			Coverage coverage=InsertCoveredPatient(KeysEqual(),monthRenew:(byte)dateRenew.Month);
+			ReplaceVerification(VerifyTypes.PatientEnrollment,coverage.PatPlan.PatPlanNum,DateTime.Today.AddDays(-5));
+			ReplaceVerification(VerifyTypes.InsuranceBenefit,coverage.InsPlan.PlanNum,DateTime.Today.AddDays(-5));
+			Clinic clinicAfter=InsertClinic();
+			AppointmentT.CreateAppointment(coverage.Patient.PatNum,dateRenew.AddDays(-2).AddHours(9),coverage.OperatoryNum,coverage.ProvNum);
+			AppointmentT.CreateAppointment(coverage.Patient.PatNum,dateRenew.AddDays(3).AddHours(9),coverage.OperatoryNum,coverage.ProvNum);
+			Appointment appointmentAfter=AppointmentT.CreateAppointment(coverage.Patient.PatNum,dateRenew.AddDays(1).AddHours(9),coverage.OperatoryNum,
+				coverage.ProvNum,clinicNum:clinicAfter.ClinicNum);
+			Dictionary<PrefName,string> dictPrefsBefore=GetPrefValues(PrefName.InsVerifyFutureDateBenefitYear,PrefName.InsVerifyFutureDatePatEnrollmentYear);
+			try {
+				SetYearChecks(isBenefitYearOn:false,isPatEnrollmentYearOn:false);
+				Assert.AreEqual(0,GetGridObjectsForPatient(coverage.Patient.PatNum,dateRenew.AddDays(-5),dateRenew.AddDays(5)).Count,
+					"without the year checks neither verification is due");
+				SetYearChecks(isBenefitYearOn:true,isPatEnrollmentYearOn:true);
+				List<InsVerifyGridObject> listInsVerifyGridObjects=GetGridObjectsForPatient(coverage.Patient.PatNum,dateRenew.AddDays(-5),
+					dateRenew.AddDays(5));
+				Assert.AreEqual(1,listInsVerifyGridObjects.Count,"one combined row for the patient");
+				AssertEligibilityRow(listInsVerifyGridObjects[0].InsVerifyPat,coverage);
+				AssertBenefitsRow(listInsVerifyGridObjects[0].InsVerifyPlan,coverage);
+				AssertAppointment(listInsVerifyGridObjects[0].InsVerifyPat,appointmentAfter,clinicAfter);
+				AssertAppointment(listInsVerifyGridObjects[0].InsVerifyPlan,appointmentAfter,clinicAfter);
+			}
+			finally {
+				RestorePrefValues(dictPrefsBefore);
+			}
+			AssertPrefValuesRestored(dictPrefsBefore);
+		}
+
+		[TestMethod]
+		public void GridList_YearCheck_EachVerificationShowsTheEarliestAppointmentItIsDueFor() {
+			//As above, but the eligibility was verified 40 days ago, so it is due by its age for every appointment, and the benefits 5 days ago, due only
+			//from the renewal on. Both year checks on combine the two into one row: its eligibility half shows the appointment before the renewal, the
+			//earliest in the range, and its benefits half the earliest after the renewal.
+			DateTime dateRenew=GetDateRenew();
+			Coverage coverage=InsertCoveredPatient(KeysEqual(),monthRenew:(byte)dateRenew.Month);
+			ReplaceVerification(VerifyTypes.PatientEnrollment,coverage.PatPlan.PatPlanNum,DateTime.Today.AddDays(-40));
+			ReplaceVerification(VerifyTypes.InsuranceBenefit,coverage.InsPlan.PlanNum,DateTime.Today.AddDays(-5));
+			Clinic clinicBefore=InsertClinic();
+			Clinic clinicAfter=InsertClinic();
+			AppointmentT.CreateAppointment(coverage.Patient.PatNum,dateRenew.AddDays(3).AddHours(9),coverage.OperatoryNum,coverage.ProvNum);
+			Appointment appointmentAfter=AppointmentT.CreateAppointment(coverage.Patient.PatNum,dateRenew.AddDays(1).AddHours(9),coverage.OperatoryNum,
+				coverage.ProvNum,clinicNum:clinicAfter.ClinicNum);
+			Appointment appointmentBefore=AppointmentT.CreateAppointment(coverage.Patient.PatNum,dateRenew.AddDays(-2).AddHours(9),
+				coverage.OperatoryNum,coverage.ProvNum,clinicNum:clinicBefore.ClinicNum);
+			Dictionary<PrefName,string> dictPrefsBefore=GetPrefValues(PrefName.InsVerifyFutureDateBenefitYear,PrefName.InsVerifyFutureDatePatEnrollmentYear);
+			try {
+				SetYearChecks(isBenefitYearOn:true,isPatEnrollmentYearOn:true);
+				List<InsVerifyGridObject> listInsVerifyGridObjects=GetGridObjectsForPatient(coverage.Patient.PatNum,dateRenew.AddDays(-5),
+					dateRenew.AddDays(5));
+				Assert.AreEqual(1,listInsVerifyGridObjects.Count,"one combined row for the patient");
+				AssertEligibilityRow(listInsVerifyGridObjects[0].InsVerifyPat,coverage);
+				AssertBenefitsRow(listInsVerifyGridObjects[0].InsVerifyPlan,coverage);
+				AssertAppointment(listInsVerifyGridObjects[0].InsVerifyPat,appointmentBefore,clinicBefore);
+				AssertAppointment(listInsVerifyGridObjects[0].InsVerifyPlan,appointmentAfter,clinicAfter);
+			}
+			finally {
+				RestorePrefValues(dictPrefsBefore);
+			}
+			AssertPrefValuesRestored(dictPrefsBefore);
+		}
+		#endregion Year check
+
 		#region The query
 		[TestMethod]
 		public void Query_TwoRowsForOneKeyAndSeveralAppointments_OneRowWithTheLatestVerificationAndTheEarliestAppointment() {
@@ -204,6 +276,26 @@ namespace INSVERIFYTests {
 			insVerify.DateLastVerified=dateLastVerified;
 			InsVerifies.Update(insVerify);
 			return insVerifyNum;
+		}
+
+		///<summary>Replaces the rows of the key with one, verified on the date. Returns its InsVerifyNum.</summary>
+		private static long ReplaceVerification(VerifyTypes verifyType,long fKey,DateTime dateLastVerified) {
+			InsVerifies.DeleteByFKey(fKey,verifyType);
+			return InsertVerification(verifyType,fKey,dateLastVerified);
+		}
+
+		///<summary>The first of the month after next: 32 to 62 days ahead, so a range of five days on either side of it never holds the appointment
+		///InsertCoveredPatient makes in two days, and a verification done in the last 40 days was done before it.</summary>
+		private static DateTime GetDateRenew() {
+			return new DateTime(DateTime.Today.Year,DateTime.Today.Month,1).AddMonths(2);
+		}
+
+		///<summary>Sets the two year checks of the list (InsVerifyFutureDateBenefitYear, InsVerifyFutureDatePatEnrollmentYear) and refreshes the
+		///cache. The caller reads their values first and puts them back (GetPrefValues, RestorePrefValues).</summary>
+		private static void SetYearChecks(bool isBenefitYearOn,bool isPatEnrollmentYearOn) {
+			Prefs.UpdateBool(PrefName.InsVerifyFutureDateBenefitYear,isBenefitYearOn);
+			Prefs.UpdateBool(PrefName.InsVerifyFutureDatePatEnrollmentYear,isPatEnrollmentYearOn);
+			Cache.Refresh(InvalidType.Prefs);
 		}
 
 		private static Clinic InsertClinic() {

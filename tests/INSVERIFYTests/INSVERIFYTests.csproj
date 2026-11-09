@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Tests for the fix package INSVERIFY (docs/port-notes/INSVERIFY.md): the Insurance Verification List and its batch verification keep both
        the patient's eligibility row and the plan's benefits row when the patient plan and the insurance plan have the same key. Database tests
-       use scratch MariaDB databases on 127.0.0.1 whose names start with insv2_, synthetic rows only, and drop them afterwards; they are skipped
+       use scratch MariaDB databases on 127.0.0.1 whose names start with insv_, synthetic rows only, and drop them afterwards; they are skipped
        (inconclusive) when the server does not answer, or when INSVERIFY_TEST_DB=skip. Every .cs file under this folder is compiled. -->
   <ItemGroup>
     <Reference Include="MySqlConnector">

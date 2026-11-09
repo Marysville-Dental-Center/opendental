@@ -1,4 +1,4 @@
-// The scratch database of the INSVERIFY tests on the local MariaDB (127.0.0.1:3306, root, blank password). Every name starts with "insv2_" plus
+// The scratch database of the INSVERIFY tests on the local MariaDB (127.0.0.1:3306, root, blank password). Every name starts with "insv_" plus
 // this run's id, so a test can never drop anything else and runs from other worktrees never collide. The database is the committed
 // db/init/new-database.sql with every fork migration of this build run on it. Synthetic rows only. Skipped (inconclusive) when the server does
 // not answer, or when INSVERIFY_TEST_DB=skip; INSVERIFY_KEEP_DB=1 keeps the database after the run for a look at what a failed test left.
@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -22,8 +23,11 @@ namespace INSVERIFYTests {
 		public const string Server="127.0.0.1";
 		public const string User="root";
 		public const string Password="";
-		///<summary>insv2_ since the follow-up round INSV2 (insv_ before).</summary>
-		private const string PREFIX="insv2_";
+		///<summary>The prefix of every scratch database this fixture creates.</summary>
+		private const string PREFIX="insv_";
+		///<summary>The prefixes whose leftovers DropStale sweeps: this fixture's, and insv2_, which the follow-up round INSV2 used for a while.
+		///</summary>
+		private static readonly string[] _arrayPrefixesSwept={ PREFIX,"insv2_" };
 		private static readonly TimeSpan _timeSpanStale=TimeSpan.FromHours(12);
 		///<summary>Start time (UTC, yyMMddHHmmss), process id and a random number.</summary>
 		private static readonly string _runId=DateTime.UtcNow.ToString("yyMMddHHmmss")+"_"+System.Diagnostics.Process.GetCurrentProcess().Id+"_"
@@ -79,7 +83,7 @@ namespace INSVERIFYTests {
 			Security.CurUser=Userods.GetUser(1)??new Userod { UserNum=1,UserName="Admin" };
 		}
 
-		///<summary>This run's scratch database for the given purpose, like insv2_261109101500_1234_5678_main. At most 64 characters.</summary>
+		///<summary>This run's scratch database for the given purpose, like insv_261109101500_1234_5678_main. At most 64 characters.</summary>
 		public static string Name(string purpose) {
 			string name=PREFIX+_runId+"_"+purpose;
 			if(name.Length>64) {
@@ -116,16 +120,22 @@ namespace INSVERIFYTests {
 		}
 
 		///<summary>Drops this fixture's leftovers of earlier runs (a crash, or INSVERIFY_KEEP_DB=1) once they are older than 12 hours. Only names of
-		///this fixture's own scheme (insv2_, a 12-digit start time, the process id, a number, the purpose) are ever dropped.</summary>
+		///this fixture's own scheme (insv_, or insv2_ of the INSV2 round, then a 12-digit start time, the process id, a number, the purpose) are ever
+		///dropped.</summary>
 		public static void DropStale() {
-			Regex regex=new Regex("^"+PREFIX+@"(\d{12})_\d+_\d+_[a-z0-9_]+$");
+			Regex regex=new Regex("^(?:"+string.Join("|",_arrayPrefixesSwept)+@")(\d{12})_\d+_\d+_[a-z0-9_]+$");
 			List<string> listNames=new List<string>();
-			using(MySqlConnection connection=OpenServer())
-			using(MySqlCommand command=new MySqlCommand("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'insv2\\_%'",connection))
-			using(MySqlDataReader reader=command.ExecuteReader())
-			{
-				while(reader.Read()) {
-					listNames.Add(reader.GetString(0));
+			using(MySqlConnection connection=OpenServer()) {
+				foreach(string prefix in _arrayPrefixesSwept) {
+					string like=prefix.Replace("_","\\_")+"%";
+					using(MySqlCommand command=new MySqlCommand("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE '"+like+"'",
+						connection))
+					using(MySqlDataReader reader=command.ExecuteReader())
+					{
+						while(reader.Read()) {
+							listNames.Add(reader.GetString(0));
+						}
+					}
 				}
 			}
 			foreach(string name in listNames) {
@@ -172,8 +182,8 @@ namespace INSVERIFYTests {
 		}
 
 		public static void Drop(string name) {
-			if(!name.StartsWith(PREFIX)) {
-				throw new ArgumentException("Tests only drop databases whose name starts with "+PREFIX+".");
+			if(!_arrayPrefixesSwept.Any(x => name.StartsWith(x))) {
+				throw new ArgumentException("Tests only drop databases whose name starts with "+string.Join(" or ",_arrayPrefixesSwept)+".");
 			}
 			using(MySqlConnection connection=OpenServer()) {
 				Exec(connection,"DROP DATABASE IF EXISTS `"+name+"`");
