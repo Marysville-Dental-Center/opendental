@@ -246,13 +246,21 @@ namespace EhrTests {
 			byte[] arrayZero=new byte[48];
 			NtpResult ntpResult=NtpReply.Parse(arrayZero,ntpExchange.SentTransmit,ntpExchange.DestinationUtc);
 			Assert.AreEqual(EnumNtpResult.Invalid,ntpResult.Status);
+			StringAssert.Contains(ntpResult.Reason,"version 0","48 zero bytes fail at the first rule they break: version 0.");
 			Assert.IsFalse(NtpReply.TryParse(arrayZero,ntpExchange.SentTransmit,ntpExchange.DestinationUtc,out double offset,out string reason));
 			Assert.AreEqual(0,offset);
 			Assert.AreNotEqual("",reason);
-			//Even with a valid first byte the zero times fail.
+			//A valid first byte and stratum: the zero originate time does not match the request.
 			arrayZero[0]=0x24;//LI 0, version 4, mode 4
 			arrayZero[1]=1;
-			Assert.AreEqual(EnumNtpResult.Invalid,NtpReply.Parse(arrayZero,ntpExchange.SentTransmit,ntpExchange.DestinationUtc).Status);
+			ntpResult=NtpReply.Parse(arrayZero,ntpExchange.SentTransmit,ntpExchange.DestinationUtc);
+			Assert.AreEqual(EnumNtpResult.Invalid,ntpResult.Status);
+			StringAssert.Contains(ntpResult.Reason,"originate time is not the transmit time");
+			//With the originate time echoed as well (Originate=sentTransmit), the zero receive and transmit times are what fail.
+			NtpReply.WriteUInt64(arrayZero,24,ntpExchange.SentTransmit);
+			ntpResult=NtpReply.Parse(arrayZero,ntpExchange.SentTransmit,ntpExchange.DestinationUtc);
+			Assert.AreEqual(EnumNtpResult.Invalid,ntpResult.Status);
+			Assert.AreEqual("The reply's receive or transmit time is zero.",ntpResult.Reason);
 		}
 		#endregion Kiss-o'-death and the all-zero reply
 

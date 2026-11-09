@@ -6,7 +6,11 @@
        packets, WindowsTime.TrySetUtc through its seam, which these tests replace before any test runs) and the source scan that replaced
        NoHqTests' check of the removed EHR.dll hooks. No network, no database, and the computer's clock is never set. The project references
        the program and the business library, as tests/LibWebTests does; no window of the program is ever shown. Compile items are listed one
-       by one until S1-6 converts this file. -->
+       by one until S1-6 converts this file.
+       Lans.g: the messages under test go through Lans.g, which returns the English text in the en-US culture. In any other culture it looks
+       the text up in the language table, and inserts a row there for a text it has not seen, when a database connection is open; these
+       tests open none, so it returns the English text, but a run with a connection outside en-US cultures may touch the language table. -->
+
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>

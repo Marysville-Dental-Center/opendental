@@ -31,7 +31,8 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>Sends one request to the server and returns the offset of the server's clock from this computer's clock in milliseconds (positive
 		///when this computer's clock is behind). Returns double.MaxValue when there was no reply or the reply broke a rule of NtpReply.TryParse; Query
-		///gives the reason. Never throws. Kept for the callers of Open Dental's client; the time check and the manual window use Query.</summary>
+		///gives the reason. Never throws. Nothing in the program calls it any more (the time check and the manual window use Query); only the tests
+		///do. It is kept because working code stays (the owner's rule), with Open Dental's signature.</summary>
 		public double getTime(string nistServerUrl) {
 			NtpResult ntpResult=Query(nistServerUrl);
 			if(!ntpResult.IsValid) {
