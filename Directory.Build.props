@@ -36,11 +36,14 @@
     <!-- No Source Link: the PDBs record no repository URL or commit, and the build does not read the .git folder. -->
     <EnableSourceLink>false</EnableSourceLink>
     <!--
-      The SDK turns on AutoGenerateBindingRedirects for every .NET Framework exe and test project that leaves it empty
-      (Microsoft.NET.Sdk.BeforeCommon.targets); the classic projects that leave it empty (the program, ServiceManager,
-      the database settings tool, UpdateFileCopier, the HL7 service, DatabaseIntegrityCheck, UnitTests and
-      UnitTestsCore) generate none today. A project that sets it in its own file keeps its own value.
+      AutoGenerateBindingRedirects is not set here. A project that leaves it empty gets it on: the SDK turns it on for
+      every .NET Framework exe and test project (Microsoft.NET.Sdk.BeforeCommon.targets), and MSBuild's common targets
+      for every project that targets .NET Framework 4.7.2 or later (Microsoft.Common.CurrentVersion.targets), so the
+      classic projects (the program, ServiceManager, the HL7 service, UnitTests, UnitTestsCore) have it on as well. An
+      SDK-style project thus gets the same default as a classic one, and when stage 2's packages bring version conflicts,
+      the build generates their redirects as the classic build would. Turning it off for the SDK-style projects, as
+      this file did until 2026-11-08, changed no .config of any output folder (docs/specs/net10-plan.md, S1-5). A
+      project that sets it in its own file keeps its own value.
     -->
-    <AutoGenerateBindingRedirects Condition="'$(AutoGenerateBindingRedirects)' == ''">false</AutoGenerateBindingRedirects>
   </PropertyGroup>
 </Project>

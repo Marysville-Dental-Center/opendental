@@ -2,7 +2,7 @@
   <!--
     Local build support, imported by every project in this repository, classic and SDK-style alike, after the project's
     own properties. The settings that SDK-style projects need before their own properties (output layout, assembly info,
-    platform, lock files, binding redirects) are in Directory.Build.props, for SDK-style projects only.
+    platform, lock files) are in Directory.Build.props, for SDK-style projects only.
 
     Every project the solution builds now exists in this repository, so nothing is
     swapped for a prebuilt DLL any more. The target that replaced a missing
