@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project>
   <!-- Settings shared by the projects that build a third-party library from its upstream source: PDFsharp/MigraDoc and WeCantSpell.Hunspell,
        git submodules under third-party\ that this repository references instead of copying (docs\third-party-source-builds.md). Each project
        is an SDK-style project for the .NET Framework 4.8 with explicit SDK imports: the SDK's Sdk.props, then this file, then its library's

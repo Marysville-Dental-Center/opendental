@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project Sdk="Microsoft.NET.Sdk">
   <!--
     AdoptionValidation: the M1-Z switch-gate rehearsal (docs/specs/port-backlog.md, section M1-Z). It generates a synthetic Open Dental
     25.3.48 database with tools\SyntheticData, records its validation baseline, backs it up and restores a copy, adopts the copy with the

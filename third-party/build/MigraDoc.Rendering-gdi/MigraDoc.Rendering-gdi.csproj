@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project>
   <!-- MigraDoc.Rendering-gdi 6.5.0 from empira's source in the submodule third-party\PDFsharp, as upstream's
        src\foundation\src\MigraDoc\src\MigraDoc.Rendering-gdi\MigraDoc.Rendering-gdi.csproj builds it for net462: the shared
        MigraDoc.Rendering folder without the files that project leaves out, and the -gdi folder's own preview control.

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project>
   <!-- MigraDoc.DocumentObjectModel 6.5.0 from empira's source in the submodule third-party\PDFsharp
        (src\foundation\src\MigraDoc\src\MigraDoc.DocumentObjectModel), as upstream's MigraDoc.DocumentObjectModel.csproj builds it for net462.
        docs\third-party-source-builds.md. -->

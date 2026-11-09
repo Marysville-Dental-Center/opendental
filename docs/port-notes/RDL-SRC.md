@@ -27,7 +27,7 @@ Package RDL-SRC, run before the rename. Branch `m16/rdl-src-1`, from `main` 9095
 ### 2. RdlEngine (`RdlEngine/`) and RdlViewer (`RdlViewer/`)
 
 - **Both projects** are in `OpenDental.sln` and `OpenDental.Local.slnf` with the same four mappings. Both already had Debug|x86 and Release|x86 property groups.
-- **OpenDental** references `..\RdlEngine\RdlEngine.csproj` and `..\RdlViewer\RdlViewer.csproj`. They replace the HintPaths to `Required dlls\RdlEngine.dll` and `RdlViewer.dll`. Nothing else references them. `RdlDesign/ReportDesigner.csproj`, which is not in the solution, already used project references.
+- **OpenDental** references `..\RdlEngine\RdlEngine.csproj` and `..\RdlViewer\RdlViewer.csproj`. They replace the HintPaths to `Required dlls\RdlEngine.dll` and `RdlViewer.dll`. Nothing else references them. `RdlDesign/ReportDesigner.csproj`, which was not in the solution then (it is since S1-1 of the .NET 10 move, decision 17 of [../specs/net10-plan.md](../specs/net10-plan.md)), already used project references.
 - **`RdlEngine.csproj`**:
   - .NET Framework 4.8 (was 4.5; Visual Studio 2022 no longer installs the 4.5 targeting pack).
   - The `MySql.Data` 6.9.9 reference is removed, with `packages.config` and `app.config` (a `DbProviderFactories` entry for MySql.Data).
@@ -116,7 +116,7 @@ The full build and the host check results are under Checks, at the end of this n
 1. **Parameter window shown two or three times.** Should ODR remember the parameters it was given for the same report run? For example, it could keep the last values per query text for a few seconds, or the viewer could build the report once. This is pre-existing behaviour of the 2.9.3 engine with ODR, unchanged here.
 2. **The three report resources are dead in the program.** `Properties.Resources.Unsched_Treat_Plans`, `ReportAccountingBalanceSheet` and `ReportAccountingGenLedger` are embedded, but no code opens them. The accounting reports are hard-coded to 2007 and carry an `@@@ConnectionString@@@` placeholder that nothing fills in. Keep them as samples, or delete them? Only `menuItemRDLReport_Click` (an office's own `.rdl` files) reaches the RDL viewer.
 3. **Delete the 8 old files in `RdlEngine/Definition`** that are not compiled (INFERRED 7)? One of them carries an older GPL header instead of the LGPL one.
-4. **`Required dlls/RdlDesigner.exe`.** It is the prebuilt report designer, built against the prebuilt engine. It is not shipped, and `RdlDesign/` holds its source, which is not in the solution. Delete it, or build RdlDesign from source too?
+4. **`Required dlls/RdlDesigner.exe`.** It is the prebuilt report designer, built against the prebuilt engine. It is not shipped, and `RdlDesign/` holds its source, which is not in the solution. Delete it, or build RdlDesign from source too? **Answered (2026-11-08):** built from source. Decision 17 of [../specs/net10-plan.md](../specs/net10-plan.md) keeps RdlDesign; since S1-1 of the .NET 10 move it is in the solution and the slnf, built against this `RdlEngine` and `RdlViewer`, and it is still not shipped. The prebuilt `RdlDesigner.exe` had already left `Required dlls` (ORG-CLEANUP).
 5. **ODR's error handling.** `ODR.DataConnection.GetTable` shows the failed query in a MessageBox and returns an empty table. The `Integer` parameter type stores a `long` and then unboxes it as `int`, which throws. Leave these as they are, or fix them?
 
 ## For the rename
