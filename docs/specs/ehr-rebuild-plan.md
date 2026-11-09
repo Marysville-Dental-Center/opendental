@@ -290,7 +290,8 @@ The key was a licence check, but it was also the only thing that kept these acti
   a file at once. The lead greps each brief's patterns against the running packages first.
 - **Project files.** No EHR package edits a project file, except `tests/EhrTests`' own project.
   - New business classes go at the end of existing files, as S0-3 and S0-6 did.
-  - A migration step goes under the `Misc\ForkMigrations\**` glob (`OpenPmsDentalBusiness.csproj:765`).
+  - A migration step goes under `Misc\ForkMigrations\`, which the SDK-style project compiles by its default glob since S1-3
+    (`44f55ca54`).
   - Stylesheets go in through `ResXFileRef` entries of the existing `OpenPmsDentalBusiness/Properties/Resources.resx`.
   - New files in `OpenPmsDental` wait for S1-5 (SDK-style, globbed).
 - **Tests.**
