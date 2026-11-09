@@ -47,7 +47,10 @@ this XSLT back to the community.
    The changes:
    1. date:format-date takes a time zone only when the value ends with Z, or with +hh:mm or -hh:mm, as EXSLT's own template does. The
       released copy took the last six characters of any other value as its time zone, so a date without one (2007-06-01) showed as
-      January 1 of its year, and a date and time without a time zone, a year and month, or a year showed as nothing.
+      January 1 of its year, and a date and time without a time zone, a year and month, or a year showed as nothing. And it shows no
+      part a value does not have: a year as the year (2011, pattern yyyy), a year and month as month and year (Aug 2010, pattern
+      MMM yyyy), and a date without a time with the pattern's date part only (the part before its first quoted text, for this file's
+      patterns with hh:mm), instead of January 1, the first of the month or midnight.
    2. date:format-date shows a value it cannot read as it came, instead of nothing.
    3. date:_format-date's pattern letter z writes nothing for a value without a time zone, instead of "UTC".
    4. The five disable-output-escaping="yes" attributes are removed (the social history's, the two result rows' and the plan of care's
@@ -2007,7 +2010,7 @@ this XSLT back to the community.
                     <xsl:call-template name="date:_format-date">
                       <xsl:with-param name="year" select="$year"/>
                       <xsl:with-param name="timezone" select="$timezone"/>
-                      <xsl:with-param name="pattern" select="$pattern"/>
+                      <xsl:with-param name="pattern" select="'yyyy'"/>
                     </xsl:call-template>
                   </xsl:when>
                   <xsl:when test="substring($dt, 5, 1) = '-'">
@@ -2019,7 +2022,7 @@ this XSLT back to the community.
                           <xsl:with-param name="year" select="$year"/>
                           <xsl:with-param name="month" select="$month"/>
                           <xsl:with-param name="timezone" select="$timezone"/>
-                          <xsl:with-param name="pattern" select="$pattern"/>
+                          <xsl:with-param name="pattern" select="'MMM yyyy'"/>
                         </xsl:call-template>
                       </xsl:when>
                       <xsl:when test="substring($dt, 8, 1) = '-'">
@@ -2027,12 +2030,22 @@ this XSLT back to the community.
                         <xsl:if test="$day &lt;= 31">
                           <xsl:choose>
                             <xsl:when test="$dt-length = 10">
+                              <xsl:variable name="pattern-date">
+                                <xsl:choose>
+                                  <xsl:when test="contains($pattern, 'hh:mm') and contains($pattern, concat(' ', &quot;'&quot;))">
+                                    <xsl:value-of select="substring-before($pattern, concat(' ', &quot;'&quot;))"/>
+                                  </xsl:when>
+                                  <xsl:otherwise>
+                                    <xsl:value-of select="$pattern"/>
+                                  </xsl:otherwise>
+                                </xsl:choose>
+                              </xsl:variable>
                               <xsl:call-template name="date:_format-date">
                                 <xsl:with-param name="year" select="$year"/>
                                 <xsl:with-param name="month" select="$month"/>
                                 <xsl:with-param name="day" select="$day"/>
                                 <xsl:with-param name="timezone" select="$timezone"/>
-                                <xsl:with-param name="pattern" select="$pattern"/>
+                                <xsl:with-param name="pattern" select="string($pattern-date)"/>
                               </xsl:call-template>
                             </xsl:when>
                             <xsl:when test="substring($dt, 11, 1) = 'T' and substring($dt, 14, 1) = ':' and substring($dt, 17, 1) = ':'">

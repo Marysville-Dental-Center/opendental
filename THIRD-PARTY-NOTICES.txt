@@ -253,9 +253,11 @@ Files:     ccr.xsl, embedded in OpenPmsDentalBusiness.dll; the program runs it o
            show received CCRs
 Version:   2.0 (2007-06-01), the "CCR XSL V2.0" file release, MODIFIED by this project (SHA-256 of the released
            file 4ab70db9f8684f6b738f1e9cfa17f0165622f40c48a9f46105cd31a862cca4c0, of the copy shipped
-           f9ce1d989571301902bfb90f5a1dcd13dbcc4a328ee4d878114fea5a036ede84). The changes, also listed in the
+           1d84391fd7761a15d90f0b8a866ebf099a960f2b0c75ebdbb2e5b357b59af739). The changes, also listed in the
            file: dates without a time zone are read as such (the released copy showed a date as January 1 of
-           its year and a date and time as nothing); a date it cannot read is shown as it came; the time zone
+           its year and a date and time as nothing), and a date shows no part it does not have (a year as the
+           year, a year and month as month and year, a date without a time with no time, instead of January 1,
+           the first of the month or midnight); a date it cannot read is shown as it came; the time zone
            letter writes nothing without a time zone; the five disable-output-escaping attributes are removed,
            so a received CCR's text is never markup; the footer says the stylesheet is a derived work
 Copyright: Copyright 2007 American Academy of Family Physicians

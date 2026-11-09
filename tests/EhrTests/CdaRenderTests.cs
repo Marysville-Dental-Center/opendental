@@ -172,15 +172,21 @@ namespace EhrTests {
 			StringAssert.Contains(text,"Zoë Ångström-Núñez","The name keeps its accents (UTF-8 both ways).");
 			//The header's date, with its offset.
 			StringAssert.Contains(text,"Fri Mar 14, 2025 at 09:26 AM UTC-05:00");
-			//The problems' dates: a date, a time without a time zone, UTC, a year and month, a year (the default format, MMM dd, yyyy).
+			//The problems' dates: a date, a time without a time zone, UTC, a year and month, a year (the default format, MMM dd, yyyy). A year and
+			//month shows as month and year, a year as the year: never a made-up first of the month or January 1.
 			StringAssert.Contains(text,"Onset: Jun 01, 2007");
 			StringAssert.Contains(text,"Onset: Nov 23, 2008");
 			StringAssert.Contains(text,"Onset: Feb 28, 2009");
-			StringAssert.Contains(text,"Onset: Aug 01, 2010");
-			StringAssert.Contains(text,"Onset: Jan 01, 2011");
+			StringAssert.Contains(text,"Onset: Aug 2010 ");
+			StringAssert.Contains(text,"Onset: 2011 ");
+			Assert.IsFalse(text.Contains("Aug 01, 2010"),"No made-up day.");
+			Assert.IsFalse(text.Contains("Jan 01, 2011"),"No made-up month and day.");
 			//The date of birth (a date only) and the report's date and time without a time zone.
 			StringAssert.Contains(text,"Dec 31, 1980");
 			StringAssert.Contains(text,"Jul 19, 2013 : 10:15 AM");
+			//The vital sign's date without a time, in a place whose pattern shows a time: the date only, never a made-up midnight.
+			StringAssert.Contains(text,"Test vital sign May 06, 2015 Test measure");
+			Assert.IsFalse(Regex.IsMatch(text,@"May 06, 2015 :|12:00 AM"),"No made-up time.");
 			//The derived work's footer (the AAFP's header asks a modified copy to say so).
 			StringAssert.Contains(text,"derived from the one provided by the American Academy of Family Physicians");
 		}

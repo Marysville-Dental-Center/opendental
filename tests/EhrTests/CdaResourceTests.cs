@@ -21,7 +21,7 @@ namespace EhrTests {
 			["CDA.xsl"]="f1c32f11186cf69d64f874cc4c94eb51ca8f696b54b4b6833fb54c6afdd7acc1",
 			["cda_l10n.xml"]="d8677885ef78afc0842484ecc70a65f8f17eea286e990bd39fa948cac7f1a884",
 			["cda_narrativeblock.xml"]="608b518182a1418e8865e5e8437083bad034762cf078750ec27c10d17a2285a9",
-			["ccr.xsl"]="f9ce1d989571301902bfb90f5a1dcd13dbcc4a328ee4d878114fea5a036ede84",
+			["ccr.xsl"]="1d84391fd7761a15d90f0b8a866ebf099a960f2b0c75ebdbb2e5b357b59af739",
 		};
 		///<summary>The SHA-256 of ccr.xsl as its "CCR XSL V2.0" file release published it.</summary>
 		private const string SHA256_CCR_RELEASED="4ab70db9f8684f6b738f1e9cfa17f0165622f40c48a9f46105cd31a862cca4c0";
@@ -109,6 +109,10 @@ namespace EhrTests {
 				Assert.IsTrue(Regex.IsMatch(xsl,@"\n   "+i+@"\. "),"Change "+i+" is listed.");
 			}
 			StringAssert.Contains(xsl,"<xsl:if test=\"(substring($tz, 1, 1) = '-' or substring($tz, 1, 1) = '+') and substring($tz, 4, 1) = ':'\">");
+			//A year, a year and month, and a date without a time show no part they do not have (change 1).
+			StringAssert.Contains(xsl,"<xsl:with-param name=\"pattern\" select=\"'yyyy'\"/>");
+			StringAssert.Contains(xsl,"<xsl:with-param name=\"pattern\" select=\"'MMM yyyy'\"/>");
+			StringAssert.Contains(xsl,"<xsl:with-param name=\"pattern\" select=\"string($pattern-date)\"/>");
 			StringAssert.Contains(xsl,"is a modified version, derived from the one provided by the American Academy of Family Physicians");
 			Assert.IsFalse(xsl.Contains("was provided by the American Academy of Family Physicians"),"The released footer is gone.");
 		}
