@@ -44,6 +44,8 @@ namespace OpenPmsDental {
 			if(protocolVersion!=EhrStylesheetStarter.PROTOCOL_VERSION) {
 				return EhrStylesheetStarter.EXIT_BAD_ARGUMENTS;
 			}
+			//Standard output carries the frames only (Console.OpenStandardOutput below): nothing written to Console.Out may reach it.
+			Console.SetOut(TextWriter.Null);
 			MarkProgress();
 			Thread threadWatchdog=new Thread(Watchdog);
 			threadWatchdog.IsBackground=true;
@@ -145,6 +147,9 @@ namespace OpenPmsDental {
 			bool isCcr=kind==EhrStylesheetStarter.KIND_CCR;
 			XslCompiledTransform xslCompiledTransform=GetTransform(isCcr);
 			XsltArgumentList xsltArgumentList=new XsltArgumentList();
+			//Without a handler, XslCompiledTransform writes xsl:message text to the console, which is the frames' channel. Both stylesheets send
+			//messages (CDA.xsl about a reference it refuses, ccr.xsl about a date pattern); they are dropped.
+			xsltArgumentList.XsltMessageEncountered+=(sender,e) => { };
 			if(!isCcr) {
 				//CDA-core-xsl's security parameters: no external image, no PDF, no script (its default is true). Upstream issue #41 says the image
 				//parameters are not used by the current code, whose sanitizer drops any URL with a colon; they are set anyway, and the tests check the
@@ -163,18 +168,13 @@ namespace OpenPmsDental {
 			xmlWriterSettings.CloseOutput=false;
 			using(MemoryStream memoryStream=new MemoryStream()) {
 				using(XmlReader xmlReader=XmlReader.Create(new StringReader(text),xmlReaderSettings))
-				using(XmlWriter xmlWriter=XmlWriter.Create(memoryStream,xmlWriterSettings)) {
-					if(isCcr) {
-						//ccr.xsl as upstream released it copied five Description/Text fields with disable-output-escaping, so a received CCR's text
-						//became markup. The copy shipped has none, and this writer writes such raw text as escaped text anyway.
-						using(XmlWriter xmlWriterEscaping=new EscapingXmlWriter(xmlWriter)) {
-							xslCompiledTransform.Transform(xmlReader,xsltArgumentList,xmlWriterEscaping,new ResourceResolver());
-						}
-					}
-					else {
-						//CDA.xsl uses disable-output-escaping once, on its own CSS text, so the CCD keeps the normal writer.
-						xslCompiledTransform.Transform(xmlReader,xsltArgumentList,xmlWriter,new ResourceResolver());
-					}
+				using(XmlWriter xmlWriter=XmlWriter.Create(memoryStream,xmlWriterSettings))
+				//ccr.xsl as upstream released it copied five Description/Text fields with disable-output-escaping, so a received CCR's text became
+				//markup: the copy shipped has none, and the CCR's writer writes such raw text as escaped text anyway. CDA.xsl uses the attribute once,
+				//on its own CSS text, so the CCD's raw text is written as it is. Both writers drop an image or other source a page would load by
+				//itself unless it is a data: image: CDA.xsl's sanitizer drops a URL with a colon, but a share path (\\server\share\x.png) has none.
+				using(XmlWriter xmlWriterPage=new PageXmlWriter(xmlWriter,isRawEscaped:isCcr)) {
+					xslCompiledTransform.Transform(xmlReader,xsltArgumentList,xmlWriterPage,new ResourceResolver());
 				}
 				return memoryStream.ToArray();
 			}
@@ -259,13 +259,39 @@ namespace OpenPmsDental {
 			}
 		}
 
-		///<summary>Writes through to another writer, except that text the stylesheet asks to write unescaped (disable-output-escaping, which reaches a
-		///writer as WriteRaw) is written escaped, as text. So a received document's text never becomes markup of the page.</summary>
-		public class EscapingXmlWriter:XmlWriter {
+		///<summary>The writer of the pages: writes through to another writer, with two exceptions. With isRawEscaped (a CCR), text the stylesheet asks
+		///to write unescaped (disable-output-escaping, which reaches a writer as WriteRaw) is written escaped, as text, so a received document's text
+		///never becomes markup of the page. And an attribute through which a page would load something by itself (src, data, background, ...) is
+		///dropped unless its value is a data: image, so a received document's image or object never comes from a file, a share or the web; links
+		///(href) stay, and the CCD window opens only http, https and mailto links, in the default browser.</summary>
+		public class PageXmlWriter:XmlWriter {
+			///<summary>The attributes through which a browser loads something by itself.</summary>
+			private static readonly string[] _arrayLoadingAttributes={ "src","data","background","poster","srcset","lowsrc","dynsrc","codebase",
+				"archive","classid","longdesc","manifest","formaction","action","xlink:href" };
 			private readonly XmlWriter _xmlWriter;
+			private readonly bool _isRawEscaped;
+			///<summary>The attribute being held back until its value is known, or null.</summary>
+			private string[] _arrayAttributeHeld;
+			private StringBuilder _stringBuilderValueHeld;
 
-			public EscapingXmlWriter(XmlWriter xmlWriter) {
+			public PageXmlWriter(XmlWriter xmlWriter,bool isRawEscaped) {
 				_xmlWriter=xmlWriter;
+				_isRawEscaped=isRawEscaped;
+			}
+
+			///<summary>True when an attribute of this name may hold this value: any value for an attribute that loads nothing, and only a data: image
+			///(read as a browser reads it: control characters and spaces dropped, any case) for one that does.</summary>
+			public static bool IsAllowed(string prefix,string localName,string value) {
+				if(!IsLoadingAttribute(prefix,localName)) {
+					return true;
+				}
+				StringBuilder stringBuilder=new StringBuilder();
+				foreach(char c in value??"") {
+					if(c>' ') {
+						stringBuilder.Append(char.ToLowerInvariant(c));
+					}
+				}
+				return stringBuilder.ToString().StartsWith("data:image/");
 			}
 
 			public override WriteState WriteState {
@@ -292,12 +318,100 @@ namespace OpenPmsDental {
 				}
 			}
 
+			private static bool IsLoadingAttribute(string prefix,string localName) {
+				string name=(string.IsNullOrEmpty(prefix) ? "" : prefix+":")+localName;
+				foreach(string nameLoading in _arrayLoadingAttributes) {
+					if(string.Equals(name,nameLoading,StringComparison.OrdinalIgnoreCase)) {
+						return true;
+					}
+				}
+				return false;
+			}
+
+			public override void WriteStartAttribute(string prefix,string localName,string ns) {
+				if(IsLoadingAttribute(prefix,localName)) {
+					_arrayAttributeHeld=new string[] { prefix,localName,ns };
+					_stringBuilderValueHeld=new StringBuilder();
+					return;
+				}
+				_xmlWriter.WriteStartAttribute(prefix,localName,ns);
+			}
+
+			public override void WriteEndAttribute() {
+				if(_arrayAttributeHeld==null) {
+					_xmlWriter.WriteEndAttribute();
+					return;
+				}
+				string[] arrayAttribute=_arrayAttributeHeld;
+				string value=_stringBuilderValueHeld.ToString();
+				_arrayAttributeHeld=null;
+				_stringBuilderValueHeld=null;
+				if(!IsAllowed(arrayAttribute[0],arrayAttribute[1],value)) {
+					return;//Dropped: the page would load it by itself.
+				}
+				_xmlWriter.WriteStartAttribute(arrayAttribute[0],arrayAttribute[1],arrayAttribute[2]);
+				_xmlWriter.WriteString(value);
+				_xmlWriter.WriteEndAttribute();
+			}
+
+			public override void WriteString(string text) {
+				if(_arrayAttributeHeld!=null) {
+					_stringBuilderValueHeld.Append(text);
+					return;
+				}
+				_xmlWriter.WriteString(text);
+			}
+
 			public override void WriteRaw(string data) {
-				_xmlWriter.WriteString(data);
+				if(_arrayAttributeHeld!=null) {
+					_stringBuilderValueHeld.Append(data);
+					return;
+				}
+				if(_isRawEscaped) {
+					_xmlWriter.WriteString(data);
+					return;
+				}
+				_xmlWriter.WriteRaw(data);
 			}
 
 			public override void WriteRaw(char[] buffer,int index,int count) {
-				_xmlWriter.WriteString(new string(buffer,index,count));
+				WriteRaw(new string(buffer,index,count));
+			}
+
+			public override void WriteChars(char[] buffer,int index,int count) {
+				WriteString(new string(buffer,index,count));
+			}
+
+			public override void WriteCharEntity(char ch) {
+				if(_arrayAttributeHeld!=null) {
+					_stringBuilderValueHeld.Append(ch);
+					return;
+				}
+				_xmlWriter.WriteCharEntity(ch);
+			}
+
+			public override void WriteSurrogateCharEntity(char lowChar,char highChar) {
+				if(_arrayAttributeHeld!=null) {
+					_stringBuilderValueHeld.Append(highChar).Append(lowChar);
+					return;
+				}
+				_xmlWriter.WriteSurrogateCharEntity(lowChar,highChar);
+			}
+
+			public override void WriteWhitespace(string ws) {
+				if(_arrayAttributeHeld!=null) {
+					_stringBuilderValueHeld.Append(ws);
+					return;
+				}
+				_xmlWriter.WriteWhitespace(ws);
+			}
+
+			public override void WriteEntityRef(string name) {
+				if(_arrayAttributeHeld!=null) {
+					_stringBuilderValueHeld.Append("&"+name+";");
+					return;
+				}
+				_xmlWriter.WriteEntityRef(name);
 			}
 
 			public override void WriteStartDocument() {
@@ -328,14 +442,6 @@ namespace OpenPmsDental {
 				_xmlWriter.WriteFullEndElement();
 			}
 
-			public override void WriteStartAttribute(string prefix,string localName,string ns) {
-				_xmlWriter.WriteStartAttribute(prefix,localName,ns);
-			}
-
-			public override void WriteEndAttribute() {
-				_xmlWriter.WriteEndAttribute();
-			}
-
 			public override void WriteCData(string text) {
 				_xmlWriter.WriteCData(text);
 			}
@@ -346,30 +452,6 @@ namespace OpenPmsDental {
 
 			public override void WriteProcessingInstruction(string name,string text) {
 				_xmlWriter.WriteProcessingInstruction(name,text);
-			}
-
-			public override void WriteEntityRef(string name) {
-				_xmlWriter.WriteEntityRef(name);
-			}
-
-			public override void WriteCharEntity(char ch) {
-				_xmlWriter.WriteCharEntity(ch);
-			}
-
-			public override void WriteWhitespace(string ws) {
-				_xmlWriter.WriteWhitespace(ws);
-			}
-
-			public override void WriteString(string text) {
-				_xmlWriter.WriteString(text);
-			}
-
-			public override void WriteSurrogateCharEntity(char lowChar,char highChar) {
-				_xmlWriter.WriteSurrogateCharEntity(lowChar,highChar);
-			}
-
-			public override void WriteChars(char[] buffer,int index,int count) {
-				_xmlWriter.WriteChars(buffer,index,count);
 			}
 
 			public override void WriteBase64(byte[] buffer,int index,int count) {
