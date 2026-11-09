@@ -158,6 +158,21 @@ the later packages:
   `ToothChartMouse.GetCursor` (the wrapper's own setter now loads them from its assembly, not its runtime type).
 - **Parity probes** (`ParityProbeTests`, section 7) also sample the X's crossing, the build-up silhouette, the implant and a root canal
   line, and a second test checks the ink of every number, sealant "S" and watch "W" within one pixel of DirectX's.
+- **Results on the build PC.** All 16,852 probes of the 253 recorded pictures agree with DirectX (mean lightness of WPF minus DirectX
+  -0.7 points at the facial centres, -0.5 at the occlusal ones; largest 11), so the light factors of 5.3 stay as TC-1 set them. The
+  known differences of 5.1 stay in the allowance list but cover no probe. Of 8,633 numbers and marks, all but 3 are within one pixel of
+  DirectX's ink; the 3 are the tall sheet's (360x480) small numbers, whose horizontal scale of about 0.86 puts their stems between two
+  pixels (allowed with that reason). The live view, read back in software, agrees with the renderer at all 1,090 probes of 8 scenes.
+- **The one change of the drawing.** DirectX draws its overlays unsmoothed, and the 2D layer's smoothed centre line was two half-bright
+  rows. `ToothSceneItem2D.CreatePolygons` now snaps an axis-aligned rectangle (the centre line, highlight boxes, a horizontal or vertical
+  stroke) to the pixels DirectX fills (the top-left rule); slanted items keep their smoothing. The centre line now fills DirectX's rows
+  exactly in all 121 checked pictures, and 46 of the 48 highlight boxes match, 2 by one column. 145 WPF baselines were re-recorded for
+  it (every 410x307 picture, 19 at 500x370 and the big window); the other 108 are unchanged.
+- **Times** (G1, fresh process, median of 21; a refill and the screen's update, the live view's being the UI thread's work):
+  dashboard hidden, DirectX 47 ms and 32 ms at 410x307 and 615x461, the live view 18 and 21 ms, software 382 and 728 ms; a
+  selection-only change, DirectX 32 and 48 ms, the live view 11 and 11 ms, software 16 and 30 ms. With the Patient Dashboard visible the
+  refill also makes the dashboard's image in software: DirectX 96 and 143 ms, the live view 415 and 764 ms. The owner is asked in G1
+  whether that cost needs a later package (the dashboard's image made asynchronously, or with less supersampling).
 
 **Why not a separate branch.** The chart must not drift from the stages' rewrites of `ControlChart.cs` and the release files. Dark
 merges keep it on `main`, and the gallery approval comes before each merge (O-27).

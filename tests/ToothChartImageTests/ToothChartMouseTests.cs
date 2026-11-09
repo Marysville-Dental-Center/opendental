@@ -355,7 +355,7 @@ namespace ToothChartImageTests {
 			return new Point(item.Origin.X+item.WidthPixels/2,item.Origin.Y+item.Font.Height/2);
 		}
 
-		///<summary>Points from start to end in steps of about stepTeeth teeth' width... in countSteps equal steps, the start included.</summary>
+		///<summary>Points from start to end in countSteps equal steps, the start and the end included: wide steps, so a drag skips teeth.</summary>
 		public static List<Point> GetDragPoints(Point pointStart,Point pointEnd,int countSteps) {
 			List<Point> listPoints=new List<Point>();
 			for(int i=0;i<=countSteps;i++) {
