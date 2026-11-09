@@ -33,7 +33,10 @@ namespace OpenPmsDental {
 			//The One-Time Tools group (Map to ICD9). Open Dental showed it only to a provider with a valid EHR key, "to prevent Snomeds from being used in
 			//non-member nations". Each office imports SNOMED CT under its own licence, so there is no member-country check (E-6 of
 			//docs/specs/ehr-rebuild-plan.md): the group shows to users with the Setup permission whenever the snomed table has rows.
-			groupBox1.Visible=IsSnomedToolsVisible(Security.IsAuthorized(EnumPermType.Setup,true),Snomeds.GetCodeCount());
+			//The count is a query (a Middle Tier call on a Middle Tier client): asked only of a user who could see the tools, since the window
+			//also opens as a code picker.
+			bool hasSetup=Security.IsAuthorized(EnumPermType.Setup,true);
+			groupBox1.Visible=hasSetup && IsSnomedToolsVisible(hasSetup,Snomeds.GetCodeCount());
 		}
 
 		///<summary>True when the One-Time Tools group shows: the user has the Setup permission and the snomed table has rows. Pure.</summary>

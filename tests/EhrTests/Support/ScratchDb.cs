@@ -36,6 +36,8 @@ namespace EhrTests {
 		private static readonly object _lockBuild=new object();
 		private static bool _isBuildTried;
 		private static bool _isBuilt;
+		///<summary>The culture Begin found, put back by End.</summary>
+		private static CultureInfo _cultureBefore;
 		///<summary>Null when the database is ready; otherwise why the database tests are skipped.</summary>
 		public static string SkipReason;
 
@@ -74,7 +76,10 @@ namespace EhrTests {
 			if(SkipReason!=null) {
 				Assert.Inconclusive(SkipReason);
 			}
-			//Lans.g returns the English text in en-US, and touches the language table in any other culture.
+			//Lans.g returns the English text in en-US, and touches the language table in any other culture. End puts the test's culture back.
+			if(_cultureBefore==null) {
+				_cultureBefore=Thread.CurrentThread.CurrentCulture;
+			}
 			Thread.CurrentThread.CurrentCulture=new CultureInfo("en-US");
 			UseDirectConnection();
 			Connect(DbName);
@@ -84,6 +89,10 @@ namespace EhrTests {
 
 		///<summary>Call from [TestCleanup]: back to the direct connection as user 1, so no later test runs as a Middle Tier client by accident.</summary>
 		public static void End() {
+			if(_cultureBefore!=null) {
+				Thread.CurrentThread.CurrentCulture=_cultureBefore;
+				_cultureBefore=null;
+			}
 			UseDirectConnection();
 			if(!_isBuilt || SkipReason!=null) {
 				return;

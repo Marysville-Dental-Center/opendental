@@ -173,8 +173,10 @@ namespace EhrTests {
 			Assert.IsTrue(FormSnomeds.IsSnomedToolsVisible(true,1));
 			Assert.IsTrue(FormSnomeds.IsSnomedToolsVisible(true,400000));
 			//The window asks the rule with the user's Setup permission and the count of the snomed table, and no longer reads provider keys.
+			//The count is asked only of a user with Setup (&& short-circuits), since the window also opens as a code picker.
 			string load=CSharpSource.GetBlock(TestPaths.ReadSource(@"OpenPmsDental\Forms\FormSnomeds.cs"),"private void FormSnomeds_Load(");
-			StringAssert.Contains(load,"groupBox1.Visible=IsSnomedToolsVisible(Security.IsAuthorized(EnumPermType.Setup,true),Snomeds.GetCodeCount());");
+			StringAssert.Contains(load,"bool hasSetup=Security.IsAuthorized(EnumPermType.Setup,true);");
+			StringAssert.Contains(load,"groupBox1.Visible=hasSetup && IsSnomedToolsVisible(hasSetup,Snomeds.GetCodeCount());");
 			foreach(string gone in new[] { "ProvKeyIsValid","EhrProvKeys","groupBox1.Visible=true" }) {
 				Assert.IsFalse(load.Contains(gone),gone);
 			}

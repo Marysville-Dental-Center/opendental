@@ -191,7 +191,8 @@ namespace EhrTests {
 				string source=TestPaths.ReadSource(@"OpenPmsDental\Forms\FormEhrProviderKeyEdit.cs");
 				foreach(string signature in new[] { "private void butSave_Click(","private void butDelete_Click(" }) {
 					string block=CSharpSource.GetBlock(source,signature);
-					StringAssert.Contains(block,"if(isPrefChanged) {\r\n\t\t\t\tDataValid.SetInvalid(InvalidType.Prefs);",signature);
+					Assert.IsTrue(Regex.IsMatch(block,@"if\(isPrefChanged\)\s*\{\s*DataValid\.SetInvalid\(InvalidType\.Prefs\);"),
+						signature+": the Prefs signal is inside if(isPrefChanged), whatever the file's line ends.");
 					Assert.AreEqual(1,Regex.Matches(block,@"DataValid\.SetInvalid\(").Count,signature);
 					Assert.IsFalse(block.Contains("Prefs.UpdateBool"),signature+": the preference is written by EhrProvKeys only.");
 				}
