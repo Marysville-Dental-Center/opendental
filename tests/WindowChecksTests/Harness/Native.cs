@@ -83,6 +83,91 @@ namespace WindowChecksTests {
 		[DllImport("user32.dll")]
 		public static extern IntPtr GetForegroundWindow();
 
+		public const int WM_GETICON=0x007F;
+		public const int WM_LBUTTONDOWN=0x0201;
+		public const int WM_LBUTTONUP=0x0202;
+		public const int MK_LBUTTON=0x0001;
+		[DllImport("user32.dll",EntryPoint="GetClassLong")]
+		public static extern int GetClassLong(IntPtr hwnd,int index);
+		[DllImport("user32.dll")]
+		public static extern bool ScreenToClient(IntPtr hwnd,ref System.Drawing.Point point);
+		[DllImport("kernel32.dll",CharSet=CharSet.Unicode,SetLastError=true)]
+		public static extern IntPtr LoadLibraryEx(string fileName,IntPtr hFile,int flags);
+		[DllImport("kernel32.dll")]
+		public static extern bool FreeLibrary(IntPtr hModule);
+		[DllImport("kernel32.dll")]
+		public static extern IntPtr FindResource(IntPtr hModule,IntPtr name,IntPtr type);
+		[DllImport("kernel32.dll")]
+		public static extern IntPtr LoadResource(IntPtr hModule,IntPtr hResInfo);
+		[DllImport("kernel32.dll")]
+		public static extern IntPtr LockResource(IntPtr hResData);
+		[DllImport("kernel32.dll")]
+		public static extern int SizeofResource(IntPtr hModule,IntPtr hResInfo);
+		[DllImport("shell32.dll",CharSet=CharSet.Unicode)]
+		public static extern int ExtractIconEx(string file,int index,IntPtr[] large,IntPtr[] small,int count);
+		[DllImport("user32.dll")]
+		public static extern bool DestroyIcon(IntPtr hIcon);
+		[StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]
+		public struct SHFILEINFO {
+			public IntPtr hIcon;
+			public int iIcon;
+			public uint dwAttributes;
+			[MarshalAs(UnmanagedType.ByValTStr,SizeConst=260)]
+			public string szDisplayName;
+			[MarshalAs(UnmanagedType.ByValTStr,SizeConst=80)]
+			public string szTypeName;
+		}
+		public const uint SHGFI_ICON=0x100;
+		public const uint SHGFI_LARGEICON=0x0;
+		public const uint SHGFI_ADDOVERLAYS=0x20;
+		[DllImport("shell32.dll",CharSet=CharSet.Unicode)]
+		public static extern IntPtr SHGetFileInfo(string path,uint fileAttributes,ref SHFILEINFO shFileInfo,uint size,uint flags);
+
+		///<summary>The window's icon (big, small, or the class's); zero when it has none.</summary>
+		public static IntPtr GetWindowIcon(IntPtr hwnd) {
+			foreach(int type in new[] { 1,0,2 }) {
+				IntPtr result;
+				SendMessageTimeout(hwnd,WM_GETICON,(IntPtr)type,IntPtr.Zero,SMTO_ABORTIFHUNG,2000,out result);
+				if(result!=IntPtr.Zero) {
+					return result;
+				}
+			}
+			IntPtr hIcon=(IntPtr)GetClassLong(hwnd,-14);//GCL_HICON
+			if(hIcon!=IntPtr.Zero) {
+				return hIcon;
+			}
+			return (IntPtr)GetClassLong(hwnd,-34);//GCL_HICONSM
+		}
+
+		///<summary>A left click by window messages (WM_LBUTTONDOWN and WM_LBUTTONUP posted to the control at the client point), never SendInput.</summary>
+		public static void PostClick(IntPtr hwnd,int x,int y) {
+			IntPtr lParam=(IntPtr)((y<<16)|(x&0xFFFF));
+			PostMessage(hwnd,WM_LBUTTONDOWN,(IntPtr)MK_LBUTTON,lParam);
+			PostMessage(hwnd,WM_LBUTTONUP,IntPtr.Zero,lParam);
+		}
+
+		///<summary>The application manifest embedded in an exe (RT_MANIFEST 1), or "".</summary>
+		public static string ReadManifest(string path) {
+			IntPtr hModule=LoadLibraryEx(path,IntPtr.Zero,0x2);//LOAD_LIBRARY_AS_DATAFILE
+			if(hModule==IntPtr.Zero) {
+				return "";
+			}
+			try {
+				IntPtr hResInfo=FindResource(hModule,(IntPtr)1,(IntPtr)24);
+				if(hResInfo==IntPtr.Zero) {
+					return "";
+				}
+				int size=SizeofResource(hModule,hResInfo);
+				IntPtr pointer=LockResource(LoadResource(hModule,hResInfo));
+				byte[] arrayBytes=new byte[size];
+				Marshal.Copy(pointer,arrayBytes,0,size);
+				return Encoding.UTF8.GetString(arrayBytes);
+			}
+			finally {
+				FreeLibrary(hModule);
+			}
+		}
+
 		///<summary>SMTO_ABORTIFHUNG: a hung window's text reads as empty instead of blocking the test.</summary>
 		private const int SMTO_ABORTIFHUNG=0x0002;
 
