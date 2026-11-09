@@ -34,6 +34,7 @@ namespace SparksToothChart.Wpf3D {
 		private ToothScene _sceneWaiting;
 		private bool _isRenderInFlight;
 		private int _countImagesReceived;
+		private int _countReceiveCalls;
 		private int _countRendersStarted;
 		//Mouse, as the DirectX chart keeps it:
 		private string _hotTooth;
@@ -80,6 +81,15 @@ namespace SparksToothChart.Wpf3D {
 		public int CountImagesReceived {
 			get {
 				return _countImagesReceived;
+			}
+		}
+
+		///<summary>How many times a render's result reached this control's UI thread at all, counted before anything else is checked (a disposed
+		///control included), for tests: a test that a disposed control gets no call reads this, not CountImagesReceived.</summary>
+		[Browsable(false)]
+		public int CountReceiveCalls {
+			get {
+				return _countReceiveCalls;
 			}
 		}
 
@@ -166,6 +176,7 @@ namespace SparksToothChart.Wpf3D {
 
 		///<summary>On the UI thread: shows the image (or, after a failed render, the 2D chart's image of the data) and starts the waiting scene.</summary>
 		private void ReceiveImage(ToothScene scene,ToothChartRenderResult result) {
+			_countReceiveCalls++;
 			_isRenderInFlight=false;
 			if(IsDisposed) {
 				return;

@@ -291,6 +291,359 @@ namespace ToothChartImageTests {
 			StringAssert.Contains(result.Output,"SHA256 "+hashFirst,"A second process gives the same bytes.");
 		}
 
+		[TestMethod]
+		public void HiddenWrapper_RefillThenGetBitmap_ShowsTheRefillWhenShownAgain() {
+			//A GetBitmap clears the scene's dirty mark, but not the screen's: a wrapper refilled while hidden, then asked for its bitmap (as the
+			//dashboard does), must still rebuild its screen image when it is shown again, or it keeps the previous chart.
+			if(!Environment.UserInteractive) {
+				Assert.Inconclusive("Needs an interactive desktop session: the wrapper must be shown.");
+			}
+			StaRunner.Run(() => {
+				using(Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size)) {
+					ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+					form.Controls.Add(wrapper);
+					form.Show();
+					ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;
+					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+					ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+					Assert.IsTrue(PumpUntil(() => toothChartImageHost.CountImagesReceived>=1 && !toothChartImageHost.IsRenderInFlight,20000),"A first image arrived.");
+					form.Hide();
+					Assert.IsFalse(wrapper.Visible);
+					int countRenders=toothChartImageHost.CountRendersStarted;
+					int countImages=toothChartImageHost.CountImagesReceived;
+					ChartScenes.Prepare(relay,ChartScenes.Get("treatment-plan"),ChartColorSet.Module);
+					PumpUntil(() => false,200);
+					Assert.AreEqual(countRenders,toothChartImageHost.CountRendersStarted,"A hidden wrapper posts no rebuild.");
+					using(Bitmap bitmap=relay.GetBitmap()) {
+						Assert.IsFalse(wrapper.IsWpfSceneDirty,"GetBitmap built the scene.");
+						form.Show();
+						Assert.IsTrue(PumpUntil(() => toothChartImageHost.CountImagesReceived>countImages && !toothChartImageHost.IsRenderInFlight,20000),
+							"Shown again, the wrapper rebuilt its screen image.");
+						using(Bitmap bitmapShown=toothChartImageHost.GetBitmapShown()) {
+							Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmap).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapShown)),
+								"The screen shows the refill, the same image as GetBitmap's.");
+						}
+					}
+					form.Close();
+				}
+			});
+		}
+
+		[TestMethod]
+		public void Wrapper_WhosePostedRebuildWentWithItsHandle_RebuildsWhenTheHandleComesBack() {
+			//DestroyHandle (not RecreateHandle) drops the BeginInvoke of a posted rebuild; the wrapper must not then believe a rebuild is still
+			//posted, or it never posts one again.
+			if(!Environment.UserInteractive) {
+				Assert.Inconclusive("Needs an interactive desktop session: the wrapper must be shown.");
+			}
+			StaRunner.Run(() => {
+				using(Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size)) {
+					TestWrapper wrapper=new TestWrapper();
+					wrapper.Size=ChartScenes.SizeModule.Size;
+					wrapper.Engine=ToothChartEngine.Wpf3D;
+					form.Controls.Add(wrapper);
+					form.Show();
+					ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;
+					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+					ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+					Assert.IsTrue(PumpUntil(() => toothChartImageHost.CountImagesReceived>=1 && !toothChartImageHost.IsRenderInFlight,20000),"A first image arrived.");
+					relay.SetSelected("8",true);//posts a rebuild; nothing pumps before the handle goes
+					wrapper.DestroyHandleForTests();
+					Assert.IsFalse(wrapper.IsHandleCreated);
+					wrapper.CreateHandleForTests();
+					Assert.IsTrue(wrapper.IsHandleCreated && toothChartImageHost.IsHandleCreated);
+					int countImages=toothChartImageHost.CountImagesReceived;
+					relay.SetSelected("9",true);
+					Assert.IsTrue(PumpUntil(() => toothChartImageHost.CountImagesReceived>countImages && !toothChartImageHost.IsRenderInFlight,20000),
+						"With its handle back, the wrapper rebuilds its screen image again.");
+					using(Bitmap bitmap=relay.GetBitmap())
+					using(Bitmap bitmapShown=toothChartImageHost.GetBitmapShown()) {
+						Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmap).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapShown)),"The screen shows both selections.");
+					}
+					form.Close();
+				}
+			});
+		}
+
+		[TestMethod]
+		public void Host_HandleDestroyedDuringItsRender_RendersAgainWhenTheHandleComesBack() {
+			//The render's result finds no handle and is dropped; the host must not stay "in flight" for good.
+			ToothScene toothScene=WpfCharts.BuildScene("restored-adult",ChartScenes.SizeModule);
+			ToothScene toothSceneNext=WpfCharts.BuildScene("treatment-plan",ChartScenes.SizeModule);
+			StaRunner.Run(() => {
+				using(TestImageHost toothChartImageHost=new TestImageHost()) {
+					toothChartImageHost.Size=toothScene.Size;
+					toothChartImageHost.CreateControl();
+					using(RenderJobHold renderJobHold=new RenderJobHold(ToothChartRenderer.JobRender)) {
+						toothChartImageHost.ShowScene(toothScene);
+						Assert.IsTrue(renderJobHold.WaitEntered(30000),"The host's render is running.");
+						toothChartImageHost.DestroyHandleForTests();
+						Assert.IsFalse(toothChartImageHost.IsHandleCreated);
+					}
+					ToothChartRenderer.Instance.WaitIdle();//the render has run and found no handle
+					PumpUntil(() => false,200);
+					Assert.AreEqual(0,toothChartImageHost.CountReceiveCalls,"The result had nowhere to go.");
+					toothChartImageHost.CreateHandleForTests();
+					Assert.IsTrue(PumpUntil(() => toothChartImageHost.CountImagesReceived>=1 && !toothChartImageHost.IsRenderInFlight,20000),
+						"With its handle back, the host renders its scene again.");
+					Assert.AreSame(toothScene,toothChartImageHost.SceneShown);
+					toothChartImageHost.ShowScene(toothSceneNext);
+					Assert.IsTrue(PumpUntil(() => toothChartImageHost.SceneShown==toothSceneNext && !toothChartImageHost.IsRenderInFlight,20000),
+						"The next scene is shown too.");
+				}
+			});
+		}
+
+		[TestMethod]
+		public void Host_PaintsItsImagePixelForPixel_WhateverTheDpiOfTheGraphics() {
+			//DrawImageUnscaled draws at the image's physical size, which differs from its pixel size when the bitmap's DPI is not the Graphics' DPI
+			//(a drag between monitors, L-2).
+			ToothScene toothScene=WpfCharts.BuildScene("restored-adult",ChartScenes.SizeModule);
+			StaRunner.Run(() => {
+				using(TestImageHost toothChartImageHost=new TestImageHost()) {
+					toothChartImageHost.Size=toothScene.Size;
+					toothChartImageHost.CreateControl();
+					toothChartImageHost.ShowScene(toothScene);
+					Assert.IsTrue(PumpUntil(() => toothChartImageHost.CountImagesReceived>=1 && !toothChartImageHost.IsRenderInFlight,20000),"An image arrived.");
+					using(Bitmap bitmapShown=toothChartImageHost.GetBitmapShown()) {
+						byte[] arrayPixelsShown=ChartImageCompare.GetPixelsArgb(bitmapShown);
+						foreach(float dpi in new[] { 96f,144f,192f,72f }) {
+							using(Bitmap bitmapTarget=new Bitmap(toothScene.Size.Width,toothScene.Size.Height,PixelFormat.Format24bppRgb)) {
+								bitmapTarget.SetResolution(dpi,dpi);
+								using(Graphics g=Graphics.FromImage(bitmapTarget)) {
+									toothChartImageHost.PaintForTests(g);
+								}
+								Assert.IsTrue(arrayPixelsShown.SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapTarget)),"Painted at "+dpi+" dpi, pixel for pixel.");
+							}
+						}
+					}
+				}
+			});
+		}
+
+		[TestMethod]
+		public void Restart_AfterAShutdownWhoseJoinTimedOut_LeavesTheOldThreadsJobAlone() {
+			//Shutdown waits only so long; a new render thread may start while the old one is still in its job. Each must keep its own targets and
+			//visual tree, or the old thread draws with the new thread's objects (or the new one with the old one's) and fails.
+			ToothScene toothScene=WpfCharts.BuildScene("restored-adult",ChartScenes.SizeModule);
+			ToothChartRenderer toothChartRenderer=ToothChartRenderer.Instance;
+			int threadIdOld=toothChartRenderer.Render(toothScene,null).ThreadIdRender;//the old thread, with its visual tree
+			ToothChartRenderResult resultOld=null;
+			ToothChartRenderResult resultNew;
+			using(ManualResetEvent manualResetEventOldDone=new ManualResetEvent(false)) {
+				using(RenderJobHold renderJobHold=new RenderJobHold(ToothChartRenderer.JobRender)) {
+					toothChartRenderer.RenderAsync(toothScene,null,result => {
+						resultOld=result;
+						manualResetEventOldDone.Set();
+					});
+					Assert.IsTrue(renderJobHold.WaitEntered(30000),"The old thread is in its render job.");
+					toothChartRenderer.Shutdown(0);//its Join times out at once
+					resultNew=toothChartRenderer.Render(toothScene,null);//a new thread starts and renders while the old one is still in its job
+					Assert.AreNotEqual(threadIdOld,resultNew.ThreadIdRender,"A new render thread drew.");
+					renderJobHold.Release();
+					Assert.IsTrue(manualResetEventOldDone.WaitOne(30000),"The old thread finished its job.");
+				}
+			}
+			Assert.IsNull(resultOld.Exception,"The old thread drew its job with its own objects: "+resultOld.Exception);
+			Assert.AreEqual(threadIdOld,resultOld.ThreadIdRender);
+			Assert.IsTrue(resultOld.PixelsBgra.SequenceEqual(resultNew.PixelsBgra),"Both threads drew the same image.");
+			ToothChartRenderResult resultAfter=toothChartRenderer.Render(toothScene,null);
+			Assert.AreEqual(resultNew.ThreadIdRender,resultAfter.ThreadIdRender);
+			Assert.IsTrue(resultAfter.PixelsBgra.SequenceEqual(resultNew.PixelsBgra),"The new thread still draws.");
+		}
+
+		[TestMethod]
+		public void Shutdown_CompletesTheWaitersOfTheJobsItAborts_AtOnce() {
+			//Shutdown aborts the queued jobs. A caller waiting in Render must hear of it at once, not after MillisecondsTimeout, and RenderAsync's
+			//callback must still run, or an image host stays "in flight" for good.
+			ToothScene toothScene=WpfCharts.BuildScene("restored-adult",ChartScenes.SizeModule);
+			ToothChartRenderer toothChartRenderer=ToothChartRenderer.Instance;
+			toothChartRenderer.Render(toothScene,null);
+			int millisecondsTimeoutOld=ToothChartRenderer.MillisecondsTimeout;
+			ToothChartRenderer.MillisecondsTimeout=20000;
+			ToothChartRenderResult resultAsync=null;
+			Exception exceptionWaiter=null;
+			long millisecondsWaiter=-1;
+			bool isAsyncDone;
+			Thread threadWaiter;
+			try {
+				using(ManualResetEvent manualResetEventAsyncDone=new ManualResetEvent(false)) {
+					using(RenderJobHold renderJobHold=new RenderJobHold(ToothChartRenderer.JobRender)) {
+						toothChartRenderer.RenderAsync(toothScene,null,null);//the job that holds the thread
+						Assert.IsTrue(renderJobHold.WaitEntered(30000));
+						toothChartRenderer.RenderAsync(toothScene,null,result => {
+							resultAsync=result;
+							manualResetEventAsyncDone.Set();
+						});
+						threadWaiter=new Thread(() => {
+							Stopwatch stopwatch=Stopwatch.StartNew();
+							try {
+								toothChartRenderer.Render(toothScene,null);
+							}
+							catch(Exception ex) {
+								exceptionWaiter=ex;
+							}
+							millisecondsWaiter=stopwatch.ElapsedMilliseconds;
+						});
+						threadWaiter.IsBackground=true;
+						threadWaiter.Start();
+						Assert.IsTrue(WaitUntil(() => (threadWaiter.ThreadState & System.Threading.ThreadState.WaitSleepJoin)!=0,10000),"The waiter queued its job and waits.");
+						toothChartRenderer.Shutdown(0);
+						renderJobHold.Release();
+					}
+					isAsyncDone=manualResetEventAsyncDone.WaitOne(10000);
+				}
+				Assert.IsTrue(threadWaiter.Join(60000));
+			}
+			finally {
+				ToothChartRenderer.MillisecondsTimeout=millisecondsTimeoutOld;
+			}
+			Assert.IsTrue(isAsyncDone,"RenderAsync's callback ran for the aborted job.");
+			Assert.IsNotNull(resultAsync.Exception,"With a failed result.");
+			Assert.IsNotNull(exceptionWaiter,"The waiter's Render threw.");
+			Assert.IsTrue(millisecondsWaiter<10000,"The waiter heard of the abort at once, not after the timeout: "+millisecondsWaiter+" ms, "+exceptionWaiter);
+			Assert.IsFalse(exceptionWaiter is TimeoutException,exceptionWaiter.ToString());
+			Assert.AreEqual(toothScene.Size,toothChartRenderer.Render(toothScene,null).Size,"The next render starts a new thread.");
+		}
+
+		[TestMethod]
+		public void Host_WhoseRenderWasAbortedByAShutdown_ShowsTheNextScene() {
+			ToothScene toothScene=WpfCharts.BuildScene("restored-adult",ChartScenes.SizeModule);
+			ToothScene toothSceneNext=WpfCharts.BuildScene("treatment-plan",ChartScenes.SizeModule);
+			ToothChartRenderer.Instance.Render(toothScene,null);
+			StaRunner.Run(() => {
+				using(TestImageHost toothChartImageHost=new TestImageHost()) {
+					toothChartImageHost.Size=toothScene.Size;
+					toothChartImageHost.CreateControl();
+					using(RenderJobHold renderJobHold=new RenderJobHold(ToothChartRenderer.JobRender)) {
+						ToothChartRenderer.Instance.RenderAsync(toothScene,null,null);//the job that holds the thread
+						Assert.IsTrue(renderJobHold.WaitEntered(30000));
+						toothChartImageHost.ShowScene(toothScene);//queued behind it
+						Assert.IsTrue(toothChartImageHost.IsRenderInFlight);
+						ToothChartRenderer.Instance.Shutdown(0);
+						renderJobHold.Release();
+					}
+					Assert.IsTrue(PumpUntil(() => !toothChartImageHost.IsRenderInFlight,15000),"The aborted render came back, so the host is not stuck.");
+					toothChartImageHost.ShowScene(toothSceneNext);
+					Assert.IsTrue(PumpUntil(() => toothChartImageHost.SceneShown==toothSceneNext && !toothChartImageHost.IsRenderInFlight,20000),
+						"The next scene is shown, drawn by a new render thread.");
+				}
+			});
+		}
+
+		[TestMethod]
+		public void ColdStart_HoldsNoLockThatAnotherCallerWaitsFor() {
+			//The start check waits for WPF's cold start. A caller that only queues a render (the UI thread's ShowScene) or reads the thread must
+			//not wait for it.
+			ToothScene toothScene=WpfCharts.BuildScene("restored-adult",ChartScenes.SizeModule);
+			ToothChartRenderer.Instance.Shutdown(30000);//the next EnsureStarted checks again, on a new thread
+			Exception exceptionStart=null;
+			bool isOtherDone;
+			bool isRendered;
+			using(ManualResetEvent manualResetEventRendered=new ManualResetEvent(false)) {
+				using(RenderJobHold renderJobHold=new RenderJobHold(ToothChartRenderer.JobCheck)) {
+					Thread threadStart=new Thread(() => {
+						try {
+							ToothChartRenderer.Instance.EnsureStarted();
+						}
+						catch(Exception ex) {
+							exceptionStart=ex;
+						}
+					});
+					threadStart.IsBackground=true;
+					threadStart.Start();
+					Assert.IsTrue(renderJobHold.WaitEntered(30000),"The start check is running.");
+					Thread threadOther=new Thread(() => {
+						int threadId=ToothChartRenderer.Instance.ThreadId;
+						ToothChartRenderer.Instance.RenderAsync(toothScene,null,result => manualResetEventRendered.Set());
+					});
+					threadOther.IsBackground=true;
+					threadOther.Start();
+					isOtherDone=threadOther.Join(5000);
+					renderJobHold.Release();
+					Assert.IsTrue(threadStart.Join(60000));
+					Assert.IsTrue(threadOther.Join(60000));
+				}
+				isRendered=manualResetEventRendered.WaitOne(30000);
+			}
+			Assert.IsTrue(isOtherDone,"The other caller waited for the start check.");
+			Assert.IsNull(exceptionStart,"The start check passed: "+exceptionStart);
+			Assert.IsTrue(isRendered,"The queued render ran after the start check.");
+		}
+
+		[TestMethod]
+		public void RepeatedRenderFailures_StartANewRenderThread_AndTheNextRenderWorks() {
+			ToothScene toothScene=WpfCharts.BuildScene("restored-adult",ChartScenes.SizeModule);
+			ToothChartRenderer toothChartRenderer=ToothChartRenderer.Instance;
+			ToothChartRenderResult resultBefore=toothChartRenderer.Render(toothScene,null);
+			int countUnhandled=ToothChartRenderer.CountUnhandledExceptions;
+			ToothChartRenderer.ActionJobStartForTests=kind => {
+				if(kind==ToothChartRenderer.JobRender) {
+					throw new InvalidOperationException("A forced render failure.");
+				}
+			};
+			try {
+				for(int i=0;i<6;i++) {
+					Expect.Throws<InvalidOperationException>(() => toothChartRenderer.Render(toothScene,null));
+				}
+			}
+			finally {
+				ToothChartRenderer.ActionJobStartForTests=null;
+			}
+			ToothChartRenderResult resultAfter=toothChartRenderer.Render(toothScene,null);
+			Assert.AreNotEqual(resultBefore.ThreadIdRender,resultAfter.ThreadIdRender,"After six failed renders in a row, a new render thread draws.");
+			Assert.IsTrue(resultAfter.PixelsBgra.SequenceEqual(resultBefore.PixelsBgra),"And it draws the same image.");
+			Assert.AreEqual(countUnhandled,ToothChartRenderer.CountUnhandledExceptions);
+		}
+
+		[TestMethod]
+		public void Start_InterruptedCaller_IsNoPermanentStartFailure() {
+			SecondProcessResult result=SecondProcess.Run(120000,"start-interrupted");
+			Console.WriteLine(result.Output);
+			Assert.AreEqual(0,result.ExitCode,result.Output);
+			StringAssert.Contains(result.Output,"caller interrupted: True");
+			StringAssert.Contains(result.Output,"started afterwards: True","A caller's ThreadInterruptedException is not kept as the start failure.");
+			StringAssert.Contains(result.Output,"engine: Wpf3D");
+		}
+
+		[TestMethod]
+		public void Start_Failure_FallsBackToSimple2D_WithOneLogLine() {
+			SecondProcessResult result=SecondProcess.Run(120000,"start-fails");
+			Console.WriteLine(result.Output);
+			Assert.AreEqual(0,result.ExitCode,result.Output);
+			StringAssert.Contains(result.Output,"engine 1: Simple2D");
+			StringAssert.Contains(result.Output,"engine 2: Simple2D");
+			StringAssert.Contains(result.Output,"bitmap: 410x307, blank False");
+			StringAssert.Contains(result.Output,"start checks run: 1","The start failure is kept: the second wrapper does not check again.");
+			StringAssert.Contains(result.Output,"fallback messages: 2");
+			StringAssert.Contains(result.Output,"log lines: 1","Two wrappers fell back, and one line was written.");
+			StringAssert.Contains(result.Output,"message: The Wpf3D tooth chart could not start (InvalidOperationException: ");
+			StringAssert.Contains(result.Output,"A forced start failure.");
+			StringAssert.Contains(result.Output,"). Using Simple2D.");
+		}
+
+		[TestMethod]
+		public void LogLines_OfWpfRenderFailures_AreWrittenEvenAfterADirectXFallbackLine() {
+			SecondProcessResult result=SecondProcess.Run(120000,"log-kinds");
+			Console.WriteLine(result.Output);
+			Assert.AreEqual(0,result.ExitCode,result.Output);
+			StringAssert.Contains(result.Output,"log lines after a DirectX fallback: 1");
+			StringAssert.Contains(result.Output,"log lines after a WPF render failure: 2","The WPF render failure has its own logged-once line.");
+			StringAssert.Contains(result.Output,"log lines after a second WPF render failure: 2","And only one.");
+		}
+
+		///<summary>Waits on the calling thread, without pumping, until the condition holds or the time is up.</summary>
+		public static bool WaitUntil(Func<bool> funcCondition,int millisecondsTimeout) {
+			Stopwatch stopwatch=Stopwatch.StartNew();
+			while(stopwatch.ElapsedMilliseconds<millisecondsTimeout) {
+				if(funcCondition()) {
+					return true;
+				}
+				Thread.Sleep(5);
+			}
+			return funcCondition();
+		}
+
 		///<summary>Pumps the message loop of the calling thread until the condition holds or the time is up.</summary>
 		public static bool PumpUntil(Func<bool> funcCondition,int millisecondsTimeout) {
 			Stopwatch stopwatch=Stopwatch.StartNew();

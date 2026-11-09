@@ -37,6 +37,8 @@ namespace SparksToothChart {
 		private static List<string> _listFallbackMessages=new List<string>();
 		///<summary>Every fallback message of this process, counted on past the 1000 that _listFallbackMessages keeps.</summary>
 		private static int _countFallbackMessages;
+		///<summary>The fallback messages of this process handed to the ToothChart log.</summary>
+		private static int _countFallbackLinesWritten;
 		private static readonly object _lockFallback=new object();
 
 		///<summary></summary>
@@ -594,6 +596,7 @@ namespace SparksToothChart {
 					return;
 				}
 				_isFallbackLogged=true;
+				_countFallbackLinesWritten++;
 			}
 			try {
 				CodeBase.Logger.WriteLine(message,"ToothChart");
@@ -609,6 +612,14 @@ namespace SparksToothChart {
 		public static List<string> GetFallbackMessages() {
 			lock(_lockFallback) {
 				return new List<string>(_listFallbackMessages);
+			}
+		}
+
+		///<summary>How many fallback messages this process has handed to the ToothChart log (CodeBase.Logger, which writes nothing in a unit test
+		///process), for tests.</summary>
+		public static int GetCountFallbackLinesWritten() {
+			lock(_lockFallback) {
+				return _countFallbackLinesWritten;
 			}
 		}
 

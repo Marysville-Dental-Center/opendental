@@ -84,6 +84,102 @@ namespace ToothChartImageTests {
 		public static RenderThreadHold HoldRenderThread(ToothScene scene,int millisecondsTimeout) {
 			return new RenderThreadHold(scene,millisecondsTimeout);
 		}
+
+		///<summary>The scene of a chart scene at a size and colour set, prepared through the relay on a 2D wrapper (the data is the same in every
+		///engine), on an STA thread of its own.</summary>
+		public static ToothScene BuildScene(string sceneName,ChartSize chartSize) {
+			return StaRunner.Run(() => {
+				using(ToothChartWrapper wrapper=new ToothChartWrapper()) {
+					wrapper.Size=chartSize.Size;
+					ChartScenes.Prepare(CreateRelay(wrapper),ChartScenes.Get(sceneName),chartSize.ColorSet);
+					return ToothSceneBuilder.Build(wrapper.TcData);
+				}
+			});
+		}
+
+		///<summary>A borderless form off every screen but shown, for the tests that need a wrapper on screen (an interactive desktop session).</summary>
+		public static System.Windows.Forms.Form CreateOffscreenForm(Size sizeClient) {
+			System.Windows.Forms.Form form=new System.Windows.Forms.Form();
+			form.FormBorderStyle=System.Windows.Forms.FormBorderStyle.None;
+			form.ShowInTaskbar=false;
+			form.StartPosition=System.Windows.Forms.FormStartPosition.Manual;
+			form.Location=new Point(-32000,-32000);
+			form.ClientSize=sizeClient;
+			return form;
+		}
+	}
+
+	///<summary>Holds the render thread inside the first job of one kind (ToothChartRenderer.JobCheck or JobRender) that starts after it is made, through
+	///ToothChartRenderer.ActionJobStartForTests: WaitEntered says when the job is held, and Release lets it go on. Later jobs pass. Dispose removes
+	///the hook and releases the job.</summary>
+	public sealed class RenderJobHold:IDisposable {
+		private readonly ManualResetEvent _manualResetEventEntered=new ManualResetEvent(false);
+		private readonly ManualResetEvent _manualResetEventRelease=new ManualResetEvent(false);
+		private int _isTaken;
+
+		public RenderJobHold(string jobKind) {
+			ToothChartRenderer.ActionJobStartForTests=kind => {
+				if(kind!=jobKind || Interlocked.Exchange(ref _isTaken,1)==1) {
+					return;
+				}
+				_manualResetEventEntered.Set();
+				_manualResetEventRelease.WaitOne();
+			};
+		}
+
+		public bool WaitEntered(int millisecondsTimeout) {
+			return _manualResetEventEntered.WaitOne(millisecondsTimeout);
+		}
+
+		public void Release() {
+			_manualResetEventRelease.Set();
+		}
+
+		public void Dispose() {
+			ToothChartRenderer.ActionJobStartForTests=null;
+			_manualResetEventRelease.Set();
+		}
+	}
+
+	///<summary>The image host with its protected handle and paint calls opened for the tests.</summary>
+	public class TestImageHost:ToothChartImageHost {
+		public void DestroyHandleForTests() {
+			DestroyHandle();
+		}
+
+		///<summary>Makes the handle again after DestroyHandleForTests.</summary>
+		public void CreateHandleForTests() {
+			if(!IsHandleCreated) {
+				CreateHandle();
+			}
+		}
+
+		///<summary>Paints the control into g as WM_PAINT would.</summary>
+		public void PaintForTests(Graphics g) {
+			OnPaint(new System.Windows.Forms.PaintEventArgs(g,ClientRectangle));
+		}
+	}
+
+	///<summary>The wrapper with its protected handle calls opened for the tests.</summary>
+	public class TestWrapper:ToothChartWrapper {
+		public void DestroyHandleForTests() {
+			DestroyHandle();
+		}
+
+		///<summary>Makes the handles of the wrapper and its engine control again after DestroyHandleForTests.</summary>
+		public void CreateHandleForTests() {
+			if(!IsHandleCreated) {
+				CreateHandle();
+			}
+			foreach(System.Windows.Forms.Control control in Controls) {
+				if(!control.IsHandleCreated) {
+					control.CreateControl();
+				}
+				if(!control.IsHandleCreated) {
+					IntPtr intPtrHandle=control.Handle;
+				}
+			}
+		}
 	}
 
 	///<summary>See WpfCharts.HoldRenderThread. Dispose restores the timeout, frees the render thread and waits until the jobs queued in between

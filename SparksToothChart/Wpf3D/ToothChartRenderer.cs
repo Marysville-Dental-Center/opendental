@@ -147,6 +147,11 @@ namespace SparksToothChart.Wpf3D {
 		public static int SupersamplingForMeasurement=0;
 		///<summary>How many chart sizes keep their render targets.</summary>
 		public const int MaxSizesKept=3;
+		///<summary>For tests only, null in the program: runs on the render thread at the start of the start check's job (with JobCheck) and of
+		///each try of a render job (with JobRender), so a test can hold the render thread inside a job or make a job fail.</summary>
+		public static Action<string> ActionJobStartForTests;
+		public const string JobCheck="check";
+		public const string JobRender="render";
 		private static readonly object _lockInstance=new object();
 		private static ToothChartRenderer _instance;
 		private static int _countUnhandledExceptions;
@@ -228,6 +233,7 @@ namespace SparksToothChart.Wpf3D {
 				}
 				try {
 					RunAndWait(() => {
+						ActionJobStartForTests?.Invoke(JobCheck);
 						ToothScene sceneCheck=new ToothScene(new System.Drawing.Size(1,1),System.Drawing.Color.Black,false,1,1,new List<ToothSceneItem3D>(),
 							new List<ToothSceneItem2D>());
 						Render3DLayer(sceneCheck,null);
@@ -407,6 +413,7 @@ namespace SparksToothChart.Wpf3D {
 			Exception exceptionFirst=null;
 			for(int tryNum=1;tryNum<=2;tryNum++) {
 				try {
+					ActionJobStartForTests?.Invoke(JobRender);
 					ToothChartRenderResult result=RenderOnThread(scene,layerCache);
 					result.CountTries=tryNum;
 					return result;

@@ -100,6 +100,54 @@ namespace ToothChartImageTests {
 		}
 
 		[TestMethod]
+		public void SemiTransparentColours_ComeOutOfEveryBuilderColourPath_Opaque() {
+			//The chart scenes use opaque colours, so the test above cannot catch a colour path that keeps a colour's alpha. Here every 3D colour path
+			//of the builder gets a semi-transparent colour: surfaces, a crown (enamel groups), an unerupted tooth (half RGB), an implant with its
+			//crown, a pontic and the perio rows. ToothSceneItem3D keeps the colour as given, so only the builder can make it opaque.
+			Color colorHalf=Color.FromArgb(128,200,40,60);
+			Color colorQuarter=Color.FromArgb(64,30,160,90);
+			List<ToothScene> listScenes=StaRunner.Run(() => {
+				List<ToothScene> listScenesBuilt=new List<ToothScene>();
+				foreach(bool isPerio in new[] { false,true }) {
+					using(ToothChartWrapper wrapper=new ToothChartWrapper()) {
+						wrapper.Size=isPerio?ChartScenes.SizePerio.Size:ChartScenes.SizeModule.Size;
+						ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+						relay.SetSurfaceColors("3","MOD",colorHalf);
+						relay.SetCrown("8",colorQuarter);
+						relay.MoveTooth("1",0,0,0,0,-12,0);//unerupted
+						relay.SetSurfaceColors("1","MODBL",colorHalf);
+						relay.SetMissing("30");
+						relay.SetImplant("30",colorHalf);
+						relay.SetCrown("30",colorQuarter);
+						relay.SetMissing("12");
+						relay.SetPontic("12",colorHalf);
+						wrapper.TcData.PerioMode=isPerio;//as a DirectX chart in perio mode has it; the wrapper allows Wpf3D perio from TC-7
+						listScenesBuilt.Add(ToothSceneBuilder.Build(wrapper.TcData));
+					}
+				}
+				return listScenesBuilt;
+			});
+			Color colorHalfOpaque=Color.FromArgb(255,colorHalf);
+			Color colorQuarterOpaque=Color.FromArgb(255,colorQuarter);
+			Color colorHalfUnerupted=Color.FromArgb(255,colorHalf.R/2,colorHalf.G/2,colorHalf.B/2);
+			foreach(ToothScene toothScene in listScenes) {
+				foreach(ToothSceneItem3D item in toothScene.Items3D) {
+					Assert.AreEqual(255,item.Color.A,item.Source+" group "+item.GroupIndex+" "+item.GroupType);
+				}
+				//The colours themselves came through: the paths were taken.
+				Assert.IsTrue(toothScene.Items3D.Any(x => x.ToothId=="3" && x.Color.ToArgb()==colorHalfOpaque.ToArgb()),"The surfaces of 3.");
+				Assert.IsTrue(toothScene.Items3D.Any(x => x.ToothId=="8" && x.Color.ToArgb()==colorQuarterOpaque.ToArgb()),"The crown of 8.");
+				Assert.IsTrue(toothScene.Items3D.Any(x => x.ToothId=="implant" && x.Source.StartsWith("implant of 30") && x.Color.ToArgb()==colorHalfOpaque.ToArgb()),
+					"The implant of 30.");
+				Assert.IsTrue(toothScene.Items3D.Any(x => x.ToothId=="30" && x.Color.ToArgb()==colorQuarterOpaque.ToArgb()),"The crown on the implant of 30.");
+				Assert.IsTrue(toothScene.Items3D.Any(x => x.ToothId=="12" && x.Color.ToArgb()==colorHalfOpaque.ToArgb()),"The pontic 12.");
+				if(!toothScene.IsPerio) {
+					Assert.IsTrue(toothScene.Items3D.Any(x => x.ToothId=="1" && x.Color.ToArgb()==colorHalfUnerupted.ToArgb()),"The unerupted 1, at half RGB.");
+				}
+			}
+		}
+
+		[TestMethod]
 		public void UneruptedTeeth_AreHalfRgb_AndOpaque() {
 			ToothChartData tcData=CreateData(ChartScenes.SizeModule.Size);
 			tcData.ListToothGraphics["1"].ShiftO=-12;//as MoveTooth with shiftO -12 sets it

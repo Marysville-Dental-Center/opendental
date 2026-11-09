@@ -150,7 +150,9 @@ namespace SparksToothChart.Wpf3D {
 		///<summary>The index of the group in the model's ToothGraphic.Groups.</summary>
 		public readonly int GroupIndex;
 		public readonly ToothGroupType GroupType;
-		///<summary>Always opaque (alpha 255): the DirectX chart draws with blending off, and WPF does not sort transparent models.</summary>
+		///<summary>As the builder gives it, which is always opaque (alpha 255): the DirectX chart draws with blending off, and WPF does not sort
+		///transparent models. The item keeps the colour as given, so the scene tests guard the builder's colour paths (ToothSceneBuilder.GetGroupColor
+		///and GetImplantColor) instead of a clamp here.</summary>
 		public readonly Color Color;
 		///<summary>The specular value of the group's material, 0 to 1 (DirectX's GetGroupMaterial rule).</summary>
 		public readonly float Specular;
@@ -167,7 +169,7 @@ namespace SparksToothChart.Wpf3D {
 			ToothId=toothId;
 			GroupIndex=groupIndex;
 			GroupType=groupType;
-			Color=Color.FromArgb(255,color);
+			Color=color;
 			Specular=specular;
 			Transform=transform;
 			IsReversed=transform.Determinant3x3<0;

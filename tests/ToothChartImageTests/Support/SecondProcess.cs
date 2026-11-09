@@ -1,4 +1,5 @@
-// A second process for the WPF chart's tests (package TC-1): the determinism test's second render, the process-exit test and the cold render times.
+// A second process for the WPF chart's tests (package TC-1): the determinism test's second render, the process-exit test, the cold render times,
+// and the start and logging tests that need a fresh process.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.CodeDom.Compiler;
@@ -7,10 +8,14 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
+using System.Threading;
+using CodeBase;
 using Microsoft.CSharp;
 using OpenPmsDental;
 using SparksToothChart;
+using SparksToothChart.Wpf3D;
 
 namespace ToothChartImageTests {
 	///<summary>What a second process did.</summary>
@@ -124,7 +129,9 @@ namespace ToothChartImageTests {
 		///<summary>args[0] is the mode:
 		///"hash &lt;scene&gt;": renders the scene at 410x307 with the module colours and prints its pixel SHA-256.
 		///"exit": renders one image and returns at once, leaving the render thread alive; the process must still end.
-		///"times &lt;out file&gt;": measures the render times for O-19 (WpfTimings) and writes the report.</summary>
+		///"times &lt;out file&gt;": measures the render times for O-19 (WpfTimings) and writes the report.
+		///"start-fails", "start-interrupted" and "log-kinds": a start failure, an interrupted cold start and the logged-once lines, each in a fresh
+		///process because a start failure and a logged line are kept for the whole process (see their methods).</summary>
 		public static int Run(string[] args) {
 			try {
 				string mode=args.Length>0?args[0]:"";
@@ -142,6 +149,15 @@ namespace ToothChartImageTests {
 						string report=WpfTimings.Measure(true).GetReport();
 						File.WriteAllText(args[1],report,new UTF8Encoding(false));
 						Console.WriteLine(report);
+						return 0;
+					case "start-fails":
+						RunStartFails();
+						return 0;
+					case "start-interrupted":
+						RunStartInterrupted();
+						return 0;
+					case "log-kinds":
+						RunLogKinds();
 						return 0;
 					default:
 						Console.WriteLine("Unknown mode "+mode);
@@ -171,6 +187,103 @@ namespace ToothChartImageTests {
 			ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
 			ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 			return WpfCharts.Draw(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+		}
+
+		///<summary>"start-fails": the renderer's start check fails (a forced failure through ActionJobStartForTests) in a fresh process, so the WPF
+		///chart cannot start. Two wrappers ask for it; each falls back to Simple 2D. The start failure is kept, and one line is handed to the log.
+		///CodeBase's logger is told it runs in a unit test, so no log file is written.</summary>
+		private static void RunStartFails() {
+			ODBuild.IsUnitTest=true;
+			int countChecks=0;
+			ToothChartRenderer.ActionJobStartForTests=kind => {
+				if(kind==ToothChartRenderer.JobCheck) {
+					Interlocked.Increment(ref countChecks);
+					throw new InvalidOperationException("A forced start failure.");
+				}
+			};
+			using(ToothChartWrapper wrapper1=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size))
+			using(ToothChartWrapper wrapper2=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size)) {
+				Console.WriteLine("engine 1: "+wrapper1.Engine);
+				Console.WriteLine("engine 2: "+wrapper2.Engine);
+				ChartScenes.Prepare(WpfCharts.CreateRelay(wrapper1),ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+				using(Bitmap bitmap=wrapper1.GetBitmap()) {
+					Console.WriteLine("bitmap: "+bitmap.Width+"x"+bitmap.Height+", blank "+ChartImageCompare.DescribeBitmap(bitmap).IsBlank);
+				}
+			}
+			Console.WriteLine("start checks run: "+countChecks);
+			List<string> listMessages=ToothChartWrapper.GetFallbackMessages();
+			Console.WriteLine("fallback messages: "+listMessages.Count);
+			Console.WriteLine("log lines: "+ToothChartWrapper.GetCountFallbackLinesWritten());
+			foreach(string message in listMessages) {
+				Console.WriteLine("message: "+message);
+			}
+		}
+
+		///<summary>"start-interrupted": the caller of the cold start is interrupted (Thread.Interrupt, as an ODThread's finite Join can abort it)
+		///while it waits for the start check. That is the caller's matter, not a start failure: a later start works.</summary>
+		private static void RunStartInterrupted() {
+			ODBuild.IsUnitTest=true;
+			bool isInterrupted=false;
+			Exception exceptionOther=null;
+			using(RenderJobHold renderJobHold=new RenderJobHold(ToothChartRenderer.JobCheck)) {
+				Thread threadCaller=new Thread(() => {
+					try {
+						ToothChartRenderer.Instance.EnsureStarted();
+					}
+					catch(ThreadInterruptedException) {
+						isInterrupted=true;
+					}
+					catch(Exception ex) {
+						exceptionOther=ex;
+					}
+				});
+				threadCaller.IsBackground=true;
+				threadCaller.Start();
+				if(!renderJobHold.WaitEntered(60000)) {
+					throw new TimeoutException("The start check did not start.");
+				}
+				threadCaller.Interrupt();
+				if(!threadCaller.Join(60000)) {
+					throw new TimeoutException("The interrupted caller did not end.");
+				}
+			}
+			Console.WriteLine("caller interrupted: "+isInterrupted+(exceptionOther==null?"":" (other: "+exceptionOther+")"));
+			bool isStarted=false;
+			try {
+				ToothChartRenderer.Instance.EnsureStarted();
+				isStarted=true;
+			}
+			catch(Exception ex) {
+				Console.WriteLine("start failed: "+ex);
+			}
+			Console.WriteLine("started afterwards: "+isStarted);
+			using(ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size)) {
+				Console.WriteLine("engine: "+wrapper.Engine);
+			}
+		}
+
+		///<summary>"log-kinds": a DirectX fallback line first (as a computer without DirectX writes one), then two WPF render failures (the render
+		///thread held past a short timeout). The WPF render failure gets its own logged-once line.</summary>
+		private static void RunLogKinds() {
+			ODBuild.IsUnitTest=true;
+			MethodInfo methodInfoLog=typeof(ToothChartWrapper).GetMethod("LogFallbackOnce",BindingFlags.NonPublic|BindingFlags.Static,null,new[] { typeof(string) },null);
+			methodInfoLog.Invoke(null,new object[] { "The DirectX tooth chart could not start (a test line). Using OpenGL." });
+			Console.WriteLine("log lines after a DirectX fallback: "+ToothChartWrapper.GetCountFallbackLinesWritten());
+			using(ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size)) {
+				if(wrapper.Engine!=ToothChartEngine.Wpf3D) {
+					throw new InvalidOperationException("The chart fell back to "+wrapper.Engine+".");
+				}
+				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+				ChartScenes.Prepare(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+				using(WpfCharts.HoldRenderThread(WpfCharts.BuildScene(wrapper),250)) {
+					using(Bitmap bitmap=relay.GetBitmap()) {
+					}
+					Console.WriteLine("log lines after a WPF render failure: "+ToothChartWrapper.GetCountFallbackLinesWritten());
+					using(Bitmap bitmap=relay.GetBitmap()) {
+					}
+					Console.WriteLine("log lines after a second WPF render failure: "+ToothChartWrapper.GetCountFallbackLinesWritten());
+				}
+			}
 		}
 	}
 }

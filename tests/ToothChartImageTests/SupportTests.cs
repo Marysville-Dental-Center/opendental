@@ -74,6 +74,25 @@ namespace ToothChartImageTests {
 		}
 
 		[TestMethod]
+		public void Compare_ClusterAcrossBlockLines_FailsTheBlockRule() {
+			//A cluster of 25 different pixels on the corner of four 16x16 grid blocks is split into four small parts, and on a second grid offset by
+			//half a block (8,8) it crosses a line there too: the rule must look at every 16x16 window.
+			using Bitmap bitmapExpected=NewBitmap(410,307,Color.White);
+			foreach(Point pointCorner in new[] { new Point(126,94),new Point(28,20),new Point(395,290) }) {
+				using Bitmap bitmapCluster=NewBitmap(410,307,Color.White);
+				for(int y=pointCorner.Y;y<pointCorner.Y+5;y++) {
+					for(int x=pointCorner.X;x<pointCorner.X+5;x++) {
+						bitmapCluster.SetPixel(x,y,Color.Black);
+					}
+				}
+				ChartImageCompareResult result=ChartImageCompare.Compare(bitmapExpected,bitmapCluster);
+				Assert.AreEqual(25,result.CountDifferent);
+				Assert.AreEqual(25,result.CountDifferentInWorstBlock,"Every window: at "+pointCorner);
+				Assert.IsFalse(result.IsPass,"A cluster of 25 pixels across block lines at "+pointCorner+" fails: "+result);
+			}
+		}
+
+		[TestMethod]
 		public void Compare_DifferentSizes_Fail() {
 			using Bitmap bitmap1=NewBitmap(410,307,Color.White);
 			using Bitmap bitmap2=NewBitmap(500,370,Color.White);
