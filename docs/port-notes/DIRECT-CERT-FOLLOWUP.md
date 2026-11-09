@@ -517,3 +517,41 @@ Not tested here, as before: the machine key set and LocalMachine\My, and so the 
 - **An entry without a usable key that the tool did not import** takes the import's key, as before this round, and the tool does not
   record that certificate (`isPfxCertInStoreBefore`, and no record of its own), so it does not remove that key when the certificate is
   replaced. Unchanged.
+
+(Both done in the last round, below.)
+
+## Last round (branch `fix/dcfu3-1`, 2026-11-09)
+
+Cut from `fix/dcfu2-2` (e62d93b96). The owner's rule (2026-11-02, `docs/specs/db-connection-security.md` section 4.3): the tool gives
+BUILTIN\Users read access to the client certificate's private key, so it must never leave a key the users can read behind, and must never
+touch a key it did not create. The lead's decisions, the plan:
+
+1. **Which certificate of the `.pfx` is the client certificate** (`GetClientCertificate`, the check's and the import's): the candidates are
+   the certificates with a private key that are not certificate authorities (no Basic Constraints with CA=true); among them those whose
+   Extended Key Usage has clientAuth, or that have none, are preferred. Exactly one is the client certificate; none or several are refused
+   before anything is put into the store, naming what the file holds (subjects and thumbprints) and how to make a `.pfx` with one client
+   certificate. Tests: a `.pfx` that lists its CA certificate with its key first imports the client certificate and keeps that one's key;
+   one with two client certificates is refused; one with only a CA certificate is refused.
+2. **A usable store entry** (`KeepCertificateInStore`) also needs its key in the key set the import uses (the machine's for
+   LocalMachine\My, the user's for the test store), read from the certificate's key provider information. An entry whose key is in another
+   key set is added again with the import's key, and the warning says that the entry's earlier key was left untouched, and where it is.
+   Test: an entry of the test store whose key provider information names the other key set.
+3. **No key of a certificate of the store is opened** to compare key containers (`DeleteKeysNotInStore`, `DeleteKeysNotInUse`, and the
+   check of the entry's key set): each certificate's key container, provider and key set come from its `CERT_KEY_PROV_INFO_PROP_ID`
+   (`CertGetCertificateContextProperty`), never `PrivateKey`, `GetRSAPrivateKey` or `GetECDsaPrivateKey`. A certificate whose property
+   cannot be read uses an unknown key: no key is deleted then, and the result says so. Tests: a seam that sees every key the code opens;
+   a seam that makes a certificate's property unreadable.
+4. **A CAPI delete is checked** (`TryDeletePrivateKey`): `PersistKeyInCsp=false` and `Clear` do not report a failed `CRYPT_DELETEKEYSET`,
+   so afterwards the container must no longer open (`CspParameters` with `UseExistingKey`, in its key set) and its file must be gone; a
+   key still there is reported. Test with a seam that leaves the container.
+5. **The review's points:** the test store's `TestKey` reports a key whose certificate copy could not be made, instead of reading the
+   missing copy as nothing to delete; the spec's advice for a certificate the tool never removes is the `Remove-Item ... -DeleteKey`
+   command, not certlm.msc; this note says why `AddClientCertificate`'s catch lets the critical exceptions through where
+   `DirectCertificateImport.AddPrivate` catches everything.
+6. **An entry without a usable key that the tool did not import** and that takes the import's key is recorded as the tool's own
+   (`ImportPfx` says whether the store's entry uses the key the import stored; `PlanImportedCertificate` records it then), so that a later
+   replace removes it with the key the tool created. Test: through `DbSettingsRunner.Apply` with the test store (a seam), an import over
+   such an entry, then a save with the password, which removes the certificate and that key.
+
+Tests never touch this PC's real stores or keys: only the test store and throwaway keys of the current user, deleted afterwards and checked
+after every run. What only an administrator can check on LocalMachine\My goes into the launch checks.
