@@ -1,4 +1,5 @@
-// Tests of the image comparer, the bitmap facts the recordings write, the STA runner and the recorder's manifest (package TC-0).
+// Tests of the image comparer, the bitmap facts the recordings write, the STA runner and the recorder's manifest (package TC-0), and of the WPF
+// gate, recorder and gallery with a forced render failure (TC-1).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using OpenPmsDental;
 using OpenPmsDentalBusiness;
+using SparksToothChart;
 
 namespace ToothChartImageTests {
 	[TestClass]
@@ -321,6 +324,69 @@ namespace ToothChartImageTests {
 			}
 			Assert.AreEqual(LegacyRecorder.ListSmoothed.Count,Directory.GetFiles(folder,"*.png",SearchOption.AllDirectories).Length,
 				"The folder holds the listed pictures only.");
+		}
+
+		[TestMethod]
+		public void WpfRecorderGateAndGallery_ReportAForcedRenderFailure_AndNeverUseTheFallbackPicture() {
+			//A render that fails makes GetBitmap return the Simple 2D chart's image while Engine stays Wpf3D. The recorder must not write that image
+			//as the WPF baseline, the gate must not compare it (a 2D baseline would match it), and the gallery must not show it as the WPF chart's.
+			ChartScene scene=ChartScenes.Get("treatment-plan");
+			ChartSize chartSize=ChartScenes.SizeModule;
+			string prefixFailure=chartSize.FolderName+"/"+scene.Name+": the WPF render failed and GetBitmap returned the Simple 2D fallback: ";
+			string folder=NewTempFolder("tc1-forced-failure-");
+			string folderRecorded=Path.Combine(folder,"recorded");
+			string folderBaseline2D=Path.Combine(folder,"baseline-2d");
+			string folderGallery=Path.Combine(folder,"gallery");
+			string folderFailures=Path.Combine(folder,"failures");
+			try {
+				StaRunner.Run(() => {
+					using ToothChartWrapper wrapper=WpfCharts.CreateWrapper(chartSize.Size);
+					Assert.AreEqual(ToothChartEngine.Wpf3D,wrapper.Engine,string.Join("; ",ToothChartWrapper.GetFallbackMessages()));
+					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+					ChartScenes.Prepare(relay,scene,chartSize.ColorSet);
+					List<string> listFailures=new List<string>();
+					using(WpfCharts.HoldRenderThread(WpfCharts.BuildScene(wrapper),250)) {
+						//The recorder: the failure is reported and nothing is written.
+						Assert.AreEqual(WpfSceneOutcome.Skipped,WpfImageTests.CheckScene(wrapper,relay,scene,chartSize,true,folderRecorded,folderFailures,"test",
+							listFailures));
+						Assert.AreEqual(1,listFailures.Count,string.Join("\r\n",listFailures));
+						StringAssert.StartsWith(listFailures[0],prefixFailure);
+						StringAssert.Contains(listFailures[0],"TimeoutException");
+						Assert.AreEqual(ToothChartEngine.Wpf3D,wrapper.Engine,"A failed render leaves the engine at Wpf3D: only the message tells.");
+						Assert.IsFalse(Directory.Exists(folderRecorded),"Nothing was recorded.");
+						//The gate, with the fallback's own image as the baseline: compared, it would pass.
+						string pathBaseline2D=WpfCharts.GetPicturePath(folderBaseline2D,chartSize,scene);
+						Directory.CreateDirectory(Path.GetDirectoryName(pathBaseline2D));
+						using(Bitmap bitmap2D=relay.GetBitmap()) {
+							PngWriter.Save(bitmap2D,pathBaseline2D);
+						}
+						listFailures.Clear();
+						Assert.AreEqual(WpfSceneOutcome.Skipped,WpfImageTests.CheckScene(wrapper,relay,scene,chartSize,false,folderBaseline2D,folderFailures,"test",
+							listFailures));
+						Assert.AreEqual(1,listFailures.Count,string.Join("\r\n",listFailures));
+						StringAssert.StartsWith(listFailures[0],prefixFailure);
+						//The gallery: the cell is marked as failed, and no picture is saved.
+						WpfGalleryPicture picture=WpfImageTests.DrawGalleryPicture(wrapper,relay,scene,chartSize,folderGallery,false);
+						Assert.IsNotNull(picture.Failure,"The gallery cell is failed.");
+						StringAssert.StartsWith(picture.Failure,prefixFailure);
+						Assert.IsFalse(Directory.Exists(folderGallery),"No picture in the gallery.");
+					}
+					//The render thread answers again: the same scene is recorded without a failure, and it does not match the 2D picture.
+					listFailures.Clear();
+					Assert.AreEqual(WpfSceneOutcome.Recorded,WpfImageTests.CheckScene(wrapper,relay,scene,chartSize,true,folderRecorded,folderFailures,"test",
+						listFailures),string.Join("\r\n",listFailures));
+					Assert.AreEqual(0,listFailures.Count,string.Join("\r\n",listFailures));
+					string pathRecorded=WpfCharts.GetPicturePath(folderRecorded,chartSize,scene);
+					StringAssert.Contains(File.ReadAllText(Path.ChangeExtension(pathRecorded,".txt")),"Repeatable: yes");
+					Assert.AreEqual(WpfSceneOutcome.Compared,WpfImageTests.CheckScene(wrapper,relay,scene,chartSize,false,folderBaseline2D,folderFailures,"test",
+						listFailures));
+					Assert.AreEqual(1,listFailures.Count,"The WPF picture differs from the 2D one: "+string.Join("\r\n",listFailures));
+					Assert.IsNull(WpfImageTests.DrawGalleryPicture(wrapper,relay,scene,chartSize,folderGallery,false).Failure);
+				});
+			}
+			finally {
+				Directory.Delete(folder,true);
+			}
 		}
 
 		[TestMethod]

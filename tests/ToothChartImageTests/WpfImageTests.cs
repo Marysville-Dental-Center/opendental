@@ -16,7 +16,8 @@ using SparksToothChart.Wpf3D;
 namespace ToothChartImageTests {
 	///<summary>Every chart scene at every one of its sizes, drawn by the WPF chart through the relay and the wrapper's GetBitmap, against
 	///Baselines\wpf-net48\&lt;size&gt;\&lt;scene&gt;.png with the tolerances of section 7 (ChartImageCompare). A failing scene writes its expected,
-	///actual and diff images to %TEMP%\ToothChartImageTests\wpf-failures. The perio scenes come with TC-7.
+	///actual and diff images to %TEMP%\ToothChartImageTests\wpf-failures. The perio scenes come with TC-7. A picture the WPF chart did not draw
+	///(the engine did not start, or a render failed and GetBitmap returned the Simple 2D fallback) fails and is never recorded or compared.
 	///
 	///Record the baselines (after a deliberate change of the drawing, in a commit that says why): set OPMS_RECORD_WPF_CHART=1 for a run of this
 	///assembly (optionally OPMS_RECORD_WPF_CHART_OUT=&lt;folder&gt;). Each PNG gets a .txt with its facts and pixel SHA-256, and a second render of
@@ -53,28 +54,12 @@ namespace ToothChartImageTests {
 					using ToothChartWrapper wrapper=WpfCharts.CreateWrapper(chartSize.Size);
 					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 					foreach(ChartScene scene in WpfCharts.GetChartScenes().Where(x => ChartScenes.GetSizes(x).Contains(chartSize))) {
-						string pathPng=WpfCharts.GetPicturePath(folderBaseline,chartSize,scene);
-						string name=chartSize.FolderName+"/"+scene.Name;
-						using Bitmap bitmap=WpfCharts.Draw(relay,scene,chartSize.ColorSet);
-						if(wrapper.Engine!=ToothChartEngine.Wpf3D) {
-							listFailures.Add(name+": the chart fell back to "+wrapper.Engine+".");
-							continue;
+						WpfSceneOutcome wpfSceneOutcome=CheckScene(wrapper,relay,scene,chartSize,isRecording,folderBaseline,folderFailures,windows,listFailures);
+						if(wpfSceneOutcome==WpfSceneOutcome.Recorded) {
+							listWritten.Add(chartSize.FolderName+"/"+scene.Name);
 						}
-						if(isRecording) {
-							WriteBaseline(relay,bitmap,scene,chartSize,pathPng,windows,listFailures);
-							listWritten.Add(name);
-							continue;
-						}
-						if(!File.Exists(pathPng)) {
-							listFailures.Add(name+": no baseline (record with "+EnvRecord+"=1).");
-							continue;
-						}
-						using Bitmap bitmapBaseline=LoadBitmap(pathPng);
-						ChartImageCompareResult result=ChartImageCompare.Compare(bitmapBaseline,bitmap);
-						countCompared++;
-						if(!result.IsPass) {
-							string pathDiff=ChartImageCompare.WriteFailureImages(Path.Combine(folderFailures,chartSize.FolderName),scene.Name,bitmapBaseline,bitmap);
-							listFailures.Add(name+": "+result+" Images: "+pathDiff);
+						else if(wpfSceneOutcome==WpfSceneOutcome.Compared) {
+							countCompared++;
 						}
 					}
 				}
@@ -90,15 +75,61 @@ namespace ToothChartImageTests {
 			Assert.IsTrue(countCompared>=250,"Compared "+countCompared);
 		}
 
+		///<summary>One scene of the gate (ChartScenes_MatchTheWpfBaselines) or the recorder, at the wrapper's size: drawn through the relay, then
+		///recorded into folderBaseline (isRecording) or compared with its baseline there; what went wrong is added to listFailures. A picture the
+		///WPF chart did not draw is a failure and is neither recorded nor compared: the engine did not start (Engine is not Wpf3D), or a render
+		///failed and GetBitmap returned the Simple 2D chart's image (Engine stays Wpf3D; a fallback message tells). Otherwise the recorder would
+		///write a 2D picture as the WPF baseline, and every later 2D picture would match it.</summary>
+		public static WpfSceneOutcome CheckScene(ToothChartWrapper wrapper,ToothChartRelay relay,ChartScene scene,ChartSize chartSize,bool isRecording,
+			string folderBaseline,string folderFailures,string windows,List<string> listFailures)
+		{
+			string pathPng=WpfCharts.GetPicturePath(folderBaseline,chartSize,scene);
+			string name=chartSize.FolderName+"/"+scene.Name;
+			int countFallbacks=ToothChartWrapper.GetCountFallbackMessages();
+			using Bitmap bitmap=WpfCharts.Draw(relay,scene,chartSize.ColorSet);
+			if(wrapper.Engine!=ToothChartEngine.Wpf3D) {
+				listFailures.Add(name+": the chart fell back to "+wrapper.Engine+".");
+				return WpfSceneOutcome.Skipped;
+			}
+			string failureFallback=WpfCharts.GetFallbackFailure(name,countFallbacks);
+			if(failureFallback!=null) {
+				listFailures.Add(failureFallback);
+				return WpfSceneOutcome.Skipped;
+			}
+			if(isRecording) {
+				if(!WriteBaseline(relay,bitmap,scene,chartSize,pathPng,windows,listFailures)) {
+					return WpfSceneOutcome.Skipped;
+				}
+				return WpfSceneOutcome.Recorded;
+			}
+			if(!File.Exists(pathPng)) {
+				listFailures.Add(name+": no baseline (record with "+EnvRecord+"=1).");
+				return WpfSceneOutcome.Skipped;
+			}
+			using Bitmap bitmapBaseline=LoadBitmap(pathPng);
+			ChartImageCompareResult result=ChartImageCompare.Compare(bitmapBaseline,bitmap);
+			if(!result.IsPass) {
+				string pathDiff=ChartImageCompare.WriteFailureImages(Path.Combine(folderFailures,chartSize.FolderName),scene.Name,bitmapBaseline,bitmap);
+				listFailures.Add(name+": "+result+" Images: "+pathDiff);
+			}
+			return WpfSceneOutcome.Compared;
+		}
+
 		///<summary>The baseline PNG and its .txt. The state is drawn a second time first: a baseline is only worth comparing with if the same state
-		///gives the same pixels.</summary>
-		private static void WriteBaseline(ToothChartRelay relay,Bitmap bitmap,ChartScene scene,ChartSize chartSize,string pathPng,string windows,List<string> listFailures) {
-			Directory.CreateDirectory(Path.GetDirectoryName(pathPng));
+		///gives the same pixels. False, with nothing written, when that second render fell back to the 2D chart.</summary>
+		private static bool WriteBaseline(ToothChartRelay relay,Bitmap bitmap,ChartScene scene,ChartSize chartSize,string pathPng,string windows,List<string> listFailures) {
 			BitmapFacts bitmapFacts=ChartImageCompare.DescribeBitmap(bitmap);
 			string pixelsSecond;
+			int countFallbacks=ToothChartWrapper.GetCountFallbackMessages();
 			using(Bitmap bitmapSecond=relay.GetBitmap()) {
 				pixelsSecond=ChartImageCompare.DescribeBitmap(bitmapSecond).PixelsSha256;
 			}
+			string failureFallback=WpfCharts.GetFallbackFailure(chartSize.FolderName+"/"+scene.Name,countFallbacks);
+			if(failureFallback!=null) {
+				listFailures.Add(failureFallback);
+				return false;
+			}
+			Directory.CreateDirectory(Path.GetDirectoryName(pathPng));
 			if(pixelsSecond!=bitmapFacts.PixelsSha256) {
 				listFailures.Add(chartSize.FolderName+"/"+scene.Name+": a second render of the same state gave other pixels.");
 			}
@@ -122,6 +153,7 @@ namespace ToothChartImageTests {
 			listLines.Add("Framework: .NET Framework 4.8, "+(Environment.Is64BitProcess?"x64":"x86"));
 			listLines.Add("Windows: "+windows);
 			File.WriteAllLines(Path.ChangeExtension(pathPng,".txt"),listLines,new UTF8Encoding(false));
+			return true;
 		}
 
 		///<summary>manifest.txt: one tab-separated line per baseline, from the .txt files.</summary>
@@ -169,35 +201,58 @@ namespace ToothChartImageTests {
 					using ToothChartWrapper wrapper=WpfCharts.CreateWrapper(chartSize.Size);
 					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 					foreach(ChartScene scene in WpfCharts.GetChartScenes().Where(x => ChartScenes.GetSizes(x).Contains(chartSize))) {
-						using Bitmap bitmap=WpfCharts.Draw(relay,scene,chartSize.ColorSet);
-						WpfGalleryPicture picture=new WpfGalleryPicture();
-						picture.Scene=scene;
-						picture.ChartSize=chartSize;
-						picture.PathWpf="wpf/"+chartSize.FolderName+"/"+scene.Name+".png";
-						string pathPng=Path.Combine(folder,"wpf",chartSize.FolderName,scene.Name+".png");
-						Directory.CreateDirectory(Path.GetDirectoryName(pathPng));
-						PngWriter.Save(bitmap,pathPng);
-						string pathBaseline=WpfCharts.GetPicturePath(WpfCharts.BaselinesWpf,chartSize,scene);
-						picture.HasBaseline=File.Exists(pathBaseline) && IsApproved();
-						if(picture.HasBaseline) {
-							using Bitmap bitmapBaseline=LoadBitmap(pathBaseline);
-							picture.Comparison=ChartImageCompare.Compare(bitmapBaseline,bitmap);
-							if(picture.Comparison.CountDifferent>0 && bitmapBaseline.Size==bitmap.Size) {
-								picture.PathDiff="diff/"+chartSize.FolderName+"/"+scene.Name+".png";
-								string pathDiff=Path.Combine(folder,"diff",chartSize.FolderName,scene.Name+".png");
-								Directory.CreateDirectory(Path.GetDirectoryName(pathDiff));
-								using Bitmap bitmapDiff=ChartImageCompare.MakeDiffImage(bitmapBaseline,bitmap);
-								PngWriter.Save(bitmapDiff,pathDiff);
-							}
-						}
-						listPictures.Add(picture);
+						listPictures.Add(DrawGalleryPicture(wrapper,relay,scene,chartSize,folder,IsApproved()));
 					}
 				}
 			});
 			string note=GetGalleryNote(galleryName);
 			WpfGallery.Write(folder,galleryName,note,listPictures,timingReport,Environment.GetEnvironmentVariable("OPMS_CHART_GALLERY_COMMIT"));
-			Console.WriteLine("Gallery "+galleryName+" written to "+folder+": "+listPictures.Count+" WPF pictures.");
+			List<string> listFailures=listPictures.Where(x => x.Failure!=null).Select(x => x.Failure).ToList();
+			Console.WriteLine("Gallery "+galleryName+" written to "+folder+": "+(listPictures.Count-listFailures.Count)+" WPF pictures"
+				+(listFailures.Count>0?", "+listFailures.Count+" failed":"")+".");
 			Console.WriteLine(timingReport.GetReport());
+			Assert.AreEqual(0,listFailures.Count,listFailures.Count+" cells of the gallery are marked as failed, because the WPF chart did not draw "
+				+"them (the folder holds the gallery; tools\\New-ToothChartGallery.ps1 -NoTestRun zips it):\r\n"+string.Join("\r\n",listFailures));
+		}
+
+		///<summary>One cell of the gallery: the scene drawn through the relay and saved under folder\wpf, compared with its baseline when
+		///isApproved and it has one. A picture the WPF chart did not draw (as CheckScene) is not saved and not compared: the cell's Failure says
+		///why, and the gallery marks the cell as failed instead of showing the 2D chart's image as the WPF chart's.</summary>
+		public static WpfGalleryPicture DrawGalleryPicture(ToothChartWrapper wrapper,ToothChartRelay relay,ChartScene scene,ChartSize chartSize,string folder,
+			bool isApproved)
+		{
+			string name=chartSize.FolderName+"/"+scene.Name;
+			WpfGalleryPicture picture=new WpfGalleryPicture();
+			picture.Scene=scene;
+			picture.ChartSize=chartSize;
+			picture.PathWpf="wpf/"+chartSize.FolderName+"/"+scene.Name+".png";
+			int countFallbacks=ToothChartWrapper.GetCountFallbackMessages();
+			using Bitmap bitmap=WpfCharts.Draw(relay,scene,chartSize.ColorSet);
+			if(wrapper.Engine!=ToothChartEngine.Wpf3D) {
+				picture.Failure=name+": the chart fell back to "+wrapper.Engine+".";
+				return picture;
+			}
+			picture.Failure=WpfCharts.GetFallbackFailure(name,countFallbacks);
+			if(picture.Failure!=null) {
+				return picture;
+			}
+			string pathPng=Path.Combine(folder,"wpf",chartSize.FolderName,scene.Name+".png");
+			Directory.CreateDirectory(Path.GetDirectoryName(pathPng));
+			PngWriter.Save(bitmap,pathPng);
+			string pathBaseline=WpfCharts.GetPicturePath(WpfCharts.BaselinesWpf,chartSize,scene);
+			picture.HasBaseline=File.Exists(pathBaseline) && isApproved;
+			if(picture.HasBaseline) {
+				using Bitmap bitmapBaseline=LoadBitmap(pathBaseline);
+				picture.Comparison=ChartImageCompare.Compare(bitmapBaseline,bitmap);
+				if(picture.Comparison.CountDifferent>0 && bitmapBaseline.Size==bitmap.Size) {
+					picture.PathDiff="diff/"+chartSize.FolderName+"/"+scene.Name+".png";
+					string pathDiff=Path.Combine(folder,"diff",chartSize.FolderName,scene.Name+".png");
+					Directory.CreateDirectory(Path.GetDirectoryName(pathDiff));
+					using Bitmap bitmapDiff=ChartImageCompare.MakeDiffImage(bitmapBaseline,bitmap);
+					PngWriter.Save(bitmapDiff,pathDiff);
+				}
+			}
+			return picture;
 		}
 
 		[TestMethod]
@@ -282,5 +337,15 @@ namespace ToothChartImageTests {
 			}
 			return Environment.OSVersion.VersionString;
 		}
+	}
+
+	///<summary>What WpfImageTests.CheckScene did with a scene.</summary>
+	public enum WpfSceneOutcome {
+		///<summary>Neither recorded nor compared: the WPF chart did not draw it, or it has no baseline. The failures say which.</summary>
+		Skipped,
+		///<summary>Its baseline was written (the failures say when it is blank or a second render differs).</summary>
+		Recorded,
+		///<summary>Compared with its baseline (the failures say when it differs).</summary>
+		Compared,
 	}
 }

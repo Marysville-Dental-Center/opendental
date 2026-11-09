@@ -27,7 +27,7 @@ namespace ToothChartImageTests {
 		///<summary>On an MTA thread, as the dashboard's ODThread worker makes its chart (UserControlDashboard, DashToothChart).</summary>
 		private static void CheckMtaCaller() {
 			Assert.AreEqual(ApartmentState.MTA,Thread.CurrentThread.GetApartmentState());
-			int countMessages=ToothChartWrapper.GetFallbackMessages().Count;
+			int countMessages=ToothChartWrapper.GetCountFallbackMessages();
 			int countUnhandled=ToothChartRenderer.CountUnhandledExceptions;
 			using(ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizePrintout.Size)) {
 				Assert.AreEqual(ToothChartEngine.Wpf3D,wrapper.Engine,string.Join("; ",ToothChartWrapper.GetFallbackMessages()));
@@ -42,8 +42,8 @@ namespace ToothChartImageTests {
 				Assert.AreEqual(ToothChartEngine.Wpf3D,wrapper.Engine,"Still the WPF chart.");
 				Assert.AreEqual(DrawingMode.DirectX,wrapper.DrawMode,"DrawMode reads the stored value the WPF chart replaces.");
 			}
-			Assert.AreEqual(countMessages,ToothChartWrapper.GetFallbackMessages().Count,"Nothing was logged: "
-				+string.Join("; ",ToothChartWrapper.GetFallbackMessages().Skip(countMessages)));
+			Assert.AreEqual(0,ToothChartWrapper.GetFallbackMessagesSince(countMessages).Count,"Nothing was logged: "
+				+string.Join("; ",ToothChartWrapper.GetFallbackMessagesSince(countMessages)));
 			Assert.AreEqual(countUnhandled,ToothChartRenderer.CountUnhandledExceptions);
 			Assert.IsNull(System.Windows.Threading.Dispatcher.FromThread(Thread.CurrentThread),"No WPF object was made on the caller's thread.");
 			Assert.AreEqual(ApartmentState.STA,ToothChartRenderer.Instance.ThreadApartment,"The render thread is STA.");
@@ -52,7 +52,7 @@ namespace ToothChartImageTests {
 
 		[TestMethod]
 		public void RenderLoop_FiveHundredImages_WithoutAFailure() {
-			int countMessages=ToothChartWrapper.GetFallbackMessages().Count;
+			int countMessages=ToothChartWrapper.GetCountFallbackMessages();
 			int countUnhandled=ToothChartRenderer.CountUnhandledExceptions;
 			ChartSize[] arraySizes={ ChartScenes.SizeModule,ChartScenes.SizePrintout,ChartScenes.SizeSheetWide,ChartScenes.SizeSheetTall };
 			List<ToothChartWrapper> listWrappers=arraySizes.Select(x => WpfCharts.CreateWrapper(x.Size)).ToList();
@@ -83,8 +83,8 @@ namespace ToothChartImageTests {
 			finally {
 				listWrappers.ForEach(x => x.Dispose());
 			}
-			Assert.AreEqual(countMessages,ToothChartWrapper.GetFallbackMessages().Count,"No render failed: "
-				+string.Join("; ",ToothChartWrapper.GetFallbackMessages().Skip(countMessages)));
+			Assert.AreEqual(0,ToothChartWrapper.GetFallbackMessagesSince(countMessages).Count,"No render failed: "
+				+string.Join("; ",ToothChartWrapper.GetFallbackMessagesSince(countMessages)));
 			Assert.AreEqual(countUnhandled,ToothChartRenderer.CountUnhandledExceptions);
 		}
 
@@ -241,7 +241,7 @@ namespace ToothChartImageTests {
 
 		[TestMethod]
 		public void HostDisposed_WhileItsRenderIsInFlight_GetsNoCall() {
-			int countMessages=ToothChartWrapper.GetFallbackMessages().Count;
+			int countMessages=ToothChartWrapper.GetCountFallbackMessages();
 			int countUnhandled=ToothChartRenderer.CountUnhandledExceptions;
 			StaRunner.Run(() => {
 				ToothScene toothScene;
@@ -265,8 +265,8 @@ namespace ToothChartImageTests {
 				Assert.IsTrue(layerCache.HasImage,"The render did finish.");
 				Assert.AreEqual(0,toothChartImageHost.CountImagesReceived,"The disposed host got no image.");
 			});
-			Assert.AreEqual(countMessages,ToothChartWrapper.GetFallbackMessages().Count,"Nothing was logged: "
-				+string.Join("; ",ToothChartWrapper.GetFallbackMessages().Skip(countMessages)));
+			Assert.AreEqual(0,ToothChartWrapper.GetFallbackMessagesSince(countMessages).Count,"Nothing was logged: "
+				+string.Join("; ",ToothChartWrapper.GetFallbackMessagesSince(countMessages)));
 			Assert.AreEqual(countUnhandled,ToothChartRenderer.CountUnhandledExceptions,"Nothing was thrown on the render thread.");
 		}
 

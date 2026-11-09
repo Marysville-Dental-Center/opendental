@@ -23,6 +23,9 @@ namespace ToothChartImageTests {
 		///<summary>Null when there is no approved baseline.</summary>
 		public ChartImageCompareResult Comparison;
 		public bool HasBaseline;
+		///<summary>Null when the WPF chart drew the picture. Otherwise why it did not (the engine did not start, or the render failed and GetBitmap
+		///returned the Simple 2D fallback): no picture is saved, and the gallery marks the cell as failed.</summary>
+		public string Failure;
 	}
 
 	public static class WpfGallery {
@@ -82,8 +85,13 @@ namespace ToothChartImageTests {
 			}
 			int countWithBaseline=listPictures.Count(x => x.HasBaseline);
 			int countDifferent=listPictures.Count(x => x.Comparison!=null && !x.Comparison.IsPass);
-			sb.Append("<p>"+listPictures.Count+" WPF pictures; "+countWithBaseline+" have an approved baseline"+(countWithBaseline>0?", "+countDifferent
-				+" differ from it beyond the tolerance":"")+".</p>\r\n");
+			int countFailed=listPictures.Count(x => x.Failure!=null);
+			sb.Append("<p>"+(listPictures.Count-countFailed)+" WPF pictures; "+countWithBaseline+" have an approved baseline"+(countWithBaseline>0?", "
+				+countDifferent+" differ from it beyond the tolerance":"")+".</p>\r\n");
+			if(countFailed>0) {
+				sb.Append("<p class=\"warn\"><b>"+countFailed+" scenes failed</b>: the WPF chart did not draw them, so their cells show why instead of a "
+					+"picture.</p>\r\n");
+			}
 			List<ChartScene> listScenes=ChartScenes.GetAll();
 			sb.Append("<p><label>Group: <select id=\"group\"><option value=\"\">all</option>");
 			foreach(string group in listScenes.Select(x => x.Group).Distinct()) {
@@ -109,6 +117,9 @@ namespace ToothChartImageTests {
 					WpfGalleryPicture picture=listPictures.FirstOrDefault(x => x.Scene.Name==scene.Name && x.ChartSize.FolderName==chartSize.FolderName);
 					if(picture==null) {
 						sb.Append("<td class=\"cap\">"+(scene.Kind==ChartSceneKind.Perio?"Perio on the WPF chart comes with TC-7 (gallery G3).":"not drawn")+"</td><td></td>");
+					}
+					else if(picture.Failure!=null) {
+						sb.Append("<td class=\"warn\">failed: "+WebUtility.HtmlEncode(picture.Failure)+"</td><td class=\"cap\">not compared</td>");
 					}
 					else {
 						AppendImageCell(sb,folder,picture.PathWpf,chartSize,"missing");
