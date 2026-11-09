@@ -152,14 +152,8 @@ namespace NoHqTests {
 		}
 		#endregion Gates and telemetry
 
-		#region EHR
-		[TestMethod]
-		public void Ehr_ReflectionHooksAreGone() {
-			Assert.AreEqual(0,EhrCodes.Listt.Count);
-			Assert.AreEqual("",EhrSummaryCcds.GetEhrResource("CCD"));
-			Assert.AreEqual("",EhrSummaryCcds.GetEhrResource("CCR"));
-		}
-		#endregion EHR
+		//The EHR.dll hooks: tests/EhrTests/NoEhrDllTests.cs (package EHR-0 of docs/specs/ehr-rebuild-plan.md). Its source scan replaced
+		//Ehr_ReflectionHooksAreGone, whose assertions (an empty code list, empty CCD and CCR stylesheets) the open rebuilds EHR-2 and EHR-3 make false.
 
 		#region Vendor neutrality
 		[TestMethod]
