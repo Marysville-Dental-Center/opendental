@@ -115,197 +115,6 @@ namespace OpenPmsDental {
 			sheetDrawingJob.DrawFieldGrid(field,sheet,g,gx,dataSet,stmt,medLab,isPrinting,pat,patGuar,scaleMS);
 		}
 
-		public static void DrawProcsGraphics(List<Procedure> procList,ToothChartRelay toothChartRelay,List<ToothInitial> toothInitialList,bool isInPatientDashboard
-			,Patient patCur=null,List<Appointment> listAppts=null) 
-		{
-			//this method must also stay in OD.exe
-			Procedure proc;
-			string[] teeth;
-			List<long> listCurProvNums=toothChartRelay.GetPertinentProvNumsForToothColorPref(Security.CurUser,patCur,listAppts);
-			for(int i=0;i<procList.Count;i++) {
-				proc=procList[i];
-				//if(proc.ProcStatus!=procStat) {
-				//  continue;
-				//}
-				if(proc.HideGraphics) {
-					continue;
-				}
-				if(ProcedureCodes.GetProcCode(proc.CodeNum).PaintType==ToothPaintingType.Extraction && (
-					proc.ProcStatus==ProcStat.C
-					|| proc.ProcStatus==ProcStat.EC
-					|| proc.ProcStatus==ProcStat.EO
-					)) {
-					continue;//prevents the red X. Missing teeth already handled.
-				}
-				ProcedureCode procCode = ProcedureCodes.GetProcCode(proc.CodeNum);
-				bool doApplyColorPref=isInPatientDashboard && toothChartRelay.DoesToothColorPrefApply(listCurProvNums,proc.ProvNum);
-				toothChartRelay.GetToothColors(procCode,proc.ProcStatus,doApplyColorPref,out Color cDark,out Color cLight);
-				switch(ProcedureCodes.GetProcCode(proc.CodeNum).PaintType) {
-					case ToothPaintingType.BridgeDark:
-						if(ToothInitials.ToothIsMissingOrHidden(toothInitialList,proc.ToothNum)) {
-							toothChartRelay.SetPontic(proc.ToothNum,cDark);
-						}
-						else {
-							toothChartRelay.SetCrown(proc.ToothNum,cDark);
-						}
-						break;
-					case ToothPaintingType.BridgeLight:
-						if(ToothInitials.ToothIsMissingOrHidden(toothInitialList,proc.ToothNum)) {
-							toothChartRelay.SetPontic(proc.ToothNum,cLight);
-						}
-						else {
-							toothChartRelay.SetCrown(proc.ToothNum,cLight);
-						}
-						break;
-					case ToothPaintingType.CrownDark:
-						toothChartRelay.SetCrown(proc.ToothNum,cDark);
-						break;
-					case ToothPaintingType.CrownLight:
-						toothChartRelay.SetCrown(proc.ToothNum,cLight);
-						break;
-					case ToothPaintingType.DentureDark:
-						if(proc.Surf=="U") {
-							teeth=new string[14];
-							for(int t=0;t<14;t++) {
-								teeth[t]=(t+2).ToString();
-							}
-						}
-						else if(proc.Surf=="L") {
-							teeth=new string[14];
-							for(int t=0;t<14;t++) {
-								teeth[t]=(t+18).ToString();
-							}
-						}
-						else {
-							teeth=proc.ToothRange.Split(new char[] { ',' });
-						}
-						for(int t=0;t<teeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(toothInitialList,teeth[t])) {
-								toothChartRelay.SetPontic(teeth[t],cDark);
-							}
-							else {
-								toothChartRelay.SetCrown(teeth[t],cDark);
-							}
-						}
-						break;
-					case ToothPaintingType.DentureLight:
-						if(proc.Surf=="U") {
-							teeth=new string[14];
-							for(int t=0;t<14;t++) {
-								teeth[t]=(t+2).ToString();
-							}
-						}
-						else if(proc.Surf=="L") {
-							teeth=new string[14];
-							for(int t=0;t<14;t++) {
-								teeth[t]=(t+18).ToString();
-							}
-						}
-						else {
-							teeth=proc.ToothRange.Split(new char[] { ',' });
-						}
-						for(int t=0;t<teeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(toothInitialList,teeth[t])) {
-								toothChartRelay.SetPontic(teeth[t],cLight);
-							}
-							else {
-								toothChartRelay.SetCrown(teeth[t],cLight);
-							}
-						}
-						break;
-					case ToothPaintingType.Extraction:
-						toothChartRelay.SetBigX(proc.ToothNum,cDark);
-						break;
-					case ToothPaintingType.FillingDark:
-						toothChartRelay.SetSurfaceColors(proc.ToothNum,proc.Surf,cDark);
-						break;
-					case ToothPaintingType.FillingLight:
-						toothChartRelay.SetSurfaceColors(proc.ToothNum,proc.Surf,cLight);
-						break;
-					case ToothPaintingType.Implant:
-						toothChartRelay.SetImplant(proc.ToothNum,cDark);
-						break;
-					case ToothPaintingType.PostBU:
-						toothChartRelay.SetBU(proc.ToothNum,cDark);
-						break;
-					case ToothPaintingType.RCT:
-						toothChartRelay.SetRCT(proc.ToothNum,cDark);
-						break;
-					case ToothPaintingType.RetainedRoot:
-						toothChartRelay.SetRetainedRoot(proc.ToothNum,cDark);
-						break;
-					case ToothPaintingType.Sealant:
-						toothChartRelay.SetSealant(proc.ToothNum,cDark);
-						break;
-					case ToothPaintingType.SpaceMaintainer:
-						if(ProcedureCodes.GetProcCode(proc.CodeNum).TreatArea==TreatmentArea.Tooth && proc.ToothNum!=""){
-							toothChartRelay.SetSpaceMaintainer(proc.ToothNum,cDark);
-						}
-						else if((ProcedureCodes.GetProcCode(proc.CodeNum).TreatArea==TreatmentArea.ToothRange && proc.ToothRange!="") 
-							|| (ProcedureCodes.GetProcCode(proc.CodeNum).AreaAlsoToothRange && proc.ToothRange!=""))
-						{
-							teeth=proc.ToothRange.Split(',');
-							for(int t=0;t<teeth.Length;t++) {
-								toothChartRelay.SetSpaceMaintainer(teeth[t],cDark);
-							}
-						}
-						else if(ProcedureCodes.GetProcCode(proc.CodeNum).TreatArea==TreatmentArea.Quad){
-							teeth=new string[0];
-							if(proc.Surf=="UR") {
-								teeth=new string[] {"4","5","6","7","8"};
-							}
-							if(proc.Surf=="UL") {
-								teeth=new string[] {"9","10","11","12","13"};
-							}
-							if(proc.Surf=="LL") {
-								teeth=new string[] {"20","21","22","23","24"};
-							}
-							if(proc.Surf=="LR") {
-								teeth=new string[] {"25","26","27","28","29"};
-							}							
-							for(int t=0;t<teeth.Length;t++) {//could still be length 0
-								toothChartRelay.SetSpaceMaintainer(teeth[t],cDark);
-							}
-						}
-						break;
-					case ToothPaintingType.Text:
-						toothChartRelay.SetText(proc.ToothNum,cDark,ProcedureCodes.GetProcCode(proc.CodeNum).PaintText);
-						break;
-					case ToothPaintingType.Veneer:
-						toothChartRelay.SetVeneer(proc.ToothNum,cLight);
-						break;
-				}
-			}
-		}
-
-		public static void DrawOrthoHardware(List<OrthoHardware> listOrthoHardwares,ToothChartRelay toothChartRelay){
-			List<OrthoHardwareSpec> listOrthoHardwareSpecs=OrthoHardwareSpecs.GetDeepCopy();
-			List<OrthoHardwares.OrthoWire> listOrthoWires=new List<OrthoHardwares.OrthoWire>();//also used for elastics
-			for(int i=0;i<listOrthoHardwares.Count;i++){
-				OrthoHardwareSpec orthoHardwareSpec=listOrthoHardwareSpecs.Find(x=>x.OrthoHardwareSpecNum==listOrthoHardwares[i].OrthoHardwareSpecNum);
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Bracket){
-					toothChartRelay.SetBracket(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor);
-				}
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Wire){
-					listOrthoWires.AddRange(OrthoHardwares.GetWires(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor));
-				}
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Elastic){
-					listOrthoWires.AddRange(OrthoHardwares.GetElastics(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor));
-				}
-			}
-			for(int i=0;i<listOrthoWires.Count;i++){
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.BetweenBrackets){
-					toothChartRelay.AddOrthoWireBetweenBrackets(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ToothIDend,listOrthoWires[i].ColorDraw);
-				}
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.InBracket){
-					toothChartRelay.AddOrthoWireInBracket(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ColorDraw);
-				}
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.Elastic){
-					toothChartRelay.AddOrthoElastic(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ToothIDend,listOrthoWires[i].ColorDraw);
-				}
-			}
-		}
-
 		///<summary>Generates an Image of the ToothChart.  Set isForSheet=true for dimensions and colors appropriate for Sheets, false for dimensions and colors appropriate for display in Patient Dashboard (matches dimensions for .</summary>
 		public static Image GetToothChartHelper(long patNum,bool showCompleted,TreatPlan treatPlan=null,List<Procedure> listProceduresFilteredOverride=null
 			,bool isInPatientDashboard=false,Patient patCur=null,List<Appointment> listAppts=null) 
@@ -326,12 +135,7 @@ namespace OpenPmsDental {
 			ToothChartRelay toothChartRelay= new ToothChartRelay(false);
 			toothChartRelay.SetToothChartWrapper(toothChartWrapper);
 			toothChartWrapper.Size=new Size(width,height);
-			toothChartWrapper.UseHardware=ComputerPrefs.LocalComputer.GraphicsUseHardware;
-			toothChartWrapper.PreferredPixelFormatNumber=ComputerPrefs.LocalComputer.PreferredPixelFormatNum;
-			toothChartWrapper.DeviceFormat=new SparksToothChart.ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
-			toothChartWrapper.DrawMode=ComputerPrefs.LocalComputer.GraphicsSimple;
-			ComputerPrefs.LocalComputer.PreferredPixelFormatNum=toothChartWrapper.PreferredPixelFormatNumber;
-			ComputerPrefs.Update(ComputerPrefs.LocalComputer);
+			ToothChartRelay.ApplyComputerSettings(toothChartWrapper,ToothChartSettingsUse.StoredMode);
 			formOldBitmap=new Form();
 			formOldBitmap.FormBorderStyle=FormBorderStyle.None;
 			formOldBitmap.Size=new Size(width,height);
@@ -344,46 +148,7 @@ namespace OpenPmsDental {
 			toothChartRelay.ResetTeeth();
 			toothChartRelay.SetOrthoMode(false);
 			List<ToothInitial> toothInitialList=patNum==0?new List<ToothInitial>():ToothInitials.GetPatientData(patNum);
-			//first, primary.  That way, you can still set a primary tooth missing afterwards.
-			for(int i=0;i<toothInitialList.Count;i++) {
-				if(toothInitialList[i].InitialType==ToothInitialType.Primary) {
-					toothChartRelay.SetPrimary(toothInitialList[i].ToothNum);
-				}
-			}
-			for(int i=0;i<toothInitialList.Count;i++) {
-				switch(toothInitialList[i].InitialType) {
-					case ToothInitialType.Missing:
-						toothChartRelay.SetMissing(toothInitialList[i].ToothNum);
-						break;
-					case ToothInitialType.Hidden:
-						toothChartRelay.SetHidden(toothInitialList[i].ToothNum);
-						break;
-					case ToothInitialType.Rotate:
-						toothChartRelay.MoveTooth(toothInitialList[i].ToothNum,toothInitialList[i].Movement,0,0,0,0,0);
-						break;
-					case ToothInitialType.TipM:
-						toothChartRelay.MoveTooth(toothInitialList[i].ToothNum,0,toothInitialList[i].Movement,0,0,0,0);
-						break;
-					case ToothInitialType.TipB:
-						toothChartRelay.MoveTooth(toothInitialList[i].ToothNum,0,0,toothInitialList[i].Movement,0,0,0);
-						break;
-					case ToothInitialType.ShiftM:
-						toothChartRelay.MoveTooth(toothInitialList[i].ToothNum,0,0,0,toothInitialList[i].Movement,0,0);
-						break;
-					case ToothInitialType.ShiftO:
-						toothChartRelay.MoveTooth(toothInitialList[i].ToothNum,0,0,0,0,toothInitialList[i].Movement,0);
-						break;
-					case ToothInitialType.ShiftB:
-						toothChartRelay.MoveTooth(toothInitialList[i].ToothNum,0,0,0,0,0,toothInitialList[i].Movement);
-						break;
-					case ToothInitialType.Drawing:
-						toothChartRelay.AddDrawingSegment(toothInitialList[i].Copy());
-						break;
-					case ToothInitialType.Text:
-						toothChartRelay.AddText(toothInitialList[i].GetTextString(), toothInitialList[i].GetTextPoint(), toothInitialList[i].ColorDraw, toothInitialList[i].ToothInitialNum);
-						break;
-				}
-			}
+			ToothChartPainter.PaintSheetToothInitials(toothChartRelay,toothInitialList);
 			//We passed in a list of procs we want to see on the toothchart.  Use that.
 			List<Procedure> listProceduresFiltered=new List<Procedure>();
 			if(listProceduresFilteredOverride!=null) {
@@ -395,9 +160,9 @@ namespace OpenPmsDental {
 			}
 			listProceduresFiltered.Sort(OpenPmsDentalBusiness.SheetPrinting.CompareProcListFiltered);
 			//Draw tooth chart
-			DrawProcsGraphics(listProceduresFiltered,toothChartRelay,toothInitialList,isInPatientDashboard,patCur,listAppts);
+			ToothChartPainter.PaintSheetProcs(toothChartRelay,listProceduresFiltered,toothInitialList,isInPatientDashboard,patCur,listAppts);
 			List<OrthoHardware> listOrthoHardwares=OrthoHardwares.GetPatientData(patNum);
-			DrawOrthoHardware(listOrthoHardwares,toothChartRelay);
+			ToothChartPainter.PaintSheetOrthoHardware(toothChartRelay,listOrthoHardwares);
 			toothChartWrapper.AutoFinish=true;
 			toothChartRelay.EndUpdate();
 			Image retVal=toothChartRelay.GetBitmap();

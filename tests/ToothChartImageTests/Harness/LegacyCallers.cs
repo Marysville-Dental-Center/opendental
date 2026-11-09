@@ -1,7 +1,8 @@
 // TEMPORARY (package TC-2): the chart code of the four callers as it was before TC-2's commit (1), so that their call logs could be recorded
-// from today's code. Every block between a "HARNESS-BEGIN <file>" and a "HARNESS-END" line is the program's code copied line for line (the
-// source test HarnessSourceTests checks it against the program file while the program still has it); around the blocks are only the fields
-// the copied code reads, named as in the callers, and the stand-ins for the controls it reads (check boxes, the plans grid, the exam combo).
+// from today's code. Every block between a "HARNESS-BEGIN <file>" and a "HARNESS-END" line is the program's code copied line for line (TC-2's
+// commit (0) checked each block against its program file with a source test, which commit (1) deleted with the code it moved); around the
+// blocks are only the fields the copied code reads, named as in the callers, and the stand-ins for the controls it reads (check boxes, the
+// plans grid, the exam combo).
 // The copied code runs against the ToothChartRelay below, which logs each draw call and asks the real relay for the colours. TC-2 deletes
 // this file after commit (2): the logs it recorded stay in CallLogs\ and every painter is compared with them.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.

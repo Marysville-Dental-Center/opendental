@@ -44,30 +44,56 @@ namespace ToothChartImageTests {
 		#region Today's code (the temporary harness)
 		[TestMethod]
 		public void ChartModule_TodaysCode_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_CHART,"harness",CallLogFixtures.GetChartModuleScenes(),x => x.Name,x => x.User,LegacyControlChart.Run);
+			CheckScenes(CallLogFixtures.CALLER_CHART,"harness",true,CallLogFixtures.GetChartModuleScenes(),x => x.Name,x => x.User,LegacyControlChart.Run);
 		}
 
 		[TestMethod]
 		public void TreatPlan_TodaysCode_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_TREAT,"harness",CallLogFixtures.GetTreatPlanScenes(),x => x.Name,x => x.User,LegacyControlTreat.Run);
+			CheckScenes(CallLogFixtures.CALLER_TREAT,"harness",true,CallLogFixtures.GetTreatPlanScenes(),x => x.Name,x => x.User,LegacyControlTreat.Run);
 		}
 
 		[TestMethod]
 		public void Sheet_TodaysCode_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_SHEET,"harness",CallLogFixtures.GetSheetScenes(),x => x.Name,x => x.User,LegacySheetPrinting.Run);
+			CheckScenes(CallLogFixtures.CALLER_SHEET,"harness",true,CallLogFixtures.GetSheetScenes(),x => x.Name,x => x.User,LegacySheetPrinting.Run);
 		}
 
 		[TestMethod]
 		public void BigChart_TodaysCode_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_BIG,"harness",CallLogFixtures.GetBigChartScenes(),x => x.Name,x => x.User,LegacyFormToothChartBig.Run);
+			CheckScenes(CallLogFixtures.CALLER_BIG,"harness",true,CallLogFixtures.GetBigChartScenes(),x => x.Name,x => x.User,LegacyFormToothChartBig.Run);
 		}
 		#endregion Today's code (the temporary harness)
 
-		///<summary>Runs every scene and compares its log with the committed one (or writes it when recording). Lists every scene that differs, with
-		///its first different line, and writes the call count of each scene to the test output.</summary>
-		private void CheckScenes<TScene>(string caller,string source,List<TScene> listScenes,Func<TScene,string> funcName,Func<TScene,CallLogUser> funcUser,
-			Func<TScene,CallLog> funcRun)
+		#region The painter
+		[TestMethod]
+		public void ChartModule_Painter_GivesTheCommittedLogs() {
+			CheckScenes(CallLogFixtures.CALLER_CHART,"painter",false,CallLogFixtures.GetChartModuleScenes(),x => x.Name,x => x.User,PainterCallers.RunChartModule);
+		}
+
+		[TestMethod]
+		public void TreatPlan_Painter_GivesTheCommittedLogs() {
+			CheckScenes(CallLogFixtures.CALLER_TREAT,"painter",false,CallLogFixtures.GetTreatPlanScenes(),x => x.Name,x => x.User,PainterCallers.RunTreatPlan);
+		}
+
+		[TestMethod]
+		public void Sheet_Painter_GivesTheCommittedLogs() {
+			CheckScenes(CallLogFixtures.CALLER_SHEET,"painter",false,CallLogFixtures.GetSheetScenes(),x => x.Name,x => x.User,PainterCallers.RunSheet);
+		}
+
+		[TestMethod]
+		public void BigChart_Painter_GivesTheCommittedLogs() {
+			CheckScenes(CallLogFixtures.CALLER_BIG,"painter",false,CallLogFixtures.GetBigChartScenes(),x => x.Name,x => x.User,PainterCallers.RunBigChart);
+		}
+		#endregion The painter
+
+		///<summary>Runs every scene and compares its log with the committed one, or writes it when recording and isRecorder (the code the logs are
+		///recorded from: today's code in the harness). Lists every scene that differs, with its first different line, and writes the call count of
+		///each scene to the test output.</summary>
+		private void CheckScenes<TScene>(string caller,string source,bool isRecorder,List<TScene> listScenes,Func<TScene,string> funcName,
+			Func<TScene,CallLogUser> funcUser,Func<TScene,CallLog> funcRun)
 		{
+			if(CallLogFiles.IsRecording && !isRecorder) {
+				Assert.Inconclusive(CallLogFiles.EnvRecord+"=1: the logs are being recorded from today's code, so "+source+" is not compared.");
+			}
 			CallLogFixtures.EnsureBuilt();
 			CallLogFixtures.SetCulture();
 			List<string> listProblems=new List<string>();
