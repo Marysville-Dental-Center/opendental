@@ -45,7 +45,9 @@
       transitive project references). The assemblies its references use still come along (reference resolution copies their
       dependencies), so each output folder holds the files it held; with the transitive references, the 27 test projects that reference
       the program would also get ODR and OpenPmsDentalDbSettings, which the program references as projects although its assembly does
-      not reference them.
+      not reference them. Packages are another matter: NuGet gives a project the packages of every project it references, all the way
+      down, and this switch does not change that. So a test project names no package that the projects it references bring (S2-1 of
+      the .NET 10 move): it compiles against them and copies them, as it copied the same files of "Required dlls" before.
     -->
     <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
   </PropertyGroup>

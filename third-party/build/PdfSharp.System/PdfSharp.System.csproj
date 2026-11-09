@@ -14,14 +14,10 @@
     <DefineConstants>TRACE;$(PdfSharpNetStandard20Symbols);$(PdfSharpUpstreamConstants)</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Extensions.Logging.Abstractions">
-      <HintPath>..\..\..\Required dlls\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
-    </Reference>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="System.Memory" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Memory">
-      <HintPath>..\..\..\Required dlls\System.Memory.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <!-- Upstream: every .cs file of the project folder. -->

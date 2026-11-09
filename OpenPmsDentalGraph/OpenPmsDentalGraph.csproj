@@ -24,10 +24,8 @@
     <Reference Include="MySqlConnector">
       <HintPath>..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
-    </Reference>
+    <!-- Newtonsoft.Json, the version of Directory.Packages.props. -->
+    <PackageReference Include="Newtonsoft.Json" />
     <Reference Include="PresentationCore" />
     <Reference Include="System" />
     <Reference Include="System.Core" />

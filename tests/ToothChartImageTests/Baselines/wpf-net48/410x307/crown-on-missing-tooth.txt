@@ -6,8 +6,10 @@ Colours: Module
 Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
 Bitmap: 410x307 Format24bppRgb
 Alpha: every alpha is 255 (format without an alpha channel)
-Colours in the picture: 3412
-Pixels SHA-256: 2762a62d915d0cc743e6ff5e2e2d2df922578fc260ee5cf64d0aa3cca4dc4b30
+Colours in the picture: 3410
+Pixels SHA-256: 6ad5ab43710a4cab5b40e23daf1e1996a15bc15c8d22358bd0b7342088181864
 Repeatable: yes (a second GetBitmap gave the same pixels)
 Framework: .NET Framework 4.8, x86
 Windows: build 26300.9711 (26H2)
+Fresh render: yes (both layers drawn again without the layer cache gave the same pixels)
+Screen DPI seen by the test host: 96

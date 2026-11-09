@@ -44,6 +44,9 @@ namespace ToothChartImageTests {
 				catch(Exception ex) {
 					exceptionDispatchInfo=ExceptionDispatchInfo.Capture(ex);
 				}
+				finally {
+					ShutDownDispatcherOfThread();
+				}
 			});
 			thread.SetApartmentState(apartmentState);
 			thread.IsBackground=true;
@@ -51,6 +54,22 @@ namespace ToothChartImageTests {
 			thread.Join();
 			exceptionDispatchInfo?.Throw();
 			return result;
+		}
+
+		///<summary>Shuts down this thread's WPF Dispatcher, when the action made one (a live view's ElementHost), on the thread itself before it ends, so
+		///WPF releases its per-thread COM objects (the text services of a WPF window that had the keyboard focus) in their own apartment. Left to the
+		///end of the process, after the STA thread is gone, TextServicesContext's shutdown can throw InvalidComObjectException and end the test host.</summary>
+		private static void ShutDownDispatcherOfThread() {
+			System.Windows.Threading.Dispatcher dispatcher=System.Windows.Threading.Dispatcher.FromThread(Thread.CurrentThread);
+			if(dispatcher==null || dispatcher.HasShutdownStarted) {
+				return;
+			}
+			try {
+				dispatcher.InvokeShutdown();
+			}
+			catch(Exception ex) {
+				ex.ToString();//the thread ends anyway
+			}
 		}
 	}
 }

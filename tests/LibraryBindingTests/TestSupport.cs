@@ -6,9 +6,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Json;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mono.Cecil;
@@ -193,6 +195,204 @@ namespace LibraryBindingTests {
 		}
 	}
 
+	///<summary>A package a project's packages.lock.json names (type Direct, Transitive or CentralTransitive), with the version it resolved to.
+	///</summary>
+	internal class LockedPackage {
+		public string Id;
+		public string Version;
+	}
+
+	///<summary>The files of "Required dlls" that each package of the lock files brings (since S2-1 of the .NET 10 move, the packages whose files
+	///are byte for byte those of "Required dlls": docs/port-notes/S2-1.md, section 2), which NuGet copies to the output of a .NET Framework project
+	///that gets the package, used or not. Named per package, not made from its id: a package's files need not carry its id (SSH.NET brings
+	///Renci.SshNet.dll; S2-3's Microsoft.Web.WebView2 brings Microsoft.Web.WebView2.Core.dll, .WinForms.dll and .Wpf.dll and the native
+	///WebView2Loader.dll). GetRequiredDlls throws for a package in neither list and for a file "Required dlls" does not hold, so a package that a
+	///later package adds fails every check that reads the projects until it is mapped here, instead of dropping out of the binding checks.
+	///RequiredDllsTests checks every mapping against the package's own files in the offline folder.</summary>
+	internal static class PackageFiles {
+		///<summary>Package id (NuGet's ids ignore case) to its files of "Required dlls", at least one each.</summary>
+		private static readonly Dictionary<string,string[]> _dictRequiredDlls=new Dictionary<string,string[]>(StringComparer.OrdinalIgnoreCase) {
+			{ "BouncyCastle.Cryptography",new[] { "BouncyCastle.Cryptography.dll" } },
+			{ "Google.Apis",new[] { "Google.Apis.dll" } },
+			{ "Google.Apis.Auth",new[] { "Google.Apis.Auth.dll" } },
+			{ "Google.Apis.Core",new[] { "Google.Apis.Core.dll" } },
+			{ "Google.Apis.Gmail.v1",new[] { "Google.Apis.Gmail.v1.dll" } },
+			{ "MailKit",new[] { "MailKit.dll" } },
+			{ "MimeKit",new[] { "MimeKit.dll" } },
+			{ "Microsoft.Identity.Client",new[] { "Microsoft.Identity.Client.dll" } },
+			{ "Microsoft.IdentityModel.Abstractions",new[] { "Microsoft.IdentityModel.Abstractions.dll" } },
+			{ "Newtonsoft.Json",new[] { "Newtonsoft.Json.dll" } },
+			{ "SSH.NET",new[] { "Renci.SshNet.dll" } },
+			{ "Microsoft.Bcl.AsyncInterfaces",new[] { "Microsoft.Bcl.AsyncInterfaces.dll" } },
+			{ "Microsoft.Bcl.Cryptography",new[] { "Microsoft.Bcl.Cryptography.dll" } },
+			{ "Microsoft.Extensions.DependencyInjection.Abstractions",new[] { "Microsoft.Extensions.DependencyInjection.Abstractions.dll" } },
+			{ "Microsoft.Extensions.Logging.Abstractions",new[] { "Microsoft.Extensions.Logging.Abstractions.dll" } },
+			{ "System.Buffers",new[] { "System.Buffers.dll" } },
+			{ "System.Diagnostics.DiagnosticSource",new[] { "System.Diagnostics.DiagnosticSource.dll" } },
+			{ "System.Formats.Asn1",new[] { "System.Formats.Asn1.dll" } },
+			{ "System.IO.Pipelines",new[] { "System.IO.Pipelines.dll" } },
+			{ "System.Memory",new[] { "System.Memory.dll" } },
+			{ "System.Numerics.Vectors",new[] { "System.Numerics.Vectors.dll" } },
+			{ "System.Runtime.CompilerServices.Unsafe",new[] { "System.Runtime.CompilerServices.Unsafe.dll" } },
+			{ "System.Text.Encodings.Web",new[] { "System.Text.Encodings.Web.dll" } },
+			{ "System.Text.Json",new[] { "System.Text.Json.dll" } },
+			{ "System.Threading.Tasks.Extensions",new[] { "System.Threading.Tasks.Extensions.dll" } },
+			//The 26th identical package, in no lock file (nothing references it; S2-4 takes it out of "Required dlls"): mapped as the others,
+			//so a project that ever gets it is checked as before.
+			{ "System.Security.Cryptography.Pkcs",new[] { "System.Security.Cryptography.Pkcs.dll" } },
+		};
+
+		///<summary>Packages of the lock files that bring no file of "Required dlls", each with its reason. An entry here exempts the package from
+		///the binding checks: no file of it is counted for any project that gets it, so nothing of it is checked for its references, redirects or
+		///output. A new entry therefore needs the lead's agreement, and its reason is written next to it. RequiredDllsTests checks that no file of
+		///such a package, in any of its folders, has the name of a file of "Required dlls".</summary>
+		private static readonly Dictionary<string,string> _dictNoRequiredDlls=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
+			{ "Mono.Cecil","the tests' reader of assembly metadata (S1-6), whose files were never in Required dlls" },
+			{ "System.ValueTuple","no assembly for .NET Framework 4.7.1 and later (lib\\net471\\_._): the framework's own (SystemValueTuple_ComesFromTheFramework)" },
+		};
+
+		///<summary>True for a package of the lock files that brings no file of "Required dlls".</summary>
+		public static bool BringsNoRequiredDlls(string packageId) {
+			return _dictNoRequiredDlls.ContainsKey(packageId);
+		}
+
+		///<summary>The files of "Required dlls" the package brings: none for one of _dictNoRequiredDlls. Throws for a package neither list knows,
+		///and for a mapping to a file "Required dlls" does not hold. where: the lock file, for the message.</summary>
+		public static string[] GetRequiredDlls(string packageId,string where) {
+			if(BringsNoRequiredDlls(packageId)) {
+				return new string[0];
+			}
+			string[] arrayFiles;
+			if(!_dictRequiredDlls.TryGetValue(packageId,out arrayFiles)) {
+				throw new InvalidOperationException(where+" names the package "+packageId+", which PackageFiles in tests\\LibraryBindingTests\\TestSupport.cs does not "
+					+"map: add the files of \"Required dlls\" it brings (or, if it brings none, the reason), so the binding checks cover it.");
+			}
+			CheckMapping(packageId,arrayFiles,where);
+			return arrayFiles;
+		}
+
+		///<summary>Throws unless the files are at least one and every one is in "Required dlls".</summary>
+		public static void CheckMapping(string packageId,string[] arrayFiles,string where) {
+			List<string> listMissing=arrayFiles.Where(x => !RequiredDlls.Files.ContainsKey(x)).ToList();
+			if(arrayFiles.Length==0 || listMissing.Count>0) {
+				throw new InvalidOperationException("PackageFiles maps the package "+packageId+" ("+where+") to "
+					+(arrayFiles.Length==0 ? "no file" : string.Join(", ",listMissing)+", which \"Required dlls\" does not hold")
+					+": every mapped package brings at least one of its files.");
+			}
+		}
+
+		///<summary>The packages of a packages.lock.json, each id and version once (an exe's lock file lists them again for win-x86). Throws for a
+		///package entry without a resolved version, so none is skipped.</summary>
+		public static List<LockedPackage> ReadLockFile(string pathLock) {
+			string text=File.ReadAllText(pathLock);
+			List<LockedPackage> listPackages=new List<LockedPackage>();
+			foreach(Match match in Regex.Matches(text,@"""([^""]+)""\s*:\s*\{\s*""type""\s*:\s*""(?:Direct|Transitive|CentralTransitive)""")) {
+				Match matchResolved=new Regex(@"\G(?:\s*,\s*""requested""\s*:\s*""[^""]*"")?\s*,\s*""resolved""\s*:\s*""([^""]+)""").Match(text,match.Index+match.Length);
+				if(!matchResolved.Success) {
+					throw new InvalidOperationException(RepoPaths.Relative(pathLock)+": the package "+match.Groups[1].Value+" has no resolved version where it was expected.");
+				}
+				string packageId=match.Groups[1].Value;
+				string version=matchResolved.Groups[1].Value;
+				if(!listPackages.Any(x => x.Id.Equals(packageId,StringComparison.OrdinalIgnoreCase) && x.Version.Equals(version,StringComparison.OrdinalIgnoreCase))) {
+					listPackages.Add(new LockedPackage { Id=packageId,Version=version });
+				}
+			}
+			return listPackages;
+		}
+
+		///<summary>The files the build copies from each package to a project's output, as the restore picked them in the project's
+		///project.assets.json: the runtime and native assets of the package in every target of the file, by "id/version" as the file names the
+		///package (NuGet's ids ignore case), each a path in the package's folder with '/' (lib/net462/System.Memory.dll). The SDK's
+		///ResolvePackageAssets copies a .NET Framework project's runtime assets of its target, the lib folder of the nearest framework the package
+		///has (lib\net4x for net48), and for an exe, whose target is win-x86, also its native assets (runtimes\win-x86\native). Read with the
+		///.NET Framework's JSON reader (JsonReaderWriterFactory), which gives each JSON member an element of its name, or, for a name that is no XML
+		///name (a target, "id/version", an asset's path), an element 'item' with the name in its attribute 'item'.</summary>
+		public static Dictionary<string,HashSet<string>> ReadCopiedAssets(string pathAssets) {
+			XElement xElementRoot;
+			using(XmlDictionaryReader xmlDictionaryReader=JsonReaderWriterFactory.CreateJsonReader(File.ReadAllBytes(pathAssets),XmlDictionaryReaderQuotas.Max)) {
+				xElementRoot=XElement.Load(xmlDictionaryReader);
+			}
+			XElement xElementTargets=GetJsonMember(xElementRoot,"targets");
+			if(xElementTargets==null || !xElementTargets.Elements().Any()) {
+				throw new InvalidOperationException(RepoPaths.Relative(pathAssets)+" has no targets.");
+			}
+			Dictionary<string,HashSet<string>> dictAssets=new Dictionary<string,HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+			foreach(XElement xElementLibrary in xElementTargets.Elements().SelectMany(x => x.Elements())) {
+				XElement xElementType=GetJsonMember(xElementLibrary,"type");
+				if(xElementType==null || xElementType.Value!="package") {
+					continue;//a project the project references
+				}
+				string key=GetJsonName(xElementLibrary);
+				HashSet<string> hashSetAssets;
+				if(!dictAssets.TryGetValue(key,out hashSetAssets)) {
+					hashSetAssets=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+					dictAssets[key]=hashSetAssets;
+				}
+				foreach(string section in new[] { "runtime","native" }) {
+					XElement xElementSection=GetJsonMember(xElementLibrary,section);
+					if(xElementSection!=null) {
+						hashSetAssets.UnionWith(xElementSection.Elements().Select(x => GetJsonName(x)));
+					}
+				}
+			}
+			return dictAssets;
+		}
+
+		///<summary>The JSON member's name of an element JsonReaderWriterFactory wrote: its 'item' attribute for a name that is no XML name, else
+		///the element's name.</summary>
+		private static string GetJsonName(XElement xElement) {
+			XAttribute xAttribute=xElement.Attribute("item");
+			return xAttribute!=null ? xAttribute.Value : xElement.Name.LocalName;
+		}
+
+		private static XElement GetJsonMember(XElement xElementObject,string name) {
+			return xElementObject.Elements().FirstOrDefault(x => GetJsonName(x)==name);
+		}
+	}
+
+	///<summary>The offline package folder the build restores from (nuget.config's %OPMS_NUGET_OFFLINE%): the variable's folder when it is set,
+	///else od-tools\nuget-packages in the repository's common git folder, where tools\Initialize-BuildEnvironment.ps1 points it for the lane;
+	///null when that folder is not there. Its packages are laid out as NuGet lays out its global folder: id\version\, in lower case.</summary>
+	internal static class OfflinePackages {
+		public static string Folder {
+			get {
+				string folder=Environment.GetEnvironmentVariable("OPMS_NUGET_OFFLINE");
+				if(string.IsNullOrWhiteSpace(folder)) {
+					string folderGit=GetCommonGitFolder();
+					folder=folderGit==null ? null : Path.Combine(folderGit,"od-tools","nuget-packages");
+				}
+				return folder!=null && Directory.Exists(folder) ? folder : null;
+			}
+		}
+
+		///<summary>The folder of the package's version in the offline folder (which must be there).</summary>
+		public static string GetPackageFolder(string packageId,string version) {
+			return Path.Combine(Folder,packageId.ToLowerInvariant(),version.ToLowerInvariant());
+		}
+
+		///<summary>git rev-parse --git-common-dir, without git: .git itself when it is a folder; for a worktree, whose .git is a file naming its
+		///own git folder, the folder its commondir file names.</summary>
+		private static string GetCommonGitFolder() {
+			string pathGit=Path.Combine(RepoPaths.Root,".git");
+			if(Directory.Exists(pathGit)) {
+				return pathGit;
+			}
+			if(!File.Exists(pathGit)) {
+				return null;
+			}
+			Match match=Regex.Match(File.ReadAllText(pathGit),@"^gitdir:\s*(.+?)\s*$",RegexOptions.Multiline);
+			if(!match.Success) {
+				return null;
+			}
+			string folderGit=Path.GetFullPath(Path.Combine(RepoPaths.Root,match.Groups[1].Value.Replace('/','\\')));
+			string pathCommonDir=Path.Combine(folderGit,"commondir");
+			if(!File.Exists(pathCommonDir)) {
+				return folderGit;
+			}
+			return Path.GetFullPath(Path.Combine(folderGit,File.ReadAllText(pathCommonDir).Trim().Replace('/','\\')));
+		}
+	}
+
 	internal class BindingRedirect {
 		public string Name;
 		public string Token;
@@ -281,9 +481,12 @@ namespace LibraryBindingTests {
 		///<summary>Ends with "Tests", the rule Directory.Build.targets uses for the shared test config.</summary>
 		public bool IsTest;
 		public bool AutoGeneratesRedirects;
-		///<summary>File names in "Required dlls" this project references (embedded interop types excluded) or copies to its output.</summary>
+		///<summary>File names in "Required dlls" this project references (embedded interop types excluded) or copies to its output: by a HintPath,
+		///or as the file of a package of its lock file (since S2-1 of the .NET 10 move, the packages whose files are the ones of "Required dlls",
+		///as PackageFiles maps them).</summary>
 		public List<string> ListRequiredDlls=new List<string>();
-		///<summary>Primary references into "Required dlls" that are copied to the output whether the code uses them or not.</summary>
+		///<summary>Primary references into "Required dlls" that are copied to the output whether the code uses them or not, and the files of the
+		///packages of its lock file, which NuGet copies to the output of a .NET Framework project used or not.</summary>
 		public List<string> ListPrimaryReferencesCopied=new List<string>();
 		///<summary>Files of "Required dlls" that None or Content items copy to the output (and to the output of every project that references this one).</summary>
 		public List<string> ListCopyItems=new List<string>();
@@ -318,11 +521,16 @@ namespace LibraryBindingTests {
 				if(_listProjects!=null) {
 					return _listProjects;
 				}
-				string slnf=RepoPaths.ReadText("OpenDental.Local.slnf");
-				_listProjects=Regex.Matches(slnf,@"""([^""]+\.csproj)""").Cast<Match>()
-					.Select(x => Read(RepoPaths.Combine(x.Groups[1].Value.Replace(@"\\",@"\"))))
-					.ToList();
+				_listProjects=ProjectPaths.Select(x => Read(x)).ToList();
 				return _listProjects;
+			}
+		}
+
+		///<summary>The full paths of the C# project files of OpenDental.Local.slnf, in its order.</summary>
+		public static List<string> ProjectPaths {
+			get {
+				string slnf=RepoPaths.ReadText("OpenDental.Local.slnf");
+				return Regex.Matches(slnf,@"""([^""]+\.csproj)""").Cast<Match>().Select(x => RepoPaths.Combine(x.Groups[1].Value.Replace(@"\\",@"\"))).ToList();
 			}
 		}
 
@@ -354,6 +562,10 @@ namespace LibraryBindingTests {
 					projectInfo.ListPrimaryReferencesCopied.Add(fileName);
 				}
 			}
+			foreach(string fileName in GetRequiredDllsOfPackages(projectInfo.Folder)) {
+				projectInfo.ListRequiredDlls.Add(fileName);
+				projectInfo.ListPrimaryReferencesCopied.Add(fileName);
+			}
 			foreach(ProjectItem projectItem in projectFile.GetItems("None").Concat(projectFile.GetItems("Content"))) {
 				string fileName=GetRequiredDllsFileName(projectItem.Include);
 				if(fileName!=null && projectItem.HasMetadata("CopyToOutputDirectory")) {
@@ -369,6 +581,25 @@ namespace LibraryBindingTests {
 			projectInfo.ConfigPath=Directory.GetFiles(projectInfo.Folder,"*.config")
 				.FirstOrDefault(x => new[] { "app.config","web.config" }.Contains(System.IO.Path.GetFileName(x).ToLowerInvariant()));
 			return projectInfo;
+		}
+
+		///<summary>The files of "Required dlls" that the packages of the project's packages.lock.json bring (every package the restore gives it for
+		///.NET Framework 4.8, its own, those of the projects it references and their dependencies), as PackageFiles maps them; it throws for a
+		///package it does not know, so none drops out of the checks.</summary>
+		private static List<string> GetRequiredDllsOfPackages(string folderProject) {
+			List<string> listFiles=new List<string>();
+			string pathLock=System.IO.Path.Combine(folderProject,"packages.lock.json");
+			if(!File.Exists(pathLock)) {
+				return listFiles;
+			}
+			foreach(LockedPackage lockedPackage in PackageFiles.ReadLockFile(pathLock)) {
+				foreach(string fileName in PackageFiles.GetRequiredDlls(lockedPackage.Id,RepoPaths.Relative(pathLock))) {
+					if(!listFiles.Contains(fileName,StringComparer.OrdinalIgnoreCase)) {
+						listFiles.Add(fileName);
+					}
+				}
+			}
+			return listFiles;
 		}
 
 		///<summary>The file name when the path points into "Required dlls" (..\Required dlls\X.dll, ..\..\Required dlls\X.dll), otherwise null.</summary>

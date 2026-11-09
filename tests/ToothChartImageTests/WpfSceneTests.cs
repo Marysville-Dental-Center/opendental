@@ -275,8 +275,10 @@ namespace ToothChartImageTests {
 			RectangleF rectMm=tcData.GetNumberRecMm("8",sizeLabel);
 			ToothSceneItem2D itemHighlight=toothScene.Items2D.First(x => x.Source=="highlight of 8");
 			PointF pointCorner=toothScene.ProjectToImage(ChartMatrix.Identity,rectMm.Left,rectMm.Top,0);
-			Assert.IsTrue(itemHighlight.Polygons[0].Any(x => Math.Abs(x.X-pointCorner.X)<0.001 && Math.Abs(x.Y-pointCorner.Y)<0.001),
-				"The box's corner is the projected corner of DirectX's box.");
+			//TC-3: snapped to the pixels DirectX fills, the pixels whose centres the projected box holds (the top-left rule).
+			PointF pointSnapped=new PointF((float)Math.Ceiling(pointCorner.X-0.5f),(float)Math.Ceiling(pointCorner.Y-0.5f));
+			Assert.IsTrue(itemHighlight.Polygons[0].Any(x => x==pointSnapped),
+				"The box's corner is the projected corner of DirectX's box, on the first pixel DirectX fills: "+pointCorner+" to "+pointSnapped);
 			ToothSceneItem2D itemNumber=toothScene.Items2D.First(x => x.Source=="number 8");
 			Assert.AreEqual(sizeText.Width,itemNumber.WidthPixels);
 			Assert.AreEqual(Color.Red.ToArgb(),itemNumber.Color.ToArgb(),"The selected number has the highlight colour.");
