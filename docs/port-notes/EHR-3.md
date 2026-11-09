@@ -348,6 +348,11 @@ Targeted runs (`run-tests.ps1 -Mode Targeted`, NoHqTests always included), after
   ReleaseFlowTests 119 passed and 1 skipped, none failed (`BuildIdFiles_AreAllInTheReleaseOutput` needs a Release output; the Release dry
   run, which archives the repository, was not run in this round: no file is added, so the staged list cannot change). No `ehr1_` or
   `ehr3_` database was left. The builds ran with `ImportDirectoryPackagesProps=false`, as below.
+- **Fix round 2** (`ehr/ehr3-3`): full lane build 0 errors, no warning in a file of this package; Targeted runs after it: EhrTests 129 of
+  129 (3 new), LibWebTests 65 of 65, PdfLibraryTests 41 of 41, S0FTests 29 of 29, AttributionTests 50 of 50, NoHqTests 58 of 58,
+  ReleaseFlowTests 119 passed and 1 skipped (`BuildIdFiles_AreAllInTheReleaseOutput`, as in fix round 1), none failed. No `ehr1_` or
+  `ehr3_` database was left. The builds ran with `ImportDirectoryPackagesProps=false`, as below. The Release dry run was not run again (no
+  file added).
 - **Release dry run** (`tools/Build-Release.ps1 -BuildLane <lane> -OutDir <scratch> -SkipInstaller`, Release|x86 through the lane): 81 files
   staged, the same 81 names as the script's allow-list (`-ListFiles`); `OpenPmsDentalBusiness.dll` grows by about 1.1 MB (the embedded
   stylesheets). The staged file list is unchanged.
