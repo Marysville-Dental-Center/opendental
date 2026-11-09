@@ -115,6 +115,10 @@ namespace LibraryUpdateTests {
 					"The file is empty");
 				AssertRefused(DirectCertificateImport.CheckPrivateFile("",pathPfx,directTestPki.Password,DateTime.UtcNow),"Enter the email address first");
 				AssertRefused(DirectCertificateImport.CheckPrivateFile("pat.q",pathPfx,directTestPki.Password,DateTime.UtcNow),"is not an email address");
+				//It says where the address is fixed: Edit Email Address's user name (the certificate window shows it read-only).
+				AssertRefused(DirectCertificateImport.CheckPrivateFile("pat.q",pathPfx,directTestPki.Password,DateTime.UtcNow),
+					"The Direct certificate is found by the user name: in Edit Email Address, enter the Direct address (name@domain) in Username or email address.");
+				Assert.AreEqual("",DirectCertificateImport.GetAddressError(" Pat Q <"+ADDRESS+"> "));
 				AssertRefused(DirectCertificateImport.CheckPrivateFile("pat q@hisp.example.test",pathPfx,directTestPki.Password,DateTime.UtcNow),"is not an email address");
 				//Another address's certificate: the message names the address and its domain, and lists what the file holds.
 				DirectCertificateResult directCertificateResultOther=DirectCertificateImport.CheckPrivateFile(ADDRESS,
@@ -242,6 +246,12 @@ namespace LibraryUpdateTests {
 					Assert.AreEqual("",directCertificateResultCheck.Error);
 					List<string> listReplaced=directCertificateResultCheck.ListDetailsReplaced.Select(x => x.Thumbprint).ToList();
 					CollectionAssert.AreEquivalent(new List<string> { issuedOld.Thumbprint,x509Certificate2Manual.Thumbprint },listReplaced);
+					//The question lists the file's certificate and both of the store's.
+					string question=DirectCertificateImport.GetReplaceQuestion(directCertificateResultCheck);
+					StringAssert.Contains(question,directCertificateResultCheck.ListDetails[0].DescribeShort());
+					StringAssert.Contains(question,issuedOld.Thumbprint);
+					StringAssert.Contains(question,x509Certificate2Manual.Thumbprint);
+					StringAssert.Contains(question,"Replace the certificates on this computer with the one in the file?");
 					List<string> listStoreBefore=directTestStores.GetThumbprints(directTestStores.NamePrivate);
 					//Not agreed (the user answered No, which imports nothing), or agreed for one of the two only: nothing changes.
 					AssertRefused(DirectCertificateImport.ImportPrivateFile(ADDRESS,pathNew,directTestPki.Password,null,DateTime.UtcNow),
@@ -268,8 +278,73 @@ namespace LibraryUpdateTests {
 					StringAssert.Contains(log,"EmailAddressNum 42");
 					StringAssert.Contains(log,issuedNew.Thumbprint);
 					StringAssert.Contains(log,issuedNew.DateTimeNotAfter.ToString("yyyy-MM-dd"));
-					StringAssert.Contains(log,"older certificates replaced: 2");
+					StringAssert.Contains(log,"certificates of the store replaced: 2");
 					Assert.IsFalse(log.Contains(ADDRESS) || log.Contains(DOMAIN) || log.Contains(directTestPki.Password),log);
+				}
+				finally {
+					DeleteImportedKeys(directTestStores);
+				}
+			}
+		}
+
+		///<summary>The store's certificate is not compared by date and may be the newer one: the store holds the renewed certificate and last year's
+		///file, still valid, is picked by mistake. The question calls neither older, lists both (the file's first), and warns before the Yes or No
+		///that the store's is valid longer; the details warn the same way. A file valid longer than the store's gets no warning. Nothing is
+		///replaced without the agreement, and nothing replaced at all needs no question.</summary>
+		[TestMethod]
+		public void CheckPrivateFile_TheQuestionShowsBothCertificatesAndWarnsWhenTheStoresIsValidLonger() {
+			using(DirectTestPki directTestPki=new DirectTestPki())
+			using(DirectTestStores directTestStores=new DirectTestStores()) {
+				try {
+					//The renewed certificate, imported here.
+					DirectTestPki.Issued issuedRenewed=directTestPki.Issue(ADDRESS,dateTimeOffsetNotBefore:DateTimeOffset.UtcNow.AddDays(-2),
+						dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(50));
+					DirectCertificateResult directCertificateResultRenewed=DirectCertificateImport.ImportPrivateFile(ADDRESS,
+						directTestPki.WritePfx("renewed.pfx",issuedRenewed,isCaIncluded:false),directTestPki.Password,null,DateTime.UtcNow);
+					Assert.IsTrue(directCertificateResultRenewed.IsImported,directCertificateResultRenewed.Error);
+					Assert.AreEqual("",DirectCertificateImport.GetReplaceQuestion(directCertificateResultRenewed),"Nothing replaced: no question.");
+					Assert.IsFalse(directCertificateResultRenewed.IsReplacedValidLonger());
+					//Last year's file, still valid for 10 days.
+					DirectTestPki.Issued issuedLastYear=directTestPki.Issue(ADDRESS,dateTimeOffsetNotBefore:DateTimeOffset.UtcNow.AddDays(-50),
+						dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(10));
+					string pathLastYear=directTestPki.WritePfx("last-year.pfx",issuedLastYear,isCaIncluded:false);
+					DirectCertificateResult directCertificateResultCheck=DirectCertificateImport.CheckPrivateFile(ADDRESS,pathLastYear,directTestPki.Password,DateTime.UtcNow);
+					Assert.AreEqual("",directCertificateResultCheck.Error,"Still valid: it can be imported, after asking.");
+					CollectionAssert.AreEqual(new List<string> { issuedRenewed.Thumbprint },directCertificateResultCheck.ListDetailsReplaced.Select(x => x.Thumbprint).ToList());
+					Assert.IsTrue(directCertificateResultCheck.IsReplacedValidLonger());
+					string warning=DirectCertificateImport.GetReplaceWarning(directCertificateResultCheck);
+					Assert.AreEqual("The certificate on this computer is valid longer than the one in the file. Replace it only if your Direct provider told you to.",
+						warning);
+					string question=DirectCertificateImport.GetReplaceQuestion(directCertificateResultCheck);
+					string describeFile=directCertificateResultCheck.ListDetails[0].DescribeShort();
+					string describeStore=directCertificateResultCheck.ListDetailsReplaced[0].DescribeShort();
+					foreach(string part in new[] { issuedLastYear.Subject,DirectCertificateImport.FormatDate(issuedLastYear.DateTimeNotAfter),issuedLastYear.Thumbprint }) {
+						StringAssert.Contains(describeFile,part);
+					}
+					StringAssert.StartsWith(question,"This computer's Direct certificate store already has a certificate for this address or its domain.");
+					Assert.IsFalse(question.ToLowerInvariant().Contains("older") || question.ToLowerInvariant().Contains("newer"),question);
+					int indexFile=question.IndexOf("In the file:\r\n"+describeFile,StringComparison.Ordinal);
+					int indexStore=question.IndexOf("On this computer now:\r\n"+describeStore,StringComparison.Ordinal);
+					int indexWarning=question.IndexOf(warning,StringComparison.Ordinal);
+					int indexAsk=question.IndexOf("Replace the certificate on this computer with the one in the file?",StringComparison.Ordinal);
+					Assert.IsTrue(indexFile>0 && indexStore>indexFile && indexWarning>indexStore && indexAsk>indexWarning,question);
+					StringAssert.Contains(question,"importing its .pfx or .p12 file again. No imports nothing.");
+					//No agreement, nothing replaced: the renewed certificate stays.
+					AssertRefused(DirectCertificateImport.ImportPrivateFile(ADDRESS,pathLastYear,directTestPki.Password,null,DateTime.UtcNow),"was not agreed to be replaced");
+					CollectionAssert.AreEqual(new List<string> { issuedRenewed.Thumbprint },directTestStores.GetThumbprints(directTestStores.NamePrivate));
+					Assert.AreEqual(issuedRenewed.Thumbprint,EmailMessages.GetCertFromPrivateStore(ADDRESS)?.Thumbprint);
+					//A file valid longer than the store's: the question shows both, without the warning.
+					DirectTestPki.Issued issuedLonger=directTestPki.Issue(ADDRESS,dateTimeOffsetNotBefore:DateTimeOffset.UtcNow.AddDays(-1),
+						dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(55));
+					DirectCertificateResult directCertificateResultLonger=DirectCertificateImport.CheckPrivateFile(ADDRESS,
+						directTestPki.WritePfx("longer.pfx",issuedLonger,isCaIncluded:false),directTestPki.Password,DateTime.UtcNow);
+					Assert.AreEqual("",directCertificateResultLonger.Error);
+					Assert.IsFalse(directCertificateResultLonger.IsReplacedValidLonger());
+					Assert.AreEqual("",DirectCertificateImport.GetReplaceWarning(directCertificateResultLonger));
+					string questionLonger=DirectCertificateImport.GetReplaceQuestion(directCertificateResultLonger);
+					StringAssert.Contains(questionLonger,"In the file:\r\n"+directCertificateResultLonger.ListDetails[0].DescribeShort());
+					StringAssert.Contains(questionLonger,"On this computer now:\r\n"+directCertificateResultLonger.ListDetailsReplaced[0].DescribeShort());
+					Assert.IsFalse(questionLonger.Contains(warning),questionLonger);
 				}
 				finally {
 					DeleteImportedKeys(directTestStores);
@@ -417,6 +492,15 @@ namespace LibraryUpdateTests {
 				+@"\s*listThumbprintsReplaceAllowed=directCertificateResultCheck\.ListDetailsReplaced\.Select\(x => x\.Thumbprint\)\.ToList\(\);",RegexOptions.Singleline),
 				"Yes before the thumbprints are allowed.");
 			Assert.IsTrue(textImport.IndexOf("MessageBoxButtons.YesNo",StringComparison.Ordinal)<textImport.IndexOf("DirectCertificateImport.ImportPrivateFile(",StringComparison.Ordinal));
+			//The question is the business layer's, which lists the file's certificate (subject, valid to, thumbprint) and the store's, names no age, and
+			//warns when the store's is valid longer (CheckPrivateFile_TheQuestionShowsBothCertificatesAndWarnsWhenTheStoresIsValidLonger); the
+			//details box warns the same way.
+			StringAssert.Contains(textImport,"string question=DirectCertificateImport.GetReplaceQuestion(directCertificateResultCheck);\n"
+				+"\t\t\t\tif(MessageBox.Show(this,question,Text,MessageBoxButtons.YesNo)!=DialogResult.Yes) {");
+			Assert.IsFalse(textWindow.ToLowerInvariant().Contains("older"),"The store's certificates are not compared by date.");
+			int indexDescribeCheck=textWindow.IndexOf("private string DescribeCheck(",StringComparison.Ordinal);
+			string textDescribeCheck=textWindow.Substring(indexDescribeCheck,textWindow.IndexOf("private void butImport_Click(",StringComparison.Ordinal)-indexDescribeCheck);
+			StringAssert.Contains(textDescribeCheck,"DirectCertificateImport.GetReplaceWarning(directCertificateResult)");
 			StringAssert.Contains(textImport,"SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,DirectCertificateImport.GetLogText(directCertificateResult,_emailAddressNum,isAnchor:false));");
 			StringAssert.Contains(textImport,"textPassword.Text=\"\";");
 			int indexAnchor=textWindow.IndexOf("private void butImportAnchor_Click(",StringComparison.Ordinal);
@@ -437,9 +521,27 @@ namespace LibraryUpdateTests {
 			Assert.IsFalse(ReadNormalized(@"OpenPmsDental\Forms\FormEmailCertRegister.resx").Contains("register an email certificate"));
 			string textAddress=ReadNormalized(@"OpenPmsDental\Forms\FormEmailAddressEdit.cs");
 			StringAssert.Contains(textAddress,"new FormEmailCertRegister(textUsername.Text.Trim(),_emailAddress.EmailAddressNum)");
+			//A user name that is not an e-mail address (a plain SMTP login) stops before the window opens, with a message that names the box where
+			//it is fixed: the window shows the address read-only.
+			Assert.IsTrue(Regex.IsMatch(textAddress,@"private void butRegisterCertificate_Click\(object sender,EventArgs e\) \{\s*"
+				+@"if\(textUsername\.Text\.Trim\(\)==""""\) \{\s*MsgBox\.Show\(this,""Enter the email address first\.""\);\s*return;\s*\}\s*"
+				+@"if\(DirectCertificateImport\.GetAddressError\(textUsername\.Text\.Trim\(\)\)!=""""\) \{[^}]*"
+				+@"MsgBox\.Show\(this,""The Direct certificate is found by the user name\. Enter the Direct address \(name@domain\) in Username or email address, then ""\s*"
+				+@"\+""click Certificate\.""\);\s*return;\s*\}\s*using FormEmailCertRegister formEmailCertRegister=new FormEmailCertRegister\("),
+				"The user name is checked as an address before the window opens.");
+			StringAssert.Contains(ReadNormalized(@"OpenPmsDental\Forms\FormEmailAddressEdit.designer.cs"),"this.label3.Text = \"Username or email address\";");
+			Assert.IsTrue(ReadNormalized(@"OpenPmsDental\Forms\FormEmailCertRegister.designer.cs").Contains("this.textEmailAddress.ReadOnly = true;"),
+				"Why the message names Edit Email Address's box.");
 			//The business layer: never Exportable; the machine key set and the users' read access on the Local Computer only.
 			string textBusiness=ReadNormalized(@"OpenPmsDentalBusiness\Email\DirectCertificateImport.cs");
 			Assert.IsFalse(textBusiness.Contains("X509KeyStorageFlags.Exportable"),"No key is imported exportable.");
+			//The question holds the new certificate's description, then the store's.
+			int indexQuestion=textBusiness.IndexOf("public static string GetReplaceQuestion(DirectCertificateResult directCertificateResult) {",StringComparison.Ordinal);
+			string textQuestion=textBusiness.Substring(indexQuestion,textBusiness.IndexOf("public static string GetReplaceWarning(",StringComparison.Ordinal)-indexQuestion);
+			Assert.IsTrue(textQuestion.IndexOf("directCertificateResult.ListDetails.Select(x => x.DescribeShort())",StringComparison.Ordinal)>0,"The file's certificate.");
+			Assert.IsTrue(textQuestion.IndexOf("directCertificateResult.ListDetailsReplaced.Select(x => x.DescribeShort())",StringComparison.Ordinal)
+				>textQuestion.IndexOf("directCertificateResult.ListDetails.Select(x => x.DescribeShort())",StringComparison.Ordinal),"Then the store's.");
+			Assert.IsFalse(textQuestion.ToLowerInvariant().Contains("older"));
 			StringAssert.Contains(textBusiness,"if(EmailMessages.CertStoreLocation==StoreLocation.LocalMachine) {\n\t\t\t\tx509KeyStorageFlags|=X509KeyStorageFlags.MachineKeySet;");
 			StringAssert.Contains(textBusiness,"x509Certificate2Collection.Import(byteArrayFile,password??\"\",X509KeyStorageFlags.EphemeralKeySet);");
 			Assert.IsTrue(Regex.IsMatch(textBusiness,@"if\(EmailMessages\.CertStoreLocation==StoreLocation\.LocalMachine\) \{\s*for\(int i=0;i<listAdding\.Count;i\+\+\) \{\s*try \{\s*GrantUsersReadToPrivateKey\(listAdding\[i\]\);"),
