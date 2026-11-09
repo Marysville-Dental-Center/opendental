@@ -42,6 +42,10 @@ namespace OpenPmsDental {
 				menuMain.Enabled=false;
 				butTimeSynch.Visible=false;
 				butEhrTriggers.Visible=false;
+				//Open Dental's provider key check was a licence gate that also kept these two from every user. This open build has no keys
+				//(docs/specs/ehr-rebuild-plan.md, section 5.1): the provider rows and the code system imports need Setup.
+				butProviderKeys.Visible=false;
+				butCodeImport.Visible=false;
 			}
 		}
 

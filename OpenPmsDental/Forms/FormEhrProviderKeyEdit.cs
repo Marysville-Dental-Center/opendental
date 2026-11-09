@@ -21,23 +21,34 @@ namespace OpenPmsDental {
 			textFName.Text=_keyCur.FName;
 		}
 
+		///<summary>Deleting a row needs the Setup permission (docs/specs/ehr-rebuild-plan.md, section 5.1). EhrProvKeys.DeleteChecked checks it again,
+		///turns the radiology procedures alert off when the last row goes, as before, and writes the Setup security log entry.</summary>
 		private void butDelete_Click(object sender,EventArgs e) {
 			if(_keyCur.IsNew) {
 				DialogResult=DialogResult.Cancel;
 				return;
 			}
+			if(!Security.IsAuthorized(EnumPermType.Setup)) {
+				return;
+			}
 			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Delete?")) {
 				return;
 			}
-			EhrProvKeys.Delete(_keyCur.EhrProvKeyNum);
-			//if the radiology proc alert is enabled and they just deleted the last ehrprovkey, disable the alert (OpenDentalService will stop alerting)
-			if(PrefC.GetBool(PrefName.IsAlertRadiologyProcsEnabled) && !EhrProvKeys.HasEhrKeys()) {
-				Prefs.UpdateBool(PrefName.IsAlertRadiologyProcsEnabled,false);
+			string error=EhrProvKeys.DeleteChecked(_keyCur,out bool isPrefChanged);
+			if(error!="") {
+				MessageBox.Show(error);
+				return;
+			}
+			if(isPrefChanged) {
 				DataValid.SetInvalid(InvalidType.Prefs);
 			}
 			DialogResult=DialogResult.OK;
 		}
 
+		///<summary>This open build has no licence keys (section 5). A row is saved when a provider has exactly the last and first names typed and the
+		///year has two digits (EhrProvKeys.GetSaveError); the key text is optional, stored as typed and never checked. Saving needs the Setup
+		///permission (section 5.1). EhrProvKeys.SaveChecked checks both again, turns the radiology procedures alert on for the table's first row, as
+		///before, and writes the Setup security log entry.</summary>
 		private void butSave_Click(object sender,EventArgs e) {
 			if(textYear.Text==""){
 				MessageBox.Show("Please enter a year.");
@@ -47,28 +58,22 @@ namespace OpenPmsDental {
 				MessageBox.Show("Invalid year, must be two digits.");
 				return;
 			}
-			if(!FormEHR.ProvKeyIsValid(textLName.Text,textFName.Text,PIn.Int(textYear.Text),textKey.Text)) {
-				MsgBox.Show(this,"Invalid provider key");
+			if(!Security.IsAuthorized(EnumPermType.Setup)) {
 				return;
 			}
-			_keyCur.LName=textLName.Text;
-			_keyCur.FName=textFName.Text;
-			_keyCur.YearValue=PIn.Int(textYear.Text);
-			_keyCur.ProvKey=textKey.Text;
-			if(_keyCur.IsNew) {
-				bool isFirstKey=false;
-				if(!PrefC.GetBool(PrefName.IsAlertRadiologyProcsEnabled)) {
-					isFirstKey=!EhrProvKeys.HasEhrKeys();
-				}
-				EhrProvKeys.Insert(_keyCur);
-				//if radiology procs alert is disabled and this is the first ehrprovkey, enable the alert (alert handled by the OpenDentalService)
-				if(!PrefC.GetBool(PrefName.IsAlertRadiologyProcsEnabled) && isFirstKey) {
-					Prefs.UpdateBool(PrefName.IsAlertRadiologyProcsEnabled,true);
-					DataValid.SetInvalid(InvalidType.Prefs);
-				}
+			EhrProvKey ehrProvKey=_keyCur.Copy();
+			ehrProvKey.LName=textLName.Text;
+			ehrProvKey.FName=textFName.Text;
+			ehrProvKey.YearValue=PIn.Int(textYear.Text);
+			ehrProvKey.ProvKey=textKey.Text;
+			string error=EhrProvKeys.SaveChecked(ehrProvKey,_keyCur,out bool isPrefChanged);
+			if(error!="") {
+				MessageBox.Show(error);
+				return;
 			}
-			else {
-				EhrProvKeys.Update(_keyCur);
+			_keyCur=ehrProvKey;
+			if(isPrefChanged) {
+				DataValid.SetInvalid(InvalidType.Prefs);
 			}
 			DialogResult=DialogResult.OK;
 		}
