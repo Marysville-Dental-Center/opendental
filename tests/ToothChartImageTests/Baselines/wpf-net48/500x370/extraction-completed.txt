@@ -1,0 +1,13 @@
+Scene: extraction-completed
+Group: paint
+Description: Completed extractions: C on 2 and 31, EC on 12, EO on 21. The completion set those teeth missing, and the Chart module skips a completed extraction, so today's chart draws no X, only the missing teeth (the "before" of the completed-extraction graphic, O-20).
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 2954
+Pixels SHA-256: 33f73f693a64ffacbd6e430b7da0106195d23405eec70c2b1fe05936bbd4be13
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

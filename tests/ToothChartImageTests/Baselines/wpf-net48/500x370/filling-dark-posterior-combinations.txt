@@ -1,0 +1,13 @@
+Scene: filling-dark-posterior-combinations
+Group: paint
+Description: Dark C fillings on several surfaces: 2 MO, 3 DO, 4 MOD, 5 MODB, 12 MODL, 13 BV, 14 MODBL, 15 OL, 18 MOD, 19 MODBLV, 20 DO, 21 MO, 28 OB, 29 MODL, 30 MOB, 31 OV.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 5929
+Pixels SHA-256: 4f1a87016a28d10e80993d48fdd74ab5f6130e15d290d5c7b796f4300a19d7bf
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

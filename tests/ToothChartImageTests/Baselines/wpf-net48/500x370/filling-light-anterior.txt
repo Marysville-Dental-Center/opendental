@@ -1,0 +1,13 @@
+Scene: filling-light-anterior
+Group: paint
+Description: Light EO fillings: 6 M, 7 MI, 8 DIF, 9 F, 10 L, 11 MDIFL, 22 V, 23 MF, 24 DL, 25 MDI, 26 I, 27 F.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4402
+Pixels SHA-256: 9c76ee7ffc2cc7f5f06a159cbac71a5892c340e54414f36b5ab91526e678d105
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

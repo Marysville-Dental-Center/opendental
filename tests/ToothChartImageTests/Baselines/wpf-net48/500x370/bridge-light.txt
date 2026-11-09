@@ -1,0 +1,13 @@
+Scene: bridge-light
+Group: paint
+Description: Light bridges: 3-4-5 TP and 12-13-14 C with 4 and 13 missing, 19-20-21 EC and 28-29-30 Cn with 20 and 29 missing.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 6723
+Pixels SHA-256: 69bdd46181533ad18707a5416b0599637518a18e8622cda187005929914a1250
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

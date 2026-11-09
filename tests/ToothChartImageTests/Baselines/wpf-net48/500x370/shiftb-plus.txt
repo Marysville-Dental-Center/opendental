@@ -1,0 +1,13 @@
+Scene: shiftb-plus
+Group: states
+Description: Shifted 2 mm buccally on teeth 4, 7, 10, 13, 20, 23, 26 and 29 (all four quadrants, mirrored teeth included).
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3132
+Pixels SHA-256: 32cb447c18ec0f8dabf28febc41d3c011a688675bb6487e2e114049b0797533d
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

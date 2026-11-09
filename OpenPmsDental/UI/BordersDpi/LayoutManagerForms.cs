@@ -1088,7 +1088,7 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 			//	return true;
 			//}
 			if(control is SparksToothChart.ToothChartWrapper){
-				return true;//ignore the 3 toothchart controls contained within: ToothChartDirectX, ToothChart2D, and ToothChartOpenGL.
+				return true;//ignore the engine control contained within: ToothChartDirectX, ToothChart2D, ToothChartOpenGL or the WPF chart's image host.
 			}
 			if(control is ScrollableControl scrollableControl && scrollableControl.AutoScroll){
 				//We need to return true for these forms to avoid a bug with scrollable splitters or panels that can create uneccessary additional white space.
@@ -1112,17 +1112,9 @@ Scrollable Control: For example, a panel that's set to AutoScroll=true.  These c
 		private bool LayoutSkipSelf(Control96Info control96Info,Control control){
 			if(control96Info==null){
 				//this control must have been programmatically added, so it's not in the list yet.
-				if(control is SparksToothChart.ToothChartDirectX){//this one can't be added manually, so we'll add it.
-					AddToList96(control,control.Parent);
-					control96Info=_listControl96Infos.FirstOrDefault(x=>x.ControlRef==control);
-					return true;
-				}
-				if(control is SparksToothChart.ToothChart2D){
-					AddToList96(control,control.Parent);
-					control96Info=_listControl96Infos.FirstOrDefault(x=>x.ControlRef==control);
-					return true;
-				}
-				if(control is SparksToothChart.ToothChartOpenGL){
+				if(control.Parent is SparksToothChart.ToothChartWrapper){
+					//The wrapper's engine control (DirectX, Simple 2D, OpenGL or the WPF chart's image host), which the wrapper adds itself and docks to
+					//fill, so it can't be added manually; we'll add it. One check for any engine, so a new or retired engine needs no edit here.
 					AddToList96(control,control.Parent);
 					control96Info=_listControl96Infos.FirstOrDefault(x=>x.ControlRef==control);
 					return true;

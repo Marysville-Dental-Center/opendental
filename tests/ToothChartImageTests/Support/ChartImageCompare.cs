@@ -16,7 +16,8 @@ namespace ToothChartImageTests {
 		public int CountPixels;
 		///<summary>Pixels where a channel (B, G, R or A) differs by more than ChannelTolerance.</summary>
 		public int CountDifferent;
-		///<summary>The most different pixels in one BlockSizexBlockSize block, and where that block starts.</summary>
+		///<summary>The most different pixels in one BlockSizexBlockSize window (any position; an aligned grid block when one is as bad), and where
+		///that window starts.</summary>
 		public int CountDifferentInWorstBlock;
 		public Point PointWorstBlock;
 
@@ -43,7 +44,8 @@ namespace ToothChartImageTests {
 
 	///<summary>Image comparison for the chart tests. A pixel counts as different when a channel differs by more than 8 of 255. A comparison passes
 	///when at most 0.1% of the pixels differ and no 16x16 block has more than 24 different pixels; the block rule catches a small local error,
-	///such as a missing "S". Images are compared as 32-bit ARGB whatever their own pixel format. The legacy recordings are compared byte for byte
+	///such as a missing "S", and it looks at every 16x16 window, not only the aligned grid, so a cluster across the grid's lines is caught too
+	///(a missing tooth digit is 25-35 pixels at 410x307, which a grid could split into parts that pass). Images are compared as 32-bit ARGB whatever their own pixel format. The legacy recordings are compared byte for byte
 	///(AreFilesIdentical) and by their pixel SHA-256, because the re-recording after a refactor on the same PC and framework must give the same
 	///files; across frameworks only the pixel SHA-256 (LegacyComparison, PngWriter).</summary>
 	public static class ChartImageCompare {
@@ -63,23 +65,41 @@ namespace ToothChartImageTests {
 			result.CountPixels=width*height;
 			bool[] arrayDifferent=GetDifferentPixels(bitmapExpected,bitmapActual);
 			result.CountDifferent=arrayDifferent.Count(x => x);
+			//A summed-area table: arraySums[(y)*(width+1)+x] is the number of different pixels above and left of (x,y), so any window's count is four
+			//look-ups.
+			int[] arraySums=new int[(width+1)*(height+1)];
+			for(int y=0;y<height;y++) {
+				int countRow=0;
+				for(int x=0;x<width;x++) {
+					if(arrayDifferent[y*width+x]) {
+						countRow++;
+					}
+					arraySums[(y+1)*(width+1)+x+1]=arraySums[y*(width+1)+x+1]+countRow;
+				}
+			}
+			//The aligned blocks first (a block at the right or bottom edge is cut off), so the reported block is the grid block when one holds the
+			//worst count; then every BlockSizexBlockSize window, which also catches a cluster that straddles the grid's lines.
 			for(int yBlock=0;yBlock<height;yBlock+=BlockSize) {
 				for(int xBlock=0;xBlock<width;xBlock+=BlockSize) {
-					int countInBlock=0;
-					for(int y=yBlock;y<Math.Min(yBlock+BlockSize,height);y++) {
-						for(int x=xBlock;x<Math.Min(xBlock+BlockSize,width);x++) {
-							if(arrayDifferent[y*width+x]) {
-								countInBlock++;
-							}
-						}
-					}
-					if(countInBlock>result.CountDifferentInWorstBlock) {
-						result.CountDifferentInWorstBlock=countInBlock;
-						result.PointWorstBlock=new Point(xBlock,yBlock);
-					}
+					CheckWindow(result,arraySums,width,xBlock,yBlock,Math.Min(xBlock+BlockSize,width),Math.Min(yBlock+BlockSize,height));
+				}
+			}
+			for(int yWindow=0;yWindow<=Math.Max(0,height-BlockSize);yWindow++) {
+				for(int xWindow=0;xWindow<=Math.Max(0,width-BlockSize);xWindow++) {
+					CheckWindow(result,arraySums,width,xWindow,yWindow,Math.Min(xWindow+BlockSize,width),Math.Min(yWindow+BlockSize,height));
 				}
 			}
 			return result;
+		}
+
+		///<summary>Counts the different pixels in [x0,x1) x [y0,y1) from the summed-area table and keeps the window when it is worse than the worst so far.</summary>
+		private static void CheckWindow(ChartImageCompareResult result,int[] arraySums,int width,int x0,int y0,int x1,int y1) {
+			int stride=width+1;
+			int count=arraySums[y1*stride+x1]-arraySums[y0*stride+x1]-arraySums[y1*stride+x0]+arraySums[y0*stride+x0];
+			if(count>result.CountDifferentInWorstBlock) {
+				result.CountDifferentInWorstBlock=count;
+				result.PointWorstBlock=new Point(x0,y0);
+			}
 		}
 
 		///<summary>One flag per pixel, row by row: true where a channel differs by more than ChannelTolerance. Both bitmaps must be the same size.</summary>

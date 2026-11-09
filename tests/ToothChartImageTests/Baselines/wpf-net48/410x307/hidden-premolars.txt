@@ -1,0 +1,13 @@
+Scene: hidden-premolars
+Group: states
+Description: First premolars 5, 12, 21 and 28 hidden (missing with the number gone, as after ortho closes the space).
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3384
+Pixels SHA-256: 0f9719656234255e7daf57b312516f7bb85d27ab97e8b07a4dbba3041a2fc402
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

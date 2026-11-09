@@ -1,0 +1,13 @@
+Scene: denture-dark-eo-r-cn
+Group: paint
+Description: Dark dentures in the statuses the other dark denture scenes leave out: an upper complete denture (surface U) in EO with teeth 1-16 missing, and lower partial dentures over the ranges 18, 19, 20 in R and 29, 30, 31 in Cn (missing).
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4542
+Pixels SHA-256: 0b4f94777f03c711689da33a0eac8196ee4ac83beedfe40cb7fe5b3a7143a28e
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

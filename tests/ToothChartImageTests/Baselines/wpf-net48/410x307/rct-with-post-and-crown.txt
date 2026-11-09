@@ -1,0 +1,13 @@
+Scene: rct-with-post-and-crown
+Group: paint
+Description: Completed root canal, post and build-up and crown (C) on 3, 14, 19 and 30, the usual endodontic sequence.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 5471
+Pixels SHA-256: b25b93e8b5df64efa2fbe21e09e23f62482bdf318e190c7ca8fa156e1af8bde6
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

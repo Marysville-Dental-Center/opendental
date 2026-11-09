@@ -3,7 +3,8 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <!-- Image tests of the graphical tooth chart (docs/specs/wpf-tooth-chart-plan.md, track TC). Package TC-0 adds the synthetic chart scenes,
        the recorder of today's DirectX, OpenGL and Simple 2D pictures (opt-in, OPMS_RECORD_LEGACY_CHART=1), the image comparer and the model
-       tests. No database and no program code: the scenes set their state through ToothChartRelay only. The project references WpfControlsOD
+       tests; package TC-1 adds the WPF chart's mesh, scene, transform, renderer and image tests, its baselines (Baselines/wpf-net48) and the gallery.
+       No database and no program code: the scenes set their state through ToothChartRelay only. The project references WpfControlsOD
        and the libraries below it, never the program. Compile items are listed one by one until S1-6 converts this file. -->
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -46,6 +47,10 @@
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <!-- The TC-1 transform test checks the WPF chart's matrices against the DirectX chart's math library. Removed with the DirectX engine in TC-9a. -->
+    <Reference Include="SharpDX.Mathematics">
+      <HintPath>..\..\Required dlls\SharpDX.Mathematics.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -63,8 +68,17 @@
     <Compile Include="Support\ChartImageCompare.cs" />
     <Compile Include="Support\PngWriter.cs" />
     <Compile Include="Support\StaRunner.cs" />
+    <Compile Include="Support\SecondProcess.cs" />
     <Compile Include="Support\TestPaths.cs" />
+    <Compile Include="Support\WpfCharts.cs" />
+    <Compile Include="Support\WpfGallery.cs" />
+    <Compile Include="Support\WpfTimings.cs" />
     <Compile Include="SupportTests.cs" />
+    <Compile Include="WpfImageTests.cs" />
+    <Compile Include="WpfMeshTests.cs" />
+    <Compile Include="WpfRendererTests.cs" />
+    <Compile Include="WpfSceneTests.cs" />
+    <Compile Include="WpfTransformTests.cs" />
     <Compile Include="WrapperTests.cs" />
   </ItemGroup>
   <ItemGroup>

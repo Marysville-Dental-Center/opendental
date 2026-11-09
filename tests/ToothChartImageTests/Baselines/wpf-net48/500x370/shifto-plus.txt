@@ -1,0 +1,13 @@
+Scene: shifto-plus
+Group: states
+Description: Supererupted 3 mm on teeth 4, 7, 10, 13, 20, 23, 26 and 29 (all four quadrants, mirrored teeth included).
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3133
+Pixels SHA-256: 615cd1f2b7f3536a06a08c2b8514bf53aa4aecdd2b94f8df98a235b48439b6dc
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

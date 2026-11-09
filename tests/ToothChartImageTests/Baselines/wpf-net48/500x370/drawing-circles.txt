@@ -1,0 +1,13 @@
+Scene: drawing-circles
+Group: interaction
+Description: Pen circles around teeth 3 and 19 (green) and 9 (purple), as a dentist marks a tooth.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3768
+Pixels SHA-256: 96d8c963e2fe9d510ee513a879bc04356eec9720897c220ad366cd78652992d1
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

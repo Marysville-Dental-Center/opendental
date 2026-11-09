@@ -1,4 +1,5 @@
-// Tests of the image comparer, the bitmap facts the recordings write, the STA runner and the recorder's manifest (package TC-0).
+// Tests of the image comparer, the bitmap facts the recordings write, the STA runner and the recorder's manifest (package TC-0), and of the WPF
+// gate, recorder and gallery with a forced render failure (TC-1).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using OpenPmsDental;
 using OpenPmsDentalBusiness;
+using SparksToothChart;
 
 namespace ToothChartImageTests {
 	[TestClass]
@@ -68,6 +71,25 @@ namespace ToothChartImageTests {
 				bitmapMany.SetPixel((i*37)%410,(i*53)%307,Color.Black);
 			}
 			Assert.IsFalse(ChartImageCompare.Compare(bitmapExpected,bitmapMany).IsPass,"More than 0.1% of the pixels fail.");
+		}
+
+		[TestMethod]
+		public void Compare_ClusterAcrossBlockLines_FailsTheBlockRule() {
+			//A cluster of 25 different pixels on the corner of four 16x16 grid blocks is split into four small parts, and on a second grid offset by
+			//half a block (8,8) it crosses a line there too: the rule must look at every 16x16 window.
+			using Bitmap bitmapExpected=NewBitmap(410,307,Color.White);
+			foreach(Point pointCorner in new[] { new Point(126,94),new Point(28,20),new Point(395,290) }) {
+				using Bitmap bitmapCluster=NewBitmap(410,307,Color.White);
+				for(int y=pointCorner.Y;y<pointCorner.Y+5;y++) {
+					for(int x=pointCorner.X;x<pointCorner.X+5;x++) {
+						bitmapCluster.SetPixel(x,y,Color.Black);
+					}
+				}
+				ChartImageCompareResult result=ChartImageCompare.Compare(bitmapExpected,bitmapCluster);
+				Assert.AreEqual(25,result.CountDifferent);
+				Assert.AreEqual(25,result.CountDifferentInWorstBlock,"Every window: at "+pointCorner);
+				Assert.IsFalse(result.IsPass,"A cluster of 25 pixels across block lines at "+pointCorner+" fails: "+result);
+			}
 		}
 
 		[TestMethod]
@@ -324,6 +346,163 @@ namespace ToothChartImageTests {
 		}
 
 		[TestMethod]
+		public void WpfRecorderGateAndGallery_ReportAForcedRenderFailure_AndNeverUseTheFallbackPicture() {
+			//A render that fails makes GetBitmap return the Simple 2D chart's image while Engine stays Wpf3D. The recorder must not write that image
+			//as the WPF baseline, the gate must not compare it (a 2D baseline would match it), and the gallery must not show it as the WPF chart's.
+			ChartScene scene=ChartScenes.Get("treatment-plan");
+			ChartSize chartSize=ChartScenes.SizeModule;
+			string prefixFailure=chartSize.FolderName+"/"+scene.Name+": the WPF render failed and GetBitmap returned the Simple 2D fallback: ";
+			string folder=NewTempFolder("tc1-forced-failure-");
+			string folderRecorded=Path.Combine(folder,"recorded");
+			string folderBaseline2D=Path.Combine(folder,"baseline-2d");
+			string folderGallery=Path.Combine(folder,"gallery");
+			string folderFailures=Path.Combine(folder,"failures");
+			try {
+				StaRunner.Run(() => {
+					using ToothChartWrapper wrapper=WpfCharts.CreateWrapper(chartSize.Size);
+					Assert.AreEqual(ToothChartEngine.Wpf3D,wrapper.Engine,string.Join("; ",ToothChartWrapper.GetFallbackMessages()));
+					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+					ChartScenes.Prepare(relay,scene,chartSize.ColorSet);
+					List<string> listFailures=new List<string>();
+					using(WpfCharts.HoldRenderThread(WpfCharts.BuildScene(wrapper),250)) {
+						//The recorder: the failure is reported and nothing is written.
+						Assert.AreEqual(WpfSceneOutcome.Skipped,WpfImageTests.CheckScene(wrapper,relay,scene,chartSize,true,folderRecorded,folderFailures,"test",
+							listFailures));
+						Assert.AreEqual(1,listFailures.Count,string.Join("\r\n",listFailures));
+						StringAssert.StartsWith(listFailures[0],prefixFailure);
+						StringAssert.Contains(listFailures[0],"TimeoutException");
+						Assert.AreEqual(ToothChartEngine.Wpf3D,wrapper.Engine,"A failed render leaves the engine at Wpf3D: only the message tells.");
+						Assert.IsFalse(Directory.Exists(folderRecorded),"Nothing was recorded.");
+						//The gate, with the fallback's own image as the baseline: compared, it would pass.
+						string pathBaseline2D=WpfCharts.GetPicturePath(folderBaseline2D,chartSize,scene);
+						Directory.CreateDirectory(Path.GetDirectoryName(pathBaseline2D));
+						using(Bitmap bitmap2D=relay.GetBitmap()) {
+							PngWriter.Save(bitmap2D,pathBaseline2D);
+						}
+						listFailures.Clear();
+						Assert.AreEqual(WpfSceneOutcome.Skipped,WpfImageTests.CheckScene(wrapper,relay,scene,chartSize,false,folderBaseline2D,folderFailures,"test",
+							listFailures));
+						Assert.AreEqual(1,listFailures.Count,string.Join("\r\n",listFailures));
+						StringAssert.StartsWith(listFailures[0],prefixFailure);
+						//The gallery: the cell is marked as failed, and no picture is saved.
+						WpfGalleryPicture picture=WpfImageTests.DrawGalleryPicture(wrapper,relay,scene,chartSize,folderGallery,null);
+						Assert.IsNotNull(picture.Failure,"The gallery cell is failed.");
+						StringAssert.StartsWith(picture.Failure,prefixFailure);
+						Assert.IsFalse(Directory.Exists(folderGallery),"No picture in the gallery.");
+					}
+					//The render thread answers again: the same scene is recorded without a failure, and it does not match the 2D picture.
+					listFailures.Clear();
+					Assert.AreEqual(WpfSceneOutcome.Recorded,WpfImageTests.CheckScene(wrapper,relay,scene,chartSize,true,folderRecorded,folderFailures,"test",
+						listFailures),string.Join("\r\n",listFailures));
+					Assert.AreEqual(0,listFailures.Count,string.Join("\r\n",listFailures));
+					string pathRecorded=WpfCharts.GetPicturePath(folderRecorded,chartSize,scene);
+					StringAssert.Contains(File.ReadAllText(Path.ChangeExtension(pathRecorded,".txt")),"Repeatable: yes");
+					Assert.AreEqual(WpfSceneOutcome.Compared,WpfImageTests.CheckScene(wrapper,relay,scene,chartSize,false,folderBaseline2D,folderFailures,"test",
+						listFailures));
+					Assert.AreEqual(1,listFailures.Count,"The WPF picture differs from the 2D one: "+string.Join("\r\n",listFailures));
+					Assert.IsNull(WpfImageTests.DrawGalleryPicture(wrapper,relay,scene,chartSize,folderGallery,null).Failure);
+				});
+			}
+			finally {
+				Directory.Delete(folder,true);
+			}
+		}
+
+		[TestMethod]
+		public void Gallery_EmptiesOnlyAGalleryFolder() {
+			//The gallery folder is whatever -Out or OPMS_CHART_GALLERY names. Before this check WriteGallery deleted it with no question, so
+			//"-Out ." in a checkout would have deleted the checkout.
+			string folder=NewTempFolder("tc1-gallery-folder-");
+			try {
+				string folderCheckout=Path.Combine(folder,"checkout");
+				Directory.CreateDirectory(Path.Combine(folderCheckout,".git"));
+				File.WriteAllText(Path.Combine(folderCheckout,"README.md"),"Not a gallery.");
+				File.WriteAllText(Path.Combine(folderCheckout,"index.html"),"<!doctype html><title>Another site</title>");
+				InvalidOperationException ex=Expect.Throws<InvalidOperationException>(() => WpfGallery.PrepareFolder(folderCheckout));
+				StringAssert.Contains(ex.Message,"Not a gallery folder");
+				Assert.IsTrue(File.Exists(Path.Combine(folderCheckout,"README.md")) && Directory.Exists(Path.Combine(folderCheckout,".git"))
+					&& File.Exists(Path.Combine(folderCheckout,"index.html")),"Nothing was deleted.");
+				//A new folder, and an empty one, become galleries.
+				string folderNew=Path.Combine(folder,"new");
+				WpfGallery.PrepareFolder(folderNew);
+				Assert.IsTrue(WpfGallery.IsGalleryFolder(folderNew));
+				string folderEmpty=Path.Combine(folder,"empty");
+				Directory.CreateDirectory(folderEmpty);
+				WpfGallery.PrepareFolder(folderEmpty);
+				Assert.IsTrue(WpfGallery.IsGalleryFolder(folderEmpty));
+				//A gallery is emptied and stays one.
+				File.WriteAllText(Path.Combine(folderNew,"index.html"),"old");
+				Directory.CreateDirectory(Path.Combine(folderNew,"wpf","410x307"));
+				WpfGallery.PrepareFolder(folderNew);
+				Assert.IsFalse(File.Exists(Path.Combine(folderNew,"index.html")),"The old gallery was emptied.");
+				Assert.IsFalse(Directory.Exists(Path.Combine(folderNew,"wpf")));
+				Assert.IsTrue(WpfGallery.IsGalleryFolder(folderNew));
+				//A gallery made before the marker file: its index.html says it is one.
+				string folderOld=Path.Combine(folder,"gallery-before-the-marker");
+				Directory.CreateDirectory(Path.Combine(folderOld,"wpf"));
+				File.WriteAllText(Path.Combine(folderOld,"index.html"),"<!doctype html>\r\n<html lang=\"en\">\r\n<head>\r\n<meta charset=\"utf-8\">\r\n"
+					+"<title>Tooth chart gallery G0</title>\r\n");
+				WpfGallery.PrepareFolder(folderOld);
+				Assert.IsFalse(Directory.Exists(Path.Combine(folderOld,"wpf")));
+				Assert.IsTrue(WpfGallery.IsGalleryFolder(folderOld));
+			}
+			finally {
+				Directory.Delete(folder,true);
+			}
+		}
+
+		[TestMethod]
+		public void Gallery_ComparesWithTheApprovedSet_AndMarksThePixelsOfTheBranchBaseline() {
+			//From G1 on the approved pictures come from main, not from this branch's Baselines\wpf-net48: a picture this branch re-recorded must show
+			//its difference from the approved one, and each picture says whether it is exactly the file the branch merges.
+			ChartScene scene=ChartScenes.Get("restored-adult");
+			ChartSize chartSize=ChartScenes.SizeModule;
+			string folder=NewTempFolder("tc1-gallery-approved-");
+			try {
+				string folderApproved=Path.Combine(folder,"approved");
+				string folderGallery=Path.Combine(folder,"gallery");
+				//The approved picture: the branch's baseline with a block painted over, as an older approved picture would differ.
+				string pathApproved=WpfCharts.GetPicturePath(folderApproved,chartSize,scene);
+				Directory.CreateDirectory(Path.GetDirectoryName(pathApproved));
+				using(Bitmap bitmapApproved=WpfImageTests.LoadBitmap(WpfCharts.GetPicturePath(WpfCharts.BaselinesWpf,chartSize,scene))) {
+					using(Graphics g=Graphics.FromImage(bitmapApproved)) {
+						g.FillRectangle(Brushes.Magenta,100,100,20,20);
+					}
+					PngWriter.Save(bitmapApproved,pathApproved);
+				}
+				List<WpfGalleryPicture> listPictures=new List<WpfGalleryPicture>();
+				StaRunner.Run(() => {
+					using ToothChartWrapper wrapper=WpfCharts.CreateWrapper(chartSize.Size);
+					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+					listPictures.Add(WpfImageTests.DrawGalleryPicture(wrapper,relay,scene,chartSize,folderGallery,folderApproved));
+					listPictures.Add(WpfImageTests.DrawGalleryPicture(wrapper,relay,ChartScenes.Get("treatment-plan"),chartSize,folderGallery,folderApproved));
+				});
+				WpfGalleryPicture picture=listPictures[0];
+				Assert.IsNull(picture.Failure,picture.Failure);
+				Assert.IsTrue(picture.HasBaseline);
+				Assert.IsFalse(picture.Comparison.IsPass,"Compared with the approved picture, not with this branch's baseline: "+picture.Comparison);
+				Assert.AreEqual(400,picture.Comparison.CountDifferent);
+				Assert.IsNotNull(picture.PathDiff);
+				Assert.AreEqual(picture.PixelsSha256Merged,picture.PixelsSha256,"The fresh picture has exactly the pixels of the baseline this branch merges.");
+				Assert.IsFalse(listPictures[1].HasBaseline,"The approved set has no treatment-plan.");
+				Assert.AreEqual(listPictures[1].PixelsSha256Merged,listPictures[1].PixelsSha256);
+				string html=WpfGallery.GetIndexHtml(folderGallery,"G1","A test gallery.",listPictures,null,null,"main at abc1234");
+				StringAssert.Contains(html,"Approved WPF pictures: main at abc1234.");
+				StringAssert.Contains(html,"2 of the 2 WPF pictures have exactly the pixels of this branch's baselines");
+				StringAssert.Contains(html,"the pixels of this branch's baseline</div>");
+				StringAssert.Contains(html,"src=\""+picture.PathDiff+"\"");
+				//A picture with other pixels than the branch's baseline says so.
+				listPictures[1].PixelsSha256Merged=new string('0',64);
+				html=WpfGallery.GetIndexHtml(folderGallery,"G1","A test gallery.",listPictures,null,null,"main at abc1234");
+				StringAssert.Contains(html,"1 of the 2 WPF pictures have exactly the pixels");
+				StringAssert.Contains(html,"other pixels than this branch's baseline");
+			}
+			finally {
+				Directory.Delete(folder,true);
+			}
+		}
+
+		[TestMethod]
 		public void Compare_PassesForTheSamePictures_AndHonoursTheModeAndSceneFilters() {
 			string folderBaseline=NewTempFolder("tc0-cmp-base-");
 			string folderNew=NewTempFolder("tc0-cmp-new-");
@@ -333,6 +512,9 @@ namespace ToothChartImageTests {
 				LegacyComparison legacyComparison=LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),null,false);
 				Assert.IsTrue(legacyComparison.IsPass,legacyComparison.GetSummary());
 				Assert.AreEqual(4,legacyComparison.ListMatching.Count);
+				//The summary names the baseline folder it was given, not the repository's legacy recording.
+				StringAssert.Contains(legacyComparison.GetSummary(),") with "+folderBaseline.TrimEnd('\\','/')+", ");
+				Assert.IsFalse(legacyComparison.GetSummary().Contains("Baselines\\legacy"),legacyComparison.GetSummary());
 				//A new recording of DirectX only, or of one scene only, passes when only those are compared.
 				Directory.Delete(Path.Combine(folderNew,"Simple2D"),true);
 				File.Delete(Path.Combine(folderNew,"DirectX","410x307","select-one.png"));

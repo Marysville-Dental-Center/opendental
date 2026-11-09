@@ -1,0 +1,13 @@
+Scene: bridge-on-present-teeth
+Group: paint
+Description: Dark TP bridge 3-4-5 with no tooth missing: every tooth gets a crown, as the Chart module paints it.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4607
+Pixels SHA-256: 237152483116e342a16ab9cb38721f5abf9b7903ef55e7bfeb89d8fbdbccc3d3
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

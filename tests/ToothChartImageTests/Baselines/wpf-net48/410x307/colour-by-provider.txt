@@ -1,0 +1,13 @@
+Scene: colour-by-provider
+Group: colours
+Description: Colour by provider: another provider's completed work drawn in the EO colours (the user preference ToothChartUsesDiffColorByProv): C crowns on 3 and 19 and C fillings MO on 4 and 20 next to the same work shown as EO on 14, 30, 13 and 29.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 5423
+Pixels SHA-256: b018da7af2b603a0a5d7d936821e7b036ad12463ba81283d24640fee6c57dd28
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

@@ -1,0 +1,13 @@
+Scene: primary-dentition-palmer
+Group: empty
+Description: All 20 primary teeth, in Palmer numbering.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3898
+Pixels SHA-256: b87800c2f514037d9b0775d4f00ba3fb5d6186c67edc06aa3222e915089aa0e1
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

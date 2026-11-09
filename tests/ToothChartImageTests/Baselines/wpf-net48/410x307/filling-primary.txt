@@ -1,0 +1,13 @@
+Scene: filling-primary
+Group: paint
+Description: Primary dentition with dark TP fillings on the primary molars and canines: A MO, B DO, C F, H M, I MOD, J O, K MO, L DO, M I, R F, S MOD, T O.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 5695
+Pixels SHA-256: 2c34fb0dd4c4ad1d75754c4c822427ad16b1517f168125b9672d0f6084a94e80
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

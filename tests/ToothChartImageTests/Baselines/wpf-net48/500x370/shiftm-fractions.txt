@@ -1,0 +1,13 @@
+Scene: shiftm-fractions
+Group: states
+Description: Teeth 3 and 14 shifted 1.6 mm mesially and 19 and 30 shifted 2.5 mm mesially: the number boxes move with the teeth.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3099
+Pixels SHA-256: 87339ddd49d47657e74b9239482e6fbbccb4673154c7ff435106108323bdfe8c
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

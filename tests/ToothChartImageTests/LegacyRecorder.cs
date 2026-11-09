@@ -200,8 +200,8 @@ namespace ToothChartImageTests {
 
 		///<summary>Draws every scene in every mode at every size of the scene, writes a PNG and a .txt for each, then the smoothed DirectX pictures
 		///(per smoothedMode), then rewrites manifest.txt and index.html from all the .txt files in folderOut and its smoothed folder. When
-		///isAllScenes, the old files of the recorded modes are deleted first, and the old smoothed pictures once CanRecordSmoothed says they will be
-		///drawn again. Runs on an STA thread.</summary>
+		///isAllScenes, the old files of the recorded modes are deleted before the first picture, once the recorder's window is known to be visible,
+		///and the old smoothed pictures once CanRecordSmoothed says they will be drawn again. Runs on an STA thread.</summary>
 		public static LegacyRecording Record(string folderOut,List<DrawingMode> listEngines,List<ChartScene> listScenes,bool isAllScenes,
 			string directXFormatGiven,SmoothedMode smoothedMode=SmoothedMode.Also)
 		{
@@ -213,21 +213,22 @@ namespace ToothChartImageTests {
 
 		private void Run(List<DrawingMode> listEngines,List<ChartScene> listScenes,bool isAllScenes,string directXFormatGiven,SmoothedMode smoothedMode) {
 			Directory.CreateDirectory(_folderOut);
-			if(isAllScenes && smoothedMode!=SmoothedMode.Only) {
-				foreach(DrawingMode engine in listEngines) {
-					string folderEngine=Path.Combine(_folderOut,engine.ToString());
-					if(Directory.Exists(folderEngine)) {
-						Directory.Delete(folderEngine,true);
-					}
-				}
-			}
 			_environmentText=ReadEnvironment();
 			using(_formHost=CreateHostForm()) {
 				_formHost.Show();
 				_formHost.Activate();
 				Application.DoEvents();
 				if(!_formHost.Visible || !IsWindowVisible(_formHost.Handle)) {
+					//Checked before anything is deleted, so a run without a desktop leaves the recording as it is.
 					throw new AssertInconclusiveException("The recorder's window is not visible: no interactive desktop.");
+				}
+				if(isAllScenes && smoothedMode!=SmoothedMode.Only) {
+					foreach(DrawingMode engine in listEngines) {
+						string folderEngine=Path.Combine(_folderOut,engine.ToString());
+						if(Directory.Exists(folderEngine)) {
+							Directory.Delete(folderEngine,true);
+						}
+					}
 				}
 				bool isDirectX=listEngines.Contains(DrawingMode.DirectX);
 				if(isDirectX) {
@@ -570,8 +571,9 @@ namespace ToothChartImageTests {
 		///<summary>The adapter that drew the DirectX picture, read from the chart's own device as the engine created it
 		///(ToothChartDirectX.DirectXDeviceFormat.CreateDevice): the device's adapter index and device type (IDirect3DDevice9::GetCreationParameters),
 		///then that adapter's description, driver version and file, display and PCI ids (IDirect3D9::GetAdapterIdentifier, on the device's own
-		///IDirect3D9). For example "0 (Hardware device): NVIDIA RTX A1000, driver 32.0.15.9671 (nvldumdx.dll), display \\.\DISPLAY1, PCI 10DE:25B0".
-		///Read through reflection, because this project does not reference SharpDX (see WrapperTests).</summary>
+		///IDirect3D9). For example "0 (Hardware device): NVIDIA RTX A1000, driver 32.0.15.9671 (nvldumd.dll), display \\.\DISPLAY1, PCI 10DE:25B0".
+		///The driver file is the user-mode driver of the host's bitness: the x86 test host records the 32-bit one (nvldumd.dll on that adapter), a
+		///64-bit host the 64-bit one (nvldumdx.dll). Read through reflection, because this project does not reference SharpDX (see WrapperTests).</summary>
 		public static string GetDirectXAdapter(ToothChartWrapper wrapper) {
 			ToothChartDirectX toothChartDirectX=wrapper.Controls.OfType<ToothChartDirectX>().FirstOrDefault();
 			if(toothChartDirectX==null) {
@@ -932,6 +934,8 @@ namespace ToothChartImageTests {
 	///bytes, because the PNG bytes depend on the framework's DeflateStream (PngWriter). Only the mode folders (DirectX, OpenGL, Simple2D) are read:
 	///the smoothed gallery pictures beside the recording are never compared.</summary>
 	public class LegacyComparison {
+		///<summary>The baseline folder the new recording was compared with, as Compare was given it.</summary>
+		public string FolderBaseline;
 		public bool IsPixelsOnly;
 		public List<DrawingMode> ListEngines;
 		///<summary>Null means every scene.</summary>
@@ -956,6 +960,7 @@ namespace ToothChartImageTests {
 			bool isPixelsOnly)
 		{
 			LegacyComparison legacyComparison=new LegacyComparison();
+			legacyComparison.FolderBaseline=folderBaseline;
 			legacyComparison.IsPixelsOnly=isPixelsOnly;
 			legacyComparison.ListEngines=listEngines;
 			legacyComparison.ListSceneNames=listSceneNames;
@@ -1042,7 +1047,7 @@ namespace ToothChartImageTests {
 			StringBuilder stringBuilder=new StringBuilder();
 			int countCompared=ListMatching.Count+ListDifferent.Count;
 			stringBuilder.Append("Compared "+countCompared+" pictures of "+string.Join(", ",ListEngines)+" ("
-				+(ListSceneNames==null?"every scene":"scenes "+string.Join(", ",ListSceneNames))+") with Baselines\\legacy, "
+				+(ListSceneNames==null?"every scene":"scenes "+string.Join(", ",ListSceneNames))+") with "+GetBaselineName()+", "
 				+(IsPixelsOnly?"by their decoded pixels":"byte for byte")+" and by the \"Pixels SHA-256\" of their .txt: "+ListMatching.Count+" match, "
 				+ListDifferent.Count+" differ, "+ListMissing.Count+" baseline pictures are missing from the new recording, "+ListNoBaseline.Count
 				+" new pictures have no baseline.\r\n");
@@ -1064,6 +1069,26 @@ namespace ToothChartImageTests {
 				stringBuilder.Append("No pictures were compared.\r\n");
 			}
 			return stringBuilder.ToString();
+		}
+
+		///<summary>The baseline folder that was compared with, as Compare was given it: relative to the repository root when it is inside it (for
+		///example "tests\ToothChartImageTests\Baselines\legacy"), otherwise the path as given.</summary>
+		private string GetBaselineName() {
+			if(string.IsNullOrWhiteSpace(FolderBaseline)) {
+				return "no baseline folder";
+			}
+			string folder=FolderBaseline.TrimEnd('\\','/');
+			string repoRoot;
+			try {
+				repoRoot=TestPaths.RepoRoot;
+			}
+			catch(InvalidOperationException) {
+				return folder;
+			}
+			if(folder.StartsWith(repoRoot+"\\",StringComparison.OrdinalIgnoreCase)) {
+				return folder.Substring(repoRoot.Length+1);
+			}
+			return folder;
 		}
 	}
 }

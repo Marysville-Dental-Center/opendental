@@ -1,0 +1,13 @@
+Scene: implant-on-present-tooth
+Group: paint
+Description: TP implants on teeth 4 and 20 that are not missing: the implant is drawn with the tooth.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3337
+Pixels SHA-256: 680d4937f67988aece208ee06edbd5b2ca6795fa1c4be4c7fac1b0a8daeef2da
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

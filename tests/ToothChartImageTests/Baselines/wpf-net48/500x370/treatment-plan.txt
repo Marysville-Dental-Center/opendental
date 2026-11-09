@@ -1,0 +1,13 @@
+Scene: treatment-plan
+Group: paint
+Description: A treatment plan, all TP: X on 1, 16, 17 and 32; fillings MO 3, DO 4, MOD 13, O 14, MO 19, OL 30; RCT, build-up and crown on 18; implant and crown on missing 29; bridge 6-7-8 with 7 missing; sealants 2 and 15.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 6327
+Pixels SHA-256: 1d4d2266727dd86cfb5685e1360522122404b63f4cb0f830e92ebfdcce5894ae
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

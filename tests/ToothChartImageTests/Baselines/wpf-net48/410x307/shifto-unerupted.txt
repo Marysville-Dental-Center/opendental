@@ -1,0 +1,13 @@
+Scene: shifto-unerupted
+Group: states
+Description: Canines 6, 11, 22 and 27 shifted 11 mm toward the root: just past the unerupted limit of -10 mm, so drawn at half colour.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4039
+Pixels SHA-256: 603fd683f562f36684363dc38cdebd0b03b491b0584913f505ffae2922393993
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

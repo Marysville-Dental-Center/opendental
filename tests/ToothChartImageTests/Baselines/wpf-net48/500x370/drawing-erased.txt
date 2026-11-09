@@ -1,0 +1,13 @@
+Scene: drawing-erased
+Group: interaction
+Description: The drawing-segments scene after the eraser took the red zig-zag away: only the black and blue strokes remain.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3361
+Pixels SHA-256: fcc95d66d81a6cc2cb94933249baf53dc2c1a9ef8aa34ade2226f6be5596ff02
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

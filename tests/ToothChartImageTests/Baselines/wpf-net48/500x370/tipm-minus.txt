@@ -1,0 +1,13 @@
+Scene: tipm-minus
+Group: states
+Description: Tipped distally (TipM -15 degrees) on teeth 4, 7, 10, 13, 20, 23, 26 and 29 (all four quadrants, mirrored teeth included).
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3161
+Pixels SHA-256: 870cae56eb4b3973c72433f0b4a0ecb3f2c1a69e790fbb9955333a0dcc6e748f
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

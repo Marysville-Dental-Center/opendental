@@ -1,0 +1,13 @@
+Scene: movements-combined
+Group: states
+Description: Several movements on one tooth: 8 rotated 20, tipped 10 and shifted 1 mm mesially; 25 tipped -10 buccally and supererupted 2 mm; 14 rotated -45 and shifted 1 mm buccally; 19 tipped 20 mesially and intruded 2 mm.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3568
+Pixels SHA-256: 10aaff261a4e7c759cd0b26a184f8895b3fd5e2b0363cdab50ea0a4dcf17b051
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

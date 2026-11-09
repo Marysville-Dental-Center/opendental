@@ -1,0 +1,13 @@
+Scene: implant-anterior
+Group: paint
+Description: Anterior implants: 8 and 9 missing with EC implants and crowns, 24 missing with a TP implant and no crown.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4173
+Pixels SHA-256: 9cd3b3ad95c35150d86918dd602996d142d6db8149b3aa3d1f78b0479f05f2ae
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)
