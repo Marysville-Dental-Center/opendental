@@ -333,6 +333,9 @@ namespace ToothChartImageTests {
 				LegacyComparison legacyComparison=LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),null,false);
 				Assert.IsTrue(legacyComparison.IsPass,legacyComparison.GetSummary());
 				Assert.AreEqual(4,legacyComparison.ListMatching.Count);
+				//The summary names the baseline folder it was given, not the repository's legacy recording.
+				StringAssert.Contains(legacyComparison.GetSummary(),") with "+folderBaseline.TrimEnd('\\','/')+", ");
+				Assert.IsFalse(legacyComparison.GetSummary().Contains("Baselines\\legacy"),legacyComparison.GetSummary());
 				//A new recording of DirectX only, or of one scene only, passes when only those are compared.
 				Directory.Delete(Path.Combine(folderNew,"Simple2D"),true);
 				File.Delete(Path.Combine(folderNew,"DirectX","410x307","select-one.png"));
