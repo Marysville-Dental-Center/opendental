@@ -124,6 +124,24 @@ after the merge, in a clean worktree (`bffa11c7e`). The slot TC-0 freed went to 
 E-19 are open (the lead, 2026-11-08). TC-1 writes its engine, gallery and first WPF baselines first, on today's classic
 `SparksToothChart.csproj`, and makes its conversion commit (1) last, after S1-T merges.
 
+**TC-1 (2026-11-08).** The owner approved gallery G0 ("Gallery G0 looks good"), shown as a page of 24 scenes beside TC-0's
+DirectX pictures with the O-19 times; the full gallery stays on the build PC. TC-1 then merged hidden. Notes from its reviews for
+the later packages:
+- `ToothChartWrapper.DrawMode` reads DirectX while `Engine` is `Wpf3D`: `Wpf3D` has no stored form, so TC-2's `DrawingMode` source
+  checks and TC-8's save rule build on that.
+- `GetBitmap` always rebuilds the scene for `Wpf3D` (the 3D layer is reused when it is the same), because `Invalidate` on a wrapper
+  without a handle never reaches `OnInvalidated`, so the dirty mark cannot be trusted on the hidden print, sheet and dashboard wrappers;
+  a separate on-screen flag keeps the screen current (5.5).
+- The watches are ordered by `Hashtable` enumeration, as DirectX orders them. That order is stable on .NET Framework but changes from
+  process to process under .NET's randomised string hashing, so TC-10 and S3b-5 give the watches a stable order before they compare
+  pictures across processes on .NET 10.
+- `SparksToothChart.csproj` removes the default None items (`ChangeLog`, `*.cur`) so its item diff is exactly the accepted set; later
+  conversions may do the same.
+- The WPF facts `.txt` files gain two lines ("Fresh render", "Screen DPI seen by the test host") at the next deliberate re-record;
+  the committed ones predate them, and nothing reads them.
+- `ToothChartImageTests` takes about 150-190 s (the 253-scene WPF gate is 80-90 s of software rendering); accepted for Targeted and
+  Full runs.
+
 **Why not a separate branch.** The chart must not drift from the stages' rewrites of `ControlChart.cs` and the release files. Dark
 merges keep it on `main`, and the gallery approval comes before each merge (O-27).
 
@@ -322,7 +340,8 @@ either way.
   (relay 126-137). A refill makes hundreds of such calls.
 - For `Wpf3D`, `OnInvalidated` (`ToothChartWrapper.cs:319`) only marks the scene dirty. On a wrapper that is shown, the first mark of a
   burst posts one rebuild to the UI thread's message queue, and later marks post nothing. A wrapper that is not shown (the hidden forms
-  of prints, sheets and the dashboard) posts nothing. `GetBitmap` rebuilds at once when the scene is dirty.
+  of prints, sheets and the dashboard) posts nothing. `GetBitmap` rebuilds at once (always, as built in TC-1: see section 2's TC-1
+  notes).
 - The posted rebuild always renders the on-screen image from the current scene, even when a `GetBitmap` in between has already rebuilt
   the scene and cleared its dirty mark. Only the posted rebuild clears the burst's "posted" mark. So a refill that ends in the
   dashboard's `GetBitmap` (`ControlChart.cs:6673-6681`) still updates the screen.
