@@ -172,7 +172,29 @@ the later packages:
   dashboard hidden, DirectX 47 ms and 32 ms at 410x307 and 615x461, the live view 18 and 21 ms, software 382 and 728 ms; a
   selection-only change, DirectX 32 and 48 ms, the live view 11 and 11 ms, software 16 and 30 ms. With the Patient Dashboard visible the
   refill also makes the dashboard's image in software: DirectX 96 and 143 ms, the live view 415 and 764 ms. The owner is asked in G1
-  whether that cost needs a later package (the dashboard's image made asynchronously, or with less supersampling).
+  whether that cost needs a later package (the dashboard's image made asynchronously, or with less supersampling). These first live-view
+  times were measured in a process that drew WPF in hardware and count the UI thread's work only; fix round 1 replaces them (below).
+- **Fix round 1 (branch `chart/tc3-2`): the program draws every WPF window in software.** `OpenPmsDental/Main Modules/ProgramEntry.cs:21`
+  sets `RenderOptions.ProcessRenderMode=RenderMode.SoftwareOnly` for the whole process, as the first statement of `Main`, before any window
+  exists. It came from upstream (added in 24.2.48 and again in 24.3.15, `d4d86a572`, with no comment giving a reason) and is the
+  program's only render-mode setting. A window's own `HwndTarget.RenderMode` cannot turn hardware back on: WPF draws in software when
+  either setting asks for it. So in the program the live view's `ElementHost` is drawn by WPF's software rasterizer, at 1x and with no
+  edge smoothing, not by the graphics card that O-19 (b) assumed, and the "Draw in software" switch moves between two software paths:
+  the live view (1x, unsmoothed, drawn by WPF's render thread after the UI thread's work) and the image host (the renderer's 3x
+  supersampled picture, the same as `GetBitmap`'s). The tests always drew in software (`TestAssemblySetup`, section 7), so they matched
+  the program; the plan and the first G1 times did not. The fix round:
+  - Owner question **O-34** (section 10) asks whether the line stays, with the live view as it actually runs.
+  - G1's times process sets `SoftwareOnly` first, as the program does, and G1's table adds the live view's frame: the time until WPF has
+    drawn and presented it (`MediaContext.CompleteRender`, on a window on the display that the user cannot see), and one full software
+    frame at 1x (a `RenderTargetBitmap` of the view's content) as a proxy. A second process measures the live view with hardware
+    rendering, for O-34's choice (a).
+  - G1 shows the live view's 1x capture (`ToothChartWpfView.GetBitmapForTests`) next to the renderer's picture and DirectX's for six
+    scenes, each with a 3x enlargement.
+  - The live view keeps its 3D layer in a `BitmapCache` (1x, snapped to the pixels; the captures are identical with and without it) and
+    draws the pen stroke in progress on an element of its own, so a selection or a pen move composites the cached 3D image instead of
+    rasterizing the 3D layer again.
+  - "Drawn by the graphics card" is corrected in `ToothChartWpfView.cs`, `ToothChartEngine.cs`, `ToothChartWrapper.cs`, the tests and this
+    plan. A source test pins the line and that no other render-mode setting exists, so a change to it brings this plan and the tests along.
 
 **Why not a separate branch.** The chart must not drift from the stages' rewrites of `ControlChart.cs` and the release files. Dark
 merges keep it on `main`, and the gallery approval comes before each merge (O-27).
@@ -365,6 +387,13 @@ either way.
   378-379). The on-screen image is the same software render as every print, so no graphics driver can change it.
 - **Live view (O-19, the alternative).** The `ElementHost` is created only when the wrapper is shown on an STA thread. A wrapper that is
   only used for an image never creates one.
+- **The live view in the program is drawn in software (O-34).** `ProgramEntry.cs:21` sets `RenderOptions.ProcessRenderMode` to
+  `SoftwareOnly` for the whole process (from upstream), and a window's `HwndTarget.RenderMode` cannot override it. WPF's render thread
+  therefore rasterizes the live view in software at 1x, with no edge smoothing, after the UI thread's work, and each frame redraws
+  whatever region changed, the 3D layer under it included. TC-3's fix round keeps the 3D layer in a `BitmapCache` and draws the pen
+  stroke on an element of its own, so a selection or a pen move composites the cached 3D image; a refill rasterizes it once. The
+  dotnet/wpf#7076 driver fault cannot reach a software-drawn view. Only if the owner removes or narrows that line (O-34 (a)) is the live
+  view drawn by the graphics card, smoothed by multisampling where the driver allows.
 
 ### 5.5 Redraws
 
@@ -391,6 +420,12 @@ either way.
 - A test checks the root DPI and every text item. A test cannot change the system DPI, so the lead repeats the determinism test once
   with the desktop at 150% (L-2). The bytes must equal those of the 100% run.
 - At 3b, `SetHighDpiMode` replaces the app.config setting (S3b-4), so L-2 is repeated on net10 x64 (TC-10).
+- **Render mode.** The program sets `RenderOptions.ProcessRenderMode=SoftwareOnly` first in `Main` (`ProgramEntry.cs:21`), so every WPF
+  window in it, the live view included, is drawn in software and does not depend on the graphics card. The test assembly sets the same
+  (section 7), so a live-view test sees what the program draws, and G1's times process sets it too. `RenderTargetBitmap` renders in
+  software either way, so the renderer's images (`GetBitmap`, prints, sheets, baselines) do not depend on it. Removing or narrowing that
+  line (O-34 (a)) changes the live view's look (hardware 3D is smoothed by multisampling where the driver allows, and differs by driver)
+  and every other WPF window of the program, so it needs a launch check of its own.
 
 ---
 
@@ -445,7 +480,8 @@ either way.
 - The 3D layer is drawn at 3× (capped at 8 megapixels) and reduced with WIC's Fant scaler.
 - 2D-layer text uses `TextFormattingMode.Display` and grayscale antialiasing, never ClearType. ClearType depends on per-user settings.
 - `RenderTargetBitmap` always renders in software (Microsoft's graphics rendering tiers page), so images do not depend on the GPU. Tests
-  that host the live view (O-19 (b) only) set `RenderOptions.ProcessRenderMode=SoftwareOnly` in `AssemblyInitialize`.
+  that host the live view (O-19 (b) only) set `RenderOptions.ProcessRenderMode=SoftwareOnly` in `AssemblyInitialize`, as the program does
+  (`ProgramEntry.cs:21`, O-34), so they draw the live view as the program draws it.
 - No test waits for `CompositionTarget.Rendering` or for a frame on screen. WPF stops drawing on screen while the session is locked, and
   Full runs are unattended. The tests run in the lead's desktop session, as the existing WPF STA tests do.
 - One render thread renders scenes one after another and reuses one bitmap per size (5.4). A `COMException` (dotnet/wpf#3067) is retried
@@ -568,7 +604,8 @@ are recorded here. For O-19 the choice between (a) and (b) follows TC-1's measur
 (i7-10700T, x86 .NET Framework 4.8, software rendering) a warm refill takes 384 ms at 410x307 and 648 ms at 615x461 (217 ms even at
 1x without smoothing), against (a)'s limit of 100 ms; a selection-only change takes 13-16 ms, within its 20 ms. TC-3 therefore adds a
 live hardware WPF view on screen with a per-computer "Draw in software" switch, and the software render stays for `GetBitmap`, prints,
-sheets and the dashboard (TC-1's gallery G0, `timings.txt`).
+sheets and the dashboard (TC-1's gallery G0, `timings.txt`). TC-3's fix round found that the program draws every WPF window in software
+(`ProgramEntry.cs:21`), so the live view is not drawn by the graphics card in the program: O-34 asks again with the live view as it runs.
 
 - **O-17. Batch H download.** The exact list is in section 9. **Recommended:** approve it. TC-0 to TC-3 do not need it. If TC-4's
   offline check resolves a package that the list lacks, TC-4 stops and the lead asks for a batch H2 the same way.
@@ -590,7 +627,8 @@ sheets and the dashboard (TC-1's gallery G0, `timings.txt`).
     - The limit the lead proposes: on the build PC, a refill plus render of the Chart module's chart at 150% (615×461) takes at most
       100 ms, and a selection-only change at most 20 ms (L-2, shown in G0).
   - **(b) Otherwise:** a live WPF view on screen (TC-3 adds it), drawn by the graphics card, with a per-computer "Draw in software"
-    check box.
+    check box. (The program draws every WPF window in software, `ProgramEntry.cs:21`, so in the program the view is drawn in software
+    at 1x: O-34.)
     - Stored as a text value in the existing `ComputerPref.DirectXFormat` column (`ComputerPref.cs:44-47`): empty means hardware,
       `WpfSoftware` means software. No schema change. The DirectX engine that read the column is gone after TC-9a.
     - An older build that reads `WpfSoftware` finds no `;` and keeps its default device format (`ToothChartDirectX.cs:1436-1440`). That
@@ -672,6 +710,29 @@ sheets and the dashboard (TC-1's gallery G0, `timings.txt`).
   unsmoothed pictures as the baseline, and add about 10 smoothed pictures in `Baselines/legacy-smoothed/` for the gallery only,
   never byte-checked.
 
+**Asked with TC-3's results (gallery G1; the lead puts it to the owner with G1):**
+
+- **O-34. The program draws every WPF window in software, the live view included.**
+  - **Facts.** `OpenPmsDental/Main Modules/ProgramEntry.cs:21` sets `RenderOptions.ProcessRenderMode=RenderMode.SoftwareOnly` for the
+    whole process before any window exists. Upstream added it in 24.2.48 and again in 24.3.15 (`d4d86a572`) with no comment, so its
+    reason is not recorded; it is the program's only render-mode setting, and it covers every WPF window and control of the program
+    (`WpfControlsOD` and every `ElementHost`), not only the chart. A window's `HwndTarget.RenderMode` cannot turn hardware back on. So the
+    live view of O-19 (b) is drawn by WPF's software rasterizer at 1x with no edge smoothing (jagged tooth edges, unlike the renderer's
+    3x picture and DirectX's smoothed default; G1's live-view section shows both), and the "Draw in software" switch chooses between two
+    software pictures: the live view (fast refills) and the renderer's smoothed picture (the same as every print; a refill takes 0.4 to
+    0.7 s). G1's times now include the live view's frame in software.
+  - **(a)** A separate, owner-approved package removes or narrows the line. Narrowing means removing the process-wide line and asking for
+    software per window (`HwndTarget.RenderMode`) where it is still wanted, since a window can ask for software but not for hardware. Either
+    way it changes WPF windows of the whole program, so it needs its own launch check on the office's graphics, and it brings back the
+    driver risk (dotnet/wpf#7076) that the switch and Setup > Graphics then cover. The live view would then be drawn by the graphics card as
+    O-19 (b) assumed.
+  - **(b)** Keep the line, and decide O-19 again with the live view as it actually runs: (b1) keep the live view as the default
+    on-screen chart (the fastest refills; 1x edges) with the switch for the smoothed picture; or (b2) show the renderer's smoothed
+    picture everywhere (O-19 (a); what is printed is what is shown, but a refill takes 0.4 to 0.7 s), and drop the live view.
+  - **Recommended:** (b1). The line is upstream's and covers far more than the chart, so changing it belongs to its own package and launch
+    check, if ever. In software the live view is out of reach of driver faults, and with its cached 3D layer a selection or a pen move
+    redraws no 3D (G1's times); the switch stays for an office that prefers the smoothed picture.
+
 ---
 
 ## 11. Launch checks by the lead
@@ -697,6 +758,9 @@ sheets and the dashboard (TC-1's gallery G0, `timings.txt`).
   - Click and drag selection, pen, eraser and colour changer.
   - Slider ticks and module switches, timed against DirectX, with the dashboard open and closed.
   - With the live view only: focus and keyboard around the ElementHost.
+  - With the live view, as the program draws it (in software at 1x, O-34): a click on a tooth and a pen stroke respond at once at 100%
+    and 150%; the edges beside the "Draw in software" picture (the switch); and that no other WPF window looks different (the fix round
+    changes only the chart's view).
 - **L-5 (TC-5, TC-6).**
   - Free text added, edited, moved and deleted, and still there after a restart.
   - Text and TextBelow codes; the extraction setting on and off.
@@ -738,7 +802,11 @@ sheets and the dashboard (TC-1's gallery G0, `timings.txt`).
 - **Images made off the UI thread.** The dashboard renders on an MTA worker. Mitigation: no WPF object on a caller's thread, the
   renderer's own STA thread, and MTA tests in TC-1 and TC-8 (5.4).
 - **Hardware WPF 3D draws nothing on some drivers** (dotnet/wpf#7076, open). Mitigation: the on-screen chart shows the software render
-  (O-19 (a)); with the live view, the software switch and the live preview.
+  (O-19 (a)); with the live view, the software switch and the live preview. While the program draws every WPF window in software
+  (`ProgramEntry.cs:21`, O-34), the live view does not use the driver at all.
+- **The live view is drawn in software in the program** (O-34). The plan assumed a hardware view. Mitigations: G1 shows the live view as
+  the program draws it and times its frame in software; the cached 3D layer and the pen stroke's own element keep 2D-only changes from
+  rasterizing the 3D layer; a source test pins the line, so removing it brings the plan and the tests along.
 - **`RenderTargetBitmap` failures in loops** (dotnet/wpf#3067), and an access violation with one d3d9.dll version (#7933). Mitigations:
   one render thread, reused bitmaps, one retry, and a 2D image of the same data as the last resort, logged.
 - **Render cost on every refill.** A software render replaces DirectX's hardware draw. Mitigations: frozen cached meshes, material and
