@@ -1,52 +1,23 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    UnitTestsCore: the table-type helpers (TableTypes\*T.cs, MultiTypes, Misc) that the legacy UnitTests project uses to create its test
+    rows. The SDK's default globs compile every .cs file under this folder (bin\ and obj\ excepted); every file there was a Compile item of
+    the classic project, so nothing is listed. It is outside tests\, so tests\Directory.Build.props does not apply: the MSTest v1 reference
+    is its own, by name, as before (Directory.Build.targets adds the folder that holds it to the search path).
+  -->
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{7BBDDEDF-C015-43C0-A532-FED224993281}</ProjectGuid>
+    <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>UnitTestsCore</RootNamespace>
     <AssemblyName>UnitTestsCore</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <DebugType>full</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
     <LangVersion>7.3</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
+    <Platforms>AnyCPU;x86</Platforms>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <Optimize>true</Optimize>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugType>full</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <DebugType>pdbonly</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
-    <LangVersion>7.3</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
@@ -66,180 +37,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Misc\DatabaseTools.cs" />
-    <Compile Include="Misc\MiscTestUtils.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TableTypes\AccountEntryT.cs" />
-    <Compile Include="TableTypes\AlertCategoryT.cs" />
-    <Compile Include="TableTypes\AllergyDefT.cs" />
-    <Compile Include="TableTypes\AllergyT.cs" />
-    <Compile Include="TableTypes\AutoCodeItemT.cs" />
-    <Compile Include="TableTypes\AutoCodeT.cs" />
-    <Compile Include="TableTypes\AutoNoteControlT.cs" />
-    <Compile Include="TableTypes\AutoNoteT.cs" />
-    <Compile Include="TableTypes\CdcrecT.cs" />
-    <Compile Include="TableTypes\CentralManagerT.cs" />
-    <Compile Include="TableTypes\ClaimPaymentT.cs" />
-    <Compile Include="TableTypes\ClaimTrackingT.cs" />
-    <Compile Include="TableTypes\EFormDefT.cs" />
-    <Compile Include="TableTypes\EFormT.cs" />
-    <Compile Include="TableTypes\LabTurnaroundT.cs" />
-    <Compile Include="TableTypes\LanguagePatT.cs" />
-    <Compile Include="TableTypes\CodeGroupT.cs" />
-    <Compile Include="TableTypes\CovSpanT.cs" />
-    <Compile Include="TableTypes\CovCatT.cs" />
-    <Compile Include="TableTypes\DisplayFieldT.cs" />
-    <Compile Include="TableTypes\DocumentT.cs" />
-    <Compile Include="TableTypes\EhrPatientT.cs" />
-    <Compile Include="TableTypes\EmailAutographT.cs" />
-    <Compile Include="TableTypes\EmployerT.cs" />
-    <Compile Include="TableTypes\EobAttachT.cs" />
-    <Compile Include="TableTypes\GroupPermissionT.cs" />
-    <Compile Include="TableTypes\HistAppointmentT.cs" />
-    <Compile Include="TableTypes\InsVerifyT.cs" />
-    <Compile Include="TableTypes\LabCaseT.cs" />
-    <Compile Include="TableTypes\LaboratoryT.cs" />
-    <Compile Include="TableTypes\OrthoChartRowT.cs" />
-    <Compile Include="TableTypes\OrthoChartT.cs" />
-    <Compile Include="TableTypes\PatFieldDefT.cs" />
-    <Compile Include="TableTypes\PatFieldPickItemT.cs" />
-    <Compile Include="TableTypes\PatFieldT.cs" />
-    <Compile Include="TableTypes\PayorTypeT.cs" />
-    <Compile Include="TableTypes\PerioExamT.cs" />
-    <Compile Include="TableTypes\PerioMeasureT.cs" />
-    <Compile Include="TableTypes\PhoneNumberT.cs" />
-    <Compile Include="TableTypes\AdjustmentT.cs" />
-    <Compile Include="TableTypes\AlertSubT.cs" />
-    <Compile Include="TableTypes\AppointmentRuleT.cs" />
-    <Compile Include="TableTypes\AppointmentT.cs" />
-    <Compile Include="TableTypes\AppointmentTypeT.cs" />
-    <Compile Include="TableTypes\ApptFieldDefT.cs" />
-    <Compile Include="TableTypes\ApptViewItemT.cs" />
-    <Compile Include="TableTypes\ApptViewT.cs" />
-    <Compile Include="TableTypes\BenefitT.cs" />
-    <Compile Include="TableTypes\CareCreditWebResponseT.cs" />
-    <Compile Include="TableTypes\CarrierT.cs" />
-    <Compile Include="TableTypes\ClaimProcT.cs" />
-    <Compile Include="TableTypes\ClaimSnapshotT.cs" />
-    <Compile Include="TableTypes\ClaimT.cs" />
-    <Compile Include="TableTypes\ClearinghouseT.cs" />
-    <Compile Include="TableTypes\ClinicPrefT.cs" />
-    <Compile Include="TableTypes\CommlogT.cs" />
-    <Compile Include="TableTypes\DiscountPlanSubT.cs" />
-    <Compile Include="TableTypes\EhrMeasureEventT.cs" />
-    <Compile Include="TableTypes\EmailAttachT.cs" />
-    <Compile Include="TableTypes\EmailSecureT.cs" />
-    <Compile Include="TableTypes\HieClinicT.cs" />
-    <Compile Include="TableTypes\HieQueueT.cs" />
-    <Compile Include="TableTypes\MedicationPatT.cs" />
-    <Compile Include="TableTypes\MedicationT.cs" />
-    <Compile Include="TableTypes\Icd10T.cs" />
-    <Compile Include="TableTypes\DiseaseDefT.cs" />
-    <Compile Include="TableTypes\DiseaseT.cs" />
-    <Compile Include="TableTypes\EmailAddressT.cs" />
-    <Compile Include="TableTypes\ClinicT.cs" />
-    <Compile Include="TableTypes\ClockEventT.cs" />
-    <Compile Include="TableTypes\CommOptOutT.cs" />
-    <Compile Include="TableTypes\CreditCardT.cs" />
-    <Compile Include="TableTypes\DefT.cs" />
-    <Compile Include="TableTypes\DefLinkT.cs" />
-    <Compile Include="TableTypes\AlertItemT.cs" />
-    <Compile Include="TableTypes\EmailMessageT.cs" />
-    <Compile Include="TableTypes\EmployeeT.cs" />
-    <Compile Include="TableTypes\EtransT.cs" />
-    <Compile Include="TableTypes\FeeSchedT.cs" />
-    <Compile Include="TableTypes\FeeT.cs" />
-    <Compile Include="TableTypes\InsPlanT.cs" />
-    <Compile Include="TableTypes\InsSubT.cs" />
-    <Compile Include="TableTypes\IntrospectionT.cs" />
-    <Compile Include="TableTypes\OperatoryT.cs" />
-    <Compile Include="TableTypes\OrthoProcLinkT.cs" />
-    <Compile Include="TableTypes\DiscountPlanT.cs" />
-    <Compile Include="TableTypes\PayPlanChargeT.cs" />
-    <Compile Include="TableTypes\PayPlanLinkT.cs" />
-    <Compile Include="TableTypes\PlannedApptT.cs" />
-    <Compile Include="TableTypes\PopupT.cs" />
-    <Compile Include="TableTypes\ProcButtonItemT.cs" />
-    <Compile Include="TableTypes\ProcButtonT.cs" />
-    <Compile Include="TableTypes\ProcGroupItemT.cs" />
-    <Compile Include="TableTypes\ProcNoteT.cs" />
-    <Compile Include="TableTypes\ProcTpT.cs" />
-    <Compile Include="TableTypes\ProgramPropertyT.cs" />
-    <Compile Include="TableTypes\ProviderClinicT.cs" />
-    <Compile Include="TableTypes\QuickPasteCatT.cs" />
-    <Compile Include="TableTypes\QuickPasteNoteT.cs" />
-    <Compile Include="TableTypes\ReactivationT.cs" />
-    <Compile Include="TableTypes\RecallTriggerT.cs" />
-    <Compile Include="TableTypes\RefAttachT.cs" />
-    <Compile Include="TableTypes\ReferralT.cs" />
-    <Compile Include="TableTypes\RegistrationKeyT.cs" />
-    <Compile Include="TableTypes\RepeatChargeT.cs" />
-    <Compile Include="TableTypes\PharmacyT.cs" />
-    <Compile Include="TableTypes\RxNormT.cs" />
-    <Compile Include="TableTypes\RxPatT.cs" />
-    <Compile Include="TableTypes\SecurityLogT.cs" />
-    <Compile Include="TableTypes\SiteT.cs" />
-    <Compile Include="TableTypes\SnomedT.cs" />
-    <Compile Include="TableTypes\StatementT.cs" />
-    <Compile Include="TableTypes\SheetDefT.cs" />
-    <Compile Include="TableTypes\SheetT.cs" />
-    <Compile Include="TableTypes\OrthoCaseT.cs" />
-    <Compile Include="TableTypes\ApiSubscriptionT.cs" />
-    <Compile Include="TableTypes\TaskAncestorT.cs" />
-    <Compile Include="TableTypes\TaskUnreadT.cs" />
-    <Compile Include="TableTypes\TimeAdjustT.cs" />
-    <Compile Include="TableTypes\ToothInitialT.cs" />
-    <Compile Include="TableTypes\TreatPlanT.cs" />
-    <Compile Include="TableTypes\UserGroupT.cs" />
-    <Compile Include="TableTypes\UserOdPrefT.cs" />
-    <Compile Include="TableTypes\UserodT.cs" />
-    <Compile Include="TableTypes\SignalodT.cs" />
-    <Compile Include="TableTypes\TaskListT.cs" />
-    <Compile Include="TableTypes\TaskT.cs" />
-    <Compile Include="TableTypes\TaskSubscriptionT.cs" />
-    <Compile Include="TableTypes\PatientT.cs" />
-    <Compile Include="TableTypes\PatPlanT.cs" />
-    <Compile Include="TableTypes\PaymentT.cs" />
-    <Compile Include="TableTypes\PayPeriodT.cs" />
-    <Compile Include="TableTypes\PayPlanT.cs" />
-    <Compile Include="TableTypes\PaySplitT.cs" />
-    <Compile Include="TableTypes\PrefT.cs" />
-    <Compile Include="TableTypes\ProcedureCodeT.cs" />
-    <Compile Include="TableTypes\ProcedureT.cs" />
-    <Compile Include="TableTypes\ProviderT.cs" />
-    <Compile Include="TableTypes\RecallT.cs" />
-    <Compile Include="TableTypes\RecallTypeT.cs" />
-    <Compile Include="TableTypes\RecurringChargeT.cs" />
-    <Compile Include="TableTypes\ScheduleOpT.cs" />
-    <Compile Include="TableTypes\ScheduleT.cs" />
-    <Compile Include="TableTypes\SubstitutionLinkT.cs" />
-    <Compile Include="TableTypes\TestT.cs" />
-    <Compile Include="TableTypes\TimeCardRuleT.cs" />
-    <Compile Include="TableTypes\UpdateHistoryT.cs" />
-    <Compile Include="MultiTypes\InsuranceT.cs" />
-    <Compile Include="TableTypes\UserWebT.cs" />
-    <Compile Include="TableTypes\VitalsignT.cs" />
+    <ProjectReference Include="..\CodeBase\xCodeBase.csproj" />
+    <ProjectReference Include="..\DataConnectionBase\xDataConnectionBase.csproj" />
+    <ProjectReference Include="..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\CodeBase\xCodeBase.csproj">
-      <Project>{18f7bc78-4b99-48d3-a1f1-0d13a63e3cf9}</Project>
-      <Name>xCodeBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\DataConnectionBase\xDataConnectionBase.csproj">
-      <Project>{29c41020-4411-41f2-9061-9b71b5b32b5d}</Project>
-      <Name>xDataConnectionBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj">
-      <Project>{3d0fc76e-803c-4de2-bdb1-47d63a4e2357}</Project>
-      <Name>OpenPmsDentalBusiness</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
 </Project>
