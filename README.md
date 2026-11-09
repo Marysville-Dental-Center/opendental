@@ -199,7 +199,8 @@ Then build the solution (see [Build](#build)), start `OpenPmsDental\bin\Debug\Op
 | `third-party/` | Upstream source the program builds instead of shipping prebuilt files: the git submodules `PDFsharp` (PDFsharp/MigraDoc 6.5.0, empira's AGPL source) and `WeCantSpell.Hunspell` (7.0.1), pinned to their release commits, and `build/`, this project's own project files that compile them in the solution, with the one PDFsharp file the build replaces ([docs/third-party-source-builds.md](docs/third-party-source-builds.md)) |
 | `ODR/`, `RdlEngine/`, `RdlViewer/` | RDL reports: `ODR.dll`, the code module report definitions call, and the fyiReporting RDL engine and viewer (LGPL 2.1), built from source in the solution and copied next to `OpenPmsDental.exe` ([docs/port-notes/RDL-SRC.md](docs/port-notes/RDL-SRC.md)) |
 | `RdlDesign/` | fyiReporting's RDL report designer (`RdlDesigner.exe`), built in the solution against `RdlEngine/` and `RdlViewer/`; a developer tool, not shipped |
-| `DocumentationBuilder/`, `PluginExample/` | Older or standalone projects, not in the solution filter and not built |
+| `DocumentationBuilder/` | Open Dental's documentation tool: the schema documentation (`OpenDentalDocumentation.xml` and the diff against a previous version), the unit test and the preference documentation; built in the solution against the program; a developer tool, not shipped |
+| `PluginExample/` | Older standalone project, not in the solution filter and not built |
 
 ## Branches
 

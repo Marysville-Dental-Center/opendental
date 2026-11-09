@@ -7,6 +7,7 @@
       "DatabaseIntegrityCheck\\xDatabaseIntegrityCheck.csproj",
       "DataConnectionBase\\xDataConnectionBase.csproj",
       "Direct2dWrapper\\Direct2dWrapper.vcxproj",
+      "DocumentationBuilder\\xDocumentationBuilder.csproj",
       "ImagingCapture\\xImagingCapture.csproj",
       "ImagingDeviceManager\\xImagingDeviceManager.csproj",
       "MySQLManager\\xMySQLManager.csproj",

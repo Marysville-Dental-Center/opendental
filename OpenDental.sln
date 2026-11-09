@@ -245,6 +245,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RdlViewer", "RdlViewer\RdlV
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReportDesigner", "RdlDesign\ReportDesigner.csproj", "{3E1D2C49-44A2-46A0-B107-9E8A87AE78A7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "xDocumentationBuilder", "DocumentationBuilder\xDocumentationBuilder.csproj", "{460E581F-836B-4414-B8E2-4DFC259585C9}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CLAIMDCMTests", "tests\CLAIMDCMTests\CLAIMDCMTests.csproj", "{8FFB891B-521F-4113-9BF8-CC325E0191DA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LibraryBindingTests", "tests\LibraryBindingTests\LibraryBindingTests.csproj", "{47EE936D-6832-406C-9CC7-609B89329C8E}"
@@ -1260,6 +1262,14 @@ Global
 		{3E1D2C49-44A2-46A0-B107-9E8A87AE78A7}.Release|Any CPU.Build.0 = Release|x86
 		{3E1D2C49-44A2-46A0-B107-9E8A87AE78A7}.Release|x86.ActiveCfg = Release|x86
 		{3E1D2C49-44A2-46A0-B107-9E8A87AE78A7}.Release|x86.Build.0 = Release|x86
+		{460E581F-836B-4414-B8E2-4DFC259585C9}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{460E581F-836B-4414-B8E2-4DFC259585C9}.Debug|Any CPU.Build.0 = Debug|x86
+		{460E581F-836B-4414-B8E2-4DFC259585C9}.Debug|x86.ActiveCfg = Debug|x86
+		{460E581F-836B-4414-B8E2-4DFC259585C9}.Debug|x86.Build.0 = Debug|x86
+		{460E581F-836B-4414-B8E2-4DFC259585C9}.Release|Any CPU.ActiveCfg = Release|x86
+		{460E581F-836B-4414-B8E2-4DFC259585C9}.Release|Any CPU.Build.0 = Release|x86
+		{460E581F-836B-4414-B8E2-4DFC259585C9}.Release|x86.ActiveCfg = Release|x86
+		{460E581F-836B-4414-B8E2-4DFC259585C9}.Release|x86.Build.0 = Release|x86
 		{8FFB891B-521F-4113-9BF8-CC325E0191DA}.Debug|Any CPU.ActiveCfg = Debug|x86
 		{8FFB891B-521F-4113-9BF8-CC325E0191DA}.Debug|Any CPU.Build.0 = Debug|x86
 		{8FFB891B-521F-4113-9BF8-CC325E0191DA}.Debug|x86.ActiveCfg = Debug|x86
