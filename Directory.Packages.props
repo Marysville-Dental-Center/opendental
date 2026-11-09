@@ -1,0 +1,74 @@
+<Project>
+  <!--
+    The versions of the NuGet packages the projects of this repository use (central package management,
+    https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management). NuGet.props, which Microsoft.Common.props
+    imports after Directory.Build.props, finds this file above every project and imports it. A project names a package with
+    <PackageReference Include="Id" /> and no version; the version is the one below. Every package comes from the offline folder of
+    nuget.config, never from a feed, and every restore writes or checks the project's packages.lock.json.
+
+    As in Directory.Build.props, everything here is for SDK-style projects only. Microsoft.NET.Sdk sets UsingMicrosoftNETSdk before
+    it imports Microsoft.Common.props; the classic Middle Tier project (OpenPmsDentalServer) and Direct2dWrapper.vcxproj never set it,
+    so they see no central versions and build exactly as before.
+
+    Stage 2 of the .NET 10 move (docs/specs/net10-plan.md), package S2-1: these packages replace the "Required dlls" files they are
+    byte for byte (lib\net462, lib\net472 or lib\net48 of each package as the .NET Framework 4.8 build takes it, SHA-256 checked;
+    docs/port-notes/S2-1.md). The projects that referenced a file by HintPath reference its package; a test project gets them through
+    the projects it references. MySqlConnector, the WebView2 files and the other files of "Required dlls" keep their HintPaths until
+    S2-2 and S2-3; the files of these packages stay in "Required dlls" until S2-4 moves the release tooling to the packages.
+  -->
+  <PropertyGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!--
+      The versions below also hold for the packages a package depends on (transitive pinning,
+      https://learn.microsoft.com/en-us/nuget/consume-packages/central-package-management#transitive-pinning). Without it NuGet takes the
+      lowest version a package asks for: MSAL 4.92 asks for System.Diagnostics.DiagnosticSource 6.0.1, System.Formats.Asn1 8.0.1 and
+      System.Text.Json 6.0.10, Microsoft.Extensions.Logging.Abstractions 8.0.3 for System.Buffers 4.5.1 and System.Memory 4.5.5. With it
+      every program and test gets the one file of each assembly that "Required dlls" held, which the binding redirects of the configs name.
+    -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <!--
+      Two of these packages bring a Roslyn source generator, which the SDK hands the compiler of every project with the package anywhere in
+      its graph: Microsoft.Extensions.Logging.Abstractions (LoggerMessage) and System.Text.Json (JsonSerializable). The files of "Required dlls"
+      brought none, and the code relies on neither: the third-party source builds hold what the logging generator writes for PDFsharp and
+      MigraDoc (third-party\build\SourceBuild.props), and a second copy would not compile. Each package's own switch takes its generator out
+      again (its buildTransitive targets), so every project compiles as before.
+    -->
+    <DisableMicrosoftExtensionsLoggingSourceGenerator>true</DisableMicrosoftExtensionsLoggingSourceGenerator>
+    <DisableSystemTextJsonSourceGenerator>true</DisableSystemTextJsonSourceGenerator>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
+    <!-- The libraries: Bouncy Castle, the Google APIs with Gmail, MailKit and MimeKit, MSAL with its IdentityModel abstractions,
+         Json.NET and SSH.NET (Renci.SshNet.dll). -->
+    <PackageVersion Include="BouncyCastle.Cryptography" Version="2.7.0" />
+    <PackageVersion Include="Google.Apis" Version="1.78.0" />
+    <PackageVersion Include="Google.Apis.Auth" Version="1.78.0" />
+    <PackageVersion Include="Google.Apis.Core" Version="1.78.0" />
+    <PackageVersion Include="Google.Apis.Gmail.v1" Version="1.77.0.4295" />
+    <PackageVersion Include="MailKit" Version="4.18.2" />
+    <PackageVersion Include="MimeKit" Version="4.18.2" />
+    <PackageVersion Include="Microsoft.Identity.Client" Version="4.92.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Abstractions" Version="8.14.0" />
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageVersion Include="SSH.NET" Version="2026.0.0" />
+    <!-- The support packages (polyfills) they and MySqlConnector use on the .NET Framework. The three Microsoft packages on 8.0.x move
+         to 10.0 in S2-2; System.Security.Cryptography.Pkcs, the 26th identical file, is used by nothing and leaves "Required dlls" in
+         S2-4. -->
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Bcl.Cryptography" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
+    <PackageVersion Include="System.Buffers" Version="4.6.1" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
+    <PackageVersion Include="System.Formats.Asn1" Version="10.0.13" />
+    <PackageVersion Include="System.IO.Pipelines" Version="10.0.14" />
+    <PackageVersion Include="System.Memory" Version="4.6.3" />
+    <PackageVersion Include="System.Numerics.Vectors" Version="4.6.1" />
+    <PackageVersion Include="System.Runtime.CompilerServices.Unsafe" Version="6.1.2" />
+    <PackageVersion Include="System.Text.Encodings.Web" Version="10.0.14" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.14" />
+    <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
+    <!-- Test tools: Mono.Cecil reads assemblies in four test projects (S1-6). -->
+    <PackageVersion Include="Mono.Cecil" Version="0.10.3" />
+  </ItemGroup>
+</Project>

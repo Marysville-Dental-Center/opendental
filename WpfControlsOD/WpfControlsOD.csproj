@@ -45,20 +45,15 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Microsoft.Web.WebView2.Wpf.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
-    </Reference>
+    <!-- Newtonsoft.Json, the version of Directory.Packages.props. -->
+    <PackageReference Include="Newtonsoft.Json" />
     <Reference Include="ReachFramework" />
     <Reference Include="System.Printing" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <!-- The ReadOnlySpan<char> overloads of WeCantSpell.Hunspell's WordList need it to compile; SpellCheckL calls the string ones. -->
-    <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\System.Memory.dll</HintPath>
-    </Reference>
+    <PackageReference Include="System.Memory" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.ServiceProcess" />

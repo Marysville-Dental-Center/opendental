@@ -9,8 +9,9 @@
        root, blank password) whose name starts with s0t_, built from the seed dump and dropped afterwards; it is inconclusive without the server.
        No other test uses a database. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <!-- Reads the built assemblies' type references without loading them. The NuGet package, from the offline package folder (nuget.config). -->
-    <PackageReference Include="Mono.Cecil" Version="0.10.3" />
+    <!-- Reads the built assemblies' type references without loading them. The NuGet package, from the offline package folder (nuget.config),
+         at the version of Directory.Packages.props. -->
+    <PackageReference Include="Mono.Cecil" />
     <Reference Include="Microsoft.Web.WebView2.Core">
       <HintPath>..\..\Required dlls\Microsoft.Web.WebView2.Core.dll</HintPath>
     </Reference>

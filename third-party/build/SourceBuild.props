@@ -6,8 +6,12 @@
        props file (PDFsharp.props, or the properties in WeCantSpell.Hunspell.csproj), then the SDK's Sdk.targets, and SourceBuild.targets
        last, so $(IntermediateOutputPath) is set when SourceBuild.targets uses it. Nothing inside a submodule is changed, and nothing is
        downloaded: the upstream project files (NuGet, GitVersion, SourceLink) are not used; these project files compile the same source, x86
-       like the program, with the support assemblies of "Required dlls", and reference no package (their restore finds nothing to restore
-       and writes a packages.lock.json that names only the other projects of this folder). -->
+       like the program. The only packages they reference are the support assemblies the sources use (Microsoft.Extensions.Logging.Abstractions,
+       System.Memory, System.Buffers, System.Runtime.CompilerServices.Unsafe), never a PDFsharp, MigraDoc or WeCantSpell package, at the
+       versions of the repository's Directory.Packages.props and from the offline folder of nuget.config, as every project's packages
+       (package S2-1 of docs\specs\net10-plan.md; until then they were the same files in "Required dlls"). The logging source generator that Microsoft.Extensions.Logging.Abstractions brings stays off
+       (Directory.Packages.props): PdfSharp-gdi\LoggerMessages.cs and MigraDoc.DocumentObjectModel\LoggerMessages.cs hold what it writes for
+       upstream's LogMessages.cs, so these projects compile the files SourceBuildItems.txt lists and nothing the generator would add. -->
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>

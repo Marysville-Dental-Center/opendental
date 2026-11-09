@@ -9,11 +9,8 @@
     <Reference Include="MySqlConnector">
       <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
-    <!-- The ReadOnlySpan<char> overloads of WeCantSpell.Hunspell's WordList need System.Memory to compile. -->
-    <Reference Include="System.Memory, Version=4.0.5.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Required dlls\System.Memory.dll</HintPath>
-    </Reference>
+    <!-- The ReadOnlySpan<char> overloads of WeCantSpell.Hunspell's WordList need System.Memory to compile; it comes as a package through the
+         projects below. -->
     <!-- TextRich (WpfControlsOD) is a WPF control; the tests build it, never shown, on an STA thread. -->
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
