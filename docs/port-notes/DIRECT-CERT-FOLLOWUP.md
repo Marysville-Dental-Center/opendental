@@ -386,6 +386,11 @@ Not tested here, as before: the machine key set and LocalMachine\My, which need 
   tests' files list the client certificate first (and .NET Framework's read keeps that order: the tool took the client certificate).
   Preferring a certificate with the client authentication purpose, or one that is not a CA, would change which certificate the tool
   takes: not part of this round.
+- A `.pfx` whose certificate LocalMachine\My already has (`isPfxCertInStoreBefore`, which the tool then never records or removes): the
+  import stores a new key for it and the store's add gives the store's entry that key (as DIRECT-CERT's third round found for the add:
+  the entry takes the added certificate's properties). The key the entry had before stays on the computer, named by no certificate; the
+  import never deletes a key that was there before, by the rule of this round. Not changed; not measured for the tool (it needs
+  LocalMachine\My).
 - Building this branch through the lane needs `ImportDirectoryPackagesProps=false` in the environment: the worktree sits inside the main
   checkout, whose `Directory.Packages.props` (S2-1, central package versions, merged on `main` after this branch was cut) NuGet otherwise
   finds above the worktree. Merged with `main`, the branch has its own copy and needs nothing.
