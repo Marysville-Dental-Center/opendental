@@ -8,6 +8,7 @@ using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.VendorDirect.ProgramLinks;
+using ProjectFileTests;
 
 namespace VBRIDGE1Tests {
 	[TestClass]
@@ -15,6 +16,11 @@ namespace VBRIDGE1Tests {
 		///<summary>A repository file with its line endings normalized to \n, since they depend on the checkout.</summary>
 		private static string Read(params string[] arrayParts) {
 			return File.ReadAllText(TestDb.FindRepoFile(Path.Combine(arrayParts))).Replace("\r\n","\n");
+		}
+
+		///<summary>A project file's evaluated items, so a check holds for the classic project files and the SDK-style ones alike.</summary>
+		private static ProjectFile Project(params string[] arrayParts) {
+			return ProjectFile.Load(TestDb.FindRepoFile(Path.Combine(arrayParts)));
 		}
 
 		///<summary>The repository root: the first folder above the test assembly with NOTICE, which must also hold LICENSE. Found by those files
@@ -59,10 +65,7 @@ namespace VBRIDGE1Tests {
 			StringAssert.Contains(iap,"IapLink.GetLaunch(Programs.GetCur(ProgramName.IAP))");
 			Assert.IsFalse(iap.Contains("DllImport"),"No calls into the IAP desktop library.");
 			Assert.IsFalse(iap.Contains("iaplus10"),"No calls into the IAP desktop library.");
-			string csproj=Read("WpfControlsOD","WpfControlsOD.csproj");
-			StringAssert.Contains(csproj,"<Compile Include=\"Bridges\\Overjet.cs\" />");
-			StringAssert.Contains(csproj,"<Compile Include=\"Bridges\\DTXStudio.cs\" />");
-			StringAssert.Contains(csproj,"<Compile Include=\"Bridges\\Iap.cs\" />");
+			Project("WpfControlsOD","WpfControlsOD.csproj").AssertCompiles(@"Bridges\Overjet.cs",@"Bridges\DTXStudio.cs",@"Bridges\Iap.cs");
 		}
 
 		[TestMethod]
@@ -80,6 +83,8 @@ namespace VBRIDGE1Tests {
 				Assert.IsFalse(File.Exists(Path.Combine(root,"OpenPmsDental","Bridges",file)),file);
 			}
 			Assert.IsFalse(Read("OpenPmsDental","OpenPmsDental.csproj").Contains("FormIap"),"FormIap is out of the project.");
+			//Nor compiled or embedded from a file left anywhere in the folder (an SDK-style project compiles what is on disk).
+			Assert.AreEqual(0,Project("OpenPmsDental","OpenPmsDental.csproj").GetItemsMentioning("FormIap").Count,"FormIap is out of the project.");
 		}
 
 		[TestMethod]
@@ -97,7 +102,7 @@ namespace VBRIDGE1Tests {
 				StringAssert.Contains(source,"return "+arrayPair[1]);
 			}
 			StringAssert.Contains(source,"new FormProgramLinkEdit()");
-			StringAssert.Contains(Read("OpenPmsDental","OpenPmsDental.csproj"),"<Compile Include=\"Logic\\VendorDirect\\BridgeProgramLinkSetups.cs\" />");
+			Project("OpenPmsDental","OpenPmsDental.csproj").AssertCompiles(@"Logic\VendorDirect\BridgeProgramLinkSetups.cs");
 			//FormProgramLinks finds them through the registry; it is not edited.
 			StringAssert.Contains(Read("OpenPmsDental","Forms","FormProgramLinks.cs"),"VendorDirect.ProgramLinkSetupRegistry.EnsureAllPrograms()");
 		}

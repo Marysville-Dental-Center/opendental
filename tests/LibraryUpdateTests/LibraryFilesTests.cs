@@ -103,12 +103,15 @@ namespace LibraryUpdateTests {
 					|| x.Name.LocalName=="None" || x.Name.LocalName=="Content"))
 				{
 					string value=(xElement.Name.LocalName=="HintPath") ? xElement.Value : ((string)xElement.Attribute("Include")??"");
-					string name=Path.GetFileName(value.Split(',')[0].Trim().Replace('/','\\'));
-					if(name.EndsWith(".dll",StringComparison.OrdinalIgnoreCase)) {
-						name=name.Substring(0,name.Length-4);
-					}
-					if(_arrayRemoved.Contains(name,StringComparer.OrdinalIgnoreCase)) {
-						listViolations.Add(path.Substring(RepoRoot.Length)+": <"+xElement.Name.LocalName+"> "+value);
+					//And the attribute form of the metadata, which an SDK-style project file may use (HintPath="...").
+					foreach(string valueCur in new[] { value,(string)xElement.Attribute("HintPath")??"" }) {
+						string name=Path.GetFileName(valueCur.Split(',')[0].Trim().Replace('/','\\'));
+						if(name.EndsWith(".dll",StringComparison.OrdinalIgnoreCase)) {
+							name=name.Substring(0,name.Length-4);
+						}
+						if(_arrayRemoved.Contains(name,StringComparer.OrdinalIgnoreCase)) {
+							listViolations.Add(path.Substring(RepoRoot.Length)+": <"+xElement.Name.LocalName+"> "+valueCur);
+						}
 					}
 				}
 			}

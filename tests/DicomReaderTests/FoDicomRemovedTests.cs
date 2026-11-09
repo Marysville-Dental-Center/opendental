@@ -51,8 +51,11 @@ namespace DicomReaderTests {
 				}
 				foreach(XElement xElement in xDocument.Descendants()) {
 					string value=xElement.Name.LocalName=="HintPath" ? xElement.Value : ((string)xElement.Attribute("Include") ?? (string)xElement.Attribute("name") ?? "");
-					if(Regex.IsMatch(value,@"(^|[\\/""])(Dicom\.(Core|Native)|fo-dicom)",RegexOptions.IgnoreCase)) {
-						listViolations.Add(path.Substring(root.Length)+": <"+xElement.Name.LocalName+"> "+value);
+					//And the attribute form of the metadata, which an SDK-style project file may use (HintPath="...").
+					foreach(string valueCur in new[] { value,(string)xElement.Attribute("HintPath")??"",(string)xElement.Attribute("Update")??"" }) {
+						if(Regex.IsMatch(valueCur,@"(^|[\\/""])(Dicom\.(Core|Native)|fo-dicom)",RegexOptions.IgnoreCase)) {
+							listViolations.Add(path.Substring(root.Length)+": <"+xElement.Name.LocalName+"> "+valueCur);
+						}
 					}
 				}
 			}

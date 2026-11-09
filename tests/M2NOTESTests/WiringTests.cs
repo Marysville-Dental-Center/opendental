@@ -4,6 +4,7 @@
 using System;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace M2NOTESTests {
 	[TestClass]
@@ -14,6 +15,11 @@ namespace M2NOTESTests {
 
 		private static string FormProcGroupDesigner() {
 			return ScratchDb.ReadRepoFile("OpenPmsDental","Forms","FormProcGroup.designer.cs");
+		}
+
+		///<summary>A project file's evaluated items, so a check holds for the classic project files and the SDK-style ones alike.</summary>
+		private static ProjectFile Project(string relativePath) {
+			return ProjectFile.Load(ScratchDb.FindRepoFile(relativePath));
 		}
 
 		private static string Between(string source,string start,string end) {
@@ -184,7 +190,7 @@ namespace M2NOTESTests {
 			StringAssert.Contains(partial,"NoteMerge_LockNote();");
 			StringAssert.Contains(partial,"new FrmProcNoteMerge(");
 			StringAssert.Contains(partial,"ProcNoteMerges.GetLogPermission(ProcNoteMerges.IsCompleteStatus(_procedure.ProcStatus))");
-			StringAssert.Contains(ScratchDb.ReadRepoFile("OpenPmsDental","OpenPmsDental.csproj"),"<Compile Include=\"Forms\\FormProcEdit.NoteMerge.cs\">");
+			Project(@"OpenPmsDental\OpenPmsDental.csproj").AssertCompiles(@"Forms\FormProcEdit.NoteMerge.cs");
 		}
 
 		[TestMethod]
@@ -209,9 +215,9 @@ namespace M2NOTESTests {
 			StringAssert.Contains(load,"butSaveMerged.IsEnabled=false;");
 			StringAssert.Contains(Between(code,"private void butKeepMine_Click(","IsDialogOK=true;"),"if(!_canChangeText) {");
 			StringAssert.Contains(Between(code,"private void butSaveMerged_Click(","IsDialogOK=true;"),"if(!_canChangeText) {");
-			string csproj=ScratchDb.ReadRepoFile("WpfControlsOD","WpfControlsOD.csproj");
-			StringAssert.Contains(csproj,"<Compile Include=\"Frms\\FrmProcNoteMerge.xaml.cs\">");
-			StringAssert.Contains(csproj,"<Page Include=\"Frms\\FrmProcNoteMerge.xaml\">");
+			ProjectFile projectFile=Project(@"WpfControlsOD\WpfControlsOD.csproj");
+			projectFile.AssertCompiles(@"Frms\FrmProcNoteMerge.xaml.cs");
+			projectFile.AssertPages(@"Frms\FrmProcNoteMerge.xaml");
 		}
 
 		[TestMethod]
@@ -227,10 +233,8 @@ namespace M2NOTESTests {
 			StringAssert.Contains(chart,",UserNum2,CASE WHEN Signature2!='' THEN 1 ELSE 0 END AS Sig2Present ");
 			StringAssert.Contains(chart,"GroupNoteSignatures.FillProgNotesSigned(row,noteRowCur,userName,dictUserNames);");
 			StringAssert.Contains(chart,"GroupNoteSignatures.GetAuditSecondSignatureText(rowCur,dictUserNames);");
-			string csproj=ScratchDb.ReadRepoFile("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj");
-			foreach(string file in new[] { "Data Interface\\GroupNoteSignatures.cs","Data Interface\\ProcNoteMerges.cs","Misc\\LocalWindowSizes.cs" }) {
-				StringAssert.Contains(csproj,"<Compile Include=\""+file+"\" />",file);
-			}
+			Project(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj").AssertCompiles(@"Data Interface\GroupNoteSignatures.cs",
+				@"Data Interface\ProcNoteMerges.cs",@"Misc\LocalWindowSizes.cs");
 		}
 	}
 }

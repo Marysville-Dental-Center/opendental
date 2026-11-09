@@ -12,6 +12,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 using VendorDirectTests.Foundation;
 
 namespace VendorDirectTests.BridgesRemoval {
@@ -141,7 +142,7 @@ namespace VendorDirectTests.BridgesRemoval {
 			{
 				string path=Path.Combine(GetRoot(),pathRelative);
 				if(!File.Exists(path)) {
-					Assert.Inconclusive(pathRelative+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+					BuildOutput.NotBuilt(pathRelative+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 				}
 				List<string> listReferences=GetReferencedAssemblyNames(path);
 				foreach(string removed in _arrayRemovedAssemblies) {
@@ -158,7 +159,7 @@ namespace VendorDirectTests.BridgesRemoval {
 				"OpenPmsDentalBusiness should reference Microsoft.IdentityModel.Abstractions.");
 			string folder=Path.Combine(GetRoot(),@"OpenPmsDental\bin\Debug");
 			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
-				Assert.Inconclusive(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Identity.Client.dll")));
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.IdentityModel.Abstractions.dll")),"MSAL's dependency is not copied to the program folder.");
@@ -171,12 +172,13 @@ namespace VendorDirectTests.BridgesRemoval {
 		public void SshNetDependency_StillReachesTheProgram() {
 			//Renci.SshNet (SSH.NET 2026.0.0, net462) references Microsoft.Bcl.AsyncInterfaces 8.0.0.0. The Graph SDK used to bring a newer copy and
 			//its redirect in, so OpenPmsDentalStorage now references it itself. Without it, SFTP A to Z storage and the TSI uploads fail when SftpClient loads.
-			Assert.IsTrue(Regex.IsMatch(ReadRepoFile(@"OpenPmsDentalStorage\OpenPmsDentalStorage.csproj"),
-				@"<Reference Include=""Microsoft\.Bcl\.AsyncInterfaces[,""][^>]*>\s*<HintPath>\.\.\\Required dlls\\Microsoft\.Bcl\.AsyncInterfaces\.dll</HintPath>"),
+			//The evaluated reference, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			Assert.AreEqual(@"..\Required dlls\Microsoft.Bcl.AsyncInterfaces.dll",
+				ProjectFile.Load(Path.Combine(GetRoot(),@"OpenPmsDentalStorage\OpenPmsDentalStorage.csproj")).GetReference("Microsoft.Bcl.AsyncInterfaces")?.GetMetadata("HintPath"),
 				"OpenPmsDentalStorage should reference Required dlls\\Microsoft.Bcl.AsyncInterfaces.dll next to Renci.SshNet.");
 			string folder=Path.Combine(GetRoot(),@"OpenPmsDental\bin\Debug");
 			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
-				Assert.Inconclusive(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Renci.SshNet.dll")));
 			//A HintPath alone does not carry it to the hosts: the compiler drops unused references, and the hosts' build will not take 10.0.0.14 for
@@ -208,7 +210,7 @@ namespace VendorDirectTests.BridgesRemoval {
 		public void Program_OutputHasNoBridgesDll() {
 			string folder=Path.Combine(GetRoot(),@"OpenPmsDental\bin\Debug");
 			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
-				Assert.Inconclusive(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			//A stale copy from an older build can stay in bin until a clean, so only check that this build did not write a newer one.
 			string pathBridges=Path.Combine(folder,"Bridges.dll");

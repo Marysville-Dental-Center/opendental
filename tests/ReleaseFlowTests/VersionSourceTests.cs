@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace ReleaseFlowTests {
 	[TestClass]
@@ -17,7 +18,7 @@ namespace ReleaseFlowTests {
 		public void OpenDentalExe_ReleaseVersionIs_0_0_AndCompatVersionStaysOn_24_3_63() {
 			string pathExe=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug","OpenPmsDental.exe");
 			if(!File.Exists(pathExe)) {
-				Assert.Inconclusive("OpenPmsDental is not built.");
+				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			FileVersionInfo fileVersionInfo=FileVersionInfo.GetVersionInfo(pathExe);
 			Assert.AreEqual("0.0",fileVersionInfo.ProductVersion,"AssemblyInformationalVersion: the release version shown in About.");
@@ -27,7 +28,7 @@ namespace ReleaseFlowTests {
 			//The release version lives in the shared assembly info (package REL-FILES), which OpenPmsDental.csproj links.
 			string sharedAssemblyInfo=TestPaths.ReadSource("SharedAssemblyInfo.cs");
 			StringAssert.Contains(sharedAssemblyInfo,"[assembly: AssemblyInformationalVersion(\"0.0\")]");
-			StringAssert.Contains(TestPaths.ReadSource("OpenPmsDental","OpenPmsDental.csproj"),"<Compile Include=\"..\\SharedAssemblyInfo.cs\">");
+			ProjectFile.Load(Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","OpenPmsDental.csproj")).AssertCompiles(@"..\SharedAssemblyInfo.cs");
 		}
 
 		[TestMethod]
@@ -127,8 +128,9 @@ namespace ReleaseFlowTests {
 
 		[TestMethod]
 		public void UpdateFileCopier_ChecksTheReleaseManifest() {
-			string textCsproj=TestPaths.ReadSource("UpdateFileCopier","UpdateFileCopier.csproj");
-			StringAssert.Contains(textCsproj,@"..\OpenPmsDentalBusiness\Misc\ForkRelease\ReleaseManifest.cs");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile.Load(Path.Combine(TestPaths.RepoRoot,"UpdateFileCopier","UpdateFileCopier.csproj"))
+				.AssertCompiles(@"..\OpenPmsDentalBusiness\Misc\ForkRelease\ReleaseManifest.cs");
 			string text=StripComments(TestPaths.ReadSource("UpdateFileCopier","FormMain.cs"));
 			StringAssert.Contains(text,"VerifyRelease(_sourceDirectory)");
 			StringAssert.Contains(text,"VerifyRelease(TempPathSource)");

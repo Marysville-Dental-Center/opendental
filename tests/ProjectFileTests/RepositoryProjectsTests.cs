@@ -40,6 +40,41 @@ namespace ProjectFileTests {
 		}
 
 		[TestMethod]
+		public void EveryProjectFileOfTheRepository_Evaluates() {
+			//Also the projects the solution filter leaves out (the plug-in example, and those stage 1 adds), which the tests that scan every
+			//project file of the repository read too. The upstream projects inside the submodules are not built and not read.
+			string root=FixtureFolder.RepoRoot();
+			string[] arraySkipped=new[] { "bin","obj","packages",".git",".claude",".vs","TestResults","node_modules" };
+			List<string> listPaths=new List<string>();
+			Stack<string> stackFolders=new Stack<string>();
+			stackFolders.Push(root);
+			while(stackFolders.Count>0) {
+				string folder=stackFolders.Pop();
+				listPaths.AddRange(Directory.GetFiles(folder,"*.csproj"));
+				foreach(string subfolder in Directory.GetDirectories(folder)) {
+					string relative=subfolder.Substring(root.Length+1);
+					if(!arraySkipped.Contains(Path.GetFileName(subfolder),StringComparer.OrdinalIgnoreCase)
+						&& !relative.Equals(@"third-party\PDFsharp",StringComparison.OrdinalIgnoreCase)
+						&& !relative.Equals(@"third-party\WeCantSpell.Hunspell",StringComparison.OrdinalIgnoreCase))
+					{
+						stackFolders.Push(subfolder);
+					}
+				}
+			}
+			Assert.IsTrue(listPaths.Count>Projects().Count,"The repository holds more project files than the solution filter lists.");
+			List<string> listProblems=new List<string>();
+			foreach(string path in listPaths) {
+				try {
+					ProjectFile.Load(path);
+				}
+				catch(Exception ex) {
+					listProblems.Add(path.Substring(root.Length+1)+": "+ex.Message);
+				}
+			}
+			Assert.AreEqual(0,listProblems.Count,string.Join("; ",listProblems));
+		}
+
+		[TestMethod]
 		public void TheProgram_CompilesItsMainWindow_AndLinksTheSharedAssemblyInfo() {
 			ProjectFile projectFile=Projects().Single(x => x.Name=="OpenPmsDental.csproj");
 			projectFile.AssertCompiles(@"Main Modules\FormOpenDental.cs",@"Properties\AssemblyInfo.cs");

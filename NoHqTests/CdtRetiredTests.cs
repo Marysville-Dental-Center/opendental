@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace NoHqTests {
 	///<summary>Checks that the CDT library is retired: its secrets and SecurityHash functions live in CodeBase (Secrets, TamperHash), the CDT project
@@ -38,7 +39,10 @@ namespace NoHqTests {
 					continue;
 				}
 				string text=File.ReadAllText(pathProject);
-				if(text.Contains("xCDT.csproj") || text.Contains("CDT.dll") || text.Contains("<Reference Include=\"CDT\"")) {
+				//A reference by the assembly's name in either project format (Include="CDT" or "CDT, Version=..."), read without the MSBuild namespace.
+				bool isReferenced=text.Contains("CDT")
+					&& ProjectXml.ReadItemElements(pathProject).Any(x => x.ItemType=="Reference" && x.Specs.Any(y => y.Split(',')[0].Trim()=="CDT"));
+				if(text.Contains("xCDT.csproj") || text.Contains("CDT.dll") || text.Contains("<Reference Include=\"CDT\"") || isReferenced) {
 					listOffenders.Add(pathProject.Substring(pathRoot.Length+1));
 				}
 			}
@@ -64,7 +68,7 @@ namespace NoHqTests {
 			foreach(string pathRelative in new[] { @"OpenPmsDental\bin\Debug\OpenPmsDental.exe",@"WpfControlsOD\bin\Debug\WpfControlsOD.dll" }) {
 				string path=Path.Combine(pathRoot,pathRelative);
 				if(!File.Exists(path)) {
-					Assert.Inconclusive(path+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+					BuildOutput.NotBuilt(path+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 				}
 				List<string> listReferences=RemovedAssembliesTests.GetReferencedAssemblyNames(path);
 				Assert.IsFalse(listReferences.Contains("CDT",StringComparer.OrdinalIgnoreCase),Path.GetFileName(path)+" still references CDT.");
@@ -146,7 +150,7 @@ namespace NoHqTests {
 			string dirConfiguration=Path.GetFileName(dirTests);
 			string path=Path.GetFullPath(Path.Combine(dirTests,"..","..","..","OpenPmsDental","bin",dirConfiguration,fileName));
 			if(!File.Exists(path)) {
-				Assert.Inconclusive(fileName+" is not built: "+path);
+				BuildOutput.NotBuilt(fileName+" is not built: "+path);
 			}
 			return Assembly.LoadFrom(path);
 		}

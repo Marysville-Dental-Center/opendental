@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 using VendorDirectTests.Foundation;
 
 namespace VendorDirectTests.DdeBridges {
@@ -44,10 +45,11 @@ namespace VendorDirectTests.DdeBridges {
 
 		[TestMethod]
 		public void BridgeCode_IsBack_AndProgramLDispatchesIt_AfterTheDiscontinuedCheck() {
-			string csproj=ReadRepoFile("WpfControlsOD","WpfControlsOD.csproj");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile projectFile=ProjectFile.Load(Path.Combine(GetRoot(),"WpfControlsOD","WpfControlsOD.csproj"));
 			foreach(string file in _arrayBridgeFiles) {
 				Assert.IsTrue(File.Exists(Path.Combine(GetRoot(),"WpfControlsOD","Bridges",file)),file);
-				StringAssert.Contains(csproj,@"<Compile Include=""Bridges\"+file+@""" />",file);
+				projectFile.AssertCompiles(@"Bridges\"+file);
 			}
 			string programL=ReadRepoFile("WpfControlsOD","Logic","ProgramL.cs");
 			int indexDiscontinued=programL.IndexOf("ProgramLinksDiscontinued.IsDiscontinued(program)",StringComparison.Ordinal);
@@ -73,7 +75,7 @@ namespace VendorDirectTests.DdeBridges {
 			foreach(string function in new[] { "DdeInitializeA","DdeConnect","DdeClientTransaction","DdeDisconnect","DdeUninitialize" }) {
 				StringAssert.Contains(client,@"EntryPoint="""+function+@"""",function);
 			}
-			StringAssert.Contains(ReadRepoFile("CodeBase","xCodeBase.csproj"),@"<Compile Include=""Utilities\ODDdeClient.cs"" />");
+			ProjectFile.Load(Path.Combine(GetRoot(),"CodeBase","xCodeBase.csproj")).AssertCompiles(@"Utilities\ODDdeClient.cs");
 		}
 
 		[TestMethod]

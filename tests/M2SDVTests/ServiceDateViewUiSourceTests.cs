@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace M2SDVTests {
 	[TestClass]
@@ -35,8 +36,8 @@ namespace M2SDVTests {
 			StringAssert.Contains(sourcePartial,"contextMenuStatement.MenuItems.Add(");
 			StringAssert.Contains(sourcePartial,"contextMenuAcctGrid.MenuItems.Add(");
 			StringAssert.Contains(sourcePartial,"_formRpServiceDateView.SetPatient(patNum,isFamily);");
-			string sourceProject=ReadSource(Path.Combine("OpenPmsDental","OpenPmsDental.csproj"));
-			StringAssert.Contains(sourceProject,@"Main Modules\ControlAccount.ServiceDateView.cs");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile.Load(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","OpenPmsDental.csproj"))).AssertCompiles(@"Main Modules\ControlAccount.ServiceDateView.cs");
 		}
 
 		[TestMethod]

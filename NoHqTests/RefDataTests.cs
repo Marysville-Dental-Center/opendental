@@ -6,6 +6,7 @@ using System.Reflection;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace NoHqTests {
 	///<summary>Checks that the functions which downloaded or imported reference data from Open Dental are gone: the default medication list,
@@ -72,7 +73,7 @@ namespace NoHqTests {
 			string dirConfiguration=Path.GetFileName(dirTests);
 			string path=Path.GetFullPath(Path.Combine(dirTests,"..","..","..","OpenPmsDental","bin",dirConfiguration,fileName));
 			if(!File.Exists(path)) {
-				Assert.Inconclusive(fileName+" is not built: "+path);
+				BuildOutput.NotBuilt(fileName+" is not built: "+path);
 			}
 			return Assembly.LoadFrom(path);
 		}
