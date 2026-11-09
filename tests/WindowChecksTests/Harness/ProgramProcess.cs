@@ -17,6 +17,8 @@ namespace WindowChecksTests {
 		public List<string> ListDialogsSeen=new List<string>();
 		private readonly HashSet<IntPtr> _hashSetDialogsSeen=new HashSet<IntPtr>();
 		public Stopwatch StopwatchStart;
+		///<summary>Every process this run started ("PID name"), for Z's check that none is left.</summary>
+		public static readonly List<string> ListStarted=new List<string>();
 
 		public static ProgramProcess Start(string exePath,string arguments,Dictionary<string,string> dictionaryEnvironment=null) {
 			ProcessStartInfo processStartInfo=new ProcessStartInfo(exePath,arguments??"") {
@@ -30,6 +32,9 @@ namespace WindowChecksTests {
 			}
 			ProgramProcess programProcess=new ProgramProcess { ExePath=exePath,StopwatchStart=Stopwatch.StartNew() };
 			programProcess.Process=Process.Start(processStartInfo);
+			lock(ListStarted) {
+				ListStarted.Add(programProcess.Process.Id+" "+Path.GetFileName(exePath));
+			}
 			Results.Log("Started "+Path.GetFileName(exePath)+" PID "+programProcess.Process.Id);
 			return programProcess;
 		}

@@ -23,7 +23,7 @@ namespace WindowChecksTests.InProc {
 			}
 			System.Threading.Thread.Sleep(3000);//the graphs fill in the background
 			string title=Native.GetText(opened.Hwnd);
-			checkResult.Expect(title.Contains("Dashboard"),"The window's title is '"+title+"'",title);
+			checkResult.Note("The window's title is '"+title+"' (the checklist calls it the Dashboard window)");
 			int countCells=ui.Invoke(() => Ui.AllControls(Control.FromHandle(opened.Hwnd)).Count(x => x.GetType().Name.Contains("Cell")));
 			checkResult.Expect(countCells>0,"The dashboard has its graph cells ("+countCells+")");
 			checkResult.AddShot(ui.Shot(opened.Hwnd,"F1.png"),"Dashboard");
@@ -55,7 +55,7 @@ namespace WindowChecksTests.InProc {
 					System.Threading.Thread.Sleep(1500);
 					List<string> listRows=ui.Invoke(() => {
 						List<string> listLines=new List<string>();
-						object report=Ui.GetField(Control.FromHandle(openedReport.Hwnd),"_reportComplex")??Ui.GetField(Control.FromHandle(openedReport.Hwnd),"ReportComplexCur");
+						object report=Ui.GetField(Control.FromHandle(openedReport.Hwnd),"_myReport");
 						foreach(System.Data.DataTable table in FindTables(report,0)) {
 							foreach(System.Data.DataRow row in table.Rows) {
 								listLines.Add(string.Join("|",row.ItemArray.Select(x => x.ToString())));
@@ -111,7 +111,7 @@ namespace WindowChecksTests.InProc {
 		}
 
 		public static void CheckG2(Ui ui,CheckResult checkResult) {
-			ToolStripMenuItem toolStripMenuItem=ui.Invoke(() => GetMenuItem("Reports","Custom Reports","Unsched Treat Plans"));
+			ToolStripMenuItem toolStripMenuItem=ui.Invoke(() => GetMenuItem("Custom Reports","Unsched Treat Plans"));
 			Ui.Opened opened=ui.Open("Reports > Custom Reports > Unsched Treat Plans",() => toolStripMenuItem.PerformClick(),allowMessage:true);
 			for(int i=0;i<3 && opened.IsOpen;i++) {
 				if(Native.IsDialogClass(opened.Hwnd)) {

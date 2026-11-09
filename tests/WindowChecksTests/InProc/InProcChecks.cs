@@ -113,9 +113,11 @@ namespace WindowChecksTests.InProc {
 			});
 		}
 
-		///<summary>Clicks the module bar's button of the module, as its OnMouseUp does (the previous selection kept for a refused click).</summary>
+		///<summary>Clicks the module bar's button of the module, as its OnMouseUp does (the previous selection kept for a refused click). Posted: leaving a
+		///module can ask a question (the Chart's "Create Planned Appointment ...?"), which is read into the current check's notes and answered No.</summary>
 		public static void GoToModule(Ui ui,EnumModuleType enumModuleType) {
-			ui.Invoke(() => {
+			List<IntPtr> listBefore=ui.GetWindows();
+			Ui.Posted posted=ui.Post("Module button "+enumModuleType,() => {
 				ModuleBar moduleBar=(ModuleBar)Ui.GetField(_formOpenDental,"moduleBar");
 				List<ModuleBarButton> listButtons=(List<ModuleBarButton>)Ui.GetField(moduleBar,"_listButtons");
 				int index=listButtons.FindIndex(x => x.ModuleType==enumModuleType);
@@ -124,6 +126,20 @@ namespace WindowChecksTests.InProc {
 				moduleBar.Invalidate();
 				Ui.Call(moduleBar,"OnButtonClicked",listButtons[index],false);
 			});
+			System.Diagnostics.Stopwatch stopwatch=System.Diagnostics.Stopwatch.StartNew();
+			while(!posted.ManualResetEventDone.WaitOne(200) && stopwatch.Elapsed.TotalSeconds<90) {
+				foreach(IntPtr hwnd in ui.GetWindows().Where(x => !listBefore.Contains(x) && Native.IsDialogClass(x))) {
+					ui.CheckResultCur?.Note("Going to "+enumModuleType+" asked: "+ui.DescribeWindow(hwnd)+"; answered No");
+					if(!Native.ClickDialogButton(hwnd,"No")) {
+						Native.CancelDialog(hwnd);
+					}
+					ui.WaitGone(hwnd);
+				}
+			}
+			if(!posted.ManualResetEventDone.WaitOne(0)) {
+				throw new TimeoutException("The module button "+enumModuleType+" did not finish within 90 s; windows: "
+					+string.Join("; ",ui.GetWindows().Select(x => ui.DescribeWindow(x))));
+			}
 			Thread.Sleep(500);
 		}
 
