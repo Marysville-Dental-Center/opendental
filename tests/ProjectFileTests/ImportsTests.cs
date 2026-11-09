@@ -350,6 +350,53 @@ namespace ProjectFileTests {
 			}
 		}
 
+		///<summary>NuGet.props' branch for a project that no Directory.Packages.props is found for, reached without a file above the scratch
+		///folder: _DirectoryPackagesPropsFile is set (in tests\Directory.Build.props, before NuGet.props) to a name with a new GUID, which no folder
+		///has, so the search walks up to the root of the drive, as MSBuild's does, and finds nothing. What NuGet.props (SDK 10.0.114, the same file
+		///as Visual Studio's copy in the Build Tools 2026) does then:
+		///- line 22: ImportDirectoryPackagesProps true, as it was not set;
+		///- line 29: the group runs, as the switch is true and DirectoryPackagesPropsPath is '';
+		///- line 30: _DirectoryPackagesPropsFile keeps the name it was given;
+		///- line 31: _DirectoryPackagesPropsBasePath is $([MSBuild]::GetDirectoryNameOfFileAbove(...)), '' when no folder has the file;
+		///- line 32: DirectoryPackagesPropsPath is set only when the base path and the file are not '', so it stays '';
+		///- line 35: the Import's condition is false (the path is ''), so nothing is imported;
+		///- lines 37-39: CentralPackageVersionsFileImported is set only under that condition, so it stays ''.
+		///And NuGet.targets (line 65 of Visual Studio's copy, line 63 of the SDK's): _CentralPackageVersionsEnabled stays '' even with
+		///ManagePackageVersionsCentrally true, so a PackageReference restores with its own Version.</summary>
+		[TestMethod]
+		public void NoDirectoryPackagesPropsFound_NothingIsImported_AsNuGetPropsHasIt() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				string fileName="NoFolderHasThis."+Guid.NewGuid().ToString("N")+".props";
+				fixtureFolder.EditFile(@"tests\Directory.Build.props","<Import Project=","<PropertyGroup><_DirectoryPackagesPropsFile>"+fileName+"</_DirectoryPackagesPropsFile>"
+					+"<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><Import Project=");
+				//The fixture's own (empty) one and a full one in the project folder have the usual name, so neither is found.
+				fixtureFolder.WriteFile(@"tests\SdkStyle\Directory.Packages.props",PACKAGES_PROPS);
+				fixtureFolder.EditProject("SdkStyle",ANCHOR_SDK_ITEMS,ANCHOR_SDK_ITEMS+"<PackageReference Include=\"Fixture.Package\" Version=\"9.9.9\" />");
+				foreach(string name in new[] { "SdkStyle","Classic" }) {
+					ProjectFile projectFile=fixtureFolder.Load(name);
+					Assert.AreEqual("true",projectFile.GetProperty("ImportDirectoryPackagesProps"),name+": line 22.");
+					Assert.AreEqual(fileName,projectFile.GetProperty("_DirectoryPackagesPropsFile"),name+": line 30.");
+					Assert.AreEqual("",projectFile.GetProperty("_DirectoryPackagesPropsBasePath"),name+": line 31, none found.");
+					Assert.AreEqual("",projectFile.GetProperty("DirectoryPackagesPropsPath"),name+": line 32.");
+					Assert.AreEqual("",projectFile.GetProperty("CentralPackageVersionsFileImported"),name+": lines 37-39.");
+					Assert.AreEqual("true",projectFile.GetProperty("ManagePackageVersionsCentrally"),name);
+					Assert.AreEqual("",projectFile.GetProperty("_CentralPackageVersionsEnabled"),name+": NuGet.targets, the file was not imported.");
+					Assert.AreEqual(0,projectFile.GetItems("PackageVersion").Count,name);
+					//Line 35: no Directory.Packages.props (nor the file of the GUID's name) is read, and nothing outside the scratch folder.
+					Assert.IsFalse(projectFile.FilesRead.Any(x => Path.GetFileName(x).Equals("Directory.Packages.props",StringComparison.OrdinalIgnoreCase)
+						|| Path.GetFileName(x).Equals(fileName,StringComparison.OrdinalIgnoreCase)),name);
+					Assert.IsTrue(projectFile.FilesRead.All(x => x.StartsWith(fixtureFolder.Root+@"\",StringComparison.OrdinalIgnoreCase)),name+": "
+						+string.Join(", ",projectFile.FilesRead));
+				}
+				Assert.AreEqual("9.9.9",fixtureFolder.Load("SdkStyle").GetPackageVersion("Fixture.Package"),"Central package management is off: its own Version.");
+				//The same name in the project folder is found there, so the branch above was the 'none found' one.
+				fixtureFolder.WriteFile(@"tests\SdkStyle\"+fileName,PACKAGES_PROPS);
+				ProjectFile projectFileFound=fixtureFolder.Load("SdkStyle");
+				Assert.AreEqual(fixtureFolder.Combine(@"tests\SdkStyle"),projectFileFound.GetProperty("_DirectoryPackagesPropsBasePath"));
+				Assert.AreEqual("true",projectFileFound.GetProperty("_CentralPackageVersionsEnabled"));
+			}
+		}
+
 		[TestMethod]
 		public void ThePackageReferencesTheSdkGivesItself_ThrowFromEveryItemQuery() {
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
@@ -529,6 +576,217 @@ namespace ProjectFileTests {
 					+"<FixtureX>1</FixtureX></PropertyGroup>"+ANCHOR_CLASSIC));
 				Assert.AreEqual("1",fixtureFolder.Load("Classic").GetProperty("FixtureX"));
 				Assert.AreEqual("",fixtureFolder.Load("Classic").GetProperty(name));
+			}
+		}
+
+		///<summary>Runs the action with the environment variable of this test process set to the value, and gives the variable its old value (none,
+		///normally) afterwards, whatever the action does. ProjectFileTests' tests run one after another in one test host (MSTest v1 runs the tests
+		///of an assembly in turn; run-tests.ps1 starts each assembly in a vstest process of its own), so no other test sees the variable.</summary>
+		private static void WithEnvironmentVariable(string name,string value,Action action) {
+			string valueOld=Environment.GetEnvironmentVariable(name);
+			Environment.SetEnvironmentVariable(name,value);
+			try {
+				action();
+			}
+			finally {
+				Environment.SetEnvironmentVariable(name,valueOld);
+			}
+		}
+
+		///<summary>The message of the NotSupportedException for a name MSBuild would read from an environment variable (GetKnownValue).</summary>
+		private static string EnvironmentVariableMessage(string name) {
+			return "$("+name+") is an environment variable";
+		}
+
+		[TestMethod]
+		public void NuGetPropsNames_AsEnvironmentVariables_ThrowWhereNuGetPropsReadsThem() {
+			//MSBuild starts every evaluation with the environment variables as properties, so NuGet.props reads a variable of one of its names when no
+			//file set it. ProjectFile does not model them: each throws where NuGet.props reads it, and only there; a file that sets the name decides it.
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				fixtureFolder.WriteFile("Directory.Packages.props",PACKAGES_PROPS);
+				fixtureFolder.WriteFile(@"Shared\Other.Packages.props","<Project><PropertyGroup><FixtureOtherPackages>other</FixtureOtherPackages></PropertyGroup></Project>");
+				string textTestsProps=File.ReadAllText(fixtureFolder.Combine(@"tests\Directory.Build.props"));
+				Action<string> writeTestsProps=properties => fixtureFolder.WriteFile(@"tests\Directory.Build.props",properties=="" ? textTestsProps
+					: textTestsProps.Replace("<Import Project=","<PropertyGroup>"+properties+"</PropertyGroup><Import Project="));
+				//DirectoryPackagesPropsPath: MSBuild imports the variable's file, so the reader may not look for one instead (it found the scratch
+				//folder's before, silently).
+				WithEnvironmentVariable("DirectoryPackagesPropsPath",fixtureFolder.Combine(@"Shared\Other.Packages.props"),() => {
+					foreach(string name in new[] { "SdkStyle","Classic" }) {
+						AssertThrows<NotSupportedException>(() => fixtureFolder.Load(name),EnvironmentVariableMessage("DirectoryPackagesPropsPath"));
+					}
+					//With the switch off, NuGet.props never reads it.
+					writeTestsProps("<ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>");
+					ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+					Assert.AreEqual("",projectFile.GetProperty("ManagePackageVersionsCentrally"));
+					AssertThrows<NotSupportedException>(() => projectFile.GetProperty("DirectoryPackagesPropsPath"),EnvironmentVariableMessage("DirectoryPackagesPropsPath"));
+					//A file that sets it decides it.
+					writeTestsProps("<DirectoryPackagesPropsPath>$(MSBuildThisFileDirectory)..\\Shared\\Other.Packages.props</DirectoryPackagesPropsPath>");
+					Assert.AreEqual("other",fixtureFolder.Load("SdkStyle").GetProperty("FixtureOtherPackages"));
+					writeTestsProps("");
+				});
+				//The switch and the two parts of the path NuGet.props finds (these threw before this round too, through SetIfEmpty).
+				foreach(string name in new[] { "ImportDirectoryPackagesProps","_DirectoryPackagesPropsFile","_DirectoryPackagesPropsBasePath" }) {
+					WithEnvironmentVariable(name,"false",() => {
+						AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"$("+name+")");
+						//A file that sets it decides it: false for the switch; the scratch folder's own name and folder for the parts.
+						string value=name=="ImportDirectoryPackagesProps" ? "false" : name=="_DirectoryPackagesPropsFile" ? "Directory.Packages.props" : fixtureFolder.Root;
+						writeTestsProps("<"+name+">"+value+"</"+name+">");
+						Assert.AreEqual(value,fixtureFolder.Load("SdkStyle").GetProperty(name),name);
+						writeTestsProps("");
+					});
+				}
+				//The two parts are not read when NuGet.props does not look for the file: the switch off, or a path a file names.
+				foreach(string name in new[] { "_DirectoryPackagesPropsFile","_DirectoryPackagesPropsBasePath" }) {
+					WithEnvironmentVariable(name,"false",() => {
+						writeTestsProps("<ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>");
+						Assert.AreEqual("",fixtureFolder.Load("SdkStyle").GetProperty("CentralPackageVersionsFileImported"),name);
+						writeTestsProps("<DirectoryPackagesPropsPath>$(MSBuildThisFileDirectory)..\\Shared\\Other.Packages.props</DirectoryPackagesPropsPath>");
+						Assert.AreEqual("other",fixtureFolder.Load("SdkStyle").GetProperty("FixtureOtherPackages"),name);
+						writeTestsProps("");
+					});
+				}
+			}
+		}
+
+		[TestMethod]
+		public void CentralPackageSwitches_AsEnvironmentVariables_ThrowWhereNuGetReadsThem() {
+			//ManagePackageVersionsCentrally, CentralPackageVersionsFileImported and _CentralPackageVersionsEnabled (NuGet.targets' switch),
+			//CentralPackageVersionOverrideEnabled and RestoreEnableGlobalPackageReference: each read as MSBuild reads it, so a variable no file set
+			//throws where NuGet reads it instead of reading as '' (before this round GetPackageVersion gave the PackageReference's own Version for
+			//each of the first three, and the VersionOverride for the fourth, where the restore fails with NU1008 or NU1013).
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				const string REFERENCE_VERSION="<PackageReference Include=\"Fixture.Package\" Version=\"9.9.9\" />";
+				string textTestsProps=File.ReadAllText(fixtureFolder.Combine(@"tests\Directory.Build.props"));
+				Action<string> writeTestsProps=properties => fixtureFolder.WriteFile(@"tests\Directory.Build.props",properties=="" ? textTestsProps
+					: textTestsProps.Replace("<Import Project=","<PropertyGroup>"+properties+"</PropertyGroup><Import Project="));
+				fixtureFolder.EditProject("SdkStyle",ANCHOR_SDK_ITEMS,ANCHOR_SDK_ITEMS+REFERENCE_VERSION);
+				//ManagePackageVersionsCentrally (the fixture's empty Directory.Packages.props is imported, so the file is): MSBuild turns central
+				//package management on, the restore fails with NU1008.
+				Assert.AreEqual("9.9.9",fixtureFolder.Load("SdkStyle").GetPackageVersion("Fixture.Package"),"Without the variable: off.");
+				WithEnvironmentVariable("ManagePackageVersionsCentrally","true",() => {
+					ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+					AssertThrows<NotSupportedException>(() => projectFile.GetPackageVersion("Fixture.Package"),"from ManagePackageVersionsCentrally");
+					AssertThrows<NotSupportedException>(() => projectFile.GetProperty("_CentralPackageVersionsEnabled"),"from ManagePackageVersionsCentrally");
+					//NuGet.targets turns a GlobalPackageReference into a PackageReference with it on.
+					fixtureFolder.EditProject("SdkStyle",REFERENCE_VERSION,REFERENCE_VERSION+"<GlobalPackageReference Include=\"Fixture.Global\" Version=\"1.0.0\" />");
+					AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),EnvironmentVariableMessage("ManagePackageVersionsCentrally"));
+					//A file that sets it decides it.
+					writeTestsProps("<ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>");
+					projectFile=fixtureFolder.Load("SdkStyle");
+					Assert.AreEqual("9.9.9",projectFile.GetPackageVersion("Fixture.Package"));
+					Assert.AreEqual(1,projectFile.GetItems("GlobalPackageReference").Count);
+					writeTestsProps("");
+					fixtureFolder.EditProject("SdkStyle","<GlobalPackageReference Include=\"Fixture.Global\" Version=\"1.0.0\" />","");
+				});
+				//CentralPackageVersionsFileImported, with ManagePackageVersionsCentrally true and the import switched off: NuGet.props does not set it,
+				//so MSBuild reads the variable and central package management is on.
+				writeTestsProps("<ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>");
+				Assert.AreEqual("9.9.9",fixtureFolder.Load("SdkStyle").GetPackageVersion("Fixture.Package"),"Without the variable: not imported, off.");
+				WithEnvironmentVariable("CentralPackageVersionsFileImported","true",() => {
+					AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle").GetPackageVersion("Fixture.Package"),"from CentralPackageVersionsFileImported");
+					//MSBuild does not read it when ManagePackageVersionsCentrally is not true.
+					writeTestsProps("<ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>");
+					ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+					Assert.AreEqual("",projectFile.GetProperty("_CentralPackageVersionsEnabled"));
+					Assert.AreEqual("9.9.9",projectFile.GetPackageVersion("Fixture.Package"));
+					//NuGet.props sets it when it imports the file, over the variable: central package management on, the Version refused (NU1008).
+					writeTestsProps("<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>");
+					projectFile=fixtureFolder.Load("SdkStyle");
+					Assert.AreEqual("true",projectFile.GetProperty("_CentralPackageVersionsEnabled"));
+					AssertThrows<InvalidOperationException>(() => projectFile.GetPackageVersion("Fixture.Package"),"NU1008");
+				});
+				writeTestsProps("");
+				//_CentralPackageVersionsEnabled itself: NuGet.targets only ever sets it true, so with central package management off MSBuild keeps
+				//the variable's value.
+				WithEnvironmentVariable("_CentralPackageVersionsEnabled","true",() => {
+					ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+					AssertThrows<NotSupportedException>(() => projectFile.GetPackageVersion("Fixture.Package"),EnvironmentVariableMessage("_CentralPackageVersionsEnabled"));
+					fixtureFolder.WriteFile("Directory.Packages.props",PACKAGES_PROPS);
+					AssertThrows<InvalidOperationException>(() => fixtureFolder.Load("SdkStyle").GetPackageVersion("Fixture.Package"),"NU1008");
+				});
+				//CentralPackageVersionOverrideEnabled, read for a VersionOverride only: false fails the restore with NU1013.
+				fixtureFolder.EditProject("SdkStyle",REFERENCE_VERSION,"<PackageReference Include=\"Fixture.Package\" />"
+					+"<PackageReference Include=\"Fixture.Other\" VersionOverride=\"4.5.7\" />");
+				Assert.AreEqual("4.5.7",fixtureFolder.Load("SdkStyle").GetPackageVersion("Fixture.Other"),"Without the variable: the override.");
+				WithEnvironmentVariable("CentralPackageVersionOverrideEnabled","false",() => {
+					ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+					AssertThrows<NotSupportedException>(() => projectFile.GetPackageVersion("Fixture.Other"),EnvironmentVariableMessage("CentralPackageVersionOverrideEnabled"));
+					Assert.AreEqual("1.2.3",projectFile.GetPackageVersion("Fixture.Package"),"Not read without a VersionOverride.");
+					writeTestsProps("<CentralPackageVersionOverrideEnabled>true</CentralPackageVersionOverrideEnabled>");
+					Assert.AreEqual("4.5.7",fixtureFolder.Load("SdkStyle").GetPackageVersion("Fixture.Other"));
+					writeTestsProps("");
+				});
+				//RestoreEnableGlobalPackageReference, read for a GlobalPackageReference with central package management on: false leaves the items as
+				//they are (the reader refused them for the wrong reason before).
+				fixtureFolder.EditProject("SdkStyle",ANCHOR_SDK_ITEMS,ANCHOR_SDK_ITEMS+"<GlobalPackageReference Include=\"Fixture.Global\" Version=\"1.0.0\" />");
+				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"GlobalPackageReference items are not modelled");
+				WithEnvironmentVariable("RestoreEnableGlobalPackageReference","false",() => {
+					AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),EnvironmentVariableMessage("RestoreEnableGlobalPackageReference"));
+					writeTestsProps("<RestoreEnableGlobalPackageReference>false</RestoreEnableGlobalPackageReference>");
+					Assert.AreEqual(1,fixtureFolder.Load("SdkStyle").GetItems("GlobalPackageReference").Count);
+					writeTestsProps("");
+					//Not read with central package management off.
+					fixtureFolder.EditFile("Directory.Packages.props","<ManagePackageVersionsCentrally>true","<ManagePackageVersionsCentrally>false");
+					Assert.AreEqual(1,fixtureFolder.Load("SdkStyle").GetItems("GlobalPackageReference").Count);
+				});
+			}
+		}
+
+		[TestMethod]
+		public void TheSdksPackageReferenceNames_AsEnvironmentVariablesOrNotKnown_Throw() {
+			//ThrowIfImplicitPackageReferences reads DisableImplicitFrameworkReferences, the target framework and RuntimeFrameworkVersion as
+			//Microsoft.NET.Sdk.DefaultItems.props and .Shared.targets read them: one not known here (an environment variable no file set, a framework
+			//the reader does not know) throws from the PackageReference queries, where the reader gave the items without the SDK's before.
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				WithEnvironmentVariable("DisableImplicitFrameworkReferences","true",() => {
+					ProjectFile projectFile=LoadSdkPackages(fixtureFolder,"","");
+					AssertThrows<NotSupportedException>(() => projectFile.GetItems("PackageReference"),EnvironmentVariableMessage("DisableImplicitFrameworkReferences"));
+					AssertThrows<NotSupportedException>(() => projectFile.GetPackageVersion("Fixture.Package"),EnvironmentVariableMessage("DisableImplicitFrameworkReferences"));
+					Assert.AreEqual(1,projectFile.GetItems("Compile").Count,"The other item types still answer.");
+					Assert.AreEqual("1.2.3",LoadSdkPackages(fixtureFolder,"<DisableImplicitFrameworkReferences>false</DisableImplicitFrameworkReferences>","")
+						.GetPackageVersion("Fixture.Package"),"A file that sets it decides it.");
+				});
+				WithEnvironmentVariable("RuntimeFrameworkVersion","2.1.30",() => {
+					ProjectFile projectFile=LoadSdkPackages(fixtureFolder,"","<PackageReference Include=\"Microsoft.NETCore.App\" />");
+					AssertThrows<NotSupportedException>(() => projectFile.GetItems("PackageReference"),EnvironmentVariableMessage("RuntimeFrameworkVersion"));
+					Assert.AreEqual("1.2.3",LoadSdkPackages(fixtureFolder,"","").GetPackageVersion("Fixture.Package"),"Not read without Microsoft.NETCore.App.");
+					Assert.AreEqual(2,LoadSdkPackages(fixtureFolder,"<RuntimeFrameworkVersion></RuntimeFrameworkVersion>","<PackageReference Include=\"Microsoft.NETCore.App\" />")
+						.GetItems("PackageReference").Count,"A file that sets it decides it.");
+				});
+				//A framework the reader does not know: whether the SDK adds its implicit PackageReference is not known either.
+				ProjectFile projectFileUnknown=LoadSdkPackages(fixtureFolder,"<TargetFramework>uap10.0</TargetFramework>","");
+				AssertThrows<NotSupportedException>(() => projectFileUnknown.GetItems("PackageReference"),"uap10.0");
+				AssertThrows<NotSupportedException>(() => projectFileUnknown.GetAllItems(),"uap10.0");
+				Assert.AreEqual(1,projectFileUnknown.GetItems("Compile").Count);
+			}
+		}
+
+		[TestMethod]
+		public void TheRestoresImportNames_AsEnvironmentVariables_Throw() {
+			//The switches of the restore's project extension files and the package folder of its package imports: MSBuild reads a variable of the
+			//name when no file set it. The switches read as '' before this round, so the restore's files were left out without a word.
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				fixtureFolder.WriteFile(@"tests\Classic\obj\Classic.csproj.a.props","<Project><PropertyGroup><FixtureExtProps>a</FixtureExtProps></PropertyGroup></Project>");
+				fixtureFolder.WriteFile(@"tests\Classic\obj\Classic.csproj.x.targets","<Project><PropertyGroup><FixtureExtTargets>x</FixtureExtTargets></PropertyGroup></Project>");
+				foreach(string name in new[] { "ImportProjectExtensionProps","ImportProjectExtensionTargets" }) {
+					WithEnvironmentVariable(name,"true",() => {
+						AssertThrows<NotSupportedException>(() => fixtureFolder.Load("Classic"),"$("+name+")");
+						//A file that sets it decides it.
+						fixtureFolder.EditFile(@"tests\Directory.Build.props","<Import Project=","<PropertyGroup><"+name+">true</"+name+"></PropertyGroup><Import Project=");
+						ProjectFile projectFile=fixtureFolder.Load("Classic");
+						Assert.AreEqual("a",projectFile.GetProperty("FixtureExtProps"),name);
+						Assert.AreEqual("x",projectFile.GetProperty("FixtureExtTargets"),name);
+						fixtureFolder.EditFile(@"tests\Directory.Build.props","<PropertyGroup><"+name+">true</"+name+"></PropertyGroup>","");
+					});
+				}
+				//NuGetPackageFolders, when the restore's props do not set it: MSBuild takes the variable's folder.
+				const string IMPORT="$(NuGetPackageRoot)fixture.package\\1.2.3\\buildTransitive\\net462\\Fixture.Package.targets";
+				fixtureFolder.WriteFile(@"tests\SdkStyle\obj\SdkStyle.csproj.nuget.g.targets","<Project><ImportGroup Condition=\" '$(ExcludeRestorePackageImports)' != 'true' \">"
+					+"<Import Project=\""+IMPORT+"\" Condition=\"Exists('"+IMPORT+"')\" /></ImportGroup></Project>");
+				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"names no package folder");
+				WithEnvironmentVariable("NuGetPackageFolders",fixtureFolder.Combine("Packages")+@"\",() => {
+					AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),EnvironmentVariableMessage("NuGetPackageFolders"));
+				});
 			}
 		}
 		#endregion Environment variables

@@ -50,9 +50,10 @@ namespace ProjectFileTests {
 	///needs another computed name adds it to that script's lists first. NuGet's central package versions (stage 2's S2-1): the
 	///Directory.Packages.props that NuGet.props imports at the end of Microsoft.Common.props (ImportNuGetProps), with its PackageVersion items
 	///and ManagePackageVersionsCentrally, and NuGet.targets' _CentralPackageVersionsEnabled; GetPackageVersion gives the version a
-	///PackageReference restores with, as NuGet decides it. Not modelled: the restore itself (which packages a project gets through its
-	///references and dependencies, transitive pinning: the lock files say that), GlobalPackageReference items, and the PackageReference items and
-	///metadata the SDK gives itself (the implicit PackageReference of a .NET Standard 1.x/2.0 or .NET Core 1.x/2.x project, the metadata of
+	///PackageReference restores with, as NuGet decides it. Every name that this modelling and the restore's imports read in code is read as
+	///MSBuild reads it (GetValueIfKnown, GetKnownValue), so an environment variable of such a name that no file set throws there too instead of
+	///reading as ''. Not modelled: the restore itself (which packages a project gets through its references and dependencies, transitive
+	///pinning: the lock files say that), GlobalPackageReference items, and the PackageReference items and metadata the SDK gives itself (the implicit PackageReference of a .NET Standard 1.x/2.0 or .NET Core 1.x/2.x project, the metadata of
 	///Microsoft.NET.Sdk.DefaultItems.Shared.targets: ThrowIfImplicitPackageReferences), which throw.</summary>
 	internal sealed class ProjectFile {
 		///<summary>The project file, full path.</summary>
@@ -290,10 +291,12 @@ namespace ProjectFileTests {
 					EvaluateItemGroup(itemStep.XElementGroup,itemStep.FileContext);
 				}
 			}
-			//NuGet.targets turns every GlobalPackageReference into a PackageReference and a PackageVersion (with central package management, unless
-			//RestoreEnableGlobalPackageReference is false), which this reader does not model.
-			if(IsPropertyTrue("ManagePackageVersionsCentrally") && !IsPropertyFalse("RestoreEnableGlobalPackageReference")
-				&& _listItems.Any(x => x.ItemType.Equals("GlobalPackageReference",StringComparison.OrdinalIgnoreCase)))
+			//NuGet.targets turns every GlobalPackageReference into a PackageReference and a PackageVersion (its ItemGroup with the condition
+			//'$(ManagePackageVersionsCentrally)' == 'true' And '$(RestoreEnableGlobalPackageReference)' != 'false'), which this reader does not
+			//model. Without such items the group adds nothing, so the two are read only when there are some, each as MSBuild reads it: one not known
+			//here (an environment variable no file set) throws (IsKnownTrue).
+			if(_listItems.Any(x => x.ItemType.Equals("GlobalPackageReference",StringComparison.OrdinalIgnoreCase))
+				&& IsKnownTrue("ManagePackageVersionsCentrally") && !IsKnownFalse("RestoreEnableGlobalPackageReference"))
 			{
 				throw new NotSupportedException(Describe()+": GlobalPackageReference items are not modelled by ProjectFile.");
 			}
@@ -450,6 +453,8 @@ namespace ProjectFileTests {
 				throw new NotSupportedException(fileContext.Path+": an import of a package file in another form than the restore writes is not modelled by "
 					+"ProjectFile: "+project);
 			}
+			//MSBuild reads an environment variable of the name when no file set it (the restore's file sets it only when it is ''); not modelled.
+			ThrowIfEnvironmentVariable("NuGetPackageFolders");
 			string folders=GetValue("NuGetPackageFolders");
 			string folder=Unescape(folders.Split(';').Select(x => x.Trim()).FirstOrDefault(x => x!="")??"");
 			if(folder=="" || IsUnresolved(folders) || !Path.IsPathRooted(folder)) {
@@ -552,6 +557,8 @@ namespace ProjectFileTests {
 			}
 			AppendTrailingSlash("MSBuildProjectExtensionsPath");
 			SetIfEmpty("ImportProjectExtensionProps","true");
+			//The import of the restore's files depends on it: one not known here (an environment variable no file set) throws, not ''.
+			ThrowIfUnresolved(GetValue("ImportProjectExtensionProps"),Describe()+": $(ImportProjectExtensionProps)");
 			if(IsPropertyTrue("ImportProjectExtensionProps")) {
 				_dictProperties["_InitialMSBuildProjectExtensionsPath"]=GetValue("MSBuildProjectExtensionsPath");
 				ImportProjectExtensions(".props");
@@ -570,14 +577,19 @@ namespace ProjectFileTests {
 		///are read as those of any imported file. So it comes after Directory.Build.props and the restore's project extension props, and before the
 		///project's own properties; a classic project imports it too. Every condition of NuGet.props tests the switch first, and MSBuild stops at
 		///the first false operand of an 'and', so with the switch off $(DirectoryPackagesPropsPath) is never expanded: only the switch must be
-		///known then (it throws when it is not), and the path only when the switch is on.</summary>
+		///known then (it throws when it is not), and the path only when the switch is on. Each of the five is read as MSBuild reads it: what a file
+		///set, else an environment variable of the name, which this reader does not model, so one that no file set throws (through SetIfEmpty for
+		///the switch, _DirectoryPackagesPropsFile and _DirectoryPackagesPropsBasePath, GetKnownValue for DirectoryPackagesPropsPath) instead of
+		///reading as ''. When no folder has the file (NuGet.props' GetDirectoryNameOfFileAbove gives ''), _DirectoryPackagesPropsBasePath is '',
+		///DirectoryPackagesPropsPath stays '' and nothing is imported, so CentralPackageVersionsFileImported keeps what it had ('' unless a file
+		///set it; an environment variable of the name throws where it is read, ApplyCommonTargetsProperties).</summary>
 		private void ImportNuGetProps() {
 			SetIfEmpty("ImportDirectoryPackagesProps","true");
 			ThrowIfUnresolved(GetValue("ImportDirectoryPackagesProps"),Describe()+": $(ImportDirectoryPackagesProps)");
 			if(!IsPropertyTrue("ImportDirectoryPackagesProps")) {
 				return;
 			}
-			if(GetValue("DirectoryPackagesPropsPath")=="") {
+			if(GetKnownValue("DirectoryPackagesPropsPath")=="") {
 				SetIfEmpty("_DirectoryPackagesPropsFile","Directory.Packages.props");
 				ThrowIfUnresolved(GetValue("_DirectoryPackagesPropsFile"),Describe()+": $(_DirectoryPackagesPropsFile)");
 				string pathFound=FindFileAbove(GetUnescaped("_DirectoryPackagesPropsFile"),Folder);
@@ -588,12 +600,10 @@ namespace ProjectFileTests {
 						GetUnescaped("_DirectoryPackagesPropsFile"))));
 				}
 			}
-			string path=GetValue("DirectoryPackagesPropsPath");
-			ThrowIfUnresolved(path,Describe()+": $(DirectoryPackagesPropsPath)");
+			string path=GetKnownValue("DirectoryPackagesPropsPath");
 			if(path=="") {
 				return;
 			}
-			path=Unescape(path);
 			if(!Path.IsPathRooted(path)) {
 				//MSBuild resolves it from the folder of NuGet.props, which this reader does not read.
 				throw new NotSupportedException(Describe()+": a relative $(DirectoryPackagesPropsPath) is not modelled by ProjectFile: "+path);
@@ -649,6 +659,7 @@ namespace ProjectFileTests {
 			}
 			//Microsoft.Common.targets, after Microsoft.Common.CurrentVersion.targets.
 			SetIfEmpty("ImportProjectExtensionTargets","true");
+			ThrowIfUnresolved(GetValue("ImportProjectExtensionTargets"),Describe()+": $(ImportProjectExtensionTargets)");
 			if(IsPropertyTrue("ImportProjectExtensionTargets")) {
 				ImportProjectExtensions(".targets");
 			}
@@ -669,7 +680,8 @@ namespace ProjectFileTests {
 		///Framework 4.7.2 or later project that leaves it empty; PublishDir (with a trailing back slash, or the output path's app.publish\ for a
 		///classic project: the SDK's own is not modelled); PlatformTargetAsMSBuildArchitecture (MSBuild.exe runs on the .NET Framework);
 		///DelaySign, false for an unsigned assembly and '' unless 'true'; and from NuGet.targets, which it imports at its end,
-		///_CentralPackageVersionsEnabled, true when ManagePackageVersionsCentrally is true and Directory.Packages.props was imported.</summary>
+		///_CentralPackageVersionsEnabled, true when ManagePackageVersionsCentrally is true and Directory.Packages.props was imported (not known
+		///when MSBuild would read either from an environment variable).</summary>
 		private void ApplyCommonTargetsProperties() {
 			_hashSetNotModelled.UnionWith(_arrayNotModelledToolsetProperties);
 			SetIfEmpty("TargetRuntime","Managed");
@@ -805,8 +817,20 @@ namespace ProjectFileTests {
 			if(!IsPropertyTrue("DelaySign")) {
 				_dictProperties["DelaySign"]="";
 			}
-			//NuGet.targets (Visual Studio's copy, as NuGet.props), imported at the end of Microsoft.Common.CurrentVersion.targets.
-			if(IsPropertyTrue("ManagePackageVersionsCentrally") && IsPropertyTrue("CentralPackageVersionsFileImported")) {
+			//NuGet.targets (Visual Studio's copy, as NuGet.props), imported at the end of Microsoft.Common.CurrentVersion.targets: true when
+			//'$(ManagePackageVersionsCentrally)' == 'true' AND '$(CentralPackageVersionsFileImported)' == 'true', else what it was. MSBuild does
+			//not read the second operand when the first is false. An operand MSBuild reads that is not known here (an environment variable no file
+			//set, GetValueIfKnown) leaves the switch not known, unless it is true already, so GetProperty and GetPackageVersion throw for it.
+			string manageCentrally=GetValueIfKnown("ManagePackageVersionsCentrally");
+			string fileImported=manageCentrally!=null && manageCentrally.Equals("true",StringComparison.OrdinalIgnoreCase)
+				? GetValueIfKnown("CentralPackageVersionsFileImported") : "";
+			if(manageCentrally==null || fileImported==null) {
+				if(!IsPropertyTrue("_CentralPackageVersionsEnabled")) {
+					_dictProperties["_CentralPackageVersionsEnabled"]=Unresolved("the _CentralPackageVersionsEnabled of NuGet.targets, from "
+						+(manageCentrally==null ? "ManagePackageVersionsCentrally" : "CentralPackageVersionsFileImported"));
+				}
+			}
+			else if(manageCentrally.Equals("true",StringComparison.OrdinalIgnoreCase) && fileImported.Equals("true",StringComparison.OrdinalIgnoreCase)) {
 				_dictProperties["_CentralPackageVersionsEnabled"]="true";
 			}
 		}
@@ -1252,6 +1276,40 @@ namespace ProjectFileTests {
 			return IsValue(name,"false");
 		}
 
+		///<summary>The value of a property at this point of the evaluation, unescaped, for a condition of MSBuild's, NuGet's or the SDK's own files
+		///that this reader evaluates in code (NuGet.props and NuGet.targets: ImportNuGetProps, _CentralPackageVersionsEnabled, the
+		///GlobalPackageReference check; the SDK's PackageReference items: ThrowIfImplicitPackageReferences; GetPackageVersion), as MSBuild reads
+		///it there: a global property, which no file can change, else what a file set, else an environment variable of the name, with which
+		///MSBuild starts every evaluation. This reader does not model environment variables, so for a name no file set that is an environment
+		///variable of this process the value is not known: null, as for a value with an expression the reader cannot evaluate. GetValue would give
+		///'' or the marker instead, and a condition would compare that as if MSBuild had it.</summary>
+		private string GetValueIfKnown(string name) {
+			if(IsEnvironmentVariable(name)) {
+				return null;
+			}
+			string value=GetValue(name);
+			return IsUnresolved(value) ? null : Unescape(value);
+		}
+
+		///<summary>GetValueIfKnown where the evaluation or the query cannot go on without the value (an import, a refusal, the version the restore
+		///takes): throws NotSupportedException when it is not known.</summary>
+		private string GetKnownValue(string name) {
+			ThrowIfEnvironmentVariable(name);
+			string value=GetValue(name);
+			ThrowIfUnresolved(value,Describe()+": $("+name+")");
+			return Unescape(value);
+		}
+
+		///<summary>GetKnownValue is 'true', as an MSBuild condition compares it (ignoring case).</summary>
+		private bool IsKnownTrue(string name) {
+			return GetKnownValue(name).Equals("true",StringComparison.OrdinalIgnoreCase);
+		}
+
+		///<summary>GetKnownValue is 'false', as an MSBuild condition compares it (ignoring case).</summary>
+		private bool IsKnownFalse(string name) {
+			return GetKnownValue(name).Equals("false",StringComparison.OrdinalIgnoreCase);
+		}
+
 		///<summary>Microsoft.NET.Sdk.DefaultItems.props and Microsoft.NET.Sdk.WindowsDesktop.props (SDK 10.0.114).</summary>
 		private void AddSdkDefaultItems() {
 			if(!IsPropertyTrue("EnableDefaultItems")) {
@@ -1679,14 +1737,20 @@ namespace ProjectFileTests {
 			if(!_dictProperties.ContainsKey(name) && _hashSetNotModelled.Contains(name)) {
 				throw new NotSupportedException(Describe()+": $("+name+") is computed by MSBuild, the solution build or the .NET SDK and not modelled by ProjectFile.");
 			}
-			if(IsEnvironmentVariable(name)) {
-				throw new NotSupportedException(Describe()+": $("+name+") is an environment variable of this process, which MSBuild reads as a property; "
-					+"ProjectFile does not model environment variables.");
-			}
+			ThrowIfEnvironmentVariable(name);
 			string value=GetValue(name);
 			ThrowIfUnresolved(value,Describe()+": $("+name+")");
 			//Unescaped, as -getProperty prints it: ApplicationVersion 1.0.0.%2a is 1.0.0.*.
 			return Unescape(value);
+		}
+
+		///<summary>Throws NotSupportedException when no file this reader read set the name and it is an environment variable of this process
+		///(IsEnvironmentVariable): MSBuild would read the variable's value there, which this reader does not model.</summary>
+		private void ThrowIfEnvironmentVariable(string name) {
+			if(IsEnvironmentVariable(name)) {
+				throw new NotSupportedException(Describe()+": $("+name+") is an environment variable of this process, which MSBuild reads as a property; "
+					+"ProjectFile does not model environment variables.");
+			}
 		}
 
 		///<summary>True when the reader knows the property's value (GetProperty does not throw for it).</summary>
@@ -2245,21 +2309,27 @@ namespace ProjectFileTests {
 		///  Microsoft.AspNetCore.App or Microsoft.AspNetCore.All without a Version PrivateAssets all and Publish true (with central package
 		///  management a PackageReference never has a Version, NU1008, so it always gets them); and one of Microsoft.NETCore.App the Version
 		///  $(RuntimeFrameworkVersion) and AllowExplicitVersion true when RuntimeFrameworkVersion is set. Its Update items match the Include ignoring
-		///  case, as MSBuild matches item specs.</summary>
+		///  case, as MSBuild matches item specs.
+		///Each property is read as those files read it (GetKnownValue): one that is not known here (an environment variable no file set, a value
+		///with an expression the reader cannot evaluate, the framework of a TargetFramework it does not know) throws, as whether the SDK adds the
+		///items is then not known.</summary>
 		private void ThrowIfImplicitPackageReferences(string itemType) {
 			if(!IsSdkStyle || (itemType!=null && !itemType.Equals("PackageReference",StringComparison.OrdinalIgnoreCase))) {
 				return;
 			}
-			if(IsPropertyTrue("DisableImplicitFrameworkReferences")) {
+			if(IsKnownTrue("DisableImplicitFrameworkReferences")) {
 				throw new NotSupportedException(Describe()+": the PackageReference metadata the SDK gives with DisableImplicitFrameworkReferences are not modelled "
 					+"by ProjectFile.");
 			}
-			Version versionFramework;
-			bool hasVersion=Version.TryParse(GetUnescaped("_TargetFrameworkVersionWithoutV"),out versionFramework);
-			if((IsValue("TargetFrameworkIdentifier",".NETStandard") && (!hasVersion || versionFramework<new Version(2,1)))
-				|| (IsValue("TargetFrameworkIdentifier",".NETCoreApp") && hasVersion && versionFramework<new Version(3,0)))
-			{
-				throw new NotSupportedException(Describe()+": the SDK's implicit PackageReference of "+GetUnescaped("TargetFramework")+" is not modelled by ProjectFile.");
+			string frameworkIdentifier=GetKnownValue("TargetFrameworkIdentifier");
+			bool isNetStandard=frameworkIdentifier.Equals(".NETStandard",StringComparison.OrdinalIgnoreCase);
+			bool isNetCoreApp=frameworkIdentifier.Equals(".NETCoreApp",StringComparison.OrdinalIgnoreCase);
+			if(isNetStandard || isNetCoreApp) {
+				Version versionFramework;
+				bool hasVersion=Version.TryParse(GetKnownValue("_TargetFrameworkVersionWithoutV"),out versionFramework);
+				if((isNetStandard && (!hasVersion || versionFramework<new Version(2,1))) || (isNetCoreApp && hasVersion && versionFramework<new Version(3,0))) {
+					throw new NotSupportedException(Describe()+": the SDK's implicit PackageReference of "+GetUnescaped("TargetFramework")+" is not modelled by ProjectFile.");
+				}
 			}
 			foreach(ProjectItem projectItem in _listItems.Where(x => x.ItemType.Equals("PackageReference",StringComparison.OrdinalIgnoreCase))) {
 				if((projectItem.Include.Equals("Microsoft.AspNetCore.App",StringComparison.OrdinalIgnoreCase)
@@ -2269,7 +2339,7 @@ namespace ProjectFileTests {
 					throw new NotSupportedException(Describe()+": the PrivateAssets and Publish metadata the SDK gives the PackageReference of "+projectItem.Include
 						+" without a Version (Microsoft.NET.Sdk.DefaultItems.Shared.targets) are not modelled by ProjectFile.");
 				}
-				if(projectItem.Include.Equals("Microsoft.NETCore.App",StringComparison.OrdinalIgnoreCase) && GetValue("RuntimeFrameworkVersion")!="") {
+				if(projectItem.Include.Equals("Microsoft.NETCore.App",StringComparison.OrdinalIgnoreCase) && GetKnownValue("RuntimeFrameworkVersion")!="") {
 					throw new NotSupportedException(Describe()+": the Version and AllowExplicitVersion metadata the SDK gives the PackageReference of "+projectItem.Include
 						+" with RuntimeFrameworkVersion set (Microsoft.NET.Sdk.DefaultItems.Shared.targets) are not modelled by ProjectFile.");
 				}
@@ -2327,13 +2397,15 @@ namespace ProjectFileTests {
 		///CollectCentralPackageVersions reports them as NU1506, a warning (an error only through TreatWarningsAsErrors or WarningsAsErrors, which the
 		///repository does not set for it), keeps one of them and the restore goes on. Which one it keeps is that task's choice, which this reader
 		///does not model, and Directory.Packages.props names each package once, so a second item is a mistake for a test to report, not a version
-		///for the reader to guess. Without central package management, the PackageReference's own Version.</summary>
+		///for the reader to guess. Without central package management, the PackageReference's own Version. _CentralPackageVersionsEnabled and
+		///CentralPackageVersionOverrideEnabled (read only for a VersionOverride) are read as NuGet's restore gets them from MSBuild: one that is not
+		///known here (an environment variable no file set, or a switch that NuGet.targets set from one) throws NotSupportedException.</summary>
 		public string GetPackageVersion(string packageId) {
 			ProjectItem projectItemReference=GetPackageReference(packageId);
 			if(projectItemReference==null) {
 				return null;
 			}
-			if(!IsPropertyTrue("_CentralPackageVersionsEnabled")) {
+			if(!IsKnownTrue("_CentralPackageVersionsEnabled")) {
 				return projectItemReference.GetMetadata("Version");
 			}
 			if(projectItemReference.GetMetadata("Version")!="") {
@@ -2341,7 +2413,7 @@ namespace ProjectFileTests {
 					+"does not allow (NU1008).");
 			}
 			if(projectItemReference.GetMetadata("VersionOverride")!="") {
-				if(IsPropertyFalse("CentralPackageVersionOverrideEnabled")) {
+				if(IsKnownFalse("CentralPackageVersionOverrideEnabled")) {
 					throw new InvalidOperationException(Describe()+": VersionOverride of "+packageId+" with CentralPackageVersionOverrideEnabled false (NU1013).");
 				}
 				return projectItemReference.GetMetadata("VersionOverride");
