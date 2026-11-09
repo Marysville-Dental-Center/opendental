@@ -20,18 +20,24 @@ namespace ToothChartImageTests {
 	///(the engine did not start, or a render failed and GetBitmap returned the Simple 2D fallback) fails and is never recorded or compared.
 	///
 	///Record the baselines (after a deliberate change of the drawing, in a commit that says why): set OPMS_RECORD_WPF_CHART=1 for a run of this
-	///assembly (optionally OPMS_RECORD_WPF_CHART_OUT=&lt;folder&gt;). Each PNG gets a .txt with its facts and pixel SHA-256, and a second render of
-	///the same state must give the same pixels.
+	///assembly (optionally OPMS_RECORD_WPF_CHART_OUT=&lt;folder&gt;). Each PNG gets a .txt with its facts (the framework and bitness of the process,
+	///the screen DPI) and pixel SHA-256, and two more renders of the same state, a second GetBitmap and a fresh render of both layers, must give
+	///the same pixels. The gate counts the pictures whose pixels are exactly their .txt's.
 	///
-	///Make a gallery (tools\New-ToothChartGallery.ps1 does this and zips it): set OPMS_CHART_GALLERY=&lt;folder&gt; for a run of this assembly.
-	///WriteGallery draws every scene again, compares each picture with its baseline, measures the render times in a fresh second process, copies
-	///TC-0's legacy pictures, and writes index.html. OPMS_CHART_GALLERY_NAME names it (default G0).</summary>
+	///Make a gallery (tools\New-ToothChartGallery.ps1 does this and zips it): set OPMS_CHART_GALLERY=&lt;folder&gt; (new, empty, or a gallery: any other
+	///folder is refused) for a run of this assembly. WriteGallery draws every scene again, marks each picture equal or not to this branch's baseline,
+	///compares it with the approved picture (from G1 on, in OPMS_CHART_GALLERY_APPROVED, which the script takes from main), measures the render times
+	///in a fresh second process, copies TC-0's legacy pictures, and writes index.html. OPMS_CHART_GALLERY_NAME names it (default G0).</summary>
 	[TestClass]
 	public class WpfImageTests {
 		public const string EnvRecord="OPMS_RECORD_WPF_CHART";
 		public const string EnvRecordOut="OPMS_RECORD_WPF_CHART_OUT";
 		public const string EnvGallery="OPMS_CHART_GALLERY";
 		public const string EnvGalleryName="OPMS_CHART_GALLERY_NAME";
+		///<summary>From G1 on: the folder of the approved WPF baselines (the &lt;size&gt;\&lt;scene&gt;.png of Baselines\wpf-net48 as main has
+		///them), and words for where they came from.</summary>
+		public const string EnvGalleryApproved="OPMS_CHART_GALLERY_APPROVED";
+		public const string EnvGalleryApprovedFrom="OPMS_CHART_GALLERY_APPROVED_FROM";
 
 		[TestMethod]
 		public void ChartScenes_MatchTheWpfBaselines() {
@@ -232,10 +238,22 @@ namespace ToothChartImageTests {
 			if(string.IsNullOrWhiteSpace(galleryName)) {
 				galleryName="G0";
 			}
-			if(Directory.Exists(folder)) {
-				Directory.Delete(folder,true);
+			//Old against new: from G1 on, the approved pictures come from outside this branch (the script takes them from main), because a branch that
+			//has re-recorded would show its changed scenes as the same as its own baselines.
+			string folderApproved=null;
+			string approvedFrom="none yet: G0's WPF pictures are the first WPF baselines";
+			if(galleryName!="G0") {
+				folderApproved=Environment.GetEnvironmentVariable(EnvGalleryApproved);
+				if(string.IsNullOrWhiteSpace(folderApproved) || !Directory.Exists(folderApproved)) {
+					Assert.Fail("Set "+EnvGalleryApproved+" to a folder of the approved WPF baselines (tools\\New-ToothChartGallery.ps1 takes them from main): "
+						+"gallery "+galleryName+" shows old against new, and this branch's own Baselines\\wpf-net48 would show a re-recorded scene as unchanged.");
+				}
+				approvedFrom=Environment.GetEnvironmentVariable(EnvGalleryApprovedFrom);
+				if(string.IsNullOrWhiteSpace(approvedFrom)) {
+					approvedFrom=folderApproved;
+				}
 			}
-			Directory.CreateDirectory(folder);
+			WpfGallery.PrepareFolder(folder);//refuses a folder that is not a gallery
 			//The render times first, in a fresh process, so the cold values are cold.
 			string pathTimes=Path.Combine(folder,"timings-second-process.txt");
 			SecondProcessResult resultTimes=SecondProcess.Run(600000,"times",pathTimes);
@@ -248,12 +266,12 @@ namespace ToothChartImageTests {
 					using ToothChartWrapper wrapper=WpfCharts.CreateWrapper(chartSize.Size);
 					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 					foreach(ChartScene scene in WpfCharts.GetChartScenes().Where(x => ChartScenes.GetSizes(x).Contains(chartSize))) {
-						listPictures.Add(DrawGalleryPicture(wrapper,relay,scene,chartSize,folder,IsApproved()));
+						listPictures.Add(DrawGalleryPicture(wrapper,relay,scene,chartSize,folder,folderApproved));
 					}
 				}
 			});
 			string note=GetGalleryNote(galleryName);
-			WpfGallery.Write(folder,galleryName,note,listPictures,timingReport,Environment.GetEnvironmentVariable("OPMS_CHART_GALLERY_COMMIT"));
+			WpfGallery.Write(folder,galleryName,note,listPictures,timingReport,Environment.GetEnvironmentVariable("OPMS_CHART_GALLERY_COMMIT"),approvedFrom);
 			List<string> listFailures=listPictures.Where(x => x.Failure!=null).Select(x => x.Failure).ToList();
 			Console.WriteLine("Gallery "+galleryName+" written to "+folder+": "+(listPictures.Count-listFailures.Count)+" WPF pictures"
 				+(listFailures.Count>0?", "+listFailures.Count+" failed":"")+".");
@@ -262,11 +280,12 @@ namespace ToothChartImageTests {
 				+"them (the folder holds the gallery; tools\\New-ToothChartGallery.ps1 -NoTestRun zips it):\r\n"+string.Join("\r\n",listFailures));
 		}
 
-		///<summary>One cell of the gallery: the scene drawn through the relay and saved under folder\wpf, compared with its baseline when
-		///isApproved and it has one. A picture the WPF chart did not draw (as CheckScene) is not saved and not compared: the cell's Failure says
-		///why, and the gallery marks the cell as failed instead of showing the 2D chart's image as the WPF chart's.</summary>
+		///<summary>One cell of the gallery: the scene drawn through the relay and saved under folder\wpf, its pixel hash checked against this
+		///branch's baseline .txt (Baselines\wpf-net48, the file being merged), and compared with the approved picture in folderApproved when that is
+		///given and has one. A picture the WPF chart did not draw (as CheckScene) is not saved and not compared: the cell's Failure says why, and the
+		///gallery marks the cell as failed instead of showing the 2D chart's image as the WPF chart's.</summary>
 		public static WpfGalleryPicture DrawGalleryPicture(ToothChartWrapper wrapper,ToothChartRelay relay,ChartScene scene,ChartSize chartSize,string folder,
-			bool isApproved)
+			string folderApproved)
 		{
 			string name=chartSize.FolderName+"/"+scene.Name;
 			WpfGalleryPicture picture=new WpfGalleryPicture();
@@ -286,8 +305,13 @@ namespace ToothChartImageTests {
 			string pathPng=Path.Combine(folder,"wpf",chartSize.FolderName,scene.Name+".png");
 			Directory.CreateDirectory(Path.GetDirectoryName(pathPng));
 			PngWriter.Save(bitmap,pathPng);
-			string pathBaseline=WpfCharts.GetPicturePath(WpfCharts.BaselinesWpf,chartSize,scene);
-			picture.HasBaseline=File.Exists(pathBaseline) && isApproved;
+			picture.PixelsSha256=ChartImageCompare.Sha256(ChartImageCompare.GetPixelsArgb(bitmap));
+			picture.PixelsSha256Merged=LegacyComparison.ReadPixelsSha256(Path.ChangeExtension(WpfCharts.GetPicturePath(WpfCharts.BaselinesWpf,chartSize,scene),".txt"));
+			if(folderApproved==null) {
+				return picture;
+			}
+			string pathBaseline=WpfCharts.GetPicturePath(folderApproved,chartSize,scene);
+			picture.HasBaseline=File.Exists(pathBaseline);
 			if(picture.HasBaseline) {
 				using Bitmap bitmapBaseline=LoadBitmap(pathBaseline);
 				picture.Comparison=ChartImageCompare.Compare(bitmapBaseline,bitmap);
@@ -316,13 +340,6 @@ namespace ToothChartImageTests {
 				Assert.IsFalse(double.IsNaN(value),key+" was not measured.");
 				Assert.IsTrue(value>0 && value<10000,key+": "+value);
 			}
-		}
-
-		///<summary>G0 has no approved WPF picture: TC-1's baselines are the first, and the owner approves them with G0. A later gallery
-		///(OPMS_CHART_GALLERY_NAME other than G0) compares with the committed baselines.</summary>
-		private static bool IsApproved() {
-			string galleryName=Environment.GetEnvironmentVariable(EnvGalleryName);
-			return !string.IsNullOrWhiteSpace(galleryName) && galleryName!="G0";
 		}
 
 		private static string GetGalleryNote(string galleryName) {

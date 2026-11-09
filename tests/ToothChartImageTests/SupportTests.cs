@@ -385,7 +385,7 @@ namespace ToothChartImageTests {
 						Assert.AreEqual(1,listFailures.Count,string.Join("\r\n",listFailures));
 						StringAssert.StartsWith(listFailures[0],prefixFailure);
 						//The gallery: the cell is marked as failed, and no picture is saved.
-						WpfGalleryPicture picture=WpfImageTests.DrawGalleryPicture(wrapper,relay,scene,chartSize,folderGallery,false);
+						WpfGalleryPicture picture=WpfImageTests.DrawGalleryPicture(wrapper,relay,scene,chartSize,folderGallery,null);
 						Assert.IsNotNull(picture.Failure,"The gallery cell is failed.");
 						StringAssert.StartsWith(picture.Failure,prefixFailure);
 						Assert.IsFalse(Directory.Exists(folderGallery),"No picture in the gallery.");
@@ -400,8 +400,102 @@ namespace ToothChartImageTests {
 					Assert.AreEqual(WpfSceneOutcome.Compared,WpfImageTests.CheckScene(wrapper,relay,scene,chartSize,false,folderBaseline2D,folderFailures,"test",
 						listFailures));
 					Assert.AreEqual(1,listFailures.Count,"The WPF picture differs from the 2D one: "+string.Join("\r\n",listFailures));
-					Assert.IsNull(WpfImageTests.DrawGalleryPicture(wrapper,relay,scene,chartSize,folderGallery,false).Failure);
+					Assert.IsNull(WpfImageTests.DrawGalleryPicture(wrapper,relay,scene,chartSize,folderGallery,null).Failure);
 				});
+			}
+			finally {
+				Directory.Delete(folder,true);
+			}
+		}
+
+		[TestMethod]
+		public void Gallery_EmptiesOnlyAGalleryFolder() {
+			//The gallery folder is whatever -Out or OPMS_CHART_GALLERY names. Before this check WriteGallery deleted it with no question, so
+			//"-Out ." in a checkout would have deleted the checkout.
+			string folder=NewTempFolder("tc1-gallery-folder-");
+			try {
+				string folderCheckout=Path.Combine(folder,"checkout");
+				Directory.CreateDirectory(Path.Combine(folderCheckout,".git"));
+				File.WriteAllText(Path.Combine(folderCheckout,"README.md"),"Not a gallery.");
+				File.WriteAllText(Path.Combine(folderCheckout,"index.html"),"<!doctype html><title>Another site</title>");
+				InvalidOperationException ex=Expect.Throws<InvalidOperationException>(() => WpfGallery.PrepareFolder(folderCheckout));
+				StringAssert.Contains(ex.Message,"Not a gallery folder");
+				Assert.IsTrue(File.Exists(Path.Combine(folderCheckout,"README.md")) && Directory.Exists(Path.Combine(folderCheckout,".git"))
+					&& File.Exists(Path.Combine(folderCheckout,"index.html")),"Nothing was deleted.");
+				//A new folder, and an empty one, become galleries.
+				string folderNew=Path.Combine(folder,"new");
+				WpfGallery.PrepareFolder(folderNew);
+				Assert.IsTrue(WpfGallery.IsGalleryFolder(folderNew));
+				string folderEmpty=Path.Combine(folder,"empty");
+				Directory.CreateDirectory(folderEmpty);
+				WpfGallery.PrepareFolder(folderEmpty);
+				Assert.IsTrue(WpfGallery.IsGalleryFolder(folderEmpty));
+				//A gallery is emptied and stays one.
+				File.WriteAllText(Path.Combine(folderNew,"index.html"),"old");
+				Directory.CreateDirectory(Path.Combine(folderNew,"wpf","410x307"));
+				WpfGallery.PrepareFolder(folderNew);
+				Assert.IsFalse(File.Exists(Path.Combine(folderNew,"index.html")),"The old gallery was emptied.");
+				Assert.IsFalse(Directory.Exists(Path.Combine(folderNew,"wpf")));
+				Assert.IsTrue(WpfGallery.IsGalleryFolder(folderNew));
+				//A gallery made before the marker file: its index.html says it is one.
+				string folderOld=Path.Combine(folder,"gallery-before-the-marker");
+				Directory.CreateDirectory(Path.Combine(folderOld,"wpf"));
+				File.WriteAllText(Path.Combine(folderOld,"index.html"),"<!doctype html>\r\n<html lang=\"en\">\r\n<head>\r\n<meta charset=\"utf-8\">\r\n"
+					+"<title>Tooth chart gallery G0</title>\r\n");
+				WpfGallery.PrepareFolder(folderOld);
+				Assert.IsFalse(Directory.Exists(Path.Combine(folderOld,"wpf")));
+				Assert.IsTrue(WpfGallery.IsGalleryFolder(folderOld));
+			}
+			finally {
+				Directory.Delete(folder,true);
+			}
+		}
+
+		[TestMethod]
+		public void Gallery_ComparesWithTheApprovedSet_AndMarksThePixelsOfTheBranchBaseline() {
+			//From G1 on the approved pictures come from main, not from this branch's Baselines\wpf-net48: a picture this branch re-recorded must show
+			//its difference from the approved one, and each picture says whether it is exactly the file the branch merges.
+			ChartScene scene=ChartScenes.Get("restored-adult");
+			ChartSize chartSize=ChartScenes.SizeModule;
+			string folder=NewTempFolder("tc1-gallery-approved-");
+			try {
+				string folderApproved=Path.Combine(folder,"approved");
+				string folderGallery=Path.Combine(folder,"gallery");
+				//The approved picture: the branch's baseline with a block painted over, as an older approved picture would differ.
+				string pathApproved=WpfCharts.GetPicturePath(folderApproved,chartSize,scene);
+				Directory.CreateDirectory(Path.GetDirectoryName(pathApproved));
+				using(Bitmap bitmapApproved=WpfImageTests.LoadBitmap(WpfCharts.GetPicturePath(WpfCharts.BaselinesWpf,chartSize,scene))) {
+					using(Graphics g=Graphics.FromImage(bitmapApproved)) {
+						g.FillRectangle(Brushes.Magenta,100,100,20,20);
+					}
+					PngWriter.Save(bitmapApproved,pathApproved);
+				}
+				List<WpfGalleryPicture> listPictures=new List<WpfGalleryPicture>();
+				StaRunner.Run(() => {
+					using ToothChartWrapper wrapper=WpfCharts.CreateWrapper(chartSize.Size);
+					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+					listPictures.Add(WpfImageTests.DrawGalleryPicture(wrapper,relay,scene,chartSize,folderGallery,folderApproved));
+					listPictures.Add(WpfImageTests.DrawGalleryPicture(wrapper,relay,ChartScenes.Get("treatment-plan"),chartSize,folderGallery,folderApproved));
+				});
+				WpfGalleryPicture picture=listPictures[0];
+				Assert.IsNull(picture.Failure,picture.Failure);
+				Assert.IsTrue(picture.HasBaseline);
+				Assert.IsFalse(picture.Comparison.IsPass,"Compared with the approved picture, not with this branch's baseline: "+picture.Comparison);
+				Assert.AreEqual(400,picture.Comparison.CountDifferent);
+				Assert.IsNotNull(picture.PathDiff);
+				Assert.AreEqual(picture.PixelsSha256Merged,picture.PixelsSha256,"The fresh picture has exactly the pixels of the baseline this branch merges.");
+				Assert.IsFalse(listPictures[1].HasBaseline,"The approved set has no treatment-plan.");
+				Assert.AreEqual(listPictures[1].PixelsSha256Merged,listPictures[1].PixelsSha256);
+				string html=WpfGallery.GetIndexHtml(folderGallery,"G1","A test gallery.",listPictures,null,null,"main at abc1234");
+				StringAssert.Contains(html,"Approved WPF pictures: main at abc1234.");
+				StringAssert.Contains(html,"2 of the 2 WPF pictures have exactly the pixels of this branch's baselines");
+				StringAssert.Contains(html,"the pixels of this branch's baseline</div>");
+				StringAssert.Contains(html,"src=\""+picture.PathDiff+"\"");
+				//A picture with other pixels than the branch's baseline says so.
+				listPictures[1].PixelsSha256Merged=new string('0',64);
+				html=WpfGallery.GetIndexHtml(folderGallery,"G1","A test gallery.",listPictures,null,null,"main at abc1234");
+				StringAssert.Contains(html,"1 of the 2 WPF pictures have exactly the pixels");
+				StringAssert.Contains(html,"other pixels than this branch's baseline");
 			}
 			finally {
 				Directory.Delete(folder,true);

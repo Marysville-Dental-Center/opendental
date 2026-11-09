@@ -1,5 +1,6 @@
 // The owner gallery of the WPF chart (docs/specs/wpf-tooth-chart-plan.md, section 8): every scene with today's DirectX, OpenGL and Simple 2D pictures
-// (TC-0's recording), the WPF picture and its difference from the last approved WPF picture, and the render times. Gallery G0 is TC-1's.
+// (TC-0's recording), the WPF picture (marked equal or not to the branch's baseline) and its difference from the last approved WPF picture, and the
+// render times. Gallery G0 is TC-1's.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -22,7 +23,13 @@ namespace ToothChartImageTests {
 		public string PathDiff;
 		///<summary>Null when there is no approved baseline.</summary>
 		public ChartImageCompareResult Comparison;
+		///<summary>True when the approved set (OPMS_CHART_GALLERY_APPROVED, from main) has this scene and size.</summary>
 		public bool HasBaseline;
+		///<summary>The pixel SHA-256 of the fresh WPF picture (ChartImageCompare.Sha256 of GetPixelsArgb).</summary>
+		public string PixelsSha256;
+		///<summary>The Pixels SHA-256 of this branch's baseline of the scene (the .txt in Baselines\wpf-net48 that the branch merges), or null when
+		///it has none. Equal to PixelsSha256 when the owner's approval of the picture approves the very file being merged.</summary>
+		public string PixelsSha256Merged;
 		///<summary>Null when the WPF chart drew the picture. Otherwise why it did not (the engine did not start, or the render failed and GetBitmap
 		///returned the Simple 2D fallback): no picture is saved, and the gallery marks the cell as failed.</summary>
 		public string Failure;
@@ -32,10 +39,44 @@ namespace ToothChartImageTests {
 		///<summary>The gallery's legacy columns, in order.</summary>
 		private static readonly DrawingMode[] _arrayEngines={ DrawingMode.DirectX,DrawingMode.OpenGL,DrawingMode.Simple2D };
 
+		///<summary>The marker file of a gallery folder, written by PrepareFolder: WriteGallery empties only a folder that holds it (or a gallery's
+		///index.html).</summary>
+		public const string MarkerFileName="tooth-chart-gallery.txt";
+
+		///<summary>Makes folder an empty gallery folder with its marker file. A folder that does not exist is made and an empty one is used. A folder
+		///that holds a gallery (the marker file, or the index.html of a gallery made before the marker) is emptied. Any other folder is refused with
+		///an InvalidOperationException and left as it is, whatever -Out or OPMS_CHART_GALLERY named: "-Out ." in a checkout deletes nothing.</summary>
+		public static void PrepareFolder(string folder) {
+			string folderFull=Path.GetFullPath(folder);
+			if(Directory.Exists(folderFull) && Directory.EnumerateFileSystemEntries(folderFull).Any()) {
+				if(!IsGalleryFolder(folderFull)) {
+					throw new InvalidOperationException("Not a gallery folder, so it is not emptied: "+folderFull+". It holds neither "+MarkerFileName
+						+" nor a gallery's index.html. Name a new or empty folder.");
+				}
+				Directory.Delete(folderFull,true);
+			}
+			Directory.CreateDirectory(folderFull);
+			File.WriteAllText(Path.Combine(folderFull,MarkerFileName),"A tooth chart gallery (tools\\New-ToothChartGallery.ps1, ToothChartImageTests.WpfImageTests."
+				+"WriteGallery). The next gallery written to this folder empties it first.\r\n",new UTF8Encoding(false));
+		}
+
+		///<summary>True when the folder holds the marker file, or an index.html that a gallery wrote (a gallery made before the marker file).</summary>
+		public static bool IsGalleryFolder(string folder) {
+			if(File.Exists(Path.Combine(folder,MarkerFileName))) {
+				return true;
+			}
+			string pathIndex=Path.Combine(folder,"index.html");
+			if(!File.Exists(pathIndex)) {
+				return false;
+			}
+			string html=File.ReadAllText(pathIndex);
+			return html.StartsWith("<!doctype html>",StringComparison.Ordinal) && html.Contains("<title>Tooth chart gallery ");
+		}
+
 		///<summary>Copies TC-0's legacy pictures of every scene and size into the gallery (legacy\&lt;mode&gt;\&lt;size&gt;\, legacy-smoothed\&lt;size&gt;\),
-		///so the folder stands alone, and writes index.html and timings.txt.</summary>
+		///so the folder stands alone, and writes index.html and timings.txt. approvedFrom says where the approved WPF pictures came from.</summary>
 		public static void Write(string folder,string galleryName,string galleryNote,List<WpfGalleryPicture> listPictures,WpfTimingReport timingReportCold,
-			string commit)
+			string commit,string approvedFrom)
 		{
 			Directory.CreateDirectory(folder);
 			foreach(ChartScene scene in ChartScenes.GetAll()) {
@@ -51,7 +92,8 @@ namespace ToothChartImageTests {
 			if(timingReportCold!=null) {
 				File.WriteAllText(Path.Combine(folder,"timings.txt"),timingReportCold.GetReport(),new UTF8Encoding(false));
 			}
-			File.WriteAllText(Path.Combine(folder,"index.html"),GetIndexHtml(folder,galleryName,galleryNote,listPictures,timingReportCold,commit),new UTF8Encoding(false));
+			File.WriteAllText(Path.Combine(folder,"index.html"),GetIndexHtml(folder,galleryName,galleryNote,listPictures,timingReportCold,commit,approvedFrom),
+				new UTF8Encoding(false));
 		}
 
 		private static void CopyIfExists(string pathFrom,string pathTo) {
@@ -62,8 +104,9 @@ namespace ToothChartImageTests {
 			File.Copy(pathFrom,pathTo,true);
 		}
 
-		private static string GetIndexHtml(string folder,string galleryName,string galleryNote,List<WpfGalleryPicture> listPictures,WpfTimingReport timingReport,
-			string commit)
+		///<summary>The gallery's index.html. The pictures' files are looked for under folder.</summary>
+		public static string GetIndexHtml(string folder,string galleryName,string galleryNote,List<WpfGalleryPicture> listPictures,WpfTimingReport timingReport,
+			string commit,string approvedFrom)
 		{
 			StringBuilder sb=new StringBuilder();
 			sb.Append("<!doctype html>\r\n<html lang=\"en\">\r\n<head>\r\n<meta charset=\"utf-8\">\r\n");
@@ -79,15 +122,20 @@ namespace ToothChartImageTests {
 			sb.Append("<p class=\"cap\">Made "+DateTime.Now.ToString("yyyy-MM-dd HH:mm",CultureInfo.InvariantCulture)+(string.IsNullOrEmpty(commit)?"":" at commit "
 				+WebUtility.HtmlEncode(commit))+". Every scene is synthetic: no patient data and no database. Columns: today's DirectX, OpenGL and Simple 2D "
 				+"pictures (recorded in TC-0; DirectX without multisampling, a few smoothed ones beside it), the WPF chart's picture, and its difference "
-				+"from the last approved WPF picture (different pixels in red over grey).</p>\r\n");
+				+"from the last approved WPF picture (different pixels in red over grey). Approved WPF pictures: "+WebUtility.HtmlEncode(approvedFrom)+".</p>\r\n");
 			if(timingReport!=null) {
 				AppendTimings(sb,timingReport);
 			}
 			int countWithBaseline=listPictures.Count(x => x.HasBaseline);
 			int countDifferent=listPictures.Count(x => x.Comparison!=null && !x.Comparison.IsPass);
 			int countFailed=listPictures.Count(x => x.Failure!=null);
-			sb.Append("<p>"+(listPictures.Count-countFailed)+" WPF pictures; "+countWithBaseline+" have an approved baseline"+(countWithBaseline>0?", "
+			int countDrawn=listPictures.Count-countFailed;
+			int countSameAsMerged=listPictures.Count(x => x.Failure==null && x.PixelsSha256Merged!=null && x.PixelsSha256Merged==x.PixelsSha256);
+			sb.Append("<p>"+countDrawn+" WPF pictures; "+countWithBaseline+" have an approved baseline"+(countWithBaseline>0?", "
 				+countDifferent+" differ from it beyond the tolerance":"")+".</p>\r\n");
+			sb.Append("<p class=\""+(countSameAsMerged==countDrawn?"ok":"warn")+"\">"+countSameAsMerged+" of the "+countDrawn+" WPF pictures have exactly the pixels "
+				+"of this branch's baselines (Baselines/wpf-net48, the files the branch merges, by their .txt's Pixels SHA-256), so approving a picture here "
+				+"approves that file. Each WPF picture says whether it does.</p>\r\n");
 			if(countFailed>0) {
 				sb.Append("<p class=\"warn\"><b>"+countFailed+" scenes failed</b>: the WPF chart did not draw them, so their cells show why instead of a "
 					+"picture.</p>\r\n");
@@ -122,7 +170,7 @@ namespace ToothChartImageTests {
 						sb.Append("<td class=\"warn\">failed: "+WebUtility.HtmlEncode(picture.Failure)+"</td><td class=\"cap\">not compared</td>");
 					}
 					else {
-						AppendImageCell(sb,folder,picture.PathWpf,chartSize,"missing");
+						AppendImageCell(sb,folder,picture.PathWpf,chartSize,"missing",GetMergedCaption(picture));
 						if(!picture.HasBaseline) {
 							sb.Append("<td class=\"cap\">no approved WPF picture yet</td>");
 						}
@@ -146,13 +194,25 @@ namespace ToothChartImageTests {
 			return sb.ToString();
 		}
 
-		private static void AppendImageCell(StringBuilder sb,string folder,string pathRelative,ChartSize chartSize,string textMissing) {
+		///<summary>A cell with the picture, or textMissing when the file is not in the gallery. captionHtml, when given, goes under the picture.</summary>
+		private static void AppendImageCell(StringBuilder sb,string folder,string pathRelative,ChartSize chartSize,string textMissing,string captionHtml=null) {
 			if(!File.Exists(Path.Combine(folder,pathRelative.Replace('/','\\')))) {
 				sb.Append("<td class=\"cap\">"+WebUtility.HtmlEncode(textMissing)+"</td>");
 				return;
 			}
 			sb.Append("<td><img loading=\"lazy\" src=\""+pathRelative+"\" width=\""+chartSize.Size.Width+"\" height=\""+chartSize.Size.Height+"\" alt=\""
-				+WebUtility.HtmlEncode(pathRelative)+"\"></td>");
+				+WebUtility.HtmlEncode(pathRelative)+"\">"+(captionHtml??"")+"</td>");
+		}
+
+		///<summary>Under a WPF picture: whether its pixels are exactly those of this branch's baseline (the file being merged).</summary>
+		private static string GetMergedCaption(WpfGalleryPicture picture) {
+			if(picture.PixelsSha256Merged==null) {
+				return "<div class=\"warn\">no baseline in this branch</div>";
+			}
+			if(picture.PixelsSha256Merged==picture.PixelsSha256) {
+				return "<div class=\"ok\">the pixels of this branch's baseline</div>";
+			}
+			return "<div class=\"warn\">other pixels than this branch's baseline</div>";
 		}
 
 		///<summary>The render times, with O-19's limits: at 150% (615x461) a refill plus render within 100 ms, and a selection-only change within 20 ms.</summary>
