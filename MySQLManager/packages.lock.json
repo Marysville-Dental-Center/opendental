@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "CodeBase": {
+        "type": "Project"
+      },
+      "DataConnectionBase": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )"
+        }
+      }
+    },
+    ".NETFramework,Version=v4.8/win-x86": {}
+  }
+}

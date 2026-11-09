@@ -1,46 +1,25 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!--
     ODR: the helper functions that RDL report definitions load as a code module (<CodeModule>ODR.dll</CodeModule>, classes ODR.Query,
     ODR.DataConnection, ODR.GetData, ODR.Format, ODR.Aggregate): OpenPmsDental/Resources/Unsched Treat Plans.rdl, ReportAccountingBalanceSheet.txt,
     ReportAccountingGenLedger.txt, and possibly an office's own reports in the A to Z folder. Built from this source and copied next to
     OpenPmsDental.exe by OpenPmsDental.csproj's reference (package RDL-SRC, docs/port-notes/RDL-SRC.md); there is no prebuilt ODR.dll any more.
     The assembly name ODR and the ODR.* class names are named inside report definitions, so they never change.
+    Loaded into OpenPmsDental.exe, which is x86, like the business layer it calls (Directory.Build.props).
   -->
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{84688345-BB6A-4F2F-8672-A82B52FD433B}</ProjectGuid>
+    <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>OpenDentalReporting</RootNamespace>
     <AssemblyName>ODR</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
     <LangVersion>8.0</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-    <ResGenToolArchitecture>Managed32Bit</ResGenToolArchitecture>
+    <Platforms>AnyCPU;x86</Platforms>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' != 'Debug' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-  </PropertyGroup>
-  <!-- Loaded into OpenPmsDental.exe, which is x86, like the business layer it calls. -->
-  <PropertyGroup Condition=" '$(Platform)' == 'x86' ">
-    <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
     <!-- The program's MySQL client (MySql.Data is not shipped). -->
@@ -54,83 +33,32 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\SharedAssemblyInfo.cs">
       <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="ComboBoxMulti.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Aggregate.cs" />
-    <Compile Include="MakeReadableDefNum.cs" />
-    <Compile Include="GetData.cs" />
-    <Compile Include="Format.cs" />
-    <Compile Include="TestValue.cs" />
-    <Compile Include="DataConnection.cs" />
-    <Compile Include="FormParameterInput.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="MakeReadable.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="MakeReadablePatNum.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Parameter.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="ParameterCollection.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Query.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="ValidDate.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="ValidDouble.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="ValidNumber.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <EmbeddedResource Include="ComboBoxMulti.resx">
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The class-based resource names (ODR.ComboBoxMulti.resources, ...) come from DependentUpon: the classes are in namespace ODR, not in
+         the root namespace OpenDentalReporting. -->
+    <EmbeddedResource Update="ComboBoxMulti.resx">
       <DependentUpon>ComboBoxMulti.cs</DependentUpon>
-      <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="FormParameterInput.resx">
+    <EmbeddedResource Update="FormParameterInput.resx">
       <DependentUpon>FormParameterInput.cs</DependentUpon>
-      <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="ValidDate.resx">
+    <EmbeddedResource Update="ValidDate.resx">
       <DependentUpon>ValidDate.cs</DependentUpon>
-      <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="ValidDouble.resx">
+    <EmbeddedResource Update="ValidDouble.resx">
       <DependentUpon>ValidDouble.cs</DependentUpon>
-      <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="ValidNumber.resx">
+    <EmbeddedResource Update="ValidNumber.resx">
       <DependentUpon>ValidNumber.cs</DependentUpon>
-      <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="ClassDiagram1.cd" />
+    <ProjectReference Include="..\CodeBase\xCodeBase.csproj" />
+    <ProjectReference Include="..\DataConnectionBase\xDataConnectionBase.csproj" />
+    <ProjectReference Include="..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\CodeBase\xCodeBase.csproj">
-      <Project>{18F7BC78-4B99-48D3-A1F1-0D13A63E3CF9}</Project>
-      <Name>xCodeBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\DataConnectionBase\xDataConnectionBase.csproj">
-      <Project>{29c41020-4411-41f2-9061-9b71b5b32b5d}</Project>
-      <Name>xDataConnectionBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj">
-      <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
-      <Name>OpenPmsDentalBusiness</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
