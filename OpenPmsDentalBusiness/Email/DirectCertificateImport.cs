@@ -313,7 +313,7 @@ namespace OpenPmsDentalBusiness {
 			}
 			X509Certificate2Collection x509Certificate2Collection=new X509Certificate2Collection();
 			try {
-				//Never X509KeyStorageFlags.Exportable: the private key can't be exported from this computer again.
+				//Never the Exportable flag: the private key can't be exported from this computer again.
 				x509Certificate2Collection.Import(byteArrayFile,password??"",x509KeyStorageFlags);
 			}
 			catch(CryptographicException ex) {
@@ -651,9 +651,9 @@ namespace OpenPmsDentalBusiness {
 			return listCertificates;
 		}
 
-		///<summary>True when Windows says the store does not exist (ERROR_FILE_NOT_FOUND).</summary>
+		///<summary>True when Windows says the store does not exist (ERROR_FILE_NOT_FOUND: .NET Framework gives the Win32 code, .NET the HRESULT).</summary>
 		private static bool IsStoreMissing(CryptographicException cryptographicException) {
-			return cryptographicException.HResult==unchecked((int)0x80070002);
+			return cryptographicException.HResult==2 || cryptographicException.HResult==unchecked((int)0x80070002);
 		}
 
 		///<summary>Opens the store for writing, which makes it if needed: "" or what the user can do (Windows refused).</summary>
