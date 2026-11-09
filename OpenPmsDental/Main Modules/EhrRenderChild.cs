@@ -159,9 +159,8 @@ namespace OpenPmsDental {
 				xsltArgumentList.AddParam("limit-pdf","","yes");
 				xsltArgumentList.AddParam("useJavascript","","false");
 			}
-			XmlReaderSettings xmlReaderSettings=new XmlReaderSettings();
-			xmlReaderSettings.DtdProcessing=DtdProcessing.Prohibit;
-			xmlReaderSettings.XmlResolver=null;
+			//The reader the limits were counted with (no DTD, no resolver, characters checked), and at most 32 M characters.
+			XmlReaderSettings xmlReaderSettings=EhrStylesheetStarter.GetXmlReaderSettings();
 			xmlReaderSettings.MaxCharactersInDocument=EhrStylesheetStarter.MAX_DOCUMENT_BYTES;
 			XmlWriterSettings xmlWriterSettings=xslCompiledTransform.OutputSettings.Clone();
 			xmlWriterSettings.Encoding=new UTF8Encoding(false);

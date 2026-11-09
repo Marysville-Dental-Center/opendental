@@ -160,19 +160,26 @@ namespace EhrTests {
 			}
 		}
 
-		///<summary>A batch whose middle document is refused keeps going with the same child: the refused one gets its reason, the others pages.</summary>
+		///<summary>A batch whose second document the stylesheet refuses (CDA.xsl ends a document with a javascript: link) keeps going with the same
+		///child: the refused one gets its reason, the others pages. A document that is not well-formed never reaches the child (the limits refuse
+		///it first), so it takes no child either.</summary>
 		[TestMethod]
 		public void Batch_RefusedDocument_GetsItsReason_AndTheRestRender() {
 			string xml=CdaGolden.ReadFixture("CCD-full.modified.xml");
+			string xmlRefused=CdaHostileTests.MakeCcd("<paragraph>Before <linkHtml href=\"javascript:alert(1)\">the link</linkHtml> after</paragraph>");
+			Assert.IsNull(EhrStylesheetStarter.GetLimitError(xmlRefused),"Within the limits: the child gets it.");
 			List<EhrRenderResult> listEhrRenderResults;
 			using(CountingStarter countingStarter=new CountingStarter()) {
-				listEhrRenderResults=EhrStylesheetStarter.RenderBatch(EhrRenderKind.Ccd,new List<string> { xml,"<ClinicalDocument><unclosed></ClinicalDocument>",xml });
+				listEhrRenderResults=EhrStylesheetStarter.RenderBatch(EhrRenderKind.Ccd,new List<string> { xml,xmlRefused,"<ClinicalDocument><unclosed></ClinicalDocument>",xml });
 				Assert.AreEqual(1,countingStarter.CountStarted,"A document the stylesheet refuses does not end the child.");
 			}
 			Assert.IsNotNull(listEhrRenderResults[0].Html);
 			Assert.IsNull(listEhrRenderResults[1].Html);
 			StringAssert.StartsWith(listEhrRenderResults[1].Reason,"The stylesheet could not show the document: ");
-			Assert.IsNotNull(listEhrRenderResults[2].Html);
+			StringAssert.Contains(listEhrRenderResults[1].Reason,"Javascript injection attempt detected");
+			Assert.IsNull(listEhrRenderResults[2].Html);
+			StringAssert.StartsWith(listEhrRenderResults[2].Reason,"The document is not well-formed XML: ");
+			Assert.IsNotNull(listEhrRenderResults[3].Html);
 		}
 
 		///<summary>A frame of a kind the child does not know ends it with EXIT_BROKEN_FRAME: the reason names the exit code, the rest of the batch

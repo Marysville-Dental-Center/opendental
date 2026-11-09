@@ -252,7 +252,12 @@ namespace LibWebTests {
 			foreach(string text in new[] { "File.","Path.","FileStream","StreamReader","StreamWriter","GetTempFolderPath","using System.IO;" }) {
 				Assert.IsFalse(sourceForm.Contains(text),"FormEhrSummaryCcdEdit.cs: "+text);
 			}
-			Assert.AreEqual(3,Regex.Matches(sourceForm,Regex.Escape("xmlDocCcd.LoadXml(_xmlCcd);")).Count,"The three reconcile buttons read the text.");
+			//The three reconcile buttons read the text: the limits again, then the strict reader they were counted with, never LoadXml's lenient one.
+			Assert.AreEqual(3,Regex.Matches(sourceForm,Regex.Escape("XmlDocument xmlDocCcd=GetXmlDocumentForReconcile();")).Count,"The three reconcile buttons read the text.");
+			int indexFormLimits=sourceForm.IndexOf("string reasonLimits=EhrStylesheetStarter.GetLimitError(_xmlCcd);");
+			int indexFormLoad=sourceForm.IndexOf("return EhrStylesheetStarter.LoadXmlDocument(_xmlCcd);");
+			Assert.IsTrue(indexFormLimits>=0 && indexFormLoad>indexFormLimits,"The reconcile buttons check the limits first.");
+			Assert.IsFalse(Regex.IsMatch(sourceForm,@"\.LoadXml\("),"FormEhrSummaryCcdEdit uses LoadXml.");
 			StringAssert.Contains(sourceForm,"string strCcd=_xmlCcd;");
 			StringAssert.Contains(sourceForm,"html=BuildPage(_xmlCcd,_htmlRendered,_note);");
 			//DisplayCCD hands the window the document and the page and writes them nowhere; it deletes only what an older version left.
@@ -262,10 +267,12 @@ namespace LibWebTests {
 			}
 			StringAssert.Contains(sourceDisplay,"new FormEhrSummaryCcdEdit(doc.InnerXml,htmlRendered,patCur,note)");
 			StringAssert.Contains(sourceDisplay,"DeleteOldCcdFiles(Path.Combine(Path.GetTempPath(),ProgramNames.TempFolderName),DateTime.Now.AddHours(-1));");
-			//The limits are checked on the text before the program builds its own XmlDocument (InnerXml writes recursively).
+			//The limits are checked on the text before the program builds its own XmlDocument (InnerXml writes recursively), and the document is
+			//built with the strict reader the limits were counted with, never with LoadXml's more lenient one.
 			int indexLimits=sourceDisplay.IndexOf("EhrStylesheetStarter.GetLimitError(strXmlCCD)");
-			int indexLoad=sourceDisplay.IndexOf("doc.LoadXml(strXmlCCD);");
+			int indexLoad=sourceDisplay.IndexOf("doc=EhrStylesheetStarter.LoadXmlDocument(strXmlCCD);");
 			Assert.IsTrue(indexLimits>=0 && indexLoad>indexLimits,"The limits come first.");
+			Assert.IsFalse(Regex.IsMatch(sourceDisplay,@"\.LoadXml\("),"DisplayCCD uses LoadXml.");
 			//The starter sends the document through a pipe and writes no file either.
 			string sourceStarter=GetClassSource(TestPaths.ReadSource("OpenPmsDentalBusiness","Data Interface","EhrSummaryCcds.cs"),"public class EhrStylesheetStarter {");
 			foreach(string text in new[] { "File.","Path.GetTemp","FileStream","StreamWriter" }) {

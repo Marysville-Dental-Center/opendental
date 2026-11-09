@@ -35,8 +35,8 @@ namespace OpenPmsDental {
 		private const int MAX_CHARS_SHOWN_OVER_LIMITS=1024*1024;
 
 		///<summary>The page the window shows. The rendered page with the note as its first line; without one, the XML, indented and encoded, below
-		///the note. A document over the child's limits (EhrStylesheetStarter.GetLimitError: too large, too deep, a DTD) is shown as its text, encoded,
-		///not indented (the indentation grows with the depth squared) and cut after 1 MB, so the program stays up.</summary>
+		///the note. A document over the child's limits (EhrStylesheetStarter.GetLimitError: too large, too deep, a DTD, not well-formed) is shown as
+		///its text, encoded, not indented (the indentation grows with the depth squared) and cut after 1 MB, so the program stays up.</summary>
 		public static string BuildPage(string xmlCcd,string htmlRendered,string note) {
 			string html;
 			if(!string.IsNullOrEmpty(htmlRendered)) {
@@ -106,14 +106,28 @@ namespace OpenPmsDental {
 			CodeBase.Controls.WebView2Policy.OpenInSystemBrowser(e.GetSystemBrowserUrl());
 		}
 
-		///<summary>Can only be called if IsReconcile is true.  This function is for EHR module b.4.</summary>
-		private void butReconcileMedications_Click(object sender,EventArgs e) {
-			XmlDocument xmlDocCcd=new XmlDocument();
+		///<summary>The document for a reconcile button, or null after a message that says why not. The reconcile code (EhrCCD.GetList...) walks the
+		///document recursively on this thread, so the child's limits are checked again first (EhrStylesheetStarter.GetLimitError), and the document
+		///is read with the reader they were counted with (EhrStylesheetStarter.LoadXmlDocument), never with LoadXml's more lenient one.</summary>
+		private XmlDocument GetXmlDocumentForReconcile() {
+			string reasonLimits=EhrStylesheetStarter.GetLimitError(_xmlCcd);
+			if(reasonLimits!=null) {
+				MessageBox.Show(Lan.g(this,"Error reading the document")+": "+reasonLimits);
+				return null;
+			}
 			try {
-				xmlDocCcd.LoadXml(_xmlCcd);
+				return EhrStylesheetStarter.LoadXmlDocument(_xmlCcd);
 			}
 			catch(Exception ex) {
 				MessageBox.Show(Lan.g(this,"Error reading the document")+": "+ex.Message);
+				return null;
+			}
+		}
+
+		///<summary>Can only be called if IsReconcile is true.  This function is for EHR module b.4.</summary>
+		private void butReconcileMedications_Click(object sender,EventArgs e) {
+			XmlDocument xmlDocCcd=GetXmlDocumentForReconcile();
+			if(xmlDocCcd==null) {
 				return;
 			}
 			using FormReconcileMedication formRM=new FormReconcileMedication(_patCur);
@@ -124,12 +138,8 @@ namespace OpenPmsDental {
 
 		///<summary>Can only be called if IsReconcile is true.  This function is for EHR module b.4.</summary>
 		private void butReconcileProblems_Click(object sender,EventArgs e) {
-			XmlDocument xmlDocCcd=new XmlDocument();
-			try {
-				xmlDocCcd.LoadXml(_xmlCcd);
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Error reading the document")+": "+ex.Message);
+			XmlDocument xmlDocCcd=GetXmlDocumentForReconcile();
+			if(xmlDocCcd==null) {
 				return;
 			}
 			using FormReconcileProblem formRP=new FormReconcileProblem(_patCur);
@@ -141,12 +151,8 @@ namespace OpenPmsDental {
 
 		///<summary>Can only be called if IsReconcile is true.  This function is for EHR module b.4.</summary>
 		private void butReconcileAllergies_Click(object sender,EventArgs e) {
-			XmlDocument xmlDocCcd=new XmlDocument();
-			try {
-				xmlDocCcd.LoadXml(_xmlCcd);
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Error reading the document")+": "+ex.Message);
+			XmlDocument xmlDocCcd=GetXmlDocumentForReconcile();
+			if(xmlDocCcd==null) {
 				return;
 			}
 			using FormReconcileAllergy formRA=new FormReconcileAllergy(_patCur);

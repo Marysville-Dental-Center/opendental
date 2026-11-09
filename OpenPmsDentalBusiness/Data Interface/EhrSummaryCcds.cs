@@ -232,10 +232,12 @@ namespace OpenPmsDentalBusiness{
 			return null;
 		}
 
-		///<summary>Null when xml may go to a child; otherwise why not: empty, over 32 MB as UTF-8, nested more than 200 levels deep, or with a document
-		///type declaration (DTD), whose entities could expand. The depth is counted with an XmlReader, which does not recurse, so a deep document
-		///cannot overflow this process's stack here either. XML that is not well-formed for another reason is not refused here: the caller's own
-		///parser or the child says why.</summary>
+		///<summary>Null when xml may go to a child; otherwise why not: empty, over 32 MB as UTF-8, nested more than 200 levels deep, with a document
+		///type declaration (DTD), whose entities could expand, or not well-formed XML. The depth is counted with an XmlReader, which does not
+		///recurse, so a deep document cannot overflow this process's stack here either. It fails closed: a document this reader cannot read to its
+		///end is refused, so its depth is never left uncounted. The reader is that of GetXmlReaderSettings; LoadXmlDocument builds the program's own
+		///XmlDocument with the same reader, so the parser that builds a DOM is never more lenient than the one that counted (XmlDocument.LoadXml's
+		///legacy reader accepts a character reference such as &amp;#0;, which stops this reader).</summary>
 		public static string GetLimitError(string xml) {
 			if(string.IsNullOrEmpty(xml)) {
 				return "The document is empty.";
@@ -243,11 +245,8 @@ namespace OpenPmsDentalBusiness{
 			if(xml.Length>MAX_DOCUMENT_BYTES || Encoding.UTF8.GetByteCount(xml)>MAX_DOCUMENT_BYTES) {
 				return "The document is larger than 32 MB.";
 			}
-			XmlReaderSettings xmlReaderSettings=new XmlReaderSettings();
-			xmlReaderSettings.DtdProcessing=DtdProcessing.Prohibit;
-			xmlReaderSettings.XmlResolver=null;
 			try {
-				using(XmlReader xmlReader=XmlReader.Create(new StringReader(xml),xmlReaderSettings)) {
+				using(XmlReader xmlReader=XmlReader.Create(new StringReader(xml),GetXmlReaderSettings())) {
 					while(xmlReader.Read()) {
 						if(xmlReader.NodeType==XmlNodeType.Element && xmlReader.Depth>=MAX_DEPTH) {
 							return "The document is nested more than "+MAX_DEPTH+" levels deep.";
@@ -255,14 +254,37 @@ namespace OpenPmsDentalBusiness{
 					}
 				}
 			}
-			catch(XmlException ex) {
-				ex.DoNothing();
-				//DtdProcessing.Prohibit stops at the document type declaration. Anything else is not well-formed, and its reader says why.
+			catch(Exception ex) {
+				//DtdProcessing.Prohibit stops at the document type declaration. Anything else is not well-formed: refused as well, because the depth
+				//after the place the reader stopped was never counted.
 				if(xml.Contains("<!DOCTYPE")) {
 					return "The document has a document type declaration (DTD), which is not allowed.";
 				}
+				return "The document is not well-formed XML: "+ex.Message;
 			}
 			return null;
+		}
+
+		///<summary>The settings of every reader of a received document in the program's process: no DTD, no resolver, characters checked (a
+		///character reference to a character XML does not allow, such as &amp;#0;, is refused).</summary>
+		public static XmlReaderSettings GetXmlReaderSettings() {
+			XmlReaderSettings xmlReaderSettings=new XmlReaderSettings();
+			xmlReaderSettings.DtdProcessing=DtdProcessing.Prohibit;
+			xmlReaderSettings.XmlResolver=null;
+			xmlReaderSettings.CheckCharacters=true;
+			return xmlReaderSettings;
+		}
+
+		///<summary>The document as an XmlDocument, read with the reader GetLimitError counts with (GetXmlReaderSettings), never with
+		///XmlDocument.LoadXml's more lenient one. Call it only for xml that passed GetLimitError: XmlDocument's own methods, InnerXml among them,
+		///recurse with the depth. Throws an XmlException when xml is not well-formed.</summary>
+		public static XmlDocument LoadXmlDocument(string xml) {
+			XmlDocument xmlDocument=new XmlDocument();
+			xmlDocument.XmlResolver=null;
+			using(XmlReader xmlReader=XmlReader.Create(new StringReader(xml??""),GetXmlReaderSettings())) {
+				xmlDocument.Load(xmlReader);
+			}
+			return xmlDocument;
 		}
 
 		///<summary>The page the shipped stylesheet makes of xml (a CCD with CDA.xsl, a CCR with ccr.xsl), made by a child process; null with the

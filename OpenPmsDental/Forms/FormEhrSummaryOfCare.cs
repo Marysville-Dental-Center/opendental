@@ -110,7 +110,8 @@ namespace OpenPmsDental {
 		///EhrStylesheetStarter, or as XML with the reason when that fails, with its print and reconcile buttons either way.</summary>
 		public static bool DisplayCCD(string strXmlCCD,Patient patCur,string strAlterateFilPathXslCCD) {
 			//The child's limits first, on the text: XmlDocument.InnerXml below writes the document recursively in the program's own process, and a
-			//document type declaration could expand its entities here. Such a document is shown as text, with the reason and no reconcile buttons.
+			//document type declaration could expand its entities here. Such a document, and one that is not well-formed XML (its depth could not be
+			//counted), is shown as text, with the reason and no reconcile buttons.
 			string reasonLimits=EhrStylesheetStarter.GetLimitError(strXmlCCD);
 			if(reasonLimits!=null) {
 				string noteLimits=Lan.g("FormEhrSummaryOfCare","The document is not shown with the program's stylesheet")+": "+reasonLimits;
@@ -119,9 +120,10 @@ namespace OpenPmsDental {
 				return formLimits.DidPrint;
 			}
 			//string xmltext=GetSampleMissingStylesheet();
-			XmlDocument doc=new XmlDocument();
+			XmlDocument doc;
 			try {
-				doc.LoadXml(strXmlCCD);
+				//The reader the limits were counted with, never LoadXml's more lenient one.
+				doc=EhrStylesheetStarter.LoadXmlDocument(strXmlCCD);
 			}
 			catch {
 				throw new XmlException("Invalid XML");

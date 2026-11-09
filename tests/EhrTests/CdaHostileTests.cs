@@ -13,6 +13,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Xml;
+using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDental;
 using OpenPmsDentalBusiness;
@@ -27,7 +28,7 @@ namespace EhrTests {
 
 		#region Documents
 		///<summary>A small CDA document whose one section's narrative is body (CDA narrative markup) and whose entries are entries.</summary>
-		private static string MakeCcd(string body,string entries="") {
+		internal static string MakeCcd(string body,string entries="") {
 			return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
 				+"<ClinicalDocument xmlns=\"urn:hl7-org:v3\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">"
 				+"<realmCode code=\"US\"/><typeId root=\"2.16.840.1.113883.1.3\" extension=\"POCD_HD000040\"/><id root=\"2.25.1001\"/>"
@@ -174,10 +175,53 @@ namespace EhrTests {
 					Assert.AreEqual("The document has a document type declaration (DTD), which is not allowed.",ehrRenderResult.Reason);
 				}
 			}
-			//Not well-formed for another reason: not refused by the limits; the child gives the parser's reason.
-			Assert.IsNull(EhrStylesheetStarter.GetLimitError("<ClinicalDocument><a></ClinicalDocument>"));
-			Assert.IsNull(EhrStylesheetStarter.Render(EhrRenderKind.Ccd,"<ClinicalDocument><a></ClinicalDocument>",out string reason));
-			StringAssert.StartsWith(reason,"The stylesheet could not show the document: ");
+			//Not well-formed for another reason: refused before any child as well (the limits fail closed), with the reader's reason.
+			string xmlMalformed="<ClinicalDocument><a></ClinicalDocument>";
+			StringAssert.StartsWith(EhrStylesheetStarter.GetLimitError(xmlMalformed),"The document is not well-formed XML: ");
+			using(CountingStarter countingStarter=new CountingStarter()) {
+				Assert.IsNull(EhrStylesheetStarter.Render(EhrRenderKind.Ccd,xmlMalformed,out string reason));
+				StringAssert.StartsWith(reason,"The document is not well-formed XML: ");
+				Assert.AreEqual(0,countingStarter.CountStarted,"No child was started.");
+			}
+		}
+
+		///<summary>A character reference XML does not allow (&amp;#0;) before 100,000 nested elements. The reader of the limits stops at the
+		///reference, before it has counted the depth, so the document is refused as not well-formed (the limits fail closed) before any child
+		///starts, and the window shows its text, with no reconcile buttons (DisplayCCD gives it no patient). XmlDocument.LoadXml's legacy reader
+		///accepts the reference: had the limits let the document through, the reconcile code (EhrCCD.GetList...) would have walked the 100,000 levels
+		///recursively in the program's process, and the stack overflow would have ended the program. The program's own XmlDocument is read with the
+		///strict reader (EhrStylesheetStarter.LoadXmlDocument), which refuses the reference too.</summary>
+		[TestMethod]
+		public void InvalidCharacterReference_BeforeDeepNesting_RefusedBeforeAnyChild() {
+			string xml="<ClinicalDocument xmlns=\"urn:hl7-org:v3\">&#0;"+string.Concat(Enumerable.Repeat("<a>",100000))
+				+string.Concat(Enumerable.Repeat("</a>",100000))+"</ClinicalDocument>";
+			string reasonLimits=EhrStylesheetStarter.GetLimitError(xml);
+			StringAssert.StartsWith(reasonLimits,"The document is not well-formed XML: ");
+			using(CountingStarter countingStarter=new CountingStarter()) {
+				Assert.IsNull(EhrStylesheetStarter.Render(EhrRenderKind.Ccd,xml,out string reason));
+				Assert.AreEqual(reasonLimits,reason);
+				List<EhrRenderResult> listEhrRenderResults=EhrStylesheetStarter.RenderBatch(EhrRenderKind.Ccd,new List<string> { xml });
+				Assert.AreEqual(reasonLimits,listEhrRenderResults[0].Reason);
+				Assert.AreEqual(0,countingStarter.CountStarted,"No child was started.");
+			}
+			//The window's view of a document over the limits: its text, plain and encoded, with the reason; not the indented XML view.
+			string page=FormEhrSummaryCcdEdit.BuildPage(xml,null,reasonLimits);
+			StringAssert.Contains(page,"<pre style=\"white-space:pre-wrap;word-wrap:break-word\">&lt;ClinicalDocument xmlns=&quot;urn:hl7-org:v3&quot;&gt;&amp;#0;"
+				+"&lt;a&gt;&lt;a&gt;&lt;a&gt;");
+			StringAssert.Contains(page,HtmlPage.EncodeWithLineBreaks(reasonLimits));
+			//The strict reader refuses the reference; LoadXml's legacy reader accepts it (shown on a small document).
+			string xmlSmall="<ClinicalDocument xmlns=\"urn:hl7-org:v3\">&#0;<a/></ClinicalDocument>";
+			StringAssert.StartsWith(EhrStylesheetStarter.GetLimitError(xmlSmall),"The document is not well-formed XML: ");
+			Expect.Throws<XmlException>(() => EhrStylesheetStarter.LoadXmlDocument(xmlSmall));
+			XmlDocument xmlDocumentLegacy=new XmlDocument();
+			xmlDocumentLegacy.LoadXml(xmlSmall);
+			Assert.AreEqual("\0",xmlDocumentLegacy.DocumentElement.FirstChild.Value,"LoadXml took the reference as a character.");
+			//A document within the limits reads alike with both.
+			string xmlFine="<ClinicalDocument xmlns=\"urn:hl7-org:v3\"><a>&#x41;&amp;</a></ClinicalDocument>";
+			Assert.IsNull(EhrStylesheetStarter.GetLimitError(xmlFine));
+			XmlDocument xmlDocumentFine=new XmlDocument();
+			xmlDocumentFine.LoadXml(xmlFine);
+			Assert.AreEqual(xmlDocumentFine.InnerXml,EhrStylesheetStarter.LoadXmlDocument(xmlFine).InnerXml);
 		}
 
 		///<summary>The child's resolver serves exactly the four embedded files under ehr-res:/// and refuses everything else, so document() and the
