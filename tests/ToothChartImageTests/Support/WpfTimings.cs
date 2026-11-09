@@ -45,7 +45,7 @@ namespace ToothChartImageTests {
 
 		public string GetReport() {
 			StringBuilder stringBuilder=new StringBuilder();
-			stringBuilder.AppendLine("WPF tooth chart render times (TC-1, for O-19)");
+			stringBuilder.AppendLine("WPF tooth chart render times (TC-1, for O-19; TC-3, on screen against DirectX, for G1)");
 			foreach(string line in ListMachine) {
 				stringBuilder.AppendLine("Machine: "+line);
 			}
@@ -68,7 +68,8 @@ namespace ToothChartImageTests {
 		public const int CountRepeats=21;
 		public static readonly Size Size150=new Size(615,461);
 
-		///<summary>isQuick: the module size only (the in-process test); otherwise every size, the factor variants and the big chart's memory.</summary>
+		///<summary>isQuick: the module size only (the in-process test); otherwise every size, the factor variants, the big chart's memory and TC-3's
+		///on-screen times against DirectX (WpfOnScreenTimings).</summary>
 		public static WpfTimingReport Measure(bool isFreshProcess,int countRepeats=CountRepeats,bool isQuick=false) {
 			WpfTimingReport report=new WpfTimingReport();
 			ReadMachine(report);
@@ -118,6 +119,7 @@ namespace ToothChartImageTests {
 			report.Add("process.memory","Private bytes of the process after the big chart",bytesAfter/1048576.0,"MB");
 			report.Add("926x858.factor","Supersampling factor of the big chart's 3D layer",ToothChartRenderer.GetSupersamplingFactor(ChartScenes.SizeBigWindow.Size),"x");
 			wrapperBig.Dispose();
+			WpfOnScreenTimings.Measure(report,countRepeats);
 			return report;
 		}
 
@@ -220,7 +222,7 @@ namespace ToothChartImageTests {
 				using(ManagementObjectSearcher managementObjectSearcher=new ManagementObjectSearcher("SELECT Name, DriverVersion FROM Win32_VideoController")) {
 					foreach(ManagementBaseObject managementBaseObject in managementObjectSearcher.Get()) {
 						report.ListMachine.Add("Adapter "+managementBaseObject["Name"]+", driver "+managementBaseObject["DriverVersion"]
-							+" (not used: RenderTargetBitmap renders in software)");
+							+" (the live view draws with a graphics card; RenderTargetBitmap renders in software)");
 					}
 				}
 			}

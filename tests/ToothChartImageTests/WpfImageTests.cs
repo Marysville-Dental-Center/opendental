@@ -307,6 +307,7 @@ namespace ToothChartImageTests {
 			string pathPng=Path.Combine(folder,"wpf",chartSize.FolderName,scene.Name+".png");
 			Directory.CreateDirectory(Path.GetDirectoryName(pathPng));
 			PngWriter.Save(bitmap,pathPng);
+			SetParity(picture,wrapper,scene,chartSize,bitmap);
 			picture.PixelsSha256=ChartImageCompare.Sha256(ChartImageCompare.GetPixelsArgb(bitmap));
 			picture.PixelsSha256Merged=LegacyComparison.ReadPixelsSha256(Path.ChangeExtension(WpfCharts.GetPicturePath(WpfCharts.BaselinesWpf,chartSize,scene),".txt"));
 			if(folderApproved==null) {
@@ -326,6 +327,22 @@ namespace ToothChartImageTests {
 				}
 			}
 			return picture;
+		}
+
+		///<summary>The parity probes of the picture against TC-0's DirectX picture of the scene, when there is one (TC-3, plan section 7).</summary>
+		private static void SetParity(WpfGalleryPicture picture,ToothChartWrapper wrapper,ChartScene scene,ChartSize chartSize,Bitmap bitmap) {
+			string pathDirectX=Path.Combine(TestPaths.BaselinesLegacy,"DirectX",chartSize.FolderName,scene.Name+".png");
+			if(!File.Exists(pathDirectX)) {
+				return;
+			}
+			using Bitmap bitmapDirectX=LoadBitmap(pathDirectX);
+			List<ParityProbeOutcome> listOutcomes=ParityProbes.Probe(scene,chartSize,ParityProbes.GetPoints(wrapper.TcData),ChartImageCompare.GetPixelsArgb(bitmapDirectX),
+				ChartImageCompare.GetPixelsArgb(bitmap),wrapper.TcData.ColorBackground);
+			int countFailed=listOutcomes.Count(x => x.Failure!=null && x.Allowance==null);
+			int countAllowed=listOutcomes.Count(x => x.Failure!=null && x.Allowance!=null);
+			picture.IsParityOk=countFailed==0;
+			picture.ParityText="Parity with DirectX: "+(listOutcomes.Count-countFailed-countAllowed)+" of "+listOutcomes.Count+" probes agree"
+				+(countAllowed>0?", "+countAllowed+" differ as a known difference":"")+(countFailed>0?", "+countFailed+" differ":"")+".";
 		}
 
 		[TestMethod]
@@ -352,6 +369,15 @@ namespace ToothChartImageTests {
 					+"matched to DirectX in TC-3 (gallery G1): specular and font tuning, parity probes. Free text, TextBelow, the extraction graphic, "
 					+"orthodontic hardware, retained roots and space maintainers come in TC-5 and TC-6 (G2), perio in TC-7 (G3). These WPF pictures are "
 					+"the first baselines, so there is no approved WPF picture to compare with yet.";
+			}
+			if(galleryName=="G1") {
+				return "Gallery G1 (package TC-3): parity of the WPF chart with today's DirectX chart. Every WPF picture is checked against TC-0's "
+					+"DirectX picture by the parity probes (the caption under it), and the WPF baselines that TC-3 re-recorded are listed and marked "
+					+"against the approved G0 pictures (the last column). TC-3's one change of the drawing: the 2D layer's horizontal and vertical "
+					+"rectangles (the white centre line and the selected numbers' highlight boxes) fill exactly the pixels DirectX fills, crisp instead "
+					+"of smoothed, so the centre line is the bright two-pixel line of today's chart. The on-screen chart is now a live WPF view drawn by "
+					+"the graphics card (O-19 (b)), with a per-computer \"Draw in software\" switch (TC-8 shows it) that shows the software render "
+					+"instead; every printed and saved image stays the software render shown here. The times compare the three with DirectX.";
 			}
 			return "Gallery "+galleryName+" of the WPF chart.";
 		}

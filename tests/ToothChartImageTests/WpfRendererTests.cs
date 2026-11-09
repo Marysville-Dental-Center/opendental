@@ -228,6 +228,7 @@ namespace ToothChartImageTests {
 					form.Location=new Point(-32000,-32000);//off every screen, but shown
 					form.ClientSize=ChartScenes.SizeModule.Size;
 					ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+					wrapper.WpfDrawInSoftware=true;//the image host is the screen's chart when drawn in software (TC-3); WpfLiveViewTests has the live view's
 					form.Controls.Add(wrapper);
 					form.Show();
 					ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;
@@ -339,6 +340,7 @@ namespace ToothChartImageTests {
 			StaRunner.Run(() => {
 				using(Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size)) {
 					ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+					wrapper.WpfDrawInSoftware=true;//the image host is the screen's chart when drawn in software (TC-3); WpfLiveViewTests has the live view's
 					form.Controls.Add(wrapper);
 					form.Show();
 					ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;
@@ -379,6 +381,7 @@ namespace ToothChartImageTests {
 					TestWrapper wrapper=new TestWrapper();
 					wrapper.Size=ChartScenes.SizeModule.Size;
 					wrapper.Engine=ToothChartEngine.Wpf3D;
+					wrapper.WpfDrawInSoftware=true;//the image host is the screen's chart when drawn in software (TC-3)
 					form.Controls.Add(wrapper);
 					form.Show();
 					ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;

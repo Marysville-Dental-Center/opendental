@@ -33,6 +33,10 @@ namespace ToothChartImageTests {
 		///<summary>Null when the WPF chart drew the picture. Otherwise why it did not (the engine did not start, or the render failed and GetBitmap
 		///returned the Simple 2D fallback): no picture is saved, and the gallery marks the cell as failed.</summary>
 		public string Failure;
+		///<summary>TC-3: the parity probes of this picture against TC-0's DirectX picture of the scene (ParityProbes), in words, or null when there is
+		///no DirectX picture. IsParityOk is false when a probe differs that no allowance covers.</summary>
+		public string ParityText;
+		public bool IsParityOk=true;
 	}
 
 	public static class WpfGallery {
@@ -133,6 +137,20 @@ namespace ToothChartImageTests {
 			int countSameAsMerged=listPictures.Count(x => x.Failure==null && x.PixelsSha256Merged!=null && x.PixelsSha256Merged==x.PixelsSha256);
 			sb.Append("<p>"+countDrawn+" WPF pictures; "+countWithBaseline+" have an approved baseline"+(countWithBaseline>0?", "
 				+countDifferent+" differ from it beyond the tolerance":"")+".</p>\r\n");
+			int countParity=listPictures.Count(x => x.ParityText!=null);
+			if(countParity>0) {
+				int countParityOk=listPictures.Count(x => x.ParityText!=null && x.IsParityOk);
+				sb.Append("<p class=\""+(countParityOk==countParity?"ok":"warn")+"\">Parity with DirectX (TC-3, plan section 7): "+countParityOk+" of the "+countParity
+					+" WPF pictures with a DirectX picture agree with it at every probe (each tooth's facial and occlusal surface centres, the X, build-ups, "
+					+"implants and root canals: hue within 12 degrees, lightness within 20 points; the known differences of plan 5.1 allowed). Each WPF "
+					+"picture says so under it.</p>\r\n");
+			}
+			List<WpfGalleryPicture> listChanged=listPictures.Where(x => x.Comparison!=null && x.Comparison.CountDifferent>0).ToList();
+			if(listChanged.Count>0) {
+				sb.Append("<p class=\"warn\"><b>"+listChanged.Count+" WPF pictures differ from the approved ones</b> (their baselines are re-recorded in this "
+					+"branch; the last column shows each difference): "+string.Join(", ",listChanged.Select(x => "<a href=\"#"+x.Scene.Name+"\">"+x.ChartSize.FolderName+"/"
+					+x.Scene.Name+"</a>"))+".</p>\r\n");
+			}
 			sb.Append("<p class=\""+(countSameAsMerged==countDrawn?"ok":"warn")+"\">"+countSameAsMerged+" of the "+countDrawn+" WPF pictures have exactly the pixels "
 				+"of this branch's baselines (Baselines/wpf-net48, the files the branch merges, by their .txt's Pixels SHA-256), so approving a picture here "
 				+"approves that file. Each WPF picture says whether it does.</p>\r\n");
@@ -170,7 +188,8 @@ namespace ToothChartImageTests {
 						sb.Append("<td class=\"warn\">failed: "+WebUtility.HtmlEncode(picture.Failure)+"</td><td class=\"cap\">not compared</td>");
 					}
 					else {
-						AppendImageCell(sb,folder,picture.PathWpf,chartSize,"missing",GetMergedCaption(picture));
+						AppendImageCell(sb,folder,picture.PathWpf,chartSize,"missing",GetMergedCaption(picture)+(picture.ParityText==null?""
+							:"<div class=\""+(picture.IsParityOk?"ok":"warn")+"\">"+WebUtility.HtmlEncode(picture.ParityText)+"</div>"));
 						if(!picture.HasBaseline) {
 							sb.Append("<td class=\"cap\">no approved WPF picture yet</td>");
 						}
@@ -204,6 +223,29 @@ namespace ToothChartImageTests {
 				+WebUtility.HtmlEncode(pathRelative)+"\">"+(captionHtml??"")+"</td>");
 		}
 
+		///<summary>TC-3's table: refill plus the screen's update with the dashboard hidden and visible, and a selection-only change, for DirectX, the
+		///live view and the WPF chart drawn in software, at 410x307 and 615x461.</summary>
+		private static void AppendOnScreenTimings(StringBuilder sb,WpfTimingReport timingReport) {
+			sb.Append("<h2>On-screen times against DirectX (TC-3)</h2>\r\n<p>Measured in the same fresh process on shown, off-screen windows: a refill (the "
+				+"Chart module's Set calls) and the screen's update; with the Patient Dashboard visible the refill also makes the dashboard's image "
+				+"(GetBitmap, the software render); a selection-only change toggles one tooth. Median of "+WpfTimings.CountRepeats+" runs. The live view's "
+				+"times are the UI thread's work: WPF's render thread then draws the frame on the graphics card, and no measurement waits for a frame.</p>\r\n");
+			sb.Append("<table class=\"times\"><thead><tr><th>Size</th><th>Engine</th><th>Refill, dashboard hidden</th><th>Refill, dashboard visible</th>"
+				+"<th>Selection only</th></tr></thead><tbody>\r\n");
+			foreach(string size in new[] { "410x307","615x461" }) {
+				foreach(string[] arrayEngine in new[] { new[] { "directx","DirectX (today)" },new[] { "live","WPF live view" },new[] { "software","WPF drawn in software" } }) {
+					string key=size+"."+arrayEngine[0];
+					sb.Append("<tr><td>"+size+"</td><td>"+WebUtility.HtmlEncode(arrayEngine[1])+"</td>");
+					foreach(string suffix in new[] { ".refill",".refill.dashboard",".selection" }) {
+						double value=timingReport.Get(key+suffix);
+						sb.Append("<td class=\"num\">"+(double.IsNaN(value)?"not measured":value.ToString("0.0",CultureInfo.InvariantCulture)+" ms")+"</td>");
+					}
+					sb.Append("</tr>\r\n");
+				}
+			}
+			sb.Append("</tbody></table>\r\n");
+		}
+
 		///<summary>Under a WPF picture: whether its pixels are exactly those of this branch's baseline (the file being merged).</summary>
 		private static string GetMergedCaption(WpfGalleryPicture picture) {
 			if(picture.PixelsSha256Merged==null) {
@@ -215,8 +257,12 @@ namespace ToothChartImageTests {
 			return "<div class=\"warn\">other pixels than this branch's baseline</div>";
 		}
 
-		///<summary>The render times, with O-19's limits: at 150% (615x461) a refill plus render within 100 ms, and a selection-only change within 20 ms.</summary>
+		///<summary>The render times, with O-19's limits: at 150% (615x461) a refill plus render within 100 ms, and a selection-only change within 20 ms.
+		///From G1 on, first TC-3's on-screen times against DirectX, when measured.</summary>
 		private static void AppendTimings(StringBuilder sb,WpfTimingReport timingReport) {
+			if(!double.IsNaN(timingReport.Get("410x307.live.refill")) || !double.IsNaN(timingReport.Get("410x307.directx.refill"))) {
+				AppendOnScreenTimings(sb,timingReport);
+			}
 			sb.Append("<h2>Render times for O-19</h2>\r\n");
 			double refill150=timingReport.Get("615x461.refill");
 			double selection150=timingReport.Get("615x461.selection");
