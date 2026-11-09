@@ -1,6 +1,7 @@
 // The support assemblies in "Required dlls" are the versions of the library updates (lib\net462 of the NuGet packages the owner approved), the
 // .NET Framework's own System.ValueTuple is used instead of a copy, and fo-dicom 4 and the packages only fo-dicom 5 needed stay out (the owner
-// dropped fo-dicom for the in-house DICOM reader on 2026-11-02). A later package that replaces one of these files changes its line here on purpose.
+// dropped fo-dicom for the in-house DICOM reader on 2026-11-02), and every package of the projects' lock files maps to its files there, byte for
+// byte the package's own (since S2-1 of the .NET 10 move). A later package that replaces one of these files changes its line here on purpose.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -9,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace LibraryBindingTests {
 	[TestClass]
@@ -74,6 +76,115 @@ namespace LibraryBindingTests {
 				Assembly assembly=Assembly.Load(assemblyName);//the framework's own assembly, not a file of this repository
 				Assert.IsTrue(assembly.GlobalAssemblyCache,"System.ValueTuple "+version+" should bind to the framework's copy, not "+assembly.Location);
 			}
+		}
+
+		[TestMethod]
+		public void PackagesOfTheLockFiles_MapToTheirFilesOfRequiredDlls_ByteForByte() {
+			//Since S2-1 of the .NET 10 move the projects get the files of the identical packages from the offline folder, and the binding checks
+			//count the files of "Required dlls" a project's lock file brings (TestSupport's PackageFiles). Every package of every lock file of the
+			//solution filter is mapped there or brings none; every file mapped is in "Required dlls" and byte for byte a file of that package at
+			//the locked version in the offline folder; a package that brings none has no file of a name in "Required dlls". A package that a later
+			//package adds (S2-2's MySqlConnector, S2-3's Microsoft.Web.WebView2) fails here until it is mapped, instead of dropping out.
+			string folderOffline=OfflinePackages.Folder;
+			if(folderOffline==null) {
+				BuildOutput.NotBuilt("The offline package folder (OPMS_NUGET_OFFLINE, or od-tools\\nuget-packages in the common git folder) is not there; "
+					+"the build restores from it (README, Building).");
+				return;
+			}
+			Dictionary<string,LockedPackage> dictPackages=new Dictionary<string,LockedPackage>(StringComparer.OrdinalIgnoreCase);
+			Dictionary<string,string> dictWhere=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+			foreach(string pathProject in SolutionProjects.ProjectPaths) {
+				string pathLock=Path.Combine(Path.GetDirectoryName(pathProject),"packages.lock.json");
+				if(!File.Exists(pathLock)) {
+					continue;
+				}
+				foreach(LockedPackage lockedPackage in PackageFiles.ReadLockFile(pathLock)) {
+					string key=lockedPackage.Id+"/"+lockedPackage.Version;
+					if(!dictPackages.ContainsKey(key)) {
+						dictPackages[key]=lockedPackage;
+						dictWhere[key]=RepoPaths.Relative(pathLock);
+					}
+				}
+			}
+			Assert.IsTrue(dictPackages.Count>0,"No lock file of the solution filter names a package.");
+			List<string> listProblems=new List<string>();
+			int countFiles=0;
+			foreach(KeyValuePair<string,LockedPackage> pair in dictPackages.OrderBy(x => x.Key,StringComparer.OrdinalIgnoreCase)) {
+				LockedPackage lockedPackage=pair.Value;
+				string folderPackage=OfflinePackages.GetPackageFolder(lockedPackage.Id,lockedPackage.Version);
+				if(!Directory.Exists(folderPackage)) {
+					listProblems.Add(pair.Key+" ("+dictWhere[pair.Key]+") is not in the offline folder.");
+					continue;
+				}
+				string[] arrayPackageFiles=Directory.GetFiles(folderPackage,"*",SearchOption.AllDirectories);
+				if(PackageFiles.BringsNoRequiredDlls(lockedPackage.Id)) {
+					List<string> listNamed=arrayPackageFiles.Select(x => Path.GetFileName(x)).Where(x => RequiredDlls.Files.ContainsKey(x)).Distinct().ToList();
+					if(listNamed.Count>0) {
+						listProblems.Add(pair.Key+" is mapped to no file of Required dlls, but holds "+string.Join(", ",listNamed)+".");
+					}
+					continue;
+				}
+				string[] arrayFiles;
+				try {
+					arrayFiles=PackageFiles.GetRequiredDlls(lockedPackage.Id,dictWhere[pair.Key]);
+				}
+				catch(InvalidOperationException ex) {
+					listProblems.Add(ex.Message);
+					continue;
+				}
+				foreach(string fileName in arrayFiles) {
+					countFiles++;
+					string hash=MetadataReader.Sha256(RequiredDlls.Files[fileName]);
+					if(!arrayPackageFiles.Any(x => Path.GetFileName(x).Equals(fileName,StringComparison.OrdinalIgnoreCase) && MetadataReader.Sha256(x)==hash)) {
+						listProblems.Add(pair.Key+": no file of the package is byte for byte Required dlls\\"+fileName+".");
+					}
+				}
+			}
+			Console.WriteLine(dictPackages.Count+" packages in the lock files; "+countFiles+" files of Required dlls checked against the offline folder.");
+			Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));
+		}
+
+		[TestMethod]
+		public void PackageFiles_APackageItDoesNotMap_FailsLoudly() {
+			//S2-3's Microsoft.Web.WebView2 brings files whose names are not its id (Microsoft.Web.WebView2.Core.dll, .WinForms.dll, .Wpf.dll,
+			//WebView2Loader.dll): until it is mapped, every check that reads the projects throws instead of leaving its files out.
+			AssertThrows<InvalidOperationException>(() => PackageFiles.GetRequiredDlls("Microsoft.Web.WebView2","x\\packages.lock.json"),
+				"names the package Microsoft.Web.WebView2");
+			CollectionAssert.AreEqual(new[] { "Renci.SshNet.dll" },PackageFiles.GetRequiredDlls("ssh.net","x"),"NuGet's ids ignore case.");
+			CollectionAssert.AreEqual(new string[0],PackageFiles.GetRequiredDlls("System.ValueTuple","x"));
+			//A mapping to no file, or to one "Required dlls" does not hold, fails the same way.
+			AssertThrows<InvalidOperationException>(() => PackageFiles.CheckMapping("Fixture.Package",new string[0],"x"),"to no file");
+			AssertThrows<InvalidOperationException>(() => PackageFiles.CheckMapping("Fixture.Package",new[] { "Newtonsoft.Json.dll","Fixture.NotThere.dll" },"x"),
+				"Fixture.NotThere.dll, which \"Required dlls\" does not hold");
+			//A package entry of a lock file without its resolved version is not skipped either.
+			string folder=Path.Combine(Path.GetTempPath(),"LibraryBindingTests_"+Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(folder);
+			try {
+				string pathLock=Path.Combine(folder,"packages.lock.json");
+				File.WriteAllText(pathLock,"{ \"version\": 2, \"dependencies\": { \".NETFramework,Version=v4.8\": {\r\n"
+					+"  \"Newtonsoft.Json\": { \"type\": \"Direct\", \"requested\": \"[13.0.4, )\", \"resolved\": \"13.0.4\", \"contentHash\": \"x\" },\r\n"
+					+"  \"System.ValueTuple\": { \"type\": \"Transitive\", \"resolved\": \"4.6.2\", \"contentHash\": \"x\" },\r\n"
+					+"  \"CodeBase\": { \"type\": \"Project\" } },\r\n"
+					+"  \".NETFramework,Version=v4.8/win-x86\": { \"Newtonsoft.Json\": { \"type\": \"Direct\", \"requested\": \"[13.0.4, )\", \"resolved\": \"13.0.4\" } } } }");
+				CollectionAssert.AreEqual(new[] { "Newtonsoft.Json/13.0.4","System.ValueTuple/4.6.2" },
+					PackageFiles.ReadLockFile(pathLock).Select(x => x.Id+"/"+x.Version).ToArray(),"Each package once; a project is not a package.");
+				File.WriteAllText(pathLock,"{ \"dependencies\": { \".NETFramework,Version=v4.8\": { \"Newtonsoft.Json\": { \"type\": \"Direct\", \"contentHash\": \"x\" } } } }");
+				AssertThrows<InvalidOperationException>(() => PackageFiles.ReadLockFile(pathLock),"no resolved version");
+			}
+			finally {
+				Directory.Delete(folder,true);
+			}
+		}
+
+		private static void AssertThrows<T>(Action action,string expectedText) where T:Exception {
+			try {
+				action();
+			}
+			catch(T ex) {
+				StringAssert.Contains(ex.Message,expectedText);
+				return;
+			}
+			Assert.Fail("No "+typeof(T).Name+" for "+expectedText);
 		}
 
 		[TestMethod]
