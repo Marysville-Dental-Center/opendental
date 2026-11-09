@@ -5,7 +5,10 @@
        NoHqTests' check of the removed EHR.dll hooks. Package EHR-1 adds the provider row rule and the permissions (ProvKeyRuleTests,
        PermissionTests) on a scratch database of the local MariaDB (Support/ScratchDb.cs: names start with ehr1_, built from
        db/init/new-database.sql by the first test that needs it, dropped at the end, synthetic rows only), with HasProvHadKey through the
-       Middle Tier mock. No network, and the computer's clock is never set. The project references
+       Middle Tier mock. Package EHR-3 adds the CCD and CCR stylesheets (Cda*Tests): every page comes from a real
+       OpenPmsDental.exe /ehr-render that EhrStylesheetStarter starts from the output folder (no XSLT in the test process, no window), compared
+       with golden pages read from tests\EhrTests\Golden (not items: EnableDefaultNoneItems is off); its CCDs built by EhrCCD use a scratch
+       database of their own whose name starts with ehr3_. No network, and the computer's clock is never set. The project references
        the program and the business library, as tests/LibWebTests does; no window of the program is ever shown. Every .cs file under this folder is compiled.
        Lans.g: the messages under test go through Lans.g, which returns the English text in the en-US culture. In any other culture it looks
        the text up in the language table, and inserts a row there for a text it has not seen, when a database connection is open. The EHR-0

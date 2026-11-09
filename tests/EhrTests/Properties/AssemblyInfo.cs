@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyTitle("EhrTests")]
-[assembly: AssemblyDescription("Tests of the EHR rebuild: the EHR switch, the time check, the NTP reply rules and the removed EHR.dll hooks.")]
+[assembly: AssemblyDescription("Tests of the EHR rebuild: the EHR switch, the time check, the NTP reply rules, the removed EHR.dll hooks and the CCD and CCR stylesheets.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyProduct("EhrTests")]
 [assembly: AssemblyCopyright("GPL v2 or later")]
