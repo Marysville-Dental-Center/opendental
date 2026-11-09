@@ -11,6 +11,8 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Threading;
 using CodeBase;
 using Microsoft.CSharp;
 using OpenPmsDental;
@@ -131,7 +133,9 @@ namespace ToothChartImageTests {
 		///"exit": renders one image and returns at once, leaving the render thread alive; the process must still end.
 		///"times &lt;out file&gt;": measures the render times for O-19 (WpfTimings) and writes the report.
 		///"start-fails", "start-interrupted" and "log-kinds": a start failure, an interrupted cold start and the logged-once lines, each in a fresh
-		///process because a start failure and a logged line are kept for the whole process (see their methods).</summary>
+		///process because a start failure and a logged line are kept for the whole process (see their methods).
+		///"abort-race" and "shutdown-throws": an aborted job's late Aborted handler and an error in the render Dispatcher's own shutdown, each in a
+		///fresh process because, unguarded, they end the process (see their methods).</summary>
 		public static int Run(string[] args) {
 			try {
 				string mode=args.Length>0?args[0]:"";
@@ -158,6 +162,12 @@ namespace ToothChartImageTests {
 						return 0;
 					case "log-kinds":
 						RunLogKinds();
+						return 0;
+					case "abort-race":
+						RunAbortRace();
+						return 0;
+					case "shutdown-throws":
+						RunShutdownThrows();
 						return 0;
 					default:
 						Console.WriteLine("Unknown mode "+mode);
@@ -284,6 +294,116 @@ namespace ToothChartImageTests {
 					Console.WriteLine("log lines after a second WPF render failure: "+ToothChartWrapper.GetCountFallbackLinesWritten());
 				}
 			}
+		}
+
+		///<summary>"abort-race": the order a review of TC-1's fix round found, pinned. A caller queues a job just as the render thread shuts down.
+		///The thread aborts the job; the caller adds its Aborted handler, sees the Aborted status, wakes, returns and closes its wait; only then does
+		///the thread raise Aborted. Two holds pin that order. The render Dispatcher's OperationPosted hook runs on the caller after the job is
+		///queued and before BeginInvoke returns, so it holds the caller before it adds its handler until the thread has aborted the job. A
+		///synchronous continuation of the job's Task runs on the render thread inside the abort, after the status is Aborted and the Dispatcher's
+		///lock is released and before Aborted is raised, so it holds the thread until the caller has returned. Unfixed, the thread's Aborted
+		///handler set the closed event, and the ObjectDisposedException left Dispatcher.Run and ended this process.</summary>
+		private static void RunAbortRace() {
+			ODBuild.IsUnitTest=true;
+			ToothChartRenderer.MillisecondsTimeout=30000;
+			ToothChartRenderer toothChartRenderer=ToothChartRenderer.Instance;
+			ToothScene toothScene=WpfCharts.BuildScene("restored-adult",ChartScenes.SizeModule);
+			toothChartRenderer.Render(toothScene,null);
+			Thread threadCaller=Thread.CurrentThread;
+			//Not disposed: a hold that timed out may still wait on them when this method returns.
+			ManualResetEvent manualResetEventHeld=new ManualResetEvent(false);
+			ManualResetEvent manualResetEventRelease=new ManualResetEvent(false);
+			ManualResetEvent manualResetEventAborted=new ManualResetEvent(false);
+			ManualResetEvent manualResetEventCallerDone=new ManualResetEvent(false);
+			Dispatcher dispatcherRender=null;
+			int isTaken=0;
+			ToothChartRenderer.ActionJobStartForTests=kind => {
+				if(kind!=ToothChartRenderer.JobRender || Interlocked.Exchange(ref isTaken,1)==1) {
+					return;
+				}
+				dispatcherRender=Dispatcher.CurrentDispatcher;
+				manualResetEventHeld.Set();
+				manualResetEventRelease.WaitOne(30000);
+			};
+			toothChartRenderer.RenderAsync(toothScene,null,null);//the job that holds the thread, so the caller's job stays queued
+			if(!manualResetEventHeld.WaitOne(30000)) {
+				throw new TimeoutException("The holding job did not start.");
+			}
+			ToothChartRenderer.ActionJobStartForTests=null;
+			bool isArmed=false;
+			bool isCallerHeld=false;
+			DispatcherOperationStatus statusWhenCallerGoesOn=DispatcherOperationStatus.Pending;
+			bool isHeldOnRenderThread=false;
+			bool isRenderThreadHeld=false;
+			dispatcherRender.Hooks.OperationPosted+=(sender,e) => {
+				if(Thread.CurrentThread!=threadCaller || !isArmed) {
+					return;//the holding job, and the shutdown posted below
+				}
+				isArmed=false;
+				e.Operation.Task.ContinueWith(task => {
+					isHeldOnRenderThread=Thread.CurrentThread==dispatcherRender.Thread;
+					manualResetEventAborted.Set();
+					isRenderThreadHeld=manualResetEventCallerDone.WaitOne(20000);
+				},TaskContinuationOptions.ExecuteSynchronously);
+				toothChartRenderer.Shutdown(0);//the shutdown runs before the caller's job, and aborts it
+				manualResetEventRelease.Set();//the holding job ends
+				isCallerHeld=manualResetEventAborted.WaitOne(20000);
+				statusWhenCallerGoesOn=e.Operation.Status;
+			};
+			Exception exceptionCaller=null;
+			isArmed=true;
+			Stopwatch stopwatch=Stopwatch.StartNew();
+			try {
+				toothChartRenderer.GetCountMeshSets();//queues a job and waits for it
+			}
+			catch(Exception ex) {
+				exceptionCaller=ex;
+			}
+			long millisecondsCaller=stopwatch.ElapsedMilliseconds;
+			manualResetEventCallerDone.Set();//the render thread raises the job's Aborted now, after its caller closed the wait
+			bool isEnded=dispatcherRender.Thread.Join(30000);
+			Console.WriteLine("caller held until the abort: "+isCallerHeld+" (job "+statusWhenCallerGoesOn+" before the caller added its handler)");
+			Console.WriteLine("render thread held inside the abort: "+isHeldOnRenderThread);
+			Console.WriteLine("render thread held until the caller returned: "+isRenderThreadHeld);
+			Console.WriteLine("caller: "+(exceptionCaller==null?"no exception":exceptionCaller.GetType().Name+": "+exceptionCaller.Message));
+			Console.WriteLine("caller heard at once: "+(millisecondsCaller<10000)+" ("+millisecondsCaller+" ms)");
+			Console.WriteLine("old render thread ended: "+isEnded);
+			Console.WriteLine("unhandled exceptions: "+ToothChartRenderer.CountUnhandledExceptions);
+			Console.WriteLine("log lines: "+ToothChartWrapper.GetCountFallbackLinesWritten());
+			ToothChartRenderResult resultNext=toothChartRenderer.Render(toothScene,null);
+			Console.WriteLine("next render: "+resultNext.Size.Width+"x"+resultNext.Size.Height+", on a new thread "
+				+(resultNext.ThreadIdRender!=dispatcherRender.Thread.ManagedThreadId));
+		}
+
+		///<summary>"shutdown-throws": an error raised during the render Dispatcher's own shutdown, outside every job (here a ShutdownFinished
+		///handler that throws), leaves Dispatcher.Run, where Dispatcher.UnhandledException never sees it. The render thread's last guard catches it
+		///and hands one line to the log; unguarded, the unhandled exception on the render thread ended this process. The next render starts a new
+		///thread.</summary>
+		private static void RunShutdownThrows() {
+			ODBuild.IsUnitTest=true;
+			ToothChartRenderer toothChartRenderer=ToothChartRenderer.Instance;
+			ToothScene toothScene=WpfCharts.BuildScene("restored-adult",ChartScenes.SizeModule);
+			Dispatcher dispatcherRender=null;
+			ToothChartRenderer.ActionJobStartForTests=kind => {
+				if(kind!=ToothChartRenderer.JobRender || dispatcherRender!=null) {
+					return;
+				}
+				dispatcherRender=Dispatcher.CurrentDispatcher;
+				dispatcherRender.ShutdownFinished+=(sender,e) => throw new InvalidOperationException("A forced error in the Dispatcher's own shutdown.");
+			};
+			ToothChartRenderResult resultFirst=toothChartRenderer.Render(toothScene,null);
+			ToothChartRenderer.ActionJobStartForTests=null;
+			int countMessages=ToothChartWrapper.GetCountFallbackMessages();
+			toothChartRenderer.Shutdown(30000);
+			Console.WriteLine("old render thread ended: "+dispatcherRender.Thread.Join(30000));
+			Console.WriteLine("unhandled exceptions: "+ToothChartRenderer.CountUnhandledExceptions);
+			Console.WriteLine("log lines: "+ToothChartWrapper.GetCountFallbackLinesWritten());
+			foreach(string message in ToothChartWrapper.GetFallbackMessagesSince(countMessages)) {
+				Console.WriteLine("message: "+message);
+			}
+			ToothChartRenderResult resultNext=toothChartRenderer.Render(toothScene,null);
+			Console.WriteLine("next render: "+resultNext.Size.Width+"x"+resultNext.Size.Height+", on a new thread "
+				+(resultNext.ThreadIdRender!=resultFirst.ThreadIdRender)+", the same image "+resultNext.PixelsBgra.SequenceEqual(resultFirst.PixelsBgra));
 		}
 	}
 }

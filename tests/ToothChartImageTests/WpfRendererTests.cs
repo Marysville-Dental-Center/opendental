@@ -685,6 +685,40 @@ namespace ToothChartImageTests {
 			StringAssert.Contains(result.Output,"log lines after a second WPF render failure: 2","And only one.");
 		}
 
+		[TestMethod]
+		public void Shutdown_AbortedJobsLateAbortedHandler_AfterItsCallerClosedTheWait_DoesNotEndTheProcess() {
+			//A caller can queue a job just as the render thread shuts down, see the job's Aborted status, return and close its wait before the
+			//render thread raises the job's Aborted event. The second process pins that order (SecondProcessEntry.RunAbortRace). The handler must
+			//not touch the closed wait: what it throws there leaves Dispatcher.Run and ends the process.
+			SecondProcessResult result=SecondProcess.Run(120000,"abort-race");
+			Console.WriteLine(result.Output);
+			Assert.AreEqual(0,result.ExitCode,"The process lived: "+result.Output);
+			StringAssert.Contains(result.Output,"caller held until the abort: True (job Aborted before the caller added its handler)","The order is pinned.");
+			StringAssert.Contains(result.Output,"render thread held inside the abort: True");
+			StringAssert.Contains(result.Output,"render thread held until the caller returned: True");
+			StringAssert.Contains(result.Output,"caller: InvalidOperationException: The WPF tooth chart's render thread shut down before it ran the job.");
+			StringAssert.Contains(result.Output,"caller heard at once: True");
+			StringAssert.Contains(result.Output,"old render thread ended: True");
+			StringAssert.Contains(result.Output,"unhandled exceptions: 0","The late Aborted handler threw nothing, not even into the thread's last guard.");
+			StringAssert.Contains(result.Output,"log lines: 0");
+			StringAssert.Contains(result.Output,"next render: 410x307, on a new thread True");
+		}
+
+		[TestMethod]
+		public void RenderThread_AnErrorInTheDispatchersOwnShutdown_IsCaughtAndLoggedOnce() {
+			//An Aborted, ShutdownStarted or ShutdownFinished handler raised by the Dispatcher's own shutdown runs outside every job, so
+			//Dispatcher.UnhandledException never sees what it throws. The render thread's last guard must catch it.
+			SecondProcessResult result=SecondProcess.Run(120000,"shutdown-throws");
+			Console.WriteLine(result.Output);
+			Assert.AreEqual(0,result.ExitCode,"The process lived: "+result.Output);
+			StringAssert.Contains(result.Output,"old render thread ended: True");
+			StringAssert.Contains(result.Output,"unhandled exceptions: 1");
+			StringAssert.Contains(result.Output,"log lines: 1");
+			StringAssert.Contains(result.Output,"message: The WPF tooth chart's render thread ended on an unexpected error (InvalidOperationException: "
+				+"A forced error in the Dispatcher's own shutdown.).");
+			StringAssert.Contains(result.Output,"next render: 410x307, on a new thread True, the same image True");
+		}
+
 		///<summary>The managed heap after a full collection with the finalizers run (WPF's render targets free their native memory in theirs), and
 		///the process's private bytes then.</summary>
 		private static long GetMemoryAfterCollect(out long bytesPrivate) {
