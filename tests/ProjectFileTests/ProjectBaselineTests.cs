@@ -4,7 +4,8 @@
 // read project files through ProjectFile see what the build sees, classic and SDK-style projects alike. It needs a record of the same tree,
 // taken after a full lane build and before any test run, so it runs only with OPMS_CHECK_PROJECT_BASELINE=1 (Inconclusive otherwise), against
 // the folder OPMS_PROJECT_BASELINE_DIR names, or tools\project-baseline. The stage gates run it against a record taken at the gate, and S1-3
-// to S1-6 in their proof. The other tests here check, on the fixtures, that the lines are written as the script writes them.
+// to S1-6 in their proof; with OPMS_PROJECT_BASELINE_DIR it writes what it compared and every difference to items-check.txt in that folder.
+// The other tests here check, on the fixtures, that the lines are written as the script writes them.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -27,10 +28,12 @@ namespace ProjectFileTests {
 			}
 			string root=FixtureFolder.RepoRoot();
 			string folder=Environment.GetEnvironmentVariable(VARIABLE_FOLDER);
-			if(string.IsNullOrWhiteSpace(folder)) {
+			bool isOwnRecord=!string.IsNullOrWhiteSpace(folder);
+			if(!isOwnRecord) {
 				folder=Path.Combine(root,"tools","project-baseline");
 			}
-			string pathItems=Path.Combine(folder.Trim(),"items.txt");
+			folder=folder.Trim();
+			string pathItems=Path.Combine(folder,"items.txt");
 			Assert.IsTrue(File.Exists(pathItems),"No record at "+pathItems);
 			List<string> listRecorded=File.ReadAllLines(pathItems).Where(x => x!="").ToList();
 			List<ProjectFile> listProjects=ProjectFile.GetSolutionFilterProjects(Path.Combine(root,"OpenDental.Local.slnf")).Select(x => ProjectFile.Load(x)).ToList();
@@ -46,12 +49,18 @@ namespace ProjectFileTests {
 			string summary=listProjects.Count+" projects ("+listSdkStyle.Count+" SDK-style: "+string.Join(", ",listSdkStyle.Select(x => x.Name))+"), "
 				+listRecorded.Count+" recorded items, "+listEvaluated.Count+" evaluated items, "+listOnlyRecorded.Count+" only in "+pathItems+", "
 				+listOnlyEvaluated.Count+" only evaluated";
-			Console.WriteLine(summary);
-			foreach(string line in listOnlyRecorded.Take(100)) {
-				Console.WriteLine("  - "+line);
+			//The summary and the differences: on the console, and for a record named by OPMS_PROJECT_BASELINE_DIR (a gate's or a package's own,
+			//never the committed one) in items-check.txt next to it, so a passing run shows what it compared too.
+			List<string> listReport=new List<string> { summary };
+			listReport.AddRange(listMissingProjects.Select(x => "  missing project: "+x));
+			listReport.AddRange(listOnlyRecorded.Take(500).Select(x => "  - "+x));
+			listReport.AddRange(listOnlyEvaluated.Take(500).Select(x => "  + "+x));
+			listReport.Add(listMissingProjects.Count+listOnlyRecorded.Count+listOnlyEvaluated.Count==0 ? "No differences." : "The items differ.");
+			foreach(string line in listReport) {
+				Console.WriteLine(line);
 			}
-			foreach(string line in listOnlyEvaluated.Take(100)) {
-				Console.WriteLine("  + "+line);
+			if(isOwnRecord) {
+				File.WriteAllLines(Path.Combine(folder,"items-check.txt"),listReport);
 			}
 			Assert.AreEqual(0,listMissingProjects.Count,"Projects the record does not hold: "+string.Join(", ",listMissingProjects));
 			Assert.AreEqual(0,listOnlyRecorded.Count+listOnlyEvaluated.Count,summary+". First differences: "
