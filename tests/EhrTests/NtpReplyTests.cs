@@ -366,10 +366,21 @@ namespace EhrTests {
 
 		[TestMethod]
 		public void Query_WithoutAServerName_SendsNothing() {
-			NtpResult ntpResult=new NTPv4().Query("  ");
-			Assert.AreEqual(EnumNtpResult.NoReply,ntpResult.Status);
-			StringAssert.Contains(ntpResult.Reason,"No time server");
-			Assert.AreEqual(double.MaxValue,new NTPv4().getTime(""),"getTime gives double.MaxValue without a valid reply, as before.");
+			List<string> listEventLog=new List<string>();
+			NTPv4.ActionWriteEventLog=(text) => listEventLog.Add(text);
+			try {
+				NtpResult ntpResult=new NTPv4().Query("  ");
+				Assert.AreEqual(EnumNtpResult.NoReply,ntpResult.Status);
+				StringAssert.Contains(ntpResult.Reason,"No time server");
+				Assert.AreEqual(1,listEventLog.Count,"One Event Log entry per request, through the seam.");
+				StringAssert.Contains(listEventLog[0],"NTPv4 time request to : NoReply.");
+				StringAssert.Contains(listEventLog[0],"No time server is set.");
+				Assert.AreEqual(double.MaxValue,new NTPv4().getTime(""),"getTime gives double.MaxValue without a valid reply, as before.");
+				Assert.AreEqual(2,listEventLog.Count,"getTime goes through Query and writes its entry through the seam too.");
+			}
+			finally {
+				ClockGuard.Install();
+			}
 		}
 		#endregion The request
 	}

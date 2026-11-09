@@ -1,4 +1,5 @@
-// The repository folder, a reader of C# sources without comments, and the guard that keeps every test away from the computer's clock.
+// The repository folder, a reader of C# sources without comments, and the guard that keeps every test away from the computer's clock and its
+// Event Log.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -6,10 +7,12 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using OpenPmsDentalBusiness;
 
 namespace EhrTests {
-	///<summary>Runs before any test of this assembly: replaces WindowsTime's seams, so no test can reach SetSystemTime or write the Event Log. A test
-	///that needs the seam puts its own fake in and calls ClockGuard.Install again in a finally block.</summary>
+	///<summary>Runs before any test of this assembly: replaces the clock seam (WindowsTime.FuncSetSystemTimeUtc) and both Event Log seams
+	///(NTPv4.ActionWriteEventLog, WindowsTime.ActionWriteEventLog), so no test can reach SetSystemTime or write the Event Log. A test that needs a
+	///seam puts its own fake in and calls ClockGuard.Install again in a finally block.</summary>
 	[TestClass]
 	public class AssemblySetup {
 		[AssemblyInitialize]
@@ -20,8 +23,12 @@ namespace EhrTests {
 
 	///<summary>The fakes that stand in for the clock and the Event Log in every test.</summary>
 	public static class ClockGuard {
-		///<summary>The name of the method behind the seam before the guard replaced it: read, never called.</summary>
+		///<summary>The name of the method behind the clock seam before the guard replaced it: read, never called.</summary>
 		public static string NameOfOriginalSeam;
+		///<summary>The name of the method behind NTPv4's Event Log seam before the guard replaced it: read, never called.</summary>
+		public static string NameOfOriginalEventLogSeamNtp;
+		///<summary>The name of the method behind WindowsTime's Event Log seam before the guard replaced it: read, never called.</summary>
+		public static string NameOfOriginalEventLogSeamWindowsTime;
 		///<summary>Calls that reached the guard. Always 0 unless a test forgot its own fake.</summary>
 		public static int CountBlockedCalls;
 
@@ -29,10 +36,18 @@ namespace EhrTests {
 			if(NameOfOriginalSeam==null) {
 				NameOfOriginalSeam=WindowsTime.FuncSetSystemTimeUtc.Method.Name;
 			}
+			if(NameOfOriginalEventLogSeamNtp==null) {
+				NameOfOriginalEventLogSeamNtp=NTPv4.ActionWriteEventLog.Method.Name;
+			}
+			if(NameOfOriginalEventLogSeamWindowsTime==null) {
+				NameOfOriginalEventLogSeamWindowsTime=WindowsTime.ActionWriteEventLog.Method.Name;
+			}
 			WindowsTime.FuncSetSystemTimeUtc=(dateTimeUtc) => {
 				CountBlockedCalls++;
 				throw new InvalidOperationException("A test reached the clock without a fake of its own. Tests never set the clock.");
 			};
+			//Both Event Log seams: an entry a test makes (NTPv4.Query writes one per request) goes nowhere.
+			NTPv4.ActionWriteEventLog=(text) => { };
 			WindowsTime.ActionWriteEventLog=(text) => { };
 		}
 	}

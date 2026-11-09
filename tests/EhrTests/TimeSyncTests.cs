@@ -361,6 +361,11 @@ namespace EhrTests {
 			Assert.AreEqual("SetSystemTimeUtcNative",ClockGuard.NameOfOriginalSeam,"The default seam is the real call, which no test reaches.");
 			Assert.AreNotEqual("SetSystemTimeUtcNative",WindowsTime.FuncSetSystemTimeUtc.Method.Name);
 			Assert.AreEqual(0,ClockGuard.CountBlockedCalls,"No test reached the clock without a fake.");
+			//Both Event Log seams too: their defaults write this computer's Event Log, which no test does.
+			Assert.AreEqual("WriteEventLogNative",ClockGuard.NameOfOriginalEventLogSeamNtp,"NTPv4's default Event Log seam is the real call.");
+			Assert.AreEqual("WriteEventLogNative",ClockGuard.NameOfOriginalEventLogSeamWindowsTime,"WindowsTime's default Event Log seam is the real call.");
+			Assert.AreNotEqual("WriteEventLogNative",NTPv4.ActionWriteEventLog.Method.Name,"NTPv4's Event Log seam is replaced.");
+			Assert.AreNotEqual("WriteEventLogNative",WindowsTime.ActionWriteEventLog.Method.Name,"WindowsTime's Event Log seam is replaced.");
 		}
 
 		[TestMethod]
