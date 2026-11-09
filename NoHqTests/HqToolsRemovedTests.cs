@@ -170,12 +170,12 @@ namespace NoHqTests {
 			{
 				Assert.IsFalse(listMembers.Contains(name),"IWebServiceMainHQ."+name+" should have been removed.");
 			}
-			//The HQ-brokered vendor members were deleted once each integration talked to its vendor directly. NoHqTests checks that they stay gone.
-			List<string> listCustomerUpdates=typeof(ICustomerUpdates).GetMethods().Select(x => x.Name).ToList();
-			foreach(string name in new[] { "RequestUpdate","FeatureRequestGetList","RequestCodeSystems","RequestFeeSched","RequestIsDevKey","DatabaseIntegrityGetList" }) {
-				Assert.IsFalse(listCustomerUpdates.Contains(name),"ICustomerUpdates."+name+" should have been removed.");
-			}
-			Assert.IsNull(typeof(CustomerUpdatesProxy).GetMethod("SendAndReceiveUpdateRequestXml"));
+			//The Customer Updates web service's members (RequestUpdate, FeatureRequestGetList, RequestCodeSystems, RequestFeeSched, RequestIsDevKey,
+			//DatabaseIntegrityGetList, SendAndReceiveUpdateRequestXml and the HQ-brokered vendor members) were deleted with their last callers, and
+			//then the empty ICustomerUpdates, CustomerUpdatesNoHq and CustomerUpdatesProxy themselves (owner, DIRECT-CERT-FOLLOWUP). NoHqTests
+			//checks that no code names them.
+			TypeLookup.AssertRemoved(typeof(WebServiceMainHQProxy),new[] { "ICustomerUpdates","CustomerUpdatesNoHq","CustomerUpdatesProxy" },
+				"should have been removed with the Customer Updates web service.");
 			Assert.IsNull(typeof(WebServiceMainHQProxy).GetMethod("CanReachWebService"));
 		}
 

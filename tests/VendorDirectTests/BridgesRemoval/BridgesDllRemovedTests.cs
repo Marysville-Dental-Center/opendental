@@ -253,7 +253,8 @@ namespace VendorDirectTests.BridgesRemoval {
 				Assert.IsFalse(ReadRepoFile(file).Contains("dosespot_staging_my_API"),file+" still has the DoseSpot v1 URL setting.");
 			}
 			Assert.IsNull(typeof(OIDInternals).GetProperty("CustomerPatNum"),"OIDInternals.CustomerPatNum asked HQ and should have been removed.");
-			Assert.IsFalse(typeof(ICustomerUpdates).GetMethods().Any(x => x.Name=="RequestCustomerID"));
+			//RequestCustomerID went with the Customer Updates web service, whose empty interface was then deleted too (DIRECT-CERT-FOLLOWUP).
+			Assert.IsNull(assembly.GetType(nsBusiness+".ICustomerUpdates"),"ICustomerUpdates (RequestCustomerID asked HQ) should have been removed.");
 			string csproj=ReadRepoFile(@"OpenPmsDental\OpenPmsDental.csproj");
 			foreach(string form in new[] { "FormAdvertisingPostcardsAccountSetup","FormDoseSpotAssignClinicId","FormDoseSpotAssignUserId","FormNewCropBilling",
 				"FormErxAccess" })
