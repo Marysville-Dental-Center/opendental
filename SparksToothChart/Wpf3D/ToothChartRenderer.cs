@@ -141,9 +141,10 @@ namespace SparksToothChart.Wpf3D {
 	///its caller at once: Render throws, and RenderAsync's callback gets a failed result.
 	///Each job catches its own exceptions and is tried once more after a failure. After FailuresInRowBeforeReset failed jobs in a row the thread
 	///drops its visual tree, materials and render targets, and after FailuresInRowBeforeRestart the renderer retires the thread, so the next job
-	///starts a new one (at most MaxRestartsAfterFailures times in a process). The render thread's Dispatcher.UnhandledException handler is the last
-	///guard and sets Handled, because an unhandled exception on any thread ends a .NET Framework process. A thread ends with its Dispatcher's
-	///shutdown, never Thread.Abort.</summary>
+	///starts a new one (at most MaxRestartsAfterFailures times in a process). An unhandled exception on any thread ends a .NET Framework process,
+	///so the render thread has two last guards: its Dispatcher.UnhandledException handler sets Handled for what a job lets out, and a catch around
+	///Dispatcher.Run takes what the Dispatcher's own shutdown raises outside every job. A waiter's Aborted handler cannot throw there (JobWait). A
+	///thread ends with its Dispatcher's shutdown, never Thread.Abort.</summary>
 	public sealed class ToothChartRenderer {
 		#region Fields
 		///<summary>A render job waits at most this long for the render thread before the caller gives up (and falls back to the 2D chart).</summary>
@@ -195,8 +196,9 @@ namespace SparksToothChart.Wpf3D {
 			}
 		}
 
-		///<summary>How many exceptions reached the render thread's last guard (Dispatcher.UnhandledException) in this process. Every job catches its
-		///own, so this stays 0.</summary>
+		///<summary>How many exceptions reached a render thread's last guards in this process: Dispatcher.UnhandledException, and the catch around
+		///Dispatcher.Run (which also ends that thread). Every job catches its own, and nothing the renderer adds to the Dispatcher's shutdown throws,
+		///so this stays 0.</summary>
 		public static int CountUnhandledExceptions {
 			get {
 				return _countUnhandledExceptions;
@@ -457,17 +459,19 @@ namespace SparksToothChart.Wpf3D {
 				}
 				finally {
 					jobWait.IsRun=true;
-					jobWait.ManualResetEventDone.Set();
+					jobWait.Signal();
 				}
 			}));
-			dispatcherOperation.Aborted+=(sender,e) => jobWait.ManualResetEventDone.Set();
+			//A shutdown can abort the job before this handler is added and raise Aborted only after this caller saw the status below, returned
+			//and closed the wait; Signal then does nothing (JobWait).
+			dispatcherOperation.Aborted+=(sender,e) => jobWait.Signal();
 			if(dispatcherOperation.Status==DispatcherOperationStatus.Aborted) {
-				jobWait.ManualResetEventDone.Set();//the thread had shut down: BeginInvoke aborts without raising Aborted
+				jobWait.Signal();//aborted already: by a shutdown under way, or by BeginInvoke itself when the thread had shut down (no Aborted then)
 			}
-			if(!jobWait.ManualResetEventDone.WaitOne(MillisecondsTimeout)) {
+			if(!jobWait.Wait(MillisecondsTimeout)) {
 				throw new TimeoutException("The WPF tooth chart's render thread did not answer within "+MillisecondsTimeout+" ms.");
 			}
-			jobWait.ManualResetEventDone.Close();
+			jobWait.Close();
 			if(!jobWait.IsRun) {
 				throw new InvalidOperationException("The WPF tooth chart's render thread shut down before it ran the job.");
 			}
@@ -484,12 +488,41 @@ namespace SparksToothChart.Wpf3D {
 			return result;
 		}
 
-		///<summary>What a caller of RunAndWait waits for. Written on the render thread before the event is set.</summary>
+		///<summary>What a caller of RunAndWait waits for. Written on the render thread before Signal. Signal and Close take the same lock, and a
+		///Signal after Close does nothing. A shutdown aborts a queued job (its status turns Aborted under the Dispatcher's lock) before it raises the
+		///job's Aborted event (after that lock is released), so a caller that adds its handler in between sees the status, returns and closes the
+		///wait before the render thread runs the handler. Set on the closed event would throw ObjectDisposedException in the Dispatcher's shutdown,
+		///outside every job, where Dispatcher.UnhandledException never sees it.</summary>
 		private sealed class JobWait<T> {
-			public readonly ManualResetEvent ManualResetEventDone=new ManualResetEvent(false);
+			private readonly object _lock=new object();
+			private readonly ManualResetEvent _manualResetEventDone=new ManualResetEvent(false);
+			private bool _isClosed;
 			public T Result;
 			public Exception Exception;
 			public bool IsRun;
+
+			///<summary>Wakes the caller; nothing once the caller has closed the wait. Never throws.</summary>
+			public void Signal() {
+				lock(_lock) {
+					if(_isClosed) {
+						return;
+					}
+					_manualResetEventDone.Set();
+				}
+			}
+
+			///<summary>On the caller's thread: true when signalled within millisecondsTimeout.</summary>
+			public bool Wait(int millisecondsTimeout) {
+				return _manualResetEventDone.WaitOne(millisecondsTimeout);
+			}
+
+			///<summary>On the caller's thread, after Wait returned true.</summary>
+			public void Close() {
+				lock(_lock) {
+					_isClosed=true;
+					_manualResetEventDone.Close();
+				}
+			}
 		}
 		#endregion Jobs
 
@@ -618,7 +651,22 @@ namespace SparksToothChart.Wpf3D {
 					return;
 				}
 				_manualResetEventReady.Set();
-				Dispatcher.Run();
+				try {
+					Dispatcher.Run();
+				}
+				catch(ThreadAbortException) {
+					throw;//the test AppDomain's unload aborts what is left of its threads; not an error of the chart
+				}
+				catch(Exception ex) {
+					//The thread's last guard. What the Dispatcher's own shutdown raises outside every job (an Aborted or ShutdownFinished
+					//handler; ShutdownStarted runs inside the posted shutdown job) leaves Dispatcher.Run, where Dispatcher.UnhandledException never
+					//sees it, and an unhandled exception on any thread ends a .NET Framework process. The thread ends here; the next job starts a new one. A job still queued on this
+					//thread then waits out MillisecondsTimeout, and its caller falls back to the 2D chart.
+					IsRetired=true;
+					Interlocked.Increment(ref _countUnhandledExceptions);
+					ToothChartWrapper.LogFallbackOnce(ToothChartFallbackKind.Wpf3DRenderThread,"The WPF tooth chart's render thread ended on an unexpected error ("
+						+ex.GetType().Name+": "+ex.Message+").");
+				}
 			}
 
 			///<summary>True while the thread takes new jobs: not retired, alive, and its Dispatcher not shutting down.</summary>

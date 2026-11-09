@@ -706,8 +706,8 @@ namespace ToothChartImageTests {
 
 		[TestMethod]
 		public void RenderThread_AnErrorInTheDispatchersOwnShutdown_IsCaughtAndLoggedOnce() {
-			//An Aborted, ShutdownStarted or ShutdownFinished handler raised by the Dispatcher's own shutdown runs outside every job, so
-			//Dispatcher.UnhandledException never sees what it throws. The render thread's last guard must catch it.
+			//An Aborted or ShutdownFinished handler raised by the Dispatcher's own shutdown runs outside every job, so Dispatcher.UnhandledException
+			//never sees what it throws. The render thread's last guard must catch it.
 			SecondProcessResult result=SecondProcess.Run(120000,"shutdown-throws");
 			Console.WriteLine(result.Output);
 			Assert.AreEqual(0,result.ExitCode,"The process lived: "+result.Output);
