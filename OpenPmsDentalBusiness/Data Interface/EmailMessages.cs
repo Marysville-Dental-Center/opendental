@@ -4116,11 +4116,7 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 			List<X509Certificate2> listX509Certificate2sValid,List<X509Certificate2> listX509Certificate2sInvalid)
 		{
 			for(int i=0;i<x509Certificate2Collection.Count;i++) {
-				string subjectName=GetCertSubjectName(x509Certificate2Collection[i]);
-				if(subjectName!="" && subjectName.ToLower()!=emailAddress.ToLower()) {
-					continue;
-				}
-				if(GetCertRfc822Name(x509Certificate2Collection[i]).ToLower()!=emailAddress.ToLower()) {
+				if(!IsForAddress(x509Certificate2Collection[i],emailAddress)) {
 					continue;
 				}
 				if(IsCertValid(x509Certificate2Collection[i])) {
@@ -4136,11 +4132,7 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 			List<X509Certificate2> listX509Certificate2sValid,List<X509Certificate2> listX509Certificate2sInvalid)
 		{
 			for(int i=0;i<x509Certificate2Collection.Count;i++) {
-				string subjectName=GetCertSubjectName(x509Certificate2Collection[i]);
-				if(subjectName!="" && subjectName.ToLower()!=domain.ToLower()) {
-					continue;
-				}
-				if(GetCertDnsName(x509Certificate2Collection[i]).ToLower()!=domain.ToLower()) {
+				if(!IsForDomain(x509Certificate2Collection[i],domain)) {
 					continue;
 				}
 				if(IsCertValid(x509Certificate2Collection[i])) {
@@ -4149,6 +4141,27 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 				}
 				listX509Certificate2sInvalid.Add(x509Certificate2Collection[i]);
 			}
+		}
+
+		///<summary>True if the certificate is an address-level certificate of the email address, valid or not: its subject's "E=" is blank or the
+		///address, and the rfc822 name of its subject alternative name is the address (case is ignored). The rule of GetCertificatesForAddress,
+		///which the Direct certificate import (DirectCertificateImport) checks a provider's certificate by.</summary>
+		public static bool IsForAddress(X509Certificate2 x509Certificate2,string emailAddress) {
+			string subjectName=GetCertSubjectName(x509Certificate2);
+			if(subjectName!="" && subjectName.ToLower()!=emailAddress.ToLower()) {
+				return false;
+			}
+			return GetCertRfc822Name(x509Certificate2).ToLower()==emailAddress.ToLower();
+		}
+
+		///<summary>True if the certificate is a domain-level certificate of the domain, valid or not: its subject's "E=" is blank or the domain, and
+		///the DNS name of its subject alternative name is the domain (case is ignored). The rule of GetCertificatesForDomain.</summary>
+		public static bool IsForDomain(X509Certificate2 x509Certificate2,string domain) {
+			string subjectName=GetCertSubjectName(x509Certificate2);
+			if(subjectName!="" && subjectName.ToLower()!=domain.ToLower()) {
+				return false;
+			}
+			return GetCertDnsName(x509Certificate2).ToLower()==domain.ToLower();
 		}
 
 		///<summary>Returns the subject name intended for email security from the given signed certificate.
