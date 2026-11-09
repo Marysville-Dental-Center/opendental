@@ -197,20 +197,75 @@ namespace EhrTests {
 			StringAssert.Contains(thread,"_timeSyncCheckState.IsStopped");
 		}
 
+		private static AlertItem MakeAlert(string description,DateTime dateTimeEntry,AlertType alertType=AlertType.Generic) {
+			return new AlertItem { Type=alertType,Description=description,SecDateTEntry=dateTimeEntry };
+		}
+
 		[TestMethod]
-		public void OpenAlerts_AreNotRepeated() {
-			AlertItem alertItemOpen=new AlertItem { Type=AlertType.Generic,Description=TimeSyncCheck.ALERT_PREFIX_OFFSET+"9 seconds off "+SERVER+"." };
-			AlertItem alertItemOther=new AlertItem { Type=AlertType.Generic,Description="Something else." };
-			AlertItem alertItemOtherType=new AlertItem { Type=AlertType.RadiologyProcedures,Description=TimeSyncCheck.ALERT_PREFIX_OFFSET+"9 seconds" };
-			Assert.IsTrue(TimeSyncCheck.IsAlertOpen(new List<AlertItem> { alertItemOther,alertItemOpen },TimeSyncCheck.ALERT_PREFIX_OFFSET));
-			Assert.IsFalse(TimeSyncCheck.IsAlertOpen(new List<AlertItem> { alertItemOther,alertItemOtherType },TimeSyncCheck.ALERT_PREFIX_OFFSET));
-			Assert.IsFalse(TimeSyncCheck.IsAlertOpen(new List<AlertItem> { alertItemOpen },TimeSyncCheck.ALERT_PREFIX_FAILED),"The two kinds are separate.");
-			Assert.IsFalse(TimeSyncCheck.IsAlertOpen(null,TimeSyncCheck.ALERT_PREFIX_OFFSET));
-			Assert.IsFalse(TimeSyncCheck.IsAlertOpen(new List<AlertItem> { null },TimeSyncCheck.ALERT_PREFIX_OFFSET));
-			string raise=CSharpSource.GetBlock(TestPaths.ReadSource(@"OpenPmsDentalBusiness\Misc\WindowsTime.cs"),"public static bool RaiseAlertIfNoneOpen(");
-			StringAssert.Contains(raise,"if(IsAlertOpen(AlertItems.RefreshForType(AlertType.Generic),prefix)) {");
+		public void Alerts_SuppressANewOneOnlyWhileTheyExistAndAreLessThan24HoursOld() {
+			Assert.AreEqual(TimeSpan.FromHours(24),TimeSyncCheck.AlertRepeatAfter);
+			DateTime dateTimeNow=new DateTime(2026,11,8,12,0,0);
+			string offset=TimeSyncCheck.ALERT_PREFIX_OFFSET+"9 seconds off "+SERVER+".";
+			string prefix=TimeSyncCheck.ALERT_PREFIX_OFFSET;
+			//Raised less than 24 hours ago and still there: no new one.
+			foreach(TimeSpan timeSpanAge in new[] { TimeSpan.Zero,TimeSpan.FromHours(1),TimeSpan.FromHours(24).Subtract(TimeSpan.FromSeconds(1)) }) {
+				Assert.IsTrue(TimeSyncCheck.HasRecentAlert(new List<AlertItem> { MakeAlert(offset,dateTimeNow.Subtract(timeSpanAge)) },prefix,dateTimeNow),
+					timeSpanAge+" old");
+			}
+			//24 hours or older, read or not (a read alert is still a row until it is deleted): a new one is raised. One that was read and left in the
+			//list no longer silences every later one for good.
+			foreach(TimeSpan timeSpanAge in new[] { TimeSpan.FromHours(24),TimeSpan.FromHours(25),TimeSpan.FromDays(30) }) {
+				Assert.IsFalse(TimeSyncCheck.HasRecentAlert(new List<AlertItem> { MakeAlert(offset,dateTimeNow.Subtract(timeSpanAge)) },prefix,dateTimeNow),
+					timeSpanAge+" old");
+			}
+			Assert.IsFalse(TimeSyncCheck.HasRecentAlert(new List<AlertItem> { MakeAlert(offset,DateTime.MinValue) },prefix,dateTimeNow),"No entry time.");
+			Assert.IsFalse(TimeSyncCheck.HasRecentAlert(new List<AlertItem> { MakeAlert(offset,dateTimeNow.AddHours(1)) },prefix,dateTimeNow),
+				"An entry time after now (the clock went back) does not silence the check.");
+			//An old one next to a recent one: the recent one suppresses.
+			Assert.IsTrue(TimeSyncCheck.HasRecentAlert(new List<AlertItem> { MakeAlert(offset,dateTimeNow.AddDays(-3)),MakeAlert(offset,dateTimeNow.AddHours(-2)) },
+				prefix,dateTimeNow));
+			//Deleting the alert re-arms it: with the row gone, the next check raises it again.
+			Assert.IsFalse(TimeSyncCheck.HasRecentAlert(new List<AlertItem>(),prefix,dateTimeNow),"Deleted.");
+			//Only generic alerts of the same kind count.
+			DateTime dateTimeRecent=dateTimeNow.AddMinutes(-5);
+			Assert.IsFalse(TimeSyncCheck.HasRecentAlert(new List<AlertItem> { MakeAlert("Something else.",dateTimeRecent),
+				MakeAlert(TimeSyncCheck.ALERT_PREFIX_OFFSET+"9 seconds",dateTimeRecent,AlertType.RadiologyProcedures) },prefix,dateTimeNow));
+			Assert.IsFalse(TimeSyncCheck.HasRecentAlert(new List<AlertItem> { MakeAlert(offset,dateTimeRecent) },TimeSyncCheck.ALERT_PREFIX_FAILED,dateTimeNow),
+				"The two kinds are separate.");
+			Assert.IsTrue(TimeSyncCheck.HasRecentAlert(new List<AlertItem> { MakeAlert(TimeSyncCheck.ALERT_PREFIX_FAILED+" (6 checks in a row).",dateTimeRecent) },
+				TimeSyncCheck.ALERT_PREFIX_FAILED,dateTimeNow));
+			Assert.IsFalse(TimeSyncCheck.HasRecentAlert(null,prefix,dateTimeNow));
+			Assert.IsFalse(TimeSyncCheck.HasRecentAlert(new List<AlertItem> { null },prefix,dateTimeNow));
+			Assert.IsFalse(TimeSyncCheck.HasRecentAlert(new List<AlertItem> { MakeAlert(offset,dateTimeRecent) },"",dateTimeNow));
+			//The thread's alert is checked against the database server's clock, which writes SecDateTEntry.
+			string raise=CSharpSource.GetBlock(TestPaths.ReadSource(@"OpenPmsDentalBusiness\Misc\WindowsTime.cs"),"public static bool RaiseAlertIfNoneRecent(");
+			StringAssert.Contains(raise,"if(HasRecentAlert(AlertItems.RefreshForType(AlertType.Generic),prefix,MiscData.GetNowDateTime())) {");
 			StringAssert.Contains(raise,"alertItem.ClinicNum=-1;");
 			StringAssert.Contains(raise,"alertItem.Type=AlertType.Generic;");
+			StringAssert.Contains(raise,"ActionType.MarkAsRead|ActionType.Delete|ActionType.ShowItemValue");
+			StringAssert.Contains(CSharpSource.GetBlock(TestPaths.ReadSource(@"OpenPmsDentalBusiness\Misc\WindowsTime.cs"),"public static void Apply("),
+				"RaiseAlertIfNoneRecent(timeSyncStep.AlertPrefix,timeSyncStep.AlertDescription,timeSyncStep.AlertItemValue);");
+		}
+
+		[TestMethod]
+		public void Alerts_ADriftThatLasts_GivesOneAlertADay() {
+			//The thread's steps with the alert rows they leave: a clock that stays 30 seconds off, checked every 4 hours for three days, while nobody
+			//deletes or reads the alerts. One alert the first day and one more every 24 hours after it, never one per check.
+			DateTime dateTimeStart=new DateTime(2026,11,8,8,0,0);
+			TimeSyncCheckState state=new TimeSyncCheckState();
+			List<AlertItem> listAlertItems=new List<AlertItem>();
+			for(int i=0;i<18;i++) {
+				DateTime dateTimeNow=dateTimeStart.AddHours(4*i);
+				TimeSyncStep timeSyncStep=TimeSyncCheck.Next(state,EnumTimeSyncMode.Warn,Valid(30));
+				Assert.AreEqual(EnumTimeSyncDecision.Alert,timeSyncStep.Decision);
+				if(!TimeSyncCheck.HasRecentAlert(listAlertItems,timeSyncStep.AlertPrefix,dateTimeNow)) {
+					listAlertItems.Add(MakeAlert(timeSyncStep.AlertDescription,dateTimeNow));
+				}
+			}
+			CollectionAssert.AreEqual(new[] { dateTimeStart,dateTimeStart.AddHours(24),dateTimeStart.AddHours(48) },listAlertItems.Select(x => x.SecDateTEntry).ToList());
+			//Deleting the latest one re-arms the alert at once.
+			listAlertItems.RemoveAt(2);
+			Assert.IsFalse(TimeSyncCheck.HasRecentAlert(listAlertItems,TimeSyncCheck.ALERT_PREFIX_OFFSET,dateTimeStart.AddHours(48+4)));
 		}
 
 		[TestMethod]

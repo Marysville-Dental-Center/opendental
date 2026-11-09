@@ -121,16 +121,21 @@ public class WindowsTime {
 
 namespace OpenPmsDentalBusiness {
 	///<summary>The time check (docs/specs/ehr-rebuild-plan.md, section 4). The setting ForkTimeSyncMode is Off (the default) or Warn. With Warn, on the
-	///database server's computer, the program asks the NTP server in the NistTimeServerUrl preference every 4 hours and raises an alert when the
-	///clock is more than 5 seconds off. It never sets the clock: Windows Time does that (section 4.4). ShouldStart, Decide, Next and
-	///GetManualSetOffer are pure functions; the rest reads or writes the setting, alerts, the log and the Windows Time service.</summary>
+	///database server's computer, the program asks the NTP server in the NistTimeServerUrl preference when the thread starts (at every logon there)
+	///and then every 4 hours, and raises an alert when the clock is more than 5 seconds off. An alert of the same kind suppresses a new one only
+	///while it exists and was raised less than 24 hours ago (HasRecentAlert): an older one, read or not, does not, and deleting one re-arms it. It
+	///never sets the clock: Windows Time does that (section 4.4); the manual window's button sets it only from a measurement taken on the click
+	///(PrepareManualSet, TrySetManual). ShouldStart, Decide, HasRecentAlert and GetManualSetOffer are pure functions. Next is deterministic and
+	///changes only its state argument. The rest reads or writes the setting, alerts, the log, the clock (through WindowsTime) and the Windows Time
+	///service.</summary>
 	public class TimeSyncCheck {
 		///<summary>The fork's own preference row: 0 Off, 1 Warn. A missing row or any other value means Off, so no database step is needed. It is not
 		///in PrefName and is read and written by name.</summary>
 		public const string PREF_NAME="ForkTimeSyncMode";
 		///<summary>A valid reply that shows the clock more than this many seconds off raises the alert. ONC's test tolerance is 5 seconds.</summary>
 		public const double ALERT_OFFSET_SECONDS=5;
-		///<summary>Failed checks in a row that make one day at one check every 4 hours.</summary>
+		///<summary>Failed checks in a row that make about one day at one check every 4 hours. Approximate: the thread also checks when it starts, at
+		///every logon on the database server's computer, and the count lives as long as the main window.</summary>
 		public const int FAILURES_PER_DAY=6;
 		///<summary>The manual window sets the clock only for an offset of at least this many seconds...</summary>
 		public const double MANUAL_SET_MIN_SECONDS=1;
@@ -141,13 +146,19 @@ namespace OpenPmsDentalBusiness {
 		public static readonly TimeSpan ManualSetMaxAge=TimeSpan.FromMinutes(2);
 		///<summary>The service name of Windows Time.</summary>
 		public const string WINDOWS_TIME_SERVICE_NAME="W32Time";
-		///<summary>The start of the offset alert's description. An open alert that starts with it is not repeated.</summary>
+		///<summary>The start of the offset alert's description. An alert that starts with it suppresses a new one only while it exists and is less than
+		///24 hours old (HasRecentAlert).</summary>
 		public const string ALERT_PREFIX_OFFSET="The clock of the database server's computer is ";
-		///<summary>The start of the failed-for-a-day alert's description. An open alert that starts with it is not repeated.</summary>
+		///<summary>The start of the failed-for-a-day alert's description. An alert that starts with it suppresses a new one only while it exists and is
+		///less than 24 hours old (HasRecentAlert).</summary>
 		public const string ALERT_PREFIX_FAILED="The time check of the database server's clock has failed for a day";
+		///<summary>An alert of the time check suppresses a new one of the same kind for this long after it was raised, and only while it exists. An
+		///older one, read or not, does not, so while the problem lasts there is at most one new alert a day.</summary>
+		public static readonly TimeSpan AlertRepeatAfter=TimeSpan.FromHours(24);
 		///<summary>The log folder (Logger) of the time check.</summary>
 		public const string LOG_SUBDIRECTORY="TimeSync";
-		///<summary>How often the check runs.</summary>
+		///<summary>How often the check runs after its first one, which runs when the thread starts (at every logon on the database server's
+		///computer, as the old thread did).</summary>
 		public static readonly TimeSpan Interval=TimeSpan.FromHours(4);
 
 		#region Setting
@@ -206,7 +217,8 @@ namespace OpenPmsDentalBusiness {
 
 		///<summary>One check of the thread, after its request: Decide's outcome, plus the rules for the other replies. A valid reply clears the count of
 		///failures. An invalid reply or no reply is written to the log only, and each FAILURES_PER_DAY-th failure in a row (one day) raises one alert
-		///with the last reason. A kiss-o'-death reply stops the checks until the next start and logs its code. Changes only state.</summary>
+		///with the last reason. A kiss-o'-death reply stops the checks until the next start and logs its code. Not pure: deterministic, and it changes
+		///only its state argument (the count of failures, the last reason, the stop).</summary>
 		public static TimeSyncStep Next(TimeSyncCheckState state,EnumTimeSyncMode mode,NtpResult ntpResult) {
 			TimeSyncStep timeSyncStep=new TimeSyncStep();
 			if(ntpResult==null) {
@@ -279,12 +291,17 @@ namespace OpenPmsDentalBusiness {
 				+"The program never sets the clock by itself.";
 		}
 
-		///<summary>True when an alert of the time check (one whose description starts with prefix) is still open, so it is not repeated. Pure.</summary>
-		public static bool IsAlertOpen(List<AlertItem> listAlertItems,string prefix) {
+		///<summary>True when an alert of the same kind (a generic alert whose description starts with prefix) suppresses a new one: only while it exists
+		///AND was raised less than AlertRepeatAfter (24 hours) before dateTimeNow. An older one does not, so an alert that was read but never deleted
+		///cannot silence every later one for good; while the problem lasts there is at most one new alert a day. An entry time later than dateTimeNow
+		///(the clock went back) does not suppress either. Deleting an alert re-arms it. dateTimeNow is the database server's clock, which wrote
+		///SecDateTEntry. Pure.</summary>
+		public static bool HasRecentAlert(List<AlertItem> listAlertItems,string prefix,DateTime dateTimeNow) {
 			if(listAlertItems==null || string.IsNullOrEmpty(prefix)) {
 				return false;
 			}
-			return listAlertItems.Any(x => x!=null && x.Type==AlertType.Generic && (x.Description??"").StartsWith(prefix,StringComparison.Ordinal));
+			return listAlertItems.Any(x => x!=null && x.Type==AlertType.Generic && (x.Description??"").StartsWith(prefix,StringComparison.Ordinal)
+				&& x.SecDateTEntry<=dateTimeNow && dateTimeNow-x.SecDateTEntry<AlertRepeatAfter);
 		}
 
 		///<summary>What the manual window may do with the last reply. The button "Set this computer's clock" is enabled only when the reply was valid,
@@ -476,7 +493,8 @@ namespace OpenPmsDentalBusiness {
 		#endregion The set button
 
 		#region Thread and Windows
-		///<summary>Carries out a step of the thread: writes its log line and raises its alert, unless one of the same kind is open. Never throws.</summary>
+		///<summary>Carries out a step of the thread: writes its log line and raises its alert, unless one of the same kind was raised less than 24 hours
+		///ago and still exists (HasRecentAlert). Never throws.</summary>
 		public static void Apply(TimeSyncStep timeSyncStep) {
 			Meth.NoCheckMiddleTierRole();
 			try {
@@ -489,18 +507,19 @@ namespace OpenPmsDentalBusiness {
 				return;
 			}
 			try {
-				RaiseAlertIfNoneOpen(timeSyncStep.AlertPrefix,timeSyncStep.AlertDescription,timeSyncStep.AlertItemValue);
+				RaiseAlertIfNoneRecent(timeSyncStep.AlertPrefix,timeSyncStep.AlertDescription,timeSyncStep.AlertItemValue);
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
 			}
 		}
 
-		///<summary>Inserts a generic alert for every user and clinic (default alert categories) unless an alert whose description starts with prefix is
-		///open. Returns true if it inserted one.</summary>
-		public static bool RaiseAlertIfNoneOpen(string prefix,string description,string itemValue) {
+		///<summary>Inserts a generic alert for every user and clinic (default alert categories) unless an alert whose description starts with prefix
+		///exists and was raised less than 24 hours ago (HasRecentAlert, against the database server's clock, which writes SecDateTEntry). Returns true
+		///if it inserted one.</summary>
+		public static bool RaiseAlertIfNoneRecent(string prefix,string description,string itemValue) {
 			Meth.NoCheckMiddleTierRole();
-			if(IsAlertOpen(AlertItems.RefreshForType(AlertType.Generic),prefix)) {
+			if(HasRecentAlert(AlertItems.RefreshForType(AlertType.Generic),prefix,MiscData.GetNowDateTime())) {
 				return false;
 			}
 			AlertItem alertItem=new AlertItem();
@@ -565,7 +584,7 @@ namespace OpenPmsDentalBusiness {
 	public enum EnumTimeSyncDecision {
 		///<summary>Nothing to report.</summary>
 		None,
-		///<summary>Raise the offset alert, unless one is open.</summary>
+		///<summary>Raise the offset alert, unless one raised less than 24 hours ago still exists.</summary>
 		Alert,
 	}
 

@@ -775,9 +775,11 @@ namespace OpenPmsDental {
 			odThread.Start();
 		}
 
-		///<summary>One check, every 4 hours: one request to the NTP server in the NistTimeServerUrl pref, checked by NtpReply, then TimeSyncCheck.Next,
-		///which uses Decide: an alert when a valid reply shows the clock more than 5 seconds off, the log only for a failed check (and one alert after
-		///a day of them), and a stop for a kiss-o'-death reply. It never sets the clock: Windows Time does (section 4.4).</summary>
+		///<summary>One check, as soon as the thread starts (SetThreads starts it at every logon, as the old thread did) and then every 4 hours: one
+		///request to the NTP server in the NistTimeServerUrl pref, checked by NtpReply, then TimeSyncCheck.Next, which uses Decide: an alert when a
+		///valid reply shows the clock more than 5 seconds off, the log only for a failed check (and one alert after about a day of them), and a stop
+		///for a kiss-o'-death reply. An alert is not raised again while one of its kind less than 24 hours old exists (TimeSyncCheck.HasRecentAlert).
+		///It never sets the clock: Windows Time does (section 4.4).</summary>
 		private void TimeSyncWorker(ODThread odThread,EnumTimeSyncMode timeSyncMode) {
 			NtpResult ntpResult=new NTPv4().Query(PrefC.GetString(PrefName.NistTimeServerUrl));
 			TimeSyncStep timeSyncStep=TimeSyncCheck.Next(_timeSyncCheckState,timeSyncMode,ntpResult);
