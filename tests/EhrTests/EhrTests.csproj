@@ -4,12 +4,16 @@
   <!-- Tests of the EHR rebuild (docs/specs/ehr-rebuild-plan.md). Package EHR-0 adds the switch (Show Features and the Setup Wizard share one
        confirmation), the time check (the ForkTimeSyncMode setting, TimeSyncCheck, the NTP reply rules of NtpReply on synthetic RFC 5905
        packets, WindowsTime.TrySetUtc through its seam, which these tests replace before any test runs) and the source scan that replaced
-       NoHqTests' check of the removed EHR.dll hooks. No network, no database, and the computer's clock is never set. The project references
+       NoHqTests' check of the removed EHR.dll hooks. Package EHR-1 adds the provider row rule and the permissions (ProvKeyRuleTests,
+       PermissionTests) on a scratch database of the local MariaDB (Support/ScratchDb.cs: names start with ehr1_, built from
+       db/init/new-database.sql by the first test that needs it, dropped at the end, synthetic rows only), with HasProvHadKey through the
+       Middle Tier mock. No network, and the computer's clock is never set. The project references
        the program and the business library, as tests/LibWebTests does; no window of the program is ever shown. Compile items are listed one
        by one until S1-6 converts this file.
        Lans.g: the messages under test go through Lans.g, which returns the English text in the en-US culture. In any other culture it looks
-       the text up in the language table, and inserts a row there for a text it has not seen, when a database connection is open; these
-       tests open none, so it returns the English text, but a run with a connection outside en-US cultures may touch the language table. -->
+       the text up in the language table, and inserts a row there for a text it has not seen, when a database connection is open. The EHR-0
+       tests open none; the database tests of EHR-1 set the en-US culture first (ScratchDb.Begin), so only the scratch database could be
+       touched. -->
 
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -51,6 +55,11 @@
   <ItemGroup>
     <!-- MSTest v1, found through the search path added in Directory.Build.targets. -->
     <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+    <!-- MySqlConnector (EHR-1): Support/ScratchDb.cs creates, loads and drops the ehr1_ scratch database on the local MariaDB itself, as
+         tests/InventoryTests does. -->
+    <Reference Include="MySqlConnector">
+      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
+    </Reference>
     <!-- PresentationCore, PresentationFramework, System.Xaml and WindowsBase: the program's windows derive from types that use WPF. -->
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -70,8 +79,11 @@
     <Compile Include="EhrSwitchTests.cs" />
     <Compile Include="NoEhrDllTests.cs" />
     <Compile Include="NtpReplyTests.cs" />
+    <Compile Include="PermissionTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ProvKeyRuleTests.cs" />
     <Compile Include="Support\NtpPacket.cs" />
+    <Compile Include="Support\ScratchDb.cs" />
     <Compile Include="Support\TestSupport.cs" />
     <Compile Include="TimeSyncTests.cs" />
   </ItemGroup>
