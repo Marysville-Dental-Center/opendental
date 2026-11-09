@@ -43,8 +43,12 @@ namespace ProjectFileTests {
 	///not-modelled lists _arrayNotModelledProperties, _arrayNotModelledToolsetProperties, _arrayNotModelledSdkProperties,
 	///_arrayWebApplicationProperties and, for an SDK-style project in another language than C#, _arraySdkLanguageProperties, each from the point
 	///of the evaluation where MSBuild's files set them) used in a Condition, an Include or an Import, directly or through another property, or
-	///asked of GetProperty. tools\Test-ProjectFileEvaluator.ps1 compares GetProperty with MSBuild -getProperty on every project of the solution
-	///filter for a long list of names, and every stage gate runs it.</summary>
+	///asked of GetProperty; and an SDK other than Microsoft.NET.Sdk. A property on none of those lists that MSBuild's own files set and this
+	///reader does not compute still reads as '' (a full MSBuild -pp listing has several hundred such names per project, none of them used by
+	///the repository's project files or tests): GetProperty is exact for the names tools\Test-ProjectFileEvaluator.ps1 checks, which compares
+	///it with MSBuild -getProperty on every project of the solution filter for a long list of names, and every stage gate runs it. A test that
+	///needs another computed name adds it to that script's lists first. NuGet's Directory.Packages.props (central package versions, stage 2's
+	///S2-1) is not read yet: S2-1 models it or makes the reader refuse it before it lands.</summary>
 	internal sealed class ProjectFile {
 		///<summary>The project file, full path.</summary>
 		public string FullPath { get; private set; }
@@ -251,6 +255,10 @@ namespace ProjectFileTests {
 			_listFilesRead.Add(FullPath);
 			XElement xElementRoot=xDocument.Root;
 			bool hasImplicitSdk=xElementRoot.Attribute("Sdk")!=null || xElementRoot.Elements().Any(x => x.Name.LocalName=="Sdk");
+			CheckSdkName((string)xElementRoot.Attribute("Sdk"),FullPath);
+			foreach(XElement xElementSdk in xElementRoot.Elements().Where(x => x.Name.LocalName=="Sdk")) {
+				CheckSdkName((string)xElementSdk.Attribute("Name")??"",FullPath);
+			}
 			FileContext fileContext=new FileContext(FullPath);
 			if(hasImplicitSdk) {
 				ImportSdkProps();
@@ -316,12 +324,29 @@ namespace ProjectFileTests {
 			}
 		}
 
+		///<summary>Throws NotSupportedException unless every SDK that sdkNames names (a ;-list, each optionally with a /version) is
+		///Microsoft.NET.Sdk, the only SDK this evaluator models. Another SDK (Microsoft.NET.Sdk.Web for the Middle Tier on .NET 10,
+		///Microsoft.NET.Sdk.Razor, ...) has other defaults and globs, so it is refused instead of read as Microsoft.NET.Sdk. Null or empty: no SDK.
+		///</summary>
+		private static void CheckSdkName(string sdkNames,string path) {
+			if(string.IsNullOrWhiteSpace(sdkNames)) {
+				return;
+			}
+			foreach(string sdk in sdkNames.Split(';').Select(x => x.Trim()).Where(x => x!="")) {
+				string name=sdk.Split('/')[0].Trim();
+				if(!name.Equals("Microsoft.NET.Sdk",StringComparison.OrdinalIgnoreCase)) {
+					throw new NotSupportedException(path+": the SDK "+name+" is not modelled by ProjectFile (only Microsoft.NET.Sdk is).");
+				}
+			}
+		}
+
 		private void ReadImport(XElement xElementImport,FileContext fileContext) {
 			string project=(string)xElementImport.Attribute("Project")??"";
 			if(xElementImport.Attribute("Sdk")!=null) {
 				if(!IsConditionTrueInFile(xElementImport,fileContext)) {
 					return;
 				}
+				CheckSdkName((string)xElementImport.Attribute("Sdk"),fileContext.Path);
 				if(project.EndsWith("Sdk.props",StringComparison.OrdinalIgnoreCase)) {
 					ImportSdkProps();
 				}

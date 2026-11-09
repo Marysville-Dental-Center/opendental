@@ -21,6 +21,7 @@ Release|x86 mapping (Release|AnyCPU for the projects the solution builds as AnyC
 Each comparison is one of:
   equal                 the same text (compared exactly, case and slashes included)
   not-modelled          the evaluator throws NotSupportedException: a name it does not compute says so instead of guessing (any MSBuild value)
+  core-not-modelled     the same for one of the 33 core names, which the evaluator must always compute: a failure
   mismatch              both have a value and they differ: a failure
   silent-empty          the evaluator gives '' where MSBuild has a value: a failure
   evaluator-error       the evaluator throws anything else, or cannot load the project: a failure
@@ -35,10 +36,6 @@ The folder the CSV files and the summary are written into (created if missing). 
 
 .PARAMETER Dll
 ProjectFileTests.dll to check. Default: tests\ProjectFileTests\bin\Debug\ProjectFileTests.dll of -Root, which a full lane build writes.
-
-.PARAMETER Build
-Build tests\ProjectFileTests (Debug|x86, that project alone) with MSBuild 18 first. Without it the DLL must be there: the stage gates run this
-script after their full lane build and do not pass it.
 
 .PARAMETER Projects
 Only these projects (file names without .csproj, comma-separated). Default: every C# project of the slnf.
@@ -62,7 +59,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\Test-ProjectFileEvalua
 param(
 	[string]$Out='',
 	[string]$Dll='',
-	[switch]$Build,
 	[string[]]$Projects=@(),
 	[switch]$DebugOnly,
 	[int]$ThrottleLimit=4,
@@ -201,14 +197,8 @@ Write-Host ("{0} C# projects; not C# (the evaluator reads C# projects only): {1}
 
 #region The evaluator
 try{
-	if($Build){
-		$csproj=Join-Path $Root 'tests\ProjectFileTests\ProjectFileTests.csproj'
-		Write-Host "Building $csproj"
-		& $msbuild $csproj -nologo -nr:false -v:minimal '-p:Configuration=Debug' '-p:Platform=x86' | Out-Host
-		if($LASTEXITCODE -ne 0){ throw "MSBuild could not build $csproj (exit $LASTEXITCODE)." }
-	}
 	if(-not $Dll){ $Dll=Join-Path $Root 'tests\ProjectFileTests\bin\Debug\ProjectFileTests.dll' }
-	if(-not (Test-Path -LiteralPath $Dll -PathType Leaf)){ throw "No $Dll. Build tests\ProjectFileTests through the build lane (or pass -Build)." }
+	if(-not (Test-Path -LiteralPath $Dll -PathType Leaf)){ throw "No $Dll. Build the solution (or tests\ProjectFileTests) through the build lane first." }
 	$Dll=(Resolve-Path -LiteralPath $Dll).Path
 	#A copy of the DLL's folder, so the build output is not locked while this process runs. The copy stays loaded until the process ends, so
 	#it cannot be deleted at the end; the copies of earlier runs (more than an hour old, so no run still uses them) are deleted here.
@@ -376,7 +366,10 @@ foreach($pass in $passes){
 		if($property -ne $null -and $property.Value -ne $null){ $valueMSBuild=[string]$property.Value }
 		$read=$pass.Evaluator[$name]
 		if($read.Exception){
-			$kind=if($read.Exception -eq 'System.NotSupportedException'){ 'not-modelled' }else{ 'evaluator-error' }
+			$kind='evaluator-error'
+			if($read.Exception -eq 'System.NotSupportedException'){
+				$kind=if($coreNames -contains $name){ 'core-not-modelled' }else{ 'not-modelled' }
+			}
 			[void]$rows.Add([pscustomobject]($base+@{ Name=$name; Kind=$kind; Evaluator="$($read.Exception): $($read.Message)"; MSBuild=$valueMSBuild }))
 			continue
 		}
@@ -391,7 +384,7 @@ foreach($path in $listMismatchedProjectLists){
 	[void]$rows.Add([pscustomobject]@{ Project=$path.Substring($Root.Length+1); Configuration=''; Platform=''; Pass='list'; Name='*'; Kind='evaluator-error';
 		Evaluator='GetSolutionFilterProjects does not list it'; MSBuild='' })
 }
-$failureKinds=@('mismatch','silent-empty','evaluator-error','msbuild-error')
+$failureKinds=@('mismatch','silent-empty','core-not-modelled','evaluator-error','msbuild-error')
 $columns=@('Project','Configuration','Platform','Pass','Name','Kind','Evaluator','MSBuild')
 $rows | Select-Object $columns | Export-Csv -NoTypeInformation -Encoding UTF8 -LiteralPath (Join-Path $Out 'evaluator-check.csv')
 $findings=@($rows | Where-Object { $failureKinds -contains $_.Kind })
