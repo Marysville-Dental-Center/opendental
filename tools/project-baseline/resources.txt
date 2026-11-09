@@ -1015,9 +1015,7 @@ SparksToothChart|SparksToothChart.Properties.Resources.resources
 SparksToothChart|SparksToothChart.ToothChart2D.resources
 SparksToothChart|SparksToothChart.ToothChartDirectX.resources
 SparksToothChart|SparksToothChart.ToothChartOpenGL.resources
-SparksToothChart|SparksToothChart.ToothChartWpf.resources
 SparksToothChart|SparksToothChart.ToothChartWrapper.resources
-SparksToothChart|SparksToothChart.g.resources
 UnitTests|UnitTests.Form2dDrawingTests.resources
 UnitTests|UnitTests.Form4kTests.resources
 UnitTests|UnitTests.FormApptLayoutTests.resources
@@ -1081,6 +1079,8 @@ xCrudGenerator|xCrudGenerator.Form1.resources
 xCrudGenerator|xCrudGenerator.Properties.Resources.resources
 xDatabaseIntegrityCheck|DatabaseIntegrityCheck.FormDatabaseCheck.resources
 xDatabaseIntegrityCheck|DatabaseIntegrityCheck.Properties.Resources.resources
+xDocumentationBuilder|DocumentationBuilder.Form1.resources
+xDocumentationBuilder|DocumentationBuilder.Properties.Resources.resources
 xImagingCapture|ImagingCapture.g.resources
 xMySQLManager|MySQLManager.FormMySQLUserEdit.resources
 xMySQLManager|MySQLManager.FormMySQLUserManager.resources
