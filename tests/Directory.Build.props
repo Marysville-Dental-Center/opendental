@@ -1,11 +1,15 @@
 <Project>
   <!--
-    Shared settings of the test projects under tests\. MSBuild imports only the nearest Directory.Build.props, so this
-    file imports the repository's own first (its settings apply here too), then adds what every test project shares.
+    Shared settings of the test projects. MSBuild imports only the nearest Directory.Build.props, so this file imports the
+    repository's own first (its settings apply here too), then adds what every test project shares. The projects under tests\ get
+    this file from MSBuild; UnitTests and the tests of tools\SyntheticData and tools\AdoptionValidation, which are outside tests\,
+    name it as their Directory.Build.props (DirectoryBuildPropsPath), so they get it, and the repository's file, once each.
+    NoHqTests, converted in S1-5 before this file had all of it, keeps its own settings in its project file; S1-5 proved its
+    output folder unchanged. A test project that adds an app.config lists it as a None item (EnableDefaultNoneItems is off below):
+    otherwise Directory.Build.targets still sees the file and skips its tests\BindingRedirects.config fallback.
 
-    As in the repository's file, everything here is for SDK-style projects only: the classic test projects set all of it
-    in their own project files and build exactly as before. Stage 1 of the .NET 10 move converts the test projects last
-    (S1-6, docs/specs/net10-plan.md); stages 2, 4 and 3b then change this one file instead of every test project file.
+    As in the repository's file, everything here is for SDK-style projects only. Every test project is one since S1-6 of the .NET 10
+    move (docs/specs/net10-plan.md): stages 2, 4 and 3b change this one file instead of every test project file.
   -->
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)..\'))" />
 
@@ -13,10 +17,47 @@
     <!-- Every test project targets .NET Framework 4.8 today (x86 comes from the repository's file). -->
     <TargetFramework>net48</TargetFramework>
     <!--
-      Every test project generates its binding redirects (into its .dll.config, from tests\BindingRedirects.config when it
-      has no app.config, Directory.Build.targets); the repository's file turns them off for a project that does not ask.
+      The platform the solution builds a test project for, as Visual Studio's configuration manager lists it: x86 only, the two
+      configurations of the classic projects (Debug|x86, Release|x86). CryptoTests and UnitTests, which the solution also builds as
+      Any CPU, name AnyCPU;x86 themselves. Either way the assembly is x86 (PlatformTarget, the repository's file).
+    -->
+    <Platforms>x86</Platforms>
+    <!-- C# 8.0, the language version of almost every test project; the few on 7.3 set it themselves. -->
+    <LangVersion>8.0</LangVersion>
+    <!--
+      Every test project generates its binding redirects into its .dll.config (from tests\BindingRedirects.config when it has no
+      app.config, Directory.Build.targets). MSBuild's common targets write that file for a library only when
+      GenerateBindingRedirectsOutputType is true (Microsoft.Common.CurrentVersion.targets sets it for an exe or winexe); the test
+      projects are libraries, apart from UnitTests (tests\LibraryBindingTests checks both).
     -->
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+    <!--
+      No None items from the SDK's default globs: a test project's None and Content items are the ones it lists (the data files it
+      copies to its output folder, for one), as they were in the classic projects. Otherwise every other file under a test folder would
+      be a None item (the baseline pictures of ToothChartImageTests, the fixtures of ProjectFileTests, packages.lock.json), which
+      changes nothing in the build. The Compile and EmbeddedResource globs stay: every .cs file under a test folder is compiled and
+      every .resx file embedded (bin\ and obj\ excepted).
+    -->
+    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+    <!--
+      As in the classic projects, a test project references the projects it names, not also every project those reference (the SDK's
+      transitive project references). The assemblies its references use still come along (reference resolution copies their
+      dependencies), so each output folder holds the files it held; with the transitive references, the 27 test projects that reference
+      the program would also get ODR and OpenPmsDentalDbSettings, which the program references as projects although its assembly does
+      not reference them.
+    -->
+    <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+  </PropertyGroup>
+  <!--
+    Full PDBs for Debug and pdbonly for Release, as in the classic test projects (the SDK's default is portable). A project built on its
+    own without a configuration gets Debug from the SDK after this file, so only Release is tested for.
+  -->
+  <PropertyGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true' and '$(Configuration)' != 'Release'">
+    <DebugType>full</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true' and '$(Configuration)' == 'Release'">
+    <DebugType>pdbonly</DebugType>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">

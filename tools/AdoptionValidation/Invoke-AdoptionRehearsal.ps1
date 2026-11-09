@@ -50,7 +50,7 @@ if(-not $SkipBuild) {
 	}
 	#The pinned .NET SDK and the offline NuGet folder for this process.
 	$null=Initialize-BuildEnvironment -RepoRoot (Split-Path -Parent (Split-Path -Parent $projectDir))
-	& $MSBuildPath (Join-Path $projectDir 'AdoptionValidation.csproj') -restore -p:RestorePackagesConfig=true -p:Configuration=Debug -p:Platform=x86 -v:minimal -nologo
+	& $MSBuildPath (Join-Path $projectDir 'AdoptionValidation.csproj') -restore -p:Configuration=Debug -p:Platform=x86 -v:minimal -nologo
 	if($LASTEXITCODE -ne 0) {
 		throw "Build failed with exit code $LASTEXITCODE."
 	}

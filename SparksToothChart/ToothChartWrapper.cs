@@ -51,7 +51,11 @@ namespace SparksToothChart {
 		///<summary></summary>
 		[Category("Action"),Description("Occurs when the mouse goes up committing tooth selection.")]
 		public event ToothChartSelectionEventHandler ToothSelectionsChanged=null;
-		
+		///<summary>A free-text label (ToothInitialType.Text) was dragged with CursorTool.MoveText to a new point in the chart's 410x307 space. No engine
+		///raises it yet: the WPF chart's free text does from TC-5 (OnTextMoved). The relay passes it on, and the Chart module saves the move.</summary>
+		[Category("Action"),Description("Occurs when the mouse goes up after moving a text label.")]
+		public event ToothChartTextMovedEventHandler TextMoved=null;
+
 		public ToothChartWrapper() {
 			drawMode=DrawingMode.Simple2D;
 			_engine=ToothChartEngine.Simple2D;
@@ -662,6 +666,51 @@ namespace SparksToothChart {
 			return ex is SharpDX.SharpDXException;
 		}
 
+		///<summary>CAUTION: Runs slowly. May take minutes. Returns the string "invalid" if no suitable Direct X format can be found. Each format is
+		///tried on an invisible chart on controlHost (TestDirectXFormat). Moved from FormGraphics (TC-2).</summary>
+		public static string GetPreferredDirectXFormat(Control controlHost) {
+			if(!ToothChartWrapper.IsDirectXRuntimeAvailable()) {
+				return "invalid";//No format can work without d3dx9_43.dll, so don't spend minutes trying each one.
+			}
+			ToothChartDirectX.DirectXDeviceFormat[] directXDeviceFormatArray=ToothChartDirectX.GetStandardDeviceFormats();
+			for(int i=0;i<directXDeviceFormatArray.Length;i++) {
+				if(TestDirectXFormat(controlHost,directXDeviceFormatArray[i].ToString())) {
+					return directXDeviceFormatArray[i].ToString();
+				}
+			}
+			return "invalid";
+		}
+
+		///<summary>Returns true if the given directXFormat works for a DirectX tooth chart on the local computer: an invisible chart on controlHost
+		///starts DirectX with it and gives a picture. Moved from FormGraphics (TC-2).</summary>
+		public static bool TestDirectXFormat(Control controlHost,string directXFormat) {
+			using(ToothChartWrapper toothChartWrapperTest=new ToothChartWrapper()) {//using blocks: this project is C# 7.3
+				toothChartWrapperTest.Visible=false;
+				//We add the invisible tooth chart to our form so that the device context will initialize properly
+				//and our device creation test will then be accurate.
+				controlHost.Controls.Add(toothChartWrapperTest);
+				toothChartWrapperTest.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(directXFormat);
+				toothChartWrapperTest.DrawMode=DrawingMode.DirectX;//Creates the device.
+				if(toothChartWrapperTest.DrawMode!=DrawingMode.DirectX) {
+					//The chart falls back to OpenGL, then Simple 2D, when DirectX cannot start.
+					controlHost.Controls.Remove(toothChartWrapperTest);
+					return false;
+				}
+				//Now we check to be sure that one can draw and retrieve a screen shot from a DirectX control
+				//using the specified device format.
+				try {
+					using(Bitmap bitmap=toothChartWrapperTest.GetBitmap()) {
+					}
+				}
+				catch {
+					controlHost.Controls.Remove(toothChartWrapperTest);
+					return false;
+				}
+				controlHost.Controls.Remove(toothChartWrapperTest);
+				return true;
+			}
+		}
+
 		private static bool CanLoadLibrary(string fileName) {
 			try {
 				IntPtr intPtrModule=LoadLibrary(fileName);
@@ -1192,6 +1241,12 @@ namespace SparksToothChart {
 			OnToothSelectionsChanged();
 		}
 
+		///<summary>Raises TextMoved: the free-text label toothInitialNum was dragged to pointF, in the chart's 410x307 space. For the engines (the WPF
+		///chart's free text, TC-5); none calls it yet.</summary>
+		internal void OnTextMoved(long toothInitialNum,PointF pointF) {
+			TextMoved?.Invoke(this,new ToothChartTextMovedEventArgs(toothInitialNum,pointF));
+		}
+
 		//public void SimulateMouseDown(MouseEventArgs e) {
 
 		//}
@@ -1212,6 +1267,20 @@ namespace SparksToothChart {
 	public delegate void ToothChartDrawEventHandler(object sender,ToothChartDrawEventArgs e);
 	///<summary></summary>
 	public delegate void ToothChartSelectionEventHandler(object sender);
+	///<summary>TextMoved: a free-text label was moved.</summary>
+	public delegate void ToothChartTextMovedEventHandler(object sender,ToothChartTextMovedEventArgs e);
+
+	///<summary>The label a TextMoved moved (toothinitial.ToothInitialNum) and where it was dropped, in the chart's 410x307 space, as the mouse gave
+	///it: not clamped or rounded (ToothChartRelay.MoveTextLabel does that before saving).</summary>
+	public class ToothChartTextMovedEventArgs {
+		public long ToothInitialNum { get; }
+		public PointF Location { get; }
+
+		public ToothChartTextMovedEventArgs(long toothInitialNum,PointF location) {
+			ToothInitialNum=toothInitialNum;
+			Location=location;
+		}
+	}
 	
 	///<summary></summary>
 	public class ToothChartDrawEventArgs{

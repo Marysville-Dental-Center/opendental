@@ -133,8 +133,11 @@ namespace BINATests {
 			string graphics=RepoFiles.Read(@"OpenPmsDental\Forms\FormGraphics.cs")+RepoFiles.Read(@"OpenPmsDental\Forms\FormGraphics.designer.cs");
 			StringAssert.DoesNotMatch(graphics,new Regex(@"radioDirectX11|Prefs\.UpdateBool\(PrefName\.DirectX11ToothChartUseIfAvail"),
 				"The DirectX 11 settings were only read by the removed Sparks3D chart.");
-			StringAssert.DoesNotMatch(RepoFiles.Read(@"OpenPmsDental\Main Modules\ControlChart.cs"),
-				new Regex(@"PrefName\.DirectX11ToothChartUseIfAvail|LocalComputer\.GraphicsUseDirectX11"),"The chart no longer reads the Sparks3D settings.");
+			//The chart's computer settings moved from the callers to the relay in TC-2, so the relay is read too.
+			foreach(string relative in new[] { @"OpenPmsDental\Main Modules\ControlChart.cs",@"WpfControlsOD\UI\ToothChart\ToothChartRelay.cs" }) {
+				StringAssert.DoesNotMatch(RepoFiles.Read(relative),new Regex(@"PrefName\.DirectX11ToothChartUseIfAvail|LocalComputer\.GraphicsUseDirectX11"),
+					relative+": the chart no longer reads the Sparks3D settings.");
+			}
 		}
 	}
 }

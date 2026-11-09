@@ -1,0 +1,40 @@
+# Tooth chart call log (TC-2): caller ControlChart, scene Ortho_Exam1, 39 calls
+SetMissing "5"
+SetBracket "3" #FF1E3CC8
+SetBracket "4" #FF1E3CC8
+SetBracket "5" #FF1E3CC8
+SetBracket "6" #FF1E3CC8
+SetBracket "7" #FF5A5A5A
+SetBracket "8" #FF1E3CC8
+SetBracket "9" #FF1E3CC8
+SetBracket "10" #FF1E3CC8
+SetBracket "11" #FF1E3CC8
+SetBracket "12" #FF1E3CC8
+SetBracket "13" #FF1E3CC8
+SetBracket "14" #FF1E3CC8
+AddOrthoWireInBracket "3" #FFB4B4BE
+AddOrthoWireBetweenBrackets "3" "4" #FFB4B4BE
+AddOrthoWireInBracket "4" #FFB4B4BE
+AddOrthoWireBetweenBrackets "4" "5" #FFB4B4BE
+AddOrthoWireInBracket "5" #FFB4B4BE
+AddOrthoWireBetweenBrackets "5" "6" #FFB4B4BE
+AddOrthoWireInBracket "6" #FFB4B4BE
+AddOrthoWireBetweenBrackets "6" "7" #FFB4B4BE
+AddOrthoWireInBracket "7" #FFB4B4BE
+AddOrthoWireBetweenBrackets "7" "8" #FFB4B4BE
+AddOrthoWireInBracket "8" #FFB4B4BE
+AddOrthoWireBetweenBrackets "8" "9" #FFB4B4BE
+AddOrthoWireInBracket "9" #FFB4B4BE
+AddOrthoWireBetweenBrackets "9" "10" #FFB4B4BE
+AddOrthoWireInBracket "10" #FFB4B4BE
+AddOrthoWireBetweenBrackets "10" "11" #FFB4B4BE
+AddOrthoWireInBracket "11" #FFB4B4BE
+AddOrthoWireBetweenBrackets "11" "12" #FFB4B4BE
+AddOrthoWireInBracket "12" #FFB4B4BE
+AddOrthoWireBetweenBrackets "12" "13" #FFB4B4BE
+AddOrthoWireInBracket "13" #FFB4B4BE
+AddOrthoWireBetweenBrackets "13" "14" #FFB4B4BE
+AddOrthoWireInBracket "14" #FFB4B4BE
+AddOrthoElastic "6" "11" #FFDC2828
+AddOrthoElastic "22" "27" #FFDC2828
+AddOrthoElastic "27" "28" #FFDC2828

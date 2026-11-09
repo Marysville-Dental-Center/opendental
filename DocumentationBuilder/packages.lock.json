@@ -2,6 +2,11 @@
   "version": 1,
   "dependencies": {
     ".NETFramework,Version=v4.8": {
+      "Mono.Cecil": {
+        "type": "Transitive",
+        "resolved": "0.10.3",
+        "contentHash": "sE0q+bj5YC3X9FuFCXv0R0suoldVGXiuUls8mtXuBwDw1LeQ39pOKFyrDiEkoxCh4tNHH/luNB6DgZZnMZlEeA=="
+      },
       "CentralManager": {
         "type": "Project",
         "dependencies": {
@@ -187,7 +192,7 @@
           "OpenPmsDentalBusiness": "[1.0.0, )"
         }
       },
-      "unittests": {
+      "Unit Tests": {
         "type": "Project",
         "dependencies": {
           "CentralManager": "[1.0.0, )",
@@ -196,6 +201,7 @@
           "DataConnectionBase": "[1.0.0, )",
           "MigraDoc.DocumentObjectModel": "[1.0.0, )",
           "MigraDoc.Rendering-gdi": "[1.0.0, )",
+          "Mono.Cecil": "[0.10.3, )",
           "ODCrypt": "[1.0.0, )",
           "OpenPmsDental": "[1.0.0, )",
           "OpenPmsDentalBusiness": "[1.0.0, )",

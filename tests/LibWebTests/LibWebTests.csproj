@@ -1,6 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
   <!-- Tests for the library update package LIB-WEB (docs/port-notes/LIB-WEB.md): WebView2 in place of the Internet Explorer WebBrowser control.
        A static check that no IE browser type, mshtml or SHDocVw interop or IE emulation key is left in shipped code; unit tests of the WebView2
        rules (profile folder, link handling, context menu, cookies, a runtime that will not start) and of the HTML the program builds (encoding,
@@ -10,50 +8,9 @@
        moved out of the legacy UnitTests project (package S0-T of the .NET 10 plan), uses one scratch database on the local MariaDB (127.0.0.1,
        root, blank password) whose name starts with s0t_, built from the seed dump and dropped afterwards; it is inconclusive without the server.
        No other test uses a database. Every .cs file under this folder is compiled. -->
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>{50488924-88DE-4F05-9C09-DA08CC574AE6}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>LibWebTests</RootNamespace>
-    <AssemblyName>LibWebTests</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <LangVersion>8.0</LangVersion>
-    <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
-    <IsCodedUITest>False</IsCodedUITest>
-    <TestProjectType>UnitTest</TestProjectType>
-    <!-- The program and the business layer need binding redirects, as OpenPmsDental.exe gets them. Generate LibWebTests.dll.config. -->
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
   <ItemGroup>
-    <!-- MSTest v1, found through the search path added in Directory.Build.targets. -->
-    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
-    <!-- Reads the built assemblies' type references without loading them. The NuGet package UnitTests restores (UnitTests\packages.config). -->
-    <Reference Include="Mono.Cecil, Version=0.10.3.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Mono.Cecil.0.10.3\lib\net40\Mono.Cecil.dll</HintPath>
-    </Reference>
+    <!-- Reads the built assemblies' type references without loading them. The NuGet package, from the offline package folder (nuget.config). -->
+    <PackageReference Include="Mono.Cecil" Version="0.10.3" />
     <Reference Include="Microsoft.Web.WebView2.Core">
       <HintPath>..\..\Required dlls\Microsoft.Web.WebView2.Core.dll</HintPath>
     </Reference>
@@ -67,18 +24,11 @@
     <!-- PresentationCore, PresentationFramework, System.Xaml and WindowsBase: FrmMessageReplacements (WpfControlsOD) is a WPF window class. -->
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
     <!-- The reader of project files (classic and SDK-style) shared by the tests that check them (S1-T of docs/specs/net10-plan.md). -->
     <Compile Include="..\ProjectFileTests\ProjectFile.cs">
       <Link>ProjectFile.cs</Link>
@@ -96,33 +46,14 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj">
-      <Project>{18F7BC78-4B99-48D3-A1F1-0D13A63E3CF9}</Project>
-      <Name>xCodeBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj">
-      <Project>{29C41020-4411-41F2-9061-9B71B5B32B5D}</Project>
-      <Name>xDataConnectionBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj">
-      <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
-      <Name>OpenPmsDentalBusiness</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />
+    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj" />
+    <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />
     <!-- For FormWiki.ParseLink and FormWebBrowserPrefs.BuildHtml (static methods). No window of the program is ever shown. -->
-    <ProjectReference Include="..\..\OpenPmsDental\OpenPmsDental.csproj">
-      <Project>{8136317D-C936-49B6-9E31-D90F02D2F207}</Project>
-      <Name>OpenPmsDental</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\..\OpenPmsDental\OpenPmsDental.csproj" />
     <!-- The table helpers (PatientT, ReferralT, RecallT, PrefT, UserodT) of EmailPreviewTemplateTests. -->
-    <ProjectReference Include="..\..\UnitTestsCore\UnitTestsCore.csproj">
-      <Project>{7BBDDEDF-C015-43C0-A532-FED224993281}</Project>
-      <Name>UnitTestsCore</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\..\UnitTestsCore\UnitTestsCore.csproj" />
     <!-- For FrmMessageReplacements.GetReplacementFieldList (a static method of a WPF window class; no window is created). -->
-    <ProjectReference Include="..\..\WpfControlsOD\WpfControlsOD.csproj">
-      <Project>{118540cc-3536-4e8b-94d4-402ca48a4cb0}</Project>
-      <Name>WpfControlsOD</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\..\WpfControlsOD\WpfControlsOD.csproj" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

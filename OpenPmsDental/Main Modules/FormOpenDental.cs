@@ -99,8 +99,9 @@ namespace OpenPmsDental{
 		private FormCreditRecurringCharges _formCreditRecurringCharges;
 		private long _patNumPrevious;
 		private DateTime _datePopupDelay;
-		///<summary>A secondary cache only used to determine if preferences related to the redrawing of the Chart module have been changed.</summary>
-		private Dictionary<string,object> _dictionaryChartPrefsCache=new Dictionary<string,object>();
+		///<summary>A secondary cache only used to determine if preferences related to the redrawing of the Chart module have been changed (the relay's
+		///snapshot of the chart settings).</summary>
+		private ToothChartSettingsSnapshot _toothChartSettingsSnapshot=new ToothChartSettingsSnapshot();
 		///<summary>A secondary cache only used to determine if preferences related to the redrawing of the non-modal task list have been changed.</summary>
 		private Dictionary<string,object> _dictionaryTaskListPrefsCache=new Dictionary<string,object>();
 		///<summary>A specific reference to the "Task" button. This special reference helps us refresh the notification text on the button after the user changes.</summary>
@@ -816,15 +817,8 @@ namespace OpenPmsDental{
 			}
 			Logger.LogToPath("DirectXFormat",LogPath.Startup,LogPhase.Unspecified);
 			//Choose a default DirectX format when no DirectX format has been specified and running in DirectX tooth chart mode.
-			if(ComputerPrefs.LocalComputer.GraphicsSimple==DrawingMode.DirectX && ComputerPrefs.LocalComputer.DirectXFormat=="") {
+			if(ToothChartRelay.ChooseStartupDirectXFormat(this)) {
 				try {
-					ComputerPrefs.LocalComputer.DirectXFormat=FormGraphics.GetPreferredDirectXFormat(this);
-					if(ComputerPrefs.LocalComputer.DirectXFormat=="invalid") {
-						//No valid local DirectX format could be found, for example because d3dx9_43.dll from the legacy DirectX runtime is missing.
-						//Use the wrapper's next mode, OpenGL; the wrapper itself falls back to Simple 2D if OpenGL cannot start either.
-						ComputerPrefs.LocalComputer.GraphicsSimple=SparksToothChart.ToothChartWrapper.GetFallbackDrawMode(DrawingMode.DirectX);
-					}
-					ComputerPrefs.Update(ComputerPrefs.LocalComputer);
 					//Reinitialize the tooth chart because the graphics mode was probably changed which should change the tooth chart appearence.
 					controlChart.InitializeOnStartup();
 				}
@@ -1717,16 +1711,9 @@ namespace OpenPmsDental{
 			#endregion
 			//TODO: If there are still issues with TP refreshing, include TP prefs in needsRedraw()
 			controlTreat.InitializeLocalData();//easier to leave this here for now than to split it.
-			_dictionaryChartPrefsCache.Clear();
 			_dictionaryTaskListPrefsCache.Clear();
 			//Chart Drawing Prefs
-			_dictionaryChartPrefsCache.Add(PrefName.UseInternationalToothNumbers.ToString(),PrefC.GetInt(PrefName.UseInternationalToothNumbers));
-			_dictionaryChartPrefsCache.Add("GraphicsUseHardware",ComputerPrefs.LocalComputer.GraphicsUseHardware);
-			_dictionaryChartPrefsCache.Add("PreferredPixelFormatNum",ComputerPrefs.LocalComputer.PreferredPixelFormatNum);
-			_dictionaryChartPrefsCache.Add("GraphicsSimple",ComputerPrefs.LocalComputer.GraphicsSimple);
-			_dictionaryChartPrefsCache.Add(PrefName.ShowFeatureEhr.ToString(),PrefC.GetBool(PrefName.ShowFeatureEhr));
-			_dictionaryChartPrefsCache.Add("DirectXFormat",ComputerPrefs.LocalComputer.DirectXFormat);
-			_dictionaryChartPrefsCache.Add(PrefName.OrthoShowInChart.ToString(),PrefC.GetBool(PrefName.OrthoShowInChart));
+			_toothChartSettingsSnapshot.Take();
 			//Task list drawing prefs
 			_dictionaryTaskListPrefsCache.Add("TaskDock",ComputerPrefs.LocalComputer.TaskDock);
 			_dictionaryTaskListPrefsCache.Add("TaskY",ComputerPrefs.LocalComputer.TaskY);
@@ -1751,15 +1738,7 @@ namespace OpenPmsDental{
 			try {
 				switch(section) {
 					case "ChartModule":
-						if(_dictionaryChartPrefsCache.Count==0
-							|| PrefC.GetInt(PrefName.UseInternationalToothNumbers)!=(int)_dictionaryChartPrefsCache["UseInternationalToothNumbers"]
-							|| ComputerPrefs.LocalComputer.GraphicsUseHardware!=(bool)_dictionaryChartPrefsCache["GraphicsUseHardware"]
-							|| ComputerPrefs.LocalComputer.PreferredPixelFormatNum!=(int)_dictionaryChartPrefsCache["PreferredPixelFormatNum"]
-							|| ComputerPrefs.LocalComputer.GraphicsSimple!=(DrawingMode)_dictionaryChartPrefsCache["GraphicsSimple"]
-							|| PrefC.GetBool(PrefName.ShowFeatureEhr)!=(bool)_dictionaryChartPrefsCache["ShowFeatureEhr"]
-							|| ComputerPrefs.LocalComputer.DirectXFormat!=(string)_dictionaryChartPrefsCache["DirectXFormat"]
-							|| PrefC.GetBool(PrefName.OrthoShowInChart)!=(bool)_dictionaryChartPrefsCache["OrthoShowInChart"]) 
-						{
+						if(_toothChartSettingsSnapshot.HasChanged()) {
 							return true;
 						}
 						break;

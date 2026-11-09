@@ -1,8 +1,8 @@
 // The removed EHR.dll hooks stay removed (docs/specs/ehr-rebuild-plan.md, package EHR-0). This source scan replaced NoHqTests'
 // Ehr_ReflectionHooksAreGone, whose three assertions (an empty code list, empty CCD and CCR stylesheets) the open rebuilds of EHR-2 and EHR-3 make
 // false on purpose. What must stay true: no code names EHR.dll or one of its types as a string, no project file, configuration file or resource
-// names EHR.dll outside comments, no EHR file loads an assembly from a file, and the dead "#if EHRTEST" block of ControlChart.cs is the only one
-// (TC-2 deletes it there).
+// names EHR.dll outside comments, no EHR file loads an assembly from a file, and no "#if EHRTEST" block is left (TC-2 deleted the last one, the
+// dead block of ControlChart.cs).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -15,7 +15,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace EhrTests {
 	[TestClass]
 	public class NoEhrDllTests {
-		///<summary>The one file that may still hold the dead "#if EHRTEST" block, until TC-2 deletes it.</summary>
+		///<summary>The Chart module, which held the last, dead "#if EHRTEST" block until TC-2 deleted it.</summary>
 		private const string PATH_CONTROL_CHART=@"OpenPmsDental\Main Modules\ControlChart.cs";
 		private static List<string> _listProgramSourceFiles;
 
@@ -160,7 +160,7 @@ namespace EhrTests {
 		}
 
 		[TestMethod]
-		public void EhrTest_IsOnlyInControlChart() {
+		public void EhrTest_IsNowhere() {
 			List<string> listProblems=new List<string>();
 			Regex regex=new Regex(@"^\s*#\s*(if|elif)\b.*\bEHRTEST\b",RegexOptions.Multiline);
 			foreach(string path in ProgramSourceFiles()) {
@@ -169,12 +169,12 @@ namespace EhrTests {
 					continue;
 				}
 				string relative=TestPaths.Relative(path);
-				if(regex.IsMatch(source) && !relative.Equals(PATH_CONTROL_CHART,StringComparison.OrdinalIgnoreCase)) {
+				if(regex.IsMatch(source)) {
 					listProblems.Add(relative);
 				}
 			}
-			Assert.AreEqual(0,listProblems.Count,"#if EHRTEST outside ControlChart.cs: "+string.Join("; ",listProblems));
-			//Nothing defines it, so the block in ControlChart.cs is dead until TC-2 deletes it.
+			Assert.AreEqual(0,listProblems.Count,"#if EHRTEST is back: "+string.Join("; ",listProblems));
+			//Nothing defines it either.
 			foreach(string pathProject in Directory.GetFiles(TestPaths.Combine("OpenPmsDental"),"*.csproj")) {
 				Assert.IsFalse(File.ReadAllText(pathProject).Contains("EHRTEST"),pathProject);
 			}
