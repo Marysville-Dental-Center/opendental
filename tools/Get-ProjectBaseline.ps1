@@ -180,7 +180,7 @@ $serializer.MaxJsonLength=[int]::MaxValue
 function Get-ProjectEvaluation($project){
 	$arguments=@($project.Path,'-nologo','-getItem:Compile','-getItem:EmbeddedResource','-getItem:Page','-getItem:Resource','-getItem:None','-getItem:Content',
 		'-getProperty:TargetPath,AssemblyName,OutputType',"-p:Configuration=$($project.Configuration)","-p:Platform=$($project.Platform)",
-		"-p:SolutionDir=$Root\","-p:SolutionPath=$Root\OpenDental.sln",'-p:SolutionName=OpenDental','-p:SolutionExt=.sln')
+		"-p:SolutionDir=$Root\","-p:SolutionPath=$Root\OpenDental.sln",'-p:SolutionName=OpenDental','-p:SolutionExt=.sln','-p:SolutionFileName=OpenDental.sln')
 	$output=& $script:msbuild @arguments 2>&1 | ForEach-Object { "$_" }
 	if($LASTEXITCODE -ne 0){ throw "MSBuild could not evaluate $($project.Relative): $(($output | Select-Object -Last 5) -join ' ')" }
 	return $serializer.DeserializeObject(($output -join "`n"))

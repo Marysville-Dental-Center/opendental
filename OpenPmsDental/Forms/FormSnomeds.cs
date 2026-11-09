@@ -30,23 +30,18 @@ namespace OpenPmsDental {
 				gridMain.SelectionMode=GridSelectionMode.MultiExtended;
 			}
 			ActiveControl=textCode;
-			//This check is here to prevent Snomeds from being used in non-member nations.
-			groupBox1.Visible=false;
-			Provider provider=Providers.GetProv(Security.CurUser.ProvNum);
-			if(provider==null) {
-				return;
-			}
-			string ehrKey="";
-			int yearValue=0;
-			List<EhrProvKey> listEhrProvKeys=EhrProvKeys.GetKeysByFLName(provider.LName,provider.FName);
-			if(listEhrProvKeys.Count!=0) {
-				ehrKey=listEhrProvKeys[0].ProvKey;
-				yearValue=listEhrProvKeys[0].YearValue;
-			}
-			if(FormEHR.ProvKeyIsValid(provider.LName,provider.FName,yearValue,ehrKey)) {
-				//EHR has been valid.
-				groupBox1.Visible=true;
-			}
+			//The One-Time Tools group (Map to ICD9). Open Dental showed it only to a provider with a valid EHR key, "to prevent Snomeds from being used in
+			//non-member nations". Each office imports SNOMED CT under its own licence, so there is no member-country check (E-6 of
+			//docs/specs/ehr-rebuild-plan.md): the group shows to users with the Setup permission whenever the snomed table has rows.
+			//The count is a query (a Middle Tier call on a Middle Tier client): asked only of a user who could see the tools, since the window
+			//also opens as a code picker.
+			bool hasSetup=Security.IsAuthorized(EnumPermType.Setup,true);
+			groupBox1.Visible=hasSetup && IsSnomedToolsVisible(hasSetup,Snomeds.GetCodeCount());
+		}
+
+		///<summary>True when the One-Time Tools group shows: the user has the Setup permission and the snomed table has rows. Pure.</summary>
+		public static bool IsSnomedToolsVisible(bool hasSetup,long countSnomeds) {
+			return hasSetup && countSnomeds>0;
 		}
 		
 		private void butSearch_Click(object sender,EventArgs e) {
@@ -146,10 +141,37 @@ namespace OpenPmsDental {
 			DialogResult=DialogResult.OK;
 		}
 
+		///<summary>Map to ICD9 changes every problem definition it can, so it needs ProblemDefEdit, as the problem windows do (section 5.1 of
+		///docs/specs/ehr-rebuild-plan.md). The standard message comes before the confirmation; MapIcd9ToSnomed checks the permission again.</summary>
 		private void butMapToSnomed_Click(object sender,EventArgs e) {
+			if(!Security.IsAuthorized(EnumPermType.ProblemDefEdit)) {
+				return;
+			}
 			if(!MsgBox.Show(this,MsgBoxButtons.OKCancel,"Will add SNOMED CT code to existing problems list only if the ICD9 code correlates to exactly one SNOMED CT code. If there is any ambiguity at all the code will not be added.")) {
 				return;
 			}
+			int changeCount=MapIcd9ToSnomed(out string error);
+			if(error!="") {
+				MessageBox.Show(error);
+				return;
+			}
+			MessageBox.Show(Lan.g(this,"SNOMED CT codes added: ")+changeCount);
+		}
+
+		///<summary>Adds the SNOMED CT code to every problem definition that has none and whose ICD-9 code maps to exactly one SNOMED CT code
+		///(Snomeds.GetICD9toSNOMEDDictionary), as the button always did. Needs ProblemDefEdit, checked here without a message: without it, returns -1
+		///with the reason and changes nothing. Writes one ProblemDefEdit security log entry with the count, and signals InvalidType.Diseases when a
+		///definition changed. Returns the number of definitions changed.</summary>
+		public static int MapIcd9ToSnomed(out string error) {
+			string errorAuthorization="";
+			if(!Security.IsAuthorized(EnumPermType.ProblemDefEdit,DateTime.MinValue,actionNotAuthorized:x => errorAuthorization=x)) {
+				error=errorAuthorization;
+				if(error=="") {
+					error=Lan.g("FormSnomeds","Not authorized for")+" "+GroupPermissions.GetDesc(EnumPermType.ProblemDefEdit);
+				}
+				return -1;
+			}
+			error="";
 			int changeCount=0;
 			Dictionary<string,string> dictionaryIcd9ToSnomed = Snomeds.GetICD9toSNOMEDDictionary();
 			//Jordan 2022-11-15-Dict ok as exception to normal patterns
@@ -160,7 +182,12 @@ namespace OpenPmsDental {
 				DiseaseDefs.Update(listDiseaseDefs[i]);
 				changeCount++;
 			}
-			MessageBox.Show(Lan.g(this,"SNOMED CT codes added: ")+changeCount);
+			SecurityLogs.MakeLogEntry(EnumPermType.ProblemDefEdit,0,"Map to ICD9 (SNOMED CT window): SNOMED CT codes added to "+changeCount
+				+" problem definitions from their ICD-9 codes.");
+			if(changeCount>0) {
+				DataValid.SetInvalid(InvalidType.Diseases);
+			}
+			return changeCount;
 		}
 
 		private void butOK_Click(object sender,EventArgs e) {
