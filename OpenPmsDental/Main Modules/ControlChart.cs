@@ -6409,7 +6409,9 @@ namespace OpenPmsDental {
 			//called via FillProgNotes() when ModuleSelected() is invoked, therefore, this event will fire when ModuleSelected() is called.  By only 
 			//firing this event here, we avoid duplicate events.
 			PatientDashboardDataEventArgs patientDashboardDataEventArgs=new PatientDashboardDataEventArgs();
-			if(dateLimit==DateTime.Today) {
+			//The chart's image is made only when a Patient Dashboard is shown to take it (DashToothChart.SetData is its only reader); a dashboard
+			//that opens later makes its own (DashToothChart.RefreshData).
+			if(dateLimit==DateTime.Today && FormOpenDental.IsDashboardVisible) {
 				try {
 					patientDashboardDataEventArgs.ImageToothChart=_toothChartRelay.GetBitmap();
 				}

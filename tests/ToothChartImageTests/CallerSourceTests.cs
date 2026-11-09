@@ -116,6 +116,31 @@ namespace ToothChartImageTests {
 		}
 
 		[TestMethod]
+		public void ChartModule_MakesTheDashboardImage_OnlyWhenADashboardCanShowIt() {
+			string fill=SourceText.GetMethod(SourceText.ReadCode(CONTROL_CHART),"private void FillToothChart(bool retainSelection,DateTime dateLimit) {");
+			SourceText.AssertInOrder(fill,"ControlChart.FillToothChart's dashboard image",
+				"PatientDashboardDataEventArgs patientDashboardDataEventArgs=new PatientDashboardDataEventArgs();",
+				"if(dateLimit==DateTime.Today && FormOpenDental.IsDashboardVisible) {",
+				"patientDashboardDataEventArgs.ImageToothChart=_toothChartRelay.GetBitmap();",
+				"ODEvent.Fire(ODEventType.ModuleSelected,patientDashboardDataEventArgs);");
+			Assert.AreEqual(1,Regex.Matches(fill,@"GetBitmap\(\)").Count,"The guarded image is the refill's only picture.");
+			//The image's only reader is the dashboard's tooth chart widget, which makes its own image when it opens later.
+			List<string> listReaders=new List<string>();
+			foreach(string relative in SourceText.GetCsFiles("OpenPmsDental")) {
+				if(Regex.IsMatch(SourceText.ReadCode(relative),@"\.ImageToothChart\b")) {
+					listReaders.Add(relative);
+				}
+			}
+			CollectionAssert.AreEquivalent(new[] { CONTROL_CHART,@"OpenPmsDental\User Controls\Dashboard\DashToothChart.cs",
+				@"OpenPmsDental\User Controls\Dashboard\PatientDashboardDataEventArgs.cs" },listReaders.ToArray());
+			string dash=SourceText.ReadCode(@"OpenPmsDental\User Controls\Dashboard\DashToothChart.cs");
+			SourceText.AssertInOrder(SourceText.GetMethod(dash,"public void RefreshData(Patient pat,SheetField sheetField) {"),"DashToothChart.RefreshData",
+				"_imgToothChart=GetToothChart(pat,treatPlan,listAppts:listAppts);");
+			StringAssert.Contains(SourceText.ReadCode(FORM_OPEN_DENTAL),
+				"return (!_formOpenDentalSingleton.splitContainer.Panel2Collapsed && _formOpenDentalSingleton.userControlDashboard.IsInitialized);");
+		}
+
+		[TestMethod]
 		public void Callers_HaveNoPaintSwitchesOrToothInitialLoopsOrHardwareLoops() {
 			foreach(string relative in new[] { CONTROL_CHART,CONTROL_TREAT,SHEET_PRINTING,FORM_BIG }) {
 				string code=SourceText.ReadCode(relative);
