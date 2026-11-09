@@ -210,7 +210,11 @@ try{
 	if(-not $Dll){ $Dll=Join-Path $Root 'tests\ProjectFileTests\bin\Debug\ProjectFileTests.dll' }
 	if(-not (Test-Path -LiteralPath $Dll -PathType Leaf)){ throw "No $Dll. Build tests\ProjectFileTests through the build lane (or pass -Build)." }
 	$Dll=(Resolve-Path -LiteralPath $Dll).Path
-	#A copy of the DLL's folder, so the build output is not locked while this process runs.
+	#A copy of the DLL's folder, so the build output is not locked while this process runs. The copy stays loaded until the process ends, so
+	#it cannot be deleted at the end; the copies of earlier runs (more than an hour old, so no run still uses them) are deleted here.
+	Get-ChildItem -LiteralPath $env:TEMP -Directory -Filter 'Test-ProjectFileEvaluator_*' -ErrorAction SilentlyContinue |
+		Where-Object { $_.LastWriteTime -lt (Get-Date).AddHours(-1) } |
+		ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
 	$copyFolder=Join-Path $env:TEMP ('Test-ProjectFileEvaluator_'+[guid]::NewGuid().ToString('N'))
 	New-Item -ItemType Directory -Force -Path $copyFolder | Out-Null
 	Get-ChildItem -LiteralPath (Split-Path -Parent $Dll) -File | Where-Object { $_.Extension -in @('.dll','.pdb','.config','.exe') } |

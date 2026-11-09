@@ -4,8 +4,12 @@
 // WebReferenceUrl's %3f is a '?'), while an escaped ';' or '*' stays part of a name instead of splitting a list or matching files. Checked
 // against MSBuild 18 -getProperty and -getItem on the same text (S1-T3's probe), and on the repository's own projects.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ProjectFileTests {
@@ -111,17 +115,41 @@ namespace ProjectFileTests {
 		}
 
 		[TestMethod]
-		public void RepositoryProjects_GetTheirEscapedValuesUnescaped() {
-			string root=FixtureFolder.RepoRoot();
-			//The values the S1-T2 check found wrong: MSBuild 18 -getProperty gives 1.0.0.* and -getItem ".NET Framework 2.0 (x86)".
-			ProjectFile projectFile=ProjectFile.Load(Path.Combine(root,"OpenPmsDental","OpenPmsDental.csproj"));
-			StringAssert.Contains(File.ReadAllText(projectFile.FullPath),"<ApplicationVersion>1.0.0.%2a</ApplicationVersion>","The file still writes it escaped.");
-			Assert.AreEqual("1.0.0.*",projectFile.GetProperty("ApplicationVersion"));
-			Assert.IsTrue(projectFile.GetItems("BootstrapperPackage").Any(x => x.GetMetadata("ProductName")==".NET Framework 2.0 (x86)"));
-			Assert.IsFalse(projectFile.GetItems("BootstrapperPackage").Any(x => x.GetMetadata("ProductName").Contains("%28")));
-			Assert.IsTrue(projectFile.GetItems("WebReferenceUrl").Any(x => x.Include.EndsWith("SMSService?wsdl")
-				&& x.GetMetadata("UpdateFromURL")=="https://www.callfire.com/service/SMSService?wsdl"));
-			Assert.AreEqual("1.0.0.*",ProjectFile.Load(Path.Combine(root,"SparksToothChart","SparksToothChart.csproj")).GetProperty("ApplicationVersion"));
+		public void RepositoryProjects_HandOutNoEscapedValue() {
+			//The values the S1-T2 check found wrong were escaped in the files (ApplicationVersion 1.0.0.%2a, a BootstrapperPackage's ProductName
+			//with %28x86%29, a WebReferenceUrl with %3f, in the classic projects of today): no property the files of a project of the solution
+			//filter set, no Include and no metadata comes out with an escape in it. Checked whatever the projects hold, so it holds as stage 1
+			//converts them and drops their ClickOnce properties.
+			Regex regexEscape=new Regex("%[0-9A-Fa-f]{2}");
+			List<string> listProblems=new List<string>();
+			int countEscapedInFiles=0;
+			foreach(string path in ProjectFile.GetSolutionFilterProjects(Path.Combine(FixtureFolder.RepoRoot(),"OpenDental.Local.slnf"))) {
+				ProjectFile projectFile=ProjectFile.Load(path);
+				foreach(string file in projectFile.FilesRead) {
+					foreach(XElement xElementProperty in XDocument.Load(file).Descendants().Where(x => x.Parent!=null && x.Parent.Name.LocalName=="PropertyGroup"
+						&& x.Parent.Parent!=null && x.Parent.Parent.Name.LocalName!="Target"))
+					{
+						if(!regexEscape.IsMatch(xElementProperty.Value) || !projectFile.IsPropertyKnown(xElementProperty.Name.LocalName)) {
+							continue;
+						}
+						countEscapedInFiles++;
+						string value=projectFile.GetProperty(xElementProperty.Name.LocalName);
+						if(regexEscape.IsMatch(value)) {
+							listProblems.Add(projectFile.Name+": $("+xElementProperty.Name.LocalName+") is "+value);
+						}
+					}
+				}
+				foreach(ProjectItem projectItem in projectFile.GetAllItems()) {
+					if(regexEscape.IsMatch(projectItem.Include)) {
+						listProblems.Add(projectFile.Name+": "+projectItem);
+					}
+					foreach(KeyValuePair<string,string> pair in projectItem.Metadata.Where(x => regexEscape.IsMatch(x.Value))) {
+						listProblems.Add(projectFile.Name+": "+projectItem+" "+pair.Key+"="+pair.Value);
+					}
+				}
+			}
+			Console.WriteLine(countEscapedInFiles+" properties written escaped in the projects' files.");
+			Assert.AreEqual(0,listProblems.Count,string.Join("; ",listProblems.Take(20)));
 		}
 	}
 }
