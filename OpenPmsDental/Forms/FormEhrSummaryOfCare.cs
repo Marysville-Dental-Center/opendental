@@ -157,9 +157,21 @@ namespace OpenPmsDental {
 			//The document stays in memory while it is shown: the patient's clinical document never sits on disk, and a crash leaves nothing behind.
 			//An older version wrote it (and the email's stylesheet) to the program's temp folder until the window closed; remove what one left there.
 			DeleteOldCcdFiles(Path.Combine(Path.GetTempPath(),ProgramNames.TempFolderName),DateTime.Now.AddHours(-1));
-			using FormEhrSummaryCcdEdit formESCD=new FormEhrSummaryCcdEdit(doc.InnerXml,htmlRendered,patCur,note);
+			//A CCR gets no reconcile buttons, as before, when it showed as raw text only.
+			Patient patReconcile=GetPatientReconcile(isCcr,patCur);
+			using FormEhrSummaryCcdEdit formESCD=new FormEhrSummaryCcdEdit(doc.InnerXml,htmlRendered,patReconcile,note);
 			formESCD.ShowDialog();
 			return formESCD.DidPrint;
+		}
+
+		///<summary>The patient the CCD window offers to reconcile the document into, or null for none, which hides its three reconcile buttons:
+		///patCur for a CCD, never a patient for a CCR. The reconcile code (EhrCCD.GetListMedicationPats and the others) reads the CDA templates of a
+		///CCD, not a CCR's elements.</summary>
+		public static Patient GetPatientReconcile(bool isCcr,Patient patCur) {
+			if(isCcr) {
+				return null;
+			}
+			return patCur;
 		}
 
 		///<summary>The names of the files an older version wrote into the program's temp folder while it showed a CCD or CCR: the document and its

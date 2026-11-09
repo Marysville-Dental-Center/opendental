@@ -265,7 +265,7 @@ namespace LibWebTests {
 			foreach(string text in new[] { "File.","WriteAll","GetTempFolderPath","GetRandomTempFile","FileStream","StreamWriter" }) {
 				Assert.IsFalse(sourceDisplay.Contains(text),"DisplayCCD: "+text);
 			}
-			StringAssert.Contains(sourceDisplay,"new FormEhrSummaryCcdEdit(doc.InnerXml,htmlRendered,patCur,note)");
+			StringAssert.Contains(sourceDisplay,"new FormEhrSummaryCcdEdit(doc.InnerXml,htmlRendered,patReconcile,note)");
 			StringAssert.Contains(sourceDisplay,"DeleteOldCcdFiles(Path.Combine(Path.GetTempPath(),ProgramNames.TempFolderName),DateTime.Now.AddHours(-1));");
 			//The limits are checked on the text before the program builds its own XmlDocument (InnerXml writes recursively), and the document is
 			//built with the strict reader the limits were counted with, never with LoadXml's more lenient one.
@@ -278,6 +278,29 @@ namespace LibWebTests {
 			foreach(string text in new[] { "File.","Path.GetTemp","FileStream","StreamWriter" }) {
 				Assert.IsFalse(sourceStarter.Contains(text),"EhrStylesheetStarter: "+text);
 			}
+		}
+
+		///<summary>A CCR never gets the three reconcile buttons, as before, when it showed as raw text only: they run the CCD's reconcile code
+		///(EhrCCD.GetList...), which reads CDA templates. DisplayCCD gives the window the patient only for a CCD, and the window shows the buttons only
+		///for a patient of the database; a document over the limits gets no patient either.</summary>
+		[TestMethod]
+		public void CcdView_ReconcileButtons_OnlyForACcd() {
+			OpenPmsDentalBusiness.Patient patient=new OpenPmsDentalBusiness.Patient { PatNum=5 };
+			Assert.IsFalse(FormEhrSummaryCcdEdit.IsReconcileShown(FormEhrSummaryOfCare.GetPatientReconcile(isCcr:true,patient)),"A CCR: no reconcile buttons.");
+			Assert.IsTrue(FormEhrSummaryCcdEdit.IsReconcileShown(FormEhrSummaryOfCare.GetPatientReconcile(isCcr:false,patient)),"A CCD: the buttons.");
+			Assert.AreSame(patient,FormEhrSummaryOfCare.GetPatientReconcile(isCcr:false,patient));
+			Assert.IsFalse(FormEhrSummaryCcdEdit.IsReconcileShown(null),"No patient.");
+			Assert.IsFalse(FormEhrSummaryCcdEdit.IsReconcileShown(new OpenPmsDentalBusiness.Patient()),"A patient not in the database.");
+			//DisplayCCD decides with isCcr (the root element ContinuityOfCareRecord) and gives the window that patient; the window's Load hides the
+			//buttons by IsReconcileShown; a document over the limits opens the window with no patient.
+			string sourceDisplay=GetDisplayCcdSource(TestPaths.ReadSource("OpenPmsDental","Forms","FormEhrSummaryOfCare.cs"));
+			StringAssert.Contains(sourceDisplay,"bool isCcr=rootName==\"continuityofcarerecord\" || rootName==\"ccr:continuityofcarerecord\";");
+			StringAssert.Contains(sourceDisplay,"Patient patReconcile=GetPatientReconcile(isCcr,patCur);");
+			StringAssert.Contains(sourceDisplay,"new FormEhrSummaryCcdEdit(strXmlCCD,null,null,noteLimits)");
+			Assert.AreEqual(2,Regex.Matches(sourceDisplay,@"new FormEhrSummaryCcdEdit\(").Count,"DisplayCCD opens the window in two places.");
+			Assert.AreEqual(0,Regex.Matches(sourceDisplay,@"new FormEhrSummaryCcdEdit\([^)]*\bpatCur\b").Count,"Neither gets patCur itself.");
+			string sourceForm=TestPaths.ReadSource("OpenPmsDental","Forms","FormEhrSummaryCcdEdit.cs");
+			StringAssert.Contains(sourceForm,"if(!IsReconcileShown(_patCur)) {");
 		}
 
 		///<summary>The page the window shows: the rendered page with the note encoded as its first paragraph; without one, the indented XML view; a

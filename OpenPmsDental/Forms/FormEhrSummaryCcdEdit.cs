@@ -72,8 +72,14 @@ namespace OpenPmsDental {
 			return html.Insert(match.Index+match.Length,paragraph);
 		}
 
+		///<summary>True when the window shows its three reconcile buttons: for a patient of the database. DisplayCCD passes none for a CCR
+		///(FormEhrSummaryOfCare.GetPatientReconcile) and for a document over the stylesheet child's limits.</summary>
+		public static bool IsReconcileShown(Patient patCur) {
+			return patCur!=null && patCur.PatNum!=0;
+		}
+
 		private void FormEhrSummaryCcdEdit_Load(object sender,EventArgs e) {
-			if(_patCur==null || _patCur.PatNum==0) {//No patient is currently selected.  Do not show reconcile UI.
+			if(!IsReconcileShown(_patCur)) {//No patient is currently selected.  Do not show reconcile UI.
 				labelReconcile.Visible=false;
 				butReconcileAllergies.Visible=false;
 				butReconcileMedications.Visible=false;
