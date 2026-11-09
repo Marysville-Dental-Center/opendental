@@ -33,7 +33,7 @@ namespace VBRIDGE2Tests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"CREATE DATABASE `"+_dbName+"` CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
 				}
@@ -43,7 +43,7 @@ namespace VBRIDGE2Tests {
 				return;
 			}
 			//The server answers, so from here on a failure is a real failure, not a reason to skip.
-			using(MySqlConnection connection=new MySqlConnection(CONNECTION+";Database="+_dbName)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION+";Database="+_dbName))) {
 				connection.Open();
 				foreach(SchemaTable table in SchemaVerifier.GetReference().Tables) {
 					Exec(connection,table.ToDdl());
@@ -52,7 +52,7 @@ namespace VBRIDGE2Tests {
 				Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0'),('EasyHideDentalSchools','1')");
 			}
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(SERVER,_dbName,"root","","","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(SERVER,_dbName,"root","","","",DatabaseType.MySql,true,DevDbTls.GetSslCa(SERVER));
 			Security.CurUser=new Userod { UserNum=1,UserName="Synthetic" };
 			Prefs.RefreshCache();
 		}
@@ -63,7 +63,7 @@ namespace VBRIDGE2Tests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS `"+_dbName+"`");
 				}

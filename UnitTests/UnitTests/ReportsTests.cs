@@ -38,7 +38,8 @@ namespace UnitTests.Reports_Tests {
 				,""
 				,USER_LOW_NAME
 				,USER_LOW_PASS
-				,DatabaseType.MySql);
+				,DatabaseType.MySql
+				,DevDbTls.GetSslCa(TestServer));
 		}
 
 		[TestInitialize]

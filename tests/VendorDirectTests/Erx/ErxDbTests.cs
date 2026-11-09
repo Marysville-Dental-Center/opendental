@@ -27,7 +27,7 @@ namespace VendorDirectTests.Erx {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -60,7 +60,7 @@ namespace VendorDirectTests.Erx {
 					Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0'),('NewCropName',''),"
 						+"('NewCropPartnerName',''),('NewCropPassword',''),('NewCropAccountId','1234-W6c43')");
 				}
-				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 				Prefs.RefreshCache();
 				Programs.InsertIfMissing(ProgramName.eRx,"eRx");
 				Programs.RefreshCache();
@@ -77,7 +77,7 @@ namespace VendorDirectTests.Erx {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -94,8 +94,8 @@ namespace VendorDirectTests.Erx {
 			}
 			ErxTestData.UseEnUs();
 			//Other test classes may have pointed the connection at their own scratch database.
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
-			using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 				connection.Open();
 				Exec(connection,"DELETE FROM "+DB_NAME+".programproperty");
 				Exec(connection,"DELETE FROM "+DB_NAME+".oidexternal");
@@ -139,7 +139,7 @@ namespace VendorDirectTests.Erx {
 			string root=DoseSpot.GetDoseSpotRoot();
 			Assert.AreEqual(OIDInternals.LegacyOidArc+".25128."+DoseSpot.LocalRootSuffix,root);
 			Assert.AreEqual(root,DoseSpot.GetDoseSpotRoot(),"Idempotent.");
-			using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 				connection.Open();
 				using(MySqlCommand mySqlCommand=new MySqlCommand("SELECT COUNT(*) FROM "+DB_NAME+".oidexternal",connection)) {
 					Assert.AreEqual(1L,Convert.ToInt64(mySqlCommand.ExecuteScalar()));
@@ -260,7 +260,7 @@ namespace VendorDirectTests.Erx {
 		public void RefreshPrescriptions_SendsNothingWhileNotConfigured() {
 			NewCropConfig.InsertMissingProperties();
 			SetRaw(OpenPmsDentalBusiness.Erx.PropertyDescs.ErxOption,0,((int)ErxOption.NewCrop).ToString());
-			using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 				connection.Open();
 				Exec(connection,"UPDATE "+DB_NAME+".program SET Enabled=1 WHERE ProgName='eRx'");
 			}

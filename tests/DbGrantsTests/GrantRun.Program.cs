@@ -515,14 +515,16 @@ namespace DbGrantsTests {
 			Report.Allowed("MiscData.MakeABackup(isAutoBackup:false): the Backup window's backup of an InnoDB database",
 				() => MiscData.MakeABackup(isAutoBackup:false));
 			Report.Allowed("MiscData.MakeABackup(serverName,user,pass,doVerify:true) on this server: the archive tab's backup with the row counts",
-				() => MiscData.MakeABackup(serverName:GrantServer.SERVER,user:Account,pass:_password,doVerify:true));
+				() => MiscData.MakeABackup(serverName:GrantServer.SERVER,user:Account,pass:_password,doVerify:true,
+					sslCa:DevDbTls.GetSslCa(GrantServer.SERVER)));
 			//The archive tab's backup to another server (here this server under another name, so that the program takes that path) creates the
 			//backup database and its tables there, then copies each table's rows with INSERT statements (owner question DB-SEC 2, 2026-11-07: before,
 			//MySqlBulkLoader's LOAD DATA LOCAL INFILE, which MySqlConnector refuses without AllowLoadLocalInfile=true, stopped it at the first table
 			//with rows). It needs the rights of a backup on this server: CREATE, INSERT and SELECT on the backup database.
 			Report.Allowed("MiscData.MakeABackup to another server (the archive tab; here "+GrantServer.SERVER
 				+":3306): CREATE DATABASE and the tables there, then INSERT statements with the rows",
-				() => MiscData.MakeABackup(serverName:GrantServer.SERVER+":3306",user:Account,pass:_password,doVerify:true));
+				() => MiscData.MakeABackup(serverName:GrantServer.SERVER+":3306",user:Account,pass:_password,doVerify:true,
+					sslCa:DevDbTls.GetSslCa(GrantServer.SERVER+":3306")));
 			Report.Allowed("Backup, repair and optimize after a MariaDB version change (Shared.BackupRepairAndOptimize: MakeABackup, "
 				+"RepairAndOptimize)",() => {
 					MiscData.MakeABackup();

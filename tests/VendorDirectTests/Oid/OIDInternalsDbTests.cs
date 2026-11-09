@@ -23,7 +23,7 @@ namespace VendorDirectTests.Oid {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION_SERVER)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION_SERVER))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -48,7 +48,7 @@ namespace VendorDirectTests.Oid {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION_SERVER)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION_SERVER))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -64,9 +64,9 @@ namespace VendorDirectTests.Oid {
 				Assert.Inconclusive(_skipReason);
 			}
 			//Other test classes point the static connection at their own scratch databases, so set it for every test.
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			Prefs.RefreshCache();
-			using(MySqlConnection connection=new MySqlConnection(CONNECTION_SERVER+";Database="+DB_NAME)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION_SERVER+";Database="+DB_NAME))) {
 				connection.Open();
 				Exec(connection,"DELETE FROM oidinternal");
 			}

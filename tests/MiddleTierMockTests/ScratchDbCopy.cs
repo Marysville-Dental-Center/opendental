@@ -92,7 +92,7 @@ namespace MiddleTierMockTests {
 		///user is root unless another account is given.</summary>
 		public static OpenDentalServerMockIIS NewMockServer(string userLow=ScratchDb.User,string passLow=ScratchDb.Password) {
 			return new OpenDentalServerMockIIS(server:ScratchDb.Server,db:DbName,user:ScratchDb.User,password:ScratchDb.Password,userLow:userLow,
-				passLow:passLow,dbType:DatabaseType.MySql);
+				passLow:passLow,dbType:DatabaseType.MySql,sslCa:DevDbTls.GetSslCa(ScratchDb.Server));
 		}
 
 		///<summary>Call from [ClassCleanup] of each class that uses the copy. Drops the copy if this run made it; a later test makes a new one.</summary>

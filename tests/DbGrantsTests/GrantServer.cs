@@ -1,5 +1,5 @@
 // Connections of the manual grants test: the local MariaDB at 127.0.0.1:3306 only, built by the program's own connection string builder and
-// opened through the connection rule (a loopback server, exempt from TLS).
+// opened through the connection rule (a loopback server, exempt from the rule; with the local test server's CA when it has one, DevDbTls).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -17,9 +17,10 @@ namespace DbGrantsTests {
 		public const string ROOT_USER="root";
 		public const string ROOT_PASSWORD="";
 
-		///<summary>The program's connection string for this server, database and user (DataConnection.BuildSimpleConnectionString).</summary>
+		///<summary>The program's connection string for this server, database and user (DataConnection.BuildSimpleConnectionString), with the local
+		///test server's CA when it has one (DevDbTls: SslMode=VerifyCA).</summary>
 		public static string GetConnectionString(string database,string user,string password) {
-			return DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,database,user,password);
+			return DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,database,user,password,DevDbTls.GetSslCa(SERVER));
 		}
 
 		///<summary>An open connection through the connection rule (DbConnectionSecurity.NewMySqlConnection).</summary>

@@ -37,7 +37,7 @@ namespace P262LinksTests {
 			}
 			string dbName=PREFIX+DateTime.UtcNow.ToString("yyMMddHHmmss")+"_"+System.Diagnostics.Process.GetCurrentProcess().Id+"_"+new Random().Next(1000,10000);
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"CREATE DATABASE `"+dbName+"` CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
 				}
@@ -48,7 +48,7 @@ namespace P262LinksTests {
 			}
 			//The server answers, so from here on a failure is a real failure, not a reason to skip.
 			DbName=dbName;
-			using(MySqlConnection connection=new MySqlConnection(CONNECTION+";Database="+DbName)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION+";Database="+DbName))) {
 				connection.Open();
 				foreach(SchemaTable table in SchemaVerifier.GetReference().Tables) {
 					Exec(connection,table.ToDdl());
@@ -56,7 +56,7 @@ namespace P262LinksTests {
 				Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0'),('EasyHideDentalSchools','1')");
 			}
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(SERVER,DbName,"root","","","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(SERVER,DbName,"root","","","",DatabaseType.MySql,true,DevDbTls.GetSslCa(SERVER));
 			Security.CurUser=new Userod { UserNum=1,UserName="Synthetic" };
 			Prefs.RefreshCache();
 		}
@@ -67,7 +67,7 @@ namespace P262LinksTests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS `"+DbName+"`");
 				}

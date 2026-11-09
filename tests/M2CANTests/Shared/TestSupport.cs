@@ -109,7 +109,7 @@ namespace M2CANTests {
 					return _skipReason;
 				}
 				try {
-					using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+					using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 						connection.Open();
 						Exec(connection,"CREATE DATABASE `"+Name+"` CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
 					}
@@ -119,7 +119,7 @@ namespace M2CANTests {
 					return _skipReason;
 				}
 				//The server answers, so from here on a failure is a real failure, not a reason to skip.
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION+";Database="+Name)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION+";Database="+Name))) {
 					connection.Open();
 					foreach(SchemaTable table in SchemaVerifier.GetReference().Tables) {
 						Exec(connection,table.ToDdl());
@@ -128,7 +128,7 @@ namespace M2CANTests {
 					Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES('RandomPrimaryKeys','0'),('DxIcdVersion','10')");
 				}
 				RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-				new DataConnection().SetDb(SERVER,Name,"root","","","",DatabaseType.MySql,true);
+				new DataConnection().SetDb(SERVER,Name,"root","","","",DatabaseType.MySql,true,DevDbTls.GetSslCa(SERVER));
 				Security.CurUser=new Userod { UserNum=1,UserName="Synthetic" };
 				_skipReason=null;
 				return null;
@@ -150,7 +150,7 @@ namespace M2CANTests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS `"+Name+"`");
 				}

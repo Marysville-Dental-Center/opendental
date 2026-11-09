@@ -350,7 +350,9 @@ namespace xCrudGenerator {
 				throw new ApplicationException("Not allowed to connect to the 'customers' database.");
 			}
 			DataConnection dcon=new DataConnection();
-			dcon.SetDb(server,dbName,user,password,"","",DatabaseType.MySql);
+			//A developer tool, never released: the local test server gets the test CA once tools/Enable-LocalDbTls.ps1 has run (the program's own
+			//loopback string with a CA, SslMode=VerifyCA); any other server "" as before (docs/port-notes/DB-TLS.md).
+			dcon.SetDb(server,dbName,user,password,"","",DatabaseType.MySql,DevDbTls.GetSslCa(server));
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
 		}
 

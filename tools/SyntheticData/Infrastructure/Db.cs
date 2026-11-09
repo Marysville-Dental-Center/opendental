@@ -46,9 +46,10 @@ namespace SyntheticData.Infrastructure {
 				DefaultCommandTimeout=1800,
 				ConnectionTimeout=10,
 				Pooling=false,
-				SslMode=MySqlSslMode.None,
 				AllowPublicKeyRetrieval=true,
 			};
+			//The local test server with its CA: TLS, the server verified (VerifyCA). Without it, and on any other port: SslMode=None, as before.
+			LocalTls.Apply(builder,settings.Server,settings.Port);
 			if(database!=null) {
 				builder.Database=database;
 			}

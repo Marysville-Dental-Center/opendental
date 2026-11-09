@@ -129,7 +129,7 @@ namespace MaintenanceTests {
 		}
 
 		public static void Connect() {
-			new DataConnection().SetDb(Server,DbName,User,Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(Server,DbName,User,Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));
 		}
 
 		///<summary>Call from TestInitialize of a database test: marks the test inconclusive when there is no scratch database, otherwise empties the
@@ -239,7 +239,7 @@ namespace MaintenanceTests {
 			if(database!=null) {
 				connectionString+=";Database="+database;
 			}
-			MySqlConnection connection=new MySqlConnection(connectionString);
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(connectionString));
 			connection.Open();
 			return connection;
 		}

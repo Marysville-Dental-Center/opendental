@@ -1,5 +1,7 @@
 // The read-only and reporting servers of their own through ConnectionStore and the database preferences, on the local MariaDB at
-// 127.0.0.1:3306 only (the rule exempts it). Scratch databases test_dbsec_*, dropped afterwards; synthetic preference rows only.
+// 127.0.0.1:3306 only (the rule exempts it). Scratch databases test_dbsec_*, dropped afterwards; synthetic preference rows only. With the
+// local test server's CA (DevDbTls, docs/port-notes/DB-TLS.md) every connection here is encrypted: the main connection's SslCa, and the
+// read-only server's own CA preference, which takes it the old way (SslMode=VerifyCA).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Globalization;
@@ -41,7 +43,7 @@ namespace DbConnectionSecurityTests {
 		///<summary>Runs the commands in one connection to the local server as root (blank password), the scratch databases' only user here.</summary>
 		private static void Exec(params string[] arrayCommands) {
 			using(MySqlConnection mySqlConnection=DbConnectionSecurity.NewMySqlConnection(
-				DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,"","root","")))
+				DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,"","root","",DevDbTls.GetSslCa(SERVER))))
 			{
 				mySqlConnection.Open();
 				foreach(string command in arrayCommands) {
@@ -72,7 +74,7 @@ namespace DbConnectionSecurityTests {
 		[TestMethod]
 		public void ConnectionStore_APreferenceWithAServer_IsItsOwnConnection_AnEmptyOneIsTheMainConnection() {
 			Thread.CurrentThread.CurrentCulture=new CultureInfo("en-US");
-			new DataConnection().SetDb(SERVER,_dbMain,"root","","","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(SERVER,_dbMain,"root","","","",DatabaseType.MySql,true,DevDbTls.GetSslCa(SERVER));
 			System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(typeof(ConnectionStore).TypeHandle);
 			//A read-only server of its own: its own server, database, user and password (never the main connection's, which is empty here).
 			const string CA_PREFERENCE=@"C:\Certificates\replica-ca.pem";
@@ -98,8 +100,10 @@ namespace DbConnectionSecurityTests {
 		[TestMethod]
 		public void ReadOnlyServerOfItsOwn_ReadsThere_TheOldWay_AndTheMainConnectionStaysAsItIs() {
 			Thread.CurrentThread.CurrentCulture=new CultureInfo("en-US");
-			new DataConnection().SetDb(SERVER,_dbMain,"root","","","",DatabaseType.MySql,true);
-			SeedPreferences(SERVER,_dbReplica,"root","");
+			new DataConnection().SetDb(SERVER,_dbMain,"root","","","",DatabaseType.MySql,true,DevDbTls.GetSslCa(SERVER));
+			//The read-only server's own CA preference: none (SslMode=none), or the local test server's CA (SslMode=VerifyCA), both the old way.
+			string caPreference=DevDbTls.GetSslCa(SERVER);
+			SeedPreferences(SERVER,_dbReplica,"root","",caPreference);
 			string connectionString=null;
 			string databaseUnpooled=null;
 			string probe=DataAction.GetString(() => {
@@ -116,7 +120,9 @@ namespace DbConnectionSecurityTests {
 			Assert.AreEqual("replica",probe,"The read went to the read-only server's database.");
 			Assert.AreEqual(_dbReplica,databaseUnpooled);
 			Assert.IsTrue(DbConnectionSecurity.IsPreferenceServerConnection(connectionString));
-			Assert.AreEqual(MySqlSslMode.None,new MySqlConnectionStringBuilder(connectionString).SslMode);
+			MySqlConnectionStringBuilder builderReadOnly=new MySqlConnectionStringBuilder(connectionString);
+			Assert.AreEqual(caPreference=="" ? MySqlSslMode.None : MySqlSslMode.VerifyCA,builderReadOnly.SslMode);
+			Assert.AreEqual(caPreference,builderReadOnly.SslCa,"Its own CA preference, never the main connection's.");
 			Assert.AreEqual(_dbMain,DataConnection.GetDatabaseName(),"The main connection is unchanged.");
 			Assert.IsFalse(DbConnectionSecurity.IsPreferenceServerConnection(DataConnection.GetConnectionString()));
 		}
@@ -124,8 +130,8 @@ namespace DbConnectionSecurityTests {
 		[TestMethod]
 		public void ConnectionLost_OnTheReadOnlyServer_IsOnlyTested_ItNeverBecomesTheMainConnection() {
 			Thread.CurrentThread.CurrentCulture=new CultureInfo("en-US");
-			new DataConnection().SetDb(SERVER,_dbMain,"root","","","",DatabaseType.MySql,true);
-			SeedPreferences(SERVER,_dbReplica,"root","");
+			new DataConnection().SetDb(SERVER,_dbMain,"root","","","",DatabaseType.MySql,true,DevDbTls.GetSslCa(SERVER));
+			SeedPreferences(SERVER,_dbReplica,"root","",DevDbTls.GetSslCa(SERVER));
 			//The string StartConnectionErrorRetry fires when the read-only server's connection is lost: GetCurrentConnectionString on that thread.
 			string connectionStringLost=DataAction.GetString(() => DataConnection.GetCurrentConnectionString(),ConnectionNames.DentalOfficeReadOnlyServer);
 			Assert.IsTrue(DbConnectionSecurity.IsPreferenceServerConnection(connectionStringLost));

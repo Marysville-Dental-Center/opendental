@@ -105,9 +105,9 @@ namespace UnitTests {
 			CreateAndSetUnitTestUser();
 			//The UnitTestsCore helpers that work on a thread of their own (DataAction.RunPractice, as StatementT.CreateStatement does) connect by
 			//the DentalOffice connection name, which the program reads from ConnectionStore.xml. A test host has no such file: point the name at
-			//this run's database, as the ported suites in tests/ do.
+			//this run's database, as the ported suites in tests/ do, with the local test server's CA when it has one (DevDbTls).
 			ConnectionStoreBase.OverrideConnection(ConnectionNames.DentalOffice,new CentralConnectionBase {
-				ServerName=TestServer,DatabaseName=UnitTestDbName,MySqlUser="root",MySqlPassword="" });
+				ServerName=TestServer,DatabaseName=UnitTestDbName,MySqlUser="root",MySqlPassword="",SslCa=DevDbTls.GetSslCa(TestServer) });
 			//A valid A-to-Z folder has a folder named A in it (FileAtoZ.GetValidPathFromString).
 			Directory.CreateDirectory(Path.Combine(AtoZFolder,"A"));
 			Prefs.UpdateString(PrefName.DocPath,AtoZFolder);

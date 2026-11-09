@@ -33,7 +33,7 @@ namespace M2UDSTests {
 				return "M2UDS_TEST_DB=skip";
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(SERVER_CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(SERVER_CONNECTION))) {
 					connection.Open();
 				}
 				return null;
@@ -62,7 +62,7 @@ namespace M2UDSTests {
 		///</summary>
 		public static void Connect(string dbName) {
 			Thread.CurrentThread.CurrentCulture=new CultureInfo("en-US");
-			new DataConnection().SetDb("127.0.0.1",dbName,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",dbName,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 		}
 
 		public static void Drop(string dbName) {
@@ -113,7 +113,7 @@ namespace M2UDSTests {
 		}
 
 		private static MySqlConnection OpenServer() {
-			MySqlConnection connection=new MySqlConnection(SERVER_CONNECTION);
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(SERVER_CONNECTION));
 			connection.Open();
 			return connection;
 		}

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
 
@@ -39,7 +40,7 @@ namespace VendorDirectTests {
 		public static void DropStale() {
 			Regex regex=new Regex("^"+PREFIX+@"[a-z0-9_]+_(\d{12})_\d+_\d{4}$");
 			List<string> listNames=new List<string>();
-			using(MySqlConnection connection=new MySqlConnection(SERVER_CONNECTION)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(SERVER_CONNECTION))) {
 				connection.Open();
 				using(MySqlCommand command=new MySqlCommand("SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME LIKE 'vendordirect\\_%'",
 					connection))

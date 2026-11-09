@@ -143,8 +143,8 @@ namespace EhrTests {
 		}
 
 		public static MySqlConnection OpenServer(string database="") {
-			MySqlConnection connection=new MySqlConnection("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
-				+(database=="" ? "" : ";Database="+database)+";Connection Timeout=15;Allow User Variables=true;Default Command Timeout=600");
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
+				+(database=="" ? "" : ";Database="+database)+";Connection Timeout=15;Allow User Variables=true;Default Command Timeout=600"));
 			connection.Open();
 			return connection;
 		}
@@ -176,7 +176,7 @@ namespace EhrTests {
 		///<summary>Points the business layer (DataCore, Db, the caches) at the database, with no Middle Tier.</summary>
 		public static void Connect(string name) {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(Server,name,User,Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(Server,name,User,Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));
 		}
 
 		///<summary>Every Middle Tier call of this thread goes through the mock server: the arguments and the result are serialized and run through
@@ -184,7 +184,7 @@ namespace EhrTests {
 		public static void UseMockMiddleTier() {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientMT;
 			OpenDentalServerProxy.MockOpenDentalServerCur=new OpenDentalServerMockIIS(server:Server,db:DbName,user:User,password:Password,userLow:User,
-				passLow:Password,dbType:DatabaseType.MySql);
+				passLow:Password,dbType:DatabaseType.MySql,sslCa:DevDbTls.GetSslCa(Server));
 		}
 
 		public static void UseDirectConnection() {

@@ -246,7 +246,7 @@ namespace AccountingTests {
 
 		private static void Connect() {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(SERVER,DB_NAME,USER,PASSWORD,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(SERVER,DB_NAME,USER,PASSWORD,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(SERVER));
 			Security.CurUser=new Userod { UserNum=7,UserName="synthetic" };
 			Cache.Refresh(InvalidType.Prefs);
 		}
@@ -292,7 +292,7 @@ namespace AccountingTests {
 		}
 
 		private static MySqlConnection OpenServer() {
-			MySqlConnection connection=new MySqlConnection("Server="+SERVER+";Port=3306;User ID="+USER+";Password="+PASSWORD+";Connection Timeout=5");
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server="+SERVER+";Port=3306;User ID="+USER+";Password="+PASSWORD+";Connection Timeout=5"));
 			connection.Open();
 			return connection;
 		}

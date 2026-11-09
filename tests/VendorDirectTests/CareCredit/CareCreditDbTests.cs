@@ -25,7 +25,7 @@ namespace VendorDirectTests.CareCreditTests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -42,7 +42,7 @@ namespace VendorDirectTests.CareCreditTests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -58,7 +58,7 @@ namespace VendorDirectTests.CareCreditTests {
 			if(_skipReason!=null) {
 				Assert.Inconclusive(_skipReason);
 			}
-			using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Database="+DB_NAME+";Connection Timeout=3")) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Database="+DB_NAME+";Connection Timeout=3"))) {
 				connection.Open();
 				Exec(connection,"DROP TABLE IF EXISTS program,programproperty,preference,carecreditwebresponse,providerclinic");
 				//Open Dental 24.3's providerclinic table.
@@ -95,7 +95,7 @@ namespace VendorDirectTests.CareCreditTests {
 					+"(1,'CareCreditPartnerCode','1065','',0,0,0),(1,'CareCreditOAuthToken','opaque-token-from-hq','',0,0,0),"
 					+"(1,'CareCreditMerchantNumber','5348120000000001','',0,0,0),(1,'QSBatchEnabled','2','',0,0,0)");
 			}
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			Prefs.RefreshCache();
 			Programs.RefreshCache();
 			ProgramProperties.RefreshCache();
@@ -341,7 +341,7 @@ namespace VendorDirectTests.CareCreditTests {
 		public void GetMerchantNumber_ClinicsOffUsesThePracticeRow() {
 			FillClinicsAndProviders();
 			SetClinicMerchantNumber(5,MERCHANT_CLINIC5);//Left from when clinics were on.
-			using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Database="+DB_NAME+";Connection Timeout=3")) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Database="+DB_NAME+";Connection Timeout=3"))) {
 				connection.Open();
 				Exec(connection,"UPDATE preference SET ValueString='1' WHERE PrefName='EasyNoClinics'");
 			}

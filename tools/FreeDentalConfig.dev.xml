@@ -11,6 +11,11 @@
   opendental_dev. For a non-default port write it as host:port in ComputerName, e.g. 127.0.0.1:3307.
   NoShowOnStartup=True skips the Choose Database window; set it to False to get the window back.
 
+  Once tools\Enable-LocalDbTls.ps1 has turned on TLS in the local MariaDB service, -WriteConfig also adds an
+  SslCa element after MySQLPassHash with the full path of the test CA, %LOCALAPPDATA%\OpenPmsDental\DevDbTls\ca.pem,
+  and OpenPmsDental.exe connects with TLS, verifying the server against that CA (docs/port-notes/DB-TLS.md).
+  Without it the connection to this computer has no TLS, which the server refuses once it requires TLS.
+
   Log in to the dev database as user Admin with a blank password.
 -->
 <ConnectionSettings>

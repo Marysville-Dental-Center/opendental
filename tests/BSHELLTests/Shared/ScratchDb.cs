@@ -37,7 +37,7 @@ namespace BSHELLTests {
 			DbName=PREFIX+DateTime.UtcNow.ToString("yyMMddHHmmss")+"_"+System.Diagnostics.Process.GetCurrentProcess().Id+"_"+new Random().Next(1000,10000);
 			try {
 				SchemaSnapshot schema=SchemaVerifier.GetReference();
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"CREATE DATABASE `"+DbName+"` CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
 					Exec(connection,"USE `"+DbName+"`");
@@ -47,7 +47,7 @@ namespace BSHELLTests {
 					Exec(connection,GetCreateTable(schema,"preference"));
 				}
 				RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-				new DataConnection().SetDb("127.0.0.1",DbName,"root","","root","",DatabaseType.MySql,true);
+				new DataConnection().SetDb("127.0.0.1",DbName,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			}
 			catch(Exception ex) {
 				_skipReason="No scratch MariaDB database: "+ex.GetBaseException().Message;
@@ -60,7 +60,7 @@ namespace BSHELLTests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS `"+DbName+"`");
 				}

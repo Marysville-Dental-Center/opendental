@@ -104,7 +104,7 @@ namespace ODOPTSTests {
 		///<summary>Points the business layer (DataCore, Db, the caches) at the scratch database.</summary>
 		public static void Connect() {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(Server,DbName,User,Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(Server,DbName,User,Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));
 		}
 
 		///<summary>The stored value of a preference row, or null when there is no row.</summary>
@@ -188,8 +188,8 @@ namespace ODOPTSTests {
 		}
 
 		private static MySqlConnection OpenServer() {
-			MySqlConnection connection=new MySqlConnection("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
-				+";Connection Timeout=15;Allow User Variables=true");
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
+				+";Connection Timeout=15;Allow User Variables=true"));
 			connection.Open();
 			return connection;
 		}

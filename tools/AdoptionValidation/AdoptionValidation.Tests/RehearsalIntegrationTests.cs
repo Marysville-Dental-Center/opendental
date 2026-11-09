@@ -1335,8 +1335,9 @@ namespace AdoptionValidation.Tests {
 		}
 
 		private static void RunClient(string fileName,string arguments) {
+			string tls=string.Concat(DataConnectionBase.DevDbTls.GetClientArguments(_server.Server,_server.Port).Select(x => "\""+x+"\" "));
 			ProcessStartInfo processStartInfo=new ProcessStartInfo(fileName,"--host="+_server.Server+" --port="+_server.Port+" --user="+_server.User
-				+" --protocol=TCP "+arguments) {
+				+" --protocol=TCP "+tls+arguments) {
 				UseShellExecute=false,
 				CreateNoWindow=true,
 				RedirectStandardError=true,

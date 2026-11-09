@@ -7,6 +7,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using DataConnectionBase;
 using MySqlConnector;
 
 namespace LibSpellTests {
@@ -142,8 +143,8 @@ namespace LibSpellTests {
 		}
 
 		public static MySqlConnection OpenServer() {
-			MySqlConnection mySqlConnection=new MySqlConnection("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
-				+";Connection Timeout=15;Pooling=false");
+			MySqlConnection mySqlConnection=new MySqlConnection(DevDbTls.Apply("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
+				+";Connection Timeout=15;Pooling=false"));
 			mySqlConnection.Open();
 			return mySqlConnection;
 		}

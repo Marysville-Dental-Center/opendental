@@ -26,7 +26,7 @@ namespace VendorDirectTests.Gmail {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -43,7 +43,7 @@ namespace VendorDirectTests.Gmail {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -59,7 +59,7 @@ namespace VendorDirectTests.Gmail {
 			if(_skipReason!=null) {
 				Assert.Inconclusive(_skipReason);
 			}
-			using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20;Database="+DB_NAME)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20;Database="+DB_NAME))) {
 				connection.Open();
 				Exec(connection,"DROP TABLE IF EXISTS program,programproperty,preference,signalod");
 				//The same definitions as Open Dental 24.3's tables.
@@ -81,7 +81,7 @@ namespace VendorDirectTests.Gmail {
 					+"ENGINE=MyISAM DEFAULT CHARSET=utf8mb3");
 				Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0')");
 			}
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			Prefs.RefreshCache();
 			Programs.RefreshCache();
 			ProgramProperties.RefreshCache();
@@ -123,7 +123,7 @@ namespace VendorDirectTests.Gmail {
 		[TestMethod]
 		public void EnsureProgram_RemovesARacingDuplicate() {
 			//Another workstation inserted a second GmailApi row at the same moment.
-			using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20;Database="+DB_NAME)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20;Database="+DB_NAME))) {
 				connection.Open();
 				Exec(connection,"INSERT INTO program (ProgName,ProgDesc,Enabled,Path,CommandLine,Note,PluginDllName,ButtonImage,FileTemplate,FilePath,"
 					+"IsDisabledByHq,CustErr) VALUES ('GmailApi','Gmail API',0,'','','','','','','',0,'')");
@@ -177,7 +177,7 @@ namespace VendorDirectTests.Gmail {
 			GoogleOAuthSettings.EnsureProgram();
 			RefreshCaches();
 			long programNum=GoogleOAuthSettings.GetProgramNum();
-			using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20;Database="+DB_NAME)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20;Database="+DB_NAME))) {
 				connection.Open();
 				Exec(connection,"UPDATE programproperty SET PropertyValue='odv2e$open-dental-ciphertext' WHERE ProgramNum="+programNum
 					+" AND PropertyDesc='Client Secret'");

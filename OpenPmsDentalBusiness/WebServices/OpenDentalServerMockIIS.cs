@@ -15,10 +15,12 @@ namespace OpenPmsDentalBusiness.WebServices {
 		private string _userLow="";
 		private string _passLow="";
 		private DatabaseType _dbType=DatabaseType.MySql;
+		private string _sslCa="";
 
-		///<summary>Optionally pass in database connection settings to override using the parent thread database context.</summary>
+		///<summary>Optionally pass in database connection settings to override using the parent thread database context. sslCa is the CA file for
+		///those settings, as DataConnection.SetDbT takes it (a server on this computer: SslMode=VerifyCA with it, SslMode=none without it).</summary>
 		public OpenDentalServerMockIIS(string server="",string db="",string user="",string password="",string userLow="",string passLow=""
-			,DatabaseType dbType=DatabaseType.MySql)
+			,DatabaseType dbType=DatabaseType.MySql,string sslCa="")
 		{
 			_server=server;
 			_db=db;
@@ -27,6 +29,7 @@ namespace OpenPmsDentalBusiness.WebServices {
 			_userLow=userLow;
 			_passLow=passLow;
 			_dbType=dbType;
+			_sslCa=sslCa??"";
 		}
 
 		public string ProcessRequest(string dtoString) {
@@ -46,7 +49,7 @@ namespace OpenPmsDentalBusiness.WebServices {
 					&& !string.IsNullOrEmpty(_db)
 					&& !string.IsNullOrEmpty(_user))
 				{
-					new DataConnection().SetDbT(_server,_db,_user,_password,_userLow,_passLow,DatabaseType.MySql);
+					new DataConnection().SetDbT(_server,_db,_user,_password,_userLow,_passLow,DatabaseType.MySql,_sslCa);
 				}
 				//Execute the func that was passed in now that our remoting role and database connection are correct.
 				o.Tag=funcWebMethod();

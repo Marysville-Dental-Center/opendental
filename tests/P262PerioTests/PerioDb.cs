@@ -75,7 +75,7 @@ namespace P262PerioTests {
 				}
 			}
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(Server,DbName,User,Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(Server,DbName,User,Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));
 			Security.CurUser=new Userod { UserNum=USER_NUM,UserName="Synthetic" };
 		}
 
@@ -169,7 +169,7 @@ namespace P262PerioTests {
 			if(database!=null) {
 				connectionString+=";Database="+database;
 			}
-			MySqlConnection connection=new MySqlConnection(connectionString);
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(connectionString));
 			connection.Open();
 			return connection;
 		}

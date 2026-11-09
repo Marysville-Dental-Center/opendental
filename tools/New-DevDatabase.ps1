@@ -22,6 +22,10 @@ The default user Admin has a blank password.
 -Force refuses to drop a database holding more than 200 patients, and the tool refuses any server other than
 localhost/127.0.0.1 unless you pass -AllowRemoteServer.
 
+TLS: once tools\Enable-LocalDbTls.ps1 has turned on TLS in the local MariaDB service (docs/port-notes/DB-TLS.md), the tool connects to
+127.0.0.1:3306 with TLS and verifies the server against its test CA (%LOCALAPPDATA%\OpenPmsDental\DevDbTls\ca.pem, or OPMS_DB_TLS_CA), and
+-WriteConfig adds that CA as <SslCa>, so OpenPmsDental.exe connects the same way. OPMS_DB_REQUIRE_TLS=1 makes a missing CA an error.
+
 .PARAMETER Name
 Database to create. Default: opendental_dev.
 
@@ -118,6 +122,8 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 # Get-BuildToolPath and Initialize-BuildEnvironment, shared by the tool scripts that build.
 . (Join-Path $PSScriptRoot 'Initialize-BuildEnvironment.ps1')
+# Get-DevDbTlsCa: the local test server's CA for -WriteConfig (DevDbTool itself uses DataConnectionBase.DevDbTls).
+. (Join-Path $PSScriptRoot 'DevDbTls.ps1')
 $toolProject = Join-Path $PSScriptRoot 'DevDbTool\DevDbTool.csproj'
 $toolExe = Join-Path $PSScriptRoot "DevDbTool\bin\$Configuration\DevDbTool.exe"
 $configTemplate = Join-Path $PSScriptRoot 'FreeDentalConfig.dev.xml'
@@ -157,6 +163,25 @@ function Write-DevConfig {
 	$xml.SelectSingleNode('/ConnectionSettings/DatabaseConnection/User').InnerText = $User
 	# Plain text is what OpenPmsDental.exe falls back to when it cannot encrypt; fine for a dev server.
 	$xml.SelectSingleNode('/ConnectionSettings/DatabaseConnection/Password').InnerText = $Password
+	# The local test server's CA once tools\Enable-LocalDbTls.ps1 has run (tools\DevDbTls.ps1): the program then connects to this computer with
+	# SslMode=VerifyCA and that CA (its loopback connection with an SslCa, docs/specs/db-connection-security.md). Without it, as before.
+	$ca = Get-DevDbTlsCa $Server $Port
+	$connection = $xml.SelectSingleNode('/ConnectionSettings/DatabaseConnection')
+	$sslCa = $connection.SelectSingleNode('SslCa')
+	if ($ca -ne '') {
+		if ($sslCa -eq $null) {
+			$sslCa = $xml.CreateElement('SslCa')
+			$after = $connection.SelectSingleNode('MySQLPassHash')
+			$space = $after.PreviousSibling.Clone()
+			[void]$connection.InsertAfter($space, $after)
+			[void]$connection.InsertAfter($sslCa, $space)
+		}
+		$sslCa.InnerText = $ca
+		Write-Host "The program connects with TLS and verifies the server against $ca (SslCa)."
+	}
+	elseif ($sslCa -ne $null) {
+		[void]$connection.RemoveChild($sslCa)
+	}
 	if (Test-Path -LiteralPath $target) {
 		Copy-Item -LiteralPath $target -Destination "$target.bak" -Force
 		Write-Host "Kept the previous config as $target.bak"

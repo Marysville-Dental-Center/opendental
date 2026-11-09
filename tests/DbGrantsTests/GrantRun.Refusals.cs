@@ -159,7 +159,8 @@ namespace DbGrantsTests {
 			WithoutRight("SELECT",OnBackups,() => {
 				Report.Allowed("MiscData.MakeABackup(): no SELECT on the backup needed",() => MiscData.MakeABackup());
 				Report.Refused("MiscData.MakeABackup(doVerify:true), the archive tab's (SELECT COUNT(*) of each backup table)","SELECT",
-					() => MiscData.MakeABackup(serverName:GrantServer.SERVER,user:Account,pass:_password,doVerify:true));
+					() => MiscData.MakeABackup(serverName:GrantServer.SERVER,user:Account,pass:_password,doVerify:true,
+						sslCa:DevDbTls.GetSslCa(GrantServer.SERVER)));
 			});
 		}
 		#endregion Backup databases
