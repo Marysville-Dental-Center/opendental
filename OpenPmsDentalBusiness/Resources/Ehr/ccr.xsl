@@ -39,6 +39,21 @@ this XSLT back to the community.
   Version: 	2.0
 
  -->
+<!--
+   MODIFIED COPY. This file is a derived work of the AAFP's ccr.xsl above, as its "CCR XSL V2.0" file release published it
+   (https://sourceforge.net/projects/ccr-resources/files/ccr-xslt-html/CCR%20XSL%20V2.0/, uploaded 2007-11-21, SHA-256
+   4ab70db9f8684f6b738f1e9cfa17f0165622f40c48a9f46105cd31a862cca4c0), changed by Open PMS - Dental on 2026-11-09 for the program's own
+   display of received CCRs (docs/port-notes/EHR-3.md). It is licensed under the Apache License, Version 2.0, as the original is.
+   The changes:
+   1. date:format-date takes a time zone only when the value ends with Z, or with +hh:mm or -hh:mm, as EXSLT's own template does. The
+      released copy took the last six characters of any other value as its time zone, so a date without one (2007-06-01) showed as
+      January 1 of its year, and a date and time without a time zone, a year and month, or a year showed as nothing.
+   2. date:format-date shows a value it cannot read as it came, instead of nothing.
+   3. date:_format-date's pattern letter z writes nothing for a value without a time zone, instead of "UTC".
+   4. The five disable-output-escaping="yes" attributes are removed (the social history's, the two result rows' and the plan of care's
+      order and goal Description/Text), so the text of a received CCR is shown as text and never becomes markup of the page.
+   5. The footer says that the page was made with a derived work of the AAFP's stylesheet, as the notice above asks of derived works.
+ -->
  <xsl:stylesheet exclude-result-prefixes="a date str" version="1.0" xmlns:a="urn:astm-org:CCR" xmlns:date="http://exslt.org/dates-and-times" xmlns:str="http://exslt.org/strings" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <xsl:output encoding="UTF-8" method="html"/>
   <!-- XSL Parameters -->
@@ -970,7 +985,7 @@ this XSLT back to the community.
                                     <td>
                                       <strong class="clinical">
                                         <span>
-                                          <xsl:value-of disable-output-escaping="yes" select="a:Description/a:Text"/>
+                                          <xsl:value-of select="a:Description/a:Text"/>
                                         </span>
                                       </strong>
                                     </td>
@@ -1197,7 +1212,7 @@ this XSLT back to the community.
                                                   </td>
                                                   <td width="65%">
                                                   <span>
-                                                  <xsl:value-of disable-output-escaping="yes" select="a:TestResult/a:Description/a:Text"/>
+                                                  <xsl:value-of select="a:TestResult/a:Description/a:Text"/>
                                                   </span>
                                                   </td>
                                                   <td width="15%">
@@ -1213,7 +1228,7 @@ this XSLT back to the community.
                                                   </strong>
                                                   </td>
                                                   <td width="65%">
-                                                  <xsl:value-of disable-output-escaping="yes" select="a:TestResult/a:Description/a:Text"/>
+                                                  <xsl:value-of select="a:TestResult/a:Description/a:Text"/>
                                                   </td>
                                                   <td width="15%">
                                                   <xsl:value-of select="a:Flag/a:Text"/>
@@ -1364,10 +1379,10 @@ this XSLT back to the community.
                                         <xsl:value-of select="a:Description/a:Text"/>
                                       </td>
                                       <td>
-                                        <xsl:value-of disable-output-escaping="yes" select="a:OrderRequest/a:Description/a:Text"/>
+                                        <xsl:value-of select="a:OrderRequest/a:Description/a:Text"/>
                                       </td>
                                       <td>
-                                        <xsl:value-of disable-output-escaping="yes" select="a:OrderRequest/a:Goals/a:Goal/a:Description/a:Text"/>
+                                        <xsl:value-of select="a:OrderRequest/a:Goals/a:Goal/a:Description/a:Text"/>
                                       </td>
                                       <td>
                                         <xsl:value-of select="a:Status/a:Text"/>
@@ -1957,7 +1972,9 @@ this XSLT back to the community.
               <xsl:when test="substring($no-neg, $no-neg-length) = 'Z'">Z</xsl:when>
               <xsl:otherwise>
                 <xsl:variable name="tz" select="substring($no-neg, $no-neg-length - 5)"/>
-                <xsl:value-of select="$tz"/>
+                <xsl:if test="(substring($tz, 1, 1) = '-' or substring($tz, 1, 1) = '+') and substring($tz, 4, 1) = ':'">
+                  <xsl:value-of select="$tz"/>
+                </xsl:if>
               </xsl:otherwise>
             </xsl:choose>
           </xsl:variable>
@@ -2047,7 +2064,14 @@ this XSLT back to the community.
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
-    <xsl:value-of select="$formatted"/>
+    <xsl:choose>
+      <xsl:when test="string($formatted) != ''">
+        <xsl:value-of select="$formatted"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:value-of select="$date-time"/>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:template>
   <xsl:template name="date:_format-date">
     <xsl:param name="year"/>
@@ -2191,6 +2215,7 @@ this XSLT back to the community.
           </xsl:when>
           <xsl:when test="$char = 'z'">
             <xsl:choose>
+              <xsl:when test="not(string($timezone))"/>
               <xsl:when test="$timezone = 'Z'">UTC</xsl:when>
               <xsl:otherwise>UTC<xsl:value-of select="$timezone"/>
               </xsl:otherwise>
@@ -2718,7 +2743,7 @@ table.internal tr.even{
         <tr>
           <th>
             <font color="#CCCCCC" size="2">
-	The stylesheet used to generate this view of the CCR was provided by the American Academy of Family Physicians and the CCR Acceleration Task Force
+	The stylesheet used to generate this view of the CCR is a modified version, derived from the one provided by the American Academy of Family Physicians and the CCR Acceleration Task Force
 </font>
           </th>
         </tr>

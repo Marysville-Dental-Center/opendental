@@ -376,7 +376,8 @@ namespace OpenPmsDentalBusiness{
 		}
 
 		private static byte[] GetLittleEndian(int value) {
-			return new byte[] { (byte)value,(byte)(value>>8),(byte)(value>>16),(byte)(value>>24) };
+			//Masked, because this project checks arithmetic overflow and a cast of a larger value to byte would throw.
+			return new byte[] { (byte)(value&0xFF),(byte)((value>>8)&0xFF),(byte)((value>>16)&0xFF),(byte)((value>>24)&0xFF) };
 		}
 
 		private static IEhrRenderChild StartChild() {
