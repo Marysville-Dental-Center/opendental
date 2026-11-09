@@ -1,11 +1,12 @@
-// The repository folder, a reader of C# sources without comments, and the guard that keeps every test away from the computer's clock and its
-// Event Log.
+// The repository folder, readers of C# sources and of XML files without their comments, and the guard that keeps every test away from the
+// computer's clock and its Event Log.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
 
@@ -130,6 +131,45 @@ namespace EhrTests {
 			}
 			listFiles.Sort(StringComparer.OrdinalIgnoreCase);
 			return listFiles;
+		}
+
+		///<summary>The repository's files that match one of the patterns (for example "*.csproj"), in every folder except build output (bin, obj),
+		///hidden folders, packages and node_modules. Unlike ProgramSourceFiles it keeps the test projects, whose project files and resources are
+		///scanned as well.</summary>
+		public static List<string> RepositoryFiles(params string[] arrayPatterns) {
+			HashSet<string> hashSetSkipped=new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bin","obj","packages","node_modules" };
+			List<string> listFiles=new List<string>();
+			Stack<string> stackFolders=new Stack<string>();
+			stackFolders.Push(RepoRoot);
+			while(stackFolders.Count>0) {
+				string folder=stackFolders.Pop();
+				foreach(string pattern in arrayPatterns) {
+					listFiles.AddRange(Directory.GetFiles(folder,pattern));
+				}
+				foreach(string folderChild in Directory.GetDirectories(folder)) {
+					string name=Path.GetFileName(folderChild);
+					if(name.StartsWith(".") || hashSetSkipped.Contains(name)) {
+						continue;
+					}
+					stackFolders.Push(folderChild);
+				}
+			}
+			listFiles=listFiles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+			listFiles.Sort(StringComparer.OrdinalIgnoreCase);
+			return listFiles;
+		}
+	}
+
+	///<summary>XML files (project files, configuration files, resources) without their comments: "&lt;!-- --&gt;" comments, and the &lt;comment&gt;
+	///elements of a .resx file, which hold notes for translators.</summary>
+	public static class XmlText {
+		private static readonly Regex _regexComment=new Regex(@"<!--.*?-->",RegexOptions.Singleline);
+		///<summary>An empty element first, so "&lt;comment/&gt;" never runs on to a later "&lt;/comment&gt;".</summary>
+		private static readonly Regex _regexResxComment=new Regex(@"<comment\b[^>]*/>|<comment\b[^>]*>.*?</comment>",RegexOptions.Singleline);
+
+		public static string WithoutComments(string xml) {
+			string text=_regexComment.Replace(xml??""," ");
+			return _regexResxComment.Replace(text," ");
 		}
 	}
 

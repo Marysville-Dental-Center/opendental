@@ -1,7 +1,8 @@
 // The removed EHR.dll hooks stay removed (docs/specs/ehr-rebuild-plan.md, package EHR-0). This source scan replaced NoHqTests'
 // Ehr_ReflectionHooksAreGone, whose three assertions (an empty code list, empty CCD and CCR stylesheets) the open rebuilds of EHR-2 and EHR-3 make
-// false on purpose. What must stay true: no code names EHR.dll or one of its types as a string, no EHR file loads an assembly from a file, and the
-// dead "#if EHRTEST" block of ControlChart.cs is the only one (TC-2 deletes it there).
+// false on purpose. What must stay true: no code names EHR.dll or one of its types as a string, no project file, configuration file or resource
+// names EHR.dll outside comments, no EHR file loads an assembly from a file, and the dead "#if EHRTEST" block of ControlChart.cs is the only one
+// (TC-2 deletes it there).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -90,6 +91,58 @@ namespace EhrTests {
 				}
 			}
 			Assert.AreEqual(0,listProblems.Count,"Strings that name EHR.dll or a type in it:\r\n"+string.Join("\r\n",listProblems));
+		}
+
+		[TestMethod]
+		public void NoProjectFileConfigOrResource_NamesEhrDll() {
+			//The plan's "no EHR.dll outside comments" for the project files, the configuration files and the resources too: a reference, a hint
+			//path, a copy step or a resource string could load or ship it again. XML comments (and a .resx file's translator notes) may tell the
+			//history, as this project's own header does. The scanner's own text is C# in tests\EhrTests, which these extensions do not reach.
+			List<string> listFiles=TestPaths.RepositoryFiles("*.csproj","*.config","*.resx");
+			//So a scan that found nothing cannot pass by reading nothing.
+			Assert.IsTrue(listFiles.Count(x => x.EndsWith(".csproj",StringComparison.OrdinalIgnoreCase))>50,"Project files: "+listFiles.Count);
+			Assert.IsTrue(listFiles.Count(x => x.EndsWith(".config",StringComparison.OrdinalIgnoreCase))>10,"Configuration files.");
+			Assert.IsTrue(listFiles.Count(x => x.EndsWith(".resx",StringComparison.OrdinalIgnoreCase))>500,"Resources.");
+			foreach(string relative in new[] { @"OpenPmsDental\OpenPmsDental.csproj",@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj",
+				@"OpenPmsDental\app.config",@"OpenPmsDental\Forms\FormEhrTimeSynch.resx",@"tests\EhrTests\EhrTests.csproj" })
+			{
+				Assert.IsTrue(listFiles.Any(x => TestPaths.Relative(x).Equals(relative,StringComparison.OrdinalIgnoreCase)),relative);
+			}
+			Assert.IsFalse(listFiles.Any(x => Regex.IsMatch(TestPaths.Relative(x),@"(^|\\)(bin|obj)\\",RegexOptions.IgnoreCase)),"No build output.");
+			Regex regexDll=new Regex(@"\bEHR\.dll\b",RegexOptions.IgnoreCase);
+			Regex regexReference=new Regex(@"\bInclude\s*=\s*""EHR(""|,)",RegexOptions.IgnoreCase);
+			List<string> listProblems=new List<string>();
+			foreach(string path in listFiles) {
+				string text=File.ReadAllText(path);
+				if(text.IndexOf("EHR",StringComparison.OrdinalIgnoreCase)<0) {
+					continue;
+				}
+				string textWithoutComments=XmlText.WithoutComments(text);
+				foreach(Regex regex in new[] { regexDll,regexReference }) {
+					Match match=regex.Match(textWithoutComments);
+					if(match.Success) {
+						listProblems.Add(TestPaths.Relative(path)+": "+match.Value);
+					}
+				}
+			}
+			Assert.AreEqual(0,listProblems.Count,"Project files, configuration files or resources that name EHR.dll:\r\n"+string.Join("\r\n",listProblems));
+			//This project's header names EHR.dll in a comment, so the comment rule is what lets it pass.
+			string project=TestPaths.ReadSource(@"tests\EhrTests\EhrTests.csproj");
+			StringAssert.Contains(project,"EHR.dll");
+			Assert.IsFalse(regexDll.IsMatch(XmlText.WithoutComments(project)));
+		}
+
+		[TestMethod]
+		public void TheXmlReader_DropsCommentsOnly() {
+			string xml="<Project><!-- EHR.dll in a comment\r\n over two lines --><ItemGroup><Reference Include=\"EHR\" /><None Include=\"x\\EHR.dll\" />"
+				+"</ItemGroup><comment/><data name=\"a\"><value>Uses EHR.dll</value><comment>EHR.dll translator note</comment></data></Project>";
+			string text=XmlText.WithoutComments(xml);
+			Assert.IsFalse(text.Contains("in a comment") || text.Contains("two lines"),"An XML comment.");
+			Assert.IsFalse(text.Contains("translator note"),"A .resx comment element.");
+			StringAssert.Contains(text,"<Reference Include=\"EHR\" />");
+			StringAssert.Contains(text,"<None Include=\"x\\EHR.dll\" />");
+			StringAssert.Contains(text,"<value>Uses EHR.dll</value>","An empty comment element does not run on to a later one.");
+			Assert.AreEqual("",XmlText.WithoutComments(null));
 		}
 
 		[TestMethod]
