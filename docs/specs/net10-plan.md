@@ -1076,7 +1076,9 @@ Added for this version, at `8018a815f` and on the build PC on 2026-11-08:
 - Signed sending uses the Direct library (`SendEmailUnsecureWithSig`, `EmailMessages.cs:1123-1144`); the CDO path's custom headers have
   one source, the Direct path (`EmailMessages.cs:616-634`); `FormEmailDigitalSignature`'s trust text names only encrypted e-mail and
   Direct.
-- `FormEmailCertRegister` calls `CustomerUpdatesProxy.GetWebServiceInstance()`, which throws `HqNotAvailableException` in this build.
+- `FormEmailCertRegister` no longer calls `CustomerUpdatesProxy` (O-13, done by DIRECT-CERT): it imports the Direct provider's
+  certificate file through `OpenPmsDentalBusiness/Email/DirectCertificateImport.cs` and sends nothing anywhere. Before, it called
+  `CustomerUpdatesProxy.GetWebServiceInstance()`, which throws `HqNotAvailableException` in this build.
 - `Forms/FormImages.cs` hosts `ControlImagesOld` for EOBs and amendments (5 call sites in 4 files; they set only `ClaimPaymentNum`,
   `ClaimNumPreAuth` or `EhrAmendmentCur` and call `ShowDialog`); the module choice `ImagesModuleUsesOld2020` is set to 0 by
   `ConvertDatabases7.cs:2760,3113`. Every image read, import, export and delete of those three uses is an `ImageStore` method
@@ -1481,14 +1483,21 @@ self-contained (open point O-15, decision 20).
   then refuses unencrypted connections (`require_secure_transport`; other sessions are told first); and the old test database
   (`opendental_dev`) is dropped and rebuilt with `tools/New-DevDatabase.ps1` over the encrypted connection (confirmed with the owner
   right before the drop).
-- **O-13. Direct certificates without Open Dental. Answered 2026-11-08: a local certificate import.** The e-mail address window's
+- **O-13. Direct certificates without Open Dental. Answered 2026-11-08: a local certificate import. Done by the DIRECT-CERT package
+  (`docs/port-notes/DIRECT-CERT.md`, branch `dev/directcert-2`).** The e-mail address window's
   Register certificate button opens `FormEmailCertRegister`, which registered the address's Direct certificate with Open Dental's own
   servers and fails since they were removed (S0-3D restored it as it was). The owner: "Yes, load Direct provider's certificate from a
   file". A package after stage 0 replaces it: the button imports the certificate the office's Direct provider (HISP) issued, from a
   `.pfx` or `.p12` file with its password, into the Direct private store (`NHINDPrivate`, the key kept non-exportable), and can also
   import the provider's trust anchor into `NHINDAnchors`. It checks that the certificate names the address (or its domain) and has a
   private key, shows the subject and dates, and replaces an older certificate for the same address only after asking. Tests use
-  generated certificates in current-user test stores, as S0-3D's do.
+  generated certificates in current-user test stores, as S0-3D's do. As built, "older" means of the same purpose (signing or
+  encryption, from the Key Usage and Extended Key Usage) and expiring before the file's certificate, so a provider's separate signing and
+  encryption certificates for one address both stay; the button is labelled Certificate. The program's own search then signs with the
+  signing one and encrypts and decrypts with the encryption one (the lead's decision of 2026-11-09, third fix round). What the .NET 10
+  switch needs of this code (`X509CertificateLoader` for SYSLIB0057, `FileSystemAclExtensions`, the CAPI key check and the serialized
+  copy of `Undo`, `CngKey` disposal to verify) is in the port note. Left to the owner:
+  `ICustomerUpdates` and `CustomerUpdatesProxy`, and the read access of `BUILTIN\Users` to the imported private keys.
 - **O-14. 32-bit vendor components: a helper module or a 64-bit replacement, per vendor (decision 19).** QuickBooks Desktop (QBFC),
   Schick CDR, Topaz signature pads and Guru load 32-bit vendor code in the program's process today. Each gets a module in the 32-bit
   helper program (S3a-13, S3a-14), unless the vendor has a 64-bit way: a 64-bit QBFC from Intuit, a Schick CDR server that runs as its

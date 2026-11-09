@@ -598,7 +598,8 @@ namespace OpenPmsDentalBusiness {
 			}
 			Health.Direct.Agent.OutgoingMessage outgoingMessageEncrypted=null;
 			try {
-				Health.Direct.Agent.DirectAgent directAgent=GetDirectAgentForEmailAddress(listAddresses.ToArray());
+				//The sender's own certificate signs (the one for signing, EmailCertificateUse); the recipients' encrypt.
+				Health.Direct.Agent.DirectAgent directAgent=GetDirectAgentForEmailAddress(EmailCertificateUse.Signing,listAddresses.ToArray());
 				outgoingMessageEncrypted=directAgent.ProcessOutgoing(outgoingMessageUnencrypted);//This is where encryption, signing, and trust verification occurs.
 			}
 			catch(Exception ex) {
@@ -1910,7 +1911,8 @@ namespace OpenPmsDentalBusiness {
 		///<summary>Throws various exceptions if decryption fails.  Decryption will fail if the sender is not yet trusted by the recipient.  Decrypts and valudates trust.  If decrypted successfully, removes the sender signature from the decrypted attachments and moves them into incomingMessage.Signatures.</summary>
 		private static Health.Direct.Agent.IncomingMessage DecryptIncomingMessage(Health.Direct.Agent.IncomingMessage incomingMessage) {
 			Meth.NoCheckMiddleTierRole();
-			Health.Direct.Agent.DirectAgent directAgent=GetDirectAgentForEmailAddress(incomingMessage.Message.ToValue.Trim());
+			//The receiver's own certificates decrypt, the one for encryption tried first (EmailCertificateUse).
+			Health.Direct.Agent.DirectAgent directAgent=GetDirectAgentForEmailAddress(EmailCertificateUse.Decrypting,incomingMessage.Message.ToValue.Trim());
 			return directAgent.ProcessIncoming(incomingMessage);//Decrypts and valudates trust.  Also removes the signature from the decrypted attachments and moves them into incomingMessage.Signatures.
 		}
 
@@ -2656,8 +2658,10 @@ namespace OpenPmsDentalBusiness {
 			return x509Certificate2Signed2;
 		}
 
-		///<summary>Returns the encryption/decryption certificate for the specified emailAddress from the store of private certificates (NHINDPrivate,
-		///Local Computer), or returns null if none found: a valid certificate with its private key for the address, else a valid one for its domain.
+		///<summary>Returns the signing certificate for the specified emailAddress from the store of private certificates (NHINDPrivate,
+		///Local Computer), or returns null if none found: of the valid certificates with their private keys for the address, else of the valid ones for
+		///its domain, the one for signing valid longest, else the first (EmailCertificates.GetPreferred; a Direct provider may issue a signing and an
+		///encryption certificate for one address).
 		///Used for creating a signing signature in email encryption, which requires the private key (the public key alone is not enough, we tried it and an exception is thrown by Dot NET).
 		///IMPORTANT: Be careful what you do with the private certificate.  It must never be shared with another party.</summary>
 		public static X509Certificate2 GetCertFromPrivateStore(string emailAddress) {
@@ -2695,7 +2699,8 @@ namespace OpenPmsDentalBusiness {
 			if(listX509Certificate2sValid.Count==0) {
 				return null;
 			}
-			return listX509Certificate2sValid[0];
+			//The one for signing valid longest; without one for signing, the first valid one, as before.
+			return EmailCertificates.GetPreferred(listX509Certificate2sValid,DirectCertificatePurpose.Signing)??listX509Certificate2sValid[0];
 		}
 
 		///<summary>Sometimes an email From address will contain the person's name along with their email address.  This function strips out the person's name if present.</summary>
@@ -2727,13 +2732,24 @@ namespace OpenPmsDentalBusiness {
 		///<summary>Throws exceptions if there are permission issues.  Recreates the directagent in order to refresh the certificate stores.</summary>
 		private static Health.Direct.Agent.DirectAgent GetDirectAgentForEmailAddress(params string[] stringArrayEmailAddresses) {
 			Meth.NoCheckMiddleTierRole();
+			return GetDirectAgentForEmailAddress(EmailCertificateUse.Any,stringArrayEmailAddresses);
+		}
+
+		///<summary>Throws exceptions if there are permission issues.  Recreates the directagent in order to refresh the certificate stores.
+		///emailCertificateUsePrivate: what the agent takes the office's own certificates for, which one resolver gives for a send and for a received
+		///message: Signing for ProcessOutgoing (the sender's, which it signs with), Decrypting for ProcessIncoming (the receiver's, which it decrypts
+		///with); Any for the agents that only refresh the stores. The recipients' certificates of a send are for encrypting to (Encrypting).</summary>
+		internal static Health.Direct.Agent.DirectAgent GetDirectAgentForEmailAddress(EmailCertificateUse emailCertificateUsePrivate,
+			params string[] stringArrayEmailAddresses)
+		{
+			Meth.NoCheckMiddleTierRole();
 			List <string> listDomains=new List<string>();
 			for(int i=0;i<stringArrayEmailAddresses.Length;i++) {
 				listDomains.Add(GetDomainForAddress(stringArrayEmailAddresses[i]));
 			}
 			Health.Direct.Common.Domains.StaticDomainResolver staticDomainResolverRes=new Health.Direct.Common.Domains.StaticDomainResolver(listDomains.ToArray());
-			ICertificateResolver iCertificateResolverResPriv=new EmailPrivateResolver();
-			ICertificateResolver iCertificateResolverResPub=new EmailPublicResolver();
+			ICertificateResolver iCertificateResolverResPriv=new EmailPrivateResolver(emailCertificateUse:emailCertificateUsePrivate);
+			ICertificateResolver iCertificateResolverResPub=new EmailPublicResolver(emailCertificateUse:EmailCertificateUse.Encrypting);
 			SystemX509Store systemX509StoreAnchor=OpenCertStore(CertStoreNameAnchor,false);
 			X509Certificate2Collection x509Certificate2CollectionAnchor=systemX509StoreAnchor.GetAllCertificates();
 			systemX509StoreAnchor.Dispose();
@@ -4003,15 +4019,40 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 
 	///<summary>The public certificates of other addresses (NHINDExternal): they encrypt Direct messages to those addresses.</summary>
 	public class EmailPublicResolver : EmailNameResolver {
-		public EmailPublicResolver(bool isReadOnly=true) : base(EmailMessages.OpenCertStore(EmailMessages.CertStoreNameExternal,!isReadOnly)) {
+		///<summary>emailCertificateUse: what the Direct agent takes the certificates of GetCertificates(MailAddress) for (EmailCertificateUse); the
+		///agent's public resolver encrypts to them (Encrypting).</summary>
+		public EmailPublicResolver(bool isReadOnly=true,EmailCertificateUse emailCertificateUse=EmailCertificateUse.Any)
+			: base(EmailMessages.OpenCertStore(EmailMessages.CertStoreNameExternal,!isReadOnly),emailCertificateUse)
+		{
 		}
 	}
 
 	///<summary>The office's own certificates with their private keys (NHINDPrivate): they sign outgoing messages and decrypt received Direct
 	///messages.</summary>
 	public class EmailPrivateResolver : EmailNameResolver {
-		public EmailPrivateResolver(bool isReadOnly=true) : base(EmailMessages.OpenCertStore(EmailMessages.CertStoreNamePrivate,!isReadOnly)) {
+		///<summary>emailCertificateUse: what the Direct agent takes the certificates of GetCertificates(MailAddress) for (EmailCertificateUse):
+		///Signing for a send, Decrypting for a received message.</summary>
+		public EmailPrivateResolver(bool isReadOnly=true,EmailCertificateUse emailCertificateUse=EmailCertificateUse.Any)
+			: base(EmailMessages.OpenCertStore(EmailMessages.CertStoreNamePrivate,!isReadOnly),emailCertificateUse)
+		{
 		}
+	}
+
+	///<summary>What the Direct agent takes the certificates of a resolver's GetCertificates(MailAddress) for (EmailNameResolver,
+	///EmailCertificates.SelectForUse). A Direct provider may issue a signing and an encryption certificate for one address. Not stored anywhere.</summary>
+	public enum EmailCertificateUse {
+		///<summary>Every valid certificate of the address (or its domain), in store order, as before: the trust check and the agents that only
+		///refresh the stores.</summary>
+		Any,
+		///<summary>The sender's own certificate, which the agent signs with (every one it is given): the one for signing valid longest
+		///(EmailCertificates.GetPreferred), else every valid one, as before.</summary>
+		Signing,
+		///<summary>A recipient's certificate, which the agent encrypts to (every one it is given): the one for encryption valid longest, else every
+		///valid one, as before.</summary>
+		Encrypting,
+		///<summary>The receiver's own certificates, which the agent tries in turn until one decrypts: the one for encryption valid longest first,
+		///then the others in store order.</summary>
+		Decrypting,
 	}
 
 	///<summary>The Direct agent's certificate resolver on one of the Windows certificate stores. Which certificate is for which address or domain,
@@ -4019,10 +4060,13 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 	public class EmailNameResolver : ICertificateResolver {
 
 		public CertificateStore Store=null;
+		///<summary>What the Direct agent takes the certificates of GetCertificates(MailAddress) for. The other lookups give every certificate.</summary>
+		private readonly EmailCertificateUse _emailCertificateUse;
 
 		///<summary>Resolves against the certificates of the given store (EmailPublicResolver: public certificates, EmailPrivateResolver: private certificates).</summary>
-		public EmailNameResolver(CertificateStore certificateStore) {
+		public EmailNameResolver(CertificateStore certificateStore,EmailCertificateUse emailCertificateUse=EmailCertificateUse.Any) {
 			Store=certificateStore;
+			_emailCertificateUse=emailCertificateUse;
 		}
 
 		~EmailNameResolver() {
@@ -4034,13 +4078,14 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 
 		///<summary>Gets all active and valid address-level certificates for the specified email address.
 		///If none found, then gets active and valid domain-level certificates for the specified email address.
+		///Of those, the ones for what the agent takes them for (the resolver's EmailCertificateUse, EmailCertificates.SelectForUse).
 		///If neither type of certificate is found, returns null.</summary>
 		public X509Certificate2Collection GetCertificates(System.Net.Mail.MailAddress address) {
 			List <X509Certificate2> listX509Certificate2sValid=new List<X509Certificate2>();
 			List <X509Certificate2> listX509Certificate2sInvalid=new List<X509Certificate2>();
 			GetCertificates(address.Address,listX509Certificate2sValid,listX509Certificate2sInvalid);
 			if(listX509Certificate2sValid.Count > 0 || listX509Certificate2sInvalid.Count > 0) {
-				return new X509Certificate2Collection(listX509Certificate2sValid.ToArray());
+				return new X509Certificate2Collection(EmailCertificates.SelectForUse(listX509Certificate2sValid,_emailCertificateUse).ToArray());
 			}
 			return null;
 		}
@@ -4111,16 +4156,51 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 			GetCertificatesForDomain(x509Certificate2Collection,domain,listX509Certificate2sValid,listX509Certificate2sInvalid);
 		}
 
+		///<summary>Of the valid certificates of an address (GetCertificates' valid list), the one for the purpose (DirectCertificateImport.GetPurpose;
+		///one for signing and encryption is for each) that is valid longest: the latest NotAfter, the first of the list among equal ones. Null when
+		///none is for the purpose. A Direct provider may issue a signing and an encryption certificate for one address, in no order in the store.</summary>
+		public static X509Certificate2 GetPreferred(List<X509Certificate2> listX509Certificate2sValid,DirectCertificatePurpose purpose) {
+			X509Certificate2 x509Certificate2Preferred=null;
+			for(int i=0;i<listX509Certificate2sValid.Count;i++) {
+				if((DirectCertificateImport.GetPurpose(listX509Certificate2sValid[i])&purpose)==0) {
+					continue;
+				}
+				if(x509Certificate2Preferred==null || listX509Certificate2sValid[i].NotAfter>x509Certificate2Preferred.NotAfter) {
+					x509Certificate2Preferred=listX509Certificate2sValid[i];
+				}
+			}
+			return x509Certificate2Preferred;
+		}
+
+		///<summary>The valid certificates of an address (GetCertificates' valid list) that the Direct agent is given for the use: Any, all of them;
+		///Signing and Encrypting, only the one for that purpose valid longest (GetPreferred), as the agent signs with, or encrypts to, every one it
+		///is given; Decrypting, that one for encryption first and then the others, as the agent tries them in turn. Without one for the purpose,
+		///all of them in their order, as before.</summary>
+		public static List<X509Certificate2> SelectForUse(List<X509Certificate2> listX509Certificate2sValid,EmailCertificateUse emailCertificateUse) {
+			if(emailCertificateUse==EmailCertificateUse.Any) {
+				return listX509Certificate2sValid;
+			}
+			DirectCertificatePurpose purpose=DirectCertificatePurpose.Encryption;
+			if(emailCertificateUse==EmailCertificateUse.Signing) {
+				purpose=DirectCertificatePurpose.Signing;
+			}
+			X509Certificate2 x509Certificate2Preferred=GetPreferred(listX509Certificate2sValid,purpose);
+			if(x509Certificate2Preferred==null) {
+				return listX509Certificate2sValid;
+			}
+			List<X509Certificate2> listX509Certificate2s=new List<X509Certificate2>() { x509Certificate2Preferred };
+			if(emailCertificateUse==EmailCertificateUse.Decrypting) {
+				listX509Certificate2s.AddRange(listX509Certificate2sValid.FindAll(x => !ReferenceEquals(x,x509Certificate2Preferred)));
+			}
+			return listX509Certificate2s;
+		}
+
 		///<summary>Gets all address-level certificates for the specified email address into the two specified lists, separated by validity.</summary>
 		public static void GetCertificatesForAddress(X509Certificate2Collection x509Certificate2Collection,string emailAddress,
 			List<X509Certificate2> listX509Certificate2sValid,List<X509Certificate2> listX509Certificate2sInvalid)
 		{
 			for(int i=0;i<x509Certificate2Collection.Count;i++) {
-				string subjectName=GetCertSubjectName(x509Certificate2Collection[i]);
-				if(subjectName!="" && subjectName.ToLower()!=emailAddress.ToLower()) {
-					continue;
-				}
-				if(GetCertRfc822Name(x509Certificate2Collection[i]).ToLower()!=emailAddress.ToLower()) {
+				if(!IsForAddress(x509Certificate2Collection[i],emailAddress)) {
 					continue;
 				}
 				if(IsCertValid(x509Certificate2Collection[i])) {
@@ -4136,11 +4216,7 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 			List<X509Certificate2> listX509Certificate2sValid,List<X509Certificate2> listX509Certificate2sInvalid)
 		{
 			for(int i=0;i<x509Certificate2Collection.Count;i++) {
-				string subjectName=GetCertSubjectName(x509Certificate2Collection[i]);
-				if(subjectName!="" && subjectName.ToLower()!=domain.ToLower()) {
-					continue;
-				}
-				if(GetCertDnsName(x509Certificate2Collection[i]).ToLower()!=domain.ToLower()) {
+				if(!IsForDomain(x509Certificate2Collection[i],domain)) {
 					continue;
 				}
 				if(IsCertValid(x509Certificate2Collection[i])) {
@@ -4149,6 +4225,27 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 				}
 				listX509Certificate2sInvalid.Add(x509Certificate2Collection[i]);
 			}
+		}
+
+		///<summary>True if the certificate is an address-level certificate of the email address, valid or not: its subject's "E=" is blank or the
+		///address, and the rfc822 name of its subject alternative name is the address (case is ignored). The rule of GetCertificatesForAddress,
+		///which the Direct certificate import (DirectCertificateImport) checks a provider's certificate by.</summary>
+		public static bool IsForAddress(X509Certificate2 x509Certificate2,string emailAddress) {
+			string subjectName=GetCertSubjectName(x509Certificate2);
+			if(subjectName!="" && subjectName.ToLower()!=emailAddress.ToLower()) {
+				return false;
+			}
+			return GetCertRfc822Name(x509Certificate2).ToLower()==emailAddress.ToLower();
+		}
+
+		///<summary>True if the certificate is a domain-level certificate of the domain, valid or not: its subject's "E=" is blank or the domain, and
+		///the DNS name of its subject alternative name is the domain (case is ignored). The rule of GetCertificatesForDomain.</summary>
+		public static bool IsForDomain(X509Certificate2 x509Certificate2,string domain) {
+			string subjectName=GetCertSubjectName(x509Certificate2);
+			if(subjectName!="" && subjectName.ToLower()!=domain.ToLower()) {
+				return false;
+			}
+			return GetCertDnsName(x509Certificate2).ToLower()==domain.ToLower();
 		}
 
 		///<summary>Returns the subject name intended for email security from the given signed certificate.
@@ -4165,10 +4262,13 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 			return "";
 		}
 
+		///<summary>The subject alternative name extension (RFC 5280, 4.2.1.6).</summary>
+		private const string OID_SUBJECT_ALTERNATIVE_NAME="2.5.29.17";
+
 		///<summary>The RFC822 name is the fully quilified email address.</summary>
 		public static string GetCertRfc822Name(X509Certificate2 x509Certificate2) {
 			for(int i=0;i<x509Certificate2.Extensions.Count;i++) {
-				if(x509Certificate2.Extensions[i].Oid.FriendlyName.ToLower()!="subject alternative name") {
+				if(x509Certificate2.Extensions[i].Oid.Value!=OID_SUBJECT_ALTERNATIVE_NAME) {//By value: the friendly name is localized, and null for an OID Windows does not know.
 					continue;
 				}
 				AsnEncodedData asnEncodedData=new AsnEncodedData(x509Certificate2.Extensions[i].Oid,x509Certificate2.Extensions[i].RawData);
@@ -4187,7 +4287,7 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 		///<summary>The DNS name is the domain name part of the email address.</summary>
 		public static string GetCertDnsName(X509Certificate2 x509Certificate2) {
 			for(int i=0;i<x509Certificate2.Extensions.Count;i++) {
-				if(x509Certificate2.Extensions[i].Oid.FriendlyName.ToLower()!="subject alternative name") {
+				if(x509Certificate2.Extensions[i].Oid.Value!=OID_SUBJECT_ALTERNATIVE_NAME) {//By value: the friendly name is localized, and null for an OID Windows does not know.
 					continue;
 				}
 				AsnEncodedData asnEncodedData=new AsnEncodedData(x509Certificate2.Extensions[i].Oid,x509Certificate2.Extensions[i].RawData);

@@ -21,6 +21,8 @@ What this version brings, each in its section below (the roadmap's "Done in the 
 - fixes from the window checks: the PDF viewers close their browsers with their windows, a closing that is held up before Windows ends
   the process ends itself after about 20 seconds and logs where it stood, a deleted image no longer leaves its thumbnail, the log-off
   prompt never logs off while the user is answering it, and a tidier Edit Email Address window;
+- the Direct certificate of an e-mail address imported from the file the office's Direct provider issued, with the provider's trust anchor,
+  in place of the registration with Open Dental's servers, which always failed;
 - Open Dental 26.2: its database schema and the changes the owner chose on 2026-11-07:
   - Appointments: several blockout types in the Advanced Appointment Search, the practice and clinic schedule notes in the Appointments
     module, and appointment estimates brought up to date when an insurance plan is saved;
@@ -378,6 +380,44 @@ question DB-SEC 2). It now copies the rows with ordinary `INSERT` statements, in
 no connection allows local files, and no temporary file of the rows is written. The account typed for the other server needs `CREATE`,
 `INSERT` and `SELECT` on the backup database. The program's own database account keeps its three server-wide rights (owner question
 DB-SEC 1, answered on 2026-11-07).
+
+## Direct certificates: imported from your Direct provider's file
+
+Edit Email Address's **Certificate** button registered the address's certificate with Open Dental's own servers, which this program no
+longer reaches, so it always failed. It now imports the certificate your Direct provider (HISP) issued for the address, on this computer
+(owner decision of 2026-11-08, `docs/port-notes/DIRECT-CERT.md`). Nothing is sent anywhere.
+
+- **The address's certificate.** Pick the provider's `.pfx` or `.p12` file and type its password; Check shows the certificate's subject,
+  issuer, serial number, validity dates, purpose (signing, encryption or both) and whether it is for the address or for its whole domain,
+  and Import puts it with its private key into this computer's Direct certificate store (`NHINDPrivate`). The private key cannot be
+  exported from there again. The certificate signs e-mail and Direct messages sent from the address and decrypts the Direct messages it
+  receives. It is stored for the user name as typed in Edit Email Address, and sending uses it once the address is saved. A certificate
+  already there is not imported again, unless its private key can no longer be used on this computer.
+- **What is refused**, each with a message: a wrong password or another kind of file, a file with no certificate for the address or its
+  domain, a certificate without its private key, an expired certificate or one not valid yet, and one Windows finds a problem in (revoked, a
+  bad signature).
+- **The address.** The program finds the certificate by the user name of Edit Email Address (Username or email address), the address
+  Direct sends from, so that must be the Direct address (name@domain). Certificate says so, and does not open the window, when it is not.
+- **Replacing a certificate.** A certificate on this computer for the address (or for its domain, for a domain certificate) is replaced
+  only when it is for the same purpose as one in the file and expires before it. The window asks first, showing both sides with their
+  purposes and dates; No imports nothing. Every other certificate for the address stays and is listed as kept, with why: a provider's
+  separate signing and encryption certificates for one address both stay, and a renewed certificate already on this computer stays when an
+  older file is imported by mistake. The private key of a replaced certificate is deleted too when this window imported it, so messages
+  encrypted to it can then be read only after importing its file again; one put there another way keeps its key. A private key that
+  another certificate on this computer, or in the file, still uses (a renewal with the same key) is never deleted. An import that fails
+  partway removes what it stored. If storing the file's private key fails, nothing is imported, but Windows may have left a private key of
+  the file behind on this computer, which the program cannot find to delete.
+- **Which certificate is used.** With a separate signing and encryption certificate for one address, signed e-mail and Direct messages
+  are signed with the signing one, Direct messages to the address are encrypted to its encryption one, and received ones are decrypted
+  with the encryption one first; of several for the same purpose, the one valid longest. An address with only one certificate is used as
+  before.
+- **The provider's trust anchor** (a `.cer`, `.crt`, `.der` or `.pem` file) is imported into the Direct trust anchors (`NHINDAnchors`)
+  after the window shows it and you answer Yes. Messages from addresses whose certificates it issued are then trusted.
+- **Administrator rights and every computer.** The import needs a Windows administrator: start the program with Run as administrator to
+  import. Do it on each computer that sends or reads Direct messages, or signs e-mail, for the address. The computer's users get read access
+  to the imported private key, so the program can use it when they are signed in.
+- **Security log.** Each import is logged (Setup) with the certificate's thumbprint and last day and how many certificates were replaced
+  and kept; no password and no address.
 
 ## Fixes from the window checks
 

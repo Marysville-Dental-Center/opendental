@@ -486,8 +486,20 @@ namespace OpenPmsDental{
 			DialogResult=DialogResult.OK;//OK triggers a refresh for the grid.
 		}
 
+		///<summary>O-13: imports the address's Direct certificate from the Direct provider's file (and the provider's trust anchor) on this computer.
+		///Nothing is saved to the address: the program finds the certificate in the store by the address (the user name, as Direct sends).</summary>
 		private void butRegisterCertificate_Click(object sender,EventArgs e) {
-			using FormEmailCertRegister formEmailCertRegister=new FormEmailCertRegister(textUsername.Text);
+			if(textUsername.Text.Trim()=="") {
+				MsgBox.Show(this,"Enter the email address first.");
+				return;
+			}
+			if(DirectCertificateImport.GetAddressError(textUsername.Text.Trim())!="") {
+				//A plain SMTP login: the certificate window shows the address read-only, so it is fixed here.
+				MsgBox.Show(this,"The Direct certificate is found by the user name. Enter the Direct address (name@domain) in Username or email address, then "
+					+"click Certificate.");
+				return;
+			}
+			using FormEmailCertRegister formEmailCertRegister=new FormEmailCertRegister(textUsername.Text.Trim(),_emailAddress.EmailAddressNum);
 			formEmailCertRegister.ShowDialog();
 		}
 

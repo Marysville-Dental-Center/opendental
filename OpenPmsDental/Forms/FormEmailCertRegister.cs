@@ -1,63 +1,72 @@
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Drawing;
-using System.IO;
-using System.Net;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
+using System.Linq;
 using System.Windows.Forms;
-using System.Xml;
 using CodeBase;
 using OpenPmsDentalBusiness;
 
 namespace OpenPmsDental {
+	///<summary>The Certificate button of Edit Email Address (open point O-13 of the .NET 10 plan, owner answer of 2026-11-08: "Yes, load Direct
+	///provider's certificate from a file"). Imports the certificate the office's Direct provider (HISP) issued for the address, from its .pfx or
+	///.p12 file and password, into this computer's Direct certificate store (NHINDPrivate) with its private key never exportable, and the
+	///provider's trust anchor into NHINDAnchors. Open Dental registered the certificate with its own servers here, which are gone. The rules are
+	///DirectCertificateImport's (docs/port-notes/DIRECT-CERT.md); this window shows what they found and asks before it replaces or trusts
+	///anything.</summary>
 	public partial class FormEmailCertRegister:FormODBase {
+		///<summary>The address the certificate is for: the Edit Email Address window's user name, which Direct sends from.</summary>
+		private string _emailAddress;
+		///<summary>For the security log only; 0 for an address not saved yet.</summary>
+		private long _emailAddressNum;
 
-		public FormEmailCertRegister(string emailAddr) {
+		public FormEmailCertRegister(string emailAddress,long emailAddressNum) {
 			InitializeComponent();
 			InitializeLayoutManager();
 			Lan.F(this);
-			textEmailAddress.Text=emailAddr;
+			_emailAddress=EmailMessages.GetAddressSimple(emailAddress);
+			_emailAddressNum=emailAddressNum;
+			textEmailAddress.Text=_emailAddress;
+			openFileDialogCert.Filter=Lan.g(this,"Certificate with private key")+" (*.pfx;*.p12)|*.pfx;*.p12";
+			openFileDialogAnchor.Filter=Lan.g(this,"Trust anchor certificate")+" (*.cer;*.crt;*.der;*.pem)|*.cer;*.crt;*.der;*.pem";
 		}
 
-		private void butSendCode_Click(object sender,EventArgs e) {
-			if(textEmailAddress.Text.Trim()=="") {
-				MsgBox.Show(this,"Email Address is blank.");
-				return;
-			}
+		private void FormEmailCertRegister_Load(object sender,EventArgs e) {
+			FillInStore();
+		}
+
+		///<summary>What this computer has for the address now: its certificates in the Direct store and whether a trust anchor of this computer
+		///trusts them. Reading the store opens each certificate's key (DirectCertificateImport.IsKeyUsable), and the trust check builds the
+		///certificates' chains, so the cursor waits.</summary>
+		private void FillInStore() {
 			Cursor=Cursors.WaitCursor;
-			XmlWriterSettings xmlWriterSettings=new XmlWriterSettings();
-			xmlWriterSettings.Indent=true;
-			xmlWriterSettings.IndentChars=("    ");
-			StringBuilder stringBuilder=new StringBuilder();
-			XmlWriter xmlWriter=XmlWriter.Create(stringBuilder,xmlWriterSettings);
-			xmlWriter.WriteStartElement("RequestEmailVeritificationCode");
-			xmlWriter.WriteElementString("RegistrationKey",PrefC.GetString(PrefName.RegistrationKey));
-			xmlWriter.WriteElementString("EmailAddress",textEmailAddress.Text);
-			xmlWriter.WriteEndElement();
-			xmlWriter.Close();
-			ICustomerUpdates service1=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
-			string xmlResponse="";
 			try {
-				xmlResponse=service1.RequestEmailVerificationCode(stringBuilder.ToString());
+				textInStore.Text=GetInStoreText();
+			}
+			finally {
+				Cursor=Cursors.Default;
+			}
+		}
+
+		private string GetInStoreText() {
+			List<DirectCertificateDetails> listDetails;
+			try {
+				listDetails=DirectCertificateImport.GetPrivateCertificates(_emailAddress);
 			}
 			catch(Exception ex) {
-				Cursor=Cursors.Default;
-				MessageBox.Show(Lan.g(this,"Error.")+"  "+ex.Message);
-				return;
+				return Lan.g(this,"This computer's Direct certificate store could not be read")+": "+ex.Message;
 			}
-			XmlDocument xmlDocument=new XmlDocument();
-			xmlDocument.LoadXml(xmlResponse);
-			string strError=WebServiceRequest.CheckForErrors(xmlDocument);
-			if(!string.IsNullOrEmpty(strError)) {
-				Cursor=Cursors.Default;
-				MessageBox.Show(Lan.g(this,"Error.")+"  "+Lan.g(this,"Verification code was not sent.")+"  "+strError);
-				return;
+			if(listDetails.Count==0) {
+				return Lan.g(this,"No certificate for this address or its domain.");
 			}
-			Cursor=Cursors.Default;
-			textVerificationCode.Text="";//Clear the old verification code if there was one.
-			MessageBox.Show(Lan.g(this,"Done.")+"  "+Lan.g(this,"The verification code has been sent to")+" "+textEmailAddress.Text);
+			string trusted;
+			try {
+				trusted=EmailMessages.IsSenderTrusted(_emailAddress) ? Lan.g(this,"yes") : Lan.g(this,"no");
+			}
+			catch(Exception ex) {
+				ex.DoNothing();//The anchor store does not exist yet, or the address can't be parsed: not known.
+				trusted=Lan.g(this,"unknown");
+			}
+			return string.Join("\r\n",listDetails.Select(x => x.DescribeShort()))+"\r\n"
+				+Lan.g(this,"Trusted by a trust anchor of this computer")+": "+trusted;
 		}
 
 		private void butBrowse_Click(object sender,EventArgs e) {
@@ -66,88 +75,124 @@ namespace OpenPmsDental {
 			}
 		}
 
-		private void butSave_Click(object sender,EventArgs e) {
-			if(textVerificationCode.Text.Trim()=="") {
-				MsgBox.Show(this,"Verification Code is blank.");
-				return;
-			}
-			if(!File.Exists(textCertFilePath.Text)) {
-				MsgBox.Show(this,"Certificate file path is invalid.");
-				return;
-			}
-			string ext=Path.GetExtension(textCertFilePath.Text).ToLower();
-			if(ext!=".der" && ext!=".cer") {
-				MsgBox.Show(this,"Certificate file path extension must be .der or .cer.");
-				return;
-			}
-			byte[] byteArrayCertificate=null;
-			try {
-				byteArrayCertificate=File.ReadAllBytes(textCertFilePath.Text);
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Failed to read the certificate file.")+"  "+ex.Message);
-				return;
-			}
-			X509Certificate2 x509Certificate2=null;
-			try {
-				x509Certificate2=new X509Certificate2(byteArrayCertificate);
-			}
-			catch(Exception ex) {
-				MessageBox.Show(Lan.g(this,"Invalid certificate file.")+"  "+ex.Message);
-				return;
-			}
-			if(EmailCertificates.GetCertSubjectName(x509Certificate2).ToLower()!=textEmailAddress.Text.ToLower()) {
-				MessageBox.Show(Lan.g(this,"Email certificates are tied to specific addresses or domains.")+"  "
-					+Lan.g(this,"The email address on the certificate is")+" "+EmailCertificates.GetCertSubjectName(x509Certificate2)+", "
-					+Lan.g(this,"but the email address you specified is")+" "+textEmailAddress.Text);
-				return;
-			}
-			if(x509Certificate2.HasPrivateKey) {
-				MsgBox.Show(this,"The specified certificate contains a private key.  For your security, please export your public key and upload that instead.");
-				return;
-			}
-			Cursor=Cursors.WaitCursor;
-			XmlWriterSettings xmlWriterSettings=new XmlWriterSettings();
-			xmlWriterSettings.Indent=true;
-			xmlWriterSettings.IndentChars=("    ");
-			StringBuilder stringBuilder=new StringBuilder();
-			XmlWriter xmlWriter=XmlWriter.Create(stringBuilder,xmlWriterSettings);
-			xmlWriter.WriteStartElement("PostEmailCertificate");
-			xmlWriter.WriteElementString("RegistrationKey",PrefC.GetString(PrefName.RegistrationKey));
-			xmlWriter.WriteElementString("EmailAddress",textEmailAddress.Text);
-			xmlWriter.WriteElementString("VerificationCode",textVerificationCode.Text);
-			xmlWriter.WriteElementString("CertificateData",Convert.ToBase64String(byteArrayCertificate));
-			xmlWriter.WriteEndElement();
-			xmlWriter.Close();
-			ICustomerUpdates service1=CustomerUpdatesProxy.GetWebServiceInstance();//Not available in this build. Throws HqNotAvailableException.
-			string xmlResponse="";
-			try {
-				xmlResponse=service1.PostEmailCertificate(stringBuilder.ToString());
-			}
-			catch(Exception ex) {
-				Cursor=Cursors.Default;
-				MessageBox.Show("Error: "+ex.Message);
-				return;
-			}
-			XmlDocument xmlDocument=new XmlDocument();
-			xmlDocument.LoadXml(xmlResponse);
-			XmlNode node=xmlDocument.SelectSingleNode("//Error");
-			if(node!=null) {
-				Cursor=Cursors.Default;
-				MessageBox.Show(Lan.g(this,"Error.")+"  "+Lan.g(this,"Email certificate was not registered.")+"  "+node.InnerText);
-				return;
-			}
-			Cursor=Cursors.Default;
-			if(xmlDocument.InnerText=="Insert") {
-				MessageBox.Show(Lan.g(this,"Done.")+"  "+Lan.g(this,"The email certificate has been registered for address")+" "+textEmailAddress.Text);
-			}
-			else {//Updated
-				MessageBox.Show(Lan.g(this,"Done.")+"  "+Lan.g(this,"The email certificate has been updated for address")+" "+textEmailAddress.Text);
-			}
-			DialogResult=DialogResult.OK;
+		///<summary>A changed file or password needs a new check before Import.</summary>
+		private void textCertFile_TextChanged(object sender,EventArgs e) {
+			textDetails.Text="";
+			butImport.Enabled=false;
 		}
 
-		private void butCancel_Click(object sender,EventArgs e) {
+		private void butCheck_Click(object sender,EventArgs e) {
+			Cursor=Cursors.WaitCursor;
+			DirectCertificateResult directCertificateResult=DirectCertificateImport.CheckPrivateFile(_emailAddress,textCertFilePath.Text,textPassword.Text,
+				DateTime.UtcNow);
+			Cursor=Cursors.Default;
+			if(directCertificateResult.Error!="") {
+				textDetails.Text="";
+				butImport.Enabled=false;
+				MessageBox.Show(this,directCertificateResult.Error,Text);
+				return;
+			}
+			textDetails.Text=DescribeCheck(directCertificateResult);
+			butImport.Enabled=true;
+		}
+
+		///<summary>The details box after a check: the file's certificates the import adds, those of the file already in the store with their key,
+		///the store's it replaces after asking (with the warning of a purpose the file lacks), and the store's it keeps, with why.</summary>
+		private string DescribeCheck(DirectCertificateResult directCertificateResult) {
+			string text=string.Join("\r\n\r\n",directCertificateResult.ListDetails.Select(x => x.Describe()));
+			if(directCertificateResult.ListDetailsInStore.Count>0) {
+				text+="\r\n\r\n"+Lan.g(this,"Already on this computer with its private key, not imported again")+":\r\n"
+					+string.Join("\r\n",directCertificateResult.ListDetailsInStore.Select(x => x.DescribeShort()));
+			}
+			if(directCertificateResult.ListDetailsReplaced.Count>0) {
+				text+="\r\n\r\n"+Lan.g(this,"Replaces, after asking")+":\r\n"+string.Join("\r\n",directCertificateResult.ListDetailsReplaced.Select(x => x.DescribeShort()));
+				string warning=DirectCertificateImport.GetReplaceWarning(directCertificateResult);
+				if(warning!="") {
+					text+="\r\n\r\n"+warning;
+				}
+			}
+			string kept=DirectCertificateImport.GetKeptText(directCertificateResult);
+			if(kept!="") {
+				text+="\r\n\r\n"+kept;
+			}
+			return text;
+		}
+
+		private void butImport_Click(object sender,EventArgs e) {
+			Cursor=Cursors.WaitCursor;
+			DirectCertificateResult directCertificateResultCheck=DirectCertificateImport.CheckPrivateFile(_emailAddress,textCertFilePath.Text,textPassword.Text,
+				DateTime.UtcNow);
+			Cursor=Cursors.Default;
+			if(directCertificateResultCheck.Error!="") {
+				textDetails.Text="";
+				butImport.Enabled=false;
+				MessageBox.Show(this,directCertificateResultCheck.Error,Text);
+				return;
+			}
+			textDetails.Text=DescribeCheck(directCertificateResultCheck);
+			List<string> listThumbprintsReplaceAllowed=new List<string>();
+			if(directCertificateResultCheck.ListDetailsReplaced.Count>0) {
+				//Only after asking: No imports nothing. The store's certificates offered are those of a purpose of the file's that expire before it;
+				//the question shows both sides and the ones kept (GetReplaceQuestion).
+				string question=DirectCertificateImport.GetReplaceQuestion(directCertificateResultCheck);
+				if(MessageBox.Show(this,question,Text,MessageBoxButtons.YesNo)!=DialogResult.Yes) {
+					return;
+				}
+				listThumbprintsReplaceAllowed=directCertificateResultCheck.ListDetailsReplaced.Select(x => x.Thumbprint).ToList();
+			}
+			Cursor=Cursors.WaitCursor;
+			DirectCertificateResult directCertificateResult=DirectCertificateImport.ImportPrivateFile(_emailAddress,textCertFilePath.Text,textPassword.Text,
+				listThumbprintsReplaceAllowed,DateTime.UtcNow);
+			Cursor=Cursors.Default;
+			if(!directCertificateResult.IsImported) {
+				MessageBox.Show(this,directCertificateResult.Error,Text);
+				return;
+			}
+			//No password, address or key in the log.
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,DirectCertificateImport.GetLogText(directCertificateResult,_emailAddressNum,isAnchor:false));
+			textPassword.Text="";//Also clears the details and turns Import off (textCertFile_TextChanged).
+			FillInStore();
+			string message=Lan.g(this,"The certificate was imported into this computer's Direct certificate store.")+" "
+				+Lan.g(this,"It is stored for the user name as typed in Edit Email Address; sending uses it once that address is saved.");
+			string kept=DirectCertificateImport.GetKeptText(directCertificateResult);
+			if(kept!="") {
+				message+="\r\n\r\n"+kept;
+			}
+			if(directCertificateResult.Warning!="") {
+				message+="\r\n\r\n"+directCertificateResult.Warning;
+			}
+			MessageBox.Show(this,message,Text);
+		}
+
+		private void butBrowseAnchor_Click(object sender,EventArgs e) {
+			if(openFileDialogAnchor.ShowDialog()==DialogResult.OK) {
+				textAnchorFilePath.Text=openFileDialogAnchor.FileName;
+			}
+		}
+
+		private void butImportAnchor_Click(object sender,EventArgs e) {
+			DirectCertificateResult directCertificateResultCheck=DirectCertificateImport.CheckAnchorFile(textAnchorFilePath.Text,DateTime.UtcNow);
+			if(directCertificateResultCheck.Error!="") {
+				MessageBox.Show(this,directCertificateResultCheck.Error,Text);
+				return;
+			}
+			string question=Lan.g(this,"Add this certificate to this computer's Direct trust anchors? Direct messages from every address whose certificate it "
+				+"issued are then trusted.")+"\r\n\r\n"+directCertificateResultCheck.ListDetails[0].Describe();
+			if(MessageBox.Show(this,question,Text,MessageBoxButtons.YesNo)!=DialogResult.Yes) {
+				return;
+			}
+			DirectCertificateResult directCertificateResult=DirectCertificateImport.ImportAnchorFile(textAnchorFilePath.Text,DateTime.UtcNow);
+			if(!directCertificateResult.IsImported) {
+				MessageBox.Show(this,directCertificateResult.Error,Text);
+				return;
+			}
+			SecurityLogs.MakeLogEntry(EnumPermType.Setup,0,DirectCertificateImport.GetLogText(directCertificateResult,_emailAddressNum,isAnchor:true));
+			textAnchorFilePath.Text="";
+			FillInStore();
+			MsgBox.Show(this,"The trust anchor was imported.");
+		}
+
+		private void butClose_Click(object sender,EventArgs e) {
 			DialogResult=DialogResult.Cancel;
 		}
 
