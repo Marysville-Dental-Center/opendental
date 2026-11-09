@@ -7,7 +7,7 @@ Converts the classic test projects to SDK-style net48 project files on top of te
 For each classic test project (tests\*\*.csproj, tools\*\*.Tests\*.csproj and UnitTests\UnitTests.csproj by default) the script writes a
 new project file in its place: <Project Sdk="Microsoft.NET.Sdk">, with only what differs from the SDK's defaults and from what
 tests\Directory.Build.props sets for every test project (net48, x86, LangVersion 8.0, DebugType, the binding redirects, MSTest v1, no
-None items from the globs). It keeps:
+None items from the globs, no transitive project references). It keeps:
 
   - the comments of the project file (the description, and the comments in front of every item or property it keeps);
   - OutputType, RootNamespace and AssemblyName when they differ from the defaults, LangVersion when it is not 8.0, ApplicationManifest,
@@ -405,7 +405,8 @@ function Convert-Project([string]$path){
 	$text.Add('</Project>')
 	#endregion Text
 
-	$content=($text -join "`n")+"`n"
+	#One kind of line end: the comments keep the classic file's own (CRLF in the working tree).
+	$content=(($text -join "`n")+"`n").Replace("`r`n","`n")
 	if($content -match '[^\x09\x0A\x0D\x20-\x7E]'){ Write-Host "${relativePath}: the new file holds non-ASCII text (from a comment); it is written as UTF-8." }
 	if($Check){
 		Write-Host "==== $relativePath"

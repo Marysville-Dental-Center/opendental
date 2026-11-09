@@ -38,6 +38,14 @@
       every .resx file embedded (bin\ and obj\ excepted).
     -->
     <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+    <!--
+      As in the classic projects, a test project references the projects it names, not also every project those reference (the SDK's
+      transitive project references). The assemblies its references use still come along (reference resolution copies their
+      dependencies), so each output folder holds the files it held; with the transitive references, the 27 test projects that reference
+      the program would also get ODR and OpenPmsDentalDbSettings, which the program references as projects although its assembly does
+      not reference them.
+    -->
+    <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
   </PropertyGroup>
   <!--
     Full PDBs for Debug and pdbonly for Release, as in the classic test projects (the SDK's default is portable). A project built on its
