@@ -14,6 +14,10 @@ Scheduled with the owner on 2026-11-07, in this order (the Open Dental 26.2 feat
    "text below the chart" paint type. See below.
 3. **Compressed DICOM decoders**, parked until such files turn up. See below.
 
+Added on 2026-11-08, alongside the .NET 10 stages and the tooth chart: **EHR again** (owner: "Allow EHR again. build what EHR.dll would
+provide"). What Open Dental's closed `EHR.dll` gave the program is rebuilt as open code, in seven packages; the plan is
+`docs/specs/ehr-rebuild-plan.md`, and its owner and counsel questions E-1 to E-19 are open.
+
 Not scheduled yet: the next release, the office switch-over, the server components on Linux, the GitHub repository move, and Open Dental
 26.3.
 
