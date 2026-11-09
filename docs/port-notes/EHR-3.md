@@ -269,3 +269,28 @@ Targeted runs (`run-tests.ps1 -Mode Targeted`, NoHqTests always included), after
   - The deep-nesting CCD gives the text view with the reason, and the program stays up. No window flashes while documents render; the
     `/ehr-render` process ends by itself (Task Manager).
   - Item 9: the Release dry run's staged list is unchanged.
+
+## 9. Runs
+
+- **Full lane build** (Debug|x86, `OpenDental.Local.slnf`): 0 errors, no warning in a file of this package.
+- **Targeted runs** (`run-tests.ps1 -Mode Targeted`, after the full build):
+
+  | Assembly | Result |
+  |---|---|
+  | EhrTests | 122 of 122 passed (34 new) |
+  | LibWebTests | 64 of 64 passed (the WebView2 smoke tests ran) |
+  | PdfLibraryTests | 41 of 41 passed |
+  | S0FTests | 29 of 29 passed |
+  | AttributionTests | 50 of 50 passed |
+  | ReleaseFlowTests | 120 of 120 passed (the release output of the dry run was there) |
+  | NoHqTests | 58 of 58 passed |
+
+  `InitSqlTests` and `ForkMigrationTests` were left out, as the brief says (no schema change). No `ehr1_` or `ehr3_` database was left.
+- **Release dry run** (`tools/Build-Release.ps1 -BuildLane <lane> -OutDir <scratch> -SkipInstaller`, Release|x86 through the lane): 81 files
+  staged, the same 81 names as the script's allow-list (`-ListFiles`); `OpenPmsDentalBusiness.dll` grows by about 1.1 MB (the embedded
+  stylesheets). The staged file list is unchanged.
+- **Environment.** `main` gained a `Directory.Packages.props` after this branch was cut (central package management, stage 2). This
+  worktree lies under the main checkout's folder, so NuGet found that file above the worktree, and every restore of this branch failed with
+  NU1008 and NU1004. The lane builds and the dry run of this package ran with the environment variable `ImportDirectoryPackagesProps=false`
+  (only for those processes; no file changed). Any worktree of a branch cut before that commit needs the same until it is merged with
+  `main`.
