@@ -73,7 +73,7 @@ namespace ProjectFileTests {
 				}
 			}
 			Assert.AreEqual(0,listProblems.Count,string.Join("; ",listProblems));
-			//Today WpfControlsOD and CryptoTests (until the lead's mapping fix of stage 1): their Debug|AnyCPU groups give the output folder.
+			//WpfControlsOD until S1-4 made it x86: its Debug|AnyCPU group gave the output folder.
 			if(Regex.IsMatch(textSln,@"\{118540CC-3536-4E8B-94D4-402CA48A4CB0\}\.Debug\|x86\.ActiveCfg = Debug\|Any CPU")) {
 				ProjectFile projectFileWpf=ProjectFile.Load(Path.Combine(root,"WpfControlsOD","WpfControlsOD.csproj"));
 				Assert.AreEqual("AnyCPU",projectFileWpf.Platform);
@@ -81,9 +81,53 @@ namespace ProjectFileTests {
 				Assert.AreEqual(@"obj\Debug\",projectFileWpf.GetProperty("IntermediateOutputPath"));
 				//Read as x86 it would get the common targets' default instead, which the build never uses.
 				Assert.AreEqual(@"bin\x86\Debug\",ProjectFile.Load(Path.Combine(root,"WpfControlsOD","WpfControlsOD.csproj"),"Debug","x86").GetProperty("OutputPath"));
-				Assert.IsTrue(countAnyCpu>=1);
 			}
+			//CryptoTests (S1-T2's item 7, asserted on its own since S1-T3): the solution builds its Debug|x86 as Debug|Any CPU, so its AnyCPU group
+			//gives the output folder bin\Debug\, where the test runners look for CryptoTests.dll. A mapping fix to x86 must change this test.
+			StringAssert.Contains(textSln,"{E5185629-91EA-4199-9623-1FF57BBF9708}.Debug|x86.ActiveCfg = Debug|Any CPU","OpenDental.sln maps CryptoTests' Debug|x86.");
+			ProjectFile projectFileCrypto=ProjectFile.Load(Path.Combine(root,"tests","CryptoTests","CryptoTests.csproj"));
+			Assert.AreEqual("Debug|AnyCPU",projectFileCrypto.Configuration+"|"+projectFileCrypto.Platform);
+			Assert.AreEqual(@"bin\Debug\",projectFileCrypto.GetProperty("OutputPath"));
+			Assert.AreEqual(@"obj\Debug\",projectFileCrypto.GetProperty("IntermediateOutputPath"));
+			Assert.AreEqual(Path.Combine(root,"tests","CryptoTests","bin","Debug","CryptoTests.dll"),projectFileCrypto.GetProperty("TargetPath"));
+			Assert.AreEqual("x86",projectFileCrypto.GetProperty("PlatformTarget"),"Its own file's, for the AnyCPU platform too.");
+			//Read as x86, its other group would give bin\x86\Debug\, which the build never uses.
+			Assert.AreEqual(@"bin\x86\Debug\",ProjectFile.Load(projectFileCrypto.FullPath,"Debug","x86").GetProperty("OutputPath"));
+			Assert.IsTrue(countAnyCpu>=1,"CryptoTests at least.");
 			Assert.AreEqual("x86",ProjectFile.Load(Path.Combine(root,"OpenPmsDental","OpenPmsDental.csproj")).Platform);
+		}
+
+		[TestMethod]
+		public void TheSolutionsGlobalProperties_WinOverTheProjectsOwn_AndAProjectOnItsOwnKeepsItsOwn() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//MSBuild 18 (S1-T3's scratch evaluation): the solution build gives every project SolutionDir, SolutionPath, SolutionName,
+				//SolutionExt and SolutionFileName as global properties, which a project's own assignment cannot change; built on its own, the
+				//project's assignment wins and the common targets give the others *Undefined*.
+				const string anchor="<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>";
+				fixtureFolder.EditProject("Classic",anchor,anchor+"<FixtureBefore>[$(SolutionDir)]</FixtureBefore><SolutionDir>..\\..\\</SolutionDir>"
+					+"<FixtureAfter>[$(SolutionDir)]</FixtureAfter>");
+				ProjectFile projectFile=fixtureFolder.Load("Classic");
+				string folder=fixtureFolder.Root+@"\";
+				Assert.AreEqual(folder,projectFile.GetProperty("SolutionDir"));
+				Assert.AreEqual("["+folder+"]",projectFile.GetProperty("FixtureBefore"));
+				Assert.AreEqual("["+folder+"]",projectFile.GetProperty("FixtureAfter"),"The project's own assignment is ignored.");
+				Assert.AreEqual(fixtureFolder.Combine("OpenDental.sln"),projectFile.GetProperty("SolutionPath"));
+				Assert.AreEqual("OpenDental",projectFile.GetProperty("SolutionName"));
+				Assert.AreEqual(".sln",projectFile.GetProperty("SolutionExt"));
+				Assert.AreEqual("OpenDental.sln",projectFile.GetProperty("SolutionFileName"));
+				Assert.AreEqual("*Undefined*",projectFile.GetProperty("DevEnvDir"));
+				//A project the solution does not list is built on its own.
+				fixtureFolder.WriteFile(@"tests\Unlisted\Unlisted.csproj",System.IO.File.ReadAllText(fixtureFolder.ProjectPath("Classic")));
+				ProjectFile projectFileUnlisted=ProjectFile.Load(fixtureFolder.Combine(@"tests\Unlisted\Unlisted.csproj"));
+				Assert.AreEqual(@"..\..\",projectFileUnlisted.GetProperty("SolutionDir"));
+				Assert.AreEqual("[]",projectFileUnlisted.GetProperty("FixtureBefore"));
+				Assert.AreEqual(@"[..\..\]",projectFileUnlisted.GetProperty("FixtureAfter"));
+				Assert.AreEqual("*Undefined*",projectFileUnlisted.GetProperty("SolutionName"));
+				Assert.AreEqual("*Undefined*",projectFileUnlisted.GetProperty("SolutionPath"));
+				//The repository's: the folder of OpenDental.sln, as the build lane's solution filter build and tools\Get-ProjectBaseline.ps1 give it.
+				string root=FixtureFolder.RepoRoot();
+				Assert.AreEqual(root+@"\",ProjectFile.Load(Path.Combine(root,"OpenPmsDental","OpenPmsDental.csproj")).GetProperty("SolutionDir"));
+			}
 		}
 	}
 }

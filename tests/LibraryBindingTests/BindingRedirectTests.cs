@@ -101,14 +101,18 @@ namespace LibraryBindingTests {
 			projectInfo.AssemblyName="NotBuiltFixture";
 			projectInfo.IsExe=true;
 			foreach(bool isRequired in new[] { true,false }) {
+				//The check's own exception is caught; the verdict on it comes after the try, so the test fails on a pass by itself, whatever the
+				//message text says.
+				UnitTestAssertException exceptionCaught=null;
 				try {
 					CheckBuiltProgramsAndTests(new List<ProjectInfo> { projectInfo },isRequired);
-					Assert.Fail("A project that is not built passed.");
 				}
 				catch(UnitTestAssertException ex) {
-					Assert.AreEqual(isRequired ? typeof(AssertFailedException) : typeof(AssertInconclusiveException),ex.GetType(),"Required: "+isRequired);
-					StringAssert.Contains(ex.Message,"NotBuiltFixture.exe");
+					exceptionCaught=ex;
 				}
+				Assert.IsNotNull(exceptionCaught,"A project that is not built passed (required: "+isRequired+").");
+				Assert.AreEqual(isRequired ? typeof(AssertFailedException) : typeof(AssertInconclusiveException),exceptionCaught.GetType(),"Required: "+isRequired);
+				StringAssert.Contains(exceptionCaught.Message,"NotBuiltFixture.exe");
 			}
 		}
 

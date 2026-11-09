@@ -58,7 +58,9 @@ namespace ProjectFileTests {
 		private void AddProject(string name,string text,string[] arrayFiles) {
 			WriteFile(@"tests\"+name+@"\"+name+".csproj",text);
 			foreach(string file in arrayFiles) {
-				WriteFile(@"tests\"+name+@"\"+file,"");
+				//Microsoft.Common.CurrentVersion.targets imports the project's .user file, and an empty one fails MSBuild's evaluation (and
+				//ProjectFile's), so the fixtures' .user file is an empty project.
+				WriteFile(@"tests\"+name+@"\"+file,file.EndsWith(".user",StringComparison.OrdinalIgnoreCase) ? "<Project />" : "");
 			}
 		}
 
