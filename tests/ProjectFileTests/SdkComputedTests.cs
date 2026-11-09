@@ -1,7 +1,8 @@
 // What MSBuild's and the .NET SDK's own files compute, which ProjectFile now computes where they do (package S1-T2 of the .NET 10 plan,
 // docs/specs/net10-plan.md): the Link the SDK gives an item outside the project folder, the output and intermediate paths, the target framework,
-// the common targets' defaults and the WindowsDesktop SDK's page metadata, in the classic and the SDK-style fixtures, with the cases where
-// MSBuild gives none; and the properties it does not compute, which throw instead of reading as ''.
+// the common targets' defaults, the SDK's compiler defaults (DefineConstants, NoWarn and the like) and the WindowsDesktop SDK's page metadata, in
+// the classic and the SDK-style fixtures, with the cases where MSBuild gives none; and the properties it does not compute, which throw instead
+// of reading as ''.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Linq;
@@ -249,6 +250,127 @@ namespace ProjectFileTests {
 			}
 		}
 		#endregion WPF pages
+
+		#region The SDK's compiler defaults
+		[TestMethod]
+		public void Sdk_GetsTheSdksCompilerDefaults_AsMSBuildEvaluatesThem() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//MSBuild 18 -getProperty gives this fixture DefineConstants TRACE;DEBUG (S1-T2's review), as it gives the SDK-style projects of the
+				//repository TRACE;DEBUG and NoWarn 1701;1702 (RepositoryProjectsTests): TRACE and 1701;1702 from Microsoft.NET.Sdk.CSharp.props
+				//before the project's own properties, DEBUG from Microsoft.NET.Sdk.CSharp.targets after them. The others as Microsoft.NET.Sdk.props,
+				//Microsoft.NET.Sdk.CSharp.props and .targets and Microsoft.NET.Sdk.Analyzers.targets of SDK 10.0.114 set them.
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				foreach(string[] arrayCase in new[] { new[] { "DefineConstants","TRACE;DEBUG" },new[] { "ImplicitConfigurationDefine","DEBUG" },
+					new[] { "NoWarn","1701;1702" },new[] { "WarningsAsErrors",";NU1605" },new[] { "WarningLevel","4" },new[] { "Configurations","Debug;Release" },
+					new[] { "Platforms","AnyCPU" },new[] { "FileAlignment","512" },new[] { "ErrorReport","prompt" },new[] { "Deterministic","true" },
+					new[] { "DebugSymbols","true" },new[] { "DebugType","portable" },new[] { "Optimize","false" },new[] { "AllowUnsafeBlocks","false" },
+					new[] { "TreatWarningsAsErrors","false" },new[] { "Prefer32Bit","false" },new[] { "SignAssembly","false" },
+					new[] { "AppDesignerFolder","Properties" } })
+				{
+					Assert.AreEqual(arrayCase[1],projectFile.GetProperty(arrayCase[0]),arrayCase[0]);
+				}
+				ProjectFile projectFileRelease=ProjectFile.Load(fixtureFolder.ProjectPath("SdkStyle"),"Release","x86");
+				Assert.AreEqual("TRACE;RELEASE",projectFileRelease.GetProperty("DefineConstants"),"The Release group's TRACE, then RELEASE.");
+				Assert.AreEqual("true",projectFileRelease.GetProperty("Optimize"));
+				Assert.AreEqual("false",projectFileRelease.GetProperty("DebugSymbols"),"Microsoft.NET.Sdk.props: false unless set.");
+				Assert.AreEqual("portable",projectFileRelease.GetProperty("DebugType"),"Set before DebugSymbols gets its false.");
+				//A classic project gets none of the SDK's: its own DefineConstants, no NoWarn (Microsoft.CSharp.CurrentVersion.targets adds 1701;1702
+				//inside CoreCompile, while building); DebugSymbols and AppDesignerFolder from MSBuild's own targets.
+				ProjectFile projectFileClassic=fixtureFolder.Load("Classic");
+				Assert.AreEqual("DEBUG;TRACE",projectFileClassic.GetProperty("DefineConstants"));
+				Assert.AreEqual("",projectFileClassic.GetProperty("NoWarn"));
+				Assert.AreEqual("",projectFileClassic.GetProperty("WarningsAsErrors"));
+				Assert.AreEqual("",projectFileClassic.GetProperty("DebugType"));
+				Assert.AreEqual("",projectFileClassic.GetProperty("WarningLevel"));
+				Assert.AreEqual("true",projectFileClassic.GetProperty("DebugSymbols"),"Microsoft.Common.CurrentVersion.targets: Debug, neither set.");
+				Assert.AreEqual("",ProjectFile.Load(fixtureFolder.ProjectPath("Classic"),"Release","x86").GetProperty("DebugSymbols"));
+				Assert.AreEqual("Properties",projectFileClassic.GetProperty("AppDesignerFolder"),"Microsoft.CSharp.CurrentVersion.targets.");
+			}
+		}
+
+		[TestMethod]
+		public void Sdk_TheProjectsOwnDefinesAndNoWarn_KeepWhatTheSdkAdds() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//$(DefineConstants) and $(NoWarn) in the project's own value: the SDK's TRACE and 1701;1702 come before it, DEBUG after it. MSBuild 18
+				//gives the third-party source builds NoWarn 1701;1702;CS0436;CS1591 this way (SourceBuild.props: $(NoWarn);CS0436;CS1591).
+				fixtureFolder.EditProject("SdkStyle","<UseWPF>true</UseWPF>","<UseWPF>true</UseWPF><DefineConstants>$(DefineConstants);FIXTURE</DefineConstants>"
+					+"<NoWarn>$(NoWarn);CS0436;CS1591</NoWarn>");
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				Assert.AreEqual("TRACE;FIXTURE;DEBUG",projectFile.GetProperty("DefineConstants"));
+				Assert.AreEqual("1701;1702;CS0436;CS1591",projectFile.GetProperty("NoWarn"));
+				//A value without $(DefineConstants) replaces TRACE; the configuration's define still follows.
+				fixtureFolder.EditProject("SdkStyle","<DefineConstants>$(DefineConstants);FIXTURE</DefineConstants>","<DefineConstants>FIXTURE</DefineConstants>");
+				Assert.AreEqual("FIXTURE;DEBUG",fixtureFolder.Load("SdkStyle").GetProperty("DefineConstants"));
+				//DisableImplicitConfigurationDefines, as SourceBuild.props sets it: no DEBUG.
+				fixtureFolder.EditProject("SdkStyle","<DefineConstants>FIXTURE</DefineConstants>",
+					"<DefineConstants>FIXTURE</DefineConstants><DisableImplicitConfigurationDefines>true</DisableImplicitConfigurationDefines>");
+				projectFile=fixtureFolder.Load("SdkStyle");
+				Assert.AreEqual("FIXTURE",projectFile.GetProperty("DefineConstants"));
+				Assert.AreEqual("",projectFile.GetProperty("ImplicitConfigurationDefine"));
+			}
+		}
+
+		[TestMethod]
+		public void Sdk_ValuesOfDirectoryBuildProps_ComeBeforeTheSdksDefaults() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//Directory.Build.props is read before Microsoft.NET.Sdk.props and Microsoft.NET.Sdk.CSharp.props: TRACE goes after its symbols, and
+				//the defaults that apply only to an empty value (NoWarn, DebugType, WarningLevel) leave its own.
+				fixtureFolder.EditFile("Directory.Build.props","<FixtureSdkOnly>sdk</FixtureSdkOnly>","<FixtureSdkOnly>sdk</FixtureSdkOnly>"
+					+"<DefineConstants>EARLY</DefineConstants><NoWarn>CS0618</NoWarn><DebugType>full</DebugType><WarningLevel>3</WarningLevel>");
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				Assert.AreEqual("EARLY;TRACE;DEBUG",projectFile.GetProperty("DefineConstants"));
+				Assert.AreEqual("CS0618",projectFile.GetProperty("NoWarn"));
+				Assert.AreEqual("full",projectFile.GetProperty("DebugType"));
+				Assert.AreEqual("3",projectFile.GetProperty("WarningLevel"));
+				//DebugSymbols false makes DebugType None, even over a value of its own.
+				fixtureFolder.EditFile("Directory.Build.props","<DebugType>full</DebugType>","<DebugType>full</DebugType><DebugSymbols>false</DebugSymbols>");
+				Assert.AreEqual("None",fixtureFolder.Load("SdkStyle").GetProperty("DebugType"));
+			}
+		}
+
+		[TestMethod]
+		public void Sdk_TheConfigurationsDefine_AndTheTargetFrameworksDefaults() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//Microsoft.NET.Sdk.CSharp.targets: the configuration in capitals, '-', '.' and ' ' made '_'.
+				ProjectFile projectFile=ProjectFile.Load(fixtureFolder.ProjectPath("SdkStyle"),"Debug-Net.Core x","x86");
+				Assert.AreEqual("TRACE;DEBUG_NET_CORE_X",projectFile.GetProperty("DefineConstants"));
+				Assert.AreEqual("",projectFile.GetProperty("Optimize"),"Microsoft.NET.Sdk.props sets it for Debug and Release only.");
+				Assert.AreEqual("false",projectFile.GetProperty("DebugSymbols"));
+				//.NET 10: the warning level of its major version, BinaryFormatter's obsolete warning an error and BinaryFormatter off.
+				WriteSdkLinksWithTargetFramework(fixtureFolder,"net10.0-windows");
+				projectFile=fixtureFolder.Load("SdkLinks");
+				Assert.AreEqual("10",projectFile.GetProperty("WarningLevel"));
+				Assert.AreEqual(";NU1605;SYSLIB0011",projectFile.GetProperty("WarningsAsErrors"));
+				Assert.AreEqual("false",projectFile.GetProperty("EnableUnsafeBinaryFormatterSerialization"));
+				Assert.AreEqual("TRACE;DEBUG",projectFile.GetProperty("DefineConstants"));
+				//.NET Standard: no warning level, no BinaryFormatter error.
+				WriteSdkLinksWithTargetFramework(fixtureFolder,"netstandard2.0");
+				projectFile=fixtureFolder.Load("SdkLinks");
+				Assert.AreEqual("",projectFile.GetProperty("WarningLevel"));
+				Assert.AreEqual(";NU1605",projectFile.GetProperty("WarningsAsErrors"));
+				//A target framework this reader does not know: what depends on it throws.
+				WriteSdkLinksWithTargetFramework(fixtureFolder,"uap10.0");
+				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkLinks").GetProperty("WarningLevel"),"uap10.0");
+				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkLinks").GetProperty("WarningsAsErrors"),"uap10.0");
+			}
+		}
+
+		[TestMethod]
+		public void SdkVisualBasic_TheCompilerDefaults_Throw() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//Microsoft.NET.Sdk.VisualBasic.props and .targets compute them otherwise; not modelled, so asking throws instead of reading ''.
+				fixtureFolder.WriteFile(@"tests\SdkVb\SdkVb.vbproj","<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Library</OutputType>"
+					+"</PropertyGroup></Project>");
+				fixtureFolder.WriteFile(@"tests\SdkVb\Module1.vb","");
+				ProjectFile projectFile=ProjectFile.Load(fixtureFolder.Combine(@"tests\SdkVb\SdkVb.vbproj"));
+				Assert.IsTrue(projectFile.Compiles("Module1.vb"),"The default glob of the language.");
+				foreach(string name in new[] { "DefineConstants","NoWarn","WarningsAsErrors","WarningLevel" }) {
+					AssertThrows<NotSupportedException>(() => projectFile.GetProperty(name),"$("+name+")");
+				}
+				Assert.AreEqual("portable",projectFile.GetProperty("DebugType"),"Microsoft.NET.Sdk.props is the same for every language.");
+			}
+		}
+		#endregion The SDK's compiler defaults
 
 		#region Not modelled
 		[TestMethod]
