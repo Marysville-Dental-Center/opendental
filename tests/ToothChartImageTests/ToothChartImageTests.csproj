@@ -69,7 +69,6 @@
   <ItemGroup>
     <Compile Include="CallerSourceTests.cs" />
     <Compile Include="CallLogTests.cs" />
-    <Compile Include="Harness\LegacyCallers.cs" />
     <Compile Include="LegacyRecorder.cs" />
     <Compile Include="ModelTests.cs" />
     <Compile Include="MovedLabelTests.cs" />

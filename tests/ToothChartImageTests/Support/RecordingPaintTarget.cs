@@ -1,5 +1,5 @@
 // The recording target of the call-log tests (package TC-2): an IToothChartPaintTarget that writes each call of ToothChartPainter to a CallLog,
-// with the same names and arguments as the harness that recorded the callers' code before the move.
+// with the same names and arguments as the harness that recorded the callers' code before TC-2 moved it (deleted since).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.Drawing;
 using OpenPmsDental;

@@ -1,8 +1,9 @@
 // Call-log tests of the tooth chart's painting code (package TC-2, docs/specs/wpf-tooth-chart-plan.md, section 4 and section 7 item 5). Each
 // scene of CallLogFixtures runs one caller's chart code on synthetic patients in a scratch database, against a target that logs every draw
 // call, and the log must equal the one committed in CallLogs\(caller)\(scene).txt. The committed logs were recorded from the callers' own code
-// before TC-2 moved it (the temporary harness in Harness\LegacyCallers.cs, a line-for-line copy), so a painter that gives the same logs paints
-// as the callers did. OPMS_RECORD_CALL_LOGS=1 writes the logs instead of comparing (a deliberate re-record only).
+// before TC-2 moved it (TC-2's commit (0), through a temporary harness that held that code line for line and was deleted once the one
+// painter gave the same logs), so a painter that gives the same logs paints as the callers did. A package that changes what a caller paints
+// re-records the logs on purpose with OPMS_RECORD_CALL_LOGS=1 and explains the changed lines in its commit.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -10,7 +11,6 @@ using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
-using ToothChartImageTests.Harness;
 
 namespace ToothChartImageTests {
 	[TestClass]
@@ -41,58 +41,36 @@ namespace ToothChartImageTests {
 			Assert.AreEqual(2,listOrthoHardwares.Select(x => x.DateExam).Distinct().Count(),"Two ortho exams.");
 		}
 
-		#region Today's code (the temporary harness)
-		[TestMethod]
-		public void ChartModule_TodaysCode_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_CHART,"harness",true,CallLogFixtures.GetChartModuleScenes(),x => x.Name,x => x.User,LegacyControlChart.Run);
-		}
-
-		[TestMethod]
-		public void TreatPlan_TodaysCode_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_TREAT,"harness",true,CallLogFixtures.GetTreatPlanScenes(),x => x.Name,x => x.User,LegacyControlTreat.Run);
-		}
-
-		[TestMethod]
-		public void Sheet_TodaysCode_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_SHEET,"harness",true,CallLogFixtures.GetSheetScenes(),x => x.Name,x => x.User,LegacySheetPrinting.Run);
-		}
-
-		[TestMethod]
-		public void BigChart_TodaysCode_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_BIG,"harness",true,CallLogFixtures.GetBigChartScenes(),x => x.Name,x => x.User,LegacyFormToothChartBig.Run);
-		}
-		#endregion Today's code (the temporary harness)
-
 		#region The painter
 		[TestMethod]
 		public void ChartModule_Painter_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_CHART,"painter",false,CallLogFixtures.GetChartModuleScenes(),x => x.Name,x => x.User,PainterCallers.RunChartModule);
+			CheckScenes(CallLogFixtures.CALLER_CHART,"painter",true,CallLogFixtures.GetChartModuleScenes(),x => x.Name,x => x.User,PainterCallers.RunChartModule);
 		}
 
 		[TestMethod]
 		public void TreatPlan_Painter_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_TREAT,"painter",false,CallLogFixtures.GetTreatPlanScenes(),x => x.Name,x => x.User,PainterCallers.RunTreatPlan);
+			CheckScenes(CallLogFixtures.CALLER_TREAT,"painter",true,CallLogFixtures.GetTreatPlanScenes(),x => x.Name,x => x.User,PainterCallers.RunTreatPlan);
 		}
 
 		[TestMethod]
 		public void Sheet_Painter_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_SHEET,"painter",false,CallLogFixtures.GetSheetScenes(),x => x.Name,x => x.User,PainterCallers.RunSheet);
+			CheckScenes(CallLogFixtures.CALLER_SHEET,"painter",true,CallLogFixtures.GetSheetScenes(),x => x.Name,x => x.User,PainterCallers.RunSheet);
 		}
 
 		[TestMethod]
 		public void BigChart_Painter_GivesTheCommittedLogs() {
-			CheckScenes(CallLogFixtures.CALLER_BIG,"painter",false,CallLogFixtures.GetBigChartScenes(),x => x.Name,x => x.User,PainterCallers.RunBigChart);
+			CheckScenes(CallLogFixtures.CALLER_BIG,"painter",true,CallLogFixtures.GetBigChartScenes(),x => x.Name,x => x.User,PainterCallers.RunBigChart);
 		}
 		#endregion The painter
 
 		///<summary>Runs every scene and compares its log with the committed one, or writes it when recording and isRecorder (the code the logs are
-		///recorded from: today's code in the harness). Lists every scene that differs, with its first different line, and writes the call count of
-		///each scene to the test output.</summary>
+		///recorded from: the painter, since TC-2 deleted the harness of the callers' old code). Lists every scene that differs, with its first
+		///different line, and writes the call count of each scene to the test output.</summary>
 		private void CheckScenes<TScene>(string caller,string source,bool isRecorder,List<TScene> listScenes,Func<TScene,string> funcName,
 			Func<TScene,CallLogUser> funcUser,Func<TScene,CallLog> funcRun)
 		{
 			if(CallLogFiles.IsRecording && !isRecorder) {
-				Assert.Inconclusive(CallLogFiles.EnvRecord+"=1: the logs are being recorded from today's code, so "+source+" is not compared.");
+				Assert.Inconclusive(CallLogFiles.EnvRecord+"=1: the logs are being recorded, so "+source+" is not compared.");
 			}
 			CallLogFixtures.EnsureBuilt();
 			CallLogFixtures.SetCulture();
