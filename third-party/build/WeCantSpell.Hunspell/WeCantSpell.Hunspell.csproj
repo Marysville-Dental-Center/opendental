@@ -4,7 +4,7 @@
        (https://github.com/aarondandy/WeCantSpell.Hunspell.git, tag 7.0.1), the library project only (WeCantSpell.Hunspell\), as upstream's
        WeCantSpell.Hunspell.csproj builds it for netstandard2.0: the same symbols (NO_... for what netstandard2.0 lacks) and its own polyfills
        (HashCode.cs and the others in the folder), for the .NET Framework 4.8 with System.Memory, System.Buffers and
-       System.Runtime.CompilerServices.Unsafe from "Required dlls". Not strong-named, as upstream's is not. Upstream's AssemblyVersion is the
+       System.Runtime.CompilerServices.Unsafe from their packages (Directory.Packages.props). Not strong-named, as upstream's is not. Upstream's AssemblyVersion is the
        major version (MinVer), 7.0.0.0, so the assembly's identity stays that of the NuGet file it replaces. MinVer, the NuGet packaging and
        the tests, benchmarks and samples of the repository are not used. The MPL 1.1 / GPL 2.0 or later / LGPL 2.1 or later library is used
        under its LGPL 2.1 or later option (THIRD-PARTY-NOTICES.txt). docs\third-party-source-builds.md. -->
@@ -40,15 +40,9 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Buffers">
-      <HintPath>..\..\..\Required dlls\System.Buffers.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Memory">
-      <HintPath>..\..\..\Required dlls\System.Memory.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Runtime.CompilerServices.Unsafe">
-      <HintPath>..\..\..\Required dlls\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
-    </Reference>
+    <PackageReference Include="System.Buffers" />
+    <PackageReference Include="System.Memory" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" />
   </ItemGroup>
   <ItemGroup>
     <!-- Upstream: every .cs file of the library folder. -->

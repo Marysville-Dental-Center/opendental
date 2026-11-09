@@ -172,17 +172,17 @@ namespace VendorDirectTests.BridgesRemoval {
 		public void SshNetDependency_StillReachesTheProgram() {
 			//Renci.SshNet (SSH.NET 2026.0.0, net462) references Microsoft.Bcl.AsyncInterfaces 8.0.0.0. The Graph SDK used to bring a newer copy and
 			//its redirect in, so OpenPmsDentalStorage now references it itself. Without it, SFTP A to Z storage and the TSI uploads fail when SftpClient loads.
-			//The evaluated reference, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
-			Assert.AreEqual(@"..\Required dlls\Microsoft.Bcl.AsyncInterfaces.dll",
-				ProjectFile.Load(Path.Combine(GetRoot(),@"OpenPmsDentalStorage\OpenPmsDentalStorage.csproj")).GetReference("Microsoft.Bcl.AsyncInterfaces")?.GetMetadata("HintPath"),
-				"OpenPmsDentalStorage should reference Required dlls\\Microsoft.Bcl.AsyncInterfaces.dll next to Renci.SshNet.");
+			//The evaluated reference: the package of Directory.Packages.props, 10.0.14, whose file is the one Required dlls held (S2-1 of the .NET 10 move).
+			Assert.AreEqual("10.0.14",
+				ProjectFile.Load(Path.Combine(GetRoot(),@"OpenPmsDentalStorage\OpenPmsDentalStorage.csproj")).GetPackageVersion("Microsoft.Bcl.AsyncInterfaces"),
+				"OpenPmsDentalStorage should reference the Microsoft.Bcl.AsyncInterfaces package next to SSH.NET's.");
 			string folder=Path.Combine(GetRoot(),@"OpenPmsDental\bin\Debug");
 			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
 				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Renci.SshNet.dll")));
-			//A HintPath alone does not carry it to the hosts: the compiler drops unused references, and the hosts' build will not take 10.0.0.14 for
-			//SSH.NET's 8.0.0.0. OpenPmsDentalStorage must use it, so its own reference is what every host copies.
+			//A reference alone did not carry it to the hosts while it was a HintPath: the compiler drops unused references, and the hosts' build would
+			//not take 10.0.0.14 for SSH.NET's 8.0.0.0. OpenPmsDentalStorage uses it, so its own reference is what every host copies.
 			Assert.IsTrue(GetReferencedAssemblyNames(Path.Combine(folder,"OpenPmsDentalStorage.dll")).Contains("Microsoft.Bcl.AsyncInterfaces"),
 				"OpenPmsDentalStorage.dll should reference Microsoft.Bcl.AsyncInterfaces.");
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Bcl.AsyncInterfaces.dll")),"SSH.NET's dependency is not copied to the program folder.");

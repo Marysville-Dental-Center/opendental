@@ -7,9 +7,6 @@
     <Reference Include="MySqlConnector">
       <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>..\..\Required dlls\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Xaml" />

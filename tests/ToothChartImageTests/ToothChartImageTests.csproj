@@ -19,6 +19,8 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
     <Reference Include="WindowsBase" />
+    <!-- TC-3's live view tests: the live view is an ElementHost (SparksToothChart\Wpf3D\ToothChartWpfView.cs). -->
+    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />

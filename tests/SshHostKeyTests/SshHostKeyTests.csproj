@@ -5,15 +5,10 @@
        wiring of every SSH path. Database tests use scratch MariaDB databases named test_fussh_* with synthetic rows only; host keys are generated
        for each run with BouncyCastle. No test reaches the internet. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <!-- BouncyCastle: the tests generate host keys with it, and the fake SSH server does its key exchange with it (SSH.NET uses it itself). -->
-    <Reference Include="BouncyCastle.Cryptography">
-      <HintPath>..\..\Required dlls\BouncyCastle.Cryptography.dll</HintPath>
-    </Reference>
+    <!-- BouncyCastle (the tests generate host keys with it, and the fake SSH server does its key exchange with it; SSH.NET uses it itself) and
+         SSH.NET come as packages through OpenPmsDentalStorage, below. -->
     <Reference Include="MySqlConnector">
       <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-    <Reference Include="Renci.SshNet">
-      <HintPath>..\..\Required dlls\Renci.SshNet.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

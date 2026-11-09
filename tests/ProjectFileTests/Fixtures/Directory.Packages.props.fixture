@@ -1,0 +1,6 @@
+<Project>
+  <!-- Fixture for tests\ProjectFileTests: copied to the root of a scratch folder as Directory.Packages.props. NuGet.props imports the first
+       Directory.Packages.props in the project's folder or a folder above it, as Microsoft.Common.props finds Directory.Build.props, so this
+       one stops that search at the scratch folder and no such file in the temp folder or above it is read. It sets nothing: central package
+       management stays off. A test that needs central package versions writes its own over it (or one in a project folder, found first). -->
+</Project>

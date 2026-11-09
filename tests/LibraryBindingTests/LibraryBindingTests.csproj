@@ -4,8 +4,9 @@
        and the release ships exactly the ones the programs need. Reads assembly metadata with Mono.Cecil and loads none of the files it checks.
        No database, device or network is needed. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <!-- Reads assembly references without loading the assemblies. The NuGet package, from the offline package folder (nuget.config). -->
-    <PackageReference Include="Mono.Cecil" Version="0.10.3" />
+    <!-- Reads assembly references without loading the assemblies. The NuGet package, from the offline package folder (nuget.config), at
+         the version of Directory.Packages.props. -->
+    <PackageReference Include="Mono.Cecil" />
   </ItemGroup>
   <ItemGroup>
     <!-- The reader of project files (classic and SDK-style) shared by the tests that check them (S1-T of docs/specs/net10-plan.md). -->

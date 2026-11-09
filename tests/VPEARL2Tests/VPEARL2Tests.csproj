@@ -8,11 +8,8 @@
     <Reference Include="MySqlConnector">
       <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
-    <!-- Newtonsoft.Json: the fake IApiRequest in PearlWiringTests implements its signatures. -->
-    <Reference Include="Newtonsoft.Json">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Required dlls\Newtonsoft.Json.dll</HintPath>
-    </Reference>
+    <!-- Newtonsoft.Json, which the fake IApiRequest in PearlWiringTests implements the signatures of, comes as a package through the projects
+         below. -->
     <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
