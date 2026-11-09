@@ -21,7 +21,6 @@ namespace xCrudGenerator {
 		private const string t6="\t\t\t\t\t\t";
 		private const string t7="\t\t\t\t\t\t\t";
 		private List<Type> _listTypes;
-		public static List<string> ListFilesToAddToODBiz=new List<string>();
 
 		public Form1() {
 			InitializeComponent();
@@ -94,7 +93,6 @@ namespace xCrudGenerator {
 					File.WriteAllText(crudFileName,strb.ToString());
 					if(isNewFile) {
 						CrudGenHelper.AddToSubversion(Path.Combine(Application.StartupPath,crudDirectory,className+".cs"));
-						ListFilesToAddToODBiz.Add(Path.Combine("Crud",Path.GetFileName(crudFileName)));
 					}
 					CrudQueries.Write(convertDbFile,_listTypes[i],textDb.Text,false,checkRunQueries.Checked,checkAddToConvertScript.Checked,results);
 					CrudGenDataInterface.Create(convertDbFile,_listTypes[i],textDb.Text,false);
@@ -2041,10 +2039,6 @@ using System.Linq;"+rn);
 					return;
 				}
 			CrudGenHelper.AddMissingPreferences(convertDbFile);
-		}
-
-		private void Form1_FormClosing(object sender,FormClosingEventArgs e) {
-			CrudGenHelper.AddToOpenDentBusiness(ListFilesToAddToODBiz);
 		}
 
 		
