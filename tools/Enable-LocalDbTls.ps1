@@ -8,8 +8,10 @@ will change and you have typed YES.
 
 Without a mode switch (enable):
   1. Checks: the session is elevated; the service (-ServiceName, default MariaDB) runs mysqld.exe or mariadbd.exe with
-     --defaults-file=<my.ini>; that my.ini says port 3306 (or no port) and bind-address=127.0.0.1; the server that answers on
-     127.0.0.1:3306 reports that port, that bind address and that my.ini's datadir, so it is this service; my.ini has no TLS line yet.
+     --defaults-file=<my.ini>; that my.ini is UTF-8 (or ASCII) text that includes no other option file (!include, !includedir) and
+     says port 3306 (or no port) and bind-address=127.0.0.1; the process that listens on 127.0.0.1:3306 is the service's own (and no
+     other process listens on port 3306 for every address); the server that answers there reports that port, that bind address and
+     that my.ini's datadir; my.ini has no TLS line yet.
   2. Makes, in memory, a test CA (RSA 3072, 10 years) and a server certificate for localhost and 127.0.0.1 (RSA 2048, 5 years,
      serverAuth). Only with -WithClientCertificate also a client certificate for the certificate-login test of S2-2 (RSA 2048, 5 years,
      clientAuth); without it (the default, until the owner has agreed to it) none. The CA's private key is never written anywhere, so
@@ -18,17 +20,20 @@ Without a mode switch (enable):
      MariaDB would take the folder for a database), with a protected ACL: SYSTEM and Administrators full control, the service account
      read, nobody else.
   4. Writes the CA certificate (public part only) as ca.pem to -DevFolder (default %LOCALAPPDATA%\OpenPmsDental\DevDbTls), where the dev
-     tools and tests look (DataConnectionBase.DevDbTls), with a protected ACL: -DevUser, SYSTEM and Administrators. That folder never
-     holds a private key.
+     tools and tests look (DataConnectionBase.DevDbTls). The folder is created when missing and gets a protected ACL: -DevUser, SYSTEM
+     and Administrators full control, nobody else. That folder never holds a private key.
   5. With -WithClientCertificate: writes client-cert.pem and client-key.pem to -ClientFolder (default DevDbTlsClient beside -DevFolder,
-     %LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient), a folder of its own, never -DevFolder or inside it, with a protected ACL: -DevUser read,
-     SYSTEM and Administrators full control. Nothing is written to the repository.
+     %LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient), a folder of its own, never -DevFolder or inside it, created when missing, with a
+     protected ACL: -DevUser read, SYSTEM and Administrators full control. Nothing is written to the repository.
+     Each folder must be <a user profile>\AppData\Local\OpenPmsDental\DevDbTls (DevDbTlsClient for the client folder) of a profile of
+     this computer, the only folders -Revert and -RequireSecureTransport accept from the record in my.ini; it must not be or overlap
+     the MariaDB folder, the server's data folder or the opms-dev-tls folder; and when it exists it holds only files of this script.
   6. Copies my.ini to my.ini.before-opms-dev-tls and adds, at the end of its [mysqld] section between marker comments, comment lines that
-     record -DevFolder (and -ClientFolder) for -Revert and -RequireSecureTransport, then ssl_ca, ssl_cert, ssl_key and
-     tls_version=TLSv1.2,TLSv1.3.
+     record -DevFolder (and -ClientFolder, and a parent folder that the run creates for them) for -Revert and -RequireSecureTransport,
+     then ssl_ca, ssl_cert, ssl_key and tls_version=TLSv1.2,TLSv1.3.
   7. Restarts the service and verifies a TLS session (have_ssl=YES, Ssl_cipher not empty) and the server certificate against the CA
-     (--ssl-ca with --ssl-verify-server-cert). When the server does not come back with TLS, the backup is restored, the service restarted
-     and the new files removed.
+     (--ssl-ca with --ssl-verify-server-cert). When the server does not come back with TLS, the backup is restored, the service restarted,
+     the files the run replaced put back as they were, the files and folders it added removed.
   It does NOT set require_secure_transport: unencrypted connections still work until -RequireSecureTransport.
 
 -RequireSecureTransport: the lead's later step, once every session connects with TLS. Checks the CA copy in the dev folder that my.ini
@@ -37,11 +42,13 @@ unencrypted one is refused (else it removes the line again).
 
 -Revert: restores my.ini from the backup (it shows what would be lost when my.ini changed since), restarts, verifies an unencrypted
 connection, then removes the opms-dev-tls folder, the files the script wrote to the dev folder and the client folder that my.ini
-records (whichever account's they are), and the backup.
+records (whichever account's they are), each folder when it is then empty, the parent folder the enable run created when it is then
+empty, and the backup.
 
 -RequireSecureTransport and -Revert never recompute the folders from the account that runs them: they take them from the record in
-my.ini and refuse a -DevFolder or -ClientFolder that names another folder. Only when my.ini has no block of this script do they fall back
-to -DevFolder or this account's default (the plan then says that a copy in another account's folder is not touched).
+my.ini and refuse a -DevFolder or -ClientFolder that names another folder, and a recorded folder that an enable run cannot have written
+(not <a user profile>\AppData\Local\OpenPmsDental\DevDbTls or \DevDbTlsClient). Only when my.ini has no block of this script do they
+fall back to -DevFolder or this account's default (the plan then says that a copy in another account's folder is not touched).
 
 -DryRun: with any mode, shows the checks and the plan and changes nothing. It does not need elevation.
 
@@ -72,8 +79,9 @@ The MariaDB service. Default: MariaDB.
 
 .PARAMETER DevFolder
 Where the CA certificate (public part only) goes for the dev tools and tests; never a private key.
-Default: %LOCALAPPDATA%\OpenPmsDental\DevDbTls of the account that runs the script. With -RequireSecureTransport and -Revert it must
-be the folder my.ini records (leave it out).
+Default: %LOCALAPPDATA%\OpenPmsDental\DevDbTls of the account that runs the script; for another account its own
+<profile>\AppData\Local\OpenPmsDental\DevDbTls (no other folder is accepted). With -RequireSecureTransport and -Revert it must be the
+folder my.ini records (leave it out).
 
 .PARAMETER DevUser
 The account that runs the dev tools and tests and gets access to -DevFolder (and read access to -ClientFolder). Default: the account that
@@ -88,8 +96,9 @@ once the owner has agreed to a client certificate. Later it means -Revert and th
 
 .PARAMETER ClientFolder
 With -WithClientCertificate: where client-cert.pem and client-key.pem go, a folder of its own (never -DevFolder or inside it).
-Default: DevDbTlsClient beside -DevFolder (%LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient). With -RequireSecureTransport and -Revert it must
-be the folder my.ini records (leave it out).
+Default: DevDbTlsClient beside -DevFolder (%LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient); it must be a profile's
+<profile>\AppData\Local\OpenPmsDental\DevDbTlsClient. With -RequireSecureTransport and -Revert it must be the folder my.ini records
+(leave it out).
 
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\Enable-LocalDbTls.ps1 -DryRun
@@ -124,12 +133,19 @@ $ErrorActionPreference = 'Stop'
 
 $MarkerBegin = '# BEGIN Open PMS - Dental local test TLS (tools/Enable-LocalDbTls.ps1; undo with -Revert)'
 $MarkerEnd = '# END Open PMS - Dental local test TLS'
-# Comment lines inside the block: the folders the enable run wrote to, which -Revert and -RequireSecureTransport read back.
+# Comment lines inside the block: the folders the enable run wrote to (and a parent folder it created for them), which -Revert and
+# -RequireSecureTransport read back.
 $RecordDevPrefix = '# dev-folder='
 $RecordClientPrefix = '# client-folder='
+$RecordParentPrefix = '# created-parent='
 $TlsFolderName = 'opms-dev-tls'
+# The dev folder and the client folder are always <a user profile's %LOCALAPPDATA%>\OpenPmsDental\<these names>.
+$AppFolderName = 'OpenPmsDental'
+$DevFolderName = 'DevDbTls'
 $ClientFolderName = 'DevDbTlsClient'
 $BackupSuffix = '.before-opms-dev-tls'
+# Write-OptionFile writes my.ini here first and then moves it over my.ini.
+$IniTempSuffix = '.opms-new'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
 # A check refused: say why and stop with exit code 1. Every check runs before the first change, so nothing needs undoing.
@@ -306,6 +322,82 @@ function Test-InsideRepository([string]$Path) {
 	return $full.StartsWith($repo, [StringComparison]::OrdinalIgnoreCase)
 }
 
+# The access rules (DACL) of a file or folder as SDDL, so that a failed run can put them back (Set-AccessSddl).
+function Get-AccessSddl([string]$Path) {
+	return (Get-Acl -LiteralPath $Path).GetSecurityDescriptorSddlForm([System.Security.AccessControl.AccessControlSections]::Access)
+}
+
+# Puts back the access rules that Get-AccessSddl read; nothing else of the security descriptor (the owner stays as it is). Inherited rules
+# are taken from the parent again, as they were.
+function Set-AccessSddl([string]$Path, [string]$Sddl) {
+	if (Test-Path -LiteralPath $Path -PathType Container) {
+		$security = New-Object System.Security.AccessControl.DirectorySecurity
+		$security.SetSecurityDescriptorSddlForm($Sddl, [System.Security.AccessControl.AccessControlSections]::Access)
+		[System.IO.Directory]::SetAccessControl($Path, $security)
+	}
+	else {
+		$security = New-Object System.Security.AccessControl.FileSecurity
+		$security.SetSecurityDescriptorSddlForm($Sddl, [System.Security.AccessControl.AccessControlSections]::Access)
+		[System.IO.File]::SetAccessControl($Path, $security)
+	}
+}
+
+# The full form of a path on a drive (C:\...), without . and .. segments and without a final backslash (except a drive root); $null for
+# anything else (a relative path, a path on the current drive without a letter, a share, an invalid path).
+function Get-CanonicalPath([string]$Path) {
+	$value = ([string]$Path).Trim().Replace('/', '\')
+	if ($value -notmatch '^[A-Za-z]:\\') {
+		return $null
+	}
+	try {
+		$full = [System.IO.Path]::GetFullPath($value)
+	}
+	catch {
+		return $null
+	}
+	if ($full.Length -gt 3) {
+		$full = $full.TrimEnd('\')
+	}
+	return $full
+}
+
+# The %LOCALAPPDATA% folders of the user profiles of this computer: <profile>\AppData\Local of every profile in the registry's profile list
+# (readable without elevation), except the service profiles of SYSTEM, LOCAL SERVICE and NETWORK SERVICE, and this account's own.
+function Get-LocalAppDataRoots {
+	$roots = New-Object System.Collections.Generic.List[string]
+	$key = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList'
+	foreach ($item in @(Get-ChildItem -LiteralPath $key -ErrorAction SilentlyContinue)) {
+		if (@('S-1-5-18', 'S-1-5-19', 'S-1-5-20') -contains $item.PSChildName) {
+			continue
+		}
+		$property = Get-ItemProperty -LiteralPath $item.PSPath -Name 'ProfileImagePath' -ErrorAction SilentlyContinue
+		if ($null -ne $property -and [string]$property.ProfileImagePath -ne '') {
+			$roots.Add((Join-Path ([Environment]::ExpandEnvironmentVariables([string]$property.ProfileImagePath)) 'AppData\Local'))
+		}
+	}
+	$own = [Environment]::GetFolderPath('LocalApplicationData')
+	if ($own -ne '') {
+		$roots.Add($own)
+	}
+	return @($roots | Where-Object { $null -ne (Get-CanonicalPath $_) } | ForEach-Object { Get-CanonicalPath $_ } | Sort-Object -Unique)
+}
+
+# True when $Path is <one of $LocalRoots>\OpenPmsDental\$Name: the only form of a dev folder (DevDbTls) or a client folder
+# (DevDbTlsClient) that this script writes to, and so the only one -Revert and -RequireSecureTransport accept from the record in my.ini.
+function Test-ProfileFolder([string]$Path, [string]$Name, [string[]]$LocalRoots) {
+	$canonical = Get-CanonicalPath $Path
+	if ($null -eq $canonical) {
+		return $false
+	}
+	foreach ($root in @($LocalRoots)) {
+		$rootCanonical = Get-CanonicalPath $root
+		if ($null -ne $rootCanonical -and (Get-NormalPath $canonical) -eq (Get-NormalPath (Join-Path $rootCanonical "$AppFolderName\$Name"))) {
+			return $true
+		}
+	}
+	return $false
+}
+
 #endregion
 
 #region The service, my.ini and the client
@@ -345,6 +437,7 @@ function Get-ServiceFacts {
 	return [pscustomobject]@{
 		Name      = $service.Name
 		State     = [string]$service.State
+		ProcessId = [int]$service.ProcessId
 		Account   = [string]$service.StartName
 		Exe       = $exe
 		Ini       = $ini
@@ -355,7 +448,9 @@ function Get-ServiceFacts {
 	}
 }
 
-# my.ini as lines (each without its line end), its line end and its encoding, so that a write keeps every other byte as it was.
+# my.ini as lines (each without its line end), its line end and its encoding, so that a write keeps every other byte as it was. Refuses a
+# file whose bytes do not come back unchanged from the decoding (bytes that are not UTF-8, such as an ANSI or UTF-16 file): writing it
+# back would change bytes the script does not mean to touch.
 function Read-OptionFile([string]$Path) {
 	$bytes = [System.IO.File]::ReadAllBytes($Path)
 	$encoding = New-Object System.Text.UTF8Encoding($false)
@@ -365,6 +460,21 @@ function Read-OptionFile([string]$Path) {
 		$offset = 3
 	}
 	$text = [System.Text.Encoding]::UTF8.GetString($bytes, $offset, $bytes.Length - $offset)
+	$again = [System.Text.Encoding]::UTF8.GetBytes($text)
+	$differsAt = -1
+	for ($i = 0; $i -lt [Math]::Max($again.Length, $bytes.Length - $offset); $i++) {
+		if ($i -ge $again.Length -or $i -ge $bytes.Length - $offset -or $again[$i] -ne $bytes[$offset + $i]) {
+			$differsAt = $offset + $i
+			break
+		}
+	}
+	if ($differsAt -ge 0) {
+		$byte = ''
+		if ($differsAt -lt $bytes.Length) {
+			$byte = ' (0x' + $bytes[$differsAt].ToString('X2') + ')'
+		}
+		Stop-Refused "$Path is not UTF-8 text: the byte at offset $differsAt$byte is not UTF-8, so writing the file back would change bytes this script does not mean to touch. Save it as UTF-8 or ASCII with nothing else changed (the MariaDB installer writes ASCII), then run the script again."
+	}
 	$crlf = ([regex]::Matches($text, "`r`n")).Count
 	$lf = ([regex]::Matches($text, "`n")).Count - $crlf
 	$newline = "`n"
@@ -413,6 +523,11 @@ function Get-ServerOptions([string]$Text) {
 
 function Test-HasBlock([string]$Text) {
 	return $Text.Contains($MarkerBegin) -and $Text.Contains($MarkerEnd)
+}
+
+# The lines of my.ini that read other option files (!include, !includedir): the options there are out of this script's sight.
+function Get-IncludeLines([string]$Text) {
+	return @($Text -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^!include' })
 }
 
 # my.ini without the script's block (the lines from the begin to the end marker).
@@ -464,7 +579,7 @@ function Add-ToMysqldSection([string]$Text, [string[]]$Lines, [string]$Newline) 
 
 function Write-OptionFile($File, [string]$Text) {
 	$bytes = $File.Encoding.GetPreamble() + $File.Encoding.GetBytes($Text)
-	$temp = "$($script:Facts.Ini).opms-new"
+	$temp = $script:Facts.Ini + $IniTempSuffix
 	[System.IO.File]::WriteAllBytes($temp, [byte[]]$bytes)
 	Move-Item -LiteralPath $temp -Destination $script:Facts.Ini -Force
 }
@@ -547,24 +662,85 @@ function Get-NormalPath([string]$Path) {
 	return $Path.Replace('/', '\').TrimEnd('\').ToLowerInvariant()
 }
 
+# The listening sockets where a connection to 127.0.0.1:3306 can land: 127.0.0.1 itself, and the addresses for every interface
+# (0.0.0.0, ::), which take such a connection whenever nothing listens on 127.0.0.1 itself (during a restart, for one). Each with its
+# address and its owning process. Get-NetTCPConnection needs no elevation.
+function Get-Listeners {
+	$listeners = @()
+	foreach ($connection in @(Get-NetTCPConnection -LocalPort 3306 -State Listen -ErrorAction SilentlyContinue)) {
+		$address = [string]$connection.LocalAddress
+		if (@('127.0.0.1', '0.0.0.0', '::') -notcontains $address) {
+			continue
+		}
+		$processId = [int]$connection.OwningProcess
+		$name = ''
+		$process = Get-Process -Id $processId -ErrorAction SilentlyContinue
+		if ($null -ne $process) {
+			$name = [string]$process.ProcessName
+		}
+		$listeners += [pscustomobject]@{ Address = $address; ProcessId = $processId; ProcessName = $name }
+	}
+	return , $listeners
+}
+
+# Why the listeners ($Listeners, as Get-Listeners gives them) are not the service's own process ($ServicePid), or $null when the service's
+# process listens on 127.0.0.1:3306 and no other process listens where a connection to it can land.
+function Get-ListenerProblem($Listeners, [int]$ServicePid) {
+	$list = @($Listeners | Where-Object { $null -ne $_ })
+	if ($ServicePid -le 0) {
+		return "the service $ServiceName has no process"
+	}
+	$own = @($list | Where-Object { $_.Address -eq '127.0.0.1' -and $_.ProcessId -eq $ServicePid })
+	if ($own.Count -eq 0) {
+		$on127 = @($list | Where-Object { $_.Address -eq '127.0.0.1' })
+		if ($on127.Count -eq 0) {
+			return "the service's process $ServicePid does not listen on 127.0.0.1:3306 (nothing does)"
+		}
+		return "process $($on127[0].ProcessId) ($($on127[0].ProcessName)) listens on 127.0.0.1:3306, not the service's process $ServicePid"
+	}
+	$others = @($list | Where-Object { $_.ProcessId -ne $ServicePid })
+	if ($others.Count -gt 0) {
+		return "process $($others[0].ProcessId) ($($others[0].ProcessName)) also listens on $($others[0].Address) port 3306, which takes the connections to 127.0.0.1:3306 whenever the service's socket is closed"
+	}
+	return $null
+}
+
+function Get-ServiceProcessId {
+	$service = Get-CimInstance -ClassName Win32_Service -Filter "Name='$ServiceName'"
+	if ($null -eq $service) {
+		return 0
+	}
+	return [int]$service.ProcessId
+}
+
+# Restarts the service and waits until 127.0.0.1:3306 answers and its listener is the service's new process (Get-ListenerProblem).
 function Restart-DbService {
 	Write-Host "Restarting the service $ServiceName ..."
 	Restart-Service -Name $ServiceName -Force
 	$deadline = [DateTime]::UtcNow.AddSeconds(90)
+	$problem = 'nothing answered on 127.0.0.1:3306'
 	while ([DateTime]::UtcNow -lt $deadline) {
 		$client = New-Object System.Net.Sockets.TcpClient
+		$answers = $false
 		try {
 			$client.Connect('127.0.0.1', 3306)
-			return
+			$answers = $true
 		}
 		catch {
-			Start-Sleep -Milliseconds 500
+			$answers = $false
 		}
 		finally {
 			$client.Close()
 		}
+		if ($answers) {
+			$problem = Get-ListenerProblem (Get-Listeners) (Get-ServiceProcessId)
+			if ($null -eq $problem) {
+				return
+			}
+		}
+		Start-Sleep -Milliseconds 500
 	}
-	throw "The service $ServiceName did not answer on 127.0.0.1:3306 within 90 seconds after the restart."
+	throw "After the restart of the service $ServiceName, within 90 seconds: $problem."
 }
 
 function Confirm-Change([string]$Question) {
@@ -602,6 +778,10 @@ function Assert-LocalServer {
 		Stop-Refused "The service $ServiceName is $($script:Facts.State). Start it first."
 	}
 	$script:IniFile = Read-OptionFile $script:Facts.Ini
+	$includes = @(Get-IncludeLines $script:IniFile.Text)
+	if ($includes.Count -gt 0) {
+		Stop-Refused "my.ini reads other option files ($($includes[0])). Their options (a port, a bind-address, TLS lines) are out of this script's sight and it never edits them: move what they set into my.ini, or turn on TLS by hand."
+	}
 	$options = Get-ServerOptions $script:IniFile.Text
 	$port = '3306'
 	if ($options.ContainsKey('port')) {
@@ -617,6 +797,19 @@ function Assert-LocalServer {
 		}
 		Stop-Refused "my.ini's bind-address is $bind. This script is only for a server that listens on 127.0.0.1 alone."
 	}
+	# The process behind 127.0.0.1:3306 must be the service's own before the client sends anything there.
+	try {
+		$listeners = Get-Listeners
+	}
+	catch {
+		Stop-Refused "This script cannot tell which process listens on 127.0.0.1:3306 (Get-NetTCPConnection: $($_.Exception.Message))."
+	}
+	$listenerProblem = Get-ListenerProblem $listeners $script:Facts.ProcessId
+	if ($null -ne $listenerProblem) {
+		Stop-Refused "The server on 127.0.0.1:3306 is not proven to be the service $($ServiceName): $listenerProblem."
+	}
+	$listenerName = @($listeners | Where-Object { $_.Address -eq '127.0.0.1' })[0].ProcessName
+	Write-Host "Listener:       127.0.0.1:3306, process $($script:Facts.ProcessId) ($listenerName), the service's own"
 	$state = Get-ServerState 'tls'
 	if (-not $state.Ok) {
 		Stop-Refused "No connection to 127.0.0.1:3306 as $User ($($state.Error)). Set MYSQL_PWD when the account has a password."
@@ -654,9 +847,9 @@ function Test-FolderOverlap([string]$First, [string]$Second) {
 }
 
 # The folders that the block of this script in my.ini records (the comment lines $RecordDevPrefix and $RecordClientPrefix), each $null when
-# the block does not record it or there is no block.
+# the block does not record it or there is no block, and the parent folders the enable run created for them ($RecordParentPrefix lines).
 function Get-RecordedFolders([string]$Text) {
-	$recorded = [pscustomobject]@{ DevFolder = $null; ClientFolder = $null }
+	$recorded = [pscustomobject]@{ DevFolder = $null; ClientFolder = $null; CreatedParents = @() }
 	$block = [regex]::Match($Text, '(?ms)^' + [regex]::Escape($MarkerBegin) + '.*?^' + [regex]::Escape($MarkerEnd))
 	if (-not $block.Success) {
 		return $recorded
@@ -669,8 +862,83 @@ function Get-RecordedFolders([string]$Text) {
 		elseif ($line.StartsWith($RecordClientPrefix) -and $line.Length -gt $RecordClientPrefix.Length) {
 			$recorded.ClientFolder = $line.Substring($RecordClientPrefix.Length).Trim().Replace('/', '\')
 		}
+		elseif ($line.StartsWith($RecordParentPrefix) -and $line.Length -gt $RecordParentPrefix.Length) {
+			$recorded.CreatedParents = @($recorded.CreatedParents) + @($line.Substring($RecordParentPrefix.Length).Trim().Replace('/', '\'))
+		}
 	}
 	return $recorded
+}
+
+# Why the folders of a -Revert or -RequireSecureTransport run ($Folders, from Resolve-RecordedFolders) cannot be ones an enable run wrote,
+# or $null when they can: the dev folder must be <one of $LocalRoots>\OpenPmsDental\DevDbTls, the client folder (when there is one)
+# <one of $LocalRoots>\OpenPmsDental\DevDbTlsClient, and each recorded created parent the parent folder of one of them. An enable run
+# accepts no other folder, so a record of any other came from somewhere else, and this script never removes files there.
+function Get-RecordProblem($Folders, [string[]]$LocalRoots) {
+	$source = '-DevFolder (or this account''s default)'
+	if ($Folders.IsRecorded) {
+		$source = 'the record in my.ini'
+	}
+	if (-not (Test-ProfileFolder $Folders.DevFolder $DevFolderName $LocalRoots)) {
+		return "The dev folder $($Folders.DevFolder), from $source, is not <a user profile>\AppData\Local\$AppFolderName\$DevFolderName of this computer, the only dev folder this script writes to."
+	}
+	$parents = @((Get-NormalPath (Split-Path -Parent (Get-CanonicalPath $Folders.DevFolder))))
+	if ($Folders.ClientFolder -ne '') {
+		if (-not (Test-ProfileFolder $Folders.ClientFolder $ClientFolderName $LocalRoots)) {
+			return "The client folder $($Folders.ClientFolder), from $source, is not <a user profile>\AppData\Local\$AppFolderName\$ClientFolderName of this computer, the only client folder this script writes to."
+		}
+		$parents += Get-NormalPath (Split-Path -Parent (Get-CanonicalPath $Folders.ClientFolder))
+	}
+	foreach ($created in @($Folders.CreatedParents)) {
+		$canonical = Get-CanonicalPath $created
+		if ($null -eq $canonical -or $parents -notcontains (Get-NormalPath $canonical)) {
+			return "my.ini records the created parent folder $created, which is not the parent of the recorded dev or client folder."
+		}
+	}
+	return $null
+}
+
+# Why $Path cannot be the dev folder or the client folder ($Label, -DevFolder or -ClientFolder) of an enable run, or $null when it can.
+# It must be <one of $LocalRoots>\OpenPmsDental\$Name, in an AppData\Local that exists (the only form -Revert and -RequireSecureTransport
+# accept from the record); it must not be a drive root, hold a user profile, or be or overlap a folder of $Protected (the MariaDB folder,
+# the server's data folder, the opms-dev-tls folder: name and path); and when it exists it holds nothing but files of $OwnNames (the
+# files this script writes there), so the run replaces only its own files and its ACL hides nothing of anyone else's.
+function Get-FolderProblem([string]$Label, [string]$Path, [string]$Name, [string[]]$OwnNames, [System.Collections.IDictionary]$Protected, [string[]]$LocalRoots) {
+	$canonical = Get-CanonicalPath $Path
+	if ($null -eq $canonical) {
+		return "$Label $Path is not a full path on a drive (C:\...)."
+	}
+	if ((Get-NormalPath $canonical) -eq (Get-NormalPath ([System.IO.Path]::GetPathRoot($canonical)))) {
+		return "$Label $canonical is a drive root."
+	}
+	foreach ($root in @($LocalRoots)) {
+		$profileRoot = Split-Path -Parent (Split-Path -Parent $root)
+		if (((Get-NormalPath $profileRoot) + '\').StartsWith((Get-NormalPath $canonical) + '\')) {
+			return "$Label $canonical is or holds the user profile $profileRoot."
+		}
+	}
+	foreach ($key in @($Protected.Keys)) {
+		$value = [string]$Protected[$key]
+		if ($value -ne '' -and (Test-FolderOverlap $canonical $value)) {
+			return "$Label $canonical is or overlaps $key $value."
+		}
+	}
+	if (-not (Test-ProfileFolder $canonical $Name $LocalRoots)) {
+		return "$Label $canonical is not <a user profile>\AppData\Local\$AppFolderName\$Name of this computer. Only such a folder is accepted: -Revert and -RequireSecureTransport take no other from the record in my.ini."
+	}
+	$local = Split-Path -Parent (Split-Path -Parent $canonical)
+	if (-not (Test-Path -LiteralPath $local -PathType Container)) {
+		return "$Label $canonical is in $local, which does not exist (has that account signed in on this computer?)."
+	}
+	if (Test-Path -LiteralPath $canonical) {
+		if (-not (Test-Path -LiteralPath $canonical -PathType Container)) {
+			return "$Label $canonical is a file."
+		}
+		$others = @(Get-ChildItem -LiteralPath $canonical -Force | Where-Object { $_.PSIsContainer -or $OwnNames -notcontains $_.Name } | ForEach-Object { $_.Name })
+		if ($others.Count -gt 0) {
+			return "$Label $canonical exists and holds $($others -join ', '), which this script did not write (it writes only $($OwnNames -join ' and ') there). Move them away first."
+		}
+	}
+	return $null
 }
 
 # The dev folder and the client folder ('' for none) of a -Revert or -RequireSecureTransport run. The enable run recorded in my.ini where it
@@ -687,7 +955,7 @@ function Resolve-RecordedFolders($Recorded, [string]$GivenDev, [string]$GivenCli
 		if ($GivenClient -ne '') {
 			$client = Resolve-FullPath $GivenClient
 		}
-		return [pscustomobject]@{ DevFolder = (Resolve-FullPath $dev); ClientFolder = $client; IsRecorded = $false }
+		return [pscustomobject]@{ DevFolder = (Resolve-FullPath $dev); ClientFolder = $client; IsRecorded = $false; CreatedParents = @() }
 	}
 	if ($GivenDev -ne '' -and (Get-NormalPath (Resolve-FullPath $GivenDev)) -ne (Get-NormalPath $Recorded.DevFolder)) {
 		Stop-Refused "my.ini records the dev folder $($Recorded.DevFolder), where the enable run wrote ca.pem, but -DevFolder names $GivenDev. Leave -DevFolder out: this mode uses the recorded folder."
@@ -702,10 +970,15 @@ function Resolve-RecordedFolders($Recorded, [string]$GivenDev, [string]$GivenCli
 		}
 		Stop-Refused "my.ini records the client folder $client, but -ClientFolder names $GivenClient. Leave -ClientFolder out: this mode uses the recorded folder."
 	}
-	return [pscustomobject]@{ DevFolder = $Recorded.DevFolder; ClientFolder = $client; IsRecorded = $true }
+	$parents = @()
+	if ($Recorded.PSObject.Properties['CreatedParents']) {
+		$parents = @($Recorded.CreatedParents | Where-Object { $_ })
+	}
+	return [pscustomobject]@{ DevFolder = $Recorded.DevFolder; ClientFolder = $client; IsRecorded = $true; CreatedParents = $parents }
 }
 
-# The paths of a run. The enable run takes -DevFolder and -ClientFolder (or their defaults); the other modes take what my.ini records.
+# The paths of a run. The enable run takes -DevFolder and -ClientFolder (or their defaults) and notes the parent folders it will create for
+# them; the other modes take what my.ini records and refuse a record that no enable run can have written (Get-RecordProblem).
 function Get-Paths([bool]$ForEnable) {
 	$tlsFolder = Join-Path $script:Facts.Home $TlsFolderName
 	$defaultDev = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'OpenPmsDental\DevDbTls'
@@ -723,10 +996,29 @@ function Get-Paths([bool]$ForEnable) {
 			}
 			$client = Resolve-FullPath $client
 		}
-		$folders = [pscustomobject]@{ DevFolder = $dev; ClientFolder = $client; IsRecorded = $false }
+		$created = @()
+		foreach ($folder in @(@($dev, $client) | Where-Object { $_ -ne '' })) {
+			$parent = Split-Path -Parent $folder
+			if ($parent -ne '' -and -not (Test-Path -LiteralPath $parent) -and @($created | Where-Object { (Get-NormalPath $_) -eq (Get-NormalPath $parent) }).Count -eq 0) {
+				$created += $parent
+			}
+		}
+		$folders = [pscustomobject]@{ DevFolder = $dev; ClientFolder = $client; IsRecorded = $false; CreatedParents = $created }
 	}
 	else {
 		$folders = Resolve-RecordedFolders (Get-RecordedFolders $script:IniFile.Text) $DevFolder $ClientFolder $defaultDev
+		$problem = Get-RecordProblem $folders (Get-LocalAppDataRoots)
+		if ($null -ne $problem) {
+			if ($folders.IsRecorded) {
+				Stop-Refused "$problem This script does not touch it: something else wrote that line of its block in $($script:Facts.Ini). Look at the block, restore my.ini from $($script:Facts.Ini + $BackupSuffix) by hand and remove the files the enable run wrote yourself."
+			}
+			Stop-Refused "$problem Pass -DevFolder (and -ClientFolder) with the folders the enable run wrote to, or remove its files by hand."
+		}
+		$folders.DevFolder = Get-CanonicalPath $folders.DevFolder
+		if ($folders.ClientFolder -ne '') {
+			$folders.ClientFolder = Get-CanonicalPath $folders.ClientFolder
+		}
+		$folders.CreatedParents = @($folders.CreatedParents | ForEach-Object { Get-CanonicalPath $_ })
 	}
 	$clientCert = ''
 	$clientKey = ''
@@ -745,11 +1037,22 @@ function Get-Paths([bool]$ForEnable) {
 		ClientCert   = $clientCert
 		ClientKey    = $clientKey
 		IsRecorded   = $folders.IsRecorded
+		CreatedParents = @($folders.CreatedParents)
 		Backup       = $script:Facts.Ini + $BackupSuffix
+		IniTemp      = $script:Facts.Ini + $IniTempSuffix
 	}
 }
 
-# The block of this script in my.ini: the record of the dev folder (and the client folder) as comment lines, then the TLS options.
+# The parent folders that the enable run creates (or created) for the dev and client folders, as $Paths names them.
+function Get-CreatedParents($Paths) {
+	if (-not $Paths.PSObject.Properties['CreatedParents']) {
+		return @()
+	}
+	return @($Paths.CreatedParents | Where-Object { $_ })
+}
+
+# The block of this script in my.ini: the record of the dev folder (and the client folder, and a parent folder the enable run created for
+# them) as comment lines, then the TLS options.
 function Get-BlockLines($Paths, [bool]$WithRequire) {
 	$lines = @(
 		$MarkerBegin,
@@ -757,6 +1060,9 @@ function Get-BlockLines($Paths, [bool]$WithRequire) {
 	)
 	if ($Paths.ClientFolder -ne '') {
 		$lines += "$RecordClientPrefix$($Paths.ClientFolder.Replace('\', '/'))"
+	}
+	foreach ($parent in (Get-CreatedParents $Paths)) {
+		$lines += "$RecordParentPrefix$($parent.Replace('\', '/'))"
 	}
 	$lines += @(
 		"ssl_ca=$($Paths.Ca.Replace('\', '/'))",
@@ -776,6 +1082,22 @@ function Get-DevFiles($Paths) {
 	return @(@($Paths.DevCa, $Paths.ClientCert, $Paths.ClientKey) | Where-Object { $_ -ne '' })
 }
 
+# How the plan describes a dev or client folder before the ACL it gets.
+function Get-FolderPlanText([string]$Folder) {
+	if (Test-Path -LiteralPath $Folder) {
+		return 'The folder exists (it holds only files of this script); its ACL is replaced with'
+	}
+	return 'The folder is created with'
+}
+
+function Remove-EmptyFolder([string]$Folder) {
+	if ($Folder -ne '' -and (Test-Path -LiteralPath $Folder -PathType Container) -and @(Get-ChildItem -LiteralPath $Folder -Force).Count -eq 0) {
+		Remove-Item -LiteralPath $Folder -Force
+	}
+}
+
+# -Revert's removal: the files the script wrote outside the opms-dev-tls folder, the dev and client folders when they are then empty, the
+# parent folders the enable run created for them when they are then empty, and the opms-dev-tls folder.
 function Remove-NewFiles($Paths) {
 	foreach ($path in (Get-DevFiles $Paths)) {
 		if (Test-Path -LiteralPath $path) {
@@ -783,12 +1105,66 @@ function Remove-NewFiles($Paths) {
 		}
 	}
 	foreach ($folder in @(@($Paths.DevFolder, $Paths.ClientFolder) | Where-Object { $_ -ne '' })) {
-		if ((Test-Path -LiteralPath $folder) -and @(Get-ChildItem -LiteralPath $folder -Force).Count -eq 0) {
-			Remove-Item -LiteralPath $folder -Force
-		}
+		Remove-EmptyFolder $folder
+	}
+	foreach ($parent in (Get-CreatedParents $Paths)) {
+		Remove-EmptyFolder $parent
 	}
 	if (Test-Path -LiteralPath $Paths.TlsFolder) {
 		Remove-Item -LiteralPath $Paths.TlsFolder -Recurse -Force
+	}
+}
+
+# What an enable run is about to replace: the files of Get-DevFiles and the dev and client folders that exist already, with their bytes
+# and their access rules, so that a failed run puts them back (Undo-EnableFiles) instead of deleting them.
+function Save-ExistingItems($Paths) {
+	$files = @()
+	foreach ($path in (Get-DevFiles $Paths)) {
+		if (Test-Path -LiteralPath $path -PathType Leaf) {
+			$files += [pscustomobject]@{ Path = $path; Bytes = [System.IO.File]::ReadAllBytes($path); Access = (Get-AccessSddl $path) }
+		}
+	}
+	$folders = @()
+	foreach ($folder in @(@($Paths.DevFolder, $Paths.ClientFolder) | Where-Object { $_ -ne '' })) {
+		if (Test-Path -LiteralPath $folder -PathType Container) {
+			$folders += [pscustomobject]@{ Path = $folder; Access = (Get-AccessSddl $folder) }
+		}
+	}
+	return [pscustomobject]@{ Files = $files; Folders = $folders }
+}
+
+# The files of a failed enable run: each file it replaced gets its bytes and access rules back and each file it added is removed; each
+# folder that was there gets its access rules back, and each folder it created (the dev and client folders, their parents) is removed
+# when it is then empty; the opms-dev-tls folder (always new: the run refuses to start when it exists) is removed, and so is my.ini's
+# temporary copy ($Paths.IniTemp) when a write left it.
+function Undo-EnableFiles($Paths, $Saved) {
+	foreach ($path in (Get-DevFiles $Paths)) {
+		$old = @($Saved.Files | Where-Object { $_.Path -eq $path })
+		if ($old.Count -gt 0) {
+			[System.IO.File]::WriteAllBytes($path, [byte[]]$old[0].Bytes)
+			Set-AccessSddl $path $old[0].Access
+		}
+		elseif (Test-Path -LiteralPath $path) {
+			Remove-Item -LiteralPath $path -Force
+		}
+	}
+	foreach ($folder in @(@($Paths.DevFolder, $Paths.ClientFolder) | Where-Object { $_ -ne '' })) {
+		$old = @($Saved.Folders | Where-Object { $_.Path -eq $folder })
+		if ($old.Count -gt 0) {
+			Set-AccessSddl $folder $old[0].Access
+		}
+		else {
+			Remove-EmptyFolder $folder
+		}
+	}
+	foreach ($parent in (Get-CreatedParents $Paths)) {
+		Remove-EmptyFolder $parent
+	}
+	if (Test-Path -LiteralPath $Paths.TlsFolder) {
+		Remove-Item -LiteralPath $Paths.TlsFolder -Recurse -Force
+	}
+	if ($Paths.IniTemp -ne '' -and (Test-Path -LiteralPath $Paths.IniTemp)) {
+		Remove-Item -LiteralPath $Paths.IniTemp -Force
 	}
 }
 
@@ -817,6 +1193,9 @@ function Invoke-Enable {
 	if (Test-Path -LiteralPath $paths.TlsFolder) {
 		Stop-Refused "$($paths.TlsFolder) exists. Run -Revert, or look at it and remove it."
 	}
+	if (Test-Path -LiteralPath $paths.IniTemp) {
+		Stop-Refused "$($paths.IniTemp) exists, left by an earlier run. Look at it and remove it."
+	}
 	if (Test-InsideRepository $paths.DevFolder) {
 		Stop-Refused "-DevFolder $($paths.DevFolder) is inside the repository; certificates and keys never go there."
 	}
@@ -827,6 +1206,19 @@ function Invoke-Enable {
 		if (Test-FolderOverlap $paths.ClientFolder $paths.DevFolder) {
 			Stop-Refused "-ClientFolder $($paths.ClientFolder) and -DevFolder $($paths.DevFolder) overlap. The client key goes to a folder of its own, never where the dev tools read the CA."
 		}
+	}
+	$protected = [ordered]@{
+		'the MariaDB folder'       = $script:Facts.Home
+		"the server's data folder" = [string]$state.Values['datadir']
+		'the certificate folder'   = $paths.TlsFolder
+	}
+	$localRoots = Get-LocalAppDataRoots
+	$problem = Get-FolderProblem '-DevFolder' $paths.DevFolder $DevFolderName @('ca.pem') $protected $localRoots
+	if ($null -eq $problem -and $paths.ClientFolder -ne '') {
+		$problem = Get-FolderProblem '-ClientFolder' $paths.ClientFolder $ClientFolderName @('client-cert.pem', 'client-key.pem') $protected $localRoots
+	}
+	if ($null -ne $problem) {
+		Stop-Refused $problem
 	}
 	$serviceSid = $null
 	if ($script:Facts.Account -ne '' -and $script:Facts.Account -ne 'LocalSystem') {
@@ -858,16 +1250,21 @@ function Invoke-Enable {
 	Write-Host "  $step. Create $($paths.TlsFolder) (owner Administrators; SYSTEM and Administrators full control, $($script:Facts.Account) read) with"
 	Write-Host '     ca.pem, server-cert.pem and server-key.pem.'
 	$step++
-	Write-Host "  $step. Write the CA certificate (public part only) to $($paths.DevCa),"
-	Write-Host "     the folder readable by $devUserName, SYSTEM and Administrators only. No private key goes to this folder."
+	Write-Host "  $step. Write the CA certificate (public part only) to $($paths.DevCa)."
+	Write-Host "     $(Get-FolderPlanText $paths.DevFolder) a protected ACL (nothing inherited): $devUserName, SYSTEM and"
+	Write-Host '     Administrators full control, nobody else. No private key goes to this folder.'
 	if ($withClient) {
 		$step++
 		Write-Host "  $step. Write the client certificate and key to $($paths.ClientCert) and $($paths.ClientKey):"
-		Write-Host "     a folder of its own, not the CA's, $devUserName read only, SYSTEM and Administrators full control."
+		Write-Host "     a folder of its own, not the CA's. $(Get-FolderPlanText $paths.ClientFolder) a protected ACL (nothing"
+		Write-Host "     inherited): $devUserName read only, SYSTEM and Administrators full control."
+	}
+	foreach ($parent in (Get-CreatedParents $paths)) {
+		Write-Host "     $parent does not exist and is created for it (-Revert removes it again when it is then empty)."
 	}
 	foreach ($existing in (Get-DevFiles $paths)) {
 		if (Test-Path -LiteralPath $existing) {
-			Write-Host "     $existing exists and is replaced."
+			Write-Host "     $existing exists and is replaced (put back as it was if the run fails)."
 		}
 	}
 	if ($consoleUser -ne '' -and $consoleUser -ne $devUserName) {
@@ -882,11 +1279,13 @@ function Invoke-Enable {
 	}
 	$step++
 	Write-Host "  $step. Restart the service $ServiceName (connections drop for a few seconds) and check a TLS session and the server"
-	Write-Host '     certificate against the CA. If the server does not come back with TLS, the backup is restored and the files removed.'
+	Write-Host '     certificate against the CA. If the server does not come back with TLS, the backup is restored, the files this run'
+	Write-Host '     replaced are put back as they were and the files and folders it added are removed.'
 	Write-Host '  require_secure_transport is not set: unencrypted connections keep working until -RequireSecureTransport.'
 	Confirm-Change 'Turn on TLS in the local MariaDB service?'
 
 	$set = New-CertificateSet $withClient
+	$saved = Save-ExistingItems $paths
 	$changedIni = $false
 	try {
 		New-Item -ItemType Directory -Path $paths.TlsFolder | Out-Null
@@ -936,15 +1335,23 @@ function Invoke-Enable {
 			if ($changedIni) {
 				Copy-Item -LiteralPath $paths.Backup -Destination $script:Facts.Ini -Force
 				Restart-DbService
+			}
+			# The run refused to start with a backup there, so a backup now is this run's own (also a partial copy).
+			if (Test-Path -LiteralPath $paths.Backup) {
 				Remove-Item -LiteralPath $paths.Backup -Force
 			}
-			Remove-NewFiles $paths
-			Write-Host 'Undone: my.ini restored from the backup, the service restarted, the new files removed.'
+			Undo-EnableFiles $paths $saved
+			Write-Host 'Undone: my.ini restored from the backup, the service restarted, the files this run replaced put back as they were, the files and folders it added removed.'
 			exit 3
 		}
 		catch {
 			Write-Host "Undoing failed too: $($_.Exception.Message)"
-			Write-Host "Restore $($script:Facts.Ini) from $($paths.Backup) by hand, restart the service $ServiceName, and remove $($paths.TlsFolder) and $((Get-DevFiles $paths) -join ', ')."
+			$replaced = @($saved.Files | ForEach-Object { $_.Path })
+			$added = @(Get-DevFiles $paths | Where-Object { $replaced -notcontains $_ })
+			Write-Host "Restore $($script:Facts.Ini) from $($paths.Backup) by hand (when it is still there), restart the service $ServiceName, and remove $($paths.TlsFolder), $($paths.IniTemp) when it is there, $($added -join ', ')."
+			if ($replaced.Count -gt 0) {
+				Write-Host "These files existed before the run and now hold the new certificates: $($replaced -join ', ')."
+			}
 			exit 4
 		}
 	}
@@ -980,6 +1387,9 @@ function Invoke-RequireSecureTransport {
 			Stop-Refused "$($paths.DevCa), the CA copy the enable run recorded in my.ini, is missing; the dev tools and tests would have no CA. Run -Revert and turn TLS on again."
 		}
 		Stop-Refused "$($paths.DevCa) is missing (my.ini records no dev folder); the dev tools and tests would have no CA. Pass -DevFolder, or run -Revert and turn TLS on again."
+	}
+	if (Test-Path -LiteralPath $paths.IniTemp) {
+		Stop-Refused "$($paths.IniTemp) exists, left by an earlier run. Look at it and remove it."
 	}
 	$verified = Get-ServerState $paths.DevCa
 	if (-not $verified.Ok -or $verified.Values['ssl_cipher'] -eq '') {
@@ -1026,7 +1436,7 @@ function Invoke-RequireSecureTransport {
 			exit 3
 		}
 		catch {
-			Write-Host "Undoing failed too: $($_.Exception.Message). Remove the line require_secure_transport=ON from $($script:Facts.Ini) and restart the service."
+			Write-Host "Undoing failed too: $($_.Exception.Message). Remove the line require_secure_transport=ON from $($script:Facts.Ini) (and $($paths.IniTemp) when it is there) and restart the service."
 			exit 4
 		}
 	}
@@ -1066,7 +1476,11 @@ function Invoke-Revert {
 		}
 	}
 	Write-Host "  2. Restart the service $ServiceName and check an unencrypted connection."
-	Write-Host "  3. Remove $($paths.TlsFolder), $((Get-DevFiles $paths) -join ', ') and the backup."
+	Write-Host "  3. Remove $($paths.TlsFolder), $((Get-DevFiles $paths) -join ', ') and the backup;"
+	Write-Host "     $((@(@($paths.DevFolder, $paths.ClientFolder) | Where-Object { $_ -ne '' })) -join ' and ') too when it is then empty."
+	foreach ($parent in (Get-CreatedParents $paths)) {
+		Write-Host "     $parent too when it is then empty (the enable run created it)."
+	}
 	if ($paths.IsRecorded) {
 		Write-Host '     These are the folders the enable run recorded in my.ini (whichever account they belong to).'
 	}
