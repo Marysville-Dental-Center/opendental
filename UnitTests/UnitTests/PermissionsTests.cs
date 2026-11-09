@@ -28,8 +28,8 @@ namespace UnitTests.Permissions_Tests {
 		}
 
 		///<summary>Each test starts with only this class's user group (CreateAndAttachUsers) and only the group permissions of the seed dump
-		///(ClearGroupPermissionTable). This was the class's ClassInitialize; its ClassCleanup deleted the remaining user groups, and MSTest does not run
-		///a ClassCleanup before the next class starts (see aaTemplateTests). Every class that ran after this one found no user groups, the unit test
+		///(ClearGroupPermissionTable). This was the class's ClassInitialize; its ClassCleanup deleted the remaining user groups, and MSTest does not promise
+		///to run a ClassCleanup before the next class starts (see aaTemplateTests). Every class that ran after this one found no user groups, the unit test
 		///user's group among them, and Security.CurUser still logged in as this class's user: the unit test user could not change its password
 		///(Authentication_Tests) and the Middle Tier mock refused the credentials (Fees_GetByFeeSchedNumsClinicNums_MiddleTier). TearDownTest puts the
 		///user groups, the group permissions and Security.CurUser back after every test.</summary>
