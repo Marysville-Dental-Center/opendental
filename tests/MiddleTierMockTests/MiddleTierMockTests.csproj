@@ -1,6 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
   <!-- The Middle Tier round trips through the mock server, the Middle Tier source rules and the ODThread tests, moved out of the legacy UnitTests
        project before the .NET 10 move (docs/specs/net10-plan.md, stage 0, package S0-T). Every Middle Tier call of a test goes through
        OpenDentalServerMockIIS, so its arguments and its result pass through DtoProcessor and XmlSerializer as they do on a real Middle Tier.
@@ -8,87 +6,20 @@
        scripts and the fork migrations; its name starts with s0t_ and is unique to the run, and it is dropped afterwards. They are skipped
        (inconclusive) when the server does not answer or when S0T_TEST_DB=skip. Synthetic data only. Every .cs file under this folder is
        compiled. -->
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>{639595B9-074A-4B8C-AFC0-A38E59121477}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MiddleTierMockTests</RootNamespace>
-    <AssemblyName>MiddleTierMockTests</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <LangVersion>8.0</LangVersion>
-    <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
-    <IsCodedUITest>False</IsCodedUITest>
-    <TestProjectType>UnitTest</TestProjectType>
-    <!-- MySqlConnector and the business layer need binding redirects, as OpenPmsDental.exe gets them. -->
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
   <ItemGroup>
-    <!-- MSTest v1, found through the search path added in Directory.Build.targets. -->
-    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
-    <!-- Reads the business layer's IL for the Middle Tier source rules (ParamCheckTests). The NuGet package this project's packages.config
-         names, as UnitTests\packages.config does, so a restore fills packages\Mono.Cecil.0.10.3 for this project on its own; the build lane
-         copies the folder into a new worktree. -->
-    <Reference Include="Mono.Cecil, Version=0.10.3.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e, processorArchitecture=MSIL">
-      <HintPath>..\..\packages\Mono.Cecil.0.10.3\lib\net40\Mono.Cecil.dll</HintPath>
-    </Reference>
+    <!-- Reads the business layer's IL for the Middle Tier source rules (ParamCheckTests). The NuGet package, from the offline package
+         folder (nuget.config). -->
+    <PackageReference Include="Mono.Cecil" Version="0.10.3" />
     <Reference Include="MySqlConnector">
       <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
     </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Drawing" />
     <!-- ODThread's members name WinForms types (Control). -->
     <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
+    <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />
+    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj" />
+    <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />
+    <ProjectReference Include="..\..\UnitTestsCore\UnitTestsCore.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj">
-      <Project>{18F7BC78-4B99-48D3-A1F1-0D13A63E3CF9}</Project>
-      <Name>xCodeBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj">
-      <Project>{29C41020-4411-41F2-9061-9B71B5B32B5D}</Project>
-      <Name>xDataConnectionBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj">
-      <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
-      <Name>OpenPmsDentalBusiness</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\UnitTestsCore\UnitTestsCore.csproj">
-      <Project>{7BBDDEDF-C015-43C0-A532-FED224993281}</Project>
-      <Name>UnitTestsCore</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

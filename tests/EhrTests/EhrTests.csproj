@@ -1,6 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
   <!-- Tests of the EHR rebuild (docs/specs/ehr-rebuild-plan.md). Package EHR-0 adds the switch (Show Features and the Setup Wizard share one
        confirmation), the time check (the ForkTimeSyncMode setting, TimeSyncCheck, the NTP reply rules of NtpReply on synthetic RFC 5905
        packets, WindowsTime.TrySetUtc through its seam, which these tests replace before any test runs) and the source scan that replaced
@@ -8,53 +6,12 @@
        PermissionTests) on a scratch database of the local MariaDB (Support/ScratchDb.cs: names start with ehr1_, built from
        db/init/new-database.sql by the first test that needs it, dropped at the end, synthetic rows only), with HasProvHadKey through the
        Middle Tier mock. No network, and the computer's clock is never set. The project references
-       the program and the business library, as tests/LibWebTests does; no window of the program is ever shown. Compile items are listed one
-       by one until S1-6 converts this file.
+       the program and the business library, as tests/LibWebTests does; no window of the program is ever shown. Every .cs file under this folder is compiled.
        Lans.g: the messages under test go through Lans.g, which returns the English text in the en-US culture. In any other culture it looks
        the text up in the language table, and inserts a row there for a text it has not seen, when a database connection is open. The EHR-0
        tests open none; the database tests of EHR-1 set the en-US culture first (ScratchDb.Begin), so only the scratch database could be
        touched. -->
-
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>{EA5CA88B-0C35-4647-87A2-B71E90E5A435}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>EhrTests</RootNamespace>
-    <AssemblyName>EhrTests</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <LangVersion>8.0</LangVersion>
-    <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
-    <IsCodedUITest>False</IsCodedUITest>
-    <TestProjectType>UnitTest</TestProjectType>
-    <!-- The program and the business layer need binding redirects, as OpenPmsDental.exe gets them. Generate EhrTests.dll.config. -->
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
   <ItemGroup>
-    <!-- MSTest v1, found through the search path added in Directory.Build.targets. -->
-    <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <!-- MySqlConnector (EHR-1): Support/ScratchDb.cs creates, loads and drops the ehr1_ scratch database on the local MariaDB itself, as
          tests/InventoryTests does. -->
     <Reference Include="MySqlConnector">
@@ -63,53 +20,19 @@
     <!-- PresentationCore, PresentationFramework, System.Xaml and WindowsBase: the program's windows derive from types that use WPF. -->
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Drawing" />
     <!-- ServiceControllerStatus and ServiceStartMode: the Windows Time states of the manual time window. -->
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
-    <Reference Include="System.Xml" />
-    <Reference Include="System.Xml.Linq" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="EhrSwitchTests.cs" />
-    <Compile Include="NoEhrDllTests.cs" />
-    <Compile Include="NtpReplyTests.cs" />
-    <Compile Include="PermissionTests.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ProvKeyRuleTests.cs" />
-    <Compile Include="Support\NtpPacket.cs" />
-    <Compile Include="Support\ScratchDb.cs" />
-    <Compile Include="Support\TestSupport.cs" />
-    <Compile Include="TimeSyncTests.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj">
-      <Project>{18F7BC78-4B99-48D3-A1F1-0D13A63E3CF9}</Project>
-      <Name>xCodeBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj">
-      <Project>{29C41020-4411-41F2-9061-9B71B5B32B5D}</Project>
-      <Name>xDataConnectionBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj">
-      <Project>{3D0FC76E-803C-4DE2-BDB1-47D63A4E2357}</Project>
-      <Name>OpenPmsDentalBusiness</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />
+    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj" />
+    <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />
     <!-- For FormShowFeatures.HandleEhrClick (a static method). No window of the program is ever created or shown. -->
-    <ProjectReference Include="..\..\OpenPmsDental\OpenPmsDental.csproj">
-      <Project>{8136317D-C936-49B6-9E31-D90F02D2F207}</Project>
-      <Name>OpenPmsDental</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\..\OpenPmsDental\OpenPmsDental.csproj" />
     <!-- The program's windows derive from WpfControlsOD's base types (MsgBox, the UI controls). -->
-    <ProjectReference Include="..\..\WpfControlsOD\WpfControlsOD.csproj">
-      <Project>{118540cc-3536-4e8b-94d4-402ca48a4cb0}</Project>
-      <Name>WpfControlsOD</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\..\WpfControlsOD\WpfControlsOD.csproj" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

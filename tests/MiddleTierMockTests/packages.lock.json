@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "Mono.Cecil": {
+        "type": "Direct",
+        "requested": "[0.10.3, )",
+        "resolved": "0.10.3",
+        "contentHash": "sE0q+bj5YC3X9FuFCXv0R0suoldVGXiuUls8mtXuBwDw1LeQ39pOKFyrDiEkoxCh4tNHH/luNB6DgZZnMZlEeA=="
+      },
+      "CodeBase": {
+        "type": "Project"
+      },
+      "DataConnectionBase": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )"
+        }
+      },
+      "ODCrypt": {
+        "type": "Project"
+      },
+      "openpmsdentalbusiness": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "DataConnectionBase": "[1.0.0, )",
+          "ODCrypt": "[1.0.0, )",
+          "OpenPmsDentalStorage": "[1.0.0, )",
+          "PasswordVaultWrapper": "[1.0.0, )",
+          "PdfSharp-gdi": "[1.0.0, )",
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "openpmsdentalstorage": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )"
+        }
+      },
+      "passwordvaultwrapper": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )"
+        }
+      },
+      "pdfsharp-gdi": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "pdfsharp.shared": {
+        "type": "Project"
+      },
+      "pdfsharp.system": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp.Shared": "[1.0.0, )"
+        }
+      },
+      "unittestscore": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "DataConnectionBase": "[1.0.0, )",
+          "OpenPmsDentalBusiness": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}
