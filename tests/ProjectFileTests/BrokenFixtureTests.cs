@@ -96,7 +96,9 @@ namespace ProjectFileTests {
 				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
 				AssertFails(() => projectFile.AssertCompiles(@"VendorDirect\Lab\Sub\LabHelper.cs"),@"does not compile VendorDirect\Lab\Sub\LabHelper.cs");
 				CollectionAssert.AreEqual(new[] { @"VendorDirect\Lab\Sub\LabHelper.cs" },projectFile.GetFilesNotCompiled("VendorDirect"));
-				Assert.AreEqual("",projectFile.AssertItem("Compile",@"..\..\Shared\SharedAssemblyInfo.cs").GetMetadata("Link"));
+				//Without its own Link the SDK gives the file outside the project folder its file name (SetLinkMetadataAutomatically), not
+				//Properties\SharedAssemblyInfo.cs, so a check of the explicit Link still fails.
+				Assert.AreEqual("SharedAssemblyInfo.cs",projectFile.AssertItem("Compile",@"..\..\Shared\SharedAssemblyInfo.cs").GetMetadata("Link"));
 				Assert.AreEqual("",projectFile.AssertItem("Compile",@"Forms\FormMain.cs").GetMetadata("SubType"));
 			}
 		}

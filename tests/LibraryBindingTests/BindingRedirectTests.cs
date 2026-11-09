@@ -87,12 +87,44 @@ namespace LibraryBindingTests {
 
 		[TestMethod]
 		public void BuiltProgramsAndTests_HoldTheFilesOfRequiredDlls_AndBindThem() {
+			List<ProjectInfo> listProjects=SolutionProjects.All.Where(x => (x.IsExe || x.IsWeb || x.IsTest) && SolutionProjects.LoadsRequiredAssemblies(x)).ToList();
+			Assert.IsTrue(listProjects.Any(x => Path.GetFileName(x.Path).Equals("OpenPmsDental.csproj",StringComparison.OrdinalIgnoreCase)),"The program is checked.");
+			CheckBuiltProgramsAndTests(listProjects,BuildOutput.IsRequired);
+		}
+
+		[TestMethod]
+		public void BuiltProgramsAndTests_AProjectThatIsNotBuilt_IsNotSkipped() {
+			//A project with no output folder: inconclusive on a developer's run, a failure when the build output is required, never a pass.
+			ProjectInfo projectInfo=new ProjectInfo();
+			projectInfo.Path=Path.Combine(Path.GetTempPath(),"LibraryBindingTests_"+Guid.NewGuid().ToString("N"),"NotBuiltFixture.csproj");
+			projectInfo.Folder=Path.GetDirectoryName(projectInfo.Path);
+			projectInfo.AssemblyName="NotBuiltFixture";
+			projectInfo.IsExe=true;
+			foreach(bool isRequired in new[] { true,false }) {
+				try {
+					CheckBuiltProgramsAndTests(new List<ProjectInfo> { projectInfo },isRequired);
+					Assert.Fail("A project that is not built passed.");
+				}
+				catch(UnitTestAssertException ex) {
+					Assert.AreEqual(isRequired ? typeof(AssertFailedException) : typeof(AssertInconclusiveException),ex.GetType(),"Required: "+isRequired);
+					StringAssert.Contains(ex.Message,"NotBuiltFixture.exe");
+				}
+			}
+		}
+
+		///<summary>For each project: the files of Required dlls in its output folder are those of Required dlls, and its configs bind every
+		///reference between the assemblies there. A project with no output is not skipped: once the built ones are checked, it ends the check through
+		///BuildOutput.NotBuilt (inconclusive on a developer's run, a failure under OPMS_REQUIRE_BUILD_OUTPUT=1), so a gate never passes it on fewer
+		///folders.</summary>
+		private static void CheckBuiltProgramsAndTests(List<ProjectInfo> listProjects,bool isRequired) {
 			List<string> listProblems=new List<string>();
+			List<string> listNotBuilt=new List<string>();
 			int countFolders=0;
-			foreach(ProjectInfo projectInfo in SolutionProjects.All.Where(x => (x.IsExe || x.IsWeb || x.IsTest) && SolutionProjects.LoadsRequiredAssemblies(x))) {
+			foreach(ProjectInfo projectInfo in listProjects) {
 				string folder=projectInfo.OutputFolder;
 				if(folder==null) {
-					continue;//not built
+					listNotBuilt.Add(RepoPaths.Relative(projectInfo.Path)+" ("+projectInfo.PrimaryOutputName+")");
+					continue;
 				}
 				countFolders++;
 				string labelFolder=RepoPaths.Relative(folder);
@@ -128,11 +160,14 @@ namespace LibraryBindingTests {
 					listProblems.AddRange(BindingRules.FindStaleRedirects(dictAssemblies,listRedirects,label+" (built)"));
 				}
 			}
-			if(countFolders==0) {
-				BuildOutput.NotBuilt("Nothing is built. Build OpenDental.Local.slnf (Debug|x86) first.");
-			}
 			Assert.AreEqual(0,listProblems.Count,listProblems.Count+" problem(s); a rebuild of the project may be needed:\r\n"
-				+string.Join("\r\n",listProblems.Distinct()));
+				+string.Join("\r\n",listProblems.Distinct())
+				+(listNotBuilt.Count==0 ? "" : "\r\nNot built, so not checked: "+string.Join(", ",listNotBuilt)));
+			if(listNotBuilt.Count>0) {
+				BuildOutput.NotBuilt((countFolders==0 ? "Nothing is built" : listNotBuilt.Count+" of "+(countFolders+listNotBuilt.Count)+" programs and tests "
+					+"that use Required dlls are not built")+": "+string.Join(", ",listNotBuilt.Take(20))+(listNotBuilt.Count>20 ? ", ..." : "")
+					+". Build OpenDental.Local.slnf (Debug|x86) first.",isRequired);
+			}
 		}
 	}
 }

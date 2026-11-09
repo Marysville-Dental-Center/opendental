@@ -1,7 +1,8 @@
 // ProjectFile on the repository's own project files, in whatever format they are in: every C# project of OpenDental.Local.slnf evaluates (its
-// conditions, imports and property functions are all understood), every source, resource and page it names is on disk, and for the
-// third-party source builds the evaluated items are exactly the ones the last build handed the compiler (SourceBuildItems.txt, which MSBuild
-// writes from the real evaluation), so the reader agrees with MSBuild on projects whose items come through imported props and wildcards.
+// conditions, imports and property functions are all understood), every source, resource and page it names is on disk, each reads its
+// nearest Directory.Build.props, the SDK-style ones get the DefineConstants and NoWarn MSBuild 18 gives them, and for the third-party source
+// builds the evaluated items are exactly the ones the last build handed the compiler (SourceBuildItems.txt, which MSBuild writes from the real
+// evaluation), so the reader agrees with MSBuild on projects whose items come through imported props and wildcards.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -81,6 +82,73 @@ namespace ProjectFileTests {
 			projectFile.AssertEmbeds(@"Main Modules\FormOpenDental.resx");
 			Assert.AreEqual(@"Properties\SharedAssemblyInfo.cs",projectFile.AssertItem("Compile",@"..\SharedAssemblyInfo.cs").GetMetadata("Link"));
 			Assert.AreEqual(@"bin\Debug\",projectFile.GetProperty("OutputPath"));
+		}
+
+		[TestMethod]
+		public void EveryProject_ReadsTheNearestDirectoryBuildProps_AndGetsTheExtensionsPathMSBuildGives() {
+			//MSBuild 18 -getProperty gives every project of the solution filter its own obj\ folder as MSBuildProjectExtensionsPath, the classic
+			//projects without a Microsoft.Common.props import of their own too (S1-T2's review checked OpenPmsDental, OpenPmsDentalBusiness,
+			//OpenPmsDentalHL7, ServiceManager, SparksToothChart, UnitTests and xCentralManager), and imports the nearest Directory.Build.props into
+			//each: through the project's own import, Sdk.props, or Microsoft.Common.CurrentVersion.targets.
+			List<string> listProblems=new List<string>();
+			int countWithoutImport=0;
+			foreach(ProjectFile projectFile in Projects()) {
+				string expected=projectFile.Folder+@"\obj\";
+				string actual=projectFile.GetProperty("MSBuildProjectExtensionsPath");
+				if(!actual.Equals(expected,StringComparison.OrdinalIgnoreCase)) {
+					listProblems.Add(projectFile.Name+": MSBuildProjectExtensionsPath "+actual+", not "+expected);
+				}
+				string pathProps=null;
+				for(DirectoryInfo directoryInfo=new DirectoryInfo(projectFile.Folder);directoryInfo!=null && pathProps==null;directoryInfo=directoryInfo.Parent) {
+					string path=Path.Combine(directoryInfo.FullName,"Directory.Build.props");
+					if(File.Exists(path)) {
+						pathProps=path;
+					}
+				}
+				if(pathProps==null || !projectFile.FilesRead.Contains(pathProps,StringComparer.OrdinalIgnoreCase)) {
+					listProblems.Add(projectFile.Name+" does not read "+(pathProps??"a Directory.Build.props"));
+				}
+				if(!projectFile.IsSdkStyle && !File.ReadAllText(projectFile.FullPath).Contains("Microsoft.Common.props")) {
+					countWithoutImport++;
+				}
+			}
+			Assert.AreEqual(0,listProblems.Count,string.Join("; ",listProblems));
+			Console.WriteLine(countWithoutImport+" classic projects without a Microsoft.Common.props import of their own.");
+		}
+
+		[TestMethod]
+		public void SdkStyleProjects_GetTheSdksDefineConstantsAndNoWarn_AsMSBuildEvaluatesThem() {
+			//What MSBuild 18 -getProperty gave the SDK-style projects of the solution filter in S1-T2's review: TRACE;DEBUG and 1701;1702 for every
+			//project whose own file sets neither (S1-1's, as xCodeBase, xODR, UpdateFileCopier, RdlEngine and DevDbTool), and NoWarn
+			//1701;1702;CS0436;CS1591 for the seven third-party source builds, whose DefineConstants are their own (third-party\build\SourceBuild.props
+			//sets DisableImplicitConfigurationDefines and adds CS0436;CS1591 to $(NoWarn)).
+			List<string> listProblems=new List<string>();
+			int countOwnDefaults=0;
+			int countSourceBuilds=0;
+			foreach(ProjectFile projectFile in Projects().Where(x => x.IsSdkStyle)) {
+				string defineConstants=projectFile.GetProperty("DefineConstants");
+				string noWarn=projectFile.GetProperty("NoWarn");
+				if(projectFile.FullPath.IndexOf(@"\third-party\build\",StringComparison.OrdinalIgnoreCase)>=0) {
+					countSourceBuilds++;
+					if(noWarn!="1701;1702;CS0436;CS1591") {
+						listProblems.Add(projectFile.Name+": NoWarn "+noWarn);
+					}
+					if(defineConstants.EndsWith(";DEBUG",StringComparison.Ordinal)) {
+						listProblems.Add(projectFile.Name+": DefineConstants "+defineConstants+" (no configuration define in a source build)");
+					}
+					continue;
+				}
+				if(System.Xml.Linq.XDocument.Load(projectFile.FullPath).Descendants().Any(x => x.Name.LocalName=="DefineConstants" || x.Name.LocalName=="NoWarn")) {
+					continue;//Its own values.
+				}
+				countOwnDefaults++;
+				if(defineConstants!="TRACE;DEBUG" || noWarn!="1701;1702") {
+					listProblems.Add(projectFile.Name+": DefineConstants "+defineConstants+", NoWarn "+noWarn);
+				}
+			}
+			Assert.AreEqual(7,countSourceBuilds,"The seven source-build projects of third-party\\build.");
+			Assert.IsTrue(countOwnDefaults>=18,"S1-1's 18 SDK-style projects set neither; "+countOwnDefaults+" found.");
+			Assert.AreEqual(0,listProblems.Count,string.Join("; ",listProblems));
 		}
 
 		[TestMethod]
