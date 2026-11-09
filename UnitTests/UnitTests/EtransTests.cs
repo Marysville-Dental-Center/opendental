@@ -30,6 +30,10 @@ namespace UnitTests.Etrans_Tests {
 			ProcedureCodeT.AddIfNotPresent("D1110");
 			ProcedureCodeT.AddIfNotPresent("D0602");
 			ProcedureCodeT.AddIfNotPresent("D1206");
+			//The History Proc Code of the seed's Bitewing History code group (InsHistBWCodes, InsHistCodeGroupsStep), which X271_EB271_SetInsuranceHistoryDates
+			//enters a bitewing date with; D0120 and D1110 above are those of Exam History and Prophy History. The classes that clear the procedure code
+			//table (ProcedureCodeT.ClearProcedureCodeTable) delete it, and the bitewing date was skipped as "not a valid procedure code" when one ran first.
+			ProcedureCodeT.AddIfNotPresent("D0272");
 			ProcedureCodes.RefreshCache();//Refresh cache if the codes above were added
 			_x271=new X271(Properties.Resources.x271Test);
 		}
@@ -633,8 +637,10 @@ namespace UnitTests.Etrans_Tests {
 			InsPlan insPlan=InsPlanT.CreateInsPlan(carrier.CarrierNum);
 			InsSub insSub=InsSubT.CreateInsSub(patient.PatNum,insPlan.PlanNum);
 			List<EB271> listEB271=_x271.GetListEB(true,carrier.IsCoinsuranceInverted);
-			int countValidInsHist=EB271.SetInsuranceHistoryDates(listEB271,patient.PatNum,insSub);
-			Assert.AreEqual(3,countValidInsHist);//There are 4 valid fields but 1 has an invalid date.
+			List<string> listSkipped=new List<string>();
+			int countValidInsHist=EB271.SetInsuranceHistoryDates(listEB271,patient.PatNum,insSub,listSkipped);
+			//There are 4 valid fields but 1 has an invalid date. The message names the dates that were not saved, and why.
+			Assert.AreEqual(3,countValidInsHist,string.Join(" | ",listSkipped));
 		}
 
 		[TestMethod]

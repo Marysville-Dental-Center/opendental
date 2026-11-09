@@ -24,6 +24,9 @@ namespace UnitTests.UserQueries_Tests {
 		[TestCleanup]
 		public void TearDownTest() {
 			//Add anything here that you want to run after every test in this class.
+			//The IsSQLAllowed tests log in as a user of their own (SetCurrentUserWOCommandQueryPerm): log the unit test user back in, so a class that
+			//runs after this one, a Middle Tier call among them, does not find Security.CurUser logged in as that user.
+			CreateAndSetUnitTestUser();
 		}
 
 		[ClassCleanup]

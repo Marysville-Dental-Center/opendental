@@ -11,6 +11,14 @@ using UnitTestsCore;
 namespace UnitTests.OrthoCases_Tests {
 	[TestClass]
 	public class OrthoCasesTests:TestBase {
+		///<summary>This method will execute after each test in this class. Three tests log in as a user of their own (password 1234); without this
+		///Security.CurUser stayed that user for every class that ran after this one, and the Middle Tier mock refused its credentials with the unit
+		///test user's typed password (Fees_GetByFeeSchedNumsClinicNums_MiddleTier).</summary>
+		[TestCleanup]
+		public void TearDownTest() {
+			CreateAndSetUnitTestUser();
+		}
+
 		///<summary>Make sure that setting an OrthoCase active, deactivates other orthocases for a patient.</summary>
 		[TestMethod]
 		public void OrthoCases_Activate_ActivateAnOrthoCaseAndDeactivateOthersForPat() {
