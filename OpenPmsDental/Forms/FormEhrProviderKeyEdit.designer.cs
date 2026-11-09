@@ -23,7 +23,6 @@ namespace OpenPmsDental{
 		/// the contents of this method with the code editor.
 		/// </summary>
 		private void InitializeComponent() {
-			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(FormEhrProviderKeyEdit));
 			this.butSave = new OpenPmsDental.UI.Button();
 			this.label1 = new System.Windows.Forms.Label();
 			this.label3 = new System.Windows.Forms.Label();
@@ -36,6 +35,7 @@ namespace OpenPmsDental{
 			this.label8 = new System.Windows.Forms.Label();
 			this.label2 = new System.Windows.Forms.Label();
 			this.label4 = new System.Windows.Forms.Label();
+			this.labelKeyNote = new System.Windows.Forms.Label();
 			this.SuspendLayout();
 			// 
 			// butSave
@@ -134,7 +134,9 @@ namespace OpenPmsDental{
 			this.label2.Name = "label2";
 			this.label2.Size = new System.Drawing.Size(410, 89);
 			this.label2.TabIndex = 112;
-			this.label2.Text = resources.GetString("label2.Text");
+			this.label2.Text = "Add a row for each provider who reports EHR. Enter the last name and first name exactly as they are in the provider\'s rec" +
+    "ord, and the year as two digits. The key is optional and is not checked: this program has no license keys. A row turns CPOE on for that p" +
+    "rovider\'s user. One row covers every provider with the same names, for example dummy providers.";
 			// 
 			// label4
 			// 
@@ -144,11 +146,21 @@ namespace OpenPmsDental{
 			this.label4.TabIndex = 117;
 			this.label4.Text = "Ex. 12";
 			this.label4.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-			// 
+			//
+			// labelKeyNote
+			//
+			this.labelKeyNote.Location = new System.Drawing.Point(316, 178);
+			this.labelKeyNote.Name = "labelKeyNote";
+			this.labelKeyNote.Size = new System.Drawing.Size(120, 18);
+			this.labelKeyNote.TabIndex = 118;
+			this.labelKeyNote.Text = "optional, not checked";
+			this.labelKeyNote.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+			//
 			// FormEhrProviderKeyEdit
-			// 
+			//
 			this.ClientSize = new System.Drawing.Size(440, 256);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
+			this.Controls.Add(this.labelKeyNote);
 			this.Controls.Add(this.label4);
 			this.Controls.Add(this.textLName);
 			this.Controls.Add(this.textFName);
@@ -184,5 +196,6 @@ namespace OpenPmsDental{
 		private System.Windows.Forms.Label label8;
 		private System.Windows.Forms.Label label2;
 		private System.Windows.Forms.Label label4;
+		private System.Windows.Forms.Label labelKeyNote;
 	}
 }

@@ -27,7 +27,8 @@ namespace OpenPmsDental {
 		private Provider _provider;
 
 		///<summary>The Meaningful Use measures dashboard and the EHR provider/quarterly key checks lived in Open Dental's proprietary EHR.dll, which
-		///used to be loaded through reflection. That hook was removed. The rest of this window works as it did when EHR.dll was missing.</summary>
+		///used to be loaded through reflection. That hook was removed. This open build has no licence keys: a provider reports EHR when an ehrprovkey
+		///row has their last and first name (EhrProvKeys.GetSaveError, docs/specs/ehr-rebuild-plan.md section 5), and quarterly keys are gone.</summary>
 		public FormEHR() {
 			InitializeComponent();
 			InitializeLayoutManager();
@@ -41,19 +42,14 @@ namespace OpenPmsDental {
 			EhrFormResultOnClose=EhrFormResult.None;
 			_patient=Patients.GetPat(PatNum);
 			_provider=Providers.GetProv(_patient.PriProv);
-			labelProvPat.Text=_provider.GetLongDesc();
-			if(EhrProvKeys.GetKeysByFLName(_provider.LName,_provider.FName).Count==0) {
-				labelProvPat.Text+=" (no ehr provider key entered)";
-			}
+			//" (not marked for EHR reporting)" when no ehrprovkey row has the provider's names, the same row test as before.
+			labelProvPat.Text=_provider.GetLongDesc()+EhrProvKeys.GetReportingNote(_provider.LName,_provider.FName);
 			if(Security.CurUser.ProvNum==0) {
 				labelProvUser.Text="none";
 			}
 			else {
 				Provider provider=Providers.GetProv(Security.CurUser.ProvNum);
-				labelProvUser.Text=Providers.GetLongDesc(provider.ProvNum);
-				if(EhrProvKeys.GetKeysByFLName(provider.LName,provider.FName).Count==0) {
-					labelProvUser.Text+=" (no ehr provider key entered)";
-				}
+				labelProvUser.Text=Providers.GetLongDesc(provider.ProvNum)+EhrProvKeys.GetReportingNote(provider.LName,provider.FName);
 			}
 			FillGridMu();
 			if(DoShowOrders) {
@@ -568,12 +564,6 @@ namespace OpenPmsDental {
 			formPatListEHR2014.ShowDialog();
 		}
 
-		private void butPatList14_Click(object sender,EventArgs e) {
-			MessageBox.Show("This form was moved to the OpenPmsDental project and should be launched from Reports ?");
-			//using OpenPmsDental.FormPatList2014 FormPL14=new OpenPmsDental.FormPatList2014();
-			//FormPL14.ShowDialog();
-		}
-
 		private void butAmendments_Click(object sender,EventArgs e) {
 			using FormEhrAmendments formEhrAmendments=new FormEhrAmendments();
 			formEhrAmendments.PatientCur=_patient;
@@ -624,12 +614,6 @@ namespace OpenPmsDental {
 		///<summary>EHR provider keys were issued and checked by Open Dental's proprietary EHR.dll, which is not loaded anymore. Always returns false,
 		///the same result as when EHR.dll was missing.</summary>
 		public static bool ProvKeyIsValid(string lName,string fName,int year,string provKey) {
-			return false;
-		}
-
-		///<summary>EHR quarterly keys were issued and checked by Open Dental's proprietary EHR.dll, which is not loaded anymore. Always returns false,
-		///the same result as when EHR.dll was missing.</summary>
-		public static bool QuarterlyKeyIsValid(string year,string quarter,string practiceTitle,string qKey) {
 			return false;
 		}
 
