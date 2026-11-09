@@ -1,44 +1,31 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk">
   <!--
     Native image capture for the Imaging module: the generic UVC camera layer (DirectShow, through COM interfaces declared
     in this project from the public Windows SDK documentation), camera triggers, and the capture windows. It uses no NuGet
     package and ships no native binary. DirectShow and its Sample Grabber (qedit.dll) are part of Windows.
-    WPF-enabled class library, always x86 like the host. It references ImagingDeviceManager, OpenPmsDentalBusiness, CodeBase and
+    WPF class library, x86 like the host (Directory.Build.props). It references ImagingDeviceManager, OpenPmsDentalBusiness, CodeBase and
     WpfControlsOD, never the OpenPmsDental assembly.
+    With UseWPF the SDK's default globs compile every .cs file and build every .xaml file under this folder as a Page (bin\ and obj\
+    excepted), so packages that add files never conflict over this project file.
   -->
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{9FCFB60D-959B-4448-A317-D56C95457C3F}</ProjectGuid>
+    <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ImagingCapture</RootNamespace>
     <AssemblyName>ImagingCapture</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
-    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
-    <PlatformTarget>x86</PlatformTarget>
-    <Prefer32Bit>false</Prefer32Bit>
     <LangVersion>7.3</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
+    <Platforms>AnyCPU;x86</Platforms>
+    <UseWPF>true</UseWPF>
+    <!-- As in WpfControlsOD.csproj: no generated sources in the PDB, and SHA-256 checksums of the .xaml files, as the classic build had. -->
+    <EmbedUntrackedSources>false</EmbedUntrackedSources>
+    <ChecksumAlgorithm>SHA256</ChecksumAlgorithm>
     <WarningLevel>4</WarningLevel>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-    <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' != 'Debug' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="PresentationCore" />
@@ -51,33 +38,14 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Every .cs and .xaml file under this folder is part of the project, so packages that add files never conflict over this project file. -->
-    <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
     <Compile Include="..\SharedAssemblyInfo.cs">
       <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
-    <Page Include="**\*.xaml" Exclude="bin\**;obj\**">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CodeBase\xCodeBase.csproj">
-      <Project>{18f7bc78-4b99-48d3-a1f1-0d13a63e3cf9}</Project>
-      <Name>xCodeBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\ImagingDeviceManager\xImagingDeviceManager.csproj">
-      <Project>{783079E6-A13F-4F43-A28D-9D7731F945D1}</Project>
-      <Name>xImagingDeviceManager</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj">
-      <Project>{3d0fc76e-803c-4de2-bdb1-47d63a4e2357}</Project>
-      <Name>OpenPmsDentalBusiness</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\WpfControlsOD\WpfControlsOD.csproj">
-      <Project>{118540CC-3536-4E8B-94D4-402CA48A4CB0}</Project>
-      <Name>WpfControlsOD</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\CodeBase\xCodeBase.csproj" />
+    <ProjectReference Include="..\ImagingDeviceManager\xImagingDeviceManager.csproj" />
+    <ProjectReference Include="..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />
+    <ProjectReference Include="..\WpfControlsOD\WpfControlsOD.csproj" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
