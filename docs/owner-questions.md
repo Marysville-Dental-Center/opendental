@@ -756,6 +756,25 @@ The questions of the EHR plan, [specs/ehr-rebuild-plan.md](specs/ehr-rebuild-pla
 
 ---
 
+## Direct certificates follow-up (DIRECT-CERT, answered on 2026-11-09)
+
+The questions the DIRECT-CERT package (open point O-13, [port-notes/DIRECT-CERT.md](port-notes/DIRECT-CERT.md)) left open. You
+approved all three parts of the follow-up package, DIRECT-CERT-FOLLOWUP
+([port-notes/DIRECT-CERT-FOLLOWUP.md](port-notes/DIRECT-CERT-FOLLOWUP.md)).
+
+- **The connection settings tool's private keys.** The tool now deletes the private key of a client certificate it replaces also when
+  Windows keeps that key the older way (a CAPI key container, as it stores a `.pfx` that names no key provider), and gives the computer's
+  users read access to such a key. Before, the certificate was removed but that kind of key stayed on the computer. The same fix as the
+  Direct certificate import's. Done.
+- **Open Dental's "Customer Updates" web service.** Its empty stand-in (`ICustomerUpdates`, `CustomerUpdatesNoHq` and
+  `CustomerUpdatesProxy`) is deleted, as you decided; the tests that checked it was still there now check that it is gone. Done.
+- **The computer's users keep read access to the Direct private key**, as built: the program runs as the signed-in Windows user, who signs
+  and decrypts with it.
+- **A replaced Direct certificate's private key is deleted only if the certificate window imported it**, as built; the key of a
+  certificate put there another way stays on the computer.
+
+---
+
 ## Not asked again (already settled)
 
 - How package migration levels are numbered (B-ACCT 2, B-PRINT 1, B-SHELL 6, M2-EST 1, M2-UDS 1, V-BRIDGE1 2, V-PEARL2 1, M2-SHELL's old question 4): decided on 2026-11-01 and done: the package steps now have dated levels 2026110101 to 2026110104, and new steps always go above the highest one.

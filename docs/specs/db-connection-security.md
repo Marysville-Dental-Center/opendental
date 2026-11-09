@@ -223,7 +223,9 @@ program runs as the signed-in user. Other certificates in the `.pfx` are not imp
 
 The certificate it replaces (owner decision of 2026-11-02): the tool removes a client certificate from the store, with its private key
 (CNG `Delete`, or the CAPI key container), only when it imported that certificate itself and a save stops using it (another certificate,
-or the password). It records the thumbprint of what it imported in `<program folder>\ConnectionSettings\imported-client-certificate.txt`
+or the password). A CAPI key (a `.pfx` that names no CNG provider, as OpenSSL writes it, or one that names a CAPI provider) is deleted
+and its file named through CAPI (`X509Certificate2.PrivateKey`, in the key set the key lives in), since .NET Framework's
+`GetRSAPrivateKey` opens it through CNG, as an `RSACng` whose `Key.Delete` leaves the container (DIRECT-CERT-FOLLOWUP). It records the thumbprint of what it imported in `<program folder>\ConnectionSettings\imported-client-certificate.txt`
 (`ImportedCertificateRecord`), written with the protection of the office CA copy (section 4.4), not in `FreeDentalConfig.xml`, whose
 content must never decide what the tool deletes. Only a certificate the store did not have before its `.pfx` was imported is recorded; one
 named with `/thumbprint=`, or put into the store some other way, is never recorded and never removed (remove it with certlm.msc). A

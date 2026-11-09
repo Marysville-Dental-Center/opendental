@@ -124,7 +124,8 @@ server computer must then connect with `<db-server>` (the name the workstations 
   file's rights back to the program folder's (any right of Users on the file is removed).
 - **A replaced client certificate is removed.** When a save with the tool stops using a client certificate (a new `.pfx`, or the password),
   the tool removes the old one from the computer's store with its private key, but only a certificate it imported itself; one named by
-  thumbprint or put there another way stays.
+  thumbprint or put there another way stays. This holds for every kind of private key, also the older kind Windows uses for a `.pfx` that
+  names no key provider (as OpenSSL writes one), whose key file also gets the computer's users' read access at the import.
 - **Setup exit code 10.** A silent setup that installed the files but could not finish the connection settings (the tool failed, or an
   existing install's settings fail the connection rule) ends with exit code 10, so deployment scripts see it; the setup log says why.
 

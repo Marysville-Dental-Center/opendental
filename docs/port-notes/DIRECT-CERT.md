@@ -126,7 +126,8 @@ the window:
   a plain SMTP login is allowed there) it stops with "The Direct certificate is found by the user name. Enter the Direct address
   (name@domain) in Username or email address, then click Certificate." (`GetAddressError`, the import's own rule).
 - **Open Dental's servers.** Nothing is sent anywhere. `ICustomerUpdates.RequestEmailVerificationCode` and `PostEmailCertificate` had no
-  caller left and were deleted, as the other Customer Updates members were (NoHqTests checks they stay gone).
+  caller left and were deleted, as the other Customer Updates members were (NoHqTests checks they stay gone). The empty `ICustomerUpdates`,
+  `CustomerUpdatesNoHq` and `CustomerUpdatesProxy` were then deleted too, by the owner's answer (DIRECT-CERT-FOLLOWUP, below).
 
 ## Also changed
 
@@ -264,7 +265,8 @@ key the import or a test stores is deleted afterwards. The failure tests use fou
   signing one: signed with the sender's, encrypted to the receiver's, decrypted, as before.
 
 Changed: `DirectRestoredTests.Windows_HaveTheirDirectControlsAgain` (the new call; the window no longer reads certificate names itself)
-and `NoHqTests.CustomerUpdates_VendorMembersAreRemoved` (the two deleted members).
+and `NoHqTests.CustomerUpdates_VendorMembersAreRemoved` (the two deleted members; replaced by `CustomerUpdates_TheEmptyShellIsRemoved` when
+DIRECT-CERT-FOLLOWUP deleted the shell).
 
 Not tested here: the Local Computer stores, the machine key set and the users' read access (for a CNG and a CAPI key), which need
 administrator rights (the launch checks below).
@@ -421,7 +423,7 @@ be written. `main` (S1-6's SDK-style test projects, TC-2, EHR-1 and the others) 
    of section 9.1 no longer says that `FormEmailCertRegister` calls `CustomerUpdatesProxy`, and O-13 is marked done by this package.
 
 Left as they are (owner questions): `ICustomerUpdates` and `CustomerUpdatesProxy`, and the read access of `BUILTIN\Users` to the imported
-private keys.
+private keys. (Answered on 2026-11-09: The owner's answers, below.)
 
 Not changed, noticed on the way: the program's own search of the signing certificate (`EmailMessages.GetCertFromPrivateStore`) and the
 Direct agent's resolver take the valid certificates for the address in store order, whatever their purpose; with a separate signing and
@@ -478,6 +480,24 @@ Found by the tests, fixed in 7cab838be:
 
 Not changed, noticed on the way: `OpenPmsDentalDbSettings.ClientCertificateStore.DeletePrivateKey` and its key file path have the same CAPI
 case (the database client certificate of a `.pfx` that names no provider); that is the connection settings tool's, not this package's.
+(Fixed by DIRECT-CERT-FOLLOWUP, `docs/port-notes/DIRECT-CERT-FOLLOWUP.md`.)
 
 Left as they are (owner questions): `ICustomerUpdates` and `CustomerUpdatesProxy`, and the read access of `BUILTIN\Users` to the imported
-private keys.
+private keys. (Answered on 2026-11-09: The owner's answers, below.)
+
+## The owner's answers (2026-11-09, DIRECT-CERT-FOLLOWUP)
+
+The owner approved the three parts of the follow-up package (`docs/port-notes/DIRECT-CERT-FOLLOWUP.md`, branch
+`fix/directcert-followup-1`):
+
+1. **The connection settings tool's CAPI key.** `ClientCertificateStore` gets this package's CAPI fix (7cab838be): it deletes and names a
+   CAPI key of the database client certificate through CAPI, in the key set the key lives in. Done in DIRECT-CERT-FOLLOWUP.
+2. **`ICustomerUpdates`, `CustomerUpdatesNoHq` and `CustomerUpdatesProxy`** are deleted (the owner's deliberate deletion), and the tests
+   that pinned the empty shell now check that it is gone. Done in DIRECT-CERT-FOLLOWUP.
+3. The two other questions, decided **as built**:
+   - (a) **`BUILTIN\Users` keep read access to the Direct private key** the window imports into the Local Computer store: the program runs as
+     the signed-in Windows user, who must be able to sign and decrypt with it (The users of the computer, above).
+   - (b) **A replaced certificate's private key is deleted only if this window imported it** (its friendly name says so); the key of a
+     certificate put there another way stays on the computer (Replacing, above).
+
+No code changed for (a) and (b).
