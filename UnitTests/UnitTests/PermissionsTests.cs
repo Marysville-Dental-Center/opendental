@@ -12,6 +12,11 @@ namespace UnitTests.Permissions_Tests {
 	public class PermissionsTests:TestBase {
 		private static UserGroup _userGroup;
 		private static Userod _user;
+		///<summary>The user groups as each test found them, put back by TearDownTest.</summary>
+		private static List<UserGroup> _listUserGroupsBefore;
+		///<summary>The group permissions as each test found them, put back by TearDownTest.</summary>
+		private static List<GroupPermission> _listGroupPermissionsBefore;
+
 		public static void CreateAndAttachUsers() {
 			UserGroupT.ClearUserGroupTable();
 			_userGroup=new UserGroup();
@@ -21,23 +26,39 @@ namespace UnitTests.Permissions_Tests {
 			UserGroupAttaches.AddForUser(_user,_userGroup.UserGroupNum);
 			UserGroupAttaches.RefreshCache();
 		}
-		[ClassInitialize]
-		public static void ClassSetUp(TestContext testContext) {
+
+		///<summary>Each test starts with only this class's user group (CreateAndAttachUsers) and only the group permissions of the seed dump
+		///(ClearGroupPermissionTable). This was the class's ClassInitialize; its ClassCleanup deleted the remaining user groups, and MSTest does not run
+		///a ClassCleanup before the next class starts (see aaTemplateTests). Every class that ran after this one found no user groups, the unit test
+		///user's group among them, and Security.CurUser still logged in as this class's user: the unit test user could not change its password
+		///(Authentication_Tests) and the Middle Tier mock refused the credentials (Fees_GetByFeeSchedNumsClinicNums_MiddleTier). TearDownTest puts the
+		///user groups, the group permissions and Security.CurUser back after every test.</summary>
+		[TestInitialize]
+		public void SetupTest() {
+			_listUserGroupsBefore=OpenPmsDentalBusiness.Crud.UserGroupCrud.SelectMany("SELECT * FROM usergroup");
+			_listGroupPermissionsBefore=OpenPmsDentalBusiness.Crud.GroupPermissionCrud.SelectMany("SELECT * FROM grouppermission");
 			GroupPermissionT.ClearGroupPermissionTable();
 			CreateAndAttachUsers();
 		}
 
-		[ClassCleanup]
-		public static void ClassTearDown() {
+		///<summary>Removes this class's user group and puts back the user groups and group permissions SetupTest found, then logs the unit test user
+		///back in (the tests log in as this class's user).</summary>
+		[TestCleanup]
+		public void TearDownTest() {
 			List<UserGroupAttach> listAttaches=UserGroupAttaches.GetForUserGroup(_userGroup.UserGroupNum);
 			foreach(UserGroupAttach attach in listAttaches) {
 				UserGroupAttaches.Delete(attach);
 			}
-			List<UserGroup> listGroups=UserGroups.GetList();
-			foreach(UserGroup userGroup in listGroups) {
-				UserGroups.Delete(userGroup);
+			DataCore.NonQ("DELETE FROM usergroup");
+			for(int i=0;i<_listUserGroupsBefore.Count;i++) {
+				OpenPmsDentalBusiness.Crud.UserGroupCrud.InsertNoCache(_listUserGroupsBefore[i].Copy(),true);
 			}
-			GroupPermissionT.ClearGroupPermissionTable();
+			DataCore.NonQ("DELETE FROM grouppermission");
+			for(int i=0;i<_listGroupPermissionsBefore.Count;i++) {
+				OpenPmsDentalBusiness.Crud.GroupPermissionCrud.InsertNoCache(_listGroupPermissionsBefore[i].Copy(),true);
+			}
+			Cache.Refresh(InvalidType.Security);
+			CreateAndSetUnitTestUser();
 		}
 
 		[TestMethod]
