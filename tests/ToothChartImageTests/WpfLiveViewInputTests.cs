@@ -1,7 +1,10 @@
 // The live view's real WPF input path (package TC-3, fix round 3; docs/specs/wpf-tooth-chart-plan.md section 7 item 7): raw mouse reports through
 // WPF's MouseDevice to the content's MouseMove, MouseDown and MouseUp, so GetPosition (under the content's 1/DPI transform) and the capture are
-// exercised, against the shared ToothChartMouse given the same points; the capture released before the handlers of SegmentDrawn and
-// ToothSelectionsChanged run; WPF's own MouseMove on a capture change adds no point; and a held-still pen adds none.
+// exercised, against the shared ToothChartMouse given the same points; the capture held while the handlers of SegmentDrawn and
+// ToothSelectionsChanged run and released after them, as WinForms releases DirectX's (fix round 4); WPF's own MouseMove on a capture change adds no
+// point; a held-still pen adds none; and a MouseMove WPF raises at an unchanged device position (its re-synchronisation after a layout that moved
+// the content under a still mouse) adds none either, while a move back to the same point after the mouse left the window is handed on.
+// The tests run at the desktop's DPI (100% on the build PC, where the content's 1/DPI transform is the identity): the input path at 150% is L-4's.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -20,7 +23,7 @@ namespace ToothChartImageTests {
 	public class WpfLiveViewInputTests {
 		///<summary>Each input goes to the live view through WPF (WpfMouseInput) and to a shared ToothChartMouse on a copy of the chart's data, as
 		///DirectX's handlers would get it: a move only where the mouse moved, the press and release at their points. Capture changes inside the view
-		///also make WPF move its mouse to a point (simulated here at pointCaptureSync, as MouseDevice.Synchronize moves it to the real cursor), which no
+		///also make WPF move its mouse to a point (simulated here at pointSyncPress and pointSyncRelease, as WPF moves it to the real cursor), which no
 		///window message made and the shared mouse never gets.</summary>
 		private sealed class InputPair {
 			public WpfMouseInput WpfMouseInput;
@@ -89,14 +92,16 @@ namespace ToothChartImageTests {
 			List<string> listSegmentsShared=new List<string>();
 			int countSelections=0;
 			int countSelectionsShared=0;
-			List<string> listCapturedInHandlers=new List<string>();
+			//Whether the content had WPF's capture while each handler ran: DirectX's handlers ran under the Win32 capture, which WinForms releases after
+			//OnMouseUp (Control.WmMouseUp's finally), so the live view releases WPF's after the shared class's MouseUp.
+			List<string> listCaptureInHandlers=new List<string>();
 			wrapper.SegmentDrawn+=(sender,e) => {
 				listSegments.Add(e.DrawingSegement);
-				listCapturedInHandlers.Add(System.Windows.Input.Mouse.Captured==null?null:"SegmentDrawn");
+				listCaptureInHandlers.Add("SegmentDrawn "+(System.Windows.Input.Mouse.Captured==content?"with the capture":"without the capture"));
 			};
 			wrapper.ToothSelectionsChanged+=sender => {
 				countSelections++;
-				listCapturedInHandlers.Add(System.Windows.Input.Mouse.Captured==null?null:"ToothSelectionsChanged");
+				listCaptureInHandlers.Add("ToothSelectionsChanged "+(System.Windows.Input.Mouse.Captured==content?"with the capture":"without the capture"));
 			};
 			ToothChartMouse toothChartMouseShared=new ToothChartMouse();
 			toothChartMouseShared.SegmentDrawn+=(sender,e) => listSegmentsShared.Add(e.DrawingSegement);
@@ -167,10 +172,112 @@ namespace ToothChartImageTests {
 			Assert.AreEqual(countSelectionsShared,countSelections,sizeName+": the same commits of the selection.");
 			Assert.AreEqual(2,countSelections,sizeName);
 			Assert.IsTrue(listCapturedAfterPress.All(x => x),sizeName+": the content has the capture from each press.");
-			Assert.IsTrue(listCapturedInHandlers.All(x => x==null),sizeName+": the handlers ran under WPF's capture: "+string.Join(", ",listCapturedInHandlers));
-			Assert.AreEqual(4,listCapturedInHandlers.Count,sizeName);
+			Assert.AreEqual(4,listCaptureInHandlers.Count,sizeName);
+			Assert.IsTrue(listCaptureInHandlers.All(x => x.EndsWith(" with the capture")),sizeName+": every handler ran with the content's capture, as DirectX's ran "
+				+"under the Win32 capture: "+string.Join(", ",listCaptureInHandlers));
 			wrapper.Dispose();
 			form.Close();
+		}
+
+		[TestMethod]
+		public void RealInput_MovesWpfRaisesAtAnUnchangedDevicePosition_AddNoPointToTheStroke() {
+			//WPF re-synchronises its mouse after a layout pass (InputManager's hit-test invalidation posts MouseDevice.Synchronize, at the position WPF already
+			//has) and raises MouseMove when the element under the mouse, or the mouse's position relative to it, changed: here a layout that moves the
+			//content a quarter of a pixel under the still mouse and back, mid-stroke. No WM_MOUSEMOVE made those moves (the mouse did not move), so DirectX's
+			//pen adds no point for them, and the live view hands none on: the stroke's points and its SegmentDrawn string are those of the real moves.
+			WpfLiveViewTests.RequireDesktop();
+			StaRunner.Run(() => {
+				foreach(ChartSize chartSize in new[] { ChartScenes.SizeModule,new ChartSize(615,461,ChartColorSet.Module) }) {
+					CheckUnchangedDevicePosition(chartSize);
+				}
+			});
+		}
+
+		private static void CheckUnchangedDevicePosition(ChartSize chartSize) {
+			Size size=chartSize.Size;
+			string sizeName=size.Width+"x"+size.Height;
+			using Form form=WpfCharts.CreateOffscreenForm(size);
+			ToothChartWrapper wrapper=WpfCharts.CreateWrapper(size);
+			form.Controls.Add(wrapper);
+			ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+			ChartScenes.Prepare(relay,ChartScenes.Get("empty-universal"),chartSize.ColorSet);
+			form.Show();
+			ToothChartWpfView toothChartWpfView=WpfLiveViewTests.WaitForLiveView(wrapper);
+			System.Windows.FrameworkElement content=(System.Windows.FrameworkElement)toothChartWpfView.Child;
+			WpfMouseInput wpfMouseInput=WpfMouseInput.ForVisual(content);
+			List<string> listSegments=new List<string>();
+			wrapper.SegmentDrawn+=(sender,e) => listSegments.Add(e.DrawingSegement);
+			int countMovesRaised=0;
+			content.MouseMove+=(sender,e) => countMovesRaised++;
+			relay.CursorTool=CursorTool.Pen;
+			double scale=size.Width/410.0;
+			List<Point> listPen=new[] { new Point(30,280),new Point(45,284),new Point(63,290),new Point(80,288) }
+				.Select(x => new Point((int)Math.Round(x.X*scale),(int)Math.Round(x.Y*scale))).ToList();
+			try {
+				wpfMouseInput.Move(listPen[0]);
+				wpfMouseInput.Press(listPen[0]);
+				wpfMouseInput.Move(listPen[1]);
+				wpfMouseInput.Move(listPen[2]);
+				Assert.AreEqual(3,wrapper.TcData.PointList.Count,sizeName+": the press and two moves.");
+				int countHandedOn=toothChartWpfView.CountMouseMovesHandedOn;
+				foreach(double offset in new[] { 0.25,0.0 }) {
+					int countRaised=countMovesRaised;
+					content.Margin=new System.Windows.Thickness(offset,offset,0,0);//the content moves under the still mouse; the message loop lays it out
+					Assert.IsTrue(WpfRendererTests.PumpUntil(() => countMovesRaised>countRaised,5000),sizeName+": WPF raised a MouseMove at the unchanged device "
+						+"position after the layout that put the content at "+offset+".");
+					Assert.AreEqual(3,wrapper.TcData.PointList.Count,sizeName+": no point for WPF's move with the content at "+offset+".");
+				}
+				Assert.AreEqual(countHandedOn,toothChartWpfView.CountMouseMovesHandedOn,sizeName+": neither move reached the shared class.");
+				wpfMouseInput.Move(listPen[3]);
+				Assert.AreEqual(4,wrapper.TcData.PointList.Count,sizeName+": a real move adds its point.");
+				wpfMouseInput.Release(listPen[3]);
+			}
+			finally {
+				content.Margin=new System.Windows.Thickness(0);
+				System.Windows.Input.Mouse.Capture(null);
+				wpfMouseInput.Deactivate();
+			}
+			Assert.AreEqual(1,listSegments.Count,sizeName);
+			Assert.AreEqual(ToothChartMouse.GetDrawingSegment(wrapper.TcData,listPen.Select(x => new PointF(x.X,x.Y)).ToList(),size),listSegments[0],
+				sizeName+": the stroke's string has the real moves' points only.");
+			wrapper.Dispose();
+			form.Close();
+		}
+
+		[TestMethod]
+		public void RealInput_AMoveBackToTheSamePointAfterTheMouseLeft_IsHandedOn() {
+			//The live view ignores a MouseMove at the device position of the last mouse event it handled, but not after the mouse has left the content: a
+			//mouse that leaves the window and comes back to the same pixel moved, and Windows sends DirectX a WM_MOUSEMOVE for it.
+			WpfLiveViewTests.RequireDesktop();
+			StaRunner.Run(() => {
+				Size size=ChartScenes.SizeModule.Size;
+				using Form form=WpfCharts.CreateOffscreenForm(size);
+				ToothChartWrapper wrapper=WpfCharts.CreateWrapper(size);
+				form.Controls.Add(wrapper);
+				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+				ChartScenes.Prepare(relay,ChartScenes.Get("empty-universal"),ChartColorSet.Module);
+				form.Show();
+				ToothChartWpfView toothChartWpfView=WpfLiveViewTests.WaitForLiveView(wrapper);
+				System.Windows.FrameworkElement content=(System.Windows.FrameworkElement)toothChartWpfView.Child;
+				WpfMouseInput wpfMouseInput=WpfMouseInput.ForVisual(content);
+				int countLeaves=0;
+				content.MouseLeave+=(sender,e) => countLeaves++;
+				Point point30=ToothChartMouseTests.GetNumberCentre(wrapper.TcData,"30");
+				try {
+					int countHandedOn=toothChartWpfView.CountMouseMovesHandedOn;
+					wpfMouseInput.Move(point30);
+					Assert.AreEqual(countHandedOn+1,toothChartWpfView.CountMouseMovesHandedOn,"The first move is handed on.");
+					wpfMouseInput.Deactivate();//the mouse leaves the window
+					Assert.AreEqual(1,countLeaves,"WPF raised MouseLeave.");
+					wpfMouseInput.Move(point30);//and comes back to the same pixel
+					Assert.AreEqual(countHandedOn+2,toothChartWpfView.CountMouseMovesHandedOn,"The move back to the same point is handed on.");
+				}
+				finally {
+					wpfMouseInput.Deactivate();
+				}
+				wrapper.Dispose();
+				form.Close();
+			});
 		}
 	}
 }

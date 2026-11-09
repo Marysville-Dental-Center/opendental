@@ -14,8 +14,10 @@ namespace ToothChartImageTests {
 	///source's client pixels: for a live view, the wrapper's pixels. The first report activates the mouse on the source, as the provider does.
 	///Why reports and not window messages: WPF's provider drops a message for a window the cursor is not over (the tests' windows are off every
 	///screen), and no test moves the real cursor. The report types are WPF's internals (RawMouseInputReport, RawMouseActions, InputReportEventArgs,
-	///InputManager.PreviewInputReportEvent), reached by reflection; S3b-5 checks them again on .NET 10. WPF still synchronises its mouse with the real
-	///cursor when the capture changes (MouseDevice.Synchronize): the view must not hand that move on (ToothChartWpfView).</summary>
+	///InputManager.PreviewInputReportEvent), reached by reflection; they are WPF's internals, so S3b-5 checks them again when the program moves to
+	///.NET 10 (stage 3b). WPF still moves its mouse when the capture changes (the window's mouse provider reports the real cursor's position when it
+	///takes the capture; MouseDevice.Synchronize runs on each capture change): the view must not hand that move on (ToothChartWpfView). It also
+	///re-synchronises after a layout pass, at the position it already has, and raises MouseMove then only when the content moved under the mouse.</summary>
 	public sealed class WpfMouseInput {
 		private static readonly Assembly _assemblyCore=typeof(InputManager).Assembly;
 		private static readonly Type _typeReport=_assemblyCore.GetType("System.Windows.Input.RawMouseInputReport",true);
@@ -43,7 +45,7 @@ namespace ToothChartImageTests {
 			_isActive=true;
 		}
 
-		///<summary>WPF moving its own mouse to the point, as MouseDevice.Synchronize does when the capture changes (to wherever the real cursor is): for a
+		///<summary>WPF moving its own mouse to the point, as it does when the capture changes (to wherever the real cursor is): for a
 		///test, from a GotMouseCapture or LostMouseCapture handler. The same report as Move; no window message makes it.</summary>
 		public void SynchroniseTo(System.Drawing.Point point) {
 			Move(point);

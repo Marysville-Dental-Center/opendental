@@ -118,7 +118,8 @@ namespace ToothChartImageTests {
 				else {
 					wrapper.LiveViewWpf.Child.UpdateLayout();
 				}
-				report.Add(key+".first","Cold for this size: "+name+" made on a shown wrapper and its first refill shown",stopwatch.Elapsed.TotalMilliseconds);
+				report.Add(key+".first","Cold for this size, order-dependent (the first engine and size measured also pays the process's WPF warm-up): "+name
+					+" made on a shown wrapper and its first refill shown",stopwatch.Elapsed.TotalMilliseconds);
 				MeasureEngine(report,key,name,relay,actionShow,countRepeats);
 			}
 			finally {

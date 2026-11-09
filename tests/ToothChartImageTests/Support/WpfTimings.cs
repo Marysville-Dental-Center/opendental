@@ -61,7 +61,8 @@ namespace ToothChartImageTests {
 
 	///<summary>Measures the WPF chart as the Chart module uses it: a refill (ChartScenes.Prepare through the relay, as ControlChart.FillToothChart
 	///sets the chart) followed by GetBitmap, which builds the scene and waits for the renderer. "Cold" values are the first of a fresh process: the
-	///render thread, WPF and the meshes start then. Warm values are the median and the slowest of repeated runs, alternating two scenes so the 3D
+	///render thread, WPF and the meshes start then. The first value of each size ("&lt;size&gt;.first") depends on the order of the measurement: the first
+	///size measured (410x307) also pays the process's WPF warm-up, so the sizes' first values cannot be compared with each other. Warm values are the median and the slowest of repeated runs, alternating two scenes so the 3D
 	///layer changes every time. A selection-only change toggles one tooth's selection, which keeps the 3D layer (its image is reused).</summary>
 	public static class WpfTimings {
 		///<summary>The repeats of the gallery's measurement (a fresh process); the in-process test uses fewer.</summary>
@@ -141,8 +142,8 @@ namespace ToothChartImageTests {
 			using(Bitmap bitmap=WpfCharts.Draw(relay,sceneA,ChartColorSet.Module)) {
 			}
 			if(isFull) {
-				report.Add(sizeName+".first","Cold for this size: the first refill and image (new render targets"+(sizeName=="410x307"?"; the meshes are built":"")+")",
-					stopwatch.Elapsed.TotalMilliseconds);
+				report.Add(sizeName+".first","Cold for this size, order-dependent (the first size measured also pays the process's WPF warm-up): the first refill "
+					+"and image (new render targets"+(sizeName=="410x307"?"; the meshes are built":"")+")",stopwatch.Elapsed.TotalMilliseconds);
 			}
 			List<double> listRefill=new List<double>();
 			List<double> listTotal=new List<double>();

@@ -102,9 +102,17 @@ namespace ToothChartImageTests {
 		public void HiddenWrapper_HasNoLiveView_AndItsImagesComeFromTheRenderer() {
 			StaRunner.Run(() => {
 				using ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+				//Hidden, as the wrappers of prints, sheets and the dashboard are, but with a handle, so a rebuild could be posted to it and run.
+				wrapper.Visible=false;
+				IntPtr intPtrHandle=wrapper.Handle;
+				Assert.IsTrue(wrapper.IsHandleCreated);
 				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 				using Bitmap bitmap=WpfCharts.Draw(relay,ChartScenes.Get("restored-adult"),ChartColorSet.Module);
+				//The live view is made only by the rebuild the message loop runs (fix round 3), so the check below is only worth something after the loop
+				//has run whatever the refill posted: a hidden wrapper's rebuild, had one been posted, would have made the view by then.
+				WpfRendererTests.PumpUntil(() => wrapper.LiveViewWpf!=null,1000);
 				Assert.IsNull(wrapper.LiveViewWpf,"A wrapper that is not shown makes no live view.");
+				Assert.AreEqual(0,wrapper.ImageHostWpf.CountRendersStarted,"Nor an on-screen render: a hidden wrapper posts no rebuild.");
 				Assert.AreSame(wrapper.ImageHostWpf,wrapper.Controls.Cast<Control>().Single());
 				Assert.AreEqual("Arial",wrapper.TcData.Font.Name,"TcData.Font as DirectX sets it.");
 				Assert.AreEqual(9f,wrapper.TcData.Font.Size);
@@ -575,7 +583,8 @@ namespace ToothChartImageTests {
 		[TestMethod]
 		public void Cursors_ThatCannotBeMade_AreTheArrow_AndChoosingAToolNeverThrows() {
 			//WPF's Cursor(Stream) writes a temporary file for each cursor it makes, and Path.GetTempFileName fails once the temp folder holds 65,535 .tmp
-			//files. The cursors are made once per thread, and one that cannot be made is the arrow, logged once.
+			//files. The cursors are made once per thread and kept; one that cannot be made is the arrow, logged once, and is tried again (alone) the next
+			//time its tool is chosen (fix round 4: Cursors_ThatFailed_AreMadeOnALaterToolChange_WithOneLogLine).
 			RequireDesktop();
 			StaRunner.Run(() => {
 				int countOpened=0;
@@ -600,8 +609,9 @@ namespace ToothChartImageTests {
 					List<string> listMessages=ToothChartWrapper.GetFallbackMessagesSince(countBefore);
 					Assert.AreEqual(2,listMessages.Count,"Logged once for the wrapper's cursors and once for the live view's: "+string.Join("; ",listMessages));
 					Assert.IsTrue(listMessages.All(x => x.Contains("could not make the cursor of Pen") && x.Contains("ColorChanger")),string.Join("; ",listMessages));
-					Assert.AreEqual(6,countOpened,"Each cursor file was tried once on this thread (three for the wrapper, three for the live view), not on every "
-						+"tool change.");
+					//The first choice of a tool with a cursor tries all three files (for the wrapper and for the live view); each later choice of such a tool
+					//tries that tool's file again, alone, because it failed (Eraser, ColorChanger, Pen, Eraser: four more each); the pointer tries none.
+					Assert.AreEqual(14,countOpened,"Three files at the first choice and one at each later choice, for the wrapper and for the live view.");
 					//The drawing tools still work with the arrow.
 					List<string> listSegments=new List<string>();
 					wrapper.SegmentDrawn+=(sender,e) => listSegments.Add(e.DrawingSegement);
@@ -636,6 +646,97 @@ namespace ToothChartImageTests {
 					ToothChartMouse.ActionOpenCursorForTests=null;
 				}
 			});
+		}
+
+		[TestMethod]
+		public void Cursors_ThatFailed_AreMadeOnALaterToolChange_WithOneLogLine() {
+			//A cursor that could not be made (a full temp folder) is not the arrow for the rest of the session (the UI thread's life): the next choice of its
+			//tool tries it again, and once the fault has passed it is the real cursor. Each kind of cursor (the wrapper's WinForms cursors, the live view's
+			//WPF cursors) logs one line, however often it is tried; a cursor that was made is kept and not made again.
+			StaRunner.Run(() => CheckCursorRetry("WinForms",cursorTool => {
+				Cursor cursor=ToothChartMouse.GetCursor(cursorTool);
+				return cursor==Cursors.Default?null:cursor;
+			}));
+			StaRunner.Run(() => CheckCursorRetry("WPF",cursorTool => ToothChartWpfView.GetCursorWpf(cursorTool)));
+			//And through the wrapper and its live view, as a tool change in the program reaches them.
+			RequireDesktop();
+			StaRunner.Run(() => {
+				bool isFailing=true;
+				ToothChartMouse.ActionOpenCursorForTests=cursorTool => {
+					if(isFailing) {
+						throw new System.IO.IOException("A test: the temporary folder is full.");
+					}
+				};
+				try {
+					using Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size);
+					ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+					form.Controls.Add(wrapper);
+					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+					form.Show();
+					ToothChartWpfView toothChartWpfView=WaitForLiveView(wrapper);
+					int countBefore=ToothChartWrapper.GetCountFallbackMessages();
+					relay.CursorTool=CursorTool.Pen;
+					Assert.IsNull(toothChartWpfView.CursorWpf,"The live view's arrow while the pen's cursor cannot be made.");
+					Assert.AreSame(Cursors.Default,wrapper.Cursor,"The wrapper's arrow while the pen's cursor cannot be made.");
+					relay.CursorTool=CursorTool.Pointer;
+					isFailing=false;//the fault passes
+					relay.CursorTool=CursorTool.Pen;
+					Assert.IsNotNull(toothChartWpfView.CursorWpf,"The live view's pen cursor, made at the next choice of the pen.");
+					Assert.AreSame(ToothChartWpfView.GetCursorWpf(CursorTool.Pen),toothChartWpfView.CursorWpf);
+					Assert.AreNotSame(Cursors.Default,wrapper.Cursor,"The wrapper's pen cursor, made at the next choice of the pen.");
+					Assert.AreSame(ToothChartMouse.GetCursor(CursorTool.Pen),wrapper.Cursor);
+					relay.CursorTool=CursorTool.Eraser;
+					Assert.IsNotNull(toothChartWpfView.CursorWpf,"The live view's eraser cursor.");
+					Assert.AreNotSame(Cursors.Default,wrapper.Cursor,"The wrapper's eraser cursor.");
+					List<string> listMessages=ToothChartWrapper.GetFallbackMessagesSince(countBefore);
+					Assert.AreEqual(2,listMessages.Count,"One line for the wrapper's cursors and one for the live view's: "+string.Join("; ",listMessages));
+					wrapper.Dispose();
+					form.Close();
+				}
+				finally {
+					ToothChartMouse.ActionOpenCursorForTests=null;
+				}
+			});
+		}
+
+		///<summary>One kind of cursor on a thread of its own (funcGetCursor gives the tool's cursor, or null for the arrow): the pen's cursor fails twice,
+		///then the fault passes and the next choice of the pen makes it; the eraser's and the colour changer's, which failed with it, are made at their own
+		///next choice; one log line in all; and a cursor made is kept.</summary>
+		private static void CheckCursorRetry(string kind,Func<CursorTool,object> funcGetCursor) {
+			bool isFailing=true;
+			List<CursorTool> listOpened=new List<CursorTool>();
+			ToothChartMouse.ActionOpenCursorForTests=cursorTool => {
+				listOpened.Add(cursorTool);
+				if(isFailing) {
+					throw new System.IO.IOException("A test: the temporary folder is full.");
+				}
+			};
+			try {
+				int countBefore=ToothChartWrapper.GetCountFallbackMessages();
+				Assert.IsNull(funcGetCursor(CursorTool.Pen),kind+": the arrow while the pen's cursor cannot be made.");
+				CollectionAssert.AreEqual(new[] { CursorTool.Pen,CursorTool.Eraser,CursorTool.ColorChanger },listOpened,kind+": all three are tried at first.");
+				Assert.IsNull(funcGetCursor(CursorTool.Pen),kind+": still the arrow while the fault lasts.");
+				CollectionAssert.AreEqual(new[] { CursorTool.Pen,CursorTool.Eraser,CursorTool.ColorChanger,CursorTool.Pen },listOpened,
+					kind+": the next choice of the pen tries the pen's cursor again, alone.");
+				isFailing=false;
+				object cursorPen=funcGetCursor(CursorTool.Pen);
+				Assert.IsNotNull(cursorPen,kind+": the real pen cursor once the fault has passed.");
+				Assert.AreSame(cursorPen,funcGetCursor(CursorTool.Pen),kind+": kept.");
+				Assert.IsNotNull(funcGetCursor(CursorTool.Eraser),kind+": the eraser's cursor at its next choice.");
+				Assert.IsNotNull(funcGetCursor(CursorTool.ColorChanger),kind+": the colour changer's cursor at its next choice.");
+				Assert.IsNull(funcGetCursor(CursorTool.Pointer),kind+": the pointer's arrow.");
+				int countOpened=listOpened.Count;
+				funcGetCursor(CursorTool.Pen);
+				funcGetCursor(CursorTool.Eraser);
+				funcGetCursor(CursorTool.ColorChanger);
+				Assert.AreEqual(countOpened,listOpened.Count,kind+": cursors once made are not made again.");
+				List<string> listMessages=ToothChartWrapper.GetFallbackMessagesSince(countBefore);
+				Assert.AreEqual(1,listMessages.Count,kind+": one log line for the failures: "+string.Join("; ",listMessages));
+				StringAssert.Contains(listMessages[0],"could not make the cursor of Pen",kind);
+			}
+			finally {
+				ToothChartMouse.ActionOpenCursorForTests=null;
+			}
 		}
 
 		[TestMethod]

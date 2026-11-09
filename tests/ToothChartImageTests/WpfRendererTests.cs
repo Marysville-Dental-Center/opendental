@@ -443,6 +443,39 @@ namespace ToothChartImageTests {
 		}
 
 		[TestMethod]
+		public void Host_ClearedWhileItsRenderIsInFlight_NeverShowsThatRender_AndShowsTheCurrentOne() {
+			//The wrapper clears the image host when it comes back on screen in place of the live view ("Draw in software" turned on, or a live view that
+			//failed) and then shows the current data. A render of an older scene still in flight then (another patient's chart, perhaps) must not show
+			//when its result arrives: the clear ends its generation.
+			ToothScene toothSceneOld=WpfCharts.BuildScene("restored-adult",ChartScenes.SizeModule);
+			ToothScene toothSceneCurrent=WpfCharts.BuildScene("treatment-plan",ChartScenes.SizeModule);
+			StaRunner.Run(() => {
+				using(TestImageHost toothChartImageHost=new TestImageHost()) {
+					toothChartImageHost.Size=toothSceneOld.Size;
+					toothChartImageHost.CreateControl();
+					using(RenderJobHold renderJobHold=new RenderJobHold(ToothChartRenderer.JobRender)) {
+						toothChartImageHost.ShowScene(toothSceneOld);
+						Assert.IsTrue(renderJobHold.WaitEntered(30000),"The older scene's render is running.");
+						toothChartImageHost.ClearImage();
+						toothChartImageHost.ShowScene(toothSceneCurrent);//the wrapper's rebuild after the clear
+						renderJobHold.Release();
+						Assert.IsTrue(PumpUntil(() => toothChartImageHost.CountReceiveCalls>=1,30000),"The older render's result arrived.");
+						Assert.AreNotSame(toothSceneOld,toothChartImageHost.SceneShown,"The older render's result is not shown after the clear.");
+					}
+					Assert.IsTrue(PumpUntil(() => toothChartImageHost.SceneShown==toothSceneCurrent && !toothChartImageHost.IsRenderInFlight,30000),
+						"The current render is shown.");
+					Assert.AreEqual(1,toothChartImageHost.CountImagesReceived,"Only the current render's image was shown.");
+					Assert.AreEqual(2,toothChartImageHost.CountReceiveCalls,"Both results arrived.");
+					using(Bitmap bitmapShown=toothChartImageHost.GetBitmapShown())
+					using(Bitmap bitmapCurrent=ToothChartRenderer.Instance.Render(toothSceneCurrent,null).ToBitmap()) {
+						Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmapCurrent).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapShown)),
+							"The image shown is the current scene's.");
+					}
+				}
+			});
+		}
+
+		[TestMethod]
 		public void Host_PaintsItsImagePixelForPixel_WhateverTheDpiOfTheGraphics() {
 			//DrawImageUnscaled draws at the image's physical size, which differs from its pixel size when the bitmap's DPI is not the Graphics' DPI
 			//(a drag between monitors, L-2).

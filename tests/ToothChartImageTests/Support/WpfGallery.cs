@@ -373,7 +373,8 @@ namespace ToothChartImageTests {
 				+"module's chart within 100 ms <b class=\""+(isRefillOk?"ok":"warn")+"\">("+refill150.ToString("0.0",CultureInfo.InvariantCulture)+" ms, "
 				+(isRefillOk?"within":"over")+")</b>, and a selection-only change within 20 ms <b class=\""+(isSelectionOk?"ok":"warn")+"\">("
 				+selection150.ToString("0.0",CultureInfo.InvariantCulture)+" ms, "+(isSelectionOk?"within":"over")+")</b>. Measured in a fresh process, so the "
-				+"first values are cold; warm values are the median of "+WpfTimings.CountRepeats+" runs.</p>\r\n");
+				+"first values are cold, and order-dependent: the first size measured also pays the process's WPF warm-up, so the first values of two sizes "
+				+"cannot be compared; warm values are the median of "+WpfTimings.CountRepeats+" runs.</p>\r\n");
 			sb.Append("<ul>");
 			foreach(string line in timingReport.ListMachine) {
 				sb.Append("<li>"+WebUtility.HtmlEncode(line)+"</li>");
