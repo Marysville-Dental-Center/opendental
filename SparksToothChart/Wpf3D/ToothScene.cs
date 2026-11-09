@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 
 namespace SparksToothChart.Wpf3D {
@@ -227,6 +228,9 @@ namespace SparksToothChart.Wpf3D {
 			Source=source;
 		}
 
+		///<summary>The polygons of one item, each turned clockwise. A polygon that is a rectangle with horizontal and vertical sides (the centre line,
+		///a number's highlight box, a horizontal or vertical stroke) is snapped to the pixels DirectX fills for it (SnapToDirectXPixels), so it is as
+		///crisp as DirectX draws it; every other polygon keeps its points and is smoothed.</summary>
 		public static ToothSceneItem2D CreatePolygons(Color color,List<PointF[]> listPolygons,string source) {
 			List<PointF[]> listOriented=new List<PointF[]>();
 			for(int i=0;i<listPolygons.Count;i++) {
@@ -234,6 +238,12 @@ namespace SparksToothChart.Wpf3D {
 					continue;
 				}
 				PointF[] arrayPoints=(PointF[])listPolygons[i].Clone();
+				if(IsAxisAlignedRectangle(arrayPoints)) {
+					arrayPoints=SnapToDirectXPixels(arrayPoints);
+					if(arrayPoints==null) {
+						continue;//DirectX fills no pixel of it
+					}
+				}
 				if(GetSignedArea(arrayPoints)<0) {
 					Array.Reverse(arrayPoints);
 				}
@@ -244,6 +254,46 @@ namespace SparksToothChart.Wpf3D {
 
 		public static ToothSceneItem2D CreateText(string text,Color color,ChartFont font,Point origin,int widthPixels,string source) {
 			return new ToothSceneItem2D(ChartItem2DKind.Text,color,null,text,font,origin,widthPixels,source);
+		}
+
+		///<summary>True when the polygon has four corners and every side is horizontal or vertical (within a thousandth of a pixel).</summary>
+		public static bool IsAxisAlignedRectangle(PointF[] arrayPoints) {
+			if(arrayPoints.Length!=4) {
+				return false;
+			}
+			const float epsilon=0.001f;
+			for(int i=0;i<4;i++) {
+				PointF p1=arrayPoints[i];
+				PointF p2=arrayPoints[(i+1)%4];
+				if(Math.Abs(p1.X-p2.X)>epsilon && Math.Abs(p1.Y-p2.Y)>epsilon) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		///<summary>An axis-aligned rectangle (image coordinates, pixel centres on halves) snapped to the pixels DirectX 9 fills for it: DirectX draws
+		///its overlays with no smoothing and fills a pixel when its centre lies inside, the left and top edges included and the right and bottom ones
+		///not (the top-left rule). So the columns x with left &lt;= x+0.5 &lt; right and the rows likewise, as a rectangle on whole pixels. Null when
+		///that is no pixel (a thin line between two pixel centres, which DirectX does not draw either).</summary>
+		public static PointF[] SnapToDirectXPixels(PointF[] arrayPoints) {
+			float left=arrayPoints.Min(x => x.X);
+			float right=arrayPoints.Max(x => x.X);
+			float top=arrayPoints.Min(x => x.Y);
+			float bottom=arrayPoints.Max(x => x.Y);
+			float leftSnapped=(float)Math.Ceiling(left-0.5f);
+			float rightSnapped=(float)Math.Ceiling(right-0.5f);
+			float topSnapped=(float)Math.Ceiling(top-0.5f);
+			float bottomSnapped=(float)Math.Ceiling(bottom-0.5f);
+			if(rightSnapped<=leftSnapped || bottomSnapped<=topSnapped) {
+				return null;
+			}
+			return new PointF[] {
+				new PointF(leftSnapped,topSnapped),
+				new PointF(rightSnapped,topSnapped),
+				new PointF(rightSnapped,bottomSnapped),
+				new PointF(leftSnapped,bottomSnapped),
+			};
 		}
 
 		///<summary>Twice the signed area of the polygon by the shoelace formula, in image coordinates (x right, y down): positive when the polygon

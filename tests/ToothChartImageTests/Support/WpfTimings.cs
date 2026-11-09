@@ -45,7 +45,7 @@ namespace ToothChartImageTests {
 
 		public string GetReport() {
 			StringBuilder stringBuilder=new StringBuilder();
-			stringBuilder.AppendLine("WPF tooth chart render times (TC-1, for O-19)");
+			stringBuilder.AppendLine("WPF tooth chart render times (TC-1, for O-19; TC-3, on screen against DirectX, for G1)");
 			foreach(string line in ListMachine) {
 				stringBuilder.AppendLine("Machine: "+line);
 			}
@@ -61,14 +61,16 @@ namespace ToothChartImageTests {
 
 	///<summary>Measures the WPF chart as the Chart module uses it: a refill (ChartScenes.Prepare through the relay, as ControlChart.FillToothChart
 	///sets the chart) followed by GetBitmap, which builds the scene and waits for the renderer. "Cold" values are the first of a fresh process: the
-	///render thread, WPF and the meshes start then. Warm values are the median and the slowest of repeated runs, alternating two scenes so the 3D
+	///render thread, WPF and the meshes start then. The first value of each size ("&lt;size&gt;.first") depends on the order of the measurement: the first
+	///size measured (410x307) also pays the process's WPF warm-up, so the sizes' first values cannot be compared with each other. Warm values are the median and the slowest of repeated runs, alternating two scenes so the 3D
 	///layer changes every time. A selection-only change toggles one tooth's selection, which keeps the 3D layer (its image is reused).</summary>
 	public static class WpfTimings {
 		///<summary>The repeats of the gallery's measurement (a fresh process); the in-process test uses fewer.</summary>
 		public const int CountRepeats=21;
 		public static readonly Size Size150=new Size(615,461);
 
-		///<summary>isQuick: the module size only (the in-process test); otherwise every size, the factor variants and the big chart's memory.</summary>
+		///<summary>isQuick: the module size only (the in-process test); otherwise every size, the factor variants, the big chart's memory and TC-3's
+		///on-screen times against DirectX (WpfOnScreenTimings).</summary>
 		public static WpfTimingReport Measure(bool isFreshProcess,int countRepeats=CountRepeats,bool isQuick=false) {
 			WpfTimingReport report=new WpfTimingReport();
 			ReadMachine(report);
@@ -118,6 +120,17 @@ namespace ToothChartImageTests {
 			report.Add("process.memory","Private bytes of the process after the big chart",bytesAfter/1048576.0,"MB");
 			report.Add("926x858.factor","Supersampling factor of the big chart's 3D layer",ToothChartRenderer.GetSupersamplingFactor(ChartScenes.SizeBigWindow.Size),"x");
 			wrapperBig.Dispose();
+			WpfOnScreenTimings.Measure(report,countRepeats);
+			return report;
+		}
+
+		///<summary>TC-3's on-screen times alone (WpfOnScreenTimings), with the machine they were measured on: for a fresh process (SecondProcess
+		///"onscreen-times").</summary>
+		public static WpfTimingReport MeasureOnScreen(int countRepeats=CountRepeats) {
+			WpfTimingReport report=new WpfTimingReport();
+			ReadMachine(report);
+			report.ListMachine.Add("Warm values: median and slowest of "+countRepeats+" runs");
+			WpfOnScreenTimings.Measure(report,countRepeats);
 			return report;
 		}
 
@@ -129,8 +142,8 @@ namespace ToothChartImageTests {
 			using(Bitmap bitmap=WpfCharts.Draw(relay,sceneA,ChartColorSet.Module)) {
 			}
 			if(isFull) {
-				report.Add(sizeName+".first","Cold for this size: the first refill and image (new render targets"+(sizeName=="410x307"?"; the meshes are built":"")+")",
-					stopwatch.Elapsed.TotalMilliseconds);
+				report.Add(sizeName+".first","Cold for this size, order-dependent (the first size measured also pays the process's WPF warm-up): the first refill "
+					+"and image (new render targets"+(sizeName=="410x307"?"; the meshes are built":"")+")",stopwatch.Elapsed.TotalMilliseconds);
 			}
 			List<double> listRefill=new List<double>();
 			List<double> listTotal=new List<double>();
@@ -219,8 +232,7 @@ namespace ToothChartImageTests {
 			try {
 				using(ManagementObjectSearcher managementObjectSearcher=new ManagementObjectSearcher("SELECT Name, DriverVersion FROM Win32_VideoController")) {
 					foreach(ManagementBaseObject managementBaseObject in managementObjectSearcher.Get()) {
-						report.ListMachine.Add("Adapter "+managementBaseObject["Name"]+", driver "+managementBaseObject["DriverVersion"]
-							+" (not used: RenderTargetBitmap renders in software)");
+						report.ListMachine.Add("Adapter "+managementBaseObject["Name"]+", driver "+managementBaseObject["DriverVersion"]);
 					}
 				}
 			}
@@ -228,6 +240,10 @@ namespace ToothChartImageTests {
 				report.ListMachine.Add("Adapters unknown ("+ex.GetType().Name+")");
 			}
 			report.ListMachine.Add((Environment.Is64BitProcess?"64":"32")+"-bit process, .NET Framework "+Environment.Version);
+			report.ListMachine.Add("WPF render mode of the process: "+System.Windows.Media.RenderOptions.ProcessRenderMode
+				+(WpfOnScreenTimings.IsProcessSoftware()?" (as OpenPmsDental.exe sets it: every WPF window, the live view included, is drawn in software, O-34)"
+				:" (WPF draws its windows with the graphics card where it can; the program does not run so, O-34)")
+				+"; RenderTargetBitmap, and so every image of the renderer, draws in software either way");
 			using(Graphics g=Graphics.FromHwnd(IntPtr.Zero)) {
 				report.ListMachine.Add("Screen DPI seen by the process "+g.DpiX.ToString(CultureInfo.InvariantCulture));
 			}

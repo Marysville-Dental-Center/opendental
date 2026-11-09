@@ -228,6 +228,7 @@ namespace ToothChartImageTests {
 					form.Location=new Point(-32000,-32000);//off every screen, but shown
 					form.ClientSize=ChartScenes.SizeModule.Size;
 					ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+					wrapper.WpfDrawInSoftware=true;//the image host is the screen's chart when drawn in software (TC-3); WpfLiveViewTests has the live view's
 					form.Controls.Add(wrapper);
 					form.Show();
 					ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;
@@ -339,6 +340,7 @@ namespace ToothChartImageTests {
 			StaRunner.Run(() => {
 				using(Form form=WpfCharts.CreateOffscreenForm(ChartScenes.SizeModule.Size)) {
 					ToothChartWrapper wrapper=WpfCharts.CreateWrapper(ChartScenes.SizeModule.Size);
+					wrapper.WpfDrawInSoftware=true;//the image host is the screen's chart when drawn in software (TC-3); WpfLiveViewTests has the live view's
 					form.Controls.Add(wrapper);
 					form.Show();
 					ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;
@@ -379,6 +381,7 @@ namespace ToothChartImageTests {
 					TestWrapper wrapper=new TestWrapper();
 					wrapper.Size=ChartScenes.SizeModule.Size;
 					wrapper.Engine=ToothChartEngine.Wpf3D;
+					wrapper.WpfDrawInSoftware=true;//the image host is the screen's chart when drawn in software (TC-3)
 					form.Controls.Add(wrapper);
 					form.Show();
 					ToothChartImageHost toothChartImageHost=wrapper.ImageHostWpf;
@@ -435,6 +438,39 @@ namespace ToothChartImageTests {
 					toothChartImageHost.ShowScene(toothSceneNext);
 					Assert.IsTrue(PumpUntil(() => toothChartImageHost.SceneShown==toothSceneNext && !toothChartImageHost.IsRenderInFlight,20000),
 						"The next scene is shown too.");
+				}
+			});
+		}
+
+		[TestMethod]
+		public void Host_ClearedWhileItsRenderIsInFlight_NeverShowsThatRender_AndShowsTheCurrentOne() {
+			//The wrapper clears the image host when it comes back on screen in place of the live view ("Draw in software" turned on, or a live view that
+			//failed) and then shows the current data. A render of an older scene still in flight then (another patient's chart, perhaps) must not show
+			//when its result arrives: the clear ends its generation.
+			ToothScene toothSceneOld=WpfCharts.BuildScene("restored-adult",ChartScenes.SizeModule);
+			ToothScene toothSceneCurrent=WpfCharts.BuildScene("treatment-plan",ChartScenes.SizeModule);
+			StaRunner.Run(() => {
+				using(TestImageHost toothChartImageHost=new TestImageHost()) {
+					toothChartImageHost.Size=toothSceneOld.Size;
+					toothChartImageHost.CreateControl();
+					using(RenderJobHold renderJobHold=new RenderJobHold(ToothChartRenderer.JobRender)) {
+						toothChartImageHost.ShowScene(toothSceneOld);
+						Assert.IsTrue(renderJobHold.WaitEntered(30000),"The older scene's render is running.");
+						toothChartImageHost.ClearImage();
+						toothChartImageHost.ShowScene(toothSceneCurrent);//the wrapper's rebuild after the clear
+						renderJobHold.Release();
+						Assert.IsTrue(PumpUntil(() => toothChartImageHost.CountReceiveCalls>=1,30000),"The older render's result arrived.");
+						Assert.AreNotSame(toothSceneOld,toothChartImageHost.SceneShown,"The older render's result is not shown after the clear.");
+					}
+					Assert.IsTrue(PumpUntil(() => toothChartImageHost.SceneShown==toothSceneCurrent && !toothChartImageHost.IsRenderInFlight,30000),
+						"The current render is shown.");
+					Assert.AreEqual(1,toothChartImageHost.CountImagesReceived,"Only the current render's image was shown.");
+					Assert.AreEqual(2,toothChartImageHost.CountReceiveCalls,"Both results arrived.");
+					using(Bitmap bitmapShown=toothChartImageHost.GetBitmapShown())
+					using(Bitmap bitmapCurrent=ToothChartRenderer.Instance.Render(toothSceneCurrent,null).ToBitmap()) {
+						Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmapCurrent).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapShown)),
+							"The image shown is the current scene's.");
+					}
 				}
 			});
 		}

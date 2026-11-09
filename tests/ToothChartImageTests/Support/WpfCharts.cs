@@ -111,6 +111,17 @@ namespace ToothChartImageTests {
 			}
 		}
 
+		///<summary>Runs the shown wrapper's posted rebuild, which makes its live view (TC-3 fix round 3: never before the message loop runs) and shows the
+		///scene in it, and returns the view once it shows a scene with the current data; null when no live view came within millisecondsTimeout.</summary>
+		public static ToothChartWpfView WaitForLiveView(ToothChartWrapper wrapper,int millisecondsTimeout=20000) {
+			WpfRendererTests.PumpUntil(() => wrapper.LiveViewWpf!=null && wrapper.LiveViewWpf.SceneShown!=null && !wrapper.IsWpfSceneDirty,millisecondsTimeout);
+			ToothChartWpfView toothChartWpfView=wrapper.LiveViewWpf;
+			if(toothChartWpfView==null || toothChartWpfView.SceneShown==null) {
+				return null;
+			}
+			return toothChartWpfView;
+		}
+
 		///<summary>A borderless form off every screen but shown, for the tests that need a wrapper on screen (an interactive desktop session).</summary>
 		public static System.Windows.Forms.Form CreateOffscreenForm(Size sizeClient) {
 			System.Windows.Forms.Form form=new System.Windows.Forms.Form();

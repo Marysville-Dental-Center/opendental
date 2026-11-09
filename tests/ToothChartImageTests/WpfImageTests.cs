@@ -272,8 +272,13 @@ namespace ToothChartImageTests {
 					}
 				}
 			});
+			List<WpfGalleryLiveCapture> listLiveCaptures=null;
+			if(galleryName!="G0") {
+				listLiveCaptures=DrawLiveViewCaptures(folder);
+			}
 			string note=GetGalleryNote(galleryName);
-			WpfGallery.Write(folder,galleryName,note,listPictures,timingReport,Environment.GetEnvironmentVariable("OPMS_CHART_GALLERY_COMMIT"),approvedFrom);
+			WpfGallery.Write(folder,galleryName,note,listPictures,timingReport,Environment.GetEnvironmentVariable("OPMS_CHART_GALLERY_COMMIT"),approvedFrom,
+				listLiveCaptures);
 			List<string> listFailures=listPictures.Where(x => x.Failure!=null).Select(x => x.Failure).ToList();
 			Console.WriteLine("Gallery "+galleryName+" written to "+folder+": "+(listPictures.Count-listFailures.Count)+" WPF pictures"
 				+(listFailures.Count>0?", "+listFailures.Count+" failed":"")+".");
@@ -307,6 +312,7 @@ namespace ToothChartImageTests {
 			string pathPng=Path.Combine(folder,"wpf",chartSize.FolderName,scene.Name+".png");
 			Directory.CreateDirectory(Path.GetDirectoryName(pathPng));
 			PngWriter.Save(bitmap,pathPng);
+			SetParity(picture,wrapper,scene,chartSize,bitmap);
 			picture.PixelsSha256=ChartImageCompare.Sha256(ChartImageCompare.GetPixelsArgb(bitmap));
 			picture.PixelsSha256Merged=LegacyComparison.ReadPixelsSha256(Path.ChangeExtension(WpfCharts.GetPicturePath(WpfCharts.BaselinesWpf,chartSize,scene),".txt"));
 			if(folderApproved==null) {
@@ -326,6 +332,89 @@ namespace ToothChartImageTests {
 				}
 			}
 			return picture;
+		}
+
+		///<summary>The parity probes of the picture against TC-0's DirectX picture of the scene, when there is one (TC-3, plan section 7).</summary>
+		private static void SetParity(WpfGalleryPicture picture,ToothChartWrapper wrapper,ChartScene scene,ChartSize chartSize,Bitmap bitmap) {
+			string pathDirectX=Path.Combine(TestPaths.BaselinesLegacy,"DirectX",chartSize.FolderName,scene.Name+".png");
+			if(!File.Exists(pathDirectX)) {
+				return;
+			}
+			using Bitmap bitmapDirectX=LoadBitmap(pathDirectX);
+			List<ParityProbeOutcome> listOutcomes=ParityProbes.Probe(scene,chartSize,ParityProbes.GetPoints(wrapper.TcData),ChartImageCompare.GetPixelsArgb(bitmapDirectX),
+				ChartImageCompare.GetPixelsArgb(bitmap),wrapper.TcData.ColorBackground);
+			int countFailed=listOutcomes.Count(x => x.Failure!=null && x.Allowance==null);
+			int countAllowed=listOutcomes.Count(x => x.Failure!=null && x.Allowance!=null);
+			picture.IsParityOk=countFailed==0;
+			picture.ParityText="Parity with DirectX: "+(listOutcomes.Count-countFailed-countAllowed)+" of "+listOutcomes.Count+" probes agree"
+				+(countAllowed>0?", "+countAllowed+" differ as a known difference":"")+(countFailed>0?", "+countFailed+" differ":"")+".";
+		}
+
+		///<summary>The scenes whose live view gallery G1 shows next to the renderer's picture (O-34), at the module size.</summary>
+		public static readonly string[] ArrayLiveCaptureScenes={ "restored-adult","treatment-plan","select-several","drawing-segments","primary-dentition",
+			"movements-combined" };
+
+		///<summary>From G1 on: the live view of a few scenes at the module size, as the program draws it on screen (in software at 1x with no edge
+		///smoothing, because the program sets RenderOptions.ProcessRenderMode to SoftwareOnly, O-34, as this test assembly does), read back with the
+		///view's own software render (GetBitmapForTests, the rasterizer the screen uses in such a process) and saved under folder\live. Each capture
+		///is compared with the renderer's picture of the same data: the parity probes, and how many pixels differ (mostly the 3D layer's unsmoothed
+		///edges). Null when there is no interactive desktop to show a wrapper on; the gallery then says so.</summary>
+		public static List<WpfGalleryLiveCapture> DrawLiveViewCaptures(string folder) {
+			if(!Environment.UserInteractive) {
+				return null;
+			}
+			List<WpfGalleryLiveCapture> listCaptures=new List<WpfGalleryLiveCapture>();
+			StaRunner.Run(() => {
+				ChartSize chartSize=ChartScenes.SizeModule;
+				using System.Windows.Forms.Form form=WpfCharts.CreateOffscreenForm(chartSize.Size);
+				ToothChartWrapper wrapper=WpfCharts.CreateWrapper(chartSize.Size);
+				form.Controls.Add(wrapper);
+				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
+				form.Show();
+				ToothChartWpfView toothChartWpfView=WpfCharts.WaitForLiveView(wrapper);
+				Assert.IsNotNull(toothChartWpfView,"The live view did not start on a shown wrapper.");
+				foreach(string sceneName in ArrayLiveCaptureScenes) {
+					ChartScene scene=ChartScenes.Get(sceneName);
+					ChartScenes.Prepare(relay,scene,chartSize.ColorSet);
+					Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartWpfView.SceneShown!=null && !wrapper.IsWpfSceneDirty,20000),sceneName);
+					WpfGalleryLiveCapture capture=new WpfGalleryLiveCapture();
+					capture.Scene=scene;
+					capture.ChartSize=chartSize;
+					capture.PathLive="live/"+chartSize.FolderName+"/"+scene.Name+".png";
+					using Bitmap bitmapView=toothChartWpfView.GetBitmapForTests();
+					using Bitmap bitmapRenderer=relay.GetBitmap();
+					string pathPng=Path.Combine(folder,"live",chartSize.FolderName,scene.Name+".png");
+					Directory.CreateDirectory(Path.GetDirectoryName(pathPng));
+					PngWriter.Save(bitmapView,pathPng);
+					List<ParityProbeOutcome> listOutcomes=ParityProbes.Probe(scene,chartSize,ParityProbes.GetPoints(wrapper.TcData),
+						ChartImageCompare.GetPixelsArgb(bitmapRenderer),ChartImageCompare.GetPixelsArgb(bitmapView),wrapper.TcData.ColorBackground);
+					capture.CountProbes=listOutcomes.Count;
+					capture.CountProbesFailed=listOutcomes.Count(x => x.Failure!=null);
+					capture.Comparison=ChartImageCompare.Compare(bitmapRenderer,bitmapView);
+					listCaptures.Add(capture);
+				}
+				wrapper.Dispose();
+				form.Close();
+			});
+			return listCaptures;
+		}
+
+		///<summary>Opt-in: the on-screen times of TC-3's G1 table (DirectX with the program's own device format, the live view and its frames, the image
+		///host), measured again in a fresh process that draws WPF in software as the program does, written to the file this names.</summary>
+		public const string EnvOnScreenTimes="OPMS_CHART_ONSCREEN_TIMES";
+
+		[TestMethod]
+		public void OnScreenTimes_AreMeasuredInAFreshProcess() {
+			string pathOut=Environment.GetEnvironmentVariable(EnvOnScreenTimes);
+			if(string.IsNullOrWhiteSpace(pathOut)) {
+				Assert.Inconclusive("Set "+EnvOnScreenTimes+" to a file to measure the on-screen times (DirectX, the live view, the image host) in a fresh process.");
+			}
+			if(!Environment.UserInteractive) {
+				Assert.Inconclusive("Needs an interactive desktop session: the charts are shown.");
+			}
+			SecondProcessResult result=SecondProcess.Run(1800000,"onscreen-times",pathOut);
+			Assert.AreEqual(0,result.ExitCode,result.Output);
+			Console.WriteLine(File.ReadAllText(pathOut));
 		}
 
 		[TestMethod]
@@ -352,6 +441,20 @@ namespace ToothChartImageTests {
 					+"matched to DirectX in TC-3 (gallery G1): specular and font tuning, parity probes. Free text, TextBelow, the extraction graphic, "
 					+"orthodontic hardware, retained roots and space maintainers come in TC-5 and TC-6 (G2), perio in TC-7 (G3). These WPF pictures are "
 					+"the first baselines, so there is no approved WPF picture to compare with yet.";
+			}
+			if(galleryName=="G1") {
+				return "Gallery G1 (package TC-3): parity of the WPF chart with today's DirectX chart. Every WPF picture is checked against TC-0's "
+					+"DirectX picture by the parity probes (the caption under it), and the WPF baselines that TC-3 re-recorded are listed and marked "
+					+"against the approved G0 pictures (the last column). TC-3's one change of the drawing: the 2D layer's horizontal and vertical "
+					+"rectangles (the white centre line and the selected numbers' highlight boxes) fill exactly the pixels DirectX fills, crisp instead "
+					+"of smoothed, so the centre line is the bright two-pixel line of today's chart. The on-screen chart is now a live WPF view (O-19 "
+					+"(b)), with a per-computer \"Draw in software\" switch (TC-8 shows it) that shows the renderer's picture instead; every printed and "
+					+"saved image stays the renderer's picture shown here. O-19 (b) assumed the live view would be drawn by the graphics card, but "
+					+"OpenPmsDental.exe draws every WPF window in software (it sets RenderOptions.ProcessRenderMode to SoftwareOnly for the whole "
+					+"process, a line from upstream), so in the program the live view is WPF's software rasterizer at 1x with no edge smoothing: owner "
+					+"question O-34. The section \"The live view as the program draws it\" shows it next to the renderer's picture, and the times "
+					+"compare DirectX, the live view (the UI thread's work and WPF's frame, measured in a process that draws in software as the "
+					+"program does) and the renderer's picture.";
 			}
 			return "Gallery "+galleryName+" of the WPF chart.";
 		}
