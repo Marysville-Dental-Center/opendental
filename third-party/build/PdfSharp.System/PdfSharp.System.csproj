@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project>
   <!-- PdfSharp.System 6.5.0 from empira's source in the submodule third-party\PDFsharp (src\foundation\src\shared\src\PdfSharp.System), as
        upstream's PdfSharp.System.csproj builds it for netstandard2.0. docs\third-party-source-builds.md. -->
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>{780459C6-739E-4C8D-9462-58D6E23B1DAC}</ProjectGuid>
     <RootNamespace>PdfSharp</RootNamespace>
     <AssemblyName>PdfSharp.System</AssemblyName>
   </PropertyGroup>
@@ -33,11 +30,8 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PdfSharp.Shared\PdfSharp.Shared.csproj">
-      <Project>{E7DBF664-0058-4F44-96A8-A58F064271DC}</Project>
-      <Name>PdfSharp.Shared</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\PdfSharp.Shared\PdfSharp.Shared.csproj" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <Import Project="..\SourceBuild.targets" />
 </Project>

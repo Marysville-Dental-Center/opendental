@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace SshHostKeyTests {
 	[TestClass]
@@ -136,9 +137,9 @@ namespace SshHostKeyTests {
 			string formPath=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPath.cs");
 			AssertHandlerChecksSecurityAdmin(formPath,"private void butSshHostKeys_Click(");
 			StringAssert.Contains(TestDb.ReadRepoFile("OpenPmsDental","Forms","FormPath.designer.cs"),"this.tabSftp.Controls.Add(this.butSshHostKeys);");
-			string csproj=TestDb.ReadRepoFile("OpenPmsDental","OpenPmsDental.csproj");
-			StringAssert.Contains(csproj,"<Compile Include=\"Forms\\FormSshHostKeys.cs\">");
-			StringAssert.Contains(csproj,"<Compile Include=\"Forms\\FormSshHostKeys.Designer.cs\">");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile.Load(Path.Combine(TestDb.GetRepoRoot(),"OpenPmsDental","OpenPmsDental.csproj"))
+				.AssertCompiles(@"Forms\FormSshHostKeys.cs",@"Forms\FormSshHostKeys.Designer.cs");
 			string form=TestDb.ReadRepoFile("OpenPmsDental","Forms","FormSshHostKeys.cs");
 			StringAssert.Contains(form,"SshHostKeys.AcceptRefusedKey(sshHostKey.SshHostKeyNum,sshHostKey.RefusedKeyType,sshHostKey.RefusedFingerprintSha256)",
 				"Accept passes the refused key the window showed.");

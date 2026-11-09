@@ -4,6 +4,7 @@
 using System.IO;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace BDBMTests {
 	[TestClass]
@@ -79,16 +80,14 @@ namespace BDBMTests {
 
 		[TestMethod]
 		public void NewFiles_AreInTheProjects() {
-			string openDental=Read("OpenPmsDental","OpenPmsDental.csproj");
-			StringAssert.Contains(openDental,"<Compile Include=\"Forms\\FormDatabaseMaintInvalidChars.cs\">");
-			StringAssert.Contains(openDental,"<Compile Include=\"Forms\\FormDatabaseMaintInvalidChars.Designer.cs\">");
-			StringAssert.Contains(openDental,"<Compile Include=\"Forms\\FormDatabaseMaintenance.Tools25.cs\">");
-			string business=Read("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj");
-			StringAssert.Contains(business,"<Compile Include=\"Misc\\DbmTextCleaner.cs\" />");
-			StringAssert.Contains(business,"<Compile Include=\"Data Interface\\DatabaseMaintenances.Base64Documents.cs\" />");
-			StringAssert.Contains(business,"<Compile Include=\"Data Interface\\DatabaseMaintenances.EmailText.cs\" />");
-			StringAssert.Contains(business,"<Compile Include=\"Data Interface\\DatabaseMaintenances.EmployeeSupervisor.cs\" />");
-			StringAssert.Contains(business,"<Compile Include=\"Data Interface\\DatabaseMaintenances.InvalidCharsGdi.cs\" />");
+			//The evaluated items, so the check holds for the classic project files and the SDK-style ones of the .NET 10 move alike.
+			ProjectFile openDental=ProjectFile.Load(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","OpenPmsDental.csproj")));
+			openDental.AssertCompiles(@"Forms\FormDatabaseMaintInvalidChars.cs",@"Forms\FormDatabaseMaintInvalidChars.Designer.cs",
+				@"Forms\FormDatabaseMaintenance.Tools25.cs");
+			ProjectFile business=ProjectFile.Load(TestDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj")));
+			business.AssertCompiles(@"Misc\DbmTextCleaner.cs",@"Data Interface\DatabaseMaintenances.Base64Documents.cs",
+				@"Data Interface\DatabaseMaintenances.EmailText.cs",@"Data Interface\DatabaseMaintenances.EmployeeSupervisor.cs",
+				@"Data Interface\DatabaseMaintenances.InvalidCharsGdi.cs");
 		}
 	}
 }

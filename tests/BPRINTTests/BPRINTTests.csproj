@@ -57,6 +57,7 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
@@ -64,6 +65,10 @@
     <!-- Scratch database helpers shared with the fork migration tests (database names start with forkmig_). -->
     <Compile Include="..\ForkMigrationTests\TestDb.cs">
       <Link>TestDb.cs</Link>
+    </Compile>
+    <!-- The reader of project files (classic and SDK-style) shared by the tests that check them (S1-T of docs/specs/net10-plan.md). -->
+    <Compile Include="..\ProjectFileTests\ProjectFile.cs">
+      <Link>ProjectFile.cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup>

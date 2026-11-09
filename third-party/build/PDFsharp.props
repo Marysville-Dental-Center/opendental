@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project>
   <!-- PDFsharp and MigraDoc 6.5.0, built from empira's AGPL source in the git submodule third-party\PDFsharp
        (https://github.com/empira/PDFsharp.git, tag v6.5.0). The six projects next to this file build exactly the assemblies the program ships,
        under upstream's names and strong-name key (src\StrongnameKey.snk), so their identities (name, version 6.5.0.0, public key token
@@ -39,7 +39,8 @@
     <PdfSharpNetStandard20Symbols>NETSTANDARD;NETSTANDARD2_0;NETSTANDARD1_0_OR_GREATER;NETSTANDARD1_1_OR_GREATER;NETSTANDARD1_2_OR_GREATER;NETSTANDARD1_3_OR_GREATER;NETSTANDARD1_4_OR_GREATER;NETSTANDARD1_5_OR_GREATER;NETSTANDARD1_6_OR_GREATER;NETSTANDARD2_0_OR_GREATER</PdfSharpNetStandard20Symbols>
   </PropertyGroup>
   <ItemGroup>
-    <!-- Upstream's ImplicitUsings=enable, which classic project files do not have. -->
+    <!-- Upstream's ImplicitUsings=enable, as a file of this folder: ImplicitUsings is off in Directory.Build.props, and the file keeps
+         what these projects compile listed file by file (SourceBuildItems.txt). -->
     <Compile Include="$(SourceBuildFolder)PDFsharp\GlobalUsings.cs">
       <Link>SourceBuild\GlobalUsings.cs</Link>
     </Compile>

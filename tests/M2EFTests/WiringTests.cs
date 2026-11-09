@@ -2,12 +2,18 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace M2EFTests {
 	[TestClass]
 	public class WiringTests {
 		private static string Read(string relativePath) {
 			return File.ReadAllText(TestDb.FindRepoFile(relativePath));
+		}
+
+		///<summary>The program's project file, evaluated, so a check holds for the classic project file and the SDK-style one alike.</summary>
+		private static ProjectFile ProgramProject() {
+			return ProjectFile.Load(TestDb.FindRepoFile(@"OpenPmsDental\OpenPmsDental.csproj"));
 		}
 
 		[TestMethod]
@@ -37,7 +43,7 @@ namespace M2EFTests {
 			StringAssert.Contains(sourceImportPatFields,"EFormPatFields.GetImports(EFormCur)");
 			StringAssert.Contains(sourceImportPatFields,"importRow.DoImport=eFormPatFieldImport.IsChange() && !eFormPatFieldImport.IsClearing();");
 			StringAssert.Contains(sourceImportPatFields,"EFormPatFields.Import(_patient.PatNum,listImports,");
-			StringAssert.Contains(Read(@"OpenPmsDental\OpenPmsDental.csproj"),@"<Compile Include=""Forms\FormSheetImport.PatFields.cs"">");
+			ProgramProject().AssertCompiles(@"Forms\FormSheetImport.PatFields.cs");
 		}
 
 		[TestMethod]
@@ -78,7 +84,7 @@ namespace M2EFTests {
 			StringAssert.Contains(source,"if(!TrySetDateSubmitted()) {");
 			StringAssert.Contains(Read(@"OpenPmsDental\Forms\FormSheetFillEdit.Submitted.cs"),
 				"SheetCur.DateTimeSubmitted=FormSubmittedDates.GetToSave(dateTimeSubmitted,SheetCur.IsNew,IsAnySignatureEntered(),DateTime.Now);");
-			StringAssert.Contains(Read(@"OpenPmsDental\OpenPmsDental.csproj"),@"<Compile Include=""Forms\FormSheetFillEdit.Submitted.cs"">");
+			ProgramProject().AssertCompiles(@"Forms\FormSheetFillEdit.Submitted.cs");
 			string sourceForms=Read(@"OpenPmsDental\Forms\FormPatientForms.cs");
 			StringAssert.Contains(sourceForms,"new GridColumn(Lan.g(this,\"Submitted\"),115,GridSortingStrategy.DateParse)");
 			StringAssert.Contains(sourceForms,"FormSubmittedDates.GetDisplayForRow(tableSubmitted,");

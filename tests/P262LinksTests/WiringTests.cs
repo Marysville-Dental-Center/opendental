@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace P262LinksTests {
 	[TestClass]
@@ -54,9 +55,8 @@ namespace P262LinksTests {
 			Assert.IsFalse(allied.Contains("CreateDirectory"),"The link never creates the Info file path's folders (public page).");
 			string ortho=TestPaths.ReadRepoFile("WpfControlsOD","Bridges","OrthoComposite.cs");
 			StringAssert.Contains(ortho,"OrthoCompositeLink.GetLaunch(program,patient)");
-			string csproj=TestPaths.ReadRepoFile("WpfControlsOD","WpfControlsOD.csproj");
-			StringAssert.Contains(csproj,"<Compile Include=\"Bridges\\AlliedstarConnect.cs\" />");
-			StringAssert.Contains(csproj,"<Compile Include=\"Bridges\\OrthoComposite.cs\" />");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile.Load(TestPaths.GetRepoFile("WpfControlsOD","WpfControlsOD.csproj")).AssertCompiles(@"Bridges\AlliedstarConnect.cs",@"Bridges\OrthoComposite.cs");
 		}
 
 		[TestMethod]
@@ -66,7 +66,7 @@ namespace P262LinksTests {
 			StringAssert.Contains(setups,"return AlliedstarConnectLink.EnsureProgram();");
 			StringAssert.Contains(setups,"class OrthoCompositeProgramLinkSetup:StandardProgramLinkSetup");
 			StringAssert.Contains(setups,"return OrthoCompositeLink.EnsureProgram();");
-			StringAssert.Contains(TestPaths.ReadRepoFile("OpenPmsDental","OpenPmsDental.csproj"),"<Compile Include=\"Logic\\VendorDirect\\P262ProgramLinkSetups.cs\" />");
+			ProjectFile.Load(TestPaths.GetRepoFile("OpenPmsDental","OpenPmsDental.csproj")).AssertCompiles(@"Logic\VendorDirect\P262ProgramLinkSetups.cs");
 		}
 
 		[TestMethod]

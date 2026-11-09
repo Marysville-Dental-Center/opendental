@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 using SparksToothChart;
 
 namespace BINATests {
@@ -32,10 +33,11 @@ namespace BINATests {
 
 		[TestMethod]
 		public void Projects_ReferenceNoneOfTheRemovedBinaries() {
-			//A Reference, a HintPath, or a file item named after them (Sparks3DInterface.cs, the Sparks3D licence text).
+			//A Reference, a HintPath (an element, or the attribute an SDK-style project file may use), or a file item named after them
+			//(Sparks3DInterface.cs, the Sparks3D licence text).
 			Regex regex=new Regex(@"<Reference\s+Include=""(xImageDeviceManager|SuniUSB|VBbridges|Sparks3D|Sparks3DXEngine)\b"
-				+@"|<HintPath>[^<]*(xImageDeviceManager|SuniUSB|VBbridges|Sparks3D)[^<]*</HintPath>"
-				+@"|<(Compile|None|Content|EmbeddedResource)\s+Include=""[^""]*(Sparks3D|SuniUSB|VBbridges|xImageDeviceManager)",RegexOptions.IgnoreCase);
+				+@"|<HintPath>[^<]*(xImageDeviceManager|SuniUSB|VBbridges|Sparks3D)[^<]*</HintPath>|\bHintPath\s*=\s*""[^""]*(xImageDeviceManager|SuniUSB|VBbridges|Sparks3D)"
+				+@"|<(Compile|None|Content|EmbeddedResource)\s+(Include|Update)=""[^""]*(Sparks3D|SuniUSB|VBbridges|xImageDeviceManager)",RegexOptions.IgnoreCase);
 			List<string> listOffenders=new List<string>();
 			foreach(string relative in RepoFiles.Files("*.csproj","*.vcxproj","*.props","*.targets","*.sln","*.slnf")) {
 				Match match=regex.Match(RepoFiles.Read(relative));
@@ -44,6 +46,14 @@ namespace BINATests {
 				}
 			}
 			Assert.AreEqual(0,listOffenders.Count,"Still referenced in: "+string.Join(", ",listOffenders));
+			//Nor compiled, embedded or copied from a file left in a project folder: an SDK-style project takes what is on disk without naming it.
+			List<string> listItems=new List<string>();
+			foreach(string path in ProjectFile.GetSolutionFilterProjects(Path.Combine(RepoFiles.Root(),"OpenDental.Local.slnf"))) {
+				ProjectFile projectFile=ProjectFile.Load(path);
+				listItems.AddRange(_arrayRemovedAssemblies.SelectMany(x => projectFile.GetItemsMentioning(x,"Compile","None","Content","EmbeddedResource","Reference"))
+					.Select(x => projectFile.Name+": "+x));
+			}
+			Assert.AreEqual(0,listItems.Count,"Still in a project: "+string.Join(", ",listItems));
 		}
 
 		[TestMethod]
@@ -78,7 +88,7 @@ namespace BINATests {
 			foreach(string pathRelative in new[] { @"OpenPmsDental\bin\Debug\OpenPmsDental.exe",@"WpfControlsOD\bin\Debug\WpfControlsOD.dll" }) {
 				string path=Path.Combine(RepoFiles.Root(),pathRelative);
 				if(!File.Exists(path)) {
-					Assert.Inconclusive(pathRelative+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+					BuildOutput.NotBuilt(pathRelative+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 				}
 				List<string> listReferences=RepoFiles.ReferencedAssemblyNames(path);
 				foreach(string removed in _arrayRemovedAssemblies) {

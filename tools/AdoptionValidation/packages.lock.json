@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "CodeBase": {
+        "type": "Project"
+      },
+      "DataConnectionBase": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )"
+        }
+      },
+      "ODCrypt": {
+        "type": "Project"
+      },
+      "openpmsdentalbusiness": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "DataConnectionBase": "[1.0.0, )",
+          "ODCrypt": "[1.0.0, )",
+          "OpenPmsDentalStorage": "[1.0.0, )",
+          "PasswordVaultWrapper": "[1.0.0, )",
+          "PdfSharp-gdi": "[1.0.0, )",
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "openpmsdentalstorage": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )"
+        }
+      },
+      "passwordvaultwrapper": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )"
+        }
+      },
+      "pdfsharp-gdi": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "pdfsharp.shared": {
+        "type": "Project"
+      },
+      "pdfsharp.system": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp.Shared": "[1.0.0, )"
+        }
+      },
+      "syntheticdata": {
+        "type": "Project"
+      }
+    },
+    ".NETFramework,Version=v4.8/win-x86": {}
+  }
+}

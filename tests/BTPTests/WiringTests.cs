@@ -4,6 +4,7 @@
 using System.IO;
 using ForkMigrationTests;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace BTPTests {
 	[TestClass]
@@ -64,11 +65,11 @@ namespace BTPTests {
 		[TestMethod]
 		public void ChartModuleUntouched_AndFilesInTheProjects() {
 			StringAssert.DoesNotMatch(Read("OpenPmsDental","Main Modules","ControlChart.cs"),new System.Text.RegularExpressions.Regex("ProcAddHelper"));
-			string csproj=Read("OpenPmsDental","OpenPmsDental.csproj");
-			StringAssert.Contains(csproj,"<Compile Include=\"Main Modules\\ControlTreat.AddProcs.cs\">");
-			StringAssert.Contains(csproj,"<Compile Include=\"Forms\\FormTreatPlanAddProcs.cs\">");
-			StringAssert.Contains(csproj,"<Compile Include=\"Forms\\FormTreatPlanAddProcs.Designer.cs\">");
-			StringAssert.Contains(Read("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj"),"<Compile Include=\"Data Interface\\ProcAddHelper.cs\" />");
+			//The evaluated items, so the check holds for the classic project files and the SDK-style ones of the .NET 10 move alike.
+			ProjectFile.Load(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","OpenPmsDental.csproj")))
+				.AssertCompiles(@"Main Modules\ControlTreat.AddProcs.cs",@"Forms\FormTreatPlanAddProcs.cs",@"Forms\FormTreatPlanAddProcs.Designer.cs");
+			ProjectFile.Load(TestDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj")))
+				.AssertCompiles(@"Data Interface\ProcAddHelper.cs");
 		}
 	}
 }

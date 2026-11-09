@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace ReleaseFlowTests {
 	[TestClass]
@@ -185,7 +186,7 @@ namespace ReleaseFlowTests {
 			StringAssert.Contains(source,"namespace OpenPmsDentalHL7 {");
 			string path=Path.Combine(TestPaths.RepoRoot,"OpenPmsDentalHL7","bin","Debug","OpenPmsDentalHL7.exe");
 			if(!File.Exists(path)) {
-				Assert.Inconclusive("OpenPmsDentalHL7 is not built.");
+				BuildOutput.NotBuilt("OpenPmsDentalHL7 is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			System.Configuration.Install.AssemblyInstaller.CheckIfInstallable(path);
 			Type typeInstaller=System.Reflection.Assembly.LoadFrom(path).GetType("OpenPmsDentalHL7.MyProjectInstaller",throwOnError:true);
@@ -266,8 +267,8 @@ namespace ReleaseFlowTests {
 		///self-contained.</summary>
 		[TestMethod]
 		public void ProgramNames_IsLinkedIntoUpdateFileCopierAndSelfContained() {
-			string csproj=File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"UpdateFileCopier","UpdateFileCopier.csproj"));
-			StringAssert.Contains(csproj,@"<Compile Include=""..\CodeBase\Utilities\ProgramNames.cs"">");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile.Load(Path.Combine(TestPaths.RepoRoot,"UpdateFileCopier","UpdateFileCopier.csproj")).AssertCompiles(@"..\CodeBase\Utilities\ProgramNames.cs");
 			string source=File.ReadAllText(Path.Combine(TestPaths.RepoRoot,"CodeBase","Utilities","ProgramNames.cs"));
 			List<string> listUsings=Regex.Matches(source,@"^using\s+([\w.]+);",RegexOptions.Multiline).Cast<Match>().Select(x => x.Groups[1].Value).ToList();
 			Assert.IsTrue(listUsings.All(x => x=="System" || x.StartsWith("System.")),"ProgramNames.cs may use only the framework: "+string.Join(", ",listUsings));

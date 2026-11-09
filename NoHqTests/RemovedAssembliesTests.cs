@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace NoHqTests {
 	///<summary>Checks that the proprietary Open Dental assemblies that were removed (the local REST API and the help system) stay out of the build.
@@ -32,7 +33,7 @@ namespace NoHqTests {
 			};
 			for(int i=0;i<listPaths.Count;i++) {
 				if(!File.Exists(listPaths[i])) {
-					Assert.Inconclusive(listPaths[i]+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+					BuildOutput.NotBuilt(listPaths[i]+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 				}
 				List<string> listReferences=GetReferencedAssemblyNames(listPaths[i]);
 				for(int j=0;j<_arrayRemovedAssemblies.Length;j++) {

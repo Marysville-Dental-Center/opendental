@@ -111,7 +111,8 @@ namespace PdfLibraryTests {
 					if(include.StartsWith("PdfSharp",StringComparison.OrdinalIgnoreCase) || include.StartsWith("MigraDoc",StringComparison.OrdinalIgnoreCase)) {
 						listProblems.Add(relative+": <Reference Include=\""+include+"\">");
 					}
-					string hintPath=(string)xElement.Elements().FirstOrDefault(x => x.Name.LocalName=="HintPath")??"";
+					//The element form of the metadata (classic project files) or the attribute form an SDK-style file may use.
+					string hintPath=(string)xElement.Elements().FirstOrDefault(x => x.Name.LocalName=="HintPath")??(string)xElement.Attribute("HintPath")??"";
 					string fileName=Path.GetFileName(hintPath);
 					if(fileName.StartsWith("PdfSharp",StringComparison.OrdinalIgnoreCase) || fileName.StartsWith("MigraDoc",StringComparison.OrdinalIgnoreCase)) {
 						listProblems.Add(relative+": "+hintPath);

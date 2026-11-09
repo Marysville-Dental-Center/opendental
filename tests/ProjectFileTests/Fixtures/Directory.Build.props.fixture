@@ -1,0 +1,11 @@
+<Project>
+  <!-- Fixture for tests\ProjectFileTests: copied to the root of a scratch folder as Directory.Build.props. Like the repository's own file,
+       its settings for SDK-style projects are in a group guarded by UsingMicrosoftNETSdk, so a classic project never sees them. -->
+  <PropertyGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
+    <FixtureSdkOnly>sdk</FixtureSdkOnly>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  </PropertyGroup>
+  <PropertyGroup>
+    <FixtureEveryProject>root</FixtureEveryProject>
+  </PropertyGroup>
+</Project>

@@ -6,6 +6,7 @@ using System.Reflection;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace NoHqTests {
 	///<summary>Checks that Open Dental's cloud edition (Thinfinity "ODCloud" and AWS AppStream) stays removed: the VirtualWeb shim and the AWS SDK are gone,
@@ -37,7 +38,7 @@ namespace NoHqTests {
 			};
 			for(int i=0;i<listPaths.Count;i++) {
 				if(!File.Exists(listPaths[i])) {
-					Assert.Inconclusive(listPaths[i]+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+					BuildOutput.NotBuilt(listPaths[i]+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 				}
 				List<string> listReferences=RemovedAssembliesTests.GetReferencedAssemblyNames(listPaths[i]);
 				for(int j=0;j<_arrayRemovedAssemblies.Length;j++) {

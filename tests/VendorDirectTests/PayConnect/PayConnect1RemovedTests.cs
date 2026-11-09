@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 using VendorDirectTests.Foundation;
 
 namespace VendorDirectTests.PayConnectV1Removal {
@@ -141,7 +142,7 @@ namespace VendorDirectTests.PayConnectV1Removal {
 			foreach(string pathRelative in new[] { @"OpenPmsDental\bin\Debug\OpenPmsDental.exe",@"WpfControlsOD\bin\Debug\WpfControlsOD.dll" }) {
 				string path=Path.Combine(GetRoot(),pathRelative);
 				if(!File.Exists(path)) {
-					Assert.Inconclusive(path+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+					BuildOutput.NotBuilt(path+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 				}
 				List<string> listReferences=GetReferencedAssemblyNames(path);
 				foreach(string removed in _arrayRemovedAssemblies) {

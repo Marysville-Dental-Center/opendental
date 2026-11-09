@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project>
   <!-- MigraDoc.Rendering-gdi 6.5.0 from empira's source in the submodule third-party\PDFsharp, as upstream's
        src\foundation\src\MigraDoc\src\MigraDoc.Rendering-gdi\MigraDoc.Rendering-gdi.csproj builds it for net462: the shared
        MigraDoc.Rendering folder without the files that project leaves out, and the -gdi folder's own preview control.
        docs\third-party-source-builds.md. -->
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>{9A7017D5-588B-416A-8069-E893A25746A7}</ProjectGuid>
     <RootNamespace>MigraDoc</RootNamespace>
     <AssemblyName>MigraDoc.Rendering-gdi</AssemblyName>
   </PropertyGroup>
@@ -50,27 +47,12 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PdfSharp.Shared\PdfSharp.Shared.csproj">
-      <Project>{E7DBF664-0058-4F44-96A8-A58F064271DC}</Project>
-      <Name>PdfSharp.Shared</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\PdfSharp.System\PdfSharp.System.csproj">
-      <Project>{780459C6-739E-4C8D-9462-58D6E23B1DAC}</Project>
-      <Name>PdfSharp.System</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\PdfSharp-gdi\PdfSharp-gdi.csproj">
-      <Project>{60E6C1F3-233C-48E6-8E3F-ADB3AD3FF44A}</Project>
-      <Name>PdfSharp-gdi</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\PdfSharp.Charting-gdi\PdfSharp.Charting-gdi.csproj">
-      <Project>{58AD08D6-1540-4EE9-AA6E-7D6472CDD4BC}</Project>
-      <Name>PdfSharp.Charting-gdi</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\MigraDoc.DocumentObjectModel\MigraDoc.DocumentObjectModel.csproj">
-      <Project>{3F1D73FB-1575-4188-8E92-214AFF173E32}</Project>
-      <Name>MigraDoc.DocumentObjectModel</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\PdfSharp.Shared\PdfSharp.Shared.csproj" />
+    <ProjectReference Include="..\PdfSharp.System\PdfSharp.System.csproj" />
+    <ProjectReference Include="..\PdfSharp-gdi\PdfSharp-gdi.csproj" />
+    <ProjectReference Include="..\PdfSharp.Charting-gdi\PdfSharp.Charting-gdi.csproj" />
+    <ProjectReference Include="..\MigraDoc.DocumentObjectModel\MigraDoc.DocumentObjectModel.csproj" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <Import Project="..\SourceBuild.targets" />
 </Project>

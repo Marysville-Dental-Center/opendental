@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "migradoc.documentobjectmodel": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "pdfsharp-gdi": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "pdfsharp.charting-gdi": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp-gdi": "[1.0.0, )",
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "pdfsharp.shared": {
+        "type": "Project"
+      },
+      "pdfsharp.system": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp.Shared": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

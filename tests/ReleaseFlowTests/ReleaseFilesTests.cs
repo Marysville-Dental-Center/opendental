@@ -7,8 +7,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Xml;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace ReleaseFlowTests {
 	[TestClass]
@@ -71,9 +71,9 @@ namespace ReleaseFlowTests {
 		[TestMethod]
 		public void SharedAssemblyInfo_IsLinkedIntoEveryShippedProject_WhichKeepsItsVersions() {
 			foreach(ShippedProject shippedProject in _listShippedProjects) {
-				string csproj=TestPaths.ReadSource(shippedProject.Folder,shippedProject.ProjectFile);
-				StringAssert.Contains(csproj,"<Compile Include=\"..\\SharedAssemblyInfo.cs\">",shippedProject.Folder);
-				StringAssert.Contains(csproj,"<Link>Properties\\SharedAssemblyInfo.cs</Link>",shippedProject.Folder);
+				//The evaluated items, so the check holds for the classic project files and the SDK-style ones of the .NET 10 move alike.
+				ProjectFile projectFile=ProjectFile.Load(Path.Combine(TestPaths.RepoRoot,shippedProject.Folder,shippedProject.ProjectFile));
+				Assert.AreEqual(@"Properties\SharedAssemblyInfo.cs",projectFile.AssertItem("Compile",@"..\SharedAssemblyInfo.cs").GetMetadata("Link"),shippedProject.Folder);
 				string assemblyInfo=TestPaths.ReadSource(shippedProject.Folder,"Properties","AssemblyInfo.cs");
 				foreach(string attribute in new[] { "AssemblyProduct","AssemblyCompany","AssemblyCopyright","AssemblyInformationalVersion" }) {
 					Assert.IsFalse(Regex.IsMatch(assemblyInfo,@"(?m)^\s*\[assembly:\s*"+attribute+@"\("),shippedProject.Folder+" still sets "+attribute+".");
@@ -90,7 +90,7 @@ namespace ReleaseFlowTests {
 		public void BuiltAssemblies_CarryTheProductNameReleaseVersionAndCopyright() {
 			string folder=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug");
 			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
-				Assert.Inconclusive("OpenPmsDental is not built.");
+				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			foreach(string fileName in _arrayBuiltAssemblies) {
 				string path=Path.Combine(folder,fileName);
@@ -118,7 +118,7 @@ namespace ReleaseFlowTests {
 			Assert.IsFalse(rc.Contains("\"Open Dental Software\"") || rc.Contains("\"Open Dental\""),"The version resource still names Open Dental as the company or product.");
 			string path=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug","Direct2dWrapper.dll");
 			if(!File.Exists(path)) {
-				Assert.Inconclusive("Direct2dWrapper is not built.");
+				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug\Direct2dWrapper.dll is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			FileVersionInfo fileVersionInfo=FileVersionInfo.GetVersionInfo(path);
 			Assert.AreEqual("Open PMS - Dental contributors",fileVersionInfo.CompanyName);
@@ -133,7 +133,7 @@ namespace ReleaseFlowTests {
 		public void OutputFolder_HasTheNativeRuntimeDlls() {
 			string folder=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","bin","Debug");
 			if(!File.Exists(Path.Combine(folder,"OpenPmsDental.exe"))) {
-				Assert.Inconclusive("OpenPmsDental is not built.");
+				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			List<string> listFileNames=Directory.GetFiles(folder).Select(x => Path.GetFileName(x)).ToList();
 			foreach(string fileName in _arrayRuntimeDlls) {
@@ -147,19 +147,22 @@ namespace ReleaseFlowTests {
 
 		[TestMethod]
 		public void OpenDentalCsproj_CopiesTheNativeRuntimeDllsInEveryConfiguration() {
-			XmlDocument xmlDocument=new XmlDocument();
-			xmlDocument.Load(Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","OpenPmsDental.csproj"));
-			XmlNamespaceManager xmlNamespaceManager=new XmlNamespaceManager(xmlDocument.NameTable);
-			xmlNamespaceManager.AddNamespace("b","http://schemas.microsoft.com/developer/msbuild/2003");
+			//Read without the MSBuild namespace and evaluated, so the check holds for the classic project file and the SDK-style one alike.
+			string pathProject=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","OpenPmsDental.csproj");
+			List<ProjectItemElement> listElements=ProjectXml.ReadItemElements(pathProject);
+			List<ProjectFile> listConfigurations=new[] { "Debug","Release" }.Select(x => ProjectFile.Load(pathProject,x,"x86")).ToList();
 			foreach(string fileName in _arrayRuntimeDlls) {
-				XmlElement xmlElement=(XmlElement)xmlDocument.SelectSingleNode("//b:ItemGroup/b:None[@Include='..\\Required dlls\\"+fileName+"']",
-					xmlNamespaceManager);
-				Assert.IsNotNull(xmlElement,"No copy item for "+fileName);
-				Assert.AreEqual(fileName,xmlElement.SelectSingleNode("b:Link",xmlNamespaceManager)?.InnerText,"Copied to the top of the output.");
-				Assert.AreEqual("PreserveNewest",xmlElement.SelectSingleNode("b:CopyToOutputDirectory",xmlNamespaceManager)?.InnerText);
+				string include=@"..\Required dlls\"+fileName;
+				ProjectItemElement projectItemElement=listElements.SingleOrDefault(x => x.ItemType=="None" && x.Include.Equals(include,StringComparison.OrdinalIgnoreCase));
+				Assert.IsNotNull(projectItemElement,"No copy item for "+fileName);
 				//No condition on the item or its group, so Release builds copy it too.
-				Assert.IsFalse(xmlElement.HasAttribute("Condition"),fileName);
-				Assert.IsFalse(((XmlElement)xmlElement.ParentNode).HasAttribute("Condition"),fileName);
+				Assert.IsNull(projectItemElement.XElement.Attribute("Condition"),fileName);
+				Assert.IsNull(projectItemElement.XElement.Parent.Attribute("Condition"),fileName);
+				foreach(ProjectFile projectFile in listConfigurations) {
+					ProjectItem projectItem=projectFile.AssertItem("None",include);
+					Assert.AreEqual(fileName,projectItem.GetMetadata("Link"),"Copied to the top of the output.");
+					Assert.AreEqual("PreserveNewest",projectItem.GetMetadata("CopyToOutputDirectory"),projectFile.Configuration);
+				}
 			}
 		}
 

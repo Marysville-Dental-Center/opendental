@@ -46,7 +46,7 @@ These are in v0.0 as described. Each one is a default, not a final answer: **cha
 - (REL-FILES 5) The Hunspell en_US dictionary embedded in `WpfControlsOD` is the OpenOffice.org dictionary (48,245 words); its terms are taken from that dictionary's README (word list LGPL, affix file BSD-style). Please confirm, or replace it with a current SCOWL build.
 - (this release; library updates; **decided on 2026-11-02: built from source**) **The source of the spell checker.** v0.0 shipped the prebuilt `NHunspell.dll` (0.9.6) and `Hunspellx86.dll` (Hunspell 1.2); the library updates replace both with `WeCantSpell.Hunspell.dll` 7.0.1 under the LGPL 2.1 or later, which (sections 4 and 6) asks whoever distributes the binary to offer its corresponding source. You decided on 2026-11-02 to build it from source: the git submodule `third-party/WeCantSpell.Hunspell` at tag 7.0.1 (commit `ab5709d95b2d`), the library project only, unmodified, compiled by `third-party/build`; the NuGet file left `Required dlls`. Every release publishes the source with the setup, in `OpenPmsDental-<version>-source.zip` ([third-party-source-builds.md](third-party-source-builds.md)). The MPL question is decided too: no MPL 1.1 text ships (item 18 above).
 - (BIN-B 5) `Required dlls/Windows.winmd` (a Windows SDK file) is in the repository only to compile `PasswordVaultWrapper`; it does not ship. Keep it, or reference the installed Windows SDK's `UnionMetadata\Windows.winmd`?
-- (RDL-SRC 4) `Required dlls/RdlDesigner.exe` is the prebuilt report designer; it does not ship, and `RdlDesign/` holds its source outside the solution. Delete it, or build RdlDesign from source?
+- (RDL-SRC 4) `Required dlls/RdlDesigner.exe` is the prebuilt report designer; it does not ship, and `RdlDesign/` holds its source outside the solution. Delete it, or build RdlDesign from source? **Answered (2026-11-08):** built from source. Decision 17 of [specs/net10-plan.md](specs/net10-plan.md) keeps RdlDesign; since S1-1 of the .NET 10 move it is in `OpenDental.sln` and `OpenDental.Local.slnf` and builds against the repository's own `RdlEngine` and `RdlViewer`. It still does not ship, and the prebuilt `RdlDesigner.exe` had already left `Required dlls` (ORG-CLEANUP).
 - (this release) **Tag and publish v0.0?** May the developer tag `v0.0` and make the GitHub release with the setup, `SHA256SUMS.txt`, the release notes and the source archive? The release notes name the tag as the source of the release (GPL section 3). **Today:** nothing is tagged or published; the files wait in the developer's release folder.
 - (this release) **Issue reports.** The release notes send reports to the repository's GitHub issues. A fork has Issues turned off by default: turn them on, or name another contact?
 - (RENAME, stage 3) **The first start after the installer.** The rename's checks that need the running program are still open: start the program from an installed folder and walk through the modules, CentralManager (not shipped), the RDL reports, the cursors, a second instance and the Event Log source. Who does this, and on which PC? **Answered (2026-11-07):** the developer tests an administrator install against a test database; the owner schedules a walk-through on an office PC.
@@ -726,6 +726,33 @@ of 2026-11-08: "1. As recommended 2. Ship dlls we need. Use Helix. It's decided.
 - **The recording of today's chart (O-32 and O-33, asked with TC-0's results).** Keep all of it in the repository (715 pictures,
   about 81 MB), since the old engines cannot record again once they are gone. DirectX stays recorded without edge smoothing for the
   tests, and about 10 smoothed pictures go in the gallery to show the look offices see.
+
+---
+
+## The EHR rebuild (answered on 2026-11-08)
+
+The questions of the EHR plan, [specs/ehr-rebuild-plan.md](specs/ehr-rebuild-plan.md), section 13 (E-1 to E-19). Your answer of
+2026-11-08: "E-1 to E-19 as recommended".
+
+- **Turning EHR on:** one confirmation, the same in Show Features and the Setup Wizard, no password (E-2). The measures window and
+  the CQM reports say "internal review only; this program is not certified" (E-1).
+- **The time check:** Off (the default) or Warn; the program never sets the clock by itself, Windows Time does, and the manual
+  window sets it only on a button, with checks (E-3).
+- **Providers and permissions:** a provider reports EHR when a key row with their name exists (the key text is optional and never
+  checked); key rows, the imports and the SNOMED tools need the Setup permission; the quarterly-key stub with no caller goes and its
+  table stays (E-4, E-5, E-6).
+- **Value sets:** each office imports its own download of VSAC's June 2013 EP release (Excel workbook or SVS XML); no automatic
+  fetch for now (E-7). **One step for the office:** someone with a UMLS licence opens that release once and records its files and
+  headers, so the importer reads the real layout; nothing from it enters the repository.
+- **CCD and CCR display:** the free HL7 and AAFP stylesheets ship with their notices (the CCR one as a copy marked as modified),
+  run only in a short-lived child process of the program's own exe, and a stylesheet that comes with an e-mail still never runs;
+  file exports also write a rendered HTML (E-11 to E-14). Download batch E is approved.
+- **Identity:** QRDA files carry this program's name and the office's identity instead of Open Dental's; HL7 follows later (E-15).
+- **Left out:** current measure versions, Stage 3 / MIPS and the newer C-CDA guide, which only count with certification (E-16);
+  other EHR gaps, the radiology-orders alert and the unused measure columns become follow-ups or stay as they are (E-17 to E-19).
+- **Counsel (E-6, E-8 to E-11):** the work goes ahead and nothing licensed is shipped; the CQM reports (EHR-5) merge after
+  counsel answers E-10, and the other counsel answers are applied when they come (the code lists already in the engine stay until
+  counsel answers E-8 and E-9).
 
 ---
 

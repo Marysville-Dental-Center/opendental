@@ -278,7 +278,7 @@ report definitions keep naming the provider MySQL.NET:
 			<Interface>SQL</Interface>
 			<ReplaceParameters>true</ReplaceParameters>
 		</DataSource>
-The report designer is not built from source: RdlDesign/ is outside the solution, and the prebuilt RdlDesigner.exe in Required dlls is not shipped (RDL-SRC owner question 4).
+The report designer, RdlDesign/ (RdlDesigner.exe), is built from source in the solution since S1-1 of the .NET 10 move, against this RdlEngine and RdlViewer; it is a developer tool and is not shipped (decision 17 of docs/specs/net10-plan.md, which answers RDL-SRC owner question 4).
  */
 
 

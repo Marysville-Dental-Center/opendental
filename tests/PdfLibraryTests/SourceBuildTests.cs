@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace PdfLibraryTests {
 	[TestClass]
@@ -80,9 +81,10 @@ namespace PdfLibraryTests {
 			StringAssert.Contains(props,"<SourceBuildTag>"+SourceBuild.PDFSHARP_TAG+"</SourceBuildTag>");
 			StringAssert.Contains(props,"<SourceBuildCommit>"+SourceBuild.PDFSHARP_COMMIT+"</SourceBuildCommit>");
 			StringAssert.Contains(props,"<SourceBuildInformationalVersion>"+SourceBuild.PDFSHARP_INFORMATIONAL_VERSION+"</SourceBuildInformationalVersion>");
-			string spell=File.ReadAllText(SourceBuild.Combine("third-party/build/WeCantSpell.Hunspell/WeCantSpell.Hunspell.csproj"));
-			StringAssert.Contains(spell,"<SourceBuildTag>"+SourceBuild.WECANTSPELL_TAG+"</SourceBuildTag>");
-			StringAssert.Contains(spell,"<SourceBuildCommit>"+SourceBuild.WECANTSPELL_COMMIT+"</SourceBuildCommit>");
+			//The evaluated properties, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile projectFileSpell=ProjectFile.Load(SourceBuild.Combine("third-party/build/WeCantSpell.Hunspell/WeCantSpell.Hunspell.csproj"));
+			Assert.AreEqual(SourceBuild.WECANTSPELL_TAG,projectFileSpell.GetProperty("SourceBuildTag"));
+			Assert.AreEqual(SourceBuild.WECANTSPELL_COMMIT,projectFileSpell.GetProperty("SourceBuildCommit"));
 			foreach(string file in new[] { "THIRD-PARTY-NOTICES.txt","NOTICE","docs/third-party-source-builds.md" }) {
 				StringAssert.Contains(File.ReadAllText(SourceBuild.Combine(file)),SourceBuild.PDFSHARP_COMMIT,file);
 			}
@@ -128,9 +130,13 @@ namespace PdfLibraryTests {
 			//Exactly one upstream file is not compiled, the wrapper around the closed licence library, and its replacement is.
 			CollectionAssert.AreEqual(new[] { "PdfSharp-gdi: "+SourceBuild.REPLACED_FILE },listLeftOut.ToArray(),string.Join("\r\n",listLeftOut));
 			Assert.IsTrue(File.Exists(Path.Combine(submodule,SourceBuild.REPLACED_FILE.Replace('/','\\'))),"The replaced file is still in the submodule.");
-			string gdiProject=File.ReadAllText(Path.Combine(buildFolder,"PdfSharp-gdi","PdfSharp-gdi.csproj"));
-			StringAssert.Contains(gdiProject,@"$(PdfSharpCoreFolder)root\PdfSharpLicense.cs");
-			StringAssert.Contains(gdiProject,"<Compile Include=\"PdfSharpLicense.cs\" />");
+			//The project file itself, evaluated (either project format): the upstream file left out, the replacement compiled.
+			ProjectFile projectFileGdi=ProjectFile.Load(Path.Combine(buildFolder,"PdfSharp-gdi","PdfSharp-gdi.csproj"));
+			string pathReplaced=Path.Combine(submodule,SourceBuild.REPLACED_FILE.Replace('/','\\'));
+			Assert.AreEqual(pathReplaced,Path.GetFullPath(projectFileGdi.GetProperty("PdfSharpCoreFolder")+@"root\PdfSharpLicense.cs"),true);
+			projectFileGdi.AssertDoesNotCompile(pathReplaced);
+			projectFileGdi.AssertCompiles("PdfSharpLicense.cs");
+			Assert.AreEqual(SourceBuild.Combine(SourceBuild.REPLACEMENT_FILE),projectFileGdi.AssertItem("Compile","PdfSharpLicense.cs").FullPath,true);
 		}
 
 		[TestMethod]
@@ -168,36 +174,45 @@ namespace PdfLibraryTests {
 				.Where(x => !x.Contains(@"\bin\") && !x.Contains(@"\obj\")).ToList();
 			CollectionAssert.AreEquivalent(_arrayProjects.Select(x => x.Project).Concat(new[] { "WeCantSpell.Hunspell" }).ToArray(),
 				listProjects.Select(Path.GetFileNameWithoutExtension).ToArray());
+			int countHintPaths=0;
 			foreach(string path in listProjects) {
 				string name=Path.GetFileNameWithoutExtension(path);
 				string relative=@"third-party\build\"+name+@"\"+name+".csproj";
 				string text=File.ReadAllText(path);
-				foreach(string forbidden in new[] { "<PackageReference","GitVersion.MsBuild","SourceLink","Sdk=\"Microsoft.NET.Sdk","packages.config" }) {
+				//The project file evaluated with what it imports, so the checks hold for the classic project files and the SDK-style ones of the .NET 10
+				//move alike: no NuGet package, GitVersion or SourceLink in either format (an SDK-style wrapper is fine, an upstream project is not).
+				ProjectFile projectFile=ProjectFile.Load(path);
+				foreach(string forbidden in new[] { "<PackageReference","GitVersion.MsBuild","SourceLink","packages.config" }) {
 					Assert.IsFalse(text.IndexOf(forbidden,StringComparison.OrdinalIgnoreCase)>=0,name+" uses "+forbidden);
 				}
+				Assert.AreEqual(0,projectFile.GetItems("PackageReference").Count+projectFile.GetItems("PackageDownload").Count,name+" asks NuGet for a package.");
 				Assert.IsFalse(File.Exists(Path.Combine(Path.GetDirectoryName(path),"packages.config")),name+" has packages.config");
-				StringAssert.Contains(text,"<Import Project=\"..\\SourceBuild.props\" />",name);
-				StringAssert.Contains(text,"<Import Project=\"..\\SourceBuild.targets\" />",name);
-				StringAssert.Contains(text,"<SourceBuildUpstreamProject>",name);
+				CollectionAssert.Contains(projectFile.FilesRead,Path.Combine(buildFolder,"SourceBuild.props"),name);
+				CollectionAssert.Contains(projectFile.FilesRead,Path.Combine(buildFolder,"SourceBuild.targets"),name);
+				Assert.AreNotEqual("",projectFile.GetProperty("SourceBuildUpstreamProject"),name);
 				StringAssert.Contains(sln,"\""+name+"\", \""+relative+"\"",name+" is in OpenDental.sln.");
 				StringAssert.Contains(slnf,"\""+relative.Replace(@"\",@"\\")+"\"",name+" is in OpenDental.Local.slnf.");
 				//The Required dlls they use are support assemblies, never a PDFsharp, MigraDoc or WeCantSpell file.
-				foreach(Match match in Regex.Matches(text,@"<HintPath>([^<]+)</HintPath>")) {
-					StringAssert.StartsWith(match.Groups[1].Value,@"..\..\..\Required dlls\",name);
-					Assert.IsFalse(Regex.IsMatch(Path.GetFileName(match.Groups[1].Value),"^(PdfSharp|MigraDoc|WeCantSpell)"),name+": "+match.Groups[1].Value);
+				List<string> listHintPaths=projectFile.GetItems("Reference").Select(x => x.GetMetadata("HintPath")).Where(x => x!="").ToList();
+				countHintPaths+=listHintPaths.Count;
+				foreach(string hintPath in listHintPaths) {
+					StringAssert.StartsWith(hintPath,@"..\..\..\Required dlls\",name);
+					Assert.IsFalse(Regex.IsMatch(Path.GetFileName(hintPath),"^(PdfSharp|MigraDoc|WeCantSpell)"),name+": "+hintPath);
 				}
+				//.NET Framework 4.8, x86 like the program (SourceBuild.props for the classic projects, the SDK's net48 and Directory.Build.props for SDK-style).
+				Assert.IsTrue(projectFile.GetProperty("TargetFrameworkVersion")=="v4.8" || projectFile.GetProperty("TargetFramework")=="net48",name);
+				Assert.AreEqual("x86",projectFile.GetProperty("PlatformTarget"),name);
 				if(name!="WeCantSpell.Hunspell") {
-					StringAssert.Contains(text,"<Import Project=\"..\\PDFsharp.props\" />",name);
+					CollectionAssert.Contains(projectFile.FilesRead,Path.Combine(buildFolder,"PDFsharp.props"),name);
+					Assert.AreEqual("true",projectFile.GetProperty("SignAssembly"),name);
+					string pathKey=Path.Combine(SubmoduleFolder(SourceBuild.PDFSHARP_PATH),"src","StrongnameKey.snk");
+					Assert.AreEqual(pathKey,Path.GetFullPath(projectFile.GetProperty("AssemblyOriginatorKeyFile")),true,name+": signed with upstream's key from the submodule.");
+					Assert.IsTrue(File.Exists(pathKey),pathKey);
+					Assert.AreEqual(Path.Combine(SubmoduleFolder(SourceBuild.PDFSHARP_PATH),"src","foundation","src")+@"\",
+						Path.GetFullPath(projectFile.GetProperty("PdfSharpSourceRoot")),true,name);
 				}
 			}
-			string props=File.ReadAllText(Path.Combine(buildFolder,"SourceBuild.props"));
-			StringAssert.Contains(props,"<TargetFrameworkVersion>v4.8</TargetFrameworkVersion>");
-			StringAssert.Contains(props,"<PlatformTarget>x86</PlatformTarget>");
-			string pdfSharpProps=File.ReadAllText(Path.Combine(buildFolder,"PDFsharp.props"));
-			StringAssert.Contains(pdfSharpProps,"<SignAssembly>true</SignAssembly>");
-			StringAssert.Contains(pdfSharpProps,@"<AssemblyOriginatorKeyFile>$(ThirdPartyRoot)PDFsharp\src\StrongnameKey.snk</AssemblyOriginatorKeyFile>",
-				"Signed with upstream's key from the submodule.");
-			StringAssert.Contains(pdfSharpProps,@"<PdfSharpSourceRoot>$(ThirdPartyRoot)PDFsharp\src\foundation\src\</PdfSharpSourceRoot>");
+			Assert.IsTrue(countHintPaths>0,"No source-build project references a support assembly of Required dlls: the HintPaths were not read.");
 			//The build of the upstream projects (SDK style, NuGet, GitVersion) is never invoked: no project of the solution points into a submodule.
 			foreach(Match match in Regex.Matches(sln,@"^Project\(""[^""]+""\) = ""[^""]+"", ""([^""]+)""",RegexOptions.Multiline)) {
 				Assert.IsFalse(match.Groups[1].Value.StartsWith(@"third-party\PDFsharp\") || match.Groups[1].Value.StartsWith(@"third-party\WeCantSpell.Hunspell\"),

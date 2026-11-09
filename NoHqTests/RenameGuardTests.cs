@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace NoHqTests {
 	///<summary>Rules that the rename to Open PMS Dental must keep and that the compiler does not check: the Middle Tier's namespace rule, the WPF
@@ -95,7 +96,7 @@ namespace NoHqTests {
 			string dirTests=Path.GetDirectoryName(typeof(RenameGuardTests).Assembly.Location);//NoHqTests\bin\Debug
 			string pathDll=Path.GetFullPath(Path.Combine(dirTests,"..","..","..","OpenPmsDental","bin",Path.GetFileName(dirTests),"WpfControlsOD.dll"));
 			if(!File.Exists(pathDll)) {
-				Assert.Inconclusive(pathDll+" is not built.");
+				BuildOutput.NotBuilt(pathDll+" is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			//From a copy of the bytes, so the file stays unlocked. The reflection-only context holds one copy of an assembly, so reuse one.
 			string fullName=AssemblyName.GetAssemblyName(pathDll).FullName;
@@ -130,9 +131,11 @@ namespace NoHqTests {
 			Assert.IsTrue(hashSetResources.Contains("themes/tabcontroldict.baml"),"The TabControl theme is not in the resources.");
 			//Everything loaded through a prefix: the project's Resource items and the BitmapFileName values of the windows.
 			List<string> listFiles=new List<string>();
-			string csproj=File.ReadAllText(Path.Combine(folderProject,"WpfControlsOD.csproj"));
-			foreach(Match match in Regex.Matches(csproj,@"<Resource Include=""Resources\\(?<file>[^""]+)""")) {
-				listFiles.Add(match.Groups["file"].Value);
+			//The evaluated Resource items (listed one by one, or by a wildcard), so this holds for the classic project file and the SDK-style one alike.
+			foreach(ProjectItem projectItem in ProjectFile.Load(Path.Combine(folderProject,"WpfControlsOD.csproj")).GetItems("Resource")) {
+				if(projectItem.Include.StartsWith(@"Resources\",StringComparison.OrdinalIgnoreCase)) {
+					listFiles.Add(projectItem.Include.Substring(@"Resources\".Length));
+				}
 			}
 			foreach(string folder in new[] { folderProject,Path.Combine(root,"OpenPmsDental") }) {
 				foreach(string pathXaml in GetSourceFiles(folder,".xaml")) {
