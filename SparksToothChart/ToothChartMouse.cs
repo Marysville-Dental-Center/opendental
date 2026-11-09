@@ -180,6 +180,16 @@ namespace SparksToothChart {
 			return -1;
 		}
 
+		///<summary>The tools with a cursor file of their own: the pen, the eraser and the colour changer.</summary>
+		public static readonly CursorTool[] ArrayCursorTools={ CursorTool.Pen,CursorTool.Eraser,CursorTool.ColorChanger };
+		///<summary>For tests only, null in the program: runs on this thread before a tool's embedded cursor file is opened (GetCursorStream, for the
+		///WinForms cursors of GetCursor and the live view's WPF cursors), so a test can make the cursors fail to load. Thread-static.</summary>
+		[ThreadStatic]
+		public static Action<CursorTool> ActionOpenCursorForTests;
+		///<summary>The WinForms cursors of the tools on this thread, made once (GetCursor); null until a tool with a cursor file is first chosen.</summary>
+		[ThreadStatic]
+		private static Dictionary<CursorTool,Cursor> _dictCursorsThread;
+
 		///<summary>The manifest name of the embedded cursor of a tool, as the wrapper's CursorTool loads it ("SparksToothChart.Pen.cur" and so on), or
 		///null for the pointer and the text mover, which use the arrow.</summary>
 		public static string GetCursorResourceName(CursorTool cursorTool) {
@@ -201,17 +211,45 @@ namespace SparksToothChart {
 			if(resourceName==null) {
 				return null;
 			}
+			ActionOpenCursorForTests?.Invoke(cursorTool);
 			return typeof(ToothChartMouse).Assembly.GetManifestResourceStream(resourceName);
 		}
 
-		///<summary>The WinForms cursor of a tool, from its embedded .cur file (the arrow for the pointer and the text mover).</summary>
+		///<summary>The WinForms cursor of a tool, from its embedded .cur file (the arrow for the pointer and the text mover). The three cursors are made
+		///together, once per thread, the first time one is asked for, and kept, so a tool change makes no new cursor handle. A cursor that cannot be made
+		///is the arrow, and the failure is logged once (ToothChartFallbackKind.Cursor). Never throws.</summary>
 		public static Cursor GetCursor(CursorTool cursorTool) {
-			using(Stream stream=GetCursorStream(cursorTool)) {
-				if(stream==null) {
-					return Cursors.Default;
-				}
-				return new Cursor(stream);
+			if(GetCursorResourceName(cursorTool)==null) {
+				return Cursors.Default;
 			}
+			if(_dictCursorsThread==null) {
+				Dictionary<CursorTool,Cursor> dictCursors=new Dictionary<CursorTool,Cursor>();
+				List<string> listFailures=new List<string>();
+				foreach(CursorTool cursorToolMade in ArrayCursorTools) {
+					Cursor cursor=Cursors.Default;
+					try {
+						using(Stream stream=GetCursorStream(cursorToolMade)) {
+							if(stream!=null) {
+								cursor=new Cursor(stream);
+							}
+						}
+					}
+					catch(Exception ex) {
+						listFailures.Add(cursorToolMade+" ("+ex.GetType().Name+": "+ex.Message+")");
+					}
+					dictCursors[cursorToolMade]=cursor;
+				}
+				_dictCursorsThread=dictCursors;
+				if(listFailures.Count>0) {
+					ToothChartWrapper.LogFallbackOnce(ToothChartFallbackKind.Cursor,"The tooth chart could not make the cursor of "+string.Join(", ",listFailures)
+						+". It shows the arrow for "+(listFailures.Count==1?"that tool":"those tools")+".");
+				}
+			}
+			Cursor cursorFound;
+			if(_dictCursorsThread.TryGetValue(cursorTool,out cursorFound)) {
+				return cursorFound;
+			}
+			return Cursors.Default;
 		}
 	}
 }

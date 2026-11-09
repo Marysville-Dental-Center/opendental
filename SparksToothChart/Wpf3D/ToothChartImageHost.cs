@@ -132,6 +132,17 @@ namespace SparksToothChart.Wpf3D {
 			}
 			return new Bitmap(_bitmapShown);
 		}
+
+		///<summary>Drops the image shown, so the control paints the chart's background until its next image arrives. The wrapper calls it before it shows
+		///this control again in place of the live view (the "Draw in software" switch, or a live view that failed): the image it held is from before the
+		///live view (another patient's chart, perhaps) or none, and is not to be shown while the software render of the current data is made.</summary>
+		public void ClearImage() {
+			Bitmap bitmapOld=_bitmapShown;
+			_bitmapShown=null;
+			_sceneShown=null;
+			bitmapOld?.Dispose();
+			Invalidate();
+		}
 		#endregion Properties
 
 		#region Rendering

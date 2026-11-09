@@ -33,7 +33,11 @@ namespace SparksToothChart {
 		///<summary>The WPF chart's render thread: its last guard caught an error, a result could not be handed on, or failed images in a row
 		///replaced the thread.</summary>
 		Wpf3DRenderThread,
-		///<summary>The WPF chart's live view could not start on a shown wrapper, and the wrapper shows the software render on screen instead.</summary>
+		///<summary>The WPF chart's live view could not start on a shown wrapper, or could not show a scene, and the wrapper shows the software render on
+		///screen instead.</summary>
 		Wpf3DLiveView,
+		///<summary>A tool's cursor (the pen's, the eraser's or the colour changer's) could not be made from its embedded file, and the chart shows the
+		///arrow for that tool.</summary>
+		Cursor,
 	}
 }
