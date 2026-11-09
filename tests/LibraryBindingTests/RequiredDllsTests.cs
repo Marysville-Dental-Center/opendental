@@ -78,13 +78,17 @@ namespace LibraryBindingTests {
 			}
 		}
 
+		///<summary>Since S2-1 of the .NET 10 move the projects get the files of the identical packages from the offline folder, and the binding
+		///checks count the files of "Required dlls" a project's lock file brings (TestSupport's PackageFiles). Every package of every lock file of
+		///the solution filter is mapped there or brings none. Every file mapped is in "Required dlls" and byte for byte (SHA-256) each file of that
+		///name that the build copies from the package at the locked version in the offline folder: the runtime and native assets the restore
+		///picked for the projects that get it (their project.assets.json, PackageFiles.ReadCopiedAssets: lib\net4x of the nearest framework, and
+		///runtimes\win-x86\native for an exe's win-x86 target), so a file of the same name and bytes in another folder of the package (another
+		///framework's lib folder) does not count. A package that brings none has no file of a name in "Required dlls" in any of its folders. A
+		///package that a later package adds (S2-2's MySqlConnector, S2-3's Microsoft.Web.WebView2) fails here until it is mapped, instead of
+		///dropping out. Without the restore's assets files (no build yet) it is inconclusive, a failure with OPMS_REQUIRE_BUILD_OUTPUT=1.</summary>
 		[TestMethod]
 		public void PackagesOfTheLockFiles_MapToTheirFilesOfRequiredDlls_ByteForByte() {
-			//Since S2-1 of the .NET 10 move the projects get the files of the identical packages from the offline folder, and the binding checks
-			//count the files of "Required dlls" a project's lock file brings (TestSupport's PackageFiles). Every package of every lock file of the
-			//solution filter is mapped there or brings none; every file mapped is in "Required dlls" and byte for byte a file of that package at
-			//the locked version in the offline folder; a package that brings none has no file of a name in "Required dlls". A package that a later
-			//package adds (S2-2's MySqlConnector, S2-3's Microsoft.Web.WebView2) fails here until it is mapped, instead of dropping out.
 			string folderOffline=OfflinePackages.Folder;
 			if(folderOffline==null) {
 				BuildOutput.NotBuilt("The offline package folder (OPMS_NUGET_OFFLINE, or od-tools\\nuget-packages in the common git folder) is not there; "
@@ -93,6 +97,9 @@ namespace LibraryBindingTests {
 			}
 			Dictionary<string,LockedPackage> dictPackages=new Dictionary<string,LockedPackage>(StringComparer.OrdinalIgnoreCase);
 			Dictionary<string,string> dictWhere=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+			//"id/version" to the files the build copies from it, over every project that gets it.
+			Dictionary<string,HashSet<string>> dictCopied=new Dictionary<string,HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+			List<string> listNotRestored=new List<string>();
 			foreach(string pathProject in SolutionProjects.ProjectPaths) {
 				string pathLock=Path.Combine(Path.GetDirectoryName(pathProject),"packages.lock.json");
 				if(!File.Exists(pathLock)) {
@@ -105,10 +112,31 @@ namespace LibraryBindingTests {
 						dictWhere[key]=RepoPaths.Relative(pathLock);
 					}
 				}
+				//Where the restore wrote it (MSBuildProjectExtensionsPath, obj\ for every project of the repository), as the reader evaluates it.
+				string pathAssets=ProjectFile.Load(pathProject).GetProperty("ProjectAssetsFile");
+				if(!File.Exists(pathAssets)) {
+					listNotRestored.Add(RepoPaths.Relative(pathAssets));
+					continue;
+				}
+				foreach(KeyValuePair<string,HashSet<string>> pairAssets in PackageFiles.ReadCopiedAssets(pathAssets)) {
+					HashSet<string> hashSetCopied;
+					if(!dictCopied.TryGetValue(pairAssets.Key,out hashSetCopied)) {
+						hashSetCopied=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+						dictCopied[pairAssets.Key]=hashSetCopied;
+					}
+					hashSetCopied.UnionWith(pairAssets.Value);
+				}
 			}
 			Assert.IsTrue(dictPackages.Count>0,"No lock file of the solution filter names a package.");
+			if(listNotRestored.Count>0) {
+				BuildOutput.NotBuilt("The restore's assets files of "+listNotRestored.Count+" projects with a lock file ("+listNotRestored[0]+", ...): the files the "
+					+"build copies from each package are read from them.");
+				return;
+			}
 			List<string> listProblems=new List<string>();
 			int countFiles=0;
+			int countCopied=0;
+			HashSet<string> hashSetFolders=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			foreach(KeyValuePair<string,LockedPackage> pair in dictPackages.OrderBy(x => x.Key,StringComparer.OrdinalIgnoreCase)) {
 				LockedPackage lockedPackage=pair.Value;
 				string folderPackage=OfflinePackages.GetPackageFolder(lockedPackage.Id,lockedPackage.Version);
@@ -132,15 +160,32 @@ namespace LibraryBindingTests {
 					listProblems.Add(ex.Message);
 					continue;
 				}
+				HashSet<string> hashSetCopied;
+				if(!dictCopied.TryGetValue(pair.Key,out hashSetCopied)) {
+					listProblems.Add(pair.Key+" ("+dictWhere[pair.Key]+") is in no project's assets file: build again, so the restore writes them.");
+					continue;
+				}
 				foreach(string fileName in arrayFiles) {
 					countFiles++;
 					string hash=MetadataReader.Sha256(RequiredDlls.Files[fileName]);
-					if(!arrayPackageFiles.Any(x => Path.GetFileName(x).Equals(fileName,StringComparison.OrdinalIgnoreCase) && MetadataReader.Sha256(x)==hash)) {
-						listProblems.Add(pair.Key+": no file of the package is byte for byte Required dlls\\"+fileName+".");
+					List<string> listAssets=hashSetCopied.Where(x => x.Split('/').Last().Equals(fileName,StringComparison.OrdinalIgnoreCase)).OrderBy(x => x).ToList();
+					if(listAssets.Count==0) {
+						listProblems.Add(pair.Key+": the build copies no file named "+fileName+" from it (its runtime and native assets: "
+							+string.Join(", ",hashSetCopied.OrderBy(x => x))+").");
+						continue;
+					}
+					foreach(string asset in listAssets) {
+						countCopied++;
+						hashSetFolders.Add(asset.Substring(0,asset.LastIndexOf('/')));
+						string pathAsset=Path.Combine(folderPackage,asset.Replace('/','\\'));
+						if(!File.Exists(pathAsset) || MetadataReader.Sha256(pathAsset)!=hash) {
+							listProblems.Add(pair.Key+": "+asset+", which the build copies, is not byte for byte Required dlls\\"+fileName+".");
+						}
 					}
 				}
 			}
-			Console.WriteLine(dictPackages.Count+" packages in the lock files; "+countFiles+" files of Required dlls checked against the offline folder.");
+			Console.WriteLine(dictPackages.Count+" packages in the lock files; "+countFiles+" files of Required dlls checked against the "+countCopied
+				+" files the build copies from the offline folder, from "+string.Join(", ",hashSetFolders.OrderBy(x => x))+".");
 			Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));
 		}
 
@@ -170,6 +215,44 @@ namespace LibraryBindingTests {
 					PackageFiles.ReadLockFile(pathLock).Select(x => x.Id+"/"+x.Version).ToArray(),"Each package once; a project is not a package.");
 				File.WriteAllText(pathLock,"{ \"dependencies\": { \".NETFramework,Version=v4.8\": { \"Newtonsoft.Json\": { \"type\": \"Direct\", \"contentHash\": \"x\" } } } }");
 				AssertThrows<InvalidOperationException>(() => PackageFiles.ReadLockFile(pathLock),"no resolved version");
+			}
+			finally {
+				Directory.Delete(folder,true);
+			}
+		}
+
+		[TestMethod]
+		public void PackageFiles_ReadCopiedAssets_TheRuntimeAndNativeAssetsOnly() {
+			//The form the restore writes project.assets.json in: each target's packages with their compile, runtime, runtimeTargets and native
+			//assets, the projects referenced, and the package folder's whole list of files under "libraries". The build copies a package's runtime
+			//assets of the project's target and the native ones of an exe's win-x86 target, nothing else: not the compile assets (reference
+			//assemblies when a package has them), not runtimeTargets (for .NET's runtime folders), not another framework's lib folder.
+			string folder=Path.Combine(Path.GetTempPath(),"LibraryBindingTests_"+Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(folder);
+			try {
+				string pathAssets=Path.Combine(folder,"project.assets.json");
+				File.WriteAllText(pathAssets,"{\r\n  \"version\": 3,\r\n  \"targets\": {\r\n"
+					+"    \".NETFramework,Version=v4.8\": {\r\n"
+					+"      \"Fixture.Package/1.2.3\": { \"type\": \"package\", \"dependencies\": { \"System.ValueTuple\": \"4.6.2\" },\r\n"
+					+"        \"compile\": { \"ref/net462/Fixture.Package.dll\": { \"related\": \".xml\" } },\r\n"
+					+"        \"runtime\": { \"lib/net462/Fixture.Package.dll\": { \"related\": \".xml\" } },\r\n"
+					+"        \"runtimeTargets\": { \"runtimes/win/lib/net9.0/Fixture.Package.dll\": { \"assetType\": \"runtime\", \"rid\": \"win\" } } },\r\n"
+					+"      \"System.ValueTuple/4.6.2\": { \"type\": \"package\", \"compile\": { \"lib/net471/_._\": {} }, \"runtime\": { \"lib/net471/_._\": {} } },\r\n"
+					+"      \"CodeBase/1.0.0\": { \"type\": \"project\", \"framework\": \".NETFramework,Version=v4.8\", \"compile\": { \"bin/placeholder/CodeBase.dll\": {} },\r\n"
+					+"        \"runtime\": { \"bin/placeholder/CodeBase.dll\": {} } } },\r\n"
+					+"    \".NETFramework,Version=v4.8/win-x86\": {\r\n"
+					+"      \"Fixture.Package/1.2.3\": { \"type\": \"package\", \"runtime\": { \"lib/net462/Fixture.Package.dll\": {} },\r\n"
+					+"        \"native\": { \"runtimes/win-x86/native/Fixture.Native.dll\": {} } } } },\r\n"
+					+"  \"libraries\": { \"Fixture.Package/1.2.3\": { \"type\": \"package\", \"path\": \"fixture.package/1.2.3\",\r\n"
+					+"    \"files\": [ \"lib/net462/Fixture.Package.dll\", \"lib/netstandard2.0/Fixture.Package.dll\" ] } } }");
+				Dictionary<string,HashSet<string>> dictAssets=PackageFiles.ReadCopiedAssets(pathAssets);
+				CollectionAssert.AreEquivalent(new[] { "Fixture.Package/1.2.3","System.ValueTuple/4.6.2" },dictAssets.Keys.ToArray(),"Packages only, not a project.");
+				CollectionAssert.AreEquivalent(new[] { "lib/net462/Fixture.Package.dll","runtimes/win-x86/native/Fixture.Native.dll" },
+					dictAssets["fixture.package/1.2.3"].ToArray(),"Both targets; NuGet's ids ignore case.");
+				CollectionAssert.AreEquivalent(new[] { "lib/net471/_._" },dictAssets["System.ValueTuple/4.6.2"].ToArray());
+				//A file without targets is not read as one without packages.
+				File.WriteAllText(pathAssets,"{ \"version\": 3, \"targets\": { }, \"libraries\": { } }");
+				AssertThrows<InvalidOperationException>(() => PackageFiles.ReadCopiedAssets(pathAssets),"has no targets");
 			}
 			finally {
 				Directory.Delete(folder,true);

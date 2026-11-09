@@ -6,9 +6,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.Serialization.Json;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mono.Cecil;
@@ -240,8 +242,10 @@ namespace LibraryBindingTests {
 			{ "System.Security.Cryptography.Pkcs",new[] { "System.Security.Cryptography.Pkcs.dll" } },
 		};
 
-		///<summary>Packages of the lock files that bring no file of "Required dlls", and why (RequiredDllsTests checks that none of their files has
-		///the name of one).</summary>
+		///<summary>Packages of the lock files that bring no file of "Required dlls", each with its reason. An entry here exempts the package from
+		///the binding checks: no file of it is counted for any project that gets it, so nothing of it is checked for its references, redirects or
+		///output. A new entry therefore needs the lead's agreement, and its reason is written next to it. RequiredDllsTests checks that no file of
+		///such a package, in any of its folders, has the name of a file of "Required dlls".</summary>
 		private static readonly Dictionary<string,string> _dictNoRequiredDlls=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase) {
 			{ "Mono.Cecil","the tests' reader of assembly metadata (S1-6), whose files were never in Required dlls" },
 			{ "System.ValueTuple","no assembly for .NET Framework 4.7.1 and later (lib\\net471\\_._): the framework's own (SystemValueTuple_ComesFromTheFramework)" },
@@ -294,6 +298,55 @@ namespace LibraryBindingTests {
 				}
 			}
 			return listPackages;
+		}
+
+		///<summary>The files the build copies from each package to a project's output, as the restore picked them in the project's
+		///project.assets.json: the runtime and native assets of the package in every target of the file, by "id/version" as the file names the
+		///package (NuGet's ids ignore case), each a path in the package's folder with '/' (lib/net462/System.Memory.dll). The SDK's
+		///ResolvePackageAssets copies a .NET Framework project's runtime assets of its target, the lib folder of the nearest framework the package
+		///has (lib\net4x for net48), and for an exe, whose target is win-x86, also its native assets (runtimes\win-x86\native). Read with the
+		///.NET Framework's JSON reader (JsonReaderWriterFactory), which gives each JSON member an element of its name, or, for a name that is no XML
+		///name (a target, "id/version", an asset's path), an element 'item' with the name in its attribute 'item'.</summary>
+		public static Dictionary<string,HashSet<string>> ReadCopiedAssets(string pathAssets) {
+			XElement xElementRoot;
+			using(XmlDictionaryReader xmlDictionaryReader=JsonReaderWriterFactory.CreateJsonReader(File.ReadAllBytes(pathAssets),XmlDictionaryReaderQuotas.Max)) {
+				xElementRoot=XElement.Load(xmlDictionaryReader);
+			}
+			XElement xElementTargets=GetJsonMember(xElementRoot,"targets");
+			if(xElementTargets==null || !xElementTargets.Elements().Any()) {
+				throw new InvalidOperationException(RepoPaths.Relative(pathAssets)+" has no targets.");
+			}
+			Dictionary<string,HashSet<string>> dictAssets=new Dictionary<string,HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+			foreach(XElement xElementLibrary in xElementTargets.Elements().SelectMany(x => x.Elements())) {
+				XElement xElementType=GetJsonMember(xElementLibrary,"type");
+				if(xElementType==null || xElementType.Value!="package") {
+					continue;//a project the project references
+				}
+				string key=GetJsonName(xElementLibrary);
+				HashSet<string> hashSetAssets;
+				if(!dictAssets.TryGetValue(key,out hashSetAssets)) {
+					hashSetAssets=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+					dictAssets[key]=hashSetAssets;
+				}
+				foreach(string section in new[] { "runtime","native" }) {
+					XElement xElementSection=GetJsonMember(xElementLibrary,section);
+					if(xElementSection!=null) {
+						hashSetAssets.UnionWith(xElementSection.Elements().Select(x => GetJsonName(x)));
+					}
+				}
+			}
+			return dictAssets;
+		}
+
+		///<summary>The JSON member's name of an element JsonReaderWriterFactory wrote: its 'item' attribute for a name that is no XML name, else
+		///the element's name.</summary>
+		private static string GetJsonName(XElement xElement) {
+			XAttribute xAttribute=xElement.Attribute("item");
+			return xAttribute!=null ? xAttribute.Value : xElement.Name.LocalName;
+		}
+
+		private static XElement GetJsonMember(XElement xElementObject,string name) {
+			return xElementObject.Elements().FirstOrDefault(x => GetJsonName(x)==name);
 		}
 	}
 
