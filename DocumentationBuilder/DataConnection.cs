@@ -11,6 +11,7 @@ using System.IO;
 using System.Windows.Forms;
 using System.Xml;
 using CodeBase;
+using DevDbTls=DataConnectionBase.DevDbTls;
 
 namespace DocumentationBuilder{
 
@@ -31,7 +32,9 @@ namespace DocumentationBuilder{
 
 		///<summary>Constructor sets the connection values.</summary>
 		public DataConnection(){
-			ConnStr=GetConnectionString();
+			//A developer tool, never released: the local test server gets the test CA once tools/Enable-LocalDbTls.ps1 has run (SslMode=VerifyCA);
+			//any other server, and every server before that, as before (docs/port-notes/DB-TLS.md).
+			ConnStr=DevDbTls.Apply(GetConnectionString());
 		  con=new MySqlConnection(ConnStr);
 			//dr = null;
 			cmd = new MySqlCommand();
@@ -41,12 +44,12 @@ namespace DocumentationBuilder{
 
 		///<summary>Only used to fill the list of databases in the ChooseDatabase window and from Employees.GetAsteriskMissedCalls.</summary>
 		public DataConnection(string serverName,string database,string mysqlUser,string mysqlPass) {
-			ConnStr="Server="+serverName
+			ConnStr=DevDbTls.Apply("Server="+serverName
 				+";Database="+database
 				+";User ID="+mysqlUser
 				+";Password="+mysqlPass
 				+";CharSet=utf8"
-				+";SslMode=none";
+				+";SslMode=none");
 			con=new MySqlConnection(ConnStr);
 			cmd=new MySqlCommand();
 			cmd.Connection=con;

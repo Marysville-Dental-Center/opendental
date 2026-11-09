@@ -234,13 +234,20 @@ namespace DbConnectionSecurityTests {
 				.ToList();
 		}
 
+		///<summary>The developer tools outside tests and tools that connect to the local test server through DevDbTls (docs/port-notes/DB-TLS.md
+		///section 3): never released, and not product projects (TheDevToolsThatCallDevDbTls_AreNotProductProjects). The side programs that are
+		///product projects (CentralManager, DatabaseIntegrityCheck) keep their connections as they are and never call DevDbTls.</summary>
+		private static readonly string[] _arrayDevToolFolders={ "DocumentationBuilder","xCrudGenerator" };
+
 		[TestMethod]
 		public void TheProgramNeverCallsDevDbTls() {
 			string root=GetRepoRoot();
 			string[] arrayTopNotProgram={ "tests","tools","UnitTests","UnitTestsCore","NoHqTests","TestResults",".git",".claude",".vs","packages","docs" };
 			List<string> listCallers=new List<string>();
 			foreach(string folder in Directory.GetDirectories(root)) {
-				if(arrayTopNotProgram.Contains(Path.GetFileName(folder),StringComparer.OrdinalIgnoreCase)) {
+				if(arrayTopNotProgram.Contains(Path.GetFileName(folder),StringComparer.OrdinalIgnoreCase)
+					|| _arrayDevToolFolders.Contains(Path.GetFileName(folder),StringComparer.OrdinalIgnoreCase))
+				{
 					continue;
 				}
 				foreach(string path in GetSourceFiles(folder)) {
@@ -253,6 +260,25 @@ namespace DbConnectionSecurityTests {
 				}
 			}
 			Assert.AreEqual("",string.Join(", ",listCallers),"Only developers, tests and dev tools use the local test server's TLS.");
+		}
+
+		[TestMethod]
+		public void TheDevToolsThatCallDevDbTls_AreNotProductProjects() {
+			//Every product project links SharedAssemblyInfo.cs (the shipped programs and the side programs that are in the source but not in the
+			//setup); a developer tool allowed to call DevDbTls must not, and the side programs that do are still checked by
+			//TheProgramNeverCallsDevDbTls.
+			string root=GetRepoRoot();
+			foreach(string folder in _arrayDevToolFolders) {
+				string[] arrayProjects=Directory.GetFiles(Path.Combine(root,folder),"*.csproj");
+				Assert.AreEqual(1,arrayProjects.Length,folder);
+				Assert.IsFalse(File.ReadAllText(arrayProjects[0]).Contains("SharedAssemblyInfo.cs"),folder+" is not a product project.");
+			}
+			foreach(string folder in new[] { "CentralManager","DatabaseIntegrityCheck" }) {
+				string[] arrayProjects=Directory.GetFiles(Path.Combine(root,folder),"*.csproj");
+				Assert.AreEqual(1,arrayProjects.Length,folder);
+				Assert.IsTrue(File.ReadAllText(arrayProjects[0]).Contains("SharedAssemblyInfo.cs"),
+					folder+" is a product project (DB-TLS.md section 3: not covered, so it never calls DevDbTls).");
+			}
 		}
 
 		[TestMethod]
@@ -345,27 +371,89 @@ namespace DbConnectionSecurityTests {
 		}
 
 		///<summary>Calls of tests and tools that connect without DevDbTls, on purpose: each opens nothing, or is refused before it connects, or sets
-		///its TLS options another way. File (from the repository root) and a piece of the call's text.</summary>
+		///its TLS options another way. File (from the repository root), the kind of call (GetConnectionKind) and a piece of the call's text.
+		///</summary>
 		private static readonly string[][] _arrayAllowed={
 			//SyntheticData sets the builder's TLS with its own LocalTls (it does not reference DataConnectionBase).
-			new[] { @"tools\SyntheticData\Infrastructure\Db.cs","builder.ConnectionString" },
-			//The TLS tests themselves set SslMode and SslCa explicitly (VerifyFull, another CA, and SslMode=None on purpose).
-			new[] { @"tests\DbConnectionSecurityTests\DevDbTlsServerTests.cs","connectionString" },
-			new[] { @"tests\DbConnectionSecurityTests\DevDbTlsServerTests.cs","builder.ConnectionString" },
-			new[] { @"tests\DbConnectionSecurityTests\DevDbTlsServerTests.cs","ROOT+\";SslMode=None\"" },
+			new[] { @"tools\SyntheticData\Infrastructure\Db.cs","MySqlConnection","builder.ConnectionString" },
+			//The TLS tests themselves set SslMode and SslCa explicitly (VerifyFull, another CA, and SslMode=None on purpose), and connect with the
+			//program's loopback string without a CA on purpose, to show that a server that requires TLS refuses it.
+			new[] { @"tests\DbConnectionSecurityTests\DevDbTlsServerTests.cs","MySqlConnection","connectionString" },
+			new[] { @"tests\DbConnectionSecurityTests\DevDbTlsServerTests.cs","MySqlConnection","builder.ConnectionString" },
+			new[] { @"tests\DbConnectionSecurityTests\DevDbTlsServerTests.cs","MySqlConnection","ROOT+\";SslMode=None\"" },
+			new[] { @"tests\DbConnectionSecurityTests\DevDbTlsServerTests.cs","NewMySqlConnection","BuildSimpleConnectionString(DatabaseType.MySql,SERVER,\"\",\"root\",\"\")" },
 			//A server over the network: refused by the rule before any connection.
-			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerTests.cs","PREFERENCE_HOST,\"opendental\",\"ro\"" },
-			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerTests.cs","TestHelpers.NETWORK_HOST,\"opendental\",\"opmsd\"" },
+			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerTests.cs","SetDb","PREFERENCE_HOST,\"opendental\",\"ro\"" },
+			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerTests.cs","SetDb","TestHelpers.NETWORK_HOST,\"opendental\",\"opmsd\"" },
+			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerTests.cs","NewMySqlConnection","\"Server=\"+PREFERENCE_HOST" },
+			new[] { @"tests\DbConnectionSecurityTests\RuleTests.cs","NewMySqlConnection","\"Server=\"+TestHelpers.NETWORK_ADDRESS" },
+			//Strings of a read-only server over the network (BuildPreferenceServerConnectionString), only created and never opened, and the main
+			//string for such a host, which the rule refuses.
+			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerTests.cs","NewMySqlConnection","connectionString" },
 			//CentralConnectionBase entries for a server over the network: refused by the rule before any connection, or only serialized.
-			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerTests.cs","ServerName=PREFERENCE_HOST" },
-			//The program's loopback connection without a CA, on purpose (the test returns before it when the server requires TLS), and the next
-			//test's connection with the CA, which it reads into sslCa from DevDbTls.GetSslCa(SERVER) first.
-			new[] { @"tests\DbConnectionSecurityTests\LoopbackDatabaseTests.cs","SERVER,_dbName,\"root\",\"\",DatabaseType.MySql" },
+			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerTests.cs","CentralConnectionBase","ServerName=PREFERENCE_HOST" },
+			//The rule's exemption for this computer: a loopback string without TLS, only created and never opened.
+			new[] { @"tests\DbConnectionSecurityTests\RuleTests.cs","NewMySqlConnection","\"Server=127.0.0.1;Port=3306;SslMode=None\"" },
+			//The program's loopback connection without a CA, on purpose (the test returns before it when the server requires TLS, after showing that
+			//the server refuses that string), and the next test's connection with the CA, which it reads into sslCa from DevDbTls.GetSslCa(SERVER).
+			new[] { @"tests\DbConnectionSecurityTests\LoopbackDatabaseTests.cs","DataConnection","SERVER,_dbName,\"root\",\"\",DatabaseType.MySql" },
+			new[] { @"tests\DbConnectionSecurityTests\LoopbackDatabaseTests.cs","NewMySqlConnection","connectionString" },
+			//The thread's own string (DataConnection.GetCurrentConnectionString) of the read-only server, which the test seeded with its CA
+			//preference from DevDbTls.GetSslCa(SERVER).
+			new[] { @"tests\DbConnectionSecurityTests\PreferenceServerDatabaseTests.cs","NewMySqlConnection","connectionString" },
+			//The grants run's own helper: GetConnectionString passes DevDbTls.GetSslCa(SERVER) to BuildSimpleConnectionString.
+			new[] { @"tests\DbGrantsTests\GrantServer.cs","NewMySqlConnection","GetConnectionString(database,user,password)" },
+			//xCrudGenerator's ConnectToDatabaseM: Open Dental's own server over the network, named in upstream code; the rule refuses it without
+			//this computer's office CA.
+			new[] { @"xCrudGenerator\CrudGenHelper.cs","SetDb","dbName,\"root\",\"\",\"\",\"\",DatabaseType.MySql" },
+			//DocumentationBuilder keeps the string it connects with in ConnStr (its window shows it), set from DevDbTls.Apply(...) just before.
+			new[] { @"DocumentationBuilder\DataConnection.cs","MySqlConnection","ConnStr" },
 		};
+
+		///<summary>The folders the scan reads: the tests, the dev tools, the legacy test projects and the developer tools of _arrayDevToolFolders.
+		///</summary>
+		private static readonly string[] _arrayScannedFolders={ "tests","tools","UnitTests","UnitTestsCore","NoHqTests","DocumentationBuilder","xCrudGenerator" };
 
 		///<summary>The calls the scan reads, each match ending at the call's opening parenthesis or the initializer's opening brace.</summary>
 		private static readonly Regex _regexConnectionCall=new Regex(@"new\s+MySqlConnection\s*\(|\.SetDbT?\s*\(|new\s+DataConnection\s*\("
-			+@"|new\s+CentralConnection(?:Base)?\s*(?:\(\s*\))?\s*\{|\bMakeABackup\s*\(|new\s+(?:[A-Za-z_][\w.]*\.)?OpenDentalServerMockIIS\s*\(");
+			+@"|new\s+CentralConnection(?:Base)?\s*(?:\(\s*\))?\s*\{|\bMakeABackup\s*\(|new\s+(?:[A-Za-z_][\w.]*\.)?OpenDentalServerMockIIS\s*\("
+			+@"|\bNewMySqlConnection(?:WithoutPooling)?\s*\(");
+
+		///<summary>For an argument that is a call of DataConnection.BuildSimpleConnectionString: its sslCa argument (sslCa: or the sixth), ""
+		///when it has none. Null for any other argument.</summary>
+		private static string GetBuilderSslCa(string argument) {
+			Match match=Regex.Match(argument,@"^\s*(?:(?:global::)?DataConnectionBase\.)?(?:DataConnection\.)?BuildSimpleConnectionString\s*\(");
+			if(!match.Success) {
+				return null;
+			}
+			List<string> listArguments=GetArguments(argument,GetCodeMask(argument),match.Index+match.Length-1);
+			string argumentNamed=listArguments.FirstOrDefault(x => Regex.IsMatch(x,@"^\s*sslCa\s*:"));
+			if(argumentNamed!=null) {
+				return Regex.Replace(argumentNamed,@"^\s*sslCa\s*:","").Trim();
+			}
+			if(listArguments.Count>=6 && !Regex.IsMatch(listArguments[5],@"^\s*[A-Za-z_]\w*\s*:(?!:)")) {
+				return listArguments[5].Trim();
+			}
+			return "";
+		}
+
+		///<summary>True when a call of the kind connects with the local test server's CA: new MySqlConnection(DevDbTls.Apply(...));
+		///NewMySqlConnection(DevDbTls.Apply(...)) or NewMySqlConnection(BuildSimpleConnectionString(...)) whose sslCa is DevDbTls.GetSslCa(...);
+		///the other kinds with DevDbTls.GetSslCa(...) among their arguments. Never for new CentralConnection { ServerName=... }, whose conversion
+		///to CentralConnectionBase drops SslCA.</summary>
+		private static bool IsThroughDevDbTls(string kind,List<string> listArguments) {
+			switch(kind) {
+				case "MySqlConnection":
+					return listArguments[0].Trim().StartsWith("DevDbTls.Apply(");
+				case "NewMySqlConnection":
+					string sslCa=GetBuilderSslCa(listArguments[0]);
+					return sslCa==null ? listArguments[0].Trim().StartsWith("DevDbTls.Apply(") : sslCa.StartsWith("DevDbTls.GetSslCa(");
+				case "CentralConnection":
+					return false;
+				default:
+					return string.Join(",",listArguments).Contains("DevDbTls.GetSslCa(");
+			}
+		}
 
 		///<summary>The kind of call the scan checks: a connection to a server named in the call, which needs the local test server's CA through
 		///DevDbTls. Null for a call of that name that names no server (it takes the thread's own connection), so the scan skips it.</summary>
@@ -384,9 +472,16 @@ namespace DbConnectionSecurityTests {
 				return listArguments.Count>=5 ? "DataConnection" : null;
 			}
 			if(Regex.IsMatch(matchValue,@"^new\s+CentralConnection")) {
-				//new CentralConnectionBase { ServerName=...,... } and new CentralConnection { ServerName=... }: ConnectionStoreBase.SetDb/SetDbT
-				//connect with its SslCa.
-				return listArguments.Any(x => Regex.IsMatch(x,@"^\s*ServerName\s*=")) ? "CentralConnection" : null;
+				//new CentralConnectionBase { ServerName=...,... }: ConnectionStoreBase.SetDb/SetDbT connect with its SslCa. new CentralConnection
+				//{ ServerName=... }: its conversion to CentralConnectionBase drops SslCA, so it never connects with the CA.
+				if(!listArguments.Any(x => Regex.IsMatch(x,@"^\s*ServerName\s*="))) {
+					return null;
+				}
+				return Regex.IsMatch(matchValue,@"^new\s+CentralConnectionBase") ? "CentralConnectionBase" : "CentralConnection";
+			}
+			if(Regex.IsMatch(matchValue,@"^NewMySqlConnection")) {
+				//DbConnectionSecurity.NewMySqlConnection(connectionString) and NewMySqlConnectionWithoutPooling; "" names no server.
+				return listArguments.Count==1 && listArguments[0].Trim()!="" && listArguments[0].Trim()!="\"\"" ? "NewMySqlConnection" : null;
 			}
 			if(matchValue.Contains("MakeABackup")) {
 				//MakeABackup(serverName:...) or a server as the first argument: the archive tab's backup, to another server too.
@@ -408,7 +503,7 @@ namespace DbConnectionSecurityTests {
 			string root=GetRepoRoot();
 			List<string> listMissing=new List<string>();
 			Dictionary<string,int> dictCounts=new Dictionary<string,int>();
-			foreach(string top in new[] { "tests","tools","UnitTests","UnitTestsCore","NoHqTests" }) {
+			foreach(string top in _arrayScannedFolders) {
 				foreach(string path in GetSourceFiles(Path.Combine(root,top))) {
 					string relative=path.Substring(root.Length+1);
 					string text=File.ReadAllText(path);
@@ -424,8 +519,7 @@ namespace DbConnectionSecurityTests {
 						}
 						string call=string.Join(",",listArguments);
 						dictCounts[kind]=(dictCounts.TryGetValue(kind,out int count) ? count : 0)+1;
-						bool isThrough=kind=="MySqlConnection" ? listArguments[0].Trim().StartsWith("DevDbTls.Apply(") : call.Contains("DevDbTls.GetSslCa(");
-						if(isThrough || _arrayAllowed.Any(x => x[0]==relative && call.Contains(x[1]))) {
+						if(IsThroughDevDbTls(kind,listArguments) || _arrayAllowed.Any(x => x[0]==relative && x[1]==kind && call.Contains(x[2]))) {
 							continue;
 						}
 						int line=text.Substring(0,match.Index).Count(x => x=='\n')+1;
@@ -436,13 +530,17 @@ namespace DbConnectionSecurityTests {
 			}
 			string counts=string.Join(", ",dictCounts.OrderBy(x => x.Key).Select(x => x.Key+" "+x.Value));
 			Assert.IsTrue(dictCounts.Values.Sum()>150,"The scan found the helpers' connections ("+counts+").");
-			foreach(string kind in new[] { "MySqlConnection","SetDb","DataConnection","CentralConnection","MakeABackup","OpenDentalServerMockIIS" }) {
+			foreach(string kind in new[] { "MySqlConnection","NewMySqlConnection","SetDb","DataConnection","CentralConnectionBase","MakeABackup",
+				"OpenDentalServerMockIIS" })
+			{
 				Assert.IsTrue(dictCounts.ContainsKey(kind),"The scan found calls of the kind "+kind+" ("+counts+").");
 			}
 			Assert.AreEqual("",string.Join("\r\n",listMissing),"Connect through DevDbTls (docs/port-notes/DB-TLS.md): "
-				+"new MySqlConnection(DevDbTls.Apply(...)); SetDb/SetDbT(...,DevDbTls.GetSslCa(server)); new DataConnection(server,...,"
-				+"DevDbTls.GetSslCa(server)); new CentralConnectionBase { ServerName=server,...,SslCa=DevDbTls.GetSslCa(server) }; "
-				+"MiscData.MakeABackup(serverName:server,...,sslCa:DevDbTls.GetSslCa(server)); new OpenDentalServerMockIIS(server:server,...,"
+				+"new MySqlConnection(DevDbTls.Apply(...)); DbConnectionSecurity.NewMySqlConnection(DevDbTls.Apply(...)) or NewMySqlConnection("
+				+"DataConnection.BuildSimpleConnectionString(...,sslCa:DevDbTls.GetSslCa(server))); SetDb/SetDbT(...,DevDbTls.GetSslCa(server)); "
+				+"new DataConnection(server,...,DevDbTls.GetSslCa(server)); new CentralConnectionBase { ServerName=server,...,"
+				+"SslCa=DevDbTls.GetSslCa(server) }, never new CentralConnection { ServerName=... }, whose conversion to CentralConnectionBase drops "
+				+"SslCA; MiscData.MakeABackup(serverName:server,...,sslCa:DevDbTls.GetSslCa(server)); new OpenDentalServerMockIIS(server:server,...,"
 				+"sslCa:DevDbTls.GetSslCa(server)).");
 		}
 
@@ -468,19 +566,41 @@ namespace DbConnectionSecurityTests {
 				"var i=new OpenPmsDentalBusiness.WebServices.OpenDentalServerMockIIS(TestServer,db,\"root\",\"\",low,pass,DatabaseType.MySql);",
 				"var j=new OpenPmsDentalBusiness.WebServices.OpenDentalServerMockIIS(user:u,password:p);",
 				"var k=new OpenDentalServerMockIIS();",
+				"var l=new MySqlConnection(DevDbTls.Apply(\"Server=127.0.0.1\"));",
+				"var m=DbConnectionSecurity.NewMySqlConnection(DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,\"\",\"root\",\"\",DevDbTls.GetSslCa(SERVER)));",
+				"var n=DbConnectionSecurity.NewMySqlConnection(DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,\"\",\"root\",\"\",sslCa:DevDbTls.GetSslCa(SERVER)));",
+				"var o=DbConnectionSecurity.NewMySqlConnection(DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,\"\",DevDbTls.GetSslCa(SERVER),\"\"));",
+				"var p=DbConnectionSecurity.NewMySqlConnection(DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,\"\",\"root\",\"\"));",
+				"var q=DbConnectionSecurity.NewMySqlConnectionWithoutPooling(connectionString);",
+				"var r=DbConnectionSecurity.NewMySqlConnection(DevDbTls.Apply(connectionString));",
+				"var s=DbConnectionSecurity.NewMySqlConnection(\"\");",
+				"var t=new CentralConnectionBase { ServerName=x,SslCa=DevDbTls.GetSslCa(x) };",
+				"var u=new CentralConnection { ServerName=x,SslCA=DevDbTls.GetSslCa(x) };",
+				"new DataConnection().SetDb(Server,db,User,Password,\"\",\"\",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));",
 			});
 			bool[] arrayIsCode=GetCodeMask(source);
+			//Each call's kind, with "+" when it connects with the CA (IsThroughDevDbTls).
 			List<string> listKinds=_regexConnectionCall.Matches(source).Cast<Match>()
-				.Select(x => GetConnectionKind(x.Value,GetArguments(source,arrayIsCode,x.Index+x.Length-1))??"-")
+				.Select(x => {
+					List<string> listArguments=GetArguments(source,arrayIsCode,x.Index+x.Length-1);
+					string kind=GetConnectionKind(x.Value,listArguments);
+					return kind==null ? "-" : kind+(IsThroughDevDbTls(kind,listArguments) ? "+" : "");
+				})
 				.ToList();
 			CollectionAssert.AreEqual(new[] {
 				"MySqlConnection","-",//new MySqlConnection(string), new MySqlConnection()
 				"-","SetDb",//new DataConnection(), .SetDb with a server
 				"-","-",//new DataConnection(), .SetDb with a connection string
 				"DataConnection","-","-",//new DataConnection(server,...), (DatabaseType), (database)
-				"CentralConnection","-","CentralConnection",//with ServerName=, without, CentralConnection with ServerName=
+				"CentralConnectionBase","-","CentralConnection",//with ServerName=, without, CentralConnection with ServerName=
 				"MakeABackup","MakeABackup","-","-",//serverName:, a server first, neither, none
 				"OpenDentalServerMockIIS","OpenDentalServerMockIIS","-","-",//server:, a server first (full name), user and password only, none
+				"MySqlConnection+",//through DevDbTls.Apply
+				"NewMySqlConnection+","NewMySqlConnection+",//the builder's sslCa (sixth, sslCa:) from DevDbTls.GetSslCa
+				"NewMySqlConnection","NewMySqlConnection",//GetSslCa in another argument (the user), no sslCa at all
+				"NewMySqlConnection","NewMySqlConnection+","-",//a string the scan cannot read, through DevDbTls.Apply, "" (no server)
+				"CentralConnectionBase+","CentralConnection",//with SslCa; CentralConnection never, whatever it sets
+				"-","SetDb+",//new DataConnection(), .SetDb with the CA
 				},listKinds,string.Join(", ",listKinds));
 		}
 
