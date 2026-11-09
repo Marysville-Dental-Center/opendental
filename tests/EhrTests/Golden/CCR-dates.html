@@ -1,0 +1,430 @@
+<html>
+  <head>
+    <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <style type="text/css"><!--
+*{
+	font-size: small;
+	font-family: Arial, sans-serif;
+}
+h1{
+	font-size: 150%;
+}
+strong.clinical {
+	color: #3300FF;
+}
+p {
+	margin-left: 20px
+}
+span.header{
+	font-weight: bold;
+    font-size: medium;
+    line-height: 16pt;
+	padding-top: 10px;
+}
+table.list {
+	padding-bottom: 5px;
+	border: thin solid #cccccc;
+	border-style-internal: thin solid #cccccc;
+	BORDER-COLLAPSE: collapse;
+	background: white;
+	background-image: none
+}
+table.list th {
+	text-align: left;
+	FONT-WEIGHT: bold;
+	COLOR: white;
+	background: #006699;
+	background-image: none
+}
+table.list td {
+	padding: 5px;
+	border: thin solid #cccccc;
+	vertical-align: top;
+}
+table.internal {
+	border: none;
+}
+table.internal td {
+	vertical-align: top;
+    padding: 1px;
+    border: none;
+}
+table.internal tr.even{
+	background: #CEFFFF;
+	background-image: none
+}
+--></style>
+    <title>Continuity of Care Record</title>
+  </head>
+  <body>
+    <table cellPadding="1" cellSpacing="1">
+      <tbody>
+        <tr>
+          <td>
+            <table cellPadding="1" cellSpacing="1">
+              <tbody>
+                <tr id="ccrheaderrow">
+                  <td>
+                    <h1>Continuity of Care Record
+			  <br></h1>
+                    <table bgColor="#ffffcc" cellPadding="1" cellSpacing="3" id="ccrheader" width="75%">
+                      <tbody>
+                        <tr>
+                          <td><strong>Date Created:</strong></td>
+                          <td>Fri Mar 14, 2025 at 09:26 AM UTC-05:00</td>
+                        </tr>
+                        <tr>
+                          <td><strong>From:</strong></td>
+                          <td>Test  Physician    (Physician)<br></td>
+                        </tr>
+                        <tr>
+                          <td><strong>To:</strong></td>
+                          <td>Example Test Clinic<br></td>
+                        </tr>
+                        <tr>
+                          <td><strong>Purpose:</strong></td>
+                          <td>Transfer of care (synthetic test record)</td>
+                        </tr>
+                      </tbody>
+                    </table><br></td>
+                </tr>
+                <tr id="demographicsrow">
+                  <td><span class="header">Patient Demographics</span><br><table class="list" id="demographics">
+                      <tbody>
+                        <tr>
+                          <th>Name</th>
+                          <th>Date of Birth</th>
+                          <th>Gender</th>
+                          <th>Identification Numbers</th>
+                          <th>Address / Phone</th>
+                        </tr>
+                        <tr>
+                          <td>Zoë  Ångström-Núñez   <br></td>
+                          <td>
+                            <table class="internal">
+                              <tbody>
+                                <tr>
+                                  <td>Dec 31, 1980</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </td>
+                          <td>Female</td>
+                          <td>
+                            <table class="internal">
+                              <tbody></tbody>
+                            </table>
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </td>
+                </tr><span id="ccrcontent"><tr id="problemsrow">
+                    <td><span class="header">Problems</span><br><table class="list" id="problems">
+                        <tbody>
+                          <tr>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Code</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Source</th>
+                          </tr>
+                          <tr>
+                            <td>Problem</td>
+                            <td>
+                              <table class="internal">
+                                <tbody>
+                                  <tr>
+                                    <td>Onset:</td>
+                                    <td>Jun 01, 2007</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                            <td>TEST0101 (TEST)
+		</td>
+                            <td><strong class="clinical">Test problem with a date only</strong></td>
+                            <td>Active</td>
+                            <td><a href="#AA0002">Test  Physician   </a></td>
+                          </tr>
+                          <tr>
+                            <td>Problem</td>
+                            <td>
+                              <table class="internal">
+                                <tbody>
+                                  <tr>
+                                    <td>Onset:</td>
+                                    <td>Nov 23, 2008</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                            <td></td>
+                            <td><strong class="clinical">Test problem with a time and no time zone</strong></td>
+                            <td>Resolved</td>
+                            <td><a href="#AA0002">Test  Physician   </a></td>
+                          </tr>
+                          <tr>
+                            <td>Problem</td>
+                            <td>
+                              <table class="internal">
+                                <tbody>
+                                  <tr>
+                                    <td>Onset:</td>
+                                    <td>Feb 28, 2009</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                            <td></td>
+                            <td><strong class="clinical">Test problem in UTC</strong></td>
+                            <td>Active</td>
+                            <td><a href="#AA0002">Test  Physician   </a></td>
+                          </tr>
+                          <tr>
+                            <td>Problem</td>
+                            <td>
+                              <table class="internal">
+                                <tbody>
+                                  <tr>
+                                    <td>Onset:</td>
+                                    <td>Aug 01, 2010</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                            <td></td>
+                            <td><strong class="clinical">Test problem with a year and month</strong></td>
+                            <td>Active</td>
+                            <td><a href="#AA0002">Test  Physician   </a></td>
+                          </tr>
+                          <tr>
+                            <td>Problem</td>
+                            <td>
+                              <table class="internal">
+                                <tbody>
+                                  <tr>
+                                    <td>Onset:</td>
+                                    <td>Jan 01, 2011</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                            <td></td>
+                            <td><strong class="clinical">Test problem with a year</strong></td>
+                            <td>Active</td>
+                            <td><a href="#AA0002">Test  Physician   </a></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr id="socialhistoryrow">
+                    <td><span class="header">Social History</span><br><table class="list" id="socialhistory">
+                        <tbody>
+                          <tr>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Code</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Source</th>
+                          </tr>
+                          <tr>
+                            <td>Occupation</td>
+                            <td>
+                              <table class="internal">
+                                <tbody>
+                                  <tr>
+                                    <td>Apr 05, 2012</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                            <td></td>
+                            <td><strong class="clinical"><span>Test social history text &amp; more</span></strong></td>
+                            <td>Active</td>
+                            <td><a href="#AA0002">Test  Physician   </a></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr id="resultsreportrow">
+                    <td><span class="header">Results (Report)</span><br><table class="list" id="resultsreport">
+                        <tbody>
+                          <tr>
+                            <th>Test</th>
+                            <th>Date</th>
+                            <th>Result</th>
+                            <th>Source</th>
+                          </tr>
+                          <tr>
+                            <td>Test report</td>
+                            <td>
+                              <table class="internal">
+                                <tbody>
+                                  <tr>
+                                    <td>Jul 19, 2013 : 10:15 AM </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                            <td>
+                              <table class="internal">
+                                <tbody>
+                                  <tr class="odd">
+                                    <td width="20%"><strong class="clinical">Test finding one</strong></td>
+                                    <td width="65%">Test result text one</td>
+                                    <td width="15%">
+                                    </td>
+                                  </tr>
+                                  <tr class="even">
+                                    <td width="20%"><strong class="clinical">Test finding two</strong></td>
+                                    <td width="65%"><span>Test result text two</span></td>
+                                    <td width="15%">
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                            <td><a href="#AA0002">Test  Physician   </a></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr id="planofcarerow">
+                    <td><span class="header">Plan Of Care Recommendations</span><br><table class="list" id="planofcare">
+                        <tbody>
+                          <tr>
+                            <th>Description</th>
+                            <th>Recommendation</th>
+                            <th>Goal</th>
+                            <th>Status</th>
+                            <th>Source</th>
+                          </tr>
+                          <tr>
+                            <td>Test plan</td>
+                            <td>Test recommendation</td>
+                            <td>Test goal</td>
+                            <td>Active</td>
+                            <td><a href="#AA0002">Test  Physician   </a></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr></span><tr>
+                  <td></td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td></td>
+        </tr>
+      </tbody>
+    </table><br><span id="actors"><span class="header">Additional Information About People &amp; Organizations</span><span id="people"><h4>People</h4>
+        <table class="list" id="actorstable">
+          <tbody>
+            <tr>
+              <th>Name</th>
+              <th>Specialty</th>
+              <th>Relation</th>
+              <th>Identification Numbers</th>
+              <th>Phone</th>
+              <th>Address/ E-mail</th>
+            </tr>
+            <tr>
+              <td><a name="AA0001">Zoë  Ångström-Núñez   </a></td>
+              <td>
+              </td>
+              <td>
+              </td>
+              <td>
+                <table class="internal">
+                  <tbody></tbody>
+                </table>
+              </td>
+              <td>
+                <table class="internal">
+                  <tbody></tbody>
+                </table>
+              </td>
+              <td></td>
+            </tr>
+            <tr>
+              <td><a name="AA0002">Test  Physician   </a></td>
+              <td>
+              </td>
+              <td>
+              </td>
+              <td>
+                <table class="internal">
+                  <tbody></tbody>
+                </table>
+              </td>
+              <td>
+                <table class="internal">
+                  <tbody></tbody>
+                </table>
+              </td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table></span><span id="organizations"><h4>Organizations</h4>
+        <table class="list" id="organizationstable">
+          <tbody>
+            <tr>
+              <th>Name</th>
+              <th>Specialty</th>
+              <th>Relation</th>
+              <th>Identification Numbers</th>
+              <th>Phone</th>
+              <th>Address/ E-mail</th>
+            </tr>
+            <tr>
+              <td><a name="AA0003">Example Test Clinic</a></td>
+              <td>
+              </td>
+              <td>
+              </td>
+              <td>
+                <table class="internal">
+                  <tbody></tbody>
+                </table>
+              </td>
+              <td>
+                <table class="internal">
+                  <tbody></tbody>
+                </table>
+              </td>
+              <td></td>
+            </tr>
+          </tbody>
+        </table></span></span><br><hr>
+    <table cellspacing="3">
+      <tbody>
+        <tr>
+          <th>
+            <font color="#CCCCCC" size="2">
+	The stylesheet used to generate this view of the CCR is a modified version, derived from the one provided by the American Academy of Family Physicians and the CCR Acceleration Task Force
+</font>
+          </th>
+        </tr>
+        <tr>
+          <td></td>
+        </tr>
+        <tr>
+          <td>
+            <font color="#CCCCCC" size="3"><strong>Powered by the <a href="http://www.astm.org/cgi-bin/SoftCart.exe/DATABASE.CART/REDLINE_PAGES/E2369.htm?E+mystore" style="color:#CCCCCC;">ASTM E2369-05 Specification for the Continuity of Care Record (CCR)</a></strong></font>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

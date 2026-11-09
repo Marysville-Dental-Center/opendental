@@ -233,6 +233,38 @@ Copyright: Pearl, Inc.
 License:   Pearl's notice on the use of its API, kept from Open Dental's license list (its text follows)
 Source:    not applicable
 
+--- Component: HL7 CDA-core-xsl
+Files:     CDA.xsl, cda_l10n.xml, cda_narrativeblock.xml, embedded in OpenPmsDentalBusiness.dll; the program runs
+           them only in its own child process to show CCDs, and writes them beside exported CCDs (CDA.xsl as
+           ccd.xsl) with the license text as stylesheets-license.txt
+Version:   4.1.0-beta.2 (tag v4.1.0-beta.2, commit bfb832026c19055faa182a7a8a4e5a2d6bd8796b), unmodified. SHA-256:
+           CDA.xsl f1c32f11186cf69d64f874cc4c94eb51ca8f696b54b4b6833fb54c6afdd7acc1,
+           cda_l10n.xml d8677885ef78afc0842484ecc70a65f8f17eea286e990bd39fa948cac7f1a884,
+           cda_narrativeblock.xml 608b518182a1418e8865e5e8437083bad034762cf078750ec27c10d17a2285a9
+Copyright: Health Level Seven International (HL7) and the contributors named in the stylesheet's header
+License:   Apache License 2.0, as the project's README and the stylesheet's header state (the release has no
+           LICENSE or NOTICE file)
+Source:    https://github.com/HL7/CDA-core-xsl
+Note:      Apache License 2.0 is compatible with GNU GPL version 3 but not with version 2; the program as distributed is
+           conveyed under version 3 (see the top of this file). Owner decision E-11 (docs/specs/ehr-rebuild-plan.md).
+
+--- Component: AAFP CCR stylesheet
+Files:     ccr.xsl, embedded in OpenPmsDentalBusiness.dll; the program runs it only in its own child process to
+           show received CCRs
+Version:   2.0 (2007-06-01), the "CCR XSL V2.0" file release, MODIFIED by this project (SHA-256 of the released
+           file 4ab70db9f8684f6b738f1e9cfa17f0165622f40c48a9f46105cd31a862cca4c0, of the copy shipped
+           f9ce1d989571301902bfb90f5a1dcd13dbcc4a328ee4d878114fea5a036ede84). The changes, also listed in the
+           file: dates without a time zone are read as such (the released copy showed a date as January 1 of
+           its year and a date and time as nothing); a date it cannot read is shown as it came; the time zone
+           letter writes nothing without a time zone; the five disable-output-escaping attributes are removed,
+           so a received CCR's text is never markup; the footer says the stylesheet is a derived work
+Copyright: Copyright 2007 American Academy of Family Physicians
+License:   Apache License 2.0, as the file's header states
+Source:    https://sourceforge.net/projects/ccr-resources/files/ccr-xslt-html/CCR%20XSL%20V2.0/; the modified
+           copy is OpenPmsDentalBusiness/Resources/Ehr/ccr.xsl in this repository
+Note:      Apache License 2.0 is compatible with GNU GPL version 3 but not with version 2; the program as distributed is
+           conveyed under version 3 (see the top of this file). Owner decision E-11 (docs/specs/ehr-rebuild-plan.md).
+
 --- License: MIT License
 Copyright (c) <year> <copyright holders named above>
 

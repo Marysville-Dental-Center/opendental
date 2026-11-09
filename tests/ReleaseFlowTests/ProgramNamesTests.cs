@@ -238,6 +238,8 @@ namespace ReleaseFlowTests {
 				[@"OpenPmsDentalBusiness\Remoting\DataTransferObject.cs"]=new[] { "\"OpenDentBusiness.\"","\"OpenPmsDentalBusiness.\"" },
 				[@"OpenPmsDentalBusiness\Db Multi Table\Security.cs"]=new[] { "\"OpenDentBusiness.Security.LogInWeb\"","\"OpenPmsDentalBusiness.Security.LogInWeb\"" },
 				[@"WpfControlsOD\Bridges\DexisIntegrator.cs"]=new[] { "\"OpenDental.FormOpenDental\"","\"OpenPmsDental.FormOpenDental\"" },
+				//The stylesheet child is the program's own exe, started by ProgramNames.ExeFileName (EHR-3).
+				[@"OpenPmsDentalBusiness\Data Interface\EhrSummaryCcds.cs"]=new[] { "\"OpenPmsDental.exe\"","\"OpenDental.exe\"" },
 			};
 			List<string> listProblems=new List<string>();
 			foreach(KeyValuePair<string,string[]> pair in dictForbidden) {
