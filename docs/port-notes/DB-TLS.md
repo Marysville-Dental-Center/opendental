@@ -422,6 +422,12 @@ passed, the same 10 inconclusive), `MiddleTierMockTests` 125, `EhrTests` 88, `Db
 passed, the 3 skipped as before) for `TestBase` and `ReportsTests`. `ForkMigrationTests` again left out under the same rule (its helper is
 not touched by the fixes).
 
+After the fix round (section 9, `main` merged in; full lane build without error), Targeted runs, all passed: `DbConnectionSecurityTests`
+150 (140 passed, the same 10 inconclusive until the CA exists), `MiddleTierMockTests` 125, `SyntheticData.Tests` 58 (57 passed),
+`ReleaseFlowTests` 120 (119 passed), `LibraryBindingTests` 12, `EhrTests` 88, `NoHqTests` 58, and for TC-2's `ChartTestDb`
+`ToothChartImageTests` 119 (116 passed, its three recording and gallery tools skipped as they are on `main`). `ForkMigrationTests` and
+`InitSqlTests` left out under the rule for every package.
+
 New tests:
 
 - `tests/DbConnectionSecurityTests/DevDbTlsTests.cs` (no server): the connection-string choices of section 3, the program's loopback string
