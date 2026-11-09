@@ -12,9 +12,10 @@ namespace SparksToothChart {
 		Simple2D,
 		///<summary>2. OpenGL through Tao.</summary>
 		OpenGL,
-		///<summary>3. The WPF 3D chart (namespace SparksToothChart.Wpf3D): on screen a live WPF view drawn by the graphics card (O-19 (b), TC-3),
-		///or with ToothChartWrapper.WpfDrawInSoftware the software render of the scene on the chart's own render thread shown by a plain WinForms
-		///control; every image (GetBitmap, prints, sheets, the dashboard) is that software render.</summary>
+		///<summary>3. The WPF 3D chart (namespace SparksToothChart.Wpf3D): on screen a live WPF view (O-19 (b), TC-3), drawn by WPF's render thread
+		///as every WPF window of the process is (in OpenPmsDental.exe in software at 1x, because the program sets RenderOptions.ProcessRenderMode to
+		///SoftwareOnly, O-34), or with ToothChartWrapper.WpfDrawInSoftware the renderer's supersampled software image of the scene, made on the chart's
+		///own render thread and shown by a plain WinForms control; every image (GetBitmap, prints, sheets, the dashboard) is that renderer's image.</summary>
 		Wpf3D,
 	}
 

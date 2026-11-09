@@ -800,9 +800,9 @@ namespace SparksToothChart {
 		}
 
 		#region Wpf3D live view and the software switch
-		///<summary>The value of computerpref.DirectXFormat that turns the WPF chart's on-screen view to software on a computer (O-19 (b)): empty, or a
-		///DirectX device format, means the live hardware view. TC-8 stores and reads it; an older build finds no ';' in it and keeps its default DirectX
-		///format (ToothChartDirectX.DirectXDeviceFormat).</summary>
+		///<summary>The value of computerpref.DirectXFormat that turns the WPF chart's on-screen view to the software render on a computer (O-19 (b)):
+		///empty, or a DirectX device format, means the live view. TC-8 stores and reads it; an older build finds no ';' in it and keeps its default
+		///DirectX format (ToothChartDirectX.DirectXDeviceFormat).</summary>
 		public const string DirectXFormatWpfSoftware="WpfSoftware";
 
 		///<summary>True when a stored computerpref.DirectXFormat value is DirectXFormatWpfSoftware: the computer draws the WPF chart in software.</summary>
@@ -811,10 +811,13 @@ namespace SparksToothChart {
 		}
 
 		///<summary>The per-computer "Draw in software" switch of the WPF chart (O-19 (b); TC-8 sets it from computerpref.DirectXFormat and shows it in
-		///Setup > Graphics). Off (the default): a shown wrapper on an STA thread shows the live view, drawn by the graphics card. On: it shows the
-		///software render of the scene, the same image as GetBitmap's, which no graphics driver can change (for a PC whose driver draws no WPF 3D,
-		///dotnet/wpf#7076). Images (GetBitmap, prints, sheets, the dashboard) are the software render either way. Changing it on a shown wrapper
-		///switches the view at once.</summary>
+		///Setup > Graphics). Off (the default): a shown wrapper on an STA thread shows the live view, which WPF's render thread draws as it draws every
+		///WPF window of the process. On: it shows the renderer's image of the scene, the same image as GetBitmap's (the 3D layer supersampled and
+		///smoothed), which no graphics driver can change (for a PC whose driver draws no WPF 3D, dotnet/wpf#7076). In OpenPmsDental.exe both are
+		///software: the program sets RenderOptions.ProcessRenderMode to SoftwareOnly for the whole process (ProgramEntry.Main, from upstream), so the
+		///live view is WPF's software rasterizer at 1x with no edge smoothing, not the graphics card, and the switch chooses between that and the
+		///smoothed image (owner question O-34). Images (GetBitmap, prints, sheets, the dashboard) are the renderer's either way. Changing it on a
+		///shown wrapper switches the view at once.</summary>
 		[Browsable(false)]
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
 		public bool WpfDrawInSoftware {
@@ -936,7 +939,7 @@ namespace SparksToothChart {
 			_isWpfScreenStale=false;
 			ToothScene toothScene=BuildWpfScene();
 			if(toothChartWpfView!=null) {
-				toothChartWpfView.ShowScene(toothScene);//the live view, drawn by the graphics card (O-19 (b))
+				toothChartWpfView.ShowScene(toothScene);//the live view (O-19 (b)); WPF's render thread draws it, in software in the program (O-34)
 				return;
 			}
 			toothChartImageHost.ShowScene(toothScene);
