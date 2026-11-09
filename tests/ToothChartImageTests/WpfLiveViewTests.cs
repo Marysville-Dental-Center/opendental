@@ -679,6 +679,9 @@ namespace ToothChartImageTests {
 			//composites it through the transforms above it, so at 150% the cache of a 615-pixel chart has 615 pixels and lands 1:1 on the device
 			//pixels, not 410 resampled or 922 reduced. Drawn at 144 dpi (RenderTargetBitmap, WPF's software rasterizer, as the program draws the view)
 			//with the view's own 1/1.5 transform, the cached view equals the uncached one exactly, and a cache rasterized at 1.5x does not.
+			//Here the window stays 615 DIPs wide (only its visual DPI is forced), so the content is smaller than its host, as in a resize before the
+			//rebuild: it must stay at 0,0. ElementHost sets its child's alignment to Stretch, which centred it at a fractional device offset where the cached
+			//image was resampled (24,496 pixels differed); the view sets top-left again after it hosts the content.
 			RequireDesktop();
 			StaRunner.Run(() => {
 				Size size=WpfTimings.Size150;
@@ -697,6 +700,8 @@ namespace ToothChartImageTests {
 					System.Windows.Media.VisualTreeHelper.SetRootDpi(visualRoot,new System.Windows.DpiScale(1.5,1.5));
 					Assert.AreEqual(1.5,toothChartWpfView.DpiScaleShown,1e-9);
 					((System.Windows.UIElement)visualRoot).UpdateLayout();
+					Assert.AreEqual(new System.Windows.Point(0,0),grid.TransformToAncestor(visualRoot).Transform(new System.Windows.Point(0,0)),
+						"The content stays at the host's top-left when the host is larger than it.");
 					System.Windows.Media.BitmapCache bitmapCache=(System.Windows.Media.BitmapCache)border3D.CacheMode;
 					Assert.AreEqual(1.0,bitmapCache.RenderAtScale);
 					byte[] arrayCached=RenderAt(grid,size,144);

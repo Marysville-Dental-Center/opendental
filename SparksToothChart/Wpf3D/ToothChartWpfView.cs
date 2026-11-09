@@ -115,6 +115,10 @@ namespace SparksToothChart.Wpf3D {
 			_gridRoot.MouseMove+=GridRoot_MouseMove;
 			_gridRoot.MouseUp+=GridRoot_MouseUp;
 			Child=_gridRoot;
+			//ElementHost's Child setter sets the content's alignment to Stretch, which centres the content in a host larger than it (a resize before its
+			//rebuild): at a fractional device offset, where the 3D layer's cached image is resampled. Top-left keeps it on whole pixels from 0,0.
+			_gridRoot.HorizontalAlignment=HorizontalAlignment.Left;
+			_gridRoot.VerticalAlignment=VerticalAlignment.Top;
 			Is3DLayerCached=true;
 			_toothChartMouse.ActionChartChanged=() => ActionChartChanged?.Invoke();
 			_toothChartMouse.ActionPenStrokeChanged=() => _livePenLayer.InvalidateVisual();//the stroke alone: the 2D layer and the 3D layer stay
@@ -383,6 +387,21 @@ namespace SparksToothChart.Wpf3D {
 				return cursorFound;
 			}
 			return null;
+		}
+
+		///<summary>Detaches the WPF content (Child=null) before the host goes: ElementHost.Dispose leaves it attached to the host's adapter, with its cached
+		///3D layer and models. Here, so it happens whoever disposes the view: the wrapper's release, or WinForms disposing the wrapper's controls when the
+		///wrapper is disposed (before the wrapper's Disposed event).</summary>
+		protected override void Dispose(bool disposing) {
+			if(disposing && !IsDisposed) {
+				try {
+					Child=null;
+				}
+				catch(Exception ex) {
+					ex.ToString();//the host goes either way
+				}
+			}
+			base.Dispose(disposing);
 		}
 
 		///<summary>The content as WPF draws it in software, at the scene's pixel size (the 3D layer at 1x with no edge smoothing, then the 2D layer and
