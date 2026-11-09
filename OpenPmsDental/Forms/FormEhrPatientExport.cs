@@ -167,6 +167,8 @@ namespace OpenPmsDental {
 			string fileName;
 			int numSkipped=0;  //Number of patients skipped. Set to -1 if only one patient was selected and had CcdValidationErrors.
 			string patientsSkipped="";  //Names of the patients that were skipped, so we can tell the user which ones didn't export correctly.
+			List<string> listFileNamesWritten=new List<string>();//Each written <name>.xml gets a <name>.html below (E-13).
+			List<string> listCcdsWritten=new List<string>();
 			for(int i=0;i<gridMain.SelectedIndices.Length;i++) {
 				patCur=Patients.GetPat((long)gridMain.ListGridRows[gridMain.SelectedIndices[i]].Tag);//Cannot use GetLim because more information is needed in the CCD message generation below.
 				strCcdValidationErrors=EhrCCD.ValidatePatient(patCur);
@@ -220,13 +222,18 @@ namespace OpenPmsDental {
 					this.Cursor=Cursors.Default;
 					return;
 				}
+				listFileNamesWritten.Add(fileName);
+				listCcdsWritten.Add(ccd);
 			}
 			if(numSkipped==-1) {	//Will be -1 if only one patient was selected, and it did not export correctly.
 				this.Cursor=Cursors.Default;
 				return;//Don't display "Exported" to the user because the CCD was not exported.
 			}
+			//One <name>.html beside each <name>.xml, made by one stylesheet child for the whole export, and one set of stylesheet files (ccd.xsl and its
+			//two companions) with the licence text.
+			string pagesNotWritten="";
 			try {
-				File.WriteAllText(ODFileUtils.CombinePaths(folderPath,"CCD.xsl"),EhrSummaryCcds.GetEhrResource("CCD"));
+				pagesNotWritten=FormEhrSummaryOfCare.WriteCcdPages(folderPath,listFileNamesWritten,listCcdsWritten);
 			}
 			catch {
 				MessageBox.Show("Error, Could not create stylesheet file");
@@ -234,6 +241,11 @@ namespace OpenPmsDental {
 			string strMsg=Lan.g(this,"Exported");
 			if(numSkipped>0) {
 				strMsg+=". "+Lan.g(this,"Patients skipped due to missing information")+": "+numSkipped+patientsSkipped;
+			}
+			if(pagesNotWritten!="") {
+				strMsg+="\r\n"+Lan.g(this,"Pages not written, because the program's stylesheet could not show the document")+":\r\n"+pagesNotWritten;
+			}
+			if(numSkipped>0 || pagesNotWritten!="") {
 				MsgBoxCopyPaste msgCP=new MsgBoxCopyPaste(strMsg);
 				msgCP.Show();
 			}

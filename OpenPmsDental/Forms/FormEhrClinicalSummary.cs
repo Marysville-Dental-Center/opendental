@@ -71,15 +71,14 @@ namespace OpenPmsDental {
 					return;
 				}
 			}
-			File.WriteAllText(Path.Combine(dlg.SelectedPath,"ccd.xml"),ccd);
-			File.WriteAllText(Path.Combine(dlg.SelectedPath,"ccd.xsl"),EhrSummaryCcds.GetEhrResource("CCD"));
+			string reasonPage=FormEhrSummaryOfCare.WriteCcdFiles(dlg.SelectedPath,ccd);//ccd.xml, the stylesheet files, the licence text and ccd.html.
 			EhrMeasureEvent newMeasureEvent = new EhrMeasureEvent();
 			newMeasureEvent.DateTEvent = DateTime.Now;
 			newMeasureEvent.EventType = EhrMeasureEventType.ClinicalSummaryProvidedToPt;
 			newMeasureEvent.PatNum = PatCur.PatNum;
 			EhrMeasureEvents.Insert(newMeasureEvent);
 			FillGridEHRMeasureEvents();
-			MessageBox.Show("Exported");	
+			MessageBox.Show("Exported"+FormEhrSummaryOfCare.GetPageNotWrittenMessage(reasonPage));
 		}
 
 		private void butSendToPortal_Click(object sender,EventArgs e) {
@@ -119,12 +118,15 @@ namespace OpenPmsDental {
 				attachCcd.ActualFileName=DateTime.Now.ToString("yyyyMMdd")+"_"+DateTime.Now.TimeOfDay.Ticks.ToString()+rnd.Next(1000).ToString()+".xml";
 				listAttachments.Add(attachCcd);
 				FileAtoZ.WriteAllText(FileAtoZ.CombinePaths(attachPath,attachCcd.ActualFileName),FormEEC.CCD,"Uploading Attachment for Clinical Summary...");			
-				EmailAttach attachSs=new EmailAttach();//Style sheet attachment.
-				attachSs.DisplayedFileName="ccd.xsl";
-				attachSs.ActualFileName=attachCcd.ActualFileName.Substring(0,attachCcd.ActualFileName.Length-4)+".xsl";//Same base name as the CCD.  The base names must match or the file will not display properly in internet browsers.
-				listAttachments.Add(attachSs);
-				FileAtoZ.WriteAllText(FileAtoZ.CombinePaths(attachPath,attachSs.ActualFileName),EhrSummaryCcds.GetEhrResource("CCD"),
-					"Uploading Attachment for Clinical Summary...");
+				//The style sheet attachments: ccd.xsl and its two companions, under the names the patient downloads them with (DisplayedFileName).
+				string baseName=attachCcd.ActualFileName.Substring(0,attachCcd.ActualFileName.Length-4);//Same base name as the CCD in the attachments folder.
+				foreach(KeyValuePair<string,string> pairFile in EhrSummaryCcds.GetCcdStylesheetFiles(doIncludeLicense:false)) {
+					EmailAttach attachSs=new EmailAttach();
+					attachSs.DisplayedFileName=pairFile.Key;
+					attachSs.ActualFileName=baseName+"_"+pairFile.Key;
+					listAttachments.Add(attachSs);
+					FileAtoZ.WriteAllText(FileAtoZ.CombinePaths(attachPath,attachSs.ActualFileName),pairFile.Value,"Uploading Attachment for Clinical Summary...");
+				}
 				//Create and save the webmail message containing the attachments.
 				EmailMessage msgWebMail=new EmailMessage();				
 				msgWebMail.FromAddress=prov.GetFormalName();
