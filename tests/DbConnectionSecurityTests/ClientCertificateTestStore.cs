@@ -6,11 +6,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Text;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DbConnectionSecurityTests {
 	///<summary>The kinds of private key a client certificate's .pfx can give: a CAPI key container (a .pfx that names no CNG provider, as
@@ -21,20 +23,33 @@ namespace DbConnectionSecurityTests {
 		CngEcdsa,
 	}
 
-	///<summary>A store of the current user with a name of its own, used for as long as the instance lives. Dispose deletes every key of the
-	///certificates it added that is still there, then the store.</summary>
+	///<summary>A store of the current user with a name of its own, used for as long as the instance lives. Dispose deletes every key it
+	///recorded (the keys of the certificates it added, and those TrackKeys was given) that is still there, then the store. Dispose never
+	///throws, so that it never hides a test's own failure: what it could not delete is kept for AssertCleanedUp, which the tests call after
+	///each test.</summary>
 	public sealed class ClientCertificateTestStore:IDisposable {
 		[DllImport("crypt32.dll",SetLastError=true,CharSet=CharSet.Unicode)]
 		private static extern bool CertUnregisterSystemStore(string systemStore,uint flags);
 		private const uint CERT_SYSTEM_STORE_CURRENT_USER=0x00010000;
 		private const uint CERT_STORE_DELETE_FLAG=0x00000010;
+		///<summary>What CertUnregisterSystemStore gives for a store that does not exist (one no certificate was ever added to).</summary>
+		private const int ERROR_FILE_NOT_FOUND=2;
 		///<summary>PROV_RSA_AES, the type of the "Microsoft Enhanced RSA and AES Cryptographic Provider".</summary>
 		private const int PROV_RSA_AES=24;
 		private const string PROVIDER_CAPI="Microsoft Enhanced RSA and AES Cryptographic Provider";
+		///<summary>What the clean-ups could not do (a key or a store left behind), until AssertCleanedUp reports it.</summary>
+		private static readonly List<string> _listCleanUpProblems=new List<string>();
 		public readonly string Name="OpenPmsDbSecTest_"+Guid.NewGuid().ToString("N");
 		///<summary>The .pfx files' password, made at run time and kept in memory only.</summary>
 		private readonly string _password=Guid.NewGuid().ToString("N");
 		private readonly List<TestKey> _listKeys=new List<TestKey>();
+
+		///<summary>The password of the .pfx files this store writes (WritePfxWithCa), for the import under test.</summary>
+		public string Password {
+			get {
+				return _password;
+			}
+		}
 
 		///<summary>Makes a self-signed client certificate with a throwaway key of this kind, writes it as a .pfx in memory and imports that as the
 		///connection settings tool does (PersistKeySet, never Exportable), but into the current user's key set (UserKeySet) and this store.
@@ -51,14 +66,83 @@ namespace DbConnectionSecurityTests {
 
 		private TestKey AddPfx(byte[] arrayPfx) {
 			using(X509Certificate2 x509Certificate2=new X509Certificate2(arrayPfx,_password,X509KeyStorageFlags.UserKeySet|X509KeyStorageFlags.PersistKeySet)) {
-				TestKey testKey=TestKey.Of(x509Certificate2);
-				_listKeys.Add(testKey);
+				//Recorded before it is inspected (TestKey.Track): a throw while the test finds the key cannot leak it.
+				TestKey testKey=TestKey.Track(x509Certificate2,_listKeys);
 				using(X509Store x509Store=new X509Store(Name,StoreLocation.CurrentUser)) {
 					x509Store.Open(OpenFlags.ReadWrite);//Creates the store.
 					x509Store.Add(x509Certificate2);
 				}
 				return testKey;
 			}
+		}
+
+		///<summary>Records the key of each certificate with one, as an import with PersistKeySet has just stored them (the code under test's
+		///ActionAfterKeysStoredForTests), so that Dispose deletes each one still there, whatever the code under test did. By thumbprint.</summary>
+		public Dictionary<string,TestKey> TrackKeys(X509Certificate2Collection x509Certificate2Collection) {
+			Dictionary<string,TestKey> dictKeys=new Dictionary<string,TestKey>();
+			foreach(X509Certificate2 x509Certificate2 in x509Certificate2Collection) {
+				if(x509Certificate2.HasPrivateKey) {
+					dictKeys[x509Certificate2.Thumbprint]=TestKey.Track(x509Certificate2,_listKeys);
+				}
+			}
+			return dictKeys;
+		}
+
+		///<summary>Adds to the store a new self-signed certificate made with this key, opened where it is, so that a certificate of the store uses
+		///the same key container (as a key that was there before an import would be). Its key is the one testKey records, which Dispose deletes.
+		///Returns its thumbprint.</summary>
+		public string AddCertificateUsingKeyOf(TestKey testKey) {
+			string subject="CN=synthetic-dbsec-samekey-"+Guid.NewGuid().ToString("N");
+			using(AsymmetricAlgorithm asymmetricAlgorithm=testKey.OpenKey())
+			using(X509Certificate2 x509Certificate2=CreateSelfSigned(NewRequest(subject,asymmetricAlgorithm,isCa:false),DateTimeOffset.Now.AddDays(30)))
+			{
+				using(X509Store x509Store=new X509Store(Name,StoreLocation.CurrentUser)) {
+					x509Store.Open(OpenFlags.ReadWrite);
+					x509Store.Add(x509Certificate2);
+				}
+				return x509Certificate2.Thumbprint;
+			}
+		}
+
+		///<summary>Writes into the folder a .pfx with a client certificate and the CA certificate that issued it, each with a throwaway key of this
+		///kind (the CA's key in the file, as some providers' files have it), the client certificate first. The keys are made as AddCertificate
+		///makes one (a scratch CAPI container, deleted again, or an ephemeral CNG key), so the file names their provider; nothing is stored
+		///until the file is imported. Returns the path.</summary>
+		public string WritePfxWithCa(string folder,TestKeyKind testKeyKind,out string thumbprintClient,out string thumbprintCa) {
+			string id=Guid.NewGuid().ToString("N");
+			string path=Path.Combine(folder,"client-with-ca-"+testKeyKind+".pfx");
+			AsymmetricAlgorithm asymmetricAlgorithmCa=null;
+			AsymmetricAlgorithm asymmetricAlgorithmClient=null;
+			try {
+				asymmetricAlgorithmCa=NewScratchKey(testKeyKind);
+				asymmetricAlgorithmClient=NewScratchKey(testKeyKind);
+				CertificateRequest certificateRequestCa=NewRequest("CN=synthetic-dbsec-ca-"+id,asymmetricAlgorithmCa,isCa:true);
+				CertificateRequest certificateRequestClient=NewRequest("CN=synthetic-dbsec-client-"+id,asymmetricAlgorithmClient,isCa:false);
+				X509SignatureGenerator x509SignatureGeneratorCa=(asymmetricAlgorithmCa is RSA)
+					? X509SignatureGenerator.CreateForRSA((RSA)asymmetricAlgorithmCa,RSASignaturePadding.Pkcs1)
+					: X509SignatureGenerator.CreateForECDsa((ECDsa)asymmetricAlgorithmCa);
+				byte[] arraySerial=Guid.NewGuid().ToByteArray().Take(8).ToArray();
+				arraySerial[0]&=0x7F;//A positive serial number.
+				using(X509Certificate2 x509Certificate2Ca=CreateSelfSigned(certificateRequestCa,DateTimeOffset.Now.AddDays(60)))
+				using(X509Certificate2 x509Certificate2ClientPublic=certificateRequestClient.Create(x509Certificate2Ca.SubjectName,x509SignatureGeneratorCa,
+					DateTimeOffset.Now.AddDays(-1),DateTimeOffset.Now.AddDays(30),arraySerial))
+				using(X509Certificate2 x509Certificate2Client=(asymmetricAlgorithmClient is RSA)
+					? x509Certificate2ClientPublic.CopyWithPrivateKey((RSA)asymmetricAlgorithmClient)
+					: x509Certificate2ClientPublic.CopyWithPrivateKey((ECDsa)asymmetricAlgorithmClient))
+				{
+					X509Certificate2Collection x509Certificate2Collection=new X509Certificate2Collection();
+					x509Certificate2Collection.Add(x509Certificate2Client);
+					x509Certificate2Collection.Add(x509Certificate2Ca);
+					File.WriteAllBytes(path,x509Certificate2Collection.Export(X509ContentType.Pfx,_password));
+					thumbprintClient=x509Certificate2Client.Thumbprint;
+					thumbprintCa=x509Certificate2Ca.Thumbprint;
+				}
+			}
+			finally {
+				DeleteScratchKey(asymmetricAlgorithmCa);
+				DeleteScratchKey(asymmetricAlgorithmClient);
+			}
+			return path;
 		}
 
 		///<summary>The store's certificate with this thumbprint, or null. The caller disposes it.</summary>
@@ -113,52 +197,121 @@ namespace DbConnectionSecurityTests {
 			}
 		}
 
-		///<summary>Deletes every key of the certificates this store added that is still there, then the store with its certificates.</summary>
+		///<summary>Deletes every key this store recorded that is still there, then the store with its certificates. Never throws: what is left
+		///is kept for AssertCleanedUp.</summary>
 		public void Dispose() {
 			foreach(TestKey testKey in _listKeys) {
-				try {
-					testKey.DeleteIfExists();
-				}
-				catch(CryptographicException) {
-					//Reported by the test that left it; the store goes anyway.
+				string problem=testKey.CleanUp();
+				if(problem!="") {
+					AddCleanUpProblem(problem);
 				}
 			}
-			CertUnregisterSystemStore(Name,CERT_SYSTEM_STORE_CURRENT_USER|CERT_STORE_DELETE_FLAG);
+			if(!CertUnregisterSystemStore(Name,CERT_SYSTEM_STORE_CURRENT_USER|CERT_STORE_DELETE_FLAG)) {
+				int error=Marshal.GetLastWin32Error();
+				if(error!=ERROR_FILE_NOT_FOUND) {//Not found: no certificate was ever added, so there is no store to delete.
+					AddCleanUpProblem("The test store CurrentUser\\"+Name+" could not be deleted: CertUnregisterSystemStore failed with Win32 error "
+						+error+". Delete it by hand (certmgr.msc, or the registry key HKCU\\Software\\Microsoft\\SystemCertificates\\"+Name+").");
+					return;
+				}
+			}
+			if(IsStoreThere()) {
+				AddCleanUpProblem("The test store CurrentUser\\"+Name+" is still there after CertUnregisterSystemStore. Delete it by hand.");
+			}
+		}
+
+		///<summary>The tests' check after each test (their TestCleanup): fails with what the test stores' clean-ups could not do since the last
+		///check, and forgets it.</summary>
+		public static void AssertCleanedUp() {
+			List<string> listProblems;
+			lock(_listCleanUpProblems) {
+				listProblems=_listCleanUpProblems.ToList();
+				_listCleanUpProblems.Clear();
+			}
+			if(listProblems.Count>0) {
+				Assert.Fail("A test store left something behind on this computer:\r\n"+string.Join("\r\n",listProblems));
+			}
+		}
+
+		private static void AddCleanUpProblem(string problem) {
+			Console.WriteLine(problem);//In the test's output too.
+			lock(_listCleanUpProblems) {
+				_listCleanUpProblems.Add(problem);
+			}
+		}
+
+		private bool IsStoreThere() {
+			using(X509Store x509Store=new X509Store(Name,StoreLocation.CurrentUser)) {
+				try {
+					x509Store.Open(OpenFlags.ReadOnly|OpenFlags.OpenExistingOnly);
+					return true;
+				}
+				catch(CryptographicException) {
+					return false;
+				}
+			}
 		}
 
 		private byte[] MakePfx(TestKeyKind testKeyKind) {
 			string subject="CN=synthetic-dbsec-key-"+Guid.NewGuid().ToString("N");
-			switch(testKeyKind) {
-				case TestKeyKind.CapiRsa:
-					//A key in a scratch CAPI container of the current user, so the .pfx names a CAPI provider and Windows imports it into a CAPI
-					//container, as it does a .pfx that names no CNG provider. The scratch container is deleted before the import, which makes its own.
-					CspParameters cspParameters=new CspParameters(PROV_RSA_AES,PROVIDER_CAPI,"OpenPmsDbSecTest_"+Guid.NewGuid().ToString("N"));
-					RSACryptoServiceProvider rsaCryptoServiceProviderScratch=new RSACryptoServiceProvider(2048,cspParameters);
-					try {
-						return ExportPfx(new CertificateRequest(subject,rsaCryptoServiceProviderScratch,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1));
-					}
-					finally {
-						rsaCryptoServiceProviderScratch.PersistKeyInCsp=false;//Clear then deletes the scratch container.
-						rsaCryptoServiceProviderScratch.Clear();
-					}
-				case TestKeyKind.CngRsa:
-					using(RSACng rsaCng=new RSACng(2048)) {//An ephemeral CNG key, in memory only: the .pfx names the CNG provider.
-						return ExportPfx(new CertificateRequest(subject,rsaCng,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1));
-					}
-				default:
-					using(ECDsaCng ecdsaCng=new ECDsaCng(256)) {
-						return ExportPfx(new CertificateRequest(subject,ecdsaCng,HashAlgorithmName.SHA256));
-					}
+			AsymmetricAlgorithm asymmetricAlgorithm=NewScratchKey(testKeyKind);
+			try {
+				using(X509Certificate2 x509Certificate2=CreateSelfSigned(NewRequest(subject,asymmetricAlgorithm,isCa:false),DateTimeOffset.Now.AddDays(30))) {
+					return x509Certificate2.Export(X509ContentType.Pfx,_password);
+				}
+			}
+			finally {
+				DeleteScratchKey(asymmetricAlgorithm);
 			}
 		}
 
-		private byte[] ExportPfx(CertificateRequest certificateRequest) {
+		///<summary>A throwaway key of this kind for a certificate the test writes as a .pfx: for a CAPI key, a key in a scratch CAPI container of
+		///the current user, so the .pfx names a CAPI provider and Windows imports it into a CAPI container, as it does a .pfx that names no CNG
+		///provider (DeleteScratchKey deletes the scratch container, and the import makes its own); for a CNG key, an ephemeral key, in memory
+		///only, so the .pfx names the CNG provider.</summary>
+		private static AsymmetricAlgorithm NewScratchKey(TestKeyKind testKeyKind) {
+			switch(testKeyKind) {
+				case TestKeyKind.CapiRsa:
+					CspParameters cspParameters=new CspParameters(PROV_RSA_AES,PROVIDER_CAPI,"OpenPmsDbSecTest_"+Guid.NewGuid().ToString("N"));
+					return new RSACryptoServiceProvider(2048,cspParameters);
+				case TestKeyKind.CngRsa:
+					return new RSACng(2048);
+				default:
+					return new ECDsaCng(256);
+			}
+		}
+
+		private static void DeleteScratchKey(AsymmetricAlgorithm asymmetricAlgorithm) {
+			if(asymmetricAlgorithm is RSACryptoServiceProvider) {
+				((RSACryptoServiceProvider)asymmetricAlgorithm).PersistKeyInCsp=false;//Clear then deletes the scratch container.
+				((RSACryptoServiceProvider)asymmetricAlgorithm).Clear();
+				return;
+			}
+			asymmetricAlgorithm?.Dispose();
+		}
+
+		///<summary>A certificate request for this key with the client authentication EKU, as the tool's client certificate has, or a CA's basic
+		///constraints and key usage.</summary>
+		private static CertificateRequest NewRequest(string subject,AsymmetricAlgorithm asymmetricAlgorithm,bool isCa) {
+			CertificateRequest certificateRequest;
+			if(asymmetricAlgorithm is RSA) {
+				certificateRequest=new CertificateRequest(subject,(RSA)asymmetricAlgorithm,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
+			}
+			else {
+				certificateRequest=new CertificateRequest(subject,(ECDsa)asymmetricAlgorithm,HashAlgorithmName.SHA256);
+			}
+			if(isCa) {
+				certificateRequest.CertificateExtensions.Add(new X509BasicConstraintsExtension(true,false,0,true));
+				certificateRequest.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign|X509KeyUsageFlags.CrlSign,true));
+				return certificateRequest;
+			}
 			OidCollection oidCollection=new OidCollection();
 			oidCollection.Add(new Oid("1.3.6.1.5.5.7.3.2"));//TLS client authentication, as the tool's client certificate has.
 			certificateRequest.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(oidCollection,false));
-			using(X509Certificate2 x509Certificate2=certificateRequest.CreateSelfSigned(DateTimeOffset.Now.AddDays(-1),DateTimeOffset.Now.AddDays(30))) {
-				return x509Certificate2.Export(X509ContentType.Pfx,_password);
-			}
+			return certificateRequest;
+		}
+
+		private static X509Certificate2 CreateSelfSigned(CertificateRequest certificateRequest,DateTimeOffset dateTimeOffsetNotAfter) {
+			return certificateRequest.CreateSelfSigned(DateTimeOffset.Now.AddDays(-1),dateTimeOffsetNotAfter);
 		}
 	}
 
@@ -167,6 +320,7 @@ namespace DbConnectionSecurityTests {
 	///store, CAPI or CNG.</summary>
 	public sealed class TestKey {
 		public string Thumbprint;
+		public string Subject;
 		public bool IsCapi;
 		public bool IsMachine;
 		public string Provider;
@@ -176,13 +330,30 @@ namespace DbConnectionSecurityTests {
 		///<summary>The key's file: under Microsoft\Crypto\RSA\(the user's SID) or RSA\MachineKeys for a CAPI key, Microsoft\Crypto\Keys for a CNG
 		///key, of %APPDATA% (the user's key set) or %ProgramData% (the machine's).</summary>
 		public string FilePath;
+		///<summary>A copy of the certificate with its key (the same certificate context, so the same key provider information), taken before
+		///anything inspects the key and released by CleanUp: when Locate throws, CleanUp deletes the key through it.</summary>
+		private X509Certificate2 _x509Certificate2;
+		private bool _isLocated;
 
-		public static TestKey Of(X509Certificate2 x509Certificate2) {
+		private TestKey() {
+		}
+
+		///<summary>Records the certificate's key in listKeys first, then finds where it is (Locate): a throw while the key is inspected cannot leak
+		///it, since the clean-up then deletes it through the certificate.</summary>
+		public static TestKey Track(X509Certificate2 x509Certificate2,List<TestKey> listKeys) {
 			TestKey testKey=new TestKey();
+			listKeys.Add(testKey);
+			testKey._x509Certificate2=new X509Certificate2(x509Certificate2);
 			testKey.Thumbprint=x509Certificate2.Thumbprint;
+			testKey.Subject=x509Certificate2.Subject;
+			testKey.Locate();
+			return testKey;
+		}
+
+		private void Locate() {
 			RSACryptoServiceProvider rsaCryptoServiceProviderCapi=null;
 			try {
-				rsaCryptoServiceProviderCapi=x509Certificate2.PrivateKey as RSACryptoServiceProvider;
+				rsaCryptoServiceProviderCapi=_x509Certificate2.PrivateKey as RSACryptoServiceProvider;
 			}
 			catch(CryptographicException) {
 				//A CNG RSA key.
@@ -192,25 +363,25 @@ namespace DbConnectionSecurityTests {
 			}
 			if(rsaCryptoServiceProviderCapi!=null) {
 				CspKeyContainerInfo cspKeyContainerInfo=rsaCryptoServiceProviderCapi.CspKeyContainerInfo;
-				testKey.IsCapi=true;
-				testKey.IsMachine=cspKeyContainerInfo.MachineKeyStore;
-				testKey.Provider=cspKeyContainerInfo.ProviderName;
-				testKey.ProviderType=cspKeyContainerInfo.ProviderType;
-				testKey.Name=cspKeyContainerInfo.KeyContainerName;
-				string folderRsa=testKey.IsMachine ? "MachineKeys" : GetCurrentUserSid();
-				testKey.FilePath=Path.Combine(GetCryptoFolder(testKey.IsMachine),"RSA",folderRsa,cspKeyContainerInfo.UniqueKeyContainerName);
-				return testKey;
+				IsCapi=true;
+				IsMachine=cspKeyContainerInfo.MachineKeyStore;
+				Provider=cspKeyContainerInfo.ProviderName;
+				ProviderType=cspKeyContainerInfo.ProviderType;
+				Name=cspKeyContainerInfo.KeyContainerName;
+				string folderRsa=IsMachine ? "MachineKeys" : GetCurrentUserSid();
+				FilePath=Path.Combine(GetCryptoFolder(IsMachine),"RSA",folderRsa,cspKeyContainerInfo.UniqueKeyContainerName);
+				_isLocated=true;
+				return;
 			}
-			using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
+			using(RSA rsa=_x509Certificate2.GetRSAPrivateKey()) {
 				if(rsa is RSACng) {
-					SetCng(testKey,((RSACng)rsa).Key);
-					return testKey;
+					SetCng(((RSACng)rsa).Key);
+					return;
 				}
 			}
-			using(ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey()) {
-				SetCng(testKey,((ECDsaCng)ecdsa).Key);
+			using(ECDsa ecdsa=_x509Certificate2.GetECDsaPrivateKey()) {
+				SetCng(((ECDsaCng)ecdsa).Key);
 			}
-			return testKey;
 		}
 
 		///<summary>True when the key still opens, through CAPI for a CAPI key container and through CNG for a CNG key, in its key set.</summary>
@@ -228,6 +399,21 @@ namespace DbConnectionSecurityTests {
 			return CngKey.Exists(Name,new CngProvider(Provider),IsMachine ? CngKeyOpenOptions.MachineKey : CngKeyOpenOptions.None);
 		}
 
+		///<summary>The key, opened where it is through its own key store (CAPI or CNG): an RSA or ECDSA object, which the caller disposes. Disposing
+		///it leaves the key.</summary>
+		public AsymmetricAlgorithm OpenKey() {
+			if(IsCapi) {
+				return new RSACryptoServiceProvider(GetCspParameters());//Opened by name, so it persists: Dispose leaves the container.
+			}
+			using(CngKey cngKey=CngKey.Open(Name,new CngProvider(Provider),IsMachine ? CngKeyOpenOptions.MachineKey : CngKeyOpenOptions.None)) {
+				//The RSACng and ECDsaCng take their own handle of the key.
+				if(cngKey.AlgorithmGroup==CngAlgorithmGroup.Rsa) {
+					return new RSACng(cngKey);
+				}
+				return new ECDsaCng(cngKey);
+			}
+		}
+
 		///<summary>The test's clean-up: deletes the key if it is still there, through its own key store.</summary>
 		public void DeleteIfExists() {
 			if(!Exists()) {
@@ -243,6 +429,61 @@ namespace DbConnectionSecurityTests {
 			cngKey.Delete();//Also disposes it.
 		}
 
+		///<summary>The store's clean-up: deletes the key if it is still there (DeleteIfExists, or through the certificate when Locate never found
+		///it), checks that it is gone, and releases the copy of the certificate. "" when it is gone, else what is left. Never throws.</summary>
+		public string CleanUp() {
+			try {
+				if(!_isLocated) {
+					return DeleteThroughCertificate();
+				}
+				DeleteIfExists();
+				if(Exists()) {
+					return "The test key of "+Subject+" ("+Thumbprint+") is still there: "+FilePath;
+				}
+				return "";
+			}
+			catch(Exception ex) {
+				return "The test key of "+Subject+" ("+Thumbprint+") could not be deleted: "+ex.Message.Trim()+" "+FilePath;
+			}
+			finally {
+				_x509Certificate2?.Dispose();
+			}
+		}
+
+		///<summary>For a key Locate did not find: deletes it through the certificate (a CAPI container through X509Certificate2.PrivateKey, a CNG
+		///key through its Key). "" when it was deleted or there was none to delete, else why not.</summary>
+		private string DeleteThroughCertificate() {
+			if(_x509Certificate2==null || !_x509Certificate2.HasPrivateKey) {
+				return "";
+			}
+			RSACryptoServiceProvider rsaCryptoServiceProviderCapi=null;
+			try {
+				rsaCryptoServiceProviderCapi=_x509Certificate2.PrivateKey as RSACryptoServiceProvider;
+			}
+			catch(CryptographicException) {
+			}
+			catch(NotSupportedException) {
+			}
+			if(rsaCryptoServiceProviderCapi!=null) {
+				rsaCryptoServiceProviderCapi.PersistKeyInCsp=false;//Clear then deletes the key container.
+				rsaCryptoServiceProviderCapi.Clear();
+				return "";
+			}
+			using(RSA rsa=_x509Certificate2.GetRSAPrivateKey()) {
+				if(rsa is RSACng) {
+					((RSACng)rsa).Key.Delete();
+					return "";
+				}
+			}
+			using(ECDsa ecdsa=_x509Certificate2.GetECDsaPrivateKey()) {
+				if(ecdsa is ECDsaCng) {
+					((ECDsaCng)ecdsa).Key.Delete();
+					return "";
+				}
+			}
+			return "The test key of "+Subject+" ("+Thumbprint+") was never located and could not be deleted through its certificate.";
+		}
+
 		private CspParameters GetCspParameters() {
 			CspParameters cspParameters=new CspParameters(ProviderType,Provider,Name);
 			cspParameters.Flags=CspProviderFlags.UseExistingKey;
@@ -252,11 +493,12 @@ namespace DbConnectionSecurityTests {
 			return cspParameters;
 		}
 
-		private static void SetCng(TestKey testKey,CngKey cngKey) {
-			testKey.IsMachine=cngKey.IsMachineKey;
-			testKey.Provider=cngKey.Provider.Provider;
-			testKey.Name=cngKey.KeyName;
-			testKey.FilePath=Path.Combine(GetCryptoFolder(testKey.IsMachine),"Keys",cngKey.UniqueName);
+		private void SetCng(CngKey cngKey) {
+			IsMachine=cngKey.IsMachineKey;
+			Provider=cngKey.Provider.Provider;
+			Name=cngKey.KeyName;
+			FilePath=Path.Combine(GetCryptoFolder(IsMachine),"Keys",cngKey.UniqueName);
+			_isLocated=true;
 		}
 
 		public static string GetCryptoFolder(bool isMachine) {

@@ -199,9 +199,11 @@ namespace OpenPmsDentalDbSettings {
 		}
 
 		///<summary>Deletes the private key of each certificate of listX509Certificate2s, but not one that a certificate of the store, or of
-		///listInUse, still uses (DeleteKeysNotInUse), as DirectCertificateImport.DeleteKeysNotInStore does. The certificates read from the store
-		///are released again. Why each key could not be deleted, in the order of listX509Certificate2s ("" when it was deleted, it had none, or
-		///another certificate uses it); when the store can't be read, no key is deleted.</summary>
+		///listInUse, still uses (DeleteKeysNotInUse), as DirectCertificateImport.DeleteKeysNotInStore does. The store is read anew, not through
+		///the caller's open handle, which keeps the certificates as it read them when it was opened: a certificate another program put into the
+		///store since counts too. The certificates read from the store are released again. Why each key could not be deleted, in the order of
+		///listX509Certificate2s ("" when it was deleted, it had none, or another certificate uses it); when the store can't be read, no key is
+		///deleted.</summary>
 		private static List<string> DeleteKeysNotInStore(X509Store x509Store,List<X509Certificate2> listX509Certificate2s,
 			List<X509Certificate2> listInUse)
 		{
@@ -210,7 +212,10 @@ namespace OpenPmsDentalDbSettings {
 			}
 			X509Certificate2Collection x509Certificate2CollectionStore;
 			try {
-				x509Certificate2CollectionStore=x509Store.Certificates;
+				using(X509Store x509StoreNow=new X509Store(x509Store.Name,x509Store.Location)) {
+					x509StoreNow.Open(OpenFlags.ReadOnly|OpenFlags.OpenExistingOnly);
+					x509Certificate2CollectionStore=x509StoreNow.Certificates;//The certificates stay valid after the store is closed.
+				}
 			}
 			catch(Exception ex) when(IsStoreException(ex)) {
 				string error="The store could not be read to see whether another certificate uses the key: "+ex.Message.Trim();

@@ -16,6 +16,12 @@ namespace DbConnectionSecurityTests {
 	public class ClientCertificateKeyTests {
 		private static readonly TestKeyKind[] _arrayKinds=new[] { TestKeyKind.CapiRsa,TestKeyKind.CngRsa,TestKeyKind.CngEcdsa };
 
+		[TestCleanup]
+		public void CleanUp() {
+			ClientCertificateStore.ActionBeforeKeyDeleteForTests=null;
+			ClientCertificateTestStore.AssertCleanedUp();
+		}
+
 		///<summary>For a CAPI key, a CNG RSA key and a CNG ECDSA key: RemoveImported takes the certificate out of the store and deletes its key (it
 		///no longer opens through its own key store, and its file is gone); the other certificate of the store and its key stay and still sign.
 		///</summary>
@@ -52,9 +58,13 @@ namespace DbConnectionSecurityTests {
 
 		///<summary>What DIRECT-CERT found, for the tool's key: .NET Framework's GetRSAPrivateKey gives a CAPI key as an RSACng, whose UniqueName is
 		///no file of the CNG folder and whose Key.Delete leaves the CAPI container (the tool's old way, which this test does once by hand). The
-		///tool now names the key's file and deletes the key through CAPI.</summary>
+		///tool now names the key's file and deletes the key through CAPI. The first three checks pin Windows' and .NET Framework's own behaviour
+		///(Windows 11, .NET Framework 4.8), not the tool's: their messages say so.</summary>
 		[TestMethod]
 		public void CapiKey_IsNamedAndDeletedThroughCapi_NotThroughTheCngViewOfIt() {
+			const string WINDOWS_CHANGED=" This pins Windows' own behaviour (Windows 11, .NET Framework 4.8), not the tool's: if a later Windows "
+				+"names or deletes a CAPI key through its CNG view (the key storage provider), this check fails while the tool, which names and "
+				+"deletes it through CAPI, is still right. Then change this check, not the tool; the checks of the tool below must still pass.";
 			using(ClientCertificateTestStore clientCertificateTestStore=new ClientCertificateTestStore()) {
 				TestKey testKey=clientCertificateTestStore.AddCertificate(TestKeyKind.CapiRsa);
 				Assert.IsTrue(testKey.IsCapi);
@@ -63,10 +73,12 @@ namespace DbConnectionSecurityTests {
 						if(rsa is RSACng) {//.NET Framework. (.NET gives an RSACryptoServiceProvider: nothing to show there.)
 							CngKey cngKey=((RSACng)rsa).Key;
 							string pathCngView=ClientCertificateStore.GetCngKeyFilePath(cngKey.IsMachineKey,cngKey.UniqueName);
-							Assert.IsFalse(File.Exists(pathCngView),"The CNG view's UniqueName is no file of the CNG folder: "+pathCngView);
+							Assert.IsFalse(File.Exists(pathCngView),"The CNG view's UniqueName is no file of the CNG folder: "+pathCngView+"."
+								+WINDOWS_CHANGED);
 							cngKey.Delete();//The tool's old DeletePrivateKey.
-							Assert.IsTrue(testKey.Exists(),"RSACng.Key.Delete leaves the CAPI container.");
-							Assert.IsTrue(File.Exists(testKey.FilePath),"And its file.");
+							Assert.IsTrue(testKey.Exists(),"RSACng.Key.Delete leaves the CAPI container."+WINDOWS_CHANGED);
+							Assert.IsTrue(File.Exists(testKey.FilePath),"RSACng.Key.Delete leaves the CAPI container's file: "+testKey.FilePath+"."
+								+WINDOWS_CHANGED);
 						}
 					}
 				}
@@ -106,6 +118,69 @@ namespace DbConnectionSecurityTests {
 							Assert.IsNull(ClientCertificateStore.GetPrivateKeyFilePath(x509Certificate2Public),testKeyKind+": the certificate without its key.");
 						}
 					}
+				}
+			}
+		}
+
+		///<summary>DCFU2, item 2: RemoveImported takes the certificate out of the store first, then deletes its key (as DirectCertificateImport
+		///removes a replaced certificate). When only the key cannot be deleted (a seam makes the delete fail), the warning says that the
+		///certificate was removed and that its key was left, and names the key's file; it no longer says the certificate could not be removed.
+		///For each kind of key.</summary>
+		[TestMethod]
+		public void RemoveImported_WhenOnlyTheKeyIsNotDeleted_SaysTheCertificateWasRemovedAndWhereItsKeyIs() {
+			foreach(TestKeyKind testKeyKind in _arrayKinds) {
+				string label=testKeyKind.ToString();
+				using(ClientCertificateTestStore clientCertificateTestStore=new ClientCertificateTestStore()) {
+					try {
+						TestKey testKey=clientCertificateTestStore.AddCertificate(testKeyKind);
+						List<string> listThumbprintsDeleteTried=new List<string>();
+						ClientCertificateStore.ActionBeforeKeyDeleteForTests=x509Certificate2 => {
+							listThumbprintsDeleteTried.Add(x509Certificate2.Thumbprint);
+							throw new CryptographicException("The test's key store refuses.");
+						};
+						string warning=ClientCertificateStore.RemoveImported(testKey.Thumbprint,StoreLocation.CurrentUser,clientCertificateTestStore.Name);
+						Assert.AreEqual("The client certificate that this tool imported before was removed from the computer's certificate store "
+							+"(CurrentUser\\"+clientCertificateTestStore.Name+"), but its private key could not be deleted ("+testKey.Subject+", "
+							+testKey.Thumbprint+"): The test's key store refuses. The key is left on this computer in "+testKey.FilePath+": delete that "
+							+"file as an administrator.",warning,label);
+						Assert.IsFalse(warning.Contains("could not be removed"),label+": the certificate was removed.");
+						CollectionAssert.AreEqual(new List<string> { testKey.Thumbprint },listThumbprintsDeleteTried,label+": the delete was tried once.");
+						Assert.AreEqual(0,clientCertificateTestStore.GetThumbprints().Count,label+": the certificate is out of the store.");
+						Assert.IsTrue(testKey.Exists(),label+": its key is left, as the warning says.");
+						Assert.IsTrue(File.Exists(testKey.FilePath),label+": in the file the warning names.");
+					}
+					finally {
+						ClientCertificateStore.ActionBeforeKeyDeleteForTests=null;
+					}
+				}//The store's clean-up deletes the key the tool left.
+			}
+		}
+
+		///<summary>RemoveImported deletes the key only once no certificate left in the store uses the same key container (DeleteKeysNotInStore, as
+		///DirectCertificateImport does for a replaced certificate): with a second certificate of the store made with the same key, the key stays
+		///and that certificate still signs; when that one is removed too, the key goes. For each kind of key.</summary>
+		[TestMethod]
+		public void RemoveImported_KeepsAKeyThatAnotherCertificateOfTheStoreUses() {
+			foreach(TestKeyKind testKeyKind in _arrayKinds) {
+				string label=testKeyKind.ToString();
+				using(ClientCertificateTestStore clientCertificateTestStore=new ClientCertificateTestStore()) {
+					TestKey testKey=clientCertificateTestStore.AddCertificate(testKeyKind);
+					string thumbprintSameKey=clientCertificateTestStore.AddCertificateUsingKeyOf(testKey);
+					using(X509Certificate2 x509Certificate2SameKey=clientCertificateTestStore.Find(thumbprintSameKey)) {
+						Assert.AreEqual(testKey.FilePath,ClientCertificateStore.GetPrivateKeyFilePath(x509Certificate2SameKey),
+							label+": the test's premise, the second certificate of the store uses the same key container.");
+					}
+					Assert.AreEqual("",ClientCertificateStore.RemoveImported(testKey.Thumbprint,StoreLocation.CurrentUser,clientCertificateTestStore.Name),
+						label);
+					CollectionAssert.AreEqual(new List<string> { thumbprintSameKey },clientCertificateTestStore.GetThumbprints(),label);
+					Assert.IsTrue(testKey.Exists(),label+": the key another certificate of the store uses stays.");
+					Assert.IsTrue(File.Exists(testKey.FilePath),label);
+					Assert.IsTrue(clientCertificateTestStore.CanSign(thumbprintSameKey),label+": and that certificate still signs.");
+					Assert.AreEqual("",ClientCertificateStore.RemoveImported(thumbprintSameKey,StoreLocation.CurrentUser,clientCertificateTestStore.Name),
+						label);
+					Assert.AreEqual(0,clientCertificateTestStore.GetThumbprints().Count,label);
+					Assert.IsFalse(testKey.Exists(),label+": no certificate uses it any more: deleted.");
+					Assert.IsFalse(File.Exists(testKey.FilePath),label);
 				}
 			}
 		}

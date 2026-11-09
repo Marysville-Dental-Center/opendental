@@ -32,6 +32,7 @@ namespace DbConnectionSecurityTests {
 		[TestCleanup]
 		public void CleanUp() {
 			TestHelpers.DeleteFolder(_folder);
+			ClientCertificateTestStore.AssertCleanedUp();
 		}
 
 		private static void Plan(string recorded,string current,string newThumbprint,bool isImported,bool wasInStore,out string toRecord,out string toRemove) {
