@@ -36,6 +36,43 @@ namespace ProjectFileTests {
 		}
 
 		[TestMethod]
+		public void Classic_WithoutTheCommonPropsImport_GetsItFromTheCommonTargets() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//As OpenPmsDental.csproj and six other classic projects of the solution filter: no Microsoft.Common.props import of its own.
+				//Microsoft.Common.CurrentVersion.targets imports it then (unless MicrosoftCommonPropsHasBeenImported is true), so MSBuild 18 reads
+				//Directory.Build.props at the Microsoft.CSharp.targets import, after the project's own properties, and gives MSBuildProjectExtensionsPath
+				//the project's obj\ folder.
+				string textClassic=File.ReadAllText(fixtureFolder.ProjectPath("Classic"));
+				const string importCommonProps="<Import Project=\"$(MSBuildExtensionsPath)\\$(MSBuildToolsVersion)\\Microsoft.Common.props\" "
+					+"Condition=\"Exists('$(MSBuildExtensionsPath)\\$(MSBuildToolsVersion)\\Microsoft.Common.props')\" />";
+				const string anchor="<AssemblyName>ClassicFixture</AssemblyName>";
+				Assert.IsTrue(textClassic.Contains(importCommonProps),"The Classic fixture imports Microsoft.Common.props.");
+				string textOwnValue=textClassic.Replace(anchor,anchor+"<FixtureEveryProject>project</FixtureEveryProject>");
+				fixtureFolder.WriteFile(@"tests\Classic\Classic.csproj",textOwnValue.Replace(importCommonProps,""));
+				ProjectFile projectFile=fixtureFolder.Load("Classic");
+				Assert.AreEqual(fixtureFolder.Combine(@"tests\Classic\obj\"),projectFile.GetProperty("MSBuildProjectExtensionsPath"));
+				Assert.AreEqual("root",projectFile.GetProperty("FixtureEveryProject"),"Directory.Build.props, read after the project's own value.");
+				Assert.AreEqual("true",projectFile.GetProperty("MicrosoftCommonPropsHasBeenImported"));
+				Assert.AreEqual(@"obj\x86\Debug\",projectFile.GetProperty("IntermediateOutputPath"));
+				CollectionAssert.AreEqual(new[] { fixtureFolder.ProjectPath("Classic"),fixtureFolder.Combine(@"tests\Directory.Build.props"),
+					fixtureFolder.Combine("Directory.Build.props"),fixtureFolder.Combine("Directory.Build.targets") },projectFile.FilesRead);
+				//With its own import at the top, the project's own value comes after Directory.Build.props; the props are read once.
+				fixtureFolder.WriteFile(@"tests\Classic\Classic.csproj",textOwnValue);
+				projectFile=fixtureFolder.Load("Classic");
+				Assert.AreEqual("project",projectFile.GetProperty("FixtureEveryProject"));
+				Assert.AreEqual(fixtureFolder.Combine(@"tests\Classic\obj\"),projectFile.GetProperty("MSBuildProjectExtensionsPath"));
+				Assert.AreEqual(4,projectFile.FilesRead.Count);
+				//A project that says it has imported them, without the import: MSBuild reads no Directory.Build.props, and nothing sets the path.
+				fixtureFolder.WriteFile(@"tests\Classic\Classic.csproj",textOwnValue.Replace(importCommonProps,"")
+					.Replace(anchor,anchor+"<MicrosoftCommonPropsHasBeenImported>true</MicrosoftCommonPropsHasBeenImported>"));
+				projectFile=fixtureFolder.Load("Classic");
+				Assert.AreEqual("project",projectFile.GetProperty("FixtureEveryProject"));
+				Assert.AreEqual("",projectFile.GetProperty("MSBuildProjectExtensionsPath"));
+				CollectionAssert.AreEqual(new[] { fixtureFolder.ProjectPath("Classic"),fixtureFolder.Combine("Directory.Build.targets") },projectFile.FilesRead);
+			}
+		}
+
+		[TestMethod]
 		public void Classic_CompilesTheListedFilesOnly() {
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
 				ProjectFile projectFile=fixtureFolder.Load("Classic");
@@ -85,7 +122,11 @@ namespace ProjectFileTests {
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
 				Assert.AreEqual(@"bin\Debug\",fixtureFolder.Load("Classic").GetProperty("OutputPath"));
 				Assert.AreEqual(@"bin\Release\",ProjectFile.Load(fixtureFolder.ProjectPath("Classic"),"Release","x86").GetProperty("OutputPath"));
-				Assert.AreEqual("",ProjectFile.Load(fixtureFolder.ProjectPath("Classic"),"Debug","x64").GetProperty("OutputPath"),"No Debug|x64 group.");
+				ProjectFile projectFileX64=ProjectFile.Load(fixtureFolder.ProjectPath("Classic"),"Debug","x64");
+				Assert.AreEqual("",projectFileX64.GetProperty("DefineConstants"),"No Debug|x64 group.");
+				//Microsoft.Common.CurrentVersion.targets' default for a configuration without an OutputPath, as MSBuild evaluates it (a build then
+				//stops in _CheckForInvalidConfigurationAndPlatform).
+				Assert.AreEqual(@"bin\x64\Debug\",projectFileX64.GetProperty("OutputPath"));
 				Assert.AreEqual("Debug",fixtureFolder.Load("Classic").GetProperty("Configuration"));
 			}
 		}
@@ -101,7 +142,12 @@ namespace ProjectFileTests {
 				Assert.AreEqual("root",projectFile.GetProperty("FixtureEveryProject"));
 				Assert.AreEqual("net48",projectFile.GetProperty("TargetFramework"),"From tests\\Directory.Build.props.");
 				Assert.AreEqual("true",projectFile.GetProperty("AutoGenerateBindingRedirects"));
-				Assert.AreEqual("",projectFile.GetProperty("DefineConstants"),"The Release group is not read for Debug.");
+				Assert.AreEqual("",projectFile.GetProperty("FixtureReleaseOnly"),"The Release group is not read for Debug.");
+				//MSBuild 18 evaluates this fixture to TRACE;DEBUG: TRACE from Microsoft.NET.Sdk.CSharp.props, DEBUG from its targets.
+				Assert.AreEqual("TRACE;DEBUG",projectFile.GetProperty("DefineConstants"));
+				ProjectFile projectFileRelease=ProjectFile.Load(fixtureFolder.ProjectPath("SdkStyle"),"Release","x86");
+				Assert.AreEqual("release",projectFileRelease.GetProperty("FixtureReleaseOnly"),"The Release group is read for Release.");
+				Assert.AreEqual("TRACE;RELEASE",projectFileRelease.GetProperty("DefineConstants"),"The Release group's TRACE, then the SDK's RELEASE.");
 				Assert.AreEqual(fixtureFolder.Combine(@"tests\BindingRedirects.config"),projectFile.GetProperty("AppConfig"),"Directory.Build.targets.");
 				Assert.IsFalse(projectFile.Compiles("FromATarget.cs"),"Items of a target are not evaluated items.");
 				ProjectItem projectItemMsTest=projectFile.GetReference("Microsoft.VisualStudio.QualityTools.UnitTestFramework");

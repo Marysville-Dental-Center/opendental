@@ -15,17 +15,29 @@ using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ProjectFileTests {
-	///<summary>A project file evaluated as MSBuild evaluates its items, for one configuration and platform (Debug|x86 by default, the build lane's).
-	///What it models: the properties of the project file and of the files it imports from the repository (Directory.Build.props and
-	///Directory.Build.targets above the project, and relative imports such as third-party\build\SourceBuild.props), with their conditions; the
-	///items of those files in MSBuild's order, with Include (a file, a list, a wildcard, an item list), Exclude, Remove and Update, and their
-	///metadata from child elements and attributes alike; for an SDK-style project the .NET SDK's default items before the project's own (Compile
-	///**\*.cs, EmbeddedResource **\*.resx and None **\* without bin, obj, hidden folders and the DefaultItemExcludes; with UseWPF, Page **\*.xaml
-	///and App.xaml as ApplicationDefinition), switched off by EnableDefaultItems, EnableDefaultCompileItems and the other switches, exactly as
+	///<summary>A project file evaluated as MSBuild evaluates its properties and items, for one configuration and platform: by default the ones
+	///OpenDental.sln builds the project with for the build lane's Debug|x86 (Debug|x86, or Debug|AnyCPU for WpfControlsOD and CryptoTests).
+	///What it models: the properties of the project file and of the files it imports from the repository (Directory.Build.props above the
+	///project, through Microsoft.Common.props, which the project imports itself or the common targets import for it; Directory.Build.targets;
+	///relative imports such as third-party\build\SourceBuild.props), with their conditions; the properties that MSBuild's and the SDK's own
+	///files compute and that the repository's project files or tests use, each at the point of the evaluation where MSBuild computes it (the
+	///output and intermediate paths, the target framework, AssemblyName, OutputType, TargetPath and the like, and for an SDK-style C# project the
+	///compiler defaults of Microsoft.NET.Sdk.props, Microsoft.NET.Sdk.CSharp.props and .targets and Microsoft.NET.Sdk.Analyzers.targets:
+	///DefineConstants with TRACE and the configuration's define, NoWarn 1701;1702, DebugType, Optimize, WarningLevel and the like: region
+	///"MSBuild's and the SDK's own files"), as MSBuild -getProperty gives them; the items of those files in MSBuild's order, with Include (a
+	///file, a list, a wildcard, an item list), Exclude, Remove and Update, and their metadata from child elements and attributes alike; for an
+	///SDK-style project the .NET SDK's default items before the project's own (Compile **\*.cs, EmbeddedResource **\*.resx and None **\*
+	///without bin, obj, hidden folders and the DefaultItemExcludes; with UseWPF, Page **\*.xaml and App.xaml as ApplicationDefinition, with the
+	///WindowsDesktop SDK's Page metadata), switched off by EnableDefaultItems, EnableDefaultCompileItems and the other switches, and the Link
+	///metadata the SDK gives an item outside the project folder (SetLinkMetadataAutomatically), exactly as
 	///Microsoft.NET.Sdk.DefaultItems.props/.targets and Microsoft.NET.Sdk.WindowsDesktop.props/.targets of the pinned SDK 10.0.114 define them.
-	///What it does not model: the files of MSBuild and the SDK themselves (so a property the SDK computes, such as its default AssemblyName, is
-	///not known here), targets (items created while building), ItemDefinitionGroup defaults, and Choose. An expression it cannot evaluate where
-	///it decides an item (an unknown property function in an Include or a condition) throws, so a check never passes on a guess.</summary>
+	///What it does not model: the rest of the files of MSBuild and the SDK, targets (items created while building), ItemDefinitionGroup
+	///defaults other than the WindowsDesktop SDK's, and Choose. Anything it cannot evaluate throws, so a check never passes on a guess: Choose, a
+	///missing import, an unknown property function in an Include or a condition, and a property that MSBuild, its toolset, the solution build
+	///or the SDK compute and this reader does not (the machine paths such as $(MSBuildExtensionsPath), $(SolutionDir), the SDK's
+	///$(RuntimeIdentifier): _arrayNotModelledProperties, _arrayNotModelledSdkProperties and, for an SDK-style project in another language than
+	///C#, _arraySdkLanguageProperties) used in a Condition, an Include or an Import, directly or through another property, or asked of
+	///GetProperty.</summary>
 	internal sealed class ProjectFile {
 		///<summary>The project file, full path.</summary>
 		public string FullPath { get; private set; }
@@ -44,17 +56,94 @@ namespace ProjectFileTests {
 		private const string UNRESOLVED_START="\u0001unresolved:";
 		private const string UNRESOLVED_END="\u0002";
 		private const string STEP_SDK_DEFAULT_ITEMS="SdkDefaultItems";
+		private const string STEP_SDK_LINK_METADATA="SdkLinkMetadata";
 		private const string STEP_SDK_TARGETS_ITEMS="SdkTargetsItems";
+		///<summary>$(VisualStudioVersion) in every project built by MSBuild 18 (Build Tools 2026, which the build lane and section 2.4 of the
+		///.NET 10 plan pin): the sub-toolset version of its Current toolset. OpenPmsDentalServer.csproj tests it in a condition.</summary>
+		private const string VISUAL_STUDIO_VERSION="18.0";
 		private static readonly string[] _arrayReservedAttributes=new[] { "Include","Exclude","Remove","Update","Condition","KeepMetadata",
 			"RemoveMetadata","KeepDuplicates","MatchOnMetadata","MatchOnMetadataOptions","Label" };
+		///<summary>Properties that MSBuild, its toolset (MSBuild.exe.config) or the solution build give every project and this reader does not
+		///compute: machine paths and versions, and the solution's global properties. One of them in a Condition, an Include or an Import throws
+		///(except the imports of MSBuild's and Visual Studio's own files, which are not read), as does GetProperty for it, unless a file this reader
+		///read set it.</summary>
+		private static readonly string[] _arrayNotModelledProperties=new[] { "MSBuildExtensionsPath","MSBuildExtensionsPath32","MSBuildExtensionsPath64",
+			"MSBuildToolsPath","MSBuildToolsPath32","MSBuildToolsPath64","MSBuildBinPath","MSBuildSDKsPath","MSBuildToolsRoot","MSBuildFrameworkToolsPath",
+			"MSBuildFrameworkToolsPath32","MSBuildFrameworkToolsPath64","MSBuildFrameworkToolsRoot","MSBuildProgramFiles32","MSBuildUserExtensionsPath",
+			"MSBuildVersion","MSBuildAssemblyVersion","MSBuildFileVersion","MSBuildSemanticVersion","MSBuildRuntimeType","MSBuildRuntimeVersion",
+			"MSBuildNodeCount","MSBuildStartupDirectory","MSBuildInteractive","MSBuildIsRestoring","MSBuildOverrideTasksPath","VsInstallRoot",
+			"RoslynTargetsPath","FrameworkSDKRoot","SDK35ToolsPath","SDK40ToolsPath","WindowsSDK80Path","WindowsKitsRoot","VCTargetsPath",
+			"TargetFrameworkRootPath","FrameworkPathOverride","TargetFrameworkDirectory","TargetPlatformSdkPath","TargetPlatformDisplayName",
+			"TargetPlatformSdkMetadataLocation","NuGetPackageRoot","NuGetPackageFolders",
+			"NETCoreSdkVersion","NETCoreSdkRuntimeIdentifier","NETCoreRoot","DOTNET_HOST_PATH","SolutionDir","SolutionPath","SolutionName","SolutionExt",
+			"SolutionFileName","CurrentSolutionConfigurationContents","BuildingSolutionFile","BuildingInsideVisualStudio",
+			//Microsoft.Common.CurrentVersion.targets (from $(ReferencePath), the registry and $(OutDir)) and Microsoft.NET.Sdk.props compute these.
+			"AssemblySearchPaths","DesignTimeAssemblySearchPaths" };
+		///<summary>Properties the .NET SDK computes for an SDK-style project and this reader does not (a classic project has none of them, so they
+		///are '' there, as MSBuild has them): the inferred runtime identifier, the generated documentation file, the package and assembly info
+		///defaults, the restore's output, the publish and package folders, the analysis level of Microsoft.NET.Sdk.Analyzers.targets.</summary>
+		private static readonly string[] _arrayNotModelledSdkProperties=new[] { "RuntimeIdentifier","RuntimeIdentifiers","DocumentationFile",
+			"VersionPrefix","Version","Authors","Company","AssemblyTitle","Product","ProjectAssetsFile","ProjectDepsFilePath","ProjectRuntimeConfigFilePath",
+			"PublishDir","PackageOutputPath","NuGetTargetMoniker","AnalysisLevel","EffectiveAnalysisLevel" };
+		///<summary>The compiler defaults that Microsoft.NET.Sdk.CSharp.props and .targets and Microsoft.NET.Sdk.Analyzers.targets compute for an
+		///SDK-style C# project (ImportSdkProps, ApplySdkLanguageProperties). The SDK's Visual Basic and F# files compute them otherwise, which this
+		///reader does not model, so for an SDK-style project in another language they are not modelled.</summary>
+		private static readonly string[] _arraySdkLanguageProperties=new[] { "NoWarn","WarningsAsErrors","DefineConstants","ImplicitConfigurationDefine",
+			"WarningLevel","AppDesignerFolder" };
+		///<summary>The item types whose items Microsoft.NET.Sdk.DefaultItems.targets gives Link metadata (SetLinkMetadataAutomatically).</summary>
+		private static readonly string[] _arrayLinkItemTypes=new[] { "Compile","AdditionalFiles","None","Content","EmbeddedResource","Page","Resource" };
+		///<summary>The names of _arrayNotModelledProperties, and for an SDK-style project those of _arrayNotModelledSdkProperties and any the
+		///evaluation could not compute (TargetPlatformVersion of a .NET 5+ target without a platform version, say).</summary>
+		private readonly HashSet<string> _hashSetNotModelled=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		///<summary>OpenDental.sln by path: its last write time and its project mappings, read once per test run.</summary>
+		private static readonly Dictionary<string,SolutionFile> _dictSolutions=new Dictionary<string,SolutionFile>(StringComparer.OrdinalIgnoreCase);
 
 		private ProjectFile() {
 		}
 
 		#region Loading
-		///<summary>The project file evaluated for Debug|x86, the configuration the build lane and the tests build.</summary>
+		///<summary>The project file evaluated for the configuration and platform OpenDental.sln builds it with for the build lane's Debug|x86
+		///(GetSolutionConfiguration): Debug|x86 for nearly every project, Debug|AnyCPU for WpfControlsOD and CryptoTests, so the properties of
+		///their platform-conditioned groups are read as the build reads them.</summary>
 		public static ProjectFile Load(string path) {
-			return Load(path,"Debug","x86");
+			string configuration;
+			string platform;
+			GetSolutionConfiguration(Path.GetFullPath(path),"Debug","x86",out configuration,out platform);
+			return Load(path,configuration,platform);
+		}
+
+		///<summary>The configuration and platform that OpenDental.sln (the first one in the project's folder or a folder above it) maps the
+		///solution configuration and platform to for the project, as MSBuild builds it from the solution or the solution filter: "Any CPU" becomes
+		///AnyCPU, as the solution build passes it. Without an OpenDental.sln above the project, or for a project the solution does not list, the
+		///solution's own configuration and platform.</summary>
+		public static void GetSolutionConfiguration(string pathProject,string solutionConfiguration,string solutionPlatform,out string configuration,
+			out string platform)
+		{
+			configuration=solutionConfiguration;
+			platform=solutionPlatform;
+			string pathSln=FindFileAbove("OpenDental.sln",Path.GetDirectoryName(Path.GetFullPath(pathProject)));
+			if(pathSln==null) {
+				return;
+			}
+			string[] arrayMapping=GetSolutionFile(pathSln).GetMapping(Path.GetFullPath(pathProject),solutionConfiguration+"|"+solutionPlatform);
+			if(arrayMapping!=null) {
+				configuration=arrayMapping[0];
+				platform=arrayMapping[1];
+			}
+		}
+
+		private static SolutionFile GetSolutionFile(string pathSln) {
+			FileInfo fileInfo=new FileInfo(pathSln);
+			lock(_dictSolutions) {
+				SolutionFile solutionFile;
+				if(!_dictSolutions.TryGetValue(pathSln,out solutionFile) || solutionFile.DateTimeWriteUtc!=fileInfo.LastWriteTimeUtc
+					|| solutionFile.Length!=fileInfo.Length)
+				{
+					solutionFile=new SolutionFile(pathSln,fileInfo.LastWriteTimeUtc,fileInfo.Length);
+					_dictSolutions[pathSln]=solutionFile;
+				}
+				return solutionFile;
+			}
 		}
 
 		public static ProjectFile Load(string path,string configuration,string platform) {
@@ -106,8 +195,17 @@ namespace ProjectFileTests {
 			_dictProperties["ProjectPath"]=FullPath;
 			_dictProperties["ProjectFileName"]=Path.GetFileName(FullPath);
 			_dictProperties["ProjectName"]=Path.GetFileNameWithoutExtension(FullPath);
+			_dictProperties["MSBuildProjectDirectoryNoRoot"]=Folder.Substring(Path.GetPathRoot(Folder).Length);
+			//MSBuild 18's toolset: "Current" for every MSBuild since 16, and the sub-toolset version.
+			_dictProperties["MSBuildToolsVersion"]="Current";
+			_dictProperties["VisualStudioVersion"]=VISUAL_STUDIO_VERSION;
+			_hashSetNotModelled.UnionWith(_arrayNotModelledProperties);
 			if(IsSdkStyle) {
 				_dictProperties["UsingMicrosoftNETSdk"]="true";
+				_hashSetNotModelled.UnionWith(_arrayNotModelledSdkProperties);
+				if(!IsCSharpProject()) {
+					_hashSetNotModelled.UnionWith(_arraySdkLanguageProperties);
+				}
 			}
 			_listFilesRead.Add(FullPath);
 			XElement xElementRoot=xDocument.Root;
@@ -123,6 +221,9 @@ namespace ProjectFileTests {
 			foreach(ItemStep itemStep in _listItemSteps) {
 				if(itemStep.Builtin==STEP_SDK_DEFAULT_ITEMS) {
 					AddSdkDefaultItems();
+				}
+				else if(itemStep.Builtin==STEP_SDK_LINK_METADATA) {
+					ApplySdkLinkMetadata();
 				}
 				else if(itemStep.Builtin==STEP_SDK_TARGETS_ITEMS) {
 					ApplySdkTargetsItems();
@@ -191,11 +292,11 @@ namespace ProjectFileTests {
 			string fileName=Path.GetFileName(project.Replace('/','\\'));
 			//The two imports of MSBuild's own files that import the repository's Directory.Build.props and Directory.Build.targets.
 			if(fileName.Equals("Microsoft.Common.props",StringComparison.OrdinalIgnoreCase)) {
-				ImportDirectoryBuildFile("Directory.Build.props");
+				ImportMicrosoftCommonProps();
 				return;
 			}
 			if(new[] { "Microsoft.CSharp.targets","Microsoft.Common.targets","Microsoft.VisualBasic.targets" }.Contains(fileName,StringComparer.OrdinalIgnoreCase)) {
-				ImportDirectoryBuildFile("Directory.Build.targets");
+				ImportMicrosoftCommonTargets(fileName);
 				return;
 			}
 			//Any other file of MSBuild, Visual Studio or the SDK (the web application targets of the Middle Tier project): not modelled.
@@ -231,7 +332,7 @@ namespace ProjectFileTests {
 		///Microsoft.Common.props and Microsoft.Common.targets find it.</summary>
 		private void ImportDirectoryBuildFile(string fileName) {
 			string switchName=fileName.EndsWith(".props",StringComparison.OrdinalIgnoreCase) ? "ImportDirectoryBuildProps" : "ImportDirectoryBuildTargets";
-			if(GetProperty(switchName).Equals("false",StringComparison.OrdinalIgnoreCase)) {
+			if(IsPropertyFalse(switchName)) {
 				return;
 			}
 			string path=FindFileAbove(fileName,Folder);
@@ -239,47 +340,471 @@ namespace ProjectFileTests {
 				ReadImportedFile(path);
 			}
 		}
+		#endregion Loading
 
-		///<summary>What Sdk.props of Microsoft.NET.Sdk does for items: Microsoft.Common.props (Directory.Build.props), then
-		///Microsoft.NET.Sdk.DefaultItems.props and Microsoft.NET.Sdk.WindowsDesktop.props, whose default items come before the project's own.</summary>
-		private void ImportSdkProps() {
-			_dictProperties["UsingMicrosoftNETSdk"]="true";
+		#region MSBuild's and the SDK's own files
+		//What the files of MSBuild 18 (Build Tools 2026) and of the pinned .NET SDK 10.0.114 do for the properties a project's conditions, items
+		//and the tests read, at the point of the evaluation where those files do it, in their order. Each method names the file it follows; the
+		//properties it does not compute are in _arrayNotModelledProperties, _arrayNotModelledSdkProperties and _arraySdkLanguageProperties, and
+		//throw when used.
+
+		///<summary>Microsoft.Common.props, which a classic project imports first, Sdk.props imports for an SDK-style project, and
+		///Microsoft.Common.CurrentVersion.targets imports for a project that did neither: Directory.Build.props, then BaseIntermediateOutputPath
+		///(obj\ unless set, with a trailing back slash) and MSBuildProjectExtensionsPath, the folder of the restore's files
+		///(BaseIntermediateOutputPath unless set, made a full path from the project folder), then MicrosoftCommonPropsHasBeenImported.</summary>
+		private void ImportMicrosoftCommonProps() {
 			ImportDirectoryBuildFile("Directory.Build.props");
-			_listItemSteps.Add(new ItemStep { Builtin=STEP_SDK_DEFAULT_ITEMS });
+			SetIfEmpty("BaseIntermediateOutputPath",@"obj\");
+			AppendTrailingSlash("BaseIntermediateOutputPath");
+			_dictProperties["_InitialBaseIntermediateOutputPath"]=GetValue("BaseIntermediateOutputPath");
+			SetIfEmpty("MSBuildProjectExtensionsPath",GetValue("BaseIntermediateOutputPath"));
+			string extensionsPath=GetValue("MSBuildProjectExtensionsPath");
+			if(!IsUnresolved(extensionsPath) && !Path.IsPathRooted(extensionsPath)) {
+				_dictProperties["MSBuildProjectExtensionsPath"]=Path.Combine(Folder,extensionsPath);
+			}
+			AppendTrailingSlash("MSBuildProjectExtensionsPath");
+			//Microsoft.Common.CurrentVersion.targets imports Microsoft.Common.props unless this is true.
+			_dictProperties["MicrosoftCommonPropsHasBeenImported"]="true";
 		}
 
-		///<summary>What Sdk.targets does for items: the property defaults of Microsoft.NET.Sdk.DefaultItems.targets and
-		///Microsoft.NET.Sdk.WindowsDesktop.targets, Microsoft.Common.targets (Directory.Build.targets), and the Page removals of the latter.</summary>
+		///<summary>Microsoft.CSharp.targets (or the Visual Basic or common one) of a classic project, and the language targets that Sdk.targets
+		///imports: the language (Microsoft.CSharp.CurrentVersion.targets, with AppDesignerFolder for C#); Microsoft.Common.props, which
+		///Microsoft.Common.CurrentVersion.targets imports first when MicrosoftCommonPropsHasBeenImported is not true (a classic project without its
+		///own import, as OpenPmsDental.csproj: its Directory.Build.props is read here, after the project's own properties); the properties of
+		///Microsoft.Common.CurrentVersion.targets; then Directory.Build.targets, which Microsoft.Common.targets imports after them.</summary>
+		private void ImportMicrosoftCommonTargets(string fileName) {
+			if(fileName.Equals("Microsoft.VisualBasic.targets",StringComparison.OrdinalIgnoreCase)) {
+				_dictProperties["Language"]="VB";
+				_dictProperties["DefaultLanguageSourceExtension"]=".vb";
+				_dictProperties["TargetRuntime"]="Managed";
+			}
+			else if(fileName.Equals("Microsoft.CSharp.targets",StringComparison.OrdinalIgnoreCase)) {
+				_dictProperties["Language"]="C#";
+				_dictProperties["DefaultLanguageSourceExtension"]=".cs";
+				_dictProperties["TargetRuntime"]="Managed";
+				SetIfEmpty("AppDesignerFolder","Properties");
+			}
+			if(!IsPropertyTrue("MicrosoftCommonPropsHasBeenImported")) {
+				ImportMicrosoftCommonProps();
+			}
+			ApplyCommonTargetsProperties();
+			ImportDirectoryBuildFile("Directory.Build.targets");
+		}
+
+		///<summary>The properties of Microsoft.Common.CurrentVersion.targets (MSBuild 18) that the repository's files and tests read, in its
+		///order: the target framework defaults (.NETFramework, v4.0) and moniker; the Windows platform defaults (Windows, 7.0) unless a .NET 5+
+		///target turned them off; the platform and configuration names; BaseOutputPath (bin\), OutputPath (bin\configuration\ for AnyCPU, else
+		///bin\platform\configuration\, when the project sets none), BaseIntermediateOutputPath and IntermediateOutputPath the same way, each with a
+		///trailing back slash; OutputType (exe); DebugSymbols (true for the Debug configuration when neither it nor DebugType is set); the output
+		///file's extension, folder (OutDir, TargetDir as a full path), name and path;
+		///GenerateBindingRedirectsOutputType for an exe; and AutoGenerateBindingRedirects for a .NET Framework 4.7.2 or later project that leaves
+		///it empty.</summary>
+		private void ApplyCommonTargetsProperties() {
+			SetIfEmpty("TargetRuntime","Managed");
+			if(IsValue("TargetRuntime","Managed")) {
+				SetIfEmpty("TargetFrameworkIdentifier",".NETFramework");
+				SetIfEmpty("TargetFrameworkVersion","v4.0");
+			}
+			string frameworkIdentifier=GetValue("TargetFrameworkIdentifier");
+			string frameworkVersion=GetValue("TargetFrameworkVersion");
+			if(frameworkIdentifier!="" && frameworkVersion!="" && GetValue("TargetFrameworkMoniker")=="") {
+				string profile=GetValue("TargetFrameworkProfile");
+				_dictProperties["TargetFrameworkMoniker"]=frameworkIdentifier+",Version="+frameworkVersion+(string.IsNullOrWhiteSpace(profile) ? "" : ",Profile="+profile);
+			}
+			if(!IsPropertyFalse("_EnableDefaultWindowsPlatform")) {
+				SetIfEmpty("TargetPlatformIdentifier","Windows");
+				SetIfEmpty("TargetPlatformVersion","7.0");
+			}
+			if(GetValue("TargetPlatformMoniker")=="" && GetValue("TargetPlatformIdentifier")!="" && GetValue("TargetPlatformVersion")!="") {
+				_dictProperties["TargetPlatformMoniker"]=GetValue("TargetPlatformIdentifier")+",Version="+GetValue("TargetPlatformVersion");
+			}
+			SetIfEmpty("PlatformName",GetValue("Platform"));
+			SetIfEmpty("ConfigurationName",GetValue("Configuration"));
+			string platformFolder=IsValue("PlatformName","AnyCPU") ? "" : GetValue("PlatformName")+@"\";
+			SetIfEmpty("BaseOutputPath",@"bin\");
+			AppendTrailingSlash("BaseOutputPath");
+			SetIfEmpty("OutputPath",GetValue("BaseOutputPath")+platformFolder+GetValue("Configuration")+@"\");
+			AppendTrailingSlash("OutputPath");
+			SetIfEmpty("BaseIntermediateOutputPath",@"obj\");
+			AppendTrailingSlash("BaseIntermediateOutputPath");
+			SetIfEmpty("IntermediateOutputPath",GetValue("BaseIntermediateOutputPath")+platformFolder+GetValue("Configuration")+@"\");
+			AppendTrailingSlash("IntermediateOutputPath");
+			//The legacy TargetType, then the default.
+			if(GetValue("TargetType")!="") {
+				_dictProperties["OutputType"]=IsValue("TargetType","Container") || IsValue("TargetType","DocumentContainer") ? "library" : GetValue("TargetType");
+			}
+			SetIfEmpty("OutputType","exe");
+			if(IsValue("ConfigurationName","Debug") && GetValue("DebugSymbols")=="" && GetValue("DebugType")=="") {
+				_dictProperties["DebugSymbols"]="true";
+			}
+			if(GetValue("TargetExt")=="") {
+				foreach(string[] arrayExtension in new[] { new[] { "exe",".exe" },new[] { "winexe",".exe" },new[] { "appcontainerexe",".exe" },
+					new[] { "library",".dll" },new[] { "module",".netmodule" },new[] { "winmdobj",".winmdobj" } })
+				{
+					if(IsValue("OutputType",arrayExtension[0])) {
+						_dictProperties["TargetExt"]=arrayExtension[1];
+					}
+				}
+			}
+			bool isOutDirSpecified=GetValue("OutDir")!="";
+			SetIfEmpty("OutDir",GetValue("OutputPath"));
+			if(GetValue("OutDir")!="") {
+				AppendTrailingSlash("OutDir");
+			}
+			SetIfEmpty("ProjectName",GetValue("MSBuildProjectName"));
+			if(GetValue("OutDir")!="" && isOutDirSpecified
+				&& ((IsPropertyTrue("WindowsAppContainer") && !IsPropertyFalse("GenerateProjectSpecificOutputFolder")) || IsPropertyTrue("GenerateProjectSpecificOutputFolder")))
+			{
+				_dictProperties["OutDir"]=GetValue("OutDir")+GetValue("ProjectName")+@"\";
+			}
+			SetIfEmpty("AssemblyName",GetValue("MSBuildProjectName"));
+			if(GetValue("TargetName")=="" && IsValue("OutputType","winmdobj") && GetValue("RootNamespace")!="") {
+				_dictProperties["TargetName"]=GetValue("RootNamespace");
+			}
+			SetIfEmpty("TargetName",GetValue("AssemblyName"));
+			if(IsValue("OutputType","winmdobj")) {
+				SetIfEmpty("WinMDExpOutputWindowsMetadataFilename",GetValue("TargetName")+".winmd");
+				SetIfEmpty("TargetFileName",GetValue("WinMDExpOutputWindowsMetadataFilename"));
+			}
+			SetIfEmpty("TargetFileName",GetValue("TargetName")+GetValue("TargetExt"));
+			string outDir=GetValue("OutDir");
+			if(outDir!="") {
+				_dictProperties["TargetDir"]=IsUnresolved(outDir) ? outDir : Path.GetFullPath(Path.Combine(Folder,outDir));
+			}
+			SetIfEmpty("TargetPath",GetValue("TargetDir")+GetValue("TargetFileName"));
+			SetIfEmpty("ProjectDir",EnsureTrailingSlash(Folder));
+			if(IsValue("OutputType","exe") || IsValue("OutputType","winexe")) {
+				_dictProperties["GenerateBindingRedirectsOutputType"]="true";
+			}
+			Version versionFramework;
+			if(GetValue("AutoGenerateBindingRedirects")=="" && IsValue("TargetFrameworkIdentifier",".NETFramework")
+				&& Version.TryParse(GetValue("TargetFrameworkVersion").TrimStart('v','V'),out versionFramework) && versionFramework>=new Version(4,7,2))
+			{
+				_dictProperties["AutoGenerateBindingRedirects"]="true";
+			}
+		}
+
+		///<summary>Sdk.props of Microsoft.NET.Sdk: UsingMicrosoftNETSdk, Microsoft.Common.props (Directory.Build.props), the defaults of
+		///Microsoft.NET.Sdk.props that the project's own properties may read or override (Configurations and Platforms; OutputType Library,
+		///FileAlignment, ErrorReport, AssemblyName and RootNamespace from the project's name, Deterministic; DebugSymbols and Optimize for Debug,
+		///Optimize for Release; PlatformTarget from an x86, x64, ARM or arm64 platform; DebugType; the switches that default to false),
+		///Microsoft.NET.Sdk.DefaultItems.props and Microsoft.NET.Sdk.WindowsDesktop.props, whose default items come before the project's own, and
+		///for a C# project Microsoft.NET.Sdk.CSharp.props: NoWarn 1701;1702 unless set, NU1605 added to WarningsAsErrors, and TRACE added to
+		///DefineConstants (after a ';' when it is not empty). All before the project's own properties, which may change them.</summary>
+		private void ImportSdkProps() {
+			_dictProperties["UsingMicrosoftNETSdk"]="true";
+			_dictProperties["UsingNETSdkDefaults"]="true";
+			ImportMicrosoftCommonProps();
+			//Microsoft.NET.Sdk.props, in its order.
+			SetIfEmpty("Configurations","Debug;Release");
+			SetIfEmpty("Platforms","AnyCPU");
+			SetIfEmpty("OutputType","Library");
+			SetIfEmpty("FileAlignment","512");
+			SetIfEmpty("ErrorReport","prompt");
+			SetIfEmpty("AssemblyName",GetValue("MSBuildProjectName"));
+			SetIfEmpty("RootNamespace",GetValue("MSBuildProjectName").Replace(" ","_"));
+			SetIfEmpty("Deterministic","true");
+			if(IsValue("Configuration","Debug")) {
+				SetIfEmpty("DebugSymbols","true");
+				SetIfEmpty("Optimize","false");
+			}
+			if(IsValue("Configuration","Release")) {
+				SetIfEmpty("Optimize","true");
+			}
+			foreach(string platformTarget in new[] { "x64","x86","ARM","arm64" }) {
+				if(IsValue("Platform",platformTarget)) {
+					SetIfEmpty("PlatformTarget",platformTarget);
+				}
+			}
+			//DebugType before DebugSymbols' own default: a Release project that sets neither gets portable and DebugSymbols false.
+			if(IsPropertyFalse("DebugSymbols")) {
+				_dictProperties["DebugType"]="None";
+			}
+			SetIfEmpty("DebugType","portable");
+			foreach(string name in new[] { "AllowUnsafeBlocks","TreatWarningsAsErrors","Prefer32Bit","PreferNativeArm64","SignAssembly","DelaySign",
+				"GeneratePackageOnBuild","PackageRequireLicenseAcceptance","DebugSymbols","CheckForOverflowUnderflow" })
+			{
+				SetIfEmpty(name,"false");
+			}
+			_listItemSteps.Add(new ItemStep { Builtin=STEP_SDK_DEFAULT_ITEMS });
+			//Microsoft.NET.Sdk.CSharp.props, which Microsoft.NET.Sdk.props imports after Microsoft.NET.Sdk.DefaultItems.props.
+			if(IsCSharpProject()) {
+				SetIfEmpty("NoWarn","1701;1702");
+				_dictProperties["WarningsAsErrors"]=GetValue("WarningsAsErrors")+";NU1605";
+				string defineConstants=GetValue("DefineConstants");
+				_dictProperties["DefineConstants"]=(defineConstants=="" ? "" : defineConstants+";")+"TRACE";
+			}
+		}
+
+		///<summary>True for a .csproj, the project files whose SDK language files (Microsoft.NET.Sdk.CSharp.props and .targets) this reader
+		///models.</summary>
+		private bool IsCSharpProject() {
+			return Path.GetExtension(FullPath).Equals(".csproj",StringComparison.OrdinalIgnoreCase);
+		}
+
+		///<summary>Sdk.targets of Microsoft.NET.Sdk, in its order: Microsoft.NET.Sdk.BeforeCommon.targets (ApplySdkBeforeCommonProperties); the
+		///language targets with Microsoft.Common.targets and Directory.Build.targets; Microsoft.NET.Sdk.targets with the default item switches and
+		///excludes of Microsoft.NET.Sdk.DefaultItems.targets and its automatic Link metadata (an item step, after every item before this point),
+		///for a C# project the compiler defaults of Microsoft.NET.Sdk.targets, Microsoft.NET.Sdk.CSharp.targets and
+		///Microsoft.NET.Sdk.Analyzers.targets (ApplySdkLanguageProperties); then, for a WPF or Windows Forms project,
+		///Microsoft.NET.Sdk.WindowsDesktop.targets with its defaults and Page removals.</summary>
 		private void ImportSdkTargets() {
+			ApplySdkBeforeCommonProperties();
+			ImportMicrosoftCommonTargets(Path.GetExtension(FullPath).Equals(".vbproj",StringComparison.OrdinalIgnoreCase) ? "Microsoft.VisualBasic.targets"
+				: "Microsoft.CSharp.targets");
 			SetIfEmpty("EnableDefaultItems","true");
 			SetIfEmpty("EnableDefaultCompileItems","true");
 			SetIfEmpty("EnableDefaultEmbeddedResourceItems","true");
 			SetIfEmpty("EnableDefaultNoneItems","true");
-			SetIfEmpty("EnableDefaultPageItems","true");
-			SetIfEmpty("EnableDefaultApplicationDefinition","true");
-			SetIfEmpty("DefaultLanguageSourceExtension",".cs");
-			SetIfEmpty("BaseOutputPath",@"bin\");
-			SetIfEmpty("BaseIntermediateOutputPath",@"obj\");
-			_dictProperties["DefaultItemExcludes"]=GetProperty("DefaultItemExcludes")+";"+GetProperty("BaseOutputPath")+"/**;"
-				+GetProperty("BaseIntermediateOutputPath")+"/**;**/*.user;**/*.*proj;**/*.sln;**/*.slnx;**/*.vssscc;**/.DS_Store";
-			_dictProperties["DefaultExcludesInProjectFolder"]=GetProperty("DefaultExcludesInProjectFolder")+";"
-				+GetProperty("DefaultItemExcludesInProjectFolder")+";**/.*/**";
-			ImportDirectoryBuildFile("Directory.Build.targets");
+			_dictProperties["DefaultItemExcludes"]=GetValue("DefaultItemExcludes")+";"+GetValue("BaseOutputPath")+"/**;"
+				+GetValue("BaseIntermediateOutputPath")+"/**;**/*.user;**/*.*proj;**/*.sln;**/*.slnx;**/*.vssscc;**/.DS_Store";
+			_dictProperties["DefaultExcludesInProjectFolder"]=GetValue("DefaultExcludesInProjectFolder")+";"
+				+GetValue("DefaultItemExcludesInProjectFolder")+";**/.*/**";
+			_listItemSteps.Add(new ItemStep { Builtin=STEP_SDK_LINK_METADATA });
+			if(IsCSharpProject()) {
+				ApplySdkLanguageProperties();
+			}
+			Version versionFramework;
+			bool isWindowsDesktopFramework=IsValue("TargetFrameworkIdentifier",".NETFramework")
+				|| (IsValue("TargetFrameworkIdentifier",".NETCoreApp") && IsValue("TargetPlatformIdentifier","Windows")
+				&& Version.TryParse(GetValue("_TargetFrameworkVersionWithoutV"),out versionFramework) && versionFramework>=new Version(3,0));
+			if(GetValue("ImportWindowsDesktopTargets")=="" && (IsPropertyTrue("UseWPF") || IsPropertyTrue("UseWindowsForms")) && isWindowsDesktopFramework) {
+				_dictProperties["ImportWindowsDesktopTargets"]="true";
+			}
+			if(IsPropertyTrue("ImportWindowsDesktopTargets")) {
+				SetIfEmpty("EnableDefaultPageItems","true");
+				SetIfEmpty("EnableDefaultApplicationDefinition","true");
+				SetIfEmpty("DefaultXamlRuntime","Wpf");
+			}
 			_listItemSteps.Add(new ItemStep { Builtin=STEP_SDK_TARGETS_ITEMS });
 		}
 
+		///<summary>The part of Microsoft.NET.Sdk.BeforeCommon.targets (SDK 10.0.114) that comes before the common targets: whether the project is
+		///an exe; the platform name; the target framework's identifier, version and platform (Microsoft.NET.TargetFrameworkInference.targets); the
+		///output and intermediate paths (Microsoft.NET.DefaultOutputPaths.targets: bin\ and obj\, then the platform folder unless the platform is
+		///AnyCPU or AppendPlatformToOutputPath is false, the configuration, both added to DefaultItemExcludes, then the target framework unless
+		///AppendTargetFrameworkToOutputPath is false); and the SDK's AutoGenerateBindingRedirects for a .NET Framework exe.</summary>
+		private void ApplySdkBeforeCommonProperties() {
+			bool isExecutable=IsValue("OutputType","Exe") || IsValue("OutputType","WinExe");
+			if(isExecutable) {
+				_dictProperties["_IsExecutable"]="true";
+			}
+			if(GetValue("HasRuntimeOutput")=="") {
+				_dictProperties["HasRuntimeOutput"]=isExecutable ? "true" : "";
+			}
+			SetIfEmpty("PlatformName",GetValue("Platform"));
+			string targetFramework=GetValue("TargetFramework");
+			if(targetFramework=="" && GetValue("TargetFrameworks")!="") {
+				throw new NotSupportedException(FullPath+": TargetFrameworks (more than one target framework) is not modelled by ProjectFile.");
+			}
+			bool isFrameworkKnown=true;
+			if(targetFramework!="") {
+				string frameworkIdentifier;
+				string frameworkVersion;
+				string platformIdentifier;
+				string platformVersion;
+				isFrameworkKnown=TryParseTargetFramework(targetFramework,out frameworkIdentifier,out frameworkVersion,out platformIdentifier,out platformVersion);
+				if(!isFrameworkKnown) {
+					foreach(string name in new[] { "TargetFrameworkIdentifier","TargetFrameworkVersion","TargetPlatformIdentifier","TargetPlatformVersion" }) {
+						_dictProperties[name]=Unresolved("the "+name+" of TargetFramework "+targetFramework);
+					}
+				}
+				else {
+					if(GetValue("TargetFrameworkIdentifier")=="" || GetValue("TargetFrameworkVersion")=="") {
+						_dictProperties["TargetFrameworkIdentifier"]=frameworkIdentifier;
+						_dictProperties["TargetFrameworkVersion"]="v"+frameworkVersion;
+					}
+					if(GetValue("TargetPlatformIdentifier")=="" || GetValue("TargetPlatformVersion")=="") {
+						SetIfEmpty("TargetPlatformIdentifier",platformIdentifier);
+						if(IsValue("TargetPlatformIdentifier","Windows")) {
+							_dictProperties["TargetPlatformIdentifier"]="Windows";
+							if(platformVersion!="") {
+								SetIfEmpty("TargetPlatformVersion",platformVersion);
+							}
+						}
+					}
+				}
+			}
+			_dictProperties["_TargetFrameworkVersionWithoutV"]=GetValue("TargetFrameworkVersion").TrimStart('v','V');
+			Version versionFramework;
+			if(IsValue("TargetFrameworkIdentifier",".NETCoreApp") && Version.TryParse(GetValue("_TargetFrameworkVersionWithoutV"),out versionFramework)
+				&& versionFramework>=new Version(5,0))
+			{
+				_dictProperties["_EnableDefaultWindowsPlatform"]="false";
+				if(GetValue("TargetPlatformIdentifier")!="" && GetValue("TargetPlatformVersion")=="") {
+					//The SDK's platform files give it a default later on; not modelled.
+					_hashSetNotModelled.Add("TargetPlatformVersion");
+					_hashSetNotModelled.Add("TargetPlatformMoniker");
+				}
+			}
+			//Microsoft.NET.DefaultOutputPaths.targets
+			if(IsPropertyTrue("UseArtifactsOutput") || IsPropertyTrue("UseArtifactsIntermediateOutput")) {
+				throw new NotSupportedException(FullPath+": the SDK's artifacts output layout (UseArtifactsOutput) is not modelled by ProjectFile.");
+			}
+			SetIfEmpty("AppendTargetFrameworkToOutputPath","true");
+			SetIfEmpty("AppendPlatformToOutputPath",IsValue("PlatformName","AnyCPU") ? "false" : "true");
+			string platformFolder="";
+			if(IsPropertyTrue("AppendPlatformToOutputPath")) {
+				platformFolder=GetValue("PlatformName")+@"\";
+				_dictProperties["_PlatformToAppendToOutputPath"]=platformFolder;
+			}
+			SetIfEmpty("BaseOutputPath",@"bin\");
+			AppendTrailingSlash("BaseOutputPath");
+			SetIfEmpty("OutputPath",GetValue("BaseOutputPath")+platformFolder+GetValue("Configuration")+@"\");
+			AppendTrailingSlash("OutputPath");
+			SetIfEmpty("BaseIntermediateOutputPath",@"obj\");
+			AppendTrailingSlash("BaseIntermediateOutputPath");
+			SetIfEmpty("IntermediateOutputPath",GetValue("BaseIntermediateOutputPath")+platformFolder+GetValue("Configuration")+@"\");
+			AppendTrailingSlash("IntermediateOutputPath");
+			_dictProperties["DefaultItemExcludes"]=GetValue("DefaultItemExcludes")+";"+GetValue("OutputPath")+"/**;"+GetValue("IntermediateOutputPath")+"/**";
+			if(IsPropertyTrue("AppendTargetFrameworkToOutputPath") && targetFramework!="") {
+				foreach(string name in new[] { "OutputPath","IntermediateOutputPath" }) {
+					_dictProperties[name]=isFrameworkKnown ? GetValue(name)+targetFramework.ToLowerInvariant()+@"\" : Unresolved("the "+name+" of TargetFramework "+targetFramework);
+				}
+			}
+			//Microsoft.NET.RuntimeIdentifierInference.targets sets the platform target from the runtime identifier it infers when the project has
+			//none (Directory.Build.props gives every SDK-style project x86); not modelled.
+			if(GetValue("PlatformTarget")=="") {
+				_hashSetNotModelled.Add("PlatformTarget");
+			}
+			if(IsValue("TargetFrameworkIdentifier",".NETFramework") && IsPropertyTrue("HasRuntimeOutput")) {
+				SetIfEmpty("AutoGenerateBindingRedirects","true");
+			}
+		}
+
+		///<summary>The compiler defaults that the SDK (10.0.114) computes after the project's own properties for a C# project, in its order:
+		///Microsoft.NET.Sdk.targets turns BinaryFormatter's obsolete warning into an error for .NET 7 and later unless
+		///EnableUnsafeBinaryFormatterSerialization is true, and sets that false from .NET 8 on (for Windows Forms and WPF from .NET 9 on);
+		///Microsoft.NET.Sdk.CSharp.targets adds the configuration's define to DefineConstants
+		///(ImplicitConfigurationDefine: the configuration in capitals with '-', '.' and ' ' made '_', always after a ';') unless
+		///DisableImplicitConfigurationDefines is true, and SYSLIB0011 to WarningsAsErrors for that error; Microsoft.NET.Sdk.Analyzers.targets
+		///sets WarningLevel when the project has none: 9999 for AnalysisLevel preview, 4 for .NET Framework, the major version for .NET. The
+		///symbols the SDK's targets add while building (NETFRAMEWORK, NET48 and the like) are not part of the evaluation, so not here either. For a
+		///target framework this reader does not know, what depends on it cannot be evaluated.</summary>
+		private void ApplySdkLanguageProperties() {
+			string frameworkIdentifier=GetValue("TargetFrameworkIdentifier");
+			Version versionFramework;
+			bool hasFrameworkVersion=Version.TryParse(GetValue("_TargetFrameworkVersionWithoutV"),out versionFramework);
+			bool isNetCoreApp=IsValue("TargetFrameworkIdentifier",".NETCoreApp");
+			if(!IsPropertyTrue("EnableUnsafeBinaryFormatterSerialization") && isNetCoreApp && hasFrameworkVersion && versionFramework>=new Version(7,0)) {
+				//Windows Forms and WPF keep BinaryFormatter working at run time through .NET 8.
+				if((IsPropertyTrue("UseWindowsForms") || IsPropertyTrue("UseWPF")) && versionFramework<=new Version(8,0)) {
+					_dictProperties["_ProjectTypeRequiresBinaryFormatter"]="true";
+				}
+				_dictProperties["_BinaryFormatterObsoleteAsError"]="true";
+				if(versionFramework>=new Version(8,0) && !IsPropertyTrue("_ProjectTypeRequiresBinaryFormatter")) {
+					_dictProperties["EnableUnsafeBinaryFormatterSerialization"]="false";
+				}
+			}
+			//Microsoft.NET.Sdk.CSharp.targets
+			SetIfEmpty("AppDesignerFolder","Properties");
+			if(!IsPropertyTrue("DisableImplicitConfigurationDefines")) {
+				string define=GetValue("Configuration").ToUpperInvariant().Replace('-','_').Replace('.','_').Replace(' ','_');
+				_dictProperties["ImplicitConfigurationDefine"]=define;
+				_dictProperties["DefineConstants"]=GetValue("DefineConstants")+";"+define;
+			}
+			if(IsUnresolved(frameworkIdentifier)) {
+				_dictProperties["WarningsAsErrors"]=GetValue("WarningsAsErrors")+";"+frameworkIdentifier;
+			}
+			else if(IsPropertyTrue("_BinaryFormatterObsoleteAsError")) {
+				_dictProperties["WarningsAsErrors"]=GetValue("WarningsAsErrors")+";SYSLIB0011";
+			}
+			//Microsoft.NET.Sdk.Analyzers.targets
+			if(GetValue("WarningLevel")=="") {
+				if(IsValue("AnalysisLevel","preview")) {
+					_dictProperties["WarningLevel"]="9999";
+				}
+				else if(IsUnresolved(frameworkIdentifier)) {
+					_dictProperties["WarningLevel"]=frameworkIdentifier;
+				}
+				else if(IsValue("TargetFrameworkIdentifier",".NETFramework")) {
+					_dictProperties["WarningLevel"]="4";
+				}
+				else if(isNetCoreApp) {
+					_dictProperties["WarningLevel"]=GetValue("_TargetFrameworkVersionWithoutV").Split('.')[0];
+				}
+			}
+		}
+
+		///<summary>[MSBuild]::GetTargetFrameworkIdentifier, GetTargetFrameworkVersion(..., 2), GetTargetPlatformIdentifier and
+		///GetTargetPlatformVersion for the short names NuGet gives the frameworks this repository targets or moves to: netNN[N] (.NET Framework,
+		///one digit per version part: net48 is 4.8, net472 4.7.2), netX.Y from 5.0 on (.NET, with an optional -platform and platform version, as
+		///net10.0-windows), netcoreappX.Y and netstandardX.Y. False for any other name.</summary>
+		private static bool TryParseTargetFramework(string targetFramework,out string frameworkIdentifier,out string frameworkVersion,
+			out string platformIdentifier,out string platformVersion)
+		{
+			frameworkIdentifier=null;
+			frameworkVersion=null;
+			platformIdentifier="";
+			platformVersion="";
+			Match match=Regex.Match(targetFramework.Trim(),@"^(net|netcoreapp|netstandard)([0-9][0-9.]*)(?:-([A-Za-z]+)([0-9][0-9.]*)?)?$",RegexOptions.IgnoreCase);
+			if(!match.Success) {
+				return false;
+			}
+			string prefix=match.Groups[1].Value.ToLowerInvariant();
+			string digits=match.Groups[2].Value;
+			List<int> listParts;
+			if(prefix=="net" && !digits.Contains(".")) {
+				frameworkIdentifier=".NETFramework";
+				listParts=digits.Select(x => x-'0').ToList();
+			}
+			else {
+				if(digits.EndsWith(".") || digits.Contains("..")) {
+					return false;
+				}
+				listParts=digits.Split('.').Select(x => int.Parse(x,System.Globalization.CultureInfo.InvariantCulture)).ToList();
+				if(prefix=="netstandard") {
+					frameworkIdentifier=".NETStandard";
+				}
+				else if(prefix=="netcoreapp" || listParts[0]>=5) {
+					frameworkIdentifier=".NETCoreApp";
+				}
+				else {
+					frameworkIdentifier=".NETFramework";
+				}
+			}
+			if(match.Groups[3].Success) {
+				if(frameworkIdentifier!=".NETCoreApp" || listParts[0]<5) {
+					return false;
+				}
+				platformIdentifier=match.Groups[3].Value;
+				platformVersion=match.Groups[4].Value;
+			}
+			while(listParts.Count>2 && listParts[listParts.Count-1]==0) {
+				listParts.RemoveAt(listParts.Count-1);
+			}
+			while(listParts.Count<2) {
+				listParts.Add(0);
+			}
+			frameworkVersion=string.Join(".",listParts);
+			return true;
+		}
+
+		///<summary>MSBuild's &lt;X Condition="!HasTrailingSlash('$(X)')"&gt;$(X)\&lt;/X&gt;.</summary>
+		private void AppendTrailingSlash(string name) {
+			string value=GetValue(name);
+			if(!value.EndsWith(@"\") && !value.EndsWith("/")) {
+				_dictProperties[name]=value+@"\";
+			}
+		}
+
 		private void SetIfEmpty(string name,string value) {
-			if(GetProperty(name)=="") {
+			if(GetValue(name)=="") {
 				_dictProperties[name]=value;
 			}
 		}
 
+		///<summary>The property's value equals the text, as an MSBuild condition compares them: ignoring case.</summary>
+		private bool IsValue(string name,string value) {
+			return GetValue(name).Equals(value,StringComparison.OrdinalIgnoreCase);
+		}
+
 		private bool IsPropertyTrue(string name) {
-			return GetProperty(name).Equals("true",StringComparison.OrdinalIgnoreCase);
+			return IsValue(name,"true");
 		}
 
 		private bool IsPropertyFalse(string name) {
-			return GetProperty(name).Equals("false",StringComparison.OrdinalIgnoreCase);
+			return IsValue(name,"false");
 		}
 
 		///<summary>Microsoft.NET.Sdk.DefaultItems.props and Microsoft.NET.Sdk.WindowsDesktop.props (SDK 10.0.114).</summary>
@@ -287,8 +812,8 @@ namespace ProjectFileTests {
 			if(!IsPropertyTrue("EnableDefaultItems")) {
 				return;
 			}
-			string excludes=GetProperty("DefaultItemExcludes")+";"+GetProperty("DefaultExcludesInProjectFolder");
-			string extension=GetProperty("DefaultLanguageSourceExtension");
+			string excludes=GetValue("DefaultItemExcludes")+";"+GetValue("DefaultExcludesInProjectFolder");
+			string extension=GetValue("DefaultLanguageSourceExtension");
 			if(IsPropertyTrue("EnableDefaultCompileItems")) {
 				AddItems("Compile","**/*"+extension,excludes,new Dictionary<string,string>(),null);
 			}
@@ -331,12 +856,63 @@ namespace ProjectFileTests {
 			}
 		}
 
-		///<summary>_EnableWindowsDesktopGlobbing: default items on, UseWPF, and a target framework of 3.0 or later (every .NET Framework 4.x and
-		///.NET target this repository has).</summary>
+		///<summary>_EnableWindowsDesktopGlobbing of Microsoft.NET.Sdk.WindowsDesktop.targets: default items on, UseWPF, and a target framework of
+		///3.0 or later (every .NET Framework 4.x and .NET target this repository has).</summary>
 		private bool IsWindowsDesktopGlobbing() {
-			return IsPropertyTrue("EnableDefaultItems") && IsPropertyTrue("UseWPF");
+			Version versionFramework;
+			return IsPropertyTrue("EnableDefaultItems") && IsPropertyTrue("UseWPF")
+				&& Version.TryParse(GetValue("_TargetFrameworkVersionWithoutV"),out versionFramework) && versionFramework>=new Version(3,0);
 		}
-		#endregion Loading
+
+		///<summary>The ItemDefinitionGroup of Microsoft.NET.Sdk.WindowsDesktop.props (SDK 10.0.114): with the WPF default globs on, every Page and
+		///ApplicationDefinition item starts with Generator=MSBuild:Compile, XamlRuntime=$(DefaultXamlRuntime) and SubType=Designer, which its own
+		///metadata then override.</summary>
+		private void ApplyItemDefinitions(ProjectItem projectItem) {
+			if(!projectItem.ItemType.Equals("Page",StringComparison.OrdinalIgnoreCase)
+				&& !projectItem.ItemType.Equals("ApplicationDefinition",StringComparison.OrdinalIgnoreCase))
+			{
+				return;
+			}
+			if(!IsSdkStyle || !IsWindowsDesktopGlobbing()) {
+				return;
+			}
+			//Before the item's own metadata; an item copied from another item list (Include="@(Page)") keeps the metadata it brought.
+			foreach(string[] arrayDefinition in new[] { new[] { "Generator","MSBuild:Compile" },new[] { "XamlRuntime",GetValue("DefaultXamlRuntime") },
+				new[] { "SubType","Designer" } })
+			{
+				if(!projectItem.HasMetadata(arrayDefinition[0])) {
+					projectItem.SetMetadata(arrayDefinition[0],arrayDefinition[1]);
+				}
+			}
+		}
+
+		///<summary>The automatic Link metadata of Microsoft.NET.Sdk.DefaultItems.targets (SDK 10.0.114), unless SetLinkMetadataAutomatically is
+		///false: an Update of every Compile, AdditionalFiles, None, Content, EmbeddedResource, Page and Resource item there is at that point (so
+		///those of Directory.Build.targets too, but none after an explicit Sdk.targets import). LinkBase gets a trailing back slash, and an item
+		///whose full path is not inside the project folder, with no Link and not from a shared project (.projitems), gets
+		///Link=%(LinkBase)%(RecursiveDir)%(Filename)%(Extension): its file name, under the folders a wildcard matched.</summary>
+		private void ApplySdkLinkMetadata() {
+			if(IsPropertyFalse("SetLinkMetadataAutomatically")) {
+				return;
+			}
+			string folderWithSlash=EnsureTrailingSlash(Folder);
+			foreach(ProjectItem projectItem in _listItems.Where(x => _arrayLinkItemTypes.Contains(x.ItemType,StringComparer.OrdinalIgnoreCase))) {
+				string linkBase=projectItem.GetMetadata("LinkBase");
+				if(linkBase!="") {
+					linkBase=EnsureTrailingSlash(linkBase);
+					projectItem.SetMetadata("LinkBase",linkBase);
+				}
+				if(projectItem.GetMetadata("Link")!=""
+					|| (projectItem.DefiningFile!=null && Path.GetExtension(projectItem.DefiningFile).Equals(".projitems",StringComparison.OrdinalIgnoreCase))
+					|| (projectItem.FullPath??"").StartsWith(folderWithSlash,StringComparison.Ordinal))
+				{
+					continue;
+				}
+				projectItem.SetMetadata("Link",linkBase+projectItem.RecursiveDir+Path.GetFileNameWithoutExtension(projectItem.Include)
+					+Path.GetExtension(projectItem.Include));
+			}
+		}
+		#endregion MSBuild's and the SDK's own files
 
 		#region Items
 		///<summary>Pass 2 for one ItemGroup outside a target.</summary>
@@ -362,7 +938,8 @@ namespace ProjectFileTests {
 				else if(update!=null) {
 					Dictionary<string,string> dictMetadata=ReadMetadata(xElementItem,fileContext);
 					List<Func<ProjectItem,bool>> listMatchers=GetMatchers(Expand(update,fileContext),fileContext);
-					foreach(ProjectItem projectItem in _listItems.Where(x => x.ItemType==itemType && listMatchers.Any(y => y(x)))) {
+					//The item type ignoring case, as Include and Remove have it: MSBuild's item types are not case-sensitive.
+					foreach(ProjectItem projectItem in _listItems.Where(x => x.ItemType.Equals(itemType,StringComparison.OrdinalIgnoreCase) && listMatchers.Any(y => y(x)))) {
 						foreach(KeyValuePair<string,string> pair in dictMetadata) {
 							projectItem.SetMetadata(pair.Key,ExpandWellKnownMetadata(pair.Value,projectItem));
 						}
@@ -371,7 +948,8 @@ namespace ProjectFileTests {
 			}
 		}
 
-		///<summary>Metadata from child elements (with their conditions) and from attributes, the SDK-style short form.</summary>
+		///<summary>Metadata from child elements (with their conditions) and from attributes, the SDK-style short form. A value this reader cannot
+		///evaluate throws.</summary>
 		private Dictionary<string,string> ReadMetadata(XElement xElementItem,FileContext fileContext) {
 			Dictionary<string,string> dictMetadata=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
 			foreach(XAttribute xAttribute in xElementItem.Attributes()) {
@@ -384,6 +962,9 @@ namespace ProjectFileTests {
 				if(IsConditionTrue(xElementMetadata,fileContext)) {
 					dictMetadata[xElementMetadata.Name.LocalName]=Expand(xElementMetadata.Value.Trim(),fileContext);
 				}
+			}
+			foreach(KeyValuePair<string,string> pair in dictMetadata) {
+				ThrowIfUnresolved(pair.Value,fileContext.Path+": "+xElementItem.Name.LocalName+" metadata "+pair.Key);
 			}
 			return dictMetadata;
 		}
@@ -425,6 +1006,7 @@ namespace ProjectFileTests {
 				if(listExcludes.Any(x => x(projectItem))) {
 					continue;
 				}
+				ApplyItemDefinitions(projectItem);
 				foreach(KeyValuePair<string,string> pair in dictMetadata) {
 					projectItem.SetMetadata(pair.Key,ExpandWellKnownMetadata(pair.Value,projectItem));
 				}
@@ -630,12 +1212,48 @@ namespace ProjectFileTests {
 		#endregion Items
 
 		#region Properties and conditions
-		///<summary>The evaluated value of a property set by the project file or a file it imports from the repository, or "". Properties MSBuild
-		///or the SDK compute in their own files are not known, apart from the few this reader sets (the MSBuildProject* ones, ProjectDir, and the
-		///SDK's default item switches for an SDK-style project).</summary>
+		///<summary>The evaluated value of a property, as MSBuild has it at the end of the evaluation (as MSBuild -getProperty gives it, so
+		///without what targets add while building): set by the project file or a file it imports from the repository, or computed by this reader
+		///where MSBuild's or the SDK's own files compute it (region "MSBuild's and the SDK's own files": for an SDK-style C# project also
+		///DefineConstants, NoWarn and the other compiler defaults), or "" when nothing sets it. Throws for a property that MSBuild, the solution
+		///build or the SDK compute and this reader does not (_arrayNotModelledProperties, _arrayNotModelledSdkProperties, and
+		///_arraySdkLanguageProperties for an SDK-style project in another language) and for a value that holds an expression this reader cannot
+		///evaluate.</summary>
 		public string GetProperty(string name) {
+			if(!_dictProperties.ContainsKey(name) && _hashSetNotModelled.Contains(name)) {
+				throw new NotSupportedException(Describe()+": $("+name+") is computed by MSBuild, the solution build or the .NET SDK and not modelled by ProjectFile.");
+			}
+			string value=GetValue(name);
+			ThrowIfUnresolved(value,Describe()+": $("+name+")");
+			return value;
+		}
+
+		///<summary>True when the reader knows the property's value (GetProperty does not throw for it).</summary>
+		public bool IsPropertyKnown(string name) {
+			if(!_dictProperties.ContainsKey(name)) {
+				return !_hashSetNotModelled.Contains(name);
+			}
+			return !IsUnresolved(GetValue(name));
+		}
+
+		///<summary>The value as it stands at this point of the evaluation, or "" when nothing set it; no check.</summary>
+		private string GetValue(string name) {
 			string value;
 			return _dictProperties.TryGetValue(name,out value) ? value : "";
+		}
+
+		///<summary>The value of $(Name) in an expression: as GetValue, but a property MSBuild, the solution build or the SDK compute and this reader
+		///does not becomes a marker, which makes the condition, include or import that uses it, directly or through another property, throw.
+		///</summary>
+		private string GetValueForExpression(string name) {
+			if(!_dictProperties.ContainsKey(name) && _hashSetNotModelled.Contains(name)) {
+				return Unresolved(name);
+			}
+			return GetValue(name);
+		}
+
+		private static bool IsUnresolved(string value) {
+			return value!=null && value.Contains(UNRESOLVED_START);
 		}
 
 		///<summary>The files read: the project file, then each imported file of the repository in the order MSBuild imports it.</summary>
@@ -710,6 +1328,9 @@ namespace ProjectFileTests {
 			if(matchMethod.Success) {
 				string value=GetPropertyInFile(matchMethod.Groups[1].Value,fileContext);
 				List<string> listArguments=SplitArguments(matchMethod.Groups[3].Value).Select(x => ExpandArgument(x,fileContext)).ToList();
+				if(IsUnresolved(value) || listArguments.Any(x => IsUnresolved(x))) {
+					return Unresolved(expression);
+				}
 				string result=EvaluateStringMethod(value,matchMethod.Groups[2].Value,listArguments);
 				return result??Unresolved(expression);
 			}
@@ -728,8 +1349,10 @@ namespace ProjectFileTests {
 					return Path.GetFileNameWithoutExtension(fileContext.Path);
 				case "msbuildthisfileextension":
 					return Path.GetExtension(fileContext.Path);
+				case "msbuildthisfiledirectorynoroot":
+					return fileContext.Directory.Substring(Path.GetPathRoot(fileContext.Directory).Length);
 				default:
-					return GetProperty(name);
+					return GetValueForExpression(name);
 			}
 		}
 
@@ -1122,6 +1745,29 @@ namespace ProjectFileTests {
 		///<summary>The .cs files on disk in the folder (relative to the project folder) and below it, outside bin and obj, that the project does not
 		///compile. Throws when the folder has none at all, so an empty answer is never vacuous.</summary>
 		public List<string> GetFilesNotCompiled(string relativeFolder) {
+			return GetSourceFiles(relativeFolder).Where(x => !Compiles(x)).Select(x => x.Substring(Folder.Length+1)).ToList();
+		}
+
+		///<summary>The .cs files on disk in the folder and below it, outside bin and obj (as GetFilesNotCompiled finds them), that no wildcard
+		///compiles, or that an item naming the file itself compiles as well: the files a classic project file lists one by one, or an SDK-style one
+		///names again (NETSDK1022). Empty when a wildcard compiles the whole folder (a classic folder wildcard such as VendorDirect\**\*.cs, or the
+		///SDK's default glob), so a file added to the folder needs no line of its own in the project file. Throws when the folder has no .cs files.
+		///</summary>
+		public List<string> GetFilesNotCompiledByWildcard(string relativeFolder) {
+			List<string> listFiles=new List<string>();
+			foreach(string path in GetSourceFiles(relativeFolder)) {
+				List<ProjectItem> listItems=_listItems.Where(x => x.ItemType.Equals("Compile",StringComparison.OrdinalIgnoreCase)
+					&& x.FullPath!=null && x.FullPath.Equals(path,StringComparison.OrdinalIgnoreCase)).ToList();
+				if(listItems.Count==0 || listItems.Any(x => !x.IsFromWildcard)) {
+					listFiles.Add(path.Substring(Folder.Length+1));
+				}
+			}
+			return listFiles;
+		}
+
+		///<summary>The full paths of the .cs files in the folder (relative to the project folder) and below it, outside bin and obj. Throws when
+		///there are none, so an empty answer of the callers is never vacuous.</summary>
+		private List<string> GetSourceFiles(string relativeFolder) {
 			string folder=Path.GetFullPath(Path.Combine(Folder,relativeFolder));
 			List<string> listFiles=Directory.Exists(folder)
 				? Directory.GetFiles(folder,"*",SearchOption.AllDirectories).Where(x => x.EndsWith(".cs",StringComparison.OrdinalIgnoreCase))
@@ -1130,7 +1776,7 @@ namespace ProjectFileTests {
 			if(listFiles.Count==0) {
 				throw new InvalidOperationException(Name+": no .cs files under "+relativeFolder);
 			}
-			return listFiles.Where(x => !Compiles(x)).Select(x => x.Substring(Folder.Length+1)).ToList();
+			return listFiles;
 		}
 
 		///<summary>The items of any of the types whose Include mentions the text (case-insensitive), for checks that a removed file or library is
@@ -1205,6 +1851,43 @@ namespace ProjectFileTests {
 			public XElement XElementGroup;
 			public FileContext FileContext;
 			public string Builtin;
+		}
+
+		///<summary>The project mappings of a solution file: for each project, by its full path, the configuration and platform that each
+		///solution configuration and platform builds it with (the ActiveCfg lines of ProjectConfigurationPlatforms).</summary>
+		private sealed class SolutionFile {
+			public readonly DateTime DateTimeWriteUtc;
+			public readonly long Length;
+			private readonly Dictionary<string,string> _dictGuids=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+			private readonly Dictionary<string,string[]> _dictMappings=new Dictionary<string,string[]>(StringComparer.OrdinalIgnoreCase);
+
+			public SolutionFile(string pathSln,DateTime dateTimeWriteUtc,long length) {
+				DateTimeWriteUtc=dateTimeWriteUtc;
+				Length=length;
+				string folder=Path.GetDirectoryName(pathSln);
+				string text=File.ReadAllText(pathSln);
+				foreach(Match match in Regex.Matches(text,@"^Project\(""\{[^}]+\}""\)\s*=\s*""[^""]*""\s*,\s*""([^""]+)""\s*,\s*""(\{[^}]+\})""",RegexOptions.Multiline)) {
+					string relative=match.Groups[1].Value.Replace('/','\\');
+					if(relative.IndexOfAny(Path.GetInvalidPathChars())>=0) {
+						continue;
+					}
+					_dictGuids[Path.GetFullPath(Path.Combine(folder,relative))]=match.Groups[2].Value;
+				}
+				foreach(Match match in Regex.Matches(text,@"^\s*(\{[^}]+\})\.([^\r\n=]+?)\.ActiveCfg\s*=\s*([^|\r\n]+)\|([^\r\n]+?)\s*$",RegexOptions.Multiline)) {
+					_dictMappings[match.Groups[1].Value+"."+match.Groups[2].Value.Trim()]=new[] { match.Groups[3].Value.Trim(),match.Groups[4].Value.Trim() };
+				}
+			}
+
+			///<summary>{configuration, platform} for the project and the solution's "Configuration|Platform", or null when the solution has no
+			///such mapping. "Any CPU" becomes AnyCPU, the value the solution build gives the project.</summary>
+			public string[] GetMapping(string pathProject,string solutionConfigurationPlatform) {
+				string guid;
+				string[] arrayMapping;
+				if(!_dictGuids.TryGetValue(pathProject,out guid) || !_dictMappings.TryGetValue(guid+"."+solutionConfigurationPlatform,out arrayMapping)) {
+					return null;
+				}
+				return new[] { arrayMapping[0],arrayMapping[1].Equals("Any CPU",StringComparison.OrdinalIgnoreCase) ? "AnyCPU" : arrayMapping[1] };
+			}
 		}
 	}
 

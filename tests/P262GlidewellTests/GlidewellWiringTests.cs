@@ -65,6 +65,9 @@ namespace P262GlidewellTests {
 			//The Glidewell folder is compiled whole (through the VendorDirect wildcard of the classic file, the default glob of an SDK-style one).
 			List<string> listNotCompiled=projectFileBusiness.GetFilesNotCompiled(@"VendorDirect\Glidewell");
 			Assert.AreEqual(0,listNotCompiled.Count,"Not compiled: "+string.Join(", ",listNotCompiled));
+			//By that wildcard or glob, so the folder needs no line of its own in the project file.
+			List<string> listNotByWildcard=projectFileBusiness.GetFilesNotCompiledByWildcard(@"VendorDirect\Glidewell");
+			Assert.AreEqual(0,listNotByWildcard.Count,"Not compiled by a wildcard: "+string.Join(", ",listNotByWildcard));
 			foreach(string name in new[] { "GlidewellAccts","GlidewellMsgs","LabCaseProducts" }) {
 				projectFileBusiness.AssertCompiles(@"Data Interface\"+name+".cs");
 			}

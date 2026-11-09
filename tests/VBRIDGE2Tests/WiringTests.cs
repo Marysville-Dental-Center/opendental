@@ -56,8 +56,11 @@ namespace VBRIDGE2Tests {
 			projectFileProgram.AssertEmbeds(@"Forms\FormClerriSetup.resx");
 			//The business classes are picked up with the whole VendorDirect folder (its wildcard in the classic project file, the default glob in an
 			//SDK-style one), so OpenPmsDentalBusiness.csproj needs no line of its own.
-			List<string> listNotCompiled=ProjectFile.Load(Path.Combine(root,"OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj")).GetFilesNotCompiled("VendorDirect");
+			ProjectFile projectFileBusiness=ProjectFile.Load(Path.Combine(root,"OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj"));
+			List<string> listNotCompiled=projectFileBusiness.GetFilesNotCompiled("VendorDirect");
 			Assert.AreEqual(0,listNotCompiled.Count,"Not compiled: "+string.Join(", ",listNotCompiled));
+			List<string> listNotByWildcard=projectFileBusiness.GetFilesNotCompiledByWildcard("VendorDirect");
+			Assert.AreEqual(0,listNotByWildcard.Count,"Not compiled by the folder's wildcard: "+string.Join(", ",listNotByWildcard));
 		}
 
 		[TestMethod]
