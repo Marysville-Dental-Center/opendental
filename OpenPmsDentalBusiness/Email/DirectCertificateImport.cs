@@ -663,7 +663,6 @@ namespace OpenPmsDentalBusiness {
 				}
 			}
 			finally {
-				privateImportRun.Dispose();
 				ResetAll(x509Certificate2Collection);//The keys in use stay in the key store (PersistKeySet); only these objects are released.
 			}
 		}
@@ -840,12 +839,13 @@ namespace OpenPmsDentalBusiness {
 		///<summary>What one import into the store of private certificates wrote, so that a failure partway can take it back: the private keys it
 		///stored (the file's certificates with a key, imported with PersistKeySet) that are not deleted yet, the certificates it added to the store,
 		///and the copy without a usable key of the same certificate that an added one took the place of.</summary>
-		private sealed class PrivateImportRun:IDisposable {
+		private sealed class PrivateImportRun {
 			private readonly X509Store _x509Store;
 			private readonly List<X509Certificate2> _listKeysStored;
 			private readonly List<X509Certificate2> _listAdded=new List<X509Certificate2>();
-			///<summary>The store's own entry of the same certificate (without a usable key) that an added certificate took the place of, by the added one.</summary>
-			private readonly Dictionary<X509Certificate2,X509Certificate2> _dictOverwritten=new Dictionary<X509Certificate2,X509Certificate2>();
+			///<summary>The store's own entry of the same certificate (without a usable key) that an added certificate took the place of, by the added
+			///one: as it was before the add, serialized with its properties (a friendly name, the key it names, if any).</summary>
+			private readonly Dictionary<X509Certificate2,byte[]> _dictOverwritten=new Dictionary<X509Certificate2,byte[]>();
 
 			public PrivateImportRun(X509Store x509Store,X509Certificate2Collection x509Certificate2Collection) {
 				_x509Store=x509Store;
@@ -873,24 +873,19 @@ namespace OpenPmsDentalBusiness {
 			///<summary>Adds the certificate to the store. Throws when the store refuses.</summary>
 			public void Add(X509Certificate2 x509Certificate2) {
 				ActionBeforeStoreAddForTests?.Invoke(x509Certificate2);
-				X509Certificate2 x509Certificate2Overwritten=null;
+				byte[] byteArrayOverwritten=null;
 				foreach(X509Certificate2 x509Certificate2Store in _x509Store.Certificates) {
-					if(x509Certificate2Overwritten==null && x509Certificate2Store.Thumbprint==x509Certificate2.Thumbprint) {
-						x509Certificate2Overwritten=x509Certificate2Store;//The same certificate without a usable key, which the added one takes the place of.
-						continue;
+					if(byteArrayOverwritten==null && x509Certificate2Store.Thumbprint==x509Certificate2.Thumbprint) {
+						//The same certificate without a usable key, which the added one takes the place of. Kept as bytes now: the store's add gives
+						//this object of its entry the added one's properties (its key and friendly name).
+						byteArrayOverwritten=x509Certificate2Store.Export(X509ContentType.SerializedCert);
 					}
 					x509Certificate2Store.Reset();
 				}
-				try {
-					_x509Store.Add(x509Certificate2);
-				}
-				catch {
-					x509Certificate2Overwritten?.Reset();
-					throw;
-				}
+				_x509Store.Add(x509Certificate2);
 				_listAdded.Add(x509Certificate2);
-				if(x509Certificate2Overwritten!=null) {
-					_dictOverwritten[x509Certificate2]=x509Certificate2Overwritten;
+				if(byteArrayOverwritten!=null) {
+					_dictOverwritten[x509Certificate2]=byteArrayOverwritten;
 				}
 			}
 
@@ -911,9 +906,12 @@ namespace OpenPmsDentalBusiness {
 						_listKeysStored.Remove(x509Certificate2);
 						continue;
 					}
-					if(_dictOverwritten.TryGetValue(x509Certificate2,out X509Certificate2 x509Certificate2Overwritten)) {
+					if(_dictOverwritten.TryGetValue(x509Certificate2,out byte[] byteArrayOverwritten)) {
 						try {
-							_x509Store.Add(x509Certificate2Overwritten);
+							//A serialized certificate, as Export wrote it: the copy with its properties as they were.
+							using(X509Certificate2 x509Certificate2Overwritten=new X509Certificate2(byteArrayOverwritten)) {
+								_x509Store.Add(x509Certificate2Overwritten);
+							}
 						}
 						catch(Exception ex) when(IsStoreException(ex)) {
 							listNotUndone.Add(Lans.g("DirectCertificateImport","The store's copy of the certificate without a usable key could not be put back")
@@ -924,12 +922,6 @@ namespace OpenPmsDentalBusiness {
 				_listAdded.Clear();
 				listNotUndone.AddRange(DeleteKeys(_listKeysStored.ToList(),new List<X509Certificate2>()));
 				return listNotUndone;
-			}
-
-			public void Dispose() {
-				foreach(X509Certificate2 x509Certificate2 in _dictOverwritten.Values) {
-					x509Certificate2.Reset();
-				}
 			}
 		}
 		#endregion The address's certificate
@@ -1237,6 +1229,12 @@ namespace OpenPmsDentalBusiness {
 				if(!x509Certificate2.HasPrivateKey) {
 					return "";
 				}
+				RSACryptoServiceProvider rsaCryptoServiceProviderCapi=GetCapiRsaPrivateKey(x509Certificate2);
+				if(rsaCryptoServiceProviderCapi!=null) {
+					rsaCryptoServiceProviderCapi.PersistKeyInCsp=false;//Clear then deletes the key container.
+					rsaCryptoServiceProviderCapi.Clear();
+					return "";
+				}
 				using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
 					if(rsa is RSACng) {
 						((RSACng)rsa).Key.Delete();
@@ -1257,7 +1255,21 @@ namespace OpenPmsDentalBusiness {
 				return "";
 			}
 			catch(Exception ex) when(!IsCriticalException(ex)) {
-				return ex.Message;
+				return ex.Message.Trim();//Windows' texts end with a line break.
+			}
+		}
+
+		///<summary>The certificate's RSA private key when Windows keeps it in a CAPI key container, else null (a CNG key, an ECDSA key, no key, or
+		///one that does not open: the CNG path then says why). A .pfx that names no CNG provider (OpenSSL writes none) is imported into a CAPI
+		///container, and .NET Framework's GetRSAPrivateKey opens that through CNG: an RSACng whose Key.Delete leaves the CAPI container, and whose
+		///Key.UniqueName is not a file of the CNG folder. The key object is the certificate's own (X509Certificate2.PrivateKey keeps it), so it is
+		///not disposed here.</summary>
+		private static RSACryptoServiceProvider GetCapiRsaPrivateKey(X509Certificate2 x509Certificate2) {
+			try {
+				return x509Certificate2.PrivateKey as RSACryptoServiceProvider;
+			}
+			catch(Exception ex) when(!IsCriticalException(ex)) {
+				return null;//.NET Framework: "Invalid provider type specified" for a CNG key, NotSupportedException for an ECDSA one.
 			}
 		}
 
@@ -1269,6 +1281,10 @@ namespace OpenPmsDentalBusiness {
 				if(!x509Certificate2.HasPrivateKey) {
 					return null;
 				}
+				RSACryptoServiceProvider rsaCryptoServiceProviderCapi=GetCapiRsaPrivateKey(x509Certificate2);
+				if(rsaCryptoServiceProviderCapi!=null) {
+					return GetCapiKeyContainerName(rsaCryptoServiceProviderCapi.CspKeyContainerInfo);
+				}
 				using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
 					if(rsa is RSACng) {
 						using(CngKey cngKey=((RSACng)rsa).Key) {
@@ -1276,9 +1292,7 @@ namespace OpenPmsDentalBusiness {
 						}
 					}
 					if(rsa is RSACryptoServiceProvider) {
-						CspKeyContainerInfo cspKeyContainerInfo=((RSACryptoServiceProvider)rsa).CspKeyContainerInfo;
-						return "CAPI|"+cspKeyContainerInfo.ProviderName+"|"+(cspKeyContainerInfo.MachineKeyStore ? "machine" : "user")+"|"
-							+cspKeyContainerInfo.UniqueKeyContainerName;
+						return GetCapiKeyContainerName(((RSACryptoServiceProvider)rsa).CspKeyContainerInfo);
 					}
 					if(rsa!=null) {
 						return null;
@@ -1296,6 +1310,11 @@ namespace OpenPmsDentalBusiness {
 			catch(Exception ex) when(!IsCriticalException(ex)) {
 				return null;
 			}
+		}
+
+		private static string GetCapiKeyContainerName(CspKeyContainerInfo cspKeyContainerInfo) {
+			return "CAPI|"+cspKeyContainerInfo.ProviderName+"|"+(cspKeyContainerInfo.MachineKeyStore ? "machine" : "user")+"|"
+				+cspKeyContainerInfo.UniqueKeyContainerName;
 		}
 
 		private static string GetCngKeyContainerName(CngKey cngKey) {
@@ -1322,6 +1341,10 @@ namespace OpenPmsDentalBusiness {
 
 		private static string GetMachinePrivateKeyFilePath(X509Certificate2 x509Certificate2) {
 			string folderCrypto=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Microsoft","Crypto");
+			RSACryptoServiceProvider rsaCryptoServiceProviderCapi=GetCapiRsaPrivateKey(x509Certificate2);
+			if(rsaCryptoServiceProviderCapi!=null) {//A CAPI key, which .NET Framework's GetRSAPrivateKey would give as an RSACng.
+				return Path.Combine(folderCrypto,"RSA","MachineKeys",rsaCryptoServiceProviderCapi.CspKeyContainerInfo.UniqueKeyContainerName);
+			}
 			//The CngKey objects are disposed too: .NET gives a new one for each Key (.NET Framework its own, which the using of rsa or ecdsa then
 			//finds disposed).
 			using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
