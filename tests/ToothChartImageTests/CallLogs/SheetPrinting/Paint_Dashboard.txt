@@ -1,0 +1,313 @@
+# Tooth chart call log (TC-2): caller SheetPrinting, scene Paint_Dashboard, 312 calls
+SetPrimary "4"
+SetPrimary "13"
+SetPrimary "20"
+SetPrimary "29"
+SetPrimary "8"
+SetPrimary "21"
+SetPrimary "28"
+SetMissing "3"
+SetMissing "6"
+SetHidden "14"
+SetMissing "K"
+MoveTooth "9" 0 0 0 1.5 0 0
+MoveTooth "9" 0 0 0 -0.25 0 0
+MoveTooth "10" 0 0 0 0 -2 0
+MoveTooth "11" 0 0 0 0 0 0.75
+MoveTooth "12" 15 0 0 0 0 0
+MoveTooth "21" 0 -10 0 0 0 0
+MoveTooth "22" 0 0 7.5 0 0 0
+AddDrawingSegment {Drawing tooth="" move=0 segment="45,68;48,70;49,72" color=#FFC80000 text=""}
+AddDrawingSegment {Drawing tooth="" move=0 segment="100.5,200.25;110,210" color=#FF0000C8 text=""}
+AddDrawingSegment {Drawing tooth="" move=0 segment="45,68;48,70;49,72" color=#FF009600 text=""}
+AddText "This shows" (25.3,123.8) #FF008000 22
+AddText "Second" (200,50) #FF505050 23
+AddText "" (0,0) #FF010203 24
+SetCrown "17" #FF414BFF
+SetText "25" #FF0028C8 "W"
+SetSpaceMaintainer "4" #FF0028C8
+SetSpaceMaintainer "5" #FF0028C8
+SetSpaceMaintainer "6" #FF0028C8
+SetSpaceMaintainer "7" #FF0028C8
+SetSpaceMaintainer "8" #FF0028C8
+SetCrown "2" #FF0028C8
+SetPontic "3" #FF0028C8
+SetCrown "4" #FF0028C8
+SetSurfaceColors "9" "MD" #FF0028C8
+SetCrown "18" #FF4E520A
+SetSurfaceColors "10" "B" #FF0D2FD3
+SetSpaceMaintainer "9" #FF0D2FD3
+SetSpaceMaintainer "10" #FF0D2FD3
+SetSpaceMaintainer "11" #FF0D2FD3
+SetSpaceMaintainer "12" #FF0D2FD3
+SetSpaceMaintainer "13" #FF0D2FD3
+SetText "26" #FF0D2FD3 "W"
+SetPontic "6" #FF0D2FD3
+SetCrown "7" #FF0D2FD3
+SetCrown "8" #FF0D2FD3
+SetText "27" #FF1A36DE "W"
+SetSpaceMaintainer "20" #FF1A36DE
+SetSpaceMaintainer "21" #FF1A36DE
+SetSpaceMaintainer "22" #FF1A36DE
+SetSpaceMaintainer "23" #FF1A36DE
+SetSpaceMaintainer "24" #FF1A36DE
+SetCrown "27" #FF1A36DE
+SetCrown "28" #FF1A36DE
+SetSurfaceColors "11" "L" #FF1A36DE
+SetCrown "19" #FF5B5915
+SetCrown "2" #FF273DE9
+SetPontic "3" #FF273DE9
+SetCrown "4" #FF273DE9
+SetSpaceMaintainer "25" #FF273DE9
+SetSpaceMaintainer "26" #FF273DE9
+SetSpaceMaintainer "27" #FF273DE9
+SetSpaceMaintainer "28" #FF273DE9
+SetSpaceMaintainer "29" #FF273DE9
+SetSurfaceColors "12" "O" #FF273DE9
+SetCrown "20" #FF686020
+SetText "28" #FF273DE9 "W"
+SetSurfaceColors "13" "MODBL" #FF3444F4
+SetCrown "21" #FF75672B
+SetText "29" #FF3444F4 "W"
+SetPontic "6" #FF3444F4
+SetCrown "7" #FF3444F4
+SetCrown "8" #FF3444F4
+SetSpaceMaintainer "9" #FFD09878
+SetSpaceMaintainer "10" #FFD09878
+SetSpaceMaintainer "11" #FFD09878
+SetSpaceMaintainer "12" #FFD09878
+SetSpaceMaintainer "13" #FFD09878
+SetSurfaceColors "15" "V" #FFD09878
+SetCrown "23" #FFDD9F83
+SetCrown "2" #FFD09878
+SetPontic "3" #FFD09878
+SetCrown "4" #FFD09878
+SetText "31" #FFD09878 "W"
+SetSurfaceColors "17" "MOD" #FF414BFF
+SetCrown "2" #FF0028C8
+SetPontic "3" #FF0028C8
+SetCrown "4" #FF0028C8
+SetCrown "5" #FF0028C8
+SetPontic "6" #FF0028C8
+SetCrown "7" #FF0028C8
+SetCrown "8" #FF0028C8
+SetCrown "9" #FF0028C8
+SetCrown "10" #FF0028C8
+SetCrown "11" #FF0028C8
+SetCrown "12" #FF0028C8
+SetCrown "13" #FF0028C8
+SetPontic "14" #FF0028C8
+SetCrown "15" #FF0028C8
+SetBigX "9" #FF0028C8
+SetSpaceMaintainer "22" #FF0028C8
+SetSpaceMaintainer "23" #FF0028C8
+SetSpaceMaintainer "24" #FF0028C8
+SetSurfaceColors "17" "MOD" #FF5A0AA0
+SetText "1" #FF0028C8 "Abc"
+SetSurfaceColors "18" "B" #FF4E520A
+SetCrown "18" #FF0D2FD3
+SetCrown "19" #FF0D2FD3
+SetCrown "20" #FF0D2FD3
+SetCrown "21" #FF0D2FD3
+SetCrown "22" #FF0D2FD3
+SetCrown "23" #FF0D2FD3
+SetCrown "24" #FF0D2FD3
+SetCrown "25" #FF0D2FD3
+SetCrown "26" #FF0D2FD3
+SetCrown "27" #FF0D2FD3
+SetCrown "28" #FF0D2FD3
+SetCrown "29" #FF0D2FD3
+SetCrown "30" #FF0D2FD3
+SetCrown "31" #FF0D2FD3
+SetText "2" #FF0D2FD3 "Abc"
+SetSurfaceColors "18" "B" #FF5A0AA0
+SetText "3" #FF1A36DE "Abc"
+SetCrown "2" #FF1A36DE
+SetPontic "3" #FF1A36DE
+SetCrown "4" #FF1A36DE
+SetCrown "5" #FF1A36DE
+SetPontic "6" #FF1A36DE
+SetCrown "7" #FF1A36DE
+SetCrown "8" #FF1A36DE
+SetCrown "9" #FF1A36DE
+SetCrown "10" #FF1A36DE
+SetCrown "11" #FF1A36DE
+SetCrown "12" #FF1A36DE
+SetCrown "13" #FF1A36DE
+SetPontic "14" #FF1A36DE
+SetCrown "15" #FF1A36DE
+SetSurfaceColors "19" "L" #FF5B5915
+SetSurfaceColors "19" "L" #FF5A0AA0
+SetSurfaceColors "20" "O" #FF686020
+SetCrown "18" #FF273DE9
+SetCrown "19" #FF273DE9
+SetCrown "20" #FF273DE9
+SetCrown "21" #FF273DE9
+SetCrown "22" #FF273DE9
+SetCrown "23" #FF273DE9
+SetCrown "24" #FF273DE9
+SetCrown "25" #FF273DE9
+SetCrown "26" #FF273DE9
+SetCrown "27" #FF273DE9
+SetCrown "28" #FF273DE9
+SetCrown "29" #FF273DE9
+SetCrown "30" #FF273DE9
+SetCrown "31" #FF273DE9
+SetText "4" #FF273DE9 "Abc"
+SetSurfaceColors "20" "O" #FF5A0AA0
+SetSpaceMaintainer "22" #FF273DE9
+SetSpaceMaintainer "23" #FF273DE9
+SetSpaceMaintainer "24" #FF273DE9
+SetSurfaceColors "21" "MODBL" #FF5A0AA0
+SetText "5" #FF3444F4 "Abc"
+SetSurfaceColors "21" "MODBL" #FF75672B
+SetBigX "13" #FF3444F4
+SetCrown "2" #FF3444F4
+SetPontic "3" #FF3444F4
+SetCrown "4" #FF3444F4
+SetCrown "5" #FF3444F4
+SetPontic "6" #FF3444F4
+SetCrown "7" #FF3444F4
+SetCrown "8" #FF3444F4
+SetCrown "9" #FF3444F4
+SetCrown "10" #FF3444F4
+SetCrown "11" #FF3444F4
+SetCrown "12" #FF3444F4
+SetCrown "13" #FF3444F4
+SetPontic "14" #FF3444F4
+SetCrown "15" #FF3444F4
+SetCrown "2" #FFD09878
+SetPontic "3" #FFD09878
+SetCrown "4" #FFD09878
+SetCrown "5" #FFD09878
+SetPontic "6" #FFD09878
+SetCrown "7" #FFD09878
+SetCrown "8" #FFD09878
+SetCrown "9" #FFD09878
+SetCrown "10" #FFD09878
+SetCrown "11" #FFD09878
+SetCrown "12" #FFD09878
+SetCrown "13" #FFD09878
+SetPontic "14" #FFD09878
+SetCrown "15" #FFD09878
+SetBigX "15" #FFD09878
+SetSurfaceColors "23" "V" #FFDD9F83
+SetText "7" #FFD09878 "Abc"
+SetSpaceMaintainer "22" #FFD09878
+SetSpaceMaintainer "23" #FFD09878
+SetSpaceMaintainer "24" #FFD09878
+SetSurfaceColors "23" "V" #FF5A0AA0
+SetImplant "17" #FF0028C8
+SetCrown "25" #FF0028C8
+SetRetainedRoot "9" #FF0028C8
+SetCrown "2" #FF414BFF
+SetPontic "3" #FF414BFF
+SetCrown "4" #FF414BFF
+SetRetainedRoot "10" #FF0D2FD3
+SetPontic "6" #FF4E520A
+SetCrown "7" #FF4E520A
+SetCrown "8" #FF4E520A
+SetCrown "26" #FF0D2FD3
+SetImplant "18" #FF0D2FD3
+SetRetainedRoot "11" #FF1A36DE
+SetImplant "19" #FF1A36DE
+SetCrown "27" #FF1A36DE
+SetCrown "27" #FF5B5915
+SetCrown "28" #FF5B5915
+SetImplant "20" #FF273DE9
+SetCrown "28" #FF273DE9
+SetRetainedRoot "12" #FF273DE9
+SetCrown "2" #FF686020
+SetPontic "3" #FF686020
+SetCrown "4" #FF686020
+SetImplant "21" #FF3444F4
+SetCrown "29" #FF3444F4
+SetPontic "6" #FF75672B
+SetCrown "7" #FF75672B
+SetCrown "8" #FF75672B
+SetRetainedRoot "13" #FF3444F4
+SetImplant "23" #FFD09878
+SetCrown "31" #FFD09878
+SetCrown "2" #FFDD9F83
+SetPontic "3" #FFDD9F83
+SetCrown "4" #FFDD9F83
+SetRetainedRoot "15" #FFD09878
+SetCrown "1" #FF414BFF
+SetSealant "9" #FF0028C8
+SetCrown "25" #FF0C2238
+SetSpaceMaintainer "17" #FF0028C8
+SetRCT "25" #FF0028C8
+SetCrown "26" #FF0C2238
+SetCrown "2" #FF4E520A
+SetSealant "10" #FF0D2FD3
+SetSpaceMaintainer "18" #FF0D2FD3
+SetRCT "26" #FF0D2FD3
+SetRCT "27" #FF1A36DE
+SetSealant "11" #FF1A36DE
+SetCrown "3" #FF5B5915
+SetCrown "27" #FF0C2238
+SetSpaceMaintainer "19" #FF1A36DE
+SetSealant "12" #FF273DE9
+SetSpaceMaintainer "20" #FF273DE9
+SetCrown "28" #FF0C2238
+SetRCT "28" #FF273DE9
+SetCrown "4" #FF686020
+SetCrown "5" #FF75672B
+SetSealant "13" #FF3444F4
+SetRCT "29" #FF3444F4
+SetCrown "29" #FF0C2238
+SetSpaceMaintainer "21" #FF3444F4
+SetCrown "31" #FF0C2238
+SetSpaceMaintainer "23" #FFD09878
+SetSealant "15" #FFD09878
+SetCrown "7" #FFDD9F83
+SetRCT "31" #FFD09878
+SetPontic "3" #FF0028C8
+SetPontic "3" #FF414BFF
+SetSurfaceColors "" "" #FF0028C8
+SetVeneer "17" #FF414BFF
+SetSpaceMaintainer "2" #FF0028C8
+SetSpaceMaintainer "3" #FF0028C8
+SetSpaceMaintainer "4" #FF0028C8
+SetBU "1" #FF0028C8
+SetCrown "9" #FF0028C8
+SetPontic "14" #FF4E520A
+SetPontic "14" #FF0D2FD3
+SetCrown "10" #FF0D2FD3
+SetVeneer "18" #FF4E520A
+SetBU "2" #FF0D2FD3
+SetSurfaceColors "" "" #FF0D2FD3
+SetCrown "13" #FF0D2FD3
+SetPontic "14" #FF0D2FD3
+SetCrown "15" #FF0D2FD3
+SetSpaceMaintainer "6" #FF0D2FD3
+SetSpaceMaintainer "7" #FF0D2FD3
+SetSpaceMaintainer "8" #FF0D2FD3
+SetVeneer "19" #FF5B5915
+SetSpaceMaintainer "27" #FF1A36DE
+SetSpaceMaintainer "28" #FF1A36DE
+SetCrown "11" #FF1A36DE
+SetBU "3" #FF1A36DE
+SetSurfaceColors "" "" #FF1A36DE
+SetSurfaceColors "J" "OD" #FF0028C8
+SetSurfaceColors "" "" #FF273DE9
+SetBU "4" #FF273DE9
+SetCrown "12" #FF273DE9
+SetSpaceMaintainer "2" #FF273DE9
+SetSpaceMaintainer "3" #FF273DE9
+SetSpaceMaintainer "4" #FF273DE9
+SetVeneer "20" #FF686020
+SetBU "5" #FF3444F4
+SetCrown "13" #FF3444F4
+SetVeneer "21" #FF75672B
+SetSpaceMaintainer "6" #FF3444F4
+SetSpaceMaintainer "7" #FF3444F4
+SetSpaceMaintainer "8" #FF3444F4
+SetSurfaceColors "" "" #FF3444F4
+SetVeneer "23" #FFDD9F83
+SetSurfaceColors "" "" #FFD09878
+SetBU "7" #FFD09878
+SetCrown "15" #FFD09878
+SetSpaceMaintainer "2" #FFD09878
+SetSpaceMaintainer "3" #FFD09878
+SetSpaceMaintainer "4" #FFD09878

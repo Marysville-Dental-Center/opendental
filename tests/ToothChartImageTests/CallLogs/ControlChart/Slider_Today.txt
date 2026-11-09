@@ -1,0 +1,10 @@
+# Tooth chart call log (TC-2): caller ControlChart, scene Slider_Today, 9 calls
+SetMissing "19"
+SetMissing "31"
+SetMissing "2"
+SetCrown "12" #FF5B5915
+SetRCT "5" #FF3444F4
+SetSealant "18" #FFD09878
+SetBigX "30" #FF0028C8
+SetCrown "8" #FF0D2FD3
+SetSurfaceColors "14" "MOD" #FF0D2FD3

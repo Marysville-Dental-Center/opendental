@@ -1,0 +1,101 @@
+# Tooth chart call log (TC-2): caller SheetPrinting, scene Ortho_Sheet, 100 calls
+SetMissing "5"
+SetBracket "3" #FF1E3CC8
+SetBracket "4" #FF1E3CC8
+SetBracket "5" #FF1E3CC8
+SetBracket "6" #FF1E3CC8
+SetBracket "7" #FF5A5A5A
+SetBracket "8" #FF1E3CC8
+SetBracket "9" #FF1E3CC8
+SetBracket "10" #FF1E3CC8
+SetBracket "11" #FF1E3CC8
+SetBracket "12" #FF1E3CC8
+SetBracket "13" #FF1E3CC8
+SetBracket "14" #FF1E3CC8
+SetBracket "30" #FF1E3CC8
+SetBracket "19" #FF1E3CC8
+SetBracket "20" #FF1E3CC8
+SetBracket "21" #FF1E3CC8
+SetBracket "22" #FF1E3CC8
+SetBracket "23" #FF1E3CC8
+SetBracket "24" #FF1E3CC8
+SetBracket "25" #FF1E3CC8
+SetBracket "26" #FF1E3CC8
+SetBracket "27" #FF1E3CC8
+SetBracket "28" #FF1E3CC8
+SetBracket "29" #FF1E3CC8
+SetBracket "30" #FF1E3CC8
+AddOrthoWireInBracket "3" #FFB4B4BE
+AddOrthoWireBetweenBrackets "3" "4" #FFB4B4BE
+AddOrthoWireInBracket "4" #FFB4B4BE
+AddOrthoWireBetweenBrackets "4" "5" #FFB4B4BE
+AddOrthoWireInBracket "5" #FFB4B4BE
+AddOrthoWireBetweenBrackets "5" "6" #FFB4B4BE
+AddOrthoWireInBracket "6" #FFB4B4BE
+AddOrthoWireBetweenBrackets "6" "7" #FFB4B4BE
+AddOrthoWireInBracket "7" #FFB4B4BE
+AddOrthoWireBetweenBrackets "7" "8" #FFB4B4BE
+AddOrthoWireInBracket "8" #FFB4B4BE
+AddOrthoWireBetweenBrackets "8" "9" #FFB4B4BE
+AddOrthoWireInBracket "9" #FFB4B4BE
+AddOrthoWireBetweenBrackets "9" "10" #FFB4B4BE
+AddOrthoWireInBracket "10" #FFB4B4BE
+AddOrthoWireBetweenBrackets "10" "11" #FFB4B4BE
+AddOrthoWireInBracket "11" #FFB4B4BE
+AddOrthoWireBetweenBrackets "11" "12" #FFB4B4BE
+AddOrthoWireInBracket "12" #FFB4B4BE
+AddOrthoWireBetweenBrackets "12" "13" #FFB4B4BE
+AddOrthoWireInBracket "13" #FFB4B4BE
+AddOrthoWireBetweenBrackets "13" "14" #FFB4B4BE
+AddOrthoWireInBracket "14" #FFB4B4BE
+AddOrthoWireInBracket "19" #FFB4B4BE
+AddOrthoWireBetweenBrackets "19" "20" #FFB4B4BE
+AddOrthoWireInBracket "20" #FFB4B4BE
+AddOrthoWireBetweenBrackets "20" "21" #FFB4B4BE
+AddOrthoWireInBracket "21" #FFB4B4BE
+AddOrthoWireBetweenBrackets "21" "22" #FFB4B4BE
+AddOrthoWireInBracket "22" #FFB4B4BE
+AddOrthoWireBetweenBrackets "22" "23" #FFB4B4BE
+AddOrthoWireInBracket "23" #FFB4B4BE
+AddOrthoWireBetweenBrackets "23" "24" #FFB4B4BE
+AddOrthoWireInBracket "24" #FFB4B4BE
+AddOrthoWireBetweenBrackets "24" "25" #FFB4B4BE
+AddOrthoWireInBracket "25" #FFB4B4BE
+AddOrthoWireBetweenBrackets "25" "26" #FFB4B4BE
+AddOrthoWireInBracket "26" #FFB4B4BE
+AddOrthoWireBetweenBrackets "26" "27" #FFB4B4BE
+AddOrthoWireInBracket "27" #FFB4B4BE
+AddOrthoWireBetweenBrackets "27" "28" #FFB4B4BE
+AddOrthoWireInBracket "28" #FFB4B4BE
+AddOrthoWireBetweenBrackets "28" "29" #FFB4B4BE
+AddOrthoWireInBracket "29" #FFB4B4BE
+AddOrthoWireBetweenBrackets "29" "30" #FFB4B4BE
+AddOrthoWireInBracket "30" #FFB4B4BE
+AddOrthoElastic "6" "11" #FFDC2828
+AddOrthoElastic "22" "27" #FFDC2828
+AddOrthoElastic "27" "28" #FFDC2828
+AddOrthoWireInBracket "19" #FFB4B4BE
+AddOrthoWireBetweenBrackets "19" "20" #FFB4B4BE
+AddOrthoWireInBracket "20" #FFB4B4BE
+AddOrthoWireBetweenBrackets "20" "21" #FFB4B4BE
+AddOrthoWireInBracket "21" #FFB4B4BE
+AddOrthoWireBetweenBrackets "21" "22" #FFB4B4BE
+AddOrthoWireInBracket "22" #FFB4B4BE
+AddOrthoWireBetweenBrackets "22" "23" #FFB4B4BE
+AddOrthoWireInBracket "23" #FFB4B4BE
+AddOrthoWireBetweenBrackets "23" "24" #FFB4B4BE
+AddOrthoWireInBracket "24" #FFB4B4BE
+AddOrthoWireBetweenBrackets "24" "25" #FFB4B4BE
+AddOrthoWireInBracket "25" #FFB4B4BE
+AddOrthoWireBetweenBrackets "25" "26" #FFB4B4BE
+AddOrthoWireInBracket "26" #FFB4B4BE
+AddOrthoWireBetweenBrackets "26" "27" #FFB4B4BE
+AddOrthoWireInBracket "27" #FFB4B4BE
+AddOrthoWireBetweenBrackets "27" "28" #FFB4B4BE
+AddOrthoWireInBracket "28" #FFB4B4BE
+AddOrthoWireBetweenBrackets "28" "29" #FFB4B4BE
+AddOrthoWireInBracket "29" #FFB4B4BE
+AddOrthoWireBetweenBrackets "29" "30" #FFB4B4BE
+AddOrthoWireInBracket "30" #FFB4B4BE
+AddOrthoElastic "3" "30" #FFDC2828
+AddOrthoElastic "14" "19" #FFDC2828

@@ -1,0 +1,2 @@
+# Tooth chart call log (TC-2): caller ControlChart, scene Ortho_GraphicsOff, 1 calls
+SetMissing "5"
