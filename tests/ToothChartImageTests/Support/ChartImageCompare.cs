@@ -44,7 +44,8 @@ namespace ToothChartImageTests {
 	///<summary>Image comparison for the chart tests. A pixel counts as different when a channel differs by more than 8 of 255. A comparison passes
 	///when at most 0.1% of the pixels differ and no 16x16 block has more than 24 different pixels; the block rule catches a small local error,
 	///such as a missing "S". Images are compared as 32-bit ARGB whatever their own pixel format. The legacy recordings are compared byte for byte
-	///(AreFilesIdentical), because the re-recording after a refactor must give the same files.</summary>
+	///(AreFilesIdentical) and by their pixel SHA-256, because the re-recording after a refactor on the same PC and framework must give the same
+	///files; across frameworks only the pixel SHA-256 (LegacyComparison, PngWriter).</summary>
 	public static class ChartImageCompare {
 		public const int ChannelTolerance=8;
 		public const double MaxFractionDifferent=0.001;

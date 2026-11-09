@@ -210,12 +210,269 @@ namespace ToothChartImageTests {
 				StringAssert.Contains(html,"drawn by OpenGL","A picture drawn by a fallback mode says so.");
 				StringAssert.Contains(html,"<option>perio</option>");
 				Assert.AreEqual(ChartScenes.GetAll().Count,html.Split(new[] { "<tbody data-group=" },StringSplitOptions.None).Length-1,"One row group per scene.");
+				Assert.IsFalse(html.Contains("DirectX, smoothed"),"No smoothed column without smoothed pictures.");
 			}
 			finally {
 				if(Directory.Exists(folder)) {
 					Directory.Delete(folder,true);
 				}
 			}
+		}
+
+		[TestMethod]
+		public void Recorder_IndexShowsTheSmoothedPictures_NextToDirectX_AndTheAdapter() {
+			string folder=Path.Combine(Path.GetTempPath(),"tc0-smoothed-"+Guid.NewGuid().ToString("N"));
+			string folderSmoothed=LegacyRecorder.GetSmoothedFolder(folder);
+			Assert.AreEqual(folder+"-smoothed",folderSmoothed);
+			Assert.AreEqual(Path.GetDirectoryName(folder),Path.GetDirectoryName(folderSmoothed),"Beside the recording, never inside it.");
+			try {
+				using Bitmap bitmap=NewBitmap(410,307,Color.Gray);
+				WritePicture(folder,"DirectX/410x307/restored-adult",bitmap,"DirectX adapter: 0 (Hardware device): Example adapter, driver 1.2.3.4");
+				WritePicture(folderSmoothed,"410x307/restored-adult",bitmap,"Device or pixel format: DirectX device format 0;Hardware;64;D16;X8R8G8B8;FourSamples");
+				LegacyRecording.WriteManifestAndIndex(folder);
+				string html=File.ReadAllText(Path.Combine(folder,"index.html"));
+				int indexDirectX=html.IndexOf("<th>DirectX</th>",StringComparison.Ordinal);
+				Assert.AreEqual(indexDirectX+"<th>DirectX</th>".Length,html.IndexOf("<th>DirectX, smoothed</th>",StringComparison.Ordinal),
+					"The smoothed column comes right after DirectX.");
+				StringAssert.Contains(html,"src=\"DirectX/410x307/restored-adult.png\"");
+				string srcSmoothed="src=\"../"+Path.GetFileName(folderSmoothed)+"/410x307/restored-adult.png\"";
+				StringAssert.Contains(html,srcSmoothed);
+				Assert.IsTrue(html.IndexOf(srcSmoothed,StringComparison.Ordinal)>html.IndexOf("src=\"DirectX/410x307/restored-adult.png\"",StringComparison.Ordinal),
+					"The smoothed picture follows the unsmoothed one of the same scene and size.");
+				StringAssert.Contains(html,"smoothed, for the gallery only (never compared): DirectX device format 0;Hardware;64;D16;X8R8G8B8;FourSamples");
+				StringAssert.Contains(html,"adapter 0 (Hardware device): Example adapter, driver 1.2.3.4","A DirectX caption names the adapter.");
+				string[] arrayManifest=File.ReadAllLines(Path.Combine(folder,"manifest.txt"));
+				Assert.AreEqual(4,arrayManifest.Length,"The manifest lists the compared pictures only.");
+				StringAssert.Contains(arrayManifest[2],"\tDevice or pixel format\tDirectX adapter\tFailed");
+				StringAssert.Contains(arrayManifest[3],"\t0 (Hardware device): Example adapter, driver 1.2.3.4\t");
+			}
+			finally {
+				foreach(string folderDelete in new[] { folder,folderSmoothed }) {
+					if(Directory.Exists(folderDelete)) {
+						Directory.Delete(folderDelete,true);
+					}
+				}
+			}
+		}
+
+		[TestMethod]
+		public void Recorder_ParsesTheSceneNamesAndTheSmoothedMode() {
+			Assert.IsNull(LegacyRecorder.ParseSceneNames(null));
+			Assert.IsNull(LegacyRecorder.ParseSceneNames(" "));
+			CollectionAssert.AreEqual(new[] { "a","b" },LegacyRecorder.ParseSceneNames(" a, b,,"));
+			Assert.AreEqual(SmoothedMode.Also,LegacyRecorder.ParseSmoothed(null));
+			Assert.AreEqual(SmoothedMode.Also,LegacyRecorder.ParseSmoothed("1"));
+			Assert.AreEqual(SmoothedMode.None,LegacyRecorder.ParseSmoothed("0"));
+			Assert.AreEqual(SmoothedMode.None,LegacyRecorder.ParseSmoothed("No"));
+			Assert.AreEqual(SmoothedMode.Only,LegacyRecorder.ParseSmoothed("ONLY"));
+		}
+
+		[TestMethod]
+		public void Recorder_SmoothedList_NamesSizesOfItsScenes_AndDirectXNeedsAControlForTheAdapter() {
+			Assert.IsTrue(LegacyRecorder.ListSmoothed.Count>=8 && LegacyRecorder.ListSmoothed.Count<=12,"About ten smoothed pictures.");
+			Assert.AreEqual(LegacyRecorder.ListSmoothed.Count,LegacyRecorder.ListSmoothed.Select(x => x.PathRelative).Distinct().Count());
+			foreach(SmoothedPicture smoothedPicture in LegacyRecorder.ListSmoothed) {
+				Assert.IsTrue(ChartScenes.GetSizes(ChartScenes.Get(smoothedPicture.SceneName)).Contains(smoothedPicture.ChartSize),smoothedPicture.PathRelative);
+			}
+			CollectionAssert.IsSubsetOf(new[] { "410x307","500x370","649x696" },LegacyRecorder.ListSmoothed.Select(x => x.ChartSize.FolderName).Distinct().ToList());
+			StaRunner.Run(() => {
+				using SparksToothChart.ToothChartWrapper wrapper=new SparksToothChart.ToothChartWrapper();
+				Assert.AreEqual("unknown (no DirectX control)",LegacyRecording.GetDirectXAdapter(wrapper));
+			});
+		}
+
+		[TestMethod]
+		public void SmoothedGalleryPictures_ExistAndAreNotBlank() {
+			//The only test that reads Baselines\legacy-smoothed: the pictures are for the gallery and are never compared.
+			string folder=TestPaths.BaselinesLegacySmoothed;
+			foreach(SmoothedPicture smoothedPicture in LegacyRecorder.ListSmoothed) {
+				string pathPng=Path.Combine(folder,smoothedPicture.ChartSize.FolderName,smoothedPicture.SceneName+".png");
+				Assert.IsTrue(File.Exists(pathPng),"Missing: "+pathPng);
+				Assert.IsTrue(File.Exists(Path.ChangeExtension(pathPng,".txt")),"Missing: "+Path.ChangeExtension(pathPng,".txt"));
+				using Bitmap bitmap=new Bitmap(pathPng);
+				Assert.AreEqual(smoothedPicture.ChartSize.Size,bitmap.Size,pathPng);
+				Assert.IsFalse(ChartImageCompare.DescribeBitmap(bitmap).IsBlank,"Blank: "+pathPng);
+			}
+			Assert.AreEqual(LegacyRecorder.ListSmoothed.Count,Directory.GetFiles(folder,"*.png",SearchOption.AllDirectories).Length,
+				"The folder holds the listed pictures only.");
+		}
+
+		[TestMethod]
+		public void Compare_PassesForTheSamePictures_AndHonoursTheModeAndSceneFilters() {
+			string folderBaseline=NewTempFolder("tc0-cmp-base-");
+			string folderNew=NewTempFolder("tc0-cmp-new-");
+			try {
+				WriteSyntheticRecording(folderBaseline);
+				WriteSyntheticRecording(folderNew);
+				LegacyComparison legacyComparison=LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),null,false);
+				Assert.IsTrue(legacyComparison.IsPass,legacyComparison.GetSummary());
+				Assert.AreEqual(4,legacyComparison.ListMatching.Count);
+				//A new recording of DirectX only, or of one scene only, passes when only those are compared.
+				Directory.Delete(Path.Combine(folderNew,"Simple2D"),true);
+				File.Delete(Path.Combine(folderNew,"DirectX","410x307","select-one.png"));
+				File.Delete(Path.Combine(folderNew,"DirectX","410x307","select-one.txt"));
+				Assert.IsFalse(LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),null,false).IsPass);
+				legacyComparison=LegacyComparison.Compare(folderBaseline,folderNew,new List<DrawingMode> { DrawingMode.DirectX },
+					new List<string> { "empty-universal" },false);
+				Assert.IsTrue(legacyComparison.IsPass,legacyComparison.GetSummary());
+				CollectionAssert.AreEqual(new[] { "DirectX/410x307/empty-universal.png","DirectX/500x370/empty-universal.png" },legacyComparison.ListMatching);
+				//Nothing to compare is no pass.
+				Assert.IsFalse(LegacyComparison.Compare(folderBaseline,folderNew,new List<DrawingMode> { DrawingMode.OpenGL },null,false).IsPass);
+			}
+			finally {
+				Directory.Delete(folderBaseline,true);
+				Directory.Delete(folderNew,true);
+			}
+		}
+
+		[TestMethod]
+		public void Compare_FailsWhenABaselinePictureIsMissing_OrANewOneHasNoBaseline() {
+			string folderBaseline=NewTempFolder("tc0-cmp-base-");
+			string folderNew=NewTempFolder("tc0-cmp-new-");
+			try {
+				WriteSyntheticRecording(folderBaseline);
+				WriteSyntheticRecording(folderNew);
+				File.Delete(Path.Combine(folderNew,"DirectX","500x370","empty-universal.png"));
+				LegacyComparison legacyComparison=LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),null,false);
+				Assert.IsFalse(legacyComparison.IsPass,"A baseline picture missing from the new recording fails the check.");
+				CollectionAssert.AreEqual(new[] { "DirectX/500x370/empty-universal.png" },legacyComparison.ListMissing);
+				Assert.AreEqual(3,legacyComparison.ListMatching.Count);
+				StringAssert.Contains(legacyComparison.GetSummary(),"Missing: DirectX/500x370/empty-universal.png");
+				//With the scene filter on another scene, the missing picture is not asked for.
+				Assert.IsTrue(LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),new List<string> { "select-one" },false).IsPass);
+				//A picture the baseline does not have fails too.
+				using(Bitmap bitmap=NewBitmap(410,307,Color.Navy)) {
+					WritePicture(folderNew,"OpenGL/410x307/empty-universal",bitmap,null);
+				}
+				legacyComparison=LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),new List<string> { "empty-universal" },false);
+				Assert.IsFalse(legacyComparison.IsPass);
+				CollectionAssert.AreEqual(new[] { "OpenGL/410x307/empty-universal.png" },legacyComparison.ListNoBaseline);
+			}
+			finally {
+				Directory.Delete(folderBaseline,true);
+				Directory.Delete(folderNew,true);
+			}
+		}
+
+		[TestMethod]
+		public void Compare_FailsWhenThePixelHashOfATextFileChanged_EvenWithTheSameBytes() {
+			string folderBaseline=NewTempFolder("tc0-cmp-base-");
+			string folderNew=NewTempFolder("tc0-cmp-new-");
+			try {
+				WriteSyntheticRecording(folderBaseline);
+				WriteSyntheticRecording(folderNew);
+				string pathText=Path.Combine(folderNew,"Simple2D","410x307","empty-universal.txt");
+				string hash=LegacyComparison.ReadPixelsSha256(pathText);
+				File.WriteAllText(pathText,File.ReadAllText(pathText).Replace(hash,new string('0',64)));
+				Assert.IsTrue(ChartImageCompare.AreFilesIdentical(Path.Combine(folderBaseline,"Simple2D","410x307","empty-universal.png"),
+					Path.ChangeExtension(pathText,".png")),"The PNG bytes are the same.");
+				foreach(bool isPixelsOnly in new[] { false,true }) {
+					LegacyComparison legacyComparison=LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),null,isPixelsOnly);
+					Assert.IsFalse(legacyComparison.IsPass,"pixels only: "+isPixelsOnly);
+					Assert.AreEqual(1,legacyComparison.ListDifferent.Count);
+					StringAssert.StartsWith(legacyComparison.ListDifferent[0],"Simple2D/410x307/empty-universal.png: the .txt files' pixel SHA-256 differ");
+				}
+				//A .txt with no hash line fails as well.
+				File.WriteAllText(pathText,"Scene: empty-universal\r\n");
+				StringAssert.Contains(LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),null,false).ListDifferent[0],
+					"no \"Pixels SHA-256\" in the new .txt");
+			}
+			finally {
+				Directory.Delete(folderBaseline,true);
+				Directory.Delete(folderNew,true);
+			}
+		}
+
+		[TestMethod]
+		public void Compare_PixelsOnly_IgnoresTheFileBytes_ButNotAChangedPixel() {
+			string folderBaseline=NewTempFolder("tc0-cmp-base-");
+			string folderNew=NewTempFolder("tc0-cmp-new-");
+			try {
+				WriteSyntheticRecording(folderBaseline);
+				WriteSyntheticRecording(folderNew);
+				//The same pixels written by another encoder (GDI+), as another framework's DeflateStream gives other bytes for the same pixels.
+				string pathPng=Path.Combine(folderNew,"DirectX","410x307","empty-universal.png");
+				using(Bitmap bitmap=new Bitmap(Path.Combine(folderBaseline,"DirectX","410x307","empty-universal.png"))) {
+					using Bitmap bitmapCopy=new Bitmap(bitmap);
+					bitmapCopy.Save(pathPng,ImageFormat.Png);
+				}
+				Assert.IsFalse(ChartImageCompare.AreFilesIdentical(pathPng,Path.Combine(folderBaseline,"DirectX","410x307","empty-universal.png")));
+				LegacyComparison legacyComparison=LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),null,false);
+				Assert.IsFalse(legacyComparison.IsPass,"Byte for byte, other bytes fail.");
+				StringAssert.Contains(legacyComparison.ListDifferent[0],"the bytes differ. 0 of 125870 pixels differ");
+				legacyComparison=LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),null,true);
+				Assert.IsTrue(legacyComparison.IsPass,legacyComparison.GetSummary());
+				StringAssert.Contains(legacyComparison.GetSummary(),"by their decoded pixels");
+				//One changed pixel fails in pixels-only mode, even with the .txt hash left as it was.
+				using(Bitmap bitmap=NewBitmap(410,307,Color.Gray)) {
+					bitmap.SetPixel(7,9,Color.FromArgb(255,129,128,128));
+					PngWriter.Save(bitmap,pathPng);
+				}
+				legacyComparison=LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),null,true);
+				Assert.IsFalse(legacyComparison.IsPass);
+				StringAssert.Contains(legacyComparison.ListDifferent[0],"the pixels differ.");
+			}
+			finally {
+				Directory.Delete(folderBaseline,true);
+				Directory.Delete(folderNew,true);
+			}
+		}
+
+		[TestMethod]
+		public void Compare_ReadsTheModeFoldersOnly_NeverTheSmoothedPictures() {
+			string folderBaseline=NewTempFolder("tc0-cmp-base-");
+			string folderNew=NewTempFolder("tc0-cmp-new-");
+			try {
+				WriteSyntheticRecording(folderBaseline);
+				WriteSyntheticRecording(folderNew);
+				using(Bitmap bitmap=NewBitmap(410,307,Color.Olive)) {
+					WritePicture(LegacyRecorder.GetSmoothedFolder(folderBaseline),"410x307/empty-universal",bitmap,null);
+					WritePicture(Path.Combine(folderBaseline,"elsewhere"),"410x307/empty-universal",bitmap,null);
+				}
+				LegacyComparison legacyComparison=LegacyComparison.Compare(folderBaseline,folderNew,LegacyRecorder.ArrayEngines.ToList(),null,false);
+				Assert.IsTrue(legacyComparison.IsPass,legacyComparison.GetSummary());
+				Assert.IsTrue(legacyComparison.ListMatching.All(x => x.StartsWith("DirectX/") || x.StartsWith("OpenGL/") || x.StartsWith("Simple2D/")));
+			}
+			finally {
+				Directory.Delete(folderBaseline,true);
+				Directory.Delete(folderNew,true);
+				string folderSmoothed=LegacyRecorder.GetSmoothedFolder(folderBaseline);
+				if(Directory.Exists(folderSmoothed)) {
+					Directory.Delete(folderSmoothed,true);
+				}
+			}
+		}
+
+		private static string NewTempFolder(string prefix) {
+			string folder=Path.Combine(Path.GetTempPath(),prefix+Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(folder);
+			return folder;
+		}
+
+		///<summary>A small recording: DirectX empty-universal at 410x307 and 500x370 and select-one at 410x307, and Simple2D empty-universal at
+		///410x307, each a PNG of PngWriter with a .txt that holds its pixel SHA-256. The same call gives the same files.</summary>
+		private static void WriteSyntheticRecording(string folder) {
+			using Bitmap bitmapSmall=NewBitmap(410,307,Color.Gray);
+			using Bitmap bitmapLarge=NewBitmap(500,370,Color.White);
+			using Bitmap bitmapSelected=NewBitmap(410,307,Color.Gray);
+			bitmapSelected.SetPixel(20,30,Color.Red);
+			WritePicture(folder,"DirectX/410x307/empty-universal",bitmapSmall,null);
+			WritePicture(folder,"DirectX/500x370/empty-universal",bitmapLarge,null);
+			WritePicture(folder,"DirectX/410x307/select-one",bitmapSelected,null);
+			WritePicture(folder,"Simple2D/410x307/empty-universal",bitmapSmall,null);
+		}
+
+		///<summary>Writes folder\pathRelative.png with PngWriter and a .txt beside it with the scene, the pixel SHA-256 and an optional extra line.</summary>
+		private static void WritePicture(string folder,string pathRelative,Bitmap bitmap,string lineExtra) {
+			string pathPng=Path.Combine(folder,pathRelative.Replace('/','\\')+".png");
+			Directory.CreateDirectory(Path.GetDirectoryName(pathPng));
+			PngWriter.Save(bitmap,pathPng);
+			List<string> listLines=new List<string> { "Scene: "+Path.GetFileNameWithoutExtension(pathPng),"Started mode: DirectX" };
+			if(lineExtra!=null) {
+				listLines.Add(lineExtra);
+			}
+			listLines.Add("Pixels SHA-256: "+ChartImageCompare.DescribeBitmap(bitmap).PixelsSha256);
+			File.WriteAllLines(Path.ChangeExtension(pathPng,".txt"),listLines);
 		}
 	}
 }

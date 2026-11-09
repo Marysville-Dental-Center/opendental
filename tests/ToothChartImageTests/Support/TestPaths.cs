@@ -59,6 +59,14 @@ namespace ToothChartImageTests {
 			}
 		}
 
+		///<summary>tests\ToothChartImageTests\Baselines\legacy-smoothed: a few DirectX pictures drawn multisampled, as the program draws them, for the
+		///gallery only (LegacyRecorder.ListSmoothed). Never compared.</summary>
+		public static string BaselinesLegacySmoothed {
+			get {
+				return LegacyRecorder.GetSmoothedFolder(BaselinesLegacy);
+			}
+		}
+
 		///<summary>SparksToothChart\Resources: the .obj models that SparksToothChart embeds.</summary>
 		public static string ModelsFolder {
 			get {

@@ -21,22 +21,62 @@ using OpenPmsDentalBusiness;
 using SparksToothChart;
 
 namespace ToothChartImageTests {
-	///<summary>The recorder of the legacy chart pictures and the byte-for-byte check of a re-recording.
+	///<summary>What the recorder does with the smoothed DirectX pictures of the gallery (LegacyRecorder.ListSmoothed).</summary>
+	public enum SmoothedMode {
+		///<summary>The default: the baseline pictures, then the smoothed ones.</summary>
+		Also,
+		///<summary>The baseline pictures only; the smoothed folder is left as it is.</summary>
+		None,
+		///<summary>The smoothed pictures only; the baseline pictures are left as they are, and the manifest and index are rewritten.</summary>
+		Only,
+	}
+
+	///<summary>One smoothed DirectX picture of the gallery: a scene at one of its sizes.</summary>
+	public class SmoothedPicture {
+		public string SceneName;
+		public ChartSize ChartSize;
+
+		public SmoothedPicture(string sceneName,ChartSize chartSize) {
+			SceneName=sceneName;
+			ChartSize=chartSize;
+		}
+
+		///<summary>The picture's path in the smoothed folder, for example "410x307/restored-adult.png".</summary>
+		public string PathRelative {
+			get {
+				return ChartSize.FolderName+"/"+SceneName+".png";
+			}
+		}
+	}
+
+	///<summary>The recorder of the legacy chart pictures and the check of a re-recording.
 	///
-	///Record (the lead's run, L-1; from the repository root, after a build of OpenDental.Local.slnf):
+	///Record (the lead's run, L-1; from the repository root, after a build of OpenDental.Local.slnf through the build lane) with the lane's vstest
+	///of Visual Studio Build Tools 2026, which
+	///  "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -version [18.0,19.0) -find Common7\IDE\Extensions\TestPlatform\vstest.console.exe
+	///finds:
 	///  set OPMS_RECORD_LEGACY_CHART=1
-	///  vstest.console.exe tests\ToothChartImageTests\bin\Debug\ToothChartImageTests.dll /Platform:x86 /Tests:RecordLegacyChart
+	///  "&lt;that vstest.console.exe&gt;" tests\ToothChartImageTests\bin\Debug\ToothChartImageTests.dll /Platform:x86 /Tests:RecordLegacyChart /logger:console;verbosity=detailed
+	///(or through the lane itself: odbuild.ps1 -Root . -TestOnly -Test tests\ToothChartImageTests\bin\Debug\ToothChartImageTests.dll
+	///-TestFilter Name=RecordLegacyChart, which prints only the result lines, not the recorder's summary).
 	///The pictures go to tests\ToothChartImageTests\Baselines\legacy\&lt;mode&gt;\&lt;width&gt;x&lt;height&gt;\&lt;scene&gt;.png, each with a .txt
 	///next to it, plus manifest.txt and index.html for the whole folder. DirectX uses the first standard device format that works, with
-	///multisampling turned off so that the same scene gives the same pixels (see FindDirectXFormat); each .txt names both formats and says whether
-	///a second picture of the same state was identical. Optional: OPMS_RECORD_LEGACY_CHART_OUT (another folder),
-	///OPMS_RECORD_LEGACY_CHART_ENGINES (for example "DirectX"), OPMS_RECORD_LEGACY_CHART_SCENES (scene names, for a quick look) and
-	///OPMS_RECORD_LEGACY_CHART_DIRECTX_FORMAT (a device format string instead of the first standard format that works).
+	///multisampling turned off so that the same scene gives the same pixels (see FindDirectXFormat); each .txt names both formats, the adapter that
+	///drew the picture and whether a second picture of the same state was identical. Then a few DirectX pictures for the gallery only (ListSmoothed)
+	///are drawn with the standard format as it is, multisampled as the program draws them, into Baselines\legacy-smoothed\&lt;width&gt;x&lt;height&gt;\
+	///(the output folder's name plus "-smoothed"); they are never compared. Optional: OPMS_RECORD_LEGACY_CHART_OUT (another folder),
+	///OPMS_RECORD_LEGACY_CHART_ENGINES (for example "DirectX"), OPMS_RECORD_LEGACY_CHART_SCENES (scene names, for a quick look),
+	///OPMS_RECORD_LEGACY_CHART_DIRECTX_FORMAT (a device format string instead of the first standard format that works) and
+	///OPMS_RECORD_LEGACY_CHART_SMOOTHED ("0": no smoothed pictures; "only": the smoothed pictures alone).
 	///
-	///Check a re-recording (after the SharpDX cut, on the same PC): record into a scratch folder with OPMS_RECORD_LEGACY_CHART_OUT, then
+	///Check a re-recording (after a change of the chart's code, on the same PC): record into a scratch folder with OPMS_RECORD_LEGACY_CHART_OUT
+	///(and OPMS_RECORD_LEGACY_CHART_SMOOTHED=0), then
 	///  set OPMS_COMPARE_LEGACY_CHART=&lt;that folder&gt;
-	///  vstest.console.exe ... /Tests:CompareLegacyRecording
-	///which fails unless every PNG there has the same bytes as its baseline.</summary>
+	///  "&lt;the same vstest.console.exe&gt;" tests\ToothChartImageTests\bin\Debug\ToothChartImageTests.dll /Platform:x86 /Tests:CompareLegacyRecording /logger:console;verbosity=detailed
+	///which fails unless every baseline picture of the compared modes and scenes (OPMS_RECORD_LEGACY_CHART_ENGINES and _SCENES, all when unset) is
+	///in that folder, has the same bytes as its baseline, and its .txt has the same "Pixels SHA-256". The PNG bytes also depend on the framework's
+	///DeflateStream (PngWriter), so a check across the x64 or .NET 10 switch (TC-10, S3b-5) sets OPMS_COMPARE_LEGACY_CHART_PIXELS_ONLY=1: the decoded
+	///pixels and the .txt hashes are compared, not the file bytes.</summary>
 	[TestClass]
 	public class LegacyRecorder {
 		public const string EnvRecord="OPMS_RECORD_LEGACY_CHART";
@@ -44,9 +84,26 @@ namespace ToothChartImageTests {
 		public const string EnvEngines="OPMS_RECORD_LEGACY_CHART_ENGINES";
 		public const string EnvScenes="OPMS_RECORD_LEGACY_CHART_SCENES";
 		public const string EnvDirectXFormat="OPMS_RECORD_LEGACY_CHART_DIRECTX_FORMAT";
+		public const string EnvSmoothed="OPMS_RECORD_LEGACY_CHART_SMOOTHED";
 		public const string EnvCompare="OPMS_COMPARE_LEGACY_CHART";
+		public const string EnvComparePixelsOnly="OPMS_COMPARE_LEGACY_CHART_PIXELS_ONLY";
 		///<summary>The modes in the order they are recorded.</summary>
 		public static readonly DrawingMode[] ArrayEngines={ DrawingMode.DirectX,DrawingMode.OpenGL,DrawingMode.Simple2D };
+		///<summary>The smoothed DirectX pictures of the gallery (owner answer of 2026-11-08): the real look of today's chart on a computer whose
+		///standard format multisamples, next to the unsmoothed baseline of the same scene and size. Whole mouths at both chart sizes, a bridge, a
+		///denture, a root canal with post and crown, the empty chart, the big window and the perio chart.</summary>
+		public static readonly List<SmoothedPicture> ListSmoothed=new List<SmoothedPicture> {
+			new SmoothedPicture("empty-universal",ChartScenes.SizeModule),
+			new SmoothedPicture("restored-adult",ChartScenes.SizeModule),
+			new SmoothedPicture("restored-adult",ChartScenes.SizePrintout),
+			new SmoothedPicture("treatment-plan",ChartScenes.SizeModule),
+			new SmoothedPicture("treatment-plan",ChartScenes.SizePrintout),
+			new SmoothedPicture("bridge-anterior",ChartScenes.SizeModule),
+			new SmoothedPicture("denture-upper-dark",ChartScenes.SizeModule),
+			new SmoothedPicture("rct-with-post-and-crown",ChartScenes.SizeModule),
+			new SmoothedPicture("size-big-window",ChartScenes.SizeBigWindow),
+			new SmoothedPicture("perio-full-exam",ChartScenes.SizePerio),
+		};
 
 		[TestMethod]
 		public void RecordLegacyChart() {
@@ -62,14 +119,14 @@ namespace ToothChartImageTests {
 			}
 			List<DrawingMode> listEngines=ParseEngines(Environment.GetEnvironmentVariable(EnvEngines));
 			List<ChartScene> listScenes=ChartScenes.GetAll();
-			string scenesWanted=Environment.GetEnvironmentVariable(EnvScenes);
-			bool isAllScenes=string.IsNullOrWhiteSpace(scenesWanted);
+			List<string> listNames=ParseSceneNames(Environment.GetEnvironmentVariable(EnvScenes));
+			bool isAllScenes=listNames==null;
 			if(!isAllScenes) {
-				List<string> listNames=scenesWanted.Split(',').Select(x => x.Trim()).Where(x => x!="").ToList();
 				listScenes=listNames.Select(x => ChartScenes.Get(x)).ToList();
 			}
+			SmoothedMode smoothedMode=ParseSmoothed(Environment.GetEnvironmentVariable(EnvSmoothed));
 			LegacyRecording legacyRecording=StaRunner.Run(() => LegacyRecording.Record(folderOut,listEngines,listScenes,isAllScenes,
-				Environment.GetEnvironmentVariable(EnvDirectXFormat)));
+				Environment.GetEnvironmentVariable(EnvDirectXFormat),smoothedMode));
 			Console.WriteLine(legacyRecording.GetSummary());
 			Assert.AreEqual(0,legacyRecording.ListFailures.Count,"Some pictures could not be made:\r\n"+string.Join("\r\n",legacyRecording.ListFailures));
 		}
@@ -78,29 +135,15 @@ namespace ToothChartImageTests {
 		public void CompareLegacyRecording() {
 			string folderNew=Environment.GetEnvironmentVariable(EnvCompare);
 			if(string.IsNullOrWhiteSpace(folderNew)) {
-				Assert.Inconclusive("Set "+EnvCompare+" to a folder recorded with "+EnvOut+" to compare it with Baselines\\legacy byte for byte.");
+				Assert.Inconclusive("Set "+EnvCompare+" to a folder recorded with "+EnvOut+" to compare it with Baselines\\legacy.");
 			}
-			List<string> listPaths=Directory.GetFiles(folderNew,"*.png",SearchOption.AllDirectories).OrderBy(x => x,StringComparer.Ordinal).ToList();
-			Assert.IsTrue(listPaths.Count>0,"No pictures in "+folderNew);
-			List<string> listDifferent=new List<string>();
-			int countIdentical=0;
-			foreach(string path in listPaths) {
-				string pathRelative=path.Substring(folderNew.TrimEnd('\\').Length+1);
-				string pathBaseline=Path.Combine(TestPaths.BaselinesLegacy,pathRelative);
-				if(!File.Exists(pathBaseline)) {
-					listDifferent.Add(pathRelative+": no baseline");
-					continue;
-				}
-				if(ChartImageCompare.AreFilesIdentical(path,pathBaseline)) {
-					countIdentical++;
-					continue;
-				}
-				using Bitmap bitmapNew=new Bitmap(path);
-				using Bitmap bitmapBaseline=new Bitmap(pathBaseline);
-				listDifferent.Add(pathRelative+": the bytes differ. "+ChartImageCompare.Compare(bitmapBaseline,bitmapNew));
-			}
-			Console.WriteLine(countIdentical+" of "+listPaths.Count+" pictures are byte-identical to Baselines\\legacy.");
-			Assert.AreEqual(0,listDifferent.Count,listDifferent.Count+" pictures differ:\r\n"+string.Join("\r\n",listDifferent));
+			List<DrawingMode> listEngines=ParseEngines(Environment.GetEnvironmentVariable(EnvEngines));
+			List<string> listNames=ParseSceneNames(Environment.GetEnvironmentVariable(EnvScenes));
+			listNames?.ForEach(x => ChartScenes.Get(x));//a misspelt name throws here, rather than comparing nothing
+			bool isPixelsOnly=Environment.GetEnvironmentVariable(EnvComparePixelsOnly)=="1";
+			LegacyComparison legacyComparison=LegacyComparison.Compare(TestPaths.BaselinesLegacy,folderNew,listEngines,listNames,isPixelsOnly);
+			Console.WriteLine(legacyComparison.GetSummary());
+			Assert.IsTrue(legacyComparison.IsPass,legacyComparison.GetSummary());
 		}
 
 		///<summary>"DirectX,OpenGL" gives those modes in recording order; empty gives all three.</summary>
@@ -111,11 +154,38 @@ namespace ToothChartImageTests {
 			List<DrawingMode> listEngines=engines.Split(',').Select(x => (DrawingMode)Enum.Parse(typeof(DrawingMode),x.Trim(),true)).ToList();
 			return ArrayEngines.Where(x => listEngines.Contains(x)).ToList();
 		}
+
+		///<summary>"a, b" gives the scene names a and b; empty gives null, which means every scene.</summary>
+		public static List<string> ParseSceneNames(string scenes) {
+			if(string.IsNullOrWhiteSpace(scenes)) {
+				return null;
+			}
+			return scenes.Split(',').Select(x => x.Trim()).Where(x => x!="").ToList();
+		}
+
+		///<summary>"0" or "no" gives None, "only" gives Only, anything else (unset, "1") gives Also.</summary>
+		public static SmoothedMode ParseSmoothed(string smoothed) {
+			string value=(smoothed??"").Trim().ToLowerInvariant();
+			if(value=="0" || value=="no") {
+				return SmoothedMode.None;
+			}
+			if(value=="only") {
+				return SmoothedMode.Only;
+			}
+			return SmoothedMode.Also;
+		}
+
+		///<summary>The folder of the smoothed gallery pictures of a recording folder: its path plus "-smoothed", so Baselines\legacy gives
+		///Baselines\legacy-smoothed, beside it and never inside it.</summary>
+		public static string GetSmoothedFolder(string folderOut) {
+			return folderOut.TrimEnd('\\','/')+"-smoothed";
+		}
 	}
 
 	///<summary>One run of the recorder.</summary>
 	public class LegacyRecording {
 		public List<string> ListWritten=new List<string>();
+		public List<string> ListWrittenSmoothed=new List<string>();
 		public List<string> ListFailures=new List<string>();
 		public List<string> ListNotes=new List<string>();
 		private string _folderOut;
@@ -125,21 +195,22 @@ namespace ToothChartImageTests {
 		private string _directXFormatSearched;
 		private Form _formHost;
 
-		///<summary>Draws every scene in every mode at every size of the scene, writes a PNG and a .txt for each, then rewrites manifest.txt and
-		///index.html from all the .txt files in folderOut. When isAllScenes, the old files of the recorded modes are deleted first. Runs on an STA
+		///<summary>Draws every scene in every mode at every size of the scene, writes a PNG and a .txt for each, then the smoothed DirectX pictures
+		///(per smoothedMode), then rewrites manifest.txt and index.html from all the .txt files in folderOut and its smoothed folder. When
+		///isAllScenes, the old files of the recorded modes (and the old smoothed pictures, when they are recorded) are deleted first. Runs on an STA
 		///thread.</summary>
 		public static LegacyRecording Record(string folderOut,List<DrawingMode> listEngines,List<ChartScene> listScenes,bool isAllScenes,
-			string directXFormatGiven)
+			string directXFormatGiven,SmoothedMode smoothedMode=SmoothedMode.Also)
 		{
 			LegacyRecording legacyRecording=new LegacyRecording();
 			legacyRecording._folderOut=folderOut;
-			legacyRecording.Run(listEngines,listScenes,isAllScenes,directXFormatGiven);
+			legacyRecording.Run(listEngines,listScenes,isAllScenes,directXFormatGiven,smoothedMode);
 			return legacyRecording;
 		}
 
-		private void Run(List<DrawingMode> listEngines,List<ChartScene> listScenes,bool isAllScenes,string directXFormatGiven) {
+		private void Run(List<DrawingMode> listEngines,List<ChartScene> listScenes,bool isAllScenes,string directXFormatGiven,SmoothedMode smoothedMode) {
 			Directory.CreateDirectory(_folderOut);
-			if(isAllScenes) {
+			if(isAllScenes && smoothedMode!=SmoothedMode.Only) {
 				foreach(DrawingMode engine in listEngines) {
 					string folderEngine=Path.Combine(_folderOut,engine.ToString());
 					if(Directory.Exists(folderEngine)) {
@@ -155,11 +226,22 @@ namespace ToothChartImageTests {
 				if(!_formHost.Visible || !IsWindowVisible(_formHost.Handle)) {
 					throw new AssertInconclusiveException("The recorder's window is not visible: no interactive desktop.");
 				}
-				if(listEngines.Contains(DrawingMode.DirectX)) {
+				bool isDirectX=listEngines.Contains(DrawingMode.DirectX);
+				if(isDirectX) {
 					_directXFormat=FindDirectXFormat(directXFormatGiven);
 				}
-				foreach(DrawingMode engine in listEngines) {
-					RecordEngine(engine,listScenes);
+				if(smoothedMode!=SmoothedMode.Only) {
+					foreach(DrawingMode engine in listEngines) {
+						RecordEngine(engine,listScenes);
+					}
+				}
+				if(smoothedMode!=SmoothedMode.None) {
+					if(isDirectX) {
+						RecordSmoothed(listScenes,isAllScenes);
+					}
+					else {
+						ListNotes.Add("No smoothed pictures: they are DirectX pictures, and DirectX is not recorded in this run.");
+					}
 				}
 				_formHost.Close();
 			}
@@ -181,12 +263,12 @@ namespace ToothChartImageTests {
 				if(listForSize.Count==0) {
 					continue;
 				}
-				ToothChartWrapper wrapper=CreateWrapper(engine,chartSize.Size);
+				ToothChartWrapper wrapper=CreateWrapper(engine,chartSize.Size,_directXFormat);
 				try {
 					ToothChartRelay relay=new ToothChartRelay();
 					relay.SetToothChartWrapper(wrapper);
 					foreach(ChartScene scene in listForSize) {
-						RecordScene(wrapper,relay,engine,scene,chartSize);
+						RecordScene(wrapper,relay,engine,scene,chartSize,false);
 					}
 				}
 				finally {
@@ -199,11 +281,11 @@ namespace ToothChartImageTests {
 			}
 			foreach(ChartScene scene in listScenes.Where(x => x.Kind==ChartSceneKind.Perio)) {
 				foreach(ChartSize chartSize in ChartScenes.GetSizes(scene)) {
-					ToothChartWrapper wrapper=CreateWrapper(engine,chartSize.Size);
+					ToothChartWrapper wrapper=CreateWrapper(engine,chartSize.Size,_directXFormat);
 					try {
 						ToothChartRelay relay=new ToothChartRelay();
 						relay.SetToothChartWrapper(wrapper);
-						RecordScene(wrapper,relay,engine,scene,chartSize);
+						RecordScene(wrapper,relay,engine,scene,chartSize,false);
 					}
 					finally {
 						DisposeWrapper(wrapper);
@@ -212,12 +294,56 @@ namespace ToothChartImageTests {
 			}
 		}
 
-		private void RecordScene(ToothChartWrapper wrapper,ToothChartRelay relay,DrawingMode engine,ChartScene scene,ChartSize chartSize) {
-			string folder=Path.Combine(_folderOut,engine.ToString(),chartSize.FolderName);
+		///<summary>The smoothed DirectX pictures of LegacyRecorder.ListSmoothed whose scene is in listScenes, each on a new wrapper with the standard
+		///search's format as it is (multisampled), as the program saves it for a computer with no format saved. Only when that format multisamples:
+		///otherwise the pictures would be the baseline's.</summary>
+		private void RecordSmoothed(List<ChartScene> listScenes,bool isAllScenes) {
+			string folderSmoothed=LegacyRecorder.GetSmoothedFolder(_folderOut);
+			if(isAllScenes && Directory.Exists(folderSmoothed)) {
+				Directory.Delete(folderSmoothed,true);
+			}
+			if(_directXFormat==null) {
+				ListNotes.Add("No smoothed pictures: DirectX cannot start.");
+				return;
+			}
+			if(_directXFormatSearched==_directXFormat) {
+				ListNotes.Add("No smoothed pictures: the DirectX format used ("+_directXFormat+") is the standard search's own, so they would be the baseline's.");
+				return;
+			}
+			foreach(SmoothedPicture smoothedPicture in LegacyRecorder.ListSmoothed) {
+				ChartScene scene=listScenes.FirstOrDefault(x => x.Name==smoothedPicture.SceneName);
+				if(scene==null) {
+					continue;
+				}
+				ToothChartWrapper wrapper=CreateWrapper(DrawingMode.DirectX,smoothedPicture.ChartSize.Size,_directXFormatSearched);
+				try {
+					ToothChartRelay relay=new ToothChartRelay();
+					relay.SetToothChartWrapper(wrapper);
+					RecordScene(wrapper,relay,DrawingMode.DirectX,scene,smoothedPicture.ChartSize,true);
+				}
+				finally {
+					DisposeWrapper(wrapper);
+				}
+			}
+		}
+
+		///<summary>Draws the scene and writes its PNG and .txt: into &lt;folderOut&gt;\&lt;engine&gt;\&lt;size&gt;, or, for a smoothed picture,
+		///into the smoothed folder's &lt;size&gt;.</summary>
+		private void RecordScene(ToothChartWrapper wrapper,ToothChartRelay relay,DrawingMode engine,ChartScene scene,ChartSize chartSize,bool isSmoothed) {
+			string folder;
+			string pathRelative;
+			if(isSmoothed) {
+				string folderSmoothed=LegacyRecorder.GetSmoothedFolder(_folderOut);
+				folder=Path.Combine(folderSmoothed,chartSize.FolderName);
+				pathRelative=Path.GetFileName(folderSmoothed)+"/"+chartSize.FolderName+"/"+scene.Name+".png";
+			}
+			else {
+				folder=Path.Combine(_folderOut,engine.ToString(),chartSize.FolderName);
+				pathRelative=engine+"/"+chartSize.FolderName+"/"+scene.Name+".png";
+			}
 			Directory.CreateDirectory(folder);
 			string pathPng=Path.Combine(folder,scene.Name+".png");
 			string pathText=Path.Combine(folder,scene.Name+".txt");
-			string pathRelative=engine+"/"+chartSize.FolderName+"/"+scene.Name+".png";
 			List<string> listLines=new List<string>();
 			listLines.Add("Scene: "+scene.Name);
 			listLines.Add("Group: "+scene.Group);
@@ -228,8 +354,15 @@ namespace ToothChartImageTests {
 			listLines.Add("Started mode: "+wrapper.DrawMode);
 			listLines.Add("Device or pixel format: "+GetDeviceOrPixelFormat(wrapper));
 			if(wrapper.DrawMode==DrawingMode.DirectX) {
-				listLines.Add("DirectX standard search: "+_directXFormatSearched+(_directXFormatSearched!=_directXFormat?" (multisampling turned off: "
-					+"with it a draw is not repeatable on every driver)":""));
+				if(isSmoothed) {
+					listLines.Add("DirectX standard search: "+_directXFormatSearched+" (used as it is, multisampled, as the program saves it for this computer)");
+					listLines.Add("Smoothed: yes, for the gallery only. Never compared: with multisampling a second draw of the same scene can give other pixels "
+						+"along the edges. The baseline of this scene and size, without multisampling, is in the recording folder.");
+				}
+				else {
+					listLines.Add("DirectX standard search: "+_directXFormatSearched+(_directXFormatSearched!=_directXFormat?" (multisampling turned off: "
+						+"with it a draw is not repeatable on every driver)":""));
+				}
 			}
 			try {
 				_formHost.Activate();
@@ -240,6 +373,9 @@ namespace ToothChartImageTests {
 					throw new Exception("GetBitmap returned nothing.");
 				}
 				BitmapFacts bitmapFacts=ChartImageCompare.DescribeBitmap(bitmap);
+				if(wrapper.DrawMode==DrawingMode.DirectX) {
+					listLines.Add("DirectX adapter: "+GetDirectXAdapter(wrapper));
+				}
 				if(wrapper.DrawMode==DrawingMode.OpenGL) {
 					listLines.Add("OpenGL: "+GetOpenGLStrings());
 				}
@@ -258,13 +394,18 @@ namespace ToothChartImageTests {
 				if(bitmapFacts.IsBlank) {
 					ListNotes.Add(pathRelative+" is blank (one colour).");
 				}
-				if(!isRepeatable) {
+				if(!isRepeatable && !isSmoothed) {
 					ListNotes.Add(pathRelative+" is not repeatable: a second GetBitmap gave other pixels.");
 				}
 				if(wrapper.DrawMode!=engine) {
 					ListNotes.Add(pathRelative+" was drawn by "+wrapper.DrawMode+": "+engine+" did not start.");
 				}
-				ListWritten.Add(pathRelative);
+				if(isSmoothed) {
+					ListWrittenSmoothed.Add(pathRelative+(isRepeatable?" (repeatable)":" (not repeatable)"));
+				}
+				else {
+					ListWritten.Add(pathRelative);
+				}
 			}
 			catch(Exception ex) {
 				listLines.Add("Failed: "+ex.GetType().Name+": "+ex.Message.Replace("\r"," ").Replace("\n"," "));
@@ -293,8 +434,8 @@ namespace ToothChartImageTests {
 		}
 
 		///<summary>A wrapper on the visible host form, set up as a new computer has it (ComputerPrefs.GetForLocalComputer: no hardware flag, pixel format
-		///0) and with the DirectX device format the recorder found, then started in engine. The fallback may start another mode: the .txt says which.</summary>
-		private ToothChartWrapper CreateWrapper(DrawingMode engine,Size size) {
+		///0) and with the given DirectX device format, then started in engine. The fallback may start another mode: the .txt says which.</summary>
+		private ToothChartWrapper CreateWrapper(DrawingMode engine,Size size,string directXFormat) {
 			_formHost.ClientSize=size;
 			ToothChartWrapper wrapper=new ToothChartWrapper();
 			wrapper.Location=new Point(0,0);
@@ -302,7 +443,7 @@ namespace ToothChartImageTests {
 			wrapper.UseHardware=false;
 			wrapper.PreferredPixelFormatNumber=0;
 			if(engine==DrawingMode.DirectX) {
-				wrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(_directXFormat??"invalid");
+				wrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(directXFormat??"invalid");
 			}
 			_formHost.Controls.Add(wrapper);
 			wrapper.DrawMode=engine;
@@ -396,6 +537,48 @@ namespace ToothChartImageTests {
 			}
 		}
 
+		///<summary>The adapter that drew the DirectX picture, read from the chart's own device as the engine created it
+		///(ToothChartDirectX.DirectXDeviceFormat.CreateDevice): the device's adapter index and device type (IDirect3DDevice9::GetCreationParameters),
+		///then that adapter's description, driver version and file, display and PCI ids (IDirect3D9::GetAdapterIdentifier, on the device's own
+		///IDirect3D9). For example "0 (Hardware device): NVIDIA RTX A1000, driver 32.0.15.9671 (nvldumdx.dll), display \\.\DISPLAY1, PCI 10DE:25B0".
+		///Read through reflection, because this project does not reference SharpDX (see WrapperTests).</summary>
+		public static string GetDirectXAdapter(ToothChartWrapper wrapper) {
+			ToothChartDirectX toothChartDirectX=wrapper.Controls.OfType<ToothChartDirectX>().FirstOrDefault();
+			if(toothChartDirectX==null) {
+				return "unknown (no DirectX control)";
+			}
+			object device=typeof(ToothChartDirectX).GetField("device").GetValue(toothChartDirectX);
+			if(device==null) {
+				return "unknown (no device)";
+			}
+			try {
+				object creationParameters=device.GetType().GetProperty("CreationParameters").GetValue(device);
+				Type typeCreation=creationParameters.GetType();
+				int adapterIndex=(int)typeCreation.GetField("AdapterOrdinal").GetValue(creationParameters);
+				string deviceType=typeCreation.GetField("DeviceType").GetValue(creationParameters).ToString();
+				object direct3D=device.GetType().GetProperty("Direct3D").GetValue(device);//AddRef'd by GetDirect3D; released below
+				try {
+					object adapterDetails=direct3D.GetType().GetMethod("GetAdapterIdentifier",new[] { typeof(int) }).Invoke(direct3D,new object[] { adapterIndex });
+					Type typeDetails=adapterDetails.GetType();
+					string description=(string)typeDetails.GetField("Description").GetValue(adapterDetails);
+					string driver=(string)typeDetails.GetField("Driver").GetValue(adapterDetails);
+					string deviceName=(string)typeDetails.GetField("DeviceName").GetValue(adapterDetails);
+					int vendorId=(int)typeDetails.GetField("VendorId").GetValue(adapterDetails);
+					int deviceId=(int)typeDetails.GetField("DeviceId").GetValue(adapterDetails);
+					object driverVersion=typeDetails.GetProperty("DriverVersion").GetValue(adapterDetails);
+					return adapterIndex+" ("+deviceType+" device): "+description.Trim()+", driver "+driverVersion+" ("+driver.Trim()+"), display "+deviceName.Trim()
+						+", PCI "+vendorId.ToString("X4")+":"+deviceId.ToString("X4");
+				}
+				finally {
+					(direct3D as IDisposable)?.Dispose();
+				}
+			}
+			catch(Exception ex) {
+				Exception exInner=ex.InnerException??ex;
+				return "unknown ("+exInner.GetType().Name+": "+exInner.Message.Replace("\r"," ").Replace("\n"," ")+")";
+			}
+		}
+
 		///<summary>The OpenGL pixel format of the engine control: colour, depth and stencil bits, double buffering and acceleration.</summary>
 		private static string DescribePixelFormat(ToothChartWrapper wrapper) {
 			if(wrapper.Controls.Count==0) {
@@ -439,7 +622,8 @@ namespace ToothChartImageTests {
 			}
 		}
 
-		///<summary>The Windows build, the display adapters with their drivers and the screen DPI: the lines every .txt ends with.</summary>
+		///<summary>The Windows build, the display adapters with their drivers and the screen DPI: the lines every .txt ends with. The adapter that drew
+		///a DirectX picture is named on its own line (GetDirectXAdapter); these lines list every adapter of the computer.</summary>
 		private static string ReadEnvironment() {
 			StringBuilder stringBuilder=new StringBuilder();
 			string windows=Environment.OSVersion.VersionString;
@@ -496,7 +680,9 @@ namespace ToothChartImageTests {
 		}
 
 		///<summary>Rewrites manifest.txt (one tab-separated line per picture) and index.html (the pictures side by side, one row per scene and size)
-		///from every .txt under folder, so a run that records one mode keeps the others in both.</summary>
+		///from every .txt under folder, so a run that records one mode keeps the others in both. The smoothed pictures of the folder's smoothed folder
+		///(LegacyRecorder.GetSmoothedFolder) get a column of the index next to DirectX, when there are any; the manifest lists the compared pictures
+		///only.</summary>
 		public static void WriteManifestAndIndex(string folder) {
 			Dictionary<string,Dictionary<string,string>> dictSidecars=new Dictionary<string,Dictionary<string,string>>();
 			foreach(DrawingMode engine in LegacyRecorder.ArrayEngines) {
@@ -509,17 +695,26 @@ namespace ToothChartImageTests {
 					dictSidecars[pathRelative.Substring(0,pathRelative.Length-4)+".png"]=ReadSidecar(pathText);
 				}
 			}
+			//Smoothed pictures, keyed "<size>/<scene>.png" as in their folder.
+			Dictionary<string,Dictionary<string,string>> dictSmoothed=new Dictionary<string,Dictionary<string,string>>();
+			string folderSmoothed=LegacyRecorder.GetSmoothedFolder(folder);
+			if(Directory.Exists(folderSmoothed)) {
+				foreach(string pathText in Directory.GetFiles(folderSmoothed,"*.txt",SearchOption.AllDirectories)) {
+					string pathRelative=pathText.Substring(folderSmoothed.Length+1).Replace('\\','/');
+					dictSmoothed[pathRelative.Substring(0,pathRelative.Length-4)+".png"]=ReadSidecar(pathText);
+				}
+			}
 			WriteManifest(folder,dictSidecars);
-			WriteIndex(folder,dictSidecars);
+			WriteIndex(folder,dictSidecars,Path.GetFileName(folderSmoothed),dictSmoothed);
 		}
 
 		private static void WriteManifest(string folder,Dictionary<string,Dictionary<string,string>> dictSidecars) {
 			string[] arrayColumns={ "Scene","Group","Requested mode","Started mode","Size","Colours","Bitmap","Alpha","Colours in the picture",
-				"Pixels SHA-256","Repeatable","Failed" };
+				"Pixels SHA-256","Repeatable","Device or pixel format","DirectX adapter","Failed" };
 			List<string> listLines=new List<string>();
 			listLines.Add("# Today's tooth chart, recorded by ToothChartImageTests.LegacyRecorder (package TC-0, docs/specs/wpf-tooth-chart-plan.md).");
-			listLines.Add("# One line per picture, from the .txt next to it, which also names the device or pixel format, the adapters, the driver and the "
-				+"Windows build.");
+			listLines.Add("# One line per picture, from the .txt next to it, which also names the OpenGL renderer, every adapter of the computer with its "
+				+"driver, and the Windows build. \"DirectX adapter\" is the adapter that drew a DirectX picture.");
 			listLines.Add("File\t"+string.Join("\t",arrayColumns));
 			foreach(string pathPng in dictSidecars.Keys.OrderBy(x => x,StringComparer.Ordinal)) {
 				Dictionary<string,string> dict=dictSidecars[pathPng];
@@ -528,20 +723,28 @@ namespace ToothChartImageTests {
 			File.WriteAllLines(Path.Combine(folder,"manifest.txt"),listLines,new UTF8Encoding(false));
 		}
 
-		private static void WriteIndex(string folder,Dictionary<string,Dictionary<string,string>> dictSidecars) {
+		private static void WriteIndex(string folder,Dictionary<string,Dictionary<string,string>> dictSidecars,string folderNameSmoothed,
+			Dictionary<string,Dictionary<string,string>> dictSmoothed)
+		{
+			bool hasSmoothed=dictSmoothed.Count>0;
 			StringBuilder sb=new StringBuilder();
 			sb.Append("<!doctype html>\r\n<html lang=\"en\">\r\n<head>\r\n<meta charset=\"utf-8\">\r\n");
 			sb.Append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\r\n");
 			sb.Append("<title>Tooth chart recordings</title>\r\n<style>\r\n");
 			sb.Append("body{font-family:Segoe UI,Arial,sans-serif;margin:16px;background:#fff;color:#111}\r\n");
 			sb.Append("table{border-collapse:collapse}td,th{border:1px solid #bbb;padding:4px;vertical-align:top;font-size:12px;text-align:left}\r\n");
-			sb.Append("img{display:block;max-width:100%;height:auto}.cap{color:#555}.name{font-weight:bold}.warn{color:#b00}\r\n");
+			sb.Append("img{display:block;max-width:100%;height:auto}.cap{color:#555}.name{font-weight:bold}.warn{color:#b00}.smooth{color:#05a}\r\n");
 			sb.Append("</style>\r\n</head>\r\n<body>\r\n<h1>Today's tooth chart, as recorded</h1>\r\n");
 			sb.Append("<p>The pictures of the DirectX, OpenGL and Simple 2D charts for every synthetic scene (package TC-0 of the WPF tooth chart plan). "
 				+"They are the \"before\" column of the owner galleries and the target of the parity probes. Under each picture: the mode that really "
-				+"drew it, the pixel format of the returned bitmap and its alpha. Perio is drawn by DirectX only. DirectX was recorded without "
-				+"multisampling, so its edges are harder than on a computer that uses four samples: with them the same scene gave other pixels on "
-				+"every draw, and a later recording could not be compared.</p>\r\n");
+				+"drew it, the pixel format of the returned bitmap and its alpha, and for DirectX the adapter that drew it. Perio is drawn by DirectX "
+				+"only. DirectX was recorded without multisampling, so its edges are harder than on a computer that uses four samples: with them the "
+				+"same scene gave other pixels on every draw, and a later recording could not be compared.</p>\r\n");
+			if(hasSmoothed) {
+				sb.Append("<p class=\"smooth\">The column \"DirectX, smoothed\" shows a few scenes as the program draws them on this computer: with the "
+					+"standard search's own format, multisampled. They are for looking only (folder "+WebUtility.HtmlEncode(folderNameSmoothed)
+					+"), never compared; the unsmoothed picture to their left is the baseline.</p>\r\n");
+			}
 			List<ChartScene> listScenes=ChartScenes.GetAll();
 			sb.Append("<p><label>Group: <select id=\"group\"><option value=\"\">all</option>");
 			foreach(string group in listScenes.Select(x => x.Group).Distinct()) {
@@ -550,6 +753,9 @@ namespace ToothChartImageTests {
 			sb.Append("</select></label></p>\r\n<table>\r\n<thead><tr><th>Scene</th><th>Size and colours</th>");
 			foreach(DrawingMode engine in LegacyRecorder.ArrayEngines) {
 				sb.Append("<th>"+engine+"</th>");
+				if(engine==DrawingMode.DirectX && hasSmoothed) {
+					sb.Append("<th>DirectX, smoothed</th>");
+				}
 			}
 			sb.Append("</tr></thead>\r\n");
 			foreach(ChartScene scene in listScenes) {
@@ -564,24 +770,16 @@ namespace ToothChartImageTests {
 					sb.Append("<td>"+listSizes[i].FolderName+"<div class=\"cap\">"+WebUtility.HtmlEncode(GetColorSetText(listSizes[i].ColorSet))+"</div></td>");
 					foreach(DrawingMode engine in LegacyRecorder.ArrayEngines) {
 						string pathPng=engine+"/"+listSizes[i].FolderName+"/"+scene.Name+".png";
-						if(!dictSidecars.TryGetValue(pathPng,out Dictionary<string,string> dict)) {
-							sb.Append("<td class=\"cap\">"+(scene.Kind==ChartSceneKind.Perio && engine!=DrawingMode.DirectX?"DirectX only":"not recorded")+"</td>");
-							continue;
+						AppendIndexCell(sb,scene,listSizes[i],engine,pathPng,dictSidecars.TryGetValue(pathPng,out Dictionary<string,string> dict)?dict:null,false);
+						if(engine==DrawingMode.DirectX && hasSmoothed) {
+							string pathSmoothed=listSizes[i].FolderName+"/"+scene.Name+".png";
+							if(dictSmoothed.TryGetValue(pathSmoothed,out Dictionary<string,string> dictSmooth)) {
+								AppendIndexCell(sb,scene,listSizes[i],engine,"../"+folderNameSmoothed+"/"+pathSmoothed,dictSmooth,true);
+							}
+							else {
+								sb.Append("<td class=\"cap\"></td>");
+							}
 						}
-						sb.Append("<td>");
-						if(dict.ContainsKey("Failed")) {
-							sb.Append("<div class=\"warn\">Failed: "+WebUtility.HtmlEncode(dict["Failed"])+"</div>");
-						}
-						else {
-							sb.Append("<img loading=\"lazy\" src=\""+pathPng+"\" width=\""+listSizes[i].Size.Width+"\" height=\""+listSizes[i].Size.Height
-								+"\" alt=\""+scene.Name+" in "+engine+"\">");
-						}
-						string started=dict.TryGetValue("Started mode",out string value)?value:"?";
-						string bitmap=dict.TryGetValue("Bitmap",out value)?value:"";
-						string alpha=dict.TryGetValue("Alpha",out value)?value:"";
-						bool isOtherMode=started!=engine.ToString();
-						sb.Append("<div class=\""+(isOtherMode?"warn":"cap")+"\">drawn by "+WebUtility.HtmlEncode(started)+"; "+WebUtility.HtmlEncode(bitmap)+"; "
-							+WebUtility.HtmlEncode(alpha)+"</div></td>");
 					}
 					sb.Append("</tr>\r\n");
 				}
@@ -593,12 +791,53 @@ namespace ToothChartImageTests {
 			sb.Append("</script>\r\n</body>\r\n</html>\r\n");
 			File.WriteAllText(Path.Combine(folder,"index.html"),sb.ToString(),new UTF8Encoding(false));
 		}
+
+		///<summary>One picture cell of the index: the picture (or why there is none) and what drew it.</summary>
+		private static void AppendIndexCell(StringBuilder sb,ChartScene scene,ChartSize chartSize,DrawingMode engine,string src,Dictionary<string,string> dict,
+			bool isSmoothed)
+		{
+			if(dict==null) {
+				sb.Append("<td class=\"cap\">"+(scene.Kind==ChartSceneKind.Perio && engine!=DrawingMode.DirectX?"DirectX only":"not recorded")+"</td>");
+				return;
+			}
+			sb.Append("<td>");
+			if(dict.ContainsKey("Failed")) {
+				sb.Append("<div class=\"warn\">Failed: "+WebUtility.HtmlEncode(dict["Failed"])+"</div>");
+			}
+			else {
+				sb.Append("<img loading=\"lazy\" src=\""+src+"\" width=\""+chartSize.Size.Width+"\" height=\""+chartSize.Size.Height
+					+"\" alt=\""+scene.Name+" in "+engine+(isSmoothed?", smoothed":"")+"\">");
+			}
+			string started=dict.TryGetValue("Started mode",out string value)?value:"?";
+			string bitmap=dict.TryGetValue("Bitmap",out value)?value:"";
+			string alpha=dict.TryGetValue("Alpha",out value)?value:"";
+			bool isOtherMode=started!=engine.ToString();
+			if(isSmoothed) {
+				string format=dict.TryGetValue("Device or pixel format",out value)?value:"";
+				sb.Append("<div class=\"smooth\">smoothed, for the gallery only (never compared): "+WebUtility.HtmlEncode(format)+"</div>");
+			}
+			sb.Append("<div class=\""+(isOtherMode?"warn":"cap")+"\">drawn by "+WebUtility.HtmlEncode(started)+"; "+WebUtility.HtmlEncode(bitmap)+"; "
+				+WebUtility.HtmlEncode(alpha)+"</div>");
+			if(dict.TryGetValue("DirectX adapter",out value)) {
+				sb.Append("<div class=\"cap\">adapter "+WebUtility.HtmlEncode(value)+"</div>");
+			}
+			sb.Append("</td>");
+		}
 		#endregion Manifest and index
 
 		///<summary>What happened: counts, notes and failures.</summary>
 		public string GetSummary() {
 			StringBuilder stringBuilder=new StringBuilder();
-			stringBuilder.Append(ListWritten.Count+" pictures written to "+_folderOut+", "+ListFailures.Count+" failed.\r\n");
+			stringBuilder.Append(ListWritten.Count+" pictures written to "+_folderOut+", "+ListWrittenSmoothed.Count+" smoothed pictures to "
+				+LegacyRecorder.GetSmoothedFolder(_folderOut)+", "+ListFailures.Count+" failed.\r\n");
+			foreach(DrawingMode engine in LegacyRecorder.ArrayEngines) {
+				foreach(IGrouping<string,string> grouping in ListWritten.Where(x => x.StartsWith(engine+"/")).GroupBy(x => x.Split('/')[1]).OrderBy(x => x.Key)) {
+					stringBuilder.Append("  "+engine+" "+grouping.Key+": "+grouping.Count()+"\r\n");
+				}
+			}
+			foreach(string smoothed in ListWrittenSmoothed) {
+				stringBuilder.Append("Smoothed: "+smoothed+"\r\n");
+			}
 			foreach(string note in ListNotes) {
 				stringBuilder.Append("Note: "+note+"\r\n");
 			}
@@ -655,5 +894,146 @@ namespace ToothChartImageTests {
 		[DllImport("opengl32.dll")]
 		private static extern IntPtr glGetString(uint name);
 		#endregion Native
+	}
+
+	///<summary>The check of a re-recording against the legacy baseline (LegacyRecorder.CompareLegacyRecording). Every baseline picture of the compared
+	///modes and scenes must be in the new recording, and every new picture must have a baseline. A picture matches when the "Pixels SHA-256" lines of
+	///both .txt files are equal and, by default, both PNG files have the same bytes; in pixels-only mode the decoded pixels are compared instead of the
+	///bytes, because the PNG bytes depend on the framework's DeflateStream (PngWriter). Only the mode folders (DirectX, OpenGL, Simple2D) are read:
+	///the smoothed gallery pictures beside the recording are never compared.</summary>
+	public class LegacyComparison {
+		public bool IsPixelsOnly;
+		public List<DrawingMode> ListEngines;
+		///<summary>Null means every scene.</summary>
+		public List<string> ListSceneNames;
+		///<summary>Paths relative to the recording folder, "DirectX/410x307/empty-universal.png", that match.</summary>
+		public List<string> ListMatching=new List<string>();
+		///<summary>Baseline pictures of the compared modes and scenes that the new recording does not have.</summary>
+		public List<string> ListMissing=new List<string>();
+		///<summary>New pictures with no baseline.</summary>
+		public List<string> ListNoBaseline=new List<string>();
+		///<summary>Pictures that do not match, each with the reason.</summary>
+		public List<string> ListDifferent=new List<string>();
+
+		///<summary>True when at least one picture was compared, every one matches, none is missing and none lacks a baseline.</summary>
+		public bool IsPass {
+			get {
+				return ListMatching.Count>0 && ListMissing.Count==0 && ListNoBaseline.Count==0 && ListDifferent.Count==0;
+			}
+		}
+
+		public static LegacyComparison Compare(string folderBaseline,string folderNew,List<DrawingMode> listEngines,List<string> listSceneNames,
+			bool isPixelsOnly)
+		{
+			LegacyComparison legacyComparison=new LegacyComparison();
+			legacyComparison.IsPixelsOnly=isPixelsOnly;
+			legacyComparison.ListEngines=listEngines;
+			legacyComparison.ListSceneNames=listSceneNames;
+			List<string> listBaseline=GetPictures(folderBaseline,listEngines,listSceneNames);
+			List<string> listNew=GetPictures(folderNew,listEngines,listSceneNames);
+			legacyComparison.ListMissing.AddRange(listBaseline.Except(listNew));
+			legacyComparison.ListNoBaseline.AddRange(listNew.Except(listBaseline));
+			foreach(string pathRelative in listNew.Intersect(listBaseline)) {
+				string reason=ComparePicture(Path.Combine(folderBaseline,pathRelative),Path.Combine(folderNew,pathRelative),isPixelsOnly);
+				if(reason==null) {
+					legacyComparison.ListMatching.Add(pathRelative);
+				}
+				else {
+					legacyComparison.ListDifferent.Add(pathRelative+": "+reason);
+				}
+			}
+			return legacyComparison;
+		}
+
+		///<summary>The PNG files under folder\&lt;mode&gt; for the given modes, and only of the given scenes unless listSceneNames is null, as
+		///"&lt;mode&gt;/&lt;size&gt;/&lt;scene&gt;.png" in ordinal order.</summary>
+		public static List<string> GetPictures(string folder,List<DrawingMode> listEngines,List<string> listSceneNames) {
+			List<string> listPaths=new List<string>();
+			foreach(DrawingMode engine in listEngines) {
+				string folderEngine=Path.Combine(folder,engine.ToString());
+				if(!Directory.Exists(folderEngine)) {
+					continue;
+				}
+				foreach(string path in Directory.GetFiles(folderEngine,"*.png",SearchOption.AllDirectories)) {
+					if(listSceneNames!=null && !listSceneNames.Contains(Path.GetFileNameWithoutExtension(path))) {
+						continue;
+					}
+					listPaths.Add(path.Substring(folder.TrimEnd('\\','/').Length+1).Replace('\\','/'));
+				}
+			}
+			return listPaths.OrderBy(x => x,StringComparer.Ordinal).ToList();
+		}
+
+		///<summary>Null when the new picture matches its baseline, otherwise why not. The .txt files' "Pixels SHA-256" lines must be equal; then the
+		///file bytes (or, in pixels-only mode, the decoded pixels).</summary>
+		public static string ComparePicture(string pathBaseline,string pathNew,bool isPixelsOnly) {
+			string hashBaseline=ReadPixelsSha256(Path.ChangeExtension(pathBaseline,".txt"));
+			string hashNew=ReadPixelsSha256(Path.ChangeExtension(pathNew,".txt"));
+			List<string> listReasons=new List<string>();
+			if(hashBaseline==null || hashNew==null) {
+				listReasons.Add("no \"Pixels SHA-256\" in the "+(hashBaseline==null?"baseline's":"new")+" .txt");
+			}
+			else if(hashBaseline!=hashNew) {
+				listReasons.Add("the .txt files' pixel SHA-256 differ (baseline "+hashBaseline+", new "+hashNew+")");
+			}
+			bool isSame;
+			if(isPixelsOnly) {
+				isSame=GetPixelsSha256(pathBaseline)==GetPixelsSha256(pathNew);
+			}
+			else {
+				isSame=ChartImageCompare.AreFilesIdentical(pathBaseline,pathNew);
+			}
+			if(!isSame) {
+				using Bitmap bitmapBaseline=new Bitmap(pathBaseline);
+				using Bitmap bitmapNew=new Bitmap(pathNew);
+				listReasons.Add((isPixelsOnly?"the pixels differ. ":"the bytes differ. ")+ChartImageCompare.Compare(bitmapBaseline,bitmapNew));
+			}
+			if(listReasons.Count==0) {
+				return null;
+			}
+			return string.Join("; ",listReasons);
+		}
+
+		///<summary>The "Pixels SHA-256" of a recording's .txt, or null when there is no .txt or no such line.</summary>
+		public static string ReadPixelsSha256(string pathText) {
+			if(!File.Exists(pathText)) {
+				return null;
+			}
+			return LegacyRecording.ReadSidecar(pathText).TryGetValue("Pixels SHA-256",out string value)?value:null;
+		}
+
+		///<summary>The SHA-256 of a PNG's decoded pixels as 32-bit ARGB, the hash the recorder writes in "Pixels SHA-256".</summary>
+		public static string GetPixelsSha256(string pathPng) {
+			using Bitmap bitmap=new Bitmap(pathPng);
+			return ChartImageCompare.Sha256(ChartImageCompare.GetPixelsArgb(bitmap));
+		}
+
+		public string GetSummary() {
+			StringBuilder stringBuilder=new StringBuilder();
+			int countCompared=ListMatching.Count+ListDifferent.Count;
+			stringBuilder.Append("Compared "+countCompared+" pictures of "+string.Join(", ",ListEngines)+" ("
+				+(ListSceneNames==null?"every scene":"scenes "+string.Join(", ",ListSceneNames))+") with Baselines\\legacy, "
+				+(IsPixelsOnly?"by their decoded pixels":"byte for byte")+" and by the \"Pixels SHA-256\" of their .txt: "+ListMatching.Count+" match, "
+				+ListDifferent.Count+" differ, "+ListMissing.Count+" baseline pictures are missing from the new recording, "+ListNoBaseline.Count
+				+" new pictures have no baseline.\r\n");
+			foreach(DrawingMode engine in ListEngines) {
+				foreach(IGrouping<string,string> grouping in ListMatching.Where(x => x.StartsWith(engine+"/")).GroupBy(x => x.Split('/')[1]).OrderBy(x => x.Key)) {
+					stringBuilder.Append("  "+engine+" "+grouping.Key+": "+grouping.Count()+" match\r\n");
+				}
+			}
+			foreach(string path in ListMissing) {
+				stringBuilder.Append("Missing: "+path+"\r\n");
+			}
+			foreach(string path in ListNoBaseline) {
+				stringBuilder.Append("No baseline: "+path+"\r\n");
+			}
+			foreach(string different in ListDifferent) {
+				stringBuilder.Append("Different: "+different+"\r\n");
+			}
+			if(countCompared==0) {
+				stringBuilder.Append("No pictures were compared.\r\n");
+			}
+			return stringBuilder.ToString();
+		}
 	}
 }

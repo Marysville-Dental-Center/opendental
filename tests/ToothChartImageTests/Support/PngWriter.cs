@@ -1,4 +1,4 @@
-// A small PNG encoder for the chart baselines: the bytes depend only on the pixels, and the files are smaller than GDI+'s.
+// A small PNG encoder for the chart baselines: on one framework the bytes depend only on the pixels, and the files are smaller than GDI+'s.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Drawing;
@@ -8,9 +8,13 @@ using System.IO.Compression;
 namespace ToothChartImageTests {
 	///<summary>Writes a bitmap as an 8-bit PNG: RGB when every alpha is 255, otherwise RGBA. Each row gets the PNG filter (None, Sub, Up, Average or
 	///Paeth) with the smallest sum of absolute filtered bytes, and the image data is one zlib stream from the framework's DeflateStream. No other
-	///chunks (no gamma, colour space or DPI), so the same pixels always give the same file. GDI+'s encoder, by contrast, can change with Windows and
-	///makes files two to three times as large, which matters for several hundred baselines. A baseline's PixelFormat and alpha are recorded in its
-	///.txt; the PNG holds the pixels only.</summary>
+	///chunks (no gamma, colour space or DPI). So the same pixels give the same file on the same framework: the compressed bytes are those of the
+	///framework's DeflateStream, which is the native zlib of .NET Framework 4.8 (clrcompression) and zlib-ng on .NET 10, and may also differ between
+	///the 32-bit and 64-bit builds. A byte-for-byte check (LegacyComparison) therefore holds only on the framework and bitness that wrote the
+	///baseline; a comparison across the x64 or .NET 10 switch (TC-10, S3b-5) compares the pixel SHA-256 instead (the "Pixels SHA-256" of each .txt
+	///and the decoded pixels, OPMS_COMPARE_LEGACY_CHART_PIXELS_ONLY=1). GDI+'s encoder, by contrast, can change with Windows and makes files two to
+	///three times as large, which matters for several hundred baselines. A baseline's PixelFormat and alpha are recorded in its .txt; the PNG holds
+	///the pixels only.</summary>
 	public static class PngWriter {
 		private static readonly byte[] _arraySignature={ 137,80,78,71,13,10,26,10 };
 		private static uint[] _arrayCrcTable;

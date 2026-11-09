@@ -45,14 +45,67 @@ namespace ToothChartImageTests {
 			foreach(ToothNumberingNomenclature nomenclature in Enum.GetValues(typeof(ToothNumberingNomenclature))) {
 				Assert.IsTrue(listScenes.Any(x => x.Nomenclature==nomenclature),"No scene in "+nomenclature+" numbering.");
 			}
-			//Each paint type that the relay can draw or ignore today has a scene. TextBelow (18) comes with TC-5, which adds its scenes.
+			//Each paint type has a scene, the ones today's chart draws nothing for (Text other than "W", TextBelow, retained root, space maintainer)
+			//included, so the galleries have their "before".
 			string[] arrayPrefixes={ "extraction","implant","rct","postbu","filling-dark","filling-light","crown-dark","crown-light","bridge-dark",
-				"bridge-light","denture","sealant","veneer","text-","retained-root","space-maintainer" };
+				"bridge-light","denture","sealant","veneer","text-","text-below","retained-root","space-maintainer" };
 			foreach(string prefix in arrayPrefixes) {
 				Assert.IsTrue(listScenes.Any(x => x.Name.StartsWith(prefix)),"No scene for "+prefix);
 			}
 			List<string> listSizes=listScenes.SelectMany(x => ChartScenes.GetSizes(x)).Select(x => x.FolderName).Distinct().ToList();
 			CollectionAssert.AreEquivalent(new[] { "410x307","500x370","649x696","926x858","640x320","360x480" },listSizes);
+		}
+
+		[TestMethod]
+		public void EveryPaintType_IsPaintedInEveryStatusColour() {
+			//Plan section 8: every paint type from 1 to 18 in every status colour (TP, C, EC, EO, R, Cn). Paint logs each procedure it is given,
+			//including the ones today's chart draws nothing for and the completed extractions it skips.
+			List<string> listLog=StaRunner.Run(() => {
+				ChartScenes.ListPaintLog=new List<string>();
+				try {
+					using ToothChartWrapper wrapper=new ToothChartWrapper();
+					wrapper.Size=ChartScenes.SizeModule.Size;
+					ToothChartRelay relay=new ToothChartRelay();
+					relay.SetToothChartWrapper(wrapper);
+					foreach(ChartScene scene in ChartScenes.GetAll().Where(x => x.Kind==ChartSceneKind.Chart)) {
+						ChartScenes.Prepare(relay,scene,ChartColorSet.Module);
+					}
+					return ChartScenes.ListPaintLog;
+				}
+				finally {
+					ChartScenes.ListPaintLog=null;
+				}
+			});
+			List<string> listMissing=new List<string>();
+			foreach(ToothPaintingType paintType in Enum.GetValues(typeof(ToothPaintingType))) {
+				if(paintType==ToothPaintingType.None) {
+					continue;
+				}
+				foreach(StatusColors statusColors in ChartScenes.ArrayStatuses) {
+					if(!listLog.Contains(paintType+" "+statusColors.Status)) {
+						listMissing.Add(paintType+" "+statusColors.Status);
+					}
+				}
+			}
+			Assert.AreEqual(18,Enum.GetValues(typeof(ToothPaintingType)).Length-1,"The paint types are 1 to 18.");
+			Assert.AreEqual(0,listMissing.Count,"No scene paints: "+string.Join(", ",listMissing));
+		}
+
+		[TestMethod]
+		public void CompletedExtractions_DrawNoX_AsInTheChartModule() {
+			//ControlChart.DrawProcGraphics skips an extraction in C, EC or EO: the tooth is missing instead. The other statuses draw the X.
+			StaRunner.Run(() => {
+				using ToothChartWrapper wrapper=new ToothChartWrapper();
+				ToothChartRelay relay=new ToothChartRelay();
+				relay.SetToothChartWrapper(wrapper);
+				foreach(StatusColors statusColors in ChartScenes.ArrayStatuses) {
+					relay.ResetTeeth();
+					ChartScenes.Paint(relay,ToothPaintingType.Extraction,"3","",statusColors);
+					bool isCompleted=statusColors.Status=="C" || statusColors.Status=="EC" || statusColors.Status=="EO";
+					Assert.AreEqual(isCompleted,ChartScenes.IsCompletedStatus(statusColors),statusColors.Status);
+					Assert.AreEqual(!isCompleted,wrapper.TcData.ListToothGraphics["3"].DrawBigX,statusColors.Status);
+				}
+			});
 		}
 
 		[TestMethod]
@@ -113,12 +166,14 @@ namespace ToothChartImageTests {
 			StaRunner.Run(() => {
 				string hashEmpty=Render2D(ChartScenes.SizeModule.Size,ChartColorSet.Module,ChartScenes.Get("empty-universal"));
 				foreach(string name in new[] { "empty-fdi","primary-dentition","missing-posterior","hidden-premolars","extraction-statuses","select-one",
-					"drawing-segments","text-watch","colour-custom-chart-colours" })
+					"drawing-segments","text-watch","colour-custom-chart-colours","extraction-completed","bridge-dark-cn","denture-light-tp-ec-r-cn" })
 				{
 					Assert.AreNotEqual(hashEmpty,Render2D(ChartScenes.SizeModule.Size,ChartColorSet.Module,ChartScenes.Get(name)),name);
 				}
-				//Today no engine draws free text, orthodontic hardware, retained roots or space maintainers, and paint text other than "W".
-				foreach(string name in new[] { "text-label-long","ortho-brackets","retained-root","space-maintainer-tooth","text-other" }) {
+				//Today no engine draws free text, orthodontic hardware, retained roots or space maintainers, paint text other than "W" and TextBelow.
+				foreach(string name in new[] { "text-label-long","ortho-brackets","retained-root","space-maintainer-tooth","text-other","text-other-eo-r",
+					"text-below-statuses","retained-root-statuses","space-maintainer-statuses" })
+				{
 					Assert.AreEqual(hashEmpty,Render2D(ChartScenes.SizeModule.Size,ChartColorSet.Module,ChartScenes.Get(name)),name);
 				}
 			});

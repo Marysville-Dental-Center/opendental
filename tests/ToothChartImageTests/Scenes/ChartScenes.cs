@@ -190,12 +190,22 @@ namespace ToothChartImageTests {
 		private static readonly string[] _arrayTeethMaxillary={ "3","5","7","10","12","14" };
 		private static readonly string[] _arrayTeethMandibular={ "30","28","26","23","21","19" };
 
+		///<summary>When not null, Paint adds "PaintType Status" for every procedure it is given, drawn or not: the scene tests' check that every paint
+		///type has a scene in every status colour. One per thread, so a test's log holds only its own scenes.</summary>
+		[ThreadStatic]
+		public static List<string> ListPaintLog;
+
 		///<summary>Paints one procedure as the Chart module's paint switch does (ControlChart.DrawProcGraphics) for the given paint type, tooth,
 		///surfaces or range and status colours. listMissing holds the teeth that are missing or hidden, which turns bridge and denture teeth into
-		///pontics. The caller has already set those teeth missing.</summary>
+		///pontics. The caller has already set those teeth missing. As in the Chart module, a completed extraction (C, EC or EO) draws nothing: the
+		///completion set the tooth missing, which the caller does. TextBelow (18) draws nothing today: no caller has a case for it (TC-5).</summary>
 		public static void Paint(ToothChartRelay relay,ToothPaintingType paintType,string toothNum,string surf,StatusColors statusColors,
 			params string[] arrayMissing)
 		{
+			ListPaintLog?.Add(paintType+" "+statusColors.Status);
+			if(paintType==ToothPaintingType.Extraction && IsCompletedStatus(statusColors)) {
+				return;//ControlChart.DrawProcGraphics skips it: "prevents the red X. Missing teeth already handled."
+			}
 			Color colorDark=statusColors.Dark;
 			Color colorLight=statusColors.Light;
 			switch(paintType) {
@@ -268,10 +278,17 @@ namespace ToothChartImageTests {
 				case ToothPaintingType.Text:
 					relay.SetText(toothNum,colorDark,surf);//surf holds the procedure code's paint text
 					break;
+				case ToothPaintingType.TextBelow:
+					break;//No paint switch has a case for it today, so nothing is drawn; TC-5 adds the relay's SetTextBelow.
 				case ToothPaintingType.Veneer:
 					relay.SetVeneer(toothNum,colorLight);
 					break;
 			}
+		}
+
+		///<summary>C, EC and EO: the statuses of work that is done. A completed extraction is shown as a missing tooth, not as an X.</summary>
+		public static bool IsCompletedStatus(StatusColors statusColors) {
+			return statusColors.Status==C.Status || statusColors.Status==EC.Status || statusColors.Status==EO.Status;
 		}
 
 		///<summary>Paints the type in each of the six status colours on six maxillary and six mandibular teeth (3, 5, 7, 10, 12, 14 and 30, 28, 26, 23,
@@ -641,6 +658,13 @@ namespace ToothChartImageTests {
 				foreach(string toothNum in new[] { "18","19","20" }) { Paint(relay,ToothPaintingType.BridgeDark,toothNum,"",EO,arrayMissing); }
 				foreach(string toothNum in new[] { "28","29","30" }) { Paint(relay,ToothPaintingType.BridgeDark,toothNum,"",R,arrayMissing); }
 			});
+			Add(listScenes,group,"bridge-dark-cn","Dark Cn bridges, the status the other dark bridge scenes leave out: 3-4-5 with 4 missing and 19-20-21 with "
+				+"20 missing.",relay => {
+					string[] arrayMissing={ "4","20" };
+					SetMissing(relay,arrayMissing);
+					foreach(string toothNum in new[] { "3","4","5" }) { Paint(relay,ToothPaintingType.BridgeDark,toothNum,"",Cn,arrayMissing); }
+					foreach(string toothNum in new[] { "19","20","21" }) { Paint(relay,ToothPaintingType.BridgeDark,toothNum,"",Cn,arrayMissing); }
+				});
 			Add(listScenes,group,"bridge-light","Light bridges: 3-4-5 TP and 12-13-14 C with 4 and 13 missing, 19-20-21 EC and 28-29-30 Cn with 20 and 29 "
 				+"missing.",relay => {
 					string[] arrayMissing={ "4","13","20","29" };
@@ -649,6 +673,15 @@ namespace ToothChartImageTests {
 					foreach(string toothNum in new[] { "12","13","14" }) { Paint(relay,ToothPaintingType.BridgeLight,toothNum,"",C,arrayMissing); }
 					foreach(string toothNum in new[] { "19","20","21" }) { Paint(relay,ToothPaintingType.BridgeLight,toothNum,"",EC,arrayMissing); }
 					foreach(string toothNum in new[] { "28","29","30" }) { Paint(relay,ToothPaintingType.BridgeLight,toothNum,"",Cn,arrayMissing); }
+				});
+			Add(listScenes,group,"bridge-light-eo-r","Light bridges in the two statuses bridge-light leaves out: 3-4-5 EO and 12-13-14 R with 4 and 13 "
+				+"missing, 19-20-21 EO and 28-29-30 R with 20 and 29 missing.",relay => {
+					string[] arrayMissing={ "4","13","20","29" };
+					SetMissing(relay,arrayMissing);
+					foreach(string toothNum in new[] { "3","4","5" }) { Paint(relay,ToothPaintingType.BridgeLight,toothNum,"",EO,arrayMissing); }
+					foreach(string toothNum in new[] { "12","13","14" }) { Paint(relay,ToothPaintingType.BridgeLight,toothNum,"",R,arrayMissing); }
+					foreach(string toothNum in new[] { "19","20","21" }) { Paint(relay,ToothPaintingType.BridgeLight,toothNum,"",EO,arrayMissing); }
+					foreach(string toothNum in new[] { "28","29","30" }) { Paint(relay,ToothPaintingType.BridgeLight,toothNum,"",R,arrayMissing); }
 				});
 			Add(listScenes,group,"bridge-anterior","Dark TP anterior bridge 7-8-9-10 with 8 and 9 missing, and 23-24-25-26 EC with 24 and 25 missing.",
 				relay => {
@@ -691,6 +724,25 @@ namespace ToothChartImageTests {
 				SetMissing(relay,arrayMissing);
 				Paint(relay,ToothPaintingType.DentureLight,"19,20,29,30","",C,arrayMissing);
 			});
+			Add(listScenes,group,"denture-dark-eo-r-cn","Dark dentures in the statuses the other dark denture scenes leave out: an upper complete denture "
+				+"(surface U) in EO with teeth 1-16 missing, and lower partial dentures over the ranges 18, 19, 20 in R and 29, 30, 31 in Cn (missing).",
+				relay => {
+					string[] arrayMissing=Enumerable.Range(1,16).Select(x => x.ToString()).Concat(new[] { "18","19","20","29","30","31" }).ToArray();
+					SetMissing(relay,arrayMissing);
+					Paint(relay,ToothPaintingType.DentureDark,"","U",EO,arrayMissing);
+					Paint(relay,ToothPaintingType.DentureDark,"18,19,20","",R,arrayMissing);
+					Paint(relay,ToothPaintingType.DentureDark,"29,30,31","",Cn,arrayMissing);
+				});
+			Add(listScenes,group,"denture-light-tp-ec-r-cn","Light dentures in the statuses the other light denture scenes leave out: an upper complete "
+				+"denture (surface U) in TP with teeth 1-16 missing, and lower partial dentures over the ranges 18, 19 in EC, 24, 25 in R and 30, 31 in Cn "
+				+"(missing).",relay => {
+					string[] arrayMissing=Enumerable.Range(1,16).Select(x => x.ToString()).Concat(new[] { "18","19","24","25","30","31" }).ToArray();
+					SetMissing(relay,arrayMissing);
+					Paint(relay,ToothPaintingType.DentureLight,"","U",TP,arrayMissing);
+					Paint(relay,ToothPaintingType.DentureLight,"18,19","",EC,arrayMissing);
+					Paint(relay,ToothPaintingType.DentureLight,"24,25","",R,arrayMissing);
+					Paint(relay,ToothPaintingType.DentureLight,"30,31","",Cn,arrayMissing);
+				});
 			#endregion Crowns, bridges, dentures
 			#region Extractions, implants, RCT, build-ups
 			Add(listScenes,group,"extraction-statuses","The big X: TP on 1, 16, 17 and 32, R on 4, Cn on 29. Completed extractions draw no X (the tooth is "
@@ -711,6 +763,16 @@ namespace ToothChartImageTests {
 					Paint(relay,ToothPaintingType.Extraction,toothNum,"",TP);
 				}
 			});
+			Add(listScenes,group,"extraction-completed","Completed extractions: C on 2 and 31, EC on 12, EO on 21. The completion set those teeth missing, and "
+				+"the Chart module skips a completed extraction, so today's chart draws no X, only the missing teeth (the \"before\" of the completed-extraction "
+				+"graphic, O-20).",relay => {
+					string[] arrayTeeth={ "2","12","21","31" };
+					StatusColors[] arrayStatusesCompleted={ C,EC,EO,C };
+					SetMissing(relay,arrayTeeth);
+					for(int i=0;i<arrayTeeth.Length;i++) {
+						Paint(relay,ToothPaintingType.Extraction,arrayTeeth[i],"",arrayStatusesCompleted[i]);
+					}
+				});
 			Add(listScenes,group,"implant-statuses","Implants on missing teeth"+statusText,relay => {
 				SetMissing(relay,_arrayTeethMaxillary);
 				SetMissing(relay,_arrayTeethMandibular);
@@ -826,6 +888,13 @@ namespace ToothChartImageTests {
 					Paint(relay,ToothPaintingType.Text,"19","ABC",EC);
 					Paint(relay,ToothPaintingType.Text,"30","1",Cn);
 				});
+			Add(listScenes,group,"text-other-eo-r","Paint type Text with text other than \"W\" in the two statuses text-other leaves out: \"Rx\" on 5 (EO) and "
+				+"\"2\" on 28 (R). Today's chart draws nothing for it (O-22).",relay => {
+					Paint(relay,ToothPaintingType.Text,"5","Rx",EO);
+					Paint(relay,ToothPaintingType.Text,"28","2",R);
+				});
+			Add(listScenes,group,"text-below-statuses","Paint type TextBelow (18) with the paint text \"IMP\""+statusText+" Today's chart draws nothing for it: "
+				+"no caller paints TextBelow (O-21, TC-5).",relay => PaintStatuses(relay,ToothPaintingType.TextBelow,"IMP"));
 			Add(listScenes,group,"retained-root","Retained roots (type 16) on 4, 13 and 20 (TP) and 29 (C). Today's chart draws nothing for them (O-23).",
 				relay => {
 					foreach(string toothNum in new[] { "4","13","20" }) {
@@ -833,6 +902,8 @@ namespace ToothChartImageTests {
 					}
 					Paint(relay,ToothPaintingType.RetainedRoot,"29","",C);
 				});
+			Add(listScenes,group,"retained-root-statuses","Retained roots"+statusText+" Today's chart draws nothing for them (O-23).",
+				relay => PaintStatuses(relay,ToothPaintingType.RetainedRoot,""));
 			Add(listScenes,group,"space-maintainer-tooth","Space maintainers (type 17) on single teeth 4 (TP) and 29 (C). Today's chart draws nothing for "
 				+"them (O-23).",relay => {
 					Paint(relay,ToothPaintingType.SpaceMaintainer,"4","",TP);
@@ -848,6 +919,8 @@ namespace ToothChartImageTests {
 					Paint(relay,ToothPaintingType.SpaceMaintainer,"4,5,6,7,8","",TP);
 					Paint(relay,ToothPaintingType.SpaceMaintainer,"20,21,22,23,24","",C);
 				});
+			Add(listScenes,group,"space-maintainer-statuses","Space maintainers on single teeth"+statusText+" Today's chart draws nothing for them (O-23).",
+				relay => PaintStatuses(relay,ToothPaintingType.SpaceMaintainer,""));
 			#endregion Sealants, veneers, text, types drawn by nothing yet
 			#region Whole mouths
 			Add(listScenes,group,"restored-adult","A heavily restored adult: 1, 16, 17, 32 missing; bridge 12-13-14 (13 missing, EO); implant with crown on "
