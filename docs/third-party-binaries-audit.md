@@ -130,7 +130,7 @@ Unused proprietary files are not listed here; they are simply deleted (for examp
 | `VirtualWeb.dll` | 0 | Removed: Open Dental's cloud edition (Thinfinity, AppStream) is gone, and the DLL is deleted |
 | `ImagingDeviceManager.dll` | 1 | Being replaced elsewhere (NTwain) |
 | `ODApi.dll` | 0 | Removed: the local REST API is gone, and the DLL is deleted |
-| `EHR` | 0 (loaded by reflection) | Being removed elsewhere. There is no `EHR.dll` in `Required dlls`. |
+| `EHR` | 0 (loaded by reflection) | Removed: the reflection hooks are gone, no code names `EHR.dll` (`tests/EhrTests/NoEhrDllTests.cs`), and there is no `EHR.dll` in `Required dlls`. The EHR features stay; what the DLL gave is rebuilt as open code (`docs/specs/ehr-rebuild-plan.md`, package EHR-0 first) |
 
 ### Priority 2: compile-time Open Dental binaries with no owner yet
 

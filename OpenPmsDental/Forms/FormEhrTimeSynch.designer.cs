@@ -38,6 +38,10 @@ namespace OpenPmsDental{
 			this.textNistTime = new OpenPmsDental.ODtextBox();
 			this.butRefreshTime = new OpenPmsDental.UI.Button();
 			this.textNistUrl = new OpenPmsDental.ODtextBox();
+			this.butSetClock = new OpenPmsDental.UI.Button();
+			this.labelSetClock = new System.Windows.Forms.Label();
+			this.checkTimeSyncWarn = new OpenPmsDental.UI.CheckBox();
+			this.labelTimeSyncWarn = new System.Windows.Forms.Label();
 			this.SuspendLayout();
 			// 
 			// label2
@@ -167,7 +171,7 @@ namespace OpenPmsDental{
 			this.butRefreshTime.Name = "butRefreshTime";
 			this.butRefreshTime.Size = new System.Drawing.Size(83, 24);
 			this.butRefreshTime.TabIndex = 76;
-			this.butRefreshTime.Text = "Sync Time";
+			this.butRefreshTime.Text = "Measure";
 			this.butRefreshTime.Click += new System.EventHandler(this.butRefreshTime_Click);
 			// 
 			// textNistUrl
@@ -184,9 +188,52 @@ namespace OpenPmsDental{
 			this.textNistUrl.TabIndex = 75;
 			this.textNistUrl.Text = "";
 			// 
+			// butSetClock
+			// 
+			this.butSetClock.Enabled = false;
+			this.butSetClock.Location = new System.Drawing.Point(254, 154);
+			this.butSetClock.Name = "butSetClock";
+			this.butSetClock.Size = new System.Drawing.Size(160, 24);
+			this.butSetClock.TabIndex = 93;
+			this.butSetClock.Text = "Set this computer's clock";
+			this.butSetClock.Click += new System.EventHandler(this.butSetClock_Click);
+			// 
+			// labelSetClock
+			// 
+			this.labelSetClock.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.labelSetClock.Location = new System.Drawing.Point(137, 272);
+			this.labelSetClock.Name = "labelSetClock";
+			this.labelSetClock.Size = new System.Drawing.Size(380, 44);
+			this.labelSetClock.TabIndex = 94;
+			this.labelSetClock.Text = "";
+			// 
+			// checkTimeSyncWarn
+			// 
+			this.checkTimeSyncWarn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.checkTimeSyncWarn.Location = new System.Drawing.Point(137, 322);
+			this.checkTimeSyncWarn.Name = "checkTimeSyncWarn";
+			this.checkTimeSyncWarn.Size = new System.Drawing.Size(380, 20);
+			this.checkTimeSyncWarn.TabIndex = 95;
+			this.checkTimeSyncWarn.Text = "Check the database server's clock every 4 hours";
+			this.checkTimeSyncWarn.Click += new System.EventHandler(this.checkTimeSyncWarn_Click);
+			// 
+			// labelTimeSyncWarn
+			// 
+			this.labelTimeSyncWarn.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.labelTimeSyncWarn.Location = new System.Drawing.Point(137, 344);
+			this.labelTimeSyncWarn.Name = "labelTimeSyncWarn";
+			this.labelTimeSyncWarn.Size = new System.Drawing.Size(380, 44);
+			this.labelTimeSyncWarn.TabIndex = 96;
+			this.labelTimeSyncWarn.Text = "Runs on the database server's computer and shows an alert when its clock is more than 5 seconds off the tim" +
+    "e server. It never sets the clock. Takes effect at the next start.";
+			// 
 			// FormEhrTimeSynch
 			// 
-			this.ClientSize = new System.Drawing.Size(538, 293);
+			this.ClientSize = new System.Drawing.Size(538, 400);
+			this.Controls.Add(this.labelTimeSyncWarn);
+			this.Controls.Add(this.checkTimeSyncWarn);
+			this.Controls.Add(this.labelSetClock);
+			this.Controls.Add(this.butSetClock);
 			this.Controls.Add(this.label7);
 			this.Controls.Add(this.textMessage);
 			this.Controls.Add(this.label6);
@@ -220,5 +267,9 @@ namespace OpenPmsDental{
 		private System.Windows.Forms.Label label6;
 		private ODtextBox textMessage;
 		private System.Windows.Forms.Label label7;
+		private UI.Button butSetClock;
+		private System.Windows.Forms.Label labelSetClock;
+		private UI.CheckBox checkTimeSyncWarn;
+		private System.Windows.Forms.Label labelTimeSyncWarn;
 	}
 }

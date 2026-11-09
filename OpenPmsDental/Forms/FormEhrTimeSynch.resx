@@ -121,8 +121,8 @@
     <value>17, 17</value>
   </metadata>
   <data name="label6.Text" xml:space="preserve">
-    <value>In order to continue using Open PMS - Dental you must ensure your local machine time and server time are in sync with an NIST time server.
-Note: You may only send a time request to the NIST time server once every four seconds.</value>
+    <value>Compares this computer's clock and the database server's clock with an NTP time server. Opening this window only measures; it never sets the clock. Windows Time should keep the clock (recommended).
+Note: You may only send a time request to the time server once every four seconds.</value>
   </data>
   <assembly alias="System.Drawing" name="System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" />
 </root>

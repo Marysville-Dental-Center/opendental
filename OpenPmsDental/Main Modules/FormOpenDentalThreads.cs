@@ -101,7 +101,6 @@ namespace OpenPmsDental {
 				Enum.GetValues(typeof(FormODThreadNames)).Cast<FormODThreadNames>().ForEach(threadName => {
 					switch(threadName) {
 						//Do not kill these.
-						case FormODThreadNames.EhrCodeList:
 						case FormODThreadNames.RegKeyIsForTesting:
 						case FormODThreadNames.ODServiceStarter:
 						case FormODThreadNames.ComputerHeartbeat:
@@ -750,36 +749,43 @@ namespace OpenPmsDental {
 		#endregion
 		#region TimeSyncThread
 
-		///<summary>This begins the time sync thread. If OpenPmsDental is running on the same machine as the mysql server, then a thread is runs in the 
-		///background to update the local machine's time using NTPv4 from the NIST time server set in the NistTimeServerUrl pref.</summary>
+		///<summary>The time check's state for this run of the program: failed checks in a row, and whether a kiss-o'-death reply stopped the checks
+		///until the next start of the program.</summary>
+		private TimeSyncCheckState _timeSyncCheckState=new TimeSyncCheckState();
+
+		///<summary>Begins the time check (docs/specs/ehr-rebuild-plan.md, section 4). It no longer follows ShowFeatureEhr: it starts only when
+		///TimeSyncCheck.ShouldStart says so, that is when the setting ForkTimeSyncMode is Warn and the program runs on the database server's computer,
+		///whose clock the audit timestamps come from. The setting is read here, so a change applies at the next start.</summary>
 		private void BeginTimeSyncThread() {
 			if(IsThreadAlreadyRunning(FormODThreadNames.TimeSync)) {
 				return;
 			}
-			if(!(ODEnvironment.IsRunningOnDbServer(MiscData.GetODServer()) && PrefC.GetBool(PrefName.ShowFeatureEhr))) {
+			EnumTimeSyncMode timeSyncMode=TimeSyncCheck.GetMode();
+			//Off needs no test of the server's name.
+			bool isOnDbServer=timeSyncMode!=EnumTimeSyncMode.Off && ODEnvironment.IsRunningOnDbServer(MiscData.GetODServer());
+			if(!TimeSyncCheck.ShouldStart(timeSyncMode,isOnDbServer) || _timeSyncCheckState.IsStopped) {
 				return;
 			}
-			//OpenPmsDental has EHR enabled and is running on the same machine as the mysql server it is connected to.
-			ODThread odThread=new ODThread((int)TimeSpan.FromHours(4).TotalMilliseconds,TimeSyncWorker);
+			ODException.SwallowAnyException(() => Logger.WriteLine("The time check starts: every "+TimeSyncCheck.Interval.TotalHours+" hours, mode "
+				+timeSyncMode+".",TimeSyncCheck.LOG_SUBDIRECTORY));
+			ODThread odThread=new ODThread((int)TimeSyncCheck.Interval.TotalMilliseconds,(o) => TimeSyncWorker(o,timeSyncMode));
 			odThread.AddExceptionHandler((e) => e.DoNothing());
 			odThread.GroupName=FormODThreadNames.TimeSync.GetDescription();
 			odThread.Name=FormODThreadNames.TimeSync.GetDescription();
 			odThread.Start();
 		}
 
-		///<summary>Worker thread for the time sync thread. Every 6 hours gets the time from an NTPv4 server and sets the local time to that.</summary>
-		private void TimeSyncWorker(ODThread o) {
-			NTPv4 ntp=new NTPv4();
-			double nistOffset=double.MaxValue;
-			ODException.SwallowAnyException(() => {//Invalid NIST Server URL if fails
-				nistOffset=ntp.getTime(PrefC.GetString(PrefName.NistTimeServerUrl));
-			});
-			if(nistOffset!=double.MaxValue) {
-				//Did not timeout, or have invalid NIST server URL
-				//Sets local machine time. May error if unable to set machine.
-				ODException.SwallowAnyException(() => {
-					WindowsTime.SetTime(DateTime.Now.AddMilliseconds(nistOffset)); 
-				});
+		///<summary>One check, as soon as the thread starts (SetThreads starts it at every logon, as the old thread did) and then every 4 hours: one
+		///request to the NTP server in the NistTimeServerUrl pref, checked by NtpReply, then TimeSyncCheck.Next, which uses Decide: an alert when a
+		///valid reply shows the clock more than 5 seconds off, the log only for a failed check (and one alert after about a day of them), and a stop
+		///for a kiss-o'-death reply. An alert is not raised again while one of its kind less than 24 hours old exists (TimeSyncCheck.HasRecentAlert).
+		///It never sets the clock: Windows Time does (section 4.4).</summary>
+		private void TimeSyncWorker(ODThread odThread,EnumTimeSyncMode timeSyncMode) {
+			NtpResult ntpResult=new NTPv4().Query(PrefC.GetString(PrefName.NistTimeServerUrl));
+			TimeSyncStep timeSyncStep=TimeSyncCheck.Next(_timeSyncCheckState,timeSyncMode,ntpResult);
+			TimeSyncCheck.Apply(timeSyncStep);
+			if(timeSyncStep.IsStop) {
+				odThread.QuitAsync();
 			}
 		}
 
@@ -818,6 +824,9 @@ namespace OpenPmsDental {
 			ComputerHeartbeat,
 			CrashedTableMonitor,
 			DataConnectionLost,
+			///<summary>Not used. The thread that filled the EHR code list from Open Dental's EHR.dll was removed with that hook. Kept so the later values
+			///keep their numbers.</summary>
+			[Obsolete]
 			EhrCodeList,
 			///<summary>DEPRECATED. This thread now runs from Open Dental Service solution</summary>
 			EnableAdditionalFeatures,

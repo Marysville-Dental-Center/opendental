@@ -45,7 +45,7 @@ After that, port desktop features from Open Dental 26.1.70, **re-implemented fro
 | **ODApi** | Open Dental's local REST API server (port 30222), with key checks against HQ | 6 calls, 2 files | Remove (≈40 lines). Revisit only if a local tool needs an API. |
 | **Bridges** | Five integrations: CareCredit, PostcardMania, QuickBooks Online, Microsoft 365 email (Open Dental's Azure app), USPS address validation (via HQ) | ~150 refs, 23 files | Cut CareCredit and PostcardMania. QuickBooks Online, Microsoft 365 and USPS: see the open decisions below. |
 | **ImagingDeviceManager** | Wrapper over the commercial EZTwain TWAIN library (plus a dead XDR sensor wrapper) | ~84 calls, 5 files | **Keep the feature**: re-implement scanning on NTwain (MIT) or WIA and drop `Eztwain4.dll` |
-| **EHR** | Not shipped at all; Meaningful Use 2014 dashboard, loaded by reflection | 0 at compile time | Remove the reflection hooks and the MU forms |
+| **EHR** | Not shipped at all; Meaningful Use 2014 dashboard, loaded by reflection | 0 at compile time | **Done:** the reflection hooks are gone (`tests/EhrTests/NoEhrDllTests.cs` keeps them gone), and the EHR features are rebuilt as open code (`docs/specs/ehr-rebuild-plan.md`, packages EHR-0 to EHR-5), since the owner allowed EHR again on 2026-11-08. Package EHR-0: Show Features and the Setup Wizard turn EHR on with one confirmation, and the time check is its own setting, Off or Warn, that never sets the clock (`docs/port-notes/EHR-0.md`). |
 
 `Required dlls/` holds 158 files in total. Phase 2 includes a license audit of all of them. `xImageDeviceManager.dll` (Suni sensors), `Eztwain4.dll` and others are proprietary too.
 

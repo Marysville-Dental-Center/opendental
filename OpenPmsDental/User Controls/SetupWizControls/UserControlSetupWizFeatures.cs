@@ -37,6 +37,11 @@ namespace OpenPmsDental.User_Controls.SetupWizard {
 			labelExplanation.Text = (string)((Label)sender).Tag;
 		}
 
+		///<summary>The same confirmation and messages as Show Features (FormShowFeatures.HandleEhrClick). The value is saved in ControlDone.</summary>
+		private void checkEhr_Click(object sender,EventArgs e) {
+			checkEhr.Checked=FormShowFeatures.HandleEhrClick(checkEhr.Checked);
+		}
+
 		private void butAdvanced_Click(object sender,EventArgs e) {
 			if(!Security.IsAuthorized(EnumPermType.ShowFeatures)) {
 				return;
