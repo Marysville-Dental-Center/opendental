@@ -11,7 +11,7 @@ relative to it, and a path inside the Program Files, Windows, local app data, te
 such as <ProgramFiles(x86)>\. The script stops with an error, before writing the file, if a line would still hold the repository's
 path or any other drive path.
 
-  items.txt      The evaluated Compile, EmbeddedResource, Page, None and Content items of each C# project
+  items.txt      The evaluated Compile, EmbeddedResource, Page, Resource, None and Content items of each C# project
                  (MSBuild -getItem, with the configuration and platform the solution gives the project for Debug|x86):
                  project|item type|include|metadata. The include is the item's path as the project gives it: relative to
                  the project folder, or relative to the repository for an item the project names by a full path (the linked
@@ -178,7 +178,7 @@ $serializer=New-Object System.Web.Script.Serialization.JavaScriptSerializer
 $serializer.MaxJsonLength=[int]::MaxValue
 
 function Get-ProjectEvaluation($project){
-	$arguments=@($project.Path,'-nologo','-getItem:Compile','-getItem:EmbeddedResource','-getItem:Page','-getItem:None','-getItem:Content',
+	$arguments=@($project.Path,'-nologo','-getItem:Compile','-getItem:EmbeddedResource','-getItem:Page','-getItem:Resource','-getItem:None','-getItem:Content',
 		'-getProperty:TargetPath,AssemblyName,OutputType',"-p:Configuration=$($project.Configuration)","-p:Platform=$($project.Platform)",
 		"-p:SolutionDir=$Root\","-p:SolutionPath=$Root\OpenDental.sln",'-p:SolutionName=OpenDental','-p:SolutionExt=.sln')
 	$output=& $script:msbuild @arguments 2>&1 | ForEach-Object { "$_" }
@@ -211,7 +211,8 @@ if(-not $CompareOnly){
 	Write-Host "$($list.Count) C# projects"
 	foreach($project in $list){
 		$evaluation=Get-ProjectEvaluation $project
-		foreach($itemType in @('Compile','EmbeddedResource','Page','None','Content')){
+		#Resource: the WPF resources a UseWPF project compiles into its .g.resources (S1-4's review), recorded since S1-T3.
+		foreach($itemType in @('Compile','EmbeddedResource','Page','Resource','None','Content')){
 			$itemList=$evaluation['Items'][$itemType]
 			if(-not $itemList){ continue }
 			foreach($item in $itemList){

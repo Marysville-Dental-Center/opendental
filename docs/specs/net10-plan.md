@@ -287,10 +287,13 @@ repository URL or commit, and the build does not read the `.git` folder. S1-1 dr
 - The project-file reader agrees with MSBuild (from stage 1 on, package S1-T2): after the full lane build and before any test run, the
   gate records a baseline with `tools\Get-ProjectBaseline.ps1 -Out <folder>` and runs ProjectFileTests'
   `ProjectBaselineTests.EveryProjectOfTheSolutionFilter_EvaluatesTheItemsMSBuildRecorded` with `OPMS_CHECK_PROJECT_BASELINE=1` and
-  `OPMS_PROJECT_BASELINE_DIR=<folder>`: zero differences between the Compile, EmbeddedResource, Page, None and Content items (with their
-  metadata) that `tests/ProjectFileTests/ProjectFile.cs` evaluates and the ones MSBuild recorded, for every project of the slnf, classic
-  and SDK-style alike; it writes what it compared and every difference to `items-check.txt` in that folder. Without the variable the
-  test is Inconclusive. S1-3, S1-4, S1-5 and S1-6 run it the same way in their proof.
+  `OPMS_PROJECT_BASELINE_DIR=<folder>`: zero differences between the Compile, EmbeddedResource, Page, Resource (since S1-T3), None and
+  Content items (with their metadata) that `tests/ProjectFileTests/ProjectFile.cs` evaluates and the ones MSBuild recorded, for every
+  project of the slnf, classic and SDK-style alike; it writes what it compared and every difference to `items-check.txt` in that folder.
+  Without the variable the test is Inconclusive. S1-3, S1-4, S1-5 and S1-6 run it the same way in their proof.
+- The reader's properties agree with MSBuild's (from stage 1 on, package S1-T3): after the full lane build every stage gate runs
+  `tools\Test-ProjectFileEvaluator.ps1 -Out <folder>`, which compares GetProperty with MSBuild -getProperty for every C# project of the
+  slnf; it must exit 0 (zero mismatches, zero silent empties, zero errors; a name the reader throws for as not modelled is allowed).
 - The stage's launch checks (section 6).
 - From the merge of S3a-12 and S3a-16 until the switch: the x64 test runs of the pointer-size tests (S3a-12, S3a-15) pass, and
   `Direct2dWrapper` builds for x64 (S3a-16).

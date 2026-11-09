@@ -22,6 +22,12 @@ The stage 1 gate allows no difference in `items.txt`, `resources.txt`, `configs.
 of `files.txt`, except the ones a package removes on purpose and names in its report. Sizes and SHA-256 values of built files
 differ with every build (most classic projects do not compile deterministically) and are only listed.
 
+Since S1-T3 the script also records the `Resource` items (the WPF resources of a UseWPF project, S1-4's review), and
+ProjectFileTests' opt-in baseline check compares them too. The record in this folder was taken before that, so its `items.txt`
+holds no `Resource` line: a new record differs from it by exactly those lines, and the opt-in check run against this folder
+(without `OPMS_PROJECT_BASELINE_DIR`) reports each `Resource` item as only evaluated, until the lead takes the record again after
+the merges. The gates and the packages check against a record of their own, which holds them.
+
 ## This record: after the first wave of stage 1 (2026-11-08)
 
 Taken after S1-T, S1-2 and S1-1 had merged and the lead's sweep after them (the 2003 MSBuild namespace removed from the SDK-style

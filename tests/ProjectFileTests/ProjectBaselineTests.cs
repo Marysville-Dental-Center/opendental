@@ -1,5 +1,5 @@
 // The opt-in proof that ProjectFile evaluates what MSBuild evaluates (package S1-T2 of the .NET 10 plan, docs/specs/net10-plan.md, section 3):
-// for every C# project of OpenDental.Local.slnf, the Compile, EmbeddedResource, Page, None and Content items it evaluates, with their metadata,
+// for every C# project of OpenDental.Local.slnf, the Compile, EmbeddedResource, Page, Resource, None and Content items it evaluates, with their metadata,
 // equal the items.txt that tools\Get-ProjectBaseline.ps1 recorded from MSBuild's own evaluation (-getItem), line for line. So the tests that
 // read project files through ProjectFile see what the build sees, classic and SDK-style projects alike. It needs a record of the same tree,
 // taken after a full lane build and before any test run, so it runs only with OPMS_CHECK_PROJECT_BASELINE=1 (Inconclusive otherwise), against
@@ -85,6 +85,7 @@ namespace ProjectFileTests {
 					@"Classic|EmbeddedResource|Forms\FormMain.resx|DependentUpon=FormMain.cs",
 					@"Classic|None|Data\Seed.txt|CopyToOutputDirectory=PreserveNewest",
 					@"Classic|Page|Frms\FrmPrint.xaml|Generator=MSBuild:Compile;SubType=Designer",
+					@"Classic|Resource|Resources\Icon.png|",
 					@"SdkExplicitImports|Compile|Forms\FormMain.cs|",
 					@"SdkExplicitImports|Compile|Program.cs|",
 					@"SdkExplicitImports|Compile|Program.cs||#2",
@@ -116,6 +117,20 @@ namespace ProjectFileTests {
 		}
 
 		[TestMethod]
+		public void AResourceItem_IsRecorded_AndOneTakenOutIsADifference() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//The WPF resources, as tools\Get-ProjectBaseline.ps1 records them since S1-T3 (-getItem:Resource): a Resource the project no longer
+				//names is a difference the check reports.
+				List<string> listBefore=BaselineRecord.GetItemLines(new[] { fixtureFolder.Load("SdkStyle") },fixtureFolder.Root);
+				CollectionAssert.IsSubsetOf(new[] { @"SdkStyle|Resource|Frms\Dictionary.xaml|",@"SdkStyle|Resource|Resources\Icon.png|" },listBefore);
+				fixtureFolder.EditProject("SdkStyle","<Resource Include=\"Resources\\Icon.png\" />","");
+				List<string> listAfter=BaselineRecord.GetItemLines(new[] { fixtureFolder.Load("SdkStyle") },fixtureFolder.Root);
+				CollectionAssert.AreEqual(new[] { @"SdkStyle|Resource|Resources\Icon.png|" },listBefore.Except(listAfter).ToArray());
+				Assert.AreEqual(0,listAfter.Except(listBefore).Count());
+			}
+		}
+
+		[TestMethod]
 		public void AChangedItem_IsADifference() {
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
 				List<string> listBefore=BaselineRecord.GetItemLines(new[] { fixtureFolder.Load("SdkStyle") },fixtureFolder.Root);
@@ -129,8 +144,9 @@ namespace ProjectFileTests {
 
 	///<summary>The lines of items.txt as tools\Get-ProjectBaseline.ps1 writes them, from ProjectFile's evaluation instead of MSBuild's.</summary>
 	internal static class BaselineRecord {
-		///<summary>The item types the script records.</summary>
-		public static readonly string[] ArrayItemTypes=new[] { "Compile","EmbeddedResource","Page","None","Content" };
+		///<summary>The item types the script records. Resource since S1-T3: a record taken before it holds no Resource lines, so it differs from
+		///this evaluation by every Resource item until it is taken again.</summary>
+		public static readonly string[] ArrayItemTypes=new[] { "Compile","EmbeddedResource","Page","Resource","None","Content" };
 
 		///<summary>project|item type|include|metadata for every item of the recorded types: the project's file name without its extension, the
 		///include and every metadata value with paths relative to the repository (RecordPaths), the item's own metadata as name=value sorted by name
