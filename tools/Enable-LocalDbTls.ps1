@@ -328,7 +328,7 @@ function Get-AccessSddl([string]$Path) {
 }
 
 # Puts back the access rules that Get-AccessSddl read; nothing else of the security descriptor (the owner stays as it is). Inherited rules
-# are taken from the parent again, as they were.
+# are taken from the parent again, as they were (Windows may then mark the list auto-inherited, AI: the same rules).
 function Set-AccessSddl([string]$Path, [string]$Sddl) {
 	if (Test-Path -LiteralPath $Path -PathType Container) {
 		$security = New-Object System.Security.AccessControl.DirectorySecurity
